@@ -571,21 +571,64 @@ pinned window size. Deterministic, and it survives cosmetic changes. Reserve ima
 one thing coordinates cannot give you — "did *something* render" — and do that with the coarse
 frame-size check the existing snapshot test already uses.
 
+#### How the menu actually works (verified against the source)
+
+Three mechanics that are not what you would guess, and that change how these tests must be written:
+
+**1. A single click selects a row. It does not activate it.**
+`PlayerEntityControls.m:763-780` — a left click only calls `setSelectedRow:` on whatever row the
+cursor is over. Activation requires **Enter** or a **double-click**
+(`n_key_gui_select || gvMouseDoubleClick`, the pattern repeated ~15 times throughout the file).
+
+So "click the Exit button" is two actions: move the selection to row 27, then confirm. A test that
+single-clicks ` Exit Game ` and waits will sit on the start screen until it times out.
+
+**2. ` Start New Commander ` does not start a game.** It opens a *scenario* screen
+(`GUI_SCREEN_NEWGAME`, `PlayerEntityLoadSave.m:207`) listing four choices from `scenarios.plist`:
+
+| Row | Label |
+|---:|---|
+| 1 | `Return to Menu` (red) |
+| **3** | **`Normal Start`** ← initially selected |
+| 4 | `Easy Start` |
+| 5 | `Tutorial` |
+| 6 | `Strict Mode` |
+
+Reaching the cockpit is therefore: confirm row 22 → confirm row 3.
+
+**3. There is no universal "back" key.** Each screen differs:
+
+| Screen | How you leave it |
+|---|---|
+| Scenario / New Game | Confirm row 1, `Return to Menu` |
+| Ship Library | **Space** (`PlayerEntityControls.m:5033`) |
+| Game Options | Select the `Back` row (`GUI_ROW_GAMEOPTIONS_BACK`) and confirm |
+| Expansion Manager | Its own in-screen navigation |
+
+That inconsistency is itself worth knowing: per-screen back semantics are exactly the kind of thing
+a rewrite silently breaks, and G5 exists to catch it.
+
+**One screen to avoid automating.** ` Load Commander ` sets `disc_operation_in_progress`
+(`PlayerEntityControls.m:4949`) and goes into file-dialog territory — OS-native, and a reliable
+source of flakes. Cover save/load through the golden harness instead, where it can be tested
+properly.
+
 #### The tests
 
 `tests/gui/`, pytest + PyAutoGUI. Every test gets a hard timeout with a forced kill, so a hang fails
 the run instead of wedging CI.
 
-| # | Test | What it catches |
-|---|---|---|
-| **G1** | **Launch → click ` Exit Game ` (row 27) → verify clean exit.** Assert: process exits within 10 s, exit code 0, no crash log, no orphaned process. | The baseline. Window opens, mouse input reaches the game, shutdown path works. |
-| **G2** | Launch → `Down`×5 → `Enter` → clean exit | Keyboard input path, independently of mouse. Separate SDL3 code path from G1. |
-| **G3** | Launch → close via the window manager | `SDL_EVENT_QUIT` (`MyOpenGLView.m:2247`) — a *different* exit path from the menu. Platform-specific: red close button / ⌘Q (`exitAppCommandQ`) on macOS, Alt-F4 on Windows. |
-| **G4** | Launch → ` Start New Commander ` → step through to the cockpit → verify the HUD renders → exit | The "does the game actually work" smoke test. |
-| **G5** | Enter each of rows 23–26 and back out with `Escape` | Screens that crash on entry — a classic rewrite regression, and cheap to catch. Expansion Manager (row 26) additionally exercises the network path. |
-| **G6** | Window lifecycle: resize, minimise/restore, fullscreen toggle | GL context survival. Behaves differently on macOS; `OOGraphicsResetManager` exists for exactly this and is currently untested. |
-| **G7** | First run: delete the config/prefs directory, launch, verify defaults are created, exit cleanly | The "works because I already have a config file" bug class. High value on a brand-new platform. |
-| **G8** | Post-exit hygiene, asserted after every test above: no core dump, no `ERROR`/exception lines in `Latest.log`, defaults file written and re-parseable | Silent-failure shutdowns. |
+| # | Test | Steps | What it catches |
+|---|---|---|---|
+| **G1** | **Exit via mouse** | Launch → click row 27 (` Exit Game `) to select → **double-click** to confirm. Assert: exits within 10 s, code 0, no crash log, no orphaned process. | The baseline. Window opens, mouse input reaches the game, shutdown path works. |
+| **G2** | **Exit via keyboard** | Launch → `Down`×5 → `Enter` | Keyboard path independently of mouse — a separate SDL3 code path from G1. |
+| **G3** | **Exit via window close** | Launch → close button (⌘Q on macOS via `exitAppCommandQ`, Alt-F4 on Windows) | `SDL_EVENT_QUIT` (`MyOpenGLView.m:2247`) — a genuinely *different* shutdown path from the menu, and the one most likely to leak on a new platform. |
+| **G4** | **Start a game** | Launch → confirm row 22 → land on scenario screen → confirm row 3 (`Normal Start`) → wait for the cockpit → assert the HUD renders → exit | The "does the game actually work end-to-end" smoke test. Covers the two-screen flow, not one. |
+| **G5** | **Screen round-trips** | Enter and leave each of: Ship Library (row 24, exit with `Space`), Game Options (row 25, exit via its `Back` row), Expansion Manager (row 26). Assert the start screen is reachable again each time. | Screens that crash on entry — a classic rewrite regression. Also pins the per-screen back semantics. Row 26 additionally exercises the network path. Skip row 23 (see above). |
+| **G6** | **Window lifecycle** | Resize, minimise/restore, fullscreen toggle | GL context survival. Behaves differently on macOS; `OOGraphicsResetManager` exists for exactly this and is currently untested. |
+| **G7** | **First run** | Delete the config/prefs directory → launch → verify defaults are created → exit cleanly | The "works because I already have a config file" bug class. High value on a brand-new platform. |
+| **G8** | **Scenario-screen back-out** | Launch → confirm row 22 → confirm row 1 (`Return to Menu`) → verify start screen → exit | Confirms G4's flow is reversible; cheap, and it catches a stuck GUI-state machine. |
+| **G9** | **Post-exit hygiene** (asserted after every test above) | No core dump; no `ERROR`/exception lines in `Latest.log`; defaults file written and re-parseable | Silent-failure shutdowns. |
 
 **Scope discipline:** these are smoke tests. They assert *launched / responded / exited cleanly* and
 nothing about gameplay state — that belongs to the golden harness, which can assert it far more
@@ -610,8 +653,8 @@ launch failure.
 
 #### When to build it
 
-G1–G3 in Phase 0, against the current Objective-C build, so there is a known-good baseline before
-anything changes. G4–G8 can follow. The whole tier becomes load-bearing at **Phase 3**, where it is
+G1–G4 in Phase 0, against the current Objective-C build, so there is a known-good baseline before
+anything changes. G5–G9 can follow. The whole tier becomes load-bearing at **Phase 3**, where it is
 the primary evidence that the Apple Silicon build is a real application and not just a binary that
 links.
 
@@ -623,7 +666,7 @@ links.
 - [ ] JS API snapshot committed
 - [ ] Tier 1/2/3 corpus automated
 - [ ] Mozilla-only-JS scan report published
-- [ ] PyAutoGUI G1–G3 green on Linux and Windows; macOS runner decision made
+- [ ] PyAutoGUI G1–G4 green on Linux and Windows; macOS runner decision made
 
 ---
 
