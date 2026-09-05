@@ -32,7 +32,7 @@ Having measured the tree, the difficulty is *not* evenly distributed. Ranked by 
 | **R2** | **GNUstep `libs-base` (Foundation)** | The real portability chain, not the ObjC language. ~11k Foundation references; `NSString` alone appears 6,286 times. | Replace with an in-tree C++23 layer. This is the migration's centre of gravity. |
 | **R3** | **Manual retain/release** | ~2,100 `retain`/`release`/`autorelease` sites, 92 `NSAutoreleasePool`, no ARC, custom `OOWeakReference` proxy for cycles. | Mirror it exactly with an intrusive `oo::Ref<T>` / `oo::WeakRef<T>`. Do *not* reach for `std::shared_ptr` during translation. |
 | **R4** | **OpenGL 2.1 compatibility profile** | 380 `glVertex3f`, 23 `glEnableClientState`, `glMatrixMode`; shaders are GLSL 1.10/1.20 (`gl_FragColor`, no `#version`). | Works on Apple Silicon *today* via macOS's legacy 2.1 profile. Ship on that; modernise to GL 3.3 Core as a separate, later phase. |
-| **R5** | **Almost no automated tests + fast-moving upstream** | One Python smoke test (`tests/launch_snapshot.py`). Upstream took ~340 commits in the last 12 months. | Build a characterisation harness **first**. Everything else depends on it. |
+| **R5** | **Almost no automated tests + fast-moving upstream** | One Python smoke test (`tests/launch_snapshot.py`), and it runs headless — the window and input paths are untested. Upstream took ~340 commits in the last 12 months. | Build a characterisation harness **first**, plus a PyAutoGUI GUI tier for the window/input/shutdown paths. Everything else depends on it. |
 
 ### The load-bearing insight
 
@@ -514,7 +514,108 @@ a tiered corpus:
 Also: statically scan all Tier-3 scripts for the Mozilla-only JS constructs in §9.3. That scan is
 the single most valuable input to the expansion-author migration guide, and it can run today.
 
-### 5.6 Exit gate
+### 5.6 GUI smoke tests (PyAutoGUI)
+
+A second, separate test tier that drives the game through **real OS-level mouse and keyboard input
+against a real window**.
+
+#### Why this exists alongside the golden harness
+
+The two tiers test disjoint things, and the boundary must stay sharp:
+
+| | Golden harness (§5.2) | PyAutoGUI tier |
+|---|---|---|
+| Driven via | Debug-console TCP, JS commands | Synthetic OS input events |
+| Window | **None** — `SDL_VIDEODRIVER=offscreen` | Real, on-screen |
+| Tests | Simulation, gameplay, data, OXP behaviour | Launch, window, input path, shutdown |
+| Volume | Hundreds of assertions | ~10 smoke tests |
+
+Note the row that matters: `tests/launch_snapshot.py:93` sets `SDL_VIDEODRIVER=offscreen`, so the
+existing test never creates a window. The entire windowing, event-loop, and input path is
+**currently untested**, and it is exactly the layer that a new platform target breaks. On Apple
+Silicon (Phase 3) this tier is the difference between "it compiles and the simulation runs" and
+"it is a working macOS application" — it is what catches a missing `.app` bundle, a Gatekeeper
+block, a GL context that never gets a drawable, or a window that opens behind the dock.
+
+It also covers what the console path structurally cannot: the debug console injects commands
+*inside* the game, bypassing SDL entirely, so it can never prove that a keypress or a click reaches
+the game at all.
+
+#### Locating UI elements: compute, don't image-match
+
+`pyautogui.locateOnScreen()` with reference screenshots is the obvious approach and the wrong one
+here — it is resolution-dependent, theme-dependent, and breaks on every HUD tweak.
+
+Oolite's GUI is a **fixed virtual grid**, so coordinates can be computed exactly
+(`src/Core/GuiDisplayGen.h:34-43`):
+
+```
+MAIN_GUI_PIXEL_WIDTH/HEIGHT  480 × 480     GUI_DEFAULT_ROWS  30
+MAIN_GUI_ROW_HEIGHT          16            MAIN_GUI_PIXEL_ROW_START  40
+```
+
+The start screen (`PlayerEntity.m:9900-9960`) lays out six selectable rows, 22–27, centred, with
+mouse interaction explicitly enabled:
+
+| Row | Label |
+|---:|---|
+| 22 | ` Start New Commander ` |
+| 23 | ` Load Commander ` |
+| 24 | ` View Ship Library ` |
+| 25 | ` Game Options ` |
+| 26 | ` Manage Expansion Packs ` |
+| **27** | **` Exit Game `** |
+
+So a helper resolves `row → screen point` from the window rect and the virtual grid, launched at a
+pinned window size. Deterministic, and it survives cosmetic changes. Reserve image matching for the
+one thing coordinates cannot give you — "did *something* render" — and do that with the coarse
+frame-size check the existing snapshot test already uses.
+
+#### The tests
+
+`tests/gui/`, pytest + PyAutoGUI. Every test gets a hard timeout with a forced kill, so a hang fails
+the run instead of wedging CI.
+
+| # | Test | What it catches |
+|---|---|---|
+| **G1** | **Launch → click ` Exit Game ` (row 27) → verify clean exit.** Assert: process exits within 10 s, exit code 0, no crash log, no orphaned process. | The baseline. Window opens, mouse input reaches the game, shutdown path works. |
+| **G2** | Launch → `Down`×5 → `Enter` → clean exit | Keyboard input path, independently of mouse. Separate SDL3 code path from G1. |
+| **G3** | Launch → close via the window manager | `SDL_EVENT_QUIT` (`MyOpenGLView.m:2247`) — a *different* exit path from the menu. Platform-specific: red close button / ⌘Q (`exitAppCommandQ`) on macOS, Alt-F4 on Windows. |
+| **G4** | Launch → ` Start New Commander ` → step through to the cockpit → verify the HUD renders → exit | The "does the game actually work" smoke test. |
+| **G5** | Enter each of rows 23–26 and back out with `Escape` | Screens that crash on entry — a classic rewrite regression, and cheap to catch. Expansion Manager (row 26) additionally exercises the network path. |
+| **G6** | Window lifecycle: resize, minimise/restore, fullscreen toggle | GL context survival. Behaves differently on macOS; `OOGraphicsResetManager` exists for exactly this and is currently untested. |
+| **G7** | First run: delete the config/prefs directory, launch, verify defaults are created, exit cleanly | The "works because I already have a config file" bug class. High value on a brand-new platform. |
+| **G8** | Post-exit hygiene, asserted after every test above: no core dump, no `ERROR`/exception lines in `Latest.log`, defaults file written and re-parseable | Silent-failure shutdowns. |
+
+**Scope discipline:** these are smoke tests. They assert *launched / responded / exited cleanly* and
+nothing about gameplay state — that belongs to the golden harness, which can assert it far more
+precisely and without flakiness. Holding this line is what stops the tier from becoming a
+maintenance sink. If a GUI test starts asserting on ship positions, it is in the wrong file.
+
+#### Platform and CI notes
+
+| Platform | Approach | Caveat |
+|---|---|---|
+| **Linux** | `xvfb-run` + `LIBGL_ALWAYS_SOFTWARE=1`, `GALLIUM_DRIVER=llvmpipe` (as `launch_snapshot.py` already does), `DISPLAY` pointed at Xvfb | Works headless on hosted runners. |
+| **Windows** | Hosted runners have an interactive desktop session | Works directly. |
+| **macOS** | **Needs a self-hosted runner** on Jon's own Apple Silicon machine | ⚠️ PyAutoGUI needs **Accessibility** (to synthesise input) and **Screen Recording** (to screenshot) TCC grants. These are per-app, granted interactively once, and cannot be scripted. Hosted GitHub macOS runners cannot grant them. |
+
+That macOS caveat is worth deciding early rather than discovering at Phase 3: either stand up a
+self-hosted runner, or accept that the macOS GUI tier is a local pre-release gate rather than a
+per-commit one. The Linux and Windows tiers can run per-commit regardless.
+
+**Audio** should be forced to `SDL_AUDIODRIVER=dummy` / `ALSOFT_DRIVERS=null` as the existing test
+does — CI machines have no audio device and OpenAL init failure would otherwise masquerade as a
+launch failure.
+
+#### When to build it
+
+G1–G3 in Phase 0, against the current Objective-C build, so there is a known-good baseline before
+anything changes. G4–G8 can follow. The whole tier becomes load-bearing at **Phase 3**, where it is
+the primary evidence that the Apple Silicon build is a real application and not just a binary that
+links.
+
+### 5.7 Exit gate
 
 - [ ] Linux + Windows CI green, reproducible
 - [ ] ≥20 scenarios producing stable goldens across 10 consecutive runs
@@ -522,6 +623,7 @@ the single most valuable input to the expansion-author migration guide, and it c
 - [ ] JS API snapshot committed
 - [ ] Tier 1/2/3 corpus automated
 - [ ] Mozilla-only-JS scan report published
+- [ ] PyAutoGUI G1–G3 green on Linux and Windows; macOS runner decision made
 
 ---
 
@@ -585,7 +687,9 @@ which Apple provides natively on arm64.
    saves, OXZ downloads, and the cache.
 3. Port the residual `SDL/` platform code; consult `upstream/oolite-mac-components` for the
    historical Cocoa dock-tile, document-type, and importer bits.
-4. Add macOS arm64 to CI, running the same goldens.
+4. Add macOS arm64 to CI, running the same goldens **and the PyAutoGUI GUI tier (§5.6)** — the
+   latter is the actual proof that this is a working macOS application rather than a binary that
+   links. Requires the self-hosted-runner decision from §5.6 to have been made by now.
 
 **Gate: Oolite plays on Apple Silicon, with expansions.** This is the first externally visible win
 and the right point to talk to upstream (§10.3).
@@ -797,7 +901,7 @@ column is the point, not the midpoint.
 
 | Phase | Scope | Est. (eng-months) | Parallel? |
 |---|---|---:|---|
-| **0** | CI, golden harness, determinism fixes, JS API snapshot, OXP corpus | 2–4 | — |
+| **0** | CI, golden harness, PyAutoGUI GUI tier, determinism fixes, JS API snapshot, OXP corpus | 2–4 | — |
 | **1** | JS façade + QuickJS-ng backend, differential validation | 4–7 | ∥ with 2 |
 | **2** | ObjC++ switch, `oofnd`, retire GNUstep-base | 6–10 | ∥ with 1 |
 | **3** | Apple Silicon build, bundle, signing, CI | 1–2 | after 1+2 |
@@ -838,6 +942,10 @@ Things this plan does not settle, roughly in the order they need answering:
    is precisely the compatibility promise this plan is built around.
 7. **Windows toolchain.** MinGW-clang (upstream's current path) vs. clang-cl + MSVC STL. The latter
    is better long-term for C++23 library coverage; the former diverges less from upstream today.
+8. **macOS CI: self-hosted runner or not?** The PyAutoGUI tier (§5.6) needs Accessibility and
+   Screen Recording TCC grants, which hosted GitHub macOS runners cannot provide. Either stand up a
+   self-hosted runner on Jon's Apple Silicon machine, or run the macOS GUI tier as a local
+   pre-release gate. **Decide before Phase 3**, since that is where the tier earns its keep.
 
 ---
 
