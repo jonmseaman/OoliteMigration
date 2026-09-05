@@ -1,0 +1,18 @@
+[submodule "oolite"]
+	path = upstream/oolite
+	url = https://github.com/jonmseaman/oolite.git
+[submodule "spidermonkey-ff4"]
+	path = upstream/spidermonkey-ff4
+	url = https://github.com/OoliteProject/spidermonkey-ff4.git
+[submodule "oolite-tests"]
+	path = upstream/oolite-tests
+	url = https://github.com/OoliteProject/oolite-tests.git
+[submodule "oolite-debug-console"]
+	path = upstream/oolite-debug-console
+	url = https://github.com/OoliteProject/oolite-debug-console.git
+[submodule "oolite-mac-components"]
+	path = upstream/oolite-mac-components
+	url = https://github.com/OoliteProject/oolite-mac-components.git
+[submodule "oolite-expansion-catalog"]
+	path = upstream/oolite-expansion-catalog
+	url = https://github.com/OoliteProject/oolite-expansion-catalog.git
