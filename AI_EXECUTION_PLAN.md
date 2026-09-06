@@ -428,7 +428,7 @@ Requirements taken from §3, §4, §11 and §12 of this document — not from ge
 | Concurrency cap / rate-limit safety | **Yes** — Scheduler capacity limits | build it | no | no |
 | Local or network inference endpoint (§12) | **at CLI granularity** — see 13.3 | **Yes** — BYO model | **Yes** — 20+ providers incl. local | **Yes** — model-agnostic |
 | Scheduled read-only reporting (§11.4) | partial | build it | **Yes** — its strongest fit | yes |
-| Runs on the Windows host (§12) | **via WSL2 only** — tmux 3.0+ required | yes | yes | yes |
+| Runs on the Ubuntu agent host (§14) | **Yes, natively** — tmux, subprocess, exec, ACP, k8s, herdr | yes | yes | yes |
 | Substrate ships, vs. you build it | **ships** | **you build all of it** | n/a | n/a |
 
 ### 13.2 The finding that matters
@@ -450,6 +450,11 @@ Two independent designs converging on the same shape is the strongest evidence a
 shape is right. **Adopt the design regardless of whether you adopt the tool.**
 
 ### 13.3 Where Gas Town does not fit cleanly
+
+> *Assessed against Gas Town. What carries to Gas City: **(1) stands** — model routing is still at
+> CLI granularity, so verify custom-endpoint support before committing to the Spark path (§12).
+> **(2) is retired** — Gas City runs natively on the Ubuntu VM, no WSL2 (see §13.6). **(3) changes** —
+> the dependency list becomes tmux, git, jq, pgrep, lsof, Go 1.26.4+. **(4) compounds** — see §13.7.*
 
 1. **It orchestrates agent CLIs over tmux, not model endpoints.** There is no model-provider
    abstraction — `role_agents` maps roles to *CLI presets* (Claude, Codex, Copilot, Gemini, Cursor).
@@ -595,6 +600,47 @@ a fleet to feed it.
 [NousResearch/hermes-agent](https://github.com/nousresearch/hermes-agent) ·
 [Hermes Agent docs](https://hermes-agent.nousresearch.com/docs/) ·
 [OpenClaw (Wikipedia)](https://en.wikipedia.org/wiki/OpenClaw)
+
+---
+
+### 13.7 One refinement: roles are *pack conventions*, not SDK primitives
+
+Verified 2026-09-06, and it slightly changes what "Gas City ships the substrate" means. The decisive
+line from the docs:
+
+> Gas City has **no baked-in role names in its Go codebase**; these are instead **pack conventions**
+> defined through prompts, formulas, orders, and configuration rather than SDK primitives.
+
+Gas Town was not deleted — its machinery was extracted *downward* into Gas City, and Gas Town
+survives above it as a configuration layer, an example pack. So the Refinery, the worktree lifecycle,
+and the role hierarchy are all still there, but they arrive **as configuration you own and edit**
+rather than as fixed behaviour.
+
+Three consequences:
+
+1. **Start from the Gastown pack; do not compose roles from scratch.** It is the reference
+   configuration for exactly the topology §11 describes. Treat it as a starting point you maintain.
+2. **This is a genuine upside for this project.** §11 defines an *authority* model — Converter
+   commits only to its own branch, Reviewer is advisory and cannot merge, only Jon re-blesses a
+   golden. Under fixed roles those were approximated. Under Gas City, **roles are configuration, so
+   §11 becomes something you express exactly.** Given that §3 names auto-re-blessing as the single
+   change most likely to end the project, being able to encode the human-only gate explicitly is
+   worth real setup cost.
+3. **Budget for configuration work, and pin versions.** Every role is prompts, formulas, orders and
+   `city.toml`; explicit agent identity is now required (the docs warn: *"do not port code or prompts
+   that assume directory path implies who the agent is"*). And the maturity picture compounds — Gas
+   City is ~1.2k stars / ~5,917 commits / MIT, younger and far less adopted than Gas Town's ~18k,
+   and you would depend on a fast-moving SDK *plus* a pack convention on top of it, across a
+   multi-year project.
+
+The mitigation from §13.3 is unchanged and still decisive: **it sits outside your repo.** Artifacts
+are git branches; verification lives in CI. If it breaks or is abandoned you lose orchestration, not
+code and not the safety net.
+
+**Sources:** [gastownhall/gascity](https://github.com/gastownhall/gascity) ·
+[coming-from-gastown.md](https://github.com/gastownhall/gascity/blob/main/docs/getting-started/coming-from-gastown.md) ·
+[Gastown example & agent roles (DeepWiki)](https://deepwiki.com/gastownhall/gascity/11-gastown-example-and-agent-roles) ·
+[cities-and-rigs tutorial](https://github.com/gastownhall/gascity/blob/main/docs/tutorials/01-cities-and-rigs.md)
 
 ---
 
@@ -864,13 +910,12 @@ Gas Town carries over to it. It needs no WSL2: tmux is native on the Ubuntu agen
 **Hermes Agent for the Reporter role now**. Deep Agents means building the whole substrate yourself;
 OpenClaw is a different tool for a different job. None of them substitutes for Phase 0.
 
-> **Open against Gas City, pending the refinement in progress.** §13's case for Gas Town rested
-> heavily on its **Refinery** being a Bors-style batch-and-bisect merge queue (§4.3) and on its role
-> hierarchy matching §11's authority table. Gas City is documented as exposing **gates**, a
-> controller/supervisor loop, **beads**, **sling** and a **mayor** role — its docs map Town's roles,
-> commands, plugins and convoys onto these primitives, but I have not verified that the Refinery's
-> *batching and bisection* survive the extraction intact. **Confirm that before committing**: batch-
-> and-bisect is the specific property §4.3 needs, and it is the reason the framework was chosen.
+> **Resolved 2026-09-06 — batch-and-bisect survives the extraction.** The open question here was
+> whether the Refinery's *batching and bisection* (§4.3) carry over from Gas Town into Gas City. They
+> do: Gas City's docs describe the Refinery processing completed polecat work through **a Bors-style
+> bisecting merge queue in which polecats never push directly to main**, with the polecat lifecycle
+> intact — pick up a bead, open a worktree, file a merge request, get recycled. The specific property
+> §4.3 depends on is present. One refinement to how it is provided: see §13.7.
 
 Separately from architecture: `MIGRATION_PLAN.md` is written two levels above the grain a fleet
 story needs, and closing that gap means **11–46× more items than it contains today** — which is a
