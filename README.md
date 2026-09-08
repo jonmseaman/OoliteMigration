@@ -4,13 +4,17 @@ Planning and working repository for migrating [Oolite](https://oolite.space/) fr
 Objective-C/GNUstep to Modern C++23, with native Apple Silicon, Windows x64, and Linux x64 targets,
 while keeping all published expansions (OXP/OXZ) working unmodified.
 
-**Start here: [MIGRATION_PLAN.md](MIGRATION_PLAN.md).**
+**Start here: [ROADMAP.md](ROADMAP.md).** Agents: [CLAUDE.md](CLAUDE.md).
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `MIGRATION_PLAN.md` | The migration plan — survey, risks, phased approach, expansion strategy |
+| `ROADMAP.md` | Phase table, infra track, open decisions — the entry point |
+| `CLAUDE.md` / `GLOSSARY.md` | Agent contract and terms |
+| `docs/architecture.md` | Survey, target design, risks, expansion contracts |
+| `docs/execution-model.md` | Verification tiers, agent authority, story sizing |
+| `docs/phases/`, `docs/infra/`, `docs/decisions/` | Per-phase docs, infra track, ADRs |
 | `upstream/oolite` | Submodule: the main Oolite repo. **The migration target.** |
 | `upstream/spidermonkey-ff4` | Submodule: the patched SpiderMonkey 1.8.5 Oolite embeds (see plan §4/R1) |
 | `upstream/oolite-tests` | Submodule: test OXPs and legacy test projects |
@@ -51,5 +55,5 @@ git clone --recursive https://github.com/jonmseaman/OoliteMigration.git
 ```bash
 cd upstream/oolite
 git fetch upstream
-git rebase upstream/master     # see MIGRATION_PLAN.md §10.3 — rebase, don't merge
+git rebase upstream/master     # see docs/architecture.md §6.3 — rebase, don't merge
 ```

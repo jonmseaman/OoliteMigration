@@ -1,9 +1,16 @@
-# Oolite: Objective-C → Modern C++23 Migration Plan
+# Architecture and rationale
 
-**Status:** Draft 1 — planning only, no code changes made to `upstream/oolite`
-**Date:** 2026-09-05
-**Baseline surveyed:** `OoliteProject/oolite` @ `942f5183f` (1.77.1a-3135-g942f5183f, master)
-**Author:** Jon Seaman (with Claude)
+**What this is:** the survey, target design, risk decisions, and expansion-compatibility contracts
+for the Objective-C → C++23 migration. It is the *why* and the *what*, and it is meant to be stable.
+The *when* lives in [ROADMAP.md](../ROADMAP.md) and the per-phase documents in [phases/](phases/);
+the *how* (tiers, roles, story sizing) lives in [execution-model.md](execution-model.md).
+
+**Baseline surveyed:** `OoliteProject/oolite` @ `942f5183f` (1.77.1a-3135-g942f5183f, master),
+2026-09-05. All figures below are from that commit; the commands that produced them are in Appendix B.
+
+**Provenance:** this file is `MIGRATION_PLAN.md` Draft 1 (2026-09-05) with its phase sections,
+effort table, and open-decisions list moved out to the roadmap and phase docs. Section numbering
+below is fresh; the original is in git history at commit `ee2de41`.
 
 ---
 
@@ -65,10 +72,11 @@ behaviour and 1,591 expansions as the acceptance criteria. Not worth it here.
 PNG/OGG assets + GLSL. Even the in-tree `DebugOXP` is pure data and JS. The only native plugin
 loader is a macOS-only debug path in `OODebugSupport.m:124`.
 
-So expansion compatibility reduces to preserving six *contracts* (§9), not to migrating expansions.
-A migration guide for expansion authors is only genuinely needed for the JS engine swap (§9.3) —
+So expansion compatibility reduces to preserving six *contracts* ([§5](#5-expansion-oxpoxz-compatibility)), not to migrating expansions.
+A migration guide for expansion authors is only genuinely needed for the JS engine swap (§5.3) —
 and the shipped scripts are already clean ES5 with zero SpiderMonkey-only syntax, which is
 encouraging for the third-party corpus.
+
 
 ---
 
@@ -229,7 +237,8 @@ game. It is a ready-made foundation for differential testing between the Objecti
 7,975 commits total; ~340 in the last 12 months, spiking Apr–May 2026 (SDL3 + Meson + Flatpak).
 Active contributors: AnotherCommander, Kevin Anthoney, Mike, phkb, mcarans, oocube.
 
-**A long-lived rewrite fork will diverge badly.** §10.3 addresses this directly.
+**A long-lived rewrite fork will diverge badly.** §6.3 addresses this directly.
+
 
 ---
 
@@ -328,7 +337,7 @@ public:
 };
 
 std::expected<PList, ParseError> parsePList(std::span<const std::byte>, std::string_view whereFrom);
-std::string writeOldStylePList(const PList&);   // OpenStep format — REQUIRED, see §9.1
+std::string writeOldStylePList(const PList&);   // OpenStep format — REQUIRED, see §5.1
 std::string writeXMLPList(const PList&);
 
 } // namespace oo
@@ -358,6 +367,8 @@ Deliberate recommendation, worth stating explicitly because it will look wrong t
 Then, *after* the class is in C++ and green: demote leaf types (`OOColor`, `Vector`, `Quaternion`,
 `OORoleSet`, `OOCommodityMarket`) to value types, and demote exclusively-owned members to
 `unique_ptr`. Two passes, each individually reviewable.
+
+---
 
 ---
 
@@ -403,7 +414,7 @@ with the Foundation work by a different person.
 none of the Mozilla-only ones. Measured on the 31 shipped scripts in `Resources/Scripts/`:
 **zero occurrences** of `for each`, conditional catch, `.quote()`, `__proto__`, `arguments.callee`,
 or E4X. The `.eslintrc.json` targets `ecmaVersion: 2015`. In-tree is clean; the 1,591 third-party
-expansions are the unknown, which is what §9.3's corpus scan is for.
+expansions are the unknown, which is what §5.3's corpus scan is for.
 
 ### R2 — GNUstep Foundation
 
@@ -446,366 +457,15 @@ Do not let this become Phase 1's problem.
 
 ### R5 — Testing and upstream divergence
 
-See §5 (harness) and §10.3 (divergence). This is the risk most likely to actually sink the project,
+See [Phase 0](phases/0-safety-net.md) and §6.3 (divergence). This is the risk most likely to actually sink the project,
 and the least technically interesting — which is exactly why it needs to be scheduled first.
 
----
-
-## 5. Phase 0 — Baseline and safety net
-
-**No production code changes.** Everything downstream depends on this phase being real.
-
-### 5.1 Reproduce upstream builds in our CI
-
-Linux x86-64 and Windows x86-64, matching `upstream/oolite/.github/workflows/build-all.yaml`.
-Pin the GNUstep commits and the `mozillajs-linux` 0.0.1 artefact. Cache aggressively — GNUstep
-from source is slow, and every later phase pays this cost on every run.
-
-### 5.2 Characterisation harness ("the golden harness")
-
-Build on `tests/launch_snapshot.py` and `upstream/oolite-debug-console`, which together already
-give a scriptable TCP channel into a running game (plist packets, port 8563, `Perform Command`
-executes arbitrary JS in the game context).
-
-Required properties:
-
-- **Determinism.** Fixed RNG seed, fixed system, fixed tick count, fixed clock. `legacy_random.c`
-  is already a deterministic LCG; audit every other entropy source (`OOAsyncWorkManager` completion
-  order, texture-load ordering, `NSDictionary` iteration order — **that last one will bite**, see
-  §5.3) and make it reproducible.
-- **State dumps.** After N ticks, serialise the world (entity list, positions, velocities,
-  orientations, AI states, market prices, player state) to a canonical sorted JSON.
-- **Frame hashes.** Perceptual hash of rendered frames at fixed camera positions, with tolerance —
-  exact pixel equality across GL drivers is not achievable and chasing it wastes weeks.
-- **Scenarios.** Start with ~20: launch/dock, witchspace jump, combat encounter, trade cycle,
-  mission trigger, save/load round-trip, each of the 6 `test-oxps`.
-
-**Acceptance for every later phase: the goldens still reproduce.**
-
-### 5.3 Iteration-order determinism (do this before anything else)
-
-GNUstep's `NSDictionary`/`NSSet` enumeration order is unspecified and will differ from any C++
-container we choose. If any gameplay path depends on it — populator scripts, role selection,
-ship registry, equipment ordering are all prime suspects — behaviour will silently diverge and
-goldens will be worthless.
-
-**Action:** instrument `NSDictionary`/`NSSet` enumeration in a debug build to shuffle order, run the
-scenarios, and find every place the outcome changes. Fix those to sort explicitly *in the Objective-C
-code, upstreamable as bug fixes*, before migrating anything. This is cheap now and extremely
-expensive to diagnose in Phase 4.
-
-### 5.4 JS API conformance snapshot
-
-Via the debug console, enumerate all 61 JS globals and, for each of the ~45 native classes, dump
-every property and method name, arity, and type. Commit as `oxp-contract/js-api-1.92.json`. Any
-later build must reproduce it exactly. This is the machine-checkable form of "expansions still work".
-
-### 5.5 OXP compatibility corpus
-
-From `upstream/oolite-expansion-catalog/expansionUrls.txt` and the live API (1,591 entries), assemble
-a tiered corpus:
-
-- **Tier 1 (~30):** the most-installed expansions + all 6 `test-oxps`. Must pass, every commit.
-- **Tier 2 (~150):** broad category coverage (ships, missions, HUDs, equipment, OXPs with heavy JS).
-  Nightly.
-- **Tier 3 (all 1,591):** load-only smoke test — does it parse, register, and reach the main menu
-  without errors in `Latest.log`? Weekly.
-
-Also: statically scan all Tier-3 scripts for the Mozilla-only JS constructs in §9.3. That scan is
-the single most valuable input to the expansion-author migration guide, and it can run today.
-
-### 5.6 GUI smoke tests (PyAutoGUI)
-
-A second, separate test tier that drives the game through **real OS-level mouse and keyboard input
-against a real window**.
-
-#### Why this exists alongside the golden harness
-
-The two tiers test disjoint things, and the boundary must stay sharp:
-
-| | Golden harness (§5.2) | PyAutoGUI tier |
-|---|---|---|
-| Driven via | Debug-console TCP, JS commands | Synthetic OS input events |
-| Window | **None** — `SDL_VIDEODRIVER=offscreen` | Real, on-screen |
-| Tests | Simulation, gameplay, data, OXP behaviour | Launch, window, input path, shutdown |
-| Volume | Hundreds of assertions | ~10 smoke tests |
-
-Note the row that matters: `tests/launch_snapshot.py:93` sets `SDL_VIDEODRIVER=offscreen`, so the
-existing test never creates a window. The entire windowing, event-loop, and input path is
-**currently untested**, and it is exactly the layer that a new platform target breaks. On Apple
-Silicon (Phase 3) this tier is the difference between "it compiles and the simulation runs" and
-"it is a working macOS application" — it is what catches a missing `.app` bundle, a Gatekeeper
-block, a GL context that never gets a drawable, or a window that opens behind the dock.
-
-It also covers what the console path structurally cannot: the debug console injects commands
-*inside* the game, bypassing SDL entirely, so it can never prove that a keypress or a click reaches
-the game at all.
-
-#### Locating UI elements: compute, don't image-match
-
-`pyautogui.locateOnScreen()` with reference screenshots is the obvious approach and the wrong one
-here — it is resolution-dependent, theme-dependent, and breaks on every HUD tweak.
-
-Oolite's GUI is a **fixed virtual grid**, so coordinates can be computed exactly
-(`src/Core/GuiDisplayGen.h:34-43`):
-
-```
-MAIN_GUI_PIXEL_WIDTH/HEIGHT  480 × 480     GUI_DEFAULT_ROWS  30
-MAIN_GUI_ROW_HEIGHT          16            MAIN_GUI_PIXEL_ROW_START  40
-```
-
-The start screen (`PlayerEntity.m:9900-9960`) lays out six selectable rows, 22–27, centred, with
-mouse interaction explicitly enabled:
-
-| Row | Label |
-|---:|---|
-| 22 | ` Start New Commander ` |
-| 23 | ` Load Commander ` |
-| 24 | ` View Ship Library ` |
-| 25 | ` Game Options ` |
-| 26 | ` Manage Expansion Packs ` |
-| **27** | **` Exit Game `** |
-
-So a helper resolves `row → screen point` from the window rect and the virtual grid, launched at a
-pinned window size. Deterministic, and it survives cosmetic changes. Reserve image matching for the
-one thing coordinates cannot give you — "did *something* render" — and do that with the coarse
-frame-size check the existing snapshot test already uses.
-
-#### How the menu actually works (verified against the source)
-
-Three mechanics that are not what you would guess, and that change how these tests must be written:
-
-**1. A single click selects a row. It does not activate it.**
-`PlayerEntityControls.m:763-780` — a left click only calls `setSelectedRow:` on whatever row the
-cursor is over. Activation requires **Enter** or a **double-click**
-(`n_key_gui_select || gvMouseDoubleClick`, the pattern repeated ~15 times throughout the file).
-
-So "click the Exit button" is two actions: move the selection to row 27, then confirm. A test that
-single-clicks ` Exit Game ` and waits will sit on the start screen until it times out.
-
-**2. ` Start New Commander ` does not start a game.** It opens a *scenario* screen
-(`GUI_SCREEN_NEWGAME`, `PlayerEntityLoadSave.m:207`) listing four choices from `scenarios.plist`:
-
-| Row | Label |
-|---:|---|
-| 1 | `Return to Menu` (red) |
-| **3** | **`Normal Start`** ← initially selected |
-| 4 | `Easy Start` |
-| 5 | `Tutorial` |
-| 6 | `Strict Mode` |
-
-Reaching the cockpit is therefore: confirm row 22 → confirm row 3.
-
-**3. There is no universal "back" key.** Each screen differs:
-
-| Screen | How you leave it |
-|---|---|
-| Scenario / New Game | Confirm row 1, `Return to Menu` |
-| Ship Library | **Space** (`PlayerEntityControls.m:5033`) |
-| Game Options | Select the `Back` row (`GUI_ROW_GAMEOPTIONS_BACK`) and confirm |
-| Expansion Manager | Its own in-screen navigation |
-
-That inconsistency is itself worth knowing: per-screen back semantics are exactly the kind of thing
-a rewrite silently breaks, and G5 exists to catch it.
-
-**One screen to avoid automating.** ` Load Commander ` sets `disc_operation_in_progress`
-(`PlayerEntityControls.m:4949`) and goes into file-dialog territory — OS-native, and a reliable
-source of flakes. Cover save/load through the golden harness instead, where it can be tested
-properly.
-
-#### The tests
-
-`tests/gui/`, pytest + PyAutoGUI. Every test gets a hard timeout with a forced kill, so a hang fails
-the run instead of wedging CI.
-
-| # | Test | Steps | What it catches |
-|---|---|---|---|
-| **G1** | **Exit via mouse** | Launch → click row 27 (` Exit Game `) to select → **double-click** to confirm. Assert: exits within 10 s, code 0, no crash log, no orphaned process. | The baseline. Window opens, mouse input reaches the game, shutdown path works. |
-| **G2** | **Exit via keyboard** | Launch → `Down`×5 → `Enter` | Keyboard path independently of mouse — a separate SDL3 code path from G1. |
-| **G3** | **Exit via window close** | Launch → close button (⌘Q on macOS via `exitAppCommandQ`, Alt-F4 on Windows) | `SDL_EVENT_QUIT` (`MyOpenGLView.m:2247`) — a genuinely *different* shutdown path from the menu, and the one most likely to leak on a new platform. |
-| **G4** | **Start a game** | Launch → confirm row 22 → land on scenario screen → confirm row 3 (`Normal Start`) → wait for the cockpit → assert the HUD renders → exit | The "does the game actually work end-to-end" smoke test. Covers the two-screen flow, not one. |
-| **G5** | **Screen round-trips** | Enter and leave each of: Ship Library (row 24, exit with `Space`), Game Options (row 25, exit via its `Back` row), Expansion Manager (row 26). Assert the start screen is reachable again each time. | Screens that crash on entry — a classic rewrite regression. Also pins the per-screen back semantics. Row 26 additionally exercises the network path. Skip row 23 (see above). |
-| **G6** | **Window lifecycle** | Resize, minimise/restore, fullscreen toggle | GL context survival. Behaves differently on macOS; `OOGraphicsResetManager` exists for exactly this and is currently untested. |
-| **G7** | **First run** | Delete the config/prefs directory → launch → verify defaults are created → exit cleanly | The "works because I already have a config file" bug class. High value on a brand-new platform. |
-| **G8** | **Scenario-screen back-out** | Launch → confirm row 22 → confirm row 1 (`Return to Menu`) → verify start screen → exit | Confirms G4's flow is reversible; cheap, and it catches a stuck GUI-state machine. |
-| **G9** | **Post-exit hygiene** (asserted after every test above) | No core dump; no `ERROR`/exception lines in `Latest.log`; defaults file written and re-parseable | Silent-failure shutdowns. |
-
-**Scope discipline:** these are smoke tests. They assert *launched / responded / exited cleanly* and
-nothing about gameplay state — that belongs to the golden harness, which can assert it far more
-precisely and without flakiness. Holding this line is what stops the tier from becoming a
-maintenance sink. If a GUI test starts asserting on ship positions, it is in the wrong file.
-
-#### Platform and CI notes
-
-| Platform | Approach | Caveat |
-|---|---|---|
-| **Linux** | `xvfb-run` + `LIBGL_ALWAYS_SOFTWARE=1`, `GALLIUM_DRIVER=llvmpipe` (as `launch_snapshot.py` already does), `DISPLAY` pointed at Xvfb | Works headless on hosted runners. |
-| **Windows** | Hosted runners have an interactive desktop session | Works directly. |
-| **macOS** | **Needs a self-hosted runner** on Jon's own Apple Silicon machine | ⚠️ PyAutoGUI needs **Accessibility** (to synthesise input) and **Screen Recording** (to screenshot) TCC grants. These are per-app, granted interactively once, and cannot be scripted. Hosted GitHub macOS runners cannot grant them. |
-
-That macOS caveat is worth deciding early rather than discovering at Phase 3: either stand up a
-self-hosted runner, or accept that the macOS GUI tier is a local pre-release gate rather than a
-per-commit one. The Linux and Windows tiers can run per-commit regardless.
-
-**Audio** should be forced to `SDL_AUDIODRIVER=dummy` / `ALSOFT_DRIVERS=null` as the existing test
-does — CI machines have no audio device and OpenAL init failure would otherwise masquerade as a
-launch failure.
-
-#### When to build it
-
-G1–G4 in Phase 0, against the current Objective-C build, so there is a known-good baseline before
-anything changes. G5–G9 can follow. The whole tier becomes load-bearing at **Phase 3**, where it is
-the primary evidence that the Apple Silicon build is a real application and not just a binary that
-links.
-
-### 5.7 Exit gate
-
-- [ ] Linux + Windows CI green, reproducible
-- [ ] ≥20 scenarios producing stable goldens across 10 consecutive runs
-- [ ] Iteration-order non-determinism found and fixed
-- [ ] JS API snapshot committed
-- [ ] Tier 1/2/3 corpus automated
-- [ ] Mozilla-only-JS scan report published
-- [ ] PyAutoGUI G1–G4 green on Linux and Windows; macOS runner decision made
 
 ---
 
-## 6. Phase 1 — De-Mozilla (JS engine replacement)
+## 5. Expansion (OXP/OXZ) compatibility
 
-Unblocks Apple Silicon. Pure C work; **runs in parallel with Phase 2.**
-
-1. **Define the façade** — `ooscript/JSEngine.hpp`. Design it against the call-site histogram in
-   §4/R1, not against QuickJS's API. Roughly: `Value`, `Context`, `Object`, `ClassDef`,
-   `PropertySpec`, `FunctionSpec`, rooted handles, exception plumbing.
-2. **Retarget all 3,828 call sites onto the façade, SpiderMonkey still underneath.** Mechanical.
-   Goldens must not move. Land it in slices — the 5 stub/init patterns and the numeric conversions
-   cover ~40% of sites and can be scripted with `clang-refactor` plus review.
-3. **Implement the QuickJS-ng backend.** Native objects still attach via a private pointer;
-   `JSClass` resolve/enumerate hooks map onto QuickJS's `JSClassExoticMethods`.
-4. **Differential-test both backends** against the goldens and Tier 1–3 corpus. Record every
-   divergence; each is either a bug or a documented expansion-author change (§9.3).
-5. **Delete the SpiderMonkey backend**, delete the `mozillajs-linux` dependency and `nspr`.
-
-**Gate:** goldens reproduce on QuickJS-ng; Tier 1+2 corpus green; Tier 3 regressions triaged and
-documented; the tree builds for `aarch64-apple-darwin` as far as the GNUstep dependency permits.
-
----
-
-## 7. Phase 2 — `oofnd` (Foundation replacement)
-
-Runs in parallel with Phase 1. **This is where GNUstep dies.**
-
-1. **Switch the build to Objective-C++.** Rename `.m` → `.mm`, `-x objective-c++`, `-std=c++23`.
-   Expect a few hundred mechanical fixes (`nil` vs `nullptr`, `class`/`new`/`delete`/`template` used
-   as identifiers or selector parts, `id` in C++ contexts, `BOOL` conflicts, stricter enum/`void*`
-   conversions). Do this as one atomic, reviewable commit — it must change no behaviour.
-2. **Build `oofnd` bottom-up**, each piece landed with its own unit tests:
-   - `Ref`/`WeakRef`/`RefCounted`/`AutoreleaseScope` (replaces `OOWeakReference`, `OOWeakSet`)
-   - `PList` + old-style **and** XML plist parser/writer (replaces `OOPListParsing`,
-     `OldSchoolPropertyListWriting`, `NSPropertyListSerialization`)
-   - Typed accessors (retires `OOCollectionExtractors` — ~1,800 sites)
-   - String utilities (retires the `NSString` categories, `OOStringParsing`, `OOStringExpander`,
-     `OOEncodingConverter`)
-   - `FileSystem`, `ResourcePaths`, `Data` (retires `NSFileManager`/`NSBundle`/`NSData` usage)
-   - `Defaults` (retires `NSUserDefaults` + the two `Override` categories)
-   - `Logging` (retires `OOLogging` — already mostly C-shaped)
-3. **Migrate usage sites** from Foundation to `oofnd`, still inside Objective-C classes. Order:
-   `oomath` → `Core` leaf utilities → `Materials` → `oxp` → `Scripting` → `Entities` → `Universe`.
-4. **Delete `libgnustep-base`** from the dependency list. `libobjc2` (runtime only) stays.
-
-**Gate:** goldens reproduce; `libgnustep-base` gone from Linux and Windows builds; only the
-Objective-C *runtime* remains.
-
----
-
-## 8. Phases 3–6
-
-### Phase 3 — Apple Silicon milestone 🎯
-
-With SpiderMonkey and GNUstep-base both gone, the only Objective-C dependency left is the runtime —
-which Apple provides natively on arm64.
-
-1. Add a `macos` branch to `src/meson/`; SDL3 for window/input (Cocoa backend), legacy GL 2.1 context.
-2. `.app` bundle packaging, `Info.plist`, code-signing/notarisation; Application Support paths for
-   saves, OXZ downloads, and the cache.
-3. Port the residual `SDL/` platform code; consult `upstream/oolite-mac-components` for the
-   historical Cocoa dock-tile, document-type, and importer bits.
-4. Add macOS arm64 to CI, running the same goldens **and the PyAutoGUI GUI tier (§5.6)** — the
-   latter is the actual proof that this is a working macOS application rather than a binary that
-   links. Requires the self-hosted-runner decision from §5.6 to have been made by now.
-
-**Gate: Oolite plays on Apple Silicon, with expansions.** This is the first externally visible win
-and the right point to talk to upstream (§10.3).
-
-### Phase 4 — Objective-C → C++23 conversion
-
-The long grind: ~500 files, leaves inward, one module per PR, goldens green at every step.
-
-Suggested order (dependency-driven, and it front-loads the pattern-setting work):
-
-1. `oomath` — `OOVector`, `OOHPVector`, `OOMatrix`, `OOQuaternion`, `OOTriangle`, `Octree`.
-   Near-pure C already; converts in days and establishes house style.
-2. `Core/OXPVerifier` — 27 files, standalone, has its own test data. The ideal pilot for a *real*
-   class hierarchy.
-3. Leaf utilities — `OOColor`, `OOCache`, `OORoleSet`, `OOProbabilitySet`, `OOPriorityQueue`,
-   `OOCommodities`, `OOEquipmentType`, `OOCharacter`.
-4. `Materials` / `oorender` (47 files) — self-contained behind `OODrawable`/`OOMaterial`.
-5. `ooaudio` — the `OOAL*` family; already a thin OpenAL wrapper.
-6. `ooscript` — the ~45 JS binding classes. Voluminous but repetitive; the façade from Phase 1
-   already isolates the engine.
-7. `ooentity` — `Entity` → `OOEntityWithDrawable` → `ShipEntity` → `StationEntity`/`PlayerEntity`.
-   **`ShipEntity` (14,945 lines, 186 ivars, 565 methods) and `PlayerEntity` (13,718 lines) are the
-   hardest artefacts in the project.** Budget real time. The existing category split
-   (`PlayerEntityControls`, `PlayerEntityContracts`, `PlayerEntityLoadSave`, …) translates directly
-   to member functions defined across multiple `.cpp` files, so the file decomposition survives.
-8. `Universe` (11,297 lines, 122 ivars, 302 methods) — last. Everything points at it.
-
-Per-file recipe:
-
-| Objective-C | C++23 |
-|---|---|
-| `@interface X : Y` + ivar block | `class X : public Y { … }` |
-| `@interface X (Private)` in the `.m` | private member functions |
-| `@interface X (Feature)` in its own file | member functions defined in `XFeature.cpp` |
-| `@interface NSString (OOFoo)` | free functions in `namespace oo::str` |
-| `- (T) foo` / `+ (T) foo` | member / `static` member function |
-| `[obj msg:a with:b]` | `obj->msg(a, b)` |
-| `[[X alloc] init…]` | `oo::make<X>(…)` returning `Ref<X>` |
-| `[x retain]` / `[x release]` | `Ref<T>` assignment (usually just deleted) |
-| `[x autorelease]` | return `Ref<T>` by value |
-| `@protocol P` | abstract base class, or a concept where no dynamic dispatch is needed |
-| `id<P>` | `P*` / `Ref<P>` |
-| `[x isKindOfClass:[Y class]]` | `dynamic_cast<Y*>(x)` — **but review each: many want a virtual or a type tag** |
-| `@try/@catch/@throw` | `try/catch/throw` |
-| `NSAutoreleasePool` | scope exit / `Ref` |
-| `@selector(foo)` + `performSelector:` | `&X::foo` or `std::function` |
-| `NSSelectorFromString(s)` | explicit `unordered_map<string, handler>` — the 10 sites need individual design |
-| `nil` / `NO` / `YES` | `nullptr` / `false` / `true` |
-| `NSLog` / `OOLog` | `oo::log` (`std::format`-based) |
-
-### Phase 5 — Remove the Objective-C runtime
-
-Delete `AutoreleaseScope`, drop `libobjc2` and `-fobjc-*` flags, rename `.mm` → `.cpp`, restore GCC
-to CI. Should be nearly mechanical if Phase 4 was disciplined.
-
-### Phase 6 — Modernise
-
-Only now, with a pure C++23 codebase and a working golden harness, is it safe to make design
-changes:
-
-- Renderer → GL 3.3 Core (or SDL3 GPU). See R4.
-- Value semantics for leaf types; `unique_ptr` for exclusive ownership; shrink `Ref` usage to the
-  entity graph where it belongs.
-- Break up `Universe`: separate scene graph, simulation, and presentation.
-- `std::expected` error paths replacing out-parameter + `BOOL` returns.
-- `std::jthread` + a proper job system for `OOAsyncWorkManager`.
-- Revisit C++20 modules.
-
----
-
-## 9. Expansion (OXP/OXZ) compatibility
-
-### 9.1 The six contracts
+### 5.1 The six contracts
 
 Expansions are data, not code. Compatibility is *exactly* the preservation of these six contracts —
 and each one is testable:
@@ -813,8 +473,8 @@ and each one is testable:
 | # | Contract | Where it lives today | Risk |
 |---|---|---|---|
 | **C1** | **Property-list dialect** — old-style OpenStep **and** XML, read **and write** | `OOPListParsing.m`, `OldSchoolPropertyListWriting.m`, GNUstep `NSPropertyListSerialization` | **High.** Must be reimplemented in `oofnd`, quirk-for-quirk, incl. the DTD rewriting in `ChangeDTDIfApplicable`. Fuzz against GNUstep. |
-| **C2** | **JavaScript API** — 61 globals, ~45 native classes, exact names/arities/semantics | `Core/Scripting/OOJS*.m` | **High.** Locked by the §5.4 conformance snapshot. |
-| **C3** | **JS language level** — ES5 + SpiderMonkey extensions | SpiderMonkey 1.8.5 | **Medium.** The only contract we knowingly change. See §9.3. |
+| **C2** | **JavaScript API** — 61 globals, ~45 native classes, exact names/arities/semantics | `Core/Scripting/OOJS*.m` | **High.** Locked by the [Phase 0 §0.5](phases/0-safety-net.md) conformance snapshot. |
+| **C3** | **JS language level** — ES5 + SpiderMonkey extensions | SpiderMonkey 1.8.5 | **Medium.** The only contract we knowingly change. See §5.3. |
 | **C4** | **Legacy scripting** — plist scripts and AI state machines | `PlayerEntityLegacyScriptEngine.m` (2,993 lines), `ShipEntityAI.m` (2,943), `AI.m`, `OOLegacyScriptWhitelist.m` | **Medium.** Old, quirky, still used by long-tail OXPs. Do not "clean up" during translation. |
 | **C5** | **Resource resolution** — search paths, `manifest.plist`/`requires.plist`, version ranges, conflict/dependency resolution, `.oxz` zip handling, merge/override semantics | `ResourceManager.m` (2,274 lines), `OOOXZManager.m` (2,420) | **Medium.** Subtle ordering rules that OXPs depend on. Pin with tests before touching. |
 | **C6** | **String expansion & localisation** — `descriptions.plist`, `[key]` substitution, `%H`/`%I` tokens, random-phrase grammar | `OOStringExpander.m` (1,294 lines), `OOSystemDescriptionManager.m` | **Medium.** Highly quirk-laden; visible to every mission text. |
@@ -822,13 +482,13 @@ and each one is testable:
 Add a seventh, informally: file formats (`.dat` meshes, PNG/OGG, GLSL 1.x shaders). These are read
 by code that changes but by parsers whose behaviour must not.
 
-### 9.2 The headline
+### 5.2 The headline
 
 > **Under this plan, expansions require no migration.** C1, C2, C4, C5 and C6 are held constant by
 > design and enforced by the corpus. The only behaviour that changes is C3 — the JavaScript
 > *language* level — and only for scripts that used Mozilla-only syntax.
 
-### 9.3 What expansion authors *will* need to change (the guide)
+### 5.3 What expansion authors *will* need to change (the guide)
 
 Deliverable: `docs/EXPANSION_MIGRATION.md`, published before the first C++-based release. Contents:
 
@@ -871,15 +531,23 @@ authors get a release cycle of notice before the C++ release changes engines.
 
 ---
 
-## 10. Repository, workflow, and upstream
+## 6. Repository, remotes, and living with upstream
 
-### 10.1 Layout (already set up in this directory)
+### 6.1 Layout
 
 ```
 OoliteMigration/
-├── MIGRATION_PLAN.md                  ← this document
-├── README.md
-├── .gitmodules
+├── ROADMAP.md                         phase table, status, open decisions — start here
+├── CLAUDE.md                          agent contract: rules, commands, exemplars
+├── GLOSSARY.md
+├── docs/
+│   ├── architecture.md                ← this document
+│   ├── execution-model.md             tiers, roles, story sizing
+│   ├── decisions/                     ADRs, append-only
+│   ├── phases/                        one document per migration phase
+│   ├── infra/                         machines, images, forge, fleet, metrics
+│   ├── templates/                     phase and story templates
+│   └── stories/                       hand-written exemplar stories
 └── upstream/
     ├── oolite/                        submodule — the main repo (the migration target)
     ├── spidermonkey-ff4/              submodule — the patched SM 1.8.5 source (R1 reference)
@@ -889,7 +557,7 @@ OoliteMigration/
     └── oolite-expansion-catalog/      submodule — the expansion URL list (corpus source)
 ```
 
-### 10.2 Remotes
+### 6.2 Remotes
 
 Per the project's convention, `origin` is the fork, `upstream` is the source of truth:
 
@@ -904,7 +572,7 @@ Per the project's convention, `origin` is the fork, `upstream` is the source of 
 points at a URL that a fresh `git clone --recursive` cannot reach — the local working copy is
 unaffected.
 
-### 10.3 Living with an active upstream
+### 6.3 Living with an active upstream
 
 Upstream is not dormant: ~340 commits in the last 12 months, 6+ active contributors. A rewrite fork
 that ignores this will be unmergeable within a year.
@@ -914,7 +582,7 @@ that ignores this will be unmergeable within a year.
 1. **Rebase, don't merge.** Keep migration work as a rebasable series on `upstream/master`. Rebase
    at least monthly. The golden harness is what makes each rebase verifiable rather than a leap of
    faith.
-2. **Upstream everything that isn't the rewrite.** Determinism fixes (§5.3), test-harness
+2. **Upstream everything that isn't the rewrite.** Determinism fixes ([Phase 0 §0.1](phases/0-safety-net.md)), test-harness
    improvements, the JS lint tool, plist quirk fixes, build fixes. These are wanted upstream, reduce
    divergence, and build the credibility that Phase 3 will need.
 3. **Talk to upstream at Phase 3, not before.** A working Apple Silicon build with expansions
@@ -926,69 +594,6 @@ that ignores this will be unmergeable within a year.
    This is the pragmatic hedge: even if the full migration stalls, Phases 0–3 leave Oolite better off.
 5. **Freeze policy.** Once Phase 4 starts on a module, stop taking upstream changes to that module;
    port them by hand instead, tracked in `docs/UPSTREAM_DELTA.md`.
-
-### 10.4 Definition of done, per PR
-
-1. Goldens reproduce (or the diff is explained and re-blessed with justification).
-2. Tier 1 OXP corpus green.
-3. Builds clean on all three platforms at `-Wall -Wextra` with no new warnings.
-4. ASan + UBSan clean on Linux (essential — hand-translated refcounting *will* produce use-after-free).
-5. No new `libgnustep-base` or `JS_*` symbols reintroduced (CI-enforced deny-list).
-
----
-
-## 11. Effort and sequencing
-
-Deliberately expressed in engineer-months rather than dates, and honestly uncertain — the ±
-column is the point, not the midpoint.
-
-| Phase | Scope | Est. (eng-months) | Parallel? |
-|---|---|---:|---|
-| **0** | CI, golden harness, PyAutoGUI GUI tier, determinism fixes, JS API snapshot, OXP corpus | 2–4 | — |
-| **1** | JS façade + QuickJS-ng backend, differential validation | 4–7 | ∥ with 2 |
-| **2** | ObjC++ switch, `oofnd`, retire GNUstep-base | 6–10 | ∥ with 1 |
-| **3** | Apple Silicon build, bundle, signing, CI | 1–2 | after 1+2 |
-| **4** | ObjC → C++23, ~500 files | 12–24 | partly ∥ |
-| **5** | Remove ObjC runtime | 1–2 | after 4 |
-| **6** | Renderer modernisation + C++23 idiom pass | 4–10 | after 5 |
-| | **Total** | **30–59** | |
-
-With phases 1 and 2 in parallel, **the Apple Silicon milestone (Phase 3) lands after roughly
-9–16 engineer-months** — that's the first externally meaningful result, and it arrives with the
-game still written in Objective-C.
-
-**Solo, part-time, this is a multi-year project.** Phases 0–3 are the part with a clear payoff
-(macOS support, a maintained JS engine, no GNUstep) and are worth doing whether or not Phase 4
-ever completes. Sequencing the plan this way is deliberate: it front-loads the value and makes
-every stopping point a reasonable place to stop.
-
----
-
-## 12. Open decisions
-
-Things this plan does not settle, roughly in the order they need answering:
-
-1. **QuickJS-ng vs. porting SM 1.8.5 to aarch64.** Recommendation is QuickJS-ng (§4/R1), but a
-   two-week spike on option A would de-risk the fallback and give an early macOS build to test with.
-   **Worth doing first.**
-2. **Fork or contribute?** Whether this is a hard fork or an upstream-collaborative effort changes
-   the review burden, the timeline, and the freeze policy in §10.3. Decide before Phase 1 lands.
-3. **How much C++23 in the translated code?** Recommendation: translate to *conservative* C++ first
-   (§8, Phase 4) and modernise in Phase 6. Mixing translation and redesign is the classic way these
-   projects die.
-4. **`std::string` vs. a custom `oo::String`.** `std::string` is recommended for interop and
-   familiarity, but `NSString` is immutable and refcounted; 6,286 sites of copying may be a
-   measurable regression. Benchmark in Phase 2 before committing.
-5. **Renderer target for Phase 6.** GL 3.3 Core vs. SDL3 GPU. Defer, but don't defer past Phase 5.
-6. **Legacy AI and legacy plist scripting** (C4) — port faithfully, or deprecate with a long
-   sunset? Faithful porting is recommended; the alternative breaks the long tail of old OXPs, which
-   is precisely the compatibility promise this plan is built around.
-7. **Windows toolchain.** MinGW-clang (upstream's current path) vs. clang-cl + MSVC STL. The latter
-   is better long-term for C++23 library coverage; the former diverges less from upstream today.
-8. **macOS CI: self-hosted runner or not?** The PyAutoGUI tier (§5.6) needs Accessibility and
-   Screen Recording TCC grants, which hosted GitHub macOS runners cannot provide. Either stand up a
-   self-hosted runner on Jon's Apple Silicon machine, or run the macOS GUI tier as a local
-   pre-release gate. **Decide before Phase 3**, since that is where the tier earns its keep.
 
 ---
 
