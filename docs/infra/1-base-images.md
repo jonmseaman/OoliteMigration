@@ -29,8 +29,8 @@ is the single change most likely to cut iteration time, more than any model choi
 
 ## Verification
 
-- [ ] `tools/setup-windows.sh` run twice: the second run installs nothing
-- [ ] `./mk.sh build test` succeeds with no `setup-msys2` step and no `install_deps.sh` run
+- [x] `tools/setup-windows.sh` run twice: the second run installs nothing
+- [x] `./mk.sh build test` succeeds with no `setup-msys2` step and no `install_deps.sh` run
 - [ ] A Tier-B run on a warm cache completes in under 10 minutes end to end
 - [ ] N golden processes run concurrently without port or output collisions, with a build running alongside
 - [ ] ccache hit rate reported by the Reporter
@@ -39,3 +39,15 @@ is the single change most likely to cut iteration time, more than any model choi
 
 - 2026-09-06 — Created from AI_EXECUTION_PLAN §4.2 and §14.4 (base images, WSL2).
 - 2026-09-11 — Rewritten for native Windows: one-time MSYS2 provisioning instead of images (ADR-0017).
+- 2026-09-11 — Item 1 landed: `tools/setup-windows.sh` (+ `--check`), resolved versions in
+  `tools/windows-packages.lock`. Verified on the Azure VM: second run installs nothing, and
+  `./mk.sh build test` builds 245 targets in ~13 min with zero warnings. Two things worth knowing
+  before item 2:
+  - `ccache.exe` is a **native Windows** binary. It reads `%LOCALAPPDATA%\ccache\ccache.conf`, not
+    `$HOME/.config/ccache/ccache.conf`, and it aborts if `USERPROFILE` is unset — which MSYS2
+    strips from a shell started by another shell, so it fails only under automation.
+    `/etc/profile.d/oolite-windows-env.sh` restores it via `cygpath -F` for login shells.
+  - **ccache is installed but the build does not use it yet.** Meson only wraps the compiler in
+    ccache when it discovers the compiler itself; `upstream/oolite/clang.ini` names it explicitly
+    (`c = 'clang'`), which suppresses that. Item 2 owns the fix; verify with `ccache --show-stats`,
+    not by checking that ccache is installed.
