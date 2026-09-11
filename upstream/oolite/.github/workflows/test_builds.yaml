@@ -1,0 +1,199 @@
+name: Test Oolite package on various platforms
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:26.04
+      options: >-
+        --cap-add SYS_ADMIN
+        --device /dev/fuse
+        --security-opt apparmor:unconfined
+    steps:
+      - name: Update Ubuntu
+        run: |
+          apt update          
+          apt install -y git curl ca-certificates
+      - name: Pre-setup ownership & curl token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This must run before the checkout action if the action tries to do git commands
+          mkdir -p "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo 'header = "Authorization: Bearer '$GITHUB_TOKEN'"' >> ~/.curlrc
+          echo 'header = "Accept: application/vnd.github+json"' >> ~/.curlrc
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install packages
+        run: |
+          ShellScripts/Linux/install_packages_root.sh --core+appimage
+      - name: Build GNUstep
+        run: |
+          ShellScripts/Linux/build_gnustep.sh system
+          echo "/usr/local/lib" | tee -a /etc/ld.so.conf
+          ldconfig
+      - name: Install Mozilla static library
+        run: |
+          ShellScripts/Linux/install_mozilla_js.sh system
+      - name: Build Oolite
+        run: |
+          ./mk.sh build dev
+      - name: Test Oolite
+        if: github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
+        run: |
+          ./mk.sh test dev
+      - name: Build AppImage
+        run: |
+          ./mk.sh pkg-appimage dev
+
+  fedora:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+      options: >-
+        --cap-add SYS_ADMIN
+        --device /dev/fuse
+        --security-opt apparmor:unconfined
+    steps:
+      - name: Update Fedora
+        run: |
+          dnf -y update
+          dnf -y install git
+      - name: Pre-setup ownership & curl token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This must run before the checkout action if the action tries to do git commands
+          mkdir -p "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo 'header = "Authorization: Bearer '$GITHUB_TOKEN'"' >> ~/.curlrc
+          echo 'header = "Accept: application/vnd.github+json"' >> ~/.curlrc
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install packages
+        run: |
+          ShellScripts/Linux/install_packages_root.sh --core+appimage
+      - name: Build GNUstep
+        run: |
+          ShellScripts/Linux/build_gnustep.sh system
+      - name: Install Mozilla static library
+        run: |
+          ShellScripts/Linux/install_mozilla_js.sh system
+          echo "/usr/local/lib64" | tee -a /etc/ld.so.conf
+          ldconfig
+      - name: Build Oolite
+        run: |
+          ./mk.sh build dev
+      - name: Test Oolite
+        if: github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
+        run: |
+          ./mk.sh test dev
+      - name: Build AppImage
+        run: |
+          ./mk.sh pkg-appimage dev
+
+  arch:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: >-
+        --cap-add SYS_ADMIN
+        --device /dev/fuse
+        --security-opt apparmor:unconfined
+    steps:
+      - name: Update Arch
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed git
+      - name: Pre-setup ownership & curl token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This must run before the checkout action if the action tries to do git commands
+          mkdir -p "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo 'header = "Authorization: Bearer '$GITHUB_TOKEN'"' >> ~/.curlrc
+          echo 'header = "Accept: application/vnd.github+json"' >> ~/.curlrc
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install packages
+        run: |
+          ShellScripts/Linux/install_packages_root.sh --core+appimage
+      - name: Build GNUstep
+        run: |
+          ShellScripts/Linux/build_gnustep.sh system
+      - name: Install Mozilla static library
+        run: |
+          ShellScripts/Linux/install_mozilla_js.sh system
+          echo "/usr/local/lib" | tee -a /etc/ld.so.conf
+          ldconfig
+      - name: Build Oolite
+        run: |
+          ./mk.sh build dev
+      - name: Test Oolite
+        if: github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
+        run: |
+          ./mk.sh test dev
+      - name: Build AppImage
+        run: |
+          ./mk.sh pkg-appimage dev
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download latest release assets
+        uses: robinraju/release-downloader@v1
+        with:
+          repository: OoliteProject/oolite_windeps_build
+          latest: true
+          fileName: "*"
+          out-file-path: build/packages
+
+      - name: Install packages
+        shell: msys2 {0}
+        env:
+          msystem: UCRT64
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo 'header = "Authorization: Bearer '$GITHUB_TOKEN'"' >> ~/.curlrc
+          echo 'header = "Accept: application/vnd.github+json"' >> ~/.curlrc
+          cp ~/.curlrc /c/Users/runneradmin/.curlrc 2>/dev/null || true          
+          ShellScripts/Windows/install_deps.sh clang
+
+      - name: Build Oolite
+        shell: msys2 {0}
+        env:
+          msystem: UCRT64
+          PYTHONUTF8: "1"
+        run: |
+          ./mk.sh build dev
+
+      - name: Test Oolite
+        if: github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
+        shell: msys2 {0}
+        env:
+          msystem: UCRT64
+          PYTHONUTF8: "1"
+        run: |
+          ./mk.sh test dev

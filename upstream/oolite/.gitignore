@@ -1,0 +1,33 @@
+# Windows cruft
+Thumbs.db
+ehthumbs.db
+
+# Mac OS X cruft
+.DS_Store
+Icon?
+
+# Xcode cruft
+xcuserdata/
+*.xcscmblueprint
+
+# kdevelop cruft
+.kdev4/
+*.kdev4
+
+# Used for downloaded code
+deps/Cocoa-deps/sparkle
+deps/libpng
+
+# IDE files
+.idea
+
+# Build products
+build/
+tools/icosmesh/obj
+doxygen/
+libobjc2/
+libs-base/
+tools-make/
+
+# Debug output
+/core

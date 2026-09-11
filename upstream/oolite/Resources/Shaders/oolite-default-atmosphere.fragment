@@ -1,0 +1,101 @@
+/*
+	oolite-default-atmosphere.fragment
+	Default fragment shader for Oolite NEW_PLANETS.
+
+
+	© 2009–2013 Jens Ayton
+
+	Permission is hereby granted, free of charge, to any person obtaining a copy
+	of this software and associated documentation files (the "Software"), to deal
+	in the Software without restriction, including without limitation the rights
+	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+	copies of the Software, and to permit persons to whom the Software is
+	furnished to do so, subject to the following conditions:
+
+	The above copyright notice and this permission notice shall be included in all
+	copies or substantial portions of the Software.
+
+	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+	SOFTWARE.
+*/
+
+#define MULTIPLIER_LIGHTSRCRADIANCE	1.035
+#define MULTIPLIER_PREEXPOSURE		1.0
+
+#define DIFFUSE_LIGHT		(gl_LightSource[1].diffuse.rgb * MULTIPLIER_LIGHTSRCRADIANCE)
+#define AMBIENT_LIGHT		(gl_LightModel.ambient.rgb)
+
+uniform vec4			atmPosition;
+uniform float			atmRadius;
+uniform vec4			atmColor;
+uniform float			atmColorMixRatio;
+uniform float			atmDensity;
+
+// No vNormal, because normal is always 0,0,1 in tangent space.
+varying vec3			vEyeVector;
+varying vec3			vLight1Vector;
+
+const float				kFresnelExponent = 5.0;
+
+
+void main()
+{
+	vec3 totalColor = vec3(0.0);
+	vec3 normal = vec3(0.0, 0.0, 1.0);
+
+	// Diffuse light
+	vec3 light1Vector = normalize(vLight1Vector);
+	vec3 eyeVector = normalize(vEyeVector);
+	vec3 diffuseColor = DIFFUSE_LIGHT;
+	
+	float NdotV = clamp(dot(normal, eyeVector), 0.0, 1.0);
+	float NdotL = max(0.0, dot(light1Vector, normal));
+		
+	float atmDistance = length(atmPosition.xyz);
+	float minDistance = atmRadius + 3500.0;
+	float magicDistance = atmDistance - minDistance;
+	float cosThreshold = -1.333333e-6 * atmRadius + 0.21333333; // 0.17 ... 0.13
+	float newOpacityExponent = atmRadius > 40000.0 ? 3.0 : 5.0;
+	
+	// mix in some light blue color
+	totalColor += diffuseColor * vec3(0.85, 0.85, 1.0);
+	
+	// create a fresnel torus around the planet - opacity is proportional to it
+	// multiply NdotV by a constant less than 1.0 to create haze
+	vec3 fresnel = vec3(pow(1.0 - (NdotV * (1.0 - atmDensity)), kFresnelExponent));
+	
+	// calculate when the atmosphere should fade in / out
+	float quant = atmDistance < (minDistance + 2000.0) ?
+					magicDistance / 2000.0 : 1.0;
+					
+	// calculate the final opacity, special handling for
+	// angles > arccos(cosThreshold) to fade atmosphere out at its edge
+	float newOpacity = clamp(quant * pow(max(0.01, NdotL), 0.203333) * (NdotV > cosThreshold ?
+								pow(fresnel.r * cosThreshold / NdotV, 0.8) :
+								min(1.0, atmDensity * 2.0) * pow(NdotV / cosThreshold, newOpacityExponent)),
+								0.0, 1.0);
+	
+	// mix the bias color now
+	totalColor *=	mix(totalColor, atmColor.rgb, atmColorMixRatio) *
+					// comment below for fresnel to not affect atmosphere color
+					dot(normalize(fresnel), vec3(NdotL));
+	
+	// at the very edge, mix in some serious bias color
+	if (NdotV < cosThreshold)
+	{
+		totalColor = mix(atmColor.rgb * NdotL, totalColor, newOpacity);
+	}
+	
+	// add ambient light
+	totalColor += AMBIENT_LIGHT * NdotL;
+	
+	// exposure - best to leave this at 1.0
+	totalColor *= MULTIPLIER_PREEXPOSURE;
+	
+	gl_FragColor = vec4(totalColor, newOpacity);
+}

@@ -1,0 +1,240 @@
+name: Build Oolite package for various platforms
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+      options: >-
+        --cap-add SYS_ADMIN
+        --device /dev/fuse
+        --security-opt apparmor:unconfined
+    strategy:
+      matrix:
+        flavour: [deployment, test, dev]
+    steps:
+      ## This is for debugging only and helps developing the workflow.
+      # - name: Environment Variables
+      #  run: |
+      #    printenv | sort
+
+      - name: Update Arch
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm --needed git
+      - name: Pre-setup ownership & curl token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This must run before the checkout action if the action tries to do git commands
+          mkdir -p "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo 'header = "Authorization: Bearer '$GITHUB_TOKEN'"' >> ~/.curlrc
+          echo 'header = "Accept: application/vnd.github+json"' >> ~/.curlrc
+      - name: Checkout Oolite
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install packages
+        run: |
+          ShellScripts/Linux/install_packages_root.sh --core+appimage
+      - name: Build GNUstep
+        run: |
+          ShellScripts/Linux/build_gnustep.sh system
+      - name: Install Mozilla static library
+        run: |
+          ShellScripts/Linux/install_mozilla_js.sh system
+          echo "/usr/local/lib" | tee -a /etc/ld.so.conf
+          ldconfig
+      - name: Build Oolite
+        run: |
+          ./mk.sh build ${{matrix.flavour}} --github-repository="$GITHUB_REPOSITORY"
+      - name: Package Oolite
+        run: |
+          ./mk.sh pkg-appimage ${{matrix.flavour}}
+      - name: Archive installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: oolite-linux-appimage-${{matrix.flavour}}
+          path: |
+            build/Oolite*.AppImage
+          retention-days: 5
+
+  build-flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+      options: --privileged
+    steps:
+      - name: Pre-setup ownership & curl token
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # This must run before the checkout action if the action tries to do git commands
+          mkdir -p "$GITHUB_WORKSPACE"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          echo 'header = "Authorization: Bearer '$GITHUB_TOKEN'"' >> ~/.curlrc
+          echo 'header = "Accept: application/vnd.github+json"' >> ~/.curlrc
+      - name: Checkout Oolite
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Build flatpak
+        run: |
+          echo "Installing gitversion..."
+          source ShellScripts/Linux/install_gitversion_fn.sh
+          mkdir -p /usr/local/bin
+          install_gitversion "."
+          ./mk.sh pkg-flatpak deployment --github-repository="$GITHUB_REPOSITORY"
+      - name: Archive installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: oolite-linux-flatpak-deployment
+          path: |
+            build/space.oolite.Oolite*.flatpak
+          retention-days: 5
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        flavour: [deployment, test, dev]
+    steps:
+      ## This is for debugging only and helps developing the workflow.
+      # - name: Environment Variables
+      #  run: |
+      #    Get-ChildItem Env: | Sort Name
+
+      - name: Git line endings & curl token
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+      - name: Set up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          cache: false
+      - name: Checkout Oolite
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Install packages
+        shell: msys2 {0}
+        env:
+          msystem: UCRT64
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo 'header = "Authorization: Bearer '$GITHUB_TOKEN'"' >> ~/.curlrc
+          echo 'header = "Accept: application/vnd.github+json"' >> ~/.curlrc
+          cp ~/.curlrc /c/Users/runneradmin/.curlrc 2>/dev/null || true          
+          ShellScripts/Windows/install_deps.sh clang
+      - name: Build Oolite
+        shell: msys2 {0}
+        env:
+          msystem: UCRT64
+          PYTHONUTF8: "1"
+        run: |
+          ./mk.sh build ${{matrix.flavour}} --github-repository="$GITHUB_REPOSITORY"
+      - name: Package Oolite
+        shell: msys2 {0}
+        env:
+          msystem: UCRT64
+          PYTHONUTF8: "1"
+        run: |
+          ./mk.sh pkg-win ${{matrix.flavour}}
+      - name: Archive installer
+        uses: actions/upload-artifact@v6
+        with:
+          name: oolite-windows-nsis-${{matrix.flavour}}
+          path: |
+            build/OoliteInstall*.exe
+          retention-days: 5
+
+  release:
+    needs: [build-linux, build-flatpak, build-windows]
+    runs-on: ubuntu-22.04
+    # Only run for internal requests (so not for PRs from forks)
+    if: github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name
+    steps:
+      ## This is for debugging only and helps developing the workflow.
+      # - name: Environment Variables
+      #  run: |
+      #    printenv | sort
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+      - name: Calculate version number and set VER_FULL
+        id: version
+        run: |
+          set -x          
+          # 1. Check that there are exactly 8 files recursively in the artifacts directory
+          FILE_COUNT=$(find artifacts -type f | wc -l)
+          echo "Total files found: $FILE_COUNT"          
+          if [[ "$FILE_COUNT" -ne 8 ]]; then
+            echo "❌ Expected exactly 8 files, but found $FILE_COUNT." >&2
+            exit 1
+          fi                    
+          # 2. Get the path of the first available AppImage
+          APPIMAGE_PATH=$(find artifacts -type f -name "*.AppImage" | head -n 1)          
+          if [[ -z "$APPIMAGE_PATH" ]]; then
+            echo "❌ No AppImages found in the downloaded artifacts!" >&2
+            exit 1
+          fi          
+          echo "Found AppImage: $APPIMAGE_PATH"                    
+          # 3. Run with packageinfo and extract the string inside quotes
+          chmod +x "$APPIMAGE_PATH"
+          VER_FULL=$("$APPIMAGE_PATH" packageinfo | awk -F'"' '/^[[:space:]]*version =/ {print $2; exit}')           
+          if [[ -z "$VER_FULL" ]]; then
+            echo "❌ Failed to extract version string from packageinfo output!" >&2
+            exit 1
+          fi                     
+          echo "Extracted Version: $VER_FULL"          
+          # 4. Output the extracted version for subsequent steps
+          echo "VER_FULL=$VER_FULL" >> "$GITHUB_OUTPUT"
+      - name: Remove old prereleases
+        if: github.ref == 'refs/heads/master' || endsWith(github.ref, 'maintenance')
+        uses: s00d/delete-older-releases@0.2.1
+        with:
+          keep_latest: 7
+          delete_type: 'prerelease'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # For changes on master branch, create a new release.
+      # It should move the 'latest' tag automatically.
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v3
+        with:
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          name: "Oolite ${{ steps.version.outputs.VER_FULL }}"
+          tag_name: "${{ steps.version.outputs.VER_FULL }}"
+          prerelease: true
+          target_commitish: ${{ github.event.pull_request.head.sha || github.sha }}
+          files: |
+            artifacts/oolite-windows-nsis-deployment/OoliteInstall-*.exe
+            artifacts/oolite-windows-nsis-test/OoliteInstall-*.exe
+            artifacts/oolite-windows-nsis-dev/OoliteInstall-*.exe
+            artifacts/oolite-linux-appimage-deployment/*.AppImage
+            artifacts/oolite-linux-appimage-test/*.AppImage
+            artifacts/oolite-linux-appimage-dev/*.AppImage
+            artifacts/oolite-linux-flatpak-deployment/*.flatpak
+
+      - name: Remove old workflow runs
+        if: github.ref == 'refs/heads/master' || endsWith(github.ref, 'maintenance')
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 30
+          keep_minimum_runs: 8
