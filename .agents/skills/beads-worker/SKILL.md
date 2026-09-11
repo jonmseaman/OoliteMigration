@@ -69,6 +69,7 @@ scripts/worktree.sh <bead>               create .worktrees/<bead> on branch bead
 scripts/worktree.sh --remove <bead>      remove the worktree and delete the branch (after close or escalation)
 scripts/accept.sh <bead>                 clean checkout of base → merge bead/<bead> → run acceptance → fast-forward base, close. Exit 0 closed+merged · 1 rejected with new learning (retry; includes merge conflicts) · 2 rejected, identical failure repeated (escalate)
 scripts/escalate.sh <bead> "<reason>"    swap fleet→frontier, add escalated, release claim, log a row in docs/fleet/FLEET_FAILURES.md
+scripts/reevaluate.sh <bead> "<why>"     ask Claude Code (frontier, read-only) whether the TASK is right; applies retry/reclassify/add_dep/escalate; exit 3 = unavailable
 scripts/context.sh <bead>                print the bead's notes + the last 40 fleet learnings; paste into every worker/reviewer task
 scripts/learn.sh <bead> "<line>"         record a cross-bead learning in docs/fleet/LEARNINGS.md and the bead's notes
 scripts/bin/bd                           guard shim: refuses close / status=closed unless BEADS_ACCEPT=1
@@ -100,7 +101,9 @@ more beads in flight is fine, more children than P is not.
    - For every result: `bd update <id> --append-notes "attempt N worker: <summary>; files: <list>"`.
      The notes are the bead's memory; the next attempt reads them through `context.sh`.
    - `blocked: true` → `bd update <id> --append-notes "<reason>"`, then
-     `scripts/escalate.sh <id> "<reason>"`. That bead leaves the batch.
+     `terminal(command="scripts/reevaluate.sh <id> \"blocked: <reason>\"", timeout=900)`. Claude
+     decides whether the task itself is wrong (see *Escalation ladder* below). Only if it returns
+     exit 3 do you `scripts/escalate.sh <id> "<reason>"` yourself. That bead leaves the batch.
 5. **Delegate the reviewers, one call, one task per committed bead**, each built from
    `references/reviewer-prompt.md`: the worktree path, `git diff main...bead/<id>`, the bead's
    sizing checks and prohibitions. Require `output_schema` `{verdict: approve|request_changes, findings[]}`.
@@ -108,8 +111,8 @@ more beads in flight is fine, more children than P is not.
    - For every verdict: `bd update <id> --append-notes "review: <verdict>; <findings, one per line>"`.
    - `request_changes` → delegate the worker again with the findings appended as context, then
      re-review. Repeat until `approve`. There is no round cap, but if two consecutive reviews
-     return the same findings the worker is not learning: escalate that bead with the findings
-     as the reason.
+     return the same findings the worker is not learning: `scripts/reevaluate.sh <id> "reviewer
+     stalemate: <findings>"`.
 6. **Accept each approved bead.** `terminal(command="scripts/accept.sh <id>", timeout=1800)`.
    You are closing your own work here, which is allowed because the reviewer approved it and
    because `accept.sh`, not you, decides: it merges the bead into the base branch in a clean
@@ -121,7 +124,10 @@ more beads in flight is fine, more children than P is not.
      worktree; the bead comes back in the next batch with the failure tail in its notes, and the
      worker prompt must include it. No cap on rounds.
    - Exit 2 → rejected with the same failure as last time: the loop is not learning.
-     `scripts/escalate.sh <id> "identical acceptance failure repeated"`.
+     `scripts/reevaluate.sh <id> "stale acceptance failure: <last failure tail>"`. Claude either
+     hands you guidance (the bead comes back with `stale_count` reset), changes the task
+     (reclassify / add_dep, the bead leaves the batch until its new deps close), or escalates.
+     Fall back to `scripts/escalate.sh` only on exit 3.
 7. **Clean up.** `terminal(command="scripts/worktree.sh --remove <id>")` only for beads that
    closed or escalated. Never remove a worktree for a bead that is going round again.
 8. **Record learnings.** For any bead that taught something the *next* bead should know (a
@@ -130,12 +136,34 @@ more beads in flight is fine, more children than P is not.
 9. **Report one line** per bead: id, outcome (closed / retry / escalated), review verdict,
    attempts. End the turn with the output of `scripts/goal-check.sh <N>`. Then go to step 1.
 
+## Escalation ladder
+
+A bead never goes straight from "stuck" to a human. In order:
+
+1. **Retry with new information** — every failed accept appends its output to the notes and the
+   next worker reads it. Unlimited while the failure keeps changing.
+2. **Re-evaluate the task with the frontier model** — `scripts/reevaluate.sh` runs Claude Code
+   headless and read-only (`claude -p`, Read/Grep/Glob only, no `bd close`, no edits) with the
+   bead, its notes and the shared learnings, and asks one question: *is this the right task?* Its
+   answer is applied mechanically: `retry` with guidance, `reclassify` to another sweep (e.g. a
+   "rename to .c" bead whose file turns out to be full of message sends becomes a convert bead),
+   `add_dep` on a seam it needs first, or `escalate`. If it names a generator rule that is wrong,
+   one deduplicated `generator-bug` frontier bead is filed so the *rule* gets fixed and the sibling
+   beads regenerated, not just this instance.
+3. **Escalate** — the bead becomes `frontier` + `escalated`, leaves the goal, and is logged in
+   `docs/fleet/FLEET_FAILURES.md`. Nothing else blocks on it except the phase's terminal item.
+
+Triggers for step 2: a worker reports `blocked`; `accept.sh` returns 2 (identical failure);
+two reviews with the same findings. One Claude call per stuck bead, never per attempt.
+
 ## Pitfalls
 
 - **The goal is reachable without a human by construction.** `goal-check` counts only
   `fleet`+`phase:<N>` beads; `rebless`, `proposed-adr` and `frontier` beads are invisible to it.
   If the gate never passes, a bead is mislabelled or blocked, not "hard": say so rather than
   attempting `frontier` work.
+- **`reevaluate.sh` needs `claude` on PATH and an Anthropic credential in the environment.** If
+  it returns exit 3, say so in the turn report and escalate; do not retry it in a loop.
 - **Raw `bd close` is refused for you and your children.** That is the guard shim doing its job.
   You close beads by calling `scripts/accept.sh`, which sets `BEADS_ACCEPT=1` itself; the
   implementing worker has no path to close at all. If the shim is not on PATH, stop and tell the
@@ -180,6 +208,7 @@ more beads in flight is fine, more children than P is not.
 
 - `scripts/goal-check.sh <N>` flips from nonzero to zero over the course of the run
 - `scripts/goal-gate.sh <N>` exits 0 on a turn right after `accept.sh` closed a bead, and 1 on a turn where nothing happened
+- `scripts/reevaluate.sh <bead> "blocked: file is full of message sends"` on a rename bead rewrites it as a convert bead (title, labels, body, deps) and keeps its notes
 - Every closed bead is a merge commit on the base branch whose acceptance commands exit 0 on the merged tree
 - `bd list --status closed --label phase:<N>` closures are all attributed to `accept.sh`
   (reason text starts with `accepted:`)

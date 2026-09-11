@@ -17,12 +17,35 @@ Applied with `hermes config set`:
 | `delegation.child_timeout_seconds` | `3600` | a stuck worker cannot hold the loop |
 | `delegation.worktree_isolation` | `false` | the skill manages worktrees itself (`.worktrees/<bead>`, branch `bead/<bead>`); Hermes flagged the key as unrecognised, which is fine since false is the default |
 | `delegation.subagent_auto_approve` | `true` | unattended loop; children must not block on approval prompts. **Security trade-off, deliberate.** |
+| (environment) | `ANTHROPIC_API_KEY` or a logged-in `claude` CLI | `reevaluate.sh` shells out to Claude Code headless; without it the ladder falls back to escalation |
 
 Plus `hermes skills trust /Users/jonms/OoliteMigration` so the repo-local skill loads.
 
 Still to do by Jon: route the judge to a cheap local model once the on-prem endpoint is
 configured, e.g. `auxiliary.goal_judge.provider` / `.model` in `~/.hermes/config.yaml`; the judge
 runs once per turn and only needs to read a `goal-check` result.
+
+## Why there is a `.hermes.md` as well as the skill
+
+Hermes injects a project context file into the **system prompt** every turn, so it survives context
+compression on a session that runs for days; a skill's text lives in the conversation and can be
+pruned. `.hermes.md` at the repo root therefore carries the standing contract (the loop in seven
+lines, the never-do list, the memory rule) and points at the skill for the full procedure, which
+the orchestrator reloads with `skill_view` when unsure. Note that for Hermes `.hermes.md` takes
+precedence over `AGENTS.md`, so it also carries the `bd prime` pointer. Claude Code still reads
+`CLAUDE.md`; the two do not conflict.
+
+## Escalation without blocking
+
+A stuck bead does not go to a human. `scripts/reevaluate.sh` runs Claude Code headless and
+read-only (`claude -p`, Read/Grep/Glob only) with the bead, its notes and the shared learnings, and
+asks one question: is this the right task? Its JSON decision is applied by script: `retry` with
+guidance, `reclassify` to another sweep via `tools/gen-stories.py --reclassify`, `add_dep` on a
+seam, or `escalate`. If Claude names a wrong rule in the generator, one deduplicated
+`generator-bug` frontier bead is filed so the rule gets fixed and siblings regenerated. Verified
+2026-09-11 on the mis-generated `OOOpenGL.m` rename bead: Claude read the file, chose a different
+sweep, and filed the generator bug in about two minutes. Escalated beads block only the phase's
+terminal item; the fleet keeps going.
 
 ## Start a run
 
@@ -75,3 +98,4 @@ beads in exactly this shape.
 ## Status log
 
 - 2026-09-10 — Created. Skill and config in place; not yet run against a real bead.
+- 2026-09-11 — Queue populated (681 beads). `reevaluate.sh` + `--reclassify` added and exercised on a real bead; `.hermes.md` added for durable instructions.

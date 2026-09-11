@@ -91,3 +91,4 @@ gate; and a scheduled read-only Reporter running first.
 - 2026-09-10 — Rewritten for Claude Code / beads; Gas City dropped (ADR-0014).
 - 2026-09-10 — Hermes Agent `/goal` is the local-tier driver; OpenCode dropped; `accept` split out as the single path to `bd close` (ADR-0015).
 - 2026-09-10 — beads-worker skill written under `.agents/skills/`; Hermes configured for it; no CI forge (ADR-0016).
+- 2026-09-11 — Frontier re-evaluation lane: `reevaluate.sh` (Claude Code headless, read-only) sits between retry and escalation; `.hermes.md` carries the standing contract in the system prompt.
