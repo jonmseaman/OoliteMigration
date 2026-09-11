@@ -105,7 +105,7 @@ seconds.
 | Tier | When | Content | Budget | Parallelism |
 |---|---|---|---|---|
 | **A — in-loop** | every agent edit | Compile the single TU; `clang-tidy`; symbol deny-list grep; that module's unit tests | **< 30 s** | none needed — it's seconds |
-| **B — per candidate PR** | agent believes it's done | Full build, **one** platform; module tests; 3–5 fast golden scenarios; Tier-1 OXP subset | **< 10 min** | N-way across CI pool, one container per scenario |
+| **B — per candidate PR** | agent believes it's done | Full build, **one** platform; module tests; 3–5 fast golden scenarios; Tier-1 OXP subset | **< 10 min** | local (WSL2), one container per scenario; no CI for now ([ADR-0016](decisions/0016-no-forge-local-verification.md)) |
 | **C — per merge batch** | merge queue | All 3 platforms; all 20 goldens; ASan + UBSan; full Tier-1; JS API snapshot; PyAutoGUI tier | 30–90 min | batched — see §3.3 |
 
 Tier A is what an agent iterates against. If Tier A is slow, everything else is irrelevant, because

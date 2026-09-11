@@ -14,7 +14,7 @@ changed* from the chain.
 | [0005](0005-defer-dgx-spark.md) | Do not buy inference hardware now; inference is a network endpoint behind config | Accepted |
 | [0006](0006-gas-city-and-hermes.md) | Gas City (Gastown pack) for the fleet; Hermes Agent for the Reporter | Superseded by 0014 |
 | [0007](0007-ubuntu-agent-host.md) | Agents run on an Ubuntu host, not Windows; Windows is a build runner | Superseded by 0010 |
-| [0008](0008-forge-and-runners.md) | GitHub origin + Forgejo mirror owning CI and runners | Accepted (default, via 0013) |
+| [0008](0008-forge-and-runners.md) | GitHub origin + Forgejo mirror owning CI and runners | Accepted; **deferred by 0016** |
 | [0009](0009-apple-silicon-after-runtime-removal.md) | Apple Silicon is Phase 5, after the Objective-C runtime is removed | Accepted |
 | [0010](0010-single-windows-machine.md) | One Windows x86-64 machine (native + WSL2) for everything until Phase 5 | Accepted |
 | [0011](0011-cpp20-then-cpp23.md) | Conversion targets C++20; the C++23 upgrade is part of Phase 6 | Accepted |
@@ -22,5 +22,6 @@ changed* from the chain.
 | [0013](0013-decide-up-front-minimise-human.md) | All open decisions decided by default; Jon is in exactly four places; merges are automatic | Accepted |
 | [0014](0014-claude-code-opencode-beads.md) | Claude Code as the runtime; beads as the queue; merge queue + run-story wrapper as in-repo scripts | Accepted; local tier amended by 0015 |
 | [0015](0015-hermes-goal-loop.md) | Hermes Agent `/goal` drives local-model sweeps; `tools/fleet/accept` is the only path to `bd close` | Accepted |
+| [0016](0016-no-forge-local-verification.md) | No CI/CD forge for now; Tier B/C and the merge-queue gate run locally | Accepted; defers 0008 |
 
 Template: Status · Date · Context · Decision · Consequences · History.

@@ -1,6 +1,6 @@
 # ADR-0008: Forge and CI runners — GitHub + self-hosted runners, or self-hosted Forgejo
 
-**Status:** **Accepted** 2026-09-10 as the default under [ADR-0013](0013-decide-up-front-minimise-human.md): the third column below. Jon may override by superseding ADR. · **Date:** 2026-09-06
+**Status:** Accepted as the default under [ADR-0013](0013-decide-up-front-minimise-human.md), then **deferred by [ADR-0016](0016-no-forge-local-verification.md)**: no forge or runners for now; the third column below is the plan when one is wanted. · **Date:** 2026-09-06
 
 ## Context
 

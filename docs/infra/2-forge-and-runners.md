@@ -1,6 +1,6 @@
 # I2 — Forge and CI runners
 
-**Status:** not started; [ADR-0008](../decisions/0008-forge-and-runners.md) decided (GitHub origin + Forgejo mirror) · **Gates:** Phase 0 items 0.3, 0.10
+**Status:** **deferred** by [ADR-0016](../decisions/0016-no-forge-local-verification.md): no forge, no runners for now; Tier B/C run locally and `tools/merge-queue` calls `tools/tier-c.sh` directly. Everything below is the plan for when a forge is wanted (a second machine at Phase 5, or a public fork). · **Gates:** —
 
 ## Goal
 

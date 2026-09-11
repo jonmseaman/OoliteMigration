@@ -56,7 +56,7 @@ ADR or phase doc it came from.
 ## Consequences
 
 - The fleet never blocks on Jon between weekly re-bless reviews. If it does, that is a bug in the
-  stories or the pack configuration, and it is logged in `docs/FLEET_FAILURES.md` (I4).
+  stories or the pack configuration, and it is logged in `docs/fleet/FLEET_FAILURES.md` (I4).
 - "Jon + frontier" and "Owner: Jon" disappear from the phase and infra docs.
 - The authority table's Jon row shrinks to the four items above. The Reporter's weekly message
   includes the re-bless queue and any proposed ADRs awaiting override.
