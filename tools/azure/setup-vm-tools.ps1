@@ -38,13 +38,31 @@ if (Test-Path (Join-Path $bdDir 'bd.exe')) {
     Write-Output "  extracted to $bdDir"
 }
 
+# ---- dolt (beads' backing store; bd runs a dolt sql-server) ----
+# Pinned to the same version as the Mac so the database format matches.
+Write-Output "=== dolt ==="
+$doltDir = 'C:\tools\dolt'
+if (Test-Path (Join-Path $doltDir 'dolt.exe')) {
+    Write-Output "  already installed"
+} else {
+    New-Item -ItemType Directory -Path $doltDir -Force | Out-Null
+    $p = Get-Installer 'https://github.com/dolthub/dolt/releases/download/v2.3.3/dolt-windows-amd64.zip' 'dolt-windows-amd64.zip'
+    $tmp = Join-Path $dl 'dolt-extract'
+    Remove-Item $tmp -Recurse -Force -EA SilentlyContinue
+    Expand-Archive -Path $p -DestinationPath $tmp -Force
+    $exe = Get-ChildItem $tmp -Recurse -Filter 'dolt.exe' | Select-Object -First 1
+    Copy-Item $exe.FullName (Join-Path $doltDir 'dolt.exe') -Force
+    Write-Output "  installed to $doltDir"
+}
+
 # ---- Machine PATH: git, node, gh, bd ----
 Write-Output "=== PATH ==="
 $want = @(
     'C:\Program Files\Git\cmd',
     'C:\Program Files\nodejs',
     'C:\Program Files\GitHub CLI',
-    'C:\tools\bd'
+    'C:\tools\bd',
+    'C:\tools\dolt'
 )
 $cur = [Environment]::GetEnvironmentVariable('Path','Machine')
 $parts = $cur -split ';' | Where-Object { $_ -ne '' }
@@ -66,6 +84,7 @@ foreach ($t in @(
     @('npm','C:\Program Files\nodejs\npm.cmd'),
     @('bash','C:\msys64\usr\bin\bash.exe'),
     @('gh','C:\Program Files\GitHub CLI\gh.exe'),
-    @('bd','C:\tools\bd\bd.exe'))) {
+    @('bd','C:\tools\bd\bd.exe'),
+    @('dolt','C:\tools\dolt\dolt.exe'))) {
     Write-Output ("  {0,-6} {1}" -f $t[0], (Test-Path $t[1]))
 }

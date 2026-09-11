@@ -45,6 +45,22 @@ so a `D4ds_v5` resize is rejected outright. `Ddsv6` has a limit of 10, making `S
 (8 vCPU / 32 GiB / local NVMe) the largest in-quota target. Anything above 10 vCPU needs a
 quota-increase request first.
 
+**Operating it over SSH.** Two things bite and are not obvious:
+
+- *The Dolt server dies with the SSH session.* `bd` runs a `dolt sql-server`; a process started
+  from a one-shot SSH command is killed when that session ends, so `bd dolt start` in one call and
+  `bd <anything>` in the next fails with "database \"oo\" not found". Either do the work in a single
+  session, or run the fleet from a persistent session (the Hermes tab, `tmux`), which is what
+  [I5](5-hermes-goal.md) already assumes. The port is pinned to 3307 in `.beads/metadata.json`;
+  without a pin each auto-start picks a new one and the previous port goes stale.
+- *`sync.remote` is an HTTPS URL and the repo is private.* Dolt shells out to git and cannot prompt
+  for credentials, so `bd bootstrap` fails with "could not read Username". Fixed on the VM with
+  `git config --global url."git@github.com:".insteadOf "https://github.com/"`, which routes it
+  through the SSH key without diverging the committed `.beads/config.yaml`.
+
+A fresh clone has no Dolt data (it is runtime state, not in git): `bd bootstrap` clones it from
+`refs/dolt/data` on the remote after a `bd dolt push` from the other machine.
+
 **Two open risks this introduces:**
 
 - *No console session.* The I0 checklist below assumes a logged-in, unlocked desktop. An Azure VM
@@ -123,3 +139,4 @@ once measured; they set the concurrency caps.
 - 2026-09-10 — Collapsed to one Windows machine until Phase 5 (ADR-0010).
 - 2026-09-11 — WSL2 dropped; everything native; checklist added (keep-awake, MSYS2, logins, `bd dolt`); Linux joins at Phase 5 (ADR-0017).
 - 2026-09-11 — The `windows` machine is an Azure VM (`OoliteConversion`, `Standard_D2s_v3`), inventory filled in, quota ceiling and two risks recorded; concurrency set to 1.
+- 2026-09-11 — Bring-up done: SSH, Defender/Search tuning, git 2.55.0.5, Node 24.21.0, MSYS2 2026-06-11, gh 2.100.0, bd 1.2.2, dolt 2.3.3, Claude Code 2.1.268 (logged in by Jon), Hermes 0.21.1 with the I5 config at concurrency 1. Repo at `C:\src\OoliteMigration`; beads bootstrapped (710 issues). Remaining: MSYS2 build deps and a first `./mk.sh build test`.

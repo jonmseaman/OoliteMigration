@@ -1,12 +1,24 @@
 #!/usr/bin/env bash
 # Run a PowerShell script on the fleet VM over SSH, reading the script from stdin.
-# The Windows OpenSSH default shell is cmd.exe, so the script is passed as a
-# base64 UTF-16LE -EncodedCommand to avoid every layer of quote mangling.
 #   printf '%s\n' 'Get-Process' | tools/azure/winps
 #   tools/azure/winps < script.ps1
+#
+# The script is copied to the VM and run with -File rather than passed as an
+# -EncodedCommand: the Windows OpenSSH default shell is cmd.exe, whose command
+# line caps at 8191 chars, and a base64 UTF-16LE blob hits that quickly.
+# -ExecutionPolicy Bypass applies to this invocation only; machine policy is
+# not changed.
 set -euo pipefail
 HOST_SPEC="${OOLITE_VM:-azureuser@51.8.88.44}"
-# Prepend progress suppression: PowerShell emits CLIXML progress records on stderr
-# over SSH, which drowns real output.
-b64=$( { printf "%s\n" "\$ProgressPreference='SilentlyContinue'"; cat; } | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')
-exec ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST_SPEC" "powershell -NoProfile -EncodedCommand $b64"
+REMOTE="C:/setup/_winps_$$.ps1"
+REMOTE_WIN="C:\\setup\\_winps_$$.ps1"   # cmd's del rejects forward slashes
+
+tmp=$(mktemp -t winps)
+trap 'rm -f "$tmp"' EXIT
+# Progress records arrive on stderr as CLIXML over SSH and drown real output.
+printf '%s\n' '$ProgressPreference = "SilentlyContinue"' > "$tmp"
+cat >> "$tmp"
+
+scp -q -o BatchMode=yes -o ConnectTimeout=15 "$tmp" "$HOST_SPEC:$REMOTE"
+ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST_SPEC" \
+    "powershell -NoProfile -ExecutionPolicy Bypass -File $REMOTE & del $REMOTE_WIN"
