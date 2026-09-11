@@ -1,6 +1,6 @@
 # ADR-0019 — What a component-tier scenario has to set up, and what S1 should assert
 
-**Status:** proposed, proceeding on the recommended default ([ADR-0013](0013-decide-up-front-minimise-human.md), CLAUDE.md rule 10)
+**Status:** accepted by default and implemented; S1 passes. Jon may still override ([ADR-0013](0013-decide-up-front-minimise-human.md), CLAUDE.md rule 10)
 **Date:** 2026-09-11
 **Supersedes nothing. Amends the factual claims in** [S1](../stories/S1-police-kills-pirate.md) **and** [0-component-tier.md](../phases/0-component-tier.md).
 
@@ -42,6 +42,26 @@ scenario until it goes green: a scenario that only passes after enough fiddling 
 scenario, which is exactly the flake risk [0-component-tier.md](../phases/0-component-tier.md) warns
 about.
 
+## What the measurement showed
+
+Taken with the setup above in place, seed 20260910, sampled every ~11 s:
+
+| t | distance | police | pirate |
+|---:|---:|---|---|
+| 6 s | 9,878 m | `tgt=-` `host=false` `e=180/180` | `tgt=-` `host=false` `e=706/706` |
+| 17 s | 9,861 m | **`tgt=pirate` `host=true`** | `tgt=police` |
+| 100 s | 3,738 m | `e=171/180` | `e=706/706` |
+| 133 s | 766 m | `e=130/180` | `e=682/706` |
+| 320 s | oscillating | recovered to `e=180/180` | `e=706/706` |
+
+**The matchup cannot end in a kill.** A GalCop Viper has 180 max energy; a stock pirate has 706.
+The police is the one losing, bottoming out at 130/180 and then regenerating, while the pirate never
+drops below 682/706. They circle indefinitely. No tick budget fixes this, which is why the original
+assertion could never have gone green.
+
+**Engagement, by contrast, is fast and unambiguous:** target acquired with `hasHostileTarget` set
+within ~17 s, about 136 ticks, against a 900-tick budget - a margin of more than 6x.
+
 ## Decision (recommended default)
 
 1. **Scenario setup is part of the `Given`, and is now specified.** A component scenario runs in a
@@ -55,8 +75,10 @@ about.
    in the scenario. A kill assertion, if wanted, belongs in a scenario with a much larger tick
    budget, and should be measured before it is written.
 
-3. **The tick budget needs measuring, not assuming.** 900 ticks came from "≈120 AI decisions",
-   which is arithmetic about `AI_THINK_INTERVAL`, not an observation of how long a kill takes.
+3. **The tick budget is now measured.** 900 ticks came from "≈120 AI decisions", arithmetic about
+   `AI_THINK_INTERVAL` rather than an observation. Engagement lands at ~136 ticks, so 900 is kept as
+   a generous ceiling rather than a target. The step returns as soon as the predicate holds, so the
+   scenario costs ~45 s end to end, not the full 112 s.
 
 4. **Correct the two documents.** The table above is the evidence; [S1](../stories/S1-police-kills-pirate.md)
    and [0-component-tier.md](../phases/0-component-tier.md) state things about the JS API that are

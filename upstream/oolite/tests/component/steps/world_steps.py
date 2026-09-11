@@ -195,6 +195,40 @@ def count_with_role(world, role):
     )
 
 
+@then(parsers.parse('within {ticks:d} ticks a ship with role "{hunter}" '
+                   'engages a ship with role "{quarry}"'))
+def engages_within(world, ticks, hunter, quarry):
+    """Poll until a hunter has the quarry as a hostile target, or the budget runs out.
+
+    Engagement rather than a kill, and measured rather than assumed - see ADR-0019. A GalCop
+    Viper has 180 max energy against a stock pirate's 706, so it cannot win: observed over 320 s
+    the police dropped to 130/180 and regenerated while the pirate never fell below 682/706. They
+    simply circle. Engagement, by contrast, is quick and unambiguous: target acquired and
+    hasHostileTarget set within ~17 s (about 136 ticks) of the spawn, against this budget of 900.
+
+    Returning as soon as it is true is what keeps the scenario ~20 s instead of the full 112 s.
+    """
+    js = (
+        "(function(){ var r = 0;"
+        " system.allShips.forEach(function(s){"
+        "   if (s.primaryRole == %s && s.hasHostileTarget"
+        "       && s.target && s.target.primaryRole == %s) r = 1;"
+        " });"
+        " return r; })()" % (_js_string(hunter), _js_string(quarry))
+    )
+    deadline = time.time() + ticks * TICK_SECONDS
+    while time.time() < deadline:
+        # A generous per-command timeout: the game is flying a dogfight on a software renderer
+        # and two cores, so a console round trip is not always prompt.
+        if world.console.evaluate_int(js, timeout=45) == 1:
+            return
+        time.sleep(POLL_SECONDS)
+    raise AssertionError(
+        f"no ship with role {hunter!r} took a ship with role {quarry!r} as a hostile target "
+        f"within {ticks} ticks"
+    )
+
+
 @then(parsers.parse('no ship with role "{role}" remains'))
 def no_ship_with_role_remains(world, role):
     remaining = count_with_role(world, role)
