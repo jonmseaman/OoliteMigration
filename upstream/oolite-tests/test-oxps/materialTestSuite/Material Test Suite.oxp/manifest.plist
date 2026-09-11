@@ -1,0 +1,11 @@
+{
+	title = "Oolite Material Test Suite";
+	identifier = "org.oolite.material-test-suite";
+	
+	version = "1.3";
+	required_oolite_version = "1.79";
+	
+	license = "GPL 2+ / CC-BY-NC-SA 3.0 - see Oolite's LICENSE.TXT for details";
+	author = "Jens Ayton";
+	information_url = "http://wiki.alioth.net/index.php/Material_Test_Suite_OXP";
+}
