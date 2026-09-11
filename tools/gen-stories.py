@@ -283,8 +283,9 @@ def item_for_file(sweep, fname):
     saved = globals()["is_c_file"]
     try:
         globals()["is_c_file"] = (lambda p: True) if sweep == "renames" else (lambda p: False)
+        pat = re.compile(r"(^|[\s:/])" + re.escape(fname) + r"m?([\s(]|$)")
         for it in SWEEP_BUILDERS[sweep]():
-            if it[0].endswith(" " + fname) or it[0].endswith(" " + fname.replace(".m", ".mm")): return it
+            if pat.search(it[0]): return it
     finally:
         globals()["is_c_file"] = saved
     return None
