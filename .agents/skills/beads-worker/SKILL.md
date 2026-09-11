@@ -20,7 +20,9 @@ ready beads for a phase, delegate a worker per bead to implement it in its own w
 a reviewer, and once the reviewer approves, close the bead through `scripts/accept.sh`, which runs
 the bead's acceptance commands in a clean checkout. Repeat until the phase's goal check passes.
 You orchestrate and you close; you never write code yourself, and **the worker that implemented a
-bead never closes it**. A bead is retried as many times as it keeps producing new information;
+bead never closes it**. A bead is done only when its work is a merge commit on the base branch and
+the acceptance commands passed on that merged tree; nothing a worker leaves in a worktree is ever
+discarded (`harvest.sh`, `gc.sh`). A bead is retried as many times as it keeps producing new information;
 only the goal's turn budget bounds the run. The scripts under `scripts/` are the source of truth
 for the mechanics; this file tells you when to call them.
 
@@ -69,8 +71,10 @@ scripts/goal-check.sh <phase>            exit 0 iff no open/in-progress bead has
 scripts/goal-gate.sh <phase>             the /goal gate: exit 0 if drained or progress this turn; consumes progress markers
 scripts/next-bead.sh <phase> [count]     claim up to <count> ready fleet beads (retries first); one JSON per line {id,title,body,acceptance,notes,exemplar,attempts,stale_count}
 scripts/worktree.sh <bead>               create .worktrees/<bead> on branch bead/<bead> from the base branch; prints the absolute path
-scripts/worktree.sh --remove <bead>      remove the worktree and delete the branch (after close or escalation)
-scripts/accept.sh <bead>                 clean checkout of base → merge bead/<bead> → run acceptance → fast-forward base, close. Exit 0 closed+merged · 1 rejected with new learning (retry; includes merge conflicts) · 2 rejected, identical failure repeated (escalate)
+scripts/worktree.sh --remove <bead>      harvest, remove the worktree; delete the branch only if merged into base (unmerged branches are kept)
+scripts/harvest.sh <bead>                commit anything the worker left uncommitted in .worktrees/<bead> onto bead/<bead>; run after every worker round
+scripts/accept.sh <bead>                 harvest → clean checkout of base → merge bead/<bead> → run acceptance on the merged tree → fast-forward base → verify the merge is on base → close → remove worktree+branch. Exit 0 closed+merged · 1 rejected with new learning (retry; includes merge conflicts and empty branches) · 2 rejected, identical failure repeated (escalate). One at a time (lock)
+scripts/gc.sh [--check]                  audit bead/* branches and .worktrees/*: delete what is merged, harvest what is dirty, reopen any closed bead whose branch never reached base. goal-check runs --check
 scripts/escalate.sh <bead> "<reason>"    swap fleet→frontier, add escalated, release claim, log a row in docs/fleet/FLEET_FAILURES.md
 scripts/reevaluate.sh <bead> "<why>"     ask Claude Code (frontier, read-only) whether the TASK is right; applies retry/reclassify/add_dep/escalate; exit 3 = unavailable
 scripts/context.sh <bead>                print the bead's notes + the last 40 fleet learnings; paste into every worker/reviewer task
@@ -101,6 +105,9 @@ more beads in flight is fine, more children than P is not.
    learnings), and the prohibitions block. Require `output_schema`
    `{summary, files_changed[], commands_run[], committed: bool, blocked: bool, blocked_reason}`.
    *Done when: every result says `committed: true`, or `blocked: true` with a reason.*
+   - **Then `terminal(command="scripts/harvest.sh <id>")` for every bead in the batch**, whatever
+     the worker reported: a worker that timed out or forgot to commit leaves work in the worktree
+     that the reviewer and `accept.sh` cannot see. Harvest commits it and notes the fact.
    - For every result: `bd update <id> --append-notes "attempt N worker: <summary>; files: <list>"`.
      The notes are the bead's memory; the next attempt reads them through `context.sh`.
    - `blocked: true` → `bd update <id> --append-notes "<reason>"`, then
@@ -120,9 +127,11 @@ more beads in flight is fine, more children than P is not.
    You are closing your own work here, which is allowed because the reviewer approved it and
    because `accept.sh`, not you, decides: it merges the bead into the base branch in a clean
    checkout, runs the acceptance commands on the merged tree, and only on exit 0 fast-forwards the
-   base branch and closes. **Merging back is part of accepting**; there is no separate merge step.
+   base branch, verifies the merge commit is an ancestor of the base branch, closes, and removes
+   the worktree and branch. **Merging back is part of accepting**; there is no separate merge or
+   cleanup step for a closed bead. Accepts are serialised by a lock; call them one after another.
    *Done when: each bead returned 0, 1, or 2.*
-   - Exit 0 → closed and merged.
+   - Exit 0 → closed, merged, worktree and branch gone.
    - Exit 1 → rejected with a failure the bead has not seen before. Keep the claim and the
      worktree; the bead comes back in the next batch with the failure tail in its notes, and the
      worker prompt must include it. No cap on rounds.
@@ -131,8 +140,11 @@ more beads in flight is fine, more children than P is not.
      hands you guidance (the bead comes back with `stale_count` reset), changes the task
      (reclassify / add_dep, the bead leaves the batch until its new deps close), or escalates.
      Fall back to `scripts/escalate.sh` only on exit 3.
-7. **Clean up.** `terminal(command="scripts/worktree.sh --remove <id>")` only for beads that
-   closed or escalated. Never remove a worktree for a bead that is going round again.
+7. **Clean up.** `terminal(command="scripts/gc.sh")` once per turn. It removes worktrees and
+   branches whose work is on the base branch, harvests dirty worktrees of live beads, keeps the
+   unmerged branch of every escalated bead for the frontier agent, and reopens any closed bead
+   whose branch never reached the base branch. Never remove a worktree by hand for a bead that is
+   going round again.
 8. **Record learnings.** For any bead that taught something the *next* bead should know (a
    codebase pattern, a misleading acceptance command, a tooling quirk), one line:
    `scripts/learn.sh <id> "<learning>"`. Not every bead has one; do not pad.
@@ -176,8 +188,12 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   bead. Resolve it: `bd list --label seam:<key> --all --json` → read that bead's notes and the
   paths it landed, and pass those paths to the worker as the exemplar. If the seam bead is not
   closed, the fleet bead should not be ready; report it rather than guessing an exemplar.
-- **Workers must commit.** `accept.sh` merges the branch as committed; uncommitted work in the
-  agent worktree does not exist as far as acceptance is concerned. The worker prompt says so.
+- **Workers must commit, and you harvest anyway.** The worker prompt says commit; `harvest.sh`
+  commits whatever was left so the reviewer sees it and `accept.sh` merges it. A branch with no
+  commits beyond the base branch is rejected by `accept.sh` (exit 1) with a note, not merged empty.
+- **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
+  commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
+  `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
 - **Merge conflicts are rejections.** With several beads in flight, a bead may conflict with one
   merged before it. `accept.sh` reports the conflicting files into the notes and returns 1; the
   worker's next round merges the base branch into its worktree and resolves. The base branch is
@@ -212,7 +228,10 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
 - `scripts/goal-check.sh <N>` flips from nonzero to zero over the course of the run
 - `scripts/goal-gate.sh <N>` exits 0 on a turn right after `accept.sh` closed a bead, and 1 on a turn where nothing happened
 - `scripts/reevaluate.sh <bead> "blocked: file is full of message sends"` on a rename bead rewrites it as a convert bead (title, labels, body, deps) and keeps its notes
-- Every closed bead is a merge commit on the base branch whose acceptance commands exit 0 on the merged tree
+- Every closed bead is a merge commit on the base branch whose acceptance commands exit 0 on the merged tree (`bd show <id>` metadata `merge_commit`), and has no `bead/<id>` branch or `.worktrees/<id>` left
+- A worktree with uncommitted changes and no commits: `accept.sh` harvests, merges and closes it; the notes record the harvest
+- A branch with zero commits beyond base: `accept.sh` rejects with exit 1 and a note
+- `gc.sh --check` exits 1 when a closed bead's branch is unmerged; `gc.sh` reopens that bead; `goal-check.sh` fails until it is accepted
 - `bd list --status closed --label phase:<N>` closures are all attributed to `accept.sh`
   (reason text starts with `accepted:`)
 - `bd close <id>` typed directly returns the guard's refusal message

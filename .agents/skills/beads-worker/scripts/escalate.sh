@@ -3,6 +3,12 @@
 # After this the bead no longer counts toward goal-check.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
 id="${1:?usage: escalate.sh <bead> <reason>}"; reason="${2:-escalated by beads-worker}"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; base="${BEADS_WORKER_BASE_BRANCH:-main}"
+# Preserve the fleet's partial work for the frontier agent: harvest, keep the branch, say where it is.
+[ -d "$WORKTREES/$id" ] && "$here/harvest.sh" "$id" >&2 || true
+if git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/bead/$id"; then
+  reason="$reason. Partial work: branch bead/$id, $(git -C "$REPO_ROOT" rev-list --count "$base..bead/$id") commit(s) ahead of $base (worktree.sh $id recreates the checkout)"
+fi
 real_bd update "$id" --remove-label fleet --add-label frontier --add-label escalated \
   --status open --assignee "" --append-notes "escalated on $(date -u +%FT%TZ): $reason" -q >&2
 touch "$REPO_ROOT/.fleet-progress.$id"

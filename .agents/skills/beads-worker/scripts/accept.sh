@@ -8,15 +8,32 @@
 # comes back for another round. There is no attempt cap. A failure whose signature is identical to
 # the previous one is "stale" (no new learning); after BEADS_WORKER_STALE_REPEATS (default 5)
 # identical failures in a row the script exits 2 to tell the orchestrator to escalate.
+# "Done" means: the bead's work is a merge commit on the base branch and the acceptance commands
+# passed on that merged tree. Before anything else, uncommitted work in the worktree is harvested
+# onto the branch (harvest.sh), so nothing a worker left behind is lost. On success the worktree and
+# branch are removed: the merge commit on the base branch is the record. One accept at a time
+# (a lock), so two beads cannot race the base branch.
 # Exit 0 = closed and merged · 1 = rejected, new learning · 2 = rejected, stale.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 id="${1:?usage: accept.sh <bead>}"
 branch="bead/$id"
 base="${BEADS_WORKER_BASE_BRANCH:-main}"
+lock="$REPO_ROOT/.beads-worker-accept.lock"
+for _ in $(seq 1 "${BEADS_ACCEPT_LOCK_WAIT:-1800}"); do mkdir "$lock" 2>/dev/null && break; sleep 1; done
+[ -d "$lock" ] || die "accept: could not take $lock"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/accept-$id.XXXXXX")"
-trap 'git -C "$REPO_ROOT" worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf "$tmp"' EXIT
-git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$branch" || die "no branch $branch (worker did not commit?)"
+trap 'git -C "$REPO_ROOT" worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf "$tmp"; rmdir "$lock" 2>/dev/null' EXIT
 git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$base" || die "no base branch $base"
+# Preserve whatever the worker left uncommitted, then insist there is something to merge.
+[ -d "$WORKTREES/$id" ] && "$here/harvest.sh" "$id" >&2
+git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$branch" || die "no branch $branch and no worktree: the worker produced nothing to merge"
+if [ "$(git -C "$REPO_ROOT" rev-list --count "$base..$branch")" -eq 0 ]; then
+  attempts="$(( $(bead_attempts "$id") + 1 ))"
+  real_bd update "$id" --set-metadata "attempts=$attempts" --append-notes "accept attempt $attempts on $(date -u +%FT%TZ): $branch has no commits beyond $base; nothing to merge. The worker must commit its changes in the worktree." -q >&2
+  touch "$REPO_ROOT/.fleet-progress.$id"
+  echo "rejected $id (attempt $attempts): $branch has no commits beyond $base"; exit 1
+fi
 # Clean, detached checkout of the base branch; merge the bead into it. Nothing here touches the
 # agent's worktree or the orchestrator's checkout.
 git -C "$REPO_ROOT" worktree add --detach "$tmp" "$base" >/dev/null
@@ -65,9 +82,16 @@ if [ "$status" -eq 0 ]; then
   else
     git -C "$REPO_ROOT" update-ref "refs/heads/$base" "$merged" "$(git -C "$REPO_ROOT" rev-parse "$base")"
   fi
-  BEADS_ACCEPT=1 real_bd close "$id" --reason "accepted: merged into $base as $(git -C "$REPO_ROOT" rev-parse --short "$merged"); all acceptance commands exit 0" -q >&2
+  # The record is the merge commit on the base branch; prove it is there before closing anything.
+  git -C "$REPO_ROOT" merge-base --is-ancestor "$merged" "$base" || die "acceptance passed but $merged is not on $base; bead left open"
+  short="$(git -C "$REPO_ROOT" rev-parse --short "$merged")"
+  BEADS_ACCEPT=1 real_bd close "$id" --reason "accepted: merged into $base as $short; all acceptance commands exit 0 on the merged tree" -q >&2
+  real_bd update "$id" --set-metadata "merge_commit=$merged" -q >&2 || true
+  # The work is on the base branch: the worktree and branch have nothing left to say.
+  git -C "$REPO_ROOT" worktree remove --force "$WORKTREES/$id" >/dev/null 2>&1 || true
+  git -C "$REPO_ROOT" branch -D "$branch" >/dev/null 2>&1 || true
   touch "$REPO_ROOT/.fleet-progress.$id"
-  echo "closed $id: merged into $base as $(git -C "$REPO_ROOT" rev-parse --short "$merged")"
+  echo "closed $id: merged into $base as $short; worktree and branch removed"
   exit 0
 fi
 attempts=$((attempts + 1))

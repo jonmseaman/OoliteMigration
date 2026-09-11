@@ -84,6 +84,11 @@ Then paste the two commands from
 - There is no per-bead attempt cap. A bead is retried while each round fails differently; five
   identical failures in a row escalate it to `frontier` (threshold `BEADS_WORKER_STALE_REPEATS`,
   default 5).
+- **Nothing is lost.** Workers must commit; `harvest.sh` commits whatever they left; `accept.sh`
+  closes only after the merge commit is on `main` and removes the worktree and branch; `gc.sh`
+  runs every turn and reopens any closed bead whose branch never reached `main`; `goal-check`
+  refuses to pass while `gc.sh --check` finds work at risk. `bd show <id>` metadata
+  `merge_commit` names the commit on `main` for every accepted bead.
 - **Memory.** Each bead's notes accumulate worker summaries, review findings and acceptance
   failures; `docs/fleet/LEARNINGS.md` accumulates cross-bead learnings; `docs/fleet/FLEET_FAILURES.md`
   gets a row per escalation. Commit the two files periodically; they are the run's record.
