@@ -15,7 +15,7 @@ The harness itself is finished and works: launch, seed, console handshake, readi
 spawn, poll, count, quit, per-scenario timeout. Everything below is about the *world setup* a
 scenario needs and what S1 can honestly assert.
 
-## What measurement showed
+## What the story got wrong
 
 | S1 / 0-component-tier.md says | What actually happens |
 |---|---|
@@ -30,19 +30,14 @@ scenario needs and what S1 can honestly assert.
 
 The first five are now handled in `steps/world_steps.py`; the last two in `console.py`.
 
-## The open question
+## Why the kill assertion was unreachable
 
 With **all** of that fixed — live universe, launched, emptied system, both ships spawned 5 km apart
-with `oolite-policeAI.js` and `oolite-pirateAI.js` — a lone police ship still does not destroy a
-lone pirate within 900 ticks (≈112 s).
+with `oolite-policeAI.js` and `oolite-pirateAI.js` — a lone police ship still did not destroy a lone
+pirate within 900 ticks (≈112 s). Rather than tune the scenario until it went green, which would
+make it true by construction rather than by observation, the fight was measured.
 
-That is a statement about Oolite's combat behaviour, and CLAUDE.md rule 7 reserves judging
-correctness to the goldens, the sanitizers and Jon. The implementing agent should not keep tuning a
-scenario until it goes green: a scenario that only passes after enough fiddling is worse than no
-scenario, which is exactly the flake risk [0-component-tier.md](../phases/0-component-tier.md) warns
-about.
-
-## What the measurement showed
+## The measurement
 
 Taken with the setup above in place, seed 20260910, sampled every ~11 s:
 
