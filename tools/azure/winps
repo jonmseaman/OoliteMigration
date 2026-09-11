@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Run a PowerShell script on the fleet VM over SSH, reading the script from stdin.
+# The Windows OpenSSH default shell is cmd.exe, so the script is passed as a
+# base64 UTF-16LE -EncodedCommand to avoid every layer of quote mangling.
+#   printf '%s\n' 'Get-Process' | tools/azure/winps
+#   tools/azure/winps < script.ps1
+set -euo pipefail
+HOST_SPEC="${OOLITE_VM:-azureuser@51.8.88.44}"
+# Prepend progress suppression: PowerShell emits CLIXML progress records on stderr
+# over SSH, which drowns real output.
+b64=$( { printf "%s\n" "\$ProgressPreference='SilentlyContinue'"; cat; } | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')
+exec ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST_SPEC" "powershell -NoProfile -EncodedCommand $b64"

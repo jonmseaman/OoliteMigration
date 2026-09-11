@@ -16,10 +16,44 @@ Fill in. Unknown is a valid entry; a blank is not.
 
 | Name | OS / version | Arch | CPU cores | RAM | Disk (NVMe?) | GPU | Roles | Grants held |
 |---|---|---|---|---|---|---|---|---|
-| windows | Windows ? | x86-64 | ? | ? | ? | ? | Hermes `/goal` + Claude Code + `bd` + worktrees; MSYS2 UCRT64 build; goldens (native processes, Mesa llvmpipe); PyAutoGUI tier; merge queue | logged-in, unlocked desktop |
+| windows | Windows 11 Pro 25H2 (26200.9445.260908) | x86-64 | 2 | 8 GiB | 128 GiB Premium SSD P10 (~500 IOPS, 100 MB/s); **no local NVMe at this size** | none; Mesa llvmpipe software GL | Hermes `/goal` + Claude Code + `bd` + worktrees; MSYS2 UCRT64 build; goldens (native processes, Mesa llvmpipe); PyAutoGUI tier; merge queue | RDP as `azureuser`; SSH key from the Mac |
 | mac | macOS 26.x | arm64 | ? | ? | ? | Apple | **Phase 5 onward:** macOS build + PyAutoGUI tier; planning until then | Accessibility, Screen Recording: **not yet granted** |
 | linux | container or rented box | x86-64 | — | — | — | — | **Phase 5 onward:** Linux build + goldens | n/a |
 | inference | — | — | — | — | — | — | OpenAI-compatible endpoint ([ADR-0005](../decisions/0005-defer-dgx-spark.md)), rented or LAN; URL in Hermes config | n/a |
+
+## The machine is an Azure VM
+
+Since 2026-09-11 the `windows` row is not a physical desktop but an Azure VM, because Jon has no
+access to the desktop. Provisioned and recovered with `az` from the Mac; see
+[`tools/azure/`](../../tools/azure/).
+
+| Field | Value |
+|---|---|
+| Resource | `OoliteConversion`, resource group `WINDEV`, `eastus`, zone 1 |
+| Subscription | Pay-As-You-Go (`14b84d2b-…`). The default `Microsoft Imagine` subscription denies `Microsoft.Network` and `Microsoft.Compute`; `az account set` first. |
+| Size | `Standard_D2s_v3` — 2 vCPU, 8 GiB |
+| Public IP | 51.8.88.44; NSG `OoliteConversion-nsg` allows 22 and 3389 **from `*`** |
+| Admin | `azureuser`; `licenseType: Windows_Client` (Azure Hybrid Benefit) |
+
+**This size is below what the plan assumes.** [I5](5-hermes-goal.md) sets
+`delegation.max_concurrent_children = 5`; 2 vCPU / 8 GiB supports **1**, and Jon set concurrency to 1
+on 2026-09-11 for bring-up. Any Tier-A/Tier-B timing measured here is a single-worker number and
+does not predict the fleet — the parallel case is the workload that matters.
+
+**Quota ceiling.** `Total Regional vCPUs` in `eastus` is **10**, and `standardDDSv5Family` is **0**,
+so a `D4ds_v5` resize is rejected outright. `Ddsv6` has a limit of 10, making `Standard_D8ds_v6`
+(8 vCPU / 32 GiB / local NVMe) the largest in-quota target. Anything above 10 vCPU needs a
+quota-increase request first.
+
+**Two open risks this introduces:**
+
+- *No console session.* The I0 checklist below assumes a logged-in, unlocked desktop. An Azure VM
+  has no physical console: disconnecting RDP takes the desktop away, which the checklist says fails
+  the GUI tier silently. The GUI tier and the goldens need a fix here (an auto-logon console
+  session, or a persistent RDP session that is never disconnected) before they can run unattended.
+- *Exposed to the internet.* RDP and SSH accept connections from any source address, on the machine
+  that will hold frontier API keys next to agents executing arbitrary code. Narrowing the NSG to
+  Jon's egress IP is not yet done.
 
 ## Before the first fleet run (Jon, once)
 
@@ -88,3 +122,4 @@ once measured; they set the concurrency caps.
 - 2026-09-06 — Created with a three-machine inventory.
 - 2026-09-10 — Collapsed to one Windows machine until Phase 5 (ADR-0010).
 - 2026-09-11 — WSL2 dropped; everything native; checklist added (keep-awake, MSYS2, logins, `bd dolt`); Linux joins at Phase 5 (ADR-0017).
+- 2026-09-11 — The `windows` machine is an Azure VM (`OoliteConversion`, `Standard_D2s_v3`), inventory filled in, quota ceiling and two risks recorded; concurrency set to 1.
