@@ -7,20 +7,21 @@
 The question was whether to stand up an agent fleet on a DGX Spark. Measured: the bottleneck is
 validation machine-time (GNUstep built from source, 20 real game launches per golden run,
 ASan/UBSan), which is x86-64 Linux/Windows build-farm work, not inference. The workload that would
-justify bulk local inference (Phase 4 fan-out) starts at month 10–16. The one large batch job
+justify bulk local inference (Phase 3 fan-out) starts at month 8–14. The one large batch job
 available today (the expansion scan, 818–1,591 small classifications) is tens of dollars of rented
 GPU time.
 
 ## Decision
 
-1. Do not buy now. Re-evaluate at Phase 4 entry with measurements from the scan pilot.
+1. Do not buy now. Re-evaluate at Phase 3 entry with measurements from the scan pilot.
 2. **Model routing is configuration, not architecture.** Every task class maps to an
    OpenAI-compatible endpoint URL in config; the endpoint's identity (rented GPU, a Spark on the
    LAN, a frontier API) is a config change.
 3. **Never put an inference endpoint on Tier A's critical path.** Tier A is compiler, linter, and
    deny-list only: under 30 seconds, offline.
-4. If money is to be spent on hardware today, spend it on an x86-64 Linux CI runner (high core
-   count, NVMe, 64–128 GB RAM), useful from Phase 0 onward.
+4. If money is to be spent on hardware today, spend it on the single Windows machine's cores, NVMe
+   and RAM (64–128 GB; it hosts agents, both build legs and 20 game instances —
+   [ADR-0010](0010-single-windows-machine.md)), useful from Phase 0 onward.
 
 ## Consequences
 

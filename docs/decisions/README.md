@@ -10,10 +10,13 @@ changed* from the chain.
 | [0001](0001-bridge-then-convert.md) | Strangler pattern: compile as ObjC++, replace Foundation, convert leaves inward | Accepted |
 | [0002](0002-quickjs-ng.md) | Replace SpiderMonkey 1.8.5 with QuickJS-ng behind a façade; aarch64 SM port held in reserve | Accepted |
 | [0003](0003-intrusive-refcount.md) | Mirror ObjC refcounting with `oo::Ref<T>`, not `std::shared_ptr` | Accepted |
-| [0004](0004-legacy-gl-until-phase-6.md) | Ship on OpenGL 2.1 compatibility profile through Phase 5 | Accepted |
+| [0004](0004-legacy-gl-until-phase-6.md) | Ship on OpenGL 2.1 compatibility profile through Phase 4 | Accepted |
 | [0005](0005-defer-dgx-spark.md) | Do not buy inference hardware now; inference is a network endpoint behind config | Accepted |
 | [0006](0006-gas-city-and-hermes.md) | Gas City (Gastown pack) for the fleet; Hermes Agent for the Reporter | Accepted |
-| [0007](0007-ubuntu-agent-host.md) | Agents run on an Ubuntu host, not Windows; Windows is a build runner | Accepted |
+| [0007](0007-ubuntu-agent-host.md) | Agents run on an Ubuntu host, not Windows; Windows is a build runner | Superseded by 0010 |
 | [0008](0008-forge-and-runners.md) | GitHub + self-hosted runners vs. self-hosted Forgejo | **Open — conflict recorded** |
+| [0009](0009-apple-silicon-after-runtime-removal.md) | Apple Silicon is Phase 5, after the Objective-C runtime is removed | Accepted |
+| [0010](0010-single-windows-machine.md) | One Windows x86-64 machine (native + WSL2) for everything until Phase 5 | Accepted |
+| [0011](0011-cpp20-then-cpp23.md) | Conversion targets C++20; the C++23 upgrade is part of Phase 6 | Accepted |
 
 Template: Status · Date · Context · Decision · Consequences · History.

@@ -5,7 +5,7 @@
 
 ## Goal
 
-Unblock Apple Silicon by putting a thin C++23 façade between Oolite and its JavaScript engine,
+Unblock Apple Silicon by putting a thin C++ façade between Oolite and its JavaScript engine,
 then swapping the patched SpiderMonkey 1.8.5 for QuickJS-ng behind it, with byte-identical
 behaviour proven by goldens and the OXP corpus. Decision and rationale:
 [ADR-0002](../decisions/0002-quickjs-ng.md).

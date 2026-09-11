@@ -5,7 +5,7 @@
 
 ## Goal
 
-Switch the build to Objective-C++, build a C++23 Foundation replacement bottom-up with unit tests,
+Switch the build to Objective-C++, build a C++20 Foundation replacement bottom-up with unit tests,
 migrate every Foundation usage site onto it while the classes are still Objective-C, and delete
 `libgnustep-base` from every platform. Only the Objective-C *runtime* remains. Design:
 [architecture §3.4](../architecture.md); memory model: [ADR-0003](../decisions/0003-intrusive-refcount.md).
@@ -49,7 +49,7 @@ Order for the Foundation sweep: `oomath` → `Core` leaf utilities → `Material
 
 ## Work items
 
-1. **Switch the build to Objective-C++.** Rename `.m` → `.mm`, `-x objective-c++`, `-std=c++23`.
+1. **Switch the build to Objective-C++.** Rename `.m` → `.mm`, `-x objective-c++`, `-std=c++20` ([ADR-0011](../decisions/0011-cpp20-then-cpp23.md)).
    Expect a few hundred mechanical fixes (`nil` vs `nullptr`, `class`/`new`/`delete`/`template` used
    as identifiers or selector parts, `id` in C++ contexts, `BOOL` conflicts, stricter enum/`void*`
    conversions). Do this as one atomic, reviewable commit — it must change no behaviour.

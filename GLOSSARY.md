@@ -12,7 +12,7 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **Deny-list** | CI grep that fails on reintroduced `libgnustep-base` or `JS_*` symbols. |
 | **Exemplar** | An already-landed path a story points at: "do it the way `<path>` does it". Sizing check 7. |
 | **Fleet** | The set of memoryless agents consuming L3 stories under Gas City. |
-| **Freeze policy** | Once Phase 4 starts on a module, upstream changes to it are ported by hand, tracked in `docs/UPSTREAM_DELTA.md`. |
+| **Freeze policy** | Once Phase 3 starts on a module, upstream changes to it are ported by hand, tracked in `docs/UPSTREAM_DELTA.md`. |
 | **G1–G9** | The PyAutoGUI GUI smoke tests. [phases/0-gui-tier.md](docs/phases/0-gui-tier.md). |
 | **Golden** | A committed canonical state dump (sorted JSON) plus frame hashes for one scenario. Byte-compared. |
 | **Golden harness** | The containerised runner that launches the real game headless, drives it over the debug-console TCP channel, and emits the dump. |
@@ -21,7 +21,7 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **L0–L3** | Grain levels: phase / plan item / component / story. The fleet consumes L3. |
 | **Mayor / Polecat / Refinery / Witness / Deacon / Dogs / Crew** | Gastown-pack role names for orchestrator / converter / merge queue / per-rig watchdog / cross-rig watchdog / helpers / human. |
 | **Merge queue, batch-and-bisect** | Tier C runs once over a batch of Tier-B-green PRs; on failure, bisects to the culprit. Gas City's Refinery. |
-| **`oofnd`** | The in-tree C++23 Foundation replacement (String, PList, Ref, FileSystem, Defaults, Logging). |
+| **`oofnd`** | The in-tree C++20 Foundation replacement (String, PList, Ref, FileSystem, Defaults, Logging). |
 | **`oo::Ref<T>` / `WeakRef<T>`** | Intrusive refcounting mirroring ObjC retain/release. Not `shared_ptr`. [ADR-0003](docs/decisions/0003-intrusive-refcount.md). |
 | **OXP / OXZ** | Oolite expansion pack, unpacked directory / zipped. Data + JS + assets; never native code. |
 | **R1–R5** | The five ranked risks: SpiderMonkey, GNUstep Foundation, manual refcounting, legacy OpenGL, no tests + fast upstream. |
@@ -36,4 +36,5 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **Tier A / B / C** | In-loop (< 30 s, offline, compiler-only) / per-PR (< 10 min, one platform) / per-merge-batch (all platforms, sanitizers, everything). |
 | **Tier 1 / 2 / 3 corpus** | ~30 / ~150 / all expansions, run per-commit / nightly / weekly. Distinct from Tier A/B/C. |
 | **Verification vs. adjudication** | Verification (did behaviour change?) is decided by goldens, sanitizers, deny-lists. Adjudication (is a failed check legitimate?) is proposed by a model and decided by Jon. |
+| **WSL2** | Windows Subsystem for Linux. Hosts Gas City, the agents, and the Linux build/golden/sanitizer leg on the single Windows machine until Phase 5. [ADR-0010](docs/decisions/0010-single-windows-machine.md). |
 | **Wrapper** | The external process that runs a story's acceptance commands and is the only thing allowed to mark a bead done. |

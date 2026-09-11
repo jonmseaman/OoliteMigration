@@ -36,7 +36,7 @@ Having measured the tree, the difficulty is *not* evenly distributed. Ranked by 
 | # | Problem | Why it's hard | Verdict |
 |---|---|---|---|
 | **R1** | **SpiderMonkey 1.8.5** (Firefox 4.0, March 2011) | No `aarch64` in `configure.in` at all; JIT (nanojit) targets x86/x86-64/ARMv7/PPC/MIPS/SPARC only; autoconf 2.13 build. **3,828 `JS_*` call sites across 102 files.** | **Hard blocker for Apple Silicon.** Must be solved *before* anything else. Independent of the language migration. |
-| **R2** | **GNUstep `libs-base` (Foundation)** | The real portability chain, not the ObjC language. ~11k Foundation references; `NSString` alone appears 6,286 times. | Replace with an in-tree C++23 layer. This is the migration's centre of gravity. |
+| **R2** | **GNUstep `libs-base` (Foundation)** | The real portability chain, not the ObjC language. ~11k Foundation references; `NSString` alone appears 6,286 times. | Replace with an in-tree C++ layer. This is the migration's centre of gravity. |
 | **R3** | **Manual retain/release** | ~2,100 `retain`/`release`/`autorelease` sites, 92 `NSAutoreleasePool`, no ARC, custom `OOWeakReference` proxy for cycles. | Mirror it exactly with an intrusive `oo::Ref<T>` / `oo::WeakRef<T>`. Do *not* reach for `std::shared_ptr` during translation. |
 | **R4** | **OpenGL 2.1 compatibility profile** | 380 `glVertex3f`, 23 `glEnableClientState`, `glMatrixMode`; shaders are GLSL 1.10/1.20 (`gl_FragColor`, no `#version`). | Works on Apple Silicon *today* via macOS's legacy 2.1 profile. Ship on that; modernise to GL 3.3 Core as a separate, later phase. |
 | **R5** | **Almost no automated tests + fast-moving upstream** | One Python smoke test (`tests/launch_snapshot.py`), and it runs headless — the window and input paths are untested. Upstream took ~340 commits in the last 12 months. | Build a characterisation harness **first**, plus a PyAutoGUI GUI tier for the window/input/shutdown paths. Everything else depends on it. |
@@ -52,12 +52,18 @@ Having measured the tree, the difficulty is *not* evenly distributed. Ranked by 
 This lets us decouple two things that are usually tangled together:
 
 1. **Getting to Apple Silicon** — needs R1 (JS engine) + R2 (Foundation). Achievable in months.
-2. **Getting to C++23** — a long, mechanical, file-by-file grind that can proceed afterwards
+2. **Getting to C++** — a long, mechanical, file-by-file grind that can proceed afterwards
    without holding the platform goal hostage.
+
+> **Sequencing decision, 2026-09-10 ([ADR-0009](decisions/0009-apple-silicon-after-runtime-removal.md)).**
+> The decoupling above is real and is what makes the strangler pattern safe, but it is *not*
+> exploited for scheduling: Apple Silicon is Phase 5, after the Objective-C runtime is removed
+> (Phase 4). The macOS build therefore never carries Objective-C, `libobjc`, or Objective-C++.
+> The cost is that the first macOS build arrives after the conversion grind rather than before it.
 
 ### Recommended strategy: *bridge, then convert* (strangler pattern)
 
-Compile the whole tree as **Objective-C++** so C++ and Objective-C coexist. Introduce a C++23
+Compile the whole tree as **Objective-C++** so C++ and Objective-C coexist. Introduce a C++
 Foundation replacement (`oofnd`) alongside the existing classes, then convert module by module
 from the leaves inward. The build is shippable at every commit; GNUstep's Foundation is deleted
 long before the last `@implementation` is.
@@ -173,7 +179,7 @@ oo_arrayForKey       158      …and ~20 more variants
 
 ~1,800 call sites, all shaped `T oo_<type>ForKey:(NSString*)key defaultValue:(T)dflt`.
 
-In C++23 this collapses to one templated accessor on a `PList` variant:
+In C++20 this collapses to one templated accessor on a `PList` variant:
 
 ```cpp
 template <class T> T get(std::string_view key, T fallback = {}) const;
@@ -246,31 +252,36 @@ Active contributors: AnotherCommander, Kevin Anthoney, Mike, phkb, mcarans, oocu
 
 ### 3.1 Language and toolchain
 
-- **C++23**, `-std=c++23`, exceptions **on** (68 `@try` sites translate directly; the JS bridge
-  and plist parser both want them), RTTI **on** initially (333 `isKindOfClass:` sites → `dynamic_cast`),
-  revisit both after conversion.
+- **C++20 during conversion, C++23 in Phase 6** ([ADR-0011](decisions/0011-cpp20-then-cpp23.md)).
+  `-std=c++20` for Phases 2–5; the Phase 6 modernisation pass raises it to `-std=c++23` and adopts
+  the C++23-only library features listed in §3.2. Exceptions **on** (68 `@try` sites translate
+  directly; the JS bridge and plist parser both want them), RTTI **on** initially (333
+  `isKindOfClass:` sites → `dynamic_cast`), revisit both after conversion.
 - **Clang ≥ 17 everywhere.** Clang is the only compiler that handles Objective-C++ on all three
-  platforms, which the bridge phase requires. GCC support can return in Phase 5 once the last
+  platforms, which the bridge phase requires. GCC support can return in Phase 4 once the last
   `.mm` file is gone.
 - **No C++20 modules** for now. Cross-platform module support in Meson + Clang + MSVC is still
   uneven, and this project cannot afford build-system risk on top of everything else. Revisit in
   Phase 6.
 
-### 3.2 C++23 library feature availability
+### 3.2 Library feature availability and the C++20 / C++23 split
 
-C++23 *language* features are safe across Apple Clang 17+, Clang 17+, and MSVC 19.4x. The *library*
-is where the three platforms diverge. Proposed policy:
+C++20 is fully usable on Apple Clang 17+, Clang 17+, and MSVC 19.4x, library included. C++23
+*language* features are safe on the same compilers; the C++23 *library* is where the three platforms
+diverge. Policy: **C++20 only through Phase 5**; the "Phase 6" rows below are adopted in the
+modernisation pass. Until then the project provides `oo::Expected` (a small polyfill with
+`std::expected`'s API, so the swap in Phase 6 is mechanical).
 
 | Feature | Apple Clang / libc++ | Clang / libstdc++ | MSVC STL | Policy |
 |---|---|---|---|---|
-| `std::expected` | ✅ (libc++ 17+) | ✅ (13+) | ✅ | **Use freely** — the error-handling backbone |
+| `std::expected` (C++23) | ✅ (libc++ 17+) | ✅ (13+) | ✅ | **Phase 6.** Until then `oo::Expected`, same API — the error-handling backbone |
 | `std::span`, `std::string_view` | ✅ | ✅ | ✅ | **Use freely** |
 | `std::format` | ✅ (16+) | ✅ (13+) | ✅ | **Use freely** |
-| `std::print` / `std::println` | ⚠️ (18+) | ✅ (14+) | ✅ | Wrap behind `oo::log` |
-| Deducing `this` | ✅ (17+) | ✅ (18+) | ✅ | Use freely |
-| `if consteval`, multidim `[]`, `[[assume]]` | ✅ | ✅ | ✅ | Use freely |
-| Ranges + C++23 adaptors | ✅ | ✅ | ⚠️ partial | Prefer C++20 ranges core |
-| `std::mdspan` | ⚠️ | ✅ (14+) | ✅ | Avoid until verified |
+| `std::print` / `std::println` (C++23) | ⚠️ (18+) | ✅ (14+) | ✅ | Phase 6; wrap behind `oo::log` regardless |
+| Deducing `this` (C++23) | ✅ (17+) | ✅ (18+) | ✅ | Phase 6 |
+| `if consteval`, multidim `[]`, `[[assume]]` (C++23) | ✅ | ✅ | ✅ | Phase 6 |
+| Ranges + C++23 adaptors | ✅ | ✅ | ⚠️ partial | C++20 ranges core only; C++23 adaptors in Phase 6 |
+| `std::mdspan` (C++23) | ⚠️ | ✅ (14+) | ✅ | Avoid until verified; Phase 6 at the earliest |
 | `std::flat_map` / `flat_set` | ❌ | ✅ (15+) | ✅ | **Avoid.** Provide `oo::FlatMap` |
 | `std::generator` | ❌ | ✅ (14+) | ❌ | **Avoid.** Not worth a polyfill |
 | `import std;` | ❌ | ⚠️ | ⚠️ | **Forbidden this cycle** |
@@ -336,7 +347,7 @@ public:
     // …
 };
 
-std::expected<PList, ParseError> parsePList(std::span<const std::byte>, std::string_view whereFrom);
+oo::Expected<PList, ParseError> parsePList(std::span<const std::byte>, std::string_view whereFrom);  // std::expected in Phase 6
 std::string writeOldStylePList(const PList&);   // OpenStep format — REQUIRED, see §5.1
 std::string writeXMLPList(const PList&);
 
@@ -399,7 +410,7 @@ are attached via `JS_SetPrivate`/`JS_GetPrivate` — a plain pointer, which port
 
 **Decision: C, with A held in reserve.** Concretely:
 
-1. Define `ooscript/JSEngine.hpp` — a thin C++23 façade (`Value`, `Context`, `ClassDef`,
+1. Define `ooscript/JSEngine.hpp` — a thin C++ façade (`Value`, `Context`, `ClassDef`,
    `Ref`-rooted GC handles) sized to what Oolite actually uses, not to what an engine offers.
 2. Port the 3,828 call sites to the façade *with SpiderMonkey still behind it*. This step must
    produce **byte-identical behaviour** — that's what makes it verifiable.
@@ -418,7 +429,7 @@ expansions are the unknown, which is what §5.3's corpus scan is for.
 
 ### R2 — GNUstep Foundation
 
-Handled by `oofnd` (§3.4) across Phases 2–4. No separate decision needed beyond: **do not port to
+Handled by `oofnd` (§3.4) across Phases 2–3. No separate decision needed beyond: **do not port to
 Apple's Foundation as an interim step.** It creates a second Foundation dialect to reconcile
 (different plist behaviour, different `NSUserDefaults` semantics, no OpenStep plist writing) for
 code that is going to be deleted anyway.
@@ -430,7 +441,7 @@ afterwards.
 
 `NSAutoreleasePool` (92 sites) needs a bridge: an `oo::AutoreleaseScope` that drains a thread-local
 deferred-release list, so `-[X autorelease]` → `oo::autorelease(x)` keeps working while both worlds
-coexist. It gets deleted in Phase 5 once no returned object relies on deferred release.
+coexist. It gets deleted in Phase 4 once no returned object relies on deferred release.
 
 ### R4 — Renderer / OpenGL on Apple Silicon
 
@@ -441,7 +452,10 @@ Apple Silicon. VAOs are available via `APPLE_vertex_array_object`. **So the exis
 on Apple Silicon essentially unmodified.** It is deprecated and could be removed in a future macOS,
 but it is what makes an early Apple Silicon milestone realistic.
 
-**Decision: ship on legacy GL 2.1 through Phases 1–5. Modernise in Phase 6, separately.**
+**Decision: ship on legacy GL 2.1 through Phase 5. Modernise in Phase 6, separately.** Note that
+with Apple Silicon resequenced to Phase 5 (ADR-0009), the window in which Apple could remove the
+legacy context before the macOS build exists is much longer; if that happens, the Phase 6 renderer
+work is pulled forward ahead of Phase 5.
 
 Phase 6 options, in preference order:
 1. **GL 3.3 Core** — one baseline that works on macOS (which supports up to 4.1 Core), Windows, and
@@ -553,7 +567,7 @@ OoliteMigration/
     ├── spidermonkey-ff4/              submodule — the patched SM 1.8.5 source (R1 reference)
     ├── oolite-tests/                  submodule — test OXPs and legacy test projects
     ├── oolite-debug-console/          submodule — TCP debug console (drives the golden harness)
-    ├── oolite-mac-components/         submodule — historical macOS Cocoa components (Phase 3 reference)
+    ├── oolite-mac-components/         submodule — historical macOS Cocoa components (Phase 5 reference)
     └── oolite-expansion-catalog/      submodule — the expansion URL list (corpus source)
 ```
 
@@ -584,15 +598,15 @@ that ignores this will be unmergeable within a year.
    faith.
 2. **Upstream everything that isn't the rewrite.** Determinism fixes ([Phase 0 §0.1](phases/0-safety-net.md)), test-harness
    improvements, the JS lint tool, plist quirk fixes, build fixes. These are wanted upstream, reduce
-   divergence, and build the credibility that Phase 3 will need.
-3. **Talk to upstream at Phase 3, not before.** A working Apple Silicon build with expansions
+   divergence, and build the credibility that Phase 5 will need.
+3. **Talk to upstream at Phase 5, not before.** A working Apple Silicon build with expansions
    running is a concrete artefact worth discussing. "We plan to rewrite Oolite in C++" is not.
    Note that upstream explicitly dropped macOS in 1.92 — restoring it is a genuine contribution
    regardless of what happens to the C++ work.
 4. **Phase-1 and Phase-2 work is upstreamable on its own merits.** Replacing a 2011 JS engine and
-   removing the GNUstep build dependency are things upstream may well want independently of C++23.
-   This is the pragmatic hedge: even if the full migration stalls, Phases 0–3 leave Oolite better off.
-5. **Freeze policy.** Once Phase 4 starts on a module, stop taking upstream changes to that module;
+   removing the GNUstep build dependency are things upstream may well want independently of C++.
+   This is the pragmatic hedge: even if the full migration stalls, Phases 0–2 leave Oolite better off.
+5. **Freeze policy.** Once Phase 3 starts on a module, stop taking upstream changes to that module;
    port them by hand instead, tracked in `docs/UPSTREAM_DELTA.md`.
 
 ---

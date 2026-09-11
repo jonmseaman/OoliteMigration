@@ -13,7 +13,7 @@ configuration, with a Reporter running first, and model routing as configuration
 1. **Reporter first** (Hermes Agent, or a scheduled Claude Code task). Read-only, so safe; a
    scheduled job, so cheap; and it forces the metrics in [I4](4-metrics.md) to be defined before
    any code depends on them. Buildable this week.
-2. **Gas City on ubuntu-agent**, from the **Gastown pack**. Pin the Gas City version and the pack
+2. **Gas City in WSL2 on the Windows machine** ([ADR-0010](../decisions/0010-single-windows-machine.md)), from the **Gastown pack**. Pin the Gas City version and the pack
    commit. Dependencies: tmux, git, jq, pgrep, lsof; Go 1.26.4+ to build from source.
 3. **Roles as pack configuration.** Map the authority table onto prompts, formulas, orders and
    `city.toml`. Explicit agent identity is required (do not port prompts that assume the directory
@@ -45,7 +45,7 @@ configuration, with a Reporter running first, and model routing as configuration
 - The carry-over channel (bead body / mail) is the *only* state between iterations; story text
   embeds absolute paths and the exemplar path.
 - No role that reads Tier-3 corpus content has repo write access or secrets.
-- Concurrency cap sized to ubuntu-agent's RAM ([I0](0-machines.md)).
+- Concurrency cap sized to the WSL2 memory ceiling, net of golden containers ([I0](0-machines.md)).
 
 ## Verification
 
@@ -59,3 +59,4 @@ configuration, with a Reporter running first, and model routing as configuration
 ## Status log
 
 - 2026-09-06 — Created from AI_EXECUTION_PLAN §11, §12, §13.6, §13.7.
+- 2026-09-10 — Host is WSL2 on the single Windows machine (ADR-0010).

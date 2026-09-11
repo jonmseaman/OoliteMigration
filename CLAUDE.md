@@ -48,7 +48,7 @@ Upstream build today: `cd upstream/oolite && ./mk.sh build test`. Smoke test:
 
 ## Exemplars
 
-None yet. Phase 4 cannot fan out until `oomath` and `Core/OXPVerifier` are hand-converted. This
+None yet. Phase 3 cannot fan out until `oomath` and `Core/OXPVerifier` are hand-converted. This
 list is updated as seams land:
 
 | Kind | Path |

@@ -11,7 +11,7 @@ there can be thousands of entities.
 ## Decision
 
 Mirror ObjC refcounting 1:1 with an intrusive `oo::RefCounted` base, `oo::Ref<T>`, `oo::WeakRef<T>`,
-and a scope-based `oo::AutoreleaseScope` shim that is deleted in Phase 5. Do **not** use
+and a scope-based `oo::AutoreleaseScope` shim that is deleted in Phase 4. Do **not** use
 `std::shared_ptr` during translation.
 
 ## Consequences

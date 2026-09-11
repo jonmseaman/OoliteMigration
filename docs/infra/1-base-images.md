@@ -33,7 +33,7 @@ change most likely to cut iteration time, more than any model choice.
 - [ ] `oolite-ci-linux:gnustep-<pin>` builds once and is pulled, not rebuilt, by CI
 - [ ] A Linux Tier-B run on a warm cache completes in under 10 minutes end to end
 - [ ] Windows runner: `mk.sh build` succeeds with no `setup-msys2` step
-- [ ] 20 golden containers run concurrently on ubuntu-agent without port or display collisions
+- [ ] 20 golden containers run concurrently in WSL2 without port or display collisions, with the Windows build still able to run alongside
 - [ ] ccache hit rate reported by the Reporter
 
 ## Status log

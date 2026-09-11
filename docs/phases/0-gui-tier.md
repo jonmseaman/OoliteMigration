@@ -23,7 +23,7 @@ The two tiers test disjoint things, and the boundary must stay sharp:
 Note the row that matters: `tests/launch_snapshot.py:93` sets `SDL_VIDEODRIVER=offscreen`, so the
 existing test never creates a window. The entire windowing, event-loop, and input path is
 **currently untested**, and it is exactly the layer that a new platform target breaks. On Apple
-Silicon (Phase 3) this tier is the difference between "it compiles and the simulation runs" and
+Silicon (Phase 5) this tier is the difference between "it compiles and the simulation runs" and
 "it is a working macOS application" — it is what catches a missing `.app` bundle, a Gatekeeper
 block, a GL context that never gets a drawable, or a window that opens behind the dock.
 
@@ -131,9 +131,9 @@ maintenance sink. If a GUI test starts asserting on ship positions, it is in the
 |---|---|---|
 | **Linux** | `xvfb-run` + `LIBGL_ALWAYS_SOFTWARE=1`, `GALLIUM_DRIVER=llvmpipe` (as `launch_snapshot.py` already does), `DISPLAY` pointed at Xvfb | Works headless on hosted runners. |
 | **Windows** | Hosted runners have an interactive desktop session | Works directly. |
-| **macOS** | **Needs a self-hosted runner** on Jon's own Apple Silicon machine | ⚠️ PyAutoGUI needs **Accessibility** (to synthesise input) and **Screen Recording** (to screenshot) TCC grants. These are per-app, granted interactively once, and cannot be scripted. Hosted GitHub macOS runners cannot grant them. |
+| **macOS** (Phase 5 onward) | **Needs a self-hosted runner** on Jon's own Apple Silicon machine | ⚠️ PyAutoGUI needs **Accessibility** (to synthesise input) and **Screen Recording** (to screenshot) TCC grants. These are per-app, granted interactively once, and cannot be scripted. Hosted GitHub macOS runners cannot grant them. |
 
-That macOS caveat is worth deciding early rather than discovering at Phase 3: either stand up a
+That macOS caveat is worth deciding early rather than discovering at Phase 5: either stand up a
 self-hosted runner, or accept that the macOS GUI tier is a local pre-release gate rather than a
 per-commit one. The Linux and Windows tiers can run per-commit regardless.
 
@@ -144,6 +144,6 @@ launch failure.
 ## When to build it
 
 G1–G4 in Phase 0, against the current Objective-C build, so there is a known-good baseline before
-anything changes. G5–G9 can follow. The whole tier becomes load-bearing at **Phase 3**, where it is
+anything changes. G5–G9 can follow. The whole tier becomes load-bearing at **Phase 5**, where it is
 the primary evidence that the Apple Silicon build is a real application and not just a binary that
 links.

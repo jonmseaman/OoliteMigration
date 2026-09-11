@@ -7,7 +7,7 @@
 Candidates evaluated 2026-09-05: Gas Town, LangChain Deep Agents, Hermes Agent, OpenClaw. Scored
 against this project's requirements: worktree isolation per agent, a batch-and-bisect merge queue,
 agents never pushing to main, stuck-agent detection, role-based routing, concurrency caps, local or
-network inference, scheduled read-only reporting, runs on the Ubuntu host.
+network inference, scheduled read-only reporting, runs on a Unix host.
 
 Gas Town scored highest and its Refinery is, independently, the exact Bors-style batch-and-bisect
 merge queue this project had already specified. Its role hierarchy lands almost 1:1 on the
@@ -32,8 +32,9 @@ lifecycle survive the extraction.
 - **Roles are pack conventions, not SDK primitives.** Gas City has no baked-in role names. The
   authority model becomes something expressed exactly in prompts, formulas, orders and `city.toml`
   rather than approximated. Budget for configuration work and pin versions.
-- Gas City runs natively on the Ubuntu host (needs tmux, git, jq, pgrep, lsof; Go 1.26.4+ to build).
-  No WSL2.
+- Gas City needs a Unix runtime (tmux, git, jq, pgrep, lsof; Go 1.26.4+ to build). It runs in
+  **WSL2 on the single Windows machine** ([ADR-0010](0010-single-windows-machine.md); an
+  interim decision for a native Ubuntu host, ADR-0007, was superseded).
 - Model routing is at **CLI granularity** (`role_agents` maps roles to CLI presets). Verify custom
   OpenAI-compatible endpoint support before betting the ADR-0005 routing plan on it.
 - Multi-machine workers are not supported today and are not needed: agents stay on one host,

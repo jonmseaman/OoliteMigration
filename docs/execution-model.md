@@ -42,13 +42,13 @@ the lines, and the remaining 52% stays serial-ish and hard.
 | 0 — harness, determinism, corpus | 2–4 | **None.** Design work; one harness, built once. |
 | 1 — JS façade + QuickJS-ng | 4–7 | **Seam then high.** The façade is one design; retargeting 3,828 sites across 102 files behind it is ~110 replication stories. |
 | 2 — ObjC++ switch + `oofnd` | 6–10 | **Seam then high.** The library *is* design, but migrating ~11k Foundation references onto it is ~250–400 replication stories. |
-| 3 — Apple Silicon build/sign/CI | 1–2 | None. |
-| **4 — ObjC → C++23, ~500 files** | **12–24** | **Highest — ≈400 stories, and the least seam-bound.** |
-| 5 — remove ObjC runtime | 1–2 | None. Mechanical, one pass. |
+| **3 — ObjC → C++20, ~500 files** | **12–24** | **Highest — ≈400 stories, and the least seam-bound.** |
+| 4 — remove ObjC runtime | 1–2 | None. Mechanical, one pass. |
+| 5 — Apple Silicon build/sign/CI | 1–2 | None. |
 | 6 — modernise | 4–10 | Low. Design changes by definition. |
 
 Fan-out potential is not a property of a phase; it is a property of the work *after its seam is cut*
-(§4, §8). Phase 4 is the largest single block and the least seam-bound, but the fleet does **not**
+(§4, §8). Phase 3 is the largest single block and the least seam-bound, but the fleet does **not**
 idle until then: it starts as soon as Phase 0's harness exists and the first seams are cut, on the
 Phase 1 and Phase 2 sweeps. What genuinely cannot be parallelised is Phase 0 itself and the seam at
 the head of each sweep.
@@ -57,7 +57,7 @@ the head of each sweep.
 
 The per-PR definition of done (§7) is:
 
-1. Goldens reproduce · 2. Tier-1 OXP corpus green · 3. Clean build on **three platforms** at
+1. Goldens reproduce · 2. Tier-1 OXP corpus green · 3. Clean build on **every supported platform** (Linux + Windows until Phase 5, + macOS after) at
 `-Wall -Wextra` · 4. **ASan + UBSan clean on Linux** · 5. Symbol deny-list enforced.
 
 Each golden scenario **launches the actual game** and drives it over the debug-console TCP channel
@@ -158,7 +158,7 @@ running its own full suite.
 | Files < 1,500 lines (216 files, 48%) | 216 | Frontier sets pattern → **local model drafts, Tier B judges** | Only after `oomath` + `OXPVerifier` establish house style by hand. |
 | **Phase 0 scan: expansions for Mozilla-only JS** | 818–1,591 | **Local, high batch** | Small context, independent, 90% accuracy is fine — it feeds a guide, and the engine catches misses. |
 | Tier-3 weekly smoke-log triage + clustering | ~1,591 logs | **Local, high batch** | Pure classification. |
-| Golden-diff first-pass triage (Phase 4) | high | Local proposes → frontier adjudicates → **you re-bless** | §2. |
+| Golden-diff first-pass triage (Phase 3) | high | Local proposes → frontier adjudicates → **you re-bless** | §2. |
 | 3,828 JS call sites → façade (Phase 1) | 3,828 | **Neither — `clang-refactor`** | A compiler is more correct and far cheaper than any model here. Do not spend tokens on this. |
 
 > **Corpus size note.** The architecture doc cites 1,591 entries from the live API. The catalog
@@ -225,7 +225,7 @@ Four notes on this table:
 ## 6. Anti-patterns
 
 - **Auto-re-blessing goldens.** The single change most likely to end the project. §2.
-- **Fanning out Phase 4 before `oomath` and `OXPVerifier` are hand-converted.** You would get 200
+- **Fanning out Phase 3 before `oomath` and `OXPVerifier` are hand-converted.** You would get 200
   files in 200 inconsistent styles and a review burden larger than the original work.
 - **Spending tokens where a compiler works** — the 3,828 JS call sites, the `.mm` mechanical fixes.
 - **Buying inference capacity to fix a build-throughput problem.** §1.3; [ADR-0005](decisions/0005-defer-dgx-spark.md).
@@ -240,7 +240,7 @@ Four notes on this table:
 
 1. Goldens reproduce (or the diff is explained and re-blessed with justification).
 2. Tier 1 OXP corpus green.
-3. Builds clean on all three platforms at `-Wall -Wextra` with no new warnings.
+3. Builds clean on every supported platform (Linux and Windows until Phase 5; macOS added there) at `-Wall -Wextra` with no new warnings.
 4. ASan + UBSan clean on Linux (essential — hand-translated refcounting *will* produce use-after-free).
 5. No new `libgnustep-base` or `JS_*` symbols reintroduced (CI-enforced deny-list).
 
@@ -279,11 +279,11 @@ the roadmap effort estimates:
 
 | Scope | Eng-months | Eng-days | Est. L3 stories |
 |---|---:|---:|---:|
-| Phases 0–3 | 13–23 | 260–460 | ~260–920 |
-| Phase 4 alone | 12–24 | 240–480 | ~240–960 |
+| Phases 0–2 (before the conversion grind) | 12–21 | 240–420 | ~240–840 |
+| Phase 3 alone | 12–24 | 240–480 | ~240–960 |
 | **Whole migration** | 30–59 | 600–1,180 | **~600–2,360** |
 
-Cross-check on Phase 4, bottom-up from the measured `.m` histogram (§1.1) rather than from the roadmap —
+Cross-check on Phase 3, bottom-up from the measured `.m` histogram (§1.1) rather than from the roadmap —
 138 files ≤400 lines at 1 story each, 62 at ~1.5, 30 at ~3, 11 at ~7 → **≈400 stories**, inside the
 240–960 band.
 
@@ -307,7 +307,7 @@ A story is fleet-ready **iff all seven hold**:
 
 Checks 5 and 7 are the ones generic guidance omits and the ones that matter most for a translation
 project. The size distribution measured in §1.1 is favourable: median `.m` is 325 lines and 138 of
-241 are ≤400, so most of Phase 4 is genuinely one story per file.
+241 are ≤400, so most of Phase 3 is genuinely one story per file.
 
 **The rule is self-diagnosing — read *which* checks fail:**
 
@@ -364,10 +364,10 @@ an inventory and emits one story per unit from a fixed template:
 | JS retarget (Phase 1) | one file | `grep -rl 'jsapi.h\|OOJavaScriptEngine.h' src` | ~110 |
 | `OOCollectionExtractors` retirement | one file | `grep -rl 'oo_[a-zA-Z]*ForKey' src` | ~150 |
 | Foundation → `oofnd` | one file, in Phase 2 order | `grep -rl 'NSString\|NSDictionary\|NSArray' src` | ~250–400 |
-| ObjC → C++ (Phase 4) | one file ≤400 lines; larger pre-split | `find src -name '*.m' -size -20k` | ~350–800 |
+| ObjC → C++ (Phase 3) | one file ≤400 lines; larger pre-split | `find src -name '*.m' -size -20k` | ~350–800 |
 
 Each generated story inherits the §8.3 criteria and prohibitions, the seam's exemplar path, and
-`priority` from the dependency order already given in the Phase 2 and Phase 4 docs.
+`priority` from the dependency order already given in the Phase 2 and Phase 3 docs.
 
 The generator is itself fleet-unsuitable — it encodes the story template, which is a design
 decision. Write it once, by hand, before the first sweep.

@@ -14,7 +14,7 @@ Options considered: (A) port SM 1.8.5 to aarch64 interpreter-only; (B) upgrade t
 
 ## Decision
 
-**C, with A held in reserve.** Define `ooscript/JSEngine.hpp`, a thin C++23 façade sized to what
+**C, with A held in reserve.** Define `ooscript/JSEngine.hpp`, a thin C++ façade sized to what
 Oolite uses. Retarget all call sites onto the façade with SpiderMonkey still behind it (must be
 byte-identical in behaviour). Add a QuickJS-ng backend. Differential-test both against the goldens
 and the OXP corpus. Delete SpiderMonkey.

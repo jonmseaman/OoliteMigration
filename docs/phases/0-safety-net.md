@@ -16,7 +16,7 @@ is what makes it safe to exist.
 
 ## Entry gate
 
-- [ ] [I0](../infra/0-machines.md): machine inventory filled in; Ubuntu VM-or-bare-metal answered
+- [ ] [I0](../infra/0-machines.md): the Windows machine's inventory filled in; WSL2 sized
 - [ ] [ADR-0008](../decisions/0008-forge-and-runners.md) decided before any runner is attached
 
 ## Exit gate
@@ -24,7 +24,7 @@ is what makes it safe to exist.
 Original gate (MIGRATION_PLAN §5.7) plus the substrate checks (AI_EXECUTION_PLAN §9), merged:
 
 - [ ] Linux + Windows CI green and reproducible on self-hosted runners
-- [ ] ≥ 20 scenarios producing stable goldens across 10 consecutive runs, **on two machines of the same architecture**
+- [ ] ≥ 20 scenarios producing stable goldens across 10 consecutive runs, in **two independent containers** (one physical machine until Phase 5)
 - [ ] Iteration-order non-determinism found, fixed in Objective-C, and submitted upstream
 - [ ] `oxp-contract/js-api-1.92.json` committed and reproduced by CI
 - [ ] Tier 1 / 2 / 3 OXP corpus automated (per-commit / nightly / weekly)
@@ -74,7 +74,7 @@ goldens will be worthless.
 **Action:** instrument `NSDictionary`/`NSSet` enumeration in a debug build to shuffle order, run the
 scenarios, and find every place the outcome changes. Fix those to sort explicitly *in the Objective-C
 code, upstreamable as bug fixes*, before migrating anything. This is cheap now and extremely
-expensive to diagnose in Phase 4.
+expensive to diagnose in Phase 3.
 
 ### 0.2 Base image
 
@@ -190,10 +190,11 @@ Not yet available. Produced by 0.9.
   N ticks diverges between x86-64 and arm64 (FMA contraction, libm differences) and between compiler
   versions and optimisation levels. Frame hashes already have tolerance; state dumps do not.
   Options: (a) goldens blessed per platform; (b) the dump quantises floats to a fixed precision;
-  (c) both. Also pin `-ffp-contract=off` and the optimisation level for golden builds. **Decide
+  (c) both. Only x86-64 exists until Phase 5, but Linux-vs-Windows differences (libm, MinGW vs
+  glibc) already exercise the policy in Tier C. Also pin `-ffp-contract=off` and the optimisation level for golden builds. **Decide
   before the first golden is blessed**, because it determines how goldens are stored. Affects the
-  Phase 3 gate directly.
-- **8 — macOS CI runner** (self-hosted on the Mac, or a local pre-release gate). Decide before Phase 3.
+  Phase 5 gate directly.
+- **8 — macOS CI runner** (self-hosted on the Mac, or a local pre-release gate). Decide before Phase 5.
 - **ADR-0008 — forge.** Before any runner is attached.
 
 ## Status log

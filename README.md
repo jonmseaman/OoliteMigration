@@ -1,7 +1,7 @@
 # OoliteMigration
 
 Planning and working repository for migrating [Oolite](https://oolite.space/) from
-Objective-C/GNUstep to Modern C++23, with native Apple Silicon, Windows x64, and Linux x64 targets,
+Objective-C/GNUstep to Modern C++ (C++20 during conversion, C++23 at the end), with native Apple Silicon, Windows x64, and Linux x64 targets,
 while keeping all published expansions (OXP/OXZ) working unmodified.
 
 **Start here: [ROADMAP.md](ROADMAP.md).** Agents: [CLAUDE.md](CLAUDE.md).
@@ -19,7 +19,7 @@ while keeping all published expansions (OXP/OXZ) working unmodified.
 | `upstream/spidermonkey-ff4` | Submodule: the patched SpiderMonkey 1.8.5 Oolite embeds (see plan §4/R1) |
 | `upstream/oolite-tests` | Submodule: test OXPs and legacy test projects |
 | `upstream/oolite-debug-console` | Submodule: TCP debug console — drives the golden test harness |
-| `upstream/oolite-mac-components` | Submodule: historical macOS Cocoa components (Phase 3 reference) |
+| `upstream/oolite-mac-components` | Submodule: historical macOS Cocoa components (Phase 5 reference) |
 | `upstream/oolite-expansion-catalog` | Submodule: expansion URL list — source for the OXP corpus |
 
 ## Remotes

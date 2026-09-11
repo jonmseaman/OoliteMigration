@@ -1,6 +1,6 @@
 # ADR-0007: Agents run on an Ubuntu host; the Windows box is a build runner
 
-**Status:** Accepted · **Date:** 2026-09-05 · **Open detail:** VM or bare metal (see below)
+**Status:** **Superseded by [ADR-0010](0010-single-windows-machine.md)** (2026-09-10) · **Date:** 2026-09-05
 
 ## Context
 
@@ -12,7 +12,7 @@ the Linux golden harness. Gas City needs tmux and a Unix runtime.
 ```
 Ubuntu x86-64 host ─────── Gas City + agents + worktrees; Linux build; golden harness; ASan/UBSan
 Windows x86-64 box ─────── self-hosted runner: MSYS2 UCRT64 build + Windows goldens
-Apple Silicon Mac ──────── Phase 3 onward: macOS build + PyAutoGUI tier (needs TCC grants)
+Apple Silicon Mac ──────── Phase 5 onward: macOS build + PyAutoGUI tier (needs TCC grants)
 Inference endpoint ─────── OpenAI-compatible URL behind one config value (ADR-0005)
 ```
 
