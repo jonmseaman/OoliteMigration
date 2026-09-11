@@ -16,6 +16,8 @@ import shutil
 REQUEST_CONNECTION = "Request Connection"
 APPROVE_CONNECTION = "Approve Connection"
 PERFORM_COMMAND = "Perform Command"
+PING = "Ping"
+PONG = "Pong"
 PACKET_TYPE_KEY = "packet type"
 MESSAGE_KEY = "message"
 CONSOLE_IDENTITY_KEY = "console identity"
@@ -75,6 +77,50 @@ def receive_plist_packet(sock):
     except Exception as e:
         print(f"[!] Error receiving packet: {e}")
         return None
+
+
+def wait_until_ready(conn, ready_timeout=120, settle=None):
+    """Block until Oolite is actually servicing the debug console, then let it draw some frames.
+
+    Sleeping a fixed number of seconds after sending the approval measures the wrong clock. The
+    approval is answered by the game's run loop, and until loading finishes there is no run loop
+    to answer it: on a slow machine the entire sleep elapses during startup, the approval and the
+    snapshot command are then consumed in the same poll, and the snapshot is taken on the first
+    frame the game ever services - before anything has been drawn. That produces a black frame
+    and looks like a rendering fault rather than a race.
+
+    Ping is echoed back as Pong with the same message (see OODebugTCPConsoleProtocol.h), so
+    readiness is directly observable instead of guessed at. Only once the game answers is it
+    worth counting out frame time, and the settle below is measured from that point.
+    """
+    if settle is None:
+        settle = float(os.environ.get("OO_SNAPSHOT_SETTLE", "5"))
+    token = f"ready-{os.getpid()}-{time.time()}"
+    started = time.time()
+    deadline = started + ready_timeout
+
+    while time.time() < deadline:
+        if not send_plist_packet(conn, {PACKET_TYPE_KEY: PING, MESSAGE_KEY: token}):
+            print("[!] Failure: could not send Ping.")
+            return False
+        # select rather than a socket timeout: receive_plist_packet reports every exception, and
+        # a timeout per poll is normal here, not an error worth printing.
+        readable, _, _ = select.select([conn], [], [], 2)
+        if not readable:
+            continue
+        pkt = receive_plist_packet(conn)
+        if pkt is None:
+            print("[!] Failure: console connection closed while waiting for Oolite.")
+            return False
+        if pkt.get(PACKET_TYPE_KEY) == PONG and pkt.get(MESSAGE_KEY) == token:
+            waited = time.time() - started
+            print(f"[+] Oolite is servicing the console after {waited:.1f}s; settling {settle}s")
+            time.sleep(settle)
+            return True
+        # Anything else (console output, configuration notes) is not an answer; keep waiting.
+
+    print(f"[!] Failure: Oolite did not answer a Ping within {ready_timeout}s.")
+    return False
 
 
 def run_test(bin_name, test_output):
@@ -145,8 +191,9 @@ def run_test(bin_name, test_output):
             print("[!] Handshake failed: Expected 'Request Connection'.")
             return False
 
-        # Allow time for engine state transition
-        time.sleep(5)
+        # Wait for the game itself, not for the clock. See wait_until_ready.
+        if not wait_until_ready(conn):
+            return False
 
         # 3. THE COMMAND
         print("[*] Requesting snapshot and quit...")
