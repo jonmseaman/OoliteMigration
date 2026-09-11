@@ -16,6 +16,7 @@ read-only job that cannot be gamed by the agents it measures.
 | Tier-B flake rate, per check, rolling 7 days | Tier B logs | **> 1% on any check is stop-the-line** |
 | Merge-queue depth, batches run, bisections triggered | `tools/merge-queue` log | throughput and health |
 | Beads: `bd ready` / claimed / closed by wrapper / **closed by human** / claimed > N h (stuck) | `bd list` | the fleet-vs-human ratio; the watchdog |
+| Days since `origin/main` and `fork/migration` last matched the local tree | `git log` vs `git ls-remote` | the backup and the fork mirror are current ([ADR-0017](../decisions/0017-native-windows-subtree.md)); > 7 days is a reminder to Jon until the merge queue pushes |
 | First-try Tier-B pass rate for fleet stories | Tier B logs | quality of generated work |
 | Re-bless queue: proposed / accepted / rejected / **age of oldest pending** | adjudicator log + Jon | the one human gate; age measures how long the fleet waited on a human |
 | Proposed ADRs awaiting override | `docs/decisions/` | decisions the fleet took by default this week |
