@@ -51,6 +51,8 @@ on their own (a maintained JS engine, no GNUstep) whether or not the conversion 
 | I4 | Metrics | [4-metrics.md](docs/infra/4-metrics.md) | I3 step 1 | not started |
 | I5 | Hermes runbook | [5-hermes-goal.md](docs/infra/5-hermes-goal.md) | first sweep | written; redo the setup on the Windows machine |
 
+Setting up a Windows machine from scratch: [docs/infra/windows-workstation-setup.md](docs/infra/windows-workstation-setup.md) — pinned versions, the steps, and the traps, written during the Azure VM bring-up.
+
 ## Reference
 
 | Doc | What |
