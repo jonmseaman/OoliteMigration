@@ -34,7 +34,7 @@ read-only job that cannot be gamed by the agents it measures.
 
 ## The log that is the actual research output
 
-`docs/FLEET_FAILURES.md`, append-only: every point where a story could not be completed by the
+`docs/fleet/FLEET_FAILURES.md`, append-only: every point where a story could not be completed by the
 fleet and a human stepped in. Date, story id, which sizing check it failed in hindsight, what the
 human had to do, whether the story template or generator was changed as a result. This is the
 document that answers the question the project was started to answer.

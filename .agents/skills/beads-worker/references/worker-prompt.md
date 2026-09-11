@@ -33,8 +33,10 @@ Bead body (the story):
 
 {bead_body}
 
-Work only inside {worktree_path}. Run the acceptance commands yourself before you finish. Commit
-with message "bead {id}: {title}". Do not touch files outside the story's file list.
+Work only inside {worktree_path}. If the notes report a merge conflict from a previous attempt,
+start with `git merge {base_branch}` in the worktree and resolve it. Run the acceptance commands
+yourself before you finish. Commit with message "bead {id}: {title}". Do not touch files outside
+the story's file list.
 
 ## output_schema
 

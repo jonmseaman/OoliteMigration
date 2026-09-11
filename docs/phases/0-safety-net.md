@@ -17,13 +17,13 @@ this phase is what makes it safe to exist.
 ## Entry gate
 
 - [ ] [I0](../infra/0-machines.md): the Windows machine's inventory filled in; WSL2 sized
-- [ ] [ADR-0008](../decisions/0008-forge-and-runners.md) decided before any runner is attached
+- [ ] ~~ADR-0008 decided before any runner is attached~~ — no runners for now ([ADR-0016](../decisions/0016-no-forge-local-verification.md))
 
 ## Exit gate
 
 Original gate (MIGRATION_PLAN §5.7) plus the substrate checks (AI_EXECUTION_PLAN §9), merged:
 
-- [ ] Linux + Windows CI green and reproducible on self-hosted runners
+- [ ] Linux (WSL2) and Windows builds green and reproducible **locally from a clean clone**, scripted; no CI ([ADR-0016](../decisions/0016-no-forge-local-verification.md))
 - [ ] ≥ 20 scenarios producing stable goldens across 10 consecutive runs, in **two independent containers** (one physical machine until Phase 5)
 - [ ] Iteration-order non-determinism found, fixed in Objective-C, and submitted upstream
 - [ ] `oxp-contract/js-api-1.92.json` committed and reproduced by CI
@@ -84,7 +84,10 @@ expensive to diagnose in Phase 3.
 
 GNUstep at pinned commits + `mozillajs-linux` 0.0.1, prebuilt and cached. Specified in [I1](../infra/1-base-images.md); listed here because Tier B timing is meaningless without it.
 
-### 0.3 Reproduce upstream builds in our CI
+### 0.3 Reproduce upstream builds locally, both legs
+
+No forge for now (ADR-0016): the target is `tools/build-linux.sh` in WSL2 and `tools/build-windows.sh`
+natively, each from a clean clone, matching what upstream's workflow does.
 
 Linux x86-64 and Windows x86-64, matching `upstream/oolite/.github/workflows/build-all.yaml`.
 Pin the GNUstep commits and the `mozillajs-linux` 0.0.1 artefact. Cache aggressively — GNUstep
@@ -165,8 +168,8 @@ Getting Tier A under 30 seconds is the single highest-leverage engineering task 
 ### 0.10 Merge queue with batch-and-bisect
 
 `tools/merge-queue`, an in-repo script ([ADR-0014](../decisions/0014-claude-code-opencode-beads.md)):
-collect Tier-B-green branches, merge into a candidate, run Tier C through the CI gate
-([I2](../infra/2-forge-and-runners.md)), fast-forward `main` on green, bisect on red and requeue the
+collect Tier-B-green branches, merge into a candidate, run `tools/tier-c.sh` locally in a clean
+worktree ([ADR-0016](../decisions/0016-no-forge-local-verification.md)), fast-forward `main` on green, bisect on red and requeue the
 culprit's bead. Companion seam: the `tools/fleet/` scripts, of which `accept` is the one that
 matters: it runs a story's acceptance in a fresh clone and alone may `bd close`, whether the driver
 is `run-story` (Claude Code) or Hermes `/goal` (local tier) ([I3](../infra/3-fleet.md),
@@ -185,10 +188,14 @@ are also enforced, consistent with "never verify with a model":
 
 ### 0.12 Story template, exemplar story, generator
 
-Commit [templates/story.md](../templates/story.md) and the hand-written
-[G1 story](../stories/G1-exit-via-mouse.md) first, then write `tools/gen-stories` against them. The
-generator is itself fleet-unsuitable: it encodes the template, which is a design decision. A
-frontier agent writes it in an interactive session.
+**Done (v0, 2026-09-11).** `tools/gen-stories.py` derives the beads for Phases 0–4 from the
+upstream tree and creates them through `bd create --graph` in one call: one epic per phase, small
+frontier seams, and one fleet bead per file for each sweep (JS retarget, extractor retirement,
+Foundation→oofnd, C-file renames, class conversions, pre-split plans for files over 1,500 lines).
+It is idempotent by title. First run: 681 beads, 1,436 dependency edges, no cycles; the only ready
+work is the four Phase 0 seams with no prerequisites. Acceptance commands live in each bead body
+under `## Acceptance`; the beads-worker scripts read them from there. Remaining item in this
+seam: bead 0.12 verifies the first generated Phase 1 bead end to end once `tier-a`/`tier-b` exist.
 
 ## Commands
 
@@ -205,7 +212,7 @@ Not yet available. Produced by 0.9.
   before the first golden is blessed**, because it determines how goldens are stored. Affects the
   Phase 5 gate directly.
 - **8 — macOS CI runner:** decided, self-hosted on the Mac (ADR-0013).
-- **ADR-0008 — forge:** decided, GitHub origin + Forgejo mirror.
+- **ADR-0008 — forge:** deferred; no forge for now (ADR-0016).
 - **11:** decided, per-platform goldens and quantised floats (ADR-0013). Implement in 0.4.
 
 ## Status log

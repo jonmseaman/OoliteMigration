@@ -14,4 +14,13 @@ real_bd() {
 }
 bead_json() { real_bd show "$1" --json 2>/dev/null | jq -c 'if type=="array" then .[0] else . end'; }
 bead_field() { bead_json "$1" | jq -r "$2 // empty"; }
+# Acceptance commands: the bead's acceptance field, else the fenced block under '## Acceptance' in
+# its description (the generator writes it there; graph plans cannot set the field).
+bead_acceptance() {
+  local acc; acc="$(bead_field "$1" '.acceptance_criteria // .acceptance')"
+  if [ -z "$acc" ]; then
+    acc="$(bead_field "$1" '.description' | awk '/^## Acceptance/{f=1;next} f&&/^```/{if(c){exit}else{c=1;next}} f&&c{print}')"
+  fi
+  printf '%s\n' "$acc"
+}
 bead_attempts() { bead_json "$1" | jq -r '(.metadata.attempts // "0") | tonumber'; }

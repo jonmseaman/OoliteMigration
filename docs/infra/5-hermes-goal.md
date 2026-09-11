@@ -55,6 +55,15 @@ Then paste the two commands from
 - Beads run in parallel: the skill claims up to `delegation.max_concurrent_children` at once and
   delegates one worker per bead in a single call. Raise that setting as RAM allows.
 
+## The queue as it stands
+
+`tools/gen-stories.py --apply` populated it on 2026-09-11: epics `Phase 0`–`Phase 4`, 96 frontier
+seams (labels `frontier`, `seam:<key>`), 580 fleet beads (labels `fleet`, `phase:<N>`,
+`sweep:<name>`). Every fleet bead is blocked on its exemplar seam and, transitively, on the previous
+phase; `bd ready` shows only what can actually start. Re-running the generator creates only what is
+missing. To regenerate a sweep after a template change: `bd list --label sweep:<name> --json` →
+`bd delete` those ids → re-run `--apply`.
+
 ## Contract with the queue
 
 The skill only works beads that carry **both** `fleet` and `phase:<N>`. It never touches

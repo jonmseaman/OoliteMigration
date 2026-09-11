@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
-# Create (or reuse) .worktrees/<bead> on branch bead/<bead>, based on main. Print the absolute path.
+# Create (or reuse) .worktrees/<bead> on branch bead/<bead>, based on the base branch. Print the path.
+# `worktree.sh --remove <bead>` removes the worktree and deletes the branch (after close/escalate).
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+if [ "${1:-}" = "--remove" ]; then
+  id="${2:?usage: worktree.sh --remove <bead>}"
+  git -C "$REPO_ROOT" worktree remove --force "$WORKTREES/$id" >/dev/null 2>&1 || true
+  git -C "$REPO_ROOT" branch -D "bead/$id" >/dev/null 2>&1 || true
+  echo "removed worktree and branch for $id"; exit 0
+fi
 id="${1:?usage: worktree.sh <bead>}"
 base="${BEADS_WORKER_BASE_BRANCH:-main}"
 path="$WORKTREES/$id"

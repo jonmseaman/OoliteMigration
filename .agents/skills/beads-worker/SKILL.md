@@ -65,8 +65,9 @@ All paths relative to the repo root. Run each with `terminal(command=..., timeou
 scripts/goal-check.sh <phase>            exit 0 iff no open/in-progress bead has fleet+phase:<N>
 scripts/goal-gate.sh <phase>             the /goal gate: exit 0 if drained or progress this turn; consumes progress markers
 scripts/next-bead.sh <phase> [count]     claim up to <count> ready fleet beads (retries first); one JSON per line {id,title,body,acceptance,notes,exemplar,attempts,stale_count}
-scripts/worktree.sh <bead>               create .worktrees/<bead> on branch bead/<bead>; prints the absolute path
-scripts/accept.sh <bead>                 clean checkout of bead/<bead> → run acceptance → close. Exit 0 closed · 1 rejected with new learning (retry) · 2 rejected, identical failure repeated (escalate)
+scripts/worktree.sh <bead>               create .worktrees/<bead> on branch bead/<bead> from the base branch; prints the absolute path
+scripts/worktree.sh --remove <bead>      remove the worktree and delete the branch (after close or escalation)
+scripts/accept.sh <bead>                 clean checkout of base → merge bead/<bead> → run acceptance → fast-forward base, close. Exit 0 closed+merged · 1 rejected with new learning (retry; includes merge conflicts) · 2 rejected, identical failure repeated (escalate)
 scripts/escalate.sh <bead> "<reason>"    swap fleet→frontier, add escalated, release claim, log a row in docs/fleet/FLEET_FAILURES.md
 scripts/context.sh <bead>                print the bead's notes + the last 40 fleet learnings; paste into every worker/reviewer task
 scripts/learn.sh <bead> "<line>"         record a cross-bead learning in docs/fleet/LEARNINGS.md and the bead's notes
@@ -111,16 +112,18 @@ more beads in flight is fine, more children than P is not.
      as the reason.
 6. **Accept each approved bead.** `terminal(command="scripts/accept.sh <id>", timeout=1800)`.
    You are closing your own work here, which is allowed because the reviewer approved it and
-   because `accept.sh`, not you, decides: it runs the acceptance commands in a clean checkout and
-   closes only on exit 0. *Done when: each bead returned 0, 1, or 2.*
-   - Exit 0 → closed.
+   because `accept.sh`, not you, decides: it merges the bead into the base branch in a clean
+   checkout, runs the acceptance commands on the merged tree, and only on exit 0 fast-forwards the
+   base branch and closes. **Merging back is part of accepting**; there is no separate merge step.
+   *Done when: each bead returned 0, 1, or 2.*
+   - Exit 0 → closed and merged.
    - Exit 1 → rejected with a failure the bead has not seen before. Keep the claim and the
      worktree; the bead comes back in the next batch with the failure tail in its notes, and the
      worker prompt must include it. No cap on rounds.
    - Exit 2 → rejected with the same failure as last time: the loop is not learning.
      `scripts/escalate.sh <id> "identical acceptance failure repeated"`.
-7. **Clean up.** `terminal(command="git worktree remove --force .worktrees/<id>")` only for
-   beads that closed or escalated. Never remove a worktree for a bead that is going round again.
+7. **Clean up.** `terminal(command="scripts/worktree.sh --remove <id>")` only for beads that
+   closed or escalated. Never remove a worktree for a bead that is going round again.
 8. **Record learnings.** For any bead that taught something the *next* bead should know (a
    codebase pattern, a misleading acceptance command, a tooling quirk), one line:
    `scripts/learn.sh <id> "<learning>"`. Not every bead has one; do not pad.
@@ -137,8 +140,18 @@ more beads in flight is fine, more children than P is not.
   You close beads by calling `scripts/accept.sh`, which sets `BEADS_ACCEPT=1` itself; the
   implementing worker has no path to close at all. If the shim is not on PATH, stop and tell the
   user; do not proceed without it.
-- **Workers must commit.** `accept.sh` checks out the branch fresh; uncommitted work in the agent
-  worktree does not exist as far as acceptance is concerned. The worker prompt says so.
+- **An exemplar may be a seam key, not a path.** Generated beads name their exemplar as
+  `seam:<key>` (or a bare key like `3.exemplar-oocolor`) when the exemplar is produced by a seam
+  bead. Resolve it: `bd list --label seam:<key> --all --json` → read that bead's notes and the
+  paths it landed, and pass those paths to the worker as the exemplar. If the seam bead is not
+  closed, the fleet bead should not be ready; report it rather than guessing an exemplar.
+- **Workers must commit.** `accept.sh` merges the branch as committed; uncommitted work in the
+  agent worktree does not exist as far as acceptance is concerned. The worker prompt says so.
+- **Merge conflicts are rejections.** With several beads in flight, a bead may conflict with one
+  merged before it. `accept.sh` reports the conflicting files into the notes and returns 1; the
+  worker's next round merges the base branch into its worktree and resolves. The base branch is
+  `main` unless `BEADS_WORKER_BASE_BRANCH` says otherwise (a merge queue may later point it at an
+  integration branch and promote to `main` after Tier C).
 - **Turn budget.** `/goal` pauses when `goals.max_turns` is exhausted; the repo's Hermes config
   sets it to 1,000,000 so a phase fits. If you see "Goal paused", `/goal resume` resets the counter.
   A pause is not a failure.
@@ -167,7 +180,7 @@ more beads in flight is fine, more children than P is not.
 
 - `scripts/goal-check.sh <N>` flips from nonzero to zero over the course of the run
 - `scripts/goal-gate.sh <N>` exits 0 on a turn right after `accept.sh` closed a bead, and 1 on a turn where nothing happened
-- Every closed bead has a `bead/<id>` branch whose acceptance commands exit 0 in a fresh checkout
+- Every closed bead is a merge commit on the base branch whose acceptance commands exit 0 on the merged tree
 - `bd list --status closed --label phase:<N>` closures are all attributed to `accept.sh`
   (reason text starts with `accepted:`)
 - `bd close <id>` typed directly returns the guard's refusal message

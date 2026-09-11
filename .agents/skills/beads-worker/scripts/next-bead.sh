@@ -14,11 +14,12 @@ ids="$( { real_bd list --label fleet --label "phase:$phase" --status in_progress
 [ -n "$ids" ] || { echo "no ready fleet bead for phase $phase" >&2; exit 3; }
 for id in $ids; do
 real_bd update "$id" --claim --actor "$me" -q >&2
-bead_json "$id" | jq -c --arg id "$id" '{
+acc="$(bead_acceptance "$id")"
+bead_json "$id" | jq -c --arg id "$id" --arg acc "$acc" '{
   id: $id,
   title: .title,
   body: (.description // ""),
-  acceptance: (.acceptance_criteria // .acceptance // ""),
+  acceptance: $acc,
   notes: (.notes // ""),
   exemplar: ((.metadata.exemplar // "") ),
   attempts: ((.metadata.attempts // "0") | tonumber),
