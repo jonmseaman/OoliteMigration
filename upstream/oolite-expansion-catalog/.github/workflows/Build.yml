@@ -1,0 +1,239 @@
+name: Build
+on:
+  schedule:
+    - cron: '0 1 1 * *'
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - .github/ISSUE_TEMPLATE/**
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install required packages
+        run: |
+          sudo apt-get install -y graphviz 
+
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: oolite-expansion-catalog
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'adopt'
+
+      - name: Download OoliteAddonScanner
+        id: download
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: "OoliteProject/OoliteAddonScanner"
+
+          # A flag to set the download target as latest release
+          # The default value is 'false'
+          latest: true
+
+          # The github tag. e.g: v1.0.1
+          # Download assets from a specific tag/version
+          # tag: "v1.0.68"
+
+          # The release id to download files from
+          releaseId: ""
+
+          # The name of the file to download.
+          # Use this field only to specify filenames other than tarball or
+          # zipball, if any.
+          # Supports wildcard pattern (eg: '*', '*.deb', '*.zip' etc..)
+          fileName: "*.tar.gz"
+
+          # Download the attached tarball (*.tar.gz)
+          tarBall: false
+
+          # Download the attached zipball (*.zip)
+          zipBall: false
+
+          # Relative path under $GITHUB_WORKSPACE to place the downloaded
+          # file(s). It will create the target directory automatically if
+          # not present eg:
+          # out-file-path: "my-downloads"
+          #   => It will create directory $GITHUB_WORKSPACE/my-downloads
+          out-file-path: ""
+
+          # A flag to set if the downloaded assets are archives and should
+          # be extracted. Checks all downloaded files if they end with zip,
+          # tar or tar.gz and extracts them, if true. Prints a warning if
+          # enabled but file is not an archive - but does not fail.
+          extract: true
+
+      - name: Restore expansions cache
+        id: cache-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            expansion-cache
+          key: ${{ runner.os }}-expansion_cache
+
+      - name: get date
+        run: |
+          echo "TODAY=$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+
+      - name: check before Catalog Generator
+        run: |
+          set -x
+          echo "Tag: ${{steps.download.outputs.tag_name}}"
+          pwd
+          printenv | sort
+          find -type f -not -path ".git/*"
+
+      - name: "Run Catalog Generator"
+        run: |
+          set -x
+          OAS_VERSION="${{steps.download.outputs.tag_name}}"
+          OAS_VERSION="${OAS_VERSION:1}"
+          java -cp "./OoliteAddonScanner-${OAS_VERSION}/OoliteAddonScanner-${OAS_VERSION}.jar" com.chaudhuri.cataloggenerator.Main --in oolite-expansion-catalog/expansionUrls.txt --out output/catalog/index --cache expansion-cache --format plist,json
+#          mv output/catalog/index.plist output/catalog/index.html
+#          mv output/catalog/index.json output/catalog/oxp.json
+
+      - name: Check after Catalog Generator
+        run: |
+          set -x
+          find -type f -not -path "./.git/*"
+
+      - name: "Run Scanner/Index Generator"
+        run: |
+          set -x
+          OAS_VERSION="${{steps.download.outputs.tag_name}}"
+          OAS_VERSION="${OAS_VERSION:1}"
+          # add json catalog from previous step so it is part of the downloadable artifact
+          mkdir -p 'output/OoliteExpansionIndex'
+          cp 'output/catalog/index.json' 'output/OoliteExpansionIndex'
+          java -jar "./OoliteAddonScanner-${OAS_VERSION}/OoliteAddonScanner-${OAS_VERSION}.jar" --url file://$(pwd)/output/catalog/index.plist --out output/OoliteExpansionIndex --cache expansion-cache --zip
+
+      - name: Check after Index Generator
+        run: |
+          set -x
+          find -type f -not -path ".git/*"
+          compgen -f output/OoliteExpansionIndex-*.zip
+
+      - name: Checkout website
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false  # otherwise, the token used is the GITHUB_TOKEN, instead of your personal access token.
+          fetch-depth: 0  # otherwise, there would be errors pushing refs to the destination repository.
+          repository: 'OoliteProject/oolite-web'
+          ref: only-media
+          path: output/oolite-web
+
+      - name: Fix permissions for Github Pages
+        run: |
+          chmod -c -R +rX "output/OoliteExpansionIndex/" | while read line; do
+            echo "::warning title=Invalid file permissions automatically fixed::$line"
+          done
+
+      - name: Move result
+        run: |
+          set -x
+          rm -rf output/oolite-web/root/html/OoliteExpansionIndex
+          mkdir -p output/oolite-web/root/html/OoliteExpansionIndex
+          cp 'output/catalog/index.plist' 'output/oolite-web/api/1.0/overview/index.html'
+          cp 'output/catalog/index.json' 'output/oolite-web/data/oxp.json'
+#          cp -rv 'output/OoliteExpansionIndex' 'output/oolite-web/root/html'
+
+      - name: Check before commit
+        run: |
+          set -x
+          cd output/oolite-web
+          git status
+
+      - name: Commit the changes
+        run: |
+          set -x
+          cd output/oolite-web
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit --allow-empty -a -m "${{github.repository}} Job ${{github.job}} Run ${{github.run_number}}"
+
+      # This step will push the changed documents into oolite-web. For this we need to have
+      # access privileges. In case you need to recreate/repair the setup:
+      # 
+      # Go to the repository's
+      # Settings/Secrets and variables/Actions.
+      # In there you can configure variables and secrets. Look at the secret named 
+      # oolite_web_expansions_catalog_manager. Likely you cannot read it. But it can
+      # be filled with a never-expiring personal access token.
+      #
+      # To generate a personal access token (and here comes the personal account - can we 
+      # create something on organization level?): Go to
+      # Top right menu (your user avatar)/Settings/Developer Settings/Personal access tokens/Tokens (classic)
+      # Create a token named oolite-web-expansions-catalog-manager and tic the boxes
+      #   - repo:status
+      #   - repo_deployment
+      #   - public_repo
+      #
+      - name: Push changes
+        if: github.ref == 'refs/heads/main'
+        uses: ad-m/github-push-action@master
+        with:
+          repository: 'OoliteProject/oolite-web'
+          directory: output/oolite-web
+          branch: only-media
+          github_token: ${{ secrets.oolite_web_expansions_catalog_manager }}
+
+      - name: Upload github pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: output/OoliteExpansionIndex
+
+      - name: Remove old OoliteExpansionIndex releases
+        if: github.ref == 'refs/heads/main'
+        uses: s00d/delete-older-releases@0.2.1
+        with:
+          keep_latest: 12
+          delete_tag_pattern: "${{github.ref_name}}-"
+          delete_type: 'release'
+          delete_branch: 'main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        id: create_release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "${{github.ref_name}}-${{ env.TODAY }}"
+          prerelease: false
+          title: "OoliteExpansionIndex ${{github.ref_name}}-${{ env.TODAY }}"
+          files: |
+            output/OoliteExpansionIndex*.zip
+
+      - name: Save Expansions Cache
+        id: cache-save
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            expansion-cache
+          key: ${{ runner.os }}-expansion_cache
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    needs: build
+    runs-on: ubuntu-latest
+
+    # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
