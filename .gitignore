@@ -7,3 +7,6 @@ build/
 *.db
 .beads-credential-key
 .beads/proxieddb/
+
+# Per-bead git worktrees created by the beads-worker skill
+.worktrees/

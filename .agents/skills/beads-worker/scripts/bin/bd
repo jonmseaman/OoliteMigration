@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Guard shim: put this directory first on PATH before starting an agent. Refuses to close a bead
+# unless BEADS_ACCEPT=1 (set only by scripts/accept.sh). Everything else passes through.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+p="$(echo "$PATH" | tr ':' '\n' | grep -vx "$here" | paste -sd: -)"
+real="$(PATH="$p" command -v bd || true)"
+[ -n "$real" ] || { echo "bd guard: real bd not found on PATH" >&2; exit 127; }
+if [ "${BEADS_ACCEPT:-0}" != "1" ]; then
+  case "${1:-}" in
+    close|done)
+      echo "bd guard: refusing 'bd $1'. Beads are closed only by scripts/accept.sh after acceptance passes." >&2; exit 77;;
+    update)
+      for a in "$@"; do
+        case "$a" in --status=closed|-s=closed) echo "bd guard: refusing status=closed. Use scripts/accept.sh." >&2; exit 77;; esac
+      done
+      prev=""
+      for a in "$@"; do
+        if { [ "$prev" = "--status" ] || [ "$prev" = "-s" ]; } && [ "$a" = "closed" ]; then
+          echo "bd guard: refusing status=closed. Use scripts/accept.sh." >&2; exit 77
+        fi; prev="$a"
+      done;;
+  esac
+fi
+exec "$real" "$@"

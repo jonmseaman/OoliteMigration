@@ -1,0 +1,54 @@
+# Worker task template
+
+Fill every `{…}`. Pass as `delegate_task(tasks=[{goal, context, output_schema}])`.
+
+## goal
+
+Implement bead {id} — "{title}" — in the git worktree at {worktree_path} on branch bead/{id}, then
+commit. Do it the way {exemplar_path} does it. Make these acceptance commands exit 0 when run from
+the worktree root:
+
+{acceptance_commands}
+
+## context
+
+You are attempt {attempts} for this bead. Below are this bead's notes (previous attempts, what
+failed, review findings) and the fleet's shared learnings from other beads. If a previous attempt
+failed, do something different from it; if a learning applies, apply it.
+
+{context_sh_output}
+
+Repository rules (from CLAUDE.md, non-negotiable):
+- Never modify anything under goldens/.
+- Never modify or delete a test to make it pass. If a test is wrong, stop and report blocked.
+- Never add -Wno-*, #pragma diagnostic, or unused-attributes to silence a warning.
+- Never run `bd close` or change a bead's status; the orchestrator's accept step does that.
+- Never push. Commit on branch bead/{id} only.
+- Never rewrite code that already compiles as C; a file with no @implementation is not a target.
+- Never read expansion (OXP/OXZ) content.
+- If the task does not fit in ≤1,500 lines read / ≤400 lines written / ≤8 files, or needs an
+  interface that does not exist and is not quoted below, stop and report blocked with the reason.
+
+Bead body (the story):
+
+{bead_body}
+
+Work only inside {worktree_path}. Run the acceptance commands yourself before you finish. Commit
+with message "bead {id}: {title}". Do not touch files outside the story's file list.
+
+## output_schema
+
+```json
+{
+  "type": "object",
+  "required": ["summary", "files_changed", "commands_run", "committed", "blocked"],
+  "properties": {
+    "summary": {"type": "string"},
+    "files_changed": {"type": "array", "items": {"type": "string"}},
+    "commands_run": {"type": "array", "items": {"type": "string"}},
+    "committed": {"type": "boolean"},
+    "blocked": {"type": "boolean"},
+    "blocked_reason": {"type": "string"}
+  }
+}
+```

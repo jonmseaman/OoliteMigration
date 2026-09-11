@@ -24,23 +24,29 @@ gate; and a scheduled read-only Reporter running first.
    bead's branch → run the story's acceptance commands → `bd close` **only** on exit 0, else
    append the output to the bead notes and release the claim. Hard timeout. A `bd` hook rejects
    any `bd close` not issued by `accept`. Both drivers below end every story here.
-4. **`tools/fleet/run-story`** (frontier driver). `bd ready` filtered to `frontier`-tier beads →
+4. **The Hermes side is written:** `.agents/skills/beads-worker/` (SKILL.md, worker and reviewer
+   prompt templates, and the scripts `goal-check`, `goal-gate`, `next-bead`, `worktree`,
+   `accept`, `escalate`, plus the `bd` guard shim). It is the concrete form of steps 3, 5 and the
+   guardrails for the local tier; `tools/fleet/` will call the same scripts. How to start it:
+   [5-hermes-goal.md](5-hermes-goal.md).
+5. **`tools/fleet/run-story`** (frontier driver). `bd ready` filtered to `frontier`-tier beads →
    claim → `tools/fleet/worktree` → `claude -p` with the bead body as the prompt and `CLAUDE.md`
    in scope → `accept` → remove the worktree. Memoryless per story. Parallelism flag = the
    concurrency cap from [I0](0-machines.md).
-5. **Hermes Agent `/goal`** (local-tier driver). One long-running Hermes session per phase,
+6. **Hermes Agent `/goal`** (local-tier driver). One long-running Hermes session per phase,
    configured against the on-prem endpoint, with the goal "`tools/fleet/goal-check <N>` exits 0".
    It picks `fleet` beads from `bd ready`, claims, works in a `tools/fleet/worktree` checkout,
    and calls `accept`. Its tool config denies `git push`, `bd close`, and writes under `goldens/`.
    Restart the session when the sweep's first-try Tier-B pass rate trends down
    ([ADR-0015](../decisions/0015-hermes-goal-loop.md)).
-6. **`tools/merge-queue`** (Phase 0 seam). Collect branches whose Tier B is green, merge into a
-   candidate branch, trigger Tier C through the [I2](2-forge-and-runners.md) gate, fast-forward
+7. **`tools/merge-queue`** (Phase 0 seam). Collect branches whose Tier B is green, merge into a
+   candidate branch, run `tools/tier-c.sh` locally in a clean worktree (no CI for now,
+   [ADR-0016](../decisions/0016-no-forge-local-verification.md)), fast-forward
    `main` on green; on red, bisect the batch, merge the good half, and put the culprit's bead back
    in `bd ready` with the failure in its notes. No human approval (ADR-0013).
-7. **Model routing.** Hermes's provider config holds the on-prem endpoint URL(s); Claude Code uses
+8. **Model routing.** Hermes's provider config holds the on-prem endpoint URL(s); Claude Code uses
    its own provider. Switching an endpoint is a config edit. Tier A never depends on any endpoint.
-8. **Adjudication and seams** are interactive Claude Code sessions, not loop runs.
+9. **Adjudication and seams** are interactive Claude Code sessions, not loop runs.
 
 ## Role → mechanism
 
@@ -84,3 +90,4 @@ gate; and a scheduled read-only Reporter running first.
 - 2026-09-10 — Host is WSL2 on the single Windows machine (ADR-0010).
 - 2026-09-10 — Rewritten for Claude Code / beads; Gas City dropped (ADR-0014).
 - 2026-09-10 — Hermes Agent `/goal` is the local-tier driver; OpenCode dropped; `accept` split out as the single path to `bd close` (ADR-0015).
+- 2026-09-10 — beads-worker skill written under `.agents/skills/`; Hermes configured for it; no CI forge (ADR-0016).
