@@ -14,10 +14,11 @@ read-only job that cannot be gamed by the agents it measures.
 |---|---|---|
 | Goldens stable (20/20 reproduce on main) | Tier C | the safety net is intact |
 | Tier-B flake rate, per check, rolling 7 days | CI | **> 1% on any check is stop-the-line** |
-| Merge-queue depth, batches run, bisections triggered | Refinery | throughput and health |
-| Stories: open / in progress / closed by wrapper / **closed by human** | beads | the fleet-vs-human ratio |
+| Merge-queue depth, batches run, bisections triggered | `tools/merge-queue` log | throughput and health |
+| Beads: `bd ready` / claimed / closed by wrapper / **closed by human** / claimed > N h (stuck) | `bd list` | the fleet-vs-human ratio; the watchdog |
 | First-try Tier-B pass rate for fleet stories | CI | quality of generated work |
-| Re-bless requests proposed / accepted / rejected | adjudicator log + Jon | the one human gate |
+| Re-bless queue: proposed / accepted / rejected / **age of oldest pending** | adjudicator log + Jon | the one human gate; age measures how long the fleet waited on a human |
+| Proposed ADRs awaiting override | `docs/decisions/` | decisions the fleet took by default this week |
 | Tier-1 corpus green | Tier B/C | expansions still work |
 | ccache hit rate; Tier-A p50/p95 wall-clock | tools | the inner loop is still fast |
 
@@ -29,7 +30,7 @@ read-only job that cannot be gamed by the agents it measures.
 | Lines converted / remaining | wc |
 | Tier-3 weekly smoke: pass / fail / new failures, clustered | Tier-3 run + local-model triage |
 | Upstream delta: commits behind, days since last rebase, frozen-module conflicts | upstream tracker |
-| Human hours spent this week, by category (design, adjudication, giant files, unblocking the fleet) | Jon, self-reported |
+| Human hours spent this week, by category (re-bless review, credentials/hardware, overrides, GUI judgement, *anything else* — the last should be zero) | Jon, self-reported |
 
 ## The log that is the actual research output
 

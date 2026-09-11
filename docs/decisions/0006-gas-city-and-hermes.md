@@ -1,6 +1,6 @@
 # ADR-0006: Gas City (with the Gastown pack) for the fleet; Hermes Agent for the Reporter
 
-**Status:** Accepted · **Date:** 2026-09-06
+**Status:** **Superseded by [ADR-0014](0014-claude-code-opencode-beads.md)** (2026-09-10: no Gas Town / Gas City; Claude Code and/or OpenCode, beads, two in-repo scripts) · **Date:** 2026-09-06
 
 ## Context
 

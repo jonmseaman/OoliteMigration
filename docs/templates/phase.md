@@ -22,7 +22,7 @@ The design decisions that must exist before any sweep can start. Each one fails 
 the [sizing rule](../execution-model.md#82-the-seven-check-sizing-rule). Name the exemplar path each
 seam produces.
 
-| Seam | Produces (exemplar path) | Owner |
+| Seam | Produces (exemplar path) | Owner (a frontier agent unless it is one of Jon's four, ADR-0013) |
 |---|---|---|
 
 ## Sweeps (fleet work)
@@ -44,7 +44,7 @@ see Phase 0 item 0.9".
 
 ## Open decisions
 
-Link to roadmap open-decision numbers. Say *when* each must be decided.
+Link to roadmap decision numbers. All are decided by default (ADR-0013); note here only if this phase would override one, as a proposed ADR.
 
 ## Status log
 

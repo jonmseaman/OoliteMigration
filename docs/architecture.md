@@ -100,8 +100,9 @@ All figures from `upstream/oolite` @ `942f5183f`.
 | C / C++ (mostly vendored + generated) | 8 | 59,088 |
 
 Of the 59k C/C++: `OOPlanetData.c` is 48,170 lines of *generated tables*, `miniz.c` (7,853) and
-`MiniZip/` (2,378) are vendored. Genuine hand-written C is ~600 lines. So the C/C++ present today
-is essentially free — it carries over untouched.
+`MiniZip/` (2,378) are vendored. Genuine hand-written C is ~600 lines, plus four `oomath` `.m` files (~1,190 lines) that contain
+no Objective-C at all. All of it carries over untouched: existing C is reused, never rewritten
+([ADR-0012](decisions/0012-c-stays-c.md)).
 
 ### 2.2 Subsystem inventory
 
@@ -294,8 +295,8 @@ Enforce with a CI job that compiles a canary TU on all three toolchains at their
 src/
   oofnd/          Foundation replacement — String, PList, Ref/WeakRef, FileSystem,
                   Defaults, Logging, Data, Bundle/ResourcePaths
-  oomath/         Vector, HPVector, Matrix, Quaternion, Triangle, BoundingBox, Octree
-                  (already near-pure C — convert first, use as the pattern-setter)
+  oomath/         Vector, HPVector, Matrix, Quaternion, Triangle, BoundingBox — **kept as C**,
+                  renamed .m → .c (ADR-0012); Octree is a class and converts normally
   oocore/         Universe, ResourceManager, ShipRegistry, Commodities, Equipment,
                   SystemDescriptions, RoleSet, Cache
   ooentity/       Entity hierarchy
@@ -551,7 +552,7 @@ authors get a release cycle of notice before the C++ release changes engines.
 
 ```
 OoliteMigration/
-├── ROADMAP.md                         phase table, status, open decisions — start here
+├── ROADMAP.md                         phase table, status, decisions — start here
 ├── CLAUDE.md                          agent contract: rules, commands, exemplars
 ├── GLOSSARY.md
 ├── docs/

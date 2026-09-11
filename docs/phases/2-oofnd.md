@@ -13,7 +13,7 @@ migrate every Foundation usage site onto it while the classes are still Objectiv
 ## Entry gate
 
 - [ ] Phase 0 exit gate green
-- [ ] `std::string` vs custom `oo::String` benchmarked (roadmap open decision 4) before the String seam lands
+- [ ] Decision 4 is `std::string` (ADR-0013). A benchmark story runs before the String seam lands: golden wall-clock before/after; > 5% regression escalates via the Reporter, otherwise proceed
 
 ## Exit gate
 
@@ -27,11 +27,11 @@ migrate every Foundation usage site onto it while the classes are still Objectiv
 
 | Seam | Produces (exemplar path) | Owner |
 |---|---|---|
-| The `.m` → `.mm` switch: one atomic, behaviour-free commit | the commit itself | Jon + frontier; compiler-driven loop for the mechanical fixes |
-| `Ref` / `WeakRef` / `RefCounted` / `AutoreleaseScope` | `src/oofnd/Ref.hpp` + tests | Jon + frontier |
-| `PList` + old-style and XML parser/writer | `src/oofnd/PList.hpp` + tests | Jon + frontier |
-| Typed accessor `PList::get<T>` and one fully migrated consumer | one file with zero `oo_*ForKey:` left | Jon + frontier |
-| String utilities, `FileSystem`, `Defaults`, `Logging`, `Data` | one migrated consumer each | Jon + frontier |
+| The `.m` → `.mm` switch: one atomic, behaviour-free commit (`.m` files with no `@implementation` become `.c`, per [ADR-0012](../decisions/0012-c-stays-c.md)) | the commit itself | Frontier agent; compiler-driven loop for the mechanical fixes |
+| `Ref` / `WeakRef` / `RefCounted` / `AutoreleaseScope` | `src/oofnd/Ref.hpp` + tests | Frontier agent |
+| `PList` + old-style and XML parser/writer | `src/oofnd/PList.hpp` + tests | Frontier agent |
+| Typed accessor `PList::get<T>` and one fully migrated consumer | one file with zero `oo_*ForKey:` left | Frontier agent |
+| String utilities, `FileSystem`, `Defaults`, `Logging`, `Data` | one migrated consumer each | Frontier agent |
 
 The `PList` component as originally written scores 2/7 on the sizing rule: too big and unverifiable.
 It must be split into stories with test-file acceptance (e.g. "old-style scanner: quoted strings and
@@ -78,7 +78,7 @@ From Phase 0. `meson test -C build --suite oofnd` for the library.
 
 ## Open decisions
 
-- **4** — `std::string` vs `oo::String`. Benchmark here before committing; `NSString` is immutable and refcounted and 6,286 sites of copying may be a measurable regression.
+- **4** — decided: `std::string`, with the threshold-gated benchmark story above (ADR-0013).
 
 ## Status log
 

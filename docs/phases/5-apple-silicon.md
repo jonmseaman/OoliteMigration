@@ -11,14 +11,16 @@ layer, a build branch, and packaging: nothing Objective-C-specific ever has to w
 ([ADR-0009](../decisions/0009-apple-silicon-after-runtime-removal.md)). This is the first externally
 visible win and the right point to talk to upstream ([architecture §6.3](../architecture.md)). It is
 also the first time any target other than x86-64 exists, and the first time a second physical
-machine joins the setup ([ADR-0010](../decisions/0010-single-windows-machine.md)). This phase is
-Jon's Mac and Jon's hands; no fleet.
+machine joins the setup ([ADR-0010](../decisions/0010-single-windows-machine.md)). The work is done
+by a frontier agent in an interactive session on the Mac; Jon's part is the TCC grants, the signing
+identity, and the runner token ([ADR-0013](../decisions/0013-decide-up-front-minimise-human.md)).
+No fleet.
 
 ## Entry gate
 
 - [ ] Phase 4 exit gate green (no `.mm`, no `-fobjc-*`, GCC and Clang both green)
-- [ ] Cross-platform golden policy (open decision 11) implemented and exercised on Linux-vs-Windows
-- [ ] macOS runner decision made (open decision 8); TCC grants held on the Mac ([I0](../infra/0-machines.md))
+- [ ] Cross-platform golden policy (decision 11) implemented and exercised on Linux-vs-Windows
+- [ ] TCC grants, signing identity and runner token held on the Mac ([I0](../infra/0-machines.md)); decision 8 is self-hosted
 - [ ] Legacy OpenGL 2.1 context still available on the target macOS version, **or** the Phase 6
   renderer work has been pulled forward ([ADR-0004](../decisions/0004-legacy-gl-until-phase-6.md))
 
@@ -56,9 +58,7 @@ From Phase 0, plus the macOS runner label `self-hosted, macos, arm64` ([I2](../i
 
 ## Open decisions
 
-- **8** — macOS runner. PyAutoGUI needs Accessibility and Screen Recording TCC grants, per-app,
-  granted interactively once. Hosted runners cannot. Either self-host on the Mac or run the macOS
-  GUI tier as a local pre-release gate.
+- **8** — decided: self-hosted runner on the Mac; Jon grants the TCC prompts once (ADR-0013).
 - **11** — cross-platform goldens (owned by Phase 0, implemented by Phase 4's exit, consumed here).
 - **5** — renderer; only if Apple has removed legacy GL.
 

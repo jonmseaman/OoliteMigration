@@ -87,8 +87,9 @@ Split the word "validation" in two:
 | **Verification** — did behaviour change? | Goldens, JS API snapshot diff, Tier-1/2/3 corpus, ASan/UBSan, symbol deny-list, `-Wall -Wextra` | A model. Ever. |
 | **Adjudication** — a check failed; is this diff legitimate? | Frontier model proposes, human re-blesses | Auto-accept |
 
-Golden re-blessing is the one irreversible step in the whole pipeline. **A model may propose a
-re-bless with justification; only you may merge one.** If you automate exactly one gate away, this
+Golden re-blessing is the one irreversible step in the whole pipeline, and the one place a human
+remains in the loop ([ADR-0013](decisions/0013-decide-up-front-minimise-human.md)). **A model may propose a
+re-bless with justification; only Jon may accept one, from a weekly queue.** If you automate exactly one gate away, this
 is the one that ends the project.
 
 ---
@@ -152,13 +153,13 @@ running its own full suite.
 
 | Work | Volume | Model tier | Why |
 |---|---|---|---|
-| Phase-0 harness design; `oofnd`, `JSEngine` façade, `oo::Ref` design | ~50 decisions | **Frontier, interactive, with you** | Determines whether the project works. Cheapest thing you will ever buy. |
-| The 6 giant files (30% of lines) | 6 | **Frontier + you, weeks each** | 200k+ token dependency closures. Physically outside a local model's KV budget on 128 GB. |
+| Phase-0 harness design; `oofnd`, `JSEngine` façade, `oo::Ref` design | ~50 decisions | **Frontier agent, interactive session** | Determines whether the project works. Jon is informed via the Reporter, not consulted ([ADR-0013](decisions/0013-decide-up-front-minimise-human.md)). |
+| The 6 giant files (30% of lines) | 6 | **Frontier agent, weeks each, pre-split by category** | 200k+ token dependency closures. Physically outside a local model's KV budget on 128 GB. |
 | Files 1,500–4,000 lines (19 files, 22%) | 19 | Frontier, one at a time | Real design content in each. |
-| Files < 1,500 lines (216 files, 48%) | 216 | Frontier sets pattern → **local model drafts, Tier B judges** | Only after `oomath` + `OXPVerifier` establish house style by hand. |
+| Files < 1,500 lines (216 files, 48%) | 216 | Frontier sets pattern → **local model drafts, Tier B judges** | Only after `OOColor` + `OXPVerifier` establish house style ([ADR-0012](decisions/0012-c-stays-c.md)). |
 | **Phase 0 scan: expansions for Mozilla-only JS** | 818–1,591 | **Local, high batch** | Small context, independent, 90% accuracy is fine — it feeds a guide, and the engine catches misses. |
 | Tier-3 weekly smoke-log triage + clustering | ~1,591 logs | **Local, high batch** | Pure classification. |
-| Golden-diff first-pass triage (Phase 3) | high | Local proposes → frontier adjudicates → **you re-bless** | §2. |
+| Golden-diff first-pass triage (Phase 3) | high | Local proposes → frontier adjudicates → **Jon re-blesses, weekly** | §2. |
 | 3,828 JS call sites → façade (Phase 1) | 3,828 | **Neither — `clang-refactor`** | A compiler is more correct and far cheaper than any model here. Do not spend tokens on this. |
 
 > **Corpus size note.** The architecture doc cites 1,591 entries from the live API. The catalog
@@ -192,7 +193,8 @@ does.
 | **Harness steward** | standing, weekly | may fix harness/CI code | **may never re-bless a golden**; reports flake rate and drift |
 | **Upstream tracker** | standing, monthly | performs the rebase, files `docs/UPSTREAM_DELTA.md` entries | any conflict inside a frozen module (architecture §6.3) |
 | **Adjudicator** (frontier) | on-demand | proposes a re-bless *with written justification* | **every re-bless, always** |
-| **Jon** | — | merges to main · re-blesses goldens · roadmap open decisions · freeze policy | — |
+| **Jon** | — | **re-blesses goldens** (weekly queue) · accounts, credentials, hardware, TCC grants · overrides a default decision by ADR · monthly judgement on the GUI tier's meaning ([ADR-0013](decisions/0013-decide-up-front-minimise-human.md)) | — |
+| **Merge queue** (`tools/merge-queue`) | standing | **merges to `main`** automatically when Tier C is green on the batch | a batch that fails after bisection with no culprit found |
 
 Four notes on this table:
 
@@ -225,7 +227,7 @@ Four notes on this table:
 ## 6. Anti-patterns
 
 - **Auto-re-blessing goldens.** The single change most likely to end the project. §2.
-- **Fanning out Phase 3 before `oomath` and `OXPVerifier` are hand-converted.** You would get 200
+- **Fanning out Phase 3 before `OOColor` and `OXPVerifier` are converted as exemplars.** You would get 200
   files in 200 inconsistent styles and a review burden larger than the original work.
 - **Spending tokens where a compiler works** — the 3,828 JS call sites, the `.mm` mechanical fixes.
 - **Buying inference capacity to fix a build-throughput problem.** §1.3; [ADR-0005](decisions/0005-defer-dgx-spark.md).
@@ -265,12 +267,12 @@ that is specified at the wrong altitude.
 | **L2** Component | "`PList` + old-style **and** XML parser/writer" | ~2 weeks | ✅ — *their finest grain* |
 | **L3** Story | "Old-style plist scanner: quoted strings + `\U` escapes; `test_plist_oldstyle_strings.cpp` cases 1–14 go green" | ~half a day | ❌ **missing** |
 
-Any memoryless work loop — Gas City's **beads**, or a Ralph-style `prd.json` story — spawns a fresh
+Any memoryless work loop — a **bead** run by `tools/fleet/run-story`, or a Ralph-style `prd.json` story — spawns a fresh
 instance per unit with **no memory of previous work** and decides "done" from acceptance criteria
 alone. It consumes L3. The phase docs provide L2.
 
 **This section is harness-independent.** Grain is a property of the task, not of the orchestrator:
-switching from Ralph to Gas City changes how a unit is stored, dispatched and closed, but not how
+switching from Ralph to beads changes how a unit is stored, dispatched and closed, but not how
 small it has to be. §8.2 survives the switch unchanged; §8.3's mechanics are the part that binds
 to a specific harness.
 
@@ -334,11 +336,11 @@ and must be written into every work unit, whatever the harness calls it:
   Every story carries, verbatim: *do not modify files under `goldens/`; do not modify the test; do
   not add `-Wno-*` or `#pragma` to silence warnings.*
 - **The agent must not close its own unit.** A model that cannot build will report success anyway.
-  Whatever marks a unit done — a Ralph `passes` field, a Gas City bead transition — must be written
+  Whatever marks a unit done — a Ralph `passes` field, `bd close` — must be written
   by an external wrapper that ran the acceptance command, never by the agent. Same principle as §2,
   and the single most important thing to get right when wiring a new harness.
 - **No memory between iterations.** Unit text must embed absolute paths and the exemplar path. Every
-  harness has exactly one carry-over channel (Ralph's `notes`; Gas City's bead body and **mail**) —
+  harness has exactly one carry-over channel (Ralph's `notes`; the bead's notes) —
   identify it before generating anything, because it is the only state that survives.
 
 Stock templates ship web-shaped acceptance criteria. Replace them wholesale:

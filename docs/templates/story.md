@@ -40,7 +40,7 @@ Plus the standard Tier-B set when the wrapper promotes the branch.
 
 ## Carry-over
 
-The one channel that survives between iterations (bead body / mail). Write here what the next
+The one channel that survives between iterations (the bead's notes, `bd update <id> --notes`). Write here what the next
 iteration must know: what was tried, what failed, what is half-done.
 
 ## Sizing check

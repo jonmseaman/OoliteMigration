@@ -6,12 +6,12 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 |---|---|
 | **Adjudicator** | Frontier-model role that examines a *failed* check and proposes whether the diff is legitimate. Proposes only; never decides. |
 | **ADR** | Architecture decision record, `docs/decisions/NNNN-*.md`. Append-only. |
-| **Bead** | Gas City's unit of tracked work. One bead ≈ one L3 story. Closed only by the wrapper. |
+| **Bead** | A `bd` (beads) issue. One bead = one L3 story; its body is the story, its notes are the carry-over channel. Closed only by the wrapper. |
 | **C1–C6** | The six expansion-compatibility contracts (plist dialect, JS API, JS language level, legacy scripting, resource resolution, string expansion). [architecture §5](docs/architecture.md). |
 | **Converter** | Agent role that translates one unit in its own worktree branch. Never pushes to main. |
 | **Deny-list** | CI grep that fails on reintroduced `libgnustep-base` or `JS_*` symbols. |
 | **Exemplar** | An already-landed path a story points at: "do it the way `<path>` does it". Sizing check 7. |
-| **Fleet** | The set of memoryless agents consuming L3 stories under Gas City. |
+| **Fleet** | The agents consuming `bd ready`: memoryless `claude -p` runs under `tools/fleet/run-story` (frontier tier) and the Hermes `/goal` loop (local tier). Both close beads only through `tools/fleet/accept`. |
 | **Freeze policy** | Once Phase 3 starts on a module, upstream changes to it are ported by hand, tracked in `docs/UPSTREAM_DELTA.md`. |
 | **G1–G9** | The PyAutoGUI GUI smoke tests. [phases/0-gui-tier.md](docs/phases/0-gui-tier.md). |
 | **Golden** | A committed canonical state dump (sorted JSON) plus frame hashes for one scenario. Byte-compared. |
@@ -19,13 +19,12 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **Harness steward** | Standing role that owns the safety net's integrity: flake rate, drift. May fix harness code; may never re-bless. |
 | **I0–I4** | Infra-track items: machines, base images, forge/runners, fleet, metrics. [docs/infra/](docs/infra/). |
 | **L0–L3** | Grain levels: phase / plan item / component / story. The fleet consumes L3. |
-| **Mayor / Polecat / Refinery / Witness / Deacon / Dogs / Crew** | Gastown-pack role names for orchestrator / converter / merge queue / per-rig watchdog / cross-rig watchdog / helpers / human. |
-| **Merge queue, batch-and-bisect** | Tier C runs once over a batch of Tier-B-green PRs; on failure, bisects to the culprit. Gas City's Refinery. |
+| **Merge queue, batch-and-bisect** | Tier C runs once over a batch of Tier-B-green PRs; on failure, bisects to the culprit. `tools/merge-queue`, an in-repo script. |
 | **`oofnd`** | The in-tree C++20 Foundation replacement (String, PList, Ref, FileSystem, Defaults, Logging). |
 | **`oo::Ref<T>` / `WeakRef<T>`** | Intrusive refcounting mirroring ObjC retain/release. Not `shared_ptr`. [ADR-0003](docs/decisions/0003-intrusive-refcount.md). |
 | **OXP / OXZ** | Oolite expansion pack, unpacked directory / zipped. Data + JS + assets; never native code. |
 | **R1–R5** | The five ranked risks: SpiderMonkey, GNUstep Foundation, manual refcounting, legacy OpenGL, no tests + fast upstream. |
-| **Re-bless** | Replacing a golden after an intentional behaviour change. The one human-only gate. |
+| **Re-bless** | Replacing a golden after an intentional behaviour change. The one human-only gate; Jon works a weekly queue of Adjudicator proposals. |
 | **Reporter** | Read-only scheduled role that reports the I4 metrics. Zero write authority. |
 | **Reviewer** | Advisory agent role. Comments only; never a gate. |
 | **Seam** | A design decision that must exist before a sweep can start. Fails sizing checks 5 and 7. Human + frontier work. |
@@ -36,5 +35,9 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **Tier A / B / C** | In-loop (< 30 s, offline, compiler-only) / per-PR (< 10 min, one platform) / per-merge-batch (all platforms, sanitizers, everything). |
 | **Tier 1 / 2 / 3 corpus** | ~30 / ~150 / all expansions, run per-commit / nightly / weekly. Distinct from Tier A/B/C. |
 | **Verification vs. adjudication** | Verification (did behaviour change?) is decided by goldens, sanitizers, deny-lists. Adjudication (is a failed check legitimate?) is proposed by a model and decided by Jon. |
-| **WSL2** | Windows Subsystem for Linux. Hosts Gas City, the agents, and the Linux build/golden/sanitizer leg on the single Windows machine until Phase 5. [ADR-0010](docs/decisions/0010-single-windows-machine.md). |
-| **Wrapper** | The external process that runs a story's acceptance commands and is the only thing allowed to mark a bead done. |
+| **WSL2** | Windows Subsystem for Linux. Hosts the agents, worktrees, `bd`, and the Linux build/golden/sanitizer leg on the single Windows machine until Phase 5. [ADR-0010](docs/decisions/0010-single-windows-machine.md). |
+| **Wrapper** | `tools/fleet/run-story`: claims a bead, runs `claude -p` in a worktree, then calls `accept`. The frontier-tier driver. |
+| **Claude Code** | Anthropic's agent CLI. Frontier role: seams, adjudication, giant files, interactive sessions; `claude -p` headless for stories; scheduled tasks for the Reporter. |
+| **Hermes Agent** | Open-source agent with persistent memory and many LLM providers. In `/goal` mode it works until `tools/fleet/goal-check <phase>` passes, against the on-prem endpoints. The local tier's driver ([ADR-0015](docs/decisions/0015-hermes-goal-loop.md)). |
+| **`accept`** | `tools/fleet/accept <bead>`: runs the story's acceptance commands in a fresh clone of the bead's branch and is the only thing that runs `bd close`. |
+| **`goal-check`** | `tools/fleet/goal-check <phase>`: exit 0 iff no open bead carries both `phase:<N>` and `fleet`. The Hermes `/goal` condition. |

@@ -1,6 +1,6 @@
 # ADR-0008: Forge and CI runners — GitHub + self-hosted runners, or self-hosted Forgejo
 
-**Status:** **Open.** A recorded recommendation and a stated intent conflict. · **Date:** 2026-09-06
+**Status:** **Accepted** 2026-09-10 as the default under [ADR-0013](0013-decide-up-front-minimise-human.md): the third column below. Jon may override by superseding ADR. · **Date:** 2026-09-06
 
 ## Context
 
@@ -25,19 +25,19 @@ So Forgejo is *safer* if the fork ever goes public, which is roadmap open decisi
 |---|---|---|---|
 | Upstream collaboration | frictionless | PRs must be re-pushed to GitHub | frictionless (origin unchanged) |
 | Fork-PR RCE exposure if public | **yes** | no | no (runners only see the mirror) |
-| Refinery gate target | `gh workflow run` + `gh run watch` | Forgejo API equivalent | Forgejo API equivalent |
+| Merge-queue gate target | `gh workflow run` + `gh run watch` | Forgejo API equivalent | Forgejo API equivalent |
 | Third-party actions | `msys2/setup-msys2@v2` etc. | must be pre-provisioned anyway ([infra/1](../infra/1-base-images.md)) | same |
 | Extra service to run | none | Forgejo | Forgejo + a push mirror |
-| PR status visible on GitHub | yes | no | no — but the Refinery, not GitHub checks, is the gate |
+| PR status visible on GitHub | yes | no | no — but `tools/merge-queue`, not GitHub checks, is the gate |
 
-## Recommendation (not yet decided)
+## Decision (taken by default, 2026-09-10)
 
 The third column: **GitHub stays `origin` for upstream collaboration; Forgejo is a push mirror that
-owns CI and the self-hosted runners; the Refinery gate talks to Forgejo.** It satisfies the original
+owns CI and the self-hosted runners; the merge-queue gate talks to Forgejo.** It satisfies the original
 reasoning and the stated intent, and closes the RCE exposure. Cost: one more service and a mirror
 to keep healthy.
 
-**Must be decided before any self-hosted runner is attached** (the security note is the reason).
+Decided before any runner is attached, as the security note requires. [I2](../infra/2-forge-and-runners.md) is unblocked.
 
 ## History
 

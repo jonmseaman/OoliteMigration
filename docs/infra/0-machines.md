@@ -15,7 +15,7 @@ Fill in. Unknown is a valid entry; a blank is not.
 
 | Name | OS / version | Arch | CPU cores | RAM | Disk (NVMe?) | GPU | Network | Roles | Grants held |
 |---|---|---|---|---|---|---|---|---|---|
-| windows | Windows ? | x86-64 | ? | ? | ? | ? | ? | **native:** MSYS2 UCRT64 build; Windows goldens; Windows runner; PyAutoGUI tier · **WSL2:** Gas City + agents + worktrees; Linux build; golden harness; ASan/UBSan; Linux runner (Docker) | interactive desktop session for the runner service (PyAutoGUI) |
+| windows | Windows ? | x86-64 | ? | ? | ? | ? | ? | **native:** MSYS2 UCRT64 build; Windows goldens; Windows runner; PyAutoGUI tier · **WSL2:** agents (Claude Code / Hermes) + worktrees + `bd`; Linux build; golden harness; ASan/UBSan; Linux runner (Docker) | interactive desktop session for the runner service (PyAutoGUI) |
 | mac | macOS 26.x | arm64 | ? | ? | ? | Apple | ? | **Phase 5 onward:** macOS build + PyAutoGUI tier; planning until then | Accessibility, Screen Recording: **not yet granted** |
 | inference | — | — | — | — | — | — | URL in config | OpenAI-compatible endpoint ([ADR-0005](../decisions/0005-defer-dgx-spark.md)), rented or LAN | n/a |
 
@@ -26,12 +26,12 @@ Everything competes for one machine's RAM, and RAM is the binding constraint:
 | Consumer | Where | Sizing note |
 |---|---|---|
 | Golden scenarios | WSL2 containers | up to 20 concurrent game processes, each with a GL context under Xvfb + Mesa `llvmpipe`; no GPU needed for GL 2.1 compat, but llvmpipe is slow and memory-hungry |
-| Agents | WSL2 | N polecats × (Claude Code CLI + worktree + build dir); concurrency cap in `city.toml` |
+| Agents | WSL2 | N concurrent `run-story` slots × (agent CLI + worktree + build dir); cap is the wrapper's parallelism flag |
 | Linux build + ccache | WSL2 | shared cache volume |
 | Windows build + Windows goldens | native | must keep enough headroom that WSL2 cannot take it |
 
 Set `.wslconfig` `memory=` and `processors=` explicitly so WSL2 has a hard ceiling; size the golden
-concurrency cap and the polecat cap to what is left inside it. A real GPU with headless EGL inside
+concurrency cap and the `run-story` parallelism to what is left inside it. A real GPU with headless EGL inside
 WSL2 is the upgrade path if scenario wall-clock becomes the bottleneck.
 
 ## Separation inside one box

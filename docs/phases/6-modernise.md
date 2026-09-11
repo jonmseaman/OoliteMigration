@@ -21,8 +21,9 @@ Per sub-project; each is its own mini-phase with goldens as the gate:
   idiomatic.
 
 - Renderer → GL 3.3 Core (or SDL3 GPU). See [ADR-0004](../decisions/0004-legacy-gl-until-phase-6.md).
-- Value semantics for leaf types; `unique_ptr` for exclusive ownership; shrink `Ref` usage to the
-  entity graph where it belongs.
+- Value semantics for leaf *classes* (`OOColor`, `OORoleSet`, …; the math types are already C
+  structs, [ADR-0012](../decisions/0012-c-stays-c.md)); `unique_ptr` for exclusive ownership;
+  shrink `Ref` usage to the entity graph where it belongs.
 - Break up `Universe`: separate scene graph, simulation, and presentation.
 - `std::expected` error paths replacing out-parameter + `BOOL` returns.
 - `std::jthread` + a proper job system for `OOAsyncWorkManager`.
@@ -30,7 +31,7 @@ Per sub-project; each is its own mini-phase with goldens as the gate:
 
 ## Open decisions
 
-- **5** — renderer target: GL 3.3 Core vs SDL3 GPU vs ANGLE. Preference order in ADR-0004. Decided in Phase 4 at the latest.
+- **5** — decided: GL 3.3 Core (ADR-0004, ADR-0013).
 - C++20 modules: revisit here once Meson + Clang + MSVC module support is even.
 
 ## Status log

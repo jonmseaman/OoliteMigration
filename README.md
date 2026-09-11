@@ -10,7 +10,7 @@ while keeping all published expansions (OXP/OXZ) working unmodified.
 
 | Path | What |
 |---|---|
-| `ROADMAP.md` | Phase table, infra track, open decisions — the entry point |
+| `ROADMAP.md` | Phase table, infra track, decisions — the entry point |
 | `CLAUDE.md` / `GLOSSARY.md` | Agent contract and terms |
 | `docs/architecture.md` | Survey, target design, risks, expansion contracts |
 | `docs/execution-model.md` | Verification tiers, agent authority, story sizing |

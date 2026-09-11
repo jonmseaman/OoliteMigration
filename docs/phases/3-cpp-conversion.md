@@ -15,13 +15,14 @@ the largest fan-out phase and the least seam-bound, and it is the phase the meta
 ## Entry gate
 
 - [ ] Phase 1 and Phase 2 exit gates green
-- [ ] **Exemplars exist:** `oomath` and `Core/OXPVerifier` converted by hand with a frontier model. They set the house style every generated story references. **Do not fan out before this.** Fanning out first yields 200 files in 200 styles and a review burden larger than the original work.
+- [ ] **Exemplars exist:** `OOColor` and `Core/OXPVerifier` converted by a frontier agent in an interactive session. They set the house style every generated story references. **Do not fan out before this.** Fanning out first yields 200 files in 200 styles and a review burden larger than the original work. (`oomath` is not the exemplar: it has no classes, [ADR-0012](../decisions/0012-c-stays-c.md).)
 - [ ] Tier A measured < 30 s on a converted leaf file
 - [ ] Freeze policy per module in force ([architecture §6.3](../architecture.md) item 5); `docs/UPSTREAM_DELTA.md` exists
 
 ## Exit gate
 
 - [ ] Zero `@implementation` in `src/` (`grep -rc '@implementation' src` is 0)
+- [ ] Every `.m` file that had no `@implementation` is now `.c`, byte-for-byte the same code ([ADR-0012](../decisions/0012-c-stays-c.md))
 - [ ] All goldens reproduce; Tier-1 corpus green; ASan/UBSan clean; Linux (WSL2) and Windows clean at `-Wall -Wextra`
 - [ ] The six giant files converted (frontier + human; tracked individually in the status log)
 
@@ -29,17 +30,18 @@ the largest fan-out phase and the least seam-bound, and it is the phase the meta
 
 | Seam | Produces (exemplar path) | Owner |
 |---|---|---|
-| `oomath` conversion (near-pure C; establishes house style) | `src/oomath/` | Jon + frontier, days |
-| `Core/OXPVerifier` conversion (real class hierarchy pilot, 27 files, own test data) | `src/oxp/verifier/` | Jon + frontier |
-| Per-module pattern for each of: `Materials`, `ooaudio`, `ooscript` bindings, `ooentity` base | one converted file per module | Jon + frontier |
-| The six giant files (`ShipEntity` 14,945 · `PlayerEntity` 13,718 · `Universe` 11,297 · `PlayerEntityControls` 5,690 · `HeadUpDisplay` 4,497 · `OOJSShip` 4,399) | themselves | **Frontier + Jon, weeks each.** 200k+ token closures; not fleet work. |
+| `OOColor` conversion: the first class, establishes house style | `src/Core/OOColor.hpp/.cpp` | Frontier agent, days |
+| `Core/OXPVerifier` conversion (real class hierarchy pilot, 27 files, own test data) | `src/oxp/verifier/` | Frontier agent |
+| Per-module pattern for each of: `Materials`, `ooaudio`, `ooscript` bindings, `ooentity` base | one converted file per module | Frontier agent |
+| The six giant files (`ShipEntity` 14,945 · `PlayerEntity` 13,718 · `Universe` 11,297 · `PlayerEntityControls` 5,690 · `HeadUpDisplay` 4,497 · `OOJSShip` 4,399) | themselves | **Frontier agent, weeks each, category file by category file.** 200k+ token closures; not fleet work. |
 | Pre-splitting files > 400 lines into story-sized slices (category files already do this for `PlayerEntity`) | a slice plan per file | frontier |
 
 ## Sweeps
 
 | Sweep | Unit | Inventory command | Exemplar | Est. stories | Ordering |
 |---|---|---|---|---:|---|
-| Leaf files ≤ 400 lines | one file | `find src -name '*.m' -size -20k` | `oomath` / `OXPVerifier` files | ~138 at 1 each | module order below |
+| `.m` → `.c` renames (no `@implementation`) | one file | `grep -L '@implementation' $(find src -name '*.m')` | — | ~10 | first; mechanical |
+| Leaf files ≤ 400 lines | one file | `grep -l '@implementation' $(find src -name '*.m' -size -20k)` | `oomath` / `OXPVerifier` files | ~138 at 1 each | module order below |
 | Files 400–1,500 lines | one pre-split slice | slice plans | per-module exemplar | ~62 × 1.5 + 30 × 3 | after the module's pattern seam |
 | Files 1,500–4,000 lines (19 files, 22% of lines) | frontier, one at a time | Appendix A | — | ~11 × 7 | real design content in each |
 
@@ -49,8 +51,9 @@ Total ≈ 400 stories, inside the 240–960 band from the effort estimate.
 
 Suggested order (dependency-driven, and it front-loads the pattern-setting work):
 
-1. `oomath` — `OOVector`, `OOHPVector`, `OOMatrix`, `OOQuaternion`, `OOTriangle`, `Octree`.
-   Near-pure C already; converts in days and establishes house style.
+1. `oomath` — `OOVector`, `OOHPVector`, `OOMatrix`, `OOQuaternion`, `OOTriangle`: **rename to
+   `.c`, do not convert** ([ADR-0012](../decisions/0012-c-stays-c.md)). `Octree` is a real class
+   and joins step 3. House style is set by `OOColor` then `OXPVerifier`.
 2. `Core/OXPVerifier` — 27 files, standalone, has its own test data. The ideal pilot for a *real*
    class hierarchy.
 3. Leaf utilities — `OOColor`, `OOCache`, `OORoleSet`, `OOProbabilitySet`, `OOPriorityQueue`,
@@ -98,8 +101,8 @@ From Phase 0. Every story's acceptance includes `tools/tier-a.sh <file>`; the wr
 ## Open decisions
 
 - **3** — how much modern C++ in translated code. Decided: conservative C++20 first ([ADR-0001](../decisions/0001-bridge-then-convert.md)).
-- **6** — legacy AI and plist scripting (contract C4): port faithfully. Recommended faithful; deprecation breaks the long tail the compatibility promise is built on.
-- **7** — Windows toolchain, MinGW-clang vs clang-cl. C++20 coverage is fine on both; deferred to the Phase 6 C++23 upgrade.
+- **6** — decided: faithful port of legacy AI and plist scripting (ADR-0013).
+- **7** — decided: MinGW-clang (ADR-0013).
 
 ## Status log
 

@@ -13,7 +13,7 @@ behaviour proven by goldens and the OXP corpus. Decision and rationale:
 ## Entry gate
 
 - [ ] Phase 0 exit gate green (goldens stable, corpus automated, Tier A < 30 s)
-- [ ] Optional but recommended: the two-week spike on porting SM 1.8.5 to aarch64 interpreter-only (roadmap open decision 1), for an early macOS test build and a de-risked fallback
+- [ ] ~~SM 1.8.5 aarch64 spike~~ — dropped (decision 1, ADR-0013): no early macOS build exists to justify it
 
 ## Exit gate
 
@@ -28,9 +28,9 @@ behaviour proven by goldens and the OXP corpus. Decision and rationale:
 
 | Seam | Produces (exemplar path) | Owner |
 |---|---|---|
-| `ooscript/JSEngine.hpp` façade design, sized to the call-site histogram | `src/Core/Scripting/JSEngine.hpp` + one fully retargeted binding file (e.g. `OOJSVector.m`) | Jon + frontier |
-| `clang-refactor` scripts for the stub/init and numeric-conversion patterns | `tools/refactor/js-stubs.sh` | Jon + frontier |
-| QuickJS-ng backend skeleton (`Context`, `Value`, `ClassDef`, exotic-method mapping) | `src/Core/Scripting/backend/quickjs/` | Jon + frontier |
+| `ooscript/JSEngine.hpp` façade design, sized to the call-site histogram | `src/Core/Scripting/JSEngine.hpp` + one fully retargeted binding file (e.g. `OOJSVector.m`) | Frontier agent |
+| `clang-refactor` scripts for the stub/init and numeric-conversion patterns | `tools/refactor/js-stubs.sh` | Frontier agent |
+| QuickJS-ng backend skeleton (`Context`, `Value`, `ClassDef`, exotic-method mapping) | `src/Core/Scripting/backend/quickjs/` | Frontier agent |
 
 ## Sweeps
 
@@ -68,8 +68,8 @@ vs `--backend=quickjs` (to be defined with the backend seam).
 
 ## Open decisions
 
-- **1** — spike option A first? Recommended yes.
-- **2** — fork or contribute? Decide before this phase lands; it changes the review burden and the freeze policy.
+- **1** — decided: no spike (ADR-0013).
+- **2** — decided: private fork; upstream PRs batched at Phase 5 (ADR-0013).
 
 ## Status log
 

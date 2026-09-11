@@ -11,8 +11,8 @@ scripts, and the CI guardrails. **No production code changes** to `upstream/ooli
 determinism fixes that are upstreamable as plain bug fixes.
 
 Almost all of Phase 0 is seam work: nearly every item fails checks 5 and 7 of the sizing rule. It
-is design, built once, by a human with a frontier model. The fleet does not exist yet; this phase
-is what makes it safe to exist.
+is design, built once, by a frontier agent in an interactive session. The fleet does not exist yet;
+this phase is what makes it safe to exist.
 
 ## Entry gate
 
@@ -29,26 +29,30 @@ Original gate (MIGRATION_PLAN §5.7) plus the substrate checks (AI_EXECUTION_PLA
 - [ ] `oxp-contract/js-api-1.92.json` committed and reproduced by CI
 - [ ] Tier 1 / 2 / 3 OXP corpus automated (per-commit / nightly / weekly)
 - [ ] Mozilla-only-JS scan report published; a hand-audited random 50 agrees with the model at an acceptable rate
-- [ ] PyAutoGUI G1–G4 green on Linux and Windows; macOS runner decision made (roadmap open decision 8)
+- [ ] PyAutoGUI G1–G4 green on Linux and Windows
 - [ ] `tools/tier-a.sh` measured **< 30 s** on `OOColor.m` and `OORoleSet.m`
 - [ ] 20 golden containers run concurrently on one host with no port or display collision
 - [ ] A deliberately perturbed market-price calculation is caught by Tier B, not by a reviewer
 - [ ] A deliberately introduced use-after-free is caught by ASan in Tier C
 - [ ] Reintroducing a `JS_*` or `libgnustep-base` symbol fails CI on the deny-list
-- [ ] A PR touching `goldens/` that Jon did not author fails CI
-- [ ] A batch of 8 PRs with one bad one: the merge queue bisects to the culprit automatically
+- [ ] A PR touching `goldens/` without an approved re-bless (Jon, weekly queue) fails CI
+- [ ] A batch of 8 PRs with one bad one: `tools/merge-queue` bisects to the culprit and requeues its bead
+- [ ] `tools/fleet/accept` closes a bead only after acceptance exits 0 in a fresh clone; an agent attempting `bd close` directly is refused
+- [ ] `tools/fleet/goal-check` returns 0 for a phase whose only open beads are `rebless` / `proposed-adr` / `frontier`
 - [ ] `docs/templates/story.md`, `docs/stories/G1-exit-via-mouse.md`, and `tools/gen-stories` exist
-- [ ] Cross-platform golden policy decided (open decision 11) **before the first golden is blessed**
+- [ ] Cross-platform golden policy (decision 11: per-platform + quantised floats) implemented **before the first golden is blessed**
 
 ## Seams
 
 | Seam | Produces (exemplar path) | Owner |
 |---|---|---|
-| Golden harness container + canonical state dump | `tests/golden/scenario_001_launch_dock/` | Jon + frontier |
-| GUI tier helper (`row → screen point`) and G1 | `tests/gui/test_g1_exit_via_mouse.py` | Jon + frontier |
-| Story template and generator | `docs/templates/story.md`, `tools/gen-stories` | Jon |
-| Tier A / B / C scripts | `tools/tier-a.sh`, `tools/tier-b.sh`, `tools/tier-c.sh` | Jon + frontier |
-| Expansion-scan classifier prompt + audit protocol | `tools/oxp-js-scan/` | Jon + frontier |
+| Golden harness container + canonical state dump | `tests/golden/scenario_001_launch_dock/` | Frontier agent |
+| GUI tier helper (`row → screen point`) and G1 | `tests/gui/test_g1_exit_via_mouse.py` | Frontier agent |
+| Story template and generator (emits beads) | `docs/templates/story.md`, `tools/gen-stories` | Frontier agent |
+| Fleet scripts: `accept` (the only path to `bd close`), `goal-check`, `worktree`, `run-story` | `tools/fleet/` | Frontier agent |
+| Merge queue, batch-and-bisect | `tools/merge-queue` | Frontier agent |
+| Tier A / B / C scripts | `tools/tier-a.sh`, `tools/tier-b.sh`, `tools/tier-c.sh` | Frontier agent |
+| Expansion-scan classifier prompt + audit protocol | `tools/oxp-js-scan/` | Frontier agent |
 
 ## Sweeps
 
@@ -160,16 +164,21 @@ Getting Tier A under 30 seconds is the single highest-leverage engineering task 
 
 ### 0.10 Merge queue with batch-and-bisect
 
-Provided by Gas City's Refinery ([ADR-0006](../decisions/0006-gas-city-and-hermes.md)); wired to CI
-per [I2](../infra/2-forge-and-runners.md) and [I3](../infra/3-fleet.md). Verified by the "8 PRs,
-one bad" exit-gate item.
+`tools/merge-queue`, an in-repo script ([ADR-0014](../decisions/0014-claude-code-opencode-beads.md)):
+collect Tier-B-green branches, merge into a candidate, run Tier C through the CI gate
+([I2](../infra/2-forge-and-runners.md)), fast-forward `main` on green, bisect on red and requeue the
+culprit's bead. Companion seam: the `tools/fleet/` scripts, of which `accept` is the one that
+matters: it runs a story's acceptance in a fresh clone and alone may `bd close`, whether the driver
+is `run-story` (Claude Code) or Hermes `/goal` (local tier) ([I3](../infra/3-fleet.md),
+[ADR-0015](../decisions/0015-hermes-goal-loop.md)). Verified by the "8 PRs, one bad" and
+"`accept` closes the bead" exit-gate items.
 
 ### 0.11 CI guardrails (enforce the prohibitions mechanically)
 
 The story prohibitions ([templates/story.md](../templates/story.md)) are stated in every story; they
 are also enforced, consistent with "never verify with a model":
 
-- A PR that touches `goldens/` fails unless authored by Jon (CODEOWNERS or an explicit check).
+- A PR that touches `goldens/` fails unless it carries a re-bless approval from Jon's weekly queue (CODEOWNERS or an explicit check).
 - A grep for new `-Wno-`, `#pragma clang diagnostic`, `#pragma GCC diagnostic` fails the PR.
 - A deleted or emptied test file is flagged and fails the PR.
 - Symbol deny-list for `libgnustep-base` and `JS_*` (from the per-PR definition of done).
@@ -178,7 +187,8 @@ are also enforced, consistent with "never verify with a model":
 
 Commit [templates/story.md](../templates/story.md) and the hand-written
 [G1 story](../stories/G1-exit-via-mouse.md) first, then write `tools/gen-stories` against them. The
-generator is itself fleet-unsuitable: it encodes the template, which is a design decision.
+generator is itself fleet-unsuitable: it encodes the template, which is a design decision. A
+frontier agent writes it in an interactive session.
 
 ## Commands
 
@@ -194,8 +204,9 @@ Not yet available. Produced by 0.9.
   glibc) already exercise the policy in Tier C. Also pin `-ffp-contract=off` and the optimisation level for golden builds. **Decide
   before the first golden is blessed**, because it determines how goldens are stored. Affects the
   Phase 5 gate directly.
-- **8 — macOS CI runner** (self-hosted on the Mac, or a local pre-release gate). Decide before Phase 5.
-- **ADR-0008 — forge.** Before any runner is attached.
+- **8 — macOS CI runner:** decided, self-hosted on the Mac (ADR-0013).
+- **ADR-0008 — forge:** decided, GitHub origin + Forgejo mirror.
+- **11:** decided, per-platform goldens and quantised floats (ADR-0013). Implement in 0.4.
 
 ## Status log
 

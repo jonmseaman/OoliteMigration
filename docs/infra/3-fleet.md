@@ -1,62 +1,86 @@
-# I3 — Fleet: Gas City, the Gastown pack, Hermes reporter, model routing
+# I3 — Fleet: Claude Code, Hermes `/goal`, beads, and the fleet scripts
 
 **Status:** not started · **Gates:** the first sweep (Phase 1 or 2). **Do not bring up before Phase 0's harness exists.**
-**Decisions:** [ADR-0006](../decisions/0006-gas-city-and-hermes.md), [ADR-0005](../decisions/0005-defer-dgx-spark.md)
+**Decisions:** [ADR-0014](../decisions/0014-claude-code-opencode-beads.md) and [ADR-0015](../decisions/0015-hermes-goal-loop.md) (runtime), [ADR-0005](../decisions/0005-defer-dgx-spark.md) (routing), [ADR-0013](../decisions/0013-decide-up-front-minimise-human.md) (no human in the loop)
 
 ## Goal
 
-The authority model in [execution-model §5](../execution-model.md) expressed exactly as Gas City
-configuration, with a Reporter running first, and model routing as configuration.
+The authority model in [execution-model §5](../execution-model.md) implemented as: beads for the
+queue; `tools/fleet/accept` as the single path to `bd close`; Claude Code (via `run-story`) for
+frontier work; Hermes Agent in `/goal` mode for local-model sweeps; `tools/merge-queue` for the
+gate; and a scheduled read-only Reporter running first.
 
 ## Order of bring-up
 
-1. **Reporter first** (Hermes Agent, or a scheduled Claude Code task). Read-only, so safe; a
-   scheduled job, so cheap; and it forces the metrics in [I4](4-metrics.md) to be defined before
-   any code depends on them. Buildable this week.
-2. **Gas City in WSL2 on the Windows machine** ([ADR-0010](../decisions/0010-single-windows-machine.md)), from the **Gastown pack**. Pin the Gas City version and the pack
-   commit. Dependencies: tmux, git, jq, pgrep, lsof; Go 1.26.4+ to build from source.
-3. **Roles as pack configuration.** Map the authority table onto prompts, formulas, orders and
-   `city.toml`. Explicit agent identity is required (do not port prompts that assume the directory
-   path implies who the agent is).
-4. **Refinery gate** = the I2 gate script.
-5. **The "done" wrapper.** Whatever transitions a bead to done runs the story's acceptance commands
-   itself and transitions only on exit 0. The agent never closes its own unit. This is the single
-   most important thing to get right when wiring the harness.
-6. **Model routing.** Task class → endpoint URL in config. Gas City routes at CLI granularity
-   (`role_agents` → CLI preset), so each preset is configured against its endpoint. **Verify custom
-   OpenAI-compatible endpoint support before relying on it.** Tier A never depends on any endpoint.
+1. **Reporter first.** A scheduled Claude Code task (or cron + `claude -p`) that reads `bd list`,
+   CI status, and the golden results and posts the [I4](4-metrics.md) numbers. Read-only, so safe;
+   cheap; and it forces the metrics to be defined before any code depends on them.
+2. **beads conventions.** Bead body = the story ([template](../templates/story.md)); `bd dep` for
+   ordering; bead notes are the only carry-over channel. Labels are load-bearing because they
+   define the Hermes goal: `phase:<N>` on everything; `fleet` on generated sweep stories;
+   `frontier` on seams; `rebless` for Jon's weekly queue; `proposed-adr` for defaults the fleet
+   took. `goal-check <N>` passes when no open bead has both `phase:<N>` and `fleet`.
+3. **`tools/fleet/accept <bead>`** (Phase 0 seam, the load-bearing script). Fresh clone of the
+   bead's branch → run the story's acceptance commands → `bd close` **only** on exit 0, else
+   append the output to the bead notes and release the claim. Hard timeout. A `bd` hook rejects
+   any `bd close` not issued by `accept`. Both drivers below end every story here.
+4. **`tools/fleet/run-story`** (frontier driver). `bd ready` filtered to `frontier`-tier beads →
+   claim → `tools/fleet/worktree` → `claude -p` with the bead body as the prompt and `CLAUDE.md`
+   in scope → `accept` → remove the worktree. Memoryless per story. Parallelism flag = the
+   concurrency cap from [I0](0-machines.md).
+5. **Hermes Agent `/goal`** (local-tier driver). One long-running Hermes session per phase,
+   configured against the on-prem endpoint, with the goal "`tools/fleet/goal-check <N>` exits 0".
+   It picks `fleet` beads from `bd ready`, claims, works in a `tools/fleet/worktree` checkout,
+   and calls `accept`. Its tool config denies `git push`, `bd close`, and writes under `goldens/`.
+   Restart the session when the sweep's first-try Tier-B pass rate trends down
+   ([ADR-0015](../decisions/0015-hermes-goal-loop.md)).
+6. **`tools/merge-queue`** (Phase 0 seam). Collect branches whose Tier B is green, merge into a
+   candidate branch, trigger Tier C through the [I2](2-forge-and-runners.md) gate, fast-forward
+   `main` on green; on red, bisect the batch, merge the good half, and put the culprit's bead back
+   in `bd ready` with the failure in its notes. No human approval (ADR-0013).
+7. **Model routing.** Hermes's provider config holds the on-prem endpoint URL(s); Claude Code uses
+   its own provider. Switching an endpoint is a config edit. Tier A never depends on any endpoint.
+8. **Adjudication and seams** are interactive Claude Code sessions, not loop runs.
 
-## Role → pack mapping
+## Role → mechanism
 
-| Authority-table role | Gastown pack role | Notes |
+| Authority-table role | Mechanism | Notes |
 |---|---|---|
-| Converter | Polecat | own worktree branch; never pushes to main |
-| Reviewer | (advisory polecat or hook) | comments only; not a gate |
-| Harness steward | Witness (per-rig) / Deacon / Dogs | may fix harness code; **may never re-bless a golden**; > 1% Tier-B flake = stop the line |
-| Merge gate | Refinery | Bors-style batch-and-bisect |
-| Orchestrator | Mayor | |
-| Reporter | Hermes / scheduled task | outside Gas City; read-only |
-| Adjudicator | frontier, interactive | proposes re-bless with justification; escalates always |
-| Jon | Crew | merges to main; re-blesses goldens; open decisions; freeze policy |
+| Converter (frontier tier) | `run-story` + `claude -p` | own worktree; never pushes to `main`; ends in `accept` |
+| Converter (local tier) | Hermes `/goal` against on-prem models | own worktree per bead; never pushes to `main`; ends in `accept` |
+| Reviewer | a `claude -p` pass over the diff, posting comments to the PR | advisory; not a gate |
+| Harness steward | scheduled `claude -p` with write access to `tools/` and `tests/` only | may fix harness code; **may never touch `goldens/`**; > 1% Tier-B flake = stop the line |
+| Merge gate | `tools/merge-queue` | automatic; batch-and-bisect |
+| Reporter | scheduled Claude Code task, read-only | outside the loop |
+| Upstream tracker | monthly `claude -p` rebase task | files `docs/UPSTREAM_DELTA.md` entries |
+| Adjudicator | interactive Claude Code | writes a re-bless proposal bead tagged `rebless` |
+| Jon | — | works the `rebless` queue weekly; credentials; overrides by ADR; monthly GUI-tier judgement |
 
-## Guardrails that must exist in the pack config
+## Guardrails that must exist in the scripts
 
-- Stories carry the [template prohibitions](../templates/story.md) verbatim.
-- The carry-over channel (bead body / mail) is the *only* state between iterations; story text
-  embeds absolute paths and the exemplar path.
-- No role that reads Tier-3 corpus content has repo write access or secrets.
+- The bead body carries the [template prohibitions](../templates/story.md) verbatim; the wrapper
+  prepends absolute paths and the exemplar path.
+- Agents run with a tool allow-list that excludes `bd close`, `git push`, and any path under
+  `goldens/`; `accept` and `merge-queue` hold those. A `bd` hook enforces the `bd close` half
+  regardless of which agent runtime is calling.
+- No agent that reads Tier-3 corpus content gets repo write access or an environment with secrets;
+  the scan runs in a container with neither.
 - Concurrency cap sized to the WSL2 memory ceiling, net of golden containers ([I0](0-machines.md)).
 
 ## Verification
 
 - [ ] Reporter delivers a daily message with every I4 metric populated (zeros are fine)
-- [ ] A polecat given the G2 story completes it in its own worktree and files a merge request; it does not close the bead
-- [ ] The wrapper closes the bead only after `tools/tier-a.sh` and the story's acceptance commands exit 0
-- [ ] A polecat that edits `goldens/` is rejected at Tier B (0.11 guardrail), not by a reviewer
-- [ ] Refinery bisects an 8-PR batch with one bad PR (Phase 0 exit item)
+- [ ] `run-story` given the G2 bead completes it in its own worktree and opens a PR; the bead is still open until `accept` passes
+- [ ] `accept` closes the bead only after `tools/tier-a.sh` and the story's acceptance commands exit 0 in a fresh clone; an agent that tries `bd close` is refused by the hook
+- [ ] A Hermes `/goal` session given a phase with three `fleet` beads and one `rebless` bead closes the three through `accept` and stops with the goal satisfied, never touching the `rebless` bead
+- [ ] An agent that edits `goldens/` is rejected at Tier B (Phase 0 guardrail), not by a reviewer
+- [ ] `tools/merge-queue` bisects an 8-PR batch with one bad PR and requeues the culprit's bead (Phase 0 exit item)
 - [ ] Switching a role's endpoint URL requires only a config change
+- [ ] A full week passes with the fleet never blocked on Jon outside the `rebless` queue
 
 ## Status log
 
-- 2026-09-06 — Created from AI_EXECUTION_PLAN §11, §12, §13.6, §13.7.
+- 2026-09-06 — Created around Gas City (ADR-0006).
 - 2026-09-10 — Host is WSL2 on the single Windows machine (ADR-0010).
+- 2026-09-10 — Rewritten for Claude Code / beads; Gas City dropped (ADR-0014).
+- 2026-09-10 — Hermes Agent `/goal` is the local-tier driver; OpenCode dropped; `accept` split out as the single path to `bd close` (ADR-0015).

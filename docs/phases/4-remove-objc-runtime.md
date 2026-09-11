@@ -10,14 +10,14 @@ GCC to CI. Nearly mechanical if Phase 3 was disciplined.
 ## Entry gate
 
 - [ ] Phase 3 exit gate green (zero `@implementation`)
-- [ ] Renderer target for Phase 6 decided (open decision 5) — **do not defer past this phase**, and pull the renderer work forward if Apple has removed legacy GL by now (Phase 5 needs it)
+- [ ] Renderer target is GL 3.3 Core (decided, ADR-0013); pull the Phase 6 renderer work forward if Apple has removed legacy GL by now (Phase 5 needs it)
 
 ## Exit gate
 
 - [ ] No `.mm` files; no `-fobjc-*` in any build line; `libobjc2` gone from all platforms
 - [ ] GCC build green on Linux alongside Clang
 - [ ] Goldens reproduce on Linux (WSL2) and Windows; ASan/UBSan clean
-- [ ] Cross-platform golden policy (open decision 11) implemented, since Phase 5 is the first non-x86-64 target
+- [ ] Cross-platform golden policy (decision 11) implemented, since Phase 5 is the first non-x86-64 target
 
 ## Notes
 

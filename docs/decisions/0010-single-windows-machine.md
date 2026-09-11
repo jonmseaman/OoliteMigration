@@ -10,8 +10,8 @@ open whether that host was a VM or bare metal. With Apple Silicon resequenced to
 Jon's decision (2026-09-10): for simplicity, everything up to the Apple Silicon phase runs on a
 single Windows 64-bit machine.
 
-Two facts constrain how that is laid out. Gas City requires a Unix runtime (tmux, pgrep, lsof), so
-it cannot run natively on Windows. And upstream's build tooling, `build_gnustep.sh`,
+Two facts constrain how that is laid out. The agent's inner loop (Tier A: single-TU compile,
+ccache, worktrees) has to be seconds and offline, and it is Linux-shaped. And upstream's build tooling, `build_gnustep.sh`,
 `launch_snapshot.py` with Xvfb, and the sanitizer story (UBSan is incomplete on Windows toolchains)
 are all Linux-shaped.
 
@@ -23,13 +23,13 @@ One physical machine, two environments:
 Windows x86-64 machine
 ├─ native Windows ──── MSYS2 UCRT64 build; Windows goldens; Windows self-hosted runner;
 │                      PyAutoGUI tier (needs the interactive desktop session)
-└─ WSL2 (Ubuntu) ───── Gas City + agents + worktrees; Linux build; golden harness (Xvfb + llvmpipe);
+└─ WSL2 (Ubuntu) ───── agents (Claude Code / Hermes) + worktrees + bd; Linux build; golden harness (Xvfb + llvmpipe);
                        ASan/UBSan; Linux self-hosted runner, jobs in Docker containers
 Inference endpoint ─── OpenAI-compatible URL behind one config value (ADR-0005), rented or LAN
 Apple Silicon Mac ──── joins at Phase 5 only
 ```
 
-Keep the Linux leg. It costs nothing extra once WSL2 exists for Gas City, it keeps parity with
+Keep the Linux leg. It is where the agents' fast inner loop lives anyway, it keeps parity with
 upstream's primary CI platform, and it is where the sanitizers are trustworthy. The alternative,
 Windows-only verification, is recorded as rejected for now; revisit if WSL2 overhead becomes the
 bottleneck.
@@ -58,3 +58,8 @@ bottleneck.
 `AI_EXECUTION_PLAN.md` §12 originally proposed Windows + WSL2; §14 moved to Ubuntu; ADR-0007
 recorded that; this ADR returns to a single Windows machine, now with the Linux leg explicitly
 inside WSL2 and the Mac deferred to Phase 5.
+
+> **Amended 2026-09-10 by [ADR-0014](0014-claude-code-opencode-beads.md).** The original text
+> justified WSL2 by Gas City's need for a Unix runtime. Gas City is gone; the layout is unchanged
+> because the reason that survives is the agents' Tier A inner loop and worktrees living next to the
+> Linux build and ccache.
