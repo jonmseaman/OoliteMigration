@@ -18,6 +18,7 @@ Applied with `hermes config set`:
 | `delegation.worktree_isolation` | `false` | the skill manages worktrees itself (`.worktrees/<bead>`, branch `bead/<bead>`); Hermes flagged the key as unrecognised, which is fine since false is the default |
 | `delegation.subagent_auto_approve` | `true` | unattended loop; children must not block on approval prompts. **Security trade-off, deliberate.** |
 | (environment) | `ANTHROPIC_API_KEY` or a logged-in `claude` CLI | `reevaluate.sh` shells out to Claude Code headless; without it the ladder falls back to escalation |
+| (environment) | `BEADS_FRONTIER_MODEL` | defaults to `claude-opus-5`: every frontier call from the loop is Claude Opus 5 (Jon, 2026-09-11) |
 
 Plus `hermes skills trust <repo path>` so the repo-local skill loads.
 

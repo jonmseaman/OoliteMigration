@@ -151,6 +151,12 @@ running its own full suite.
 
 ## 4. Model tiering: what runs where
 
+The frontier model is **Claude Opus 5** (`claude --model claude-opus-5`; Jon, 2026-09-11), in
+interactive sessions and in every headless frontier call (`run-story`, `reevaluate.sh`, the Reporter).
+The one exception is the **per-phase review** (`<N>.review` beads), delegated to **Claude Fable 5.1**:
+it checks that every item of the phase is really done and generates whatever work is still missing,
+and the phase's exit gate waits on it.
+
 | Work | Volume | Model tier | Why |
 |---|---|---|---|
 | Phase-0 harness design; `oofnd`, `JSEngine` façade, `oo::Ref` design | ~50 decisions | **Frontier agent, interactive session** | Determines whether the project works. Jon is informed via the Reporter, not consulted ([ADR-0013](decisions/0013-decide-up-front-minimise-human.md)). |
@@ -193,6 +199,7 @@ does.
 | **Harness steward** | standing, weekly | may fix harness and tier code | **may never re-bless a golden**; reports flake rate and drift |
 | **Upstream tracker** | standing, monthly | performs the rebase, files `docs/UPSTREAM_DELTA.md` entries | any conflict inside a frozen module (architecture §6.3) |
 | **Adjudicator** (frontier) | on-demand | proposes a re-bless *with written justification* | **every re-bless, always** |
+| **Phase reviewer** (Claude Fable 5.1) | once per phase, before its exit gate | verifies every phase item is done, files missing work as new beads, may reopen itself behind them | nothing it cannot express as a bead; it never closes beads itself |
 | **Jon** | — | **re-blesses goldens** (weekly queue) · accounts, credentials, hardware, TCC grants · overrides a default decision by ADR · monthly judgement on the GUI tier's meaning ([ADR-0013](decisions/0013-decide-up-front-minimise-human.md)) | — |
 | **Merge queue** (`tools/merge-queue`) | standing | **merges to `main`** automatically when Tier C is green on the batch | a batch that fails after bisection with no culprit found |
 

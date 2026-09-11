@@ -24,5 +24,6 @@ changed* from the chain.
 | [0015](0015-hermes-goal-loop.md) | Hermes Agent `/goal` drives local-model sweeps; `tools/fleet/accept` is the only path to `bd close` | Accepted |
 | [0016](0016-no-forge-local-verification.md) | No CI/CD forge for now; Tier B/C and the merge-queue gate run locally | Accepted; defers 0008 |
 | [0017](0017-native-windows-subtree.md) | Native Windows only (no WSL2); `upstream/oolite` is a subtree of the fork; Linux joins at Phase 5; merge queue pushes after each green batch | Accepted; amends 0010, 0014, 0016 |
+| [0018](0018-component-test-tier.md) | A component test tier: Gherkin scenarios over the debug console in Python (pytest-bdd, not cucumber-cpp); `OO_RANDOM_SEED` as its one enabler | Proposed — default in effect |
 
 Template: Status · Date · Context · Decision · Consequences · History.

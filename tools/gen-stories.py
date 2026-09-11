@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "upstream/oolite/src"
 PROHIBITIONS = """## Prohibitions (verbatim in every story)
 - Do not modify anything under `goldens/`.
-- Do not modify or delete tests. If the test is wrong, stop and report.
+- Do not modify or delete tests. If the test is wrong, stop and report. **Adding** a test is not prohibited and is expected where this unit changes observable behaviour: add a scenario under `upstream/oolite/tests/component/features/` using steps that already exist (`tests/component/README.md`). Needing a *new step* fails sizing check 5: stop and file a bead (ADR-0018).
 - Do not add `-Wno-*`, `#pragma` diagnostic suppressions, or unused-attributes to silence a warning.
 - Do not run `bd close`; the orchestrator's accept step does that after review.
 - Do not read expansion (OXP/OXZ) content. If the task appears to need it, stop and report.
@@ -57,6 +57,7 @@ RENAMED = {
     "tools/build-linux.sh: clean-clone Linux build in WSL2 matching upstream's workflow": None,   # ADR-0017: Linux joins at Phase 5
     "Exercise the cross-platform golden policy Linux vs Windows before any arm64 exists": None,  # moved to Phase 5
     "tools/merge-queue: batch Tier-B-green branches, run tier-c locally, fast-forward, bisect on red": "tools/merge-queue: batch Tier-B-green branches, run tier-c locally, fast-forward, bisect on red, push",
+    "tools/tier-b.sh: one-platform build + module tests + 3-5 fast goldens + Tier-1 subset, under 10 min": "tools/tier-b.sh: build + module tests + 3-5 fast goldens + fast component subset + Tier-1 subset, under 10 min",
 }
 
 def refresh():
@@ -74,7 +75,7 @@ def refresh():
         issues[new] = issues.pop(old)
     wanted = {}
     for key, n, title, desc, acc, dk, pri in SEAMS:
-        wanted[title] = (body(desc or title, [], "n/a (seam)", f"seam {key}", n, prose=acc), None)
+        wanted[title] = (seam_body(key, n, title, desc, acc), None)
     for skey, n, gen in SWEEPS:
         items, presplit = (sweep_convert() if skey == "convert" else (gen(), []))
         for title, desc, acc, dk, exemplar, pri in items: wanted[title] = (body(desc, acc, exemplar, skey, n), exemplar)
@@ -137,14 +138,16 @@ SEAMS = [
  # ---- Phase 0
  ("0.1a", 0, "Instrument NSDictionary/NSSet enumeration order shuffle (debug build)", "Add a debug-only shuffle of GNUstep NSDictionary/NSSet enumeration order behind an env var so order-dependent gameplay paths can be found. No behaviour change when the env var is unset.", "Debug build with OO_SHUFFLE_ENUMERATION=1 launches and reaches the main menu; without it, byte-identical behaviour to before.", [], 1),
  ("0.1b", 0, "Find and fix iteration-order-dependent gameplay paths; upstreamable", "Run the smoke test and the first scenarios under the shuffle; sort explicitly in Objective-C at every site where the outcome changes. Prime suspects: populator scripts, role selection, ship registry, equipment ordering.", "Ten consecutive shuffled runs of the smoke test produce identical Latest.log gameplay lines; each fix is a separate commit suitable for an upstream PR.", ["0.1a"], 1),
- ("0.2", 0, "tools/setup-windows.sh: MSYS2 UCRT64 provisioned once (deps, Mesa opengl32.dll, ccache, python)", "Script the one-time provisioning that upstream's workflow repeats per run: ShellScripts/Windows/install_deps.sh clang, mingw-w64-ucrt-x86_64-mesa (the llvmpipe opengl32.dll the goldens use), ccache, python with pytest/pyautogui, jq. Idempotent. See docs/infra/1-base-images.md.", "Run twice on the Windows machine: the second run installs nothing; ./mk.sh build test succeeds afterwards.", [], 1),
+ ("0.13a", 0, "OO_RANDOM_SEED: honour an env var seed in GameController (determinism fix, upstreamable)", "src/Core/GameController.m:100 seeds RANROT from the wall clock. When OO_RANDOM_SEED is set, seed from it; otherwise unchanged. ~3 lines. Prerequisite of the component tier (0.13b) and of the goldens (0.4): neither can be deterministic without it (ADR-0018 §3).", "Two launches with OO_RANDOM_SEED=20260910 produce identical randf() sequences (log the first 5 draws under OOLog 'debug.random' in a debug build); without the variable, behaviour is unchanged.", [], 1),
+ ("0.13b", 0, "Component tier seam: tests/component console client, launch fixture, step library, and S1", "Per docs/stories/S1-police-kills-pirate.md and docs/phases/0-component-tier.md: pytest + pytest-bdd under upstream/oolite/tests/component/ (console.py shared with the golden harness later, conftest.py with seed injection and hard timeout, steps/world_steps.py, features/s1_police_kills_pirate.feature, requirements.txt, README.md step catalogue). Headless, one native game process, parameterised port, OO_RANDOM_SEED set. No new native interfaces.", ["python3 -m pytest upstream/oolite/tests/component/ -x -q", "for i in 1 2 3 4 5; do python3 -m pytest upstream/oolite/tests/component/ -x -q || exit 1; done"], ["0.13a", "0.3b"], 1),
+ ("0.2", 0, "tools/setup-windows.sh: MSYS2 UCRT64 provisioned once (deps, Mesa opengl32.dll, ccache, python)", "Script the one-time provisioning that upstream's workflow repeats per run: ShellScripts/Windows/install_deps.sh clang, mingw-w64-ucrt-x86_64-mesa (the llvmpipe opengl32.dll the goldens use), ccache, python with pytest/pytest-bdd/pyautogui, jq. Idempotent. See docs/infra/1-base-images.md.", "Run twice on the Windows machine: the second run installs nothing; ./mk.sh build test succeeds afterwards.", [], 1),  # provisions pytest-bdd too
  ("0.3b", 0, "tools/build-windows.sh: native MSYS2 UCRT64 build from a clean clone", "Script the Windows build from a clean clone with MSYS2 provisioned by 0.2 (no setup-msys2 step); same flavours as upstream build-all.yaml; ccache on.", "tools/build-windows.sh exits 0 from a fresh clone on the Windows machine and produces the test binary.", ["0.2"], 1),
  ("0.4a", 0, "Parameterise tests/launch_snapshot.py: port, output dir, --load <save>", "Today PORT=8563 and HOST are hardcoded. Make port and artifact directory arguments/env so N instances run at once; add --load <file.oolite-save>, passed through as the game's -load argument (scenarios 013-017 load the checklist saves).", "Two instances run concurrently on different ports and both produce a screenshot; --load with a checklist save reaches the docked screen.", ["0.3b"], 1),
- ("0.4b", 0, "Golden harness runner: one scenario per native game process, Mesa llvmpipe, parameterised port", "tests/golden/run.sh <scenario>: launches one game process natively with MSYS2's Mesa opengl32.dll beside the binary (as upstream/oolite/tests/run_test_fn.sh does), drives it over the debug-console TCP channel on its own port, writes artifacts to a per-run directory. No containers (ADR-0017).", "N scenarios (N = the RAM budget in docs/infra/0-machines.md, at least 4) run concurrently on the machine with no port or output collision.", ["0.4a"], 1),
+ ("0.4b", 0, "Golden harness runner: one scenario per native game process, Mesa llvmpipe, parameterised port", "tests/golden/run.sh <scenario>: launches one game process natively with MSYS2's Mesa opengl32.dll beside the binary (as upstream/oolite/tests/run_test_fn.sh does), drives it over the debug-console TCP channel on its own port using the component tier's console client (tests/component/console.py, ADR-0018), writes artifacts to a per-run directory. No containers (ADR-0017).", "N scenarios (N = the RAM budget in docs/infra/0-machines.md, at least 4) run concurrently on the machine with no port or output collision.", ["0.4a", "0.13b"], 1),
  ("0.4c", 0, "Canonical state dump: sorted JSON of entities, positions, velocities, AI states, market, player", "A debug-console JS command that serialises the world after N ticks to canonical sorted JSON; float fields quantised per decision 11.", "Two runs of the same scenario on the same build produce byte-identical dumps.", ["0.4b"], 1),
  ("0.4d", 0, "Frame hashes with tolerance at fixed camera positions", "Perceptual hash of rendered frames at fixed camera positions; tolerance documented; llvmpipe pinned as the rasteriser.", "Same scenario, two runs: hashes within tolerance; a deliberately moved ship changes the hash beyond tolerance.", ["0.4b"], 2),
  ("0.4e", 0, "Golden storage policy: per-platform goldens + quantised floats; -ffp-contract=off; pinned -O", "Implement decision 11: goldens/<platform>/<scenario>/ layout (windows-x64 first; macos-arm64 and linux-x64 join at Phase 5), quantisation in the dump, golden build flags pinned.", "Windows goldens for scenario 001 stored under goldens/windows-x64/; a diff tool reports zero differences between two runs after quantisation.", ["0.4c"], 1),
- ("0.4f", 0, "Scenario 001 launch/dock: script, bless, 10-run stability", "The first golden scenario and the exemplar for all others: fixed seed, fixed system, fixed tick count, dump + frame hash, blessed under the policy.", "10 consecutive runs reproduce the golden byte-for-byte on Windows.", ["0.4e"], 1),
+ ("0.4f", 0, "Scenario 001 launch/dock: script, bless, 10-run stability", "The first golden scenario and the exemplar for all others: fixed seed (OO_RANDOM_SEED, 0.13a), fixed system, fixed tick count, dump + frame hash, blessed under the policy.", "10 consecutive runs reproduce the golden byte-for-byte on Windows.", ["0.4e", "0.13a"], 1),
  ("0.4g", 0, "Define scenarios 18-20 (beyond the seventeen named in the plan)", "Name the remaining scenarios so the list reaches 20 with broad coverage (equipment, station services, NPC AI states, HUD modes, etc.). Output: a list with one line each, added to docs/phases/0-safety-net.md.", "docs/phases/0-safety-net.md lists 20 scenarios with a one-line purpose each.", ["0.4f"], 2),
  ("0.5", 0, "JS API conformance snapshot: oxp-contract/js-api-1.92.json", "Via the debug console enumerate all 61 JS globals and every native class's properties, methods, arities and types; commit; add a check that regenerates and diffs.", "tools/js-api-snapshot.sh regenerates the file and `git diff --exit-code` passes on the current build.", ["0.4a"], 1),
  ("0.6a", 0, "OXP corpus: fetch and cache the catalog (818 unique URLs) with checksums", "Download every expansion from upstream/oolite-expansion-catalog into a local cache with a manifest of checksums; resumable.", "Manifest lists every URL with size and sha256; a second run downloads nothing.", [], 2),
@@ -154,12 +157,14 @@ SEAMS = [
  ("0.7b", 0, "Expansion-scan model pilot: classify ambiguous hits with a local model, hand-audit 50", "Sandboxed (no repo mount, no secrets): local model classifies the lint's ambiguous hits; a random 50 are hand-audited and the agreement rate recorded in docs/fleet/LEARNINGS.md.", "Report published with agreement rate; sandbox verified to have no repo write access.", ["0.7a"], 3),
  ("0.8a", 0, "GUI tier: row->screen-point helper, launch/kill fixture, and G1 exit-via-mouse", "The calibration seam: upstream/oolite/tests/gui/conftest.py and test_g1_exit_via_mouse.py per docs/stories/G1-exit-via-mouse.md. Runs against a real window on the desktop and takes the GUI-tier desktop lock (tools/gui-lock, created here) while it runs.", "python3 -m pytest upstream/oolite/tests/gui/test_g1_exit_via_mouse.py -x -q passes natively on Windows with the desktop unlocked.", ["0.3b"], 1),
  ("0.9a", 0, "tools/tier-a.sh <file>: single-TU compile + clang-tidy + deny-list, under 30 s, offline", "The agent inner loop. Compile one translation unit via meson/ninja target, run clang-tidy on it, grep the deny-list; measure on OOColor.m and OORoleSet.m.", "tools/tier-a.sh upstream/oolite/src/Core/OOColor.m completes in under 30 s with the network disabled.", ["0.3b"], 1),
- ("0.9b", 0, "tools/tier-b.sh: one-platform build + module tests + 3-5 fast goldens + Tier-1 subset, under 10 min", "Runs in a clean worktree; headless (no GUI tier); `--fast` variant for accept.sh.", "tools/tier-b.sh exits 0 on main in under 10 minutes on a warm cache.", ["0.9a", "0.4f", "0.6b"], 1),
- ("0.9c", 0, "tools/tier-c.sh: all goldens, ASan, full Tier 1, JS API snapshot, GUI tier under the desktop lock", "The merge gate, run locally (ADR-0016) in a clean worktree on Windows. The GUI tier runs here and nightly only, under tools/gui-lock, never per bead (ADR-0017).", "tools/tier-c.sh exits 0 on main; a deliberate use-after-free in a scratch branch is caught by ASan under MSYS2 clang, or the ADR-0017 sanitizer fallback is filed as a proposed ADR.", ["0.9b", "0.5", "0.8a"], 1),
+ ("0.9b", 0, "tools/tier-b.sh: build + module tests + 3-5 fast goldens + fast component subset + Tier-1 subset, under 10 min", "Runs in a clean worktree; headless (no GUI tier); includes the tagged fast subset of the component tier (pytest -m fast under tests/component, ADR-0018); `--fast` variant for accept.sh.", "tools/tier-b.sh exits 0 on main in under 10 minutes on a warm cache.", ["0.9a", "0.4f", "0.6b"], 1),
+ ("0.9c", 0, "tools/tier-c.sh: all goldens, ASan, full Tier 1, JS API snapshot, GUI tier under the desktop lock", "The merge gate, run locally (ADR-0016) in a clean worktree on Windows: full component suite (ADR-0018), all goldens, corpus, snapshot, ASan. The GUI tier runs here and nightly only, under tools/gui-lock, never per bead (ADR-0017).", "tools/tier-c.sh exits 0 on main; a deliberate use-after-free in a scratch branch is caught by ASan under MSYS2 clang, or the ADR-0017 sanitizer fallback is filed as a proposed ADR.", ["0.9b", "0.5", "0.8a"], 1),
  ("0.10", 0, "tools/merge-queue: batch Tier-B-green branches, run tier-c locally, fast-forward, bisect on red, push", "Batch-and-bisect over local branches; requeues the culprit's bead with the failure in its notes. accept.sh's base branch becomes an integration branch this promotes. After every green batch: `git push origin main` and `git subtree push --prefix=upstream/oolite fork migration` (ADR-0017); the weekly hand-push bead is closed when this lands.", "A batch of 8 branches with one bad one: the queue bisects to the culprit and merges the other 7; after a green batch origin/main and fork/migration match the local tree.", ["0.9c"], 2),
- ("0.11", 0, "Guardrail checks: goldens/ protection, warning-suppression grep, deleted-test detection, deny-list", "tools/guardrails.sh run by tier-b and tier-c: fails on any change under goldens/ without a rebless approval, on new -Wno-/#pragma diagnostic, on deleted/emptied test files, on reintroduced libgnustep-base/JS_* symbols.", "Each of the four violations, introduced in a scratch branch, fails tools/guardrails.sh with a specific message.", ["0.9b"], 1),
+ ("0.11", 0, "Guardrail checks: goldens/ protection, warning-suppression grep, deleted-test detection, deny-list", "tools/guardrails.sh run by tier-b and tier-c: fails on any change under goldens/ without a rebless approval, on new -Wno-/#pragma diagnostic, on deleted/emptied test files (including .feature files and the component step library, ADR-0018 §5), on reintroduced libgnustep-base/JS_* symbols.", "Each of the four violations, introduced in a scratch branch, fails tools/guardrails.sh with a specific message.", ["0.9b"], 1),
  ("0.12", 0, "Verify story generator output against the first real sweep (Phase 1 façade retarget)", "tools/gen-stories.py exists (v0). Once tier-a/tier-b exist, re-run with --apply and confirm the first generated bead is completable by a worker end to end through the beads-worker skill.", "One generated Phase 1 bead closed by accept.sh with no human edits to the bead text.", ["0.9b", "1.1"], 2),
- ("0.gate", 0, "Phase 0 exit gate: every item in docs/phases/0-safety-net.md checked", "Walk the exit-gate checklist; each unchecked item becomes a new bead. Close only when all are checked.", "All exit-gate boxes checked in docs/phases/0-safety-net.md with the commit that satisfied each.", ["0.1b","0.3b","0.4d","0.4g","0.6c","0.7b","0.10","0.11"], 1),
+ ("0.14", 0, "tools/fleet/run-story: frontier driver (claude -p --model claude-opus-5) over frontier beads", "bd ready filtered to frontier beads -> claim -> beads-worker worktree.sh -> claude -p --model claude-opus-5 with the bead body as the prompt and CLAUDE.md in scope, allow-list excluding bd close / git push / goldens -> accept.sh -> worktree cleanup. Memoryless per story; parallelism flag from docs/infra/0-machines.md. The frontier model is Claude Opus 5 by default (BEADS_FRONTIER_MODEL overrides); a bead whose metadata carries model=<id> runs on that model instead (the phase reviews use claude-fable-5-1).", "run-story given a scratch frontier bead with acceptance `test -f tools/fleet/.smoke` completes it in its own worktree and the bead is closed by accept.sh, not by the agent; `claude -p` was invoked with --model claude-opus-5 (logged).", [], 2),
+ ("0.15", 0, "Reporter: scheduled read-only Claude Code task posting the I4 metrics", "A scheduled task (claude -p --model claude-opus-5, read-only tools) that reads bd, the tier logs, git and the goldens and writes docs/fleet/REPORT-<date>.md with every docs/infra/4-metrics.md daily metric (zeros allowed), including days since origin/main and fork/migration matched.", "One report file exists with every daily metric populated; the task holds no write authority beyond docs/fleet/.", [], 3),
+ ("0.gate", 0, "Phase 0 exit gate: every item in docs/phases/0-safety-net.md checked", "Walk the exit-gate checklist; each unchecked item becomes a new bead. Close only when all are checked.", "All exit-gate boxes checked in docs/phases/0-safety-net.md with the commit that satisfied each.", ["0.1b","0.3b","0.4d","0.4g","0.6c","0.7b","0.10","0.11","0.13b","0.14","0.15"], 1),
  # ---- Phase 1
  ("1.1", 1, "Design ooscript/JSEngine.hpp façade against the JS_* call-site histogram", "Value, Context, Object, ClassDef, PropertySpec, FunctionSpec, rooted handles, exception plumbing; sized to what Oolite uses. Header + SpiderMonkey-backed implementation, no call sites moved yet.", "Header compiles; tools/tier-a.sh passes on the implementation file; a doc comment maps each of the top 20 JS_* functions to its façade call.", ["0.gate"], 1),
  ("1.1x", 1, "Retarget one binding file (OOJSVector.m) onto the façade as the exemplar", "The first retargeted file; every later retarget bead points here.", "! grep -nE '\\bJS_[A-Za-z]+' src/Core/Scripting/OOJSVector.m; tier-a passes; goldens unchanged (tier-b).", ["1.1"], 1),
@@ -242,6 +247,20 @@ def sweep_gui():
     return [(f"GUI test G{i}: {t}", f"Add upstream/oolite/tests/gui/test_g{i}_*.py the way test_g1_exit_via_mouse.py is written, per docs/phases/0-gui-tier.md. Runs against a real window on the desktop under the GUI-tier desktop lock.",
              [f"python3 -m pytest upstream/oolite/tests/gui/test_g{i}_*.py -x -q"], ["0.8a"], "upstream/oolite/tests/gui/test_g1_exit_via_mouse.py", 2) for i, t in g.items()]
 
+COMPONENT = {2: ("Pirate attacks; the target registers an attacker", "the damage path independently of the kill path"),
+             3: ("A hostile spawn drives a ship into ATTACK", "AI state-machine transitions via Ship.AIState, independent of whether combat resolves"),
+             4: ("A missile-armed ship kills by missile", "the second weapon path; missiles are simulated projectiles, lasers are hitscan"),
+             5: ("Escorts converge on their mother", "group and formation behaviour (OOShipGroup), which no other tier touches"),
+             6: ("A damaged ship flees and range increases", "the FLEE branch, the most commonly broken AI transition"),
+             7: ("8 neutral ships, 900 ticks, nobody dies, no ERROR in Latest.log", "the canary: accidental carnage, NaN blowups, scan-class confusion"),
+             8: ("Destroyed ships leave system.allShips", "entity lifetime: a leaked entity shows here long before ASan catches the use-after-free")}
+
+def sweep_component():
+    return [(f"Component scenario S{i}: {t}",
+             f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way s1_police_kills_pirate.feature is written (docs/stories/S1-police-kills-pirate.md, docs/phases/0-component-tier.md), using only steps that already exist in the step library (tests/component/README.md). Catches: {why}. Assert 'within N ticks' and counts, never exact positions. If the scenario needs a step that does not exist, stop and report blocked (new interface, ADR-0018 §5).",
+             [f"python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q", f"for i in 1 2 3; do python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q || exit 1; done"],
+             ["0.13b"], "upstream/oolite/tests/component/features/s1_police_kills_pirate.feature", 2) for i, (t, why) in COMPONENT.items()]
+
 def sweep_js_retarget():
     out = []
     for p in m_files():
@@ -319,14 +338,35 @@ def sweep_convert():
         files = f"- {rel} ({n} lines)" + (f"\n- {hrel} ({hn} lines)" if hrel else "")
         what = (f"Convert the free functions in {rel} from Objective-C++ to C++20: every message send becomes a member call on the converted classes, Foundation usage is already oofnd. No class here; keep the file as .mm until Phase 4." if freefn
                 else f"Convert the class in {rel} (and {hrel or 'its header'}) from Objective-C to conservative C++20 per the recipe in docs/phases/3-cpp-conversion.md: class shell, member functions, oo::Ref, dynamic_cast where isKindOfClass: genuinely needs it. Plain-C method bodies stay verbatim.")
+        what += " If the conversion touches observable ship, AI or weapon behaviour, add a component scenario under upstream/oolite/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one."
         out.append((f"Convert to C++20: {p.name}", f"{what}\n\n## Files\n{files}",
                     [f"! grep -nE '@implementation|@interface|@selector|@protocol' {rel}" + (f" {hrel}" if hrel else ""), f"tools/tier-a.sh {rel}", "tools/tier-b.sh --fast"], [seam], f"seam:{seam}", MODULE_ORDER[mod]))
     return out, presplit
 
 SWEEPS = [  # key, phase, label, generator
-    ("scenarios", 0, sweep_scenarios), ("gui", 0, sweep_gui), ("js-retarget", 1, sweep_js_retarget),
+    ("scenarios", 0, sweep_scenarios), ("gui", 0, sweep_gui), ("component", 0, sweep_component), ("js-retarget", 1, sweep_js_retarget),
     ("extractors", 2, sweep_extractors), ("foundation", 2, sweep_foundation), ("renames", 3, sweep_renames), ("convert", 3, None),
 ]
+
+REVIEW_MODEL = "claude-fable-5-1"
+
+def review_seam(n):
+    """The phase review (Jon, 2026-09-11): Claude Fable 5.1 verifies every item of phase n is really done
+    and files whatever work is missing, before the exit gate walks the checklist."""
+    name, doc = PHASES[n]
+    desc = (f"Delegated to Claude Fable 5.1 (bead metadata model={REVIEW_MODEL}; run-story passes it as --model). "
+            f"Procedure: (1) `bd list --label phase:{n} --all --json`: every bead other than this review and the gate is closed or escalated; work every escalated bead (they are frontier work) or file a replacement. "
+            f"(2) For a sample of at least 20 closed beads and every seam, check the merge commit on main and re-run its acceptance block; anything that no longer holds gets a new bead. "
+            f"(3) Walk {doc}: every exit-gate box has evidence in the tree, every work item landed; grep the tree for the phase's leftovers (the phase doc says what must be gone). "
+            f"(4) For each gap: `bd create --parent <phase {n} epic> --labels phase:{n},<fleet|frontier>,sweep:review-{n}` with a fenced ## Acceptance block, then `bd dep add <this review> <new bead>` so this review reopens behind it. "
+            f"(5) Append findings to docs/fleet/LEARNINGS.md and the phase doc's status log; re-run tools/gen-stories.py --dry-run and file a generator-bug bead if the generator should have emitted the missing work. "
+            f"Close only when nothing is left; the exit gate ({n}.gate) then walks the checklist. Never close beads yourself: accept.sh does.")
+    acc = [f"test \"$(bd list --label phase:{n} --status open,in_progress --json -n 0 | jq '[.[] | select((.labels | index(\"seam:{n}.review\")) or (.labels | index(\"seam:{n}.gate\")) | not)] | length')\" = 0",
+           f"grep -q 'review {n} ' docs/fleet/LEARNINGS.md"]
+    return (f"{n}.review", n, f"Phase {n} review (Claude Fable 5.1): every item verified done, missing work filed as beads", desc, acc, [], 1)
+
+SEAMS += [review_seam(n) for n in PHASES]
+REVIEW_META = {f"{n}.review": {"model": REVIEW_MODEL, "exemplar": "docs/execution-model.md"} for n in PHASES}
 
 # ---------------------------------------------------------------- main
 def body(desc, acceptance, exemplar, sweep, phase, prose=None):
@@ -338,6 +378,11 @@ def body(desc, acceptance, exemplar, sweep, phase, prose=None):
                f"# DONE WHEN: {prose or desc}\n"
                "exit 1  # no executable acceptance yet")
     return f"Generated by tools/gen-stories.py · sweep {sweep} · Phase {phase} · exemplar: {exemplar}\n\n## Task\n{desc}\n\n**Do it the way `{exemplar}` does it.**\n\n## Acceptance (run by accept.sh in a clean checkout)\n```\n{acc}\n```\n\n{PROHIBITIONS}\n\n{SIZING}"
+
+def seam_body(key, n, title, desc, acc):
+    """A seam's acceptance is prose (guarded) unless the table gives a list of commands."""
+    if isinstance(acc, list): return body(desc or title, acc, "n/a (seam)", f"seam {key}", n)
+    return body(desc or title, [], "n/a (seam)", f"seam {key}", n, prose=acc)
 
 SWEEP_BUILDERS = {"renames": lambda: sweep_renames(), "convert": lambda: sweep_convert()[0], "presplit": lambda: sweep_convert()[1],
                   "foundation": lambda: sweep_foundation(), "extractors": lambda: sweep_extractors(), "js-retarget": lambda: sweep_js_retarget()}
@@ -421,9 +466,13 @@ def main():
     for n, (name, doc) in PHASES.items():
         if a.phase is not None and n != a.phase: continue
         ids[f"epic{n}"] = create(f"Phase {n} — {name}", "epic", n, [f"phase:{n}", "epic"], f"See {doc}. Children are the seams (frontier) and the generated sweep beads (fleet).", 1)
+    gate_deps = {key: dk for key, n, title, desc, acc, dk, pri in SEAMS if key.endswith(".gate")}
     for key, n, title, desc, acc, dk, pri in SEAMS:
         if a.phase is not None and n != a.phase: continue
-        ids[key] = create(title, "task", n, [f"phase:{n}", "frontier", f"seam:{key}"], body(desc or title, [], "n/a (seam)", f"seam {key}", n, prose=acc), pri, parent=ids.get(f"epic{n}"))
+        labels = [f"phase:{n}", "frontier", f"seam:{key}"] + (["review"] if key.endswith(".review") else [])
+        ids[key] = create(title, "task", n, labels, seam_body(key, n, title, desc, acc), pri, parent=ids.get(f"epic{n}"), meta=REVIEW_META.get(key))
+        if key.endswith(".review"): dk = gate_deps.get(f"{n}.gate", [])   # the review checks everything the gate used to wait on
+        if key.endswith(".gate"): dk = list(dk) + [f"{n}.review"]           # and the gate waits on the review
         for d in dk: deps.append((key, d))
     counts = {}; file_to_extractor = {}
     for skey, n, gen in SWEEPS:
@@ -444,10 +493,10 @@ def main():
         if presplit: counts["presplit"] = len(presplit)
     for k in list(ids):
         if ":" in k and not k.startswith(("epic", "existing:")):
-            if k.startswith(("scenarios:", "gui:")): deps.append(("0.gate", k))
-            elif k.startswith("js-retarget:"): deps.append(("1.7", k))
-            elif k.startswith(("foundation:", "extractors:")): deps.append(("2.12", k))
-            elif k.startswith(("renames:", "convert:", "presplit:")): deps.append(("3.giant-Universe", k))
+            if k.startswith(("scenarios:", "gui:", "component:")): deps.append(("0.review", k))
+            elif k.startswith("js-retarget:"): deps.append(("1.7", k)); deps.append(("1.review", k))
+            elif k.startswith(("foundation:", "extractors:")): deps.append(("2.12", k)); deps.append(("2.review", k))
+            elif k.startswith(("renames:", "convert:", "presplit:")): deps.append(("3.giant-Universe", k)); deps.append(("3.review", k))
     late = []  # deps involving pre-existing beads: wired with bd dep add after the graph
     for blocked, blocker in deps:
         if blocked not in ids or blocker not in ids: continue

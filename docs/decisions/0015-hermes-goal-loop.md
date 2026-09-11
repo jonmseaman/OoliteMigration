@@ -52,3 +52,12 @@ close them, and a goal-seeking loop will find that path if it exists.
 ADR-0006 first proposed Hermes, for the Reporter. ADR-0014 dropped it in favour of OpenCode for the
 local tier. This ADR brings it back for the local tier's *driver* role, which is a better fit for
 `/goal` than the Reporter ever was.
+
+> **Amended 2026-09-11 (Jon).** The frontier model is **Claude Opus 5**: every `claude -p` in
+> `run-story`, `reevaluate.sh` and the Reporter passes `--model claude-opus-5`
+> (`BEADS_FRONTIER_MODEL` overrides). Interactive frontier sessions use the same model.
+>
+> **Amended 2026-09-11 (Jon), phase reviews.** Every phase has a `<N>.review` bead, delegated to
+> **Claude Fable 5.1** (bead metadata `model=claude-fable-5-1`), that verifies all of the phase's work
+> is done, re-runs sampled acceptance on `main`, and files any missing work as new beads
+> (`sweep:review-<N>`) it then waits on. The exit gate `<N>.gate` depends on the review.

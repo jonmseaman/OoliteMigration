@@ -30,7 +30,7 @@ gate; and a scheduled read-only Reporter running first.
    guardrails for the local tier; `tools/fleet/` will call the same scripts. How to start it:
    [5-hermes-goal.md](5-hermes-goal.md).
 5. **`tools/fleet/run-story`** (frontier driver). `bd ready` filtered to `frontier`-tier beads →
-   claim → `tools/fleet/worktree` → `claude -p` with the bead body as the prompt and `CLAUDE.md`
+   claim → `tools/fleet/worktree` → `claude -p --model claude-opus-5` with the bead body as the prompt and `CLAUDE.md`
    in scope → `accept` → remove the worktree. Memoryless per story. Parallelism flag = the
    concurrency cap from [I0](0-machines.md).
 6. **Hermes Agent `/goal`** (local-tier driver). One long-running Hermes session per phase,
@@ -45,7 +45,11 @@ gate; and a scheduled read-only Reporter running first.
    `main` on green; on red, bisect the batch, merge the good half, and put the culprit's bead back
    in `bd ready` with the failure in its notes. No human approval (ADR-0013).
 8. **Model routing.** Hermes's provider config holds the on-prem endpoint URL(s); Claude Code uses
-   its own provider. Switching an endpoint is a config edit. Tier A never depends on any endpoint.
+   its own provider, and **every frontier call is Claude Opus 5** (`claude -p --model claude-opus-5`
+   in `run-story`, the Reporter and `reevaluate.sh`; `BEADS_FRONTIER_MODEL` overrides). A bead whose
+   metadata carries `model=<id>` runs on that model: the per-phase review beads carry
+   `claude-fable-5-1`. Switching an endpoint or the model is a config edit. Tier A never depends on
+   any endpoint.
 9. **Adjudication and seams** are interactive Claude Code sessions, not loop runs.
 
 ## Role → mechanism
@@ -60,6 +64,7 @@ gate; and a scheduled read-only Reporter running first.
 | Reporter | scheduled Claude Code task, read-only | outside the loop |
 | Upstream tracker | monthly `claude -p` rebase task | files `docs/UPSTREAM_DELTA.md` entries |
 | Adjudicator | interactive Claude Code | writes a re-bless proposal bead tagged `rebless` |
+| **Phase reviewer** | `run-story` on the `<N>.review` bead, `--model claude-fable-5-1` (bead metadata) | verifies every phase item is really done, re-runs sampled acceptance on `main`, files the missing work as beads (`sweep:review-<N>`), and only then lets `<N>.gate` run |
 | Jon | — | works the `rebless` queue weekly; credentials; overrides by ADR; monthly GUI-tier judgement |
 
 ## Guardrails that must exist in the scripts

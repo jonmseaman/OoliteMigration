@@ -580,8 +580,8 @@ Per the project's convention, `origin` is the fork, `upstream` is the source of 
 |---|---|---|
 | `OoliteMigration` (this) | `https://github.com/jonmseaman/OoliteMigration.git` | — |
 | `upstream/oolite` (subtree) | remote `fork` = `https://github.com/jonmseaman/oolite.git`, branch `migration` | remote `upstream` = `https://github.com/OoliteProject/oolite.git` |
-| the subtrees `oolite-tests`, `oolite-expansion-catalog` | — | `https://github.com/OoliteProject/<repo>.git` |
-| the remaining submodules | `https://github.com/OoliteProject/<repo>.git` (read-only reference) | same |
+| the subtrees `oolite-tests`, `oolite-expansion-catalog` | remote `<repo>` = `https://github.com/jonmseaman/<repo>.git` | remote `<repo>-upstream` = `https://github.com/OoliteProject/<repo>.git` |
+| the remaining submodules | `https://github.com/jonmseaman/<repo>.git` in `.gitmodules` (read-only reference) | `https://github.com/OoliteProject/<repo>.git` |
 
 Remotes are local git config; add `fork` and `upstream` on a fresh clone
 ([ADR-0017](decisions/0017-native-windows-subtree.md)).

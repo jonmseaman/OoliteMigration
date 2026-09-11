@@ -8,6 +8,7 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **ADR** | Architecture decision record, `docs/decisions/NNNN-*.md`. Append-only. |
 | **Bead** | A `bd` (beads) issue. One bead = one L3 story; its body is the story, its notes are the carry-over channel. Closed only by the wrapper. |
 | **C1–C6** | The six expansion-compatibility contracts (plist dialect, JS API, JS language level, legacy scripting, resource resolution, string expansion). [architecture §5](docs/architecture.md). |
+| **Component tier** | The third test tier: Gherkin scenarios (pytest-bdd) driven over the debug-console channel, asserting named tolerant invariants — "no pirate remains after 900 ticks". Diagnoses what the goldens only detect. [phases/0-component-tier.md](docs/phases/0-component-tier.md), [ADR-0018](docs/decisions/0018-component-test-tier.md). |
 | **Converter** | Agent role that translates one unit in its own worktree branch. Never pushes to main. |
 | **Deny-list** | Tier B/C grep that fails on reintroduced `libgnustep-base` or `JS_*` symbols. |
 | **Exemplar** | An already-landed path a story points at: "do it the way `<path>` does it". Sizing check 7. |
@@ -27,6 +28,7 @@ Terms used across the roadmap, phase docs, and execution model. Agents: read thi
 | **Re-bless** | Replacing a golden after an intentional behaviour change. The one human-only gate; Jon works a weekly queue of Adjudicator proposals. |
 | **Reporter** | Read-only scheduled role that reports the I4 metrics. Zero write authority. |
 | **Reviewer** | Advisory agent role. Comments only; never a gate. |
+| **S1–Sn** | The component-tier Gherkin scenarios. S1 is the seam and exemplar; S2–S8 are its sweep. [phases/0-component-tier.md](docs/phases/0-component-tier.md). |
 | **Seam** | A design decision that must exist before a sweep can start. Fails sizing checks 5 and 7. Human + frontier work. |
 | **Seven-check sizing rule** | The test a story must pass to be fleet-ready. [execution-model §8.2](docs/execution-model.md). |
 | **Story** | An L3 work unit: ≤ 1,500 lines read, ≤ 400 written, ≤ 8 files, command-shaped acceptance, no new interfaces, 2–3 sentences, names an exemplar. |

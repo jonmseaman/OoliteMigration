@@ -32,7 +32,10 @@ Plus the standard Tier-B set when the wrapper promotes the branch.
 ## Prohibitions (verbatim in every story)
 
 - Do not modify anything under `goldens/`.
-- Do not modify or delete tests. If the test is wrong, stop and report.
+- Do not modify or delete tests. If the test is wrong, stop and report. **Adding** a test is not
+  prohibited and is expected where this unit changes observable behaviour: add a scenario to
+  `tests/component/features/` using steps that already exist. Needing a *new step* fails sizing
+  check 5 — stop and file a bead ([ADR-0018](../decisions/0018-component-test-tier.md)).
 - Do not add `-Wno-*`, `#pragma` diagnostic suppressions, or `[[maybe_unused]]` to silence a warning.
 - Do not mark this unit done. The wrapper does that after running the acceptance commands.
 - Do not read expansion (OXP/OXZ) content. If the task appears to need it, stop and report.

@@ -22,9 +22,9 @@ while keeping all published expansions (OXP/OXZ) working unmodified.
 | `upstream/oolite` | **Subtree** of the fork `jonmseaman/oolite`. **The migration target.** |
 | `upstream/oolite-tests` | Subtree: test OXPs and the release-checklist save files (golden scenarios 13–17) |
 | `upstream/oolite-expansion-catalog` | Subtree: expansion URL list — source for the OXP corpus |
-| `upstream/spidermonkey-ff4` | Submodule: the patched SpiderMonkey 1.8.5 Oolite embeds (reference only) |
-| `upstream/oolite-debug-console` | Submodule: TCP debug console (protocol reference) |
-| `upstream/oolite-mac-components` | Submodule: historical macOS Cocoa components (Phase 5 reference) |
+| `upstream/spidermonkey-ff4` | Submodule (fork `jonmseaman/spidermonkey-ff4`): the patched SpiderMonkey 1.8.5 Oolite embeds (reference only) |
+| `upstream/oolite-debug-console` | Submodule (fork): TCP debug console (protocol reference) |
+| `upstream/oolite-mac-components` | Submodule (fork): historical macOS Cocoa components (Phase 5 reference) |
 
 Subtrees are part of this repo's tree and every worktree; submodules are reference only and are
 absent from worktrees ([ADR-0017](docs/decisions/0017-native-windows-subtree.md)).
@@ -36,8 +36,11 @@ absent from worktrees ([ADR-0017](docs/decisions/0017-native-windows-subtree.md)
 | `origin` | `jonmseaman/OoliteMigration` | this repo; `main` is the base branch |
 | `fork` | `jonmseaman/oolite` | receives `upstream/oolite` by `git subtree push` (branch `migration`) |
 | `upstream` | `OoliteProject/oolite` | source of truth; `git subtree pull --squash` monthly |
+| `oolite-tests`, `oolite-expansion-catalog` | `jonmseaman/<repo>` | push targets for the other two subtrees |
+| `oolite-tests-upstream`, `oolite-expansion-catalog-upstream` | `OoliteProject/<repo>` | pull sources for them |
 
-Remotes are local config: add `fork` and `upstream` after cloning.
+Every Oolite repository is forked under `jonmseaman/` (2026-09-11); the remaining submodules point at
+those forks in `.gitmodules`. Remotes are local config: add them after cloning.
 
 ## Clone
 

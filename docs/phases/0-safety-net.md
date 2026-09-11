@@ -30,6 +30,7 @@ Original gate (MIGRATION_PLAN §5.7) plus the substrate checks (AI_EXECUTION_PLA
 - [ ] Tier 1 / 2 / 3 OXP corpus automated (per-commit / nightly / weekly)
 - [ ] Mozilla-only-JS scan report published; a hand-audited random 50 agrees with the model at an acceptable rate
 - [ ] PyAutoGUI G1–G4 green on Windows, run by Tier C and nightly under the desktop lock (never per bead)
+- [ ] Component tier S1–S8 green on Windows, five consecutive runs with no flake; the tagged subset in Tier B, the full suite in Tier C ([0-component-tier.md](0-component-tier.md))
 - [ ] `tools/tier-a.sh` measured **< 30 s** on `OOColor.m` and `OORoleSet.m`
 - [ ] N golden game processes (N from the [I0](../infra/0-machines.md) RAM budget, at least 4) run concurrently with no port or output collision
 - [ ] A deliberately perturbed market-price calculation is caught by Tier B, not by a reviewer
@@ -48,6 +49,7 @@ Original gate (MIGRATION_PLAN §5.7) plus the substrate checks (AI_EXECUTION_PLA
 |---|---|---|
 | Golden harness runner (native game processes) + canonical state dump | `tests/golden/scenarios/001/` | Frontier agent |
 | GUI tier helper (`row → screen point`) and G1 | `tests/gui/test_g1_exit_via_mouse.py` | Frontier agent |
+| Component tier: console client, launch fixture, step library, and S1 | `tests/component/` | Frontier agent |
 | Story template and generator (emits beads) | `docs/templates/story.md`, `tools/gen-stories` | Frontier agent |
 | Fleet scripts: `accept` (the only path to `bd close`), `goal-check`, `worktree`, `run-story` | `tools/fleet/` | Frontier agent |
 | Merge queue, batch-and-bisect | `tools/merge-queue` | Frontier agent |
@@ -62,6 +64,7 @@ Small, and only after their seam exists:
 |---|---|---|---|---:|---|
 | Golden scenarios 2–20 (13–17 load the checklist saves) | one scenario | the scenario list in 0.4 | scenario 001 | ~19 | after 0.4 seam |
 | GUI tests G2–G9 | one test | [0-gui-tier.md](0-gui-tier.md) | G1 | 8 | after G1 |
+| Component scenarios S2–S8 | one scenario | the catalogue in [0-component-tier.md](0-component-tier.md) | S1 | 7 | after 0.13 seam |
 | Tier-2 corpus curation | one expansion entry | catalog | — | ~150 | any time |
 
 ## Work items
@@ -103,6 +106,9 @@ Required properties:
   is already a deterministic LCG; audit every other entropy source (`OOAsyncWorkManager` completion
   order, texture-load ordering, `NSDictionary` iteration order — **that last one will bite**, see
   0.1) and make it reproducible.
+  **"Fixed RNG seed" needs a three-line change nobody had filed:** `GameController.m:100` seeds RANROT
+  from the wall clock, and there is no way to override it. Honour an `OO_RANDOM_SEED` env var when set
+  — upstreamable as a plain determinism fix, and a prerequisite of this item, not just of 0.13.
 - **State dumps.** After N ticks, serialise the world (entity list, positions, velocities,
   orientations, AI states, market prices, player state) to a canonical sorted JSON.
 - **Frame hashes.** Perceptual hash of rendered frames at fixed camera positions, with tolerance —
@@ -200,6 +206,28 @@ It is idempotent by title. First run: 681 beads, 1,436 dependency edges, no cycl
 work is the four Phase 0 seams with no prerequisites. Acceptance commands live in each bead body
 under `## Acceptance`; the beads-worker scripts read them from there. Remaining item in this
 seam: bead 0.12 verifies the first generated Phase 1 bead end to end once `tier-a`/`tier-b` exist.
+
+### 0.13 Component test tier (Gherkin over the debug console)
+
+Specified in [0-component-tier.md](0-component-tier.md), decided in
+[ADR-0018](../decisions/0018-component-test-tier.md). A third tier, sharing 0.4's transport
+(debug-console TCP, headless) but asserting **named, tolerant invariants** instead of byte-comparing a
+dump: "no pirate remains after 900 ticks", not "these 1,800 floats are unchanged".
+
+It exists because the goldens are a tripwire without a diagnosis. A golden says *something moved*; a
+component scenario says *weapons stopped dealing damage*. In Phase 3 that difference is most of the
+debugging cost, and it falls on Jon's adjudication time.
+
+It is also **cheaper than the goldens and lands sooner**: tolerant assertions need a fixed RNG seed and
+nothing else — no fixed delta-t, no quantised floats, no per-platform blessing, no human gate. So S1
+should land **before** the golden harness runner, which can then reuse its console client.
+
+- Seam: `tests/component/` — console client (shared with 0.4), launch fixture, step library, and S1.
+- Sweep: S2–S8 from the catalogue, scoring 7/7 against S1.
+- Tier B runs a tagged subset; Tier C runs the whole suite. Never Tier A — a launch alone costs ~5-10 s.
+- **Later beads may add scenarios** using existing steps (fleet work); a new *step* is a new interface
+  and needs its own bead. The 0.11 deleted-test guardrail must cover `.feature` files and the step
+  library.
 
 ## Commands
 
