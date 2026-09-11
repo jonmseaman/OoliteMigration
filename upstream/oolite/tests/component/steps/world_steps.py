@@ -19,6 +19,27 @@ TICK_SECONDS = 0.125
 # polling far faster than the AI thinks buys nothing.
 POLL_SECONDS = 0.5
 
+# A save has to be loaded to get a running simulation; this one ships with the game.
+SCENARIO_SAVE = "Resources/Scenarios/oolite-standard.oolite-save"
+
+# Launching out of the station takes a few seconds of real time on a software renderer.
+LAUNCH_TIMEOUT_SECONDS = 60
+
+# system.addShips gives every ship nullAI.plist - an inert ship that never thinks, never acquires
+# a target and never fires. Measured: two ships, 900 ticks, AIState GLOBAL throughout and full
+# energy on both. A scenario about combat therefore has to install the role's real AI, which is
+# what the system populator would have done. Names from ai_type in Resources/Config/shipdata.plist.
+ROLE_AI = {
+    "police": "oolite-policeAI.js",
+    "pirate": "oolite-pirateAI.js",
+    "trader": "oolite-traderAI.js",
+    "shuttle": "oolite-shuttleAI.js",
+}
+
+# Where an unpositioned spawn goes. Left to itself addShips scatters ships anywhere in the system
+# - measured 415 km apart - so nothing ever meets anything. Scenarios spawn around one locus.
+SPAWN_RADIUS_M = 5000
+
 
 def _js_string(value):
     """Quote a Python string for embedding in a JS source fragment."""
@@ -30,12 +51,57 @@ def _js_string(value):
 
 @given(parsers.parse("a universe seeded with {seed:d}"))
 def universe_seeded_with(world, seed):
-    """Launch the game with OO_RANDOM_SEED pinned.
+    """Launch the game with OO_RANDOM_SEED pinned, into an empty but running system.
 
-    This has to be the launch step, not a later one: GameController seeds RANROT once during
-    -init, so the seed cannot be changed after the process is up.
+    Two things have to be true at once, and neither is free.
+
+    The simulation must actually be running. Left at the main menu the game shows a demo scene:
+    there is a docked player and a station, but no AI runs, so spawned ships sit in AIState
+    GLOBAL with no target for ever. Measured: 90 s, zero movement, zero targets. A save has to be
+    loaded to get a live universe, and there is no JS route out of the intro screen - that is
+    keyboard work and belongs to the GUI tier.
+
+    The system must also be empty, and a loaded save is anything but: the standard scenario opens
+    with roughly 80 entities including 32 pirates and 5 police. "No ship with role pirate
+    remains" is unreachable in that, and would be measuring the ambient population rather than
+    the scenario. So the system is cleared down to the player before anything is spawned.
+
+    RANROT is seeded once in GameController -init, which is why the seed belongs to this step and
+    cannot be changed later.
     """
-    world.start(seed)
+    world.start(seed, load_save=SCENARIO_SAVE)
+
+    # A loaded save starts docked, and while docked the game is sitting on station screens rather
+    # than flying the system - NPC AI does not tick, which is why every ship reports AIState
+    # GLOBAL with no target no matter how long you wait. Launching puts the universe in flight.
+    world.console.perform("player.ship.launch();")
+    deadline = time.time() + LAUNCH_TIMEOUT_SECONDS
+    while time.time() < deadline:
+        time.sleep(1)
+        if world.console.evaluate("player.ship.docked").strip().lower() == "false":
+            break
+    else:
+        raise AssertionError(
+            f"player never launched within {LAUNCH_TIMEOUT_SECONDS}s; the system would not be "
+            "simulated and no scenario below it can mean anything"
+        )
+    # Let the launch settle so the player is clear of the station before the system is emptied.
+    time.sleep(2)
+
+    removed = world.console.evaluate_int(
+        "(function(){"
+        " var ships = system.allShips, n = 0;"
+        " for (var i = 0; i < ships.length; i++) {"
+        "   if (!ships[i].isPlayer) { ships[i].remove(); n++; }"
+        " }"
+        " return n; })()"
+    )
+    remaining = world.console.evaluate_int("system.allShips.length")
+    if remaining > 1:
+        raise AssertionError(
+            f"cleared {removed} ships but {remaining} remain; the scenario would be measuring "
+            "the ambient population rather than what it spawned"
+        )
 
 
 # --- When ----------------------------------------------------------------------------------
@@ -44,14 +110,7 @@ def universe_seeded_with(world, seed):
 @when(parsers.parse('I spawn {count:d} ship with role "{role}"'))
 @when(parsers.parse('I spawn {count:d} ships with role "{role}"'))
 def spawn_ships(world, count, role):
-    # addShips(role, count [, position, radius]) returns the Array of ships it added
-    # (OOJSSystem.m:943), so its length is the honest answer to "did I get what I asked for".
-    added = world.console.evaluate_int(
-        "system.addShips(%s, %d).length" % (_js_string(role), count)
-    )
-    if added != count:
-        raise AssertionError(f"asked for {count} {role!r}, addShips returned {added}")
-    world.spawned[role] = world.spawned.get(role, 0) + count
+    _spawn(world, count, role, "player.ship.position", SPAWN_RADIUS_M)
 
 
 @when(parsers.parse('I spawn {count:d} ship with role "{role}" within {km:d} km'))
@@ -63,18 +122,42 @@ def spawn_ships_near(world, count, role, km):
     spawned is the only thing in an otherwise empty system worth measuring from, so use it when
     there is one and fall back to the origin when there is not.
     """
+    _spawn(world, count, role, "__ooLocus", km * 1000)
+
+
+def _spawn(world, count, role, at_js, radius_m):
+    """Spawn ships around a locus and give them the AI their role would normally fly with.
+
+    addShips(role, count [, position, radius]) returns the Array of ships it added
+    (OOJSSystem.m:943), so its length is the honest answer to "did I get what I asked for".
+
+    The first spawn of a scenario also fixes __ooLocus, the point later "within N km" spawns
+    measure from. debugConsole is a writable JS global (OODebugMonitor.m:761), which is the
+    documented place to keep scratch state between commands.
+    """
+    ai = ROLE_AI.get(role)
     js = (
         "(function(){"
-        " var ships = system.allShips;"
-        " var at = ships.length > 0 ? ships[0].position : [0, 0, 0];"
-        " return system.addShips(%s, %d, at, %d).length;"
-        "})()" % (_js_string(role), count, km * 1000)
+        " var at = %s;"
+        " var added = system.addShips(%s, %d, at, %d);"
+        " if (!added) return 0;"
+        " if (typeof debugConsole.__ooLocus === 'undefined' && added.length > 0)"
+        "   debugConsole.__ooLocus = added[0].position;"
+        " for (var i = 0; i < added.length; i++) {"
+        "   %s"
+        " }"
+        " return added.length; })()"
+        % (
+            "debugConsole.__ooLocus" if at_js == "__ooLocus" else at_js,
+            _js_string(role),
+            count,
+            radius_m,
+            ("added[i].setAI(%s);" % _js_string(ai)) if ai else "",
+        )
     )
     added = world.console.evaluate_int(js)
     if added != count:
-        raise AssertionError(
-            f"asked for {count} {role!r} within {km} km, addShips returned {added}"
-        )
+        raise AssertionError(f"asked for {count} {role!r}, addShips returned {added}")
     world.spawned[role] = world.spawned.get(role, 0) + count
 
 

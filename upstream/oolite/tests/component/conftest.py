@@ -5,7 +5,7 @@ wedging it (docs/phases/0-component-tier.md).
 """
 
 import os
-import socket
+import shutil
 import threading
 
 import pytest
@@ -32,6 +32,28 @@ def _default_app_dir():
     return os.path.join(oolite, "build", "meson_test", "oolite.app")
 
 
+def _ensure_software_gl(app_dir):
+    """Put Mesa's llvmpipe driver beside the binary, as tests/run_test_fn.sh does.
+
+    Without it the game picks up whatever OpenGL the desktop offers and dies during init with
+    "An uninitialized OpenGL extension function has been called, terminating" - the headless VM
+    has no usable hardware GL.
+
+    Two DLLs, not one. Mesa's opengl32.dll loads libgallium_wgl.dll at runtime, and when that is
+    missing Windows raises a MODAL error dialog, which blocks an unattended run for ever instead
+    of failing it. run_test_fn.sh copies only opengl32.dll and gets away with it purely because
+    it runs inside an MSYS2 shell with $MINGW_PREFIX/bin on PATH.
+    """
+    prefix = os.environ.get("MINGW_PREFIX")
+    if not prefix:
+        return
+    for dll in ("opengl32.dll", "libgallium_wgl.dll"):
+        source = os.path.join(prefix, "bin", dll)
+        target = os.path.join(app_dir, dll)
+        if os.path.isfile(source) and not os.path.isfile(target):
+            shutil.copy2(source, target)
+
+
 @pytest.fixture(scope="session")
 def app_dir(pytestconfig):
     path = pytestconfig.getoption("--oolite-app") or _default_app_dir()
@@ -40,23 +62,22 @@ def app_dir(pytestconfig):
             f"no Oolite build at {path}. Build it first (tools/build-windows.sh test) "
             "or pass --oolite-app."
         )
+    _ensure_software_gl(path)
     return path
 
 
 @pytest.fixture
-def free_port():
-    """A port the OS just confirmed is free.
+def console_port():
+    """The port the game will connect out to.
 
-    One game process per scenario means the hardcoded 8563 of tests/launch_snapshot.py cannot be
-    reused: two scenarios would fight over it, and on Windows the loser binds successfully and
-    then never sees a connection.
+    It is the GAME that dials the console, not the other way round, and it takes the port from
+    console-port in debugConfig.plist - defaulting to 8563 (OODebugSupport.m:80,
+    OODebugTCPConsoleProtocol.h:46). So a port the test picks freely is a port nothing connects
+    to. console.py still takes the port as an argument, because the golden harness needs to run
+    several games at once and will have to write that plist per process; until something does,
+    scenarios share the default and must run sequentially, which pytest does anyway.
     """
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(("127.0.0.1", 0))
-    port = sock.getsockname()[1]
-    sock.close()
-    return port
+    return int(os.environ.get("OO_CONSOLE_PORT", "8563"))
 
 
 class World:
@@ -70,10 +91,11 @@ class World:
         self.seed = None
         self.spawned = {}
 
-    def start(self, seed):
+    def start(self, seed, load_save=None):
         self.seed = seed
         self.console = DebugConsole(
-            self.app_dir, self.port, seed=seed, output_dir=self.output_dir
+            self.app_dir, self.port, seed=seed, output_dir=self.output_dir,
+            load_save=load_save
         )
         self.console.start()
         return self.console
@@ -85,13 +107,13 @@ class World:
 
 
 @pytest.fixture
-def world(app_dir, free_port, tmp_path, request):
+def world(app_dir, console_port, tmp_path, request):
     """One game per scenario, killed unconditionally at the end.
 
     The timeout is enforced by a watchdog thread rather than a signal: SIGALRM does not exist on
     Windows, and this tier runs natively on Windows (ADR-0017).
     """
-    w = World(app_dir, free_port, str(tmp_path))
+    w = World(app_dir, console_port, str(tmp_path))
 
     timed_out = threading.Event()
 

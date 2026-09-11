@@ -43,10 +43,16 @@ class DebugConsole:
     its own game process and they must not collide (item 0.4 requires the same).
     """
 
-    def __init__(self, app_dir, port, seed=None, output_dir=None, host="127.0.0.1"):
+    def __init__(self, app_dir, port, seed=None, output_dir=None, host="127.0.0.1",
+                 load_save=None):
         self.app_dir = os.path.abspath(app_dir)
         self.port = int(port)
         self.seed = seed
+        # Without a save the game sits on the main-menu demo: there is a docked player and a
+        # station, but the simulation is not running, so spawned ships never leave AIState GLOBAL
+        # and never acquire a target. -load starts a real game (src/SDL/main.m:167). There is no
+        # JS route out of the intro screen - that is keyboard work and belongs to the GUI tier.
+        self.load_save = load_save
         self.output_dir = os.path.abspath(output_dir) if output_dir else None
         self.host = host
         self._server = None
@@ -103,8 +109,11 @@ class DebugConsole:
         path = os.path.join(self.app_dir, binary)
         if not os.path.isfile(path):
             raise ConsoleError(f"no Oolite binary at {path}; build it first")
+        argv = [path, "--no-splash"]
+        if self.load_save:
+            argv += ["-load", self.load_save]
         self._proc = subprocess.Popen(
-            [path, "--no-splash"],
+            argv,
             cwd=self.app_dir,
             env=self._env(),
             stdout=subprocess.DEVNULL,
@@ -198,7 +207,13 @@ class DebugConsole:
         this call then waits for. Without the marker a stray log line from the game would be
         mistaken for the answer.
         """
-        marker = f"@@{os.getpid()}-{self.port}-{time.time()}@@"
+        # The console echoes the command back as Console Output before it sends any result, so a
+        # marker that appears literally in the command text matches the echo and the answer is
+        # read out of the wrong packet. Splitting the marker in the source fixes that: the echo
+        # contains the pieces, only the real output contains them joined.
+        head = f"@@{os.getpid()}-{self.port}"
+        tail = f"{int(time.time() * 1000) % 1000000}@@"
+        marker = head + tail
         wrapped = (
             "(function(){ try { return String(%s); } "
             "catch (e) { return 'ERROR: ' + e; } })()" % js
@@ -210,7 +225,7 @@ class DebugConsole:
         # the TCP client forwards as a Console Output packet.
         self.perform(
             'debugConsole.consoleMessage("command-result", '
-            f'"{marker}" + {wrapped} + "{marker}");'
+            f'"{head}" + "{tail}" + {wrapped} + "{head}" + "{tail}");'
         )
 
         deadline = time.time() + timeout
