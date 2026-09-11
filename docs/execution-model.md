@@ -44,7 +44,7 @@ the lines, and the remaining 52% stays serial-ish and hard.
 | 2 — ObjC++ switch + `oofnd` | 6–10 | **Seam then high.** The library *is* design, but migrating ~11k Foundation references onto it is ~250–400 replication stories. |
 | **3 — ObjC → C++20, ~500 files** | **12–24** | **Highest — ≈400 stories, and the least seam-bound.** |
 | 4 — remove ObjC runtime | 1–2 | None. Mechanical, one pass. |
-| 5 — Apple Silicon build/sign/CI | 1–2 | None. |
+| 5 — Apple Silicon (and Linux) build/sign/package | 1–2 | None. |
 | 6 — modernise | 4–10 | Low. Design changes by definition. |
 
 Fan-out potential is not a property of a phase; it is a property of the work *after its seam is cut*
@@ -55,18 +55,18 @@ the head of each sweep.
 
 ### 1.3 The real bottleneck is validation machine-time, and it isn't GPU work
 
-The per-PR definition of done (§7) is:
+The per-bead definition of done (§7) is:
 
-1. Goldens reproduce · 2. Tier-1 OXP corpus green · 3. Clean build on **every supported platform** (Linux + Windows until Phase 5, + macOS after) at
-`-Wall -Wextra` · 4. **ASan + UBSan clean on Linux** · 5. Symbol deny-list enforced.
+1. Goldens reproduce · 2. Tier-1 OXP corpus green · 3. Clean build on **every supported platform** (Windows until Phase 5; macOS and Linux after) at
+`-Wall -Wextra` · 4. **ASan clean** · 5. Symbol deny-list enforced.
 
 Each golden scenario **launches the actual game** and drives it over the debug-console TCP channel
 (`tests/launch_snapshot.py`, 230 lines, plist packets on port 8563). Twenty scenarios × a real
-process each. The CI builds **GNUstep from source** (`ShellScripts/Linux/build_gnustep.sh`, pinned
-commits) before it compiles a line of Oolite.
+process each. Upstream's workflow provisions the toolchain from scratch on every run (GNUstep from
+source on Linux, MSYS2 packages on Windows) before it compiles a line of Oolite.
 
 That is a build-farm and headless-GL problem measured in CPU cores, NVMe, and X displays. It is
-**x86-64 Linux and Windows** work. It is not inference. No LLM hardware moves that number.
+**x86-64 Windows** work until Phase 5. It is not inference. No LLM hardware moves that number.
 
 ---
 
@@ -105,34 +105,34 @@ seconds.
 | Tier | When | Content | Budget | Parallelism |
 |---|---|---|---|---|
 | **A — in-loop** | every agent edit | Compile the single TU; `clang-tidy`; symbol deny-list grep; that module's unit tests | **< 30 s** | none needed — it's seconds |
-| **B — per candidate PR** | agent believes it's done | Full build, **one** platform; module tests; 3–5 fast golden scenarios; Tier-1 OXP subset | **< 10 min** | local (WSL2), one container per scenario; no CI for now ([ADR-0016](decisions/0016-no-forge-local-verification.md)) |
-| **C — per merge batch** | merge queue | All 3 platforms; all 20 goldens; ASan + UBSan; full Tier-1; JS API snapshot; PyAutoGUI tier | 30–90 min | batched — see §3.3 |
+| **B — per candidate PR** | agent believes it's done | Full build, **one** platform; module tests; 3–5 fast golden scenarios; Tier-1 OXP subset | **< 10 min** | local, one game process per scenario, headless; no CI ([ADR-0016](decisions/0016-no-forge-local-verification.md)) |
+| **C — per merge batch** | merge queue | Every supported platform (Windows until Phase 5); all 20 goldens; ASan; full Tier-1; JS API snapshot; PyAutoGUI tier under the desktop lock (also nightly; never per bead, [ADR-0017](decisions/0017-native-windows-subtree.md)) | 30–90 min | batched — see §3.3 |
 
 Tier A is what an agent iterates against. If Tier A is slow, everything else is irrelevant, because
 the agent's inner loop dominates wall-clock. **Getting Tier A under 30 seconds is the single highest-
 leverage engineering task in this entire document.**
 
-### 3.2 Containerize the golden harness — the prerequisite for all parallelism
+### 3.2 Isolate the golden harness — the prerequisite for all parallelism
 
 Nothing else scales until this exists. `tests/launch_snapshot.py` currently hardcodes
 `PORT = 8563` and `HOST = 127.0.0.1`.
 
-- Parameterize port and `DISPLAY`; one scenario per container, Xvfb inside.
-- Bake **GNUstep + the `mozillajs-linux` artefact into a base image**, built once from the pinned
-  commits. The CI presently compiles GNUstep from source on every run; this alone likely cuts
-  iteration time more than any model choice you could make.
-- `ccache`/`sccache` with a shared cache volume across agents.
-- Emit the canonical sorted-JSON state dump (Phase 0) as the container's artifact.
+- Parameterize port and output directory; one scenario per native game process with Mesa's
+  llvmpipe `opengl32.dll` beside the binary ([ADR-0017](decisions/0017-native-windows-subtree.md)).
+- **Provision MSYS2 once** ([I1](infra/1-base-images.md)). Upstream's workflow reprovisions on every
+  run; not paying that per run likely cuts iteration time more than any model choice you could make.
+- `ccache` with one cache directory shared across agent worktrees.
+- Emit the canonical sorted-JSON state dump (Phase 0) as the run's artifact.
 
 Scenario parallelism then becomes a scheduling problem, which is a solved one.
 
 ### 3.3 Merge queue with batch-and-bisect 
 
-**Do not run Tier C per task.** Batch PRs that passed Tier B, run Tier C once over the batch,
+**Do not run Tier C per task.** Batch bead branches that passed Tier B, run Tier C once over the batch,
 and bisect only on failure:
 
-- 16 PRs, batch passes → **1** Tier-C run instead of 16.
-- 16 PRs, batch fails → 1 + log₂(16) = **5** runs. Still a 3.2× amortization.
+- 16 branches, batch passes → **1** Tier-C run instead of 16.
+- 16 branches, batch fails → 1 + log₂(16) = **5** runs. Still a 3.2× amortization.
 
 This is how large monorepos absorb exactly this load. Parallelism comes from the *scheduler batching independent work*, not from each agent
 running its own full suite.
@@ -141,7 +141,7 @@ running its own full suite.
 
 - **One git worktree per agent.** Without it they fight over the build directory and you will spend
   weeks debugging phantom failures.
-- **Deny-list in CI** for `libgnustep-base` and `JS_*` symbols (§7.5) — mechanical, cheap,
+- **Deny-list in Tier B/C** for `libgnustep-base` and `JS_*` symbols (§7.5) — mechanical, cheap,
   catches the regression that matters most.
 - **Determinism first (Phase 0 §0.1).** `NSDictionary`/`NSSet` enumeration order is unspecified. If a
   gameplay path depends on it, the goldens are noise and every downstream signal is worthless.
@@ -189,8 +189,8 @@ does.
 |---|---|---|---|
 | **Reporter** | scheduled, daily + weekly | nothing — **read-only, zero write authority** | n/a; it reports merge-queue state, golden drift, Tier-3 trend, upstream delta |
 | **Converter** | ephemeral, one per file | commits to *its own worktree branch* | anything that won't pass Tier A |
-| **Reviewer** | ephemeral, one per PR | **advisory comments only — cannot merge** | style drift; `isKindOfClass:` sites that want a virtual, not a `dynamic_cast` |
-| **Harness steward** | standing, weekly | may fix harness/CI code | **may never re-bless a golden**; reports flake rate and drift |
+| **Reviewer** | ephemeral, one per bead | **advisory comments only — cannot merge** | style drift; `isKindOfClass:` sites that want a virtual, not a `dynamic_cast` |
+| **Harness steward** | standing, weekly | may fix harness and tier code | **may never re-bless a golden**; reports flake rate and drift |
 | **Upstream tracker** | standing, monthly | performs the rebase, files `docs/UPSTREAM_DELTA.md` entries | any conflict inside a frozen module (architecture §6.3) |
 | **Adjudicator** (frontier) | on-demand | proposes a re-bless *with written justification* | **every re-bless, always** |
 | **Jon** | — | **re-blesses goldens** (weekly queue) · accounts, credentials, hardware, TCC grants · overrides a default decision by ADR · monthly judgement on the GUI tier's meaning ([ADR-0013](decisions/0013-decide-up-front-minimise-human.md)) | — |
@@ -238,13 +238,13 @@ Four notes on this table:
 
 ---
 
-## 7. Definition of done, per PR
+## 7. Definition of done, per bead branch
 
 1. Goldens reproduce (or the diff is explained and re-blessed with justification).
 2. Tier 1 OXP corpus green.
-3. Builds clean on every supported platform (Linux and Windows until Phase 5; macOS added there) at `-Wall -Wextra` with no new warnings.
-4. ASan + UBSan clean on Linux (essential — hand-translated refcounting *will* produce use-after-free).
-5. No new `libgnustep-base` or `JS_*` symbols reintroduced (CI-enforced deny-list).
+3. Builds clean on every supported platform (Windows until Phase 5; macOS and Linux added there) at `-Wall -Wextra` with no new warnings.
+4. ASan clean (essential — hand-translated refcounting *will* produce use-after-free; MSYS2 clang, or the [ADR-0017](decisions/0017-native-windows-subtree.md) fallback).
+5. No new `libgnustep-base` or `JS_*` symbols reintroduced (Tier B/C deny-list).
 
 Items 1, 2, 4 and 5 are mechanical and decided by Tier B/C. Item 1's "re-blessed" path is the one
 human gate in the pipeline (§2).
@@ -352,7 +352,7 @@ Stock templates ship web-shaped acceptance criteria. Replace them wholesale:
 | `python3 tests/launch_snapshot.py` passes | — |
 | Golden scenario N reproduces | — |
 | Tier-1 OXP corpus green | — |
-| **ASan + UBSan clean on Linux** | — |
+| **ASan clean** | — |
 | Symbol deny-list: no new `libgnustep-base` / `JS_*` | — |
 | PyAutoGUI tier for window/input work | "Verify in browser" |
 

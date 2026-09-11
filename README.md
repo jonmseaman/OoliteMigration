@@ -5,42 +5,39 @@ Objective-C/GNUstep to Modern C++ (C++20 during conversion, C++23 at the end), w
 while keeping all published expansions (OXP/OXZ) working unmodified.
 
 **Start here: [ROADMAP.md](ROADMAP.md).** Agents: [CLAUDE.md](CLAUDE.md).
+**Before the first fleet run on the Windows machine:** the checklist in [docs/infra/0-machines.md](docs/infra/0-machines.md)
+(keep-awake tool, MSYS2, `bd dolt pull`, Hermes and `claude` logins).
 
 ## Layout
 
 | Path | What |
 |---|---|
 | `ROADMAP.md` | Phase table, infra track, decisions — the entry point |
-| `CLAUDE.md` / `GLOSSARY.md` | Agent contract and terms |
+| `CLAUDE.md` / `GLOSSARY.md` / `.hermes.md` | Agent contracts (Claude Code; Hermes) and terms |
 | `docs/architecture.md` | Survey, target design, risks, expansion contracts |
 | `docs/execution-model.md` | Verification tiers, agent authority, story sizing |
 | `docs/phases/`, `docs/infra/`, `docs/decisions/` | Per-phase docs, infra track, ADRs |
-| `upstream/oolite` | Submodule: the main Oolite repo. **The migration target.** |
-| `upstream/spidermonkey-ff4` | Submodule: the patched SpiderMonkey 1.8.5 Oolite embeds (see plan §4/R1) |
-| `upstream/oolite-tests` | Submodule: test OXPs and legacy test projects |
-| `upstream/oolite-debug-console` | Submodule: TCP debug console — drives the golden test harness |
+| `tools/gen-stories.py` | Generates the beads queue from the tree |
+| `.agents/skills/beads-worker/` | The Hermes skill that drains the queue |
+| `upstream/oolite` | **Subtree** of the fork `jonmseaman/oolite`. **The migration target.** |
+| `upstream/oolite-tests` | Subtree: test OXPs and the release-checklist save files (golden scenarios 13–17) |
+| `upstream/oolite-expansion-catalog` | Subtree: expansion URL list — source for the OXP corpus |
+| `upstream/spidermonkey-ff4` | Submodule: the patched SpiderMonkey 1.8.5 Oolite embeds (reference only) |
+| `upstream/oolite-debug-console` | Submodule: TCP debug console (protocol reference) |
 | `upstream/oolite-mac-components` | Submodule: historical macOS Cocoa components (Phase 5 reference) |
-| `upstream/oolite-expansion-catalog` | Submodule: expansion URL list — source for the OXP corpus |
+
+Subtrees are part of this repo's tree and every worktree; submodules are reference only and are
+absent from worktrees ([ADR-0017](docs/decisions/0017-native-windows-subtree.md)).
 
 ## Remotes
 
-`origin` is the fork; `upstream` is the source of truth.
-
-| Repo | `origin` | `upstream` |
+| Remote | URL | Role |
 |---|---|---|
-| this repo | `jonmseaman/OoliteMigration` | — |
-| `upstream/oolite` | `jonmseaman/oolite` | `OoliteProject/oolite` |
-| other submodules | `OoliteProject/<repo>` (read-only reference) | same |
+| `origin` | `jonmseaman/OoliteMigration` | this repo; `main` is the base branch |
+| `fork` | `jonmseaman/oolite` | receives `upstream/oolite` by `git subtree push` (branch `migration`) |
+| `upstream` | `OoliteProject/oolite` | source of truth; `git subtree pull --squash` monthly |
 
-### Before the first push
-
-Two GitHub repos need to exist:
-
-1. `jonmseaman/OoliteMigration` — new and empty (no README/licence, to avoid a merge on first push)
-2. `jonmseaman/oolite` — a fork of `OoliteProject/oolite`
-
-Until the fork exists, `.gitmodules` points at a URL a fresh `git clone --recursive` cannot reach.
-The local working copy is unaffected.
+Remotes are local config: add `fork` and `upstream` after cloning.
 
 ## Clone
 
@@ -48,12 +45,17 @@ The local working copy is unaffected.
 git clone --recursive https://github.com/jonmseaman/OoliteMigration.git
 ```
 
-`upstream/oolite` is ~560 MB and `upstream/spidermonkey-ff4` ~65 MB, so this takes a while.
+On Windows first set `git config --global core.autocrlf false` and `core.longpaths true`.
 
-## Sync with upstream Oolite
+## Sync with upstream Oolite (upstream-tracker task)
 
 ```bash
-cd upstream/oolite
-git fetch upstream
-git rebase upstream/master     # see docs/architecture.md §6.3 — rebase, don't merge
+git subtree pull --prefix=upstream/oolite upstream master --squash
+```
+
+## Mirror the converted tree to the fork (merge queue after each green batch; weekly by hand until then)
+
+```bash
+git push origin main
+git subtree push --prefix=upstream/oolite fork migration
 ```

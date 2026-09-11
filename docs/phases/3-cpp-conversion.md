@@ -5,7 +5,7 @@
 
 ## Goal
 
-The long grind: ~500 files, leaves inward, one module per PR, goldens green at every step.
+The long grind: ~500 files, leaves inward, one module per merge batch, goldens green at every step.
 Conservative **C++20** only ([ADR-0001](../decisions/0001-bridge-then-convert.md),
 [ADR-0011](../decisions/0011-cpp20-then-cpp23.md)); the C++23 upgrade is Phase 6; intrusive refcounting
 only ([ADR-0003](../decisions/0003-intrusive-refcount.md)); modernisation waits for Phase 6. This is
@@ -23,7 +23,7 @@ the largest fan-out phase and the least seam-bound, and it is the phase the meta
 
 - [ ] Zero `@implementation` in `src/` (`grep -rc '@implementation' src` is 0)
 - [ ] Every `.m` file that had no `@implementation` is now `.c`, byte-for-byte the same code ([ADR-0012](../decisions/0012-c-stays-c.md))
-- [ ] All goldens reproduce; Tier-1 corpus green; ASan/UBSan clean; Linux (WSL2) and Windows clean at `-Wall -Wextra`
+- [ ] All goldens reproduce; Tier-1 corpus green; ASan clean; Windows clean at `-Wall -Wextra`
 - [ ] The six giant files converted (frontier + human; tracked individually in the status log)
 
 ## Seams

@@ -4,7 +4,7 @@ description: "Drain a beads queue: delegate, review, accept, repeat."
 version: 0.1.0
 author: Jon Seaman (jonmseaman), Hermes Agent
 license: MIT
-platforms: [linux, macos]
+platforms: [windows, linux, macos]
 prerequisites:
   commands: [bd, git, jq]
 metadata:
@@ -33,12 +33,15 @@ for the mechanics; this file tells you when to call them.
 
 ## Prerequisites
 
-- `bd`, `git`, `jq` on PATH; a repo with an initialised beads workspace (`bd where` succeeds)
+- `bd`, `git`, `jq` on PATH; a repo with an initialised beads workspace (`bd where` succeeds).
+  The scripts are bash: on the Windows machine run Hermes from the MSYS2 UCRT64 shell (the shell
+  the build already needs), which provides bash, coreutils, `jq`, `python3` and `sha256sum`
 - The `bd` guard shim first on PATH **before Hermes starts**, so no agent in this process tree can
   close a bead directly: `export PATH="$REPO/.agents/skills/beads-worker/scripts/bin:$PATH"`
 - Beads labelled per the queue contract: every workable bead carries `fleet` and `phase:<N>`;
   beads for humans carry `rebless` or `proposed-adr`; seams carry `frontier`. Acceptance lives in
-  the bead's `acceptance` field, one shell command per line, each exiting 0 on success
+  the bead body under `## Acceptance` (fenced), one shell command per line, each exiting 0 on
+  success; `accept.sh` refuses a block that is comments only
 - `delegation.max_concurrent_children` ≥ 2 in `config.yaml`; `delegation.child_timeout_seconds`
   set (30–60 min) so a stuck worker cannot hold the loop
 

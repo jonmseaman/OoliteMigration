@@ -36,12 +36,14 @@ acceptance="$(bead_acceptance "$id")"
 [ -n "$acceptance" ] || die "bead $id has no acceptance commands; refusing to close without a gate"
 log="$(mktemp)"
 status=0
+ran=0
 if command -v timeout >/dev/null 2>&1; then TIMEOUT_CMD=(timeout "${BEADS_ACCEPT_TIMEOUT:-1500}")
 elif command -v gtimeout >/dev/null 2>&1; then TIMEOUT_CMD=(gtimeout "${BEADS_ACCEPT_TIMEOUT:-1500}")
 else TIMEOUT_CMD=(); fi
 while IFS= read -r cmd; do
   case "$cmd" in ''|'#'*) continue;; esac
   echo "\$ $cmd" >>"$log"
+  ran=$((ran + 1))
   rc=0
   ( cd "$tmp" && "${TIMEOUT_CMD[@]}" bash -o pipefail -c "$cmd" ) >>"$log" 2>&1 || rc=$?
   if [ "$rc" -ne 0 ]; then
@@ -51,6 +53,9 @@ while IFS= read -r cmd; do
   fi
 done <<<"$acceptance"
 attempts="$(bead_attempts "$id")"
+# A block made only of comments (a frontier seam whose executable acceptance has not been written
+# yet) must not close the bead: refusing is the gate.
+[ "$ran" -gt 0 ] || die "bead $id has no executable acceptance command (comments only); write one before calling accept"
 if [ "$status" -eq 0 ]; then
   # Advance the base branch to the merge commit. If the orchestrator's checkout has $base checked
   # out, fast-forward it there (git refuses to move a checked-out branch behind its worktree);
@@ -69,7 +74,7 @@ attempts=$((attempts + 1))
 tail_out="$(tail -c 3000 "$log")"
 # Failure signature: the output with hex hashes, timestamps and addresses blanked, so two attempts that
 # fail the same way compare equal even if incidental numbers differ.
-sig="$(printf %s "$tail_out" | sed -E 's/[0-9a-f]{7,}/H/g; s/[0-9]{2}:[0-9]{2}:[0-9]{2}/T/g; s/0x[0-9a-fA-F]+/A/g; s/[0-9]+/N/g' | shasum -a 256 | cut -c1-16)"
+sig="$(printf %s "$tail_out" | sed -E 's/[0-9a-f]{7,}/H/g; s/[0-9]{2}:[0-9]{2}:[0-9]{2}/T/g; s/0x[0-9a-fA-F]+/A/g; s/[0-9]+/N/g' | { command -v sha256sum >/dev/null 2>&1 && sha256sum || shasum -a 256; } | cut -c1-16)"
 prev_sig="$(bead_json "$id" | jq -r '.metadata.last_failure_sig // empty')"
 stale="$(bead_json "$id" | jq -r '(.metadata.stale_count // "0") | tonumber')"
 if [ "$sig" = "$prev_sig" ]; then stale=$((stale + 1)); else stale=1; fi

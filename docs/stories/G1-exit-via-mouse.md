@@ -28,9 +28,9 @@ for launch, environment, and timeout handling — but with `SDL_VIDEODRIVER` *un
 
 ## Files
 
-- `/Users/jonms/OoliteMigration/upstream/oolite/tests/gui/conftest.py` (new: launch fixture, hard timeout with forced kill, `row_to_point(row)`)
-- `/Users/jonms/OoliteMigration/upstream/oolite/tests/gui/test_g1_exit_via_mouse.py` (new)
-- `/Users/jonms/OoliteMigration/upstream/oolite/tests/gui/requirements.txt` (new: `pytest`, `pyautogui`)
+- `upstream/oolite/tests/gui/conftest.py` (new: launch fixture, hard timeout with forced kill, `row_to_point(row)`, the desktop lock)
+- `upstream/oolite/tests/gui/test_g1_exit_via_mouse.py` (new)
+- `upstream/oolite/tests/gui/requirements.txt` (new: `pytest`, `pyautogui`)
 
 Reads: `tests/launch_snapshot.py` (230 lines), `GuiDisplayGen.h` header block, the two cited
 `PlayerEntity*.m` ranges. Under 1,500 lines. Writes: ~150 lines.
@@ -38,8 +38,8 @@ Reads: `tests/launch_snapshot.py` (230 lines), `GuiDisplayGen.h` header block, t
 ## Acceptance (run by the wrapper)
 
 ```bash
-# nonzero before (file absent), zero after:
-cd /Users/jonms/OoliteMigration/upstream/oolite && xvfb-run -a python3 -m pytest tests/gui/test_g1_exit_via_mouse.py -x -q
+# nonzero before (file absent), zero after; from the repo root, on the Windows desktop (ADR-0017):
+python3 -m pytest upstream/oolite/tests/gui/test_g1_exit_via_mouse.py -x -q
 ```
 
 Post-exit hygiene (G9) asserted inside the test: no core dump; no `ERROR`/exception lines in

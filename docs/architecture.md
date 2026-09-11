@@ -287,7 +287,7 @@ modernisation pass. Until then the project provides `oo::Expected` (a small poly
 | `std::generator` | ❌ | ✅ (14+) | ❌ | **Avoid.** Not worth a polyfill |
 | `import std;` | ❌ | ⚠️ | ⚠️ | **Forbidden this cycle** |
 
-Enforce with a CI job that compiles a canary TU on all three toolchains at their pinned minimums.
+Enforce with a Tier C check that compiles a canary TU on all three toolchains at their pinned minimums.
 
 ### 3.3 Proposed source layout
 
@@ -309,7 +309,7 @@ src/
 ```
 
 Dependency direction is strictly downward: `oofnd` and `oomath` depend on nothing in-tree; nothing
-depends on `oorender` except `main`. Enforce with a CI include-graph check — this is what keeps the
+depends on `oorender` except `main`. Enforce with a Tier C include-graph check — this is what keeps the
 Universe god-object from re-forming.
 
 ### 3.4 `oofnd` — the Foundation replacement
@@ -564,12 +564,12 @@ OoliteMigration/
 │   ├── templates/                     phase and story templates
 │   └── stories/                       hand-written exemplar stories
 └── upstream/
-    ├── oolite/                        submodule — the main repo (the migration target)
+    ├── oolite/                        subtree of the fork — the main repo (the migration target)
     ├── spidermonkey-ff4/              submodule — the patched SM 1.8.5 source (R1 reference)
-    ├── oolite-tests/                  submodule — test OXPs and legacy test projects
-    ├── oolite-debug-console/          submodule — TCP debug console (drives the golden harness)
+    ├── oolite-tests/                  subtree — test OXPs, checklist saves, legacy test projects
+    ├── oolite-debug-console/          submodule — TCP debug console (protocol reference)
     ├── oolite-mac-components/         submodule — historical macOS Cocoa components (Phase 5 reference)
-    └── oolite-expansion-catalog/      submodule — the expansion URL list (corpus source)
+    └── oolite-expansion-catalog/      subtree — the expansion URL list (corpus source)
 ```
 
 ### 6.2 Remotes
@@ -579,13 +579,12 @@ Per the project's convention, `origin` is the fork, `upstream` is the source of 
 | Repo | `origin` | `upstream` |
 |---|---|---|
 | `OoliteMigration` (this) | `https://github.com/jonmseaman/OoliteMigration.git` | — |
-| `upstream/oolite` | `https://github.com/jonmseaman/oolite.git` | `https://github.com/OoliteProject/oolite.git` |
-| all other submodules | `https://github.com/OoliteProject/<repo>.git` (read-only reference) | same |
+| `upstream/oolite` (subtree) | remote `fork` = `https://github.com/jonmseaman/oolite.git`, branch `migration` | remote `upstream` = `https://github.com/OoliteProject/oolite.git` |
+| the subtrees `oolite-tests`, `oolite-expansion-catalog` | — | `https://github.com/OoliteProject/<repo>.git` |
+| the remaining submodules | `https://github.com/OoliteProject/<repo>.git` (read-only reference) | same |
 
-**Action required before first push:** create `jonmseaman/OoliteMigration` (new, empty) and fork
-`OoliteProject/oolite` to `jonmseaman/oolite` on GitHub. Until the fork exists, `.gitmodules`
-points at a URL that a fresh `git clone --recursive` cannot reach — the local working copy is
-unaffected.
+Remotes are local git config; add `fork` and `upstream` on a fresh clone
+([ADR-0017](decisions/0017-native-windows-subtree.md)).
 
 ### 6.3 Living with an active upstream
 
@@ -594,9 +593,11 @@ that ignores this will be unmergeable within a year.
 
 **Recommended posture:**
 
-1. **Rebase, don't merge.** Keep migration work as a rebasable series on `upstream/master`. Rebase
-   at least monthly. The golden harness is what makes each rebase verifiable rather than a leap of
-   faith.
+1. **Sync monthly, verify with goldens.** `upstream/oolite` is a subtree; the upstream-tracker task
+   runs `git subtree pull --prefix=upstream/oolite upstream master --squash` monthly, and the merge
+   queue mirrors the converted tree to the fork's `migration` branch with `git subtree push` after
+   each green batch ([ADR-0017](decisions/0017-native-windows-subtree.md)). The golden harness is
+   what makes each sync verifiable rather than a leap of faith.
 2. **Upstream everything that isn't the rewrite.** Determinism fixes ([Phase 0 §0.1](phases/0-safety-net.md)), test-harness
    improvements, the JS lint tool, plist quirk fixes, build fixes. These are wanted upstream, reduce
    divergence, and build the credibility that Phase 5 will need.

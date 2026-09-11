@@ -5,7 +5,7 @@
 ## Goal
 
 Delete `AutoreleaseScope`, drop `libobjc2` and every `-fobjc-*` flag, rename `.mm` → `.cpp`, restore
-GCC to CI. Nearly mechanical if Phase 3 was disciplined.
+the GCC (MINGW64) build alongside Clang (UCRT64). Nearly mechanical if Phase 3 was disciplined.
 
 ## Entry gate
 
@@ -15,15 +15,15 @@ GCC to CI. Nearly mechanical if Phase 3 was disciplined.
 ## Exit gate
 
 - [ ] No `.mm` files; no `-fobjc-*` in any build line; `libobjc2` gone from all platforms
-- [ ] GCC build green on Linux alongside Clang
-- [ ] Goldens reproduce on Linux (WSL2) and Windows; ASan/UBSan clean
-- [ ] Cross-platform golden policy (decision 11) implemented, since Phase 5 is the first non-x86-64 target
+- [ ] GCC (MINGW64) build green alongside Clang (UCRT64)
+- [ ] Goldens reproduce on Windows; ASan clean
+- [ ] Cross-platform golden policy (decision 11) implemented on Windows, since Phase 5 adds the first other platforms
 
 ## Notes
 
 This is the last phase that runs entirely on the single Windows machine
-([ADR-0010](../decisions/0010-single-windows-machine.md)). Its exit is the point at which the Mac
-is set up as a runner.
+([ADR-0010](../decisions/0010-single-windows-machine.md), [ADR-0017](../decisions/0017-native-windows-subtree.md)).
+Its exit is the point at which the Mac and a Linux build environment join.
 
 ## Seams / sweeps
 

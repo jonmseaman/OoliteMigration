@@ -52,7 +52,7 @@ case "$action" in
     echo "retry $id with guidance: $guidance";;
   reclassify)
     sweep="$(printf %s "$dec" | jq -r '.sweep // ""')"; [ -n "$sweep" ] || { echo "reevaluate: reclassify without sweep" >&2; exit 3; }
-    (cd "$REPO_ROOT" && python3 tools/gen-stories.py --reclassify "$id" "$sweep") || exit 3
+    (cd "$REPO_ROOT" && "${PYTHON:-python3}" tools/gen-stories.py --reclassify "$id" "$sweep") || exit 3
     real_bd update "$id" --set-metadata stale_count=0 --set-metadata attempts=0 -q >&2; touch "$REPO_ROOT/.fleet-progress.$id"
     echo "reclassified $id -> $sweep";;
   add_dep)

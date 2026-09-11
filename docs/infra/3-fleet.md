@@ -13,7 +13,7 @@ gate; and a scheduled read-only Reporter running first.
 ## Order of bring-up
 
 1. **Reporter first.** A scheduled Claude Code task (or cron + `claude -p`) that reads `bd list`,
-   CI status, and the golden results and posts the [I4](4-metrics.md) numbers. Read-only, so safe;
+   the tier logs, and the golden results and posts the [I4](4-metrics.md) numbers. Read-only, so safe;
    cheap; and it forces the metrics to be defined before any code depends on them.
 2. **beads conventions.** Bead body = the story ([template](../templates/story.md)); `bd dep` for
    ordering; bead notes are the only carry-over channel. Labels are load-bearing because they
@@ -54,7 +54,7 @@ gate; and a scheduled read-only Reporter running first.
 |---|---|---|
 | Converter (frontier tier) | `run-story` + `claude -p` | own worktree; never pushes to `main`; ends in `accept` |
 | Converter (local tier) | Hermes `/goal` against on-prem models | own worktree per bead; never pushes to `main`; ends in `accept` |
-| Reviewer | a `claude -p` pass over the diff, posting comments to the PR | advisory; not a gate |
+| Reviewer | a delegated pass over the diff, findings appended to the bead's notes | advisory; not a gate |
 | Harness steward | scheduled `claude -p` with write access to `tools/` and `tests/` only | may fix harness code; **may never touch `goldens/`**; > 1% Tier-B flake = stop the line |
 | Merge gate | `tools/merge-queue` | automatic; batch-and-bisect |
 | Reporter | scheduled Claude Code task, read-only | outside the loop |
@@ -70,17 +70,21 @@ gate; and a scheduled read-only Reporter running first.
   `goldens/`; `accept` and `merge-queue` hold those. A `bd` hook enforces the `bd close` half
   regardless of which agent runtime is calling.
 - No agent that reads Tier-3 corpus content gets repo write access or an environment with secrets;
-  the scan runs in a container with neither.
-- Concurrency cap sized to the WSL2 memory ceiling, net of golden containers ([I0](0-machines.md)).
+  the scan runs in a sandbox (separate account or VM) with neither.
+- Concurrency cap sized to the RAM budget in [I0](0-machines.md), net of concurrent game processes.
+- Frontier seams carry a prose definition of done and a guard line (`exit 1`) in their acceptance
+  block; the frontier agent replaces it with executable commands before calling `accept`, which
+  refuses comment-only blocks.
 
 ## Verification
 
 - [ ] Reporter delivers a daily message with every I4 metric populated (zeros are fine)
-- [ ] `run-story` given the G2 bead completes it in its own worktree and opens a PR; the bead is still open until `accept` passes
+- [ ] `run-story` given the G2 bead completes it in its own worktree and commits; the bead is still open until `accept` passes
 - [ ] `accept` closes the bead only after `tools/tier-a.sh` and the story's acceptance commands exit 0 in a fresh clone; an agent that tries `bd close` is refused by the hook
 - [ ] A Hermes `/goal` session given a phase with three `fleet` beads and one `rebless` bead closes the three through `accept` and stops with the goal satisfied, never touching the `rebless` bead
 - [ ] An agent that edits `goldens/` is rejected at Tier B (Phase 0 guardrail), not by a reviewer
-- [ ] `tools/merge-queue` bisects an 8-PR batch with one bad PR and requeues the culprit's bead (Phase 0 exit item)
+- [ ] `tools/merge-queue` bisects an 8-branch batch with one bad branch and requeues the culprit's bead (Phase 0 exit item)
+- [ ] After a green batch the merge queue pushes `main` to `origin` and `git subtree push`es `upstream/oolite` to the fork's `migration` branch ([ADR-0017](../decisions/0017-native-windows-subtree.md))
 - [ ] Switching a role's endpoint URL requires only a config change
 - [ ] A full week passes with the fleet never blocked on Jon outside the `rebless` queue
 
@@ -92,3 +96,4 @@ gate; and a scheduled read-only Reporter running first.
 - 2026-09-10 — Hermes Agent `/goal` is the local-tier driver; OpenCode dropped; `accept` split out as the single path to `bd close` (ADR-0015).
 - 2026-09-10 — beads-worker skill written under `.agents/skills/`; Hermes configured for it; no CI forge (ADR-0016).
 - 2026-09-11 — Frontier re-evaluation lane: `reevaluate.sh` (Claude Code headless, read-only) sits between retry and escalation; `.hermes.md` carries the standing contract in the system prompt.
+- 2026-09-11 — Native Windows only; `upstream/oolite` is a subtree; merge queue pushes after each green batch (ADR-0017).

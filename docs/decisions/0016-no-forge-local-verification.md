@@ -39,3 +39,7 @@ now. Local builds and local golden runs only.
 ## History
 
 ADR-0008 (forge decision), ADR-0010 (single machine).
+
+> **Amended 2026-09-11 by [ADR-0017](0017-native-windows-subtree.md).** "Pushes are manual" becomes:
+> the merge queue pushes `main` to `origin` and the subtree to the fork after each Tier C green
+> batch; until it exists, Jon pushes weekly. Tier B and Tier C run natively on Windows, not in WSL2.

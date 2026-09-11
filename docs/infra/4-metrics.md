@@ -13,10 +13,10 @@ read-only job that cannot be gamed by the agents it measures.
 | Metric | Source | Why |
 |---|---|---|
 | Goldens stable (20/20 reproduce on main) | Tier C | the safety net is intact |
-| Tier-B flake rate, per check, rolling 7 days | CI | **> 1% on any check is stop-the-line** |
+| Tier-B flake rate, per check, rolling 7 days | Tier B logs | **> 1% on any check is stop-the-line** |
 | Merge-queue depth, batches run, bisections triggered | `tools/merge-queue` log | throughput and health |
 | Beads: `bd ready` / claimed / closed by wrapper / **closed by human** / claimed > N h (stuck) | `bd list` | the fleet-vs-human ratio; the watchdog |
-| First-try Tier-B pass rate for fleet stories | CI | quality of generated work |
+| First-try Tier-B pass rate for fleet stories | Tier B logs | quality of generated work |
 | Re-bless queue: proposed / accepted / rejected / **age of oldest pending** | adjudicator log + Jon | the one human gate; age measures how long the fleet waited on a human |
 | Proposed ADRs awaiting override | `docs/decisions/` | decisions the fleet took by default this week |
 | Tier-1 corpus green | Tier B/C | expansions still work |

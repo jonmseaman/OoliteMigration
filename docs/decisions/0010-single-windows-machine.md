@@ -63,3 +63,8 @@ inside WSL2 and the Mac deferred to Phase 5.
 > justified WSL2 by Gas City's need for a Unix runtime. Gas City is gone; the layout is unchanged
 > because the reason that survives is the agents' Tier A inner loop and worktrees living next to the
 > Linux build and ccache.
+
+> **Amended 2026-09-11 by [ADR-0017](0017-native-windows-subtree.md).** The WSL2 leg is dropped:
+> agents, worktrees, `bd`, the build, the goldens and the GUI tier all run natively on Windows, and
+> Linux joins at Phase 5 with macOS. The "self-hosted runner" rows in the diagram were already void
+> under ADR-0016 (no forge).

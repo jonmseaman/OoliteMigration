@@ -105,8 +105,8 @@ properly.
 
 ## The tests
 
-`tests/gui/`, pytest + PyAutoGUI. Every test gets a hard timeout with a forced kill, so a hang fails
-the run instead of wedging CI.
+`upstream/oolite/tests/gui/`, pytest + PyAutoGUI. Every test gets a hard timeout with a forced kill,
+so a hang fails the run instead of wedging it.
 
 | # | Test | Steps | What it catches |
 |---|---|---|---|
@@ -125,21 +125,17 @@ nothing about gameplay state — that belongs to the golden harness, which can a
 precisely and without flakiness. Holding this line is what stops the tier from becoming a
 maintenance sink. If a GUI test starts asserting on ship positions, it is in the wrong file.
 
-## Platform and CI notes
+## Platform notes
 
 | Platform | Approach | Caveat |
 |---|---|---|
-| **Linux** | `xvfb-run` + `LIBGL_ALWAYS_SOFTWARE=1`, `GALLIUM_DRIVER=llvmpipe` (as `launch_snapshot.py` already does), `DISPLAY` pointed at Xvfb | Works headless on hosted runners. |
-| **Windows** | Hosted runners have an interactive desktop session | Works directly. |
-| **macOS** (Phase 5 onward) | **Needs a self-hosted runner** on Jon's own Apple Silicon machine | ⚠️ PyAutoGUI needs **Accessibility** (to synthesise input) and **Screen Recording** (to screenshot) TCC grants. These are per-app, granted interactively once, and cannot be scripted. Hosted GitHub macOS runners cannot grant them. |
-
-That macOS caveat is worth deciding early rather than discovering at Phase 5: either stand up a
-self-hosted runner, or accept that the macOS GUI tier is a local pre-release gate rather than a
-per-commit one. The Linux and Windows tiers can run per-commit regardless.
+| **Windows** (Phases 0–4) | Native, against the interactive desktop; the machine stays logged in and unlocked (keep-awake tool, [I0 checklist](../infra/0-machines.md)) | Takes the desktop exclusively while it runs, so it holds a desktop lock and runs **in Tier C and nightly, never per bead** ([ADR-0017](../decisions/0017-native-windows-subtree.md)). An RDP disconnect takes the desktop with it. |
+| **Linux** (Phase 5 onward) | `xvfb-run` + `LIBGL_ALWAYS_SOFTWARE=1`, `GALLIUM_DRIVER=llvmpipe` (as `launch_snapshot.py` already does), `DISPLAY` pointed at Xvfb | Headless; can run wherever the Linux build runs. |
+| **macOS** (Phase 5 onward) | Runs on Jon's own Apple Silicon machine | ⚠️ PyAutoGUI needs **Accessibility** (to synthesise input) and **Screen Recording** (to screenshot) TCC grants. These are per-app, granted interactively once, and cannot be scripted. |
 
 **Audio** should be forced to `SDL_AUDIODRIVER=dummy` / `ALSOFT_DRIVERS=null` as the existing test
-does — CI machines have no audio device and OpenAL init failure would otherwise masquerade as a
-launch failure.
+does — a verification machine may have no audio device, and OpenAL init failure would otherwise
+masquerade as a launch failure.
 
 ## When to build it
 
