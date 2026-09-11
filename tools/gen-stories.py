@@ -519,8 +519,13 @@ def main():
     else:
         created = {}
     def real(x): return x.split(":", 1)[1] if x.startswith("existing:") else created.get(x, x)
-    for b1, b2 in late:
-        subprocess.run(["bd", "dep", "add", real(b1), real(b2), "-q"], capture_output=True)
+    if late:
+        pairs = [{"from": real(b1), "to": real(b2)} for b1, b2 in late]
+        res = subprocess.run(["bd", "dep", "add", "--file", "-"], capture_output=True, text=True,
+                             input="\n".join(json.dumps(p) for p in pairs))
+        if res.returncode != 0:  # bulk validation is all-or-nothing: one stale id would drop every edge
+            print(f"bulk dep add failed ({res.stderr.strip()[:200]}); falling back to per-edge")
+            for p in pairs: subprocess.run(["bd", "dep", "add", p["from"], p["to"], "-q"], capture_output=True)
     for k, epic in late_parents:
         if k in created: subprocess.run(["bd", "update", created[k], "--parent", epic, "-q"], capture_output=True)
     print(f"created {len(created)} beads; wired {len(late)} late deps; parented {len(late_parents)}")
