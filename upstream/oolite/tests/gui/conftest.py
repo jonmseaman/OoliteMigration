@@ -194,7 +194,8 @@ class GameWindow:
             pytest.fail(f"no Oolite binary at {path}; build it first (tools/build-windows.sh test)")
         self._park_software_gl()
         self.proc = subprocess.Popen(
-            [path, "--no-splash", "-windowed"],
+            # MyOpenGLView.m matches the splash flag spelling exactly: -nosplash / --nosplash.
+            [path, "-nosplash", "-windowed"],
             cwd=self.app_dir,
             env=self._env(),
             stdout=subprocess.DEVNULL,
