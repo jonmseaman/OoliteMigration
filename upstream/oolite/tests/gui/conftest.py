@@ -64,6 +64,30 @@ WIN32_SIGNATURES = {
     "user32.SetWindowPos": ("BOOL", ["HWND", "HWND", "INT", "INT", "INT", "INT", "UINT"]),
     "user32.ShowWindow": ("BOOL", ["HWND", "INT"]),
     "user32.SetForegroundWindow": ("BOOL", ["HWND"]),
+    # Foreground arbitration (GameWindow.focus / assert_focused / _foreground_is_untakeable).
+    "user32.GetForegroundWindow": ("HWND", []),
+    "user32.SetActiveWindow": ("HWND", ["HWND"]),
+    "user32.BringWindowToTop": ("BOOL", ["HWND"]),
+    "user32.AttachThreadInput": ("BOOL", ["DWORD", "DWORD", "BOOL"]),
+    # Z-order probe (assert_click_point_is_ours). WindowFromPoint takes a POINT BY VALUE - an
+    # 8-byte struct - which an undeclared call cannot pass correctly at all.
+    "user32.WindowFromPoint": ("HWND", ["POINT"]),
+    "user32.GetAncestor": ("HWND", ["HWND", "UINT"]),
+    # Naming the window that is in the way.
+    "user32.GetWindowTextW": ("INT", ["HWND", "LPWSTR", "INT"]),
+    "user32.GetClassNameW": ("INT", ["HWND", "LPWSTR", "INT"]),
+    # DPI awareness, declared at import before any rect is read.
+    "user32.SetProcessDpiAwarenessContext": ("BOOL", ["LPVOID"]),
+    "user32.SetProcessDPIAware": ("BOOL", []),
+    "shcore.SetProcessDpiAwareness": ("LONG", ["INT"]),
+    "shcore.GetProcessDpiAwareness": ("LONG", ["HANDLE", "PINT"]),
+    # Integrity levels, for telling "elevated window owns the desktop" from "G1 is broken".
+    "kernel32.GetCurrentThreadId": ("DWORD", []),
+    "kernel32.OpenProcess": ("HANDLE", ["DWORD", "BOOL", "DWORD"]),
+    "advapi32.OpenProcessToken": ("BOOL", ["HANDLE", "DWORD", "PHANDLE"]),
+    "advapi32.GetTokenInformation": ("BOOL", ["HANDLE", "INT", "LPVOID", "DWORD", "LPDWORD"]),
+    "advapi32.GetSidSubAuthorityCount": ("PUCHAR", ["LPVOID"]),
+    "advapi32.GetSidSubAuthority": ("LPDWORD", ["LPVOID", "DWORD"]),
     # The Tool Help process-table walk (surviving_game_processes). CreateToolhelp32Snapshot
     # RETURNS a HANDLE: undeclared, that 64-bit handle comes back truncated and sign-extended
     # through a 32-bit int, so the very first Process32First on it fails with
@@ -77,10 +101,22 @@ WIN32_SIGNATURES = {
     "kernel32.CloseHandle": ("BOOL", ["HANDLE"]),
 }
 
+# Functions that do not exist on every supported Windows. Declaring them is conditional; CALLING
+# them is already guarded by hasattr at the call site.
+OPTIONAL_WIN32 = frozenset(
+    {
+        "user32.SetProcessDpiAwarenessContext",  # 10-1703 and later
+        "shcore.SetProcessDpiAwareness",  # 8.1 and later
+        "shcore.GetProcessDpiAwareness",  # 8.1 and later
+    }
+)
+
 # The library handles. ``None`` off Windows: the module must still IMPORT everywhere so that
 # `pytest --collect-only` and the offline guard tests work on any platform; the fixtures skip.
 USER32 = None
+SHCORE = None
 KERNEL32 = None
+ADVAPI32 = None
 WNDENUMPROC = None
 PROCESSENTRY32 = None
 
@@ -128,13 +164,20 @@ if IS_WINDOWS:
         "HANDLE": wintypes.HANDLE,
         "HWND": wintypes.HWND,
         "INT": ctypes.c_int,
+        "LONG": wintypes.LONG,
         "LPARAM": wintypes.LPARAM,
         "LPDWORD": ctypes.POINTER(wintypes.DWORD),
         "LPPOINT": ctypes.POINTER(wintypes.POINT),
         "LPPROCESSENTRY32": ctypes.POINTER(PROCESSENTRY32),
         "LPRECT": ctypes.POINTER(wintypes.RECT),
+        "LPVOID": ctypes.c_void_p,
+        "LPWSTR": wintypes.LPWSTR,
         "LRESULT": LRESULT,
         "PDWORD_PTR": ctypes.POINTER(DWORD_PTR),
+        "PHANDLE": ctypes.POINTER(wintypes.HANDLE),
+        "PINT": ctypes.POINTER(ctypes.c_int),
+        "POINT": wintypes.POINT,
+        "PUCHAR": ctypes.POINTER(ctypes.c_ubyte),
         "UINT": wintypes.UINT,
         "WNDENUMPROC": WNDENUMPROC,
         "WPARAM": wintypes.WPARAM,
@@ -147,23 +190,160 @@ if IS_WINDOWS:
         """
         for qualified, (restype, argtypes) in WIN32_SIGNATURES.items():
             library, _, function = qualified.partition(".")
-            func = getattr(libraries[library], function)
+            handle = libraries.get(library)
+            if handle is None:
+                # A library this Windows does not have (shcore before 8.1). Its call sites are
+                # hasattr-guarded; an undeclarable signature must not break the import.
+                if qualified in OPTIONAL_WIN32:
+                    continue
+                raise OSError(f"{library} is required by this tier but could not be loaded")
+            try:
+                func = getattr(handle, function)
+            except AttributeError:
+                if qualified in OPTIONAL_WIN32:
+                    continue
+                raise
             func.restype = _WIN32_TYPES[restype]
             func.argtypes = [_WIN32_TYPES[name] for name in argtypes]
         return libraries
 
-    # Our OWN handle, not ``ctypes.windll.user32``: windll hands out a process-wide cached
+    # Our OWN handles, not ``ctypes.windll.*``: windll hands out a process-wide cached
     # library whose function objects are shared with every other importer, so declaring
     # argtypes on it would mutate somebody else's calls. use_last_error gives us a
-    # ctypes-private copy of GetLastError that a later Python call cannot clobber.
+    # ctypes-private copy of GetLastError that a later Python call cannot clobber - and it is
+    # the ONLY way ``ctypes.get_last_error()`` ever returns anything but 0, which is why the
+    # DPI refusal below can report a real error code instead of a constant zero.
     USER32 = ctypes.WinDLL("user32", use_last_error=True)
     KERNEL32 = ctypes.WinDLL("kernel32", use_last_error=True)
-    _declare_win32({"user32": USER32, "kernel32": KERNEL32})
+    ADVAPI32 = ctypes.WinDLL("advapi32", use_last_error=True)
+    try:
+        SHCORE = ctypes.WinDLL("shcore", use_last_error=True)
+    except OSError:  # pre-8.1: SetProcessDPIAware is all there is
+        SHCORE = None
+    _declare_win32(
+        {"user32": USER32, "kernel32": KERNEL32, "advapi32": ADVAPI32, "shcore": SHCORE}
+    )
 
 
 def _win32_error(function):
     """The OSError for the last failed Win32 call, read from ctypes' private last-error slot."""
     return ctypes.WinError(ctypes.get_last_error(), f"{function} failed")
+
+
+# --- DPI awareness ------------------------------------------------------------------------------
+#
+# Oolite ships a manifest that declares PerMonitorV2 (src/SDL/OOResourcesWin/oolite.exe.manifest:
+# 34-35), so the game's window lives in PHYSICAL pixels. A python.exe that has not declared
+# awareness is DPI-*virtualised*: GetClientRect and ClientToScreen hand it logical pixels, and
+# SendInput takes logical pixels too. At 100% scaling logical == physical and nothing shows; at
+# 125% or 150% every coordinate this file computes is off by the scale factor, so the click lands
+# on the wrong row or outside the window entirely and the game simply keeps running.
+#
+# That is the whole of the "passed for the implementer, failed for the reviewer, identical
+# coordinate maths" failure: it is not flake, it is the test process and the game disagreeing
+# about what a pixel is. Matching the game's awareness is what makes the two agree, so this runs
+# at import - before pyautogui, and before any rect is read.
+DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 = ctypes.c_void_p(-4) if IS_WINDOWS else None
+
+
+# GetProcessDpiAwareness values (PROCESS_DPI_AWARENESS). The game is PerMonitorV2 by manifest,
+# so only PER_MONITOR is a match: see why SYSTEM is NOT good enough in
+# assert_dpi_awareness_matches_game.
+DPI_UNAWARE = 0
+DPI_SYSTEM_AWARE = 1
+DPI_PER_MONITOR_AWARE = 2
+
+
+def _become_per_monitor_dpi_aware():
+    """Declare PerMonitorV2, matching the game. Returns True if this process is now PER_MONITOR.
+
+    Every call's return is CHECKED rather than assumed: SetProcessDpiAwarenessContext is refused
+    (ERROR_ACCESS_DENIED) for a process whose awareness is already set - by a manifest, by an
+    embedding host, or by an earlier import - and a silently refused call would leave the process
+    computing virtualised coordinates while this file reported success. The return is reported to
+    the caller and the real, observed state is re-read from the OS below; the tests assert on that
+    observed state, never on the request having been made.
+
+    The recorded ``error`` must be MEANINGFUL, not merely present. ``ctypes.get_last_error()``
+    reads ctypes' private last-error slot, which is only ever populated for functions reached
+    through a ``ctypes.WinDLL(..., use_last_error=True)`` handle: called on a function from the
+    shared ``ctypes.windll`` cache it returns a constant 0, so a refusal would be reported as
+    "REFUSED (error 0)" and tell the operator nothing. USER32 above IS such a handle, so the
+    code below is the real ERROR_ACCESS_DENIED (5) on the refusal path. Measured: after a
+    genuinely refused second call, SetProcessDpiAwarenessContext -> False and
+    ``ctypes.get_last_error()`` -> 5.
+    """
+    if not IS_WINDOWS:
+        return False
+    if hasattr(USER32, "SetProcessDpiAwarenessContext"):
+        ctypes.set_last_error(0)
+        _become_per_monitor_dpi_aware.requested = bool(
+            USER32.SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2)
+        )
+        _become_per_monitor_dpi_aware.error = (
+            0 if _become_per_monitor_dpi_aware.requested else ctypes.get_last_error()
+        )
+    elif SHCORE is not None and hasattr(SHCORE, "SetProcessDpiAwareness"):
+        # 8.1 .. 10-1607: 2 == PROCESS_PER_MONITOR_DPI_AWARE. S_OK is 0; E_ACCESSDENIED means an
+        # awareness was already set. The HRESULT is itself the error code, so it is recorded
+        # directly rather than read from the last-error slot (which this API does not set).
+        try:
+            hresult = SHCORE.SetProcessDpiAwareness(DPI_PER_MONITOR_AWARE)
+            _become_per_monitor_dpi_aware.requested = hresult == 0
+            _become_per_monitor_dpi_aware.error = 0 if hresult == 0 else hresult
+        except OSError as exc:
+            _become_per_monitor_dpi_aware.requested = False
+            _become_per_monitor_dpi_aware.error = repr(exc)
+    else:
+        # Pre-8.1 can only ever reach SYSTEM. That is recorded honestly so the assert below can
+        # say so, rather than being quietly accepted as if it matched the game.
+        _become_per_monitor_dpi_aware.requested = bool(USER32.SetProcessDPIAware())
+        _become_per_monitor_dpi_aware.error = "SetProcessDPIAware can only reach SYSTEM awareness"
+    return _process_dpi_awareness() == DPI_PER_MONITOR_AWARE
+
+
+_become_per_monitor_dpi_aware.requested = None
+_become_per_monitor_dpi_aware.error = None
+
+
+def _process_dpi_awareness():
+    """0 = UNAWARE (coordinates are virtualised), 1 = SYSTEM, 2 = PER_MONITOR."""
+    awareness = ctypes.c_int(0)
+    SHCORE.GetProcessDpiAwareness(None, ctypes.byref(awareness))
+    return awareness.value
+
+
+if IS_WINDOWS:
+    _become_per_monitor_dpi_aware()
+
+
+def assert_dpi_awareness_matches_game():
+    """Fail loudly unless this process is PER_MONITOR aware, exactly like the game.
+
+    Oolite's manifest declares PerMonitorV2 (src/SDL/OOResourcesWin/oolite.exe.manifest:34-35), so
+    its window is reported in PHYSICAL pixels on EVERY monitor.
+
+    SYSTEM awareness (1) is NOT a match and must not pass. A system-aware process is told the
+    primary monitor's DPI for the whole desktop, so on any monitor whose scaling differs from the
+    primary's it is still handed VIRTUALISED coordinates by GetClientRect/ClientToScreen and still
+    aims SendInput in them - the precise mismatch this function is named for. An assert of
+    `awareness != 0` would pass in exactly the case the fix exists to prevent: awareness already
+    set to SYSTEM by an earlier caller, so SetProcessDpiAwarenessContext is refused.
+    """
+    assert IS_WINDOWS, "DPI awareness is a Windows concept"
+    awareness = _process_dpi_awareness()
+    assert awareness == DPI_PER_MONITOR_AWARE, (
+        f"this process reports DPI awareness {awareness} "
+        f"({ {0: 'UNAWARE', 1: 'SYSTEM', 2: 'PER_MONITOR'}.get(awareness, 'unknown') }), but "
+        "Oolite is PerMonitorV2 by manifest and its window is in PHYSICAL pixels. UNAWARE is "
+        "virtualised everywhere; SYSTEM is virtualised on every monitor whose scaling differs "
+        "from the primary's. Either way every row point computed here is wrong by the scale "
+        "factor and the confirm click misses ` Exit Game ` while the maths still looks perfect.\n"
+        f"The declaration at import {'succeeded' if _become_per_monitor_dpi_aware.requested else 'was REFUSED'}"
+        f" (error {_become_per_monitor_dpi_aware.error!r}); an awareness already set by a "
+        "manifest or an embedding host cannot be changed, so run this tier from a plain "
+        "python.exe."
+    )
 
 # --- Oolite's fixed virtual GUI grid (src/Core/GuiDisplayGen.h:34-43) -------------------------
 MAIN_GUI_PIXEL_WIDTH = 480
@@ -181,6 +361,19 @@ READY_TIMEOUT_SECONDS = int(os.environ.get("OO_GUI_READY_TIMEOUT", "180"))
 # not from launch - see wait_until_ready in tests/launch_snapshot.py for why that distinction
 # is the difference between a test and a race.
 SETTLE_SECONDS = float(os.environ.get("OO_GUI_SETTLE", "5"))
+# Taking the foreground is a request Windows can refuse (see GameWindow.focus); retry for this
+# long before declaring the desktop unusable.
+FOCUS_TIMEOUT_SECONDS = float(os.environ.get("OO_GUI_FOCUS_TIMEOUT", "15"))
+# Comfortably inside MOUSE_DOUBLE_CLICK_INTERVAL (0.40s, src/SDL/MyOpenGLView.h:59): two clicks
+# further apart than that are two single clicks to the game, and never activate a row.
+DOUBLE_CLICK_INTERVAL_SECONDS = 0.05
+
+# Prefixes a failure caused by the DESKTOP being unusable for GUI tests rather than by the game
+# being broken. An operator (and tools/gui-tier.sh) must be able to tell the two apart at a
+# glance: "G1 is broken" and "something elevated is sitting on your foreground" call for
+# completely different responses, and reporting the second as the first is how a real regression
+# gets ignored. Deliberately NOT a skip - a silent pass is what bead oo-7by1 just removed.
+DESKTOP_UNUSABLE_MARKER = "GUI TIER PRECONDITION FAILED"
 
 # How every GUI-tier launch is spelled. MyOpenGLView.m:363 matches the splash flag by exact
 # ``isEqual:`` against -nosplash / --nosplash only, so any other spelling (a hyphen between "no"
@@ -263,10 +456,52 @@ def row_to_point(row, client_rect):
 # --- the game process -------------------------------------------------------------------------
 
 
+def _native_path(path):
+    """Turn a git-for-Windows MSYS path (``/c/Users/...``) into one Python can open.
+
+    Git run from an MSYS shell answers ``rev-parse`` in MSYS form even with
+    ``--path-format=absolute``; ``os.path.isdir`` on that string is always False, which would
+    silently defeat the fallback below rather than failing loudly.
+    """
+    if IS_WINDOWS and len(path) > 2 and path[0] == "/" and path[2] in "/\\" and path[1].isalpha():
+        return f"{path[1].upper()}:/{path[3:]}"
+    return path
+
+
 def _default_app_dir():
+    """Where oolite.app is, for a checkout that may not be the one holding the build.
+
+    ``build/`` is gitignored (upstream/oolite/.gitignore:25), so a fresh worktree - the
+    orchestrator's per-bead worktrees, and the detached checkout accept.sh merges into - contains
+    the tests but no binary. Falling back to the main checkout's build makes the real G1 test
+    runnable from those worktrees instead of being deselected, which is the failure that put this
+    tier's only meaningful test outside its own acceptance. ``--oolite-app``/``$OO_APP_DIR`` still
+    win, so a caller can always point somewhere else.
+    """
     here = os.path.dirname(os.path.abspath(__file__))
     oolite = os.path.abspath(os.path.join(here, "..", ".."))
-    return os.path.join(oolite, "build", "meson_test", "oolite.app")
+    local = os.path.join(oolite, "build", "meson_test", "oolite.app")
+    if os.path.isdir(local):
+        return local
+    # A linked worktree's .git is a file pointing at the main checkout; its common dir is the
+    # main repository's .git, whose parent is the checkout that holds the build.
+    try:
+        common = subprocess.run(
+            ["git", "-C", oolite, "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return local
+    if common.returncode == 0 and common.stdout.strip():
+        main_checkout = os.path.dirname(_native_path(common.stdout.strip()))
+        shared = os.path.join(
+            main_checkout, "upstream", "oolite", "build", "meson_test", "oolite.app"
+        )
+        if os.path.isdir(shared):
+            return shared
+    return local
 
 
 def pytest_addoption(parser):
@@ -399,6 +634,9 @@ class GameWindow:
         path = os.path.join(self.app_dir, binary)
         if not os.path.isfile(path):
             pytest.fail(f"no Oolite binary at {path}; build it first (tools/build-windows.sh test)")
+        # Before a single coordinate is read: this process must measure pixels the way the game
+        # does, or every point computed below is silently wrong on a scaled display.
+        assert_dpi_awareness_matches_game()
         self._park_software_gl()
         # BEFORE the process starts: record what is already on disk, so that after exit we can
         # tell a file THIS run wrote from one an earlier run left behind. app_dir is the
@@ -415,21 +653,51 @@ class GameWindow:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-        self._await_startup_complete(READY_TIMEOUT_SECONDS)
-        self.hwnd = self._await_window(30)
-        self._pin_window(*PINNED_CLIENT_SIZE)
-        self.focus()
-        time.sleep(SETTLE_SECONDS)
+        # EVERYTHING after the Popen is unwound if it raises. These steps can all fail -
+        # _await_startup_complete, _await_window and focus() all call pytest.fail - and the
+        # process this method has already launched must not survive such a failure. This
+        # try/except is BELT AND BRACES, not the only defence: measured on both trees, when
+        # start() raises the exception propagates out through the ``yield window.start()``
+        # expression inside the fixture generator and the ``finally: window.kill()`` in the
+        # ``game`` fixture runs during the unwind, so the process was already being killed
+        # without this. It stays because a killed-twice process is free and an orphaned
+        # oolite.exe is not: _pin_window parks every instance at exactly (0,0) at the same
+        # client size, so any surviving instance covers the NEXT run's window pixel for pixel
+        # and silently eats its clicks (see assert_click_point_is_ours, which is the check that
+        # makes that condition loud whatever its source).
+        try:
+            self._await_startup_complete(READY_TIMEOUT_SECONDS)
+            self.hwnd = self._await_window(30)
+            self._pin_window(*PINNED_CLIENT_SIZE)
+            self.focus()
+            time.sleep(SETTLE_SECONDS)
+        except BaseException:
+            # BaseException, not Exception: pytest.fail raises Failed, which derives from
+            # BaseException, and that is the single most likely way to get here.
+            self.kill()
+            raise
         return self
 
     def kill(self):
+        """Kill the game and undo the Mesa parking. Safe to call twice, and on a failed start().
+
+        Must never raise: it runs on the failure path in start() and in fixture teardown, where
+        an exception would mask the real error AND still leave the process behind.
+        """
         try:
             if self.proc is not None and self.proc.poll() is None:
                 self.proc.kill()
                 try:
                     self.proc.wait(timeout=10)
                 except subprocess.TimeoutExpired:
-                    pass
+                    # kill() is SIGKILL/TerminateProcess, so a timeout here means the OS has not
+                    # reaped it yet rather than that it survived - but say so, because a survivor
+                    # would occlude the next run's clicks.
+                    print(
+                        f"WARNING: oolite.exe pid {self.proc.pid} did not exit within 10s of "
+                        "being killed; a survivor will occlude the next run's click point",
+                        file=sys.stderr,
+                    )
         finally:
             self._restore_software_gl()
 
@@ -540,20 +808,228 @@ class GameWindow:
             raise _win32_error("ClientToScreen")
         return (origin.x, origin.y, cli.right - cli.left, cli.bottom - cli.top)
 
+    def _integrity_level(self, pid):
+        """The process's mandatory integrity level, or None if it cannot be read.
+
+        A medium-integrity process cannot read a high-integrity process's token, so None is
+        itself evidence of a higher-integrity target: OpenProcess/OpenProcessToken fail with
+        ERROR_ACCESS_DENIED across the UIPI boundary.
+        """
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        TOKEN_QUERY = 0x0008
+        TokenIntegrityLevel = 25
+        handle = KERNEL32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return None
+        try:
+            token = wintypes.HANDLE()
+            if not ADVAPI32.OpenProcessToken(handle, TOKEN_QUERY, ctypes.byref(token)):
+                return None
+            size = wintypes.DWORD()
+            ADVAPI32.GetTokenInformation(token, TokenIntegrityLevel, None, 0, ctypes.byref(size))
+            buffer = ctypes.create_string_buffer(size.value)
+            if not ADVAPI32.GetTokenInformation(
+                token, TokenIntegrityLevel, buffer, size.value, ctypes.byref(size)
+            ):
+                return None
+            sid = ctypes.cast(buffer, ctypes.POINTER(ctypes.c_void_p))[0]
+            count = ADVAPI32.GetSidSubAuthorityCount(sid)[0]
+            return ADVAPI32.GetSidSubAuthority(sid, count - 1)[0]
+        finally:
+            KERNEL32.CloseHandle(handle)
+
+    def _foreground_is_untakeable(self):
+        """Is the current foreground owned by a process we are forbidden to steal it from?
+
+        AttachThreadInput - the whole basis of focus() below - is refused with
+        ERROR_ACCESS_DENIED across the UIPI/integrity boundary, so when an ELEVATED window
+        (Task Manager started as administrator is the everyday example) owns the foreground, no
+        amount of retrying can ever succeed. Distinguishing that case matters: it is
+        "your desktop cannot run GUI tests right now", not "G1 is broken", and an operator who
+        cannot tell the two apart will go looking for a bug in the game.
+
+        Returns None when the foreground is takeable, or a description of the blocker.
+        """
+        foreground = USER32.GetForegroundWindow()
+        if not foreground or foreground == self.hwnd:
+            return None
+        pid = wintypes.DWORD()
+        thread = USER32.GetWindowThreadProcessId(foreground, ctypes.byref(pid))
+        our_thread = KERNEL32.GetCurrentThreadId()
+        # The direct evidence: can we attach to its input queue at all?
+        if thread and thread != our_thread:
+            ctypes.set_last_error(0)
+            if USER32.AttachThreadInput(our_thread, thread, True):
+                USER32.AttachThreadInput(our_thread, thread, False)
+                return None
+            # ctypes' private last-error slot, which is populated only because USER32 is our own
+            # use_last_error handle. ERROR_ACCESS_DENIED is the UIPI signature; anything else is
+            # a transient refusal that retrying can still get past.
+            if ctypes.get_last_error() != 5:
+                return None
+        ours = self._integrity_level(os.getpid())
+        theirs = self._integrity_level(pid.value)
+        title = ctypes.create_unicode_buffer(256)
+        USER32.GetWindowTextW(foreground, title, 256)
+        cls = ctypes.create_unicode_buffer(256)
+        USER32.GetClassNameW(foreground, cls, 256)
+        return (
+            f"hwnd {foreground} (class {cls.value!r}, title {title.value!r}, pid {pid.value}) "
+            f"refuses AttachThreadInput with ERROR_ACCESS_DENIED; its integrity level is "
+            f"{theirs!r} against our {ours!r} (0x3000 = High/elevated, 0x2000 = Medium)"
+        )
+
     def focus(self):
+        """Make the game window the foreground window, and VERIFY that it worked.
+
+        SetForegroundWindow is not a command, it is a request: Windows refuses it from a process
+        that does not already own the foreground, and this desktop sets
+        SPI_GETFOREGROUNDLOCKTIMEOUT to 0x7FFFFFFF, so the refusal is permanent and silent - the
+        call returns 0 and merely flashes the taskbar. A test that ignores that return clicks at
+        a correct coordinate on a window that is not accepting input, which looks exactly like a
+        coordinate bug.
+
+        AttachThreadInput to the current foreground thread lifts the restriction for the duration
+        (the two threads share an input queue, so we count as the foreground for the call), which
+        is the documented way to do this. It is attempted repeatedly and then asserted, because
+        an unfocused window makes every later assertion in this tier meaningless.
+
+        The one case retrying cannot fix is an ELEVATED foreground owner: AttachThreadInput does
+        not cross the UIPI boundary, so the loop would spin out its whole timeout and then report
+        a failure indistinguishable from a broken click. That case is detected and reported
+        separately - see _foreground_is_untakeable and assert_desktop_can_run_gui_tests.
+        """
         SW_RESTORE = 9
         # ShowWindow's BOOL return is the PREVIOUS visibility, not success, so it is not an
-        # error indicator and is deliberately not checked. SetForegroundWindow genuinely can
-        # refuse (the foreground-lock rules), but a refusal is recoverable and this tier has
-        # always tolerated it, so it stays a warning rather than a new failure mode.
+        # error indicator and is deliberately not checked.
         USER32.ShowWindow(self.hwnd, SW_RESTORE)
-        if not USER32.SetForegroundWindow(self.hwnd):
-            warnings.warn(
-                f"SetForegroundWindow refused for hwnd {self.hwnd}: "
-                f"{ctypes.WinError(ctypes.get_last_error())}",
-                stacklevel=1,
+        target_thread = USER32.GetWindowThreadProcessId(self.hwnd, None)
+        deadline = time.time() + FOCUS_TIMEOUT_SECONDS
+        while time.time() < deadline:
+            foreground = USER32.GetForegroundWindow()
+            if foreground == self.hwnd:
+                time.sleep(0.2)
+                return
+            our_thread = KERNEL32.GetCurrentThreadId()
+            fg_thread = USER32.GetWindowThreadProcessId(foreground, None) if foreground else 0
+            attached = []
+            for thread in (fg_thread, target_thread):
+                if (
+                    thread
+                    and thread != our_thread
+                    and USER32.AttachThreadInput(our_thread, thread, True)
+                ):
+                    attached.append(thread)
+            try:
+                USER32.BringWindowToTop(self.hwnd)
+                USER32.SetForegroundWindow(self.hwnd)
+                USER32.SetActiveWindow(self.hwnd)
+            finally:
+                for thread in attached:
+                    USER32.AttachThreadInput(our_thread, thread, False)
+            time.sleep(0.3)
+        blocker = self._foreground_is_untakeable()
+        if blocker:
+            pytest.fail(
+                f"{DESKTOP_UNUSABLE_MARKER}: an elevated (higher-integrity) window owns the "
+                f"foreground and Windows forbids this process from taking it.\n  {blocker}\n"
+                "This is NOT a G1 failure and says nothing about the game: AttachThreadInput "
+                "cannot cross the UIPI boundary, so no retry can ever succeed while that window "
+                "is foreground. Close or minimise it (an elevated Task Manager is the usual "
+                "culprit) and re-run. tools/gui-tier.sh checks this precondition before it "
+                "starts, so the tier reports it up front rather than as a mystery click failure."
             )
-        time.sleep(0.5)
+        pytest.fail(
+            f"could not give the Oolite window (hwnd {self.hwnd}) the foreground within "
+            f"{FOCUS_TIMEOUT_SECONDS}s; foreground is hwnd {USER32.GetForegroundWindow()}. "
+            "Synthetic clicks go to whatever is focused, so this tier cannot run on a desktop "
+            "whose foreground it cannot take (a screen locked or in use - ADR-0017)."
+        )
+
+    def assert_focused(self):
+        """The window still owns the foreground. Checked immediately before every click.
+
+        RE-TAKES the foreground rather than merely sampling it. A bare assert here is what made
+        this tier's definition of done non-repeatable: measured over 35 consecutive runs of the
+        DoD command on an otherwise idle machine, 34 passed and one failed with "the Oolite
+        window lost the foreground before a click". ANYTHING that transiently owns the
+        foreground between start()'s settle and this assert - a notification, an installer, or
+        (caught red-handed on this machine) a sibling tool launching oolite.exe without taking
+        tools/gui-lock - hard-failed the whole run, even though the condition was gone a fraction
+        of a second later.
+
+        focus() is the self-healing form select_row has always used, and it is not a softening:
+        it retries for FOCUS_TIMEOUT_SECONDS and then hard-fails exactly as before, with the
+        elevated-owner case still reported distinguishably. A foreground that is genuinely
+        untakeable still fails the test; a foreground that was momentarily borrowed no longer
+        does.
+        """
+        if USER32.GetForegroundWindow() == self.hwnd:
+            return
+        self.focus()
+        foreground = USER32.GetForegroundWindow()
+        assert foreground == self.hwnd, (
+            f"the Oolite window lost the foreground before a click and could not retake it "
+            f"within {FOCUS_TIMEOUT_SECONDS}s (foreground is hwnd {foreground}, game is "
+            f"{self.hwnd}); the click would have gone to another window"
+        )
+
+    def assert_click_point_is_ours(self, x, y):
+        """The window UNDER the click point is ours - which is not implied by owning the focus.
+
+        THE THIRD FAILURE MODE. Foreground and Z-ORDER are different things, and a synthetic
+        click made with mouse_event (which is what pyautogui uses - _pyautogui_win.py:432 _click
+        -> _sendMouseEvent -> mouse_event; the SendInput branch is commented out at :483-492) is
+        delivered BY POSITION to the topmost window at that point, exactly like a physical click.
+        It does not go to the foreground window. So a window that sits ABOVE the game at the
+        click point swallows the click while GetForegroundWindow() still answers with the game's
+        hwnd and assert_focused() still passes - a correctly placed, correctly timed double-click
+        on a correctly focused window that never reaches the game.
+
+        The occluder observed on this desktop was a second oolite.exe. _pin_window parks every
+        instance at exactly (0,0) at the same 960x720 client size, so any other instance covers
+        this window's rows pixel for pixel, is the same class (SDL_app), and - being on the start
+        screen itself - silently consumes the click. Measured directly: with one present,
+        GetForegroundWindow() == our hwnd while WindowFromPoint(488,727) returned the OTHER
+        instance's hwnd.
+
+        WHERE THAT SECOND INSTANCE CAME FROM IS NOT ESTABLISHED. It was originally attributed to
+        a leak from a failed start(), but that mechanism was DISPROVEN by measurement: when
+        start() raises, the exception propagates through the ``yield window.start()`` expression
+        inside the fixture generator and the ``finally:`` in the ``game`` fixture runs during the
+        unwind, so the process was already being killed (instrumented on both trees; kill was
+        called, and the launched pid was dead at session end). One launcher that DOES bypass the
+        desktop lock has since been caught - tools/js_api_snapshot.py starts oolite.exe without
+        taking tools/gui-lock - but this assert does not depend on knowing the source. It is what
+        makes an occluded click point a named failure instead of a mystery miss, whatever put the
+        window there.
+        """
+        under = USER32.WindowFromPoint(wintypes.POINT(x, y))
+        GA_ROOT = 2
+        root = USER32.GetAncestor(under, GA_ROOT) or under  # children belong to their frame
+        if root == self.hwnd:
+            return
+        pid = wintypes.DWORD()
+        USER32.GetWindowThreadProcessId(root, ctypes.byref(pid))
+        cls = ctypes.create_unicode_buffer(256)
+        USER32.GetClassNameW(root, cls, 256)
+        title = ctypes.create_unicode_buffer(256)
+        USER32.GetWindowTextW(root, title, 256)
+        same_binary = cls.value == "SDL_app"
+        pytest.fail(
+            f"the click point {(x, y)} is OCCLUDED: the topmost window there is hwnd {root} "
+            f"(class {cls.value!r}, title {title.value!r}, pid {pid.value}), not the game's hwnd "
+            f"{self.hwnd}. The game still owns the FOREGROUND, but a synthetic click is "
+            "delivered by position to whatever is on top at that point, so this click would "
+            "have been swallowed and the game would simply keep running.\n"
+            + (
+                "That window is another Oolite instance (class SDL_app). Something else on this "
+                "machine is running the game concurrently - check for a launcher that does not "
+                "take tools/gui-lock. Kill any stray oolite.exe and re-run."
+                if same_binary
+                else "Move or close that window; this tier needs the game's rows unobscured."
+            )
+        )
 
     # --- input --------------------------------------------------------------------------------
 
@@ -568,21 +1044,37 @@ class GameWindow:
         """
         import pyautogui
 
+        self.focus()
         x, y = self.point_for_row(row)
         pyautogui.moveTo(x, y, duration=0.2)
         # The row under the cursor is read from the cursor position the renderer last saw, so
         # give the game a frame to notice the move before the click lands.
         time.sleep(0.3)
+        self.assert_focused()
+        self.assert_click_point_is_ours(x, y)
         pyautogui.click(x, y)
         time.sleep(0.3)
         return x, y
 
     def confirm_row(self, row):
-        """Activate ``row`` with a double-click (gvMouseDoubleClick)."""
+        """Activate ``row`` with a double-click (gvMouseDoubleClick).
+
+        The two clicks must be closer together than MOUSE_DOUBLE_CLICK_INTERVAL (0.40s,
+        MyOpenGLView.h:59) or MyOpenGLView+Input.m:285-293 records two separate single clicks and
+        never sets gvMouseDoubleClick, so pyautogui's inter-click interval is pinned rather than
+        left at its default.
+        """
         import pyautogui
 
+        # Re-takes the foreground if something transiently stole it, then asserts. A bare
+        # sample here was one of the two structural causes of this tier's non-repeatable DoD.
+        self.assert_focused()
         x, y = self.point_for_row(row)
-        pyautogui.doubleClick(x, y)
+        # Focus is not enough: the click goes to whatever is topmost AT THIS POINT. See
+        # assert_click_point_is_ours - this is the third failure mode this bead was reworked for.
+        self.assert_click_point_is_ours(x, y)
+        pyautogui.doubleClick(x, y, interval=DOUBLE_CLICK_INTERVAL_SECONDS)
+
 
 
 # --- fixtures -----------------------------------------------------------------------------------
@@ -853,6 +1345,80 @@ def require_gui_platform():
     )
 
 
+def describe_untakeable_foreground():
+    """Is an elevated window sitting on the foreground right now? Returns a reason, or None.
+
+    The same UIPI check GameWindow._foreground_is_untakeable performs, but usable BEFORE a game
+    exists, so the tier can report "this desktop cannot run GUI tests" as a precondition instead
+    of as a 15-second timeout inside the first click. Cheap: one AttachThreadInput attempt.
+    """
+    if not IS_WINDOWS:
+        return None
+    foreground = USER32.GetForegroundWindow()
+    if not foreground:
+        return None
+    pid = wintypes.DWORD()
+    thread = USER32.GetWindowThreadProcessId(foreground, ctypes.byref(pid))
+    our_thread = KERNEL32.GetCurrentThreadId()
+    if not thread or thread == our_thread:
+        return None
+    ctypes.set_last_error(0)
+    if USER32.AttachThreadInput(our_thread, thread, True):
+        USER32.AttachThreadInput(our_thread, thread, False)
+        return None
+    # ctypes' private last-error slot: populated only because USER32 is our own use_last_error
+    # handle, so this is the real code rather than whatever a later Python call left behind.
+    if ctypes.get_last_error() != 5:  # ERROR_ACCESS_DENIED is the UIPI signature
+        return None
+    title = ctypes.create_unicode_buffer(256)
+    USER32.GetWindowTextW(foreground, title, 256)
+    cls = ctypes.create_unicode_buffer(256)
+    USER32.GetClassNameW(foreground, cls, 256)
+    return (
+        f"hwnd {foreground} (class {cls.value!r}, title {title.value!r}, pid {pid.value}) owns "
+        "the foreground and refuses AttachThreadInput with ERROR_ACCESS_DENIED, which means it "
+        "runs at a higher integrity level (it is elevated) than this test process"
+    )
+
+
+def assert_desktop_can_run_gui_tests():
+    """Refuse to start when the desktop is known to be unusable, and say so distinguishably.
+
+    A gate that any single elevated window on the desktop can wedge is not a gate accept.sh can
+    pass - but a SILENT PASS is not the answer either (that is exactly what bead oo-7by1 removed).
+    So this fails, loudly, with DESKTOP_UNUSABLE_MARKER and the offending window named, up front
+    and before a game is launched. The operator sees "your desktop is unusable for GUI tests"
+    rather than "G1 is broken", which are the two things the reviewer could not tell apart.
+
+    It is a FAILURE and not a skip on purpose: the condition is fixable in seconds (close the
+    elevated window) and a run that reported success without exercising G1 would be a lie. It is
+    reported BEFORE the run rather than 15 seconds into the first click so that the cause, not
+    the symptom, is what lands in the log.
+
+    It POLLS rather than taking one instantaneous sample. This gate runs at session scope,
+    before the desktop lock, and a UAC prompt or an installer owning the foreground for two
+    seconds would otherwise fail an entire accept.sh run on a healthy tree for a condition that
+    had already cleared by the time anyone looked. The budget is FOCUS_TIMEOUT_SECONDS, the same
+    one focus() gives the foreground; only a blocker that PERSISTS for the whole of it fails.
+    """
+    deadline = time.time() + FOCUS_TIMEOUT_SECONDS
+    blocker = describe_untakeable_foreground()
+    while blocker and time.time() < deadline:
+        time.sleep(0.5)
+        blocker = describe_untakeable_foreground()
+    if blocker:
+        pytest.fail(
+            f"{DESKTOP_UNUSABLE_MARKER}: this desktop cannot run the GUI tier right now.\n"
+            f"  {blocker}\n"
+            "Synthetic input goes to the focused window, and Windows forbids a medium-integrity "
+            "process from taking the foreground away from an elevated one - AttachThreadInput "
+            "cannot cross the UIPI boundary, so no retry can ever succeed. NOTHING IS WRONG WITH "
+            "THE GAME OR WITH G1; close or minimise that window and re-run. (An elevated Task "
+            f"Manager is the usual culprit.) This persisted for {FOCUS_TIMEOUT_SECONDS}s, so it "
+            "is not a passing notification or installer."
+        )
+
+
 @pytest.fixture(scope="session")
 def gui_runtime():
     """The tier's precondition gate, resolved BEFORE the build or the desktop lock.
@@ -863,7 +1429,11 @@ def gui_runtime():
     missing-build error instead of the honest "not applicable here".
     """
     require_gui_platform()
-    return require_gui_dependencies()
+    pyautogui = require_gui_dependencies()
+    # Checked here, once per session, so an unusable desktop is reported as its own cause before
+    # any game is launched rather than as a mysterious click failure 15s into the first test.
+    assert_desktop_can_run_gui_tests()
+    return pyautogui
 
 
 @pytest.fixture
