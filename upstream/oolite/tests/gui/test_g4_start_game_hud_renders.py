@@ -205,7 +205,15 @@ def count_scanner_red(path):
     return tuple(counts)
 
 
-def row_is_occupied(path, row, threshold=40):
+# A row counts as "has text on it" above this many lit pixels. Measured on this build: the
+# faintest real menu row (` Exit Game `) lights ~480 and the densest non-text artefact that can
+# land on a row band - the GUI mouse crosshair, which stays wherever the last click left it -
+# lights ~50. 200 is between them with room either side, and deliberately NOT 1: a threshold of
+# "any lit pixel" would call the cursor a menu row and mis-identify the screen.
+ROW_OCCUPIED_THRESHOLD = 200
+
+
+def row_is_occupied(path, row, threshold=ROW_OCCUPIED_THRESHOLD):
     """Does GUI ``row`` have text drawn on it in this frame?
 
     The row's y comes from conftest.row_to_point - the SAME grid maths the clicks use, so a row
@@ -427,6 +435,39 @@ def test_a_frame_with_no_scanner_scores_zero(tmp_path):
     path = tmp_path / "painted.png"
     painted.save(path)
     assert count_scanner_red(str(path)) == (5, 5)
+
+
+@pytest.mark.offline
+def test_the_row_occupancy_threshold_separates_text_from_the_cursor(tmp_path):
+    """A lit-pixel count must distinguish a menu row from the GUI mouse crosshair.
+
+    This is a measured constant, not a taste: the crosshair is drawn wherever the last click left
+    it and DOES land inside a row band (it put ~50 lit pixels on row 22 of a scenario-screen frame
+    during development, which made the screen-identity check reject a correct screen). If the
+    threshold ever drops near that, assert_on_scenario_screen starts failing on a healthy game.
+    """
+    from PIL import Image
+
+    assert 60 < ROW_OCCUPIED_THRESHOLD < 400, (
+        f"the row-occupancy threshold {ROW_OCCUPIED_THRESHOLD} is outside the measured gap "
+        "between the GUI crosshair (~50 lit pixels in a row band) and the faintest real menu "
+        "row (~480)"
+    )
+    blank = Image.new("RGB", (960, 720), (0, 0, 0))
+    _, y = row_to_point(22, (0, 0, 960, 720))
+    for dx in range(55):  # a crosshair-sized smudge, well under the threshold
+        blank.putpixel((400 + dx, y), (120, 120, 255))
+    sparse = tmp_path / "cursor.png"
+    blank.save(sparse)
+    assert not row_is_occupied(str(sparse), 22), "a cursor-sized smudge was read as a menu row"
+
+    text = Image.new("RGB", (960, 720), (0, 0, 0))
+    for dy in range(-5, 6):
+        for dx in range(200):
+            text.putpixel((380 + dx, y + dy), (255, 255, 0))
+    dense = tmp_path / "text.png"
+    text.save(dense)
+    assert row_is_occupied(str(dense), 22), "a row full of text was not read as occupied"
 
 
 @pytest.mark.offline
