@@ -6,8 +6,18 @@ against a real window**. Specified in
 [G1](../../../../docs/stories/G1-exit-via-mouse.md).
 
 ```bash
-python3 -m pytest upstream/oolite/tests/gui/test_g1_exit_via_mouse.py -x -q
+tools/gui-tier.sh upstream/oolite/tests/gui/test_g1_exit_via_mouse.py
 ```
+
+Run it through `tools/gui-tier.sh`, not bare `pytest`. The runner installs
+[`requirements.txt`](requirements.txt) — nothing else in the repository does, so without it the
+missing-`pyautogui` case is the *expected* case — and exports `OO_GUI_REQUIRE=1`.
+
+**A skip is a silent pass.** On Windows, a missing `pyautogui` is a hard `pytest.fail` naming the
+install command, never an `importorskip`. The one legitimate skip is a non-Windows host, where
+this tier genuinely does not apply (ADR-0017); `OO_GUI_REQUIRE=1` turns even that into a failure,
+so a run that was *supposed* to exercise G1 cannot come back green from the wrong machine.
+`tools/setup-windows.sh` installs `pyautogui` too, for a machine set up once up front.
 
 It needs a **real desktop**: logged in, unlocked, and not doing anything else, because the tier
 takes the desktop exclusively while it runs ([ADR-0017](../../../../docs/decisions/0017-native-windows-subtree.md)).
