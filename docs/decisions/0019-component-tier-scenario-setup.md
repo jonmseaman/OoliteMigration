@@ -19,7 +19,7 @@ scenario needs and what S1 can honestly assert.
 
 | S1 / 0-component-tier.md says | What actually happens |
 |---|---|
-| Spawn ships and they fight | `system.addShips` assigns **`nullAI.plist`**. Ships never think, never target, never fire. Two ships, 900 ticks: `AIState` `GLOBAL` throughout, both at full energy. |
+| Spawn ships and they fight | Ships never think, never target, never fire. Two ships, 900 ticks: `AIState` `GLOBAL` throughout, both at full energy. The cause is **not** `addShips`: the templates do carry an `ai_type` (`oolite_template_viper` → `oolite-policeAI.js`, `Resources/Config/shipdata.plist:3831`; pirate templates → `oolite-pirateAI.js`, e.g. `:390`), but `-setAITo:` substitutes `oolite-nullAI.js` while `[PLAYER scriptsLoaded]` is false (`src/Core/Entities/ShipEntityAI.m:254-257`) — which is the case at the main menu and before a save is loaded. Load, launch, then `ship.setAI(...)` explicitly. |
 | Spawning is enough setup | At the main menu there is **no simulation at all** — a demo scene with a docked player and a station. 90 s, zero movement, zero targets. A save must be `-load`ed (`src/SDL/main.m:167`). |
 | A loaded game is in flight | A loaded save starts **docked**; while docked NPC AI still does not tick. `player.ship.launch()` is required. |
 | The system is empty enough to count roles | The standard scenario opens with **~80 entities, including 32 pirates and 5 police**. `countShipsWithRole("pirate") == 0` is unreachable, and the count measures the ambient population, not the scenario. |
