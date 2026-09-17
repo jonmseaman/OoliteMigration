@@ -1,0 +1,383 @@
+#!/usr/bin/env bash
+#
+# Exclusion proof for the NON-GUI launchers (bug oo-ccy9). Real concurrent processes, scratch
+# lock dir, no game build needed.
+#
+#     tools/desktop-lock-selftest
+#
+# tools/gui-lock-selftest proves the mutex itself is a mutex. This proves the thing that was
+# actually broken: that tools/js_api_snapshot.py and the other desktop launchers now GO THROUGH
+# that mutex - they queue behind a holder instead of launching on top of it, they release when
+# they are done, and they release even when the body raises.
+#
+# The game is never launched here. What is exercised is the exact code path that gates the
+# launch: tools/desktop_lock.py's context manager, the same one js_api_snapshot.collect() wraps
+# _collect_globals in. A test that needed a built game could not run in accept.sh's checkout.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+export OO_GUI_LOCK_DIR="${LOCALAPPDATA:-${TMPDIR:-${TEMP:-/tmp}}}/oolite-desktop-lock-proof.lock"
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+L="bash tools/gui-lock"
+fail=0
+ok(){ echo "PASS: $1"; }
+no(){ echo "FAIL: $1"; fail=1; }
+
+native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
+TOOLS="$(native "$(pwd)/tools")"
+
+echo "=== 1. a launcher BLOCKS while a GUI session holds the desktop ==="
+# A stand-in for the GUI tier: it takes the lock exactly as the desktop_lock fixture does and
+# holds it while it "runs a test".
+bash -c 'export OO_GUI_LOCK_OWNER=guitest; bash tools/gui-lock acquire --timeout 10 >/dev/null && sleep 10' &
+GUI=$!
+sleep 2
+$L status | sed 's/^/  /'
+
+start=$(date +%s)
+out=$(OO_GUI_LOCK_TIMEOUT=4 python3 - "$TOOLS" <<'PY' 2>&1
+import sys
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import DesktopLockError, desktop_lock
+try:
+    with desktop_lock("jsapi", start=sys.argv[1]):
+        print("LAUNCHED")          # must NOT happen: the GUI test still holds the desktop
+except DesktopLockError as exc:
+    print("REFUSED:", exc)
+PY
+); rc=$?
+end=$(date +%s)
+echo "$out" | sed 's/^/  /'
+echo "  (rc=$rc after $((end-start))s)"
+case "$out" in
+	*LAUNCHED*) no "the snapshot launcher took the desktop while a GUI test held it" ;;
+	*REFUSED*)  ok "the snapshot launcher refused to launch while the GUI test held the desktop" ;;
+	*)          no "unexpected output from the launcher" ;;
+esac
+# It must have QUEUED, not failed instantly: a launcher that gives up at once is not sharing the
+# desktop, it is just losing. 4s timeout, so anything under ~3s means it never waited.
+[ "$((end-start))" -ge 3 ] && ok "it queued for the desktop ($((end-start))s) rather than failing instantly" \
+	|| no "it did not queue at all ($((end-start))s)"
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "the GUI test still holds the lock" || no "the GUI test's lock vanished"
+
+echo "=== 2. once the GUI session releases, the launcher gets the desktop ==="
+wait $GUI 2>/dev/null
+# The stand-in exits without releasing (its `sleep` is killed by the wait above at best), so drop
+# it the way the fixture's teardown would.
+OO_GUI_LOCK_OWNER=guitest $L release >/dev/null 2>&1
+out=$(OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" <<'PY' 2>&1
+import os, sys
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock
+with desktop_lock("jsapi", start=sys.argv[1]) as path:
+    print("LAUNCHED under", path)
+    print("owner:", open(os.path.join(path, "owner")).readline().strip())
+PY
+); rc=$?
+echo "$out" | sed 's/^/  /'
+case "$out" in
+	*LAUNCHED*) ok "the launcher took the desktop once it was free" ;;
+	*)          no "the launcher could not take a free desktop (rc=$rc)" ;;
+esac
+case "$out" in
+	*"owner: owner="*jsapi*) ok "it holds the lock under its own distinct identity" ;;
+	*)                       no "the launcher's owner identity is not its own: $out" ;;
+esac
+[ ! -d "$OO_GUI_LOCK_DIR" ] && ok "the lock was released when the run finished" \
+	|| no "the launcher leaked the lock after a clean run"
+
+echo "=== 3. a CRASHING run still releases the desktop ==="
+# The whole point of the context manager. A snapshot run dies non-deterministically (the console
+# transport drops, the game exits 0xffffffff); if that leaked the lock, the next GUI test would
+# queue for OO_GUI_LOCK_STALE seconds and only then reclaim it.
+out=$(python3 - "$TOOLS" <<'PY' 2>&1
+import sys
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock
+try:
+    with desktop_lock("jsapi", start=sys.argv[1]):
+        raise RuntimeError("the console transport died mid-enumeration")
+except RuntimeError as exc:
+    print("CRASHED:", exc)
+PY
+)
+echo "$out" | sed 's/^/  /'
+case "$out" in *CRASHED*) ;; *) no "the crash case did not run" ;; esac
+[ ! -d "$OO_GUI_LOCK_DIR" ] && ok "the lock was released despite the exception" \
+	|| no "a crashed run leaked the desktop lock"
+
+echo "=== 4. a launcher will not release a lock it does not own ==="
+# Ownership is what makes the release safe. If the snapshot tool's teardown ran after its own
+# lock had been stale-reclaimed by a GUI session, an unconditional release would drop the GUI
+# session's live lock and put two processes on the desktop - the original bug, inverted.
+OO_GUI_LOCK_OWNER=guitest2 $L acquire --timeout 5 >/dev/null
+out=$(python3 - "$TOOLS" <<'PY' 2>&1
+import os, subprocess, sys
+sys.path.insert(0, sys.argv[1])
+import desktop_lock as dl
+# Exactly what the context manager's finally clause runs, with our own identity.
+me = dl.owner_identity("jsapi")
+env = dict(os.environ, OO_GUI_LOCK_OWNER=me)
+r = subprocess.run(["bash", dl.gui_lock_script(sys.argv[1]), "release"],
+                   capture_output=True, text=True, env=env)
+print("release rc:", r.returncode)
+PY
+)
+echo "$out" | sed 's/^/  /'
+echo "$out" | grep -q 'release rc: 3' && ok "release of another owner's lock refused (exit 3)" \
+	|| no "a launcher released a lock it did not own"
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "the other holder's lock survived" || no "the other holder's lock was destroyed"
+OO_GUI_LOCK_OWNER=guitest2 $L release >/dev/null 2>&1
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
+echo "=== 5. a LIVE holder is not stale-reclaimed out from under itself ==="
+# THE BUG THIS ADDS COVER FOR (oo-ccy9 review 1). gui-lock reclaims a lock older than
+# OO_GUI_LOCK_STALE so a dead holder cannot wedge the desktop for ever. But js_api_snapshot holds
+# the desktop for a WHOLE enumeration - up to MAX_SESSION_RESTARTS=80 sessions at OO_READY_TIMEOUT
+# each - which can exceed the 1800s default. Before the heartbeat, the lock went stale UNDER A
+# LIVE HOLDER and another launcher legitimately put a SECOND GAME on the desktop while the first
+# was still being driven, and the holder's own release was then refused.
+#
+# Same situation, compressed: a 12s stale window, a hold of 30s (2.5 windows), and a rival that
+# keeps trying to take the desktop throughout.
+export OO_GUI_LOCK_STALE=12
+HOLD=30
+
+holder_log="$(native "${LOCALAPPDATA:-/tmp}/oolite-desktop-lock-held.log")"
+rm -f "$holder_log"
+OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" "$HOLD" >"$holder_log" 2>&1 <<'PY' &
+import os, sys, time
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock, heartbeat_interval
+print("heartbeat interval:", heartbeat_interval())
+with desktop_lock("jsapi", start=sys.argv[1]) as path:
+    print("HOLDING", path, flush=True)
+    time.sleep(float(sys.argv[2]))
+    owner = open(os.path.join(path, "owner")).readline().strip()
+    print("STILL_OWNED_BY", owner, flush=True)
+print("RELEASED", flush=True)
+PY
+HOLDER=$!
+sleep 3
+$L status | sed 's/^/  /'
+
+# A rival launcher polling for the desktop the whole time the holder is working. It must NEVER
+# get in: every acquire it makes should time out, because the holder keeps refreshing.
+#
+# BOUNDED BY A DEADLINE, not just by the holder being alive. `kill -0 $HOLDER` is true right up to
+# the instant the holder releases, so an acquire STARTED at 29s of a 30s hold can succeed at 31s -
+# against a lock that was legitimately free by then. That is a race in the TEST, not a lost lock
+# (measured once: the rival "won" on try 6 while the holder still owned the lock at 30s and no
+# heartbeat had been refused), and a flaky guard is a guard people stop believing. So the rival
+# stops trying with a margin wider than its own timeout: every attempt it makes then both starts
+# AND finishes inside the hold, and a win is unambiguously a live holder losing the desktop.
+RIVAL_TIMEOUT=4
+rival_deadline=$(( $(date +%s) + HOLD - RIVAL_TIMEOUT - 4 ))
+rival_got=0
+tries=0
+while kill -0 $HOLDER 2>/dev/null && [ "$(date +%s)" -lt "$rival_deadline" ] && [ "$tries" -lt 6 ]; do
+	tries=$(( tries + 1 ))
+	if OO_GUI_LOCK_OWNER=rival $L acquire --timeout "$RIVAL_TIMEOUT" >/dev/null 2>&1; then
+		rival_got=1
+		echo "  rival TOOK the desktop on try $tries while the holder was still working"
+		OO_GUI_LOCK_OWNER=rival $L release >/dev/null 2>&1
+		break
+	fi
+done
+wait $HOLDER 2>/dev/null
+held_out="$(cat "$holder_log" 2>/dev/null)"
+rm -f "$holder_log"
+echo "$held_out" | sed 's/^/  /'
+echo "  (rival attempted $tries acquires across a ${HOLD}s hold with a ${OO_GUI_LOCK_STALE}s stale window)"
+
+[ "$tries" -ge 2 ] && ok "the rival really did keep trying ($tries acquires)" \
+	|| no "the rival barely tried ($tries acquires); this proves nothing"
+[ "$rival_got" -eq 0 ] && ok "a rival never reclaimed the lock across ${HOLD}s > ${OO_GUI_LOCK_STALE}s stale" \
+	|| no "the held lock went STALE UNDER A LIVE HOLDER and a rival took the desktop"
+case "$held_out" in
+	*STILL_OWNED_BY*jsapi*) ok "after ${HOLD}s the holder still owns the lock under its own identity" ;;
+	*)                      no "the holder's own identity was gone from the lock after ${HOLD}s" ;;
+esac
+case "$held_out" in
+	*"heartbeat refused"*) no "the holder's heartbeat was refused: it lost the lock while working" ;;
+	*)                     ok "no heartbeat was ever refused during the hold" ;;
+esac
+case "$held_out" in
+	*RELEASED*) ok "the holder's own release succeeded (it still owned what it dropped)" ;;
+	*)          no "the holder never reached a clean release" ;;
+esac
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
+echo "=== 6. a CRASHED holder's lock still goes stale and is reclaimable ==="
+# The other direction, and the one a heartbeat could easily break. The fix must NOT make locks
+# immortal: refresh is a push from a live process, so a holder that is killed stops pushing and
+# the lock ages out exactly as before. If this fails, the heartbeat has defeated the stale
+# mechanism it was working around and one crash wedges the desktop for ever.
+crash_log="$(native "${LOCALAPPDATA:-/tmp}/oolite-desktop-lock-crash.log")"
+rm -f "$crash_log"
+OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" >"$crash_log" 2>&1 <<'PY' &
+import sys, time
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock
+with desktop_lock("jsapi", start=sys.argv[1]) as path:
+    print("HOLDING", path, flush=True)
+    time.sleep(600)          # never reached: we are killed below
+PY
+VICTIM=$!
+sleep 4
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "the victim holds the lock before it dies" || no "the victim never took the lock"
+# SIGKILL: no finally, no release, no further heartbeat. Exactly a power-cut holder.
+kill -9 $VICTIM 2>/dev/null
+wait $VICTIM 2>/dev/null
+rm -f "$crash_log"
+sleep 1
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "the killed holder leaked its lock (as a crash does)" \
+	|| no "the lock vanished on its own; the rest of this check proves nothing"
+
+# Immediately: still fresh, so nobody may take it. This is what stops a slow rival from
+# reclaiming a lock whose holder is merely busy.
+if OO_GUI_LOCK_OWNER=after $L acquire --timeout 3 >/dev/null 2>&1; then
+	no "the crashed holder's lock was taken before its stale window elapsed"
+	OO_GUI_LOCK_OWNER=after $L release >/dev/null 2>&1
+else
+	ok "the crashed holder's lock is still respected inside the stale window"
+fi
+# Then past the window, with no heartbeat keeping it alive, it MUST be reclaimable.
+sleep $(( OO_GUI_LOCK_STALE + 4 ))
+if OO_GUI_LOCK_OWNER=after $L acquire --timeout 10 >/dev/null 2>&1; then
+	ok "the crashed holder's lock went stale and was reclaimed (${OO_GUI_LOCK_STALE}s window)"
+	OO_GUI_LOCK_OWNER=after $L release >/dev/null 2>&1
+else
+	no "a CRASHED holder's lock never went stale: the heartbeat has defeated the stale mechanism"
+fi
+unset OO_GUI_LOCK_STALE
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
+echo "=== 7. only the OWNER may refresh ==="
+# A refresh that anyone could call would let a rival keep somebody else's lock alive for ever -
+# the same hole as an unchecked release, pointed the other way.
+OO_GUI_LOCK_OWNER=holder7 $L acquire --timeout 5 >/dev/null
+OO_GUI_LOCK_OWNER=stranger7 $L refresh >/dev/null 2>&1; rc=$?
+echo "  stranger refresh rc=$rc"
+[ "$rc" -eq 3 ] && ok "refreshing another owner's lock is refused (exit 3)" \
+	|| no "a stranger refreshed a lock it does not own (rc=$rc)"
+OO_GUI_LOCK_OWNER=holder7 $L refresh >/dev/null 2>&1; rc=$?
+echo "  owner refresh rc=$rc"
+[ "$rc" -eq 0 ] && ok "the owner may refresh its own lock (exit 0)" \
+	|| no "the owner could not refresh its own lock (rc=$rc)"
+OO_GUI_LOCK_OWNER=holder7 $L release >/dev/null 2>&1
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
+echo "=== 8. a DEAD HEARTBEAT is noticed by the holder ==="
+# THE BUG THIS ADDS COVER FOR (oo-ccy9 review 2). Check 5 proves the heartbeat keeps a live hold
+# fresh - but a review measured that the heartbeat THREAD could die silently: only subprocess.run
+# was inside the try, so a print to a closed/redirected stream (js_api_snapshot and
+# launch_snapshot BOTH run under captured stdio) raised out of the daemon thread. The interpreter
+# printed "Exception in thread desktop-lock-heartbeat" and NOTHING NOTICED - no main-thread
+# liveness check existed - so the hold continued un-refreshed until the lock went stale UNDER A
+# LIVE HOLDER: exactly the bug the heartbeat exists to prevent, silently restored.
+#
+# Two halves, and both must hold:
+#   8a  a stream that raises on EVERY write cannot kill the heartbeat, even on the refused branch
+#       (the code path that used to be outside the try) - the thread is still alive afterwards -
+#       AND the holder FAILS the hold, because a refused refresh PROVES the desktop was lost.
+#   8b  when the heartbeat DOES stop beating, the holder NOTICES: it says so while the body is
+#       still running, and the context manager raises DesktopLockError instead of returning a
+#       result computed while the desktop mutex was not being held.
+#
+# 8a's SECOND assertion is review 3's finding, and it is why 8a used to bless a bug. The check
+# drives EXACTLY the lost-lock path - the lock is handed to thief8 mid-hold, so every subsequent
+# ownership-checked refresh is refused - and asserted ONLY that the thread survived. Meanwhile the
+# module merely warned on that branch and the run REPORTED SUCCESS, while the strictly WEAKER
+# evidence of a dead heartbeat (8b) raised. A test that exercises the proven-loss path and does
+# not assert the failure is a test that certifies the inversion.
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+export OO_GUI_LOCK_STALE=12
+
+out=$(OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" <<'PY' 2>&1
+import os, subprocess, sys, threading, time
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import DesktopLockError, desktop_lock
+
+class Raises:
+    """A stream that raises on every write - a closed pipe, a captured stdio that went away."""
+    def write(self, *a):
+        raise OSError("stream is closed")
+    def flush(self):
+        pass
+
+script = os.path.join(sys.argv[1], "gui-lock")
+try:
+    with desktop_lock("hbprobe", start=sys.argv[1], stream=Raises()) as path:
+        owner = open(os.path.join(path, "owner")).readline().split("=", 1)[1].strip()
+        # Force the REFUSED branch - the print that used to sit outside the try - by handing the
+        # lock to somebody else while we hold it.
+        subprocess.run(["bash", script, "release"], capture_output=True,
+                       env=dict(os.environ, OO_GUI_LOCK_OWNER=owner))
+        subprocess.run(["bash", script, "acquire", "--timeout", "5"], capture_output=True,
+                       env=dict(os.environ, OO_GUI_LOCK_OWNER="thief8"))
+        time.sleep(7)          # > heartbeat_interval(12) == 5, so at least one refusal happened
+        alive = any(t.name == "desktop-lock-heartbeat" for t in threading.enumerate())
+        print("HEARTBEAT_ALIVE_AFTER_REFUSAL_ON_A_BROKEN_STREAM:", alive, file=sys.__stdout__)
+    print("HOLD_REPORTED_SUCCESS_DESPITE_LOSING_THE_LOCK", file=sys.__stdout__)
+except DesktopLockError as exc:
+    print("HOLD_FAILED_AFTER_LOSING_THE_LOCK:", exc, file=sys.__stdout__)
+PY
+); rc=$?
+echo "$out" | sed 's/^/  /'
+OO_GUI_LOCK_OWNER=thief8 $L release >/dev/null 2>&1
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+case "$out" in
+	*"HEARTBEAT_ALIVE_AFTER_REFUSAL_ON_A_BROKEN_STREAM: True"*)
+		ok "a refused heartbeat on a stream that raises does NOT kill the heartbeat thread" ;;
+	*)
+		no "the heartbeat thread died when its log stream raised (rc=$rc): the silent-death bug is back" ;;
+esac
+case "$out" in
+	*HOLD_FAILED_AFTER_LOSING_THE_LOCK*)
+		ok "a hold whose refresh was REFUSED fails, instead of reporting success" ;;
+	*HOLD_REPORTED_SUCCESS_DESPITE_LOSING_THE_LOCK*)
+		no "the lock was PROVABLY handed to another owner mid-hold and the hold still succeeded" ;;
+	*)  no "unexpected output from the lost-lock probe (rc=$rc)" ;;
+esac
+
+# 8b. the liveness check is not vacuous: kill the heartbeat outright (the module's documented test
+# seam, since nothing else can kill it any more) and require the holder to notice, loudly, while
+# the body is still running - and to refuse to return quietly.
+out=$(OO_GUI_LOCK_TIMEOUT=10 OO_GUI_LOCK_HEARTBEAT_KILL=1 python3 - "$TOOLS" <<'PY' 2>&1
+import sys, time
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import DesktopLockError, desktop_lock
+try:
+    with desktop_lock("hbdead", start=sys.argv[1]):
+        time.sleep(3)
+        print("BODY_RAN", flush=True)
+    print("NOTHING_NOTICED", flush=True)
+except DesktopLockError as exc:
+    print("HOLDER_NOTICED:", exc, flush=True)
+PY
+); rc=$?
+echo "$out" | sed 's/^/  /'
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+case "$out" in
+	*BODY_RAN*) ok "the body really ran while the heartbeat was dead (so this is the live case)" ;;
+	*)          no "the body never ran; check 8b proves nothing" ;;
+esac
+case "$out" in
+	*"HEARTBEAT DIED while the body is still running"*)
+		ok "the holder reported the dead heartbeat WHILE the body was still running" ;;
+	*)
+		no "a dead heartbeat went unreported during the hold - the silent-death bug" ;;
+esac
+case "$out" in
+	*HOLDER_NOTICED*)
+		ok "the context manager raised DesktopLockError rather than returning an un-held result" ;;
+	*NOTHING_NOTICED*)
+		no "the heartbeat died and the hold returned success anyway" ;;
+	*)  no "unexpected output from the dead-heartbeat probe (rc=$rc)" ;;
+esac
+unset OO_GUI_LOCK_STALE
+
+echo
+if [ "$fail" -eq 0 ]; then echo "ALL DESKTOP-LAUNCHER EXCLUSION CHECKS PASSED"; else echo "SOME CHECKS FAILED"; fi
+exit $fail

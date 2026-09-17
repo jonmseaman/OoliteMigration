@@ -1,11 +1,11 @@
 """Launch Oolite headless, drive it over the debug console, and capture one screenshot.
 
 Everything that used to be a module constant is now an argument or an environment variable, so N
-copies of this script can run at once: each picks its own console port and its own artifact
+copies of ``run_test`` can run at once: each picks its own console port and its own artifact
 directory, and nothing is shared between them except the binary. --load hands a saved commander
 to the game's -load argument so a run can start docked instead of on the main-menu demo.
 
-Two things here are not obvious and are the reason the file looks the way it does:
+Three things here are not obvious and are the reason the file looks the way it does:
 
 * The PORT is not something this script can simply choose. It is the GAME that dials out to the
   console, and it reads the port from `console-port` in debugConfig.plist (OODebugSupport.m:80,
@@ -13,6 +13,13 @@ Two things here are not obvious and are the reason the file looks the way it doe
   writing a plist the game will merge, not by listening somewhere else. See _console_config_dir.
 
 * Readiness is measured on the GAME's clock, never on this script's. See wait_until_rendering.
+
+* The DESKTOP LOCK is taken by the command-line entry point, NOT by ``run_test`` (bug oo-ccy9).
+  Running this file as a script is the build's single smoke launch, and one real window on the
+  interactive desktop must exclude the GUI tier's. But ``run_test`` is the reusable half that the
+  N-concurrent claim above is about, and an exclusive mutex inside it would serialise - or
+  deadlock - exactly the fan-out it exists to support. So the lock wraps the single-launch CLI
+  and leaves the library function alone.
 """
 
 import argparse
@@ -457,6 +464,35 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
+def _desktop_lock_helper():
+    """tools/desktop_lock from the OUTER repository, or None when there is none.
+
+    This file lives in a subtree that is also pushed to the fork on its own, where tools/ does
+    not exist; there is no fleet to collide with there, so a missing helper is not an error. When
+    the outer repository IS around us, its tools/gui-lock is the desktop mutex every launcher on
+    this machine shares, and this launcher must take it (bug oo-ccy9).
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    while True:
+        tools = os.path.join(here, "tools")
+        if os.path.isfile(os.path.join(tools, "gui-lock")) and os.path.isfile(
+            os.path.join(tools, "desktop_lock.py")
+        ):
+            if tools not in sys.path:
+                sys.path.insert(0, tools)
+            import desktop_lock  # noqa: F401  - located at runtime, on purpose
+
+            return desktop_lock
+        parent = os.path.dirname(here)
+        if parent == here:
+            print(
+                "[!] no tools/desktop_lock.py above this checkout; "
+                "launching WITHOUT the desktop mutex"
+            )
+            return None
+        here = parent
+
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -483,16 +519,41 @@ if __name__ == "__main__":
         print(f"[*] Moving to {target_dir}")
         os.chdir(target_dir)
 
-        # Run the test from within the Oolite directory
-        success = run_test(
-            bin_name,
-            test_output,
-            args.port,
-            args.host,
-            load_save,
-            args.settle_frames,
-            args.ready_timeout,
-        )
+        # THE DESKTOP LOCK (bug oo-ccy9). This is the smoke test, and it launches ONE game -
+        # which on Windows means one real window on the interactive desktop, because
+        # SDL_VIDEODRIVER=offscreen is deliberately not set there. Two games on the desktop at
+        # once steal each other's foreground, so it queues behind the GUI tier rather than
+        # racing it.
+        #
+        # The lock lives in the OUTER repository (tools/gui-lock), not in this subtree, and this
+        # file must keep working when the subtree is pushed to the fork on its own - so the
+        # helper is located at runtime and a missing one is a warning, not a failure. It is also
+        # taken around run_test only: acquiring before the chdir above would hold the desktop
+        # while resolving paths, which is free but says the wrong thing about what the lock
+        # protects.
+        lock_helper = _desktop_lock_helper()
+        if lock_helper is None:
+            success = run_test(
+                bin_name,
+                test_output,
+                args.port,
+                args.host,
+                load_save,
+                args.settle_frames,
+                args.ready_timeout,
+            )
+        else:
+            with lock_helper.desktop_lock("smoke", start=__file__, stream=sys.stdout):
+                # Run the test from within the Oolite directory
+                success = run_test(
+                    bin_name,
+                    test_output,
+                    args.port,
+                    args.host,
+                    load_save,
+                    args.settle_frames,
+                    args.ready_timeout,
+                )
 
     except Exception as e:
         print(f"[!] Critical Error: {e}")

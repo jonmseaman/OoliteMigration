@@ -21,6 +21,7 @@
 # when acquire and release run as separate CI steps with different parent processes.
 #
 #   tools/gui-lock acquire [--timeout N]   block until held (default 900s), then exit 0
+#   tools/gui-lock refresh                 keep a lock THIS owner holds from going stale (exit 3 otherwise)
 #   tools/gui-lock release [--force]       drop a lock THIS owner holds (exit 3 otherwise)
 #   tools/gui-lock status                  exit 0 if held, 1 if free; prints the holder
 #   tools/gui-lock path                    print the lock directory and exit 0
@@ -181,6 +182,39 @@ release() {
 	rm -rf "$LOCK"
 }
 
+# A LIVE holder must be able to keep its lock alive past OO_GUI_LOCK_STALE without defeating the
+# stale mechanism (bug oo-ccy9). The stale window exists for holders that DIED; a holder that is
+# still on the desktop must not be reclaimed out from under itself. The JS-API snapshot holds the
+# desktop for a whole enumeration - up to MAX_SESSION_RESTARTS=80 sessions at OO_READY_TIMEOUT
+# seconds each - which can exceed the 1800s default, at which point a second game would legally
+# land on the desktop while the first is still being driven.
+#
+# `refresh` is therefore the ONLY way to extend a hold, and it is deliberately:
+#   * OWNERSHIP-CHECKED, exactly like release - one run may not keep another run's lock alive;
+#   * A PUSH from the live holder, not a property of the lock. It touches the directory's mtime,
+#     which is precisely what dir_age() reads. Nothing about the lock itself is made immortal.
+# So crash-safety is preserved by construction: the refreshes stop when the holder stops, the
+# mtime ages from the LAST refresh, and the lock goes stale OO_GUI_LOCK_STALE seconds later and is
+# reclaimable as before. A dead holder cannot heartbeat.
+#
+# Both the lock dir and the owner file are touched: dir_age() stats the directory, but writing the
+# owner file is what updates the directory mtime on some filesystems, so we do not rely on either
+# one alone.
+refresh() {
+	local me holder
+	[ -d "$LOCK" ] || {
+		echo "gui-lock: refusing to refresh $LOCK: it is not held" >&2
+		return 3
+	}
+	me="$(owner_id)"
+	holder="$(held_by)"
+	if [ "$holder" != "$me" ]; then
+		echo "gui-lock: refusing to refresh a lock we do not own (held by ${holder:-none}, we are $me)" >&2
+		return 3
+	fi
+	touch "$OWNER" "$LOCK" 2>/dev/null || return 1
+}
+
 status() {
 	if [ -d "$LOCK" ]; then
 		echo "held: $(held_by) $(sed -n 's/^info=//p' "$OWNER" 2>/dev/null | head -n 1)"
@@ -205,6 +239,7 @@ done
 
 case "$cmd" in
 	acquire) acquire "$timeout" ;;
+	refresh) refresh ;;
 	release) release "$force" ;;
 	status)  status ;;
 	path)    printf '%s\n' "$LOCK" ;;
@@ -217,7 +252,7 @@ case "$cmd" in
 		exit $rc
 		;;
 	*)
-		echo "usage: tools/gui-lock {acquire|release|status|path|owner|run -- cmd...} [--timeout N] [--force]" >&2
+		echo "usage: tools/gui-lock {acquire|refresh|release|status|path|owner|run -- cmd...} [--timeout N] [--force]" >&2
 		exit 2
 		;;
 esac

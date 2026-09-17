@@ -1,9 +1,10 @@
 """Enumerate Oolite's JavaScript API over the debug console and emit a deterministic snapshot.
 
-This is the engine behind tools/js-api-snapshot.sh. It launches the real game headless, drives it
-over the debug console (transport: upstream/oolite/tests/component/console.py, ADR-0018), asks the
-live SpiderMonkey runtime what globals and native classes exist, and writes the answer to
-oxp-contract/js-api-1.93.json.
+This is the engine behind tools/js-api-snapshot.sh. It launches the real game (headless in the
+sense that nothing drives its window - it still OPENS one on Windows, so it takes the desktop lock;
+see `collect`), drives it over the debug console (transport:
+upstream/oolite/tests/component/console.py, ADR-0018), asks the live SpiderMonkey runtime what
+globals and native classes exist, and writes the answer to oxp-contract/js-api-1.93.json.
 
 Five things here are deliberate and are the reason it looks like this:
 
@@ -58,9 +59,13 @@ import time
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.dirname(_HERE)
+# tools/ explicitly, not just as sys.path[0]: this module is also imported by the check scripts.
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
 sys.path.insert(0, os.path.join(_REPO, "upstream", "oolite", "tests", "component"))
 
 from console import ConsoleError, DebugConsole  # noqa: E402
+from desktop_lock import desktop_lock  # noqa: E402  - tools/desktop_lock.py, beside this file
 
 DEFAULT_APP_DIR = os.path.join(_REPO, "upstream", "oolite", "build", "meson_test", "oolite.app")
 DEFAULT_OUTPUT = os.path.join(_REPO, "oxp-contract", "js-api-1.93.json")
@@ -583,7 +588,15 @@ def collect(app_dir, port, host, settle, ready_timeout):
     os.environ["OO_SNAPSHOTSDIR"] = output_dir
     os.environ["OO_LOGSDIR"] = output_dir
     try:
-        version, result = _collect_globals(app_dir, port, host, settle, ready_timeout)
+        # THE DESKTOP LOCK (bug oo-ccy9). This run is "headless" only in the sense that nobody
+        # clicks it: SDL_VIDEODRIVER=offscreen is deliberately not set on Windows (MSYS2's Mesa
+        # has no EGL, see console.py::_env), so the game opens a real window on the real desktop
+        # and can take the foreground - which it did, out from under a running G1 click. The lock
+        # is taken around the WHOLE enumeration rather than per launch because _collect_globals
+        # relaunches the game up to MAX_SESSION_RESTARTS times and dropping the desktop between
+        # restarts would let a GUI test in half-way through a snapshot.
+        with desktop_lock("jsapi", start=__file__):
+            version, result = _collect_globals(app_dir, port, host, settle, ready_timeout)
     finally:
         if previous is None:
             os.environ.pop("OO_ADDITIONALADDONSDIRS", None)

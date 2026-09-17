@@ -169,13 +169,27 @@ def main():
     splash_evidence = conftest.splash_evidence
     LAUNCH_ARGS = list(conftest.LAUNCH_ARGS)
 
-    lock = os.path.join(REPO, "tools", "gui-lock")
-    held = os.path.isfile(lock) and subprocess.run(
-        ["bash", lock, "acquire", "--timeout", os.environ.get("OO_GUI_LOCK_TIMEOUT", "900")],
-        capture_output=True,
-        text=True,
-    ).returncode == 0
+    # THE DESKTOP LOCK (bug oo-ccy9). This check opens a REAL window - that is the whole point,
+    # it is the GUI tier's launch reproduced - so it must hold the same mutex the GUI tier holds.
+    #
+    # It used to take the lock "best effort": it recorded whether the acquire succeeded and
+    # launched the game either way, so a timed-out acquire (the case where somebody ELSE is on
+    # the desktop) put two games on the desktop at once, which is precisely what the lock exists
+    # to prevent. A lock you launch without is not a lock. Now the acquire is load-bearing: if it
+    # fails, this check fails and launches nothing.
+    sys.path.insert(0, os.path.join(REPO, "tools"))
+    from desktop_lock import DesktopLockError, desktop_lock  # noqa: E402  - located at runtime
 
+    try:
+        with desktop_lock("splashcheck", start=__file__, stream=sys.stdout):
+            return _run_launch(app_dir, binary, assert_splash_screen_is_off, splash_evidence)
+    except DesktopLockError as exc:
+        print(f"FAIL: {exc}")
+        return 1
+
+
+def _run_launch(app_dir, binary, assert_splash_screen_is_off, splash_evidence):
+    """One launch, under the desktop lock, asserting the splash ordering. Always kills the game."""
     parked = []
     proc = None
     try:
@@ -249,8 +263,6 @@ def main():
             live = parked.pop()
             if os.path.isfile(live + PARKED_SUFFIX):
                 os.replace(live + PARKED_SUFFIX, live)
-        if held:
-            subprocess.run(["bash", lock, "release"], capture_output=True)
 
 
 if __name__ == "__main__":
