@@ -45,6 +45,15 @@ Three things here are not obvious and are the reason the file looks the way it d
   runtime).
 
   ``--check-isolation`` and ``--prefs-race`` prove both halves offline, with no built game.
+
+* PATHS FROM THE COMMAND LINE CROSS A BOUNDARY (bug oo-vyey). The repository's shell is MSYS2
+  bash, so the documented way to run this - ``--load "$SAVE"`` with ``$SAVE`` a natural
+  ``/c/Users/...`` path - hands an MSYS path to a NATIVE Windows python. ``os.path.abspath`` then
+  resolves it against the current DRIVE (``/c/Users/x`` becomes ``C:/c/Users/x``, a real directory
+  on this machine, which is how the mistake survives), and the same string would go on to the
+  native game binary's ``-load``. Every path that arrives as an argument is therefore converted at
+  the boundary with ``cygpath -m``, exactly as ``tests/golden/run.sh:124`` and ``tools/gui-lock``
+  do. ``--check-msys-paths`` proves both directions offline.
 """
 
 import argparse
@@ -75,14 +84,65 @@ OOLITE_VERSION_KEY = "Oolite version"
 
 # --- CONFIGURATION ---
 IS_WINDOWS = sys.platform == "win32" or (os.name == "nt")
+
+
+# --- THE MSYS PATH BOUNDARY (bug oo-vyey) ------------------------------------------------------
+#
+# This script is a NATIVE Windows python invoked from MSYS2 bash, and the two disagree about what
+# a path is. `/c/Users/jon/save.oolite-save` is what the shell means; os.path.abspath resolves it
+# against the CURRENT DRIVE and yields `C:/c/Users/jon/save.oolite-save`, which on this machine is
+# a real directory (C:\c exists), so the mistake does not announce itself - it silently reads the
+# wrong tree, or hands the wrong string to the game's -load. cygpath is the only thing that knows
+# the mapping (it reads /etc/fstab and the MSYS root), so it is what does the conversion, exactly
+# as tests/golden/run.sh:124 and tools/gui-lock:35 already do.
+#
+# Applied ONCE, at the argument boundary, never deeper: a path already in native form is left
+# alone (cygpath -m is idempotent on `C:/...`), and off Windows there is no boundary to cross.
+_CYGPATH = shutil.which("cygpath") if IS_WINDOWS else None
+
+
+def looks_like_msys_path(text):
+    """True for a POSIX-rooted path string on Windows - the form a native binary misreads.
+
+    Drive-letter paths (`C:/x`, `C:\\x`) and UNC paths are already native. A bare `/c/...` or
+    `/tmp/...` is not, and is what the repository's own shell produces.
+    """
+    if not text or not IS_WINDOWS:
+        return False
+    if text[0] not in "/\\":
+        return False
+    return not text.startswith("\\\\") and not text.startswith("//")
+
+
+def native_path(text):
+    """Convert an MSYS path to the native `C:/...` form the game and the OS understand.
+
+    Returns ``text`` unchanged when there is nothing to convert or no cygpath to convert with -
+    a missing cygpath means this is not an MSYS shell, and the caller's path is already native.
+    """
+    if not looks_like_msys_path(text) or not _CYGPATH:
+        return text
+    try:
+        out = subprocess.run(
+            [_CYGPATH, "-m", "--", text],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        return text
+    return out or text
+
 DEFAULT_PORT = 8563  # kOOTCPConsolePort
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_OUTPUT = "./test_output"
 MIN_FILE_SIZE_KB = 100  # Threshold for a valid render
 
 # How much of the game's own clock must pass, after it starts answering, before a frame is worth
-# capturing. Game time only advances when the run loop runs, so this counts rendered frames rather
-# than wall-clock seconds and cannot be exhausted by a slow startup.
+# capturing. This is a duration in GAME-CLOCK SECONDS, not a count of frames: it is compared
+# against a clock.absoluteSeconds delta in wait_until_rendering. Game time only advances while the
+# run loop steps, so waiting on it implies frames were drawn and cannot be exhausted by a slow
+# startup - but the quantity itself is seconds, and the flag that sets it is --settle-game-seconds.
 DEFAULT_SETTLE_GAME_SECONDS = 2.0
 
 
@@ -445,7 +505,13 @@ def run_test(bin_name, test_output, port, host, load_save, settle_game_seconds, 
     if load_save:
         # src/SDL/main.m:167 - the argument after -load is taken as the commander to load, and it
         # must end in .oolite-save for the game to accept it.
-        cmd += ["-load", load_save]
+        #
+        # Converted HERE too, not only in __main__ (bug oo-vyey): this is the boundary where the
+        # string stops being python's and becomes a NATIVE Windows process's argv, and run_test is
+        # a library function that callers - tests/golden, the component tier - invoke directly
+        # with whatever their own MSYS shell handed them. native_path is a no-op on an
+        # already-native path, so the CLI's conversion is not undone by a second one.
+        cmd += ["-load", native_path(load_save)]
 
     print(f"[*] Executing: {' '.join(cmd)}")
     proc = subprocess.Popen(
@@ -601,11 +667,23 @@ def parse_args(argv=None):
         help="Saved commander to hand to the game's -load argument, so the run starts docked",
     )
     parser.add_argument(
-        "--settle-frames",
+        "--settle-game-seconds",
         type=float,
-        default=float(os.environ.get("OO_SNAPSHOT_SETTLE", DEFAULT_SETTLE_GAME_SECONDS)),
+        default=None,
+        metavar="SECONDS",
         help="Seconds of the GAME's clock that must pass before snapshotting "
         f"(default: $OO_SNAPSHOT_SETTLE, else {DEFAULT_SETTLE_GAME_SECONDS})",
+    )
+    # Deprecated alias. The old name lied about its unit - it never took a frame count - but it is
+    # a published flag, so it keeps working and warns rather than breaking callers silently.
+    parser.add_argument(
+        "--settle-frames",
+        type=float,
+        default=None,
+        dest="settle_frames_deprecated",
+        metavar="SECONDS",
+        help="DEPRECATED alias for --settle-game-seconds (never took frames; takes game-clock "
+        "seconds). Warns and will be removed.",
     )
     parser.add_argument(
         "--ready-timeout",
@@ -635,12 +713,41 @@ def parse_args(argv=None):
         help="offline: construct the shared-GNUSTEP_USERS_ROOT race and prove staging closes it",
     )
     parser.add_argument(
+        "--check-msys-paths",
+        action="store_true",
+        help="offline: prove an MSYS --load path misses the file unconverted and reaches it "
+             "converted, and that the binary's -load argv is native",
+    )
+    parser.add_argument(
+        "--check-settle-units",
+        action="store_true",
+        help="offline: prove the settle value is game-clock seconds, not frames, and that "
+             "--settle-frames is an exact alias",
+    )
+    parser.add_argument(
         "--instances",
         type=int,
         default=3,
         help="how many concurrent instances the offline checks simulate (default: 3)",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+
+    # Resolve the settle duration: explicit new flag wins, then the deprecated alias (with a
+    # warning), then $OO_SNAPSHOT_SETTLE, then the built-in default. Both flags carry the SAME
+    # unit - game-clock seconds - so the alias needs no conversion, only a warning.
+    if args.settle_frames_deprecated is not None:
+        print(
+            "[!] --settle-frames is deprecated and misnamed: it takes game-clock SECONDS, not "
+            "frames. Use --settle-game-seconds.",
+            file=sys.stderr,
+        )
+        if args.settle_game_seconds is None:
+            args.settle_game_seconds = args.settle_frames_deprecated
+    if args.settle_game_seconds is None:
+        args.settle_game_seconds = float(
+            os.environ.get("OO_SNAPSHOT_SETTLE", DEFAULT_SETTLE_GAME_SECONDS)
+        )
+    return args
 
 
 # --- offline self-checks (bug oo-pzc1) ---------------------------------------------------------
@@ -905,6 +1012,255 @@ def _launch_probe(instances=3, stagger=0.4):
     return 0
 
 
+class _ArgvRecord:
+    """Stands in for the game process: records the argv it was spawned with, then reports exit 0.
+
+    Exit 0 at poll() time is deliberate - run_test sees the child gone before it connects, prints
+    so, and returns False in under a second, which is all the time this check needs. The argv is
+    captured at spawn, which is the moment the string stops being python's and becomes a native
+    Windows process's.
+    """
+
+    lock = None
+    seen = None
+
+    def __init__(self, cmd, cwd=None, **kwargs):
+        with _ArgvRecord.lock:
+            _ArgvRecord.seen.append(list(cmd))
+        self.returncode = 0
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self, timeout=None):
+        return self.returncode
+
+    def kill(self):
+        pass
+
+
+def _spawn_recorder(real_popen, binary):
+    """Intercept ONLY the game launch; every other spawn goes to the real Popen.
+
+    Necessary because native_path itself shells out to cygpath: a blanket replacement of
+    subprocess.Popen would swallow the very conversion under test (and cygpath's Popen is used as
+    a context manager, which the recorder is not).
+    """
+
+    def spawn(cmd, *args, **kwargs):
+        argv0 = cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd)
+        if os.path.basename(str(argv0)) == binary:
+            return _ArgvRecord(cmd, *args, **kwargs)
+        return real_popen(cmd, *args, **kwargs)
+
+    return spawn
+
+
+def _check_msys_paths():
+    """Prove the MSYS boundary BOTH ways: the broken form is still broken, the fix resolves it.
+
+    Three things are asserted, and the first is the one that makes this a check rather than a
+    decoration: the DEFECT MUST REPRODUCE. os.path.abspath on an MSYS path has to yield something
+    that is NOT the file, or there is no bug here and the rest proves nothing.
+
+    Runs offline, with no built game and no desktop: the game process is replaced by _ArgvRecord,
+    so what is measured is the argv a NATIVE binary would have received.
+    """
+    import threading
+
+    if not IS_WINDOWS or not _CYGPATH:
+        print("=" * 78)
+        print("SKIPPED: --check-msys-paths needs a native Windows python with cygpath on PATH.")
+        print("  IS_WINDOWS=%r cygpath=%r" % (IS_WINDOWS, _CYGPATH))
+        print("  There is no MSYS/native boundary to cross here, so there is nothing to check.")
+        print("=" * 78)
+        return 0
+
+    base = tempfile.mkdtemp(prefix="oolite-msys-path-")
+    previous_cwd = os.getcwd()
+    real_popen = subprocess.Popen
+    _ArgvRecord.lock = threading.Lock()
+    _ArgvRecord.seen = []
+    failures = []
+    try:
+        save = os.path.join(base, "checklist.oolite-save")
+        with open(save, "w") as handle:
+            handle.write("<save/>\n")
+        real = os.path.normcase(os.path.abspath(save))
+
+        # The MSYS spelling of that exact file - what the repository's own bash hands to --load.
+        msys = subprocess.run(
+            [_CYGPATH, "-u", "--", save], capture_output=True, text=True, check=True
+        ).stdout.strip()
+        print("[msys] native : %s" % save)
+        print("[msys] MSYS   : %s" % msys)
+        if not msys.startswith("/"):
+            failures.append("cygpath -u did not produce a POSIX path: %r" % msys)
+        if not looks_like_msys_path(msys):
+            failures.append("looks_like_msys_path rejected a real MSYS path: %r" % msys)
+
+        # --- BEFORE: the pre-fix expression. It MUST NOT reach the file. ---------------------
+        broken = os.path.abspath(msys)
+        print("[msys] os.path.abspath(MSYS) -> %s  (isfile=%r)" % (broken, os.path.isfile(broken)))
+        if os.path.normcase(broken) == real:
+            failures.append(
+                "the defect did not reproduce: os.path.abspath(%r) already resolved to the real "
+                "file. A check that cannot fail is not a check." % msys
+            )
+        if os.path.isfile(broken):
+            failures.append("os.path.abspath(%r) reached a FILE at %r - the scratch directory was "
+                            "not where this check thought it was" % (msys, broken))
+
+        # --- AFTER: the fix. It MUST reach exactly that file. --------------------------------
+        fixed = os.path.abspath(native_path(msys))
+        print("[msys] native_path(MSYS)     -> %s  (isfile=%r)" % (fixed, os.path.isfile(fixed)))
+        if os.path.normcase(fixed) != real:
+            failures.append("native_path(%r) resolved to %r, not the save at %r"
+                            % (msys, fixed, real))
+        if not os.path.isfile(fixed):
+            failures.append("native_path(%r) does not name an existing file" % msys)
+
+        # Idempotent: an already-native path must survive untouched, or a caller that converted
+        # once would be mangled by converting twice (run_test converts again, on purpose).
+        if native_path(save) != save:
+            failures.append("native_path mangled an already-native path: %r -> %r"
+                            % (save, native_path(save)))
+        for already in ("C:/x/y.oolite-save", r"C:\x\y.oolite-save", "relative.oolite-save"):
+            if native_path(already) != already:
+                failures.append("native_path touched a non-MSYS path %r -> %r"
+                                % (already, native_path(already)))
+
+        # --- BEHAVIOURAL: what argv does the NATIVE binary actually get? ---------------------
+        app = _fake_app(os.path.join(base, "oolite.app"))
+        bin_name = "oolite.exe" if IS_WINDOWS else "oolite"
+        out = os.path.join(base, "out")
+        os.makedirs(out, exist_ok=True)
+        os.chdir(app)
+        subprocess.Popen = _spawn_recorder(real_popen, bin_name)
+        try:
+            run_test(bin_name, out, 8791, "127.0.0.1", msys, 0.1, 1, app_dir=app)
+        finally:
+            subprocess.Popen = real_popen
+            os.chdir(previous_cwd)
+
+        if len(_ArgvRecord.seen) != 1:
+            failures.append("expected exactly one spawn, recorded %d" % len(_ArgvRecord.seen))
+        for argv in _ArgvRecord.seen:
+            print("[msys] spawned argv: %r" % (argv,))
+            if "-load" not in argv:
+                failures.append("run_test dropped -load from the argv: %r" % (argv,))
+                continue
+            handed = argv[argv.index("-load") + 1]
+            if looks_like_msys_path(handed):
+                failures.append(
+                    "run_test handed an MSYS path to the native binary's -load: %r. This is the "
+                    "bug: the game resolves it against the current drive and loads nothing."
+                    % handed
+                )
+            if os.path.normcase(os.path.abspath(handed)) != real:
+                failures.append("-load argument %r does not name the save at %r" % (handed, real))
+            if not os.path.isfile(handed):
+                failures.append("-load argument %r is not an existing file" % handed)
+            # The staging from bug oo-pzc1 must still be intact: the binary launched must be the
+            # PRIVATE staged copy, never the shared build.
+            launched = os.path.dirname(os.path.abspath(argv[0]))
+            if os.path.normcase(launched) == os.path.normcase(os.path.abspath(app)):
+                failures.append("the run launched out of the SHARED build %s - per-run staging "
+                                "(bug oo-pzc1) was undone" % app)
+    finally:
+        subprocess.Popen = real_popen
+        os.chdir(previous_cwd)
+        shutil.rmtree(base, ignore_errors=True)
+
+    for line in failures:
+        print("[!] %s" % line)
+    if failures:
+        print("msys-paths: FAIL")
+        return 1
+    print("msys-paths: PASS - abspath alone misses the file, native_path reaches it, and the "
+          "binary's -load argv is native")
+    return 0
+
+
+def _settle_units_check():
+    """Offline: prove the settle knob is GAME-CLOCK SECONDS, and that both spellings agree.
+
+    A grep for the new flag name proves nothing about units. The observable is behavioural: ask
+    for N and the wait must end when the GAME's clock has advanced N - regardless of how many
+    polls (frames) that took and regardless of wall-clock time. So this drives the real
+    wait_until_rendering against a stubbed clock:
+
+      * a clock ticking 0.25 game-seconds per poll must satisfy N=1.0 after ~4 polls, not after
+        1 poll (which is what a frame COUNT of 1.0 would mean);
+      * a clock that is frozen - the run loop stalled - must be REFUSED, never satisfied. Without
+        this case the check could not fail.
+    """
+    global evaluate
+    real_evaluate = evaluate
+    failures = []
+
+    def run(step, want, timeout=6):
+        polls = {"n": 0}
+
+        def fake(conn, js, timeout=20):
+            if js != "clock.absoluteSeconds":
+                return "GUI_SCREEN_MAIN"
+            value = polls["n"] * step
+            polls["n"] += 1
+            return repr(value)
+
+        globals()["evaluate"] = fake
+        try:
+            return wait_until_rendering(None, want, timeout=timeout), polls["n"]
+        finally:
+            globals()["evaluate"] = real_evaluate
+
+    # 1. Ticking clock: N is seconds of game time, so N=1.0 at 0.25/poll needs >= 5 reads
+    #    (the baseline read plus four advancing ones). A frame count would have stopped at 2.
+    ok, polls = run(0.25, 1.0)
+    if not ok:
+        failures.append("advancing game clock did not satisfy a 1.0 game-second settle")
+    elif polls < 5:
+        failures.append(
+            "settle of 1.0 was satisfied after %d clock reads at 0.25s/read - that is a frame "
+            "count, not seconds" % polls
+        )
+
+    # 2. Asking for MORE seconds must take strictly more polls. Units scale; a frame count of
+    #    2.0 vs 1.0 at this tick rate would not.
+    ok_two, polls_two = run(0.25, 2.0)
+    if not ok_two or polls_two <= polls:
+        failures.append(
+            "settle 2.0 took %r reads vs %r for 1.0 - the value does not scale as a duration"
+            % (polls_two, polls)
+        )
+
+    # 3. THE FAILURE CASE: a stalled run loop (game clock frozen) must be refused, not settled.
+    frozen, _ = run(0.0, 1.0, timeout=2)
+    if frozen:
+        failures.append("frozen game clock was accepted as settled - the wait cannot fail")
+
+    # 4. Both spellings resolve to the same field and the same unit; neither converts.
+    new = parse_args(["--settle-game-seconds", "7.5"]).settle_game_seconds
+    old = parse_args(["--settle-frames", "7.5"]).settle_game_seconds
+    default = parse_args([]).settle_game_seconds
+    if new != 7.5:
+        failures.append("--settle-game-seconds 7.5 resolved to %r" % new)
+    if old != 7.5:
+        failures.append("--settle-frames 7.5 resolved to %r, not the same quantity" % old)
+    if default != float(os.environ.get("OO_SNAPSHOT_SETTLE", DEFAULT_SETTLE_GAME_SECONDS)):
+        failures.append("default settle resolved to %r" % default)
+
+    for line in failures:
+        print("[!] %s" % line)
+    if failures:
+        print("settle-units: FAIL")
+        return 1
+    print("settle-units: PASS - settle is game-clock seconds (1.0s took %d clock reads at "
+          "0.25s/read), a frozen clock is refused, and --settle-frames is an exact alias" % polls)
+    return 0
+
+
 def _desktop_lock_helper():
     """tools/desktop_lock from the OUTER repository, or None when there is none.
 
@@ -944,11 +1300,20 @@ if __name__ == "__main__":
         sys.exit(_check_isolation(max(2, args.instances)))
     if args.launch_probe:
         sys.exit(_launch_probe(max(2, args.instances)))
+    if args.check_msys_paths:
+        sys.exit(_check_msys_paths())
+    if args.check_settle_units:
+        sys.exit(_settle_units_check())
 
     # Determine binary name and original path
     bin_name = "oolite.exe" if IS_WINDOWS else "oolite"
     original_cwd = os.getcwd()
-    target_dir = os.path.abspath(args.path)
+    # native_path FIRST, then abspath: abspath on an MSYS path silently invents a real-looking
+    # C:/c/... that exists on this machine (bug oo-vyey). The same reasoning applies to --path and
+    # --output, which also arrive from the MSYS shell and also end up in the native game's world
+    # (the app dir becomes the staging source and the cwd; the output dir becomes OO_SNAPSHOTSDIR
+    # and OO_LOGSDIR, read by the game itself).
+    target_dir = os.path.abspath(native_path(args.path))
 
     # If the user pointed to a file, get the containing directory
     if os.path.isfile(target_dir):
@@ -956,11 +1321,14 @@ if __name__ == "__main__":
         target_dir = os.path.dirname(target_dir)
 
     # Resolved before the chdir below, so relative paths mean what the caller meant.
-    test_output = os.path.abspath(args.output)
+    test_output = os.path.abspath(native_path(args.output))
     os.makedirs(test_output, exist_ok=True)
-    load_save = os.path.abspath(args.load) if args.load else None
+    load_save = os.path.abspath(native_path(args.load)) if args.load else None
     if load_save and not os.path.isfile(load_save):
         print(f"[!] Failure: no save file at {load_save}")
+        if looks_like_msys_path(args.load) and not _CYGPATH:
+            print("[!] --load looks like an MSYS path and no cygpath was found to convert it; "
+                  "pass a native C:/... path instead.")
         sys.exit(1)
 
     success = False
@@ -988,7 +1356,7 @@ if __name__ == "__main__":
                 args.port,
                 args.host,
                 load_save,
-                args.settle_frames,
+                args.settle_game_seconds,
                 args.ready_timeout,
                 app_dir=target_dir,
                 keep_staged=args.keep_staged,
@@ -1002,7 +1370,7 @@ if __name__ == "__main__":
                     args.port,
                     args.host,
                     load_save,
-                    args.settle_frames,
+                    args.settle_game_seconds,
                     args.ready_timeout,
                     app_dir=target_dir,
                     keep_staged=args.keep_staged,

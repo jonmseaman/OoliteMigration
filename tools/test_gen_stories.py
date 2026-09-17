@@ -43,7 +43,8 @@ class ClassifierTest(unittest.TestCase):
         p = self.write("Thing", C_BODY, "NSString *ThingDescription(int n);\n")
         self.assertTrue(gs.body_is_c(p), "body alone is plain C")
         self.assertTrue(gs.header_declares_ns(p))
-        self.assertFalse(gs.is_c_file(p), "header declares NSString*: not a mechanical rename")
+        self.assertNotEqual(gs.classify(p), "renames",
+                            "header declares NSString*: not a mechanical rename")
         self.assertEqual(gs.classify(p), "foundation")
 
     def test_header_with_nssize_value_type_is_not_a_rename(self):
@@ -57,8 +58,21 @@ class ClassifierTest(unittest.TestCase):
     def test_plain_c_header_is_a_rename(self):
         p = self.write("Thing", C_BODY, "#include <stdbool.h>\nBOOL ThingIsGood(int n);\n")
         self.assertFalse(gs.header_declares_ns(p))
-        self.assertTrue(gs.is_c_file(p))
         self.assertEqual(gs.classify(p), "renames")
+
+    def test_no_second_definition_of_the_rename_rule(self):
+        """Bead oo-yg8p: the rename rule has exactly one definition, classify()'s 'renames' branch.
+
+        is_c_file() was a dead second copy of it, reachable only from this file. Its removal is
+        only safe while nothing reintroduces a parallel definition, so assert the module exposes
+        no such helper and that the tests ask the live function.
+        """
+        self.assertFalse(hasattr(gs, "is_c_file"),
+                         "is_c_file() is a second definition of classify()'s rename rule")
+        # Spelled in two pieces so this scan does not match its own needle.
+        needle = "gs.is_c_" + "file("
+        src = (TOOLS / "test_gen_stories.py").read_text()
+        self.assertNotIn(needle, src, "tests must exercise the live classifier")
 
     def test_ns_mentioned_only_in_a_comment_is_still_a_rename(self):
         p = self.write("Thing", C_BODY,
