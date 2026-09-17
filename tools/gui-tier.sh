@@ -72,7 +72,43 @@ except Exception as exc:
     )
 PY
 
-# --- 2. Run the tier, with skipping disarmed -------------------------------------------------
+# --- 2. Check the desktop preconditions BEFORE spending a game launch on them ----------------
+#
+# An elevated window owning the foreground makes the whole tier un-runnable: synthetic input goes
+# to the focused window, and Windows forbids a medium-integrity process from taking the
+# foreground away from a higher-integrity one (AttachThreadInput returns ERROR_ACCESS_DENIED
+# across the UIPI boundary), so no retry inside the tests can ever succeed. Reported here, up
+# front and by its own name, so an operator can tell "your desktop is unusable for GUI tests"
+# from "G1 is broken" — the two failures a reviewer previously could not distinguish. It is a
+# hard failure, not a skip: a run that reported success without exercising G1 would be a lie.
+#
+# It POLLS rather than sampling once. A single instantaneous sample makes a UAC prompt or an
+# installer that owns the foreground for two seconds fail an entire accept.sh run on a healthy
+# tree, for a condition that has already cleared. Only a blocker that PERSISTS for the tier's
+# focus budget is a real one.
+"$PYTHON" - <<PY
+import sys
+sys.path.insert(0, r"$(native "$REPO_ROOT/upstream/oolite/tests/gui")")
+import time
+
+import conftest
+
+deadline = time.time() + conftest.FOCUS_TIMEOUT_SECONDS
+blocker = conftest.describe_untakeable_foreground()
+while blocker and time.time() < deadline:
+    time.sleep(0.5)
+    blocker = conftest.describe_untakeable_foreground()
+if blocker:
+    sys.exit(
+        f"tools/gui-tier.sh: {conftest.DESKTOP_UNUSABLE_MARKER}: {blocker}.\n"
+        f"It persisted for {conftest.FOCUS_TIMEOUT_SECONDS}s, so it is not a passing "
+        "notification or installer. This is a DESKTOP problem, not a G1 failure: close or "
+        "minimise that window (an elevated Task Manager is the usual culprit) and re-run. "
+        "Refusing to start."
+    )
+PY
+
+# --- 3. Run the tier, with skipping disarmed -------------------------------------------------
 targets=()
 passthrough=()
 seen_dashdash=0
