@@ -49,6 +49,13 @@ READY_TIMEOUT_SECONDS = int(os.environ.get("OO_GUI_READY_TIMEOUT", "180"))
 # is the difference between a test and a race.
 SETTLE_SECONDS = float(os.environ.get("OO_GUI_SETTLE", "5"))
 
+# How every GUI-tier launch is spelled. MyOpenGLView.m:363 matches the splash flag by exact
+# ``isEqual:`` against -nosplash / --nosplash only, so any other spelling (a hyphen between "no"
+# and "splash", say) is silently ignored and the splash runs; -windowed is matched at :1358 and
+# is correct as written. tools/check-splash-off.py imports this list so the behavioural check can
+# never drift from what the tier actually runs.
+LAUNCH_ARGS = ["-nosplash", "-windowed"]
+
 
 # --- row -> screen point ----------------------------------------------------------------------
 
@@ -138,6 +145,69 @@ def pytest_addoption(parser):
     )
 
 
+def splash_evidence(log_text):
+    """``(surface_line, loading_line, startup_line)`` - 1-based line numbers, ``None`` if absent.
+
+    * ``surface_line``  - first ``display.initGL`` "Requested a new surface of W x H, windowed".
+    * ``loading_line``  - first line of the resource-loading phase (``shipData.load.begin``,
+      or ``searchPaths.dumpAll`` which immediately precedes it).
+    * ``startup_line``  - the ``startup.complete`` line.
+
+    Where ``surface_line`` falls RELATIVE TO ``loading_line`` is the runtime observable that
+    distinguishes a splash-free launch from a splashed one.
+    """
+    surface = loading = startup = None
+    for number, line in enumerate(log_text.splitlines(), 1):
+        if surface is None and "Requested a new surface of" in line and "windowed" in line:
+            surface = number
+        if loading is None and ("shipData.load.begin" in line or "searchPaths.dumpAll" in line):
+            loading = number
+        if startup is None and "startup.complete" in line:
+            startup = number
+    return surface, loading, startup
+
+
+def assert_splash_screen_is_off(log_text, log_path):
+    """Fail unless the GL surface was created BEFORE resource loading started.
+
+    Whether the splash ran is not visible in the spelling of the launch flag - a misspelled
+    flag is silently ignored (MyOpenGLView.m:363 matches ``-nosplash``/``--nosplash`` by exact
+    ``isEqual:``) - but it IS visible in the log's ordering:
+
+    * splash OFF - MyOpenGLView.m:431 takes the ``if (!showSplashScreen)`` branch and calls
+      ``initialiseGLWithSize:`` at :434 during ``-init``, i.e. BEFORE any resource loading;
+    * splash ON  - that block is skipped and the call is deferred to :507 inside
+      ``endSplashScreen``, which GameController.m:313 fires at the END of startup, after
+      Universe init and loadPlayerIfRequired.
+
+    Measured on both paths: splash off puts "Requested a new surface of 960 x 720, windowed"
+    at log line 20 with ``shipData.load.begin`` at 32; splash on puts the same surface line at
+    39, i.e. AFTER loading. Note the surface line still precedes ``startup.complete`` on both
+    paths (39 vs 41 with the splash on), so "before startup.complete" is NOT the discriminator
+    - "before resource loading" is.
+
+    logcontrol.plist:131 enables ``display.initGL`` by default, so the line is in every log.
+    This gates the actual defect (the splash running, and with it a moving target for every
+    pinned-window coordinate) rather than the spelling of the flag.
+    """
+    surface, loading, startup = splash_evidence(log_text)
+    assert startup is not None, f"no startup.complete line in {log_path}"
+    assert loading is not None, (
+        f"no resource-loading marker (shipData.load.begin / searchPaths.dumpAll) in {log_path}"
+    )
+    assert surface is not None, (
+        "the splash screen ran: no 'Requested a new surface of ... windowed' line at all "
+        f"in {log_path}"
+    )
+    assert surface < loading, (
+        f"the splash screen ran: the GL surface was created at log line {surface}, AFTER "
+        f"resource loading began at line {loading} (startup.complete at {startup}) in "
+        f"{log_path}. That is the deferred endSplashScreen path (MyOpenGLView.m:507), so the "
+        "no-splash flag did not take effect."
+    )
+    return surface, loading, startup
+
+
 class GameWindow:
     """One Oolite process, its window, and the input primitives the tests drive it with."""
 
@@ -194,8 +264,7 @@ class GameWindow:
             pytest.fail(f"no Oolite binary at {path}; build it first (tools/build-windows.sh test)")
         self._park_software_gl()
         self.proc = subprocess.Popen(
-            # MyOpenGLView.m matches the splash flag spelling exactly: -nosplash / --nosplash.
-            [path, "-nosplash", "-windowed"],
+            [path] + LAUNCH_ARGS,
             cwd=self.app_dir,
             env=self._env(),
             stdout=subprocess.DEVNULL,
@@ -261,8 +330,12 @@ class GameWindow:
                 )
             if os.path.isfile(log):
                 with open(log, "r", encoding="utf-8", errors="replace") as handle:
-                    if "startup.complete" in handle.read():
-                        return
+                    text = handle.read()
+                if "startup.complete" in text:
+                    # Readiness and the splash check read the SAME line pair, so assert it
+                    # here: a launch whose splash ran has pinned the wrong window already.
+                    assert_splash_screen_is_off(text, log)
+                    return
             time.sleep(0.5)
         pytest.fail(f"Oolite did not finish loading within {timeout}s; see {log}")
 
