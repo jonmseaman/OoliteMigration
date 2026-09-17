@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# The GUI-tier desktop mutex.
+#
+# The PyAutoGUI tier drives a real window with synthetic OS input events, so it takes the
+# interactive desktop exclusively: two GUI tests running at once would steal each other's
+# focus and each other's clicks (docs/phases/0-gui-tier.md, "Platform notes"). This is that
+# exclusion, and it is deliberately a plain mkdir lock so that a shell script, a pytest run
+# and a CI step can all take the same lock without sharing a language.
+#
+# The lock directory is the SAME path upstream/oolite/tests/gui/conftest.py computes; if you
+# change it here, change it there.
+#
+#   tools/gui-lock acquire [--timeout N]   block until held (default 900s), then exit 0
+#   tools/gui-lock release                 drop a lock this machine holds
+#   tools/gui-lock status                  exit 0 if held, 1 if free; prints the holder
+#   tools/gui-lock run [--timeout N] -- cmd...   acquire, run cmd, release, propagate status
+set -u
+
+lock_dir() {
+	if [ -n "${OO_GUI_LOCK_DIR:-}" ]; then
+		printf '%s\n' "$OO_GUI_LOCK_DIR"
+	elif [ -n "${LOCALAPPDATA:-}" ]; then
+		printf '%s\n' "$LOCALAPPDATA/Temp/oolite-gui-desktop.lock"
+	else
+		printf '%s\n' "${TMPDIR:-/tmp}/oolite-gui-desktop.lock"
+	fi
+}
+
+LOCK="$(lock_dir)"
+OWNER="$LOCK/owner"
+
+# A holder that died without releasing would wedge the tier for ever, so a lock older than
+# OO_GUI_LOCK_STALE seconds is reclaimed. Age, not liveness: the holder may be a process on a
+# different session that this shell cannot see.
+STALE="${OO_GUI_LOCK_STALE:-1800}"
+
+reap_if_stale() {
+	[ -d "$LOCK" ] || return 0
+	local now age
+	now=$(date +%s)
+	age=$(( now - $(stat -c %Y "$LOCK" 2>/dev/null || echo "$now") ))
+	if [ "$age" -gt "$STALE" ]; then
+		echo "gui-lock: reclaiming stale lock (${age}s old, held by $(cat "$OWNER" 2>/dev/null || echo unknown))" >&2
+		rm -rf "$LOCK"
+	fi
+}
+
+acquire() {
+	local timeout="${1:-900}" deadline
+	deadline=$(( $(date +%s) + timeout ))
+	mkdir -p "$(dirname "$LOCK")"
+	while :; do
+		reap_if_stale
+		if mkdir "$LOCK" 2>/dev/null; then
+			printf '%s pid=%s %s\n' "${HOSTNAME:-$(hostname)}" "$$" "$(date -Is)" >"$OWNER"
+			printf '%s\n' "$LOCK"
+			return 0
+		fi
+		if [ "$(date +%s)" -ge "$deadline" ]; then
+			echo "gui-lock: timed out after ${timeout}s; held by $(cat "$OWNER" 2>/dev/null || echo unknown)" >&2
+			return 1
+		fi
+		sleep 2
+	done
+}
+
+release() {
+	rm -rf "$LOCK"
+}
+
+status() {
+	if [ -d "$LOCK" ]; then
+		echo "held: $(cat "$OWNER" 2>/dev/null || echo unknown)"
+		return 0
+	fi
+	echo "free"
+	return 1
+}
+
+timeout=900
+cmd="${1:-}"
+[ $# -gt 0 ] && shift
+while [ $# -gt 0 ]; do
+	case "$1" in
+		--timeout) timeout="$2"; shift 2 ;;
+		--) shift; break ;;
+		*) break ;;
+	esac
+done
+
+case "$cmd" in
+	acquire) acquire "$timeout" ;;
+	release) release ;;
+	status)  status ;;
+	run)
+		acquire "$timeout" >/dev/null || exit 1
+		"$@"
+		rc=$?
+		release
+		exit $rc
+		;;
+	*)
+		echo "usage: tools/gui-lock {acquire|release|status|run -- cmd...} [--timeout N]" >&2
+		exit 2
+		;;
+esac
