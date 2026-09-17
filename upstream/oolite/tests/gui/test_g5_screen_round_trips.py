@@ -181,6 +181,11 @@ class ScreenWitness:
             readable, _, _ = select.select([self._server], [], [], 1)
             if readable:
                 self._conn, _ = self._server.accept()
+                # On Windows an accepted socket INHERITS the listener's non-blocking mode, so
+                # _recv_exactly's recv() raises WinError 10035 instead of waiting for the rest
+                # of a packet. Every read below is already deadline-guarded by select(), so the
+                # accepted connection is put back into blocking mode explicitly.
+                self._conn.setblocking(True)
                 self._handshake()
                 return self
         raise ScreenWitnessError(
