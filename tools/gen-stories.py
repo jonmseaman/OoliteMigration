@@ -330,14 +330,63 @@ def body_is_c(p):
 # doc comment (`// @"(w + xi)"`, `// returns an NSString`) does not count as a declaration.
 NS_SIG = re.compile(r'\bNS[A-Z]\w*\s*\*|\bNS(Size|Rect|Point|Range)\b')
 
+def _blank(seg):
+    """seg with every character except newlines replaced by a space: removes the text while
+    keeping byte offsets and line structure intact."""
+    return re.sub(r'[^\n]', ' ', seg)
+
 def strip_noncode(text):
-    text = re.sub(r'/\*.*?\*/', ' ', text, flags=re.S)
-    out = []
-    for line in text.splitlines():
-        line = re.sub(r'//.*$', '', line)
-        if line.lstrip().startswith('#'): continue
-        out.append(line)
-    return "\n".join(out)
+    """Blank out everything that is not code: block comments, line comments, the bodies of string
+    and character literals, and whole preprocessor lines.
+
+    Scanned left to right in ONE pass so the constructs nest correctly (a `/*` inside a string is
+    not a comment, a `"` inside a comment does not open a string). String bodies are blanked as
+    well as comments (bead oo-mnzc) because header_declares_ns now matches ACROSS line breaks, so
+    a literal such as @"NSString *Thing(int);" would otherwise read as a real declaration."""
+    out = []; i = 0; n = len(text)
+    while i < n:
+        c = text[i]
+        if c == '/' and text[i+1:i+2] == '*':
+            j = text.find('*/', i + 2)
+            seg = text[i:] if j < 0 else text[i:j+2]
+            out.append(_blank(seg)); i += len(seg)
+        elif c == '/' and text[i+1:i+2] == '/':
+            j = text.find('\n', i)
+            if j < 0: j = n
+            out.append(_blank(text[i:j])); i = j
+        elif c == '"' or c == "'":
+            q = c; j = i + 1
+            while j < n and text[j] != q:
+                if text[j] == '\\': j += 1          # \" and \' do not close the literal
+                if text[j:j+1] == '\n': break        # unterminated: do not run past the line
+                j += 1
+            seg = text[i:min(j + 1, n)]
+            out.append(c + _blank(seg[1:])); i += len(seg)
+        else:
+            out.append(c); i += 1
+    return "\n".join("" if ln.lstrip().startswith('#') else ln
+                     for ln in "".join(out).splitlines())
+
+def text_declares_ns(code):
+    """True when already-stripped C text contains an NS* type in a DECLARATION.
+
+    Matched per declaration, not per physical line (bead oo-mnzc). A C declaration is terminated by
+    ';' and may be split over any number of lines, so
+
+        NSString *
+        ThingDescription(int n);
+
+    is one declaration even though no single line carries both the NS* type and the ';' — the
+    line-by-line scan this replaced missed exactly that (and the NSSize/NSRect/NSPoint/NSRange
+    by-value cases) whenever the return type sat on its own line, a common C header style."""
+    parts = code.split(';')
+    for decl in parts[:-1]:              # each of these was terminated by a ';': a declaration
+        if NS_SIG.search(decl): return True
+    tail = parts[-1]                     # unterminated remainder: keep the old per-line guard
+    for line in tail.splitlines():
+        if not NS_SIG.search(line): continue
+        if re.search(r'[(),]', line) or re.search(r'\bNS[A-Z]\w*\s*\*\s*\w', line): return True
+    return False
 
 def header_declares_ns(p):
     """True when this file's OWN header declares an NS* type in a signature. Renaming such a file
@@ -347,10 +396,7 @@ def header_declares_ns(p):
     if h is None: return False
     try: t = open(h, errors="replace").read()
     except OSError: return False
-    for line in strip_noncode(t).splitlines():
-        if not NS_SIG.search(line): continue
-        if re.search(r'[(),;]', line) or re.search(r'\bNS[A-Z]\w*\s*\*\s*\w', line): return True
-    return False
+    return text_declares_ns(strip_noncode(t))
 
 def is_c_file(p):
     """This file can be renamed to .c in one mechanical step: a plain-C body AND a header that
