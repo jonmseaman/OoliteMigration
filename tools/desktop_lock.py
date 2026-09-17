@@ -121,6 +121,15 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
     the heartbeat died - a result computed while the desktop mutex was not being held is not a
     result to return quietly.
 
+    A LOST LOCK FAILS THE HOLD, NOT JUST THE SUSPECTED ONE (review 3). Attempt 3 got these two
+    cases the wrong way round. A dead heartbeat - where the lock may perfectly well still be ours,
+    we merely stopped proving it - RAISED; a REFUSED ``gui-lock refresh``, where the ownership
+    check has POSITIVELY ESTABLISHED that somebody else owns the desktop right now and a second
+    game may already be on it, only printed a warning and the run reported SUCCESS. The strictly
+    worse evidence must not produce the quieter outcome. A refused refresh now latches ``lost``
+    and the ``finally`` fails the hold on the same terms as ``died``. It is latched rather than
+    raised from the thread so the release in the ``finally`` still runs and reaps the game.
+
     Release runs in a ``finally`` and is therefore reached on a crash, an exception or a
     ``KeyboardInterrupt``; it is the script's ownership-checked release, never an ``rm -rf``, so a
     teardown that runs after our lock was already stale-reclaimed by somebody else refuses rather
@@ -189,6 +198,9 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
     # see the beat.is_alive() check in the finally.
     stop = threading.Event()
     interval = heartbeat_interval()
+    # LATCHED: a refresh that was REFUSED proves somebody else owns the desktop RIGHT NOW.
+    # See the finally - this fails the hold on the same terms as a dead heartbeat.
+    lost = threading.Event()
 
     def _beat():
         # A TEST SEAM, and the only way to prove the liveness check below is not vacuous: no
@@ -210,12 +222,23 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
                             capture_output=True, text=True, env=env,
                         )
                         if r.returncode != 0:
-                            # We no longer own the lock: somebody reclaimed it, or it was
-                            # released. Say so loudly - a second process may now be on the desktop
-                            # - but keep the body running; tearing down mid-enumeration from a
-                            # daemon thread would be worse.
+                            # WE NO LONGER HOLD THE DESKTOP. This is not a suspicion: the
+                            # ownership-checked refresh was REFUSED, so somebody else owns the
+                            # mutex right now and a second game may already be on the desktop.
+                            #
+                            # THE INVERSION THIS FIXES (review 3). Attempt 3 raised when the
+                            # heartbeat THREAD died - a merely SUSPECTED loss, since the lock may
+                            # well have stayed ours - but only _say()'d here, where the loss is
+                            # PROVEN, and the run reported SUCCESS. The strictly worse case must
+                            # not be the quieter one. So latch it and fail the hold in the
+                            # finally, on the same terms as `died`.
+                            #
+                            # Still latched-and-deferred rather than raised from here: tearing the
+                            # body down from a daemon thread mid-enumeration would leave the game
+                            # process orphaned, and the release in the finally is what reaps it.
+                            lost.set()
                             _say(
-                                "[!] desktop lock: heartbeat refused, we may no longer hold the "
+                                "[!] desktop lock: heartbeat REFUSED - we no longer hold the "
                                 f"desktop: {r.stderr.strip() or r.stdout.strip()}"
                             )
                     except Exception as exc:  # noqa: BLE001 - never kill the heartbeat
@@ -253,6 +276,7 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
         if not stop.is_set() and not beat.is_alive():
             dead.set()
         died = dead.is_set()
+        was_lost = lost.is_set()
         stop.set()
         beat.join(timeout=30)
         watch.join(timeout=5)
@@ -263,11 +287,21 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
             _say(f"[!] desktop lock: release refused: {dropped.stderr.strip()}")
         else:
             _say(f"[*] desktop lock: released by {me}")
-        if died and sys.exc_info()[0] is None:
+        if (died or was_lost) and sys.exc_info()[0] is None:
             # FAIL LOUDLY, not just verbosely. The body's result was produced while the desktop
-            # mutex was un-refreshed, so it may have shared the desktop with another launcher and
-            # cannot be trusted. Only raised when the body itself did not raise, so a real failure
-            # is never masked by this one.
+            # mutex was un-refreshed, or while we PROVABLY did not hold it at all, so it may have
+            # shared the desktop with another launcher and cannot be trusted. Only raised when the
+            # body itself did not raise, so a real failure is never masked by this one.
+            #
+            # BOTH cases fail, and `lost` is the more certain of the two (review 3): a refused
+            # refresh means the ownership check said somebody else owns the desktop, whereas a
+            # dead heartbeat only means we stopped proving we still do. Attempt 3 raised on the
+            # weaker evidence and merely warned on the stronger.
+            if was_lost:
+                raise DesktopLockError(
+                    f"the desktop lock was LOST during the hold by {me}: a heartbeat refresh was "
+                    "refused, so another owner held the desktop while this body ran"
+                )
             raise DesktopLockError(
                 f"the desktop-lock heartbeat for {me} died while the body was still running; "
                 "the hold went un-refreshed and may have been stale-reclaimed"

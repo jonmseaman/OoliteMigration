@@ -42,6 +42,12 @@
 #                               tools/js_api_check.py and tests/golden/golden_run.py ALREADY hold
 #                               oolite.app paths for exactly this purpose, so it was a live hazard.
 #  17  a shell log reader       the same thing in shell: tail "$LOGS/latest.log"
+#
+# 19-35  THE RULE x BRANCH PROBE MATRIX (review 3). Every finding review 3 measured was the RULE
+#        DISAGREEING WITH ITSELF across two branches, not a missing spelling - so the same launch
+#        and the same log reader are now written in EVERY branch the scanner has (python-list,
+#        python-string, python-kwarg, shell, batch, powershell, async, partial) and uniformity is
+#        the assertion. 19-30 must all be caught; 31-35 must all be clean.
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
@@ -264,6 +270,188 @@ LOGS="upstream/oolite/build/meson_test/oolite.app/logs"
 tail -n 50 "$LOGS/latest.log"
 EOF
 expect_clean tools/rogue17_shlog.sh "a shell log reader holding .../oolite.app/logs"
+
+# ==========================================================================================
+# 19-30. THE RULE x BRANCH PROBE MATRIX (review 3)
+# ==========================================================================================
+# Review 3 found no missing spelling. It found the RULE CONTRADICTING ITSELF: the SAME launcher
+# was caught in the shell branch and missed in the python-list branch, because only one of them
+# stripped leaders; and `args=`/`executable=` - subprocess's own documented command-line
+# parameters - were thrown away as "kwargs" in the branch that was supposed to read argv[0].
+#
+# Enumerating more spellings is what produced that. So the matrix below is keyed on
+# RULE x BRANCH instead: ONE launcher and ONE negative control are expressed in EVERY branch the
+# scanner has, and the assertion is uniformity.
+#
+#   BRANCHES: python-list  python-string  python-kwarg  shell  batch  powershell
+#   POSITIVE: the same "$APP/oolite.exe --no-splash" launch, once per branch  -> MUST be caught
+#   NEGATIVE: the same "read .../oolite.app/logs/latest.log", once per branch -> MUST be clean
+#
+# A defect now has to survive being written six ways, and a branch that disagrees with its
+# siblings fails loudly instead of quietly certifying coverage it does not have.
+
+echo "=== 19. MATRIX python-list: the same launch, as a list argv ==="
+cat >tools/rogue19_m_pylist.py <<'EOF'
+import os, subprocess
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+subprocess.run([GAME, "--no-splash"], check=True)
+EOF
+expect_caught tools/rogue19_m_pylist.py "MATRIX python-list launcher"
+
+echo "=== 20. MATRIX python-string: the same launch, as a shell=True command line ==="
+cat >tools/rogue20_m_pystr.py <<'EOF'
+import os, subprocess
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+subprocess.run("%s --no-splash" % GAME, shell=True, check=True)
+EOF
+expect_caught tools/rogue20_m_pystr.py "MATRIX python-string launcher"
+
+echo "=== 21. MATRIX python-kwarg: args= IS the command line ==="
+# MEASURED EVASION. `args` is subprocess's DOCUMENTED name for the command line, and argv0_expr
+# discarded every `name=` argument as a kwarg - so the most by-the-book spelling of a launch in
+# the whole standard library scanned clean.
+cat >tools/rogue21_m_args_kw.py <<'EOF'
+import os, subprocess
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+subprocess.run(args=[GAME, "--no-splash"], check=True)
+EOF
+expect_caught tools/rogue21_m_args_kw.py "MATRIX python-kwarg launcher (args=)"
+
+echo "=== 22. MATRIX python-kwarg: executable= overrides what actually runs ==="
+# MEASURED EVASION, and nastier than args=: argv[0] says "game" and the OS runs the binary in
+# executable=. Reading only the positional is reading the label, not the process.
+cat >tools/rogue22_m_exe_kw.py <<'EOF'
+import os, subprocess
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+subprocess.Popen(["game", "--no-splash"], executable=GAME)
+EOF
+expect_caught tools/rogue22_m_exe_kw.py "MATRIX python-kwarg launcher (executable=)"
+
+echo "=== 23. MATRIX python-list through cmd /c - CAUGHT AS .sh, MISSED AS .py ==="
+# THE CONTRADICTION ITSELF. spawns_shell stripped `cmd` and `/c` before reading the command word;
+# spawns_python took elems[0] verbatim and saw "cmd". Byte-identical intent, opposite verdicts.
+cat >tools/rogue23_m_cmdc.py <<'EOF'
+import os, subprocess
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+subprocess.run(["cmd", "/c", GAME, "--no-splash"])
+EOF
+expect_caught tools/rogue23_m_cmdc.py "MATRIX python-list launcher behind cmd /c"
+
+echo "=== 24. MATRIX python-list behind env VAR=x - the repo's own SDL idiom ==="
+cat >tools/rogue24_m_env.py <<'EOF'
+import os, subprocess
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+subprocess.Popen(["env", "SDL_VIDEODRIVER=windows", GAME])
+EOF
+expect_caught tools/rogue24_m_env.py "MATRIX python-list launcher behind env VAR=x"
+
+echo "=== 25. MATRIX python-list behind wine / gdb --args / timeout / winpty ==="
+# All four are real shapes for driving a game process, and all four MEASURED clean.
+cat >tools/rogue25_m_wrappers.py <<'EOF'
+import os, subprocess
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+subprocess.Popen(["wine", GAME])
+subprocess.Popen(["gdb", "--args", GAME, "--no-splash"])
+subprocess.Popen(["timeout", "300", GAME])
+subprocess.Popen(["winpty", GAME])
+EOF
+expect_caught tools/rogue25_m_wrappers.py "MATRIX python-list launcher behind wine/gdb/timeout/winpty"
+
+echo "=== 26. MATRIX async: asyncio.create_subprocess_exec / _shell ==="
+cat >tools/rogue26_m_asyncio.py <<'EOF'
+import asyncio, os
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+
+
+async def drive():
+    await asyncio.create_subprocess_exec(GAME, "--no-splash")
+    await asyncio.create_subprocess_shell("%s --no-splash" % GAME)
+EOF
+expect_caught tools/rogue26_m_asyncio.py "MATRIX async launcher (asyncio.create_subprocess_*)"
+
+echo "=== 27. MATRIX powershell -Command: the same intent bash -c was already caught for ==="
+# rogue 16 caught `bash -c "$APP/oolite.exe"`. SH_DASH_C re-scanned only -c and /c|/k, so the
+# byte-identical powershell spelling MEASURED clean on a Windows-first repo.
+cat >tools/rogue27_m_powershell.sh <<'EOF'
+#!/usr/bin/env bash
+set -u
+powershell -Command "Start-Process '$OO_APP_DIR/oolite.exe' -ArgumentList '--no-splash'"
+EOF
+expect_caught tools/rogue27_m_powershell.sh "MATRIX powershell -Command launcher"
+
+echo "=== 28. MATRIX shell: the same launch, plainly ==="
+cat >tools/rogue28_m_shell.sh <<'EOF'
+#!/usr/bin/env bash
+set -u
+APP="${OO_APP_DIR:-upstream/oolite/build/meson_test/oolite.app}"
+"$APP/oolite.exe" --no-splash
+EOF
+expect_caught tools/rogue28_m_shell.sh "MATRIX shell launcher"
+
+echo "=== 29. MATRIX batch: the same launch, as a .cmd ==="
+cat >tools/rogue29_m_batch.cmd <<'EOF'
+@echo off
+call "%OO_APP_DIR%\oolite.exe" --no-splash
+EOF
+expect_caught tools/rogue29_m_batch.cmd "MATRIX batch launcher (.cmd)"
+
+echo "=== 30. MATRIX functools.partial - the spawn name is an ARGUMENT, not a call ==="
+# The reviewer judged this lower-realism than the rest. It is handled rather than scoped away,
+# because a documented hole in a shared gate is a hole.
+cat >tools/rogue30_m_partial.py <<'EOF'
+import functools, os, subprocess
+GAME = os.path.join(os.environ["OO_APP_DIR"], "oolite.exe")
+launch = functools.partial(subprocess.Popen, [GAME, "--no-splash"])
+EOF
+expect_caught tools/rogue30_m_partial.py "MATRIX functools.partial(subprocess.Popen, [...]) launcher"
+
+# --- the matrix's NEGATIVE half: the SAME log reader in every branch must stay clean ----------
+# Without these, every positive above could be satisfied by making the scanner more eager, which
+# is the failure mode that got two earlier attempts rejected for false positives on a SHARED gate.
+
+echo "=== 31. MATRIX NEGATIVE python-list: the log reader ==="
+cat >tools/rogue31_n_pylist.py <<'EOF'
+import subprocess
+LOGS = "upstream/oolite/build/meson_test/oolite.app/logs"
+subprocess.run(["tail", "-n", "50", LOGS + "/latest.log"])
+EOF
+expect_clean tools/rogue31_n_pylist.py "MATRIX negative python-list (log reader)"
+
+echo "=== 32. MATRIX NEGATIVE python-string: the log reader as a shell command line ==="
+cat >tools/rogue32_n_pystr.py <<'EOF'
+import subprocess
+LOGS = "upstream/oolite/build/meson_test/oolite.app/logs"
+subprocess.run("tail -n 50 " + LOGS + "/latest.log", shell=True)
+EOF
+expect_clean tools/rogue32_n_pystr.py "MATRIX negative python-string (log reader)"
+
+echo "=== 33. MATRIX NEGATIVE python-kwarg: the game path as cwd=/env=, not as argv[0] ==="
+# The kwarg fix must stay SURGICAL: `args=` and `executable=` are the command line; `cwd=`,
+# `env=` and everything else are settings beside it. Reading all kwargs would resurrect both of
+# review 2's measured false positives in a new place.
+cat >tools/rogue33_n_kwarg.py <<'EOF'
+import os, subprocess
+APP = os.path.join(os.environ["OO_APP_DIR"], "oolite.app")
+subprocess.run(["tail", "-n", "50", "latest.log"], cwd=os.path.join(APP, "logs"))
+subprocess.run(["wc", "-c", "x"], env=dict(os.environ, OO_GAME=os.path.join(APP, "oolite.exe")))
+EOF
+expect_clean tools/rogue33_n_kwarg.py "MATRIX negative python-kwarg (game path in cwd=/env=)"
+
+echo "=== 34. MATRIX NEGATIVE shell/batch/powershell: the log reader in each ==="
+cat >tools/rogue34_n_shell.sh <<'EOF'
+#!/usr/bin/env bash
+set -u
+LOGS="upstream/oolite/build/meson_test/oolite.app/logs"
+env LC_ALL=C tail -n 50 "$LOGS/latest.log"
+powershell -Command "Get-Content '$LOGS/latest.log' -Tail 50"
+EOF
+expect_clean tools/rogue34_n_shell.sh "MATRIX negative shell+powershell (log reader)"
+
+cat >tools/rogue35_n_batch.bat <<'EOF'
+@echo off
+type "%OO_APP_DIR%\oolite.app\logs\latest.log"
+EOF
+expect_clean tools/rogue35_n_batch.bat "MATRIX negative batch (log reader)"
 
 echo "=== 18. the tree is back to clean ==="
 out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?

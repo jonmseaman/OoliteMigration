@@ -62,10 +62,41 @@ game. It is a launcher wherever it appears, with or without a visible path.
 Shell files get the same treatment with shell syntax: the COMMAND WORD of each pipeline segment,
 after stripping leaders (``exec``, ``start``, ``nohup``, ``VAR=x``, ``cmd /c``, ...) - INCLUDING
 empty tokens, so the canonical batch line ``start "" "%OO_APP_DIR%\\oolite.exe"`` does not escape
-by hiding behind an empty window title - and the contents of ``-c``/``/c`` command strings are
-re-scanned, so ``bash -c "$APP/oolite.exe --no-splash"`` is not a hiding place either.
+by hiding behind an empty window title - and the contents of ``-c``/``/c``/``-Command``/
+``-EncodedCommand`` command strings are re-scanned, so ``bash -c "$APP/oolite.exe --no-splash"``
+and ``powershell -Command "Start-Process '$APP/oolite.exe'"`` are not hiding places either.
 
 Comments are stripped before anything is matched, so prose never trips it.
+
+ONE RULE, EVERY BRANCH (review 3)
+=================================
+Review 3 did not find a missing spelling. It found the rule CONTRADICTING ITSELF: the same
+launcher was caught in one branch and missed in another, which is strictly worse than a rule that
+is uniformly narrow, because the guard looks like it covers the shape and does not.
+
+  * ``args=`` and ``executable=`` ARE argv[0].  ``argv0_exprs`` used to discard every ``name=``
+    argument as "a kwarg" - including ``args``, which is subprocess's own DOCUMENTED name for the
+    command line, and ``executable``, which overrides what is actually run. MEASURED:
+    ``subprocess.run(args=[GAME, "--no-splash"])`` and ``subprocess.Popen(["game"],
+    executable=GAME)`` both scanned clean. Those two names are now read AS the command
+    expression; every other kwarg is still ignored, which is what kills the false positives.
+  * LEADERS ARE STRIPPED IN THE LIST BRANCH TOO.  The shell branch has always skipped
+    ``cmd /c`` / ``env VAR=x`` / ``winpty`` / ``wine`` before reading the command word; the Python
+    LIST branch took ``elems[0]`` verbatim. So the byte-identical launcher was caught as a .sh and
+    MISSED as a .py: ``subprocess.run(["cmd", "/c", GAME])``, ``Popen(["env", "SDL=x", GAME])``,
+    ``["wine", GAME]``, ``["gdb", "--args", GAME]``, ``["timeout", "300", GAME]``,
+    ``["winpty", GAME]`` - all measured clean, all opening a real foreground window on a
+    Windows-first repo. Both branches now go through the SAME leader-stripping tokenizer
+    (``_sh_command_words``), and an element sitting after ``-c``/``/c``/``-Command`` is re-scanned
+    as its own shell command line exactly as ``_sh_lines`` does for shell files.
+  * ASYNC SPAWNS COUNT.  ``asyncio.create_subprocess_exec`` / ``create_subprocess_shell`` are
+    process spawns; an async console driver is a plausible next tool. So is
+    ``functools.partial(subprocess.Popen, [GAME, ...])``, where the spawn name is not followed by
+    ``(`` - that is handled by reading the partial's remaining arguments as the command line.
+
+The probe matrix in tools/desktop-lock-rogue-proof is built as RULE x BRANCH (python-list,
+python-string, python-kwarg, shell, batch, powershell) precisely because the defects have all
+lived where two branches disagreed, not in any one branch's depth.
 """
 
 import os
@@ -84,10 +115,21 @@ SELF_REFERENTIAL = (
 
 # A call that starts a process. run/call/check_call/check_output only count with an explicit
 # subprocess. prefix (a bare run() is any function); Popen is unambiguous enough on its own.
-PY_SPAWN = re.compile(
-    r"\b(?:subprocess\s*\.\s*(?:Popen|run|call|check_call|check_output)"
+# asyncio.create_subprocess_exec/_shell are spawns too - an async console driver is a plausible
+# next tool, and review 3 MEASURED `await asyncio.create_subprocess_exec(GAME, "--no-splash")`
+# scanning clean.
+_SPAWN_NAMES = (
+    r"subprocess\s*\.\s*(?:Popen|run|call|check_call|check_output)"
     r"|Popen"
-    r"|os\s*\.\s*(?:startfile|system|popen|exec\w*|spawn\w*))\s*\(")
+    r"|os\s*\.\s*(?:startfile|system|popen|exec\w*|spawn\w*)"
+    r"|(?:asyncio\s*\.\s*)?create_subprocess_(?:exec|shell)")
+PY_SPAWN = re.compile(r"\b(?:%s)\s*\(" % _SPAWN_NAMES)
+# `functools.partial(subprocess.Popen, [GAME, ...])`: the spawn name is NOT followed by `(`, so
+# PY_SPAWN cannot see it. The partial's remaining arguments ARE the command line.
+PY_PARTIAL = re.compile(r"\b(?:functools\s*\.\s*)?partial\s*\(")
+SPAWN_NAME = re.compile(r"^\s*(?:%s)\s*$" % _SPAWN_NAMES)
+# The two subprocess kwargs that ARE the command line, rather than a setting beside it.
+ARGV_KWARGS = ("args", "executable")
 # The transport whose constructor spawns the game.
 TRANSPORT = re.compile(r"\bDebugConsole\s*\(")
 
@@ -117,12 +159,28 @@ DEF = re.compile(r"^(\s*)(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(")
 RETURN = re.compile(r"^\s*(?:return|yield)\b(.*)$")
 
 SH_ASSIGN = re.compile(r"^\s*(?:export\s+)?([A-Za-z_]\w*)=(.*)$")
+# Leading words that are NOT the command: shells, wrappers, env-setters, launch verbs. Review 3
+# MEASURED every one of wine/gdb/timeout/winpty/env/cmd-/c as an evasion in the PYTHON LIST
+# branch, where this table was not consulted at all - while the byte-identical .sh was caught.
+# Both branches now share it (see _command_words / _list_command_exprs).
 SH_LEADERS = re.compile(
-    r"^(?:exec|start|nohup|command|time|sudo|then|do|else|elif|if|while|until|"
-    r"[A-Za-z_]\w*=\S*|[-/][cC]|cmd(?:\.exe)?|call|winpty|env)$")
-# `bash -c "<command line>"` / `cmd /c "<command line>"`: the game word hides inside a quoted
-# argument, so the contents are re-scanned as their own shell line.
-SH_DASH_C = re.compile(r"""(?:^|\s)(?:-c|/[cCkK])\s+(['"])(.*?)\1""")
+    r"^(?:exec|start|[Ss]tart-[Pp]rocess|nohup|command|time|sudo|then|do|else|elif|if|while|until|"
+    r"[A-Za-z_]\w*=\S*|[-/][cC]|cmd(?:\.exe)?|call|winpty|env|"
+    r"wine|wine64|gdb|lldb|valgrind|strace|timeout|stdbuf|xvfb-run|"
+    r"powershell(?:\.exe)?|pwsh(?:\.exe)?|bash|sh|zsh|dash)$")
+# After a leader has been consumed, an option or a bare number is still not the command word:
+# `gdb --args <game>`, `timeout 300 <game>`, `env -i <game>`. Only applied AFTER a real leader,
+# so a plain `tail -n 50 "$LOGS/x.log"` still has argv[0] == "tail" and stays clean.
+SH_LEADER_NOISE = re.compile(r"^(?:[-/][^\s]*|\d+(?:\.\d+)?[smhd]?)$")
+# The option whose VALUE is another command line: `bash -c "..."`, `cmd /c "..."`, and - new in
+# review 3 - `powershell -Command "..."`. The byte-identical intent as `bash -c` was caught
+# (rogue 16) while the powershell spelling MEASURED clean, which is the rule disagreeing with
+# itself across two branches rather than a missing depth.
+SH_NESTED_OPT = re.compile(r"^(?:-c|/[cCkK]|-[Cc]ommand|-[Ee]ncoded[Cc]ommand)$")
+# `bash -c "<command line>"` / `cmd /c "<command line>"` / `powershell -Command "<...>"`: the game
+# word hides inside a quoted argument, so the contents are re-scanned as their own shell line.
+SH_DASH_C = re.compile(
+    r"""(?:^|\s)(?:-c|/[cCkK]|-[Cc]ommand|-[Ee]ncoded[Cc]ommand)\s+(['"])(.*?)\1""")
 
 
 def _refs(expr, names):
@@ -248,33 +306,157 @@ def _split_top(text):
     return parts
 
 
-def argv0_expr(call_args):
-    """The expression that becomes argv[0] of a spawn, given the call's '(...)' text.
+def _literal(expr):
+    """The text of `expr` if it is a plain string literal, else None."""
+    m = re.fullmatch(r"(?:[rbuf]*)(['\"])(.*)\1", expr.strip(), re.S)
+    return m.group(2) if m else None
 
-    This is THE detection rule: only the command position counts. `["tail", "-n", LOGS]` has
-    argv[0] `"tail"` and is not a launch however much the rest of it mentions the game.
+
+def _command_words(toks):
+    """Shell tokens with leaders, empty tokens and post-leader noise stripped.
+
+    ONE tokenizer for both branches (review 3). The shell branch always stripped leaders before
+    reading the command word; the Python list branch did not, so the same launcher was caught as
+    a .sh and missed as a .py. `-c`/`/c`/`-Command` are leaders too, so the command line they
+    carry is what gets read next - exactly as _sh_lines re-scans it for shell files.
     """
-    inner = call_args.strip()
-    if inner.startswith("("):
-        inner = inner[1:-1] if inner.endswith(")") else inner[1:]
-    positional = [p for p in _split_top(inner)
-                  if not re.match(r"^\s*[A-Za-z_]\w*\s*=(?!=)", p)]
-    if not positional:
-        return ""
-    first = positional[0].strip()
-    # A list/tuple command: argv[0] is its first element.
+    out = list(toks)
+    saw_leader = False
+    while out:
+        head = out[0].strip("\"'")
+        if not head:
+            out.pop(0)
+            continue
+        if SH_LEADERS.match(head):
+            saw_leader = True
+            out.pop(0)
+            continue
+        if saw_leader and SH_LEADER_NOISE.match(head):
+            out.pop(0)
+            continue
+        break
+    return out
+
+
+def _string_argv0(s):
+    """argv[0] of a plain shell command line, re-quoted so bare `oolite` stays a complete literal."""
+    words = _command_words(s.split())
+    return '"%s"' % words[0].strip("\"'") if words else ""
+
+
+def _list_command_exprs(elems):
+    """Candidate argv[0] expressions of a Python list/tuple command line.
+
+    The list branch now obeys the same leader rule as the shell branch: `["cmd","/c",GAME]`,
+    `["env","SDL=x",GAME]`, `["wine",GAME]`, `["gdb","--args",GAME]`, `["timeout","300",GAME]`
+    and `["winpty",GAME]` all resolve to GAME. An element that FOLLOWS a nested-command option is
+    additionally re-scanned as its own shell command line, since it holds a command line rather
+    than a program path.
+    """
+    out, nested_next, saw_leader = [], False, False
+    for raw in elems:
+        expr = raw.strip()
+        if not expr:
+            continue
+        lit = _literal(expr)
+        if nested_next:
+            # `["bash","-c", "<command line>"]`: the whole element is a command line.
+            out.append(_string_argv0(lit) if lit is not None else expr)
+            return out
+        if lit is not None and SH_NESTED_OPT.match(lit.strip()):
+            nested_next = saw_leader = True
+            continue
+        if lit is not None and SH_LEADERS.match(lit.strip()):
+            saw_leader = True
+            continue
+        if lit is not None and not lit.strip():
+            continue
+        if lit is not None and saw_leader and SH_LEADER_NOISE.match(lit.strip()):
+            continue
+        out.append(expr)
+        return out
+    return out
+
+
+def _value_command_exprs(value):
+    """Candidate argv[0] expressions for one command-line VALUE (list, string or bare name)."""
+    first = value.strip()
+    if not first:
+        return []
     if first[:1] in "[(":
         close = {"[": "]", "(": ")"}[first[0]]
         end = first.rfind(close)
         elems = _split_top(first[1:end if end > 0 else len(first)])
-        return elems[0].strip() if elems else ""
-    # A plain string command line (shell=True, os.system): argv[0] is its first word, re-quoted so
-    # the bare-`oolite` form is still recognisable as a complete literal.
-    lit = re.fullmatch(r"(?:[rbuf]*)(['\"])(.*)\1", first, re.S)
-    if lit:
-        words = lit.group(2).split()
-        return '"%s"' % words[0] if words else ""
-    return first
+        return _list_command_exprs(elems)
+    lit = _literal(first)
+    if lit is not None:
+        # A plain string command line (shell=True, os.system, create_subprocess_shell).
+        got = _string_argv0(lit)
+        return [got] if got else []
+    # A command line BUILT from a leading literal: `"tail -n 50 " + LOGS`, `"tail %s" % LOGS`.
+    # argv[0] is inside that literal, so read it there rather than tainting the whole expression -
+    # otherwise the shell-string branch would flag the log reader that the list branch correctly
+    # ignores, which is the same two-branches-disagree defect pointed the other way.
+    #
+    # Only trusted when the literal CONTAINS the whole command word: another token follows it or
+    # it ends in whitespace, AND that word is not itself a substitution placeholder.
+    # `"%s --no-splash" % GAME` and `"{} --no-splash".format(GAME)` put argv[0] in the SUBSTITUTED
+    # value, so they fall through to the conservative whole-expression form and are still caught;
+    # so do `"%s" % GAME` and `"wine " + GAME`.
+    m = re.match(r"(?:[rbuf]*)(['\"])((?:\\.|(?!\1).)*)\1", first, re.S)
+    if m and m.end() < len(first):
+        lit_text = m.group(2)
+        words = _command_words(lit_text.split())
+        if (words and (len(words) > 1 or lit_text != lit_text.rstrip())
+                and not re.search(r"%[-#0 +]*\d*(?:\.\d+)?[a-zA-Z%]|\{[^}]*\}|\$\{?\w", words[0])):
+            return ['"%s"' % words[0].strip("\"'")]
+    return [first]
+
+
+def argv0_exprs(call_args, extra_positional=0):
+    """Every expression that can become argv[0] of a spawn, given the call's '(...)' text.
+
+    This is THE detection rule: only the command position counts. `["tail", "-n", LOGS]` has
+    argv[0] `"tail"` and is not a launch however much the rest of it mentions the game.
+
+    TWO KWARGS ARE THE COMMAND POSITION (review 3). Attempt 3 discarded every `name=` argument as
+    "a kwarg", including subprocess's own DOCUMENTED `args=` and the `executable=` that overrides
+    what actually runs; `subprocess.run(args=[GAME, "--no-splash"])` and
+    `Popen(["game"], executable=GAME)` both MEASURED clean. Every OTHER kwarg is still ignored -
+    that restriction is what keeps the two measured false positives dead.
+
+    `extra_positional` skips leading positionals that are not the command line, which is how
+    `functools.partial(subprocess.Popen, [GAME, ...])` is read.
+    """
+    inner = call_args.strip()
+    if inner.startswith("("):
+        inner = inner[1:-1] if inner.endswith(")") else inner[1:]
+    parts = _split_top(inner)
+    positional, kwargs = [], []
+    for p in parts:
+        m = re.match(r"^\s*([A-Za-z_]\w*)\s*=(?!=)(.*)$", p, re.S)
+        if m:
+            kwargs.append((m.group(1), m.group(2)))
+        else:
+            positional.append(p)
+    out = []
+    positional = positional[extra_positional:]
+    if positional:
+        out.extend(_value_command_exprs(positional[0]))
+    for name, value in kwargs:
+        if name in ARGV_KWARGS:
+            out.extend(_value_command_exprs(value))
+    return [e for e in out if e]
+
+
+def argv0_expr(call_args):
+    """Back-compatible single-expression form of :func:`argv0_exprs`."""
+    got = argv0_exprs(call_args)
+    return got[0] if got else ""
+
+
+def _is_launch(exprs, names):
+    return any(GAME.search(e) or _refs(e, names) for e in exprs)
 
 
 def spawns_python(text):
@@ -284,11 +466,20 @@ def spawns_python(text):
     names = game_names_python(body)
     for m in PY_SPAWN.finditer(body):
         args = balanced(body, body.index("(", m.end() - 1))
-        target = argv0_expr(args)
-        if not target:
-            continue
-        if GAME.search(target) or _refs(target, names):
+        if _is_launch(argv0_exprs(args), names):
             return True
+    # `functools.partial(subprocess.Popen, [GAME, ...])` - the spawn name is an ARGUMENT here, so
+    # it is never followed by '(' and PY_SPAWN cannot see it. The reviewer judged this shape lower
+    # realism than the rest; it is handled anyway rather than documented as a hole.
+    for m in PY_PARTIAL.finditer(body):
+        args = balanced(body, body.index("(", m.end() - 1))
+        inner = args.strip()
+        if inner.startswith("("):
+            inner = inner[1:-1] if inner.endswith(")") else inner[1:]
+        parts = _split_top(inner)
+        if parts and SPAWN_NAME.match(parts[0]):
+            if _is_launch(argv0_exprs(args, extra_positional=1), names):
+                return True
     return False
 
 
@@ -323,14 +514,10 @@ def spawns_shell(text):
             continue
         # Each pipeline/list segment gets its own command position.
         for seg in re.split(r"\|\||&&|[|;&]|\$\(|`", line):
-            toks = seg.split()
-            # Strip leaders AND empty tokens: `start "" "%APP%\oolite.exe"` must not escape by
-            # putting an empty window title where the command word is looked for.
-            while toks:
-                head = toks[0].strip("\"'")
-                if head and not SH_LEADERS.match(head):
-                    break
-                toks.pop(0)
+            # ONE tokenizer, shared with the Python list branch: leaders, empty tokens (so
+            # `start "" "%APP%\oolite.exe"` cannot hide behind an empty title) and post-leader
+            # options all strip before the command word is read.
+            toks = _command_words(seg.split())
             if not toks:
                 continue
             word = toks[0].strip("\"'").lstrip("$").strip("{}")

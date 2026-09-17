@@ -279,17 +279,25 @@ echo "=== 8. a DEAD HEARTBEAT is noticed by the holder ==="
 #
 # Two halves, and both must hold:
 #   8a  a stream that raises on EVERY write cannot kill the heartbeat, even on the refused branch
-#       (the code path that used to be outside the try) - the thread is still alive afterwards.
+#       (the code path that used to be outside the try) - the thread is still alive afterwards -
+#       AND the holder FAILS the hold, because a refused refresh PROVES the desktop was lost.
 #   8b  when the heartbeat DOES stop beating, the holder NOTICES: it says so while the body is
 #       still running, and the context manager raises DesktopLockError instead of returning a
 #       result computed while the desktop mutex was not being held.
+#
+# 8a's SECOND assertion is review 3's finding, and it is why 8a used to bless a bug. The check
+# drives EXACTLY the lost-lock path - the lock is handed to thief8 mid-hold, so every subsequent
+# ownership-checked refresh is refused - and asserted ONLY that the thread survived. Meanwhile the
+# module merely warned on that branch and the run REPORTED SUCCESS, while the strictly WEAKER
+# evidence of a dead heartbeat (8b) raised. A test that exercises the proven-loss path and does
+# not assert the failure is a test that certifies the inversion.
 rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
 export OO_GUI_LOCK_STALE=12
 
 out=$(OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" <<'PY' 2>&1
 import os, subprocess, sys, threading, time
 sys.path.insert(0, sys.argv[1])
-from desktop_lock import desktop_lock
+from desktop_lock import DesktopLockError, desktop_lock
 
 class Raises:
     """A stream that raises on every write - a closed pipe, a captured stdio that went away."""
@@ -299,17 +307,21 @@ class Raises:
         pass
 
 script = os.path.join(sys.argv[1], "gui-lock")
-with desktop_lock("hbprobe", start=sys.argv[1], stream=Raises()) as path:
-    owner = open(os.path.join(path, "owner")).readline().split("=", 1)[1].strip()
-    # Force the REFUSED branch - the print that used to sit outside the try - by handing the lock
-    # to somebody else while we hold it.
-    subprocess.run(["bash", script, "release"], capture_output=True,
-                   env=dict(os.environ, OO_GUI_LOCK_OWNER=owner))
-    subprocess.run(["bash", script, "acquire", "--timeout", "5"], capture_output=True,
-                   env=dict(os.environ, OO_GUI_LOCK_OWNER="thief8"))
-    time.sleep(7)          # > heartbeat_interval(12) == 5, so at least one refusal happened
-    alive = any(t.name == "desktop-lock-heartbeat" for t in threading.enumerate())
-    print("HEARTBEAT_ALIVE_AFTER_REFUSAL_ON_A_BROKEN_STREAM:", alive, file=sys.__stdout__)
+try:
+    with desktop_lock("hbprobe", start=sys.argv[1], stream=Raises()) as path:
+        owner = open(os.path.join(path, "owner")).readline().split("=", 1)[1].strip()
+        # Force the REFUSED branch - the print that used to sit outside the try - by handing the
+        # lock to somebody else while we hold it.
+        subprocess.run(["bash", script, "release"], capture_output=True,
+                       env=dict(os.environ, OO_GUI_LOCK_OWNER=owner))
+        subprocess.run(["bash", script, "acquire", "--timeout", "5"], capture_output=True,
+                       env=dict(os.environ, OO_GUI_LOCK_OWNER="thief8"))
+        time.sleep(7)          # > heartbeat_interval(12) == 5, so at least one refusal happened
+        alive = any(t.name == "desktop-lock-heartbeat" for t in threading.enumerate())
+        print("HEARTBEAT_ALIVE_AFTER_REFUSAL_ON_A_BROKEN_STREAM:", alive, file=sys.__stdout__)
+    print("HOLD_REPORTED_SUCCESS_DESPITE_LOSING_THE_LOCK", file=sys.__stdout__)
+except DesktopLockError as exc:
+    print("HOLD_FAILED_AFTER_LOSING_THE_LOCK:", exc, file=sys.__stdout__)
 PY
 ); rc=$?
 echo "$out" | sed 's/^/  /'
@@ -320,6 +332,13 @@ case "$out" in
 		ok "a refused heartbeat on a stream that raises does NOT kill the heartbeat thread" ;;
 	*)
 		no "the heartbeat thread died when its log stream raised (rc=$rc): the silent-death bug is back" ;;
+esac
+case "$out" in
+	*HOLD_FAILED_AFTER_LOSING_THE_LOCK*)
+		ok "a hold whose refresh was REFUSED fails, instead of reporting success" ;;
+	*HOLD_REPORTED_SUCCESS_DESPITE_LOSING_THE_LOCK*)
+		no "the lock was PROVABLY handed to another owner mid-hold and the hold still succeeded" ;;
+	*)  no "unexpected output from the lost-lock probe (rc=$rc)" ;;
 esac
 
 # 8b. the liveness check is not vacuous: kill the heartbeat outright (the module's documented test
