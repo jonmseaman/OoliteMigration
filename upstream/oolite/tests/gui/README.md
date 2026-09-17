@@ -44,7 +44,8 @@ with `--oolite-app <path>` or `OO_APP_DIR`.
 | `point_to_row(x, y, client_rect)` | function | The inverse, walking the same chain the game does. Lets the maths be tested with no game running. |
 | `game` | fixture | One process with a real, pinned window, ready and focused; killed unconditionally on teardown. `game.select_row`, `game.confirm_row`, `game.client_rect`. |
 | `desktop_lock` | fixture | Session-scoped, takes `tools/gui-lock`. |
-| `assert_clean_exit(output_dir)` | function | G9 hygiene: no crash dump, no `ERROR` in `Latest.log`. |
+| `assert_clean_exit(output_dir, app_dir)` | function | G9 hygiene, all three checks unconditional: no crash dump, no `ERROR` in `Latest.log` (an *absent* log is a failure, not a skip), and the GNUstep defaults file still parses. Returns `(path, contents)` of the defaults file. |
+| `assert_no_surviving_game_processes(root_pid)` | function | No `oolite.exe` in the launched process tree is still alive. Scoped to that tree, so a concurrent sibling run is not mistaken for a leak. |
 
 ## Three things that are not what you would guess
 
@@ -61,3 +62,12 @@ Readiness is therefore read from the game's own log line, never slept for.
 the binary so a headless VM can render offscreen; with it present the game dies during `initGL`
 with `0x80070057` and never opens a window. The `game` fixture moves those DLLs aside for the
 duration and puts them back on teardown.
+
+**4. The defaults file is OpenStep, not XML.** `src/SDL/main.m:119` points `GNUSTEP_USERS_ROOT`
+at the directory holding `oolite.exe`, so this run's user defaults land in
+`<app_dir>/GNUstep/Defaults/oolite.plist`, and gnustep-base writes them in the old-style
+`{ "key" = "value"; }` dialect that `plistlib` cannot read. `GameController.m:905` synchronizes
+them as the last act of `-exitAppWithContext:`, which is why "the defaults file still parses" is
+a real post-exit check: a shutdown that died mid-write leaves a truncated file. `conftest.py`
+carries a strict OpenStep parser for exactly this — strict because a lenient one would turn a
+half-written file back into a silent pass (bug oo-5rsa).

@@ -19,6 +19,7 @@ from conftest import (
     MAIN_GUI_PIXEL_HEIGHT,
     MAIN_GUI_ROW_HEIGHT,
     assert_clean_exit,
+    assert_no_surviving_game_processes,
     point_to_row,
     row_to_point,
 )
@@ -114,8 +115,11 @@ def test_g1_exit_via_mouse(game):
         )
     assert returncode == 0, f"the game exited with {returncode}, not 0"
 
-    # 4. No orphaned process: the handle is reaped and nothing is left holding the window.
-    assert game.proc.poll() == 0
+    # 4. No orphaned process. NOT `game.proc.poll() == 0` - wait() above already reaped and
+    #    stored that returncode, so re-reading it is true by construction and checks nothing.
+    #    Ask the OS process table instead, scoped to the tree we launched so a concurrent
+    #    sibling GUI run's oolite.exe cannot be mistaken for our leak.
+    assert_no_surviving_game_processes(game.proc.pid)
 
-    # 5. G9 hygiene: no crash dump, no ERROR in the log.
-    assert_clean_exit(game.output_dir)
+    # 5. G9 hygiene: no crash dump, no ERROR in the log, and a defaults file that re-parses.
+    assert_clean_exit(game.output_dir, game.app_dir)
