@@ -37,11 +37,10 @@ Five things here are deliberate and are the reason it looks like this:
   `system` are one live object each: mission.screenID is `null` with no mission screen up and a
   string with one, and system.mainStation is an object in a system and null in interstellar space.
   Recording those typeofs would make a regeneration diff against the savegame, not against the API,
-  so _describe_global omits `type` from an object global's own_members. Nothing is lost: every one
-  of those members is also on the class prototype (Mission.prototype, System.prototype, ...), whose
-  descriptors are read off the prototype object and are therefore state-independent. Descriptor
-  flags, kind and arity are still recorded for the own copy, so a member appearing or vanishing on
-  a singleton is still a visible diff.
+  so _describe_global omits `type` from an object global's own_members. What that costs is bounded
+  and measured, not assumed - see _strip_state_dependent_types, which states exactly how many
+  entries lose a type that nothing else in the document carries, and js_api_check.py, which fails
+  if that set ever grows beyond the pinned five.
 
 Only shapes are recorded, never values: kind, arity, descriptor flags, and - where it is a property
 of the class definition rather than of the session - the typeof of a data property. A regeneration
@@ -227,6 +226,15 @@ def _scan_members(con, target, names):
     accumulator and helper this module installs (__ooAcc, __ooBuf, __ooIdx, __ooScan) appear as its
     own members and would otherwise be recorded as part of Oolite's API.
     """
+    if not names:
+        # No round trip at all, and that is load-bearing, not an optimisation. __ooAcc is reset
+        # JS-side by __ooScan when `from` is 0; with no names the loop below never calls it, so a
+        # fetch here would return the PREVIOUS target's accumulator and record its members as this
+        # target's own. That is exactly the corruption that put StopIteration, missionVariables and
+        # worldScripts in an earlier snapshot holding Station.prototype's, Mission.prototype's and
+        # Array.prototype's members. A target with no own names has no members, full stop.
+        return {}
+
     found = {}
     start = 0
     opaque = []
@@ -284,6 +292,25 @@ def _strip_state_dependent_types(members):
     mission.screenID is null with no mission screen up and a string with one; system.mainStation is
     an object in a system and null in interstellar space. Keeping those would make a regeneration
     diff against the savegame. Kind, arity and descriptor flags stay - they are the shape.
+
+    This is NOT free, and the earlier claim that it was ("every such member is also on the class
+    prototype, so nothing is lost") was checked on four globals and is false in general. Measured
+    over all 17 object globals in this build, most own data properties DO reappear on the class
+    prototype (Mission.prototype, System.prototype, Clock.prototype, ...) or, for `global`, as a
+    top-level global entry of their own, and for those the type really is recoverable from
+    elsewhere in the document. Five do not:
+
+        console.script, console.settings, debugConsole.script, debugConsole.settings, player.ship
+
+    Those five are the honest cost of this decision, and they are also the members for which the
+    dropped value is least informative: each is a slot holding a live object or null depending on
+    what the session is doing, so the typeof we would record is precisely the session state this
+    function exists to exclude. Recording a declared/nullable type instead would mean inventing a
+    type the engine never declares - it publishes no type metadata for a JS property - so the
+    choice is between a session value and nothing, and nothing is the reproducible one.
+
+    js_api_check.py pins that set: if a sixth own-only data property ever appears, the check fails
+    and this comment has to be re-derived rather than silently drifting out of date again.
     """
     for entry in members.values():
         entry.pop("type", None)
@@ -325,8 +352,10 @@ def _describe_global(con, name):
                 con, f"{ref}.prototype", _names_of(con, f"{ref}.prototype")
             )
     else:
-        # See the module docstring: a singleton's own data-property values are session state, so
-        # their typeof is dropped. The class prototype below carries the authoritative shape.
+        # See the module docstring and _strip_state_dependent_types: a singleton's own
+        # data-property values are session state, so their typeof is dropped. Most of them are
+        # recoverable from the class prototype recorded just below; five in this build are not,
+        # and that cost is documented there rather than glossed over.
         entry["own_members"] = _strip_state_dependent_types(
             _scan_members(con, ref, _names_of(con, ref))
         )
@@ -370,28 +399,105 @@ def _summarise(globals_map):
     }
 
 
+def _open_session(app_dir, port, host, settle, ready_timeout):
+    """Launch the game and bring one console session up to the point where scanning can start.
+
+    Returned as a tuple rather than kept in `collect` inline because the session is DISPOSABLE:
+    see _collect_globals, which throws one away and opens another when the transport dies.
+    """
+    con = DebugConsole(app_dir, port, seed=1, output_dir=None, host=host)
+    con.start(ready_timeout=ready_timeout)
+    _wait_until_rendering(con, settle)
+    version = con.evaluate("oolite.versionString").strip()
+    con.perform(" ".join(HELPERS_JS.split()))
+    time.sleep(1.0)
+    if con.evaluate("typeof __ooScan", timeout=20).strip() != "function":
+        raise ConsoleError("the enumeration helpers did not install on the global")
+    names = [n for n in _names_of(con, "__ooGlobal") if not n.startswith(HARNESS_PREFIX)]
+    return con, version, names
+
+
+# The console transport dies non-deterministically mid-run on Windows: the game's end of the
+# socket is reset (ConnectionResetError / WinError 10054) part-way through a long enumeration,
+# which killed two earlier full runs at 46/121 and 30/121 globals. Diagnosing that in the game is
+# a separate job; what this tool owes is not to lose an hour of scanning to it. A dropped session
+# is therefore replaced with a fresh one and the enumeration RESUMES at the global that died -
+# globals are independent, so a restart costs only the boot time. Bounded, and loud if exhausted:
+# silently emitting a short snapshot would be worse than failing.
+MAX_SESSION_RESTARTS = 6
+
+
+def _is_transport_death(exc):
+    """True for an exception that means the socket died, not that the game answered badly.
+
+    OSError covers ConnectionResetError / ConnectionAbortedError / BrokenPipeError. The console
+    also reports a half-closed socket as its own ConsoleError from _recv returning None, which is
+    the same event seen one layer up, so that specific message counts too. Everything else - a JS
+    error, a timeout, a disagreeing global set - is a real finding and must not be retried away.
+    """
+    if isinstance(exc, (OSError, EOFError)):
+        return True
+    return isinstance(exc, ConsoleError) and "connection closed" in str(exc)
+
+
+def _collect_globals(app_dir, port, host, settle, ready_timeout):
+    """Describe every global, surviving a dropped console transport by relaunching and resuming."""
+    result = {}
+    version = None
+    names = None
+    restarts = 0
+    while True:
+        con = None
+        try:
+            con, version, session_names = _open_session(app_dir, port, host, settle, ready_timeout)
+            if names is None:
+                names = session_names
+            elif session_names != names:
+                # A restart that sees a different global set is not a resumption of the same
+                # measurement, and splicing the two would produce a document describing no single
+                # runtime. Start the whole snapshot over rather than emit a chimera.
+                raise ConsoleError(
+                    f"the relaunched game exposes {len(session_names)} globals, not {len(names)}; "
+                    "the snapshot cannot be spliced across two different runtimes"
+                )
+            for index, name in enumerate(names, 1):
+                if name in result:
+                    continue
+                result[name] = _describe_global(con, name)
+                print(f"[*] {index:3d}/{len(names)} {name}", flush=True)
+            return version, result
+        except (OSError, EOFError, ConsoleError) as exc:
+            if not _is_transport_death(exc):
+                raise
+            restarts += 1
+            done = len(result)
+            if restarts > MAX_SESSION_RESTARTS:
+                raise ConsoleError(
+                    f"the console transport died {restarts} times ({exc}); gave up after "
+                    f"{done}/{len(names) if names else '?'} globals. The snapshot was NOT written."
+                ) from exc
+            print(f"[~] console transport died after {done} globals ({exc}); "
+                  f"relaunching and resuming (restart {restarts}/{MAX_SESSION_RESTARTS})",
+                  flush=True)
+            time.sleep(2.0)
+        finally:
+            if con is not None:
+                try:
+                    con.close()
+                except Exception:
+                    pass
+
+
 def collect(app_dir, port, host, settle, ready_timeout):
     _ensure_software_gl(app_dir)
     config_dir = _console_config_dir(host, port)
     output_dir = tempfile.mkdtemp(prefix="oolite-jsapi-out-")
     previous = os.environ.get("OO_ADDITIONALADDONSDIRS")
     os.environ["OO_ADDITIONALADDONSDIRS"] = f"{config_dir},{previous}" if previous else config_dir
+    os.environ["OO_SNAPSHOTSDIR"] = output_dir
+    os.environ["OO_LOGSDIR"] = output_dir
     try:
-        con = DebugConsole(app_dir, port, seed=1, output_dir=output_dir, host=host)
-        with con:
-            con.start(ready_timeout=ready_timeout)
-            _wait_until_rendering(con, settle)
-            version = con.evaluate("oolite.versionString").strip()
-            con.perform(" ".join(HELPERS_JS.split()))
-            time.sleep(1.0)
-            if con.evaluate("typeof __ooScan", timeout=20).strip() != "function":
-                raise ConsoleError("the enumeration helpers did not install on the global")
-
-            names = [n for n in _names_of(con, "__ooGlobal") if not n.startswith(HARNESS_PREFIX)]
-            result = {}
-            for index, name in enumerate(names, 1):
-                result[name] = _describe_global(con, name)
-                print(f"[*] {index:3d}/{len(names)} {name}", flush=True)
+        version, result = _collect_globals(app_dir, port, host, settle, ready_timeout)
     finally:
         if previous is None:
             os.environ.pop("OO_ADDITIONALADDONSDIRS", None)

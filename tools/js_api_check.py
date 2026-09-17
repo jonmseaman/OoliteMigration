@@ -43,6 +43,160 @@ FORBIDDEN_TOP_KEYS = {"generated_at", "timestamp", "date", "host", "port", "cons
 
 KINDS = {"method", "property", "accessor", "opaque", "native-opaque"}
 
+# Own data properties of an object global whose `type` is dropped (see
+# js_api_snapshot.py:_strip_state_dependent_types) and which appear nowhere else in the document
+# that a type could be read off instead - not on the class prototype, and not, for `global`, as a
+# top-level global of their own. This is the exact, measured cost of dropping `type`, pinned here
+# so it cannot quietly grow: an earlier revision asserted the cost was ZERO on the strength of four
+# sampled globals and was wrong for the other thirteen.
+TYPELESS_OWN_ONLY = {
+    "console.script", "console.settings",
+    "debugConsole.script", "debugConsole.settings",
+    "player.ship",
+}
+
+
+def _member_signature(members):
+    """Canonical form of a member map for the identical-bucket check below.
+
+    Two normalisations, both required to see the fault this check exists for:
+
+    * `type` is dropped. own_members never carries it (js_api_snapshot.py strips it) while
+      prototype_members does, so a raw comparison would never match a fabricated own_members
+      against the prototype it was copied from - which is precisely how the corruption survived
+      review the first time.
+    * `native-opaque` entries are dropped. They are synthesised Python-side from the name list and
+      never pass through the JS accumulator, so a copied accumulator reproduces a target's
+      describable members and nothing else. Comparing on that subset is what makes the copy
+      visible; StopIteration's fabricated 21 members matched Station.prototype's 21 methods while
+      excluding its 18 native-opaque ones.
+    """
+    normalised = {
+        name: {k: v for k, v in entry.items() if k != "type"}
+        for name, entry in members.items()
+        if entry.get("kind") != "native-opaque"
+    }
+    return json.dumps(normalised, sort_keys=True)
+
+
+# Two buckets legitimately holding byte-identical member maps in this build. Every one is a real
+# aliasing fact about the runtime, verified by name: a singleton and its class share a prototype
+# object (clock/Clock), the debug console is exposed twice under two names (console/debugConsole),
+# the DOM-less builtins are their own prototype (JSON, Proxy), the typed arrays are generated from
+# one template, and the plain error classes share a prototype shape. Anything NOT in this list that
+# comes out identical is the signature of the stale-accumulator bug: a target with zero own
+# property names used to be described with the PREVIOUS target's accumulator, which silently gave
+# StopIteration a copy of Station.prototype, missionVariables a copy of Mission.prototype and
+# worldScripts a copy of Array.prototype. That class of fault is invisible to every other check
+# here, so it gets its own.
+EXPECTED_IDENTICAL_BUCKETS = [
+    # (bucket kind, description) -> groups are matched as frozensets of "global.bucket" keys.
+    {"clock.prototype_members", "Clock.prototype_members"},
+    {"console.prototype_members", "debugConsole.prototype_members", "Console.prototype_members"},
+    {"console.own_members", "debugConsole.own_members"},
+    {"mission.prototype_members", "Mission.prototype_members"},
+    {"system.prototype_members", "System.prototype_members"},
+    {"player.prototype_members", "Player.prototype_members"},
+    {"oolite.prototype_members", "Oolite.prototype_members"},
+    {"manifest.prototype_members", "Manifest.prototype_members"},
+    {"JSON.own_members", "JSON.prototype_members"},
+    {"Proxy.own_members", "Proxy.prototype_members"},
+    {"Math.own_members", "Math.prototype_members"},
+    {"SystemInfo.statics", "SystemInfo.prototype_members"},
+    {"XML.statics", "XML.prototype_members"},
+    {"XMLList.statics", "XMLList.prototype_members"},
+    {"Array.prototype_members", "worldScriptNames.prototype_members"},
+    {"ConsoleSettings.prototype_members", "consoleMessage.prototype_members"},
+    # The nine typed-array constructors are generated from one template in SpiderMonkey, so their
+    # prototypes carry the same eight members and their statics the same seven.
+    {f"{n}.prototype_members" for n in
+     ("Float32Array", "Float64Array", "Int8Array", "Int16Array", "Int32Array",
+      "Uint8Array", "Uint8ClampedArray", "Uint16Array", "Uint32Array")},
+    # The plain error classes all inherit the same five-member Error.prototype shape.
+    {f"{n}.prototype_members" for n in
+     ("EvalError", "InternalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError",
+      "URIError")},
+]
+
+
+def check_no_fabricated_buckets(globals_map):
+    """Fail if two member maps are byte-identical without a declared reason.
+
+    The cheap, general detector for a whole class of enumeration fault: any bug that hands one
+    target's member list to another produces an exact duplicate, because the copy is made of
+    already-serialised records rather than re-derived per target.
+
+    Groups whose members are all plain `Object.prototype`-shaped or all empty are not interesting:
+    an empty bucket carries no information to fabricate, and the shared builtin prototypes and the
+    shared `statics` of every native constructor (the six Function statics, the five of a plain
+    function) are structural, not per-class. Those are skipped generically rather than listed.
+    """
+    groups = {}
+    for gname, entry in globals_map.items():
+        for bucket, members in member_buckets(entry):
+            if not members:
+                continue
+            groups.setdefault(_member_signature(members), set()).add(f"{gname}.{bucket}")
+
+    allowed = [frozenset(group) for group in EXPECTED_IDENTICAL_BUCKETS]
+    for signature, keys in sorted(groups.items(), key=lambda kv: sorted(kv[1])):
+        if len(keys) < 2:
+            continue
+        members = json.loads(signature)
+        # Shared structural shapes: `statics` is identical across every native constructor because
+        # it is Function's own, and the builtin object prototypes are shared by construction.
+        if all(key.endswith(".statics") for key in keys):
+            continue
+        if set(members) <= OBJECT_PROTOTYPE_MEMBERS:
+            continue
+        if any(keys == group for group in allowed):
+            continue
+        fail(f"{sorted(keys)} have byte-identical member maps ({len(members)} entries) with no "
+             "declared reason. An enumeration that copies one target's members onto another "
+             "produces exactly this; if the aliasing is real, add it to "
+             "EXPECTED_IDENTICAL_BUCKETS with the reason")
+
+
+# The 15 members every plain object inherits from Object.prototype in this SpiderMonkey. Objects
+# whose prototype IS Object.prototype therefore all record the same 15, which is shared by
+# construction and says nothing about any one of them.
+OBJECT_PROTOTYPE_MEMBERS = frozenset([
+    "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__", "callObjC",
+    "constructor", "hasOwnProperty", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString",
+    "toSource", "toString", "unwatch", "valueOf", "watch",
+])
+
+
+def check_typeless_own_only(globals_map):
+    """Pin the exact set of own data properties whose `type` is unrecoverable.
+
+    js_api_snapshot.py drops `type` from an object global's own_members because a live singleton's
+    typeof is session state. For most of those members the type is still in the document, on the
+    class prototype - or, for `global`, on the global of the same name. For a few it is not, and
+    THAT is the real cost of the decision. It is pinned rather than merely documented so a future
+    change that widens the loss has to argue for it instead of landing silently: the original
+    justification for dropping `type` claimed the cost was zero, having sampled four of seventeen
+    object globals.
+    """
+    lost = set()
+    for gname, entry in globals_map.items():
+        if entry.get("type") != "object":
+            continue
+        proto = entry.get("prototype_members") or {}
+        for mname, member in (entry.get("own_members") or {}).items():
+            if member.get("kind") != "property" or mname in proto:
+                continue
+            if gname == "global" and mname in globals_map:
+                continue  # `global.mission` is recoverable from the `mission` global itself.
+            lost.add(f"{gname}.{mname}")
+    if lost != TYPELESS_OWN_ONLY:
+        added = sorted(lost - TYPELESS_OWN_ONLY)
+        gone = sorted(TYPELESS_OWN_ONLY - lost)
+        fail(f"the set of own data properties with an unrecoverable type has changed "
+             f"(new: {added}, no longer present: {gone}). Dropping `type` from own_members is "
+             "only defensible while this set is small and known; re-derive it and update "
+             "TYPELESS_OWN_ONLY and js_api_snapshot.py's docstring together")
+
 
 def fail(message):
     print(f"[!] {message}")
@@ -176,6 +330,9 @@ def main(path):
                     fail(f"{gname}.{bucket}.{mname} is a property with no type")
     if members_seen < 2300:
         fail(f"only {members_seen} members recorded; the enumeration did not complete")
+
+    check_no_fabricated_buckets(globals_map)
+    check_typeless_own_only(globals_map)
 
     print(f"[+] {path}: {len(globals_map)} globals "
           f"({summary['oolite_global_count']} Oolite, "

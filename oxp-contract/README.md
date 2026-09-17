@@ -65,14 +65,44 @@ and deliberately so. Each is one live object, so the `typeof` of its own data pr
 current session, not the API: `mission.screenID` is `null` with no mission screen up and a string
 with one; `system.mainStation` is an object in a system and `null` in interstellar space. Recording
 those would make a regeneration diff against the savegame. `own_members` therefore carries kind,
-arity and descriptor flags but **no `type`** — and nothing is lost, because every one of those
-members also appears on the corresponding class prototype (`Mission.prototype`, `System.prototype`,
-...), whose descriptors are read off the prototype object and are state-independent.
-`tools/js-api-check.sh` fails the file if an `own_members` entry ever regains a `type`.
+arity and descriptor flags but **no `type`**. `tools/js-api-check.sh` fails the file if an
+`own_members` entry ever regains a `type`.
+
+That is not free, and an earlier version of this paragraph wrongly said it was ("nothing is lost,
+every such member is also on the class prototype"), on the strength of four sampled globals. Across
+all seventeen object globals, most own data properties *are* recoverable — the same member appears
+on the class prototype (`Mission.prototype`, `System.prototype`, ...) with a state-independent
+`typeof`, and for `global` the member is itself a top-level global with its own entry. Five are not:
+
+    console.script  console.settings  debugConsole.script  debugConsole.settings  player.ship
+
+For those five the `typeof` is genuinely gone from the document. They are also the members where it
+was worth least: each holds a live object or `null` depending on what the session is doing, so the
+recorded value would be exactly the session state this rule exists to keep out, and the engine
+declares no static type to record instead. `tools/js-api-check.sh` pins that set by name and fails
+if it grows, so widening the loss has to be argued for rather than noticed later.
 
 Keys are sorted, the indent is two spaces, the encoding is ASCII with LF endings.
 `tools/js-api-check.sh` re-serialises the file and fails if it is not byte-identical, so a hand
 edit is caught even without a game build.
+
+### No two globals may share a member list by accident
+
+`tools/js-api-check.sh` fails if two globals record byte-identical member maps without a declared
+reason. This is the detector for a whole class of enumeration fault, and it exists because one
+happened: the scanner accumulated each target's members into a JS-side string that was reset only
+when a scan actually ran, so a global with *zero* own property names was described with the
+**previous** global's accumulator. Three globals in an earlier snapshot were therefore pure
+fabrication — `StopIteration` held `Station.prototype`'s members, `missionVariables` held
+`Mission.prototype`'s and `worldScripts` held `Array.prototype`'s, each the immediate successor of
+its donor in sorted order. The correct answer for all three is an empty `own_members`.
+
+Any bug that copies one target's members onto another produces an exact duplicate, because the copy
+is of already-serialised records rather than a re-derivation. The comparison ignores `type` and
+`native-opaque` entries, since those are added and removed per bucket and would mask the match. Real
+aliasing does exist (a singleton shares its class's prototype object; `console` and `debugConsole`
+are the same object under two names; the typed arrays come from one template) and is listed by name
+in `EXPECTED_IDENTICAL_BUCKETS`; anything else fails.
 
 ### `native-opaque`
 
