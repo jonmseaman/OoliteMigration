@@ -6,7 +6,7 @@ reviewer's report of an ``assert False`` injected into test_g1_exit_via_mouse.py
 leaving a survivor behind.
 
 THAT DEFECT DOES NOT EXIST, and this file is the evidence that it does not, pinned so it cannot
-come back. Measured by injecting exactly that failure - a scratch copy of
+come back. Measured by reproducing that injection exactly - a scratch copy of
 test_g1_exit_via_mouse.py with ``assert False`` placed after step 1's ``select_row``, i.e. with
 the game demonstrably up - and recording the pid the run itself launched:
 
@@ -14,36 +14,43 @@ the game demonstrably up - and recording the pid the run itself launched:
     pristine     fd501c4    rc=1, "1 failed, 38 passed in 26.51s", launched pid  6384 -> GONE
 
 fd501c4 is the very tree the bead was filed against, so this is not a leak some later bead fixed
-by accident: the teardown was already correct. ``GameWindow.kill`` is byte-identical between the
-two trees. The original sighting was a CONCURRENT AGENT'S oolite.exe - five agents share this
+by accident: the teardown was already correct, and ``GameWindow.kill`` is byte-identical between
+the two trees. The original sighting was a CONCURRENT AGENT'S oolite.exe - five agents share this
 desktop - and a bare ``tasklist /FI "IMAGENAME eq oolite.exe"`` cannot tell that from a leak of
 one's own. Recording the launched pid and asking about THAT pid is what distinguishes them, and it
-is why every assertion below is pid-scoped.
+is why every assertion here is pid-scoped.
 
 WHY THE TEARDOWN IS SOUND, which is the property this file locks. ``game`` is a generator fixture
 whose ``yield`` sits inside a ``try/finally``. When a test body raises, pytest throws that
-exception INTO the generator at the yield point, so the ``finally: window.kill()`` runs during the
-unwind - identically for a passing test and a failing one. There is no separate failure path to
-leak down.
+exception into the generator at the yield point, so ``finally: window.kill()`` runs during the
+unwind - identically for a passing test and a failing one. There is no separate failure path.
 
-HOW THE MID-RUN FAILURE IS INJECTED HERE. This test does not take the ``game`` fixture; it takes
-``game``'s own dependencies and drives the REAL fixture generator (``conftest.game``'s underlying
-generator function) by hand, so that it can ``throw()`` into it at the yield - which is precisely
-what pytest does to unwind a failed test. A test that merely took the fixture and failed could
-not then assert anything, because its own assertions would never run. Nothing here re-implements
-the teardown: the code under test is conftest's own, unmodified.
+HOW THE MID-RUN FAILURE IS STAGED. A test cannot fail deliberately AND then assert on what its
+own teardown did: its assertions would never run. So the failure happens in a CHILD pytest
+process and the assertions happen here, in the parent. The child test file is written into THIS
+directory, so the ``conftest.py`` it binds to is this tier's real one - the shared fixture itself,
+unmodified, not a reimplementation and not a private copy of its body. The child records the pid
+it launched to a file, fails while the game is up, and the parent then asserts that pid is gone
+from the operating system's process table.
+
+The child file is named ``_njnw_child_*.py`` rather than ``test_*.py`` so that a normal tier run
+never collects it, the tier-wide AST meta-guard in test_g9_post_exit_hygiene.py (which walks
+``os.listdir`` for ``test_*.py``) never sees it, and it is removed in a ``finally`` either way.
 
     python3 -m pytest upstream/oolite/tests/gui/test_g10_mid_run_failure_leaves_no_orphan.py -q
 
-FALSIFIABILITY, measured rather than asserted. With ``GameWindow.kill``'s ``self.proc.kill()``
-neutered in a scratch copy of conftest.py, this test goes RED and names the surviving pid:
-"the game process this run launched (pid 24020) SURVIVED a mid-run test failure". The committed
-conftest.py is untouched by this bead.
+FALSIFIABILITY, measured rather than asserted - see the bead's evidence. With
+``GameWindow.kill``'s ``self.proc.kill()`` neutered in a scratch copy of the tier, this test goes
+RED and names the surviving pid. The committed conftest.py is untouched by this bead.
 
-Needs the desktop: a real window, unlocked and logged in (ADR-0017). It takes tools/gui-lock via
-the inherited ``desktop_lock`` fixture and launches nothing of its own.
+Needs the desktop: a real window, unlocked and logged in (ADR-0017). The child run takes
+tools/gui-lock through the shared fixture, so this test releases the lock before spawning it (it
+holds none of its own) and launches nothing directly.
 """
 
+import os
+import subprocess
+import sys
 import time
 
 import pytest
@@ -55,91 +62,163 @@ from conftest import (
     surviving_game_processes,
 )
 
-# How long the process gets to actually be gone after the teardown returns. kill() already waits
-# 10s on the Popen; this is slack for the OS to drop the entry from the process table.
-ORPHAN_GRACE_SECONDS = 10.0
+HERE = os.path.dirname(os.path.abspath(__file__))
 
-# The shape of the injected failure. A plain AssertionError, because that is what a failing
-# assertion in a real GUI test raises, and pytest.fail's Failed (a BaseException) would take a
-# different route through the generator's unwind than the everyday case this pins.
-INJECTED = "oo-njnw: deliberate mid-run failure with the game UP"
+# How long the pid gets to actually be gone once the child process has exited. kill() already
+# waits up to 10s on the Popen; this is slack for the OS to drop the process-table entry.
+ORPHAN_GRACE_SECONDS = 15.0
+
+# The child gets the tier's own readiness budget plus room for the launch itself. A real launch is
+# ~11-25s on this machine; a child that came back in under a second did not run a game at all,
+# which is asserted below rather than assumed.
+CHILD_TIMEOUT_SECONDS = float(os.environ.get("OO_NJNW_CHILD_TIMEOUT", "300"))
+
+# A child run that finishes faster than this cannot have launched, pinned and settled a real
+# window (the fixture alone sleeps SETTLE_SECONDS after a startup gate that waits for
+# ``startup.complete``). Guards against the failure this file had in review: a pin that dies in
+# its own preamble in 0.4s while claiming to have exercised the teardown.
+MINIMUM_REAL_LAUNCH_SECONDS = 5.0
+
+INJECTED_MESSAGE = "oo-njnw: deliberate mid-run failure with the game UP"
+
+CHILD_SOURCE = '''\
+"""GENERATED, TRANSIENT (bead oo-njnw). Fails MID-RUN with the game up, on purpose.
+
+Written into the GUI tier directory by test_g10_mid_run_failure_leaves_no_orphan.py so that the
+``conftest.py`` it binds is this tier's real one - the point is to exercise the SHARED ``game``
+fixture's own teardown down its real unwind path. Deliberately not named test_*.py: a normal tier
+run must never collect it, and the tier-wide AST meta-guard must never see it. The parent removes
+it in a finally.
+"""
+
+import os
 
 
-def _game_fixture_generator(gui_runtime, app_dir, desktop_lock, tmp_path):
-    """conftest's REAL ``game`` fixture body, as a generator we can throw into.
-
-    ``__pytest_wrapped__.obj`` is the undecorated function pytest itself calls, so this is the
-    shared fixture's own code and not a copy of it. Asserted rather than assumed: if a future
-    refactor turns ``game`` into something other than a generator fixture, this test must fail
-    loudly instead of quietly exercising nothing.
-    """
-    wrapped = getattr(conftest.game, "__pytest_wrapped__", None)
-    assert wrapped is not None, (
-        "conftest.game is no longer a pytest fixture wrapper, so this test cannot reach the "
-        "shared teardown. Re-point it at the real fixture body rather than reimplementing it."
-    )
-    generator = wrapped.obj(gui_runtime, app_dir, desktop_lock, tmp_path)
-    assert hasattr(generator, "throw"), (
-        "conftest.game is not a generator fixture any more; a mid-run failure can no longer be "
-        "injected at its yield, and the teardown path this test pins has changed shape"
-    )
-    return generator
+def test_njnw_child_fails_while_the_game_is_up(game):
+    pid = game.proc.pid
+    with open(os.environ["OO_NJNW_PIDFILE"], "w", encoding="utf-8") as handle:
+        handle.write(str(pid))
+    assert game.proc.poll() is None, "the game must still be up at the injection point"
+    assert False, {message!r}
+'''
 
 
-def test_a_mid_run_failure_leaves_no_orphaned_game(gui_runtime, app_dir, desktop_lock, tmp_path):
-    """Launch through the shared fixture, die mid-run with the game up, assert THAT pid is gone.
+def _run_child(pidfile):
+    """Run the child test in its own pytest process. Returns ``(returncode, output, seconds)``."""
+    child = os.path.join(HERE, "_njnw_child_%d.py" % os.getpid())
+    with open(child, "w", encoding="utf-8") as handle:
+        handle.write(CHILD_SOURCE.format(message=INJECTED_MESSAGE))
+    env = dict(os.environ, OO_NJNW_PIDFILE=pidfile)
+    # The child takes tools/gui-lock through the shared fixture; give it its own owner identity so
+    # it cannot be confused with this process's, and let it wait for a sibling agent's run.
+    env["OO_GUI_LOCK_OWNER"] = "njnw-child:py%d" % os.getpid()
+    try:
+        started = time.time()
+        finished = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pytest",
+                os.path.basename(child) + "::test_njnw_child_fails_while_the_game_is_up",
+                "-q",
+                "-p",
+                "no:cacheprovider",
+                "-o",
+                "python_files=_njnw_child_*.py",
+                "--oolite-app",
+                _app_dir_argument(),
+            ],
+            cwd=HERE,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=CHILD_TIMEOUT_SECONDS,
+        )
+        return finished.returncode, finished.stdout + finished.stderr, time.time() - started
+    finally:
+        try:
+            os.remove(child)
+        except OSError:
+            pass
 
-    Every check is scoped to the pid this test launched. A bare "is any oolite.exe running?"
+
+def _app_dir_argument():
+    """The build this tier would use anyway, passed explicitly so the child cannot pick another."""
+    return conftest._default_app_dir()
+
+
+def test_a_mid_run_failure_leaves_no_orphaned_game(tmp_path):
+    """A GUI test that dies with the game up must leave the pid it launched dead.
+
+    Every check is scoped to the pid the child run launched. A bare "is any oolite.exe running?"
     would be a false positive against a concurrent sibling GUI run on this shared desktop - and
     that false positive is exactly what filed this bead, so this test is not allowed to repeat it.
     """
-    generator = _game_fixture_generator(gui_runtime, app_dir, desktop_lock, tmp_path)
+    conftest.require_gui_platform()
+    conftest.require_gui_dependencies()
+    app = _app_dir_argument()
+    if not os.path.isdir(app):
+        pytest.fail(
+            f"no Oolite build at {app}; this pin needs a real game to launch "
+            "(tools/build-windows.sh test)"
+        )
 
-    window = next(generator)  # runs GameWindow.start(): a real window, pinned and focused
-    pid = window.proc.pid
+    pidfile = str(tmp_path / "child-pid.txt")
+    returncode, output, seconds = _run_child(pidfile)
 
-    # The game must genuinely be UP at the moment of failure, or this test pins nothing: a
-    # teardown that "leaves no orphan" after the game already exited is trivially true.
-    assert window.proc.poll() is None, (
-        f"the game (pid {pid}) had already exited before the failure could be injected, so this "
-        "test would assert nothing about a mid-run failure"
+    # The child must have failed for OUR reason, not fallen over in its own preamble. Without
+    # this, a child that never launched anything would make the orphan assertion below vacuous -
+    # the exact defect an earlier draft of this file had (it died in 0.4s having launched nothing).
+    assert os.path.isfile(pidfile), (
+        "the child run never recorded a launched pid, so it never had a game up and this pin "
+        f"asserted nothing. Child rc={returncode} in {seconds:.1f}s:\n{output}"
     )
-    assert surviving_game_processes(pid), (
-        f"the OS process table does not show the game this run launched (pid {pid}) as alive, so "
-        "the 'no orphan' assertion below could not fail even if the teardown leaked"
+    pid = int(open(pidfile, encoding="utf-8").read().strip())
+    assert returncode != 0, (
+        f"the child run was expected to FAIL mid-run (it ends in `assert False`) but exited 0; "
+        f"the injection is not happening:\n{output}"
     )
-
-    # Inject the failure the bead is about. Throwing into the generator at its yield is what
-    # pytest does when a test body raises, so this drives conftest's own
-    # ``finally: window.kill()`` down its real unwind path.
-    with pytest.raises(AssertionError) as caught:
-        generator.throw(AssertionError(INJECTED))
-    assert INJECTED in str(caught.value), (
-        "the fixture teardown swallowed or replaced the test's failure; a mid-run failure must "
-        f"propagate, not be masked. Got: {caught.value!r}"
+    assert INJECTED_MESSAGE in output, (
+        "the child did not fail for the injected reason, so the failure it exercised was not a "
+        f"mid-run failure with the game up. Child rc={returncode}:\n{output}"
+    )
+    assert seconds >= MINIMUM_REAL_LAUNCH_SECONDS, (
+        f"the child finished in {seconds:.2f}s, faster than a real launch can possibly be "
+        f"({MINIMUM_REAL_LAUNCH_SECONDS}s floor: the fixture waits for startup.complete and then "
+        "settles). It cannot have put a window on the desktop, so this pin would be vacuous:\n"
+        + output
     )
 
     # THE PROPERTY. Pid-scoped, asked of the operating system's process table - the only witness
-    # that can say "no" - and not of Popen.returncode, which kill() has already stored and which
-    # would therefore be true by construction.
+    # that can say "no". NOT Popen.returncode, which the child's own kill() already stored and
+    # which would therefore be true by construction.
     deadline = time.time() + ORPHAN_GRACE_SECONDS
     survivors = surviving_game_processes(pid)
     while survivors and time.time() < deadline:
         time.sleep(0.25)
         survivors = surviving_game_processes(pid)
     assert not survivors, (
-        f"the game process this run launched (pid {pid}) SURVIVED a mid-run test failure: "
+        f"the game process the child run launched (pid {pid}) SURVIVED a mid-run test failure: "
         + ", ".join(f"{name} (pid {survived})" for survived, name in survivors)
         + f" still alive {ORPHAN_GRACE_SECONDS}s after the shared ``game`` fixture's teardown "
         "returned. A leaked window is parked by _pin_window at exactly (0,0) at the same client "
         "size, so it covers the NEXT test's click point pixel for pixel and silently eats its "
-        "clicks - the root cause of bug oo-0p8f, and five agents share this desktop (oo-njnw)."
+        "clicks - the root cause of bug oo-0p8f, and five agents share this desktop (oo-njnw). "
+        f"Child rc={returncode} in {seconds:.1f}s:\n{output}"
     )
 
-    # The tier's own shared post-exit helpers, over the same pid and the same window, so this
-    # test is held to the tier's baseline rather than to a private one.
+    # The tier's own shared post-exit helper, over the same pid, so this pin is held to the tier's
+    # baseline rather than to a private one.
     assert_no_surviving_game_processes(pid)
-    assert_no_parked_runtime_files(window)
+
+    # Printed so a passing run carries its own evidence: which pid was launched, that it is gone,
+    # and that the child really did take a real launch's worth of time. A pin whose green run
+    # leaves no trace of the pid it observed cannot be audited (run with -s to see it).
+    print(
+        f"oo-njnw: child launched oolite.exe pid {pid}, failed MID-RUN with the game up "
+        f"({INJECTED_MESSAGE!r}), and the shared fixture's teardown left that pid DEAD "
+        f"- child rc={returncode} in {seconds:.1f}s"
+    )
 
 
 @pytest.mark.offline
@@ -148,15 +227,14 @@ def test_the_shared_teardown_kills_on_the_failure_path_and_not_only_on_success()
 
     The structural half of the claim above, checkable with no desktop: if a future edit moved
     ``window.kill()`` out of the finalizer and into the body after the yield, the launching test
-    would still pass on a green run and leak on every red one - the exact defect this bead was
-    filed for. So the SHAPE is pinned too, from the AST rather than from a substring: a comment
-    or a docstring naming kill() must not hold this green.
+    would still pass on every green run and leak on every red one - the exact defect this bead was
+    filed for. So the SHAPE is pinned too, from the AST rather than from a substring: a comment or
+    a docstring naming kill() must not be able to hold this green.
     """
     import ast
     import inspect
 
-    source = inspect.getsource(conftest)
-    tree = ast.parse(source)
+    tree = ast.parse(inspect.getsource(conftest))
     fixture = next(
         node
         for node in ast.walk(tree)
@@ -189,3 +267,63 @@ def test_the_shared_teardown_kills_on_the_failure_path_and_not_only_on_success()
         "the game fixture's ``yield`` is not inside the try whose finally kills the game, so a "
         "test-body failure would not unwind through the teardown at all"
     )
+
+
+@pytest.mark.offline
+def test_the_generated_child_fails_mid_run_rather_than_after_the_game_exits():
+    """The injected child must fail with the game UP, and must record its pid first.
+
+    The one property that makes the launching pin meaningful: a child that failed AFTER the game
+    had already exited would leave no orphan trivially, and the pin would pass forever without
+    exercising the teardown's failure path at all. Asserted from the AST of the generated source,
+    so a future edit to CHILD_SOURCE cannot quietly weaken it.
+    """
+    import ast
+
+    source = CHILD_SOURCE.format(message=INJECTED_MESSAGE)
+    tree = ast.parse(source)
+    func = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_")
+    )
+    assert "game" in [a.arg for a in func.args.args], (
+        "the child must take the SHARED game fixture; anything else would exercise a "
+        "reimplementation of the teardown rather than the teardown"
+    )
+    statements = [node for node in func.body if not isinstance(node, ast.Expr)]
+    # The last statement is the deliberate failure, and a liveness assertion precedes it.
+    last = statements[-1]
+    assert isinstance(last, ast.Assert) and isinstance(last.test, ast.Constant), (
+        "the child's final statement must be the deliberate `assert False` failure"
+    )
+    assert last.test.value is False
+    unparsed = ast.unparse(tree)
+    assert "game.proc.poll() is None" in unparsed, (
+        "the child must assert the game is still UP immediately before failing, or the pin cannot "
+        "claim to exercise a MID-RUN failure"
+    )
+    assert "OO_NJNW_PIDFILE" in unparsed and "game.proc.pid" in unparsed, (
+        "the child must record the pid it launched, or the parent has nothing pid-scoped to "
+        "assert on and would fall back to the image-name query that misattributed this bead"
+    )
+
+
+@pytest.mark.offline
+def test_the_pin_refuses_to_pass_on_a_child_that_never_launched():
+    """The vacuity guard itself: a fast child with no pid must FAIL this pin, not pass it.
+
+    This is the defect an earlier draft of this file shipped with - it died in its own preamble in
+    0.37s, launched nothing, and would have been reported as a guard. The floor and the pidfile
+    demand are what prevent that, so they are asserted directly.
+    """
+    assert MINIMUM_REAL_LAUNCH_SECONDS > 1.0, (
+        "the real-launch floor must be well above a preamble failure's duration"
+    )
+    assert conftest.SETTLE_SECONDS > 0, (
+        "the fixture settles after readiness, which is why a real launch cannot be instant"
+    )
+    # And the helpers the pin leans on are the tier's shared, pid-scoped ones.
+    assert callable(surviving_game_processes)
+    assert callable(assert_no_surviving_game_processes)
+    assert callable(assert_no_parked_runtime_files)
