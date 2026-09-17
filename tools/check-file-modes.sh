@@ -19,13 +19,16 @@
 # this checks. tools/gui-lock shipped 100644 with a `test -x` acceptance that passed on this
 # machine and would have failed anywhere else (bead oo-tqmx); this exists so that cannot recur.
 #
-# "Invoked as a bare program" is decided from the tree, not from a hand-kept list. A call site
-# is a tracked line where the path stands in COMMAND POSITION. Command position means the path
-# token is preceded by nothing but:
+# "Invoked as a bare program" is decided from the tree, not from a hand-kept list. The question
+# this file answers for every line is ONE question of shell grammar: is the path token in
+# COMMAND POSITION? Everything below is that question, and nothing below is a per-file
+# special case. Command position means the path token is preceded by nothing but:
 #
 #   * the start of a line (optionally indented), or a YAML list `- ` or `run:`, or a crontab
 #     schedule;
-#   * a shell operator that opens a command: `;`  `&`  `&&`  `|`  `||`  `(`  `$(`;
+#   * a shell operator that opens a command: `;`  `&`  `&&`  `|`  `||`  `(`  `{`  `$(` -- at the
+#     start of a line as well as mid-line, so `( tools/foo.sh )`, `{ tools/foo.sh; }` and
+#     `x() { tools/foo.sh; }` are call sites exactly as `cd /x && tools/foo.sh` is;
 #   * a RUN PREFIX that executes its argument rather than reading it: `exec`, `nohup`,
 #     `command`, `time`, `watch`, `timeout <n>`, `env FOO=1`, `xargs -n1`, a scheduling
 #     wrapper with its options (`sudo -u bob`, `nice -n 5`, `ionice`, `stdbuf`, `setsid`,
@@ -52,8 +55,29 @@
 # identifies exactly one tracked file -- and when it is suppressed for an ambiguous basename
 # the suppression is ANNOUNCED (`note: ... dispatch rule suppressed`), never silent: silently
 # disabling it re-opens the exact hole this guard exists to close.
-# A variable-held path in an ASSIGNMENT (`COMPDB_READER="$REPO/tools/x.py"`) is not command
-# position and is not a call site -- what matters is how the variable is later used.
+#
+# THREE THINGS THAT LOOK LIKE COMMAND POSITION AND ARE NOT. Each of these fired as a false
+# positive before it was named here, so each is enforced, not merely documented:
+#
+#   1. AN ASSIGNMENT. `FOO=tools/foo.sh`, `X=tools/foo.sh; echo`, `COMPDB_READER="$REPO/x.sh"`
+#      are not command position -- what matters is how the variable is later USED. The
+#      unquoted form used to match, because the dispatch rule's directory part happily
+#      swallowed the `FOO=` prefix; `=` (and `,`, and a backtick) are therefore excluded from
+#      the directory part of a dispatch, so no assignment prefix can be mistaken for a
+#      directory.
+#   2. A DATA LIST ELEMENT. A quoted path that is a list element or a mapping key --
+#      `    "tools/launcher_scan.py",` in a Python tuple, `["tools/foo.sh"]`,
+#      `"tools/foo.sh": 1` in JSON -- is data being named, not a program being run. Rejected
+#      when the quoted token is the LITERAL path and the whole line is that token plus list
+#      punctuation. A dispatch such as `"$here/gc.sh"` is not rejected: it is not the literal
+#      path, so it is never data.
+#   3. A LINE INSIDE AN OPEN QUOTED STRING. The scan is line-oriented, so a bare path on its
+#      own line inside a multi-line `VAR="..."` literal looked like a command. open_quote_lines
+#      tracks double-quote state across a file (honouring backslash escapes, single-quoted
+#      segments, `#` comments, heredocs and Python triple quotes) and every line that BEGINS
+#      inside an open double-quoted string is skipped. That is what stopped
+#      tools/check-splash-off.py -- listed on its own line inside a `LOCKED_LAUNCHERS="..."`
+#      block and only ever invoked through python3 -- from being ordered to become 100755.
 #
 # A path that only ever appears after an interpreter (`python3 tools/x.py`), as an argument to
 # a command that reads it (`git ls-files -s tools/x.py`, `grep pat tools/x.py`), or quoted in
@@ -67,9 +91,13 @@
 #
 # upstream/ is a third-party subtree and is excluded: its modes come from upstream.
 #
-# Sourcing: `CHECK_FILE_MODES_SOURCE_ONLY=1 . tools/check-file-modes.sh` defines the grammar
-# and `build_re` and returns without scanning, so a probe can test the REAL regexes instead of
-# a hand-copied paraphrase of them.
+# Cost: the tree is walked ONCE, with a fixed-string search for every shebang-bearing
+# basename, and the per-path regexes then run over that small candidate set. Walking the whole
+# tree once per script instead took ~84s here.
+#
+# Sourcing: `CHECK_FILE_MODES_SOURCE_ONLY=1 . tools/check-file-modes.sh` defines the grammar,
+# `build_re`, `line_is_call_site` and `open_quote_lines` and returns without scanning, so a
+# probe can test the REAL regexes instead of a hand-copied paraphrase of them.
 set -u
 
 cd "$(dirname "$0")/.." || exit 1
@@ -85,6 +113,10 @@ RUNPRE="$RUNPRE"'|(sudo|nice|ionice|stdbuf|setsid|chrt)([[:space:]]+-[^[:space:]
 RUNPRE="$RUNPRE"'|timeout[[:space:]]+[0-9]+[smhd]?[[:space:]]+'
 RUNPRE="$RUNPRE"'|env([[:space:]]+[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*)+[[:space:]]+'
 RUNPRE="$RUNPRE"'|xargs([[:space:]]+-[^[:space:]]+)*[[:space:]]+'
+# A bare env-assignment PREFIX (`FOO=1 tools/foo.sh`) is command position: the command
+# follows it. It requires trailing whitespace and a command after it, which is exactly what
+# distinguishes it from a plain assignment (`FOO=tools/foo.sh`, nothing after).
+RUNPRE="$RUNPRE"'|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+'
 RUNPRE="$RUNPRE"'|(then|do|else|if|elif|while|until|!)[[:space:]]+)*'
 
 # Positions that open a command (everything except a comment). A line whose first non-blank
@@ -92,7 +124,11 @@ RUNPRE="$RUNPRE"'|(then|do|else|if|elif|while|until|!)[[:space:]]+)*'
 # below: otherwise the `(` / `;` openers turn ordinary prose such as
 # `# run artifacts (tests/golden/run.sh); one dir per run` into a bogus call site.
 NOTCMT='(^[^#[:space:]]|^[[:space:]]*[^#[:space:]])[^#]*'
-BASE="(^[[:space:]]*(-[[:space:]]+|[-0-9*/,]+([[:space:]]+[-0-9*/,]+){4}[[:space:]]+)?|$NOTCMT[;&|(][[:space:]]*|$NOTCMT"'\$\([[:space:]]*|run:[[:space:]]*)'
+# `( cmd )`, `{ cmd; }` and `x() { cmd; }` open a command too. The mid-line case is covered by
+# NOTCMT plus the operator class; a line that STARTS with the group opener has no preceding
+# token at all, so it needs its own leading alternative.
+GRP='[({][[:space:]]*'
+BASE="(^[[:space:]]*($GRP)?(-[[:space:]]+|[-0-9*/,]+([[:space:]]+[-0-9*/,]+){4}[[:space:]]+)?|$NOTCMT[;&|({][[:space:]]*|$NOTCMT"'\$\([[:space:]]*|run:[[:space:]]*)'
 # A usage-comment opener, which carries a stricter trailing requirement.
 CMTBASE='^[[:space:]]*#[[:space:]]*'
 # The program token must end at whitespace, a quote, `;`, `)`, `&`, `|`, or end of line.
@@ -135,8 +171,11 @@ build_form() {
 	# Basename-anchored dispatch, with any directory part: covers sibling/variable dispatch
 	# (`"$here/harvest.sh"`, `"$(dirname "${BASH_SOURCE[0]}")/gc.sh"`) and relative-prefix
 	# invocation from a subdirectory (`scripts/accept.sh` for a path under .agents/...).
+	# The directory part excludes `=`, `,` and a backtick: without that exclusion the
+	# assignment `FOO=tools/foo.sh` parsed as directory `FOO=tools`, and an assignment is
+	# not command position.
 	if [ "$path" != "$base" ] && [ "$allow_dispatch" = 1 ]; then
-		form="$form|[\"']?([^[:space:]\"';&|]*|\\\$\\([^)]*\\)[^[:space:]\"';&|]*)/$be"
+		form="$form|[\"']?([^[:space:]\"';&|=,\`]*|\\\$\\([^)]*\\)[^[:space:]\"';&|=,\`]*)/$be"
 	fi
 	printf '%s' "$form"
 }
@@ -149,22 +188,82 @@ build_re() {
 }
 
 # build_reject_re <path> [allow_dispatch] -- lines that the positive pattern matched but that
-# are PROSE, not call sites: a `#` comment whose path is followed by an English word. Applied
-# as a subtraction because POSIX ERE cannot express "a word that is not one of these".
+# are NOT call sites. Applied as a subtraction because POSIX ERE cannot express "a word that
+# is not one of these". Two classes:
+#   * PROSE: a `#` comment whose path is followed by an English word.
+#   * DATA: a quoted LITERAL path that is a list element or a mapping key. The whole line must
+#     be that quoted token plus list punctuation -- a leading `[`/`(`/`,`/`-` or a trailing
+#     `,`/`]`/`}`/`)`/`:` -- so a variable dispatch (`"$here/gc.sh"`) is never data.
 build_reject_re() {
-	local path="$1" allow_dispatch="${2:-1}" form
+	local path="$1" allow_dispatch="${2:-1}" form pe prose data
 	form=$(build_form "$path" "$allow_dispatch")
-	printf '%s' "$CMTBASE$RUNPRE($form)[[:space:]]+$PROSEWORD([^A-Za-z0-9_-]|\$)"
+	pe=$(ere_escape "$path")
+	prose="$CMTBASE$RUNPRE($form)[[:space:]]+$PROSEWORD([^A-Za-z0-9_-]|\$)"
+	data="^[[:space:]]*([][({,-][[:space:]]*)*[\"'](\\./)?$pe[\"'][[:space:]]*[]},:)]*[[:space:]]*\$"
+	data="$data|^[[:space:]]*[\"'](\\./)?$pe[\"'][[:space:]]*:"
+	printf '%s' "($prose)|($data)"
 }
 
 # line_is_call_site <path> <allow_dispatch> <line>  -- the single source of truth for the
 # grammar, used by the scan below AND by tools/check-file-modes-probe.sh, so a probe cannot
-# test a paraphrase of the rule instead of the rule.
+# test a paraphrase of the rule instead of the rule. NOTE: this judges ONE line in isolation;
+# the multi-line quoted-string rule lives in open_quote_lines and is applied by the scan.
 line_is_call_site() {
 	local path="$1" allow="$2" line="$3"
 	printf '%s\n' "$line" | grep -qE "$(build_re "$path" "$allow")" || return 1
 	printf '%s\n' "$line" | grep -qE "$(build_reject_re "$path" "$allow")" && return 1
 	return 0
+}
+
+# open_quote_lines -- read a file on stdin, print the 1-based numbers of the lines that BEGIN
+# inside an unterminated double-quoted string. Those lines are string DATA, not commands: a
+# bare path on its own line inside `LOCKED_LAUNCHERS="..."` is not a call site.
+#
+# This is a deliberately crude tracker, not a shell parser. It honours backslash escapes,
+# single-quoted segments (literal, no interpolation), `#` comments outside quotes, heredoc
+# bodies (skipped wholesale), and Python/TOML triple quotes (tracked so the three quotes
+# cannot corrupt the double-quote counter, but their bodies are NOT suppressed -- a module
+# docstring may legitimately carry a usage line). It errs toward reporting nothing: an
+# unrecognised construct leaves the state closed, which keeps the old behaviour rather than
+# silently hiding a call site.
+open_quote_lines() {
+	awk '
+	function scan(s,   i, c, n) {
+		n = length(s)
+		for (i = 1; i <= n; i++) {
+			c = substr(s, i, 1)
+			if (intq) {
+				if (substr(s, i, 3) == "\"\"\"") { intq = 0; i += 2 }
+				continue
+			}
+			if (inq) {
+				if (c == "\\") { i++; continue }
+				if (c == "\"") inq = 0
+				continue
+			}
+			if (c == "\\") { i++; continue }
+			if (c == "'"'"'") {
+				i++
+				while (i <= n && substr(s, i, 1) != "'"'"'") i++
+				continue
+			}
+			if (c == "#") return
+			if (substr(s, i, 3) == "\"\"\"") { intq = 1; i += 2; continue }
+			if (c == "\"") inq = 1
+		}
+	}
+	BEGIN { inq = 0; intq = 0; inhd = 0 }
+	{
+		if (inq) print NR
+		if (inhd) { if ($0 ~ hdre) inhd = 0; next }
+		scan($0)
+		if (!inq && !intq && match($0, /<<-?["'"'"']?[A-Za-z_][A-Za-z0-9_]*/)) {
+			tag = substr($0, RSTART, RLENGTH)
+			sub(/^<<-?["'"'"']?/, "", tag)
+			hdre = "^[[:space:]]*" tag "[[:space:]]*$"
+			inhd = 1
+		}
+	}'
 }
 
 if [ "${CHECK_FILE_MODES_SOURCE_ONLY:-0}" = 1 ]; then
@@ -187,9 +286,15 @@ blobs=$(git ls-files -s | grep -v '^160000' | sed 's/^\([0-7]*\) [0-9a-f]* [0-3]
 # get silently skipped instead of reported.
 has_shebang() { [ "$(git cat-file blob ":$1" 2>/dev/null | head -c 2)" = '#!' ]; }
 
-# Bead acceptance criteria, one command per line: executed verbatim by accept.sh.
 ACC_FILE=$(mktemp) || exit 1
-trap 'rm -f "$ACC_FILE"' EXIT
+CLASS=$(mktemp) || exit 1
+PATFILE=$(mktemp) || exit 1
+CANDALL=$(mktemp) || exit 1
+CANDMETA=$(mktemp) || exit 1
+CANDTEXT=$(mktemp) || exit 1
+trap 'rm -f "$ACC_FILE" "$CLASS" "$PATFILE" "$CANDALL" "$CANDMETA" "$CANDTEXT"' EXIT
+
+# Bead acceptance criteria, one command per line: executed verbatim by accept.sh.
 if git cat-file -e :.beads/issues.jsonl 2>/dev/null; then
 	git cat-file blob :.beads/issues.jsonl 2>/dev/null | python3 -c '
 import json, sys
@@ -209,6 +314,93 @@ for raw in sys.stdin:
 fi
 [ -s "$ACC_FILE" ] || note "note: no bead acceptance lines extracted; acceptance call sites not scanned"
 
+# --- pass 1: mode + shebang for every tracked blob -----------------------------------------
+# ONE `git cat-file --batch` for the whole tree rather than one process per file: on Windows
+# the per-process cost dominates everything else this script does. `--batch` emits a header
+# line and then raw bytes, so the stream is split by SIZE (not by newlines, which arbitrary
+# blob content contains) and only the first two bytes of each blob are inspected.
+shebangs=$(printf '%s\n' "$blobs" | cut -f2 | sed 's|^|:|' | git cat-file --batch 2>/dev/null | python3 -c '
+import sys
+buf = sys.stdin.buffer
+out = []
+while True:
+    hdr = buf.readline()
+    if not hdr:
+        break
+    parts = hdr.split()
+    if len(parts) < 3:
+        break
+    size = int(parts[2])
+    body = buf.read(size)
+    buf.read(1)
+    out.append("yes" if body[:2] == b"#!" else "no")
+sys.stdout.buffer.write(("\n".join(out) + ("\n" if out else "")).encode())
+')
+paste <(printf '%s\n' "$blobs") <(printf '%s' "$shebangs") >"$CLASS"
+# If the batch read desynchronised for any reason, fall back to the per-file probe rather
+# than mis-classify: a wrong `no` here would silently skip a script.
+if [ "$(wc -l <"$CLASS")" != "$(printf '%s\n' "$blobs" | wc -l)" ] \
+   || grep -qvE $'	(yes|no)$' "$CLASS"; then
+	note "note: batched shebang read desynchronised; falling back to one read per file"
+	: >"$CLASS"
+	while IFS=$'	' read -r mode path; do
+		[ -n "${path:-}" ] || continue
+		if has_shebang "$path"; then sb=yes; else sb=no; fi
+		printf '%s	%s	%s\n' "$mode" "$path" "$sb" >>"$CLASS"
+	done <<EOF
+$blobs
+EOF
+fi
+
+# --- pass 2: ONE walk of the tree for every candidate line ---------------------------------
+# Every form the grammar can match -- literal path, `./` prefix, quoted, or a `$dir/` dispatch
+# -- contains the file's BASENAME verbatim, so a single fixed-string search for the basenames
+# of all shebang-bearing files is a sound superset of the candidates. The expensive per-path
+# regexes then run over that superset instead of over the whole tree, once per script.
+awk -F'\t' '$3 == "yes" { n = $2; sub(/.*\//, "", n); print n }' "$CLASS" | sort -u >"$PATFILE"
+
+if [ -s "$PATFILE" ]; then
+	{
+		git grep --cached -n -I -F -f "$PATFILE" -- ':!upstream/' ':!.beads/' 2>/dev/null
+		grep -n -F -f "$PATFILE" "$ACC_FILE" 2>/dev/null | sed 's|^|.beads/acceptance:|'
+	} | awk '
+	{
+		sub(/\r$/, "")
+		i = index($0, ":");            if (i == 0) next
+		f = substr($0, 1, i - 1)
+		r = substr($0, i + 1)
+		j = index(r, ":");             if (j == 0) next
+		if (f == "tools/check-file-modes.sh") next
+		if (f == "tools/check-file-modes-probe.sh") next
+		print f ":" substr(r, 1, j - 1) "	" substr(r, j + 1)
+	}' >"$CANDALL"
+	# Split into two line-aligned files. The split is done here, by the SHELL, rather than by
+	# handing temp paths to a helper: MSYS `mktemp` yields a /tmp path that a native Windows
+	# python resolves to a different directory, so a helper opening argv paths silently wrote
+	# its output where nothing would read it and every file looked interpreted.
+	cut -f1 <"$CANDALL" >"$CANDMETA"
+	cut -f2- <"$CANDALL" >"$CANDTEXT"
+fi
+
+# Memoised open-double-quote line sets, so each candidate file is parsed at most once.
+OPENQ_DONE=" "
+OPENQ_SET=" "
+in_open_quote() {
+	local f="$1" ln="$2" nums n
+	case "$OPENQ_DONE" in
+	*" $f "*) ;;
+	*)
+		OPENQ_DONE="$OPENQ_DONE$f "
+		nums=$(git cat-file blob ":$f" 2>/dev/null | open_quote_lines)
+		for n in $nums; do OPENQ_SET="$OPENQ_SET$f:$n "; done
+		;;
+	esac
+	case "$OPENQ_SET" in
+	*" $f:$ln "*) return 0 ;;
+	esac
+	return 1
+}
+
 # Basenames that are ambiguous across the tree: the variable-dispatch rule keys on the
 # basename alone, so only apply it where the basename identifies exactly one tracked file.
 dup_basenames=$(printf '%s\n' "$blobs" | cut -f2 | sed 's|.*/||' | sort | uniq -d)
@@ -221,21 +413,47 @@ is_dup_basename() {
 # $2 is 1 to allow the sibling/variable-dispatch form, 0 to suppress it. The suppression
 # decision is made by the CALLER, not here: this runs inside a command substitution, so any
 # variable it set would die with the subshell and the suppression would go unannounced.
+# The rejection is a second grep over the SAME candidate file rather than a per-line grep, so
+# the cost is a fixed handful of processes per script instead of two per matching line.
 bare_call_sites() {
-	local path="$1" allow="${2:-1}" re rej
+	local path="$1" allow="${2:-1}" re rej hits rejs keep line f ln out=''
+	[ -s "$CANDTEXT" ] || return 0
 	re=$(build_re "$path" "$allow")
 	rej=$(build_reject_re "$path" "$allow")
 
-	{
-		git grep --cached -n -I -E "$re" -- ':!upstream/' ':!.beads/' 2>/dev/null
-		grep -n -E "$re" "$ACC_FILE" 2>/dev/null | sed 's|^|.beads/acceptance:|'
-	} | grep -v '^tools/check-file-modes\.sh:' | grep -v '^tools/check-file-modes-probe\.sh:' \
-	  | grep -vE "$rej"
+	hits=$(grep -nE "$re" "$CANDTEXT" 2>/dev/null | cut -d: -f1)
+	[ -n "$hits" ] || return 0
+	rejs=$(grep -nE "$rej" "$CANDTEXT" 2>/dev/null | cut -d: -f1)
+	if [ -n "$rejs" ]; then
+		keep=$(comm -23 <(printf '%s\n' "$hits" | sort -n) \
+		                <(printf '%s\n' "$rejs" | sort -n))
+	else
+		keep="$hits"
+	fi
+	[ -n "$keep" ] || return 0
+
+	# One awk pass joins the surviving line numbers to their "<file>:<lineno>" and text.
+	while IFS= read -r line; do
+		[ -n "$line" ] || continue
+		f=${line%%:*}
+		ln=${line#*:}
+		ln=${ln%%:*}
+		in_open_quote "$f" "$ln" && continue
+		out="$out$line
+"
+	done <<EOF
+$(printf '%s\n' "$keep" | awk -v mf="$CANDMETA" -v tf="$CANDTEXT" '
+	NR == FNR { want[$1] = 1; next }
+	{ m[FNR] = $0 }
+	END {
+		while ((getline t < tf) > 0) { n++; if (n in want) print m[n] ":" t }
+	}' - "$CANDMETA")
+EOF
+	printf '%s' "$out"
 }
 
-while IFS=$'\t' read -r mode path; do
+while IFS=$'\t' read -r mode path sb; do
 	[ -n "${path:-}" ] || continue
-	if has_shebang "$path"; then sb=yes; else sb=no; fi
 
 	if [ "$sb" = no ] && [ "$mode" = 100755 ]; then
 		if [ "$LIST_ONLY" = 1 ]; then
@@ -283,9 +501,7 @@ while IFS=$'\t' read -r mode path; do
 		printf '%s\n' "$sites" | head -5 | sed 's/^/    call site: /' >&2
 		fail=1
 	fi
-done <<EOF
-$blobs
-EOF
+done <"$CLASS"
 
 if [ "$LIST_ONLY" = 1 ]; then
 	exit 0
