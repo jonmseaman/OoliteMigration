@@ -20,6 +20,31 @@ Three things here are not obvious and are the reason the file looks the way it d
   N-concurrent claim above is about, and an exclusive mutex inside it would serialise - or
   deadlock - exactly the fan-out it exists to support. So the lock wraps the single-launch CLI
   and leaves the library function alone.
+
+* The PREFS ROOT is per-run, by STAGING A PRIVATE oolite.app - not by a lock and not by an
+  environment variable (bug oo-pzc1). ``src/SDL/main.m:119`` does
+
+      SDL_setenv_unsafe("GNUSTEP_USERS_ROOT", currentWorkingDir, YES)
+
+  where ``currentWorkingDir`` is the directory holding the EXECUTABLE (QueryFullProcessImageName,
+  main.m:91-95) and the trailing ``YES`` is SDL's *overwrite* flag. So the game OVERWRITES whatever
+  the parent exported: handing each child its own ``GNUSTEP_USERS_ROOT`` in the environment - the
+  first fix anyone reaches for - is inert on Windows, and N instances sharing one oolite.app still
+  race on one ``GNUstep/Defaults/oolite.plist`` (written by ``-exitAppWithContext:``,
+  GameController.m:905-906, as a whole-file read-modify-write, so the last writer wins and the
+  other runs' preferences are silently lost).
+
+  The only thing the game reads is WHERE ITS OWN BINARY LIVES, so isolation has to be a private
+  directory holding the binary. That is exactly what ``tests/golden/golden_run.py`` does (bug
+  oo-16s) and why it is the desktop-lock exemption: junctions for read-only directories, hard
+  links for files, real copies for the three directories the game WRITES. A lock was the wrong
+  answer here for the same reason it is wrong there - ``run_test`` is the N-concurrent half, and
+  an exclusive mutex inside it would serialise or deadlock the fan-out. The staging code is
+  duplicated rather than imported because this subtree is also pushed to the fork on its own,
+  where ``tests/golden/`` does not exist (same reason ``_desktop_lock_helper`` locates tools/ at
+  runtime).
+
+  ``--check-isolation`` and ``--prefs-race`` prove both halves offline, with no built game.
 """
 
 import argparse
@@ -270,7 +295,115 @@ def _console_config_dir(host, port):
     return root
 
 
-def run_test(bin_name, test_output, port, host, load_save, settle_game_seconds, ready_timeout):
+# --- per-run prefs isolation (bug oo-pzc1) -----------------------------------------------------
+#
+# Real copies rather than links: these are the directories the GAME WRITES, and sharing them is
+# the collision. Same list as tests/golden/golden_run.py:56 - GNUstep/ holds Defaults/oolite.plist
+# (the raced file), Logs/ holds Latest.log, oolite-saves/ holds commanders.
+PRIVATE_SUBDIRS = ("GNUstep", "Logs", "oolite-saves")
+
+
+def _link_dir(source, target):
+    """Junction (Windows) or symlink: a read-only directory shared with the real build."""
+    if IS_WINDOWS:
+        import _winapi
+
+        _winapi.CreateJunction(source, target)
+    else:
+        os.symlink(source, target)
+
+
+def stage_app(app_dir, staged):
+    """Build a private copy of oolite.app whose GNUSTEP_USERS_ROOT is this run's alone.
+
+    Cheap on purpose: the game only needs its BINARY to sit in a private directory, because that
+    directory is what main.m:119 turns into GNUSTEP_USERS_ROOT. Read-only directories (Resources,
+    the GL DLLs' folders) are junctions into the real build, files are hard links, and only the
+    three directories the game writes are real copies.
+    """
+    os.makedirs(staged, exist_ok=True)
+    for name in sorted(os.listdir(app_dir)):
+        source = os.path.join(app_dir, name)
+        target = os.path.join(staged, name)
+        if os.path.exists(target) or os.path.islink(target):
+            continue
+        if os.path.isdir(source):
+            if name in PRIVATE_SUBDIRS:
+                shutil.copytree(source, target, dirs_exist_ok=True)
+            else:
+                _link_dir(source, target)
+        else:
+            try:
+                os.link(source, target)
+            except OSError:
+                shutil.copy2(source, target)
+    for name in PRIVATE_SUBDIRS:
+        os.makedirs(os.path.join(staged, name), exist_ok=True)
+    return staged
+
+
+def unstage_app(staged):
+    """Remove a staged app WITHOUT following its junctions into the real build.
+
+    shutil.rmtree over a tree containing junctions is exactly how a harness deletes the build it
+    was supposed to read, so links are removed as links and only real copies are recursed into.
+    """
+    if not os.path.isdir(staged):
+        return
+    for name in os.listdir(staged):
+        path = os.path.join(staged, name)
+        if os.path.islink(path) or (os.path.isdir(path) and _is_reparse_point(path)):
+            try:
+                os.rmdir(path)
+            except OSError:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
+        elif os.path.isdir(path):
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+    try:
+        os.rmdir(staged)
+    except OSError:
+        pass
+
+
+def _is_reparse_point(path):
+    """A junction is not an os.path.islink on stock CPython < 3.8 and is not always one now."""
+    try:
+        return bool(os.lstat(path).st_file_attributes & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+    except (OSError, AttributeError):
+        return False
+
+
+def prefs_file(app_root):
+    """The defaults file the game writes: GNUSTEP_USERS_ROOT/GNUstep/Defaults/oolite.plist.
+
+    Learned on bead oo-5rsa: this is an OpenStep 'old-style' plist, NOT XML, so plistlib cannot
+    parse a real one. Nothing here parses it; only its PATH and its owner matter.
+    """
+    return os.path.join(app_root, "GNUstep", "Defaults", "oolite.plist")
+
+
+def run_test(bin_name, test_output, port, host, load_save, settle_game_seconds, ready_timeout,
+             app_dir=None, keep_staged=False):
+    """Launch one game and capture one snapshot. Safe to run N times concurrently.
+
+    ``app_dir`` is the built oolite.app to run. The game is NOT launched from it: a private copy
+    is staged under a per-run temporary directory and the binary is launched from there, so this
+    run's GNUSTEP_USERS_ROOT - which the game derives from its own executable's location and which
+    no environment variable can override - is nobody else's. Defaults to the current directory,
+    which is what the CLI chdir'd into.
+    """
+    if app_dir is None:
+        app_dir = os.getcwd()
+    app_dir = os.path.abspath(app_dir)
+
     # Setup TCP Server
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -281,6 +414,15 @@ def run_test(bin_name, test_output, port, host, load_save, settle_game_seconds, 
     print(f"[*] Console server listening on {host}:{port}")
 
     config_dir = _console_config_dir(host, port)
+
+    # THE PREFS ROOT (bug oo-pzc1). Stage a private oolite.app and run the binary from THERE, so
+    # main.m:119 derives this run's GNUSTEP_USERS_ROOT from a directory nobody else is using. Not
+    # an env var - the game overwrites it (SDL_setenv_unsafe ..., YES) - and not a lock, which
+    # would serialise the N-concurrent fan-out this function exists to support.
+    staged_root = tempfile.mkdtemp(prefix=f"oolite-run-{port}-{os.getpid()}-")
+    staged_app = os.path.join(staged_root, "app")
+    stage_app(app_dir, staged_app)
+    print(f"[*] Private prefs root: {staged_app}")
 
     # Environment configuration for pure headless software offscreen rendering
     env = os.environ.copy()
@@ -299,7 +441,7 @@ def run_test(bin_name, test_output, port, host, load_save, settle_game_seconds, 
     existing = env.get("OO_ADDITIONALADDONSDIRS")
     env["OO_ADDITIONALADDONSDIRS"] = f"{config_dir},{existing}" if existing else config_dir
 
-    cmd = [f"./{bin_name}", "--no-splash"]
+    cmd = [os.path.join(staged_app, bin_name), "--no-splash"]
     if load_save:
         # src/SDL/main.m:167 - the argument after -load is taken as the commander to load, and it
         # must end in .oolite-save for the game to accept it.
@@ -308,6 +450,7 @@ def run_test(bin_name, test_output, port, host, load_save, settle_game_seconds, 
     print(f"[*] Executing: {' '.join(cmd)}")
     proc = subprocess.Popen(
         cmd,
+        cwd=staged_app,
         env=env,
         stdout=sys.stdout,
         stderr=sys.stderr,
@@ -414,6 +557,15 @@ def run_test(bin_name, test_output, port, host, load_save, settle_game_seconds, 
         if proc.poll() is None:
             proc.kill()
         shutil.rmtree(config_dir, ignore_errors=True)
+        if keep_staged:
+            print(f"[*] Keeping staged app at {staged_app}")
+        else:
+            # unstage_app, never rmtree: the staged app is full of junctions INTO THE REAL BUILD.
+            unstage_app(staged_app)
+            try:
+                os.rmdir(staged_root)
+            except OSError:
+                pass
 
 
 def parse_args(argv=None):
@@ -461,7 +613,296 @@ def parse_args(argv=None):
         default=float(os.environ.get("OO_READY_TIMEOUT", "120")),
         help="Seconds to wait for the game to start answering the console (default: 120)",
     )
+    parser.add_argument(
+        "--keep-staged",
+        action="store_true",
+        help="keep this run's private staged oolite.app instead of removing it",
+    )
+    parser.add_argument(
+        "--check-isolation",
+        action="store_true",
+        help="offline: hold N staged prefs roots at once and assert they cannot collide",
+    )
+    parser.add_argument(
+        "--launch-probe",
+        action="store_true",
+        help="offline: run N OVERLAPPING run_test calls against a fake binary and assert each "
+             "launched from its own private prefs root",
+    )
+    parser.add_argument(
+        "--prefs-race",
+        action="store_true",
+        help="offline: construct the shared-GNUSTEP_USERS_ROOT race and prove staging closes it",
+    )
+    parser.add_argument(
+        "--instances",
+        type=int,
+        default=3,
+        help="how many concurrent instances the offline checks simulate (default: 3)",
+    )
     return parser.parse_args(argv)
+
+
+# --- offline self-checks (bug oo-pzc1) ---------------------------------------------------------
+#
+# Both need no built game and no desktop, so they still gate something real in the detached,
+# build-less checkout accept.sh merges into (the tools/check-splash-off.py --self-test pattern).
+
+
+def _fake_app(root):
+    """A minimal stand-in for a built oolite.app: a binary, a read-only dir, the written dirs."""
+    os.makedirs(os.path.join(root, "Resources"), exist_ok=True)
+    with open(os.path.join(root, "Resources", "big.dat"), "w") as handle:
+        handle.write("x" * 4096)
+    binary = "oolite.exe" if IS_WINDOWS else "oolite"
+    with open(os.path.join(root, binary), "w") as handle:
+        handle.write("#!/bin/sh\nexit 0\n")
+    for name in PRIVATE_SUBDIRS:
+        os.makedirs(os.path.join(root, name), exist_ok=True)
+    os.makedirs(os.path.dirname(prefs_file(root)), exist_ok=True)
+    with open(prefs_file(root), "w") as handle:
+        handle.write("{ shared = 1; }\n")
+    return root
+
+
+def _prefs_race(instances=3):
+    """Construct the race, then show staging closes it. Prints every step; exit 0 only if closed.
+
+    THE RACE, exactly as N instances of the OLD code had it: every instance's GNUSTEP_USERS_ROOT
+    is the ONE shared app dir, so every instance writes the SAME Defaults/oolite.plist and the
+    last writer wins. Each "instance" here writes its own id into the prefs file it owns, and the
+    property asserted afterwards is that EVERY instance can still read back ITS OWN id.
+    """
+    base = tempfile.mkdtemp(prefix="oolite-prefs-race-")
+    failures = []
+    try:
+        app = _fake_app(os.path.join(base, "oolite.app"))
+
+        # --- BEFORE: the shared root. This is the defect; it MUST fail. ---------------------
+        shared_roots = [app] * instances
+        for i, root in enumerate(shared_roots):
+            with open(prefs_file(root), "w") as handle:
+                handle.write("{ instance = %d; }\n" % i)
+        shared_survivors = 0
+        for i, root in enumerate(shared_roots):
+            with open(prefs_file(root)) as handle:
+                if ("instance = %d;" % i) in handle.read():
+                    shared_survivors += 1
+        print("[race] shared GNUSTEP_USERS_ROOT: %d/%d instances kept their own prefs"
+              % (shared_survivors, instances))
+        if shared_survivors != 1:
+            failures.append(
+                "the race did not reproduce: expected exactly 1 surviving writer with one shared "
+                "root, got %d. A check that cannot fail is not a check." % shared_survivors
+            )
+
+        # --- AFTER: one staged app per instance. This is the fix; it MUST hold. -------------
+        staged_roots = []
+        for i in range(instances):
+            staged = os.path.join(base, "staged-%d" % i, "app")
+            stage_app(app, staged)
+            staged_roots.append(staged)
+        if len(set(staged_roots)) != instances:
+            failures.append("staged app dirs are not distinct: %r" % (staged_roots,))
+        for i, root in enumerate(staged_roots):
+            with open(prefs_file(root), "w") as handle:
+                handle.write("{ instance = %d; }\n" % i)
+        staged_survivors = 0
+        for i, root in enumerate(staged_roots):
+            with open(prefs_file(root)) as handle:
+                if ("instance = %d;" % i) in handle.read():
+                    staged_survivors += 1
+        print("[race] staged GNUSTEP_USERS_ROOT: %d/%d instances kept their own prefs"
+              % (staged_survivors, instances))
+        if staged_survivors != instances:
+            failures.append("staging did not isolate the prefs file: %d/%d survived"
+                            % (staged_survivors, instances))
+
+        # The shared build must be untouched by any of it, and the binary must really be there.
+        with open(prefs_file(app)) as handle:
+            if "instance = %d;" % (instances - 1) not in handle.read():
+                failures.append("the source app's own prefs file was not the shared one")
+        binary = "oolite.exe" if IS_WINDOWS else "oolite"
+        for root in staged_roots:
+            if not os.path.isfile(os.path.join(root, binary)):
+                failures.append("staged app %s has no %s to launch" % (root, binary))
+            if not os.path.isfile(os.path.join(root, "Resources", "big.dat")):
+                failures.append("staged app %s cannot see the shared Resources" % root)
+
+        # unstage must not follow the junctions into the build. Asserted BEFORE anything else
+        # removes the source, so the conjunct can actually be false.
+        for root in staged_roots:
+            unstage_app(root)
+        leaked = [r for r in staged_roots if os.path.isdir(r)]
+        if leaked:
+            failures.append("staged app dirs survived unstage_app: %r" % leaked)
+        if not os.path.isfile(os.path.join(app, "Resources", "big.dat")):
+            failures.append("unstage_app followed a junction and deleted the real build")
+    finally:
+        shutil.rmtree(base, ignore_errors=True)
+
+    for line in failures:
+        print("[!] %s" % line)
+    if failures:
+        print("prefs-race: FAIL")
+        return 1
+    print("prefs-race: PASS - the shared root loses %d/%d writers, staging loses none"
+          % (instances - 1, instances))
+    return 0
+
+
+def _check_isolation(instances=3):
+    """Assert that N SIMULTANEOUSLY HELD staged roots cannot collide, and that the source can.
+
+    The plans are held at once on purpose: these are the roots N concurrent run_test calls own at
+    the same moment, so a collision here is a collision two real runs have.
+    """
+    base = tempfile.mkdtemp(prefix="oolite-isolation-")
+    failures = []
+    roots = []
+    try:
+        app = _fake_app(os.path.join(base, "oolite.app"))
+        for _ in range(instances):
+            staged_root = tempfile.mkdtemp(prefix="oolite-run-", dir=base)
+            staged = os.path.join(staged_root, "app")
+            stage_app(app, staged)
+            roots.append(staged)
+        for key, values in (("staged app dir", roots),
+                            ("prefs file", [prefs_file(r) for r in roots])):
+            if len(set(values)) != instances:
+                failures.append("two concurrent runs would collide on %s: %r" % (key, values))
+        for root in roots:
+            if os.path.normcase(os.path.abspath(root)) == os.path.normcase(os.path.abspath(app)):
+                failures.append("a staged root IS the shared build: %s" % root)
+        print("ok: %d isolated prefs roots" % len(roots) if not failures else "collision")
+    finally:
+        for root in roots:
+            unstage_app(root)
+        shutil.rmtree(base, ignore_errors=True)
+    for line in failures:
+        print("[!] %s" % line)
+    return 1 if failures else 0
+
+
+class _SpawnRecord:
+    """Stands in for the game process: records WHERE it was launched from, then reports exit 0.
+
+    The launch directory is the whole measurement. src/SDL/main.m:91-119 takes the directory of
+    the RUNNING EXECUTABLE (QueryFullProcessImageName) and makes it GNUSTEP_USERS_ROOT, so the
+    directory argv[0] resolves to IS this instance's prefs root - nothing the parent puts in the
+    environment changes it. Resolving argv[0] against the cwd the spawn was given (or the process
+    cwd when it was given none, which is how the pre-fix code launched "./oolite.exe") reproduces
+    exactly what CreateProcess would do.
+    """
+
+    lock = None
+    seen = None
+
+    def __init__(self, cmd, cwd=None, **kwargs):
+        argv0 = cmd[0] if isinstance(cmd, (list, tuple)) else str(cmd).split()[0]
+        root = os.path.dirname(os.path.abspath(os.path.join(cwd or os.getcwd(), argv0)))
+        # Recorded AT SPAWN TIME, because run_test removes the staged app on its way out and a
+        # check made afterwards would be asking about a directory that no longer exists.
+        usable = os.path.isdir(os.path.dirname(prefs_file(root)))
+        with _SpawnRecord.lock:
+            _SpawnRecord.seen.append((os.path.normcase(root), usable))
+        self.returncode = 0
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self, timeout=None):
+        return self.returncode
+
+    def kill(self):
+        pass
+
+
+def _launch_probe(instances=3, stagger=0.4):
+    """Run N run_test calls that OVERLAP and assert each launched from its OWN prefs root.
+
+    Overlapping on purpose: a solo run has nothing to collide with, which is precisely why a solo
+    run missed this class of defect before. Threads are staggered so the runs are genuinely
+    simultaneous rather than merely consecutive, and every recorded root is compared.
+
+    Against the pre-fix code all N roots are the ONE shared app directory and this returns 1.
+    """
+    import threading
+
+    base = tempfile.mkdtemp(prefix="oolite-launch-probe-")
+    previous_cwd = os.getcwd()
+    real_popen = subprocess.Popen
+    _SpawnRecord.lock = threading.Lock()
+    _SpawnRecord.seen = []
+    failures = []
+    try:
+        app = _fake_app(os.path.join(base, "oolite.app"))
+        bin_name = "oolite.exe" if IS_WINDOWS else "oolite"
+        # The pre-fix code spawned "./<binary>" with no cwd, i.e. relative to the PROCESS cwd,
+        # which its CLI had chdir'd into the app dir. Both versions start from that same world.
+        os.chdir(app)
+        subprocess.Popen = _SpawnRecord
+
+        results = {}
+
+        def one(i):
+            out = os.path.join(base, "out-%d" % i)
+            os.makedirs(out, exist_ok=True)
+            try:
+                results[i] = run_test(bin_name, out, 8700 + i, "127.0.0.1", None, 0.1, 1,
+                                      app_dir=app)
+            except TypeError:
+                # The pre-fix signature has no app_dir; call it as it was, so the probe measures
+                # the OLD behaviour rather than erroring out before it measures anything.
+                results[i] = run_test(bin_name, out, 8700 + i, "127.0.0.1", None, 0.1, 1)
+            except Exception as exc:  # noqa: BLE001 - reported, never swallowed
+                results[i] = "error: %s" % exc
+
+        threads = []
+        for i in range(instances):
+            t = threading.Thread(target=one, args=(i,))
+            t.start()
+            threads.append(t)
+            time.sleep(stagger)  # overlap on purpose
+        for t in threads:
+            t.join(timeout=180)
+
+        recorded = list(_SpawnRecord.seen)
+        roots = [r for r, _ in recorded]
+        unusable = [r for r, usable in recorded if not usable]
+        print("[probe] %d overlapping instances; run_test returned %r"
+              % (instances, sorted(results.items(), key=lambda kv: kv[0])))
+        for root in roots:
+            print("[probe] launched from %s" % root)
+        shared = os.path.normcase(os.path.abspath(app))
+        if len(roots) != instances:
+            failures.append("expected %d launches, recorded %d" % (instances, len(roots)))
+        if len(set(roots)) != len(roots):
+            failures.append(
+                "CONCURRENT INSTANCES SHARE A GNUSTEP_USERS_ROOT: %d distinct launch directories "
+                "for %d instances" % (len(set(roots)), len(roots)))
+        if shared in set(roots):
+            failures.append("an instance launched out of the SHARED build directory %s" % shared)
+        # A distinct root that cannot hold a prefs file isolates nothing, so "distinct" alone is
+        # not the property. Measured at spawn time (see _SpawnRecord).
+        for root in unusable:
+            failures.append("%s had no GNUstep/Defaults to write prefs into at launch" % root)
+        # Asserted while the source build still exists, so it can actually be false.
+        if not os.path.isfile(os.path.join(app, "Resources", "big.dat")):
+            failures.append("the shared build lost Resources/big.dat during the run")
+    finally:
+        subprocess.Popen = real_popen
+        os.chdir(previous_cwd)
+        shutil.rmtree(base, ignore_errors=True)
+
+    for line in failures:
+        print("[!] %s" % line)
+    if failures:
+        print("launch-probe: FAIL")
+        return 1
+    print("launch-probe: PASS - %d overlapping instances, %d distinct private prefs roots, none "
+          "the shared build" % (instances, len(set(roots))))
+    return 0
 
 
 def _desktop_lock_helper():
@@ -495,6 +936,14 @@ def _desktop_lock_helper():
 
 if __name__ == "__main__":
     args = parse_args()
+
+    # The offline checks come first: they need no build, no desktop and no chdir.
+    if args.prefs_race:
+        sys.exit(_prefs_race(max(2, args.instances)))
+    if args.check_isolation:
+        sys.exit(_check_isolation(max(2, args.instances)))
+    if args.launch_probe:
+        sys.exit(_launch_probe(max(2, args.instances)))
 
     # Determine binary name and original path
     bin_name = "oolite.exe" if IS_WINDOWS else "oolite"
@@ -541,6 +990,8 @@ if __name__ == "__main__":
                 load_save,
                 args.settle_frames,
                 args.ready_timeout,
+                app_dir=target_dir,
+                keep_staged=args.keep_staged,
             )
         else:
             with lock_helper.desktop_lock("smoke", start=__file__, stream=sys.stdout):
@@ -553,6 +1004,8 @@ if __name__ == "__main__":
                     load_save,
                     args.settle_frames,
                     args.ready_timeout,
+                    app_dir=target_dir,
+                    keep_staged=args.keep_staged,
                 )
 
     except Exception as e:

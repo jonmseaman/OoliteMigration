@@ -32,15 +32,116 @@ BUDGET_SECONDS="${OOLITE_TIER_A_BUDGET:-30}"
 # Same reason as tools/build-windows.sh: this runs as a bead's acceptance command, and
 # accept.sh runs those with a plain `bash -c` in whatever shell the orchestrator started
 # in. Without this, Tier A fails on MSYSTEM rather than on the code.
+#
+# Two rules, because the previous version had neither and so was a guard that could not
+# fail (bead oo-wfvu):
+#
+#   1. MSYS2 is DISCOVERED, not assumed to be at /c/msys64. It is /c/msys64 on a default
+#      install, C:/Users/<user>/scoop/apps/msys2/current under scoop, and anywhere at all
+#      with a custom prefix, so a hard-coded path makes the guard a no-op on most machines.
+#   2. If the UCRT64 environment cannot be reached or confirmed, this DIES. Continuing
+#      would resolve clang / clang-tidy / ninja / meson from whatever PATH happened to be
+#      inherited and report a tier-A result produced by an unknown toolchain.
 
-# `OOLITE_TIER_A_SOURCE_ONLY=1 . tools/tier-a.sh` must NOT re-exec: a probe sources this file
-# to test the real deny-list gate, and an exec would replace the probe with a help message.
-MSYS2_BASH="${MSYS2_BASH:-/c/msys64/usr/bin/bash.exe}"
-if [ "${OOLITE_TIER_A_SOURCE_ONLY:-0}" != 1 ] \
-   && [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OOLITE_TIER_A_REEXEC:-}" ] && [ -x "$MSYS2_BASH" ]; then
+# --- The source-only seam ----------------------------------------------------------------
+#
+# `OOLITE_TIER_A_SOURCE_ONLY=1 . tools/tier-a.sh` defines this file's deny-list functions and
+# returns without running a step, so tools/tier-a-deny-probe.sh exercises the REAL gate
+# rather than a paraphrase of it. Two things must not happen on that path: the re-exec below
+# (an exec would replace the probe process), and the UCRT64 environment assertions after it
+# (probing pure shell functions needs no toolchain, and accept.sh runs its lines from a
+# plain MSYSTEM=MSYS shell).
+#
+# The seam is deliberately NOT the environment variable alone: it ALSO requires that this
+# file really was sourced, so exporting OOLITE_TIER_A_SOURCE_ONLY=1 can never weaken an
+# EXECUTED tier-A run. An executed script has $0 == ${BASH_SOURCE[0]}; a sourced one does not,
+# because $0 still belongs to the calling shell. Both conditions, or no seam -- which is why
+# `OOLITE_TIER_A_SOURCE_ONLY=1 bash tools/tier-a.sh <file>` still re-execs, still asserts
+# UCRT64 and still runs all three steps (bead oo-wfvu's guard stays intact).
+OOLITE_TIER_A_SOURCE_SEAM=0
+if [ "${OOLITE_TIER_A_SOURCE_ONLY:-0}" = 1 ] && [ "${BASH_SOURCE[0]}" != "$0" ]; then
+  OOLITE_TIER_A_SOURCE_SEAM=1
+fi
+
+die() { printf 'tier-a: %s\n' "$*" >&2; exit 1; }
+
+# A candidate MSYS2 root counts only if it has BOTH usr/bin/bash.exe and a ucrt64/bin
+# directory. The second test is what tells a real MSYS2 apart from Git-for-Windows' bash
+# (which also ships usr/bin/bash.exe and cygpath, but has no ucrt64 prefix — re-exec'ing
+# into it with MSYSTEM=UCRT64 would produce a shell whose MSYSTEM is a lie).
+msys2_bash_from_root() {
+  local root="${1%/}"
+  [ -n "$root" ] || return 1
+  [ -x "$root/usr/bin/bash.exe" ] || return 1
+  [ -d "$root/ucrt64/bin" ] || return 1
+  printf '%s' "$root/usr/bin/bash.exe"
+}
+
+# Candidates, best first: an explicit caller override; this shell's own MSYS2 root (correct
+# whenever we are already inside MSYS2 under some other MSYSTEM, wherever it is installed),
+# found via `cygpath -m /` and, if cygpath is unavailable, via the running bash's own path;
+# then the conventional install locations, last.
+find_msys2_bash() {
+  local root candidates=()
+  if [ -n "${MSYS2_BASH:-}" ]; then
+    [ -x "$MSYS2_BASH" ] || return 1
+    printf '%s' "$MSYS2_BASH"
+    return 0
+  fi
+  if [ -n "${MSYS2_ROOT:-}" ]; then
+    candidates+=("$MSYS2_ROOT")
+  fi
+  if command -v cygpath >/dev/null 2>&1; then
+    root="$(cygpath -m / 2>/dev/null || true)"
+    if [ -n "$root" ]; then candidates+=("$root"); fi
+  fi
+  case "${BASH:-}" in
+    */usr/bin/bash*) candidates+=("${BASH%/usr/bin/bash*}") ;;
+  esac
+  candidates+=(/c/msys64 /c/tools/msys64 "${HOME:-/nonexistent}/scoop/apps/msys2/current")
+  for root in "${candidates[@]}"; do
+    msys2_bash_from_root "$root" && return 0
+  done
+  return 1
+}
+
+if [ "$OOLITE_TIER_A_SOURCE_SEAM" != 1 ] \
+   && [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OOLITE_TIER_A_REEXEC:-}" ]; then
+  MSYS2_BASH_RESOLVED="$(find_msys2_bash)" || die \
+"MSYSTEM is '${MSYSTEM:-unset}' and no MSYS2 installation with a UCRT64 environment was found.
+       Looked at: \$MSYS2_BASH, \$MSYS2_ROOT, cygpath -m /, \$BASH, /c/msys64, /c/tools/msys64,
+       \$HOME/scoop/apps/msys2/current (a root counts only with usr/bin/bash.exe AND ucrt64/bin).
+       Run tier-a.sh from an MSYS2 UCRT64 shell, or set MSYS2_BASH=<msys2-root>/usr/bin/bash.exe."
+  echo "==> MSYSTEM is '${MSYSTEM:-unset}'; re-executing under MSYS2 UCRT64 ($MSYS2_BASH_RESOLVED)" >&2
   export OOLITE_TIER_A_REEXEC=1
-  exec env MSYSTEM=UCRT64 CHERE_INVOKING=1 "$MSYS2_BASH" -lc \
+  exec env MSYSTEM=UCRT64 CHERE_INVOKING=1 "$MSYS2_BASH_RESOLVED" -lc \
     "$(printf '%q ' "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")" "$@")"
+fi
+
+# The re-exec did not happen, or happened and did not take. Either way, prove we are in a
+# real UCRT64 environment before trusting PATH — the assertion tools/setup-windows.sh:98
+# makes, and which this script was missing entirely.
+#
+# MSYSTEM alone is not sufficient evidence: any shell can export MSYSTEM=UCRT64. So also
+# require the MSYS2 prefix to be the UCRT64 one and to exist. MSYSTEM_PREFIX/MINGW_PREFIX
+# are exported by /etc/profile but not by a non-login `bash -c`, so an unset prefix is
+# normal and falls back to /ucrt64; a prefix set to something ELSE (/mingw64, /clang64) is
+# a contradiction and is refused.
+#
+# Skipped ONLY on the genuinely-sourced probe path (see the source-only seam above): sourcing
+# this file defines shell functions and touches no compiler, so demanding a UCRT64 toolchain
+# there would make the probe unrunnable from accept.sh's MSYSTEM=MSYS shell. Every executed
+# run -- including `OOLITE_TIER_A_SOURCE_ONLY=1 bash tools/tier-a.sh <file>` -- still asserts.
+if [ "$OOLITE_TIER_A_SOURCE_SEAM" != 1 ]; then
+  [ "${MSYSTEM:-}" = "UCRT64" ] || die \
+    "refusing to run with MSYSTEM='${MSYSTEM:-unset}': tier A must use the MSYS2 UCRT64 toolchain (start <msys2-root>/ucrt64.exe, or set MSYS2_BASH and unset OOLITE_TIER_A_REEXEC)"
+  OOLITE_UCRT_PREFIX="${MSYSTEM_PREFIX:-${MINGW_PREFIX:-/ucrt64}}"
+  [ "$OOLITE_UCRT_PREFIX" = "/ucrt64" ] || die \
+    "MSYSTEM says UCRT64 but MSYSTEM_PREFIX/MINGW_PREFIX is '$OOLITE_UCRT_PREFIX', not /ucrt64; this environment is inconsistent, refusing to guess a toolchain"
+  command -v cygpath >/dev/null 2>&1 || die \
+    "MSYSTEM=UCRT64 but there is no cygpath on PATH; this is not an MSYS2 shell"
+  [ -d "$OOLITE_UCRT_PREFIX/bin" ] || die \
+    "MSYSTEM=UCRT64 but $OOLITE_UCRT_PREFIX/bin does not exist; this is not a working MSYS2 UCRT64 installation"
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -53,7 +154,7 @@ COMPDB_READER="$REPO_ROOT/tools/tier-a-compdb.py"
 STARTED_AT=$SECONDS
 step()   { printf '==> %s\n' "$*"; }
 detail() { printf '    %s\n' "$*"; }
-die()    { printf 'tier-a: %s\n' "$*" >&2; exit 1; }
+# die() is defined above, with the MSYS2/UCRT64 guard, because that guard needs it.
 
 fail() {
   printf 'tier-a: FAIL (%s) in %ss\n' "$1" "$(( SECONDS - STARTED_AT ))" >&2
@@ -210,8 +311,11 @@ deny_gate() {
   return 0
 }
 
-if [ "${OOLITE_TIER_A_SOURCE_ONLY:-0}" = 1 ]; then
-  return 0 2>/dev/null || exit 0
+# End of the sourced surface: a probe that sourced this file has what it came for. Keyed on
+# the seam, not on the bare variable, so an EXECUTED run with OOLITE_TIER_A_SOURCE_ONLY=1 in
+# its environment falls through here and runs the full three-step gate instead of exiting 0.
+if [ "$OOLITE_TIER_A_SOURCE_SEAM" = 1 ]; then
+  return 0
 fi
 
 case "${1:-}" in
@@ -235,6 +339,18 @@ for c in clang clang-tidy ninja meson python cygpath; do
   command -v "$c" >/dev/null 2>&1 \
     || die "missing '$c' on PATH; run tools/setup-windows.sh (Phase 0 item 0.2)"
 done
+
+# And they must be THE UCRT64 ones. This is the other half of the bug in bead oo-wfvu: with
+# MSYSTEM right but PATH wrong (a mingw64 shell's leftovers, a native LLVM in Program Files)
+# the tier-A verdict would be produced by an unknown toolchain and reported as authoritative.
+# cygpath is an /usr/bin tool in every MSYSTEM, so it is exempt from the prefix check.
+for c in clang clang-tidy ninja meson python; do
+  OOLITE_TOOL_PATH="$(command -v "$c")"
+  case "$OOLITE_TOOL_PATH" in
+    "$OOLITE_UCRT_PREFIX"/*) ;;
+    *) die "'$c' resolves to $OOLITE_TOOL_PATH, outside the UCRT64 prefix $OOLITE_UCRT_PREFIX; PATH is not the UCRT64 toolchain's (start <msys2-root>/ucrt64.exe)" ;;
+  esac
+done
 [ -f "$DENY_LIST" ]      || die "missing deny-list $DENY_LIST"
 [ -f "$COMPDB_READER" ]  || die "missing $COMPDB_READER"
 
@@ -245,7 +361,10 @@ step "tier-a $SOURCE_REL (flavour $BUILD_FLAVOUR, budget ${BUDGET_SECONDS}s)"
 # Depend mode (meson's -MF path is relative to the build dir and does not resolve from
 # ccache's temp dir in preprocessor mode), base_dir so worktrees at different absolute paths
 # share entries, and a pinned version macro so a bead branch does not miss on every object.
-# Without all three, Tier A is a cold compile and misses the 30 s budget.
+# These raise the hit RATE across worktrees; they are not what keeps Tier A inside the budget.
+# Measured 2026-09-17 (docs/phases/0-safety-net.md "Commands"): with CCACHE_DIR redirected to an
+# empty directory a steady-state run is ~4 s versus ~4.4 s warm — one TU is cheap either way.
+# The first-run cost is `meson setup` (~10 s), not compilation.
 export CCACHE_DEPEND=1
 export CCACHE_BASEDIR="$(cygpath -m "$REPO_ROOT")"
 export OOLITE_VER_FULL="${OOLITE_VER_FULL:-0.0.0-fleet}"
