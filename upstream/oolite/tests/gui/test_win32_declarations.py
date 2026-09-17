@@ -149,6 +149,69 @@ def test_declarations_name_pointer_sized_handle_types():
 
 
 @pytest.mark.offline
+def test_the_process_table_calls_are_declared_with_pointer_sized_handles():
+    """The Tool Help walk's kernel32 calls carry real HANDLE types, not c_void_p/c_int.
+
+    surviving_game_processes (oo-5rsa) is the OS-level witness that no orphaned oolite.exe
+    survived the exit, and it reads the process table through CreateToolhelp32Snapshot. An
+    undeclared restype decodes that pointer-sized HANDLE through a 32-bit signed int; the
+    truncated handle then makes Process32First fail, the table comes back empty, and the
+    survivor check reports "nothing survived" - a silent pass in the very check that exists to
+    remove silent passes. As with HWND, "has argtypes" is not enough: the type must be
+    pointer-sized.
+    """
+    for qualified in (
+        "kernel32.CreateToolhelp32Snapshot",
+        "kernel32.Process32First",
+        "kernel32.Process32Next",
+        "kernel32.CloseHandle",
+    ):
+        assert qualified in conftest.WIN32_SIGNATURES, f"{qualified} is not declared at all"
+    assert conftest.WIN32_SIGNATURES["kernel32.CreateToolhelp32Snapshot"][0] == "HANDLE", (
+        "the snapshot handle is pointer-sized; a 32-bit restype truncates it"
+    )
+    for qualified in ("kernel32.Process32First", "kernel32.Process32Next", "kernel32.CloseHandle"):
+        assert conftest.WIN32_SIGNATURES[qualified][1][0] == "HANDLE", (
+            f"{qualified} takes the snapshot HANDLE as its first argument; declaring it "
+            "c_void_p or c_int would satisfy 'has argtypes' while keeping the bug"
+        )
+    for qualified in ("kernel32.Process32First", "kernel32.Process32Next"):
+        assert conftest.WIN32_SIGNATURES[qualified][1][1] == "LPPROCESSENTRY32", (
+            f"{qualified} takes a PROCESSENTRY32*; a bare pointer would accept any structure, "
+            "and a wrong layout makes the call return FALSE - i.e. 'no processes'"
+        )
+
+
+@pytest.mark.offline
+@pytest.mark.skipif(not conftest.IS_WINDOWS, reason="the real kernel32 exists only on Windows")
+def test_the_live_kernel32_functions_carry_the_declarations():
+    """The kernel32 half of the table is stamped onto the real function objects."""
+    assert conftest.KERNEL32 is not None
+    assert conftest.KERNEL32 is not ctypes.windll.kernel32, (
+        "the tier must own its kernel32 handle so its argtypes are not process-wide"
+    )
+    snapshot = conftest.KERNEL32.CreateToolhelp32Snapshot
+    assert snapshot.restype is not None, "CreateToolhelp32Snapshot has no restype"
+    assert ctypes.sizeof(snapshot.restype) == ctypes.sizeof(ctypes.c_void_p), (
+        "CreateToolhelp32Snapshot returns a pointer-sized HANDLE; a 32-bit restype would "
+        "truncate and sign-extend it"
+    )
+    for name in ("Process32First", "Process32Next", "CloseHandle"):
+        func = getattr(conftest.KERNEL32, name)
+        assert func.argtypes, f"{name} has no argtypes on the live function"
+        assert ctypes.sizeof(func.argtypes[0]) == ctypes.sizeof(ctypes.c_void_p), (
+            f"{name}'s handle argument is declared HANDLE but is only "
+            f"{ctypes.sizeof(func.argtypes[0])} bytes wide"
+        )
+    # The structure pointer must be a real PROCESSENTRY32*, not an untyped pointer.
+    assert conftest.PROCESSENTRY32 is not None
+    entry_param = conftest.KERNEL32.Process32First.argtypes[1]
+    assert getattr(entry_param, "_type_", None) is conftest.PROCESSENTRY32, (
+        "Process32First's second argument must be POINTER(PROCESSENTRY32)"
+    )
+
+
+@pytest.mark.offline
 def test_undeclared_call_cannot_carry_a_64_bit_handle():
     """The defect itself, shown on a real 64-bit foreign function pointer.
 
@@ -202,7 +265,17 @@ def test_the_live_user32_functions_carry_the_declarations():
         library, _, name = qualified.partition(".")
         if library != "user32":
             continue
-        func = getattr(conftest.USER32, name)
+        func = getattr(conftest.USER32, name, None)
+        if func is None:
+            # _declare_win32 `continue`s over an absent OPTIONAL_WIN32 entry, so on a host that
+            # lacks one (SetProcessDpiAwarenessContext is absent before Windows 10-1703) there is
+            # no live function to carry the declaration. An unguarded getattr would ERROR with
+            # AttributeError here instead of passing. A REQUIRED name is still a hard failure:
+            # this must not become a blanket excuse for a missing declaration.
+            assert qualified in conftest.OPTIONAL_WIN32, (
+                f"{qualified} is not in OPTIONAL_WIN32 but is missing from the live user32"
+            )
+            continue
         assert func.argtypes is not None, f"{qualified} has no argtypes on the live function"
         assert len(func.argtypes) == len(argtypes), f"{qualified} argtype count disagrees"
         assert func.restype is not None, f"{qualified} has no restype"
