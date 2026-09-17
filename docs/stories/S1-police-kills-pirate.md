@@ -1,4 +1,11 @@
-# Story: S1 — A police ship destroys a lone pirate
+# Story: S1 — A police ship engages a lone pirate
+
+**Amended 2026-09-11 by [ADR-0019](../decisions/0019-component-tier-scenario-setup.md)**, which ran
+this scenario for the first time and found that several facts stated below from source inspection do
+not hold against the built game. The corrections are folded in here; the file name is unchanged so
+that existing citations keep resolving. The assertion is **engagement, not a kill** — see
+[ADR-0019](../decisions/0019-component-tier-scenario-setup.md) §"Why the kill assertion was
+unreachable".
 
 Hand-written 2026-09-10 as the **exemplar for the component tier**, the way
 [G1](G1-exit-via-mouse.md) is the exemplar for the GUI tier. S1 is a *seam*: it fails sizing checks 5
@@ -14,15 +21,18 @@ see the facts below. Do not start S1 before it lands.
 ## Task
 
 Add `upstream/oolite/tests/component/`: a pytest + pytest-bdd suite that launches the Objective-C
-build headless, drives it over the debug-console TCP channel, spawns a police ship and a pirate, runs
-the simulation for at most 900 ticks, and asserts that no pirate remains and a police ship survives.
-Provide the console client, the launch fixture and the step library that S2–S8 will reuse.
+build headless, drives it over the debug-console TCP channel, **loads a save and launches the player
+so the simulation actually ticks**, empties the system of ambient traffic, spawns a police ship and a
+pirate around a single locus **with their role's real AI**, runs the simulation for at most 900
+ticks, and asserts that the police ship acquires the pirate as a hostile target and that the pirate
+takes damage. Provide the console client, the launch fixture and the step library that S2–S8 will
+reuse.
 
 **Do it the way `upstream/oolite/tests/launch_snapshot.py` does it** for
 the protocol framing, launch, environment and timeout handling — headless, with
 `SDL_AUDIODRIVER=dummy` and `ALSOFT_DRIVERS=null`, plus `OO_RANDOM_SEED` set for the run.
 
-## Facts the implementation depends on (verified against source, 2026-09-10)
+## Facts the implementation depends on (source inspection 2026-09-10, corrected by observation 2026-09-11)
 
 **Protocol and launch** — reuse, do not reinvent:
 - Plist framing: 4-byte big-endian length + XML plist (`tests/launch_snapshot.py:31-77`).
@@ -39,12 +49,27 @@ the protocol framing, launch, environment and timeout handling — headless, wit
 
 | Need | Surface |
 |---|---|
-| Spawn | `addShips` (`src/Core/Scripting/OOJSSystem.m:192`), `legacy_spawnShip` (`:213`) |
-| Count by role | `countShipsWithRole` (`OOJSSystem.m:197`) |
+| Spawn | `addShips(role, count[, position, radius])` (`src/Core/Scripting/OOJSSystem.m:192`, `:943`) — returns the array of ships added; `legacy_spawnShip` (`:213`). There is **no `addShipsWithinRadius`**. |
+| Give a spawned ship a working AI | `ship.setAI("oolite-policeAI.js")` / `"oolite-pirateAI.js"`. Do **not** rely on the role's own AI: `shipdata.plist` does supply one (`oolite_template_viper` → `ai_type = "oolite-policeAI.js"` at `Resources/Config/shipdata.plist:3831`; the pirate templates → `"oolite-pirateAI.js"`, e.g. `:390`, `:1400`, `:1569`), but `-setAITo:` **discards it** and substitutes `oolite-nullAI.js` whenever `[PLAYER scriptsLoaded]` is false (`src/Core/Entities/ShipEntityAI.m:254-257`). Ships spawned before a game is loaded therefore never think, never target and never fire — which is exactly what ADR-0019 observed at the main menu and while docked. Load and launch first, then set the AI explicitly. |
+| Count by role | `countShipsWithRole` (`OOJSSystem.m:197`) — counts the **ambient** population too, which the scenario must empty first |
 | Enumerate | `system.allShips` (`OOJSSystem.m:116,152`) |
-| Position / orientation / scan class / liveness | `OOJSEntity.m:105,107,108,119` |
+| Orientation / position / scan class / liveness | `OOJSEntity.m:105,107,108,119` (`orientation`, `position`, `scanClass`, `isValid`) |
+| Health | `energy` / `maxEnergy` on **`Entity`**, read-write (`OOJSEntity.m:101,104`) |
 | AI state / motion / identity | `OOJSShip.m:340` (`AIState`), `:472` (`velocity`), `:458` (`speed`), `:439` (`primaryRole`) |
+| Targeting | `ship.target`, `ship.hasHostileTarget` |
+| Message to the debug console | `debugConsole.consoleMessage(colorCode, message)` (`OOJSConsole.m:195`). The bare global `consoleMessage(...)` belongs to `player` and shows an **in-game** message, not a console one. |
 | Cross-command scratch state | `debugConsole` is a writable JS global (`src/Core/Debug/OODebugMonitor.m:761`) |
+
+**World setup is part of the `Given`** ([ADR-0019](../decisions/0019-component-tier-scenario-setup.md)):
+
+- At the main menu there is **no simulation at all** — a demo scene with a docked player and a
+  station. A save must be `-load`ed (`src/SDL/main.m:167`).
+- A loaded save starts **docked**, and NPC AI does not tick while docked. `player.ship.launch()` is
+  required.
+- The standard scenario opens with **~80 entities, including 32 pirates and 5 police**. The system
+  must be emptied before a role count measures the scenario rather than the ambient traffic.
+- An *unpositioned* `addShips` scatters anywhere in the system — observed 415 km apart. Pass an
+  explicit `position` and `radius` to place ships near each other.
 
 **Determinism:**
 - `src/Core/GameController.m:100` seeds RANROT from the wall clock
@@ -52,35 +77,50 @@ the protocol framing, launch, environment and timeout handling — headless, wit
 - Combat consumes that RNG: 52 `randf()` sites in `ShipEntity.m`, 14 in `ShipEntityAI.m`, including
   the shot-attempt gate `if (range > randf() * weaponRange * (accuracy+7.5))  return NO;`
   (`ShipEntity.m:11481`).
-- AI thinks every `0.125 s` (`AI_THINK_INTERVAL`, `src/Core/AI.h:31`), so 900 ticks ≈ 120 decisions —
-  ample for acquire → close → fire → kill.
+- AI thinks every `0.125 s` (`AI_THINK_INTERVAL`, `src/Core/AI.h:31`). 900 ticks was originally
+  justified as "≈120 decisions — ample for acquire → close → fire → kill"; that arithmetic was never
+  observed. **Measured**: engagement (target acquired, `hasHostileTarget` set) lands at ~136 ticks
+  (~17 s), so 900 is a generous ceiling, not a target. A **kill does not happen at all** in this
+  matchup — a GalCop Viper has 180 max energy against a stock pirate's 706, and the police ship is
+  the one losing ([ADR-0019](../decisions/0019-component-tier-scenario-setup.md)).
 
-**Two things deliberately out of scope, because the API does not support them cleanly today:**
-- **`energy` is not exposed to JS** (only `energyRechargeRate`, `OOJSShip.m:371`). Do not add a native
-  property. Assert death and survival, not health.
+**Two things deliberately out of scope:**
 - **Killer attribution.** `shipDied` / `shipKilledOther` do fire (`ShipEntity.m:9007,9020,9024`), but
   capturing them needs a script object on a ship (`setScript`, `OOJSShip.m:560`) and therefore a
-  test-only script resource. **S1 does not assert attribution.** With exactly two ships spawned, "no
-  pirate remains and a police ship survives" already proves the AI engaged, the weapon fired, damage
-  landed and the target died. If a later scenario needs attribution, that is a **new step** → stop and
-  file a bead ([ADR-0018](../decisions/0018-component-test-tier.md) §5).
+  test-only script resource. **S1 does not assert attribution.** With exactly two ships spawned,
+  "the police acquires the pirate as a hostile target and the pirate's `energy` drops below its
+  `maxEnergy`" already proves the AI engaged, the weapon fired and damage landed. If a later scenario
+  needs attribution, that is a **new step** → stop and file a bead
+  ([ADR-0018](../decisions/0018-component-test-tier.md) §5).
+- **A kill assertion.** Unreachable in this matchup on any tick budget; it belongs in a scenario
+  whose time-to-kill has been measured first.
+
+**Adding native interfaces remains prohibited.** `energy` being observable widens what a scenario may
+assert; it does not license exposing anything that is not already exposed.
 
 ## The scenario
 
 ```gherkin
 Feature: Ship-to-ship combat
 
-  Scenario: A police viper destroys a lone pirate
+  Scenario: A police viper engages a lone pirate
     Given a universe seeded with 20260910
-    When I spawn 1 ship with role "police"
-    And I spawn 1 ship with role "pirate" within 10 km
+    And a launched player in an emptied system
+    When I spawn 1 ship with role "police" at the locus
+    And I spawn 1 ship with role "pirate" within 5 km of the locus
     And the simulation runs for at most 900 ticks
-    Then no ship with role "pirate" remains
-    And a ship with role "police" survives
+    Then the police ship has the pirate as a hostile target
+    And the pirate has taken damage
 ```
 
-The run step polls `countShipsWithRole("pirate")` on an interval and stops early when it reaches 0;
-it must fail on timeout, not hang.
+`Given` sets `OO_RANDOM_SEED` at launch, `-load`s a save, calls `player.ship.launch()` and clears the
+~80 ambient entities. The spawn steps call `addShips(role, 1, locus, radius)` and then `setAI` with
+the role's real AI script, because `-setAITo:` replaces the template's `ai_type` with
+`oolite-nullAI.js` until the player's scripts are loaded (`ShipEntityAI.m:254-257`) and a null-AI ship
+never acts.
+The run step polls the predicate on an interval and returns as soon as it holds; it must fail on
+timeout, not hang. "Has taken damage" is `energy < maxEnergy` on the pirate (`Entity.energy`,
+`OOJSEntity.m:101,104`).
 
 ## Files
 
