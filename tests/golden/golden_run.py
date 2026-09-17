@@ -16,6 +16,21 @@ explains each mechanism; the load-bearing facts are:
 * PATHS. Every path goes through `to_native`, including here, because the ENVIRONMENT
   (OO_GOLDEN_RUNDIR, OO_APP_DIR) bypasses run.sh - and a relocated run_root takes config_dir with
   it, so the game never reads the plist naming its port and N runs collide on 8563.
+
+NO DESKTOP LOCK, deliberately (bug oo-ccy9). Every other tool in this repository that launches the
+game takes `tools/gui-lock`, the interactive-desktop mutex, because two games on one desktop steal
+each other's foreground. This harness is the documented exemption, and the reason is the first line
+of this docstring: it exists to run N scenarios AT ONCE (GOLDEN_MAX_CONCURRENCY, docs/infra/
+0-machines.md). `tools/gui-lock` is exclusive - one holder - so taking it here would either
+serialise the fan-out into a queue of one, defeating the harness, or, if a second run were started
+from inside a first that already held it, block for OO_GUI_LOCK_TIMEOUT and then fail. The harness
+does not need the lock because it never needs the FOREGROUND: nothing here sends synthetic input,
+no window is clicked, readiness is read over the console socket and the only artifact is a
+game-side screenshot (OO_SNAPSHOTSDIR), which the game renders from its own framebuffer whether or
+not it is the active window. What DOES have to be exclusive between concurrent runs is already
+excluded, per-resource rather than per-desktop: the port lock, the staged app dir, the artifact
+dir. A run that ever starts needing the foreground stops being exempt and must take the lock, and
+then it must also stop running N at a time.
 """
 
 import argparse
