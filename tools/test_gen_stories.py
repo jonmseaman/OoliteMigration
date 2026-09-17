@@ -217,7 +217,8 @@ class SplitDeclarationTest(unittest.TestCase):
         m.write_text(C_BODY)
         (d / "Thing.h").write_text("NSString *\nThingDescription(int n);\n")
         self.assertTrue(gs.body_is_c(m), "the body alone is plain C")
-        self.assertFalse(gs.is_c_file(m), "a split NS* header signature is not a mechanical rename")
+        self.assertNotEqual(gs.classify(m), "renames",
+                            "a split NS* header signature is not a mechanical rename")
         self.assertEqual(gs.classify(m), "foundation")
 
     def test_strip_noncode_preserves_line_count(self):
