@@ -73,6 +73,11 @@ WIN32_SIGNATURES = {
     # 8-byte struct - which an undeclared call cannot pass correctly at all.
     "user32.WindowFromPoint": ("HWND", ["POINT"]),
     "user32.GetAncestor": ("HWND", ["HWND", "UINT"]),
+    # Closing the window the way the title-bar X does (G3). PostMessageW takes WPARAM/LPARAM,
+    # both pointer-sized: undeclared they narrow to 32 bits, and the HWND narrows with them, so
+    # the message would be posted to a truncated handle - i.e. to nothing - and PostMessage would
+    # report failure (or worse, succeed against an unrelated window).
+    "user32.PostMessageW": ("BOOL", ["HWND", "UINT", "WPARAM", "LPARAM"]),
     # Naming the window that is in the way.
     "user32.GetWindowTextW": ("INT", ["HWND", "LPWSTR", "INT"]),
     "user32.GetClassNameW": ("INT", ["HWND", "LPWSTR", "INT"]),
@@ -381,6 +386,11 @@ DESKTOP_UNUSABLE_MARKER = "GUI TIER PRECONDITION FAILED"
 # is correct as written. tools/check-splash-off.py imports this list so the behavioural check can
 # never drift from what the tier actually runs.
 LAUNCH_ARGS = ["-nosplash", "-windowed"]
+
+# The window message a title-bar X click ends up delivering (winuser.h). SDL's Win32 backend
+# turns it into SDL_EVENT_QUIT, which is the event G3 exists to exercise; see
+# GameWindow.close_window for why this and not a synthesised in-process SDL event.
+WM_CLOSE = 0x0010
 
 
 # --- row -> screen point ----------------------------------------------------------------------
@@ -1074,6 +1084,34 @@ class GameWindow:
         # assert_click_point_is_ours - this is the third failure mode this bead was reworked for.
         self.assert_click_point_is_ours(x, y)
         pyautogui.doubleClick(x, y, interval=DOUBLE_CLICK_INTERVAL_SECONDS)
+
+    def close_window(self):
+        """Close the window the way the title-bar X does: post WM_CLOSE to its frame (G3).
+
+        WHY THIS AND NOT A SYNTHETIC SDL EVENT. The behaviour under test is the user closing the
+        window, and the honest boundary for a GUI-tier test is the one the window manager uses.
+        A physical click on the X makes the frame send WM_SYSCOMMAND/SC_CLOSE, whose DefWindowProc
+        handling posts WM_CLOSE to the window; SDL's Win32 backend translates that WM_CLOSE into
+        SDL_EVENT_QUIT, which MyOpenGLView+Input.m:660-664 turns into
+        ``[gameController exitAppWithContext:@"SDL_QUIT event received"]``. Posting WM_CLOSE
+        enters that chain at the same place the window manager does, from OUTSIDE the process,
+        through the game's real message queue. Calling SDL_PushEvent inside the game, or invoking
+        exitAppWithContext directly, would assert that a function works rather than that closing
+        the window works - and would still pass if the SDL_EVENT_QUIT case were deleted outright.
+
+        Measured on this build before the test was written: PostMessageW(hwnd, WM_CLOSE) returned
+        1 and oolite.exe exited with status 0 within ~2s.
+
+        The pointer is NOT moved and nothing is clicked, so unlike select_row/confirm_row this
+        does not depend on Z-order - a posted message goes to the window by HANDLE, not by
+        position. assert_focused() is still called first: the window must be the live foreground
+        one this test launched, not a leftover.
+        """
+        self.assert_focused()
+        posted = USER32.PostMessageW(self.hwnd, WM_CLOSE, 0, 0)
+        if not posted:
+            raise _win32_error(f"PostMessageW(WM_CLOSE) to hwnd {self.hwnd}")
+        return self.hwnd
 
 
 
