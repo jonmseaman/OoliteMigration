@@ -73,6 +73,11 @@ WIN32_SIGNATURES = {
     # 8-byte struct - which an undeclared call cannot pass correctly at all.
     "user32.WindowFromPoint": ("HWND", ["POINT"]),
     "user32.GetAncestor": ("HWND", ["HWND", "UINT"]),
+    # Closing the window the way the title-bar X does (G3). PostMessageW takes WPARAM/LPARAM,
+    # both pointer-sized: undeclared they narrow to 32 bits, and the HWND narrows with them, so
+    # the message would be posted to a truncated handle - i.e. to nothing - and PostMessage would
+    # report failure (or worse, succeed against an unrelated window).
+    "user32.PostMessageW": ("BOOL", ["HWND", "UINT", "WPARAM", "LPARAM"]),
     # Naming the window that is in the way.
     "user32.GetWindowTextW": ("INT", ["HWND", "LPWSTR", "INT"]),
     "user32.GetClassNameW": ("INT", ["HWND", "LPWSTR", "INT"]),
@@ -382,6 +387,11 @@ DESKTOP_UNUSABLE_MARKER = "GUI TIER PRECONDITION FAILED"
 # never drift from what the tier actually runs.
 LAUNCH_ARGS = ["-nosplash", "-windowed"]
 
+# The window message a title-bar X click ends up delivering (winuser.h). SDL's Win32 backend
+# turns it into SDL_EVENT_QUIT, which is the event G3 exists to exercise; see
+# GameWindow.close_window for why this and not a synthesised in-process SDL event.
+WM_CLOSE = 0x0010
+
 
 # --- row -> screen point ----------------------------------------------------------------------
 
@@ -594,6 +604,12 @@ class GameWindow:
         self.proc = None
         self.hwnd = None
         self._parked = []
+        # Everything this window ever renamed aside, and everything it failed to rename back.
+        # ``_parked`` is CONSUMED by the restore, so it cannot answer "did the restore happen?"
+        # afterwards; these two can, and they are scoped to THIS run's own actions rather than
+        # to the state of the shared build directory (oo-e75).
+        self._parked_ever = []
+        self._restore_failures = []
         # Filled in by start(): what the defaults files looked like BEFORE this run wrote
         # anything. assert_defaults_file_reparses needs it to tell "this run wrote the file"
         # from "a file is lying there from an earlier run" (oo-5rsa).
@@ -621,6 +637,7 @@ class GameWindow:
             if os.path.isfile(live):
                 os.replace(live, live + self._PARKED_SUFFIX)
                 self._parked.append(live)
+                self._parked_ever.append(live)
 
     def _restore_software_gl(self):
         while self._parked:
@@ -628,6 +645,12 @@ class GameWindow:
             parked = live + self._PARKED_SUFFIX
             if os.path.isfile(parked):
                 os.replace(parked, live)
+            else:
+                # The file this run moved aside is not where it put it. Recorded rather than
+                # ignored: app_dir is the SHARED build, so a DLL this run renamed and did not
+                # rename back is broken offscreen rendering for every other tier on the
+                # machine, and the only run that can still report it is this one (oo-e75).
+                self._restore_failures.append(parked)
 
     def start(self):
         binary = "oolite.exe" if IS_WINDOWS else "oolite"
@@ -1075,6 +1098,34 @@ class GameWindow:
         self.assert_click_point_is_ours(x, y)
         pyautogui.doubleClick(x, y, interval=DOUBLE_CLICK_INTERVAL_SECONDS)
 
+    def close_window(self):
+        """Close the window the way the title-bar X does: post WM_CLOSE to its frame (G3).
+
+        WHY THIS AND NOT A SYNTHETIC SDL EVENT. The behaviour under test is the user closing the
+        window, and the honest boundary for a GUI-tier test is the one the window manager uses.
+        A physical click on the X makes the frame send WM_SYSCOMMAND/SC_CLOSE, whose DefWindowProc
+        handling posts WM_CLOSE to the window; SDL's Win32 backend translates that WM_CLOSE into
+        SDL_EVENT_QUIT, which MyOpenGLView+Input.m:660-664 turns into
+        ``[gameController exitAppWithContext:@"SDL_QUIT event received"]``. Posting WM_CLOSE
+        enters that chain at the same place the window manager does, from OUTSIDE the process,
+        through the game's real message queue. Calling SDL_PushEvent inside the game, or invoking
+        exitAppWithContext directly, would assert that a function works rather than that closing
+        the window works - and would still pass if the SDL_EVENT_QUIT case were deleted outright.
+
+        Measured on this build before the test was written: PostMessageW(hwnd, WM_CLOSE) returned
+        1 and oolite.exe exited with status 0 within ~2s.
+
+        The pointer is NOT moved and nothing is clicked, so unlike select_row/confirm_row this
+        does not depend on Z-order - a posted message goes to the window by HANDLE, not by
+        position. assert_focused() is still called first: the window must be the live foreground
+        one this test launched, not a leftover.
+        """
+        self.assert_focused()
+        posted = USER32.PostMessageW(self.hwnd, WM_CLOSE, 0, 0)
+        if not posted:
+            raise _win32_error(f"PostMessageW(WM_CLOSE) to hwnd {self.hwnd}")
+        return self.hwnd
+
 
 
 # --- fixtures -----------------------------------------------------------------------------------
@@ -1448,6 +1499,12 @@ def game(gui_runtime, app_dir, desktop_lock, tmp_path):
         yield window.start()
     finally:
         window.kill()
+        # G9 (oo-e75): the one hygiene property that is true of EVERY test in this tier
+        # regardless of how it ended, so it is asserted here rather than left to each test to
+        # remember. kill() has just run _restore_software_gl; this is the assertion that the
+        # restore actually happened, because the DLLs it renames live in the SHARED build tree
+        # and a leak lands on the component tier, not on the test that caused it.
+        assert_no_parked_runtime_files(window)
 
 
 # --- post-exit hygiene (G9), asserted by every test in this tier --------------------------------
@@ -1933,3 +1990,182 @@ def _clean_exit_arguments(game_or_output_dir, app_dir, defaults_launch_mark):
         "assert_clean_exit(game) (oo-5rsa)."
     )
     return game_or_output_dir, app_dir, defaults_launch_mark
+
+
+# --- G9: the hygiene NOTHING in this tier asserted before (oo-e75) ------------------------------
+#
+# assert_clean_exit above is the tier's established baseline and every launching test already
+# calls it. Two properties of the shutdown are outside its reach, and BOTH were measured on this
+# build rather than assumed:
+#
+# 1. WHETHER THE SHUTDOWN FINISHED. assert_clean_exit infers the shutdown from the defaults
+#    write, and GameController.m:906 -synchronize-s BEFORE :908 OOLoggingTerminate(), :909
+#    SDL_Quit() and :910 the OpenAL shutdown. A process that synchronized and then died in any
+#    of those three leaves a moved plist mtime, no dump and no ERROR line - so assert_clean_exit
+#    PASSES IT COMPLETELY - while the log was never closed. The footer is the only witness that
+#    the tail of -exitAppWithContext: ran.
+#      (Measured, and this is the honest limit of the claim: a game killed at the START SCREEN
+#      does NOT slip past assert_clean_exit - the plist mtime never moves, so the defaults check
+#      catches it. It reports it as "a leftover from an earlier run (oo-5rsa)", naming the wrong
+#      cause, which is a diagnostic defect rather than missing coverage. Only a death AFTER the
+#      synchronize is invisible to it.)
+#
+# 2. WHY THE GAME EXITED. -exitAppWithContext: is reached from NINE call sites in this tree,
+#    including PlayerEntityControls.m:958 "Q or escape pressed in error handling mode". Every one
+#    of them synchronizes defaults, closes the log and exits 0, so every check in this tier
+#    passes on every one of them. A G3 that posted WM_CLOSE and got an exit via the error-handling
+#    path would be green while its entire claim - that the SDL_EVENT_QUIT case took the game down
+#    - was false. The exit.context line records the reason as a string, and it is the only
+#    runtime evidence of which path ran.
+
+# GameController.m:893 - OOLog(@"exit.context", @"Exiting: %@.", context). Names WHY.
+SHUTDOWN_EXIT_CONTEXT_WITNESS = "[exit.context]"
+# GameController.m:907, immediately after [[NSUserDefaults standardUserDefaults] synchronize].
+SHUTDOWN_DEFAULTS_WITNESS = ".GNUstepDefaults synchronized."
+# OOLogOutputHandler.m:370's postamble, reached via OOLoggingTerminate() at GameController.m:908.
+# The LAST thing the orderly path writes, and therefore the only witness for the code AFTER the
+# defaults write.
+SHUTDOWN_LOG_CLOSED_WITNESS = "Closing log at"
+
+SHUTDOWN_WITNESSES = (
+    SHUTDOWN_EXIT_CONTEXT_WITNESS,
+    SHUTDOWN_DEFAULTS_WITNESS,
+    SHUTDOWN_LOG_CLOSED_WITNESS,
+)
+
+# Written by the game once loading finishes, and the very line the readiness gate
+# (``_await_startup_complete``) waits for. It is the anchor the exit trace is measured against:
+# see assert_shutdown_path_completed.
+STARTUP_COMPLETE_WITNESS = "[startup.complete]"
+
+
+def assert_shutdown_path_completed(game_or_output_dir, expected_context=None):
+    """The log carries -exitAppWithContext:'s full trace, in order, for the expected reason.
+
+    Two claims assert_clean_exit cannot make:
+
+    * THE SHUTDOWN FINISHED. The footer is written at GameController.m:908, AFTER the :906
+      defaults synchronize that assert_clean_exit's evidence comes from, so a death anywhere in
+      :908-:910 passes every existing check in this tier and fails only this one.
+    * IT EXITED FOR THE REASON THE TEST ASKED FOR. Pass ``expected_context`` - the exact string
+      the call site hands -exitAppWithContext: - and the exit.context line must name it. Without
+      this, all nine exit paths in the tree are indistinguishable to this tier: each one
+      synchronizes, closes the log and exits 0, so a test whose gesture did nothing while the
+      game left by some other route (PlayerEntityControls.m:958's error-handling path, a
+      Command-Q, Universe.m:1048's request) is green with its whole claim false.
+
+    Order is anchored to THIS run's last ``startup.complete`` - the line the readiness gate
+    already waited for - so an earlier run's shutdown sharing the log file cannot vouch for this
+    one.
+
+    Unconditional: an absent log FAILS, and so does an absent startup.complete.
+    """
+    output_dir = (
+        game_or_output_dir.output_dir
+        if isinstance(game_or_output_dir, GameWindow)
+        else game_or_output_dir
+    )
+    log = os.path.join(output_dir, "Latest.log")
+    assert os.path.isfile(log), (
+        f"no Latest.log at {log}, so the shutdown trace cannot be read. It existed earlier in "
+        "this run (_await_startup_complete read 'startup.complete' out of it), so treating its "
+        "absence as anything but a failure would report a pass for a check that never ran."
+    )
+    with open(log, "r", encoding="utf-8", errors="replace") as handle:
+        text = handle.read()
+
+    # The anchor: where the run that has just ended finished loading. Every witness below has to
+    # come after it, or it belongs to some earlier run whose output shares this file.
+    anchor = text.rfind(STARTUP_COMPLETE_WITNESS)
+    assert anchor >= 0, (
+        f"{STARTUP_COMPLETE_WITNESS!r} is not in {log}, yet the readiness gate waited for that "
+        "very line in this run before the test was allowed to touch the game. Without it there "
+        "is nothing to attribute the exit trace to, and this check would degrade into 'some "
+        "shutdown happened at some point'."
+    )
+    tail = text[anchor:]
+
+    at = {}
+    missing = []
+    for witness in SHUTDOWN_WITNESSES:
+        index = tail.find(witness)
+        if index < 0:
+            missing.append(witness)
+        else:
+            at[witness] = index
+    assert not missing, (
+        "the orderly shutdown path did not run to completion: "
+        + ", ".join(repr(w) for w in missing)
+        + f" never appeared in {log} after this run's {STARTUP_COMPLETE_WITNESS} (offset "
+        f"{anchor}). -exitAppWithContext: (GameController.m:891-912) writes all three on its "
+        f"way out, and {SHUTDOWN_LOG_CLOSED_WITNESS!r} in particular comes AFTER the :906 "
+        "defaults synchronize that assert_clean_exit infers the shutdown from - so a process "
+        "that died in OOLoggingTerminate, SDL_Quit or the OpenAL shutdown passes every other "
+        "check in this tier and is caught only here (oo-e75)."
+    )
+    ordered = [at[w] for w in SHUTDOWN_WITNESSES]
+    assert ordered == sorted(ordered), (
+        f"the shutdown witnesses appear out of order in {log} (offsets "
+        + ", ".join(f"{w}={at[w]}" for w in SHUTDOWN_WITNESSES)
+        + "). GameController.m writes them at :893, :907 and :908 in that sequence, so this is "
+        "not one run's shutdown."
+    )
+
+    # Which of the nine exit paths actually ran. The line is
+    # "[exit.context]: Exiting: <context>." (GameController.m:893).
+    line = tail[at[SHUTDOWN_EXIT_CONTEXT_WITNESS] :].splitlines()[0].strip()
+    if expected_context is not None:
+        assert expected_context in line, (
+            f"the game exited for the wrong reason: expected a context naming "
+            f"{expected_context!r}, but the log says {line!r}. -exitAppWithContext: is reached "
+            "from nine call sites in this tree and EVERY one of them synchronizes defaults, "
+            "closes the log and exits 0 - so without this assertion a test whose gesture did "
+            "nothing, while the game left by some other route, is green with its central claim "
+            "false (oo-e75)."
+        )
+    return line
+
+
+def assert_no_parked_runtime_files(window):
+    """The shared build is as THIS run found it: every DLL it parked was renamed back.
+
+    ``GameWindow._park_software_gl`` RENAMES opengl32.dll and libgallium_wgl.dll inside the
+    SHARED build tree (five agents run against that one directory) and ``_restore_software_gl``
+    puts them back from ``kill()``. Nothing asserted that the restore happened. A run that dies
+    between the two leaves the component tier's software GL renamed on disk, and the symptom
+    lands on a DIFFERENT tier hours later as "the game cannot render offscreen any more" - the
+    worst kind of leak, because the test that caused it went green.
+
+    SCOPED TO THIS RUN'S OWN BOOKKEEPING, not to the state of the directory. Listing the shared
+    app dir for ``*.gui-tier-parked`` was the first spelling and it is WRONG: a concurrent
+    sibling GUI run legitimately has those DLLs parked for the duration of its own game, so the
+    directory scan fails on another agent's correct behaviour. Measured - it did, twice, against
+    a sibling's in-flight run. Same defect class as a bare "is any oolite.exe running?", which
+    surviving_game_processes rejects for the same reason.
+
+    Both failure directions are covered, because they are different bugs: an unrestored parked
+    file (``_restore_failures``, recorded when the rename back cannot find its source) and a DLL
+    this run parked that is now absent from the build altogether.
+    """
+    assert isinstance(window, GameWindow), (
+        "assert_no_parked_runtime_files takes the GameWindow, not a path: the check is 'did THIS "
+        "run put back what it moved', and only the window knows what it moved. A directory scan "
+        "fails on a concurrent sibling run's legitimate parking (oo-e75)."
+    )
+    assert not window._restore_failures, (
+        "software-GL DLL(s) this run parked could not be renamed back: "
+        + ", ".join(sorted(window._restore_failures))
+        + ". _park_software_gl moved them aside inside the SHARED build "
+        f"{window.app_dir} and _restore_software_gl found nothing to move back, so the "
+        "component tier's offscreen rendering is broken on disk for every other agent on this "
+        "machine until someone renames them by hand (oo-e75)."
+    )
+    lost = sorted(path for path in window._parked_ever if not os.path.isfile(path))
+    assert not lost, (
+        "software-GL DLL(s) this run parked are missing from the shared build: "
+        + ", ".join(lost)
+        + f". The restore reported success, so no *{GameWindow._PARKED_SUFFIX} twin is left "
+        "either: the rename lost the file rather than merely leaving it aside, and there is "
+        "nothing to rename back (oo-e75)."
+    )
+    return list(window._parked_ever)

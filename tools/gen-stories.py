@@ -398,10 +398,11 @@ def header_declares_ns(p):
     except OSError: return False
     return text_declares_ns(strip_noncode(t))
 
-def is_c_file(p):
-    """This file can be renamed to .c in one mechanical step: a plain-C body AND a header that
-    declares no NS* types (a header signature in NS* is an interface change, not a rename)."""
-    return body_is_c(p) and not header_declares_ns(p)
+# The "can this be renamed to .c in one mechanical step" rule (plain-C body AND a header that
+# declares no NS* types) has exactly ONE definition, and it is the "renames" branch of classify()
+# below. A second helper used to state it (is_c_file, bead oo-yg8p); it was called from nowhere in
+# the generator and only from the tests, so it could drift away from the live rule silently. Do not
+# reintroduce it: ask classify(p) == "renames".
 
 def classify(p):
     """Which sweep owns this file: 'renames' (mechanical .m -> .c), 'foundation' (plain-C body but
