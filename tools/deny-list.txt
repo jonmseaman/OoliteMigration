@@ -4,7 +4,9 @@
 # A pattern that must match a literal '#' has to start with the bracket form '[#]', or the
 # reader takes the whole line for a comment and the rule silently never runs.
 # Consumed by tools/tier-a.sh, which greps a changed file for these and compares the hit
-# count against the same file at the merge base — a *new* hit fails the tier.
+# count against the same file at the merge base — a *new* hit fails the tier, and by
+# tools/guardrails.sh (bead oo-ptc), which applies the same baseline-relative rule to every
+# changed source file in a branch rather than to one named TU.
 #
 # It has to be baseline-relative, not absolute: today the tree legitimately contains 3,828
 # JS_* call sites across 102 files and links libgnustep-base everywhere. The regression
@@ -22,3 +24,30 @@
 \bGNUSTEP_BASE_LIBRARY\b
 [#]import[[:space:]]*<Foundation/
 \bNSAutoreleasePool\b
+[-]lgnustep-base\b
+\bNS_DURING\b
+\bNS_HANDLER\b
+
+# --- SpiderMonkey build dependencies (Phase 1 item 1.7: deleted with the backend) ---
+# NSPR ships with mozjs and only ever arrives as its transitive dependency; a PR_* call or an
+# -lnspr on a link line means the old engine came back in through the build system.
+\bmozillajs\b
+\bmozjs\b
+[-]lnspr[0-9]*\b
+\bPR_(Malloc|Free|GetCurrentThread|Init|NewLock|Lock|Unlock)\b
+
+# --- Warning suppression (CLAUDE.md rule 3) ---
+# Kept here as well as in tools/guardrails.sh's suppression check because the two ask different
+# questions: the deny-list is per-file and baseline-relative, so it also catches a suppression
+# that arrives by COPYING an already-suppressed file (a copy has a fresh, empty baseline; a
+# rename is compared against its old path and is correctly a no-op), which an added-lines scan
+# can miss.
+# That claim is only true if the two pattern sets actually agree. They diverged once: the
+# _Pragma("...") operator was in neither, and _Pragma is the ONLY way to put a diagnostic
+# suppression inside a macro — `#define QUIET_BEGIN _Pragma("GCC diagnostic push")` — so it is
+# the natural spelling in a port. Keep this block and tools/guardrails.sh sup_patterns() in step.
+# Bracket forms so this file does not match itself when it is the file being scanned.
+[-]Wno-[A-Za-z0-9=_-]+
+[#][[:space:]]*pragma[[:space:]]+(GCC|clang)[[:space:]]+diagnostic
+[_]Pragma[[:space:]]*\([[:space:]]*"[^"]*diagnostic
+__attribute__[[:space:]]*\(\([^)]*unused
