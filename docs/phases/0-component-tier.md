@@ -50,7 +50,8 @@ tier can land *before* the golden harness, *before* item 0.1's iteration-order w
 across the Phase 5 platforms unchanged.
 
 Scenarios must still be written to be robust: assert **"within N ticks"**, never "at tick N"; assert
-**"no pirate remains"**, never an exact position. A scenario that needs an exact float is a golden.
+**"the pirate's `energy` dropped below its `maxEnergy`"**, never an exact energy or position. A
+scenario that needs an exact float is a golden.
 
 ## The observation surface (all of it already exists)
 
@@ -60,10 +61,10 @@ Steps send small JS strings through the existing `Perform Command` packet — ex
 | Need | Existing JS surface |
 |---|---|
 | Spawn a scene | `addShips(role, count[, position, radius])` (`src/Core/Scripting/OOJSSystem.m:192`, `:943`), which returns the array of ships added; `legacy_spawnShip` (`:213`). There is **no `addShipsWithinRadius`** — pass `position` and `radius` to `addShips`. |
-| Make a spawned ship act | `ship.setAI(...)`. **`addShips` assigns `nullAI.plist`**: spawned ships never think, never target and never fire until given their role's real AI (`oolite-policeAI.js`, `oolite-pirateAI.js`, …). |
+| Make a spawned ship act | `ship.setAI(...)`. The role's template does carry an `ai_type` (`oolite_template_viper` → `oolite-policeAI.js`, `Resources/Config/shipdata.plist:3831`; pirate templates → `oolite-pirateAI.js`, e.g. `:390`, `:1400`, `:1569`), but `-setAITo:` **throws it away and substitutes `oolite-nullAI.js` while `[PLAYER scriptsLoaded]` is false** (`src/Core/Entities/ShipEntityAI.m:254-257`). Ships spawned before a game is loaded never think, never target and never fire, whatever their role — so load, launch, then set the AI explicitly. |
 | Count survivors | `countShipsWithRole` (`OOJSSystem.m:197`) |
 | Enumerate the world | `system.allShips` (`OOJSSystem.m:116,152`) |
-| Position, orientation, scan class, liveness | `OOJSEntity.m:105,107,108,119` (`position`, `orientation`, `scanClass`, `isValid`) |
+| Orientation, position, scan class, liveness | `OOJSEntity.m:105,107,108,119` (`orientation`, `position`, `scanClass`, `isValid`) |
 | Health | `energy`, `maxEnergy` — read-write on **`Entity`** (`OOJSEntity.m:101,104`), so available on every ship |
 | AI state, motion, identity | `OOJSShip.m:340` (`AIState`), `:472` (`velocity`), `:458` (`speed`), `:388` (`heading`), `:439` (`primaryRole`) |
 | Targeting | `ship.target`, `ship.hasHostileTarget` |
@@ -116,7 +117,8 @@ Feature: Ship-to-ship combat
 
 `Given` sets `OO_RANDOM_SEED` at launch, loads a save, launches the player and empties the system;
 `When` sends `addShips(role, count, position, radius)` and then `setAI` with the role's real AI,
-since `addShips` alone leaves the ship on `nullAI.plist`; the run step polls the predicate and
+since `-setAITo:` leaves the ship on `oolite-nullAI.js` until the player's scripts are loaded
+(`ShipEntityAI.m:254-257`); the run step polls the predicate and
 returns as soon as it holds, failing on timeout rather than hanging; `Then` asserts in Python on the
 values read back (`target`, `hasHostileTarget`, `energy` versus `maxEnergy`).
 

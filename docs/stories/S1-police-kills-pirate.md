@@ -50,10 +50,10 @@ the protocol framing, launch, environment and timeout handling — headless, wit
 | Need | Surface |
 |---|---|
 | Spawn | `addShips(role, count[, position, radius])` (`src/Core/Scripting/OOJSSystem.m:192`, `:943`) — returns the array of ships added; `legacy_spawnShip` (`:213`). There is **no `addShipsWithinRadius`**. |
-| Give a spawned ship a working AI | `ship.setAI("oolite-policeAI.js")` / `"oolite-pirateAI.js"`. **`addShips` assigns `nullAI.plist`**, so spawned ships never think, never target and never fire until their AI is set. |
+| Give a spawned ship a working AI | `ship.setAI("oolite-policeAI.js")` / `"oolite-pirateAI.js"`. Do **not** rely on the role's own AI: `shipdata.plist` does supply one (`oolite_template_viper` → `ai_type = "oolite-policeAI.js"` at `Resources/Config/shipdata.plist:3831`; the pirate templates → `"oolite-pirateAI.js"`, e.g. `:390`, `:1400`, `:1569`), but `-setAITo:` **discards it** and substitutes `oolite-nullAI.js` whenever `[PLAYER scriptsLoaded]` is false (`src/Core/Entities/ShipEntityAI.m:254-257`). Ships spawned before a game is loaded therefore never think, never target and never fire — which is exactly what ADR-0019 observed at the main menu and while docked. Load and launch first, then set the AI explicitly. |
 | Count by role | `countShipsWithRole` (`OOJSSystem.m:197`) — counts the **ambient** population too, which the scenario must empty first |
 | Enumerate | `system.allShips` (`OOJSSystem.m:116,152`) |
-| Position / orientation / scan class / liveness | `OOJSEntity.m:105,107,108,119` |
+| Orientation / position / scan class / liveness | `OOJSEntity.m:105,107,108,119` (`orientation`, `position`, `scanClass`, `isValid`) |
 | Health | `energy` / `maxEnergy` on **`Entity`**, read-write (`OOJSEntity.m:101,104`) |
 | AI state / motion / identity | `OOJSShip.m:340` (`AIState`), `:472` (`velocity`), `:458` (`speed`), `:439` (`primaryRole`) |
 | Targeting | `ship.target`, `ship.hasHostileTarget` |
@@ -115,7 +115,9 @@ Feature: Ship-to-ship combat
 
 `Given` sets `OO_RANDOM_SEED` at launch, `-load`s a save, calls `player.ship.launch()` and clears the
 ~80 ambient entities. The spawn steps call `addShips(role, 1, locus, radius)` and then `setAI` with
-the role's real AI script, because `addShips` assigns `nullAI.plist` and a null-AI ship never acts.
+the role's real AI script, because `-setAITo:` replaces the template's `ai_type` with
+`oolite-nullAI.js` until the player's scripts are loaded (`ShipEntityAI.m:254-257`) and a null-AI ship
+never acts.
 The run step polls the predicate on an interval and returns as soon as it holds; it must fail on
 timeout, not hang. "Has taken damage" is `energy < maxEnergy` on the pirate (`Entity.energy`,
 `OOJSEntity.m:101,104`).
