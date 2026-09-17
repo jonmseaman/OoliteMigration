@@ -16,14 +16,21 @@ Fill in. Unknown is a valid entry; a blank is not.
 
 | Name | OS / version | Arch | CPU cores | RAM | Disk (NVMe?) | GPU | Roles | Grants held |
 |---|---|---|---|---|---|---|---|---|
-| windows | Windows 11 Pro 25H2 (26200.9445.260908) | x86-64 | 2 | 8 GiB | 128 GiB Premium SSD P10 (~500 IOPS, 100 MB/s); **no local NVMe at this size** | none; Mesa llvmpipe software GL | Hermes `/goal` + Claude Code + `bd` + worktrees; MSYS2 UCRT64 build; goldens (native processes, Mesa llvmpipe); PyAutoGUI tier; merge queue | RDP as `azureuser`; SSH key from the Mac |
+| windows | Windows 11 Pro 25H2 (26200), hostname `DESKTOP-DNENHGI` (Jon's desktop; replaced the Azure VM 2026-09-16) | x86-64 | 16 (24 threads), i9-12900KS | 64 GiB | 2 TB NVMe (`C:`, ~680 GB free) + 1 TB NVMe | NVIDIA RTX 4070 Ti + Intel UHD 770; goldens still use Mesa llvmpipe for determinism | Hermes `/goal` + Claude Code + `bd` + worktrees; MSYS2 UCRT64 build; goldens (native processes, Mesa llvmpipe); PyAutoGUI tier; merge queue | local console as `jon`; not admin |
 | mac | macOS 26.x | arm64 | ? | ? | ? | Apple | **Phase 5 onward:** macOS build + PyAutoGUI tier; planning until then | Accessibility, Screen Recording: **not yet granted** |
 | linux | container or rented box | x86-64 | — | — | — | — | **Phase 5 onward:** Linux build + goldens | n/a |
 | inference | — | — | — | — | — | — | OpenAI-compatible endpoint ([ADR-0005](../decisions/0005-defer-dgx-spark.md)), rented or LAN; URL in Hermes config | n/a |
 
-## The machine is an Azure VM
+## The machine was an Azure VM (2026-09-11 to 2026-09-16)
 
-Since 2026-09-11 the `windows` row is not a physical desktop but an Azure VM, because Jon has no
+**Superseded 2026-09-16:** the VM is torn down and the `windows` row is Jon's desktop again. The
+section is kept for the traps it records; the `tools/azure/` scripts remain the pinned-download
+provisioning path. On the desktop the paths differ from the runbook: the clone is
+`C:\Users\jon\OoliteMigration`, MSYS2 is scoop's at `C:\Users\jon\scoop\apps\msys2\current`
+(not `C:\msys64`), Node and Claude Code come from scoop's `nodejs`, and `bd`/`dolt` are in
+`C:\tools\` on the **user** PATH because the fleet account is not an administrator.
+
+Since 2026-09-11 the `windows` row was not a physical desktop but an Azure VM, because Jon had no
 access to the desktop. Provisioned and recovered with `az` from the Mac; see
 [`tools/azure/`](../../tools/azure/).
 
@@ -140,3 +147,5 @@ once measured; they set the concurrency caps.
 - 2026-09-11 — WSL2 dropped; everything native; checklist added (keep-awake, MSYS2, logins, `bd dolt`); Linux joins at Phase 5 (ADR-0017).
 - 2026-09-11 — The `windows` machine is an Azure VM (`OoliteConversion`, `Standard_D2s_v3`), inventory filled in, quota ceiling and two risks recorded; concurrency set to 1.
 - 2026-09-11 — Bring-up done: SSH, Defender/Search tuning, git 2.55.0.5, Node 24.21.0, MSYS2 2026-06-11, gh 2.100.0, bd 1.2.2, dolt 2.3.3, Claude Code 2.1.268 (logged in by Jon), Hermes 0.21.1 with the I5 config at concurrency 1. Repo at `C:\src\OoliteMigration`; beads bootstrapped (710 issues). Remaining: MSYS2 build deps and a first `./mk.sh build test`.
+- 2026-09-16 — VM torn down; the `windows` machine is Jon's desktop (`DESKTOP-DNENHGI`, 16C/24T, 64 GiB, NVMe). Bring-up done from a Claude Code session: git `core.autocrlf=false` / `core.longpaths=true` (global; no admin), remotes `fork`/`upstream` added, scoop MSYS2 updated (`pacman -Syuu` ×2) plus `git base-devel ccache jq`, `/etc/profile.d/oolite-fleet.sh` puts the `bd` guard shim first (`bd close` exits 77), bd 1.2.2 + dolt 2.3.3 in `C:\tools` on the user PATH, Claude Code 2.1.268 logged in, beads bootstrapped (714 issues, Dolt on 3307, `beads.role=maintainer`), `HERMES_GIT_BASH_PATH` set to MSYS2's bash. Hermes installed by Jon; I5 config not yet applied. Remaining for Jon: keep-awake (AC sleep is 10 min, display 3 min), `gh auth login`, `hermes config` per I5 at concurrency 5, then bead `oo-f4i` (MSYS2 build deps) and a first `./mk.sh build test`.
+- 2026-09-16 (later) — Hermes I5 config applied (concurrency 5) and the skill trusted; the five bead branches merged by hand on 2026-09-11 (`oo-f4i`, `oo-gku`, `oo-scnp`, `oo-djz2`, `oo-1bf.3`) closed by Jon, unblocking S2–S8. `tools/setup-windows.sh` run (second run installs nothing; `--check` green), `./mk.sh build test` green in ~10 min, `./mk.sh test test` passes (loads in 1.6 s, 1280×720 snapshot). MSYS2 git has its own `/home/jon/.gitconfig`: identity, `autocrlf=false`, `longpaths=true` set there too. `MSYS2_BASH` points the fleet scripts' re-exec at the scoop MSYS2. Machine checklist done except `gh auth login`.

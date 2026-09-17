@@ -231,7 +231,23 @@ should land **before** the golden harness runner, which can then reuse its conso
 
 ## Commands
 
-Not yet available. Produced by 0.9.
+Tier A only; B and C are still to come (0.9).
+
+```
+tools/tier-a.sh <file>          # single-TU compile + clang-tidy + deny-list, < 30 s, offline
+```
+
+Measured 2026-09-16 on the fleet Windows machine, warm shared ccache and an existing
+`build/meson_test`: `OOColor.m` 1.9 s, `OORoleSet.m` 1.8 s wall. From no build directory at
+all the script configures one itself and the first run costs ~8 s total. The check set is in
+`.clang-tidy` at the repo root; the symbol deny-list is `tools/deny-list.txt` and is
+baseline-relative (a *new* hit versus the merge base fails, since the tree legitimately
+contains 3,828 `JS_*` sites today).
+
+That module's unit tests, listed for Tier A in [execution-model §3.1](../execution-model.md),
+are **not** wired in: there is no per-module unit-test target in this tree yet and a component
+scenario costs ~5-10 s per game launch (ADR-0018). They belong here, under the same budget,
+once such a target exists.
 
 ## Open decisions
 

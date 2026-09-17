@@ -11,6 +11,18 @@ boundaries: the repository root and .worktrees/<bead> checkouts only; bd, git an
 stop when: three consecutive turns produce no closed bead, no escalation and no new acceptance failure, or a bead is blocked on a decision that has no default
 ```
 
+When the session's model is the frontier model and it should take the Phase 0 seams as well, start
+Hermes with `BEADS_WORKER_LABELS="fleet frontier"` exported and paste this instead (the scripts read
+the variable; the contract names both labels):
+
+```
+/goal Drain the beads queue for phase 0 using the beads-worker skill: for every open bead labelled phase:0 and either fleet or frontier, delegate a worker, delegate a reviewer, run scripts/accept.sh, and repeat until none remain. A frontier bead's acceptance is prose plus exit 1: its worker must replace it with executable commands via bd update <id> --acceptance before accept.
+verify: .agents/skills/beads-worker/scripts/goal-check.sh 0 exits 0, and its output is quoted at the end of the final turn
+constraints: never run bd close yourself; never touch goldens/, tests, or warning flags; never work on review, rebless, proposed-adr or escalated beads; never push
+boundaries: the repository root and .worktrees/<bead> checkouts only; bd, git and the beads-worker scripts
+stop when: three consecutive turns produce no closed bead, no escalation and no new acceptance failure, or a bead is blocked on a decision that has no default
+```
+
 Then, in the same session:
 
 ```

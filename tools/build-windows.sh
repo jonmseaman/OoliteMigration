@@ -96,7 +96,13 @@ export CCACHE_DEPEND=1
 
 # ccache hashes any absolute paths it is handed, and every agent worktree sits at a different
 # absolute path. base_dir rewrites absolute paths beneath it to relative ones before hashing.
-export CCACHE_BASEDIR="$REPO_ROOT"
+#
+# It must be a *native* Windows path. ccache here is a native binary and rejects an MSYS path
+# ("CCACHE_BASEDIR: not an absolute path: /c/Users/..."), which makes every later ccache
+# invocation - including --print-stats - fail. That was silent: the stats query below returned
+# empty and the build died in arithmetic instead, and base_dir was never actually in effect, so
+# worktrees missed on every object.
+export CCACHE_BASEDIR="$(cygpath -m "$REPO_ROOT")"
 
 # Pin the version macro, which is what actually decides whether worktrees share the cache.
 #
@@ -110,9 +116,15 @@ export CCACHE_BASEDIR="$REPO_ROOT"
 # it must not use this script, or must pass OOLITE_VER_FULL explicitly.
 export OOLITE_VER_FULL="${OOLITE_VER_FULL:-0.0.0-fleet}"
 
-ccache_stat() { ccache --print-stats 2>/dev/null | awk -v k="$1" '$1 == k {print $2}'; }
+ccache_stat() {
+  local v
+  v="$(ccache --print-stats 2>/dev/null | awk -v k="$1" '$1 == k {print $2}')"
+  # Any ccache failure (bad config, missing cache dir) yields an empty string; never let that
+  # reach an arithmetic context, where it aborts the build under `set -e` before a line compiles.
+  case "$v" in ''|*[!0-9]*) echo 0 ;; *) echo "$v" ;; esac
+}
 HITS_BEFORE=$(( $(ccache_stat direct_cache_hit) + $(ccache_stat preprocessed_cache_hit) ))
-MISS_BEFORE="$(ccache_stat cache_miss)";       MISS_BEFORE="${MISS_BEFORE:-0}"
+MISS_BEFORE="$(ccache_stat cache_miss)"
 
 say "ccache $(ccache --version | head -1 | awk '{print $3}'), cache_dir $(ccache --show-config 2>/dev/null | awk '/cache_dir =/{print $NF}')"
 

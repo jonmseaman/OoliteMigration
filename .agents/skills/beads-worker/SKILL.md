@@ -41,7 +41,12 @@ for the mechanics; this file tells you when to call them.
 - The `bd` guard shim first on PATH **before Hermes starts**, so no agent in this process tree can
   close a bead directly: `export PATH="$REPO/.agents/skills/beads-worker/scripts/bin:$PATH"`
 - Beads labelled per the queue contract: every workable bead carries `fleet` and `phase:<N>`;
-  beads for humans carry `rebless` or `proposed-adr`; seams carry `frontier`. Acceptance lives in
+  beads for humans carry `rebless` or `proposed-adr`; seams carry `frontier`. The loop works the
+  labels in `BEADS_WORKER_LABELS` (default `fleet`); export `BEADS_WORKER_LABELS="fleet frontier"`
+  before starting Hermes when its model is the frontier model and it should take the seams too.
+  `review`, `rebless`, `proposed-adr` and `escalated` beads are always excluded
+  (`BEADS_WORKER_EXCLUDE`). A `frontier` bead's acceptance is prose plus `exit 1` until the worker
+  replaces it with executable commands (`bd update <id> --acceptance`), so the worker prompt says so. Acceptance lives in
   the bead body under `## Acceptance` (fenced), one shell command per line, each exiting 0 on
   success; `accept.sh` refuses a block that is comments only
 - `delegation.max_concurrent_children` ≥ 2 in `config.yaml`; `delegation.child_timeout_seconds`
@@ -174,7 +179,8 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
 ## Pitfalls
 
 - **The goal is reachable without a human by construction.** `goal-check` counts only
-  `fleet`+`phase:<N>` beads; `rebless`, `proposed-adr` and `frontier` beads are invisible to it.
+  `phase:<N>` beads with a `BEADS_WORKER_LABELS` label; `rebless`, `proposed-adr`, `review` and
+  `escalated` beads are invisible to it, and `frontier` beads only when the label set includes them.
   If the gate never passes, a bead is mislabelled or blocked, not "hard": say so rather than
   attempting `frontier` work.
 - **`reevaluate.sh` needs `claude` on PATH and an Anthropic credential in the environment.** If

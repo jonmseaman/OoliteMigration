@@ -25,9 +25,11 @@ MSYS_PKGS=(dos2unix git pactoys unzip)
 
 # mingw-w64-ucrt-x86_64-* packages. mesa supplies the llvmpipe opengl32.dll the goldens copy
 # beside the binary (upstream/oolite/tests/run_test_fn.sh); ccache backs the shared compiler
-# cache; jq is required by the fleet scripts (.agents/skills/beads-worker/scripts/_lib.sh).
+# cache; jq is required by the fleet scripts (.agents/skills/beads-worker/scripts/_lib.sh);
+# clang-tools-extra supplies clang-tidy, which tools/tier-a.sh requires (Phase 0 item 0.9) -
+# the clang package alone does not ship it, so Tier A dies on a machine provisioned without it.
 UCRT_PKGS=(
-  binutils clang lld
+  binutils clang clang-tools-extra lld
   espeak-ng libpng libvorbis openal pcaudiolib sdl3
   meson ninja nsis jq
   mesa ccache

@@ -286,11 +286,24 @@ def sweep_extractors():
 def sweep_foundation():
     out = []
     for p in m_files():
-        if not grep(p, r'\bNS(String|Array|Dictionary|Set|Number|Data|Enumerator|Mutable\w+)\b'): continue
+        header_ns = header_declares_ns(p)
+        if not grep(p, r'\bNS(String|Array|Dictionary|Set|Number|Data|Enumerator|Mutable\w+)\b') and not header_ns: continue
         if p.name in GIANT: continue
         n = count_lines(p); rel = p.relative_to(ROOT).as_posix().replace(".m", ".mm"); mod = module_of(p)
-        out.append((f"Migrate Foundation usage to oofnd: {p.name}", f"Replace NSString/NSArray/NSDictionary/NSSet/NSNumber/NSData usage in {rel} ({n} lines, module {mod}) with oofnd types, the class still Objective-C. Do not convert the class.",
-                    [f"! grep -nE '\\bNS(String|Array|Dictionary|Set|Number|Data|Enumerator|Mutable[A-Za-z]+)\\b' {rel}", f"tools/tier-a.sh {rel}", "tools/tier-b.sh --fast"],
+        h = header_for(p); hrel = h.relative_to(ROOT).as_posix() if h else None
+        grep_files = rel + (f" {hrel}" if header_ns and hrel else "")
+        extra = ""
+        if header_ns:
+            # ADR-0012: this file's body is plain C, but its header declares NS* types in a public
+            # signature, so renaming it to .c would change an interface used across the tree. The
+            # Foundation migration comes first and must clean the header too; the rename bead for
+            # this file is emitted by a later tools/gen-stories.py run, once this bead has closed.
+            extra = (f" Its header {hrel} declares NS* types in public signatures, so the header must be migrated too:"
+                     " every declared NS* parameter/return becomes its oofnd equivalent, and every caller in the tree"
+                     " is updated in the same commit. Until that lands this file cannot be renamed to .c"
+                     " (ADR-0012); the rename bead is emitted only after this bead closes.")
+        out.append((f"Migrate Foundation usage to oofnd: {p.name}", f"Replace NSString/NSArray/NSDictionary/NSSet/NSNumber/NSData usage in {rel} ({n} lines, module {mod}) with oofnd types, the class still Objective-C. Do not convert the class.{extra}",
+                    [f"! grep -nE '\\bNS(String|Array|Dictionary|Set|Number|Data|Enumerator|Mutable[A-Za-z]+)\\b' {grep_files}", f"tools/tier-a.sh {rel}", "tools/tier-b.sh --fast"],
                     ["2.10"], "the exemplar consumers named in beads 2.4-2.8", MODULE_ORDER[mod]))
     return out
 
@@ -302,9 +315,9 @@ def objc_usage(p):
     kw = len(re.findall(r'@(selector|protocol|try|catch|synchronized|autoreleasepool|class|property|end)', t))
     return (sends, kw, '@interface' in t)
 
-def is_c_file(p):
-    """No class, and little enough Objective-C (sends, @"" literals, OOLog) that a rename bead can
-    replace it in one small step once oofnd's strings and logging exist."""
+def body_is_c(p):
+    """The old is_c_file test: the .m body alone has no class and little enough Objective-C
+    (sends, @"" literals, OOLog) to be replaced in one small step."""
     if grep(p, r'@implementation'): return False
     sends, kw, iface = objc_usage(p)
     try: t = open(p, errors="replace").read()
@@ -312,20 +325,66 @@ def is_c_file(p):
     literals = t.count('@"'); oolog = len(re.findall(r'\bOOLog', t))
     return not iface and kw == 0 and (sends + literals + oolog) <= 8
 
+# An NS* type used in a declared signature: a pointer to any NS class, or one of the NS value
+# structs passed by value. Comment and preprocessor lines are stripped first so a mention in a
+# doc comment (`// @"(w + xi)"`, `// returns an NSString`) does not count as a declaration.
+NS_SIG = re.compile(r'\bNS[A-Z]\w*\s*\*|\bNS(Size|Rect|Point|Range)\b')
+
+def strip_noncode(text):
+    text = re.sub(r'/\*.*?\*/', ' ', text, flags=re.S)
+    out = []
+    for line in text.splitlines():
+        line = re.sub(r'//.*$', '', line)
+        if line.lstrip().startswith('#'): continue
+        out.append(line)
+    return "\n".join(out)
+
+def header_declares_ns(p):
+    """True when this file's OWN header declares an NS* type in a signature. Renaming such a file
+    to .c would change an interface used across the tree (bead oo-qnmv), so it is not a mechanical
+    rename: the Foundation sweep has to clean the header first."""
+    h = header_for(p)
+    if h is None: return False
+    try: t = open(h, errors="replace").read()
+    except OSError: return False
+    for line in strip_noncode(t).splitlines():
+        if not NS_SIG.search(line): continue
+        if re.search(r'[(),;]', line) or re.search(r'\bNS[A-Z]\w*\s*\*\s*\w', line): return True
+    return False
+
+def is_c_file(p):
+    """This file can be renamed to .c in one mechanical step: a plain-C body AND a header that
+    declares no NS* types (a header signature in NS* is an interface change, not a rename)."""
+    return body_is_c(p) and not header_declares_ns(p)
+
+def classify(p):
+    """Which sweep owns this file: 'renames' (mechanical .m -> .c), 'foundation' (plain-C body but
+    the header declares NS* types: migrate Foundation first, rename bead emitted after it closes),
+    or 'convert' (real Objective-C, Phase 3 C++20 conversion)."""
+    if not body_is_c(p): return "convert"
+    return "foundation" if header_declares_ns(p) else "renames"
+
 def sweep_renames():
     out = []
     for p in m_files():
-        if not is_c_file(p): continue
+        if classify(p) != "renames": continue
         rel = p.relative_to(ROOT).as_posix(); c = rel[:-2] + ".c"; sends = objc_usage(p)[0]
+        h = header_for(p); hrel = h.relative_to(ROOT).as_posix() if h else None
         extra = f" It has {sends} residual Objective-C call(s); replace each with the plain C equivalent (usually a logging macro or a Foundation call that oofnd now provides)." if sends else ""
+        acc = [f"test -f {c}", f"! test -f {rel} && ! test -f {rel}m", f"! grep -nE '@(implementation|interface|selector|protocol)|@\"' {c}"]
+        if hrel:  # the header must stay free of NS* signatures, or this is an interface change, not a rename (bead oo-qnmv)
+            acc.append(f"! grep -nE '\\bNS[A-Z][A-Za-z0-9_]*\\s*\\*|\\bNS(Size|Rect|Point|Range)\\b' {hrel}")
+        acc.append(f"tools/tier-a.sh {c}")
         out.append((f"Rename C-in-.m file to .c: {p.name}", f"{rel} contains no Objective-C class (ADR-0012). Rename to {c}, add extern \"C\" guards to its header, adjust meson. Otherwise byte-identical code.{extra}",
-                    [f"test -f {c}", f"! test -f {rel} && ! test -f {rel}m", f"! grep -nE '@(implementation|interface|selector|protocol)|@\"' {c}", f"tools/tier-a.sh {c}"], ["2.10"], "docs/decisions/0012-c-stays-c.md", 1))
+                    acc, ["2.10"], "docs/decisions/0012-c-stays-c.md", 1))
     return out
 
 def sweep_convert():
     out = []; presplit = []
     for p in m_files():
-        if is_c_file(p): continue
+        # 'foundation' files (plain-C body, NS* in the header) belong to the Foundation sweep; their
+        # rename bead appears on the next generator run, once that migration has closed (oo-qnmv).
+        if classify(p) != "convert": continue
         if p.name in GIANT or p.name in ("OOColor.m",): continue
         n = count_lines(p); h = header_for(p); hn = count_lines(h) if h else 0
         freefn = not grep(p, r'@implementation')
@@ -390,14 +449,14 @@ SWEEP_PHASE = {"renames": 3, "convert": 3, "presplit": 3, "foundation": 2, "extr
 
 def item_for_file(sweep, fname):
     """The (title, desc, acc, deps, exemplar, pri) the generator would emit for this file under this sweep, ignoring the classifier."""
-    saved = globals()["is_c_file"]
+    saved = globals()["classify"]
     try:
-        globals()["is_c_file"] = (lambda p: True) if sweep == "renames" else (lambda p: False)
+        globals()["classify"] = lambda p: sweep if sweep in ("renames", "foundation") else "convert"
         pat = re.compile(r"(^|[\s:/])" + re.escape(fname) + r"m?([\s(]|$)")
         for it in SWEEP_BUILDERS[sweep]():
             if pat.search(it[0]): return it
     finally:
-        globals()["is_c_file"] = saved
+        globals()["classify"] = saved
     return None
 
 def reclassify(bead_id, sweep):
@@ -430,16 +489,33 @@ def reclassify(bead_id, sweep):
     print(f"reclassified {bead_id}: {title}")
 
 def check_classification():
-    """Report existing rename/convert beads whose file the classifier now puts in the other sweep."""
+    """Report existing rename/convert beads whose file the classifier now puts in another sweep.
+
+    Only sweep:renames and sweep:convert are checked: they are the two Phase 3 sweeps that partition
+    the .m files, so a file in both is a contradiction. sweep:foundation is Phase 2 and orthogonal —
+    a file legitimately carries a Foundation bead *and* a later Phase 3 bead — so it is never
+    reported here. A renames bead whose header declares NS* types shows up as `renames -> foundation`
+    (bead oo-qnmv): the Foundation migration has to clean the header before the rename is mechanical.
+
+    Read-only: prints a report and exits 0, so it is safe in an acceptance block. Nothing is mutated;
+    `--reclassify <bead> <sweep>` applies one line of the report at a time."""
     out = subprocess.run(["bd", "list", "--all", "--json", "-n", "0", "--label-any", "sweep:renames,sweep:convert"], capture_output=True, text=True).stdout
     by_name = {p.name: p for p in m_files()}
-    for x in json.loads(out) or []:
+    try: issues = json.loads(out) or []
+    except json.JSONDecodeError: issues = []
+    checked = 0; bad = 0
+    for x in issues:
         fname = x["title"].split(": ")[-1].split(" ")[-1]; fname = fname[:-1] if fname.endswith(".mm") else fname
-        p = by_name.get(fname); 
+        p = by_name.get(fname)
         if not p: continue
-        want = "renames" if is_c_file(p) else "convert"
         have = next((l[6:] for l in x.get("labels", []) if l.startswith("sweep:")), "?")
-        if want != have and x["status"] != "closed": print(f"{x['id']}\t{have} -> {want}\t{fname}")
+        if have not in ("renames", "convert") or x["status"] == "closed": continue
+        checked += 1
+        want = classify(p)
+        if want != have:
+            bad += 1; print(f"{x['id']}\t{have} -> {want}\t{fname}")
+    print(f"checked {checked} rename/convert bead(s); {bad} misclassified")
+    return 0
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--apply", action="store_true"); ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--phase", type=int)
@@ -474,7 +550,7 @@ def main():
         if key.endswith(".review"): dk = gate_deps.get(f"{n}.gate", [])   # the review checks everything the gate used to wait on
         if key.endswith(".gate"): dk = list(dk) + [f"{n}.review"]           # and the gate waits on the review
         for d in dk: deps.append((key, d))
-    counts = {}; file_to_extractor = {}
+    counts = {}; file_to_extractor = {}; file_to_foundation = {}
     for skey, n, gen in SWEEPS:
         if a.phase is not None and n != a.phase: continue
         presplit = []
@@ -485,7 +561,12 @@ def main():
             for d in dk: deps.append((k, d))
             fname = title.split(": ")[-1].split(" ")[-1]
             if skey == "extractors": file_to_extractor[fname] = k
-            if skey == "foundation" and fname in file_to_extractor: deps.append((k, file_to_extractor[fname]))
+            if skey == "foundation":
+                file_to_foundation[fname] = k
+                if fname in file_to_extractor: deps.append((k, file_to_extractor[fname]))
+            # A rename bead for a file that also has a Foundation bead waits on it: the header and
+            # body must be free of NS* before the .m -> .c rename is mechanical (bead oo-qnmv).
+            if skey == "renames" and fname in file_to_foundation: deps.append((k, file_to_foundation[fname]))
         counts[skey] = len(items)
         for i, (title, desc, acc, dk, exemplar, pri) in enumerate(presplit):
             k = f"presplit:{i}"; ids[k] = create(title, "task", n, [f"phase:{n}", "frontier", "sweep:presplit"], body(desc, [], exemplar, "presplit", n, prose="Slice plan in the bead notes; each slice reads under 1,500 lines."), pri, parent=ids.get(f"epic{n}"))

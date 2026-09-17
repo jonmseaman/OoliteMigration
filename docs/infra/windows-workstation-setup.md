@@ -129,6 +129,13 @@ still the fastest way to reproduce the exact set: `setup-vm.ps1` then `setup-vm-
   ```
   git config --global url."git@github.com:".insteadOf "https://github.com/"
   ```
+- **The UCRT64 `jq` (mingw-w64-ucrt-x86_64-jq 1.8.2) aborts on any runtime error.** Instead of
+  `jq: error (...)` and exit 5 it dies with `Assertion failed: cb == jq_util_input_next_input_cb`
+  and exit 127, so a bead whose JSON lacks a field looks like a crashed tool rather than a bad
+  filter. The MSYS `jq` at `/usr/bin/jq` (same version) behaves correctly. `/ucrt64/bin` precedes
+  `/usr/bin` on the UCRT64 PATH, so write filters that cannot error (`.a // empty`, `if type==`)
+  or call `/usr/bin/jq` explicitly; found 2026-09-16 when an orchestrator ran
+  `bd show --json | jq '.labels'` on the array bd returns.
 - **PowerShell functions returning extra values.** `Write-Output` inside a PowerShell function is
   added to its return value, so a helper that logs and returns a path returns an *array*, and every
   `-FilePath` binding then fails with "Cannot convert System.Object[]". Use `Write-Host` for logging.
@@ -155,3 +162,13 @@ The beads database is a local Dolt DB per machine; `bd dolt push` / `pull` sync 
 - [ ] `bd ready` lists issues
 - [ ] `cd upstream/oolite && ./mk.sh build test` is green
 - [ ] `python3 tests/launch_snapshot.py` runs
+
+## Deviations on Jon's desktop (2026-09-16)
+
+The runbook above was written for the VM. On the desktop that replaced it
+([I0](0-machines.md) status log): the clone is `C:\Users\jon\OoliteMigration`; MSYS2 is the
+scoop package at `C:\Users\jon\scoop\apps\msys2\current` (so `HERMES_GIT_BASH_PATH` and the
+`profile.d` paths point there, not at `C:\msys64`); Node, Python and Claude Code come from scoop;
+`bd`/`dolt` sit in `C:\tools\` on the **user** PATH and git config is `--global`, because the
+account is not an administrator. The Hermes installer set `HERMES_GIT_BASH_PATH` to scoop's Git
+Bash, exactly the trap above; it was reset by hand.
