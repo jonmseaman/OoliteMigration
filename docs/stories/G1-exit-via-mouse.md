@@ -51,6 +51,126 @@ pass, and this command's whole job is to distinguish "G1 passed" from "G1 never 
 Post-exit hygiene (G9) asserted inside the test: no core dump; no `ERROR`/exception lines in
 `Latest.log`; defaults file written and re-parseable.
 
+### What the command needs, and what it does *not* need (bead oo-0p8f)
+
+`-m offline` is **not** an acceptable substitute for the command above. `@pytest.mark.offline`
+covers only the pure-arithmetic tests, so `pytest -q -m offline` deselects
+`test_g1_exit_via_mouse` — the entire point of this story — and still reports success. If this
+tier's acceptance ever reports "N passed, 1 deselected", it is not gating G1.
+
+The command runs in `accept.sh`'s clean detached checkout, which contains the tests but not
+`build/` (gitignored, `upstream/oolite/.gitignore:25`). `conftest._default_app_dir` therefore
+falls back to the main checkout's `build/meson_test/oolite.app` via the shared git common dir, so
+the real test runs from a worktree rather than being skipped out of the gate. `--oolite-app` and
+`$OO_APP_DIR` still override.
+
+It does need the interactive desktop, unlocked and logged in (ADR-0017), and it takes
+`tools/gui-lock` for the duration.
+
+### Two environment dependencies that make this fail on some desktops and not others
+
+Both were diagnosed under bead oo-0p8f, after the same code passed for the implementer and failed
+for the reviewer at a *correctly computed* coordinate. Neither is flake; both are now asserted
+rather than hoped for.
+
+1. **DPI awareness.** Oolite's manifest declares PerMonitorV2
+   (`src/SDL/OOResourcesWin/oolite.exe.manifest:34-35`), so its window is in physical pixels. A
+   DPI-*unaware* `python.exe` is handed virtualised logical pixels by `GetClientRect`,
+   `ClientToScreen` and `SendInput` alike. At 100% scaling the two agree and everything passes;
+   above it, every point `row_to_point` computes is off by the scale factor, the confirm click
+   misses ` Exit Game `, and the game just keeps running — while the arithmetic tests all still
+   pass. `conftest` declares PerMonitorV2 at import and
+   `test_test_process_is_dpi_aware_like_the_game` asserts it took.
+2. **Foreground ownership.** `SetForegroundWindow` is a request, not a command: Windows refuses it
+   from a process that does not already own the foreground, and with
+   `SPI_GETFOREGROUNDLOCKTIMEOUT` at `0x7FFFFFFF` (observed on this desktop) the refusal is
+   permanent and silent — it returns 0 and flashes the taskbar. Synthetic clicks then go to
+   whatever *is* focused, which looks exactly like a coordinate bug. `GameWindow.focus` now
+   attaches to the foreground thread's input queue, retries, and **fails the test** if it cannot
+   take the foreground; `assert_focused` re-checks immediately before every click.
+
+Also pinned: the confirm double-click's inter-click interval, which must stay under the game's
+`MOUSE_DOUBLE_CLICK_INTERVAL` (0.40 s, `MyOpenGLView.h:59`) or
+`MyOpenGLView+Input.m:285-293` records two single clicks and never sets `gvMouseDoubleClick` —
+the row is selected but never activated.
+
+### The third failure mode: focus is not enough (bead oo-0p8f, attempt 2)
+
+A gating reviewer reproduced the original symptom *after* the two fixes above, with **neither**
+cause active: `focus()` returned successfully and `assert_focused()` passed, yet the double-click
+still did not activate the row. The missing cause is that **foreground ownership and Z-ORDER are
+different things**.
+
+`pyautogui` clicks with `mouse_event` (`_pyautogui_win.py:432` `_click` → `_sendMouseEvent` →
+`mouse_event`; the `SendInput` branch is commented out at `:483-492`), which — exactly like a
+physical click — is delivered **by position** to the topmost window at that point, *not* to the
+foreground window. So a window sitting above the game at the click point swallows the click while
+`GetForegroundWindow()` still answers with the game's `hwnd` and `assert_focused()` still passes.
+
+The occluder observed on this desktop was a **second `oolite.exe`**. `_pin_window` parks every
+instance at exactly (0,0) at the same 960x720 client size, so any other instance covers this
+window's rows pixel for pixel, is the same window class (`SDL_app`), and — being on the start
+screen itself — silently consumes the click. Measured directly: with one present,
+`GetForegroundWindow()` was our `hwnd` while `WindowFromPoint(488,727)` returned the **other
+instance's**.
+
+**Where that second instance came from is not established.** Attempt 2 attributed it to a leak
+from a failed `start()`, on the premise that "the fixture's teardown only runs once
+`yield window.start()` has been reached". That premise is **false** and was disproven by
+measurement: when `start()` raises, the exception propagates out through the `yield` expression
+inside the fixture generator and the `finally: window.kill()` in the `game` fixture runs during
+the unwind. Instrumented on both the pre-fix and post-fix trees by forcing a failure inside
+`focus()`: pre-fix, `kill` **was** called (`kill_calls=1`) and the launched pid was dead at
+session end; post-fix, `kill_calls=2`. One launcher that *does* bypass the desktop mutex has
+since been caught — `tools/js_api_snapshot.py` starts `oolite.exe` without taking
+`tools/gui-lock` — but that is a separate defect, not this one's proven cause.
+
+So the two changes are not one fix and its corollary; only the second is load-bearing:
+
+- `assert_click_point_is_ours` checks `WindowFromPoint` (+ `GetAncestor(GA_ROOT)`) before each
+  click, so an occluded click point is a named failure instead of a mystery miss **whatever put
+  the window there**. This is the only defence against the condition.
+- `GameWindow.start` also kills the process it launched if any later step raises. Belt and
+  braces: the fixture's `finally` already did this, but killing twice costs nothing and a
+  surviving instance costs the machine.
+
+### The DoD's real repeatability defect: asserting focus without retaking it (attempt 3)
+
+Re-measured independently on the post-merge tree with no `oolite.exe` present at start: **34
+passes and 1 failure in 35 consecutive runs**, the failure at `test_g1_exit_via_mouse.py:105`
+with "the Oolite window lost the foreground before a click".
+
+The cause is structural, not cosmic. `select_row` calls `self.focus()` before it asserts and is
+therefore self-healing; `game.assert_focused()` in the test and `confirm_row`'s
+`self.assert_focused()` only **sampled** the foreground. Anything that transiently owned it
+between `start()`'s settle and that sample — a notification, an installer, or a sibling tool
+launching the game without taking the lock — hard-failed the run for a condition that had already
+cleared.
+
+`assert_focused` now retakes the foreground via `focus()` before asserting. That is not a
+softening: `focus()` retries for `FOCUS_TIMEOUT_SECONDS` and then hard-fails exactly as before,
+with an elevated owner still reported distinguishably. Same reasoning applied to the
+session-scope precondition gate and `tools/gui-tier.sh`, which each took one instantaneous
+sample and now poll for the same budget.
+
+### When the desktop itself cannot run this tier
+
+An **elevated** window owning the foreground wedges the tier permanently: `AttachThreadInput`
+cannot cross the UIPI/integrity boundary, so `focus()`'s retry loop can never succeed. Measured:
+an elevated Task Manager (integrity `0x3000` against the test process's `0x2000`) refused
+`AttachThreadInput` with `ERROR_ACCESS_DENIED` on 11 consecutive runs, and `taskkill` answered
+"Access is denied".
+
+This is reported as its own thing, not as a G1 failure. `conftest.describe_untakeable_foreground`
+detects it, `assert_desktop_can_run_gui_tests` fails with the `GUI TIER PRECONDITION FAILED`
+marker and names the offending window, and `tools/gui-tier.sh` runs that check **before** it
+launches a game, so the cause rather than the symptom lands in the log.
+
+It is a hard failure rather than a skip **on purpose**: the condition is fixable in seconds by
+closing the window, and a run that reported success without exercising G1 would be exactly the
+vacuous pass bead oo-7by1 removed. What it must never be is indistinguishable from "G1 is
+broken" — those two call for opposite responses.
+
 ## Prohibitions
 
 - Do not modify anything under `goldens/`.
