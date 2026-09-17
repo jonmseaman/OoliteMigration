@@ -79,6 +79,83 @@ $L release --force >/dev/null 2>&1
 kill $H 2>/dev/null; wait $H 2>/dev/null
 rm -rf "$OO_GUI_LOCK_DIR"
 
+# ---------------------------------------------------------------------------------------
+# 7 is the check that check 1 and check 4 between them CANNOT make. Check 1 races two
+# acquires against a FRESH lock, where mkdir alone is atomic and nothing can go wrong; check 4
+# reclaims a stale lock with exactly ONE claimant, so it proves a crashed run does not wedge
+# the tier but never exercises two reclaimers. The defect lives precisely in the gap: two runs
+# both judging ONE stale lock stale. It is a race, so it does not fire every time - the
+# unfixed code double-acquired in roughly 1 trial in 3 - and a single trial passing would be
+# no proof at all. Hence TRIALS, and hence zero tolerance: one double-acquire is a failure.
+echo "=== 7. two concurrent acquires against ONE STALE lock: exactly one may win ==="
+TRIALS="${OO_GUI_LOCK_SELFTEST_TRIALS:-20}"
+doubles=0; winners=0; zero_winner=0
+for i in $(seq 1 "$TRIALS"); do
+	rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap "$OO_GUI_LOCK_DIR".stale.* 2>/dev/null
+	OO_GUI_LOCK_OWNER=ghost$i $L acquire --timeout 5 >/dev/null 2>&1 || no "trial $i setup acquire failed"
+	touch -d '2 hours ago' "$OO_GUI_LOCK_DIR"
+	# Two real processes, started as close together as the shell allows, each convinced the
+	# lock is stale. Results go to files because a backgrounded subshell cannot export rc.
+	ra="$OO_GUI_LOCK_DIR.rcA.$i"; rb="$OO_GUI_LOCK_DIR.rcB.$i"
+	rm -f "$ra" "$rb"
+	( OO_GUI_LOCK_OWNER=raceA OO_GUI_LOCK_STALE=60 $L acquire --timeout 1 >/dev/null 2>&1; echo $? >"$ra" ) &
+	pa=$!
+	( OO_GUI_LOCK_OWNER=raceB OO_GUI_LOCK_STALE=60 $L acquire --timeout 1 >/dev/null 2>&1; echo $? >"$rb" ) &
+	pb=$!
+	wait $pa 2>/dev/null; wait $pb 2>/dev/null
+	a=$(cat "$ra" 2>/dev/null || echo 99); b=$(cat "$rb" 2>/dev/null || echo 99)
+	rm -f "$ra" "$rb"
+	n=0
+	[ "$a" -eq 0 ] && n=$((n+1))
+	[ "$b" -eq 0 ] && n=$((n+1))
+	if [ "$n" -eq 2 ]; then
+		doubles=$((doubles+1)); echo "  trial $i: DOUBLE ACQUIRE (A=$a B=$b)"
+	elif [ "$n" -eq 1 ]; then
+		winners=$((winners+1))
+		# The survivor must also own what it holds: the loser must not have shredded the
+		# winner's owner record on its way past (that is how the collision hid itself).
+		h=$(sed -n 's/^owner=//p' "$OO_GUI_LOCK_DIR/owner" 2>/dev/null)
+		case "$h" in raceA|raceB) ;; *) no "trial $i: winner holds lock with owner='$h'" ;; esac
+	else
+		zero_winner=$((zero_winner+1)); echo "  trial $i: no winner (A=$a B=$b)"
+	fi
+	$L release --force >/dev/null 2>&1
+	rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+done
+echo "  $TRIALS trials: $winners single-winner, $doubles DOUBLE, $zero_winner no-winner"
+[ "$doubles" -eq 0 ] && ok "no double-acquire in $TRIALS concurrent stale-reclaim trials" \
+  || no "$doubles/$TRIALS trials put TWO runs on the desktop at once"
+[ "$winners" -gt 0 ] && ok "stale lock is still reclaimable under contention ($winners/$TRIALS)" \
+  || no "no trial reclaimed the stale lock at all - the reap is wedged"
+[ -e "$OO_GUI_LOCK_DIR.reap" ] && no "reap gate leaked" || ok "reap gate left no residue"
+
+echo "=== 8. python fallback uses the SAME atomic reclaim (no unconditional rmtree) ==="
+py=$(python3 - <<'EOF'
+import os, sys, tempfile, time
+sys.path.insert(0, "upstream/oolite/tests/gui")
+import conftest
+d = os.path.join(tempfile.mkdtemp(), "l.lock")
+os.mkdir(d)
+open(os.path.join(d, "owner"), "w").write("owner=ghost\n")
+# Fresh lock: reclaim must refuse, and must NOT delete it.
+print("fresh_reclaimed:", conftest._lock_reclaim_stale(d, 1800))
+print("fresh_survived:", os.path.isdir(d) and os.path.isfile(os.path.join(d, "owner")))
+os.utime(d, (time.time() - 7200, time.time() - 7200))
+# Stale lock: exactly one of two back-to-back reclaims may win; the second sees a fresh dir.
+first = conftest._lock_reclaim_stale(d, 60)
+second = conftest._lock_reclaim_stale(d, 60)
+print("stale_first:", first, "stale_second:", second)
+print("exactly_one:", (first, second) == (True, False))
+print("gate_gone:", not os.path.exists(d + ".reap"))
+EOF
+)
+echo "$py" | sed 's/^/  /'
+echo "$py" | grep -q 'fresh_reclaimed: False' && echo "$py" | grep -q 'fresh_survived: True' \
+  && ok "python reclaim leaves a live lock alone" || no "python reclaim touched a fresh lock"
+echo "$py" | grep -q 'exactly_one: True' \
+  && ok "python stale reclaim has exactly one winner" || no "python stale reclaim is not exclusive"
+echo "$py" | grep -q 'gate_gone: True' && ok "python reap gate cleaned up" || no "python reap gate leaked"
+
 echo
 [ "$fail" -eq 0 ] && echo "ALL EXCLUSION CHECKS PASSED" || echo "SOME CHECKS FAILED"
 exit $fail

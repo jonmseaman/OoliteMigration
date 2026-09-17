@@ -19,6 +19,7 @@ import ctypes
 import math
 import os
 import platform
+import random
 import shutil
 import subprocess
 import sys
@@ -428,6 +429,64 @@ def _lock_held_by(path):
     return None
 
 
+def _lock_reclaim_stale(path, stale):
+    """Atomically reclaim a stale lock directory, returning True only if WE now hold it.
+
+    This is the same protocol as tools/gui-lock's reclaim_stale(), down to the gate directory
+    name, so the two halves interlock rather than each reclaiming "their own way": a fallback
+    session and a shell session racing the same stale lock still produce exactly one winner.
+
+    The naive "if stale: rmtree; then mkdir" is a TOCTOU - two runs both judge the same
+    directory stale and the loser's rmtree deletes the winner's freshly created lock, so both
+    end up on the desktop. So we serialise reapers behind a short-lived ``<lock>.reap`` mkdir
+    gate, RE-CHECK the age inside it, retire the stale directory with a single atomic rename,
+    and only drop the gate once the new lock exists.
+    """
+    reap = path + ".reap"
+    reap_stale = float(os.environ.get("OO_GUI_LOCK_REAP_STALE", "300"))
+    try:
+        if time.time() - os.path.getmtime(path) <= stale:
+            return False
+    except OSError:
+        return False
+    try:
+        os.mkdir(reap)
+    except FileExistsError:
+        # A reaper died mid-reclaim? Retire the gate itself atomically; the rename has exactly
+        # one winner, and that winner does not assume it holds the gate - it just retries.
+        try:
+            if time.time() - os.path.getmtime(reap) > reap_stale:
+                dead = "%s.dead.%d.%d" % (reap, os.getpid(), random.randrange(1 << 30))
+                os.rename(reap, dead)
+                shutil.rmtree(dead, ignore_errors=True)
+        except OSError:
+            pass
+        return False
+    except OSError:
+        return False
+    try:
+        if os.path.isdir(path):
+            try:
+                still_stale = time.time() - os.path.getmtime(path) > stale
+            except OSError:
+                still_stale = False
+            if not still_stale:
+                return False
+            dead = "%s.stale.%d.%d" % (path, os.getpid(), random.randrange(1 << 30))
+            try:
+                os.rename(path, dead)
+            except OSError:
+                return False
+            shutil.rmtree(dead, ignore_errors=True)
+        try:
+            os.mkdir(path)
+        except OSError:
+            return False
+        return True
+    finally:
+        shutil.rmtree(reap, ignore_errors=True)
+
+
 @pytest.fixture(scope="session")
 def desktop_lock():
     """Hold the GUI-tier desktop mutex for the whole session.
@@ -469,27 +528,27 @@ def desktop_lock():
     os.makedirs(os.path.dirname(path), exist_ok=True)
     deadline = time.time() + float(os.environ.get("OO_GUI_LOCK_TIMEOUT", "900"))
     while True:
+        got = False
         try:
             os.mkdir(path)
+            got = True
+        except FileExistsError:
+            # Same stale rule as the script (OO_GUI_LOCK_STALE, age not liveness), so a
+            # crashed holder does not wedge the tier for ever here either - but the reclaim is
+            # ATOMIC (see _lock_reclaim_stale): an unconditional rmtree here would let two
+            # sessions both judge one lock stale and both take the desktop.
+            stale = float(os.environ.get("OO_GUI_LOCK_STALE", "1800"))
+            got = _lock_reclaim_stale(path, stale)
+        if got:
             with open(os.path.join(path, "owner"), "w", encoding="utf-8") as fh:
                 fh.write(f"owner={me}\ninfo=python pid={os.getpid()} {time.strftime('%FT%T%z')}\n")
             break
-        except FileExistsError:
-            # Same stale rule as the script (OO_GUI_LOCK_STALE, age not liveness), so a
-            # crashed holder does not wedge the tier for ever here either.
-            try:
-                stale = float(os.environ.get("OO_GUI_LOCK_STALE", "1800"))
-                if time.time() - os.path.getmtime(path) > stale:
-                    shutil.rmtree(path, ignore_errors=True)
-                    continue
-            except OSError:
-                pass
-            if time.time() >= deadline:
-                pytest.fail(
-                    f"could not take the GUI desktop lock at {path}; "
-                    f"held by {_lock_held_by(path) or 'unknown'}"
-                )
-            time.sleep(2)
+        if time.time() >= deadline:
+            pytest.fail(
+                f"could not take the GUI desktop lock at {path}; "
+                f"held by {_lock_held_by(path) or 'unknown'}"
+            )
+        time.sleep(2)
     try:
         yield path
     finally:

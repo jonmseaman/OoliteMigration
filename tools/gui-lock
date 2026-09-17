@@ -73,16 +73,66 @@ held_by() {
 # OO_GUI_LOCK_STALE seconds is reclaimed. Age, not liveness: the holder may be a process on a
 # different session that this shell cannot see.
 STALE="${OO_GUI_LOCK_STALE:-1800}"
+# The reap gate (below). Held for a few syscalls only, so its own stale window is short.
+REAP="$LOCK.reap"
+REAP_STALE="${OO_GUI_LOCK_REAP_STALE:-300}"
 
-reap_if_stale() {
-	[ -d "$LOCK" ] || return 0
-	local now age
+dir_age() {
+	local now
 	now=$(date +%s)
-	age=$(( now - $(stat -c %Y "$LOCK" 2>/dev/null || echo "$now") ))
-	if [ "$age" -gt "$STALE" ]; then
-		echo "gui-lock: reclaiming stale lock (${age}s old, held by $(held_by) )" >&2
-		rm -rf "$LOCK"
+	printf '%s\n' "$(( now - $(stat -c %Y "$1" 2>/dev/null || echo "$now") ))"
+}
+
+# Reclaiming a stale lock must be ATOMIC WITH TAKING IT, or it is not a mutex.
+#
+# The obvious "if stale: rm -rf; then mkdir" is a TOCTOU: two runs can both judge the SAME
+# directory stale, and the loser's rm -rf then deletes the WINNER'S freshly created lock -
+# after which the loser's own mkdir succeeds and BOTH runs drive the desktop. (Reproduced at
+# ~1 trial in 3.) It is worse than a lost wakeup, because the loser also destroys the winner's
+# owner record, so the winner's later release is refused while it is still on the desktop.
+#
+# So: serialise reapers behind a second, short-lived mkdir lock ($LOCK.reap), RE-CHECK the age
+# inside that gate, and do not drop the gate until we hold the new $LOCK. A late reaper that
+# arrives after someone else reclaimed sees a fresh mtime and reaps nothing. The stale
+# directory is retired with `mv` (one atomic rename, one winner) rather than rm -rf, so no
+# other process can observe a half-emptied lock.
+#
+# Chosen over "rename the stale dir and proceed only if the rename won" on its own, because a
+# bare rename is still a TOCTOU against the *fresh* lock: a slow loser that decided "stale"
+# before the winner's mkdir would rename away a live, legitimately held lock. The gate plus
+# the re-check inside it is what closes that window.
+#
+# Returns 0 ONLY if this process both retired the stale lock and now holds a new empty $LOCK.
+reclaim_stale() {
+	[ -d "$LOCK" ] || return 1
+	# Cheap unsynchronised pre-check, so the common (not stale) poll costs one stat.
+	[ "$(dir_age "$LOCK")" -gt "$STALE" ] || return 1
+	if ! mkdir "$REAP" 2>/dev/null; then
+		# A reaper crashed mid-reclaim? Retire the gate itself atomically - whoever wins the
+		# rename does NOT assume it holds the gate, it just lets the next loop re-mkdir it.
+		if [ "$(dir_age "$REAP")" -gt "$REAP_STALE" ]; then
+			local dead_gate="$REAP.dead.$$.${RANDOM:-0}"
+			mv "$REAP" "$dead_gate" 2>/dev/null && rm -rf "$dead_gate"
+		fi
+		return 1
 	fi
+	local rc=1 age dead
+	if [ -d "$LOCK" ]; then
+		age=$(dir_age "$LOCK")
+		if [ "$age" -gt "$STALE" ]; then
+			echo "gui-lock: reclaiming stale lock (${age}s old, held by $(held_by) )" >&2
+			dead="$LOCK.stale.$$.${RANDOM:-0}"
+			if mv "$LOCK" "$dead" 2>/dev/null; then
+				rm -rf "$dead"
+				mkdir "$LOCK" 2>/dev/null && rc=0
+			fi
+		fi
+	else
+		# Someone reclaimed and released while we waited for the gate: the lock is simply free.
+		mkdir "$LOCK" 2>/dev/null && rc=0
+	fi
+	rmdir "$REAP" 2>/dev/null || rm -rf "$REAP"
+	return $rc
 }
 
 acquire() {
@@ -91,8 +141,7 @@ acquire() {
 	deadline=$(( $(date +%s) + timeout ))
 	mkdir -p "$(dirname "$LOCK")"
 	while :; do
-		reap_if_stale
-		if mkdir "$LOCK" 2>/dev/null; then
+		if mkdir "$LOCK" 2>/dev/null || reclaim_stale; then
 			{
 				printf 'owner=%s\n' "$me"
 				printf 'info=%s pid=%s %s\n' "${HOSTNAME:-$(hostname)}" "$$" "$(date -Is)"
