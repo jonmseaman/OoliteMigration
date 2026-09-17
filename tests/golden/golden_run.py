@@ -1,27 +1,21 @@
 """Run one golden scenario in one native game process; the half that needs a real language.
 
-`tests/golden/run.sh` is the entry point and stages Mesa; this file does the isolation:
+`tests/golden/run.sh` is the entry point and stages Mesa; this file does the isolation. The README
+explains each mechanism; the load-bearing facts are:
 
-* PORT. The game DIALS OUT to the console and reads the port from `console-port` in
-  debugConfig.plist (OODebugSupport.m:67-80, default kOOTCPConsolePort=8563), so a port is made
-  real by writing a plist the game merges, not by listening elsewhere - see `_write_console_config`,
-  which is upstream/oolite/tests/launch_snapshot.py's `_console_config_dir` trick. Ports are taken
-  from a range under an exclusive lock file held for the life of the run, so N concurrent runs
-  cannot land on the same port even between the moment one is chosen and the moment it is bound.
-
-* PREFS ROOT. src/SDL/main.m:119 sets GNUSTEP_USERS_ROOT to the directory the executable lives in,
-  so N processes sharing one oolite.app share (and race on) one GNUstep/Defaults/oolite.plist and
-  one cache. Each run therefore gets its own staged app directory: directories are junctions and
-  files are hard links, so staging 317 MB costs no bytes, while GNUstep/ and Logs/ are real copies
-  the run may write to freely.
-
-* READINESS. Never measured on this script's wall clock. console.py pings until Pong proves the run
-  loop is servicing packets, and `_wait_until_rendering` then polls clock.absoluteSeconds (UNIVERSE
-  time, which only advances while the run loop steps). A fixed sleep here is the proven way to
-  snapshot the first frame ever drawn and get a black PNG.
-
-Paths handed to native processes are native (C:/...); run.sh converts with `cygpath -m` before
-calling us, because a native python reads an MSYS /c/... path as a relative C:/c/... and fails.
+* PORT. The game DIALS OUT and reads `console-port` from debugConfig.plist (OODebugSupport.m:67-80,
+  default kOOTCPConsolePort=8563), so a port is made real by writing a plist the game merges, not
+  by listening elsewhere (`_write_console_config`, launch_snapshot.py's `_console_config_dir`
+  trick). Ports are held under an exclusive lock for the life of the run, closing the window
+  between choosing one and binding it.
+* PREFS ROOT. src/SDL/main.m:119 points GNUSTEP_USERS_ROOT at the directory the executable lives
+  in, so N processes sharing one oolite.app race on one Defaults/oolite.plist. Each run gets its
+  own staged app (junctions + hard links; GNUstep/, Logs/, oolite-saves/ are real copies).
+* READINESS. Never this script's wall clock: console.py pings until Pong, then
+  `_wait_until_rendering` polls clock.absoluteSeconds. A fixed sleep snapshots a black first frame.
+* PATHS. Every path goes through `to_native`, including here, because the ENVIRONMENT
+  (OO_GOLDEN_RUNDIR, OO_APP_DIR) bypasses run.sh - and a relocated run_root takes config_dir with
+  it, so the game never reads the plist naming its port and N runs collide on 8563.
 """
 
 import argparse
@@ -30,6 +24,7 @@ import os
 import plistlib
 import shutil
 import socket
+import subprocess
 import sys
 import time
 import uuid
@@ -50,6 +45,47 @@ _held_locks = []
 
 class GoldenError(RuntimeError):
     pass
+
+
+# --- the MSYS -> native path boundary ----------------------------------------------------------
+
+def is_msys_path(path):
+    """True for a POSIX-absolute path on Windows.
+
+    Tested on the LEADING SLASH, not a list of drive letters: /c/..., /tmp/... and /anything are
+    equally wrong, and enumerating /c/ and /C/ is what let `--run-dir /tmp/x` through. A native
+    Windows path begins '<drive>:/' or with a UNC '//'.
+    """
+    if not path or not IS_WINDOWS or path[0] not in "/\\":
+        return False
+    return path[1:2] not in ("/", "\\")
+
+
+def _slashes(path):
+    """One separator everywhere, so comparing two of our paths is meaningful."""
+    return str(path).replace("\\", "/")
+
+
+def to_native(path, what="path"):
+    """Convert an MSYS path to native form, or fail loudly if it cannot be converted.
+
+    Accepting one silently is the bug: a native python resolves /tmp/x against the current drive,
+    so artifacts and the game's console config land where the caller never named.
+    """
+    if not path or not is_msys_path(path):
+        return path
+    try:
+        converted = subprocess.run(
+            ["cygpath", "-m", path], capture_output=True, text=True, check=True
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        converted = ""
+    if not converted or is_msys_path(converted):
+        raise GoldenError(
+            "%s %r is an MSYS/POSIX path; a native process would read it as %r. Pass a native "
+            "path (C:/...) or install cygpath." % (what, path, os.path.abspath(path))
+        )
+    return converted
 
 
 # --- port reservation -------------------------------------------------------------------------
@@ -87,6 +123,39 @@ def reserve_port(run_root, wanted=None):
     raise GoldenError("no free console port in %d..%d" % (PORT_BASE, PORT_BASE + PORT_COUNT))
 
 
+def _pid_is_alive(pid):
+    """Is this pid running? NEVER os.kill.
+
+    On stock CPython for Windows os.kill(pid, 0) is TerminateProcess for every signal but
+    CTRL_C_EVENT/CTRL_BREAK_EVENT, so that "liveness probe" KILLS the process it inspects - on the
+    contended path, i.e. during exactly the N-concurrent run this harness exists for.
+    """
+    if IS_WINDOWS:
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        handle = kernel32.OpenProcess(0x1000, False, pid)  # QUERY_LIMITED_INFORMATION
+        if not handle:
+            return ctypes.get_last_error() == 5  # ACCESS_DENIED: exists, owned by someone else
+        try:
+            code = wintypes.DWORD()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return True  # cannot tell; keep the lock
+            return code.value == 259  # STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)  # POSIX only, where signal 0 really is the no-op existence check
+    except ProcessLookupError:
+        return False
+    except OSError:
+        return True
+    return True
+
+
 def _lock_is_stale(lock):
     """A lock whose owner is gone. Cheap and conservative: only the pid is trusted."""
     try:
@@ -97,12 +166,9 @@ def _lock_is_stale(lock):
     if pid <= 0:
         return True
     try:
-        os.kill(pid, 0)
-    except OSError:
-        return True
+        return not _pid_is_alive(pid)
     except Exception:
-        return False
-    return False
+        return False  # unsure: leave a sibling's lock alone
 
 
 def _release(lock):
@@ -207,15 +273,15 @@ def plan(args, run_root):
     port = reserve_port(run_root, args.port)
     stamp = time.strftime("%Y%m%dT%H%M%S", time.gmtime())
     run_id = "%s-p%d-%d-%s" % (stamp, port, os.getpid(), uuid.uuid4().hex[:6])
-    artifact_dir = os.path.join(run_root, args.scenario, run_id)
+    artifact_dir = _slashes(os.path.join(run_root, args.scenario, run_id))
     return {
         "scenario": args.scenario,
         "console_host": "127.0.0.1",
         "console_port": port,
         "artifact_dir": artifact_dir,
-        "staged_app_dir": os.path.join(artifact_dir, "app"),
-        "config_dir": os.path.join(artifact_dir, "console-config"),
-        "source_app_dir": args.app_dir,
+        "staged_app_dir": _slashes(os.path.join(artifact_dir, "app")),
+        "config_dir": _slashes(os.path.join(artifact_dir, "console-config")),
+        "source_app_dir": _slashes(args.app_dir),
         "run_id": run_id,
     }
 
@@ -310,23 +376,72 @@ def parse_args(argv=None):
                              "simultaneously, so they are distinct for the same reason N "
                              "concurrent runs are")
     parser.add_argument("--keep", action="store_true", help="keep the staged app directory")
+    parser.add_argument("--check-isolation", action="store_true",
+                        help="hold --plan-count plans at once and assert they cannot collide")
     parser.add_argument("--timeout", type=float, default=600.0)
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+    # The environment bypasses run.sh entirely, so the boundary is enforced here too (finding 2).
+    args.repo_root = to_native(args.repo_root, "--repo-root")
+    args.app_dir = to_native(args.app_dir, "--app-dir/OO_APP_DIR")
+    args.run_dir = to_native(args.run_dir, "--run-dir/OO_GOLDEN_RUNDIR")
+    return args
+
+
+# --- isolation self-check ----------------------------------------------------------------------
+
+_ISOLATION_KEYS = ("console_port", "artifact_dir", "staged_app_dir", "config_dir", "run_id")
+_ISOLATION_PATHS = ("artifact_dir", "staged_app_dir", "config_dir", "source_app_dir", "repo_root")
+
+
+def check_isolation(plans):
+    """Assert simultaneously held plans cannot collide; these are the plans N concurrent
+    invocations hold at the same moment, so a difference here is a difference two real runs have.
+    """
+    if len(plans) < 2:
+        raise GoldenError("--check-isolation needs at least two plans (--plan-count)")
+    for key in _ISOLATION_KEYS:
+        seen = set()
+        for p in plans:
+            if p[key] in seen:
+                raise GoldenError("two concurrent runs would collide on %s (%r)" % (key, p[key]))
+            seen.add(p[key])
+    for p in plans:
+        for key in _ISOLATION_PATHS:
+            if is_msys_path(str(p[key])):
+                raise GoldenError("%s is an MSYS path a native process cannot use: %s"
+                                  % (key, p[key]))
+    print("ok: %d isolated plans, ports %s, distinct artifact directories"
+          % (len(plans), [p["console_port"] for p in plans]))
 
 
 def main(argv=None):
     args = parse_args(argv)
-    run_root = args.run_dir or os.path.join(args.repo_root, "tests", "golden", "artifacts")
-    os.makedirs(run_root, exist_ok=True)
-    spec = load_scenario(args.repo_root, args.scenario)
+    if args.check_isolation:
+        args.dry_run = True
+        if args.plan_count < 2:
+            args.plan_count = 2
+    try:
+        run_root = args.run_dir or os.path.join(args.repo_root, "tests", "golden", "artifacts")
+        run_root = _slashes(os.path.abspath(run_root))
+        if is_msys_path(run_root):
+            raise GoldenError("run root %r is an MSYS path" % run_root)
+        os.makedirs(run_root, exist_ok=True)
+        spec = load_scenario(args.repo_root, args.scenario)
+    except GoldenError as exc:
+        print("[!] %s" % exc, file=sys.stderr)
+        return 1
 
     plans = []
     try:
         for _ in range(max(1, args.plan_count)):
             p = plan(args, run_root)
-            p["repo_root"] = args.repo_root
+            p["repo_root"] = _slashes(args.repo_root)
             p["seed"] = spec["seed"]
             plans.append(p)
+
+        if args.check_isolation:
+            check_isolation(plans)
+            return 0
 
         if args.dry_run:
             json.dump(plans if args.plan_count > 1 else plans[0], sys.stdout, indent=2,

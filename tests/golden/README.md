@@ -8,11 +8,15 @@ requires (`upstream/oolite/tests/component/console.py`).
 ```bash
 tests/golden/run.sh 001                       # one scenario
 tests/golden/run.sh 001 --dry-run             # print the run plan, launch nothing
+tests/golden/run.sh 001 --check-isolation --plan-count 4   # prove 4 concurrent runs cannot collide
 tests/golden/run.sh --help
 ```
 
 It needs a built game: `upstream/oolite/build/meson_test/oolite.app` by default, `--app-dir` or
-`$OO_APP_DIR` otherwise. Artifacts land in `tests/golden/artifacts/<scenario>/<run-id>/`
+`$OO_APP_DIR` otherwise. Mesa's `opengl32.dll` and `libgallium_wgl.dll` are copied beside the
+binary **unconditionally** on every run, as `upstream/oolite/tests/run_test_fn.sh:28-33` does — a
+stale DLL from an older MSYS2 would otherwise render the goldens on a different rasteriser.
+Artifacts land in `tests/golden/artifacts/<scenario>/<run-id>/`
 (`Latest.log`, the snapshot PNG, `run.json` with the port, the game clock reading, `guiScreen` and
 the wall time). The directory is git-ignored.
 
@@ -33,15 +37,21 @@ naming it in `OO_ADDITIONALADDONSDIRS`, which `ResourceManager` treats as a sear
 (`OOOXZManager.m:286`). The stock Debug OXP leaves `console-host`/`console-port` commented out, so
 this always wins the merge. Same mechanism as `upstream/oolite/tests/launch_snapshot.py`.
 
-## Two rules the harness must keep
+## Three rules the harness must keep
 
 * **Never wait on the script's wall clock.** `console.py` pings until `Pong` proves the run loop is
   servicing packets; `golden_run.py` then polls `clock.absoluteSeconds` (UNIVERSE time, which
   advances only while the run loop steps) until the scenario's `settle_seconds` of *game* time have
-  passed. A fixed sleep here is how `launch_snapshot.py` once snapshotted the first frame ever
-  serviced and produced a ~5 KB black PNG.
-* **Never hand an MSYS path to a native binary.** `/c/...` becomes `C:/c/...` and fails with
-  WinError 3. `run.sh` converts with `cygpath -m` at every boundary.
+  passed. A fixed sleep is how `launch_snapshot.py` once produced a ~5 KB black PNG.
+* **Never hand an MSYS path to a native binary.** Any leading-slash path (`/c/...`, `/tmp/...`) is
+  resolved by a native process against the current drive and lands where the caller never named.
+  `run.sh` converts every path option with `cygpath -m`; `golden_run.py` re-checks with
+  `is_msys_path`, which tests the **leading slash**, not a list of drive letters. It matters most
+  for `config_dir`, handed to the *game* as `OO_ADDITIONALADDONSDIRS`: a misplaced one means the
+  game never reads its `debugConfig.plist`, falls back to port 8563, and N runs collide there.
+* **Never probe a sibling's liveness with `os.kill`.** On stock CPython for Windows
+  `os.kill(pid, 0)` is `TerminateProcess`, so the stale-lock check would kill the concurrent game
+  process whose lock it inspects. `_pid_is_alive` uses `OpenProcess`/`GetExitCodeProcess`.
 
 ## Scenarios
 
