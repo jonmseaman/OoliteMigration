@@ -26,9 +26,14 @@
 #
 #   * the start of a line (optionally indented), or a YAML list `- ` or `run:`, or a crontab
 #     schedule;
-#   * a shell operator that opens a command: `;`  `&`  `&&`  `|`  `||`  `(`  `{`  `$(` -- at the
-#     start of a line as well as mid-line, so `( tools/foo.sh )`, `{ tools/foo.sh; }` and
-#     `x() { tools/foo.sh; }` are call sites exactly as `cd /x && tools/foo.sh` is;
+#   * a shell operator that opens a command: `;`  `&`  `&&`  `|`  `||`  `(`  `{`  `$(`  `[`,
+#     or the `)` that terminates a `case` arm pattern -- at the start of a line as well as
+#     mid-line, so `( tools/foo.sh )`, `{ tools/foo.sh; }`, `x() { tools/foo.sh; }`,
+#     `  a) tools/foo.sh ;;` and `["$here/gc.sh"]` are call sites exactly as
+#     `cd /x && tools/foo.sh` is. The case-arm `)` and the list `[` were added last: without
+#     them a `case` branch and a dispatch inside a bracketed list both went unseen, and the
+#     bracketed one was the single hole in the "a dispatch is never data" invariant below,
+#     since the DATA rule correctly declines to reject a non-literal `$dir/base` token;
 #   * a RUN PREFIX that executes its argument rather than reading it: `exec`, `nohup`,
 #     `command`, `time`, `watch`, `timeout <n>`, `env FOO=1`, `xargs -n1`, a scheduling
 #     wrapper with its options (`sudo -u bob`, `nice -n 5`, `ionice`, `stdbuf`, `setsid`,
@@ -64,7 +69,10 @@
 #      unquoted form used to match, because the dispatch rule's directory part happily
 #      swallowed the `FOO=` prefix; `=` (and `,`, and a backtick) are therefore excluded from
 #      the directory part of a dispatch, so no assignment prefix can be mistaken for a
-#      directory.
+#      directory. The env-assignment RUN PREFIX (`FOO=1 tools/foo.sh`) that exists alongside
+#      it must NOT swallow an opening quote: `CMD="bash tools/foo.sh"` is an assignment of an
+#      interpreter invocation, not a prefixed command, so the prefix's value part excludes
+#      quotes and backticks.
 #   2. A DATA LIST ELEMENT. A quoted path that is a list element or a mapping key --
 #      `    "tools/launcher_scan.py",` in a Python tuple, `["tools/foo.sh"]`,
 #      `"tools/foo.sh": 1` in JSON -- is data being named, not a program being run. Rejected
@@ -116,7 +124,15 @@ RUNPRE="$RUNPRE"'|xargs([[:space:]]+-[^[:space:]]+)*[[:space:]]+'
 # A bare env-assignment PREFIX (`FOO=1 tools/foo.sh`) is command position: the command
 # follows it. It requires trailing whitespace and a command after it, which is exactly what
 # distinguishes it from a plain assignment (`FOO=tools/foo.sh`, nothing after).
-RUNPRE="$RUNPRE"'|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+'
+# The assigned value must not contain a QUOTE, a BACKTICK or a `(`. Without that exclusion the
+# UNTERMINATED OPENING QUOTE of a quoted value, or the `$(` of a command substitution, was
+# swallowed as the value itself, so the next token looked like a command:
+# `CMD="bash tools/foo.sh"` parsed as prefix `CMD="` plus command `bash ...`, and
+# `spawners=$(python3 tools/launcher_scan.py tools)` -- a LIVE line in
+# tools/check-desktop-lock.sh -- parsed as prefix `spawners=$(python3 ` plus a bare-program
+# call. Storing or capturing an interpreter invocation is the commonest shape of exactly the
+# class this guard exists to EXCLUDE.
+RUNPRE="$RUNPRE"'|[A-Za-z_][A-Za-z0-9_]*=[^[:space:]"'"'"'`(]*[[:space:]]+'
 RUNPRE="$RUNPRE"'|(then|do|else|if|elif|while|until|!)[[:space:]]+)*'
 
 # Positions that open a command (everything except a comment). A line whose first non-blank
@@ -127,8 +143,8 @@ NOTCMT='(^[^#[:space:]]|^[[:space:]]*[^#[:space:]])[^#]*'
 # `( cmd )`, `{ cmd; }` and `x() { cmd; }` open a command too. The mid-line case is covered by
 # NOTCMT plus the operator class; a line that STARTS with the group opener has no preceding
 # token at all, so it needs its own leading alternative.
-GRP='[({][[:space:]]*'
-BASE="(^[[:space:]]*($GRP)?(-[[:space:]]+|[-0-9*/,]+([[:space:]]+[-0-9*/,]+){4}[[:space:]]+)?|$NOTCMT[;&|({][[:space:]]*|$NOTCMT"'\$\([[:space:]]*|run:[[:space:]]*)'
+GRP='[({[][[:space:]]*'
+BASE="(^[[:space:]]*($GRP)?(-[[:space:]]+|[-0-9*/,]+([[:space:]]+[-0-9*/,]+){4}[[:space:]]+)?|$NOTCMT[;&|({[)][[:space:]]*|$NOTCMT"'\$\([[:space:]]*|run:[[:space:]]*)'
 # A usage-comment opener, which carries a stricter trailing requirement.
 CMTBASE='^[[:space:]]*#[[:space:]]*'
 # The program token must end at whitespace, a quote, `;`, `)`, `&`, `|`, or end of line.

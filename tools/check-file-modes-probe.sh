@@ -135,6 +135,49 @@ probe miss tools/foo.sh 'FOO=$REPO/tools/foo.sh'
 probe hit  tools/foo.sh 'FOO=1 tools/foo.sh'
 probe hit  tools/foo.sh 'F=tools/foo.sh; tools/foo.sh'
 
+echo "== defect E: a quoted assignment VALUE must not open a command (regression, attempt 4) =="
+# The env-assignment RUN PREFIX added for `FOO=1 tools/foo.sh` swallowed the UNTERMINATED
+# OPENING QUOTE of a quoted value, so the token after it looked like a command. Storing an
+# interpreter invocation in a variable is the commonest shape of the class this guard exists
+# to EXCLUDE, and it went unprobed because the 109-case table had no assignment-with-a-quoted
+# -value case at all. All six of these are HITs on attempt 4 and MISSes on attempt 3.
+probe miss tools/foo.py 'cmd="python3 tools/foo.py"'
+probe miss tools/foo.sh 'CMD="bash tools/foo.sh"'
+probe miss tools/foo.sh 'msg="edit tools/foo.sh now"'
+probe miss tools/foo.sh 'x="a tools/foo.sh"'
+probe miss tools/foo.py "cmd='python3 tools/foo.py'"
+probe miss tools/foo.sh 'args="--x tools/foo.sh"'
+probe miss tools/foo.sh 'RUN="sh tools/foo.sh --flag"'
+probe miss tools/foo.sh 'CMD=`bash tools/foo.sh`'
+probe miss tools/foo.sh '    LOCAL_CMD="bash tools/foo.sh"'
+# The same swallow via a command substitution. This one is LIVE: tools/check-desktop-lock.sh
+# captures `$(python3 tools/launcher_scan.py ...)`, an interpreter invocation, and the guard
+# demanded a chmod for it.
+probe miss tools/launcher_scan.py 'spawners=$(python3 tools/launcher_scan.py tools tests upstream/oolite/tests) || fail=1'
+probe miss tools/foo.py 'out=$(python3 tools/foo.py)'
+probe miss tools/foo.sh 'v=$(bash tools/foo.sh --list)'
+# ...but capturing a BARE program is still a call site.
+probe hit  tools/foo.sh 'out=$(tools/foo.sh)'
+# ...while the genuine env-assignment prefix and a genuine multi-assignment prefix still fire.
+probe hit  tools/foo.sh 'FOO=1 BAR=2 tools/foo.sh'
+probe hit  tools/foo.sh 'FOO=x/y tools/foo.sh'
+
+echo "== defect F: a case arm and a bracketed list both open a command (was a false negative) =="
+# `)` closes a `case` arm PATTERN and opens its command list; `[` opens a bracketed list whose
+# element may be a dispatch. Neither was in BASE's operator class, so the header's opener list
+# was untrue and `["$here/gc.sh"]` was the one hole in the "a dispatch is never data" rule.
+probe hit  tools/foo.sh '  a) tools/foo.sh ;;'
+probe hit  tools/foo.sh '  *) exec tools/foo.sh ;;'
+probe hit  tools/foo.sh 'case $x in a) tools/foo.sh ;; esac'
+probe hit  tools/foo.sh '    run) tools/foo.sh "$@" ;;'
+probe hit  .agents/skills/beads-worker/scripts/gc.sh '  ["$here/gc.sh"]'
+probe hit  .agents/skills/beads-worker/scripts/gc.sh '  ["$here/gc.sh", "x"]'
+# The new openers must not resurrect the DATA or PROSE false positives.
+probe miss tools/foo.sh '["tools/foo.sh"]'
+probe miss tools/foo.sh '    ["tools/foo.sh"],'
+probe miss tools/foo.sh '# a) tools/foo.sh is what the old version did'
+probe miss tools/foo.sh 'grep pat tools/foo.sh) | head'
+
 echo "== defect C: subshell / brace group DOES open a command (was a false negative) =="
 probe hit  tools/foo.sh '( tools/foo.sh )'
 probe hit  tools/foo.sh '(tools/foo.sh)'
