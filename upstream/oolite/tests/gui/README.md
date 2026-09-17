@@ -24,6 +24,36 @@ takes the desktop exclusively while it runs ([ADR-0017](../../../../docs/decisio
 That exclusion is `tools/gui-lock`, taken by the session-scoped `desktop_lock` fixture. It runs
 in Tier C and nightly, **never per bead**. An RDP disconnect takes the desktop with it.
 
+### The lock is not this tier's private business
+
+**Any tool that launches the game on the interactive desktop must take `tools/gui-lock`** (bug
+oo-ccy9). This tier is not the only thing that opens a window: on Windows the console-driven
+"headless" launchers are not headless either, because `SDL_VIDEODRIVER=offscreen` is deliberately
+left unset there (MSYS2's Mesa ships no EGL, so the offscreen driver cannot create a context — see
+`tests/component/console.py::_env`). A JS-API snapshot run that skipped the lock stole the
+foreground from a G1 click, once in 35 measured G1 runs on a clean tree.
+
+Python launchers outside this tier take it through `tools/desktop_lock.py`, a thin wrapper that
+shells out to the same `tools/gui-lock` with a distinct owner tag (`jsapi`, `smoke`, `component`,
+`splashcheck`) so the ownership-checked release can tell them apart. This tier keeps its own
+in-fixture implementation, because it must still work with no bash.
+
+Two launchers are exempt, on purpose: `tests/golden/golden_run.py` runs N scenarios concurrently by
+design and never needs the foreground, and `tests/component/console.py` is the transport those N
+runs share. `tools/check-desktop-lock.sh` enforces the rule and the exemptions. It detects a
+launcher **by its spawn** — a `Popen`/`subprocess.run`/`os.startfile`/`DebugConsole`/shell command
+whose target resolves to the game binary, across `*.py`, `*.sh`, `*.bat` and `*.cmd` — not by one
+string idiom, so it fails on a new launcher in neither list however that launcher is spelled.
+`tools/desktop-lock-rogue-proof` plants five rogue spellings plus a prose-only negative control and
+asserts the exit code of each.
+
+A hold is **heartbeated**. `tools/gui-lock` reclaims a lock older than `OO_GUI_LOCK_STALE`
+(default 1800s) so a dead holder cannot wedge the desktop for ever, but a JS-API enumeration can
+legitimately hold the desktop longer than that. `tools/desktop_lock.py` therefore runs a daemon
+thread calling `tools/gui-lock refresh` (ownership-checked) every third of the stale window. A
+crashed holder stops refreshing, so its lock still ages out and is still reclaimable — both
+directions are proved by `tools/desktop-lock-selftest` checks 5 and 6.
+
 It also needs a built game: by default `upstream/oolite/build/meson_test/oolite.app`, overridden
 with `--oolite-app <path>` or `OO_APP_DIR`.
 
