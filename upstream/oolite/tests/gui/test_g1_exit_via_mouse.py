@@ -121,5 +121,8 @@ def test_g1_exit_via_mouse(game):
     #    sibling GUI run's oolite.exe cannot be mistaken for our leak.
     assert_no_surviving_game_processes(game.proc.pid)
 
-    # 5. G9 hygiene: no crash dump, no ERROR in the log, and a defaults file that re-parses.
-    assert_clean_exit(game.output_dir, game.app_dir)
+    # 5. G9 hygiene: no crash dump, no ERROR in the log, and a defaults file THIS RUN wrote and
+    #    which re-parses. Passing the fixture itself rather than a directory is deliberate: the
+    #    "written by this run" evidence is the launch-time mark GameWindow.start() recorded, and
+    #    a call that could be spelled without it would be a check that cannot fail (oo-5rsa).
+    assert_clean_exit(game)
