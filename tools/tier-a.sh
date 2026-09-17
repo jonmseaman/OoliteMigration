@@ -178,7 +178,10 @@ step "tier-a $SOURCE_REL (flavour $BUILD_FLAVOUR, budget ${BUDGET_SECONDS}s)"
 # Depend mode (meson's -MF path is relative to the build dir and does not resolve from
 # ccache's temp dir in preprocessor mode), base_dir so worktrees at different absolute paths
 # share entries, and a pinned version macro so a bead branch does not miss on every object.
-# Without all three, Tier A is a cold compile and misses the 30 s budget.
+# These raise the hit RATE across worktrees; they are not what keeps Tier A inside the budget.
+# Measured 2026-09-17 (docs/phases/0-safety-net.md "Commands"): with CCACHE_DIR redirected to an
+# empty directory a steady-state run is ~4 s versus ~4.4 s warm — one TU is cheap either way.
+# The first-run cost is `meson setup` (~10 s), not compilation.
 export CCACHE_DEPEND=1
 export CCACHE_BASEDIR="$(cygpath -m "$REPO_ROOT")"
 export OOLITE_VER_FULL="${OOLITE_VER_FULL:-0.0.0-fleet}"
