@@ -68,7 +68,7 @@ updated as seams land:
 
 | Kind | Path |
 |---|---|
-| GUI test | `upstream/oolite/tests/gui/test_g1_exit_via_mouse.py` (pending) |
+| GUI test | `upstream/oolite/tests/gui/test_g1_exit_via_mouse.py` ([G1](docs/stories/G1-exit-via-mouse.md); G2-G9 replicate it) |
 | Component scenario | `upstream/oolite/tests/component/features/s1_police_kills_pirate.feature` (pending; [S1](docs/stories/S1-police-kills-pirate.md), [ADR-0018](docs/decisions/0018-component-test-tier.md)) |
 
 Runtime: you are either Claude Code launched by `tools/fleet/run-story` in a worktree (frontier
