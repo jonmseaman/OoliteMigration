@@ -8,9 +8,10 @@
 #     tools/guardrails-selftest            # all cases, exit 0 only if every one behaves
 #
 # NOTHING HERE TOUCHES THIS REPOSITORY. Every case is applied to a throwaway fixture git repo
-# built from scratch under $LOCALAPPDATA/Temp: that is the only honest way to prove the
-# goldens guard, since proving it in place would mean committing the exact edit the guard
-# exists to forbid, and the same for the deleted-test guard.
+# built from scratch in a PRIVATE `mktemp -d` under the system temp directory (see SCRATCH
+# below: $TMPDIR, else $TEMP, else %LOCALAPPDATA%\Temp, else /tmp), removed by an EXIT trap:
+# that is the only honest way to prove the goldens guard, since proving it in place would mean
+# committing the exact edit the guard exists to forbid, and the same for the deleted-test guard.
 #
 # The fixture is a MINIATURE of the real tree (two protected golden paths, a .feature, a step
 # library, two .m sources, a meson.build) rather than a clone, so a case runs in milliseconds
@@ -29,8 +30,24 @@ REPO="$PWD"
 GUARD="$REPO/tools/guardrails.sh"
 DENY="$REPO/tools/deny-list.txt"
 
-SCRATCH="${LOCALAPPDATA:-${TMPDIR:-${TEMP:-/tmp}}}/oolite-guardrails-selftest"
-rm -rf "$SCRATCH"
+# CONCURRENCY. accept.sh runs this script as an acceptance line, and the fleet runs several
+# workers and their reviewers in parallel BY DESIGN, so two invocations overlap routinely. A
+# FIXED scratch path made that fatal: the `rm -rf` below and the per-fixture `rm -rf` in
+# fixture() would delete an in-flight run's tree - including the directory it was cd'd into -
+# and the victim reported ANTI-VACUITY failures ("the test-file classifier matches 0 tracked
+# files", "tools/deny-list.txt is missing") because its own cwd had vanished. That is a
+# SPURIOUS RED on a correct tree, which is worse than no gate at all: it teaches agents to
+# re-run until green. Each run therefore gets its own private mktemp -d, removed by an EXIT
+# trap (also on INT/TERM, so an interrupted run does not leak a tree either). No fixed path:
+# post-mortem debuggability is not worth a flaky merge gate - set SELFTEST_KEEP=1 to keep the
+# tree, and the path is printed on failure.
+TMPROOT="${TMPDIR:-${TEMP:-${LOCALAPPDATA:+$LOCALAPPDATA/Temp}}}"
+TMPROOT="${TMPROOT:-/tmp}"
+SCRATCH="$(mktemp -d "$TMPROOT/oolite-guardrails-selftest.XXXXXX")" || exit 1
+cleanup() { [ -n "${SELFTEST_KEEP:-}" ] || { cd / 2>/dev/null; rm -rf "$SCRATCH"; }; }
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 143' TERM
 
 fail=0
 cases=0
@@ -53,6 +70,9 @@ git_c() { git -c user.email=s@l -c user.name=s "$@"; }
 install_guard_into() { grep -v '^goldens/|not populated yet' "$GUARD" > "$1"; }
 
 # fixture <name> : a fresh repo on branch main with one clean commit; cd's into it
+# $SCRATCH is private to THIS run (mktemp -d above), so this rm -rf can never reach another
+# run's identically-named fixture - the second of the two destruction mechanisms that made
+# overlapping runs fail.
 fixture() {
   local d="$SCRATCH/$1"
   rm -rf "$d"; mkdir -p "$d/tools" "$d/goldens" "$d/tests/golden/scenarios/001" \
@@ -883,6 +903,55 @@ expect_fail "(f controls ARE load-bearing: a leading return still refused)" "is 
 
 # =================================================================================================
 echo
+echo "=== 3u. 'if True:' IS TRANSPARENT TO UNCONDITIONAL EXITS TOO ==="
+# Measured leak: `if True:` was treated as transparent for LIVENESS but not for EXITS. Its
+# nested statements were read at ordinary indent, so the top-level guard on the exit rule never
+# fired for them, and a ONE-LINE WRAPPER re-opened every neutering the exit rule closes:
+#   if True: / return       + a retained assertion  read LIVE
+#   if True: return  (one-liner) + ditto            read LIVE
+#   if True: / pytest.skip() + ditto                read LIVE
+# Note 3q's `if True:`/`pass` control could not see this: that body has live=0 either way.
+# Each shape below has its BREAK TWIN: remove ONLY the exit and the same body must pass.
+fixture gut_if_true_return || exit 1
+neuter '    if True:' '        return' '    assert universe.pirate is None'
+expect_fail "(f) 'if True:' wrapping a bare return refused" "is emptied"
+
+fixture neg_if_true_return_break || exit 1
+# BREAK TWIN: the exit is the only thing removed, so the assertion below is reachable.
+neuter '    if True:' '        pass' '    assert universe.pirate is None'
+expect_pass "(f control) same wrapper WITHOUT the return passes"
+
+fixture gut_if_true_return_oneline || exit 1
+neuter '    if True: return' '    assert universe.pirate is None'
+expect_fail "(g) one-line 'if True: return' refused" "is emptied"
+
+fixture neg_if_true_return_oneline_break || exit 1
+neuter '    if True: pass' '    assert universe.pirate is None'
+expect_pass "(g control) one-line 'if True: pass' passes"
+
+fixture gut_if_true_skip || exit 1
+neuter '    if True:' '        pytest.skip("flaky")' '    assert universe.pirate is None'
+expect_fail "(h) 'if True:' wrapping an unconditional skip refused" "is emptied"
+
+fixture neg_if_true_skip_break || exit 1
+# BREAK TWIN: a GENUINE conditional skip one level deeper - the exit is no longer unconditional,
+# so this must pass. If it did not, the 3r tightening would be a false-RED generator.
+neuter '    if True:' '        if universe.offline:' '            pytest.skip("no network")' \
+       '    assert universe.pirate is None'
+expect_pass "(h control) a conditional skip nested inside 'if True:' passes"
+
+fixture gut_if_true_nested || exit 1
+# Transparency composes: two nested wrappers are still no decision at all.
+neuter '    if True:' '        if True:' '            return' '    assert universe.pirate is None'
+expect_fail "(i) nested 'if True:' wrappers around a return refused" "is emptied"
+
+fixture neg_if_true_nested_break || exit 1
+# BREAK TWIN / FALSE-RED GUARD: a return inside a REAL loop under 'if True:' is conditional.
+neuter '    if True:' '        for s in universe.ships:' '            return' \
+       '    assert universe.pirate is None'
+expect_pass "(i control) a return under a real loop inside 'if True:' passes"
+
+echo
 echo "=== 4. deny-list: a reintroduced JS_*/GNUstep symbol is REFUSED ==="
 fixture deny_js || exit 1
 printf 'static JSRuntime *rt; static void f(void) { JS_NewContext(rt); }\n' >> upstream/oolite/src/Core/OOColor.m
@@ -966,6 +1035,6 @@ printf 'guardrails-selftest: %d cases\n' "$cases"
 if [ "$fail" -eq 0 ]; then
   echo "guardrails-selftest: ALL CASES BEHAVED"
 else
-  echo "guardrails-selftest: FAILURES ABOVE" >&2
+  echo "guardrails-selftest: FAILURES ABOVE (rerun with SELFTEST_KEEP=1 to keep $SCRATCH)" >&2
 fi
 exit "$fail"

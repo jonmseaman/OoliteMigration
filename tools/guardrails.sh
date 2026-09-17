@@ -142,6 +142,12 @@
 #     and an unconditional skip make everything below them unreachable, so a retained assertion
 #     underneath does not count. An exit AFTER real work, or under an `if`, is ordinary control
 #     flow and stays live. Selftest 3t.
+#   `if True:` IS TRANSPARENT TO THAT RULE, NOT JUST TO LIVENESS. The header decides nothing, so
+#     the DIRECT children of an `if True:` block (nested arbitrarily deep in such blocks, and the
+#     one-line `if True: return` form) are judged at top level for the exit rule. Otherwise a
+#     ONE-LINE WRAPPER re-opens every neutering the exit rule closes - measured: `if True:` /
+#     `return` above a retained assertion read LIVE. A statement under a REAL construct inside
+#     the block (`if True:` / `for ...:` / `return`) is conditional and stays live. Selftest 3u.
 #
 # STILL HEURISTIC — these read LIVE and this check will not catch them:
 #
@@ -635,8 +641,16 @@ py_units() {       # content on stdin -> one line per LIVE test/step unit
     }
 
     # Is the body of the def at line i (header indent ind) live? useh as above.
-    function bodylive(i, ind, useh,   k,t,st,ti,skipind,indoc,bodyind,rest,body,live) {
-      live=0; skipind=-1; indoc=0; bodyind=-1; k=i+1
+    #
+    # TRANSPARENT-BLOCK BOOKKEEPING. `if True:` decides nothing, so its DIRECT children are at
+    # the top level of the unit as far as unconditional exits go: `if True:` / `return` makes
+    # everything below it unreachable exactly as a bare `return` does. TH/TB/TT are a stack of
+    # open transparent blocks - header indent, direct-child indent (-1 until the first child
+    # fixes it), and whether the header itself sat at a top-level position. Only DIRECT children
+    # of a fully top-level chain count: a `return` nested inside a `for` inside `if True:` is
+    # conditional, and calling it an exit would be a FALSE RED.
+    function bodylive(i, ind, useh,   k,t,st,ti,skipind,indoc,bodyind,rest,body,live,TH,TB,TT,tdep,istop) {
+      live=0; skipind=-1; indoc=0; bodyind=-1; tdep=0; k=i+1
       while (k<=NR) {
         t=L[k]; st=strip(t)
         if (st=="") { k++; continue }
@@ -651,18 +665,36 @@ py_units() {       # content on stdin -> one line per LIVE test/step unit
           k++; continue
         }
         if (bodyind<0) bodyind=ti
+        # Leave any transparent block this statement has dedented out of.
+        while (tdep>0 && ti<=TH[tdep]) tdep--
+        # Is this statement at a TOP-LEVEL position, i.e. does reaching it guarantee that
+        # everything textually below it in the unit is reachable only through it?
+        if (tdep==0) istop = (ti<=bodyind)
+        else {
+          if (TB[tdep]<0) TB[tdep]=ti          # first direct child fixes the body indent
+          istop = (TT[tdep] && ti<=TB[tdep])
+        }
         if (st ~ /^if[ \t]+(False|0)[ \t]*:/ || st ~ /^if[ \t]+not[ \t]+True[ \t]*:/) { skipind=ti; k++; continue }
         # `if True:` is a TRANSPARENT block, not a live statement: the header decides nothing,
-        # so the body is scanned at face value and an empty one stays dead.
+        # so the body is scanned at face value and an empty one stays dead. It is transparent to
+        # UNCONDITIONAL EXITS too - `if True:` / `return` kills the rest of the unit exactly as a
+        # bare `return` does, and that one-line wrapper would otherwise re-open every neutering
+        # the exit rule closes - so the block is pushed on the transparent stack and its direct
+        # children are judged at top level (see the function header).
         if (st ~ /^if[ \t]+(True|1)[ \t]*:/) {
           rest=st; sub(/^if[ \t]+(True|1)[ \t]*:[ \t]*/,"",rest)
-          if (rest != "" && !stmtdead(rest, useh)) live=1
+          if (rest != "") {                    # one-liner: the whole block is this statement
+            if (isexit(rest) && istop) return live
+            if (!stmtdead(rest, useh)) live=1
+            k++; continue
+          }
+          tdep++; TH[tdep]=ti; TB[tdep]=-1; TT[tdep]=istop
           k++; continue
         }
         if (substr(st,1,1)=="@") { k++; continue }
         # UNCONDITIONAL EXIT at the TOP LEVEL of the body: the scan stops. Nothing below runs, so
         # whether the unit is live was decided entirely by what came before.
-        if (isexit(st) && ti<=bodyind) return live
+        if (isexit(st) && istop) return live
         if (stmtdead(st, useh)) { k++; continue }
         live=1; k++
       }
