@@ -1,0 +1,1040 @@
+#!/usr/bin/env bash
+#
+# Proof that tools/guardrails.sh FAILS on a real violation of each of its four rules, and
+# passes on the legitimate changes that look like one (bead oo-ptc). A check that cannot fail is
+# not a check; a check that fails on legitimate work gets bypassed, so every violation case here
+# is paired with a NEGATIVE CONTROL.
+#
+#     tools/guardrails-selftest            # all cases, exit 0 only if every one behaves
+#
+# NOTHING HERE TOUCHES THIS REPOSITORY. Every case is applied to a throwaway fixture git repo
+# built from scratch in a PRIVATE `mktemp -d` under the system temp directory (see SCRATCH
+# below: $TMPDIR, else $TEMP, else %LOCALAPPDATA%\Temp, else /tmp), removed by an EXIT trap:
+# that is the only honest way to prove the goldens guard, since proving it in place would mean
+# committing the exact edit the guard exists to forbid, and the same for the deleted-test guard.
+#
+# The fixture is a MINIATURE of the real tree (two protected golden paths, a .feature, a step
+# library, two .m sources, a meson.build) rather than a clone, so a case runs in milliseconds
+# and the scenario under test is the only thing in the diff. The two files that carry the real
+# policy - tools/guardrails.sh and tools/deny-list.txt - are COPIED IN, not reimplemented, so
+# this exercises the shipping guard and the shipping pattern list.
+#
+# THE FIXTURE IS DELIBERATELY DIRTY. OOJSEngine.m carries three JS_* call sites and OOCocoa.m
+# carries a pre-existing `#pragma GCC diagnostic ignored`, exactly as the real upstream tree
+# does, because the most damaging defect this guard ever had was a PURE RENAME of such a file
+# reading as "the whole file was added". A fixture of clean files cannot catch that.
+set -u
+
+cd "$(dirname "$0")/.." || exit 1
+REPO="$PWD"
+GUARD="$REPO/tools/guardrails.sh"
+DENY="$REPO/tools/deny-list.txt"
+
+# CONCURRENCY. accept.sh runs this script as an acceptance line, and the fleet runs several
+# workers and their reviewers in parallel BY DESIGN, so two invocations overlap routinely. A
+# FIXED scratch path made that fatal: the `rm -rf` below and the per-fixture `rm -rf` in
+# fixture() would delete an in-flight run's tree - including the directory it was cd'd into -
+# and the victim reported ANTI-VACUITY failures ("the test-file classifier matches 0 tracked
+# files", "tools/deny-list.txt is missing") because its own cwd had vanished. That is a
+# SPURIOUS RED on a correct tree, which is worse than no gate at all: it teaches agents to
+# re-run until green. Each run therefore gets its own private mktemp -d, removed by an EXIT
+# trap (also on INT/TERM, so an interrupted run does not leak a tree either). No fixed path:
+# post-mortem debuggability is not worth a flaky merge gate - set SELFTEST_KEEP=1 to keep the
+# tree, and the path is printed on failure.
+TMPROOT="${TMPDIR:-${TEMP:-${LOCALAPPDATA:+$LOCALAPPDATA/Temp}}}"
+TMPROOT="${TMPROOT:-/tmp}"
+SCRATCH="$(mktemp -d "$TMPROOT/oolite-guardrails-selftest.XXXXXX")" || exit 1
+cleanup() { [ -n "${SELFTEST_KEEP:-}" ] || { cd / 2>/dev/null; rm -rf "$SCRATCH"; }; }
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 143' TERM
+
+fail=0
+cases=0
+ok() { cases=$((cases+1)); printf 'PASS: %s\n' "$1"; }
+no() { cases=$((cases+1)); printf 'FAIL: %s\n' "$1"; fail=1; }
+
+# Built by concatenation so the forbidden literals never appear in this file's own source.
+FLAG="-W""no-unused-variable"
+PRAGMA="#pragma GCC diag""nostic ignored \"-W""unused-variable\""
+PRAGMA_CLANG="#pragma clang diag""nostic ignored \"-W""shadow\""
+ATTR="__attr""ibute__((unused))"
+UPRAGMA="_Prag""ma"
+
+git_c() { git -c user.email=s@l -c user.name=s "$@"; }
+
+# The fixture POPULATES goldens/, which the real tree does not yet, so the shipped guard's
+# PROTECTED_PREFIXES_PENDING exemption for goldens/ would be stale in every fixture and emit a
+# "that exemption is stale" note on all ~60 cases. The fixture copy therefore drops that one
+# exemption line; case 1k reinstates the pristine guard to prove the exemption itself works.
+install_guard_into() { grep -v '^goldens/|not populated yet' "$GUARD" > "$1"; }
+
+# fixture <name> : a fresh repo on branch main with one clean commit; cd's into it
+# $SCRATCH is private to THIS run (mktemp -d above), so this rm -rf can never reach another
+# run's identically-named fixture - the second of the two destruction mechanisms that made
+# overlapping runs fail.
+fixture() {
+  local d="$SCRATCH/$1"
+  rm -rf "$d"; mkdir -p "$d/tools" "$d/goldens" "$d/tests/golden/scenarios/001" \
+    "$d/upstream/oolite/tests/component/features" "$d/upstream/oolite/tests/component/steps" \
+    "$d/upstream/oolite/src/Core" "$d/.github/workflows"
+  # See install_guard()'s comment: the fixture populates goldens/, so the shipped
+  # PROTECTED_PREFIXES_PENDING exemption for it would be stale here. Case 1k uses the pristine
+  # guard to prove the exemption mechanism itself.
+  install_guard_into "$d/tools/guardrails.sh"
+  cp "$DENY"  "$d/tools/deny-list.txt"
+  printf '{ "settle_seconds": 8 }\n' > "$d/tests/golden/scenarios/001/scenario.json"
+  printf 'golden one\n' > "$d/goldens/g1.txt"
+  printf 'golden two\n' > "$d/goldens/g2.txt"
+  cat > "$d/upstream/oolite/tests/component/features/s1.feature" <<'EOF'
+Feature: Ship-to-ship combat
+  Scenario: A police viper engages a lone pirate
+    Given a clean system
+    When the viper engages
+    Then the pirate is destroyed
+EOF
+  cat > "$d/upstream/oolite/tests/component/steps/world_steps.py" <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+@then("the pirate is destroyed")
+def destroyed():
+    assert universe.pirate is None
+EOF
+  cat > "$d/upstream/oolite/src/Core/OOColor.m" <<'EOF'
+#import "OOColor.h"
+
+@implementation OOColor
+- (void) reset { _r = 0.0f; }
+@end
+EOF
+  # Carries deny-listed symbols already, like 102 real files do.
+  cat > "$d/upstream/oolite/src/Core/OOJSEngine.m" <<'EOF'
+#import "OOJSEngine.h"
+
+static JSRuntime *sRuntime;
+
+void OOJSInit(void)
+{
+    sRuntime = JS_NewRuntime(8L * 1024L * 1024L);
+    JS_SetErrorReporter(sRuntime, OOJSReport);
+}
+EOF
+  # Carries a pre-existing suppression, like four real upstream files do.
+  { printf '#import "OOCocoa.h"\n'
+    printf '%s\n' "$PRAGMA"
+    printf 'static int gLegacy;\n'; } > "$d/upstream/oolite/src/Core/OOCocoa.m"
+  printf "project('oolite', 'c')\n" > "$d/upstream/oolite/src/Core/meson.build"
+  printf 'name: build\njobs:\n  linux:\n    runs-on: ubuntu-latest\n' > "$d/.github/workflows/ci.yml"
+  ( cd "$d" && git init -q -b main . && git_c add -A && git_c commit -qm base ) || return 1
+  cd "$d" || return 1
+}
+
+# run the guard in the current fixture; prints rc and captures output in $OUT
+run_guard() { OUT=$(bash tools/guardrails.sh 2>&1); RC=$?; }
+
+# expect_fail <case> <substring>
+expect_fail() {
+  run_guard
+  printf '  rc=%s\n' "$RC"
+  printf '%s\n' "$OUT" | grep -E 'guardrails: (goldens|suppression|tests|deny-list):' | sed 's/^/    /'
+  if [ "$RC" -eq 0 ]; then no "$1 (guard exited 0 on a real violation)"; return; fi
+  if printf '%s' "$OUT" | grep -qF "$2"; then ok "$1"; else no "$1 (failed, but not with \"$2\")"; fi
+}
+
+expect_pass() {
+  run_guard
+  printf '  rc=%s\n' "$RC"
+  if [ "$RC" -eq 0 ]; then ok "$1"; else printf '%s\n' "$OUT" | sed 's/^/    /'; no "$1 (guard exited $RC on a clean tree)"; fi
+}
+
+echo "=== 0. clean fixture: the guard must PASS, or every case below is meaningless ==="
+fixture clean || { no "fixture setup"; exit 1; }
+expect_pass "clean tree passes (with pre-existing pragma and JS_* sites present)"
+
+# =================================================================================================
+echo
+echo "=== 1. goldens: a change under a protected golden path is REFUSED ==="
+fixture goldens || exit 1
+printf '{ "settle_seconds": 99 }\n' > tests/golden/scenarios/001/scenario.json
+expect_fail "modified golden is refused" "has no re-bless approval"
+
+echo
+echo "=== 1b. ...and a NEW file dropped under a protected path is refused too ==="
+fixture goldens_add || exit 1
+mkdir -p tests/golden/scenarios/002 && printf '{}\n' > tests/golden/scenarios/002/scenario.json
+expect_fail "added golden is refused" "has no re-bless approval"
+
+echo
+echo "=== 1c. ...unless a re-bless approval is already on record (a PRIOR commit) ==="
+fixture goldens_ok || exit 1
+printf 'tests/golden/scenarios/001/scenario.json  Jon, weekly re-bless queue\n' > tools/rebless-approvals.txt
+git_c add -A >/dev/null; git_c commit -qm "approval" >/dev/null
+# main is the checked-out branch, so that commit already moved the base: the approval is part
+# of the BASE, not of the change under test. That is the whole point of this case.
+printf '{ "settle_seconds": 99 }\n' > tests/golden/scenarios/001/scenario.json
+expect_pass "approved re-bless is allowed"
+
+echo
+echo "=== 1d. ...and a change may NOT approve itself in the same breath ==="
+fixture goldens_self || exit 1
+printf 'tests/golden/scenarios/001/scenario.json  I approve of me\n' > tools/rebless-approvals.txt
+printf '{ "settle_seconds": 99 }\n' > tests/golden/scenarios/001/scenario.json
+expect_fail "self-approval refused" "may not approve itself"
+
+echo
+echo "=== 1e. ...a golden DELETED is refused (the case that always worked) ==="
+fixture goldens_del || exit 1
+git rm -q goldens/g1.txt
+expect_fail "deleted golden refused" "has no re-bless approval"
+
+echo
+echo "=== 1f. FINDING 2: a golden RENAMED OUT of a protected path is refused ==="
+# Was rc=0/OK: changed_paths() printed only the NEW side, so the guard was shown an ordinary
+# unprotected path and never learned a golden had left Jon's custody. goldens/ has no
+# is_test_path() backstop, so nothing else caught it either. g2.txt stays behind, so the
+# anti-vacuity assertion still passes and this case is about the rename and nothing else.
+fixture goldens_rename_out || exit 1
+git mv goldens/g1.txt upstream/oolite/src/Core/g1_backup.txt
+expect_fail "golden renamed OUT of goldens/ refused" "is RENAMED OUT of a protected golden path"
+
+echo
+echo "=== 1g. ...including out of tests/golden/scenarios/ ==="
+fixture goldens_rename_out2 || exit 1
+git mv tests/golden/scenarios/001/scenario.json upstream/oolite/src/Core/old_scenario.json
+expect_fail "scenario golden renamed out refused" "is RENAMED OUT of a protected golden path"
+
+echo
+echo "=== 1h. ...and a rename WITHIN the protected path is still a change to a golden ==="
+fixture goldens_rename_in || exit 1
+git mv goldens/g1.txt goldens/g1-renamed.txt
+expect_fail "golden renamed within goldens/ refused" "inside a protected golden path"
+
+echo
+echo "=== 1i. ...and dropping a file INTO a protected path is refused ==="
+fixture goldens_rename_into || exit 1
+git mv upstream/oolite/src/Core/OOColor.m goldens/OOColor.m.bak
+expect_fail "file renamed into goldens/ refused" "is renamed into a protected golden path"
+
+echo
+echo "=== 1j. NEGATIVE CONTROL: renaming an ordinary file near, but not in, a golden path ==="
+fixture goldens_neg || exit 1
+git mv upstream/oolite/src/Core/OOColor.m upstream/oolite/src/Core/OOColour.m
+expect_pass "ordinary rename outside protected paths passes"
+
+echo
+echo "=== 1k. FINDING 7: anti-vacuity is PER-PREFIX, not any-of ==="
+# Was: seen=1 if ANY prefix was tracked, so with goldens/ empty in the real tree (0 files) and
+# tests/golden/scenarios/ holding 1, the goldens/ half was ALREADY VACUOUS and the assertion
+# passed regardless. Now each prefix must exist or be explicitly, documentedly exempt.
+fixture vac_one_prefix || exit 1
+cp "$GUARD" tools/guardrails.sh          # the PRISTINE guard, exemption line intact
+git rm -q -r goldens >/dev/null
+git_c commit -qam "pristine guard, no goldens" >/dev/null
+printf '// unrelated\n' >> upstream/oolite/src/Core/OOColor.m
+expect_pass "the documented-pending prefix may be empty"
+
+fixture vac_other_prefix || exit 1
+git rm -q -r tests/golden >/dev/null
+expect_fail "an UNEXEMPTED empty protected prefix fails the run" "the protected-path list has rotted"
+
+echo
+echo "=== 1k2. ...and a PENDING exemption that has gone stale is called out ==="
+# The exemption is a dated promise, not a permanent hole: once the prefix is populated the line
+# must go, and the guard says so rather than quietly carrying a lie.
+fixture vac_stale_exempt || exit 1
+cp "$GUARD" tools/guardrails.sh          # pristine: goldens/ exempted, but goldens/ IS populated
+git_c commit -qam "pristine guard" >/dev/null
+printf '// unrelated\n' >> upstream/oolite/src/Core/OOColor.m
+run_guard
+printf '  rc=%s\n' "$RC"
+if [ "$RC" -eq 0 ] && printf '%s' "$OUT" | grep -qF "that exemption is stale"; then
+  ok "a stale pending-prefix exemption is reported (and does not fail the run)"
+else
+  no "a stale pending-prefix exemption is reported (rc=$RC)"
+fi
+
+echo
+echo "=== 1l. FINDING 7 (lesser): an INDENTED approval line does not approve ==="
+# awk 'NF{print $1}' stripped leading whitespace, so a line indented to look like part of the
+# file's example block approved for real. Approvals must start in column one.
+fixture approve_indent || exit 1
+printf '   tests/golden/scenarios/001/scenario.json  hiding in the example block\n' > tools/rebless-approvals.txt
+git_c add -A >/dev/null; git_c commit -qm "sneaky approval" >/dev/null
+printf '{ "settle_seconds": 99 }\n' > tests/golden/scenarios/001/scenario.json
+expect_fail "indented approval does not approve" "has no re-bless approval"
+
+echo
+echo "=== 1m. NEGATIVE CONTROL: the same approval, flush left, still works ==="
+fixture approve_flush || exit 1
+printf 'tests/golden/scenarios/001/scenario.json  Jon, flush left, real approval\n' > tools/rebless-approvals.txt
+git_c add -A >/dev/null; git_c commit -qm "real approval" >/dev/null
+printf '{ "settle_seconds": 99 }\n' > tests/golden/scenarios/001/scenario.json
+expect_pass "flush-left approval approves"
+
+# =================================================================================================
+echo
+echo "=== 2. suppression: a NEW warning suppression is REFUSED ==="
+fixture sup_flag || exit 1
+printf "extra_args = ['%s']\n" "$FLAG" >> upstream/oolite/src/Core/meson.build
+expect_fail "added compiler flag refused" "adds a warning suppression"
+
+fixture sup_pragma || exit 1
+printf '%s\n' "$PRAGMA_CLANG" >> upstream/oolite/src/Core/OOColor.m
+expect_fail "added pragma refused" "adds a warning suppression"
+
+fixture sup_attr || exit 1
+printf 'static int leftover %s;\n' "$ATTR" >> upstream/oolite/src/Core/OOColor.m
+expect_fail "added unused-attribute refused" "adds a warning suppression"
+
+echo
+echo "=== 2b. ...but a suppression that was ALREADY there is not a new violation ==="
+fixture sup_preexisting || exit 1
+printf '// an unrelated later edit\n' >> upstream/oolite/src/Core/OOCocoa.m
+expect_pass "pre-existing suppression does not fail a later edit"
+
+echo
+echo "=== 2c. ...and prose ABOUT the rule is not a violation (the grep trap) ==="
+fixture sup_prose || exit 1
+{ printf '# House rules\n'
+  printf 'Never add %s or a %s to silence a warning.\n' "$FLAG" "$PRAGMA"; } > NOTES.md
+expect_pass "documentation quoting the forbidden constructs passes"
+
+echo
+echo "=== 2d. FINDING 5: the _Pragma() string form is matched ==="
+# _Pragma is the ONLY way to put a diagnostic suppression inside a macro, so it is the natural
+# spelling in a port - and it matched NEITHER the guard's pattern set NOR the deny-list copy,
+# so both of the two checks that "ask different questions" were blind to it.
+fixture sup_uPragma || exit 1
+{ printf '#define QUIET_BEGIN %s("GCC diag' "$UPRAGMA"; printf 'nostic push") \\\n'
+  printf '                    %s("GCC diag' "$UPRAGMA"; printf 'nostic ignored \\"-W'; printf 'unused-variable\\")\n'
+  printf 'QUIET_BEGIN\nstatic int quiet;\n'; } >> upstream/oolite/src/Core/OOColor.m
+expect_fail "_Pragma diagnostic suppression refused" "adds a warning suppression"
+
+echo
+echo "=== 2e. ...and the DENY-LIST copy of the patterns catches it too ==="
+# The deny-list is per-file and baseline-relative, which is a different question; it must not
+# have the same hole. Proven by putting the construct in a file the suppression check exempts.
+fixture sup_uPragma_deny || exit 1
+{ printf '%s("GCC diag' "$UPRAGMA"; printf 'nostic ignored \\"-W'; printf 'shadow\\")\n'; } >> upstream/oolite/src/Core/OOJSEngine.m
+run_guard
+printf '  rc=%s\n' "$RC"
+if printf '%s' "$OUT" | grep -qF "reintroduces deny-listed symbols"; then ok "_Pragma is also a deny-list hit"; else no "_Pragma is also a deny-list hit (deny-list did not fire)"; fi
+
+echo
+echo "=== 2f. NEGATIVE CONTROL: an ordinary _Pragma that is not a diagnostic passes ==="
+fixture sup_uPragma_neg || exit 1
+{ printf '%s("pack(push, 1)")\n' "$UPRAGMA"; } >> upstream/oolite/src/Core/OOColor.m
+expect_pass "_Pragma(\"pack\") is not a suppression"
+
+echo
+echo "=== 2g. FINDING 6: build systems that actually carry the flags are scanned ==="
+# CODE_RE covered meson/Makefile/GNUmakefile/.mk but not the places this tree really builds
+# from. Each of these was rc=0/OK before.
+fixture sup_cmake || exit 1
+printf 'add_compile_options(%s)\n' "$FLAG" > CMakeLists.txt
+expect_fail "CMakeLists.txt suppression refused" "adds a warning suppression"
+
+fixture sup_automake || exit 1
+printf 'AM_CFLAGS = -W''no-shadow\n' > Makefile.am
+expect_fail "Makefile.am suppression refused" "adds a warning suppression"
+
+fixture sup_autoconf || exit 1
+printf 'CFLAGS="$CFLAGS -W''no-error"\n' > configure.ac
+expect_fail "configure.ac suppression refused" "adds a warning suppression"
+
+fixture sup_ci || exit 1
+printf '    env:\n      CFLAGS: %s\n' "$FLAG" >> .github/workflows/ci.yml
+expect_fail "CI workflow yml suppression refused" "adds a warning suppression"
+
+fixture sup_xcconfig || exit 1
+printf 'OTHER_CFLAGS = $(inherited) %s\n' "$FLAG" > Build.xcconfig
+expect_fail ".xcconfig suppression refused" "adds a warning suppression"
+
+fixture sup_mesonopts || exit 1
+printf "option('extra', type: 'string', value: '%s')\n" "$FLAG" > upstream/oolite/meson.options
+expect_fail "meson.options suppression refused" "adds a warning suppression"
+
+echo
+echo "=== 2h. NEGATIVE CONTROL: yaml/CI prose and ordinary build edits still PASS ==="
+# Adding .yml/.yaml to CODE_RE only stays safe because ONLY ADDED LINES are scanned and .md/.txt
+# stay out of CODE_RE. Both halves of that argument get a case.
+fixture sup_yaml_neg || exit 1
+printf '    steps:\n      - run: meson setup build\n' >> .github/workflows/ci.yml
+expect_pass "an ordinary CI workflow edit passes"
+
+fixture sup_yaml_pre || exit 1
+printf '    env:\n      CFLAGS: %s\n' "$FLAG" >> .github/workflows/ci.yml
+git_c commit -qam "pre-existing upstream CI flag" >/dev/null
+printf '      - run: ninja -C build\n' >> .github/workflows/ci.yml
+expect_pass "a pre-existing CI flag does not fail a later workflow edit"
+
+fixture sup_md_neg || exit 1
+printf 'The CI file may not contain %s.\n' "$FLAG" > docs.md
+expect_pass "markdown quoting a flag is still out of scope"
+
+echo
+echo "=== 2i. FINDING 1 (suppression half): a PURE RENAME of a file that already had a pragma ==="
+# THE MOST DAMAGING DEFECT. The new path does not exist at the base, so the baseline was empty,
+# so the ENTIRE file read as added and its pre-existing pragma fired the guard. This migration
+# renames files by design; the first Phase-1/2 move turned the guard permanently red.
+fixture rename_pragma || exit 1
+git mv upstream/oolite/src/Core/OOCocoa.m upstream/oolite/src/Core/OOPlatform.m
+expect_pass "pure rename of a file carrying a pre-existing pragma passes"
+
+echo
+echo "=== 2j. ...and a rename that ALSO adds a suppression is still refused ==="
+# The fix must not be "ignore renames": a rename is a normal place to sneak a line in.
+fixture rename_pragma_bad || exit 1
+git mv upstream/oolite/src/Core/OOColor.m upstream/oolite/src/Core/OOColour.m
+printf '%s\n' "$PRAGMA_CLANG" >> upstream/oolite/src/Core/OOColour.m
+expect_fail "rename that adds a suppression is refused" "adds a warning suppression"
+
+# =================================================================================================
+echo
+echo "=== 3. tests: a deleted test file is REFUSED ==="
+fixture test_del || exit 1
+git rm -q upstream/oolite/tests/component/features/s1.feature
+expect_fail "deleted .feature refused" "is deleted"
+
+echo
+echo "=== 3b. ...the component step library counts as a test (ADR-0018 §5) ==="
+fixture test_steps || exit 1
+git rm -q upstream/oolite/tests/component/steps/world_steps.py
+expect_fail "deleted step library refused" "is deleted"
+
+echo
+echo "=== 3c. ...an EMPTIED test is refused even though the file still exists ==="
+fixture test_gut || exit 1
+cat > upstream/oolite/tests/component/features/s1.feature <<'EOF'
+Feature: Ship-to-ship combat
+EOF
+expect_fail "gutted .feature refused" "is emptied"
+
+echo
+echo "=== 3d. ...as is commenting the assertions out of a step file ==="
+fixture test_comment || exit 1
+sed -i 's/^@then/#@then/; s/^    assert /    #assert /' upstream/oolite/tests/component/steps/world_steps.py
+expect_fail "commented-out steps refused" "is emptied"
+
+echo
+echo "=== 3e. ...a test renamed OUT of the test set is refused ==="
+fixture test_rename || exit 1
+git mv upstream/oolite/tests/component/steps/world_steps.py upstream/oolite/src/Core/world_steps.py
+expect_fail "test renamed out of the test set refused" "out of the test set"
+
+echo
+echo "=== 3f. ...but ADDING to a test is expected and must PASS ==="
+fixture test_add || exit 1
+cat >> upstream/oolite/tests/component/features/s1.feature <<'EOF'
+
+  Scenario: A second viper joins
+    Given a clean system
+    Then the pirate is destroyed
+EOF
+expect_pass "adding a scenario passes"
+
+fixture test_add_step || exit 1
+cat >> upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+
+@then("the wreckage remains")
+def wreckage():
+    assert universe.wreckage
+EOF
+expect_pass "adding a step passes"
+
+echo
+echo "=== 3g. FINDING 3: a test renamed to a NON-COLLECTED name INSIDE tests/ is refused ==="
+# The R-branch only fired when the new path stopped matching is_test_path(), and is_test_path()
+# says yes to anything under tests/ - so disabling a test in place was free. pytest-bdd collects
+# neither of these, and every scenario using those steps silently dies.
+fixture test_rename_disabled_py || exit 1
+git mv upstream/oolite/tests/component/steps/world_steps.py \
+       upstream/oolite/tests/component/steps/world_steps_disabled.py.bak
+expect_fail "step library renamed to a .bak inside tests/ refused" "nothing collects the new name"
+
+fixture test_rename_disabled_feature || exit 1
+git mv upstream/oolite/tests/component/features/s1.feature \
+       upstream/oolite/tests/component/features/s1.feature.disabled
+expect_fail ".feature renamed to .disabled inside tests/ refused" "nothing collects the new name"
+
+echo
+echo "=== 3h. NEGATIVE CONTROL: a legitimate test rename that STAYS collectable passes ==="
+fixture test_rename_ok || exit 1
+git mv upstream/oolite/tests/component/features/s1.feature \
+       upstream/oolite/tests/component/features/combat.feature
+expect_pass "renaming a .feature to another .feature passes"
+
+fixture test_rename_ok_steps || exit 1
+git mv upstream/oolite/tests/component/steps/world_steps.py \
+       upstream/oolite/tests/component/steps/universe_steps.py
+expect_pass "renaming a step library within steps/ passes"
+
+echo
+echo "=== 3i. ...but a rename that also guts the file is refused ==="
+# The rename must still be DETECTED as a rename (so this exercises the R-branch's unit
+# comparison, not the D+A fallback): the file keeps its shape and the real scenario is disabled
+# with a @skip tag while padding is appended - the same gutting style as 3l, plus a move.
+fixture test_rename_and_gut || exit 1
+git mv upstream/oolite/tests/component/features/s1.feature \
+       upstream/oolite/tests/component/features/combat.feature
+sed -i 's/^  Scenario: A police viper/  @skip\n  Scenario: A police viper/' \
+  upstream/oolite/tests/component/features/combat.feature
+expect_fail "rename + gut refused" "is emptied"
+
+echo
+echo "=== 3j. FINDING 4a: a step body replaced by 'pass' is refused (count unchanged) ==="
+# @then is still decorated and still counted, so an occurrence count saw no change at all.
+fixture gut_pass || exit 1
+cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+@then("the pirate is destroyed")
+def destroyed():
+    pass
+EOF
+expect_fail "step body replaced by pass refused" "is emptied"
+
+echo
+echo "=== 3k. FINDING 4b: a body wrapped in 'if False:' is refused (count GOES UP) ==="
+fixture gut_iffalse || exit 1
+cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+@then("the pirate is destroyed")
+def destroyed():
+    if False:
+        assert universe.pirate is None
+    return
+EOF
+expect_fail "body wrapped in 'if False:' refused" "is emptied"
+
+echo
+echo "=== 3l. FINDING 4c: @skip on the real scenario plus padding is refused (count GOES UP) ==="
+fixture gut_skip_feature || exit 1
+cat > upstream/oolite/tests/component/features/s1.feature <<'EOF'
+Feature: Ship-to-ship combat
+  @skip
+  Scenario: A police viper engages a lone pirate
+    Given a clean system
+    When the viper engages
+    Then the pirate is destroyed
+
+  Scenario: Padding that asserts nothing anyone cares about
+    Given a clean system
+    Then the pirate is destroyed
+EOF
+expect_fail "@skip-ing the real scenario refused" "is emptied"
+
+echo
+echo "=== 3m. ...and @skip on a step function is refused too ==="
+fixture gut_skip_py || exit 1
+sed -i 's/^@then("the pirate is destroyed")/@pytest.mark.skip\n@then("the pirate is destroyed")/' \
+  upstream/oolite/tests/component/steps/world_steps.py
+expect_fail "@skip on a step function refused" "is emptied"
+
+echo
+echo "=== 3n. ...and RENAMING a live unit reads as removing it ==="
+# Renaming the step's Gherkin text orphans every scenario that used the old text, exactly as a
+# deletion would.
+fixture gut_rename_unit || exit 1
+sed -i 's/@then("the pirate is destroyed")/@then("the pirate is possibly destroyed")/' \
+  upstream/oolite/tests/component/steps/world_steps.py
+expect_fail "renaming a step's Gherkin text refused" "is emptied"
+
+echo
+echo "=== 3o. NEGATIVE CONTROLS for the gutting rule: legitimate edits must PASS ==="
+fixture gut_neg_strengthen || exit 1
+sed -i 's/    assert universe.pirate is None/    assert universe.pirate is None\n    assert universe.debris > 0/' \
+  upstream/oolite/tests/component/steps/world_steps.py
+expect_pass "strengthening an assertion passes"
+
+fixture gut_neg_docstring || exit 1
+sed -i 's/^def destroyed():/def destroyed():\n    """The pirate must be gone, not merely damaged."""/' \
+  upstream/oolite/tests/component/steps/world_steps.py
+expect_pass "adding a docstring to a step passes"
+
+fixture gut_neg_scenario || exit 1
+cat >> upstream/oolite/tests/component/features/s1.feature <<'EOF'
+
+  @slow
+  Scenario: A tagged but not skipped scenario
+    Given a clean system
+    Then the pirate is destroyed
+EOF
+expect_pass "a non-skip tag on an ADDED scenario passes"
+
+fixture gut_neg_conftest || exit 1
+cat > upstream/oolite/tests/component/conftest.py <<'EOF'
+import pytest
+
+@pytest.fixture
+def universe():
+    return object()
+EOF
+expect_pass "adding a conftest fixture passes"
+
+echo
+echo "=== 3p. RUNTIME NEUTERING: a unit that still READS as a test but runs nothing ==="
+# REVIEW-3 FINDING. The dead-body model understood only SYNTACTIC disabling (pass / ... /
+# `if False:` / a @skip DECORATOR) and walked straight through five live-looking spellings that
+# disable a test at RUN TIME. All five were reproduced at rc=0 while the `pass` control at 3j
+# correctly failed. The guard had ALREADY committed to the policy - `@pytest.mark.skipif(True,)`
+# is refused at the decorator - so it was enforcing "a skipped unit is a dead unit" only where
+# the spelling happened to be a decorator. These cases make the policy consistent, and each is
+# paired with the NEGATIVE CONTROL that stops it becoming a false positive: the controls are the
+# reason this can be tightened at all.
+#
+# Base body for every case here is the fixture's live `assert universe.pirate is None`.
+neuter() {  # neuter <body-lines...> : replace the @then body in world_steps.py
+  local f=upstream/oolite/tests/component/steps/world_steps.py
+  { printf 'from pytest_bdd import given, when, then\n'
+    printf 'import pytest\n\n'
+    printf '@given("a clean system")\ndef clean_system():\n    universe.reset()\n\n'
+    printf '@when("the viper engages")\ndef engage():\n    universe.tick()\n\n'
+    printf '@then("the pirate is destroyed")\ndef destroyed():\n'
+    printf '%s\n' "$@" ; } > "$f"
+}
+
+# pyfixture <name> : a fixture plus a COMMITTED unittest-style python test file, so the change
+# under test is only the edit that follows. Two units: a plain one (the skip_intro refactor
+# target) and a @pytest.mark.skipif one (the conditional platform guard), which is how the real
+# GUI suite is written.
+pyfixture() {
+  fixture "$1" || return 1
+  mkdir -p upstream/oolite/tests/gui
+  cat > upstream/oolite/tests/gui/test_menu.py <<'EOF'
+import pytest
+import unittest
+
+IS_WINDOWS = True
+
+
+class MenuTest(unittest.TestCase):
+    def test_main_menu_appears(self):
+        self.press("space")
+        self.wait_for("main_menu")
+        self.assertEqual(self.screen(), "main_menu")
+
+    @pytest.mark.skipif(not IS_WINDOWS, reason="DPI awareness is a Windows concept")
+    def test_dpi_awareness_declared(self):
+        self.assertTrue(self.dpi_declared())
+EOF
+  git_c add -A >/dev/null && git_c commit -qm "python test base" >/dev/null
+}
+
+fixture gut_raise_skiptest || exit 1
+neuter '    raise SkipTest("later")'
+expect_fail "(a) raise SkipTest as the body refused" "is emptied"
+
+fixture gut_raise_unittest_skiptest || exit 1
+neuter '    raise unittest.SkipTest("later")'
+expect_fail "(a) raise unittest.SkipTest refused" "is emptied"
+
+fixture gut_pytest_skip_first || exit 1
+# WORSE THAN DELETION: the file still reads as asserting. Everything after an unconditional
+# skip is unreachable, so the retained assertion below is dead code.
+neuter '    pytest.skip("flaky")' '    assert universe.pirate is None'
+expect_fail "(b) pytest.skip() as the FIRST statement refused" "is emptied"
+
+fixture gut_self_skiptest_first || exit 1
+neuter '    self.skipTest("flaky")' '    assert universe.pirate is None'
+expect_fail "(b) self.skipTest() as the FIRST statement refused" "is emptied"
+
+fixture gut_if_true || exit 1
+# The INVERTED spelling of 3k. `if False:` was handled; `if True:` wrapping nothing was not.
+neuter '    if True:' '        pass'
+expect_fail "(c) 'if True:' wrapping a dead body refused" "is emptied"
+
+fixture gut_assert_true || exit 1
+neuter '    assert True'
+expect_fail "(d) 'assert True' as the whole body refused" "is emptied"
+
+fixture gut_helper_emptied || exit 1
+# (e) The unit's body is untouched; the HELPER it delegates to is emptied in the same change,
+# so the unit asserts nothing. Establish the helper+caller shape as the BASE first, so the
+# change under test is exactly "the helper lost its body".
+cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+def check_pirate_gone():
+    assert universe.pirate is None
+
+@then("the pirate is destroyed")
+def destroyed():
+    check_pirate_gone()
+EOF
+git_c add -A >/dev/null; git_c commit -qm "extract helper" >/dev/null
+sed -i 's/^    assert universe.pirate is None$/    pass/' \
+  upstream/oolite/tests/component/steps/world_steps.py
+expect_fail "(e) helper emptied in the same change refused" "is emptied"
+
+echo
+echo "=== 3q. NEGATIVE CONTROLS for 3p, EACH PROVED LOAD-BEARING BY BREAKING IT ==="
+# Without these the tightening in 3p is a false-positive generator, and a guard that cries wolf
+# is worse than no guard. But a control is only worth having if it CAN go red: review-3 found
+# that the skip-lookalike control below passed for the wrong reason - it used the receiver
+# `universe`, which the matcher never looked at, so it could not have detected the over-reach it
+# existed for. Every control here is therefore followed by its BREAK TWIN: the same case with
+# the one detail changed that should make the guard fire. If the twin does not fail, the control
+# is decorative.
+fixture neg_conditional_skip || exit 1
+# A GENUINE conditional skip guarding a real assertion. The skip is not at the top level of the
+# body, so it does not make the unit unreachable.
+neuter '    if universe.offline:' '        pytest.skip("no network")' \
+       '    assert universe.pirate is None'
+expect_pass "(a/b control) pytest.skip inside a real conditional passes"
+
+fixture neg_conditional_skip_break || exit 1
+# BREAK TWIN: de-indent the skip to the top level and the same body must be refused.
+neuter '    pytest.skip("no network")' '    assert universe.pirate is None'
+expect_fail "(a/b control IS load-bearing: top-level skip still refused)" "is emptied"
+
+fixture neg_assert_true_plus || exit 1
+neuter '    assert True' '    assert universe.pirate is None'
+expect_pass "(d control) 'assert True' alongside a real assertion passes"
+
+fixture neg_assert_true_break || exit 1
+# BREAK TWIN: take the real assertion away and only the padding is left.
+neuter '    assert True' '    return'
+expect_fail "(d control IS load-bearing: 'assert True' alone still refused)" "is emptied"
+
+fixture neg_if_true_live || exit 1
+neuter '    if True:' '        assert universe.pirate is None'
+expect_pass "(c control) 'if True:' around a REAL assertion passes"
+
+fixture neg_if_true_break || exit 1
+# BREAK TWIN: same wrapper, nothing inside it.
+neuter '    if True:' '        pass'
+expect_fail "(c control IS load-bearing: 'if True:' around nothing still refused)" "is emptied"
+
+fixture neg_helper_live || exit 1
+cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+def check_pirate_gone():
+    assert universe.pirate is None
+
+@then("the pirate is destroyed")
+def destroyed():
+    check_pirate_gone()
+EOF
+expect_pass "(e control) extracting a LIVE helper passes"
+
+fixture neg_helper_break || exit 1
+# BREAK TWIN: the identical extraction, into a helper that asserts nothing.
+cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+def check_pirate_gone():
+    pass
+
+@then("the pirate is destroyed")
+def destroyed():
+    check_pirate_gone()
+EOF
+expect_fail "(e control IS load-bearing: extracting a DEAD helper still refused)" "is emptied"
+
+fixture neg_skip_lookalike || exit 1
+# THE OVER-REACH DETECTOR, respelled. The old version of this control called
+# `universe.skip_frames(3)`, and passed only because the receiver `universe` was outside the
+# matcher's (pytest|unittest|self) alternation - it could not see an over-reach on `self.` at
+# all, which is precisely where the over-reach lived. On `self.`, with the call as the SOLE
+# statement, the unit reads as dead the moment isskip() matches on substring rather than on the
+# whole method name.
+neuter '    self.skip_frames(3)'
+expect_pass "(control) self.<name containing skip>() is NOT a skip"
+
+fixture neg_skip_lookalike_more || exit 1
+# The full set of real-world spellings the substring matcher condemned, in one body.
+neuter '    self.skip_intro()' '    self.unskip_all()' '    self.frame_skip_setup()' \
+       '    pytest.skip_if_slow()' '    unittest.skiptracker()'
+expect_pass "(control) skip_intro / unskip_all / frame_skip_setup / skip_if_slow pass"
+
+fixture neg_skip_lookalike_break || exit 1
+# BREAK TWIN: the one spelling that IS a skip, same receiver, same position.
+neuter '    self.skipTest("later")'
+expect_fail "(lookalike control IS load-bearing: self.skipTest() still refused)" "is emptied"
+
+echo
+echo "=== 3r. THE REFACTOR THAT MUST NOT GO RED: a helper named skip_intro ==="
+# REVIEW-3 BLOCKING 1, reproduced end to end on the shipping guard: isskip() matched any callee
+# CONTAINING "skip", so extracting two setup lines into `def skip_intro(self)` - a pure refactor
+# that deletes no assertion - made the caller read as dead and the guard exit 1. That is the
+# failure mode that gets a guard bypassed.
+pyfixture neg_skip_intro_refactor || exit 1
+cat > upstream/oolite/tests/gui/test_menu.py <<'EOF'
+import pytest
+import unittest
+
+IS_WINDOWS = True
+
+
+class MenuTest(unittest.TestCase):
+    def skip_intro(self):
+        self.press("space")
+        self.wait_for("main_menu")
+
+    def test_main_menu_appears(self):
+        self.skip_intro()
+        self.assertEqual(self.screen(), "main_menu")
+
+    @pytest.mark.skipif(not IS_WINDOWS, reason="DPI awareness is a Windows concept")
+    def test_dpi_awareness_declared(self):
+        self.assertTrue(self.dpi_declared())
+EOF
+expect_pass "extracting a helper named skip_intro() passes"
+
+pyfixture neg_skip_intro_break || exit 1
+# BREAK TWIN: the same unit is visible to the check, so really gutting it is still refused -
+# the case above is not passing because the file is invisible.
+sed -i 's/^        self.assertEqual(self.screen(), "main_menu")$/        pass/;s/^        self.press("space")$//;s/^        self.wait_for("main_menu")$/        pass/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_fail "(3r IS load-bearing: gutting that same unit is refused)" "is emptied"
+
+echo
+echo "=== 3s. @skipif IS A LIVE UNIT: a conditional platform guard is not a disabled test ==="
+# REVIEW-3 BLOCKING 2. The decorator gate dropped any def whose decorators matched /@.*skip/,
+# which swallowed @pytest.mark.skipif / @unittest.skipIf / @unittest.skipUnless. skipif RUNS on
+# the matching platform and is the dominant idiom in this repo's real suite, so those units were
+# invisible at BOTH ends and could be gutted to `pass` in silence. MEASURED AFTER THE FIX on the
+# real tree: test_g1_exit_via_mouse.py 13 defs -> 13 units (was 9), test_win32_declarations.py
+# 7 -> 7 (was 5); across the whole real python suite 46 test defs -> 46 units, 0 unguarded.
+pyfixture skipif_gutted || exit 1
+sed -i 's/^        self.assertTrue(self.dpi_declared())$/        pass/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_fail "gutting a @pytest.mark.skipif unit is refused" "is emptied"
+
+pyfixture skipif_unittest_gutted || exit 1
+sed -i 's/^    @pytest.mark.skipif(not IS_WINDOWS, reason="DPI awareness is a Windows concept")$/    @unittest.skipUnless(IS_WINDOWS, "windows only")/' \
+  upstream/oolite/tests/gui/test_menu.py
+git_c add -A >/dev/null; git_c commit -qm "unittest spelling" >/dev/null
+sed -i 's/^        self.assertTrue(self.dpi_declared())$/        pass/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_fail "gutting an @unittest.skipUnless unit is refused" "is emptied"
+
+pyfixture skipif_strengthened || exit 1
+# CONTROL for the loosening: a @skipif unit is live, so ADDING to it must still pass.
+sed -i 's/^        self.assertTrue(self.dpi_declared())$/        self.assertTrue(self.dpi_declared())\n        self.assertEqual(self.dpi_mode(), "per-monitor")/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_pass "(3s control) strengthening a @skipif unit passes"
+
+pyfixture skipif_unconditional || exit 1
+# ...and the line the loosening must NOT cross: skipif(True, ...) is unconditional, so it is
+# still a disabled test and adding it to a live unit is still refused.
+sed -i 's/^    def test_main_menu_appears(self):$/    @pytest.mark.skipif(True, reason="parked")\n    def test_main_menu_appears(self):/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_fail "@pytest.mark.skipif(True) on a live unit is still refused" "is emptied"
+
+echo
+echo "=== 3t. AN UNCONDITIONAL EXIT AT THE TOP OF THE BODY ENDS THE SCAN ==="
+# REVIEW-3 BLOCKING 3. A bare `return` was skip-and-continue, so `return` followed by the
+# retained assertion still read as live - the structural twin of the pytest.skip()-first case
+# that 3p closes, and the same one-line neutering.
+fixture gut_return_first || exit 1
+neuter '    return' '    assert universe.pirate is None'
+expect_fail "(f) bare 'return' before the assertion refused" "is emptied"
+
+fixture gut_sysexit_first || exit 1
+neuter '    sys.exit(0)' '    assert universe.pirate is None'
+expect_fail "(f) 'sys.exit(0)' before the assertion refused" "is emptied"
+
+fixture neg_return_after || exit 1
+# CONTROL: a `return` AFTER the assertion changes nothing - the assertion already ran.
+neuter '    assert universe.pirate is None' '    return'
+expect_pass "(f control) a trailing 'return' after a real assertion passes"
+
+fixture neg_return_conditional || exit 1
+# CONTROL: an early return under a condition is ordinary control flow, not a disabled test.
+neuter '    if universe.offline:' '        return' '    assert universe.pirate is None'
+expect_pass "(f control) a conditional early return passes"
+
+fixture neg_return_after_break || exit 1
+# BREAK TWIN for both controls: move the return above the assertion and it is refused again.
+neuter '    return' '    assert universe.pirate is None' '    return'
+expect_fail "(f controls ARE load-bearing: a leading return still refused)" "is emptied"
+
+# =================================================================================================
+echo
+echo "=== 3u. 'if True:' IS TRANSPARENT TO UNCONDITIONAL EXITS TOO ==="
+# Measured leak: `if True:` was treated as transparent for LIVENESS but not for EXITS. Its
+# nested statements were read at ordinary indent, so the top-level guard on the exit rule never
+# fired for them, and a ONE-LINE WRAPPER re-opened every neutering the exit rule closes:
+#   if True: / return       + a retained assertion  read LIVE
+#   if True: return  (one-liner) + ditto            read LIVE
+#   if True: / pytest.skip() + ditto                read LIVE
+# Note 3q's `if True:`/`pass` control could not see this: that body has live=0 either way.
+# Each shape below has its BREAK TWIN: remove ONLY the exit and the same body must pass.
+fixture gut_if_true_return || exit 1
+neuter '    if True:' '        return' '    assert universe.pirate is None'
+expect_fail "(f) 'if True:' wrapping a bare return refused" "is emptied"
+
+fixture neg_if_true_return_break || exit 1
+# BREAK TWIN: the exit is the only thing removed, so the assertion below is reachable.
+neuter '    if True:' '        pass' '    assert universe.pirate is None'
+expect_pass "(f control) same wrapper WITHOUT the return passes"
+
+fixture gut_if_true_return_oneline || exit 1
+neuter '    if True: return' '    assert universe.pirate is None'
+expect_fail "(g) one-line 'if True: return' refused" "is emptied"
+
+fixture neg_if_true_return_oneline_break || exit 1
+neuter '    if True: pass' '    assert universe.pirate is None'
+expect_pass "(g control) one-line 'if True: pass' passes"
+
+fixture gut_if_true_skip || exit 1
+neuter '    if True:' '        pytest.skip("flaky")' '    assert universe.pirate is None'
+expect_fail "(h) 'if True:' wrapping an unconditional skip refused" "is emptied"
+
+fixture neg_if_true_skip_break || exit 1
+# BREAK TWIN: a GENUINE conditional skip one level deeper - the exit is no longer unconditional,
+# so this must pass. If it did not, the 3r tightening would be a false-RED generator.
+neuter '    if True:' '        if universe.offline:' '            pytest.skip("no network")' \
+       '    assert universe.pirate is None'
+expect_pass "(h control) a conditional skip nested inside 'if True:' passes"
+
+fixture gut_if_true_nested || exit 1
+# Transparency composes: two nested wrappers are still no decision at all.
+neuter '    if True:' '        if True:' '            return' '    assert universe.pirate is None'
+expect_fail "(i) nested 'if True:' wrappers around a return refused" "is emptied"
+
+fixture neg_if_true_nested_break || exit 1
+# BREAK TWIN / FALSE-RED GUARD: a return inside a REAL loop under 'if True:' is conditional.
+neuter '    if True:' '        for s in universe.ships:' '            return' \
+       '    assert universe.pirate is None'
+expect_pass "(i control) a return under a real loop inside 'if True:' passes"
+
+echo
+echo "=== 4. deny-list: a reintroduced JS_*/GNUstep symbol is REFUSED ==="
+fixture deny_js || exit 1
+printf 'static JSRuntime *rt; static void f(void) { JS_NewContext(rt); }\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "reintroduced JS_* refused" "reintroduces deny-listed symbols"
+
+fixture deny_gs || exit 1
+printf '#import <Foundation/Foundation.h>\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "reintroduced Foundation import refused" "reintroduces deny-listed symbols"
+
+echo
+echo "=== 4b. FINDING 1 (deny-list half): a PURE RENAME of a file full of JS_* passes ==="
+# `git mv OOJSEngine.m OOScriptEngine.m` with NO content change reported 0 -> 3 hits, because
+# the baseline was resolved as $BASE:<newpath> and the new path does not exist at the base.
+# 3,828 such sites exist in 102 files; the .m -> .cpp sweep moves all of them.
+fixture rename_deny || exit 1
+git mv upstream/oolite/src/Core/OOJSEngine.m upstream/oolite/src/Core/OOScriptEngine.m
+expect_pass "pure rename of a file carrying 3 JS_* sites passes"
+
+echo
+echo "=== 4c. ...the classic migration move, .m to .cpp, also passes ==="
+fixture rename_cpp || exit 1
+git mv upstream/oolite/src/Core/OOJSEngine.m upstream/oolite/src/Core/OOJSEngine.cpp
+expect_pass ".m -> .cpp rename of a deny-listed file passes"
+
+echo
+echo "=== 4d. ...but a rename that ADDS a hit is still refused ==="
+fixture rename_deny_bad || exit 1
+git mv upstream/oolite/src/Core/OOJSEngine.m upstream/oolite/src/Core/OOScriptEngine.m
+printf 'static jsval extra; void g(void){ JS_DestroyContext(NULL); }\n' >> upstream/oolite/src/Core/OOScriptEngine.m
+expect_fail "rename that adds a deny-list hit refused" "reintroduces deny-listed symbols"
+
+echo
+echo "=== 4e. ...and a rename that migrates the symbols away (the actual job) passes ==="
+fixture rename_deny_clean || exit 1
+git mv upstream/oolite/src/Core/OOJSEngine.m upstream/oolite/src/Core/OOScriptEngine.cpp
+cat > upstream/oolite/src/Core/OOScriptEngine.cpp <<'EOF'
+#include "OOScriptEngine.h"
+
+static ScriptRuntime *sRuntime;
+
+void OOScriptInit(void)
+{
+    sRuntime = ScriptRuntimeCreate(8L * 1024L * 1024L);
+}
+EOF
+expect_pass "migrating the symbols away during the rename passes"
+
+echo
+echo "=== 4f. ...a COPY of a deny-listed file is NOT excused (a copy has no baseline) ==="
+fixture copy_deny || exit 1
+cp upstream/oolite/src/Core/OOJSEngine.m upstream/oolite/src/Core/OOJSEngine2.m
+expect_fail "copying a deny-listed file refused" "reintroduces deny-listed symbols"
+
+# =================================================================================================
+echo
+echo "=== 5. ANTI-VACUITY: a guard that can no longer scan anything must FAIL, not pass ==="
+fixture vac_deny || exit 1
+git rm -q tools/deny-list.txt
+expect_fail "missing deny-list fails the run" "this check cannot fire"
+
+fixture vac_deny_empty || exit 1
+printf '# every pattern removed\n' > tools/deny-list.txt
+expect_fail "empty deny-list fails the run" "this check cannot fire"
+
+fixture vac_goldens || exit 1
+git rm -q -r goldens tests/golden >/dev/null
+expect_fail "all protected paths gone fails the run" "the protected-path list has rotted"
+
+fixture vac_sup || exit 1
+sed -i 's/^    .\[-\]Wno-\[A-Za-z0-9=_-\]+. \\$/    '"'"'ZZZ_NEVER_MATCHES'"'"' \\/' tools/guardrails.sh
+expect_fail "a broken suppression matcher fails the run" "canary lines"
+
+fixture vac_tests || exit 1
+sed -i 's|^    tests/\*\|\*/tests/\*) return 0 ;;|    __no_such_path__) return 0 ;;|' tools/guardrails.sh
+sed -i 's|^    test_\*\.py\|\*_test\.py\|test_\*\.c\|test_\*\.m\|\*\.feature\|conftest\.py) return 0 ;;|    __no_such_file__) return 0 ;;|' tools/guardrails.sh
+expect_fail "a test classifier that matches nothing fails the run" "cannot fire"
+
+echo
+cd "$REPO" || exit 1
+printf 'guardrails-selftest: %d cases\n' "$cases"
+if [ "$fail" -eq 0 ]; then
+  echo "guardrails-selftest: ALL CASES BEHAVED"
+else
+  echo "guardrails-selftest: FAILURES ABOVE (rerun with SELFTEST_KEEP=1 to keep $SCRATCH)" >&2
+fi
+exit "$fail"
