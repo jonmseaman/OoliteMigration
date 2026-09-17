@@ -1,0 +1,35 @@
+# Tier A's clang-tidy configuration (docs/phases/0-safety-net.md item 0.9).
+#
+# Scope: the checks that catch real defects in a migration that is moving code from
+# Objective-C to C++ one translation unit at a time. Style checks are deliberately absent
+# — the tree is 20 years of upstream Objective-C, and a Tier A that fires on every
+# untouched line is a Tier A that agents learn to ignore.
+#
+# The exclusions below are all "true of the existing tree, not of this bead's edit".
+# Removing one is a deliberate, separately-beaded tightening, not a drive-by.
+#
+#   bugprone-narrowing-conversions      pervasive in the float-heavy maths (Vector, OOColor).
+#   bugprone-switch-missing-default-case  upstream style: exhaustive enum switches, no default.
+#   bugprone-easily-swappable-parameters  fires on every (x1,y1,x2,y2) geometry helper.
+#   misc-no-recursion                   the OXP verifier and the plist parsers are recursive by design.
+#
+# Note the companion settings that live in tools/tier-a.sh rather than here, because they
+# are about *where* we look rather than *what* we look for: -header-filter='$^' keeps
+# diagnostics to the translation unit itself (a shared header would otherwise report the
+# same finding once per TU that includes it), and --warnings-as-errors='*' is what makes a
+# finding fail the tier.
+Checks: >
+  -*,
+  bugprone-*,
+  clang-analyzer-*,
+  misc-*,
+  performance-*,
+  -bugprone-narrowing-conversions,
+  -bugprone-switch-missing-default-case,
+  -bugprone-easily-swappable-parameters,
+  -misc-no-recursion
+
+# Findings in headers are reported by the TU that owns them, not by every includer.
+HeaderFilterRegex: '$^'
+
+FormatStyle: none
