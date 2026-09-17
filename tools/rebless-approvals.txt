@@ -10,12 +10,17 @@
 # reviewed commit that lands BEFORE the re-bless, which is what makes it an approval rather than
 # a note the same agent wrote to excuse itself.
 #
-# FORMAT: one line per approved path. First whitespace-separated field is the path, exactly as
+# FORMAT: one line per approved path. The line MUST START IN COLUMN ONE - an indented line is
+# NOT an approval, deliberately, so that a live approval cannot hide inside what every reader
+# takes for the example block below. First whitespace-separated field is the path, exactly as
 # git reports it; the rest of the line is free text and should say who approved it, when, and
 # why. Blank lines and #-comments are ignored. A directory prefix is NOT accepted: an approval
 # names one file, so it cannot be widened by accident or inherited by the next change.
 #
-#   tests/golden/scenarios/001/scenario.json   Jon 2026-09-20, re-bless queue: settle time raised
-#                                              to 12 s after the run-loop fix (bead oo-xxxx).
+# EXAMPLE (every line of it is a comment, and it is indented as well - two independent reasons
+# it cannot be mistaken for a live approval by the guard):
+#
+#   tests/golden/scenarios/001/scenario.json   Jon 2026-09-20, re-bless queue: settle time
+#                                              raised to 12 s after the run-loop fix.
 #
 # There are no approvals on record. That is the correct steady state.

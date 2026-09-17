@@ -39,8 +39,15 @@
 # --- Warning suppression (CLAUDE.md rule 3) ---
 # Kept here as well as in tools/guardrails.sh's suppression check because the two ask different
 # questions: the deny-list is per-file and baseline-relative, so it also catches a suppression
-# that arrives by copying an already-suppressed file, which an added-lines scan can miss.
+# that arrives by COPYING an already-suppressed file (a copy has a fresh, empty baseline; a
+# rename is compared against its old path and is correctly a no-op), which an added-lines scan
+# can miss.
+# That claim is only true if the two pattern sets actually agree. They diverged once: the
+# _Pragma("...") operator was in neither, and _Pragma is the ONLY way to put a diagnostic
+# suppression inside a macro — `#define QUIET_BEGIN _Pragma("GCC diagnostic push")` — so it is
+# the natural spelling in a port. Keep this block and tools/guardrails.sh sup_patterns() in step.
 # Bracket forms so this file does not match itself when it is the file being scanned.
 [-]Wno-[A-Za-z0-9=_-]+
 [#][[:space:]]*pragma[[:space:]]+(GCC|clang)[[:space:]]+diagnostic
+[_]Pragma[[:space:]]*\([[:space:]]*"[^"]*diagnostic
 __attribute__[[:space:]]*\(\([^)]*unused
