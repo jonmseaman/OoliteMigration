@@ -94,169 +94,35 @@ done
 # neither list is a launcher nobody has judged, and this check is the only thing that would ever
 # notice.
 #
-# WHAT THIS USED TO DO, AND WHY IT WAS WORTHLESS. The first version grepped for the *string
-# idiom* the existing launchers happen to use - `"oolite.exe" if IS_WINDOWS`. A review planted
-# four rogue launchers and measured it: the ternary was caught, and THREE perfectly natural
-# spellings were invisible while the check still printed PASS -
-#   subprocess.Popen([os.path.join(APP, "oolite.exe"), "--no-splash"])   (the obvious one)
-#   subprocess.Popen([APP + "/" + "oolite" + EXE])                       (name from variables)
-#   subprocess.Popen("C:/app/oolite.app/oolite.exe --no-splash", shell=True)
-# and `--include='*.py'` meant no .sh/.bat/.cmd wrapper was ever read at all. A guard that only
-# recognises the code it was written against is not a guard.
+# THE DETECTION LIVES IN tools/launcher_scan.py, which documents the rule and the two reviews
+# that broke its predecessors. In one line: a launcher is A PROCESS-SPAWNING CALL WHOSE argv[0]
+# RESOLVES TO THE GAME BINARY - keyed on semantics, not on a list of spellings.
 #
-# SO THE DETECTION IS KEYED ON THE SPAWN, not on one way of writing a filename:
-#
-#   * a process-spawning call - Popen/subprocess.run/call/check_call/check_output,
-#     os.startfile/system/exec*/spawn*, or a shell command word - whose target mentions the game
-#     (oolite.exe, oolite.app, a bare "oolite" argv[0], .../oolite); the target is followed
-#     through variables to a fixpoint, so `bin_name = "oolite.exe" if ...` / `cmd = [f"./{bin_name}"]`
-#     / `Popen(cmd)` is one launcher, not three unrelated lines.
-#   * DebugConsole(...) - the shared transport whose whole job is to spawn the game. It is a
-#     launcher wherever it appears, with or without a visible path.
+#   * argv[0] ONLY. Mentioning the game in a later argument, an env var or a log path is not
+#     launching it. That restriction is what stopped two MEASURED false positives (a meson build
+#     helper holding PROJECT = "oolite", a log reader holding .../oolite.app/logs) from failing an
+#     unrelated bead's acceptance on this shared gate.
+#   * RESOLVED TRANSITIVELY, through everything this codebase uses to build a command line:
+#     `name =`, `name +=`, `a, b =`, `self.name =`, `cmd.append/extend/insert`, and a function
+#     whose return expression is game-valued. Review 2 evaded the previous version with all four
+#     of the last ones - `cmd += [...]` is this repo's OWN house style (console.py:122).
+#   * DebugConsole(...) counts wherever it appears: its constructor's job is to spawn the game.
 #
 # Scope: tools/, tests/ and upstream/oolite/tests/ - every file that is .py/.sh/.bat/.cmd OR
-# carries a sh/bash/python shebang (tools/gui-lock and this file have no extension). Upstream's
-# own packaging scripts (upstream/oolite/ShellScripts, installers/win32/RunOolite.bat) are
-# deliberately out of scope: they ship the game to end users, they are not fleet tooling, and
+# carries a sh/bash/python shebang (tools/gui-lock and this file have no extension). Shell files
+# get the same argv[0] rule in shell syntax, with leaders AND empty tokens stripped (so
+# `start "" "%APP%\oolite.exe"` cannot hide behind an empty title) and `-c "..."` command strings
+# re-scanned (so `bash -c "$APP/oolite.exe"` cannot hide inside a quoted argument).
+# Upstream's own packaging scripts (upstream/oolite/ShellScripts, installers/win32/RunOolite.bat)
+# are deliberately out of scope: they ship the game to end users, they are not fleet tooling, and
 # nothing in a test run executes them.
 #
-# This file excludes itself - it necessarily quotes every pattern it hunts for - and so does any
-# match that is inside a comment. Prose mentioning oolite.exe never trips it.
+# This file and the scanner exclude themselves - they necessarily quote every pattern they hunt
+# for - and so does any match inside a comment. Prose mentioning oolite.exe never trips it.
 
 step "2/4 no unclassified launcher"
 known="$(printf '%s %s' "$LOCKED_LAUNCHERS" "$EXEMPT_LAUNCHERS" | tr '\n' ' ')"
-spawners=$(SCAN_KNOWN="$known" python3 - tools tests upstream/oolite/tests <<'PY'
-import os, re, sys
-
-SELF = "tools/check-desktop-lock.sh"
-# Files whose JOB is to quote launcher spellings. Excluding them is not a hole: neither ever
-# runs the game (the rogue proof writes scratch files and deletes them), and if they were
-# scanned this check could never describe what it hunts for.
-SELF_REFERENTIAL = (SELF, "tools/desktop-lock-rogue-proof", "tools/desktop-lock-selftest")
-
-# A call that starts a process. `run/call/check_call/check_output` only count with an explicit
-# subprocess. prefix (a bare run() is any function); Popen is unambiguous enough on its own.
-PY_SPAWN = re.compile(
-    r"\b(?:subprocess\s*\.\s*(?:Popen|run|call|check_call|check_output)"
-    r"|Popen"
-    r"|os\s*\.\s*(?:startfile|system|popen|exec\w*|spawn\w*))\s*\(")
-# The transport whose constructor spawns the game. A launcher wherever it appears.
-TRANSPORT = re.compile(r"\bDebugConsole\s*\(")
-# "this names the GAME BINARY" - not merely a path that has an `oolite` directory in it
-# ($REPO/upstream/oolite/... is a source tree, not an executable). The binary is spelled
-# oolite.exe, or lives in oolite.app/, or is the bare word "oolite"/"./oolite" in argv[0].
-GAME = re.compile(r"oolite\.exe"
-                  r"|oolite\.app[/\\]"
-                  r"|['\"]\.?/?oolite['\"]"
-                  r"|\./oolite(?![\w.])",
-                  re.IGNORECASE)
-ASSIGN = re.compile(r"^\s*(?:self\s*\.\s*)?([A-Za-z_]\w*)\s*(?::[^=\n]+)?=[^=]")
-SH_ASSIGN = re.compile(r"^\s*(?:export\s+)?([A-Za-z_]\w*)=(.*)$")
-
-
-def game_vars(text, assign_re, extract):
-    """Names of variables that (transitively) hold the game binary or a command line for it."""
-    found, changed = set(), True
-    while changed:
-        changed = False
-        for line in text.splitlines():
-            m = assign_re.match(line)
-            if not m:
-                continue
-            rhs = extract(line, m)
-            hit = GAME.search(rhs) or any(
-                re.search(r"\b%s\b" % re.escape(v), rhs) for v in found)
-            if hit and m.group(1) not in found:
-                found.add(m.group(1))
-                changed = True
-    return found
-
-
-def balanced(text, open_at):
-    """The argument text of the call whose '(' is at open_at, to its matching ')'."""
-    depth, i = 0, open_at
-    while i < len(text) and i < open_at + 4000:
-        if text[i] == "(":
-            depth += 1
-        elif text[i] == ")":
-            depth -= 1
-            if depth == 0:
-                return text[open_at:i + 1]
-        i += 1
-    return text[open_at:open_at + 4000]
-
-
-def strip_py_comments(text):
-    return "\n".join(re.sub(r"(^|\s)#.*$", r"\1", ln) for ln in text.splitlines())
-
-
-def spawns_python(text):
-    body = strip_py_comments(text)
-    if TRANSPORT.search(body):
-        return True
-    names = game_vars(body, ASSIGN, lambda line, m: line[m.end() - 1:])
-    for m in PY_SPAWN.finditer(body):
-        args = balanced(body, body.index("(", m.end() - 1))
-        if GAME.search(args):
-            return True
-        if any(re.search(r"\b%s\b" % re.escape(v), args) for v in names):
-            return True
-    return False
-
-
-SH_LEADERS = re.compile(
-    r"^(?:exec|start|nohup|command|time|sudo|then|do|else|elif|if|while|until|"
-    r"[A-Za-z_]\w*=\S*|/[cC]|cmd(?:\.exe)?|call)$")
-
-
-def spawns_shell(text):
-    names = game_vars(text, SH_ASSIGN, lambda line, m: m.group(2))
-    for raw in text.splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or line.upper().startswith(("REM ", "::")):
-            continue
-        # Each pipeline/list segment gets its own command position.
-        for seg in re.split(r"\|\||&&|[|;&]|\$\(|`", line):
-            toks = seg.split()
-            while toks and SH_LEADERS.match(toks[0].strip('"\'')):
-                toks.pop(0)
-            if not toks:
-                continue
-            word = toks[0].strip('"\'').lstrip("$").strip("{}")
-            if GAME.search(word):
-                return True
-            if word in names or re.sub(r"[^\w].*$", "", word) in names:
-                return True
-    return False
-
-
-roots = sys.argv[1:]
-known = set(os.environ.get("SCAN_KNOWN", "").split())
-out = []
-for root in roots:
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in (".git", "__pycache__", "build")]
-        for name in sorted(filenames):
-            path = os.path.join(dirpath, name).replace("\\", "/")
-            ext = os.path.splitext(name)[1].lower()
-            try:
-                text = open(path, "r", encoding="utf-8", errors="replace").read()
-            except OSError:
-                continue
-            if ext not in (".py", ".sh", ".bat", ".cmd"):
-                head = text[:200].splitlines()
-                if not (head and head[0].startswith("#!")
-                        and re.search(r"\b(ba)?sh\b|python", head[0])):
-                    continue
-                ext = ".py" if "python" in head[0] else ".sh"
-            if path in SELF_REFERENTIAL:
-                continue
-            hit = spawns_python(text) if ext == ".py" else spawns_shell(text)
-            if hit:
-                out.append(path)
-print("\n".join(sorted(set(out))))
-PY
-)
+spawners=$(python3 tools/launcher_scan.py tools tests upstream/oolite/tests) || fail=1
 spawners=$(printf '%s' "$spawners" | tr -d '\r')
 for f in $spawners; do
 	case " $known " in

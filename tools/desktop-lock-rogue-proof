@@ -1,18 +1,47 @@
 #!/usr/bin/env bash
-# Plant the rogue launchers the review used to break check 2, one at a time, and assert that
-# tools/check-desktop-lock.sh FAILS on each. Scratch files only; removed before each assertion is
-# reported, and the script restores the tree on any exit.
+# Plant the rogue launchers TWO successive reviews used to break check 2, one at a time, and
+# assert that tools/check-desktop-lock.sh reacts correctly to each. Scratch files only; removed
+# before each assertion is reported, and the script restores the tree on any exit.
 #
 #     tools/desktop-lock-rogue-proof
 #
-# Five spellings, because check 2's first version only recognised the one its own launchers used
-# and printed PASS for the other three:
-#   1  ternary idiom            "oolite.exe" if IS_WINDOWS else "oolite"   (the one it did catch)
+# A guard that passes its own curated rogues but fails a reviewer's is not done, so this file is
+# the union of both reviews' attacks. Every entry here was MEASURED to evade or misfire against
+# some earlier version of the detector - none is hypothetical.
+#
+# MUST BE CAUGHT (exit 1, named in the report):
+#   1  ternary idiom            "oolite.exe" if IS_WINDOWS else "oolite"
 #   2  plain literal join       Popen([os.path.join(APP, "oolite.exe"), ...])
 #   3  name from variables      "oolite" + EXE
 #   4  shell=True command line  Popen("C:/app/oolite.app/oolite.exe --no-splash", shell=True)
 #   5  a shell wrapper          a .sh that execs the binary - never scanned at all before
-# plus a NEGATIVE control: prose that merely mentions oolite.exe must NOT trip the check.
+#   6  os.startfile
+#   9  AUGMENTED ASSIGNMENT     cmd = [] / cmd += [os.path.join(APP,"oolite.exe")] / Popen(cmd)
+#                               THE REPO'S OWN HOUSE STYLE: component/console.py:122 builds argv
+#                               with `argv += [...]`. Review 2: evaded, check printed PASS.
+#  10  list .append()           argv.append(os.path.join(APP,"oolite.exe"))   - review 2: evaded
+#  11  list .extend()           cmd.extend([...])                             - review 2: evaded
+#  12  HELPER INDIRECTION       def game_binary(app): return os.path.join(app,"oolite.exe")
+#                               then Popen([game_binary(...), "--no-splash"]). Review 2: evaded,
+#                               and this is the most likely shape for the NEXT launcher, since
+#                               every current one duplicates that same join.
+#  15  batch `start ""`         start "" "%OO_APP_DIR%\oolite.exe" --no-splash - review 2: evaded
+#                               (the empty title sat where the command word was looked for), while
+#                               the SAME LINE WITHOUT the title was caught.
+#  16  bash -c "..."            the game word hidden inside a quoted -c argument - review 2: evaded
+#
+# MUST NOT BE CAUGHT - NEGATIVE CONTROLS (exit 0). These matter as much as the misses:
+# check-desktop-lock.sh is a SHARED GATE, so a false positive fails an UNRELATED bead's acceptance,
+# and that is precisely what gets a guard disabled rather than fixed.
+#   7  prose/comments mentioning oolite.exe
+#  13  A MESON BUILD HELPER     PROJECT = "oolite" + subprocess.run(["meson","setup",d,
+#                               "-Dproject="+PROJECT]). Review 2 MEASURED this reported as
+#                               "spawns the game", exit 1.
+#  14  A PURE LOG READER        LOGS = ".../oolite.app/logs" + subprocess.run(["tail","-n","50",
+#                               LOGS+"/latest.log"]). Review 2 MEASURED exit 1 - and
+#                               tools/js_api_check.py and tests/golden/golden_run.py ALREADY hold
+#                               oolite.app paths for exactly this purpose, so it was a live hazard.
+#  17  a shell log reader       the same thing in shell: tail "$LOGS/latest.log"
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
@@ -36,6 +65,23 @@ expect_caught() {
 		ok "$why (exit $rc, named in the report)"
 	else
 		no "$why WAS NOT CAUGHT (exit $rc)"
+		printf '%s\n' "$out" | sed -n '/2\/4/,/3\/4/p' | sed 's/^/      /'
+	fi
+}
+
+# expect_clean <path> <why>: a NEGATIVE control. Realistic non-launching code that must NOT be
+# flagged. Same shape as expect_caught, opposite assertion.
+expect_clean() {
+	local path="$1" why="$2"
+	PLANTED="$path"
+	local out rc
+	out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?
+	rm -f "$path"; PLANTED=""
+	echo "  NEGATIVE CONTROL $path -> check-desktop-lock exit $rc"
+	if [ "$rc" -eq 0 ]; then
+		ok "$why is not flagged (exit 0)"
+	else
+		no "FALSE POSITIVE: $why tripped the check (exit $rc)"
 		printf '%s\n' "$out" | sed -n '/2\/4/,/3\/4/p' | sed 's/^/      /'
 	fi
 }
@@ -120,7 +166,106 @@ else
 	printf '%s\n' "$out" | sed -n '/2\/4/,/3\/4/p' | sed 's/^/      /'
 fi
 
-echo "=== 8. the tree is back to clean ==="
+echo "=== 9. AUGMENTED ASSIGNMENT - the repo's OWN house style (console.py:122) ==="
+# Review 2 broke the previous detector here: its ASSIGN regex demanded `=` not preceded by `+`,
+# so `cmd += [...]` never registered as an assignment and this file exited 0 with a PASS.
+cat >tools/rogue9_augassign.py <<'EOF'
+import os, subprocess
+APP = os.environ["OO_APP_DIR"]
+cmd = []
+cmd += [os.path.join(APP, "oolite.exe"), "--no-splash"]
+subprocess.Popen(cmd)
+EOF
+expect_caught tools/rogue9_augassign.py "launcher built with augmented assignment (cmd += [...])"
+
+echo "=== 10. list .append() - a mutation IS an assignment into the name ==="
+cat >tools/rogue10_append.py <<'EOF'
+import os, subprocess
+APP = os.environ["OO_APP_DIR"]
+argv = []
+argv.append(os.path.join(APP, "oolite.exe"))
+argv.append("--no-splash")
+subprocess.Popen(argv)
+EOF
+expect_caught tools/rogue10_append.py "launcher built with argv.append()"
+
+echo "=== 11. list .extend() ==="
+cat >tools/rogue11_extend.py <<'EOF'
+import os, subprocess
+APP = os.environ["OO_APP_DIR"]
+cmd = []
+cmd.extend([os.path.join(APP, "oolite.exe"), "--no-splash"])
+subprocess.Popen(cmd)
+EOF
+expect_caught tools/rogue11_extend.py "launcher built with cmd.extend()"
+
+echo "=== 12. HELPER-FUNCTION INDIRECTION - the likeliest shape for the NEXT launcher ==="
+# Every current launcher duplicates the same os.path.join(app_dir, binary); the obvious cleanup is
+# to factor it into a helper - at which point the previous detector, which followed variables but
+# not function returns, went blind while still printing PASS.
+cat >tools/rogue12_helper.py <<'EOF'
+import os, subprocess
+
+
+def game_binary(app):
+    return os.path.join(app, "oolite.exe")
+
+
+subprocess.Popen([game_binary(os.environ["OO_APP_DIR"]), "--no-splash"])
+EOF
+expect_caught tools/rogue12_helper.py "launcher that goes through a game_binary() helper"
+
+echo "=== 13. NEGATIVE CONTROL: a meson build helper whose PROJECT happens to be \"oolite\" ==="
+# MEASURED as a false positive by review 2: the bare quoted "oolite" matched anywhere, and the
+# taint spread to every subprocess call mentioning that variable. It is a build, not a launch:
+# argv[0] is "meson".
+cat >tools/rogue13_meson.py <<'EOF'
+import os, subprocess
+PROJECT = "oolite"
+build_dir = os.path.join("build", PROJECT)
+subprocess.run(["meson", "setup", build_dir, "-Dproject=" + PROJECT])
+EOF
+expect_clean tools/rogue13_meson.py "a meson build helper holding PROJECT = \"oolite\""
+
+echo "=== 14. NEGATIVE CONTROL: a PURE LOG READER holding an oolite.app path ==="
+# Also MEASURED as a false positive by review 2 - and not hypothetical: tools/js_api_check.py and
+# tests/golden/golden_run.py already hold oolite.app paths for exactly this reason. argv[0] is
+# "tail"; the game path is a directory to read, never a thing to execute.
+cat >tools/rogue14_logreader.py <<'EOF'
+import subprocess
+LOGS = "upstream/oolite/build/meson_test/oolite.app/logs"
+subprocess.run(["tail", "-n", "50", LOGS + "/latest.log"])
+EOF
+expect_clean tools/rogue14_logreader.py "a log reader holding .../oolite.app/logs"
+
+echo "=== 15. the canonical Windows batch launch, WITH the empty window title ==="
+# `start "" "<path>"` is how you launch a quoted path from a .bat. Review 2: the leader-stripping
+# loop popped `start`, hit the empty title, stopped, and found an empty command word - so this
+# evaded while the same line WITHOUT the title was caught. Leaders and empty tokens now both strip.
+cat >tools/rogue15_start.bat <<'EOF'
+@echo off
+start "" "%OO_APP_DIR%\oolite.exe" --no-splash
+EOF
+expect_caught tools/rogue15_start.bat "batch launcher using start with an empty window title"
+
+echo "=== 16. the game word hidden inside a bash -c command string ==="
+cat >tools/rogue16_shc.sh <<'EOF'
+#!/usr/bin/env bash
+set -u
+bash -c "$OO_APP_DIR/oolite.exe --no-splash"
+EOF
+expect_caught tools/rogue16_shc.sh "launcher hiding the game inside a bash -c string"
+
+echo "=== 17. NEGATIVE CONTROL: the same log reader, in shell ==="
+cat >tools/rogue17_shlog.sh <<'EOF'
+#!/usr/bin/env bash
+set -u
+LOGS="upstream/oolite/build/meson_test/oolite.app/logs"
+tail -n 50 "$LOGS/latest.log"
+EOF
+expect_clean tools/rogue17_shlog.sh "a shell log reader holding .../oolite.app/logs"
+
+echo "=== 18. the tree is back to clean ==="
 out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?
 [ "$rc" -eq 0 ] && ok "clean again after every rogue was removed (exit $rc)" \
 	|| no "the tree did not come back clean (exit $rc)"

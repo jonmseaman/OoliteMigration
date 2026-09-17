@@ -110,6 +110,17 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
     and the lock goes stale on schedule. A dead process cannot heartbeat. The thread is a daemon
     and is joined in the ``finally``, so it can never outlive the interpreter or the hold.
 
+    AND THE HEARTBEAT ITSELF IS WATCHED (review 2). A review measured this thread dying silently:
+    only ``subprocess.run`` was inside the try, so a ``print`` to a closed or redirected stream -
+    and both js_api_snapshot and launch_snapshot run under captured stdio - raised out of the
+    thread. The interpreter printed "Exception in thread desktop-lock-heartbeat" and NOTHING ELSE
+    NOTICED: the body kept running, un-refreshed, until the lock went stale under a live holder,
+    which is the precise bug this fix exists for, silently restored. So now the whole loop body is
+    guarded, logging can never raise out of it, a watchdog thread polls ``beat.is_alive()`` once a
+    second and reports a death WHILE THE BODY RUNS, and the ``finally`` raises DesktopLockError if
+    the heartbeat died - a result computed while the desktop mutex was not being held is not a
+    result to return quietly.
+
     Release runs in a ``finally`` and is therefore reached on a crash, an exception or a
     ``KeyboardInterrupt``; it is the script's ownership-checked release, never an ``rm -rf``, so a
     teardown that runs after our lock was already stale-reclaimed by somebody else refuses rather
@@ -120,14 +131,28 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
     than failing: this must not make the upstream tree unrunnable on its own.
     """
     out = stream or sys.stderr
+
+    def _say(msg):
+        """Never let logging kill the heartbeat: a dead heartbeat is worse than a lost line.
+
+        Falls back to the real stderr when the caller's stream is gone, because the one thing
+        that must reach a human is "the desktop mutex stopped being refreshed".
+        """
+        for stream in (out, sys.__stderr__):
+            try:
+                if stream is None:
+                    continue
+                print(msg, file=stream, flush=True)
+                return
+            except Exception:  # noqa: BLE001 - try the next stream
+                continue
+
     script = gui_lock_script(start)
     bash = shutil.which("bash")
     if not (script and bash):
-        print(
+        _say(
             f"[!] desktop lock: no tools/gui-lock reachable from {start or __file__} "
-            "(or no bash); launching WITHOUT the desktop mutex",
-            file=out,
-            flush=True,
+            "(or no bash); launching WITHOUT the desktop mutex"
         )
         yield None
         return
@@ -148,51 +173,105 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
             f"{me}: {held.stderr.strip() or held.stdout.strip()}"
         )
     path = held.stdout.strip()
-    print(f"[*] desktop lock: held by {me} at {path}", file=out, flush=True)
+    _say(f"[*] desktop lock: held by {me} at {path}")
 
     # The heartbeat. Daemon so a hard exit can never be blocked by it; stopped and joined in the
     # finally so it can never outlive the hold and keep a released (or reclaimed) lock alive.
+    #
+    # THE WHOLE LOOP BODY IS INSIDE THE except (bug oo-ccy9, review 2). Attempt 2 guarded only the
+    # subprocess.run; the refused-branch print was outside it. Writing to ``out`` CAN raise - a
+    # closed or redirected stream, a broken pipe, and js_api_snapshot and launch_snapshot both run
+    # under captured stdio - and a raise there killed the daemon thread outright. MEASURED: the
+    # interpreter printed "Exception in thread desktop-lock-heartbeat", the thread list dropped to
+    # ['MainThread'], and the body kept running with the lock NO LONGER BEING REFRESHED until it
+    # went stale under a live holder: the exact bug this module exists to fix, silently restored.
+    # So: nothing in the loop may escape, and a heartbeat that stops beating must be NOTICED -
+    # see the beat.is_alive() check in the finally.
     stop = threading.Event()
     interval = heartbeat_interval()
 
     def _beat():
-        while not stop.wait(interval):
+        # A TEST SEAM, and the only way to prove the liveness check below is not vacuous: no
+        # amount of breaking the loop from outside can kill this thread any more (that is the
+        # point of the two layers), so the selftest needs a supported way to simulate a heartbeat
+        # that stopped beating. Only ever set by tools/desktop-lock-selftest.
+        if os.environ.get("OO_GUI_LOCK_HEARTBEAT_KILL") == "1":
+            return
+        # Two layers on purpose. The inner try makes the normal failure modes (a refresh that
+        # errors, a stream that raises) non-fatal; the outer loop SELF-HEALS anything unforeseen,
+        # so an exception no one predicted costs one refresh instead of the whole heartbeat. The
+        # thread only ends when `stop` is set - and if it ever ends anyway, the finally notices.
+        while not stop.is_set():
             try:
-                r = subprocess.run(
-                    [bash, script, "refresh"], capture_output=True, text=True, env=env
-                )
-            except Exception as exc:  # noqa: BLE001 - a heartbeat must never kill the run
-                print(f"[!] desktop lock: heartbeat error: {exc}", file=out, flush=True)
-                continue
-            if r.returncode != 0:
-                # We no longer own the lock: somebody reclaimed it, or it was released. Say so
-                # loudly - it means a second process may now be on the desktop - but keep the
-                # body running; tearing down mid-enumeration from a daemon thread would be worse.
-                print(
-                    "[!] desktop lock: heartbeat refused, we may no longer hold the desktop: "
-                    f"{r.stderr.strip() or r.stdout.strip()}",
-                    file=out,
-                    flush=True,
-                )
+                while not stop.wait(interval):
+                    try:
+                        r = subprocess.run(
+                            [bash, script, "refresh"],
+                            capture_output=True, text=True, env=env,
+                        )
+                        if r.returncode != 0:
+                            # We no longer own the lock: somebody reclaimed it, or it was
+                            # released. Say so loudly - a second process may now be on the desktop
+                            # - but keep the body running; tearing down mid-enumeration from a
+                            # daemon thread would be worse.
+                            _say(
+                                "[!] desktop lock: heartbeat refused, we may no longer hold the "
+                                f"desktop: {r.stderr.strip() or r.stdout.strip()}"
+                            )
+                    except Exception as exc:  # noqa: BLE001 - never kill the heartbeat
+                        _say(f"[!] desktop lock: heartbeat error: {exc}")
+            except BaseException as exc:  # noqa: BLE001 - including anything _say could not catch
+                _say(f"[!] desktop lock: heartbeat restarting after: {exc!r}")
 
     beat = threading.Thread(target=_beat, name="desktop-lock-heartbeat", daemon=True)
     beat.start()
+
+    # LIVENESS WATCHDOG (bug oo-ccy9, review 2). The finding was not just "the thread can die" but
+    # "the thread can die and NOTHING NOTICES" - no main-thread check existed, so the hold ran on
+    # un-refreshed until the lock went stale under a live holder. This polls once a second while
+    # the body runs, so the death is reported WHILE IT MATTERS and not only at teardown.
+    dead = threading.Event()
+
+    def _watch():
+        while not stop.wait(1.0):
+            if not beat.is_alive():
+                if not dead.is_set():
+                    dead.set()
+                    _say(
+                        "[!] desktop lock: HEARTBEAT DIED while the body is still running; this "
+                        "hold is NOT being refreshed and the lock may be stale-reclaimed out from "
+                        "under us - another launcher may take the desktop alongside us"
+                    )
+                return
+
+    watch = threading.Thread(target=_watch, name="desktop-lock-watchdog", daemon=True)
+    watch.start()
     try:
         yield path
     finally:
+        # Belt to the watchdog's braces: catch a death it had no time to poll for.
+        if not stop.is_set() and not beat.is_alive():
+            dead.set()
+        died = dead.is_set()
         stop.set()
         beat.join(timeout=30)
+        watch.join(timeout=5)
         dropped = subprocess.run(
             [bash, script, "release"], capture_output=True, text=True, env=env
         )
         if dropped.returncode != 0:
-            print(
-                f"[!] desktop lock: release refused: {dropped.stderr.strip()}",
-                file=out,
-                flush=True,
-            )
+            _say(f"[!] desktop lock: release refused: {dropped.stderr.strip()}")
         else:
-            print(f"[*] desktop lock: released by {me}", file=out, flush=True)
+            _say(f"[*] desktop lock: released by {me}")
+        if died and sys.exc_info()[0] is None:
+            # FAIL LOUDLY, not just verbosely. The body's result was produced while the desktop
+            # mutex was un-refreshed, so it may have shared the desktop with another launcher and
+            # cannot be trusted. Only raised when the body itself did not raise, so a real failure
+            # is never masked by this one.
+            raise DesktopLockError(
+                f"the desktop-lock heartbeat for {me} died while the body was still running; "
+                "the hold went un-refreshed and may have been stale-reclaimed"
+            )
 
 
 def import_from(start):

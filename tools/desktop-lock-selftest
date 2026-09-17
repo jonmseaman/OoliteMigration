@@ -163,11 +163,21 @@ $L status | sed 's/^/  /'
 
 # A rival launcher polling for the desktop the whole time the holder is working. It must NEVER
 # get in: every acquire it makes should time out, because the holder keeps refreshing.
+#
+# BOUNDED BY A DEADLINE, not just by the holder being alive. `kill -0 $HOLDER` is true right up to
+# the instant the holder releases, so an acquire STARTED at 29s of a 30s hold can succeed at 31s -
+# against a lock that was legitimately free by then. That is a race in the TEST, not a lost lock
+# (measured once: the rival "won" on try 6 while the holder still owned the lock at 30s and no
+# heartbeat had been refused), and a flaky guard is a guard people stop believing. So the rival
+# stops trying with a margin wider than its own timeout: every attempt it makes then both starts
+# AND finishes inside the hold, and a win is unambiguously a live holder losing the desktop.
+RIVAL_TIMEOUT=4
+rival_deadline=$(( $(date +%s) + HOLD - RIVAL_TIMEOUT - 4 ))
 rival_got=0
 tries=0
-while kill -0 $HOLDER 2>/dev/null && [ "$tries" -lt 6 ]; do
+while kill -0 $HOLDER 2>/dev/null && [ "$(date +%s)" -lt "$rival_deadline" ] && [ "$tries" -lt 6 ]; do
 	tries=$(( tries + 1 ))
-	if OO_GUI_LOCK_OWNER=rival $L acquire --timeout 4 >/dev/null 2>&1; then
+	if OO_GUI_LOCK_OWNER=rival $L acquire --timeout "$RIVAL_TIMEOUT" >/dev/null 2>&1; then
 		rival_got=1
 		echo "  rival TOOK the desktop on try $tries while the holder was still working"
 		OO_GUI_LOCK_OWNER=rival $L release >/dev/null 2>&1
@@ -257,6 +267,97 @@ echo "  owner refresh rc=$rc"
 	|| no "the owner could not refresh its own lock (rc=$rc)"
 OO_GUI_LOCK_OWNER=holder7 $L release >/dev/null 2>&1
 rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
+echo "=== 8. a DEAD HEARTBEAT is noticed by the holder ==="
+# THE BUG THIS ADDS COVER FOR (oo-ccy9 review 2). Check 5 proves the heartbeat keeps a live hold
+# fresh - but a review measured that the heartbeat THREAD could die silently: only subprocess.run
+# was inside the try, so a print to a closed/redirected stream (js_api_snapshot and
+# launch_snapshot BOTH run under captured stdio) raised out of the daemon thread. The interpreter
+# printed "Exception in thread desktop-lock-heartbeat" and NOTHING NOTICED - no main-thread
+# liveness check existed - so the hold continued un-refreshed until the lock went stale UNDER A
+# LIVE HOLDER: exactly the bug the heartbeat exists to prevent, silently restored.
+#
+# Two halves, and both must hold:
+#   8a  a stream that raises on EVERY write cannot kill the heartbeat, even on the refused branch
+#       (the code path that used to be outside the try) - the thread is still alive afterwards.
+#   8b  when the heartbeat DOES stop beating, the holder NOTICES: it says so while the body is
+#       still running, and the context manager raises DesktopLockError instead of returning a
+#       result computed while the desktop mutex was not being held.
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+export OO_GUI_LOCK_STALE=12
+
+out=$(OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" <<'PY' 2>&1
+import os, subprocess, sys, threading, time
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock
+
+class Raises:
+    """A stream that raises on every write - a closed pipe, a captured stdio that went away."""
+    def write(self, *a):
+        raise OSError("stream is closed")
+    def flush(self):
+        pass
+
+script = os.path.join(sys.argv[1], "gui-lock")
+with desktop_lock("hbprobe", start=sys.argv[1], stream=Raises()) as path:
+    owner = open(os.path.join(path, "owner")).readline().split("=", 1)[1].strip()
+    # Force the REFUSED branch - the print that used to sit outside the try - by handing the lock
+    # to somebody else while we hold it.
+    subprocess.run(["bash", script, "release"], capture_output=True,
+                   env=dict(os.environ, OO_GUI_LOCK_OWNER=owner))
+    subprocess.run(["bash", script, "acquire", "--timeout", "5"], capture_output=True,
+                   env=dict(os.environ, OO_GUI_LOCK_OWNER="thief8"))
+    time.sleep(7)          # > heartbeat_interval(12) == 5, so at least one refusal happened
+    alive = any(t.name == "desktop-lock-heartbeat" for t in threading.enumerate())
+    print("HEARTBEAT_ALIVE_AFTER_REFUSAL_ON_A_BROKEN_STREAM:", alive, file=sys.__stdout__)
+PY
+); rc=$?
+echo "$out" | sed 's/^/  /'
+OO_GUI_LOCK_OWNER=thief8 $L release >/dev/null 2>&1
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+case "$out" in
+	*"HEARTBEAT_ALIVE_AFTER_REFUSAL_ON_A_BROKEN_STREAM: True"*)
+		ok "a refused heartbeat on a stream that raises does NOT kill the heartbeat thread" ;;
+	*)
+		no "the heartbeat thread died when its log stream raised (rc=$rc): the silent-death bug is back" ;;
+esac
+
+# 8b. the liveness check is not vacuous: kill the heartbeat outright (the module's documented test
+# seam, since nothing else can kill it any more) and require the holder to notice, loudly, while
+# the body is still running - and to refuse to return quietly.
+out=$(OO_GUI_LOCK_TIMEOUT=10 OO_GUI_LOCK_HEARTBEAT_KILL=1 python3 - "$TOOLS" <<'PY' 2>&1
+import sys, time
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import DesktopLockError, desktop_lock
+try:
+    with desktop_lock("hbdead", start=sys.argv[1]):
+        time.sleep(3)
+        print("BODY_RAN", flush=True)
+    print("NOTHING_NOTICED", flush=True)
+except DesktopLockError as exc:
+    print("HOLDER_NOTICED:", exc, flush=True)
+PY
+); rc=$?
+echo "$out" | sed 's/^/  /'
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+case "$out" in
+	*BODY_RAN*) ok "the body really ran while the heartbeat was dead (so this is the live case)" ;;
+	*)          no "the body never ran; check 8b proves nothing" ;;
+esac
+case "$out" in
+	*"HEARTBEAT DIED while the body is still running"*)
+		ok "the holder reported the dead heartbeat WHILE the body was still running" ;;
+	*)
+		no "a dead heartbeat went unreported during the hold - the silent-death bug" ;;
+esac
+case "$out" in
+	*HOLDER_NOTICED*)
+		ok "the context manager raised DesktopLockError rather than returning an un-held result" ;;
+	*NOTHING_NOTICED*)
+		no "the heartbeat died and the hold returned success anyway" ;;
+	*)  no "unexpected output from the dead-heartbeat probe (rc=$rc)" ;;
+esac
+unset OO_GUI_LOCK_STALE
 
 echo
 if [ "$fail" -eq 0 ]; then echo "ALL DESKTOP-LAUNCHER EXCLUSION CHECKS PASSED"; else echo "SOME CHECKS FAILED"; fi
