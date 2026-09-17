@@ -30,8 +30,19 @@ import conftest
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 # The libraries whose call sites must be declared. Extend this when the tier starts calling a
-# new one - and then the scan below will demand the signatures too.
-GUARDED_LIBRARIES = ("user32", "shcore", "kernel32", "USER32", "SHCORE", "KERNEL32")
+# new one - and then the scan below will demand the signatures too. advapi32 joined when the
+# tier started reading process integrity levels to tell an elevated foreground owner from a
+# broken G1 (bead oo-0p8f).
+GUARDED_LIBRARIES = (
+    "user32",
+    "shcore",
+    "kernel32",
+    "advapi32",
+    "USER32",
+    "SHCORE",
+    "KERNEL32",
+    "ADVAPI32",
+)
 
 # Attributes of a library handle that are ctypes machinery rather than an API call.
 _NOT_A_CALL = {"_FuncPtr", "_handle", "_name"}
@@ -254,7 +265,17 @@ def test_the_live_user32_functions_carry_the_declarations():
         library, _, name = qualified.partition(".")
         if library != "user32":
             continue
-        func = getattr(conftest.USER32, name)
+        func = getattr(conftest.USER32, name, None)
+        if func is None:
+            # _declare_win32 `continue`s over an absent OPTIONAL_WIN32 entry, so on a host that
+            # lacks one (SetProcessDpiAwarenessContext is absent before Windows 10-1703) there is
+            # no live function to carry the declaration. An unguarded getattr would ERROR with
+            # AttributeError here instead of passing. A REQUIRED name is still a hard failure:
+            # this must not become a blanket excuse for a missing declaration.
+            assert qualified in conftest.OPTIONAL_WIN32, (
+                f"{qualified} is not in OPTIONAL_WIN32 but is missing from the live user32"
+            )
+            continue
         assert func.argtypes is not None, f"{qualified} has no argtypes on the live function"
         assert len(func.argtypes) == len(argtypes), f"{qualified} argtype count disagrees"
         assert func.restype is not None, f"{qualified} has no restype"
