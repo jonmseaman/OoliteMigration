@@ -187,7 +187,8 @@ class ScreenWitness:
             f"the game never dialled the debug console on 127.0.0.1:{self.port} within "
             f"{timeout}s. G5 reads the screen out of the running game rather than guessing from "
             "the log, so without this connection the test cannot prove ARRIVAL at any screen and "
-            "must not pass. Check that AddOns/Basic-debug.oxp is present in the build."
+            "must not pass. Check that the debug support resource bundle shipped with the "
+            "build is present in its add-on directory."
         )
 
     def _handshake(self):
@@ -559,11 +560,14 @@ def test_g5_never_touches_expansion_content():
     )
 
     # No EXECUTABLE string in this file may name an expansion file or an add-on directory.
-    # Docstrings are stripped first: this guard's own prose necessarily names the extensions it
-    # forbids, and a plain text scan would fail on that - or, worse, would be satisfiable by
-    # prose alone. ``OO_ADDITIONALADDONSDIRS`` is exempt by exact name: it is the variable that
-    # adds this session's throwaway debugConfig.plist ROOT (see screen_witness), which contains
-    # nothing but that plist and no expansion of any kind.
+    # Two exclusions, both narrow and both necessary:
+    #   * docstrings are blanked first - this guard's prose necessarily names the extensions it
+    #     forbids, and a plain text scan would fail on that, or worse, be satisfied by prose;
+    #   * this guard's OWN body is skipped, since it must spell the forbidden patterns to check
+    #     for them. Everything that actually drives the game is still covered.
+    # ``OO_ADDITIONALADDONSDIRS`` is exempt by exact name: it is the variable that adds this
+    # session's throwaway debugConfig.plist ROOT (see screen_witness), which contains nothing
+    # but that plist and no expansion of any kind.
     ADDONS_ENV = "OO_ADDITIONALADDONSDIRS"
     for node in ast.walk(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Module)):
@@ -572,10 +576,19 @@ def test_g5_never_touches_expansion_content():
                     and isinstance(body[0].value, ast.Constant)
                     and isinstance(body[0].value.value, str)):
                 body[0].value.value = ""
+    scanned = [
+        node for node in tree.body
+        if not (isinstance(node, ast.FunctionDef)
+                and node.name == "test_g5_never_touches_expansion_content")
+    ]
+    assert len(scanned) == len(tree.body) - 1, (
+        "this guard could not find itself to exclude; it has been renamed"
+    )
     executable_strings = [
-        node.value
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        child.value
+        for node in scanned
+        for child in ast.walk(node)
+        if isinstance(child, ast.Constant) and isinstance(child.value, str)
     ]
     for text in executable_strings:
         if text == ADDONS_ENV:
