@@ -7,70 +7,183 @@
 # exclusion, and it is deliberately a plain mkdir lock so that a shell script, a pytest run
 # and a CI step can all take the same lock without sharing a language.
 #
-# The lock directory is the SAME path upstream/oolite/tests/gui/conftest.py computes; if you
-# change it here, change it there.
+# This script is the SINGLE SOURCE OF TRUTH for the lock path:
+# upstream/oolite/tests/gui/conftest.py::_lock_path() shells out to `tools/gui-lock path` and
+# only falls back to its own copy of the rules when there is no bash. The path is emitted in
+# native `C:/...` form via `cygpath -m`, because handing an MSYS `/c/...` path to a native
+# Windows python resolves it to `C:/c/...` (WinError 3) and would lock a different directory.
+#
+# A lock is OWNED. The owner identity is $OO_GUI_LOCK_OWNER when set, otherwise
+# "<host>:<PPID>" - the process that invoked this script, so an `acquire` and a later
+# `release` from the same pytest session or the same interactive shell match, while a stray
+# shell, or a second session whose acquire timed out but whose teardown still runs, does not.
+# `release` REFUSES to drop a lock this owner does not hold. Set OO_GUI_LOCK_OWNER explicitly
+# when acquire and release run as separate CI steps with different parent processes.
 #
 #   tools/gui-lock acquire [--timeout N]   block until held (default 900s), then exit 0
-#   tools/gui-lock release                 drop a lock this machine holds
+#   tools/gui-lock release [--force]       drop a lock THIS owner holds (exit 3 otherwise)
 #   tools/gui-lock status                  exit 0 if held, 1 if free; prints the holder
+#   tools/gui-lock path                    print the lock directory and exit 0
+#   tools/gui-lock owner                   print this invocation's owner identity
 #   tools/gui-lock run [--timeout N] -- cmd...   acquire, run cmd, release, propagate status
 set -u
 
-lock_dir() {
-	if [ -n "${OO_GUI_LOCK_DIR:-}" ]; then
-		printf '%s\n' "$OO_GUI_LOCK_DIR"
-	elif [ -n "${LOCALAPPDATA:-}" ]; then
-		printf '%s\n' "$LOCALAPPDATA/Temp/oolite-gui-desktop.lock"
+# Never hand an MSYS /c/... path to a native binary: native python turns it into C:/c/...
+# (WinError 3). cygpath -m is that boundary; off MSYS there is no boundary to cross.
+normalize_path() {
+	if command -v cygpath >/dev/null 2>&1; then
+		cygpath -m "$1"
 	else
-		printf '%s\n' "${TMPDIR:-/tmp}/oolite-gui-desktop.lock"
+		printf '%s\n' "$1"
 	fi
+}
+
+lock_dir() {
+	local raw
+	if [ -n "${OO_GUI_LOCK_DIR:-}" ]; then
+		raw="$OO_GUI_LOCK_DIR"
+	elif [ -n "${LOCALAPPDATA:-}" ]; then
+		raw="$LOCALAPPDATA/Temp/oolite-gui-desktop.lock"
+	else
+		raw="${TMPDIR:-${TEMP:-/tmp}}/oolite-gui-desktop.lock"
+	fi
+	normalize_path "$raw"
 }
 
 LOCK="$(lock_dir)"
 OWNER="$LOCK/owner"
 
+# Who we are, for ownership: the CALLER's pid, not ours. acquire and release are two separate
+# invocations made by one longer-lived process (pytest, a CI step, your shell).
+owner_id() {
+	if [ -n "${OO_GUI_LOCK_OWNER:-}" ]; then
+		printf '%s\n' "$OO_GUI_LOCK_OWNER"
+	else
+		printf '%s:%s\n' "${HOSTNAME:-$(hostname)}" "$PPID"
+	fi
+}
+
+# The identity recorded in the lock, or empty if there is none to read.
+held_by() {
+	[ -f "$OWNER" ] || return 0
+	sed -n 's/^owner=//p' "$OWNER" 2>/dev/null | head -n 1
+}
+
 # A holder that died without releasing would wedge the tier for ever, so a lock older than
 # OO_GUI_LOCK_STALE seconds is reclaimed. Age, not liveness: the holder may be a process on a
 # different session that this shell cannot see.
 STALE="${OO_GUI_LOCK_STALE:-1800}"
+# The reap gate (below). Held for a few syscalls only, so its own stale window is short.
+REAP="$LOCK.reap"
+REAP_STALE="${OO_GUI_LOCK_REAP_STALE:-300}"
 
-reap_if_stale() {
-	[ -d "$LOCK" ] || return 0
-	local now age
+dir_age() {
+	local now
 	now=$(date +%s)
-	age=$(( now - $(stat -c %Y "$LOCK" 2>/dev/null || echo "$now") ))
-	if [ "$age" -gt "$STALE" ]; then
-		echo "gui-lock: reclaiming stale lock (${age}s old, held by $(cat "$OWNER" 2>/dev/null || echo unknown))" >&2
-		rm -rf "$LOCK"
+	printf '%s\n' "$(( now - $(stat -c %Y "$1" 2>/dev/null || echo "$now") ))"
+}
+
+# Reclaiming a stale lock must be ATOMIC WITH TAKING IT, or it is not a mutex.
+#
+# The obvious "if stale: rm -rf; then mkdir" is a TOCTOU: two runs can both judge the SAME
+# directory stale, and the loser's rm -rf then deletes the WINNER'S freshly created lock -
+# after which the loser's own mkdir succeeds and BOTH runs drive the desktop. (Reproduced at
+# ~1 trial in 3.) It is worse than a lost wakeup, because the loser also destroys the winner's
+# owner record, so the winner's later release is refused while it is still on the desktop.
+#
+# So: serialise reapers behind a second, short-lived mkdir lock ($LOCK.reap), RE-CHECK the age
+# inside that gate, and do not drop the gate until we hold the new $LOCK. A late reaper that
+# arrives after someone else reclaimed sees a fresh mtime and reaps nothing. The stale
+# directory is retired with `mv` (one atomic rename, one winner) rather than rm -rf, so no
+# other process can observe a half-emptied lock.
+#
+# Chosen over "rename the stale dir and proceed only if the rename won" on its own, because a
+# bare rename is still a TOCTOU against the *fresh* lock: a slow loser that decided "stale"
+# before the winner's mkdir would rename away a live, legitimately held lock. The gate plus
+# the re-check inside it is what closes that window.
+#
+# Returns 0 ONLY if this process both retired the stale lock and now holds a new empty $LOCK.
+reclaim_stale() {
+	[ -d "$LOCK" ] || return 1
+	# Cheap unsynchronised pre-check, so the common (not stale) poll costs one stat.
+	[ "$(dir_age "$LOCK")" -gt "$STALE" ] || return 1
+	if ! mkdir "$REAP" 2>/dev/null; then
+		# A reaper crashed mid-reclaim? Retire the gate itself atomically - whoever wins the
+		# rename does NOT assume it holds the gate, it just lets the next loop re-mkdir it.
+		if [ "$(dir_age "$REAP")" -gt "$REAP_STALE" ]; then
+			local dead_gate="$REAP.dead.$$.${RANDOM:-0}"
+			mv "$REAP" "$dead_gate" 2>/dev/null && rm -rf "$dead_gate"
+		fi
+		return 1
 	fi
+	local rc=1 age dead
+	if [ -d "$LOCK" ]; then
+		age=$(dir_age "$LOCK")
+		if [ "$age" -gt "$STALE" ]; then
+			echo "gui-lock: reclaiming stale lock (${age}s old, held by $(held_by) )" >&2
+			dead="$LOCK.stale.$$.${RANDOM:-0}"
+			if mv "$LOCK" "$dead" 2>/dev/null; then
+				rm -rf "$dead"
+				mkdir "$LOCK" 2>/dev/null && rc=0
+			fi
+		fi
+	else
+		# Someone reclaimed and released while we waited for the gate: the lock is simply free.
+		mkdir "$LOCK" 2>/dev/null && rc=0
+	fi
+	rmdir "$REAP" 2>/dev/null || rm -rf "$REAP"
+	return $rc
 }
 
 acquire() {
-	local timeout="${1:-900}" deadline
+	local timeout="${1:-900}" deadline me
+	me="$(owner_id)"
 	deadline=$(( $(date +%s) + timeout ))
 	mkdir -p "$(dirname "$LOCK")"
 	while :; do
-		reap_if_stale
-		if mkdir "$LOCK" 2>/dev/null; then
-			printf '%s pid=%s %s\n' "${HOSTNAME:-$(hostname)}" "$$" "$(date -Is)" >"$OWNER"
+		if mkdir "$LOCK" 2>/dev/null || reclaim_stale; then
+			{
+				printf 'owner=%s\n' "$me"
+				printf 'info=%s pid=%s %s\n' "${HOSTNAME:-$(hostname)}" "$$" "$(date -Is)"
+			} >"$OWNER"
 			printf '%s\n' "$LOCK"
 			return 0
 		fi
 		if [ "$(date +%s)" -ge "$deadline" ]; then
-			echo "gui-lock: timed out after ${timeout}s; held by $(cat "$OWNER" 2>/dev/null || echo unknown)" >&2
+			echo "gui-lock: timed out after ${timeout}s; held by $(held_by)" >&2
 			return 1
 		fi
 		sleep 2
 	done
 }
 
+# ONLY THE OWNER MAY RELEASE. Dropping a lock another run is actively holding puts two
+# processes on the interactive desktop at once, which is the exact collision this lock exists
+# to prevent, so a non-owner release is an error (exit 3), not a no-op.
 release() {
+	local force="${1:-}" me holder
+	[ -d "$LOCK" ] || return 0
+	me="$(owner_id)"
+	holder="$(held_by)"
+	if [ "$force" = "--force" ]; then
+		echo "gui-lock: force-releasing lock held by ${holder:-unknown} (we are $me)" >&2
+		rm -rf "$LOCK"
+		return 0
+	fi
+	if [ -z "$holder" ]; then
+		echo "gui-lock: refusing to release $LOCK: no owner recorded; wait for the stale reap or pass --force" >&2
+		return 3
+	fi
+	if [ "$holder" != "$me" ]; then
+		echo "gui-lock: refusing to release a lock we do not own (held by $holder, we are $me)" >&2
+		return 3
+	fi
 	rm -rf "$LOCK"
 }
 
 status() {
 	if [ -d "$LOCK" ]; then
-		echo "held: $(cat "$OWNER" 2>/dev/null || echo unknown)"
+		echo "held: $(held_by) $(sed -n 's/^info=//p' "$OWNER" 2>/dev/null | head -n 1)"
 		return 0
 	fi
 	echo "free"
@@ -78,11 +191,13 @@ status() {
 }
 
 timeout=900
+force=""
 cmd="${1:-}"
 [ $# -gt 0 ] && shift
 while [ $# -gt 0 ]; do
 	case "$1" in
 		--timeout) timeout="$2"; shift 2 ;;
+		--force) force="--force"; shift ;;
 		--) shift; break ;;
 		*) break ;;
 	esac
@@ -90,8 +205,10 @@ done
 
 case "$cmd" in
 	acquire) acquire "$timeout" ;;
-	release) release ;;
+	release) release "$force" ;;
 	status)  status ;;
+	path)    printf '%s\n' "$LOCK" ;;
+	owner)   owner_id ;;
 	run)
 		acquire "$timeout" >/dev/null || exit 1
 		"$@"
@@ -100,7 +217,7 @@ case "$cmd" in
 		exit $rc
 		;;
 	*)
-		echo "usage: tools/gui-lock {acquire|release|status|run -- cmd...} [--timeout N]" >&2
+		echo "usage: tools/gui-lock {acquire|release|status|path|owner|run -- cmd...} [--timeout N] [--force]" >&2
 		exit 2
 		;;
 esac

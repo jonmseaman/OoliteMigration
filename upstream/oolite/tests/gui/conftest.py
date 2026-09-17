@@ -18,10 +18,13 @@ Three things live here, and G2-G9 reuse all three:
 import ctypes
 import math
 import os
+import platform
+import random
 import shutil
 import subprocess
 import sys
 import time
+import warnings
 
 import pytest
 
@@ -48,6 +51,13 @@ READY_TIMEOUT_SECONDS = int(os.environ.get("OO_GUI_READY_TIMEOUT", "180"))
 # not from launch - see wait_until_ready in tests/launch_snapshot.py for why that distinction
 # is the difference between a test and a race.
 SETTLE_SECONDS = float(os.environ.get("OO_GUI_SETTLE", "5"))
+
+# How every GUI-tier launch is spelled. MyOpenGLView.m:363 matches the splash flag by exact
+# ``isEqual:`` against -nosplash / --nosplash only, so any other spelling (a hyphen between "no"
+# and "splash", say) is silently ignored and the splash runs; -windowed is matched at :1358 and
+# is correct as written. tools/check-splash-off.py imports this list so the behavioural check can
+# never drift from what the tier actually runs.
+LAUNCH_ARGS = ["-nosplash", "-windowed"]
 
 
 # --- row -> screen point ----------------------------------------------------------------------
@@ -138,6 +148,69 @@ def pytest_addoption(parser):
     )
 
 
+def splash_evidence(log_text):
+    """``(surface_line, loading_line, startup_line)`` - 1-based line numbers, ``None`` if absent.
+
+    * ``surface_line``  - first ``display.initGL`` "Requested a new surface of W x H, windowed".
+    * ``loading_line``  - first line of the resource-loading phase (``shipData.load.begin``,
+      or ``searchPaths.dumpAll`` which immediately precedes it).
+    * ``startup_line``  - the ``startup.complete`` line.
+
+    Where ``surface_line`` falls RELATIVE TO ``loading_line`` is the runtime observable that
+    distinguishes a splash-free launch from a splashed one.
+    """
+    surface = loading = startup = None
+    for number, line in enumerate(log_text.splitlines(), 1):
+        if surface is None and "Requested a new surface of" in line and "windowed" in line:
+            surface = number
+        if loading is None and ("shipData.load.begin" in line or "searchPaths.dumpAll" in line):
+            loading = number
+        if startup is None and "startup.complete" in line:
+            startup = number
+    return surface, loading, startup
+
+
+def assert_splash_screen_is_off(log_text, log_path):
+    """Fail unless the GL surface was created BEFORE resource loading started.
+
+    Whether the splash ran is not visible in the spelling of the launch flag - a misspelled
+    flag is silently ignored (MyOpenGLView.m:363 matches ``-nosplash``/``--nosplash`` by exact
+    ``isEqual:``) - but it IS visible in the log's ordering:
+
+    * splash OFF - MyOpenGLView.m:431 takes the ``if (!showSplashScreen)`` branch and calls
+      ``initialiseGLWithSize:`` at :434 during ``-init``, i.e. BEFORE any resource loading;
+    * splash ON  - that block is skipped and the call is deferred to :507 inside
+      ``endSplashScreen``, which GameController.m:313 fires at the END of startup, after
+      Universe init and loadPlayerIfRequired.
+
+    Measured on both paths: splash off puts "Requested a new surface of 960 x 720, windowed"
+    at log line 20 with ``shipData.load.begin`` at 32; splash on puts the same surface line at
+    39, i.e. AFTER loading. Note the surface line still precedes ``startup.complete`` on both
+    paths (39 vs 41 with the splash on), so "before startup.complete" is NOT the discriminator
+    - "before resource loading" is.
+
+    logcontrol.plist:131 enables ``display.initGL`` by default, so the line is in every log.
+    This gates the actual defect (the splash running, and with it a moving target for every
+    pinned-window coordinate) rather than the spelling of the flag.
+    """
+    surface, loading, startup = splash_evidence(log_text)
+    assert startup is not None, f"no startup.complete line in {log_path}"
+    assert loading is not None, (
+        f"no resource-loading marker (shipData.load.begin / searchPaths.dumpAll) in {log_path}"
+    )
+    assert surface is not None, (
+        "the splash screen ran: no 'Requested a new surface of ... windowed' line at all "
+        f"in {log_path}"
+    )
+    assert surface < loading, (
+        f"the splash screen ran: the GL surface was created at log line {surface}, AFTER "
+        f"resource loading began at line {loading} (startup.complete at {startup}) in "
+        f"{log_path}. That is the deferred endSplashScreen path (MyOpenGLView.m:507), so the "
+        "no-splash flag did not take effect."
+    )
+    return surface, loading, startup
+
+
 class GameWindow:
     """One Oolite process, its window, and the input primitives the tests drive it with."""
 
@@ -194,7 +267,7 @@ class GameWindow:
             pytest.fail(f"no Oolite binary at {path}; build it first (tools/build-windows.sh test)")
         self._park_software_gl()
         self.proc = subprocess.Popen(
-            [path, "--no-splash", "-windowed"],
+            [path] + LAUNCH_ARGS,
             cwd=self.app_dir,
             env=self._env(),
             stdout=subprocess.DEVNULL,
@@ -260,8 +333,12 @@ class GameWindow:
                 )
             if os.path.isfile(log):
                 with open(log, "r", encoding="utf-8", errors="replace") as handle:
-                    if "startup.complete" in handle.read():
-                        return
+                    text = handle.read()
+                if "startup.complete" in text:
+                    # Readiness and the splash check read the SAME line pair, so assert it
+                    # here: a launch whose splash ran has pinned the wrong window already.
+                    assert_splash_screen_is_off(text, log)
+                    return
             time.sleep(0.5)
         pytest.fail(f"Oolite did not finish loading within {timeout}s; see {log}")
 
@@ -357,17 +434,131 @@ class GameWindow:
 # --- fixtures -----------------------------------------------------------------------------------
 
 
-def _lock_dir():
-    """The same path tools/gui-lock computes. Change one, change the other."""
+def _lock_script():
+    """Absolute path to tools/gui-lock, or None if there is no checkout around us."""
+    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+    script = os.path.join(repo, "tools", "gui-lock")
+    return script if os.path.isfile(script) else None
+
+
+def _lock_path():
+    """The lock directory - the SAME string tools/gui-lock prints.
+
+    Sameness is not promised, it is delegated: we ask the script. Two halves each applying
+    "the same rules" is how this drifted before - the shell said ${TMPDIR:-/tmp}/... (an MSYS
+    path) while python said tempfile.gettempdir() (a native path), so a shell holder and a
+    pytest holder locked two different directories and the mutex silently stopped excluding.
+    The bash-less fallback below repeats the rules only because it must, and normalises to the
+    same native C:/... form the script emits via `cygpath -m`.
+    """
+    bash = shutil.which("bash")
+    script = _lock_script()
+    if bash and script:
+        out = subprocess.run(
+            [bash, script, "path"], capture_output=True, text=True
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
     explicit = os.environ.get("OO_GUI_LOCK_DIR")
     if explicit:
-        return explicit
+        return _native(explicit)
     local = os.environ.get("LOCALAPPDATA")
     if local:
-        return os.path.join(local, "Temp", "oolite-gui-desktop.lock")
+        return _native(os.path.join(local, "Temp", "oolite-gui-desktop.lock"))
     import tempfile
 
-    return os.path.join(tempfile.gettempdir(), "oolite-gui-desktop.lock")
+    return _native(os.path.join(tempfile.gettempdir(), "oolite-gui-desktop.lock"))
+
+
+def _native(path):
+    """Forward-slash native form, matching `cygpath -m` output on this machine."""
+    return os.path.abspath(path).replace("\\", "/")
+
+
+def _lock_owner():
+    """This session's owner identity, passed explicitly to tools/gui-lock.
+
+    Not left to the script's default: the script's fallback identity is "<host>:<PPID>", and a
+    bash spawned by a *native* Windows python reports PPID=1, so every pytest session would
+    claim the identity "<host>:1" and could release another session's lock. We pass our own pid
+    in OO_GUI_LOCK_OWNER for both acquire and release, so the identity is ours and is stable
+    across the two invocations.
+    """
+    explicit = os.environ.get("OO_GUI_LOCK_OWNER")
+    if explicit:
+        return explicit
+    host = os.environ.get("HOSTNAME") or platform.node()
+    return f"{host}:py{os.getpid()}"
+
+
+def _lock_held_by(path):
+    """The owner recorded in the lock directory, or None."""
+    try:
+        with open(os.path.join(path, "owner"), "r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.startswith("owner="):
+                    return line[len("owner=") :].strip()
+    except OSError:
+        return None
+    return None
+
+
+def _lock_reclaim_stale(path, stale):
+    """Atomically reclaim a stale lock directory, returning True only if WE now hold it.
+
+    This is the same protocol as tools/gui-lock's reclaim_stale(), down to the gate directory
+    name, so the two halves interlock rather than each reclaiming "their own way": a fallback
+    session and a shell session racing the same stale lock still produce exactly one winner.
+
+    The naive "if stale: rmtree; then mkdir" is a TOCTOU - two runs both judge the same
+    directory stale and the loser's rmtree deletes the winner's freshly created lock, so both
+    end up on the desktop. So we serialise reapers behind a short-lived ``<lock>.reap`` mkdir
+    gate, RE-CHECK the age inside it, retire the stale directory with a single atomic rename,
+    and only drop the gate once the new lock exists.
+    """
+    reap = path + ".reap"
+    reap_stale = float(os.environ.get("OO_GUI_LOCK_REAP_STALE", "300"))
+    try:
+        if time.time() - os.path.getmtime(path) <= stale:
+            return False
+    except OSError:
+        return False
+    try:
+        os.mkdir(reap)
+    except FileExistsError:
+        # A reaper died mid-reclaim? Retire the gate itself atomically; the rename has exactly
+        # one winner, and that winner does not assume it holds the gate - it just retries.
+        try:
+            if time.time() - os.path.getmtime(reap) > reap_stale:
+                dead = "%s.dead.%d.%d" % (reap, os.getpid(), random.randrange(1 << 30))
+                os.rename(reap, dead)
+                shutil.rmtree(dead, ignore_errors=True)
+        except OSError:
+            pass
+        return False
+    except OSError:
+        return False
+    try:
+        if os.path.isdir(path):
+            try:
+                still_stale = time.time() - os.path.getmtime(path) > stale
+            except OSError:
+                still_stale = False
+            if not still_stale:
+                return False
+            dead = "%s.stale.%d.%d" % (path, os.getpid(), random.randrange(1 << 30))
+            try:
+                os.rename(path, dead)
+            except OSError:
+                return False
+            shutil.rmtree(dead, ignore_errors=True)
+        try:
+            os.mkdir(path)
+        except OSError:
+            return False
+        return True
+    finally:
+        shutil.rmtree(reap, ignore_errors=True)
 
 
 @pytest.fixture(scope="session")
@@ -378,39 +569,74 @@ def desktop_lock():
     each other's focus and each other's clicks. tools/gui-lock is the mutex; it is a plain
     mkdir lock so a shell step and a pytest run can share it.
     """
-    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-    script = os.path.join(repo, "tools", "gui-lock")
+    script = _lock_script()
     bash = shutil.which("bash")
-    if bash and os.path.isfile(script):
+    me = _lock_owner()
+    if bash and script:
+        # OO_GUI_LOCK_OWNER is ours and is passed to BOTH calls, so release drops the lock this
+        # session took and the script refuses it if some other run holds it.
+        env = dict(os.environ, OO_GUI_LOCK_OWNER=me)
         held = subprocess.run(
             [bash, script, "acquire", "--timeout", os.environ.get("OO_GUI_LOCK_TIMEOUT", "900")],
             capture_output=True,
             text=True,
+            env=env,
         )
         if held.returncode != 0:
             pytest.fail(f"could not take the GUI desktop lock: {held.stderr.strip()}")
         try:
-            yield _lock_dir()
+            yield _lock_path()
         finally:
-            subprocess.run([bash, script, "release"], capture_output=True)
+            dropped = subprocess.run(
+                [bash, script, "release"], capture_output=True, text=True, env=env
+            )
+            if dropped.returncode != 0:
+                warnings.warn(
+                    f"gui-lock: release refused: {dropped.stderr.strip()}", stacklevel=1
+                )
         return
     # No bash (or no checkout around us): take the identical lock directly. Same protocol, same
-    # path, so it still excludes a shell-side holder.
-    path = _lock_dir()
+    # path, same ownership record, so it still excludes - and is still excluded by - a
+    # shell-side holder.
+    path = _lock_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    deadline = time.time() + 900
+    deadline = time.time() + float(os.environ.get("OO_GUI_LOCK_TIMEOUT", "900"))
     while True:
+        got = False
         try:
             os.mkdir(path)
-            break
+            got = True
         except FileExistsError:
-            if time.time() >= deadline:
-                pytest.fail(f"could not take the GUI desktop lock at {path}")
-            time.sleep(2)
+            # Same stale rule as the script (OO_GUI_LOCK_STALE, age not liveness), so a
+            # crashed holder does not wedge the tier for ever here either - but the reclaim is
+            # ATOMIC (see _lock_reclaim_stale): an unconditional rmtree here would let two
+            # sessions both judge one lock stale and both take the desktop.
+            stale = float(os.environ.get("OO_GUI_LOCK_STALE", "1800"))
+            got = _lock_reclaim_stale(path, stale)
+        if got:
+            with open(os.path.join(path, "owner"), "w", encoding="utf-8") as fh:
+                fh.write(f"owner={me}\ninfo=python pid={os.getpid()} {time.strftime('%FT%T%z')}\n")
+            break
+        if time.time() >= deadline:
+            pytest.fail(
+                f"could not take the GUI desktop lock at {path}; "
+                f"held by {_lock_held_by(path) or 'unknown'}"
+            )
+        time.sleep(2)
     try:
         yield path
     finally:
-        shutil.rmtree(path, ignore_errors=True)
+        # Ownership-checked, never an unconditional rmtree: a teardown that ran after some
+        # other run had legitimately taken the lock would otherwise drop a live holder's lock
+        # and put two processes on the desktop at once.
+        holder = _lock_held_by(path)
+        if holder == me:
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            warnings.warn(
+                f"gui-lock: not releasing {path}: held by {holder or 'unknown'}, we are {me}",
+                stacklevel=1,
+            )
 
 
 @pytest.fixture(scope="session")
@@ -424,17 +650,75 @@ def app_dir(pytestconfig):
     return path
 
 
+GUI_REQUIREMENTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+
+# Set OO_GUI_REQUIRE=1 to turn even the not-applicable-platform skip into a failure, so that a
+# run which was *supposed* to exercise G1 cannot come back green from the wrong machine.
+GUI_REQUIRED = os.environ.get("OO_GUI_REQUIRE", "").strip().lower() not in ("", "0", "false", "no")
+
+
+def require_gui_dependencies():
+    """Import pyautogui or FAIL the test. Never skip.
+
+    A skip is a silent pass. The import-or-skip helper this used to call meant that on the
+    overwhelmingly common configuration - a machine where nothing had installed
+    tests/gui/requirements.txt - the whole tier reported success without a window ever opening.
+    On a platform where this tier IS supposed to run, a missing hard dependency is a broken
+    environment, and a broken environment must be loud.
+    """
+    try:
+        import pyautogui  # noqa: F401
+    except Exception as exc:  # ImportError, but also the display/permission errors it raises
+        pytest.fail(
+            "the GUI tier's hard dependency 'pyautogui' is unusable "
+            f"({exc.__class__.__name__}: {exc}).\n"
+            "This tier drives a real window with real OS input; without pyautogui G1 cannot "
+            "run, and a run that did not happen must not be reported as a pass. Install it:\n"
+            f"    python3 -m pip install -r {GUI_REQUIREMENTS}\n"
+            "or run the tier through its runner, which installs it for you:\n"
+            "    bash tools/gui-tier.sh"
+        )
+    return pyautogui
+
+
+def require_gui_platform():
+    """Skip only where G1 is genuinely not applicable — and not even there under OO_GUI_REQUIRE."""
+    if IS_WINDOWS:
+        return
+    if GUI_REQUIRED:
+        pytest.fail(
+            "OO_GUI_REQUIRE is set but this is not Windows "
+            f"(sys.platform={sys.platform!r}). The GUI tier runs natively on Windows "
+            "(ADR-0017); a run asked to exercise G1 must not pass by skipping."
+        )
+    # The one legitimate skip in this tier: a platform where G1 is genuinely not applicable.
+    # Deliberate and explicit - not a missing dependency in disguise.
+    pytest.skip(
+        "the GUI tier runs natively on Windows (ADR-0017); "
+        "set OO_GUI_REQUIRE=1 to make this a failure instead"
+    )
+
+
+@pytest.fixture(scope="session")
+def gui_runtime():
+    """The tier's precondition gate, resolved BEFORE the build or the desktop lock.
+
+    Session-scoped and named first in ``game``'s signature so it is instantiated ahead of the
+    session-scoped ``app_dir``: the one legitimate skip in this tier is "wrong platform", and it
+    has to be reachable without a built game, or a Linux checkout reports a confusing
+    missing-build error instead of the honest "not applicable here".
+    """
+    require_gui_platform()
+    return require_gui_dependencies()
+
+
 @pytest.fixture
-def game(app_dir, desktop_lock, tmp_path):
+def game(gui_runtime, app_dir, desktop_lock, tmp_path):
     """One game process with a real window, killed unconditionally at the end.
 
     Teardown kills rather than asks: a test that has already failed is a test whose game is in
     an unknown state, and a hung window must fail the run instead of wedging the desktop.
     """
-    if not IS_WINDOWS:
-        pytest.skip("the GUI tier runs natively on Windows (ADR-0017)")
-    pytest.importorskip("pyautogui", reason="pip install -r tests/gui/requirements.txt")
-
     window = GameWindow(app_dir, str(tmp_path))
     try:
         yield window.start()
