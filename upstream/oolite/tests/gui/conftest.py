@@ -64,12 +64,25 @@ WIN32_SIGNATURES = {
     "user32.SetWindowPos": ("BOOL", ["HWND", "HWND", "INT", "INT", "INT", "INT", "UINT"]),
     "user32.ShowWindow": ("BOOL", ["HWND", "INT"]),
     "user32.SetForegroundWindow": ("BOOL", ["HWND"]),
+    # The Tool Help process-table walk (surviving_game_processes). CreateToolhelp32Snapshot
+    # RETURNS a HANDLE: undeclared, that 64-bit handle comes back truncated and sign-extended
+    # through a 32-bit int, so the very first Process32First on it fails with
+    # ERROR_INVALID_HANDLE - and the walk then reports "no survivors", which is the silent pass
+    # this bead exists to remove. The snapshot handle is HANDLE for the same reason an HWND is
+    # HWND: it is pointer-sized, and c_void_p/c_int would satisfy "has argtypes" while
+    # reproducing the defect exactly.
+    "kernel32.CreateToolhelp32Snapshot": ("HANDLE", ["DWORD", "DWORD"]),
+    "kernel32.Process32First": ("BOOL", ["HANDLE", "LPPROCESSENTRY32"]),
+    "kernel32.Process32Next": ("BOOL", ["HANDLE", "LPPROCESSENTRY32"]),
+    "kernel32.CloseHandle": ("BOOL", ["HANDLE"]),
 }
 
 # The library handles. ``None`` off Windows: the module must still IMPORT everywhere so that
 # `pytest --collect-only` and the offline guard tests work on any platform; the fixtures skip.
 USER32 = None
+KERNEL32 = None
 WNDENUMPROC = None
+PROCESSENTRY32 = None
 
 if IS_WINDOWS:
     # RECT/POINT and the Win32 libraries exist only here.
@@ -79,6 +92,28 @@ if IS_WINDOWS:
     # everything else: an undeclared ``c_void_p`` HWND parameter is fine, but a declared one
     # documents the 64-bit width and keeps the table honest.
     WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    class PROCESSENTRY32(ctypes.Structure):
+        """tlhelp32.h's PROCESSENTRY32 (the ANSI form, matching Process32First/Next).
+
+        Declared at module scope rather than inside the table reader so that the signature
+        table can name a real ``POINTER(PROCESSENTRY32)`` - a bare ``c_void_p`` would let a
+        caller pass any pointer at all, and dwSize is the only thing standing between a wrong
+        structure layout and Process32First returning FALSE (i.e. "no processes", a pass).
+        """
+
+        _fields_ = [
+            ("dwSize", wintypes.DWORD),
+            ("cntUsage", wintypes.DWORD),
+            ("th32ProcessID", wintypes.DWORD),
+            ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+            ("th32ModuleID", wintypes.DWORD),
+            ("cntThreads", wintypes.DWORD),
+            ("th32ParentProcessID", wintypes.DWORD),
+            ("pcPriClassBase", ctypes.c_long),
+            ("dwFlags", wintypes.DWORD),
+            ("szExeFile", ctypes.c_char * 260),
+        ]
 
     # The pointer-sized scalars ctypes.wintypes does not define. LRESULT and DWORD_PTR are
     # LONG_PTR/ULONG_PTR: 64 bits here, 32 bits on Win32, which is exactly the width that goes
@@ -96,6 +131,7 @@ if IS_WINDOWS:
         "LPARAM": wintypes.LPARAM,
         "LPDWORD": ctypes.POINTER(wintypes.DWORD),
         "LPPOINT": ctypes.POINTER(wintypes.POINT),
+        "LPPROCESSENTRY32": ctypes.POINTER(PROCESSENTRY32),
         "LPRECT": ctypes.POINTER(wintypes.RECT),
         "LRESULT": LRESULT,
         "PDWORD_PTR": ctypes.POINTER(DWORD_PTR),
@@ -121,7 +157,8 @@ if IS_WINDOWS:
     # argtypes on it would mutate somebody else's calls. use_last_error gives us a
     # ctypes-private copy of GetLastError that a later Python call cannot clobber.
     USER32 = ctypes.WinDLL("user32", use_last_error=True)
-    _declare_win32({"user32": USER32})
+    KERNEL32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _declare_win32({"user32": USER32, "kernel32": KERNEL32})
 
 
 def _win32_error(function):
@@ -322,6 +359,10 @@ class GameWindow:
         self.proc = None
         self.hwnd = None
         self._parked = []
+        # Filled in by start(): what the defaults files looked like BEFORE this run wrote
+        # anything. assert_defaults_file_reparses needs it to tell "this run wrote the file"
+        # from "a file is lying there from an earlier run" (oo-5rsa).
+        self.defaults_launch_mark = None
 
     # --- lifecycle ----------------------------------------------------------------------------
 
@@ -359,6 +400,14 @@ class GameWindow:
         if not os.path.isfile(path):
             pytest.fail(f"no Oolite binary at {path}; build it first (tools/build-windows.sh test)")
         self._park_software_gl()
+        # BEFORE the process starts: record what is already on disk, so that after exit we can
+        # tell a file THIS run wrote from one an earlier run left behind. app_dir is the
+        # persistent build tree, so without this mark "the defaults file exists" is true
+        # forever and the G9 defaults check cannot fail (oo-5rsa). Taken before Popen so no
+        # write of ours can land inside the window between stat and launch; mtime granularity
+        # is not a worry because the game runs for seconds (startup gate + SETTLE_SECONDS)
+        # before it can possibly synchronize its defaults.
+        self.defaults_launch_mark = defaults_write_mark(self.app_dir)
         self.proc = subprocess.Popen(
             [path] + LAUNCH_ARGS,
             cwd=self.app_dir,
@@ -834,12 +883,435 @@ def game(gui_runtime, app_dir, desktop_lock, tmp_path):
 # --- post-exit hygiene (G9), asserted by every test in this tier --------------------------------
 
 
-def assert_clean_exit(output_dir):
-    """No core dump, no ERROR in Latest.log, and a defaults file that still parses.
+# --- the GNUstep defaults file ------------------------------------------------------------------
+#
+# src/SDL/main.m:119 sets GNUSTEP_USERS_ROOT to the directory holding oolite.exe, so gnustep-base
+# keeps this run's user defaults under <app_dir>/GNUstep/Defaults/. The domain file is named for
+# the process (``oolite``), and GameController.m:905-906 -synchronize-s it on the way out of
+# -exitAppWithContext: and then logs ".GNUstepDefaults synchronized." - which is precisely why
+# "the defaults file still parses" is a meaningful post-exit check: a shutdown that died partway
+# through that write leaves a truncated file behind.
+DEFAULTS_RELATIVE_PATH = os.path.join("GNUstep", "Defaults", "oolite.plist")
+
+
+def defaults_path_candidates(app_dir):
+    """Every place this platform could have put the user defaults, best guess first."""
+    candidates = [os.path.join(os.path.abspath(app_dir), DEFAULTS_RELATIVE_PATH)]
+    # OO_GAME_DATA_TO_USER_FOLDER builds repoint HOMEPATH (main.m:120-124); and off Windows
+    # main.m never sets GNUSTEP_USERS_ROOT at all, so the defaults land under $HOME.
+    local = os.environ.get("LOCALAPPDATA")
+    if local:
+        candidates.append(os.path.join(local, "Oolite", "oolite.app", DEFAULTS_RELATIVE_PATH))
+    home = os.path.expanduser("~")
+    if home and home != "~":
+        candidates.append(os.path.join(home, DEFAULTS_RELATIVE_PATH))
+    seen = []
+    for path in candidates:
+        if path not in seen:
+            seen.append(path)
+    return seen
+
+
+class DefaultsParseError(ValueError):
+    """The defaults file exists but is not a well-formed property list."""
+
+
+# Returned by defaults_write_mark for a path that did not exist at launch.
+_ABSENT_AT_LAUNCH = None
+# Distinguishes "marked, and it was absent" from "never marked at all".
+_UNMARKED = object()
+
+
+def defaults_write_mark(app_dir):
+    """Snapshot every candidate defaults path's mtime AT LAUNCH. ``{path: (mtime_ns, size)}``.
+
+    This is the half of the G9 defaults check that makes it falsifiable at all.
+    ``app_dir`` is the PERSISTENT build tree (``_default_app_dir()`` ->
+    ``upstream/oolite/build/meson_test/oolite.app``), so a defaults file left behind by a run
+    last month satisfies "exists and parses" forever, and this run could write nothing at all
+    without the check noticing. The story (docs/stories/G1-exit-via-mouse.md:52) asks for a
+    defaults file WRITTEN and re-parseable; without a launch-time mark the "written" half is
+    unfalsifiable - which is precisely the tautology class bug oo-5rsa exists to remove.
+
+    A path absent at launch is recorded as ``None``: its later EXISTENCE is then proof of a
+    write, which is a stronger witness than any timestamp.
+    """
+    mark = {}
+    for path in defaults_path_candidates(app_dir):
+        try:
+            stat = os.stat(path)
+        except OSError:
+            mark[path] = _ABSENT_AT_LAUNCH
+        else:
+            mark[path] = (stat.st_mtime_ns, stat.st_size)
+    return mark
+
+
+def _openstep_tokens(text):
+    """Tokenise an OpenStep (\"old-style\") property list.
+
+    gnustep-base writes this dialect, not XML - see the file itself - so ``plistlib`` cannot
+    read it and a check built on plistlib alone would fail on a perfectly healthy file.
+    """
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c in " \t\r\n":
+            i += 1
+            continue
+        if text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            if end < 0:
+                raise DefaultsParseError(f"unterminated /* comment at offset {i}")
+            i = end + 2
+            continue
+        if text.startswith("//", i):
+            end = text.find("\n", i)
+            i = n if end < 0 else end + 1
+            continue
+        if c == '"':
+            out, i = [], i + 1
+            while True:
+                if i >= n:
+                    raise DefaultsParseError("unterminated quoted string")
+                d = text[i]
+                if d == "\\":
+                    if i + 1 >= n:
+                        raise DefaultsParseError("truncated escape in quoted string")
+                    out.append({"n": "\n", "t": "\t", "r": "\r"}.get(text[i + 1], text[i + 1]))
+                    i += 2
+                    continue
+                if d == '"':
+                    i += 1
+                    break
+                out.append(d)
+                i += 1
+            yield ("str", "".join(out))
+            continue
+        if c in "{}()=;,<>":
+            yield ("punct", c)
+            i += 1
+            continue
+        start = i
+        while i < n and (text[i].isalnum() or text[i] in "_$+-./:@\\^~"):
+            i += 1
+        if i == start:
+            raise DefaultsParseError(f"unexpected character {c!r} at offset {i}")
+        yield ("str", text[start:i])
+
+
+def parse_openstep_plist(text):
+    """Parse an OpenStep plist into dicts/lists/strings, or raise DefaultsParseError.
+
+    Deliberately strict: an unbalanced brace, a missing ``;`` or trailing garbage all raise.
+    A lenient parser here would turn a half-written defaults file into a silent pass, which is
+    the whole failure this check exists to catch.
+    """
+    tokens = list(_openstep_tokens(text))
+    pos = 0
+
+    def peek():
+        return tokens[pos] if pos < len(tokens) else (None, None)
+
+    def take(expected=None):
+        nonlocal pos
+        if pos >= len(tokens):
+            raise DefaultsParseError(f"unexpected end of plist, wanted {expected or 'a token'}")
+        tok = tokens[pos]
+        pos += 1
+        if expected is not None and tok != ("punct", expected):
+            raise DefaultsParseError(f"wanted {expected!r}, found {tok[1]!r}")
+        return tok
+
+    def value():
+        kind, text_ = take()
+        if kind == "str":
+            return text_
+        if text_ == "{":
+            out = {}
+            while peek() != ("punct", "}"):
+                ktype, key = take()
+                if ktype != "str":
+                    raise DefaultsParseError(f"dictionary key must be a string, found {key!r}")
+                take("=")
+                out[key] = value()
+                take(";")
+            take("}")
+            return out
+        if text_ == "(":
+            out = []
+            if peek() != ("punct", ")"):
+                out.append(value())
+                while peek() == ("punct", ","):
+                    take(",")
+                    if peek() == ("punct", ")"):
+                        break
+                    out.append(value())
+            take(")")
+            return out
+        if text_ == "<":
+            chunks = []
+            while peek() != ("punct", ">"):
+                ktype, chunk = take()
+                if ktype != "str":
+                    raise DefaultsParseError("malformed <...> data block")
+                chunks.append(chunk)
+            take(">")
+            joined = "".join(chunks)
+            try:
+                return bytes.fromhex(joined)
+            except ValueError as exc:
+                raise DefaultsParseError(f"malformed hex in data block: {exc}") from exc
+        raise DefaultsParseError(f"unexpected {text_!r} where a value was wanted")
+
+    if not tokens:
+        raise DefaultsParseError("the defaults file is empty")
+    root = value()
+    if pos != len(tokens):
+        raise DefaultsParseError(f"trailing garbage after the root object: {tokens[pos][1]!r}")
+    return root
+
+
+def parse_defaults_file(path):
+    """Read and parse a defaults file in whichever plist dialect it is written in.
+
+    XML and binary first (``plistlib``), then the OpenStep dialect gnustep-base actually emits.
+    Raises DefaultsParseError if no dialect can read it.
+    """
+    import plistlib
+
+    with open(path, "rb") as handle:
+        raw = handle.read()
+    if not raw.strip():
+        raise DefaultsParseError(f"{path} is empty")
+    try:
+        return plistlib.loads(raw)
+    except Exception:
+        pass
+    try:
+        return parse_openstep_plist(raw.decode("utf-8", errors="strict"))
+    except UnicodeDecodeError as exc:
+        raise DefaultsParseError(f"{path} is not valid UTF-8: {exc}") from exc
+
+
+def assert_defaults_file_reparses(app_dir, launch_mark):
+    """The defaults file was written BY THIS RUN and still parses. Returns ``(path, contents)``.
+
+    GameController.m:905 synchronizes NSUserDefaults as the last thing before SDL_Quit, so this
+    is a direct read of whether the orderly shutdown path completed its write.
+
+    ``launch_mark`` comes from ``defaults_write_mark(app_dir)`` called AT LAUNCH and is
+    mandatory. Without it this function could only assert that SOME defaults file exists and
+    parses - and app_dir is the persistent build tree, so a plist written weeks ago satisfies
+    that forever while this run writes nothing. "Exists" is not "was written"; only the mark
+    can tell them apart.
+    """
+    assert launch_mark is not None, (
+        "assert_defaults_file_reparses needs the launch-time mark from "
+        "defaults_write_mark(app_dir); without it the check degrades to 'a defaults file "
+        "exists somewhere', which a plist left by an earlier run satisfies forever (oo-5rsa)"
+    )
+    candidates = defaults_path_candidates(app_dir)
+    found = [p for p in candidates if os.path.isfile(p)]
+    assert found, (
+        "no GNUstep defaults file after exit; GameController.m:905-906 synchronizes "
+        "NSUserDefaults in -exitAppWithContext:, so an absent file means that write never "
+        "happened. Looked in:\n  " + "\n  ".join(candidates)
+    )
+
+    # Which of the files that exist did THIS run actually write?
+    fresh, stale = [], []
+    for path in found:
+        before = launch_mark.get(path, _UNMARKED)
+        if before is _UNMARKED:
+            # Not marked at launch, so nothing can be attributed to this run. Treated as stale
+            # rather than quietly accepted: an unattributable file is exactly the evidence
+            # this assertion is not allowed to rely on.
+            stale.append(f"{path} (not marked at launch)")
+            continue
+        stat = os.stat(path)
+        if before is _ABSENT_AT_LAUNCH:
+            fresh.append(path)  # it did not exist at launch; its existence IS the write
+        elif stat.st_mtime_ns > before[0]:
+            fresh.append(path)
+        else:
+            stale.append(
+                f"{path} (mtime unchanged since launch: {stat.st_mtime_ns} <= {before[0]}, "
+                f"size {stat.st_size} vs {before[1]})"
+            )
+    assert fresh, (
+        "the defaults file exists but THIS RUN did not write it - every candidate is exactly "
+        "as it was at launch, so the -synchronize in GameController.m:905-906 never landed and "
+        "what is on disk is a leftover from an earlier run. app_dir is the persistent build "
+        "tree, so 'a defaults file exists and parses' is true forever and proves nothing "
+        "(oo-5rsa). Unwritten:\n  " + "\n  ".join(stale)
+    )
+
+    path = fresh[0]
+    try:
+        contents = parse_defaults_file(path)
+    except DefaultsParseError as exc:
+        raise AssertionError(
+            f"the defaults file {path} no longer parses after exit: {exc}. A truncated or "
+            "corrupt defaults file is a shutdown that died partway through its final write."
+        ) from exc
+    assert isinstance(contents, dict), (
+        f"the defaults file {path} parsed to a {type(contents).__name__}, not a dictionary"
+    )
+    assert contents, f"the defaults file {path} parsed to an empty dictionary"
+    return path, contents
+
+
+# --- surviving processes -------------------------------------------------------------------------
+
+
+def _windows_process_table():
+    """``[(pid, parent_pid, exe_name_lowercased), ...]`` via CreateToolhelp32Snapshot.
+
+    Every call goes through KERNEL32 with the argtypes/restype declared in WIN32_SIGNATURES
+    (oo-x2uy). The snapshot HANDLE in particular must be declared: undeclared, ctypes decodes
+    it through a 32-bit signed int, and the truncated handle makes Process32First fail - which
+    this reader would report as an empty process table, i.e. "nothing survived".
+    """
+    TH32CS_SNAPPROCESS = 0x00000002
+    INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
+
+    snapshot = KERNEL32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+    if not snapshot or snapshot == INVALID_HANDLE_VALUE:
+        raise _win32_error("CreateToolhelp32Snapshot")
+    entry = PROCESSENTRY32()
+    entry.dwSize = ctypes.sizeof(PROCESSENTRY32)
+    rows = []
+    try:
+        ok = KERNEL32.Process32First(snapshot, ctypes.byref(entry))
+        if not ok:
+            # ERROR_NO_MORE_FILES on the very first call means the snapshot handle was bad.
+            # An empty table here would be read as "no survivors" by every caller, so it is a
+            # hard error rather than an empty list.
+            raise _win32_error("Process32First")
+        while ok:
+            rows.append(
+                (
+                    int(entry.th32ProcessID),
+                    int(entry.th32ParentProcessID),
+                    entry.szExeFile.decode("mbcs", errors="replace").lower(),
+                )
+            )
+            ok = KERNEL32.Process32Next(snapshot, ctypes.byref(entry))
+    finally:
+        KERNEL32.CloseHandle(snapshot)
+    return rows
+
+
+def _posix_process_table():
+    """``[(pid, parent_pid, comm_lowercased), ...]`` from /proc.
+
+    WARNING - this table cannot support the descendant walk that surviving_game_processes does
+    on Windows, and the walk knows it (see that function). Linux reparents an orphan to init or
+    to the nearest subreaper the moment its parent dies, so once the root process exits, a
+    surviving grandchild's ppid is 1 and a tree walk rooted at the old pid finds nothing: a
+    silent pass, exactly the defect class oo-5rsa exists to remove. Windows does not do this -
+    th32ParentProcessID retains the (possibly dead) creator's pid - which is why the walk is
+    sound there and falls back to an unscoped image-name sweep here.
+    """
+    rows = []
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        try:
+            with open(f"/proc/{name}/stat", "r", encoding="utf-8", errors="replace") as fh:
+                stat = fh.read()
+            comm = stat[stat.index("(") + 1 : stat.rindex(")")]
+            rest = stat[stat.rindex(")") + 1 :].split()
+            rows.append((int(name), int(rest[1]), comm.lower()))
+        except (OSError, ValueError, IndexError):
+            continue
+    return rows
+
+
+def _process_table():
+    return _windows_process_table() if IS_WINDOWS else _posix_process_table()
+
+
+GAME_PROCESS_NAMES = ("oolite.exe", "oolite")
+
+
+def surviving_game_processes(root_pid):
+    """Live Oolite processes that are ``root_pid`` or descended from it.
+
+    Scoped to OUR process tree on purpose. A bare "is any oolite.exe running?" would be a
+    false positive against a concurrent sibling GUI run on the same desktop, and this tier is
+    not permitted to make another run's process look like its own leak.
+    """
+    rows = _process_table()
+    children = {}
+    names = {}
+    for pid, parent, name in rows:
+        names[pid] = name
+        if pid != parent:
+            children.setdefault(parent, []).append(pid)
+    ours, stack = set(), [root_pid]
+    while stack:
+        pid = stack.pop()
+        if pid in ours:
+            continue
+        ours.add(pid)
+        stack.extend(children.get(pid, ()))
+    return sorted(
+        (pid, names[pid])
+        for pid in ours
+        if pid in names and names[pid] in GAME_PROCESS_NAMES
+    )
+
+
+def assert_no_surviving_game_processes(root_pid, timeout=10.0):
+    """FAIL if any oolite.exe in the launched process tree is still alive.
+
+    Note what this is NOT: re-reading ``Popen.returncode`` after ``wait()`` has already reaped
+    it. That can only ever return the value wait() just stored, so it is true by construction
+    and checks nothing. The operating system's process table is the only witness that can say
+    "no" here.
+    """
+    deadline = time.time() + timeout
+    survivors = surviving_game_processes(root_pid)
+    while survivors and time.time() < deadline:
+        time.sleep(0.25)
+        survivors = surviving_game_processes(root_pid)
+    assert not survivors, (
+        "orphaned game process(es) survived the exit: "
+        + ", ".join(f"{name} (pid {pid})" for pid, name in survivors)
+        + f" - still alive {timeout}s after the process tree rooted at pid {root_pid} was "
+        "supposed to be gone"
+    )
+
+
+# --- the G9 assertion itself ---------------------------------------------------------------------
+
+
+def assert_clean_exit(game_or_output_dir, app_dir=None, defaults_launch_mark=None):
+    """No core dump, no ERROR in Latest.log, and a defaults file THIS RUN wrote and can reparse.
 
     docs/phases/0-gui-tier.md G9. A shutdown that leaves any of these behind has not worked,
     however zero its exit status.
+
+    Call it with the fixture: ``assert_clean_exit(game)``. Everything it needs - the output
+    directory, the app directory, and the launch-time defaults mark - lives on the GameWindow,
+    so there is one obvious spelling and no way to call it with a subset of the evidence. The
+    explicit three-argument form stays for tests that synthesise directories.
+
+    A one-argument ``assert_clean_exit(output_dir)`` is NOT valid: without ``app_dir`` there is
+    no defaults check at all, and without the launch mark the defaults check cannot fail. Both
+    raise here with instructions rather than silently checking less (oo-5rsa).
+
+    All checks are unconditional. An ABSENT Latest.log is a failure, not a pass: by the time
+    any test reaches here, ``_await_startup_complete`` has already read ``startup.complete``
+    out of that very file in this very run, so the file not being there means something
+    deleted or moved it and the log check would otherwise evaporate into a silent pass.
     """
+    output_dir, app_dir, defaults_launch_mark = _clean_exit_arguments(
+        game_or_output_dir, app_dir, defaults_launch_mark
+    )
+
     dumps = [
         f
         for f in os.listdir(output_dir)
@@ -848,11 +1320,46 @@ def assert_clean_exit(output_dir):
     assert not dumps, f"crash dump(s) left behind: {dumps}"
 
     log = os.path.join(output_dir, "Latest.log")
-    if os.path.isfile(log):
-        with open(log, "r", encoding="utf-8", errors="replace") as handle:
-            bad = [
-                line.strip()
-                for line in handle
-                if "ERROR" in line or "EXCEPTION" in line.upper()
-            ]
-        assert not bad, "errors in Latest.log:\n" + "\n".join(bad[:10])
+    assert os.path.isfile(log), (
+        f"no Latest.log at {log} after exit. _await_startup_complete read 'startup.complete' "
+        "out of this file earlier in this same run, so it existed; skipping the log check "
+        "because it has since vanished would report a pass for a check that never ran."
+    )
+    with open(log, "r", encoding="utf-8", errors="replace") as handle:
+        bad = [
+            line.strip()
+            for line in handle
+            if "ERROR" in line or "EXCEPTION" in line.upper()
+        ]
+    assert not bad, "errors in Latest.log:\n" + "\n".join(bad[:10])
+
+    return assert_defaults_file_reparses(app_dir, defaults_launch_mark)
+
+
+def _clean_exit_arguments(game_or_output_dir, app_dir, defaults_launch_mark):
+    """Resolve assert_clean_exit's arguments, refusing any call that would check less.
+
+    Separated out so assert_clean_exit's own body stays free of the ``if`` statements
+    test_assert_clean_exit_runs_every_check_unconditionally forbids: not one of the checks
+    below is allowed to be conditional, and this function guards the INPUTS, not the checks.
+    """
+    if isinstance(game_or_output_dir, GameWindow):
+        game = game_or_output_dir
+        assert app_dir is None and defaults_launch_mark is None, (
+            "pass either assert_clean_exit(game) or the explicit "
+            "assert_clean_exit(output_dir, app_dir, mark), not a mixture"
+        )
+        return game.output_dir, game.app_dir, game.defaults_launch_mark
+
+    assert app_dir is not None, (
+        "assert_clean_exit needs the app directory as well as the output directory: the G9 "
+        "defaults check reads <app_dir>/GNUstep/Defaults/oolite.plist, and a one-argument "
+        "call would skip it entirely. Call assert_clean_exit(game) (oo-5rsa)."
+    )
+    assert defaults_launch_mark is not None, (
+        "assert_clean_exit needs the launch-time defaults mark (GameWindow.start() records it "
+        "as game.defaults_launch_mark). Without it the defaults check can only say 'a file "
+        "exists', which a plist from an earlier run satisfies forever. Call "
+        "assert_clean_exit(game) (oo-5rsa)."
+    )
+    return game_or_output_dir, app_dir, defaults_launch_mark
