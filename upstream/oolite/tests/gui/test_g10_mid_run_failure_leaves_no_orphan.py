@@ -121,6 +121,16 @@ def _run_child(pidfile, child_lock_dir):
     run, so at no point is an unlocked game on the desktop. The child's private mutex only stops
     it from queueing behind its own parent. It is a fresh empty directory per run, so the child
     never contends with anything and never reclaims anyone's lock.
+
+    THIS IS NOT COMPENSATING FOR THE STALE LOCK, and that was measured rather than assumed. A
+    separate fleet defect - a lock orphaned by a dead session, reclaimed under the script's own
+    age-based protocol and filed as oo-c7bu - produced failures that LOOKED like this deadlock,
+    so the two had to be told apart deliberately. Removing only the ``OO_GUI_LOCK_DIR`` line
+    below, from a CLEAN and verified-free lock, still fails: the child never writes its pidfile
+    and dies with "1 error in 29.89s", the parent failing at the pidfile assertion after 39s.
+    That is the child hitting its 30s acquisition budget on the mutex its own parent is holding,
+    with no stale lock anywhere in the picture. The private directory is therefore load-bearing
+    on its own merits and is kept.
     """
     child = os.path.join(HERE, "_njnw_child_%d.py" % os.getpid())
     with open(child, "w", encoding="utf-8") as handle:
