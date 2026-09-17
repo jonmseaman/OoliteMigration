@@ -27,14 +27,19 @@ REQUIRED_METHOD_CLASSES = ["Ship", "PlayerShip", "Station", "System", "Vector3D"
 REQUIRED_OBJECTS = ["clock", "mission", "missionVariables", "oolite", "player", "system",
                     "worldScripts"]
 
-# A snapshot that embeds any of these is not reproducible. The patterns are deliberately broad.
+# A snapshot that embeds any of these is not reproducible. The patterns match VALUES, never member
+# names: the API legitimately contains globals and members called Date, Clock or host, and a
+# pattern broad enough to catch those would fail on a perfectly deterministic file.
 NON_DETERMINISTIC = [
-    (re.compile(r"\b[A-Za-z]:[\\/]"), "a Windows path"),
-    (re.compile(r"(?m)^\s*\"[^\"]*(timestamp|generated_at|date)\"", re.I), "a timestamp field"),
+    (re.compile(r"\b[A-Za-z]:[\\\\/]"), "a filesystem path"),
     (re.compile(r"\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}"), "an ISO timestamp"),
     (re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b"), "an IP address"),
-    (re.compile(r"\"(port|console_port|host|pid|tmpdir|cwd)\"", re.I), "a session field"),
 ]
+
+# Top-level keys that would make the document depend on the machine or the moment it was taken.
+# Checked structurally rather than by regex, for the same reason.
+FORBIDDEN_TOP_KEYS = {"generated_at", "timestamp", "date", "host", "port", "console_port", "pid",
+                      "path", "app_dir", "cwd", "tmpdir", "user"}
 
 KINDS = {"method", "property", "accessor", "opaque", "native-opaque"}
 
@@ -73,6 +78,10 @@ def main(path):
         found = pattern.search(text)
         if found:
             fail(f"{path} embeds {what} ({found.group(0)!r}); the snapshot must not vary per run")
+
+    stray = FORBIDDEN_TOP_KEYS & set(doc)
+    if stray:
+        fail(f"{path} has session-dependent top-level key(s) {sorted(stray)}")
 
     if doc.get("schema") != "oolite-js-api/1":
         fail(f"unexpected schema {doc.get('schema')!r}")
