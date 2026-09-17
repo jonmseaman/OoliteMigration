@@ -599,6 +599,33 @@ neuter() {  # neuter <body-lines...> : replace the @then body in world_steps.py
     printf '%s\n' "$@" ; } > "$f"
 }
 
+# pyfixture <name> : a fixture plus a COMMITTED unittest-style python test file, so the change
+# under test is only the edit that follows. Two units: a plain one (the skip_intro refactor
+# target) and a @pytest.mark.skipif one (the conditional platform guard), which is how the real
+# GUI suite is written.
+pyfixture() {
+  fixture "$1" || return 1
+  mkdir -p upstream/oolite/tests/gui
+  cat > upstream/oolite/tests/gui/test_menu.py <<'EOF'
+import pytest
+import unittest
+
+IS_WINDOWS = True
+
+
+class MenuTest(unittest.TestCase):
+    def test_main_menu_appears(self):
+        self.press("space")
+        self.wait_for("main_menu")
+        self.assertEqual(self.screen(), "main_menu")
+
+    @pytest.mark.skipif(not IS_WINDOWS, reason="DPI awareness is a Windows concept")
+    def test_dpi_awareness_declared(self):
+        self.assertTrue(self.dpi_declared())
+EOF
+  git_c add -A >/dev/null && git_c commit -qm "python test base" >/dev/null
+}
+
 fixture gut_raise_skiptest || exit 1
 neuter '    raise SkipTest("later")'
 expect_fail "(a) raise SkipTest as the body refused" "is emptied"
@@ -654,23 +681,43 @@ sed -i 's/^    assert universe.pirate is None$/    pass/' \
 expect_fail "(e) helper emptied in the same change refused" "is emptied"
 
 echo
-echo "=== 3q. NEGATIVE CONTROLS for 3p: these must all still PASS ==="
+echo "=== 3q. NEGATIVE CONTROLS for 3p, EACH PROVED LOAD-BEARING BY BREAKING IT ==="
 # Without these the tightening in 3p is a false-positive generator, and a guard that cries wolf
-# is worse than no guard.
+# is worse than no guard. But a control is only worth having if it CAN go red: review-3 found
+# that the skip-lookalike control below passed for the wrong reason - it used the receiver
+# `universe`, which the matcher never looked at, so it could not have detected the over-reach it
+# existed for. Every control here is therefore followed by its BREAK TWIN: the same case with
+# the one detail changed that should make the guard fire. If the twin does not fail, the control
+# is decorative.
 fixture neg_conditional_skip || exit 1
-# A GENUINE conditional skip guarding a real assertion. The skip is not at the body's top
-# level, so it does not make the unit unreachable.
+# A GENUINE conditional skip guarding a real assertion. The skip is not at the top level of the
+# body, so it does not make the unit unreachable.
 neuter '    if universe.offline:' '        pytest.skip("no network")' \
        '    assert universe.pirate is None'
 expect_pass "(a/b control) pytest.skip inside a real conditional passes"
+
+fixture neg_conditional_skip_break || exit 1
+# BREAK TWIN: de-indent the skip to the top level and the same body must be refused.
+neuter '    pytest.skip("no network")' '    assert universe.pirate is None'
+expect_fail "(a/b control IS load-bearing: top-level skip still refused)" "is emptied"
 
 fixture neg_assert_true_plus || exit 1
 neuter '    assert True' '    assert universe.pirate is None'
 expect_pass "(d control) 'assert True' alongside a real assertion passes"
 
+fixture neg_assert_true_break || exit 1
+# BREAK TWIN: take the real assertion away and only the padding is left.
+neuter '    assert True' '    return'
+expect_fail "(d control IS load-bearing: 'assert True' alone still refused)" "is emptied"
+
 fixture neg_if_true_live || exit 1
 neuter '    if True:' '        assert universe.pirate is None'
 expect_pass "(c control) 'if True:' around a REAL assertion passes"
+
+fixture neg_if_true_break || exit 1
+# BREAK TWIN: same wrapper, nothing inside it.
+neuter '    if True:' '        pass'
+expect_fail "(c control IS load-bearing: 'if True:' around nothing still refused)" "is emptied"
 
 fixture neg_helper_live || exit 1
 cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
@@ -693,12 +740,146 @@ def destroyed():
 EOF
 expect_pass "(e control) extracting a LIVE helper passes"
 
+fixture neg_helper_break || exit 1
+# BREAK TWIN: the identical extraction, into a helper that asserts nothing.
+cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+def check_pirate_gone():
+    pass
+
+@then("the pirate is destroyed")
+def destroyed():
+    check_pirate_gone()
+EOF
+expect_fail "(e control IS load-bearing: extracting a DEAD helper still refused)" "is emptied"
+
 fixture neg_skip_lookalike || exit 1
-# A call whose NAME merely contains "skip" is not a skip: only the spellings in isskip() are.
-# Sole statement, so this control is load-bearing - if the matcher over-reached, the unit would
-# read as dead and this would go red.
-neuter '    universe.skip_frames(3)'
-expect_pass "(control) a call whose name contains 'skip' is not a skip"
+# THE OVER-REACH DETECTOR, respelled. The old version of this control called
+# `universe.skip_frames(3)`, and passed only because the receiver `universe` was outside the
+# matcher's (pytest|unittest|self) alternation - it could not see an over-reach on `self.` at
+# all, which is precisely where the over-reach lived. On `self.`, with the call as the SOLE
+# statement, the unit reads as dead the moment isskip() matches on substring rather than on the
+# whole method name.
+neuter '    self.skip_frames(3)'
+expect_pass "(control) self.<name containing skip>() is NOT a skip"
+
+fixture neg_skip_lookalike_more || exit 1
+# The full set of real-world spellings the substring matcher condemned, in one body.
+neuter '    self.skip_intro()' '    self.unskip_all()' '    self.frame_skip_setup()' \
+       '    pytest.skip_if_slow()' '    unittest.skiptracker()'
+expect_pass "(control) skip_intro / unskip_all / frame_skip_setup / skip_if_slow pass"
+
+fixture neg_skip_lookalike_break || exit 1
+# BREAK TWIN: the one spelling that IS a skip, same receiver, same position.
+neuter '    self.skipTest("later")'
+expect_fail "(lookalike control IS load-bearing: self.skipTest() still refused)" "is emptied"
+
+echo
+echo "=== 3r. THE REFACTOR THAT MUST NOT GO RED: a helper named skip_intro ==="
+# REVIEW-3 BLOCKING 1, reproduced end to end on the shipping guard: isskip() matched any callee
+# CONTAINING "skip", so extracting two setup lines into `def skip_intro(self)` - a pure refactor
+# that deletes no assertion - made the caller read as dead and the guard exit 1. That is the
+# failure mode that gets a guard bypassed.
+pyfixture neg_skip_intro_refactor || exit 1
+cat > upstream/oolite/tests/gui/test_menu.py <<'EOF'
+import pytest
+import unittest
+
+IS_WINDOWS = True
+
+
+class MenuTest(unittest.TestCase):
+    def skip_intro(self):
+        self.press("space")
+        self.wait_for("main_menu")
+
+    def test_main_menu_appears(self):
+        self.skip_intro()
+        self.assertEqual(self.screen(), "main_menu")
+
+    @pytest.mark.skipif(not IS_WINDOWS, reason="DPI awareness is a Windows concept")
+    def test_dpi_awareness_declared(self):
+        self.assertTrue(self.dpi_declared())
+EOF
+expect_pass "extracting a helper named skip_intro() passes"
+
+pyfixture neg_skip_intro_break || exit 1
+# BREAK TWIN: the same unit is visible to the check, so really gutting it is still refused -
+# the case above is not passing because the file is invisible.
+sed -i 's/^        self.assertEqual(self.screen(), "main_menu")$/        pass/;s/^        self.press("space")$//;s/^        self.wait_for("main_menu")$/        pass/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_fail "(3r IS load-bearing: gutting that same unit is refused)" "is emptied"
+
+echo
+echo "=== 3s. @skipif IS A LIVE UNIT: a conditional platform guard is not a disabled test ==="
+# REVIEW-3 BLOCKING 2. The decorator gate dropped any def whose decorators matched /@.*skip/,
+# which swallowed @pytest.mark.skipif / @unittest.skipIf / @unittest.skipUnless. skipif RUNS on
+# the matching platform and is the dominant idiom in this repo's real suite, so those units were
+# invisible at BOTH ends and could be gutted to `pass` in silence. MEASURED AFTER THE FIX on the
+# real tree: test_g1_exit_via_mouse.py 13 defs -> 13 units (was 9), test_win32_declarations.py
+# 7 -> 7 (was 5); across the whole real python suite 46 test defs -> 46 units, 0 unguarded.
+pyfixture skipif_gutted || exit 1
+sed -i 's/^        self.assertTrue(self.dpi_declared())$/        pass/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_fail "gutting a @pytest.mark.skipif unit is refused" "is emptied"
+
+pyfixture skipif_unittest_gutted || exit 1
+sed -i 's/^    @pytest.mark.skipif(not IS_WINDOWS, reason="DPI awareness is a Windows concept")$/    @unittest.skipUnless(IS_WINDOWS, "windows only")/' \
+  upstream/oolite/tests/gui/test_menu.py
+git_c add -A >/dev/null; git_c commit -qm "unittest spelling" >/dev/null
+sed -i 's/^        self.assertTrue(self.dpi_declared())$/        pass/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_fail "gutting an @unittest.skipUnless unit is refused" "is emptied"
+
+pyfixture skipif_strengthened || exit 1
+# CONTROL for the loosening: a @skipif unit is live, so ADDING to it must still pass.
+sed -i 's/^        self.assertTrue(self.dpi_declared())$/        self.assertTrue(self.dpi_declared())\n        self.assertEqual(self.dpi_mode(), "per-monitor")/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_pass "(3s control) strengthening a @skipif unit passes"
+
+pyfixture skipif_unconditional || exit 1
+# ...and the line the loosening must NOT cross: skipif(True, ...) is unconditional, so it is
+# still a disabled test and adding it to a live unit is still refused.
+sed -i 's/^    def test_main_menu_appears(self):$/    @pytest.mark.skipif(True, reason="parked")\n    def test_main_menu_appears(self):/' \
+  upstream/oolite/tests/gui/test_menu.py
+expect_fail "@pytest.mark.skipif(True) on a live unit is still refused" "is emptied"
+
+echo
+echo "=== 3t. AN UNCONDITIONAL EXIT AT THE TOP OF THE BODY ENDS THE SCAN ==="
+# REVIEW-3 BLOCKING 3. A bare `return` was skip-and-continue, so `return` followed by the
+# retained assertion still read as live - the structural twin of the pytest.skip()-first case
+# that 3p closes, and the same one-line neutering.
+fixture gut_return_first || exit 1
+neuter '    return' '    assert universe.pirate is None'
+expect_fail "(f) bare 'return' before the assertion refused" "is emptied"
+
+fixture gut_sysexit_first || exit 1
+neuter '    sys.exit(0)' '    assert universe.pirate is None'
+expect_fail "(f) 'sys.exit(0)' before the assertion refused" "is emptied"
+
+fixture neg_return_after || exit 1
+# CONTROL: a `return` AFTER the assertion changes nothing - the assertion already ran.
+neuter '    assert universe.pirate is None' '    return'
+expect_pass "(f control) a trailing 'return' after a real assertion passes"
+
+fixture neg_return_conditional || exit 1
+# CONTROL: an early return under a condition is ordinary control flow, not a disabled test.
+neuter '    if universe.offline:' '        return' '    assert universe.pirate is None'
+expect_pass "(f control) a conditional early return passes"
+
+fixture neg_return_after_break || exit 1
+# BREAK TWIN for both controls: move the return above the assertion and it is refused again.
+neuter '    return' '    assert universe.pirate is None' '    return'
+expect_fail "(f controls ARE load-bearing: a leading return still refused)" "is emptied"
 
 # =================================================================================================
 echo

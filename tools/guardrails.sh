@@ -117,6 +117,45 @@
 # temporary-path translation, which matters because this repository is worked from MSYS bash on
 # Windows where native git does not accept /tmp-style paths.
 #
+# WHAT COUNTS AS A LIVE TEST UNIT — AND THE HEURISTIC LIMITS OF THAT MODEL
+#
+# The "gutted test" rule reduces each .py test and .feature to the IDENTITIES of its LIVE units
+# and refuses any unit that was live at the base and is not live now (py_units/feature_units
+# below). "Live" means the body does something at run time. That model is a heuristic, and it is
+# wrong in both directions if it is not stated carefully, so its edges are named here:
+#
+#   MATCHED AS WHOLE NAMES, NOT SUBSTRINGS. A runtime skip is `skip`, `skipTest`, `skip_test`,
+#     `skip_module` or `xfail` - bare, or on pytest/unittest/self. A helper whose name merely
+#     CONTAINS the word is ordinary code: `self.skip_intro()`, `self.skip_first_frame()`,
+#     `self.unskip_all()`, `self.frame_skip_setup()`, `pytest.skip_if_slow()` are all LIVE.
+#     Extracting setup lines into a helper called skip_intro() is a pure refactor; a guard that
+#     reddens on it is a guard that gets bypassed. Selftest 3q/3r hold both directions.
+#   @skipif IS LIVE. `@pytest.mark.skipif(cond, ...)`, `@unittest.skipIf`, `@unittest.skipUnless`
+#     are CONDITIONAL PLATFORM GUARDS - they run and assert on the matching platform, and they
+#     are the dominant idiom in this repository's GUI suite. They are counted as units at both
+#     ends, so gutting one is caught. Only a literal-True condition (`skipif(True, ...)`) and the
+#     unconditional `@skip`/`@xfail` spellings mean "disabled". Measured on the real tree after
+#     this change: test_g1_exit_via_mouse.py 13 defs -> 13 units (9 before),
+#     test_win32_declarations.py 7 -> 7 (5 before); whole python suite 46 defs -> 46 units,
+#     0 unguarded. Selftest 3s.
+#   AN UNCONDITIONAL EXIT AT THE TOP LEVEL ENDS THE SCAN. `return`, `sys.exit()`, `os._exit()`
+#     and an unconditional skip make everything below them unreachable, so a retained assertion
+#     underneath does not count. An exit AFTER real work, or under an `if`, is ordinary control
+#     flow and stays live. Selftest 3t.
+#
+# STILL HEURISTIC — these read LIVE and this check will not catch them:
+#
+#   * a body whose only statement is a side-effect-free call the model cannot evaluate, e.g.
+#     `logging.info("ran")` or `print(...)`: a call is assumed to do something, because assuming
+#     otherwise would condemn every test that delegates to a helper;
+#   * `with pytest.raises(ValueError):` / `pass` - the context manager itself is an assertion in
+#     pytest, but a body that never reaches the raising call asserts nothing;
+#   * `monkeypatch`/mock rewiring that makes a retained assertion trivially true;
+#   * a unit deleted from one file and re-added to another (the SPLIT limitation below).
+#
+# These are deliberate: each would require evaluating Python rather than reading it, and a
+# false RED costs more here than a missed subtle neutering, which review still catches.
+#
 # ANTI-VACUITY: a check that scans nothing must FAIL, not pass
 #
 # Every check states a fact about the tree that must hold for it to be capable of firing, and
@@ -541,10 +580,42 @@ py_units() {       # content on stdin -> one line per LIVE test/step unit
 
     # An unconditional runtime skip. Reaching one at the top level of the body means every
     # statement after it is unreachable, so the unit asserts nothing at run time.
+    #
+    # THE METHOD NAME IS MATCHED WHOLE, NEVER AS A SUBSTRING. An earlier version matched any
+    # callee "containing skip" and so condemned `self.skip_intro()`, `self.skip_first_frame()`,
+    # `self.unskip_all()`, `self.frame_skip_setup()` and `pytest.skip_if_slow()` - ordinary
+    # helpers whose names merely start or end with the word. Extracting two setup lines into a
+    # helper called skip_intro() is a pure refactor that deletes no assertion, and a guard that
+    # goes red on it is a guard that gets bypassed. Only the real spellings count:
+    #   skip  skipTest  skip_test  skip_module  xfail        (bare, or on pytest/unittest/self)
     function isskip(st) {
-      if (st ~ /^raise[ \t]+(unittest\.)?SkipTest/) return 1
-      if (st ~ /^(pytest|unittest|self)\.?[A-Za-z_]*[sS]kip[A-Za-z_]*[ \t]*\(/) return 1
-      if (st ~ /^[sS]kip(Test)?[ \t]*\(/) return 1
+      if (st ~ /^raise[ \t]+(unittest\.)?SkipTest([ \t]*\(|[ \t]*$)/) return 1
+      if (st ~ /^(pytest|unittest|self)\.(skip|skipTest|skip_test|skip_module|xfail)[ \t]*\(/) return 1
+      if (st ~ /^(skip|skipTest|skip_test|skip_module|xfail)[ \t]*\(/) return 1
+      return 0
+    }
+
+    # An UNCONDITIONAL EXIT from the body. Everything below one at the top level of a body is
+    # unreachable, so the scan must STOP there rather than skip the line and keep reading: a
+    # `return` followed by the retained assertion is the exact structural twin of
+    # `pytest.skip()` followed by the retained assertion, and is a one-line neutering.
+    function isexit(st) {
+      if (isskip(st)) return 1
+      if (st ~ /^return([ \t]|$)/) return 1
+      if (st ~ /^(sys\.exit|os\._exit|exit|quit)[ \t]*\(/) return 1
+      return 0
+    }
+
+    # Do the DECORATORS of this def disable it outright? decs arrives already lowercased.
+    #
+    # @skipif / @skipIf / @skipUnless are CONDITIONAL PLATFORM GUARDS, not disabled tests: they
+    # run, and assert, on the matching platform, and they are the dominant idiom in the real
+    # suite here (18 of them across the GUI tests). Treating them as dead made those units
+    # INVISIBLE AT BOTH ENDS of the comparison, so an agent could gut one to `pass` and this
+    # check would say nothing. They are live; only a literal-True condition is unconditional.
+    function decdead(decs) {
+      if (decs ~ /@([a-z_][a-z0-9_.]*\.)?skip(if|unless)[ \t]*\([ \t]*(true|1)[ \t]*[,)]/) return 1
+      if (decs ~ /@([a-z_][a-z0-9_.]*\.)?(skip|skiptest|xfail|wip|disabled|ignore|manual|todo)([ \t(]|$)/) return 1
       return 0
     }
 
@@ -589,7 +660,9 @@ py_units() {       # content on stdin -> one line per LIVE test/step unit
           k++; continue
         }
         if (substr(st,1,1)=="@") { k++; continue }
-        if (isskip(st) && ti<=bodyind && live==0) return 0
+        # UNCONDITIONAL EXIT at the TOP LEVEL of the body: the scan stops. Nothing below runs, so
+        # whether the unit is live was decided entirely by what came before.
+        if (isexit(st) && ti<=bodyind) return live
         if (stmtdead(st, useh)) { k++; continue }
         live=1; k++
       }
@@ -637,7 +710,7 @@ py_units() {       # content on stdin -> one line per LIVE test/step unit
           id = "def:" nm
         }
         if (id=="") continue
-        if (decs ~ SK || decs ~ /@.*skip/) continue
+        if (decdead(decs)) continue
         if (bodylive(i, ind, 1)) print id
       }
     }'
