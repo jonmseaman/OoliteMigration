@@ -139,8 +139,10 @@ DEFAULT_OUTPUT = "./test_output"
 MIN_FILE_SIZE_KB = 100  # Threshold for a valid render
 
 # How much of the game's own clock must pass, after it starts answering, before a frame is worth
-# capturing. Game time only advances when the run loop runs, so this counts rendered frames rather
-# than wall-clock seconds and cannot be exhausted by a slow startup.
+# capturing. This is a duration in GAME-CLOCK SECONDS, not a count of frames: it is compared
+# against a clock.absoluteSeconds delta in wait_until_rendering. Game time only advances while the
+# run loop steps, so waiting on it implies frames were drawn and cannot be exhausted by a slow
+# startup - but the quantity itself is seconds, and the flag that sets it is --settle-game-seconds.
 DEFAULT_SETTLE_GAME_SECONDS = 2.0
 
 
@@ -665,11 +667,23 @@ def parse_args(argv=None):
         help="Saved commander to hand to the game's -load argument, so the run starts docked",
     )
     parser.add_argument(
-        "--settle-frames",
+        "--settle-game-seconds",
         type=float,
-        default=float(os.environ.get("OO_SNAPSHOT_SETTLE", DEFAULT_SETTLE_GAME_SECONDS)),
+        default=None,
+        metavar="SECONDS",
         help="Seconds of the GAME's clock that must pass before snapshotting "
         f"(default: $OO_SNAPSHOT_SETTLE, else {DEFAULT_SETTLE_GAME_SECONDS})",
+    )
+    # Deprecated alias. The old name lied about its unit - it never took a frame count - but it is
+    # a published flag, so it keeps working and warns rather than breaking callers silently.
+    parser.add_argument(
+        "--settle-frames",
+        type=float,
+        default=None,
+        dest="settle_frames_deprecated",
+        metavar="SECONDS",
+        help="DEPRECATED alias for --settle-game-seconds (never took frames; takes game-clock "
+        "seconds). Warns and will be removed.",
     )
     parser.add_argument(
         "--ready-timeout",
@@ -705,12 +719,35 @@ def parse_args(argv=None):
              "converted, and that the binary's -load argv is native",
     )
     parser.add_argument(
+        "--check-settle-units",
+        action="store_true",
+        help="offline: prove the settle value is game-clock seconds, not frames, and that "
+             "--settle-frames is an exact alias",
+    )
+    parser.add_argument(
         "--instances",
         type=int,
         default=3,
         help="how many concurrent instances the offline checks simulate (default: 3)",
     )
-    return parser.parse_args(argv)
+    args = parser.parse_args(argv)
+
+    # Resolve the settle duration: explicit new flag wins, then the deprecated alias (with a
+    # warning), then $OO_SNAPSHOT_SETTLE, then the built-in default. Both flags carry the SAME
+    # unit - game-clock seconds - so the alias needs no conversion, only a warning.
+    if args.settle_frames_deprecated is not None:
+        print(
+            "[!] --settle-frames is deprecated and misnamed: it takes game-clock SECONDS, not "
+            "frames. Use --settle-game-seconds.",
+            file=sys.stderr,
+        )
+        if args.settle_game_seconds is None:
+            args.settle_game_seconds = args.settle_frames_deprecated
+    if args.settle_game_seconds is None:
+        args.settle_game_seconds = float(
+            os.environ.get("OO_SNAPSHOT_SETTLE", DEFAULT_SETTLE_GAME_SECONDS)
+        )
+    return args
 
 
 # --- offline self-checks (bug oo-pzc1) ---------------------------------------------------------
@@ -1145,6 +1182,85 @@ def _check_msys_paths():
     return 0
 
 
+def _settle_units_check():
+    """Offline: prove the settle knob is GAME-CLOCK SECONDS, and that both spellings agree.
+
+    A grep for the new flag name proves nothing about units. The observable is behavioural: ask
+    for N and the wait must end when the GAME's clock has advanced N - regardless of how many
+    polls (frames) that took and regardless of wall-clock time. So this drives the real
+    wait_until_rendering against a stubbed clock:
+
+      * a clock ticking 0.25 game-seconds per poll must satisfy N=1.0 after ~4 polls, not after
+        1 poll (which is what a frame COUNT of 1.0 would mean);
+      * a clock that is frozen - the run loop stalled - must be REFUSED, never satisfied. Without
+        this case the check could not fail.
+    """
+    global evaluate
+    real_evaluate = evaluate
+    failures = []
+
+    def run(step, want, timeout=6):
+        polls = {"n": 0}
+
+        def fake(conn, js, timeout=20):
+            if js != "clock.absoluteSeconds":
+                return "GUI_SCREEN_MAIN"
+            value = polls["n"] * step
+            polls["n"] += 1
+            return repr(value)
+
+        globals()["evaluate"] = fake
+        try:
+            return wait_until_rendering(None, want, timeout=timeout), polls["n"]
+        finally:
+            globals()["evaluate"] = real_evaluate
+
+    # 1. Ticking clock: N is seconds of game time, so N=1.0 at 0.25/poll needs >= 5 reads
+    #    (the baseline read plus four advancing ones). A frame count would have stopped at 2.
+    ok, polls = run(0.25, 1.0)
+    if not ok:
+        failures.append("advancing game clock did not satisfy a 1.0 game-second settle")
+    elif polls < 5:
+        failures.append(
+            "settle of 1.0 was satisfied after %d clock reads at 0.25s/read - that is a frame "
+            "count, not seconds" % polls
+        )
+
+    # 2. Asking for MORE seconds must take strictly more polls. Units scale; a frame count of
+    #    2.0 vs 1.0 at this tick rate would not.
+    ok_two, polls_two = run(0.25, 2.0)
+    if not ok_two or polls_two <= polls:
+        failures.append(
+            "settle 2.0 took %r reads vs %r for 1.0 - the value does not scale as a duration"
+            % (polls_two, polls)
+        )
+
+    # 3. THE FAILURE CASE: a stalled run loop (game clock frozen) must be refused, not settled.
+    frozen, _ = run(0.0, 1.0, timeout=2)
+    if frozen:
+        failures.append("frozen game clock was accepted as settled - the wait cannot fail")
+
+    # 4. Both spellings resolve to the same field and the same unit; neither converts.
+    new = parse_args(["--settle-game-seconds", "7.5"]).settle_game_seconds
+    old = parse_args(["--settle-frames", "7.5"]).settle_game_seconds
+    default = parse_args([]).settle_game_seconds
+    if new != 7.5:
+        failures.append("--settle-game-seconds 7.5 resolved to %r" % new)
+    if old != 7.5:
+        failures.append("--settle-frames 7.5 resolved to %r, not the same quantity" % old)
+    if default != float(os.environ.get("OO_SNAPSHOT_SETTLE", DEFAULT_SETTLE_GAME_SECONDS)):
+        failures.append("default settle resolved to %r" % default)
+
+    for line in failures:
+        print("[!] %s" % line)
+    if failures:
+        print("settle-units: FAIL")
+        return 1
+    print("settle-units: PASS - settle is game-clock seconds (1.0s took %d clock reads at "
+          "0.25s/read), a frozen clock is refused, and --settle-frames is an exact alias" % polls)
+    return 0
+
+
 def _desktop_lock_helper():
     """tools/desktop_lock from the OUTER repository, or None when there is none.
 
@@ -1186,6 +1302,8 @@ if __name__ == "__main__":
         sys.exit(_launch_probe(max(2, args.instances)))
     if args.check_msys_paths:
         sys.exit(_check_msys_paths())
+    if args.check_settle_units:
+        sys.exit(_settle_units_check())
 
     # Determine binary name and original path
     bin_name = "oolite.exe" if IS_WINDOWS else "oolite"
@@ -1238,7 +1356,7 @@ if __name__ == "__main__":
                 args.port,
                 args.host,
                 load_save,
-                args.settle_frames,
+                args.settle_game_seconds,
                 args.ready_timeout,
                 app_dir=target_dir,
                 keep_staged=args.keep_staged,
@@ -1252,7 +1370,7 @@ if __name__ == "__main__":
                     args.port,
                     args.host,
                     load_save,
-                    args.settle_frames,
+                    args.settle_game_seconds,
                     args.ready_timeout,
                     app_dir=target_dir,
                     keep_staged=args.keep_staged,
