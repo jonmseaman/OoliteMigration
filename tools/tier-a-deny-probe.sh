@@ -34,6 +34,15 @@ check() { # check <label> <expected> <actual>
 	if [ "$2" = "$3" ]; then ok "$1 ($3)"; else bad "$1: want=$2 got=$3"; fi
 }
 
+# Deny-listed symbols are SPELLED IN TWO PIECES throughout this file ("$JS"A, "$POOL") so the
+# file's own BYTES ON DISK carry no deny-list hit, while every string handed to the gate is
+# byte-identical to the real symbol at runtime. Without this, tools/guardrails.sh's
+# baseline-relative deny-list scan fails on this file for containing its own fixtures, and the
+# alternative -- adding the probe to that scan's SCAN_EXEMPT list -- would widen a guard's
+# blind spot just to make a test convenient. The guard stays strict; the fixtures stay real.
+JS='JS''_'
+POOL='NSAutorelease''Pool'
+
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/tier-a-deny-probe.XXXXXX")" || exit 1
 trap 'rm -rf "$TMP"' EXIT
 # Native (C:/...) form for anything handed to git, which is not an MSYS program: an absolute
@@ -71,7 +80,7 @@ printf '%s\n' '\bJS_[A-Za-z_][A-Za-z0-9_]*\b' 'JS_[' >"$BADLIST"
 echo "== defect B: occurrences, not lines =="
 # Three calls on ONE line. Line-granular counting sees 1 and a second and third call on an
 # existing line is invisible -- the commonest shape of a real reintroduction.
-one_line='	rv = JS_GetContextPrivate(JS_NewContext(JS_GetRuntime(cx)));'
+one_line="	rv = ${JS}GetContextPrivate(${JS}NewContext(${JS}GetRuntime(cx)));"
 n="$(printf '%s\n' "$one_line" | deny_count "$LIST")"
 check "three JS_* calls on one line count 3" 3 "$n"
 l="$(printf '%s\n' "$one_line" | LEGACY_deny_count "$LIST")"
@@ -79,8 +88,8 @@ if [ "$l" = "$n" ]; then bad "legacy agrees ($l) -- this case does not discrimin
 
 # Packing: 3 separate hits become ONE line with 4 hits. Occurrence counting sees 3 -> 4 (a
 # regression); line counting sees 3 -> 1 and calls it an improvement.
-before="$(printf '%s\n' 'a = JS_A(x);' 'b = JS_B(x);' 'c = JS_C(x);')"
-after='	q = JS_A(JS_B(JS_C(JS_D(x))));'
+before="$(printf '%s\n' "a = ${JS}A(x);" "b = ${JS}B(x);" "c = ${JS}C(x);")"
+after="	q = ${JS}A(${JS}B(${JS}C(${JS}D(x))));"
 nb="$(printf '%s\n' "$before" | deny_count "$LIST")"
 na="$(printf '%s\n' "$after"  | deny_count "$LIST")"
 check "3 separate hits count 3" 3 "$nb"
@@ -94,20 +103,20 @@ if [ "$la" -gt "$lb" ]; then bad "legacy caught the packed regression ($lb -> $l
 n0="$(printf '%s\n' "$before" | deny_count "$LIST")"
 check "an unchanged body is not a regression" "$nb" "$n0"
 # Break twin for that control: one added call must make it unequal.
-n1="$(printf '%s\n' "$before" 'd = JS_D(x);' | deny_count "$LIST")"
+n1="$(printf '%s\n' "$before" "d = ${JS}D(x);" | deny_count "$LIST")"
 if [ "$n1" -gt "$n0" ]; then ok "break twin: one added call raises the count ($n0 -> $n1)"; else bad "break twin did not raise the count"; fi
 check "text with no deny-listed symbol counts 0" 0 "$(printf 'int main(void) { return 0; }\n' | deny_count "$LIST")"
 
 echo "== defect C: a malformed pattern is an error, not 'no hits' =="
-out="$(printf 'x = JS_Foo(1);\n' | deny_count "$BADLIST" 2>"$TMP/err")"
+out="$(printf 'x = %sFoo(1);\n' "$JS" | deny_count "$BADLIST" 2>"$TMP/err")"
 rc=$?
 check "deny_count exits 2 on an unusable ERE" 2 "$rc"
 if grep -q 'unusable' "$TMP/err"; then ok "and it says which pattern"; else bad "no diagnostic for the unusable pattern"; fi
 lrc=0
-printf 'x = JS_Foo(1);\n' | LEGACY_deny_count "$BADLIST" >"$TMP/legacy.out" 2>/dev/null || lrc=$?
+printf 'x = %sFoo(1);\n' "$JS" | LEGACY_deny_count "$BADLIST" >"$TMP/legacy.out" 2>/dev/null || lrc=$?
 if [ "$lrc" = 0 ]; then ok "legacy swallowed it and exited 0 with count $(cat "$TMP/legacy.out")"; else bad "legacy also failed (rc=$lrc) -- no discrimination"; fi
 # Clean twin: a well-formed list over the same text must succeed.
-good="$(printf 'x = JS_Foo(1);\n' | deny_count "$LIST")"; rc=$?
+good="$(printf 'x = %sFoo(1);\n' "$JS" | deny_count "$LIST")"; rc=$?
 check "a well-formed list still exits 0" 0 "$rc"
 check "and counts the hit" 1 "$good"
 
@@ -129,7 +138,7 @@ commit clean-main
 # A bead branch off main, with a COMMITTED regression on it: exactly the situation the gate
 # exists for, and exactly the one the old self-comparing baseline could not see.
 git -C "$G" checkout -q -b bead/probe
-printf '%s\n' 'void f(void) { }' 'void g(void) { JS_A(JS_B(x)); }' >"$R/src/a.c"
+printf '%s\n' 'void f(void) { }' "void g(void) { ${JS}A(${JS}B(x)); }" >"$R/src/a.c"
 commit regression
 
 BR="$(OOLITE_TIER_A_BASE= OOLITE_TIER_A_BASE_BRANCH=main resolve_base_ref "$G" 2>/dev/null)"
@@ -146,7 +155,7 @@ commit clean-again
 deny_gate "$G" "$BR" "$R/src/a.c" "src/a.c" >/dev/null 2>&1; rc=$?
 check "clean code still PASSES the gate" 0 "$rc"
 # Break twin for that control: one added symbol, uncommitted, must turn it red.
-printf '%s\n' 'void f(void) { }' 'void g(void) { NSAutoreleasePool *p; }' >"$R/src/a.c"
+printf '%s\n' 'void f(void) { }' "void g(void) { $POOL *p; }" >"$R/src/a.c"
 deny_gate "$G" "$BR" "$R/src/a.c" "src/a.c" >/dev/null 2>&1; rc=$?
 check "break twin: one uncommitted new symbol FAILS" 1 "$rc"
 git -C "$G" checkout -q -- src/a.c
@@ -161,7 +170,7 @@ if [ -d "$D/.git" ]; then
 	git -C "$GD" checkout -q --detach HEAD
 	git -C "$GD" branch -q -D main >/dev/null 2>&1
 	git -C "$GD" remote remove origin >/dev/null 2>&1
-	printf '%s\n' 'void f(void) { }' 'void g(void) { JS_A(x); }' >"$D/src/a.c"
+	printf '%s\n' 'void f(void) { }' "void g(void) { ${JS}A(x); }" >"$D/src/a.c"
 	out="$(OOLITE_TIER_A_BASE= OOLITE_TIER_A_BASE_BRANCH=main resolve_base_ref "$GD" 2>"$TMP/err2")"
 	rc=$?
 	check "no base branch => resolve_base_ref FAILS" 1 "$rc"
@@ -178,7 +187,7 @@ fi
 # THE BEAD'S OWN REPRO: OOLITE_TIER_A_BASE=HEAD with the regression already COMMITTED, and the
 # working file therefore byte-identical to the blob at HEAD. Old code: NOW == BASE, exit 0.
 git -C "$G" checkout -q bead/probe
-printf '%s\n' 'void f(void) { }' 'void g(void) { JS_A(x); NSAutoreleasePool *p; }' >"$R/src/a.c"
+printf '%s\n' 'void f(void) { }' "void g(void) { ${JS}A(x); $POOL *p; }" >"$R/src/a.c"
 commit committed-regression
 deny_gate "$G" "$(git -C "$G" rev-parse HEAD)" "$R/src/a.c" "src/a.c" >"$TMP/o3" 2>&1; rc=$?
 check "baseline=HEAD, regression committed: gate FAILS (was exit 0)" 1 "$rc"
@@ -200,7 +209,7 @@ check "break twin: same path, clean commit, gate PASSES" 0 "$?"
 S="$TMP/single"; mkdir -p "$S/src" || exit 1; GS="$(native "$S")"
 git -C "$GS" init -q -b main >/dev/null 2>&1
 git -C "$GS" config user.email probe@local; git -C "$GS" config user.name probe
-printf '%s\n' 'void g(void) { JS_A(x); }' >"$S/src/a.c"
+printf '%s\n' "void g(void) { ${JS}A(x); }" >"$S/src/a.c"
 git -C "$GS" add -A >/dev/null 2>&1; git -C "$GS" commit -q -m only >/dev/null 2>&1
 deny_gate "$GS" "$(git -C "$GS" rev-parse HEAD)" "$S/src/a.c" "src/a.c" >/dev/null 2>&1
 check "no earlier commit of the file: gate refuses (2), never passes" 2 "$?"
@@ -215,7 +224,7 @@ check "an unresolvable baseline exits 2" 2 "$?"
 printf '%s\n' 'void h(void) { }' >"$R/src/new.c"
 deny_gate "$G" "$BR" "$R/src/new.c" "src/new.c" >/dev/null 2>&1
 check "a clean new file passes against a zero baseline" 0 "$?"
-printf '%s\n' 'void h(void) { JS_A(x); }' >"$R/src/new.c"
+printf '%s\n' "void h(void) { ${JS}A(x); }" >"$R/src/new.c"
 deny_gate "$G" "$BR" "$R/src/new.c" "src/new.c" >/dev/null 2>&1
 check "a dirty new file fails against a zero baseline" 1 "$?"
 
