@@ -93,6 +93,8 @@ Only beads labelled `fleet` are yours; `frontier`, `rebless` and `proposed-adr` 
   derives "bare program" from the tree — a call site is the path in command position, including
   behind a run prefix (`timeout 30 tools/x.sh`), as sibling dispatch (`"$here/x.sh"`), and in a
   bead's `acceptance_criteria` (accept.sh runs those verbatim on a Linux checkout).
+  `tools/check-file-modes-probe.sh` is its test: it *sources* the guard's own regexes and probes
+  them, so the grammar table cannot drift from the grammar.
   Never assert this with `test -x`: MSYS on NTFS reports rwx for every file, so `test -x` is
   always true on the fleet machine and is blind to the defect. Assert on `git ls-files -s`,
   which is what the index records and what a Linux checkout sees.
