@@ -89,7 +89,10 @@ Only beads labelled `fleet` are yours; `frontier`, `rebless` and `proposed-adr` 
   always invoked through an interpreter (`python3 tools/foo.py`, `bash tools/foo.sh`) MAY stay
   `100644`; a shebang on it is documentation, not a promise. Nothing is `100755` without a
   shebang. `upstream/` is excluded (its modes are upstream's). Enforced by
-  `tools/check-file-modes.sh`; `--list` prints every script's mode and how it is called.
+  `tools/check-file-modes.sh`; `--list` prints every script's mode and how it is called. It
+  derives "bare program" from the tree — a call site is the path in command position, including
+  behind a run prefix (`timeout 30 tools/x.sh`), as sibling dispatch (`"$here/x.sh"`), and in a
+  bead's `acceptance_criteria` (accept.sh runs those verbatim on a Linux checkout).
   Never assert this with `test -x`: MSYS on NTFS reports rwx for every file, so `test -x` is
   always true on the fleet machine and is blind to the defect. Assert on `git ls-files -s`,
   which is what the index records and what a Linux checkout sees.
