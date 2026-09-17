@@ -237,9 +237,40 @@ Tier A only; B and C are still to come (0.9).
 tools/tier-a.sh <file>          # single-TU compile + clang-tidy + deny-list, < 30 s, offline
 ```
 
-Measured 2026-09-16 on the fleet Windows machine, warm shared ccache and an existing
-`build/meson_test`: `OOColor.m` 1.9 s, `OORoleSet.m` 1.8 s wall. From no build directory at
-all the script configures one itself and the first run costs ~8 s total. The check set is in
+Measured 2026-09-17 on the fleet Windows machine (16C/24T, 64 GiB) with five worker agents
+running concurrently, wall clock, median of three runs of `tools/tier-a.sh` per cell:
+
+| build dir | ccache | `OOColor.m` wall |
+| --- | --- | --- |
+| exists (`build/meson_test`) | warm shared `C:\ccache` | **4.4 s** |
+| exists | cold (`CCACHE_DIR` redirected to an empty dir) | **~4 s** |
+| absent — script runs `meson setup` first | warm shared | **15 s** |
+| absent | cold | **15–17 s** |
+
+`OORoleSet.m` in the steady-state row: 4.0 s. An idle-machine run on 2026-09-16 gave 1.9 s and
+1.8 s for the same two files, so expect roughly 2x under a loaded fleet; both are well inside the
+budget either way.
+
+Two corrections to earlier figures follow from this, and the previously documented "~8 s from no
+build directory" got both wrong.
+
+**ccache warmth is not what makes Tier A fast.** Tier A compiles exactly one translation unit, and
+that TU costs ~1–3 s even on a total ccache miss, so redirecting `CCACHE_DIR` to an empty directory
+moves the steady-state number by under a second. ccache is still load-bearing for the *full* build
+(`tools/build-windows.sh`, thousands of TUs) — just not at this granularity. The comment in
+`tier-a.sh` that "without all three, Tier A is a cold compile and misses the 30 s budget" overstates
+the case: the three settings matter for hit *rate* across worktrees, not for meeting the budget.
+
+**A fresh checkout costs ~15 s, not ~8 s, and the cost is `meson setup`** (~10 s on its own here),
+not compilation. `tier-a.sh` deliberately resets its own clock after configuring — "the budget is
+the steady-state loop, not first-run provisioning" — so its printed `PASS … in 4s` *excludes* setup.
+The 8 s figure looks like that self-reported number rather than wall clock.
+
+The 30 s gate stands: even the worst measured case (cold ccache, no build directory, loaded machine)
+is 17 s. But it is a **steady-state** budget, and a bead whose worktree has no `build/meson_test`
+pays a one-off ~11 s that the script's own report never shows.
+
+The check set is in
 `.clang-tidy` at the repo root; the symbol deny-list is `tools/deny-list.txt` and is
 baseline-relative (a *new* hit versus the merge base fails, since the tree legitimately
 contains 3,828 `JS_*` sites today).
@@ -267,3 +298,4 @@ once such a target exists.
 
 - 2026-09-06 — Phase doc created from MIGRATION_PLAN §5 and AI_EXECUTION_PLAN §4.2, §8, §9. No work started.
 - 2026-09-11 — Rewritten for native Windows only (ADR-0017): no Linux build, no containers; scenarios 13–17 are the checklist saves; the GUI tier runs in Tier C and nightly.
+- 2026-09-17 — Tier A timings in "Commands" re-measured cold and warm (oo-sp1c). The retired "~8 s from no build directory" was the script's self-reported time, which excludes `meson setup`; wall clock is ~15 s, and ccache warmth changes a steady-state run by under a second.
