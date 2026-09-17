@@ -129,6 +129,13 @@ still the fastest way to reproduce the exact set: `setup-vm.ps1` then `setup-vm-
   ```
   git config --global url."git@github.com:".insteadOf "https://github.com/"
   ```
+- **The UCRT64 `jq` (mingw-w64-ucrt-x86_64-jq 1.8.2) aborts on any runtime error.** Instead of
+  `jq: error (...)` and exit 5 it dies with `Assertion failed: cb == jq_util_input_next_input_cb`
+  and exit 127, so a bead whose JSON lacks a field looks like a crashed tool rather than a bad
+  filter. The MSYS `jq` at `/usr/bin/jq` (same version) behaves correctly. `/ucrt64/bin` precedes
+  `/usr/bin` on the UCRT64 PATH, so write filters that cannot error (`.a // empty`, `if type==`)
+  or call `/usr/bin/jq` explicitly; found 2026-09-16 when an orchestrator ran
+  `bd show --json | jq '.labels'` on the array bd returns.
 - **PowerShell functions returning extra values.** `Write-Output` inside a PowerShell function is
   added to its return value, so a helper that logs and returns a path returns an *array*, and every
   `-FilePath` binding then fails with "Cannot convert System.Object[]". Use `Write-Host` for logging.
