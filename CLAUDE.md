@@ -95,6 +95,20 @@ Only beads labelled `fleet` are yours; `frontier`, `rebless` and `proposed-adr` 
   `git subtree pull --squash` in the upstream-tracker task only.
 - `upstream/oolite`, `upstream/oolite-tests` and the expansion catalog are subtrees. The remaining
   submodules are read-only reference, absent from worktrees; a bead must not depend on them.
+- **File modes.** A script invoked as a bare program (`tools/foo`, `./foo` — including from a
+  bead's acceptance line) MUST be committed `100755` and MUST start with a `#!` shebang. A file
+  always invoked through an interpreter (`python3 tools/foo.py`, `bash tools/foo.sh`) MAY stay
+  `100644`; a shebang on it is documentation, not a promise. Nothing is `100755` without a
+  shebang. `upstream/` is excluded (its modes are upstream's). Enforced by
+  `tools/check-file-modes.sh`; `--list` prints every script's mode and how it is called. It
+  derives "bare program" from the tree — a call site is the path in command position, including
+  behind a run prefix (`timeout 30 tools/x.sh`), as sibling dispatch (`"$here/x.sh"`), and in a
+  bead's `acceptance_criteria` (accept.sh runs those verbatim on a Linux checkout).
+  `tools/check-file-modes-probe.sh` is its test: it *sources* the guard's own regexes and probes
+  them, so the grammar table cannot drift from the grammar.
+  Never assert this with `test -x`: MSYS on NTFS reports rwx for every file, so `test -x` is
+  always true on the fleet machine and is blind to the defect. Assert on `git ls-files -s`,
+  which is what the index records and what a Linux checkout sees.
 - Docs: phases in `docs/phases/`, decisions as append-only ADRs in `docs/decisions/`, infra in
   `docs/infra/`. Keep the hand-written part of this file under 1,000 words (the managed beads
   block below is `bd`'s and does not count).

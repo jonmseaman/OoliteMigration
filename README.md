@@ -18,6 +18,7 @@ while keeping all published expansions (OXP/OXZ) working unmodified.
 | `docs/execution-model.md` | Verification tiers, agent authority, story sizing |
 | `docs/phases/`, `docs/infra/`, `docs/decisions/` | Per-phase docs, infra track, ADRs |
 | `tools/gen-stories.py` | Generates the beads queue from the tree |
+| `tools/check-file-modes.sh` | Guardrail: bare-program scripts are committed `100755` (see CLAUDE.md conventions) |
 | `.agents/skills/beads-worker/` | The Hermes skill that drains the queue |
 | `upstream/oolite` | **Subtree** of the fork `jonmseaman/oolite`. **The migration target.** |
 | `upstream/oolite-tests` | Subtree: test OXPs and the release-checklist save files (golden scenarios 13–17) |
