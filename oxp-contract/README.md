@@ -13,8 +13,13 @@ method, arity and type. Generated from the live game over the debug console by
 ```bash
 tools/js-api-snapshot.sh          # regenerate from the built game (needs oolite.app; ~20 min)
 tools/js-api-check.sh             # structural + determinism check; offline, no build needed
+tools/js-api-contract.sh          # pin the counts and per-class method floors; offline
 tools/js-api-check.sh --regen     # the full contract: regenerate, then git diff --exit-code
 ```
+
+`js-api-check.sh` asks "is this file well-formed and reproducible?"; `js-api-contract.sh` asks "does
+it still describe the API we recorded?". Both run offline, which is why they — and not `--regen` —
+are what the bead's acceptance and CI execute: a clean checkout has no game binary.
 
 ### What the numbers actually are
 
