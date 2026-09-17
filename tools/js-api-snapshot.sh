@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # Regenerate oxp-contract/js-api-1.93.json from the live game.
 #
-# The game is launched headless and interrogated over the debug console; see
-# tools/js_api_snapshot.py for why the port comes from a generated debugConfig.plist and why
-# readiness is measured on the game's clock rather than ours.
+# The game is launched and interrogated over the debug console; see tools/js_api_snapshot.py for
+# why the port comes from a generated debugConfig.plist and why readiness is measured on the
+# game's clock rather than ours.
+#
+# The launch takes tools/gui-lock (the interactive-desktop mutex) for the whole run, because on
+# Windows this "headless" launch still opens a real window and can steal the foreground from a
+# GUI test (bug oo-ccy9). Expect to queue behind a running GUI tier; OO_GUI_LOCK_TIMEOUT bounds
+# the wait.
 #
 # Usage: tools/js-api-snapshot.sh [--app <oolite.app>] [--output <file>] [extra args...]
 set -euo pipefail

@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+#
+# Exclusion proof for the NON-GUI launchers (bug oo-ccy9). Real concurrent processes, scratch
+# lock dir, no game build needed.
+#
+#     tools/desktop-lock-selftest
+#
+# tools/gui-lock-selftest proves the mutex itself is a mutex. This proves the thing that was
+# actually broken: that tools/js_api_snapshot.py and the other desktop launchers now GO THROUGH
+# that mutex - they queue behind a holder instead of launching on top of it, they release when
+# they are done, and they release even when the body raises.
+#
+# The game is never launched here. What is exercised is the exact code path that gates the
+# launch: tools/desktop_lock.py's context manager, the same one js_api_snapshot.collect() wraps
+# _collect_globals in. A test that needed a built game could not run in accept.sh's checkout.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+export OO_GUI_LOCK_DIR="${LOCALAPPDATA:-${TMPDIR:-${TEMP:-/tmp}}}/oolite-desktop-lock-proof.lock"
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+L="bash tools/gui-lock"
+fail=0
+ok(){ echo "PASS: $1"; }
+no(){ echo "FAIL: $1"; fail=1; }
+
+native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
+TOOLS="$(native "$(pwd)/tools")"
+
+echo "=== 1. a launcher BLOCKS while a GUI session holds the desktop ==="
+# A stand-in for the GUI tier: it takes the lock exactly as the desktop_lock fixture does and
+# holds it while it "runs a test".
+bash -c 'export OO_GUI_LOCK_OWNER=guitest; bash tools/gui-lock acquire --timeout 10 >/dev/null && sleep 10' &
+GUI=$!
+sleep 2
+$L status | sed 's/^/  /'
+
+start=$(date +%s)
+out=$(OO_GUI_LOCK_TIMEOUT=4 python3 - "$TOOLS" <<'PY' 2>&1
+import sys
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import DesktopLockError, desktop_lock
+try:
+    with desktop_lock("jsapi", start=sys.argv[1]):
+        print("LAUNCHED")          # must NOT happen: the GUI test still holds the desktop
+except DesktopLockError as exc:
+    print("REFUSED:", exc)
+PY
+); rc=$?
+end=$(date +%s)
+echo "$out" | sed 's/^/  /'
+echo "  (rc=$rc after $((end-start))s)"
+case "$out" in
+	*LAUNCHED*) no "the snapshot launcher took the desktop while a GUI test held it" ;;
+	*REFUSED*)  ok "the snapshot launcher refused to launch while the GUI test held the desktop" ;;
+	*)          no "unexpected output from the launcher" ;;
+esac
+# It must have QUEUED, not failed instantly: a launcher that gives up at once is not sharing the
+# desktop, it is just losing. 4s timeout, so anything under ~3s means it never waited.
+[ "$((end-start))" -ge 3 ] && ok "it queued for the desktop ($((end-start))s) rather than failing instantly" \
+	|| no "it did not queue at all ($((end-start))s)"
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "the GUI test still holds the lock" || no "the GUI test's lock vanished"
+
+echo "=== 2. once the GUI session releases, the launcher gets the desktop ==="
+wait $GUI 2>/dev/null
+# The stand-in exits without releasing (its `sleep` is killed by the wait above at best), so drop
+# it the way the fixture's teardown would.
+OO_GUI_LOCK_OWNER=guitest $L release >/dev/null 2>&1
+out=$(OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" <<'PY' 2>&1
+import os, sys
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock
+with desktop_lock("jsapi", start=sys.argv[1]) as path:
+    print("LAUNCHED under", path)
+    print("owner:", open(os.path.join(path, "owner")).readline().strip())
+PY
+); rc=$?
+echo "$out" | sed 's/^/  /'
+case "$out" in
+	*LAUNCHED*) ok "the launcher took the desktop once it was free" ;;
+	*)          no "the launcher could not take a free desktop (rc=$rc)" ;;
+esac
+case "$out" in
+	*"owner: owner="*jsapi*) ok "it holds the lock under its own distinct identity" ;;
+	*)                       no "the launcher's owner identity is not its own: $out" ;;
+esac
+[ ! -d "$OO_GUI_LOCK_DIR" ] && ok "the lock was released when the run finished" \
+	|| no "the launcher leaked the lock after a clean run"
+
+echo "=== 3. a CRASHING run still releases the desktop ==="
+# The whole point of the context manager. A snapshot run dies non-deterministically (the console
+# transport drops, the game exits 0xffffffff); if that leaked the lock, the next GUI test would
+# queue for OO_GUI_LOCK_STALE seconds and only then reclaim it.
+out=$(python3 - "$TOOLS" <<'PY' 2>&1
+import sys
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock
+try:
+    with desktop_lock("jsapi", start=sys.argv[1]):
+        raise RuntimeError("the console transport died mid-enumeration")
+except RuntimeError as exc:
+    print("CRASHED:", exc)
+PY
+)
+echo "$out" | sed 's/^/  /'
+case "$out" in *CRASHED*) ;; *) no "the crash case did not run" ;; esac
+[ ! -d "$OO_GUI_LOCK_DIR" ] && ok "the lock was released despite the exception" \
+	|| no "a crashed run leaked the desktop lock"
+
+echo "=== 4. a launcher will not release a lock it does not own ==="
+# Ownership is what makes the release safe. If the snapshot tool's teardown ran after its own
+# lock had been stale-reclaimed by a GUI session, an unconditional release would drop the GUI
+# session's live lock and put two processes on the desktop - the original bug, inverted.
+OO_GUI_LOCK_OWNER=guitest2 $L acquire --timeout 5 >/dev/null
+out=$(python3 - "$TOOLS" <<'PY' 2>&1
+import os, subprocess, sys
+sys.path.insert(0, sys.argv[1])
+import desktop_lock as dl
+# Exactly what the context manager's finally clause runs, with our own identity.
+me = dl.owner_identity("jsapi")
+env = dict(os.environ, OO_GUI_LOCK_OWNER=me)
+r = subprocess.run(["bash", dl.gui_lock_script(sys.argv[1]), "release"],
+                   capture_output=True, text=True, env=env)
+print("release rc:", r.returncode)
+PY
+)
+echo "$out" | sed 's/^/  /'
+echo "$out" | grep -q 'release rc: 3' && ok "release of another owner's lock refused (exit 3)" \
+	|| no "a launcher released a lock it did not own"
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "the other holder's lock survived" || no "the other holder's lock was destroyed"
+OO_GUI_LOCK_OWNER=guitest2 $L release >/dev/null 2>&1
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
+echo
+if [ "$fail" -eq 0 ]; then echo "ALL DESKTOP-LAUNCHER EXCLUSION CHECKS PASSED"; else echo "SOME CHECKS FAILED"; fi
+exit $fail

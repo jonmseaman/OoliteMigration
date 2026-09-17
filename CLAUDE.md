@@ -79,6 +79,12 @@ Only beads labelled `fleet` are yours; `frontier`, `rebless` and `proposed-adr` 
 
 ## Repo conventions
 
+- **Any tool that launches the game on the interactive desktop takes `tools/gui-lock`** — not just
+  the pytest GUI tier. On Windows a "headless" console-driven launch still opens a real window
+  (`SDL_VIDEODRIVER=offscreen` is unset there: MSYS2's Mesa has no EGL), so an unlocked launcher
+  steals the foreground mid-click from a running GUI test. Use `tools/desktop_lock.py`; the rule and
+  its two deliberate exemptions (the golden harness, which runs N games concurrently by design, and
+  the shared console transport) are enforced by `tools/check-desktop-lock.sh`.
 - `origin` = `jonmseaman/OoliteMigration`; `fork` = `jonmseaman/oolite`, which receives
   `upstream/oolite` by `git subtree push`; `upstream` = `OoliteProject/oolite`, pulled by
   `git subtree pull --squash` in the upstream-tracker task only.

@@ -24,6 +24,25 @@ takes the desktop exclusively while it runs ([ADR-0017](../../../../docs/decisio
 That exclusion is `tools/gui-lock`, taken by the session-scoped `desktop_lock` fixture. It runs
 in Tier C and nightly, **never per bead**. An RDP disconnect takes the desktop with it.
 
+### The lock is not this tier's private business
+
+**Any tool that launches the game on the interactive desktop must take `tools/gui-lock`** (bug
+oo-ccy9). This tier is not the only thing that opens a window: on Windows the console-driven
+"headless" launchers are not headless either, because `SDL_VIDEODRIVER=offscreen` is deliberately
+left unset there (MSYS2's Mesa ships no EGL, so the offscreen driver cannot create a context — see
+`tests/component/console.py::_env`). A JS-API snapshot run that skipped the lock stole the
+foreground from a G1 click, once in 35 measured G1 runs on a clean tree.
+
+Python launchers outside this tier take it through `tools/desktop_lock.py`, a thin wrapper that
+shells out to the same `tools/gui-lock` with a distinct owner tag (`jsapi`, `smoke`, `component`,
+`splashcheck`) so the ownership-checked release can tell them apart. This tier keeps its own
+in-fixture implementation, because it must still work with no bash.
+
+Two launchers are exempt, on purpose: `tests/golden/golden_run.py` runs N scenarios concurrently by
+design and never needs the foreground, and `tests/component/console.py` is the transport those N
+runs share. `tools/check-desktop-lock.sh` enforces the rule and the exemptions, and fails on a new
+launcher that is in neither list.
+
 It also needs a built game: by default `upstream/oolite/build/meson_test/oolite.app`, overridden
 with `--oolite-app <path>` or `OO_APP_DIR`.
 
