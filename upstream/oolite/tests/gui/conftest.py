@@ -424,17 +424,75 @@ def app_dir(pytestconfig):
     return path
 
 
+GUI_REQUIREMENTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "requirements.txt")
+
+# Set OO_GUI_REQUIRE=1 to turn even the not-applicable-platform skip into a failure, so that a
+# run which was *supposed* to exercise G1 cannot come back green from the wrong machine.
+GUI_REQUIRED = os.environ.get("OO_GUI_REQUIRE", "").strip().lower() not in ("", "0", "false", "no")
+
+
+def require_gui_dependencies():
+    """Import pyautogui or FAIL the test. Never skip.
+
+    A skip is a silent pass. The import-or-skip helper this used to call meant that on the
+    overwhelmingly common configuration - a machine where nothing had installed
+    tests/gui/requirements.txt - the whole tier reported success without a window ever opening.
+    On a platform where this tier IS supposed to run, a missing hard dependency is a broken
+    environment, and a broken environment must be loud.
+    """
+    try:
+        import pyautogui  # noqa: F401
+    except Exception as exc:  # ImportError, but also the display/permission errors it raises
+        pytest.fail(
+            "the GUI tier's hard dependency 'pyautogui' is unusable "
+            f"({exc.__class__.__name__}: {exc}).\n"
+            "This tier drives a real window with real OS input; without pyautogui G1 cannot "
+            "run, and a run that did not happen must not be reported as a pass. Install it:\n"
+            f"    python3 -m pip install -r {GUI_REQUIREMENTS}\n"
+            "or run the tier through its runner, which installs it for you:\n"
+            "    bash tools/gui-tier.sh"
+        )
+    return pyautogui
+
+
+def require_gui_platform():
+    """Skip only where G1 is genuinely not applicable — and not even there under OO_GUI_REQUIRE."""
+    if IS_WINDOWS:
+        return
+    if GUI_REQUIRED:
+        pytest.fail(
+            "OO_GUI_REQUIRE is set but this is not Windows "
+            f"(sys.platform={sys.platform!r}). The GUI tier runs natively on Windows "
+            "(ADR-0017); a run asked to exercise G1 must not pass by skipping."
+        )
+    # The one legitimate skip in this tier: a platform where G1 is genuinely not applicable.
+    # Deliberate and explicit - not a missing dependency in disguise.
+    pytest.skip(
+        "the GUI tier runs natively on Windows (ADR-0017); "
+        "set OO_GUI_REQUIRE=1 to make this a failure instead"
+    )
+
+
+@pytest.fixture(scope="session")
+def gui_runtime():
+    """The tier's precondition gate, resolved BEFORE the build or the desktop lock.
+
+    Session-scoped and named first in ``game``'s signature so it is instantiated ahead of the
+    session-scoped ``app_dir``: the one legitimate skip in this tier is "wrong platform", and it
+    has to be reachable without a built game, or a Linux checkout reports a confusing
+    missing-build error instead of the honest "not applicable here".
+    """
+    require_gui_platform()
+    return require_gui_dependencies()
+
+
 @pytest.fixture
-def game(app_dir, desktop_lock, tmp_path):
+def game(gui_runtime, app_dir, desktop_lock, tmp_path):
     """One game process with a real window, killed unconditionally at the end.
 
     Teardown kills rather than asks: a test that has already failed is a test whose game is in
     an unknown state, and a hung window must fail the run instead of wedging the desktop.
     """
-    if not IS_WINDOWS:
-        pytest.skip("the GUI tier runs natively on Windows (ADR-0017)")
-    pytest.importorskip("pyautogui", reason="pip install -r tests/gui/requirements.txt")
-
     window = GameWindow(app_dir, str(tmp_path))
     try:
         yield window.start()
