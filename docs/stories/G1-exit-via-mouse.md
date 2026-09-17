@@ -39,8 +39,14 @@ Reads: `tests/launch_snapshot.py` (230 lines), `GuiDisplayGen.h` header block, t
 
 ```bash
 # nonzero before (file absent), zero after; from the repo root, on the Windows desktop (ADR-0017):
-python3 -m pytest upstream/oolite/tests/gui/test_g1_exit_via_mouse.py -x -q
+tools/gui-tier.sh upstream/oolite/tests/gui/test_g1_exit_via_mouse.py
 ```
+
+Run the tier through `tools/gui-tier.sh`, not bare `pytest`. The runner installs
+`upstream/oolite/tests/gui/requirements.txt` (which nothing else does) and sets
+`OO_GUI_REQUIRE=1`, so a machine that cannot run G1 — wrong platform, or pyautogui missing —
+**fails and says what to install** instead of skipping to a green exit 0. A skip is a silent
+pass, and this command's whole job is to distinguish "G1 passed" from "G1 never ran".
 
 Post-exit hygiene (G9) asserted inside the test: no core dump; no `ERROR`/exception lines in
 `Latest.log`; defaults file written and re-parseable.

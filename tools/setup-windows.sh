@@ -42,7 +42,10 @@ UCRT_PKGS=(
 WINDEPS_PKGS=(spidermonkey libobjc2 gnustep-make gnustep-base)
 
 # Pure-Python, no MSYS2 package exists. pytest-bdd drives the component tier (ADR-0018);
-# pyautogui drives the GUI tier against a real window (docs/phases/0-gui-tier.md).
+# pyautogui drives the GUI tier against a real window (docs/phases/0-gui-tier.md). The GUI
+# tier's own pin is upstream/oolite/tests/gui/requirements.txt, installed by tools/gui-tier.sh
+# on every run; this list keeps a set-up-once machine from paying for that install each time.
+# Keep the two in step: a name added there belongs here.
 PIP_PKGS=(pytest-bdd pyautogui)
 
 # Shared compiler cache, outside every worktree so it survives worktree removal (I1 item 2).
