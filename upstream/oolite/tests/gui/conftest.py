@@ -78,6 +78,20 @@ WIN32_SIGNATURES = {
     # the message would be posted to a truncated handle - i.e. to nothing - and PostMessage would
     # report failure (or worse, succeed against an unrelated window).
     "user32.PostMessageW": ("BOOL", ["HWND", "UINT", "WPARAM", "LPARAM"]),
+    # Synthetic KEYBOARD input (G2). pyautogui cannot drive this game's arrow keys: its Windows
+    # backend calls keybd_event(vk, 0, 0, 0), which supplies no scancode and - decisively - no
+    # KEYEVENTF_EXTENDEDKEY. Oolite's SDL3 build dispatches keys BY SCANCODE
+    # (MyOpenGLView+Input.m:400-403 reads kbd_event->scancode), and VK_DOWN's non-extended
+    # scancode 0x50 is numpad 2, so the arrow never arrives as an arrow. MEASURED on this build
+    # with the game's own guiScreen as the witness: pyautogui "down" x2 then Enter landed on
+    # GUI_SCREEN_NEWGAME (row 22 - zero advances), while SendInput with
+    # KEYEVENTF_SCANCODE|KEYEVENTF_EXTENDEDKEY landed on GUI_SCREEN_SHIPLIBRARY (row 24 -
+    # exactly two advances). SendInput's second parameter is an ARRAY OF INPUT, whose KEYBDINPUT
+    # member carries a pointer-sized dwExtraInfo: undeclared, the structure is mis-marshalled and
+    # the call reports success while delivering nothing.
+    "user32.SendInput": ("UINT", ["UINT", "LPINPUT", "INT"]),
+    # VK -> scancode, for the same calls. MAPVK_VK_TO_VSC.
+    "user32.MapVirtualKeyW": ("UINT", ["UINT", "UINT"]),
     # Naming the window that is in the way.
     "user32.GetWindowTextW": ("INT", ["HWND", "LPWSTR", "INT"]),
     "user32.GetClassNameW": ("INT", ["HWND", "LPWSTR", "INT"]),
@@ -124,6 +138,8 @@ KERNEL32 = None
 ADVAPI32 = None
 WNDENUMPROC = None
 PROCESSENTRY32 = None
+INPUT = None
+KEYBDINPUT = None
 
 if IS_WINDOWS:
     # RECT/POINT and the Win32 libraries exist only here.
@@ -161,6 +177,35 @@ if IS_WINDOWS:
     # wrong when nothing is declared.
     LRESULT = ctypes.c_ssize_t
     DWORD_PTR = ctypes.c_size_t
+    ULONG_PTR = ctypes.c_size_t
+
+    class KEYBDINPUT(ctypes.Structure):
+        """winuser.h's KEYBDINPUT, the keyboard arm of INPUT (G2's synthetic key presses).
+
+        ``dwExtraInfo`` is a ULONG_PTR: on win64 it is 8 bytes, so a structure that declared it
+        as DWORD would be 4 bytes short and every field after the union's start would be read
+        from the wrong offset. SendInput validates ``cbSize`` against its own idea of the
+        layout and returns 0 on a mismatch - or, worse, accepts a malformed event and delivers
+        nothing while reporting success.
+        """
+
+        _fields_ = [
+            ("wVk", wintypes.WORD),
+            ("wScan", wintypes.WORD),
+            ("dwFlags", wintypes.DWORD),
+            ("time", wintypes.DWORD),
+            ("dwExtraInfo", ULONG_PTR),
+        ]
+
+    class _INPUTUNION(ctypes.Union):
+        # Only the keyboard arm is used here; the padding reserves the full width of the union
+        # (MOUSEINPUT is the largest member) so sizeof(INPUT) matches what SendInput expects.
+        _fields_ = [("ki", KEYBDINPUT), ("_pad", ctypes.c_byte * 32)]
+
+    class INPUT(ctypes.Structure):
+        """winuser.h's INPUT. ``type`` is INPUT_KEYBOARD (1) for everything this tier sends."""
+
+        _fields_ = [("type", wintypes.DWORD), ("u", _INPUTUNION)]
 
     _WIN32_TYPES = {
         "BOOL": wintypes.BOOL,
@@ -172,6 +217,7 @@ if IS_WINDOWS:
         "LONG": wintypes.LONG,
         "LPARAM": wintypes.LPARAM,
         "LPDWORD": ctypes.POINTER(wintypes.DWORD),
+        "LPINPUT": ctypes.POINTER(INPUT),
         "LPPOINT": ctypes.POINTER(wintypes.POINT),
         "LPPROCESSENTRY32": ctypes.POINTER(PROCESSENTRY32),
         "LPRECT": ctypes.POINTER(wintypes.RECT),
@@ -391,6 +437,44 @@ LAUNCH_ARGS = ["-nosplash", "-windowed"]
 # turns it into SDL_EVENT_QUIT, which is the event G3 exists to exercise; see
 # GameWindow.close_window for why this and not a synthesised in-process SDL event.
 WM_CLOSE = 0x0010
+
+# --- synthetic keyboard input (G2) --------------------------------------------------------------
+#
+# winuser.h. INPUT_KEYBOARD selects the KEYBDINPUT arm of INPUT; the KEYEVENTF_* flags are the
+# only thing standing between "an arrow key" and "numpad 2" as far as an SDL3 game is concerned.
+INPUT_KEYBOARD = 1
+KEYEVENTF_EXTENDEDKEY = 0x0001
+KEYEVENTF_KEYUP = 0x0002
+KEYEVENTF_SCANCODE = 0x0008
+MAPVK_VK_TO_VSC = 0
+
+# The virtual keys this tier presses, by the name a test uses.
+VK_CODES = {
+    "down": 0x28,
+    "up": 0x26,
+    "left": 0x25,
+    "right": 0x27,
+    "enter": 0x0D,
+    "space": 0x20,
+    "escape": 0x1B,
+}
+
+# Keys whose scancode is only unambiguous with KEYEVENTF_EXTENDEDKEY set. The arrow cluster
+# shares its scancodes with the numeric keypad (VK_DOWN and numpad-2 are both 0x50), and the
+# extended bit is what tells them apart - so an arrow sent without it is delivered as the keypad
+# key and a game that dispatches by scancode never sees an arrow at all.
+EXTENDED_VK_CODES = frozenset({0x25, 0x26, 0x27, 0x28, 0x21, 0x22, 0x23, 0x24, 0x2D, 0x2E})
+
+# How long a key is held down. Oolite SAMPLES key state once per frame rather than queueing
+# keystrokes (PlayerEntityControls.m:715-798 reads [gameView isDown:...]), so a press released
+# between two polls is never observed. G5 measured 0.15s as reliably sampled and this matches it.
+KEY_HOLD_SECONDS = float(os.environ.get("OO_GUI_KEY_HOLD", "0.15"))
+# And how long it stays up afterwards. -handleGUIUpDownArrowKeys latches ``upDownKeyPressed``
+# (PlayerEntityControls.m:797) so a key held across frames advances one row and then AUTO-REPEATS
+# every KEY_REPEAT_INTERVAL (0.20s, PlayerEntity.h:333). The latch clears on the first poll that
+# sees the key up, which is what makes N presses N discrete steps: hold under the repeat
+# interval, then release long enough to be sampled up.
+KEY_RELEASE_SECONDS = float(os.environ.get("OO_GUI_KEY_RELEASE", "0.25"))
 
 
 # --- row -> screen point ----------------------------------------------------------------------
@@ -1097,6 +1181,65 @@ class GameWindow:
         # assert_click_point_is_ours - this is the third failure mode this bead was reworked for.
         self.assert_click_point_is_ours(x, y)
         pyautogui.doubleClick(x, y, interval=DOUBLE_CLICK_INTERVAL_SECONDS)
+
+    def press_key(self, key, hold=None, release=None):
+        """Press and release one key, the way a real keyboard does (G2).
+
+        WHY NOT pyautogui. Its Windows backend calls ``keybd_event(vk, 0, 0, 0)``: no scancode,
+        and no ``KEYEVENTF_EXTENDEDKEY``. Oolite's SDL3 build dispatches keys BY SCANCODE
+        (MyOpenGLView+Input.m:400-403 reads ``kbd_event->scancode``), and the arrow cluster
+        shares scancodes with the numeric keypad - VK_DOWN and numpad-2 are both 0x50 - so
+        without the extended bit the game receives a keypad key and the arrow NEVER ARRIVES.
+
+        MEASURED on this build, with the game's own ``guiScreen`` as the witness. Two presses
+        then Enter, from the start screen: pyautogui ``down`` landed on GUI_SCREEN_NEWGAME (row
+        22, i.e. ZERO advances - Enter fired on the row the menu starts on), while SendInput with
+        ``KEYEVENTF_SCANCODE|KEYEVENTF_EXTENDEDKEY`` landed on GUI_SCREEN_SHIPLIBRARY (row 24,
+        exactly two advances). Space and Enter arrive either way; only the arrows are affected,
+        which is why G5's Space-based navigation was never troubled by this.
+
+        The event is sent by SCANCODE (``wVk`` left 0), which is what a physical key produces and
+        what SDL's Win32 backend reads. Timing is the tier's shared hold/release pair: Oolite
+        SAMPLES key state per frame rather than queueing keystrokes, so the key must be down
+        across at least one poll, and it must be seen UP again before the next press or
+        ``upDownKeyPressed`` (PlayerEntityControls.m:797) turns the next press into auto-repeat.
+        """
+        name = key.lower()
+        vk = VK_CODES.get(name)
+        if vk is None:
+            raise KeyError(
+                f"{key!r} is not in VK_CODES; add it there rather than passing a raw code, so "
+                "the extended-key question is answered in one place"
+            )
+        # The foreground owns the keyboard: synthetic key events go to the focused window, not
+        # to whatever is under the pointer. assert_focused() re-takes a transiently stolen
+        # foreground rather than failing outright (oo-0p8f).
+        self.assert_focused()
+        scan = USER32.MapVirtualKeyW(vk, MAPVK_VK_TO_VSC)
+        if not scan:
+            raise _win32_error(f"MapVirtualKeyW(vk 0x{vk:02X})")
+        flags = KEYEVENTF_SCANCODE
+        if vk in EXTENDED_VK_CODES:
+            flags |= KEYEVENTF_EXTENDEDKEY
+        self._send_key(scan, flags)
+        time.sleep(KEY_HOLD_SECONDS if hold is None else hold)
+        self._send_key(scan, flags | KEYEVENTF_KEYUP)
+        time.sleep(KEY_RELEASE_SECONDS if release is None else release)
+        return scan
+
+    def _send_key(self, scan, flags):
+        """One SendInput keyboard event, with its return value CHECKED.
+
+        SendInput returns the number of events actually inserted; a 0 means the event was
+        blocked (UIPI, a low-level hook, or a malformed structure) and is otherwise completely
+        silent - exactly the failure mode that makes a keyboard test look like a game bug.
+        """
+        item = INPUT()
+        item.type = INPUT_KEYBOARD
+        item.u.ki = KEYBDINPUT(wVk=0, wScan=scan, dwFlags=flags, time=0, dwExtraInfo=0)
+        sent = USER32.SendInput(1, ctypes.byref(item), ctypes.sizeof(INPUT))
+        if sent != 1:
+            raise _win32_error(f"SendInput(scancode 0x{scan:02X}, flags 0x{flags:04X})")
 
     def close_window(self):
         """Close the window the way the title-bar X does: post WM_CLOSE to its frame (G3).

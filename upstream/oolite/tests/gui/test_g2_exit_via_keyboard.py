@@ -7,16 +7,16 @@ Written the way test_g1_exit_via_mouse.py is written and kept SHORT the way
 test_g3_exit_via_window_close.py is: the desktop lock, the readiness gate, DPI awareness, the
 pinned window, the process-table survivor check and the G9 hygiene asserts are all conftest.py's
 and are reused verbatim. This file launches nothing of its own. What it adds is the keyboard
-navigation, and the evidence that the keyboard is what did it.
+navigation and the evidence that the keyboard is what did it.
 
 THE EXIT CONTEXT CONVERGES WITH G1's. SAID PLAINLY.
 ---------------------------------------------------
 G3's technique is to assert on an observable UNIQUELY attributable to the path under test - the
-``@"SDL_QUIT event received"`` context string, unique among the tree's nine
-``-exitAppWithContext:`` call sites. G2 has no such luck at the exit, and pretending otherwise
-would be the exact dishonesty this tier exists to prevent:
+``@"SDL_QUIT event received"`` context string, unique among the tree's ``-exitAppWithContext:``
+call sites. G2 has no such luck AT THE EXIT, and pretending otherwise would be the exact
+dishonesty this tier exists to prevent:
 
-    PlayerEntityControls.m:4980-4982
+    PlayerEntityControls.m:4979-4982
         else if (([gameView isDown:gvMouseDoubleClick] || [self checkKeyPress:n_key_gui_select])
                  && [gui selectedRow] == 6+row_zero)
         {
@@ -27,47 +27,67 @@ ONE expression, an ``||`` of the double-click and the select key, reaching ONE
 ``exitAppWithContext:``. G1 (mouse) and G2 (keyboard) therefore produce a byte-identical
 ``[exit.context]`` line. That string IS unique in the tree - verified by
 ``test_the_start_screen_exit_context_is_unique_in_the_tree`` - so asserting it proves the
-START-SCREEN ``Exit Game`` row ran rather than one of the other eight exit sites, and it is
-asserted here for that reason. It proves NOTHING about keyboard versus mouse, and this file does
-not claim it does.
+START-SCREEN ` Exit Game ` ROW ran rather than one of the other exit sites, and it is asserted
+here for that reason. It proves NOTHING about keyboard versus mouse, and this file does not
+claim it does.
 
-THE DISCRIMINATOR: FIVE SINGLE-ROW STEPS, WHICH ONLY AN ARROW KEY CAN PRODUCE
------------------------------------------------------------------------------
-The keyboard-only observable is upstream of the exit, in how the selection MOVED. Two facts,
-both pinned by tree-wide greps in this file so they cannot rot:
+THE KEYBOARD-ONLY OBSERVABLE: WHERE THE SELECTION ENDED UP
+-----------------------------------------------------------
+The discriminator is upstream of the exit, in HOW THE SELECTION MOVED. This test never moves the
+pointer and never presses a mouse button, so the only thing that can move the selection is the
+arrow key: ``-[GuiDisplayGen setNextRow:]`` (GuiDisplayGen.m:517) is the game's ONLY relative
+selection move, it has exactly TWO call sites in the whole tree (PlayerEntityControls.m:729 and
+:749), both inside ``-handleGUIUpDownArrowKeys`` and both gated on ``checkKeyPress:`` of an arrow
+key, while that same method's mouse branches (:765-:787) jump ABSOLUTELY to
+``UNIVERSE->cursor_row``. All of that is pinned by a tree-wide grep in
+``test_a_single_row_step_is_reachable_only_from_the_arrow_keys``.
 
-* ``-[GuiDisplayGen setNextRow:]`` (GuiDisplayGen.m:517) - the only RELATIVE selection move in
-  the game - has exactly TWO call sites in the whole tree, PlayerEntityControls.m:729 and :749,
-  both inside ``-handleGUIUpDownArrowKeys`` and both gated on ``checkKeyPress:`` of
-  ``n_key_gui_arrow_down`` / ``n_key_gui_arrow_up``. There is no mouse path to it and no script
-  path to it.
-* The mouse branches of that same method (:765-:787) call ``setSelectedRow:UNIVERSE->cursor_row``
-  - an ABSOLUTE jump to whatever row the pointer is over. A mouse cannot step by one except by
-  the coincidence of being parked one row down, and this test never moves the pointer at all.
+HOW THE SELECTION IS OBSERVED, AND WHY NOT THE OBVIOUS WAY. ``-reportSelectedRow:``
+(GuiDisplayGen.m:572) fires a ``guiSelectedRowChanged`` world-script event, and reading that over
+the debug console was the first design. IT DOES NOT WORK, and the measurement is recorded here so
+nobody spends the afternoon again: with the handler installed on ``console.script`` and
+``typeof`` confirming it was a function, a MOUSE-CONFIRMED row change that demonstrably happened
+(``guiScreen`` went to GUI_SCREEN_SHIPLIBRARY) produced an EMPTY trace. A hook that stays empty
+through a change that certainly occurred is a dead instrument, and a test built on it would have
+been a check that cannot fail.
 
-Every one of those calls ends in ``-reportSelectedRow:`` (GuiDisplayGen.m:572), whose sole act is
-to fire the ``guiSelectedRowChanged`` world-script event with the new row number. So the run's own
-selection trace is readable from inside the game, and a trace of FIVE SUCCESSIVE +1 TRANSITIONS
-from the first selectable row to ``Exit Game`` is producible only by five arrow-key presses. That
-is this file's G3-equivalent: an observable attributable to the keyboard and to nothing else,
-asserted from the live run.
+What IS used is the instrument G5 relies on and which answered correctly throughout:
+``guiScreen``. It works as a ROW PROBE because every start-screen row activates a DIFFERENT
+screen (PlayerEntityControls.m:4945 ``int row_zero = 21``, :4950-4982):
 
-The trace is read the way G5 reads ``guiScreen`` - over the debug console (tests/component/
-console.py's protocol), installing a ``guiSelectedRowChanged`` handler on the console's own world
-script (``console.script``, oolite-debug-console.js:721) so the events land in an array this test
-can query. The console plumbing is a lean re-spelling of G5's for the same reason G5 gave for not
-putting its own in conftest.py: concurrent beads against one conftest are a guaranteed conflict.
+    row 22 (1+row_zero) -> setGuiToScenarioScreen      => GUI_SCREEN_NEWGAME
+    row 24 (3+row_zero) -> setGuiToIntroFirstGo:NO     => GUI_SCREEN_SHIPLIBRARY
+    row 25 (4+row_zero) -> setGuiToGameOptionsScreen   => GUI_SCREEN_GAMEOPTIONS
+    row 26 (5+row_zero) -> setGuiToOXZManager          => GUI_SCREEN_OXZMANAGER
+    row 27 (6+row_zero) -> exitAppWithContext:@"Exit Game selected on start screen"
+
+So "Down x N, then Enter, and the game arrives on the screen row (first+N) leads to" proves the
+arrow keys walked exactly N rows. The test uses this TWICE: once as a CALIBRATION that ends on a
+screen and is therefore recoverable (Down x2 -> Enter -> GUI_SCREEN_SHIPLIBRARY, proving a single
+Down advances exactly one row), and once for real (Down x5 -> Enter -> the process exits). The
+calibration is what makes the real press count meaningful rather than assumed: if a Down advanced
+zero rows the calibration lands on GUI_SCREEN_NEWGAME, and if it auto-repeated it lands on
+GUI_SCREEN_GAMEOPTIONS - both named, both fatal.
+
+WHY THE KEYS ARE SENT WITH SendInput AND NOT pyautogui
+-------------------------------------------------------
+``game.press_key`` (conftest) sends a SCANCODE with ``KEYEVENTF_EXTENDEDKEY``. pyautogui's
+Windows backend calls ``keybd_event(vk, 0, 0, 0)`` - no scancode, no extended bit - and Oolite's
+SDL3 build dispatches BY SCANCODE, where the arrow cluster shares scancodes with the numeric
+keypad. MEASURED: pyautogui ``down`` x2 then Enter landed on GUI_SCREEN_NEWGAME (zero advances);
+the same gesture through ``press_key`` landed on GUI_SCREEN_SHIPLIBRARY (exactly two). Space and
+Enter arrive either way, which is why G5's Space navigation never hit this.
 
 ROW ADDRESSING IS DERIVED, NOT COUNTED ON FINGERS
 -------------------------------------------------
 No literal 5, 22 or 27 appears in the navigation. ``start_screen_layout()`` reads
 ``-setupStartScreenGui`` (PlayerEntity.m) for its ``int initialRow`` and the number of
 ``oolite-start-option-N`` rows it lays out, and ``exit_row_dispatch()`` reads the start-screen
-case of ``-pollDemoControls`` (PlayerEntityControls.m) for its ``int row_zero``, the ``N+row_zero``
-offset of the branch that calls ``exitAppWithContext:``, AND the context string that branch
-passes. The two derivations must agree on which row is ``Exit Game``, the number of Down presses
-is their difference, and the expected context is the one the source actually contains. A layout
-change fails this file loudly and by name instead of quietly selecting the wrong thing.
+case of ``-pollDemoControls`` (PlayerEntityControls.m) for its ``int row_zero``, the
+``N+row_zero`` offset of the branch that calls ``exitAppWithContext:``, AND the context string
+that branch passes. The two derivations must agree on which row is ` Exit Game `, the number of
+Down presses is their difference, and the expected context is the one the source actually
+contains.
 
     python3 -m pytest upstream/oolite/tests/gui/test_g2_exit_via_keyboard.py -x -q
 
@@ -88,6 +108,7 @@ import time
 import pytest
 
 from conftest import (
+    KEY_HOLD_SECONDS,
     assert_clean_exit,
     assert_no_surviving_game_processes,
     assert_shutdown_path_completed,
@@ -99,22 +120,20 @@ SRC_DIR = os.path.join(OOLITE_ROOT, "src")
 PLAYER_ENTITY = os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntity.m")
 PLAYER_CONTROLS = os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntityControls.m")
 
-# The start screen, the only screen this test is ever on. PlayerEntity.m's -setGuiToIntroFirstGo:
-# leaves gui_screen here; G5 pins that this identifier is assigned in exactly one place.
+# The start screen, the only screen this test navigates from. G5 pins that this identifier is
+# assigned in exactly one place in the tree.
 START_SCREEN = "GUI_SCREEN_INTRO1"
+# Where a confirmed row 24 (3+row_zero, ``setGuiToIntroFirstGo:NO``) lands. The calibration's
+# expected destination, and the only one that means "each Down advanced exactly one row".
+CALIBRATION_SCREEN = "GUI_SCREEN_SHIPLIBRARY"
+# Where a confirmed row 22 lands - i.e. what the calibration sees if the Downs did NOTHING and
+# Enter fired on the row the menu starts on. Named so that failure reports its own cause.
+NO_ADVANCE_SCREEN = "GUI_SCREEN_NEWGAME"
+# ...and row 25, i.e. what an auto-repeating Down produces.
+OVER_ADVANCE_SCREEN = "GUI_SCREEN_GAMEOPTIONS"
 
-# How long a Down is HELD. The game samples key state once per pollDemoControls frame
-# (PlayerEntityControls.m:4943 -> :715), so a tap between two polls is simply never seen - the
-# defect G5 measured with pyautogui.press() and space. Generous, because a missed press is the
-# one flake that would make this test non-repeatable.
-KEY_HOLD_SECONDS = 0.30
-# And how long it is RELEASED afterwards, before the next press. -handleGUIUpDownArrowKeys latches
-# ``upDownKeyPressed`` (PlayerEntityControls.m:795) so a held key cannot auto-repeat below
-# KEY_REPEAT_INTERVAL (PlayerEntity.h:333, 0.20s); the latch clears on the first poll that sees
-# the key up, which is what makes five presses five DISCRETE steps rather than one long repeat.
-KEY_RELEASE_SECONDS = 0.30
-# How long the game is given to report a selection move after a press.
-STEP_TIMEOUT_SECONDS = 8
+# How long the game is given to act on a confirmed row.
+TRANSITION_TIMEOUT_SECONDS = 15
 # The story's budget for the exit, the same one G1, G3 and G5 use.
 EXIT_TIMEOUT_SECONDS = 10
 
@@ -185,16 +204,38 @@ def exit_row_dispatch():
     return row_zero + int(branch.group(1)), branch.group(2)
 
 
+def ship_library_row():
+    """The row whose dispatch calls ``-setGuiToIntroFirstGo:NO``, derived the same way.
+
+    The calibration's target. Derived rather than written as 24 for the same reason every other
+    row here is: a menu that gains or loses an entry must fail loudly, not silently calibrate
+    against the wrong row.
+    """
+    body = _method_body(_read(PLAYER_CONTROLS), "- (void) pollDemoControls:(double)delta_t")
+    row_zero = int(re.search(r"int\s+row_zero\s*=\s*(\d+)\s*;", body).group(1))
+    branch = re.search(
+        r"\[gui selectedRow\]\s*==\s*(\d+)\s*\+\s*row_zero\s*\)\s*\{\s*"
+        r"\[self setGuiToIntroFirstGo:NO\]",
+        body,
+    )
+    assert branch, (
+        "no start-screen row dispatches -setGuiToIntroFirstGo:NO any more, so G2 has no "
+        "recoverable screen to calibrate its Down presses against"
+    )
+    return row_zero + int(branch.group(1))
+
+
 FIRST_SELECTABLE_ROW, START_OPTION_COUNT = start_screen_layout()
 EXIT_GAME_ROW, EXPECTED_EXIT_CONTEXT = exit_row_dispatch()
+SHIP_LIBRARY_ROW = ship_library_row()
 # Selection starts on the first selectable row (``[gui setSelectedRow:initialRow]``), so reaching
 # ` Exit Game ` costs exactly this many single-row steps. THE story's "Down x5", derived.
 DOWN_PRESSES = EXIT_GAME_ROW - FIRST_SELECTABLE_ROW
-# The rows the selection must visit, in order, one per press.
-EXPECTED_ROW_TRACE = list(range(FIRST_SELECTABLE_ROW + 1, EXIT_GAME_ROW + 1))
+# And the calibration's, likewise derived.
+CALIBRATION_PRESSES = SHIP_LIBRARY_ROW - FIRST_SELECTABLE_ROW
 
 
-# --- the selection trace, read out of the running game ------------------------------------------
+# --- the screen witness (G5's instrument) -------------------------------------------------------
 #
 # Protocol constants, spelled as tests/component/console.py and G5 spell them.
 PACKET_TYPE_KEY = "packet type"
@@ -205,20 +246,13 @@ PERFORM_COMMAND = "Perform Command"
 CONSOLE_OUTPUT = "Console Output"
 CONSOLE_IDENTITY_KEY = "console identity"
 
-# The world-script event -reportSelectedRow: fires (GuiDisplayGen.m:572). Its second argument is
-# the new row number.
-SELECTION_EVENT = "guiSelectedRowChanged"
-# Where the handler installed below stashes the rows it is told about. A ``$``-prefixed name so it
-# cannot collide with anything oolite-debug-console.js defines on itself.
-TRACE_PROPERTY = "$g2SelectionTrace"
+
+class ScreenWitnessError(AssertionError):
+    """The console could not tell us what screen the game is on."""
 
 
-class SelectionWitnessError(AssertionError):
-    """The console could not tell us how the selection moved."""
-
-
-class SelectionWitness:
-    """Reads the game's own ``guiSelectedRowChanged`` trace over the debug console.
+class ScreenWitness:
+    """Reads ``guiScreen`` out of the running game over the debug console.
 
     It is the GAME that dials US (OODebugSupport.m:67-80), so the socket must be listening BEFORE
     the game starts - hence the fixture below is built ahead of ``game``. The port is private to
@@ -261,27 +295,30 @@ class SelectionWitness:
                 self._conn.setblocking(True)
                 self._handshake()
                 return self
-        raise SelectionWitnessError(
+        raise ScreenWitnessError(
             f"the game never dialled the debug console on 127.0.0.1:{self.port} within "
-            f"{timeout}s. G2 proves the KEYBOARD moved the selection by reading the game's own "
-            f"{SELECTION_EVENT} trace, so without this connection it cannot tell a keyboard "
-            "walk from a mouse jump and must not pass. Check that Basic-debug.oxp is present in "
-            "the build's AddOns directory."
+            f"{timeout}s. G2 proves the ARROW KEYS moved the selection by reading the game's own "
+            "guiScreen after a confirmed row, so without this connection it cannot tell a "
+            "keyboard walk from a press that did nothing and must not pass. Check that "
+            "Basic-debug.oxp is present in the build's AddOns directory."
         )
 
     def _handshake(self):
         packet = self._recv()
         if packet is None or packet.get(PACKET_TYPE_KEY) != REQUEST_CONNECTION:
-            raise SelectionWitnessError(f"unexpected first console packet: {packet!r}")
+            raise ScreenWitnessError(f"unexpected first console packet: {packet!r}")
         self._send({PACKET_TYPE_KEY: APPROVE_CONNECTION, CONSOLE_IDENTITY_KEY: "oolite G2"})
 
-    # --- the two things this witness can be asked ---------------------------------------------
+    def gui_screen(self, timeout=15):
+        """The game's own ``guiScreen``, as a ``GUI_SCREEN_*`` string.
 
-    def evaluate(self, expression):
-        """Evaluate a JS expression in the game and return its value as a string."""
-        # The console echoes the command text back before the answer, so a marker that appears
-        # literally in the command would match its own echo. Split in the source and joined at
-        # runtime, the same trick console.py::evaluate and G5 use.
+        PlayerEntityLegacyScriptEngine.m:920 answers this property with
+        ``OOStringFromGUIScreenID(gui_screen)``, so the value is a direct read of the instance
+        variable each screen's setter assigns - not a redraw, not a texture, not a guess.
+        """
+        # The console echoes the command text back before the answer, so a marker that appeared
+        # literally in the command would match its own echo. Split in the source, joined at
+        # runtime - the same trick console.py::evaluate and G5 use, for the same reason.
         head = f"@@g2-{os.getpid()}-{self.port}"
         tail = f"{int(time.time() * 1000) % 1000000}@@"
         marker = head + tail
@@ -289,63 +326,31 @@ class SelectionWitness:
             PACKET_TYPE_KEY: PERFORM_COMMAND,
             MESSAGE_KEY: (
                 'debugConsole.consoleMessage("command-result", '
-                f'"{head}" + "{tail}" + String({expression}) + "{head}" + "{tail}");'
+                f'"{head}" + "{tail}" + String(guiScreen) + "{head}" + "{tail}");'
             ),
         })
-        deadline = time.time() + 15
+        deadline = time.time() + timeout
         while time.time() < deadline:
             readable, _, _ = select.select([self._conn], [], [], 1)
             if not readable:
                 continue
             packet = self._recv()
             if packet is None:
-                raise SelectionWitnessError("the console connection closed mid-query")
+                raise ScreenWitnessError("the console connection closed mid-query")
             if packet.get(PACKET_TYPE_KEY) != CONSOLE_OUTPUT:
                 continue
             text = str(packet.get(MESSAGE_KEY, ""))
             if text.count(marker) >= 2:
                 return text.split(marker)[1]
-        raise SelectionWitnessError(f"no answer to {expression!r} within 15s")
+        raise ScreenWitnessError(f"no answer to guiScreen within {timeout}s")
 
-    def arm(self):
-        """Install the ``guiSelectedRowChanged`` handler and clear the trace.
-
-        ``console.script`` is the debug console's own world script object
-        (oolite-debug-console.js:721), and PlayerEntity.m:12889-12892 dispatches every player
-        script event to every world script - so defining the handler there is enough for
-        -reportSelectedRow: to reach it. Called AFTER the game has settled, so the selection
-        moves it records are only the ones this test caused.
-        """
-        self.evaluate(
-            f"(function(){{ var s = console.script;"
-            f" s.{TRACE_PROPERTY} = [];"
-            f" s.{SELECTION_EVENT} = function(key, row, text)"
-            f" {{ s.{TRACE_PROPERTY}.push(row); }};"
-            f" return s.{TRACE_PROPERTY}.length; }})()"
-        )
-        installed = self.evaluate(f"typeof console.script.{SELECTION_EVENT}")
-        if installed != "function":
-            raise SelectionWitnessError(
-                f"the {SELECTION_EVENT} handler did not install (typeof is {installed!r}), so "
-                "the selection trace would be empty however the selection moved - which would "
-                "turn G2's keyboard evidence into a check that cannot fail"
-            )
-        return self.trace()
-
-    def trace(self):
-        """The rows the game has reported selecting since ``arm()``, in order."""
-        answer = self.evaluate(f"console.script.{TRACE_PROPERTY}.join(',')")
-        answer = answer.strip()
-        if not answer:
-            return []
-        return [int(part) for part in answer.split(",")]
-
-    def await_trace_length(self, length, timeout=STEP_TIMEOUT_SECONDS):
+    def await_screen(self, expected, timeout=TRANSITION_TIMEOUT_SECONDS):
+        """Poll until ``guiScreen`` is ``expected``; return the last value seen either way."""
         deadline = time.time() + timeout
-        seen = self.trace()
-        while len(seen) < length and time.time() < deadline:
-            time.sleep(0.2)
-            seen = self.trace()
+        seen = self.gui_screen()
+        while seen != expected and time.time() < deadline:
+            time.sleep(0.4)
+            seen = self.gui_screen()
         return seen
 
     def close(self):
@@ -383,7 +388,7 @@ class SelectionWitness:
 
 
 @pytest.fixture
-def selection_witness():
+def screen_witness():
     """Listen for the game's console connection, and tell the game where to dial.
 
     Named FIRST in the test's signature so pytest builds it BEFORE ``game``: the game dials out
@@ -391,7 +396,7 @@ def selection_witness():
     environment variable is set here rather than in a launcher because ``GameWindow._env`` copies
     ``os.environ``, which is how this file adds a resource root without adding a launcher.
     """
-    witness = SelectionWitness()
+    witness = ScreenWitness()
     previous = os.environ.get("OO_ADDITIONALADDONSDIRS")
     roots = [witness.config_root.replace("\\", "/")]
     if previous:
@@ -407,132 +412,127 @@ def selection_witness():
         witness.close()
 
 
-# --- the keystrokes -----------------------------------------------------------------------------
-
-
-def hold_key(game, key, seconds=KEY_HOLD_SECONDS):
-    """Press and release ``key``, holding it long enough for one poll to sample it."""
-    import pyautogui
-
-    # Re-takes the foreground if something transiently stole it, then asserts (oo-0p8f). Synthetic
-    # KEYBOARD input goes to the focused window, so unlike a click it does not depend on Z-order
-    # and assert_click_point_is_ours has nothing to say about it.
-    game.assert_focused()
-    pyautogui.keyDown(key)
-    time.sleep(seconds)
-    pyautogui.keyUp(key)
-    time.sleep(KEY_RELEASE_SECONDS)
-
-
-def step_down_once(game, witness, expected_row, already):
-    """One ``Down``, and the proof that the game moved the selection by exactly one row.
-
-    Returns the new trace. A press the poll loop never sampled produces NO event at all, so it is
-    retried once - the retry cannot double-step, because a second event would make the trace
-    longer than ``already + 1`` and the assertion below names that.
-    """
-    for _ in range(2):
-        hold_key(game, "down")
-        seen = witness.await_trace_length(already + 1)
-        if len(seen) > already:
-            break
-    assert len(seen) == already + 1, (
-        f"pressing Down to reach row {expected_row} moved the selection "
-        f"{len(seen) - already} time(s), not once. The game reported {seen!r}; "
-        f"-handleGUIUpDownArrowKeys (PlayerEntityControls.m:715-798) is supposed to advance one "
-        "selectable row per discrete press."
-    )
-    assert seen[-1] == expected_row, (
-        f"Down moved the selection to row {seen[-1]}, not {expected_row}. The full trace is "
-        f"{seen!r} against the expected {EXPECTED_ROW_TRACE!r}, derived from "
-        f"-setupStartScreenGui's initialRow ({FIRST_SELECTABLE_ROW}) and the start-screen "
-        f"dispatcher's ` Exit Game ` row ({EXIT_GAME_ROW})."
-    )
-    return seen
+def walk_down(game, presses):
+    """Press ``Down`` ``presses`` times, discretely. Returns the rows aimed at, for messages."""
+    for _ in range(presses):
+        game.press_key("down")
+    return list(range(FIRST_SELECTABLE_ROW + 1, FIRST_SELECTABLE_ROW + presses + 1))
 
 
 # --- the test -----------------------------------------------------------------------------------
 
 
-def test_g2_exit_via_keyboard(selection_witness, game):
-    """Walk to ` Exit Game ` with five Downs, press Enter, and assert a clean exit.
+def test_g2_exit_via_keyboard(screen_witness, game):
+    """Calibrate the arrow key, then walk to ` Exit Game ` and press Enter.
 
-    The pointer is never moved and no button is ever pressed: every input in this test is a key.
-    What is asserted, in order:
+    The pointer is never moved and no button is ever pressed: every input is a key.
 
-    1. the game is on the START SCREEN before anything is pressed, so a layout change fails here
-       rather than selecting whatever now sits at the derived row;
-    2. each Down moves the selection by EXACTLY ONE ROW, to the next row in the derived sequence
-       - the observable only ``-setNextRow:`` can produce and only an arrow key can reach;
-    3. the selection lands on ` Exit Game ` and the game is still running, because navigating is
-       not activating;
-    4. Enter exits it, within the budget, with status 0;
-    5. nothing of ours survives in the OS process table, the G9 hygiene evidence holds, and the
-       shutdown trace names the START-SCREEN exit context (shared with G1's mouse path by
-       construction - see this module's docstring - so it is asserted as proof of WHICH ROW ran,
-       not of which input device ran it).
+    1. CALIBRATION. From the start screen, ``Down`` x CALIBRATION_PRESSES then ``Enter`` must
+       arrive at the Ship Library. That screen is reachable ONLY from the row that many steps
+       down, so arriving there proves each Down advanced exactly one row - and the two ways it
+       can go wrong are named: landing on the scenario screen means the Downs did nothing, and
+       landing on Game Options means one of them auto-repeated. ``Space`` returns to the start
+       screen, which also re-selects the first row (``setupStartScreenGui`` does
+       ``setSelectedRow:initialRow``), so the real walk starts from a known position.
+    2. THE WALK. ``Down`` x DOWN_PRESSES, still on the start screen afterwards, because
+       navigating is not activating.
+    3. ``Enter`` exits within the budget, with status 0.
+    4. Nothing of ours survives, the G9 hygiene evidence holds, and the shutdown trace names the
+       START-SCREEN exit context (shared with G1's mouse path by construction - see this module's
+       docstring - so it is proof of WHICH ROW ran, not of which device ran it).
     """
-    witness = selection_witness.accept()
+    witness = screen_witness.accept()
     assert game.proc.poll() is None, "the game exited before the test could press anything"
     # Synthetic key input is delivered to the FOCUSED window, so this is the precondition for
     # every press below. assert_focused() self-heals a transiently stolen foreground (oo-0p8f).
     game.assert_focused()
 
-    # 1. On the start screen, per the game's own guiScreen - the same observable G5 uses, and the
-    #    "assert which screen you are on before pressing" that row derivation calls for.
-    screen = witness.evaluate("guiScreen")
+    screen = witness.gui_screen()
     assert screen == START_SCREEN, (
         f"the game is on {screen}, not {START_SCREEN}, so the rows derived from "
         "-setupStartScreenGui do not describe what is on the screen and pressing Down would "
         "navigate an unknown menu"
     )
-    assert witness.arm() == [], "the selection trace was not empty after arming"
 
-    # 2. Five Downs, each proved to be one step. DOWN_PRESSES is derived, not typed.
-    trace = []
-    for expected_row in EXPECTED_ROW_TRACE:
-        trace = step_down_once(game, witness, expected_row, len(trace))
-    assert trace == EXPECTED_ROW_TRACE, (
-        f"the selection walked {trace!r}, not {EXPECTED_ROW_TRACE!r}"
+    # 1. CALIBRATION: prove one Down == one row, using a screen we can come back from.
+    walk_down(game, CALIBRATION_PRESSES)
+    game.press_key("enter")
+    seen = witness.await_screen(CALIBRATION_SCREEN)
+    if seen == NO_ADVANCE_SCREEN:
+        pytest.fail(
+            f"CALIBRATION FAILED: after {CALIBRATION_PRESSES} Down press(es) and Enter the game "
+            f"is on {seen}, which is what row {FIRST_SELECTABLE_ROW} activates - the row the "
+            "menu STARTS on. OBSERVED: the Enter arrived and the selection did not move. The "
+            "cause is NOT determined by this test; the candidates, in the order they are worth "
+            "checking, are: (a) the Down presses never reached the game at all; (b) they reached "
+            "it without KEYEVENTF_EXTENDEDKEY, which an SDL3 build that dispatches by scancode "
+            "receives as numeric-keypad keys rather than arrows (see GameWindow.press_key); "
+            f"(c) the hold ({KEY_HOLD_SECONDS}s) was too short for the per-frame poll to "
+            "sample the key down; (d) the start menu was renumbered, so the derived rows no "
+            "longer describe it."
+        )
+    if seen == OVER_ADVANCE_SCREEN:
+        pytest.fail(
+            f"CALIBRATION FAILED: after {CALIBRATION_PRESSES} Down press(es) and Enter the game "
+            f"is on {seen}, one row PAST {CALIBRATION_SCREEN}. OBSERVED: the selection moved one "
+            "row too far. The likeliest cause is a press that auto-repeated - "
+            "-handleGUIUpDownArrowKeys (PlayerEntityControls.m:725-742) advances again once a "
+            "held key outlives KEY_REPEAT_INTERVAL - but a renumbered menu would look the same."
+        )
+    assert seen == CALIBRATION_SCREEN, (
+        f"CALIBRATION FAILED: after {CALIBRATION_PRESSES} Down press(es) and Enter the game is "
+        f"on {seen}, not {CALIBRATION_SCREEN} (row {SHIP_LIBRARY_ROW}). Until one Down is known "
+        "to be one row, the five presses below prove nothing about where the selection ended up."
     )
 
-    # 3. Navigation is not activation: the game is still running, on the start screen, with
-    #    ` Exit Game ` merely selected.
+    # Back to the start screen. Space is the Ship Library's own exit (PlayerEntityControls.m:
+    # 5031-5035) and -setGuiToIntroFirstGo:YES rebuilds the menu with the first row selected.
+    game.press_key("space")
+    seen = witness.await_screen(START_SCREEN)
+    assert seen == START_SCREEN, (
+        f"Space did not return the game from {CALIBRATION_SCREEN} to {START_SCREEN} (it is on "
+        f"{seen}), so the real walk below would start from an unknown selection"
+    )
+
+    # 2. THE WALK: to ` Exit Game `. DOWN_PRESSES is derived, not typed.
+    walk_down(game, DOWN_PRESSES)
     assert game.proc.poll() is None, (
         f"the game exited during navigation, before Enter was pressed. {DOWN_PRESSES} Down "
         "presses are supposed to move the selection and nothing else."
     )
-    screen = witness.evaluate("guiScreen")
+    screen = witness.gui_screen()
     assert screen == START_SCREEN, (
         f"navigating left the game on {screen}; Down is supposed to move the selection within "
         f"{START_SCREEN}, not change screen"
     )
 
-    # 4. Enter. PlayerEntityControls.m's start-screen dispatcher activates the selected row on
+    # 3. Enter. The start-screen dispatcher activates the selected row on
     #    ``[self checkKeyPress:n_key_gui_select]``, which is what Enter is bound to.
-    hold_key(game, "enter")
+    game.press_key("enter")
     try:
         returncode = game.proc.wait(timeout=EXIT_TIMEOUT_SECONDS)
     except Exception:
         pytest.fail(
-            f"the game was still running {EXIT_TIMEOUT_SECONDS}s after Enter was pressed on row "
-            f"{EXIT_GAME_ROW} (` Exit Game `), which the selection trace {trace!r} shows was "
-            "selected. The keyboard activation path did not take the game down."
+            f"the game was still running {EXIT_TIMEOUT_SECONDS}s after Enter was pressed with "
+            f"row {EXIT_GAME_ROW} (` Exit Game `) selected - {DOWN_PRESSES} Down presses below a "
+            f"calibrated start. The calibration proved each Down advances one row, so the "
+            "selection was on ` Exit Game ` and the keyboard activation did not take the game "
+            "down."
         )
     assert returncode == 0, f"the game exited with {returncode}, not 0"
 
-    # 5. No orphaned process. Asked of the OS process table, not of proc.poll(): wait() above has
+    # 4. No orphaned process. Asked of the OS process table, not of proc.poll(): wait() above has
     #    already reaped and stored that returncode, so re-reading it is true by construction
     #    (oo-5rsa). Scoped to the tree we launched so a concurrent sibling's oolite.exe is not
     #    mistaken for our leak.
     assert_no_surviving_game_processes(game.proc.pid)
 
-    # 6. G9 hygiene: no dump, no ERROR, a defaults file THIS run wrote and which re-parses. The
+    # 5. G9 hygiene: no dump, no ERROR, a defaults file THIS run wrote and which re-parses. The
     #    fixture is passed rather than a directory so the launch-time mark travels with it.
     assert_clean_exit(game)
 
-    # 7. The shutdown ran to its last line, and it ran for the START-SCREEN ` Exit Game ` row
-    #    rather than for any of the other eight exit sites in the tree.
+    # 6. The shutdown ran to its last line, and it ran for the START-SCREEN ` Exit Game ` row
+    #    rather than for any of the other exit sites in the tree.
     assert_shutdown_path_completed(game, expected_context=EXPECTED_EXIT_CONTEXT)
 
 
@@ -568,7 +568,7 @@ def test_the_start_screen_exit_context_is_unique_in_the_tree():
     THE TREE-WIDE GREP, G3's technique. -exitAppWithContext: is reached from several places and
     every one of them synchronizes defaults, closes the log and exits 0, so the context line is
     the only runtime evidence of WHICH one ran. A second site passing the same string would make
-    step 7 of the launching test a weaker claim than its message says.
+    the launching test's final assertion a weaker claim than its message says.
     """
     hits = _grep(r'exitAppWithContext:@"' + re.escape(EXPECTED_EXIT_CONTEXT) + r'"')
     assert len(hits) == 1, (
@@ -597,7 +597,7 @@ def test_the_keyboard_and_mouse_exit_paths_converge_on_one_call_site():
     This is not a lament, it is the guard that keeps the module docstring honest. The branch that
     exits is one ``||`` of the double-click and the select key, so G1 and G2 log the identical
     context. If a future edit ever split them, this test goes RED and whoever sees it gets to
-    replace G2's selection-trace evidence with the far simpler context assertion.
+    replace G2's navigation evidence with the far simpler context assertion.
     """
     body = _method_body(_read(PLAYER_CONTROLS), "- (void) pollDemoControls:(double)delta_t")
     branch = re.search(
@@ -619,17 +619,17 @@ def test_the_keyboard_and_mouse_exit_paths_converge_on_one_call_site():
 def test_a_single_row_step_is_reachable_only_from_the_arrow_keys():
     """THE KEYBOARD DISCRIMINATOR'S UNIQUENESS PROOF.
 
-    G2 claims that a trace of successive +1 selection moves can only have come from arrow-key
-    presses. That rests on ``-setNextRow:`` - the game's only RELATIVE selection move - being
-    called from nowhere but the two arrow branches of -handleGUIUpDownArrowKeys, and on the mouse
-    branches of that same method jumping ABSOLUTELY to the cursor's row instead. Both are checked
-    here over the whole tree, so a future call site added anywhere silently weakens nothing.
+    G2 claims that walking N single rows can only have come from arrow-key presses. That rests
+    on ``-setNextRow:`` - the game's only RELATIVE selection move - being called from nowhere but
+    the two arrow branches of -handleGUIUpDownArrowKeys, and on the mouse branches of that same
+    method jumping ABSOLUTELY to the cursor's row instead. Both are checked over the whole tree,
+    so a future call site added anywhere silently weakens nothing.
     """
     calls = [hit for hit in _grep(r"\[\s*gui\s+setNextRow:") if not hit[0].endswith(".h")]
     assert len(calls) == 2, (
-        f"-setNextRow: is called from {len(calls)} places, not 2: {calls}. G2 reads a +1 "
-        "selection step as proof that an arrow key was pressed; a third call site would have to "
-        "be shown to be unreachable from the mouse before that claim could stand."
+        f"-setNextRow: is called from {len(calls)} places, not 2: {calls}. G2 reads a one-row "
+        "walk as proof that an arrow key was pressed; a third call site would have to be shown "
+        "unreachable from the mouse before that claim could stand."
     )
     assert {path for path, _number, _line in calls} == {
         os.path.relpath(PLAYER_CONTROLS, OOLITE_ROOT)
@@ -640,11 +640,8 @@ def test_a_single_row_step_is_reachable_only_from_the_arrow_keys():
         "-handleGUIUpDownArrowKeys no longer contains both -setNextRow: calls, so the two the "
         "tree-wide grep found are somewhere else entirely"
     )
-    # Each one is guarded by an arrow key read, and by nothing else.
     for direction, key in ((r"\+1", "n_key_gui_arrow_down"), (r"-1", "n_key_gui_arrow_up")):
-        guard = re.search(
-            r"BOOL\s+(\w+)\s*=\s*\[self checkKeyPress:" + key + r"\]", body
-        )
+        guard = re.search(r"BOOL\s+(\w+)\s*=\s*\[self checkKeyPress:" + key + r"\]", body)
         assert guard, f"-handleGUIUpDownArrowKeys no longer reads {key}"
         block = re.search(
             r"if\s*\(\s*" + guard.group(1) + r"\s*\)(.*?)\[gui setNextRow:\s*" + direction,
@@ -653,7 +650,7 @@ def test_a_single_row_step_is_reachable_only_from_the_arrow_keys():
         )
         assert block, (
             f"the -setNextRow:{direction} call is no longer inside the `if ({guard.group(1)})` "
-            f"block, so a +/-1 selection step no longer proves {key} was down"
+            f"block, so a one-row step no longer proves {key} was down"
         )
 
     # And the mouse cannot step: its branches set an ABSOLUTE row from the cursor.
@@ -665,45 +662,55 @@ def test_a_single_row_step_is_reachable_only_from_the_arrow_keys():
             f"{block.group(1)!r}"
         )
         assert "setNextRow" not in block.group(1), (
-            f"the {mouse} branch now calls -setNextRow:, so a +1 selection step no longer proves "
-            "a keyboard press and G2's central claim is false"
+            f"the {mouse} branch now calls -setNextRow:, so a one-row step no longer proves a "
+            "keyboard press and G2's central claim is false"
         )
 
 
 @pytest.mark.offline
-def test_the_selection_event_is_fired_from_every_selection_move():
-    """``guiSelectedRowChanged`` must be what -reportSelectedRow: fires, or the trace is blind.
+def test_each_calibration_screen_is_reachable_from_exactly_one_start_row():
+    """The screens the calibration reads back must each name ONE row, or they prove nothing.
 
-    A rename here would leave the handler installed on a name nothing ever calls: the trace would
-    be empty, every press would look missed, and the failure would read as "the keyboard does not
-    work" rather than "the test is listening to the wrong event".
+    G2 infers "the selection was on row R" from "the game arrived on screen S". That inference
+    holds only while each S is reachable from a single start-screen row, so the dispatcher is
+    read and its row->screen map checked for collisions.
     """
-    hits = _grep(r'doScriptEvent:OOJSID\("' + SELECTION_EVENT + r'"\)')
-    assert len(hits) == 1, (
-        f"{SELECTION_EVENT} is fired from {len(hits)} places, not 1: {hits}"
+    body = _method_body(_read(PLAYER_CONTROLS), "- (void) pollDemoControls:(double)delta_t")
+    row_zero = int(re.search(r"int\s+row_zero\s*=\s*(\d+)\s*;", body).group(1))
+    dispatches = re.findall(
+        r"\[gui selectedRow\]\s*==\s*(\d+)\s*\+\s*row_zero\s*\)\s*\{(.*?)\n\t\t\t\t\}",
+        body,
+        re.S,
     )
-    gui = _read(os.path.join(SRC_DIR, "Core", "GuiDisplayGen.m"))
-    body = _method_body(gui, "- (void) reportSelectedRow:")
-    assert SELECTION_EVENT in body, (
-        f"-reportSelectedRow: no longer fires {SELECTION_EVENT}, so nothing reports a selection "
-        "move and G2's trace would be empty however the selection moved"
-    )
-    # Every selection setter must report, or a step could happen unobserved and the trace would
-    # be short by one while the navigation was perfectly correct.
-    for setter in ("setSelectedRow:", "setNextRow:", "setFirstSelectableRow", "setLastSelectableRow"):
-        setter_body = _method_body(gui, "- (BOOL) " + setter)
-        assert "reportSelectedRow:" in setter_body, (
-            f"-{setter} changes the selection without calling -reportSelectedRow:, so a move it "
-            "makes is invisible to G2's trace"
+    assert dispatches, "the start-screen dispatcher has no `selectedRow == N+row_zero` branches"
+    rows_for = {}
+    for offset, block in dispatches:
+        row = row_zero + int(offset)
+        for setter, screen in (
+            ("setGuiToScenarioScreen", NO_ADVANCE_SCREEN),
+            ("setGuiToIntroFirstGo:NO", CALIBRATION_SCREEN),
+            ("setGuiToGameOptionsScreen", OVER_ADVANCE_SCREEN),
+        ):
+            if setter in block:
+                rows_for.setdefault(screen, []).append(row)
+    for screen in (NO_ADVANCE_SCREEN, CALIBRATION_SCREEN, OVER_ADVANCE_SCREEN):
+        assert len(rows_for.get(screen, [])) == 1, (
+            f"{screen} is reachable from {rows_for.get(screen)} start-screen rows, not exactly "
+            "one, so arriving there no longer identifies which row was selected"
         )
+    assert rows_for[CALIBRATION_SCREEN] == [SHIP_LIBRARY_ROW]
+    assert rows_for[NO_ADVANCE_SCREEN] == [FIRST_SELECTABLE_ROW]
+    assert rows_for[OVER_ADVANCE_SCREEN] == [SHIP_LIBRARY_ROW + 1], (
+        "the 'auto-repeat' diagnosis assumes Game Options sits one row past the Ship Library"
+    )
 
 
 @pytest.mark.offline
 def test_the_rows_are_derived_from_the_game_and_agree_with_each_other():
     """The two independent derivations must describe the same menu - and no literal may creep in.
 
-    ``-setupStartScreenGui`` says where the menu starts and how many rows it has;
-    the start-screen dispatcher says which row exits. They are written in different files by
+    ``-setupStartScreenGui`` says where the menu starts and how many rows it has; the
+    start-screen dispatcher says which row exits. They are written in different files by
     different constants and this file trusts neither alone: they must AGREE, and the number of
     Down presses is their difference rather than a number anyone typed.
     """
@@ -717,12 +724,75 @@ def test_the_rows_are_derived_from_the_game_and_agree_with_each_other():
         "the code that reads it disagree; G2 would press Enter on the wrong row."
     )
     assert DOWN_PRESSES == exit_row - first
-    assert EXPECTED_ROW_TRACE == list(range(first + 1, exit_row + 1))
+    assert 0 < CALIBRATION_PRESSES < DOWN_PRESSES, (
+        f"the calibration walks {CALIBRATION_PRESSES} row(s) and the real walk {DOWN_PRESSES}; "
+        "the calibration must be a strictly shorter, recoverable walk"
+    )
     assert DOWN_PRESSES == 5, (
         f"the derivation now needs {DOWN_PRESSES} Down presses, not the 5 in "
         "docs/phases/0-gui-tier.md's G2 row. That is not necessarily a bug - the menu may have "
         "gained or lost an entry - but the story and this assertion must be updated together, "
         "deliberately, rather than the test silently pressing a different number of times."
+    )
+
+
+@pytest.mark.offline
+def test_the_arrow_keys_are_sent_with_the_extended_scancode_flag():
+    """The mechanism G2 depends on, pinned where a future edit would notice.
+
+    MEASURED on this build: arrow keys delivered by ``keybd_event(vk, 0, 0, 0)`` (what pyautogui
+    sends) move the selection ZERO rows, because Oolite's SDL3 build dispatches by SCANCODE and
+    the arrow cluster shares its scancodes with the numeric keypad; the extended bit is the only
+    thing that distinguishes them. Dropping the flag would leave every assertion in this file
+    intact and make the test fail in a way that reads as a game bug.
+    """
+    import conftest
+
+    assert conftest.KEYEVENTF_SCANCODE == 0x0008
+    assert conftest.KEYEVENTF_EXTENDEDKEY == 0x0001
+    assert conftest.VK_CODES["down"] == 0x28, "VK_DOWN is 0x28 in winuser.h"
+    assert conftest.VK_CODES["down"] in conftest.EXTENDED_VK_CODES, (
+        "VK_DOWN is not in EXTENDED_VK_CODES, so press_key would send it without "
+        "KEYEVENTF_EXTENDEDKEY and the game would receive numpad-2 instead of an arrow"
+    )
+    for arrow in ("up", "down", "left", "right"):
+        assert conftest.VK_CODES[arrow] in conftest.EXTENDED_VK_CODES, (
+            f"the {arrow} arrow is not declared extended"
+        )
+    # Enter and Space are NOT extended, and must not be sent as though they were.
+    for plain in ("enter", "space"):
+        assert conftest.VK_CODES[plain] not in conftest.EXTENDED_VK_CODES
+    # The declaration the call depends on (test_win32_declarations.py enforces the rest).
+    assert "user32.SendInput" in conftest.WIN32_SIGNATURES
+    assert conftest.WIN32_SIGNATURES["user32.SendInput"][1][1] == "LPINPUT", (
+        "SendInput's second parameter must be declared as a pointer to the real INPUT structure"
+    )
+
+
+@pytest.mark.offline
+def test_the_key_timing_produces_discrete_single_row_steps():
+    """The hold/release pair must sit inside the game's own repeat semantics.
+
+    -handleGUIUpDownArrowKeys (PlayerEntityControls.m:725-742) advances a row only when
+    ``(!upDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL)``, and :797
+    latches ``upDownKeyPressed`` from the arrow keys. So a hold that outlives KEY_REPEAT_INTERVAL
+    advances TWICE, and a press never sampled down advances not at all. Both bounds are checked
+    against the interval read out of the game's own header.
+    """
+    import conftest
+
+    header = _read(os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntity.h"))
+    match = re.search(r"#define\s+KEY_REPEAT_INTERVAL\s+([0-9.]+)", header)
+    assert match, "PlayerEntity.h no longer defines KEY_REPEAT_INTERVAL"
+    interval = float(match.group(1))
+    assert conftest.KEY_HOLD_SECONDS < interval, (
+        f"a key is held {conftest.KEY_HOLD_SECONDS}s but the game auto-repeats after {interval}s "
+        "(PlayerEntity.h KEY_REPEAT_INTERVAL), so a single press would advance more than one row"
+    )
+    assert conftest.KEY_HOLD_SECONDS > 0, "a zero hold is never sampled by the per-frame poll"
+    assert conftest.KEY_RELEASE_SECONDS > 0, (
+        "without a release gap upDownKeyPressed never clears and the next press is treated as a "
+        "repeat of the last"
     )
 
 
@@ -743,9 +813,8 @@ def test_g2_presses_keys_and_never_touches_the_mouse():
         "the G2 test function has been renamed; this guard must be renamed with it"
     )
     reachable = [functions["test_g2_exit_via_keyboard"]]
-    for helper in ("step_down_once", "hold_key"):
-        assert helper in functions, f"{helper} is gone; G2's key presses are not where they were"
-        reachable.append(functions[helper])
+    assert "walk_down" in functions, "walk_down is gone; G2's key presses are not where they were"
+    reachable.append(functions["walk_down"])
 
     attribute_calls, name_calls = set(), set()
     for func in reachable:
@@ -757,8 +826,8 @@ def test_g2_presses_keys_and_never_touches_the_mouse():
             elif isinstance(node.func, ast.Name):
                 name_calls.add(node.func.id)
 
-    assert {"keyDown", "keyUp"} <= attribute_calls, (
-        "G2 no longer presses keys with pyautogui.keyDown/keyUp; it is supposed to exercise the "
+    assert "press_key" in attribute_calls, (
+        "G2 no longer presses keys with game.press_key(); it is supposed to exercise the "
         "keyboard path, which is the only thing it covers that G1 does not"
     )
     for forbidden in ("select_row", "confirm_row", "click", "doubleClick", "moveTo", "mouseDown"):
