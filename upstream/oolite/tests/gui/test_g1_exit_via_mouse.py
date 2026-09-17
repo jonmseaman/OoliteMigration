@@ -130,7 +130,7 @@ def test_g1_exit_via_mouse(game):
     assert game.proc.poll() == 0
 
     # 5. G9 hygiene: no crash dump, no ERROR in the log.
-    assert_clean_exit(game.output_dir)
+    assert_clean_exit(game.output_dir, game.app_dir)
 
 
 # --- regression guards for the two defects behind this bug bead ---------------------------------
@@ -185,34 +185,96 @@ def test_system_dpi_awareness_is_not_accepted_as_matching_the_game():
 @pytest.mark.offline
 @pytest.mark.skipif(not IS_WINDOWS, reason="the DPI declaration is a Windows call")
 def test_the_dpi_declaration_checks_its_own_return():
-    """A refused SetProcessDpiAwarenessContext must be recorded, not discarded.
+    """A refused SetProcessDpiAwarenessContext must be recorded with a MEANINGFUL error.
 
-    The call's return was previously thrown away with no argtypes/restype set, so a refusal was
-    invisible and the claim "declares PerMonitorV2 and asserts it took" was only half true. The
-    outcome is now recorded and named in the assertion message, the same way focus() ignores
-    SetForegroundWindow's return but verifies the real state with GetForegroundWindow.
+    The call's return was once thrown away entirely, so a refusal was invisible. Recording it is
+    not enough on its own: ``ctypes.get_last_error()`` reads ctypes' private last-error slot,
+    which is populated ONLY for functions reached through a
+    ``ctypes.WinDLL(..., use_last_error=True)`` handle. Read after a call made on the shared
+    ``ctypes.windll`` cache it is a constant 0, so "was REFUSED (error 0)" is what the operator
+    would be told on exactly the path this guard exists for. Measured: after a genuinely refused
+    second call, SetProcessDpiAwarenessContext -> False with ``ctypes.get_last_error()`` == 0 via
+    windll but 5 (ERROR_ACCESS_DENIED) via an own handle.
+
+    So this asserts the recorded error is REAL, by making a refusal happen and reading it.
     """
+    import ctypes
+
     import conftest
 
     assert conftest._become_per_monitor_dpi_aware.requested is not None, (
         "the DPI declaration's outcome is not recorded, so a silent refusal is possible"
     )
-    user32 = __import__("ctypes").windll.user32
-    if hasattr(user32, "SetProcessDpiAwarenessContext"):
-        assert user32.SetProcessDpiAwarenessContext.argtypes == [__import__("ctypes").c_void_p], (
-            "without argtypes the context is truncated to 32 bits and the call fails on win64"
-        )
+    assert conftest.USER32 is not None
+    # The tier's own handle, opened with use_last_error=True. That flag is the ONLY reason
+    # ctypes.get_last_error() below returns anything but 0; ctypes.windll's cached library
+    # does not carry it. Asserted off the flag on the handle's function-pointer class rather
+    # than by identity against windll, so this file does not itself touch the banned handle
+    # (test_win32_declarations.py bans it).
+    FUNCFLAG_USE_LASTERROR = 0x10
+    assert conftest.USER32._FuncPtr._flags_ & FUNCFLAG_USE_LASTERROR, (
+        "the DPI calls must go through a WinDLL(..., use_last_error=True) handle, or "
+        "get_last_error() is always 0 and a refusal reports nothing"
+    )
+    if not hasattr(conftest.USER32, "SetProcessDpiAwarenessContext"):
+        pytest.skip("this Windows predates SetProcessDpiAwarenessContext")
+
+    declared = conftest.USER32.SetProcessDpiAwarenessContext
+    assert declared.argtypes == [ctypes.c_void_p], (
+        "without argtypes the context is truncated to 32 bits and the call fails on win64"
+    )
+
+    # The refusal path, for real: awareness is already PerMonitorV2 (conftest set it at import),
+    # and a second attempt to set it is refused with ERROR_ACCESS_DENIED. The error that gets
+    # recorded must be that code, not zero.
+    ctypes.set_last_error(0)
+    refused = bool(declared(conftest.DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2))
+    error = ctypes.get_last_error()
+    assert not refused, (
+        "a second SetProcessDpiAwarenessContext was accepted; this test needs the refusal path"
+    )
+    assert error != 0, (
+        "the refusal recorded error 0, which tells the operator nothing. That is what happens "
+        "when get_last_error() is read after a call made through ctypes.windll instead of a "
+        "WinDLL(..., use_last_error=True) handle."
+    )
+    assert error == 5, f"expected ERROR_ACCESS_DENIED (5) on a refused redeclaration, got {error}"
+
+    # And the message the operator actually sees names that code rather than a constant zero.
+    original = conftest._become_per_monitor_dpi_aware.error
+    conftest._become_per_monitor_dpi_aware.error = error
+    conftest._become_per_monitor_dpi_aware.requested = False
+    real_awareness = conftest._process_dpi_awareness
+    conftest._process_dpi_awareness = lambda: conftest.DPI_UNAWARE
+    try:
+        with pytest.raises(AssertionError) as caught:
+            conftest.assert_dpi_awareness_matches_game()
+    finally:
+        conftest._process_dpi_awareness = real_awareness
+        conftest._become_per_monitor_dpi_aware.error = original
+        conftest._become_per_monitor_dpi_aware.requested = True
+    assert "error 5" in str(caught.value), (
+        "the assertion message must carry the real Win32 error code from the refusal"
+    )
 
 
 @pytest.mark.offline
 def test_a_failed_start_kills_the_game_rather_than_leaking_it():
     """start() must not leave a live oolite.exe behind when it fails part-way through.
 
-    The fixture's teardown only runs once ``yield window.start()`` has been reached, so a failure
-    inside start() - which focus() can now raise - used to leak the process. That orphan is not
-    just untidy: _pin_window parks every instance at exactly (0,0) at the same client size, so it
-    covers the NEXT run's window pixel for pixel and swallows its clicks, turning one failure into
-    a permanently broken machine. Checked without a real game by driving the failure directly.
+    This is BELT AND BRACES, and the docstring says so rather than claiming a cause it cannot
+    demonstrate. The mechanism once asserted here - "the fixture's teardown only runs once
+    ``yield window.start()`` has been reached, so a failure inside start() leaks the process" -
+    is FALSE and was disproven by measurement: when start() raises, the exception propagates out
+    through the ``yield`` expression inside the fixture generator and the ``finally:
+    window.kill()`` in the ``game`` fixture runs during the unwind. Instrumented on both the
+    pre-fix and post-fix trees by forcing a failure inside focus(): pre-fix, kill WAS called
+    (kill_calls=1) and the launched pid was dead at session end; post-fix, kill_calls=2.
+
+    The guard stays because killing twice costs nothing and a surviving oolite.exe costs the
+    machine: _pin_window parks every instance at exactly (0,0) at the same client size, so any
+    other instance covers the next run's rows pixel for pixel. What makes THAT condition loud is
+    assert_click_point_is_ours, not this.
     """
     import conftest
 
@@ -275,7 +337,7 @@ def test_an_occluded_click_point_is_detected_even_though_focus_is_correct():
     window = conftest.GameWindow.__new__(conftest.GameWindow)
     window.hwnd = 111111
 
-    user32 = conftest.ctypes.windll.user32
+    user32 = conftest.USER32
     real_from_point = user32.WindowFromPoint
     real_ancestor = user32.GetAncestor
     try:
@@ -296,6 +358,57 @@ def test_an_occluded_click_point_is_detected_even_though_focus_is_correct():
     message = str(caught.value)
     assert "OCCLUDED" in message, "the occlusion failure must name its own cause"
     assert "222222" in message, "the failure must name the window that would eat the click"
+
+
+@pytest.mark.offline
+@pytest.mark.skipif(not IS_WINDOWS, reason="the foreground is a Windows concept")
+def test_assert_focused_retakes_the_foreground_rather_than_only_sampling_it():
+    """A transiently stolen foreground must be RETAKEN, not turned into a hard failure.
+
+    This is the structural cause of the DoD's non-repeatability. Measured on an otherwise idle
+    machine with no oolite.exe present at start: 35 consecutive runs of the DoD command gave 34
+    passes and ONE failure, at test_g1_exit_via_mouse.py:105, "the Oolite window lost the
+    foreground before a click". ``select_row`` has always been self-healing because it calls
+    ``focus()`` first; the bare ``assert_focused()`` calls did not, so anything that owned the
+    foreground for an instant - a notification, an installer, or a sibling tool launching the
+    game without taking tools/gui-lock - hard-failed the run.
+
+    It is not a softening: when the foreground genuinely cannot be taken, focus() still spends
+    its whole FOCUS_TIMEOUT_SECONDS budget and then hard-fails, which is asserted below too.
+    """
+    import conftest
+
+    window = conftest.GameWindow.__new__(conftest.GameWindow)
+    window.hwnd = 111111
+
+    user32 = conftest.USER32
+    real_foreground = user32.GetForegroundWindow
+    try:
+        # 1. Already focused: no focus() call needed at all.
+        user32.GetForegroundWindow = lambda: 111111
+        window.focus = lambda: pytest.fail("focus() must not be called when already focused")
+        window.assert_focused()
+
+        # 2. Foreground lost, and focus() gets it back: the assert must PASS, where the bare
+        #    sample it replaces would have failed the whole run.
+        stolen = [True]
+
+        def recovering_focus():
+            stolen[0] = False
+
+        user32.GetForegroundWindow = lambda: 999999 if stolen[0] else 111111
+        window.focus = recovering_focus
+        window.assert_focused()
+        assert not stolen[0], "assert_focused must actually attempt to retake the foreground"
+
+        # 3. Foreground genuinely untakeable: still a hard failure, not a pass.
+        user32.GetForegroundWindow = lambda: 999999
+        window.focus = lambda: None
+        with pytest.raises(AssertionError) as caught:
+            window.assert_focused()
+        assert "999999" in str(caught.value), "the failure must name the window that took it"
+    finally:
+        user32.GetForegroundWindow = real_foreground
 
 
 @pytest.mark.offline

@@ -101,25 +101,57 @@ cause active: `focus()` returned successfully and `assert_focused()` passed, yet
 still did not activate the row. The missing cause is that **foreground ownership and Z-ORDER are
 different things**.
 
-`pyautogui` clicks with `mouse_event` (`_pyautogui_win.py:_click`), which — exactly like a
+`pyautogui` clicks with `mouse_event` (`_pyautogui_win.py:432` `_click` → `_sendMouseEvent` →
+`mouse_event`; the `SendInput` branch is commented out at `:483-492`), which — exactly like a
 physical click — is delivered **by position** to the topmost window at that point, *not* to the
 foreground window. So a window sitting above the game at the click point swallows the click while
 `GetForegroundWindow()` still answers with the game's `hwnd` and `assert_focused()` still passes.
 
-The occluder this tier manufactures for itself is a **leaked `oolite.exe`**. `_pin_window` parks
-every instance at exactly (0,0) at the same 960x720 client size, so an orphan covers the next
-run's rows pixel for pixel, is the same window class (`SDL_app`), and — being on the start screen
-itself — silently consumes the click. Measured directly on this desktop: with an orphan present,
-`GetForegroundWindow()` was our `hwnd` while `WindowFromPoint(488,727)` returned the **orphan's**.
+The occluder observed on this desktop was a **second `oolite.exe`**. `_pin_window` parks every
+instance at exactly (0,0) at the same 960x720 client size, so any other instance covers this
+window's rows pixel for pixel, is the same window class (`SDL_app`), and — being on the start
+screen itself — silently consumes the click. Measured directly: with one present,
+`GetForegroundWindow()` was our `hwnd` while `WindowFromPoint(488,727)` returned the **other
+instance's**.
 
-Two changes close it:
+**Where that second instance came from is not established.** Attempt 2 attributed it to a leak
+from a failed `start()`, on the premise that "the fixture's teardown only runs once
+`yield window.start()` has been reached". That premise is **false** and was disproven by
+measurement: when `start()` raises, the exception propagates out through the `yield` expression
+inside the fixture generator and the `finally: window.kill()` in the `game` fixture runs during
+the unwind. Instrumented on both the pre-fix and post-fix trees by forcing a failure inside
+`focus()`: pre-fix, `kill` **was** called (`kill_calls=1`) and the launched pid was dead at
+session end; post-fix, `kill_calls=2`. One launcher that *does* bypass the desktop mutex has
+since been caught — `tools/js_api_snapshot.py` starts `oolite.exe` without taking
+`tools/gui-lock` — but that is a separate defect, not this one's proven cause.
 
-- `GameWindow.start` now kills the process it launched if any later step raises. Previously the
-  fixture's teardown only ran once `yield window.start()` had been reached, so every failure
-  inside `start()` — including the new hard failure in `focus()` — leaked a live game. One
-  failure therefore poisoned every subsequent run on the machine.
-- `assert_click_point_is_ours` checks `WindowFromPoint` before each click, so an occluded click
-  point is a named failure instead of a mystery miss.
+So the two changes are not one fix and its corollary; only the second is load-bearing:
+
+- `assert_click_point_is_ours` checks `WindowFromPoint` (+ `GetAncestor(GA_ROOT)`) before each
+  click, so an occluded click point is a named failure instead of a mystery miss **whatever put
+  the window there**. This is the only defence against the condition.
+- `GameWindow.start` also kills the process it launched if any later step raises. Belt and
+  braces: the fixture's `finally` already did this, but killing twice costs nothing and a
+  surviving instance costs the machine.
+
+### The DoD's real repeatability defect: asserting focus without retaking it (attempt 3)
+
+Re-measured independently on the post-merge tree with no `oolite.exe` present at start: **34
+passes and 1 failure in 35 consecutive runs**, the failure at `test_g1_exit_via_mouse.py:105`
+with "the Oolite window lost the foreground before a click".
+
+The cause is structural, not cosmic. `select_row` calls `self.focus()` before it asserts and is
+therefore self-healing; `game.assert_focused()` in the test and `confirm_row`'s
+`self.assert_focused()` only **sampled** the foreground. Anything that transiently owned it
+between `start()`'s settle and that sample — a notification, an installer, or a sibling tool
+launching the game without taking the lock — hard-failed the run for a condition that had already
+cleared.
+
+`assert_focused` now retakes the foreground via `focus()` before asserting. That is not a
+softening: `focus()` retries for `FOCUS_TIMEOUT_SECONDS` and then hard-fails exactly as before,
+with an elevated owner still reported distinguishably. Same reasoning applied to the
+session-scope precondition gate and `tools/gui-tier.sh`, which each took one instantaneous
+sample and now poll for the same budget.
 
 ### When the desktop itself cannot run this tier
 
