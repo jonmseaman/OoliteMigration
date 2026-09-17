@@ -429,9 +429,10 @@ def test_g2_exit_via_keyboard(screen_witness, game):
 
     1. CALIBRATION. From the start screen, ``Down`` x CALIBRATION_PRESSES then ``Enter`` must
        arrive at the Ship Library. That screen is reachable ONLY from the row that many steps
-       down, so arriving there proves each Down advanced exactly one row - and the two ways it
-       can go wrong are named: landing on the scenario screen means the Downs did nothing, and
-       landing on Game Options means one of them auto-repeated. ``Space`` returns to the start
+       down, so arriving there is evidence each Down advanced exactly one row - and the two ways
+       it can go wrong are named and reported separately: landing on the scenario screen is the
+       no-advance case, landing on Game Options is the over-advance case. Each reports what was
+       OBSERVED and lists candidate causes rather than naming one. ``Space`` returns to the start
        screen, which also re-selects the first row (``setupStartScreenGui`` does
        ``setSelectedRow:initialRow``), so the real walk starts from a known position.
     2. THE WALK. ``Down`` x DOWN_PRESSES, still on the start screen afterwards, because
@@ -465,19 +466,23 @@ def test_g2_exit_via_keyboard(screen_witness, game):
             "menu STARTS on. OBSERVED: the Enter arrived and the selection did not move. The "
             "cause is NOT determined by this test; the candidates, in the order they are worth "
             "checking, are: (a) the Down presses never reached the game at all; (b) they reached "
-            "it without KEYEVENTF_EXTENDEDKEY, which an SDL3 build that dispatches by scancode "
-            "receives as numeric-keypad keys rather than arrows (see GameWindow.press_key); "
+            "it without KEYEVENTF_EXTENDEDKEY, which a build that dispatches by scancode could "
+            "receive as numeric-keypad keys rather than arrows (see GameWindow.press_key); "
             f"(c) the hold ({KEY_HOLD_SECONDS}s) was too short for the per-frame poll to "
-            "sample the key down; (d) the start menu was renumbered, so the derived rows no "
+            "sample the key down, or long enough to outlive KEY_REPEAT_INTERVAL and be "
+            "swallowed as a repeat; (d) the start menu was renumbered, so the derived rows no "
             "longer describe it."
         )
     if seen == OVER_ADVANCE_SCREEN:
         pytest.fail(
             f"CALIBRATION FAILED: after {CALIBRATION_PRESSES} Down press(es) and Enter the game "
             f"is on {seen}, one row PAST {CALIBRATION_SCREEN}. OBSERVED: the selection moved one "
-            "row too far. The likeliest cause is a press that auto-repeated - "
-            "-handleGUIUpDownArrowKeys (PlayerEntityControls.m:725-742) advances again once a "
-            "held key outlives KEY_REPEAT_INTERVAL - but a renumbered menu would look the same."
+            "row too far. The cause is NOT determined by this test; the candidates are: (a) one "
+            "press auto-repeated - -handleGUIUpDownArrowKeys (PlayerEntityControls.m:725-742) "
+            f"advances again once a held key outlives KEY_REPEAT_INTERVAL, and the hold is "
+            f"{KEY_HOLD_SECONDS}s; (b) the release gap was too short, so a press was counted as a "
+            "repeat of the previous one; (c) the start menu was renumbered, so the derived rows "
+            "no longer describe it - which looks identical from here."
         )
     assert seen == CALIBRATION_SCREEN, (
         f"CALIBRATION FAILED: after {CALIBRATION_PRESSES} Down press(es) and Enter the game is "
@@ -514,10 +519,14 @@ def test_g2_exit_via_keyboard(screen_witness, game):
     except Exception:
         pytest.fail(
             f"the game was still running {EXIT_TIMEOUT_SECONDS}s after Enter was pressed with "
-            f"row {EXIT_GAME_ROW} (` Exit Game `) selected - {DOWN_PRESSES} Down presses below a "
-            f"calibrated start. The calibration proved each Down advances one row, so the "
-            "selection was on ` Exit Game ` and the keyboard activation did not take the game "
-            "down."
+            f"row {EXIT_GAME_ROW} (` Exit Game `) expected to be selected - {DOWN_PRESSES} Down "
+            f"presses below a calibrated start. OBSERVED: the process did not exit within the "
+            f"budget, and it was still on {START_SCREEN} immediately before Enter. The cause is "
+            "NOT determined by this test; the candidates are: (a) the Enter never reached the "
+            "game; (b) the selection was not on ` Exit Game ` despite the calibration, e.g. one "
+            "of the Down presses was dropped or repeated; (c) the shutdown started but took "
+            f"longer than {EXIT_TIMEOUT_SECONDS}s, which the Latest.log in the run directory "
+            "would show."
         )
     assert returncode == 0, f"the game exited with {returncode}, not 0"
 
@@ -740,11 +749,14 @@ def test_the_rows_are_derived_from_the_game_and_agree_with_each_other():
 def test_the_arrow_keys_are_sent_with_the_extended_scancode_flag():
     """The mechanism G2 depends on, pinned where a future edit would notice.
 
-    MEASURED on this build: arrow keys delivered by ``keybd_event(vk, 0, 0, 0)`` (what pyautogui
-    sends) move the selection ZERO rows, because Oolite's SDL3 build dispatches by SCANCODE and
-    the arrow cluster shares its scancodes with the numeric keypad; the extended bit is the only
-    thing that distinguishes them. Dropping the flag would leave every assertion in this file
-    intact and make the test fail in a way that reads as a game bug.
+    WHY THE FLAG IS SENT, stated as rationale and not as a measurement: press_key delivers arrows
+    by SCANCODE, and the arrow cluster shares its scancodes with the numeric keypad - the extended
+    bit is the only thing in the INPUT structure that distinguishes them. This file therefore sets
+    it, and pins that it is still set. What is NOT claimed here is that dropping the flag has been
+    observed to break this build: the arrow delivery was reworked several times during authoring
+    and the only mechanism measured end-to-end is the one below. The risk being guarded is that a
+    future edit drops the flag, every assertion in this file stays intact, and the resulting
+    failure reads as a game bug rather than as a harness regression.
     """
     import conftest
 
@@ -752,8 +764,9 @@ def test_the_arrow_keys_are_sent_with_the_extended_scancode_flag():
     assert conftest.KEYEVENTF_EXTENDEDKEY == 0x0001
     assert conftest.VK_CODES["down"] == 0x28, "VK_DOWN is 0x28 in winuser.h"
     assert conftest.VK_CODES["down"] in conftest.EXTENDED_VK_CODES, (
-        "VK_DOWN is not in EXTENDED_VK_CODES, so press_key would send it without "
-        "KEYEVENTF_EXTENDEDKEY and the game would receive numpad-2 instead of an arrow"
+        "VK_DOWN is not in EXTENDED_VK_CODES, so press_key would send its scancode without "
+        "KEYEVENTF_EXTENDEDKEY - the one bit that tells an arrow apart from numpad-2 for a "
+        "consumer that dispatches by scancode"
     )
     for arrow in ("up", "down", "left", "right"):
         assert conftest.VK_CODES[arrow] in conftest.EXTENDED_VK_CODES, (
