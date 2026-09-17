@@ -12,3 +12,6 @@ __pycache__/
 
 # Per-bead git worktrees created by the beads-worker skill
 .worktrees/
+
+# Golden harness run artifacts (tests/golden/run.sh); one directory per run
+tests/golden/artifacts/
