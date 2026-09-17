@@ -577,6 +577,129 @@ def universe():
 EOF
 expect_pass "adding a conftest fixture passes"
 
+echo
+echo "=== 3p. RUNTIME NEUTERING: a unit that still READS as a test but runs nothing ==="
+# REVIEW-3 FINDING. The dead-body model understood only SYNTACTIC disabling (pass / ... /
+# `if False:` / a @skip DECORATOR) and walked straight through five live-looking spellings that
+# disable a test at RUN TIME. All five were reproduced at rc=0 while the `pass` control at 3j
+# correctly failed. The guard had ALREADY committed to the policy - `@pytest.mark.skipif(True,)`
+# is refused at the decorator - so it was enforcing "a skipped unit is a dead unit" only where
+# the spelling happened to be a decorator. These cases make the policy consistent, and each is
+# paired with the NEGATIVE CONTROL that stops it becoming a false positive: the controls are the
+# reason this can be tightened at all.
+#
+# Base body for every case here is the fixture's live `assert universe.pirate is None`.
+neuter() {  # neuter <body-lines...> : replace the @then body in world_steps.py
+  local f=upstream/oolite/tests/component/steps/world_steps.py
+  { printf 'from pytest_bdd import given, when, then\n'
+    printf 'import pytest\n\n'
+    printf '@given("a clean system")\ndef clean_system():\n    universe.reset()\n\n'
+    printf '@when("the viper engages")\ndef engage():\n    universe.tick()\n\n'
+    printf '@then("the pirate is destroyed")\ndef destroyed():\n'
+    printf '%s\n' "$@" ; } > "$f"
+}
+
+fixture gut_raise_skiptest || exit 1
+neuter '    raise SkipTest("later")'
+expect_fail "(a) raise SkipTest as the body refused" "is emptied"
+
+fixture gut_raise_unittest_skiptest || exit 1
+neuter '    raise unittest.SkipTest("later")'
+expect_fail "(a) raise unittest.SkipTest refused" "is emptied"
+
+fixture gut_pytest_skip_first || exit 1
+# WORSE THAN DELETION: the file still reads as asserting. Everything after an unconditional
+# skip is unreachable, so the retained assertion below is dead code.
+neuter '    pytest.skip("flaky")' '    assert universe.pirate is None'
+expect_fail "(b) pytest.skip() as the FIRST statement refused" "is emptied"
+
+fixture gut_self_skiptest_first || exit 1
+neuter '    self.skipTest("flaky")' '    assert universe.pirate is None'
+expect_fail "(b) self.skipTest() as the FIRST statement refused" "is emptied"
+
+fixture gut_if_true || exit 1
+# The INVERTED spelling of 3k. `if False:` was handled; `if True:` wrapping nothing was not.
+neuter '    if True:' '        pass'
+expect_fail "(c) 'if True:' wrapping a dead body refused" "is emptied"
+
+fixture gut_assert_true || exit 1
+neuter '    assert True'
+expect_fail "(d) 'assert True' as the whole body refused" "is emptied"
+
+fixture gut_helper_emptied || exit 1
+# (e) The unit's body is untouched; the HELPER it delegates to is emptied in the same change,
+# so the unit asserts nothing. Establish the helper+caller shape as the BASE first, so the
+# change under test is exactly "the helper lost its body".
+cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+def check_pirate_gone():
+    assert universe.pirate is None
+
+@then("the pirate is destroyed")
+def destroyed():
+    check_pirate_gone()
+EOF
+git_c add -A >/dev/null; git_c commit -qm "extract helper" >/dev/null
+sed -i 's/^    assert universe.pirate is None$/    pass/' \
+  upstream/oolite/tests/component/steps/world_steps.py
+expect_fail "(e) helper emptied in the same change refused" "is emptied"
+
+echo
+echo "=== 3q. NEGATIVE CONTROLS for 3p: these must all still PASS ==="
+# Without these the tightening in 3p is a false-positive generator, and a guard that cries wolf
+# is worse than no guard.
+fixture neg_conditional_skip || exit 1
+# A GENUINE conditional skip guarding a real assertion. The skip is not at the body's top
+# level, so it does not make the unit unreachable.
+neuter '    if universe.offline:' '        pytest.skip("no network")' \
+       '    assert universe.pirate is None'
+expect_pass "(a/b control) pytest.skip inside a real conditional passes"
+
+fixture neg_assert_true_plus || exit 1
+neuter '    assert True' '    assert universe.pirate is None'
+expect_pass "(d control) 'assert True' alongside a real assertion passes"
+
+fixture neg_if_true_live || exit 1
+neuter '    if True:' '        assert universe.pirate is None'
+expect_pass "(c control) 'if True:' around a REAL assertion passes"
+
+fixture neg_helper_live || exit 1
+cat > upstream/oolite/tests/component/steps/world_steps.py <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    universe.reset()
+
+@when("the viper engages")
+def engage():
+    universe.tick()
+
+def check_pirate_gone():
+    assert universe.pirate is None
+
+@then("the pirate is destroyed")
+def destroyed():
+    check_pirate_gone()
+EOF
+expect_pass "(e control) extracting a LIVE helper passes"
+
+fixture neg_skip_lookalike || exit 1
+# A call whose NAME merely contains "skip" is not a skip: only the spellings in isskip() are.
+# Sole statement, so this control is load-bearing - if the matcher over-reached, the unit would
+# read as dead and this would go red.
+neuter '    universe.skip_frames(3)'
+expect_pass "(control) a call whose name contains 'skip' is not a skip"
+
 # =================================================================================================
 echo
 echo "=== 4. deny-list: a reintroduced JS_*/GNUstep symbol is REFUSED ==="

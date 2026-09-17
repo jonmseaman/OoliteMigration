@@ -39,6 +39,39 @@
 # whether it is still somewhere under tests/ — `s1.feature` -> `s1.feature.disabled` stays under
 # tests/ and is collected by nothing.
 #
+# NAMED LIMITATION: A FILE SPLIT (and a rename git scores too low to detect) GETS NO BASELINE
+#
+# The credit above is given only where git itself reports R or C. Two real Phase-1/2 shapes fall
+# outside that, and both will read as "newly added" and go RED. This is a deliberate,
+# conservative choice - refusing to credit an unpaired A rather than guessing which old file it
+# came from - but it is a limitation, not an accident, and the escape hatch is below.
+#
+#   SPLIT.  `OOJSEngine.m` -> `OOJSEngine.cpp` + `OOJSValues.cpp`, verbatim, no content change,
+#           is reported by git as `R050 old new1` plus a bare `A new2`. The R half is credited;
+#           the A half has no baseline, so every symbol that migrated into new2 reads as newly
+#           added. Reproduced: a 92-line file with 2 JS_* sites split verbatim in two ->
+#           rc=1, "deny-list: OOJSValues.cpp reintroduces deny-listed symbols (0 -> 1 hits)".
+#           This is the same SHAPE as the false positive that made an earlier version of this
+#           guard permanently red, triggered by a split rather than by a move.
+#   LOW SIMILARITY.  A move whose port also rewrote most of the lines falls below git's -M50
+#           threshold and is reported as D + A rather than R, with the same consequence.
+#           Reproduced: a rename git scores R066 passes; a 70%-rewritten one fails.
+#
+# WHAT TO DO WHEN THIS FIRES (either is fine; the second is better practice anyway):
+#
+#   * pass an explicit base:  tools/guardrails.sh --base <ref before the move>, or set
+#     $OO_GUARDRAILS_BASE; or
+#   * SPLIT THE COMMIT: land the pure move/split first (no content change - git then scores it
+#     as R/C and it passes), and the edits in a second commit against that new baseline. This is
+#     what the migration should be doing regardless: a move mixed with a rewrite is unreviewable.
+#
+# Raising git's rename detection (`--find-renames=<n>`, `-C`) was considered and rejected: it
+# helps the low-similarity case only by making the guard credit files that are NOT the same
+# file, which is exactly the hole this check exists to close. Auto-crediting an unpaired A whose
+# content is a subset of some same-commit R's old side was also considered; it is not obviously
+# safe (an agent can satisfy "subset of an old file" by copying a deny-listed line out of any
+# moved file in the same commit), so the conservative refusal stands and is documented instead.
+#
 # DIFF vs TREE, decided per rule and not by habit
 #
 # Three of the four rules are statements about a CHANGE ("never modify", "never delete",
@@ -146,11 +179,19 @@
 # Does adding .yml/.yaml break the prose-safety argument? No, and the argument has to be re-made
 # rather than assumed: safety comes from scanning only ADDED lines, so a workflow file that has
 # always contained a flag is invisible, and it comes from .md/.txt/.json/.jsonl/.feature staying
-# OUT of CODE_RE, which is where documentation about these rules lives. Verified: no tracked
-# file of any newly added type contains a suppression or deny-list hit today, so the extension
-# is not being paid for with a pre-existing red. The residual risk is a YAML *comment* that
-# quotes the prohibition - that is what SCAN_EXEMPT is for, and it is a one-line, reasoned entry
-# rather than a silent hole.
+# OUT of CODE_RE, which is where documentation about these rules lives. Verified against all 28
+# tracked files of the newly added types: NONE contains a suppression hit, and exactly ONE
+# carries a pre-existing DENY-LIST hit -
+#
+#     upstream/oolite/installers/flatpak/space.oolite.Oolite.yaml:93
+#     (the mozillajs-linux static-lib URL, matched by the JS pattern)
+#
+# which is harmless and must not be read as "the extension was paid for with a pre-existing
+# red": the deny-list check is PER-FILE and BASELINE-RELATIVE (hit COUNT at the base vs now), so
+# that line is part of that file's baseline. Appending an unrelated comment to it is rc=0;
+# adding a SECOND matching line is correctly refused as "1 -> 2 hits". Confirmed by running it
+# both ways. The residual risk is a YAML *comment* that quotes the prohibition - that is what
+# SCAN_EXEMPT is for, and it is a one-line, reasoned entry rather than a silent hole.
 #
 # DOES ANY OF THIS APPLY TO upstream/ ?
 #
@@ -497,9 +538,78 @@ py_units() {       # content on stdin -> one line per LIVE test/step unit
   awk -v SK="$SKIP_TAG_RE" '
     function strip(s){ sub(/^[ \t]+/,"",s); sub(/[ \t]+$/,"",s); return s }
     function indent(s,  m){ m=match(s,/[^ \t]/); return (m==0? -1 : m-1) }
+
+    # An unconditional runtime skip. Reaching one at the top level of the body means every
+    # statement after it is unreachable, so the unit asserts nothing at run time.
+    function isskip(st) {
+      if (st ~ /^raise[ \t]+(unittest\.)?SkipTest/) return 1
+      if (st ~ /^(pytest|unittest|self)\.?[A-Za-z_]*[sS]kip[A-Za-z_]*[ \t]*\(/) return 1
+      if (st ~ /^[sS]kip(Test)?[ \t]*\(/) return 1
+      return 0
+    }
+
+    # A statement that executes nothing. useh=1 also treats a bare call to a helper defined
+    # in THIS file whose own body is dead as dead - see "A HELPER EMPTIED IN THE SAME CHANGE".
+    function stmtdead(st, useh,   nm) {
+      if (st=="pass" || st=="...") return 1
+      if (st ~ /^return([ \t]+None)?$/) return 1
+      if (st ~ /^raise[ \t]+NotImplementedError/) return 1
+      if (st ~ /^assert[ \t]+True[ \t]*$/) return 1
+      if (isskip(st)) return 1
+      if (useh && st ~ /^[A-Za-z_][A-Za-z0-9_.]*[ \t]*\(.*\)[ \t]*$/) {
+        nm=st; sub(/[ \t]*\(.*$/,"",nm); sub(/^.*\./,"",nm)
+        if (nm in DEADDEF) return 1
+      }
+      return 0
+    }
+
+    # Is the body of the def at line i (header indent ind) live? useh as above.
+    function bodylive(i, ind, useh,   k,t,st,ti,skipind,indoc,bodyind,rest,body,live) {
+      live=0; skipind=-1; indoc=0; bodyind=-1; k=i+1
+      while (k<=NR) {
+        t=L[k]; st=strip(t)
+        if (st=="") { k++; continue }
+        ti=indent(t)
+        if (ti<=ind) break
+        if (indoc) { if (index(st,td)>0 || index(st,tq)>0) indoc=0; k++; continue }
+        if (skipind>=0) { if (ti>skipind) { k++; continue } ; skipind=-1 }
+        if (substr(st,1,1)=="#") { k++; continue }
+        if (index(st,td)==1 || index(st,tq)==1) {
+          body=substr(st,4)
+          if (!(length(st)>=6 && (index(body,td)>0 || index(body,tq)>0))) indoc=1
+          k++; continue
+        }
+        if (bodyind<0) bodyind=ti
+        if (st ~ /^if[ \t]+(False|0)[ \t]*:/ || st ~ /^if[ \t]+not[ \t]+True[ \t]*:/) { skipind=ti; k++; continue }
+        # `if True:` is a TRANSPARENT block, not a live statement: the header decides nothing,
+        # so the body is scanned at face value and an empty one stays dead.
+        if (st ~ /^if[ \t]+(True|1)[ \t]*:/) {
+          rest=st; sub(/^if[ \t]+(True|1)[ \t]*:[ \t]*/,"",rest)
+          if (rest != "" && !stmtdead(rest, useh)) live=1
+          k++; continue
+        }
+        if (substr(st,1,1)=="@") { k++; continue }
+        if (isskip(st) && ti<=bodyind && live==0) return 0
+        if (stmtdead(st, useh)) { k++; continue }
+        live=1; k++
+      }
+      return live
+    }
+
     { L[NR]=$0 }
     END{
       sq=sprintf("%c",39); tq=sq sq sq; dq=sprintf("%c",34); td=dq dq dq
+
+      # Pass 1: every def in the file, helper-blind, so a helper gutted in the same change is
+      # known to be dead before any unit that calls it is judged.
+      for (i=1;i<=NR;i++) {
+        s=strip(L[i])
+        if (s !~ /^def[ \t]+/) continue
+        nm=s; sub(/^def[ \t]+/,"",nm); sub(/[ \t]*\(.*$/,"",nm)
+        if (!bodylive(i, indent(L[i]), 0)) DEADDEF[nm]=1
+      }
+
+      # Pass 2: the units themselves, helper-aware.
       for (i=1;i<=NR;i++) {
         s=strip(L[i])
         if (s !~ /^def[ \t]+/) continue
@@ -528,27 +638,7 @@ py_units() {       # content on stdin -> one line per LIVE test/step unit
         }
         if (id=="") continue
         if (decs ~ SK || decs ~ /@.*skip/) continue
-        live=0; skipind=-1; indoc=0; k=i+1
-        while (k<=NR) {
-          t=L[k]; st=strip(t)
-          if (st=="") { k++; continue }
-          ti=indent(t)
-          if (ti<=ind) break
-          if (indoc) { if (index(st,td)>0 || index(st,tq)>0) indoc=0; k++; continue }
-          if (skipind>=0) { if (ti>skipind) { k++; continue } ; skipind=-1 }
-          if (substr(st,1,1)=="#") { k++; continue }
-          if (index(st,td)==1 || index(st,tq)==1) {
-            body=substr(st,4)
-            if (!(length(st)>=6 && (index(body,td)>0 || index(body,tq)>0))) indoc=1
-            k++; continue
-          }
-          if (st ~ /^if[ \t]+(False|0)[ \t]*:/ || st ~ /^if[ \t]+not[ \t]+True[ \t]*:/) { skipind=ti; k++; continue }
-          if (st=="pass" || st=="..." || st ~ /^return([ \t]+None)?$/) { k++; continue }
-          if (substr(st,1,1)=="@") { k++; continue }
-          if (st ~ /^raise[ \t]+NotImplementedError/) { k++; continue }
-          live=1; k++
-        }
-        if (live) print id
+        if (bodylive(i, ind, 1)) print id
       }
     }'
 }
