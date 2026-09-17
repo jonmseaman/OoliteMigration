@@ -344,9 +344,26 @@ def test_g7_asserts_on_the_prefs_file_by_name_and_only_after_a_real_launch():
         "the prefs path must be built from conftest.DEFAULTS_RELATIVE_PATH so it cannot drift "
         "from the path the rest of the tier checks"
     )
-    assert "defaults_launch_mark" in body, (
-        "G7 must assert the prefs file was ABSENT at launch; otherwise 'it exists afterwards' "
-        "is satisfied by a leftover and the test cannot fail (oo-5rsa)"
+    # NOT a substring search. `body` is the function's raw source INCLUDING its docstring, and
+    # the docstring names game.defaults_launch_mark: a text grep here stays green after both
+    # real assertions are deleted, which is the oo-5rsa defect class one level up. Ask the AST
+    # instead - the attribute must be REACHED BY AN ``assert`` STATEMENT, so prose cannot
+    # satisfy it.
+    mark_asserts = [
+        node
+        for node in ast.walk(func)
+        if isinstance(node, ast.Assert)
+        and any(
+            isinstance(child, ast.Attribute) and child.attr == "defaults_launch_mark"
+            for child in ast.walk(node)
+        )
+    ]
+    assert len(mark_asserts) >= 2, (
+        "G7 must assert the prefs file was ABSENT at launch, in two steps: that start() recorded "
+        "a launch mark at all, and that the mark's entry for prefs_file is None. Found "
+        f"{len(mark_asserts)} assert statement(s) referencing .defaults_launch_mark. Without both, "
+        "'it exists afterwards' is satisfied by a leftover and the test cannot fail (oo-5rsa). "
+        "Mentioning defaults_launch_mark in the docstring does NOT count."
     )
     calls = {
         node.func.id
