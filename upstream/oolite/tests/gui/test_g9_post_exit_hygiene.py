@@ -148,17 +148,20 @@ def test_g9_post_exit_hygiene_holds_after_a_real_exit(game):
     context_line = assert_shutdown_path_completed(game, EXPECTED_EXIT_CONTEXT)
     assert EXPECTED_EXIT_CONTEXT in context_line
 
-    # 6. NOT asserted here: that the shared build's software-GL DLLs are back. They are still
+    # 6. NOT asserted here: anything about the shared build's software-GL DLLs. They are still
     #    parked at this point BY DESIGN - _restore_software_gl runs in kill(), which runs in the
     #    fixture's teardown, after this function returns. That property therefore belongs to the
     #    fixture and is asserted there (conftest.game), which is also what makes it hold for
-    #    every test in this tier rather than only for the ones that remember it.
-    assert game._parked_ever, (
-        "this run parked no software-GL DLL at all, so the fixture's post-teardown restore "
-        "assertion has nothing to check on this machine and G9's third hygiene property would "
-        "be vacuous here. Expected _park_software_gl to have moved "
-        f"{list(game.SOFTWARE_GL_DLLS)} aside in {game.app_dir}."
-    )
+    #    every test in this tier rather than only the ones that remember it.
+    #
+    #    AND NOT EVEN "this run parked something": that assertion was here and a real run turned
+    #    it RED for a legitimate reason. A concurrent sibling GUI run already had the DLLs parked,
+    #    so _park_software_gl found nothing to move and game._parked_ever was empty - which is
+    #    correct behaviour by both runs. It is the same cross-run race that made the first
+    #    spelling of assert_no_parked_runtime_files wrong, reintroduced one level up. The
+    #    fixture's check is sound while vacuous in that case (nothing parked, nothing to restore)
+    #    and the offline twins below cover the non-vacuous paths through the real park/restore
+    #    pair, so nothing is lost by not demanding it here.
 
 
 # --- the red proof: the gap the new helper closes is real ---------------------------------------
