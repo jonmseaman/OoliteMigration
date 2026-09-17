@@ -20,12 +20,12 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
-snapshot="$repo/oxp-contract/js-api-1.92.json"
+snapshot="$repo/oxp-contract/js-api-1.93.json"
 
 if [ "${1:-}" = "--regen" ]; then
   "$here/js-api-snapshot.sh"
   git -C "$(cygpath -m "$repo" 2>/dev/null || printf '%s' "$repo")" \
-    diff --exit-code -- oxp-contract/js-api-1.92.json
+    diff --exit-code -- oxp-contract/js-api-1.93.json
   echo "[+] regenerated snapshot is identical to the committed one"
   exit 0
 fi

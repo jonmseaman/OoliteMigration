@@ -3,9 +3,9 @@
 This is the engine behind tools/js-api-snapshot.sh. It launches the real game headless, drives it
 over the debug console (transport: upstream/oolite/tests/component/console.py, ADR-0018), asks the
 live SpiderMonkey runtime what globals and native classes exist, and writes the answer to
-oxp-contract/js-api-1.92.json.
+oxp-contract/js-api-1.93.json.
 
-Four things here are deliberate and are the reason it looks like this:
+Five things here are deliberate and are the reason it looks like this:
 
 * The port is not ours to choose. The GAME dials out to the console and reads console-port from
   debugConfig.plist (OODebugSupport.m:67-80, default kOOTCPConsolePort = 8563). A port becomes
@@ -33,8 +33,19 @@ Four things here are deliberate and are the reason it looks like this:
   each name, so a killed command can be resumed at the next index and the offending member is
   recorded as kind "native-opaque" rather than losing the whole class.
 
-Only shapes are recorded, never values: kind, arity, descriptor flags, and the typeof of a data
-property are properties of the class definition, not of the session, so a regeneration diffs clean.
+* The `typeof` of a SINGLETON's own data property is SESSION STATE, not API shape. `mission` and
+  `system` are one live object each: mission.screenID is `null` with no mission screen up and a
+  string with one, and system.mainStation is an object in a system and null in interstellar space.
+  Recording those typeofs would make a regeneration diff against the savegame, not against the API,
+  so _describe_global omits `type` from an object global's own_members. Nothing is lost: every one
+  of those members is also on the class prototype (Mission.prototype, System.prototype, ...), whose
+  descriptors are read off the prototype object and are therefore state-independent. Descriptor
+  flags, kind and arity are still recorded for the own copy, so a member appearing or vanishing on
+  a singleton is still a visible diff.
+
+Only shapes are recorded, never values: kind, arity, descriptor flags, and - where it is a property
+of the class definition rather than of the session - the typeof of a data property. A regeneration
+therefore diffs clean.
 """
 
 import argparse
@@ -53,7 +64,7 @@ sys.path.insert(0, os.path.join(_REPO, "upstream", "oolite", "tests", "component
 from console import ConsoleError, DebugConsole  # noqa: E402
 
 DEFAULT_APP_DIR = os.path.join(_REPO, "upstream", "oolite", "build", "meson_test", "oolite.app")
-DEFAULT_OUTPUT = os.path.join(_REPO, "oxp-contract", "js-api-1.92.json")
+DEFAULT_OUTPUT = os.path.join(_REPO, "oxp-contract", "js-api-1.93.json")
 DEFAULT_PORT = 8563
 SETTLE_GAME_SECONDS = 2.0
 CHUNK = 3000
@@ -209,6 +220,12 @@ def _scan_members(con, target, names):
     A killed command leaves __ooIdx pointing at the member that killed it, so the scan is resumed
     one past it and that member is recorded as "native-opaque": known to exist, not safely
     describable from the prototype. See the module docstring.
+
+    Harness-created members are dropped from the RESULT rather than from `names`: the resume index
+    __ooIdx is an offset into the JS side's own unfiltered, sorted name list, so pre-filtering here
+    would desynchronise it. `global` is a self-reference to the JS global object, so the
+    accumulator and helper this module installs (__ooAcc, __ooBuf, __ooIdx, __ooScan) appear as its
+    own members and would otherwise be recorded as part of Oolite's API.
     """
     found = {}
     start = 0
@@ -250,12 +267,27 @@ def _scan_members(con, target, names):
             found[name] = {"kind": "native-opaque"}
     for name in opaque:
         found[name] = {"kind": "native-opaque"}
+    for name in [n for n in found if n.startswith(HARNESS_PREFIX)]:
+        del found[name]
     return found
 
 
 def _js_global(name):
     """A JS expression for a global by name, safe for any identifier."""
     return f"__ooGlobal[{json.dumps(name)}]"
+
+
+def _strip_state_dependent_types(members):
+    """Drop `type` from data properties of a live singleton.
+
+    `typeof` of a live value answers what the session currently holds, not what the API declares:
+    mission.screenID is null with no mission screen up and a string with one; system.mainStation is
+    an object in a system and null in interstellar space. Keeping those would make a regeneration
+    diff against the savegame. Kind, arity and descriptor flags stay - they are the shape.
+    """
+    for entry in members.values():
+        entry.pop("type", None)
+    return members
 
 
 def _describe_global(con, name):
@@ -293,18 +325,39 @@ def _describe_global(con, name):
                 con, f"{ref}.prototype", _names_of(con, f"{ref}.prototype")
             )
     else:
-        entry["own_members"] = _scan_members(con, ref, _names_of(con, ref))
+        # See the module docstring: a singleton's own data-property values are session state, so
+        # their typeof is dropped. The class prototype below carries the authoritative shape.
+        entry["own_members"] = _strip_state_dependent_types(
+            _scan_members(con, ref, _names_of(con, ref))
+        )
         if has_proto == "1":
             proto = f"Object.getPrototypeOf({ref})"
             entry["prototype_members"] = _scan_members(con, proto, _names_of(con, proto))
     return entry
 
 
+def _is_native_class(entry):
+    """True for a global that is really a native CLASS, not just a function.
+
+    Every JS function owns a .prototype, so `is_class` (has-a-prototype) over-counts: the plain
+    utility globals `consoleMessage`, `formatCredits` and `formatInteger` each own a prototype
+    whose only member is `constructor`, and ConsoleSettings is a Debug-OXP constructor with the
+    same empty shape. A native class installed by JS_InitClass carries real members on its
+    prototype, so requiring more than the automatic `constructor` is what separates the two.
+    """
+    if entry.get("type") != "function" or not entry.get("is_class"):
+        return False
+    members = entry.get("prototype_members")
+    if not isinstance(members, dict):
+        return False
+    return bool(set(members) - {"constructor"})
+
+
 def _summarise(globals_map):
     names = sorted(globals_map)
     oolite = sorted(n for n in names if n not in ECMA_GLOBALS)
     shipped = [n for n in oolite if n not in DEBUG_GLOBALS]
-    classes = sorted(n for n in oolite if globals_map[n].get("is_class"))
+    classes = sorted(n for n in oolite if _is_native_class(globals_map[n]))
     return {
         "global_count": len(names),
         "ecmascript_global_count": len(names) - len(oolite),

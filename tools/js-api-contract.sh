@@ -9,20 +9,21 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
-snapshot="$repo/oxp-contract/js-api-1.92.json"
+snapshot="$repo/oxp-contract/js-api-1.93.json"
 
 python3 - "$(cygpath -m "$snapshot" 2>/dev/null || printf '%s' "$snapshot")" <<'PY'
 import json
 import sys
 
-# Measured against upstream/oolite 1.93 by tools/js-api-snapshot.sh. See oxp-contract/README.md
-# for why these are not the "61" the originating story guessed at.
+# Measured against upstream/oolite 1.93 by tools/js-api-snapshot.sh (which is why the file is named
+# js-api-1.93.json). See oxp-contract/README.md for why these are not the "61" the originating
+# story guessed at, and why class_count is 28 rather than "every Oolite global with a prototype".
 EXPECTED = {
     "global_count": 121,
     "ecmascript_global_count": 51,
     "oolite_global_count": 70,
     "oolite_global_count_without_debug_console": 66,
-    "class_count": 32,
+    "class_count": 28,
 }
 
 # Classes that must carry a non-empty method list, with the minimum this build actually has. A

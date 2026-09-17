@@ -26,7 +26,7 @@ Original gate (MIGRATION_PLAN §5.7) plus the substrate checks (AI_EXECUTION_PLA
 - [ ] Windows build green and reproducible **locally from a clean clone**, scripted; no CI ([ADR-0016](../decisions/0016-no-forge-local-verification.md)); Windows is the only platform until Phase 5 ([ADR-0017](../decisions/0017-native-windows-subtree.md))
 - [ ] ≥ 20 scenarios producing stable goldens across 10 consecutive runs, from **two independent clean worktrees** on the one machine
 - [ ] Iteration-order non-determinism found, fixed in Objective-C, and submitted upstream
-- [ ] `oxp-contract/js-api-1.92.json` committed and reproduced by Tier C
+- [ ] `oxp-contract/js-api-1.93.json` committed and reproduced by Tier C
 - [ ] Tier 1 / 2 / 3 OXP corpus automated (per-commit / nightly / weekly)
 - [ ] Mozilla-only-JS scan report published; a hand-audited random 50 agrees with the model at an acceptable rate
 - [ ] PyAutoGUI G1–G4 green on Windows, run by Tier C and nightly under the desktop lock (never per bead)
@@ -136,7 +136,7 @@ Nothing else scales until this exists. `tests/launch_snapshot.py` currently hard
 ### 0.5 JS API conformance snapshot
 
 Via the debug console, enumerate all 61 JS globals and, for each of the ~45 native classes, dump
-every property and method name, arity, and type. Commit as `oxp-contract/js-api-1.92.json`. Any
+every property and method name, arity, and type. Commit as `oxp-contract/js-api-1.93.json`. Any
 later build must reproduce it exactly. This is the machine-checkable form of "expansions still work".
 
 ### 0.6 OXP compatibility corpus

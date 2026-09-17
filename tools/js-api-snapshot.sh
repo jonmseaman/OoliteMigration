@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerate oxp-contract/js-api-1.92.json from the live game.
+# Regenerate oxp-contract/js-api-1.93.json from the live game.
 #
 # The game is launched headless and interrogated over the debug console; see
 # tools/js_api_snapshot.py for why the port comes from a generated debugConfig.plist and why
@@ -18,7 +18,7 @@ to_native() {
 }
 
 app="${OO_APP_DIR:-$repo/upstream/oolite/build/meson_test/oolite.app}"
-output="$repo/oxp-contract/js-api-1.92.json"
+output="$repo/oxp-contract/js-api-1.93.json"
 args=()
 while [ $# -gt 0 ]; do
   case "$1" in

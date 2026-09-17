@@ -1,4 +1,4 @@
-"""Structural check for oxp-contract/js-api-1.92.json.
+"""Structural check for oxp-contract/js-api-1.93.json.
 
 Run by tools/js-api-check.sh. It answers the question a clean checkout can answer without a game
 binary: is the committed snapshot a well-formed, deterministic, non-empty description of the JS
@@ -104,7 +104,7 @@ def main(path):
         fail("summary.oolite_globals is missing or not sorted")
     if summary.get("oolite_global_count") != len(oolite_globals):
         fail("summary.oolite_global_count disagrees with summary.oolite_globals")
-    if len(oolite_globals) < 50:
+    if len(oolite_globals) < 66:
         fail(f"only {len(oolite_globals)} Oolite globals; the enumeration did not complete")
 
     classes = summary.get("classes")
@@ -112,6 +112,15 @@ def main(path):
         fail("summary.classes is missing or not sorted")
     if summary.get("class_count") != len(classes):
         fail("summary.class_count disagrees with summary.classes")
+
+    # A native class is a constructor whose prototype carries real members. Every JS function owns
+    # a .prototype, so without this the plain utility globals (consoleMessage, formatCredits,
+    # formatInteger) would be counted as classes - which is exactly what an earlier snapshot did.
+    for name in classes:
+        members = globals_map.get(name, {}).get("prototype_members")
+        if not isinstance(members, dict) or not set(members) - {"constructor"}:
+            fail(f"{name} is listed as a native class but its prototype has only `constructor`; "
+                 "it is a plain function, not a class")
 
     for name in REQUIRED_CLASSES:
         if name not in globals_map:
@@ -145,14 +154,27 @@ def main(path):
         for bucket, members in member_buckets(entry):
             for mname, member in members.items():
                 members_seen += 1
+                if mname.startswith("__oo"):
+                    # The snapshot tool installs __ooScan/__ooAcc/__ooBuf/__ooIdx on the JS global
+                    # to drive the enumeration. `global` self-references that object, so they can
+                    # leak into its own_members. They are the harness, not Oolite's API.
+                    fail(f"{gname}.{bucket}.{mname} is a snapshot-harness member; it must not "
+                         "reach the contract")
                 kind = member.get("kind")
                 if kind not in KINDS:
                     fail(f"{gname}.{bucket}.{mname} has unknown kind {kind!r}")
                 if kind == "method" and not isinstance(member.get("arity"), int):
                     fail(f"{gname}.{bucket}.{mname} is a method with no integer arity")
-                if kind == "property" and not isinstance(member.get("type"), str):
+                if bucket == "own_members":
+                    # A singleton's own data-property values are session state (mission.screenID
+                    # is null or a string depending on whether a mission screen is up), so the
+                    # snapshot must not record their typeof or a regeneration cannot reproduce.
+                    if "type" in member:
+                        fail(f"{gname}.own_members.{mname} records a type; typeof of a live "
+                             "singleton value is session state, not API shape")
+                elif kind == "property" and not isinstance(member.get("type"), str):
                     fail(f"{gname}.{bucket}.{mname} is a property with no type")
-    if members_seen < 1000:
+    if members_seen < 2300:
         fail(f"only {members_seen} members recorded; the enumeration did not complete")
 
     print(f"[+] {path}: {len(globals_map)} globals "

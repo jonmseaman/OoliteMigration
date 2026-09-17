@@ -20,7 +20,7 @@ behaviour proven by goldens and the OXP corpus. Decision and rationale:
 - [ ] All 20 goldens reproduce on the QuickJS-ng backend
 - [ ] Tier-1 and Tier-2 OXP corpus green on QuickJS-ng
 - [ ] Every Tier-3 regression triaged: bug fixed, or documented in `docs/EXPANSION_MIGRATION.md`
-- [ ] `oxp-contract/js-api-1.92.json` reproduces exactly on QuickJS-ng
+- [ ] `oxp-contract/js-api-1.93.json` reproduces exactly on QuickJS-ng
 - [ ] Deny-list: zero `JS_*` symbols; `mozillajs-linux` and `nspr` removed from the dependency list
 - [ ] The tree builds for `aarch64-apple-darwin` as far as the GNUstep dependency permits
 
