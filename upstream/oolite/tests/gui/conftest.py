@@ -30,10 +30,103 @@ import pytest
 
 IS_WINDOWS = sys.platform == "win32" or os.name == "nt"
 
+# --- Win32 signatures -------------------------------------------------------------------------
+#
+# EVERY Win32 function this tier calls is declared here, and the functions are reached through
+# the module-level library handles below - never through ``ctypes.windll``.
+#
+# Why this table exists (bug oo-x2uy). A ctypes function object with no ``argtypes`` marshals a
+# Python ``int`` argument as a 32-bit C ``int``, and with no ``restype`` it decodes the return
+# value as a 32-bit signed ``int``. On 64-bit Windows an HWND is a 64-bit pointer-sized handle,
+# so an undeclared call cannot carry one: a handle at or above 2**32 either raises
+# ``ArgumentError: int too long to convert`` (current CPython) or is silently truncated to its
+# low 32 bits (older CPython) - and an undeclared *return* of a handle is truncated and
+# sign-extended with no error at all. The tier appeared to work only because Windows hands out
+# small HWNDs most of the time; that is a coin toss, not a contract, and every GUI bead G2-G9
+# inherits it.
+#
+# The table is a plain dict of TYPE NAMES rather than ctypes objects so that it can be imported
+# and asserted on from any platform (see test_win32_declarations.py, which fails if a call site
+# in this tier is missing from it).
+#
+# Format: "<library>.<function>": (restype name, [argtype names]).
+WIN32_SIGNATURES = {
+    "user32.EnumWindows": ("BOOL", ["WNDENUMPROC", "LPARAM"]),
+    "user32.GetWindowThreadProcessId": ("DWORD", ["HWND", "LPDWORD"]),
+    "user32.IsWindowVisible": ("BOOL", ["HWND"]),
+    "user32.SendMessageTimeoutW": (
+        "LRESULT",
+        ["HWND", "UINT", "WPARAM", "LPARAM", "UINT", "UINT", "PDWORD_PTR"],
+    ),
+    "user32.GetWindowRect": ("BOOL", ["HWND", "LPRECT"]),
+    "user32.GetClientRect": ("BOOL", ["HWND", "LPRECT"]),
+    "user32.ClientToScreen": ("BOOL", ["HWND", "LPPOINT"]),
+    "user32.SetWindowPos": ("BOOL", ["HWND", "HWND", "INT", "INT", "INT", "INT", "UINT"]),
+    "user32.ShowWindow": ("BOOL", ["HWND", "INT"]),
+    "user32.SetForegroundWindow": ("BOOL", ["HWND"]),
+}
+
+# The library handles. ``None`` off Windows: the module must still IMPORT everywhere so that
+# `pytest --collect-only` and the offline guard tests work on any platform; the fixtures skip.
+USER32 = None
+WNDENUMPROC = None
+
 if IS_WINDOWS:
-    # RECT/POINT and ctypes.windll exist only here. The module must still IMPORT elsewhere so
-    # that `pytest --collect-only` works on any platform; the fixtures skip instead.
-    import ctypes.wintypes  # noqa: F401
+    # RECT/POINT and the Win32 libraries exist only here.
+    from ctypes import wintypes
+
+    # EnumWindows' callback. Declared with the real parameter types for the same reason as
+    # everything else: an undeclared ``c_void_p`` HWND parameter is fine, but a declared one
+    # documents the 64-bit width and keeps the table honest.
+    WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+
+    # The pointer-sized scalars ctypes.wintypes does not define. LRESULT and DWORD_PTR are
+    # LONG_PTR/ULONG_PTR: 64 bits here, 32 bits on Win32, which is exactly the width that goes
+    # wrong when nothing is declared.
+    LRESULT = ctypes.c_ssize_t
+    DWORD_PTR = ctypes.c_size_t
+
+    _WIN32_TYPES = {
+        "BOOL": wintypes.BOOL,
+        "DWORD": wintypes.DWORD,
+        "DWORD_PTR": DWORD_PTR,
+        "HANDLE": wintypes.HANDLE,
+        "HWND": wintypes.HWND,
+        "INT": ctypes.c_int,
+        "LPARAM": wintypes.LPARAM,
+        "LPDWORD": ctypes.POINTER(wintypes.DWORD),
+        "LPPOINT": ctypes.POINTER(wintypes.POINT),
+        "LPRECT": ctypes.POINTER(wintypes.RECT),
+        "LRESULT": LRESULT,
+        "PDWORD_PTR": ctypes.POINTER(DWORD_PTR),
+        "UINT": wintypes.UINT,
+        "WNDENUMPROC": WNDENUMPROC,
+        "WPARAM": wintypes.WPARAM,
+    }
+
+    def _declare_win32(libraries):
+        """Stamp WIN32_SIGNATURES onto the real ctypes function objects.
+
+        Driven off the table so the declarations and the guard test cannot drift apart.
+        """
+        for qualified, (restype, argtypes) in WIN32_SIGNATURES.items():
+            library, _, function = qualified.partition(".")
+            func = getattr(libraries[library], function)
+            func.restype = _WIN32_TYPES[restype]
+            func.argtypes = [_WIN32_TYPES[name] for name in argtypes]
+        return libraries
+
+    # Our OWN handle, not ``ctypes.windll.user32``: windll hands out a process-wide cached
+    # library whose function objects are shared with every other importer, so declaring
+    # argtypes on it would mutate somebody else's calls. use_last_error gives us a
+    # ctypes-private copy of GetLastError that a later Python call cannot clobber.
+    USER32 = ctypes.WinDLL("user32", use_last_error=True)
+    _declare_win32({"user32": USER32})
+
+
+def _win32_error(function):
+    """The OSError for the last failed Win32 call, read from ctypes' private last-error slot."""
+    return ctypes.WinError(ctypes.get_last_error(), f"{function} failed")
 
 # --- Oolite's fixed virtual GUI grid (src/Core/GuiDisplayGen.h:34-43) -------------------------
 MAIN_GUI_PIXEL_WIDTH = 480
@@ -294,18 +387,16 @@ class GameWindow:
     # --- window -------------------------------------------------------------------------------
 
     def _top_level_windows(self):
-        user32 = ctypes.windll.user32
         found = []
-        pid = ctypes.c_ulong()
-        proto = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        pid = wintypes.DWORD()
 
         def visit(hwnd, _lparam):
-            user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-            if pid.value == self.proc.pid and user32.IsWindowVisible(hwnd):
+            USER32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+            if pid.value == self.proc.pid and USER32.IsWindowVisible(hwnd):
                 found.append(hwnd)
             return True
 
-        user32.EnumWindows(proto(visit), None)
+        USER32.EnumWindows(WNDENUMPROC(visit), 0)
         return found
 
     def _log_path(self):
@@ -348,8 +439,8 @@ class GameWindow:
         SendMessageTimeout with SMTO_ABORTIFHUNG asks the window directly, so a game whose run
         loop has wedged fails here instead of failing later as a mysteriously ignored click.
         """
-        user32 = ctypes.windll.user32
         SMTO_ABORTIFHUNG = 0x0002
+        WM_NULL = 0x0000
         deadline = time.time() + timeout
         while time.time() < deadline:
             if self.proc.poll() is not None:
@@ -358,9 +449,9 @@ class GameWindow:
                     f"see {self.output_dir}"
                 )
             for hwnd in self._top_level_windows():
-                result = ctypes.c_ulong()
-                if user32.SendMessageTimeoutW(
-                    hwnd, 0x0000, 0, 0, SMTO_ABORTIFHUNG, 2000, ctypes.byref(result)
+                result = DWORD_PTR()
+                if USER32.SendMessageTimeoutW(
+                    hwnd, WM_NULL, 0, 0, SMTO_ABORTIFHUNG, 2000, ctypes.byref(result)
                 ):
                     return hwnd
             time.sleep(0.5)
@@ -372,33 +463,47 @@ class GameWindow:
         The grid maths is in client pixels, so pinning the outer window instead would make the
         row points depend on the border and title-bar metrics of whoever's desktop this is.
         """
-        user32 = ctypes.windll.user32
-        win = ctypes.wintypes.RECT()
-        cli = ctypes.wintypes.RECT()
-        user32.GetWindowRect(self.hwnd, ctypes.byref(win))
-        user32.GetClientRect(self.hwnd, ctypes.byref(cli))
+        user32 = USER32
+        win = wintypes.RECT()
+        cli = wintypes.RECT()
+        if not user32.GetWindowRect(self.hwnd, ctypes.byref(win)):
+            raise _win32_error("GetWindowRect")
+        if not user32.GetClientRect(self.hwnd, ctypes.byref(cli)):
+            raise _win32_error("GetClientRect")
         chrome_w = (win.right - win.left) - (cli.right - cli.left)
         chrome_h = (win.bottom - win.top) - (cli.bottom - cli.top)
         SWP_NOZORDER = 0x0004
-        user32.SetWindowPos(
+        if not user32.SetWindowPos(
             self.hwnd, None, 0, 0, client_w + chrome_w, client_h + chrome_h, SWP_NOZORDER
-        )
+        ):
+            raise _win32_error("SetWindowPos")
         # The game only recomputes display_z on a resize event, so let it see this one.
         time.sleep(1.0)
 
     def client_rect(self):
         """The client area in screen coordinates: ``(left, top, width, height)``."""
-        user32 = ctypes.windll.user32
-        cli = ctypes.wintypes.RECT()
-        origin = ctypes.wintypes.POINT(0, 0)
-        user32.GetClientRect(self.hwnd, ctypes.byref(cli))
-        user32.ClientToScreen(self.hwnd, ctypes.byref(origin))
+        user32 = USER32
+        cli = wintypes.RECT()
+        origin = wintypes.POINT(0, 0)
+        if not user32.GetClientRect(self.hwnd, ctypes.byref(cli)):
+            raise _win32_error("GetClientRect")
+        if not user32.ClientToScreen(self.hwnd, ctypes.byref(origin)):
+            raise _win32_error("ClientToScreen")
         return (origin.x, origin.y, cli.right - cli.left, cli.bottom - cli.top)
 
     def focus(self):
-        user32 = ctypes.windll.user32
-        user32.ShowWindow(self.hwnd, 9)  # SW_RESTORE
-        user32.SetForegroundWindow(self.hwnd)
+        SW_RESTORE = 9
+        # ShowWindow's BOOL return is the PREVIOUS visibility, not success, so it is not an
+        # error indicator and is deliberately not checked. SetForegroundWindow genuinely can
+        # refuse (the foreground-lock rules), but a refusal is recoverable and this tier has
+        # always tolerated it, so it stays a warning rather than a new failure mode.
+        USER32.ShowWindow(self.hwnd, SW_RESTORE)
+        if not USER32.SetForegroundWindow(self.hwnd):
+            warnings.warn(
+                f"SetForegroundWindow refused for hwnd {self.hwnd}: "
+                f"{ctypes.WinError(ctypes.get_last_error())}",
+                stacklevel=1,
+            )
         time.sleep(0.5)
 
     # --- input --------------------------------------------------------------------------------
