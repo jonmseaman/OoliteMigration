@@ -84,7 +84,12 @@ Only beads labelled `fleet` are yours; `frontier`, `rebless` and `proposed-adr` 
   (`SDL_VIDEODRIVER=offscreen` is unset there: MSYS2's Mesa has no EGL), so an unlocked launcher
   steals the foreground mid-click from a running GUI test. Use `tools/desktop_lock.py`; the rule and
   its two deliberate exemptions (the golden harness, which runs N games concurrently by design, and
-  the shared console transport) are enforced by `tools/check-desktop-lock.sh`.
+  the shared console transport) are enforced by `tools/check-desktop-lock.sh`, which detects a
+  launcher by its **spawn** (a `Popen`/`os.startfile`/`DebugConsole`/shell command whose target is
+  the game binary) across `*.py`/`*.sh`/`*.bat`/`*.cmd`, not by one string idiom — so it fails on a
+  new launcher in neither list however it is spelled (`tools/desktop-lock-rogue-proof` proves this
+  against five planted rogues). A long hold is heartbeated via `tools/gui-lock refresh`, so a live
+  holder is never stale-reclaimed while a crashed one still ages out.
 - `origin` = `jonmseaman/OoliteMigration`; `fork` = `jonmseaman/oolite`, which receives
   `upstream/oolite` by `git subtree push`; `upstream` = `OoliteProject/oolite`, pulled by
   `git subtree pull --squash` in the upstream-tracker task only.

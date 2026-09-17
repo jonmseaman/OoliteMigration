@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# Plant the rogue launchers the review used to break check 2, one at a time, and assert that
+# tools/check-desktop-lock.sh FAILS on each. Scratch files only; removed before each assertion is
+# reported, and the script restores the tree on any exit.
+#
+#     tools/desktop-lock-rogue-proof
+#
+# Five spellings, because check 2's first version only recognised the one its own launchers used
+# and printed PASS for the other three:
+#   1  ternary idiom            "oolite.exe" if IS_WINDOWS else "oolite"   (the one it did catch)
+#   2  plain literal join       Popen([os.path.join(APP, "oolite.exe"), ...])
+#   3  name from variables      "oolite" + EXE
+#   4  shell=True command line  Popen("C:/app/oolite.app/oolite.exe --no-splash", shell=True)
+#   5  a shell wrapper          a .sh that execs the binary - never scanned at all before
+# plus a NEGATIVE control: prose that merely mentions oolite.exe must NOT trip the check.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+fail=0
+ok(){ echo "PASS: $1"; }
+no(){ echo "FAIL: $1"; fail=1; }
+
+PLANTED=""
+cleanup(){ [ -n "$PLANTED" ] && rm -f $PLANTED; PLANTED=""; }
+trap cleanup EXIT INT TERM
+
+# plant <path> <<'EOF' ... EOF ; then run the check and require it to fail.
+expect_caught() {
+	local path="$1" why="$2"
+	PLANTED="$path"
+	local out rc
+	out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?
+	rm -f "$path"; PLANTED=""
+	echo "  rogue $path -> check-desktop-lock exit $rc"
+	if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "$path spawns the game"; then
+		ok "$why (exit $rc, named in the report)"
+	else
+		no "$why WAS NOT CAUGHT (exit $rc)"
+		printf '%s\n' "$out" | sed -n '/2\/4/,/3\/4/p' | sed 's/^/      /'
+	fi
+}
+
+echo "=== 0. a clean tree passes (so a FAIL below is the rogue, not the baseline) ==="
+out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?
+echo "  clean tree -> exit $rc"
+[ "$rc" -eq 0 ] && ok "clean tree passes" || { no "the clean tree already fails; nothing below proves anything"; printf '%s\n' "$out" | sed 's/^/      /'; }
+
+echo "=== 1. the ternary idiom (the ONLY spelling the old check knew) ==="
+cat >tools/rogue1_ternary.py <<'EOF'
+import os, subprocess
+APP = os.environ["OO_APP_DIR"]
+binary = "oolite.exe" if os.name == "nt" else "oolite"
+subprocess.Popen([os.path.join(APP, binary), "--no-splash"])
+EOF
+expect_caught tools/rogue1_ternary.py "ternary-idiom launcher"
+
+echo "=== 2. a plain literal join - the most obvious way to write a new launcher ==="
+cat >tools/rogue2_literal.py <<'EOF'
+import os, subprocess
+APP = os.environ["OO_APP_DIR"]
+subprocess.Popen([os.path.join(APP, "oolite.exe"), "--no-splash"])
+EOF
+expect_caught tools/rogue2_literal.py "plain-literal-join launcher"
+
+echo "=== 3. the binary name assembled from variables ==="
+cat >tools/rogue3_assembled.py <<'EOF'
+import os, subprocess
+APP = os.environ["OO_APP_DIR"]
+EXE = ".exe" if os.name == "nt" else ""
+BIN = APP + "/" + "oolite" + EXE
+subprocess.Popen([BIN, "--no-splash"])
+EOF
+expect_caught tools/rogue3_assembled.py "launcher whose binary name is assembled from variables"
+
+echo "=== 4. a shell=True command line, under tests/ ==="
+cat >tests/rogue4_shell_true.py <<'EOF'
+import subprocess
+subprocess.Popen("C:/app/oolite.app/oolite.exe --no-splash", shell=True)
+EOF
+expect_caught tests/rogue4_shell_true.py "shell=True command-line launcher under tests/"
+
+echo "=== 5. a SHELL WRAPPER - not scanned at all by the old --include='*.py' ==="
+cat >tools/rogue5_wrapper.sh <<'EOF'
+#!/usr/bin/env bash
+# A wrapper that launches the game. No python anywhere.
+set -u
+APP="${OO_APP_DIR:-upstream/oolite/build/meson_test/oolite.app}"
+exec "$APP/oolite.exe" --no-splash
+EOF
+expect_caught tools/rogue5_wrapper.sh "shell-wrapper launcher (.sh)"
+
+echo "=== 6. os.startfile, which the old check never matched ==="
+cat >tools/rogue6_startfile.py <<'EOF'
+import os
+os.startfile(os.path.join(os.environ["OO_APP_DIR"], "oolite.exe"))
+EOF
+expect_caught tools/rogue6_startfile.py "os.startfile launcher"
+
+echo "=== 7. NEGATIVE CONTROL: prose and docs must NOT trip the check ==="
+# A false positive is as bad as a miss: it makes the guard something people disable.
+cat >tools/rogue7_prose.py <<'EOF'
+"""Notes about the game.
+
+The Windows binary is called oolite.exe and lives in oolite.app/. We never launch it here;
+this module only parses upstream/oolite/build logs and mentions "oolite" in passing.
+"""
+import subprocess
+# subprocess.Popen(["oolite.exe"])  <- commented out on purpose, this is not a launcher
+def log_size(path):
+    return subprocess.run(["wc", "-c", path], capture_output=True).stdout
+EOF
+PLANTED="tools/rogue7_prose.py"
+out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?
+rm -f tools/rogue7_prose.py; PLANTED=""
+echo "  prose-only file -> check-desktop-lock exit $rc"
+if [ "$rc" -eq 0 ]; then
+	ok "prose mentioning oolite.exe does not trip the check (exit 0)"
+else
+	no "FALSE POSITIVE: a file that only mentions the binary in prose/comments tripped the check"
+	printf '%s\n' "$out" | sed -n '/2\/4/,/3\/4/p' | sed 's/^/      /'
+fi
+
+echo "=== 8. the tree is back to clean ==="
+out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?
+[ "$rc" -eq 0 ] && ok "clean again after every rogue was removed (exit $rc)" \
+	|| no "the tree did not come back clean (exit $rc)"
+
+echo
+if [ "$fail" -eq 0 ]; then echo "ALL ROGUE-LAUNCHER DETECTION CHECKS PASSED"; else echo "SOME CHECKS FAILED"; fi
+exit $fail

@@ -28,6 +28,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import threading
 
 
 class DesktopLockError(RuntimeError):
@@ -66,6 +67,22 @@ def owner_identity(tag):
     return f"{host}:{tag}{os.getpid()}"
 
 
+def heartbeat_interval(stale=None):
+    """How often to refresh the lock, from the stale window in force.
+
+    A third of the window, so two consecutive refreshes may be lost (a slow machine, a paused
+    process, a `bash` that took a second to start) before the lock is anywhere near stale - and
+    floored at 5s so a deliberately tiny OO_GUI_LOCK_STALE in a test does not spin.
+    """
+    if stale is None:
+        stale = os.environ.get("OO_GUI_LOCK_STALE", "1800")
+    try:
+        stale = int(float(stale))
+    except (TypeError, ValueError):
+        stale = 1800
+    return max(5, stale // 3)
+
+
 @contextlib.contextmanager
 def desktop_lock(tag, timeout=None, start=None, stream=None):
     """Hold the desktop mutex for the duration of the ``with`` body.
@@ -76,6 +93,22 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
     Failure to acquire raises DesktopLockError: the caller must NOT launch the game anyway. That
     is the bug this module exists for - tools/check-splash-off.py used to acquire "best effort"
     and launch regardless, which is the same collision with extra steps.
+
+    THE HOLD IS HEARTBEATED (bug oo-ccy9, review 1). tools/gui-lock reclaims a lock older than
+    OO_GUI_LOCK_STALE (default 1800s) so a holder that died cannot wedge the desktop for ever.
+    But the JS-API snapshot holds the desktop for a WHOLE enumeration - up to
+    MAX_SESSION_RESTARTS=80 sessions at OO_READY_TIMEOUT (default 240s) each - which can exceed
+    half an hour on a contended machine. Without a heartbeat the lock would go stale UNDER A LIVE
+    HOLDER: another launcher would legitimately reclaim it and put a SECOND GAME on the desktop
+    while this one is still being driven (the exact bug), and this run's own release would then
+    hit the ownership refusal below and merely warn.
+
+    So a daemon thread calls ``gui-lock refresh`` every ``heartbeat_interval()`` seconds while the
+    body runs. This does NOT defeat the stale mechanism, which is the thing that must not happen:
+    the refresh is a PUSH from the live holder and is ownership-checked, so a holder that crashes,
+    is killed, or hangs at the OS level stops refreshing, the mtime ages from its last refresh,
+    and the lock goes stale on schedule. A dead process cannot heartbeat. The thread is a daemon
+    and is joined in the ``finally``, so it can never outlive the interpreter or the hold.
 
     Release runs in a ``finally`` and is therefore reached on a crash, an exception or a
     ``KeyboardInterrupt``; it is the script's ownership-checked release, never an ``rm -rf``, so a
@@ -116,9 +149,39 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
         )
     path = held.stdout.strip()
     print(f"[*] desktop lock: held by {me} at {path}", file=out, flush=True)
+
+    # The heartbeat. Daemon so a hard exit can never be blocked by it; stopped and joined in the
+    # finally so it can never outlive the hold and keep a released (or reclaimed) lock alive.
+    stop = threading.Event()
+    interval = heartbeat_interval()
+
+    def _beat():
+        while not stop.wait(interval):
+            try:
+                r = subprocess.run(
+                    [bash, script, "refresh"], capture_output=True, text=True, env=env
+                )
+            except Exception as exc:  # noqa: BLE001 - a heartbeat must never kill the run
+                print(f"[!] desktop lock: heartbeat error: {exc}", file=out, flush=True)
+                continue
+            if r.returncode != 0:
+                # We no longer own the lock: somebody reclaimed it, or it was released. Say so
+                # loudly - it means a second process may now be on the desktop - but keep the
+                # body running; tearing down mid-enumeration from a daemon thread would be worse.
+                print(
+                    "[!] desktop lock: heartbeat refused, we may no longer hold the desktop: "
+                    f"{r.stderr.strip() or r.stdout.strip()}",
+                    file=out,
+                    flush=True,
+                )
+
+    beat = threading.Thread(target=_beat, name="desktop-lock-heartbeat", daemon=True)
+    beat.start()
     try:
         yield path
     finally:
+        stop.set()
+        beat.join(timeout=30)
         dropped = subprocess.run(
             [bash, script, "release"], capture_output=True, text=True, env=env
         )

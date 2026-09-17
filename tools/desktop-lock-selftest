@@ -130,6 +130,134 @@ echo "$out" | grep -q 'release rc: 3' && ok "release of another owner's lock ref
 OO_GUI_LOCK_OWNER=guitest2 $L release >/dev/null 2>&1
 rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
 
+echo "=== 5. a LIVE holder is not stale-reclaimed out from under itself ==="
+# THE BUG THIS ADDS COVER FOR (oo-ccy9 review 1). gui-lock reclaims a lock older than
+# OO_GUI_LOCK_STALE so a dead holder cannot wedge the desktop for ever. But js_api_snapshot holds
+# the desktop for a WHOLE enumeration - up to MAX_SESSION_RESTARTS=80 sessions at OO_READY_TIMEOUT
+# each - which can exceed the 1800s default. Before the heartbeat, the lock went stale UNDER A
+# LIVE HOLDER and another launcher legitimately put a SECOND GAME on the desktop while the first
+# was still being driven, and the holder's own release was then refused.
+#
+# Same situation, compressed: a 12s stale window, a hold of 30s (2.5 windows), and a rival that
+# keeps trying to take the desktop throughout.
+export OO_GUI_LOCK_STALE=12
+HOLD=30
+
+holder_log="$(native "${LOCALAPPDATA:-/tmp}/oolite-desktop-lock-held.log")"
+rm -f "$holder_log"
+OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" "$HOLD" >"$holder_log" 2>&1 <<'PY' &
+import os, sys, time
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock, heartbeat_interval
+print("heartbeat interval:", heartbeat_interval())
+with desktop_lock("jsapi", start=sys.argv[1]) as path:
+    print("HOLDING", path, flush=True)
+    time.sleep(float(sys.argv[2]))
+    owner = open(os.path.join(path, "owner")).readline().strip()
+    print("STILL_OWNED_BY", owner, flush=True)
+print("RELEASED", flush=True)
+PY
+HOLDER=$!
+sleep 3
+$L status | sed 's/^/  /'
+
+# A rival launcher polling for the desktop the whole time the holder is working. It must NEVER
+# get in: every acquire it makes should time out, because the holder keeps refreshing.
+rival_got=0
+tries=0
+while kill -0 $HOLDER 2>/dev/null && [ "$tries" -lt 6 ]; do
+	tries=$(( tries + 1 ))
+	if OO_GUI_LOCK_OWNER=rival $L acquire --timeout 4 >/dev/null 2>&1; then
+		rival_got=1
+		echo "  rival TOOK the desktop on try $tries while the holder was still working"
+		OO_GUI_LOCK_OWNER=rival $L release >/dev/null 2>&1
+		break
+	fi
+done
+wait $HOLDER 2>/dev/null
+held_out="$(cat "$holder_log" 2>/dev/null)"
+rm -f "$holder_log"
+echo "$held_out" | sed 's/^/  /'
+echo "  (rival attempted $tries acquires across a ${HOLD}s hold with a ${OO_GUI_LOCK_STALE}s stale window)"
+
+[ "$tries" -ge 2 ] && ok "the rival really did keep trying ($tries acquires)" \
+	|| no "the rival barely tried ($tries acquires); this proves nothing"
+[ "$rival_got" -eq 0 ] && ok "a rival never reclaimed the lock across ${HOLD}s > ${OO_GUI_LOCK_STALE}s stale" \
+	|| no "the held lock went STALE UNDER A LIVE HOLDER and a rival took the desktop"
+case "$held_out" in
+	*STILL_OWNED_BY*jsapi*) ok "after ${HOLD}s the holder still owns the lock under its own identity" ;;
+	*)                      no "the holder's own identity was gone from the lock after ${HOLD}s" ;;
+esac
+case "$held_out" in
+	*"heartbeat refused"*) no "the holder's heartbeat was refused: it lost the lock while working" ;;
+	*)                     ok "no heartbeat was ever refused during the hold" ;;
+esac
+case "$held_out" in
+	*RELEASED*) ok "the holder's own release succeeded (it still owned what it dropped)" ;;
+	*)          no "the holder never reached a clean release" ;;
+esac
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
+echo "=== 6. a CRASHED holder's lock still goes stale and is reclaimable ==="
+# The other direction, and the one a heartbeat could easily break. The fix must NOT make locks
+# immortal: refresh is a push from a live process, so a holder that is killed stops pushing and
+# the lock ages out exactly as before. If this fails, the heartbeat has defeated the stale
+# mechanism it was working around and one crash wedges the desktop for ever.
+crash_log="$(native "${LOCALAPPDATA:-/tmp}/oolite-desktop-lock-crash.log")"
+rm -f "$crash_log"
+OO_GUI_LOCK_TIMEOUT=10 python3 - "$TOOLS" >"$crash_log" 2>&1 <<'PY' &
+import sys, time
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import desktop_lock
+with desktop_lock("jsapi", start=sys.argv[1]) as path:
+    print("HOLDING", path, flush=True)
+    time.sleep(600)          # never reached: we are killed below
+PY
+VICTIM=$!
+sleep 4
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "the victim holds the lock before it dies" || no "the victim never took the lock"
+# SIGKILL: no finally, no release, no further heartbeat. Exactly a power-cut holder.
+kill -9 $VICTIM 2>/dev/null
+wait $VICTIM 2>/dev/null
+rm -f "$crash_log"
+sleep 1
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "the killed holder leaked its lock (as a crash does)" \
+	|| no "the lock vanished on its own; the rest of this check proves nothing"
+
+# Immediately: still fresh, so nobody may take it. This is what stops a slow rival from
+# reclaiming a lock whose holder is merely busy.
+if OO_GUI_LOCK_OWNER=after $L acquire --timeout 3 >/dev/null 2>&1; then
+	no "the crashed holder's lock was taken before its stale window elapsed"
+	OO_GUI_LOCK_OWNER=after $L release >/dev/null 2>&1
+else
+	ok "the crashed holder's lock is still respected inside the stale window"
+fi
+# Then past the window, with no heartbeat keeping it alive, it MUST be reclaimable.
+sleep $(( OO_GUI_LOCK_STALE + 4 ))
+if OO_GUI_LOCK_OWNER=after $L acquire --timeout 10 >/dev/null 2>&1; then
+	ok "the crashed holder's lock went stale and was reclaimed (${OO_GUI_LOCK_STALE}s window)"
+	OO_GUI_LOCK_OWNER=after $L release >/dev/null 2>&1
+else
+	no "a CRASHED holder's lock never went stale: the heartbeat has defeated the stale mechanism"
+fi
+unset OO_GUI_LOCK_STALE
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
+echo "=== 7. only the OWNER may refresh ==="
+# A refresh that anyone could call would let a rival keep somebody else's lock alive for ever -
+# the same hole as an unchecked release, pointed the other way.
+OO_GUI_LOCK_OWNER=holder7 $L acquire --timeout 5 >/dev/null
+OO_GUI_LOCK_OWNER=stranger7 $L refresh >/dev/null 2>&1; rc=$?
+echo "  stranger refresh rc=$rc"
+[ "$rc" -eq 3 ] && ok "refreshing another owner's lock is refused (exit 3)" \
+	|| no "a stranger refreshed a lock it does not own (rc=$rc)"
+OO_GUI_LOCK_OWNER=holder7 $L refresh >/dev/null 2>&1; rc=$?
+echo "  owner refresh rc=$rc"
+[ "$rc" -eq 0 ] && ok "the owner may refresh its own lock (exit 0)" \
+	|| no "the owner could not refresh its own lock (rc=$rc)"
+OO_GUI_LOCK_OWNER=holder7 $L release >/dev/null 2>&1
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
 echo
 if [ "$fail" -eq 0 ]; then echo "ALL DESKTOP-LAUNCHER EXCLUSION CHECKS PASSED"; else echo "SOME CHECKS FAILED"; fi
 exit $fail
