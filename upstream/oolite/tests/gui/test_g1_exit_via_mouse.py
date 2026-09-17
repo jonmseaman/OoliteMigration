@@ -16,12 +16,21 @@ import time
 import pytest
 
 from conftest import (
+    DESKTOP_UNUSABLE_MARKER,
+    DOUBLE_CLICK_INTERVAL_SECONDS,
+    DPI_PER_MONITOR_AWARE,
+    IS_WINDOWS,
     MAIN_GUI_PIXEL_HEIGHT,
     MAIN_GUI_ROW_HEIGHT,
     assert_clean_exit,
+    assert_dpi_awareness_matches_game,
     point_to_row,
     row_to_point,
 )
+
+# src/SDL/MyOpenGLView.h:59 - two left clicks further apart than this are two single clicks to
+# the game and never set gvMouseDoubleClick, so ` Exit Game ` is selected but never activated.
+MOUSE_DOUBLE_CLICK_INTERVAL = 0.40
 
 # PlayerEntity.m:9900-9960 - start-screen rows 22-27 are selectable and 27 is ` Exit Game `.
 EXIT_GAME_ROW = 27
@@ -91,6 +100,9 @@ def test_g1_exit_via_mouse(game):
     single-clicks ` Exit Game ` and waits sits on the start screen until it times out.
     """
     assert game.proc.poll() is None, "the game exited before the test could click anything"
+    # The window must own the foreground or the clicks below go to whatever does; the bug this
+    # test was rewritten for was exactly that, mistaken for a coordinate error.
+    game.assert_focused()
 
     # 1. Select. The click must not activate anything: the game is still running afterwards.
     x, y = game.select_row(EXIT_GAME_ROW)
@@ -119,3 +131,246 @@ def test_g1_exit_via_mouse(game):
 
     # 5. G9 hygiene: no crash dump, no ERROR in the log.
     assert_clean_exit(game.output_dir)
+
+
+# --- regression guards for the two defects behind this bug bead ---------------------------------
+#
+# Both were invisible on the implementer's desktop and fatal on the reviewer's, and neither needs
+# a game to check, so both are marked offline and gate in a clean checkout too.
+
+
+@pytest.mark.offline
+@pytest.mark.skipif(not IS_WINDOWS, reason="DPI awareness is a Windows concept")
+def test_test_process_is_dpi_aware_like_the_game():
+    """The test process must measure pixels the way Oolite does - PER_MONITOR, not merely 'aware'.
+
+    Oolite's manifest declares PerMonitorV2 (src/SDL/OOResourcesWin/oolite.exe.manifest:34-35).
+    A DPI-unaware python.exe is handed virtualised logical pixels by GetClientRect,
+    ClientToScreen and SendInput alike, so on any display above 100% scaling every point
+    row_to_point computes is wrong by the scale factor and the confirm click misses ` Exit Game `
+    while the maths still looks perfect. conftest declares awareness at import; this asserts it
+    took, because the failure it prevents is otherwise indistinguishable from a coordinate bug.
+    """
+    assert_dpi_awareness_matches_game()
+
+
+@pytest.mark.offline
+@pytest.mark.skipif(not IS_WINDOWS, reason="DPI awareness is a Windows concept")
+def test_system_dpi_awareness_is_not_accepted_as_matching_the_game():
+    """SYSTEM awareness (1) must FAIL the check, not pass it.
+
+    The assert this replaces was `awareness != 0`, which accepts PROCESS_SYSTEM_DPI_AWARE. A
+    system-aware process is told the PRIMARY monitor's DPI for the whole desktop, so on any
+    monitor whose scaling differs it still receives virtualised coordinates - exactly the
+    game/test mismatch the function is named for, and exactly the reachable case (an awareness
+    already set to SYSTEM by an earlier caller, so the PerMonitorV2 request is refused). A check
+    that passes in the very scenario it exists to catch is not a check.
+    """
+    import conftest
+
+    for insufficient in (conftest.DPI_UNAWARE, conftest.DPI_SYSTEM_AWARE):
+        original = conftest._process_dpi_awareness
+        conftest._process_dpi_awareness = lambda value=insufficient: value
+        try:
+            with pytest.raises(AssertionError) as caught:
+                conftest.assert_dpi_awareness_matches_game()
+        finally:
+            conftest._process_dpi_awareness = original
+        assert "PerMonitorV2" in str(caught.value)
+
+    # And the real process must genuinely be PER_MONITOR, not just not-unaware.
+    assert conftest._process_dpi_awareness() == DPI_PER_MONITOR_AWARE
+
+
+@pytest.mark.offline
+@pytest.mark.skipif(not IS_WINDOWS, reason="the DPI declaration is a Windows call")
+def test_the_dpi_declaration_checks_its_own_return():
+    """A refused SetProcessDpiAwarenessContext must be recorded, not discarded.
+
+    The call's return was previously thrown away with no argtypes/restype set, so a refusal was
+    invisible and the claim "declares PerMonitorV2 and asserts it took" was only half true. The
+    outcome is now recorded and named in the assertion message, the same way focus() ignores
+    SetForegroundWindow's return but verifies the real state with GetForegroundWindow.
+    """
+    import conftest
+
+    assert conftest._become_per_monitor_dpi_aware.requested is not None, (
+        "the DPI declaration's outcome is not recorded, so a silent refusal is possible"
+    )
+    user32 = __import__("ctypes").windll.user32
+    if hasattr(user32, "SetProcessDpiAwarenessContext"):
+        assert user32.SetProcessDpiAwarenessContext.argtypes == [__import__("ctypes").c_void_p], (
+            "without argtypes the context is truncated to 32 bits and the call fails on win64"
+        )
+
+
+@pytest.mark.offline
+def test_a_failed_start_kills_the_game_rather_than_leaking_it():
+    """start() must not leave a live oolite.exe behind when it fails part-way through.
+
+    The fixture's teardown only runs once ``yield window.start()`` has been reached, so a failure
+    inside start() - which focus() can now raise - used to leak the process. That orphan is not
+    just untidy: _pin_window parks every instance at exactly (0,0) at the same client size, so it
+    covers the NEXT run's window pixel for pixel and swallows its clicks, turning one failure into
+    a permanently broken machine. Checked without a real game by driving the failure directly.
+    """
+    import conftest
+
+    killed = []
+
+    class ExplodingWindow(conftest.GameWindow):
+        def __init__(self):
+            super().__init__(".", ".")
+            self.proc = object()  # stands in for the live Popen a failed start() leaves behind
+
+        def _park_software_gl(self):
+            pass
+
+        def _await_startup_complete(self, timeout):
+            pytest.fail("simulated: the game never finished loading")
+
+        def kill(self):
+            killed.append(True)
+
+    window = ExplodingWindow()
+    # Only the Popen and the steps after it matter here, so call the guarded region directly by
+    # running start() with the binary check and the Popen stubbed out.
+    original_popen = conftest.subprocess.Popen
+    conftest.subprocess.Popen = lambda *a, **k: window.proc
+    original_isfile = conftest.os.path.isfile
+    conftest.os.path.isfile = lambda path: True
+    original_assert = conftest.assert_dpi_awareness_matches_game
+    conftest.assert_dpi_awareness_matches_game = lambda: None
+    try:
+        with pytest.raises(BaseException):
+            window.start()
+    finally:
+        conftest.subprocess.Popen = original_popen
+        conftest.os.path.isfile = original_isfile
+        conftest.assert_dpi_awareness_matches_game = original_assert
+
+    assert killed, (
+        "start() failed without killing the process it had already launched; every failing run "
+        "would leak a live oolite.exe that occludes the next run's click point"
+    )
+
+
+@pytest.mark.offline
+def test_an_occluded_click_point_is_detected_even_though_focus_is_correct():
+    """THE THIRD FAILURE MODE: owning the foreground does not mean owning the pixels.
+
+    A synthetic click made with mouse_event (what pyautogui uses) is delivered BY POSITION to the
+    topmost window at that point, exactly like a physical click - NOT to the foreground window.
+    So a window above the game at the click point swallows the click while GetForegroundWindow()
+    still answers with the game's hwnd and assert_focused() still passes. That is precisely the
+    reviewer's report: focus() succeeded, assert_focused() passed, and the double-click still did
+    not activate the row.
+
+    Measured on this machine with a leaked oolite.exe present: foreground == our hwnd while
+    WindowFromPoint(488,727) returned the ORPHAN's hwnd. assert_click_point_is_ours is the check
+    that turns that silent miss into a named failure.
+    """
+    import conftest
+
+    window = conftest.GameWindow.__new__(conftest.GameWindow)
+    window.hwnd = 111111
+
+    user32 = conftest.ctypes.windll.user32
+    real_from_point = user32.WindowFromPoint
+    real_ancestor = user32.GetAncestor
+    try:
+        # Same window under the point: allowed.
+        user32.WindowFromPoint = lambda point: 111111
+        user32.GetAncestor = lambda hwnd, flag: 111111
+        window.assert_click_point_is_ours(488, 727)
+
+        # A DIFFERENT window under the point, while we still hold the foreground: fail loudly.
+        user32.WindowFromPoint = lambda point: 222222
+        user32.GetAncestor = lambda hwnd, flag: 222222
+        with pytest.raises(BaseException) as caught:
+            window.assert_click_point_is_ours(488, 727)
+    finally:
+        user32.WindowFromPoint = real_from_point
+        user32.GetAncestor = real_ancestor
+
+    message = str(caught.value)
+    assert "OCCLUDED" in message, "the occlusion failure must name its own cause"
+    assert "222222" in message, "the failure must name the window that would eat the click"
+
+
+@pytest.mark.offline
+def test_an_unusable_desktop_is_reported_distinguishably_from_a_broken_g1():
+    """An elevated foreground owner must be reported as a PRECONDITION, not as a click failure.
+
+    AttachThreadInput cannot cross the UIPI/integrity boundary, so while an elevated window owns
+    the foreground no retry can ever succeed and the tier is wedged. Measured: an elevated Task
+    Manager (integrity 0x3000 against our 0x2000) refused AttachThreadInput with
+    ERROR_ACCESS_DENIED on 11 consecutive runs. The gate must still FAIL - a silent pass is what
+    bead oo-7by1 removed - but it must say which of the two things went wrong, because
+    "your desktop is unusable" and "G1 is broken" call for opposite responses.
+    """
+    import conftest
+
+    original = conftest.describe_untakeable_foreground
+    conftest.describe_untakeable_foreground = lambda: (
+        "hwnd 461400 (class 'TaskManagerWindow', title 'Task Manager', pid 22884) owns the "
+        "foreground and refuses AttachThreadInput with ERROR_ACCESS_DENIED"
+    )
+    try:
+        with pytest.raises(BaseException) as caught:
+            conftest.assert_desktop_can_run_gui_tests()
+    finally:
+        conftest.describe_untakeable_foreground = original
+
+    message = str(caught.value)
+    assert not isinstance(caught.value, pytest.skip.Exception), (
+        "an unusable desktop must not SKIP; that is the silent pass oo-7by1 removed"
+    )
+    assert DESKTOP_UNUSABLE_MARKER in message, (
+        "the failure must carry the precondition marker so it is machine-distinguishable from a "
+        "G1 failure"
+    )
+    assert "TaskManagerWindow" in message, "the failure must name the offending window"
+
+    # And a takeable foreground must not fail at all.
+    conftest.describe_untakeable_foreground = lambda: None
+    try:
+        conftest.assert_desktop_can_run_gui_tests()
+    finally:
+        conftest.describe_untakeable_foreground = original
+
+
+@pytest.mark.offline
+def test_the_runner_checks_the_desktop_precondition_up_front():
+    """tools/gui-tier.sh must refuse an unusable desktop before it launches a game."""
+    import os
+
+    here = os.path.dirname(os.path.abspath(__file__))
+    runner = os.path.join(here, "..", "..", "..", "..", "tools", "gui-tier.sh")
+    with open(runner, "r", encoding="utf-8") as handle:
+        script = handle.read()
+    assert "describe_untakeable_foreground" in script, (
+        "the runner must check for an un-takeable foreground before starting the tier"
+    )
+    assert "DESKTOP_UNUSABLE_MARKER" in script
+
+
+@pytest.mark.offline
+def test_double_click_interval_activates_rather_than_selecting_twice():
+    """The confirm click's inter-click gap must be inside the game's double-click window.
+
+    MyOpenGLView+Input.m:285-293 sets gvMouseDoubleClick only when the gap between two
+    SDL_EVENT_MOUSE_BUTTON_UPs is under MOUSE_DOUBLE_CLICK_INTERVAL (0.40s,
+    MyOpenGLView.h:59). Left at a library default, a slower pair is two single clicks: the row is
+    selected, never activated, and the game runs on until the test times out - the exact symptom
+    this bead was filed for. Pinning the interval is only a fix while it stays under the game's.
+    """
+    assert DOUBLE_CLICK_INTERVAL_SECONDS < MOUSE_DOUBLE_CLICK_INTERVAL, (
+        f"confirm_row clicks {DOUBLE_CLICK_INTERVAL_SECONDS}s apart, but the game only counts a "
+        f"double-click under {MOUSE_DOUBLE_CLICK_INTERVAL}s (MyOpenGLView.h:59)"
+    )
+    # And with margin: the interval is the *requested* gap, and a loaded machine adds to it.
+    assert DOUBLE_CLICK_INTERVAL_SECONDS <= MOUSE_DOUBLE_CLICK_INTERVAL / 4.0, (
+        "the double-click interval has no headroom for scheduling jitter"
+    )
+
