@@ -1,0 +1,21 @@
+# Re-bless approvals — the ONLY way a change under a protected golden path passes
+# tools/guardrails.sh (CLAUDE.md rule 1, docs/phases/0-safety-net.md item 0.11).
+#
+# Protected paths today: goldens/ and tests/golden/scenarios/.
+#
+# Re-blessing a golden is Jon's decision alone. An agent that believes a golden is wrong says so
+# with a justification and stops; it does not edit the golden and it does not edit this file.
+# The guard enforces that mechanically: a change that edits BOTH a protected path AND this file
+# is refused, whatever it says here. An approval is therefore always a separate, human,
+# reviewed commit that lands BEFORE the re-bless, which is what makes it an approval rather than
+# a note the same agent wrote to excuse itself.
+#
+# FORMAT: one line per approved path. First whitespace-separated field is the path, exactly as
+# git reports it; the rest of the line is free text and should say who approved it, when, and
+# why. Blank lines and #-comments are ignored. A directory prefix is NOT accepted: an approval
+# names one file, so it cannot be widened by accident or inherited by the next change.
+#
+#   tests/golden/scenarios/001/scenario.json   Jon 2026-09-20, re-bless queue: settle time raised
+#                                              to 12 s after the run-loop fix (bead oo-xxxx).
+#
+# There are no approvals on record. That is the correct steady state.

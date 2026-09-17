@@ -1,0 +1,241 @@
+#!/usr/bin/env bash
+#
+# Proof that tools/guardrails.sh FAILS on a real violation of each of its four rules, and
+# passes on a clean tree (bead oo-ptc). A check that cannot fail is not a check.
+#
+#     tools/guardrails-selftest            # all cases, exit 0 only if every one behaves
+#
+# NOTHING HERE TOUCHES THIS REPOSITORY. Every case is applied to a throwaway fixture git repo
+# built from scratch under $LOCALAPPDATA/Temp: that is the only honest way to prove the
+# goldens guard, since proving it in place would mean committing the exact edit the guard
+# exists to forbid, and the same for the deleted-test guard.
+#
+# The fixture is a MINIATURE of the real tree (a protected golden path, a .feature, a step
+# library, a .m source) rather than a clone, so a case runs in milliseconds and the scenario
+# under test is the only thing in the diff. The two files that carry the real policy -
+# tools/guardrails.sh and tools/deny-list.txt - are COPIED IN, not reimplemented, so this
+# exercises the shipping guard and the shipping pattern list.
+set -u
+
+cd "$(dirname "$0")/.." || exit 1
+REPO="$PWD"
+GUARD="$REPO/tools/guardrails.sh"
+DENY="$REPO/tools/deny-list.txt"
+
+SCRATCH="${LOCALAPPDATA:-${TMPDIR:-${TEMP:-/tmp}}}/oolite-guardrails-selftest"
+rm -rf "$SCRATCH"
+
+fail=0
+ok() { printf 'PASS: %s\n' "$1"; }
+no() { printf 'FAIL: %s\n' "$1"; fail=1; }
+
+# fixture <name> : a fresh repo on branch main with one clean commit; cd's into it
+fixture() {
+  local d="$SCRATCH/$1"
+  rm -rf "$d"; mkdir -p "$d/tools" "$d/tests/golden/scenarios/001" \
+    "$d/upstream/oolite/tests/component/features" "$d/upstream/oolite/tests/component/steps" \
+    "$d/upstream/oolite/src/Core"
+  cp "$GUARD" "$d/tools/guardrails.sh"
+  cp "$DENY"  "$d/tools/deny-list.txt"
+  printf '{ "settle_seconds": 8 }\n' > "$d/tests/golden/scenarios/001/scenario.json"
+  cat > "$d/upstream/oolite/tests/component/features/s1.feature" <<'EOF'
+Feature: Ship-to-ship combat
+  Scenario: A police viper engages a lone pirate
+    Given a clean system
+    When the viper engages
+    Then the pirate is destroyed
+EOF
+  cat > "$d/upstream/oolite/tests/component/steps/world_steps.py" <<'EOF'
+from pytest_bdd import given, when, then
+
+@given("a clean system")
+def clean_system():
+    pass
+
+@when("the viper engages")
+def engage():
+    pass
+
+@then("the pirate is destroyed")
+def destroyed():
+    assert True
+EOF
+  cat > "$d/upstream/oolite/src/Core/OOColor.m" <<'EOF'
+#import "OOColor.h"
+
+@implementation OOColor
+- (void) reset { _r = 0.0f; }
+@end
+EOF
+  ( cd "$d" && git init -q -b main . \
+      && git -c user.email=s@l -c user.name=s add -A \
+      && git -c user.email=s@l -c user.name=s commit -qm base ) || return 1
+  cd "$d" || return 1
+}
+
+# run the guard in the current fixture; prints rc and captures output in $OUT
+run_guard() { OUT=$(bash tools/guardrails.sh 2>&1); RC=$?; }
+
+# expect_fail <case> <substring>
+expect_fail() {
+  run_guard
+  printf '  rc=%s\n' "$RC"
+  printf '%s\n' "$OUT" | grep -E 'guardrails: (goldens|suppression|tests|deny-list):' | sed 's/^/    /'
+  if [ "$RC" -eq 0 ]; then no "$1 (guard exited 0 on a real violation)"; return; fi
+  if printf '%s' "$OUT" | grep -qF "$2"; then ok "$1"; else no "$1 (failed, but not with \"$2\")"; fi
+}
+
+expect_pass() {
+  run_guard
+  printf '  rc=%s\n' "$RC"
+  if [ "$RC" -eq 0 ]; then ok "$1"; else printf '%s\n' "$OUT" | sed 's/^/    /'; no "$1 (guard exited $RC on a clean tree)"; fi
+}
+
+echo "=== 0. clean fixture: the guard must PASS, or every case below is meaningless ==="
+fixture clean || { no "fixture setup"; exit 1; }
+expect_pass "clean tree passes"
+
+echo
+echo "=== 1. goldens: a change under a protected golden path is REFUSED ==="
+fixture goldens || exit 1
+printf '{ "settle_seconds": 99 }\n' > tests/golden/scenarios/001/scenario.json
+expect_fail "modified golden is refused" "has no re-bless approval"
+
+echo
+echo "=== 1b. ...and a NEW file dropped under a protected path is refused too ==="
+fixture goldens_add || exit 1
+printf '{ "settle_seconds": 3 }\n' > tests/golden/scenarios/002-scenario.json
+mkdir -p tests/golden/scenarios/002 && printf '{}\n' > tests/golden/scenarios/002/scenario.json
+expect_fail "added golden is refused" "has no re-bless approval"
+
+echo
+echo "=== 1c. ...unless a re-bless approval is already on record (a PRIOR commit) ==="
+fixture goldens_ok || exit 1
+printf 'tests/golden/scenarios/001/scenario.json  Jon, weekly re-bless queue\n' > tools/rebless-approvals.txt
+git -c user.email=s@l -c user.name=s add -A >/dev/null
+git -c user.email=s@l -c user.name=s commit -qm "approval" >/dev/null
+# main is the checked-out branch, so that commit already moved the base: the approval is part
+# of the BASE, not of the change under test. That is the whole point of this case.
+printf '{ "settle_seconds": 99 }\n' > tests/golden/scenarios/001/scenario.json
+expect_pass "approved re-bless is allowed"
+
+echo
+echo "=== 1d. ...and a change may NOT approve itself in the same breath ==="
+fixture goldens_self || exit 1
+printf 'tests/golden/scenarios/001/scenario.json  I approve of me\n' > tools/rebless-approvals.txt
+printf '{ "settle_seconds": 99 }\n' > tests/golden/scenarios/001/scenario.json
+expect_fail "self-approval refused" "may not approve itself"
+
+echo
+echo "=== 2. suppression: a NEW warning suppression is REFUSED ==="
+# Built by concatenation so the literals never appear in this file's own source.
+FLAG="-W""no-unused-variable"
+PRAGMA="#pragma clang diag""nostic ignored \"-W""shadow\""
+ATTR="__attr""ibute__((unused))"
+
+fixture sup_flag || exit 1
+printf "extra_args = ['%s']\n" "$FLAG" >> upstream/oolite/src/Core/meson.build
+expect_fail "added compiler flag refused" "adds a warning suppression"
+
+fixture sup_pragma || exit 1
+printf '%s\n' "$PRAGMA" >> upstream/oolite/src/Core/OOColor.m
+expect_fail "added pragma refused" "adds a warning suppression"
+
+fixture sup_attr || exit 1
+printf 'static int leftover %s;\n' "$ATTR" >> upstream/oolite/src/Core/OOColor.m
+expect_fail "added unused-attribute refused" "adds a warning suppression"
+
+echo
+echo "=== 2b. ...but a suppression that was ALREADY there is not a new violation ==="
+fixture sup_preexisting || exit 1
+printf '%s\n' "$PRAGMA" >> upstream/oolite/src/Core/OOColor.m
+git -c user.email=s@l -c user.name=s commit -qam "pre-existing upstream suppression" >/dev/null
+printf '// an unrelated later edit\n' >> upstream/oolite/src/Core/OOColor.m
+expect_pass "pre-existing suppression does not fail a later edit"
+
+echo
+echo "=== 2c. ...and prose ABOUT the rule is not a violation (the grep trap) ==="
+fixture sup_prose || exit 1
+{ printf '# House rules\n'
+  printf 'Never add %s or a %s to silence a warning.\n' "$FLAG" "$PRAGMA"; } > NOTES.md
+expect_pass "documentation quoting the forbidden constructs passes"
+
+echo
+echo "=== 3. tests: a deleted test file is REFUSED ==="
+fixture test_del || exit 1
+git rm -q upstream/oolite/tests/component/features/s1.feature
+expect_fail "deleted .feature refused" "is deleted"
+
+echo
+echo "=== 3b. ...the component step library counts as a test (ADR-0018 §5) ==="
+fixture test_steps || exit 1
+git rm -q upstream/oolite/tests/component/steps/world_steps.py
+expect_fail "deleted step library refused" "is deleted"
+
+echo
+echo "=== 3c. ...an EMPTIED test is refused even though the file still exists ==="
+fixture test_gut || exit 1
+cat > upstream/oolite/tests/component/features/s1.feature <<'EOF'
+Feature: Ship-to-ship combat
+EOF
+expect_fail "gutted .feature refused" "is emptied"
+
+echo
+echo "=== 3d. ...as is commenting the assertions out of a step file ==="
+fixture test_comment || exit 1
+sed -i 's/^@then/#@then/; s/^    assert True/    #assert True/' upstream/oolite/tests/component/steps/world_steps.py
+expect_fail "commented-out steps refused" "is emptied"
+
+echo
+echo "=== 3e. ...a test renamed OUT of the test set is refused ==="
+# Out of the test set means the NEW path no longer classifies as a test. Moving the step
+# library into src/ under a neutral name is exactly how a test disappears without a deletion:
+# the file survives, pytest never collects it, and every scenario using those steps dies.
+# (Moving a .feature would NOT trip this, and should not: a .feature is a test wherever it is.)
+fixture test_rename || exit 1
+git mv upstream/oolite/tests/component/steps/world_steps.py upstream/oolite/src/Core/world_steps.py
+expect_fail "test renamed out of the test set refused" "out of the test set"
+
+echo
+echo "=== 3f. ...but ADDING to a test is expected and must PASS ==="
+fixture test_add || exit 1
+cat >> upstream/oolite/tests/component/features/s1.feature <<'EOF'
+
+  Scenario: A second viper joins
+    Given a clean system
+    Then the pirate is destroyed
+EOF
+expect_pass "adding a scenario passes"
+
+echo
+echo "=== 4. deny-list: a reintroduced JS_*/GNUstep symbol is REFUSED ==="
+fixture deny_js || exit 1
+printf 'static JSRuntime *rt; static void f(void) { JS_NewContext(rt); }\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "reintroduced JS_* refused" "reintroduces deny-listed symbols"
+
+fixture deny_gs || exit 1
+printf '#import <Foundation/Foundation.h>\n' >> upstream/oolite/src/Core/OOColor.m
+expect_fail "reintroduced Foundation import refused" "reintroduces deny-listed symbols"
+
+echo
+echo "=== 5. ANTI-VACUITY: a guard that can no longer scan anything must FAIL, not pass ==="
+fixture vac_deny || exit 1
+git rm -q tools/deny-list.txt
+expect_fail "missing deny-list fails the run" "this check cannot fire"
+
+fixture vac_deny_empty || exit 1
+printf '# every pattern removed\n' > tools/deny-list.txt
+expect_fail "empty deny-list fails the run" "this check cannot fire"
+
+fixture vac_goldens || exit 1
+git rm -q -r tests/golden >/dev/null
+expect_fail "protected path gone fails the run" "protected-path list has rotted"
+
+echo
+cd "$REPO" || exit 1
+if [ "$fail" -eq 0 ]; then
+  echo "guardrails-selftest: ALL CASES BEHAVED"
+else
+  echo "guardrails-selftest: FAILURES ABOVE" >&2
+fi
+exit "$fail"
