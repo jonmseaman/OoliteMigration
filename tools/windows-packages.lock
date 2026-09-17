@@ -5,6 +5,7 @@ git 2.55.0-1
 mingw-w64-ucrt-x86_64-binutils 2.47-3
 mingw-w64-ucrt-x86_64-ccache 4.14-1
 mingw-w64-ucrt-x86_64-clang 22.1.8-2
+mingw-w64-ucrt-x86_64-clang-tools-extra 22.1.8-2
 mingw-w64-ucrt-x86_64-espeak-ng 1.52.0.r141.g0d451f8c-1
 mingw-w64-ucrt-x86_64-gnustep-base 1.31.1+7a5990974-1
 mingw-w64-ucrt-x86_64-gnustep-make 2.9.3+97b568f1-1

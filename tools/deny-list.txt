@@ -1,0 +1,24 @@
+# Tier A / B symbol deny-list (docs/execution-model.md §7.5, docs/phases/0-safety-net.md 0.11).
+#
+# One extended-regular-expression per line; blank lines and #-comments ignored.
+# A pattern that must match a literal '#' has to start with the bracket form '[#]', or the
+# reader takes the whole line for a comment and the rule silently never runs.
+# Consumed by tools/tier-a.sh, which greps a changed file for these and compares the hit
+# count against the same file at the merge base — a *new* hit fails the tier.
+#
+# It has to be baseline-relative, not absolute: today the tree legitimately contains 3,828
+# JS_* call sites across 102 files and links libgnustep-base everywhere. The regression
+# this catches is reintroduction — a file that was migrated off SpiderMonkey or off
+# GNUstep growing a call back. Once Phase 1 and Phase 2 land and the counts reach zero,
+# baseline-relative and absolute mean the same thing, and nothing here has to change.
+
+# --- SpiderMonkey (Phase 1, ADR-0002: replaced by quickjs-ng behind a JSEngine facade) ---
+\bJS_[A-Za-z_][A-Za-z0-9_]*\b
+\bJSRuntime\b
+\bJSContext\b
+\bjsval\b
+
+# --- libgnustep-base (Phase 2: replaced by oofnd; the Objective-C runtime stays) ---
+\bGNUSTEP_BASE_LIBRARY\b
+[#]import[[:space:]]*<Foundation/
+\bNSAutoreleasePool\b
