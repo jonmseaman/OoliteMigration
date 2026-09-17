@@ -33,8 +33,11 @@ BUDGET_SECONDS="${OOLITE_TIER_A_BUDGET:-30}"
 # accept.sh runs those with a plain `bash -c` in whatever shell the orchestrator started
 # in. Without this, Tier A fails on MSYSTEM rather than on the code.
 
+# `OOLITE_TIER_A_SOURCE_ONLY=1 . tools/tier-a.sh` must NOT re-exec: a probe sources this file
+# to test the real deny-list gate, and an exec would replace the probe with a help message.
 MSYS2_BASH="${MSYS2_BASH:-/c/msys64/usr/bin/bash.exe}"
-if [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OOLITE_TIER_A_REEXEC:-}" ] && [ -x "$MSYS2_BASH" ]; then
+if [ "${OOLITE_TIER_A_SOURCE_ONLY:-0}" != 1 ] \
+   && [ "${MSYSTEM:-}" != "UCRT64" ] && [ -z "${OOLITE_TIER_A_REEXEC:-}" ] && [ -x "$MSYS2_BASH" ]; then
   export OOLITE_TIER_A_REEXEC=1
   exec env MSYSTEM=UCRT64 CHERE_INVOKING=1 "$MSYS2_BASH" -lc \
     "$(printf '%q ' "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")" "$@")"
@@ -58,6 +61,158 @@ fail() {
 }
 
 usage() { sed -n '2,24p' "${BASH_SOURCE[0]}"; }
+
+# --- the deny-list gate (step 3), defined here so a probe can source the REAL code -----------
+#
+# Sourcing: `OOLITE_TIER_A_SOURCE_ONLY=1 . tools/tier-a.sh` defines resolve_base_ref,
+# deny_count and deny_gate and returns without running any step, so
+# tools/tier-a-deny-probe.sh exercises these functions rather than a paraphrase of them.
+# That is the tools/check-file-modes.sh pattern (bead oo-tqmx) applied here.
+#
+# Three defects this replaces (bead oo-2ixr), each of which on its own made step 3 a gate
+# that could never fail:
+#
+#   A. `merge-base HEAD main || echo HEAD` compared the working tree against ITSELF whenever
+#      the merge base was unavailable (single-branch clone, detached CI checkout), so the
+#      baseline count always equalled the current count. A baseline that cannot be resolved
+#      is now fatal: a gate that cannot fail must not be allowed to report PASS.
+#   B. `grep -cE` counts LINES. Adding two more JS_* calls to a line that already had one was
+#      invisible, and packing previously-separate hits onto fewer lines LOWERED the baseline
+#      enough to mask new ones. Occurrences are counted with `grep -oE` instead.
+#   C. `|| true` swallowed grep's exit 2 (malformed ERE, unreadable input) exactly as it
+#      swallowed exit 1 (no match), so one typo in tools/deny-list.txt retired that rule for
+#      good and nothing said so. rc >= 2 is now an error, distinct from "no match".
+
+# deny_count [deny-list-path] -- text on stdin; prints the TOTAL NUMBER OF OCCURRENCES of all
+# patterns (not the number of matching lines). Exit 0 ok, 2 if a pattern is unusable.
+deny_count() {
+  local list="${1:-$DENY_LIST}"
+  local text; text="$(cat)"
+  local total=0 pattern out rc hits
+  while IFS= read -r pattern || [ -n "$pattern" ]; do
+    case "$pattern" in ''|'#'*) continue ;; esac
+    # grep's status is CAPTURED, never swallowed: 0 = hits, 1 = no match, >= 2 = grep itself
+    # failed. Captured with `|| rc=$?` rather than by toggling `set +e` / `set -e`: this file
+    # is also SOURCED by tools/tier-a-deny-probe.sh, and a bare `set -e` here would switch
+    # errexit ON in the probe's shell and kill it at its first deliberately-failing case.
+    rc=0
+    out="$(printf '%s\n' "$text" | grep -oE "$pattern")" || rc=$?
+    if [ "$rc" -ge 2 ]; then
+      printf 'tier-a: deny-list pattern is unusable (grep exit %s): %s\n' "$rc" "$pattern" >&2
+      printf 'tier-a: fix it in %s -- a pattern that cannot run is a rule that never runs\n' \
+        "$list" >&2
+      return 2
+    fi
+    if [ -n "$out" ]; then
+      hits="$(printf '%s\n' "$out" | wc -l)"
+      total=$(( total + hits ))
+    fi
+  done < "$list"
+  printf '%s' "$total"
+}
+
+# resolve_base_ref <repo-root> -- print the commit the deny-list baseline is read from.
+# Exit 1 (never a silent fallback to HEAD) when no baseline can be resolved.
+resolve_base_ref() {
+  local root="$1" branch="${OOLITE_TIER_A_BASE_BRANCH:-main}" ref='' cand head
+  if [ -n "${OOLITE_TIER_A_BASE:-}" ]; then
+    ref="$(git -C "$root" rev-parse --verify --quiet "${OOLITE_TIER_A_BASE}^{commit}")" || ref=''
+    if [ -z "$ref" ]; then
+      printf 'tier-a: OOLITE_TIER_A_BASE=%s does not name a commit in %s\n' \
+        "$OOLITE_TIER_A_BASE" "$root" >&2
+      return 1
+    fi
+  else
+    # The base branch may be local (`main`) or only a remote-tracking ref (a CI checkout that
+    # fetched one branch); try both before giving up. This is the resolution order
+    # tools/guardrails.sh uses, and it is what makes the gate live in accept.sh's DETACHED
+    # merged checkout, where HEAD is the merge commit and `main` is still a local branch.
+    for cand in "$branch" "origin/$branch" "refs/remotes/origin/$branch"; do
+      git -C "$root" rev-parse --verify --quiet "${cand}^{commit}" >/dev/null || continue
+      ref="$(git -C "$root" merge-base HEAD "$cand" 2>/dev/null)" || ref=''
+      [ -n "$ref" ] && break
+    done
+    if [ -z "$ref" ]; then
+      printf 'tier-a: no merge base between HEAD and %s in %s.\n' "$branch" "$root" >&2
+      printf 'tier-a: refusing to run the deny-list against HEAD itself -- that compares the\n' >&2
+      printf 'tier-a: file with itself and can never fail. Fetch %s, or set OOLITE_TIER_A_BASE.\n' \
+        "$branch" >&2
+      return 1
+    fi
+  fi
+  head="$(git -C "$root" rev-parse --verify --quiet 'HEAD^{commit}')" || head=''
+  if [ -n "$head" ] && [ "$ref" = "$head" ]; then
+    printf 'tier-a: note: deny-list baseline is HEAD (%s); a committed regression at HEAD\n' \
+      "${ref:0:12}" >&2
+    printf 'tier-a: note: is part of the baseline and only uncommitted hits can fail.\n' >&2
+  fi
+  printf '%s' "$ref"
+}
+
+# deny_gate <repo-root> <base-ref> <source-file> <source-rel-path>
+#   0 = no new hits, 1 = REGRESSION (more occurrences than the baseline), 2 = the gate could
+#   not be evaluated (bad ref, unusable pattern). 2 is never reported as a pass.
+deny_gate() {
+  local root="$1" base="$2" file="$3" rel="$4"
+  local now_count base_count base_text pattern rc parent
+
+  [ -f "$file" ] || { printf 'tier-a: no such file: %s\n' "$file" >&2; return 2; }
+  git -C "$root" rev-parse --verify --quiet "${base}^{commit}" >/dev/null \
+    || { printf 'tier-a: deny-list baseline %s is not a commit\n' "$base" >&2; return 2; }
+
+  now_count="$(deny_count <"$file")" || return 2
+
+  if git -C "$root" cat-file -e "$base:$rel" 2>/dev/null; then
+    # THE VACUITY CHECK. If the baseline is HEAD itself and the file on disk is byte-identical
+    # to the blob at HEAD, both counts are computed from the SAME BYTES: the comparison is a
+    # tautology and step 3 cannot fail, whatever the file contains. That is exactly the state
+    # the old `|| echo HEAD` fallback produced, and it reported PASS. Step back to HEAD's
+    # first parent, which is a real baseline ("did the last commit add deny-listed symbols?");
+    # if there is no such baseline, refuse rather than run a check that cannot fail.
+    # "unmodified" is decided with `git diff` on the REPO-RELATIVE path, not by hashing an
+    # absolute one: on MSYS an absolute /c/... path handed to native git resolves elsewhere.
+    if [ "$base" = "$(git -C "$root" rev-parse --verify --quiet 'HEAD^{commit}')" ] \
+       && git -C "$root" diff --quiet "$base" -- "$rel"; then
+      parent="$(git -C "$root" rev-parse --verify --quiet "${base}^1^{commit}")" || parent=''
+      if [ -n "$parent" ] && git -C "$root" cat-file -e "$parent:$rel" 2>/dev/null; then
+        printf 'tier-a: baseline %s is HEAD and %s is unmodified there; using %s instead\n' \
+          "${base:0:12}" "$rel" "${parent:0:12}" >&2
+        base="$parent"
+      else
+        printf 'tier-a: the deny-list baseline for %s is HEAD, the file is unmodified, and\n' \
+          "$rel" >&2
+        printf 'tier-a: there is no earlier commit of it: both counts would read the same\n' >&2
+        printf 'tier-a: bytes and step 3 could never fail. Set OOLITE_TIER_A_BASE.\n' >&2
+        return 2
+      fi
+    fi
+    base_text="$(git -C "$root" show "$base:$rel")" \
+      || { printf 'tier-a: cannot read %s at %s\n' "$rel" "$base" >&2; return 2; }
+    base_count="$(printf '%s\n' "$base_text" | deny_count)" || return 2
+  else
+    # Genuinely absent at the baseline (a newly added file): compared against zero. This is
+    # the ONLY case that may default, and it is decided by cat-file -e, not by a swallowed error.
+    base_count=0
+  fi
+
+  detail "deny-list hits: $now_count now, $base_count at ${base:0:12}"
+  if [ "$now_count" -gt "$base_count" ]; then
+    printf 'tier-a: %s reintroduces deny-listed symbols (%s -> %s):\n' \
+      "$rel" "$base_count" "$now_count" >&2
+    while IFS= read -r pattern || [ -n "$pattern" ]; do
+      case "$pattern" in ''|'#'*) continue ;; esac
+      rc=0
+      grep -nE "$pattern" "$file" >&2 || rc=$?
+      [ "$rc" -le 1 ] || printf 'tier-a: (pattern unusable while reporting: %s)\n' "$pattern" >&2
+    done < "$DENY_LIST"
+    return 1
+  fi
+  return 0
+}
+
+if [ "${OOLITE_TIER_A_SOURCE_ONLY:-0}" = 1 ]; then
+  return 0 2>/dev/null || exit 0
+fi
 
 case "${1:-}" in
   -h|--help) usage; exit 0 ;;
@@ -168,38 +323,17 @@ detail "$(( SECONDS - T0 ))s"
 step "3/3 deny     tools/deny-list.txt"
 T0=$SECONDS
 
-BASE_REF="${OOLITE_TIER_A_BASE:-}"
-if [ -z "$BASE_REF" ]; then
-  BASE_REF="$(git -C "$REPO_ROOT" merge-base HEAD main 2>/dev/null || echo HEAD)"
-fi
+BASE_REF="$(resolve_base_ref "$REPO_ROOT")" \
+  || die "cannot resolve a deny-list baseline; see the message above"
+[ -n "$BASE_REF" ] || die "cannot resolve a deny-list baseline for $SOURCE_REL"
 
-deny_count() {   # deny_count <text-on-stdin> ; prints total hits across all patterns
-  local text; text="$(cat)"
-  local total=0 pattern hits
-  while IFS= read -r pattern; do
-    case "$pattern" in ''|'#'*) continue ;; esac
-    hits="$(printf '%s' "$text" | grep -cE "$pattern" || true)"
-    total=$(( total + hits ))
-  done < "$DENY_LIST"
-  printf '%s' "$total"
-}
-
-NOW_COUNT="$(deny_count < "$SOURCE_ABS")"
-if BASE_TEXT="$(git -C "$REPO_ROOT" show "$BASE_REF:$SOURCE_REL" 2>/dev/null)"; then
-  BASE_COUNT="$(printf '%s' "$BASE_TEXT" | deny_count)"
-else
-  BASE_COUNT=0
-fi
-
-detail "deny-list hits: $NOW_COUNT now, $BASE_COUNT at ${BASE_REF:0:12}"
-if [ "$NOW_COUNT" -gt "$BASE_COUNT" ]; then
-  echo "tier-a: $SOURCE_REL reintroduces deny-listed symbols ($BASE_COUNT -> $NOW_COUNT):" >&2
-  while IFS= read -r pattern; do
-    case "$pattern" in ''|'#'*) continue ;; esac
-    grep -nE "$pattern" "$SOURCE_ABS" >&2 || true
-  done < "$DENY_LIST"
-  fail "deny-list"
-fi
+DENY_RC=0
+deny_gate "$REPO_ROOT" "$BASE_REF" "$SOURCE_ABS" "$SOURCE_REL" || DENY_RC=$?
+case "$DENY_RC" in
+  0) ;;
+  1) fail "deny-list" ;;
+  *) die "the deny-list gate could not be evaluated for $SOURCE_REL (exit $DENY_RC); refusing to report PASS" ;;
+esac
 detail "$(( SECONDS - T0 ))s"
 
 # --- Report -------------------------------------------------------------------------------
