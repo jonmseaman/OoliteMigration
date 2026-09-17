@@ -18,10 +18,12 @@ Three things live here, and G2-G9 reuse all three:
 import ctypes
 import math
 import os
+import platform
 import shutil
 import subprocess
 import sys
 import time
+import warnings
 
 import pytest
 
@@ -357,17 +359,73 @@ class GameWindow:
 # --- fixtures -----------------------------------------------------------------------------------
 
 
-def _lock_dir():
-    """The same path tools/gui-lock computes. Change one, change the other."""
+def _lock_script():
+    """Absolute path to tools/gui-lock, or None if there is no checkout around us."""
+    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+    script = os.path.join(repo, "tools", "gui-lock")
+    return script if os.path.isfile(script) else None
+
+
+def _lock_path():
+    """The lock directory - the SAME string tools/gui-lock prints.
+
+    Sameness is not promised, it is delegated: we ask the script. Two halves each applying
+    "the same rules" is how this drifted before - the shell said ${TMPDIR:-/tmp}/... (an MSYS
+    path) while python said tempfile.gettempdir() (a native path), so a shell holder and a
+    pytest holder locked two different directories and the mutex silently stopped excluding.
+    The bash-less fallback below repeats the rules only because it must, and normalises to the
+    same native C:/... form the script emits via `cygpath -m`.
+    """
+    bash = shutil.which("bash")
+    script = _lock_script()
+    if bash and script:
+        out = subprocess.run(
+            [bash, script, "path"], capture_output=True, text=True
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            return out.stdout.strip()
     explicit = os.environ.get("OO_GUI_LOCK_DIR")
     if explicit:
-        return explicit
+        return _native(explicit)
     local = os.environ.get("LOCALAPPDATA")
     if local:
-        return os.path.join(local, "Temp", "oolite-gui-desktop.lock")
+        return _native(os.path.join(local, "Temp", "oolite-gui-desktop.lock"))
     import tempfile
 
-    return os.path.join(tempfile.gettempdir(), "oolite-gui-desktop.lock")
+    return _native(os.path.join(tempfile.gettempdir(), "oolite-gui-desktop.lock"))
+
+
+def _native(path):
+    """Forward-slash native form, matching `cygpath -m` output on this machine."""
+    return os.path.abspath(path).replace("\\", "/")
+
+
+def _lock_owner():
+    """This session's owner identity, passed explicitly to tools/gui-lock.
+
+    Not left to the script's default: the script's fallback identity is "<host>:<PPID>", and a
+    bash spawned by a *native* Windows python reports PPID=1, so every pytest session would
+    claim the identity "<host>:1" and could release another session's lock. We pass our own pid
+    in OO_GUI_LOCK_OWNER for both acquire and release, so the identity is ours and is stable
+    across the two invocations.
+    """
+    explicit = os.environ.get("OO_GUI_LOCK_OWNER")
+    if explicit:
+        return explicit
+    host = os.environ.get("HOSTNAME") or platform.node()
+    return f"{host}:py{os.getpid()}"
+
+
+def _lock_held_by(path):
+    """The owner recorded in the lock directory, or None."""
+    try:
+        with open(os.path.join(path, "owner"), "r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.startswith("owner="):
+                    return line[len("owner=") :].strip()
+    except OSError:
+        return None
+    return None
 
 
 @pytest.fixture(scope="session")
@@ -378,39 +436,74 @@ def desktop_lock():
     each other's focus and each other's clicks. tools/gui-lock is the mutex; it is a plain
     mkdir lock so a shell step and a pytest run can share it.
     """
-    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
-    script = os.path.join(repo, "tools", "gui-lock")
+    script = _lock_script()
     bash = shutil.which("bash")
-    if bash and os.path.isfile(script):
+    me = _lock_owner()
+    if bash and script:
+        # OO_GUI_LOCK_OWNER is ours and is passed to BOTH calls, so release drops the lock this
+        # session took and the script refuses it if some other run holds it.
+        env = dict(os.environ, OO_GUI_LOCK_OWNER=me)
         held = subprocess.run(
             [bash, script, "acquire", "--timeout", os.environ.get("OO_GUI_LOCK_TIMEOUT", "900")],
             capture_output=True,
             text=True,
+            env=env,
         )
         if held.returncode != 0:
             pytest.fail(f"could not take the GUI desktop lock: {held.stderr.strip()}")
         try:
-            yield _lock_dir()
+            yield _lock_path()
         finally:
-            subprocess.run([bash, script, "release"], capture_output=True)
+            dropped = subprocess.run(
+                [bash, script, "release"], capture_output=True, text=True, env=env
+            )
+            if dropped.returncode != 0:
+                warnings.warn(
+                    f"gui-lock: release refused: {dropped.stderr.strip()}", stacklevel=1
+                )
         return
     # No bash (or no checkout around us): take the identical lock directly. Same protocol, same
-    # path, so it still excludes a shell-side holder.
-    path = _lock_dir()
+    # path, same ownership record, so it still excludes - and is still excluded by - a
+    # shell-side holder.
+    path = _lock_path()
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    deadline = time.time() + 900
+    deadline = time.time() + float(os.environ.get("OO_GUI_LOCK_TIMEOUT", "900"))
     while True:
         try:
             os.mkdir(path)
+            with open(os.path.join(path, "owner"), "w", encoding="utf-8") as fh:
+                fh.write(f"owner={me}\ninfo=python pid={os.getpid()} {time.strftime('%FT%T%z')}\n")
             break
         except FileExistsError:
+            # Same stale rule as the script (OO_GUI_LOCK_STALE, age not liveness), so a
+            # crashed holder does not wedge the tier for ever here either.
+            try:
+                stale = float(os.environ.get("OO_GUI_LOCK_STALE", "1800"))
+                if time.time() - os.path.getmtime(path) > stale:
+                    shutil.rmtree(path, ignore_errors=True)
+                    continue
+            except OSError:
+                pass
             if time.time() >= deadline:
-                pytest.fail(f"could not take the GUI desktop lock at {path}")
+                pytest.fail(
+                    f"could not take the GUI desktop lock at {path}; "
+                    f"held by {_lock_held_by(path) or 'unknown'}"
+                )
             time.sleep(2)
     try:
         yield path
     finally:
-        shutil.rmtree(path, ignore_errors=True)
+        # Ownership-checked, never an unconditional rmtree: a teardown that ran after some
+        # other run had legitimately taken the lock would otherwise drop a live holder's lock
+        # and put two processes on the desktop at once.
+        holder = _lock_held_by(path)
+        if holder == me:
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            warnings.warn(
+                f"gui-lock: not releasing {path}: held by {holder or 'unknown'}, we are {me}",
+                stacklevel=1,
+            )
 
 
 @pytest.fixture(scope="session")

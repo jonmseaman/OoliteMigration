@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# Exclusion proof for tools/gui-lock. Real concurrent processes, scratch lock dir.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+export OO_GUI_LOCK_DIR="${LOCALAPPDATA:-${TMPDIR:-${TEMP:-/tmp}}}/oolite-gui-proof.lock"
+rm -rf "$OO_GUI_LOCK_DIR"
+L="bash tools/gui-lock"
+fail=0
+ok(){ echo "PASS: $1"; }
+no(){ echo "FAIL: $1"; fail=1; }
+
+echo "=== 1. second concurrent acquire must NOT get the lock ==="
+# Holder A: a long-lived shell that acquires and keeps running (its pid is the owner).
+bash -c 'export OO_GUI_LOCK_OWNER=holderA; bash tools/gui-lock acquire --timeout 5 >/dev/null && sleep 12' &
+A=$!
+sleep 2
+$L status; echo "  (status rc=$?)"
+start=$(date +%s)
+OO_GUI_LOCK_OWNER=holderB $L acquire --timeout 4 >/dev/null 2>&1; rc=$?
+end=$(date +%s)
+echo "  second acquire rc=$rc after $((end-start))s"
+[ "$rc" -ne 0 ] && ok "concurrent acquire blocked then failed" || no "second acquire SUCCEEDED while A held"
+
+echo "=== 2. NON-owner release must be refused while owner still holds ==="
+out=$(OO_GUI_LOCK_OWNER=stranger $L release 2>&1); rc=$?
+echo "  rc=$rc  msg=$out"
+[ "$rc" -eq 3 ] && ok "non-owner release refused (exit 3)" || no "non-owner release exit $rc"
+[ -d "$OO_GUI_LOCK_DIR" ] && ok "lock still held after refused release" || no "lock was destroyed by non-owner"
+
+echo "=== 3. owner release succeeds ==="
+out=$(OO_GUI_LOCK_OWNER=holderA $L release 2>&1); rc=$?
+echo "  rc=$rc  msg=$out"
+[ "$rc" -eq 0 ] && [ ! -d "$OO_GUI_LOCK_DIR" ] && ok "owner released its own lock" || no "owner release rc=$rc dir=$( [ -d "$OO_GUI_LOCK_DIR" ] && echo present || echo gone)"
+wait $A 2>/dev/null
+
+echo "=== 4. stale lock (owner dead) is reclaimable ==="
+rm -rf "$OO_GUI_LOCK_DIR"
+OO_GUI_LOCK_OWNER=deadghost $L acquire --timeout 5 >/dev/null || no "setup acquire failed"
+# Backdate the lock well past the stale window; the ghost owner never releases.
+touch -d '2 hours ago' "$OO_GUI_LOCK_DIR"
+out=$(OO_GUI_LOCK_OWNER=survivor OO_GUI_LOCK_STALE=60 $L acquire --timeout 5 2>&1); rc=$?
+echo "  rc=$rc  $out"
+[ "$rc" -eq 0 ] && ok "stale lock reclaimed by a new run" || no "stale lock wedged the tier (rc=$rc)"
+holder=$(sed -n 's/^owner=//p' "$OO_GUI_LOCK_DIR/owner")
+[ "$holder" = "survivor" ] && ok "reclaimer recorded as owner ($holder)" || no "owner is $holder"
+OO_GUI_LOCK_OWNER=survivor $L release >/dev/null 2>&1
+
+echo "=== 5. python half is excluded by a shell-held lock (same path) ==="
+OO_GUI_LOCK_OWNER=shellholder $L acquire --timeout 5 >/dev/null
+py=$(python3 - <<'EOF'
+import os, sys
+sys.path.insert(0, "upstream/oolite/tests/gui")
+import conftest
+p = conftest._lock_path()
+print("python sees:", p)
+print("exists:", os.path.isdir(p))
+print("held_by:", conftest._lock_held_by(p))
+EOF
+)
+echo "$py" | sed 's/^/  /'
+echo "$py" | grep -q 'exists: True' && echo "$py" | grep -q 'held_by: shellholder' \
+  && ok "python sees the shell's lock at the same path, with its owner" \
+  || no "python did not see the shell-held lock"
+OO_GUI_LOCK_OWNER=shellholder $L release >/dev/null
+rm -rf "$OO_GUI_LOCK_DIR"
+
+echo "=== 6. default (no OO_GUI_LOCK_OWNER) identity: a stray shell cannot release ==="
+bash -c 'bash tools/gui-lock acquire --timeout 5 >/dev/null; sleep 14' &
+H=$!
+sleep 2
+recorded=$(sed -n 's/^owner=//p' "$OO_GUI_LOCK_DIR/owner")
+echo "  holder=$recorded  stray shell pid=$$"
+out=$($L release 2>&1); rc=$?
+echo "  stray release rc=$rc  $out"
+[ "$rc" -eq 3 ] && [ -d "$OO_GUI_LOCK_DIR" ] \
+  && ok "default-identity stray release refused, lock intact" \
+  || no "stray shell dropped a lock it did not own (rc=$rc)"
+$L release --force >/dev/null 2>&1
+kill $H 2>/dev/null; wait $H 2>/dev/null
+rm -rf "$OO_GUI_LOCK_DIR"
+
+echo
+[ "$fail" -eq 0 ] && echo "ALL EXCLUSION CHECKS PASSED" || echo "SOME CHECKS FAILED"
+exit $fail
