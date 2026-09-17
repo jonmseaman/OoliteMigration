@@ -1,0 +1,238 @@
+#!/usr/bin/env bash
+# Proof for bug oo-c7bu: a lock left by a DEAD owner is reclaimed PROMPTLY, and nothing about
+# that promptness weakens the mutex.
+#
+#     tools/gui-lock-liveness-selftest        # exit 0 only if every case behaves
+#
+# WHY THIS EXISTS. tools/gui-lock-selftest already proves exclusion and the atomic stale reap,
+# but its check 4 reclaims a lock by BACKDATING it two hours - so it proves the AGE path and
+# says nothing about how long a real crashed holder wedges the tier. In production that answer
+# was 900 seconds: the default stale window was 1800s against a 900s acquire timeout, so an
+# abandoned lock could never be reclaimed within one acquire. A full GUI tier produced
+# '76 passed, 7 errors in 915.35s', every error 'could not take the GUI desktop lock: timed out
+# after 900s; held by DESKTOP-DNENHGI:py26916', with BOTH recorded pids already gone from the
+# process table. This file measures the WALL CLOCK of that reclaim, and pins the three
+# directions a liveness rule can get wrong.
+#
+# EVERY CASE USES A PRIVATE LOCK DIRECTORY under the system temp dir, never the shared desktop
+# mutex: the fleet runs several agents against the real lock at all times, and a selftest that
+# reclaimed THAT would drop a live holder off the desktop. Removed by an EXIT trap.
+#
+# NO SOLO RUNS FOR THE EXCLUSION CASES. A single acquirer against a free lock proves nothing
+# about a mutex, so cases 2 and 5 run OVERLAPPING processes and case 5 asserts a single winner
+# across many concurrent trials.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+
+TMPROOT="${TMPDIR:-${TEMP:-${LOCALAPPDATA:+$LOCALAPPDATA/Temp}}}"
+TMPROOT="${TMPROOT:-/tmp}"
+SCRATCH="$(mktemp -d "$TMPROOT/oolite-gui-liveness.XXXXXX")" || exit 1
+export OO_GUI_LOCK_DIR="$SCRATCH/desktop.lock"
+cleanup() {
+	# Never leave a lock behind, not even on an interrupt.
+	[ -n "${SELFTEST_KEEP:-}" ] || { cd / 2>/dev/null; rm -rf "$SCRATCH"; }
+}
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 143' TERM
+
+L="bash tools/gui-lock"
+fail=0
+ok() { printf 'PASS: %s\n' "$1"; }
+no() { printf 'FAIL: %s\n' "$1"; fail=1; }
+
+# A long-lived holder: a background bash that takes the lock and then sleeps, naming ITSELF as
+# the liveness pid - exactly what conftest.py and tools/desktop_lock.py do for a pytest session.
+# Echoes its pid. This is the only honest stand-in for "a run that is on the desktop".
+#
+# ITS STDOUT AND STDERR MUST BE REDIRECTED. A background job started inside $(...) inherits the
+# command substitution's pipe, and the substitution does not return until that pipe is closed by
+# EVERY writer - so without the redirect this function BLOCKS for the holder's whole lifetime
+# (a 600s sleep) instead of returning its pid, and the suite hangs with no output at all.
+start_holder() {
+	local tag="$1" secs="$2"
+	bash -c 'export OO_GUI_LOCK_OWNER="'"$tag"'"; export OO_GUI_LOCK_OWNER_PID=$$;
+	         bash tools/gui-lock acquire --timeout 20 >/dev/null || exit 1; sleep '"$secs" \
+		>/dev/null 2>&1 &
+	echo $!
+}
+
+reset_lock() { rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap "$OO_GUI_LOCK_DIR".stale.* 2>/dev/null; }
+
+# The liveness grace (rule 4 in tools/gui-lock) means a lock must be a few seconds old before
+# its recorded pid is trusted. Kept short here so the suite runs in seconds; the DEFAULT is
+# exercised for its VALUE by case 6.
+export OO_GUI_LOCK_LIVENESS_GRACE=3
+
+echo "=== 1. DEAD OWNER: a killed holder's lock is reclaimed in seconds, not in the timeout ==="
+reset_lock
+H=$(start_holder deadowner 600)
+sleep 5
+[ -d "$OO_GUI_LOCK_DIR" ] || no "setup: holder never took the lock"
+rec=$(sed -n 's/^livepid=//p' "$OO_GUI_LOCK_DIR/owner" 2>/dev/null)
+echo "  holder bash pid=$H  livepid record='$rec'"
+[ -n "$rec" ] && ok "acquire recorded a liveness pid ($rec)" || no "acquire recorded NO livepid= - liveness cannot work"
+kill -9 "$H" 2>/dev/null; wait "$H" 2>/dev/null
+sleep 1
+# The owner is now demonstrably gone. The whole bug is how long THIS takes.
+start=$(date +%s)
+out=$(OO_GUI_LOCK_OWNER=nextrun $L acquire --timeout 120 2>&1); rc=$?
+end=$(date +%s); took=$((end-start))
+echo "  reclaim rc=$rc in ${took}s :: $(printf '%s' "$out" | head -n 1)"
+# BOTH halves matter: rc=0 alone could be a lock that was never held, and a fast time alone
+# could be a fast failure. The lock must ALSO now be ours.
+[ "$rc" -eq 0 ] || no "dead owner's lock was NOT reclaimed (rc=$rc)"
+[ "$rc" -eq 0 ] && [ "$took" -le 30 ] \
+	&& ok "dead owner's lock reclaimed in ${took}s (production burned 900s)" \
+	|| no "reclaim took ${took}s, rc=$rc"
+h=$(sed -n 's/^owner=//p' "$OO_GUI_LOCK_DIR/owner" 2>/dev/null)
+[ "$h" = "nextrun" ] && ok "reclaimer owns what it holds (owner=$h)" || no "after reclaim owner='$h'"
+printf '%s' "$out" | grep -q 'gone from the process table' \
+	&& ok "reclaim names liveness, not age, as its reason" \
+	|| no "reclaim did not report a liveness reason: $out"
+OO_GUI_LOCK_OWNER=nextrun $L release >/dev/null 2>&1
+
+echo "=== 2. LIVE OWNER: a second acquirer must BLOCK while a live holder runs (OVERLAPPING) ==="
+reset_lock
+H=$(start_holder liveowner 25)
+sleep 5
+[ -d "$OO_GUI_LOCK_DIR" ] || no "setup: live holder never took the lock"
+# The holder is ALIVE for this whole window, and the lock is older than the grace, so liveness
+# is being consulted and must answer "alive". A solo run could never show this.
+kill -0 "$H" 2>/dev/null && ok "holder pid $H is alive during the contended acquire" || no "holder died early"
+start=$(date +%s)
+OO_GUI_LOCK_OWNER=intruder $L acquire --timeout 8 >/dev/null 2>&1; rc=$?
+end=$(date +%s); took=$((end-start))
+echo "  intruder rc=$rc after ${took}s (holder still running)"
+kill -0 "$H" 2>/dev/null && ok "holder was STILL alive when the intruder gave up" || no "holder exited mid-case"
+[ "$rc" -ne 0 ] && ok "live holder's lock was NOT stolen (intruder rc=$rc)" \
+	|| no "INTRUDER TOOK A LIVE HOLDER'S LOCK - two runs on the desktop"
+# It must have BLOCKED, not failed instantly for some unrelated reason.
+[ "$took" -ge 7 ] && ok "intruder blocked for its whole ${took}s timeout" || no "intruder returned after only ${took}s"
+h=$(sed -n 's/^owner=//p' "$OO_GUI_LOCK_DIR/owner" 2>/dev/null)
+[ "$h" = "liveowner" ] && ok "live holder still owns the lock (owner=$h)" || no "owner is now '$h'"
+kill -9 "$H" 2>/dev/null; wait "$H" 2>/dev/null
+reset_lock
+
+echo "=== 3. REFRESHING HOLDER past the stale window is NOT reclaimed (oo-ccy9 must not regress) ==="
+reset_lock
+# A holder that outlives the stale window by heartbeating, exactly as tools/desktop_lock.py
+# does. With OO_GUI_LOCK_STALE=4 and a refresh every 2s, an age-only rule would reclaim this
+# lock repeatedly; the holder is alive throughout, so nothing may touch it.
+bash -c 'export OO_GUI_LOCK_OWNER=beater; export OO_GUI_LOCK_OWNER_PID=$$;
+         OO_GUI_LOCK_STALE=4 bash tools/gui-lock acquire --timeout 20 >/dev/null || exit 1
+         for i in $(seq 1 12); do sleep 2; OO_GUI_LOCK_STALE=4 bash tools/gui-lock refresh || exit 1; done' &
+B=$!
+sleep 5
+[ -d "$OO_GUI_LOCK_DIR" ] || no "setup: beater never took the lock"
+# Hammer it with acquirers whose stale window (4s) is far shorter than the hold.
+steals=0
+for i in 1 2 3 4 5; do
+	OO_GUI_LOCK_OWNER=thief$i OO_GUI_LOCK_STALE=4 $L acquire --timeout 2 >/dev/null 2>&1 && steals=$((steals+1))
+	sleep 1
+done
+alive=no; kill -0 "$B" 2>/dev/null && alive=yes
+h=$(sed -n 's/^owner=//p' "$OO_GUI_LOCK_DIR/owner" 2>/dev/null)
+echo "  5 acquirers over ~15s vs a 4s stale window: $steals steals; beater alive=$alive owner=$h"
+[ "$alive" = "yes" ] && ok "the refreshing holder really was alive throughout" || no "beater died - case proves nothing"
+[ "$steals" -eq 0 ] && ok "a refreshing LIVE holder was never reclaimed" \
+	|| no "$steals acquirers stole a live, refreshing holder's lock (oo-ccy9 regressed)"
+[ "$h" = "beater" ] && ok "beater still owns its lock" || no "owner is '$h'"
+kill -9 "$B" 2>/dev/null; wait "$B" 2>/dev/null
+reset_lock
+
+echo "=== 4. UNPROVABLE owners are left alone: a foreign host, and a record with no livepid= ==="
+# A pid on ANOTHER machine tells this host nothing: 999999 being absent here says nothing about
+# whether it is driving a desktop over there. Must fall back to age, i.e. must NOT reclaim.
+reset_lock
+mkdir -p "$OO_GUI_LOCK_DIR"
+printf 'owner=OTHERBOX:py999999\ninfo=OTHERBOX pid=999999\nlivepid=OTHERBOX 999999\n' >"$OO_GUI_LOCK_DIR/owner"
+sleep 4
+OO_GUI_LOCK_OWNER=x $L acquire --timeout 3 >/dev/null 2>&1; rc=$?
+[ "$rc" -ne 0 ] && ok "a FOREIGN-HOST pid is never judged dead (rc=$rc)" \
+	|| no "reclaimed a lock held by another machine's pid"
+reset_lock
+# A lock written by an older checkout has no livepid= at all: unknown must mean alive.
+mkdir -p "$OO_GUI_LOCK_DIR"
+printf 'owner=legacy\ninfo=%s pid=999999\n' "${HOSTNAME:-$(hostname)}" >"$OO_GUI_LOCK_DIR/owner"
+sleep 4
+OO_GUI_LOCK_OWNER=x $L acquire --timeout 3 >/dev/null 2>&1; rc=$?
+[ "$rc" -ne 0 ] && ok "a record with NO livepid= is never judged dead (rc=$rc)" \
+	|| no "reclaimed a lock whose liveness could not be established"
+reset_lock
+
+echo "=== 5. TOCTOU: many concurrent acquirers against ONE DEAD-OWNER lock - exactly one wins ==="
+# This is the case the liveness rule could most easily break. Check 7 of gui-lock-selftest
+# races two reclaimers down the AGE path; this races N down the LIVENESS path, where every
+# racer independently reads the same dead pid and concludes "reclaim". If the gate, the
+# re-check or the atomic rename were skipped for dead owners, two would hold at once - the
+# reproduced oo-50av collision. Zero tolerance: one double is a failure.
+TRIALS="${OO_GUI_LOCK_LIVENESS_TRIALS:-10}"
+RACERS="${OO_GUI_LOCK_LIVENESS_RACERS:-5}"
+doubles=0; singles=0; none=0
+for t in $(seq 1 "$TRIALS"); do
+	reset_lock
+	H=$(start_holder ghost$t 600)
+	sleep 4
+	kill -9 "$H" 2>/dev/null; wait "$H" 2>/dev/null
+	[ -d "$OO_GUI_LOCK_DIR" ] || { no "trial $t: setup lock missing"; continue; }
+	wins="$SCRATCH/wins.$t"; : >"$wins"
+	pids=""
+	for r in $(seq 1 "$RACERS"); do
+		# Each winner APPENDS a line and then STAYS ALIVE holding the lock for a few seconds.
+		# The sleep is what makes the count meaningful: a racer that exited the instant it won
+		# would itself become a dead owner, and the next racer would legitimately reclaim from
+		# it - counting as a "double acquire" when in fact the two never overlapped. Holding
+		# means every line in this file is a run that WAS on the desktop at the same moment.
+		( OO_GUI_LOCK_OWNER=racer$r OO_GUI_LOCK_OWNER_PID=$$ $L acquire --timeout 6 >/dev/null 2>&1 \
+			&& { echo "racer$r" >>"$wins"; sleep 6; } ) >/dev/null 2>&1 &
+		pids="$pids $!"
+	done
+	for p in $pids; do wait "$p" 2>/dev/null; done
+	n=$(grep -c . "$wins" 2>/dev/null || echo 0)
+	if [ "$n" -gt 1 ]; then
+		doubles=$((doubles+1)); echo "  trial $t: $n SIMULTANEOUS HOLDERS ($(tr '\n' ' ' <"$wins"))"
+	elif [ "$n" -eq 1 ]; then
+		singles=$((singles+1))
+		h=$(sed -n 's/^owner=//p' "$OO_GUI_LOCK_DIR/owner" 2>/dev/null)
+		case "$h" in racer*) ;; *) no "trial $t: winner holds a lock owned by '$h'" ;; esac
+	else
+		none=$((none+1)); echo "  trial $t: no winner - a dead owner wedged the lock"
+	fi
+	$L release --force >/dev/null 2>&1
+	rm -f "$wins"
+done
+echo "  $TRIALS trials x $RACERS racers: $singles single-winner, $doubles MULTI, $none no-winner"
+[ "$doubles" -eq 0 ] && ok "exactly one winner in every trial - the reap stayed atomic" \
+	|| no "$doubles/$TRIALS trials put MORE THAN ONE run on the desktop"
+[ "$singles" -eq "$TRIALS" ] && ok "every trial reclaimed the dead owner's lock ($singles/$TRIALS)" \
+	|| no "only $singles/$TRIALS trials reclaimed - a dead owner can still wedge the tier"
+[ -e "$OO_GUI_LOCK_DIR.reap" ] && no "reap gate leaked" || ok "reap gate left no residue"
+reset_lock
+
+echo "=== 6. THE DEFAULT that caused the outage: stale window must be BELOW the acquire timeout ==="
+# The one-sentence bug. Asserted on the SHIPPING defaults, by running the script, not by
+# reading its source: a stale window >= the acquire timeout means an abandoned lock can never
+# be reclaimed inside one acquire however good the reclaim code is.
+def_stale=$(OO_GUI_LOCK_DIR="$SCRATCH/probe.lock" bash -c 'unset OO_GUI_LOCK_STALE; . tools/gui-lock path >/dev/null 2>&1; echo "${STALE:-}"' 2>/dev/null)
+[ -z "$def_stale" ] && def_stale=$(sed -n 's/^STALE="\${OO_GUI_LOCK_STALE:-\([0-9]*\)}"$/\1/p' tools/gui-lock | head -n 1)
+def_timeout=$(sed -n 's/^timeout=\([0-9][0-9]*\)$/\1/p' tools/gui-lock | head -n 1)
+echo "  default OO_GUI_LOCK_STALE=$def_stale  default acquire timeout=$def_timeout"
+[ -n "$def_stale" ] && [ -n "$def_timeout" ] || no "could not read the defaults out of tools/gui-lock"
+[ -n "$def_stale" ] && [ -n "$def_timeout" ] && [ "$def_stale" -lt "$def_timeout" ] \
+	&& ok "default stale ${def_stale}s < default timeout ${def_timeout}s" \
+	|| no "default stale ${def_stale}s >= default timeout ${def_timeout}s - a dead owner can never be reclaimed in one acquire"
+# And a misconfiguration that restores the old ratio must SAY SO when it bites.
+reset_lock
+mkdir -p "$OO_GUI_LOCK_DIR"
+printf 'owner=OTHERBOX:py999999\ninfo=OTHERBOX pid=999999\nlivepid=OTHERBOX 999999\n' >"$OO_GUI_LOCK_DIR/owner"
+msg=$(OO_GUI_LOCK_OWNER=x OO_GUI_LOCK_STALE=1800 $L acquire --timeout 3 2>&1 >/dev/null); rc=$?
+echo "  $(printf '%s' "$msg" | tail -n 1)"
+[ "$rc" -ne 0 ] && printf '%s' "$msg" | grep -q 'oo-c7bu' \
+	&& ok "a stale window >= the timeout is diagnosed on the failure" \
+	|| no "timed-out acquire did not diagnose the stale/timeout ratio"
+reset_lock
+
+echo
+[ "$fail" -eq 0 ] && echo "ALL LIVENESS CHECKS PASSED" || echo "SOME CHECKS FAILED"
+exit "$fail"

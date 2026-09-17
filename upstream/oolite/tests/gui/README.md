@@ -47,12 +47,21 @@ string idiom, so it fails on a new launcher in neither list however that launche
 `tools/desktop-lock-rogue-proof` plants five rogue spellings plus a prose-only negative control and
 asserts the exit code of each.
 
-A hold is **heartbeated**. `tools/gui-lock` reclaims a lock older than `OO_GUI_LOCK_STALE`
-(default 1800s) so a dead holder cannot wedge the desktop for ever, but a JS-API enumeration can
-legitimately hold the desktop longer than that. `tools/desktop_lock.py` therefore runs a daemon
-thread calling `tools/gui-lock refresh` (ownership-checked) every third of the stale window. A
-crashed holder stops refreshing, so its lock still ages out and is still reclaimable — both
-directions are proved by `tools/desktop-lock-selftest` checks 5 and 6.
+A hold is reclaimed on **liveness first, age second** (bug oo-c7bu). `tools/gui-lock` records
+`livepid=<host> <pid>` — the long-lived owner process, not the short-lived shell that wrote the
+file — and an acquirer that finds that pid absent from **this host's** process table reclaims the
+lock immediately, with no age requirement at all. A pid on another host, a record with no
+`livepid=`, or a process table that cannot be read all mean "cannot prove dead", and such a holder
+is left strictly alone and ages out as before. `OO_GUI_LOCK_STALE` (default 600s) is that age
+fallback, and it **must stay below `OO_GUI_LOCK_TIMEOUT`**: it used to be 1800s against a 900s
+timeout, so an abandoned lock could never be reclaimed within one acquire and every acquirer burned
+its full timeout before failing. A timed-out acquire now says so in its second stderr line.
+
+A hold is also **heartbeated**. A JS-API enumeration can legitimately hold the desktop longer than
+the stale window, so `tools/desktop_lock.py` runs a daemon thread calling `tools/gui-lock refresh`
+(ownership-checked) every third of that window. A crashed holder stops refreshing *and* loses its
+liveness, so its lock is reclaimable at once — both directions are proved by
+`tools/desktop-lock-selftest` checks 5 and 6 and by `tools/gui-lock-liveness-selftest`.
 
 It also needs a built game: by default `upstream/oolite/build/meson_test/oolite.app`, overridden
 with `--oolite-app <path>` or `OO_APP_DIR`.
@@ -63,7 +72,8 @@ with `--oolite-app <path>` or `OO_APP_DIR`.
 | `OO_GUI_SETTLE` | `5` | Seconds for the start screen to draw once the game reports ready. |
 | `OO_GUI_LOCK_DIR` | `%LOCALAPPDATA%\Temp\oolite-gui-desktop.lock` | Where the desktop mutex lives. Must match `tools/gui-lock`. |
 | `OO_GUI_LOCK_TIMEOUT` | `900` | How long to queue for the desktop. |
-| `OO_GUI_LOCK_STALE` | `1800` | Age at which a lock is assumed abandoned and reclaimed. |
+| `OO_GUI_LOCK_STALE` | `600` | Age at which a lock is assumed abandoned and reclaimed. Must stay **below** `OO_GUI_LOCK_TIMEOUT` (oo-c7bu). A provably-dead owner is reclaimed with no age at all. |
+| `OO_GUI_LOCK_OWNER_PID` | the calling process | The long-lived pid whose life proves the hold is live. |
 | `OO_APP_DIR` | the test build | Which `oolite.app` to drive. |
 
 ## What conftest.py gives G2-G9

@@ -75,11 +75,11 @@ def heartbeat_interval(stale=None):
     floored at 5s so a deliberately tiny OO_GUI_LOCK_STALE in a test does not spin.
     """
     if stale is None:
-        stale = os.environ.get("OO_GUI_LOCK_STALE", "1800")
+        stale = os.environ.get("OO_GUI_LOCK_STALE", "600")
     try:
         stale = int(float(stale))
     except (TypeError, ValueError):
-        stale = 1800
+        stale = 600
     return max(5, stale // 3)
 
 
@@ -167,7 +167,12 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
         return
 
     me = owner_identity(tag)
-    env = dict(os.environ, OO_GUI_LOCK_OWNER=me)
+    # OO_GUI_LOCK_OWNER_PID names THIS process - the long-lived one that runs the `with` body -
+    # as the holder whose life proves the hold is live (bug oo-c7bu). The `bash` below exits
+    # seconds after acquire returns, so inferring liveness from it would read every live hold
+    # as dead. Passed to every call, so refresh re-pins the same identity.
+    env = dict(os.environ, OO_GUI_LOCK_OWNER=me, OO_GUI_LOCK_OWNER_PID=str(os.getpid()))
+
     if timeout is None:
         timeout = os.environ.get("OO_GUI_LOCK_TIMEOUT", "900")
     held = subprocess.run(
