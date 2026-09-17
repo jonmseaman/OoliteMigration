@@ -213,46 +213,8 @@ def _names_of(con, target):
     return [n for n in text.split(RECORD) if n]
 
 
-def _scan_members(con, target, names):
-    """Describe every own member of `target`, surviving uncatchable native errors.
-
-    A killed command leaves __ooIdx pointing at the member that killed it, so the scan is resumed
-    one past it and that member is recorded as "native-opaque": known to exist, not safely
-    describable from the prototype. See the module docstring.
-
-    Harness-created members are dropped from the RESULT rather than from `names`: the resume index
-    __ooIdx is an offset into the JS side's own unfiltered, sorted name list, so pre-filtering here
-    would desynchronise it. `global` is a self-reference to the JS global object, so the
-    accumulator and helper this module installs (__ooAcc, __ooBuf, __ooIdx, __ooScan) appear as its
-    own members and would otherwise be recorded as part of Oolite's API.
-    """
-    if not names:
-        # No round trip at all, and that is load-bearing, not an optimisation. __ooAcc is reset
-        # JS-side by __ooScan when `from` is 0; with no names the loop below never calls it, so a
-        # fetch here would return the PREVIOUS target's accumulator and record its members as this
-        # target's own. That is exactly the corruption that put StopIteration, missionVariables and
-        # worldScripts in an earlier snapshot holding Station.prototype's, Mission.prototype's and
-        # Array.prototype's members. A target with no own names has no members, full stop.
-        return {}
-
-    found = {}
-    start = 0
-    opaque = []
-    while start < len(names):
-        try:
-            con.evaluate(f"__ooScan({target},{start})", timeout=SCAN_TIMEOUT)
-            break
-        except ConsoleError:
-            try:
-                index = int(float(con.evaluate("__ooIdx", timeout=20)))
-            except (ConsoleError, ValueError):
-                index = start
-            index = max(index, start)
-            if index < len(names):
-                opaque.append(names[index])
-            start = index + 1
-
-    accumulated = _fetch_string(con, "__ooAcc")
+def _merge_accumulator(found, accumulated):
+    """Parse the JS-side accumulator string into `found`."""
     for record in accumulated.split(RECORD):
         if not record:
             continue
@@ -267,17 +229,71 @@ def _scan_members(con, target, names):
         entry["readable"] = flags[2:3] == "r"
         entry["writable"] = flags[3:4] == "w"
         found[name] = entry
+    return found
 
+
+def _scan_members(con, target, names, state):
+    """Describe every own member of `target`, surviving uncatchable native errors.
+
+    A killed command leaves __ooIdx pointing at the member that killed it, so the scan is resumed
+    one past it and that member is recorded as "native-opaque": known to exist, not safely
+    describable from the prototype. See the module docstring.
+
+    `state` is the caller's dict for THIS target and holds every result so far: the members already
+    described, the resume index, the members known to be opaque, and how many console sessions have
+    now died at the current index. It lives outside this function because the uncatchable native
+    error does not merely kill a console command - often enough it also kills the socket, and
+    sometimes the game process with it. When that happens the caller opens a fresh session and
+    calls back in here with the SAME state, and the scan continues from where it stopped instead of
+    restarting the target from index 0 and walking into the identical wall for ever.
+
+    Harness-created members are dropped from the RESULT rather than from `names`: the resume index
+    __ooIdx is an offset into the JS side's own unfiltered, sorted name list, so pre-filtering here
+    would desynchronise it. `global` is a self-reference to the JS global object, so the
+    accumulator and helper this module installs (__ooAcc, __ooBuf, __ooIdx, __ooScan) appear as its
+    own members and would otherwise be recorded as part of Oolite's API.
+    """
+    found = state["found"]
+    while state["start"] < len(names):
+        start = state["start"]
+        # Reset the accumulator HERE, unconditionally, rather than relying on __ooScan's own
+        # `from === 0` reset. Two reasons, and the first one is a data-corruption fix: a target
+        # with zero own property names never enters this loop at all, so the JS-side reset never
+        # fired and the fetch below returned the PREVIOUS target's members - which is how an
+        # earlier snapshot gave StopIteration a copy of Station.prototype, missionVariables a copy
+        # of Mission.prototype and worldScripts a copy of Array.prototype. (The early return above
+        # now also makes that case unreachable; both guards are cheap and this one also covers a
+        # resumed segment.) Second, draining the accumulator per SEGMENT rather than per target
+        # means a segment that kills the session loses only its own partial output.
+        con.evaluate('(__ooGlobal.__ooAcc = "").length', timeout=20)
+        try:
+            con.evaluate(f"__ooScan({target},{start})", timeout=SCAN_TIMEOUT)
+        except ConsoleError:
+            # The command was killed by an uncatchable native error. Both reads below can
+            # themselves fail if the socket died with it; that propagates to the caller, which
+            # relaunches and calls back in with this same state.
+            index = int(float(con.evaluate("__ooIdx", timeout=20)))
+            _merge_accumulator(found, _fetch_string(con, "__ooAcc"))
+            index = max(index, start)
+            if index < len(names):
+                state["opaque"].append(names[index])
+            state["start"] = index + 1
+            state["deaths_at"] = 0
+            continue
+        _merge_accumulator(found, _fetch_string(con, "__ooAcc"))
+        state["start"] = len(names)
+
+    result = dict(found)
     for name in names:
-        if name not in found:
+        if name not in result:
             # Either the member that killed a scan segment, or one never reached because a later
             # segment covered the rest. Both mean the same thing for the contract.
-            found[name] = {"kind": "native-opaque"}
-    for name in opaque:
-        found[name] = {"kind": "native-opaque"}
-    for name in [n for n in found if n.startswith(HARNESS_PREFIX)]:
-        del found[name]
-    return found
+            result[name] = {"kind": "native-opaque"}
+    for name in state["opaque"]:
+        result[name] = {"kind": "native-opaque"}
+    for name in [n for n in result if n.startswith(HARNESS_PREFIX)]:
+        del result[name]
+    return result
 
 
 def _js_global(name):
@@ -317,13 +333,45 @@ def _strip_state_dependent_types(members):
     return members
 
 
-def _describe_global(con, name):
+def _scan_state(progress, key):
+    """Per-target scan state, created once and kept across console sessions (see _scan_members)."""
+    return progress.setdefault(
+        key, {"found": {}, "start": 0, "opaque": [], "deaths_at": 0, "names": None}
+    )
+
+
+def _scan_target(con, progress, global_name, bucket, expr):
+    """Scan one member bucket, resuming a scan a previous console session died inside.
+
+    The name list is fetched once per target and kept in the state: it is safe to read (it never
+    invokes a getter) but re-reading it after a relaunch would be wasted round trips, and pinning
+    it guarantees the resume index still means the same member.
+    """
+    state = _scan_state(progress, f"{global_name}.{bucket}")
+    if state["names"] is None:
+        state["names"] = _names_of(con, expr)
+    if not state["names"]:
+        # Return without a single round trip, and that is load-bearing rather than an
+        # optimisation. __ooAcc is reset inside __ooScan on `from === 0`; with no names the scan
+        # loop never runs, so a fetch of __ooAcc here would return the PREVIOUS target's members
+        # and record them as this target's own. That is exactly how an earlier snapshot gave
+        # StopIteration a copy of Station.prototype's members, missionVariables a copy of
+        # Mission.prototype's and worldScripts a copy of Array.prototype's - each the immediate
+        # successor of its donor in sorted order. A target with no own names has no members.
+        return {}
+    return _scan_members(con, expr, state["names"], state)
+
+
+def _describe_global(con, name, progress):
     """Shape of one global: its type, arity, class, and every member of it and its prototype.
 
     The header (type, class name, arity, has-prototype) is fetched in ONE evaluation: a console
     round trip costs a game frame, and four of them per global over 121 globals dominates the run.
     Reading .length and .prototype is safe on every global measured - only descriptor reads on a
     native prototype can raise the uncatchable error _scan_members handles.
+
+    `progress` is the run-wide scan-state map, keyed by target expression. A target whose scan
+    killed the console session resumes from it rather than starting over; see _collect_globals.
     """
     ref = _js_global(name)
     header = con.evaluate(
@@ -346,22 +394,21 @@ def _describe_global(con, name):
     if kind == "function":
         entry["arity"] = int(arity or 0)
         entry["is_class"] = has_proto == "1"
-        entry["statics"] = _scan_members(con, ref, _names_of(con, ref))
+        entry["statics"] = _scan_target(con, progress, name, "statics", ref)
         if has_proto == "1":
-            entry["prototype_members"] = _scan_members(
-                con, f"{ref}.prototype", _names_of(con, f"{ref}.prototype")
-            )
+            entry["prototype_members"] = _scan_target(
+                con, progress, name, "prototype_members", f"{ref}.prototype")
     else:
         # See the module docstring and _strip_state_dependent_types: a singleton's own
         # data-property values are session state, so their typeof is dropped. Most of them are
         # recoverable from the class prototype recorded just below; five in this build are not,
         # and that cost is documented there rather than glossed over.
         entry["own_members"] = _strip_state_dependent_types(
-            _scan_members(con, ref, _names_of(con, ref))
-        )
+            _scan_target(con, progress, name, "own_members", ref))
         if has_proto == "1":
-            proto = f"Object.getPrototypeOf({ref})"
-            entry["prototype_members"] = _scan_members(con, proto, _names_of(con, proto))
+            entry["prototype_members"] = _scan_target(
+                con, progress, name, "prototype_members",
+                f"Object.getPrototypeOf({ref})")
     return entry
 
 
@@ -419,12 +466,23 @@ def _open_session(app_dir, port, host, settle, ready_timeout):
 
 # The console transport dies non-deterministically mid-run on Windows: the game's end of the
 # socket is reset (ConnectionResetError / WinError 10054) part-way through a long enumeration,
-# which killed two earlier full runs at 46/121 and 30/121 globals. Diagnosing that in the game is
-# a separate job; what this tool owes is not to lose an hour of scanning to it. A dropped session
-# is therefore replaced with a fresh one and the enumeration RESUMES at the global that died -
-# globals are independent, so a restart costs only the boot time. Bounded, and loud if exhausted:
-# silently emitting a short snapshot would be worse than failing.
-MAX_SESSION_RESTARTS = 6
+# which killed two earlier full runs at 46/121 and 30/121 globals. Measured here, the trigger is
+# not random at all - it is the same uncatchable native property-getter error that _scan_members
+# already survives at the COMMAND level. Reading, say, Dock.prototype.allowsDocking terminates the
+# console command; do that a few times in quick succession and the game drops the socket, and
+# sometimes exits outright (rc 0xffffffff). Seven classes behave this way, so a long run hits it.
+#
+# Fixing the engine's error handling is not this tool's job. Surviving it is: a dropped session is
+# replaced with a fresh one and the enumeration RESUMES exactly where it stopped, down to the
+# member index, using the per-target state in `progress`. Resuming at the GLOBAL would not be
+# enough - the offending member would be re-read on every restart and the run would loop for ever,
+# which is what a coarser version of this did. A member whose read has now killed
+# MAX_DEATHS_PER_MEMBER sessions is recorded as native-opaque (it is: it is exactly the member
+# whose descriptor cannot be read) and the scan steps past it.
+#
+# Bounded, and loud when exhausted: silently writing a short snapshot would be worse than failing.
+MAX_SESSION_RESTARTS = 80
+MAX_DEATHS_PER_MEMBER = 2
 
 
 def _is_transport_death(exc):
@@ -440,9 +498,36 @@ def _is_transport_death(exc):
     return isinstance(exc, ConsoleError) and "connection closed" in str(exc)
 
 
+def _advance_past_killer(progress):
+    """Charge a session death to whichever target was mid-scan, and step past a repeat offender.
+
+    Only one target can be scanning when the socket dies, so the unfinished one is unambiguous.
+    Two deaths at the same member index is taken as proof that reading that member's descriptor is
+    what kills the session; it is recorded as native-opaque - which is precisely what it is, a
+    member that exists but whose descriptor cannot be read - and the index moves on. Without this
+    the relaunch would re-read the same member for ever.
+    """
+    for key, state in progress.items():
+        names = state["names"]
+        if names is None or state["start"] >= len(names):
+            continue
+        state["deaths_at"] += 1
+        if state["deaths_at"] >= MAX_DEATHS_PER_MEMBER:
+            victim = names[state["start"]]
+            state["opaque"].append(victim)
+            state["start"] += 1
+            state["deaths_at"] = 0
+            print(f"    reading {key}.{victim} killed the session "
+                  f"{MAX_DEATHS_PER_MEMBER}x; recording it as native-opaque and moving on",
+                  flush=True)
+        return key
+    return None
+
+
 def _collect_globals(app_dir, port, host, settle, ready_timeout):
     """Describe every global, surviving a dropped console transport by relaunching and resuming."""
     result = {}
+    progress = {}
     version = None
     names = None
     restarts = 0
@@ -455,7 +540,7 @@ def _collect_globals(app_dir, port, host, settle, ready_timeout):
             elif session_names != names:
                 # A restart that sees a different global set is not a resumption of the same
                 # measurement, and splicing the two would produce a document describing no single
-                # runtime. Start the whole snapshot over rather than emit a chimera.
+                # runtime. Fail rather than emit a chimera.
                 raise ConsoleError(
                     f"the relaunched game exposes {len(session_names)} globals, not {len(names)}; "
                     "the snapshot cannot be spliced across two different runtimes"
@@ -463,20 +548,21 @@ def _collect_globals(app_dir, port, host, settle, ready_timeout):
             for index, name in enumerate(names, 1):
                 if name in result:
                     continue
-                result[name] = _describe_global(con, name)
+                result[name] = _describe_global(con, name, progress)
                 print(f"[*] {index:3d}/{len(names)} {name}", flush=True)
             return version, result
         except (OSError, EOFError, ConsoleError) as exc:
             if not _is_transport_death(exc):
                 raise
             restarts += 1
+            stalled = _advance_past_killer(progress)
             done = len(result)
             if restarts > MAX_SESSION_RESTARTS:
                 raise ConsoleError(
                     f"the console transport died {restarts} times ({exc}); gave up after "
                     f"{done}/{len(names) if names else '?'} globals. The snapshot was NOT written."
                 ) from exc
-            print(f"[~] console transport died after {done} globals ({exc}); "
+            print(f"[~] console session died in {stalled} after {done} globals ({exc}); "
                   f"relaunching and resuming (restart {restarts}/{MAX_SESSION_RESTARTS})",
                   flush=True)
             time.sleep(2.0)

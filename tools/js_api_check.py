@@ -90,25 +90,24 @@ def _member_signature(members):
 # worldScripts a copy of Array.prototype. That class of fault is invisible to every other check
 # here, so it gets its own.
 EXPECTED_IDENTICAL_BUCKETS = [
-    # (bucket kind, description) -> groups are matched as frozensets of "global.bucket" keys.
+    # A singleton and its class share one prototype OBJECT, so both record it identically.
     {"clock.prototype_members", "Clock.prototype_members"},
-    {"console.prototype_members", "debugConsole.prototype_members", "Console.prototype_members"},
-    {"console.own_members", "debugConsole.own_members"},
     {"mission.prototype_members", "Mission.prototype_members"},
     {"system.prototype_members", "System.prototype_members"},
     {"player.prototype_members", "Player.prototype_members"},
     {"oolite.prototype_members", "Oolite.prototype_members"},
     {"manifest.prototype_members", "Manifest.prototype_members"},
+    # `console` and `debugConsole` are the same live object under two global names.
+    {"console.prototype_members", "debugConsole.prototype_members", "Console.prototype_members"},
+    {"console.own_members", "debugConsole.own_members"},
+    # Namespace-style builtins: the object IS its own prototype's member set.
     {"JSON.own_members", "JSON.prototype_members"},
     {"Proxy.own_members", "Proxy.prototype_members"},
     {"Math.own_members", "Math.prototype_members"},
-    {"SystemInfo.statics", "SystemInfo.prototype_members"},
-    {"XML.statics", "XML.prototype_members"},
-    {"XMLList.statics", "XMLList.prototype_members"},
+    # `worldScriptNames` is a plain Array, so it shares Array.prototype.
     {"Array.prototype_members", "worldScriptNames.prototype_members"},
-    {"ConsoleSettings.prototype_members", "consoleMessage.prototype_members"},
     # The nine typed-array constructors are generated from one template in SpiderMonkey, so their
-    # prototypes carry the same eight members and their statics the same seven.
+    # prototypes carry the same eight members.
     {f"{n}.prototype_members" for n in
      ("Float32Array", "Float64Array", "Int8Array", "Int16Array", "Int32Array",
       "Uint8Array", "Uint8ClampedArray", "Uint16Array", "Uint32Array")},
@@ -116,6 +115,11 @@ EXPECTED_IDENTICAL_BUCKETS = [
     {f"{n}.prototype_members" for n in
      ("EvalError", "InternalError", "RangeError", "ReferenceError", "SyntaxError", "TypeError",
       "URIError")},
+    # Two of the seven uncatchable-getter classes. Every member of either prototype except
+    # `constructor` and `remove` is native-opaque and therefore excluded from the comparison, and
+    # those two really are the same shape on both. Verified by name against the full member lists,
+    # which differ: ExhaustPlume has 3 members, Flasher 8.
+    {"ExhaustPlume.prototype_members", "Flasher.prototype_members"},
 ]
 
 

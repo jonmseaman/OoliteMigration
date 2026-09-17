@@ -17,13 +17,13 @@ import sys
 
 # Measured against upstream/oolite 1.93 by tools/js-api-snapshot.sh (which is why the file is named
 # js-api-1.93.json). See oxp-contract/README.md for why these are not the "61" the originating
-# story guessed at, and why class_count is 28 rather than "every Oolite global with a prototype".
+# story guessed at, and why class_count is 27 rather than "every Oolite global with a prototype".
 EXPECTED = {
     "global_count": 121,
     "ecmascript_global_count": 51,
     "oolite_global_count": 70,
     "oolite_global_count_without_debug_console": 66,
-    "class_count": 28,
+    "class_count": 27,
 }
 
 # Classes that must carry a non-empty method list, with the minimum this build actually has. A
@@ -33,6 +33,19 @@ MIN_METHODS = {
     "Ship": 81, "PlayerShip": 28, "Player": 16, "System": 27, "Station": 21,
     "Vector3D": 20, "Quaternion": 15, "Entity": 3,
 }
+
+# Globals whose prototype really does have ZERO own property names on this build, verified
+# directly over the console (Object.getOwnPropertyNames(X.prototype).length === 0). Pinned as an
+# equality because they are the exact victims of the stale-accumulator bug: each was previously
+# filled with the preceding scan target's members, which inflated class_count and put three
+# fabricated member lists in the contract. If one of these ever acquires members again, that is
+# either a real engine change worth reviewing or the bug come back, and both must stop the build.
+EMPTY_PROTOTYPES = ["SystemInfo", "XML", "XMLList"]
+
+# Object globals whose own_members is empty for the same reason and was fabricated for the same
+# reason: StopIteration held Station.prototype's members, missionVariables held Mission.prototype's
+# and worldScripts held Array.prototype's.
+EMPTY_OWN_MEMBERS = ["StopIteration", "missionVariables", "worldScripts"]
 
 path = sys.argv[1]
 with open(path, encoding="utf-8") as handle:
@@ -55,6 +68,20 @@ for name, floor in MIN_METHODS.items():
                if e.get("kind") == "method"]
     if len(methods) < floor:
         problems.append(f"{name}.prototype has {len(methods)} methods, expected at least {floor}")
+
+for name in EMPTY_PROTOTYPES:
+    members = globals_map.get(name, {}).get("prototype_members")
+    if members != {}:
+        problems.append(f"{name}.prototype records {len(members or {})} members; it has zero own "
+                        "property names on this build, and a non-empty list here is the "
+                        "stale-accumulator bug or a real engine change")
+
+for name in EMPTY_OWN_MEMBERS:
+    members = globals_map.get(name, {}).get("own_members")
+    if members != {}:
+        problems.append(f"{name}.own_members records {len(members or {})} members; it has zero "
+                        "own property names on this build, and a non-empty list here is the "
+                        "stale-accumulator bug or a real engine change")
 
 if problems:
     for problem in problems:

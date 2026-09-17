@@ -38,18 +38,24 @@ wins. Measured against `upstream/oolite` at version 1.93:
 | `ecmascript_global_count` | 51 | ECMAScript/E4X builtins SpiderMonkey provides (`Array`, `XML`, ...) |
 | `oolite_global_count` | 70 | globals Oolite itself installs |
 | `oolite_global_count_without_debug_console` | 66 | the same, minus the four the Debug OXP adds (`Console`, `ConsoleSettings`, `console`, `debugConsole`) |
-| `class_count` | 28 | Oolite globals that are real native classes: a constructor whose prototype carries members beyond the automatic `constructor` |
-| (not a summary key) | 32 | Oolite globals that merely *own* a `.prototype`. Four more than `class_count`, and not the right number — see below |
+| `class_count` | 27 | Oolite globals that are real native classes: a constructor whose prototype carries members beyond the automatic `constructor` |
+| (not a summary key) | 32 | Oolite globals that merely *own* a `.prototype`. Five more than `class_count`, and not the right number — see below |
 
-`class_count` is 28, not 32. Every JavaScript function owns a `.prototype`, so "has a prototype" is
+`class_count` is 27, not 32. Every JavaScript function owns a `.prototype`, so "has a prototype" is
 not the test for a class: `consoleMessage`, `formatCredits` and `formatInteger` are plain global
 utility functions, and `ConsoleSettings` is a Debug-OXP constructor, whose prototypes contain
-nothing but `constructor`. A class installed by `JS_InitClass` has real members on its prototype,
+nothing but `constructor`. `SystemInfo` is a fifth: its `prototype` is a live `[object SystemInfo]`
+with **zero** own property names — everything useful (`filteredSystems`, `systemsInRange`,
+`setInterstellarProperty`) is a static on the constructor, not a prototype member. (An earlier
+snapshot counted it as a class because a scanner bug filled its empty prototype with the previous
+target's members; see "No two globals may share a member list by accident" below. `XML.prototype`
+and `XMLList.prototype` are empty for the same real reason and were wrong for the same bug reason.)
+A class installed by `JS_InitClass` has real members on its prototype,
 which is the test `tools/js_api_snapshot.py::_is_native_class` applies and
 `tools/js-api-check.sh` re-verifies against the committed file.
 
 61 is not any of these. The closest reading is "Oolite globals that are not native classes"
-(70 − 28 = 42) or the shipped non-debug set (66); the figure in the story appears to predate
+(70 − 27 = 43) or the shipped non-debug set (66); the figure in the story appears to predate
 several additions. The snapshot records what the engine does, and the summary block carries all
 five counts so a later reader does not have to guess which one a check meant.
 
