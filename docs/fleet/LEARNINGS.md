@@ -7,3 +7,4 @@ bead's notes; this file is for what the *next* bead should know. The last 40 lin
 into every worker and reviewer context, so keep entries short and concrete. Prune when stale.
 
 <!-- entries below; newest last -->
+- 2026-09-17 [oo-kgl5] Windows: never hand an MSYS path (/c/...) to a native binary. ccache rejects CCACHE_BASEDIR=/c/... and then ALL later ccache calls fail silently, which made meson fall back to bare clang (0% cache) and killed build-windows.sh in arithmetic; native python turns /c/... into C:/c/... (WinError 3). Convert with cygpath -m at every boundary.

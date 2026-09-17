@@ -33,6 +33,12 @@ Bead body (the story):
 
 {bead_body}
 
+If this bead carries the `frontier` label, its acceptance block is prose: a `# DONE WHEN:` line and
+an `exit 1` guard. Turning that prose into executable commands is part of the work. Before you
+finish, write them with `bd update {id} --acceptance "<one command per line>"`; each must exit 0
+from the repository root on the merged tree, and `accept.sh` runs that field, not the description.
+A block that is only comments or `exit 1` is rejected.
+
 Work only inside {worktree_path}. If the notes report a merge conflict from a previous attempt,
 start with `git merge {base_branch}` in the worktree and resolve it. Run the acceptance commands
 yourself before you finish. **Commit everything** with message "bead {id}: {title}" and confirm

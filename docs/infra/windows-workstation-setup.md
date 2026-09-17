@@ -155,3 +155,13 @@ The beads database is a local Dolt DB per machine; `bd dolt push` / `pull` sync 
 - [ ] `bd ready` lists issues
 - [ ] `cd upstream/oolite && ./mk.sh build test` is green
 - [ ] `python3 tests/launch_snapshot.py` runs
+
+## Deviations on Jon's desktop (2026-09-16)
+
+The runbook above was written for the VM. On the desktop that replaced it
+([I0](0-machines.md) status log): the clone is `C:\Users\jon\OoliteMigration`; MSYS2 is the
+scoop package at `C:\Users\jon\scoop\apps\msys2\current` (so `HERMES_GIT_BASH_PATH` and the
+`profile.d` paths point there, not at `C:\msys64`); Node, Python and Claude Code come from scoop;
+`bd`/`dolt` sit in `C:\tools\` on the **user** PATH and git config is `--global`, because the
+account is not an administrator. The Hermes installer set `HERMES_GIT_BASH_PATH` to scoop's Git
+Bash, exactly the trap above; it was reset by hand.

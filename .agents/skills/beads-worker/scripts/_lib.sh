@@ -23,4 +23,20 @@ bead_acceptance() {
   fi
   printf '%s\n' "$acc"
 }
+# Which beads the loop works: every bead carrying phase:<N> and at least one label in
+# BEADS_WORKER_LABELS (default: fleet), minus any carrying a label in BEADS_WORKER_EXCLUDE. Set
+# BEADS_WORKER_LABELS="fleet frontier" to let a frontier-model session take the seams as well.
+# review, rebless and proposed-adr beads are never the loop's; escalated ones already failed here.
+BEADS_WORKER_LABELS="${BEADS_WORKER_LABELS:-fleet}"
+BEADS_WORKER_EXCLUDE="${BEADS_WORKER_EXCLUDE:-review rebless proposed-adr escalated}"
+# worker_list <phase> [bd list flags...]: one JSON array of matching beads, deduplicated by id.
+worker_list() {
+  local phase="$1"; shift
+  for l in $BEADS_WORKER_LABELS; do
+    real_bd list --label "$l" --label "phase:$phase" "$@" --json -n 0 2>/dev/null       | jq -c 'if type=="array" then .[] else empty end'
+  done | jq -s --arg ex "$BEADS_WORKER_EXCLUDE" '
+    ($ex | split(" ") | map(select(. != ""))) as $ex
+    | map(select(((.labels // []) | map(. as $l | $ex | index($l)) | any) | not))
+    | unique_by(.id)'
+}
 bead_attempts() { bead_json "$1" | jq -r '(.metadata.attempts // "0") | tonumber'; }
