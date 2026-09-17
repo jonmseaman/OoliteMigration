@@ -1,0 +1,7 @@
+{
+  "seed": 1,
+  "settle_seconds": 2.0,
+  "snapshot": true,
+  "load_save": null,
+  "js": []
+}
