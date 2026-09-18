@@ -54,6 +54,7 @@ Measured on the synthetic fixtures (N=8, stub gate):
 | interaction (`f3`+`f6`) | pair named, `f6` evicted, 7 merged | 9 |
 | flaky gate | `INCONCLUSIVE`, 0 evicted, 0 merged | 4 |
 | conflicting branch | evicted before any gate runs | 1 |
+| green batch, `--push` confirmed | `origin/main` and `fork/migration` both match the tree | 1 |
 
 The one-culprit figure is the arithmetic in the algorithm, spent: batch (1) + `ceil(log2 8)` = 3
 prefix probes + 1 confirming re-run + 1 solo attribution + 1 remainder = **7**. A change that makes
@@ -140,6 +141,38 @@ Missing any of them, the queue prints the push it *would* have run and exits gre
 proves all four branches of this against a **bare repository under `$LOCALAPPDATA/Temp`**; nothing
 in this bead was ever run against `origin`.
 
+### The fork mirror (ADR-0017 step 7)
+
+The push cadence has **two** halves, and the queue does both or neither:
+
+```
+git push origin main
+git subtree push --prefix=upstream/oolite fork migration
+```
+
+The second mirrors the converted tree onto the fork's `migration` branch, so the fork carries the
+ported engine with its history grafted onto the fork's commits. Not per bead: a subtree split walks
+the whole history each time and a mirror gains nothing from finer grain. **This is the step that
+closes the weekly hand-push bead.**
+
+Three design decisions worth stating:
+
+- **The mirror is dominated by a successful push** (`[ "$PUSHED" = 1 ] && mirror_subtree`). A fork
+  mirrored from a tree that never reached `origin` is exactly the drift the cadence exists to stop.
+- **The mirror has its own forge guard.** `fork` and `origin` are different URLs, so a guard that
+  only vetted `$REMOTE` would let the mirror reach a real forge unexamined.
+- **A failed mirror is loud but not fatal.** `main` has already fast-forwarded and been pushed;
+  unwinding that would be worse than a stale mirror. `MIRRORED` stays 0 so the verdict block and the
+  JSON record the disagreement instead of implying a mirror that does not exist.
+
+Scenario S13 proves the bead's DONE WHEN against two **bare repositories in the temp dir**: after a
+green batch `origin/main` matches local `main` *and* `fork/migration`'s **tree** equals the local
+`upstream/oolite` tree. Tree equality is the right assertion and SHA equality would be wrong — a
+subtree split rewrites commits by construction — while "a `migration` branch exists" would be
+vacuous, since a mirror of the wrong commit satisfies it. The forge-guard arm uses a local bare repo
+whose *path* contains `github.com`: mutant M15 deletes that guard, and a real `https://github.com/…`
+URL would make the mutated queue attempt a genuine network push.
+
 Likewise the requeue step: when a branch is evicted the queue **prints** the `bd update ... --notes`
 command and never runs it. The agent that implements a bead does not mutate bead state.
 
@@ -147,7 +180,7 @@ command and never runs it. The agent that implements a bead does not mutate bead
 
 `tools/merge-queue-selftest` builds throwaway git repositories under `$LOCALAPPDATA/Temp` with
 scripted good/bad/interacting branches and a stub gate whose entire contract — like `tier-c.sh`'s —
-is its exit status. Twelve scenarios, ~93 assertions, ~6 minutes. Against the real gate the same
+is its exit status. Thirteen scenarios, ~110 assertions, ~7 minutes. Against the real gate the same
 coverage would be 60+ Tier C runs, about 22 hours, and would merge real branches into real `main`.
 
 Every assertion is positive evidence: gate invocation counts, base SHA before and after, ancestry

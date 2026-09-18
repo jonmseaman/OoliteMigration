@@ -73,23 +73,40 @@ push-off)
   printf '%s\n' "$E" | grep -q 'OO_MQ_ALLOW_REMOTE_HOST' || fail "there is no forge guard"
   n="$(printf '%s\n' "$E" | grep -c 'git -C "\$REPO" push')"
   [ "$n" = 1 ] || fail "the code contains $n push call sites; there must be exactly ONE, inside the triple guard"
+  # ADR-0017 step 7's mirror is the SECOND network write, and it gets the same treatment: exactly
+  # one call site, and it must be a `git subtree push` at the documented prefix/remote/branch.
+  m="$(printf '%s\n' "$E" | grep -c 'git -C "\$REPO" subtree push')"
+  [ "$m" = 1 ] || fail "the code contains $m subtree-push call sites; there must be exactly ONE"
+  printf '%s\n' "$E" | grep -q 'SUBTREE_PREFIX="${OO_MQ_SUBTREE_PREFIX:-upstream/oolite}"' \
+    || fail "the subtree prefix does not default to upstream/oolite (ADR-0017)"
+  printf '%s\n' "$E" | grep -q 'SUBTREE_REMOTE="${OO_MQ_SUBTREE_REMOTE:-fork}"' \
+    || fail "the mirror remote does not default to 'fork' (ADR-0017)"
+  printf '%s\n' "$E" | grep -q 'SUBTREE_BRANCH="${OO_MQ_SUBTREE_BRANCH:-migration}"' \
+    || fail "the mirror branch does not default to 'migration' (ADR-0017)"
+  # The mirror must be INSIDE the push guard: its only invocation is dominated by a successful push.
+  printf '%s\n' "$E" | grep -q '\[ "\$PUSHED" = 1 \] && mirror_subtree' \
+    || fail "mirror_subtree is not gated on a SUCCESSFUL push; a fork mirrored from a tree that was never pushed is the drift ADR-0017 exists to stop"
+  # The mirror carries its OWN forge guard, because fork and origin are different URLs.
+  printf '%s\n' "$E" | grep -q 'SUBTREE REFUSED' \
+    || fail "the mirror has no forge refusal; a guard that only vets \$REMOTE lets the mirror reach a real forge"
   # The single push must be dominated by the green verdict AND the confirmation.
   printf '%s\n' "$E" | grep -q 'if \[ "\$VERDICT" = green \] && \[ "\$PUSH" = 1 \]' \
     || fail "the push is not gated on a GREEN verdict"
-  pass "push is OFF by default, has exactly one call site, and needs --push + OO_MQ_PUSH_CONFIRM + a non-forge remote"
+  pass "push and the ADR-0017 subtree mirror are OFF by default, have one call site each, and both need --push + OO_MQ_PUSH_CONFIRM + a non-forge remote"
   ;;
 
 # ------------------------------------------------------------------------------------------------
 # The behavioural proof, split so no line runs for many minutes. Each delegates to the selftest,
 # which builds throwaway repos under $LOCALAPPDATA/Temp and asserts POSITIVE evidence: gate
 # invocation counts, base SHAs before and after, and ancestry of every branch.
-green|bisect|multi|flake|policy)
+green|bisect|multi|flake|policy|mirror)
   case "$CHECK" in
     green)  SCEN="S1 S2 S3 S4" ;;   # fast-forward, dry-run inert, empty batch, attestation
     bisect) SCEN="S5" ;;            # the headline: 8 branches, 1 culprit
     multi)  SCEN="S6 S7" ;;         # two culprits; an interaction
     flake)  SCEN="S8 S9" ;;         # a flake and a poisoned base: INCONCLUSIVE, nobody blamed
     policy) SCEN="S10 S11 S12" ;;   # push, the deadlock guard, a conflicting branch
+    mirror) SCEN="S13" ;;           # ADR-0017 step 7: origin AND fork/migration match the tree
   esac
   OUT="$(bash tools/merge-queue-selftest $SCEN 2>&1)"; RC=$?
   printf '%s\n' "$OUT" | tail -20
@@ -106,12 +123,13 @@ green|bisect|multi|flake|policy)
 # ------------------------------------------------------------------------------------------------
 # The mutants. For every property the queue defends, one mutant corrupts the DATA and one weakens
 # the CHECKER; each must turn the selftest RED *naming the defect*.
-mutants-ff|mutants-bisect|mutants-flake|mutants-admit)
+mutants-ff|mutants-bisect|mutants-flake|mutants-admit|mutants-mirror)
   case "$CHECK" in
     mutants-ff)     MUT="M1 M2 M12" ;;
     mutants-bisect) MUT="M3 M4" ;;
     mutants-flake)  MUT="M5 M6 M7 M8" ;;
     mutants-admit)  MUT="M9 M10 M11" ;;
+    mutants-mirror) MUT="M13 M14 M15" ;;
   esac
   OUT="$(bash tools/merge-queue-mutants.sh $MUT 2>&1)"; RC=$?
   printf '%s\n' "$OUT" | grep -E '^(==|    ok|    FAIL|merge-queue-mutants:)'
@@ -125,7 +143,8 @@ mutants-ff|mutants-bisect|mutants-flake|mutants-admit)
 # ------------------------------------------------------------------------------------------------
 design)
   D=docs/infra/merge-queue.md
-  for s in '1327' 'ceil(log2' 'INCONCLUSIVE' 'gui-lock' 'OFF by default' 'attestation'; do
+  for s in '1327' 'ceil(log2' 'INCONCLUSIVE' 'gui-lock' 'OFF by default' 'attestation' \
+           'git subtree push --prefix=upstream/oolite fork migration' 'ADR-0017'; do
     grep -q -- "$s" "$D" || fail "$D does not state '$s'"
   done
   # The measured cost table must agree with what the selftest actually observes. A document that
