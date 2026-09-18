@@ -811,7 +811,12 @@ def assert_jumped(evidence, spec):
         raise ScenarioError("the tick budget was not met: the simulation did not run in the "
                             "destination system")
     if not evidence["world_at_rest"]:
-        raise ScenarioError("the world was not at rest when the dump was taken")
+        raise ScenarioError(
+            "the world was not at rest when the dump was taken: %r still report motion. "
+            "ShipEntity -velocity is [super velocity] + [self thrustVector] "
+            "(ShipEntity.m:12830-12833), so a ship under thrust reads a velocity no JS write can "
+            "clear, whose value tracks the frame count - dumping it would make the golden a "
+            "stopwatch reading." % (evidence.get("moving_entities"),))
     if not evidence["world_reached_fixed_point"]:
         raise ScenarioError("the destination world never reached a clean clear-and-settle round")
     return True
@@ -924,6 +929,15 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
                     "NOT frozen, so the dump is a stopwatch reading"
                     % (clock_after - clock_before))
             moving = moving_entities(console)
+            if moving:
+                # CLEAR ONCE MORE UNDER THE PAUSE, then re-assert. Docking at the destination
+                # station puts the player back beside a station whose docking sequence can leave
+                # entities in the world; the clock is stopped here, so a clear under the pause
+                # cannot introduce new nondeterminism - it removes what the docking left. If the
+                # world is STILL moving after that, the run REFUSES rather than blessing a
+                # frame-count-dependent dump (bead oo-jor's rc=2-vs-rc=1 distinction).
+                clear_system(console)
+                moving = moving_entities(console)
             probe = probe_state(console)
             png, grid = capture_frame(console, artifact_dir)
             state = json.loads(dump_state(console))
@@ -954,6 +968,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "fuel_consumed_tenths": fuel_before_tenths - fuel_after_tenths,
             "distance_ly_tenths": distance_tenths,
             "world_at_rest": not moving,
+            "moving_entities": list(moving),
             "world_reached_fixed_point": bool(clear_rounds) and clear_rounds[-1] == [0, 0, 0],
             # The BUDGET is pinned; the MEASURED elapsed time is deliberately NOT in the dump - the
             # overshoot past the 100 ms poll is a property of how fast this box rendered that
