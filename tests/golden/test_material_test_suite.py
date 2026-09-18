@@ -739,3 +739,87 @@ def test_this_fixture_really_does_ship_a_manifest(spec):
         "[oxp-standards.error] lines (bead oo-kcrw NOMANIF) and the predicate must be "
         "reconsidered deliberately, not relaxed." % spec["oxp_source"])
     assert "org.oolite.material-test-suite" in open(path, encoding="utf-8").read()
+
+
+# =================================================================================================
+# A GOLDEN CANNOT WITNESS ITSELF (bead oo-gxp).
+#
+# Every comparison above reads the stored golden and compares it against a COPY OF ITSELF or
+# against expectations restated from it, so editing state.json moves BOTH sides of the equation
+# and the edit is structurally invisible. Measured here directly: a mutation run of this gate
+# scored 18/19 with exactly one survivor - `evidence.ticks + 1`, the smallest edit that changes
+# anything - which stayed GREEN across all 80 tests.
+#
+# provenance.json ALREADY recorded state.json's sha256 and byte count; nothing read them. These
+# two tests do, and they kill that mutant, because provenance is a SEPARATE FILE the mutant does
+# not touch. Editing BOTH files is a deliberate re-bless, which is exactly what
+# tools/rebless-approvals.txt and Jon's approval exist to govern - so the escape hatch stays the
+# governed one.
+#
+# THE ASYMMETRY IS DELIBERATE AND MUST BE PRESERVED. This pins the bytes of a COMMITTED artifact
+# against its own provenance record; it is NOT a comparison rule for a freshly captured frame. A
+# fresh frame is compared against frame.grid with the MEASURED TOLERANCE (see
+# test_stored_frame_matches_a_copy_of_itself / test_an_all_black_frame_is_rejected), because
+# llvmpipe is not bit-reproducible across runs (bead oo-ae9). Byte-hashing a fresh capture would
+# make the gate flaky; byte-hashing the stored file detects tampering with it.
+# =================================================================================================
+
+def _digest(path):
+    import hashlib
+    blob = open(path, "rb").read()
+    return hashlib.sha256(blob).hexdigest(), len(blob)
+
+
+@pytest.mark.parametrize("artifact,path_of", [
+    ("state.json", lambda: GOLDEN),
+    ("frame.grid", lambda: FRAME),
+])
+def test_stored_artifact_matches_the_digest_recorded_in_provenance(artifact, path_of, provenance):
+    recorded = (provenance.get("artifacts") or {}).get(artifact)
+    assert recorded, (
+        "provenance.json records no artifacts[%r]; without a witness that lives OUTSIDE the file, "
+        "any edit to it moves both sides of every comparison in this gate and is invisible "
+        "(bead oo-gxp)." % artifact)
+    for field in ("sha256", "bytes"):
+        assert field in recorded, "provenance artifacts[%r] records no %r" % (artifact, field)
+
+    sha, size = _digest(path_of())
+    assert (sha, size) == (recorded["sha256"], recorded["bytes"]), (
+        "%s has been edited since it was blessed: it is now %d bytes with sha256 %s, but "
+        "provenance.json records %d bytes with sha256 %s. A one-unit edit to a golden is "
+        "invisible to every comparison that reads the golden on both sides, so this digest - held "
+        "in a SEPARATE file - is the only check that can see it. Do NOT update provenance to "
+        "match: changing both is a re-bless and needs an approval line in "
+        "tools/rebless-approvals.txt."
+        % (artifact, size, sha, recorded["bytes"], recorded["sha256"]))
+
+
+def test_the_provenance_digest_defence_actually_fires(tmp_path, provenance):
+    """Pin the defence itself: a one-unit edit to a COPY of the golden must be detected.
+
+    Without this, the test above could silently degrade into a tautology (e.g. someone recomputing
+    the digest from the file it is meant to police). The mutation is applied to a THROWAWAY copy
+    under tmp_path - never to the real golden - because restore-on-exit does not run when a
+    process is killed (bead oo-dto).
+    """
+    import hashlib
+    recorded = provenance["artifacts"]["state.json"]
+
+    data = json.loads(open(GOLDEN, encoding="utf-8").read())
+    data["evidence"]["ticks"] = int(data["evidence"]["ticks"]) + 1
+    mutated = tmp_path / "state.json"
+    mutated.write_text(json.dumps(data, sort_keys=True, separators=(",", ":")), encoding="utf-8")
+
+    blob = mutated.read_bytes()
+    sha = hashlib.sha256(blob).hexdigest()
+    assert (sha, len(blob)) != (recorded["sha256"], recorded["bytes"]), (
+        "a golden mutated by one tick still matches the digest recorded in provenance, so the "
+        "digest defence cannot detect an edit to the golden and is decoration")
+
+    # And the mutated copy is still accepted by the evidence checker - which is precisely why the
+    # digest defence is needed: no OTHER check in this gate can see this edit.
+    rc, out = run(EVIDENCE, str(mutated), "--label", "one-tick mutant")
+    assert rc == 0, (
+        "expected the evidence checker to still PASS the one-tick mutant (it asserts ticks >= 1, "
+        "not a specific value); if it now fails, this test's premise has changed and the comment "
+        "above is stale\n%s" % out)
