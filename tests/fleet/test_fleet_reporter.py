@@ -151,7 +151,8 @@ def test_a_faked_number_is_caught_by_the_cross_check(tmp_path, report):
     adr = next(m for m in p["metrics"] if m["id"] == "proposed-adrs-awaiting-override")
     adr["values"]["awaiting_override"]["value"] += 7
     tampered = str(tmp_path / os.path.basename(path))
-    open(tampered, "w", encoding="utf-8").write(
+    # newline="\n" matters: the default would insert \r into the JSON block on Windows
+    open(tampered, "w", encoding="utf-8", newline="\n").write(
         re.sub(r"```json\n.*?\n```", "```json\n" + json.dumps(p, indent=2) + "\n```", text, flags=re.S))
     ok, msgs = fr.check_report(tampered, DOC, ROOT, fr.default_bd())
     assert not ok

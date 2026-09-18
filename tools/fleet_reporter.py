@@ -212,7 +212,11 @@ def val(x, unit=None):
 
 
 def nc(reason):
-    return {"not_computed": reason}
+    # Collapse whitespace: reasons often quote a tool's stderr, which arrives multi-line and
+    # CR-terminated on Windows.  A raw control character inside the report's JSON block makes
+    # the whole payload unparseable - i.e. one unlucky error message would break the gate for
+    # a line-ending rather than for a defect.  It also keeps a reason on one markdown bullet.
+    return {"not_computed": " ".join(str(reason).split())}
 
 
 def find_repo_root(start: str) -> str:
@@ -533,6 +537,10 @@ def render(payload) -> str:
 
 
 def extract_payload(md_text):
+    # Tolerate CRLF: accept.sh replays in a FRESH CHECKOUT, and a checkout with
+    # core.autocrlf would otherwise hand json.loads raw \r control characters and fail
+    # the whole gate for a line-ending, not for a defect.
+    md_text = md_text.replace("\r\n", "\n")
     m = re.search(r"```json\n(.*?)\n```", md_text, re.S)
     if not m:
         raise ValueError("report has no ```json payload block")
