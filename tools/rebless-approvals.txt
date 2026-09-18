@@ -23,4 +23,5 @@
 #   tests/golden/scenarios/001/scenario.json   Jon 2026-09-20, re-bless queue: settle time
 #                                              raised to 12 s after the run-loop fix.
 #
-# There are no approvals on record. That is the correct steady state.
+# Approvals on record (remove a line once its re-bless has landed):
+goldens/windows-x64/001/provenance.json   Jon Seaman 2026-09-18, oo-5ggu: provenance-only change from the -ffp-contract=off rebuild (verified=true, translation_units 242->243, build_dir); state.json is byte-identical, so no golden value moves. Approval given in chat and recorded by Claude Code at Jon's request.
