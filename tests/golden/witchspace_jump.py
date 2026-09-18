@@ -133,11 +133,22 @@ from state_dump import dump_state, ensure_launchable, start_with_retry  # noqa: 
 
 SCENARIO = "002-witchspace"
 
-# Guarded location FIRST, staged location second, so landing the golden is a pure `git mv` with no
-# code change (scenarios 010/012/015's arrangement, deliberately identical).
+# EVERY artifact this harness reads is resolved with the SAME ordering: guarded location
+# `goldens/windows-x64/<SCENARIO>/` FIRST, staged location `tests/golden/pending/<SCENARIO>/`
+# second, so landing the golden is a pure `git mv` of the directory with no code change
+# (scenarios 010/012/015's arrangement, deliberately identical).
+#
+# The rule is "same ordering for all four tuples" and not "three of four": SPEC_CANDIDATES
+# originally omitted the guarded entry, and because load_spec() runs in main() for EVERY mode
+# (--check-evidence, the live run and the --break-jump mutant arm alike), that one omission took
+# down three of this bead's seven acceptance lines AFTER the move — including the non-vacuity arm,
+# which then failed for a missing spec.json instead of because the ship stayed in Lave. A landing
+# procedure that disarms the arm proving the gate has teeth is worse than no landing procedure.
+# `tests/golden/scenarios/<SCENARIO>/` is kept as a last resort for the pre-staging layout only.
 SPEC_CANDIDATES = (
-    os.path.join(HERE, "scenarios", SCENARIO, "spec.json"),
+    os.path.join(REPO_ROOT, "goldens", "windows-x64", SCENARIO, "spec.json"),
     os.path.join(HERE, "pending", SCENARIO, "spec.json"),
+    os.path.join(HERE, "scenarios", SCENARIO, "spec.json"),
 )
 GOLDEN_CANDIDATES = (
     os.path.join(REPO_ROOT, "goldens", "windows-x64", SCENARIO, "state.json"),
