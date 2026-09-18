@@ -209,6 +209,54 @@ class Verdict:
     NOTLOADED = "NOTLOADED"  # the expansion was not accepted into the search paths
     ERRORS = "ERRORS"        # loaded fine, but the log has ERROR lines
     PASS = "PASS"
+    # --- added by bead oo-kcrw, for dependency-aware GROUP loading -----------
+    #
+    # Each of these is a DISTINCT failure with a distinct owner and a distinct
+    # response, and collapsing any of them into ERRORS/NOTLOADED would destroy
+    # the per-expansion attribution that is this instrument's whole value.
+    UNSATISFIABLE = "UNSATIS"    # a declared requirement is not in the corpus at
+                                 # all, so the expansion never got a chance to
+                                 # load. NOT a load failure; no launch happens.
+    DEPNOTLOADED = "DEPNOTLD"    # the PRIMARY loaded but a DEPENDENCY did not:
+                                 # the group is not a valid test of the primary.
+    DEPERRORS = "DEPERR"         # the primary loaded cleanly; the error lines
+                                 # belong to a named DEPENDENCY. Still a failure,
+                                 # but reported against the dependency.
+    NOMANIFEST = "NOMANIF"       # the expansion LOADED and its ONLY error is the
+                                 # standards complaint that it ships no
+                                 # manifest.plist - a legacy in-tree fixture that
+                                 # predates the manifest format. Non-fatal, and
+                                 # argued in full at NOMANIFEST_RE below.
+
+
+#: The exact standards complaint emitted for an expansion with no manifest.plist:
+#: OOStandardsError from ResourceManager, rendered as
+#:   [oxp-standards.error]: OXP <path> has no manifest.plist
+#:
+#: WHY THIS GETS ITS OWN NON-FATAL STATE, AND WHY THAT IS NOT A LOOSENED PREDICATE.
+#: Five of the six in-tree test-oxps (upstream/oolite-tests/test-oxps) ship no
+#: manifest.plist at all; they predate the format. Measured: each produces
+#: EXACTLY 2 error lines per run and they are all this one message. The tell that
+#: it is a fixture property rather than five independent defects is that five
+#: unrelated fixtures produce an identical count of exactly 2.
+#:
+#: Reporting them as ERRORS - the same state as an expansion whose ship data does
+#: not parse - sends the next reader hunting a bug that does not exist, and that
+#: is a REPORTING defect. So they get their own state, and it is non-fatal.
+#:
+#: The classification is narrow by construction and cannot widen into a silencer:
+#:   * it requires the expansion to have LOADED first (P5 satisfied) - a rejected
+#:     expansion is NOTLOADED and never reaches this branch;
+#:   * it requires that EVERY error line in the run match this one message. One
+#:     additional error line of any kind and the verdict is ERRORS again, with
+#:     the manifest lines still listed;
+#:   * the message must NAME a staged member, so an unrelated expansion's missing
+#:     manifest cannot be absorbed;
+#:   * the lines are still PRINTED, still recorded in the JSON, and still counted.
+#:     Nothing is suppressed - only re-labelled, with the count reported.
+#: tools/test_oxp_deps.py pins every one of those conditions, and the mutation
+#: harness shows the gate go red if the match is widened.
+NOMANIFEST_RE = re.compile(r"\bhas no manifest\.plist\s*$")
 
 
 def _launch_env(logs: Path, addons: Path | None):
@@ -242,7 +290,7 @@ def _launch_env(logs: Path, addons: Path | None):
 
 
 def judge(text: str, staged: str | None, log_label: str, rc=None, timeout=None,
-          require_sentinel: bool = True) -> tuple:
+          require_sentinel: bool = True, scan_errors: bool = True) -> tuple:
     """Apply P2-P5 then the ERROR scan to a log's TEXT. Returns (verdict, detail, errors).
 
     Split out from run_one deliberately so the guard can be exercised offline
@@ -291,29 +339,12 @@ def judge(text: str, staged: str | None, log_label: str, rc=None, timeout=None,
 
     # ---- P5 LOADED -------------------------------------------------------
     if staged is not None:
-        if not SEARCHPATHS_RE.search(text):
+        entries = searchpath_entries(text)
+        if entries is None:
             return (Verdict.NOTLOADED,
                     "%s has no [searchPaths.dumpAll] block - cannot prove the expansion "
                     "was parsed" % log_label, [])
-        # Take ONLY the indented path lines of the block. The block is printed as
-        # "[searchPaths.dumpAll]: Resource paths: <mode>\n    path\n    path..."
-        # and ends at the next timestamped line.
-        after = text.split("[searchPaths.dumpAll]: Resource paths:", 1)[1]
-        entries = []
-        for ln in after.splitlines()[1:]:
-            if re.match(r"^\s*\d\d:\d\d:\d\d\.\d+ \[", ln):
-                break
-            if ln.startswith("    "):
-                entries.append(ln.strip().replace("\\", "/"))
-        # Match the FULL staged path, not the bare name. Matching a bare name
-        # against the whole log is a false-positive generator: the per-run work
-        # directory is itself named after the expansion, so "NAME" appears in the
-        # block as part of the AddOns ROOT path even when the expansion itself was
-        # rejected. Five test-oxps were reported PASS that way before this was
-        # found. An entry must END with the staged file's own name.
-        want = staged.replace("\\", "/")
-        hit = any(e == want or e.endswith("/" + want) for e in entries)
-        if not hit:
+        if not is_loaded(entries, staged):
             return (Verdict.NOTLOADED,
                     "%r is ABSENT from the [searchPaths.dumpAll] Resource paths block in %s "
                     "(block listed %d path(s): %s), so the game never accepted it into "
@@ -321,22 +352,23 @@ def judge(text: str, staged: str | None, log_label: str, rc=None, timeout=None,
                     "manifest.plist, unmet required_oolite_version, or unmet requires_oxps). "
                     "The expansion did NOT load; any absence of ERROR lines is vacuous."
                     % (staged, log_label, len(entries),
-                       ", ".join(e.rsplit("/", 1)[-1] for e in entries)), [])
+                       ", ".join(entry_names(entries))), [])
 
     # ---- only now is the ERROR scan meaningful ---------------------------
     # Carry the channel across continuation lines: a wrapped message's tail has
     # no [channel] prefix of its own, and judging it alone would let the tail of
     # an excluded message be counted (or the tail of a real error be missed).
-    errs = []
-    current = None
-    for ln in lines:
-        chan = channel_of(ln)
-        if chan is not None:
-            current = chan
-        if current and current.startswith(BENIGN_CHANNEL_PREFIX):
-            continue
-        if is_error_line(ln):
-            errs.append(ln)
+    #
+    # scan_errors=False is used ONLY by judge_group(), which needs P2-P4b applied
+    # unchanged but must run the error scan itself so it can ATTRIBUTE each line
+    # to the member that owns it. Returning ERRORS here would collapse "a
+    # dependency emitted this" into "the primary failed" - the precise loss of
+    # attribution bead oo-kcrw exists to prevent. It never widens what counts as
+    # an error: judge_group calls the same error_lines() on the same text.
+    if not scan_errors:
+        return (Verdict.PASS, "run-level guards P2-P4b passed; error scan deferred to "
+                              "the group attributor", [])
+    errs = error_lines(text)
     if errs:
         who = staged or "the log"
         return (Verdict.ERRORS,
@@ -346,6 +378,307 @@ def judge(text: str, staged: str | None, log_label: str, rc=None, timeout=None,
     return (Verdict.PASS,
             "loaded (named in searchPaths.dumpAll), reached shipData.load.begin and "
             "startup.complete, %d log lines, 0 ERROR lines" % len(lines), [])
+
+
+def searchpath_entries(text: str):
+    """The indented path entries of the [searchPaths.dumpAll] block, or None.
+
+    Factored out of judge() by bead oo-kcrw so a GROUP check can ask the same
+    question about several staged files from one log without re-parsing it, and
+    so the parsing itself is testable offline against a captured log.
+    """
+    if not SEARCHPATHS_RE.search(text):
+        return None
+    after = text.split("[searchPaths.dumpAll]: Resource paths:", 1)[1]
+    entries = []
+    for ln in after.splitlines()[1:]:
+        if re.match(r"^\s*\d\d:\d\d:\d\d\.\d+ \[", ln):
+            break
+        if ln.startswith("    "):
+            entries.append(ln.strip().replace("\\", "/"))
+    return entries
+
+
+def entry_names(entries):
+    return [e.rsplit("/", 1)[-1] for e in entries]
+
+
+def is_loaded(entries, staged: str) -> bool:
+    """Whether `staged` appears as an ENTRY of the search-path block.
+
+    An entry must EQUAL the staged filename or END WITH "/" + it. Matching the
+    bare name against the whole log was a measured false-positive generator: the
+    per-run work directory is itself named after the expansion, so the name
+    appears in the block as part of the AddOns ROOT path even when the expansion
+    was rejected. Five test-oxps reported PASS that way.
+    """
+    want = staged.replace("\\", "/")
+    return any(e == want or e.endswith("/" + want) for e in entries)
+
+
+def error_lines(text: str):
+    """Every error line in `text`, with the benign harness channel excluded.
+
+    Factored out of judge() (bead oo-kcrw) so the group checker can run the SAME
+    detector and then attribute the lines it finds, rather than reimplementing
+    the scan with a different definition of "error".
+    """
+    errs = []
+    current = None
+    for ln in text.splitlines():
+        chan = channel_of(ln)
+        if chan is not None:
+            current = chan
+        if current and current.startswith(BENIGN_CHANNEL_PREFIX):
+            continue
+        if is_error_line(ln):
+            errs.append(ln)
+    return errs
+
+
+def judge_group(text: str, members, log_label: str, rc=None, timeout=None,
+                require_sentinel: bool = True) -> tuple:
+    """Judge a log from a run that staged a PRIMARY plus its dependency closure.
+
+    `members` is the ordered list produced by oxp_deps.tier1_groups()[i]["members"]:
+    dicts with staged_as / identifier / title / role, the first being the primary.
+
+    WHY THIS IS NOT JUST judge() IN A LOOP.  Loading a SET changes what a failure
+    means, and the whole value of this instrument is per-expansion attribution:
+
+      * if the PRIMARY is absent from the search-path block -> NOTLOADED, as
+        before, and the dependencies are named so the reader can see they WERE
+        staged (which is what distinguishes "unmet requirement" from "the
+        grouping did not work");
+      * if the primary loaded but a DEPENDENCY did not -> DEPNOTLOADED naming
+        the dependency. The run is not a valid test of the primary and must not
+        be green, but the primary is not the culprit;
+      * if the log has error lines, they are ATTRIBUTED. An error emitted by a
+        dependency is reported as DEPERRORS against that dependency, never as
+        "the primary FAILED" - that would send the next reader to audit an
+        expansion that is fine;
+      * an error line that NO staged expansion claims is reported explicitly as
+        unattributed rather than being folded into the primary's tally. An
+        unowned error is a finding about the engine or the harness and hiding it
+        inside a primary's verdict destroys that signal.
+
+    Returns (verdict, detail, errors, per_member) where per_member maps each
+    member's identifier to {"staged_as", "role", "loaded", "errors"}.
+    """
+    import oxp_deps  # local import: keeps this module importable standalone
+
+    primary = members[0]
+    # P2-P4b are properties of the RUN, not of any one expansion, so they are
+    # delegated to the existing single-expansion judge with staged=None (which
+    # skips its P5) and returned unchanged. Reimplementing them here is how two
+    # copies of a guard drift apart.
+    v, d, _ = judge(text, None, log_label, rc=rc, timeout=timeout,
+                    require_sentinel=require_sentinel, scan_errors=False)
+    if v != Verdict.PASS:
+        return (v, d, [], {})
+
+    entries = searchpath_entries(text)
+    if entries is None:
+        return (Verdict.NOTLOADED,
+                "%s has no [searchPaths.dumpAll] block - cannot prove any expansion "
+                "was parsed" % log_label, [], {})
+
+    per = {}
+    for m in members:
+        per[m["identifier"]] = {
+            "staged_as": m["staged_as"], "role": m["role"],
+            "loaded": is_loaded(entries, m["staged_as"]), "errors": [],
+        }
+
+    staged_names = ", ".join(m["staged_as"] for m in members[1:]) or "(none)"
+    if not per[primary["identifier"]]["loaded"]:
+        return (Verdict.NOTLOADED,
+                "%r is ABSENT from the [searchPaths.dumpAll] Resource paths block in %s "
+                "(block listed %d path(s): %s) EVEN THOUGH its declared requires_oxps "
+                "closure was staged alongside it [%s], so the dependency explanation does "
+                "NOT account for this one - ResourceManager checkPotentialPath rejected it "
+                "for some other reason (no/invalid manifest.plist, unmet "
+                "required_oolite_version, or an UNDECLARED requirement). The expansion did "
+                "NOT load; any absence of ERROR lines is vacuous."
+                % (primary["staged_as"], log_label, len(entries),
+                   ", ".join(entry_names(entries)), staged_names), [], per)
+
+    unloaded_deps = [m for m in members[1:] if not per[m["identifier"]]["loaded"]]
+    if unloaded_deps:
+        return (Verdict.DEPNOTLOADED,
+                "%s loaded, but %d of its %d staged DEPENDENC%s did not appear in the "
+                "[searchPaths.dumpAll] block: %s. The group is therefore not a valid test "
+                "of %s - the dependency is the thing to investigate, not the primary."
+                % (primary["staged_as"], len(unloaded_deps), len(members) - 1,
+                   "Y" if len(unloaded_deps) == 1 else "IES",
+                   ", ".join(m["staged_as"] for m in unloaded_deps),
+                   primary["identifier"]), [], per)
+
+    # ---- attribution -----------------------------------------------------
+    owners = [{"label": m["identifier"],
+               "tokens": oxp_deps.owner_tokens(m, m["staged_as"])} for m in members]
+    by_owner = oxp_deps.attribute_errors(error_lines(text), owners)
+    for ident, lines in by_owner.items():
+        if ident in per:
+            per[ident]["errors"] = lines
+
+    prim_errs = by_owner.get(primary["identifier"], [])
+    dep_errs = [(m["identifier"], by_owner.get(m["identifier"], []))
+                for m in members[1:] if by_owner.get(m["identifier"])]
+    unowned = by_owner.get(oxp_deps.UNATTRIBUTED, [])
+    all_errs = prim_errs + [l for _, e in dep_errs for l in e] + unowned
+
+    # ---- the legacy-fixture class, decided before ERRORS ------------------
+    # Only when EVERY error line in the whole run is the "has no manifest.plist"
+    # standards complaint AND every such line was attributed to a staged member.
+    # One extra line of any kind, or one unowned manifest complaint, falls
+    # through to the normal ERRORS handling below with these lines still listed.
+    if all_errs and not unowned and all(NOMANIFEST_RE.search(l) for l in all_errs):
+        return (Verdict.NOMANIFEST,
+                "%s LOADED (named in searchPaths.dumpAll) and its ONLY %d error line(s) "
+                "are the standards complaint that it ships no manifest.plist. That is a "
+                "property of this legacy in-tree fixture, which predates the manifest "
+                "format - NOT a content defect - so it is reported as its own state "
+                "rather than as ERRORS, and the lines are printed below rather than "
+                "suppressed. Any additional error of any kind makes this ERRORS again."
+                % (primary["staged_as"], len(all_errs)), all_errs[:20], per)
+
+    if prim_errs:
+        return (Verdict.ERRORS,
+                "%s FAILED: %d ERROR line(s) attributable to IT (of %d in %s; %s)"
+                % (primary["staged_as"], len(prim_errs),
+                   len(prim_errs) + sum(len(e) for _, e in dep_errs) + len(unowned),
+                   log_label,
+                   "no dependency errors" if not dep_errs else
+                   "dependency errors: " + "; ".join("%s=%d" % (i, len(e)) for i, e in dep_errs)),
+                prim_errs[:20], per)
+    if dep_errs:
+        who = ", ".join("%s (%d)" % (i, len(e)) for i, e in dep_errs)
+        return (Verdict.DEPERRORS,
+                "%s itself loaded with NO error lines of its own; the %d error line(s) in "
+                "this run belong to its DEPENDENC%s %s. This is still a failure, but it is "
+                "NOT a failure of %s - investigate the dependency."
+                % (primary["staged_as"], sum(len(e) for _, e in dep_errs),
+                   "Y" if len(dep_errs) == 1 else "IES", who, primary["identifier"]),
+                [l for _, e in dep_errs for l in e][:20], per)
+    if unowned:
+        chans = sorted({channel_of(l) or "?" for l in unowned})
+        return (Verdict.ERRORS,
+                "%d ERROR line(s) in %s that NO staged expansion claims (primary %s and %d "
+                "dependencies all loaded cleanly; channels: %s). An unowned error is "
+                "reported rather than folded into the primary: attribution works by finding "
+                "a staged member's filename, identifier or title IN the line, and these "
+                "lines contain none of those. Candidate causes, in order of likelihood and "
+                "NOT discriminated by this check: (a) the message names a DATA KEY instead "
+                "of its source file (e.g. a shipdata.plist entry name), so the log itself "
+                "does not say which expansion contributed it; (b) the engine or a base "
+                "resource emitted it; (c) a member's manifest title differs from every "
+                "string the message uses. Read the quoted lines to decide."
+                % (len(unowned), log_label, primary["identifier"], len(members) - 1,
+                   ", ".join(chans)),
+                unowned[:20], per)
+
+    return (Verdict.PASS,
+            "loaded with its %d-member requires_oxps closure (all named in "
+            "searchPaths.dumpAll), reached shipData.load.begin and startup.complete, "
+            "%d log lines, 0 ERROR lines attributable to any member"
+            % (len(members), len(text.splitlines())), [], per)
+
+
+def run_group(app_dir: Path, group: dict, work: Path, timeout: float) -> dict:
+    """Launch the game ONCE with a primary plus its whole dependency closure."""
+    name = group["name"]
+    result = {
+        "name": name, "primary": group["primary"],
+        "members": [m["identifier"] for m in group["members"]],
+        "missing": group.get("missing", []),
+        "verdict": Verdict.LAUNCH, "detail": "", "errors": [],
+        "wall_s": 0.0, "rc": None, "per_member": {},
+    }
+
+    # UNSATISFIABLE comes FIRST and does not launch anything. A requirement that
+    # is not in the corpus means the expansion never got a chance to load;
+    # reporting that as a load failure would be a false accusation, and spending
+    # a 15-second launch to produce it would be waste.
+    if group.get("missing"):
+        result["verdict"] = Verdict.UNSATISFIABLE
+        result["detail"] = (
+            "%s declares requirement(s) that are NOT PRESENT in the corpus at all: %s. "
+            "The expansion therefore never got a chance to load, and no launch was "
+            "attempted. This is a gap in the cached corpus, NOT a load failure of %s."
+            % (name, ", ".join(group["missing"]), name))
+        return result
+
+    safe = re.sub(r"\.(oxz|oxp)\b", "_", name, flags=re.I)
+    run_dir = work / re.sub(r"[^A-Za-z0-9._-]", "_", safe)[:80]
+    if run_dir.exists():
+        shutil.rmtree(run_dir, ignore_errors=True)
+    addons = run_dir / "AddOns"
+    logs = run_dir / "Logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    addons.mkdir(parents=True, exist_ok=True)
+
+    for m in group["members"]:
+        src = Path(m["path"])
+        if not src.exists():
+            result["verdict"] = "MISSING"
+            result["detail"] = ("member %s: no such source path %s - the blob is not in the "
+                                "cache" % (m["identifier"], m["path"]))
+            return result
+        dest = addons / m["staged_as"]
+        if src.is_dir():
+            shutil.copytree(src, dest)
+        else:
+            shutil.copyfile(src, dest)
+        if not dest.exists():
+            result["verdict"] = "MISSING"
+            result["detail"] = "member %s: copy reported success but %s is absent" % (
+                m["identifier"], dest)
+            return result
+    if SENTINEL_OXP.is_dir():
+        stage(SENTINEL_OXP, addons)
+
+    log_path = logs / "Latest.log"
+    result["log"] = str(log_path).replace("\\", "/")
+    exe = app_dir / "oolite.exe"
+    if not exe.exists():
+        result["detail"] = "no oolite.exe at %s" % str(exe).replace("\\", "/")
+        return result
+
+    t0 = time.time()
+    proc = subprocess.Popen(
+        [str(exe), "--no-splash", "-load", SCENARIO_SAVE],
+        cwd=str(app_dir), env=_launch_env(logs, addons),
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    try:
+        result["rc"] = proc.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        try:
+            proc.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            pass
+        result["rc"] = "timeout"
+    result["wall_s"] = round(time.time() - t0, 2)
+
+    if not log_path.exists():
+        hint = ""
+        if result["rc"] == STATUS_DLL_NOT_FOUND:
+            hint = (" - that is 0x%X STATUS_DLL_NOT_FOUND: the UCRT64 runtime directory "
+                    "is not on PATH, so the process died before its entry point"
+                    % STATUS_DLL_NOT_FOUND)
+        result["detail"] = ("the game produced NO log at %s (exit %s)%s. It did not run, so "
+                            "NO conclusion about ERROR lines is possible."
+                            % (result["log"], result["rc"], hint))
+        return result
+
+    text = log_path.read_text(encoding="utf-8", errors="replace")
+    v, d, errs, per = judge_group(text, group["members"], result["log"],
+                                  rc=result["rc"], timeout=timeout)
+    result["verdict"], result["detail"], result["errors"], result["per_member"] = v, d, errs, per
+    return result
+
 
 
 def stage(oxp: Path, addons: Path) -> str:
@@ -446,6 +779,11 @@ def main(argv=None):
     ap.add_argument("--no-sentinel", action="store_true",
                     help="with --judge-log: skip the P4b own-marker assertion (for judging "
                          "logs captured before the sentinel existed)")
+    ap.add_argument("--groups", default="",
+                    help="a JSON file of dependency-closure GROUPS (from "
+                         "tools/oxp_deps.py tier1 --json). Each group is loaded in ONE "
+                         "launch with its primary plus its transitive requires_oxps "
+                         "closure, and errors are attributed per member.")
     args = ap.parse_args(argv)
 
     # --- offline guard mode: no launch, judge a captured log --------------
@@ -463,8 +801,8 @@ def main(argv=None):
             print("           | %s" % ln)
         return 0 if verdict == Verdict.PASS else 1
 
-    if not args.oxp:
-        sys.stderr.write("nothing to do: pass --oxp PATH or --judge-log FILE\n")
+    if not args.oxp and not args.groups:
+        sys.stderr.write("nothing to do: pass --oxp PATH, --groups FILE or --judge-log FILE\n")
         return 2
     if not args.app_dir:
         sys.stderr.write("LAUNCH: no --app-dir and no OO_APP_DIR; refusing to guess\n")
@@ -481,6 +819,38 @@ def main(argv=None):
     work = Path(args.work) if args.work else Path(
         os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "Temp" / "oo-het-load"
     work.mkdir(parents=True, exist_ok=True)
+
+    # --- dependency-aware GROUP mode (bead oo-kcrw) ------------------------
+    if args.groups:
+        groups = json.loads(Path(args.groups).read_text(encoding="utf-8"))
+        if not groups:
+            sys.stderr.write("the group file is EMPTY - refusing to report success on "
+                             "zero checks\n")
+            return 2
+        results, failed = [], 0
+        # NOMANIFEST is NON-FATAL: see the argument at NOMANIFEST_RE. It is the
+        # ONLY non-PASS state that does not fail the tier, it is still printed
+        # with its lines and still counted in the summary, and it is reachable
+        # only for an expansion that LOADED and whose every error is the missing
+        # -manifest standards complaint.
+        ok_states = (Verdict.PASS, Verdict.NOMANIFEST)
+        for g in groups:
+            r = run_group(app_dir, g, work, args.timeout)
+            results.append(r)
+            failed += r["verdict"] not in ok_states
+            print("%-10s %-44s %6.1fs  %s"
+                  % (r["verdict"], r["name"][:44], r["wall_s"], r["detail"]), flush=True)
+            for ln in r["errors"]:
+                print("           | %s" % ln, flush=True)
+        if args.json:
+            Path(args.json).write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+        counts = {}
+        for r in results:
+            counts[r["verdict"]] = counts.get(r["verdict"], 0) + 1
+        print("--- %d group(s) checked, %d failed (%s) ---"
+              % (len(results), failed,
+                 ", ".join("%s=%d" % kv for kv in sorted(counts.items()))), flush=True)
+        return 1 if failed else 0
 
     results, failed = [], 0
     for spec in args.oxp:

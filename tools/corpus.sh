@@ -209,6 +209,23 @@ cmd_selftest() {
 }
 
 # ------------------------------------------------------------------- tier1
+#
+# DEPENDENCY-AWARE GROUPING (bead oo-kcrw).  Each Tier 1 expansion is loaded in
+# ONE launch together with the TRANSITIVE closure of its requires_oxps, not
+# solo.  Verified necessary by a two-launch experiment on this host, same build,
+# differing only in whether the dependency was staged:
+#
+#   solo    ['oolite.oxp.Svengali.GNN']                       -> NOTLOADED
+#           [oxp.requirementMissing]: OXP oolite.oxp.Svengali.GNN.oxz had unmet
+#           requirements and was removed from the loading list
+#   closure ['...GNN', '...Svengali.Library']                 -> PASS
+#
+# The closure is resolved by tools/oxp_deps.py, which builds an identifier ->
+# cached-blob index from the manifests (requires_oxps names IDENTIFIERS and the
+# byte cache is content-addressed, so no filename mapping exists otherwise),
+# walks the graph ITERATIVELY with a visited set so a cycle cannot hang it, and
+# reports a requirement that is absent from the corpus as UNSATISFIABLE rather
+# than as a load failure.
 cmd_tier1() {
 	local limit="" only="" include_broken=0
 	while [ $# -gt 0 ]; do
@@ -227,103 +244,51 @@ cmd_tier1() {
 	[ -f "$APP_DIR/oolite.exe" ] || die "LAUNCH: no oolite.exe in $APP_DIR"
 	[ -f "$TIER1_JSON" ] || die "no tier1 list at $TIER1_JSON (run: tools/corpus.sh regen)"
 
-	local args
-	args="$("$PY" - "$TIER1_JSON" "${limit:-0}" "$only" "$include_broken" <<-'PYEOF'
-		import json, os, sys, pathlib
+	local work="${TMPDIR:-${LOCALAPPDATA:-$HOME}/Temp}/oo-kcrw-tier1.$$"
+	mkdir -p "$work" || die "could not create work dir $work"
+	local groups="$work/groups.json"
+
+	# Resolve the groups in ONE python call that writes a FILE. Nothing is piped
+	# through a bash `while read` loop any more: python.exe emits CRLF, and the
+	# resulting trailing carriage return once made a run stage 1 of 36 entries
+	# and report 35 bogus MISSING verdicts. A JSON file has no such hazard, and
+	# the staging itself now happens inside run_group() where every copy is
+	# checked at the point of failure.
+	"$PY" - "$TIER1_JSON" "$groups" "${limit:-0}" "$only" "$include_broken" <<-'PYEOF' || die "could not resolve the tier1 dependency closures"
+		import json, sys, pathlib
 		sys.path.insert(0, "tools")
-		import oxp_corpus as oc
+		import oxp_deps as od
 
-		tier1, limit, only, include_broken = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4]
-		repo = pathlib.Path(tier1).resolve().parent.parent.parent
-		d = json.loads(pathlib.Path(tier1).read_text("utf-8"))
-
-		cache = os.environ.get("OXP_CACHE_DIR")
-		if not cache:
-		    local = os.environ.get("LOCALAPPDATA")
-		    cache = (os.path.join(local, "OoliteMigration", "oxp-cache") if local
-		             else os.path.expanduser("~/.cache/oolite-migration/oxp-cache"))
-
-		items = []
-		for e in d["catalogue"]:
-		    blob = oc.blob_path(cache, e["url"])
-		    # The cache is content-addressed, so the blob has no .oxz name. Oolite
-		    # decides what is an expansion BY EXTENSION (ResourceManager.m:290-310),
-		    # so it must be staged under a real .oxz filename - the checker copies it
-		    # into a private AddOns dir, and we hand it the cached path plus the name.
-		    items.append((e["identifier"] + ".oxz", str(blob)))
-		for t in d["test_oxps"]:
-		    items.append((t["name"], str(repo / t["path"])))
-		if include_broken == "1":
-		    items.append(("oo-het-broken.oxp", str(repo / "tools/oxp-corpus/broken/oo-het-broken.oxp")))
-
+		tier1, out, limit, only, include_broken = sys.argv[1:6]
+		groups = od.tier1_groups(pathlib.Path(tier1))
 		if only:
-		    items = [i for i in items if only.lower() in i[0].lower()]
-		if limit:
-		    items = items[:limit]
-		for name, path in items:
-		    print(name + "\t" + path)
+		    groups = [g for g in groups if only.lower() in g["name"].lower()]
+		if int(limit):
+		    groups = groups[:int(limit)]
+		if include_broken == "1":
+		    p = str(od.REPO_ROOT / "tools/oxp-corpus/broken/oo-het-broken.oxp").replace("\\", "/")
+		    groups.append({
+		        "name": "oo-het-broken.oxp", "primary": "oo-het-broken.oxp",
+		        "members": [{"identifier": "oo-het-broken.oxp",
+		                     "staged_as": "oo-het-broken.oxp", "path": p,
+		                     "title": "oo-het-broken", "role": "primary"}],
+		        "missing": [], "companions": [], "companion_reason": "",
+		    })
+		pathlib.Path(out).write_text(json.dumps(groups, indent=2), encoding="utf-8")
+		nd = sum(1 for g in groups if len(g["members"]) > 1)
+		print("tier1: %d group(s), %d with dependencies, %d member-loads total"
+		      % (len(groups), nd, sum(len(g["members"]) for g in groups)))
 	PYEOF
-	)" || die "could not resolve the tier1 set"
-
-	[ -n "$args" ] || die "tier1 selection is EMPTY - refusing to report success on zero checks"
 
 	local n
-	n="$(printf '%s\n' "$args" | wc -l | tr -d ' ')"
-	echo "tier1: $n expansion(s), app-dir=$APP_DIR"
-	echo
-
-	local work="${TMPDIR:-${LOCALAPPDATA:-$HOME}/Temp}/oo-het-tier1.$$"
-	mkdir -p "$work"
-
-	local oxpargs=() staged_n=0
-	while IFS="$(printf '	')" read -r name path; do
-		# STRIP THE CR. python.exe on Windows writes CRLF, so the last field of
-		# every line read here ends with a carriage return, and "$path" then
-		# names a file that does not exist. This is exactly the bug that made a
-		# full run report "36 checked, 35 failed" with 35 bogus MISSING results:
-		# only the FINAL line survived, because it had no trailing newline and
-		# therefore no CR. A staging failure must never masquerade as a missing
-		# expansion - it sends the next reader hunting the corpus cache instead
-		# of the harness.
-		name="${name%$'\r'}"; path="${path%$'\r'}"
-		[ -n "$name" ] || continue
-
-		# (a) NOT IN THE CORPUS: the source is not where the manifest says.
-		if [ ! -e "$path" ]; then
-			echo "NOTCACHED  $name" >&2
-			echo "  source does not exist: $path" >&2
-			echo "  the expansion is not in the cache; run tools/oxp_corpus.py fetch" >&2
-			return 1
-		fi
-
-		# Stage under the correct extension: the cache is content-addressed and
-		# has no filename, and Oolite dispatches on the extension.
-		local staged="$work/staged/$name"
-		mkdir -p "$(dirname "$staged")"
-		# (b) FAILED TO STAGE must be LOUD. An unchecked cp surfaces 20 lines
-		# later as a bogus "MISSING" verdict about the expansion itself.
-		if [ -d "$path" ]; then
-			cp -r "$path" "$staged" || { echo "STAGEFAIL  $name: cp -r failed ($path -> $staged)" >&2; return 1; }
-		else
-			cp "$path" "$staged" || { echo "STAGEFAIL  $name: cp failed ($path -> $staged)" >&2; return 1; }
-		fi
-		[ -e "$staged" ] || { echo "STAGEFAIL  $name: cp reported success but $staged does not exist" >&2; return 1; }
-		staged_n=$((staged_n+1))
-		oxpargs+=(--oxp "$staged")
-	done <<< "$args"
-
-	# The staged count must match what we resolved, or the run would silently
-	# check fewer expansions than it claims to.
-	if [ "$staged_n" -ne "$n" ]; then
-		echo "STAGEFAIL  staged $staged_n of $n expansions - refusing to report on a partial set" >&2
-		return 1
-	fi
-	echo "staged $staged_n/$n, loading..."
+	n="$("$PY" -c "import json,sys;print(len(json.load(open(sys.argv[1]))))" "$groups")"
+	[ "${n:-0}" -gt 0 ] || die "tier1 selection is EMPTY - refusing to report success on zero checks"
+	echo "app-dir=$APP_DIR"
 	echo
 
 	"$PY" "$REPO_ROOT/tools/oxp_load_check.py" \
 		--app-dir "$APP_DIR" --work "$work/runs" \
-		--json "$work/results.json" "${oxpargs[@]}"
+		--json "$work/results.json" --groups "$groups"
 	local rc=$?
 	echo
 	echo "results: $work/results.json"
