@@ -124,6 +124,13 @@ more beads in flight is fine, more children than P is not.
      `terminal(command="scripts/reevaluate.sh <id> \"blocked: <reason>\"", timeout=900)`. Claude
      decides whether the task itself is wrong (see *Escalation ladder* below). Only if it returns
      exit 3 do you `scripts/escalate.sh <id> "<reason>"` yourself. That bead leaves the batch.
+   - **Blocked on a capability that does not exist yet is a dependency, not a retry**
+     ([ADR-0020](../../../docs/decisions/0020-component-scenarios-are-smoke-tests-for-now.md)
+     §4, from `oo-kbqw`). The first time a blocked report is verified: file or find the seam
+     bead, `bd dep add <id> <seam>`, release the claim, remove the worktree. A bead whose status
+     is merely set back to open is still ready, and the next worker re-derives the same report.
+   - **Anything parked for Jon gets the `human` label too** (with `rebless` or `proposed-adr`):
+     `bd human list` is his inbox and only sees that label; `bd human respond <id>` is his reply.
 5. **Delegate the reviewers, one call, one task per committed bead**, each built from
    `references/reviewer-prompt.md`: the worktree path, `git diff main...bead/<id>`, the bead's
    sizing checks and prohibitions. Require `output_schema` `{verdict: approve|request_changes, findings[]}`.
