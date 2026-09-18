@@ -1,0 +1,68 @@
+{
+  "allowed_oxp_standards_error_signatures": [
+    "OXP PNGTestSuite.oxp has no manifest.plist"
+  ],
+  "allowed_oxp_standards_errors": 2,
+  "backdrop_image": "oolite_material_test_suite_backdrop.png",
+  "backdrop_image_relpath": "Images/oolite_material_test_suite_backdrop.png",
+  "expected_diffuse_map_sample": {
+    "1": "basi0g01.png",
+    "153": "z09n2c08.png",
+    "77": "g05n3p04.png"
+  },
+  "expected_ihdr_dimensions": [
+    1024,
+    512
+  ],
+  "expected_live_script_versions": {
+    "oolite-png-test-suite": "1.0"
+  },
+  "expected_oxp_world_scripts": [
+    "oolite-png-test-suite"
+  ],
+  "expected_texture_key": "Images/oolite_material_test_suite_backdrop.png",
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+  "oxp_source": "upstream/oolite-tests/test-oxps/PNGTestSuite/PNGTestSuite.oxp",
+  "png_sample_indices": [
+    1,
+    77,
+    153
+  ],
+  "png_shipdata_key_prefix": "oolite_png_test_suite_",
+  "png_test_count": 153,
+  "quant_decimals": 3,
+  "repopulator_handlers": [
+    "systemWillRepopulate"
+  ],
+  "scenario": "010-png-test-suite",
+  "seed": 20260918,
+  "stock_world_scripts": [
+    "Oolite Equipment Control",
+    "Oolite Ship Library",
+    "oolite-cloaking-device",
+    "oolite-constrictor-hunt",
+    "oolite-contracts-cargo",
+    "oolite-contracts-helpers",
+    "oolite-contracts-parcels",
+    "oolite-contracts-passengers",
+    "oolite-libPriorityAI",
+    "oolite-nova",
+    "oolite-populator",
+    "oolite-primable-equipment-register",
+    "oolite-registership",
+    "oolite-thargoid-plans",
+    "oolite-trumbles",
+    "oolite-tutorial"
+  ],
+  "system_id": 7,
+  "system_name": "Lave",
+  "texture_log_channels": [
+    "texture.load.png.error",
+    "texture.load.png.failed",
+    "texture.load.png.setup.failed",
+    "texture.load.png.warning",
+    "texture.upload"
+  ],
+  "tick_seconds": 0.125,
+  "ticks": 24
+}
