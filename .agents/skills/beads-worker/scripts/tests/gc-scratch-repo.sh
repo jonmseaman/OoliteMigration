@@ -71,9 +71,15 @@ for spec in "$@"; do
     merged|mergeddirty|mergedlocked)
       echo "$id=closed" >>"$dir/stub/statuses"
       git -C "$dir" worktree add -q -b "bead/$id" "$dir/.worktrees/$id" main
-      echo "merged work" >"$dir/.worktrees/$id/merged.txt"
+      # Per-id filename: two merged:/mergeddirty: scenarios in one repo would otherwise both write
+      # the SAME merged.txt with the same content, so the second worktree has nothing to commit,
+      # its commit fails and the branch silently stays at main - a scenario that never got built.
+      echo "merged work by $id" >"$dir/.worktrees/$id/merged-$id.txt"
       git -C "$dir/.worktrees/$id" add -A
       commit_in "$dir/.worktrees/$id" "bead $id: work that gets merged"
+      # Fail loudly rather than build a scenario that isn't the one asked for.
+      [ "$(git -C "$dir" rev-list --count "main..bead/$id")" -ge 1 ] \
+        || { echo "gc-scratch-repo: bead/$id did not advance past main for $spec" >&2; exit 2; }
       # Exactly accept.sh's merge: a --no-ff merge commit made on a detached checkout of main.
       m="$(mktemp -d "${TMPDIR:-/tmp}/scratch-merge.XXXXXX")"
       git -C "$dir" worktree add -q --detach "$m" main
@@ -83,7 +89,7 @@ for spec in "$@"; do
       git -C "$dir" worktree remove --force "$m"
       # The leftover goes in AFTER the merge, so it is on no branch and on no commit anywhere.
       # `|| true`: under set -e a false test as the LAST command of the branch would abort the harness.
-      { [ "$kind" = mergeddirty ] && echo "precious uncommitted work" >"$dir/.worktrees/$id/leftover.txt"; } || true
+      { [ "$kind" = mergeddirty ] && echo "precious uncommitted work" >"$dir/.worktrees/$id/leftover-$id.txt"; } || true
       # mergedlocked: clean and merged, so gc DOES try to remove it, but `git worktree remove` fails
       # on a locked worktree - the portable stand-in for "Device or resource busy".
       { [ "$kind" = mergedlocked ] && git -C "$dir" worktree lock --reason "live process holds it" "$dir/.worktrees/$id"; } || true

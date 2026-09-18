@@ -21,7 +21,7 @@ gc="${1:-$here/../gc.sh}"
 [ -f "$gc" ] || { echo "gc-safety: no gc.sh at $gc" >&2; exit 2; }
 gc="$(cd "$(dirname "$gc")" && pwd)/$(basename "$gc")"
 shift 2>/dev/null || true
-scenarios=("$@"); [ ${#scenarios[@]} -eq 0 ] && scenarios=(rescue cleanup live locked lockedmerged)
+scenarios=("$@"); [ ${#scenarios[@]} -eq 0 ] && scenarios=(rescue cleanup mixed live locked lockedmerged)
 tmproot="${LOCALAPPDATA:-${TMPDIR:-/tmp}}"
 case "$tmproot" in *\\*) tmproot="$(cygpath -u "$tmproot" 2>/dev/null || echo "$tmproot")";; esac
 [ -d "$tmproot/Temp" ] && tmproot="$tmproot/Temp"
@@ -37,18 +37,18 @@ for s in "${scenarios[@]}"; do
   case "$s" in
   rescue)
     d="$(build mergeddirty:oo-rescue)"
-    f="$d/.worktrees/oo-rescue/leftover.txt"
+    f="$d/.worktrees/oo-rescue/leftover-oo-rescue.txt"
     # VACUITY GUARD: the subject must exist before gc, or "it survived" is meaningless.
     if [ ! -f "$f" ] || [ "$(cat "$f")" != "precious uncommitted work" ]; then
       fail "rescue: harness did not create the uncommitted leftover"; continue
     fi
     out="$(run_gc "$d")"; rc=$?
     # POSITIVE post-condition: the exact content is readable from the bead branch afterwards.
-    got="$(git -C "$d" show "bead/oo-rescue:leftover.txt" 2>/dev/null || true)"
+    got="$(git -C "$d" show "bead/oo-rescue:leftover-oo-rescue.txt" 2>/dev/null || true)"
     if [ "$got" = "precious uncommitted work" ]; then
       pass "rescue: leftover harvested onto bead/oo-rescue (rc=$rc)"
     else
-      fail "rescue: content LOST - bead/oo-rescue:leftover.txt is '$got'"
+      fail "rescue: content LOST - bead/oo-rescue:leftover-oo-rescue.txt is '$got'"
       printf '%s\n' "$out" | sed 's/^/  gc| /' >&2
     fi
     [ $rc -ne 0 ] && pass "rescue: gc reported rc=$rc" || fail "rescue: gc exited 0 after leaving unmerged work"
@@ -85,12 +85,30 @@ for s in "${scenarios[@]}"; do
     # The refusal path proper: merged+closed+clean, so gc DOES try to remove - but the worktree is
     # busy. It must be REPORTED and left alone, never rm -rf'd (oo-ymmj), with rc=1.
     d="$(build mergedlocked:oo-lm)"
-    [ -f "$d/.worktrees/oo-lm/merged.txt" ] || { fail "lockedmerged: harness made no worktree"; continue; }
+    [ -f "$d/.worktrees/oo-lm/merged-oo-lm.txt" ] || { fail "lockedmerged: harness made no worktree"; continue; }
     out="$(run_gc "$d")"; rc=$?
-    [ -f "$d/.worktrees/oo-lm/merged.txt" ] && pass "lockedmerged: busy worktree left intact" || fail "lockedmerged: busy worktree destroyed"
+    [ -f "$d/.worktrees/oo-lm/merged-oo-lm.txt" ] && pass "lockedmerged: busy worktree left intact" || fail "lockedmerged: busy worktree destroyed"
     git -C "$d" show-ref --verify --quiet refs/heads/bead/oo-lm && pass "lockedmerged: branch kept" || fail "lockedmerged: branch deleted despite failed removal"
     printf '%s\n' "$out" | grep -q 'REFUSING to force-remove worktree oo-lm' && pass "lockedmerged: refusal reported" || fail "lockedmerged: no refusal message"
     [ $rc -eq 1 ] && pass "lockedmerged: gc rc=1" || { fail "lockedmerged: gc rc=$rc, expected 1"; printf '%s\n' "$out" | sed 's/^/  gc| /' >&2; }
+    ;;
+  mixed)
+    # Both merged scenarios in ONE repo: the realistic gc run, where a rescue and a legitimate
+    # cleanup are decided in the same pass. Also pins the harness bug where two merged: scenarios
+    # wrote the same file, so the second branch silently never advanced past main.
+    d="$(build mergeddirty:oo-mx1 merged:oo-mx2)"
+    f="$d/.worktrees/oo-mx1/leftover-oo-mx1.txt"
+    [ -f "$f" ] || { fail "mixed: harness made no leftover"; continue; }
+    [ "$(git -C "$d" rev-list --count main..bead/oo-mx2 2>/dev/null || echo 0)" -eq 0 ] \
+      || { fail "mixed: bead/oo-mx2 was not actually merged into main"; continue; }
+    git -C "$d" merge-base --is-ancestor bead/oo-mx2 main || { fail "mixed: bead/oo-mx2 is not an ancestor of main"; continue; }
+    out="$(run_gc "$d")"; rc=$?
+    [ "$(git -C "$d" show bead/oo-mx1:leftover-oo-mx1.txt 2>/dev/null)" = "precious uncommitted work" ] \
+      && pass "mixed: dirty merged bead rescued" || { fail "mixed: dirty merged bead's work LOST"; printf '%s\n' "$out" | sed 's/^/  gc| /' >&2; }
+    [ -d "$d/.worktrees/oo-mx1" ] && pass "mixed: rescued worktree kept" || fail "mixed: rescued worktree destroyed"
+    [ -d "$d/.worktrees/oo-mx2" ] && { fail "mixed: clean merged worktree NOT cleaned"; printf '%s\n' "$out" | sed 's/^/  gc| /' >&2; } || pass "mixed: clean merged worktree removed"
+    git -C "$d" show-ref --verify --quiet refs/heads/bead/oo-mx2 && fail "mixed: clean merged branch NOT removed" || pass "mixed: clean merged branch removed"
+    [ $rc -eq 1 ] && pass "mixed: gc rc=1 (work at risk reported)" || fail "mixed: gc rc=$rc, expected 1"
     ;;
   *) echo "gc-safety: unknown scenario $s" >&2; exit 2;;
   esac
