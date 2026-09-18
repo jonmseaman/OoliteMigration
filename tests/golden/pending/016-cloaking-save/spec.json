@@ -1,0 +1,84 @@
+{
+  "scenario": "016-cloaking-save",
+  "seed": 20260918,
+  "system_id": 80,
+  "system_name": "Atdice",
+  "galaxy_number": 4,
+
+  "_ticks": "BEWARE THE CLOAK. Bead oo-qwk5 measured the asp-cloaked family flipping scanClass CLASS_NEUTRAL -> CLASS_NO_DRAW at t=21.6s when it cloaks, and scenario 005's trigger spawns exactly that ship into this save's system. 24 x 0.125 = 3.0s of GAME time is an order of magnitude short of 21.6s, AND the scenario clears every non-player non-station ship to a fixed point before it ticks - so the cloak cannot reach the dump or the frame by either route. The tick count is that choice, not a default.",
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+
+  "load_save": "upstream/oolite-tests/Checklist-files/Missions/CloakingDevice.oolite-save",
+  "_control_save": "THE WRONG-SAVE CONTROL. A SIBLING CHECKLIST SAVE, not a fresh game: a dead run is an easy control and proves little. Trumbles.oolite-save is the same 1.75 era, the same directory and the same shape, differing only in its contents - so a gate that passes on it is measuring 'a checklist save loaded', not 'THIS checklist save round-tripped'.",
+  "control_save": "upstream/oolite-tests/Checklist-files/Missions/Trumbles.oolite-save",
+
+  "_save_format_version": "THE COMPATIBILITY CONTRACT THIS SCENARIO PINS. The fixture was written by Oolite 1.75; a loader that stopped understanding a 1.75 file fails here BY NAME rather than by a mysterious value difference.",
+  "save_format_version": "1.75",
+
+  "expected_commander_name": "CloakingDevice",
+
+  "_census": "THE ROUND-TRIP ASSERTION. Each entry names a key in the .oolite-save plist, the JS expression that reads the same quantity out of the LOADED game, and how the two are made comparable. The sides are produced by two INDEPENDENT readers sharing no code - Python's plistlib in THIS process and Oolite's Objective-C deserialiser in a SEPARATE OS process read back over the debug console - so they cannot be the same object even in principle. `float_tenths` is MEASURED, not a fudge: PlayerEntity stores credits and fuel as integers in tenths, so this fixture's 956226 is 95622.6 and its 70 is 7.0.",
+  "census": [
+    {"plist": "player_name",         "js": "player.name",                   "kind": "str",          "why": "commander identity. This save's is 'CloakingDevice'; a fresh commander is 'Jameson'."},
+    {"plist": "current_system_name", "js": "system.name",                   "kind": "str",          "why": "the system the save pins; a save loaded into the wrong system is the most damaging silent load failure"},
+    {"plist": "credits",             "js": "player.credits",                "kind": "float_tenths", "why": "stored in tenths: the plist holds 956226 and JS reports 95622.6. Scale MEASURED, not assumed."},
+    {"plist": "fuel",                "js": "player.ship.fuel",              "kind": "float_tenths", "why": "stored in tenths of a light year (70 = 7.0 LY); JS reports light years"},
+    {"plist": "legal_status",        "js": "player.bounty",                 "kind": "int",          "why": "player.bounty is the INTEGER accessor (OOJSPlayer.m); player.legalStatus returns a DISPLAY STRING"},
+    {"plist": "galaxy_number",       "js": "galaxyNumber",                  "kind": "int",          "why": "galaxy index; a chart-level property distinct from the system"},
+    {"plist": "ship_desc",           "js": "player.ship.dataKey",           "kind": "str",          "why": "the shipdata key the player's hull is rebuilt from"},
+    {"plist": "ship_name",           "js": "player.ship.shipClassName",     "kind": "str",          "why": "human-facing class name, separate storage from ship_desc"},
+    {"plist": "ship_kills",          "js": "player.score",                  "kind": "int",          "why": "kill score 1661; a counter, so a load that resets counters fails here"},
+    {"plist": "max_cargo",           "js": "player.ship.cargoSpaceCapacity", "kind": "int",         "why": "cargo capacity, an integer the loader RECOMPUTES rather than copies (EQ_CARGO_BAY is in extra_equipment), so agreement is a real result"},
+    {"plist": "missiles",            "js": "player.ship.missiles.length",   "kind": "int",          "why": "pylon count, reconstructed from missile_roles by the loader"},
+    {"plist": "forward_weapon",      "js": "player.ship.forwardWeapon.equipmentKey", "kind": "weapon_id", "why": "1.75 stores weapons as INTEGER IDs (5 = military laser) while the engine reports equipment keys; this is the one field where the two formats genuinely differ in TYPE, so the mapping is declared in weapon_ids below rather than inferred"},
+    {"plist": "aft_weapon",          "js": "player.ship.aftWeapon.equipmentKey",     "kind": "weapon_id", "why": "the same 1.75 integer-ID format on a second facing, so a one-off coincidence in forward_weapon cannot carry the assertion"},
+    {"plist": "entity_personality",  "js": "player.ship.entityPersonality", "kind": "int",          "why": "a per-ship random-looking integer (2865) the loader must carry through verbatim; it feeds shader and texture selection, so a loader that regenerated it would silently change rendering"},
+    {"plist": "fuel_charge_rate",    "js": "player.ship.fuelChargeRate",    "kind": "float",        "why": "a FLOAT in the 1.75 plist (1.0), so the format's float path is exercised and not only its integers and strings"}
+  ],
+
+  "_weapon_ids": "1.75 STORES WEAPONS AS INTEGER IDs. OOWeaponType's legacy numbering (OOEquipmentType.m weaponTypeFromEquipmentKey / OOWeaponTypeFromString) maps these integers to the equipment keys the modern engine reports. The mapping is DECLARED here, not inferred at runtime, so a future renumbering is a red rather than a silently-adjusted comparison.",
+  "weapon_ids": {
+    "0": "EQ_WEAPON_NONE",
+    "1": "EQ_WEAPON_PLASMA_CANNON",
+    "2": "EQ_WEAPON_PULSE_LASER",
+    "3": "EQ_WEAPON_BEAM_LASER",
+    "4": "EQ_WEAPON_MINING_LASER",
+    "5": "EQ_WEAPON_MILITARY_LASER",
+    "10": "EQ_WEAPON_THARGOID_LASER"
+  },
+
+  "_mission_variables": "THE CORE OF THIS SCENARIO, AND WHERE IT DIFFERS FROM SCENARIO 005. 005 (bead oo-rkm) asserts that ONE mission variable MOVED, because a world-script event wrote it. 016 asserts that EVERY OTHER mission variable did NOT move - that a 1.75 plist's mission state survived deserialisation into a 2.x engine unaltered. Recorded as a KEY SET as well as by value: A MISSION VARIABLE THAT IS THE EMPTY STRING READS IDENTICALLY TO AN ABSENT ONE, so presence must be witnessed separately from value. The keys are the FILE's own names, with the `mission_` prefix the engine strips for JS (OOJSMissionVariables.m:191-193) KEPT, because this scenario is about the file format.",
+  "expected_mission_variable_keys": [
+    "mission_CT_thargonCount",
+    "mission_TL_FOR_EQ_NAVAL_ENERGY_UNIT",
+    "mission_cloakcounter",
+    "mission_conhunt",
+    "mission_nova",
+    "mission_novacount",
+    "mission_snoopers_CRCNews",
+    "mission_snoopers_usedSlots",
+    "mission_thargplans",
+    "mission_trumbles"
+  ],
+
+  "_mission_variable_write_exceptions": "THE ONE DECLARED EXCEPTION, AND WHY IT IS NOT A HOLE. Loading this save calls [UNIVERSE populateNormalSpace] (PlayerEntityLoadSave.m:777), which fires the systemWillPopulate world-script event (Universe.m:1732-1737); oolite-cloaking-device-mission.js:62 does `missionVariables.cloakcounter++`. That single write is bead oo-rkm's scenario 005, MEASURED there: 6 on disk, 7 in the engine. This scenario asserts the set of DIFFERING keys is EXACTLY this set and that the delta is exactly +1, so BOTH failure directions are red - another field quietly failing to round-trip appears here and is not declared, and a cloakcounter that stopped moving disappears from here and was declared. An engine write that is not accounted for is a save-format finding.",
+  "mission_variable_write_exceptions": {
+    "mission_cloakcounter": {
+      "writer": "oolite-cloaking-device-mission.js:62 (systemWillPopulate)",
+      "delta": 1,
+      "in_file": 6,
+      "in_engine": 7,
+      "measured_by": "bead oo-rkm, golden scenario 005-mission-trigger"
+    }
+  },
+
+  "_min_mission_variables_round_tripped": "A FLOOR, so a fixture reduced to one surviving field plus the declared exception cannot satisfy the exact-set clause vacuously. Nine of the ten round-trip unchanged.",
+  "min_mission_variables_round_tripped": 9,
+
+  "_equipment": "extra_equipment IS A SUBSET OF THE LIVE EQUIPMENT LIST, NOT EQUAL TO IT: the live ship also carries its weapons and its four pylon missiles, which 1.75 stores in SEPARATE keys (forward_weapon, missile_roles). The assertion is therefore CONTAINMENT (nothing the save restored may be missing) plus this pinned saved count (so containment cannot be satisfied by a shrunken fixture). equipment_live_only is RECORDED but not asserted, so a reviewer sees an engine that started inventing equipment without the gate flaking on a legitimate weapon entry.",
+  "expected_equipment_count": 16,
+
+  "repopulator_handlers": ["systemWillRepopulate"]
+}
