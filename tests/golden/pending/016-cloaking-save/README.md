@@ -180,11 +180,11 @@ a checker that is already red registers a false kill for every mutant run agains
 
 | File | Lines | Purpose |
 | ---- | ----: | ------- |
-| `tests/golden/cloaking_load.py` | 970 | the live harness |
-| `tests/golden/check_cloaking_evidence.py` | 260 | offline evidence checker — no game, no network |
-| `tests/golden/gate_016_spec.py` | 400 | determinism knobs: pinned, read-where-they-act (AST), agreeing with provenance |
-| `tests/golden/test_cloaking_load.py` | 560 | 45-test falsifiability suite |
-| `tests/golden/pending/016-cloaking-save/spec.json` | 113 | the scenario contract |
+| `tests/golden/cloaking_load.py` | 1061 | the live harness |
+| `tests/golden/check_cloaking_evidence.py` | 259 | offline evidence checker — no game, no network |
+| `tests/golden/gate_016_spec.py` | 446 | determinism knobs: pinned, read-where-they-act (AST), agreeing with provenance |
+| `tests/golden/test_cloaking_load.py` | 641 | 45-test falsifiability suite |
+| `tests/golden/pending/016-cloaking-save/spec.json` | 112 | the scenario contract |
 
 **Data (not authored files):** `state.json`, `frame.grid`, `provenance.json`, `acceptance.txt` —
 blessed run artifacts and the stored acceptance commands.
