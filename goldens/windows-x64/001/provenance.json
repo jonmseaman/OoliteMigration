@@ -1,19 +1,19 @@
 {
   "build_flags": {
-    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
-    "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
+    "build_dir": "C:/Users/jon/OoliteMigration/.worktrees/oo-5ggu/upstream/oolite/build/meson_test",
+    "detail": "compliant",
     "effective_optimization_levels": {
-      "-O2": 242
+      "-O2": 243
     },
     "policy_fp_contract": "-ffp-contract=off",
     "policy_optimization": "-O2",
-    "translation_units": 242,
-    "verified": false
+    "translation_units": 243,
+    "verified": true
   },
-  "commit": "6e4e6edf9dc6dacbcca99b1fe5e96225af1b6736",
+  "commit": "0ebcc8c769601dc4c03974e115976cf41fa1cb17",
   "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
   "dump_tool": "tests/golden/dump/run_dump.py",
-  "note": "scenario 001: paused world, system cleared of non-station ships, 2 police + 2 pirates spawned deterministically at radius 0. Blessed from run A of tests/golden/measure_quantisation.sh; four further runs were byte-identical. NOTE the build_flags block: the shared build that produced this dump PREDATES the -ffp-contract=off pin added by bead oo-ss8, so it is recorded as UNVERIFIED rather than assumed compliant. Re-bless after the next rebuild of the shared app dir.",
+  "note": "scenario 001 RE-BLESSED by bead oo-5ggu against a build that genuinely carries -ffp-contract=off at an effective -O2 (243/243 TUs; check_build_flags PASS). The previous golden was blessed from the shared build, which predated the pin and recorded verified=false. MEASURED, AND THE ANSWER IS A NULL RESULT: the dump is BYTE-IDENTICAL before and after the flag, at 15 decimal places as well as at the policy 3 (sha256 a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769 from BOTH builds, also equal to oo-ss8's rawA). Cause established by disassembly, not assumed: this toolchain targets baseline x86_64-w64-windows-gnu, which has no FMA, so neither binary contains a single vfmadd/vfmsub instruction and there was no fusion for the flag to disable. The flag is INSURANCE for targets that do have FMA (-march=x86-64-v3 and later, and Phase 5's macos-arm64), not a fix for this scenario. See tests/golden/measurements/001-fma-contract-summary.json. Built in the worktree's own build dir; the shared app dir was NOT rebuilt or modified.",
   "os": "Windows-11-10.0.26200-SP0",
   "platform": "windows-x64",
   "quant_decimals": 3,
