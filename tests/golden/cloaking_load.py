@@ -26,28 +26,37 @@ assert opposite halves of the same load:
                   failing to round-trip is a RED here, and a cloakcounter that stopped moving is
                   also a RED here.
 
-In one line: 005 proves the engine WROTE one mission variable; 016 proves the engine did not
-write, drop, re-type or rescale any of the other 40 observables it restored. Neither result
-implies the other, and 016's gate fails on dumps 005's gate accepts (a load that corrupted
-`credits` still fires the trigger) and vice versa.
+In one line: 005 proves the engine WROTE one mission variable; 016 proves that every other
+observable the 1.75 file carries either survived unchanged or was migrated in a DECLARED way with
+a pinned delta and a named mechanism. Neither result implies the other, and 016's gate fails on
+dumps 005's gate accepts (a load that corrupted `credits` still fires the trigger) and vice versa.
 
-THE 1.75 FORMAT FACTS THIS SCENARIO PINS, ALL MEASURED FROM THE FIXTURE
-======================================================================
-1. MISSION VARIABLES ARE STRINGS ON DISK AND RE-TYPED IN THE ENGINE. Every value in the plist's
-   `mission_variables` is a STRING ("0", "13", "6", "MISSION_COMPLETE"); the JS view reports
-   numbers for the numeric ones. The comparison therefore normalises both sides through
-   `_norm_mv`, which is the ONLY place a coercion happens and has no catch-all branch.
-2. THE `mission_` PREFIX IS STRIPPED FOR JS (OOJSMissionVariables.m:191-193), so the file key
-   `mission_cloakcounter` is `missionVariables.cloakcounter`. The dump records the FILE's key
-   names, because this scenario is about the file format.
-3. CREDITS AND FUEL ARE STORED IN TENTHS. The plist holds 956226 and 70; JS reports 95622.6 and
-   7.0. Measured, not assumed, and applied only to fields whose census entry declares
-   `float_tenths`.
-4. `extra_equipment` IS A SUBSET OF THE LIVE EQUIPMENT LIST, NOT EQUAL TO IT. The live ship also
-   carries its weapons and its four pylon missiles, which the save stores in separate keys
-   (`forward_weapon`, `missile_roles`). So the assertion is CONTAINMENT plus a pinned saved count;
-   `equipment_live_only` is recorded so a future engine that started inventing equipment is
-   visible to a reviewer even though it is not itself a failure.
+THE CONTRACT IS A CLOSED PAIR, NOT "EVERYTHING IS IDENTICAL"
+============================================================
+Loading this 1.75 fixture into the modern engine performs THREE migrations. All three were FOUND
+BY RUNNING IT - the first live run failed with "the live ship is MISSING EQ_ENERGY_BOMB" - and all
+three are declared in spec.json with their mechanism in the engine source:
+
+  EQ_ENERGY_BOMB is REMOVED.        PlayerEntity.m:1394-1398. Energy bombs are no longer supported
+                                    without an OXP, so [OOEquipmentType equipmentTypeWithIdentifier:]
+                                    returns nil, the loader deletes the key and sets
+                                    energyBombCompensation.
+  credits +900.                     PlayerEntity.m:1730-1746 compensates: it tries to mount an
+                                    EQ_QC_MINE first and, because all four pylons already carry
+                                    EQ_HARDENED_MISSILE, falls to `credits += 9000` (tenths). The
+                                    engine LOGS which branch it took on load.upgrade.replacedEnergyBomb,
+                                    and this scenario REQUIRES that line - so the credit delta rests
+                                    on the engine's own testimony, not on arithmetic that adds up.
+  fuel_charge_rate 1.0 -> 2.0.      DERIVED, NOT RESTORED. 1.75 stored the value; the modern engine
+                                    never reads the key back. -[PlayerEntity fuelChargeRate]
+                                    (PlayerEntity.m:13007-13021) computes it from hull mass
+                                    (ShipEntity.m:8122) and scales by state of repair when
+                                    ship_trade_in_factor is 75..90 - this commander's is 85.
+
+`compare_sides` + `assert_declared_set` make that a CLOSED PAIR: the set of fields that differ must
+be EXACTLY the declared set, so BOTH directions are red - an undeclared field that stopped
+round-tripping, AND a declared migration that stopped happening. A count floor cannot do this; it
+cannot distinguish 13 equal fields from 12 equal plus one silently drifted (bead oo-9w5).
 
 A MISSION VARIABLE THAT IS THE EMPTY STRING READS IDENTICALLY TO AN ABSENT ONE
 =============================================================================
@@ -339,45 +348,50 @@ def assert_non_vacuous(census, label):
     return len(census), len(populated)
 
 
-def compare_census(left, right, left_label, right_label):
-    """Refuses by IDENTITY, not equality: a mapping always equals itself, the in-memory twin of
+def compare_sides(left, right, declared, norm=lambda v: v):
+    """THE CLOSED PAIR, used for BOTH the census and the mission variables.
+
+    Returns (equal keys, differing keys, detail). The CALLER asserts that `differing` is EXACTLY
+    the declared-migration key set, which makes BOTH failure directions red:
+      * a field that stopped round-tripping appears in `differing` and was not declared;
+      * a declared migration that stopped happening disappears from `differing` and was declared.
+    Neither list may be edited to make a run pass. A count floor alone would not do this: it
+    cannot distinguish 13 equal fields from 12 equal plus one silently-drifted (bead oo-9w5).
+
+    REFUSES BY IDENTITY, NOT EQUALITY: a mapping always equals itself, the in-memory twin of
     golden_diff.py's st_dev/st_ino guard. `left == right` is the ANSWER, so using it as the guard
-    would refuse every correct load."""
+    would refuse every correct load.
+    """
     if left is right:
         raise Refusal("both sides of the comparison are the SAME object in memory (id=%d); this "
                       "comparison could never fail." % id(left))
-    problems = []
-    for key in sorted(set(left) | set(right)):
-        if key not in left:
-            problems.append("%s: <absent in %s> != %r" % (key, left_label, right[key]))
-        elif key not in right:
-            problems.append("%s: %r != <absent in %s>" % (key, left[key], right_label))
-        elif left[key] != right[key]:
-            problems.append("%s: %r (%s) != %r (%s)"
-                            % (key, left[key], left_label, right[key], right_label))
-    return problems
-
-
-def compare_mission_variables(file_mv, engine_mv, spec):
-    """THE CORE OF SCENARIO 016 - and the line that keeps it honest about scenario 005.
-
-    Returns (equal keys, differing keys, detail). The CALLER asserts that `differing` is EXACTLY
-    the declared exception set, so both failure directions are red:
-      * a field that stopped round-tripping appears in `differing` and was not declared;
-      * cloakcounter no longer moving disappears from `differing` and was declared.
-    """
-    exceptions = spec["mission_variable_write_exceptions"]
     equal, differing, detail = [], [], {}
-    for key in sorted(set(file_mv) | set(engine_mv)):
-        fv = _norm_mv(file_mv[key]) if key in file_mv else None
-        ev = _norm_mv(engine_mv[key]) if key in engine_mv else None
-        if fv == ev:
+    for key in sorted(set(left) | set(right)):
+        lv = norm(left[key]) if key in left else None
+        rv = norm(right[key]) if key in right else None
+        if key in left and key in right and lv == rv:
             equal.append(key)
         else:
             differing.append(key)
-            detail[key] = {"in_file": fv, "in_engine": ev,
-                           "declared_writer": exceptions.get(key, {}).get("writer")}
+            detail[key] = {"in_file": lv, "in_engine": rv,
+                           "declared": key in declared,
+                           "mechanism": (declared.get(key) or {}).get("mechanism")
+                                        or (declared.get(key) or {}).get("writer")}
     return equal, differing, detail
+
+
+def assert_declared_set(differing, detail, declared, what):
+    """`differing` must be EXACTLY `declared` - the assertion the closed pair exists for."""
+    if sorted(differing) != sorted(declared):
+        undeclared = sorted(set(differing) - set(declared))
+        missing = sorted(set(declared) - set(differing))
+        raise ScenarioError(
+            "%s differ between the FILE and the ENGINE on %r, but this scenario declares exactly "
+            "%r. UNDECLARED DRIFT: %r - a field that stopped round-tripping is the save-format "
+            "regression this scenario exists to catch. DECLARED BUT ABSENT: %r - a migration the "
+            "engine is documented to perform stopped happening. Both are FINDINGS; neither list "
+            "is a list to edit. Detail: %r"
+            % (what, sorted(differing), sorted(declared), undeclared, missing, detail))
 
 
 # --- world quieting ------------------------------------------------------------------------
@@ -540,6 +554,26 @@ def settle(console, seconds=FRAME_SETTLE_SECONDS, timeout=SETTLE_TIMEOUT_SECONDS
     raise ScenarioError("the game clock did not advance %ss within %ss" % (seconds, timeout))
 
 
+def read_upgrade_log(artifact_dir):
+    """Pull the ENGINE's OWN testimony about legacy migrations out of THIS run's Latest.log.
+
+    `load.upgrade.replacedEnergyBomb` is logged UNCONDITIONALLY by PlayerEntity.m:1730-1746 (it is
+    an OOLog, not OOLogWithFormat on a gated channel), so it needs no logcontrol.plist. It is the
+    difference between "credits went up by 900" - arithmetic that could be coincidence - and "the
+    loader says it took the cash-compensation branch".
+    """
+    log = os.path.join(artifact_dir, "Latest.log")
+    if not os.path.isfile(log):
+        raise ScenarioError(
+            "no Latest.log at %s: the run wrote no log at all, so the engine's own migration "
+            "testimony cannot be read and rc=0 would mean nothing." % log)
+    with open(log, "r", encoding="utf-8", errors="replace") as handle:
+        text = handle.read()
+    lines = [ln.strip().split("]:", 1)[-1].strip()
+             for ln in text.splitlines() if "[load.upgrade" in ln]
+    return lines, len(text)
+
+
 def capture_frame(console, artifact_dir, attempts=20):
     """Snapshot and return (png path, 64x64 luminance grid).
 
@@ -562,9 +596,10 @@ def capture_frame(console, artifact_dir, attempts=20):
 
 # --- the anti-vacuity gate ---------------------------------------------------------------------
 
-def assert_round_trip(evidence, spec, problems=None):
-    """Held at CAPTURE time here and again, independently and offline, by
-    check_cloaking_evidence.py, so every future diff against the stored golden re-checks it."""
+def assert_round_trip(evidence, spec):
+    """THE 1.75 SAVE-FORMAT CONTRACT, held at CAPTURE time here and again, independently and
+    offline, by check_cloaking_evidence.py - so every future diff against the stored golden
+    re-checks it rather than only the capture run."""
     if evidence["save_written_by_version"] != spec["save_format_version"]:
         raise ScenarioError(
             "the fixture reports written_by_version=%r but this scenario pins the %r-era format "
@@ -572,48 +607,81 @@ def assert_round_trip(evidence, spec, problems=None):
             "re-measure, do NOT edit the assertion to match."
             % (evidence["save_written_by_version"], spec["save_format_version"]))
 
+    # --- mission variables: presence, then the closed pair ------------------------------------
     want_keys = sorted(spec["expected_mission_variable_keys"])
     for side in ("mission_variable_keys_in_file", "mission_variable_keys_in_engine"):
         if evidence[side] != want_keys:
             raise ScenarioError(
                 "%s is %r, not the %d key(s) this 1.75 save carries (%r). A DEFAULT NEW GAME HAS "
                 "NONE (PlayerEntity.m:1986-1987), so this key SET is what a run that ignored "
-                "-load cannot produce. Keys, never values: an empty-string mission variable reads "
-                "identically to an absent one." % (side, evidence[side], len(want_keys), want_keys))
+                "-load cannot produce. KEYS, NEVER VALUES: an empty-string mission variable reads "
+                "identically to an absent one, so presence must be witnessed on its own."
+                % (side, evidence[side], len(want_keys), want_keys))
 
-    declared = sorted(spec["mission_variable_write_exceptions"])
-    if evidence["mission_variables_differing"] != declared:
-        raise ScenarioError(
-            "the mission variables that differ between the FILE and the ENGINE are %r, but this "
-            "scenario declares exactly %r. EITHER a field stopped round-tripping (a save-format "
-            "regression, the thing this scenario exists to catch) OR a declared engine write "
-            "stopped happening. Both are findings; neither is a list to edit. Detail: %r"
-            % (evidence["mission_variables_differing"], declared,
-               evidence["mission_variables_detail"]))
-    for key, rule in spec["mission_variable_write_exceptions"].items():
-        got_file = evidence["mission_variables_detail"][key]["in_file"]
-        got_engine = evidence["mission_variables_detail"][key]["in_engine"]
-        if int(got_engine) - int(got_file) != int(rule["delta"]):
+    writes = spec["mission_variable_write_exceptions"]
+    assert_declared_set(evidence["mission_variables_differing"],
+                        evidence["mission_variables_detail"], writes,
+                        "the mission variables that")
+    for key, rule in writes.items():
+        got = evidence["mission_variables_detail"][key]
+        if int(got["in_engine"]) - int(got["in_file"]) != int(rule["delta"]):
             raise ScenarioError(
                 "%s reads %r on disk and %r in the engine, a delta of %d, but %s is declared to "
                 "write %+d. EQUAL VALUES WOULD BE THE DESERIALISER-COPY SIGNATURE and any other "
                 "delta means something else is writing this key too."
-                % (key, got_file, got_engine, int(got_engine) - int(got_file), rule["writer"],
-                   int(rule["delta"])))
+                % (key, got["in_file"], got["in_engine"],
+                   int(got["in_engine"]) - int(got["in_file"]), rule["writer"], int(rule["delta"])))
     if evidence["mission_variables_equal_count"] < int(spec["min_mission_variables_round_tripped"]):
         raise ScenarioError(
             "only %d mission variable(s) round-tripped unchanged, under the floor of %d. A single "
-            "surviving field plus one declared exception would otherwise satisfy every other "
-            "clause here." % (evidence["mission_variables_equal_count"],
-                              int(spec["min_mission_variables_round_tripped"])))
+            "surviving field plus the declared write would otherwise satisfy the exact-set clause."
+            % (evidence["mission_variables_equal_count"],
+               int(spec["min_mission_variables_round_tripped"])))
 
-    if evidence["equipment_missing_in_engine"]:
+    # --- the census: the same closed pair, over the format's own field types ------------------
+    migrations = spec["census_migrations"]
+    assert_declared_set(evidence["census_differing"], evidence["census_detail"], migrations,
+                        "the census fields that")
+    for key, rule in migrations.items():
+        got = evidence["census_detail"][key]
+        delta = round(float(got["in_engine"]) - float(got["in_file"]), 3)
+        if delta != round(float(rule["delta"]), 3):
+            raise ScenarioError(
+                "census field %s reads %r on disk and %r in the engine, a delta of %r, but this "
+                "scenario pins %r. The declared mechanism is: %s. A changed delta means the "
+                "migration changed; re-measure it, do NOT adjust the number."
+                % (key, got["in_file"], got["in_engine"], delta, rule["delta"], rule["mechanism"]))
+    if evidence["census_equal_count"] < int(spec["min_census_fields_round_tripped"]):
         raise ScenarioError(
-            "the live ship is MISSING %d item(s) the save restored: %r. `extra_equipment` is the "
-            "1.75 format's equipment record and a loader that drops entries from it is exactly "
-            "the save-format regression this scenario pins."
-            % (len(evidence["equipment_missing_in_engine"]),
-               evidence["equipment_missing_in_engine"]))
+            "only %d census field(s) round-tripped unchanged, under the floor of %d."
+            % (evidence["census_equal_count"], int(spec["min_census_fields_round_tripped"])))
+
+    # --- equipment: containment minus declared removals, witnessed by the ENGINE's own log ----
+    removals = {k for k, v in spec["equipment_migrations"].items() if v["disposition"] == "REMOVED"}
+    unexplained = sorted(set(evidence["equipment_missing_in_engine"]) - removals)
+    if unexplained:
+        raise ScenarioError(
+            "the live ship is MISSING %d item(s) the save restored and this scenario does NOT "
+            "declare a migration for: %r. `extra_equipment` is the 1.75 format's equipment record "
+            "and a loader that silently drops entries from it is exactly the save-format "
+            "regression this scenario pins." % (len(unexplained), unexplained))
+    still_present = sorted(removals - set(evidence["equipment_missing_in_engine"]))
+    if still_present:
+        raise ScenarioError(
+            "this scenario declares %r to be REMOVED by the loader's legacy migration, but the "
+            "live ship still carries %r. The declared migration stopped happening; that is a "
+            "FINDING about the loader, not a line to delete." % (sorted(removals), still_present))
+    for key, rule in spec["equipment_migrations"].items():
+        if rule["disposition"] != "REMOVED":
+            continue
+        want = rule["compensation_log_substring"]
+        if want not in evidence["upgrade_log_lines_text"]:
+            raise ScenarioError(
+                "the engine logged no %r line for the %s migration. Its own testimony on the "
+                "%s channel is what makes the credit delta PROOF of the compensation branch "
+                "rather than arithmetic that happened to add up; without it the assertion is "
+                "circumstantial. Lines seen: %r"
+                % (want, key, rule["compensation_log_channel"], evidence["upgrade_log_lines"]))
     if evidence["equipment_saved_count"] != int(spec["expected_equipment_count"]):
         raise ScenarioError(
             "the fixture's extra_equipment carries %d key(s), not the %d this scenario pins; the "
@@ -626,12 +694,6 @@ def assert_round_trip(evidence, spec, problems=None):
     if not evidence["tick_budget_met"]:
         raise ScenarioError("the tick budget was not met, so the dump is not the state this "
                             "scenario specifies")
-
-    if problems:
-        raise ScenarioError(
-            "CENSUS DIFFERS: %d field(s) disagree between the save FILE (read here by Python's "
-            "plist parser) and the LOADED GAME (read over the console by the JS API, in a "
-            "separate OS process sharing no code): %s" % (len(problems), "; ".join(problems)))
     return True
 
 
@@ -705,11 +767,14 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             state = json.loads(dump_state(console))
 
         equip_saved = sorted(str(k) for k in (expect_plist.get("extra_equipment") or {}))
-        mv_equal, mv_diff, mv_detail = compare_mission_variables(file_mv, engine_mv, spec)
+        # AFTER the game has exited, so the log is complete and flushed.
+        upgrade_lines, log_bytes = read_upgrade_log(artifact_dir)
 
+        mv_equal, mv_diff, mv_detail = compare_sides(
+            file_mv, engine_mv, spec["mission_variable_write_exceptions"], norm=_norm_mv)
         n_saved, pop_saved = assert_non_vacuous(saved, "the census read from the save FILE")
         assert_non_vacuous(live, "the census read from the LOADED GAME")
-        problems = compare_census(saved, live, "saved", "loaded")
+        c_equal, c_diff, c_detail = compare_sides(saved, live, spec["census_migrations"])
 
         evidence = {
             "scenario": SCENARIO,
@@ -718,8 +783,10 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "save_written_by_version": str(plist.get("written_by_version", "")),
             "census_fields": n_saved,
             "census_populated": pop_saved,
-            "round_trip_fields_equal": n_saved - len(problems),
-            "round_trip_ok": not problems,
+            "census_equal": c_equal,
+            "census_equal_count": len(c_equal),
+            "census_differing": c_diff,
+            "census_detail": c_detail,
             "mission_variable_keys_in_file": sorted(file_mv),
             "mission_variable_keys_in_engine": sorted(engine_mv),
             "mission_variable_count": len(file_mv),
@@ -730,6 +797,8 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "equipment_saved_count": len(equip_saved),
             "equipment_missing_in_engine": sorted(set(equip_saved) - set(equip_live)),
             "equipment_live_only": sorted(set(equip_live) - set(equip_saved)),
+            "upgrade_log_lines": upgrade_lines,
+            "upgrade_log_lines_text": "\n".join(upgrade_lines),
             "world_at_rest": bool(at_rest),
             "world_reached_fixed_point": bool(clear_rounds) and clear_rounds[-1] == [0, 0, 0],
             # The BUDGET is pinned; the MEASURED elapsed time is deliberately NOT in the dump -
@@ -744,7 +813,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "stations_quieted": stations_quieted,
             "repopulator_handlers_quieted": sorted(repopulator_handlers),
         }
-        assert_round_trip(evidence, spec, problems)
+        assert_round_trip(evidence, spec)
         # The canonical dump carries the mission variables at TOP LEVEL under the FILE's own key
         # names, so `mission_cloakcounter` is in the golden by name and any future diff sees it.
         state["mission_variables"] = {k: _norm_mv(v) for k, v in engine_mv.items()}
@@ -763,9 +832,9 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             with open(frame_out, "wb") as handle:
                 handle.write(bytes(grid))
         return {"ok": True, "out": out_path, "frame_out": frame_out, "port": port,
-                "png": golden_run._slashes(png), "problems": problems,
+                "png": golden_run._slashes(png),
                 "frame_hash": frame_hash.hex_digest(grid), "bytes": len(text),
-                "game_seconds_elapsed": round(elapsed, 3),
+                "log_bytes": log_bytes, "game_seconds_elapsed": round(elapsed, 3),
                 "wall_seconds": round(time.time() - started, 1), "evidence": evidence,
                 "saved": saved, "live": live}
     finally:
@@ -965,14 +1034,15 @@ def main(argv=None):
         return 3
 
     ev = result["evidence"]
-    print("ROUND TRIP: %s (%s-era, %d bytes) -> %d/%d census field(s) equal across two "
-          "independent readers, %d/%d mission variable(s) unchanged with the declared "
-          "exception(s) %r, all %d saved equipment key(s) present in the live ship (%.1fs wall)"
+    print("ROUND TRIP: %s (%s-era, %d bytes) -> %d/%d census field(s) and %d/%d mission "
+          "variable(s) identical across two independent readers; the only differences are the "
+          "DECLARED migrations %r and the declared engine write %r; all %d saved equipment key(s) "
+          "accounted for, engine testimony %r (%.1fs wall)"
           % (ev["save_file"], ev["save_written_by_version"], ev["save_bytes"],
-             ev["round_trip_fields_equal"], ev["census_fields"],
+             ev["census_equal_count"], ev["census_fields"],
              ev["mission_variables_equal_count"], ev["mission_variable_count"],
-             ev["mission_variables_differing"], ev["equipment_saved_count"],
-             result["wall_seconds"]))
+             ev["census_differing"], ev["mission_variables_differing"],
+             ev["equipment_saved_count"], ev["upgrade_log_lines"], result["wall_seconds"]))
     if result["out"]:
         print("dump: %s (%d bytes)" % (result["out"], result["bytes"]))
     if result["frame_out"]:
