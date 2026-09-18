@@ -1,0 +1,43 @@
+{
+ "entries": {
+  "https://example.invalid/fixtures/Corrupt_Expansion_1.0.oxz": {
+   "cache_key": "5a40f6a03010294cc0ac2e68d404e294f20fc51c31aa780627b661a60a71ab39",
+   "fetched_at": "2026-09-18T00:00:00Z",
+   "final_url": "https://example.invalid/fixtures/Corrupt_Expansion_1.0.oxz",
+   "http_status": 200,
+   "sha256": "8456944e31877af695da94588868a8cc447831ef0458e1e564f4994d4faca9a9",
+   "size": 400,
+   "status": "ok",
+   "url": "https://example.invalid/fixtures/Corrupt_Expansion_1.0.oxz"
+  },
+  "https://example.invalid/fixtures/Gone_Expansion_1.0.oxz": {
+   "cache_key": "c308ceb267b6ebf8029dc962992c2b5a64e1daa13f7ae79610153cf62857051b",
+   "error": "HTTP 404 Not Found",
+   "fetched_at": "2026-09-18T00:00:00Z",
+   "status": "error",
+   "url": "https://example.invalid/fixtures/Gone_Expansion_1.0.oxz"
+  },
+  "https://example.invalid/fixtures/Good_Expansion_1.0.oxz": {
+   "cache_key": "06b8d75dc163078d33f715a367877ab6183938b786ff91f9adf0ea7e5a905c46",
+   "fetched_at": "2026-09-18T00:00:00Z",
+   "final_url": "https://example.invalid/fixtures/Good_Expansion_1.0.oxz",
+   "http_status": 200,
+   "sha256": "50bfd68fea69b92af84fc3354b9045f61bffaafd140315eaa14c52086e39da9d",
+   "size": 224,
+   "status": "ok",
+   "url": "https://example.invalid/fixtures/Good_Expansion_1.0.oxz"
+  },
+  "https://example.invalid/fixtures/Missing_Expansion_1.0.oxz": {
+   "cache_key": "b6baf7632cd3a5f885bea934a55de0fd6e6d5ffcdd2af97df4a30fe62c5743c1",
+   "fetched_at": "2026-09-18T00:00:00Z",
+   "final_url": "https://example.invalid/fixtures/Missing_Expansion_1.0.oxz",
+   "http_status": 200,
+   "sha256": "9fbb08b863712864e43ffab152295169de8b88d7acfb2776fec87703c29ee7cc",
+   "size": 34,
+   "status": "ok",
+   "url": "https://example.invalid/fixtures/Missing_Expansion_1.0.oxz"
+  }
+ },
+ "generated_by": "tools/oxp-corpus/make_fixture.py",
+ "version": 1
+}
