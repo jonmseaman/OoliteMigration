@@ -1,0 +1,19 @@
+Opening log for Oolite version 0.0.0-fleet by unknown (x86-64 test release) under Windows 10.0.26200.9457  64-bit at 2026-09-18 03:22:28 -0400.
+12th Gen Intel(R) Core(TM) i9-12900KS 24 processors detected. System RAM: 65296 MB (free: 40730 MB).
+Build options: OpenAL, GLSL shaders, new planets, JavaScript console support, OXP verifier, localization tools, debug GraphViz support, JavaScript profiling.
+
+Note that the contents of the log file can be adjusted by editing logcontrol.plist.
+
+03:22:28.731 [process.args]: Startup command: C:\Users\jon\OoliteMigration\upstream\oolite\build\meson_test\oolite.app\oolite.exe --no-splash -load Resources/Scenarios/oolite-standard.oolite-save 
+03:22:29.096 [display.mode.list.native]: Native display resolution detected: 5120 x 1392
+03:22:29.266 [display.initGL]: Trying 8-bpcc, 24-bit depth buffer
+03:22:29.568 [display.initGL]: V-Sync requested.
+03:22:29.568 [display.initGL]: Achieved color / depth buffer sizes (bits):
+03:22:29.568 [display.initGL]: Red: 8
+03:22:29.568 [display.initGL]: Green: 8
+03:22:29.568 [display.initGL]: Blue: 8
+03:22:29.568 [display.initGL]: Alpha: 8
+03:22:29.568 [display.initGL]: Depth Buffer: 24
+03:22:29.569 [display.initGL]: Pixel type is float : 0
+03:22:29.569 [display.initGL]: Window Pixel Format: SDL_PIXELFORMAT_XRGB8888
+03:22:29.569 [display.initGL]: ----- WARNING: Could not enable V-Sync. Please check that your graphics driver supports the WGL_EXT_swap_control extension.

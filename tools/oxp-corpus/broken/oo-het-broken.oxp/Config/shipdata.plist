@@ -1,0 +1,9 @@
+/* Deliberately malformed: the dictionary for oo-het-broken-ship is never
+   closed, so the plist parser must fail on it. */
+{
+	"oo-het-broken-ship" =
+	{
+		like_ship = "oolite-cobra3-player";
+		name = "oo-het broken ship";
+		roles = "oo-het-broken";
+}

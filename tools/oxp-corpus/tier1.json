@@ -1,0 +1,652 @@
+{
+  "schema": 1,
+  "generator": "tools/oxp_tier1.py",
+  "criterion": "dependency in-degree (requires_oxps + optional_oxps), then category-breadth fill; see module docstring",
+  "corpus_size": 813,
+  "target_catalogue": 30,
+  "catalogue": [
+    {
+      "identifier": "oolite.oxp.Griff.Griff_shipset_decals",
+      "title": "Griff Shipset Decals",
+      "version": "1.0",
+      "category": "Miscellaneous",
+      "url": "https://wiki.alioth.net/img_auth.php/8/8c/Oolite.oxp.Griff.Griff_shipset_decals.oxz",
+      "sha256": "fa79cdb9cae7301541c81a2acbe8379261c18a0cc8524d7d0256e96c5f07abc4",
+      "size": 210366,
+      "band": "A-hub",
+      "indegree": 26,
+      "required_by": [
+        "oolite.oxp.Griff.Adder",
+        "oolite.oxp.Griff.Anaconda",
+        "oolite.oxp.Griff.Asp",
+        "oolite.oxp.Griff.Boa",
+        "oolite.oxp.Griff.Boa_MkII",
+        "oolite.oxp.Griff.Bug_(Elite2)",
+        "oolite.oxp.Griff.Cobra_MKIII_Alt",
+        "oolite.oxp.Griff.Cobra_MkI",
+        "oolite.oxp.Griff.Cobra_MkIII",
+        "oolite.oxp.Griff.Ferdelance",
+        "oolite.oxp.Griff.Gecko",
+        "oolite.oxp.Griff.Gnat_(Elite2)",
+        "oolite.oxp.Griff.Griffin1_(Elite2)",
+        "oolite.oxp.Griff.Krait",
+        "oolite.oxp.Griff.Mamba",
+        "oolite.oxp.Griff.Mamba_alt_texture",
+        "oolite.oxp.Griff.Ophidian_(EliteA)",
+        "oolite.oxp.Griff.Python",
+        "oolite.oxp.Griff.Shuttle",
+        "oolite.oxp.Griff.Sidewinder",
+        "oolite.oxp.Griff.SpecGloss_Sidewinder",
+        "oolite.oxp.Griff.Transporter",
+        "oolite.oxp.Griff.Viper",
+        "oolite.oxp.Griff.Wolf_Mk_II",
+        "oolite.oxp.Griff.Worm",
+        "oolite.oxp.spara.griff_normalmapped_ships_replace"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Griff_alloys_and_wreckage",
+      "title": "Griff Alloys and Wreckage",
+      "version": "1.0.1",
+      "category": "Retextures",
+      "url": "https://wiki.alioth.net/img_auth.php/0/01/Oolite.oxp.Griff.Alloys_and_wreckage.oxz",
+      "sha256": "e4e0ed2d2c2c1ada89df3f8634813d38685b35b28c896b8934b91dbb95f8e3e6",
+      "size": 1117783,
+      "band": "A-hub",
+      "indegree": 23,
+      "required_by": [
+        "gsagostinho.CobraMkIV",
+        "oolite.oxp.Griff.Adder",
+        "oolite.oxp.Griff.Anaconda",
+        "oolite.oxp.Griff.Asp",
+        "oolite.oxp.Griff.Boa",
+        "oolite.oxp.Griff.Boa_MkII",
+        "oolite.oxp.Griff.Cobra_MKIII_Alt",
+        "oolite.oxp.Griff.Cobra_MkI",
+        "oolite.oxp.Griff.Cobra_MkIII",
+        "oolite.oxp.Griff.Cobra_MkIII.SubentMissiles",
+        "oolite.oxp.Griff.Ferdelance",
+        "oolite.oxp.Griff.Gecko",
+        "oolite.oxp.Griff.Krait",
+        "oolite.oxp.Griff.Mamba",
+        "oolite.oxp.Griff.Mamba_alt_texture",
+        "oolite.oxp.Griff.Moray",
+        "oolite.oxp.Griff.Python",
+        "oolite.oxp.Griff.Shuttle",
+        "oolite.oxp.Griff.Sidewinder",
+        "oolite.oxp.Griff.Transporter",
+        "oolite.oxp.Griff.Viper",
+        "oolite.oxp.Griff.Worm",
+        "oolite.oxp.spara.griff_normalmapped_ships_replace"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.DrNil.YAH",
+      "title": "Your Ad Here",
+      "version": "4.5.1",
+      "category": "Ambience",
+      "url": "https://wiki.alioth.net/img_auth.php/8/8a/Yah_4.5.1.oxz",
+      "sha256": "26baa0965e86a9f82c95cc3a33f1097e3227ff4e3dc21df17b3930fa8089e655",
+      "size": 3817296,
+      "band": "A-hub",
+      "indegree": 15,
+      "required_by": [
+        "oolite.oxp.DrNil.Oo-Haul",
+        "oolite.oxp.DrNil.YAH-SetA",
+        "oolite.oxp.DrNil.YAH-SetB",
+        "oolite.oxp.DrNil.YAH-SetC",
+        "oolite.oxp.DrNil.YAH-SetD",
+        "oolite.oxp.DrNil.YAH-SetE",
+        "oolite.oxp.DrNil.YAH-SetF",
+        "oolite.oxp.DrNil.YAH-SetG",
+        "oolite.oxp.Thargoid.YAH-ConstoreRemover",
+        "oolite.oxp.Thargoid.YAH-WitchpointOverride",
+        "oolite.oxp.Zafrusteria.ShrewsRights",
+        "oolite.oxp.spara.yah_constores_only",
+        "oolite.oxp.spara.yah_fuel_station",
+        "oolite.oxp.spara.yah_gem_casino",
+        "oolite.oxp.spara.yah_more"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Svengali.Library",
+      "title": "Library",
+      "version": "1.10.5",
+      "category": "Miscellaneous",
+      "url": "https://wiki.alioth.net/img_auth.php/8/82/Library_1.10.5.oxz",
+      "sha256": "5c07406a7bdfc5d4040afed9b975ef8b3c04931cbedc2c470148e16629aa5877",
+      "size": 5199376,
+      "band": "A-hub",
+      "indegree": 14,
+      "required_by": [
+        "oolite.oxp.Arquebus.ContextualJukebox",
+        "oolite.oxp.EricWalch.DeepSpacePirates",
+        "oolite.oxp.Lone_Wolf.ShieldCyclerNext",
+        "oolite.oxp.Norby.EscortDeck",
+        "oolite.oxp.Norby.Towbar",
+        "oolite.oxp.Ramen.Hyperspace_Hangar",
+        "oolite.oxp.Svengali.BGS",
+        "oolite.oxp.Svengali.GNN",
+        "oolite.oxp.Svengali.HyperRadio2",
+        "oolite.oxp.Thargoid.Planetfall",
+        "oolite.oxp.Tricky.Jaguar_Company",
+        "oolite.oxp.cim.skilled-npcs",
+        "oolite.oxp.phkb.SystemMap",
+        "oolite.oxp.phkb.XenonHUD"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.spara.additional_planets_sr_base",
+      "title": "Additional Planets SR Base",
+      "version": "0.11",
+      "category": "Ambience",
+      "url": "https://wiki.alioth.net/img_auth.php/f/fe/Additional_planets_sr_base_0.11.oxz",
+      "sha256": "3e62623ee54c7779e9d45ac0d11355068d87f490e29a16fc93ef0cedd619378f",
+      "size": 9849,
+      "band": "A-hub",
+      "indegree": 14,
+      "required_by": [
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Norby.Ambiences_recommended_by_Norby",
+        "oolite.oxp.Norby.Superhub_for_Extra_Planets",
+        "oolite.oxp.redspear.additional_planets_sr_demux_alien_pack",
+        "oolite.oxp.redspear.additional_planets_sr_demux_earthlike_pack",
+        "oolite.oxp.redspear.additional_planets_sr_demux_ocean_pack",
+        "oolite.oxp.redspear.additional_planets_sr_demux_volcanic",
+        "oolite.oxp.redspear.additional_planets_sr_others_gas_giants",
+        "oolite.oxp.redspear.free_bitmaps_dusty",
+        "oolite.oxp.redspear.free_bitmaps_icy",
+        "oolite.oxp.redspear.free_bitmaps_rocky",
+        "oolite.oxp.spara.additional_planets_sr_demux_gas_giants",
+        "oolite.oxp.spara.additional_planets_sr_pack_redux",
+        "oolite.oxp.spara.stations_for_extra_planets"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.z.phkb.XenonUI",
+      "title": "Xenon UI",
+      "version": "3.15",
+      "category": "Ambience",
+      "url": "https://wiki.alioth.net/img_auth.php/0/0b/XenonUI.oxz",
+      "sha256": "28c7da0019d9842a7a651a0764cd00cc7a0753ccaf59d247e008dc9e0cf6b516",
+      "size": 7659455,
+      "band": "A-hub",
+      "indegree": 14,
+      "required_by": [
+        "oolite.oxp.z.phkb.XenonUIResources",
+        "oolite.oxp.z.phkb.XenonUIResourcesB",
+        "oolite.oxp.z.phkb.XenonUIResourcesC",
+        "oolite.oxp.z.phkb.XenonUIResourcesD",
+        "oolite.oxp.z.phkb.XenonUIResourcesE",
+        "oolite.oxp.z.phkb.XenonUIResourcesF",
+        "oolite.oxp.z.phkb.XenonUIResourcesG",
+        "oolite.oxp.z.phkb.XenonUIResourcesH",
+        "oolite.oxp.z.phkb.XenonUIResourcesI",
+        "oolite.oxp.z.phkb.XenonUIResourcesJ",
+        "oolite.oxp.z.phkb.XenonUIResourcesK",
+        "oolite.oxp.z.phkb.XenonUIResourcesL",
+        "oolite.oxp.z.phkb.XenonUIResourcesM",
+        "oolite.oxp.z.phkb.XenonUIResourcesN"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.phkb.MarketScriptInterface",
+      "title": "Market Script Interface",
+      "version": "1.1",
+      "category": "Miscellaneous",
+      "url": "https://wiki.alioth.net/img_auth.php/d/d8/MarketScriptInterface_1.1.oxz",
+      "sha256": "a5f84a46e038bc8c40f8889498e36957e3f6e9a0656855d10e8f4ec894441c84",
+      "size": 12833,
+      "band": "A-hub",
+      "indegree": 11,
+      "required_by": [
+        "oolite.oxp.EricWalch.UPSCourier",
+        "oolite.oxp.IronFist.Draven",
+        "oolite.oxp.Ramirez.BlOombergMarkets",
+        "oolite.oxp.Thargoid.Planetfall",
+        "oolite.oxp.captain_beatnik.Riredi",
+        "oolite.oxp.phkb.FuelTweaks",
+        "oolite.oxp.phkb.GalCopMissions",
+        "oolite.oxp.phkb.RiskyBusiness",
+        "oolite.oxp.phkb.Smugglers_TGU",
+        "oolite.oxp.spara.stations_for_extra_planets",
+        "oolite.oxp.stranger.SW_Economy"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Thargoid.Bigships",
+      "title": "Bigships",
+      "version": "1.4",
+      "category": "Mechanics",
+      "url": "https://wiki.alioth.net/img_auth.php/6/61/BigShips_1.4.oxz",
+      "sha256": "4c8a76da7ec51f73d9b534094ff3f3ea062a97fd9c0e36556c2ded7b19da054b",
+      "size": 5839,
+      "band": "A-hub",
+      "indegree": 8,
+      "required_by": [
+        "oolite.oxp.Cholmondeley.Lore_Collection_(Classic_Elite)",
+        "oolite.oxp.EricWalch.DeepSpaceDredger",
+        "oolite.oxp.Norby.Andromeda",
+        "oolite.oxp.Norby.Superhub_for_Extra_Planets",
+        "oolite.oxp.Thargoid.Aquatics",
+        "oolite.oxp.smivs.Liners",
+        "oolite.oxp.staer9.StarDestroyer",
+        "oolite.oxp.zzz.Montana05.adck_bulk_haulers"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.cim.ships-library",
+      "title": "Ship's Library",
+      "version": "0.14",
+      "category": "Equipment",
+      "url": "https://wiki.alioth.net/img_auth.php/0/05/Ships_Library_0.14.oxz",
+      "sha256": "379496f0745778b6c91f7d31f616a6a05ab9cff7d9b7e28247cebdc8b17c0ead",
+      "size": 1809103,
+      "band": "A-hub",
+      "indegree": 8,
+      "required_by": [
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Ramen.Mutabilis-Ships_Library",
+        "oolite.oxp.Ramen.Status_Quo-Ship's_Library",
+        "oolite.oxp.Ramirez.IronRaven",
+        "oolite.oxp.captsolo.solos-good-fortune",
+        "oolite.oxp.cim.extracts-tre-clan",
+        "oolite.oxp.phkb.RoughGuideToTheOoniverse",
+        "oolite.oxp.phkb.ShipConfiguration"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.CaptMurphy.ShipStorageHelper",
+      "title": "Ship Storage Helper",
+      "version": "0.39",
+      "category": "Miscellaneous",
+      "url": "https://wiki.alioth.net/img_auth.php/f/f9/Ship_Storage_Helper_0.39.oxz",
+      "sha256": "9dc699cae0a3c48ccc9005b356e87f3e454f43185a7411c687f2fc26348e535c",
+      "size": 17629,
+      "band": "A-hub",
+      "indegree": 7,
+      "required_by": [
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Norby.Carriers",
+        "oolite.oxp.Norby.ShipVersion",
+        "oolite.oxp.Ramen.Hyperspace_Hangar",
+        "oolite.oxp.cim.combat-simulator",
+        "oolite.oxp.phkb.ShipRepurchase",
+        "oolite.oxp.phkb.ShipRespray"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Norby.CombatMFD",
+      "title": "MFD - Combat MFD",
+      "version": "1.21",
+      "category": "HUDs",
+      "url": "https://wiki.alioth.net/img_auth.php/6/66/CombatMFD-1.21.oxz",
+      "sha256": "10427a8f94c27c48b4e08827a4687da22cc95dbcdbdc7a83223c904c4c4e6ce0",
+      "size": 16577,
+      "band": "A-hub",
+      "indegree": 7,
+      "required_by": [
+        "oolite.oxp.Gnievmir.VimanaHUD",
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Norby.HUDSelector",
+        "oolite.oxp.Norby.Telescope",
+        "oolite.oxp.Norby.cag.Telescope",
+        "oolite.oxp.captain_beatnik.coluber_hud_ch01",
+        "oolite.oxp.phkb.VimanaX_HUD"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Svengali.GNN",
+      "title": "GNN",
+      "version": "1.4",
+      "category": "Ambience",
+      "url": "https://wiki.alioth.net/img_auth.php/9/93/GNN_1.4.oxz",
+      "sha256": "3e41819ace093bf9c81d463aa602c0955f86a5c105530e67b935d5569b74c10d",
+      "size": 4296066,
+      "band": "A-hub",
+      "indegree": 7,
+      "required_by": [
+        "oolite.oxp.Day.Diplomacy",
+        "oolite.oxp.Ramirez.BlOombergMarkets",
+        "oolite.oxp.Svengali.HyperRadio2",
+        "oolite.oxp.Thargoid.Planetfall",
+        "oolite.oxp.Tricky.Jaguar_Company",
+        "oolite.oxp.Zafrusteria.ShrewsRights",
+        "oolite.oxp.phkb.GalCopMissions"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Thargoid.Planetfall",
+      "title": "PlanetFall2",
+      "version": "2.35",
+      "category": "Systems",
+      "url": "https://wiki.alioth.net/img_auth.php/2/25/PlanetFall2_2.35.oxz",
+      "sha256": "53d10e05478d86fb0429a57f178c3c2caf77eee2d6bb71e588b464143bee2c82",
+      "size": 1972959,
+      "band": "A-hub",
+      "indegree": 7,
+      "required_by": [
+        "oolite.oxp.Norby.Planetfall_Markets",
+        "oolite.oxp.Ramirez.FeudalStates",
+        "oolite.oxp.Thargoid.PlanetFall2_BlackMonks",
+        "oolite.oxp.Thargoid.PlanetFall2_HOopyCasino",
+        "oolite.oxp.Thargoid.PlanetFall2_Oo-Haul",
+        "oolite.oxp.phkb.FeudalPlanetFall",
+        "oolite.oxp.phkb.SuperSystem"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Norby.HUDSelector",
+      "title": "HUD Selector with Large HUD",
+      "version": "1.28",
+      "category": "HUDs",
+      "url": "https://wiki.alioth.net/img_auth.php/7/75/HUDSelector-1.28.oxz",
+      "sha256": "04ca1db5ca06fcdcca1314f30d4a4871c67f59a1081fa5328b570b0f7da63f2a",
+      "size": 80091,
+      "band": "A-hub",
+      "indegree": 6,
+      "required_by": [
+        "oolite.oxp.Gnievmir.VimanaHUD",
+        "oolite.oxp.Killer_Wolf.Steampunk_hud",
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Norby.CombatMFD",
+        "oolite.oxp.captain_beatnik.coluber_hud_ch01",
+        "oolite.oxp.phkb.VimanaX_HUD"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Thargoid.PlanetaryCompass",
+      "title": "Planetary Compass",
+      "version": "1.02",
+      "category": "Equipment",
+      "url": "https://wiki.alioth.net/img_auth.php/b/b9/Planetary_Compass_1.01.oxz",
+      "sha256": "272bc310c8414911c0ecdfb671301450772fe7a75c460eb81b358d55c67427d1",
+      "size": 5656,
+      "band": "A-hub",
+      "indegree": 6,
+      "required_by": [
+        "oolite.oxp.Norby.Ambiences_recommended_by_Norby",
+        "oolite.oxp.Thargoid.PlanetaryCompassPackA",
+        "oolite.oxp.Thargoid.PlanetaryCompassPackB",
+        "oolite.oxp.Thargoid.PlanetaryCompassPackC",
+        "oolite.oxp.Thargoid.PlanetaryCompassPackD",
+        "oolite.oxp.stranger.InSystemCargoDelivery"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.zzz.Montana05.resource_pack_01",
+      "title": "Montanas Resource Pack 01",
+      "version": "0.54",
+      "category": "Miscellaneous",
+      "url": "https://wiki.alioth.net/img_auth.php/4/43/Oolite.oxp.zzz.Montana05.resource_pack_01.OXZ",
+      "sha256": "47336524e1b210cac9a044d77886e8a8bfd4a87b7317cd40cc80cad04d406196",
+      "size": 34988134,
+      "band": "A-hub",
+      "indegree": 6,
+      "required_by": [
+        "oolite.oxp.zzz.Montana05.BUS_gecko_dragon",
+        "oolite.oxp.zzz.Montana05.GalTech_chimera_gunship_Fix",
+        "oolite.oxp.zzz.Montana05.GalTech_colonial_viper_mark_I_Restore",
+        "oolite.oxp.zzz.Montana05.GalTech_constitution_class_heavy_cruiser_Fix",
+        "oolite.oxp.zzz.Montana05.GalTech_escort_fighter_Fix",
+        "oolite.oxp.zzz.Montana05.SIRF"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.phkb.BroadcastCommsMFD",
+      "title": "BroadcastComms MFD",
+      "version": "1.4",
+      "category": "HUDs",
+      "url": "https://wiki.alioth.net/img_auth.php/a/ac/BroadcastCommsMFD_1.4.oxz",
+      "sha256": "e37da2d2838b9045918489a402dde3b307464def40a2c92db735031d57b7e85b",
+      "size": 49142,
+      "band": "A-hub",
+      "indegree": 5,
+      "required_by": [
+        "oolite.oxp.Cholmondely.BroadcastComms_Digebiti_Variations",
+        "oolite.oxp.Norby.Ambiences_recommended_by_Norby",
+        "oolite.oxp.phkb.EnhancedPassengerContracts",
+        "oolite.oxp.phkb.GalCopMissions",
+        "oolite.oxp.phkb.QuickVisa"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Norby.Carriers",
+      "title": "Carriers",
+      "version": "0.10",
+      "category": "Ships",
+      "url": "https://wiki.alioth.net/img_auth.php/d/d0/Carriers_0.10.oxz",
+      "sha256": "e753e68821041de25991eec95759dc67d57a331564d9e97ea4621571d31cbb96",
+      "size": 2028565,
+      "band": "A-hub",
+      "indegree": 4,
+      "required_by": [
+        "oolite.oxp.CaptMurphy.ShipStorageHelper",
+        "oolite.oxp.Norby.Carriers_with_turrets",
+        "oolite.oxp.Norby.EscortDeck",
+        "oolite.oxp.Norby.EscortPack"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Svengali.CCL",
+      "title": "Cabal Common Library",
+      "version": "1.7.2",
+      "category": "Miscellaneous",
+      "url": "https://wiki.alioth.net/img_auth.php/a/ab/CabalLibray-1.7.2.oxz",
+      "sha256": "2891744b136f92379b59c64b7e097cde1d1865e9a7f7a107baca7bf0946d5caa",
+      "size": 1391321,
+      "band": "A-hub",
+      "indegree": 4,
+      "required_by": [
+        "oolite.oxp.Lone_Wolf.ShieldCycler",
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Svengali.Hyperradio",
+        "oolite.oxp.Svengali.OXPConfig"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Svengali.OXPConfig",
+      "title": "OxpConfig",
+      "version": "2.3.4",
+      "category": "Miscellaneous",
+      "url": "https://wiki.alioth.net/img_auth.php/f/f3/OxpConfig_2.3.4.oxz",
+      "sha256": "57104b58d445098007cc2d3467ecaafdc64b97902e4e450028901b36df7211ac",
+      "size": 95765,
+      "band": "A-hub",
+      "indegree": 4,
+      "required_by": [
+        "oolite.oxp.Lone_Wolf.ShieldCycler",
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Tricky.Jaguar_Company",
+        "oolite.oxp.cim.skilled-npcs"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.phkb.TionislaOrbitalGraveyard",
+      "title": "Tionisla Orbital Graveyard",
+      "version": "2.10",
+      "category": "Ambience",
+      "url": "https://wiki.alioth.net/img_auth.php/a/a6/TionislaOrbitalGraveyard.oxz",
+      "sha256": "92102c7da1e7d4dda40edba41a249aa2b67cba4c39cdebb932dfa2667da69bed",
+      "size": 19476703,
+      "band": "A-hub",
+      "indegree": 4,
+      "required_by": [
+        "oolite.oxp.Cholmondeley.Lore_Collection_(Classic_Elite)",
+        "oolite.oxp.phkb.TionislaOrbitalGraveyard_Memorials",
+        "oolite.oxp.phkb.TionislaOrbitalGraveyard_Monuments",
+        "oolite.oxp.phkb.TionislaOrbitalGraveyard_Shipwrecks"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.CaptMurphy.ExplorersClub",
+      "title": "Explorers' Club",
+      "version": "1.4.7",
+      "category": "Activities",
+      "url": "https://wiki.alioth.net/img_auth.php/5/55/Explorers_Club_1.4.4.oxz",
+      "sha256": "d118542bbc31a29f370b4e0bafcd5acfc30a6bac3028d091f9b5439a223c667b",
+      "size": 272543,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Wildeblood.DistantSpace",
+        "oolite.oxp.stranger.HereBeDragons"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.CommonSenseOTB.ShieldEqualizer+Capacitors",
+      "title": "ShieldEqualizer+Capacitors",
+      "version": "1.8",
+      "category": "Equipment",
+      "url": "https://wiki.alioth.net/img_auth.php/b/b4/ShieldEqualizerAndCapacitors-1.8.oxz",
+      "sha256": "91689199527b8b5a83640574571055c528f78a09df3e208d42d9bd34f3a47f34",
+      "size": 76674,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.Gnievmir.VimanaHUD",
+        "oolite.oxp.Norby.HardShips",
+        "oolite.oxp.phkb.VimanaX_HUD"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.CommonSenseOTB.SniperLock",
+      "title": "SniperLock",
+      "version": "1.0.0",
+      "category": "Equipment",
+      "url": "https://wiki.alioth.net/img_auth.php/b/b1/Oolite.oxp.CommonSenseOTB.SniperLock.oxz",
+      "sha256": "fe29d2523368d84bd321e3555bb8531d13053725bdb5ab69567a8cc16f6bfb1f",
+      "size": 7094,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.Gnievmir.VimanaHUD",
+        "oolite.oxp.dybal.SniperLock_Fix",
+        "oolite.oxp.phkb.VimanaX_HUD"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Griff.Cobra_MkIII",
+      "title": "Griff Cobra MkIII",
+      "version": "1.04.3",
+      "category": "Retextures",
+      "url": "https://wiki.alioth.net/img_auth.php/d/dc/Oolite.oxp.Griff.Cobra_MkIII.oxz",
+      "sha256": "c35a1676163587bb451f99711d77efe03a452c96beb99a675cd4625c62276c4d",
+      "size": 2848811,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.Griff.Cobra_MkIII.SubentMissiles",
+        "oolite.oxp.Griff.StartinGriffCobraIII",
+        "oolite.oxp.spara.griff_normalmapped_ships_replace"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Ngalo.N-Shields",
+      "title": "N-Shields",
+      "version": "1.0.2",
+      "category": "Mechanics",
+      "url": "https://wiki.alioth.net/img_auth.php/9/9c/N-Shields-1.0.2.oxz",
+      "sha256": "d554a7009d2b2abf0193d2416de8eefdbb9d0f8b160b78b2f537b62ce8193921",
+      "size": 28327,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.Ngalo.NPC_Equipment_Damage",
+        "oolite.oxp.Rustem.MilitaryShields_Ships",
+        "oolite.oxp.dybal.NPC_Energy_Units"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Ngalo.NPC_Equipment_Damage",
+      "title": "NPC Equipment Damage",
+      "version": "0.3.0",
+      "category": "Mechanics",
+      "url": "https://wiki.alioth.net/img_auth.php/2/21/Oolite.oxp.Ngalo.NPC_Equipment_Damage_0.3.0.oxz",
+      "sha256": "85b8308ed4149135dca66e8402377ef71e7ba3854ac2bc5c8e233b8f3bbe0e60",
+      "size": 4394,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.Ngalo.N-Shields",
+        "oolite.oxp.Rustem.MilitaryShields_Ships",
+        "oolite.oxp.dybal.NPC_Energy_Units"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Norby.EscortDeck",
+      "title": "Escort Deck",
+      "version": "1.13",
+      "category": "Activities",
+      "url": "https://wiki.alioth.net/img_auth.php/0/02/EscortDeck_1.13.oxz",
+      "sha256": "666bb8f0b24a61dbbdfe32adca97168a7eddf7c9d819b77e9cb96dfc3b9a5246",
+      "size": 675590,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.Norby.Carriers",
+        "oolite.oxp.Norby.EscortPack",
+        "oolite.oxp.phkb.NightAdder_EscortDeck"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Norby.HDBG",
+      "title": "HD Backgrounds",
+      "version": "1.0",
+      "category": "Ambience",
+      "url": "https://wiki.alioth.net/img_auth.php/1/18/HDBG_1.0.oxz",
+      "sha256": "62a3fae5c3d2e1603ce83d2a394337dc75dd76f987142da354b3547061e34277",
+      "size": 5094,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.BeeTLeBeTHLeHeM.LifeInTheFrontier",
+        "oolite.oxp.Norby.Ambience_Collection",
+        "oolite.oxp.Norby.HDBG-A"
+      ]
+    },
+    {
+      "identifier": "oolite.oxp.Norby.Separated_Lasers",
+      "title": "Separated Lasers",
+      "version": "1.3",
+      "category": "Weapons",
+      "url": "https://wiki.alioth.net/img_auth.php/3/33/Separated_Lasers_1.3.oxz",
+      "sha256": "34cf03089635ac1fa4ef69a59e54b2fcbc9cc512f396b6358ea1658867db1727",
+      "size": 11402,
+      "band": "A-hub",
+      "indegree": 3,
+      "required_by": [
+        "oolite.oxp.Norby.Eco_Lasers",
+        "oolite.oxp.Norby.Multiple_Lasers",
+        "oolite.oxp.Norby.Sniper_Gun"
+      ]
+    }
+  ],
+  "test_oxps": [
+    {
+      "name": "AI overflow test",
+      "path": "upstream/oolite-tests/test-oxps/AI overflow test/AI overflow test.oxp"
+    },
+    {
+      "name": "JSInterfaceTests",
+      "path": "upstream/oolite-tests/test-oxps/JSInterfaceTests/JavaScript Interface Tests.oxp"
+    },
+    {
+      "name": "materialTestSuite",
+      "path": "upstream/oolite-tests/test-oxps/materialTestSuite/Material Test Suite.oxp"
+    },
+    {
+      "name": "PNGTestSuite",
+      "path": "upstream/oolite-tests/test-oxps/PNGTestSuite/PNGTestSuite.oxp"
+    },
+    {
+      "name": "RetroMissions",
+      "path": "upstream/oolite-tests/test-oxps/RetroMissions/RetroMissions.oxp"
+    },
+    {
+      "name": "shaderFallbackTest",
+      "path": "upstream/oolite-tests/test-oxps/shaderFallbackTest/Fallback test.oxp"
+    }
+  ]
+}

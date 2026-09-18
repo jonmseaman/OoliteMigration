@@ -1,0 +1,10 @@
+{
+	identifier = "oolite.oxp.oo-het.sentinel";
+	version = "1.0";
+	title = "oo-het load-check sentinel";
+	category = "Debug";
+	required_oolite_version = "1.80";
+	author = "Oolite migration fleet (bead oo-het)";
+	license = "same as the repository";
+	description = "Emits a run-owned end-of-run marker and quits, so a per-expansion load check can prove its own run completed rather than inferring it from a zero exit code.";
+}

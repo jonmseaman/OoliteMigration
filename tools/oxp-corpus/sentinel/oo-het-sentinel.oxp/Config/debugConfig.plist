@@ -1,0 +1,19 @@
+/*  Steer this run's debug-console dial-out AWAY from the shared default port.
+
+    Oolite DIALS OUT to console-host:console-port (OODebugSupport.m:67-95;
+    default 127.0.0.1:8563).  On this fleet machine several workers run
+    component-test harnesses that LISTEN on 8563, and console.py's _accept()
+    accepts whoever connects.  A load-check game that dials the default port
+    therefore lands in a stranger's listener, which runs quit() - measured
+    live: [debugTCP.connected]: Connected to debug console
+    "OoliteComponentTests", then [universe.quit] 4.7s later.
+
+    Port 1 is privileged and nothing on this host listens there, so the dial-out
+    fails harmlessly and no external console can reach into the run.  We do not
+    need a console of our own: the sentinel world script is how this run is
+    driven and how it signs off.
+*/
+{
+	console-host = "127.0.0.1";
+	console-port = 1;
+}
