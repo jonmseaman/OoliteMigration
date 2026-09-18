@@ -34,13 +34,36 @@ A three-hour sequence of game launches cannot be a stored acceptance line, and a
 2. **Shardable.** `--shard K/N` partitions the list deterministically, so a
    weekly Tier 3 can be spread over several nights. Shard state directories
    union cleanly. **Sharding here multiplies LOCAL game launches only** — the
-   corpus is read from the content-addressed cache and this code never touches
+   the corpus is read from the content-addressed cache and this code never touches
    the network. (Bead oo-425 records what happens when sharding is applied to a
    rate-limited remote fetch: 6× the agreed request rate against a volunteer
    host.)
 3. **The logic worth arguing about is offline-testable.** Selection lives in
    `tools/oxp_tier23.py`, clustering and classification in `tools/oxp_report.py`;
    both are exercised against committed fixtures with no game launch at all.
+
+### What has actually been run, and what has not
+
+**No full Tier 3 run has been performed and none is claimed.** The largest real
+run to date is a **12-expansion Tier 2 sample**, measured on this host while four
+sibling agents were active:
+
+```
+tools/corpus.sh tier2 --limit 12 --state ...
+12 checked, 1 failing (7 pass, 4 unmet-deps not counted)   wall 192s  rc=1
+```
+
+That is **16.0 s per expansion**, slightly above oo-het's 13.5 s — contention,
+as expected — which puts Tier 2 at ~40 min and Tier 3 at ~3.6 h. The sample
+produced four of the seven states from real game launches: 7 `PASS`, 4
+`NOTLOADED_DEPS`, 1 `ERRORS` (XenonUI, clustered). Note that the oo-kcrw
+correlation held perfectly again: **every** rejected expansion in the sample
+declared `requires_oxps`, and `NOTLOADED` (rejected with no declared
+dependencies) was **zero**.
+
+Acceptance line 4 is the only stored line that launches the game; it uses two
+expansions (~40 s) and exists to prove the launch path and the resume, not to
+cover the corpus. Everything else in the gate is fixture-driven and offline.
 
 ## Tier 2 selection: the corpus's own `category` field
 
