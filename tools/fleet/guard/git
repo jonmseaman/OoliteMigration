@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# run-story guard shim for `git`. First on PATH for the model invocation (see tools/fleet/run-story).
+# Refuses `git push` in every spelling (`git push`, `git -C <dir> push`, `git --git-dir=... push`)
+# before resolving the real binary; CLAUDE.md hard rule 5 — a bead lands by accept.sh merging the
+# branch, never by a push. Everything else passes through.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+sub=""
+skip=0
+for a in "$@"; do
+  if [ "$skip" -eq 1 ]; then skip=0; continue; fi
+  case "$a" in
+    -C|-c|--git-dir|--work-tree|--namespace|--exec-path|--config-env) skip=1; continue;;
+    -*) continue;;
+    *) sub="$a"; break;;
+  esac
+done
+if [ "$sub" = "push" ]; then
+  echo "run-story guard: refusing 'git push'. Commit on the bead branch only; accept.sh merges it into the base branch (CLAUDE.md hard rule 5)." >&2
+  exit 77
+fi
+p="$(echo "$PATH" | tr ':' '\n' | grep -vx "$here" | paste -sd: -)"
+real="$(PATH="$p" command -v git || true)"
+[ -n "$real" ] || { echo "run-story guard: real git not found on PATH" >&2; exit 127; }
+PATH="$p" exec "$real" "$@"

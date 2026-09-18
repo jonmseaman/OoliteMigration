@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+# tools/fleet/run-story — frontier driver: takes ONE `frontier` bead from the ready queue to
+# accepted, by COMPOSING the beads-worker scripts (never reimplementing them):
+#
+#   next-bead.sh (bd ready, filtered to frontier)  ->  claim
+#     -> worktree.sh <id>                          ->  .worktrees/<id> on bead/<id>
+#     -> context.sh <id>                           ->  notes + fleet learnings into the prompt
+#     -> claude -p --model claude-opus-5           ->  bead body as the prompt, CLAUDE.md in scope,
+#                                                      under the allow-list below
+#     -> goldens audit                             ->  refuse to accept a story that touched goldens/
+#     -> accept.sh <id>                            ->  the ONLY path that closes a bead
+#     -> worktree.sh --remove <id>                 ->  cleanup
+#
+# MEMORYLESS: one invocation is one story. Every story gets a FRESH temp dir (prompt, argv, log),
+# a prompt rebuilt from that bead's body, and no --resume/--continue/--session-id is ever passed.
+# Nothing is carried between stories; the bead's notes are the only channel that survives, exactly
+# as CLAUDE.md requires.
+#
+# PARALLELISM is not this script's job: it runs one story. The fan-out width the orchestrator should
+# use is read from docs/infra/0-machines.md (`delegation.max_concurrent_children`) and printed by
+# `--print-policy` as `parallel=<N>`, so the loop that spawns N run-story processes has one source
+# of truth.
+#
+# THE FRONTIER MODEL is Claude Opus 5 everywhere; BEADS_FRONTIER_MODEL overrides it.
+#
+# SEAMS (so the driver is testable without a real model and without closing a real bead):
+#   BEADS_FRONTIER_CMD   run this instead of `claude`; gets the prompt on stdin, the constructed
+#                        claude argv in $STORY_ARGV_FILE, and STORY_{BEAD,WORKTREE,PROMPT_FILE,
+#                        MODEL,LOG} in the environment. Runs under the SAME guard PATH.
+#   BEADS_NEXT_BEAD_CMD  default: .agents/skills/beads-worker/scripts/next-bead.sh
+#   BEADS_WORKTREE_CMD   default: .agents/skills/beads-worker/scripts/worktree.sh
+#   BEADS_CONTEXT_CMD    default: .agents/skills/beads-worker/scripts/context.sh
+#   BEADS_ACCEPT_CMD     default: .agents/skills/beads-worker/scripts/accept.sh
+#
+# Usage:
+#   run-story [--phase N] [--bead ID] [--print-policy] [--print-prompt]
+# Exit: 0 accepted · 1 usage/setup error · 3 nothing ready · 4 refused (guard violation)
+#       · 5 the model invocation failed · 6 accept rejected the story
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+: "${REPO_ROOT:?not inside a git repository}"
+SCRIPTS="$REPO_ROOT/.agents/skills/beads-worker/scripts"
+GUARD_DIR="$REPO_ROOT/tools/fleet/guard"
+MACHINES="$REPO_ROOT/docs/infra/0-machines.md"
+
+die() { echo "run-story: $*" >&2; exit "${2:-1}"; }
+
+# --- policy -------------------------------------------------------------------------------------
+# The frontier model. Opus 5 everywhere unless overridden.
+FRONTIER_MODEL="${BEADS_FRONTIER_MODEL:-claude-opus-5}"
+
+# DENY is the safety-critical half and is enforced TWICE: here, as --disallowedTools handed to the
+# model, and again by tools/fleet/guard/{bd,git}, which sit FIRST on PATH for the whole invocation
+# and refuse the command even if the model's own permission layer is bypassed or misconfigured.
+# goldens/ additionally gets a post-run audit, because a Write the model performs cannot be shimmed.
+DENY=(
+  'Bash(bd close:*)'
+  'Bash(bd done:*)'
+  'Bash(bd update:*--status*)'
+  'Bash(bd update:*--set-status*)'
+  'Bash(git push:*)'
+  'Write(goldens/**)'
+  'Edit(goldens/**)'
+  'NotebookEdit(goldens/**)'
+)
+ALLOW=(
+  'Read' 'Glob' 'Grep' 'Edit' 'Write' 'TodoWrite'
+  'Bash(git status:*)' 'Bash(git diff:*)' 'Bash(git log:*)' 'Bash(git add:*)'
+  'Bash(git commit:*)' 'Bash(git show:*)' 'Bash(git merge:*)'
+  'Bash(bd show:*)' 'Bash(bd list:*)' 'Bash(bd update:*--append-notes*)'
+  'Bash(bash tools/*)' 'Bash(python3:*)' 'Bash(python:*)' 'Bash(pytest:*)'
+)
+
+parallelism() {
+  [ -f "$MACHINES" ] || die "docs/infra/0-machines.md not found at $MACHINES; parallelism has no source of truth"
+  local n
+  # No `| head -1` in a pipeline here: this script runs under `set -o pipefail`, and a head that
+  # exits early SIGPIPEs its producer, failing the whole pipeline (rc 141). sed reads all its input.
+  n="$(grep -oE 'delegation\.max_concurrent_children[^0-9]*[0-9]+' "$MACHINES" | sed -n '1s/.*[^0-9]\([0-9][0-9]*\)$/\1/p' || true)"
+  [ -n "$n" ] || die "no delegation.max_concurrent_children in $MACHINES"
+  printf '%s\n' "$n"
+}
+
+print_policy() {
+  echo "model=$FRONTIER_MODEL"
+  echo "parallel=$(parallelism)"
+  local a
+  for a in "${ALLOW[@]}"; do echo "allow=$a"; done
+  for a in "${DENY[@]}"; do echo "deny=$a"; done
+  echo "guard=$GUARD_DIR"
+}
+
+# --- argument parsing ---------------------------------------------------------------------------
+phase="${BEADS_FRONTIER_PHASE:-0}"
+bead=""
+print_prompt=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --print-policy) print_policy; exit 0;;
+    --print-prompt) print_prompt=1; shift;;
+    --phase) phase="${2:?--phase needs a value}"; shift 2;;
+    --bead) bead="${2:?--bead needs a value}"; shift 2;;
+    -h|--help) sed -n '2,30p' "$0"; exit 0;;
+    *) die "unknown argument: $1";;
+  esac
+done
+
+NEXT_BEAD_CMD="${BEADS_NEXT_BEAD_CMD:-$SCRIPTS/next-bead.sh}"
+WORKTREE_CMD="${BEADS_WORKTREE_CMD:-$SCRIPTS/worktree.sh}"
+CONTEXT_CMD="${BEADS_CONTEXT_CMD:-$SCRIPTS/context.sh}"
+ACCEPT_CMD="${BEADS_ACCEPT_CMD:-$SCRIPTS/accept.sh}"
+
+# --- 1. claim one frontier bead -----------------------------------------------------------------
+# next-bead.sh claims and prints one JSON record per line; the frontier lane is selected by label,
+# which is why this driver sets BEADS_WORKER_LABELS rather than filtering `bd ready` itself.
+if [ -n "$bead" ]; then
+  # next-bead.sh has no per-bead selector: claim a batch and pick the requested id out of it,
+  # rather than reimplementing the claim.
+  record="$(BEADS_WORKER_LABELS=frontier "$NEXT_BEAD_CMD" "$phase" "${BEADS_FRONTIER_BATCH:-20}" \
+            | jq -c --arg id "$bead" 'select(.id == $id)' || true)"
+  [ -n "$record" ] || die "bead $bead is not in the claimable frontier queue for phase $phase" 3
+else
+  rc=0
+  record="$(BEADS_WORKER_LABELS=frontier "$NEXT_BEAD_CMD" "$phase" 1)" || rc=$?
+  [ "$rc" -eq 0 ] || exit 3
+fi
+record="$(sed -n 1p <<<"$record")"   # not `| head -1`: pipefail + early-exit head = SIGPIPE (141)
+id="$(printf '%s' "$record" | jq -r '.id')"
+title="$(printf '%s' "$record" | jq -r '.title // ""')"
+body="$(printf '%s' "$record" | jq -r '.body // ""')"
+[ -n "$id" ] && [ "$id" != "null" ] || die "claimed record has no id: $record"
+echo "run-story: story $id — $title"
+
+# --- 2. a fresh temp dir per story (memorylessness lives here) -----------------------------------
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/run-story-$id.XXXXXX")"
+command -v cygpath >/dev/null 2>&1 && tmp="$(cygpath -m "$tmp")"
+trap 'rm -rf "$tmp"' EXIT
+prompt="$tmp/prompt.md"
+argv_file="$tmp/claude.argv"
+log="$tmp/model.log"
+
+# --- 3. worktree via beads-worker worktree.sh ----------------------------------------------------
+wt="$("$WORKTREE_CMD" "$id" | tail -1)"
+[ -d "$wt" ] || die "worktree.sh did not produce a worktree for $id (got '$wt')"
+echo "run-story: worktree $wt"
+
+# --- 4. prompt: the bead body, the bead's context, and CLAUDE.md in scope ------------------------
+claude_md="$wt/CLAUDE.md"
+[ -f "$claude_md" ] || die "no CLAUDE.md in $wt: refusing to run a story without the agent contract in scope"
+{
+  echo "# Story $id — $title"
+  echo
+  echo "$body"
+  echo
+  echo "## Context for $id (bead notes, then fleet learnings)"
+  echo
+  "$CONTEXT_CMD" "$id" 2>/dev/null || echo "(context unavailable)"
+  echo
+  echo "## CLAUDE.md — the repository agent contract (binding; the full file is at ./CLAUDE.md)"
+  echo
+  cat "$claude_md"
+  echo
+  echo "## Rules for this run (enforced, not advisory)"
+  echo "- Work only in $wt, on branch bead/$id. Commit everything before you finish."
+  echo "- \`bd close\`, any bead status mutation, \`git push\` and any write under goldens/ are"
+  echo "  refused by tools/fleet/guard and by the tool policy; accept.sh is the only path that"
+  echo "  closes this bead."
+} > "$prompt"
+[ "$print_prompt" -eq 1 ] && { cat "$prompt"; exit 0; }
+
+# --- 5. the model invocation, behind a seam ------------------------------------------------------
+argv=(claude -p --model "$FRONTIER_MODEL" --output-format text
+      --permission-mode default --permission-prompts none
+      --add-dir "$wt"
+      --allowedTools "${ALLOW[@]}"
+      --disallowedTools "${DENY[@]}")
+printf '%s\n' "${argv[@]}" > "$argv_file"
+
+mrc=0
+(
+  cd "$wt"
+  export PATH="$GUARD_DIR:$PATH"
+  export STORY_BEAD="$id" STORY_WORKTREE="$wt" STORY_PROMPT_FILE="$prompt" \
+         STORY_MODEL="$FRONTIER_MODEL" STORY_ARGV_FILE="$argv_file" STORY_LOG="$log"
+  if [ -n "${BEADS_FRONTIER_CMD:-}" ]; then
+    bash -o pipefail -c "$BEADS_FRONTIER_CMD" < "$prompt"
+  else
+    "${argv[@]}" < "$prompt"
+  fi
+) >"$log" 2>&1 || mrc=$?
+sed 's/^/  | /' "$log" || true
+[ "$mrc" -eq 0 ] || { echo "run-story: the model invocation failed (rc=$mrc) for $id; leaving the worktree for the next round" >&2; exit 5; }
+
+# --- 6. goldens audit (the one denial a PATH shim cannot make) -----------------------------------
+base="${BEADS_WORKER_BASE_BRANCH:-main}"
+touched="$( { git -C "$wt" status --porcelain --untracked-files=all -- goldens 2>/dev/null;
+              git -C "$wt" diff --name-only "$base"...HEAD -- goldens 2>/dev/null; } | sed '/^$/d' )"
+if [ -n "$touched" ]; then
+  echo "run-story: REFUSED $id: the story touched goldens/, which is forbidden by CLAUDE.md hard rule 1; not calling accept" >&2
+  printf '%s\n' "$touched" >&2
+  exit 4
+fi
+
+# --- 7. accept (the only path that closes a bead) ------------------------------------------------
+arc=0
+"$ACCEPT_CMD" "$id" || arc=$?
+if [ "$arc" -ne 0 ]; then
+  echo "run-story: accept rejected $id (rc=$arc); worktree kept for the next round" >&2
+  exit 6
+fi
+
+# --- 8. cleanup ----------------------------------------------------------------------------------
+# accept.sh already removes the worktree on success; this is idempotent and also covers an accept
+# seam that does not. worktree.sh --remove harvests first and keeps an unmerged branch.
+"$WORKTREE_CMD" --remove "$id" >/dev/null 2>&1 || true
+[ -d "$wt" ] && { echo "run-story: cleanup failed, worktree $wt still present" >&2; exit 1; }
+echo "run-story: $id accepted; worktree removed"
+exit 0
