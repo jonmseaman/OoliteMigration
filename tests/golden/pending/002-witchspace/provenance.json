@@ -1,0 +1,160 @@
+{
+  "_jump": "The ENGINE's own account of the jump, recorded so a later reader can check the claim without re-running the game. The fuel bill equalling the distance is the INDEPENDENT witness: it arrives through the fuel accounting rather than through system.ID, so an engine that moved the player without jumping does not satisfy it.",
+  "_scenario_knobs": "The knobs this golden was BLESSED with. gate_002_spec.py requires spec.json to equal them EXACTLY. A fresh-run-vs-golden comparison cannot catch a changed seed, because changing the seed changes BOTH sides; agreement with this record makes drift fatal while keeping a governed re-bless legal.",
+  "_stability": "Every run's outcome is recorded regardless of exit code. A REFUSAL (the harness declining to dump an unsettled world) is not a DIFFERENCE; collapsing the two is how a stability claim goes dishonest. distinct_frame_digests is recorded but NOT asserted - see frame_digest_asserted.",
+  "_what_this_file_is": "The witness that lives OUTSIDE state.json. A golden cannot witness itself: any digest stored INSIDE state.json moves when state.json is edited, so both sides of a self-comparison change together and nothing goes red. Every predicate gate_002_spec.py and gate_002_evidence.py make about the blessed artifacts is anchored here.",
+  "artifacts": {
+    "frame.grid": {
+      "asserted": false,
+      "bytes": 4096,
+      "sha256": "fc36f6151e1a10532116dca1648bd9afe0d64353b5d23334ee7e0226e8366a38"
+    },
+    "state.json": {
+      "bytes": 2018,
+      "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930"
+    }
+  },
+  "dump_tool": "tests/golden/witchspace_jump.py",
+  "frame_digest_asserted": false,
+  "frame_digest_why_not_asserted": "llvmpipe is not bit-reproducible: the 10-run sweep produced 10 distinct frame digests for ONE identical dump digest. Byte-comparing the grid would flake forever on renderer noise. The dump is byte-hashed BECAUSE it is quantised and deterministic; the frame is not. The frame.grid sha256 above is recorded for forensics and explicitly marked asserted:false.",
+  "frame_liveness": {
+    "_floor": "Half the spread MEASURED on the blessed frame, not a magic number. Liveness is the one frame property a dead run cannot fake: a run that died before drawing yields a uniform grid whose spread is ~0. The floor sits far below the measured value so renderer noise cannot trip it, and far above 0 so an undrawn frame cannot pass.",
+    "asserted": true,
+    "floor": 0.2275,
+    "measured_spread": 0.4549
+  },
+  "gates": [
+    "tests/golden/gate_002_spec.py",
+    "tests/golden/gate_002_evidence.py"
+  ],
+  "jump": {
+    "cause": "standard jump",
+    "destination_station_name": "Icosahedron Station",
+    "distance_ly_tenths": 56,
+    "dock_events": 1,
+    "fuel_after_tenths": 14,
+    "fuel_before_tenths": 70,
+    "fuel_consumed_tenths": 56,
+    "statuses_seen": [
+      "STATUS_WITCHSPACE_COUNTDOWN",
+      "STATUS_EXITING_WITCHSPACE",
+      "STATUS_IN_FLIGHT"
+    ],
+    "system_id_after": 129,
+    "system_id_before": 7,
+    "witchspace_enter_events": 1,
+    "witchspace_exit_events": 1
+  },
+  "market_projection": {
+    "compared_instead": [
+      "good_count",
+      "goods"
+    ],
+    "field": "market",
+    "measured": "Across 8 consecutive runs BEFORE the projection, every field of the dump agreed EXCEPT market.*, which differed in 26-30 fields each run. After the projection, 10/10 runs produced one identical dump digest.",
+    "projected": true,
+    "reason": "Arriving in a system rebuilds the commodity market (Universe.m:7997-7998 destroys commodityMarket and calls -generateMarketForSystemWithEconomy:andScript:), pricing and stocking each good with base*random*(randf()-randf()) (OOCommodities.m:423,442,544,567). randf() draws from the global RANROT stream whose position depends on elapsed frames, so the per-good values move with frame count rather than with the seed.",
+    "why_not_deleted": "A deleted market would make an arrival with NO market indistinguishable from a healthy one, and an absent market is exactly what a half-completed arrival produces. The good count and sorted good names are fixed by Resources/Config/commodities.plist, not by any random draw, so they remain a positive witness."
+  },
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "002-witchspace",
+  "scenario_knobs": {
+    "countdown_seconds": 5,
+    "destination_station_name": "Icosahedron Station",
+    "destination_system_id": 129,
+    "destination_system_name": "Zaonce",
+    "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+    "origin_system_id": 7,
+    "origin_system_name": "Lave",
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": {
+    "command": "python3 tests/golden/witchspace_jump.py --stability 10",
+    "distinct_dump_digests": [
+      "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930"
+    ],
+    "distinct_frame_digests": 10,
+    "dumps_written": 10,
+    "errored": 0,
+    "per_run": [
+      {
+        "bytes": 2018,
+        "run": 1,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 38.1
+      },
+      {
+        "bytes": 2018,
+        "run": 2,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 38.4
+      },
+      {
+        "bytes": 2018,
+        "run": 3,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 38.5
+      },
+      {
+        "bytes": 2018,
+        "run": 4,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 39.1
+      },
+      {
+        "bytes": 2018,
+        "run": 5,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 36.2
+      },
+      {
+        "bytes": 2018,
+        "run": 6,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 31.4
+      },
+      {
+        "bytes": 2018,
+        "run": 7,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 28.0
+      },
+      {
+        "bytes": 2018,
+        "run": 8,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 30.0
+      },
+      {
+        "bytes": 2018,
+        "run": 9,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 27.8
+      },
+      {
+        "bytes": 2018,
+        "run": 10,
+        "sha256": "040344bb2cecc02d65a52d8b5a98de4c4970de0f6dd64fc805e027f159f8e930",
+        "verdict": "DUMPED",
+        "wall_seconds": 27.4
+      }
+    ],
+    "refused": 0,
+    "runs": 10,
+    "wall_seconds_max": 39.1,
+    "wall_seconds_min": 27.4
+  }
+}
