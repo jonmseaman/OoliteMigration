@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# Distinguish a genuine GUI-tier acceptance failure from desktop/CPU contention (bug oo-ac3f).
+#
+# tools/gui-lock DOES serialise GUI-launching pytest runs: the session-scoped `desktop_lock`
+# fixture (upstream/oolite/tests/gui/conftest.py) blocks in `gui-lock acquire` until it owns the
+# desktop, so two GUI-tier processes genuinely cannot drive synthetic input at the same instant.
+# But the lock protects the DESKTOP only, not CPU or IO. A concurrent sibling that is itself
+# queued for the lock, compiling, or running another pytest tier still starves the CPU of
+# whatever process holds the lock - and the GUI tier's own timeouts (TRANSITION_TIMEOUT_SECONDS,
+# ScreenWitness.accept, gui_screen(timeout=...)) are real wall-clock timers, so CPU/IO starvation
+# alone can flip a transition-timeout test from pass to fail with no code change and no
+# GUI-vs-GUI collision. Observed in production: oo-6zd's acceptance line 6 returned rc=1 under
+# contention with a sibling launching G5, then rc=0 seconds later run alone. Same code, same
+# tree, opposite verdicts - the only variable was machine load.
+#
+# Convention (see .agents/skills/beads-worker/SKILL.md, "GUI acceptance verdicts"): a FAILING
+# GUI-tier acceptance line is not trusted as a genuine failure until it has ALSO failed ISOLATED -
+# no sibling holding or queued for tools/gui-lock, no elevated GUI/compile-ish process count. This
+# script automates exactly that recheck and reports the gui-lock and load state around both runs,
+# so a reviewer can tell "the code is broken" from "the desktop was busy" from evidence instead of
+# a guess about who else was doing what.
+#
+# Usage: tools/gui-acceptance-recheck "<acceptance line>"
+# Exit code:
+#   - 0 immediately if the FIRST run already passes (no recheck needed).
+#   - otherwise, the RECHECK's own exit code once the desktop is quiet (or the wait budget runs
+#     out): this is the trustworthy verdict. The first run's rc is reported but never returned.
+set -u
+
+line="${1:?usage: tools/gui-acceptance-recheck \"<acceptance line>\"}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOCK_SCRIPT="$REPO_ROOT/tools/gui-lock"
+
+# Is the gui-lock currently held? `gui-lock status` exits 0 when held, 1 when free.
+lock_held() {
+	[ -f "$LOCK_SCRIPT" ] || return 1
+	bash "$LOCK_SCRIPT" status >/dev/null 2>&1
+}
+
+# A cheap, portable proxy for "how busy is this machine right now": the count of processes whose
+# name suggests GUI or compile load. Not a real load average - Windows has no /proc, and this
+# runs on whatever `ps` MSYS provides - but enough to tell "quiet" from "busy" for a human reading
+# the report. Never fails the script: an unreadable process table just reads as "unknown".
+sibling_load() {
+	if command -v ps >/dev/null 2>&1; then
+		ps -W 2>/dev/null | grep -Eic 'oolite|cl\.exe|cc1|pytest|python' || echo 0
+	else
+		echo unknown
+	fi
+}
+
+report_state() {
+	local label="$1"
+	echo "--- $label ---"
+	if [ -f "$LOCK_SCRIPT" ]; then
+		if lock_held; then
+			bash "$LOCK_SCRIPT" status 2>&1 | sed 's/^/gui-lock: /'
+		else
+			echo "gui-lock: free"
+		fi
+	else
+		echo "gui-lock: tools/gui-lock not found"
+	fi
+	echo "sibling-load (GUI/compile-ish process count): $(sibling_load)"
+}
+
+echo "=== FIRST RUN (verdict is provisional until isolated) ==="
+report_state "before first run"
+first_rc=0
+bash -o pipefail -c "$line" || first_rc=$?
+echo "first run rc=$first_rc"
+
+if [ "$first_rc" -eq 0 ]; then
+	echo "RESULT: passed on the first try; no recheck needed. TRUSTED rc=0"
+	exit 0
+fi
+
+echo
+echo "=== RECHECK: waiting for an isolated desktop before trusting the failure ==="
+# Wait for the lock to be free AND the sibling-load proxy to read zero, up to a bounded budget:
+# this recheck is meant to run promptly, not to camp on a busy fleet indefinitely.
+budget="${OO_RECHECK_WAIT_SECONDS:-120}"
+deadline=$(($(date +%s) + budget))
+while :; do
+	load="$(sibling_load)"
+	if ! lock_held && [ "$load" = "0" ]; then
+		break
+	fi
+	if [ "$(date +%s)" -ge "$deadline" ]; then
+		echo "gui-acceptance-recheck: desktop never went quiet within ${budget}s; rechecking anyway" >&2
+		break
+	fi
+	sleep 2
+done
+report_state "before recheck"
+recheck_rc=0
+bash -o pipefail -c "$line" || recheck_rc=$?
+echo "recheck rc=$recheck_rc"
+report_state "after recheck"
+
+echo
+if [ "$recheck_rc" -eq 0 ]; then
+	echo "RESULT: first run failed (rc=$first_rc) but the isolated recheck passed (rc=0) - CONTENTION, not a genuine failure. Do not treat the first rc as ground truth."
+else
+	echo "RESULT: failed both contended and isolated (rc=$recheck_rc) - GENUINE failure, trust it."
+fi
+exit "$recheck_rc"
