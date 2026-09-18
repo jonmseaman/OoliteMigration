@@ -14,6 +14,8 @@
 #   locked   a 0-commit worktree `git worktree remove` cannot remove is KEPT intact (oo-ymmj).
 #   lockedmerged  a merged+closed+CLEAN worktree gc tries to remove but cannot (busy) is REFUSED
 #            with rc=1 and nothing deleted - never rm -rf'd (oo-ymmj).
+#   goalcheck  goal-check.sh's filter over gc --check discriminates (oo-0aw6): a routine
+#            merged-and-cleaned pass stays quiet, while an at-risk bead's id REACHES the operator.
 # Exit 0 = every selected scenario passed; 1 = at least one failed.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,7 +23,7 @@ gc="${1:-$here/../gc.sh}"
 [ -f "$gc" ] || { echo "gc-safety: no gc.sh at $gc" >&2; exit 2; }
 gc="$(cd "$(dirname "$gc")" && pwd)/$(basename "$gc")"
 shift 2>/dev/null || true
-scenarios=("$@"); [ ${#scenarios[@]} -eq 0 ] && scenarios=(rescue cleanup mixed live locked lockedmerged)
+scenarios=("$@"); [ ${#scenarios[@]} -eq 0 ] && scenarios=(rescue cleanup mixed live locked lockedmerged goalcheck)
 tmproot="${LOCALAPPDATA:-${TMPDIR:-/tmp}}"
 case "$tmproot" in *\\*) tmproot="$(cygpath -u "$tmproot" 2>/dev/null || echo "$tmproot")";; esac
 [ -d "$tmproot/Temp" ] && tmproot="$tmproot/Temp"
@@ -109,6 +111,39 @@ for s in "${scenarios[@]}"; do
     [ -d "$d/.worktrees/oo-mx2" ] && { fail "mixed: clean merged worktree NOT cleaned"; printf '%s\n' "$out" | sed 's/^/  gc| /' >&2; } || pass "mixed: clean merged worktree removed"
     git -C "$d" show-ref --verify --quiet refs/heads/bead/oo-mx2 && fail "mixed: clean merged branch NOT removed" || pass "mixed: clean merged branch removed"
     [ $rc -eq 1 ] && pass "mixed: gc rc=1 (work at risk reported)" || fail "mixed: gc rc=$rc, expected 1"
+    ;;
+  goalcheck)
+    # oo-0aw6: goal-check.sh filters gc --check's output. The routine "is merged into" line must
+    # stay filtered (it fires on every clean run), but the at-risk line must reach the operator
+    # NAMING THE BEAD. Two throwaway repos, one per direction.
+    # (a) ROUTINE: merged+closed+CLEAN -> gc --check rc=0, goal-check rc=0 and says nothing new.
+    dq="$(build merged:oo-gcq)"
+    [ -f "$dq/scripts/goal-check.sh" ] || { fail "goalcheck: harness did not install goal-check.sh"; continue; }
+    [ -d "$dq/.worktrees/oo-gcq" ] || { fail "goalcheck: harness made no worktree for oo-gcq"; continue; }
+    outq="$( cd "$dq" && PATH="$dq/stub:$PATH" bash scripts/goal-check.sh 0 2>&1 )"; rcq=$?
+    if [ $rcq -eq 0 ] && ! printf '%s\n' "$outq" | grep -q '^gc:'; then
+      pass "goalcheck: routine merged+clean pass stays quiet (rc=0, no gc: noise)"
+    else
+      fail "goalcheck: routine pass was not quiet (rc=$rcq)"; printf '%s\n' "$outq" | sed 's/^/  goal| /' >&2
+    fi
+    # (b) AT RISK: merged+closed but the worktree still holds uncommitted work. goal-check must
+    # exit 1 AND name oo-gcr. Asserting the POSITIVE: the id appears in the operator-visible output.
+    dr="$(build mergeddirty:oo-gcr)"
+    [ -f "$dr/.worktrees/oo-gcr/leftover-oo-gcr.txt" ] || { fail "goalcheck: harness made no leftover for oo-gcr"; continue; }
+    outr="$( cd "$dr" && PATH="$dr/stub:$PATH" bash scripts/goal-check.sh 0 2>&1 )"; rcr=$?
+    if printf '%s\n' "$outr" | grep -q 'oo-gcr'; then
+      pass "goalcheck: at-risk bead oo-gcr is named in goal-check output (rc=$rcr)"
+    else
+      fail "goalcheck: at-risk output never names oo-gcr"; printf '%s\n' "$outr" | sed 's/^/  goal| /' >&2
+    fi
+    printf '%s\n' "$outr" | grep -q 'is merged but its worktree still holds uncommitted work' \
+      && pass "goalcheck: the work-at-risk line survived the filter" \
+      || fail "goalcheck: the work-at-risk line was filtered out"
+    # The filter must still WORK: the routine line must not come back as noise.
+    printf '%s\n' "$outr" | grep -q 'is merged into' \
+      && fail "goalcheck: routine 'is merged into' noise is no longer filtered" \
+      || pass "goalcheck: routine 'is merged into' line still filtered"
+    [ $rcr -eq 1 ] && pass "goalcheck: goal-check rc=1 with work at risk" || fail "goalcheck: goal-check rc=$rcr, expected 1"
     ;;
   *) echo "gc-safety: unknown scenario $s" >&2; exit 2;;
   esac

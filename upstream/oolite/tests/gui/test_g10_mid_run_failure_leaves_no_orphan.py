@@ -364,7 +364,10 @@ def test_the_child_cannot_deadlock_on_the_lock_its_parent_holds():
     Both halves matter and both are asserted:
 
     * the child is handed ``OO_GUI_LOCK_DIR`` (honoured by tools/gui-lock's ``lock_dir()`` and by
-      conftest's bash-less ``_lock_path()`` fallback alike), so it never queues behind its parent;
+      conftest's bash-less ``_lock_path()`` fallback alike), so it never queues behind its parent.
+      Asserted from the AST with _run_child's docstring stripped, never as a substring: that
+      docstring names OO_GUI_LOCK_DIR four times and used to hold this guard green with the real
+      assignment deleted (bug oo-f1sq);
     * the parent takes the REAL ``desktop_lock`` fixture, so the desktop is genuinely held while
       the child's window is up. Without that second half the first would be a loophole rather
       than a fix - an unlocked game on a desktop five agents share.
@@ -372,11 +375,52 @@ def test_the_child_cannot_deadlock_on_the_lock_its_parent_holds():
     import ast
     import inspect
 
-    spawn = inspect.getsource(_run_child)
-    assert "OO_GUI_LOCK_DIR" in spawn, (
-        "the child is not given a private lock directory, so it will block acquiring the "
-        "exclusive desktop mutex its own parent's session already holds - a self-deadlock that "
-        "makes this pin pass alone and hang inside its own tier"
+    # From the AST, with _run_child's OWN DOCSTRING STRIPPED FIRST. A substring check over the
+    # source cannot do this job: that docstring names OO_GUI_LOCK_DIR four times, so deleting the
+    # real assignment left this guard GREEN ("1 passed in 0.02s") - bug oo-f1sq. Prose must not be
+    # able to hold this green, the same standard the teardown guard above states for kill().
+    spawn = ast.parse(inspect.getsource(_run_child))
+    func = next(
+        node
+        for node in ast.walk(spawn)
+        if isinstance(node, ast.FunctionDef) and node.name == "_run_child"
+    )
+    body = list(func.body)
+    if (
+        body
+        and isinstance(body[0], ast.Expr)
+        and isinstance(body[0].value, ast.Constant)
+        and isinstance(body[0].value.value, str)
+    ):
+        del body[0]
+
+    def _assigns_env_key(key):
+        """True iff executable code assigns to ``env[key]`` - not merely names it."""
+        for statement in body:
+            for node in ast.walk(statement):
+                if not isinstance(node, ast.Assign):
+                    continue
+                for target in node.targets:
+                    if not isinstance(target, ast.Subscript):
+                        continue
+                    if not (
+                        isinstance(target.value, ast.Name) and target.value.id == "env"
+                    ):
+                        continue
+                    index = target.slice
+                    if isinstance(index, ast.Index):  # pragma: no cover - Python < 3.9
+                        index = index.value
+                    if isinstance(index, ast.Constant) and index.value == key:
+                        return True
+        return False
+
+    assert _assigns_env_key("OO_GUI_LOCK_DIR"), (
+        "_run_child does not ASSIGN env['OO_GUI_LOCK_DIR'] (checked as an ast.Assign to an "
+        "ast.Subscript on `env`, with the docstring stripped, so a mention in prose cannot "
+        "satisfy it). Without the real assignment the child is not given a private lock "
+        "directory, so it will block acquiring the exclusive desktop mutex its own parent's "
+        "session already holds - a self-deadlock that makes this pin pass alone and hang inside "
+        "its own tier"
     )
 
     signature = inspect.signature(test_a_mid_run_failure_leaves_no_orphaned_game)
