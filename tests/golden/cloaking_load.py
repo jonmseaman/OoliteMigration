@@ -164,7 +164,14 @@ def load_spec(path=None):
 
 
 def save_path(spec, key="load_save"):
-    return golden_run._slashes(os.path.join(REPO_ROOT, *spec[key].split("/")))
+    """Resolve the .oolite-save the GAME loads, or the wrong-save control arm.
+
+    Both knobs are read BY NAME here rather than through the `key` variable alone, so the spec
+    gate's AST check can see that this function is where each acts - a knob reached only through
+    an indirection is invisible to that check and is decoration as far as it can tell.
+    """
+    rel = spec["load_save"] if key == "load_save" else spec["control_save"]
+    return golden_run._slashes(os.path.join(REPO_ROOT, *rel.split("/")))
 
 
 # --- the file side -----------------------------------------------------------------------------
@@ -216,7 +223,7 @@ def _normalise(value, kind, spec=None):
     if kind == "float":
         return round(float(value), 3)
     if kind == "weapon_id":
-        table = (spec or {}).get("weapon_ids") or {}
+        table = spec["weapon_ids"] if spec else {}
         key = str(int(value))
         if key not in table:
             raise Refusal(
