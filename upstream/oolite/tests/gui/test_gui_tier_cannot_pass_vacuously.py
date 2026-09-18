@@ -683,3 +683,144 @@ def test_assert_clean_exit_runs_every_check_unconditionally():
     )
     assert "crash dump" in body
     assert "Latest.log" in body
+
+
+# --- bug oo-3opg: a click must be aimed a frame BEFORE the button goes down -------------------
+#
+# The defect these pin is not a timeout and not a screen: it is that Oolite reads the clicked
+# row out of UNIVERSE->cursor_row, which is written only while RENDERING (Universe.m:5343 is the
+# sole assignment in the tree), so a move and a click delivered inside one pollControls activate
+# the row the pointer was on BEFORE the move. In-tier that lost race turned G5's Expansion
+# Manager leave gesture into a confirm of the row that OPENED the screen - row 26, which on the
+# manager is OXZ_GUI_ROW_UPDATE - and the game stayed on GUI_SCREEN_OXZMANAGER.
+#
+# These are structural (AST) rather than textual: a comment describing the settle would satisfy
+# a grep, and the prose above would satisfy it twice over.
+
+
+def _conftest_tree():
+    with open(os.path.join(HERE, "conftest.py"), "r", encoding="utf-8") as handle:
+        source = handle.read()
+    return source, ast.parse(source)
+
+
+def _method(tree, class_name, method_name):
+    cls = next(
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef) and node.name == class_name
+    )
+    return next(
+        node
+        for node in ast.walk(cls)
+        if isinstance(node, ast.FunctionDef) and node.name == method_name
+    )
+
+
+@pytest.mark.offline
+@pytest.mark.parametrize("method_name", ["select_row", "confirm_row"])
+def test_every_clicking_helper_aims_before_it_clicks(method_name):
+    """The pointer must be placed by aim_at_row, never moved-and-clicked in one breath.
+
+    Asserted as ORDER on the AST, not as the presence of a name: the aim call must appear
+    before any pyautogui click/doubleClick/mouseDown in the method body, and the method must
+    not compute its own point with point_for_row and click that, which is exactly the shape
+    that raced.
+    """
+    _, tree = _conftest_tree()
+    func = _method(tree, "GameWindow", method_name)
+
+    clicks = [
+        node.lineno
+        for node in ast.walk(func)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr in ("click", "doubleClick", "mouseDown", "mouseUp")
+    ]
+    assert clicks, f"{method_name} no longer clicks anything"
+
+    aims = [
+        node.lineno
+        for node in ast.walk(func)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "aim_at_row"
+    ]
+    assert aims, (
+        f"{method_name} does not call aim_at_row, so nothing guarantees the game has rendered a "
+        "frame with the pointer on the target row. The click will activate UNIVERSE->cursor_row "
+        "from the PREVIOUS frame - the row the pointer was on before - which is bug oo-3opg."
+    )
+    assert min(aims) < min(clicks), (
+        f"{method_name} clicks at line {min(clicks)} before aiming at line {min(aims)}"
+    )
+    assert not [
+        node
+        for node in ast.walk(func)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "point_for_row"
+    ], (
+        f"{method_name} computes its own click point with point_for_row instead of going "
+        "through aim_at_row; that is the un-settled path this bug was filed for"
+    )
+
+
+@pytest.mark.offline
+def test_aim_at_row_waits_after_moving():
+    """aim_at_row must sleep for CURSOR_SETTLE_SECONDS *after* the move, or it settles nothing.
+
+    A move with a duration argument is not a settle: pyautogui returns as soon as the pointer
+    arrives, and the frame that reads the new position has not been drawn yet.
+    """
+    _, tree = _conftest_tree()
+    func = _method(tree, "GameWindow", "aim_at_row")
+
+    moves = [
+        node.lineno
+        for node in ast.walk(func)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "moveTo"
+    ]
+    assert moves, "aim_at_row no longer moves the pointer"
+
+    sleeps = [
+        node
+        for node in ast.walk(func)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "sleep"
+        and any(
+            isinstance(arg, ast.Name) and arg.id == "CURSOR_SETTLE_SECONDS"
+            for arg in node.args
+        )
+    ]
+    assert sleeps, (
+        "aim_at_row does not sleep for CURSOR_SETTLE_SECONDS; without a wait the game has not "
+        "rendered a frame with the pointer here and cursor_row is still the previous row"
+    )
+    assert max(node.lineno for node in sleeps) > min(moves), (
+        "aim_at_row waits BEFORE it moves, which settles the position it is leaving"
+    )
+
+
+@pytest.mark.offline
+def test_the_cursor_settle_budget_covers_a_loaded_frame():
+    """The settle must be worth more than one nominal frame, and stay a real wait.
+
+    0.3s was the value in place while G5's Expansion Manager round trip failed roughly one
+    in-tier run in three and never in isolation, so a loaded frame on this machine is not
+    reliably inside 0.3s. The floor is set above that measured-insufficient value rather than
+    at a frame time, and a settle of zero must be impossible.
+    """
+    assert conftest.CURSOR_SETTLE_SECONDS > 0.3, (
+        f"CURSOR_SETTLE_SECONDS is {conftest.CURSOR_SETTLE_SECONDS}s. 0.3s was MEASURED "
+        "insufficient (bug oo-3opg: ~1 full-tier run in 3 lost the Expansion Manager return), "
+        "so a budget at or below it reinstates the race."
+    )
+    # It is also the tier's cost: two settles per confirmed row, and G5 confirms six.
+    assert conftest.CURSOR_SETTLE_SECONDS <= 5.0, (
+        "the settle has grown into a timeout; if a frame really takes this long the tier has a "
+        "different problem and hiding it behind a longer wait is not the fix"
+    )

@@ -15,3 +15,7 @@ __pycache__/
 
 # Golden harness run artifacts (tests/golden/run.sh); one directory per run
 tests/golden/artifacts/
+
+# orchestrator scratch: per-bead worker briefs and claimed-batch records (regenerated each turn)
+.batch.jsonl
+.fleet-briefs/
