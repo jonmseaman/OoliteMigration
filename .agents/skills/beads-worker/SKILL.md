@@ -205,6 +205,15 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
 - **Workers must commit, and you harvest anyway.** The worker prompt says commit; `harvest.sh`
   commits whatever was left so the reviewer sees it and `accept.sh` merges it. A branch with no
   commits beyond the base branch is rejected by `accept.sh` (exit 1) with a note, not merged empty.
+- **Harvest can commit a SABOTAGED GATE, so check before accepting.** A worker killed at its
+  timeout mid-mutation leaves its gate disabled on disk, and `harvest.sh` commits whatever is
+  there. Bead `oo-dto` was harvested with `if False:` in place of the one predicate the scenario is
+  named for; the gate would have passed a run where the event never happened. Before accepting any
+  bead that ran a mutation harness, grep the **committed** tree for disabled predicates
+  (`if False:`, `if 0:`, `elif False:`, commented-out `raise`) and read each hit: a replacement
+  *string literal* inside a mutant-building test is fine, a live code path is not. Tell workers to
+  mutate a throwaway copy under `$LOCALAPPDATA/Temp`, never the real file — restore-on-exit never
+  runs when the process is killed.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.

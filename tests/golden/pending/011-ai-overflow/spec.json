@@ -1,0 +1,29 @@
+{
+  "allowed_oxp_standards_error_signatures": [
+    "OXP AI overflow test.oxp has no manifest.plist"
+  ],
+  "allowed_oxp_standards_errors": 2,
+  "expected_max_stack_depth": 32,
+  "expected_overflow_signatures": [
+    "ahruman-stack-overflow-testAI.plist:GLOBAL"
+  ],
+  "expected_ship_ai_type": "ahruman-stack-overflow-testAI.plist",
+  "expected_ship_keys": [
+    "ahruman-stack-overflow-test"
+  ],
+  "expected_squash_signatures": [
+    "OoliteException in ahruman-stack-overflow-testAI.plist:GLOBAL.ENTER"
+  ],
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+  "overflow_ship_count": 1,
+  "overflow_ship_role": "ahruman-stack-overflow-test",
+  "overflow_spawn_distance": 10000,
+  "oxp_source": "upstream/oolite-tests/test-oxps/AI overflow test/AI overflow test.oxp",
+  "quant_decimals": 3,
+  "scenario": "011-ai-overflow",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "tick_seconds": 0.125,
+  "ticks": 24
+}
