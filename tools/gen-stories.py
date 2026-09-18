@@ -247,21 +247,70 @@ def sweep_gui():
     return [(f"GUI test G{i}: {t}", f"Add upstream/oolite/tests/gui/test_g{i}_*.py the way test_g1_exit_via_mouse.py is written, per docs/phases/0-gui-tier.md. Runs against a real window on the desktop under the GUI-tier desktop lock.",
              [f"python3 -m pytest upstream/oolite/tests/gui/test_g{i}_*.py -x -q"], ["0.8a"], "upstream/oolite/tests/gui/test_g1_exit_via_mouse.py", 2) for i, t in g.items()]
 
-COMPONENT = {2: ("Pirate attacks; the target registers an attacker", "the damage path independently of the kill path"),
-             3: ("A hostile spawn drives a ship into ATTACK", "AI state-machine transitions via Ship.AIState, independent of whether combat resolves"),
-             4: ("A missile-armed ship kills by missile", "the second weapon path; missiles are simulated projectiles, lasers are hitscan"),
-             5: ("Escorts converge on their mother", "group and formation behaviour (OOShipGroup), which no other tier touches"),
-             6: ("A damaged ship flees and range increases", "the FLEE branch, the most commonly broken AI transition"),
-             7: ("8 neutral ships, 900 ticks, nobody dies, no ERROR in Latest.log", "the canary: accidental carnage, NaN blowups, scan-class confusion"),
-             8: ("Destroyed ships leave system.allShips", "entity lifetime: a leaked entity shows here long before ASan catches the use-after-free")}
+# Per-scenario capability check (ADR-0020, 2026-09-18): each entry is
+# (title, what-it-would-catch-if-fully-written, seam) where `seam` is the bead id of the
+# capability the FULL behavioural assertion needs, or None if the observable is a role-count /
+# liveness fact the step library (tests/component/README.md) can already express end to end (as
+# S1 is). A scenario whose subject is "the specific ship(s) I spawned did X" (a per-ship handle,
+# a property write, a continuous numeric sample, or an AI-state/attribution read the library has
+# no step for) cannot be given a real green/red gate with only 0.13b's role-count steps — S8/
+# oo-qwk5 discovered this the hard way after a full implementation attempt (see its notes) before
+# Jon descoped S2-S8 to smoke scenarios in ADR-0020. Do not remove a seam citation without
+# re-checking tests/component/README.md's step table: the check is "can an existing step name
+# THIS entity among several, or read/write a property on it" — not "is there a plausible-sounding
+# Gherkin sentence".
+COMPONENT = {2: ("Pirate attacks; the target registers an attacker", "the damage path independently of the kill path",
+                 "oo-kbqw"),  # needs Ship.AIPrimaryAggressor/AIFoundTarget read - no step exposes it
+             3: ("A hostile spawn drives a ship into ATTACK", "AI state-machine transitions via Ship.AIState, independent of whether combat resolves",
+                 "oo-3cvh"),  # Ship.AIState reads GLOBAL for JS AIs; needs Ship.isAttacking seam
+             4: ("A missile-armed ship kills by missile", "the second weapon path; missiles are simulated projectiles, lasers are hitscan",
+                 "oo-kbqw"),  # damageType only reaches a per-ship shipDied/shipKilledOther script event
+             5: ("Escorts converge on their mother", "group and formation behaviour (OOShipGroup), which no other tier touches",
+                 "oo-bdl0"),  # needs a handle to "the mother I spawned" and "her escorts", not a role count
+             6: ("A damaged ship flees and range increases", "the FLEE branch, the most commonly broken AI transition",
+                 "oo-kbqw"),  # needs a numeric sample read twice (range) plus a behaviour-mode transition read
+             7: ("8 neutral ships, 900 ticks, nobody dies, no ERROR in Latest.log", "the canary: accidental carnage, NaN blowups, scan-class confusion",
+                 "oo-bdl0"),  # "nobody I spawned died" needs per-ship handles; a role count is inflated by the populator (measured: shuttle 8->9 by t=30s)
+             8: ("Destroyed ships leave system.allShips", "entity lifetime: a leaked entity shows here long before ASan catches the use-after-free",
+                 "oo-kbqw")}  # needs a handle to the destroyed ship AND a bounty write to make the kill deterministic (measured: ~24% of spawns are non-criminal by chance)
 
 def sweep_component():
-    return [(f"Component scenario S{i}: {t}",
-             f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way s1_police_kills_pirate.feature is written (docs/stories/S1-police-kills-pirate.md, docs/phases/0-component-tier.md), using only steps that already exist in the step library (tests/component/README.md). Catches: {why}. Assert 'within N ticks' and counts, never exact positions. If the scenario needs a step that does not exist, stop and report blocked (new interface, ADR-0018 §5).",
-             # One run; green means done (Jon, 2026-09-18). The former single-run-plus-three-run-loop
-             # made an accept pay for four real-time game runs; flakiness is Jon's to judge by hand.
-             [f"python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q"],
-             ["0.13b"], "upstream/oolite/tests/component/features/s1_police_kills_pirate.feature", 2) for i, (t, why) in COMPONENT.items()]
+    out = []
+    for i, (t, why, seam) in COMPONENT.items():
+        if seam is None:
+            # Fully expressible today: an existing step can name this entity among several spawned,
+            # or read/write a property on it, so the FULL behavioural assertion is fleet work.
+            body = (f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way "
+                    "s1_police_kills_pirate.feature is written (docs/stories/S1-police-kills-pirate.md, "
+                    "docs/phases/0-component-tier.md), using only steps that already exist in the step "
+                    f"library (tests/component/README.md). Catches: {why}. Assert 'within N ticks' and "
+                    "counts, never exact positions. If the scenario needs a step that does not exist, "
+                    "stop and report blocked (new interface, ADR-0018 §5).")
+        else:
+            # ADR-0020: the title's real observable needs `seam` (a per-ship handle, property write,
+            # or AI-state read the step library does not have). Do not attempt the full behaviour —
+            # write the SMOKE version only, using steps that exist today, and say plainly what it does
+            # not prove. This is what makes S2-S8's dependency differ per scenario instead of being one
+            # blanket "0.13b, using only steps that already exist" claim regardless of the observable.
+            body = (f"Per ADR-0020 (docs/decisions/0020-component-scenarios-are-smoke-tests-for-now.md), "
+                    f"this is a SMOKE scenario for now: the full observable (\"{t}\") needs a capability "
+                    f"the step library does not have yet (tracked by {seam}) and is NOT fleet work here. "
+                    f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way "
+                    "s1_police_kills_pirate.feature is written, but set the world up exactly as the "
+                    "story says (load, launch, spawn the named roles, set their AIs, per ADR-0019), run "
+                    "the simulation for the stated ticks, and assert ONLY what the existing step library "
+                    "can say: `no ERROR appears in the log`, plus `a ship with role \"<x>\" survives` for "
+                    f"a role this scenario spawned. Add a comment at the top of the feature file saying "
+                    f"this does not prove \"{why}\" and that the real assertion is deferred to {seam}. "
+                    "Do not add a step, do not assert per-ship identity/AIState/damageType/ranges, and "
+                    "do not report blocked — the smoke version is the whole of this bead.")
+        out.append((f"Component scenario S{i}: {t}", body,
+                     # One run; green means done (Jon, 2026-09-18). The former single-run-plus-three-run-loop
+                     # made an accept pay for four real-time game runs; flakiness is Jon's to judge by hand.
+                     [f"python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q"],
+                     ["0.13b"] if seam is None else ["0.13b", seam],
+                     "upstream/oolite/tests/component/features/s1_police_kills_pirate.feature", 2))
+    return out
 
 def sweep_js_retarget():
     out = []
@@ -628,8 +677,17 @@ def main():
             elif k.startswith(("foundation:", "extractors:")): deps.append(("2.12", k)); deps.append(("2.review", k))
             elif k.startswith(("renames:", "convert:", "presplit:")): deps.append(("3.giant-Universe", k)); deps.append(("3.review", k))
     late = []  # deps involving pre-existing beads: wired with bd dep add after the graph
+    _bd_id_re = re.compile(r"^oo-[a-zA-Z0-9]+$")
     for blocked, blocker in deps:
-        if blocked not in ids or blocker not in ids: continue
+        if blocked not in ids: continue
+        if blocker not in ids:
+            # A dep target may be a bare existing bd id rather than a generator key (e.g. a
+            # capability-seam bead cited by COMPONENT's per-scenario check, oo-kbqw/oo-bdl0/oo-3cvh —
+            # those are not sweep or SEAMS keys, so they never land in `ids` from title-matching).
+            # Resolve them the same way title-matched existing beads are: as an "existing:" node,
+            # wired via the late bd-dep-add pass below rather than as a graph edge.
+            if _bd_id_re.match(blocker): ids[blocker] = f"existing:{blocker}"
+            else: continue
         b1, b2 = ids[blocked], ids[blocker]
         if b1.startswith("existing:") and b2.startswith("existing:"):
             if a.rewire: late.append((b1, b2))
