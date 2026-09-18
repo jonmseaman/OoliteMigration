@@ -502,6 +502,22 @@ def _mutants(cat):
     out.append(("evidence_traceability",
                 "have a RED outcome detect an evidence field that does not exist", m))
 
+    # check_evidence_traceability has TWO defences and they are NOT redundant, so each is pinned
+    # by its own mutant (oo-jor's lesson: a surviving mutant may be an equivalent mutant, a blind
+    # gate, or a redundant defence, and only reading the code tells them apart). The mutant above
+    # exercises the "detects names a field that does not exist" half. This one exercises the
+    # ORPHAN half, and ONLY that half can kill it: an evidence clause that no described failure
+    # ever reads is collected at run time and consulted by nobody.
+    m = copy.deepcopy(cat)
+    _new(m)[0]["evidence"].append({
+        "field": "evidence.collected_but_never_consulted",
+        "source": "engine-log",
+        "detail": "a field a run would dutifully write",
+        "cannot_be_faked_because": "it is written by the engine",
+    })
+    out.append(("evidence_traceability",
+                "add an evidence clause that no RED outcome ever reads", m))
+
     m = copy.deepcopy(cat)
     for s in _new(m):
         s["status"] = "blocked"
