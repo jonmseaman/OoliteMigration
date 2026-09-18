@@ -14,14 +14,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DUMP_JS_PATH = os.path.join(HERE, "dump_state.js")
 
 
-def start_with_retry(make_console, attempts=5, ready_timeout=180):
+def start_with_retry(make_console, attempts=8, ready_timeout=180):
     """Build and start a fresh DebugConsole, retrying a handful of times.
 
     `make_console` is a zero-arg factory (not a console instance): native process launch on this
     VM occasionally fails with WinError-class DLL-load races before the game ever reaches main()
     (observed: STATUS_DLL_NOT_FOUND, exit code 3221225781) - nothing to do with the dump itself,
-    unrelated to determinism, but it can leave the failed DebugConsole's listening socket bound.
-    A fresh instance per attempt avoids retrying start() on an already-bound port.
+    unrelated to determinism (also seen and documented independently on bead oo-16s's Mesa
+    staging), but it can leave the failed DebugConsole's listening socket bound. A fresh instance
+    per attempt avoids retrying start() on an already-bound port. Backoff grows because the
+    underlying race has been observed to persist for tens of seconds on a loaded VM.
     """
     from console import ConsoleError
 
@@ -37,7 +39,7 @@ def start_with_retry(make_console, attempts=5, ready_timeout=180):
                 console.close()
             except Exception:
                 pass
-            time.sleep(2)
+            time.sleep(min(30, 3 * (attempt + 1)))
     raise last
 
 
