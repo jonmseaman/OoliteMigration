@@ -18,7 +18,12 @@
       "status": "landed",
       "bead": "oo-jor",
       "purpose": "The player launches from the station, flies a fixed tick budget and docks again; the canonical state dump plus a single-pose frame hash.",
-      "coverage_axes": ["player-flight", "dock-cycle", "world-state-dump", "frame-hash-single-pose"]
+      "coverage_axes": [
+        "player-flight",
+        "dock-cycle",
+        "world-state-dump",
+        "frame-hash-single-pose"
+      ]
     },
     {
       "id": "002",
@@ -26,7 +31,11 @@
       "status": "planned",
       "bead": "oo-z22",
       "purpose": "A witchspace jump to an adjacent system: the countdown, the tunnel, and the destination system's generated contents.",
-      "coverage_axes": ["witchspace", "system-generation", "world-state-dump"]
+      "coverage_axes": [
+        "witchspace",
+        "system-generation",
+        "world-state-dump"
+      ]
     },
     {
       "id": "003",
@@ -34,7 +43,11 @@
       "status": "planned",
       "bead": "oo-izi",
       "purpose": "A scripted combat encounter: weapons fire, damage lands, and the post-fight world state is pinned.",
-      "coverage_axes": ["npc-combat", "damage-model", "world-state-dump"]
+      "coverage_axes": [
+        "npc-combat",
+        "damage-model",
+        "world-state-dump"
+      ]
     },
     {
       "id": "004",
@@ -42,7 +55,11 @@
       "status": "planned",
       "bead": "oo-zv2",
       "purpose": "Buy a commodity, fly, sell it: the market model, the cargo manifest and the resulting credit balance.",
-      "coverage_axes": ["market-economy", "cargo-manifest", "world-state-dump"]
+      "coverage_axes": [
+        "market-economy",
+        "cargo-manifest",
+        "world-state-dump"
+      ]
     },
     {
       "id": "005",
@@ -50,7 +67,11 @@
       "status": "planned",
       "bead": "oo-rkm",
       "purpose": "A mission script fires from a world-script event and its mission variables are pinned.",
-      "coverage_axes": ["mission-scripting", "mission-variables", "world-state-dump"]
+      "coverage_axes": [
+        "mission-scripting",
+        "mission-variables",
+        "world-state-dump"
+      ]
     },
     {
       "id": "006",
@@ -58,7 +79,11 @@
       "status": "planned",
       "bead": "oo-8ij",
       "purpose": "Save the game, reload it, and dump: the save format round-trips without losing or reordering state.",
-      "coverage_axes": ["save-format", "persistence", "world-state-dump"]
+      "coverage_axes": [
+        "save-format",
+        "persistence",
+        "world-state-dump"
+      ]
     },
     {
       "id": "007",
@@ -66,7 +91,11 @@
       "status": "planned",
       "bead": "oo-5k2",
       "purpose": "Load the in-tree JS-interface test-oxp and pin what its scripts make the engine do.",
-      "coverage_axes": ["expansion-load", "js-interface", "world-state-dump"]
+      "coverage_axes": [
+        "expansion-load",
+        "js-interface",
+        "world-state-dump"
+      ]
     },
     {
       "id": "008",
@@ -74,7 +103,11 @@
       "status": "planned",
       "bead": "oo-qd6",
       "purpose": "Load the in-tree materials test-oxp and pin the material definitions the renderer resolves.",
-      "coverage_axes": ["expansion-load", "materials", "world-state-dump"]
+      "coverage_axes": [
+        "expansion-load",
+        "materials",
+        "world-state-dump"
+      ]
     },
     {
       "id": "009",
@@ -82,7 +115,11 @@
       "status": "planned",
       "bead": "oo-rad",
       "purpose": "Load the in-tree shader test-oxp and pin shader binding and fallback behaviour.",
-      "coverage_axes": ["expansion-load", "shaders", "world-state-dump"]
+      "coverage_axes": [
+        "expansion-load",
+        "shaders",
+        "world-state-dump"
+      ]
     },
     {
       "id": "010",
@@ -90,7 +127,11 @@
       "status": "planned",
       "bead": "oo-gxp",
       "purpose": "Load the in-tree PNG test suite and pin texture decoding across its image variants.",
-      "coverage_axes": ["expansion-load", "texture-decode", "world-state-dump"]
+      "coverage_axes": [
+        "expansion-load",
+        "texture-decode",
+        "world-state-dump"
+      ]
     },
     {
       "id": "011",
@@ -98,7 +139,11 @@
       "status": "planned",
       "bead": "oo-dto",
       "purpose": "Load the in-tree AI-overflow test-oxp and pin how the AI stack handles its pathological plist.",
-      "coverage_axes": ["expansion-load", "ai-plist", "world-state-dump"]
+      "coverage_axes": [
+        "expansion-load",
+        "ai-plist",
+        "world-state-dump"
+      ]
     },
     {
       "id": "012",
@@ -106,7 +151,11 @@
       "status": "planned",
       "bead": "oo-3ya",
       "purpose": "Load the in-tree retro-missions test-oxp and pin legacy mission-script execution.",
-      "coverage_axes": ["expansion-load", "legacy-mission-scripting", "world-state-dump"]
+      "coverage_axes": [
+        "expansion-load",
+        "legacy-mission-scripting",
+        "world-state-dump"
+      ]
     },
     {
       "id": "013",
@@ -114,7 +163,12 @@
       "status": "planned",
       "bead": "oo-5h8e",
       "purpose": "Load the 1.75-era Constrictor checklist save and pin its mission state after load.",
-      "coverage_axes": ["save-format", "legacy-save-1.75", "mission-state", "world-state-dump"]
+      "coverage_axes": [
+        "save-format",
+        "legacy-save-1.75",
+        "mission-state",
+        "world-state-dump"
+      ]
     },
     {
       "id": "014",
@@ -122,7 +176,12 @@
       "status": "planned",
       "bead": "oo-wseo",
       "purpose": "Load the 1.75-era Nova checklist save and pin its mission state after load.",
-      "coverage_axes": ["save-format", "legacy-save-1.75", "mission-state", "world-state-dump"]
+      "coverage_axes": [
+        "save-format",
+        "legacy-save-1.75",
+        "mission-state",
+        "world-state-dump"
+      ]
     },
     {
       "id": "015",
@@ -130,7 +189,12 @@
       "status": "planned",
       "bead": "oo-hv4d",
       "purpose": "Load the 1.75-era Trumbles checklist save and pin its mission state after load.",
-      "coverage_axes": ["save-format", "legacy-save-1.75", "mission-state", "world-state-dump"]
+      "coverage_axes": [
+        "save-format",
+        "legacy-save-1.75",
+        "mission-state",
+        "world-state-dump"
+      ]
     },
     {
       "id": "016",
@@ -138,7 +202,12 @@
       "status": "planned",
       "bead": "oo-ghhw",
       "purpose": "Load the 1.75-era CloakingDevice checklist save and pin its mission state after load.",
-      "coverage_axes": ["save-format", "legacy-save-1.75", "mission-state", "world-state-dump"]
+      "coverage_axes": [
+        "save-format",
+        "legacy-save-1.75",
+        "mission-state",
+        "world-state-dump"
+      ]
     },
     {
       "id": "017",
@@ -146,9 +215,13 @@
       "status": "planned",
       "bead": "oo-zyj1",
       "purpose": "Load the 1.75-era ThargoidPlans checklist save and pin its mission state after load.",
-      "coverage_axes": ["save-format", "legacy-save-1.75", "mission-state", "world-state-dump"]
+      "coverage_axes": [
+        "save-format",
+        "legacy-save-1.75",
+        "mission-state",
+        "world-state-dump"
+      ]
     },
-
     {
       "id": "018",
       "name": "expansion-closure-and-manifestless",
@@ -226,32 +299,101 @@
         "the version banner or [process.args]"
       ],
       "observables": [
-        {"expr": "searchPaths.dumpAll", "kind": "log", "availability": "today", "evidence": "src/Core/ResourceManager.m"},
-        {"expr": "oxp.requirementMissing", "kind": "log", "availability": "today", "evidence": "src/Core/ResourceManager.m"},
-        {"expr": "startup.complete", "kind": "log", "availability": "today", "evidence": "src/Core/GameController.m"},
-        {"expr": "oxp-standards.error", "kind": "log", "availability": "today", "evidence": "src/Core/Debug/OODebugStandards.m"},
-        {"expr": "tools/oxp_deps.py::closure", "kind": "harness", "availability": "today"},
-        {"expr": "tools/oxp_load_check.py::NOMANIFEST_RE", "kind": "harness", "availability": "today"},
-        {"expr": "System.mainStation", "kind": "js", "availability": "today"},
-        {"expr": "Entity.isValid", "kind": "js", "availability": "today"}
+        {
+          "expr": "searchPaths.dumpAll",
+          "kind": "log",
+          "availability": "today",
+          "evidence": "src/Core/ResourceManager.m"
+        },
+        {
+          "expr": "oxp.requirementMissing",
+          "kind": "log",
+          "availability": "today",
+          "evidence": "src/Core/ResourceManager.m"
+        },
+        {
+          "expr": "startup.complete",
+          "kind": "log",
+          "availability": "today",
+          "evidence": "src/Core/GameController.m"
+        },
+        {
+          "expr": "oxp-standards.error",
+          "kind": "log",
+          "availability": "today",
+          "evidence": "src/Core/Debug/OODebugStandards.m"
+        },
+        {
+          "expr": "tools/oxp_deps.py::closure",
+          "kind": "harness",
+          "availability": "today"
+        },
+        {
+          "expr": "tools/oxp_load_check.py::NOMANIFEST_RE",
+          "kind": "harness",
+          "availability": "today"
+        },
+        {
+          "expr": "System.mainStation",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Entity.isValid",
+          "kind": "js",
+          "availability": "today"
+        }
       ],
       "cost": {
         "seconds_per_run": 40,
         "runs_per_gate": 1,
-        "basis_anchors": ["solo-expansion-load-13.5s", "tier-run-36-groups-11-13min"],
+        "basis_anchors": [
+          "solo-expansion-load-13.5s",
+          "tier-run-36-groups-11-13min"
+        ],
         "basis": "two launches, both docked and neither flying: measured 10.4 s for the refused solo run and 14.8 s for the closure run, plus staging and dump round trips; the per-group figure from a 36-group tier run (18-22 s) is the independent cross-check."
       },
       "dependencies": [],
       "blockers": [],
       "red_means": [
-        {"symptom": "the CONTROL run names the primary in [searchPaths.dumpAll]", "meaning": "requirement resolution stopped enforcing requires_oxps - expansions now load with unmet dependencies, which is how an OXP breaks silently for every user."},
-        {"symptom": "[oxp.requirementMissing] absent from the control run", "meaning": "either the diagnostic channel died or the refusal moved earlier; in both cases the corpus tooling's verdicts become unattributable."},
-        {"symptom": "standards-error count for the NOMANIF fixture != 2", "meaning": "manifest parsing or the standards channel changed; a count above 2 means new complaints, below 2 means complaints were lost."},
-        {"symptom": "either run lacks [startup.complete]", "meaning": "a dead launch - treat every other signal in that run as void."},
-        {"symptom": "the recomputed closure differs from evidence.staged_identifiers", "meaning": "the identifier index or the dependency walk changed; the run measured a different composition than the golden did."}
+        {
+          "symptom": "the CONTROL run names the primary in [searchPaths.dumpAll]",
+          "meaning": "requirement resolution stopped enforcing requires_oxps - expansions now load with unmet dependencies, which is how an OXP breaks silently for every user.",
+          "detects": [
+            "evidence.control_requirement_missing",
+            "evidence.primary_in_search_paths"
+          ]
+        },
+        {
+          "symptom": "[oxp.requirementMissing] absent from the control run",
+          "meaning": "either the diagnostic channel died or the refusal moved earlier; in both cases the corpus tooling's verdicts become unattributable.",
+          "detects": [
+            "evidence.control_requirement_missing"
+          ]
+        },
+        {
+          "symptom": "standards-error count for the NOMANIF fixture != 2",
+          "meaning": "manifest parsing or the standards channel changed; a count above 2 means new complaints, below 2 means complaints were lost.",
+          "detects": [
+            "evidence.nomanif_standards_errors"
+          ]
+        },
+        {
+          "symptom": "either run lacks [startup.complete]",
+          "meaning": "a dead launch - treat every other signal in that run as void.",
+          "detects": [
+            "evidence.startup_complete_both_runs"
+          ]
+        },
+        {
+          "symptom": "the recomputed closure differs from evidence.staged_identifiers",
+          "meaning": "the identifier index or the dependency walk changed; the run measured a different composition than the golden did.",
+          "detects": [
+            "evidence.staged_identifiers"
+          ]
+        }
       ]
     },
-
     {
       "id": "019",
       "name": "equipment-and-station-services",
@@ -329,39 +471,141 @@
         "the equipment array being non-empty (the starting ship already has equipment)"
       ],
       "observables": [
-        {"expr": "Ship.equipment", "kind": "js", "availability": "today", "access": "read"},
-        {"expr": "Ship.awardEquipment", "kind": "js", "availability": "today"},
-        {"expr": "Ship.canAwardEquipment", "kind": "js", "availability": "today"},
-        {"expr": "Ship.equipmentStatus", "kind": "js", "availability": "today"},
-        {"expr": "Ship.setEquipmentStatus", "kind": "js", "availability": "today"},
-        {"expr": "Ship.removeEquipment", "kind": "js", "availability": "today"},
-        {"expr": "Player.credits", "kind": "js", "availability": "today", "access": "write"},
-        {"expr": "PlayerShip.serviceLevel", "kind": "js", "availability": "today"},
-        {"expr": "PlayerShip.docked", "kind": "js", "availability": "today"},
-        {"expr": "Station.equipmentPriceFactor", "kind": "js", "availability": "today"},
-        {"expr": "Station.equivalentTechLevel", "kind": "js", "availability": "today"},
-        {"expr": "EquipmentInfo.price", "kind": "js", "availability": "today"},
-        {"expr": "EquipmentInfo.techLevel", "kind": "js", "availability": "today"},
-        {"expr": "EquipmentInfo.canBeDamaged", "kind": "js", "availability": "today"},
-        {"expr": "Clock.absoluteSeconds", "kind": "js", "availability": "today"}
+        {
+          "expr": "Ship.equipment",
+          "kind": "js",
+          "availability": "today",
+          "access": "read"
+        },
+        {
+          "expr": "Ship.awardEquipment",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Ship.canAwardEquipment",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Ship.equipmentStatus",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Ship.setEquipmentStatus",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Ship.removeEquipment",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Player.credits",
+          "kind": "js",
+          "availability": "today",
+          "access": "write"
+        },
+        {
+          "expr": "PlayerShip.serviceLevel",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "PlayerShip.docked",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Station.equipmentPriceFactor",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Station.equivalentTechLevel",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "EquipmentInfo.price",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "EquipmentInfo.techLevel",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "EquipmentInfo.canBeDamaged",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Clock.absoluteSeconds",
+          "kind": "js",
+          "availability": "today"
+        }
       ],
       "cost": {
         "seconds_per_run": 22,
         "runs_per_gate": 1,
-        "basis_anchors": ["warm-launch-4.1-4.3s", "solo-expansion-load-13.5s", "scenario-001-24-32s"],
+        "basis_anchors": [
+          "warm-launch-4.1-4.3s",
+          "solo-expansion-load-13.5s",
+          "scenario-001-24-32s"
+        ],
         "basis": "one launch, no flight and no snapshot: 001 measured 24-32 s WITH a flight, a dock and a frame capture, so the same harness minus the flight is under that; the load itself is the 13.5 s term and the warm-launch figure is the floor."
       },
       "dependencies": [],
       "blockers": [],
       "red_means": [
-        {"symptom": "the equipment array is unchanged after awardEquipment returned true", "meaning": "the award path no longer reaches the ship's equipment set - equipment can be bought and silently not installed."},
-        {"symptom": "equipmentStatus reads EQUIPMENT_OK after a damage write", "meaning": "the OK/DAMAGED state machine collapsed; damaged equipment would keep working, and the repair economy stops meaning anything."},
-        {"symptom": "canAwardEquipment returns true for a duplicate of a non-multiple item", "meaning": "rule enforcement in the equipment model was lost - the refusal branch is gone."},
-        {"symptom": "credits unchanged, or changed by an amount other than the stored price", "meaning": "the pricing path is dead or the formula moved; the diff names the field and the two numbers."},
-        {"symptom": "the equipment array is REORDERED with the same members", "meaning": "an enumeration-order regression in the equipment registry - exactly item 0.1's failure class, and this is the only scenario positioned to see it."}
+        {
+          "symptom": "the equipment array is unchanged after awardEquipment returned true",
+          "meaning": "the award path no longer reaches the ship's equipment set - equipment can be bought and silently not installed.",
+          "detects": [
+            "evidence.equipment_count_delta"
+          ]
+        },
+        {
+          "symptom": "equipmentStatus reads EQUIPMENT_OK after a damage write",
+          "meaning": "the OK/DAMAGED state machine collapsed; damaged equipment would keep working, and the repair economy stops meaning anything.",
+          "detects": [
+            "evidence.status_transition"
+          ]
+        },
+        {
+          "symptom": "canAwardEquipment returns true for a duplicate of a non-multiple item",
+          "meaning": "rule enforcement in the equipment model was lost - the refusal branch is gone.",
+          "detects": [
+            "evidence.duplicate_award_refused"
+          ]
+        },
+        {
+          "symptom": "credits unchanged, or changed by an amount other than the stored price",
+          "meaning": "the pricing path is dead or the formula moved; the diff names the field and the two numbers.",
+          "detects": [
+            "evidence.credits_delta"
+          ]
+        },
+        {
+          "symptom": "the equipment array is REORDERED with the same members",
+          "meaning": "an enumeration-order regression in the equipment registry - exactly item 0.1's failure class, and this is the only scenario positioned to see it.",
+          "detects": [
+            "evidence.equipment_count_delta"
+          ]
+        },
+        {
+          "symptom": "the game clock did not advance by the pinned budget while docked",
+          "meaning": "the run loop was not stepping - the dump is a photograph of tick 0 and every other reading in it was taken before the engine did any work.",
+          "detects": [
+            "evidence.tick_budget_met"
+          ]
+        }
       ]
     },
-
     {
       "id": "020",
       "name": "hud-render-modes",
@@ -396,7 +640,11 @@
         "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
         "extra": {
           "pose": "frame_capture.POSES['ref'] - position [0,0,0], orientation [1,0,0,0]",
-          "modes": ["hud.plist", "hud-small.plist", "hidden"],
+          "modes": [
+            "hud.plist",
+            "hud-small.plist",
+            "hidden"
+          ],
           "repeats_per_mode": 2,
           "surface": "960x720 windowed",
           "rasteriser": "LIBGL_ALWAYS_SOFTWARE=1, GALLIUM_DRIVER=llvmpipe",
@@ -442,22 +690,73 @@
         "two captures being byte-identical (measured exact_match_rate is 0.0 - byte equality never holds here)"
       ],
       "observables": [
-        {"expr": "PlayerShip.hud", "kind": "js", "availability": "today", "access": "write"},
-        {"expr": "PlayerShip.hudHidden", "kind": "js", "availability": "today", "access": "write"},
-        {"expr": "PlayerShip.docked", "kind": "js", "availability": "today"},
-        {"expr": "Entity.position", "kind": "js", "availability": "today", "access": "write"},
-        {"expr": "Entity.orientation", "kind": "js", "availability": "today", "access": "write"},
-        {"expr": "System.setPopulator", "kind": "js", "availability": "today"},
-        {"expr": "tests/golden/frame_hash.py::frame_hash", "kind": "harness", "availability": "today"},
-        {"expr": "tests/golden/frame_capture.py::apply_pose", "kind": "harness", "availability": "today"},
-        {"expr": "tests/golden/calibration.json", "kind": "harness", "availability": "today"},
-        {"expr": "upstream/oolite/Resources/Config/hud-small.plist", "kind": "file", "availability": "today"},
-        {"expr": "upstream/oolite/Resources/Config/hud.plist", "kind": "file", "availability": "today"}
+        {
+          "expr": "PlayerShip.hud",
+          "kind": "js",
+          "availability": "today",
+          "access": "write"
+        },
+        {
+          "expr": "PlayerShip.hudHidden",
+          "kind": "js",
+          "availability": "today",
+          "access": "write"
+        },
+        {
+          "expr": "PlayerShip.docked",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "Entity.position",
+          "kind": "js",
+          "availability": "today",
+          "access": "write"
+        },
+        {
+          "expr": "Entity.orientation",
+          "kind": "js",
+          "availability": "today",
+          "access": "write"
+        },
+        {
+          "expr": "System.setPopulator",
+          "kind": "js",
+          "availability": "today"
+        },
+        {
+          "expr": "tests/golden/frame_hash.py::frame_hash",
+          "kind": "harness",
+          "availability": "today"
+        },
+        {
+          "expr": "tests/golden/frame_capture.py::apply_pose",
+          "kind": "harness",
+          "availability": "today"
+        },
+        {
+          "expr": "tests/golden/calibration.json",
+          "kind": "harness",
+          "availability": "today"
+        },
+        {
+          "expr": "upstream/oolite/Resources/Config/hud-small.plist",
+          "kind": "file",
+          "availability": "today"
+        },
+        {
+          "expr": "upstream/oolite/Resources/Config/hud.plist",
+          "kind": "file",
+          "availability": "today"
+        }
       ],
       "cost": {
         "seconds_per_run": 170,
         "runs_per_gate": 1,
-        "basis_anchors": ["frame-capture-26-28s", "calibration-306.9s"],
+        "basis_anchors": [
+          "frame-capture-26-28s",
+          "calibration-306.9s"
+        ],
         "basis": "6 captures (3 modes x 2 repeats) at the measured 26-28 s per capture, each in its own game process as the noise floor requires; the one-off separation calibration costs a further ~5 min, measured at 306.9 s for 11 captures."
       },
       "dependencies": [],
@@ -468,43 +767,95 @@
         "if_populations_overlap": "record NOT SEPARABLE at this surface, fall back to the largest stimulus pair (hidden vs hud.plist) and, if that also overlaps, mark the scenario INFEASIBLE at 960x720 and file the finding. Loosening the tolerance to make it pass is forbidden - that is the decoration oo-ae9's threshold work exists to prevent."
       },
       "red_means": [
-        {"symptom": "within-mode distance exceeds the tolerance", "meaning": "the HUD render became nondeterministic between processes, or rasteriser noise grew beyond what the calibration measured - re-measure the floor before touching the scenario."},
-        {"symptom": "between-mode distance falls below the tolerance", "meaning": "switching the HUD no longer changes what is drawn: dial definitions are not being loaded, or the overlay pass was skipped."},
-        {"symptom": "hud read-back does not match the requested plist", "meaning": "the HUD setter silently failed; every frame in that run is the same scene and the comparison is void."},
-        {"symptom": "docked is true or hudHidden is true at capture time", "meaning": "the run never reached flight, so the frames contain no HUD regardless of what they hash to."},
-        {"symptom": "a PNG below the byte floor", "meaning": "a black frame - GL initialised but nothing rendered; the whole run is void."}
+        {
+          "symptom": "within-mode distance exceeds the tolerance",
+          "meaning": "the HUD render became nondeterministic between processes, or rasteriser noise grew beyond what the calibration measured - re-measure the floor before touching the scenario.",
+          "detects": [
+            "evidence.separation"
+          ]
+        },
+        {
+          "symptom": "between-mode distance falls below the tolerance",
+          "meaning": "switching the HUD no longer changes what is drawn: dial definitions are not being loaded, or the overlay pass was skipped.",
+          "detects": [
+            "evidence.separation"
+          ]
+        },
+        {
+          "symptom": "hud read-back does not match the requested plist",
+          "meaning": "the HUD setter silently failed; every frame in that run is the same scene and the comparison is void.",
+          "detects": [
+            "evidence.hud_readback"
+          ]
+        },
+        {
+          "symptom": "docked is true or hudHidden is true at capture time",
+          "meaning": "the run never reached flight, so the frames contain no HUD regardless of what they hash to.",
+          "detects": [
+            "evidence.in_flight"
+          ]
+        },
+        {
+          "symptom": "a PNG below the byte floor",
+          "meaning": "a black frame - GL initialised but nothing rendered; the whole run is void.",
+          "detects": [
+            "evidence.frame_bytes"
+          ]
+        },
+        {
+          "symptom": "the position read-back differs from the declared pose by more than 1.0 m",
+          "meaning": "the camera pose did not apply, so the captures are renders of the same WRONG scene and agree with each other while measuring nothing.",
+          "detects": [
+            "evidence.pose_applied"
+          ]
+        }
       ]
     }
   ],
-
   "rejected_candidates": [
     {
       "name": "NPC AI-state census after a scripted provocation",
       "why_wanted": "the AI state machine is the single largest behavioural surface in the engine and no golden reads it.",
       "why_rejected": "Ship.AIState is permanently GLOBAL in this tier - addShips hands every ship oolite-nullAI.js while the player's scripts are not loaded (ShipEntityAI.m:254-257), and measured runs show zero setState hits. A dump field that is constant by construction is a fabricated field, not a measurement.",
-      "blockers": ["oo-kbqw"],
-      "observables_missing": ["a per-ship AI-state read that can return anything other than GLOBAL in a harness-spawned world"]
+      "blockers": [
+        "oo-kbqw"
+      ],
+      "observables_missing": [
+        "a per-ship AI-state read that can return anything other than GLOBAL in a harness-spawned world"
+      ]
     },
     {
       "name": "Attack-versus-flee discrimination",
       "why_wanted": "the FLEE transition is, per the component-tier catalogue, the most commonly broken AI branch.",
       "why_rejected": "hasHostileTarget returns YES for FLEE as well as ATTACK, so the only exposed predicate cannot tell the two apart; a scenario built on it would go green on either behaviour.",
-      "blockers": ["oo-3cvh"],
-      "observables_missing": ["Ship.isAttacking (the ATTACK side of the behaviour split), exposed symmetrically with isFleeing"]
+      "blockers": [
+        "oo-3cvh"
+      ],
+      "observables_missing": [
+        "Ship.isAttacking (the ATTACK side of the behaviour split), exposed symmetrically with isFleeing"
+      ]
     },
     {
       "name": "Scenario-scoped survival of spawned ships",
       "why_wanted": "entity lifetime after destruction is where hand-translated refcounting is expected to fail first.",
       "why_rejected": "a role-count observable cannot distinguish a ship the scenario spawned from one the populator injected mid-run - oo-qwk5 measured pirate=2 at t=32.2 s with allShips going 10 -> 14 - and six beads have already reduced to this. A golden could suppress the populator, but the property still needs a HANDLE to the specific ships, which no observable provides.",
-      "blockers": ["oo-kbqw", "oo-bdl0"],
-      "observables_missing": ["per-ship handles surviving across steps", "a generic property read scoped to those handles"]
+      "blockers": [
+        "oo-kbqw",
+        "oo-bdl0"
+      ],
+      "observables_missing": [
+        "per-ship handles surviving across steps",
+        "a generic property read scoped to those handles"
+      ]
     },
     {
       "name": "Moving-world determinism (a golden with ships under thrust)",
       "why_wanted": "001 dumps a static world of 2 entities and 21 float literals, all exact binary fractions - thin evidence of engine-wide determinism.",
       "why_rejected": "a spawned ship under thrust reports velocity = newtonian + thrustVector (ShipEntity.m:12830-12833) and the JS setter reaches only the newtonian half, so no scenario can freeze it; -setTotalVelocity: is not exposed to JS. Measured: 4 of 6 ships still moving at 60-97 m/s immediately after the write, on 3 of 8 runs.",
       "blockers": [],
-      "observables_missing": ["a JS seam for flightSpeed or setTotalVelocity, which has no bead yet - filing one is the prerequisite, not a scenario"]
+      "observables_missing": [
+        "a JS seam for flightSpeed or setTotalVelocity, which has no bead yet - filing one is the prerequisite, not a scenario"
+      ]
     }
   ]
 }

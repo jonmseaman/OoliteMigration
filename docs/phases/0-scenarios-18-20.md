@@ -207,6 +207,37 @@ definitions are not loading, or the overlay pass was skipped. A `hud` read-back 
 silently failed and the comparison is void. `docked` or `hudHidden` true at capture → no HUD is in
 frame regardless of the hashes. A PNG under the byte floor → a black frame; the run is void.
 
+## The gate, and the hole mutation found in it
+
+`tools/check-scenario-catalogue.py` has four subcommands, all four stored as this bead's
+acceptance: `--strict` (the catalogue satisfies every property), `--selftest` (each check is proven
+to reject a targeted mutant, *and* to be the check that kills it), `--cross-check-beads` (every bead
+id resolves in the tracker and no rejection rests on a closed blocker), `--check-docs` (the phase
+doc's table agrees with the catalogue verbatim).
+
+The first version of the gate had **eight of the nine RED outcomes right and one hole**, found by
+mutating the committed specification rather than by reading it. Deleting scenario 019's
+`duplicate_award_refused` evidence clause — the clause that proves the equipment model *refuses* an
+illegal write, the most valuable and least convenient of the five — passed `--strict` **green**,
+because a count threshold cannot tell five clauses from four when the floor is three. That is
+exactly the shape this fleet has recorded before: a gate that protects its data while leaving the
+thing that judges the data unprotected.
+
+The fix is not a bigger count. `check_evidence_traceability` requires every evidence clause to be
+named by at least one RED outcome's `detects`, and every RED outcome to name evidence that exists —
+so the evidence set and the failure set are a closed pair. Drop a clause and its RED entry is left
+pointing at a field the catalogue no longer defines, reported by name:
+
+```
+DEFECT [evidence_traceability]: scenario 019's RED outcome 'canAwardEquipment returns true for a
+duplicate of a non-multiple item' claims to detect 'evidence.duplicate_award_refused', which is not
+one of its evidence fields ['evidence.credits_delta', 'evidence.equipment_count_delta',
+'evidence.status_transition', 'evidence.tick_budget_met'] - the failure set and the evidence set
+have drifted
+```
+
+The mutant is kept in `--selftest` as the standing proof.
+
 ## Why three, and not four or two
 
 The candidates that did **not** survive are in the catalogue with their reasons, because a selection

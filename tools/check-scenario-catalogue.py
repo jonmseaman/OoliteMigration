@@ -302,6 +302,44 @@ def check_red_means(cat):
                              % (s["id"], item))
 
 
+def check_evidence_traceability(cat):
+    """EVERY evidence clause must be detected by at least one named RED outcome, and every RED
+    outcome must name evidence that exists.
+
+    This is the check that catches a SINGLE dropped evidence clause, which a count threshold
+    cannot see: a specification that carries five clauses and a specification that carries four
+    both clear "at least three", so deleting the one clause that pins a refusal - the awkward,
+    valuable one - is free. Requiring the two lists to reference each other makes the evidence set
+    and the failure set a closed pair: drop a clause and its RED entry is left pointing at a field
+    the catalogue no longer defines, which is reported BY NAME. Drop both and the scenario can no
+    longer explain how that failure would ever be noticed.
+
+    This mirrors the discipline check_launch_dock_evidence.py applies to a dump: the properties a
+    gate defends are enumerated in a table, so one of them cannot be quietly dropped.
+    """
+    for s in _new(cat):
+        fields = {e["field"] for e in s["evidence"]}
+        detected = set()
+        for item in s["red_means"]:
+            names = item.get("detects")
+            if not isinstance(names, list) or not names:
+                raise Defect("scenario %s has a RED outcome %r that names no evidence field in "
+                             "`detects`: a failure mode nobody can observe is not a failure mode"
+                             % (s["id"], item["symptom"][:70]))
+            for n in names:
+                if n not in fields:
+                    raise Defect("scenario %s's RED outcome %r claims to detect %r, which is not "
+                                 "one of its evidence fields %s - the failure set and the evidence "
+                                 "set have drifted"
+                                 % (s["id"], item["symptom"][:70], n, sorted(fields)))
+                detected.add(n)
+        orphans = fields - detected
+        if orphans:
+            raise Defect("scenario %s carries evidence field(s) %s that no RED outcome detects: "
+                         "the run would collect them and no described failure would ever read "
+                         "them" % (s["id"], sorted(orphans)))
+
+
 def check_not_all_aspirational(cat):
     """At least one new scenario must be buildable with today's observables."""
     buildable = [s["id"] for s in _new(cat)
@@ -341,6 +379,7 @@ CHECKS = [
     ("no_duplicate_coverage", check_no_duplicate_coverage),
     ("cost", check_cost),
     ("red_means", check_red_means),
+    ("evidence_traceability", check_evidence_traceability),
     ("not_all_aspirational", check_not_all_aspirational),
     ("rejected_candidates", check_rejected_candidates),
 ]
@@ -440,6 +479,28 @@ def _mutants(cat):
     m = copy.deepcopy(cat)
     _new(m)[0]["red_means"] = _new(m)[0]["red_means"][:1]
     out.append(("red_means", "leave only one RED outcome described", m))
+
+    # THE MUTANT THAT SURVIVED THE FIRST VERSION OF THIS GATE. Deleting ONE named evidence clause
+    # is invisible to a count threshold (5 -> 4 still clears "at least 3"), and the clause a lazy
+    # implementer would drop is exactly the awkward one - here scenario 019's REFUSAL evidence,
+    # the clause that proves the equipment model is applying rules rather than accepting writes.
+    # check_evidence_traceability exists because of this mutant; it is kept as the proof.
+    m = copy.deepcopy(cat)
+    s = [x for x in _new(m) if x["id"] == "019"][0]
+    s["evidence"] = [e for e in s["evidence"]
+                     if e["field"] != "evidence.duplicate_award_refused"]
+    out.append(("evidence_traceability",
+                "delete ONE named evidence clause (019's refusal evidence)", m))
+
+    m = copy.deepcopy(cat)
+    _new(m)[2]["red_means"][0].pop("detects")
+    out.append(("evidence_traceability",
+                "leave a RED outcome naming no evidence field it detects", m))
+
+    m = copy.deepcopy(cat)
+    _new(m)[1]["red_means"][0]["detects"] = ["evidence.something_nobody_collects"]
+    out.append(("evidence_traceability",
+                "have a RED outcome detect an evidence field that does not exist", m))
 
     m = copy.deepcopy(cat)
     for s in _new(m):
