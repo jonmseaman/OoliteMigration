@@ -233,6 +233,27 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   reopened. Escalate instead.
 - **Persistent memory is not the carry-over channel.** Anything the next attempt must know goes
   in the bead's notes, because the next attempt may run in a different session or a different agent.
+- **A failing GUI acceptance line is not trusted until it fails ISOLATED too (bug oo-ac3f).**
+  `tools/gui-lock` (the session-scoped `desktop_lock` fixture in
+  `upstream/oolite/tests/gui/conftest.py`) already serialises every GUI-launching pytest run, so
+  two GUI processes cannot fight over the desktop at the same instant — that collision is not the
+  risk. The risk is a CONCURRENT NON-GUI sibling (another tier compiling, several pytest processes
+  running at once) starving the CPU of whichever process holds the lock: the GUI tier's timeouts
+  (`TRANSITION_TIMEOUT_SECONDS`, `ScreenWitness.accept(timeout=...)`, `gui_screen(timeout=...)`)
+  are real wall-clock timers, so contention alone can flip a transition-timeout test from pass to
+  fail with no code change at all. Observed in production: oo-6zd's acceptance line 6 returned
+  rc=1 under contention with a sibling launching G5, then rc=0 seconds later run alone — same
+  code, same tree, opposite verdicts. So: when a GUI-tier acceptance line (`accept.sh` runs
+  anything under `upstream/oolite/tests/gui/`) returns nonzero, re-run it once with
+  `tools/gui-acceptance-recheck "<line>"` before writing `accept attempt N failed` into the bead's
+  notes or counting it toward `stale_count`. That script re-runs the line once the gui-lock is
+  free and the sibling-load proxy is quiet (or a bounded wait elapses), and reports the gui-lock
+  holder and a process-count proxy around both runs. If the recheck passes, the failure was
+  contention, not a genuine regression: do not append it to notes as a failure and do not count it
+  toward `BEADS_WORKER_STALE_REPEATS`; treat that acceptance round as needing a plain retry instead.
+  If the recheck also fails, it is genuine — proceed exactly as `accept.sh` already does. This does
+  NOT apply to non-GUI (unit/component) acceptance lines, and it does not replace fixing an
+  actually-flaky GUI test (that is a bug in the test, e.g. oo-3opg, not a review-process step).
 
 ## Verification
 
