@@ -478,6 +478,16 @@ def assert_trigger_fired(evidence, spec):
             "file+1, so an unequal value means the world-script event did not run the handler."
             % (spec["mission_variable_key"], got, evidence["mission_counter_in_file"], want,
                spec["mission_variable_key"]))
+    if got != spec["expected_counter_in_engine"]:
+        # The RELATION above is scenario logic; this is the PINNED LITERAL. Both are checked
+        # because the relation alone would accept any pair one apart, so a fixture that moved from
+        # 6 to 10 would slide through while no longer being the save whose counter sits exactly on
+        # the script's `> 6` threshold.
+        raise ScenarioError(
+            "missionVariables.%s is %r in the running engine but the spec pins %r. The relation "
+            "file+1 holds, so the increment happened - but not from the value this scenario was "
+            "blessed against. Re-measure; do not edit the spec to match."
+            % (spec["mission_variable_key"], got, spec["expected_counter_in_engine"]))
 
     if not evidence["ambush_populator_registered"]:
         raise ScenarioError(
