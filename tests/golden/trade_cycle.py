@@ -87,6 +87,7 @@ import argparse
 import json
 import os
 import plistlib
+import subprocess
 import sys
 import time
 
