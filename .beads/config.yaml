@@ -66,6 +66,13 @@
 # - github.token    → use GITHUB_TOKEN env var instead
 
 sync.remote: "git+https://github.com/jonmseaman/OoliteMigration.git"
+# Auto-export is OFF (bead oo-c4ly, 2026-09-18). With it on, every `bd update` in every worktree
+# rewrote that worktree's copy of .beads/issues.jsonl, harvest committed it onto the bead branch,
+# and every accept then conflicted with main on a file nobody wrote by hand (36 of the last 200
+# commits on main were that conflict's resolution). The export is regenerated from Dolt by
+# scripts/accept.sh on the base branch after each close, so main's copy is the only one that
+# changes and it is always fresh. Run `bd export -o .beads/issues.jsonl` by hand if you need it
+# sooner.
 export:
-    auto: true
+    auto: false
     git-add: false

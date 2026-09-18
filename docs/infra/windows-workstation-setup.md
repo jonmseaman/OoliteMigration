@@ -149,9 +149,12 @@ The beads database is a local Dolt DB per machine; `bd dolt push` / `pull` sync 
   `accept.sh` closes beads there.
 - `bd dolt pull` before you start, `bd dolt push` when you stop. Same discipline as git.
 - Edits to *different* issues merge cleanly. Edits to the *same* issue conflict.
-- `.beads/issues.jsonl` is a **generated export** that is tracked in git, so two machines both
-  committing it produces git conflicts on a file neither of you wrote by hand. Let one machine own
-  it; regenerate rather than hand-merge.
+- `.beads/issues.jsonl` is a **generated export** that is tracked in git. Auto-export is off
+  (`export.auto: false` in `.beads/config.yaml`, bead oo-c4ly): `bd` no longer rewrites the file
+  after every write, so worktrees and branches never carry a changed copy. `accept.sh` regenerates
+  it from Dolt on `main` after each close, and if a branch created before the switch still
+  conflicts on it, `accept.sh` takes `main`'s copy (it is regenerated anyway). Never hand-merge
+  it; `bd export -o .beads/issues.jsonl` if you want it fresh right now.
 
 ## Verification
 

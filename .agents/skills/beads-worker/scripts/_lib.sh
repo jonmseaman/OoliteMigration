@@ -46,3 +46,41 @@ worker_list() {
     | unique_by(.id)'
 }
 bead_attempts() { bead_json "$1" | jq -r '(.metadata.attempts // "0") | tonumber'; }
+
+# The tracked bead DB export (.beads/*.jsonl) is fleet bookkeeping regenerated from Dolt, never
+# the record of truth: every note, status and field reaches the JSONL through `bd`, which writes
+# Dolt first. A merge conflict in that file therefore carries nothing a `bd export` on the base
+# branch does not already have (bead oo-c4ly: 36 of 200 commits on main were hand-resolutions of
+# exactly this conflict). resolve_beads_db_conflict <checkout> finishes a half-done merge whose
+# ONLY conflicts are .beads/*.jsonl by taking the base side ("ours" in a checkout of the base) and
+# staging it. Returns 1 and leaves the merge untouched if any other path conflicts: a real
+# conflict in bead work is still the worker's to resolve.
+resolve_beads_db_conflict() {
+  local co="$1" conflicts other p
+  conflicts="$(git -C "$co" diff --name-only --diff-filter=U 2>/dev/null)"
+  [ -n "$conflicts" ] || return 1
+  other="$(printf '%s\n' "$conflicts" | grep -vE '^\.beads/[^/]+\.jsonl$' || true)"
+  [ -z "$other" ] || return 1
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    git -C "$co" checkout --ours -- "$p" 2>/dev/null || return 1
+    git -C "$co" add -- "$p" || return 1
+  done <<EOF
+$conflicts
+EOF
+  [ -z "$(git -C "$co" diff --name-only --diff-filter=U 2>/dev/null)" ]
+}
+
+# refresh_beads_export <base>: regenerate .beads/issues.jsonl from Dolt in the root checkout and
+# commit it on the base branch if it changed. With export.auto off in .beads/config.yaml this is
+# the export's only writer, so the tracked copy is always main's and always fresh (an export of
+# ~750 issues takes under a second). Never fatal: a stale export is a nuisance, not a lost bead.
+refresh_beads_export() {
+  local base="$1" out="$REPO_ROOT/.beads/issues.jsonl"
+  [ "$(git -C "$REPO_ROOT" symbolic-ref --quiet --short HEAD 2>/dev/null)" = "$base" ] || return 0
+  real_bd export -o "$out" >/dev/null 2>&1 || { echo "beads-worker: bd export failed; the tracked export is stale until the next accept" >&2; return 0; }
+  git -C "$REPO_ROOT" diff --quiet -- .beads/issues.jsonl 2>/dev/null && return 0
+  git -C "$REPO_ROOT" -c user.name=beads-worker -c user.email=beads-worker@local \
+    commit -q -m "fleet: bead DB export refreshed from Dolt after accept" -- .beads/issues.jsonl >/dev/null 2>&1 \
+    || echo "beads-worker: could not commit the refreshed export on $base; it is left modified in $REPO_ROOT" >&2
+}

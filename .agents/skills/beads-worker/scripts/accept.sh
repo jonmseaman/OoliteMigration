@@ -48,7 +48,11 @@ fi
 # Clean, detached checkout of the base branch; merge the bead into it. Nothing here touches the
 # agent's worktree or the orchestrator's checkout.
 git -C "$REPO_ROOT" worktree add --detach "$tmp" "$base" >/dev/null
-if ! git -C "$tmp" -c user.name=beads-worker -c user.email=beads-worker@local merge --no-ff --no-edit -m "bead $id: merge into $base" "$branch" >"$tmp.merge.log" 2>&1; then
+if ! git -C "$tmp" -c user.name=beads-worker -c user.email=beads-worker@local merge --no-ff --no-edit -m "bead $id: merge into $base" "$branch" >"$tmp.merge.log" 2>&1 \
+   && ! { resolve_beads_db_conflict "$tmp" \
+          && git -C "$tmp" -c user.name=beads-worker -c user.email=beads-worker@local commit -q --no-edit >>"$tmp.merge.log" 2>&1 \
+          && echo "accept: $id conflicted with $base only in the bead DB export (.beads/*.jsonl); took $base's copy, which is regenerated from Dolt after the close" >&2 \
+          && { real_bd update "$id" --append-notes "accept on $(date -u +%FT%TZ): bead DB export conflict with $base auto-resolved by taking $base's .beads/*.jsonl (a generated file; every record comes from Dolt)" -q >&2 || true; }; }; then
   attempts="$(( $(bead_attempts "$id") + 1 ))"
   conflict="$(git -C "$tmp" diff --name-only --diff-filter=U 2>/dev/null | head -20)"
   real_bd update "$id" --set-metadata "attempts=$attempts" --append-notes "accept attempt $attempts: merge conflict with $base on $(date -u +%FT%TZ). Conflicting files:
@@ -102,6 +106,8 @@ if [ "$status" -eq 0 ]; then
   git -C "$REPO_ROOT" worktree remove --force "$WORKTREES/$id" >/dev/null 2>&1 || true
   git -C "$REPO_ROOT" branch -D "$branch" >/dev/null 2>&1 || true
   touch "$REPO_ROOT/.fleet-progress.$id"
+  # The tracked export follows the DB, on the base branch only (export.auto is off; see _lib.sh).
+  refresh_beads_export "$base"
   echo "closed $id: merged into $base as $short; worktree and branch removed"
   exit 0
 fi
