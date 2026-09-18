@@ -124,9 +124,24 @@ more beads in flight is fine, more children than P is not.
      `terminal(command="scripts/reevaluate.sh <id> \"blocked: <reason>\"", timeout=900)`. Claude
      decides whether the task itself is wrong (see *Escalation ladder* below). Only if it returns
      exit 3 do you `scripts/escalate.sh <id> "<reason>"` yourself. That bead leaves the batch.
+   - **Blocked on a capability that does not exist yet is a dependency, not a retry**
+     ([ADR-0020](../../../docs/decisions/0020-component-scenarios-are-smoke-tests-for-now.md)
+     §4, from `oo-kbqw`). The first time a blocked report is verified: file or find the seam
+     bead, `bd dep add <id> <seam>`, release the claim, remove the worktree. A bead whose status
+     is merely set back to open is still ready, and the next worker re-derives the same report.
+   - **Anything parked for Jon gets the `human` label too** (with `rebless` or `proposed-adr`):
+     `bd human list` is his inbox and only sees that label; `bd human respond <id>` is his reply.
 5. **Delegate the reviewers, one call, one task per committed bead**, each built from
    `references/reviewer-prompt.md`: the worktree path, `git diff main...bead/<id>`, the bead's
    sizing checks and prohibitions. Require `output_schema` `{verdict: approve|request_changes, findings[]}`.
+   - **Sizing for golden-scenario beads is read as AUTHORED FILES, not authored lines.** The
+     story's `writes<=400 / <=8 files` budget is calibrated for code-porting beads. A golden
+     scenario must carry a harness, an evidence checker, a knob gate and a falsifiability suite,
+     which lands at ~2300–2700 authored lines in every instance accepted so far (oo-hv4d 2282,
+     oo-wseo 2725, oo-ghhw 2519). Count blessed run artifacts (`state.json`, `frame.grid`,
+     `frame.png`, `provenance.json`) as DATA, hold the bead to `<=8` authored files, and record the
+     line count as advisory. Three reviewers in one session raised this independently and all three
+     declined to block on it — do not make each new bead re-litigate it.
    *Done when: every bead has a verdict.*
    - For every verdict: `bd update <id> --append-notes "review: <verdict>; <findings, one per line>"`.
    - `request_changes` → delegate the worker again with the findings appended as context, then
@@ -235,6 +250,48 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   `bash tools/guardrails.sh` in the worktree before accepting. Before deleting such a file, `cmp`
   it against the staged copy under `tests/golden/pending/` and read its contents — a stub is safe
   to drop, the real artifact is not.
+- **Export `PATH="/ucrt64/bin:$PATH"` in every terminal call that runs a fleet script.** `accept.sh`
+  inherits the orchestrator's shell, and the Hermes desktop terminal's PATH has no MSYS2 UCRT64
+  prefix, so acceptance lines calling `python3` die with `command not found` `[exit 127]` on
+  perfectly correct work (observed on oo-5ggu: attempt 1 rejected at line 1; the identical command
+  re-run with `/ucrt64/bin` on PATH closed the bead). An `[exit 127]` is an environment defect, not
+  a verdict: fix the environment and re-run **before** writing `accept attempt N failed` into the
+  notes or counting it toward `BEADS_WORKER_STALE_REPEATS`. Same class as the oo-gla learning, one
+  level up — there a bad PATH killed a game launch inside a worker, here it killed the accepter.
+- **Do not fill the batch with game-LAUNCHING beads: they starve each other and fail healthy work.**
+  Four scenario beads running 10-run stability sweeps at once made oo-rkm's live acceptance line
+  fail **six consecutive times**, every failure an instrument signature (`TimeoutExpired ... after
+  10 seconds`, `ConsoleError: no answer to 'system.name' within 15s`, `rm: ... Device or resource
+  busy`, each logged at `procs=5`/`procs=6`) — while the same line on the same tree measured green
+  3/3 an hour earlier. Six identical failures is normally the signature of a broken gate
+  (`BEADS_WORKER_STALE_REPEATS` is 5), so this is exactly where an orchestrator wrongly escalates
+  healthy work. Launching beads contend for CPU, for the shared console port 8563 and for the
+  shared app dir; offline beads (checkers, gates, mutation suites over stored artifacts)
+  parallelise freely. **Mix the batch: at most one or two launching beads at a time**, and when a
+  launching line fails, check the sibling load before believing it.
+- **Before any game-launching line, require `ps -W | grep -ci oolite` to be 0 — orphans poison it.**
+  A game a worker launched through a harness subprocess is **not** killed when that worker ends: it
+  keeps console port 8563 bound and keeps handles on its staged app copy. oo-rkm's live line failed
+  seven times across two sessions (`TimeoutExpired ... after 10 seconds`, `ConsoleError: no answer
+  to 'system.name' within 15s`, `rm: ... Device or resource busy`) with **no children running** —
+  three orphaned `oolite.exe` were still alive, two of them hours old. After killing them the
+  identical line on the identical tree returned **rc=0 in 16s**, against rc=1 after 117s moments
+  earlier. MSYS `ps` puts the *Windows* pid in field 4, and `taskkill //PID` is mangled by MSYS
+  argument conversion, so kill with:
+  `ps -W | grep -i oolite | awk '{print $4}' | while read p; do /c/Windows/System32/taskkill.exe /PID $p /F; done`
+  Log the count beside every result: `rc=1 wall=117s oolite_procs=4` diagnoses itself; a bare rc=1
+  gets mistaken for a broken gate and, at five repeats, escalates healthy work. A long wall time is
+  the tell — the harness is burning its retry budget against a port that will never answer.
+- **Replay a stored acceptance block the way `accept.sh` does, or you will silently skip a line.**
+  `while IFS= read -r l; ...; done < file` DROPS the final line when the file has no trailing
+  newline (measured: `printf 'a\nb\nc' > f` reads **2 of 3**). `accept.sh` is immune because it uses
+  a here-string — `done <<<"$acceptance"` — and bash always terminates a here-string (3 of 3). A
+  reviewer hit this on oo-zyj1, reported `RAN=6` against 7 stored lines, and nearly filed it as a
+  bead defect; the dropped line was the LIVE RED PROOF, the one whose absence most weakens a
+  review. Always assert lines-run == lines-stored taken from `bd show --json`, never from your own
+  temp file — a count from the file that lost the line cannot detect the loss. A worker that
+  validated its own acceptance this way may have left its last line untested while honestly
+  reporting success.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.

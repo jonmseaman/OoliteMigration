@@ -1,0 +1,255 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "note": "recorded for provenance/auditing ONLY. This digest is NEVER a gate predicate: llvmpipe is not bit-reproducible and this scenario's own sweep produced 9 distinct grid digests over 9 BYTE-IDENTICAL dumps. Byte-hashing the frame would make the gate flake on renderer noise. The dump is hashed byte-wise because it is quantised and deterministic; the frame is not. The asymmetry is deliberate.",
+      "sha256": "d2931058b46995cff9caf5e313f10e141c19be1a57ef393dc378713d1df99847"
+    },
+    "state.json": {
+      "bytes": 2709,
+      "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049"
+    }
+  },
+  "blessed_from_commit": "0a66c8b04cd972f2708945ecc69a7f56799f3f72",
+  "blessed_utc": "2026-09-18T13:41:08Z",
+  "dump_tool": "tests/golden/trumbles_load.py",
+  "evidence_checker": "tests/golden/check_trumbles_evidence.py",
+  "frame_liveness": {
+    "asserted": true,
+    "floor": 0.02,
+    "margin": {
+      "all_black_vs_blessed": 0.034308,
+      "blessed_frame_vs_black": 0.034308,
+      "dimmest_real_frame_vs_black": 0.031028,
+      "max_same_scene_noise": 0.010916,
+      "reading": "the floor sits 1.8x above the largest same-scene noise and at 0.65x of the dimmest real frame measured, so no same-scene variation can push a real frame under it and an empty render cannot climb over it. The blessed frame clears it by 1.7x."
+    },
+    "metric": "frame_hash.distance(grid, all-black 4096-byte grid)",
+    "what_it_proves": "that something was RENDERED. This is the one frame property the measurements support, and it is the property a dead run fails: a run that died before drawing, or drew into a lost context, yields an all-black grid at distance 0."
+  },
+  "frame_measurements": {
+    "all_black_vs_populated": {
+      "max": 0.037364,
+      "max_x_tol": 8.54,
+      "min": 0.031028,
+      "min_x_tol": 7.09
+    },
+    "all_white_vs_populated": {
+      "min": 0.962636,
+      "min_x_tol": 219.92
+    },
+    "intra_run_1s_apart_0_trumbles": {
+      "max": 0.00171,
+      "max_x_tol": 0.39,
+      "min": 0.001573,
+      "min_x_tol": 0.36
+    },
+    "intra_run_1s_apart_4_trumbles": {
+      "max": 0.00684,
+      "max_x_tol": 1.56,
+      "min": 0.005263,
+      "min_x_tol": 1.2
+    },
+    "same_scene_pairs_10_runs": {
+      "max": 0.010916,
+      "max_x_tol": 2.49,
+      "min": 0.004725,
+      "min_x_tol": 1.08
+    },
+    "separation_ratio": 0.25,
+    "separation_reading": "min(zero-trumble vs populated) / max(populated vs populated). Bead oo-gxp's scenario 010 reached 261; anything below 1 means the observable cannot discriminate.",
+    "zero_trumble_frame_vs_populated": {
+      "max": 0.007899,
+      "max_x_tol": 1.8,
+      "min": 0.002768,
+      "min_x_tol": 0.63
+    }
+  },
+  "frame_tolerance": {
+    "asserted": false,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9). USED AS MEASURED, never adjusted to make a run pass.",
+    "why_not_asserted": "MEASURED AND REJECTED, not omitted. Same-scene frames of this scenario differ by 0.004725..0.010916 (1.08x..2.49x this tolerance) because HeadUpDisplay.m:3306 -drawTrumbles: animates the live population every rendered frame; OOTrumble.m:305-353 schedules each animation with randf(). Two frames captured 1s apart INSIDE ONE RUN differ by 0.005263..0.006840, i.e. as much as two separate runs do, which proves the spread is in-scene animation and not cross-run nondeterminism. Removing the trumbles from the same control collapses it to 0.001573..0.001710 (0.36x..0.39x), identifying the source. The separation test then fails outright: the SMALLEST distance from a ZERO-trumble frame to a populated one (0.002768) is 0.25x the LARGEST distance between two populated frames (0.010916) - signal smaller than noise, so no threshold admits two runs of this scenario while rejecting a run with no trumbles at all. Widening the tolerance until same-scene pairs fit would have produced a gate that passes for every reason including the wrong ones."
+  },
+  "landing_rehearsal": {
+    "note": "Both the gate and the offline tests search goldens/windows-x64/015-trumbles/ FIRST and fall back to tests/golden/pending/015-trumbles/, through the identical idiom, so landing is a pure `git mv` with no code change. See LANDING.md.",
+    "performed": true
+  },
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "015-trumbles",
+  "scenario_knobs": {
+    "expected_saved_trumble_count": 0,
+    "expected_trumble_count": 4,
+    "load_save": "upstream/oolite-tests/Checklist-files/Missions/Trumbles.oolite-save",
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 24,
+    "trumble_awards": 4
+  },
+  "stability": {
+    "distinct_dump_digests": [
+      "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049"
+    ],
+    "distinct_frame_grid_digests": 9,
+    "dump_bytes": [
+      2709
+    ],
+    "dumps_written": 9,
+    "errored": 0,
+    "note": "9 of 10 runs wrote a BYTE-IDENTICAL dump (2709 bytes, one digest). The tenth correctly REFUSED - its own quiesce() guard reported the world never reaching a fixed point, with one ship reappearing on nearly every round. That is a REFUSAL, not a DIFFERENCE: the run declined to dump rather than dumping a frame-count-dependent world (bead oo-jor's distinction, and golden_diff's rc=2-vs-rc=1). Every run's outcome is recorded regardless of exit code. The frame grids are all distinct, as expected: llvmpipe is not bit-reproducible, which is why the grid is compared with the measured tolerance and is NOT part of state.json.",
+    "per_run": [
+      {
+        "bytes": 2709,
+        "frame_sha256": "2d9a660f9ae6759c218a87328783533d6c0978a66d657f83cafe6bc98aabcddd",
+        "run": 1,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 22.2
+      },
+      {
+        "bytes": 2709,
+        "frame_sha256": "c84203ed58f2aca95b5c76b06506324bc121d626517365e6c8e3bd31a6085da3",
+        "run": 2,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 22.4
+      },
+      {
+        "bytes": 2709,
+        "frame_sha256": "5cae60a27314e8878cf5c94948d36ad6ad72dd279805beb048cf63da2f3e9ea6",
+        "run": 3,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 28.9
+      },
+      {
+        "bytes": 2709,
+        "frame_sha256": "b5dab3697cffc3a8f13f6de6feffd35a617472a96d8c8664fcd5a664dccaba51",
+        "run": 4,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 28.3
+      },
+      {
+        "bytes": 2709,
+        "frame_sha256": "f3fe69f3c8472c7a091711ad5190b204f52fcfc0cdddd14b5fcc39e2acb0d5f2",
+        "run": 5,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 28.0
+      },
+      {
+        "bytes": 2709,
+        "frame_sha256": "baba25a8072199b380808a3d2732bfc816dff7276c53b40dba882e3c601210a8",
+        "run": 6,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 36.2
+      },
+      {
+        "bytes": null,
+        "frame_sha256": null,
+        "run": 7,
+        "sha256": null,
+        "verdict": "REFUSED",
+        "wall_seconds": 30.3
+      },
+      {
+        "bytes": 2709,
+        "frame_sha256": "99eba66c7738703f6e58a3894f7856d5e462b8c098e2986f3c17789969f19079",
+        "run": 8,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 27.2
+      },
+      {
+        "bytes": 2709,
+        "frame_sha256": "8af02929eb4d120e008c63effef73b25f0abc0bf3162e2548f97b3acecce2b5c",
+        "run": 9,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 30.5
+      },
+      {
+        "bytes": 2709,
+        "frame_sha256": "1f8b0b19b2746c19ef72d53a3157d9b14b05d215a469dd6f051a304e03f84ba2",
+        "run": 10,
+        "sha256": "3c36f30690cec1b920cd48e22f239db70f7909289145f8a1da4eba1b352bb049",
+        "verdict": "DUMPED",
+        "wall_seconds": 29.7
+      }
+    ],
+    "refused": 1,
+    "runs": 10,
+    "stable": true,
+    "wall_seconds_max": 36.2,
+    "wall_seconds_min": 22.2
+  },
+  "trumble_determinism": {
+    "breeding_inside_tick_budget": false,
+    "breeding_note": "OOTrumble.m:623-627 sets readyToSpawn only after a trumble has eaten 10 accumulated units of CARGO (trumbleAppetiteAccumulator > 10.0) while full-grown and comfortable, and the feeding branch at :585-612 iterates [player cargo] - the cargo PODS, of which a docked player has none. MEASURED: with 8 live trumbles the count did not move across 15s of game time. The dump carries trumble_count_stable_across_ticks so a future engine that DID breed here goes red instead of drifting.",
+    "counts_matching_checksum": [
+      0
+    ],
+    "deterministic_award_prefix": 4,
+    "deterministic_award_prefix_source": "PLAYER_MAX_TRUMBLES/6 (PlayerEntity.h:312 = 24). PlayerEntity.m:11531's award gate takes its unconditional LEFT branch below that threshold and consults ranrot_rand() above it.",
+    "measured_award_series_at_seed_20260918": [
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        6,
+        7,
+        7,
+        7,
+        7,
+        8,
+        8,
+        8
+      ],
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        5,
+        6,
+        6,
+        7,
+        8,
+        8,
+        8,
+        8,
+        8
+      ],
+      [
+        1,
+        2,
+        3,
+        4,
+        5,
+        5,
+        6,
+        6,
+        6,
+        6,
+        6,
+        7,
+        8,
+        8
+      ]
+    ],
+    "note": "The save's trumble count is pinned by its own anti-cheat checksum, not by the integer it stores: PlayerEntity.m:12112-12125 SEARCHES 1..23 for a count matching the checksum when they disagree. Recomputing munge_checksum (legacy_random.c:48-57) over this commander's name/credits/kills authorises EXACTLY n=0 and no other n in 0..23.",
+    "saved_checksum": 20936,
+    "saved_count": 0,
+    "verdict": "Three runs at the IDENTICAL seed agree on the first four awards and diverge from the fifth. A fixed seed pins the RANROT SEQUENCE but not how far into it a run has advanced, because the frames burned before the draw depend on render speed - the same shape bead oo-izi measured for system.addShips. The scenario therefore stops at the measured prefix rather than coarsening the dump to hide the divergence. THE SEAM THAT WOULD BE NEEDED to pin a larger population is a JS-reachable way to seed or step the engine's RANROT stream at a known point; inventing one is out of scope for a golden scenario."
+  }
+}

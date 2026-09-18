@@ -258,7 +258,9 @@ COMPONENT = {2: ("Pirate attacks; the target registers an attacker", "the damage
 def sweep_component():
     return [(f"Component scenario S{i}: {t}",
              f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way s1_police_kills_pirate.feature is written (docs/stories/S1-police-kills-pirate.md, docs/phases/0-component-tier.md), using only steps that already exist in the step library (tests/component/README.md). Catches: {why}. Assert 'within N ticks' and counts, never exact positions. If the scenario needs a step that does not exist, stop and report blocked (new interface, ADR-0018 §5).",
-             [f"python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q", f"for i in 1 2 3; do python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q || exit 1; done"],
+             # One run; green means done (Jon, 2026-09-18). The former single-run-plus-three-run-loop
+             # made an accept pay for four real-time game runs; flakiness is Jon's to judge by hand.
+             [f"python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q"],
              ["0.13b"], "upstream/oolite/tests/component/features/s1_police_kills_pirate.feature", 2) for i, (t, why) in COMPONENT.items()]
 
 def sweep_js_retarget():
