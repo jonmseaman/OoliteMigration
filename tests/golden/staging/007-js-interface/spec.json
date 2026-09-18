@@ -1,0 +1,13 @@
+{
+  "scenario": "007-js-interface",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+  "oxp": "upstream/oolite-tests/test-oxps/JSInterfaceTests/JavaScript Interface Tests.oxp",
+  "oxp_dirname": "JavaScript Interface Tests.oxp",
+  "expected_nomanifest_errors": 2
+}
