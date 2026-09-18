@@ -1,0 +1,30 @@
+{
+  "ANSWER": "NO. Not one float moved. Zero fields differ at 15 decimal places.",
+  "WHY_THE_NULL_RESULT_not_speculation": "Disassembled both binaries with objdump: NEITHER contains a single vfmadd/vfmsub/vfnmadd/vfnmsub instruction (0 in each; 2224 and 1836 scalar mulsd respectively). clang here targets x86_64-w64-windows-gnu with no -march/-mtune anywhere in the 243-entry compile database, i.e. baseline x86-64, which predates FMA3. There was nothing to fuse, so turning fusion off changed nothing.",
+  "all_four_dumps_identical": true,
+  "also_equals_oo_ss8_rawA": true,
+  "distinct_float_values": 6,
+  "fields_compared": 122,
+  "fields_that_moved": [],
+  "float_fields": 21,
+  "max_absolute_difference": 0.0,
+  "max_relative_difference": 0.0,
+  "method": "Two builds of the SAME source tree: the shared build/meson_test (242 TUs, 0 carrying -ffp-contract=off) and this bead's worktree build (243 TUs, 243/243 carrying it at effective -O2). Two independent game runs from each, dumped at --quant-decimals 15 (raw doubles), compared FULL PRECISION before any quantisation.",
+  "positive_control_the_flag_DOES_work": {
+    "clang -O2 (default arch) -ffp-contract=fast": "0 vfmadd",
+    "clang -O2 (default arch) -ffp-contract=off": "0 vfmadd",
+    "clang -O2 -march=x86-64-v3 -ffp-contract=fast": "1 vfmadd",
+    "clang -O2 -march=x86-64-v3 -ffp-contract=off": "0 vfmadd",
+    "conclusion": "The flag is load-bearing on an FMA-capable target and inert on this one. So the null result is a property of the TARGET, not of the flag or of the measurement.",
+    "note": "A null result is only interpretable with a control showing the instrument can see a difference. Same clang, a*b+c read from parameters:"
+  },
+  "quantisation_question_STILL_UNSETTLED": "oo-ss8 could not locate a float noise floor because every value is an exact binary fraction needing at most 7 decimals, so toFixed(15) rounded nothing. This bead hoped two genuinely different builds would supply variation to measure. They did not: the two builds produce bit-identical output, so there is STILL no measured noise floor and 3 decimals remains a justified choice rather than a measured one. Nothing here narrows it. What would: an FMA-capable -march, a second platform, or a scenario that integrates motion.",
+  "sha256": {
+    "post-raw-A.json": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769",
+    "post-raw-B.json": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769",
+    "pre-raw-A.json": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769",
+    "pre-raw-B.json": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769"
+  },
+  "what": "Does -ffp-contract=off change scenario 001's dump? (bead oo-5ggu)",
+  "what_this_means_for_the_policy": "The -ffp-contract=off pin is INSURANCE, not a fix for this scenario on this host. It becomes load-bearing the moment anyone builds with -march=x86-64-v3 or newer, or on Phase 5's macos-arm64 (AArch64 has FMADD in its base ISA and clang contracts by default). Keeping it unconditionally is correct precisely because its absence is invisible here."
+}

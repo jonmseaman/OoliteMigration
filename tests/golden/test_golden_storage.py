@@ -236,10 +236,19 @@ def test_stored_golden_001_provenance_is_on_policy():
 def test_provenance_records_OBSERVED_flags_not_the_policy_it_wishes_for():
     """A provenance file that asserts compliance by construction is worse than none.
 
-    The shared build that produced this golden predates the -ffp-contract=off pin, so its
-    build_flags block must say so - `verified: false` with a `detail` naming the missing flag.
-    This test exists so the finding cannot be lost by someone tidying the provenance up, and so
-    that a later rebuild flipping it to verified:true is a deliberate, visible change.
+    HISTORY (oo-ss8 -> oo-5ggu). oo-ss8 blessed this golden from the shared build, which predated
+    the -ffp-contract=off pin, so its build_flags block honestly recorded `verified: false` with a
+    detail naming the missing flag, and this test pinned that finding so it could not be quietly
+    tidied away. oo-5ggu then built a compliant tree (243/243 TUs carrying the flag at an
+    effective -O2) and RE-BLESSED scenario 001 against it, so the finding is now the opposite one
+    and this test pins THE NEW TRUTH instead.
+
+    What it still protects is unchanged and is the whole point: the block must report what
+    check_build_flags OBSERVED in a real compile_commands.json, never the policy constants. So
+    `verified: true` is only accepted alongside the checker's own 'compliant' verdict and a
+    translation-unit count above its vacuity floor - a hand-edited `"verified": true` with a
+    plausible sentence beside it does not pass. The unverified branch is kept live for any golden
+    blessed from a build whose database was unavailable: it must still name the offending flag.
     """
     prov = json.load(open(os.path.join(os.path.dirname(GOLDEN_001), "provenance.json"),
                           encoding="utf-8"))
@@ -247,7 +256,19 @@ def test_provenance_records_OBSERVED_flags_not_the_policy_it_wishes_for():
     assert "verified" in flags, "provenance does not say whether the flags were verified at all"
     assert isinstance(flags["detail"], str) and flags["detail"], \
         "provenance records no detail about the build flags"
-    if not flags["verified"]:
+    if flags["verified"]:
+        assert flags["detail"] == "compliant", (
+            "verified=true must carry check_build_flags' own 'compliant' verdict, not prose: %r"
+            % flags["detail"])
+        assert flags.get("translation_units", 0) >= cbf.MIN_TUS, (
+            "verified against only %r translation units; below the %d vacuity floor, so "
+            "'every TU carries the flag' would be an almost-empty claim"
+            % (flags.get("translation_units"), cbf.MIN_TUS))
+        assert set(flags.get("effective_optimization_levels") or {}) == {cbf.PINNED_O}, (
+            "verified=true but the EFFECTIVE -O levels observed were %r; the effective level is "
+            "the LAST -O on the line, and meson appends -O0 after -O2 unless -Ddebug=false"
+            % (flags.get("effective_optimization_levels"),))
+    else:
         assert cbf.REQUIRED_FP in flags["detail"] or "-O" in flags["detail"], \
             "flags are unverified but the reason does not name a flag: %r" % flags["detail"]
 
