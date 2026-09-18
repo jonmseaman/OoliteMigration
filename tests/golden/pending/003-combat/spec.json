@@ -1,0 +1,17 @@
+{
+  "scenario": "003-combat",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "ticks": 64,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+  "attacker_key": "[viper]",
+  "victim_key": "[adder]",
+  "attacker_position": [0.0, 0.0, 2000.0],
+  "victim_position": [0.0, 0.0, 3200.0],
+  "strikes": 2,
+  "strike_damage": 60.0,
+  "strike_range": 2500.0
+}

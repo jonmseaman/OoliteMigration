@@ -1,0 +1,21 @@
+{
+  "build_flags": {
+    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
+    "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
+    "effective_optimization_levels": {
+      "-O2": 242
+    },
+    "policy_fp_contract": "-ffp-contract=off",
+    "policy_optimization": "-O2",
+    "translation_units": 242,
+    "verified": false
+  },
+  "commit": "0ebcc8c769601dc4c03974e115976cf41fa1cb17",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/launch_dock.py",
+  "note": "Scenario 001 launch/dock (bead oo-jor): player launches, flies 24 ticks of game time, docks. The system populator is switched off (system.setPopulator(key,null), 36 settings) and traffic removed, so the world is the system's own fixed entities plus the player - the smallest reproducible world. Evidence block carries ENGINE-dispatched shipWillLaunchFromStation/shipDockedWithStation counts. See tests/golden/scenarios/001-launch-dock/README.md.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "001-launch-dock"
+}

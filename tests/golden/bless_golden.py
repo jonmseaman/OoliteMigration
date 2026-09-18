@@ -111,6 +111,11 @@ def main(argv=None):
                              "compile_commands.json is read so provenance records the flags "
                              "actually used rather than the flags the policy wants")
     parser.add_argument("--note", default="")
+    parser.add_argument("--dump-tool", default="tests/golden/dump/run_dump.py",
+                        help="the tool that PRODUCED this dump, recorded in provenance. A second "
+                             "scenario driven by a different script (e.g. launch_dock.py) must "
+                             "say so, or provenance confidently names the wrong producer and a "
+                             "future reader cannot reproduce the golden.")
     parser.add_argument("--force", action="store_true",
                         help="overwrite an EXISTING golden value. Refused without this flag: "
                              "silently re-blessing a golden that a run disagreed with is how a "
@@ -144,7 +149,7 @@ def main(argv=None):
         "compiler": compiler_version(),
         "os": platform_mod.platform(),
         "commit": git("rev-parse", "HEAD"),
-        "dump_tool": "tests/golden/dump/run_dump.py",
+        "dump_tool": args.dump_tool,
         "note": args.note,
     }
     with open(os.path.join(target, "provenance.json"), "w", encoding="utf-8",

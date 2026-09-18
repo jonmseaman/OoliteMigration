@@ -1,0 +1,126 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "md5": "c5d52278415bb1491b5bd9d6c7caa369",
+      "note": "64x64 luminance grid. Recorded for provenance, NOT used as a gate: llvmpipe is not bit-reproducible across runs, so the frame is compared with the MEASURED tolerance and byte-hashing it would make the gate flake on renderer noise. THE ASYMMETRY IS DELIBERATE.",
+      "sha256": "787691a527ae7bac972ce74a730386ddf26641b12b7b9ebba3a7f5fbb817a66b"
+    },
+    "state.json": {
+      "bytes": 2851,
+      "md5": "f9c9e6e2ecf2254bb1c87337d0035202",
+      "note": "the deterministic dump, BYTE-HASHED. This is the INDEPENDENT WITNESS: a comparison of the golden against a copy of itself moves BOTH sides when the golden is edited, so a one-quantised-unit perturbation is invisible to it. Provenance is a separate file the mutant does not touch (bead oo-gxp).",
+      "sha256": "ab0b072c30f05e5373247fbed3d2a1eadb0fe955a7c1096b88f495cc5e8b8aa2"
+    }
+  },
+  "blessed_utc": "2026-09-18T13:40:29Z",
+  "commit": "0a66c8b04cd972f2708945ecc69a7f56799f3f72",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/constrictor_save.py",
+  "evidence_checker": "tests/golden/check_constrictor_evidence.py",
+  "frame_control": {
+    "control_fresh_game_distance": 0.06284543504901961,
+    "control_fresh_game_ratio": 14.35724,
+    "control_method": "the IDENTICAL scenario - same staging, same seed, same ticks, same dump - run with a DIFFERENT checklist save (ThargoidPlans.oolite-save) and with NO -load at all, so the ONLY variable is which commander state was loaded.",
+    "control_thargoidplans_distance": 0.01706495098039216,
+    "control_thargoidplans_ratio": 3.89852,
+    "same_scene_distance": 0.0015340073529411765,
+    "same_scene_ratio": 0.35044,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9; noise floor 0.002541, weakest real signal 0.007541). USED AS MEASURED, never adjusted.",
+    "verdict": "two launches of the same scenario differ by 0.001534 (0.35x the tolerance) while loading a different checklist save moves the frame 0.017065 (3.90x) and a fresh game 0.062845 (14.36x). An 11-fold noise-to-signal separation against the nearest control arm."
+  },
+  "landing_rehearsal": {
+    "note": "both the scenario script and the gate lines search goldens/windows-x64/013-constrictor/ FIRST and fall back to tests/golden/pending/013-constrictor/ through the IDENTICAL idiom, so landing is a pure `git mv` with no code change. See LANDING.md.",
+    "performed": true
+  },
+  "mission_state_differential": {
+    "control_fresh_game": {
+      "commander_name": "Jameson",
+      "fields_compared": 8,
+      "fields_moved": 6,
+      "live_mission_handlers": [],
+      "mission_conhunt": null,
+      "mission_conhunt_present": false,
+      "mission_script_loaded": false,
+      "mission_variable_names": [],
+      "system_id": 7,
+      "system_name": "Lave"
+    },
+    "control_thargoidplans": {
+      "commander_name": "ThargoidPlans",
+      "fields_compared": 8,
+      "fields_moved": 7,
+      "live_mission_handlers": [],
+      "mission_conhunt": "MISSION_COMPLETE",
+      "mission_conhunt_present": true,
+      "mission_script_loaded": true,
+      "mission_variable_names": [
+        "CT_thargonCount",
+        "conhunt",
+        "snoopers_CRCNews",
+        "snoopers_usedSlots",
+        "trumbles"
+      ],
+      "system_id": 147,
+      "system_name": "Quedle"
+    },
+    "subject": {
+      "commander_name": "Constrictor",
+      "live_mission_handlers": [
+        "guiScreenChanged",
+        "missionScreenOpportunity",
+        "systemWillPopulate"
+      ],
+      "mission_conhunt": null,
+      "mission_conhunt_present": false,
+      "mission_script_loaded": true,
+      "mission_variable_names": [
+        "CT_thargonCount",
+        "snoopers_CRCNews",
+        "snoopers_usedSlots",
+        "trumbles"
+      ],
+      "system_id": 240,
+      "system_name": "Esgebi"
+    },
+    "verdict": "7 of 8 mission-state fields move against the ThargoidPlans arm and 6 of 8 against a fresh game. mission_conhunt itself does NOT move against the fresh arm (both absent), which is exactly why live_mission_handlers is required alongside it; the checker REJECTS both control dumps with rc=1."
+  },
+  "note": "Scenario 013 (bead oo-5h8e): upstream/oolite-tests/Checklist-files/Missions/Constrictor.oolite-save - a 1.75-era checklist save - is loaded via the game's own -load argument, the game runs 24 ticks of game time in Esgebi (system ID 240, galaxy 1) under seed 20260918, and the dump carries mission_variables BOTH at top level and inside evidence. MEASURED FINDING: this fixture is PRE-mission - mission_conhunt is ABSENT because oolite-constrictor-hunt-mission.js sets conhunt only when player.score > 255 and this commander's ship_kills is exactly 255. Absence alone is a weak assertion, so it is paired with the BEHAVIOURAL consequence: the mission script still has all three event handlers live, which a MISSION_COMPLETE save (deleted in _cleanUp()) and a fresh game (script never built) both lack. provenance.scenario_knobs records the determinism knobs this golden was BLESSED with, and the acceptance gate asserts spec.json still agrees with them, so re-blessing with a new seed stays legal while silent drift between spec and golden is fatal.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "save_fixture": {
+    "bytes": 25826,
+    "note": "the save-format compatibility contract this scenario also pins",
+    "path": "upstream/oolite-tests/Checklist-files/Missions/Constrictor.oolite-save",
+    "sha256": "9b14df63e0d736d70fa7018094ef342d2bc195978947f13fcbf8fd02bb230f96",
+    "written_by_version": "1.75"
+  },
+  "scenario": "013-constrictor",
+  "scenario_knobs": {
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "system_id": 240,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": {
+    "differed": 0,
+    "distinct_dump_digests": [
+      "f9c9e6e2ecf2254bb1c87337d0035202"
+    ],
+    "dump_bytes": [
+      2851
+    ],
+    "dumps_written": 10,
+    "failed": 0,
+    "note": "10/10 runs exited 0 and wrote a BYTE-IDENTICAL dump on 2026-09-18. The harness looks for the dump ON DISK rather than inferring it from the return code, so a run that wrote a correct dump but exited nonzero would be counted and flagged, not hidden.",
+    "rc_nonzero_but_dumped": 0,
+    "rc_zero": 10,
+    "refused": 0,
+    "runs": 10,
+    "wall_seconds_max": 44,
+    "wall_seconds_min": 28
+  }
+}

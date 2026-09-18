@@ -1,0 +1,14 @@
+{
+  "scenario": "001-launch-dock",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+  "pose": {
+    "position": [0.0, 0.0, 0.0],
+    "orientation": [1.0, 0.0, 0.0, 0.0]
+  }
+}

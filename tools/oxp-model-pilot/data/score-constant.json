@@ -1,0 +1,25 @@
+{
+  "label": "constant-answer stub (always false-positive)",
+  "audited": 61,
+  "scored": 61,
+  "matrix": {
+    "tp": 0,
+    "fp": 0,
+    "tn": 50,
+    "fn": 11
+  },
+  "agreement": 0.819672131147541,
+  "precision": 0,
+  "recall": 0,
+  "control_recall": 0,
+  "controls": 11,
+  "control_hits": 0,
+  "classes_predicted": [
+    "false-positive"
+  ],
+  "passed": false,
+  "failures": [
+    "CONSTANT-ANSWER CLASSIFIER: every prediction is [\"false-positive\"] - it scores 82.0% agreement on a 82.0%-negative population while having learned nothing",
+    "CONTROL RECALL 0.0% < required 50.0%: the classifier missed known-real Mozilla constructs, so high agreement is an artifact of the negative-heavy population"
+  ]
+}

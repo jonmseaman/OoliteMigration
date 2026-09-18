@@ -1,0 +1,67 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "note": "64x64 luminance grid; compared with a TOLERANCE, never byte-wise, because llvmpipe is not bit-reproducible across runs",
+      "sha256": "c9b2630594fc1a4e9eaa01cfd7bbd2fbfb95d8467a6b01b8cc06cae8773af9ff"
+    },
+    "state.json": {
+      "bytes": 2438,
+      "md5": "32cc0e7f17bd6c4cc5b9e9db359eebd7",
+      "sha256": "621d78fb6d5dec123bcff4dbbf6fe83e2428509a1be73f0c45ff3adbe1dce891"
+    }
+  },
+  "blessed_from_commit": "237ff418ae71c2d127f7a83125d70b471e4a852a",
+  "blessed_utc": "2026-09-18T12:35:54Z",
+  "dump_tool": "tests/golden/png_test_suite.py",
+  "evidence_checker": "tests/golden/check_png_evidence.py",
+  "frame_control": {
+    "control_method": "the IDENTICAL scenario - same staging, same world, same ticks, same dump - run with --blank-screen, i.e. the same mission screen opened with NO background image, so the ONLY variable is whether the decoded PNG reaches the screen. The image-absent run recorded png_texture_uploads=[] , which is the independent, non-graphical confirmation that the backdrop is decoded ONLY when the screen asks for it.",
+    "oxp_absent_distance": 0.13877719056372548,
+    "oxp_absent_ratio": 31.704061858878728,
+    "same_scene_distance": 0.0005313648897058823,
+    "same_scene_ratio": 0.12139188914575849,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9; noise floor 0.002541, weakest real signal 0.007541). USED AS MEASURED, never adjusted.",
+    "verdict": "the frame moves 0.138777 (31.7x the tolerance) when the decoded PNG is absent, while two independent launches of the real scenario differ by 0.000531 (0.121x). A 261-fold separation, both values well inside bead oo-ae9's measured discrimination band."
+  },
+  "landing_rehearsal": {
+    "note": "both the gate and the offline tests search goldens/windows-x64/010-png-test-suite/ FIRST and fall back to tests/golden/pending/010-png-test-suite/, so landing is a pure `git mv` with no code change. See LANDING.md.",
+    "performed": true
+  },
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "010-png-test-suite",
+  "scenario_knobs": {
+    "allowed_oxp_standards_errors": 2,
+    "expected_ihdr_dimensions": [
+      1024,
+      512
+    ],
+    "expected_texture_key": "Images/oolite_material_test_suite_backdrop.png",
+    "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+    "oxp_source": "upstream/oolite-tests/test-oxps/PNGTestSuite/PNGTestSuite.oxp",
+    "png_test_count": 153,
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": {
+    "distinct_dump_digests": [
+      "32cc0e7f17bd6c4cc5b9e9db359eebd7"
+    ],
+    "distinct_frame_grid_digests": 10,
+    "dump_bytes": [
+      2438
+    ],
+    "dumps_written": 10,
+    "note": "10/10 runs exited 0 and wrote a BYTE-IDENTICAL dump. The frame grids are all distinct, as expected: llvmpipe is not bit-reproducible, which is why the grid is compared with the measured tolerance and is NOT part of state.json.",
+    "rc_nonzero_but_dumped": 0,
+    "rc_zero": 10,
+    "runs": 10,
+    "wall_seconds_max": 22.8,
+    "wall_seconds_min": 19.4
+  }
+}
