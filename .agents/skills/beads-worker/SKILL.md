@@ -214,6 +214,27 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   *string literal* inside a mutant-building test is fine, a live code path is not. Tell workers to
   mutate a throwaway copy under `$LOCALAPPDATA/Temp`, never the real file — restore-on-exit never
   runs when the process is killed.
+- **`gc.sh` and `next-bead.sh` are blind to live workers — check before you act on them.** Both
+  reason from bead status and worktree state on disk, and neither can tell "abandoned by a dead
+  worker" from "in active use by a live one". Run mid-cycle, `gc.sh` harvested three worktrees
+  belonging to *running* workers and `next-bead.sh` re-claimed two beads already in flight — a
+  dispatch straight from that output would have put two workers on one bead. Worse, a mid-flight
+  harvest commits whatever the worktree holds **at that instant**, which for a worker running a
+  mutation harness is a disabled gate (see the sabotage bullet above). Before acting on either
+  script's output, call `delegate_task action='list'` and treat every bead whose worker is
+  `status='running'` as off limits; audit any `uncommitted work harvested` commit for disabled
+  predicates before it can reach an accept. Mutating only throwaway copies under
+  `$LOCALAPPDATA/Temp` makes a worktree safe to harvest at any instant.
+- **Harvest can also commit a file into the guarded `goldens/` tree.** `harvest.sh` commits
+  whatever is on disk and knows nothing about protected paths. Bead `oo-qd6` timed out leaving a
+  3-byte `{}` stub at `goldens/windows-x64/008-material-test-suite/state.json` — a mutation probe
+  of the gate's guarded-path fallback — and it was committed. `guardrails.sh` caught it (`FAIL`,
+  "is under a protected golden path and is changed and has no re-bless approval"), but acceptance
+  replays the *bead's own* lines, so a bead that never invokes guardrails would have merged it.
+  After harvesting any timed-out bead run `git diff --name-only main...HEAD | grep ^goldens/` and
+  `bash tools/guardrails.sh` in the worktree before accepting. Before deleting such a file, `cmp`
+  it against the staged copy under `tests/golden/pending/` and read its contents — a stub is safe
+  to drop, the real artifact is not.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
