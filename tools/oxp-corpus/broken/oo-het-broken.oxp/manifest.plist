@@ -1,0 +1,10 @@
+{
+	identifier = "oolite.oxp.oo-het.broken";
+	version = "1.0";
+	title = "oo-het deliberately broken expansion";
+	category = "Debug";
+	required_oolite_version = "1.80";
+	author = "Oolite migration fleet (bead oo-het)";
+	license = "same as the repository";
+	description = "A red-proof fixture. Its manifest is VALID on purpose, so the game accepts it into sSearchPaths and the load check's positive evidence (P5) holds - the failure must come from the ERROR scan, not from the expansion being invisible. Its shipdata.plist is malformed and its world script calls a method that does not exist.";
+}
