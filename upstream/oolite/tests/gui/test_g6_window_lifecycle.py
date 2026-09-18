@@ -340,8 +340,27 @@ class WindowWitness(ScreenWitness):
         return int(float(width)), int(float(height))
 
     def game_is_fullscreen(self):
-        """``[[UNIVERSE gameController] inFullScreenMode]`` - Universe.m:4541."""
-        return self.evaluate("oolite.gameSettings.gameWindow.fullScreen").strip() == "true"
+        """``[[UNIVERSE gameController] inFullScreenMode]`` - Universe.m:4541.
+
+        MEASURED, not assumed: this property comes back over the console as ``0``/``1``, not
+        as ``false``/``true``. It is an ObjC BOOL boxed with ``+numberWithBool:``, and
+        ``String()`` of the resulting JS value is the number. The first spelling of this method
+        compared against ``"true"`` and therefore answered False for a genuinely fullscreen
+        game - the fullscreen phase failed while the game's own log said "Requested a new
+        surface of 5120 x 1392, fullscreen." So every accepted spelling is listed explicitly
+        and anything else RAISES rather than being read as False: a silent False here is a test
+        that can never see a successful toggle however well the game behaves.
+        """
+        raw = self.evaluate("oolite.gameSettings.gameWindow.fullScreen").strip().lower()
+        if raw in ("1", "true"):
+            return True
+        if raw in ("0", "false"):
+            return False
+        raise ScreenWitnessError(
+            f"oolite.gameSettings.gameWindow.fullScreen answered {raw!r}, which is neither a "
+            "boolean nor 0/1. Treating an unrecognised answer as False would make the "
+            "fullscreen assertion unable to pass however well the game behaved."
+        )
 
     def game_clock(self):
         """UNIVERSE's own clock, which only advances while the run loop steps frames."""
@@ -974,6 +993,38 @@ def test_the_fullscreen_flag_is_only_assigned_by_the_toggle_at_runtime():
             f"an assignment to fullScreen that is neither the setter nor a start-up read: "
             f"{line!r}. G6 attributes a mid-run change of this flag to the F12 toggle."
         )
+
+
+@pytest.mark.offline
+def test_the_fullscreen_flag_parse_accepts_the_form_the_game_really_sends():
+    """The 0/1 spelling must be accepted, and an unrecognised answer must RAISE, not be False.
+
+    This guard exists because the bug it covers actually happened on a real run:
+    ``oolite.gameSettings.gameWindow.fullScreen`` is an ObjC BOOL boxed with
+    ``+numberWithBool:``, so it arrives as ``0``/``1``, and a parse comparing against ``"true"``
+    answered False for a game whose own log said "Requested a new surface of 5120 x 1392,
+    fullscreen." A parse that reads anything unexpected as False makes the whole fullscreen
+    phase unpassable, so the failure mode is pinned here rather than left to a live run to
+    rediscover.
+    """
+    class _Canned(WindowWitness):
+        def __init__(self, answer):
+            self._answer = answer  # no socket: only the parse is under test
+
+        def evaluate(self, expression, timeout=15):
+            return self._answer
+
+    assert _Canned("1").game_is_fullscreen() is True, "the game's real spelling must parse"
+    assert _Canned("0").game_is_fullscreen() is False
+    assert _Canned("true").game_is_fullscreen() is True, "a boolean spelling must still work"
+    assert _Canned("false").game_is_fullscreen() is False
+    assert _Canned(" 1 \n").game_is_fullscreen() is True, "whitespace must not defeat it"
+    with pytest.raises(ScreenWitnessError) as caught:
+        _Canned("undefined").game_is_fullscreen()
+    assert "neither a boolean nor 0/1" in str(caught.value), (
+        "an unrecognised answer must be reported, not silently read as 'not fullscreen' - that "
+        "is exactly the shape that made the fullscreen assertion unpassable"
+    )
 
 
 @pytest.mark.offline
