@@ -328,6 +328,28 @@ def check(data, label):
             "EMPTY by design - it has a manifest - so any such line is a finding, not noise."
             % (sigs,))
 
+    # 6b. NO COPY OF THE EXPANSION WAS REJECTED AS A DUPLICATE IDENTIFIER.
+    # Checked separately from the standards count because the engine reports it on a DIFFERENT
+    # channel: with the expansion resolvable at two search paths, ResourceManager.m:719-724 logs
+    # [oxp.duplicate], validateManifest: returns NO, and the path is dropped - while
+    # oxp_standards_errors stays 0. Measured directly: the --stage-double arm first produced a dump
+    # IDENTICAL to the golden, because both copies were byte-identical and load order silently
+    # picked one. A golden must never be blessed from a state where which copy is live was decided
+    # by directory ordering.
+    dupes = ev.get("oxp_duplicate_identifier_lines")
+    if not isinstance(dupes, list):
+        problems.append(
+            "evidence.oxp_duplicate_identifier_lines is %r, expected a list. The field must be "
+            "PRESENT even when empty: an absent field is indistinguishable from a runner that "
+            "never looked at the [oxp.duplicate] channel." % (dupes,))
+    elif dupes:
+        problems.append(
+            "evidence.oxp_duplicate_identifier_lines is %r (expected []). The expansion resolved at "
+            "more than one search path, so one copy was REJECTED as a duplicate identifier and "
+            "which copy went live was decided by load order, not by the scenario. This state leaves "
+            "oxp_standards_errors at 0 and, for identical copies, an unchanged dump - no other "
+            "check here can see it." % (dupes,))
+
     # --- the dump's own shape ------------------------------------------------------------------
     ents = data.get("entities")
     if not isinstance(ents, list) or len(ents) < MIN_ENTITIES:

@@ -2,14 +2,14 @@
   "artifacts": {
     "frame.grid": {
       "bytes": 4096,
-      "md5": "5613de2c9895997136e284c24e11b487",
+      "md5": "a4ac1a2457fb071a07c3c5d02beac0ab",
       "note": "64x64 luminance grid; compared with a MEASURED TOLERANCE, never byte-wise, because llvmpipe is not bit-reproducible across runs (bead oo-ae9). Deliberately NOT part of state.json.",
-      "sha256": "2f32a532e68a86c314f2f2fe88c971817988618efdd2582be600ffb0bc843165"
+      "sha256": "21cd4f40c0393e246e4064ca26b45e80c18f89228f9d2fc62aea745131bfa335"
     },
     "state.json": {
-      "bytes": 3353,
-      "md5": "56d9f4e675fdc08a19d98589e10c9fe7",
-      "sha256": "ec7ffa65e8ad41d34939304ea1a15d4132a47e642855fb965eae95d9750663a2"
+      "bytes": 3389,
+      "md5": "ca2df8e9d5c9aa322030b6e2d93e1a8f",
+      "sha256": "ae8803b7d260a1a5b5aeef96d7f2e83bf4fdcfd638d8bc247c58c5c0fcdc7282"
     }
   },
   "blessed_from_commit": "",
@@ -26,20 +26,27 @@
     ]
   },
   "dump_tool": "tests/golden/material_test_suite.py",
+  "duplicate_identifier_finding": {
+    "fix": "Added evidence.oxp_duplicate_identifier_lines, read from the engine's own [oxp.duplicate] channel, asserted empty in both the runner (DEFENCE 7) and check_material_evidence.py (6b), with an absent field failing as loudly as a non-empty one. The mutant now goes RED naming both values. Note this STRENGTHENED the gate rather than adjusting the mutant to match it.",
+    "root_cause": "ResourceManager.m:719-724. With the expansion resolvable at two search paths the engine logs [oxp.duplicate] and validateManifest: returns NO, so the :661 check fails and :663 never adds the path. That path emits NO [oxp-standards.error] line at all, so a standards-count predicate is structurally blind to it. Compounding it, load order decided the winner: 'Material Test Suite Copy.oxp' sorts before 'Material Test Suite.oxp' (space < '.'), so the COPY went live and the ORIGINAL was rejected - and because the copies were byte-identical, every field in the dump was unchanged.",
+    "summary": "The --stage-double mutant initially SURVIVED: it produced a dump byte-identical to the golden with oxp_standards_errors still 0. Not an equivalent mutant - a BLIND GATE."
+  },
   "evidence_checker": "tests/golden/check_material_evidence.py",
   "frame_control": {
     "control_method": "Three arms, all produced by THIS scenario's own code (--no-model / --empty-stage / --no-oxp write the frame grid before the evidence gate, so a REFUSED run still yields its frame). The narrow arm is --no-model: the SAME expansion staged, the SAME backdrop, the SAME screen, the SAME ticks - the ONLY variable is whether a material-bearing model is drawn. Its texture-upload list independently records the backdrop alone, the two oolite_shader_test_suite_* maps never decoded, which is the non-graphical confirmation.",
-    "empty_stage_distance": 0.210488,
-    "empty_stage_ratio": 48.08660951734229,
-    "no_model_distance": 0.072411,
-    "no_model_ratio": 16.54250827486732,
-    "oxp_absent_distance": 0.210506,
-    "oxp_absent_ratio": 48.09072167086796,
-    "same_scene_distance": 0.000514,
-    "same_scene_ratio": 0.11742482845537007,
+    "empty_stage_distance": 0.210514,
+    "empty_stage_ratio": 48.09254929465715,
+    "no_model_distance": 0.072457,
+    "no_model_ratio": 16.55301711165515,
+    "no_model_vs_oxp_absent_distance": 0.138578,
+    "oxp_absent_distance": 0.210503,
+    "oxp_absent_ratio": 48.09003631194701,
+    "oxp_absent_vs_empty_stage_distance": 0.001729,
+    "same_scene_distance": 0.000568,
+    "same_scene_ratio": 0.1297612890323934,
     "tolerance": 0.004377268476873758,
     "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9; noise floor 0.002541, weakest real signal 0.007541). USED AS MEASURED, never adjusted.",
-    "verdict": "MATERIALS DO MOVE THE FRAME HASH, far beyond the instrument's noise. Two independent launches of the identical scene differ by 0.000514 (0.12x tolerance); removing ONLY the material-bearing model, with everything else held constant, moves the frame 0.072411 (16.54x) - a 141-fold separation between noise and signal attributable to the MATERIAL MAPS specifically rather than to the expansion's presence. Removing the expansion entirely moves it 0.210506 (48.09x). --no-oxp and --empty-stage agree with each other to 0.001715 (0.39x, WITHIN tolerance), which is the expected cross-check: both render the same expansion-less screen."
+    "verdict": "MATERIALS DO MOVE THE FRAME HASH, far beyond the instrument's noise. Two launches of the identical scene differ by 0.000568 (0.13x tolerance). Removing ONLY the material-bearing model - same expansion staged, same backdrop, same screen, same ticks - moves the frame 0.072457 (16.55x), a 128-fold separation between noise and signal attributable to the MATERIAL MAPS specifically rather than merely to the expansion's presence. Removing the expansion entirely moves it 0.210503 (48.09x). Cross-checks: --no-oxp and --empty-stage agree to 0.001729 (0.40x, WITHIN tolerance) as they must, both rendering the same expansion-less screen; and no_model vs no_oxp differ by 0.138578 (31.66x), confirming the two arms are distinct states rather than the same blank frame."
   },
   "landing_rehearsal": {
     "note": "Both the runner and the offline tests search goldens/windows-x64/008-material-test-suite/ FIRST and fall back to tests/golden/pending/008-material-test-suite/, so landing is a pure `git mv` with no code change - the same shape scenarios 010 and 012 use. See LANDING.md.",
@@ -70,19 +77,19 @@
   "stability": {
     "broken": 0,
     "distinct_dump_digests": [
-      "56d9f4e675fdc08a19d98589e10c9fe7"
+      "ca2df8e9d5c9aa322030b6e2d93e1a8f"
     ],
     "distinct_frame_grid_digests": 10,
     "dump_bytes": [
-      3353
+      3389
     ],
     "dumps_written": 10,
-    "note": "10/10 runs exited 0 and wrote a BYTE-IDENTICAL dump; the blessed state.json has that same digest. stdout+stderr were captured for EVERY run regardless of exit code and each run was classified by what it PRODUCED (DUMPED/REFUSED/BROKEN), never filtered on returncode. The 10 frame grids are all distinct, as expected: llvmpipe is not bit-reproducible, which is why the grid is compared with the measured tolerance and is NOT in state.json. Harness: tools/oo-qd6-stability.sh.",
+    "note": "10/10 runs exited 0 and wrote a BYTE-IDENTICAL dump whose digest equals the blessed state.json. stdout+stderr were captured for EVERY run regardless of exit code and each run was classified by what it PRODUCED (DUMPED/REFUSED/BROKEN), never filtered on returncode - a sibling harness that recorded results only when returncode==0 reported '1/10 dumped' while four identical dumps existed. All 10 frame grids are distinct, as expected: llvmpipe is not bit-reproducible, which is why the grid is compared with the measured tolerance and is NOT in state.json. Harness: tools/oo-qd6-stability.sh.",
     "rc_nonzero_but_dumped": 0,
     "rc_zero": 10,
     "refused": 0,
     "runs": 10,
-    "wall_seconds_max": 37,
-    "wall_seconds_min": 19
+    "wall_seconds_max": 32,
+    "wall_seconds_min": 18
   }
 }

@@ -750,8 +750,30 @@ def normalise_texture_key(key, oxp_basename):
     return key.split(":")[0].strip()
 
 
+def normalise_duplicate_line(line, oxp_basename):
+    """Make an [oxp.duplicate] line comparable across runs.
+
+    The message names TWO paths - the rejected expansion and the one already loaded - and both are
+    under the per-run staging root, which carries a timestamp, a port and a pid. The leading
+    HH:MM:SS.mmm stamp varies too. Both are stripped for the same reason the standards signatures
+    are normalised: a field that cannot be compared between runs defends nothing. This is done even
+    though the value is `[]` in the blessed golden, because a field is only useful if it stays
+    diffable in the state where it actually carries something.
+
+    Every drive-letter path collapses to its last component, so the rejected copy's own name (the
+    part that identifies WHICH duplicate appeared) survives while the volatile prefix does not.
+    """
+    line = re.sub(r"^\d\d:\d\d:\d\d\.\d+\s+", "", line.strip())
+    # Expansion directory names CONTAIN SPACES ("Material Test Suite Copy.oxp"), so a
+    # non-whitespace path pattern stops at the first space and leaves the volatile prefix behind -
+    # measured, not guessed. The character class therefore admits spaces and the match is anchored
+    # by the `.oxp` suffix.
+    line = re.sub(r"[A-Za-z]:[/\\][\w\s./\\-]*?([\w\s.-]+\.oxp)", r"\1", line)
+    return normalise_oxp_error(line, oxp_basename)
+
+
 def read_log_evidence(artifact_dir, oxp_basename, spec):
-    """Collect the standards, texture-upload and shader evidence from THIS run's own Latest.log."""
+    """Collect the standards, duplicate, texture-upload and shader evidence from this run's log."""
     log = os.path.join(artifact_dir, "Latest.log")
     if not os.path.isfile(log):
         raise ScenarioError(
@@ -761,6 +783,21 @@ def read_log_evidence(artifact_dir, oxp_basename, spec):
         text = handle.read()
     standards = [normalise_oxp_error(m.group(1), oxp_basename)
                  for m in OXP_STANDARDS_RE.finditer(text)]
+    # DUPLICATE-IDENTIFIER EVIDENCE, ON ITS OWN CHANNEL. This is NOT reachable through
+    # [oxp-standards.error]: ResourceManager.m:719-724 logs a same-identifier expansion on
+    # `oxp.duplicate` and returns NO from validateManifest:, so :661 fails and :663 never adds the
+    # path. MEASURED, not assumed: --stage-double initially produced a dump identical to the golden
+    # and the standards count stayed 0, because the rejection happens on a channel the standards
+    # predicate does not watch. The load order compounds it - "Material Test Suite Copy.oxp" sorts
+    # before "Material Test Suite.oxp" (space < '.'), so the COPY won and the ORIGINAL was the one
+    # rejected, with byte-identical content either way. Nothing in the dump could see it. Hence a
+    # separate field: the state must be visible, and it must be visible where the ENGINE names it.
+    # The leading HH:MM:SS.mmm and the staged absolute paths are stripped for the same reason the
+    # standards signatures are: both vary by construction on every run, and a field that cannot be
+    # compared is a field that defends nothing. This matters even though the value is [] in the
+    # blessed golden - if it ever becomes non-empty it must still be diffable.
+    duplicates = sorted({normalise_duplicate_line(line, oxp_basename)
+                         for line in text.splitlines() if "[oxp.duplicate]" in line})
     uploads = []
     for match in TEXTURE_UPLOAD_RE.finditer(text):
         width, height, key = int(match.group(1)), int(match.group(2)), match.group(3)
@@ -771,7 +808,7 @@ def read_log_evidence(artifact_dir, oxp_basename, spec):
     failure_prefixes = tuple("[%s]" % c for c in spec["failure_log_channels"])
     failures = [line.strip() for line in text.splitlines()
                 if any(p in line for p in failure_prefixes)]
-    return standards, uploads, failures, len(text)
+    return standards, duplicates, uploads, failures, len(text)
 
 
 def assert_ran(evidence, spec):
@@ -941,6 +978,23 @@ def assert_ran(evidence, spec):
             "EMPTY by design - it has a manifest - so any such line is a finding, not noise."
             % (unexpected,))
 
+    # --- DEFENCE 7: no expansion was REJECTED as a duplicate identifier -------------------------
+    # A SEPARATE defence from the standards count, because the engine reports this on a separate
+    # channel and the standards predicate is structurally blind to it. If the expansion is present
+    # at two roots, ResourceManager.m:719-724 logs [oxp.duplicate], validateManifest: returns NO,
+    # and the second path is silently dropped - with ZERO standards errors. Worse, the winner is
+    # decided by load order, so which of the two copies is live is not something this scenario
+    # controls. That must never be the state a golden is blessed from, even when the two copies are
+    # byte-identical and the dump therefore looks perfect.
+    if evidence["oxp_duplicate_identifier_lines"]:
+        raise ScenarioError(
+            "evidence.oxp_duplicate_identifier_lines is %r (expected []). The expansion resolved at "
+            "more than one search path, so the engine REJECTED one copy as a duplicate identifier "
+            "(ResourceManager.m:722) and which copy went live was decided by load order, not by "
+            "this scenario. Note this leaves oxp_standards_errors at 0 and, for byte-identical "
+            "copies, an unchanged dump - it is invisible to every other defence here."
+            % (evidence["oxp_duplicate_identifier_lines"],))
+
 
 def canonical(obj):
     """The one serialisation used for the golden, for a fresh run, and for the hash."""
@@ -1024,7 +1078,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, stage=True, empty_stage=F
             state = json.loads(dump_state(console))
 
         # AFTER the game has exited, so the log is complete and flushed.
-        standards, uploads, failures, log_bytes = read_log_evidence(
+        standards, duplicates, uploads, failures, log_bytes = read_log_evidence(
             artifact_dir, oxp_basename, spec)
 
         ihdr = {}
@@ -1050,6 +1104,10 @@ def run(app_dir, out_path, spec, run_root, keep=False, stage=True, empty_stage=F
             "detail_level": detail,
             "oxp_standards_errors": len(standards),
             "oxp_standards_error_signatures": sorted(set(standards)),
+            # Recorded SEPARATELY from the standards signatures because the engine reports it on a
+            # different channel and rejects the path without ever emitting a standards line
+            # (ResourceManager.m:719-724). See read_log_evidence.
+            "oxp_duplicate_identifier_lines": duplicates,
             "gui_screen": gui_screen,
             "player_docked": player_docked,
             # The BUDGET is pinned; the MEASURED elapsed time is deliberately NOT in the dump - the

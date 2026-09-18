@@ -367,6 +367,67 @@ def test_data_mutant_a_standards_error_appeared(golden, tmpdump):
     assert "oxp_standards_errors" in out
 
 
+def test_data_mutant_duplicate_identifier_line_present(golden, tmpdump):
+    """The double-root state, which NO other defence here can see.
+
+    MEASURED: before this field existed, `--stage-double` produced a dump BYTE-IDENTICAL to the
+    golden and kept oxp_standards_errors at 0, because ResourceManager.m:719-724 reports a
+    same-identifier expansion on the `oxp.duplicate` channel and drops the path without ever
+    emitting a standards line.
+    """
+    golden["evidence"]["oxp_duplicate_identifier_lines"] = [
+        "[oxp.duplicate]: OXP Material Test Suite.oxp has the same identifier "
+        "(org.oolite.material-test-suite) as Material Test Suite Copy.oxp which has already been "
+        "loaded."]
+    rc, out = run(EVIDENCE, tmpdump(golden))
+    assert rc == 1
+    assert "oxp_duplicate_identifier_lines" in out
+
+
+def test_data_mutant_duplicate_field_absent_entirely(golden, tmpdump):
+    """An ABSENT field must fail too: it is indistinguishable from a runner that never looked."""
+    del golden["evidence"]["oxp_duplicate_identifier_lines"]
+    rc, out = run(EVIDENCE, tmpdump(golden))
+    assert rc == 1
+    assert "oxp_duplicate_identifier_lines" in out
+
+
+def test_checker_mutant_duplicate_check_removed(tmp_path, golden, tmpdump):
+    weak = _weakened_checker(
+        tmp_path,
+        "    elif dupes:",
+        "    elif False:")
+    golden["evidence"]["oxp_duplicate_identifier_lines"] = ["[oxp.duplicate]: anything at all"]
+    mutant = tmpdump(golden)
+    assert run(EVIDENCE, mutant)[0] == 1
+    assert run(weak, mutant)[0] == 0
+
+
+def test_duplicate_line_normalisation_strips_every_volatile_part():
+    """Both paths, the timestamp, and NAMES CONTAINING SPACES.
+
+    A non-whitespace path pattern stops at the first space and leaves the per-run staging root in
+    the string, which would make the field undiffable in exactly the state where it carries
+    something. Asserted directly rather than trusted.
+    """
+    import material_test_suite as mts
+    raw = ("09:19:42.269 [oxp.duplicate]: OXP C:/Users/jon/AppData/Local/Temp/oo_qd6/runs/"
+           "008-material-test-suite-131941-p8600-676/oxp-stage/Material Test Suite.oxp has the "
+           "same identifier (org.oolite.material-test-suite) as C:/Users/jon/AppData/Local/Temp/"
+           "oo_qd6/runs/008-material-test-suite-131941-p8600-676/oxp-stage/"
+           "Material Test Suite Copy.oxp which has already been loaded.")
+    got = mts.normalise_duplicate_line(raw, "Material Test Suite.oxp")
+    assert got == ("[oxp.duplicate]: OXP Material Test Suite.oxp has the same identifier "
+                   "(org.oolite.material-test-suite) as Material Test Suite Copy.oxp which has "
+                   "already been loaded."), got
+    for volatile in ("09:19:42", "C:/", "p8600", "131941", "AppData"):
+        assert volatile not in got, "%r survived normalisation: %r" % (volatile, got)
+
+
+def test_golden_records_no_duplicate(golden):
+    assert golden["evidence"]["oxp_duplicate_identifier_lines"] == []
+
+
 def test_data_mutant_repopulator_not_quieted(golden, tmpdump):
     golden["evidence"]["repopulator_handlers_quieted"] = []
     rc, out = run(EVIDENCE, tmpdump(golden))
