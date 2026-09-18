@@ -92,7 +92,17 @@ _NOISE_CLASS = re.compile(
     # streaming decode still behind. How many times that happens is a race between the
     # decoder and the frame rate - one extra "Incomplete, trying next for OoliteTheme.ogg"
     # appeared in one of two identical unshuffled runs. Timing, not enumeration order.
-    r"sound\.buffer)"
+    r"sound\.buffer|"
+    # texture.planet.generate / texture.generator.queue embed a live OOConcreteTexture
+    # -description, which carries the generator's CURRENT seed and load state. The planet
+    # atmosphere generator is queued and re-seeded asynchronously, so the SAME texture object
+    # (0xd9b5e528) was logged as "{...3560527675,2338263651.../, loading}" in one run and
+    # "{...281364376,2993670880.../, loading}" in another - and the two runs that disagreed
+    # were BOTH UNSHUFFLED, which is what proves this is a loader-thread race and not
+    # enumeration order. Snapshotting a mutable object's description is nondeterministic by
+    # construction; the deterministic texture.planet.generate.begin/.complete lines around it
+    # are kept.
+    r"texture\.planet\.generate$|texture\.generator\.queue)"
 )
 _NOISE_LINE = re.compile(
     r"Opening log for|processors detected|Build options:|Closing log at|"
@@ -116,12 +126,21 @@ def gameplay_lines(log_path):
     with open(log_path, encoding="utf-8", errors="replace") as fh:
         for raw in fh:
             line = _STAMP.sub("", raw.rstrip("\r\n")).strip()
-            if not line or _NOISE_LINE.search(line):
+            if not line:
                 continue
+            # The class is tracked BEFORE the noise check, and this order is load-bearing.
+            # A head line is often dropped by _NOISE_LINE (an embedded 0x pointer, say) - if
+            # the early `continue` ran first, `current` would keep pointing at some EARLIER,
+            # unrelated message, and this message's continuations would then be judged
+            # against that stale class and leak through while their own head was dropped.
+            # That is exactly the leak the attribution exists to prevent, and it is pinned by
+            # --self-test ("a continuation of a NOISE-dropped head is dropped too").
             match = _CLASS.match(line)
             if match:
                 current = match.group(1)
             # else: no prefix, so this continues the previous message and keeps its class.
+            if _NOISE_LINE.search(line):
+                continue
             if current and _NOISE_CLASS.match(current):
                 continue
             out.append(re.sub(r"\b\d+\.\d+\b", "<f>", line))
@@ -484,6 +503,33 @@ def self_test():
     check("native() returns an absolute path for a relative input",
           re.match(r"^([A-Za-z]:|/)", native("./verbose")) is not None,
           native("./verbose"))
+
+    # 5b. REGRESSION PIN for the statement-order bug in gameplay_lines.
+    #
+    #     A head line whose class IS filtered but which _NOISE_LINE also drops (an embedded
+    #     0x pointer) must still set the class its continuations inherit. With the noise
+    #     check placed before the class tracking, `current` stayed pointing at the PREVIOUS,
+    #     unfiltered message, so the continuation was judged against that stale class and
+    #     leaked - which is how a mutable texture -description ("..., loading}", whose text
+    #     depends on whether the async generator had set the dimensions) was misreported as a
+    #     gameplay CONTENT difference between two UNSHUFFLED runs.
+    stale = write(
+        "stale.log",
+        head
+        # An unfiltered, class-bearing line first: this is what `current` wrongly kept.
+        + "00:00:01.000 [shipData.load.begin]: Loading ship data.\n"
+        # Head of a FILTERED class that _NOISE_LINE also drops for its hex pointer.
+        + "00:00:02.000 [texture.planet.generate]: Planet <OOPlanetEntity 0xcf251188>{x}\n"
+        # Its continuation: no class prefix, no hex, so only inherited class can drop it.
+        + "1024,512/3560527675,2338263651/0.750000, loading}\n"
+        + tail,
+    )
+    stale_lines = gameplay_lines(stale)
+    check("a continuation of a NOISE-dropped head is dropped too",
+          not any("loading}" in l for l in stale_lines),
+          f"leaked: {[l for l in stale_lines if 'loading}' in l]}")
+    check("the unrelated line before it is still kept",
+          any("Loading ship data" in l for l in stale_lines), str(stale_lines))
 
     # 6. The classifier separates a TRACED log-order channel from an untraced one. Both
     #    directions, because a classifier that only ever says "benign" is not a check.
