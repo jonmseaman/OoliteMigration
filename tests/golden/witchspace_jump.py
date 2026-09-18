@@ -42,6 +42,11 @@ trusting a capture-time assertion that once passed:
      `witchJumpChecklist:` with a reason string ("blocked", "no target", "too far", "insufficient
      fuel"). An installed-but-never-fired handler is not evidence on its own, which is why it is
      the SIXTH check and not the first.
+  7. `destination_station_name` == the destination's OWN main station, and `dock_events` >= 1. Lave
+     has a Coriolis Station and Zaonce an Icosahedron Station, so the name of the station the run
+     docks at is an independent second witness to WHICH system it ended in - one that does not go
+     through `system.ID` at all. The dock event is dispatched by the engine at
+     PlayerEntity.m:7206.
 
 WHY THE OBSERVABLES ARE NOT ROLE COUNTS - MEASURED, NOT ASSUMED
 ===============================================================
@@ -146,6 +151,7 @@ FRAME_CANDIDATES = (
 LAUNCH_TIMEOUT_SECONDS = 120
 IN_FLIGHT_TIMEOUT_SECONDS = 120
 JUMP_TIMEOUT_SECONDS = 180
+DOCK_TIMEOUT_SECONDS = 180
 TICK_WALL_BUDGET_SECONDS = 300
 SETTLE_TIMEOUT_SECONDS = 120
 FRAME_SETTLE_SECONDS = 1.5
@@ -166,7 +172,8 @@ STANDARD_JUMP_CAUSE = "standard jump"
 # handlers are attached to a live world script so the ENGINE delivers the events
 # (PlayerEntity.m:12927-12939 walks worldScripts and calls the named method on each).
 PROBE_JS = """(function(){
-  debugConsole.ooZ22 = {enter: 0, willExit: 0, exited: 0, cause: "", dest: "", failed: ""};
+  debugConsole.ooZ22 = {enter: 0, willExit: 0, exited: 0, dock: 0,
+                        cause: "", dest: "", failed: ""};
   var names = Object.keys(worldScripts);
   if (!names.length) return "NO-WORLD-SCRIPTS";
   var s = worldScripts[names[0]];
@@ -177,6 +184,7 @@ PROBE_JS = """(function(){
   };
   s.shipWillExitWitchspace = function () { debugConsole.ooZ22.willExit += 1; };
   s.shipExitedWitchspace = function () { debugConsole.ooZ22.exited += 1; };
+  s.shipDockedWithStation = function () { debugConsole.ooZ22.dock += 1; };
   s.playerJumpFailed = function (why) { debugConsole.ooZ22.failed = String(why); };
   return names[0];
 })()"""
@@ -211,6 +219,9 @@ class PatientConsole:
         self._timeout = timeout
 
     def evaluate(self, js, timeout=None):
+        if os.environ.get("OO_Z22_TRACE"):
+            sys.stderr.write("[trace] eval %s\n" % " ".join(js.split())[:90])
+            sys.stderr.flush()
         return self._inner.evaluate(js, timeout=self._timeout if timeout is None else timeout)
 
     def evaluate_int(self, js, timeout=None):
@@ -548,6 +559,41 @@ def jump(console, spec, break_jump=False):
            seen["statuses"], probe_state(console)))
 
 
+def dock_at_destination(console, timeout=DOCK_TIMEOUT_SECONDS):
+    """Dock at the DESTINATION system's own main station, and wait for the sequence to SETTLE.
+
+    Two waits, both learned by scenario 001 and both kept. (a) `-enterDock:`
+    (PlayerEntity.m:7083-7090) sets the docked flag immediately, so `player.ship.docked` reads true
+    while the break pattern is still playing; `shipDockedWithStation` is dispatched much later, at
+    PlayerEntity.m:7206 in `-docked`. (b) Even that event is not the end - it fires six lines before
+    `-docked` puts the GUI on the status screen - so this also waits for STATUS_DOCKED.
+    """
+    if console.evaluate("system.mainStation ? 'yes' : 'no'").strip() != "yes":
+        raise ScenarioError(
+            "the destination system has no main station to dock with. This scenario ends docked "
+            "because pausing IN FLIGHT wedges the debug console (see run()); a destination without "
+            "a station needs a different ending, not a skipped one.")
+    console.perform("system.mainStation.dockPlayer();")
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        time.sleep(0.5)
+        if int(probe_state(console).get("dock", 0)) >= 1:
+            break
+    else:
+        raise ScenarioError(
+            "the engine never dispatched shipDockedWithStation within %ss (player.ship.docked=%r); "
+            "the docking sequence did not complete, so a dump taken now would be of a half-docked "
+            "ship" % (timeout, _docked(console)))
+    while time.time() < deadline:
+        if _status(console) == "STATUS_DOCKED" and _docked(console):
+            return True
+        time.sleep(0.5)
+    raise ScenarioError(
+        "shipDockedWithStation fired but player.ship.status is %r rather than STATUS_DOCKED after "
+        "%ss; the docking sequence has not settled and pausing here leaves the world integrating"
+        % (_status(console), timeout))
+
+
 def run_ticks(console, ticks, tick_seconds):
     """Advance `ticks` AI ticks of GAME time, never the harness clock."""
     budget = ticks * tick_seconds
@@ -679,6 +725,22 @@ def assert_jumped(evidence, spec):
             "(PlayerEntity.m:7387-7460) emits 'blocked', 'no target', 'too far' or 'insufficient "
             "fuel' and sets the status back to STATUS_IN_FLIGHT." % evidence["jump_failed"])
 
+    if evidence["destination_station_name"] != spec["destination_station_name"]:
+        raise ScenarioError(
+            "the scenario docked at %r, not the destination's own %r. THIS IS THE CHECK THAT A RUN "
+            "WHICH NEVER LEFT THE ORIGIN CANNOT PASS: Lave's main station is a Coriolis and "
+            "Zaonce's is an Icosahedron, so the station's own name is a second, independent "
+            "witness to the arrival."
+            % (evidence["destination_station_name"], spec["destination_station_name"]))
+    if evidence["dock_events"] < 1:
+        raise ScenarioError(
+            "evidence.dock_events is %d: the engine never dispatched shipDockedWithStation "
+            "(PlayerEntity.m:7206) at the destination, so the ship did not really dock there"
+            % evidence["dock_events"])
+    if not evidence["docked_at_end"]:
+        raise ScenarioError("evidence.docked_at_end is false: the scenario ends undocked, so the "
+                            "dump was taken from a state the pause cannot freeze soundly")
+
     if not evidence["tick_budget_met"]:
         raise ScenarioError("the tick budget was not met: the simulation did not run in the "
                             "destination system")
@@ -757,6 +819,25 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             settle(console)
             clear_rounds = quiesce(console)
 
+            # DOCK AT THE DESTINATION'S OWN MAIN STATION, THEN PAUSE. Two reasons, one measured.
+            #
+            # (1) EVIDENCE. Docking at a station that exists only in the DESTINATION system is a
+            #     further property a run that never left Lave cannot produce, and it is recorded by
+            #     name: `destination_station_name` is Zaonce's Icosahedron Station, not Lave's
+            #     Coriolis. `dock_events` is incremented by the ENGINE (PlayerEntity.m:7206), never
+            #     by this file.
+            # (2) MEASURED NECESSITY. Pausing IN FLIGHT wedges the console: three consecutive runs
+            #     hung at the first `clock.absoluteSeconds` AFTER `pauseGame()` returned true and
+            #     died on the reply timeout, at 15 s and again at 90 s. `-setGamePaused:`
+            #     (GameController.m:155-170) calls `setEcoQoS:YES`, which puts the process into
+            #     Windows efficiency mode; in flight the game then services the debug socket too
+            #     slowly to answer. Scenario 001 pauses while DOCKED and does not hit this. So this
+            #     scenario ends where the exemplar ends - docked, paused, clock stopped - and the
+            #     pause is never taken in flight.
+            dock_at_destination(console)
+            destination_station = console.evaluate(
+                "system.mainStation ? system.mainStation.name : ''").strip()
+
             if console.evaluate("pauseGame()").strip().lower() != "true":
                 raise ScenarioError(
                     "pauseGame() returned false: the game is NOT paused (guiScreen=%s). "
@@ -791,6 +872,9 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "jump_cause": str(probe.get("cause", "")),
             "jump_destination_id": str(probe.get("dest", "")),
             "jump_failed": str(probe.get("failed", "")),
+            "dock_events": int(probe.get("dock", 0)),
+            "destination_station_name": destination_station,
+            "docked_at_end": bool(state["player"]["ship"]["docked"]),
             "countdown_status_seen": bool(seen["countdown"]),
             "exiting_status_seen": bool(seen["exiting"]),
             "statuses_seen": list(seen["statuses"]),
@@ -861,7 +945,8 @@ def check_evidence(path, spec, label=None):
         raise Refusal("%s carries no evidence block; a dump with no evidence compares equal to any "
                       "other evidence-free dump and proves nothing about the jump" % label)
     missing = [k for k in ("system_id_before", "system_id_after", "witchspace_enter_events",
-                           "witchspace_exit_events", "jump_cause", "fuel_consumed_tenths")
+                           "witchspace_exit_events", "jump_cause", "fuel_consumed_tenths",
+                           "destination_station_name", "dock_events")
                if k not in evidence]
     if missing:
         raise Refusal("%s's evidence block is missing %s" % (label, missing))

@@ -10,6 +10,9 @@
   "destination_system_id": 129,
   "destination_system_name": "Zaonce",
 
+  "_destination_station_name": "Zaonce's own main station. Lave's is a Coriolis Station and Zaonce's is an Icosahedron Station, so the station the scenario docks at is a SECOND, INDEPENDENT witness to the arrival: a run that never left the origin docks at a differently-named station and fails by name. MEASURED on this box.",
+  "destination_station_name": "Icosahedron Station",
+
   "_countdown_seconds": "The witchspace spin-up handed to player.ship.beginHyperspaceCountdown(). OOJSPlayerShip.m:1580-1586 REFUSES anything outside 5..60, so 5 is the shortest legal countdown - chosen to keep the run short, not to skip the countdown: countdown_status_seen asserts STATUS_WITCHSPACE_COUNTDOWN was actually observed.",
   "countdown_seconds": 5,
 
