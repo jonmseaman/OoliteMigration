@@ -1,0 +1,224 @@
+{
+  "different_scene_distances": [
+    0.036875765931372546,
+    0.007563572303921569,
+    0.06488013174019608,
+    0.03680874693627451,
+    0.007540594362745098,
+    0.06479587928921568,
+    0.03710554534313725,
+    0.007779947916666667,
+    0.06516735600490196
+  ],
+  "exact_match_rate": 0.0,
+  "grid_sweep": {
+    "128": {
+      "noise_floor": 0.002578316482843137,
+      "separated": true,
+      "weakest_signal": 0.007449879365808824
+    },
+    "16": {
+      "noise_floor": 0.0013786764705882354,
+      "separated": true,
+      "weakest_signal": 0.005912990196078431
+    },
+    "240": {
+      "noise_floor": 0.002934232026143791,
+      "separated": true,
+      "weakest_signal": 0.007593273420479303
+    },
+    "32": {
+      "noise_floor": 0.0017463235294117648,
+      "separated": true,
+      "weakest_signal": 0.00700827205882353
+    },
+    "64": {
+      "noise_floor": 0.0025409773284313726,
+      "separated": true,
+      "weakest_signal": 0.007540594362745098
+    }
+  },
+  "hash": {
+    "cells": 4096,
+    "kind": "l1-luminance-grid",
+    "side": 64
+  },
+  "margin": 1.7226712052468358,
+  "measure_seconds": 306.9,
+  "measured_at": "2026-09-18T06:49:03Z",
+  "noise_floor": 0.0025409773284313726,
+  "rasteriser": {
+    "GALLIUM_DRIVER": "llvmpipe",
+    "LIBGL_ALWAYS_SOFTWARE": "1"
+  },
+  "rejected_dhash": {
+    "bits": 256,
+    "different_scene_distances": [
+      0.390625,
+      0.27734375,
+      0.30859375,
+      0.3828125,
+      0.31640625,
+      0.33203125,
+      0.39453125,
+      0.375,
+      0.3828125
+    ],
+    "kind": "dhash",
+    "margin": 1.0788579268047802,
+    "noise_floor": 0.23828125,
+    "same_scene_distances": [
+      0.1640625,
+      0.22265625,
+      0.23828125
+    ],
+    "separated": true,
+    "side": 16,
+    "weakest_signal": 0.27734375,
+    "why": "an Oolite system view is ~99 percent black sky, so most cells of a 16x16 grid are flat and every brighter-than-the-next-cell bit there is decided by single-digit luminance noise - roughly half those bits coin-flip between two runs of the same scene. That puts dhash's noise floor at 0.238 of its 256 bits, two orders of magnitude above this metric's 0.00254, so even when it happens to separate it does so with a margin of 1.08x against this metric's 1.72x - and on the first measured scene set it did not separate at all."
+  },
+  "same_scene_distances": [
+    0.0025409773284313726,
+    0.0022441789215686273,
+    0.002487362132352941
+  ],
+  "samples": {
+    "different_scene_pairs": [
+      {
+        "a": "ref#0",
+        "b": "moved",
+        "distance": 0.036875765931372546
+      },
+      {
+        "a": "ref#0",
+        "b": "turned",
+        "distance": 0.007563572303921569
+      },
+      {
+        "a": "ref#0",
+        "b": "ref-with-ship",
+        "distance": 0.06488013174019608
+      },
+      {
+        "a": "ref#1",
+        "b": "moved",
+        "distance": 0.03680874693627451
+      },
+      {
+        "a": "ref#1",
+        "b": "turned",
+        "distance": 0.007540594362745098
+      },
+      {
+        "a": "ref#1",
+        "b": "ref-with-ship",
+        "distance": 0.06479587928921568
+      },
+      {
+        "a": "ref#2",
+        "b": "moved",
+        "distance": 0.03710554534313725
+      },
+      {
+        "a": "ref#2",
+        "b": "turned",
+        "distance": 0.007779947916666667
+      },
+      {
+        "a": "ref#2",
+        "b": "ref-with-ship",
+        "distance": 0.06516735600490196
+      }
+    ],
+    "frames": [
+      {
+        "hash": "b6b639ffba76608c90de56385f598075",
+        "label": "ref#0",
+        "pose": "ref",
+        "wall_seconds": 26.0
+      },
+      {
+        "hash": "4579e928f3885c4aefde7c478bba26e1",
+        "label": "ref#1",
+        "pose": "ref-again",
+        "wall_seconds": 26.4
+      },
+      {
+        "hash": "5ce22c2e86a948ab3cc48bb5fa4e6aba",
+        "label": "ref#2",
+        "pose": "ref-again",
+        "wall_seconds": 27.8
+      },
+      {
+        "hash": "f4f681e59f842ae4b604777ec772664d",
+        "label": "moved",
+        "pose": "moved",
+        "wall_seconds": 28.0
+      },
+      {
+        "hash": "eef456d1685891735477b1d5ddd04683",
+        "label": "turned",
+        "pose": "turned",
+        "wall_seconds": 28.4
+      },
+      {
+        "hash": "b8dc690836743ffc6014ebd233155c72",
+        "label": "ref-with-ship",
+        "pose": "ref-with-ship",
+        "wall_seconds": 28.3
+      }
+    ],
+    "same_scene_pairs": [
+      {
+        "a": "ref#0",
+        "b": "ref#1",
+        "bytes_identical": false,
+        "distance": 0.0025409773284313726
+      },
+      {
+        "a": "ref#0",
+        "b": "ref#2",
+        "bytes_identical": false,
+        "distance": 0.0022441789215686273
+      },
+      {
+        "a": "ref#1",
+        "b": "ref#2",
+        "bytes_identical": false,
+        "distance": 0.002487362132352941
+      }
+    ]
+  },
+  "sensitivity": {
+    "ship-12000m": {
+      "above_noise_floor": true,
+      "detectable": false,
+      "distance": 0.003061810661764706
+    },
+    "ship-200m": {
+      "above_noise_floor": true,
+      "detectable": true,
+      "distance": 0.0848422181372549
+    },
+    "ship-3000m": {
+      "above_noise_floor": true,
+      "detectable": false,
+      "distance": 0.003016812193627451
+    },
+    "ship-400m": {
+      "above_noise_floor": true,
+      "detectable": true,
+      "distance": 0.0058115042892156864
+    },
+    "ship-800m": {
+      "above_noise_floor": true,
+      "detectable": false,
+      "distance": 0.0027075674019607842
+    }
+  },
+  "separated": true,
+  "ship_range_m": 200,
+  "surface": "960x720 windowed (SDL; the offscreen driver is unusable here - no EGL)",
+  "tolerance": 0.004377268476873758,
+  "weakest_signal": 0.007540594362745098
+}
