@@ -130,6 +130,20 @@
 
   "landing_rehearsal": {
     "performed": true,
-    "note": "Both the scenario script and both gates search goldens/windows-x64/004-trade-cycle/ FIRST and fall back to tests/golden/pending/004-trade-cycle/, through the identical idiom, so landing is a pure `git mv` with no code change. REHEARSED FOR REAL, not described: the move was performed in a throwaway copy of the tree under Temp and every gate re-run from the moved layout. See LANDING.md."
+    "note": "Both the scenario script and both gates search goldens/windows-x64/004-trade-cycle/ FIRST and fall back to tests/golden/pending/004-trade-cycle/, through the identical idiom, so landing is a pure `git mv` with no code change. REHEARSED FOR REAL, not described: the tree was copied to a throwaway directory under Temp, the six moves were applied there, and all four verification commands were re-run from the moved layout - gate_004_spec.py reported 'agree with the knobs recorded in goldens/windows-x64/004-trade-cycle', i.e. it really did read the MOVED provenance. NOTE the spec's destination differs from the rest (tests/golden/scenarios/, not goldens/), which is exactly the step a sibling bead got wrong this session. See LANDING.md."
+  },
+
+  "mutation_run": {
+    "mutants": 28,
+    "killed": 28,
+    "survived": 0,
+    "where": "throwaway copies under %LOCALAPPDATA%\\Temp only; no file in the repo tree was edited at any instant, so this worktree was safe to harvest throughout (bead oo-dto committed a sabotaged gate when a worker was killed mid-mutation)",
+    "classes": {
+      "state.json (16, graded by check_trade_cycle_evidence.py)": "load trace truncated to a prefix; load trace absent; a leg moving no money; a leg's cash off by one tenth; the market not feeling the buy; cargoSpaceUsed not moving (the clamped-write failure); goods appearing from nowhere; an untraded good moving; the untraded control shortened to 1; the cycle ending with an empty hold; the dump's market / credits / cargo edited away from the evidence block; the evidence block removed; the seed in the dump differing from the spec; the world not at a fixed point",
+      "provenance digest (1)": "THE MUTANT THIS PROJECT KEEPS REDISCOVERING - one quantised unit on one price (516 -> 516.001 in bead oo-gxp's case). A golden-vs-copy comparison CANNOT see it because the edit moves both sides. Detected here by size and sha256 against provenance.json, a SEPARATE file: 3055 -> 3059 bytes, digest differs. The unmutated golden passes the identical check, which is the control that makes the kill meaningful.",
+      "spec (9, graded by gate_004_spec.py)": "symmetric cycle; arithmetic that no longer closes; credit scale flattened to 1; quantisation coarsened to 6; seed drifting from provenance; the load.progress channel dropped; a load stage dropped; pointed at a different .oolite-save; the repopulator suppression emptied",
+      "frame (2, graded by trade_cycle.py --compare-frame)": "an all-black grid, i.e. a run that drew nothing (killed by the liveness floor, which the tolerance assertion alone would NOT catch); a perturbed grid beyond the measured tolerance (killed by the tolerance assertion, which liveness alone would NOT catch). Each of the two frame properties kills a mutant the other survives, which is why both are asserted."
+    },
+    "harness_defect_found_and_fixed": "the digest mutant SURVIVED on the first pass. Investigated rather than accepted: the harness's own probe had inverted exit-code polarity relative to the acceptance line it was standing in for, so it reported success when the digests disagreed. The GATE was correct; the INSTRUMENT was wrong - the same shape as bead oo-djn's false finding. Rewritten to mimic the stored acceptance line exactly, after which it kills."
   }
 }
