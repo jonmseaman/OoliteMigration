@@ -671,7 +671,7 @@ def capture_frame(console, artifact_dir, attempts=20):
         "worse than no frame at all." % (png, type(last).__name__, last))
 
 
-def assert_ran(evidence, spec):
+def assert_ran(evidence, spec, problems=None):
     """The anti-vacuity gate, applied BEFORE anything is written.
 
     Every clause names a field the dump CARRIES, so the same property is re-checked by every
@@ -751,7 +751,17 @@ def assert_ran(evidence, spec):
     if not evidence["tick_budget_met"]:
         raise ScenarioError("the tick budget was not met")
     if not evidence["round_trip_ok"]:
-        raise ScenarioError("census fields disagree between the save file and the loaded game")
+        # NAME THE FIELDS. A refusal that says only "they disagree" cannot be distinguished, by a
+        # gate or by a human, from an unrelated failure earlier in the run - and the red-proof
+        # acceptance line for this scenario has to prove the census is what rejected the run.
+        detail = ("; ".join(str(p) for p in problems) if problems
+                  else "%d of %d census field(s) differ" % (
+                      evidence["census_fields"] - evidence["round_trip_fields_equal"],
+                      evidence["census_fields"]))
+        raise ScenarioError(
+            "CENSUS DIFFERS: census fields disagree between the save FILE (read here by Python's "
+            "plist parser) and the LOADED GAME (read over the console by the JS API, in a separate "
+            "OS process sharing no code): %s" % detail)
     return True
 
 
@@ -868,7 +878,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "stations_quieted": stations_quieted,
             "repopulator_handlers_quieted": sorted(repopulator_handlers),
         }
-        assert_ran(evidence, spec)
+        assert_ran(evidence, spec, problems)
         state["evidence"] = evidence
         text = canonical(state)
         if out_path:
