@@ -60,6 +60,26 @@ class FrameHashError(RuntimeError):
     pass
 
 
+def wrong_grid_size_message(path, actual_bytes):
+    """Return the refusal text for a grid file that is not GRID_CELLS bytes.
+
+    WHY THIS LIVES HERE AND NOT IN EACH SCENARIO: every scenario's _read_grid() used to format
+    this sentence by hand, and every copy referenced a GRID_SIZE attribute that has never
+    existed - the attribute is GRID_SIDE. The typo sits INSIDE the error path, so it is invisible
+    on every green run and only fires when the check is doing its job: a truncated or corrupt
+    frame.grid crashed with AttributeError instead of being refused by name. The template was
+    copied into four call sites across three scenarios before anyone hit it. Formatting the
+    message in ONE place means the next scenario copied from the template cannot re-introduce it:
+    there is no attribute name left at the call site to mistype.
+
+    Callers raise their OWN scenario error type with this text, so a scenario failure still
+    surfaces as that scenario's error rather than a frame_hash one.
+    """
+    return ("%s is %d bytes, not the %d-byte %dx%d luminance grid; any comparison against it "
+            "would be meaningless"
+            % (path, actual_bytes, GRID_CELLS, GRID_SIDE, GRID_SIDE))
+
+
 def _load_calibration():
     """Read the recorded measurements. NEVER raises: import must not depend on the data.
 

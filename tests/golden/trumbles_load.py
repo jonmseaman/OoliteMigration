@@ -925,10 +925,10 @@ def _read_grid(path):
     with open(path, "rb") as handle:
         blob = handle.read()
     if len(blob) != frame_hash.GRID_CELLS:
-        raise ScenarioError(
-            "%s is %d bytes, not the %d-byte %dx%d luminance grid; any comparison against it "
-            "would be meaningless"
-            % (path, len(blob), frame_hash.GRID_CELLS, frame_hash.GRID_SIZE, frame_hash.GRID_SIZE))
+        # The refusal text is formatted by frame_hash so it cannot be mistyped here: this call
+        # site used to spell the side length GRID_SIZE, an attribute frame_hash does not
+        # exist (it is GRID_SIDE), which turned this REFUSAL into an AttributeError crash.
+        raise ScenarioError(frame_hash.wrong_grid_size_message(path, len(blob)))
     return blob
 
 
