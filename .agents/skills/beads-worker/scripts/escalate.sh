@@ -2,6 +2,10 @@
 # Hand a bead the fleet cannot finish to the frontier tier: fleet → frontier, add escalated, release.
 # After this the bead no longer counts toward goal-check.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast before any path is computed (oo-aqzj): unsourced _lib.sh leaves these empty and
+# "$WORKTREES/$id" / "$REPO_ROOT/docs/..." land at the filesystem root. Keep above the first use.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 id="${1:?usage: escalate.sh <bead> <reason>}"; reason="${2:-escalated by beads-worker}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; base="${BEADS_WORKER_BASE_BRANCH:-main}"
 # Preserve the fleet's partial work for the frontier agent: harvest, keep the branch, say where it is.

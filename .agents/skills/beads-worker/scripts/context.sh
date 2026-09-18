@@ -2,6 +2,10 @@
 # Print the context block to paste into a worker or reviewer task: the bead's notes (previous
 # attempts, failures, review findings) and the tail of the shared learnings file.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast before any path is computed (oo-aqzj): unsourced _lib.sh leaves these empty and the
+# learnings read becomes /docs/fleet/LEARNINGS.md at the filesystem root. Keep above the first use.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 id="${1:?usage: context.sh <bead> [learnings-lines]}"; n="${2:-40}"
 echo "## Bead $id notes (previous attempts, failures, review findings)"
 notes="$(bead_field "$id" '.notes')"; [ -n "$notes" ] && echo "$notes" || echo "(none yet)"

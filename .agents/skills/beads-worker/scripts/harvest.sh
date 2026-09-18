@@ -5,6 +5,10 @@
 #   harvest.sh <bead>          commit uncommitted changes (if any); print what happened
 # Exit 0 = worktree clean (nothing to do, or harvested) · 3 = no worktree for this bead.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast before any path is computed (oo-aqzj): unsourced _lib.sh leaves these empty and
+# "$WORKTREES/$id" becomes "/$id" - a path at the filesystem root. Keep above the first use.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 id="${1:?usage: harvest.sh <bead>}"
 branch="bead/$id"; path="$WORKTREES/$id"; base="${BEADS_WORKER_BASE_BRANCH:-main}"
 [ -d "$path/.git" ] || [ -f "$path/.git" ] || { echo "harvest: no worktree at $path" >&2; exit 3; }

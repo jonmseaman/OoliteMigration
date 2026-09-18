@@ -3,6 +3,10 @@
 # (default `fleet`; see _lib.sh). Beads for humans (rebless, proposed-adr) and reviews are never
 # counted; seams (frontier) only when BEADS_WORKER_LABELS includes frontier.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast (oo-aqzj): this script computes no paths itself, but it shells out to gc.sh, so an
+# unsourced _lib.sh here is exactly the detached invocation gc.sh must never receive.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 phase="${1:?usage: goal-check.sh <phase>}"
 remaining="$(worker_list "$phase" --status open,in_progress \
   | jq -r '.[] | "\(.id)\t\(.status)\t\(.title)"')"

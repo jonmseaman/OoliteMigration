@@ -16,6 +16,9 @@
 #            with rc=1 and nothing deleted - never rm -rf'd (oo-ymmj).
 #   goalcheck  goal-check.sh's filter over gc --check discriminates (oo-0aw6): a routine
 #            merged-and-cleaned pass stays quiet, while an at-risk bead's id REACHES the operator.
+#   unsourced  gc.sh run DETACHED from _lib.sh ($WORKTREES empty, so its glob "$WORKTREES"/*/
+#            becomes /*/ - paths at the FILESYSTEM ROOT) must refuse, non-zero, naming _lib.sh,
+#            and must do so BEFORE it touches anything (oo-aqzj).
 # Exit 0 = every selected scenario passed; 1 = at least one failed.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,7 +26,7 @@ gc="${1:-$here/../gc.sh}"
 [ -f "$gc" ] || { echo "gc-safety: no gc.sh at $gc" >&2; exit 2; }
 gc="$(cd "$(dirname "$gc")" && pwd)/$(basename "$gc")"
 shift 2>/dev/null || true
-scenarios=("$@"); [ ${#scenarios[@]} -eq 0 ] && scenarios=(rescue cleanup mixed live locked lockedmerged goalcheck)
+scenarios=("$@"); [ ${#scenarios[@]} -eq 0 ] && scenarios=(rescue cleanup mixed live locked lockedmerged goalcheck unsourced)
 tmproot="${LOCALAPPDATA:-${TMPDIR:-/tmp}}"
 case "$tmproot" in *\\*) tmproot="$(cygpath -u "$tmproot" 2>/dev/null || echo "$tmproot")";; esac
 [ -d "$tmproot/Temp" ] && tmproot="$tmproot/Temp"
@@ -111,6 +114,40 @@ for s in "${scenarios[@]}"; do
     [ -d "$d/.worktrees/oo-mx2" ] && { fail "mixed: clean merged worktree NOT cleaned"; printf '%s\n' "$out" | sed 's/^/  gc| /' >&2; } || pass "mixed: clean merged worktree removed"
     git -C "$d" show-ref --verify --quiet refs/heads/bead/oo-mx2 && fail "mixed: clean merged branch NOT removed" || pass "mixed: clean merged branch removed"
     [ $rc -eq 1 ] && pass "mixed: gc rc=1 (work at risk reported)" || fail "mixed: gc rc=$rc, expected 1"
+    ;;
+  unsourced)
+    # oo-aqzj: gc.sh DETACHED from _lib.sh. With $WORKTREES empty, "$WORKTREES"/*/ globs to /*/ -
+    # entries at the FILESYSTEM ROOT - and gc computed real paths from them (a reviewer's mangled
+    # copy rmdir'd two empty directories in the MSYS2 root; only oo-ymmj's rmdir-instead-of-rm -rf
+    # kept that from being an rm -rf at /). gc must refuse before it computes or touches anything.
+    #
+    # Sandbox: a directory holding ONLY gc.sh, with NO _lib.sh beside it, so `source` fails exactly
+    # as it does in the real detached case. Recording stubs for every command gc could use to touch
+    # the filesystem (git, rmdir, rm) go FIRST on PATH and only append to a trace file - so even a
+    # gc WITHOUT the guard cannot damage anything here, which is the whole point of the bug.
+    # An empty trace is the positive proof that the refusal happened before any path was used.
+    d="$(mktemp -d "$tmproot/gcunsourced.XXXXXX")"
+    mkdir -p "$d/scripts" "$d/stub"
+    cp "$gc" "$d/scripts/gc.sh"
+    for c in git rmdir rm; do
+      printf '#!/usr/bin/env bash\nprintf "%%s %%s\\n" %s "$*" >>"%s/trace"\nexit 0\n' "$c" "$d" >"$d/stub/$c"
+      chmod +x "$d/stub/$c"
+    done
+    : >"$d/trace"
+    # VACUITY GUARDS: assert the subject exists and the sabotage is real before concluding anything.
+    [ -f "$d/scripts/gc.sh" ] || { fail "unsourced: sandbox has no gc.sh to test"; continue; }
+    [ -e "$d/scripts/_lib.sh" ] && { fail "unsourced: sandbox unexpectedly has _lib.sh; not a detached run"; continue; }
+    out="$( cd "$d" && PATH="$d/stub:$PATH" bash scripts/gc.sh 2>&1 )"; rc=$?
+    if [ $rc -ne 0 ]; then pass "unsourced: gc refused (rc=$rc)"
+    else fail "unsourced: gc exited 0 with WORKTREES unset"; printf '%s\n' "$out" | sed 's/^/  gc| /' >&2; fi
+    if printf '%s\n' "$out" | grep -q '_lib.sh not sourced'; then pass "unsourced: refusal names _lib.sh not sourced"
+    else fail "unsourced: refusal does not name the cause"; printf '%s\n' "$out" | sed 's/^/  gc| /' >&2; fi
+    if [ -s "$d/trace" ]; then
+      fail "unsourced: gc invoked filesystem commands BEFORE refusing (paths from an empty prefix):"
+      sed 's/^/  ran| /' "$d/trace" >&2
+    else
+      pass "unsourced: no git/rmdir/rm invoked - refused before computing any path"
+    fi
     ;;
   goalcheck)
     # oo-0aw6: goal-check.sh filters gc --check's output. The routine "is merged into" line must
