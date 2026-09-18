@@ -1,0 +1,61 @@
+F
+================================== FAILURES ===================================
+__ test_setup_runs_cleanly_and_a_spawned_ship_survives_the_scenario_duration __
+
+fixturefunc = <function universe_seeded_with at 0x000001c838859430>
+request = <FixtureRequest for <Function test_setup_runs_cleanly_and_a_spawned_ship_survives_the_scenario_duration>>
+kwargs = {'seed': 20260918, 'world': <conftest.World object at 0x000001c83886cad0>}
+
+    def call_fixture_func(
+        fixturefunc: _FixtureFunc[FixtureValue], request: FixtureRequest, kwargs
+    ) -> FixtureValue:
+        if inspect.isgeneratorfunction(fixturefunc):
+            fixturefunc = cast(Callable[..., Generator[FixtureValue]], fixturefunc)
+            generator = fixturefunc(**kwargs)
+            try:
+                fixture_result = next(generator)
+            except StopIteration:
+                raise ValueError(f"{request.fixturename} did not yield a value") from None
+            finalizer = functools.partial(_teardown_yield_fixture, fixturefunc, generator)
+            request.addfinalizer(finalizer)
+        else:
+            fixturefunc = cast(Callable[..., FixtureValue], fixturefunc)
+>           fixture_result = fixturefunc(**kwargs)
+                             ^^^^^^^^^^^^^^^^^^^^^
+
+../../../scoop/apps/msys2/2025-12-13/ucrt64/lib/python3.14/site-packages/_pytest/fixtures.py:1005: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+upstream/oolite/tests/component/steps/world_steps.py:72: in universe_seeded_with
+    world.start(seed, load_save=SCENARIO_SAVE)
+upstream/oolite/tests/component/conftest.py:153: in start
+    self.console.start()
+upstream/oolite/tests/component/console.py:83: in start
+    self._accept(timeout=60)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <console.DebugConsole object at 0x000001c83886cc20>, timeout = 60
+
+    def _accept(self, timeout):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if self._proc.poll() is not None:
+                raise ConsoleError(
+                    f"Oolite exited with {self._proc.returncode} before connecting to the console"
+                )
+            readable, _, _ = select.select([self._server], [], [], 1)
+            if readable:
+                self._conn, _ = self._server.accept()
+                self._conn.setblocking(True)
+                return
+>       raise ConsoleError(f"Oolite did not connect to the console within {timeout}s")
+E       console.ConsoleError: Oolite did not connect to the console within 60s
+
+upstream/oolite/tests/component/console.py:143: ConsoleError
+---------------------------- Captured stderr call -----------------------------
+[*] desktop lock: held by DESKTOP-DNENHGI:component33344 at C:/Users/jon/AppData/Local/Temp/oolite-gui-desktop.lock
+-------------------------- Captured stderr teardown ---------------------------
+[*] desktop lock: released by DESKTOP-DNENHGI:component33344
+=========================== short test summary info ===========================
+FAILED upstream/oolite/tests/component/test_s6_damaged_ship_flees.py::test_setup_runs_cleanly_and_a_spawned_ship_survives_the_scenario_duration
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 deselected in 78.02s (0:01:18)
