@@ -310,6 +310,16 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   `ConnectionResetError`/`rc=3`/`TimeoutExpired`, clear orphans, wait ~20s for the port to settle,
   retry up to 3 times; on ANY other failure stop at once — a real gate failure must never be
   retried into a false green. Never taskkill and immediately relaunch.
+- **A stored acceptance line must be proven to FAIL, not just to pass.** A worker built a regex
+  acceptance line in python3 (`frame_hash\.GRID_SIZE`) and stored it via `bd update --acceptance`;
+  the round trip through bd/JSON doubled the backslash to `frame_hash\\.GRID_SIZE`, which `git grep`
+  reads as literal-backslash-then-any-char and matches nothing — on ANY tree, fixed or not. Every
+  replay on the fixed tree looked green. Only a reviewer running the stored line verbatim on the
+  UNFIXED tree caught it: rc=0, "PASS: no reference remains," while the bug was still there. Rule:
+  whenever a stored line embeds a backslash, after reading it back with `bd show --json`, run it on
+  a tree where the defect is KNOWN to still be present (pre-fix main, or a throwaway copy with the
+  bug reintroduced) and confirm it fails there. Green-only replay cannot detect a gate that can
+  never turn red.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
