@@ -822,6 +822,47 @@ def assert_jumped(evidence, spec):
     return True
 
 
+def project_out_market(state):
+    """Replace the commodity market with a SHAPE WITNESS, and say exactly why.
+
+    MEASURED, ACROSS EIGHT CONSECUTIVE RUNS OF THIS SCENARIO ON THIS BOX. Every run agreed on every
+    field of the dump EXCEPT `market.*`, which differed in 26-30 fields each time (prices and
+    quantities both). That is not noise this harness can settle out: arriving in a system makes the
+    engine build a NEW market for it - Universe.m:7997-7998 destroys `commodityMarket` and calls
+    `-generateMarketForSystemWithEconomy:andScript:`, which prices and stocks each good with
+    `base * random * (randf() - randf())` (OOCommodities.m:423, :442, :544, :567). `randf()` is
+    drawn from the global RANROT stream, whose position depends on how many draws the frames before
+    it made, so the per-good values move with elapsed frames rather than with the seed. A golden
+    that byte-compared them would flake forever, and quantising them coarser would be the same lie
+    told more quietly.
+
+    THE MARKET IS THEREFORE NOT COMPARED BY VALUE - BUT IT IS NOT SIMPLY DELETED EITHER. Deleting
+    it would make an arrival with NO market indistinguishable from a healthy one, and an absent
+    market is exactly what a half-completed jump would produce. So the values are replaced by a
+    SHAPE: the number of goods and the sorted list of their names, both of which are fixed by
+    Resources/Config/commodities.plist and not by any random draw, and both of which a dead or
+    market-less arrival fails. The projection is recorded in the dump itself (`market_projection`)
+    so no later reader has to guess that it happened.
+    """
+    market = state.get("market")
+    if not isinstance(market, dict) or not market:
+        raise ScenarioError(
+            "the dump carries no commodity market (%r). Arriving in a system rebuilds it "
+            "(Universe.m:7997-7998); its absence means the arrival did not complete, and "
+            "projecting a missing market out would turn that failure into a pass." % (market,))
+    goods = sorted(market)
+    state["market"] = {
+        "_projected": "values not compared; see project_out_market() in witchspace_jump.py",
+        "good_count": len(goods),
+        "goods": goods,
+    }
+    return {"projected": True, "good_count": len(goods),
+            "reason": "per-good price/quantity are randf() draws taken when the destination "
+                      "market is generated (OOCommodities.m:423,442,544,567); MEASURED to differ "
+                      "in 26-30 fields across 8 runs while every other field agreed",
+            "compared_instead": ["good_count", "goods"]}
+
+
 def canonical(obj):
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
@@ -984,6 +1025,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
         }
         assert_jumped(evidence, spec)
         state["evidence"] = evidence
+        state["market_projection"] = project_out_market(state)
         text = canonical(state)
         if out_path:
             parent = os.path.dirname(os.path.abspath(out_path))
