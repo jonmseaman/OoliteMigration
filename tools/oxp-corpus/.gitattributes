@@ -1,0 +1,9 @@
+# The fixture cache holds CHECKSUMMED OPAQUE BLOBS.  They must survive checkout
+# byte-for-byte: any CRLF translation changes their sha256 and would make the
+# corpus verification tests fail (or, worse, pass for the wrong reason) on a
+# machine configured with core.autocrlf=true.
+fixtures/cache/** -text -diff
+
+# The manifests are checked byte-wise by nothing, but keeping them LF avoids
+# needless churn between platforms.
+*.json text eol=lf
