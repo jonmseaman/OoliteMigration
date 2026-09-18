@@ -776,6 +776,25 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             preconditions = thargplans_preconditions(console, spec)
             live = live_census(console, spec)
 
+            # THE CENSUS VERDICT IS TAKEN HERE, THE INSTANT BOTH SIDES EXIST - not after the
+            # tick budget with the other assertions. ORDER IS THE WHOLE POINT: a census
+            # disagreement means the game loaded a DIFFERENT COMMANDER than the harness expects,
+            # which is an identity error, whereas everything below it (quiescence, at-rest,
+            # frame) is physics that can fail for its own unrelated reasons. Measured: the live
+            # red proof (--expect-from a sibling checklist save) once failed on a stray cargo
+            # container instead of the census it was built to provoke, so the engineered failure
+            # was MASKED by an unrelated one and the line proved nothing about the census. Taking
+            # the verdict first makes the red proof report the disagreement it engineered.
+            n_saved, pop_saved = assert_non_vacuous(saved, "the census read from the save FILE")
+            n_live, _ = assert_non_vacuous(live, "the census read from the LOADED GAME")
+            problems = compare_census(saved, live, "saved", "loaded")
+            if problems:
+                raise ScenarioError(
+                    "CENSUS DIFFERS: census fields disagree between the save FILE (read here by "
+                    "Python's plist parser) and the LOADED GAME (read over the console by the JS "
+                    "API, in a separate OS process sharing no code): %s"
+                    % "; ".join(str(p) for p in problems))
+
             # SUPPRESSION FIRST, BEFORE ANY SLOW PROBE - order is load-bearing, not tidiness.
             # Scenario 010 measured eight of ten runs refusing when the suppression came after a
             # multi-second probe, because a station with hasNPCTraffic still on launched traffic
@@ -796,10 +815,6 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
 
         # AFTER the game has exited, so the log is complete and flushed.
         stages, failures, upgrades, log_bytes = read_load_evidence(artifact_dir, spec)
-
-        n_saved, pop_saved = assert_non_vacuous(saved, "the census read from the save FILE")
-        n_live, _ = assert_non_vacuous(live, "the census read from the LOADED GAME")
-        problems = compare_census(saved, live, "saved", "loaded")
 
         evidence = {
             "scenario": SCENARIO,
