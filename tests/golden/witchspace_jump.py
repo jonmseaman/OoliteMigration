@@ -147,6 +147,10 @@ FRAME_CANDIDATES = (
     os.path.join(REPO_ROOT, "goldens", "windows-x64", SCENARIO, "frame.grid"),
     os.path.join(HERE, "pending", SCENARIO, "frame.grid"),
 )
+PROVENANCE_CANDIDATES = (
+    os.path.join(REPO_ROOT, "goldens", "windows-x64", SCENARIO, "provenance.json"),
+    os.path.join(HERE, "pending", SCENARIO, "provenance.json"),
+)
 
 LAUNCH_TIMEOUT_SECONDS = 120
 IN_FLIGHT_TIMEOUT_SECONDS = 120
@@ -159,10 +163,13 @@ CLEAR_ROUNDS = 20
 # See PatientConsole: 15 s (console.py's default) was measured too short on this loaded box.
 CONSOLE_REPLY_TIMEOUT_SECONDS = 90
 
-# The floor a frame must clear, in frame_hash distance units, to count as RENDERED. It is NOT a
-# same-scene tolerance: it separates "something was drawn" from "an all-black grid", which is what
-# a run that died before drawing produces. The measured margin is recorded in provenance.json.
-FRAME_LIVENESS_FLOOR = 0.020
+# A frame counts as RENDERED when the SPREAD (max - min) of its luminance bytes, scaled to 0..1,
+# clears a floor MEASURED on the blessed frame and recorded in provenance.json. The floor is read
+# from provenance at check time, never hardcoded here: provenance is the witness that lives OUTSIDE
+# the artifact (bead oo-gxp), and a constant in this file would be a second, drifting definition of
+# the same property. This is the SAME metric gate_002_evidence.py asserts, deliberately - a frame
+# predicate that disagreed with the gate's would let one of them pass what the other refuses.
+FRAME_LIVENESS_FLOOR_FALLBACK = 0.2275
 
 # The engine's own name for a plain inter-system jump, passed to shipWillEnterWitchspace as
 # [player jumpCause] (Universe.m:1061). A galactic jump or a misjump reports a different string.
@@ -1121,6 +1128,37 @@ def _read_grid(path):
     return blob
 
 
+def _blessed_liveness_floor():
+    """Read the liveness floor from provenance.json - the witness OUTSIDE the artifact.
+
+    Falls back to the blessed constant only when no provenance is reachable, so the checker still
+    has teeth in a stripped checkout rather than silently passing everything.
+    """
+    for candidate in PROVENANCE_CANDIDATES:
+        if os.path.isfile(candidate):
+            with open(candidate, "r", encoding="utf-8") as handle:
+                prov = json.load(handle)
+            liveness = prov.get("frame_liveness") or {}
+            floor = liveness.get("floor")
+            if liveness.get("asserted") is True and isinstance(floor, (int, float)) and floor > 0:
+                return float(floor), candidate
+            raise ScenarioError(
+                "%s frame_liveness=%r must assert a positive floor; liveness is the one frame "
+                "property a dead run cannot fake, and without it the frame is entirely unpinned"
+                % (candidate, liveness))
+    return FRAME_LIVENESS_FLOOR_FALLBACK, None
+
+
+def _liveness(grid):
+    """SPREAD of the luminance bytes, scaled to 0..1 - gate_002_evidence.py's metric exactly.
+
+    A run that died before drawing the scene yields a (near-)uniform grid whose spread is ~0. The
+    distance to an all-black grid is NOT used: a dim but fully-rendered starfield sits close to
+    black in that metric, so it cannot separate "dark scene" from "no scene".
+    """
+    return (max(grid) - min(grid)) / 255.0
+
+
 def check_frame(grid_path, reference_path):
     """Assert LIVENESS only, and REPORT the distance to the reference.
 
@@ -1130,20 +1168,25 @@ def check_frame(grid_path, reference_path):
     """
     got = _read_grid(grid_path)
     want = _read_grid(reference_path)
-    live = frame_hash.distance(got, bytes(frame_hash.GRID_CELLS))
+    floor, floor_source = _blessed_liveness_floor()
+    live = _liveness(got)
     result = {
         "distance_to_reference": frame_hash.distance(got, want),
         "liveness": live,
-        "liveness_floor": FRAME_LIVENESS_FLOOR,
-        "live": live >= FRAME_LIVENESS_FLOOR,
+        "liveness_floor": floor,
+        "liveness_floor_from": floor_source or "FRAME_LIVENESS_FLOOR_FALLBACK",
+        "liveness_metric": "luminance spread (max-min)/255, as gate_002_evidence.py asserts",
+        "reference_liveness": _liveness(want),
+        "live": live >= floor,
         "verdict_rests_on": "liveness",
         "hash_got": frame_hash.hex_digest(got),
         "hash_want": frame_hash.hex_digest(want),
     }
     print(json.dumps(result, indent=2, sort_keys=True))
     if not result["live"]:
-        print("FAIL: %s has luminance distance %.6f from an all-black frame, below the %.6f floor. "
-              "Nothing was rendered." % (grid_path, live, FRAME_LIVENESS_FLOOR), file=sys.stderr)
+        print("FAIL: %s has luminance spread %.6f, below the blessed floor %.6f. The frame is "
+              "(near-)uniform, which is what a run that never drew the scene produces."
+              % (grid_path, live, floor), file=sys.stderr)
         return 1
     return 0
 
