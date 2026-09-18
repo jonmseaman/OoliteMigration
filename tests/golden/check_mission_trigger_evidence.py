@@ -33,8 +33,15 @@ That is backed by the two other consequences of the SAME `if` block, because a c
 witness:
   * DEFENCE B: `oolite-cloaking-device-mission` is registered in `system.populatorSettings` - a key
     created by that block's `system.setPopulator()` call (:71) and by nothing else;
-  * DEFENCE C: the ambush exists - 1 `asp-cloaked` and 2 `asp-pirate` (:77-80).
+  * DEFENCE C: the ambush exists - the single `asp-cloaked` the callback spawned (:77), carrying
+    `oolite-cloaking-device-target-ship` and an escort group of 3.
 The Constrictor control arm fails all three while still being a fully loaded, fully alive game.
+
+WHY THE ESCORTS ARE NOT COUNTED BY ROLE. `asp-pirate` is ALSO the ordinary Asp's role in
+shipdata.plist, so the ambient populator adds them: a system-wide count of it was measured at 2, 3
+and 4 across ten runs and aborted 2 of them. The escorts are read off the LEADER's own
+`escortGroup` instead, whose size is fixed by `escorts = 2` in the asp-cloaked template. A gate
+whose observable the populator also writes to is the trap six sibling beads hit (bead oo-qwk5).
 
 EXIT CODES: 0 the dump carries the evidence; 1 it does not (each failure names the field and both
 values). A usage error is 2 - "I cannot tell you", never "they match" - the convention golden_diff
@@ -78,7 +85,13 @@ EXPECTED_COUNTER_IN_ENGINE = 7
 EXPECTED_POPULATOR = "oolite-cloaking-device-mission"
 
 # --- DEFENCE C: the ambush that populator's callback spawned ------------------------------------
-EXPECTED_SPAWNED_ROLES = {"asp-cloaked": 1, "asp-pirate": 2}
+# Only asp-cloaked is counted by role: it exists solely in this mission's shipdata template. The
+# escorts are pinned through the LEADER's escortGroup, because `asp-pirate` is also the ordinary
+# Asp's role and the ambient populator writes to it (measured 2, 3 and 4 across runs).
+EXPECTED_SPAWNED_ROLES = {"asp-cloaked": 1}
+EXPECTED_LEADER_ROLE = "asp-cloaked"
+EXPECTED_LEADER_SCRIPT = "oolite-cloaking-device-target-ship"
+EXPECTED_LEADER_ESCORTS = 3
 
 # --- the script object itself --------------------------------------------------------------------
 EXPECTED_MISSION_SCRIPT = "oolite-cloaking-device"
@@ -210,11 +223,37 @@ def check(data, label):
             "record that the ambush was ever in the world." % (counts,))
     elif counts != EXPECTED_SPAWNED_ROLES:
         problems.append(
-            "evidence.spawned_role_counts is %r but the measured set is %r. These ships are what "
-            "the ambush populator's callback spawns (1 asp-cloaked, 2 asp-pirate, literals at "
-            "oolite-cloaking-device-mission.js:77-80). Their identities are a RANROT role draw and "
-            "are deliberately NOT pinned; their COUNT is fixed by the script. Both controls read "
-            "zero asp-cloaked." % (counts, EXPECTED_SPAWNED_ROLES))
+            "evidence.spawned_role_counts is %r but the measured set is %r. `asp-cloaked` exists "
+            "ONLY in this mission's shipdata template, so a zero there means the populator "
+            "callback never ran. Both controls read zero."
+            % (counts, EXPECTED_SPAWNED_ROLES))
+
+    leader = ev.get("ambush_leader")
+    if ev.get("ambush_leader_role") != EXPECTED_LEADER_ROLE:
+        problems.append("evidence.ambush_leader_role is %r, expected %r"
+                        % (ev.get("ambush_leader_role"), EXPECTED_LEADER_ROLE))
+    if not isinstance(leader, dict):
+        problems.append(
+            "evidence.ambush_leader is %r: no %s entity was read out of the world. The leader is "
+            "the ship the populator's CALLBACK spawns (oolite-cloaking-device-mission.js:77), so "
+            "it is the only witness that the callback RAN rather than merely being registered."
+            % (leader, EXPECTED_LEADER_ROLE))
+    else:
+        if leader.get("script") != EXPECTED_LEADER_SCRIPT:
+            problems.append(
+                "evidence.ambush_leader.script is %r, expected %r. shipdata.plist attaches that "
+                "script to the asp-cloaked template, so a different one means this is not the "
+                "mission's ship." % (leader.get("script"), EXPECTED_LEADER_SCRIPT))
+        if leader.get("escort_group_count") != EXPECTED_LEADER_ESCORTS:
+            problems.append(
+                "evidence.ambush_leader.escort_group_count is %r, expected %r. NOTE THE DELIBERATE "
+                "CHOICE OF OBSERVABLE: the escorts are counted through the LEADER'S OWN GROUP and "
+                "NOT with system.countShipsWithRole('asp-pirate'), because that role is also the "
+                "ordinary Asp's in shipdata.plist and the ambient populator writes to it - "
+                "measured at 2, 3 and 4 across runs. A property measured on a population the "
+                "populator also fills cannot distinguish the ship the mission spawned from one "
+                "that wandered in."
+                % (leader.get("escort_group_count"), EXPECTED_LEADER_ESCORTS))
 
     # --- the live script object ----------------------------------------------------------------
     if ev.get("mission_script") != EXPECTED_MISSION_SCRIPT:
@@ -285,13 +324,15 @@ def check(data, label):
     return ("%s: MISSION TRIGGER FIRED - %s loaded (commander %r in %s, ID %d, galaxy %d, %s-era "
             "save, score %d); the systemWillPopulate world-script event ran %s, which incremented "
             "missionVariables.%s from %d ON DISK to %d IN THE ENGINE, registered the %r populator "
-            "and spawned the ambush (%s); %d mission variable(s) restored; %d live handler(s) "
-            "(%s); ran %d ticks; %d entities, %d market goods"
+            "and spawned the ambush (%s, leader script %s with an escort group of %d); %d mission "
+            "variable(s) restored; %d live handler(s) (%s); ran %d ticks; %d entities, %d market "
+            "goods"
             % (label, EXPECTED_SAVE_FILE, ev["commander_name"], ev["system_name"], ev["system_id"],
                ev["galaxy_number"], ev["save_format_version"], ev["score"],
                EXPECTED_MISSION_SCRIPT, EXPECTED_COUNTER_KEY, in_file, in_engine,
                EXPECTED_POPULATOR,
-               ", ".join("%s=%d" % kv for kv in sorted(counts.items())), len(mv),
+               ", ".join("%s=%d" % kv for kv in sorted(counts.items())),
+               leader["script"], leader["escort_group_count"], len(mv),
                len(handlers), ", ".join(sorted(handlers)), ev["ticks"], len(ents), len(market)))
 
 

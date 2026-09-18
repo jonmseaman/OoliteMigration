@@ -27,7 +27,14 @@ same `if` block, because a counter alone could in principle move for another rea
 
   * `oolite-cloaking-device-mission` appears in `system.populatorSettings` - a key only that
     script's `system.setPopulator(...)` call creates;
-  * the ambush exists: `system.countShipsWithRole('asp-cloaked') == 1` and `'asp-pirate' == 2`.
+  * the ambush exists: the leader is the single `asp-cloaked` the callback spawned, carrying
+    `oolite-cloaking-device-target-ship` and an escort group of 3.
+
+MEASURED CAUTION ON ROLE COUNTS: `asp-pirate` is NOT mission-exclusive - shipdata.plist gives the
+ordinary Asp that role, so the ambient populator adds them and a system-wide count of it was
+observed at 2, 3 and 4 over ten runs, aborting 2 of them. The escorts are therefore read off the
+LEADER's own `escortGroup`, whose size is fixed by `escorts = 2` in shipdata, rather than by
+sweeping the whole system for a role anybody can have.
 
 All three are read out of the LIVE engine before the world is cleared for the dump, and all three
 are recorded as dump fields so every later comparison re-checks them.
@@ -235,6 +242,21 @@ def read_trigger_state(console, spec, require_script=True):
     for role in spec["expected_spawned_roles"]:
         counts[role] = console.evaluate_int("system.countShipsWithRole(%s)" % json.dumps(role))
 
+    # The ambush LEADER's own identity, read off the spawned entity. MEASURED NOTE ON ROLE
+    # COUNTS: `asp-pirate` is NOT mission-exclusive - shipdata.plist gives the ordinary Asp that
+    # role, so the ambient populator adds them and the count was observed at 2, 3 and 4 across
+    # runs. Counting it made the dump non-reproducible (2 of 10 runs aborted). Only `asp-cloaked`
+    # is created solely by this mission's template, so the escorts are pinned through the LEADER's
+    # escortGroup - a number fixed by `escorts = 2` in shipdata - instead of by a role sweep of
+    # the whole system.
+    leader = _js_json(console, "(function(){ var s = system.shipsWithRole(%s);"
+                               " if (!s || !s.length) return 'null';"
+                               " var x = s[0];"
+                               " return JSON.stringify({"
+                               "   script: (x.script ? x.script.name : null),"
+                               "   escort_group_count: (x.escortGroup ? x.escortGroup.count : null)"
+                               " }); })()" % json.dumps(spec["ambush_leader_role"]))
+
     key = spec["mission_variable_key"]
     counter = mission_vars.get(key)
     return {
@@ -248,6 +270,8 @@ def read_trigger_state(console, spec, require_script=True):
         "live_mission_handlers": sorted(live),
         "ambush_populator": spec["expected_populator_key"],
         "ambush_populator_registered": spec["expected_populator_key"] in populators,
+        "ambush_leader_role": spec["ambush_leader_role"],
+        "ambush_leader": leader,
         "spawned_role_counts": counts,
     }
 
@@ -466,9 +490,30 @@ def assert_trigger_fired(evidence, spec):
         got_count = evidence["spawned_role_counts"].get(role)
         if got_count != want_count:
             raise ScenarioError(
-                "system.countShipsWithRole(%r) is %r, expected %r. These ships are the ambush the "
-                "populator callback spawns; their COUNT is fixed by literals in the mission script "
-                "even though their cast is a RANROT role draw." % (role, got_count, want_count))
+                "system.countShipsWithRole(%r) is %r, expected %r. That role is created ONLY by "
+                "this mission's shipdata template, so the ambush the populator callback spawned "
+                "is not in the world." % (role, got_count, want_count))
+
+    leader = evidence["ambush_leader"]
+    if not isinstance(leader, dict):
+        raise ScenarioError(
+            "no %s entity was found to read: the ambush leader is the ship the populator callback "
+            "spawns (oolite-cloaking-device-mission.js:77) and it is the only witness that the "
+            "callback RAN rather than merely being registered." % evidence["ambush_leader_role"])
+    if leader.get("script") != spec["expected_ambush_leader_script"]:
+        raise ScenarioError(
+            "the ambush leader's script is %r, expected %r. shipdata.plist attaches "
+            "oolite-cloaking-device-target-ship.js to the asp-cloaked template, so a different "
+            "script means this is not the mission's ship."
+            % (leader.get("script"), spec["expected_ambush_leader_script"]))
+    if leader.get("escort_group_count") != int(spec["expected_ambush_escort_group_count"]):
+        raise ScenarioError(
+            "the ambush leader's escortGroup.count is %r, expected %r. NOTE THE DELIBERATE CHOICE "
+            "OF OBSERVABLE: the escorts are counted through the LEADER'S OWN GROUP and not with "
+            "system.countShipsWithRole('asp-pirate'), because that role is ALSO given to the "
+            "ordinary Asp in shipdata.plist and the ambient populator adds them - measured at 2, 3 "
+            "and 4 across runs, which made a system-wide role count non-reproducible."
+            % (leader.get("escort_group_count"), spec["expected_ambush_escort_group_count"]))
 
     if evidence["mission_variables"] != spec["expected_mission_variables"]:
         raise ScenarioError(
@@ -618,7 +663,7 @@ def run(app_dir, spec, run_root, out_path=None, frame_out=None, keep=False, save
 
 DIFFERENTIAL_FIELDS = ("commander_name", "system_name", "system_id", "galaxy_number",
                        "mission_counter_in_engine", "mission_counter_present",
-                       "ambush_populator_registered", "spawned_role_counts",
+                       "ambush_populator_registered", "ambush_leader", "spawned_role_counts",
                        "mission_variable_names", "mission_script_loaded")
 
 
@@ -721,11 +766,11 @@ def main(argv=None):
 
     ev = result["evidence"]
     print("scenario %s: commander=%r system=%r(%s) galaxy=%s %s file=%r engine=%r populator=%s "
-          "spawned=%s handlers=%s mission_vars=%d ticks=%s wall=%.1fs"
+          "leader=%s spawned=%s handlers=%s mission_vars=%d ticks=%s wall=%.1fs"
           % (SCENARIO, ev["commander_name"], ev["system_name"], ev["system_id"],
              ev.get("galaxy_number"), ev["mission_counter_key"], ev["mission_counter_in_file"],
              ev["mission_counter_in_engine"], ev["ambush_populator_registered"],
-             ev["spawned_role_counts"], ev["live_mission_handlers"],
+             ev["ambush_leader"], ev["spawned_role_counts"], ev["live_mission_handlers"],
              len(ev["mission_variables"]), ev["ticks"], result["wall_seconds"]))
     if result["out"]:
         print("dump: %s (%d bytes)" % (result["out"], result["bytes"]))

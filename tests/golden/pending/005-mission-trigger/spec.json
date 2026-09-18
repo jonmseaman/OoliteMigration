@@ -25,11 +25,13 @@
   "expected_counter_in_file": 6,
   "expected_counter_in_engine": 7,
 
-  "_side_effects": "The two other consequences of the SAME `if` block, so the counter cannot be the only witness. The populator key is created by that block's system.setPopulator() call and by nothing else; the role counts are literals in the block's callback (1 asp-cloaked, 2 asp-pirate).",
+  "_side_effects": "The two other consequences of the SAME `if` block, so the counter cannot be the only witness. The populator key is created by that block's system.setPopulator() call and by nothing else; the ambush leader is the ship its callback spawns. MEASURED CAUTION ON ROLE COUNTS: `asp-pirate` is NOT mission-exclusive - shipdata.plist gives the ordinary Asp that role, so the ambient populator adds them and the system-wide count was observed at 2, 3 and 4 across ten runs. Only `asp-cloaked` is created solely by this mission's template, so the escorts are pinned through the LEADER's own escortGroup (fixed by `escorts = 2` in shipdata) instead of by a system-wide role sweep.",
   "expected_populator_key": "oolite-cloaking-device-mission",
+  "ambush_leader_role": "asp-cloaked",
+  "expected_ambush_leader_script": "oolite-cloaking-device-target-ship",
+  "expected_ambush_escort_group_count": 3,
   "expected_spawned_roles": {
-    "asp-cloaked": 1,
-    "asp-pirate": 2
+    "asp-cloaked": 1
   },
 
   "_handlers": "systemWillPopulate must STILL be a live function on the script object: startUp deletes it when missionVariables.cloak is already set (oolite-cloaking-device-mission.js:38-45), and a script with no handler cannot have been the thing that fired.",
@@ -61,9 +63,9 @@
     "counter_in_engine": null,
     "counter_present": false,
     "populator_registered": false,
+    "ambush_leader": null,
     "spawned_role_counts": {
-      "asp-cloaked": 0,
-      "asp-pirate": 0
+      "asp-cloaked": 0
     }
   },
 
