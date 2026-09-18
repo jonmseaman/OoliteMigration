@@ -327,7 +327,12 @@ BackendClass* attach(ClassDef* def)
 	if (flags & static_cast<std::uint32_t>(ClassFlag::NewEnumerate))
 	{
 		if (def->newEnumerate == nullptr)  fatal("ClassFlag::NewEnumerate set without a newEnumerate hook");
-		c.enumerate = reinterpret_cast<JSEnumerateOp>(gNewEnumerateTable[gNewEnumerators.slot(def->newEnumerate)]);
+		// The engine's own convention: with JSCLASS_NEW_ENUMERATE the `enumerate` slot holds a
+		// JSNewEnumerateOp and the engine casts it back. Copy the pointer bits rather than cast
+		// between the two function types.
+		const JSNewEnumerateOp newEnum = gNewEnumerateTable[gNewEnumerators.slot(def->newEnumerate)];
+		static_assert(sizeof newEnum == sizeof c.enumerate, "function pointer sizes");
+		std::memcpy(&c.enumerate, &newEnum, sizeof c.enumerate);
 	}
 	else
 	{
@@ -714,9 +719,10 @@ void destroyIdArray(Context cx, IdArray* ida)
 
 String   getFunctionId(Function fn)                   { return wrap(JS_GetFunctionId(FUN(fn))); }
 Object   getFunctionObject(Function fn)               { return wrap(JS_GetFunctionObject(FUN(fn))); }
-NativeFn getFunctionNative(Context cx, Function fn)
+NativeFn getFunctionNative(Context /*cx*/, Function fn)
 {
-	if (JS_GetFunctionNative(CX(cx), FUN(fn)) != NativeTramp)  return nullptr;
+	// Only functions defined through the façade are registered; the engine's own natives and
+	// script functions answer nullptr, which is the one distinction the callers draw.
 	auto it = gNatives.find(FUN(fn));
 	return it == gNatives.end() ? nullptr : it->second;
 }
@@ -758,7 +764,7 @@ bool          stringEqualsAscii(Context cx, String str, const char* ascii, bool*
 	*match = m != JS_FALSE;
 	return true;
 }
-bool          stringHasBeenInterned(Context cx, String str)                  { return JS_StringHasBeenInterned(CX(cx), STR(str)) != JS_FALSE; }
+bool          stringHasBeenInterned(Context /*cx*/, String str)              { return JS_StringHasBeenInterned(STR(str)) != JS_FALSE; }
 
 // MARK: Exceptions and error reporting --------------------------------------------------------
 

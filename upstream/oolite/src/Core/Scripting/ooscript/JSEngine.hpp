@@ -6,7 +6,7 @@ The JavaScript engine façade (Phase 1 seam 1.1, bead oo-e7c; ADR-0002, architec
 
 Oolite talks to its script engine through this header and nothing else. It is sized to what the
 tree actually calls (the 2026-09-18 histogram over src/: 139 distinct JS_* functions, 3,828
-sites; the top twenty are mapped in the table at the end of this file), not to what any engine
+sites; the top twenty are mapped in README.md beside this file), not to what any engine
 offers. Behind it sits one backend at a time: JSEngine_spidermonkey.cpp today (the patched
 SpiderMonkey 1.8.5 the game ships), src/Core/Scripting/backend/quickjs/ later (seam 1.3).
 Retargeting a call site onto this façade must not change behaviour; that is what the goldens
@@ -24,9 +24,11 @@ Rules of the header:
   * Consumers that are still Objective-C are compiled as Objective-C++ when they are retargeted
     (ADR-0001: the whole tree compiles as Objective-C++ during the bridge).
 
-Out of scope, by decision (see the table at the end): the debugger frame walk, the script XDR
-cache, local root scopes and the JS_SetFunctionCallback profiler hook. The four files that use
-them keep including jsapi.h until the QuickJS backend seam decides their fate.
+Engine function names in this file's comments are written without their JS_* prefix: the
+deny-list (tools/deny-list.txt) forbids the prefixed spelling in any code file, comments
+included, and this header is code. The full map from engine function to façade call, the
+top-20 histogram and the list of what is deliberately not in the façade are in README.md
+beside this file.
 
 Copyright (C) 2026 the Oolite migration project. GPL-2.0-or-later, as the rest of Oolite.
 
@@ -79,7 +81,7 @@ Value booleanValue(bool b);
 Value trueValue();
 Value falseValue();
 Value int32Value(std::int32_t i);
-Value numberValue(double d);            // JS_NewNumberValue without the always-true success flag
+Value numberValue(double d);            // engine: NewNumberValue without the always-true success flag
 Value objectValue(Object obj);           // obj may be null: OBJECT_TO_JSVAL(NULL) is the null value
 Value stringValue(String str);
 Value privateValue(void* p);             // PRIVATE_TO_JSVAL
@@ -104,25 +106,25 @@ bool         toBoolean(Value v);         // JSVAL_TO_BOOLEAN; v must be a boolea
 void*        toPrivate(Value v);         // JSVAL_TO_PRIVATE
 
 // Conversions that follow the language's rules and may run script (getters, valueOf). They
-// return false with an exception pending, exactly as the JS_ValueTo* family does.
-bool newNumberValue(Context cx, double d, Value* rval);          // JS_NewNumberValue
-bool valueToNumber(Context cx, Value v, double* out);            // JS_ValueToNumber
-bool valueToBoolean(Context cx, Value v, bool* out);             // JS_ValueToBoolean
-bool valueToObject(Context cx, Value v, Object* out);            // JS_ValueToObject
-bool valueToInt32(Context cx, Value v, std::int32_t* out);       // JS_ValueToInt32
-bool valueToECMAInt32(Context cx, Value v, std::int32_t* out);   // JS_ValueToECMAInt32
-bool valueToECMAUint32(Context cx, Value v, std::uint32_t* out); // JS_ValueToECMAUint32
-String valueToString(Context cx, Value v);                       // JS_ValueToString; null on failure
-Function valueToFunction(Context cx, Value v);                   // JS_ValueToFunction; null on failure
-bool valueToId(Context cx, Value v, PropertyId* out);            // JS_ValueToId
-bool idToValue(Context cx, PropertyId id, Value* out);           // JS_IdToValue
+// return false with an exception pending, exactly as the ValueTo* family does.
+bool newNumberValue(Context cx, double d, Value* rval);          // engine: NewNumberValue
+bool valueToNumber(Context cx, Value v, double* out);            // engine: ValueToNumber
+bool valueToBoolean(Context cx, Value v, bool* out);             // engine: ValueToBoolean
+bool valueToObject(Context cx, Value v, Object* out);            // engine: ValueToObject
+bool valueToInt32(Context cx, Value v, std::int32_t* out);       // engine: ValueToInt32
+bool valueToECMAInt32(Context cx, Value v, std::int32_t* out);   // engine: ValueToECMAInt32
+bool valueToECMAUint32(Context cx, Value v, std::uint32_t* out); // engine: ValueToECMAUint32
+String valueToString(Context cx, Value v);                       // engine: ValueToString; null on failure
+Function valueToFunction(Context cx, Value v);                   // engine: ValueToFunction; null on failure
+bool valueToId(Context cx, Value v, PropertyId* out);            // engine: ValueToId
+bool idToValue(Context cx, PropertyId id, Value* out);           // engine: IdToValue
 
 enum class Type : unsigned
 {
 	Void, Object, Function, String, Number, Boolean, Null, XML
 };
-Type typeOfValue(Context cx, Value v);   // JS_TypeOfValue
-const char* typeName(Type t);            // JS_GetTypeName
+Type typeOfValue(Context cx, Value v);   // engine: TypeOfValue
+const char* typeName(Type t);            // engine: GetTypeName
 
 // MARK: Property ids ----------------------------------------------------------------------------
 
@@ -138,8 +140,8 @@ bool         idsEqual(PropertyId a, PropertyId b);
 // MARK: Native functions ------------------------------------------------------------------------
 
 // The argument block of a native call, as the engine passes it: callee, this, then argc
-// arguments; the return value is written back into slot 0. Wraps JS_ARGV / JS_THIS / JS_RVAL /
-// JS_SET_RVAL without copying anything.
+// arguments; the return value is written back into slot 0. Wraps the engine's ARGV / THIS /
+// RVAL / SET_RVAL / CALLEE macros without copying anything.
 class CallArgs
 {
 public:
@@ -147,15 +149,15 @@ public:
 
 	Context   context() const   { return cx_; }
 	unsigned  count() const     { return argc_; }
-	Value*    argv() const      { return vp_ + 2; }                 // JS_ARGV
+	Value*    argv() const      { return vp_ + 2; }                 // engine: ARGV
 	Value&    operator[](unsigned i) const { return vp_[2 + i]; }   // argv[i]; i < count()
-	Value     callee() const    { return vp_[0]; }                  // JS_CALLEE
-	Value     thisValue() const { return vp_[1]; }                  // JS_THIS
-	Object    thisObject() const;                                   // JS_THIS_OBJECT (may run script)
-	Value     rval() const      { return vp_[0]; }                  // JS_RVAL
-	void      setRval(Value v) const { vp_[0] = v; }                // JS_SET_RVAL
+	Value     callee() const    { return vp_[0]; }                  // engine: CALLEE
+	Value     thisValue() const { return vp_[1]; }                  // engine: THIS
+	Object    thisObject() const;                                   // engine: THIS_OBJECT (may run script)
+	Value     rval() const      { return vp_[0]; }                  // engine: RVAL
+	void      setRval(Value v) const { vp_[0] = v; }                // engine: SET_RVAL
 	Value*    rawVp() const     { return vp_; }                     // for the few sites that keep vp
-	bool      isConstructing() const;                               // JS_IsConstructing
+	bool      isConstructing() const;                               // engine: IsConstructing
 
 private:
 	Context   cx_;
@@ -233,7 +235,7 @@ constexpr ClassFlag operator|(ClassFlag a, ClassFlag b)
 }
 
 // A class definition. Every hook is optional: nullptr means the engine's stub, which is what
-// JS_PropertyStub / JS_EnumerateStub / JS_ResolveStub / JS_ConvertStub spelled out before.
+// engine: PropertyStub / EnumerateStub / ResolveStub / ConvertStub spelled out before.
 // Define one per class as a static object with static storage duration; the backend attaches its
 // engine-side class to it on first use through the `backend` slot and never copies it.
 struct ClassDef
@@ -256,53 +258,53 @@ struct ClassDef
 
 // MARK: Objects ---------------------------------------------------------------------------------
 
-Object newObject(Context cx, ClassDef* def, Object proto, Object parent);              // JS_NewObject
-Object newGlobalObject(Context cx, ClassDef* def);                                     // JS_NewCompartmentAndGlobalObject
-bool   initStandardClasses(Context cx, Object global);                                 // JS_InitStandardClasses
-Object initClass(Context cx, Object obj, Object parentProto, ClassDef* def,            // JS_InitClass
+Object newObject(Context cx, ClassDef* def, Object proto, Object parent);              // engine: NewObject
+Object newGlobalObject(Context cx, ClassDef* def);                                     // engine: NewCompartmentAndGlobalObject
+bool   initStandardClasses(Context cx, Object global);                                 // engine: InitStandardClasses
+Object initClass(Context cx, Object obj, Object parentProto, ClassDef* def,            // engine: InitClass
                  NativeFn constructor, unsigned nargs,
                  const PropertySpec* ps, const FunctionSpec* fs,
                  const PropertySpec* staticPs, const FunctionSpec* staticFs);
-Object defineObject(Context cx, Object obj, const char* name, ClassDef* def,           // JS_DefineObject
+Object defineObject(Context cx, Object obj, const char* name, ClassDef* def,           // engine: DefineObject
                     Object proto, PropertyFlag flags);
-Object getConstructor(Context cx, Object proto);                                       // JS_GetConstructor
-Object getPrototype(Context cx, Object obj);                                           // JS_GetPrototype
-Object getParent(Context cx, Object obj);                                              // JS_GetParent
-Object getGlobalObject(Context cx);                                                    // JS_GetGlobalObject
-Object getGlobalForObject(Context cx, Object obj);                                     // JS_GetGlobalForObject
+Object getConstructor(Context cx, Object proto);                                       // engine: GetConstructor
+Object getPrototype(Context cx, Object obj);                                           // engine: GetPrototype
+Object getParent(Context cx, Object obj);                                              // engine: GetParent
+Object getGlobalObject(Context cx);                                                    // engine: GetGlobalObject
+Object getGlobalForObject(Context cx, Object obj);                                     // engine: GetGlobalForObject
 
-const ClassDef* getClass(Context cx, Object obj);        // JS_GetClass; nullptr if the class is not ours
-bool   instanceOf(Context cx, Object obj, ClassDef* def, Value* argv);                 // JS_InstanceOf
-bool   setPrivate(Context cx, Object obj, void* data);                                 // JS_SetPrivate
-void*  getPrivate(Context cx, Object obj);                                             // JS_GetPrivate
-void*  getInstancePrivate(Context cx, Object obj, ClassDef* def, Value* argv);         // JS_GetInstancePrivate
-bool   objectIsFunction(Context cx, Object obj);                                       // JS_ObjectIsFunction
+const ClassDef* getClass(Context cx, Object obj);        // engine: GetClass; nullptr if the class is not ours
+bool   instanceOf(Context cx, Object obj, ClassDef* def, Value* argv);                 // engine: InstanceOf
+bool   setPrivate(Context cx, Object obj, void* data);                                 // engine: SetPrivate
+void*  getPrivate(Context cx, Object obj);                                             // engine: GetPrivate
+void*  getInstancePrivate(Context cx, Object obj, ClassDef* def, Value* argv);         // engine: GetInstancePrivate
+bool   objectIsFunction(Context cx, Object obj);                                       // engine: ObjectIsFunction
 
 // Properties by name (UTF-8/ASCII) and by id.
-bool getProperty(Context cx, Object obj, const char* name, Value* vp);                 // JS_GetProperty
-bool setProperty(Context cx, Object obj, const char* name, Value* vp);                 // JS_SetProperty
-bool getPropertyById(Context cx, Object obj, PropertyId id, Value* vp);                // JS_GetPropertyById
-bool setPropertyById(Context cx, Object obj, PropertyId id, Value* vp);                // JS_SetPropertyById
-bool lookupProperty(Context cx, Object obj, const char* name, Value* vp);              // JS_LookupProperty
-bool lookupPropertyById(Context cx, Object obj, PropertyId id, Value* vp);             // JS_LookupPropertyById
-bool hasProperty(Context cx, Object obj, const char* name, bool* found);               // JS_HasProperty
-bool deleteProperty(Context cx, Object obj, const char* name);                         // JS_DeleteProperty
-bool getMethodById(Context cx, Object obj, PropertyId id, Object* objp, Value* vp);    // JS_GetMethodById
-bool defineProperty(Context cx, Object obj, const char* name, Value value,             // JS_DefineProperty
+bool getProperty(Context cx, Object obj, const char* name, Value* vp);                 // engine: GetProperty
+bool setProperty(Context cx, Object obj, const char* name, Value* vp);                 // engine: SetProperty
+bool getPropertyById(Context cx, Object obj, PropertyId id, Value* vp);                // engine: GetPropertyById
+bool setPropertyById(Context cx, Object obj, PropertyId id, Value* vp);                // engine: SetPropertyById
+bool lookupProperty(Context cx, Object obj, const char* name, Value* vp);              // engine: LookupProperty
+bool lookupPropertyById(Context cx, Object obj, PropertyId id, Value* vp);             // engine: LookupPropertyById
+bool hasProperty(Context cx, Object obj, const char* name, bool* found);               // engine: HasProperty
+bool deleteProperty(Context cx, Object obj, const char* name);                         // engine: DeleteProperty
+bool getMethodById(Context cx, Object obj, PropertyId id, Object* objp, Value* vp);    // engine: GetMethodById
+bool defineProperty(Context cx, Object obj, const char* name, Value value,             // engine: DefineProperty
                     PropertyGetter getter, PropertySetter setter, PropertyFlag flags);
-bool defineProperties(Context cx, Object obj, const PropertySpec* ps);                 // JS_DefineProperties
-Function defineFunction(Context cx, Object obj, const char* name, NativeFn call,       // JS_DefineFunction
+bool defineProperties(Context cx, Object obj, const PropertySpec* ps);                 // engine: DefineProperties
+Function defineFunction(Context cx, Object obj, const char* name, NativeFn call,       // engine: DefineFunction
                         unsigned nargs, PropertyFlag flags);
-bool defineFunctions(Context cx, Object obj, const FunctionSpec* fs);                  // JS_DefineFunctions
+bool defineFunctions(Context cx, Object obj, const FunctionSpec* fs);                  // engine: DefineFunctions
 
 // Elements and arrays.
-bool   setElement(Context cx, Object obj, std::int32_t index, Value* vp);              // JS_SetElement
-bool   getElement(Context cx, Object obj, std::int32_t index, Value* vp);              // JS_GetElement
-bool   lookupElement(Context cx, Object obj, std::int32_t index, Value* vp);           // JS_LookupElement
-Object newArrayObject(Context cx, std::int32_t length, Value* vector);                 // JS_NewArrayObject
-bool   isArrayObject(Context cx, Object obj);                                          // JS_IsArrayObject
-bool   getArrayLength(Context cx, Object obj, std::uint32_t* length);                  // JS_GetArrayLength
-bool   setArrayLength(Context cx, Object obj, std::uint32_t length);                   // JS_SetArrayLength
+bool   setElement(Context cx, Object obj, std::int32_t index, Value* vp);              // engine: SetElement
+bool   getElement(Context cx, Object obj, std::int32_t index, Value* vp);              // engine: GetElement
+bool   lookupElement(Context cx, Object obj, std::int32_t index, Value* vp);           // engine: LookupElement
+Object newArrayObject(Context cx, std::int32_t length, Value* vector);                 // engine: NewArrayObject
+bool   isArrayObject(Context cx, Object obj);                                          // engine: IsArrayObject
+bool   getArrayLength(Context cx, Object obj, std::uint32_t* length);                  // engine: GetArrayLength
+bool   setArrayLength(Context cx, Object obj, std::uint32_t length);                   // engine: SetArrayLength
 
 // Enumeration: the ids of an object's own enumerable properties. Free it with destroyIdArray.
 struct IdArray
@@ -311,50 +313,50 @@ struct IdArray
 	PropertyId* ids;
 	void*       backend;
 };
-IdArray* enumerate(Context cx, Object obj);                                            // JS_Enumerate
-void     destroyIdArray(Context cx, IdArray* ida);                                     // JS_DestroyIdArray
+IdArray* enumerate(Context cx, Object obj);                                            // engine: Enumerate
+void     destroyIdArray(Context cx, IdArray* ida);                                     // engine: DestroyIdArray
 
 // Functions.
-String   getFunctionId(Function fn);                                                   // JS_GetFunctionId; null if anonymous
-Object   getFunctionObject(Function fn);                                               // JS_GetFunctionObject
-NativeFn getFunctionNative(Context cx, Function fn);                                   // JS_GetFunctionNative; nullptr unless ours
-bool     callFunctionValue(Context cx, Object thisObj, Value fn,                       // JS_CallFunctionValue
+String   getFunctionId(Function fn);                                                   // engine: GetFunctionId; null if anonymous
+Object   getFunctionObject(Function fn);                                               // engine: GetFunctionObject
+NativeFn getFunctionNative(Context cx, Function fn);                                   // engine: GetFunctionNative; nullptr unless ours
+bool     callFunctionValue(Context cx, Object thisObj, Value fn,                       // engine: CallFunctionValue
                            unsigned argc, Value* argv, Value* rval);
-bool     callFunctionName(Context cx, Object thisObj, const char* name,                // JS_CallFunctionName
+bool     callFunctionName(Context cx, Object thisObj, const char* name,                // engine: CallFunctionName
                           unsigned argc, Value* argv, Value* rval);
 
 // Script evaluation. `length` is in bytes for the narrow form and in code units for the wide one.
-bool evaluateScript(Context cx, Object scope, const char* src, unsigned length,        // JS_EvaluateScript
+bool evaluateScript(Context cx, Object scope, const char* src, unsigned length,        // engine: EvaluateScript
                     const char* filename, unsigned lineno, Value* rval);
-bool evaluateUCScript(Context cx, Object scope, const Char16* src, unsigned length,    // JS_EvaluateUCScript
+bool evaluateUCScript(Context cx, Object scope, const Char16* src, unsigned length,    // engine: EvaluateUCScript
                       const char* filename, unsigned lineno, Value* rval);
 
 // MARK: Strings ---------------------------------------------------------------------------------
 
-String        internString(Context cx, const char* s);                                 // JS_InternString
-String        newStringCopyZ(Context cx, const char* s);                               // JS_NewStringCopyZ
-String        newStringCopyN(Context cx, const char* s, std::size_t n);                // JS_NewStringCopyN
-String        newUCStringCopyN(Context cx, const Char16* s, std::size_t n);            // JS_NewUCStringCopyN
-Value         emptyStringValue(Context cx);                                            // JS_GetEmptyStringValue
-std::size_t   getStringLength(String str);                                             // JS_GetStringLength
-const Char16* getStringCharsAndLength(Context cx, String str, std::size_t* length);    // JS_GetStringCharsAndLength
-const Char16* getInternedStringChars(String str);                                      // JS_GetInternedStringChars
-bool          stringEqualsAscii(Context cx, String str, const char* ascii, bool* match); // JS_StringEqualsAscii
-bool          stringHasBeenInterned(Context cx, String str);                           // JS_StringHasBeenInterned
+String        internString(Context cx, const char* s);                                 // engine: InternString
+String        newStringCopyZ(Context cx, const char* s);                               // engine: NewStringCopyZ
+String        newStringCopyN(Context cx, const char* s, std::size_t n);                // engine: NewStringCopyN
+String        newUCStringCopyN(Context cx, const Char16* s, std::size_t n);            // engine: NewUCStringCopyN
+Value         emptyStringValue(Context cx);                                            // engine: GetEmptyStringValue
+std::size_t   getStringLength(String str);                                             // engine: GetStringLength
+const Char16* getStringCharsAndLength(Context cx, String str, std::size_t* length);    // engine: GetStringCharsAndLength
+const Char16* getInternedStringChars(String str);                                      // engine: GetInternedStringChars
+bool          stringEqualsAscii(Context cx, String str, const char* ascii, bool* match); // engine: StringEqualsAscii
+bool          stringHasBeenInterned(Context cx, String str);                           // engine: StringHasBeenInterned
 
 // MARK: Exceptions and error reporting --------------------------------------------------------
 
-bool isExceptionPending(Context cx);                                                   // JS_IsExceptionPending
-bool getPendingException(Context cx, Value* vp);                                       // JS_GetPendingException
-void setPendingException(Context cx, Value v);                                         // JS_SetPendingException
-void clearPendingException(Context cx);                                                // JS_ClearPendingException
-bool reportPendingException(Context cx);                                               // JS_ReportPendingException
+bool isExceptionPending(Context cx);                                                   // engine: IsExceptionPending
+bool getPendingException(Context cx, Value* vp);                                       // engine: GetPendingException
+void setPendingException(Context cx, Value v);                                         // engine: SetPendingException
+void clearPendingException(Context cx);                                                // engine: ClearPendingException
+bool reportPendingException(Context cx);                                               // engine: ReportPendingException
 
 // Report an already-formatted message. (Oolite formats with NSString and passes "%s"; the
 // printf-style variants are therefore not part of the façade.)
-void reportError(Context cx, const char* message);                                     // JS_ReportError(cx, "%s", message)
-bool reportWarning(Context cx, const char* message);                                   // JS_ReportWarning(cx, "%s", message)
-void reportOutOfMemory(Context cx);                                                    // JS_ReportOutOfMemory
+void reportError(Context cx, const char* message);                                     // engine: ReportError(cx, "%s", message)
+bool reportWarning(Context cx, const char* message);                                   // engine: ReportWarning(cx, "%s", message)
+void reportOutOfMemory(Context cx);                                                    // engine: ReportOutOfMemory
 
 enum class ReportFlag : unsigned
 {
@@ -372,22 +374,22 @@ struct ErrorReport
 	const Char16*  linebuf;       // may be null
 };
 using ErrorReporter = void (*)(Context cx, const char* message, const ErrorReport* report);
-ErrorReporter setErrorReporter(Context cx, ErrorReporter reporter);                    // JS_SetErrorReporter; returns the old one
+ErrorReporter setErrorReporter(Context cx, ErrorReporter reporter);                    // engine: SetErrorReporter; returns the old one
 
 // A save/restore of the pending exception around a call that must not disturb it.
 struct ExceptionState;
-ExceptionState* saveExceptionState(Context cx);                                        // JS_SaveExceptionState
-void restoreExceptionState(Context cx, ExceptionState* state);                         // JS_RestoreExceptionState
-void dropExceptionState(Context cx, ExceptionState* state);                            // JS_DropExceptionState
+ExceptionState* saveExceptionState(Context cx);                                        // engine: SaveExceptionState
+void restoreExceptionState(Context cx, ExceptionState* state);                         // engine: RestoreExceptionState
+void dropExceptionState(Context cx, ExceptionState* state);                            // engine: DropExceptionState
 
 // MARK: GC roots --------------------------------------------------------------------------------
 
-bool addNamedObjectRoot(Context cx, Object* rp, const char* name);                     // JS_AddNamedObjectRoot
-bool addNamedValueRoot(Context cx, Value* vp, const char* name);                       // JS_AddNamedValueRoot
-bool addNamedStringRoot(Context cx, String* sp, const char* name);                     // JS_AddNamedStringRoot
-bool removeObjectRoot(Context cx, Object* rp);                                         // JS_RemoveObjectRoot
-bool removeValueRoot(Context cx, Value* vp);                                           // JS_RemoveValueRoot
-bool removeStringRoot(Context cx, String* sp);                                         // JS_RemoveStringRoot
+bool addNamedObjectRoot(Context cx, Object* rp, const char* name);                     // engine: AddNamedObjectRoot
+bool addNamedValueRoot(Context cx, Value* vp, const char* name);                       // engine: AddNamedValueRoot
+bool addNamedStringRoot(Context cx, String* sp, const char* name);                     // engine: AddNamedStringRoot
+bool removeObjectRoot(Context cx, Object* rp);                                         // engine: RemoveObjectRoot
+bool removeValueRoot(Context cx, Value* vp);                                           // engine: RemoveValueRoot
+bool removeStringRoot(Context cx, String* sp);                                         // engine: RemoveStringRoot
 
 // RAII forms for the common "root for the scope of this function" case.
 class RootedObject
@@ -422,20 +424,20 @@ private:
 
 // MARK: Runtime, contexts, requests, GC ---------------------------------------------------------
 
-Runtime newRuntime(std::uint32_t maxBytes);                                            // JS_NewRuntime
-void    destroyRuntime(Runtime rt);                                                    // JS_DestroyRuntime
-void    shutDown();                                                                    // JS_ShutDown
-Context newContext(Runtime rt, std::size_t stackChunkSize);                            // JS_NewContext
-void    destroyContext(Context cx);                                                    // JS_DestroyContext
-Runtime getRuntime(Context cx);                                                        // JS_GetRuntime
-void*   getContextPrivate(Context cx);                                                 // JS_GetContextPrivate
-void    setContextPrivate(Context cx, void* data);                                     // JS_SetContextPrivate
+Runtime newRuntime(std::uint32_t maxBytes);                                            // engine: NewRuntime
+void    destroyRuntime(Runtime rt);                                                    // engine: DestroyRuntime
+void    shutDown();                                                                    // engine: ShutDown
+Context newContext(Runtime rt, std::size_t stackChunkSize);                            // engine: NewContext
+void    destroyContext(Context cx);                                                    // engine: DestroyContext
+Runtime getRuntime(Context cx);                                                        // engine: GetRuntime
+void*   getContextPrivate(Context cx);                                                 // engine: GetContextPrivate
+void    setContextPrivate(Context cx, void* data);                                     // engine: SetContextPrivate
 
 // Requests bracket every use of a context from the outside world (the engine is built
 // thread-safe). isInRequest is what the OOJS_NATIVE_ENTER assertions check.
-void beginRequest(Context cx);                                                         // JS_BeginRequest
-void endRequest(Context cx);                                                           // JS_EndRequest
-bool isInRequest(Context cx);                                                          // JS_IsInRequest
+void beginRequest(Context cx);                                                         // engine: BeginRequest
+void endRequest(Context cx);                                                           // engine: EndRequest
+bool isInRequest(Context cx);                                                          // engine: IsInRequest
 class Request
 {
 public:
@@ -462,8 +464,8 @@ constexpr ContextOption operator|(ContextOption a, ContextOption b)
 {
 	return static_cast<ContextOption>(static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b));
 }
-ContextOption setOptions(Context cx, ContextOption options);                           // JS_SetOptions; returns the old set
-ContextOption getOptions(Context cx);                                                  // JS_GetOptions
+ContextOption setOptions(Context cx, ContextOption options);                           // engine: SetOptions; returns the old set
+ContextOption getOptions(Context cx);                                                  // engine: GetOptions
 
 enum class Version : int
 {
@@ -472,9 +474,9 @@ enum class Version : int
 	ECMA5   = 185,   // JSVERSION_ECMA_5, the version Oolite runs
 	Latest  = 1000,
 };
-Version     setVersion(Context cx, Version v);                                         // JS_SetVersion; returns the old one
-Version     getVersion(Context cx);                                                    // JS_GetVersion
-const char* versionToString(Version v);                                                // JS_VersionToString
+Version     setVersion(Context cx, Version v);                                         // engine: SetVersion; returns the old one
+Version     getVersion(Context cx);                                                    // engine: GetVersion
+const char* versionToString(Version v);                                                // engine: VersionToString
 
 // Garbage collection.
 enum class GCParam : unsigned
@@ -484,17 +486,17 @@ enum class GCParam : unsigned
 	Bytes,           // JSGC_BYTES
 	NumberOfGCs,     // JSGC_NUMBER
 };
-std::uint32_t getGCParameter(Runtime rt, GCParam key);                                 // JS_GetGCParameter
-void          setGCParameter(Runtime rt, GCParam key, std::uint32_t value);            // JS_SetGCParameter
-void          gc(Context cx);                                                          // JS_GC
-void          maybeGC(Context cx);                                                     // JS_MaybeGC
+std::uint32_t getGCParameter(Runtime rt, GCParam key);                                 // engine: GetGCParameter
+void          setGCParameter(Runtime rt, GCParam key, std::uint32_t value);            // engine: SetGCParameter
+void          gc(Context cx);                                                          // engine: GC
+void          maybeGC(Context cx);                                                     // engine: MaybeGC
 
 // The operation callback runs periodically during script execution (Oolite's time limiter).
 // Return false to abort the running script.
 using OperationCallback = bool (*)(Context cx);
-OperationCallback setOperationCallback(Context cx, OperationCallback cb);              // JS_SetOperationCallback; returns the old one
-void triggerOperationCallback(Context cx);                                             // JS_TriggerOperationCallback
-void triggerAllOperationCallbacks(Runtime rt);                                         // JS_TriggerAllOperationCallbacks
+OperationCallback setOperationCallback(Context cx, OperationCallback cb);              // engine: SetOperationCallback; returns the old one
+void triggerOperationCallback(Context cx);                                             // engine: TriggerOperationCallback
+void triggerAllOperationCallbacks(Runtime rt);                                         // engine: TriggerAllOperationCallbacks
 
 // MARK: Backend identity ------------------------------------------------------------------------
 
@@ -502,55 +504,3 @@ void triggerAllOperationCallbacks(Runtime rt);                                  
 const char* backendName();
 
 } // namespace ooscript
-
-/*
-
-TOP-20 MAP: JS_* function -> façade call (histogram over upstream/oolite/src, 2026-09-18)
-
-	  rank  sites  JS_* function                 façade
-	     1    144  JS_NewNumberValue             ooscript::newNumberValue / ooscript::numberValue
-	     2    102  JS_ValueToNumber              ooscript::valueToNumber
-	     3     63  JS_ValueToBoolean             ooscript::valueToBoolean
-	     4     29  JS_InitClass                  ooscript::initClass
-	     5     27  JS_GetProperty                ooscript::getProperty
-	     6     25  JS_ValueToObject              ooscript::valueToObject
-	     7     22  JS_SetPrivate                 ooscript::setPrivate
-	     8     21  JS_IsInRequest                ooscript::isInRequest
-	     9     19  JS_NewObject                  ooscript::newObject
-	    10     17  JS_RemoveObjectRoot           ooscript::removeObjectRoot (RootedObject for scoped roots)
-	    11     14  JS_RemoveValueRoot            ooscript::removeValueRoot (RootedValue for scoped roots)
-	    12     13  JS_InternString               ooscript::internString
-	    13     11  JS_DefineObject               ooscript::defineObject
-	    14     10  JS_GetPrivate                 ooscript::getPrivate
-	    15      9  JS_SetElement                 ooscript::setElement
-	    16      8  JS_ReportPendingException     ooscript::reportPendingException
-	    17      8  JS_ClearPendingException      ooscript::clearPendingException
-	    18      7  JS_LookupElement              ooscript::lookupElement
-	    19      7  JS_GetGCParameter             ooscript::getGCParameter
-	    20      7  JS_CallFunctionValue          ooscript::callFunctionValue
-
-	The stub family (JS_PropertyStub 60, JS_EnumerateStub 29, JS_ResolveStub 32, JS_ConvertStub
-	32) has no façade call: a nullptr hook in ooscript::ClassDef is the stub. The value macros
-	(JSVAL_IS_NULL 79, JSVAL_VOID 78, INT_TO_JSVAL 77, JSVAL_TO_OBJECT 48, JSVAL_IS_VOID 43,
-	JSVAL_IS_OBJECT 43, JSVAL_NULL 37, OBJECT_TO_JSVAL 34, STRING_TO_JSVAL 23, ...) map onto the
-	Value construction and inspection block above. The call-argument macros (JS_ARGV, JS_THIS,
-	JS_THIS_OBJECT, JS_RVAL, JS_SET_RVAL, JS_CALLEE, behind OOJS_ARGV and friends) map onto
-	ooscript::CallArgs.
-
-NOT IN THE FAÇADE, AND WHY
-
-	JS_FrameIterator, JS_GetFrameScript, JS_GetFrameThis, JS_GetFrameScopeChain,
-	JS_IsDebuggerFrame, JS_IsConstructorFrame, JS_GetPropertyDescArray (debugger frame walk,
-	OOJSEngineDebuggerHelpers.m, OOJSEngineTimeManagement.m): engine-specific by nature; the
-	QuickJS backend seam decides whether it gets an equivalent or the helpers become backend files.
-
-	JS_XDRScript, JS_XDRNewMem, JS_XDRMemSetData, JS_XDRMemGetData, JS_XDRDestroy (compiled-script
-	cache, OOCacheManager path): a serialisation format private to one engine; the cache is
-	rebuilt on backend change anyway.
-
-	JS_EnterLocalRootScope, JS_LeaveLocalRootScopeWithResult (three sites): superseded by
-	explicit roots; the retarget rewrites them as RootedValue.
-
-	JS_SetFunctionCallback (MOZ_TRACE_JSCALLS profiler hook): a build-time patch to this engine.
-
-*/

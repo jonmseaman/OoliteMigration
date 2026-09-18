@@ -4,7 +4,7 @@
 	ships; no GNUstep, no SDL. tools/check-jsengine-facade.sh builds and runs it.
 
 	What is asserted, and why it matters for the retarget that follows:
-	  - the façade's number canonicalisation is bit-identical to JS_NewNumberValue's, because a
+	  - the façade's number canonicalisation is bit-identical to the engine's NewNumberValue's, because a
 	    double where the engine would store an int moves a golden dump;
 	  - two classes that reuse the same tinyids with different getters stay distinct (Ship and
 	    PlayerShip do this), i.e. the trampoline design does not route by receiver class;
@@ -22,6 +22,8 @@
 namespace {
 
 int gFailures = 0;
+std::string gLastError;   // what the error reporter last received
+unsigned    gLastLine = 0;
 
 #define CHECK(cond) do { if (!(cond)) { std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); ++gFailures; } } while (0)
 
@@ -128,6 +130,40 @@ bool Throwing(Context cx, CallArgs& /*args*/)
 	return false;
 }
 
+// Runs from inside a script frame (called as excProbe() from script), where an uncaught exception
+// from a nested evaluation stays pending instead of being reported. Exercises the pending-
+// exception API the way Oolite's natives use it. Returns 1 on success; failures are counted.
+int gProbeFailures = 0;
+#define PCHECK(cond) do { if (!(cond)) { std::printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond); ++gProbeFailures; } } while (0)
+
+bool ExcProbe(Context cx, CallArgs& args)
+{
+	Object global = getGlobalForObject(cx, args.thisObject());
+	Value rv = undefinedValue();
+	const char* bad = "throw new Error('nested kaboom')";
+	PCHECK(!evaluateScript(cx, global, bad, static_cast<unsigned>(std::strlen(bad)), "nested.js", 3, &rv));
+	PCHECK(isExceptionPending(cx));
+	Value exc = undefinedValue();
+	PCHECK(getPendingException(cx, &exc) && isObject(exc));
+	// Save, clear, restore: the pending exception survives a detour.
+	ExceptionState* st = saveExceptionState(cx);
+	clearPendingException(cx);
+	PCHECK(!isExceptionPending(cx));
+	restoreExceptionState(cx, st);
+	PCHECK(isExceptionPending(cx));
+	// Report it: the reporter sees the message and nothing stays pending.
+	gLastError.clear();
+	PCHECK(reportPendingException(cx));
+	PCHECK(gLastError.find("nested kaboom") != std::string::npos);
+	PCHECK(!isExceptionPending(cx));
+	// A value set by hand is pending too, and reads back.
+	setPendingException(cx, int32Value(9));
+	PCHECK(isExceptionPending(cx) && getPendingException(cx, &exc) && toInt32(exc) == 9);
+	clearPendingException(cx);
+	args.setRval(int32Value(1));
+	return true;
+}
+
 const FunctionSpec sPointMethods[] =
 {
 	{ "sum", PointSum, 0, 0 },
@@ -142,8 +178,6 @@ const FunctionSpec sPointStatics[] =
 ClassDef sGlobalClass = { "global", ClassFlag::Global, nullptr, nullptr, nullptr, nullptr,
                           nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 
-std::string gLastError;
-unsigned    gLastLine = 0;
 void Reporter(Context, const char* message, const ErrorReport* report)
 {
 	gLastError = message ? message : "";
@@ -227,7 +261,7 @@ int main()
 		CHECK(valueToBoolean(cx, int32Value(0), &b) && !b);
 		CHECK(valueToBoolean(cx, rv, &b) && b);
 		std::int32_t i = 0;
-		CHECK(valueToInt32(cx, numberValue(41.7), &i) && i == 42);   // JS_ValueToInt32 rounds
+		CHECK(valueToInt32(cx, numberValue(41.7), &i) && i == 42);   // the engine's ValueToInt32 rounds
 		CHECK(valueToECMAInt32(cx, numberValue(41.7), &i) && i == 41);
 		Value sv = stringValue(newStringCopyZ(cx, "42"));
 		double d = 0;
@@ -236,7 +270,7 @@ int main()
 
 		// Classes: init, construct, tinyid getters/setters, methods, statics, private data.
 		Object proto = initClass(cx, global, nullptr, &sPointClass, PointConstruct, 2,
-		                         sPointProps, sPointMethods, sPointStatics, nullptr);
+		                         sPointProps, sPointMethods, nullptr, sPointStatics);
 		CHECK(proto != nullptr);
 		CHECK(getClass(cx, proto) == &sPointClass);
 		Object sproto = initClass(cx, global, nullptr, &sScaledClass, ScaledConstruct, 2,
@@ -281,20 +315,29 @@ int main()
 		CHECK(callFunctionValue(cx, global, fnv, 1, &arg, &out) && isInt32(out) && toInt32(out) == 42);
 		CHECK(callFunctionName(cx, global, "twice", 1, &arg, &out) && toInt32(out) == 42);
 
-		// Exceptions: from script, from a native, and the reporter.
+		// Exceptions. An uncaught exception from a top-level evaluation is reported to the error
+		// reporter and cleared before evaluateScript returns (the engine's default, which Oolite
+		// keeps: its reporter is what logs script errors). An exception raised by a native inside
+		// a call from native code stays pending for the caller to inspect.
 		const char* bad = "throw new Error('kaboom')";
-		CHECK(!evaluateScript(cx, global, bad, static_cast<unsigned>(std::strlen(bad)), "test.js", 7, &rv));
-		CHECK(isExceptionPending(cx));
-		Value exc = undefinedValue();
-		CHECK(getPendingException(cx, &exc) && isObject(exc));
 		gLastError.clear();
-		CHECK(reportPendingException(cx));
+		CHECK(!evaluateScript(cx, global, bad, static_cast<unsigned>(std::strlen(bad)), "test.js", 7, &rv));
 		CHECK(gLastError.find("kaboom") != std::string::npos);
+		CHECK(gLastLine == 7);
 		CHECK(!isExceptionPending(cx));
-		CHECK(!evalNumber(cx, global, "thrower()", &ok) || !ok);
-		CHECK(isExceptionPending(cx));
-		clearPendingException(cx);
+		// reportError reports through the reporter at once and throws nothing (that is why
+		// Oolite's error logging works from inside natives); the failed call is then uncaught at
+		// the top level and there is nothing left pending.
+		gLastError.clear();
+		evalNumber(cx, global, "thrower()", &ok);
+		CHECK(!ok && gLastError.find("boom from native") != std::string::npos);
 		CHECK(!isExceptionPending(cx));
+		// Inside a script frame an exception stays pending for native code to inspect: the probe
+		// native below runs a throwing script from within a call and checks the pending-exception
+		// API from there, which is exactly how Oolite's natives see script exceptions.
+		CHECK(defineFunction(cx, global, "excProbe", ExcProbe, 0, PropertyFlag::None) != nullptr);
+		CHECK(evalNumber(cx, global, "excProbe()", &ok) == 1.0 && ok);
+		CHECK(gProbeFailures == 0);
 		const char* syntax = "var = ;";
 		gLastLine = 0;
 		CHECK(!evaluateScript(cx, global, syntax, static_cast<unsigned>(std::strlen(syntax)), "bad.js", 12, &rv));
