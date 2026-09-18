@@ -1,0 +1,53 @@
+{
+  "scenario": "013-constrictor",
+  "seed": 20260918,
+  "system_id": 240,
+  "system_name": "Esgebi",
+  "galaxy_number": 1,
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+
+  "load_save": "upstream/oolite-tests/Checklist-files/Missions/Constrictor.oolite-save",
+  "control_save": "upstream/oolite-tests/Checklist-files/Missions/ThargoidPlans.oolite-save",
+  "save_format_version": "1.75",
+
+  "expected_commander_name": "Constrictor",
+  "expected_score": 255,
+
+  "_mission_state": "THE MEASURED MISSION STATE OF THIS FIXTURE. Constrictor.oolite-save is a PRE-MISSION save: mission_conhunt is ABSENT from its mission_variables dict, because oolite-constrictor-hunt-mission.js only sets conhunt='STAGE_1' once player.score > 255 and this commander sits at EXACTLY 255. Absence is therefore the correct, measured value and is asserted as such; see expected_mission_conhunt below and the README. The absence is paired with expected_live_mission_handlers, which is what makes it a POSITIVE mission-state assertion rather than the mere lack of a field.",
+  "expected_mission_conhunt": null,
+  "expected_mission_conhunt_present": false,
+  "expected_mission_variables": {
+    "CT_thargonCount": 0,
+    "snoopers_CRCNews": "|",
+    "snoopers_usedSlots": 0,
+    "trumbles": "NOT_NOW"
+  },
+  "mission_script_name": "oolite-constrictor-hunt",
+  "expected_live_mission_handlers": [
+    "guiScreenChanged",
+    "missionScreenOpportunity",
+    "systemWillPopulate"
+  ],
+
+  "_control": "The differential control arm. Loading control_save into the IDENTICAL scenario must move every field named here, which is what proves the dump measures the LOADED SAVE and not merely 'a game started'.",
+  "control_expected": {
+    "commander_name": "ThargoidPlans",
+    "system_name": "Quedle",
+    "system_id": 147,
+    "mission_conhunt": "MISSION_COMPLETE",
+    "mission_conhunt_present": true,
+    "live_mission_handlers": []
+  },
+
+  "_fresh": "The second control arm: a game launched with NO -load at all. Measured on this box; every one of these differs from the loaded values above.",
+  "fresh_game_expected": {
+    "commander_name": "Jameson",
+    "system_name": "Lave",
+    "system_id": 7,
+    "galaxy_number": 0,
+    "score": 0,
+    "mission_variables": {}
+  }
+}
