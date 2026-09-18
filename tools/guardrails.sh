@@ -169,9 +169,9 @@
 #
 #   goldens      EVERY configured protected prefix must exist as a tracked path, except those
 #                explicitly listed in PROTECTED_PREFIXES_PENDING with a reason. Asserting that
-#                *some* prefix exists is not enough: `git ls-files goldens/` is 0 in this tree
-#                today while tests/golden/scenarios/ has 1, so an any-of assertion passes while
-#                half the protected list is already vacuous.
+#                *some* prefix exists is not enough: one prefix being populated would let an
+#                any-of assertion pass while the other half of the protected list is already
+#                vacuous, so each prefix is checked on its own.
 #   suppression  the suppression matcher must match its built-in canary lines
 #   tests        the test-file classifier must match at least one tracked file
 #   deny-list    tools/deny-list.txt must exist, hold >= 1 pattern, and match its canary
@@ -262,8 +262,9 @@ PROTECTED_PREFIXES="goldens/ tests/golden/scenarios/"
 # Anti-vacuity exemption, one line per prefix, with the reason it is allowed to be empty.
 # A prefix listed here is still PROTECTED; it is only excused from "must exist as a tracked
 # path". Anything not listed must exist, or the protected-path list has rotted.
+# Empty is the expected end state: every protected prefix is populated, so every one of them is
+# subject to the existence check. Add a line here only to cover a prefix protected in advance.
 PROTECTED_PREFIXES_PENDING="
-goldens/|not populated yet: the golden corpus lands with beads oo-ss8/oo-gla/oo-16s (scenarios 002-017). Protected in advance so the first golden cannot arrive unguarded; delete this line once git ls-files goldens/ is non-empty.
 "
 
 # Extensions that are CODE for the purpose of the suppression and deny-list scans. Everything
