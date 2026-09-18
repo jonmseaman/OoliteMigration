@@ -23,7 +23,7 @@
 
   "_save_format": "THE COMPATIBILITY CONTRACT, MEASURED RATHER THAN ASSUMED. The bead's story calls this fixture 1.75-era; it is OLDER. `written_by_version` is written by every 1.75 save and is ABSENT here, together with four more keys the 1.75 Trumbles fixture carries, while three legacy-only keys are present. Asserting both sets means a fixture swap to a NEWER file - the easy mistake - goes red by name instead of quietly weakening the contract.",
   "expected_written_by_version": "",
-  "save_format_keys_present": ["ootunes_on", "reducedDetail", "saved"],
+  "save_format_keys_present": ["has_energy_bomb", "ootunes_on", "reducedDetail", "saved"],
   "save_format_keys_absent": [
     "current_system_name",
     "entity_personality",
@@ -53,12 +53,15 @@
     "Loading complete"
   ],
 
+  "_expected_legacy_upgrades": "THE MIGRATION THIS SCENARIO PINS, AND THE ENGINE'S OWN WITNESS OF IT. This fixture carries has_energy_bomb = true, an item Oolite REMOVED. PlayerEntity.m:1730-1746 tries to replace it with a Quirium cascade mine and, finding all four pylons already full of EQ_HARDENED_MISSILEs, falls through to `credits += 9000` (deci-credits = 900 Cr) and logs this line on the `load.upgrade` channel. MEASURED live: the plist holds 933068 credits and the loaded game reports 94206.8, exactly 900 Cr more. The credits census field predicts that arithmetic independently, so an engine that dropped the migration, compensated a different amount, or found a free pylon fails BOTH checks by name.",
+  "expected_legacy_upgrades": ["Compensated legacy energy bomb with 900 credits."],
+
   "repopulator_handlers": ["systemWillRepopulate"],
 
   "_census": "THE LOAD ASSERTION. Each entry names a key in the .oolite-save plist, the JS expression that reads the same quantity out of the loaded game, and how the two are made comparable. The two sides are produced by two INDEPENDENT readers sharing no code - Python's plistlib in THIS process, and Oolite's Objective-C deserialiser in a SEPARATE OS process read back over the console - so they cannot be the same object even in principle. Scenario 006's invariant, applied to this fixture.",
   "census": [
     {"plist": "player_name",   "js": "player.name",                   "kind": "str",          "why": "commander identity. This save's is 'Tester'; a fresh commander is 'Jameson'."},
-    {"plist": "credits",       "js": "player.credits",                "kind": "float_tenths", "why": "PlayerEntity stores credits in tenths; the plist holds 933068 and JS reports 93306.8. Scale MEASURED, not assumed."},
+    {"plist": "credits",       "js": "player.credits",                "kind": "float_tenths_legacy_energy_bomb", "why": "PlayerEntity stores credits in DECI-credits, and this save is additionally MIGRATED on load: its legacy energy bomb cannot be replaced by a Quirium cascade mine (all four pylons full), so PlayerEntity.m:1743 adds 9000 deci-credits. The plist holds 933068; the loaded game reports 94206.8. The kind encodes that prediction, and expected_legacy_upgrades requires the engine to have logged the same event."},
     {"plist": "fuel",          "js": "player.ship.fuel",              "kind": "float_tenths", "why": "the plist stores fuel in tenths of a light year (70 = 7.0 LY); JS reports light years"},
     {"plist": "legal_status",  "js": "player.bounty",                 "kind": "int",          "why": "player.bounty is the INTEGER accessor (OOJSPlayer.m:286-288); player.legalStatus returns a DISPLAY STRING via OODisplayStringFromLegalStatus"},
     {"plist": "galaxy_number", "js": "galaxyNumber",                  "kind": "int",          "why": "galaxy index; galaxy 3 is three galactic hyperdrive jumps from a new commander's galaxy 0"},

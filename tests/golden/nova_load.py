@@ -20,7 +20,15 @@ rather than smoothed over, because the fixture is the thing under test. Measured
   Nova.oolite-save     (this scenario)  49 top-level keys, NO `written_by_version` KEY AT ALL
 
 `written_by_version` is written by every save Oolite 1.75 produces, so its ABSENCE places this
-fixture BEFORE that era, not in it. Nova.oolite-save also lacks `current_system_name`,
+fixture BEFORE that era, not in it. The contract is not merely a key census: the loader MIGRATES
+this file. It carries `has_energy_bomb` - an item Oolite REMOVED - and PlayerEntity.m:1730-1746
+tries to replace it with a Quirium cascade mine, finds all four pylons already full of
+EQ_HARDENED_MISSILEs, and falls through to `credits += 9000` (deci-credits = 900 Cr), logging
+[load.upgrade.replacedEnergyBomb]. MEASURED live: the plist holds 933068 credits and the loaded
+game reports 94206.8, exactly 900 Cr more. That migration is asserted TWICE by two independent
+witnesses - the credits census field predicts the arithmetic, and `evidence.legacy_upgrades`
+requires the engine's own log line - so an engine that dropped the migration, compensated a
+different amount, or found a free pylon fails by name rather than loading a different commander. Nova.oolite-save also lacks `current_system_name`,
 `ship_name`, `entity_personality`, `fuel_charge_rate` and `wormholes` - all of which the 1.75
 Trumbles file carries - and it carries three keys the 1.75 file does not (`ootunes_on`,
 `reducedDetail`, `saved`). So this scenario pins a STRICTLY OLDER compatibility contract than
@@ -148,6 +156,12 @@ FRAME_SETTLE_SECONDS = 1.5
 SETTLE_TIMEOUT_SECONDS = 120
 CLEAR_ROUNDS = 20
 
+# PlayerEntity.m:1743. Credits are stored in DECI-credits, so 9000 here is 900 Cr. The loader
+# adds it when a save's legacy energy bomb cannot be replaced by a Quirium cascade mine because
+# every missile pylon is already occupied - which is this fixture's case (four
+# EQ_HARDENED_MISSILEs on a four-pylon Cobra III).
+LEGACY_ENERGY_BOMB_COMPENSATION_DECI = 9000
+
 # The floor a frame must clear, in frame_hash distance units, to count as RENDERED. Not a
 # tolerance and not a same-scene equality test - see compare_frame().
 FRAME_LIVENESS_FLOOR = 0.020
@@ -233,6 +247,23 @@ def _normalise(value, kind):
         return str(value)
     if kind == "float_tenths":
         return round(float(value) / 10.0, 3)
+    if kind == "float_tenths_legacy_energy_bomb":
+        # THE LOADER MIGRATES THIS SAVE AND CHANGES THE VALUE, AND THAT IS THE POINT.
+        # This fixture has has_energy_bomb = true, an item Oolite removed. On load,
+        # PlayerEntity.m:1730-1746 tries to mount a Quirium cascade mine in its place and, if
+        # every pylon is already full - this save carries four EQ_HARDENED_MISSILEs, so it is -
+        # falls through to `credits += 9000` (deci-credits, i.e. 900 Cr) and logs
+        # [load.upgrade.replacedEnergyBomb]. MEASURED live: the plist holds 933068 and the loaded
+        # game reports 94206.8, exactly 900 Cr more.
+        #
+        # This is NOT a fudge to make a comparison pass, and it must not be read as one. It is the
+        # save-format compatibility contract this scenario exists to pin, expressed as an
+        # arithmetic prediction the engine has to satisfy: an engine that DROPPED the legacy
+        # energy-bomb migration, or that compensated a different amount, or that found a free
+        # pylon and mounted the mine instead, all fail here by name rather than silently loading a
+        # different commander. The engine's own [load.upgrade] line is ALSO asserted
+        # (evidence.legacy_upgrades), so the two witnesses have to agree.
+        return round((float(value) + LEGACY_ENERGY_BOMB_COMPENSATION_DECI) / 10.0, 3)
     raise Refusal("census field declares unknown kind %r; refusing to invent a conversion" % kind)
 
 
@@ -267,7 +298,7 @@ def live_census(console, spec):
             out[field["plist"]] = int(float(raw))
         elif kind == "str":
             out[field["plist"]] = str(raw)
-        elif kind == "float_tenths":
+        elif kind in ("float_tenths", "float_tenths_legacy_energy_bomb"):
             out[field["plist"]] = round(float(raw), 3)
         else:
             raise Refusal("census field declares unknown kind %r" % kind)
@@ -364,7 +395,17 @@ def read_load_evidence(artifact_dir):
             stages.append(stripped.split("[load.progress]:", 1)[1].strip())
         elif "[load.failed]" in stripped:
             failures.append(stripped)
-    return stages, failures, len(text)
+    # THE ENGINE'S OWN WITNESS OF THE FORMAT MIGRATION. This save carries has_energy_bomb, an item
+    # Oolite removed; PlayerEntity.m:1730-1746 compensates it and logs on the `load.upgrade`
+    # channel. The credits census field predicts the ARITHMETIC of that migration, so requiring
+    # the log line as well means the two independent witnesses of the same engine behaviour have
+    # to agree - a checker that only predicted the number would pass for a coincidence.
+    upgrades = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if "[load.upgrade." in stripped:
+            upgrades.append(stripped.split("]:", 1)[-1].strip())
+    return stages, failures, sorted(upgrades), len(text)
 
 
 def assert_galaxy(console, spec):
@@ -595,6 +636,16 @@ def assert_ran(evidence, spec, problems=None):
             "a loaded save." % (evidence["load_stages"], len(stages), stages))
     if evidence["load_failures"]:
         raise ScenarioError("the engine logged load failure(s): %r" % (evidence["load_failures"],))
+    want_upgrades = sorted(spec["expected_legacy_upgrades"])
+    if evidence["legacy_upgrades"] != want_upgrades:
+        raise ScenarioError(
+            "the engine logged legacy-format upgrade(s) %r, not the expected %r. This fixture "
+            "carries has_energy_bomb - an item Oolite REMOVED - and PlayerEntity.m:1730-1746 "
+            "compensates it with 900 Cr because all four pylons already hold hardened missiles. "
+            "That migration is the save-format compatibility contract this scenario pins, and "
+            "the credits census field predicts its ARITHMETIC independently; both witnesses must "
+            "agree or the loader has changed how it handles pre-1.75 saves."
+            % (evidence["legacy_upgrades"], want_upgrades))
 
     want_keys = sorted(spec["expected_mission_variable_keys"])
     if evidence["mission_variable_keys"] != want_keys:
@@ -733,7 +784,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             state = json.loads(dump_state(console))
 
         # AFTER the game has exited, so the log is complete and flushed.
-        stages, failures, log_bytes = read_load_evidence(artifact_dir)
+        stages, failures, upgrades, log_bytes = read_load_evidence(artifact_dir)
 
         n_saved, pop_saved = assert_non_vacuous(saved, "the census read from the save FILE")
         n_live, _ = assert_non_vacuous(live, "the census read from the LOADED GAME")
@@ -746,6 +797,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "save_written_by_version": str(plist.get("written_by_version", "")),
             "load_stages": stages,
             "load_failures": failures,
+            "legacy_upgrades": upgrades,
             "mission_variable_keys": sorted(mv_keys),
             "mission_variable_count": len(mv_keys),
             "mission_novacount_value": mv_values.get(spec["mission_novacount_key"], ""),
