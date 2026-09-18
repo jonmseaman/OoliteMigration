@@ -92,6 +92,25 @@ WIN32_SIGNATURES = {
     "user32.SendInput": ("UINT", ["UINT", "LPINPUT", "INT"]),
     # VK -> scancode, for the same calls. MAPVK_VK_TO_VSC.
     "user32.MapVirtualKeyW": ("UINT", ["UINT", "UINT"]),
+    # Window LIFECYCLE (G6): the OS's own answer to "what state is this window in, and where".
+    # IsIconic is the ONLY authority on minimised - a minimised window's GetWindowRect returns
+    # an off-screen parking rectangle (typically -32000,-32000), so a rect comparison alone
+    # cannot tell "minimised" from "moved". GetWindowPlacement additionally carries showCmd
+    # (SW_SHOWNORMAL / SW_SHOWMINIMIZED / SW_SHOWMAXIMIZED) AND rcNormalPosition, which is the
+    # restored rectangle Windows remembers WHILE the window is minimised - the only way to
+    # check "restore put it back where it was" without trusting our own bookkeeping.
+    # WINDOWPLACEMENT is a 44-byte structure whose length field Windows validates, so an
+    # undeclared call cannot pass it at all.
+    "user32.IsIconic": ("BOOL", ["HWND"]),
+    "user32.IsZoomed": ("BOOL", ["HWND"]),
+    "user32.GetWindowPlacement": ("BOOL", ["HWND", "LPWINDOWPLACEMENT"]),
+    # Which monitor the window is on, and that monitor's bounds - so "fullscreen covers the
+    # screen" is asserted against THIS machine's display rather than a magic 1920x1080.
+    # MonitorFromWindow RETURNS an HMONITOR, a pointer-sized handle: undeclared it is truncated
+    # and sign-extended through a 32-bit int and GetMonitorInfoW then fails, which a careless
+    # caller would read as "no monitor info" rather than as an error.
+    "user32.MonitorFromWindow": ("HMONITOR", ["HWND", "DWORD"]),
+    "user32.GetMonitorInfoW": ("BOOL", ["HMONITOR", "LPMONITORINFO"]),
     # Naming the window that is in the way.
     "user32.GetWindowTextW": ("INT", ["HWND", "LPWSTR", "INT"]),
     "user32.GetClassNameW": ("INT", ["HWND", "LPWSTR", "INT"]),
@@ -140,6 +159,8 @@ WNDENUMPROC = None
 PROCESSENTRY32 = None
 INPUT = None
 KEYBDINPUT = None
+WINDOWPLACEMENT = None
+MONITORINFO = None
 
 if IS_WINDOWS:
     # RECT/POINT and the Win32 libraries exist only here.
@@ -207,21 +228,60 @@ if IS_WINDOWS:
 
         _fields_ = [("type", wintypes.DWORD), ("u", _INPUTUNION)]
 
+    class WINDOWPLACEMENT(ctypes.Structure):
+        """winuser.h's WINDOWPLACEMENT - the window's state AND its restored rectangle (G6).
+
+        ``length`` must be ``sizeof(WINDOWPLACEMENT)`` or GetWindowPlacement returns FALSE, so
+        this is declared as a real structure rather than a blob: a wrong layout would make the
+        call fail and a careless caller would read the zeroed-out ``showCmd`` as SW_HIDE.
+
+        ``rcNormalPosition`` is the reason this API is used at all. It is the RESTORED position
+        Windows itself remembers, and it remains readable WHILE the window is minimised - so
+        "restore put the window back where it was" can be checked against the OS's own memory
+        of the rectangle instead of only against a value this test recorded.
+        """
+
+        _fields_ = [
+            ("length", wintypes.UINT),
+            ("flags", wintypes.UINT),
+            ("showCmd", wintypes.UINT),
+            ("ptMinPosition", wintypes.POINT),
+            ("ptMaxPosition", wintypes.POINT),
+            ("rcNormalPosition", wintypes.RECT),
+        ]
+
+    class MONITORINFO(ctypes.Structure):
+        """winuser.h's MONITORINFO: the monitor's full bounds and its work area.
+
+        Same ``cbSize`` contract as above. ``rcMonitor`` is what a fullscreen window must cover
+        on THIS machine's display, which is how G6 avoids asserting a magic resolution.
+        """
+
+        _fields_ = [
+            ("cbSize", wintypes.DWORD),
+            ("rcMonitor", wintypes.RECT),
+            ("rcWork", wintypes.RECT),
+            ("dwFlags", wintypes.DWORD),
+        ]
+
     _WIN32_TYPES = {
         "BOOL": wintypes.BOOL,
         "DWORD": wintypes.DWORD,
         "DWORD_PTR": DWORD_PTR,
         "HANDLE": wintypes.HANDLE,
+        "HMONITOR": wintypes.HANDLE,
         "HWND": wintypes.HWND,
         "INT": ctypes.c_int,
         "LONG": wintypes.LONG,
         "LPARAM": wintypes.LPARAM,
         "LPDWORD": ctypes.POINTER(wintypes.DWORD),
         "LPINPUT": ctypes.POINTER(INPUT),
+        "LPMONITORINFO": ctypes.POINTER(MONITORINFO),
         "LPPOINT": ctypes.POINTER(wintypes.POINT),
         "LPPROCESSENTRY32": ctypes.POINTER(PROCESSENTRY32),
         "LPRECT": ctypes.POINTER(wintypes.RECT),
         "LPVOID": ctypes.c_void_p,
+        "LPWINDOWPLACEMENT": ctypes.POINTER(WINDOWPLACEMENT),
         "LPWSTR": wintypes.LPWSTR,
         "LRESULT": LRESULT,
         "PDWORD_PTR": ctypes.POINTER(DWORD_PTR),
@@ -457,6 +517,9 @@ VK_CODES = {
     "enter": 0x0D,
     "space": 0x20,
     "escape": 0x1B,
+    # F12 is Oolite's fullscreen toggle: MyOpenGLView+Input.m:469-473 calls -toggleScreenMode
+    # directly from the SDLK_F12 case. Not an extended key (see EXTENDED_VK_CODES).
+    "f12": 0x7B,
 }
 
 # Keys whose scancode is only unambiguous with KEYEVENTF_EXTENDEDKEY set. The arrow cluster
