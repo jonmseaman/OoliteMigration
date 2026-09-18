@@ -64,6 +64,11 @@
     if (!ships[i].isPlayer) ents.push(shipRecord(ships[i]));
   }
   // Explicit stable sort key, not allShips order - see the module docstring above.
+  // MEASURED, not assumed: deleting this line still produces three byte-identical dumps under the
+  // repeat-run gate (same spawn sequence on the same build yields the same allShips order every
+  // time), but it DOES change the dump versus the sorted baseline. The guard that actually
+  // discriminates it is tests/golden/dump/run_order_proof.sh, which spawns the same ships in the
+  // opposite order; do not remove this sort on the strength of the three-run diff staying green.
   ents.sort(function (a, b) { return cmp(a.id, b.id); });
 
   var marketObj = {};

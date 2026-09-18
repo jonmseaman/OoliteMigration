@@ -65,7 +65,18 @@ def clear_system(console):
         )
 
 
-def run_once(app_dir, port, seed, output_dir, perturb=None):
+RAW_ORDER_JS = (
+    "(function(){"
+    " var ships = system.allShips, ids = [];"
+    " for (var i = 0; i < ships.length; i++) {"
+    "   if (!ships[i].isPlayer) ids.push(ships[i].shipUniqueName || ships[i].name);"
+    " }"
+    " return JSON.stringify(ids); })()"
+)
+
+
+def run_once(app_dir, port, seed, output_dir, perturb=None, spawn_order=("police", "pirate"),
+             raw_order=False):
     """Launch, spawn a fixed scenario, and dump - `ticks` is not needed: see below.
 
     No frame-stepping is needed to make two runs identical: item 0.4's determinism requirement
@@ -87,8 +98,21 @@ def run_once(app_dir, port, seed, output_dir, perturb=None):
         # sort by id reproduces the identical dump twice regardless of allShips iteration order.
         # radius_m=0: no addShips scatter-radius RNG draw, which is otherwise a second source of
         # divergence on top of physics (both are removed by pausing + a fixed seed + zero radius).
-        spawn_deterministic(console, "police", 2, radius_m=0, ai=None)
-        spawn_deterministic(console, "pirate", 2, radius_m=0, ai=None)
+        #
+        # `spawn_order` is a knob, not decoration: spawning the SAME two roles in the OPPOSITE
+        # order changes the order system.allShips hands them back, while leaving the set of ships
+        # and every one of their field values identical. That is the perturbation
+        # run_order_proof.sh uses to prove ents.sort() is load-bearing - a dump that is not sorted
+        # by a stable key reorders under it, a sorted one does not.
+        for role in spawn_order:
+            spawn_deterministic(console, role, 2, radius_m=0, ai=None)
+
+        if raw_order:
+            # Positive control for the order proof: the UNSORTED allShips id sequence. If this is
+            # identical across both spawn orders then the perturbation did not actually change
+            # iteration order and the proof would be vacuous, so run_order_proof.sh asserts it
+            # DIFFERS before it asserts the dumps MATCH.
+            return console.evaluate(RAW_ORDER_JS)
 
         if perturb is not None:
             # Mutant hook for the quantisation-epsilon proof (see run_epsilon_proof.sh): nudge one
@@ -114,7 +138,17 @@ def main(argv=None):
     parser.add_argument("--output-dir", default=None, help="Latest.log / snapshot dir (tmp if unset)")
     parser.add_argument("--perturb", type=float, default=None,
                          help="metres to nudge allShips[0].position.x before dumping")
+    parser.add_argument("--spawn-order", default="police,pirate",
+                         help="comma-separated roles to spawn, in order; reversing this changes "
+                              "system.allShips iteration order without changing the ship set")
+    parser.add_argument("--raw-order", action="store_true",
+                         help="emit the UNSORTED allShips id sequence instead of the dump "
+                              "(positive control for run_order_proof.sh)")
     args = parser.parse_args(argv)
+
+    spawn_order = tuple(r for r in args.spawn_order.split(",") if r)
+    if not spawn_order:
+        raise SystemExit("--spawn-order must name at least one role")
 
     if not os.path.isdir(args.app_dir):
         raise SystemExit("no Oolite build at %s; build it first or pass --app-dir" % args.app_dir)
@@ -125,7 +159,8 @@ def main(argv=None):
         output_dir = tempfile.mkdtemp(prefix="oo_gla_dump_")
     os.makedirs(output_dir, exist_ok=True)
 
-    text = run_once(args.app_dir, args.port, args.seed, output_dir, perturb=args.perturb)
+    text = run_once(args.app_dir, args.port, args.seed, output_dir, perturb=args.perturb,
+                    spawn_order=spawn_order, raw_order=args.raw_order)
     if args.out:
         with open(args.out, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(text)
