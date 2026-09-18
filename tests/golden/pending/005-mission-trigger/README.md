@@ -48,7 +48,7 @@ with the tolerance `frame_hash.derive_tolerance()` measured in bead oo-ae9, neve
 |---|---|
 | `tests/golden/mission_trigger.py` | the scenario: launch, load, clear, tick, dump |
 | `tests/golden/check_mission_trigger_evidence.py` | offline: *did a mission script actually fire?* |
-| `tests/golden/test_mission_trigger.py` | 47 offline falsifiability tests (19 data mutants, 7 checker mutants) |
+| `tests/golden/test_mission_trigger.py` | 47 offline falsifiability tests (21 data mutants, 8 checker mutants) |
 | `spec.json` | every determinism knob, each one read by the script |
 | `state.json` | the blessed canonical dump (3099 bytes) |
 | `frame.grid` | 64×64 luminance grid, tolerance-compared |
