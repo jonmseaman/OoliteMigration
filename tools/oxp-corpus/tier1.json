@@ -625,27 +625,33 @@
   ],
   "test_oxps": [
     {
-      "name": "AI overflow test",
+      "name": "AI overflow test.oxp",
+      "dir": "AI overflow test",
       "path": "upstream/oolite-tests/test-oxps/AI overflow test/AI overflow test.oxp"
     },
     {
-      "name": "JSInterfaceTests",
+      "name": "JavaScript Interface Tests.oxp",
+      "dir": "JSInterfaceTests",
       "path": "upstream/oolite-tests/test-oxps/JSInterfaceTests/JavaScript Interface Tests.oxp"
     },
     {
-      "name": "materialTestSuite",
+      "name": "Material Test Suite.oxp",
+      "dir": "materialTestSuite",
       "path": "upstream/oolite-tests/test-oxps/materialTestSuite/Material Test Suite.oxp"
     },
     {
-      "name": "PNGTestSuite",
+      "name": "PNGTestSuite.oxp",
+      "dir": "PNGTestSuite",
       "path": "upstream/oolite-tests/test-oxps/PNGTestSuite/PNGTestSuite.oxp"
     },
     {
-      "name": "RetroMissions",
+      "name": "RetroMissions.oxp",
+      "dir": "RetroMissions",
       "path": "upstream/oolite-tests/test-oxps/RetroMissions/RetroMissions.oxp"
     },
     {
-      "name": "shaderFallbackTest",
+      "name": "Fallback test.oxp",
+      "dir": "shaderFallbackTest",
       "path": "upstream/oolite-tests/test-oxps/shaderFallbackTest/Fallback test.oxp"
     }
   ]

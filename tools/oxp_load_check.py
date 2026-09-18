@@ -295,22 +295,33 @@ def judge(text: str, staged: str | None, log_label: str, rc=None, timeout=None,
             return (Verdict.NOTLOADED,
                     "%s has no [searchPaths.dumpAll] block - cannot prove the expansion "
                     "was parsed" % log_label, [])
-        block = text.split("[searchPaths.dumpAll]: Resource paths:", 1)[1]
-        block = block.split("\n[", 1)[0] if "\n[" in block else block
-        # Timestamped lines end the block; the paths are the indented run after it.
-        block_lines = []
-        for ln in block.splitlines():
-            if ln.startswith("    ") or ln.strip() == "" or not re.match(r"^\d\d[:.]", ln.strip()):
-                block_lines.append(ln)
-            if re.match(r"^\d\d:\d\d:\d\d", ln.strip()):
+        # Take ONLY the indented path lines of the block. The block is printed as
+        # "[searchPaths.dumpAll]: Resource paths: <mode>\n    path\n    path..."
+        # and ends at the next timestamped line.
+        after = text.split("[searchPaths.dumpAll]: Resource paths:", 1)[1]
+        entries = []
+        for ln in after.splitlines()[1:]:
+            if re.match(r"^\s*\d\d:\d\d:\d\d\.\d+ \[", ln):
                 break
-        haystack = "\n".join(block_lines)
-        if staged not in haystack:
+            if ln.startswith("    "):
+                entries.append(ln.strip().replace("\\", "/"))
+        # Match the FULL staged path, not the bare name. Matching a bare name
+        # against the whole log is a false-positive generator: the per-run work
+        # directory is itself named after the expansion, so "NAME" appears in the
+        # block as part of the AddOns ROOT path even when the expansion itself was
+        # rejected. Five test-oxps were reported PASS that way before this was
+        # found. An entry must END with the staged file's own name.
+        want = staged.replace("\\", "/")
+        hit = any(e == want or e.endswith("/" + want) for e in entries)
+        if not hit:
             return (Verdict.NOTLOADED,
-                    "%r is ABSENT from the [searchPaths.dumpAll] Resource paths block in %s, "
-                    "so the game never accepted it into sSearchPaths (ResourceManager "
-                    "checkPotentialPath rejected its manifest.plist). The expansion did NOT "
-                    "load; any absence of ERROR lines is vacuous." % (staged, log_label), [])
+                    "%r is ABSENT from the [searchPaths.dumpAll] Resource paths block in %s "
+                    "(block listed %d path(s): %s), so the game never accepted it into "
+                    "sSearchPaths - ResourceManager checkPotentialPath rejected it (no/invalid "
+                    "manifest.plist, unmet required_oolite_version, or unmet requires_oxps). "
+                    "The expansion did NOT load; any absence of ERROR lines is vacuous."
+                    % (staged, log_label, len(entries),
+                       ", ".join(e.rsplit("/", 1)[-1] for e in entries)), [])
 
     # ---- only now is the ERROR scan meaningful ---------------------------
     # Carry the channel across continuation lines: a wrapped message's tail has

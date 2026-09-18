@@ -153,6 +153,36 @@ cmd_selftest() {
 	[ "$rc" -eq 0 ] || { echo "   FAIL (rc=$rc)"; fail=1; }
 
 	echo
+	echo "== 5. the staging loop survives CRLF from python.exe =="
+	# REGRESSION PIN. python.exe writes CRLF, so the last field of each line the
+	# resolver emits carries a trailing CR and names a nonexistent path. Only the
+	# FINAL line (no trailing newline, hence no CR) used to survive, and a full
+	# run reported "36 checked, 35 failed" with 35 bogus MISSING verdicts.
+	"$PY" - <<-'PYEOF'
+		import subprocess, sys
+		# Three CRLF-terminated lines, exactly as python.exe emits them.
+		payload = "a	path-a\r\nb	path-b\r\nc	path-c"
+		script = r'''
+		n=0
+		while IFS="$(printf '	')" read -r name path; do
+		  name="${name%$'\r'}"; path="${path%$'\r'}"
+		  [ -n "$name" ] || continue
+		  case "$path" in *$'\r'*) echo "CR-LEAK:$path"; exit 1;; esac
+		  n=$((n+1))
+		done <<< "$PAYLOAD"
+		echo "n=$n"
+		'''
+		out = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
+		                     env={"PAYLOAD": payload, "PATH": "/usr/bin:/bin"})
+		got = out.stdout.strip()
+		assert "CR-LEAK" not in got, got
+		assert got.endswith("n=3"), "expected 3 iterations, got: %r %r" % (got, out.stderr)
+		print("   ok: 3/3 CRLF lines parsed, no carriage return leaked into a path")
+	PYEOF
+	rc=$?
+	[ "$rc" -eq 0 ] || { echo "   FAIL (rc=$rc)"; fail=1; }
+
+	echo
 	if [ "$fail" -ne 0 ]; then
 		echo "SELFTEST FAILED"
 		return 1
@@ -228,20 +258,51 @@ cmd_tier1() {
 	local work="${TMPDIR:-${LOCALAPPDATA:-$HOME}/Temp}/oo-het-tier1.$$"
 	mkdir -p "$work"
 
-	local oxpargs=()
-	while IFS="$(printf '\t')" read -r name path; do
+	local oxpargs=() staged_n=0
+	while IFS="$(printf '	')" read -r name path; do
+		# STRIP THE CR. python.exe on Windows writes CRLF, so the last field of
+		# every line read here ends with a carriage return, and "$path" then
+		# names a file that does not exist. This is exactly the bug that made a
+		# full run report "36 checked, 35 failed" with 35 bogus MISSING results:
+		# only the FINAL line survived, because it had no trailing newline and
+		# therefore no CR. A staging failure must never masquerade as a missing
+		# expansion - it sends the next reader hunting the corpus cache instead
+		# of the harness.
+		name="${name%$'\r'}"; path="${path%$'\r'}"
 		[ -n "$name" ] || continue
+
+		# (a) NOT IN THE CORPUS: the source is not where the manifest says.
+		if [ ! -e "$path" ]; then
+			echo "NOTCACHED  $name" >&2
+			echo "  source does not exist: $path" >&2
+			echo "  the expansion is not in the cache; run tools/oxp_corpus.py fetch" >&2
+			return 1
+		fi
+
 		# Stage under the correct extension: the cache is content-addressed and
 		# has no filename, and Oolite dispatches on the extension.
 		local staged="$work/staged/$name"
 		mkdir -p "$(dirname "$staged")"
+		# (b) FAILED TO STAGE must be LOUD. An unchecked cp surfaces 20 lines
+		# later as a bogus "MISSING" verdict about the expansion itself.
 		if [ -d "$path" ]; then
-			cp -r "$path" "$staged"
+			cp -r "$path" "$staged" || { echo "STAGEFAIL  $name: cp -r failed ($path -> $staged)" >&2; return 1; }
 		else
-			cp "$path" "$staged"
+			cp "$path" "$staged" || { echo "STAGEFAIL  $name: cp failed ($path -> $staged)" >&2; return 1; }
 		fi
+		[ -e "$staged" ] || { echo "STAGEFAIL  $name: cp reported success but $staged does not exist" >&2; return 1; }
+		staged_n=$((staged_n+1))
 		oxpargs+=(--oxp "$staged")
 	done <<< "$args"
+
+	# The staged count must match what we resolved, or the run would silently
+	# check fewer expansions than it claims to.
+	if [ "$staged_n" -ne "$n" ]; then
+		echo "STAGEFAIL  staged $staged_n of $n expansions - refusing to report on a partial set" >&2
+		return 1
+	fi
+	echo "staged $staged_n/$n, loading..."
+	echo
 
 	"$PY" "$REPO_ROOT/tools/oxp_load_check.py" \
 		--app-dir "$APP_DIR" --work "$work/runs" \

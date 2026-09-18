@@ -372,7 +372,12 @@ def test_oxps():
         oxps = sorted(p for p in d.iterdir() if p.is_dir() and p.suffix == ".oxp")
         for oxp in oxps:
             out.append({
-                "name": d.name,
+                # The .oxp BASENAME, not the containing directory's name. Oolite
+                # dispatches on the extension (ResourceManager.m:290-310), so an
+                # entry staged as "AI overflow test" with no .oxp suffix is not
+                # an expansion at all and is silently ignored.
+                "name": oxp.name,
+                "dir": d.name,
                 "path": str(oxp.relative_to(REPO_ROOT)).replace("\\", "/"),
             })
     return out
