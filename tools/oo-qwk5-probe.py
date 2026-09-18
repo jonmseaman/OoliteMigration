@@ -143,12 +143,36 @@ CENSUS_JS = (
     " return out.join(';'); })()"
 )
 
+# Whether the cast is actually FIGHTING, which no role count can show: a scenario whose quarry
+# survives because nobody ever engaged it is a different defect from one whose quarry survives
+# because the killers are too weak, and only this tells them apart. bounty and scanClass are read
+# because policeAI picks its target by offence, so a clean cast never fights at all.
+ENGAGE_JS = (
+    "(function(){"
+    " var out = [];"
+    " system.allShips.forEach(function(s){"
+    "   if (s.isPlayer) return;"
+    "   out.push([s.dataKey, s.primaryRole, s.AIState,"
+    "             (s.hasHostileTarget ? 'H' : '-'),"
+    "             (s.target ? s.target.primaryRole : 'none'),"
+    "             s.bounty, s.scanClass].join(','));"
+    " });"
+    " return out.join(';'); })()"
+)
+
 
 def census(console):
     text = console.evaluate(CENSUS_JS, timeout=45).strip()
     if not text:
         return []
     return [tuple(item.split("|", 1)) for item in text.split(";") if item]
+
+
+def engagement(console):
+    text = console.evaluate(ENGAGE_JS, timeout=45).strip()
+    if not text:
+        return []
+    return [item.split(",") for item in text.split(";") if item]
 
 
 def main(argv=None):
@@ -164,6 +188,13 @@ def main(argv=None):
     ap.add_argument("--roles", default="police,pirate,trader,hunter,shuttle,escort,miner",
                     help="roles to report counts for (via countShipsWithRole)")
     ap.add_argument("--json", default="", help="write the full record here")
+    ap.add_argument("--engage", action="store_true",
+                    help="also sample per-ship AIState/target/bounty, to tell 'nobody engaged' "
+                         "apart from 'the killers were too weak'")
+    ap.add_argument("--bounty", type=int, default=0,
+                    help="set this bounty on every ship of --bounty-role after spawning")
+    ap.add_argument("--bounty-role", default="",
+                    help="role whose ships get --bounty (policeAI only attacks offenders)")
     ap.add_argument("--output-dir", default=os.environ.get("TEMP", "."),
                     help="where the game writes its log")
     args = ap.parse_args(argv)
@@ -193,6 +224,18 @@ def main(argv=None):
             record["spawned"][role] = record["spawned"].get(role, 0) + got
             print(f"spawned {got}/{count} {role!r}" + (f" within {km} km" if km else ""))
 
+        if args.bounty and args.bounty_role:
+            # policeAI only attacks OFFENDERS: oolite-policeAI.js scans for offenders/fugitives,
+            # so a spawned pirate with bounty 0 is a clean ship the police will never engage.
+            marked = console.evaluate_int(
+                "(function(){ var n = 0;"
+                " system.allShips.forEach(function(s){"
+                "   if (!s.isPlayer && s.primaryRole == %s) { s.bounty = %d; n++; }"
+                " }); return n; })()" % (_js_string(args.bounty_role), args.bounty)
+            )
+            record["bounty_marked"] = marked
+            print(f"set bounty={args.bounty} on {marked} {args.bounty_role!r}")
+
         t0 = time.time()
         deadline = t0 + args.seconds
         while time.time() < deadline:
@@ -202,12 +245,17 @@ def main(argv=None):
                 "system.countShipsWithRole(%s)" % _js_string(r), timeout=45) for r in roles}
             sample = {"t": t, "n": len(ships), "counts": counts,
                       "ships": sorted(set(ships))}
+            if args.engage:
+                sample["engage"] = engagement(console)
             record["samples"].append(sample)
             if args.quarry and record["quarry_dead_at"] is None \
                     and counts.get(args.quarry) == 0:
                 record["quarry_dead_at"] = t
             print(f"t={t:7.1f} allShips={len(ships):3d} " +
                   " ".join(f"{r}={counts[r]}" for r in roles))
+            if args.engage:
+                for row in sample["engage"]:
+                    print("        " + " ".join(f"{c:<14}" for c in row))
             time.sleep(max(0.0, args.interval))
     except Exception as exc:  # a probe that dies must say so, not report a short clean run
         record["error"] = f"{type(exc).__name__}: {exc}"
