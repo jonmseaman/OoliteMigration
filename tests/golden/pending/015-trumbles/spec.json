@@ -1,0 +1,63 @@
+{
+  "scenario": "015-trumbles",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "upstream/oolite-tests/Checklist-files/Missions/Trumbles.oolite-save",
+
+  "_trumble_awards": "THE MEASURED BOUNDARY OF DETERMINISM, NOT A CONVENIENT NUMBER. PlayerEntity.m:11531 gates an award on `trumbleCount < PLAYER_MAX_TRUMBLES/6 || (trumbleCount < PLAYER_MAX_TRUMBLES/3 && ranrot_rand() % 2 > 0)`, and PLAYER_MAX_TRUMBLES is 24 (PlayerEntity.h:312). So the first FOUR awards take the left branch unconditionally and the fifth onwards consult RANROT. Measured over three runs at THIS seed the counts after fourteen awards went 1 2 3 4 5 6 6 7 7 7 7 8 8 8 / 1 2 3 4 5 5 6 6 7 8 8 8 8 8 / 1 2 3 4 5 5 6 6 6 6 6 7 8 8: identical for the first four, divergent from the fifth. Raising this number makes the golden unreproducible; see tests/golden/pending/015-trumbles/README.md.",
+  "trumble_awards": 4,
+  "expected_trumble_count": 4,
+  "expected_saved_trumble_count": 0,
+
+  "mission_trumbles_key": "trumbles",
+  "_expected_mission_variable_keys": "The five mission variables this 1.75-era save carries, with the engine's `mission_` prefix stripped for JS (OOJSMissionVariables.m:191-193). A DEFAULT NEW GAME HAS NONE (PlayerEntity.m:1986-1987), which is what makes this check unsatisfiable by a run that ignored -load. Compared as a KEY SET, never by value: mission_trumbles is the EMPTY STRING in this fixture and an absent mission variable reads the same way.",
+  "expected_mission_variable_keys": [
+    "CT_thargonCount",
+    "snoopers_CRCNews",
+    "snoopers_dateCheck",
+    "snoopers_usedSlots",
+    "trumbles"
+  ],
+
+  "_log_channels": "Switched on by a logcontrol.plist staged into this run's private resource root (ResourceManager.m:1761-1777), NOT from the console: the whole load happens before the debug console connects, so a JS call comes too late. `load.progress` is off by default (Resources/Config/logcontrol.plist:241).",
+  "log_channels": ["load", "load.progress", "load.failed", "cheat", "cheat.tentative", "cheat.verified"],
+
+  "_load_progress_stages": "The engine's OWN load trace, verbatim and in order, from PlayerEntityLoadSave.m:620-811. These strings are logged ONLY inside -loadPlayerFromFile:, so a run that ignored -load emits none of them and a load that died partway emits a prefix.",
+  "load_progress_stages": [
+    "Reading file",
+    "Restricting scenario",
+    "Creating player ship",
+    "Initialising player entity",
+    "Loading commander data",
+    "Recording save path",
+    "Creating system",
+    "Resetting player flight variables",
+    "Loading system market",
+    "Setting scenario key",
+    "Starting JS engine",
+    "Populating initial system",
+    "Completing JS startup",
+    "Loading complete"
+  ],
+
+  "repopulator_handlers": ["systemWillRepopulate"],
+
+  "_census": "THE LOAD ASSERTION. Each entry names a key in the .oolite-save plist, the JS expression that reads the same quantity out of the loaded game, and how the two are made comparable. The two sides are produced by two INDEPENDENT readers sharing no code - Python's plistlib in THIS process, and Oolite's Objective-C deserialiser in a SEPARATE OS process read back over the console - so they cannot be the same object even in principle. Scenario 006's invariant, applied to this fixture.",
+  "census": [
+    {"plist": "player_name",         "js": "player.name",                    "kind": "str",          "why": "commander identity. This save's is 'Trumbles'; a fresh commander is 'Jameson'."},
+    {"plist": "current_system_name", "js": "system.name",                    "kind": "str",          "why": "the system the save pins; a save loaded into the wrong system is the most damaging silent load failure"},
+    {"plist": "credits",             "js": "player.credits",                 "kind": "float_tenths", "why": "PlayerEntity stores credits in tenths; the plist holds 65534 and JS reports 6553.4. Scale MEASURED, not assumed."},
+    {"plist": "fuel",                "js": "player.ship.fuel",               "kind": "float_tenths", "why": "the plist stores fuel in tenths of a light year (70 = 7.0 LY); JS reports light years"},
+    {"plist": "legal_status",        "js": "player.bounty",                  "kind": "int",          "why": "player.bounty is the INTEGER accessor (OOJSPlayer.m:286-288); player.legalStatus returns a DISPLAY STRING via OODisplayStringFromLegalStatus"},
+    {"plist": "galaxy_number",       "js": "galaxyNumber",                   "kind": "int",          "why": "galaxy index; a chart-level property distinct from the system"},
+    {"plist": "ship_desc",           "js": "player.ship.dataKey",            "kind": "str",          "why": "the shipdata key the player's hull is rebuilt from"},
+    {"plist": "ship_name",           "js": "player.ship.shipClassName",      "kind": "str",          "why": "human-facing class name, separate storage from ship_desc"},
+    {"plist": "ship_kills",          "js": "player.score",                   "kind": "int",          "why": "kill score; a counter, so a load that resets counters fails here"},
+    {"plist": "max_cargo",           "js": "player.ship.cargoSpaceCapacity",  "kind": "int",          "why": "cargo capacity, an integer the loader recomputes rather than copies"},
+    {"plist": "missiles",            "js": "player.ship.missiles.length",    "kind": "int",          "why": "pylon count, reconstructed from missile_roles by the loader"}
+  ]
+}
