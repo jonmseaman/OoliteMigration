@@ -86,3 +86,24 @@ Every mutation was applied to THROWAWAY copies in a detached scratch worktree, n
 | 7 | `destination_system_id := origin` | spec | the central predicate becomes unsatisfiable |
 | 8 | one byte appended to `state.json` | evidence | sha256 and byte size both disagree |
 | 9 | `frame.grid` zeroed (never drawn) | evidence | luminance spread 0.0 < floor 0.2275 |
+
+## The live line can lose the console to a sibling — retry, do not re-bless
+
+MEASURED during acceptance replay: the live line (6) failed once with
+`ConnectionResetError: [WinError 10054]`, rc=3 after 28 s, with **1 orphaned oolite.exe** on the
+box; the identical line on the identical tree then passed in 50 s with 0 orphans, jump confirmed
+and the dump byte-identical to the golden. An rc=3 from this harness is an UNEXPECTED EXCEPTION —
+console contention, a sibling worker's game holding port 8563, or an orphan — and is an INSTRUMENT
+FAILURE, not a verdict on the scenario. Before reporting the live line as a defect:
+
+```sh
+ps -W | grep -i oolite | awk '{print $4}' | while read p; do /c/Windows/System32/taskkill.exe /PID $p /F; done
+```
+
+then re-run unchanged. A long wall time with a timeout or reset message is the tell.
+
+**The mutant line (7) refuses rc=3 explicitly and matches the destination refusal text**, because
+it originally accepted ANY nonzero rc — and a crashed run (rc=3) therefore satisfied it. A mutant
+arm that passes when the game crashes proves nothing: it must go red BECAUSE the ship stayed in
+Lave, so it now asserts `SCENARIO FAILED: ... pins the destination system to ID 129 but the game
+reports 7` appears in the output.
