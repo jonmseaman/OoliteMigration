@@ -1,0 +1,25 @@
+{
+  "label": "qwen3-4b-2507 (local, LM Studio)",
+  "audited": 61,
+  "scored": 61,
+  "matrix": {
+    "tp": 3,
+    "fp": 1,
+    "tn": 49,
+    "fn": 8
+  },
+  "agreement": 0.8524590163934426,
+  "precision": 0.75,
+  "recall": 0.2727272727272727,
+  "control_recall": 0.2727272727272727,
+  "controls": 11,
+  "control_hits": 3,
+  "classes_predicted": [
+    "false-positive",
+    "mozilla"
+  ],
+  "passed": false,
+  "failures": [
+    "CONTROL RECALL 27.3% < required 50.0%: the classifier missed known-real Mozilla constructs, so high agreement is an artifact of the negative-heavy population"
+  ]
+}
