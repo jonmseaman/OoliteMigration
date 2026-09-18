@@ -128,6 +128,10 @@ MIN_MARKET_GOODS = 17
 TICK_WALL_BUDGET_SECONDS = 300
 FRAME_SETTLE_SECONDS = 1.5
 SETTLE_TIMEOUT_SECONDS = 120
+# How many times a read-only STARTUP probe may be re-asked when the console does not answer inside
+# its own 15s window. Four, because the one stall measured in an acceptance rehearsal cleared on
+# the next ask; the bound exists so a game that never settles is REFUSED by name instead of hanging.
+STARTUP_PROBE_TRIES = 4
 CLEAR_ROUNDS = 20
 
 # The floor a frame must clear, in frame_hash distance units, to count as RENDERED. It is NOT a
@@ -231,6 +235,43 @@ def read_load_evidence(artifact_dir):
     return stages, failures, len(text)
 
 
+def evaluate_settling(console, js, tries=STARTUP_PROBE_TRIES):
+    """Evaluate a STARTUP probe, re-asking if the console does not answer in time.
+
+    MEASURED, not defensive padding. An acceptance rehearsal on a VM running the fleet's other
+    beads hit `no answer to 'String(player.ship.dockedStation === system.mainStation)' within 15s`
+    AFTER the two probes before it had already answered - i.e. the game was alive and talking, and
+    then stalled for longer than one command window while the load-save GUI transition finished.
+
+    The retry is narrow on purpose, because a broad one would hide real deaths:
+
+      * it is used ONLY by assert_system(), on the read-only probes between launch and the first
+        write. Nothing here has a side effect, so re-asking cannot double a trade;
+      * `console.evaluate` polls `self._proc.poll()` every second and raises "Oolite exited with N
+        mid-command" when the process is gone (console.py:241). That is a DIFFERENT message from
+        the timeout, and it is re-raised immediately - a dead game still fails fast, in one window,
+        rather than burning every retry;
+      * a JS error is likewise re-raised at once: it is an answer, just a bad one;
+      * the budget is bounded and reported, so a game that never settles still fails, by name.
+    """
+    from console import ConsoleError
+
+    last = None
+    for attempt in range(tries):
+        try:
+            return console.evaluate(js)
+        except ConsoleError as exc:
+            if "no answer to" not in str(exc):
+                raise           # exited mid-command, or a JS error: an answer, not a stall.
+            last = exc
+            time.sleep(1)
+    raise ScenarioError(
+        "the console did not answer %s in %d attempt(s) though the game was still running: %s. "
+        "The world never became responsive enough to probe, so this run is REFUSED rather than "
+        "dumped - a dump taken from a game that could not answer is not evidence of anything."
+        % (js, tries, last))
+
+
 def assert_system(console, spec):
     got = console.evaluate_int("system.ID")
     if got != int(spec["system_id"]):
@@ -239,12 +280,13 @@ def assert_system(console, spec):
             "the market this scenario trades in is that system's market, so a different system is "
             "a different scenario wearing this one's golden"
             % (SCENARIO, int(spec["system_id"]), spec.get("system_name"), got))
-    if console.evaluate("String(player.ship.docked)").strip().lower() != "true":
+    if evaluate_settling(console, "String(player.ship.docked)").strip().lower() != "true":
         raise ScenarioError(
             "the player is not docked. -[PlayerEntity tryBuyingCommodity:all:] returns NO when "
             "undocked (PlayerEntity.m:11341) and `localMarket` belongs to the docked station, so "
             "an undocked player means there is no market to trade in.")
-    if console.evaluate(
+    if evaluate_settling(
+            console,
             "String(player.ship.dockedStation === system.mainStation)").strip().lower() != "true":
         raise ScenarioError(
             "the player is not docked at the MAIN station. StationEntity.m:191-203 returns the "

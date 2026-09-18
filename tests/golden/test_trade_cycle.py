@@ -172,6 +172,83 @@ def test_assert_ran_rejects_an_empty_hold_even_when_the_spec_agrees(spec):
     assert "empty hold" in str(exc.value)
 
 
+# --- the startup-probe retry: narrow on purpose -----------------------------------------------
+
+class _FakeConsole:
+    """Minimal stand-in: answers on the Nth ask, raising whatever is queued before that."""
+
+    def __init__(self, failures, answer="true"):
+        self.failures = list(failures)
+        self.answer = answer
+        self.asks = 0
+
+    def evaluate(self, js, timeout=15):
+        self.asks += 1
+        if self.failures:
+            raise self.failures.pop(0)
+        return self.answer
+
+
+def _console_error(text):
+    sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
+    from console import ConsoleError
+    return ConsoleError(text)
+
+
+def test_startup_probe_reasks_after_a_stall_and_returns_the_answer(monkeypatch):
+    monkeypatch.setattr(trade_cycle.time, "sleep", lambda _s: None)
+    console = _FakeConsole([_console_error("no answer to 'x' within 15s")])
+    assert trade_cycle.evaluate_settling(console, "x") == "true"
+    assert console.asks == 2, "the stall must be re-asked exactly once, not swallowed"
+
+
+def test_startup_probe_does_not_retry_a_dead_game(monkeypatch):
+    """A dead game must fail in ONE window, not burn the whole retry budget."""
+    monkeypatch.setattr(trade_cycle.time, "sleep", lambda _s: None)
+    console = _FakeConsole([_console_error("Oolite exited with 3 mid-command")])
+    with pytest.raises(Exception) as exc:
+        trade_cycle.evaluate_settling(console, "x")
+    assert "exited with 3" in str(exc.value)
+    assert console.asks == 1, "a process death is an answer; retrying it hides the death"
+
+
+def test_startup_probe_does_not_retry_a_js_error(monkeypatch):
+    monkeypatch.setattr(trade_cycle.time, "sleep", lambda _s: None)
+    console = _FakeConsole([_console_error("JS error evaluating 'x': ReferenceError")])
+    with pytest.raises(Exception) as exc:
+        trade_cycle.evaluate_settling(console, "x")
+    assert "ReferenceError" in str(exc.value)
+    assert console.asks == 1
+
+
+def test_startup_probe_refuses_rather_than_hangs_when_it_never_settles(monkeypatch):
+    monkeypatch.setattr(trade_cycle.time, "sleep", lambda _s: None)
+    stalls = [_console_error("no answer to 'x' within 15s")
+              for _ in range(trade_cycle.STARTUP_PROBE_TRIES)]
+    console = _FakeConsole(stalls)
+    with pytest.raises(trade_cycle.ScenarioError) as exc:
+        trade_cycle.evaluate_settling(console, "x")
+    assert "REFUSED rather than dumped" in str(exc.value)
+    assert console.asks == trade_cycle.STARTUP_PROBE_TRIES, "the budget must be bounded"
+
+
+def test_startup_retry_is_used_only_on_read_only_startup_probes():
+    """The retry must not reach anything with a side effect: re-asking a trade would double it."""
+    import ast
+    tree = ast.parse(open(os.path.join(HERE, "trade_cycle.py"), encoding="utf-8").read())
+    callers = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef,)):
+            continue
+        for inner in ast.walk(node):
+            if (isinstance(inner, ast.Call) and isinstance(inner.func, ast.Name)
+                    and inner.func.id == "evaluate_settling"):
+                callers.add(node.name)
+    assert callers == {"assert_system"}, (
+        "evaluate_settling() is called from %r; it may only be used by assert_system(), whose "
+        "probes are read-only and run before the first write" % sorted(callers))
+
+
 # --- the evidence checker, as a subprocess, on the stored golden -----------------------------------
 
 def test_evidence_checker_passes_on_the_stored_golden():
