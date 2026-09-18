@@ -1,0 +1,28 @@
+{
+  "build_flags": {
+    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
+    "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
+    "effective_optimization_levels": {
+      "-O2": 242
+    },
+    "policy_fp_contract": "-ffp-contract=off",
+    "policy_optimization": "-O2",
+    "translation_units": 242,
+    "verified": false
+  },
+  "commit": "a733ba491c03f7198df2891a914c0b621b235582",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/retro_missions.py",
+  "note": "Scenario 012 RetroMissions test-OXP (bead oo-3ya): the in-tree fixture upstream/oolite-tests/test-oxps/RetroMissions/RetroMissions.oxp is staged into a private OO_ADDITIONALADDONSDIRS root, the game runs 24 ticks of game time in Lave, and the dump carries an evidence block proving the expansion's content went LIVE: 6 world-script names a stock game lacks, of which ahruman-reaper resolves to a live JS object with version '1', the other 5 being legacy plist keys. RetroMissions ships NO manifest.plist (bead oo-kcrw's NOMANIF class - a property of these legacy fixtures) and the run tolerates EXACTLY 2 '[oxp-standards.error]: OXP RetroMissions.oxp has no manifest.plist' lines and no other oxp-standards error; a third or different line fails the run. No manifest is staged. See tests/golden/pending/012-retro-missions/README.md. provenance.scenario_knobs records the determinism knobs this golden was BLESSED with; the acceptance gate asserts spec.json still agrees with them, so re-blessing with a new seed stays legal while silent drift between spec and golden is fatal.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "012-retro-missions",
+  "scenario_knobs": {
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": "10 consecutive runs on 2026-09-18, all 10 DUMPED and byte-identical (1973 bytes, md5 4c49d2295a33232f7ca477178b32eb1c), 0 REFUSED, 0 DIFFERED; wall 17-21 s each."
+}

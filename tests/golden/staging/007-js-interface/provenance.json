@@ -1,0 +1,21 @@
+{
+  "build_flags": {
+    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
+    "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
+    "effective_optimization_levels": {
+      "-O2": 242
+    },
+    "policy_fp_contract": "-ffp-contract=off",
+    "policy_optimization": "-O2",
+    "translation_units": 242,
+    "verified": false
+  },
+  "commit": "a733ba491c03f7198df2891a914c0b621b235582",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/js_interface.py",
+  "note": "Scenario 007 JS interface (bead oo-5k2): stages the in-tree 'JavaScript Interface Tests' test-oxp into a private addons root and runs ITS OWN test rig (ooRunTests) inside a live game. Evidence block carries the RIG'S OWN output - completion line, per-test pass/fail counts, and a SHA-256 of the sorted test-name set, a field that cannot exist unless the expansion's scripts ran. The fixture ships no manifest.plist (bead oo-kcrw NOMANIF): its 2 error lines are allow-listed by exact message and EXACT count, and the count is pinned in the dump. 6/6 runs byte-identical. See tests/golden/staging/007-js-interface/README.md.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "007-js-interface"
+}
