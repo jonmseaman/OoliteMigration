@@ -44,9 +44,10 @@ before the dependency was recorded and burned a worker cycle re-deriving the sam
 
 ## Consequences
 
-- The seven scenario beads are re-scoped in their notes and given executable acceptance in the
-  form S8 already uses (pytest `-k sN_`, three consecutive green runs). Their earlier "BLOCKED"
-  notes are superseded by this ADR.
+- The seven scenario beads are re-scoped in their notes and given executable acceptance: one
+  pytest run of the scenario (`-k sN_`); green means done. The generator's former shape, a single
+  run followed by a three-run loop, cost four real-time game runs per accept and is retired
+  (Jon, 2026-09-18). Their earlier "BLOCKED" notes are superseded by this ADR.
 - The phase 0 exit criterion "S2–S8 replicate S1" is met by smoke scenarios. Anyone reading a
   green S3 must not conclude that ATTACK transitions work; the feature file's name and a comment
   in each file say so.
