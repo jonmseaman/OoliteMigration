@@ -1,0 +1,88 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "md5": "5613de2c9895997136e284c24e11b487",
+      "note": "64x64 luminance grid; compared with a MEASURED TOLERANCE, never byte-wise, because llvmpipe is not bit-reproducible across runs (bead oo-ae9). Deliberately NOT part of state.json.",
+      "sha256": "2f32a532e68a86c314f2f2fe88c971817988618efdd2582be600ffb0bc843165"
+    },
+    "state.json": {
+      "bytes": 3353,
+      "md5": "56d9f4e675fdc08a19d98589e10c9fe7",
+      "sha256": "ec7ffa65e8ad41d34939304ea1a15d4132a47e642855fb965eae95d9750663a2"
+    }
+  },
+  "blessed_from_commit": "",
+  "blessed_utc": "2026-09-18T13:04:00Z",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "determinism_notes": {
+    "cast_pinned": "mission.runScreen's `model` is given in LITERAL [shipKey] form ([oolite_shader_test_suite_13]). A BARE role would be a RANROT draw (Universe.m:4008 -> :3948 -> OOShipRegistry.m:276-279) whose position depends on frames burned earlier, so a fixed seed does NOT fix the cast (bead oo-izi). OOShipRegistry.m:1229 registers the [key] form at probability 1.0, so no draw is made.",
+    "detail_level_pinned": "debugConsole.detailLevel is written from the spec and READ BACK. It selects between the shader and fixed-function material paths and the fixture ships parallel entry sets for each.",
+    "no_spin": "spinModel=false. makeDemoShipWithRole:spinning: (Universe.m:5827-5834) sets demoRate=1.0 when spinning and ShipEntity.m:2337-2342 then derives the model's orientation from [UNIVERSE getTime] - a wall-clock rotation that would put a different frame on screen every run.",
+    "traffic_sources_off": [
+      "system.populatorSettings",
+      "StationEntity hasNPCTraffic",
+      "oolite-populator.js systemWillRepopulate"
+    ]
+  },
+  "dump_tool": "tests/golden/material_test_suite.py",
+  "evidence_checker": "tests/golden/check_material_evidence.py",
+  "frame_control": {
+    "control_method": "Three arms, all produced by THIS scenario's own code (--no-model / --empty-stage / --no-oxp write the frame grid before the evidence gate, so a REFUSED run still yields its frame). The narrow arm is --no-model: the SAME expansion staged, the SAME backdrop, the SAME screen, the SAME ticks - the ONLY variable is whether a material-bearing model is drawn. Its texture-upload list independently records the backdrop alone, the two oolite_shader_test_suite_* maps never decoded, which is the non-graphical confirmation.",
+    "empty_stage_distance": 0.210488,
+    "empty_stage_ratio": 48.08660951734229,
+    "no_model_distance": 0.072411,
+    "no_model_ratio": 16.54250827486732,
+    "oxp_absent_distance": 0.210506,
+    "oxp_absent_ratio": 48.09072167086796,
+    "same_scene_distance": 0.000514,
+    "same_scene_ratio": 0.11742482845537007,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9; noise floor 0.002541, weakest real signal 0.007541). USED AS MEASURED, never adjusted.",
+    "verdict": "MATERIALS DO MOVE THE FRAME HASH, far beyond the instrument's noise. Two independent launches of the identical scene differ by 0.000514 (0.12x tolerance); removing ONLY the material-bearing model, with everything else held constant, moves the frame 0.072411 (16.54x) - a 141-fold separation between noise and signal attributable to the MATERIAL MAPS specifically rather than to the expansion's presence. Removing the expansion entirely moves it 0.210506 (48.09x). --no-oxp and --empty-stage agree with each other to 0.001715 (0.39x, WITHIN tolerance), which is the expected cross-check: both render the same expansion-less screen."
+  },
+  "landing_rehearsal": {
+    "note": "Both the runner and the offline tests search goldens/windows-x64/008-material-test-suite/ FIRST and fall back to tests/golden/pending/008-material-test-suite/, so landing is a pure `git mv` with no code change - the same shape scenarios 010 and 012 use. See LANDING.md.",
+    "performed": false
+  },
+  "manifest_state": {
+    "decision": "ALLOW-LIST NOTHING. Bead oo-kcrw classified 'the five in-tree legacy test-oxps' as NOMANIF; there are SIX and this is the sixth - Material Test Suite.oxp SHIPS a manifest.plist, verified on disk against all six and confirmed by a real launch whose 13452-byte Latest.log contained ZERO [oxp-standards.error] lines while [searchPaths.dumpAll] named the staged copy. So allowed_oxp_standards_errors=0 with an EMPTY allow-list: any such line fails the run. This is STRICTER than 010/012's exact-count allowance, not weaker. No manifest is staged or removed - fabricating or deleting fixture content would falsify the thing under test.",
+    "fixture_ships_manifest": true,
+    "identifier": "org.oolite.material-test-suite",
+    "oxp_standards_errors_measured": 0,
+    "searchpaths_evidence_verbatim": [
+      "08:45:43.288 [searchPaths.dumpAll]: Resource paths: ",
+      "    C:/Users/jon/AppData/Local/Temp/oo_qd6_probe/probe-124541-p8600-10436/oxp-stage/Material Test Suite.oxp"
+    ],
+    "version": "1.3"
+  },
+  "os": "Windows-10-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "008-material-test-suite",
+  "scenario_knobs": {
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": {
+    "broken": 0,
+    "distinct_dump_digests": [
+      "56d9f4e675fdc08a19d98589e10c9fe7"
+    ],
+    "distinct_frame_grid_digests": 10,
+    "dump_bytes": [
+      3353
+    ],
+    "dumps_written": 10,
+    "note": "10/10 runs exited 0 and wrote a BYTE-IDENTICAL dump; the blessed state.json has that same digest. stdout+stderr were captured for EVERY run regardless of exit code and each run was classified by what it PRODUCED (DUMPED/REFUSED/BROKEN), never filtered on returncode. The 10 frame grids are all distinct, as expected: llvmpipe is not bit-reproducible, which is why the grid is compared with the measured tolerance and is NOT in state.json. Harness: tools/oo-qd6-stability.sh.",
+    "rc_nonzero_but_dumped": 0,
+    "rc_zero": 10,
+    "refused": 0,
+    "runs": 10,
+    "wall_seconds_max": 37,
+    "wall_seconds_min": 19
+  }
+}
