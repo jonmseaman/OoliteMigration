@@ -282,6 +282,16 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   Log the count beside every result: `rc=1 wall=117s oolite_procs=4` diagnoses itself; a bare rc=1
   gets mistaken for a broken gate and, at five repeats, escalates healthy work. A long wall time is
   the tell — the harness is burning its retry budget against a port that will never answer.
+- **Replay a stored acceptance block the way `accept.sh` does, or you will silently skip a line.**
+  `while IFS= read -r l; ...; done < file` DROPS the final line when the file has no trailing
+  newline (measured: `printf 'a\nb\nc' > f` reads **2 of 3**). `accept.sh` is immune because it uses
+  a here-string — `done <<<"$acceptance"` — and bash always terminates a here-string (3 of 3). A
+  reviewer hit this on oo-zyj1, reported `RAN=6` against 7 stored lines, and nearly filed it as a
+  bead defect; the dropped line was the LIVE RED PROOF, the one whose absence most weakens a
+  review. Always assert lines-run == lines-stored taken from `bd show --json`, never from your own
+  temp file — a count from the file that lost the line cannot detect the loss. A worker that
+  validated its own acceptance this way may have left its last line untested while honestly
+  reporting success.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
