@@ -39,14 +39,24 @@ run_mutant() { # run_mutant <id> <target: queue|selftest> <old> <new> <scenarios
   cp "$HERE/merge-queue.sh" "$HERE/merge-queue-selftest" "$dir/"
   local file="$dir/merge-queue.sh"; [ "$target" = selftest ] && file="$dir/merge-queue-selftest"
 
-  OLD="$old" NEW="$new" FILE="$file" python -c '
+  # THE MSYS PATH TRAP: python here is a NATIVE /ucrt64/bin/python.exe, which does not understand
+  # "/c/Users/...". Without cygpath every mutant fails with FileNotFoundError and the harness
+  # reports "0 caught, 12 escaped" -- a red that looks like a finding and is really a path bug.
+  local file_native="$file"
+  command -v cygpath >/dev/null 2>&1 && file_native="$(cygpath -m "$file")"
+  local mrc=0
+  OLD="$old" NEW="$new" FILE="$file_native" python -c '
 import os,sys
 p=os.environ["FILE"]; old=os.environ["OLD"]; new=os.environ["NEW"]
 s=open(p,encoding="utf-8").read()
 if old not in s:
     sys.stderr.write("MUTANT DID NOT APPLY: anchor not found: %r\n" % old[:90]); sys.exit(9)
 open(p,"w",encoding="utf-8",newline="\n").write(s.replace(old,new,1))
-' || { bad "$id: the mutation did not apply (the anchor moved; the mutant is stale, not the queue innocent)"; return; }
+' || mrc=$?
+  if [ "$mrc" -ne 0 ]; then
+    bad "$id: the mutation did not apply (rc=$mrc; anchor moved or the edit failed -- the mutant is stale, the queue is not thereby innocent)"
+    return
+  fi
 
   # THE ANTI-VACUITY CHECK ON THE MUTANT ITSELF: the copy must actually differ.
   if cmp -s "$file" "$HERE/$(basename "$file")"; then
@@ -70,8 +80,10 @@ open(p,"w",encoding="utf-8",newline="\n").write(s.replace(old,new,1))
 
 LIST=0; WANT=""
 [ "${1:-}" = "--list" ] && LIST=1
-[ $# -gt 0 ] && [ "$LIST" = 0 ] && WANT="$1"
-want() { [ -z "$WANT" ] || [ "$WANT" = "$1" ]; }
+[ $# -gt 0 ] && [ "$LIST" = 0 ] && WANT="$*"
+# No arguments means every mutant; otherwise the named subset, so the stored acceptance block can
+# split the proof across lines that each finish in a couple of minutes.
+want() { case " ${WANT:-} " in "  ") return 0 ;; *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
 printf 'merge-queue-mutants: %d mutant(s) against throwaway copies in %s\n' 12 "$WORK"
 
@@ -182,7 +194,7 @@ if want M11; then
   printf '"'"'%s\n'"'"' "$GATE_RUNS" > "$COUNT_FILE"' \
     '  GATE_RUNS=$(( GATE_RUNS + 1 ))
   printf '"'"'1\n'"'"' > "$COUNT_FILE"' \
-    "S5" "expected '"'"'1'"'"', got '"'"'2'"'"'"
+    "S5" "the invocation counter disagrees with the run count"
 fi
 if want M12; then
   printf '\n== M12 CHECKER: the empty-batch guard becomes a quiet green instead of a fatal error\n'

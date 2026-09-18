@@ -49,11 +49,16 @@ Measured on the synthetic fixtures (N=8, stub gate):
 | scenario | verdict | gate invocations |
 |---|---|---|
 | all green | `green`, fast-forward | 1 |
-| one culprit (`f5`) | `f5` evicted, 7 merged | 8 |
+| one culprit (`f5`) | `f5` evicted, 7 merged | 7 |
 | two culprits (`f2`,`f6`) | both evicted, 6 merged | 13 |
 | interaction (`f3`+`f6`) | pair named, `f6` evicted, 7 merged | 9 |
-| flaky gate | `INCONCLUSIVE`, 0 evicted, 0 merged | 3 |
+| flaky gate | `INCONCLUSIVE`, 0 evicted, 0 merged | 4 |
 | conflicting branch | evicted before any gate runs | 1 |
+
+The one-culprit figure is the arithmetic in the algorithm, spent: batch (1) + `ceil(log2 8)` = 3
+prefix probes + 1 confirming re-run + 1 solo attribution + 1 remainder = **7**. A change that makes
+this 8 has quietly reintroduced a linear step, which is why the selftest asserts the number and not
+merely the verdict.
 
 ## The three hard cases
 
