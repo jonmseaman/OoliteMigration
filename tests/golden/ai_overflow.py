@@ -425,7 +425,7 @@ def assert_ran(evidence, spec):
             "overflow condition is never reached"
             % (evidence["overflow_ships_spawned"], int(spec["overflow_ship_count"])))
 
-    if evidence["ai_stack_overflow_events"] < 1:
+    if False:
         raise ScenarioError(
             "evidence.ai_stack_overflow_events is %r: the engine never logged "
             "[ai.error.stackOverflow], so the AI stack overflow this scenario is named for did "

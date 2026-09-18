@@ -72,7 +72,7 @@ import sys
 # Every field the evidence block must carry, with the value a REAL staged run produces. Listed as
 # a table rather than as inline ifs so the set is readable and so a future scenario cannot quietly
 # drop one of them.
-REQUIRED_TRUE = ("oxp_staged", "tick_budget_met")
+REQUIRED_TRUE = ("oxp_staged", "tick_budget_met", "overflow_handled")
 REQUIRED_POSITIVE = ("ticks", "overflow_ships_spawned")
 
 # DEFENCE 1/2: what the running game's ship registry knows about this expansion. MEASURED.
