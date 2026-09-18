@@ -33,6 +33,10 @@ UCRT_PKGS=(
   espeak-ng libpng libvorbis openal pcaudiolib sdl3
   meson ninja nsis jq
   mesa ccache
+  # llvm-tools ships llvm-symbolizer, which Tier C's ASan stage REQUIRES (bead oo-j4u): without
+  # it every sanitizer frame is a bare address, and a report cannot be attributed to oolite.exe
+  # rather than to a prebuilt third-party DLL. clang alone does not provide it.
+  llvm-tools
   python python-pip python-setuptools python-wheel python-pytest python-pillow
 )
 
