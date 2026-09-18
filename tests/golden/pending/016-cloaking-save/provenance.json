@@ -1,0 +1,145 @@
+{
+  "scenario": "016-cloaking-save",
+  "platform": "windows-x64",
+  "os": "Windows-11-10.0.26200-SP0",
+  "quant_decimals": 3,
+  "dump_tool": "tests/golden/cloaking_load.py",
+  "evidence_checker": "tests/golden/check_cloaking_evidence.py",
+  "spec_gate": "tests/golden/gate_016_spec.py",
+  "blessed_utc": "2026-09-18T19:35:00Z",
+
+  "artifacts": {
+    "state.json": {
+      "bytes": 5422,
+      "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b",
+      "note": "A GOLDEN CANNOT WITNESS ITSELF. This digest and byte count live in provenance.json - a SEPARATE file - precisely because comparing the stored golden against a copy of itself moves BOTH sides when the golden is edited, so a one-quantised-unit perturbation is invisible to it (bead oo-gxp measured that mutant surviving). Editing both files together is a deliberate re-bless and is what tools/rebless-approvals.txt exists to govern."
+    },
+    "frame.grid": {
+      "bytes": 4096,
+      "sha256": "f3c6125ea5fb9448fa4764ce9aa4ea2afd0a9de2af0c5633709b024ce6765331",
+      "note": "RECORDED FOR PROVENANCE ONLY - THIS DIGEST IS NEVER A GATE PREDICATE. llvmpipe is not bit-reproducible: this scenario's own 10-run sweep produced 10 DISTINCT frame-grid digests over 10 BYTE-IDENTICAL dumps. Byte-hashing the frame would make the gate flake on renderer noise. The dump is hashed byte-wise because it is quantised and deterministic; the frame is compared with a MEASURED tolerance. The asymmetry is deliberate."
+    }
+  },
+
+  "scenario_knobs": {
+    "seed": 20260918,
+    "system_id": 80,
+    "ticks": 24,
+    "tick_seconds": 0.125,
+    "quant_decimals": 3,
+    "load_save": "upstream/oolite-tests/Checklist-files/Missions/CloakingDevice.oolite-save",
+    "control_save": "upstream/oolite-tests/Checklist-files/Missions/Trumbles.oolite-save",
+    "save_format_version": "1.75",
+    "expected_equipment_count": 16,
+    "min_census_fields_round_tripped": 13,
+    "min_mission_variables_round_tripped": 9
+  },
+
+  "_declared_migrations": "THE WITNESS FROM OUTSIDE THE SPEC. The declared-migration sets are the ONE place a failing run could be made to pass - by adding the drifting field to the set - so they are recorded here as well, and gate_016_spec.py requires the two files to agree. Widening one alone is red; widening both is a deliberate act with a reviewer's name on it.",
+  "declared_migrations": {
+    "census_migrations": ["credits", "fuel_charge_rate"],
+    "mission_variable_write_exceptions": ["mission_cloakcounter"],
+    "equipment_migrations": ["EQ_ENERGY_BOMB"]
+  },
+
+  "_measured_migrations": "ALL THREE WERE FOUND BY RUNNING THE SCENARIO, NOT ANTICIPATED. The first live run exited 1 with 'the live ship is MISSING 1 item(s) the save restored: [EQ_ENERGY_BOMB]', and chasing that through PlayerEntity.m turned up the credit compensation and, separately, the derived fuel charge rate. Each is a real fact about what a 1.75 save means to the modern engine.",
+  "measured_migrations": {
+    "EQ_ENERGY_BOMB": {
+      "disposition": "REMOVED",
+      "source": "PlayerEntity.m:1394-1398",
+      "detail": "The loader finds EQ_ENERGY_BOMB in extra_equipment, sees [OOEquipmentType equipmentTypeWithIdentifier:] return nil (energy bombs are no longer supported without an OXP), removes the key and sets energyBombCompensation."
+    },
+    "credits": {
+      "in_file": 95622.6,
+      "in_engine": 96522.6,
+      "delta": 900.0,
+      "source": "PlayerEntity.m:1730-1746",
+      "detail": "The compensation branch. It tries to mount an EQ_QC_MINE first; this commander's four pylons already carry EQ_HARDENED_MISSILE (missile_roles in the plist, and player.ship.missiles.length == 4 live), so mountMissileWithRole fails and the else branch runs `credits += 9000` in tenths = 900 credits.",
+      "engine_testimony": "Compensated legacy energy bomb with 900 credits.",
+      "engine_testimony_channel": "load.upgrade.replacedEnergyBomb",
+      "why_the_log_line_matters": "Without it the +900 is arithmetic that happens to add up and would be satisfied equally by a save whose credits were corrupted by exactly that amount. The log line is the LOADER SAYING WHICH BRANCH IT TOOK, and the gate requires it."
+    },
+    "fuel_charge_rate": {
+      "in_file": 1.0,
+      "in_engine": 2.0,
+      "delta": 1.0,
+      "source": "PlayerEntity.m:13007-13021 (MASS_DEPENDENT_FUEL_PRICES), ShipEntity.m:8122",
+      "detail": "DERIVED, NOT RESTORED. 1.75 stored fuel_charge_rate in the plist; the modern engine never reads that key back. -[PlayerEntity fuelChargeRate] computes the rate from [super fuelChargeRate] (a function of hull mass) and then scales it by state of repair when ship_trade_in_factor is between 75 and 90 - this fixture's is 85. A stored value the format contract no longer honours is a MORE interesting fact about a 1.75 save than a field that merely copies, and pinning it means a future engine that started honouring the saved value again goes red instead of silently changing fuel economics."
+    }
+  },
+
+  "_how_this_differs_from_scenario_005": "Bead oo-rkm's scenario 005 loads THE SAME FIXTURE. 005's subject is the systemWillPopulate world-script event FIRING - it asserts missionVariables.cloakcounter moved 6 -> 7 and that the cloaked-Asp ambush was registered and spawned. 016's subject is the 1.75 SAVE FORMAT: it asserts that of the 15-field census, the 16-key equipment set and the 10 mission variables, everything either round-trips verbatim or is one of three DECLARED migrations with a pinned delta and a named engine mechanism. The two gates fail on disjoint inputs: a load that corrupted `credits`, dropped EQ_ESCAPE_POD, regenerated entity_personality or lost mission_nova still fires the trigger and still passes 005, and fails here; a run in which the trigger never fired passes nothing here except by removing cloakcounter from the declared set, which the closed pair catches as DECLARED BUT ABSENT. 016 also measures three engine behaviours 005 does not measure at all.",
+
+  "frame_tolerance": {
+    "asserted": true,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9). USED AS MEASURED, never adjusted to make a run pass.",
+    "same_scene_max": 0.00153,
+    "same_scene_max_x_tol": 0.35,
+    "same_scene_min": 0.001422,
+    "same_scene_pairs": 9,
+    "control_wrong_save_distance": 0.023797,
+    "control_wrong_save_x_tol": 5.44,
+    "control_wrong_save": "Trumbles.oolite-save, the sibling 1.75 checklist save, run through the IDENTICAL scenario code",
+    "separation_ratio": 15.55,
+    "separation_reading": "control_wrong_save_distance / same_scene_max. Anything at or below 1 means the frame cannot discriminate this scenario from the control. 15.6 means the two populations are cleanly separated and the measured tolerance sits between them (0.35x on one side, 5.44x on the other), so the tolerance is ASSERTED here. Contrast scenario 015, where the animated trumble HUD pushed same-scene pairs to 1.08x..2.49x and the tolerance had to be measured and REJECTED - this scenario has no animated HUD element, which is why the same instrument gives a usable verdict."
+  },
+
+  "frame_liveness": {
+    "asserted": true,
+    "floor": 0.02,
+    "metric": "frame_hash.distance(grid, all-black 4096-byte grid)",
+    "measured_min": 0.052074,
+    "measured_max": 0.052154,
+    "margin": "the blessed frame clears the floor by 2.6x and the tightest of the ten runs by 2.6x; the largest same-scene variation is 0.00153, which cannot push a real frame from 0.052 under 0.020.",
+    "what_it_proves": "that something was RENDERED. It is the property a dead run fails: a run that died before drawing, or drew into a lost context, yields an all-black grid at distance 0 - and is otherwise indistinguishable from a good run by exit code or by the absence of ERROR lines."
+  },
+
+  "stability": {
+    "runs": 10,
+    "dumps_written": 10,
+    "refused": 0,
+    "errored": 0,
+    "accounted_for": true,
+    "stable": true,
+    "distinct_dump_digests": ["937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b"],
+    "dump_bytes": [5422],
+    "distinct_frame_grid_digests": 10,
+    "wall_seconds_min": 12.1,
+    "wall_seconds_max": 23.3,
+    "note": "10 of 10 runs wrote a BYTE-IDENTICAL dump (5422 bytes, ONE digest); 0 refused, 0 errored, and dumped + refused + errored == runs, so every run is accounted for. The frame grids are all DISTINCT, exactly as expected: llvmpipe is not bit-reproducible, which is why the grid is compared with the measured tolerance and is NOT part of state.json. The harness deletes its output path before every run, so 'a dump exists after this run' cannot be satisfied by a stale artifact from an earlier invocation (bead oo-gxp).",
+    "per_run": [
+      {"run": 1,  "verdict": "DUMPED", "wall_seconds": 16.0, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "f3c6125ea5fb9448fa4764ce9aa4ea2afd0a9de2af0c5633709b024ce6765331"},
+      {"run": 2,  "verdict": "DUMPED", "wall_seconds": 17.5, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "6035fd839437223c99f6af7861098ddf2f3ca0d15263a16423123b77816497db"},
+      {"run": 3,  "verdict": "DUMPED", "wall_seconds": 17.0, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "64dc46b51791a92dcfc37f23e020825eb138fbee53bb35871d606ec7c3a746bf"},
+      {"run": 4,  "verdict": "DUMPED", "wall_seconds": 18.0, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "04344b5fb9cf82d1d823b9d98cc851da965db534117a24209f930bb47a793d14"},
+      {"run": 5,  "verdict": "DUMPED", "wall_seconds": 23.3, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "9fd7a9491919154d623c3795d7e8d9e0365620d273897fe915afecd02e08701a"},
+      {"run": 6,  "verdict": "DUMPED", "wall_seconds": 12.2, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "c39411ac97329c00971370e08a979a6bf507e71da685bfd8ef8011c64a3ddb76"},
+      {"run": 7,  "verdict": "DUMPED", "wall_seconds": 15.0, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "3b0bf74c61e42ad90a8a6eaf1fffcfaa730d2c771e9d43396e6baa851126e599"},
+      {"run": 8,  "verdict": "DUMPED", "wall_seconds": 16.6, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "5df50bd1704bc88f993a2d3064b9839116c8ea6116db86be53ce54d894140f57"},
+      {"run": 9,  "verdict": "DUMPED", "wall_seconds": 17.8, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "a29ab39ff53c422df7b909b4dd251090a79072be9195286bfaada58362752243"},
+      {"run": 10, "verdict": "DUMPED", "wall_seconds": 12.1, "bytes": 5422, "sha256": "937f0078fffff3bc0abcd45a5fda30e9d8b74d1711a143ba008519671944293b", "frame_sha256": "9b024311a86e31dc4d13cc5d028cbdc3a809f608101c0f7641eca55062703566"}
+    ]
+  },
+
+  "red_proof": {
+    "_note": "A LIVE RED-PROOF MUST ACTUALLY LAUNCH THE GAME. Both arms below were timed; a line claiming to launch the game and returning in under a second did not launch it. The wrong-save arm is a SIBLING CHECKLIST SAVE, not a fresh game - a dead run is an easy control and proves little.",
+    "arm_wrong_save_loaded": {
+      "command": "cloaking_load.py --save upstream/oolite-tests/Checklist-files/Missions/Trumbles.oolite-save",
+      "rc": 1,
+      "wall_seconds": 5,
+      "refusal": "scenario 016-cloaking-save is pinned to system ID 80 (Atdice) but the loaded save is in system ID 7",
+      "dump_written": false
+    },
+    "arm_expectations_from_the_sibling_save": {
+      "command": "cloaking_load.py --expect-from upstream/oolite-tests/Checklist-files/Missions/Trumbles.oolite-save",
+      "_what_it_tests": "The game loads the REAL save and the expectation is read from the SIBLING file, so the round-trip comparison itself is the thing under test rather than the system pin. A correct engine and a correct comparison MUST report a difference.",
+      "rc": 1,
+      "wall_seconds": 17,
+      "refusal": "mission_variable_keys_in_file is [5 Trumbles keys], not the 10 key(s) this 1.75 save carries",
+      "dump_written": false
+    }
+  },
+
+  "cloak_note": "BEWARE THE CLOAK. Bead oo-qwk5 measured the asp-cloaked ship family flipping scanClass CLASS_NEUTRAL -> CLASS_NO_DRAW at t=21.6s when it cloaks, and scenario 005's trigger spawns exactly that ship into this save's system on load. This scenario is immune by BOTH routes and deliberately so: (1) it clears every non-player, non-station ship to a FIXED POINT before it ticks - a single sweep is not enough, because removing the Asp runs its death_actions and drops an unusual cargo container, which oo-rkm measured; and (2) 24 x 0.125 = 3.0s of game time is an order of magnitude short of 21.6s. gate_016_spec.py enforces the upper bound with that number named, so a future widening of the tick budget past the cloak is red."
+}
