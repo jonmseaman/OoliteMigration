@@ -250,6 +250,17 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   a verdict: fix the environment and re-run **before** writing `accept attempt N failed` into the
   notes or counting it toward `BEADS_WORKER_STALE_REPEATS`. Same class as the oo-gla learning, one
   level up — there a bad PATH killed a game launch inside a worker, here it killed the accepter.
+- **Do not fill the batch with game-LAUNCHING beads: they starve each other and fail healthy work.**
+  Four scenario beads running 10-run stability sweeps at once made oo-rkm's live acceptance line
+  fail **six consecutive times**, every failure an instrument signature (`TimeoutExpired ... after
+  10 seconds`, `ConsoleError: no answer to 'system.name' within 15s`, `rm: ... Device or resource
+  busy`, each logged at `procs=5`/`procs=6`) — while the same line on the same tree measured green
+  3/3 an hour earlier. Six identical failures is normally the signature of a broken gate
+  (`BEADS_WORKER_STALE_REPEATS` is 5), so this is exactly where an orchestrator wrongly escalates
+  healthy work. Launching beads contend for CPU, for the shared console port 8563 and for the
+  shared app dir; offline beads (checkers, gates, mutation suites over stored artifacts)
+  parallelise freely. **Mix the batch: at most one or two launching beads at a time**, and when a
+  launching line fails, check the sibling load before believing it.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
