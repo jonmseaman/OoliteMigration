@@ -300,6 +300,16 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   LEARNINGS.md`, stale `.fleet-progress.*` files, untracked `.ctx/`. Commit or ignore it before the
   accept batch, and re-run `accept.sh` afterwards: the work is not lost, the merge commit is intact
   and the retry fast-forwards onto it.
+- **Two different live-launch failures look alike; only one is an orphan.** `rc=3
+  ConnectionResetError [WinError 10054]` arrives FAST (6–10s) with `oolite_procs == 0` — a reset
+  mid-handshake, measured at 3 of 5 attempts in one window and then 12 clean passes, clustering
+  within ~3s of a taskkill sweep (teardown racing the console port). The harness does not cover it:
+  `start_with_retry` handles a process that dies before `main()`, `WorldNotProbeable` one that never
+  answers, a reset is neither. It blocked a real accept (oo-rkm, already approved, both landing arms
+  7/7 green). Wrap the accept batch in a retry loop that INSPECTS the output: on
+  `ConnectionResetError`/`rc=3`/`TimeoutExpired`, clear orphans, wait ~20s for the port to settle,
+  retry up to 3 times; on ANY other failure stop at once — a real gate failure must never be
+  retried into a false green. Never taskkill and immediately relaunch.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
