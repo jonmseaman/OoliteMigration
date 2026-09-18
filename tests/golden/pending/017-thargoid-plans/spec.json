@@ -43,7 +43,7 @@
   },
 
   "_log_channels": "Switched on by a logcontrol.plist staged into this run's private resource root (ResourceManager.m:1761-1777), NOT from the console: the whole load happens before the debug console connects, so a JS call comes too late. `load.progress` is off by default (Resources/Config/logcontrol.plist:241).",
-  "log_channels": ["load", "load.progress", "load.failed"],
+  "log_channels": ["load", "load.progress", "load.failed", "load.upgrade", "load.upgrade.replacedEnergyBomb"],
 
   "_load_progress_stages": "The engine's OWN load trace, verbatim and in order, from PlayerEntityLoadSave.m:620-811. These strings are logged ONLY inside -loadPlayerFromFile:, so a run that ignored -load emits none of them and a load that died partway emits a prefix.",
   "load_progress_stages": [
@@ -63,13 +63,27 @@
     "Loading complete"
   ],
 
+  "_load_migrations": "THE 1.75 SAVE-FORMAT COMPATIBILITY CONTRACT, MADE EXPLICIT. This is the finding that the fixture forced and the reason the bead says 'this also pins the save-format compatibility contract'. The save carries has_energy_bomb=true and EQ_ENERGY_BOMB, equipment that NO LONGER EXISTS. PlayerEntity.m:1731-1746 migrates it on load: it tries to mount an EQ_QC_MINE and, failing that (this commander's four pylons are already full of EQ_HARDENED_MISSILE), does `credits += 9000` - 9000 DECIcredits, i.e. 900 credits - and logs it. So the LOADED credits are NOT the saved credits, by exactly 9000 plist units, and a census that compared them raw would be red on a CORRECT engine. MEASURED: the first live run of this scenario failed with `credits: 99454.7 (saved) != 100354.7 (loaded)`, which is this migration and nothing else. The delta is declared here and applied by apply_load_migrations() so the comparison stays exact rather than being loosened to a tolerance, and the engine's OWN log line is required as evidence - if a future loader stops migrating, the number goes red AND the missing log line names why.",
+  "load_migrations": [
+    {
+      "plist": "credits",
+      "delta": 9000,
+      "log_channel": "load.upgrade.replacedEnergyBomb",
+      "log_message": "Compensated legacy energy bomb with 900 credits.",
+      "source": "PlayerEntity.m:1731-1746",
+      "why": "legacy EQ_ENERGY_BOMB compensation: 9000 decicredits (900 credits) when no pylon is free for the EQ_QC_MINE replacement"
+    }
+  ],
+  "_expected_upgrade_messages": "The engine's OWN record of the migration above, required verbatim. An empty list here would make the migration silent and the adjusted census arithmetic unfalsifiable.",
+  "expected_upgrade_messages": ["Compensated legacy energy bomb with 900 credits."],
+
   "repopulator_handlers": ["systemWillRepopulate"],
 
   "_census": "THE LOAD ASSERTION. Each entry names a key in the .oolite-save plist, the JS expression that reads the same quantity out of the loaded game, and how the two are made comparable. The two sides are produced by two INDEPENDENT readers sharing no code - Python's plistlib in THIS process, and Oolite's Objective-C deserialiser in a SEPARATE OS process read back over the console - so they cannot be the same object even in principle. Scenario 006's invariant, applied to this fixture.",
   "census": [
     {"plist": "player_name",         "js": "player.name",                   "kind": "str",          "why": "commander identity. This save's is 'ThargoidPlans'; a fresh commander is 'Jameson'."},
     {"plist": "current_system_name", "js": "system.name",                   "kind": "str",          "why": "the system the save pins; a save loaded into the wrong system is the most damaging silent load failure"},
-    {"plist": "credits",             "js": "player.credits",                "kind": "float_tenths", "why": "PlayerEntity stores credits in tenths; the plist holds 994547 and JS reports 99454.7. Scale MEASURED, not assumed."},
+    {"plist": "credits",             "js": "player.credits",                "kind": "float_tenths", "why": "PlayerEntity stores credits in tenths; the plist holds 994547. The LOADED game reports 100354.7, not 99454.7, because the 1.75 energy-bomb migration adds 9000 decicredits on load - see load_migrations. Scale AND migration MEASURED, not assumed."},
     {"plist": "fuel",                "js": "player.ship.fuel",              "kind": "float_tenths", "why": "the plist stores fuel in tenths of a light year (70 = 7.0 LY); JS reports light years"},
     {"plist": "legal_status",        "js": "player.bounty",                 "kind": "int",          "why": "player.bounty is the INTEGER accessor (OOJSPlayer.m:286-288); player.legalStatus returns a DISPLAY STRING via OODisplayStringFromLegalStatus"},
     {"plist": "galaxy_number",       "js": "galaxyNumber",                  "kind": "int",          "why": "JS galaxyNumber is [player currentGalaxyID] (OOJSGlobal.m:190-191), the SAME 0-based index the plist stores - MEASURED, after a first draft assumed a 1-based JS field and the live run disproved it. This save is galaxy 1; the Thargoid Plans mission runs in galaxy 2, one galactic jump away."},

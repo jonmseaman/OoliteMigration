@@ -238,6 +238,32 @@ def saved_census(spec, plist):
     return out
 
 
+def apply_load_migrations(spec, census, plist):
+    """Adjust the FILE-side census by the migrations the loader performs on a 1.75-era save.
+
+    THE SAVE-FORMAT COMPATIBILITY CONTRACT, AS AN EXACT NUMBER RATHER THAN A TOLERANCE.
+    This fixture carries `has_energy_bomb` and EQ_ENERGY_BOMB - equipment that no longer exists.
+    PlayerEntity.m:1731-1746 migrates it at load time: it tries to mount an EQ_QC_MINE and,
+    failing that (all four of this commander's pylons already hold EQ_HARDENED_MISSILE), does
+    `credits += 9000` - 9000 DECIcredits, 900 credits - and logs the fact. So the loaded credits
+    are NOT the saved credits, and MEASURED, the first live run of this scenario failed with
+    `credits: 99454.7 (saved) != 100354.7 (loaded)`, which is this migration exactly.
+
+    The delta is declared in the spec and added HERE, on the FILE side, so the round trip stays an
+    EXACT equality. The alternative - widening credits to a tolerance - would have hidden any
+    other credit bug of up to 900 credits, which is most of them.
+    """
+    applied = []
+    for migration in spec["load_migrations"]:
+        key = migration["plist"]
+        if key not in census:
+            continue
+        field = next(f for f in spec["census"] if f["plist"] == key)
+        census[key] = _normalise(int(plist[key]) + int(migration["delta"]), field["kind"])
+        applied.append(key)
+    return applied
+
+
 def live_census(console, spec):
     """The RIGHT side: read out of the LIVE game, in a SEPARATE OS PROCESS, over the console."""
     out = {}
@@ -349,9 +375,11 @@ def enable_load_logging(config_dir, spec):
 def read_load_evidence(artifact_dir, spec):
     """Pull the ENGINE's own load trace out of THIS run's Latest.log.
 
-    Returns (ordered stage list, load failure lines, log size). The stages are the literal strings
-    PlayerEntityLoadSave.m logs; the scenario requires the whole ordered sequence, so a load that
-    died halfway is a different list and fails by name.
+    Returns (ordered stage list, load failure lines, upgrade messages, log size). The stages are
+    the literal strings PlayerEntityLoadSave.m logs; the scenario requires the whole ordered
+    sequence, so a load that died halfway is a different list and fails by name. The upgrade
+    messages are the engine's OWN record of the 1.75 format migrations (PlayerEntity.m:1731-1746)
+    and are what makes the adjusted census arithmetic falsifiable rather than a fudge factor.
     """
     log = os.path.join(artifact_dir, "Latest.log")
     if not os.path.isfile(log):
@@ -360,14 +388,17 @@ def read_load_evidence(artifact_dir, spec):
             "cannot be checked and rc=0 would mean nothing." % log)
     with open(log, "r", encoding="utf-8", errors="replace") as handle:
         text = handle.read()
-    stages, failures = [], []
+    stages, failures, upgrades = [], [], []
+    channel = "[%s]:" % spec["load_migrations"][0]["log_channel"]
     for line in text.splitlines():
         stripped = line.strip()
         if "[load.progress]:" in stripped:
             stages.append(stripped.split("[load.progress]:", 1)[1].strip())
         elif "[load.failed]" in stripped:
             failures.append(stripped)
-    return stages, failures, len(text)
+        elif channel in stripped:
+            upgrades.append(stripped.split(channel, 1)[1].strip())
+    return stages, failures, upgrades, len(text)
 
 
 def assert_system(console, spec):
@@ -615,6 +646,24 @@ def assert_ran(evidence, spec, problems=None):
     if evidence["load_failures"]:
         raise ScenarioError("the engine logged load failure(s): %r" % (evidence["load_failures"],))
 
+    want_upgrades = list(spec["expected_upgrade_messages"])
+    if evidence["load_upgrade_messages"] != want_upgrades:
+        raise ScenarioError(
+            "the engine logged 1.75 format-upgrade message(s) %r, not %r. PlayerEntity.m:1731-1746 "
+            "compensates this save's legacy EQ_ENERGY_BOMB with 9000 decicredits and SAYS SO on "
+            "the load.upgrade.replacedEnergyBomb channel; the census adds that same delta on the "
+            "file side, so without the engine's own line the adjusted arithmetic would be an "
+            "unfalsifiable fudge factor. This is the save-format compatibility contract the bead "
+            "names, and a loader that stopped migrating goes red HERE as well as on credits."
+            % (evidence["load_upgrade_messages"], want_upgrades))
+    if [m["plist"] for m in spec["load_migrations"]] != evidence["census_fields_migrated"]:
+        raise ScenarioError(
+            "the census applied migrations to %r but the spec declares %r; a migration declared "
+            "and not applied (or applied and not declared) silently changes what the round trip "
+            "compares."
+            % (evidence["census_fields_migrated"],
+               [m["plist"] for m in spec["load_migrations"]]))
+
     want = dict(spec["expected_mission_variables"])
     if evidence["mission_variables"] != want:
         raise ScenarioError(
@@ -716,6 +765,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
         plist, size = read_save_file(save)
         expect_plist, _ = read_save_file(expect_from) if expect_from else (plist, size)
         saved = saved_census(spec, expect_plist)
+        migrated = apply_load_migrations(spec, saved, expect_plist)
         saved_mv = saved_mission_variables(plist)
 
         console = start_with_retry(lambda: DebugConsole(
@@ -745,7 +795,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             state = json.loads(dump_state(console))
 
         # AFTER the game has exited, so the log is complete and flushed.
-        stages, failures, log_bytes = read_load_evidence(artifact_dir, spec)
+        stages, failures, upgrades, log_bytes = read_load_evidence(artifact_dir, spec)
 
         n_saved, pop_saved = assert_non_vacuous(saved, "the census read from the save FILE")
         n_live, _ = assert_non_vacuous(live, "the census read from the LOADED GAME")
@@ -758,6 +808,8 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "save_written_by_version": str(plist.get("written_by_version", "")),
             "load_stages": stages,
             "load_failures": failures,
+            "load_upgrade_messages": upgrades,
+            "census_fields_migrated": sorted(migrated),
             "mission_variables": mv_after,
             "mission_variables_at_load": mv,
             "mission_variable_count": len(mv_after),
