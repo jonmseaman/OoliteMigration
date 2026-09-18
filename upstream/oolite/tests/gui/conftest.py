@@ -15,6 +15,7 @@ Three things live here, and G2-G9 reuse all three:
   interactive desktop exclusively while it runs.
 """
 
+import atexit
 import ctypes
 import math
 import os
@@ -757,6 +758,10 @@ class GameWindow:
         # to the state of the shared build directory (oo-e75).
         self._parked_ever = []
         self._restore_failures = []
+        # Filled in by _park_software_gl: parked twins this run INHERITED from a dead earlier
+        # run and renamed back before parking anything of its own (oo-992b). Empty is the
+        # healthy case.
+        self.inherited_recovered = []
         # Filled in by start(): what the defaults files looked like BEFORE this run wrote
         # anything. assert_defaults_file_reparses needs it to tell "this run wrote the file"
         # from "a file is lying there from an earlier run" (oo-5rsa).
@@ -779,12 +784,45 @@ class GameWindow:
         return env
 
     def _park_software_gl(self):
+        # BEFORE the first rename: the shared build must not already be dirty. A parked twin we
+        # find here is not ours - we have parked nothing yet - so it was stranded by an earlier
+        # run that died between its park and its unpark. This heals it and then fails loudly
+        # (oo-992b); see assert_no_inherited_parked_runtime_files for why that ordering.
+        self.inherited_recovered = assert_no_inherited_parked_runtime_files(
+            self.app_dir, self.SOFTWARE_GL_DLLS, self._PARKED_SUFFIX
+        )
         for dll in self.SOFTWARE_GL_DLLS:
             live = os.path.join(self.app_dir, dll)
             if os.path.isfile(live):
                 os.replace(live, live + self._PARKED_SUFFIX)
                 self._parked.append(live)
                 self._parked_ever.append(live)
+                # CRASH SAFETY, layer one. _restore_software_gl runs from kill(), which runs
+                # from the fixture's finally - and a finally does NOT run when the interpreter
+                # is killed outright (taskkill, a subagent timeout at 3600s, an orchestrator
+                # stop: all three happened in one session). atexit covers the gentler half of
+                # that space - SIGTERM-ish shutdowns and any unhandled exception that unwinds
+                # the interpreter - at the cost of one idempotent rename. It is NOT the whole
+                # answer: the setup guard above is, because it needs no cooperation from the
+                # process that died (oo-992b).
+                atexit.register(self._restore_one_at_exit, live)
+
+    def _restore_one_at_exit(self, live):
+        """Idempotent single-file unpark, safe to run after a normal restore already ran.
+
+        Registered with atexit at park time. Renames back ONLY if the parked twin is still
+        there and the live name is still free, so the ordinary path (kill -> teardown) having
+        already restored the file makes this a no-op rather than a second rename that would
+        clobber a concurrent sibling's freshly-parked state. Swallows OSError deliberately:
+        this runs during interpreter shutdown, where raising buys nothing and can mask the real
+        exit status (oo-992b).
+        """
+        parked = live + self._PARKED_SUFFIX
+        try:
+            if os.path.isfile(parked) and not os.path.isfile(live):
+                os.replace(parked, live)
+        except OSError:
+            pass
 
     def _restore_software_gl(self):
         while self._parked:
@@ -2471,3 +2509,73 @@ def assert_no_parked_runtime_files(window):
         "nothing to rename back (oo-e75)."
     )
     return list(window._parked_ever)
+
+
+def assert_no_inherited_parked_runtime_files(app_dir, dlls, suffix):
+    """Fail if the shared build was ALREADY dirty before this run parked anything.
+
+    THE GAP THIS CLOSES (oo-992b, the incident). ``assert_no_parked_runtime_files`` is scoped to
+    THIS run's own bookkeeping, deliberately and correctly: a directory scan at TEARDOWN fails on
+    a concurrent sibling's legitimate in-flight parking (oo-e75 measured that twice). But the
+    consequence is that it passes happily when the DLLs were parked BEFORE the run began. A GUI
+    run died between its park and its unpark on Sep 16 and stranded both software-GL DLLs; every
+    run for a full day afterwards went green while the component tier's offscreen renderer was
+    missing from disk, because each run's own bookkeeping was spotless. A guard that proves a run
+    is clean cannot, even in principle, see an INHERITED dirty baseline.
+
+    WHY A DIRECTORY SCAN IS SOUND HERE AND NOT AT TEARDOWN. This runs at SETUP, and the GUI tier
+    holds the desktop lock (tools/gui-lock) for the whole of a session. Only one GUI run parks
+    these DLLs at a time, so a parked twin visible at setup - before this run has renamed
+    anything - cannot belong to a live sibling. It belongs to a dead one.
+
+    HEAL, THEN FAIL, in that order. The rename back comes FIRST so the shared build is usable
+    again even though this run is about to abort, and only then does the assert fire: a guard
+    that fails without repairing leaves five agents broken until a human reads the message, and a
+    repair without a failure is a silent fix nobody investigates. The message names the file and
+    its mtime, because the mtime is what identifies WHICH run died.
+
+    Returns the list of (path, mtime) it recovered - empty on a clean baseline.
+    """
+    inherited = []
+    for dll in dlls:
+        parked = os.path.join(app_dir, dll + suffix)
+        if os.path.isfile(parked):
+            when = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(parked)))
+            inherited.append((parked, when, os.path.getsize(parked)))
+    if not inherited:
+        return []
+    recovered, failed = [], []
+    for parked, when, size in inherited:
+        live = parked[: -len(suffix)]
+        try:
+            if not os.path.isfile(live):
+                os.replace(parked, live)
+                recovered.append((live, when, size))
+            else:
+                # Both names present: renaming would DESTROY the live file. Never delete either
+                # - the parked twin is a real 23MB DLL, not a backup (oo-992b).
+                failed.append((parked, when, size))
+        except OSError as exc:  # pragma: no cover - a locked file on the shared build
+            failed.append((parked, when, f"{size} ({exc})"))
+    detail = ", ".join(f"{p} (mtime {w}, {s} bytes)" for p, w, s in recovered + failed)
+    raise AssertionError(
+        "INHERITED DIRTY BASELINE in the shared build "
+        f"{app_dir}: software-GL DLL(s) were ALREADY parked before this run started: "
+        + detail
+        + ". This run had parked nothing yet, so an EARLIER run died between its park and its "
+        "unpark and stranded them - the mtime above is when that run died. The component tier's "
+        f"offscreen rendering was broken on disk for every agent since then. "
+        + (
+            f"RECOVERED by renaming back: {', '.join(p for p, _, _ in recovered)}. "
+            if recovered
+            else ""
+        )
+        + (
+            f"COULD NOT recover (live name already occupied - do NOT delete, these ARE the real "
+            f"DLLs): {', '.join(p for p, _, _ in failed)}. "
+            if failed
+            else ""
+        )
+        + "This failure is deliberate even though the build is now repaired: a silent fix is a "
+        "fix nobody investigates (oo-992b)."
+    )
