@@ -29,10 +29,26 @@ gate; and a scheduled read-only Reporter running first.
    `accept`, `escalate`, plus the `bd` guard shim). It is the concrete form of steps 3, 5 and the
    guardrails for the local tier; `tools/fleet/` will call the same scripts. How to start it:
    [5-hermes-goal.md](5-hermes-goal.md).
-5. **`tools/fleet/run-story`** (frontier driver). `bd ready` filtered to `frontier`-tier beads →
-   claim → `tools/fleet/worktree` → `claude -p --model claude-opus-5` with the bead body as the prompt and `CLAUDE.md`
-   in scope → `accept` → remove the worktree. Memoryless per story. Parallelism flag = the
-   concurrency cap from [I0](0-machines.md).
+5. **`tools/fleet/run-story`** (frontier driver, landed by `oo-4vdc`). `bd ready` filtered to
+   `frontier`-tier beads → claim → beads-worker `worktree.sh` → `claude -p --model claude-opus-5`
+   with the bead body as the prompt and `CLAUDE.md` in scope → goldens audit → beads-worker
+   `accept.sh` → `worktree.sh --remove`. It **composes** the beads-worker scripts rather than
+   reimplementing them, and each of those is behind an env seam (`BEADS_NEXT_BEAD_CMD`,
+   `BEADS_WORKTREE_CMD`, `BEADS_CONTEXT_CMD`, `BEADS_ACCEPT_CMD`, and `BEADS_FRONTIER_CMD` for the
+   model itself) so `tools/fleet/run-story-selftest` can exercise the whole pipeline against a
+   scratch repo without a real model and without touching a real bead.
+   Memoryless per story: a fresh `mktemp -d` per invocation, a prompt rebuilt from that bead's body,
+   and no `--resume`/`--continue`/`--session-id` is ever passed.
+   The allow-list is enforced **twice** — as `--disallowedTools` handed to the model, and again by
+   `tools/fleet/guard/{bd,git}`, which sit first on `PATH` for the whole model invocation and refuse
+   `bd close`, any `bd update --status`, and `git push` with exit 77 whatever the model's own
+   permission layer does. `goldens/` gets a third check: a post-run audit that refuses the story
+   (exit 4) and **never calls accept** if anything under `goldens/` was touched.
+   `run-story --print-policy` prints `model=`, `parallel=` and every `allow=`/`deny=` entry;
+   parallelism is read from `delegation.max_concurrent_children` in [I0](0-machines.md) so the
+   orchestrator that fans out N stories has one source of truth.
+   Exit codes: 0 accepted · 1 setup error · 3 nothing ready · 4 refused (goldens) · 5 model
+   invocation failed · 6 accept rejected (worktree kept for the next round).
 6. **Hermes Agent `/goal`** (local-tier driver). One long-running Hermes session per phase,
    configured against the on-prem endpoint, with the goal "`tools/fleet/goal-check <N>` exits 0".
    It picks `fleet` beads from `bd ready`, claims, works in a `tools/fleet/worktree` checkout,
