@@ -67,19 +67,24 @@ is the one police priority with `reconsider: 1`). The complete list, from a full
 | `constrictor` | constrictor | 250 | 450 | 600 | military | **outruns and outguns 12 vipers** |
 | `thargoid` / `thargoid-mothership` | thargoid | 100 | 600 | 500 | thargoid laser | tougher still |
 
-Measured against 8 and 12 and 24 police at 1 km:
+Measured against 8, 12 and 24 police at 1 km. Runs that died with
+`ConsoleError: Oolite did not connect to the console within 60s` (shared port 8563, a sibling
+agent's game still holding it) are excluded as instrument failures, not results:
 
-| cast | runs | quarry destroyed |
-|---|---|---|
-| `asp-cloaked` + 8 police, 120 s (r3) | 1 | 1 — at t=92.1 s |
-| `asp-cloaked` + 24 police, 130 s (r4) | 2 | **0** |
-| `constrictor` + 12 police, 112 s (r6) | 2 completed | **1 of 2** (dead_at 64.1 s, then None) |
+| cast | valid runs | quarry destroyed | times |
+|---|---:|---:|---|
+| `asp-cloaked` + 8 police (r3, r7-2, r7-3) | 3 | **2** | 92.1 s, 113.0 s, — |
+| `asp-cloaked` + 24 police (r4-1, r4-2) | 2 | **1** | —, 60.4 s |
+| `constrictor` + 12 police (r6-1..3) | 3 | **1** | 64.1 s, —, — |
+| `pirate` + 8 police (r2) | 1 | **0** | — (bounty 22 <= 32, never engaged) |
+| `police` + 16 pirates (r1) | 1 | **0** | — (pirates flee police by design) |
 
-More killers made `asp-cloaked` *worse*, not better, which the per-ship sampling explains: at
-t=21.6 s the Asp's `scanClass` had changed from `CLASS_NEUTRAL` to **`CLASS_NO_DRAW`** — it had
-activated its cloaking device, at which point it is unscannable and every viper loses it. The
-one run that killed it did so before the cloak mattered. This is a coin flip, not a stimulus
-that can be strengthened.
+Best case is `asp-cloaked` + 8 police at **5 of 8 across both police counts** — nowhere near the
+10/10 the bead requires, and note that *tripling the killers made it no better*. The per-ship
+sampling explains why: at t=21.6 s the Asp's `scanClass` had changed from `CLASS_NEUTRAL` to
+**`CLASS_NO_DRAW`** — it had activated its cloaking device, at which point it is unscannable and
+every viper loses it. The runs that killed it did so before the cloak mattered. That is a coin
+flip, not a stimulus that can be strengthened.
 
 `constrictor` fails for the opposite reason: 450 energy, a military laser, 3 missiles, ECM and
 600 m/s against a viper's 180 energy and 320 m/s. It wins the fight or leaves.
