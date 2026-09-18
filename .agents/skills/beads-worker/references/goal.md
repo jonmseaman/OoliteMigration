@@ -29,4 +29,18 @@ Then, in the same session:
 /goal gate add .agents/skills/beads-worker/scripts/goal-gate.sh 3
 ```
 
+**On Windows the gate must be wrapped in the MSYS2 bash.** Hermes runs gates with Python's
+`subprocess.run(shell=True)`, which is `cmd.exe` whatever shell Hermes was started from (the
+terminal tool's `HERMES_GIT_BASH_PATH` does not apply to gates). A bare `.agents/...` gate fails
+every attempt with `'.agents' is not recognized`, exhausts its 3 retries and pauses the goal
+(2026-09-17, phase 0). Set the labels inside the wrapper too, because the gate does not inherit the
+exports of the shell that launched a desktop-attached session:
+
+```
+/goal gate add C:\Users\jon\scoop\apps\msys2\current\usr\bin\bash.exe -lc "cd /c/Users/jon/OoliteMigration && MSYSTEM=UCRT64 BEADS_WORKER_LABELS='fleet frontier' .agents/skills/beads-worker/scripts/goal-gate.sh 3"
+```
+
+`/goal gate list` shows attempts and the last output tail; `/goal gate clear` removes a broken one;
+`/goal resume` un-pauses after the gate is fixed.
+
 Check with `/goal show` (contract) and `/goal gate` (gate state). `/goal status` shows turns used.

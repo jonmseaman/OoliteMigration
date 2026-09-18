@@ -1,7 +1,9 @@
 # Reviewer task template
 
-Advisory only. The verdict never gates acceptance; `request_changes` earns at most one more worker
-round. Pass as `delegate_task(tasks=[{goal, context, output_schema}])`.
+The verdict gates acceptance: the orchestrator calls `accept.sh` only after `approve`.
+`request_changes` sends the bead back to a worker with the findings, then to review again, as many
+rounds as the findings keep changing (two identical rounds in a row go to `reevaluate.sh`, not to
+accept). Pass as `delegate_task(tasks=[{goal, context, output_schema}])`.
 
 ## goal
 
@@ -29,6 +31,11 @@ Check, in this order, and report each as a finding if violated:
 3. Style drift from the exemplar: naming, header layout, error handling shape.
 4. Sizing: reads ≤ ~1,500 lines, writes ≤ ~400 lines, ≤ 8 files.
 5. Acceptance: the acceptance commands are plausible to pass; the diff does not game them.
+6. For a `frontier` bead, whose worker wrote its own executable acceptance in place of the prose
+   `DONE WHEN`: run those commands yourself from the worktree root and run the DONE WHEN as the
+   story states it. `request_changes` if either fails, if a command can pass without the work
+   (compares a thing to itself, always exits 0, selects nothing), or if the commands do not test
+   what the DONE WHEN says. A bead whose acceptance cannot fail is not done.
 
 Be specific. A finding without a file and line is not a finding.
 

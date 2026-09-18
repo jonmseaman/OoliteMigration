@@ -58,7 +58,7 @@ gate; and a scheduled read-only Reporter running first.
 |---|---|---|
 | Converter (frontier tier) | `run-story` + `claude -p` | own worktree; never pushes to `main`; ends in `accept` |
 | Converter (local tier) | Hermes `/goal` against on-prem models | own worktree per bead; never pushes to `main`; ends in `accept` |
-| Reviewer | a delegated pass over the diff, findings appended to the bead's notes | advisory; not a gate |
+| Reviewer | a delegated pass over the diff, findings appended to the bead's notes | gates `accept`: a bead is accepted only on `approve`; rounds repeat while findings change (2026-09-16, Jon) |
 | Harness steward | scheduled `claude -p` with write access to `tools/` and `tests/` only | may fix harness code; **may never touch `goldens/`**; > 1% Tier-B flake = stop the line |
 | Merge gate | `tools/merge-queue` | automatic; batch-and-bisect |
 | Reporter | scheduled Claude Code task, read-only | outside the loop |

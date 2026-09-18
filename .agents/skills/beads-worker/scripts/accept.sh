@@ -15,20 +15,26 @@
 # (a lock), so two beads cannot race the base branch.
 # Exit 0 = closed and merged · 1 = rejected, new learning · 2 = rejected, stale.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
-# Fail fast before any path is computed (oo-aqzj): unsourced _lib.sh leaves these empty and the
-# lock, the worktree removal and "$WORKTREES/$id" all land at the filesystem root. Keep above
-# the first use.
-: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
-  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 id="${1:?usage: accept.sh <bead>}"
 branch="bead/$id"
 base="${BEADS_WORKER_BASE_BRANCH:-main}"
 lock="$REPO_ROOT/.beads-worker-accept.lock"
-for _ in $(seq 1 "${BEADS_ACCEPT_LOCK_WAIT:-1800}"); do mkdir "$lock" 2>/dev/null && break; sleep 1; done
-[ -d "$lock" ] || die "accept: could not take $lock"
+# The lock records its owner's PID. An accept that is killed (timeout, control-C, a dead terminal)
+# cannot run its EXIT trap, and without this check its lock would block every later accept until
+# a human removed it (2026-09-17, oo-ptc: 13 minutes of the whole fleet waiting on an empty dir).
+for _ in $(seq 1 "${BEADS_ACCEPT_LOCK_WAIT:-1800}"); do
+  if mkdir "$lock" 2>/dev/null; then echo $$ > "$lock/pid"; break; fi
+  owner="$(cat "$lock/pid" 2>/dev/null || true)"
+  if [ -z "$owner" ] || ! kill -0 "$owner" 2>/dev/null; then
+    echo "accept: reclaiming $lock left by dead accept pid '${owner:-unknown}'" >&2
+    rm -rf "$lock"; continue
+  fi
+  sleep 1
+done
+[ -d "$lock" ] && [ "$(cat "$lock/pid" 2>/dev/null)" = "$$" ] || die "accept: could not take $lock"
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/accept-$id.XXXXXX")"
-trap 'git -C "$REPO_ROOT" worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf "$tmp"; rmdir "$lock" 2>/dev/null' EXIT
+trap 'git -C "$REPO_ROOT" worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf "$tmp"; rm -rf "$lock" 2>/dev/null' EXIT
 git -C "$REPO_ROOT" show-ref --verify --quiet "refs/heads/$base" || die "no base branch $base"
 # Preserve whatever the worker left uncommitted, then insist there is something to merge.
 [ -d "$WORKTREES/$id" ] && "$here/harvest.sh" "$id" >&2

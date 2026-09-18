@@ -97,7 +97,9 @@ more beads in flight is fine, more children than P is not.
    queue drained" and stop; the judge will confirm. Nonzero → continue. *Done when: you know
    whether work remains.*
 2. **Claim a batch.** `terminal(command="scripts/next-bead.sh <N> <P>")`. One JSON record per
-   line; beads that failed a previous round come first, with `attempts` and `notes` populated.
+   line; beads that failed a previous round come first, with `attempts` and `notes` populated,
+   then `bug` beads before tasks (a bug is a defect in work already on the base branch), then by
+   priority.
    Exit 3 → nothing is ready (all remaining beads are blocked or claimed by someone else); run
    `bd list --label fleet --label phase:<N> --status open,in_progress`, report what is blocking,
    then wait one turn. *Done when: you hold records for 1..P claimed beads.*
@@ -128,7 +130,10 @@ more beads in flight is fine, more children than P is not.
      re-review. Repeat until `approve`. There is no round cap, but if two consecutive reviews
      return the same findings the worker is not learning: `scripts/reevaluate.sh <id> "reviewer
      stalemate: <findings>"`.
-6. **Accept each approved bead.** `terminal(command="scripts/accept.sh <id>", timeout=1800)`.
+6. **Accept each approved bead, and only approved beads.** The review gates acceptance: a bead
+   with `request_changes` goes back to step 4 with the findings, never to `accept.sh`. A finding
+   is fixed on the bead branch before the merge, not filed as a new bead after it.
+   `terminal(command="scripts/accept.sh <id>", timeout=1800)`.
    You are closing your own work here, which is allowed because the reviewer approved it and
    because `accept.sh`, not you, decides: it merges the bead into the base branch in a clean
    checkout, runs the acceptance commands on the merged tree, and only on exit 0 fast-forwards the
