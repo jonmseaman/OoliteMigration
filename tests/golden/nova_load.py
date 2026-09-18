@@ -482,6 +482,59 @@ def suppress_station_traffic(console):
     return count
 
 
+def suppress_station_ai(console, spec):
+    """Switch every station's own AI to a null AI - THE FOURTH TRAFFIC SOURCE, FOUND BY MEASURING.
+
+    Scenario 015 needed three suppressions (system populator, StationEntity's launch schedule,
+    oolite-populator.js systemWillRepopulate) because it loaded a save docked at Lave's main
+    station. THIS save's system contains a ROCK HERMIT as well, and a rock hermit runs
+    `rockHermitAI.plist`, whose CHECK_FOR_ROCKS state does `scanForRocks` on a 20 s `pauseAI`
+    cycle and, on TARGET_FOUND, `launchMiner`. StationEntity.m:1736-1776 -launchMiner builds a
+    Mining Transporter and queues it, and NONE of the three existing suppressions touch that path:
+    `hasNPCTraffic` gates the ordinary trader schedule, not a station's own AI.
+
+    MEASURED before this function existed: a 10-run sweep gave FOUR distinct dump digests. Five
+    runs dumped a two-entity world and three dumped a THREE-entity world whose extra entity was
+    `{"id": "Mining Transporter", "role": "miner", "velocity": [17.557, -39.661, -24.874]}`, and
+    two more REFUSED with "1 entity/entities still report motion: Cobra Mark I=254.8750" - the
+    hermit's launch queue emptying while the harness was trying to reach a fixed point. A
+    follow-up probe watched the miner appear 4-6 s after quiesce() had returned a clean round and
+    hold 50 then 100 m/s. That is bead oo-jor's finding one layer deeper: a fourth source is a
+    FINDING, and the honest response is to identify and switch it off, never to widen the round
+    count until the race is usually won.
+
+    The AI name comes from the spec so an upstream rename turns into a red rather than a silent
+    no-op, and the write is VERIFIED by reading `station.AI` back (OOJSShip.m:337 exposes it
+    read-only), because a setAI that silently did nothing would leave the race exactly as it was.
+    """
+    name = spec["station_ai"]
+    raw = console.evaluate(
+        "(function(){ var s = system.stations, out = [];"
+        " for (var i = 0; i < s.length; i++) {"
+        "   s[i].setAI(%s); out.push(s[i].name + '=' + s[i].AI); }"
+        " return out.join(', '); })()" % json.dumps(name)).strip()
+    entries = [e for e in raw.split(", ") if e]
+    if not entries:
+        raise ScenarioError(
+            "no station was found to silence. This save is docked at a station by construction, "
+            "so zero stations means the save did not load the world.")
+    # The engine reports the AI by the name it RESOLVED, not the name it was given: setAI
+    # ("oolite-nullAI.js") reads back as "nullAI.plist" (measured). So the read-back is checked
+    # against spec["station_ai_reported"] rather than against the name written, and BOTH are
+    # pinned - a setAI that silently did nothing would leave the hermit's rockHermitAI in place
+    # and the read-back would say so.
+    reported = spec["station_ai_reported"]
+    wrong = [e for e in entries if not e.endswith("=" + reported)]
+    if wrong:
+        raise ScenarioError(
+            "these station(s) did not accept the null AI %r (the engine reports the resolved name "
+            "%r): %r. StationEntity's own AI is the FOURTH traffic source (a rock hermit's "
+            "rockHermitAI launchMiner), and it is not gated by hasNPCTraffic; if setAI is "
+            "silently doing nothing this scenario is racing the hermit's launch queue and its "
+            "dump is frame-count dependent." % (name, reported, wrong))
+    return sorted(entries)
+
+
 def suppress_repopulator(console, spec):
     """Neuter oolite-populator.js's repopulate handler - the source that defeats the other two.
 
@@ -697,6 +750,14 @@ def assert_ran(evidence, spec, problems=None):
             "compatibility contract."
             % (evidence["save_format_keys_absent"], sorted(spec["save_format_keys_absent"])))
 
+    if len(evidence["station_ais_silenced"]) != evidence["stations_quieted"]:
+        raise ScenarioError(
+            "%d station(s) had their launch schedule switched off but only %d had their own AI "
+            "silenced. A station's AI is a SEPARATE traffic source that hasNPCTraffic does not "
+            "gate - a rock hermit's rockHermitAI launches a miner on its own 20 s cycle - and a "
+            "station left with its AI running makes this dump a race (measured: 4 distinct "
+            "digests over 10 runs before this suppression existed)."
+            % (evidence["stations_quieted"], len(evidence["station_ais_silenced"])))
     if not evidence["world_at_rest"]:
         raise ScenarioError("the world was not at rest when the dump was taken")
     if not evidence["world_reached_fixed_point"]:
@@ -772,6 +833,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             # in the meantime.
             suppressed = suppress_populators(console)
             stations_quieted = suppress_station_traffic(console)
+            station_ais = suppress_station_ai(console, spec)
             repopulator_handlers = suppress_repopulator(console, spec)
             quiesce(console)
 
@@ -818,6 +880,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             "seed": seed,
             "populators_suppressed": len(suppressed),
             "stations_quieted": stations_quieted,
+            "station_ais_silenced": station_ais,
             "repopulator_handlers_quieted": sorted(repopulator_handlers),
         }
         evidence.update(shape)

@@ -75,7 +75,7 @@ REQUIRED_KNOBS = (
     "expected_mission_variable_keys", "mission_novacount_key", "mission_nova_key",
     "expected_mission_novacount_value", "expected_written_by_version",
     "save_format_keys_present", "save_format_keys_absent", "expected_legacy_upgrades",
-    "log_channels", "load_progress_stages", "repopulator_handlers", "census",
+    "log_channels", "load_progress_stages", "repopulator_handlers", "station_ai", "station_ai_reported", "census",
 )
 
 # Read inside the function that ACTS on the knob, verified by AST.
@@ -85,6 +85,8 @@ READ_IN_FUNCTION = {
     "log_channels": "enable_load_logging",
     "galaxy_number": "assert_galaxy",
     "repopulator_handlers": "suppress_repopulator",
+    "station_ai": "suppress_station_ai",
+    "station_ai_reported": "suppress_station_ai",
     "save_format_keys_present": "save_format_shape",
     "save_format_keys_absent": "save_format_shape",
     "load_progress_stages": "assert_ran",
@@ -249,6 +251,19 @@ def check_pinned(spec):
              "[load.upgrade.replacedEnergyBomb]. Without it evidence.legacy_upgrades reads an "
              "EMPTY LIST for every run and the migration witness becomes vacuous - an absence "
              "that looks like a pass." % (channels, REQUIRED_UPGRADE_CHANNEL_PREFIX))
+
+    for knob in ("station_ai", "station_ai_reported"):
+        if not isinstance(spec[knob], str) or "null" not in spec[knob].lower():
+            fail("spec %s=%r does not name a NULL AI" % (knob, spec[knob]))
+    ai = spec["station_ai"]
+    if not isinstance(ai, str) or "null" not in ai.lower():
+        fail("spec station_ai=%r does not name a NULL AI. It exists to silence a station's OWN AI "
+             "- the fourth traffic source, which hasNPCTraffic does not gate: a rock hermit's "
+             "rockHermitAI calls launchMiner on a 20 s cycle (StationEntity.m:1736-1776). "
+             "MEASURED before this knob existed: 10 runs gave FOUR distinct dump digests, three "
+             "carrying an extra Mining Transporter entity and two refusing with a ship still "
+             "under thrust. Pointing this at a real AI re-opens the race while every comparison "
+             "still looks like it checked something." % (ai,))
 
     census = spec["census"]
     if not isinstance(census, list) or len(census) < 2:

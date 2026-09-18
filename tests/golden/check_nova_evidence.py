@@ -261,6 +261,21 @@ def check(state, label="dump"):
             "empty strings compares equal to any other empty census."
             % (label, populated, ev.get("census_fields")))
 
+    # --- the fourth traffic source, which only this scenario's system has ----------------------
+    # Every station whose launch schedule was switched off must ALSO have had its own AI
+    # silenced. hasNPCTraffic gates the ordinary trader schedule; a rock hermit's rockHermitAI
+    # calls launchMiner on its own 20 s cycle (StationEntity.m:1736-1776) and is untouched by it.
+    # MEASURED before that suppression existed: 10 runs, FOUR distinct dump digests, three of them
+    # carrying an extra Mining Transporter entity. A dump taken without it is a race, and the race
+    # is invisible in the dump unless this is checked.
+    silenced = ev.get("station_ais_silenced")
+    if not isinstance(silenced, list) or len(silenced) != ev.get("stations_quieted"):
+        raise EvidenceError(
+            "%s: evidence.station_ais_silenced is %r for %r station(s) whose launch schedule was "
+            "switched off. A station left with its own AI running launches traffic no "
+            "hasNPCTraffic flag gates, and the resulting dump depends on when the harness looked."
+            % (label, silenced, ev.get("stations_quieted")))
+
     # --- defence 6: the dump's own shape -------------------------------------------------------
     entities = state.get("entities")
     if not isinstance(entities, list) or len(entities) < MIN_ENTITIES:
