@@ -235,6 +235,14 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   `bash tools/guardrails.sh` in the worktree before accepting. Before deleting such a file, `cmp`
   it against the staged copy under `tests/golden/pending/` and read its contents — a stub is safe
   to drop, the real artifact is not.
+- **Export `PATH="/ucrt64/bin:$PATH"` in every terminal call that runs a fleet script.** `accept.sh`
+  inherits the orchestrator's shell, and the Hermes desktop terminal's PATH has no MSYS2 UCRT64
+  prefix, so acceptance lines calling `python3` die with `command not found` `[exit 127]` on
+  perfectly correct work (observed on oo-5ggu: attempt 1 rejected at line 1; the identical command
+  re-run with `/ucrt64/bin` on PATH closed the bead). An `[exit 127]` is an environment defect, not
+  a verdict: fix the environment and re-run **before** writing `accept attempt N failed` into the
+  notes or counting it toward `BEADS_WORKER_STALE_REPEATS`. Same class as the oo-gla learning, one
+  level up — there a bad PATH killed a game launch inside a worker, here it killed the accepter.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
