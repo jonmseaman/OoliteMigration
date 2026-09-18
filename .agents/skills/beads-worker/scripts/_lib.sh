@@ -27,6 +27,12 @@ bead_acceptance() {
 # BEADS_WORKER_LABELS (default: fleet), minus any carrying a label in BEADS_WORKER_EXCLUDE. Set
 # BEADS_WORKER_LABELS="fleet frontier" to let a frontier-model session take the seams as well.
 # review, rebless and proposed-adr beads are never the loop's; escalated ones already failed here.
+# Label set this host works. Precedence: the environment, then `git config beads-worker.labels`
+# (repo-local, shared by every worktree, survives any launcher), then `fleet`. The git config
+# exists because a desktop-launched Hermes runs its terminal as a non-login `bash -c` that
+# inherits nothing from a login shell or profile.d, so an exported variable never reached the
+# workers' scripts (2026-09-17: next-bead.sh silently fell back to `fleet` alone).
+BEADS_WORKER_LABELS="${BEADS_WORKER_LABELS:-$(git config --get beads-worker.labels 2>/dev/null || true)}"
 BEADS_WORKER_LABELS="${BEADS_WORKER_LABELS:-fleet}"
 BEADS_WORKER_EXCLUDE="${BEADS_WORKER_EXCLUDE:-review rebless proposed-adr escalated}"
 # worker_list <phase> [bd list flags...]: one JSON array of matching beads, deduplicated by id.

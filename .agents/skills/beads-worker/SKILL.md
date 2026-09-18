@@ -42,8 +42,11 @@ for the mechanics; this file tells you when to call them.
   close a bead directly: `export PATH="$REPO/.agents/skills/beads-worker/scripts/bin:$PATH"`
 - Beads labelled per the queue contract: every workable bead carries `fleet` and `phase:<N>`;
   beads for humans carry `rebless` or `proposed-adr`; seams carry `frontier`. The loop works the
-  labels in `BEADS_WORKER_LABELS` (default `fleet`); export `BEADS_WORKER_LABELS="fleet frontier"`
-  before starting Hermes when its model is the frontier model and it should take the seams too.
+  labels in `BEADS_WORKER_LABELS`, or when that is unset `git config beads-worker.labels`, or
+  `fleet`. Run `git config beads-worker.labels "fleet frontier"` in the checkout when the session's
+  model is the frontier model and it should take the seams too: the git config is shared by every
+  worktree and reaches the workers of a desktop-launched Hermes, whose terminal is a non-login
+  `bash -c` that an exported variable never reaches.
   `review`, `rebless`, `proposed-adr` and `escalated` beads are always excluded
   (`BEADS_WORKER_EXCLUDE`). A `frontier` bead's acceptance is prose plus `exit 1` until the worker
   replaces it with executable commands (`bd update <id> --acceptance`), so the worker prompt says so. Acceptance lives in
