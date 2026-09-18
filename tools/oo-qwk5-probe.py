@@ -224,6 +224,26 @@ def main(argv=None):
             record["spawned"][role] = record["spawned"].get(role, 0) + got
             print(f"spawned {got}/{count} {role!r}" + (f" within {km} km" if km else ""))
 
+        # The facts that decide whether police will EVER attack the quarry, and which no role
+        # count can show. Universe.m:4026 gives a ship spawned under the literal role "pirate" a
+        # bounty of 20 + randf()*50, i.e. 20..70 - a DRAW, not a constant. policeAI attacks a
+        # scanned ship only when its bounty exceeds fineThreshold(), which is
+        # 50 - government*6 (oolite-priorityai.js:845). So in a low-government system a
+        # legitimately-spawned pirate is often BELOW the threshold and is never attacked at all,
+        # which is a second, independent source of flakiness from combat duration.
+        facts = console.evaluate(
+            "(function(){ return [system.name, system.info.government,"
+            " 50 - system.info.government * 6].join('|'); })()", timeout=45)
+        record["system_facts"] = facts
+        print(f"system|government|fineThreshold = {facts}")
+        bounties = console.evaluate(
+            "(function(){ var out = [];"
+            " system.allShips.forEach(function(s){"
+            "   if (!s.isPlayer) out.push(s.primaryRole + '=' + s.bounty);"
+            " }); return out.join(' '); })()", timeout=45)
+        record["bounties"] = bounties
+        print(f"bounties: {bounties}")
+
         if args.bounty and args.bounty_role:
             # policeAI only attacks OFFENDERS: oolite-policeAI.js scans for offenders/fugitives,
             # so a spawned pirate with bounty 0 is a clean ship the police will never engage.
