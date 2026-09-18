@@ -314,50 +314,63 @@ def test_a_corrupted_golden_is_rejected(golden, tmp_path, label, mutate):
 
 CHECKER_MUTANTS = (
     ("EXPECTED_POPULATOR widened to a key every system has",
-     'EXPECTED_POPULATOR = "oolite-cloaking-device-mission"',
-     'EXPECTED_POPULATOR = "oolite-populator"',
+     (('EXPECTED_POPULATOR = "oolite-cloaking-device-mission"',
+       'EXPECTED_POPULATOR = "oolite-populator"'),),
      lambda d: d["evidence"].update(ambush_populator="oolite-populator")),
     ("EXPECTED_SPAWNED_ROLES zeroed",
-     'EXPECTED_SPAWNED_ROLES = {"asp-cloaked": 1}',
-     'EXPECTED_SPAWNED_ROLES = {"asp-cloaked": 0}',
+     (('EXPECTED_SPAWNED_ROLES = {"asp-cloaked": 1}',
+       'EXPECTED_SPAWNED_ROLES = {"asp-cloaked": 0}'),),
      lambda d: d["evidence"].update(spawned_role_counts={"asp-cloaked": 0})),
     ("EXPECTED_LEADER_SCRIPT widened to the default ship script",
-     'EXPECTED_LEADER_SCRIPT = "oolite-cloaking-device-target-ship"',
-     'EXPECTED_LEADER_SCRIPT = "oolite-default-ship-script"',
+     (('EXPECTED_LEADER_SCRIPT = "oolite-cloaking-device-target-ship"',
+       'EXPECTED_LEADER_SCRIPT = "oolite-default-ship-script"'),),
      lambda d: d["evidence"].update(ambush_leader={"script": "oolite-default-ship-script",
                                                    "escort_group_count": 3})),
     ("EXPECTED_LEADER_ESCORTS lowered",
-     "EXPECTED_LEADER_ESCORTS = 3", "EXPECTED_LEADER_ESCORTS = 2",
+     (("EXPECTED_LEADER_ESCORTS = 3", "EXPECTED_LEADER_ESCORTS = 2"),),
      lambda d: d["evidence"].update(ambush_leader={
          "script": "oolite-cloaking-device-target-ship", "escort_group_count": 2})),
     ("EXPECTED_GALAXY widened off the trigger's guard",
-     "EXPECTED_GALAXY = 4", "EXPECTED_GALAXY = 1",
+     (("EXPECTED_GALAXY = 4", "EXPECTED_GALAXY = 1"),),
      lambda d: d["evidence"].update(galaxy_number=1)),
     ("EXPECTED_COMMANDER widened",
-     'EXPECTED_COMMANDER = "CloakingDevice"', 'EXPECTED_COMMANDER = "Jameson"',
+     (('EXPECTED_COMMANDER = "CloakingDevice"', 'EXPECTED_COMMANDER = "Jameson"'),),
      lambda d: d["evidence"].update(commander_name="Jameson")),
-    ("EXPECTED_COUNTER_IN_FILE widened",
-     "EXPECTED_COUNTER_IN_FILE = 6", "EXPECTED_COUNTER_IN_FILE = 10",
+    ("EXPECTED_COUNTER_IN_FILE widened (with the two other witnesses of the same property "
+     "neutralised, since `file=6` is deliberately defended three times)",
+     (("EXPECTED_COUNTER_IN_FILE = 6", "EXPECTED_COUNTER_IN_FILE = 10"),
+      ("    if in_engine != EXPECTED_COUNTER_IN_ENGINE:", "    if False:"),
+      ("    elif mv != EXPECTED_MISSION_VARIABLES:", "    elif False:")),
      lambda d: (d["evidence"].update(mission_counter_in_file=10,
                                      mission_counter_in_engine=11),
                 d["evidence"]["mission_variables"].update(cloakcounter=11),
                 d["mission_variables"].update(cloakcounter=11))),
     ("EXPECTED_LIVE_HANDLERS reduced to one name",
-     'EXPECTED_LIVE_HANDLERS = ("startUp", "systemWillPopulate")',
-     'EXPECTED_LIVE_HANDLERS = ("startUp",)',
+     (('EXPECTED_LIVE_HANDLERS = ("startUp", "systemWillPopulate")',
+       'EXPECTED_LIVE_HANDLERS = ("startUp",)'),),
      lambda d: d["evidence"].update(live_mission_handlers=["startUp"])),
 )
 
 
-@pytest.mark.parametrize("label,old,new,mutate", CHECKER_MUTANTS,
+@pytest.mark.parametrize("label,pairs,mutate", CHECKER_MUTANTS,
                          ids=[m[0] for m in CHECKER_MUTANTS])
-def test_weakening_the_checker_stops_it_discriminating(golden, tmp_path, label, old, new, mutate):
+def test_weakening_the_checker_stops_it_discriminating(golden, tmp_path, label, pairs, mutate):
     """Each constant must be WHAT DOES THE DISCRIMINATING, so a future edit that loosens it is a
     real behaviour change and not a no-op. The bad input is REJECTED by the real checker and
-    ACCEPTED by the weakened copy."""
+    ACCEPTED by the weakened copy.
+
+    `pairs` is a tuple of (old, new) source edits. Where it holds MORE THAN ONE, the property is
+    deliberately defended by several clauses and every one of them is neutralised together: that is the honest way to express redundancy.
+    Weakening only one of three witnesses is an EQUIVALENT mutant - it changes the source without
+    changing behaviour - and asserting it flips the verdict would be asserting a falsehood. The
+    redundancy itself is pinned clause-by-clause by test_the_increment_relation_is_defended_twice.
+    """
     source = open(CHECKER, "r", encoding="utf-8").read()
-    assert old in source, "the checker no longer contains %r; this mutant is stale" % old
-    mutated_source = source.replace(old, new, 1)
+    mutated_source = source
+    for want, repl in pairs:
+        assert want in mutated_source, (
+            "the checker no longer contains %r; this mutant is stale" % want)
+        mutated_source = mutated_source.replace(want, repl, 1)
     assert mutated_source != source, "the mutation was a no-op; this mutant proves nothing"
     weakened = tmp_path / "weak_checker.py"
     weakened.write_text(mutated_source, encoding="utf-8")
