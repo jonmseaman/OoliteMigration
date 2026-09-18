@@ -134,6 +134,14 @@ more beads in flight is fine, more children than P is not.
 5. **Delegate the reviewers, one call, one task per committed bead**, each built from
    `references/reviewer-prompt.md`: the worktree path, `git diff main...bead/<id>`, the bead's
    sizing checks and prohibitions. Require `output_schema` `{verdict: approve|request_changes, findings[]}`.
+   - **Sizing for golden-scenario beads is read as AUTHORED FILES, not authored lines.** The
+     story's `writes<=400 / <=8 files` budget is calibrated for code-porting beads. A golden
+     scenario must carry a harness, an evidence checker, a knob gate and a falsifiability suite,
+     which lands at ~2300–2700 authored lines in every instance accepted so far (oo-hv4d 2282,
+     oo-wseo 2725, oo-ghhw 2519). Count blessed run artifacts (`state.json`, `frame.grid`,
+     `frame.png`, `provenance.json`) as DATA, hold the bead to `<=8` authored files, and record the
+     line count as advisory. Three reviewers in one session raised this independently and all three
+     declined to block on it — do not make each new bead re-litigate it.
    *Done when: every bead has a verdict.*
    - For every verdict: `bd update <id> --append-notes "review: <verdict>; <findings, one per line>"`.
    - `request_changes` → delegate the worker again with the findings appended as context, then
