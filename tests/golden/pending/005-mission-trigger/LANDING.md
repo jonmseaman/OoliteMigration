@@ -65,15 +65,26 @@ golden, provenance and frame; `tests/golden/scenarios/…` for the spec) with id
 
 ## Rehearsal
 
-Two arms were exercised, both under `bash -o pipefail -c`, the shell `accept.sh` uses.
+Both arms were exercised under `bash -o pipefail -c`, the shell `accept.sh` uses, replaying the
+**stored** acceptance block with `RAN == stored == 7` asserted on each arm.
 
-1. **Staged (pending) arm** — all seven acceptance lines run from this pending directory, including
-   the live line that launches the game, reproduces the blessed dump byte-for-byte and compares the
-   rendered frame within tolerance.
-2. **Landed arm** — in a scratch `git worktree add --detach` checkout merged with this branch, the
-   four `git mv` commands above were performed verbatim and all seven lines were replayed. Result
-   recorded in `provenance.json` under `landing_rehearsal`.
+1. **Staged (pending) arm** — lines 1–6 `rc=0` from this pending directory; line 7 (the live
+   launch) was green in the worker's own worktree at bless time, reproducing the blessed dump
+   byte-for-byte and comparing the rendered frame within tolerance.
+2. **Landed arm** — a scratch `git worktree add --detach` on `main`, `git merge --no-edit
+   bead/oo-rkm`, then the four `git mv` commands above **verbatim**. Lines 1–6 `rc=0`, line 1
+   reporting `spec=tests/golden/scenarios/005-mission-trigger/spec.json` and
+   `golden/prov/frame=goldens/windows-x64/005-mission-trigger/…`.
+
+**Line 7 on the landed arm is UNVERIFIED UNDER LOAD, not failed.** Six replays returned `rc=1`
+with instrument failures only — `subprocess.TimeoutExpired … after 10 seconds`, `ConsoleError: no
+answer to 'system.name' within 15s`, `rm: Device or resource busy` — each with five or six sibling
+`oolite.exe` processes launching the same build concurrently and sharing the debug console port.
+Line 7 is **byte-identical** to its pre-fix revision (this change touched only lines 1–3) and was
+measured green 3/3 at 56 s/49 s/106 s on this tree on a quiet box. A 10-second subprocess timeout
+cannot survive six concurrent launches: that is contention, not a regression. Re-run it on a quiet
+machine before accepting.
 
 The *original* version of this document claimed the landed arm had been rehearsed when only the
-staged arm had been; that is what hid the spec-path contradiction above. Do not re-record
+staged arm had been; that is what hid the spec-path contradiction above. Do not record
 `landing_rehearsal.performed: true` for an arm you did not actually run.
