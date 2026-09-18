@@ -1,7 +1,8 @@
 {
   "scenario": "017-thargoid-plans",
   "seed": 20260918,
-  "system_id": 0,
+  "_system_id": "MEASURED from a live load, not read off the plist: the save records only current_system_name, and the engine resolves the ID from the galaxy seed at load time. Quedle is ID 147 in galaxy 2 (JS numbering), and 147 != 83 is one of the Thargoid Plans arming clauses.",
+  "system_id": 147,
   "system_name": "Quedle",
   "ticks": 24,
   "tick_seconds": 0.125,
@@ -23,17 +24,19 @@
   "thargplans_key": "thargplans",
   "thargplans_expected": false,
 
-  "_expected_thargplans_preconditions": "oolite-thargoid-plans-mission.js:77-90 opens the first briefing when !missionVariables.thargplans && missionVariables.conhunt === 'MISSION_COMPLETE' && player.score > 1280 && galaxyNumber === 2 && system.ID !== 83. This save satisfies every clause - ship_kills 1281 is ONE over the threshold - which is what the fixture is FOR. Read live through the same JS the mission script uses, never re-derived from the plist, so a loader that restored the file but not the runtime state fails here.",
+  "_expected_thargplans_preconditions": "MEASURED LIVE, NOT ASSUMED - and the measurement CHANGED the design. oolite-thargoid-plans-mission.js:77-90 opens the first briefing when !missionVariables.thargplans && missionVariables.conhunt === 'MISSION_COMPLETE' && player.score > 1280 && galaxyNumber === 2 && system.ID !== 83. FOUR of those five clauses hold in this fixture: conhunt is MISSION_COMPLETE, thargplans is absent, ship_kills 1281 is ONE over the 1280 threshold, and Quedle is system 147, not 83. THE FIFTH DOES NOT: JS `galaxyNumber` is `[player currentGalaxyID]` (OOJSGlobal.m:190-191), the SAME 0-based index the plist stores, and this save holds 1. A first draft of this scenario asserted galaxy_is_two=true on the assumption that JS was 1-based; the live run returned false and the assumption was wrong, not the engine. The fixture carries EQ_GAL_DRIVE and has_galactic_hyperdrive=true, so it is positioned ONE GALACTIC JUMP SHORT of the mission's galaxy - which is what the checklist tester is meant to perform by hand. The map below is the MEASURED state, asserted clause by clause, so an engine that moved the fixture's galaxy, cleared conhunt, rounded the kill score past or below 1280, or started the mission early goes red by name.",
   "thargplans_precondition_probes": {
     "conhunt_complete": "String(missionVariables.conhunt === 'MISSION_COMPLETE')",
     "galaxy_is_two": "String(galaxyNumber === 2)",
+    "has_galactic_hyperdrive": "String(player.ship.equipmentStatus('EQ_GAL_DRIVE') === 'EQUIPMENT_OK')",
     "not_in_system_83": "String(system.ID !== 83)",
     "score_over_1280": "String(player.score > 1280)",
     "thargplans_unset": "String(!missionVariables.thargplans)"
   },
   "expected_thargplans_preconditions": {
     "conhunt_complete": true,
-    "galaxy_is_two": true,
+    "galaxy_is_two": false,
+    "has_galactic_hyperdrive": true,
     "not_in_system_83": true,
     "score_over_1280": true,
     "thargplans_unset": true
@@ -69,7 +72,7 @@
     {"plist": "credits",             "js": "player.credits",                "kind": "float_tenths", "why": "PlayerEntity stores credits in tenths; the plist holds 994547 and JS reports 99454.7. Scale MEASURED, not assumed."},
     {"plist": "fuel",                "js": "player.ship.fuel",              "kind": "float_tenths", "why": "the plist stores fuel in tenths of a light year (70 = 7.0 LY); JS reports light years"},
     {"plist": "legal_status",        "js": "player.bounty",                 "kind": "int",          "why": "player.bounty is the INTEGER accessor (OOJSPlayer.m:286-288); player.legalStatus returns a DISPLAY STRING via OODisplayStringFromLegalStatus"},
-    {"plist": "galaxy_number",       "js": "galaxyNumber - 1",              "kind": "int",          "why": "the plist field is 0-based and JS galaxyNumber is 1-based; this save is plist 1 / JS 2, which is the galaxy the Thargoid Plans mission runs in"},
+    {"plist": "galaxy_number",       "js": "galaxyNumber",                  "kind": "int",          "why": "JS galaxyNumber is [player currentGalaxyID] (OOJSGlobal.m:190-191), the SAME 0-based index the plist stores - MEASURED, after a first draft assumed a 1-based JS field and the live run disproved it. This save is galaxy 1; the Thargoid Plans mission runs in galaxy 2, one galactic jump away."},
     {"plist": "ship_desc",           "js": "player.ship.dataKey",           "kind": "str",          "why": "the shipdata key the player's hull is rebuilt from"},
     {"plist": "ship_name",           "js": "player.ship.shipClassName",     "kind": "str",          "why": "human-facing class name, separate storage from ship_desc"},
     {"plist": "ship_kills",          "js": "player.score",                  "kind": "int",          "why": "kill score. 1281 is ONE over the Thargoid Plans threshold of 1280 (oolite-thargoid-plans-mission.js:80), so a load that reset or rounded counters disarms the mission and fails here."},

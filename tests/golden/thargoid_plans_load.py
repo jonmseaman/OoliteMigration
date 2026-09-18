@@ -34,23 +34,30 @@ commander has an EMPTY mission variable dictionary (PlayerEntity.m:1986-1987), s
 unsatisfiable by a run that ignored `-load`; the map is the form the data supports here and it is
 used because it is available, not because it is prettier.
 
-`mission_thargplans` IS NOT IN THIS FILE, AND THAT IS THE POINT OF THE FIXTURE.
-The bead's prose names `mission_thargplans`. It is ABSENT from the save, deliberately: the
-checklist fixture is positioned at the moment the mission becomes AVAILABLE, not partway through
-it. oolite-thargoid-plans-mission.js:77-90 arms the briefing on
+`mission_thargplans` IS NOT IN THIS FILE, AND THE FIXTURE'S POSITION WAS MEASURED, NOT ASSUMED.
+The bead's prose names `mission_thargplans`. It is ABSENT from the save: the checklist fixture is
+positioned BEFORE the mission starts. oolite-thargoid-plans-mission.js:77-90 arms the first
+briefing on
 
     !missionVariables.thargplans && missionVariables.conhunt === "MISSION_COMPLETE"
-        && player.score > 1280 && galaxyNumber(2) && system.ID !== 83
+        && player.score > 1280 && galaxyNumber === 2 && system.ID !== 83
 
-and the save satisfies every clause: no thargplans, conhunt complete, ship_kills 1281 (one over
-the threshold), galaxy_number 1 (JS `galaxyNumber` is 1-based over the 0-based plist field).
-So the scenario records the mission's ARMED PRECONDITIONS as evidence
-(`evidence.thargplans_preconditions`), which is a stronger statement about the fixture than a
-variable's value would have been, and it records the live value of `thargplans` itself
-(`evidence.thargplans_state`) whatever it turns out to be, so that an engine that started - or
-failed to start - the mission inside the tick budget changes the dump instead of drifting
-silently. WHETHER the briefing fires headlessly is MEASURED, not assumed, and the measurement is
-recorded in tests/golden/pending/017-thargoid-plans/README.md.
+FOUR of those five clauses hold here - no thargplans, conhunt complete, ship_kills 1281 (ONE over
+the 1280 threshold), Quedle is system 147 rather than 83. THE FIFTH DOES NOT, and finding that out
+changed this scenario's design. A first draft asserted `galaxyNumber === 2` on the assumption that
+the JS field was 1-based over the plist's 0-based `galaxy_number` of 1. The live run returned
+false. OOJSGlobal.m:190-191 resolves `galaxyNumber` to `[player currentGalaxyID]`, the SAME 0-based
+index, so this save is in galaxy 1 and the mission runs in galaxy 2. The fixture carries
+EQ_GAL_DRIVE and `has_galactic_hyperdrive`, so it sits ONE GALACTIC JUMP SHORT of the mission -
+which is exactly the step the checklist asks a human tester to perform.
+
+So the scenario records the arming clauses AS MEASURED (`evidence.thargplans_preconditions`, a
+clause-by-clause map including the false one) rather than as a single "armed" boolean that would
+have been wrong. That is a stronger statement about the fixture than a variable's value: an engine
+that moved the fixture's galaxy, cleared `conhunt`, rounded the kill score across 1280, or started
+the mission early goes red BY CLAUSE NAME. `evidence.thargplans_present` records whether the
+loaded game carries the variable at all, and `mission_variables_stable_across_ticks` records that
+nothing started it inside the budget - MEASURED both before and after the ticks.
 
 ANTI-VACUITY: WHAT A FRESH COMMANDER CANNOT PRODUCE
 ====================================================
@@ -629,10 +636,20 @@ def assert_ran(evidence, spec, problems=None):
     if evidence["thargplans_preconditions"] != want_pre:
         raise ScenarioError(
             "the Thargoid Plans mission's arming clauses read %r live, not the %r this fixture "
-            "was built to satisfy (oolite-thargoid-plans-mission.js:77-90). The save exists to "
-            "sit exactly at the moment the mission becomes available; a clause that no longer "
-            "holds means the loaded runtime state is not the saved one."
+            "was built to satisfy (oolite-thargoid-plans-mission.js:77-90). The clause map is the "
+            "MEASURED state of this fixture, false clauses included (it sits one GALACTIC jump "
+            "short of the mission's galaxy); a clause that no longer reads as measured means the "
+            "loaded runtime state is not the saved one."
             % (evidence["thargplans_preconditions"], want_pre))
+
+    if not evidence["mission_variables_stable_across_ticks"]:
+        raise ScenarioError(
+            "the mission variable map moved from %r to %r across the %d-tick budget. This fixture "
+            "sits BEFORE the Thargoid Plans mission starts and a docked player running no mission "
+            "screen should not change it; a change here is a FINDING about the mission scripts, "
+            "not a number to update quietly."
+            % (evidence["mission_variables_at_load"], evidence["mission_variables"],
+               evidence["ticks"]))
 
     if evidence["save_written_by_version"] != str(spec["expected_save_version"]):
         raise ScenarioError(
