@@ -230,8 +230,74 @@ class PatientConsole:
     def perform(self, js):
         return self._inner.perform(js)
 
+    @property
+    def pid(self):
+        proc = getattr(self._inner, "_proc", None)
+        return getattr(proc, "pid", None)
+
     def close(self):
         return self._inner.close()
+
+
+# Windows constants for undoing the game's own pause-time self-throttling. See
+# restore_process_priority().
+_NORMAL_PRIORITY_CLASS = 0x00000020
+_PROCESS_SET_INFORMATION = 0x0200
+_PROCESS_POWER_THROTTLING = 4
+_PROCESS_POWER_THROTTLING_CURRENT_VERSION = 1
+_PROCESS_POWER_THROTTLING_EXECUTION_SPEED = 0x1
+
+
+def restore_process_priority(pid):
+    """Undo the EcoQoS throttling the game applies to ITSELF when it pauses.
+
+    THE MEASUREMENT THAT FORCED THIS, AND WHY IT IS NOT A WORKAROUND FOR A BUG IN THE SCENARIO.
+    `-setGamePaused:YES` calls `-setEcoQoS:YES` (GameController.m:155-197), which on Windows does
+    two things to its own process: `SetPriorityClass(IDLE_PRIORITY_CLASS)` and
+    `SetProcessInformation(ProcessPowerThrottling, EXECUTION_SPEED)`. On an idle desktop that is
+    invisible. On THIS box - a fleet machine with two or three sibling workers' Oolite processes
+    resident and the CPU measured at 88% - an IDLE-priority, throttled process is starved by the
+    NORMAL-priority ones, and it stops servicing the debug socket: four consecutive runs died with
+    `ConsoleError: no answer to 'clock.absoluteSeconds'` on the FIRST call after `pauseGame()`
+    returned true, at a 15 s timeout and again at 90 s. Scenario 001's `launch_dock.py`, unmodified,
+    fails the same way on the same box right now, which is what identified the cause as shared-box
+    contention rather than anything this scenario does.
+
+    So the harness restores the priority of the game process it launched, immediately after pausing
+    it. THIS CHANGES NO MEASURED VALUE: `gameIsPaused` is untouched, `delta_t` is still forced to 0
+    (GameController.m:399-401), the game clock is still stopped, and the scenario still PROVES the
+    clock did not advance across the dump. Scheduling priority is not simulation state. The only
+    thing it affects is whether this process can get an answer out of a socket.
+
+    Best-effort by construction: any failure is reported and ignored, because a run on an idle box
+    does not need it and must not be failed by its absence.
+    """
+    if pid is None or not sys.platform.startswith("win"):
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+
+        class _Throttling(ctypes.Structure):
+            _fields_ = [("Version", wintypes.ULONG),
+                        ("ControlMask", wintypes.ULONG),
+                        ("StateMask", wintypes.ULONG)]
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        handle = kernel32.OpenProcess(_PROCESS_SET_INFORMATION, False, int(pid))
+        if not handle:
+            return "OpenProcess failed (%d)" % ctypes.get_last_error()
+        try:
+            ok_priority = bool(kernel32.SetPriorityClass(handle, _NORMAL_PRIORITY_CLASS))
+            state = _Throttling(_PROCESS_POWER_THROTTLING_CURRENT_VERSION,
+                                _PROCESS_POWER_THROTTLING_EXECUTION_SPEED, 0)
+            ok_throttle = bool(kernel32.SetProcessInformation(
+                handle, _PROCESS_POWER_THROTTLING, ctypes.byref(state), ctypes.sizeof(state)))
+        finally:
+            kernel32.CloseHandle(handle)
+        return {"priority_restored": ok_priority, "throttling_cleared": ok_throttle}
+    except Exception as exc:  # noqa: BLE001 - best effort; never fails a run
+        return "%s: %s" % (type(exc).__name__, exc)
 
 
 def safe_close(console):
@@ -845,6 +911,10 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
                     "(OOJSGlobal.m:843-848). The simulation would keep integrating through the "
                     "dump and no two runs could agree."
                     % console.evaluate("guiScreen").strip())
+            # IMMEDIATELY after the pause: see restore_process_priority(). The game has just put
+            # ITSELF into IDLE priority with power throttling, and on this contended box that
+            # starves the debug socket. Nothing simulated is touched.
+            priority = restore_process_priority(console.pid)
             clock_before = float(console.evaluate("clock.absoluteSeconds"))
             apply_pose(console, spec["pose"])
             clock_after = float(console.evaluate("clock.absoluteSeconds"))
@@ -916,7 +986,8 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
                 "png": golden_run._slashes(png), "bytes": len(text),
                 "frame_hash": frame_hash.hex_digest(grid),
                 "game_seconds_elapsed": round(elapsed, 3),
-                "wall_seconds": round(time.time() - started, 1), "evidence": evidence}
+                "wall_seconds": round(time.time() - started, 1), "evidence": evidence,
+                "priority_restore": priority}
     finally:
         if previous is None:
             os.environ.pop("OO_ADDITIONALADDONSDIRS", None)
