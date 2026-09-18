@@ -81,7 +81,7 @@ RAW_ORDER_JS = (
 
 
 def run_once(app_dir, port, seed, output_dir, perturb=None, spawn_order=("police", "pirate"),
-             raw_order=False):
+             raw_order=False, quant_decimals=None):
     """Launch, spawn a fixed scenario, and dump - `ticks` is not needed: see below.
 
     No frame-stepping is needed to make two runs identical: item 0.4's determinism requirement
@@ -99,6 +99,13 @@ def run_once(app_dir, port, seed, output_dir, perturb=None, spawn_order=("police
         # processes' launches and no float quantisation can absorb that much drift.
         console.evaluate("pauseGame()")
         clear_system(console)
+        if quant_decimals is not None:
+            # MEASUREMENT HOOK (oo-ss8). dump_state.js reads debugConsole.dumpQuantDecimals if
+            # it is a number. Used only to dump at FULL precision so the run-to-run float spread
+            # can be measured instead of guessed; goldens are never stored from such a run -
+            # golden_diff.py refuses a provenance whose quant_decimals is not the default.
+            console.perform("debugConsole.dumpQuantDecimals = %d;" % int(quant_decimals))
+
         # Two roles, deterministically named (state_dump.spawn_deterministic), so a stable-order
         # sort by id reproduces the identical dump twice regardless of allShips iteration order.
         # radius_m=0: no addShips scatter-radius RNG draw, which is otherwise a second source of
@@ -149,6 +156,10 @@ def main(argv=None):
     parser.add_argument("--raw-order", action="store_true",
                          help="emit the UNSORTED allShips id sequence instead of the dump "
                               "(positive control for run_order_proof.sh)")
+    parser.add_argument("--quant-decimals", type=int, default=None,
+                         help="override dump_state.js QUANT_DECIMALS for this run. Measurement "
+                              "only (e.g. 15 to see the raw float spread); a dump produced this "
+                              "way must never be stored as a golden")
     args = parser.parse_args(argv)
 
     spawn_order = tuple(r for r in args.spawn_order.split(",") if r)
@@ -174,7 +185,8 @@ def main(argv=None):
     os.makedirs(output_dir, exist_ok=True)
 
     text = run_once(args.app_dir, args.port, args.seed, output_dir, perturb=args.perturb,
-                    spawn_order=spawn_order, raw_order=args.raw_order)
+                    spawn_order=spawn_order, raw_order=args.raw_order,
+                    quant_decimals=args.quant_decimals)
     if args.out:
         with open(args.out, "w", encoding="utf-8", newline="\n") as handle:
             handle.write(text)

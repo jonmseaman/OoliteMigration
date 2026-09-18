@@ -1,0 +1,14 @@
+{
+  "build_flags": {
+    "fp_contract": "-ffp-contract=off",
+    "optimization": "-O2"
+  },
+  "commit": "c46db77ac94e1a6f7bad7906a650ac4aab647c02",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/dump/run_dump.py",
+  "note": "scenario 001 (tests/golden/scenarios/001): paused world, system cleared of non-station ships, 2 police + 2 pirates spawned deterministically at radius 0. Blessed from run A of tests/golden/measure_quantisation.sh; run B was byte-identical.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "001"
+}
