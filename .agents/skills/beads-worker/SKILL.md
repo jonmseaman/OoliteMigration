@@ -214,6 +214,17 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   *string literal* inside a mutant-building test is fine, a live code path is not. Tell workers to
   mutate a throwaway copy under `$LOCALAPPDATA/Temp`, never the real file — restore-on-exit never
   runs when the process is killed.
+- **`gc.sh` and `next-bead.sh` are blind to live workers — check before you act on them.** Both
+  reason from bead status and worktree state on disk, and neither can tell "abandoned by a dead
+  worker" from "in active use by a live one". Run mid-cycle, `gc.sh` harvested three worktrees
+  belonging to *running* workers and `next-bead.sh` re-claimed two beads already in flight — a
+  dispatch straight from that output would have put two workers on one bead. Worse, a mid-flight
+  harvest commits whatever the worktree holds **at that instant**, which for a worker running a
+  mutation harness is a disabled gate (see the sabotage bullet above). Before acting on either
+  script's output, call `delegate_task action='list'` and treat every bead whose worker is
+  `status='running'` as off limits; audit any `uncommitted work harvested` commit for disabled
+  predicates before it can reach an accept. Mutating only throwaway copies under
+  `$LOCALAPPDATA/Temp` makes a worktree safe to harvest at any instant.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
