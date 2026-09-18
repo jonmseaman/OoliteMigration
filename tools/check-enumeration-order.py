@@ -523,6 +523,55 @@ def self_test():
     return 0
 
 
+def check_finding():
+    """Assert this bead's FINDING is still intact and its classifier still discriminates.
+
+    The deliverable of bead oo-djn is a negative result: under the shuffle, exactly one log
+    channel reorders, and it is benign because every consumer of its container is
+    order-insensitive. That conclusion lives in LOG_ORDER_ONLY, and it is only worth
+    anything while the trace is present and the classifier can still fail. Offline.
+    """
+    failures = []
+
+    def check(name, condition, detail=""):
+        if condition:
+            print(f"    ok   {name}")
+        else:
+            print(f"    FAIL {name} {detail}")
+            failures.append(name)
+
+    key = "shipData.load.roleCategories"
+    check(f"{key} is still classified", key in LOG_ORDER_ONLY)
+    if key in LOG_ORDER_ONLY:
+        trace = LOG_ORDER_ONLY[key]
+        for citation in ("ResourceManager.m:1836", "Universe.m:3013",
+                         "containsObject:", "NSMutableSet"):
+            check(f"the trace still cites {citation}", citation in trace)
+
+    # The classifier must discriminate in BOTH directions, or the allow-list is decoration.
+    benign = [f"[{key}]: Adding 1 entries for category x",
+              f"[{key}]: Adding 2 entries for category y"]
+    channels, content = classify_divergences(benign, list(reversed(benign)))
+    check("a reordering in the traced channel is recognised", channels == {key}, str(channels))
+    check("a reordering is not reported as a content difference", content == [], str(content))
+    check("the traced channel is treated as log-order-only",
+          bool(channels) and all(c in LOG_ORDER_ONLY for c in channels))
+
+    rogue, _ = classify_divergences(["[ai.message.receive]: A"], ["[ai.message.receive]: B"])
+    check("an untraced channel is NOT excused",
+          bool(rogue) and not all(c in LOG_ORDER_ONLY for c in rogue), str(rogue))
+
+    _, extra = classify_divergences(benign + [f"[{key}]: Adding 3 for z"], benign)
+    check("a content difference in the traced channel is still reported", len(extra) == 1,
+          str(extra))
+
+    if failures:
+        print(f"FAILED step=check-finding {len(failures)} case(s): {', '.join(failures)}")
+        return 1
+    print("check-enumeration-order --check-finding: PASS")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--seeds", type=int, nargs="*", default=None,
@@ -540,10 +589,15 @@ def main():
     parser.add_argument("--keep", action="store_true", help="keep the per-run artifacts")
     parser.add_argument("--self-test", action="store_true",
                         help="offline: prove the normaliser and reporter work; no game needed")
+    parser.add_argument("--check-finding", action="store_true",
+                        help="offline: assert bead oo-djn's classified channel and its "
+                             "consumer trace are still present and the classifier still fails")
     args = parser.parse_args()
 
     if args.self_test:
         return self_test()
+    if args.check_finding:
+        return check_finding()
 
     binary = os.path.join(args.app_dir, "oolite.exe")
     if not os.path.isfile(binary):
