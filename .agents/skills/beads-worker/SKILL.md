@@ -292,6 +292,14 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   temp file — a count from the file that lost the line cannot detect the loss. A worker that
   validated its own acceptance this way may have left its last line untested while honestly
   reporting success.
+- **Keep the root checkout clean, or an accept will pass its gates and still fail to land.**
+  `accept.sh` runs acceptance on a scratch tree, then fast-forwards the base branch *in the repo
+  root*; a dirty root makes that last step fail with `acceptance passed but fast-forwarding main
+  ... failed (dirty checkout?)`, leaving a valid merge commit orphaned and the bead open. The mess
+  is usually the fleet's own housekeeping — bd DB writes to `.beads/*.jsonl`, `docs/fleet/
+  LEARNINGS.md`, stale `.fleet-progress.*` files, untracked `.ctx/`. Commit or ignore it before the
+  accept batch, and re-run `accept.sh` afterwards: the work is not lost, the merge commit is intact
+  and the retry fast-forwards onto it.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
