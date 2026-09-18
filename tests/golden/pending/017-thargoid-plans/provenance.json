@@ -1,0 +1,200 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "note": "recorded for provenance/auditing ONLY. This digest is NEVER a gate predicate: llvmpipe is not bit-reproducible and this scenario own sweep produced 10 distinct grid digests over 10 BYTE-IDENTICAL dumps. Byte-hashing the frame would make the gate flake on renderer noise. The dump is hashed byte-wise because it is quantised and deterministic; the frame is not. The asymmetry is deliberate.",
+      "sha256": "486850e517ed5dc0e7648ffd0aa388349a93837fc05d0d3da1ef80675266e736"
+    },
+    "state.json": {
+      "bytes": 3085,
+      "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95"
+    }
+  },
+  "blessed_from_commit": "b1c4079a9b0be9a5bdaf9c1feab65cf9d6cacea2",
+  "blessed_utc": "2026-09-18T20:21:13Z",
+  "dump_tool": "tests/golden/thargoid_plans_load.py",
+  "evidence_checker": "tests/golden/check_thargoid_plans_evidence.py",
+  "frame_liveness": {
+    "asserted": true,
+    "floor": 0.02,
+    "margin": {
+      "blessed_frame_vs_black": 0.052149,
+      "max_same_scene_noise": 0.001545,
+      "reading": "the blessed frame clears the floor by 2.6x and same-scene noise is 0.08x the floor, so no same-scene variation can push a real frame under it and an empty render (distance 0) cannot climb over it."
+    },
+    "metric": "frame_hash.distance(grid, all-black 4096-byte grid)",
+    "what_it_proves": "that something was RENDERED - the property a dead run fails. Asserted IN ADDITION to the tolerance, not instead of it: a frame can be within tolerance of a reference that was itself black, so liveness is checked against an absolute."
+  },
+  "frame_measurements": {
+    "all_black_vs_blessed": {
+      "max": 0.052251,
+      "min": 0.052149,
+      "min_x_tol": 11.91
+    },
+    "all_white_vs_blessed": {
+      "min": 0.947749
+    },
+    "same_scene_pairs_10_runs": {
+      "max": 0.001545,
+      "max_x_tol": 0.353,
+      "min": 0.001367,
+      "min_x_tol": 0.312,
+      "pairs": 45
+    },
+    "separation_ratio": 16.23,
+    "separation_reading": "min(wrong-scene distance) / max(same-scene distance). Above 1 means the observable can discriminate; scenario 015 measured 0.25 and could not. Bead oo-gxp scenario 010 reached 261.",
+    "wrong_scene_015_trumbles_lave": {
+      "max": 0.025224,
+      "min": 0.02508,
+      "min_x_tol": 5.73
+    }
+  },
+  "frame_tolerance": {
+    "asserted": true,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9). USED AS MEASURED, never adjusted to make a run pass.",
+    "why_asserted": "MEASURED AND ACCEPTED, unlike scenario 015. That scenario frame animates (HeadUpDisplay.m:3306 -drawTrumbles: redraws a live population every frame with randf()-scheduled animations) and its same-scene pairs sat at 1.08x..2.49x the tolerance - signal smaller than noise, so it could assert only liveness. THIS scenario docked scene is static: all 45 same-scene pairs over the 10-run sweep span 0.001367..0.001545, i.e. 0.31x..0.35x the tolerance, with a 2.8x margin under it, while a DIFFERENT scene (scenario 015 blessed Lave frame) sits at 0.025080, 5.7x the tolerance and 16x the largest same-scene distance. Separation ratio 16.2: the observable discriminates, so the tolerance is asserted."
+  },
+  "landing_rehearsal": {
+    "note": "Both the gate and the offline tests search goldens/windows-x64/017-thargoid-plans/ FIRST and fall back to tests/golden/pending/017-thargoid-plans/, through the identical idiom, so landing is a pure `git mv` with no code change. REHEARSED FOR REAL in a scratch worktree: the move was performed and every stored acceptance line re-run green afterwards. See LANDING.md.",
+    "performed": true
+  },
+  "mission_variable_assertion": {
+    "form": "KEY->VALUE MAP",
+    "why": "CHECKED BEFORE THE ASSERTION WAS DESIGNED. Scenario 015 fixture holds mission_trumbles as the EMPTY STRING and an ABSENT mission variable reads identically over the JS bridge, so that scenario could assert only a key SET. Every one of THIS fixture five values is a non-empty string, so the whole map is asserted - strictly stronger, and it pins conhunt == MISSION_COMPLETE. saved_mission_variables() REFUSES (rc=2) if a future fixture ever carries an empty value, rather than keeping a check that cannot fail."
+  },
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "save_format_contract": {
+    "credits_delta_decicredits": 9000,
+    "discovered_by": "MEASURED, not read off the source first: the scenario first live run went red with `credits: 99454.7 (saved) != 100354.7 (loaded)`, a delta of exactly 9000 plist units, and the log named the cause.",
+    "handled_by": "spec.load_migrations declares the delta; thargoid_plans_load.apply_load_migrations() adds it to the FILE side so the round trip stays an EXACT equality. A tolerance was REJECTED: widening credits by 900 would hide any credit bug smaller than 900 credits, which is most of them. The engine OWN log line is required as evidence (evidence.load_upgrade_messages) so the adjustment is falsifiable rather than a fudge factor.",
+    "migration": "PlayerEntity.m:1731-1746. The fixture carries has_energy_bomb=true and EQ_ENERGY_BOMB, equipment that no longer exists. The loader tries to mount an EQ_QC_MINE in its place and, failing that (all four pylons already hold EQ_HARDENED_MISSILE), does `credits += 9000` - 9000 DECIcredits, 900 credits - and logs 'Compensated legacy energy bomb with 900 credits.' on the load.upgrade.replacedEnergyBomb channel.",
+    "written_by_version": "1.75"
+  },
+  "scenario": "017-thargoid-plans",
+  "scenario_knobs": {
+    "expected_save_version": "1.75",
+    "load_save": "upstream/oolite-tests/Checklist-files/Missions/ThargoidPlans.oolite-save",
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "system_id": 147,
+    "thargplans_expected": false,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": {
+    "distinct_dump_digests": [
+      "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95"
+    ],
+    "distinct_frame_grid_digests": 10,
+    "dump_bytes": [
+      3085
+    ],
+    "dumps_written": 10,
+    "errored": 0,
+    "note": "ALL TEN runs wrote a BYTE-IDENTICAL dump (3085 bytes, one digest); 0 refused, 0 errored, so dumps_written + refused == runs with nothing unaccounted. The frame grids are all distinct, as expected: llvmpipe is not bit-reproducible, which is why the grid is compared with the measured tolerance and is NOT part of state.json. The blessed state.json is byte-identical to all ten sweep dumps.",
+    "per_run": [
+      {
+        "bytes": 3085,
+        "frame_sha256": "4620d00df96b6c4a00ce9f7055451c48ff9186dce092b7c20cdcd232397bbaed",
+        "run": 1,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.0
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "2268e472cbd64e609d7fbe8f9ef253ef66a2de3c22f34d1b59213b69b0001c9d",
+        "run": 2,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.5
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "dba31c32e072dd2731cdf020ef35546be194adfb58f5892bf98e30d313d33892",
+        "run": 3,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.0
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "b4bd19a5d0243bd2aecb47921af36942bfd401605208d8b8a3a51d0d1f7e9ccb",
+        "run": 4,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.1
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "83ea3cc53d9637001e65b0f2bbbf52b436b0685d7128d359a25ce3cc2c90b59e",
+        "run": 5,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 10.8
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "cd6dc7ef3a6dc8259cb1d4585c1ce69522820f4cbee6e0c3b6931c5b680fc658",
+        "run": 6,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 10.8
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "31acea90df29684d086b1fb595f8dd5a2f134f7b4800648daeee4eec6b979864",
+        "run": 7,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.0
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "0871e6f111d65a7374c1eb3cc7584368f01361566bda93063ec671119519e67f",
+        "run": 8,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 10.9
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "9825621ab7e8551183433c1f830ffe4512ee9dbbf4b16f234d51dfbe75ddd93f",
+        "run": 9,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.0
+      },
+      {
+        "bytes": 3085,
+        "frame_sha256": "d09b506fdab000d084d10f38a51d61f0b3000adadb08664206a870a2c887ef09",
+        "run": 10,
+        "sha256": "a57b51d9002f4a1bced8aa7224dd81b5506601e4267ce76bb2b58b040f639f95",
+        "verdict": "DUMPED",
+        "wall_seconds": 10.8
+      }
+    ],
+    "refused": 0,
+    "runs": 10,
+    "stable": true,
+    "wall_seconds_max": 11.5,
+    "wall_seconds_min": 10.8
+  },
+  "thargoid_plans_mission_state": {
+    "measured_preconditions": {
+      "conhunt_complete": true,
+      "galaxy_is_two": false,
+      "has_galactic_hyperdrive": true,
+      "not_in_system_83": true,
+      "score_over_1280": true,
+      "thargplans_unset": true
+    },
+    "mission_variables_moved_across_tick_budget": false,
+    "mission_variables_note": "MEASURED both before and after the 24-tick budget: identical. A docked player opening no mission screen does not advance the mission, so the dump carries mission_variables_stable_across_ticks and an engine that DID start it here goes red instead of drifting.",
+    "thargplans_in_save": false,
+    "verdict": "The bead prose names mission_thargplans; it is ABSENT from this fixture, which sits BEFORE the mission starts. FOUR of oolite-thargoid-plans-mission.js:77-90 five arming clauses hold (conhunt MISSION_COMPLETE, thargplans unset, ship_kills 1281 one over the 1280 threshold, Quedle is system 147 not 83). THE FIFTH DOES NOT: JS galaxyNumber is [player currentGalaxyID] (OOJSGlobal.m:190-191), the SAME 0-based index the plist stores, so this save is in galaxy 1 and the mission runs in galaxy 2. A first draft of this scenario assumed the JS field was 1-based and asserted galaxy_is_two=true; the LIVE RUN DISPROVED IT and the assertion was corrected to the measurement, not the other way round. The fixture carries EQ_GAL_DRIVE and has_galactic_hyperdrive, so it is positioned ONE GALACTIC JUMP SHORT of the mission - which is the step the checklist asks a human tester to perform."
+  }
+}

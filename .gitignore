@@ -19,3 +19,5 @@ tests/golden/artifacts/
 # orchestrator scratch: per-bead worker briefs and claimed-batch records (regenerated each turn)
 .batch.jsonl
 .fleet-briefs/
+.ctx/
+.beadinfo.json
