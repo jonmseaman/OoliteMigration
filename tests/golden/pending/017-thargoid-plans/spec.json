@@ -1,0 +1,79 @@
+{
+  "scenario": "017-thargoid-plans",
+  "seed": 20260918,
+  "system_id": 0,
+  "system_name": "Quedle",
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "upstream/oolite-tests/Checklist-files/Missions/ThargoidPlans.oolite-save",
+
+  "expected_save_version": "1.75",
+
+  "_expected_mission_variables": "THE FULL KEY->VALUE MAP, and that is a MEASURED choice. Scenario 015's fixture holds mission_trumbles as the EMPTY STRING and an ABSENT mission variable reads identically over the JS bridge, so that scenario could assert only a key SET. THIS fixture was checked first and every one of its five values is a NON-EMPTY string, so the whole map is asserted - strictly stronger, and it pins conhunt == MISSION_COMPLETE, the flag that ARMS the Thargoid Plans mission. The engine strips the `mission_` prefix for JS (OOJSMissionVariables.m:191-193). A DEFAULT NEW GAME HAS NO MISSION VARIABLES AT ALL (PlayerEntity.m:1986-1987).",
+  "expected_mission_variables": {
+    "CT_thargonCount": "0",
+    "conhunt": "MISSION_COMPLETE",
+    "snoopers_CRCNews": "|",
+    "snoopers_usedSlots": "0",
+    "trumbles": "NOT_NOW"
+  },
+
+  "_thargplans_key": "The bead's prose names mission_thargplans. IT IS NOT IN THIS FILE, deliberately: the checklist fixture sits at the moment the mission becomes AVAILABLE, not partway through it. thargplans_expected records whether the LOADED game is expected to carry it; if a future engine starts the mission inside this scenario's budget the dump changes instead of drifting.",
+  "thargplans_key": "thargplans",
+  "thargplans_expected": false,
+
+  "_expected_thargplans_preconditions": "oolite-thargoid-plans-mission.js:77-90 opens the first briefing when !missionVariables.thargplans && missionVariables.conhunt === 'MISSION_COMPLETE' && player.score > 1280 && galaxyNumber === 2 && system.ID !== 83. This save satisfies every clause - ship_kills 1281 is ONE over the threshold - which is what the fixture is FOR. Read live through the same JS the mission script uses, never re-derived from the plist, so a loader that restored the file but not the runtime state fails here.",
+  "thargplans_precondition_probes": {
+    "conhunt_complete": "String(missionVariables.conhunt === 'MISSION_COMPLETE')",
+    "galaxy_is_two": "String(galaxyNumber === 2)",
+    "not_in_system_83": "String(system.ID !== 83)",
+    "score_over_1280": "String(player.score > 1280)",
+    "thargplans_unset": "String(!missionVariables.thargplans)"
+  },
+  "expected_thargplans_preconditions": {
+    "conhunt_complete": true,
+    "galaxy_is_two": true,
+    "not_in_system_83": true,
+    "score_over_1280": true,
+    "thargplans_unset": true
+  },
+
+  "_log_channels": "Switched on by a logcontrol.plist staged into this run's private resource root (ResourceManager.m:1761-1777), NOT from the console: the whole load happens before the debug console connects, so a JS call comes too late. `load.progress` is off by default (Resources/Config/logcontrol.plist:241).",
+  "log_channels": ["load", "load.progress", "load.failed"],
+
+  "_load_progress_stages": "The engine's OWN load trace, verbatim and in order, from PlayerEntityLoadSave.m:620-811. These strings are logged ONLY inside -loadPlayerFromFile:, so a run that ignored -load emits none of them and a load that died partway emits a prefix.",
+  "load_progress_stages": [
+    "Reading file",
+    "Restricting scenario",
+    "Creating player ship",
+    "Initialising player entity",
+    "Loading commander data",
+    "Recording save path",
+    "Creating system",
+    "Resetting player flight variables",
+    "Loading system market",
+    "Setting scenario key",
+    "Starting JS engine",
+    "Populating initial system",
+    "Completing JS startup",
+    "Loading complete"
+  ],
+
+  "repopulator_handlers": ["systemWillRepopulate"],
+
+  "_census": "THE LOAD ASSERTION. Each entry names a key in the .oolite-save plist, the JS expression that reads the same quantity out of the loaded game, and how the two are made comparable. The two sides are produced by two INDEPENDENT readers sharing no code - Python's plistlib in THIS process, and Oolite's Objective-C deserialiser in a SEPARATE OS process read back over the console - so they cannot be the same object even in principle. Scenario 006's invariant, applied to this fixture.",
+  "census": [
+    {"plist": "player_name",         "js": "player.name",                   "kind": "str",          "why": "commander identity. This save's is 'ThargoidPlans'; a fresh commander is 'Jameson'."},
+    {"plist": "current_system_name", "js": "system.name",                   "kind": "str",          "why": "the system the save pins; a save loaded into the wrong system is the most damaging silent load failure"},
+    {"plist": "credits",             "js": "player.credits",                "kind": "float_tenths", "why": "PlayerEntity stores credits in tenths; the plist holds 994547 and JS reports 99454.7. Scale MEASURED, not assumed."},
+    {"plist": "fuel",                "js": "player.ship.fuel",              "kind": "float_tenths", "why": "the plist stores fuel in tenths of a light year (70 = 7.0 LY); JS reports light years"},
+    {"plist": "legal_status",        "js": "player.bounty",                 "kind": "int",          "why": "player.bounty is the INTEGER accessor (OOJSPlayer.m:286-288); player.legalStatus returns a DISPLAY STRING via OODisplayStringFromLegalStatus"},
+    {"plist": "galaxy_number",       "js": "galaxyNumber - 1",              "kind": "int",          "why": "the plist field is 0-based and JS galaxyNumber is 1-based; this save is plist 1 / JS 2, which is the galaxy the Thargoid Plans mission runs in"},
+    {"plist": "ship_desc",           "js": "player.ship.dataKey",           "kind": "str",          "why": "the shipdata key the player's hull is rebuilt from"},
+    {"plist": "ship_name",           "js": "player.ship.shipClassName",     "kind": "str",          "why": "human-facing class name, separate storage from ship_desc"},
+    {"plist": "ship_kills",          "js": "player.score",                  "kind": "int",          "why": "kill score. 1281 is ONE over the Thargoid Plans threshold of 1280 (oolite-thargoid-plans-mission.js:80), so a load that reset or rounded counters disarms the mission and fails here."},
+    {"plist": "max_cargo",           "js": "player.ship.cargoSpaceCapacity", "kind": "int",         "why": "cargo capacity, an integer the loader recomputes rather than copies"},
+    {"plist": "missiles",            "js": "player.ship.missiles.length",   "kind": "int",          "why": "pylon count, reconstructed from missile_roles by the loader"}
+  ]
+}
