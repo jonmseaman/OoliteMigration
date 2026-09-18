@@ -1,0 +1,45 @@
+{
+  "build_flags": {
+    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
+    "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
+    "effective_optimization_levels": {
+      "-O2": 242
+    },
+    "policy_fp_contract": "-ffp-contract=off",
+    "policy_optimization": "-O2",
+    "translation_units": 242,
+    "verified": false
+  },
+  "commit": "da9b349c4aa7dcd58961f4ef53fe961908f40a1d",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/shader_fallback.py",
+  "frame_differential": {
+    "note": "Two launches of the identical scene sit at 0.32x tolerance; removing the expansion moves the frame 25.4x beyond it - an 80-fold separation between noise and signal. The absent arm is corroborated independently: its evidence block has shader_uniform_sets_positive=false, shader_compile_failures=[], glsl_driver_log=[] and oxp_standards_errors=0, i.e. no shader of any kind was built and the expansion was not on the search path at all.",
+    "oxp_absent_distance": 0.11103036917892156,
+    "oxp_absent_ratio": 25.365218004224264,
+    "same_scene_distance": 0.0013815487132352942,
+    "same_scene_ratio": 0.3156189117789721,
+    "separation": 80.4,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.derive_tolerance() over tests/golden/calibration.json (bead oo-ae9); NEVER adjusted by this bead"
+  },
+  "knobs": {
+    "demo_ship_role": "[ahruman_shader_fallback_test]",
+    "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "note": "Scenario 009 shaders (bead oo-rad): stages the in-tree shaderFallbackTest OXP, puts its cube on a mission screen pinned to the literal [shipKey] role, and proves FROM THE ENGINE AND THE GL DRIVER that GLSL is live and that the expansion own shader source reached the compiler. Positive anti-vacuity evidence: [shader.uniform.set] lines (OOShaderMaterial.m:327, reachable only after compile+link both returned GL_TRUE) plus the GL driver own glGetInfoLogARB text naming the fixture syntax error. SCOPE: this golden does NOT cover a SUCCESSFUL OXP shader painting pixels - the only shader test-OXP in this tree ships an intentionally invalid shader, and the red cube in frame.png is the fixture own documented no-shader outcome. 10/10 runs byte-identical. NOMANIF (oo-kcrw): 2 error lines allow-listed by exact message and exact count; no manifest staged.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "renderer": {
+    "gl_version_line": "OpenGL renderer version: 4.6.0 (\"4.6 (Compatibility Profile) Mesa 26.1.8\"). Vendor: \"Mesa\". Renderer: \"llvmpipe (LLVM 22.1.8, 256 bits)\".",
+    "note": "The golden harness forces LIBGL_ALWAYS_SOFTWARE=1 / GALLIUM_DRIVER=llvmpipe (console.py:_env), which is also the rasteriser bead oo-ae9 calibrated the frame tolerance against. The same box also has an NVIDIA GeForce RTX 4070 Ti driving GL 4.6.0/560.94 when the software override is absent, and reports \"Shaders are supported.\" there too - so this scenario is NOT limited to software rendering, it is pinned to it for tolerance comparability.",
+    "shader_support_line": "Shaders are supported."
+  },
+  "scenario": "009-shaders"
+}

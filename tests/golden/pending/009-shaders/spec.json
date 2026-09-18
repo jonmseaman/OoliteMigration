@@ -1,0 +1,38 @@
+{
+  "allowed_oxp_standards_error_signatures": [
+    "OXP Fallback test.oxp has no manifest.plist"
+  ],
+  "allowed_oxp_standards_errors": 2,
+  "bare_role": "ahruman_shader_fallback_test",
+  "demo_ship_role": "[ahruman_shader_fallback_test]",
+  "expected_fragment_shader": "ahruman_shader_fallback_test.fragment",
+  "expected_glsl_diagnostic_substring": "syntax error",
+  "expected_ship_name": "Shader fallback test",
+  "expected_vertex_shader": "oolite-tangent-space-vertex.vertex",
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+  "material_key": "cube-face",
+  "oxp_source": "upstream/oolite-tests/test-oxps/shaderFallbackTest/Fallback test.oxp",
+  "quant_decimals": 3,
+  "repopulator_handlers": [
+    "systemWillRepopulate"
+  ],
+  "scenario": "009-shaders",
+  "seed": 20260918,
+  "shader_capable_detail_levels": [
+    "DETAIL_LEVEL_EXTRAS",
+    "DETAIL_LEVEL_SHADERS"
+  ],
+  "shader_log_channels": [
+    "rendering.opengl.shader",
+    "shader.compile.failure",
+    "shader.link.failure",
+    "shader.load.failed",
+    "shader.uniform",
+    "shader.uniform.set"
+  ],
+  "shipdata_key": "ahruman_shader_fallback_test",
+  "system_id": 7,
+  "system_name": "Lave",
+  "tick_seconds": 0.125,
+  "ticks": 24
+}
