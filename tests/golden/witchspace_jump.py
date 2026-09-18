@@ -150,6 +150,8 @@ TICK_WALL_BUDGET_SECONDS = 300
 SETTLE_TIMEOUT_SECONDS = 120
 FRAME_SETTLE_SECONDS = 1.5
 CLEAR_ROUNDS = 20
+# See PatientConsole: 15 s (console.py's default) was measured too short on this loaded box.
+CONSOLE_REPLY_TIMEOUT_SECONDS = 90
 
 # The floor a frame must clear, in frame_hash distance units, to count as RENDERED. It is NOT a
 # same-scene tolerance: it separates "something was drawn" from "an all-black grid", which is what
@@ -182,6 +184,43 @@ PROBE_JS = """(function(){
 
 class ScenarioError(RuntimeError):
     pass
+
+
+class PatientConsole:
+    """A DebugConsole wrapper that waits longer for an answer, and NOTHING else.
+
+    MEASURED, ON THIS BOX, AND THE REASON THIS CLASS EXISTS. `DebugConsole.evaluate` defaults to a
+    15-second reply timeout (console.py:210). That is generous for an idle machine and too short
+    for this fleet: with two sibling workers' games resident and the CPU at 88%, two consecutive
+    runs of this scenario died with `ConsoleError: no answer to 'player.ship.position' within 15s`
+    and `... 'clock.absoluteSeconds' within 15s` - at different call sites, which is the signature
+    of a machine-load artefact rather than a hung game (the same expression had answered dozens of
+    times earlier in the same run).
+
+    RAISING THE TIMEOUT IS NOT WEAKENING A GATE, AND THE DISTINCTION MATTERS. Nothing this scenario
+    asserts is measured on the harness clock: the tick budget is read from `clock.absoluteSeconds`
+    INSIDE the game, the jump is watched by status transition and by engine-dispatched events, and
+    the dump is quantised state. The reply timeout governs only how long this process is willing to
+    wait for a socket round trip, so a longer one changes no recorded value - it only stops a busy
+    box from being reported as a failed jump. The timeouts that ARE assertions (the countdown must
+    begin, the jump must complete, the world must quiesce) are unchanged.
+    """
+
+    def __init__(self, inner, timeout):
+        self._inner = inner
+        self._timeout = timeout
+
+    def evaluate(self, js, timeout=None):
+        return self._inner.evaluate(js, timeout=self._timeout if timeout is None else timeout)
+
+    def evaluate_int(self, js, timeout=None):
+        return self._inner.evaluate_int(js, timeout=self._timeout if timeout is None else timeout)
+
+    def perform(self, js):
+        return self._inner.perform(js)
+
+    def close(self):
+        return self._inner.close()
 
 
 def safe_close(console):
@@ -683,9 +722,9 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
         # phantom).
         os.remove(out_path)
     try:
-        console = start_with_retry(lambda: DebugConsole(
+        console = PatientConsole(start_with_retry(lambda: DebugConsole(
             staged, port, seed=seed, output_dir=artifact_dir, host="127.0.0.1",
-            load_save=spec["load_save"]))
+            load_save=spec["load_save"])), CONSOLE_REPLY_TIMEOUT_SECONDS)
         try:
             holder = install_probe(console)
             system_before = assert_system(console, spec, "origin_system_id", "the origin system")
