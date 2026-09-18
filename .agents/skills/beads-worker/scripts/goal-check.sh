@@ -17,7 +17,14 @@ if [ -z "$remaining" ]; then
     exit 0
   fi
   echo "phase $phase: no open $BEADS_WORKER_LABELS beads, but work is at risk. Run scripts/gc.sh:"
-  "$(dirname "${BASH_SOURCE[0]}")/gc.sh" --check 2>&1 | grep -v "^gc: .* merged\|^gc: all" || true
+  # Filter the ROUTINE lines only. `gc: <branch> is merged into <base> (bead <st>)` fires for every
+  # cleanly-merged bead on every run, which is why this filter exists. But the old pattern
+  # `^gc: .* merged` also matched gc's WARNING lines - above all
+  #   gc: bead/<id> is merged but its worktree still holds uncommitted work
+  # (oo-y8fa) - so the operator was told "work is at risk" with NO BEAD NAMED: the single line
+  # identifying which worktree holds unharvested work was the line being dropped. Anchor the noise
+  # pattern on the literal "is merged into " of the routine line so "is merged but ..." survives.
+  "$(dirname "${BASH_SOURCE[0]}")/gc.sh" --check 2>&1 | grep -v "^gc: .* is merged into \|^gc: all" || true
   exit 1
 fi
 echo "phase $phase: $BEADS_WORKER_LABELS beads still open:"
