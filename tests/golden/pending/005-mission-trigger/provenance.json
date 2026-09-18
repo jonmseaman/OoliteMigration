@@ -1,0 +1,149 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "md5": "020f4e5e51317610773eb7d567434d58",
+      "note": "64x64 luminance grid. Recorded for provenance, NOT used as a gate: llvmpipe is not bit-reproducible across runs, so the frame is compared with the MEASURED tolerance and byte-hashing it would make the gate flake on renderer noise. THE ASYMMETRY IS DELIBERATE.",
+      "sha256": "f920bcc90a5fc8ca6f641d9cc27a80ee94208087da6a7a88797c33155f63a234"
+    },
+    "state.json": {
+      "bytes": 3099,
+      "md5": "fc63db1d7efd77f9864e5ab76a103ce7",
+      "note": "the deterministic dump, BYTE-HASHED. This is the INDEPENDENT WITNESS: a comparison of the golden against a copy of itself moves BOTH sides when the golden is edited, so a one-quantised-unit perturbation is invisible to it. Provenance is a separate file the mutant does not touch (bead oo-gxp).",
+      "sha256": "cdc323b183500d81589ea54a76dafb9093a7b495a26af692527ea8f6b2a570f1"
+    }
+  },
+  "blessed_utc": "2026-09-18T17:25:09Z",
+  "commit": "634ccaae5752dbd90bc62a508c024598badea3da",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/mission_trigger.py",
+  "evidence_checker": "tests/golden/check_mission_trigger_evidence.py",
+  "frame_control": {
+    "control_constrictor_distance": 0.017872051164215686,
+    "control_constrictor_ratio": 4.08292,
+    "control_fresh_game_distance": 0.06419079350490196,
+    "control_fresh_game_ratio": 14.66458,
+    "control_method": "the IDENTICAL scenario - same staging, same seed, same ticks, same dump - run with a DIFFERENT checklist save (Constrictor.oolite-save, galaxy 1, where the trigger's guard fails) and with NO -load at all.",
+    "same_scene_distance": 0.0014811197916666666,
+    "same_scene_ratio": 0.33837,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9). USED AS MEASURED, never adjusted.",
+    "verdict": "two launches of the same scenario differ by 0.001481 (0.34x the tolerance) while loading a different checklist save moves the frame 0.017872 (4.08x) and a fresh game 0.064191 (14.66x)."
+  },
+  "landing_rehearsal": {
+    "arms_exercised": [
+      "staged",
+      "landed"
+    ],
+    "landed_arm_live_line": "line 7 UNVERIFIED UNDER LOAD, not failed. Six replays returned rc=1 with INSTRUMENT failures only - `subprocess.TimeoutExpired ... after 10 seconds`, `ConsoleError: no answer to 'system.name' within 15s`, `rm: Device or resource busy` - each logged with 5-6 concurrent sibling oolite.exe processes launching the same build and sharing the debug console port. Line 7 is byte-identical to its pre-fix revision (this bead changed only lines 1-3), and it was measured green 3/3 at 56s/49s/106s on this tree on a quiet box. A 10-second subprocess timeout cannot survive six concurrent Oolite launches; this is contention, not a regression. To be re-run on a quiet machine before acceptance.",
+    "landed_arm_offline_lines": "lines 1-6 rc=0 after the git mv, resolving spec=tests/golden/scenarios/005-mission-trigger/spec.json and golden/provenance/frame=goldens/windows-x64/005-mission-trigger/.",
+    "method": "`git worktree add --detach` on main, `git merge --no-edit bead/oo-rkm`, then the four `git mv` commands from LANDING.md verbatim, then every stored acceptance line replayed with `bash -o pipefail -c` exactly as accept.sh runs them. RAN=7 == stored=7 on both arms.",
+    "note": "CORRECTED. The earlier record claimed a rehearsal that was never run: it asserted that the scenario script and every acceptance line resolved all four artifacts through an IDENTICAL guarded-first idiom, so landing was a pure `git mv` with no code change. Only the STAGED arm had been exercised, and the claim was FALSE for spec.json: mission_trigger.py:93-96 and test_mission_trigger.py:31-33 resolve tests/golden/scenarios/005-mission-trigger/spec.json FIRST while the acceptance lines searched goldens/windows-x64/005-mission-trigger/spec.json FIRST, so NO placement satisfied both resolvers and landing was broken in either direction. The acceptance lines' spec candidate list has been aligned with SPEC_CANDIDATES; LANDING.md carries the per-artifact destination table. Do not re-record a rehearsal arm you did not actually run - this file is the INDEPENDENT WITNESS and a false claim inside it degrades exactly the artifact the gate trusts to sit outside the thing it witnesses.",
+    "performed": true,
+    "staged_arm": "lines 1-6 rc=0; line 7 (live launch) rc=0 in the worker's own worktree at bless time."
+  },
+  "note": "Scenario 005 (bead oo-rkm): loading upstream/oolite-tests/Checklist-files/Missions/CloakingDevice.oolite-save via the game's own -load argument calls [UNIVERSE populateNormalSpace] (PlayerEntityLoadSave.m:777), which fires the systemWillPopulate WORLD-SCRIPT EVENT (Universe.m:1732-1737). oolite-cloaking-device-mission.js:47-103 handles it and, in galaxy 5 with cloak unset, runs missionVariables.cloakcounter++ (:62), registers the ambush populator (:71) and spawns the cloaked Asp with its escorts (:77-80). THE FALSIFIABLE CORE: the fixture holds cloakcounter=6 ON DISK and the running engine reads 7 - a value the deserialiser merely copied would read 6. MEASURED CAUTION: asp-pirate is NOT mission-exclusive (shipdata.plist gives the ordinary Asp that role), so a system-wide count of it read 2, 3 and 4 across ten runs; the escorts are pinned through the LEADER's own escortGroup instead. provenance.scenario_knobs records the determinism knobs this golden was BLESSED with, and the acceptance gate asserts spec.json still agrees with them, so re-blessing with a new seed stays legal while silent drift between spec and golden is fatal.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "save_fixture": {
+    "bytes": 26452,
+    "note": "the save-format compatibility contract this scenario also pins",
+    "path": "upstream/oolite-tests/Checklist-files/Missions/CloakingDevice.oolite-save",
+    "sha256": "28dee246b1ed6fe722b0ba463ed4e0af6106e9277b4858b289ebd55c1841492a",
+    "written_by_version": "1.75"
+  },
+  "scenario": "005-mission-trigger",
+  "scenario_knobs": {
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "system_id": 80,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": {
+    "distinct_digests": 1,
+    "dumps_written": 10,
+    "flake_rate": "0/10",
+    "identical_dumps": 10,
+    "max_same_scene_frame_distance": 0.0015146292892156863,
+    "max_same_scene_frame_ratio": 0.34602,
+    "method": "ten independent launches of tests/golden/mission_trigger.py, each into a fresh staged app copy on its own reserved port. The harness detects the dump ON DISK rather than inferring success from rc, so a run that wrote a correct dump but exited nonzero would be COUNTED and flagged, not hidden.",
+    "note": "A FIRST TEN-RUN PASS FAILED 2/10 and that failure is why this scenario's observable changed: the run aborted with countShipsWithRole('asp-pirate')==3 when 2 was expected, because asp-pirate is ALSO the ordinary Asp's role in shipdata.plist and the ambient populator writes to it (observed 2, 3 and 4). The escorts are now read off the ambush LEADER's own escortGroup, fixed by escorts=2 in the asp-cloaked template, and the second ten-run pass was 10/10 byte-identical. The flake was in the GATE's choice of observable, not in the engine.",
+    "runs": 10
+  },
+  "trigger_differential": {
+    "control_constrictor": {
+      "ambush_leader": null,
+      "ambush_populator_registered": false,
+      "commander_name": "Constrictor",
+      "fields_compared": 12,
+      "fields_moved": 11,
+      "galaxy_number": 1,
+      "mission_counter_in_engine": null,
+      "mission_counter_in_file": null,
+      "mission_counter_present": false,
+      "mission_script_loaded": true,
+      "mission_variable_names": [
+        "CT_thargonCount",
+        "snoopers_CRCNews",
+        "snoopers_usedSlots",
+        "trumbles"
+      ],
+      "spawned_role_counts": {
+        "asp-cloaked": 0
+      },
+      "system_id": 240,
+      "system_name": "Esgebi"
+    },
+    "control_fresh_game": {
+      "ambush_leader": null,
+      "ambush_populator_registered": false,
+      "commander_name": "Jameson",
+      "fields_compared": 12,
+      "fields_moved": 12,
+      "galaxy_number": 0,
+      "mission_counter_in_engine": null,
+      "mission_counter_in_file": null,
+      "mission_counter_present": false,
+      "mission_script_loaded": false,
+      "mission_variable_names": [],
+      "spawned_role_counts": {
+        "asp-cloaked": 0
+      },
+      "system_id": 7,
+      "system_name": "Lave"
+    },
+    "subject": {
+      "ambush_leader": {
+        "escort_group_count": 3,
+        "script": "oolite-cloaking-device-target-ship"
+      },
+      "ambush_populator_registered": true,
+      "commander_name": "CloakingDevice",
+      "galaxy_number": 4,
+      "mission_counter_in_engine": 7,
+      "mission_counter_in_file": 6,
+      "mission_counter_present": true,
+      "mission_script_loaded": true,
+      "mission_variable_names": [
+        "CT_thargonCount",
+        "TL_FOR_EQ_NAVAL_ENERGY_UNIT",
+        "cloakcounter",
+        "conhunt",
+        "nova",
+        "novacount",
+        "snoopers_CRCNews",
+        "snoopers_usedSlots",
+        "thargplans",
+        "trumbles"
+      ],
+      "spawned_role_counts": {
+        "asp-cloaked": 1
+      },
+      "system_id": 80,
+      "system_name": "Atdice"
+    },
+    "verdict": "11 of 12 trigger fields move against the Constrictor arm and 12 of 12 against a fresh game; the evidence checker REJECTS both control dumps with rc=1."
+  }
+}
