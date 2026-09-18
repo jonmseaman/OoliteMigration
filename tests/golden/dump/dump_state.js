@@ -24,7 +24,18 @@
  * without a per-platform golden. See tests/golden/dump/README.md for the epsilon proof.
  */
 (function () {
+  // QUANTISATION PRECISION (decision 11). 3 decimals = 1 mm on positions, 1 mm/s on
+  // velocities. See tests/golden/GOLDEN_STORAGE.md for the measurement this rests on.
+  //
+  // debugConsole.dumpQuantDecimals is an OVERRIDE, not a second policy: it exists so the
+  // storage policy can be measured rather than asserted (dump at 15 decimals, diff two runs,
+  // observe the actual spread). The stored goldens are always produced at the default, and
+  // tests/golden/golden_diff.py REFUSES to compare anything whose provenance records a
+  // coarser value - so nobody can turn a failing golden green by rounding harder.
   var QUANT_DECIMALS = 3;
+  if (typeof debugConsole.dumpQuantDecimals === "number") {
+    QUANT_DECIMALS = debugConsole.dumpQuantDecimals;
+  }
 
   function q(x) {
     return Number(Number(x).toFixed(QUANT_DECIMALS));

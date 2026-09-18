@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# run-story guard shim for `bd`. tools/fleet/run-story puts this directory FIRST on PATH for the
+# whole model invocation, so the refusal does not depend on the model honouring a tool policy.
+# Refuses, before resolving the real binary (so it refuses even where bd is not installed):
+#   bd close / bd done       — only .agents/skills/beads-worker/scripts/accept.sh closes a bead
+#   bd update --status ...   — ANY bead status mutation, not just closed
+# Everything else is passed through to the real bd.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+case "${1:-}" in
+  close|done)
+    echo "run-story guard: refusing 'bd $1'. A bead is closed only by beads-worker accept.sh after acceptance passes (CLAUDE.md hard rule 4)." >&2
+    exit 77;;
+  update)
+    prev=""
+    for a in "$@"; do
+      case "$a" in
+        --status|--status=*|-s|--set-status|--set-status=*)
+          echo "run-story guard: refusing a bead status mutation ('bd update ... $a'). Status is the orchestrator's; accept.sh is the only path that changes it." >&2
+          exit 77;;
+      esac
+      prev="$a"
+    done;;
+esac
+p="$(echo "$PATH" | tr ':' '\n' | grep -vx "$here" | paste -sd: -)"
+real="$(PATH="$p" command -v bd || true)"
+[ -n "$real" ] || { echo "run-story guard: real bd not found on PATH" >&2; exit 127; }
+PATH="$p" exec "$real" "$@"

@@ -1,0 +1,38 @@
+{
+  "LIMIT_READ_THIS": "This does NOT locate a float noise floor and must not be cited as evidence for a particular decimal count. Every float in the dump is an exact binary fraction needing at most 7 decimal places to write down, so toFixed(15) rounded nothing at all - the measurement never exercised rounding. What it does establish is that scenario 001 is bit-reproducible on this platform with this build.",
+  "distinct_hashes": 1,
+  "float_fields": 21,
+  "further_limits": [
+    "static scenario: pauseGame() forces delta_t to 0, so no physics integrates",
+    "21 float fields but only 6 distinct values (4 ships spawned at radius 0 share the station position)",
+    "all velocities are zero; nothing is in flight"
+  ],
+  "leaf_fields": 122,
+  "max_exact_decimal_places_needed": 7,
+  "max_observed_absolute_spread": 0.0,
+  "method": "tests/golden/measure_quantisation.sh + 3 extra runs; run_dump.py --quant-decimals 15, i.e. the dump emitted at 15 decimal places instead of the policy 3. Five separate game processes, sequential (the game dials out to the fixed console port, so concurrent runs attach to each other's game).",
+  "result": "All five runs byte-identical. Observed run-to-run spread is exactly zero in all 21 float fields.",
+  "runs": [
+    "rawA",
+    "rawB",
+    "rawC",
+    "rawD",
+    "rawE"
+  ],
+  "sha256": {
+    "rawA": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769",
+    "rawB": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769",
+    "rawC": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769",
+    "rawD": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769",
+    "rawE": "a12ebfaed616eefd02b13a5347e8f43a0bfb9b70d866a30bf751fafeb3644769"
+  },
+  "wall_seconds": {
+    "rawA": 13,
+    "rawB": 12,
+    "rawC": 11,
+    "rawD": 15,
+    "rawE": 33
+  },
+  "what": "Run-to-run float spread measurement for scenario 001 on windows-x64 (bead oo-ss8).",
+  "what_would_make_this_meaningful": "A second platform (macos-arm64 or linux-x64, Phase 5), or a scenario that integrates motion over a fixed tick count so positions are the product of repeated arithmetic rather than a copy."
+}
