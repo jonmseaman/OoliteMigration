@@ -119,6 +119,38 @@ Required properties:
   ThargoidPlans, loaded with the game's `-load`; 1.75-era files, so they pin save-format
   compatibility and each mission script's state).
 
+#### The twenty scenarios
+
+The machine-readable form of this table is [`scenario-catalogue.json`](scenario-catalogue.json)
+(schema `oolite-golden-scenarios/1`), which is what later beads consume; the table below is
+generated from it and must agree with it verbatim (`tools/check-scenario-catalogue.py --check-docs`).
+Scenarios 001-017 are the set named above; **018-020** are defined by bead `oo-9w5` and specified in
+[0-scenarios-18-20.md](0-scenarios-18-20.md), which also records the candidates that were rejected
+and why.
+
+| # | Scenario | Status | Purpose |
+|---|---|---|---|
+| 001 | `launch-dock` | landed | The player launches from the station, flies a fixed tick budget and docks again; the canonical state dump plus a single-pose frame hash. |
+| 002 | `witchspace-jump` | planned | A witchspace jump to an adjacent system: the countdown, the tunnel, and the destination system's generated contents. |
+| 003 | `combat-encounter` | planned | A scripted combat encounter: weapons fire, damage lands, and the post-fight world state is pinned. |
+| 004 | `trade-cycle` | planned | Buy a commodity, fly, sell it: the market model, the cargo manifest and the resulting credit balance. |
+| 005 | `mission-trigger` | planned | A mission script fires from a world-script event and its mission variables are pinned. |
+| 006 | `save-load-round-trip` | planned | Save the game, reload it, and dump: the save format round-trips without losing or reordering state. |
+| 007 | `test-oxp-js-interface` | planned | Load the in-tree JS-interface test-oxp and pin what its scripts make the engine do. |
+| 008 | `test-oxp-materials` | planned | Load the in-tree materials test-oxp and pin the material definitions the renderer resolves. |
+| 009 | `test-oxp-shaders` | planned | Load the in-tree shader test-oxp and pin shader binding and fallback behaviour. |
+| 010 | `test-oxp-png` | planned | Load the in-tree PNG test suite and pin texture decoding across its image variants. |
+| 011 | `test-oxp-ai-overflow` | planned | Load the in-tree AI-overflow test-oxp and pin how the AI stack handles its pathological plist. |
+| 012 | `test-oxp-retro-missions` | planned | Load the in-tree retro-missions test-oxp and pin legacy mission-script execution. |
+| 013 | `checklist-save-constrictor` | planned | Load the 1.75-era Constrictor checklist save and pin its mission state after load. |
+| 014 | `checklist-save-nova` | planned | Load the 1.75-era Nova checklist save and pin its mission state after load. |
+| 015 | `checklist-save-trumbles` | planned | Load the 1.75-era Trumbles checklist save and pin its mission state after load. |
+| 016 | `checklist-save-cloaking-device` | planned | Load the 1.75-era CloakingDevice checklist save and pin its mission state after load. |
+| 017 | `checklist-save-thargoid-plans` | planned | Load the 1.75-era ThargoidPlans checklist save and pin its mission state after load. |
+| 018 | `expansion-closure-and-manifestless` | buildable | Two launches of the same build differing only in what is staged: an expansion with a non-empty requires_oxps loads with its transitive closure and is refused without it, and a manifest-less in-tree fixture loads while emitting exactly its two standards errors. |
+| 019 | `equipment-and-station-services` | buildable | Docked at the main station: award, query, damage and remove equipment, and buy one item - pinning the equipment registry, the OK/DAMAGED status machine, the station's tech-level-derived pricing and the resulting credit balance. |
+| 020 | `hud-render-modes` | buildable-pending-own-calibration | From one fixed camera pose in flight, render the same scene under three HUD modes (hud.plist, hud-small.plist, hidden) and assert the frame hashes agree within mode and differ between modes by more than the measured tolerance. |
+
 **Acceptance for every later phase: the goldens still reproduce.**
 
 Nothing else scales until this exists. `tests/launch_snapshot.py` currently hardcodes
@@ -298,4 +330,5 @@ once such a target exists.
 
 - 2026-09-06 — Phase doc created from MIGRATION_PLAN §5 and AI_EXECUTION_PLAN §4.2, §8, §9. No work started.
 - 2026-09-11 — Rewritten for native Windows only (ADR-0017): no Linux build, no containers; scenarios 13–17 are the checklist saves; the GUI tier runs in Tier C and nightly.
+- 2026-09-18 — Scenarios 018-020 defined (oo-9w5): the list reaches 20 with a one-line purpose each, machine-readable in `scenario-catalogue.json` and argued in [0-scenarios-18-20.md](0-scenarios-18-20.md). Gate: `tools/check-scenario-catalogue.py`.
 - 2026-09-17 — Tier A timings in "Commands" re-measured cold and warm (oo-sp1c). The retired "~8 s from no build directory" was the script's self-reported time, which excludes `meson setup`; wall clock is ~15 s, and ccache warmth changes a steady-state run by under a second.
