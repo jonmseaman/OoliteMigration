@@ -272,6 +272,44 @@ def evaluate_settling(console, js, tries=STARTUP_PROBE_TRIES):
         % (js, tries, last))
 
 
+def shutdown(console):
+    """Tear the console down, distinguishing a TEARDOWN failure from a RUN failure.
+
+    MEASURED, in an acceptance rehearsal on a loaded VM: every measurement of the trade cycle had
+    already succeeded, the dump and frame were in hand, and the run still failed rc=3 with
+    `TimeoutExpired ... timed out after 10 seconds` raised out of `with console:`. That is
+    console.py:190-195 - quit(), wait 15s, kill(), wait 10s - and the second wait expiring means
+    the OS had not finished reaping a process that was already killed. Nothing about the game's
+    behaviour under test is expressed in how fast Windows reaps a corpse.
+
+    So a teardown timeout is REPORTED, not raised. The honesty rules that keep this from becoming a
+    blanket try/except:
+
+      * it is only reachable AFTER the measurement block completed. Anything that fails earlier
+        propagates untouched - `with console:` is gone precisely so a teardown error cannot mask
+        one, not so errors can be swallowed;
+      * only subprocess.TimeoutExpired from the reap is tolerated. Any other exception re-raises;
+      * the process is killed again on the way out, so nothing is left running;
+      * the fact is printed to stderr, and deliberately NOT written into the dump: how fast this
+        box reaped a process is a property of the box, not of the engine, and putting it in
+        state.json would make the golden differ run to run (bead oo-jor's rule, same as the
+        measured tick elapsed time).
+    """
+    try:
+        console.close()
+    except subprocess.TimeoutExpired as exc:
+        proc = getattr(console, "_proc", None)
+        if proc is not None:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        sys.stderr.write(
+            "note: the game process did not reap within the console's teardown budget (%s). "
+            "Every measurement in this run completed BEFORE teardown, so the run stands; if you "
+            "see this on every run, the box is overloaded, not the engine.\n" % exc)
+
+
 def assert_system(console, spec):
     got = console.evaluate_int("system.ID")
     if got != int(spec["system_id"]):
@@ -682,7 +720,10 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
 
         console = start_with_retry(lambda: DebugConsole(
             staged, port, seed=seed, output_dir=artifact_dir, host="127.0.0.1", load_save=save))
-        with console:
+        # NOT `with console:`. __exit__ would let a teardown timeout (a property of how fast this
+        # box reaps a killed process) replace a completed run's result with a failure. try/finally
+        # with shutdown() keeps the two apart: a failure INSIDE the block still propagates.
+        try:
             assert_system(console, spec)
 
             # SUPPRESSION FIRST, BEFORE ANY SLOW PROBE - order is load-bearing, not tidiness.
@@ -711,6 +752,8 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             at_rest = not moving_entities(console)
             png, grid = capture_frame(console, artifact_dir)
             state = json.loads(dump_state(console))
+        finally:
+            shutdown(console)
 
         # AFTER the game has exited, so the log is complete and flushed.
         stages, failures, log_bytes = read_load_evidence(artifact_dir)

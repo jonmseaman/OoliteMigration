@@ -249,6 +249,72 @@ def test_startup_retry_is_used_only_on_read_only_startup_probes():
         "probes are read-only and run before the first write" % sorted(callers))
 
 
+# --- teardown is not the run ------------------------------------------------------------------
+
+class _ClosingConsole:
+    def __init__(self, raises=None):
+        self.raises = raises
+        self.closed = 0
+        self.killed = 0
+
+        outer = self
+
+        class _P:
+            def kill(self_inner):
+                outer.killed += 1
+        self._proc = _P()
+
+    def close(self):
+        self.closed += 1
+        if self.raises:
+            raise self.raises
+
+
+def test_shutdown_tolerates_a_reap_timeout_and_kills_the_corpse(capsys):
+    """A killed process the OS has not yet reaped is a property of the box, not of the engine."""
+    import subprocess as sp
+    console = _ClosingConsole(sp.TimeoutExpired(cmd="oolite.exe", timeout=10))
+    trade_cycle.shutdown(console)
+    assert console.killed == 1, "the process must still be killed on the way out"
+    assert "did not reap" in capsys.readouterr().err
+
+
+def test_shutdown_reraises_anything_that_is_not_a_reap_timeout():
+    console = _ClosingConsole(RuntimeError("socket exploded"))
+    with pytest.raises(RuntimeError):
+        trade_cycle.shutdown(console)
+
+
+def test_a_failure_inside_the_run_is_not_masked_by_teardown():
+    """try/finally, not `with console:` - and a failure in the block must still propagate."""
+    import subprocess as sp
+    console = _ClosingConsole(sp.TimeoutExpired(cmd="oolite.exe", timeout=10))
+    with pytest.raises(ValueError, match="the real failure"):
+        try:
+            raise ValueError("the real failure")
+        finally:
+            trade_cycle.shutdown(console)
+    assert console.closed == 1
+
+
+def test_run_does_not_use_the_console_context_manager():
+    """`with console:` would let __exit__'s teardown timeout replace a completed run's result."""
+    import re
+    src = open(os.path.join(HERE, "trade_cycle.py"), encoding="utf-8").read()
+    assert not re.search(r"^\s*with console:", src, re.M), (
+        "the run block must be try/finally with shutdown(), so a teardown timeout cannot turn a "
+        "completed measurement into a failure - nor mask one")
+    assert "shutdown(console)" in src
+
+
+def test_teardown_note_is_not_written_into_the_dump():
+    """How fast the box reaped a process must never reach the golden - it differs run to run."""
+    with open(golden_state(), "r", encoding="utf-8") as handle:
+        blob = handle.read()
+    for token in ("did not reap", "TimeoutExpired", "teardown"):
+        assert token not in blob
+
+
 # --- the evidence checker, as a subprocess, on the stored golden -----------------------------------
 
 def test_evidence_checker_passes_on_the_stored_golden():
