@@ -515,6 +515,37 @@ def self_test():
     check("every LOG_ORDER_ONLY entry cites a source file and a consumer",
           all(".m:" in v and len(v) > 120 for v in LOG_ORDER_ONLY.values()))
 
+    # 9. The VERDICT logic itself must still consult the allow-list. Cases 6-8 exercise
+    #    classify_divergences, which is only the classifier; neutering the `unexplained`
+    #    computation inside sweep() left all of them green while making the sweep excuse
+    #    every untraced channel. Assert on the AST of sweep(), not on its source text: a
+    #    comment or a docstring mentioning LOG_ORDER_ONLY must not be able to satisfy this.
+    import ast
+    import inspect
+    tree = ast.parse(inspect.getsource(sweep))
+    assigns = [
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "unexplained" for t in node.targets)
+    ]
+    check("sweep() still computes `unexplained`", len(assigns) == 1, f"found {len(assigns)}")
+    reads_allowlist = any(
+        isinstance(node, ast.Name) and node.id == "LOG_ORDER_ONLY"
+        for a in assigns for node in ast.walk(a)
+    )
+    check("`unexplained` is derived from LOG_ORDER_ONLY rather than hardcoded",
+          reads_allowlist)
+    # And it must be able to be non-empty: a comprehension over the observed channels.
+    check("`unexplained` filters the observed channels",
+          any(isinstance(node, (ast.GeneratorExp, ast.ListComp, ast.SetComp))
+              for a in assigns for node in ast.walk(a)))
+    raises_on_unexplained = any(
+        isinstance(node, ast.If)
+        and any(isinstance(n, ast.Name) and n.id == "unexplained" for n in ast.walk(node.test))
+        for node in ast.walk(tree)
+    )
+    check("sweep() branches on `unexplained`", raises_on_unexplained)
+
     shutil.rmtree(work, ignore_errors=True)
     if failures:
         print(f"FAILED step=self-test {len(failures)} case(s) failed: {', '.join(failures)}")
