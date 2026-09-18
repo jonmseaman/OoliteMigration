@@ -32,9 +32,40 @@ REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 
 sys.path.insert(0, HERE)
 from golden_diff import POLICY_QUANT_DECIMALS, assert_non_vacuous, load  # noqa: E402
+from check_build_flags import PINNED_O, REQUIRED_FP, check_db  # noqa: E402
 
-REQUIRED_FP = "-ffp-contract=off"
-PINNED_O = "-O2"
+
+def observed_build_flags(build_dir):
+    """What the binary that produced this dump was ACTUALLY compiled with.
+
+    Deliberately NOT the policy constants. Writing the policy values into provenance would make
+    every golden claim compliance by construction, which is precisely the failure the flag pin
+    exists to prevent: a provenance file that says -ffp-contract=off while the binary contracted
+    is worse than no provenance, because it is confidently wrong.
+
+    Returns a dict that always records `verified`, so a golden blessed from a build whose
+    compile_commands.json was unavailable is visibly UNVERIFIED rather than silently assumed
+    compliant.
+    """
+    result = {"policy_fp_contract": REQUIRED_FP, "policy_optimization": PINNED_O,
+              "verified": False, "build_dir": build_dir, "detail": None}
+    if not build_dir:
+        result["detail"] = "no build dir given; flags not verified"
+        return result
+    db_path = os.path.join(build_dir, "compile_commands.json")
+    if not os.path.isfile(db_path):
+        result["detail"] = "no compile_commands.json under %s; flags not verified" % build_dir
+        return result
+    try:
+        db, problems, levels = check_db(db_path)
+    except Exception as exc:
+        result["detail"] = "could not read %s: %s" % (db_path, exc)
+        return result
+    result["translation_units"] = len(db)
+    result["effective_optimization_levels"] = levels
+    result["verified"] = not problems
+    result["detail"] = "compliant" if not problems else "; ".join(problems)
+    return result
 
 
 def detect_platform():
@@ -75,6 +106,10 @@ def main(argv=None):
     parser.add_argument("--scenario", required=True, help="e.g. 001")
     parser.add_argument("--platform", default=None, help="default: detected from this host")
     parser.add_argument("--goldens-root", default=os.path.join(REPO_ROOT, "goldens"))
+    parser.add_argument("--build-dir", default=None,
+                        help="the meson build dir of the binary that PRODUCED this dump; its "
+                             "compile_commands.json is read so provenance records the flags "
+                             "actually used rather than the flags the policy wants")
     parser.add_argument("--note", default="")
     parser.add_argument("--force", action="store_true",
                         help="overwrite an EXISTING golden value. Refused without this flag: "
@@ -105,7 +140,7 @@ def main(argv=None):
         "scenario": args.scenario,
         "platform": plat,
         "quant_decimals": POLICY_QUANT_DECIMALS,
-        "build_flags": {"fp_contract": REQUIRED_FP, "optimization": PINNED_O},
+        "build_flags": observed_build_flags(args.build_dir),
         "compiler": compiler_version(),
         "os": platform_mod.platform(),
         "commit": git("rev-parse", "HEAD"),
@@ -118,6 +153,9 @@ def main(argv=None):
         handle.write("\n")
 
     print("blessed %s (%d bytes) + provenance.json" % (state, len(text) + 1))
+    if not provenance["build_flags"]["verified"]:
+        print("NOTE: build flags for this golden are UNVERIFIED: %s"
+              % provenance["build_flags"]["detail"])
     return 0
 
 

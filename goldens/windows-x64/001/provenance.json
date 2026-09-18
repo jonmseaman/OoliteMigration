@@ -1,12 +1,19 @@
 {
   "build_flags": {
-    "fp_contract": "-ffp-contract=off",
-    "optimization": "-O2"
+    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
+    "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
+    "effective_optimization_levels": {
+      "-O2": 242
+    },
+    "policy_fp_contract": "-ffp-contract=off",
+    "policy_optimization": "-O2",
+    "translation_units": 242,
+    "verified": false
   },
-  "commit": "c46db77ac94e1a6f7bad7906a650ac4aab647c02",
+  "commit": "6e4e6edf9dc6dacbcca99b1fe5e96225af1b6736",
   "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
   "dump_tool": "tests/golden/dump/run_dump.py",
-  "note": "scenario 001 (tests/golden/scenarios/001): paused world, system cleared of non-station ships, 2 police + 2 pirates spawned deterministically at radius 0. Blessed from run A of tests/golden/measure_quantisation.sh; run B was byte-identical.",
+  "note": "scenario 001: paused world, system cleared of non-station ships, 2 police + 2 pirates spawned deterministically at radius 0. Blessed from run A of tests/golden/measure_quantisation.sh; four further runs were byte-identical. NOTE the build_flags block: the shared build that produced this dump PREDATES the -ffp-contract=off pin added by bead oo-ss8, so it is recorded as UNVERIFIED rather than assumed compliant. Re-bless after the next rebuild of the shared app dir.",
   "os": "Windows-11-10.0.26200-SP0",
   "platform": "windows-x64",
   "quant_decimals": 3,

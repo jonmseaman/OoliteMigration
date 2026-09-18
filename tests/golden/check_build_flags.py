@@ -112,13 +112,37 @@ def check_db(path):
 
 
 def configure(source_dir, build_dir):
+    """Configure with meson, VIA A SHELL - deliberately, not with a bare subprocess.
+
+    upstream/oolite/meson.build:5 runs ShellScripts/common/get_version.sh, which refuses to run
+    unless it can identify its caller as meson. On Windows it does that by walking the PARENT
+    PROCESS chain through powershell (get_version.sh:7-20). Launching meson directly from
+    python.exe puts an extra python in that chain and the identification fails, with the guard's
+    telltale EMPTY diagnostic values:
+
+        Parent process is , Bash parent is . This file can only be called by meson or sourced by
+        create_flatpak_fn.sh!
+
+    which meson reports only as "get_version.sh failed with status 1" and reads exactly like a
+    repo defect. MEASURED on this host, same source, same env, back to back: meson from bash
+    rc=0; the identical meson invocation from subprocess.run([...]) rc=1 at get_version.sh.
+    Going through bash restores the chain the script expects.
+
+    MINGW_PREFIX is also required: unset, get_version.sh takes its else branch and runs
+    `ps -p $PPID -o comm=`, and MSYS2's ps has no -o option, so the caller check rejects
+    everything (fleet learning, bead oo-djn).
+    """
     env = dict(os.environ)
-    # mk.sh / get_version.sh branches on MINGW_PREFIX; unset, its fallback uses `ps -o`, which
-    # MSYS2's ps does not have, and every configure is rejected with two EMPTY diagnostic values.
     env.setdefault("MINGW_PREFIX", "/ucrt64")
     env.setdefault("MSYSTEM", "UCRT64")
-    cmd = ["meson", "setup", build_dir, source_dir]
-    proc = subprocess.run(cmd, env=env, capture_output=True, text=True)
+    # -Ddebug=false is what mk.sh passes for the `test` and `deployment` flavours (mk.sh:173-177),
+    # i.e. the flavours a golden is ever produced from. Meson's DEFAULT buildtype sets debug=true,
+    # under which oolite's meson.build appends -O0 after meson's -O2 and every TU really compiles
+    # at -O0 - a genuinely different build, not a labelling quirk. Configuring without it would
+    # check flags on a build nobody blesses goldens from.
+    cmd = 'meson setup "$1" "$2" -Ddebug=false'
+    proc = subprocess.run(["bash", "-c", cmd, "_", build_dir, source_dir],
+                          env=env, capture_output=True, text=True)
     if proc.returncode != 0:
         sys.stderr.write(proc.stdout[-4000:])
         sys.stderr.write(proc.stderr[-4000:])

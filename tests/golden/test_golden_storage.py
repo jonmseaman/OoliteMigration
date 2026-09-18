@@ -228,9 +228,28 @@ def test_stored_golden_001_provenance_is_on_policy():
     assert os.path.isfile(prov_path), prov_path
     prov = json.load(open(prov_path, encoding="utf-8"))
     assert prov["quant_decimals"] == gd.POLICY_QUANT_DECIMALS
-    assert prov["build_flags"]["fp_contract"] == cbf.REQUIRED_FP
-    assert prov["build_flags"]["optimization"] == cbf.PINNED_O
     assert prov["platform"] == "windows-x64"
+    assert prov["build_flags"]["policy_fp_contract"] == cbf.REQUIRED_FP
+    assert prov["build_flags"]["policy_optimization"] == cbf.PINNED_O
+
+
+def test_provenance_records_OBSERVED_flags_not_the_policy_it_wishes_for():
+    """A provenance file that asserts compliance by construction is worse than none.
+
+    The shared build that produced this golden predates the -ffp-contract=off pin, so its
+    build_flags block must say so - `verified: false` with a `detail` naming the missing flag.
+    This test exists so the finding cannot be lost by someone tidying the provenance up, and so
+    that a later rebuild flipping it to verified:true is a deliberate, visible change.
+    """
+    prov = json.load(open(os.path.join(os.path.dirname(GOLDEN_001), "provenance.json"),
+                          encoding="utf-8"))
+    flags = prov["build_flags"]
+    assert "verified" in flags, "provenance does not say whether the flags were verified at all"
+    assert isinstance(flags["detail"], str) and flags["detail"], \
+        "provenance records no detail about the build flags"
+    if not flags["verified"]:
+        assert cbf.REQUIRED_FP in flags["detail"] or "-O" in flags["detail"], \
+            "flags are unverified but the reason does not name a flag: %r" % flags["detail"]
 
 
 def test_the_measurement_limit_is_pinned_not_forgotten():

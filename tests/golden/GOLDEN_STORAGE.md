@@ -230,15 +230,52 @@ PASS: 243/243 translation units carry -ffp-contract=off and compile at the pinne
 Effective -O levels: {'-O2': 243}
 ```
 
-Two anti-vacuity properties in that checker are worth calling out because both were found by
-measurement, not by design:
+Three anti-vacuity properties in that checker are worth calling out, because all three were found
+by running it rather than by designing it:
 
 * **"Effective", i.e. the last `-O` on the line.** Oolite's `meson.build` appends `-O0` after
-  meson's `-O2` when `debug` is true, and every TU in a debug configure carries **both**. A naive
-  "is `-O2` somewhere on the command line" test passes on a build that really compiles at `-O0`.
-  The checker takes the last one.
+  meson's `-O2` when `debug` is true, and every TU in a default configure carries **both** — so it
+  really compiles at `-O0`. A naive "is `-O2` somewhere on the command line" test passes on that
+  build. The checker takes the last one, and configures with `-Ddebug=false`, which is what
+  `mk.sh` passes for the `test` and `deployment` flavours (`mk.sh:173-177`) — the only flavours a
+  golden is ever produced from.
 * **A minimum TU count.** "0 of 0 translation units violate the policy" is the vacuous form of this
   check, so a database with fewer than 100 entries is rejected outright.
+* **Configure through a shell, not a bare `subprocess.run`.** `meson.build:5` runs
+  `ShellScripts/common/get_version.sh`, which identifies its caller by walking the Windows parent
+  process chain. An extra `python.exe` in that chain breaks the identification and the script
+  refuses to run, with its telltale *empty* diagnostic values — surfacing only as
+  `get_version.sh failed with status 1`, which reads exactly like a repo defect. Measured back to
+  back on the same source and env: meson from bash `rc=0`, the identical invocation from
+  `subprocess.run([...])` `rc=1`.
+
+### FINDING: the build that produced the current golden predates this pin
+
+Running the checker against the **shared** build directory that actually produced
+`goldens/windows-x64/001/state.json`:
+
+```
+FAIL: the configured build does not honour the golden flag policy:
+  - 242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m).
+```
+
+That build was configured before this bead added the pin, so **the stored golden was produced by a
+binary that could contract multiply-adds.** This is recorded, not papered over:
+`provenance.json` for that golden carries `"verified": false` with the full reason, because
+`bless_golden.py` writes the **observed** flags read from `compile_commands.json` rather than the
+policy constants. Writing the policy values there would make every golden claim compliance by
+construction — the exact failure the pin exists to prevent.
+
+The correct resolution is to rebuild the shared app dir and re-bless, which is out of this bead's
+scope (a worktree has no build and must not create one). Until then the golden is honest about its
+own provenance, and `test_provenance_records_OBSERVED_flags_not_the_policy_it_wishes_for` keeps the
+finding from being tidied away.
+
+Note also that the dump values themselves are essentially insensitive to this: the scenario is
+paused (`delta_t = 0`) and the dumped positions are copies, so there is almost no float arithmetic
+for contraction to affect — which is consistent with the five runs being byte-identical. That is an
+explanation, not an excuse; the flags still need to be right before a golden is trusted
+cross-platform.
 
 ## Why `golden_diff.py` and not `diff`
 
