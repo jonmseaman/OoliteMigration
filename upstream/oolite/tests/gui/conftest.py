@@ -1343,25 +1343,111 @@ def _lock_held_by(path):
     return None
 
 
+DEFAULT_LOCK_STALE = "600"
+"""Default OO_GUI_LOCK_STALE, kept in lockstep with tools/gui-lock's own default.
+
+MUST STAY BELOW THE DEFAULT ACQUIRE TIMEOUT (900s, OO_GUI_LOCK_TIMEOUT) - bug oo-c7bu. It was
+1800s, twice that timeout, so a lock left by a dead process could never be reclaimed inside one
+acquire and every acquirer burned its full 900s before failing.
+"""
+
+
+def _lock_live_record(path):
+    """The ``livepid=`` record in the lock directory as ``(host, [pid, ...])``, or None.
+
+    See tools/gui-lock's liveness block (bug oo-c7bu). These are the LONG-LIVED owner process's
+    pids - not the short-lived shell that wrote the file - and there is more than one because
+    MSYS and native Windows count pids differently; the holder is alive if ANY of them is.
+    """
+    try:
+        with open(os.path.join(path, "owner"), "r", encoding="utf-8", errors="replace") as fh:
+            for line in fh:
+                if line.startswith("livepid="):
+                    parts = line[len("livepid=") :].strip().split()
+                    pids = [int(p) for p in parts[1:] if p.isdigit()]
+                    if len(parts) >= 2 and pids:
+                        return parts[0], pids
+                    return None
+    except OSError:
+        return None
+    return None
+
+
+def _pid_alive(pid):
+    """Is ``pid`` in this machine's process table? UNKNOWN COUNTS AS ALIVE.
+
+    Every failure mode - an unreadable table, an unexpected exception, a platform we have no
+    reader for - returns True, because "cannot prove dead" must never reclaim a live holder's
+    lock. A false alive costs one age-out; a false dead costs the mutex.
+    """
+    try:
+        rows = _process_table()
+    except Exception:
+        return True
+    if not rows:
+        return True
+    return any(row[0] == pid for row in rows)
+
+
+def _lock_owner_is_dead(path):
+    """True only if the lock's recorded owner is PROVABLY gone from THIS machine.
+
+    Host-scoped on purpose: the record carries a hostname, and a pid on another machine tells
+    us nothing at all about whether that holder is still driving its own desktop.
+    """
+    rec = _lock_live_record(path)
+    if not rec:
+        return False
+    host, pids = rec
+    me = os.environ.get("HOSTNAME") or platform.node()
+    if not host or host != me:
+        return False
+    # Alive if ANY recorded pid is alive: the record names one process in two pid namespaces.
+    return not any(_pid_alive(pid) for pid in pids)
+
+
+def _lock_reclaimable(path, stale):
+    """Is this lock reclaimable - aged out OR owned by a process that is provably gone?
+
+    The liveness half is what makes a crashed holder's lock reclaimable IMMEDIATELY (bug
+    oo-c7bu): waiting out an age window does not make a dead owner any more dead, it just
+    burns the acquirer's whole timeout. The age half remains for holders this host cannot
+    judge (a foreign host, a record with no livepid=).
+
+    A FRESH LOCK IS NEVER CONDEMNED BY LIVENESS. Below OO_GUI_LOCK_LIVENESS_GRACE seconds of
+    age the answer is age-only, however dead the recorded pid looks - see rule 4 in
+    tools/gui-lock. Without it, a lock still inside its own acquire window (mkdir done,
+    livepid= not yet written) or one whose owning process exited right after acquire reads as
+    abandoned while it is legitimately held, and two runs land on the desktop at once.
+    """
+    try:
+        age = time.time() - os.path.getmtime(path)
+    except OSError:
+        return False
+    grace = float(os.environ.get("OO_GUI_LOCK_LIVENESS_GRACE", "15"))
+    if age >= grace and _lock_owner_is_dead(path):
+        return True
+    return age > stale
+
+
 def _lock_reclaim_stale(path, stale):
-    """Atomically reclaim a stale lock directory, returning True only if WE now hold it.
+    """Atomically reclaim a reclaimable lock directory, returning True only if WE now hold it.
 
     This is the same protocol as tools/gui-lock's reclaim_stale(), down to the gate directory
-    name, so the two halves interlock rather than each reclaiming "their own way": a fallback
-    session and a shell session racing the same stale lock still produce exactly one winner.
+    name and the reclaimable() predicate, so the two halves interlock rather than each
+    reclaiming "their own way": a fallback session and a shell session racing the same lock
+    still produce exactly one winner.
 
     The naive "if stale: rmtree; then mkdir" is a TOCTOU - two runs both judge the same
     directory stale and the loser's rmtree deletes the winner's freshly created lock, so both
     end up on the desktop. So we serialise reapers behind a short-lived ``<lock>.reap`` mkdir
-    gate, RE-CHECK the age inside it, retire the stale directory with a single atomic rename,
-    and only drop the gate once the new lock exists.
+    gate, RE-CHECK reclaimability inside it, retire the directory with a single atomic rename,
+    and only drop the gate once the new lock exists. The liveness rule rides that same gate and
+    that same re-check: it changes WHICH locks are reclaimable, never HOW they are reclaimed.
     """
     reap = path + ".reap"
     reap_stale = float(os.environ.get("OO_GUI_LOCK_REAP_STALE", "300"))
-    try:
-        if time.time() - os.path.getmtime(path) <= stale:
-            return False
-    except OSError:
+    if not _lock_reclaimable(path, stale):
         return False
     try:
         os.mkdir(reap)
@@ -1380,11 +1466,9 @@ def _lock_reclaim_stale(path, stale):
         return False
     try:
         if os.path.isdir(path):
-            try:
-                still_stale = time.time() - os.path.getmtime(path) > stale
-            except OSError:
-                still_stale = False
-            if not still_stale:
+            # RE-CHECK inside the gate, re-reading the owner record from disk: the holder we
+            # judged dead or aged-out a moment ago may since have been replaced by a live one.
+            if not _lock_reclaimable(path, stale):
                 return False
             dead = "%s.stale.%d.%d" % (path, os.getpid(), random.randrange(1 << 30))
             try:
@@ -1401,6 +1485,7 @@ def _lock_reclaim_stale(path, stale):
         shutil.rmtree(reap, ignore_errors=True)
 
 
+
 @pytest.fixture(scope="session")
 def desktop_lock():
     """Hold the GUI-tier desktop mutex for the whole session.
@@ -1415,7 +1500,14 @@ def desktop_lock():
     if bash and script:
         # OO_GUI_LOCK_OWNER is ours and is passed to BOTH calls, so release drops the lock this
         # session took and the script refuses it if some other run holds it.
-        env = dict(os.environ, OO_GUI_LOCK_OWNER=me)
+        #
+        # OO_GUI_LOCK_OWNER_PID names THIS pytest process as the one whose life proves the hold
+        # is live (bug oo-c7bu). Without it the script would have to infer a pid, and the bash
+        # it would infer from is a child that exits the moment acquire returns - so the hold
+        # would read as dead to the next acquirer. This session is the long-lived process.
+        env = dict(
+            os.environ, OO_GUI_LOCK_OWNER=me, OO_GUI_LOCK_OWNER_PID=str(os.getpid())
+        )
         held = subprocess.run(
             [bash, script, "acquire", "--timeout", os.environ.get("OO_GUI_LOCK_TIMEOUT", "900")],
             capture_output=True,
@@ -1451,11 +1543,15 @@ def desktop_lock():
             # crashed holder does not wedge the tier for ever here either - but the reclaim is
             # ATOMIC (see _lock_reclaim_stale): an unconditional rmtree here would let two
             # sessions both judge one lock stale and both take the desktop.
-            stale = float(os.environ.get("OO_GUI_LOCK_STALE", "1800"))
+            stale = float(os.environ.get("OO_GUI_LOCK_STALE", DEFAULT_LOCK_STALE))
             got = _lock_reclaim_stale(path, stale)
         if got:
             with open(os.path.join(path, "owner"), "w", encoding="utf-8") as fh:
                 fh.write(f"owner={me}\ninfo=python pid={os.getpid()} {time.strftime('%FT%T%z')}\n")
+                # The liveness record (bug oo-c7bu): this session IS the long-lived holder, so
+                # its own pid is the one whose death makes this lock reclaimable at once.
+                host = os.environ.get("HOSTNAME") or platform.node()
+                fh.write(f"livepid={host} {os.getpid()}\n")
             break
         if time.time() >= deadline:
             pytest.fail(

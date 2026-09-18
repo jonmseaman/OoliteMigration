@@ -71,9 +71,17 @@ held_by() {
 }
 
 # A holder that died without releasing would wedge the tier for ever, so a lock older than
-# OO_GUI_LOCK_STALE seconds is reclaimed. Age, not liveness: the holder may be a process on a
-# different session that this shell cannot see.
-STALE="${OO_GUI_LOCK_STALE:-1800}"
+# OO_GUI_LOCK_STALE seconds is reclaimed.
+#
+# THE DEFAULT MUST STAY BELOW THE DEFAULT ACQUIRE TIMEOUT (bug oo-c7bu). It was 1800s while
+# acquire()'s default timeout was 900s - TWICE the timeout - so a lock left by a process that
+# died could NEVER be reclaimed inside a single acquire: every acquirer waited out its full
+# 900s and then failed. Observed in production as '76 passed, 7 errors in 915.35s', every one
+# of the seven 'could not take the GUI desktop lock: timed out after 900s; held by
+# DESKTOP-DNENHGI:py26916' with BOTH recorded pids already absent from the process table.
+# So: any change to this default, or to acquire()'s, must keep STALE < that timeout, and the
+# invariant is asserted at startup below rather than left to a comment.
+STALE="${OO_GUI_LOCK_STALE:-600}"
 # The reap gate (below). Held for a few syscalls only, so its own stale window is short.
 REAP="$LOCK.reap"
 REAP_STALE="${OO_GUI_LOCK_REAP_STALE:-300}"
@@ -82,6 +90,143 @@ dir_age() {
 	local now
 	now=$(date +%s)
 	printf '%s\n' "$(( now - $(stat -c %Y "$1" 2>/dev/null || echo "$now") ))"
+}
+
+# --- LIVENESS (bug oo-c7bu) ----------------------------------------------------------------
+#
+# Age alone is not enough. The production wedge was a lock whose owner was ALREADY GONE from
+# the process table: nothing about waiting out a window makes that lock any more abandoned
+# than it was one second after the holder died, and the wait is pure fleet time burned. So a
+# lock whose owner is DEMONSTRABLY dead is reclaimed with NO age requirement at all.
+#
+# Three rules keep this from weakening the mutex, and every one of them fails SAFE (to "this
+# holder is alive", i.e. to the old age-only behaviour):
+#
+#   1. HOST-SCOPED. The record carries a hostname. A pid on ANOTHER machine tells us nothing -
+#      pid 1234 is very much alive over there and probably alive here too, belonging to someone
+#      else entirely. A record whose host is not this host is NEVER judged dead.
+#   2. THE LIVENESS PID IS THE *CALLER*, NOT THIS SCRIPT. `info=... pid=$$` is this short-lived
+#      bash, which exits seconds after acquire returns - reading THAT as liveness would declare
+#      every live lock dead and hand the desktop to everyone at once. The recorded `livepid=`
+#      is the long-lived process that owns the hold (the pytest session, the CI step, your
+#      shell), derived in live_id() below.
+#   3. UNKNOWN IS ALIVE. No livepid= line (a lock written by an older checkout, or the
+#      momentary window inside acquire() between mkdir and writing the owner file), an
+#      unparseable one, or a process table we could not read at all - all mean "cannot prove
+#      dead", and a holder that cannot be proven dead is left strictly alone.
+#   4. A FRESH LOCK IS NEVER CONDEMNED BY LIVENESS. A lock younger than OO_GUI_LOCK_LIVENESS_GRACE
+#      seconds is judged on AGE ALONE, however dead its recorded pid looks. This closes a hole
+#      that the first draft of this fix opened and that tools/gui-lock-selftest check 7 caught
+#      immediately: 6 of 8 concurrent trials DOUBLE-ACQUIRED. Two windows produce a
+#      briefly-dead-looking pid on a lock that is legitimately held:
+#        * acquire() is not instantaneous. Between `mkdir $LOCK` and the write of livepid= a
+#          reader sees a lock with no liveness record; a reader that arrives a moment later,
+#          while the recorded pid is still being resolved, can see a pid that is not yet (or no
+#          longer) in the table it samples.
+#        * A hand-off. The winner's owning process may exit moments after acquire returns while
+#          its lock is legitimately still being used by the run it belongs to.
+#      Waiting a few seconds before trusting liveness costs a reclaim that already replaces a
+#      900-second wedge with a sub-minute one. It is the cheapest possible insurance against the
+#      one failure mode that matters: two runs on the desktop at once.
+#
+# This is ADDITIVE to the age rule, never a replacement: an unparseable or foreign-host record
+# still ages out on OO_GUI_LOCK_STALE exactly as before.
+LIVENESS_GRACE="${OO_GUI_LOCK_LIVENESS_GRACE:-15}"
+
+# The pids whose life proves the hold is live, as "HOST PID [PID...]", or empty when we cannot
+# name one. Preference order for the identity, most explicit first:
+#   * $OO_GUI_LOCK_OWNER_PID  - a caller that knows which process the hold belongs to says so.
+#   * the owner identity itself - "<host>:<pid>", "<host>:py<pid>", "<host>:<tag><pid>": the
+#     shape every in-tree caller already writes (conftest.py::_lock_owner, desktop_lock.py).
+#   * $PPID - the process that invoked us. EXCLUDING 1: a bash spawned by a native Windows
+#     python reports PPID=1 (documented at _lock_owner), and "pid 1" is not an identity.
+#
+# BOTH PID NAMESPACES ARE RECORDED, and a holder is alive if ANY recorded pid is alive.
+# The two halves of this lock count pids differently - $$/$PPID here are MSYS pids, while
+# conftest.py's os.getpid() and its CreateToolhelp32Snapshot table are native Windows pids -
+# so a single number is unreadable by one half or the other. Worse, the two are not even
+# stable together: `bash -c '...; sleep 25'` EXECS the final command, which keeps the MSYS pid
+# but gives the process a BRAND-NEW native pid. MEASURED: recording only the native pid made a
+# live, sleeping holder read as dead within seconds and an intruder took its lock. Recording
+# both and requiring only one to be alive fails safe in exactly the right direction: a pid we
+# cannot follow keeps the holder alive, it never condemns it.
+live_id() {
+	local me="$1" host="${HOSTNAME:-$(hostname)}" pid=""
+	if [ -n "${OO_GUI_LOCK_OWNER_PID:-}" ]; then
+		printf '%s %s\n' "$host" "$(pid_aliases "$OO_GUI_LOCK_OWNER_PID")"
+		return 0
+	fi
+	case "$me" in
+		*:*[0-9])
+			# Trailing digit run after the LAST colon, with any tag ("py", "jsapi") between.
+			pid="${me##*:}"
+			pid="$(printf '%s\n' "$pid" | sed -n 's/.*[^0-9]\([0-9][0-9]*\)$/\1/p; s/^\([0-9][0-9]*\)$/\1/p' | head -n 1)"
+			host="${me%%:*}"
+			;;
+	esac
+	if [ -z "$pid" ] && [ "${PPID:-0}" -gt 1 ] 2>/dev/null; then
+		pid="$PPID"
+	fi
+	[ -n "$pid" ] || return 0
+	printf '%s %s\n' "$host" "$(pid_aliases "$pid")"
+}
+
+# Every name this machine knows one process by: the pid as given, plus the MSYS and native pids
+# of whichever `ps -W` row it matches (column 1 is the MSYS pid, column 4 the native one).
+# Space separated, deduplicated, and always including the input even when nothing matches.
+pid_aliases() {
+	local pid="$1" row out
+	case "$pid" in ''|*[!0-9]*) printf '%s\n' "$pid"; return 0 ;; esac
+	out="$pid"
+	if command -v ps >/dev/null 2>&1; then
+		row="$(ps -W 2>/dev/null | awk -v p="$pid" 'NR>1 && ($1==p || $4==p) {print $1" "$4; exit}')"
+		for cand in $row; do
+			case " $out " in *" $cand "*) ;; *) [ -n "$cand" ] && out="$out $cand" ;; esac
+		done
+	fi
+	printf '%s\n' "$out"
+}
+
+
+# The "HOST PID" recorded in the lock, or empty if there is none to read.
+live_record() {
+	[ -f "$OWNER" ] || return 0
+	sed -n 's/^livepid=//p' "$OWNER" 2>/dev/null | head -n 1
+}
+
+# Is this pid in the process table? UNKNOWN COUNTS AS ALIVE (rule 3).
+#
+# On MSYS `ps -W` is the only reader that sees BOTH worlds: column 1 is the MSYS pid and column
+# 4 the native Windows pid, and the identities we are handed come from both ($PPID is an MSYS
+# pid; conftest's os.getpid() is a native one). Matching either column can only ever produce a
+# FALSE ALIVE on a coincidental collision, which costs one age-out - never a false dead, which
+# would cost the mutex.
+proc_alive() {
+	local pid="$1" table
+	case "$pid" in ''|*[!0-9]*) return 0 ;; esac
+	if command -v ps >/dev/null 2>&1; then
+		table="$(ps -W 2>/dev/null || ps 2>/dev/null)" || return 0
+		[ -n "$table" ] || return 0   # unreadable table: cannot prove dead
+		printf '%s\n' "$table" | awk -v p="$pid" 'NR>1 && ($1==p || $4==p){f=1} END{exit f?0:1}'
+		return $?
+	fi
+	kill -0 "$pid" 2>/dev/null && return 0
+	return 1
+}
+
+# Can we PROVE the current holder is gone? Only then is age skipped. A holder is alive if ANY
+# of its recorded pids is alive - see live_id() on why there is more than one.
+owner_is_dead() {
+	local rec host pids p
+	rec="$(live_record)"
+	[ -n "$rec" ] || return 1                       # no record: not provably dead
+	host="${rec%% *}"; pids="${rec#* }"
+	[ -n "$host" ] && [ -n "$pids" ] && [ "$pids" != "$rec" ] || return 1
+	[ "$host" = "${HOSTNAME:-$(hostname)}" ] || return 1   # another machine's pid proves nothing
+	for p in $pids; do
+		proc_alive "$p" && return 1
+	done
+	return 0
 }
 
 # Reclaiming a stale lock must be ATOMIC WITH TAKING IT, or it is not a mutex.
@@ -103,11 +248,34 @@ dir_age() {
 # before the winner's mkdir would rename away a live, legitimately held lock. The gate plus
 # the re-check inside it is what closes that window.
 #
+# THE LIVENESS RULE RIDES THE SAME GATE (bug oo-c7bu). "Reclaimable" is now "aged out OR the
+# owner is provably dead", and that predicate is evaluated in exactly the two places the age
+# test was: once cheaply outside the gate, and once again INSIDE it, re-reading the owner file
+# from disk. That re-read is what keeps the window closed: a late reaper that arrives after
+# someone else reclaimed reads the NEW owner record - fresh mtime, a live pid - and reaps
+# nothing. Skipping the age never skips the gate, the re-check, or the atomic rename.
+#
 # Returns 0 ONLY if this process both retired the stale lock and now holds a new empty $LOCK.
+
+# The single predicate: is the lock at $LOCK reclaimable right now, and why? Echoes a reason.
+reclaimable() {
+	local age="$1"
+	# Liveness may only condemn a lock that has had time to settle (rule 4).
+	if [ "$age" -ge "$LIVENESS_GRACE" ] 2>/dev/null && owner_is_dead; then
+		printf 'owner %s is gone from the process table (lock %ss old)\n' "$(held_by)" "$age"
+		return 0
+	fi
+	if [ "$age" -gt "$STALE" ]; then
+		printf 'stale: %ss old (> %ss), held by %s\n' "$age" "$STALE" "$(held_by)"
+		return 0
+	fi
+	return 1
+}
+
 reclaim_stale() {
 	[ -d "$LOCK" ] || return 1
-	# Cheap unsynchronised pre-check, so the common (not stale) poll costs one stat.
-	[ "$(dir_age "$LOCK")" -gt "$STALE" ] || return 1
+	# Cheap unsynchronised pre-check, so the common (held by a live run) poll stays cheap.
+	reclaimable "$(dir_age "$LOCK")" >/dev/null || return 1
 	if ! mkdir "$REAP" 2>/dev/null; then
 		# A reaper crashed mid-reclaim? Retire the gate itself atomically - whoever wins the
 		# rename does NOT assume it holds the gate, it just lets the next loop re-mkdir it.
@@ -117,11 +285,12 @@ reclaim_stale() {
 		fi
 		return 1
 	fi
-	local rc=1 age dead
+	local rc=1 why dead
 	if [ -d "$LOCK" ]; then
-		age=$(dir_age "$LOCK")
-		if [ "$age" -gt "$STALE" ]; then
-			echo "gui-lock: reclaiming stale lock (${age}s old, held by $(held_by) )" >&2
+		# RE-CHECK inside the gate, re-reading the owner record: the holder we judged dead a
+		# moment ago may since have been replaced by a live one that legitimately owns this.
+		if why="$(reclaimable "$(dir_age "$LOCK")")"; then
+			echo "gui-lock: reclaiming lock ($why)" >&2
 			dead="$LOCK.stale.$$.${RANDOM:-0}"
 			if mv "$LOCK" "$dead" 2>/dev/null; then
 				rm -rf "$dead"
@@ -137,8 +306,9 @@ reclaim_stale() {
 }
 
 acquire() {
-	local timeout="${1:-900}" deadline me
+	local timeout="${1:-900}" deadline me live
 	me="$(owner_id)"
+	live="$(live_id "$me")"
 	deadline=$(( $(date +%s) + timeout ))
 	mkdir -p "$(dirname "$LOCK")"
 	while :; do
@@ -146,12 +316,28 @@ acquire() {
 			{
 				printf 'owner=%s\n' "$me"
 				printf 'info=%s pid=%s %s\n' "${HOSTNAME:-$(hostname)}" "$$" "$(date -Is)"
+				# The liveness record (bug oo-c7bu). "HOST PID" of the LONG-LIVED caller, never
+				# of this script - see live_id(). Written LAST, so a reader that catches the
+				# file half-written sees no livepid= and falls back to age, which is safe.
+				[ -n "$live" ] && printf 'livepid=%s\n' "$live"
 			} >"$OWNER"
 			printf '%s\n' "$LOCK"
 			return 0
 		fi
 		if [ "$(date +%s)" -ge "$deadline" ]; then
 			echo "gui-lock: timed out after ${timeout}s; held by $(held_by)" >&2
+			# NAME THE MISCONFIGURATION THAT CAUSED THE PRODUCTION WEDGE (bug oo-c7bu). A stale
+			# window at or above the acquire timeout means an aged-out reclaim can never fire
+			# inside one acquire: the acquirer waits out its whole timeout and fails, which is
+			# how seven GUI tests burned 915s against a lock whose owner was already dead.
+			# Liveness normally reclaims such a lock instantly and with no age at all, so
+			# reaching here with that ratio means liveness could not judge the holder (a
+			# foreign host, or a record with no livepid=) AND age was unreachable. Diagnosed on
+			# the failure path rather than refused up front, so a deliberately tiny window in a
+			# test is never blocked - only an acquire that has already failed is explained.
+			if [ "$STALE" -ge "$timeout" ] 2>/dev/null; then
+				echo "gui-lock: OO_GUI_LOCK_STALE=${STALE}s is not less than the acquire timeout ${timeout}s, so an abandoned lock could not be reclaimed within this acquire (oo-c7bu); set OO_GUI_LOCK_STALE below the timeout" >&2
+			fi
 			return 1
 		fi
 		sleep 2
@@ -201,7 +387,7 @@ release() {
 # owner file is what updates the directory mtime on some filesystems, so we do not rely on either
 # one alone.
 refresh() {
-	local me holder
+	local me holder live
 	[ -d "$LOCK" ] || {
 		echo "gui-lock: refusing to refresh $LOCK: it is not held" >&2
 		return 3
@@ -211,6 +397,15 @@ refresh() {
 	if [ "$holder" != "$me" ]; then
 		echo "gui-lock: refusing to refresh a lock we do not own (held by ${holder:-none}, we are $me)" >&2
 		return 3
+	fi
+	# Re-assert the liveness record too (bug oo-c7bu), so a hold whose long-lived pid changed
+	# between acquire and now - or one taken by a checkout that did not write livepid= - is
+	# re-pinned to a process that is demonstrably running RIGHT NOW: this one. A refresh is
+	# already ownership-checked, so this cannot be used to claim someone else's hold.
+	live="$(live_id "$me")"
+	if [ -n "$live" ] && [ "$live" != "$(live_record)" ]; then
+		{ grep -v '^livepid=' "$OWNER" 2>/dev/null; printf 'livepid=%s\n' "$live"; } >"$OWNER.tmp.$$" \
+			&& mv "$OWNER.tmp.$$" "$OWNER" 2>/dev/null || rm -f "$OWNER.tmp.$$"
 	fi
 	touch "$OWNER" "$LOCK" 2>/dev/null || return 1
 }
