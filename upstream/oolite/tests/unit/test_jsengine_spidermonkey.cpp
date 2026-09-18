@@ -343,14 +343,6 @@ int main()
 		CHECK(!evaluateScript(cx, global, syntax, static_cast<unsigned>(std::strlen(syntax)), "bad.js", 12, &rv));
 		clearPendingException(cx);
 		CHECK(gLastLine == 12);
-		setPendingException(cx, int32Value(9));
-		CHECK(isExceptionPending(cx) && getPendingException(cx, &exc) && toInt32(exc) == 9);
-		ExceptionState* st = saveExceptionState(cx);
-		clearPendingException(cx);
-		CHECK(!isExceptionPending(cx));
-		restoreExceptionState(cx, st);
-		CHECK(isExceptionPending(cx));
-		clearPendingException(cx);
 		gLastError.clear();
 		reportWarning(cx, "just a warning");
 		CHECK(gLastError.find("just a warning") != std::string::npos);

@@ -46,9 +46,12 @@ step "2/5 header is engine-neutral"
 if grep -nE '^[[:space:]]*#[[:space:]]*include[[:space:]]*[<"](js|mozjs|nspr|pr)' "$hdr"; then
 	fail "the façade header includes an engine header"
 fi
-# Preprocess, keep only the lines that came from the header itself, and look for engine names.
-"$CXX" -std=c++20 -E -x c++ "$hdr" \
+# Preprocess (through a wrapper, so #pragma once is not "in the main file"), keep only the lines
+# that came from the header itself, and look for engine names.
+printf '#include "ooscript/JSEngine.hpp"\n' > "$work/pp.cpp"
+"$CXX" -std=c++20 -I"$oo/src/Core/Scripting" -E "$work/pp.cpp" \
 	| awk -v h="$(basename "$hdr")" '/^# [0-9]+ "/ { keep = index($3, h) > 0; next } keep { print }' > "$work/hdr.i"
+[ -s "$work/hdr.i" ] || fail "preprocessing produced no lines from $(basename "$hdr"); the engine-name scan would be vacuous"
 if grep -nE '\bJS_[A-Za-z]+[[:space:]]*\(|\bjsval\b|\bjsid\b|\bJSContext\b|\bJSObject\b|\bJSString\b|\bJSClass\b|\bJSBool\b' "$work/hdr.i"; then
 	fail "the façade header's code names engine types or functions"
 fi
