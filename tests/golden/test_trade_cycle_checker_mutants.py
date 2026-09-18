@@ -73,6 +73,22 @@ PRESENT = [os.path.isfile(CHECKER), os.path.isfile(SCRIPT),
            SPEC_PATH is not None, GOLDEN_PATH is not None]
 
 
+@pytest.fixture(autouse=True)
+def _requires_scenario_004(request):
+    """Skip every arm except the half-landed guard when scenario 004 is not in this tree.
+
+    A module-level `pytestmark` would silence the guard too, and the guard is the one test that
+    MUST run on every branch: it is what refuses the halfway state in which these arms quietly
+    stop running.
+    """
+    if request.node.get_closest_marker("runs_without_scenario_004"):
+        return
+    if not all(PRESENT):
+        pytest.skip("scenario 004 (checker=%r script=%r spec=%r golden=%r) is not in this tree; "
+                    "its artefacts land with bead oo-zv2" % tuple(PRESENT))
+
+
+@pytest.mark.runs_without_scenario_004
 def test_the_scenario_004_files_are_either_all_present_or_all_absent():
     """A PARTIAL landing is the dangerous state: with the checker present but its golden missing
     every mutant arm below would skip, and the suite would report green while testing nothing."""
@@ -82,24 +98,22 @@ def test_the_scenario_004_files_are_either_all_present_or_all_absent():
         "cannot run is a checker nobody validates." % tuple(PRESENT))
 
 
-pytestmark = pytest.mark.skipif(
-    not all(PRESENT),
-    reason="scenario 004 (checker=%r script=%r spec=%r golden=%r) is not in this tree; its "
-           "artefacts land with bead oo-zv2" % tuple(PRESENT))
-
-
 # ------------------------------------------------------------------------------------------
 # helpers
 # ------------------------------------------------------------------------------------------
 
 @pytest.fixture(scope="module")
 def golden():
+    if GOLDEN_PATH is None:
+        pytest.skip("no scenario 004 golden in this tree")
     with open(GOLDEN_PATH, "r", encoding="utf-8") as handle:
         return json.load(handle)
 
 
 @pytest.fixture(scope="module")
 def spec():
+    if SPEC_PATH is None:
+        pytest.skip("no scenario 004 spec.json in this tree")
     with open(SPEC_PATH, "r", encoding="utf-8") as handle:
         return json.load(handle)
 
