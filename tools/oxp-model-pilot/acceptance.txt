@@ -1,0 +1,6 @@
+node tools/oxp-model-pilot/verify-audit.js
+node tools/oxp-model-pilot/sandbox-probe.js
+bash -c 'node tools/oxp-model-pilot/sandbox.js --mode constant --no-net --tag accept --out "${LOCALAPPDATA:-$HOME}/Temp/oxp-model-pilot/accept-constant.jsonl" >/dev/null && node tools/oxp-model-pilot/score.js --verdicts "${LOCALAPPDATA:-$HOME}/Temp/oxp-model-pilot/accept-constant.jsonl" --label "constant-answer stub"; test $? -eq 1 && echo "VACUITY GUARD OK: the constant-answer classifier was rejected"'
+node tools/oxp-model-pilot/score.js --verdicts tools/oxp-model-pilot/data/verdicts-deepseek.jsonl --label "deepseek-r1-8b local" --min-control-recall 0.5 --min-agreement 0.6
+node tools/oxp-model-pilot/verify-report.js
+bash -c 'p=$(node tools/oxp-model-pilot/server-probe.js); echo "$p"; case "$p" in "SERVER ABSENT"*) echo "SKIP: live-model line skipped, no local inference server"; exit 0;; esac; node tools/oxp-model-pilot/sandbox.js --mode model --tag accept-live --out "${LOCALAPPDATA:-$HOME}/Temp/oxp-model-pilot/accept-live.jsonl" && node tools/oxp-model-pilot/score.js --verdicts "${LOCALAPPDATA:-$HOME}/Temp/oxp-model-pilot/accept-live.jsonl" --label "live local model" --min-control-recall 0 --min-agreement 0.6'
