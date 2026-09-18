@@ -1,0 +1,4408 @@
+{
+  "classes": {
+    "<global>": {
+      "method_count": 19,
+      "methods": {
+        "autoAIForRole": {
+          "arity": 1,
+          "native": "GlobalAutoAIForRole"
+        },
+        "clearExtraGuiScreenKeys": {
+          "arity": 2,
+          "native": "GlobalClearExtraGuiScreenKeys"
+        },
+        "displayNameForCommodity": {
+          "arity": 1,
+          "native": "GlobalDisplayNameForCommodity"
+        },
+        "expandDescription": {
+          "arity": 1,
+          "native": "GlobalExpandDescription"
+        },
+        "expandMissionText": {
+          "arity": 1,
+          "native": "GlobalExpandMissionText"
+        },
+        "getGuiColorSettingForKey": {
+          "arity": 1,
+          "native": "GlobalGetGuiColorSettingForKey"
+        },
+        "getScreenBackgroundForKey": {
+          "arity": 1,
+          "native": "GlobalGetScreenBackgroundForKey"
+        },
+        "keyBindingDescription": {
+          "arity": 1,
+          "native": "GlobalKeyBindingDescription"
+        },
+        "log": {
+          "arity": 1,
+          "native": "GlobalLog"
+        },
+        "pauseGame": {
+          "arity": 0,
+          "native": "GlobalPauseGame"
+        },
+        "quitGame": {
+          "arity": 0,
+          "native": "GlobalQuitGame"
+        },
+        "randomInhabitantsDescription": {
+          "arity": 1,
+          "native": "GlobalRandomInhabitantsDescription"
+        },
+        "randomName": {
+          "arity": 0,
+          "native": "GlobalRandomName"
+        },
+        "setExtraGuiScreenKeys": {
+          "arity": 2,
+          "native": "GlobalSetExtraGuiScreenKeys"
+        },
+        "setGuiColorSettingForKey": {
+          "arity": 2,
+          "native": "GlobalSetGuiColorSettingForKey"
+        },
+        "setScreenBackground": {
+          "arity": 1,
+          "native": "GlobalSetScreenBackground"
+        },
+        "setScreenBackgroundForKey": {
+          "arity": 2,
+          "native": "GlobalSetScreenBackgroundForKey"
+        },
+        "setScreenOverlay": {
+          "arity": 1,
+          "native": "GlobalSetScreenOverlay"
+        },
+        "takeSnapShot": {
+          "arity": 1,
+          "native": "GlobalTakeSnapShot"
+        }
+      },
+      "properties": {
+        "galaxyNumber": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kGlobal_galaxyNumber"
+        },
+        "guiScreen": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kGlobal_guiScreen"
+        },
+        "timeAccelerationFactor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kGlobal_timeAccelerationFactor"
+        }
+      },
+      "property_count": 3,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSGlobal.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Clock": {
+      "method_count": 3,
+      "methods": {
+        "addSeconds": {
+          "arity": 1,
+          "native": "ClockAddSeconds"
+        },
+        "clockStringForTime": {
+          "arity": 1,
+          "native": "ClockClockStringForTime"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "JSClockToString"
+        }
+      },
+      "properties": {
+        "absoluteSeconds": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_absoluteSeconds"
+        },
+        "adjustedSeconds": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_adjustedSeconds"
+        },
+        "clockString": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_clockString"
+        },
+        "days": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_days"
+        },
+        "daysComponent": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_daysComponent"
+        },
+        "hours": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_hours"
+        },
+        "hoursComponent": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_hoursComponent"
+        },
+        "isAdjusting": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_isAdjusting"
+        },
+        "legacy_scriptTimer": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_legacy_scriptTimer"
+        },
+        "minutes": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_minutes"
+        },
+        "minutesComponent": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_minutesComponent"
+        },
+        "seconds": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_seconds"
+        },
+        "secondsComponent": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kClock_secondsComponent"
+        }
+      },
+      "property_count": 13,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSClock.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Console": {
+      "method_count": 17,
+      "methods": {
+        "__setUpCallObjC": {
+          "arity": 1,
+          "native": "ConsoleSetUpCallObjC"
+        },
+        "clearConsole": {
+          "arity": 0,
+          "native": "ConsoleClearConsole"
+        },
+        "consoleMessage": {
+          "arity": 2,
+          "native": "ConsoleConsoleMessage"
+        },
+        "displayMessagesInClass": {
+          "arity": 1,
+          "native": "ConsoleDisplayMessagesInClass"
+        },
+        "dumpHeap": {
+          "arity": 0,
+          "native": "ConsoleDumpHeap"
+        },
+        "dumpNamedRoots": {
+          "arity": 0,
+          "native": "ConsoleDumpNamedRoots"
+        },
+        "garbageCollect": {
+          "arity": 0,
+          "native": "ConsoleGarbageCollect"
+        },
+        "getProfile": {
+          "arity": 1,
+          "native": "ConsoleGetProfile"
+        },
+        "inspectEntity": {
+          "arity": 1,
+          "native": "ConsoleInspectEntity"
+        },
+        "isExecutableJavaScript": {
+          "arity": 2,
+          "native": "ConsoleIsExecutableJavaScript"
+        },
+        "profile": {
+          "arity": 1,
+          "native": "ConsoleProfile"
+        },
+        "scriptStack": {
+          "arity": 0,
+          "native": "ConsoleScriptStack"
+        },
+        "setDisplayMessagesInClass": {
+          "arity": 2,
+          "native": "ConsoleSetDisplayMessagesInClass"
+        },
+        "trace": {
+          "arity": 1,
+          "native": "ConsoleTrace"
+        },
+        "writeJSMemoryStats": {
+          "arity": 0,
+          "native": "ConsoleWriteJSMemoryStats"
+        },
+        "writeLogMarker": {
+          "arity": 0,
+          "native": "ConsoleWriteLogMarker"
+        },
+        "writeMemoryStats": {
+          "arity": 0,
+          "native": "ConsoleWriteMemoryStats"
+        }
+      },
+      "properties": {
+        "__dumpStackForErrors": {
+          "access": "readwrite",
+          "enumerable": false,
+          "flags": "OOJS_PROP_HIDDEN_READWRITE_CB",
+          "id": "kConsole_dumpStackForErrors"
+        },
+        "__dumpStackForWarnings": {
+          "access": "readwrite",
+          "enumerable": false,
+          "flags": "OOJS_PROP_HIDDEN_READWRITE_CB",
+          "id": "kConsole_dumpStackForWarnings"
+        },
+        "__showErrorLocations": {
+          "access": "readwrite",
+          "enumerable": false,
+          "flags": "OOJS_PROP_HIDDEN_READWRITE_CB",
+          "id": "kConsole_showErrorLocations"
+        },
+        "debugFlags": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kConsole_debugFlags"
+        },
+        "detailLevel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kConsole_detailLevel"
+        },
+        "displayFPS": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kConsole_displayFPS"
+        },
+        "glFixedFunctionTextureUnitCount": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kConsole_glFixedFunctionTextureUnitCount"
+        },
+        "glFragmentShaderTextureUnitCount": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kConsole_glFragmentShaderTextureUnitCount"
+        },
+        "glRendererString": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kConsole_glRendererString"
+        },
+        "glVendorString": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kConsole_glVendorString"
+        },
+        "ignoreDroppedPackets": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kConsole_ignoreDroppedPackets"
+        },
+        "maximumDetailLevel": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kConsole_maximumDetailLevel"
+        },
+        "pedanticMode": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kConsole_pedanticMode"
+        },
+        "platformDescription": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kConsole_platformDescription"
+        }
+      },
+      "property_count": 14,
+      "source": "upstream/oolite/src/Core/Debug/OOJSConsole.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "ConsoleSettings": {
+      "method_count": 0,
+      "methods": {},
+      "properties": {},
+      "property_count": 0,
+      "source": "upstream/oolite/src/Core/Debug/OOJSConsole.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Dock": {
+      "inherits": "Ship",
+      "method_count": 1,
+      "methods": {
+        "isQueued": {
+          "arity": 1,
+          "native": "DockIsQueued"
+        }
+      },
+      "properties": {
+        "allowsDocking": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kDock_allowsDocking"
+        },
+        "allowsLaunching": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kDock_allowsLaunching"
+        },
+        "disallowedDockingCollides": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kDock_disallowedDockingCollides"
+        },
+        "dockingQueueLength": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kDock_dockingQueueLength"
+        },
+        "launchingQueueLength": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kDock_launchingQueueLength"
+        }
+      },
+      "property_count": 5,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSDock.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Entity": {
+      "method_count": 2,
+      "methods": {
+        "dumpState": {
+          "arity": 0,
+          "native": "EntityDumpState"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "OOJSObjectWrapperToString"
+        }
+      },
+      "properties": {
+        "collisionRadius": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_collisionRadius"
+        },
+        "distanceTravelled": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_distanceTravelled"
+        },
+        "energy": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kEntity_energy"
+        },
+        "heading": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_heading"
+        },
+        "isDock": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isDock"
+        },
+        "isInSpace": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isInSpace"
+        },
+        "isPlanet": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isPlanet"
+        },
+        "isPlayer": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isPlayer"
+        },
+        "isShip": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isShip"
+        },
+        "isStation": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isStation"
+        },
+        "isSubEntity": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isSubEntity"
+        },
+        "isSun": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isSun"
+        },
+        "isSunlit": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isSunlit"
+        },
+        "isValid": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isValid"
+        },
+        "isVisible": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isVisible"
+        },
+        "isVisualEffect": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isVisualEffect"
+        },
+        "isWormhole": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_isWormhole"
+        },
+        "mass": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_mass"
+        },
+        "maxEnergy": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kEntity_maxEnergy"
+        },
+        "orientation": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kEntity_orientation"
+        },
+        "owner": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_owner"
+        },
+        "position": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kEntity_position"
+        },
+        "scanClass": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kEntity_scanClass"
+        },
+        "spawnTime": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_spawnTime"
+        },
+        "status": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEntity_status"
+        }
+      },
+      "property_count": 25,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSEntity.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "EquipmentInfo": {
+      "method_count": 1,
+      "methods": {
+        "toString": {
+          "arity": 0,
+          "native": "OOJSObjectWrapperToString"
+        }
+      },
+      "properties": {
+        "calculatedPrice": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_calculatedPrice"
+        },
+        "canBeDamaged": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_canBeDamaged"
+        },
+        "canCarryMultiple": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_canCarryMultiple"
+        },
+        "damageProbability": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_damageProbability"
+        },
+        "defaultActivateKey": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_defaultActivateKey"
+        },
+        "defaultModeKey": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_defaultModeKey"
+        },
+        "description": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_description"
+        },
+        "displayColor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kEquipmentInfo_displayColor"
+        },
+        "effectiveTechLevel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kEquipmentInfo_effectiveTechLevel"
+        },
+        "equipmentKey": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_equipmentKey"
+        },
+        "fastAffinityDefensive": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_fastAffinityDefensive"
+        },
+        "fastAffinityOffensive": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_fastAffinityOffensive"
+        },
+        "incompatibleEquipment": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_incompatibleEquipment"
+        },
+        "installationTime": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_installationTime"
+        },
+        "isAvailableToAll": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_isAvailableToAll"
+        },
+        "isAvailableToNPCs": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_isAvailableToNPCs"
+        },
+        "isAvailableToPlayer": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_isAvailableToPlayer"
+        },
+        "isExternalStore": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_isExternalStore"
+        },
+        "isPortableBetweenShips": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_isPortableBetweenShips"
+        },
+        "isVisible": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_isVisible"
+        },
+        "name": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_name"
+        },
+        "price": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_price"
+        },
+        "provides": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_provides"
+        },
+        "repairTime": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_repairTime"
+        },
+        "requiredCargoSpace": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiredCargoSpace"
+        },
+        "requiresAnyEquipment": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresAnyEquipment"
+        },
+        "requiresCleanLegalRecord": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresCleanLegalRecord"
+        },
+        "requiresEmptyPylon": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresEmptyPylon"
+        },
+        "requiresEquipment": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresEquipment"
+        },
+        "requiresFreePassengerBerth": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresFreePassengerBerth"
+        },
+        "requiresFullFuel": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresFullFuel"
+        },
+        "requiresMountedPylon": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresMountedPylon"
+        },
+        "requiresNonCleanLegalRecord": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresNonCleanLegalRecord"
+        },
+        "requiresNonFullFuel": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_requiresNonFullFuel"
+        },
+        "scriptInfo": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_scriptInfo"
+        },
+        "scriptName": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_scriptName"
+        },
+        "techLevel": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_techLevel"
+        },
+        "weaponInfo": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kEquipmentInfo_weaponInfo"
+        }
+      },
+      "property_count": 38,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSEquipmentInfo.m",
+      "static_methods": {
+        "infoForKey": {
+          "arity": 0,
+          "native": "EquipmentInfoStaticInfoForKey"
+        }
+      },
+      "static_properties": {}
+    },
+    "ExhaustPlume": {
+      "inherits": "Entity",
+      "method_count": 1,
+      "methods": {
+        "remove": {
+          "arity": 0,
+          "native": "ExhaustPlumeRemove"
+        }
+      },
+      "properties": {
+        "size": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kExhaustPlume_size"
+        }
+      },
+      "property_count": 1,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSExhaustPlume.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Flasher": {
+      "inherits": "Entity",
+      "method_count": 1,
+      "methods": {
+        "remove": {
+          "arity": 0,
+          "native": "FlasherRemove"
+        }
+      },
+      "properties": {
+        "active": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kFlasher_active"
+        },
+        "color": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kFlasher_color"
+        },
+        "fraction": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kFlasher_fraction"
+        },
+        "frequency": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kFlasher_frequency"
+        },
+        "phase": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kFlasher_phase"
+        },
+        "size": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kFlasher_size"
+        }
+      },
+      "property_count": 6,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSFlasher.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Manifest": {
+      "method_count": 4,
+      "methods": {
+        "comment": {
+          "arity": 1,
+          "native": "ManifestComment"
+        },
+        "setComment": {
+          "arity": 2,
+          "native": "ManifestSetComment"
+        },
+        "setShortComment": {
+          "arity": 2,
+          "native": "ManifestSetShortComment"
+        },
+        "shortComment": {
+          "arity": 1,
+          "native": "ManifestShortComment"
+        }
+      },
+      "properties": {
+        "list": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kManifest_list"
+        }
+      },
+      "property_count": 1,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSManifest.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Mission": {
+      "method_count": 7,
+      "methods": {
+        "addMessageText": {
+          "arity": 1,
+          "native": "MissionAddMessageText"
+        },
+        "markSystem": {
+          "arity": 1,
+          "native": "MissionMarkSystem"
+        },
+        "runScreen": {
+          "arity": 1,
+          "native": "MissionRunScreen"
+        },
+        "runShipLibrary": {
+          "arity": 0,
+          "native": "MissionRunShipLibrary"
+        },
+        "setInstructions": {
+          "arity": 1,
+          "native": "MissionSetInstructions"
+        },
+        "setInstructionsKey": {
+          "arity": 1,
+          "native": "MissionSetInstructionsKey"
+        },
+        "unmarkSystem": {
+          "arity": 1,
+          "native": "MissionUnmarkSystem"
+        }
+      },
+      "properties": {
+        "exitScreen": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kMission_exitScreen"
+        },
+        "markedSystems": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kMission_markedSystems"
+        },
+        "screenID": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kMission_screenID"
+        }
+      },
+      "property_count": 3,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSMission.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Oolite": {
+      "method_count": 1,
+      "methods": {
+        "compareVersion": {
+          "arity": 1,
+          "native": "OoliteCompareVersion"
+        }
+      },
+      "properties": {
+        "colorSaturation": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kOolite_colorSaturation"
+        },
+        "gameSettings": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kOolite_gameSettings"
+        },
+        "hdrToneMapper": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kOolite_hdrToneMapper"
+        },
+        "jsVersion": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kOolite_jsVersion"
+        },
+        "jsVersionString": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kOolite_jsVersionString"
+        },
+        "postFX": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kOolite_postFX"
+        },
+        "resourcePaths": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kOolite_resourcePaths"
+        },
+        "sdrToneMapper": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kOolite_sdrToneMapper"
+        },
+        "timeAccelerationFactor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kOolite_timeAccelerationFactor"
+        },
+        "version": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kOolite_version"
+        },
+        "versionString": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kOolite_versionString"
+        }
+      },
+      "property_count": 11,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSOolite.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Planet": {
+      "inherits": "Entity",
+      "method_count": 0,
+      "methods": {},
+      "properties": {
+        "airColor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_airColor"
+        },
+        "airColorMixRatio": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_airColorMixRatio"
+        },
+        "airDensity": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_airDensity"
+        },
+        "hasAtmosphere": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlanet_hasAtmosphere"
+        },
+        "illuminationColor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_illuminationColor"
+        },
+        "isMainPlanet": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlanet_isMainPlanet"
+        },
+        "name": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_name"
+        },
+        "orientation": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_orientation"
+        },
+        "radius": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlanet_radius"
+        },
+        "rotationalVelocity": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_rotationalVelocity"
+        },
+        "terminatorThresholdVector": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_terminatorThresholdVector"
+        },
+        "texture": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlanet_texture"
+        }
+      },
+      "property_count": 12,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSPlanet.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Player": {
+      "method_count": 15,
+      "methods": {
+        "addMessageToArrivalReport": {
+          "arity": 1,
+          "native": "PlayerAddMessageToArrivalReport"
+        },
+        "audioMessage": {
+          "arity": 1,
+          "native": "PlayerAudioMessage"
+        },
+        "commsMessage": {
+          "arity": 1,
+          "native": "PlayerCommsMessage"
+        },
+        "consoleMessage": {
+          "arity": 1,
+          "native": "PlayerConsoleMessage"
+        },
+        "decreaseContractReputation": {
+          "arity": 0,
+          "native": "PlayerDecreaseContractReputation"
+        },
+        "decreaseParcelReputation": {
+          "arity": 0,
+          "native": "PlayerDecreaseParcelReputation"
+        },
+        "decreasePassengerReputation": {
+          "arity": 0,
+          "native": "PlayerDecreasePassengerReputation"
+        },
+        "endScenario": {
+          "arity": 1,
+          "native": "PlayerEndScenario"
+        },
+        "increaseContractReputation": {
+          "arity": 0,
+          "native": "PlayerIncreaseContractReputation"
+        },
+        "increaseParcelReputation": {
+          "arity": 0,
+          "native": "PlayerIncreaseParcelReputation"
+        },
+        "increasePassengerReputation": {
+          "arity": 0,
+          "native": "PlayerIncreasePassengerReputation"
+        },
+        "replaceShip": {
+          "arity": 1,
+          "native": "PlayerReplaceShip"
+        },
+        "setEscapePodDestination": {
+          "arity": 1,
+          "native": "PlayerSetEscapePodDestination"
+        },
+        "setPlayerRole": {
+          "arity": 1,
+          "native": "PlayerSetPlayerRole"
+        },
+        "stopAudioMessage": {
+          "arity": 0,
+          "native": "PlayerStopAudioMessage"
+        }
+      },
+      "properties": {
+        "alertAltitude": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_alertAltitude"
+        },
+        "alertCondition": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_alertCondition"
+        },
+        "alertEnergy": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_alertEnergy"
+        },
+        "alertHostiles": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_alertHostiles"
+        },
+        "alertMassLocked": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_alertMassLocked"
+        },
+        "alertTemperature": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_alertTemperature"
+        },
+        "bounty": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayer_bounty"
+        },
+        "contractReputation": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_contractReputation"
+        },
+        "contractReputationPrecise": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_contractReputationPrecise"
+        },
+        "credits": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayer_credits"
+        },
+        "dockingClearanceStatus": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_dockingClearanceStatus"
+        },
+        "escapePodRescueTime": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayer_escapePodRescueTime"
+        },
+        "legalStatus": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_legalStatus"
+        },
+        "name": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayer_name"
+        },
+        "parcelReputation": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_parcelReputation"
+        },
+        "parcelReputationPrecise": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_parcelReputationPrecise"
+        },
+        "passengerReputation": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_passengerReputation"
+        },
+        "passengerReputationPrecise": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_passengerReputationPrecise"
+        },
+        "rank": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_rank"
+        },
+        "roleWeights": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_roleWeights"
+        },
+        "score": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayer_score"
+        },
+        "trumbleCount": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayer_trumbleCount"
+        }
+      },
+      "property_count": 22,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSPlayer.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "PlayerShip": {
+      "inherits": "Ship",
+      "method_count": 27,
+      "methods": {
+        "addParcel": {
+          "arity": 0,
+          "native": "PlayerShipAddParcel"
+        },
+        "addPassenger": {
+          "arity": 0,
+          "native": "PlayerShipAddPassenger"
+        },
+        "awardContract": {
+          "arity": 0,
+          "native": "PlayerShipAwardContract"
+        },
+        "awardEquipmentToCurrentPylon": {
+          "arity": 1,
+          "native": "PlayerShipAwardEquipmentToCurrentPylon"
+        },
+        "beginGalacticHyperspaceCountdown": {
+          "arity": 1,
+          "native": "PlayerShipBeginGalacticHyperspaceCountdown"
+        },
+        "beginHyperspaceCountdown": {
+          "arity": 0,
+          "native": "PlayerShipBeginHyperspaceCountdown"
+        },
+        "cancelDockingRequest": {
+          "arity": 1,
+          "native": "PlayerShipCancelDockingRequest"
+        },
+        "cancelHyperspaceCountdown": {
+          "arity": 0,
+          "native": "PlayerShipCancelHyperspaceCountdown"
+        },
+        "disengageAutopilot": {
+          "arity": 0,
+          "native": "PlayerShipDisengageAutopilot"
+        },
+        "engageAutopilotToStation": {
+          "arity": 1,
+          "native": "PlayerShipEngageAutopilotToStation"
+        },
+        "hideHUDSelector": {
+          "arity": 1,
+          "native": "PlayerShipHideHUDSelector"
+        },
+        "launch": {
+          "arity": 0,
+          "native": "PlayerShipLaunch"
+        },
+        "removeAllCargo": {
+          "arity": 0,
+          "native": "PlayerShipRemoveAllCargo"
+        },
+        "removeContract": {
+          "arity": 2,
+          "native": "PlayerShipRemoveContract"
+        },
+        "removeParcel": {
+          "arity": 1,
+          "native": "PlayerShipRemoveParcel"
+        },
+        "removePassenger": {
+          "arity": 1,
+          "native": "PlayerShipRemovePassenger"
+        },
+        "requestDockingClearance": {
+          "arity": 1,
+          "native": "PlayerShipRequestDockingClearance"
+        },
+        "resetCustomView": {
+          "arity": 0,
+          "native": "PlayerShipResetCustomView"
+        },
+        "resetScannerZoom": {
+          "arity": 0,
+          "native": "PlayerShipResetScannerZoom"
+        },
+        "setCustomHUDDial": {
+          "arity": 2,
+          "native": "PlayerShipSetCustomHUDDial"
+        },
+        "setCustomView": {
+          "arity": 2,
+          "native": "PlayerShipSetCustomView"
+        },
+        "setMultiFunctionDisplay": {
+          "arity": 1,
+          "native": "PlayerShipSetMultiFunctionDisplay"
+        },
+        "setMultiFunctionText": {
+          "arity": 1,
+          "native": "PlayerShipSetMultiFunctionText"
+        },
+        "setPrimedEquipment": {
+          "arity": 1,
+          "native": "PlayerShipSetPrimedEquipment"
+        },
+        "showHUDSelector": {
+          "arity": 1,
+          "native": "PlayerShipShowHUDSelector"
+        },
+        "takeInternalDamage": {
+          "arity": 0,
+          "native": "PlayerShipTakeInternalDamage"
+        },
+        "useSpecialCargo": {
+          "arity": 1,
+          "native": "PlayerShipUseSpecialCargo"
+        }
+      },
+      "properties": {
+        "activeMissile": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_activeMissile"
+        },
+        "aftShield": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_aftShield"
+        },
+        "aftShieldRechargeRate": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_aftShieldRechargeRate"
+        },
+        "chartHighlightMode": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_chartHightlightMode"
+        },
+        "compassMode": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_compassMode"
+        },
+        "compassTarget": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_compassTarget"
+        },
+        "compassType": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_compassType"
+        },
+        "crosshairs": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_crosshairs"
+        },
+        "currentWeapon": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_currentWeapon"
+        },
+        "cursorCoordinates": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_cursorCoordinates"
+        },
+        "cursorCoordinatesInLY": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_cursorCoordinatesInLY"
+        },
+        "docked": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_docked"
+        },
+        "dockedStation": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_dockedStation"
+        },
+        "fastEquipmentA": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_fastEquipmentA"
+        },
+        "fastEquipmentB": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_fastEquipmentB"
+        },
+        "forwardShield": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_forwardShield"
+        },
+        "forwardShieldRechargeRate": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_forwardShieldRechargeRate"
+        },
+        "fuelLeakRate": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_fuelLeakRate"
+        },
+        "galacticHyperspaceBehaviour": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_galacticHyperspaceBehaviour"
+        },
+        "galacticHyperspaceFixedCoords": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_galacticHyperspaceFixedCoords"
+        },
+        "galacticHyperspaceFixedCoordsInLY": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_galacticHyperspaceFixedCoordsInLY"
+        },
+        "galaxyCoordinates": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_galaxyCoordinates"
+        },
+        "galaxyCoordinatesInLY": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_galaxyCoordinatesInLY"
+        },
+        "hud": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_hud"
+        },
+        "hudAllowsBigGui": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_hudAllowsBigGui"
+        },
+        "hudHidden": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_hudHidden"
+        },
+        "infoSystem": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_infoSystem"
+        },
+        "injectorsEngaged": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_injectorsEngaged"
+        },
+        "massLockable": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_massLockable"
+        },
+        "maxAftShield": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_maxAftShield"
+        },
+        "maxForwardShield": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_maxForwardShield"
+        },
+        "messageGuiTextColor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_messageGuiTextColor"
+        },
+        "messageGuiTextCommsColor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_messageGuiTextCommsColor"
+        },
+        "missilesOnline": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_missilesOnline"
+        },
+        "multiFunctionDisplayList": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_multiFunctionDisplayList"
+        },
+        "multiFunctionDisplays": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_multiFunctionDisplays"
+        },
+        "nextSystem": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_nextSystem"
+        },
+        "pitch": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_pitch"
+        },
+        "previousSystem": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_previousSystem"
+        },
+        "price": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_price"
+        },
+        "primedEquipment": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_primedEquipment"
+        },
+        "renovationCost": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_renovationCost"
+        },
+        "renovationMultiplier": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_renovationMultiplier"
+        },
+        "reticleColorTarget": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_reticleColorTarget"
+        },
+        "reticleColorTargetSensitive": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_reticleColorTargetSensitive"
+        },
+        "reticleColorWormhole": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_reticleColorWormhole"
+        },
+        "reticleTargetSensitive": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_reticleTargetSensitive"
+        },
+        "roll": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_roll"
+        },
+        "routeMode": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_routeMode"
+        },
+        "scannerMinimalistic": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_scannerMinimalistic"
+        },
+        "scannerNonLinear": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_scannerNonLinear"
+        },
+        "scannerUltraZoom": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_scannerUltraZoom"
+        },
+        "scoopOverride": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_scoopOverride"
+        },
+        "serviceLevel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_serviceLevel"
+        },
+        "specialCargo": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_specialCargo"
+        },
+        "targetSystem": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_targetSystem"
+        },
+        "torusEngaged": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_torusEngaged"
+        },
+        "viewDirection": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_viewDirection"
+        },
+        "viewPositionAft": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_viewPositionAft"
+        },
+        "viewPositionForward": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_viewPositionForward"
+        },
+        "viewPositionPort": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_viewPositionPort"
+        },
+        "viewPositionStarboard": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_viewPositionStarboard"
+        },
+        "weaponsOnline": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kPlayerShip_weaponsOnline"
+        },
+        "yaw": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kPlayerShip_yaw"
+        }
+      },
+      "property_count": 64,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSPlayerShip.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Quaternion": {
+      "method_count": 14,
+      "methods": {
+        "conjugate": {
+          "arity": 0,
+          "native": "QuaternionConjugate"
+        },
+        "dot": {
+          "arity": 1,
+          "native": "QuaternionDot"
+        },
+        "multiply": {
+          "arity": 1,
+          "native": "QuaternionMultiply"
+        },
+        "normalize": {
+          "arity": 0,
+          "native": "QuaternionNormalize"
+        },
+        "rotate": {
+          "arity": 2,
+          "native": "QuaternionRotate"
+        },
+        "rotateX": {
+          "arity": 1,
+          "native": "QuaternionRotateX"
+        },
+        "rotateY": {
+          "arity": 1,
+          "native": "QuaternionRotateY"
+        },
+        "rotateZ": {
+          "arity": 1,
+          "native": "QuaternionRotateZ"
+        },
+        "toArray": {
+          "arity": 0,
+          "native": "QuaternionToArray"
+        },
+        "toSource": {
+          "arity": 0,
+          "native": "QuaternionToSource"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "QuaternionToString"
+        },
+        "vectorForward": {
+          "arity": 0,
+          "native": "QuaternionVectorForward"
+        },
+        "vectorRight": {
+          "arity": 0,
+          "native": "QuaternionVectorRight"
+        },
+        "vectorUp": {
+          "arity": 0,
+          "native": "QuaternionVectorUp"
+        }
+      },
+      "properties": {
+        "w": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kQuaternion_w"
+        },
+        "x": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kQuaternion_x"
+        },
+        "y": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kQuaternion_y"
+        },
+        "z": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kQuaternion_z"
+        }
+      },
+      "property_count": 4,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSQuaternion.m",
+      "static_methods": {
+        "random": {
+          "arity": 0,
+          "native": "QuaternionStaticRandom"
+        }
+      },
+      "static_properties": {}
+    },
+    "Script": {
+      "method_count": 1,
+      "methods": {
+        "toString": {
+          "arity": 0,
+          "native": "OOJSObjectWrapperToString"
+        }
+      },
+      "properties": {},
+      "property_count": 0,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSScript.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Ship": {
+      "inherits": "Entity",
+      "method_count": 79,
+      "methods": {
+        "__runLegacyScriptActions": {
+          "arity": 2,
+          "native": "ShipRunLegacyScriptActions"
+        },
+        "abandonShip": {
+          "arity": 0,
+          "native": "ShipAbandonShip"
+        },
+        "addCargoEntity": {
+          "arity": 1,
+          "native": "ShipAddCargoEntity"
+        },
+        "addCollisionException": {
+          "arity": 1,
+          "native": "ShipAddCollisionException"
+        },
+        "addDefenseTarget": {
+          "arity": 1,
+          "native": "ShipAddDefenseTarget"
+        },
+        "adjustCargo": {
+          "arity": 2,
+          "native": "ShipAdjustCargo"
+        },
+        "awardEquipment": {
+          "arity": 1,
+          "native": "ShipAwardEquipment"
+        },
+        "becomeCascadeExplosion": {
+          "arity": 0,
+          "native": "ShipBecomeCascadeExplosion"
+        },
+        "broadcastCascadeImminent": {
+          "arity": 0,
+          "native": "ShipBroadcastCascadeImminent"
+        },
+        "broadcastDistressMessage": {
+          "arity": 0,
+          "native": "ShipBroadcastDistressMessage"
+        },
+        "canAwardEquipment": {
+          "arity": 1,
+          "native": "ShipCanAwardEquipment"
+        },
+        "checkCourseToDestination": {
+          "arity": 0,
+          "native": "ShipCheckCourseToDestination"
+        },
+        "checkScanner": {
+          "arity": 0,
+          "native": "ShipCheckScanner"
+        },
+        "clearDefenseTargets": {
+          "arity": 0,
+          "native": "ShipClearDefenseTargets"
+        },
+        "commsMessage": {
+          "arity": 1,
+          "native": "ShipCommsMessage"
+        },
+        "damageAssessment": {
+          "arity": 0,
+          "native": "ShipDamageAssessment"
+        },
+        "dealEnergyDamage": {
+          "arity": 2,
+          "native": "ShipDealEnergyDamage"
+        },
+        "deployEscorts": {
+          "arity": 0,
+          "native": "ShipDeployEscorts"
+        },
+        "dockEscorts": {
+          "arity": 0,
+          "native": "ShipDockEscorts"
+        },
+        "dumpCargo": {
+          "arity": 0,
+          "native": "ShipDumpCargo"
+        },
+        "ejectItem": {
+          "arity": 1,
+          "native": "ShipEjectItem"
+        },
+        "ejectSpecificItem": {
+          "arity": 1,
+          "native": "ShipEjectSpecificItem"
+        },
+        "enterWormhole": {
+          "arity": 0,
+          "native": "ShipEnterWormhole"
+        },
+        "equipmentStatus": {
+          "arity": 1,
+          "native": "ShipEquipmentStatus"
+        },
+        "exitAI": {
+          "arity": 0,
+          "native": "ShipExitAI"
+        },
+        "exitSystem": {
+          "arity": 0,
+          "native": "ShipExitSystem"
+        },
+        "explode": {
+          "arity": 0,
+          "native": "ShipExplode"
+        },
+        "findNearestStation": {
+          "arity": 0,
+          "native": "ShipFindNearestStation"
+        },
+        "fireECM": {
+          "arity": 0,
+          "native": "ShipFireECM"
+        },
+        "fireMissile": {
+          "arity": 0,
+          "native": "ShipFireMissile"
+        },
+        "getMaterials": {
+          "arity": 0,
+          "native": "ShipGetMaterials"
+        },
+        "getSafeCourseToDestination": {
+          "arity": 0,
+          "native": "ShipGetSafeCourseToDestination"
+        },
+        "getShaders": {
+          "arity": 0,
+          "native": "ShipGetShaders"
+        },
+        "hasEquipmentProviding": {
+          "arity": 1,
+          "native": "ShipHasEquipmentProviding"
+        },
+        "hasRole": {
+          "arity": 1,
+          "native": "ShipHasRole"
+        },
+        "markTargetForFines": {
+          "arity": 0,
+          "native": "ShipMarkTargetForFines"
+        },
+        "notifyGroupOfWormhole": {
+          "arity": 0,
+          "native": "ShipNotifyGroupOfWormhole"
+        },
+        "offerToEscort": {
+          "arity": 1,
+          "native": "ShipOfferToEscort"
+        },
+        "patrolReportIn": {
+          "arity": 1,
+          "native": "ShipPatrolReportIn"
+        },
+        "performAttack": {
+          "arity": 0,
+          "native": "ShipPerformAttack"
+        },
+        "performCollect": {
+          "arity": 0,
+          "native": "ShipPerformCollect"
+        },
+        "performEscort": {
+          "arity": 0,
+          "native": "ShipPerformEscort"
+        },
+        "performFaceDestination": {
+          "arity": 0,
+          "native": "ShipPerformFaceDestination"
+        },
+        "performFlee": {
+          "arity": 0,
+          "native": "ShipPerformFlee"
+        },
+        "performFlyToRangeFromDestination": {
+          "arity": 0,
+          "native": "ShipPerformFlyToRangeFromDestination"
+        },
+        "performHold": {
+          "arity": 0,
+          "native": "ShipPerformHold"
+        },
+        "performIdle": {
+          "arity": 0,
+          "native": "ShipPerformIdle"
+        },
+        "performIntercept": {
+          "arity": 0,
+          "native": "ShipPerformIntercept"
+        },
+        "performLandOnPlanet": {
+          "arity": 0,
+          "native": "ShipPerformLandOnPlanet"
+        },
+        "performMining": {
+          "arity": 0,
+          "native": "ShipPerformMining"
+        },
+        "performScriptedAI": {
+          "arity": 0,
+          "native": "ShipPerformScriptedAI"
+        },
+        "performScriptedAttackAI": {
+          "arity": 0,
+          "native": "ShipPerformScriptedAttackAI"
+        },
+        "performStop": {
+          "arity": 0,
+          "native": "ShipPerformStop"
+        },
+        "performTumble": {
+          "arity": 0,
+          "native": "ShipPerformTumble"
+        },
+        "reactToAIMessage": {
+          "arity": 1,
+          "native": "ShipReactToAIMessage"
+        },
+        "recallDockingInstructions": {
+          "arity": 0,
+          "native": "ShipRecallDockingInstructions"
+        },
+        "remove": {
+          "arity": 0,
+          "native": "ShipRemove"
+        },
+        "removeCollisionException": {
+          "arity": 1,
+          "native": "ShipRemoveCollisionException"
+        },
+        "removeDefenseTarget": {
+          "arity": 1,
+          "native": "ShipRemoveDefenseTarget"
+        },
+        "removeEquipment": {
+          "arity": 1,
+          "native": "ShipRemoveEquipment"
+        },
+        "requestDockingInstructions": {
+          "arity": 0,
+          "native": "ShipRequestDockingInstructions"
+        },
+        "requestHelpFromGroup": {
+          "arity": 0,
+          "native": "ShipRequestHelpFromGroup"
+        },
+        "restoreSubEntities": {
+          "arity": 0,
+          "native": "ShipRestoreSubEntities"
+        },
+        "selectNewMissile": {
+          "arity": 0,
+          "native": "ShipSelectNewMissile"
+        },
+        "sendAIMessage": {
+          "arity": 1,
+          "native": "ShipSendAIMessage"
+        },
+        "setAI": {
+          "arity": 1,
+          "native": "ShipSetAI"
+        },
+        "setBounty": {
+          "arity": 2,
+          "native": "ShipSetBounty"
+        },
+        "setCargo": {
+          "arity": 1,
+          "native": "ShipSetCargo"
+        },
+        "setCargoType": {
+          "arity": 1,
+          "native": "ShipSetCargoType"
+        },
+        "setCrew": {
+          "arity": 1,
+          "native": "ShipSetCrew"
+        },
+        "setEquipmentStatus": {
+          "arity": 2,
+          "native": "ShipSetEquipmentStatus"
+        },
+        "setMaterials": {
+          "arity": 1,
+          "native": "ShipSetMaterials"
+        },
+        "setScript": {
+          "arity": 1,
+          "native": "ShipSetScript"
+        },
+        "setShaders": {
+          "arity": 2,
+          "native": "ShipSetShaders"
+        },
+        "spawn": {
+          "arity": 1,
+          "native": "ShipSpawn"
+        },
+        "switchAI": {
+          "arity": 1,
+          "native": "ShipSwitchAI"
+        },
+        "threatAssessment": {
+          "arity": 1,
+          "native": "ShipThreatAssessment"
+        },
+        "throwSpark": {
+          "arity": 0,
+          "native": "ShipThrowSpark"
+        },
+        "updateEscortFormation": {
+          "arity": 0,
+          "native": "ShipUpdateEscortFormation"
+        }
+      },
+      "properties": {
+        "AI": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_AI"
+        },
+        "AIFoundTarget": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_AIFoundTarget"
+        },
+        "AIPrimaryAggressor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_AIPrimaryAggressor"
+        },
+        "AIScript": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_AIScript"
+        },
+        "AIScriptWakeTime": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_AIScriptWakeTime"
+        },
+        "AIState": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_AIState"
+        },
+        "accuracy": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_accuracy"
+        },
+        "aftWeapon": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_aftWeapon"
+        },
+        "alertCondition": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_alertCondition"
+        },
+        "autoAI": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_autoAI"
+        },
+        "autoWeapons": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_autoWeapons"
+        },
+        "beaconCode": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_beaconCode"
+        },
+        "beaconLabel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_beaconLabel"
+        },
+        "boundingBox": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_boundingBox"
+        },
+        "bounty": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_bounty"
+        },
+        "cargoList": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_cargoList"
+        },
+        "cargoSpaceAvailable": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_cargoSpaceAvailable"
+        },
+        "cargoSpaceCapacity": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_cargoSpaceCapacity"
+        },
+        "cargoSpaceUsed": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_cargoSpaceUsed"
+        },
+        "cloakAutomatic": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_cloakAutomatic"
+        },
+        "collisionExceptions": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_collisionExceptions"
+        },
+        "commodity": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_commodity"
+        },
+        "commodityAmount": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_commodityAmount"
+        },
+        "contracts": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_contracts"
+        },
+        "crew": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_crew"
+        },
+        "cruiseSpeed": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_cruiseSpeed"
+        },
+        "currentWeapon": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_currentWeapon"
+        },
+        "dataKey": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_dataKey"
+        },
+        "defenseTargets": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_defenseTargets"
+        },
+        "desiredRange": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_desiredRange"
+        },
+        "desiredSpeed": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_desiredSpeed"
+        },
+        "destination": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_destination"
+        },
+        "destinationSystem": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_destinationSystem"
+        },
+        "displayName": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_displayName"
+        },
+        "dockingInstructions": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_dockingInstructions"
+        },
+        "energyRechargeRate": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_energyRechargeRate"
+        },
+        "entityPersonality": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_entityPersonality"
+        },
+        "equipment": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_equipment"
+        },
+        "escortGroup": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_escortGroup"
+        },
+        "escorts": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_escorts"
+        },
+        "exhaustEmissiveColor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_exhaustEmissiveColor"
+        },
+        "exhausts": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_exhausts"
+        },
+        "extraCargo": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_extraCargo"
+        },
+        "flashers": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_flashers"
+        },
+        "forwardWeapon": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_forwardWeapon"
+        },
+        "fuel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_fuel"
+        },
+        "fuelChargeRate": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_fuelChargeRate"
+        },
+        "group": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_group"
+        },
+        "hasHostileTarget": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_hasHostileTarget"
+        },
+        "hasHyperspaceMotor": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_hasHyperspaceMotor"
+        },
+        "hasSuspendedAI": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_hasSuspendedAI"
+        },
+        "heading": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_heading"
+        },
+        "heatInsulation": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_heatInsulation"
+        },
+        "homeSystem": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_homeSystem"
+        },
+        "hyperspaceSpinTime": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_hyperspaceSpinTime"
+        },
+        "injectorBurnRate": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_injectorBurnRate"
+        },
+        "injectorSpeedFactor": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_injectorSpeedFactor"
+        },
+        "isBeacon": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isBeacon"
+        },
+        "isBoulder": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_isBoulder"
+        },
+        "isCargo": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isCargo"
+        },
+        "isCloaked": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_isCloaked"
+        },
+        "isDerelict": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isDerelict"
+        },
+        "isFleeing": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isFleeing"
+        },
+        "isFrangible": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isFrangible"
+        },
+        "isJamming": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isJamming"
+        },
+        "isMinable": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isMinable"
+        },
+        "isMine": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isMine"
+        },
+        "isMissile": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isMissile"
+        },
+        "isPiloted": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isPiloted"
+        },
+        "isPirate": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isPirate"
+        },
+        "isPirateVictim": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isPirateVictim"
+        },
+        "isPolice": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isPolice"
+        },
+        "isRock": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isRock"
+        },
+        "isThargoid": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isThargoid"
+        },
+        "isTrader": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isTrader"
+        },
+        "isTurret": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isTurret"
+        },
+        "isWeapon": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_isWeapon"
+        },
+        "laserHeatLevel": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_laserHeatLevel"
+        },
+        "laserHeatLevelAft": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_laserHeatLevelAft"
+        },
+        "laserHeatLevelForward": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_laserHeatLevelForward"
+        },
+        "laserHeatLevelPort": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_laserHeatLevelPort"
+        },
+        "laserHeatLevelStarboard": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_laserHeatLevelStarboard"
+        },
+        "lightsActive": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_lightsActive"
+        },
+        "markedForFines": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_markedForFines"
+        },
+        "maxEscorts": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_maxEscorts"
+        },
+        "maxPitch": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_maxPitch"
+        },
+        "maxRoll": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_maxRoll"
+        },
+        "maxSpeed": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_maxSpeed"
+        },
+        "maxThrust": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_maxThrust"
+        },
+        "maxYaw": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_maxYaw"
+        },
+        "missileCapacity": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_missileCapacity"
+        },
+        "missileLoadTime": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_missileLoadTime"
+        },
+        "missiles": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_missiles"
+        },
+        "name": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_name"
+        },
+        "parcelCount": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_parcelCount"
+        },
+        "parcels": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_parcels"
+        },
+        "passengerCapacity": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_passengerCapacity"
+        },
+        "passengerCount": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_passengerCount"
+        },
+        "passengers": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_passengers"
+        },
+        "pitch": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_pitch"
+        },
+        "portWeapon": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_portWeapon"
+        },
+        "potentialCollider": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_potentialCollider"
+        },
+        "primaryRole": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_primaryRole"
+        },
+        "reactionTime": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_reactionTime"
+        },
+        "reportAIMessages": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_reportAIMessages"
+        },
+        "roleWeights": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_roleWeights"
+        },
+        "roles": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_roles"
+        },
+        "roll": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_roll"
+        },
+        "savedCoordinates": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_savedCoordinates"
+        },
+        "scanDescription": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_scanDescription"
+        },
+        "scannerDisplayColor1": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_scannerDisplayColor1"
+        },
+        "scannerDisplayColor2": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_scannerDisplayColor2"
+        },
+        "scannerHostileDisplayColor1": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_scannerHostileDisplayColor1"
+        },
+        "scannerHostileDisplayColor2": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_scannerHostileDisplayColor2"
+        },
+        "scannerRange": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_scannerRange"
+        },
+        "script": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_script"
+        },
+        "scriptInfo": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_scriptInfo"
+        },
+        "scriptedMisjump": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_scriptedMisjump"
+        },
+        "scriptedMisjumpRange": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_scriptedMisjumpRange"
+        },
+        "shipClassName": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_shipClassName"
+        },
+        "shipUniqueName": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_shipUniqueName"
+        },
+        "speed": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_speed"
+        },
+        "starboardWeapon": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_starboardWeapon"
+        },
+        "subEntities": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_subEntities"
+        },
+        "subEntityCapacity": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_subEntityCapacity"
+        },
+        "subEntityRotation": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_subEntityRotation"
+        },
+        "sunGlareFilter": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_sunGlareFilter"
+        },
+        "target": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_target"
+        },
+        "temperature": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_temperature"
+        },
+        "thrust": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_thrust"
+        },
+        "thrustVector": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_thrustVector"
+        },
+        "trackCloseContacts": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_trackCloseContacts"
+        },
+        "vectorForward": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_vectorForward"
+        },
+        "vectorRight": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_vectorRight"
+        },
+        "vectorUp": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_vectorUp"
+        },
+        "velocity": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShip_velocity"
+        },
+        "weaponFacings": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_weaponFacings"
+        },
+        "weaponPositionAft": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_weaponPositionAft"
+        },
+        "weaponPositionForward": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_weaponPositionForward"
+        },
+        "weaponPositionPort": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_weaponPositionPort"
+        },
+        "weaponPositionStarboard": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_weaponPositionStarboard"
+        },
+        "weaponRange": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_weaponRange"
+        },
+        "withinStationAegis": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_withinStationAegis"
+        },
+        "yaw": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShip_yaw"
+        }
+      },
+      "property_count": 144,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSShip.m",
+      "static_methods": {
+        "keys": {
+          "arity": 0,
+          "native": "ShipStaticKeys"
+        },
+        "keysForRole": {
+          "arity": 1,
+          "native": "ShipStaticKeysForRole"
+        },
+        "roleIsInCategory": {
+          "arity": 2,
+          "native": "ShipStaticRoleIsInCategory"
+        },
+        "roles": {
+          "arity": 0,
+          "native": "ShipStaticRoles"
+        },
+        "setShipDataForKey": {
+          "arity": 2,
+          "native": "ShipStaticSetShipDataForKey"
+        },
+        "shipDataForKey": {
+          "arity": 1,
+          "native": "ShipStaticShipDataForKey"
+        }
+      },
+      "static_properties": {}
+    },
+    "ShipGroup": {
+      "method_count": 4,
+      "methods": {
+        "addShip": {
+          "arity": 1,
+          "native": "ShipGroupAddShip"
+        },
+        "containsShip": {
+          "arity": 1,
+          "native": "ShipGroupContainsShip"
+        },
+        "removeShip": {
+          "arity": 1,
+          "native": "ShipGroupRemoveShip"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "OOJSObjectWrapperToString"
+        }
+      },
+      "properties": {
+        "count": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShipGroup_count"
+        },
+        "leader": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShipGroup_leader"
+        },
+        "name": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kShipGroup_name"
+        },
+        "ships": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kShipGroup_ships"
+        }
+      },
+      "property_count": 4,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSShipGroup.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Sound": {
+      "method_count": 1,
+      "methods": {
+        "toString": {
+          "arity": 0,
+          "native": "OOJSObjectWrapperToString"
+        }
+      },
+      "properties": {
+        "name": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSound_name"
+        }
+      },
+      "property_count": 1,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSound.m",
+      "static_methods": {
+        "load": {
+          "arity": 1,
+          "native": "SoundStaticLoad"
+        },
+        "musicSoundSource": {
+          "arity": 0,
+          "native": "SoundStaticMusicSoundSource"
+        },
+        "playMusic": {
+          "arity": 1,
+          "native": "SoundStaticPlayMusic"
+        },
+        "stopMusic": {
+          "arity": 0,
+          "native": "SoundStaticStopMusic"
+        }
+      },
+      "static_properties": {}
+    },
+    "SoundSource": {
+      "method_count": 4,
+      "methods": {
+        "play": {
+          "arity": 0,
+          "native": "SoundSourcePlay"
+        },
+        "playOrRepeat": {
+          "arity": 0,
+          "native": "SoundSourcePlayOrRepeat"
+        },
+        "stop": {
+          "arity": 0,
+          "native": "SoundSourceStop"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "OOJSObjectWrapperToString"
+        }
+      },
+      "properties": {
+        "isPlaying": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSoundSource_isPlaying"
+        },
+        "loop": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSoundSource_loop"
+        },
+        "position": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSoundSource_position"
+        },
+        "positional": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSoundSource_positional"
+        },
+        "repeatCount": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSoundSource_repeatCount"
+        },
+        "sound": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSoundSource_sound"
+        },
+        "volume": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSoundSource_volume"
+        }
+      },
+      "property_count": 7,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSoundSource.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Station": {
+      "inherits": "Ship",
+      "method_count": 20,
+      "methods": {
+        "abortAllDockings": {
+          "arity": 0,
+          "native": "StationAbortAllDockings"
+        },
+        "abortDockingForShip": {
+          "arity": 1,
+          "native": "StationAbortDockingForShip"
+        },
+        "addShipToShipyard": {
+          "arity": 1,
+          "native": "StationAddShipToShipyard"
+        },
+        "canDockShip": {
+          "arity": 1,
+          "native": "StationCanDockShip"
+        },
+        "decreaseAlertLevel": {
+          "arity": 0,
+          "native": "StationDecreaseAlertLevel"
+        },
+        "dockPlayer": {
+          "arity": 0,
+          "native": "StationDockPlayer"
+        },
+        "increaseAlertLevel": {
+          "arity": 0,
+          "native": "StationIncreaseAlertLevel"
+        },
+        "launchDefenseShip": {
+          "arity": 0,
+          "native": "StationLaunchDefenseShip"
+        },
+        "launchEscort": {
+          "arity": 0,
+          "native": "StationLaunchEscort"
+        },
+        "launchMiner": {
+          "arity": 0,
+          "native": "StationLaunchMiner"
+        },
+        "launchPatrol": {
+          "arity": 0,
+          "native": "StationLaunchPatrol"
+        },
+        "launchPirateShip": {
+          "arity": 0,
+          "native": "StationLaunchPirateShip"
+        },
+        "launchPolice": {
+          "arity": 0,
+          "native": "StationLaunchPolice"
+        },
+        "launchScavenger": {
+          "arity": 0,
+          "native": "StationLaunchScavenger"
+        },
+        "launchShipWithRole": {
+          "arity": 1,
+          "native": "StationLaunchShipWithRole"
+        },
+        "launchShuttle": {
+          "arity": 0,
+          "native": "StationLaunchShuttle"
+        },
+        "removeShipFromShipyard": {
+          "arity": 1,
+          "native": "StationRemoveShipFromShipyard"
+        },
+        "setInterface": {
+          "arity": 0,
+          "native": "StationSetInterface"
+        },
+        "setMarketPrice": {
+          "arity": 2,
+          "native": "StationSetMarketPrice"
+        },
+        "setMarketQuantity": {
+          "arity": 2,
+          "native": "StationSetMarketQuantity"
+        }
+      },
+      "properties": {
+        "alertCondition": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_alertCondition"
+        },
+        "allegiance": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_allegiance"
+        },
+        "allowsAutoDocking": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_allowsAutoDocking"
+        },
+        "allowsFastDocking": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_allowsFastDocking"
+        },
+        "breakPattern": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_breakPattern"
+        },
+        "dockedContractors": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_dockedContractors"
+        },
+        "dockedDefenders": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_dockedDefenders"
+        },
+        "dockedPolice": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_dockedPolice"
+        },
+        "equipmentPriceFactor": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_equipmentPriceFactor"
+        },
+        "equivalentTechLevel": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_equivalentTechLevel"
+        },
+        "hasNPCTraffic": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_hasNPCTraffic"
+        },
+        "hasShipyard": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_hasShipyard"
+        },
+        "isMainStation": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_isMainStation"
+        },
+        "market": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_market"
+        },
+        "requiresDockingClearance": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_requiresDockingClearance"
+        },
+        "roll": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_roll"
+        },
+        "shipyard": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kStation_shipyard"
+        },
+        "suppressArrivalReports": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kStation_suppressArrivalReports"
+        }
+      },
+      "property_count": 18,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSStation.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Sun": {
+      "inherits": "Entity",
+      "method_count": 2,
+      "methods": {
+        "cancelNova": {
+          "arity": 0,
+          "native": "SunCancelNova"
+        },
+        "goNova": {
+          "arity": 1,
+          "native": "SunGoNova"
+        }
+      },
+      "properties": {
+        "hasGoneNova": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSun_hasGoneNova"
+        },
+        "isGoingNova": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSun_isGoingNova"
+        },
+        "name": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSun_name"
+        },
+        "radius": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSun_radius"
+        }
+      },
+      "property_count": 4,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSun.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "System": {
+      "method_count": 25,
+      "methods": {
+        "addGroup": {
+          "arity": 3,
+          "native": "SystemAddGroup"
+        },
+        "addGroupToRoute": {
+          "arity": 2,
+          "native": "SystemAddGroupToRoute"
+        },
+        "addMoon": {
+          "arity": 1,
+          "native": "SystemAddMoon"
+        },
+        "addPlanet": {
+          "arity": 1,
+          "native": "SystemAddPlanet"
+        },
+        "addShips": {
+          "arity": 3,
+          "native": "SystemAddShips"
+        },
+        "addShipsToRoute": {
+          "arity": 2,
+          "native": "SystemAddShipsToRoute"
+        },
+        "addVisualEffect": {
+          "arity": 2,
+          "native": "SystemAddVisualEffect"
+        },
+        "countEntitiesWithScanClass": {
+          "arity": 1,
+          "native": "SystemCountEntitiesWithScanClass"
+        },
+        "countShipsWithPrimaryRole": {
+          "arity": 1,
+          "native": "SystemCountShipsWithPrimaryRole"
+        },
+        "countShipsWithRole": {
+          "arity": 1,
+          "native": "SystemCountShipsWithRole"
+        },
+        "entitiesWithScanClass": {
+          "arity": 1,
+          "native": "SystemEntitiesWithScanClass"
+        },
+        "filteredEntities": {
+          "arity": 2,
+          "native": "SystemFilteredEntities"
+        },
+        "legacy_addShips": {
+          "arity": 2,
+          "native": "SystemLegacyAddShips"
+        },
+        "legacy_addShipsAt": {
+          "arity": 6,
+          "native": "SystemLegacyAddShipsAt"
+        },
+        "legacy_addShipsAtPrecisely": {
+          "arity": 6,
+          "native": "SystemLegacyAddShipsAtPrecisely"
+        },
+        "legacy_addShipsWithinRadius": {
+          "arity": 7,
+          "native": "SystemLegacyAddShipsWithinRadius"
+        },
+        "legacy_addSystemShips": {
+          "arity": 3,
+          "native": "SystemLegacyAddSystemShips"
+        },
+        "legacy_spawnShip": {
+          "arity": 1,
+          "native": "SystemLegacySpawnShip"
+        },
+        "locationFromCode": {
+          "arity": 1,
+          "native": "SystemLocationFromCode"
+        },
+        "sendAllShipsAway": {
+          "arity": 1,
+          "native": "SystemSendAllShipsAway"
+        },
+        "setPopulator": {
+          "arity": 2,
+          "native": "SystemSetPopulator"
+        },
+        "setWaypoint": {
+          "arity": 4,
+          "native": "SystemSetWaypoint"
+        },
+        "shipsWithPrimaryRole": {
+          "arity": 1,
+          "native": "SystemShipsWithPrimaryRole"
+        },
+        "shipsWithRole": {
+          "arity": 1,
+          "native": "SystemShipsWithRole"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "SystemToString"
+        }
+      },
+      "properties": {
+        "ID": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_ID"
+        },
+        "allDemoShips": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_allDemoShips"
+        },
+        "allShips": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_allShips"
+        },
+        "allVisualEffects": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_allVisualEffects"
+        },
+        "ambientLevel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_ambientLevel"
+        },
+        "breakPattern": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_breakPattern"
+        },
+        "description": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_description"
+        },
+        "economy": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_economy"
+        },
+        "economyDescription": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_economyDescription"
+        },
+        "government": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_government"
+        },
+        "governmentDescription": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_governmentDescription"
+        },
+        "info": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_info"
+        },
+        "inhabitantsDescription": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_inhabitantsDescription"
+        },
+        "isInterstellarSpace": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_isInterstellarSpace"
+        },
+        "mainPlanet": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_mainPlanet"
+        },
+        "mainStation": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_mainStation"
+        },
+        "name": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_name"
+        },
+        "planets": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_planets"
+        },
+        "population": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_population"
+        },
+        "populatorSettings": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_populatorSettings"
+        },
+        "productivity": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_productivity"
+        },
+        "pseudoRandom100": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_pseudoRandom100"
+        },
+        "pseudoRandom256": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_pseudoRandom256"
+        },
+        "pseudoRandomNumber": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_pseudoRandomNumber"
+        },
+        "stations": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_stations"
+        },
+        "sun": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_sun"
+        },
+        "techLevel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kSystem_techLevel"
+        },
+        "waypoints": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_waypoints"
+        },
+        "wormholes": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystem_wormholes"
+        }
+      },
+      "property_count": 29,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSystem.m",
+      "static_methods": {
+        "infoForSystem": {
+          "arity": 2,
+          "native": "SystemStaticInfoForSystem"
+        },
+        "systemIDForName": {
+          "arity": 1,
+          "native": "SystemStaticSystemIDForName"
+        },
+        "systemNameForID": {
+          "arity": 1,
+          "native": "SystemStaticSystemNameForID"
+        }
+      },
+      "static_properties": {}
+    },
+    "SystemInfo": {
+      "method_count": 5,
+      "methods": {
+        "distanceToSystem": {
+          "arity": 1,
+          "native": "SystemInfoDistanceToSystem"
+        },
+        "routeToSystem": {
+          "arity": 1,
+          "native": "SystemInfoRouteToSystem"
+        },
+        "samplePrice": {
+          "arity": 1,
+          "native": "SystemInfoSamplePrice"
+        },
+        "setProperty": {
+          "arity": 3,
+          "native": "SystemInfoSetPropertyMethod"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "OOJSObjectWrapperToString"
+        }
+      },
+      "properties": {
+        "coordinates": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystemInfo_coordinates"
+        },
+        "galaxyID": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystemInfo_galaxyID"
+        },
+        "internalCoordinates": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystemInfo_internalCoordinates"
+        },
+        "systemID": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kSystemInfo_systemID"
+        }
+      },
+      "property_count": 4,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSystemInfo.m",
+      "static_methods": {
+        "filteredSystems": {
+          "arity": 2,
+          "native": "SystemInfoStaticFilteredSystems"
+        },
+        "setInterstellarProperty": {
+          "arity": 4,
+          "native": "SystemInfoStaticSetInterstellarProperty"
+        }
+      },
+      "static_properties": {}
+    },
+    "Timer": {
+      "method_count": 3,
+      "methods": {
+        "start": {
+          "arity": 0,
+          "native": "TimerStart"
+        },
+        "stop": {
+          "arity": 0,
+          "native": "TimerStop"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "OOJSObjectWrapperToString"
+        }
+      },
+      "properties": {
+        "interval": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kTimer_interval"
+        },
+        "isRunning": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kTimer_isRunning"
+        },
+        "nextTime": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kTimer_nextTime"
+        }
+      },
+      "property_count": 3,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSTimer.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Vector3D": {
+      "method_count": 19,
+      "methods": {
+        "add": {
+          "arity": 1,
+          "native": "VectorAdd"
+        },
+        "angleTo": {
+          "arity": 1,
+          "native": "VectorAngleTo"
+        },
+        "cross": {
+          "arity": 1,
+          "native": "VectorCross"
+        },
+        "direction": {
+          "arity": 0,
+          "native": "VectorDirection"
+        },
+        "distanceTo": {
+          "arity": 1,
+          "native": "VectorDistanceTo"
+        },
+        "dot": {
+          "arity": 1,
+          "native": "VectorDot"
+        },
+        "fromCoordinateSystem": {
+          "arity": 1,
+          "native": "VectorFromCoordinateSystem"
+        },
+        "magnitude": {
+          "arity": 0,
+          "native": "VectorMagnitude"
+        },
+        "multiply": {
+          "arity": 1,
+          "native": "VectorMultiply"
+        },
+        "rotateBy": {
+          "arity": 1,
+          "native": "VectorRotateBy"
+        },
+        "rotationTo": {
+          "arity": 1,
+          "native": "VectorRotationTo"
+        },
+        "squaredDistanceTo": {
+          "arity": 1,
+          "native": "VectorSquaredDistanceTo"
+        },
+        "squaredMagnitude": {
+          "arity": 0,
+          "native": "VectorSquaredMagnitude"
+        },
+        "subtract": {
+          "arity": 1,
+          "native": "VectorSubtract"
+        },
+        "toArray": {
+          "arity": 0,
+          "native": "VectorToArray"
+        },
+        "toCoordinateSystem": {
+          "arity": 1,
+          "native": "VectorToCoordinateSystem"
+        },
+        "toSource": {
+          "arity": 0,
+          "native": "VectorToSource"
+        },
+        "toString": {
+          "arity": 0,
+          "native": "VectorToString"
+        },
+        "tripleProduct": {
+          "arity": 2,
+          "native": "VectorTripleProduct"
+        }
+      },
+      "properties": {
+        "x": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVector_x"
+        },
+        "y": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVector_y"
+        },
+        "z": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVector_z"
+        }
+      },
+      "property_count": 3,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSVector.m",
+      "static_methods": {
+        "interpolate": {
+          "arity": 3,
+          "native": "VectorStaticInterpolate"
+        },
+        "random": {
+          "arity": 0,
+          "native": "VectorStaticRandom"
+        },
+        "randomDirection": {
+          "arity": 0,
+          "native": "VectorStaticRandomDirection"
+        },
+        "randomDirectionAndLength": {
+          "arity": 0,
+          "native": "VectorStaticRandomDirectionAndLength"
+        }
+      },
+      "static_properties": {}
+    },
+    "VisualEffect": {
+      "inherits": "Entity",
+      "method_count": 7,
+      "methods": {
+        "getMaterials": {
+          "arity": 0,
+          "native": "VisualEffectGetMaterials"
+        },
+        "getShaders": {
+          "arity": 0,
+          "native": "VisualEffectGetShaders"
+        },
+        "remove": {
+          "arity": 0,
+          "native": "VisualEffectRemove"
+        },
+        "restoreSubEntities": {
+          "arity": 0,
+          "native": "VisualEffectRestoreSubEntities"
+        },
+        "scale": {
+          "arity": 1,
+          "native": "VisualEffectScale"
+        },
+        "setMaterials": {
+          "arity": 1,
+          "native": "VisualEffectSetMaterials"
+        },
+        "setShaders": {
+          "arity": 2,
+          "native": "VisualEffectSetShaders"
+        }
+      },
+      "properties": {
+        "beaconCode": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_beaconCode"
+        },
+        "beaconLabel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_beaconLabel"
+        },
+        "dataKey": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kVisualEffect_dataKey"
+        },
+        "hullHeatLevel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_hullHeatLevel"
+        },
+        "isBreakPattern": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_isBreakPattern"
+        },
+        "scaleX": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_scaleX"
+        },
+        "scaleY": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_scaleY"
+        },
+        "scaleZ": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_scaleZ"
+        },
+        "scannerDisplayColor1": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_scannerDisplayColor1"
+        },
+        "scannerDisplayColor2": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_scannerDisplayColor2"
+        },
+        "script": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kVisualEffect_script"
+        },
+        "scriptInfo": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kVisualEffect_scriptInfo"
+        },
+        "shaderFloat1": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_shaderFloat1"
+        },
+        "shaderFloat2": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_shaderFloat2"
+        },
+        "shaderInt1": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_shaderInt1"
+        },
+        "shaderInt2": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_shaderInt2"
+        },
+        "shaderVector1": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_shaderVector1"
+        },
+        "shaderVector2": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kVisualEffect_shaderVector2"
+        },
+        "subEntities": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kVisualEffect_subEntities"
+        },
+        "vectorForward": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kVisualEffect_vectorForward"
+        },
+        "vectorRight": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kVisualEffect_vectorRight"
+        },
+        "vectorUp": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kVisualEffect_vectorUp"
+        }
+      },
+      "property_count": 22,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSVisualEffect.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Waypoint": {
+      "inherits": "Entity",
+      "method_count": 0,
+      "methods": {},
+      "properties": {
+        "beaconCode": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kWaypoint_beaconCode"
+        },
+        "beaconLabel": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kWaypoint_beaconLabel"
+        },
+        "orientation": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kWaypoint_orientation"
+        },
+        "size": {
+          "access": "readwrite",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READWRITE_CB",
+          "id": "kWaypoint_size"
+        }
+      },
+      "property_count": 4,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSWaypoint.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "Wormhole": {
+      "inherits": "Entity",
+      "method_count": 0,
+      "methods": {},
+      "properties": {
+        "arrivalTime": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kWormhole_arrivalTime"
+        },
+        "destination": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kWormhole_destination"
+        },
+        "expiryTime": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kWormhole_expiryTime"
+        },
+        "origin": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "kWormhole_origin"
+        }
+      },
+      "property_count": 4,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSWormhole.m",
+      "static_methods": {},
+      "static_properties": {}
+    },
+    "special": {
+      "method_count": 2,
+      "methods": {
+        "jsWarning": {
+          "arity": 1,
+          "native": "SpecialJSWarning"
+        },
+        "markConsoleEntryPoint": {
+          "arity": 0,
+          "native": "SpecialMarkConsoleEntryPoint"
+        }
+      },
+      "properties": {},
+      "property_count": 0,
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSpecialFunctions.m",
+      "static_methods": {},
+      "static_properties": {}
+    }
+  },
+  "generator": "tools/js_api_source_snapshot.py",
+  "schema": "oolite-js-api-source/1",
+  "source_root": "upstream/oolite/src",
+  "summary": {
+    "class_count": 31,
+    "files_with_tables": 31,
+    "method_count": 285,
+    "property_count": 469,
+    "readonly_properties": 269,
+    "readwrite_properties": 200,
+    "static_method_count": 21,
+    "static_property_count": 0,
+    "unregistered_tables": []
+  }
+}

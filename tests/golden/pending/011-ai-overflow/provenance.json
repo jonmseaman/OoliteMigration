@@ -1,0 +1,31 @@
+{
+  "build_flags": {
+    "build_dir": "C:/Users/jon/OoliteMigration/upstream/oolite/build/meson_test",
+    "detail": "242 of 242 translation units do NOT carry -ffp-contract=off (first: ../../src/Core/AI.m). Without it clang may fuse a*b+c into a single FMA, which rounds once instead of twice and changes the low bits of every float in the dump - exactly the cross-platform variation the golden policy exists to remove.",
+    "effective_optimization_levels": {
+      "-O2": 242
+    },
+    "policy_fp_contract": "-ffp-contract=off",
+    "policy_optimization": "-O2",
+    "translation_units": 242,
+    "verified": false
+  },
+  "commit": "9094649e46d5d0359234cc50fef7331ea83dd074",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/ai_overflow.py",
+  "note": "Scenario 011 'AI overflow test' test-OXP (bead oo-dto). The in-tree fixture upstream/oolite-tests/test-oxps/AI overflow test/AI overflow test.oxp is staged into a private OO_ADDITIONALADDONSDIRS root, its ship is spawned, and the dump carries an evidence block proving the engine's AI STACK OVERFLOW was both REACHED and HANDLED: ship registry key 'ahruman-stack-overflow-test' merged with ai_type 'ahruman-stack-overflow-testAI.plist'; 1 [ai.error.stackOverflow] signed 'ahruman-stack-overflow-testAI.plist:GLOBAL' unwinding 32 preserved AI frames (AI.m:40 kStackLimiter, derived and pinned by tests/golden/test_ai_overflow.py); 1 matching 'Squashing exception OoliteException ... in AI handler ahruman-stack-overflow-testAI.plist:GLOBAL.ENTER'; and a 24-tick game-clock budget measured AFTER the overflow line appeared, so the dump also shows the simulation survived it. THE BEAD'S BRIEFED PREMISE WAS WRONG AND THE MEASUREMENT IS RECORDED: this expansion was reported as failing to load on a missing manifest.plist; measured here it LOADS and is named in [searchPaths.dumpAll], because ResourceManager.m:642-664 makes the missing manifest fatal only for an .oxz or under OOEnforceStandards() and otherwise synthesises a basic manifest at :654 and adds the path at :663. It is bead oo-kcrw's NOMANIF class, identical to RetroMissions: the run tolerates EXACTLY 2 '[oxp-standards.error]: OXP AI overflow test.oxp has no manifest.plist' lines and no other oxp-standards error; a third or different line fails the run. NO MANIFEST WAS STAGED and none is fabricated. See tests/golden/pending/011-ai-overflow/README.md. provenance.scenario_knobs records the determinism knobs this golden was BLESSED with; the acceptance gate asserts spec.json still agrees with them, so re-blessing with new knobs stays legal while silent drift between spec and golden is fatal.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "011-ai-overflow",
+  "scenario_knobs": {
+    "overflow_ship_count": 1,
+    "overflow_ship_role": "ahruman-stack-overflow-test",
+    "overflow_spawn_distance": 10000,
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": "10 consecutive runs on 2026-09-18, all 10 DUMPED and byte-identical (2166 bytes, md5 e2e87932e32339ae750b3994d2ecd12f - the same digest as the stored state.json), 0 REFUSED, 0 DIFFERED; wall 17-31 s each. Every one of the 10 also reached and handled the AI stack overflow, because assert_ran() refuses to dump otherwise."
+}

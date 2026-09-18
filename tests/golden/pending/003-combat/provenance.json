@@ -1,0 +1,35 @@
+{
+  "blessed_from": "tests/golden/combat.py",
+  "note": "STAGED, NOT BLESSED. goldens/ is a protected path: tools/guardrails.sh refuses any change under it without a human approval line in tools/rebless-approvals.txt, and bead oo-8ij proved by A/B control that the guard does not distinguish CREATE from MODIFY. See LANDING.md for the tested procedure to move this into goldens/windows-x64/003-combat/.",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "repo_commit": "9094649e46d5d0359234cc50fef7331ea83dd074",
+  "scenario": "003-combat",
+  "scenario_knobs": {
+    "attacker_key": "[viper]",
+    "attacker_position": [
+      0.0,
+      0.0,
+      2000.0
+    ],
+    "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "strike_damage": 60.0,
+    "strike_range": 2500.0,
+    "strikes": 2,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 64,
+    "victim_key": "[adder]",
+    "victim_position": [
+      0.0,
+      0.0,
+      3200.0
+    ]
+  },
+  "spec": "tests/golden/scenarios/003-combat/spec.json",
+  "stability": "10/10 runs byte-identical (md5 54ff0e9d8fbe2a0564fc4cf4208c9bbc), wall 27-42s each",
+  "state_bytes": 1848,
+  "state_sha256": "a4454b6649a3dd4e9a8014a0f0b6351dd9ed70acc81cf9bb47ecb0a5102d73d9"
+}

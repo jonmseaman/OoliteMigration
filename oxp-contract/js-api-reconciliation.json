@@ -1,0 +1,161 @@
+{
+  "classes_compared": 29,
+  "classes_runtime_only": [
+    "Array",
+    "ArrayBuffer",
+    "Boolean",
+    "Date",
+    "Error",
+    "EvalError",
+    "Float32Array",
+    "Float64Array",
+    "Function",
+    "Int16Array",
+    "Int32Array",
+    "Int8Array",
+    "InternalError",
+    "Iterator",
+    "JSON",
+    "Math",
+    "Namespace",
+    "Number",
+    "Object",
+    "Proxy",
+    "QName",
+    "RangeError",
+    "ReferenceError",
+    "RegExp",
+    "StopIteration",
+    "String",
+    "SyntaxError",
+    "TypeError",
+    "URIError",
+    "Uint16Array",
+    "Uint32Array",
+    "Uint8Array",
+    "Uint8ClampedArray",
+    "XML",
+    "XMLList",
+    "clock",
+    "console",
+    "consoleMessage",
+    "debugConsole",
+    "defaultFont",
+    "formatCredits",
+    "formatInteger",
+    "global",
+    "manifest",
+    "mission",
+    "missionVariables",
+    "oolite",
+    "player",
+    "system",
+    "worldScriptNames",
+    "worldScripts"
+  ],
+  "classes_source_only": [
+    "<global>",
+    "special"
+  ],
+  "mutability_mismatch": {},
+  "properties_compared": 402,
+  "properties_runtime_only": {
+    "Console": [
+      "DEBUG_BOUNDING_BOXES",
+      "DEBUG_COLLISIONS",
+      "DEBUG_DOCKING",
+      "DEBUG_DRAW_NORMALS",
+      "DEBUG_LINKED_LISTS",
+      "DEBUG_MISC",
+      "DEBUG_NO_DUST",
+      "DEBUG_NO_SHADER_FALLBACK",
+      "DEBUG_OCTREE_DRAW",
+      "DEBUG_OCTREE_LOGGING",
+      "DEBUG_SHADER_VALIDATION"
+    ]
+  },
+  "properties_source_only": {
+    "SystemInfo": [
+      "coordinates",
+      "galaxyID",
+      "internalCoordinates",
+      "systemID"
+    ]
+  },
+  "runtime_opaque_resolved_from_source": {
+    "Dock": [
+      "allowsDocking",
+      "allowsLaunching",
+      "disallowedDockingCollides",
+      "dockingQueueLength",
+      "launchingQueueLength"
+    ],
+    "ExhaustPlume": [
+      "size"
+    ],
+    "Flasher": [
+      "active",
+      "color",
+      "fraction",
+      "frequency",
+      "phase",
+      "size"
+    ],
+    "Station": [
+      "alertCondition",
+      "allegiance",
+      "allowsAutoDocking",
+      "allowsFastDocking",
+      "breakPattern",
+      "dockedContractors",
+      "dockedDefenders",
+      "dockedPolice",
+      "equipmentPriceFactor",
+      "equivalentTechLevel",
+      "hasNPCTraffic",
+      "hasShipyard",
+      "isMainStation",
+      "market",
+      "requiresDockingClearance",
+      "roll",
+      "shipyard",
+      "suppressArrivalReports"
+    ],
+    "VisualEffect": [
+      "beaconCode",
+      "beaconLabel",
+      "dataKey",
+      "hullHeatLevel",
+      "isBreakPattern",
+      "scaleX",
+      "scaleY",
+      "scaleZ",
+      "scannerDisplayColor1",
+      "scannerDisplayColor2",
+      "script",
+      "scriptInfo",
+      "shaderFloat1",
+      "shaderFloat2",
+      "shaderInt1",
+      "shaderInt2",
+      "shaderVector1",
+      "shaderVector2",
+      "subEntities",
+      "vectorForward",
+      "vectorRight",
+      "vectorUp"
+    ],
+    "Waypoint": [
+      "beaconCode",
+      "beaconLabel",
+      "orientation",
+      "size"
+    ],
+    "Wormhole": [
+      "arrivalTime",
+      "destination",
+      "expiryTime",
+      "origin"
+    ]
+  }
+}
