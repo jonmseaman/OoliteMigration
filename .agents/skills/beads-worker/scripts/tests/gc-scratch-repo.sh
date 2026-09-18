@@ -13,6 +13,9 @@
 #   dirty:<id>    bead <id> in_progress, worktree with uncommitted work. Must be harvested.
 #   merged:<id>   bead <id> closed, branch merged into main exactly as accept.sh does it
 #                 (--no-ff merge commit on main). Worktree and branch must be cleaned up.
+#   mergeddirty:<id>  like merged:, but the worktree ALSO holds an uncommitted leftover.txt whose
+#                 content is "precious uncommitted work". Merged does NOT put that file on main,
+#                 so removing the worktree destroys it (oo-y8fa): it must be harvested or refused.
 # A stub `bd` serving the bead statuses is put first on PATH, so no real beads database is touched.
 set -euo pipefail
 dir="${1:?usage: gc-scratch-repo.sh <dir> <gc.sh> [scenario...]}"
@@ -65,7 +68,7 @@ for spec in "$@"; do
       commit_in "$dir/.worktrees/$id" "bead $id: real work"
       echo "uncommitted work" >"$dir/.worktrees/$id/leftover.txt"
       ;;
-    merged)
+    merged|mergeddirty|mergedlocked)
       echo "$id=closed" >>"$dir/stub/statuses"
       git -C "$dir" worktree add -q -b "bead/$id" "$dir/.worktrees/$id" main
       echo "merged work" >"$dir/.worktrees/$id/merged.txt"
@@ -78,6 +81,12 @@ for spec in "$@"; do
         merge --no-ff --no-edit -m "bead $id: merge into main" "bead/$id" >/dev/null
       git -C "$dir" update-ref refs/heads/main "$(git -C "$m" rev-parse HEAD)"
       git -C "$dir" worktree remove --force "$m"
+      # The leftover goes in AFTER the merge, so it is on no branch and on no commit anywhere.
+      # `|| true`: under set -e a false test as the LAST command of the branch would abort the harness.
+      { [ "$kind" = mergeddirty ] && echo "precious uncommitted work" >"$dir/.worktrees/$id/leftover.txt"; } || true
+      # mergedlocked: clean and merged, so gc DOES try to remove it, but `git worktree remove` fails
+      # on a locked worktree - the portable stand-in for "Device or resource busy".
+      { [ "$kind" = mergedlocked ] && git -C "$dir" worktree lock --reason "live process holds it" "$dir/.worktrees/$id"; } || true
       ;;
     *) echo "gc-scratch-repo: unknown scenario $spec" >&2; exit 2;;
   esac

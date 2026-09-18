@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Audit and clean what workers leave behind: bead/* branches and .worktrees/* checkouts.
 # Rules (work is never discarded):
-#   branch merged into the base branch            -> delete branch and worktree (the work is on main)
+#   branch merged into the base branch, worktree clean -> delete branch and worktree (work is on main)
+#   branch merged into the base branch, worktree dirty -> harvest onto the branch, KEEP both, exit 1
 #   branch with no commits of its own             -> NOT started: keep (a live worker may be in it)
 #   branch not merged, bead open/in_progress      -> harvest uncommitted work, keep (it is going round again)
 #   branch not merged, bead closed or missing     -> WORK NOT ON MAIN: report, reopen the bead, exit 1
@@ -95,12 +96,35 @@ for branch in $(git -C "$REPO_ROOT" branch --list 'bead/*' --format='%(refname:s
   fi
   if git -C "$REPO_ROOT" merge-base --is-ancestor "$branch" "$base"; then
     echo "gc: $branch is merged into $base (bead $st)"
-    [ $check -eq 1 ] && continue
+    if [ $check -eq 1 ]; then
+      # --check must SEE the hole it used to walk into: uncommitted work under a merged branch is
+      # at risk, because the non-check path used to delete the worktree holding it.
+      [ -n "$dirty" ] && { echo "gc: $branch is merged but its worktree still holds uncommitted work"; rc=1; }
+      continue
+    fi
     # accept.sh closes the bead before its worktree is retired. A bead still in_progress whose
     # branch is merged may have a worker living in the worktree: report, do not remove.
     if [ "$st" = "in_progress" ]; then
       echo "gc: $branch is merged but bead $id is still in_progress: worktree kept (a worker may be using it)"
       continue
+    fi
+    # MERGED IS NOT A LICENCE TO DELETE UNCOMMITTED WORK (oo-y8fa). The branch being on $base says
+    # nothing about the files still sitting unstaged in the worktree: they are, by definition, not
+    # in any commit and so not on $base either. The old code went straight to `worktree remove
+    # --force`, which threw them away silently - the same silent-data-loss class oo-ymmj closed for
+    # live workers. Harvest first, with the SAME helper the dirty path uses, then stop: the harvest
+    # commit is NOT on $base, so deleting the branch here would destroy what we just rescued.
+    # Keep worktree and branch, report, and exit non-zero so the caller runs accept.sh.
+    if [ -n "$dirty" ]; then
+      echo "gc: $branch is merged but its worktree still holds uncommitted work"
+      if "$here/harvest.sh" "$id" >/dev/null; then
+        echo "gc: harvested $id onto $branch before any cleanup; worktree and branch KEPT"
+        echo "gc: $branch now has work that is NOT on $base: run accept.sh $id"
+      else
+        echo "gc: REFUSING to remove worktree $id: could not harvest its uncommitted work" >&2
+        echo "gc: worktree $id left in place, nothing was deleted" >&2
+      fi
+      rc=1; continue
     fi
     if [ -d "$path" ] && ! remove_worktree "$path" "$id"; then rc=1; continue; fi
     git -C "$REPO_ROOT" branch -D "$branch" >/dev/null 2>&1 && echo "gc: removed $branch and its worktree"
