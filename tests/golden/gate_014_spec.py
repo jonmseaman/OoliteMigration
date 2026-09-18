@@ -289,6 +289,22 @@ def check_pinned(spec):
     return census
 
 
+def _spec_reads(node, knob):
+    return [n for n in ast.walk(node)
+            if isinstance(n, ast.Subscript)
+            and isinstance(n.value, ast.Name) and n.value.id == "spec"
+            and isinstance(n.slice, ast.Constant) and n.slice.value == knob]
+
+
+def _only_inside_raise(func, target):
+    """True when `target` occurs only under a Raise statement within `func`."""
+    for raise_node in [n for n in ast.walk(func) if isinstance(n, ast.Raise)]:
+        for sub in ast.walk(raise_node):
+            if sub is target:
+                return True
+    return False
+
+
 def check_read_where_it_acts(source):
     for knob in REQUIRED_KNOBS:
         if knob == "quant_decimals":
@@ -306,15 +322,26 @@ def check_read_where_it_acts(source):
             fail("nova_load.py has no function %r, so the gate cannot verify that spec[%r] is "
                  "read where it is acted on; the scenario was refactored and this gate was not"
                  % (func_name, knob))
-        reads = [n for n in ast.walk(func)
-                 if isinstance(n, ast.Subscript)
-                 and isinstance(n.value, ast.Name) and n.value.id == "spec"
-                 and isinstance(n.slice, ast.Constant) and n.slice.value == knob]
+        reads = _spec_reads(func, knob)
         if not reads:
             fail("nova_load.py reads spec[%r] somewhere, but NOT inside %s() - the function "
                  "that acts on it. A knob read only to be copied into the evidence block is still "
                  "decoration: the dump would report the spec's value while the behaviour ran on a "
                  "literal, and a substring-only gate would stay green." % (knob, func_name))
+        # A READ IS NOT AN ACT. This distinction was found by this gate's OWN mutant: replacing
+        # `if evidence[...] != str(spec["expected_written_by_version"]):` with a literal left the
+        # knob still read - INSIDE THE FAILURE MESSAGE of the very `raise` that no longer used it
+        # - and the gate stayed GREEN. A knob that appears only in the text a failure prints is
+        # decoration with extra steps: the message would quote the spec while the predicate ran
+        # on the literal. So the read must occur in an ACTING position - a comparison, a call
+        # argument, a subscript base, an assignment value - and reads that appear ONLY inside a
+        # raise statement do not count.
+        acting = [n for n in reads if not _only_inside_raise(func, n)]
+        if not acting:
+            fail("nova_load.py reads spec[%r] inside %s() but ONLY within a `raise` - i.e. only "
+                 "in the text a failure prints, never in a predicate. The knob is decoration: "
+                 "changing it would change the wording of an error and nothing else."
+                 % (knob, func_name))
 
 
 def check_isolation(source):
