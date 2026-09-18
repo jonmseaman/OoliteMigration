@@ -480,6 +480,32 @@ FOCUS_TIMEOUT_SECONDS = float(os.environ.get("OO_GUI_FOCUS_TIMEOUT", "15"))
 # further apart than that are two single clicks to the game, and never activate a row.
 DOUBLE_CLICK_INTERVAL_SECONDS = 0.05
 
+# --- the cursor_row read-back (bug oo-3opg) ---------------------------------------------------
+#
+# A click does NOT carry the row it hit. PlayerEntityControls.m:771 and :782 activate
+# ``UNIVERSE->cursor_row``, and Universe.m:5343 is the ONLY assignment to it in the tree:
+#     cursor_row = [gui drawGUI:1.0 drawCursor:YES];
+# i.e. the row is computed while RENDERING a frame (GuiDisplayGen.m:1459) from
+# virtualJoystickPosition, which the SDL motion event set (MyOpenGLView+Input.m:377-390).
+#
+# One tick is pollControls -> update -> updateScreen (GameController.m:384-431). A move and a
+# click that arrive in the SAME pollControls are seen by that tick's pollDemoControls with the
+# PREVIOUS frame's cursor_row still in place, so the click activates the row the pointer was on
+# before it moved. Nothing in the input path fixes this: only a rendered frame does.
+#
+# So the pointer is parked on the target for at least one frame before any button goes down.
+# The budget is deliberately several frames, not one: the animation timer is 1/200s
+# (GameController.m:437) but a frame under contention from four sibling agents is far slower,
+# and the cost is paid twice per row on a test that already spends minutes in the game.
+# Measured on this machine at 0.3s this failed roughly one round trip in three in-tier and
+# never in isolation - i.e. 0.3s is inside the distribution of a loaded frame time, which is
+# exactly why the old value looked fine alone.
+CURSOR_SETTLE_SECONDS = float(os.environ.get("OO_GUI_CURSOR_SETTLE", "1.0"))
+# How long pyautogui spends interpolating the move itself. The final position is what matters,
+# and CURSOR_SETTLE_SECONDS is measured AFTER the move completes, so this only has to be long
+# enough that the motion events are not coalesced into a single jump the game misreads.
+MOUSE_MOVE_DURATION_SECONDS = float(os.environ.get("OO_GUI_MOUSE_MOVE", "0.2"))
+
 # Prefixes a failure caused by the DESKTOP being unusable for GUI tests rather than by the game
 # being broken. An operator (and tools/gui-tier.sh) must be able to tell the two apart at a
 # glance: "G1 is broken" and "something elevated is sitting on your foreground" call for
@@ -1300,6 +1326,34 @@ class GameWindow:
     def point_for_row(self, row):
         return row_to_point(row, self.client_rect())
 
+    def aim_at_row(self, row):
+        """Put the pointer on ``row`` and WAIT for the game to have read it back.
+
+        THE ONE-FRAME LAG THIS EXISTS FOR (bug oo-3opg). Oolite does not decide which row a
+        click hit from the click's coordinates. It activates ``UNIVERSE->cursor_row``
+        (PlayerEntityControls.m:771, :782), and that variable is written in exactly one place -
+        ``Universe.m:5343``, ``cursor_row = [gui drawGUI:1.0 drawCursor:YES]`` - i.e. during the
+        RENDER of a frame, from ``virtualJoystickPosition`` (GuiDisplayGen.m:1459).
+
+        One tick is ``[gameView pollControls]`` -> ``[UNIVERSE update:]`` -> ``[gameView
+        updateScreen]`` (GameController.m:384-431). pollControls ingests the SDL motion event and
+        the two button pairs together; update runs pollDemoControls, which reads the cursor_row
+        the PREVIOUS frame's render left behind; only then does updateScreen recompute it. So a
+        move and a click delivered inside one tick activate the row the pointer was on BEFORE the
+        move, every time. Whether they land in one tick is a race against the frame rate, which
+        is why this failed intermittently under load and never in isolation.
+
+        Holding the pointer still for at least one rendered frame removes the race outright:
+        after any frame is drawn with the pointer here, cursor_row IS this row, and it stays
+        this row however many frames pass before the click.
+        """
+        import pyautogui
+
+        x, y = self.point_for_row(row)
+        pyautogui.moveTo(x, y, duration=MOUSE_MOVE_DURATION_SECONDS)
+        time.sleep(CURSOR_SETTLE_SECONDS)
+        return x, y
+
     def select_row(self, row):
         """Move the pointer onto ``row`` and click once. This SELECTS; it does not activate.
 
@@ -1309,15 +1363,11 @@ class GameWindow:
         import pyautogui
 
         self.focus()
-        x, y = self.point_for_row(row)
-        pyautogui.moveTo(x, y, duration=0.2)
-        # The row under the cursor is read from the cursor position the renderer last saw, so
-        # give the game a frame to notice the move before the click lands.
-        time.sleep(0.3)
+        x, y = self.aim_at_row(row)
         self.assert_focused()
         self.assert_click_point_is_ours(x, y)
         pyautogui.click(x, y)
-        time.sleep(0.3)
+        time.sleep(CURSOR_SETTLE_SECONDS)
         return x, y
 
     def confirm_row(self, row):
@@ -1327,15 +1377,25 @@ class GameWindow:
         MyOpenGLView.h:59) or MyOpenGLView+Input.m:285-293 records two separate single clicks and
         never sets gvMouseDoubleClick, so pyautogui's inter-click interval is pinned rather than
         left at its default.
+
+        The pointer is AIMED FIRST and given a frame to be read back - see aim_at_row. Clicking
+        at a point the game has not yet sampled activates whatever row the cursor was on before,
+        and because a confirm is what MOVES between screens, "the row before" is reliably the row
+        that opened the screen we are trying to leave. On the Expansion Manager that stale row is
+        26, which is both the start-screen row that opened it and, on the manager itself,
+        ``OXZ_GUI_ROW_UPDATE`` (OOOXZManager.m:110) - a live selectable action whose handler
+        calls -updateManifests and starts a NETWORK DOWNLOAD (:622-634) instead of leaving. That
+        is bug oo-3opg's ~1-in-3 in-tier "RETURN FAILED for Expansion Manager".
         """
         import pyautogui
 
         # Re-takes the foreground if something transiently stole it, then asserts. A bare
         # sample here was one of the two structural causes of this tier's non-repeatable DoD.
         self.assert_focused()
-        x, y = self.point_for_row(row)
+        x, y = self.aim_at_row(row)
         # Focus is not enough: the click goes to whatever is topmost AT THIS POINT. See
         # assert_click_point_is_ours - this is the third failure mode this bead was reworked for.
+        self.assert_focused()
         self.assert_click_point_is_ours(x, y)
         pyautogui.doubleClick(x, y, interval=DOUBLE_CLICK_INTERVAL_SECONDS)
 
