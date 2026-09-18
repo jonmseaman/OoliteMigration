@@ -43,9 +43,21 @@ def load(path):
 
 
 def arm_of(witness, name):
+    """A detached COPY of one arm, for tests that only read it.
+
+    Deep-copied so a test that pokes at the arm cannot leak into another test through the module's
+    cached fixture. Tests that mean to corrupt the witness must use arm_in(), which returns the
+    live object - a mutation applied to a copy silently does nothing and the mutant appears killed
+    when it was never applied.
+    """
+    return copy.deepcopy(arm_in(witness, name))
+
+
+def arm_in(witness, name):
+    """The LIVE arm inside `witness`, for tests that corrupt it deliberately."""
     for arm in witness["arms"]:
         if arm["arm"] == name:
-            return copy.deepcopy(arm)
+            return arm
     raise AssertionError("no arm %r in fixture" % name)
 
 
@@ -55,6 +67,17 @@ def problems_for(witness, arm_name):
 
 def names(problems):
     return {p.split("]")[0].lstrip("[") for p in problems}
+
+
+def _position_drift_problems(problems):
+    """Only the position_frozen messages about actual DRIFT, not about window length.
+
+    check_position_frozen makes two distinct complaints: "you are still moving" (a fact about the
+    frames) and "there are not enough frozen frames" (a fact about the window). A single-frame
+    window trivially triggers the second, so a test about blindness to drift has to separate them
+    or it silently stops testing what it says it does.
+    """
+    return [p for p in problems if "frozen frames are required" not in p]
 
 
 # --- the fixtures are what they claim to be ----------------------------------------------------
@@ -108,8 +131,15 @@ def test_the_preexisting_performstop_path_is_measured_not_assumed():
     """
     problems = problems_for(load(RED), "performstop")
     assert problems, "performstop must not pass from frame 0 - it decays rather than snapping"
-    assert any("2.1250" in p or "3.6750" in p or "18.7500" in p for p in problems), (
-        "the failure should be the DECAY tail, not a full re-acceleration")
+    speeds = [s["speed"] for f in arm_of(load(RED), "performstop")["after"] for s in f["ships"]]
+    assert speeds[0] > 0 and speeds[-1] == 0, (
+        "the recorded performstop arm should start moving and end stopped; this test is about the "
+        "DECAY between those, so a witness without one is not exercising it")
+    assert any("rest_all_frames" in p and "moving at" in p for p in problems), (
+        "the failure should be the decay tail - the ship still moving on the frames right after "
+        "the call - not a full re-acceleration")
+    assert not any("245.7000" in p or "299.98" in p for p in problems), (
+        "performstop must not look like the velocity arm's runaway re-acceleration")
 
 
 def test_setting_a_nonzero_speed_holds_it():
@@ -142,27 +172,38 @@ def test_setting_a_nonzero_speed_holds_it():
 # --- THE CRUX: the multi-frame requirement is load-bearing --------------------------------------
 
 def test_single_frame_check_would_wrongly_pass():
-    """Weaken the checker to ONE frame and the re-accelerating witness passes. The mutant.
+    """THE CRUX. Truncate the window to one frame and the re-accelerating witness is not caught
+    by the frame-content defences - only by the defences that count frames.
 
     Frame 0 of the RED velocity arm is the frame the write landed on, where setTotalVelocity: has
-    just subtracted the current thrustVector - so position has not moved yet. Truncating the window
-    to that single frame removes every later frame in which the ship is visibly faster, and the
-    position defence has nothing to compare against. A gate built that way reports a ship that
-    doubles its speed over the next nine frames as settled.
+    just subtracted the current thrustVector, so position has not moved yet. A gate that read a
+    single frame would see that and report a ship which goes on to reach 299.98 m/s as settled.
+
+    Two independent defences stand in the way, and BOTH are asserted here: rest_frame_count (there
+    were not enough frames) and position_frozen (not enough frozen frames after the settle). The
+    redundancy is deliberate - the multi-frame requirement is the one property whose loss silently
+    restores the original defect, so it is guarded twice on purpose rather than by accident.
     """
     witness = load(RED)
     arm = arm_of(witness, "velocity")
 
-    full = cs.check_position_frozen(arm)
-    assert full, "sanity: the full window must see the drift"
+    assert cs.check_position_frozen(arm), "sanity: the full window must see the drift"
 
     one_frame = dict(arm, after=arm["after"][:1])
-    assert cs.check_position_frozen(one_frame) == [], (
-        "a one-frame window must be unable to see drift - if it can, this test is not exercising "
+
+    # The frame-CONTENT defence cannot see a drift in a single frame: there is nothing to compare.
+    # This is exactly the blindness the multi-frame requirement exists to cover.
+    assert _position_drift_problems(cs.check_position_frozen(one_frame)) == [], (
+        "a one-frame window must be unable to see DRIFT - if it can, this test is not exercising "
         "the weakening it claims to")
+
+    # ...and the frame-COUNT defences both refuse it.
     assert cs.check_rest_frame_count(one_frame), (
-        "rest_frame_count is the ONLY defence standing between a one-frame window and a false "
-        "PASS; it did not fire, so the multi-frame requirement is not enforced")
+        "rest_frame_count did not fire on a one-frame window; the multi-frame requirement is not "
+        "enforced and a single-frame reading would pass")
+    assert any("frozen frames are required" in p for p in cs.check_position_frozen(one_frame)), (
+        "position_frozen accepted a window with no frames after the settle, so 'stopped' is not "
+        "distinguished from 'about to be re-thrust'")
     assert "1 frame(s)" in cs.check_rest_frame_count(one_frame)[0]
 
 
@@ -184,16 +225,39 @@ def test_data_mutant_reaccelerating_ship_is_caught():
 
 
 def test_data_mutant_drifting_position_is_caught_even_at_speed_zero():
-    """Position is checked INDEPENDENTLY of speed, so a speed reading of 0 cannot cover a drift."""
+    """Position is checked INDEPENDENTLY of speed, so a speed reading of 0 cannot cover a drift.
+
+    The drift is PROGRESSIVE (a growing offset), not a constant one. A constant shift applied from
+    some frame onward leaves every later frame identical to its neighbours, which is a settled ship
+    at a different place - genuinely not what this defence is for. A ship still being integrated
+    moves a bit more each frame, and that is what must be caught.
+    """
     witness = load(GREEN)
     witness["arms"] = [a for a in witness["arms"] if a["arm"] == "speed"]
-    for frame in witness["arms"][0]["after"][3:]:
-        frame["ships"][0]["px"] += 5.0  # moving, while speed still reads exactly 0.0
+    for step, frame in enumerate(witness["arms"][0]["after"][3:], start=1):
+        frame["ships"][0]["px"] += 5.0 * step  # moving, while speed still reads exactly 0.0
     problems = problems_for(witness, "speed")
     assert "position_frozen" in names(problems)
     assert "rest_all_frames" not in names(problems), (
         "this mutant must be caught by position_frozen ALONE; if rest_all_frames also fires the "
         "two defences are not independent and this is a MISKILL")
+
+
+def test_data_mutant_a_late_settle_is_caught():
+    """The settle frame is bounded, not merely required to exist.
+
+    Without the MAX_SETTLE_FRAMES bound, a ship that coasted for eight frames and stopped on the
+    ninth would pass as "settled" - the defence would have degenerated into "stops eventually",
+    which every decelerating ship satisfies.
+    """
+    witness = load(GREEN)
+    witness["arms"] = [a for a in witness["arms"] if a["arm"] == "speed"]
+    for step, frame in enumerate(witness["arms"][0]["after"][:6], start=1):
+        frame["ships"][0]["px"] += 5.0 * (6 - step)
+    problems = problems_for(witness, "speed")
+    assert "position_frozen" in names(problems)
+    assert any("did not stop changing until frame" in p for p in problems), (
+        "a ship that settles only after MAX_SETTLE_FRAMES must be named as a late settle")
 
 
 def test_data_mutant_ship_that_was_never_moving_is_caught():
@@ -225,6 +289,92 @@ def test_data_mutant_unattributed_binary_is_caught():
     witness = load(GREEN)
     witness["binary"] = {"app_dir": "somewhere"}
     assert "binary_identified" in names(problems_for(witness, "speed"))
+
+
+# --- the CRUISE expectation: mutants against the positive control -------------------------------
+
+def cruise_problems(witness, arm_name="cruise"):
+    return cs.judge(witness, arm_name, "cruise")[0]
+
+
+def test_the_cruise_arm_passes_the_cruise_expectation():
+    assert cruise_problems(load(GREEN)) == []
+
+
+def test_data_mutant_a_decayed_cruise_speed_is_caught():
+    """The blip case: the write lands, then the engine pulls the speed back.
+
+    This is the failure mode a rest-only gate is completely blind to, and it is the one that
+    distinguishes 'ship.speed is writable' from 'ship.speed accepts a write and keeps it'.
+    """
+    witness = load(GREEN)
+    arm = arm_in(witness, "cruise")
+    for step, frame in enumerate(arm["after"][1:], start=1):
+        for ship in frame["ships"]:
+            ship["speed"] = max(0.0, ship["speed"] - 15.0 * step)
+    problems = cruise_problems(witness)
+    assert "cruise_speed_held" in names(problems)
+    assert any("did not HOLD" in p for p in problems)
+
+
+def test_data_mutant_a_reported_speed_with_a_frozen_position_is_caught():
+    """Position is verified independently: a speed reading alone is not motion."""
+    witness = load(GREEN)
+    arm = arm_in(witness, "cruise")
+    frozen = arm["after"][0]["ships"][0]
+    for frame in arm["after"][1:]:
+        for ship in frame["ships"]:
+            for axis in ("px", "py", "pz"):
+                ship[axis] = frozen[axis]
+    problems = cruise_problems(witness)
+    assert "cruise_position_advances" in names(problems)
+    assert "cruise_speed_held" not in names(problems), (
+        "this mutant must be caught by the POSITION defence alone; if the speed defence also fires "
+        "the two are not independent and this is a MISKILL")
+
+
+CRUISE_MUTANTS = {
+    # defence name -> a function corrupting the GREEN cruise arm in the way that defence exists to
+    # catch. Each defence must have one, so removing it lets a known-bad witness through.
+    "cruise_speed_held": lambda arm: [
+        ship.__setitem__("speed", 3.0)
+        for frame in arm["after"][1:] for ship in frame["ships"]],
+    "cruise_position_advances": lambda arm: [
+        ship.__setitem__(axis, arm["after"][0]["ships"][0][axis])
+        for frame in arm["after"][1:] for ship in frame["ships"]
+        for axis in ("px", "py", "pz")],
+    "ships_present": lambda arm: [frame.__setitem__("ships", []) for frame in arm["after"]],
+    "frames_advanced": lambda arm: [
+        frame.__setitem__("t", arm["after"][0]["t"]) for frame in arm["after"]],
+    "rest_frame_count": lambda arm: arm.__setitem__("after", arm["after"][:1]),
+}
+
+
+@pytest.mark.parametrize("defence", [name for name, _ in cs.CRUISE_DEFENCES])
+def test_each_cruise_defence_is_load_bearing(monkeypatch, defence):
+    """Each cruise defence catches something no other cruise defence catches.
+
+    Built as corrupt-then-remove, not remove-and-hope: the witness is mutated in the way this
+    defence exists to catch, the full table must REJECT it, and the table without this one defence
+    must ACCEPT it. Asserting only that a good witness still passes would be vacuous - it passes
+    with every defence removed too.
+    """
+    assert defence in CRUISE_MUTANTS, (
+        "cruise defence %r has no mutant; a defence with no failing input it uniquely catches is "
+        "untested and may be dead" % defence)
+
+    witness = load(GREEN)
+    CRUISE_MUTANTS[defence](arm_in(witness, "cruise"))
+    assert cruise_problems(witness), "the mutated witness must be rejected by the full table"
+
+    monkeypatch.setattr(cs, "CRUISE_DEFENCES",
+                        tuple((n, f) for n, f in cs.CRUISE_DEFENCES if n != defence))
+    weakened = load(GREEN)
+    CRUISE_MUTANTS[defence](arm_in(weakened, "cruise"))
+    assert cruise_problems(weakened) == [], (
+        "with %r removed the corrupted witness is STILL rejected, so another defence covers the "
+        "same ground - either this defence is redundant or the mutant is not specific to it"
+        % defence)
 
 
 # --- CHECKER mutants: weaken a defence, the known-bad input must still be rejected ---------------

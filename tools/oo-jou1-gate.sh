@@ -35,7 +35,7 @@ PY="${PYTHON:-python3}"
 fail=0
 note() { printf '%s\n' "$*"; }
 
-note "== 1/3 GREEN: the offline tier"
+note "== 1/4 GREEN: the offline tier"
 if "$PY" -m pytest "$MOTION" -q; then
   note "   ok"
 else
@@ -43,8 +43,8 @@ else
   fail=1
 fi
 
-note "== 2/3 RED: the unfixed engine's witness must be REJECTED"
-out="$("$PY" "$CHECK" "$MOTION/fixtures/red-unfixed-engine.json" --arm velocity 2>&1)"
+note "== 2/4 RED: the unfixed engine's witness must be REJECTED"
+out="$("$PY" "$CHECK" "$MOTION/fixtures/red-unfixed-engine.json" --arm velocity --expect rest 2>&1)"
 rc=$?
 if [ "$rc" -ne 1 ]; then
   note "   FAIL: expected rc=1 (a real difference), got rc=$rc"
@@ -59,7 +59,19 @@ else
   note "   ok: $(printf '%s' "$out" | sed -n '2p')"
 fi
 
-note "== 3/3 REFUSE: an unjudgeable witness must return 2, not 0"
+note "== 3/4 CRUISE: a written nonzero speed is HELD and the ship travels"
+out="$("$PY" "$CHECK" "$MOTION/fixtures/green-speed-arm.json" --arm cruise --expect cruise 2>&1)"
+rc=$?
+if [ "$rc" -ne 0 ]; then
+  note "   FAIL: the positive control did not pass (rc=$rc); a seam that only accepts 0 is a"
+  note "         stop() spelled as a property, not a writable speed:"
+  note "$out" | head -5
+  fail=1
+else
+  note "   ok: $(printf '%s' "$out" | head -1)"
+fi
+
+note "== 4/4 REFUSE: an unjudgeable witness must return 2, not 0"
 rc=0
 "$PY" "$CHECK" "$MOTION/fixtures/green-speed-arm.json" --arm no-such-arm >/dev/null 2>&1 || rc=$?
 if [ "$rc" -ne 2 ]; then

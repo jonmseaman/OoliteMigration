@@ -38,6 +38,7 @@ repo: 0 verified, 1 a real failure, 2 "I cannot tell you" (unreadable/ill-formed
 
 import argparse
 import json
+import math
 import sys
 
 # A ship at rest reads EXACTLY 0.0 in practice (flightSpeed is assigned, not integrated towards
@@ -49,6 +50,17 @@ REST_EPS = 1e-6
 # Position must not drift either. One millimetre over the whole window: the quantisation the golden
 # storage policy stores at is 3 decimals = 1 mm, so anything a golden could distinguish is caught.
 POSITION_EPS = 1e-3
+
+# How far a held cruise speed may read from the value written. Exact equality is the observed
+# behaviour (the engine stores the double it was handed and -applyThrust: leaves it alone while
+# desired_speed matches), but a tolerance costs nothing and keeps the defence about "held" rather
+# than about float representation.
+CRUISE_EPS = 1e-6
+
+# How many frames of residual-velocity decay are tolerated after the write before position must be
+# permanently frozen. Measured at 2 on this engine (see check_position_frozen); 3 leaves one frame
+# of headroom without being loose enough to hide a ship that is still under thrust.
+MAX_SETTLE_FRAMES = 3
 
 # Consecutive frames required. Four is not a round number for its own sake: the pre-existing
 # performStop() path (which this bead measured before changing anything) takes 2-3 frames to decay
@@ -140,21 +152,72 @@ def check_rest_all_frames(arm):
 
 
 def check_position_frozen(arm):
-    """D3. Checked independently of speed, not inferred from it."""
+    """D3. Checked independently of speed, not inferred from it.
+
+    MEASURED BEHAVIOUR, and why this is not simply "every frame equals frame 0". Writing
+    ship.speed = 0 holds flightSpeed at exactly 0 from the very first sampled frame, but position
+    keeps changing for a frame or two afterwards: -setTotalVelocity: left the velocity ivar at
+    `-thrustVector` rather than at zero, and that residual is integrated away over the next couple
+    of frames. Observed on the fixed binary, one ship, px in metres:
+
+        f0 -49475.584336   f1 -49483.762053   f2 -49490.024708   f3 -49490.024708   f4 (same)
+
+    So the ship arrives at a permanent rest on frame 2 and never moves again. Demanding equality
+    with frame 0 would reject that, which would be a checker asserting something the engine never
+    claimed. Demanding nothing would accept a ship that drifts forever.
+
+    This defence therefore locates the settle frame - the first frame from which every later
+    position is IDENTICAL - and requires it to be early (<= MAX_SETTLE_FRAMES) with enough frozen
+    frames after it to be meaningful. The settle index is reported in the PASS line, so a
+    regression that doubles it is visible rather than silently absorbed.
+    """
+    frames = arm["after"]
+    ids = sorted(s["id"] for s in _ships(frames[0]))
+    if not ids:
+        return ["no ships in the sampled frames"]
+
+    def position_of(frame):
+        return {s["id"]: (s["px"], s["py"], s["pz"]) for s in _ships(frame)}
+
+    positions = [position_of(f) for f in frames]
+    settle = None
+    for start in range(len(positions)):
+        if all(
+            all(
+                ship_id in positions[later]
+                and max(abs(positions[later][ship_id][axis] - positions[start][ship_id][axis])
+                        for axis in range(3)) <= POSITION_EPS
+                for ship_id in ids
+            )
+            for later in range(start + 1, len(positions))
+        ):
+            settle = start
+            break
+
+    if settle is None:
+        drift = max(
+            abs(positions[-1][ship_id][axis] - positions[-2][ship_id][axis])
+            for ship_id in ids if ship_id in positions[-1] and ship_id in positions[-2]
+            for axis in range(3)
+        )
+        return ["position never stopped changing across %d sampled frames (still moving %.6f m "
+                "between the last two) though every frame reported speed 0 - the ship is still "
+                "being integrated" % (len(frames), drift)]
+
     problems = []
-    first = {s["id"]: s for s in _ships(arm["after"][0])}
-    for index, frame in enumerate(arm["after"][1:], start=1):
-        for ship in _ships(frame):
-            base = first.get(ship["id"])
-            if base is None:
-                problems.append("%s appears on frame %d but not on frame 0" % (ship["id"], index))
-                continue
-            for axis in ("px", "py", "pz"):
-                drift = abs(ship[axis] - base[axis])
-                if drift > POSITION_EPS:
-                    problems.append(
-                        "%s drifted %.6f m on %s by frame %d though its speed read as zero - the "
-                        "ship is still being integrated" % (ship["id"], drift, axis, index))
+    if settle > MAX_SETTLE_FRAMES:
+        problems.append(
+            "position did not stop changing until frame %d; at most %d frame(s) of residual "
+            "velocity decay are expected after the write (-setTotalVelocity: leaves the velocity "
+            "ivar at -thrustVector, which integrates away), so a longer settle means something is "
+            "still driving the ship" % (settle, MAX_SETTLE_FRAMES))
+    frozen = len(frames) - settle
+    if frozen < MIN_REST_FRAMES:
+        problems.append(
+            "only %d frame(s) remain after the position settled on frame %d; %d consecutive frozen "
+            "frames are required, because a ship that happens to be stationary on the last frame "
+            "sampled has not been shown to STAY stationary" % (frozen, settle, MIN_REST_FRAMES))
+    arm["settle_frame"] = settle
     return problems
 
 
@@ -168,6 +231,81 @@ DEFENCES = (
 )
 
 
+# --- the CRUISE expectation: the complementary positive control ---------------------------------
+#
+# A seam that only ever accepts 0 would satisfy every defence above and still be useless: it would
+# be a "stop()" spelled as a property. These defences judge the opposite claim - that a written
+# NONZERO speed is held, and that the ship actually travels - so the two expectations together pin
+# "the value written is the value kept" rather than "zero is reachable".
+#
+# Deliberately a SEPARATE table rather than a flag on the rest defences: sharing one function with
+# an `if expect == ...` inside it means one mutation silently weakens both expectations at once,
+# which is how a decomposed gate turns back into a single blind one (oo-3ya).
+
+def check_cruise_speed_held(arm):
+    """Every sampled frame reads the speed that was written, not a one-frame blip."""
+    target = arm.get("target_speed")
+    if target is None:
+        return ["the arm does not record the speed it wrote, so 'held' cannot be checked"]
+    problems = []
+    for index, frame in enumerate(arm["after"]):
+        for ship in _ships(frame):
+            if abs(ship["speed"] - target) > CRUISE_EPS:
+                problems.append(
+                    "%s reads %.4f m/s on frame %d (t=%.4f) but %.4f was written; the engine did "
+                    "not HOLD the scripted speed - a write that survives one frame and decays is "
+                    "not a seam" % (ship["id"], ship["speed"], index, float(frame["t"]), target))
+    return problems
+
+
+def check_cruise_position_advances(arm):
+    """Checked independently of speed: a speed reading with a frozen position is a lie.
+
+    Monotonic per-axis distance from the frame-0 position. Comparing consecutive frames would pass
+    a ship oscillating in place; comparing against the origin will not.
+    """
+    problems = []
+    frames = arm["after"]
+    first = {s["id"]: s for s in _ships(frames[0])}
+    previous = {ship_id: 0.0 for ship_id in first}
+    for index, frame in enumerate(frames[1:], start=1):
+        for ship in _ships(frame):
+            base = first.get(ship["id"])
+            if base is None:
+                problems.append("%s appears on frame %d but not on frame 0" % (ship["id"], index))
+                continue
+            moved = math.sqrt(sum((ship[a] - base[a]) ** 2 for a in ("px", "py", "pz")))
+            if moved <= previous[ship["id"]]:
+                problems.append(
+                    "%s has travelled %.6f m by frame %d, no further than the %.6f m it had "
+                    "reached by frame %d, though its speed reads nonzero - the speed is being "
+                    "reported but not integrated"
+                    % (ship["id"], moved, index, previous[ship["id"]], index - 1))
+            previous[ship["id"]] = moved
+    return problems
+
+
+CRUISE_DEFENCES = (
+    ("ships_present", check_ships_present),
+    ("frames_advanced", check_frames_advanced),
+    ("rest_frame_count", check_rest_frame_count),
+    ("cruise_speed_held", check_cruise_speed_held),
+    ("cruise_position_advances", check_cruise_position_advances),
+)
+
+def expectations():
+    """The expectation table, rebuilt on every call.
+
+    Deliberately a FUNCTION and not a module-level dict. A dict built at import time captures the
+    DEFENCES tuple by reference, so a mutation harness that swaps cs.DEFENCES (which is exactly how
+    the per-defence mutants in test_check_settled.py work) would leave judge() still running the
+    original table - every mutant would appear killed while none of them were being applied. That
+    regression was introduced here and caught by the all-defences-removed control; rebuilding per
+    call keeps the mutants live.
+    """
+    return {"rest": DEFENCES, "cruise": CRUISE_DEFENCES}
+
+
 def check_binary_identified(witness):
     """D7. A verdict about an unnamed binary is a verdict about nothing."""
     binary = witness.get("binary") or {}
@@ -179,10 +317,19 @@ def check_binary_identified(witness):
     return []
 
 
-def judge(witness, arm_name):
-    """Return (problems, arm). Raises Refusal when the witness cannot be judged."""
+def judge(witness, arm_name, expect="rest"):
+    """Return (problems, arm). Raises Refusal when the witness cannot be judged.
+
+    `expect` selects WHICH claim is being made about the arm. There is no default-by-guessing:
+    asking for the rest claim about a cruise arm is a real failure and is reported as one, since a
+    checker that silently picks the expectation that passes cannot fail.
+    """
     if not isinstance(witness, dict) or not isinstance(witness.get("arms"), list):
         raise Refusal("witness is not a motion_probe result (no 'arms' list)")
+    table = expectations()
+    if expect not in table:
+        raise Refusal("unknown expectation %r (known: %s)"
+                      % (expect, ", ".join(sorted(table))))
     arms = [a for a in witness["arms"] if a.get("arm") == arm_name]
     if not arms:
         raise Refusal("witness contains no arm named %r (it has %s)"
@@ -192,7 +339,7 @@ def judge(witness, arm_name):
         raise Refusal("arm %r has no post-write frames" % arm_name)
 
     problems = []
-    for name, fn in DEFENCES:
+    for name, fn in table[expect]:
         for message in fn(arm):
             problems.append("[%s] %s" % (name, message))
     for message in check_binary_identified(witness):
@@ -202,9 +349,11 @@ def judge(witness, arm_name):
 
 def summarise(arm, witness):
     speeds = [s["speed"] for f in arm["after"] for s in _ships(f)]
-    return ("arm=%s frames=%d ships=%d max speed after the write=%.6f m/s "
+    settle = arm.get("settle_frame")
+    return ("arm=%s frames=%d ships=%d settled on frame %s max speed after the write=%.6f m/s "
             "(pre-write max %.4f m/s) binary=%s md5=%s"
             % (arm["arm"], len(arm["after"]), len(_ships(arm["after"][0])),
+               "n/a" if settle is None else settle,
                max(speeds) if speeds else float("nan"),
                max(s["speed"] for s in _ships(arm["before"])),
                (witness.get("binary") or {}).get("exe", "?"),
@@ -215,6 +364,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("witness")
     parser.add_argument("--arm", default="speed")
+    parser.add_argument("--expect", default="rest", choices=sorted(expectations()),
+                        help="which claim to judge: 'rest' (held at zero) or 'cruise' (a written "
+                             "nonzero speed is held and the ship travels)")
     args = parser.parse_args(argv)
 
     try:
@@ -225,13 +377,13 @@ def main(argv=None):
         return 2
 
     try:
-        problems, arm = judge(witness, args.arm)
+        problems, arm = judge(witness, args.arm, args.expect)
     except Refusal as exc:
         print("REFUSED: %s" % exc)
         return 2
 
     if problems:
-        print("FAIL: the ship did not come to and stay at rest")
+        print("FAIL: arm %r does not satisfy the %r expectation" % (args.arm, args.expect))
         # Capped: a re-accelerating ship produces one problem per ship per frame per axis, which
         # buries the verdict in scrollback. The names and the count are what a reader needs.
         for problem in problems[:MAX_REPORTED]:

@@ -358,6 +358,9 @@ def run(app_dir, port, seed, output_dir, arms, frames, tick_seconds, role="pirat
             after = sample_frames(console, frames, tick_seconds, prefix)
             witness["arms"].append({
                 "arm": arm, "js": js, "prefix": prefix, "before": before, "after": after,
+                # The speed this arm asked for, so check_settled.py judges "held" against the
+                # value actually written rather than a constant duplicated in the checker.
+                "target_speed": CRUISE_SPEED if arm == "cruise" else 0.0,
             })
     finally:
         console.close()

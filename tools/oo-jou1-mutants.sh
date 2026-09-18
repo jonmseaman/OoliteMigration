@@ -42,12 +42,14 @@ MOTION_NATIVE="$repo_native/tests/golden/motion"
 OOJSSHIP="$repo/upstream/oolite/src/Core/Scripting/OOJSShip.m"
 CHECKER="$MOTION/check_settled.py"
 GREEN="$MOTION/fixtures/green-speed-arm.json"
+CONTRACT="$repo/oxp-contract/js-api-1.93.json"
 RED="$MOTION/fixtures/red-unfixed-engine.json"
 
 PY="${PYTHON:-python3}"
 command -v "$PY" >/dev/null 2>&1 || { echo "no $PY on PATH"; exit 2; }
 
 backups=()
+mutated_paths=()
 restore() {
   local i
   for ((i=${#backups[@]}-1; i>=0; i--)); do
@@ -56,6 +58,7 @@ restore() {
     rm -f "${pair%%::*}"
   done
   backups=()
+  mutated_paths=()
 }
 trap restore EXIT INT TERM
 
@@ -63,6 +66,7 @@ backup() {  # backup <file>
   local tmp; tmp="$(mktemp)"
   cp -f "$1" "$tmp"
   backups+=("$tmp::$1")
+  mutated_paths+=("$1")
 }
 
 kills=0
@@ -83,10 +87,32 @@ baseline() {
   fi
 }
 
+# True when every file we backed up is byte-identical to its backup, i.e. the mutation edited
+# nothing. Compared against the BACKUP rather than against git HEAD on purpose: a mutation that
+# happens to reproduce the committed content (M10 reverting a value that was not yet committed)
+# is still a real mutation of the working tree, and judging it by `git diff` silently mislabels
+# it. The backup is the only honest before-image.
+mutation_is_a_no_op() {
+  local pair
+  for pair in "${backups[@]}"; do
+    cmp -s "${pair%%::*}" "${pair##*::}" || return 1
+  done
+  return 0
+}
+
 mutant() {  # mutant <name> <description>
   local name="$1" desc="$2"
   echo
   echo "== MUTANT $name: $desc"
+  # A mutation that did not actually change the file is not a survivor, it is a broken harness -
+  # and it reports identically to a blind gate. M9/M10 sat as "SURVIVED" through two runs because
+  # their heredocs were malformed and edited nothing; only diffing the tree exposed it.
+  if mutation_is_a_no_op; then
+    echo "   *** MUTATION DID NOT APPLY - the harness is broken, not the gate ***"
+    restore
+    survivors=$((survivors + 1))
+    return
+  fi
   if gate; then
     echo "   rc=0 *** SURVIVED - THE GATE DOES NOT DISCRIMINATE THIS ***"
     survivors=$((survivors + 1))
@@ -202,6 +228,30 @@ assert old in s, "M5 anchor not found"
 open(p, "w", encoding="utf-8", newline="\n").write(s.replace(old, ""))
 EOF
 mutant M5 "remove the position_frozen defence from the DEFENCES table"
+
+# --- M9: the CRUISE defences (the positive control) --------------------------------------------
+backup "$CHECKER"
+"$PY" - "$(native "$CHECKER")" <<'EOF'
+import sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+old = '    ("cruise_speed_held", check_cruise_speed_held),' + chr(10)
+assert old in s, "M9 anchor not found"
+open(p, "w", encoding="utf-8", newline=chr(10)).write(s.replace(old, ""))
+EOF
+mutant M9 "remove the cruise_speed_held defence (a decayed write would pass)"
+
+# --- M10: the CONTRACT ---------------------------------------------------------------------------
+backup "$CONTRACT"
+"$PY" - "$(native "$CONTRACT")" <<'EOF'
+import json, sys
+p = sys.argv[1]
+d = json.load(open(p, encoding="utf-8"))
+d["globals"]["Ship"]["prototype_members"]["speed"]["writable"] = False
+open(p, "w", encoding="utf-8", newline=chr(10)).write(
+    json.dumps(d, indent=2, sort_keys=True) + chr(10))
+EOF
+mutant M10 "revert the recorded contract to writable:false for Ship.speed"
 
 # --- M6: the EVIDENCE ---------------------------------------------------------------------------
 backup "$GREEN"
