@@ -1,0 +1,135 @@
+{
+  "scenario": "004-trade-cycle",
+  "platform": "windows-x64",
+  "os": "Windows-11-10.0.26200-SP0",
+  "quant_decimals": 3,
+  "dump_tool": "tests/golden/trade_cycle.py",
+  "evidence_checker": "tests/golden/check_trade_cycle_evidence.py",
+  "spec_gate": "tests/golden/gate_004_spec.py",
+  "blessed_from_commit": "0f55127de57b0df2cd241408752a9c22ab095ff9",
+  "blessed_utc": "2026-09-18T19:13:36Z",
+
+  "artifacts": {
+    "state.json": {
+      "bytes": 3055,
+      "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f",
+      "note": "hashed byte-wise BY A GATE LINE, because a golden cannot witness itself: a golden-vs-copy comparison moves BOTH sides when the golden is edited, so a one-quantised-unit change survives it (bead oo-gxp measured that mutant surviving). This digest and the byte count live HERE, in a separate file the mutant does not touch."
+    },
+    "frame.grid": {
+      "bytes": 4096,
+      "sha256": "91e8794d350b4834f880fb1520f28003dea62b6cd265f4dc2f82d4f2d62c37d3",
+      "note": "recorded for provenance/auditing ONLY. This digest is NEVER a gate predicate: llvmpipe is not bit-reproducible and this scenario's own sweep produced 10 DISTINCT grid digests over 10 BYTE-IDENTICAL dumps. The dump is hashed byte-wise because it is quantised and deterministic; the frame is compared with a measured distance. The asymmetry is deliberate."
+    }
+  },
+
+  "scenario_knobs": {
+    "seed": 20260918,
+    "system_id": 80,
+    "ticks": 24,
+    "tick_seconds": 0.125,
+    "quant_decimals": 3,
+    "load_save": "upstream/oolite-tests/Checklist-files/Missions/CloakingDevice.oolite-save",
+    "commodity": "food",
+    "buy_units": 5,
+    "sell_units": 3,
+    "expected_cargo_after": 2,
+    "credits_scale": 10
+  },
+
+  "trade_measurements": {
+    "market_price_food": 40,
+    "market_quantity_before": 17,
+    "market_quantity_after": 15,
+    "market_capacity_food": 127,
+    "credits_before": 96522.6,
+    "credits_after": 96514.6,
+    "credits_net": -8.0,
+    "buy_leg_cost": 20.0,
+    "sell_leg_proceeds": 12.0,
+    "cargo_after_cycle": 2,
+    "credits_scale_measurement": "PlayerEntity stores credits in TENTHS. Probed directly on this box before the scenario was written: 5 units of food at price 40 moved player.credits from 96522.6 to 96502.6, i.e. exactly 20.0 credits, so cost = price * units / 10. The save file's own `credits` key is 965226 for the same 96522.6, which is the second, independent confirmation of the scale.",
+    "seams_used": [
+      "station.setMarketQuantity(good, q) -> -[StationEntity setQuantity:forCommodity:]",
+      "player.ship.manifest[good] = n -> -[PlayerEntity setCargoQuantityForType:amount:]",
+      "player.credits = c -> -[PlayerEntity setCreditBalance:]"
+    ],
+    "seam_not_available": "-[PlayerEntity tryBuyingCommodity:all:] / -trySellingCommodity:all: (PlayerEntity.m:11334, :11434) are the engine's own buy/sell orchestration and are NOT reachable from this tier. CHECKED, not assumed: both are two-argument selectors, and the debug console's callObjC dispatches only the four signatures in OOJSCall.m's template class - a two-argument selector falls through GetMethodType to kMethodTypeInvalid and is refused by name. They are otherwise driven only from PlayerEntityControls.m's key handler, i.e. the GUI tier. The scenario therefore CANNOT witness their capacity/legality branches or the playerBoughtCargo/playerSoldCargo events; saying so is better than a golden that implies coverage it does not have. THE SEAM THAT WOULD BE NEEDED is a JS-reachable buy/sell or a single-argument ObjC shim.",
+    "engine_computed_witness": "cargoSpaceUsed is NOT written by this scenario - -calculateCurrentCargo recomputes it from the hold after each manifest write - so 'used moved by exactly the units traded' is an ENGINE-computed fact, and a manifest write that was clamped or dropped moves it differently. Probed: asking for cargoSpaceCapacity+50 units of food yielded a hold of exactly 35 (the capacity), i.e. the clamp is real and reachable, which is why the traded quantities are chosen far inside it."
+  },
+
+  "observable_carriers": {
+    "question": "bead oo-rkm's rule: before measuring stability, find every carrier of the thing you assert on.",
+    "carriers_found": [
+      "Universe.m:7998 -setUpSpace / StationEntity.m:264 -initialiseLocalMarket REGENERATE the market. Both run on system entry and on load, i.e. BEFORE this scenario's baseline - the scenario never changes system and never re-docks.",
+      "the player's own buy/sell, i.e. this scenario",
+      "commodity scripts (OOCommodities.m:327-355), at market GENERATION time only"
+    ],
+    "measured": "with the populators, station traffic and oolite-populator's systemWillRepopulate quieted, a full 17-commodity snapshot of quantity and price was BYTE-IDENTICAL across 4 s of game time.",
+    "guard": "a measurement is not a guard, so the guard ships too: evidence.untraded_goods_changed compares all 16 goods the scenario does NOT trade, before and after the whole cycle. If another carrier ever writes to this market during a run, that list is non-empty and the run goes RED rather than flaky.",
+    "untraded_goods_compared": 16,
+    "untraded_goods_changed": []
+  },
+
+  "stability": {
+    "runs": 10,
+    "dumps_written": 10,
+    "refused": 0,
+    "errored": 0,
+    "stable": true,
+    "distinct_dump_digests": [
+      "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f"
+    ],
+    "dump_bytes": [3055],
+    "distinct_frame_grid_digests": 10,
+    "wall_seconds_min": 11.5,
+    "wall_seconds_max": 20.5,
+    "note": "10 of 10 runs wrote a BYTE-IDENTICAL dump (3055 bytes, one digest); an ELEVENTH independent run, the one that produced the blessed artifacts, reproduced the same digest. Every run's outcome is recorded regardless of exit code, and REFUSED (the harness declining to dump an unsettled world) is tracked separately from DIFFERED - collapsing the two is how a stability claim goes dishonest (bead oo-jor). The frame grids are all distinct, as expected: llvmpipe is not bit-reproducible, which is why the grid is compared with a measured distance and is NOT part of state.json.",
+    "per_run": [
+      {"run": 1, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "b9cfdb4f2858931fe9d147eadd0ac117307417947d7f04399198c13227d86da6", "wall_seconds": 11.5},
+      {"run": 2, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "e849d6f5faff149bc333287597b92e56d6a06ac58e3d7a3788381430518bffa0", "wall_seconds": 12.6},
+      {"run": 3, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "003038240e517191e849ce2cdad2efc66427d57fa1b5077e83803ca62f90a5d9", "wall_seconds": 12.0},
+      {"run": 4, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "ebc60c8595ba443bf4097e79a3dc6b38bf64a3d14f8476cba0f9a9335dde81bd", "wall_seconds": 12.1},
+      {"run": 5, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "1c04129c770a00e52d3a667c935effb05900054db2d535a856a256947e69a728", "wall_seconds": 17.2},
+      {"run": 6, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "6f5f35553485f356813cea01ef038564242dddfcb0127e23addfcd010d7ed2ee", "wall_seconds": 11.8},
+      {"run": 7, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "eb1ff1c89534d056512f134e4e81fc0e5e966839fd97006f8a2f599dbac80476", "wall_seconds": 17.5},
+      {"run": 8, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "90e540d912f4c5e12aab284782239501212af6a5ffec2c207f8265ab7f037d0c", "wall_seconds": 18.9},
+      {"run": 9, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "6cc39fb00ce570d129fc47752a851a257d6d7eced414637ef6c2875ce8ec4369", "wall_seconds": 17.2},
+      {"run": 10, "verdict": "DUMPED", "bytes": 3055, "sha256": "7c11f20235d204d8fc6092d61f74644d4e642531dcfc94e9d2c8f73bb111731f", "frame_sha256": "439e2f01d5b9933f079f2004cbb8a2c4b6d9bf57009e1cbd55210f1ed0c442f3", "wall_seconds": 20.5}
+    ]
+  },
+
+  "frame_tolerance": {
+    "asserted": true,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9). USED AS MEASURED, never adjusted to make a run pass.",
+    "why_asserted": "MEASURED AND ACCEPTED, unlike scenario 015. That scenario could only assert liveness because HeadUpDisplay.m:3306 -drawTrumbles: animates a live population every frame, putting its same-scene pairs at 1.08x..2.49x this tolerance. THIS scenario's scene is a docked market view with no animated population: all 45 same-scene pairs across the 10 stability grids sit at 0.001371..0.001583, i.e. 0.31x..0.36x the tolerance - a 2.8x margin under it. So the equality assertion is available here and is made."
+  },
+
+  "frame_measurements": {
+    "same_scene_pairs_10_runs": {"pairs": 45, "min": 0.001371, "max": 0.001583, "max_x_tol": 0.36},
+    "all_black_vs_populated": {"min": 0.052081, "max": 0.052163, "min_x_tol": 11.9},
+    "all_white_vs_populated": {"min": 0.947837},
+    "different_scene_015_trumbles": {"distance": 0.025412, "x_tol": 5.8},
+    "different_scene_009_shaders": {"distance": 0.124363, "x_tol": 28.4},
+    "different_scene_010_png": {"distance": 0.129397, "x_tol": 29.6},
+    "separation_ratio": 16.05,
+    "separation_reading": "min(distance to the NEAREST different scene, 0.025412 - scenario 015's blessed frame) / max(distance between two frames of THIS scene, 0.001583). Signal is 16x the noise, so a threshold exists that admits two runs of this scenario and rejects an unrelated scene. Bead oo-gxp's scenario 010 reached 261 on a present-vs-absent texture; anything below 1 means the observable cannot discriminate (scenario 015 measured 0.25 and correctly refused to assert)."
+  },
+
+  "frame_liveness": {
+    "asserted": true,
+    "floor": 0.02,
+    "metric": "frame_hash.distance(grid, all-black 4096-byte grid)",
+    "what_it_proves": "that something was RENDERED - the property a dead run fails: a run that died before drawing, or drew into a lost context, yields an all-black grid at distance 0. The tolerance assertion alone does NOT catch it, because two black frames match each other perfectly.",
+    "margin": {
+      "dimmest_real_frame_vs_black": 0.052081,
+      "max_same_scene_noise": 0.001583,
+      "reading": "the floor sits 12.6x above the largest same-scene noise and at 0.38x of the dimmest real frame measured, so no same-scene variation can push a real frame under it and an empty render cannot climb over it."
+    }
+  },
+
+  "landing_rehearsal": {
+    "performed": true,
+    "note": "Both the scenario script and both gates search goldens/windows-x64/004-trade-cycle/ FIRST and fall back to tests/golden/pending/004-trade-cycle/, through the identical idiom, so landing is a pure `git mv` with no code change. REHEARSED FOR REAL, not described: the move was performed in a throwaway copy of the tree under Temp and every gate re-run from the moved layout. See LANDING.md."
+  }
+}
