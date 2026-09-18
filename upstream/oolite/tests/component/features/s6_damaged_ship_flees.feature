@@ -20,5 +20,5 @@ Feature: A damaged ship flees and range increases (smoke test)
     When I spawn 1 ship with role "police"
     And I spawn 1 ship with role "pirate" within 10 km
     And the simulation runs for at most 900 ticks
-    Then a ship with role "pirate" survives
+    Then a ship with role "police" survives
     And no ERROR appears in the log
