@@ -9087,7 +9087,7 @@
           "kind": "property",
           "readable": true,
           "type": "undefined",
-          "writable": false
+          "writable": true
         },
         "starboardWeapon": {
           "configurable": false,
