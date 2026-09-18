@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "_comment": [
+    "UNDECLARED companion requirements (bead oo-kcrw).",
+    "",
+    "requires_oxps is self-reported and some expansions genuinely need a partner",
+    "they never declare. Those cannot be discovered by walking the graph, so they",
+    "are recorded HERE, as data, with a written reason and the evidence line that",
+    "proves the need. This table is NOT a silencer: the error it addresses stays",
+    "detectable, and removing an entry makes the tier go red again with the",
+    "expansion's own error quoted. Every entry must carry `reason` and `evidence`.",
+    "",
+    "A companion participates in the closure walk exactly like a declared",
+    "requirement, so the companion's own requires_oxps are followed too."
+  ],
+  "companions": {
+    "oolite.oxp.z.phkb.XenonUI": {
+      "requires": ["oolite.oxp.z.phkb.XenonUIResources"],
+      "reason": "Xenon UI is a HUD/UI framework that ships no artwork of its own. It refuses to function without exactly one companion resource pack and says so in its own words at startup. The corpus contains 15 interchangeable packs (A-N for 16:9 and 16:10 plus the Redux set); Pack A (oolite.oxp.z.phkb.XenonUIResources) is chosen because it is the lowest-lettered 16:9 pack and therefore a deterministic, arbitrary-free choice among equals. The pairing is mutual and visible in the data: Pack A's own manifest declares requires_oxps = [oolite.oxp.z.phkb.XenonUI], so XenonUI + Pack A is a genuine 2-CYCLE in the companion-augmented dependency graph and is the corpus's own live proof that the closure walk must terminate on cycles.",
+      "evidence": "[XenonUI]: ERROR! No Xenon UI Resource packs installed. Xenon UI cannot function without one resource pack installed."
+    }
+  }
+}
