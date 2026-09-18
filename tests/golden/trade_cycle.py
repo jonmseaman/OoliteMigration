@@ -130,9 +130,16 @@ TICK_WALL_BUDGET_SECONDS = 300
 FRAME_SETTLE_SECONDS = 1.5
 SETTLE_TIMEOUT_SECONDS = 120
 # How many times a read-only STARTUP probe may be re-asked when the console does not answer inside
-# its own 15s window. Four, because the one stall measured in an acceptance rehearsal cleared on
-# the next ask; the bound exists so a game that never settles is REFUSED by name instead of hanging.
-STARTUP_PROBE_TRIES = 4
+# its own 15s window, and how many times the whole LAUNCH may be retried when it never answers.
+#
+# MEASURED, not guessed. On a box running the rest of the fleet, two runs in a row had the console
+# connect, answer `system.ID`, and then never answer the next probe - for over three minutes, with
+# the process alive the whole time. Re-asking did not recover it; a FRESH launch succeeded in ~20s
+# every time it was tried. So the budget for re-asking one wedged process is small (a genuine
+# momentary stall clears on the next ask) and the real recovery is relaunching, the same shape
+# state_dump.start_with_retry already uses for launches that die before main().
+STARTUP_PROBE_TRIES = 2
+PROBEABLE_LAUNCH_ATTEMPTS = 3
 CLEAR_ROUNDS = 20
 
 # The floor a frame must clear, in frame_hash distance units, to count as RENDERED. It is NOT a
@@ -147,6 +154,17 @@ class ScenarioError(RuntimeError):
 
 class Refusal(RuntimeError):
     """The comparison could not be performed soundly, so no verdict is given (rc=2)."""
+
+
+class WorldNotProbeable(ScenarioError):
+    """The game launched and connected but never answered a startup probe.
+
+    A DISTINCT type, not a flavour of ScenarioError's message, because it is the one failure this
+    scenario may answer by relaunching: it says nothing about the engine's trade behaviour, only
+    that this particular process never became askable. Every other ScenarioError means a
+    measurement disagreed with what the scenario asserts, and relaunching one of those would be
+    retrying until the answer is convenient - which is how a gate stops meaning anything.
+    """
 
 
 def _first_existing(candidates, what):
@@ -266,7 +284,7 @@ def evaluate_settling(console, js, tries=STARTUP_PROBE_TRIES):
                 raise           # exited mid-command, or a JS error: an answer, not a stall.
             last = exc
             time.sleep(1)
-    raise ScenarioError(
+    raise WorldNotProbeable(
         "the console did not answer %s in %d attempt(s) though the game was still running: %s. "
         "The world never became responsive enough to probe, so this run is REFUSED rather than "
         "dumped - a dump taken from a game that could not answer is not evidence of anything."
@@ -689,8 +707,8 @@ def canonical(obj):
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
 
 
-def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks_override=None,
-        frame_out=None, buy_override=None, sell_override=None, save_override=None):
+def run_once(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks_override=None,
+             frame_out=None, buy_override=None, sell_override=None, save_override=None):
     """One game process, one canonical dump, one frame grid."""
     from console import DebugConsole  # noqa: E402  (path valid only after sys.path setup)
 
@@ -824,6 +842,37 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
         if not keep:
             golden_run.unstage_app(staged)
         golden_run.release_all()
+
+
+def run(*args, **kwargs):
+    """run_once(), relaunching ONLY when the world never became probeable.
+
+    See PROBEABLE_LAUNCH_ATTEMPTS for the measurement this exists for: a process that connects and
+    then never answers is not recovered by asking again, but a fresh launch answers in ~20s.
+
+    The narrowness is the whole point, and it is enforced by the type, not by matching a message:
+
+      * ONLY WorldNotProbeable is retried. It is raised from exactly one place - evaluate_settling()
+        - and only for probes taken BEFORE the first write, so a relaunch cannot repeat a trade;
+      * every other ScenarioError propagates on the FIRST occurrence. Those mean a measurement
+        disagreed with what the scenario asserts, and relaunching until a measurement agrees is
+        indistinguishable from having no gate at all;
+      * each attempt is reported on stderr, so a run that needed three launches says so rather than
+        looking like a clean first try;
+      * the budget is bounded: after the last attempt the WorldNotProbeable is re-raised and the
+        run fails, REFUSED, by name.
+    """
+    last = None
+    for attempt in range(PROBEABLE_LAUNCH_ATTEMPTS):
+        try:
+            return run_once(*args, **kwargs)
+        except WorldNotProbeable as exc:
+            last = exc
+            sys.stderr.write(
+                "note: launch %d of %d never became probeable (%s); relaunching. This says nothing "
+                "about the engine's trade behaviour - only that this process never became askable.\n"
+                % (attempt + 1, PROBEABLE_LAUNCH_ATTEMPTS, exc))
+    raise last
 
 
 def _read_grid(path):

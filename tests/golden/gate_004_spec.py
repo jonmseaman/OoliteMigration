@@ -79,9 +79,11 @@ READ_IN_FUNCTION = {
     "buy_units": "assert_ran",
     "sell_units": "assert_ran",
     "expected_cargo_after": "assert_ran",
-    "seed": "run",
-    "ticks": "run",
-    "tick_seconds": "run",
+    # run_once(), not run(): run() is the thin relaunch wrapper, and the knobs are read by the
+    # function that actually launches the game and acts on them.
+    "seed": "run_once",
+    "ticks": "run_once",
+    "tick_seconds": "run_once",
 }
 
 POLICY_QUANT_DECIMALS = 3

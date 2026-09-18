@@ -249,6 +249,74 @@ def test_startup_retry_is_used_only_on_read_only_startup_probes():
         "probes are read-only and run before the first write" % sorted(callers))
 
 
+# --- the relaunch is narrow: only an unprobeable world, never a disagreeing measurement --------
+
+def _relaunching_run(monkeypatch, outcomes):
+    """Drive trade_cycle.run() with a fake run_once that yields `outcomes` in order."""
+    calls = []
+
+    def fake_run_once(*a, **kw):
+        calls.append(1)
+        item = outcomes.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    monkeypatch.setattr(trade_cycle, "run_once", fake_run_once)
+    return calls
+
+
+def test_run_relaunches_an_unprobeable_world_and_succeeds(monkeypatch, capsys):
+    calls = _relaunching_run(monkeypatch, [
+        trade_cycle.WorldNotProbeable("never answered"), {"ok": True}])
+    assert trade_cycle.run("app", "out", {}, "root") == {"ok": True}
+    assert len(calls) == 2
+    assert "never became probeable" in capsys.readouterr().err, (
+        "a run that needed two launches must SAY so, not look like a clean first try")
+
+
+def test_run_does_not_relaunch_a_disagreeing_measurement(monkeypatch):
+    """Relaunching until a measurement agrees is indistinguishable from having no gate."""
+    calls = _relaunching_run(monkeypatch, [
+        trade_cycle.ScenarioError("the purse is unchanged across the whole cycle"),
+        {"ok": True}])
+    with pytest.raises(trade_cycle.ScenarioError, match="purse is unchanged"):
+        trade_cycle.run("app", "out", {}, "root")
+    assert len(calls) == 1, "a failed assertion must propagate on the FIRST occurrence"
+
+
+def test_run_gives_up_after_a_bounded_number_of_launches(monkeypatch):
+    outcomes = [trade_cycle.WorldNotProbeable("never answered")
+                for _ in range(trade_cycle.PROBEABLE_LAUNCH_ATTEMPTS + 2)]
+    calls = _relaunching_run(monkeypatch, outcomes)
+    with pytest.raises(trade_cycle.WorldNotProbeable):
+        trade_cycle.run("app", "out", {}, "root")
+    assert len(calls) == trade_cycle.PROBEABLE_LAUNCH_ATTEMPTS
+
+
+def test_world_not_probeable_is_raised_from_exactly_one_place():
+    """If it could be raised after a write, a relaunch could repeat a trade."""
+    import ast
+    tree = ast.parse(open(os.path.join(HERE, "trade_cycle.py"), encoding="utf-8").read())
+    raisers = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        for inner in ast.walk(node):
+            if (isinstance(inner, ast.Raise) and isinstance(inner.exc, ast.Call)
+                    and isinstance(inner.exc.func, ast.Name)
+                    and inner.exc.func.id == "WorldNotProbeable"):
+                raisers.add(node.name)
+    assert raisers == {"evaluate_settling"}, (
+        "WorldNotProbeable is raised from %r; only evaluate_settling() may raise it, because only "
+        "its probes run before the first write and are therefore safe to relaunch" % sorted(raisers))
+
+
+def test_world_not_probeable_is_a_scenario_error():
+    """It must still fail the run when the budget is spent - it is not a soft outcome."""
+    assert issubclass(trade_cycle.WorldNotProbeable, trade_cycle.ScenarioError)
+
+
 # --- teardown is not the run ------------------------------------------------------------------
 
 class _ClosingConsole:
