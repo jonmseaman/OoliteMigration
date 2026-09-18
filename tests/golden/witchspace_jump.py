@@ -382,15 +382,36 @@ def install_probe(console):
     return holder
 
 
-def assert_system(console, spec, key, what):
-    """Read system.ID and require the pinned value. `key` names the spec knob, so this function is
-    where BOTH the origin and the destination knobs are acted on."""
+def assert_origin_system(console, spec):
+    """Require the game to be in the system the spec pins as the ORIGIN.
+
+    Reads `spec["origin_system_id"]` LITERALLY rather than through a caller-supplied key name. The
+    generic `assert_system(console, spec, key, what)` this replaced was AST-invisible: gate_002_spec
+    walks the scenario looking for `spec["<knob>"]` inside the function that acts on the knob, and a
+    dynamic `spec[key]` satisfies no such check - which is exactly the "the knob is read somewhere,
+    but the behaviour runs on something else" shape the gate exists to catch. The gate caught it
+    here, on this file, before anything was blessed. Two near-identical functions are the price of
+    a knob whose use a machine can verify.
+    """
     got = console.evaluate_int("system.ID")
-    if got != int(spec[key]):
+    if got != int(spec["origin_system_id"]):
         raise ScenarioError(
-            "scenario %s pins %s to system ID %d but the game reports %d; a golden taken in a "
-            "different system is not comparable with the stored one"
-            % (SCENARIO, what, int(spec[key]), got))
+            "scenario %s pins the origin system to ID %d but the game reports %d; the save did not "
+            "load the state this scenario is written against, and a jump measured from the wrong "
+            "origin is not the jump this golden describes"
+            % (SCENARIO, int(spec["origin_system_id"]), got))
+    return got
+
+
+def assert_destination_system(console, spec):
+    """Require the game to be in the system the spec pins as the DESTINATION. See
+    assert_origin_system for why the knob is read literally rather than through a key name."""
+    got = console.evaluate_int("system.ID")
+    if got != int(spec["destination_system_id"]):
+        raise ScenarioError(
+            "scenario %s pins the destination system to ID %d but the game reports %d; the ship "
+            "jumped SOMEWHERE - a misjump lands in interstellar space - but not where this "
+            "scenario says" % (SCENARIO, int(spec["destination_system_id"]), got))
     return got
 
 
@@ -901,7 +922,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
             load_save=spec["load_save"])), CONSOLE_REPLY_TIMEOUT_SECONDS)
         try:
             holder = install_probe(console)
-            system_before = assert_system(console, spec, "origin_system_id", "the origin system")
+            system_before = assert_origin_system(console, spec)
             target = set_target_system(console, spec)
             distance_tenths = int(round(float(console.evaluate(
                 "String(system.info.distanceToSystem(System.infoForSystem(galaxyNumber, %d)))"
@@ -917,7 +938,7 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
 
             seen = jump(console, spec, break_jump=break_jump)
 
-            system_after = console.evaluate_int("system.ID")
+            system_after = assert_destination_system(console, spec)
             destination_name = console.evaluate("system.name").strip()
             fuel_after_tenths = int(round(
                 float(console.evaluate("player.ship.fuel").strip()) * 10))

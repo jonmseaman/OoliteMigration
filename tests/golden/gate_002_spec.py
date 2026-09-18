@@ -78,8 +78,8 @@ REQUIRED_KNOBS = (
 
 # Read inside the function that ACTS on the knob, verified by AST.
 READ_IN_FUNCTION = {
-    "origin_system_id": "assert_system",
-    "destination_system_id": "set_target_system",
+    "origin_system_id": "assert_origin_system",
+    "destination_system_id": "assert_destination_system",
     "destination_system_name": "assert_jumped",
     "destination_station_name": "assert_jumped",
     "countdown_seconds": "jump",
