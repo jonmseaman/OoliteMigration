@@ -8,10 +8,215 @@ tests/golden/golden_run.py already do (ADR-0018: console.py is the shared transp
 
 import json
 import os
+import struct
+import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DUMP_JS_PATH = os.path.join(HERE, "dump_state.js")
+
+# STATUS_DLL_NOT_FOUND. Windows reports this as the process EXIT CODE when the image loader
+# cannot resolve a static import before the program's entry point runs - so the game dies with
+# no Latest.log at all, which is how this failure is told apart from a game that started and
+# then failed (the latter always leaves a log). See ensure_launchable() for why it happens here.
+STATUS_DLL_NOT_FOUND = 0xC0000135  # 3221225781
+
+
+class LaunchEnvironmentError(RuntimeError):
+    """The app dir cannot be launched at all, for a reason no amount of retrying will fix."""
+
+
+def _pe_imports(path):
+    """Return the DLL names in `path`'s PE import directory ([] if it has none / is not a PE).
+
+    Stdlib only, deliberately: adding pefile as a test dependency to diagnose a launch failure
+    would make the diagnosis itself another thing that can fail to import.
+    """
+    try:
+        with open(path, "rb") as handle:
+            data = handle.read()
+    except OSError:
+        return []
+    if data[:2] != b"MZ":
+        return []
+    try:
+        pe = struct.unpack_from("<I", data, 0x3C)[0]
+        nsec = struct.unpack_from("<H", data, pe + 6)[0]
+        opt_size = struct.unpack_from("<H", data, pe + 20)[0]
+        magic = struct.unpack_from("<H", data, pe + 24)[0]
+        dd = pe + 24 + (112 if magic == 0x20B else 96)
+        import_rva = struct.unpack_from("<I", data, dd + 8)[0]
+        if not import_rva:
+            return []
+        sections = []
+        sec_off = pe + 24 + opt_size
+        for i in range(nsec):
+            base = sec_off + i * 40
+            vsize, vaddr = struct.unpack_from("<II", data, base + 8)
+            rsize, raw = struct.unpack_from("<II", data, base + 16)
+            sections.append((vaddr, max(vsize, rsize), raw))
+
+        def to_offset(rva):
+            for vaddr, size, raw in sections:
+                if vaddr <= rva < vaddr + size:
+                    return raw + (rva - vaddr)
+            return None
+
+        out = []
+        off = to_offset(import_rva)
+        while off is not None:
+            entry = data[off:off + 20]
+            if len(entry) < 20 or entry == b"\0" * 20:
+                break
+            name_rva = struct.unpack_from("<I", entry, 12)[0]
+            if name_rva:
+                noff = to_offset(name_rva)
+                if noff is None:
+                    break
+                out.append(data[noff:data.index(b"\0", noff)].decode("ascii", "replace"))
+            off += 20
+        return out
+    except (struct.error, ValueError, IndexError):
+        return []
+
+
+def _search_dirs():
+    """Directories the Windows image loader will search, in its own order, for this process."""
+    dirs = [os.environ.get("SystemRoot", r"C:\Windows") + os.sep + "System32"]
+    dirs += [d for d in os.environ.get("PATH", "").split(os.pathsep) if d]
+    return dirs
+
+
+def unresolved_imports(app_dir, roots=("oolite.exe", "libgallium_wgl.dll")):
+    """Walk the transitive PE import graph from `roots` and report what the loader cannot find.
+
+    Returns {missing_dll_name: set(of importers)}. api-ms-win-* / ext-ms-* are skipped: those are
+    API-SET contract stubs the OS resolves virtually from an in-memory schema, so they are
+    legitimately absent from disk and reporting them would bury the real answer in noise.
+
+    libgallium_wgl.dll is walked as a root even though nothing statically imports it, because
+    opengl32.dll (Mesa's, staged into the app dir by the component tier) LoadLibrary()s it at
+    initGL time - it is therefore part of the launch's real dependency set.
+    """
+    search = _search_dirs()
+    app_dir = os.path.abspath(app_dir)
+
+    def locate(name):
+        direct = os.path.join(app_dir, name)
+        if os.path.isfile(direct):
+            return direct
+        for d in search:
+            cand = os.path.join(d, name)
+            if os.path.isfile(cand):
+                return cand
+        return None
+
+    missing, seen = {}, set()
+    queue = [r for r in roots if os.path.isfile(os.path.join(app_dir, r))]
+    queue = [(r, os.path.join(app_dir, r)) for r in queue]
+    while queue:
+        name, path = queue.pop(0)
+        if name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        for imp in _pe_imports(path):
+            low = imp.lower()
+            if low.startswith("api-ms-win-") or low.startswith("ext-ms-"):
+                continue
+            found = locate(imp)
+            if found is None:
+                missing.setdefault(imp, set()).add(name)
+            else:
+                queue.append((imp, found))
+    return missing
+
+
+def _candidate_runtime_dirs():
+    """Where the MSYS2/UCRT64 runtime DLLs plausibly live, most authoritative first."""
+    cands = []
+    explicit = os.environ.get("OO_RUNTIME_DLL_DIR")
+    if explicit:
+        cands.append(explicit)
+    prefix = os.environ.get("MSYSTEM_PREFIX")
+    if prefix:
+        cands.append(os.path.join(prefix, "bin"))
+    # The interpreter running this script is itself normally /ucrt64/bin/python3.exe, so its own
+    # directory is the single most reliable pointer to the matching runtime - it cannot be stale
+    # the way a hardcoded path can, and it is right by construction whenever the acceptance line's
+    # `command -v python3` fallback chain resolved to the UCRT64 python.
+    cands.append(os.path.dirname(os.path.abspath(sys.executable)))
+    cands += [
+        r"C:\Users\jon\scoop\apps\msys2\current\ucrt64\bin",
+        r"C:\msys64\ucrt64\bin",
+    ]
+    out, seen = [], set()
+    for c in cands:
+        c = os.path.abspath(c)
+        if c.lower() not in seen and os.path.isdir(c):
+            seen.add(c.lower())
+            out.append(c)
+    return out
+
+
+def ensure_launchable(app_dir, verbose=True):
+    """Make the app dir launchable BEFORE spawning the game, or fail with the real reason.
+
+    THE BUG THIS EXISTS FOR, measured rather than guessed. When the shell running the acceptance
+    line does not have the UCRT64 runtime directory on PATH, the game dies with exit code
+    3221225781 (STATUS_DLL_NOT_FOUND) before its entry point, writing NO Latest.log. The console
+    harness then reports 'Oolite exited with 3221225781 before connecting to the console', and
+    start_with_retry burns all 8 attempts (~116s) because a missing PATH entry is not a race and
+    retrying cannot fix it.
+
+    The dependency is TRANSITIVE, which is why a direct-import check clears the binary and the
+    failure looks mysterious: all 32 of oolite.exe's own imports resolve. It is Mesa's
+    libgallium_wgl.dll - loaded by the staged opengl32.dll - that needs libLLVM-22.dll,
+    libSPIRV-Tools.dll and libsystre-0.dll, and those exist ONLY in the UCRT64 runtime directory.
+
+    This is a property of the invoking SHELL, not of the machine, the clock or the app dir, which
+    is why the failure looked intermittent 'in time': the same paths succeed from a shell that has
+    the directory and fail from one that does not.
+
+    Repairs os.environ["PATH"] (inherited by console.py's Popen through its env.copy()) when a
+    directory supplying the missing DLLs can be found, and raises LaunchEnvironmentError naming
+    the exact DLLs otherwise - a loud, specific failure instead of two minutes of silent retries.
+    """
+    missing = unresolved_imports(app_dir)
+    if not missing:
+        return []
+
+    added = []
+    for cand in _candidate_runtime_dirs():
+        names = {n.lower() for n in os.listdir(cand)}
+        if not any(m.lower() in names for m in missing):
+            continue
+        os.environ["PATH"] = cand + os.pathsep + os.environ.get("PATH", "")
+        added.append(cand)
+        missing = unresolved_imports(app_dir)
+        if not missing:
+            if verbose:
+                sys.stderr.write(
+                    "preflight: added %s to PATH to resolve the game's transitive runtime "
+                    "imports (would otherwise exit %d/STATUS_DLL_NOT_FOUND with no log)\n"
+                    % (os.pathsep.join(added), STATUS_DLL_NOT_FOUND)
+                )
+            return added
+
+    raise LaunchEnvironmentError(
+        "the Oolite build at %s cannot be launched: the image loader cannot resolve %s.\n"
+        "Needed by: %s\n"
+        "Searched: %s\n"
+        "This is an ENVIRONMENT fault, not a flake - the game would exit %d "
+        "(STATUS_DLL_NOT_FOUND) before writing any log, and no retry can fix it. Put the UCRT64 "
+        "runtime directory on PATH (export PATH=\"/ucrt64/bin:$PATH\") or set OO_RUNTIME_DLL_DIR."
+        % (
+            app_dir,
+            ", ".join(sorted(missing)),
+            "; ".join("%s <- %s" % (k, ",".join(sorted(v))) for k, v in sorted(missing.items())),
+            os.pathsep.join(_candidate_runtime_dirs()) or "(no candidate directory exists)",
+            STATUS_DLL_NOT_FOUND,
+        )
+    )
 
 
 def start_with_retry(make_console, attempts=8, ready_timeout=180):
@@ -24,6 +229,13 @@ def start_with_retry(make_console, attempts=8, ready_timeout=180):
     staging), but it can leave the failed DebugConsole's listening socket bound. A fresh instance
     per attempt avoids retrying start() on an already-bound port. Backoff grows because the
     underlying race has been observed to persist for tens of seconds on a loaded VM.
+
+    NOTE ON STATUS_DLL_NOT_FOUND: the dominant cause of that exit code here is NOT a race but a
+    PATH missing the UCRT64 runtime directory, which retrying cannot repair - see
+    ensure_launchable(), which run_dump.py calls before the first attempt. If it still appears
+    after the preflight passed, something changed the app dir mid-flight (a concurrent tier
+    parking DLLs), so it stays retryable here; but the retry loop re-checks and gives up early
+    with the real reason rather than silently burning 8 backoffs on an unfixable condition.
     """
     from console import ConsoleError
 
@@ -39,6 +251,20 @@ def start_with_retry(make_console, attempts=8, ready_timeout=180):
                 console.close()
             except Exception:
                 pass
+            # A launch that died of STATUS_DLL_NOT_FOUND is worth ONE re-check rather than eight
+            # blind backoffs: if the dependency graph is genuinely broken, say so now with the
+            # missing DLL named, instead of 116 seconds later with a bare exit code.
+            if str(STATUS_DLL_NOT_FOUND) in str(exc):
+                app_dir = getattr(console, "app_dir", None)
+                if app_dir:
+                    missing = unresolved_imports(app_dir)
+                    if missing:
+                        raise LaunchEnvironmentError(
+                            "Oolite exited %d (STATUS_DLL_NOT_FOUND) and the image loader still "
+                            "cannot resolve: %s. Retrying cannot fix a missing runtime directory; "
+                            "put the UCRT64 bin directory on PATH or set OO_RUNTIME_DLL_DIR."
+                            % (STATUS_DLL_NOT_FOUND, ", ".join(sorted(missing)))
+                        )
             time.sleep(min(30, 3 * (attempt + 1)))
     raise last
 

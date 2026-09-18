@@ -25,7 +25,12 @@ sys.path.insert(0, COMPONENT_DIR)
 sys.path.insert(0, HERE)
 
 from console import DebugConsole  # noqa: E402
-from state_dump import dump_state, spawn_deterministic, start_with_retry  # noqa: E402
+from state_dump import (  # noqa: E402
+    dump_state,
+    ensure_launchable,
+    spawn_deterministic,
+    start_with_retry,
+)
 
 SCENARIO_SAVE = "Resources/Scenarios/oolite-standard.oolite-save"
 
@@ -152,6 +157,15 @@ def main(argv=None):
 
     if not os.path.isdir(args.app_dir):
         raise SystemExit("no Oolite build at %s; build it first or pass --app-dir" % args.app_dir)
+
+    # PREFLIGHT, before anything is spawned. A shell without the UCRT64 runtime directory on PATH
+    # cannot launch this build at all: Mesa's libgallium_wgl.dll needs libLLVM-22.dll,
+    # libSPIRV-Tools.dll and libsystre-0.dll, which live only there, and the loader kills the
+    # process with 3221225781 (STATUS_DLL_NOT_FOUND) before main() - no window, no Latest.log, and
+    # eight retries of ~116s that cannot possibly succeed. This repairs PATH when it can and fails
+    # immediately, naming the missing DLLs, when it cannot. It does NOT weaken the gate: a build
+    # that is genuinely broken still fails, just with the real reason instead of a bare exit code.
+    ensure_launchable(args.app_dir)
 
     output_dir = args.output_dir
     if output_dir is None:
