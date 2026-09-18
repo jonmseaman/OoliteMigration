@@ -1,0 +1,52 @@
+{
+  "scenario": "004-trade-cycle",
+
+  "_seed": "OO_RANDOM_SEED, exported by upstream/oolite/tests/component/console.py. It pins the RANROT SEQUENCE; it does NOT pin a draw whose position in that sequence depends on elapsed frames (bead oo-izi). This scenario therefore contains no random draw at all: it spawns nothing, and every number it asserts on is written or read through a named engine seam.",
+  "seed": 20260918,
+
+  "_system": "Atdice, system ID 80, is where CloakingDevice.oolite-save is docked. The market this scenario trades in IS that system's market (StationEntity.m:191-198 returns [UNIVERSE commodityMarket] for the main station), so the system is a determinism knob, not decoration: a different system is a different market with different prices and quantities.",
+  "system_id": 80,
+  "system_name": "Atdice",
+
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+
+  "_load_save": "CloakingDevice.oolite-save, 26452 bytes, written_by_version 1.75. Chosen over the other four checklist saves because its commander is docked at a MAIN station with 35 tons of free hold and 96522.6 credits - enough that neither leg of the cycle can be clamped by capacity or by an empty purse, which would turn a trade assertion into an assertion about a clamp.",
+  "load_save": "upstream/oolite-tests/Checklist-files/Missions/CloakingDevice.oolite-save",
+
+  "_commodity": "food. MEASURED at this save/system: quantity 17, price 40, capacity 127 - so a 5-unit buy and a 3-unit sell both sit well inside 0..capacity and cannot be clamped at either end (Station.setMarketQuantity THROWS outside that range; probed). Its mass unit is TONS, so the hold moves in whole units and cargoSpaceUsed tracks it exactly; a kilogram or gram good would move cargoSpaceUsed in fractions of a pod and make the engine-recomputed check unreadable.",
+  "commodity": "food",
+
+  "_units": "DELIBERATELY ASYMMETRIC: sell_units < buy_units, so the cycle does NOT return to its starting point. A symmetric cycle would end with the same purse, the same hold and the same market it began with - a final dump indistinguishable from a run that never traded at all, and therefore a golden that a dead trade could satisfy.",
+  "buy_units": 5,
+  "sell_units": 3,
+  "expected_cargo_after": 2,
+
+  "_credits_scale": "PlayerEntity stores credits in TENTHS of a credit (the same scale the save file uses: this commander's plist `credits` is 965226 and JS reports 96522.6). So a good priced 40 costs 4.0 credits per unit. MEASURED on this box: 5 units of food at price 40 moved the balance 96522.6 -> 96502.6, i.e. exactly 20.0. Pinned here rather than hardcoded in the script so a future engine that changed the scale fails by name instead of being absorbed.",
+  "credits_scale": 10,
+
+  "_log_channels": "Switched on by a logcontrol.plist staged into this run's private resource root (ResourceManager.m:1761-1777), NOT from the console: the whole load happens before the debug console connects, so a JS call comes too late. `load.progress` is off by default (Resources/Config/logcontrol.plist:241).",
+  "log_channels": ["load", "load.progress", "load.failed"],
+
+  "_load_progress_stages": "The engine's OWN load trace, verbatim and in order, from PlayerEntityLoadSave.m:620-811. These strings are logged ONLY inside -loadPlayerFromFile:, so a run that ignored -load emits none of them and a load that died partway emits a PREFIX. This is the presence-of-progress precondition a dead launch cannot fake (bead oo-het: a launch that died in display setup writes a 1476-byte log with zero ERROR lines).",
+  "load_progress_stages": [
+    "Reading file",
+    "Restricting scenario",
+    "Creating player ship",
+    "Initialising player entity",
+    "Loading commander data",
+    "Recording save path",
+    "Creating system",
+    "Resetting player flight variables",
+    "Loading system market",
+    "Setting scenario key",
+    "Starting JS engine",
+    "Populating initial system",
+    "Completing JS startup",
+    "Loading complete"
+  ],
+
+  "_repopulator_handlers": "oolite-populator.js's repopulate handler defeats the other two suppressions on its own: its station picker _tradeStation tests hasNPCTraffic inside its loop but ENDS WITH an unconditional `return system.mainStation`. Named here so an upstream rename becomes a red rather than a silent no-op.",
+  "repopulator_handlers": ["systemWillRepopulate"]
+}
