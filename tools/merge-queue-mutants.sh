@@ -85,7 +85,7 @@ LIST=0; WANT=""
 # split the proof across lines that each finish in a couple of minutes.
 want() { case " ${WANT:-} " in "  ") return 0 ;; *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
-printf 'merge-queue-mutants: %d mutant(s) against throwaway copies in %s\n' 12 "$WORK"
+printf 'merge-queue-mutants: %d mutant(s) against throwaway copies in %s\n' 15 "$WORK"
 
 # ================================================================================================
 # PROPERTY 1: a fast-forward only happens on a GREEN verdict, and it really moves the ref. (G5/G9)
@@ -204,6 +204,31 @@ if want M12; then
     '[ "${#CANDIDATES[@]}" -gt 0 ] \
   || exit 0 # "the candidate list is EMPTY (G1)' \
     "S3" "expected '2', got '0'"
+fi
+
+# ================================================================================================
+# PROPERTY 7: the ADR-0017 MIRROR is real, is bound to the push guard, and is not merely announced.
+# ================================================================================================
+if want M13; then
+  printf '\n== M13 CHECKER: the subtree mirror is announced but never run (the fork silently goes stale)\n'
+  run_mutant M13 queue \
+    '  if git -C "$REPO" subtree push --prefix="$prefix" "$remote" "$branch" >/dev/null 2>&1; then' \
+    '  if true; then' \
+    "S13" "fork/migration tree == local upstream/oolite tree"
+fi
+if want M14; then
+  printf '\n== M14 DATA: the mirror escapes the push guard and fires on an UNCONFIRMED run\n'
+  run_mutant M14 queue \
+    '    say "PUSH SKIPPED: --push was given but OO_MQ_PUSH_CONFIRM is not '\''yes'\''. Would run: git push $REMOTE $BASE && git subtree push --prefix=$SUBTREE_PREFIX $SUBTREE_REMOTE $SUBTREE_BRANCH"' \
+    '    say "PUSH SKIPPED: --push was given but OO_MQ_PUSH_CONFIRM is not '\''yes'\''. Would run: git push $REMOTE $BASE && git subtree push --prefix=$SUBTREE_PREFIX $SUBTREE_REMOTE $SUBTREE_BRANCH"; mirror_subtree' \
+    "S13" "the fork gained a migration branch without confirmation"
+fi
+if want M15; then
+  printf '\n== M15 CHECKER: the mirror remote loses its own forge guard (a github.com fork is mirrored to)\n'
+  run_mutant M15 queue \
+    '  if printf '\''%s'\'' "$furl" | grep -qi '\''github\.com'\'' && [ "${OO_MQ_ALLOW_REMOTE_HOST:-0}" != 1 ]; then' \
+    '  if false; then' \
+    "S13" "the forge-guarded remote was mirrored to anyway"
 fi
 
 printf '\n================================================================\n'

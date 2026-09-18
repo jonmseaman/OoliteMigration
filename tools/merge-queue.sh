@@ -122,6 +122,10 @@ GATE="${OO_MQ_GATE:-tools/tier-c.sh}"; TIERB="${OO_MQ_TIERB:-tools/tier-b.sh}"
 DRY=0; PUSH=0; RERUN="${OO_MQ_RERUN:-1}"; VERIFY_BASE=0; JOBS=1
 MAX_CULPRITS="${OO_MQ_MAX_CULPRITS:-3}"; REQUIRE_ATTEST="${OO_MQ_REQUIRE_ATTEST:-1}"
 ATTEST_BRANCH=""; JSON_OUT=""; REMOTE="${OO_MQ_REMOTE:-origin}"
+# ADR-0017 step 7's mirror: `git subtree push --prefix=upstream/oolite fork migration`.
+SUBTREE_PREFIX="${OO_MQ_SUBTREE_PREFIX:-upstream/oolite}"
+SUBTREE_REMOTE="${OO_MQ_SUBTREE_REMOTE:-fork}"
+SUBTREE_BRANCH="${OO_MQ_SUBTREE_BRANCH:-migration}"
 
 die() { printf 'merge-queue: %s\n' "$*" >&2; exit 2; }
 
@@ -526,15 +530,59 @@ fi
 # --- Push (opt-in, OFF by default) -----------------------------------------------------------------
 
 PUSHED=0
+MIRRORED=0
+
+# ADR-0017 step 7, the SECOND half of the push cadence: after each Tier C green batch the queue
+# pushes $BASE to $REMOTE *and* mirrors the converted tree onto the fork's `migration` branch with
+#
+#     git subtree push --prefix=upstream/oolite fork migration
+#
+# so the fork carries the ported tree with its history grafted onto the fork's commits. It is not
+# per bead on purpose: a subtree split walks the whole history each time and a mirror gains nothing
+# from finer grain. This is the step that closes the weekly hand-push bead.
+#
+# It runs ONLY from inside the fully-guarded push branch below, so it inherits the same three
+# conditions (--push, OO_MQ_PUSH_CONFIRM=yes, a non-forge remote) and adds a fourth of its own: the
+# mirror remote is forge-guarded separately, because `fork` and `origin` are different URLs and a
+# guard that only vetted `origin` would let the mirror reach a real forge unexamined.
+mirror_subtree() {
+  local prefix="$SUBTREE_PREFIX" remote="$SUBTREE_REMOTE" branch="$SUBTREE_BRANCH" furl
+  if [ ! -d "$REPO/$prefix" ]; then
+    say "SUBTREE SKIPPED: there is no '$prefix' directory in $REPO, so there is nothing to mirror"
+    return 0
+  fi
+  furl="$(git -C "$REPO" remote get-url "$remote" 2>/dev/null || echo '')"
+  if [ -z "$furl" ]; then
+    say "SUBTREE SKIPPED: no remote '$remote' is configured. Would run: git subtree push --prefix=$prefix $remote $branch"
+    return 0
+  fi
+  if printf '%s' "$furl" | grep -qi 'github\.com' && [ "${OO_MQ_ALLOW_REMOTE_HOST:-0}" != 1 ]; then
+    say "SUBTREE REFUSED: mirror remote '$remote' is $furl, which is a real forge. Set OO_MQ_ALLOW_REMOTE_HOST=1 to override; the fleet never does."
+    return 0
+  fi
+  if git -C "$REPO" subtree push --prefix="$prefix" "$remote" "$branch" >/dev/null 2>&1; then
+    MIRRORED=1
+    say "MIRRORED $prefix -> $remote/$branch ($furl)"
+  else
+    # A failed mirror is NOT fatal: main has already fast-forwarded and been pushed, and unwinding
+    # that would be worse than a stale mirror. It is loud, and MIRRORED stays 0 so the JSON and the
+    # attestation record the disagreement rather than implying a mirror that does not exist.
+    say "SUBTREE FAILED: git subtree push --prefix=$prefix $remote $branch exited nonzero; $BASE is pushed but the mirror is STALE"
+  fi
+}
+
 if [ "$VERDICT" = green ] && [ "$PUSH" = 1 ]; then
   url="$(git -C "$REPO" remote get-url "$REMOTE" 2>/dev/null || echo '')"
   if [ "${OO_MQ_PUSH_CONFIRM:-}" != "yes" ]; then
-    say "PUSH SKIPPED: --push was given but OO_MQ_PUSH_CONFIRM is not 'yes'. Would run: git push $REMOTE $BASE"
+    say "PUSH SKIPPED: --push was given but OO_MQ_PUSH_CONFIRM is not 'yes'. Would run: git push $REMOTE $BASE && git subtree push --prefix=$SUBTREE_PREFIX $SUBTREE_REMOTE $SUBTREE_BRANCH"
   elif printf '%s' "$url" | grep -qi 'github\.com' && [ "${OO_MQ_ALLOW_REMOTE_HOST:-0}" != 1 ]; then
     say "PUSH REFUSED: remote '$REMOTE' is $url, which is a real forge. Set OO_MQ_ALLOW_REMOTE_HOST=1 to override; the fleet never does."
   else
     git -C "$REPO" push "$REMOTE" "$BASE:$BASE" >/dev/null 2>&1 && PUSHED=1
     say "PUSHED $BASE -> $REMOTE ($url)"
+    # Both halves of ADR-0017's cadence or neither: a mirror of a tree that was never pushed would
+    # make the fork disagree with origin, which is precisely the drift the cadence exists to stop.
+    [ "$PUSHED" = 1 ] && mirror_subtree
   fi
 elif [ "$PUSH" = 1 ]; then
   say "PUSH SKIPPED: the verdict is $VERDICT, and only a GREEN batch is ever pushed"
@@ -568,6 +616,7 @@ if [ -n "$PARTNERS" ]; then detail "interactions    $PARTNERS"; fi
 detail "base            $BASE_BEFORE -> $BASE_AFTER"
 if [ "$NARROWED_FROM" -gt 0 ]; then detail "bisection       narrowed $NARROWED_FROM -> $NARROWED_TO"; fi
 detail "pushed          $PUSHED"
+detail "mirrored        $MIRRORED (subtree $SUBTREE_PREFIX -> $SUBTREE_REMOTE/$SUBTREE_BRANCH, ADR-0017)"
 printf '%s\n' "--- gate log (invocation, label, commit, verdict, seconds) ---"
 cat "$GATE_LOG"
 
@@ -579,9 +628,9 @@ done
 
 if [ -n "$JSON_OUT" ]; then
   {
-    printf '{"verdict":"%s","gate_invocations":%d,"admitted":%d,"merged":%d,"evicted":"%s","conflicted":"%s","interactions":"%s","base_before":"%s","base_after":"%s","narrowed_from":%d,"narrowed_to":%d,"pushed":%d}\n' \
+    printf '{"verdict":"%s","gate_invocations":%d,"admitted":%d,"merged":%d,"evicted":"%s","conflicted":"%s","interactions":"%s","base_before":"%s","base_after":"%s","narrowed_from":%d,"narrowed_to":%d,"pushed":%d,"mirrored":%d}\n' \
       "$VERDICT" "$GATE_RUNS" "$N_ADMITTED" "${#MERGED[@]}" "${EVICTED[*]:-}" "${CONFLICTED[*]:-}" "$PARTNERS" \
-      "$BASE_BEFORE" "$BASE_AFTER" "$NARROWED_FROM" "$NARROWED_TO" "$PUSHED"
+      "$BASE_BEFORE" "$BASE_AFTER" "$NARROWED_FROM" "$NARROWED_TO" "$PUSHED" "$MIRRORED"
   } > "$JSON_OUT"
 fi
 

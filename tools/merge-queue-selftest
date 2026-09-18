@@ -368,6 +368,106 @@ if want S12; then
   has "output" "$OUT" "merged           3"
 fi
 
+# ================================================================================================
+# S13 ADR-0017 STEP 7, THE OTHER HALF OF THE PUSH CADENCE. A green batch must leave BOTH the
+#     integration remote AND the fork's `migration` branch matching the local tree -- that is the
+#     literal DONE WHEN of this bead. Both remotes are BARE REPOSITORIES IN THE TEMP DIR; the
+#     forge guard is exercised against a github.com URL so nothing here can reach a real forge.
+#
+#     The assertion that matters is the CONTENT one: the mirror's tree must equal the local
+#     upstream/oolite tree. `git subtree push` rewrites history (the fork's commits are splits, not
+#     the originals), so comparing SHAs would be wrong and comparing "a branch exists" would be
+#     vacuous -- a mirror of the WRONG commit passes that. Compare the trees.
+# ================================================================================================
+if want S13; then
+  scenario S13 "ADR-0017: a green push also subtree-mirrors upstream/oolite to fork/migration"
+  D="$TMPROOT/s13"; R="$TMPROOT/s13-origin.git"; F="$TMPROOT/s13-fork.git"
+  mkrepo "$D" f1:good f2:good f3:good
+  # Give the fixture an upstream/oolite prefix with content, and put each branch's change INSIDE
+  # it, so a mirror that pushes a stale split is detectable by tree comparison.
+  git -C "$D" checkout -q main
+  mkdir -p "$D/upstream/oolite"; printf 'engine\n' > "$D/upstream/oolite/src.txt"
+  git -C "$D" add -A; git -C "$D" commit -qm 'upstream/oolite prefix'
+  for b in f1 f2 f3; do
+    git -C "$D" checkout -q "$b"
+    git -C "$D" merge -q --no-edit main
+    printf '%s\n' "$b" > "$D/upstream/oolite/$b.c"
+    git -C "$D" add -A; git -C "$D" commit -qm "$b touches the prefix"
+  done
+  git -C "$D" checkout -q main
+  attest "$D" f1 f2 f3
+  git init -q --bare "$R"; git -C "$D" remote add origin "$R"; git -C "$D" push -q origin main
+  git init -q --bare "$F"; git -C "$D" remote add fork "$F"
+
+  # (a) the DONE WHEN: a green batch, pushed and confirmed, leaves origin/main AND fork/migration
+  #     matching the local tree.
+  OUT="$( cd "$D" && GATE_TALLY="$D/.tally" OO_MQ_PUSH_CONFIRM=yes \
+          bash "$MQ" --repo "$D" --gate "bash $D/gate.sh" --branches f1,f2,f3 --push 2>&1 )"; RC=$?
+  eq "rc" "$RC" 0
+  has "output" "$OUT" "PUSHED main -> origin"
+  has "output" "$OUT" "MIRRORED upstream/oolite -> fork/migration"
+  eq "mirrored flag" "$(printf '%s\n' "$OUT" | awk '/^ *mirrored /{print $2}')" 1
+  if [ "$(git -C "$R" rev-parse main)" = "$(git -C "$D" rev-parse main)" ]; then
+    ok "origin/main matches the local tree"
+  else bad "origin/main does not match local main"; fi
+  # THE CONTENT ASSERTION. A subtree split has different commit SHAs by construction, so compare
+  # the TREE the fork's migration branch carries against the local upstream/oolite subtree.
+  LOCAL_TREE="$(git -C "$D" rev-parse "main:upstream/oolite")"
+  FORK_TREE="$(git -C "$F" rev-parse 'migration^{tree}')"
+  eq "fork/migration tree == local upstream/oolite tree" "$FORK_TREE" "$LOCAL_TREE"
+  # And the mirror must actually carry every branch's file: a split of the PRE-BATCH main would
+  # have the right shape and the wrong content.
+  FORK_FILES="$(git -C "$F" ls-tree -r --name-only migration | sort | tr '\n' ' ')"
+  eq "fork/migration contents" "$FORK_FILES" "f1.c f2.c f3.c src.txt "
+
+  # (b) the mirror is inside the SAME guard as the push: no confirmation, no mirror, and the
+  #     fork's migration branch must not exist at all.
+  git init -q --bare "$TMPROOT/s13b-fork.git"
+  D2="$TMPROOT/s13b"; mkrepo "$D2" g1:good
+  mkdir -p "$D2/upstream/oolite"; printf 'x\n' > "$D2/upstream/oolite/src.txt"
+  git -C "$D2" add -A; git -C "$D2" commit -qm prefix
+  git -C "$D2" checkout -q g1 && git -C "$D2" merge -q --no-edit main && git -C "$D2" checkout -q main
+  # Attest AFTER the merge: the attestation is keyed on the EXACT tip SHA (G2), and merging main
+  # into g1 moved that tip. Attesting first is how a fixture accidentally tests the admission guard
+  # instead of the thing it meant to test.
+  attest "$D2" g1
+  git -C "$D2" remote add fork "$TMPROOT/s13b-fork.git"
+  runq "$D2" --branches g1 --push
+  eq "rc" "$RC" 0
+  has "output" "$OUT" "PUSH SKIPPED"
+  has "output" "$OUT" "git subtree push --prefix=upstream/oolite fork migration"
+  eq "mirrored flag" "$(printf '%s\n' "$OUT" | awk '/^ *mirrored /{print $2}')" 0
+  if git -C "$TMPROOT/s13b-fork.git" rev-parse migration >/dev/null 2>&1; then
+    bad "the fork gained a migration branch without confirmation"
+  else ok "the unconfirmed run left the fork with NO migration branch"; fi
+
+  # (c) the forge guard applies to the MIRROR remote independently of the push remote: a fork URL
+  #     that looks like github.com is refused even when origin is a harmless bare repo.
+  #
+  #     THE URL IS A LOCAL BARE REPO WHOSE PATH CONTAINS "github.com". That is deliberate and it is
+  #     a safety property of this fixture, not a shortcut: mutant M15 deletes the forge guard, and
+  #     if the URL were a real https://github.com/... the mutated queue would make a genuine
+  #     network push attempt against a real forge. A path-shaped lookalike exercises exactly the
+  #     same string predicate while keeping every byte inside $LOCALAPPDATA/Temp.
+  FORGEISH="$TMPROOT/github.com/example-not-real.git"
+  mkdir -p "$TMPROOT/github.com"; git init -q --bare "$FORGEISH"
+  git -C "$D" remote set-url fork "$FORGEISH"
+  git -C "$D" checkout -q -b f4 main && printf 'f4\n' > "$D/upstream/oolite/f4.c" \
+    && git -C "$D" add -A && git -C "$D" commit -qm f4 && git -C "$D" checkout -q main
+  attest "$D" f4
+  OUT="$( cd "$D" && GATE_TALLY="$D/.tally" OO_MQ_PUSH_CONFIRM=yes \
+          bash "$MQ" --repo "$D" --gate "bash $D/gate.sh" --branches f4 --push 2>&1 )"; RC=$?
+  eq "rc" "$RC" 0
+  has "output" "$OUT" "PUSHED main -> origin"
+  has "output" "$OUT" "SUBTREE REFUSED"
+  has "output" "$OUT" "which is a real forge"
+  eq "mirrored flag" "$(printf '%s\n' "$OUT" | awk '/^ *mirrored /{print $2}')" 0
+  # The refusal must be a refusal, not a log line: the lookalike remote must have gained nothing.
+  if git -C "$FORGEISH" rev-parse migration >/dev/null 2>&1; then
+    bad "the forge-guarded remote was mirrored to anyway"
+  else ok "the forge-guarded remote has NO migration branch"; fi
+fi
+
 printf '\n================================================================\n'
 # ANTI-VACUITY FOR THE SELFTEST ITSELF. `merge-queue-selftest S99` must not print GREEN having run
 # nothing; and a scenario body that is skipped by a typo'd guard must not be able to hide.
