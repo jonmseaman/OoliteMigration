@@ -87,6 +87,10 @@ ahead of an unmoved camera, at a 960×720 surface, against a noise floor of ~0.0
 Detectability is scored against the **tolerance**, not the raw noise floor: the gate passes
 everything at or below the tolerance, so a distance a hair above the floor is still invisible to it.
 
+> **A ship beyond ~800 m is below the noise floor at 960×720 software GL. Frame hashing here
+> detects camera pose and near-field geometry, not distant objects.** A passing frame hash is
+> therefore *not* evidence that a distant ship rendered — do not read it as one.
+
 This is a real limit of the technique at this resolution, and the honest response is to record it
 rather than to loosen the tolerance until the far cases pass — a tolerance stretched below the
 noise floor passes every frame.

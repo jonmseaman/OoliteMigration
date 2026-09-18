@@ -136,6 +136,42 @@ def red_proof():
     )
 
 
+def online_sanity():
+    """ONE end-to-end check: two fresh renders of the fixed reference pose agree.
+
+    Deliberately two launches, not the full online suite's five. accept.sh replays in a fresh
+    detached checkout where a launch costs 26-31 s and the shared app dir is contended by sibling
+    workers, so a gate needing five of them is fragile. The offline lines already pin the metric,
+    the derivation and both comparison directions against the committed calibration and sample
+    frames; this line exists to prove the whole pipeline - launch, pose, render, hash - still runs.
+    """
+    import tempfile
+
+    import frame_capture
+
+    out = tempfile.mkdtemp(prefix="ae9-gate-")
+    a = frame_capture.capture("ref", out)
+    b = frame_capture.capture("ref-again", out)
+    for shot in (a, b):
+        assert shot["wall_seconds"] >= 5.0, (
+            "%s completed in %ss, far below the measured cost of launching this game (26-31 s). "
+            "The capture probably attached to an already-running process rather than the one it "
+            "spawned, so this line proved nothing." % (shot["pose"], shot["wall_seconds"])
+        )
+        assert shot["position"] == [0.0, 0.0, 0.0], (
+            "%s rendered from %r, not the declared reference pose" % (shot["pose"],
+                                                                     shot["position"])
+        )
+    r = frame_hash.assert_within(a["png"], b["png"], what="two live renders of the reference pose")
+    assert r["distance"] > 0, (
+        "two independent renders measured EXACTLY identical, which never happened in calibration; "
+        "suspect both captures returned the same file"
+    )
+    print("ONLINE: two live renders of the fixed reference pose (%ss, %ss) differ by %.6f, "
+          "WITHIN the tolerance %.6f (%.2fx of it)"
+          % (a["wall_seconds"], b["wall_seconds"], r["distance"], r["tolerance"], r["ratio"]))
+
+
 COMMANDS = {
     "import-is-safe": import_is_safe,
     "calibration-is-real": calibration_is_real,
@@ -144,6 +180,7 @@ COMMANDS = {
     "positive-control": positive_control,
     "discriminates": discriminates,
     "red-proof": red_proof,
+    "online-sanity": online_sanity,
 }
 
 
