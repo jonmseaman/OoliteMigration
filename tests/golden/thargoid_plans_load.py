@@ -878,7 +878,10 @@ def _read_grid(path):
         raise ScenarioError(
             "%s is %d bytes, not the %d-byte %dx%d luminance grid; any comparison against it "
             "would be meaningless"
-            % (path, len(blob), frame_hash.GRID_CELLS, frame_hash.GRID_SIZE, frame_hash.GRID_SIZE))
+            # GRID_SIDE, not GRID_SIZE: the attribute is named GRID_SIDE in frame_hash.py and a
+            # typo here turns this REFUSAL into an AttributeError, i.e. a crash where a named
+            # rejection was intended. Caught by test_a_wrong_sized_grid_is_rejected.
+            % (path, len(blob), frame_hash.GRID_CELLS, frame_hash.GRID_SIDE, frame_hash.GRID_SIDE))
     return blob
 
 
