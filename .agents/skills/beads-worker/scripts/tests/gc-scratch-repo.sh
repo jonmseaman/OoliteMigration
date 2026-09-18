@@ -32,7 +32,9 @@ git -C "$dir" -c commit.gpgsign=false commit -qm "base commit"
 mkdir -p "$dir/.worktrees" "$dir/scripts" "$dir/stub"
 # The scripts under test: the gc.sh being exercised, beside the real _lib.sh and harvest.sh.
 cp "$gc_src" "$dir/scripts/gc.sh"
-cp "$here/../_lib.sh" "$here/../harvest.sh" "$dir/scripts/"
+# goal-check.sh goes in too: it is the layer that filters gc.sh's output, and the `goalcheck`
+# scenario in gc-safety.test.sh exercises that filter against the same scratch scenarios.
+cp "$here/../_lib.sh" "$here/../harvest.sh" "$here/../goal-check.sh" "$dir/scripts/"
 chmod +x "$dir/scripts/"*.sh
 # Stub bd: `bd show <id> --json` answers from statuses file; every other subcommand is a no-op.
 : >"$dir/stub/statuses"
