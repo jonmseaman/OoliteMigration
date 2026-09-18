@@ -261,6 +261,19 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   shared app dir; offline beads (checkers, gates, mutation suites over stored artifacts)
   parallelise freely. **Mix the batch: at most one or two launching beads at a time**, and when a
   launching line fails, check the sibling load before believing it.
+- **Before any game-launching line, require `ps -W | grep -ci oolite` to be 0 — orphans poison it.**
+  A game a worker launched through a harness subprocess is **not** killed when that worker ends: it
+  keeps console port 8563 bound and keeps handles on its staged app copy. oo-rkm's live line failed
+  seven times across two sessions (`TimeoutExpired ... after 10 seconds`, `ConsoleError: no answer
+  to 'system.name' within 15s`, `rm: ... Device or resource busy`) with **no children running** —
+  three orphaned `oolite.exe` were still alive, two of them hours old. After killing them the
+  identical line on the identical tree returned **rc=0 in 16s**, against rc=1 after 117s moments
+  earlier. MSYS `ps` puts the *Windows* pid in field 4, and `taskkill //PID` is mangled by MSYS
+  argument conversion, so kill with:
+  `ps -W | grep -i oolite | awk '{print $4}' | while read p; do /c/Windows/System32/taskkill.exe /PID $p /F; done`
+  Log the count beside every result: `rc=1 wall=117s oolite_procs=4` diagnoses itself; a bare rc=1
+  gets mistaken for a broken gate and, at five repeats, escalates healthy work. A long wall time is
+  the tell — the harness is burning its retry budget against a port that will never answer.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
