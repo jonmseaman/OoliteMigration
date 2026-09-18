@@ -1,0 +1,25 @@
+{
+  "scenario": "006-save-load",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "save_file": "Resources/Scenarios/oolite-standard.oolite-save",
+
+  "_census": "THE FIELD CENSUS IS THE ROUND-TRIP ASSERTION. Each entry names a key in the .oolite-save plist, the JS expression that reads the same quantity back out of the loaded game, and how the two are made comparable. A field is in this census because it was MEASURED to round-trip, not because it looked like it should - see tests/golden/save_load.py:probe_census and the README beside the staged golden. Adding a field here strengthens the gate; removing one weakens it, and test_save_load.py pins the census size so a silent removal fails.",
+  "census": [
+    {"plist": "credits",             "js": "player.credits",                 "kind": "float_tenths", "why": "PlayerEntity.m stores credits in tenths of a credit; the plist holds the raw integer-valued double, JS reports credits. Scale measured, not assumed."},
+    {"plist": "legal_status",        "js": "player.bounty",                  "kind": "int",          "why": "the numeric legal status. player.bounty is the INTEGER accessor (OOJSPlayer.m:286-288 returns [player legalStatus] as an int); player.legalStatus returns a DISPLAY STRING via OODisplayStringFromLegalStatus (:226-228) and reads 'Clean' here - measured, and the reason this field names bounty."},
+    {"plist": "current_system_name", "js": "system.name",                    "kind": "str",          "why": "the system the save pins; a save loaded into the wrong system is the single most damaging silent round-trip failure"},
+    {"plist": "player_name",         "js": "player.name",                    "kind": "str",          "why": "commander identity"},
+    {"plist": "galaxy_number",       "js": "galaxyNumber",                   "kind": "int",          "why": "galaxy index; a chart-level property distinct from the system"},
+    {"plist": "ship_desc",           "js": "player.ship.dataKey",            "kind": "str",          "why": "the shipdata key the player's hull is rebuilt from"},
+    {"plist": "ship_class_name",     "js": "player.ship.shipClassName",      "kind": "str",          "why": "human-facing class name, separate storage from ship_desc"},
+    {"plist": "ship_kills",          "js": "player.score",                   "kind": "int",          "why": "kill score; a counter, so a round-trip that resets counters fails here"},
+    {"plist": "max_cargo",           "js": "player.ship.cargoSpaceCapacity", "kind": "int",          "why": "cargo capacity, an integer the loader recomputes rather than copies"},
+    {"plist": "missiles",            "js": "player.ship.missiles.length",    "kind": "int",          "why": "pylon count, reconstructed from missile_roles by the loader"},
+    {"plist": "fuel",                "js": "player.ship.fuel",               "kind": "float_tenths", "why": "the plist stores fuel in tenths of a light year (70 = 7.0 LY); JS reports light years. Scale measured."}
+  ]
+}
