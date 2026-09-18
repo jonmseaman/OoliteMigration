@@ -225,6 +225,16 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   `status='running'` as off limits; audit any `uncommitted work harvested` commit for disabled
   predicates before it can reach an accept. Mutating only throwaway copies under
   `$LOCALAPPDATA/Temp` makes a worktree safe to harvest at any instant.
+- **Harvest can also commit a file into the guarded `goldens/` tree.** `harvest.sh` commits
+  whatever is on disk and knows nothing about protected paths. Bead `oo-qd6` timed out leaving a
+  3-byte `{}` stub at `goldens/windows-x64/008-material-test-suite/state.json` — a mutation probe
+  of the gate's guarded-path fallback — and it was committed. `guardrails.sh` caught it (`FAIL`,
+  "is under a protected golden path and is changed and has no re-bless approval"), but acceptance
+  replays the *bead's own* lines, so a bead that never invokes guardrails would have merged it.
+  After harvesting any timed-out bead run `git diff --name-only main...HEAD | grep ^goldens/` and
+  `bash tools/guardrails.sh` in the worktree before accepting. Before deleting such a file, `cmp`
+  it against the staged copy under `tests/golden/pending/` and read its contents — a stub is safe
+  to drop, the real artifact is not.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.
