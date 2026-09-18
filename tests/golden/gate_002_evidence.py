@@ -240,17 +240,26 @@ def check_artifact_witness(golden_dir, raw):
 
 
 def check_frame(golden_dir, provenance):
-    """WITNESS 8: liveness asserted, byte digest deliberately refused."""
+    """WITNESS 8: liveness asserted, byte digest deliberately refused.
+
+    The grid is the raw `side*side` luminance bytes `frame_hash.frame_grid` produces, not JSON.
+    Liveness is measured as the SPREAD (max - min) of those bytes scaled to 0..1: a run that died
+    before drawing the scene yields a uniform grid whose spread is ~0, and that is the single frame
+    property such a run cannot fake. The blessed grid is NOT byte-compared against anything - see
+    the failure message below.
+    """
     grid_path = os.path.join(golden_dir, "frame.grid")
     if not os.path.isfile(grid_path):
         refuse("missing %s" % grid_path)
-    with open(grid_path, "r", encoding="utf-8") as handle:
-        grid = json.load(handle)
-    cells = grid.get("cells") if isinstance(grid, dict) else grid
-    if not isinstance(cells, list) or not cells:
-        fail("%s carries no cells" % grid_path)
-    values = [float(v) for row in cells for v in (row if isinstance(row, list) else [row])]
-    spread = max(values) - min(values)
+    with open(grid_path, "rb") as handle:
+        cells = handle.read()
+    if not cells:
+        fail("%s is empty" % grid_path)
+    side = int(round(len(cells) ** 0.5))
+    if side * side != len(cells):
+        fail("%s is %d bytes, not a square luminance grid; frame_hash.frame_grid writes side*side "
+             "bytes" % (grid_path, len(cells)))
+    spread = (max(cells) - min(cells)) / 255.0
 
     liveness = provenance.get("frame_liveness") or {}
     floor = liveness.get("floor")
