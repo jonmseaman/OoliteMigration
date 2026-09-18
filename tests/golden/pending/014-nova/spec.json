@@ -1,0 +1,78 @@
+{
+  "scenario": "014-nova",
+  "seed": 20260918,
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "upstream/oolite-tests/Checklist-files/Missions/Nova.oolite-save",
+
+  "_galaxy_number": "Galaxy 3. A new commander starts in galaxy 0 and only three galactic hyperdrive jumps reach galaxy 3, so this is state a default game cannot have. The system is deliberately NOT pinned by name: this fixture has no `current_system_name` key (the 1.75-era Trumbles save does), which is itself part of the older save format this scenario pins.",
+  "galaxy_number": 3,
+
+  "_mission_variables": "THE BEAD NAMES mission_nova AND mission_novacount. Measured with plistlib, this fixture carries FIVE mission variables and mission_nova is NOT one of them, while mission_novacount is present with the NON-EMPTY value '3'. Both facts are asserted. Compared primarily as a KEY SET because a mission variable whose value is the empty string reads identically to an absent one (scenario 015's mission_trumbles was exactly that); novacount is ADDITIONALLY compared by value, which is strictly stronger and which scenario 015 could not do. A DEFAULT NEW GAME HAS NO MISSION VARIABLES AT ALL (PlayerEntity.m:1986-1987). The engine strips the `mission_` prefix for JS (OOJSMissionVariables.m:191-193).",
+  "expected_mission_variable_keys": [
+    "TL_FOR_EQ_NAVAL_ENERGY_UNIT",
+    "conhunt",
+    "novacount",
+    "thargplans",
+    "trumbles"
+  ],
+  "mission_novacount_key": "novacount",
+  "expected_mission_novacount_value": "3",
+  "mission_nova_key": "nova",
+
+  "_save_format": "THE COMPATIBILITY CONTRACT, MEASURED RATHER THAN ASSUMED. The bead's story calls this fixture 1.75-era; it is OLDER. `written_by_version` is written by every 1.75 save and is ABSENT here, together with four more keys the 1.75 Trumbles fixture carries, while three legacy-only keys are present. Asserting both sets means a fixture swap to a NEWER file - the easy mistake - goes red by name instead of quietly weakening the contract.",
+  "expected_written_by_version": "",
+  "save_format_keys_present": ["has_energy_bomb", "ootunes_on", "reducedDetail", "saved"],
+  "save_format_keys_absent": [
+    "current_system_name",
+    "entity_personality",
+    "fuel_charge_rate",
+    "ship_name",
+    "written_by_version"
+  ],
+
+  "_log_channels": "Switched on by a logcontrol.plist staged into this run's private resource root (ResourceManager.m:1761-1777), NOT from the console: the whole load happens before the debug console connects, so a JS call comes too late. `load.progress` is off by default (Resources/Config/logcontrol.plist:241).",
+  "log_channels": ["load", "load.progress", "load.failed"],
+
+  "_load_progress_stages": "The engine's OWN load trace, verbatim and in order, from PlayerEntityLoadSave.m:620-811. These strings are logged ONLY inside -loadPlayerFromFile:, so a run that ignored -load emits none of them and a load that died partway emits a prefix.",
+  "load_progress_stages": [
+    "Reading file",
+    "Restricting scenario",
+    "Creating player ship",
+    "Initialising player entity",
+    "Loading commander data",
+    "Recording save path",
+    "Creating system",
+    "Resetting player flight variables",
+    "Loading system market",
+    "Setting scenario key",
+    "Starting JS engine",
+    "Populating initial system",
+    "Completing JS startup",
+    "Loading complete"
+  ],
+
+  "_expected_legacy_upgrades": "THE MIGRATION THIS SCENARIO PINS, AND THE ENGINE'S OWN WITNESS OF IT. This fixture carries has_energy_bomb = true, an item Oolite REMOVED. PlayerEntity.m:1730-1746 tries to replace it with a Quirium cascade mine and, finding all four pylons already full of EQ_HARDENED_MISSILEs, falls through to `credits += 9000` (deci-credits = 900 Cr) and logs this line on the `load.upgrade` channel. MEASURED live: the plist holds 933068 credits and the loaded game reports 94206.8, exactly 900 Cr more. The credits census field predicts that arithmetic independently, so an engine that dropped the migration, compensated a different amount, or found a free pylon fails BOTH checks by name.",
+  "expected_legacy_upgrades": ["Compensated legacy energy bomb with 900 credits."],
+
+  "_station_ai": "THE FOURTH TRAFFIC SOURCE, FOUND BY MEASURING. Scenario 015 needed three suppressions; this save's system also contains a ROCK HERMIT, and a rock hermit runs rockHermitAI.plist, whose CHECK_FOR_ROCKS state scans on a 20s pauseAI cycle and calls launchMiner on TARGET_FOUND (StationEntity.m:1736-1776). NONE of the three existing suppressions touch it - hasNPCTraffic gates the ordinary trader schedule, not a station's own AI. Measured before this knob existed: 10 runs, FOUR distinct dump digests, three of them carrying an extra {id: Mining Transporter, role: miner} entity and two runs REFUSING with a Cobra Mark I still under thrust. oolite-nullAI.js is the engine's own do-nothing AI.",
+  "station_ai": "oolite-nullAI.js",
+  "_station_ai_reported": "The engine reports a ship's AI by the name it RESOLVED, not the name setAI was given: setAI('oolite-nullAI.js') reads back as 'nullAI.plist' (measured live). Both names are pinned so the read-back verification is a real check rather than a tautology.",
+  "station_ai_reported": "nullAI.plist",
+
+  "repopulator_handlers": ["systemWillRepopulate"],
+
+  "_census": "THE LOAD ASSERTION. Each entry names a key in the .oolite-save plist, the JS expression that reads the same quantity out of the loaded game, and how the two are made comparable. The two sides are produced by two INDEPENDENT readers sharing no code - Python's plistlib in THIS process, and Oolite's Objective-C deserialiser in a SEPARATE OS process read back over the console - so they cannot be the same object even in principle. Scenario 006's invariant, applied to this fixture.",
+  "census": [
+    {"plist": "player_name",   "js": "player.name",                   "kind": "str",          "why": "commander identity. This save's is 'Tester'; a fresh commander is 'Jameson'."},
+    {"plist": "credits",       "js": "player.credits",                "kind": "float_tenths_legacy_energy_bomb", "why": "PlayerEntity stores credits in DECI-credits, and this save is additionally MIGRATED on load: its legacy energy bomb cannot be replaced by a Quirium cascade mine (all four pylons full), so PlayerEntity.m:1743 adds 9000 deci-credits. The plist holds 933068; the loaded game reports 94206.8. The kind encodes that prediction, and expected_legacy_upgrades requires the engine to have logged the same event."},
+    {"plist": "fuel",          "js": "player.ship.fuel",              "kind": "float_tenths", "why": "the plist stores fuel in tenths of a light year (70 = 7.0 LY); JS reports light years"},
+    {"plist": "legal_status",  "js": "player.bounty",                 "kind": "int",          "why": "player.bounty is the INTEGER accessor (OOJSPlayer.m:286-288); player.legalStatus returns a DISPLAY STRING via OODisplayStringFromLegalStatus"},
+    {"plist": "galaxy_number", "js": "galaxyNumber",                  "kind": "int",          "why": "galaxy index; galaxy 3 is three galactic hyperdrive jumps from a new commander's galaxy 0"},
+    {"plist": "ship_desc",     "js": "player.ship.dataKey",           "kind": "str",          "why": "the shipdata key the player's hull is rebuilt from"},
+    {"plist": "ship_kills",    "js": "player.score",                  "kind": "int",          "why": "kill score, 1634 here; a counter, so a load that resets counters fails"},
+    {"plist": "max_cargo",     "js": "player.ship.cargoSpaceCapacity", "kind": "int",         "why": "cargo capacity, an integer the loader recomputes rather than copies"},
+    {"plist": "missiles",      "js": "player.ship.missiles.length",   "kind": "int",          "why": "pylon count, reconstructed from missile_roles by the loader"}
+  ]
+}
