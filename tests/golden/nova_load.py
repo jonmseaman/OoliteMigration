@@ -823,19 +823,23 @@ def run(app_dir, out_path, spec, run_root, keep=False, seed_override=None, ticks
         console = start_with_retry(lambda: DebugConsole(
             staged, port, seed=seed, output_dir=artifact_dir, host="127.0.0.1", load_save=save))
         with console:
-            galaxy = assert_galaxy(console, spec)
-            mv_keys, mv_values = mission_variables(console)
-            live = live_census(console, spec)
-
-            # SUPPRESSION FIRST, BEFORE ANY SLOW PROBE - order is load-bearing, not tidiness.
-            # Scenario 010 measured eight of ten runs refusing when the suppression came after a
-            # multi-second probe, because a station with hasNPCTraffic still on launched traffic
-            # in the meantime.
+            # SUPPRESSION FIRST, BEFORE ANY SLOW PROBE. THE ORDER IS LOAD-BEARING, AND THIS
+            # SCENARIO MEASURED IT THE HARD WAY. An earlier revision read the census and the
+            # mission variables first - about fourteen console round trips, several seconds - and
+            # its 10-run sweep produced FOUR distinct dump digests, three of them carrying an
+            # extra Mining Transporter. With the suppressions moved ahead of every probe, a
+            # 30-second watch with repeated clearing saw no miner at all. Scenario 010 recorded
+            # the same finding for the same reason: whatever runs before the suppression is a
+            # window the station launches into.
             suppressed = suppress_populators(console)
             stations_quieted = suppress_station_traffic(console)
             station_ais = suppress_station_ai(console, spec)
             repopulator_handlers = suppress_repopulator(console, spec)
             quiesce(console)
+
+            galaxy = assert_galaxy(console, spec)
+            mv_keys, mv_values = mission_variables(console)
+            live = live_census(console, spec)
 
             elapsed = run_ticks(console, ticks, float(spec["tick_seconds"]))
 
