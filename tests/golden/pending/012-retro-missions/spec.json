@@ -1,0 +1,51 @@
+{
+  "allowed_oxp_standards_error_signatures": [
+    "OXP RetroMissions.oxp has no manifest.plist"
+  ],
+  "allowed_oxp_standards_errors": 2,
+  "expected_key_only_scripts": [
+    "cloaking-device",
+    "constrictor_hunt",
+    "nova",
+    "thargoid_plans",
+    "trumbles"
+  ],
+  "expected_live_script_versions": {
+    "ahruman-reaper": "1"
+  },
+  "expected_oxp_world_scripts": [
+    "ahruman-reaper",
+    "cloaking-device",
+    "constrictor_hunt",
+    "nova",
+    "thargoid_plans",
+    "trumbles"
+  ],
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+  "oxp_source": "upstream/oolite-tests/test-oxps/RetroMissions/RetroMissions.oxp",
+  "quant_decimals": 3,
+  "scenario": "012-retro-missions",
+  "seed": 20260918,
+  "stock_world_scripts": [
+    "Oolite Equipment Control",
+    "Oolite Ship Library",
+    "oolite-cloaking-device",
+    "oolite-constrictor-hunt",
+    "oolite-contracts-cargo",
+    "oolite-contracts-helpers",
+    "oolite-contracts-parcels",
+    "oolite-contracts-passengers",
+    "oolite-libPriorityAI",
+    "oolite-nova",
+    "oolite-populator",
+    "oolite-primable-equipment-register",
+    "oolite-registership",
+    "oolite-thargoid-plans",
+    "oolite-trumbles",
+    "oolite-tutorial"
+  ],
+  "system_id": 7,
+  "system_name": "Lave",
+  "tick_seconds": 0.125,
+  "ticks": 24
+}
