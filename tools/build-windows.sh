@@ -45,10 +45,28 @@ die() { echo "build-windows: $*" >&2; exit 1; }
 
 CLEAN=false
 FLAVOURS=()
+# --setup-flags="..." -- passed straight through to mk.sh, which splices it into `meson setup`.
+#
+# WHY THIS EXISTS (bead oo-j4u). Tier C needs a SANITIZED configure (-Db_sanitize=address plus a
+# -resource-dir, see tools/asan-resource-dir.sh) and mk.sh already accepts --setup-flags. The
+# temptation is to call mk.sh directly and skip this wrapper. That does not work, and the failure
+# does not look like a configure problem: upstream's
+# ShellScripts/common/get_version.sh:7-27 refuses to run unless it can identify meson as its
+# parent, and it picks HOW to identify it on `[[ -v MINGW_PREFIX ]]`. Outside a UCRT64 login
+# shell it takes the `ps -p $PPID -o comm=` branch, MSYS2's ps has no -o option, PARENT_PROCESS
+# is empty, and meson dies at meson.build:5:13 with two EMPTY diagnostic values (bead oo-djn).
+# This wrapper's re-exec above is what supplies MINGW_PREFIX, so the pass-through belongs HERE
+# rather than in a hand-rolled mk.sh invocation.
+#
+# Deliberately minimal: when the flag is absent the mk.sh command line below is byte-identical
+# to what it was before, so nothing about the existing flavours changes.
+SETUP_FLAGS=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --all)   FLAVOURS=("${ALL_FLAVOURS[@]}") ;;
     --clean) CLEAN=true ;;
+    --setup-flags=*) SETUP_FLAGS="${1#--setup-flags=}" ;;
+    --setup-flags)   SETUP_FLAGS="${2:?--setup-flags needs a value}"; shift ;;
     -h|--help) sed -n '2,18p' "${BASH_SOURCE[0]}"; exit 0 ;;
     -*)      die "unknown option '$1'" ;;
     *)       FLAVOURS+=("$1") ;;
@@ -142,11 +160,12 @@ for flavour in "${FLAVOURS[@]}"; do
     ( cd "$OOLITE" && ./mk.sh clean "$flavour" >/dev/null 2>&1 ) || true
   fi
 
-  say "building flavour '$flavour'"
+  say "building flavour '$flavour'${SETUP_FLAGS:+ (setup-flags: $SETUP_FLAGS)}"
   # PYTHONUTF8 matches the upstream workflow. --native-file replaces clang.ini rather than adding
   # to it; see tools/meson/ccache-clang.ini for why it cannot be layered.
   ( cd "$OOLITE" && PYTHONUTF8=1 ./mk.sh build "$flavour" \
       --native-file="$(cygpath -m "$NATIVE_FILE")" \
+      ${SETUP_FLAGS:+--setup-flags="$SETUP_FLAGS"} \
       --ver-full="$OOLITE_VER_FULL" )
 
   binary="$OOLITE/build/meson_$flavour/oolite.app/oolite.exe"
