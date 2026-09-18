@@ -6,6 +6,11 @@
 # repo root (.fleet-progress.<bead>); they also change `git status`, so Hermes re-runs the gate
 # instead of replaying the previous failure. This script consumes the markers.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast before any path is computed (oo-aqzj): unsourced _lib.sh leaves these empty and the
+# marker glob "$REPO_ROOT"/.fleet-progress.* becomes /.fleet-progress.* - matched AND rm -f'd at
+# the filesystem root. Keep above the first use.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 phase="${1:?usage: goal-gate.sh <phase>}"
 markers=( "$REPO_ROOT"/.fleet-progress.* )
 progress=0

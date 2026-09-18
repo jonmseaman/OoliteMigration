@@ -11,6 +11,10 @@
 # The frontier model is Claude Opus 5 (BEADS_FRONTIER_MODEL overrides; Jon, 2026-09-11).
 # Exit 0 = decision applied. Exit 3 = Claude unavailable or unparsable; caller falls back to escalate.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast before any path is computed (oo-aqzj): unsourced _lib.sh leaves these empty and the
+# `cd "$REPO_ROOT"` / marker touch land at the filesystem root. Keep above the first use.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 id="${1:?usage: reevaluate.sh <bead> \"<trigger>\"}"; trigger="${2:-stuck}"
 command -v claude >/dev/null 2>&1 || { echo "reevaluate: claude CLI not on PATH" >&2; exit 3; }
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

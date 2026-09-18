@@ -3,6 +3,10 @@
 # (default `fleet`; see _lib.sh), previously-failed ones first,
 # and print one JSON record per line. Exit 3 when nothing is ready.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast (oo-aqzj): this script computes no paths itself, but an unsourced _lib.sh also means no
+# worker_list/real_bd/bead_json, so it would die of "command not found" instead of saying why.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 phase="${1:?usage: next-bead.sh <phase> [count]}"
 count="${2:-1}"
 me="${BEADS_ACTOR:-$(git config user.name || echo hermes)}"

@@ -9,6 +9,14 @@
 #   worktree with no branch                       -> harvest onto bead/<id> if it has changes, else remove
 #   gc.sh --check   audit only, no changes; exit 1 if any work is at risk (used by goal-check)
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# FAIL FAST BEFORE ANY PATH IS COMPUTED (oo-aqzj). If _lib.sh did not actually run - a copy of this
+# script detached from it, a mangled/empty lib, or `source` failing before set -e is in force -
+# $REPO_ROOT and $WORKTREES are EMPTY and every path below is computed from an empty prefix:
+# "$WORKTREES"/*/ becomes /*/ , i.e. entries at the FILESYSTEM ROOT, which gc then rmdir's and runs
+# git against. This guard must stay ABOVE the first use of either variable; ${var:?} makes a
+# non-interactive shell print the message and exit non-zero on the spot, before any path exists.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 base="${BEADS_WORKER_BASE_BRANCH:-main}"; check=0; [ "${1:-}" = "--check" ] && check=1
 rc=0

@@ -15,6 +15,11 @@
 # (a lock), so two beads cannot race the base branch.
 # Exit 0 = closed and merged · 1 = rejected, new learning · 2 = rejected, stale.
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast before any path is computed (oo-aqzj): unsourced _lib.sh leaves these empty and the
+# lock, the worktree removal and "$WORKTREES/$id" all land at the filesystem root. Keep above
+# the first use.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 id="${1:?usage: accept.sh <bead>}"
 branch="bead/$id"

@@ -2,6 +2,10 @@
 # Create (or reuse) .worktrees/<bead> on branch bead/<bead>, based on the base branch. Print the path.
 # `worktree.sh --remove <bead>` removes the worktree and deletes the branch (after close/escalate).
 source "$(dirname "${BASH_SOURCE[0]}")/_lib.sh"
+# Fail fast before any path is computed (oo-aqzj): unsourced _lib.sh leaves these empty and
+# "$WORKTREES/$id" becomes "/$id" - a path at the filesystem root. Keep above the first use.
+: "${REPO_ROOT:?_lib.sh not sourced (REPO_ROOT unset): refusing to compute paths from an empty prefix}" \
+  "${WORKTREES:?_lib.sh not sourced (WORKTREES unset): refusing to compute paths from an empty prefix}"
 if [ "${1:-}" = "--remove" ]; then
   # Never discards work: uncommitted changes are harvested first, and the branch is deleted only
   # if it is merged into the base branch. An unmerged branch (escalated bead) is kept for the
