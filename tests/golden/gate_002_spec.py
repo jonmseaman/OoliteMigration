@@ -59,12 +59,17 @@ SCENARIO = "002-witchspace"
 SCENARIO_SCRIPT = os.path.join(HERE, "witchspace_jump.py")
 
 SPEC_CANDIDATES = (
+    os.path.join(REPO_ROOT, "goldens", "windows-x64", SCENARIO, "spec.json"),
     os.path.join(HERE, "scenarios", SCENARIO, "spec.json"),
     os.path.join(HERE, "pending", SCENARIO, "spec.json"),
 )
-# Guarded location first, staged location second, so this file keeps working unchanged after a
-# human re-bless moves the artifacts (guardrails.sh refuses CREATE as well as MODIFY under
-# goldens/, so this bead cannot land them there itself).
+# Guarded location FIRST, staged location last, so this file keeps working unchanged after a human
+# re-bless moves the artifacts (guardrails.sh refuses CREATE as well as MODIFY under goldens/, so
+# this bead cannot land them there itself). THE FIRST ENTRY WAS ADDED BECAUSE THE LANDING REHEARSAL
+# CAUGHT ITS ABSENCE: with only the two lower entries, `git mv tests/golden/pending/002-witchspace
+# goldens/windows-x64/002-witchspace` left this gate exiting 2 ("no spec.json in any of ...") while
+# the evidence gate still passed - a landing procedure that silently disarms half its own checks.
+# Rehearse the move; do not trust the list.
 GOLDEN_CANDIDATES = (
     os.path.join(REPO_ROOT, "goldens", "windows-x64", SCENARIO),
     os.path.join(HERE, "pending", SCENARIO),
