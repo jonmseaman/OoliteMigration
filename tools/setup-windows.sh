@@ -219,10 +219,19 @@ CCACHE_DIR_WANTED="${OOLITE_CCACHE_DIR:-$CCACHE_DIR_DEFAULT}"
 
 # `ccache --show-config` prints "(default) key = value" for a setting it did not read from a
 # config file, and "(<path>) key = value" for one it did. A value we did not set is a miss.
+# NOT `ccache --show-config | grep -qE ...`: this script runs under `set -euo pipefail` (line 16)
+# and that idiom inverts under it - grep -q exits on the first match, SIGPIPEs ccache, and
+# pipefail reports 141, so a CONFIRMED setting reads as a miss and the script rewrites a config
+# that was already correct (or dies at the `|| die` below). Bead oo-mxgy: measured, ccache emits
+# ~1.5 KB here so it fits the 64 KB pipe buffer and the site did not fire in 100 runs - but the
+# volume is ccache's to change, not ours. Capture first, then match; no `|| true` (it would hide
+# a ccache that failed to run at all, which is exactly what this function must notice).
 ccache_reports() {
-  USERPROFILE="${USERPROFILE:-$(cygpath -w "$(cygpath -F 40)")}" \
-  LOCALAPPDATA="${LOCALAPPDATA:-$(cygpath -w "$(cygpath -F 28)")}" \
-    ccache --show-config 2>/dev/null | grep -qE "^\(.*ccache\.conf\) +$1 = $2\$"
+  local cfg
+  cfg=$(USERPROFILE="${USERPROFILE:-$(cygpath -w "$(cygpath -F 40)")}" \
+        LOCALAPPDATA="${LOCALAPPDATA:-$(cygpath -w "$(cygpath -F 28)")}" \
+          ccache --show-config 2>/dev/null) || return 1
+  grep -qE "^\(.*ccache\.conf\) +$1 = $2\$" <<< "$cfg"
 }
 
 if ccache_reports cache_dir "$(cygpath -w "$CCACHE_DIR_WANTED" | sed 's/\\/\\\\/g')" \
