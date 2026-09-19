@@ -2,24 +2,33 @@
 
 ooscript/JSEngine_quickjs.cpp
 
-A QuickJS-ng backend for the façade in JSEngine.hpp (Phase 1 seam 1.4b, bead oo-0kq). Scope, by
-design (the full façade surface is a later bead's job once this seam is proven):
+A QuickJS-ng backend for the façade in JSEngine.hpp (Phase 1 seam 1.4b/1.4c, beads oo-0kq and
+oo-s0y). Scope, by design (the full façade surface is a later bead's job once this seam is
+proven):
 
   * Runtime/Context lifecycle (newRuntime/newContext/destroyContext/destroyRuntime/shutDown and
     the small set of accessors the tests exercise).
   * Value construction and inspection for the primitives Oolite actually threads through the
     façade in a resolve/enumerate demo: undefined, null, booleans, int32, doubles, objects.
   * ClassDef lifecycle (attach-on-first-use, exactly as the SpiderMonkey backend does) with
-    HasPrivate, finalize, and — the point of this bead — resolve and enumerate mapped onto
-    QuickJS-ng's JSClassExoticMethods (has_property and get_own_property_names respectively).
+    HasPrivate, finalize, and resolve and enumerate mapped onto QuickJS-ng's JSClassExoticMethods
+    (has_property and get_own_property_names respectively).
   * Private-pointer attach/retrieve (setPrivate/getPrivate/getInstancePrivate) via JS_SetOpaque
     and JS_GetOpaque/JS_GetAnyOpaque.
+  * GC roots and exceptions (bead oo-s0y): addNamedObjectRoot/addNamedValueRoot and their removes
+    (String roots are a no-op — this backend does not yet produce String handles), plus
+    isExceptionPending/getPendingException/setPendingException/clearPendingException/
+    reportPendingException/reportError/reportWarning/reportOutOfMemory/setErrorReporter/
+    saveExceptionState/restoreExceptionState/dropExceptionState. See the "MARK: Exceptions and
+    error reporting" and "MARK: GC roots" sections below for how each maps onto QuickJS-ng's
+    refcounted-plus-cycle-collector model, which is a different GC discipline than SpiderMonkey's
+    conservative stack scan.
 
-Anything else the façade declares (strings, arrays, GC parameters, error reporting, roots, the
-full property-definition surface, …) is out of scope here: nothing in the tree calls into this
-backend yet (retargeting call sites is separate beads, and this backend is not the meson default),
-so an unimplemented façade function simply has no definition in this translation unit and stays
-unreferenced. tests/unit/test_jsengine_quickjs.cpp only calls what is implemented below.
+Anything else the façade declares (strings, arrays, GC parameters, the full property-definition
+surface, …) is out of scope here: nothing in the tree calls into this backend yet (retargeting
+call sites is separate beads, and this backend is not the meson default), so an unimplemented
+façade function simply has no definition in this translation unit and stays unreferenced.
+tests/unit/test_jsengine_quickjs.cpp only calls what is implemented below.
 
 Value representation
 	ooscript::Value must stay an 8-byte POD (JSEngine.hpp is not ours to change), but QuickJS-ng's
@@ -343,7 +352,12 @@ bool evaluateScript(Context cx, Object /*scope*/, const char* src, unsigned leng
 	JSValue result = JS_Eval(ctx, src, length, filename, JS_EVAL_TYPE_GLOBAL);
 	if (JS_IsException(result))
 	{
-		JS_FreeValue(ctx, JS_GetException(ctx));
+		// Leave the exception pending rather than swallowing it here: the façade's contract
+		// (JSEngine.hpp's "return false with an exception pending" convention, matched by
+		// JS_EvaluateScript on the SpiderMonkey backend) is that a caller inspects it through
+		// isExceptionPending/getPendingException or reports it through reportPendingException,
+		// same as any other façade call that fails. JS_Eval already left its own JS_TAG_EXCEPTION
+		// result in *result*, not in the context's pending slot, so re-throw it there.
 		JS_FreeValue(ctx, result);
 		*rval = undefinedValue();
 		return false;
@@ -352,6 +366,217 @@ bool evaluateScript(Context cx, Object /*scope*/, const char* src, unsigned leng
 	JS_FreeValue(ctx, result);
 	return true;
 }
+
+// MARK: Exceptions and error reporting ----------------------------------------------------------
+//
+// QuickJS-ng's exception state is one JSValue per context (JS_Throw / JS_GetException /
+// JS_HasException); JS_GetException both reads AND CLEARS it, which is the opposite of the
+// façade's getPendingException (read without disturbing, mirroring SpiderMonkey's
+// JS_GetPendingException). Every read below therefore re-arms the pending slot with JS_Throw
+// straight after fetching it, so the net refcount and pending-ness are unchanged — same
+// borrow-not-own convention as getProperty() above (fromJS() aliases the engine value; nothing
+// here hands the façade caller an owning reference to manage).
+//
+// QuickJS-ng has no ReportError-style callback of its own (a JS_Throw is silent unless something
+// later fetches JS_GetException and prints it), so ErrorReporter is backend state, one per
+// context, invoked explicitly by reportError/reportWarning/reportOutOfMemory/
+// reportPendingException below — the same shape as gExtras in the SpiderMonkey backend. Line
+// number and script name are not tracked by this seam (no frame walk here yet; see the "not in
+// the façade" list in ooscript/README.md for the related frame-walk functions), so ErrorReport
+// carries flags and message only; filename/lineno/linebuf are always null/0.
+
+namespace {
+
+struct ContextExtras
+{
+	ErrorReporter reporter = nullptr;
+};
+std::unordered_map<JSContext*, ContextExtras> gContextExtras;
+
+void invokeReporter(JSContext* ctx, const char* message, unsigned flags)
+{
+	auto it = gContextExtras.find(ctx);
+	if (it == gContextExtras.end() || it->second.reporter == nullptr)  return;
+	ErrorReport r{};
+	r.filename  = nullptr;
+	r.lineno    = 0;
+	r.flags     = flags;
+	r.ucmessage = nullptr;
+	r.linebuf   = nullptr;
+	it->second.reporter(wrap(ctx), message, &r);
+}
+
+} // namespace
+
+bool isExceptionPending(Context cx)  { return JS_HasException(CX(cx)); }
+
+bool getPendingException(Context cx, Value* vp)
+{
+	JSContext* ctx = CX(cx);
+	if (!JS_HasException(ctx))  return false;
+	JSValue exc = JS_GetException(ctx);   // clears the pending slot; we now own exc
+	*vp = fromJS(exc);
+	JS_Throw(ctx, exc);                   // re-arm: consumes our ownership, restores pending state
+	return true;
+}
+
+void setPendingException(Context cx, Value v)
+{
+	JSContext* ctx = CX(cx);
+	// toJS() aliases *v* without taking a reference (see the file banner's borrow convention), so
+	// JS_Throw — which consumes the reference it is given — needs its own dup, or the value's
+	// existing owner (a property slot, another root, ...) would end up with a dangling ref.
+	JS_Throw(ctx, JS_DupValue(ctx, toJS(v)));
+}
+
+void clearPendingException(Context cx)
+{
+	JSContext* ctx = CX(cx);
+	if (JS_HasException(ctx))  JS_FreeValue(ctx, JS_GetException(ctx));
+}
+
+bool reportPendingException(Context cx)
+{
+	JSContext* ctx = CX(cx);
+	if (!JS_HasException(ctx))  return false;
+	JSValue exc = JS_GetException(ctx);   // clears the pending slot
+	size_t len = 0;
+	const char* msg = JS_ToCStringLen(ctx, &len, exc);
+	invokeReporter(ctx, msg != nullptr ? msg : "(unknown exception)", static_cast<unsigned>(ReportFlag::Exception));
+	if (msg != nullptr)  JS_FreeCString(ctx, msg);
+	JS_FreeValue(ctx, exc);
+	return true;
+}
+
+void reportError(Context cx, const char* message)
+{
+	JSContext* ctx = CX(cx);
+	invokeReporter(ctx, message, static_cast<unsigned>(ReportFlag::Error));
+	JS_ThrowPlainError(ctx, "%s", message);
+}
+
+bool reportWarning(Context cx, const char* message)
+{
+	invokeReporter(CX(cx), message, static_cast<unsigned>(ReportFlag::Warning));
+	return true;
+}
+
+void reportOutOfMemory(Context cx)
+{
+	JSContext* ctx = CX(cx);
+	invokeReporter(ctx, "out of memory", static_cast<unsigned>(ReportFlag::Error));
+	JS_ThrowOutOfMemory(ctx);
+}
+
+ErrorReporter setErrorReporter(Context cx, ErrorReporter reporter)
+{
+	ContextExtras& ex = gContextExtras[CX(cx)];
+	ErrorReporter old = ex.reporter;
+	ex.reporter = reporter;
+	return old;
+}
+
+// The opaque façade ExceptionState is this backend's own snapshot: the exception JSValue that was
+// pending at save time (if any), owned by the snapshot between save and restore/drop exactly as
+// JS_SaveExceptionState/JS_RestoreExceptionState/JS_DropExceptionState would own it in an engine
+// that had them (QuickJS-ng does not).
+struct ExceptionState
+{
+	bool    hadException = false;
+	JSValue value         = JS_UNDEFINED;
+};
+
+ExceptionState* saveExceptionState(Context cx)
+{
+	JSContext* ctx = CX(cx);
+	auto* st = new ExceptionState();
+	if (JS_HasException(ctx))
+	{
+		st->hadException = true;
+		st->value = JS_GetException(ctx);   // clears pending; the snapshot now owns this ref
+	}
+	return st;
+}
+
+void restoreExceptionState(Context cx, ExceptionState* state)
+{
+	JSContext* ctx = CX(cx);
+	if (state == nullptr)  return;
+	// Drop whatever the bracketed call left pending: restoring must put the ORIGINAL state back,
+	// not merge with what ran in between.
+	if (JS_HasException(ctx))  JS_FreeValue(ctx, JS_GetException(ctx));
+	if (state->hadException)  JS_Throw(ctx, state->value);   // consumes the snapshot's owned ref
+	delete state;
+}
+
+void dropExceptionState(Context cx, ExceptionState* state)
+{
+	if (state == nullptr)  return;
+	if (state->hadException)  JS_FreeValue(CX(cx), state->value);
+	delete state;
+}
+
+// MARK: GC roots ----------------------------------------------------------------------------
+//
+// QuickJS-ng is refcounted with a cycle collector, not a conservative-stack-scanning GC: an
+// ordinary façade Object/Value handle already keeps its referent alive for as long as it is
+// reachable from the object graph or from another owning reference (see the file banner and
+// getProperty()'s borrow-vs-own discussion above) — there is no periodic collection that can
+// invalidate a handle sitting in a native local out from under it the way SpiderMonkey's does.
+// So "rooting" here maps onto the one thing QuickJS-ng's model still needs from a native caller
+// that wants a handle to keep surviving independent of where it currently sits in that graph
+// (e.g. before it has been attached to anything reachable): take an explicit extra reference at
+// add-root time and hold it until removed. The root table is keyed by the address the caller
+// passed (rp/vp), exactly as RootedObject/RootedValue in JSEngine.hpp use it (one add in the
+// constructor, one remove in the destructor); it snapshots the value AT ADD TIME, so a caller
+// that reassigns *rp/*vp after rooting (RootedObject::set(), RootedValue::set()) must root again
+// to protect the new value — this backend does not rescan the address the way SpiderMonkey's
+// conservative scanner effectively does. String roots are a no-op: this backend does not yet
+// produce String handles (see isString()), so there is nothing to hold a reference to.
+
+namespace {
+
+std::unordered_map<void*, JSValue> gObjectRoots;
+std::unordered_map<void*, JSValue> gValueRoots;
+
+} // namespace
+
+bool addNamedObjectRoot(Context cx, Object* rp, const char* /*name*/)
+{
+	JSContext* ctx = CX(cx);
+	JSValue held = (rp != nullptr && *rp != nullptr) ? JS_DupValue(ctx, OBJVAL(*rp)) : JS_NULL;
+	gObjectRoots[rp] = held;
+	return true;
+}
+
+bool removeObjectRoot(Context cx, Object* rp)
+{
+	auto it = gObjectRoots.find(rp);
+	if (it == gObjectRoots.end())  return false;
+	JS_FreeValue(CX(cx), it->second);
+	gObjectRoots.erase(it);
+	return true;
+}
+
+bool addNamedValueRoot(Context cx, Value* vp, const char* /*name*/)
+{
+	JSContext* ctx = CX(cx);
+	JSValue held = vp != nullptr ? JS_DupValue(ctx, toJS(*vp)) : JS_UNDEFINED;
+	gValueRoots[vp] = held;
+	return true;
+}
+
+bool removeValueRoot(Context cx, Value* vp)
+{
+	auto it = gValueRoots.find(vp);
+	if (it == gValueRoots.end())  return false;
+	JS_FreeValue(CX(cx), it->second);
+	gValueRoots.erase(it);
+	return true;
+}
+
+bool addNamedStringRoot(Context /*cx*/, String* /*sp*/, const char* /*name*/) { return true; }
+bool removeStringRoot(Context /*cx*/, String* /*sp*/)                        { return true; }
 
 // MARK: Runtime, contexts ---------------------------------------------------------------------
 

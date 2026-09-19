@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <string>
 
 // Declared in JSEngine_quickjs.cpp; test-only glue between a PropertySpec-style name/tinyid pair
 // and the resolve/enumerate exotic methods (see that file's banner).
@@ -169,6 +170,77 @@ int main()
 	CHECK(isInt32(rv) && toInt32(rv) == 3);
 	const char* bad = "var = ;";
 	CHECK(!evaluateScript(cx, global, bad, static_cast<unsigned>(std::strlen(bad)), "bad.js", 1, &rv));
+
+	// Exceptions: a syntax error leaves the engine's own exception pending (bead oo-s0y). Read it
+	// without disturbing it (isExceptionPending/getPendingException), report it through a
+	// backend-held ErrorReporter, then clear it explicitly.
+	CHECK(isExceptionPending(cx));
+	Value pending = undefinedValue();
+	CHECK(getPendingException(cx, &pending));
+	CHECK(isExceptionPending(cx));   // reading must not clear it
+	static std::string sLastReported;
+	static unsigned sLastFlags = 0;
+	ErrorReporter oldReporter = setErrorReporter(cx, +[](Context, const char* message, const ErrorReport* report)
+	{
+		sLastReported = message != nullptr ? message : "";
+		sLastFlags = report != nullptr ? report->flags : 0;
+	});
+	CHECK(oldReporter == nullptr);
+	CHECK(reportPendingException(cx));
+	CHECK(!sLastReported.empty());
+	CHECK((sLastFlags & static_cast<unsigned>(ReportFlag::Exception)) != 0);
+	CHECK(!isExceptionPending(cx));   // reportPendingException clears it
+
+	// setPendingException / clearPendingException round-trip a façade value (not just an engine
+	// error), then clear it so it does not leak into the destroyContext below.
+	setPendingException(cx, int32Value(99));
+	CHECK(isExceptionPending(cx));
+	Value thrown = undefinedValue();
+	CHECK(getPendingException(cx, &thrown) && isInt32(thrown) && toInt32(thrown) == 99);
+	clearPendingException(cx);
+	CHECK(!isExceptionPending(cx));
+
+	// save/restore/drop bracket a call that must not disturb an already-pending exception.
+	setPendingException(cx, int32Value(7));
+	ExceptionState* saved = saveExceptionState(cx);
+	CHECK(!isExceptionPending(cx));                 // save lifts it off the context
+	setPendingException(cx, int32Value(8));          // something else runs and throws
+	restoreExceptionState(cx, saved);
+	Value restored = undefinedValue();
+	CHECK(getPendingException(cx, &restored) && isInt32(restored) && toInt32(restored) == 7);
+	clearPendingException(cx);
+
+	setPendingException(cx, int32Value(11));
+	ExceptionState* dropped = saveExceptionState(cx);
+	CHECK(!isExceptionPending(cx));
+	dropExceptionState(cx, dropped);                 // drop must not resurrect it
+	CHECK(!isExceptionPending(cx));
+
+	setErrorReporter(cx, oldReporter);
+
+	// GC roots: RootedObject keeps a handle stable for the scope of a block, and
+	// removeObjectRoot()/removeValueRoot() answer false once the root is gone (a second remove is
+	// not a silent success).
+	{
+		Object r = newObject(cx, &sPointClass, nullptr, nullptr);
+		CHECK(setPrivate(cx, r, new Point{1.0, 2.0}));
+		RootedObject root(cx, r, "test_root");
+		CHECK(root.get() == r);
+		CHECK(getClass(cx, root.get()) == &sPointClass);
+	}
+	// After the scope above the root is released (RootedObject's destructor called
+	// removeObjectRoot once); the object itself is still reachable only if something else holds
+	// it, which nothing does here, so it becomes collectable.
+
+	Object rawObj = nullptr;
+	CHECK(addNamedObjectRoot(cx, &rawObj, "raw_root"));
+	CHECK(removeObjectRoot(cx, &rawObj));
+	CHECK(!removeObjectRoot(cx, &rawObj));   // already removed: false, not a crash
+
+	Value rawVal = int32Value(0);
+	CHECK(addNamedValueRoot(cx, &rawVal, "raw_val_root"));
+	CHECK(removeValueRoot(cx, &rawVal));
+	CHECK(!removeValueRoot(cx, &rawVal));
 
 	destroyContext(cx);
 	destroyRuntime(rt);
