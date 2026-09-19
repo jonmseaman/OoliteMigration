@@ -26,6 +26,38 @@ MA 02110-1301, USA.
 #import "OOJSGuiScreenKeyDefinition.h"
 //#import "OOJavaScriptEngine.h"
 
+#include "ooscript/JSEngine.hpp"
+
+/*
+	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-6u8, the same way bead oo-sdz
+	retargeted OOJSVector.mm (the exemplar for this sweep; see its header comment for the full
+	rationale). This file only directly called the two RemoveValueRoot / RemoveObjectRoot
+	engine functions (ooscript/README.md's retarget map); OOJSAddGCValueRoot /
+	OOJSAddGCObjectRoot are OOJS_*-spelled macros from OOJavaScriptEngine.h, not themselves
+	spelled with the engine's own prefix at this call site, and are unchanged, out of scope for
+	the sweep exactly as OOJSVector.mm's header comment describes for the OOJS_*
+	argument-marshalling macros. `this` is not used here, so no reserved-word renames were
+	needed; the file is still built as Objective-C++ (ADR-0001) because it now names the
+	ooscript:: namespace.
+*/
+
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Value;
+using ooscript::Object;
+
+// Byte-identical façade <-> jsapi views, local to this call site (JSEngine.hpp: Value/Object are
+// byte copies of jsval/JSObject*; see OOJSVector.mm for the same, non-exported, pattern).
+namespace {
+static inline Context  OOJSFCX(JSContext *cx)     { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline Value   *OOJSFVALP(jsval *v)         { return reinterpret_cast<Value*>(v); }
+} // namespace
+namespace {
+static inline Object  *OOJSFOBJP(JSObject **o)     { return reinterpret_cast<Object*>(o); }
+} // namespace
+
 
 @implementation OOJSGuiScreenKeyDefinition
 
@@ -50,8 +82,8 @@ MA 02110-1301, USA.
 	JSContext				*context = OOJSAcquireContext();
 	_callback = JSVAL_VOID;
 	_callbackThis = NULL;
-	JS_RemoveValueRoot(context, &_callback);
-	JS_RemoveObjectRoot(context, &_callbackThis);
+	ooscript::removeValueRoot(OOJSFCX(context), OOJSFVALP(&_callback));
+	ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_callbackThis));
 
 	OOJSRelinquishContext(context);
 
@@ -105,7 +137,7 @@ MA 02110-1301, USA.
 - (void)setCallback:(jsval)callback
 {
 	JSContext				*context = OOJSAcquireContext();
-	JS_RemoveValueRoot(context, &_callback);
+	ooscript::removeValueRoot(OOJSFCX(context), OOJSFVALP(&_callback));
 	_callback = callback;
 	OOJSAddGCValueRoot(context, &_callback, "OOJSGuiScreenKeyDefinition callback function");
 	OOJSRelinquishContext(context);
@@ -121,7 +153,7 @@ MA 02110-1301, USA.
 - (void)setCallbackThis:(JSObject *)callbackThis
 {
 	JSContext				*context = OOJSAcquireContext();
-	JS_RemoveObjectRoot(context, &_callbackThis);
+	ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_callbackThis));
 	_callbackThis = callbackThis;
 	OOJSAddGCObjectRoot(context, &_callbackThis, "OOJSGuiScreenKeyDefinition callback this");
 	OOJSRelinquishContext(context);
