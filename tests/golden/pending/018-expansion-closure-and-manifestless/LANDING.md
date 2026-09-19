@@ -43,13 +43,24 @@ Run from the repo root, on `main`, after this bead's branch has merged.
 
 `LANDING.md` itself is deleted by the same commit.
 
-**No code change is required.** `tests/golden/expansion_closure.py`, `check_018_evidence.py`,
-`gate_018_spec.py` and `test_expansion_closure.py` resolve each artefact by searching
-`goldens/windows-x64/018-expansion-closure-and-manifestless/` FIRST and falling back to
-`tests/golden/pending/018-expansion-closure-and-manifestless/`, through the identical
-`ls A B 2>/dev/null | head -1` idiom the stored acceptance lines use. That is the shape scenarios
-010, 012 and 015 use, deliberately, and every stored acceptance line for this bead is written in
-the same two-candidate form so it stays green across the move.
+**No code change is required**, but note that the move has THREE destinations, not one, and a
+resolver must account for each of them separately:
+
+| what | before | after | how the gates find it |
+| --- | --- | --- | --- |
+| `state.json`, `frame.grid`, `frame.png`, `provenance.json`, `README.md` | `tests/golden/pending/018-…/` | `goldens/windows-x64/018-…/` | `$D = ls -d goldens/windows-x64/018-… tests/golden/pending/018-… \| head -1` |
+| `spec.json` | `tests/golden/pending/018-…/` | `tests/golden/scenarios/018-…/` | `$S = ls tests/golden/scenarios/018-…/spec.json "$D/spec.json" \| head -1` — **not** under `$D` |
+| `LANDING.md` | `tests/golden/pending/018-…/` | *deleted* | asserted only while `$D` is still under `tests/golden/pending/` |
+
+`tests/golden/expansion_closure.py`, `check_018_evidence.py`, `gate_018_spec.py` and
+`test_expansion_closure.py` use the same `ls A B 2>/dev/null | head -1` idiom, the shape scenarios
+010, 012 and 015 use deliberately. Every stored acceptance line for this bead resolves `$D` that
+way, and the two lines that read `spec.json` (1 and 4) additionally resolve `$S` that way, so all
+four stay green across this move. That is not an assumption: all four were replayed on a throwaway
+copy of the tree with every `git mv` above applied and `LANDING.md` deleted, and all four returned
+`rc=0` there as well as on the pending tree. An earlier line 4 that greped `"$D/spec.json"` and
+required `"$D/LANDING.md"` was RED on that landed tree for exactly the two reasons this table
+names.
 
 Whoever lands it must add the approval line to `tools/rebless-approvals.txt` in the same commit —
 that is the human decision the guard exists to force, and **a worker must never add it**.
