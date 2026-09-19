@@ -29,6 +29,10 @@ MA 02110-1301, USA.
 #import "OOMaths.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSQuaternion(JSContext *context, JSObject *global);
 
 
@@ -66,3 +70,9 @@ BOOL QuaternionFromArgumentList(JSContext *context, NSString *scriptClass, NSStr
 	Like VectorFromArgumentList(), but does not report an error on failure.
 */
 BOOL QuaternionFromArgumentListNoError(JSContext *context, uintN argc, jsval *argv, Quaternion *outVector, uintN *outConsumed)  GCC_ATTR((nonnull (1, 3, 4)));
+
+
+#ifdef __cplusplus
+}
+#endif
+

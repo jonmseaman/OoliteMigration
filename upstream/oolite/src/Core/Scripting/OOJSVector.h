@@ -29,6 +29,10 @@ MA 02110-1301, USA.
 #import "OOMaths.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSVector(JSContext *context, JSObject *global);
 
 
@@ -74,5 +78,9 @@ BOOL VectorFromArgumentList(JSContext *context, NSString *scriptClass, NSString 
 */
 BOOL VectorFromArgumentListNoError(JSContext *context, uintN argc, jsval *argv, HPVector *outVector, uintN *outConsumed)  GCC_ATTR((nonnull (1, 3, 4)));
 
+
+#ifdef __cplusplus
+}
+#endif
 
 

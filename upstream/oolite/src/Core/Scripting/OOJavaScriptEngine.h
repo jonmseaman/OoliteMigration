@@ -35,6 +35,12 @@ MA 02110-1301, USA.
 
 #import "OOJSPropID.h"
 
+#ifdef __cplusplus
+#define OOJS_EXTERN_C extern "C"
+#else
+#define OOJS_EXTERN_C
+#endif
+
 
 @protocol OOJavaScriptEngineMonitor;
 
@@ -153,9 +159,9 @@ void OOJSReportWarning(JSContext *context, NSString *format, ...);
 void OOJSReportWarningWithArguments(JSContext *context, NSString *format, va_list args);
 void OOJSReportWarningForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...);
 
-void OOJSReportBadPropertySelector(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec);
-void OOJSReportBadPropertyValue(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec, jsval value);
-void OOJSReportBadArguments(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, NSString *message, NSString *expectedArgsDescription);
+OOJS_EXTERN_C void OOJSReportBadPropertySelector(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec);
+OOJS_EXTERN_C void OOJSReportBadPropertyValue(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec, jsval value);
+OOJS_EXTERN_C void OOJSReportBadArguments(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, NSString *message, NSString *expectedArgsDescription);
 
 /*	OOJSSetWarningOrErrorStackSkip()
 	
@@ -175,13 +181,13 @@ void OOJSSetWarningOrErrorStackSkip(unsigned skip);
 	On failure, it will return NO and raise an error. If the caller is a JS
 	callback, it must return NO to signal an error.
 */
-BOOL OOJSArgumentListGetNumber(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, double *outNumber, uintN *outConsumed);
+OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, double *outNumber, uintN *outConsumed);
 
 /*	OOJSArgumentListGetNumberNoError()
 	
 	Like OOJSArgumentListGetNumber(), but does not report an error on failure.
 */
-BOOL OOJSArgumentListGetNumberNoError(JSContext *context, uintN argc, jsval *argv, double *outNumber, uintN *outConsumed);
+OOJS_EXTERN_C BOOL OOJSArgumentListGetNumberNoError(JSContext *context, uintN argc, jsval *argv, double *outNumber, uintN *outConsumed);
 
 
 // Typed as int rather than BOOL to work with more general expressions such as bitfield tests.
@@ -291,7 +297,7 @@ NSString *OOStringFromJSString(JSContext *context, JSString *string);
 	OOStringFromJSValue() returns nil if value is null or undefined,
 	OOStringFromJSValueEvenIfNull() returns "null" or "undefined".
 */
-NSString *OOStringFromJSValue(JSContext *context, jsval value);
+OOJS_EXTERN_C NSString *OOStringFromJSValue(JSContext *context, jsval value);
 NSString *OOStringFromJSValueEvenIfNull(JSContext *context, jsval value);
 
 
@@ -490,7 +496,7 @@ BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *
 	subclass of superclass, recursively.
 */
 void OOJSRegisterSubclass(JSClass *subclass, JSClass *superclass);
-BOOL OOJSIsSubclass(JSClass *putativeSubclass, JSClass *superclass);
+OOJS_EXTERN_C BOOL OOJSIsSubclass(JSClass *putativeSubclass, JSClass *superclass);
 OOINLINE BOOL OOJSIsMemberOfSubclass(JSContext *context, JSObject *object, JSClass *superclass)
 {
 	return OOJSIsSubclass(OOJSGetClass(context, object), superclass);
@@ -576,8 +582,8 @@ void OOJSRegisterObjectConverter(JSClass *theClass, OOJSClassConverterCallback c
 
 /*	See comments on time limiter in OOJSEngineTimeManagement.h.
 */
-void OOJSPauseTimeLimiter(void);
-void OOJSResumeTimeLimiter(void);
+OOJS_EXTERN_C void OOJSPauseTimeLimiter(void);
+OOJS_EXTERN_C void OOJSResumeTimeLimiter(void);
 
 
 /*	OOJSDumpStack()
