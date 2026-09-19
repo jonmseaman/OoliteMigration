@@ -18,3 +18,4 @@ recorded RED, because a schedule nobody watches is exactly where a vacuous green
 
 | started | job | verdict | rc | wall | log | note |
 |---|---|---|---|---|---|---|
+| 2026-09-19 03:04:35 | tier-c | RED | 1 | 65s | `build/nightly/tier-c-20260919-030434.log` | rc=1; tier-b: FAIL (stage tests): tests/golden failed (pytest rc=1, 1065 passed); full log C:/Users/jon/scoop/apps/msys2/2025- |
