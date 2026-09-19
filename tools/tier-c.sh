@@ -174,6 +174,40 @@ done
 
 all_stage_names() { printf '%b\n' "$STAGES" | while IFS=$'\t' read -r n c d; do [ -n "$n" ] && printf '%s\n' "$n"; done; }
 
+# The stage names, ONCE, as an array -- and every lookup below is a loop over it rather than a
+# pipeline, deliberately (bead oo-3uf8).
+#
+# The code this replaces was `all_stage_names | grep -qx "$want"` under the `set -o pipefail` at
+# the top of this file. `grep -q` exits the instant it matches, which SIGPIPEs the still-writing
+# producer on the left, and pipefail then propagates 141 -- so a SUCCESSFUL match read as a
+# failure and --only/--skip rejected every stage name they listed as known in the same sentence.
+# It is the same trap bead oo-j4u lost two acceptances to, one level in: there it was an
+# acceptance line, here it was the product.
+#
+# Note it does NOT reproduce with a toy producer: `printf 'a\nb\n' | grep -qx a` is rc=0 with and
+# without pipefail, because a small producer fits in the pipe buffer and finishes before grep
+# exits. It needs THIS producer -- a subshell running a `while read` loop, still scheduled when
+# grep returns -- which is why a minimal repro looks green and proves nothing.
+#
+# The fix is structural rather than a `|| true`: with no pipeline there is no SIGPIPE to mask,
+# and a `|| true` would have swallowed real failures too. tools/tier-b.sh feeds its own tables
+# through a here-string (`done <<< "$TEST_SUITES"`) for the same reason.
+STAGE_NAMES=()
+while read -r _n; do
+  [ -n "$_n" ] && STAGE_NAMES+=("$_n")
+done <<< "$(all_stage_names)"
+[ "${#STAGE_NAMES[@]}" -gt 0 ] \
+  || die "the STAGES table parsed to ZERO stage names; every selection below would be vacuous"
+
+# is_stage <name> -- exact match against the table. No pipeline, no subshell, no grep.
+is_stage() {
+  local _want="$1" _n
+  for _n in "${STAGE_NAMES[@]}"; do
+    [ "$_n" = "$_want" ] && return 0
+  done
+  return 1
+}
+
 if [ "$LIST" = 1 ]; then
   printf '%-10s %8s  %s\n' STAGE 'COST(s)' DESCRIPTION
   printf '%b\n' "$STAGES" | while IFS=$'\t' read -r n c d; do
@@ -188,19 +222,27 @@ fi
 
 # --only / --skip resolution. An --only naming a stage that does not exist is a FATAL usage error,
 # never a silently empty run: "tier-c: GREEN, 0 stages" is the purest form of the vacuous pass.
+#
+# Validate BEFORE selecting, so a typo is reported as a typo rather than as an empty selection.
+# Each list is split on its own, not on "$ONLY$SKIP": concatenating them glued the last name of
+# one to the first of the other (--only jsapi --skip gui asked about a stage called 'jsapigui').
+for _list in "$ONLY" "$SKIP"; do
+  [ -n "$_list" ] || continue
+  IFS=',' read -r -a _wants <<< "$_list"
+  for want in "${_wants[@]+"${_wants[@]}"}"; do
+    [ -n "$want" ] || continue
+    is_stage "$want" \
+      || die "no such stage '$want'; known stages: ${STAGE_NAMES[*]}"
+  done
+done
+
 SELECTED=()
-while read -r n; do
-  [ -n "$n" ] || continue
+for n in "${STAGE_NAMES[@]}"; do
   if [ -n "$ONLY" ]; then case ",$ONLY," in *",$n,"*) ;; *) continue ;; esac; fi
   if [ -n "$SKIP" ]; then case ",$SKIP," in *",$n,"*) continue ;; esac; fi
   SELECTED+=("$n")
-done <<< "$(all_stage_names)"
-
-for want in $(printf '%s' "$ONLY$SKIP" | tr ',' ' '); do
-  [ -n "$want" ] || continue
-  all_stage_names | grep -qx "$want" \
-    || die "no such stage '$want'; known stages: $(all_stage_names | tr '\n' ' ')"
 done
+
 [ "${#SELECTED[@]}" -gt 0 ] \
   || die "the stage selection is EMPTY (--only='$ONLY' --skip='$SKIP'); a tier with no stages passes vacuously"
 
