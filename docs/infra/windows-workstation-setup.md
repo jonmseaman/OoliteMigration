@@ -165,6 +165,72 @@ The beads database is a local Dolt DB per machine; `bd dolt push` / `pull` sync 
 - [ ] `bd ready` lists issues
 - [ ] `cd upstream/oolite && ./mk.sh build test` is green
 - [ ] `python3 tests/launch_snapshot.py` runs
+- [ ] `schtasks /Query /TN "OoliteMigration Nightly"` exits 0 (the nightly Tier C task)
+- [ ] `schtasks /Query /TN "OoliteMigration Weekly Corpus"` exits 0 (the weekly Tier 3 corpus task)
+
+## The nightly and weekly schedule
+
+[ADR-0016](../decisions/0016-no-forge-local-verification.md) means there is no hosted scheduler:
+the per-commit gate is the merge queue on this machine, and the **nightly** and **weekly** runs
+that [Phase 0](../phases/0-safety-net.md) asks for (boxes 30 and 32 — the OXP corpus is
+"per-commit / nightly / weekly", the GUI tier runs "by Tier C and nightly") are two Windows
+scheduled tasks here.
+
+| Task | Runs | When |
+|---|---|---|
+| `OoliteMigration Nightly` | `tools/nightly.sh tier-c` — the whole Tier C gate, including the GUI tier that runs in Tier C and nightly only ([ADR-0017](../decisions/0017-native-windows-subtree.md)) | daily, 02:00 |
+| `OoliteMigration Weekly Corpus` | `tools/nightly.sh corpus-tier3` — all 813 corpus expansions, ~3 h, resumable | Sunday, 03:00 |
+
+Register them (safe to re-run; `schtasks /F` replaces rather than refuses):
+
+```
+powershell -ExecutionPolicy Bypass -File tools\install-scheduled-tasks.ps1
+powershell -ExecutionPolicy Bypass -File tools\install-scheduled-tasks.ps1 -WhatIf    # dry run
+powershell -ExecutionPolicy Bypass -File tools\install-scheduled-tasks.ps1 -Remove    # unregister
+```
+
+Verify:
+
+```
+schtasks /Query /TN "OoliteMigration Nightly"
+schtasks /Query /TN "OoliteMigration Weekly Corpus"
+```
+
+`tools/nightly.sh` writes a dated log under `build/nightly/` (gitignored, so a 02:00 run can
+never dirty the shared checkout and block `accept.sh`'s fast-forward for the whole fleet) and
+appends one line per run to [`docs/fleet/NIGHTLY.md`](../fleet/NIGHTLY.md). It does **not** treat
+`rc=0` as a pass: each job must also print the completion marker its runner emits only after
+really finishing (`tier-c: GREEN` for Tier C, a non-zero expansion count in the corpus report for
+Tier 3). Verified falsifiable — same runner, same `rc=0`: with the marker the wrapper records
+GREEN, with the marker removed it records RED and exits 1.
+
+### What the registration decides, and why
+
+- **`schtasks.exe`, unelevated, per-user.** The fleet account is not an administrator (see the
+  deviations below). Measured here: `/Create` rc=0, `/Query` rc=0, `/Delete` rc=0, `/Query` on a
+  deleted task rc=1 — no elevation needed.
+- **Interactive logon, not `/RU SYSTEM`.** Tier C's GUI stage drives a real window with synthetic
+  input and its ASan stage opens a real GL window (MSYS2's Mesa ships no EGL, so
+  `SDL_VIDEODRIVER=offscreen` cannot create a context). A task in session 0 has no desktop and
+  every GUI test would fail or silently skip, so the machine stays logged in and unlocked
+  ([I0](0-machines.md), [the GUI tier](../phases/0-gui-tier.md)).
+- **MSYS2's bash, discovered not hardcoded**, from `HERMES_GIT_BASH_PATH`, then `MSYS2_BASH`,
+  then the scoop and `C:\msys64` locations — this machine's MSYS2 is the scoop package. Git Bash
+  is refused outright with the reason (it cannot see the pacman toolchain; see the traps above).
+  The command is `bash.exe -lc "<repo>/tools/nightly.sh <job>"`: a **login** shell, because that
+  is what sources `/etc/profile.d/oolite-windows-env.sh`. `MSYSTEM=UCRT64` is deliberately not
+  set in the task — `tools/nightly.sh` re-execs into the UCRT64 shell itself, exactly as
+  `tools/tier-c.sh` and `tools/setup-windows.sh` do, so that guarantee lives in one place.
+- **The task points at the main checkout, never at a worktree.** A path under `.worktrees\` is
+  resolved back up, because `accept.sh` deletes a worktree when its bead lands and the task would
+  then fail silently every night.
+- **Two quoting traps, both measured.** PowerShell 5 strips bare embedded quotes when marshalling
+  arguments to a native exe, so `-lc "…nightly.sh tier-c"` reached `schtasks` as three tokens and
+  it refused with `ERROR: Invalid argument/option - 'tier-c'`; each quote is escaped `\"`, and the
+  stored command was read back with `/Query /V` to confirm it round-trips. Separately, piping a
+  native Windows tool into `head`/`grep`/`Out-Null` **masks its exit code**, so every `schtasks`
+  status here is read from `$LASTEXITCODE` (or `$?`) directly — otherwise a vacuous green looks
+  like proof.
 
 ## Deviations on Jon's desktop (2026-09-16)
 
