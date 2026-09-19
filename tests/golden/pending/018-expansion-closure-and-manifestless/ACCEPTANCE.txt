@@ -1,0 +1,129 @@
+Stored acceptance for bead oo-1bf.5 - golden scenario 018-expansion-closure-and-manifestless.
+
+These are the EXACT lines stored in the bead via `bd update oo-1bf.5 --acceptance`, one shell
+command per line, each exiting 0 on success from the repository root. `tools/accept.sh` runs the
+STORED field, not this file; this copy is here so a reader can see them without a bd query, and it
+is kept byte-identical to the stored block.
+
+HOW EACH LINE RESOLVES ITS ARTIFACTS, AND WHY THAT SURVIVES THE LANDING MOVE
+---------------------------------------------------------------------------
+LANDING.md moves the artifacts to THREE different destinations, not one, so a single two-candidate
+resolve is not enough and an earlier version of line 4 was measurably RED on a landed tree. The
+resolution now used, and measured green on BOTH a pending tree and a throwaway landed tree:
+
+  $D (the artifact dir)   ls -d goldens/windows-x64/018-expansion-closure-and-manifestless
+                                tests/golden/pending/018-expansion-closure-and-manifestless
+                          | head -1.  Holds state.json, frame.grid, frame.png, provenance.json
+                          and README.md before AND after the move - all five land under
+                          goldens/windows-x64/018-expansion-closure-and-manifestless/.
+
+  $S (spec.json)          ls tests/golden/scenarios/018-expansion-closure-and-manifestless/spec.json
+                                "$D/spec.json"
+                          | head -1.  spec.json does NOT land under $D: LANDING.md moves it to
+                          tests/golden/scenarios/018-expansion-closure-and-manifestless/, so it
+                          needs its own two-candidate resolve with the SCENARIOS path searched
+                          first.  Lines 1 and 4 both use this form; a check written against
+                          "$D/spec.json" alone goes red the moment the golden lands.
+
+  LANDING.md              Asserted ONLY while $D is still tests/golden/pending/..., because
+                          LANDING.md is deleted by the landing commit (LANDING.md itself says so).
+                          On a landed tree the sub-check is correctly skipped; on the pending tree
+                          - the tree tools/accept.sh actually replays - it still has teeth, proven
+                          by a sabotage arm that deletes LANDING.md and turns line 4 red.
+
+Which line touches which: line 1 uses $D and $S; line 2 uses neither (it invokes checked-in code
+by fixed repo-root path); line 3 uses $D; line 4 uses $D and $S.  All four were measured rc=0 on
+the current pending tree AND rc=0 on a throwaway landed tree built by performing every git mv in
+LANDING.md's procedure and deleting LANDING.md.
+
+NO BACKSLASHES APPEAR IN ANY LINE. A round trip through bd/JSON doubles them: a regex written as
+foo\.bar comes back as foo\\.bar, which git grep matches on no tree, ever. Every pattern below is
+a fixed string under `git grep -qF` / `grep -qF` for that reason.
+
+WHAT EACH LINE PROVES
+---------------------
+1. EVIDENCE CHECKER + ARTIFACT PRESENCE. All five artifacts exist and are non-empty; the blessed
+   dump still proves the two-launch differential (primary loaded WITH its closure, REFUSED without
+   it, [oxp.requirementMissing] in the control run only, [startup.complete] in BOTH, the
+   manifest-less fixture loaded with exactly 2 attributed standards errors); the blessed frame
+   clears its liveness floor.
+2. SPEC GATE + FALSIFIABILITY SUITE. gate_018_spec.py asserts every determinism knob is pinned in
+   spec.json, READ WHERE IT ACTS (checked by AST, not by grep), and in agreement with the knobs
+   provenance.json records. The 27-test suite then pins every load-bearing clause of the evidence
+   checker TWICE: a DATA mutant proving the unmutated checker refuses a corrupted dump, and a
+   CHECKER mutant proving that weakening THAT ONE clause makes it accept the same dump.
+3. PROVENANCE WITNESS. A golden cannot witness itself: one quantised unit on one float moves both
+   sides of any golden-vs-copy comparison. This line asserts provenance.json holds state.json's
+   byte count and sha256 from OUTSIDE the file, that the 10-run sweep is recorded with exactly one
+   dump digest matching the blessed golden, that frame LIVENESS is asserted, and that frame BYTES
+   are not (llvmpipe produced 10 distinct grid digests over that one dump digest).
+4. NON-VACUITY ANCHORS. The named signals that make this a differential rather than a snapshot
+   must survive in the places that use them: the refusal diagnostic in the harness, the
+   negative-control clause in the checker, the manifest-less signature in spec.json (resolved via
+   $S, because spec.json lands under tests/golden/scenarios/ and NOT under $D), the control arm in
+   the blessed dump, and README.md. LANDING.md is asserted only while the artifacts are still
+   staged under tests/golden/pending/, because the landing commit deletes it; requiring it
+   unconditionally made this line red on a landed tree.
+
+PROVEN TO FAIL, NOT ONLY TO PASS
+--------------------------------
+Each line was read back from `bd show oo-1bf.5 --json` and replayed VERBATIM on throwaway copies
+of the tree under %LOCALAPPDATA%/Temp, each carrying the defect that line guards. Nothing in the
+repository was mutated.
+
+Lines 1-3, eight arms, all RED:
+
+  L1  provenance.json deleted                                       rc=1
+  L1  control arm no longer refuses the primary                     rc=1
+  L1  frame.grid replaced by an all-black (undrawn) grid            rc=1
+  L2  spec.json's pinned standards-error count drifted              rc=1
+  L2  negative-control clause replaced by `if False:`               rc=1
+  L3  ONE quantised unit added to ONE float in state.json           rc=1
+  L3  provenance started asserting frame BYTES                      rc=1
+  L3  10-run stability record cut to 3                              rc=1
+
+Line 4 was re-proven after its rewrite, on BOTH a pending tree and a throwaway LANDED tree (built
+by applying every `git mv` in LANDING.md and deleting LANDING.md). 17 red arms, 2 green baselines
+and 1 deliberate green:
+
+  L4  pending: artifact dir removed entirely                        rc=1
+  L4  pending: spec.json deleted (no candidate anywhere)            rc=1
+  L4  pending: refusal diagnostic renamed out of the harness        rc=1
+  L4  pending: negative-control clause renamed in the checker       rc=1
+  L4  pending: manifest-less signature dropped from spec.json       rc=1
+  L4  pending: control arm dropped from the blessed dump            rc=1
+  L4  pending: state.json deleted                                   rc=1
+  L4  pending: README.md deleted                                    rc=1
+  L4  pending: LANDING.md deleted while still staged                rc=1
+  L4  landed:  spec.json deleted                                    rc=1
+  L4  landed:  manifest-less signature dropped from landed spec     rc=1
+  L4  landed:  refusal diagnostic renamed out of the harness        rc=1
+  L4  landed:  negative-control clause renamed in the checker       rc=1
+  L4  landed:  control arm dropped from the landed dump             rc=1
+  L4  landed:  state.json deleted                                   rc=1
+  L4  landed:  README.md deleted                                    rc=1
+  L4  pending baseline / landed baseline (no mutation)              rc=0, rc=0
+  L4  landed:  frame.grid deleted                                   rc=0, DELIBERATELY
+
+The last arm is green on purpose and is recorded rather than hidden: frame.grid is line 1's
+territory, not line 4's, and a line that went red for a defect it does not own would be claiming a
+discrimination it has not got. Line 1 is the arm that kills a missing or dead frame.
+
+WHAT IS NOT HERE, AND WHY
+-------------------------
+No line launches the game. A live run takes ~15s and two game processes, and a stored acceptance
+line that launches Oolite fails for reasons that are not findings: an orphaned oolite.exe from an
+unrelated run holds console port 8563 and turns a correct tree red. The live evidence is recorded
+in provenance.json (10 runs, 10 DUMPED, byte-identical) and the two live mutant arms are recorded
+there too, with their measured rc, wall time and message. The live re-run procedure is in
+LANDING.md for whoever lands the golden.
+
+THE LINES
+---------
+1. export PATH="/ucrt64/bin:$PATH"; PY=$(command -v python3 || command -v python || echo /ucrt64/bin/python3); D=$( { ls -d goldens/windows-x64/018-expansion-closure-and-manifestless tests/golden/pending/018-expansion-closure-and-manifestless 2>/dev/null || true; } | head -1 ); test -n "$D" || { echo "FAIL: scenario 018 artifacts are in neither goldens/windows-x64/ nor tests/golden/pending/"; exit 1; }; for f in state.json frame.grid frame.png provenance.json; do test -s "$D/$f" || { echo "FAIL: $D/$f is missing or empty"; exit 1; }; done; S=$( { ls tests/golden/scenarios/018-expansion-closure-and-manifestless/spec.json "$D/spec.json" 2>/dev/null || true; } | head -1 ); test -s "$S" || { echo "FAIL: no spec.json for scenario 018"; exit 1; }; "$PY" tests/golden/check_018_evidence.py "$D/state.json" || { echo "FAIL: the blessed dump does not prove the expansion-closure differential"; exit 1; }; "$PY" tests/golden/expansion_closure.py --check-frame "$D/frame.grid" || { echo "FAIL: the blessed frame does not clear its liveness floor"; exit 1; }; echo "PASS: scenario 018 artifacts all present; the blessed dump proves the closure/control differential and the blessed frame is live"
+
+2. export PATH="/ucrt64/bin:$PATH"; PY=$(command -v python3 || command -v python || echo /ucrt64/bin/python3); "$PY" tests/golden/gate_018_spec.py || { echo "FAIL: scenario 018 determinism knobs are not pinned, not read where they act, or disagree with provenance"; exit 1; }; "$PY" -m pytest tests/golden/test_expansion_closure.py -q || { echo "FAIL: the scenario 018 falsifiability suite is red"; exit 1; }; echo "PASS: gate_018_spec is green and every load-bearing clause of check_018_evidence.py is pinned by a DATA mutant AND a CHECKER mutant"
+
+3. export PATH="/ucrt64/bin:$PATH"; PY=$(command -v python3 || command -v python || echo /ucrt64/bin/python3); D=$( { ls -d goldens/windows-x64/018-expansion-closure-and-manifestless tests/golden/pending/018-expansion-closure-and-manifestless 2>/dev/null || true; } | head -1 ); "$PY" tests/golden/expansion_closure.py --check-provenance "$D" || { echo "FAIL: provenance.json does not witness state.json byte-for-byte, or has lost its 10-run stability record, or has started asserting frame BYTES"; exit 1; }; echo "PASS: provenance witnesses the golden from OUTSIDE it (a one-quantised-unit edit is visible), records 10 stable runs with one dump digest, and asserts liveness rather than frame bytes"
+
+4. export PATH="/ucrt64/bin:$PATH"; D=$( { ls -d goldens/windows-x64/018-expansion-closure-and-manifestless tests/golden/pending/018-expansion-closure-and-manifestless 2>/dev/null || true; } | head -1 ); test -n "$D" || { echo "FAIL: scenario 018 artifacts are in neither goldens/windows-x64/ nor tests/golden/pending/"; exit 1; }; S=$( { ls tests/golden/scenarios/018-expansion-closure-and-manifestless/spec.json "$D/spec.json" 2>/dev/null || true; } | head -1 ); test -s "$S" || { echo "FAIL: no spec.json for scenario 018 under tests/golden/scenarios/ or under $D"; exit 1; }; git grep -qF "oxp.requirementMissing" -- tests/golden/expansion_closure.py || { echo "FAIL: the harness no longer looks for the refusal diagnostic that IS the negative control"; exit 1; }; git grep -qF "control_primary_in_search_paths" -- tests/golden/check_018_evidence.py || { echo "FAIL: the evidence checker lost the negative-control clause"; exit 1; }; git grep -qF "has no manifest.plist" -- "$S" || { echo "FAIL: $S lost the manifest-less standards-error signature it pins"; exit 1; }; grep -qF "control_primary_in_search_paths" "$D/state.json" 2>/dev/null || { test -s "$D/state.json" || { echo "FAIL: $D/state.json is missing or empty, so the blessed dump cannot witness anything"; exit 1; }; echo "FAIL: the blessed dump does not record the control arm at all; without it this is a snapshot, not a differential"; exit 1; }; test -s "$D/README.md" || { echo "FAIL: scenario 018 is missing its README.md"; exit 1; }; LAND="landed, so LANDING.md is correctly gone"; case "$D" in tests/golden/pending/*) test -s "$D/LANDING.md" || { echo "FAIL: scenario 018 is still staged under tests/golden/pending/ and its rehearsed LANDING.md is missing"; exit 1; }; LAND="still staged, and LANDING.md is present" ;; esac; echo "PASS: refusal diagnostic in the harness, negative-control clause in the checker, manifest-less signature in $S, control arm in $D/state.json, README.md present; scenario 018 is $LAND"
