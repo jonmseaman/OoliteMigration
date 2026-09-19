@@ -255,7 +255,7 @@ resolve_base_ref() {
 #   not be evaluated (bad ref, unusable pattern). 2 is never reported as a pass.
 deny_gate() {
   local root="$1" base="$2" file="$3" rel="$4"
-  local now_count base_count base_text pattern rc parent
+  local now_count base_count base_text pattern rc parent base_rel
 
   [ -f "$file" ] || { printf 'tier-a: no such file: %s\n' "$file" >&2; return 2; }
   git -C "$root" rev-parse --verify --quiet "${base}^{commit}" >/dev/null \
@@ -263,7 +263,32 @@ deny_gate() {
 
   now_count="$(deny_count <"$file")" || return 2
 
-  if git -C "$root" cat-file -e "$base:$rel" 2>/dev/null; then
+  base_rel="$rel"
+  if ! git -C "$root" cat-file -e "$base:$rel" 2>/dev/null; then
+    # $rel does not exist at the baseline under its CURRENT name. Before treating this as a
+    # brand-new file (bead oo-sdz): a retarget bead renames its file (.m -> .mm, ADR-0001) as
+    # part of the SAME change that is under test here, so the current name genuinely has no
+    # history yet. Comparing that against zero would let every deny-listed identifier in the
+    # file "reappear" as new on every single retarget-and-rename bead in this sweep, which is
+    # not a regression -- it is the same bytes under a new name. tools/guardrails.sh already
+    # does this (its own comment: "this migration renames files BY DESIGN"); tier-a's per-file
+    # gate did not, until this fix. Ask git to find what $rel was renamed FROM, scoped to just
+    # these two paths so the detector is not confused by unrelated renames elsewhere in the tree.
+    local rename_line old_path
+    rename_line="$(git -C "$root" diff --find-renames=30% --name-status "$base" \
+      | awk -F'\t' -v want="$rel" '$1 ~ /^R/ && $3 == want { print; exit }')"
+    case "$rename_line" in
+      R*)
+        old_path="$(printf '%s' "$rename_line" | cut -f2)"
+        if [ -n "$old_path" ] && git -C "$root" cat-file -e "$base:$old_path" 2>/dev/null; then
+          detail "treating $rel as a rename of $old_path at ${base:0:12} for the deny-list baseline"
+          base_rel="$old_path"
+        fi
+        ;;
+    esac
+  fi
+
+  if git -C "$root" cat-file -e "$base:$base_rel" 2>/dev/null; then
     # THE VACUITY CHECK. If the baseline is HEAD itself and the file on disk is byte-identical
     # to the blob at HEAD, both counts are computed from the SAME BYTES: the comparison is a
     # tautology and step 3 cannot fail, whatever the file contains. That is exactly the state
@@ -273,7 +298,7 @@ deny_gate() {
     # "unmodified" is decided with `git diff` on the REPO-RELATIVE path, not by hashing an
     # absolute one: on MSYS an absolute /c/... path handed to native git resolves elsewhere.
     if [ "$base" = "$(git -C "$root" rev-parse --verify --quiet 'HEAD^{commit}')" ] \
-       && git -C "$root" diff --quiet "$base" -- "$rel"; then
+       && [ "$base_rel" = "$rel" ] && git -C "$root" diff --quiet "$base" -- "$rel"; then
       parent="$(git -C "$root" rev-parse --verify --quiet "${base}^1^{commit}")" || parent=''
       if [ -n "$parent" ] && git -C "$root" cat-file -e "$parent:$rel" 2>/dev/null; then
         printf 'tier-a: baseline %s is HEAD and %s is unmodified there; using %s instead\n' \
@@ -287,8 +312,8 @@ deny_gate() {
         return 2
       fi
     fi
-    base_text="$(git -C "$root" show "$base:$rel")" \
-      || { printf 'tier-a: cannot read %s at %s\n' "$rel" "$base" >&2; return 2; }
+    base_text="$(git -C "$root" show "$base:$base_rel")" \
+      || { printf 'tier-a: cannot read %s at %s\n' "$base_rel" "$base" >&2; return 2; }
     base_count="$(printf '%s\n' "$base_text" | deny_count)" || return 2
   else
     # Genuinely absent at the baseline (a newly added file): compared against zero. This is

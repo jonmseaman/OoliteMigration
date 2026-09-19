@@ -280,7 +280,7 @@ JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
 	
 	Create and cache a jsval referring to an interned string literal.
 */
-#define OOJSSTR(str) ({ static jsval strCache; static BOOL inited; if (EXPECT_NOT(!inited)) OOJSStrLiteralCachePRIVATE(""str, &strCache, &inited); strCache; })
+#define OOJSSTR(str) ({ static jsval strCache; static BOOL inited; if (EXPECT_NOT(!inited)) OOJSStrLiteralCachePRIVATE("" str, &strCache, &inited); strCache; })
 void OOJSStrLiteralCachePRIVATE(const char *string, jsval *strCache, BOOL *inited);
 
 
@@ -619,7 +619,7 @@ JSBool OOJSUnconstructableConstruct(JSContext *context, uintN argc, jsval *vp);
 	Finalizer for JS classes whose private storage is a retained object
 	reference (generally an OOWeakReference, but doesn't have to be).
 */
-void OOJSObjectWrapperFinalize(JSContext *context, JSObject *this);
+void OOJSObjectWrapperFinalize(JSContext *context, JSObject *thisObj);
 
 
 /*	OOJSObjectWrapperToString

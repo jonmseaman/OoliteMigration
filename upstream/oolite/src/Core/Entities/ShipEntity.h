@@ -613,7 +613,7 @@ typedef enum
 - (BOOL) addEquipmentItem:(NSString *)equipmentKey withValidation:(BOOL)validateAddition inContext:(NSString *)context;
 - (BOOL) hasHyperspaceMotor;
 - (float) hyperspaceSpinTime;
-- (void) setHyperspaceSpinTime:(float)new;
+- (void) setHyperspaceSpinTime:(float)newValue;
 
 
 - (NSEnumerator *) equipmentEnumerator;
@@ -667,17 +667,17 @@ typedef enum
 - (double) maxHyperspaceDistance;
 - (float) afterburnerFactor;
 - (float) afterburnerRate;
-- (void) setAfterburnerFactor:(GLfloat)new;
-- (void) setAfterburnerRate:(GLfloat)new;
+- (void) setAfterburnerFactor:(GLfloat)newValue;
+- (void) setAfterburnerRate:(GLfloat)newValue;
 - (float) maxThrust;
 - (float) thrust;
 
-- (void) setMaxThrust:(GLfloat)new;
-- (void) setMaxFlightPitch:(GLfloat)new;
-- (void) setMaxFlightSpeed:(GLfloat)new;
-- (void) setMaxFlightRoll:(GLfloat)new;
-- (void) setMaxFlightYaw:(GLfloat)new;
-- (void) setEnergyRechargeRate:(GLfloat)new;
+- (void) setMaxThrust:(GLfloat)newValue;
+- (void) setMaxFlightPitch:(GLfloat)newValue;
+- (void) setMaxFlightSpeed:(GLfloat)newValue;
+- (void) setMaxFlightRoll:(GLfloat)newValue;
+- (void) setMaxFlightYaw:(GLfloat)newValue;
+- (void) setEnergyRechargeRate:(GLfloat)newValue;
 
 
 - (void) processBehaviour:(OOTimeDelta)delta_t;
@@ -910,7 +910,7 @@ typedef enum
 - (OOCargoQuantity) commodityAmount;
 
 - (OOCargoQuantity) maxAvailableCargoSpace;
-- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)new;
+- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)newValue;
 - (OOCargoQuantity) availableCargoSpace;
 - (OOCargoQuantity) cargoQuantityOnBoard;
 - (OOCargoType) cargoType;

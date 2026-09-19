@@ -180,7 +180,7 @@ enum class PropertyFlag : std::uint8_t
 	Permanent  = 0x04,   // JSPROP_PERMANENT
 	Shared     = 0x40,   // JSPROP_SHARED: no value slot, the getter is the truth
 };
-constexpr PropertyFlag operator|(PropertyFlag a, PropertyFlag b)
+constexpr PropertyFlag operator|(PropertyFlag a, PropertyFlag b) noexcept
 {
 	return static_cast<PropertyFlag>(static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b));
 }
@@ -229,7 +229,7 @@ enum class ClassFlag : std::uint32_t
 	NewEnumerate = 1u << 1,   // JSCLASS_NEW_ENUMERATE: `newEnumerate` is used, `enumerate` ignored
 	Global       = 1u << 2,   // JSCLASS_GLOBAL_FLAGS: the class of the global object
 };
-constexpr ClassFlag operator|(ClassFlag a, ClassFlag b)
+constexpr ClassFlag operator|(ClassFlag a, ClassFlag b) noexcept
 {
 	return static_cast<ClassFlag>(static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b));
 }

@@ -33,9 +33,9 @@ MA 02110-1301, USA.
 */
 
 #ifdef JS_USE_JSVAL_JSID_STRUCT_TYPES
-#define OOJSID(str) ({ static jsid idCache; static JSBool inited; if (EXPECT_NOT(!inited)) { OOJSInitJSIDCachePRIVATE(""str, &idCache); inited = JS_TRUE; } idCache; })
+#define OOJSID(str) ({ static jsid idCache; static JSBool inited; if (EXPECT_NOT(!inited)) { OOJSInitJSIDCachePRIVATE("" str, &idCache); inited = JS_TRUE; } idCache; })
 #else
-#define OOJSID(str) ({ static jsid idCache = JSID_VOID; if (EXPECT_NOT(idCache == JSID_VOID)) OOJSInitJSIDCachePRIVATE(""str, &idCache); idCache; })
+#define OOJSID(str) ({ static jsid idCache = JSID_VOID; if (EXPECT_NOT(idCache == JSID_VOID)) OOJSInitJSIDCachePRIVATE("" str, &idCache); idCache; })
 #endif
 void OOJSInitJSIDCachePRIVATE(const char *name, jsid *idCache);
 

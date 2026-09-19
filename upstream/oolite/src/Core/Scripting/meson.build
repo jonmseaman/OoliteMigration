@@ -38,7 +38,7 @@ oolite_sources += files(
     'OOJSSystem.m',
     'OOJSSystemInfo.m',
     'OOJSTimer.m',
-    'OOJSVector.m',
+    'OOJSVector.mm',
     'OOJSVisualEffect.m',
     'OOJSWaypoint.m',
     'OOJSWorldScripts.m',

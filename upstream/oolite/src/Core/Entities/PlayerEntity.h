@@ -942,10 +942,10 @@ typedef enum
 - (float) forwardShieldRechargeRate;
 - (float) aftShieldRechargeRate;
 
-- (void) setMaxForwardShieldLevel:(float)new;
-- (void) setMaxAftShieldLevel:(float)new;
-- (void) setForwardShieldRechargeRate:(float)new;
-- (void) setAftShieldRechargeRate:(float)new;
+- (void) setMaxForwardShieldLevel:(float)newValue;
+- (void) setMaxAftShieldLevel:(float)newValue;
+- (void) setForwardShieldRechargeRate:(float)newValue;
+- (void) setAftShieldRechargeRate:(float)newValue;
 
 // return keyconfig.plist settings for scripting
 - (NSDictionary *) keyConfig;

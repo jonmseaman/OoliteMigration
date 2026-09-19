@@ -53,7 +53,9 @@ typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
 
 #ifndef OO_SCANCLASS_TYPE
 #define OO_SCANCLASS_TYPE
+#ifndef __cplusplus
 typedef enum OOScanClass OOScanClass;
+#endif
 #endif
 
 
