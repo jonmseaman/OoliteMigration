@@ -7,7 +7,7 @@ first, and its rename bead emitted only after that bead closes.
 
 Run:  python3 tools/test_gen_stories.py
 """
-import importlib.util, sys, tempfile, unittest, warnings
+import importlib.util, json, subprocess, sys, tempfile, unittest, warnings
 from pathlib import Path
 
 warnings.simplefilter("ignore", ResourceWarning)  # the generator reads files without closing them
@@ -225,6 +225,126 @@ class SplitDeclarationTest(unittest.TestCase):
         """Blanking must not shift line numbers: the stripper replaces text, not lines."""
         src = 'int a;\n/* two\n   lines */\nint b;  // tail\nNSString *c;\n'
         self.assertEqual(len(gs.strip_noncode(src).splitlines()), len(src.splitlines()))
+
+
+class ScenarioCatalogueSweepTest(unittest.TestCase):
+    """bead oo-1bf.12: sweep_scenarios() hardcoded scenarios 002-017, so 018-020 were never
+    emitted although docs/phases/scenario-catalogue.json has carried them since oo-9w5.
+
+    The sweep now reads the catalogue the way sweep_component() reads COMPONENT. Two properties
+    matter and each has its own test:
+
+      1. EVERY non-landed catalogue entry is emitted, including ones the catalogue gains later.
+         Keyed on `status == 'landed'` and nothing else - an allow-list of statuses would have
+         silently dropped 020, whose status is the non-obvious 'buildable-pending-own-calibration'.
+      2. The titles of 002-017 are BYTE-IDENTICAL to the ones the literal list produced, because
+         the generator's only identity key is the title: one changed character re-files a
+         duplicate of an existing bead. They are frozen below as literals, so a drift is a test
+         failure rather than a duplicated queue.
+    """
+
+    # Verbatim from the literal list this bead replaced (tools/gen-stories.py before oo-1bf.12).
+    FROZEN_TITLES = [
+        "Golden scenario 002: witchspace jump",
+        "Golden scenario 003: combat encounter",
+        "Golden scenario 004: trade cycle",
+        "Golden scenario 005: mission trigger",
+        "Golden scenario 006: save/load round-trip",
+        "Golden scenario 007: test-oxp: JS interface",
+        "Golden scenario 008: test-oxp: materials",
+        "Golden scenario 009: test-oxp: shaders",
+        "Golden scenario 010: test-oxp: PNG",
+        "Golden scenario 011: test-oxp: AI overflow",
+        "Golden scenario 012: test-oxp: retro missions",
+        "Golden scenario 013: load checklist save Constrictor",
+        "Golden scenario 014: load checklist save Nova",
+        "Golden scenario 015: load checklist save Trumbles",
+        "Golden scenario 016: load checklist save CloakingDevice",
+        "Golden scenario 017: load checklist save ThargoidPlans",
+    ]
+
+    def titles(self, items):
+        return [t for t, *_ in items]
+
+    def test_titles_002_017_are_byte_identical(self):
+        got = self.titles(gs.sweep_scenarios())
+        for want in self.FROZEN_TITLES:
+            self.assertIn(want, got, "title drift re-files a duplicate of an existing bead")
+
+    def test_every_non_landed_catalogue_entry_is_emitted(self):
+        cat = gs.catalogue_scenarios()
+        if not cat:
+            self.skipTest("no scenario catalogue in this checkout")
+        want = [s["id"] for s in cat if s.get("status") != "landed"]
+        got = self.titles(gs.sweep_scenarios())
+        self.assertEqual(len(got), len(want),
+                         "one story per non-landed catalogue entry, no more and no fewer")
+        for sid in want:
+            self.assertTrue(any(t.startswith(f"Golden scenario {sid}:") for t in got),
+                            f"catalogue entry {sid} is not emitted")
+
+    def test_landed_scenarios_are_skipped(self):
+        cat = gs.catalogue_scenarios()
+        if not cat:
+            self.skipTest("no scenario catalogue in this checkout")
+        landed = [s["id"] for s in cat if s.get("status") == "landed"]
+        self.assertTrue(landed, "the catalogue should record at least one landed scenario (001)")
+        got = self.titles(gs.sweep_scenarios())
+        for sid in landed:
+            self.assertFalse(any(t.startswith(f"Golden scenario {sid}:") for t in got),
+                             f"{sid} is landed; its golden is already in the tree")
+
+    def test_018_020_are_emitted_with_the_catalogue_name(self):
+        """The three beads the Phase 0 review filed by hand (oo-1bf.5/.6/.7) took their title
+        suffix from the catalogue's `name`, so the generator must produce exactly that or it
+        duplicates them."""
+        cat = {s["id"]: s for s in gs.catalogue_scenarios()}
+        if not cat:
+            self.skipTest("no scenario catalogue in this checkout")
+        got = self.titles(gs.sweep_scenarios())
+        for sid in ("018", "019", "020"):
+            self.assertIn(sid, cat, f"the catalogue must carry scenario {sid}")
+            self.assertIn(f"Golden scenario {sid}: {cat[sid]['name']}", got)
+
+    def test_a_future_catalogue_entry_needs_no_generator_change(self):
+        """The point of the change: an entry the generator has never heard of is emitted, and a
+        status string nobody anticipated does not suppress it (020's real status is
+        'buildable-pending-own-calibration', not 'buildable')."""
+        with tempfile.TemporaryDirectory() as tmp:
+            p = Path(tmp) / "cat.json"
+            p.write_text(json.dumps({"scenarios": [
+                {"id": "001", "name": "launch-dock", "status": "landed", "purpose": "p"},
+                {"id": "021", "name": "brand-new-thing", "status": "some-status-nobody-planned-for",
+                 "purpose": "A purpose sentence."},
+            ]}), encoding="utf-8")
+            items = gs.sweep_scenarios(catalogue_path=p)
+        self.assertEqual(self.titles(items), ["Golden scenario 021: brand-new-thing"])
+        self.assertIn("A purpose sentence.", items[0][1])
+        self.assertEqual(items[0][2], ["tests/golden/scenarios/021/run.sh --check",
+                                       "tests/golden/scenarios/021/run.sh --stability 10"])
+
+    def test_missing_catalogue_yields_no_stories_rather_than_a_crash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(gs.sweep_scenarios(catalogue_path=Path(tmp) / "nope.json"), [])
+
+    def test_dry_run_prints_every_non_landed_scenario_title(self):
+        """The acceptance line's shape: `gen-stories.py --dry-run` must PRINT 018-020 even though
+        beads exist for them, because a dry run reports what the sweep covers. Running the real
+        script (not just the function) is what pins the printing, which no unit-level call does.
+        """
+        cat = gs.catalogue_scenarios()
+        if not cat:
+            self.skipTest("no scenario catalogue in this checkout")
+        p = subprocess.run([sys.executable, str(TOOLS / "gen-stories.py"), "--dry-run"],
+                           capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stderr[-2000:])
+        printed = [ln for ln in p.stdout.splitlines() if "Golden scenario 0" in ln]
+        expected = [s["id"] for s in cat if s.get("status") != "landed"]
+        self.assertEqual(len(printed), len(expected),
+                         "one printed line per non-landed catalogue entry")
+        for sid in expected:
+            self.assertTrue(any(f"Golden scenario {sid}:" in ln for ln in printed),
+                            f"--dry-run does not print scenario {sid}")
 
 
 if __name__ == "__main__":

@@ -224,20 +224,76 @@ SEAMS = [
 SAVES = [("Constrictor", "mission_conhunt"), ("Nova", "mission_nova / mission_novacount"), ("Trumbles", "mission_trumbles"),
          ("CloakingDevice", "mission_cloakcounter"), ("ThargoidPlans", "mission_thargplans")]
 
-def sweep_scenarios():
+SCENARIO_CATALOGUE = ROOT / "docs/phases/scenario-catalogue.json"
+
+def catalogue_scenarios(path=None):
+    """The scenario catalogue's entries (id, name, purpose, status, bead), in catalogue order.
+
+    docs/phases/scenario-catalogue.json is the single machine-readable list of the golden set
+    (bead oo-9w5; gated by tools/check-scenario-catalogue.py). An empty list is returned when the
+    file is missing or unreadable so the generator still runs outside a full checkout.
+    """
+    try:
+        data = json.loads((Path(path) if path else SCENARIO_CATALOGUE).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    scen = data.get("scenarios")
+    return scen if isinstance(scen, list) else []
+
+# TITLES ARE THE GENERATOR'S IDENTITY KEY, SO 002-017's ARE FROZEN HERE (bead oo-1bf.12).
+# create() recognises an already-filed bead by TITLE and by nothing else, so a one-character
+# change to any of these re-files a duplicate of a bead that already exists. The catalogue's
+# `name` is a slug (witchspace-jump, test-oxp-js-interface, checklist-save-constrictor) while
+# these sixteen beads were filed, before the catalogue existed, with prose suffixes — so the
+# catalogue supplies the SET (and, for new entries, the title text and purpose) while the text of
+# the pre-existing sixteen is pinned to what is in the tracker. Entries 018+ take the catalogue's
+# `name` verbatim, which is exactly how the Phase 0 review filed 018-020 by hand (oo-1bf.5/.6/.7),
+# so those three are recognised as existing rather than duplicated.
+def _frozen_scenario_stories():
     names = ["witchspace jump", "combat encounter", "trade cycle", "mission trigger", "save/load round-trip",
              "test-oxp: JS interface", "test-oxp: materials", "test-oxp: shaders", "test-oxp: PNG", "test-oxp: AI overflow", "test-oxp: retro missions"]
-    out = [(f"Golden scenario {i:03d}: {n}", f"Write scenario {i:03d} ({n}) the way scenario 001 is written: fixed seed, fixed system, fixed tick count, canonical dump and frame hash; bless it under the golden policy and prove 10-run stability.",
-            ["tests/golden/scenarios/%03d/run.sh --check" % i, "tests/golden/scenarios/%03d/run.sh --stability 10" % i], ["0.4f"], "tests/golden/scenarios/001/", 2)
-           for i, n in enumerate(names, start=2)]
+    out = {"%03d" % i: (n, f"Write scenario {i:03d} ({n}) the way scenario 001 is written: fixed seed, fixed system, fixed tick count, canonical dump and frame hash; bless it under the golden policy and prove 10-run stability.")
+           for i, n in enumerate(names, start=2)}
     # Scenarios 013-017: the upstream release checklist's mission saves (1.75-era, mid-mission). They
     # pin the save-format compatibility contract, mission-variable round-trip, and each mission
     # script's state machine, none of which the scenarios above exercise.
     for j, (save, var) in enumerate(SAVES, start=len(names) + 2):
         path = f"upstream/oolite-tests/Checklist-files/Missions/{save}.oolite-save"
-        out.append((f"Golden scenario {j:03d}: load checklist save {save}",
-                    f"Write scenario {j:03d} the way scenario 001 is written, but starting from {path} via the harness's --load (the game's -load argument): fixed seed, fixed tick count, canonical dump (must include mission_variables, in particular {var}) and frame hash; bless under the golden policy; prove 10-run stability. The save is a 1.75-era file, so this also pins the save-format compatibility contract.",
-                    ["tests/golden/scenarios/%03d/run.sh --check" % j, "tests/golden/scenarios/%03d/run.sh --stability 10" % j], ["0.4f"], "tests/golden/scenarios/001/", 2))
+        out["%03d" % j] = (f"load checklist save {save}",
+                           f"Write scenario {j:03d} the way scenario 001 is written, but starting from {path} via the harness's --load (the game's -load argument): fixed seed, fixed tick count, canonical dump (must include mission_variables, in particular {var}) and frame hash; bless under the golden policy; prove 10-run stability. The save is a 1.75-era file, so this also pins the save-format compatibility contract.")
+    return out
+
+def sweep_scenarios(catalogue_path=None):
+    """One story per catalogue entry that is not already landed, read from the catalogue rather
+    than from a literal list — the way sweep_component() reads COMPONENT.
+
+    The old literal list stopped at 017 and so 018-020 were never emitted although the catalogue
+    has carried them since oo-9w5; a new catalogue entry now needs no generator change at all.
+
+    Entries with status 'landed' are skipped (001 is landed and has its golden in the tree).
+    Entries that ALREADY have a bead are still emitted: de-duplication is create()'s job, which
+    matches on title and references the existing bead instead of recreating it (the same mechanism
+    that keeps every other sweep idempotent), so a run neither duplicates nor silently hides them.
+    """
+    frozen = _frozen_scenario_stories()
+    out = []
+    for s in catalogue_scenarios(catalogue_path):
+        sid = s.get("id")
+        if not sid or str(s.get("status", "")) == "landed":
+            continue
+        if sid in frozen:
+            suffix, desc = frozen[sid]
+        else:
+            suffix = s.get("name") or sid
+            purpose = (s.get("purpose") or "").strip()
+            desc = (f"Write scenario {sid} ({suffix}) the way scenario 001 is written: fixed seed, fixed system, "
+                    "fixed tick count, canonical dump and frame hash; bless it under the golden policy and prove "
+                    "10-run stability.")
+            if purpose:
+                desc += f"\n\nPurpose (docs/phases/scenario-catalogue.json): {purpose}"
+        out.append((f"Golden scenario {sid}: {suffix}", desc,
+                    [f"tests/golden/scenarios/{sid}/run.sh --check", f"tests/golden/scenarios/{sid}/run.sh --stability 10"],
+                    ["0.4f"], "tests/golden/scenarios/001/", 2))
     return out
 
 def sweep_gui():
@@ -648,7 +704,7 @@ def main():
         if key.endswith(".review"): dk = gate_deps.get(f"{n}.gate", [])   # the review checks everything the gate used to wait on
         if key.endswith(".gate"): dk = list(dk) + [f"{n}.review"]           # and the gate waits on the review
         for d in dk: deps.append((key, d))
-    counts = {}; file_to_extractor = {}; file_to_foundation = {}
+    counts = {}; file_to_extractor = {}; file_to_foundation = {}; scenario_lines = []
     for skey, n, gen in SWEEPS:
         if a.phase is not None and n != a.phase: continue
         presplit = []
@@ -656,6 +712,13 @@ def main():
         for i, (title, desc, acc, dk, exemplar, pri) in enumerate(items):
             k = f"{skey}:{i}"
             ids[k] = create(title, "task", n, [f"phase:{n}", "fleet", f"sweep:{skey}"], body(desc, acc, exemplar, skey, n), pri, parent=ids.get(f"epic{n}"), meta={"exemplar": exemplar})
+            # The scenario sweep is small and is the one sweep whose SET comes from a committed
+            # data file, so a dry run lists it line by line: that is what makes "the catalogue
+            # gained an entry and the generator emits it" checkable without touching bd. Every
+            # entry is listed, including the ones create() resolved to an existing bead (marked
+            # with its id) — a dry run reports what the sweep COVERS, not only what it would file.
+            if skey == "scenarios":
+                scenario_lines.append("  %s  [%s]" % (title, ids[k].split(":", 1)[1] if ids[k].startswith("existing:") else "would file"))
             for d in dk: deps.append((k, d))
             fname = title.split(": ")[-1].split(" ")[-1]
             if skey == "extractors": file_to_extractor[fname] = k
@@ -697,6 +760,9 @@ def main():
     out = ROOT / "build" / "gen-stories-plan.json"; out.parent.mkdir(exist_ok=True); out.write_text(json.dumps(plan, indent=1))
     print(f"plan: {len(nodes)} nodes, {len(edges)} edges, {len(late)} late deps -> {out}")
     for k, v in counts.items(): print(f"  sweep {k}: {v}")
+    if scenario_lines:
+        print(f"scenario catalogue ({SCENARIO_CATALOGUE.relative_to(ROOT).as_posix()}), non-landed entries:")
+        for line in scenario_lines: print(line)
     if not apply:
         print("dry run; nothing written to bd"); return
     if nodes:
