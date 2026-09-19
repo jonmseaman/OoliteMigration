@@ -1,0 +1,41 @@
+{
+  "scenario": "019-equipment-and-station-services",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "ticks": 8,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+
+  "_docked_throughout": "DOCKED FOR THE WHOLE RUN, which is what makes this the cheapest scenario in the 18-20 set: it never launches, so the system populator that blocked oo-qwk5 and forced scenario 001 to dump the smallest possible world does not apply. `undocked_seen` is expected FALSE and is RECORDED as false in the dump rather than omitted, so a run that somehow launched fails by name.",
+  "docked_throughout": true,
+
+  "_award_key": "NAMED HERE, not picked as 'whatever was first in a list' - the catalogue's own requirement. A list-order pick would make the scenario silently measure a different item the day the registry is reordered, which is precisely the regression this scenario exists to catch. EQ_FUEL_SCOOPS is damageable (canBeDamaged true, measured) and not carry-multiple, so it can carry BOTH the OK->DAMAGED transition and the duplicate-award refusal.",
+  "award_key": "EQ_FUEL_SCOOPS",
+
+  "_undamageable_key": "The OTHER refusal arm. equipment.plist gives EQ_CARGO_BAY `damage_probability = 0`, and OOEquipmentType.m:556-568 therefore reports canBeDamaged FALSE. MEASURED on this build: setEquipmentStatus(EQ_CARGO_BAY,'EQUIPMENT_DAMAGED') returns false and the status stays EQUIPMENT_OK (OOJSShip.m:2920-2928 warns rather than damaging). A refusal is positive evidence the status machine applies rules.",
+  "undamageable_key": "EQ_CARGO_BAY",
+
+  "_purchase_key": "The item bought with credits. TL 2 <= the station's TL 4, so it is genuinely on sale here, and its price is a round 6000 in equipment.plist - read out of the ENGINE's loaded registry at run time, never out of the plist by this harness.",
+  "purchase_key": "EQ_ECM",
+  "expected_purchase_price": 6000,
+
+  "_above_tech_level_key": "THE CONTROL THAT MAKES THE TECH LEVEL MEAN SOMETHING. One key on one side of a threshold passes against any constant, including a station reporting 0 or NSNotFound. EQ_DOCK_COMP is TL 9, above this station's 4, so the pair straddles the value and a degenerate tech level fails the two-sided predicate.",
+  "above_tech_level_key": "EQ_DOCK_COMP",
+
+  "_expected_station_tech_level": "Lave's Coriolis reports equivalentTechLevel 4, matching the system's own techlevel. PlayerEntity.m:9300-9308 prefers the STATION's value when it declares one, so both are stored and a divergence between them is visible rather than absorbed.",
+  "expected_station_tech_level": 4,
+
+  "_expected_price_factor": "StationEntity.m:696-697 reads `equipment_price_factor` from the station's shipdata and floors it at 0.5; Lave's main station declares none, so it is the 1.0 default. Pinned because it is one of the two multiplicands of every price this scenario records.",
+  "expected_price_factor": 1.0,
+
+  "_credits_start": "SETUP, NOT MEASUREMENT. The standard save carries 100 credits and the purchase costs 6000, so the balance is topped up to a pinned value first; what is MEASURED is that the engine's price and the station's factor produce the recorded delta. PlayerEntity stores credits as deci-credits (PlayerEntityScriptMethods.m:52-59), so the value must be representable to one decimal place - 20000 is.",
+  "credits_start": 20000.0,
+
+  "_min_registry_entries": "A floor on the enumerated equipment registry, under what this build loads (measured: the stock registry is far larger). It rejects a run where equipment.plist did not load at all: an order pinned over three entries cannot see the reordering item 0.1 names, so a short registry must refuse rather than compare.",
+  "min_registry_entries": 20,
+
+  "_repopulator_handlers": "oolite-populator.js's repopulate handler. Its station picker `_tradeStation` tests hasNPCTraffic inside its loop but ENDS WITH an unconditional `return system.mainStation`, so switching the flag off does not stop it launching. The name is pinned here so an upstream rename becomes a red rather than a silent no-op.",
+  "repopulator_handlers": ["systemWillRepopulate"]
+}
