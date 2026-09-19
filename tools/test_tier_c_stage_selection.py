@@ -189,12 +189,29 @@ def test_every_declared_stage_is_covered_here() -> None:
     tie drift silently: an 8th stage added as `...deselects\\nbogus8\\t1\\t...` turns the
     behavioural tests above red while this tie test stays green, which is the wrong way round --
     the tie test exists to say WHY they went red.
+
+    THE FIELD SEPARATOR IS A LITERAL TWO-CHARACTER `\\t` ESCAPE, not a real TAB (bead oo-gvyl
+    measured the table: 0 chr(9) bytes, 14 backslash-t sequences), because `printf '%b'` expands
+    it at RUNTIME -- tier-c.sh:175 then reads the expanded rows with `IFS=$'\\t'`. Python's
+    "\\t" literal below is exactly that two-character sequence, so the split matches. Do NOT
+    "fix" this to "\\t" (a real TAB): that would never match, every parsed name would be a whole
+    ROW, and the comparison against bare names would fail confusingly rather than usefully.
+    The explicit split-happened guard below turns that mistake into a message that names itself
+    instead of dumping seven whole rows at the reader.
     """
     text = TIER_C.read_text(encoding="utf-8")
     m = re.search(r'^STAGES="(.*?)"\s*$', text, re.M | re.S)
     assert m, "cannot find the STAGES table in tier-c.sh"
     rows = re.split(r"\n|\\n", m.group(1))
     declared = [ln.split("\\t")[0].strip() for ln in rows if ln.strip()]
+    # Anti-vacuity: prove the FIELD split actually fired. A bare stage name can never contain a
+    # backslash or whitespace, so a survivor here means the separator assumption is wrong and
+    # `declared` holds whole rows -- say so, rather than letting the equality assert below print
+    # seven full table rows and leave the reader to spot the escape level by eye.
+    unsplit = [n for n in declared if "\\" in n or any(c.isspace() for c in n)]
+    assert not unsplit, (
+        "the STAGES field separator changed: these parsed 'names' are whole rows, not bare stage "
+        f"names, so no field split occurred: {unsplit}")
     assert declared == STAGES, (
         f"tier-c.sh declares {declared} but this test file covers {STAGES}")
 
