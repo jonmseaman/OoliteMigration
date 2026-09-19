@@ -17,6 +17,15 @@ if get_option('espeak')
     add_project_arguments('-DHAVE_LIBESPEAK=1', language: c_family)
 endif
 
+# QuickJS-ng backend build plumbing (Phase 1 seam 1.4a, bead oo-kte). This only builds
+# libquickjs when selected; nothing links against it or includes its headers yet - that is
+# seam 1.4b/oo-0kq's job. Kept out of oolite_dependencies on purpose so choosing this backend
+# cannot change the SpiderMonkey build it is meant to eventually replace.
+if get_option('js_backend') == 'quickjs'
+    quickjs_ng_proj = subproject('quickjs-ng')
+    quickjs_ng_dep = quickjs_ng_proj.get_variable('qjs_dep')
+endif
+
 subdir('meson')
 subdir('Core')
 subdir('SDL')
