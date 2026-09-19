@@ -172,8 +172,10 @@ while IFS= read -r cfgline; do
 		esac
 		val="${val%"${val##*[![:space:]]}"}"       # re-trim what the comment left behind
 		# An `if` rather than `[ ... ] && auto_off=1`: the `&&` list returns 1 on a
-		# non-false value, and a loop BODY returning 1 under `set -e` (line 24) kills the
-		# script silently before it can print the FAIL message naming the config file.
+		# non-false value, so it leaves the loop body's exit status at 1 - fragile under
+		# `set -e` (line 24) and dependent on subtle rules about which positions are
+		# exempt. Measured on main before this change: the script did NOT die there, it
+		# still printed the FAIL message and exited 1. This is defensive, not a bug fix.
 		if [ "$val" = "false" ]; then auto_off=1; fi
 		;;
 	esac
