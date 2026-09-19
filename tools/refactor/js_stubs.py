@@ -266,12 +266,29 @@ def rewrite_stub_tokens(text):
 def rewrite_init_class(text):
     """Rewrite `lhs = JS_InitClass(...)` call sites to the ooscript
     façade form, except inside string literals/comments (spans
-    recomputed here for the same reason as rewrite_stub_tokens)."""
+    recomputed here for the same reason as rewrite_stub_tokens).
+
+    Also handles the inline-declaration form `Type *lhs = JS_InitClass(...)`
+    (e.g. `JSObject *clockPrototype = JS_InitClass(...)`, the common shape
+    at real call sites such as OOJSClock.m/OOJSMission.m/OOJSOolite.m,
+    as opposed to the no-declaration `sVectorPrototype = JS_InitClass(...)`
+    shape in the OOJSVector.mm exemplar, where sVectorPrototype is already
+    declared elsewhere as a file-scope static). The optional decl_type/
+    stars group only matches when a `*` is present between the type token
+    and the assignment target, so the plain (already-declared) form is
+    never mistaken for a two-token declaration. When a declaration is
+    present, its type is preserved by hoisting a separate declaration
+    statement for `lhs` ahead of the existing (unchanged) two-line facade
+    call+assign form, so `lhs` keeps its original type and scope instead
+    of the leading `Type *` fragment being left stranded in front of the
+    rewritten statement."""
     spans = compute_excluded_spans(text)
     count = 0
     out = []
     pos = 0
-    pattern = re.compile(r"(?P<lhs>\b\w+)\s*=\s*JS_InitClass\s*\(")
+    pattern = re.compile(
+        r"(?:(?P<decl_type>\b\w+)\s*(?P<stars>\*+)\s*)?(?P<lhs>\b\w+)\s*=\s*JS_InitClass\s*\("
+    )
     while True:
         m = pattern.search(text, pos)
         if not m:
@@ -314,10 +331,20 @@ def rewrite_init_class(text):
         new_global = wrap_obj(global_a)
         new_parent = wrap_obj(parent_a)
         lhs = m.group("lhs")
+        decl_type = m.group("decl_type")
+        stars = m.group("stars")
         indent_match = re.search(r"[ \t]*$", text[:m.start()].split("\n")[-1])
         indent = indent_match.group(0) if indent_match else ""
+        decl_stmt = ""
+        if decl_type is not None:
+            # Inline-declaration form (`Type *lhs = JS_InitClass(...)`):
+            # preserve the original declaration's type by hoisting a
+            # standalone declaration statement for `lhs` ahead of the
+            # facade call+assign, rather than leaving the `Type *`
+            # fragment stranded in front of the rewritten statement.
+            decl_stmt = f"{decl_type} {stars}{lhs};\n{indent}"
         replacement = (
-            f"Object proto = ooscript::initClass({new_cx}, {new_global}, {new_parent}, "
+            f"{decl_stmt}Object proto = ooscript::initClass({new_cx}, {new_global}, {new_parent}, "
             f"{clasp_a}, {ctor_a}, {nargs_a}, {ps_a}, {fs_a}, "
             f"{sps_a}, {sfs_a});\n{indent}{lhs} = OOJSROBJ(proto);"
         )

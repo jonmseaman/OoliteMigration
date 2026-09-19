@@ -119,4 +119,48 @@ grep -Fq "JS_ValueToNumber(context, val, &x) -- see docs" "$WORK/comment.m" || {
     exit 1
 }
 
+# Regression fixture 3: JS_InitClass call site using the real inline-
+# declaration form `Type *name = JS_InitClass(...)` (as seen in upstream
+# OOJSClock.m/OOJSMission.m/OOJSOolite.m), as opposed to the no-
+# declaration form covered by the OOJSVector.pre-retarget.m exemplar
+# above. Guards against a regex that only captured the trailing
+# assignment-target identifier and left the leading `Type *` fragment
+# stranded in front of the rewritten statement (producing malformed
+# non-compiling C++ like `JSObject *Object proto = ooscript::initClass(...);`).
+INLINE_DECL_FIXTURE="$SCRIPT_DIR/testdata/js-stubs-inline-decl-initclass.m"
+if [ ! -f "$INLINE_DECL_FIXTURE" ]; then
+    echo "js-stubs-selftest: missing fixture: $INLINE_DECL_FIXTURE" >&2
+    exit 1
+fi
+cp "$INLINE_DECL_FIXTURE" "$WORK/inline-decl.m"
+if command -v cygpath >/dev/null 2>&1; then
+    INLINE_DECL_WORKFILE="$(cygpath -m "$WORK/inline-decl.m")"
+else
+    INLINE_DECL_WORKFILE="$WORK/inline-decl.m"
+fi
+INLINE_DECL_OUT="$(bash "$SCRIPT_DIR/js-stubs.sh" "$INLINE_DECL_WORKFILE" 2>&1)"
+echo "$INLINE_DECL_OUT"
+echo "$INLINE_DECL_OUT" | grep -q "stub_tokens=0 init_class=1 numeric_calls=0" || {
+    echo "js-stubs-selftest: unexpected rewrite counts for inline-decl fixture" >&2
+    exit 1
+}
+grep -Fq $'\tJSObject *examplePrototype;' "$WORK/inline-decl.m" || {
+    echo "js-stubs-selftest: inline-decl fixture's hoisted declaration statement missing/wrong" >&2
+    exit 1
+}
+grep -Fq $'\tObject proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sExampleClass, OOJSUnconstructableConstruct, 0, sExampleProperties, sExampleMethods, NULL, NULL);' "$WORK/inline-decl.m" || {
+    echo "js-stubs-selftest: inline-decl fixture's facade call statement missing/wrong" >&2
+    exit 1
+}
+grep -Fq $'\texamplePrototype = OOJSROBJ(proto);' "$WORK/inline-decl.m" || {
+    echo "js-stubs-selftest: inline-decl fixture's OOJSROBJ assignment statement missing/wrong" >&2
+    exit 1
+}
+# The type declaration must never end up glued onto the rewritten
+# statement (the exact corruption this fixture guards against).
+if grep -Fq 'JSObject *Object proto' "$WORK/inline-decl.m"; then
+    echo "js-stubs-selftest: inline-decl fixture corrupted -- leading type declaration glued onto rewrite" >&2
+    exit 1
+fi
+
 echo "js-stubs-selftest: OK"
