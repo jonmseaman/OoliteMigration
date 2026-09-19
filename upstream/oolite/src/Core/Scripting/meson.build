@@ -41,7 +41,7 @@ oolite_sources += files(
     'OOJSVector.mm',
     'ooscript/JSEngine_spidermonkey.cpp',
     'OOJSVisualEffect.m',
-    'OOJSWaypoint.m',
+    'OOJSWaypoint.mm',
     'OOJSWorldScripts.m',
     'OOJSWormhole.m',
     'OOJavaScriptEngine.m',
