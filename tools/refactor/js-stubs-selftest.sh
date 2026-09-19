@@ -60,4 +60,63 @@ grep -Fq "sVectorPrototype = OOJSROBJ(proto);" "$WORK/fixture.m"
 grep -Fq "ooscript::valueToNumber(OOJSFCX(context), OOJSFVAL(arrayX), &x)" "$WORK/fixture.m"
 grep -Fq "return ooscript::newNumberValue(OOJSFCX(context), fValue, OOJSFVALP(value));" "$WORK/fixture.m"
 
+# Regression fixture 1: a JS_* stub token appearing only inside a string
+# literal (a log message) must be left byte-for-byte unchanged -- not
+# rewritten to nullptr. Guards against a bare \bTOKEN\b regex over raw
+# text with no string-literal awareness.
+STRLIT_FIXTURE="$SCRIPT_DIR/testdata/js-stubs-string-literal.m"
+if [ ! -f "$STRLIT_FIXTURE" ]; then
+    echo "js-stubs-selftest: missing fixture: $STRLIT_FIXTURE" >&2
+    exit 1
+fi
+cp "$STRLIT_FIXTURE" "$WORK/strlit.m"
+if command -v cygpath >/dev/null 2>&1; then
+    STRLIT_WORKFILE="$(cygpath -m "$WORK/strlit.m")"
+else
+    STRLIT_WORKFILE="$WORK/strlit.m"
+fi
+STRLIT_OUT="$(bash "$SCRIPT_DIR/js-stubs.sh" "$STRLIT_WORKFILE" 2>&1)"
+echo "$STRLIT_OUT"
+echo "$STRLIT_OUT" | grep -q "stub_tokens=0 init_class=0 numeric_calls=0" || {
+    echo "js-stubs-selftest: string-literal fixture was rewritten (should be untouched)" >&2
+    exit 1
+}
+diff -u "$STRLIT_FIXTURE" "$WORK/strlit.m" || {
+    echo "js-stubs-selftest: string-literal fixture content changed -- JS_* token inside a string literal was corrupted" >&2
+    exit 1
+}
+
+# Regression fixture 2: a JS_* call-shaped mention inside a comment, with
+# real-looking arguments, must be left byte-for-byte unchanged -- not
+# rewritten in place. Guards against a plain text.find()-based call
+# scanner with no comment awareness (the prior in-repo example of this,
+# OOJSVector.pre-retarget.m's JS_ValueToNumber() comment mention, happened
+# to have empty parens, which masked the bug by luck; this fixture uses
+# real arguments so it cannot be masked the same way).
+COMMENT_FIXTURE="$SCRIPT_DIR/testdata/js-stubs-comment-call.m"
+if [ ! -f "$COMMENT_FIXTURE" ]; then
+    echo "js-stubs-selftest: missing fixture: $COMMENT_FIXTURE" >&2
+    exit 1
+fi
+cp "$COMMENT_FIXTURE" "$WORK/comment.m"
+if command -v cygpath >/dev/null 2>&1; then
+    COMMENT_WORKFILE="$(cygpath -m "$WORK/comment.m")"
+else
+    COMMENT_WORKFILE="$WORK/comment.m"
+fi
+COMMENT_OUT="$(bash "$SCRIPT_DIR/js-stubs.sh" "$COMMENT_WORKFILE" 2>&1)"
+echo "$COMMENT_OUT"
+echo "$COMMENT_OUT" | grep -q "stub_tokens=0 init_class=0 numeric_calls=0" || {
+    echo "js-stubs-selftest: comment-call fixture was rewritten (should be untouched)" >&2
+    exit 1
+}
+diff -u "$COMMENT_FIXTURE" "$WORK/comment.m" || {
+    echo "js-stubs-selftest: comment-call fixture content changed -- JS_* call mention inside a comment was rewritten" >&2
+    exit 1
+}
+grep -Fq "JS_ValueToNumber(context, val, &x) -- see docs" "$WORK/comment.m" || {
+    echo "js-stubs-selftest: comment-call fixture's comment text no longer matches exactly" >&2
+    exit 1
+}
+
 echo "js-stubs-selftest: OK"

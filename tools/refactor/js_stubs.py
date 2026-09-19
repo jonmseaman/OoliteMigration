@@ -145,12 +145,85 @@ def split_top_level_args(s):
     return [a.strip() for a in args if a.strip() != ""] or [""]
 
 
-def find_call(text, start, func_name):
+def compute_excluded_spans(text):
+    """Return a sorted, non-overlapping list of (start, end) byte-offset
+    spans covering every C/C++/Objective-C string literal ("...", '...',
+    @"...") and every // line comment and /* */ block comment in `text`.
+    JS_* tokens found inside these spans must never be rewritten: they are
+    not code, they are data (log messages, docs) or documentation.
+
+    This is a lightweight best-effort lexer, not a full C++ tokenizer: it
+    is not raw-string-literal (R"(...)") aware, but the codebase under
+    retarget does not use those. It does handle backslash escapes inside
+    string/char literals so an escaped quote does not end the literal
+    early, and it does not look for quotes/comment-starts while already
+    inside a comment (so e.g. an apostrophe in a // comment can't
+    accidentally open a bogus string span).
+    """
+    spans = []
+    i = 0
+    n = len(text)
+    while i < n:
+        c = text[i]
+        if c == "/" and i + 1 < n and text[i + 1] == "/":
+            start = i
+            j = text.find("\n", i)
+            end = j if j != -1 else n
+            spans.append((start, end))
+            i = end
+            continue
+        if c == "/" and i + 1 < n and text[i + 1] == "*":
+            start = i
+            j = text.find("*/", i + 2)
+            end = j + 2 if j != -1 else n
+            spans.append((start, end))
+            i = end
+            continue
+        if c == '"' or c == "'":
+            quote = c
+            start = i
+            i += 1
+            while i < n:
+                if text[i] == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                if text[i] == quote:
+                    i += 1
+                    break
+                i += 1
+            spans.append((start, i))
+            continue
+        i += 1
+    return spans
+
+
+def in_excluded_span(pos, spans):
+    """True if byte offset `pos` falls inside one of `spans` (a string
+    literal or a comment). `spans` must be sorted ascending by start."""
+    for s, e in spans:
+        if s <= pos < e:
+            return True
+        if s > pos:
+            break
+    return False
+
+
+def find_call(text, start, func_name, spans=None):
     """Locate `func_name(...)` starting at or after `start`; return
-    (call_start, args_start, args_end_exclusive_of_paren) or None."""
-    idx = text.find(func_name + "(", start)
-    if idx == -1:
-        return None
+    (call_start, args_start, args_end_exclusive_of_paren) or None. When
+    `spans` (excluded string-literal/comment spans, see
+    compute_excluded_spans) is given, matches whose function-name token
+    starts inside an excluded span are skipped -- e.g. a call-shaped
+    mention inside a comment is not a real call site."""
+    search_from = start
+    while True:
+        idx = text.find(func_name + "(", search_from)
+        if idx == -1:
+            return None
+        if spans is not None and in_excluded_span(idx, spans):
+            search_from = idx + 1
+            continue
+        break
     args_start = idx + len(func_name) + 1
     depth = 1
     i = args_start
@@ -165,19 +238,36 @@ def find_call(text, start, func_name):
 
 
 def rewrite_stub_tokens(text):
+    """Rewrite bare JS_*Stub tokens to nullptr, except inside string
+    literals/comments. Spans are recomputed here (rather than accepted as
+    a parameter) because this must see the text as it stands right before
+    this pass runs -- an earlier pass may have changed its length, which
+    would make previously-computed offsets wrong. All STUB_TOKENS are
+    matched in a single combined regex/single re.sub pass (rather than
+    one pass per token) so that `spans`, computed once up front, stays
+    valid for every match: a per-token loop that rewrote the text in
+    between passes would shift byte offsets and desync `spans` from the
+    text still being scanned."""
+    spans = compute_excluded_spans(text)
     count = 0
 
     def sub(m):
         nonlocal count
+        if in_excluded_span(m.start(), spans):
+            return m.group(0)
         count += 1
         return "nullptr"
 
-    for tok in STUB_TOKENS:
-        text = re.sub(r"\b" + tok + r"\b", sub, text)
+    combined = r"\b(?:" + "|".join(STUB_TOKENS) + r")\b"
+    text = re.sub(combined, sub, text)
     return text, count
 
 
 def rewrite_init_class(text):
+    """Rewrite `lhs = JS_InitClass(...)` call sites to the ooscript
+    façade form, except inside string literals/comments (spans
+    recomputed here for the same reason as rewrite_stub_tokens)."""
+    spans = compute_excluded_spans(text)
     count = 0
     out = []
     pos = 0
@@ -187,7 +277,11 @@ def rewrite_init_class(text):
         if not m:
             out.append(text[pos:])
             break
-        call = find_call(text, m.start(), "JS_InitClass")
+        if in_excluded_span(m.start(), spans):
+            out.append(text[pos:m.end()])
+            pos = m.end()
+            continue
+        call = find_call(text, m.start(), "JS_InitClass", spans)
         if not call:
             out.append(text[pos:m.end()])
             pos = m.end()
@@ -235,6 +329,11 @@ def rewrite_init_class(text):
 
 
 def rewrite_numeric(text, scalars, pointers):
+    """Rewrite JS_NewNumberValue/JS_ValueToNumber/JS_ValueToBoolean call
+    sites to their ooscript façade equivalents, except inside string
+    literals/comments (spans recomputed here for the same reason as
+    rewrite_stub_tokens)."""
+    spans = compute_excluded_spans(text)
     count = 0
     out = []
     pos = 0
@@ -244,8 +343,12 @@ def rewrite_numeric(text, scalars, pointers):
         if not m:
             out.append(text[pos:])
             break
+        if in_excluded_span(m.start(), spans):
+            out.append(text[pos:m.end()])
+            pos = m.end()
+            continue
         func = m.group(1)
-        call = find_call(text, m.start(), func)
+        call = find_call(text, m.start(), func, spans)
         if not call:
             out.append(text[pos:m.end()])
             pos = m.end()
