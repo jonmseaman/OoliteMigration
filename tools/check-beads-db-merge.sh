@@ -148,19 +148,36 @@ step "4/4 export.auto is off and the export stays tracked"
 # only 35 bytes, so it always completes inside the 64 KB pipe buffer and the site could NOT be
 # made to fire (0 failures in 200 in-place runs). The shape is removed anyway - it fires the
 # day the config grows, the failure mode is silent, and `|| true` would swallow real errors.
+# A trailing YAML comment on the setting is LEGAL and must not fail the guard (bead oo-ehyx):
+# `auto: false   # keep exports manual` is the same setting as `auto: false`. The comment is
+# stripped only where YAML says one starts -- at a `#` PRECEDED BY WHITESPACE (or at the very
+# start of the value) -- so `auto: falsey` and `auto: false# nospace` still do NOT match: in
+# YAML both are the plain scalars "falsey" and "false# nospace", neither of which is false.
+# The old `grep -qE '^\s*auto:\s*false'` matched both of those because it was unanchored at the
+# end; that tightening came in with oo-mxgy and is deliberately kept.
 export_block="$(awk '/^export:/{f=1;next} f&&/^[^ ]/{f=0} f' .beads/config.yaml)"
 auto_off=0
 while IFS= read -r cfgline; do
+	# >>> BEGIN export.auto matcher (tools/test_export_auto_matcher.py runs exactly these lines) >>>
 	cfgline="${cfgline%$'\r'}"
 	cfgline="${cfgline#"${cfgline%%[![:space:]]*}"}"   # strip leading whitespace
 	cfgline="${cfgline%"${cfgline##*[![:space:]]}"}"   # strip trailing whitespace
 	case "$cfgline" in
 	"auto:"*)
 		val="${cfgline#auto:}"
-		val="${val#"${val%%[![:space:]]*}"}"
-		[ "$val" = "false" ] && auto_off=1
+		val="${val#"${val%%[![:space:]]*}"}"       # strip leading whitespace
+		case "$val" in
+		"#"*) val="" ;;                            # the value is only a comment
+		*[[:space:]]"#"*) val="${val%%[[:space:]]"#"*}" ;;  # drop a trailing comment
+		esac
+		val="${val%"${val##*[![:space:]]}"}"       # re-trim what the comment left behind
+		# An `if` rather than `[ ... ] && auto_off=1`: the `&&` list returns 1 on a
+		# non-false value, and a loop BODY returning 1 under `set -e` (line 24) kills the
+		# script silently before it can print the FAIL message naming the config file.
+		if [ "$val" = "false" ]; then auto_off=1; fi
 		;;
 	esac
+	# <<< END export.auto matcher <<<
 done <<EOF
 $export_block
 EOF
