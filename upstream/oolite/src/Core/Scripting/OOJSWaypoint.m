@@ -45,13 +45,13 @@ static JSClass sWaypointClass =
 	"Waypoint",
 	JSCLASS_HAS_PRIVATE,
 	
-	JS_PropertyStub,		// addProperty
-	JS_PropertyStub,		// delProperty
+	nullptr,		// addProperty
+	nullptr,		// delProperty
 	WaypointGetProperty,		// getProperty
 	WaypointSetProperty,		// setProperty
-	JS_EnumerateStub,		// enumerate
-	JS_ResolveStub,			// resolve
-	JS_ConvertStub,			// convert
+	nullptr,		// enumerate
+	nullptr,			// resolve
+	nullptr,			// convert
 	OOJSObjectWrapperFinalize,// finalize
 	JSCLASS_NO_OPTIONAL_MEMBERS
 };
@@ -88,7 +88,8 @@ static JSFunctionSpec sWaypointMethods[] =
 
 void InitOOJSWaypoint(JSContext *context, JSObject *global)
 {
-	sWaypointPrototype = JS_InitClass(context, global, JSEntityPrototype(), &sWaypointClass, OOJSUnconstructableConstruct, 0, sWaypointProperties, sWaypointMethods, NULL, NULL);
+	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), OOJSFOBJ(JSEntityPrototype()), &sWaypointClass, OOJSUnconstructableConstruct, 0, sWaypointProperties, sWaypointMethods, NULL, NULL);
+	sWaypointPrototype = OOJSROBJ(proto);
 	OOJSRegisterObjectConverter(&sWaypointClass, OOJSBasicPrivateObjectConverter);
 	OOJSRegisterSubclass(&sWaypointClass, JSEntityClass());
 }
@@ -170,7 +171,7 @@ static JSBool WaypointGetProperty(JSContext *context, JSObject *this, jsid propI
 		return QuaternionToJSValue(context, q, value);
 		
 	case kWaypoint_size:
-		return JS_NewNumberValue(context, [entity size], value);
+		return ooscript::newNumberValue(OOJSFCX(context), [entity size], OOJSFVALP(value));
 
 	default:
 		OOJSReportBadPropertySelector(context, this, propID, sWaypointProperties);
@@ -246,7 +247,7 @@ static JSBool WaypointSetProperty(JSContext *context, JSObject *this, jsid propI
 			break;
 
 		case kWaypoint_size:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(OOJSFCX(context), *value, &fValue))
 			{
 				if (fValue > 0.0)
 				{
