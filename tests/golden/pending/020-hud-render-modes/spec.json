@@ -1,0 +1,47 @@
+{
+  "scenario": "020-hud-render-modes",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "ticks": 16,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+
+  "_in_flight": "IN FLIGHT, not docked - the opposite of scenario 019, and for a measured reason: the HUD is drawn over the 3-D view only. While docked the screen is a station GUI and all three 'modes' render the same picture, so the between-mode differential this scenario rests on would measure nothing. `in_flight` and the guiScreen at every capture are recorded as evidence rather than assumed.",
+  "in_flight": true,
+
+  "_pose": "The `ref` pose of tests/golden/frame_capture.py: the origin of the save's system frame, identity orientation, looking at the planet and sun - the only large stable features an emptied system has. The 3-D stimulus is held CONSTANT across all three modes; only the overlay changes. Re-applied and read back BEFORE EVERY capture, because a drifting camera is indistinguishable from a HUD difference.",
+  "pose_name": "ref",
+  "pose_position": [0.0, 0.0, 0.0],
+  "pose_orientation": [1.0, 0.0, 0.0, 0.0],
+  "pose_tolerance_m": 1.0,
+
+  "_hud_modes": "THE SUBJECT. Three modes over two stock plists: hud.plist (the default, PlayerEntity.m:1982 and :4515 both fall back to it), hud-small.plist (the other stock HUD shipped in Resources/Config), and hud.plist with hudHidden true - the overlay suppressed entirely. The hidden mode deliberately keeps hud.plist loaded so the ONLY difference between it and the primary mode is whether the overlay is DRAWN; pointing it at hud-small.plist would confound two changes in one arm.",
+  "hud_modes": [
+    {"mode": "hud", "hud": "hud.plist", "hidden": false},
+    {"mode": "hud-small", "hud": "hud-small.plist", "hidden": false},
+    {"mode": "hidden", "hud": "hud.plist", "hidden": true}
+  ],
+
+  "_primary_mode": "Which mode's frame becomes frame.grid and frame.png, named explicitly rather than taken as 'the first entry' - a positional rule silently re-blesses a different frame the day someone reorders the list. It is also the mode captured a SECOND time in the same run to give the within-mode witness.",
+  "primary_mode": "hud",
+
+  "_unknown_hud_plist": "THE ENGINE REFUSAL. -switchHudTo: (PlayerEntity.m:4537-4542) looks the name up with dictionaryFromFilesNamed: and, when that yields nil, logs PlayerEntity.switchHudTo.failed and returns NO WITHOUT TOUCHING the HUD. So writing this name must leave player.ship.hud reading the previous one. A permissive model that stores whatever string it is handed reports this name back instead - which is why the refusal is POSITIVE evidence where 'no ERROR lines' is not (bead oo-het's exit-87 corpse carried zero ERROR lines).",
+  "unknown_hud_plist": "oo-1bf7-no-such-hud.plist",
+
+  "_within_mode_tolerance": "MEASURED BY THIS SCENARIO, not inherited. The catalogue marks 020 buildable-pending-own-calibration because the shared 0.004377 in tests/golden/calibration.json was derived by bead oo-ae9 from 3-D SCENE changes and says nothing about whether a HUD OVERLAY clears the bar. `hud_render_modes.py --calibrate 4` measured both populations on this host, 12 captures each from ITS OWN game process (129.6 s), with the per-capture clear-to-fixed-point in place so no ambient ship could inflate the within-mode side: within-mode 18 pairs at 0.001592..0.002073, between-mode 48 pairs at 0.011000..0.022383. NON-OVERLAPPING with a 5.31x gap, and the threshold is the geometric mean of the worst within and the best between - frame_hash.derive_tolerance's own rule, which places it at an equal MULTIPLICATIVE margin (2.30x) from each population. The raw populations are stored in provenance.json.calibration.",
+  "within_mode_tolerance": 0.004774962186049237,
+
+  "_min_separation_ratio": "A FLOOR ON THE MARGIN ITSELF, so a run cannot pass by shrinking the stimulus until the modes are barely distinguishable. Measured separation between the two populations was 5.31x (best between 0.011000 / worst within 0.002073), and the weakest of 10 stability runs still separated by 5.83x; the floor is set at 2.0x - comfortably under what was measured, comfortably above 1.0x (which would accept populations that merely fail to overlap). A run that drops under it is a finding to investigate, never a reason to lower this number.",
+  "min_separation_ratio": 2.0,
+
+  "_frame_liveness_floor": "The one frame property a dead run cannot fake: the luminance SPREAD (max-min)/255 of the 64x64 grid. An empty or never-drawn render is ~0.0. Measured across every calibration capture of this scenario at 0.7176..0.7294, so the floor of 0.2 sits at 0.28x the weakest observed value - a vacuity guard, not a tight assertion, because a tight one would gate the renderer rather than the HUD.",
+  "frame_liveness_floor": 0.2,
+
+  "_min_png_bytes": "A black frame compresses to ~5 KB; real captures of this scene on this 960x720 surface measured 224301..243085 bytes across the calibration sweep. 50000 is the catalogue's own floor and sits far above the black-frame case and far below every real one.",
+  "min_png_bytes": 50000,
+
+  "_repopulator_handlers": "oolite-populator.js's repopulate handler. Its station picker `_tradeStation` tests hasNPCTraffic inside its loop but ENDS WITH an unconditional `return system.mainStation`, so switching the flag off does not stop it launching. The name is pinned here so an upstream rename becomes a red rather than a silent no-op. This scenario FLIES, so ambient traffic drifting into frame between two captures would be a real difference and would inflate the within-mode population - suppression is load-bearing here in a way it is not for a docked scenario.",
+  "repopulator_handlers": ["systemWillRepopulate"]
+}

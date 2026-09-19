@@ -1,0 +1,170 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "note": "recorded for provenance/auditing ONLY. This digest is NEVER a gate predicate: llvmpipe is not bit-reproducible and this scenario's own sweep produced 10 distinct grid digests over 1 BYTE-IDENTICAL dumps. The dump is hashed byte-wise because it is quantised and deterministic; the frame is not. The asymmetry is deliberate.",
+      "sha256": "79fffc1157290849da132a5dfa18262a4ca948c7a004eb16b7035edeb06f33fc"
+    },
+    "frame.png": {
+      "bytes": 220925,
+      "note": "the blessed frame itself, for a human to look at; verified to hash to frame.grid through tests/golden/frame_hash.py frame_grid().",
+      "sha256": "671806ecbb34ad0a17f752f25a89bdd29e0cd650dd6e288ec3bd0cff39ea4832"
+    },
+    "state.json": {
+      "bytes": 3377,
+      "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e"
+    }
+  },
+  "commit": "81bbcff387bba52926b347faa144507aae78eb2f",
+  "compiler": "clang version 22.1.8 (https://github.com/msys2/MINGW-packages 6e4e79c2f86eeb534e324e583f2057dc9fd5ecab)",
+  "dump_tool": "tests/golden/expansion_closure.py",
+  "frame_digest_asserted": false,
+  "frame_liveness": {
+    "asserted": true,
+    "floor": 0.02,
+    "margin": {
+      "all_white_vs_blessed": 0.967821,
+      "blessed_frame_vs_black": 0.032179,
+      "max_real_frame_vs_black": 0.032196,
+      "max_same_scene_noise": 0.001853,
+      "min_real_frame_vs_black": 0.032124,
+      "min_same_scene_noise": 0.001366,
+      "reading": "measured over the 10-run sweep: every real frame sits at 0.032124..0.032196 from black while the largest distance between any two frames OF THE SAME SCENE is 0.001853. The floor 0.02 sits 10.8x above that noise and at 0.62x of the dimmest real frame, so no same-scene variation can push a real frame under it and an empty render cannot climb over it."
+    },
+    "metric": "frame_hash.distance(grid, all-black 4096-byte grid)",
+    "what_it_proves": "that something was RENDERED. This is the one frame property the measurements support and the one a dead run fails: a run that died before drawing, or drew into a lost context, yields an all-black grid at distance 0."
+  },
+  "frame_tolerance": {
+    "asserted": false,
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9). USED AS MEASURED, never adjusted to make a run pass.",
+    "why_not_asserted": "MEASURED AND NOT NEEDED, rather than omitted. Same-scene frames of this scenario differ by only 0.001366..0.001853 (0.31x..0.42x the tolerance), so a frame-vs-reference comparison would in fact pass - but it would measure the RENDERER, not this scenario. This scenario's subject is which expansions reached the search paths, a fact carried entirely by the engine's own log and the evidence block; the staged expansions have no visual consequence from a docked camera, so a frame-tolerance assertion here would be a gate that passes for a reason unrelated to what is under test. LIVENESS is asserted instead, because a dead run is the one failure a frame can detect for this scenario."
+  },
+  "mutants": {
+    "--break-closure": "stages the CLOSURE arm WITHOUT the dependency, so it becomes a second control. MEASURED rc=1 in 8s with: the CLOSURE run staged [oolite.oxp.Svengali.GNN] yet oolite.oxp.Svengali.GNN.oxz is ABSENT from [searchPaths.dumpAll]. Proves the positive arm of the differential is load-bearing.",
+    "--no-manifestless": "stages no manifest-less fixture. MEASURED rc=1 in 14s with: the closure run attributed 0 [oxp-standards.error] line(s) to the manifest-less fixture, but exactly 2 is the pinned count. Proves the NOMANIF count is a PREDICATE and not a field that is merely printed (bead oo-3ya's seed survivor).",
+    "note": "the two falsifiability arms, both run live and both writing NO artifact when they fail - a run that fails its evidence assertions must not produce a blessable dump."
+  },
+  "note": "Scenario 018 (bead oo-1bf.5): TWO launches of the same build differing only in what is staged. The CLOSURE arm stages oolite.oxp.Svengali.GNN together with the transitive requires_oxps closure computed by tools/oxp_deps.py (GNN + oolite.oxp.Svengali.Library) and the primary is NAMED in [searchPaths.dumpAll]; the CONTROL arm stages the primary ALONE and the engine REFUSES it, logging [oxp.requirementMissing] naming the primary while the primary is ABSENT from that run's search paths. Both arms also stage the manifest-less in-tree fixture RetroMissions.oxp, which LOADS (ResourceManager.m:642-664 synthesises a manifest for an .oxp in relaxed mode) and emits EXACTLY 2 [oxp-standards.error] 'OXP RetroMissions.oxp has no manifest.plist' lines in each run - bead oo-kcrw's NOMANIF class. Standards lines are attributed per-expansion by tools/oxp_deps.attribute_errors, so a complaint owned by the primary or its dependency cannot be absorbed into the fixture's allowance, and any line no staged expansion claims fails the run. Both arms must reach [startup.complete]: bead oo-het's exit-87 corpse carries the version banner and [process.args] with ZERO ERROR lines and never reaches it, which is why this scenario's evidence is a DIFFERENTIAL between two runs and never an absence in one. The dump and frame are taken from the CLOSURE arm. NO EXPANSION CONTENT IS READ: corpus blobs are staged by path and only manifest METADATA (identifier, version, requires_oxps) is consulted. provenance.scenario_knobs records the knobs this golden was BLESSED with; tests/golden/gate_018_spec.py asserts spec.json still agrees with them, so re-blessing with new knobs stays legal while silent drift between spec and golden is fatal. See tests/golden/pending/018-expansion-closure-and-manifestless/README.md.",
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "018-expansion-closure-and-manifestless",
+  "scenario_knobs": {
+    "allowed_manifestless_standards_error_signatures": [
+      "OXP RetroMissions.oxp has no manifest.plist"
+    ],
+    "allowed_manifestless_standards_errors": 2,
+    "expected_closure": [
+      "oolite.oxp.Svengali.GNN",
+      "oolite.oxp.Svengali.Library"
+    ],
+    "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+    "manifestless_oxp": "upstream/oolite-tests/test-oxps/RetroMissions/RetroMissions.oxp",
+    "primary_identifier": "oolite.oxp.Svengali.GNN",
+    "quant_decimals": 3,
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 8
+  },
+  "stability": {
+    "distinct_dump_digests": [
+      "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e"
+    ],
+    "distinct_frame_grid_digests": 10,
+    "dump_bytes": [
+      3377
+    ],
+    "dumps_written": 10,
+    "errored": 0,
+    "note": "10 consecutive runs on 2026-09-19, ALL 10 DUMPED and BYTE-IDENTICAL (3377 bytes, one sha256), 0 REFUSED, 0 ERRORED; wall 14-15 s each, and ps -W | grep -ci oolite read 0 before every launch. Each run is TWO game processes (closure arm then control arm). The 10 frame grids are all DISTINCT, as expected: llvmpipe is not bit-reproducible, which is why the grid carries a liveness floor and is NOT part of state.json.",
+    "per_run": [
+      {
+        "bytes": 3377,
+        "frame_sha256": "79fffc1157290849da132a5dfa18262a4ca948c7a004eb16b7035edeb06f33fc",
+        "run": 1,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 15.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "c56da2b3cb028dad618e62c3a7d036e4c38cbb63b682176ca45c19100fc8ffc2",
+        "run": 2,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 15.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "8ba38e6328446757bc684094933adcf23f33736683f80d608116ee3f0c5b7775",
+        "run": 3,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 15.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "ef7bddc178ef164f9c7d160ac1206b79ae9c823a67ae8a2524f520a11a7230ac",
+        "run": 4,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 15.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "f2260ff2a4ca76b61e3267755beb742dcb66e80572d81c0d53bab3668b4fa05c",
+        "run": 5,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 15.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "f6b52c45e1ffa2305adb91e9d0b8caa60be87facea2826af53f78bb6926237a2",
+        "run": 6,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 14.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "dee9e163c7d9cb37c184d4f08fe4c6beed68dad22a1f830d07c71d2f0413e845",
+        "run": 7,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 14.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "daaf8113d13fde3cf7c5f90691647ec5f17d236fe44ce045a7b3b35e576eba34",
+        "run": 8,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 15.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "edd2dad46055fa79020bc623a1204776984c03b6274f2ca2e50bc1d82944a34f",
+        "run": 9,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 14.0
+      },
+      {
+        "bytes": 3377,
+        "frame_sha256": "ce582b6701e7a7ac7df832e9ffdfae7ea5b2a6cb4298d9ca881aded9d3268494",
+        "run": 10,
+        "sha256": "2b2e4a11d2984092e008f1116b2674f3c74547999a41e07138689a6c5c3e1e9e",
+        "verdict": "DUMPED",
+        "wall_seconds": 14.0
+      }
+    ],
+    "refused": 0,
+    "runs": 10,
+    "stable": true,
+    "wall_seconds_max": 15.0,
+    "wall_seconds_min": 14.0
+  }
+}
