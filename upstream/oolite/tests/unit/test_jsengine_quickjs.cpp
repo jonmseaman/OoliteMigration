@@ -242,6 +242,39 @@ int main()
 	CHECK(removeValueRoot(cx, &rawVal));
 	CHECK(!removeValueRoot(cx, &rawVal));
 
+	// Regression: destroyContext() must erase the destroyed context's entry from the backend's
+	// per-context ErrorReporter map (gContextExtras), not just free the underlying context handle.
+	// Otherwise, if the allocator hands the freed handle back to a later newContext() (common:
+	// same size, no other allocations in between), the new, unrelated context would silently
+	// inherit the previous context's stale reporter via gContextExtras[ctx]'s operator[].
+	// Exercise context reuse directly: set a reporter on one context, destroy it, create a fresh
+	// context (likely reusing the freed handle), and confirm no stale reporter callback fires.
+	{
+		static std::string sStaleReported;
+		Context reused1 = newContext(rt, 8192);
+		CHECK(reused1 != nullptr);
+		ErrorReporter prevReporter = setErrorReporter(reused1, +[](Context, const char* message, const ErrorReport*)
+		{
+			sStaleReported = message != nullptr ? message : "";
+		});
+		reportError(reused1, "reporter armed on context 1");
+		CHECK(sStaleReported == "reporter armed on context 1");
+		clearPendingException(reused1);
+		destroyContext(reused1);   // must erase reused1's gContextExtras entry, not just free it
+
+		sStaleReported.clear();
+		Context reused2 = newContext(rt, 8192);   // may or may not reuse reused1's address
+		CHECK(reused2 != nullptr);
+		// reused2 never called setErrorReporter: if destroyContext() failed to erase reused1's
+		// entry and the allocator reused the address, invokeReporter() would find reused1's old
+		// reporter still keyed under this address and fire it here. It must stay empty.
+		reportError(reused2, "should not reach any reporter");
+		CHECK(sStaleReported.empty());
+		clearPendingException(reused2);
+		destroyContext(reused2);
+		(void)prevReporter;
+	}
+
 	destroyContext(cx);
 	destroyRuntime(rt);
 	shutDown();

@@ -602,7 +602,16 @@ Context newContext(Runtime rt, std::size_t /*stackChunkSize*/)
 	if (ctx != nullptr)  gCtxForRuntime[RT(rt)] = ctx;
 	return wrap(ctx);
 }
-void destroyContext(Context cx) { JS_FreeContext(CX(cx)); }
+void destroyContext(Context cx)
+{
+	// Erase this context's ErrorReporter entry before freeing it: JS_FreeContext may hand the
+	// freed JSContext* back to a later JS_NewContext, and without this erase the new context
+	// would silently inherit the previous unrelated context's stale reporter via
+	// gContextExtras[CX(cx)]'s operator[] in setErrorReporter()/invokeReporter() (mirrors the
+	// SpiderMonkey exemplar's destroyContext(), which erases gExtras before JS_DestroyContext).
+	gContextExtras.erase(CX(cx));
+	JS_FreeContext(CX(cx));
+}
 Runtime getRuntime(Context cx)  { return wrap(JS_GetRuntime(CX(cx))); }
 void*   getContextPrivate(Context cx)          { return JS_GetContextOpaque(CX(cx)); }
 void    setContextPrivate(Context cx, void* d) { JS_SetContextOpaque(CX(cx), d); }
