@@ -47,6 +47,17 @@ MA 02110-1301, USA.
 #import "OOCocoa.h"
 
 
+#ifdef __cplusplus
+#ifndef OOJS_EXTERN_C
+#define OOJS_EXTERN_C extern "C"
+#endif
+#else
+#ifndef OOJS_EXTERN_C
+#define OOJS_EXTERN_C
+#endif
+#endif
+
+
 #define OOJS_PROFILE OOLITE_DEBUG
 
 #if OOJS_PROFILE
@@ -94,7 +105,7 @@ MA 02110-1301, USA.
 	}
 
 
-void OOJSReportWrappedException(JSContext *context, id exception);
+OOJS_EXTERN_C void OOJSReportWrappedException(JSContext *context, id exception);
 
 
 #ifndef NDEBUG
@@ -181,8 +192,8 @@ struct OOJSProfileStackFrame
 
 
 #define OOJS_DECLARE_PROFILE_STACK_FRAME(name) OOJSProfileStackFrame name;
-void OOJSProfileEnter(OOJSProfileStackFrame *frame, const char *function);
-void OOJSProfileExit(OOJSProfileStackFrame *frame);
+OOJS_EXTERN_C void OOJSProfileEnter(OOJSProfileStackFrame *frame, const char *function);
+OOJS_EXTERN_C void OOJSProfileExit(OOJSProfileStackFrame *frame);
 
 #else
 

@@ -33,6 +33,11 @@ add_project_arguments(
     '-fobjc-exceptions',
     language: 'objc',
 )
+add_project_arguments(
+    '-fexceptions',
+    '-fobjc-exceptions',
+    language: 'objcpp',
+)
 
 if ccid == 'clang'
     add_project_arguments(
@@ -41,6 +46,13 @@ if ccid == 'clang'
         '-fobjc-runtime=gnustep-2.2',
         '-fblocks',
         language: 'objc',
+    )
+    add_project_arguments(
+        '-DGNUSTEP_RUNTIME=1',
+        '-D_NONFRAGILE_ABI=1',
+        '-fobjc-runtime=gnustep-2.2',
+        '-fblocks',
+        language: 'objcpp',
     )
 else
     add_project_arguments(

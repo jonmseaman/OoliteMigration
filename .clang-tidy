@@ -12,6 +12,11 @@
 #   bugprone-switch-missing-default-case  upstream style: exhaustive enum switches, no default.
 #   bugprone-easily-swappable-parameters  fires on every (x1,y1,x2,y2) geometry helper.
 #   misc-no-recursion                   the OXP verifier and the plist parsers are recursive by design.
+#   misc-const-correctness              upstream C/ObjC bodies assign once and never mark it (they
+#                                        predate C++); it fires on every OOJS_RETURN_*/OOJS_BEGIN_FULL_NATIVE
+#                                        macro expansion (JS_* retarget beads, ADR-0001/ADR-0002) and on
+#                                        every other untouched local in a file newly compiled as
+#                                        Objective-C++, not on anything a retarget bead wrote.
 #
 # Note the companion settings that live in tools/tier-a.sh rather than here, because they
 # are about *where* we look rather than *what* we look for: -header-filter='$^' keeps
@@ -27,7 +32,8 @@ Checks: >
   -bugprone-narrowing-conversions,
   -bugprone-switch-missing-default-case,
   -bugprone-easily-swappable-parameters,
-  -misc-no-recursion
+  -misc-no-recursion,
+  -misc-const-correctness
 
 # Findings in headers are reported by the TU that owns them, not by every includer.
 HeaderFilterRegex: '$^'
