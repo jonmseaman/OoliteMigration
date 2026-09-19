@@ -171,7 +171,10 @@ def ensure_launchable(app_dir, verbose=True):
     The dependency is TRANSITIVE, which is why a direct-import check clears the binary and the
     failure looks mysterious: all 32 of oolite.exe's own imports resolve. It is Mesa's
     libgallium_wgl.dll - loaded by the staged opengl32.dll - that needs libLLVM-22.dll,
-    libSPIRV-Tools.dll and libsystre-0.dll, and those exist ONLY in the UCRT64 runtime directory.
+    libSPIRV-Tools.dll and libsystre-0.dll. At the time of the incident those existed ONLY in the
+    UCRT64 runtime directory; a build that runs after Mesa was staged beside the binary copies
+    them into the app dir too (post_build.sh walks `ldd oolite.exe`), after which the walk below
+    finds them there and nothing needs repairing. Both suppliers are legitimate (bead oo-1bf.13).
 
     This is a property of the invoking SHELL, not of the machine, the clock or the app dir, which
     is why the failure looked intermittent 'in time': the same paths succeed from a shell that has
