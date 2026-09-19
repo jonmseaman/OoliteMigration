@@ -299,6 +299,7 @@ tools/guardrails-selftest|constructs the violations that prove the guard fires
 tools/deny-list.txt|is the pattern list; every line is a deny-list hit by definition
 tools/gen-stories.py|emits the verbatim prohibition block into every generated story
 upstream/oolite/src/Core/Scripting/ooscript/JSEngine_spidermonkey.cpp|the SpiderMonkey backend of the ooscript façade (ADR-0002 step 2, seam 1.1): the ONE translation unit whose job is to include jsapi.h; deleted at Phase 1 item 5. The façade header beside it is NOT exempt.
+upstream/oolite/src/Core/Scripting/ooscript/JSEngine_quickjs.cpp|the QuickJS-ng backend of the ooscript façade (ADR-0002 step 2): the ONE translation unit whose job is to call QuickJS-ng's own JS_*-prefixed C API (JS_NewRuntime, JS_NewContext, JSRuntime, JSContext, JSValue, JS_SetOpaque, etc.). The façade header beside it is NOT exempt.
 tools/check-jsengine-facade.sh|the façade's acceptance: it greps the header for the engine names it must not contain
 tools/tier-b-guardrails-proof.sh|plants the deny-listed symbol that proves tier-b's stage 0 fires
 "
