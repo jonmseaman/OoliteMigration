@@ -1,0 +1,228 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "note": "recorded for provenance/auditing ONLY. This digest is NEVER a gate predicate: llvmpipe is not bit-reproducible and this scenario's twenty sweep runs produced TWENTY distinct grid digests over twenty BYTE-IDENTICAL dumps. Byte-hashing the frame would make the gate flake on renderer noise. The dump is hashed byte-wise because it is quantised and deterministic; the frame is compared by DISTANCE within a measured tolerance. The asymmetry is deliberate.",
+      "sha256": "d00feea5d598f8818ac44273db1bc0ec1cb485e4d9d0ca4f750b696348efb339"
+    },
+    "frame.png": {
+      "bytes": 227943,
+      "note": "the human-readable companion to frame.grid, stored so a reviewer can SEE the status screen the grid was reduced from. Never a gate predicate.",
+      "sha256": "8ee4331383df0b53edf7c276d869de3322719645af84b18624a1caf727e87fec"
+    },
+    "state.json": {
+      "bytes": 4873,
+      "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c"
+    }
+  },
+  "blessed_from_commit": "81bbcff387bba52926b347faa144507aae78eb2f",
+  "blessed_utc": "2026-09-19T05:20:00Z",
+  "dump_tool": "tests/golden/equipment_services.py",
+  "equipment_observables": {
+    "engine_refusals_recorded": {
+      "damage_refused_for_undamageable": true,
+      "duplicate_award_refused": true,
+      "tech_level_control_above_station": "EQ_DOCK_COMP TL 9 > station TL 4",
+      "why": "A REFUSAL is positive evidence the model applies rules: a permissive stub that accepts every write returns true for all three. Both halves of the damage refusal are stored (the boolean AND the status read back), because a checker reading only one half would accept an engine that lied about the other."
+    },
+    "pricing": {
+      "credits_after": 14000.0,
+      "credits_before": 20000.0,
+      "credits_start_is_setup": "player.credits is topped up to the pinned credits_start first because the standard save carries 100 credits and the item costs 6000. That write is SETUP, not measurement: what is measured is that the engine's price and the station's factor produce the recorded balance.",
+      "equipment_price_factor": 1.0,
+      "honest_claim": "The GUI purchase path was NOT exercised. -buySelectedItem (PlayerEntity.m:10174) is reachable only from the equip-ship screen via PlayerEntityControls.m, i.e. a KEYPRESS, which is out of reach of every headless harness in this repository (scenario 006's finding for the save half, applied here). The purchase is modelled the way every OXP models it: the harness debits credits by price x factor, where BOTH multiplicands come from the engine - EquipmentInfo.price out of the loaded registry and equipmentPriceFactor off the station's own shipdata. All five numbers are stored SEPARATELY so a pricing change disagrees BY NAME instead of both sides sliding together, and the checker re-derives the arithmetic independently.",
+      "purchase_charge": 6000.0,
+      "purchase_price": 6000.0
+    },
+    "registry_order_pinned": 41,
+    "starting_ship_carries_no_equipment": "MEASURED: oolite-standard.oolite-save starts DOCKED at Lave's Coriolis with an EMPTY equipment array. That matters - 'the equipment array is non-empty' is explicitly NOT evidence in the catalogue because the starting ship usually carries equipment. Here it carries none, so every member of the final array was put there by this scenario.",
+    "station": {
+      "equipment_price_factor": 1,
+      "equivalent_tech_level": 4,
+      "service_level": 100,
+      "station_name": "Coriolis Station",
+      "system_tech_level": 4
+    },
+    "what_no_other_golden_carries": "tests/golden/dump/dump_state.js emits entities, market and a player block of credits/legalStatus/score/cargo plus four ship fields. THERE IS NO EQUIPMENT ANYWHERE IN ANY LANDED GOLDEN. Scenario 004 is commodities (a different registry, different pricing, a different storage model); scenario 003's damage is ship energy, not the EQUIPMENT_OK->EQUIPMENT_DAMAGED machine; the component tier sees role counts and liveness only. The shared dump is NOT modified to add equipment, because it is shared by every landed golden and editing it would move 002-017's dumps too - this scenario adds its own 'equipment' and 'evidence' blocks, as 015 does.",
+    "why_order": "Item 0.1 names EQUIPMENT ORDERING as a prime suspect for iteration-order non-determinism. Ship.equipment is built by -equipmentListForScripting (ShipEntity.m) walking [OOEquipmentType allEquipmentTypes], and EquipmentInfo.allEquipment (OOJSEquipmentInfo.m:507) returns that same enumeration. This is the ONLY artifact in the repository that pins it. A reordering with the same members changes this dump and nothing else in the suite."
+  },
+  "evidence_checker": "tests/golden/check_equipment_evidence.py",
+  "frame_liveness": {
+    "asserted": true,
+    "floor": 0.2,
+    "margin": {
+      "all_black_spread": 0.0,
+      "blessed_frame_spread": 0.662745,
+      "max_spread_over_20_runs": 0.662745,
+      "min_spread_over_20_runs": 0.662745,
+      "reading": "every one of the 20 sweep frames measured spread 0.662745 exactly, so the floor of 0.2 sits at 0.30x of every real frame and infinitely above an empty render at 0.0. No same-scene variation can push a real frame under it and a blank frame cannot climb over it."
+    },
+    "metric": "luminance spread (max(grid)-min(grid))/255",
+    "what_it_proves": "that something was RENDERED. A run that died before drawing, or drew into a lost context, yields a (near-)uniform grid whose spread is ~0. The distance to an all-black grid is deliberately NOT the metric: a dim but fully-rendered scene sits close to black in that metric, so it cannot separate 'dark scene' from 'no scene'."
+  },
+  "frame_tolerance": {
+    "asserted": true,
+    "measurements": {
+      "between_max": 0.005213,
+      "between_min": 0.005087,
+      "cross_run_note": "across all 20 sweep runs (separate processes), same-scene grids differ by at most 0.001739, which is 0.40x the tolerance - the tolerance holds across processes, not only within one.",
+      "cross_run_same_scene_max": 0.001739,
+      "cross_run_same_scene_min": 0.001482,
+      "distinct_grid_digests_over_20_runs": 20,
+      "separation_ratio": 2.951,
+      "within_bare": [
+        0.00161,
+        0.001606,
+        0.001659
+      ],
+      "within_loaded": [
+        0.001658,
+        0.001611,
+        0.001724
+      ]
+    },
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9). USED AS MEASURED, never adjusted to make a run pass.",
+    "why_asserted": "MEASURED AND ACCEPTED - the opposite of scenario 015's finding, for a measured reason. The status screen RENDERS the player's equipment list, so the frame is a genuine second witness to this scenario's own subject. In ONE process at the same GUI screen, three frames with NO equipment and three after awarding EQ_ECM + EQ_CARGO_BAY + EQ_FUEL_SCOOPS measured [0.00161, 0.001606, 0.001659] and [0.001658, 0.001611, 0.001724] WITHIN each group and 0.005087..0.005213 BETWEEN them - the two populations do not overlap, and the tolerance 0.004377 falls between them with ~2.9x separation. 015 rejected the same assertion because its signal (animated trumbles) was smaller than its noise; here the signal is 3x the noise, so a run that installed no equipment lands OUTSIDE the tolerance."
+  },
+  "landing_rehearsal": {
+    "how": "the LANDING.md checklist was executed against the staged artifacts in tests/golden/pending/019-equipment-and-station-services/ before commit: the evidence checker, the spec gate, the provenance witness, a live run compared byte-for-byte against the blessed dump, and the non-vacuity arm that proves each gate goes RED on a corrupted copy.",
+    "rehearsed": true,
+    "what_jon_does": "git mv the four artifacts to goldens/windows-x64/019-equipment-and-station-services/. NO CODE CHANGE IS NEEDED: equipment_services.py, check_equipment_evidence.py and gate_019_spec.py all search the guarded location FIRST and the staged location second."
+  },
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "019-equipment-and-station-services",
+  "scenario_knobs": {
+    "above_tech_level_key": "EQ_DOCK_COMP",
+    "award_key": "EQ_FUEL_SCOOPS",
+    "credits_start": 20000.0,
+    "docked_throughout": true,
+    "expected_price_factor": 1.0,
+    "expected_purchase_price": 6000,
+    "expected_station_tech_level": 4,
+    "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+    "min_registry_entries": 20,
+    "purchase_key": "EQ_ECM",
+    "quant_decimals": 3,
+    "repopulator_handlers": [
+      "systemWillRepopulate"
+    ],
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 8,
+    "undamageable_key": "EQ_CARGO_BAY"
+  },
+  "spec_gate": "tests/golden/gate_019_spec.py",
+  "stability": {
+    "distinct_dump_digests": [
+      "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c"
+    ],
+    "distinct_frame_grid_digests": 10,
+    "dump_bytes": [
+      4873
+    ],
+    "dumps_written": 10,
+    "errored": 0,
+    "per_run": [
+      {
+        "bytes": 4873,
+        "frame_sha256": "fd0209a8a742619d3b4b6b821db876872f626e8423a402da096c75d03aab176c",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run01.json",
+        "run": 1,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.7
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "f81b420ac6a22800340bda5264d183d71680c46a6b9adb90a2126937b5dfa249",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run02.json",
+        "run": 2,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.7
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "28324ede4068be555db83a9df767cadbe351fbdb27da322d26612f9679023ead",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run03.json",
+        "run": 3,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 10.5
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "287ba996fd85d9920986c3b27303ba16d81a32253bc54b21b9a2099eec70d236",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run04.json",
+        "run": 4,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.2
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "6bce6de9ddd60cae3bd712346652bad587a703fb939c93e9c8884ee512448339",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run05.json",
+        "run": 5,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.5
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "51f3f7a794e63af66fc4549f93f6635d5ddefe4404b7d7629376eb91e5d76ce9",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run06.json",
+        "run": 6,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.2
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "610c3d9a9fe103c50a415fe1f51859c5b27f4090c0f6b10e0a9a39d776566b6f",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run07.json",
+        "run": 7,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.1
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "f2cafbd4319acf924197a7c09740ead79f26488551e0a07c81ba18ce302176b0",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run08.json",
+        "run": 8,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.3
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "5b3fea6374a2cbf224a949fe5e89bb2b40dbc2cece01b2b92a1d87106a0dcf0c",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run09.json",
+        "run": 9,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.2
+      },
+      {
+        "bytes": 4873,
+        "frame_sha256": "f8b0ab6836492fc816e929eb43d8f7b2ff67fe6c1ec6a7ed78911811f816cfe7",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo1bf6_stab2/stability/run10.json",
+        "run": 10,
+        "sha256": "81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c",
+        "verdict": "DUMPED",
+        "wall_seconds": 11.3
+      }
+    ],
+    "refused": 0,
+    "runs": 10,
+    "stable": true,
+    "wall_seconds_max": 11.7,
+    "wall_seconds_min": 10.5
+  },
+  "stability_note": "TWO independent 10-run sweeps were taken (the second is recorded here in full). Both produced 10 dumps, 0 refused, 0 errored, and the SAME single dump digest 81971b2f273d2a07ea046e75477c456f0bb607f1fca7515462b9d03a9f12990c across all 20 runs, at 4873 bytes each. A REFUSAL (the harness declining to dump an unsettled world) is counted separately from a DIFFERENCE; collapsing the two is how a stability claim goes dishonest (bead oo-jor)."
+}

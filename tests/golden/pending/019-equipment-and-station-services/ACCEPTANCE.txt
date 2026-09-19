@@ -1,0 +1,18 @@
+# Stored acceptance for bead oo-1bf.6 (golden scenario 019).
+#
+# This file is a COPY for readers. The authoritative text is the bead's stored acceptance field
+# (`bd show oo-1bf.6 --json`), which is what accept.sh runs. Each line exits 0 on success, from
+# the repo root, and resolves every artifact from the guarded goldens/ location FIRST and the
+# staged pending/ location second - so the block is identical before and after Jon lands it.
+#
+# Line 8 is the NON-VACUITY ARM: it removes the awarded equipment again inside a live run and
+# requires the scenario to exit 1 AND write no dump. Without it, lines 1-7 are green-only replay
+# and could not detect a gate that can never turn red.
+python3 tests/golden/gate_019_spec.py
+python3 tests/golden/check_equipment_evidence.py "$(ls goldens/windows-x64/019-equipment-and-station-services/state.json tests/golden/pending/019-equipment-and-station-services/state.json 2>/dev/null | head -1)"
+python3 -c "import hashlib,json,os,sys; d=[p for p in ('goldens/windows-x64/019-equipment-and-station-services','tests/golden/pending/019-equipment-and-station-services') if os.path.isfile(os.path.join(p,'provenance.json'))][0]; pr=json.load(open(os.path.join(d,'provenance.json'),encoding='utf-8')); bad=[n for n,m in pr['artifacts'].items() if hashlib.sha256(open(os.path.join(d,n),'rb').read()).hexdigest()!=m['sha256']]; sys.exit('provenance digests disagree with the artifacts: %r'%bad) if bad else print('provenance witnesses %d artifact(s); stability %d runs, %d distinct dump digest'%(len(pr['artifacts']),pr['stability']['runs'],len(pr['stability']['distinct_dump_digests'])))"
+python3 -m pytest tests/golden/test_equipment_services.py tests/golden/test_equipment_checker_mutants.py -q
+grep -q duplicate_award_refused tests/golden/equipment_services.py && grep -q duplicate_award_refused tests/golden/check_equipment_evidence.py && grep -q damage_refused_for_undamageable tests/golden/equipment_services.py && grep -q damage_refused_for_undamageable tests/golden/check_equipment_evidence.py && echo "both engine refusals asserted by harness AND checker"
+test -z "$(grep -l -e equipmentKey -e allEquipment -e equipmentStatus tests/golden/dump/dump_state.js tests/golden/dump/state_dump.py)" && echo "shared dump carries no equipment: 002-017 dumps unmoved"
+python3 tests/golden/equipment_services.py --out "${TMPDIR:-/tmp}/oo019_live.json" --frame-out "${TMPDIR:-/tmp}/oo019_live.grid" && python3 tests/golden/golden_diff.py "$(ls goldens/windows-x64/019-equipment-and-station-services/state.json tests/golden/pending/019-equipment-and-station-services/state.json 2>/dev/null | head -1)" "${TMPDIR:-/tmp}/oo019_live.json" && python3 tests/golden/equipment_services.py --check-frame "${TMPDIR:-/tmp}/oo019_live.grid" "$(ls goldens/windows-x64/019-equipment-and-station-services/frame.grid tests/golden/pending/019-equipment-and-station-services/frame.grid 2>/dev/null | head -1)"
+python3 tests/golden/equipment_services.py --out "${TMPDIR:-/tmp}/oo019_broken.json" --break-equipment; test $? -eq 1 && test ! -f "${TMPDIR:-/tmp}/oo019_broken.json" && echo "NON-VACUITY: with the award undone the scenario exits 1 and writes NO dump"
