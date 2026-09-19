@@ -1,0 +1,34 @@
+{
+  "scenario": "002-witchspace",
+  "seed": 20260918,
+
+  "_origin_system_id": "Lave, system 7 of galaxy 0 - where Resources/Scenarios/oolite-standard.oolite-save starts, docked at the Coriolis. ASSERTED, not assumed: a save that silently changed system would otherwise produce a golden of a different jump.",
+  "origin_system_id": 7,
+  "origin_system_name": "Lave",
+
+  "_destination_system_id": "Zaonce, system 129, 5.6 LY from Lave - inside the Cobra Mark III's 7.0 LY tank with 1.4 LY to spare, so the jump is legal by fuel AND the margin is visible in the dump (fuel_before_tenths 70 -> fuel_after_tenths 14). MEASURED on this box: the jump completes and the engine reports cause 'standard jump', dest '129'.",
+  "destination_system_id": 129,
+  "destination_system_name": "Zaonce",
+
+  "_destination_station_name": "Zaonce's own main station. Lave's is a Coriolis Station and Zaonce's is an Icosahedron Station, so the station the scenario docks at is a SECOND, INDEPENDENT witness to the arrival: a run that never left the origin docks at a differently-named station and fails by name. MEASURED on this box.",
+  "destination_station_name": "Icosahedron Station",
+
+  "_countdown_seconds": "The witchspace spin-up handed to player.ship.beginHyperspaceCountdown(). OOJSPlayerShip.m:1580-1586 REFUSES anything outside 5..60, so 5 is the shortest legal countdown - chosen to keep the run short, not to skip the countdown: countdown_status_seen asserts STATUS_WITCHSPACE_COUNTDOWN was actually observed.",
+  "countdown_seconds": 5,
+
+  "_ticks": "24 ticks x 0.125 s = 3.0 s of GAME time, run in the DESTINATION system after arrival. Measured on clock.absoluteSeconds inside the game, never on the harness clock, so the dump does not depend on how loaded this box is. Same budget as scenario 001, deliberately.",
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+
+  "_pose": "DECLARED, not flown, and load-bearing twice. (1) witchJumpChecklist: (PlayerEntity.m:7387-7401) runs checkShipsInVicinityForWitchJumpExit when the countdown expires and fires playerJumpFailed('blocked') if anything is close - MEASURED: a countdown begun in the launch corridor fell back to STATUS_IN_FLIGHT with system.ID unchanged. From [0,0,0] the ship is 434 km from the Coriolis and 794 km from the rock hermit and the jump completes. (2) A flown position is a function of how many frames this box rendered; scenario 001 measured player.ship.velocity[2] at -164.856 vs -164.504 for exactly that reason.",
+  "pose": {
+    "position": [0.0, 0.0, 0.0],
+    "orientation": [1.0, 0.0, 0.0, 0.0]
+  },
+
+  "_repopulator_handlers": "oolite-populator.js's repopulate handler, neutered in BOTH systems. Its station picker _tradeStation tests hasNPCTraffic inside its loop but ENDS WITH an unconditional `return system.mainStation`, so switching the flag off does not stop it launching traffic. The name is pinned here so an upstream rename becomes a red rather than a silent no-op.",
+  "repopulator_handlers": ["systemWillRepopulate"]
+}

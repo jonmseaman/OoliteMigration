@@ -161,7 +161,7 @@ SEAMS = [
  ("0.9c", 0, "tools/tier-c.sh: all goldens, ASan, full Tier 1, JS API snapshot, GUI tier under the desktop lock", "The merge gate, run locally (ADR-0016) in a clean worktree on Windows: full component suite (ADR-0018), all goldens, corpus, snapshot, ASan. The GUI tier runs here and nightly only, under tools/gui-lock, never per bead (ADR-0017).", "tools/tier-c.sh exits 0 on main; a deliberate use-after-free in a scratch branch is caught by ASan under MSYS2 clang, or the ADR-0017 sanitizer fallback is filed as a proposed ADR.", ["0.9b", "0.5", "0.8a"], 1),
  ("0.10", 0, "tools/merge-queue: batch Tier-B-green branches, run tier-c locally, fast-forward, bisect on red, push", "Batch-and-bisect over local branches; requeues the culprit's bead with the failure in its notes. accept.sh's base branch becomes an integration branch this promotes. After every green batch: `git push origin main` and `git subtree push --prefix=upstream/oolite fork migration` (ADR-0017); the weekly hand-push bead is closed when this lands.", "A batch of 8 branches with one bad one: the queue bisects to the culprit and merges the other 7; after a green batch origin/main and fork/migration match the local tree.", ["0.9c"], 2),
  ("0.11", 0, "Guardrail checks: goldens/ protection, warning-suppression grep, deleted-test detection, deny-list", "tools/guardrails.sh run by tier-b and tier-c: fails on any change under goldens/ without a rebless approval, on new -Wno-/#pragma diagnostic, on deleted/emptied test files (including .feature files and the component step library, ADR-0018 §5), on reintroduced libgnustep-base/JS_* symbols.", "Each of the four violations, introduced in a scratch branch, fails tools/guardrails.sh with a specific message.", ["0.9b"], 1),
- ("0.12", 0, "Verify story generator output against the first real sweep (Phase 1 façade retarget)", "tools/gen-stories.py exists (v0). Once tier-a/tier-b exist, re-run with --apply and confirm the first generated bead is completable by a worker end to end through the beads-worker skill.", "One generated Phase 1 bead closed by accept.sh with no human edits to the bead text.", ["0.9b", "1.1"], 2),
+ ("0.12", 0, "Verify story generator output against the first real sweep (Phase 1 façade retarget)", "tools/gen-stories.py exists (v0). Once tier-a/tier-b exist, re-run with --apply and confirm the first generated bead is completable by a worker end to end through the beads-worker skill.", "One generated Phase 1 bead closed by accept.sh with no human edits to the bead text.", ["0.9b", "1.2"], 2),
  ("0.14", 0, "tools/fleet/run-story: frontier driver (claude -p --model claude-opus-5) over frontier beads", "bd ready filtered to frontier beads -> claim -> beads-worker worktree.sh -> claude -p --model claude-opus-5 with the bead body as the prompt and CLAUDE.md in scope, allow-list excluding bd close / git push / goldens -> accept.sh -> worktree cleanup. Memoryless per story; parallelism flag from docs/infra/0-machines.md. The frontier model is Claude Opus 5 by default (BEADS_FRONTIER_MODEL overrides); a bead whose metadata carries model=<id> runs on that model instead (the phase reviews use claude-fable-5-1).", "run-story given a scratch frontier bead with acceptance `test -f tools/fleet/.smoke` completes it in its own worktree and the bead is closed by accept.sh, not by the agent; `claude -p` was invoked with --model claude-opus-5 (logged).", [], 2),
  ("0.15", 0, "Reporter: scheduled read-only Claude Code task posting the I4 metrics", "A scheduled task (claude -p --model claude-opus-5, read-only tools) that reads bd, the tier logs, git and the goldens and writes docs/fleet/REPORT-<date>.md with every docs/infra/4-metrics.md daily metric (zeros allowed), including days since origin/main and fork/migration matched.", "One report file exists with every daily metric populated; the task holds no write authority beyond docs/fleet/.", [], 3),
  ("0.gate", 0, "Phase 0 exit gate: every item in docs/phases/0-safety-net.md checked", "Walk the exit-gate checklist; each unchecked item becomes a new bead. Close only when all are checked.", "All exit-gate boxes checked in docs/phases/0-safety-net.md with the commit that satisfied each.", ["0.1b","0.3b","0.4d","0.4g","0.6c","0.7b","0.10","0.11","0.13b","0.14","0.15"], 1),
@@ -224,20 +224,76 @@ SEAMS = [
 SAVES = [("Constrictor", "mission_conhunt"), ("Nova", "mission_nova / mission_novacount"), ("Trumbles", "mission_trumbles"),
          ("CloakingDevice", "mission_cloakcounter"), ("ThargoidPlans", "mission_thargplans")]
 
-def sweep_scenarios():
+SCENARIO_CATALOGUE = ROOT / "docs/phases/scenario-catalogue.json"
+
+def catalogue_scenarios(path=None):
+    """The scenario catalogue's entries (id, name, purpose, status, bead), in catalogue order.
+
+    docs/phases/scenario-catalogue.json is the single machine-readable list of the golden set
+    (bead oo-9w5; gated by tools/check-scenario-catalogue.py). An empty list is returned when the
+    file is missing or unreadable so the generator still runs outside a full checkout.
+    """
+    try:
+        data = json.loads((Path(path) if path else SCENARIO_CATALOGUE).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    scen = data.get("scenarios")
+    return scen if isinstance(scen, list) else []
+
+# TITLES ARE THE GENERATOR'S IDENTITY KEY, SO 002-017's ARE FROZEN HERE (bead oo-1bf.12).
+# create() recognises an already-filed bead by TITLE and by nothing else, so a one-character
+# change to any of these re-files a duplicate of a bead that already exists. The catalogue's
+# `name` is a slug (witchspace-jump, test-oxp-js-interface, checklist-save-constrictor) while
+# these sixteen beads were filed, before the catalogue existed, with prose suffixes — so the
+# catalogue supplies the SET (and, for new entries, the title text and purpose) while the text of
+# the pre-existing sixteen is pinned to what is in the tracker. Entries 018+ take the catalogue's
+# `name` verbatim, which is exactly how the Phase 0 review filed 018-020 by hand (oo-1bf.5/.6/.7),
+# so those three are recognised as existing rather than duplicated.
+def _frozen_scenario_stories():
     names = ["witchspace jump", "combat encounter", "trade cycle", "mission trigger", "save/load round-trip",
              "test-oxp: JS interface", "test-oxp: materials", "test-oxp: shaders", "test-oxp: PNG", "test-oxp: AI overflow", "test-oxp: retro missions"]
-    out = [(f"Golden scenario {i:03d}: {n}", f"Write scenario {i:03d} ({n}) the way scenario 001 is written: fixed seed, fixed system, fixed tick count, canonical dump and frame hash; bless it under the golden policy and prove 10-run stability.",
-            ["tests/golden/scenarios/%03d/run.sh --check" % i, "tests/golden/scenarios/%03d/run.sh --stability 10" % i], ["0.4f"], "tests/golden/scenarios/001/", 2)
-           for i, n in enumerate(names, start=2)]
+    out = {"%03d" % i: (n, f"Write scenario {i:03d} ({n}) the way scenario 001 is written: fixed seed, fixed system, fixed tick count, canonical dump and frame hash; bless it under the golden policy and prove 10-run stability.")
+           for i, n in enumerate(names, start=2)}
     # Scenarios 013-017: the upstream release checklist's mission saves (1.75-era, mid-mission). They
     # pin the save-format compatibility contract, mission-variable round-trip, and each mission
     # script's state machine, none of which the scenarios above exercise.
     for j, (save, var) in enumerate(SAVES, start=len(names) + 2):
         path = f"upstream/oolite-tests/Checklist-files/Missions/{save}.oolite-save"
-        out.append((f"Golden scenario {j:03d}: load checklist save {save}",
-                    f"Write scenario {j:03d} the way scenario 001 is written, but starting from {path} via the harness's --load (the game's -load argument): fixed seed, fixed tick count, canonical dump (must include mission_variables, in particular {var}) and frame hash; bless under the golden policy; prove 10-run stability. The save is a 1.75-era file, so this also pins the save-format compatibility contract.",
-                    ["tests/golden/scenarios/%03d/run.sh --check" % j, "tests/golden/scenarios/%03d/run.sh --stability 10" % j], ["0.4f"], "tests/golden/scenarios/001/", 2))
+        out["%03d" % j] = (f"load checklist save {save}",
+                           f"Write scenario {j:03d} the way scenario 001 is written, but starting from {path} via the harness's --load (the game's -load argument): fixed seed, fixed tick count, canonical dump (must include mission_variables, in particular {var}) and frame hash; bless under the golden policy; prove 10-run stability. The save is a 1.75-era file, so this also pins the save-format compatibility contract.")
+    return out
+
+def sweep_scenarios(catalogue_path=None):
+    """One story per catalogue entry that is not already landed, read from the catalogue rather
+    than from a literal list — the way sweep_component() reads COMPONENT.
+
+    The old literal list stopped at 017 and so 018-020 were never emitted although the catalogue
+    has carried them since oo-9w5; a new catalogue entry now needs no generator change at all.
+
+    Entries with status 'landed' are skipped (001 is landed and has its golden in the tree).
+    Entries that ALREADY have a bead are still emitted: de-duplication is create()'s job, which
+    matches on title and references the existing bead instead of recreating it (the same mechanism
+    that keeps every other sweep idempotent), so a run neither duplicates nor silently hides them.
+    """
+    frozen = _frozen_scenario_stories()
+    out = []
+    for s in catalogue_scenarios(catalogue_path):
+        sid = s.get("id")
+        if not sid or str(s.get("status", "")) == "landed":
+            continue
+        if sid in frozen:
+            suffix, desc = frozen[sid]
+        else:
+            suffix = s.get("name") or sid
+            purpose = (s.get("purpose") or "").strip()
+            desc = (f"Write scenario {sid} ({suffix}) the way scenario 001 is written: fixed seed, fixed system, "
+                    "fixed tick count, canonical dump and frame hash; bless it under the golden policy and prove "
+                    "10-run stability.")
+            if purpose:
+                desc += f"\n\nPurpose (docs/phases/scenario-catalogue.json): {purpose}"
+        out.append((f"Golden scenario {sid}: {suffix}", desc,
+                    [f"tests/golden/scenarios/{sid}/run.sh --check", f"tests/golden/scenarios/{sid}/run.sh --stability 10"],
+                    ["0.4f"], "tests/golden/scenarios/001/", 2))
     return out
 
 def sweep_gui():
@@ -247,21 +303,70 @@ def sweep_gui():
     return [(f"GUI test G{i}: {t}", f"Add upstream/oolite/tests/gui/test_g{i}_*.py the way test_g1_exit_via_mouse.py is written, per docs/phases/0-gui-tier.md. Runs against a real window on the desktop under the GUI-tier desktop lock.",
              [f"python3 -m pytest upstream/oolite/tests/gui/test_g{i}_*.py -x -q"], ["0.8a"], "upstream/oolite/tests/gui/test_g1_exit_via_mouse.py", 2) for i, t in g.items()]
 
-COMPONENT = {2: ("Pirate attacks; the target registers an attacker", "the damage path independently of the kill path"),
-             3: ("A hostile spawn drives a ship into ATTACK", "AI state-machine transitions via Ship.AIState, independent of whether combat resolves"),
-             4: ("A missile-armed ship kills by missile", "the second weapon path; missiles are simulated projectiles, lasers are hitscan"),
-             5: ("Escorts converge on their mother", "group and formation behaviour (OOShipGroup), which no other tier touches"),
-             6: ("A damaged ship flees and range increases", "the FLEE branch, the most commonly broken AI transition"),
-             7: ("8 neutral ships, 900 ticks, nobody dies, no ERROR in Latest.log", "the canary: accidental carnage, NaN blowups, scan-class confusion"),
-             8: ("Destroyed ships leave system.allShips", "entity lifetime: a leaked entity shows here long before ASan catches the use-after-free")}
+# Per-scenario capability check (ADR-0020, 2026-09-18): each entry is
+# (title, what-it-would-catch-if-fully-written, seam) where `seam` is the bead id of the
+# capability the FULL behavioural assertion needs, or None if the observable is a role-count /
+# liveness fact the step library (tests/component/README.md) can already express end to end (as
+# S1 is). A scenario whose subject is "the specific ship(s) I spawned did X" (a per-ship handle,
+# a property write, a continuous numeric sample, or an AI-state/attribution read the library has
+# no step for) cannot be given a real green/red gate with only 0.13b's role-count steps — S8/
+# oo-qwk5 discovered this the hard way after a full implementation attempt (see its notes) before
+# Jon descoped S2-S8 to smoke scenarios in ADR-0020. Do not remove a seam citation without
+# re-checking tests/component/README.md's step table: the check is "can an existing step name
+# THIS entity among several, or read/write a property on it" — not "is there a plausible-sounding
+# Gherkin sentence".
+COMPONENT = {2: ("Pirate attacks; the target registers an attacker", "the damage path independently of the kill path",
+                 "oo-kbqw"),  # needs Ship.AIPrimaryAggressor/AIFoundTarget read - no step exposes it
+             3: ("A hostile spawn drives a ship into ATTACK", "AI state-machine transitions via Ship.AIState, independent of whether combat resolves",
+                 "oo-3cvh"),  # Ship.AIState reads GLOBAL for JS AIs; needs Ship.isAttacking seam
+             4: ("A missile-armed ship kills by missile", "the second weapon path; missiles are simulated projectiles, lasers are hitscan",
+                 "oo-kbqw"),  # damageType only reaches a per-ship shipDied/shipKilledOther script event
+             5: ("Escorts converge on their mother", "group and formation behaviour (OOShipGroup), which no other tier touches",
+                 "oo-bdl0"),  # needs a handle to "the mother I spawned" and "her escorts", not a role count
+             6: ("A damaged ship flees and range increases", "the FLEE branch, the most commonly broken AI transition",
+                 "oo-kbqw"),  # needs a numeric sample read twice (range) plus a behaviour-mode transition read
+             7: ("8 neutral ships, 900 ticks, nobody dies, no ERROR in Latest.log", "the canary: accidental carnage, NaN blowups, scan-class confusion",
+                 "oo-bdl0"),  # "nobody I spawned died" needs per-ship handles; a role count is inflated by the populator (measured: shuttle 8->9 by t=30s)
+             8: ("Destroyed ships leave system.allShips", "entity lifetime: a leaked entity shows here long before ASan catches the use-after-free",
+                 "oo-kbqw")}  # needs a handle to the destroyed ship AND a bounty write to make the kill deterministic (measured: ~24% of spawns are non-criminal by chance)
 
 def sweep_component():
-    return [(f"Component scenario S{i}: {t}",
-             f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way s1_police_kills_pirate.feature is written (docs/stories/S1-police-kills-pirate.md, docs/phases/0-component-tier.md), using only steps that already exist in the step library (tests/component/README.md). Catches: {why}. Assert 'within N ticks' and counts, never exact positions. If the scenario needs a step that does not exist, stop and report blocked (new interface, ADR-0018 §5).",
-             # One run; green means done (Jon, 2026-09-18). The former single-run-plus-three-run-loop
-             # made an accept pay for four real-time game runs; flakiness is Jon's to judge by hand.
-             [f"python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q"],
-             ["0.13b"], "upstream/oolite/tests/component/features/s1_police_kills_pirate.feature", 2) for i, (t, why) in COMPONENT.items()]
+    out = []
+    for i, (t, why, seam) in COMPONENT.items():
+        if seam is None:
+            # Fully expressible today: an existing step can name this entity among several spawned,
+            # or read/write a property on it, so the FULL behavioural assertion is fleet work.
+            body = (f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way "
+                    "s1_police_kills_pirate.feature is written (docs/stories/S1-police-kills-pirate.md, "
+                    "docs/phases/0-component-tier.md), using only steps that already exist in the step "
+                    f"library (tests/component/README.md). Catches: {why}. Assert 'within N ticks' and "
+                    "counts, never exact positions. If the scenario needs a step that does not exist, "
+                    "stop and report blocked (new interface, ADR-0018 §5).")
+        else:
+            # ADR-0020: the title's real observable needs `seam` (a per-ship handle, property write,
+            # or AI-state read the step library does not have). Do not attempt the full behaviour —
+            # write the SMOKE version only, using steps that exist today, and say plainly what it does
+            # not prove. This is what makes S2-S8's dependency differ per scenario instead of being one
+            # blanket "0.13b, using only steps that already exist" claim regardless of the observable.
+            body = (f"Per ADR-0020 (docs/decisions/0020-component-scenarios-are-smoke-tests-for-now.md), "
+                    f"this is a SMOKE scenario for now: the full observable (\"{t}\") needs a capability "
+                    f"the step library does not have yet (tracked by {seam}) and is NOT fleet work here. "
+                    f"Add upstream/oolite/tests/component/features/s{i}_*.feature the way "
+                    "s1_police_kills_pirate.feature is written, but set the world up exactly as the "
+                    "story says (load, launch, spawn the named roles, set their AIs, per ADR-0019), run "
+                    "the simulation for the stated ticks, and assert ONLY what the existing step library "
+                    "can say: `no ERROR appears in the log`, plus `a ship with role \"<x>\" survives` for "
+                    f"a role this scenario spawned. Add a comment at the top of the feature file saying "
+                    f"this does not prove \"{why}\" and that the real assertion is deferred to {seam}. "
+                    "Do not add a step, do not assert per-ship identity/AIState/damageType/ranges, and "
+                    "do not report blocked — the smoke version is the whole of this bead.")
+        out.append((f"Component scenario S{i}: {t}", body,
+                     # One run; green means done (Jon, 2026-09-18). The former single-run-plus-three-run-loop
+                     # made an accept pay for four real-time game runs; flakiness is Jon's to judge by hand.
+                     [f"python3 -m pytest upstream/oolite/tests/component/ -k s{i}_ -x -q"],
+                     ["0.13b"] if seam is None else ["0.13b", seam],
+                     "upstream/oolite/tests/component/features/s1_police_kills_pirate.feature", 2))
+    return out
 
 def sweep_js_retarget():
     out = []
@@ -599,7 +704,7 @@ def main():
         if key.endswith(".review"): dk = gate_deps.get(f"{n}.gate", [])   # the review checks everything the gate used to wait on
         if key.endswith(".gate"): dk = list(dk) + [f"{n}.review"]           # and the gate waits on the review
         for d in dk: deps.append((key, d))
-    counts = {}; file_to_extractor = {}; file_to_foundation = {}
+    counts = {}; file_to_extractor = {}; file_to_foundation = {}; scenario_lines = []
     for skey, n, gen in SWEEPS:
         if a.phase is not None and n != a.phase: continue
         presplit = []
@@ -607,6 +712,13 @@ def main():
         for i, (title, desc, acc, dk, exemplar, pri) in enumerate(items):
             k = f"{skey}:{i}"
             ids[k] = create(title, "task", n, [f"phase:{n}", "fleet", f"sweep:{skey}"], body(desc, acc, exemplar, skey, n), pri, parent=ids.get(f"epic{n}"), meta={"exemplar": exemplar})
+            # The scenario sweep is small and is the one sweep whose SET comes from a committed
+            # data file, so a dry run lists it line by line: that is what makes "the catalogue
+            # gained an entry and the generator emits it" checkable without touching bd. Every
+            # entry is listed, including the ones create() resolved to an existing bead (marked
+            # with its id) — a dry run reports what the sweep COVERS, not only what it would file.
+            if skey == "scenarios":
+                scenario_lines.append("  %s  [%s]" % (title, ids[k].split(":", 1)[1] if ids[k].startswith("existing:") else "would file"))
             for d in dk: deps.append((k, d))
             fname = title.split(": ")[-1].split(" ")[-1]
             if skey == "extractors": file_to_extractor[fname] = k
@@ -628,8 +740,17 @@ def main():
             elif k.startswith(("foundation:", "extractors:")): deps.append(("2.12", k)); deps.append(("2.review", k))
             elif k.startswith(("renames:", "convert:", "presplit:")): deps.append(("3.giant-Universe", k)); deps.append(("3.review", k))
     late = []  # deps involving pre-existing beads: wired with bd dep add after the graph
+    _bd_id_re = re.compile(r"^oo-[a-zA-Z0-9]+$")
     for blocked, blocker in deps:
-        if blocked not in ids or blocker not in ids: continue
+        if blocked not in ids: continue
+        if blocker not in ids:
+            # A dep target may be a bare existing bd id rather than a generator key (e.g. a
+            # capability-seam bead cited by COMPONENT's per-scenario check, oo-kbqw/oo-bdl0/oo-3cvh —
+            # those are not sweep or SEAMS keys, so they never land in `ids` from title-matching).
+            # Resolve them the same way title-matched existing beads are: as an "existing:" node,
+            # wired via the late bd-dep-add pass below rather than as a graph edge.
+            if _bd_id_re.match(blocker): ids[blocker] = f"existing:{blocker}"
+            else: continue
         b1, b2 = ids[blocked], ids[blocker]
         if b1.startswith("existing:") and b2.startswith("existing:"):
             if a.rewire: late.append((b1, b2))
@@ -639,6 +760,9 @@ def main():
     out = ROOT / "build" / "gen-stories-plan.json"; out.parent.mkdir(exist_ok=True); out.write_text(json.dumps(plan, indent=1))
     print(f"plan: {len(nodes)} nodes, {len(edges)} edges, {len(late)} late deps -> {out}")
     for k, v in counts.items(): print(f"  sweep {k}: {v}")
+    if scenario_lines:
+        print(f"scenario catalogue ({SCENARIO_CATALOGUE.relative_to(ROOT).as_posix()}), non-landed entries:")
+        for line in scenario_lines: print(line)
     if not apply:
         print("dry run; nothing written to bd"); return
     if nodes:

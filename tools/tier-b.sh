@@ -7,10 +7,11 @@
 #     tools/tier-b.sh --fast          # accept.sh variant: NO build (see --fast below)
 #     tools/tier-b.sh --list          # print the stages and their measured cost, run nothing
 #
-# Six stages, in increasing cost, each of which must produce POSITIVE EVIDENCE that it did its
+# Seven stages, in increasing cost, each of which must produce POSITIVE EVIDENCE that it did its
 # work. Measured on the fleet box (i9-12900KS, 24 threads, 64 GiB), 2026-09-18, four sibling
 # agents active:
 #
+#   0 guardrails  9-16 s     tools/guardrails.sh -- CLAUDE.md rules 1, 2, 3, 8, offline
 #   1 build       13-22 s warm/incremental, ~142 s genuinely cold  (tools/build-windows.sh test)
 #   2 tests       ~12 s      offline module tests, 3 suites
 #   2b parity     ~3 s       tier-b's environment must agree with a bare shell's verdict
@@ -19,7 +20,19 @@
 #   5 smoke       ~14 s      upstream/oolite/tests/launch_snapshot.py
 #   6 corpus      ~53 s      tools/corpus.sh tier1 --limit N  (N=3 by default)
 #
-#   TOTAL ~165 s warm, ~295 s cold.  Budget: 600 s (the bead's "under 10 minutes").
+#   TOTAL ~180 s warm, ~310 s cold.  Budget: 600 s (the bead's "under 10 minutes").
+#
+# STAGE 0's NUMBER IS MEASURED IN THIS REPO, NOT IN A TOY ONE. It is quoted as a RANGE because
+# three timed runs of `bash tools/guardrails.sh` in this worktree gave 9.42 s, 10.04 s and
+# 15.54 s wall (user ~2.5 s, sys ~6-8 s) -- the spread is sibling-agent load on the fleet box,
+# and the sys-heavy profile says the cost is process creation under MSYS2, not computation.
+# An earlier draft of this header claimed "~2-5 s" from a timing taken in the mutant proof's
+# 5-file scratch repo; measured here on 1,999 tracked files the same script took 86.5 s, 113.3 s
+# and 97.2 s. The gap was NOT the scan: guardrails.sh classified every tracked file with
+# "$(basename -- "$1")", one fork per file, and on Windows a fork costs ~45 ms. Replacing it with
+# the pure-bash "${1##*/}" (tools/guardrails.sh, is_test_path/is_collectable_test) selects the
+# IDENTICAL 271 test files and takes the classifier loop from 126 s to 1 s. Nothing was scoped
+# down or exempted to reach the number, so the guard still scans the bead's whole diff.
 #
 # WHY THESE AND NOT MORE. The full Tier 1 corpus is 36 groups at ~17 s each = 11-13 min on its
 # own, which alone blows the budget; it belongs to Tier C. Only the first N groups run here. The
@@ -189,7 +202,7 @@ while [ $# -gt 0 ]; do
 done
 
 if [ "$LIST" = 1 ]; then
-  sed -n '/^#   1 build/,/^#   TOTAL/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,3\}//'
+  sed -n '/^#   0 guardrails/,/^#   TOTAL/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,3\}//'
   exit 0
 fi
 
@@ -233,6 +246,64 @@ printf '==> tier-b (%s, flavour %s, budget %ss%s)\n' \
   "$PLATFORM" "$BUILD_FLAVOUR" "$BUDGET_SECONDS" "$([ "$FAST" = 1 ] && echo ', --fast')"
 detail "repo      $REPO_NATIVE"
 detail "run root  $RUN_ROOT_NATIVE"
+
+# ================================================================================================
+# STAGE 0 -- GUARDRAILS (CLAUDE.md rules 1, 2, 3, 8)
+# ================================================================================================
+#
+# Phase 0's exit gate (docs/phases/0-safety-net.md boxes 38 and 39) says a reintroduced
+# JS_*/libgnustep-base symbol and a bead branch touching goldens/ without an approved re-bless
+# must FAIL TIER B. Until this stage existed they did not: the deny-list ran in tier-a, and
+# tools/guardrails.sh ran only where a bead's own acceptance block happened to name it -- i.e.
+# exactly the beads least likely to violate it. A rule enforced only where someone remembered to
+# ask is not enforced.
+#
+# FIRST, AND DELIBERATELY SO. It is offline, needs no build, no game and no port, and costs
+# 9-16 s measured in this repo (three runs: 9.42 s, 10.04 s, 15.54 s -- see the cost table at the
+# top of this file), so a red guard costs seconds rather than minutes: a change that reintroduces
+# JS_* fails here instead of after a 142 s cold build and a 43 s golden stage. That is a ~10-20x
+# saving on the failing path, not a free one, and it is worth stating plainly because the first
+# draft of this stage claimed "2-5 s" from a timing taken in a 5-file scratch repo while the real
+# figure in this 1,999-file tree was ~100 s. The honest number only became 9-16 s after the fork
+# per tracked file in guardrails.sh's test classifier was removed; had it stayed at ~100 s this
+# ordering would still be right (100 s before a 185 s build beats 285 s), but "costs nothing"
+# would have been false. Nothing later in this file depends on this stage, so the ordering is
+# purely about how cheaply the answer arrives.
+#
+# rc CONVENTION (the repo's, bead oo-jor): 0 = checked and clean, 1 = a real violation,
+# 2 = REFUSED (no base ref resolves, no scratch dir). 2 IS NOT A PASS and is reported as its own
+# reason, because a guard that could not run is indistinguishable from one that found nothing
+# unless the two are told apart here.
+#
+# ANTI-VACUITY. guardrails.sh carries its own canaries (its suppression matcher must match 4
+# built-in canary lines; the deny-list must score > 0 on known-bad text; the test classifier must
+# match >= 1 tracked file) and turns each into a FAILURE rather than a skip. But a guard that
+# silently became a no-op would also exit 0 with no output at all, so this stage additionally
+# requires the two EVIDENCE lines that only a check which actually scanned the tree can print --
+# "deny-list: <n> patterns, canary scores <n>" and "tests: classifier matches <n> tracked test
+# files". An exit 0 without them is treated as red.
+stage_guardrails() {
+  local t0=$SECONDS log="$RUN_ROOT/guardrails.log" rc=0
+  step guardrails "tools/guardrails.sh (goldens, suppression, tests, deny-list)"
+  [ -f "$HERE/guardrails.sh" ] \
+    || fail guardrails "tools/guardrails.sh is missing; the rule-1/2/3/8 guard cannot run"
+  ( cd "$REPO_ROOT" && bash "$HERE/guardrails.sh" ) > "$log" 2>&1 || rc=$?
+  case "$rc" in
+    0) : ;;
+    1) cat "$log" >&2
+       fail guardrails "tools/guardrails.sh found a violation of CLAUDE.md rules 1/2/3/8 (see above); this is the deny-list and goldens/ guard, not a style check" ;;
+    *) cat "$log" >&2
+       fail guardrails "tools/guardrails.sh could not run (rc=$rc = refused, e.g. no base ref); a refusal is not a pass" ;;
+  esac
+  grep -q 'deny-list: .* patterns, canary scores' "$log" \
+    || { cat "$log" >&2; fail guardrails "guardrails.sh exited 0 but printed no deny-list evidence line; the deny-list check did not run and the gate would pass vacuously"; }
+  grep -q 'tests: classifier matches' "$log" \
+    || { cat "$log" >&2; fail guardrails "guardrails.sh exited 0 but printed no test-classifier evidence line; the rule-2 check did not run and the gate would pass vacuously"; }
+  detail "$(grep -m1 '^guardrails: base ' "$log" || echo 'guardrails: base (unreported)')"
+  detail "$(grep -m1 'deny-list: .* patterns' "$log")"
+  detail "$(grep -m1 'tests: classifier matches' "$log")"
+  detail "stage guardrails ok in $(( SECONDS - t0 ))s"
+}
 
 # ================================================================================================
 # STAGE 1 -- BUILD
@@ -615,6 +686,7 @@ stage_corpus() {
 
 # ================================================================================================
 
+stage_guardrails
 stage_build
 stage_tests
 stage_environment_parity

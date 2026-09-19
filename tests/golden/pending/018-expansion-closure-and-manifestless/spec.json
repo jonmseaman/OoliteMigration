@@ -1,0 +1,25 @@
+{
+  "scenario": "018-expansion-closure-and-manifestless",
+  "seed": 20260918,
+  "system_id": 7,
+  "system_name": "Lave",
+  "ticks": 8,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+
+  "_primary": "THE PRIMARY IS CHOSEN FOR ITS NON-EMPTY requires_oxps, NOT FOR ITS CONTENT. oolite.oxp.Svengali.GNN declares exactly one requirement, oolite.oxp.Svengali.Library, and bead oo-kcrw measured the pair causally on this build: GNN staged alone is NOTLOADED with '[oxp.requirementMissing]: OXP oolite.oxp.Svengali.GNN.oxz had unmet requirements and was removed from the loading list' (rc=0, 10.4s), and GNN + Library is a PASS named in [searchPaths.dumpAll] (rc=0, 14.8s). No expansion CONTENT is read by this scenario: the corpus blob is staged by path and only manifest METADATA (identifier, version, requires_oxps) is consulted, through tools/oxp_deps.py.",
+  "primary_identifier": "oolite.oxp.Svengali.GNN",
+
+  "_expected_closure": "The transitive requires_oxps closure the golden was blessed with, recorded so a FRESH walk over the corpus index can be compared against it at run time. The run recomputes the closure and refuses if the two disagree - the identifier index or the dependency walk changing is a RED result, not an invisible one.",
+  "expected_closure": ["oolite.oxp.Svengali.GNN", "oolite.oxp.Svengali.Library"],
+
+  "_manifestless_oxp": "One of the five in-tree test-oxps that ship no manifest.plist (bead oo-kcrw's NOMANIF class). ResourceManager.m:634-664 branches on the file EXTENSION: an .oxz with no manifest is logged on oxp.noManifest and RETURNS at :640, never loaded; an .oxp emits OOStandardsError at :646 and, in relaxed mode, falls through to :654 where a basic manifest is SYNTHESISED and the path is added to the search paths at :663. So this fixture LOADS and its standards complaint is informational - which is exactly the invariant this arm pins.",
+  "manifestless_oxp": "upstream/oolite-tests/test-oxps/RetroMissions/RetroMissions.oxp",
+
+  "_allowed_manifestless_standards_errors": "EXACTLY 2, measured. Not a tolerance and not a mute: the count is asserted for equality in BOTH runs, the lines are attributed per-expansion by tools/oxp_deps.attribute_errors so a complaint owned by the primary or its dependency cannot be absorbed, and any line no staged expansion claims fails the run separately. Scenario 012 measured 4 instead of 2 when the staging directory was reachable by two roots, and the exact-count guard is what caught it; a guard that merely allowed 'some missing-manifest errors' would have blessed a golden taken with the expansion loaded twice.",
+  "allowed_manifestless_standards_errors": 2,
+  "allowed_manifestless_standards_error_signatures": [
+    "OXP RetroMissions.oxp has no manifest.plist"
+  ]
+}

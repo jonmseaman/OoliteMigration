@@ -1,0 +1,96 @@
+{
+  "scenario": "017-thargoid-plans",
+  "seed": 20260918,
+  "_system_id": "MEASURED from a live load, not read off the plist: the save records only current_system_name, and the engine resolves the ID from the galaxy seed at load time. Quedle is ID 147 in galaxy 2 (JS numbering), and 147 != 83 is one of the Thargoid Plans arming clauses.",
+  "system_id": 147,
+  "system_name": "Quedle",
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+  "load_save": "upstream/oolite-tests/Checklist-files/Missions/ThargoidPlans.oolite-save",
+
+  "expected_save_version": "1.75",
+
+  "_expected_mission_variables": "THE FULL KEY->VALUE MAP, and that is a MEASURED choice. Scenario 015's fixture holds mission_trumbles as the EMPTY STRING and an ABSENT mission variable reads identically over the JS bridge, so that scenario could assert only a key SET. THIS fixture was checked first and every one of its five values is a NON-EMPTY string, so the whole map is asserted - strictly stronger, and it pins conhunt == MISSION_COMPLETE, the flag that ARMS the Thargoid Plans mission. The engine strips the `mission_` prefix for JS (OOJSMissionVariables.m:191-193). A DEFAULT NEW GAME HAS NO MISSION VARIABLES AT ALL (PlayerEntity.m:1986-1987).",
+  "expected_mission_variables": {
+    "CT_thargonCount": "0",
+    "conhunt": "MISSION_COMPLETE",
+    "snoopers_CRCNews": "|",
+    "snoopers_usedSlots": "0",
+    "trumbles": "NOT_NOW"
+  },
+
+  "_thargplans_key": "The bead's prose names mission_thargplans. IT IS NOT IN THIS FILE, deliberately: the checklist fixture sits at the moment the mission becomes AVAILABLE, not partway through it. thargplans_expected records whether the LOADED game is expected to carry it; if a future engine starts the mission inside this scenario's budget the dump changes instead of drifting.",
+  "thargplans_key": "thargplans",
+  "thargplans_expected": false,
+
+  "_expected_thargplans_preconditions": "MEASURED LIVE, NOT ASSUMED - and the measurement CHANGED the design. oolite-thargoid-plans-mission.js:77-90 opens the first briefing when !missionVariables.thargplans && missionVariables.conhunt === 'MISSION_COMPLETE' && player.score > 1280 && galaxyNumber === 2 && system.ID !== 83. FOUR of those five clauses hold in this fixture: conhunt is MISSION_COMPLETE, thargplans is absent, ship_kills 1281 is ONE over the 1280 threshold, and Quedle is system 147, not 83. THE FIFTH DOES NOT: JS `galaxyNumber` is `[player currentGalaxyID]` (OOJSGlobal.m:190-191), the SAME 0-based index the plist stores, and this save holds 1. A first draft of this scenario asserted galaxy_is_two=true on the assumption that JS was 1-based; the live run returned false and the assumption was wrong, not the engine. The fixture carries EQ_GAL_DRIVE and has_galactic_hyperdrive=true, so it is positioned ONE GALACTIC JUMP SHORT of the mission's galaxy - which is what the checklist tester is meant to perform by hand. The map below is the MEASURED state, asserted clause by clause, so an engine that moved the fixture's galaxy, cleared conhunt, rounded the kill score past or below 1280, or started the mission early goes red by name.",
+  "thargplans_precondition_probes": {
+    "conhunt_complete": "String(missionVariables.conhunt === 'MISSION_COMPLETE')",
+    "galaxy_is_two": "String(galaxyNumber === 2)",
+    "has_galactic_hyperdrive": "String(player.ship.equipmentStatus('EQ_GAL_DRIVE') === 'EQUIPMENT_OK')",
+    "not_in_system_83": "String(system.ID !== 83)",
+    "score_over_1280": "String(player.score > 1280)",
+    "thargplans_unset": "String(!missionVariables.thargplans)"
+  },
+  "expected_thargplans_preconditions": {
+    "conhunt_complete": true,
+    "galaxy_is_two": false,
+    "has_galactic_hyperdrive": true,
+    "not_in_system_83": true,
+    "score_over_1280": true,
+    "thargplans_unset": true
+  },
+
+  "_log_channels": "Switched on by a logcontrol.plist staged into this run's private resource root (ResourceManager.m:1761-1777), NOT from the console: the whole load happens before the debug console connects, so a JS call comes too late. `load.progress` is off by default (Resources/Config/logcontrol.plist:241).",
+  "log_channels": ["load", "load.progress", "load.failed", "load.upgrade", "load.upgrade.replacedEnergyBomb"],
+
+  "_load_progress_stages": "The engine's OWN load trace, verbatim and in order, from PlayerEntityLoadSave.m:620-811. These strings are logged ONLY inside -loadPlayerFromFile:, so a run that ignored -load emits none of them and a load that died partway emits a prefix.",
+  "load_progress_stages": [
+    "Reading file",
+    "Restricting scenario",
+    "Creating player ship",
+    "Initialising player entity",
+    "Loading commander data",
+    "Recording save path",
+    "Creating system",
+    "Resetting player flight variables",
+    "Loading system market",
+    "Setting scenario key",
+    "Starting JS engine",
+    "Populating initial system",
+    "Completing JS startup",
+    "Loading complete"
+  ],
+
+  "_load_migrations": "THE 1.75 SAVE-FORMAT COMPATIBILITY CONTRACT, MADE EXPLICIT. This is the finding that the fixture forced and the reason the bead says 'this also pins the save-format compatibility contract'. The save carries has_energy_bomb=true and EQ_ENERGY_BOMB, equipment that NO LONGER EXISTS. PlayerEntity.m:1731-1746 migrates it on load: it tries to mount an EQ_QC_MINE and, failing that (this commander's four pylons are already full of EQ_HARDENED_MISSILE), does `credits += 9000` - 9000 DECIcredits, i.e. 900 credits - and logs it. So the LOADED credits are NOT the saved credits, by exactly 9000 plist units, and a census that compared them raw would be red on a CORRECT engine. MEASURED: the first live run of this scenario failed with `credits: 99454.7 (saved) != 100354.7 (loaded)`, which is this migration and nothing else. The delta is declared here and applied by apply_load_migrations() so the comparison stays exact rather than being loosened to a tolerance, and the engine's OWN log line is required as evidence - if a future loader stops migrating, the number goes red AND the missing log line names why.",
+  "load_migrations": [
+    {
+      "plist": "credits",
+      "delta": 9000,
+      "log_channel": "load.upgrade.replacedEnergyBomb",
+      "log_message": "Compensated legacy energy bomb with 900 credits.",
+      "source": "PlayerEntity.m:1731-1746",
+      "why": "legacy EQ_ENERGY_BOMB compensation: 9000 decicredits (900 credits) when no pylon is free for the EQ_QC_MINE replacement"
+    }
+  ],
+  "_expected_upgrade_messages": "The engine's OWN record of the migration above, required verbatim. An empty list here would make the migration silent and the adjusted census arithmetic unfalsifiable.",
+  "expected_upgrade_messages": ["Compensated legacy energy bomb with 900 credits."],
+
+  "repopulator_handlers": ["systemWillRepopulate"],
+
+  "_census": "THE LOAD ASSERTION. Each entry names a key in the .oolite-save plist, the JS expression that reads the same quantity out of the loaded game, and how the two are made comparable. The two sides are produced by two INDEPENDENT readers sharing no code - Python's plistlib in THIS process, and Oolite's Objective-C deserialiser in a SEPARATE OS process read back over the console - so they cannot be the same object even in principle. Scenario 006's invariant, applied to this fixture.",
+  "census": [
+    {"plist": "player_name",         "js": "player.name",                   "kind": "str",          "why": "commander identity. This save's is 'ThargoidPlans'; a fresh commander is 'Jameson'."},
+    {"plist": "current_system_name", "js": "system.name",                   "kind": "str",          "why": "the system the save pins; a save loaded into the wrong system is the most damaging silent load failure"},
+    {"plist": "credits",             "js": "player.credits",                "kind": "float_tenths", "why": "PlayerEntity stores credits in tenths; the plist holds 994547. The LOADED game reports 100354.7, not 99454.7, because the 1.75 energy-bomb migration adds 9000 decicredits on load - see load_migrations. Scale AND migration MEASURED, not assumed."},
+    {"plist": "fuel",                "js": "player.ship.fuel",              "kind": "float_tenths", "why": "the plist stores fuel in tenths of a light year (70 = 7.0 LY); JS reports light years"},
+    {"plist": "legal_status",        "js": "player.bounty",                 "kind": "int",          "why": "player.bounty is the INTEGER accessor (OOJSPlayer.m:286-288); player.legalStatus returns a DISPLAY STRING via OODisplayStringFromLegalStatus"},
+    {"plist": "galaxy_number",       "js": "galaxyNumber",                  "kind": "int",          "why": "JS galaxyNumber is [player currentGalaxyID] (OOJSGlobal.m:190-191), the SAME 0-based index the plist stores - MEASURED, after a first draft assumed a 1-based JS field and the live run disproved it. This save is galaxy 1; the Thargoid Plans mission runs in galaxy 2, one galactic jump away."},
+    {"plist": "ship_desc",           "js": "player.ship.dataKey",           "kind": "str",          "why": "the shipdata key the player's hull is rebuilt from"},
+    {"plist": "ship_name",           "js": "player.ship.shipClassName",     "kind": "str",          "why": "human-facing class name, separate storage from ship_desc"},
+    {"plist": "ship_kills",          "js": "player.score",                  "kind": "int",          "why": "kill score. 1281 is ONE over the Thargoid Plans threshold of 1280 (oolite-thargoid-plans-mission.js:80), so a load that reset or rounded counters disarms the mission and fails here."},
+    {"plist": "max_cargo",           "js": "player.ship.cargoSpaceCapacity", "kind": "int",         "why": "cargo capacity, an integer the loader recomputes rather than copies"},
+    {"plist": "missiles",            "js": "player.ship.missiles.length",   "kind": "int",          "why": "pylon count, reconstructed from missile_roles by the loader"}
+  ]
+}

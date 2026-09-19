@@ -1,0 +1,81 @@
+{
+  "scenario": "005-mission-trigger",
+  "seed": 20260918,
+  "system_id": 80,
+  "system_name": "Atdice",
+  "galaxy_number": 4,
+  "ticks": 24,
+  "tick_seconds": 0.125,
+  "quant_decimals": 3,
+
+  "load_save": "upstream/oolite-tests/Checklist-files/Missions/CloakingDevice.oolite-save",
+  "control_save": "upstream/oolite-tests/Checklist-files/Missions/Constrictor.oolite-save",
+  "save_format_version": "1.75",
+
+  "expected_commander_name": "CloakingDevice",
+  "expected_galaxy_number": 4,
+  "expected_score": 1661,
+
+  "_trigger": "THE SUBJECT OF THIS SCENARIO. Loading a save calls [UNIVERSE populateNormalSpace] (PlayerEntityLoadSave.m:777), which fires the systemWillPopulate WORLD-SCRIPT EVENT (Universe.m:1732-1737). oolite-cloaking-device-mission.js:47-103 handles it: in galaxy 5 (galaxyNumber === 4) with missionVariables.cloak unset it does `missionVariables.cloakcounter++` (:62) and, once the counter exceeds 6 with no asp-cloaked present, registers the ambush populator (:71-89) which spawns the cloaked Asp and two escorts.",
+  "mission_script_name": "oolite-cloaking-device",
+  "mission_variable_key": "cloakcounter",
+  "mission_variable_key_in_file": "mission_cloakcounter",
+
+  "_counter": "THE FALSIFIABLE CORE. The fixture holds 6 ON DISK; the running engine reads 7. A value the deserialiser merely COPIED would read 6, so file+1 is positive proof the mission script's own code ran. expected_counter_in_file is pinned because 6 is exactly the value that makes the incremented counter exceed the script's `> 6` threshold - a different fixture value would change whether the ambush is spawned at all.",
+  "expected_counter_in_file": 6,
+  "expected_counter_in_engine": 7,
+
+  "_side_effects": "The two other consequences of the SAME `if` block, so the counter cannot be the only witness. The populator key is created by that block's system.setPopulator() call and by nothing else; the ambush leader is the ship its callback spawns. MEASURED CAUTION ON ROLE COUNTS: `asp-pirate` is NOT mission-exclusive - shipdata.plist gives the ordinary Asp that role, so the ambient populator adds them and the system-wide count was observed at 2, 3 and 4 across ten runs. Only `asp-cloaked` is created solely by this mission's template, so the escorts are pinned through the LEADER's own escortGroup (fixed by `escorts = 2` in shipdata) instead of by a system-wide role sweep.",
+  "expected_populator_key": "oolite-cloaking-device-mission",
+  "ambush_leader_role": "asp-cloaked",
+  "expected_ambush_leader_script": "oolite-cloaking-device-target-ship",
+  "expected_ambush_escort_group_count": 3,
+  "expected_spawned_roles": {
+    "asp-cloaked": 1
+  },
+
+  "_handlers": "systemWillPopulate must STILL be a live function on the script object: startUp deletes it when missionVariables.cloak is already set (oolite-cloaking-device-mission.js:38-45), and a script with no handler cannot have been the thing that fired.",
+  "expected_live_mission_handlers": [
+    "startUp",
+    "systemWillPopulate"
+  ],
+
+  "_mission_variables": "The measured POST-trigger set. Note cloakcounter is 7 here, not the file's 6: this dict is read out of the running engine after the event. A fresh game's is EMPTY.",
+  "expected_mission_variables": {
+    "CT_thargonCount": 0,
+    "TL_FOR_EQ_NAVAL_ENERGY_UNIT": 13,
+    "cloakcounter": 7,
+    "conhunt": "MISSION_COMPLETE",
+    "nova": "NOVA_HERO",
+    "novacount": 4,
+    "snoopers_CRCNews": "|",
+    "snoopers_usedSlots": 0,
+    "thargplans": "MISSION_COMPLETE",
+    "trumbles": "NOT_NOW"
+  },
+
+  "_control": "The differential control arm: the IDENTICAL scenario with a different checklist save. Constrictor.oolite-save is in galaxy 1, so the trigger's own `galaxyNumber === 4` guard fails - the mission script is LOADED but its handler does nothing. That is sharper than a dead run: it proves the assertions measure the TRIGGER FIRING and not merely 'a game with a save in it'.",
+  "control_expected": {
+    "commander_name": "Constrictor",
+    "system_name": "Esgebi",
+    "system_id": 240,
+    "galaxy_number": 1,
+    "counter_in_engine": null,
+    "counter_present": false,
+    "populator_registered": false,
+    "ambush_leader": null,
+    "spawned_role_counts": {
+      "asp-cloaked": 0
+    }
+  },
+
+  "_fresh": "The second control arm: a game launched with NO -load at all. The world scripts are not built, so the mission script itself is absent.",
+  "fresh_game_expected": {
+    "commander_name": "Jameson",
+    "system_name": "Lave",
+    "system_id": 7,
+    "galaxy_number": 0,
+    "mission_script_loaded": false,
+    "mission_variables": {}
+  }
+}

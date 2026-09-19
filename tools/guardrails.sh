@@ -169,9 +169,9 @@
 #
 #   goldens      EVERY configured protected prefix must exist as a tracked path, except those
 #                explicitly listed in PROTECTED_PREFIXES_PENDING with a reason. Asserting that
-#                *some* prefix exists is not enough: `git ls-files goldens/` is 0 in this tree
-#                today while tests/golden/scenarios/ has 1, so an any-of assertion passes while
-#                half the protected list is already vacuous.
+#                *some* prefix exists is not enough: one prefix being populated would let an
+#                any-of assertion pass while the other half of the protected list is already
+#                vacuous, so each prefix is checked on its own.
 #   suppression  the suppression matcher must match its built-in canary lines
 #   tests        the test-file classifier must match at least one tracked file
 #   deny-list    tools/deny-list.txt must exist, hold >= 1 pattern, and match its canary
@@ -249,6 +249,24 @@
 # upstream/ for the opposite and equally deliberate reason: file modes there come from upstream,
 # so they are not ours to fix.)
 set -u
+# PIPEFAIL IS ON DELIBERATELY, AND IT IS LOAD-BEARING (bead oo-mxgy).
+#
+# Without it, every pipeline in this file reports only its LAST command's status, so a git,
+# awk or grep that dies mid-pipe is invisible and the guard reports OK on a change it never
+# actually read. That is the vacuous green this guard exists to prevent, one level up.
+#
+# Turning it on is also a trap, which is why this comment is long. The idiom
+# `producer | grep -q PATTERN` BREAKS under pipefail: grep -q exits the instant it matches,
+# SIGPIPEs a still-writing producer, and pipefail propagates 141 - so a SUCCESSFUL match reads
+# as a FAILURE. Bead oo-3uf8 lost tier-c.sh's entire --only/--skip validator to exactly this.
+# Note it does NOT reproduce with a toy producer: a short printf fits in the 64KB pipe buffer
+# and finishes before grep exits, so a minimal test is green and proves nothing.
+#
+# THEREFORE: no `| grep -q` anywhere in this file, and never `|| true` to paper over one -
+# that swallows genuine failures too. Use a shell loop with `case`, a here-string, or capture
+# the producer's output into a variable first. tools/test_guardrails_pipefail.py FAILS if the
+# idiom reappears here while pipefail is set.
+set -o pipefail
 
 cd "$(dirname "$0")/.." || exit 1
 
@@ -262,8 +280,9 @@ PROTECTED_PREFIXES="goldens/ tests/golden/scenarios/"
 # Anti-vacuity exemption, one line per prefix, with the reason it is allowed to be empty.
 # A prefix listed here is still PROTECTED; it is only excused from "must exist as a tracked
 # path". Anything not listed must exist, or the protected-path list has rotted.
+# Empty is the expected end state: every protected prefix is populated, so every one of them is
+# subject to the existence check. Add a line here only to cover a prefix protected in advance.
 PROTECTED_PREFIXES_PENDING="
-goldens/|not populated yet: the golden corpus lands with beads oo-ss8/oo-gla/oo-16s (scenarios 002-017). Protected in advance so the first golden cannot arrive unguarded; delete this line once git ls-files goldens/ is non-empty.
 "
 
 # Extensions that are CODE for the purpose of the suppression and deny-list scans. Everything
@@ -281,6 +300,7 @@ tools/deny-list.txt|is the pattern list; every line is a deny-list hit by defini
 tools/gen-stories.py|emits the verbatim prohibition block into every generated story
 upstream/oolite/src/Core/Scripting/ooscript/JSEngine_spidermonkey.cpp|the SpiderMonkey backend of the ooscript façade (ADR-0002 step 2, seam 1.1): the ONE translation unit whose job is to include jsapi.h; deleted at Phase 1 item 5. The façade header beside it is NOT exempt.
 tools/check-jsengine-facade.sh|the façade's acceptance: it greps the header for the engine names it must not contain
+tools/tier-b-guardrails-proof.sh|plants the deny-listed symbol that proves tier-b's stage 0 fires
 "
 
 fail=0
@@ -348,8 +368,23 @@ all_paths() {    # BOTH sides of every rename, for path-shaped rules
   norm_change | awk -F"$US" '{ if ($2 != "") print $2; if ($3 != "" && $3 != $2) print $3 }' | grep -v '^$'
 }
 
+is_code() {         # is_code <path> - does this path's extension/name make it CODE to scan?
+  # Deliberately NOT `printf ... | grep -qE "$CODE_RE"`: see the pipefail note in is_exempt.
+  # grep reads one short line here so it would probably never fire, but the shape is the bug
+  # and the shape is what a later reader copies. A single non-pipelined grep is immune.
+  grep -qE "$CODE_RE" <<< "$1"
+}
+
 is_exempt() {       # is_exempt <path>
-  printf '%s' "$SCAN_EXEMPT" | grep -q "^$1|"
+  # NO `producer | grep -q` HERE, DELIBERATELY (bead oo-mxgy). `grep -q` exits the instant it
+  # matches, which SIGPIPEs a still-writing producer; under `set -o pipefail` the pipeline then
+  # reports 141 and a SUCCESSFUL match reads as a FAILURE. Bead oo-3uf8 lost tier-c.sh's whole
+  # --only/--skip validator to exactly that. The loop below cannot be broken by adding pipefail.
+  local e
+  while IFS= read -r e; do
+    case "$e" in "$1|"*) return 0 ;; esac
+  done <<< "$SCAN_EXEMPT"
+  return 1
 }
 
 base_blob() {       # base_blob <baseline-path> -> writes $TMPD/base, rc 0 if it exists
@@ -397,12 +432,31 @@ is_protected() {   # is_protected <path>
 }
 
 is_pending_prefix() {
-  printf '%s' "$PROTECTED_PREFIXES_PENDING" | grep -q "^$1|"
+  # Array/loop rather than `| grep -q` — see is_exempt for why (bead oo-mxgy).
+  local e
+  while IFS= read -r e; do
+    case "$e" in "$1|"*) return 0 ;; esac
+  done <<< "$PROTECTED_PREFIXES_PENDING"
+  return 1
 }
 
 approval_on_record() {  # approval_on_record <path>
   [ -f "$APPROVALS" ] || return 1
-  grep -v '^[[:space:]]*#' "$APPROVALS" | grep '^[^[:space:]]' | awk '{print $1}' | grep -qxF "$1"
+  # The approval file is read ONCE into a variable and matched by the shell. The old form
+  # (`grep -v ... | grep ... | awk ... | grep -qxF`) had the pipefail trap at its tail: under
+  # `set -o pipefail` the -q would SIGPIPE the awk/grep ahead of it and a found approval would
+  # be reported as rc=141, i.e. NOT approved. See bead oo-mxgy.
+  local line first
+  while IFS= read -r line || [ -n "$line" ]; do
+    line=${line%$'\r'}
+    case "$line" in
+      ''|'#'*) continue ;;          # blank, or a comment in column 0
+      [[:space:]]*) continue ;;     # indented: a continuation/comment, never an approval
+    esac
+    first=${line%%[[:space:]]*}
+    [ "$first" = "$1" ] && return 0
+  done < "$APPROVALS"
+  return 1
 }
 
 check_goldens() {
@@ -420,8 +474,15 @@ check_goldens() {
   done
   [ "$live" -gt 0 ] || { bad "goldens: every protected prefix ($PROTECTED_PREFIXES) is empty - the protected-path list has rotted and this check cannot fire"; return; }
 
-  local self_approved=0
-  all_paths | grep -qx "$APPROVALS" && self_approved=1
+  # A change may not approve itself. This used to read `all_paths | grep -qx "$APPROVALS"`,
+  # which is the single most dangerous instance of the trap this file now sets pipefail against:
+  # all_paths is an awk pipeline over the whole change, grep -q exits on the FIRST match and
+  # SIGPIPEs it, and under pipefail the pipeline returns 141 - so `&& self_approved=1` would
+  # never fire and a self-approving change would sail through the guard. Loop, no pipe.
+  local self_approved=0 ap
+  while IFS= read -r ap; do
+    [ "$ap" = "$APPROVALS" ] && { self_approved=1; break; }
+  done < <(all_paths)
 
   demand() {  # demand <protected-path> <what happened>
     if [ "$self_approved" = 1 ]; then
@@ -496,7 +557,7 @@ check_suppression() {
   local p base out
   while IFS="$US" read -r p base; do
     [ -n "${p:-}" ] || continue
-    printf '%s' "$p" | grep -qE "$CODE_RE" || continue
+    is_code "$p" || continue
     is_exempt "$p" && continue
     [ -n "${base:-}" ] && is_exempt "$base" && continue
     [ -e "$p" ] || continue
@@ -538,11 +599,22 @@ EOF
 # deleted from steps/ silently kills every scenario that used it, so the step library is
 # classified as a test file in its own right.
 # =============================================================================================
+# NOTE ON "${1##*/}" RATHER THAN "$(basename -- "$1")". These two classifiers are semantically
+# identical either way -- ${1##*/} strips everything through the last '/', which is what basename
+# does for the relative, slash-separated, non-trailing-slash paths `git ls-files` emits -- but
+# basename is an EXTERNAL COMMAND in a COMMAND SUBSTITUTION, i.e. a fork per call. check_tests()
+# calls is_test_path() once for every tracked file to compute its anti-vacuity count, so on this
+# repo's 1,999 tracked files that was 1,999 forks, and on Windows/MSYS2 a fork costs ~45 ms of
+# kernel time rather than the ~1 ms it costs on Linux. MEASURED in this worktree: the classifier
+# loop alone took 126 s with basename and 1 s with ${1##*/}, selecting the IDENTICAL set of 271
+# files both ways (verified by diffing the two outputs). That single substitution is what takes
+# `bash tools/guardrails.sh` from ~86-137 s to ~4 s -- see the cost note in tools/tier-b.sh.
+# This is a pure speedup: no path is exempted, no scan is narrowed, and nothing is scoped down.
 is_test_path() {   # is_test_path <path> : part of the test corpus
   case "$1" in
     tests/*|*/tests/*) return 0 ;;
   esac
-  case "$(basename -- "$1")" in
+  case "${1##*/}" in
     test_*.py|*_test.py|test_*.c|test_*.m|*.feature|conftest.py) return 0 ;;
   esac
   return 1
@@ -552,7 +624,7 @@ is_collectable_test() {  # is_collectable_test <path> : a runner will actually e
   case "$1" in
     */steps/*.py|steps/*.py) return 0 ;;   # pytest-bdd step library (ADR-0018 §5)
   esac
-  case "$(basename -- "$1")" in
+  case "${1##*/}" in
     test_*.py|*_test.py|*.feature|conftest.py|test_*.c|test_*.m|test_*.mm|test_*.cpp) return 0 ;;
   esac
   return 1
@@ -858,7 +930,7 @@ check_denylist() {
   local p base now before
   while IFS="$US" read -r p base; do
     [ -n "${p:-}" ] || continue
-    printf '%s' "$p" | grep -qE "$CODE_RE" || continue
+    is_code "$p" || continue
     is_exempt "$p" && continue
     [ -n "${base:-}" ] && is_exempt "$base" && continue
     [ -e "$p" ] || continue

@@ -134,6 +134,14 @@ more beads in flight is fine, more children than P is not.
 5. **Delegate the reviewers, one call, one task per committed bead**, each built from
    `references/reviewer-prompt.md`: the worktree path, `git diff main...bead/<id>`, the bead's
    sizing checks and prohibitions. Require `output_schema` `{verdict: approve|request_changes, findings[]}`.
+   - **Sizing for golden-scenario beads is read as AUTHORED FILES, not authored lines.** The
+     story's `writes<=400 / <=8 files` budget is calibrated for code-porting beads. A golden
+     scenario must carry a harness, an evidence checker, a knob gate and a falsifiability suite,
+     which lands at ~2300–2700 authored lines in every instance accepted so far (oo-hv4d 2282,
+     oo-wseo 2725, oo-ghhw 2519). Count blessed run artifacts (`state.json`, `frame.grid`,
+     `frame.png`, `provenance.json`) as DATA, hold the bead to `<=8` authored files, and record the
+     line count as advisory. Three reviewers in one session raised this independently and all three
+     declined to block on it — do not make each new bead re-litigate it.
    *Done when: every bead has a verdict.*
    - For every verdict: `bd update <id> --append-notes "review: <verdict>; <findings, one per line>"`.
    - `request_changes` → delegate the worker again with the findings appended as context, then
@@ -274,6 +282,44 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   Log the count beside every result: `rc=1 wall=117s oolite_procs=4` diagnoses itself; a bare rc=1
   gets mistaken for a broken gate and, at five repeats, escalates healthy work. A long wall time is
   the tell — the harness is burning its retry budget against a port that will never answer.
+- **Replay a stored acceptance block the way `accept.sh` does, or you will silently skip a line.**
+  `while IFS= read -r l; ...; done < file` DROPS the final line when the file has no trailing
+  newline (measured: `printf 'a\nb\nc' > f` reads **2 of 3**). `accept.sh` is immune because it uses
+  a here-string — `done <<<"$acceptance"` — and bash always terminates a here-string (3 of 3). A
+  reviewer hit this on oo-zyj1, reported `RAN=6` against 7 stored lines, and nearly filed it as a
+  bead defect; the dropped line was the LIVE RED PROOF, the one whose absence most weakens a
+  review. Always assert lines-run == lines-stored taken from `bd show --json`, never from your own
+  temp file — a count from the file that lost the line cannot detect the loss. A worker that
+  validated its own acceptance this way may have left its last line untested while honestly
+  reporting success.
+- **Keep the root checkout clean, or an accept will pass its gates and still fail to land.**
+  `accept.sh` runs acceptance on a scratch tree, then fast-forwards the base branch *in the repo
+  root*; a dirty root makes that last step fail with `acceptance passed but fast-forwarding main
+  ... failed (dirty checkout?)`, leaving a valid merge commit orphaned and the bead open. The mess
+  is usually the fleet's own housekeeping — bd DB writes to `.beads/*.jsonl`, `docs/fleet/
+  LEARNINGS.md`, stale `.fleet-progress.*` files, untracked `.ctx/`. Commit or ignore it before the
+  accept batch, and re-run `accept.sh` afterwards: the work is not lost, the merge commit is intact
+  and the retry fast-forwards onto it.
+- **Two different live-launch failures look alike; only one is an orphan.** `rc=3
+  ConnectionResetError [WinError 10054]` arrives FAST (6–10s) with `oolite_procs == 0` — a reset
+  mid-handshake, measured at 3 of 5 attempts in one window and then 12 clean passes, clustering
+  within ~3s of a taskkill sweep (teardown racing the console port). The harness does not cover it:
+  `start_with_retry` handles a process that dies before `main()`, `WorldNotProbeable` one that never
+  answers, a reset is neither. It blocked a real accept (oo-rkm, already approved, both landing arms
+  7/7 green). Wrap the accept batch in a retry loop that INSPECTS the output: on
+  `ConnectionResetError`/`rc=3`/`TimeoutExpired`, clear orphans, wait ~20s for the port to settle,
+  retry up to 3 times; on ANY other failure stop at once — a real gate failure must never be
+  retried into a false green. Never taskkill and immediately relaunch.
+- **A stored acceptance line must be proven to FAIL, not just to pass.** A worker built a regex
+  acceptance line in python3 (`frame_hash\.GRID_SIZE`) and stored it via `bd update --acceptance`;
+  the round trip through bd/JSON doubled the backslash to `frame_hash\\.GRID_SIZE`, which `git grep`
+  reads as literal-backslash-then-any-char and matches nothing — on ANY tree, fixed or not. Every
+  replay on the fixed tree looked green. Only a reviewer running the stored line verbatim on the
+  UNFIXED tree caught it: rc=0, "PASS: no reference remains," while the bug was still there. Rule:
+  whenever a stored line embeds a backslash, after reading it back with `bd show --json`, run it on
+  a tree where the defect is KNOWN to still be present (pre-fix main, or a throwaway copy with the
+  bug reintroduced) and confirm it fails there. Green-only replay cannot detect a gate that can
+  never turn red.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
   `gc.sh --check` finds a closed bead with an unmerged branch or a dirty worktree.

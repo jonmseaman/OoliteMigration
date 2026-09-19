@@ -1,0 +1,201 @@
+{
+  "artifacts": {
+    "frame.grid": {
+      "bytes": 4096,
+      "note": "recorded for provenance/auditing ONLY. This digest is NEVER a gate predicate: llvmpipe is not bit-reproducible and this scenario's own sweep produced 10 DISTINCT grid digests over 10 BYTE-IDENTICAL dumps. Byte-hashing the frame would make the gate flake on renderer noise. The dump is hashed byte-wise because it is quantised and deterministic; the frame is compared with a measured tolerance. The asymmetry is deliberate.",
+      "sha256": "90823198777070ddbb1976a2aa9c582509bf1ec13267f7d243514cb3727c6581"
+    },
+    "state.json": {
+      "bytes": 2893,
+      "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b"
+    }
+  },
+  "blessed_from_commit": "3cda8165f17a139e67ed2c907fcb86f9828a6ff0",
+  "blessed_utc": "2026-09-18T19:25:12Z",
+  "determinism_findings": {
+    "fourth_traffic_source": "THE FINDING THIS SCENARIO PAID FOR. The first 10-run sweep gave FOUR distinct dump digests: 5 runs dumped a two-entity world, 3 dumped a three-entity world carrying {id: Mining Transporter, role: miner}, and 2 REFUSED with 'Cobra Mark I=254.8750' still under thrust. The cause is NOT engine nondeterminism: this save's system contains a ROCK HERMIT, whose rockHermitAI.plist CHECK_FOR_ROCKS state calls launchMiner on a 20 s pauseAI cycle (StationEntity.m:1736-1776). NONE of scenario 015's three suppressions touch it - hasNPCTraffic gates the ordinary trader schedule, not a station's own AI - because 015's save is docked at Lave's main station and never meets a hermit. Fix: suppress_station_ai() writes oolite-nullAI.js to every station and VERIFIES the read-back (the engine reports the RESOLVED name 'nullAI.plist', so both names are pinned and a silently-ignored setAI cannot pass).",
+    "probe_ordering": "A SECOND, INDEPENDENT CAUSE, AND THE SAME SHAPE SCENARIO 010 MEASURED. Even with the AI silenced a sweep still gave four digests, because the census and mission-variable probes - about fourteen console round trips, several seconds - ran BEFORE the suppressions. Whatever runs before the suppression is a window the station launches into. Moving every probe AFTER the four suppressions took the sweep to 10/10 byte-identical; a 30 s watch with repeated clearing then saw no miner at all.",
+    "reading": "Both were design defects in THIS HARNESS, not flakiness in the engine, and both were found by reading the dumps that differed rather than by widening a tolerance or a round count. A 2-in-10 or 4-in-10 disagreement in a NEW gate is almost always an observable the scenario does not control yet (beads oo-rkm, oo-qwk5)."
+  },
+  "dump_tool": "tests/golden/nova_load.py",
+  "evidence_checker": "tests/golden/check_nova_evidence.py",
+  "frame_liveness": {
+    "asserted": true,
+    "floor": 0.02,
+    "margin": {
+      "blessed_frame_vs_black": 0.051882,
+      "max_same_scene_noise": 0.001628,
+      "reading": "the floor sits 12.3x above the largest same-scene noise and at 0.39x of the dimmest real frame measured, so no same-scene variation can push a real frame under it and an empty render cannot climb over it."
+    },
+    "metric": "frame_hash.distance(grid, all-black 4096-byte grid)",
+    "what_it_proves": "that something was RENDERED. A run that died before drawing, or drew into a lost context, yields an all-black grid at distance 0."
+  },
+  "frame_tolerance": {
+    "asserted": true,
+    "discrimination_limit": {
+      "miner_present_vs_blessed": {
+        "max": 0.001572,
+        "max_x_tol": 0.359,
+        "min": 0.001354
+      },
+      "reading": "STATED RATHER THAN IMPLIED. The frame assertion does NOT discriminate every world difference: frames from the pre-fix sweep that carried an extra Mining Transporter entity sit at 0.31x..0.36x tolerance, INSIDE the same-scene band, because that ship is far off camera. So the frame proves the RENDER is the blessed render; the DUMP, not the frame, carries this scenario's world-state claim. Bead oo-gxp's scenario 010 reached a 261-fold separation for a change that was ON SCREEN; a change off screen has none, and implying otherwise would be the vacuous half of a two-artifact gate."
+    },
+    "measurements": {
+      "all_black_vs_blessed_scene": {
+        "max": 0.051975,
+        "min": 0.051882,
+        "min_x_tol": 11.85
+      },
+      "all_white_vs_blessed_scene": {
+        "min": 0.948025,
+        "min_x_tol": 216.58
+      },
+      "same_scene_45_pairs_over_10_runs": {
+        "max": 0.001628,
+        "max_x_tol": 0.372,
+        "min": 0.001374,
+        "min_x_tol": 0.314
+      }
+    },
+    "tolerance": 0.004377268476873758,
+    "tolerance_source": "tests/golden/frame_hash.py derive_tolerance() over tests/golden/calibration.json (bead oo-ae9). USED AS MEASURED, never adjusted to make a run pass.",
+    "why_asserted": "MEASURED AND ACCEPTED, unlike scenario 015. All 45 same-scene pairs across the 10-run sweep sit at 0.31x..0.37x the measured tolerance - a 2.7x margin - because this scene carries no animated HUD population (scenario 015's live trumbles WERE the picture, giving it 1.08x..2.49x and forcing asserted=false with a reason). A black render is 11.85x the tolerance away and a white one 216x, so the assertion has teeth against a dead or broken render."
+  },
+  "landing_rehearsal": {
+    "note": "Both the gate and the offline tests search goldens/windows-x64/014-nova/ FIRST and fall back to tests/golden/pending/014-nova/, through the identical idiom, so landing is a pure `git mv` with no code change. The procedure in LANDING.md was REHEARSED on a scratch copy of the tree with every verification command re-run there.",
+    "performed": true
+  },
+  "os": "Windows-11-10.0.26200-SP0",
+  "platform": "windows-x64",
+  "quant_decimals": 3,
+  "scenario": "014-nova",
+  "scenario_knobs": {
+    "expected_legacy_upgrades": [
+      "Compensated legacy energy bomb with 900 credits."
+    ],
+    "expected_mission_novacount_value": "3",
+    "expected_written_by_version": "",
+    "galaxy_number": 3,
+    "load_save": "upstream/oolite-tests/Checklist-files/Missions/Nova.oolite-save",
+    "mission_nova_key": "nova",
+    "mission_novacount_key": "novacount",
+    "quant_decimals": 3,
+    "save_format_keys_absent": [
+      "current_system_name",
+      "entity_personality",
+      "fuel_charge_rate",
+      "ship_name",
+      "written_by_version"
+    ],
+    "save_format_keys_present": [
+      "has_energy_bomb",
+      "ootunes_on",
+      "reducedDetail",
+      "saved"
+    ],
+    "seed": 20260918,
+    "station_ai": "oolite-nullAI.js",
+    "station_ai_reported": "nullAI.plist",
+    "tick_seconds": 0.125,
+    "ticks": 24
+  },
+  "stability": {
+    "distinct_dump_digests": [
+      "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b"
+    ],
+    "distinct_frame_grid_digests": 10,
+    "dump_bytes": [
+      2893
+    ],
+    "dumps_written": 10,
+    "errored": 0,
+    "note": "10 of 10 runs wrote a BYTE-IDENTICAL dump (2893 bytes, one digest), 0 refused, 0 errored - dumped + refused + errored == runs, so every run is accounted for. TWO EARLIER SWEEPS WERE NOT STABLE and the reason is recorded under determinism_findings below, because the fix was a real finding about this system, not a retune.",
+    "per_run": [
+      {
+        "bytes": 2893,
+        "frame_sha256": "fa24296755b63a961ed8d785883867fa31e2014cbd3a7a2234ceedc985e28bac",
+        "run": 1,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 12.0
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "ec2c66b1f0ffa2af7126815b77d92395b21aa00d1c262d026ec74e33bf068f82",
+        "run": 2,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 12.1
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "167ab0b6c41dd95267746a8829c6cdccb6488ee26d5b9fec148d489250f6ce4f",
+        "run": 3,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 13.0
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "64e8d68fbe43188cbbdafee113b67f1ad1cd915f410ff949227364fad51c944a",
+        "run": 4,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 12.1
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "a0cb3a82f23b6055e0184509c7c20deb171228132346c062fad5b162bcf442fa",
+        "run": 5,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 12.6
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "51db2f278e9c2631fd9fec079b0456c4faa23cd43c8dee9c5ed6a173e7cc2e9f",
+        "run": 6,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 14.1
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "adaa55cceb85dca85fb562736d679104cb2d1b5e16692ab7b0cea377b43c7f5e",
+        "run": 7,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 17.9
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "28264542a96b8fba2941a2fcc87ad8e7456a7e57440cfda221e0aaa744643109",
+        "run": 8,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 12.5
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "f83e813034b0354097f59d6253172b62e10dad70ceb1f9ef9389b14556762bfb",
+        "run": 9,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 12.7
+      },
+      {
+        "bytes": 2893,
+        "frame_sha256": "1610c123dbcfafe13a4e9a7820a8a45eb059b7cc4feb6d7cd8b56398ef5846a2",
+        "run": 10,
+        "sha256": "d657be6191d95aecd5a9740c29efabf83336f0559563dbdcdcf235d63e59444b",
+        "verdict": "DUMPED",
+        "wall_seconds": 12.3
+      }
+    ],
+    "refused": 0,
+    "runs": 10,
+    "stable": true,
+    "wall_seconds_max": 17.9,
+    "wall_seconds_min": 12.0
+  }
+}

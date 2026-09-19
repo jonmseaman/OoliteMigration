@@ -1,0 +1,34 @@
+# Stored acceptance for bead oo-1bf.7 (golden scenario 020, hud-render-modes).
+#
+# This file is a COPY for readers. The authoritative text is the bead's stored acceptance field
+# (`bd show oo-1bf.7 --json`), which is what accept.sh runs. Each line exits 0 on success, from
+# the repo root, and resolves every artifact from the guarded goldens/ location FIRST, then
+# tests/golden/scenarios/, then the staged tests/golden/pending/ location - so the block is
+# IDENTICAL before and after Jon lands it. All three positions were rehearsed.
+#
+# EVERY LINE IS OFFLINE. None launches the game, deliberately: a launching acceptance line goes
+# red from a sibling worker's orphan holding console port 8563, which is not a finding about this
+# scenario. Scenario 018 set that precedent and this follows it. The LIVE evidence is in
+# provenance.json (a 10-run sweep, 10 dumped / 0 refused, plus this scenario's own 12-capture
+# calibration) and is witnessed by line 3's digest check.
+#
+# Line 3 CARRIES THE NON-VACUITY ARMS, and it does not need the game either.
+# tests/golden/test_hud_render_modes.py feeds the evidence checker dumps carrying the exact
+# defects this scenario exists to detect - above all the central one, all three HUD modes
+# rendering the same picture - and requires rc=1 for each. It goes further with FIVE
+# CHECKER-WEAKENING mutants: each neuters exactly one clause in a throwaway copy of the checker
+# and requires the defect that clause guards to become ACCEPTED, which is what proves the clause
+# is load-bearing rather than redundant (bead oo-xy0o measured that hole on a checker that had
+# already landed). Without those arms, lines 1, 2 and 4 are green-only replay and could not
+# distinguish a working gate from one that can never turn red.
+#
+# The LIVE non-vacuity counterpart - `hud_render_modes.py --freeze-hud`, which captures every mode
+# WITHOUT ever writing the HUD - was run by hand and exits 1 writing NO dump:
+#   SCENARIO FAILED: the modes read back {'hud': 'hud.plist', 'hud-small': 'hud.plist',
+#   'hidden': 'hud.plist'}, which is not the set of plists the spec declares
+# It is NOT stored here only because it launches the game.
+
+python3 tests/golden/gate_020_spec.py
+python3 tests/golden/check_hud_render_evidence.py "$(ls goldens/windows-x64/020-hud-render-modes/state.json tests/golden/scenarios/020-hud-render-modes/state.json tests/golden/pending/020-hud-render-modes/state.json 2>/dev/null | head -1)"
+python3 -m pytest tests/golden/test_hud_render_modes.py -q
+python3 -c "import hashlib,json,os,sys; D=[p for p in ('goldens/windows-x64/020-hud-render-modes','tests/golden/scenarios/020-hud-render-modes','tests/golden/pending/020-hud-render-modes') if os.path.isfile(os.path.join(p,'provenance.json'))]; sys.exit('FAIL: no provenance.json in any known location') if not D else None; d=D[0]; pr=json.load(open(os.path.join(d,'provenance.json'),encoding='utf-8')); bad=[n for n,m in pr['artifacts'].items() if not os.path.isfile(os.path.join(d,n)) or hashlib.sha256(open(os.path.join(d,n),'rb').read()).hexdigest()!=m['sha256']]; sys.exit('FAIL: provenance digests disagree with the artifacts: %r'%bad) if bad else None; c=pr['calibration']; f=max(c['within_mode_distances']); s=min(c['between_mode_distances']); sys.exit('FAIL: calibration populations overlap') if f>=s else None; sys.exit('FAIL: stored tolerance was not derived from the stored populations') if abs((f*s)**0.5-c['tolerance'])>1e-12 else None; sys.exit('FAIL: the tolerance is the shared 3-D constant, which this scenario had to measure for itself') if abs(c['tolerance']-0.004377268476873758)<1e-12 else None; st=pr['stability']; sys.exit('FAIL: sweep unaccounted for') if st['dumps_written']+st['refused']!=st['runs'] or st['runs']<10 or st['errored'] else None; print('provenance witnesses %d artifact(s) in %s; OWN calibration %d captures, within<=%.6f vs between>=%.6f (%.2fx), tolerance %.9f re-derived; stability %d runs %d dumped %d refused, weakest %.2fx'%(len(pr['artifacts']),d,c['captures_total'],f,s,s/f,c['tolerance'],st['runs'],st['dumps_written'],st['refused'],st['separation_per_run']['separation_ratio_min']))"

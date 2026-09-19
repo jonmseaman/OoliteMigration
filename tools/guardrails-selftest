@@ -229,15 +229,33 @@ fixture goldens_neg || exit 1
 git mv upstream/oolite/src/Core/OOColor.m upstream/oolite/src/Core/OOColour.m
 expect_pass "ordinary rename outside protected paths passes"
 
+# The exemption these two cases exercise no longer exists in the real guard (goldens/ is
+# populated, so the line was deleted as stale). They must therefore INJECT their own pending
+# exemption into the copied guard rather than depend on the shipped list still carrying one -
+# otherwise the cases silently stop testing the pending mechanism the day it is emptied.
+inject_pending() {  # inject_pending <prefix> ; edits ./tools/guardrails.sh in the fixture
+  python3 - "$1" <<'PY'
+import re, sys
+p = sys.argv[1]
+f = 'tools/guardrails.sh'
+s = open(f, encoding='utf-8').read()
+new = 'PROTECTED_PREFIXES_PENDING="\n%s|selftest fixture: exercising the pending-exemption path\n"' % p
+s2, n = re.subn(r'PROTECTED_PREFIXES_PENDING="\n(.*?)"', new.replace('\\', '\\\\'), s, count=1, flags=re.S)
+assert n == 1, 'PROTECTED_PREFIXES_PENDING not found in guard - selftest fixture cannot inject'
+open(f, 'w', encoding='utf-8', newline='\n').write(s2)
+PY
+}
+
 echo
 echo "=== 1k. FINDING 7: anti-vacuity is PER-PREFIX, not any-of ==="
 # Was: seen=1 if ANY prefix was tracked, so with goldens/ empty in the real tree (0 files) and
 # tests/golden/scenarios/ holding 1, the goldens/ half was ALREADY VACUOUS and the assertion
 # passed regardless. Now each prefix must exist or be explicitly, documentedly exempt.
 fixture vac_one_prefix || exit 1
-cp "$GUARD" tools/guardrails.sh          # the PRISTINE guard, exemption line intact
+cp "$GUARD" tools/guardrails.sh          # the real guard...
+inject_pending 'goldens/'                # ...plus a fixture exemption for goldens/
 git rm -q -r goldens >/dev/null
-git_c commit -qam "pristine guard, no goldens" >/dev/null
+git_c commit -qam "guard with fixture exemption, no goldens" >/dev/null
 printf '// unrelated\n' >> upstream/oolite/src/Core/OOColor.m
 expect_pass "the documented-pending prefix may be empty"
 
@@ -250,8 +268,9 @@ echo "=== 1k2. ...and a PENDING exemption that has gone stale is called out ==="
 # The exemption is a dated promise, not a permanent hole: once the prefix is populated the line
 # must go, and the guard says so rather than quietly carrying a lie.
 fixture vac_stale_exempt || exit 1
-cp "$GUARD" tools/guardrails.sh          # pristine: goldens/ exempted, but goldens/ IS populated
-git_c commit -qam "pristine guard" >/dev/null
+cp "$GUARD" tools/guardrails.sh          # real guard + fixture exemption, but goldens/ IS populated
+inject_pending 'goldens/'
+git_c commit -qam "guard with fixture exemption" >/dev/null
 printf '// unrelated\n' >> upstream/oolite/src/Core/OOColor.m
 run_guard
 printf '  rc=%s\n' "$RC"
