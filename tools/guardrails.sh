@@ -280,6 +280,7 @@ tools/guardrails.sh|the guard itself: this header quotes every construct it forb
 tools/guardrails-selftest|constructs the violations that prove the guard fires
 tools/deny-list.txt|is the pattern list; every line is a deny-list hit by definition
 tools/gen-stories.py|emits the verbatim prohibition block into every generated story
+tools/tier-b-guardrails-proof.sh|plants the deny-listed symbol that proves tier-b's stage 0 fires
 "
 
 fail=0
