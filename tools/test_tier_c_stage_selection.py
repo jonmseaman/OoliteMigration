@@ -181,11 +181,20 @@ def test_an_empty_selection_is_fatal_not_an_empty_green() -> None:
 
 def test_every_declared_stage_is_covered_here() -> None:
     """This file's STAGES list must equal tier-c.sh's table, or the parametrised tests above
-    silently stop covering a stage that was added (or keep testing one that was deleted)."""
+    silently stop covering a stage that was added (or keep testing one that was deleted).
+
+    BOTH row separators are parsed, physical AND escaped. tier-c.sh renders the table with
+    `printf '%b'` (tier-c.sh:175), which expands a literal two-character `\\n` escape, so a row
+    appended in ESCAPE form is a REAL runtime stage. Splitting only on physical newlines let the
+    tie drift silently: an 8th stage added as `...deselects\\nbogus8\\t1\\t...` turns the
+    behavioural tests above red while this tie test stays green, which is the wrong way round --
+    the tie test exists to say WHY they went red.
+    """
     text = TIER_C.read_text(encoding="utf-8")
     m = re.search(r'^STAGES="(.*?)"\s*$', text, re.M | re.S)
     assert m, "cannot find the STAGES table in tier-c.sh"
-    declared = [ln.split("\\t")[0].strip() for ln in m.group(1).split("\n") if ln.strip()]
+    rows = re.split(r"\n|\\n", m.group(1))
+    declared = [ln.split("\\t")[0].strip() for ln in rows if ln.strip()]
     assert declared == STAGES, (
         f"tier-c.sh declares {declared} but this test file covers {STAGES}")
 
@@ -195,12 +204,33 @@ def test_the_selection_path_contains_no_grep_pipeline() -> None:
 
     A `producer | grep -q` under pipefail is the shape that caused this (fleet learning oo-j4u).
     Patching around it with `|| true` would also swallow real failures, so the selection code
-    must contain NO pipeline at all -- the stage names live in an array and lookups loop over it.
+    must contain NO `| grep` at all -- the stage names live in an array and lookups loop over it.
+
+    THE REGION STARTS AT all_stage_names, NOT at STAGE_NAMES=(). The producer whose pipeline
+    caused this defect IS all_stage_names (tier-c.sh:175, `printf '%b\\n' "$STAGES" | while
+    read ...`), and it sits ~20 lines ABOVE the array build. A region that began at
+    STAGE_NAMES=() excluded the exact code the test claims to guard, so the original
+    `all_stage_names | grep -qx "$want"` could be written back one line higher and stay green.
+
+    WHAT THIS TEST DOES NOT CATCH, stated plainly. It is a TEXT PROXY, not a semantic one: it
+    cannot tell a SAFE `| grep` from an unsafe one. `printf '%s\\n' "$x" | grep -qE ...` with a
+    tiny producer (tier-c.sh:545) is safe because the producer finishes inside the 64 KB pipe
+    buffer, and ANY pipeline inside a `$(...)` command substitution is safe because the
+    substitution completes before its consumer can exit. Those live outside this region and are
+    deliberately not asserted about. Within the region the rule is a blanket ban, which is
+    honest only because nothing here legitimately needs to pipe into grep -- the two `printf |
+    while` / `printf | awk` pipelines that DO live here (all_stage_names itself, and --list) are
+    untouched by the rule. The behavioural tests above, which run the real script, are what
+    actually prove the selection works; this one only pins the shape.
     """
     text = TIER_C.read_text(encoding="utf-8")
-    start = text.index("STAGE_NAMES=()")
+    start = text.index("all_stage_names() {")
     end = text.index("if [ \"$DRY\" = 1 ]", start)
     region = text[start:end]
+    # Guard the guard: if the region ever stops covering both the producer and the array build,
+    # this test is checking less than its docstring claims.
+    assert "printf '%b\\n' \"$STAGES\"" in region, "the region no longer covers the producer"
+    assert "STAGE_NAMES=()" in region, "the region no longer covers the stage-name array"
     code = [ln for ln in region.split("\n")
             if ln.strip() and not ln.lstrip().startswith("#")]
     offenders = [ln for ln in code if re.search(r"\|\s*grep\b", ln)]
@@ -208,6 +238,10 @@ def test_the_selection_path_contains_no_grep_pipeline() -> None:
         "the --only/--skip selection path pipes into grep again; under `set -o pipefail` a "
         f"`grep -q` that exits early SIGPIPEs its producer and rc=141 reads as no-match: "
         f"{offenders}")
-    assert "|| true" not in region, (
+    # `|| true` is checked against comment-stripped CODE, not the raw region: the region now
+    # covers the comment block at tier-c.sh:180-194, which *discusses* `|| true` as the wrong
+    # fix. Matching prose would fail on a comment that argues for the right thing.
+    masked = [ln for ln in code if "|| true" in ln]
+    assert not masked, (
         "a `|| true` in the selection path would hide real failures as well as the SIGPIPE; "
-        "the fix must be structural (no pipeline), not a masked exit status")
+        f"the fix must be structural (no pipeline), not a masked exit status: {masked}")
