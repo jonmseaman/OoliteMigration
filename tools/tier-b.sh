@@ -20,7 +20,17 @@
 #   5 smoke       ~14 s      upstream/oolite/tests/launch_snapshot.py
 #   6 corpus      ~53 s      tools/corpus.sh tier1 --limit N  (N=3 by default)
 #
-#   TOTAL ~180 s warm, ~310 s cold.  Budget: 600 s (the bead's "under 10 minutes").
+#   TOTAL ~180 s warm, ~310 s cold.  Budget: 1200 s.
+#
+# BUDGET HISTORY. The original figure was 600 s ("the bead's \"under 10 minutes\""), sized off the
+# per-stage estimates above without ever timing stage 4 end to end. Two separate js-retarget beads
+# (oo-45g attempt 5, escalated) measured stage_component alone -- the full 8-scenario
+# upstream/oolite/tests/component suite, one native game launch per scenario -- at 769-957 s wall,
+# which alone exceeds 600 s even when every stage passes (bead oo-a6du). There is no pytest "fast"
+# marker in tests/component to subset by (seam 0.9b assumed one would exist; it never landed), and
+# ADR-0018 sizes this tier at Tier B in full, not a subset, so shrinking what --fast runs here would
+# be a scope change to the ADR, not a budget fix. 1200 s is the measured range (769-957 s) plus the
+# other six stages (~120-310 s) plus headroom for sibling-agent contention on the fleet box.
 #
 # STAGE 0's NUMBER IS MEASURED IN THIS REPO, NOT IN A TOY ONE. It is quoted as a RANGE because
 # three timed runs of `bash tools/guardrails.sh` in this worktree gave 9.42 s, 10.04 s and
@@ -129,7 +139,7 @@ REPO_ROOT="$(cd "$HERE/.." && pwd)"
 OOLITE="$REPO_ROOT/upstream/oolite"
 PLATFORM="${OOLITE_TIER_B_PLATFORM:-windows-x64}"
 BUILD_FLAVOUR="${OOLITE_TIER_B_FLAVOUR:-test}"
-BUDGET_SECONDS="${OOLITE_TIER_B_BUDGET:-600}"
+BUDGET_SECONDS="${OOLITE_TIER_B_BUDGET:-1200}"
 CORPUS_GROUPS="${OOLITE_TIER_B_CORPUS_GROUPS:-3}"
 
 native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
