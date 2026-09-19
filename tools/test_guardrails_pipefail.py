@@ -142,10 +142,13 @@ KNOWN_SITES = {
     "tools/oo-jou1-gate.sh": 1,
     # printf of a single short URL string.
     "tools/merge-queue.sh": 2,
-    # :201 is bead oo-3uf8's --only/--skip validator (the one instance in this class PROVEN to
-    # break in production) and :503 pipes nm output, which is genuinely unbounded. Both are
-    # oo-3uf8's diff, not oo-mxgy's; this entry exists so the count cannot grow meanwhile.
-    "tools/tier-c.sh": 2,
+    # Was 2. Bead oo-3uf8 LANDED on main as 7a80d9a and removed its --only/--skip validator
+    # (`all_stage_names | grep -qx`) -- the one instance in this class PROVEN to break in
+    # production. Do not go looking for it; it no longer exists. The single survivor is
+    # :545, `printf '%s\n' "$symtest" | grep -qE ...`: a printf of one short variable
+    # completes before grep can exit, so the producer is never mid-write and no 141 is
+    # possible. This entry stays at 1 so the count cannot grow back unnoticed.
+    "tools/tier-c.sh": 1,
 }
 
 
