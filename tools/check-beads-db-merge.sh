@@ -141,5 +141,28 @@ done
 echo "  $n beads: export notes == bd show notes"
 
 step "4/4 export.auto is off and the export stays tracked"
-awk '/^export:/{f=1;next} f&&/^[^ ]/{f=0} f' .beads/config.yaml | grep -qE '^\s*auto:\s*false' || fail "export.auto is not false in .beads/config.yaml"
+# The `export:` block is read into a variable and matched by the shell rather than piped into
+# `grep -qE`. This file runs under `set -euo pipefail` (line 24), and `producer | grep -q` is
+# the trap bead oo-mxgy audited: grep -q exits on the first match, SIGPIPEs the awk still
+# writing, and pipefail turns a SUCCESSFUL match into exit 141. Measured here: the awk emits
+# only 35 bytes, so it always completes inside the 64 KB pipe buffer and the site could NOT be
+# made to fire (0 failures in 200 in-place runs). The shape is removed anyway - it fires the
+# day the config grows, the failure mode is silent, and `|| true` would swallow real errors.
+export_block="$(awk '/^export:/{f=1;next} f&&/^[^ ]/{f=0} f' .beads/config.yaml)"
+auto_off=0
+while IFS= read -r cfgline; do
+	cfgline="${cfgline%$'\r'}"
+	cfgline="${cfgline#"${cfgline%%[![:space:]]*}"}"   # strip leading whitespace
+	cfgline="${cfgline%"${cfgline##*[![:space:]]}"}"   # strip trailing whitespace
+	case "$cfgline" in
+	"auto:"*)
+		val="${cfgline#auto:}"
+		val="${val#"${val%%[![:space:]]*}"}"
+		[ "$val" = "false" ] && auto_off=1
+		;;
+	esac
+done <<EOF
+$export_block
+EOF
+[ "$auto_off" = 1 ] || fail "export.auto is not false in .beads/config.yaml"
 echo "PASS: export-only conflicts resolve to the base side (no loss, no duplicates), non-export conflicts are refused, a fresh export matches the DB, export.auto is off and the export is tracked"
