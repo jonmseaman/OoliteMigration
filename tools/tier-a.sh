@@ -311,6 +311,63 @@ deny_gate() {
   return 0
 }
 
+# --- the stale-build-dir detector (used before step 1), in the sourced surface ---------------
+#
+# WHY THIS EXISTS (bead oo-1bf.8, found by the Phase 0 review of oo-ss8). When meson.build (or
+# meson.options, a subdir meson.build, the native file) is newer than build.ninja, ninja does
+# not just compile: it first runs its REGENERATE_BUILD rule, i.e. `meson --internal regenerate`.
+# On this box that path DIES, and it dies looking like a compile error in the file under test.
+# tools/build-windows.sh:54-63 documents the trap for the SETUP path and it applies verbatim to
+# the REGENERATE path: upstream's ShellScripts/common/get_version.sh:7-27 refuses to run unless
+# it can identify meson as its parent, and under the regenerate rule the parent shows as
+# python.exe. Reproduced directly on this tree with meson.build touched:
+#
+#   [0/1] Regenerating build files
+#   ../../meson.build:5:13: ERROR: Command `... get_version.sh ...` failed with status 1.
+#   ninja: error: rebuilding 'build.ninja': subcommand failed
+#
+# which tier-a reported as `FAIL (compile) in 3s` on EVERY file for ~20 hours after oo-ss8.
+#
+# These two functions are defined HERE rather than beside their use site so the source-only
+# seam exposes them and tools/tier-a-stale-probe.sh can drive the REAL detector.
+
+# buildsystem_files <build-dir> -- every file whose change makes build.ninja stale, one per
+# line. Meson records the list itself in meson-info/intro-buildsystem_files.json, which is the
+# same set ninja names as inputs of its `build build.ninja: REGENERATE_BUILD ...` edge, so this
+# cannot drift from what actually triggers a regeneration. The hard-coded fallback is used only
+# when that file is absent (an old or partially-written build dir) and is deliberately WIDER
+# than necessary: over-reporting costs one reconfigure, under-reporting costs the 20-hour
+# outage this exists to prevent.
+buildsystem_files() {
+  local dir="$1" info
+  info="$dir/meson-info/intro-buildsystem_files.json"
+  if [ -f "$info" ]; then
+    # One JSON string per line, as meson writes it; entries are native forward-slash paths
+    # (C:/...), which bash's own file tests accept on MSYS.
+    sed -n 's/^[[:space:]]*"\(.*\)",\{0,1\}[[:space:]]*$/\1/p' "$info"
+    return 0
+  fi
+  printf '%s\n' "$OOLITE/meson.build" "$OOLITE/meson.options" "$NATIVE_FILE"
+  find "$OOLITE/src" -name meson.build 2>/dev/null || true
+}
+
+# stale_buildsystem_files <build-dir> -- print every build-system file NEWER than that dir's
+# build.ninja. Empty output means the build dir is current and ninja will not regenerate.
+# mtime-only: no subprocess per file, so the warm path pays nothing.
+stale_buildsystem_files() {
+  local dir="$1" f ninja
+  ninja="$dir/build.ninja"
+  # No build.ninja at all is NOT this check's business (the configure-once block above owns
+  # that case); reporting every build-system file as stale here would hide it.
+  [ -f "$ninja" ] || return 0
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    [ -e "$f" ] || continue
+    [ "$f" -nt "$ninja" ] || continue
+    printf '%s\n' "$f"
+  done < <(buildsystem_files "$dir")
+}
+
 # End of the sourced surface: a probe that sourced this file has what it came for. Keyed on
 # the seam, not on the bare variable, so an EXECUTED run with OOLITE_TIER_A_SOURCE_ONLY=1 in
 # its environment falls through here and runs the full three-step gate instead of exiting 0.
@@ -385,6 +442,60 @@ if [ ! -f "$BUILD_DIR/build.ninja" ]; then
     || die "meson setup failed; run tools/build-windows.sh to see the log"
   STARTED_AT=$SECONDS   # the budget is the steady-state loop, not first-run provisioning
 fi
+
+# --- A build directory OLDER than the build system that generated it ---------------------
+#
+# WHY THIS EXISTS (bead oo-1bf.8, found by the Phase 0 review of oo-ss8). When meson.build
+# (or meson.options, a subdir meson.build, the native file) is newer than build.ninja, ninja
+# will not just compile: it first runs its REGENERATE_BUILD rule, i.e. `meson --internal
+# regenerate`. On this box that path dies, and it dies in a way that looks like a compile
+# error in the file under test. tools/build-windows.sh:54-63 documents the trap for the SETUP
+# path and it applies verbatim here: upstream's ShellScripts/common/get_version.sh:7-27
+# refuses to run unless it can identify meson as its parent, and under the regenerate rule the
+# parent process is python.exe. After oo-ss8 touched upstream/oolite/meson.build this made
+# tier-a report `FAIL (compile)` on EVERY file for ~20 hours, until build-windows.sh was
+# re-run by hand.
+#
+# The remedy is build-windows.sh's remedy: do the configure THROUGH tools/build-windows.sh,
+# which supplies MINGW_PREFIX and the rest of the environment get_version.sh's guard needs,
+# before ninja is ever asked to regenerate. Upstream's get_version.sh is not edited
+# (ADR-0012/0017).
+#
+# The check is mtime-only and runs no subprocess on the warm path, so it costs nothing in the
+# steady state; the reconfigure itself is announced and off-budget, exactly like the
+# first-run configure above.
+
+# buildsystem_files / stale_buildsystem_files are defined with the deny-list gate above, in
+# this file's SOURCED surface, so tools/tier-a-stale-probe.sh exercises the real detector
+# rather than a paraphrase of it (the tools/tier-a-deny-probe.sh pattern).
+
+STALE_FILES="$(stale_buildsystem_files "$BUILD_DIR")"
+if [ -n "$STALE_FILES" ]; then
+  STALE_COUNT="$(printf '%s\n' "$STALE_FILES" | grep -c . || true)"
+  STALE_FIRST="$(printf '%s\n' "$STALE_FILES" | head -1)"
+  # meson records these paths in NATIVE form (C:/...), while $REPO_ROOT is this shell's MSYS
+  # form (/c/...), so strip both before reporting or the message carries an absolute path.
+  STALE_FIRST="${STALE_FIRST#"$REPO_ROOT"/}"
+  STALE_FIRST="${STALE_FIRST#"$(cygpath -m "$REPO_ROOT")"/}"
+  step "build.ninja is older than $STALE_COUNT build-system file(s) ($STALE_FIRST); reconfiguring through tools/build-windows.sh rather than letting ninja regenerate (off-budget)"
+  RECONFIG_LOG="$(mktemp)"
+  if ! "$REPO_ROOT/tools/build-windows.sh" "$BUILD_FLAVOUR" >"$RECONFIG_LOG" 2>&1; then
+    cat "$RECONFIG_LOG" >&2
+    rm -f "$RECONFIG_LOG"
+    die "tools/build-windows.sh $BUILD_FLAVOUR failed while reconfiguring the stale build directory (log above)"
+  fi
+  rm -f "$RECONFIG_LOG"
+  [ -f "$BUILD_DIR/build.ninja" ] \
+    || die "tools/build-windows.sh ran but there is still no $BUILD_DIR/build.ninja"
+  # Refuse to continue into ninja if the reconfigure did not actually refresh build.ninja:
+  # that is the exact state whose regeneration this section exists to avoid, and reporting a
+  # compile failure for it would blame the source file again.
+  STALE_FILES="$(stale_buildsystem_files "$BUILD_DIR")"
+  [ -z "$STALE_FILES" ] || die \
+    "build.ninja is still older than $(printf '%s\n' "$STALE_FILES" | head -1) after tools/build-windows.sh; refusing to let ninja run its regenerate rule"
+  STARTED_AT=$SECONDS   # the budget is the steady-state loop, not a reconfigure
+fi
+
 [ -f "$BUILD_DIR/compile_commands.json" ] || die "no compile_commands.json in $BUILD_DIR"
 
 # --- Read this file's compile command out of the compile database ------------------------
