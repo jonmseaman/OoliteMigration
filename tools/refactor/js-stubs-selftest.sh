@@ -35,7 +35,7 @@ fi
 OUT="$(bash "$SCRIPT_DIR/js-stubs.sh" "$WORKFILE" 2>&1)"
 echo "$OUT"
 
-echo "$OUT" | grep -q "stub_tokens=5 init_class=1 numeric_calls=11" || {
+[[ "$OUT" == *"stub_tokens=5 init_class=1 numeric_calls=11"* ]] || {
     echo "js-stubs-selftest: unexpected rewrite counts" >&2
     exit 1
 }
@@ -77,7 +77,7 @@ else
 fi
 STRLIT_OUT="$(bash "$SCRIPT_DIR/js-stubs.sh" "$STRLIT_WORKFILE" 2>&1)"
 echo "$STRLIT_OUT"
-echo "$STRLIT_OUT" | grep -q "stub_tokens=0 init_class=0 numeric_calls=0" || {
+[[ "$STRLIT_OUT" == *"stub_tokens=0 init_class=0 numeric_calls=0"* ]] || {
     echo "js-stubs-selftest: string-literal fixture was rewritten (should be untouched)" >&2
     exit 1
 }
@@ -106,7 +106,7 @@ else
 fi
 COMMENT_OUT="$(bash "$SCRIPT_DIR/js-stubs.sh" "$COMMENT_WORKFILE" 2>&1)"
 echo "$COMMENT_OUT"
-echo "$COMMENT_OUT" | grep -q "stub_tokens=0 init_class=0 numeric_calls=0" || {
+[[ "$COMMENT_OUT" == *"stub_tokens=0 init_class=0 numeric_calls=0"* ]] || {
     echo "js-stubs-selftest: comment-call fixture was rewritten (should be untouched)" >&2
     exit 1
 }
@@ -140,7 +140,7 @@ else
 fi
 INLINE_DECL_OUT="$(bash "$SCRIPT_DIR/js-stubs.sh" "$INLINE_DECL_WORKFILE" 2>&1)"
 echo "$INLINE_DECL_OUT"
-echo "$INLINE_DECL_OUT" | grep -q "stub_tokens=0 init_class=1 numeric_calls=0" || {
+[[ "$INLINE_DECL_OUT" == *"stub_tokens=0 init_class=1 numeric_calls=0"* ]] || {
     echo "js-stubs-selftest: unexpected rewrite counts for inline-decl fixture" >&2
     exit 1
 }
