@@ -9,6 +9,9 @@
 *.yml text eol=lf
 *.plist text eol=lf
 *.oolite-save text eol=lf
+# Line-oriented data read by shell tooling (read -r doesn't strip \r): must be LF even though
+# *.txt in general falls to core.eol (native = CRLF on Windows) via the `* text=auto` default.
+tools/deny-list.txt text eol=lf
 *.bat text eol=crlf
 *.cmd text eol=crlf
 *.ps1 text eol=crlf
