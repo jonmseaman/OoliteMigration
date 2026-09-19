@@ -353,6 +353,58 @@ EOF
 # baseline", i.e. back into the rename bug this file exists to fix.
 US=$'\037'
 
+# --- conversion-sweep D+A pairing (bead oo-4i1v) ------------------------------------------
+# The .m -> .mm/.cpp sweep sometimes rewrites enough of a file (e.g. a facade retarget) that
+# the result falls below git --find-renames' 50% similarity default: git then reports an
+# unmatched D (old .m) and an unmatched A (new .mm/.cpp) instead of an R, and the deny-list
+# check (see "WHAT TO DO WHEN THIS FIRES" above) sees a baseline of 0 for the new file, so
+# every deny-listed symbol that was already legitimately present (JS_*, reinterpret_cast,
+# etc.) reads as newly introduced. Raising --find-renames globally was considered and
+# rejected (comment above at "Raising git's rename detection"); instead, pair an unmatched D
+# with an unmatched A ONLY when the two paths are identical except for a known conversion-
+# sweep extension change (.m -> .mm, .m -> .cpp), and rewrite the pair as a synthetic rename
+# so norm_change() uses the D side as the baseline, exactly as it would for a real R. This is
+# not gameable into crediting an unrelated file: the match requires the full path (directory
+# and basename) to be identical apart from the extension, so nothing but the sweep's own
+# rename-with-rewrite shape can trigger it.
+CHANGE=$(printf '%s\n' "$CHANGE" | awk -F'\t' '
+  function stem(path,    n, i, c, slash, dot) {
+    n = length(path); slash = 0; dot = 0
+    for (i = n; i >= 1; i--) {
+      c = substr(path, i, 1)
+      if (c == "/") { slash = i; break }
+      if (c == "." && dot == 0) dot = i
+    }
+    if (dot == 0 || dot <= slash) return ""
+    return substr(path, 1, dot - 1) "\t" substr(path, dot + 1)
+  }
+  NF < 2 { next }
+  $1 == "D" {
+    dline[++nd] = $0; s = stem($2); split(s, p, "\t"); dstem[nd] = p[1]; dext[nd] = p[2]; next
+  }
+  $1 == "A" {
+    aline[++na] = $0; apath[na] = $2; s = stem($2); split(s, p, "\t"); astem[na] = p[1]; aext[na] = p[2]; next
+  }
+  { other[++no_] = $0 }
+  END {
+    for (i = 1; i <= nd; i++) {
+      if (dext[i] != "m") continue
+      for (j = 1; j <= na; j++) {
+        if (used[j]) continue
+        if (astem[j] == dstem[i] && (aext[j] == "mm" || aext[j] == "cpp")) {
+          split(dline[i], dp, "\t")
+          print "R100\t" dp[2] "\t" apath[j]
+          matched[i] = 1; used[j] = 1
+          break
+        }
+      }
+    }
+    for (i = 1; i <= nd; i++) if (!matched[i]) print dline[i]
+    for (j = 1; j <= na; j++) if (!used[j]) print aline[j]
+    for (k = 1; k <= no_; k++) print other[k]
+  }
+')
+
 norm_change() {  # <status><US><path-on-disk-or-empty><US><baseline-path-or-empty>
   printf '%s\n' "$CHANGE" | awk -F'\t' -v US="$US" '
     NF>=2 {
