@@ -301,6 +301,13 @@ tools/gen-stories.py|emits the verbatim prohibition block into every generated s
 upstream/oolite/src/Core/Scripting/ooscript/JSEngine_spidermonkey.cpp|the SpiderMonkey backend of the ooscript façade (ADR-0002 step 2, seam 1.1): the ONE translation unit whose job is to include jsapi.h; deleted at Phase 1 item 5. The façade header beside it is NOT exempt.
 tools/check-jsengine-facade.sh|the façade's acceptance: it greps the header for the engine names it must not contain
 tools/tier-b-guardrails-proof.sh|plants the deny-listed symbol that proves tier-b's stage 0 fires
+tools/refactor/js-stubs.sh|documents, in comments/usage text, the JS_* call-site patterns it mechanically rewrites onto the façade (bead oo-oio); it does not itself call any engine function
+tools/refactor/js_stubs.py|implements the mechanical JS_*-to-façade rewrite bead oo-oio describes; the JS_* names are pattern text (regex/docstrings), never engine calls made by this file
+tools/refactor/js-stubs-selftest.sh|acceptance test asserting js-stubs.sh removes JS_* call sites from its fixture; quotes the targeted names to check for their absence
+tools/refactor/testdata/OOJSVector.pre-retarget.m|frozen pre-retarget fixture (restored from git history) used only to prove js-stubs.sh's rewrite (bead oo-oio); never built, never linked
+tools/refactor/testdata/js-stubs-string-literal.m|regression fixture proving js-stubs.sh leaves JS_* tokens inside string literals untouched (bead oo-oio review round 2); never built, never linked
+tools/refactor/testdata/js-stubs-comment-call.m|regression fixture proving js-stubs.sh leaves JS_* call-shaped mentions inside comments untouched (bead oo-oio review round 2); never built, never linked
+tools/refactor/testdata/js-stubs-inline-decl-initclass.m|regression fixture proving js-stubs.sh's JS_InitClass rewrite handles the real inline-declaration form (a leading Type-pointer declaration before the assignment target) without corrupting the declaration (bead oo-oio review round 3); never built, never linked
 "
 
 fail=0
