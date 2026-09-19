@@ -1,0 +1,388 @@
+{
+  "ambient_traffic": {
+    "finding": "A FOURTH TRAFFIC SOURCE EXISTS IN THE ENGINE AND NO JS WRITE REACHES IT.",
+    "fix": "_capture_mode() now clears the system to a fixed point and re-applies the pose IMMEDIATELY BEFORE each shutter, and re-censuses AFTER it, refusing if the frame is not empty within EMPTY_FRAME_ATTEMPTS=6 rounds. The world is empty AT THE INSTANT OF THE SNAPSHOT rather than some seconds earlier - the same discipline the pose read-back already applies to the camera.",
+    "fourth_source": "StationEntity.m:991 gates the patrol launch on !((isMainStation && [self hasNPCTraffic]) || hasPatrolShips), so a station carrying hasPatrolShips launches patrols with hasNPCTraffic ALREADY OFF - unlike the trader and shuttle arms at lines 979 and 967, which that flag does stop. It is reachable from C only, so it cannot be suppressed the way the other three were; it can only be OUTLASTED.",
+    "measured_after_fix": "10 of 10 runs DUMPED, 0 refused, and every capture reached an empty frame on attempt 1 (empty_frame_attempts == [1, 1, 1] on all 10 runs). Refusal rate 0%.",
+    "measured_before_fix": "With one clear-and-settle up front, 2 of 10 stability runs REFUSED (20%): one found 1 ship at the last capture, one found 3 ships at the FIRST capture 1.5 game-seconds after a clear that had removed 4.",
+    "sources_suppressed_from_js": [
+      "per-station hasNPCTraffic (StationEntity.m:1269-1277)",
+      "worldScripts['oolite-populator'].systemWillRepopulate",
+      "the world emptied to a fixed point before the tick budget"
+    ],
+    "why_not_tolerated": "A ship in frame is a REAL difference between two captures of the SAME mode. Absorbing it would inflate the within-mode population and LOOSEN the very threshold this scenario exists to measure, destroying the separation that is the whole point. The check stays at EXACTLY ZERO ships and is asserted PER CAPTURE, because a run's final census cannot see traffic that was present for one capture and gone by the next."
+  },
+  "artifacts": {
+    "frame-hidden.grid": {
+      "bytes": 4096,
+      "note": "the 'hidden' mode's own 64x64 grid. These three are what make the separation claim RE-DERIVABLE FROM PIXELS rather than from the dump's own numbers - `hud_render_modes.py --check-stored-separation` recomputes every within/between distance from them offline, with no game. A doctored dump cannot satisfy them.",
+      "sha256": "1ecd53da21fd979ee6d315a1c3fb64f49ad2fe54ac5edc28dd33cc0076a5dcd5"
+    },
+    "frame-hud-small.grid": {
+      "bytes": 4096,
+      "note": "the 'hud-small' mode's own 64x64 grid. These three are what make the separation claim RE-DERIVABLE FROM PIXELS rather than from the dump's own numbers - `hud_render_modes.py --check-stored-separation` recomputes every within/between distance from them offline, with no game. A doctored dump cannot satisfy them.",
+      "sha256": "38032fbeedc055757d9f59fc246ec3c66db1aa1670a0b51ed3ebc299c2e14351"
+    },
+    "frame-hud.grid": {
+      "bytes": 4096,
+      "note": "the 'hud' mode's own 64x64 grid. These three are what make the separation claim RE-DERIVABLE FROM PIXELS rather than from the dump's own numbers - `hud_render_modes.py --check-stored-separation` recomputes every within/between distance from them offline, with no game. A doctored dump cannot satisfy them.",
+      "sha256": "f6ca368301caf6a18f5618d4411b3d88d53df95f881ea8185461b62ccc978651"
+    },
+    "frame.grid": {
+      "bytes": 4096,
+      "note": "the primary mode's 64x64 luminance grid, recorded for provenance/auditing ONLY. NEVER a gate predicate: llvmpipe is not bit-reproducible and this scenario's ten sweep runs produced TEN distinct grid digests. The frame is compared by DISTANCE within a measured tolerance; the asymmetry with state.json is deliberate.",
+      "sha256": "f6ca368301caf6a18f5618d4411b3d88d53df95f881ea8185461b62ccc978651"
+    },
+    "frame.png": {
+      "bytes": 241625,
+      "note": "the human-readable companion to frame.grid, so a reviewer can SEE the HUD the grid was reduced from. Never a gate predicate.",
+      "sha256": "eba24dd7b2c502f087b2d164c6888936be86376d3d654a0164797826dcfd09ba"
+    },
+    "state.json": {
+      "bytes": 3174,
+      "note": "the canonical dump: quantised to 3 decimals and byte-comparable. THIS digest is a gate predicate; the grid digests below are not.",
+      "sha256": "114866ffe7a09912bfcefcadf6a4bc635270140904badea793ac13ecd40cdd1d"
+    }
+  },
+  "blessed_from_commit": "5bba4bc8820baf843a0d1733265d1d006561fa9e",
+  "blessed_utc": "2026-09-19T06:32:00Z",
+  "calibration": {
+    "best_between_mode_distance": 0.010999731924019608,
+    "between_mode_distances": [
+      0.010999731924019608,
+      0.011005476409313725,
+      0.011006433823529413,
+      0.011046645220588236,
+      0.01106100643382353,
+      0.011077282475490197,
+      0.011081112132352942,
+      0.011104090073529412,
+      0.011150045955882353,
+      0.011151003370098039,
+      0.011156747855392156,
+      0.011165364583333334,
+      0.011202703737745097,
+      0.011202703737745097,
+      0.011228553921568627,
+      0.011239085477941177,
+      0.016911764705882352,
+      0.018203316482843138,
+      0.01820523131127451,
+      0.018210018382352942,
+      0.018230124080882353,
+      0.018250229779411764,
+      0.01827512254901961,
+      0.018373736213235296,
+      0.018448414522058823,
+      0.018450329350490197,
+      0.018450329350490197,
+      0.018451286764705883,
+      0.018451286764705883,
+      0.018465647977941178,
+      0.01848000919117647,
+      0.01848575367647059,
+      0.022089460784313727,
+      0.022127757352941178,
+      0.02214211856617647,
+      0.022217754289215685,
+      0.022256050857843136,
+      0.02227041207107843,
+      0.022282858455882352,
+      0.022287645526960786,
+      0.02229626225490196,
+      0.022320197610294117,
+      0.022336473651960783,
+      0.022340303308823528,
+      0.022341260723039217,
+      0.022347005208333333,
+      0.02237381280637255,
+      0.022383386948529413
+    ],
+    "captures_total": 12,
+    "margin": 2.3036270226719204,
+    "measure_seconds": 129.6,
+    "measured_utc": "2026-09-19T06:30:46Z",
+    "modes": [
+      "hud",
+      "hud-small",
+      "hidden"
+    ],
+    "per_process": true,
+    "repeats_per_mode": 4,
+    "separated": true,
+    "separation_ratio": 5.306697459584296,
+    "shared_3d_tolerance_not_used": 0.004377268476873758,
+    "tolerance": 0.004774962186049237,
+    "tool": "tests/golden/hud_render_modes.py --calibrate 4",
+    "why": "THIS IS THE ONLY SCENARIO IN THE CATALOGUE WHOSE STATUS IS buildable-pending-own-calibration, and this block is what that status asked for. The shared 0.004377 in tests/golden/calibration.json was measured by bead oo-ae9 against 3-D SCENE changes, and the same work measured the instrument going BLIND on a small stimulus (a trader at 800 m scored under the noise floor). A HUD is a modest, mostly-dark fraction of the frame, so whether it clears the bar was an OPEN QUESTION - and docs/phases/0-scenarios-18-20.md is explicit that loosening the tolerance to make it pass is forbidden. It was MEASURED instead: 12 captures from ONE game process (per_process, so the floor carries frame timing and clock state, not just the same PNG hashed twice), 18 within-mode pairs and 48 between-mode pairs. The populations do NOT overlap. The tolerance is the geometric mean of the worst within and the best between - frame_hash.derive_tolerance's own rule, which puts it at an equal MULTIPLICATIVE margin from each side. gate_020_spec.py RE-DERIVES it from these stored populations, so a hand-edited constant cannot survive: the measurements it would have to match are recorded beside it.",
+    "within_mode_distances": [
+      0.0015921798406862745,
+      0.001608455882352941,
+      0.0016994102328431373,
+      0.0017453661151960785,
+      0.001789407169117647,
+      0.0018286611519607843,
+      0.0018391927083333333,
+      0.0018411075367647058,
+      0.0018506816789215686,
+      0.001872702205882353,
+      0.0018899356617647059,
+      0.0019215303308823528,
+      0.0019291896446078432,
+      0.0019311044730392158,
+      0.0019435508578431373,
+      0.0020086550245098037,
+      0.00205078125,
+      0.0020728017769607843
+    ],
+    "worst_within_mode_distance": 0.0020728017769607843
+  },
+  "dump_tool": "tests/golden/hud_render_modes.py",
+  "evidence_checker": "tests/golden/check_hud_render_evidence.py",
+  "frame_digests": {
+    "asserted": false,
+    "distinct_over_sweep": 10,
+    "why": "Recorded FOR AUDIT, never a predicate. Ten sweep runs produced TEN distinct grid digests, so a digest equality would flake on renderer noise while saying nothing about whether the HUD modes differ. The dump is hashed byte-wise because it is quantised and deterministic; the frame is compared by DISTANCE. The asymmetry is deliberate (bead oo-gxp)."
+  },
+  "frame_liveness": {
+    "asserted": true,
+    "floor": 0.2,
+    "margin": {
+      "ratio_to_floor": 3.61,
+      "reading": "every calibration capture measured 0.7216..0.7333 luminance spread; the blessed run's weakest capture measured 0.7255"
+    },
+    "why": "The one frame property a dead run cannot fake: a run that died before drawing yields a near-uniform grid at ~0.0. The floor sits at 0.28x the weakest observed reading - a vacuity guard, deliberately NOT tight, because a tight liveness assertion would gate the renderer rather than the HUD."
+  },
+  "frame_tolerance": {
+    "asserted": true,
+    "source": "this scenario's own calibration",
+    "value": 0.004774962186049237,
+    "why": "SCENARIO 018 MEASURED A FRAME TOLERANCE AND DELIBERATELY DID NOT ADOPT IT, because staged expansions have no visual consequence from a docked camera, so asserting one would have gated the renderer rather than the subject. HERE THE OPPOSITE HOLDS: the HUD modes ARE the subject, and a scenario about HUD rendering that declined to assert a frame tolerance would assert nothing about HUD rendering at all. So it is asserted in BOTH directions: the same mode must land WITHIN tolerance (stability) and different modes must land BEYOND it (distinguishability), with a floor on the ratio between them so the margin itself cannot quietly shrink."
+  },
+  "landing_rehearsal": {
+    "note": "LANDING.md's move was REHEARSED on a throwaway copy under $LOCALAPPDATA/Temp, not merely written: the copy was landed per the checklist (artifacts moved to tests/golden/scenarios/020-hud-render-modes/, LANDING.md deleted) and ALL FOUR stored acceptance lines were re-run against the landed tree and exited 0 there as well as here.",
+    "rehearsed": true,
+    "rehearsed_utc": "2026-09-19T06:40:00Z"
+  },
+  "platform": {
+    "os": "Windows 11 (MSYS2/UCRT64)",
+    "rasteriser": {
+      "GALLIUM_DRIVER": "llvmpipe",
+      "LIBGL_ALWAYS_SOFTWARE": "1"
+    },
+    "surface": "960x720 windowed (SDL; the offscreen driver is unusable here - no EGL)",
+    "why": "THE TOLERANCE BELOW IS A PROPERTY OF THIS RASTERISER. Mesa llvmpipe's frame-to-frame noise is what sets the within-mode floor; against another GL implementation that floor is unknown and the threshold means nothing. Recorded so a future red on different hardware is read as 'recalibrate', not 'the HUD broke'."
+  },
+  "quant_decimals": 3,
+  "scenario": "020-hud-render-modes",
+  "scenario_knobs": {
+    "frame_liveness_floor": 0.2,
+    "hud_modes": [
+      {
+        "hidden": false,
+        "hud": "hud.plist",
+        "mode": "hud"
+      },
+      {
+        "hidden": false,
+        "hud": "hud-small.plist",
+        "mode": "hud-small"
+      },
+      {
+        "hidden": true,
+        "hud": "hud.plist",
+        "mode": "hidden"
+      }
+    ],
+    "in_flight": true,
+    "load_save": "Resources/Scenarios/oolite-standard.oolite-save",
+    "min_png_bytes": 50000,
+    "min_separation_ratio": 2.0,
+    "pose_name": "ref",
+    "pose_orientation": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "pose_position": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "pose_tolerance_m": 1.0,
+    "primary_mode": "hud",
+    "quant_decimals": 3,
+    "repopulator_handlers": [
+      "systemWillRepopulate"
+    ],
+    "seed": 20260918,
+    "system_id": 7,
+    "tick_seconds": 0.125,
+    "ticks": 16,
+    "unknown_hud_plist": "oo-1bf7-no-such-hud.plist",
+    "within_mode_tolerance": 0.004774962186049237
+  },
+  "spec_gate": "tests/golden/gate_020_spec.py",
+  "stability": {
+    "distinct_dump_digests": [
+      "2405c9a111a14372bdd06d4870f18f4d44f4e5ff8576cd59c30a1b25e1246151",
+      "26674d43ffd39f584047afb232a8c44627d8f0123784e7b5acdc2651283e2ae2",
+      "4ab7143394643e96ecb1f47dc962658f4070fc692d834bdd1b212821ccd7291c",
+      "5807696ebef4915c9292bf744ebf7e8c83c4da1cecc39e090589eea04297ecc8",
+      "70b12789b9ecd5074be7204492feaa9988c8861187628c67882eefb52a7ee257",
+      "ad345e362cfe36731d79aae7647ab8cda8fbf5772687e2ff76cc3e54ac5b5ad3",
+      "b5e36dea5ca762d94ea28c90483c93b62d7cb7f1c967e4c3d46671467b35c661",
+      "babfb144d663f37693b534cab555f5b6bda2ba8da1c91f73baf09a04ad926aab",
+      "e7dd19441fc669bd34a96a8ed83cefa4c1f16b12e26d2de1f613bb25953d1102",
+      "f1ce85e986e407d5d16bb69e5b1d2497bfd1848c3b709dd94ee8a4103d6be830"
+    ],
+    "distinct_frame_grid_digests": 10,
+    "dump_bytes": [
+      3166,
+      3168,
+      3170,
+      3172,
+      3173,
+      3174
+    ],
+    "dump_digest_count": 10,
+    "dumps_written": 10,
+    "errored": 0,
+    "per_run": [
+      {
+        "best_between": 0.01107919730392157,
+        "bytes": 3168,
+        "frame_sha256": "82d4f5fceabe450415b8ea324cf3699b824f4b2c1a1d1ddc96d6bffdb49c9d92",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run01.json",
+        "run": 1,
+        "separation_ratio": 6.181623931623932,
+        "sha256": "70b12789b9ecd5074be7204492feaa9988c8861187628c67882eefb52a7ee257",
+        "verdict": "DUMPED",
+        "wall_seconds": 26.3,
+        "worst_within": 0.0017922794117647058
+      },
+      {
+        "best_between": 0.01108685661764706,
+        "bytes": 3168,
+        "frame_sha256": "2589fe818af5584afbcd3da508642b8d471f5748dbbd85840b42c93ff223bcae",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run02.json",
+        "run": 2,
+        "separation_ratio": 5.944558521560575,
+        "sha256": "ad345e362cfe36731d79aae7647ab8cda8fbf5772687e2ff76cc3e54ac5b5ad3",
+        "verdict": "DUMPED",
+        "wall_seconds": 28.4,
+        "worst_within": 0.0018650428921568628
+      },
+      {
+        "best_between": 0.011032284007352941,
+        "bytes": 3174,
+        "frame_sha256": "139b9a88545e2ab69e2423a3502125de7e2c5e6bf858717471b4019a6ba5d20e",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run03.json",
+        "run": 3,
+        "separation_ratio": 5.930519814719506,
+        "sha256": "f1ce85e986e407d5d16bb69e5b1d2497bfd1848c3b709dd94ee8a4103d6be830",
+        "verdict": "DUMPED",
+        "wall_seconds": 29.3,
+        "worst_within": 0.0018602558210784313
+      },
+      {
+        "best_between": 0.01102462469362745,
+        "bytes": 3168,
+        "frame_sha256": "b825e70bc60e5c5a47be419ae58f4452a0ecbd4af697401d1d7b5ddfaa625cbc",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run04.json",
+        "run": 4,
+        "separation_ratio": 6.224324324324324,
+        "sha256": "babfb144d663f37693b534cab555f5b6bda2ba8da1c91f73baf09a04ad926aab",
+        "verdict": "DUMPED",
+        "wall_seconds": 27.4,
+        "worst_within": 0.0017712162990196078
+      },
+      {
+        "best_between": 0.011018880208333333,
+        "bytes": 3173,
+        "frame_sha256": "566bfcfe5849926621f7e70562f06f177367a70da4d65dc0d48b01c25a6f51bf",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run05.json",
+        "run": 5,
+        "separation_ratio": 5.830293819655521,
+        "sha256": "b5e36dea5ca762d94ea28c90483c93b62d7cb7f1c967e4c3d46671467b35c661",
+        "verdict": "DUMPED",
+        "wall_seconds": 26.7,
+        "worst_within": 0.0018899356617647059
+      },
+      {
+        "best_between": 0.011060049019607844,
+        "bytes": 3172,
+        "frame_sha256": "8abd7695f1b3f8c0e653f24676cc50029abb3ddf47e7a6aee6708a295c722e67",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run06.json",
+        "run": 6,
+        "separation_ratio": 6.177540106951872,
+        "sha256": "4ab7143394643e96ecb1f47dc962658f4070fc692d834bdd1b212821ccd7291c",
+        "verdict": "DUMPED",
+        "wall_seconds": 28.5,
+        "worst_within": 0.0017903645833333333
+      },
+      {
+        "best_between": 0.01101983762254902,
+        "bytes": 3166,
+        "frame_sha256": "4b9f624222596dfabe945032663df825ab035bd863e6a37d7816801fb3d78519",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run07.json",
+        "run": 7,
+        "separation_ratio": 6.181525241675618,
+        "sha256": "2405c9a111a14372bdd06d4870f18f4d44f4e5ff8576cd59c30a1b25e1246151",
+        "verdict": "DUMPED",
+        "wall_seconds": 28.3,
+        "worst_within": 0.001782705269607843
+      },
+      {
+        "best_between": 0.011015050551470588,
+        "bytes": 3170,
+        "frame_sha256": "b056fef9b2428fb1a60855d3647781c23f1a4a854f033d38492ae9d60adf27f6",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run08.json",
+        "run": 8,
+        "separation_ratio": 5.964230171073095,
+        "sha256": "5807696ebef4915c9292bf744ebf7e8c83c4da1cecc39e090589eea04297ecc8",
+        "verdict": "DUMPED",
+        "wall_seconds": 28.5,
+        "worst_within": 0.0018468520220588235
+      },
+      {
+        "best_between": 0.011067708333333334,
+        "bytes": 3172,
+        "frame_sha256": "7a4b6400e24d384e92a05b4e5203ff85f882f4c4ca796f54f28aa59857e13ea5",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run09.json",
+        "run": 9,
+        "separation_ratio": 6.13262599469496,
+        "sha256": "26674d43ffd39f584047afb232a8c44627d8f0123784e7b5acdc2651283e2ae2",
+        "verdict": "DUMPED",
+        "wall_seconds": 27.4,
+        "worst_within": 0.0018047257965686275
+      },
+      {
+        "best_between": 0.011108877144607843,
+        "bytes": 3172,
+        "frame_sha256": "6553013f7383d222874ca7083723ee1ae1f6c9cb3546a94290acb7c60ce2524a",
+        "out": "C:/Users/jon/AppData/Local/Temp/oo_1bf7_runs3/stability/run10.json",
+        "run": 10,
+        "separation_ratio": 5.993285123966942,
+        "sha256": "e7dd19441fc669bd34a96a8ed83cefa4c1f16b12e26d2de1f613bb25953d1102",
+        "verdict": "DUMPED",
+        "wall_seconds": 27.3,
+        "worst_within": 0.0018535539215686274
+      }
+    ],
+    "refused": 0,
+    "runs": 10,
+    "separation_held_every_run": true,
+    "separation_per_run": {
+      "best_between_min": 0.011015050551470588,
+      "separation_ratio_max": 6.224324324324324,
+      "separation_ratio_min": 5.830293819655521,
+      "worst_within_max": 0.0018899356617647059
+    },
+    "tool": "tests/golden/hud_render_modes.py --stability 10",
+    "wall_seconds_max": 29.3,
+    "wall_seconds_min": 26.3,
+    "why": "For THIS scenario the per-run SEPARATION is the stability claim, not a dump digest. The dump carries MEASURED FLOAT DISTANCES between rendered frames and llvmpipe is not bit-reproducible, so ten runs legitimately produced ten distinct dump digests and ten distinct grid digests; demanding one digest would be demanding the renderer be deterministic to the last bit, which tests/golden/calibration.json already measured it is not (exact_match_rate 0.0). What IS claimed, and held on 10 of 10 runs, is that the modes separated: worst within-mode across the whole sweep 0.001890, best between-mode 0.011015, weakest run 5.83x."
+  }
+}
