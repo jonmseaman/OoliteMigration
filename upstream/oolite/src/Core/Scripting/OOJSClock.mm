@@ -71,6 +71,9 @@ namespace {
 static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
 } // namespace
 namespace {
+static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
+} // namespace
+namespace {
 static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
 } // namespace
 
@@ -326,7 +329,7 @@ static bool ClockClockStringForTime(Context cx, CallArgs &oojsArgs)
 
 	double						time;
 
-	if (EXPECT_NOT(argc < 1 || !JS_ValueToNumber(context, OOJS_ARGV[0], &time)))
+	if (EXPECT_NOT(argc < 1 || !ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[0]), &time)))
 	{
 		jsval arg = JSVAL_VOID;
 		if (argc > 0)  arg = OOJS_ARGV[0];
@@ -354,7 +357,7 @@ static bool ClockAddSeconds(Context cx, CallArgs &oojsArgs)
 	double						time;
 	const double				kMaxTime = 30.0 * 24.0 * 3600.0;	// 30 days
 
-	if (EXPECT_NOT(argc < 1 || !JS_ValueToNumber(context, OOJS_ARGV[0], &time)))
+	if (EXPECT_NOT(argc < 1 || !ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[0]), &time)))
 	{
 		jsval arg = JSVAL_VOID;
 		if (argc > 0)  arg = OOJS_ARGV[0];
