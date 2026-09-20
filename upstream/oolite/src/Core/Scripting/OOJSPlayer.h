@@ -30,6 +30,10 @@ MA 02110-1301, USA.
 @class PlayerEntity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSPlayer(JSContext *context, JSObject *global);
 
 JSClass *JSPlayerClass(void);
@@ -44,3 +48,7 @@ JSObject *JSPlayerObject(void);
 	consistent state.
 */
 PlayerEntity *OOPlayerForScripting(void);
+
+#ifdef __cplusplus
+}
+#endif
