@@ -57,7 +57,7 @@ MA 02110-1301, USA.
 
 	SetGlobalObject had no façade equivalent yet; ooscript::setGlobalObject is added to
 	JSEngine.hpp/JSEngine_spidermonkey.cpp by this bead following the existing
-	newGlobalObject/getGlobalObject pattern (JS_SetGlobalObject's only call site in the tree).
+	newGlobalObject/getGlobalObject pattern (the engine's SetGlobalObject entry point's only call site in the tree).
 
 	Retargeting DefineProperties/DefineFunctions requires sGlobalProperties/sGlobalMethods to
 	become ooscript::PropertySpec/FunctionSpec tables (the façade's DefineProperties and
