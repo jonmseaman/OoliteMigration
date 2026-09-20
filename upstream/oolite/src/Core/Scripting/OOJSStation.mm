@@ -315,8 +315,10 @@ static JSPropertySpec sStationPropertiesRaw[] =
 	{ "shipyard",                   kStation_shipyard,                  OOJS_PROP_READONLY_CB },
 	{ 0 }
 };
+} // namespace
 
 
+namespace {
 static FunctionSpec sStationMethods[] =
 {
 	// JS name					Function						min args	flags
@@ -342,6 +344,7 @@ static FunctionSpec sStationMethods[] =
 	{ "removeShipFromShipyard", StationRemoveShipFromShipyard,  1,			0 },
 	{ 0 }
 };
+} // namespace
 
 
 void InitOOJSStation(JSContext *context, JSObject *global)
@@ -353,6 +356,7 @@ void InitOOJSStation(JSContext *context, JSObject *global)
 }
 
 
+namespace {
 static BOOL JSStationGetStationEntity(JSContext *context, JSObject *stationObj, StationEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
@@ -373,7 +377,9 @@ static BOOL JSStationGetStationEntity(JSContext *context, JSObject *stationObj, 
 	
 	OOJS_PROFILE_EXIT
 }
+} // namespace
 
+namespace {
 static BOOL JSStationGetShipEntity(JSContext *context, JSObject *shipObj, ShipEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
@@ -394,6 +400,7 @@ static BOOL JSStationGetShipEntity(JSContext *context, JSObject *shipObj, ShipEn
 	
 	OOJS_PROFILE_EXIT
 }
+} // namespace
 
 
 @implementation StationEntity (OOJavaScriptExtensions)
@@ -413,6 +420,7 @@ static BOOL JSStationGetShipEntity(JSContext *context, JSObject *shipObj, ShipEn
 @end
 
 
+namespace {
 static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
@@ -526,8 +534,10 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
@@ -639,17 +649,19 @@ static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // *** Methods ***
 
+namespace {
 static bool StationAbortAllDockings(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -665,7 +677,9 @@ static bool StationAbortAllDockings(Context cx, CallArgs &oojsArgs)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
+namespace {
 static bool StationAbortDockingForShip(Context cx, CallArgs &oojsArgs)
 
 {
@@ -699,9 +713,11 @@ static bool StationAbortDockingForShip(Context cx, CallArgs &oojsArgs)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 // canDockShip(shipEntity) : boolean
 // Proposed by phkb (Nick Rogers) 20161206
+namespace {
 static bool StationCanDockShip(Context cx, CallArgs &oojsArgs)
 
 {
@@ -742,17 +758,19 @@ static bool StationCanDockShip(Context cx, CallArgs &oojsArgs)
    OOJS_RETURN_BOOL(result);
    OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // dockPlayer()
 // Proposed and written by Frame 20090729
+namespace {
 static bool StationDockPlayer(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -785,15 +803,17 @@ static bool StationDockPlayer(Context cx, CallArgs &oojsArgs)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationIncreaseAlertLevel(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -813,14 +833,16 @@ static bool StationIncreaseAlertLevel(Context cx, CallArgs &oojsArgs)
 	OOJS_RETURN_VOID;
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
+namespace {
 static bool StationDecreaseAlertLevel(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -840,8 +862,10 @@ static bool StationDecreaseAlertLevel(Context cx, CallArgs &oojsArgs)
 	OOJS_RETURN_VOID;
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 // launchShipWithRole(role : String [, abortAllDockings : boolean]) : shipEntity
+namespace {
 static bool StationLaunchShipWithRole(Context cx, CallArgs &oojsArgs)
 
 {
@@ -880,15 +904,17 @@ static bool StationLaunchShipWithRole(Context cx, CallArgs &oojsArgs)
 	OOJS_RETURN_OBJECT(result);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationLaunchDefenseShip(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -907,15 +933,17 @@ static bool StationLaunchDefenseShip(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationLaunchEscort(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -934,15 +962,17 @@ static bool StationLaunchEscort(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationLaunchScavenger(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -961,15 +991,17 @@ static bool StationLaunchScavenger(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationLaunchMiner(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -987,15 +1019,17 @@ static bool StationLaunchMiner(Context cx, CallArgs &oojsArgs)
 	OOJS_RETURN_OBJECT(launched);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationLaunchPirateShip(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -1014,15 +1048,17 @@ static bool StationLaunchPirateShip(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationLaunchShuttle(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -1040,15 +1076,17 @@ static bool StationLaunchShuttle(Context cx, CallArgs &oojsArgs)
 	OOJS_RETURN_OBJECT(launched);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationLaunchPatrol(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -1066,15 +1104,17 @@ static bool StationLaunchPatrol(Context cx, CallArgs &oojsArgs)
 	OOJS_RETURN_OBJECT(launched);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationLaunchPolice(Context cx, CallArgs &oojsArgs)
 
 {
 
 	JSContext *context = OOJSRCX(cx);
 
-	uintN argc = oojsArgs.count();
+	uintN argc = oojsArgs.count(); (void)argc;
 
 	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
@@ -1092,7 +1132,9 @@ static bool StationLaunchPolice(Context cx, CallArgs &oojsArgs)
 	OOJS_RETURN_OBJECT(launched);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
+namespace {
 static bool StationSetInterface(Context cx, CallArgs &oojsArgs)
 
 {
@@ -1212,8 +1254,10 @@ static bool StationSetInterface(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationSetMarketPrice(Context cx, CallArgs &oojsArgs)
 
 {
@@ -1263,8 +1307,10 @@ static bool StationSetMarketPrice(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationSetMarketQuantity(Context cx, CallArgs &oojsArgs)
 
 {
@@ -1314,8 +1360,10 @@ static bool StationSetMarketQuantity(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationAddShipToShipyard(Context cx, CallArgs &oojsArgs)
 
 {
@@ -1492,8 +1540,10 @@ static bool StationAddShipToShipyard(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static bool StationRemoveShipFromShipyard(Context cx, CallArgs &oojsArgs)
 
 {
@@ -1542,4 +1592,5 @@ static bool StationRemoveShipFromShipyard(Context cx, CallArgs &oojsArgs)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
