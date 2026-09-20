@@ -30,6 +30,9 @@ so stop and file a bead rather than adding one inside a conversion story
 | `a universe seeded with <n>` | Given | Launches the game with `OO_RANDOM_SEED=<n>`. Must be first: RANROT is seeded once in `GameController -init`, so the seed cannot change afterwards. |
 | `I spawn <n> ship(s) with role "<role>"` | When | `system.addShips`; fails if fewer than `<n>` were added. |
 | `I spawn <n> ship(s) with role "<role>" within <km> km` | When | Same, positioned within `<km>` of the first existing ship (or the origin if the system is empty). |
+| `I spawn <n> ship(s) with role "<role>" using ship key "<key>"` | When | Deterministic sibling: the `<key>` (a literal `"[shipKey]"` selector, e.g. `"[viper]"`) is passed to `addShips` instead of the role, so no RANROT ship-type draw happens (`OOShipRegistry.m:1229` registers every `[shipKey]` at probability 1.0); `primaryRole` is then forced to `<role>` so every other step still matches on it. Use when a scenario's outcome depends on which ship class was spawned, not just its role. |
+| `I spawn <n> ship(s) with role "<role>" using ship key "<key>" within <km> km` | When | Same, positioned within `<km>` of the first existing ship. |
+| `the ship with role "<role>" has bounty <n>` | When | Sets `ship.bounty` (`OOJSShip.m:349`, read/write) on every ship with that `primaryRole`. Use to pin a combat-engagement precondition (e.g. policeAI's `fineThreshold()` gate) as a fact of the scenario instead of leaving it to `addShips`' own role-spawn bounty draw. |
 | `the simulation runs for at most <n> ticks` | When | Polls and returns early once every non-`police` spawned role is gone. A tick is one `AI_THINK_INTERVAL` (0.125 s, `src/Core/AI.h:31`), so 900 ticks ≈ 120 AI decisions. |
 | `the simulation runs for <n> ticks` | When | Runs the whole budget with no early exit, for scenarios asserting that nothing happened. |
 | `no ship with role "<role>" remains` | Then | `system.countShipsWithRole(role) == 0`. |
