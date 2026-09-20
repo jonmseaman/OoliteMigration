@@ -86,7 +86,7 @@ oolite_sources += files(
     'OOSoundSourcePool.m',
     'OOSpatialReference.m',
     'OOStringExpander.m',
-    'OOStringParsing.m',
+    'OOStringParsing.mm',
     'OOSystemDescriptionManager.m',
     'OOTextureScaling.m',
     'OOTextureSprite.m',
