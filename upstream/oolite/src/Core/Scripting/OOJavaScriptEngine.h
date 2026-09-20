@@ -298,7 +298,7 @@ NSString *OOStringFromJSString(JSContext *context, JSString *string);
 	OOStringFromJSValueEvenIfNull() returns "null" or "undefined".
 */
 OOJS_EXTERN_C NSString *OOStringFromJSValue(JSContext *context, jsval value);
-NSString *OOStringFromJSValueEvenIfNull(JSContext *context, jsval value);
+OOJS_EXTERN_C NSString *OOStringFromJSValueEvenIfNull(JSContext *context, jsval value);
 
 
 /*	OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec)
