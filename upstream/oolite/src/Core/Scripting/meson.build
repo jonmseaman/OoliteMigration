@@ -36,7 +36,7 @@ oolite_sources += files(
     'OOJSStation.mm',
     'OOJSSun.m',
     'OOJSSystem.m',
-    'OOJSSystemInfo.m',
+    'OOJSSystemInfo.mm',
     'OOJSTimer.m',
     'OOJSVector.mm',
     'ooscript/JSEngine_spidermonkey.cpp',
