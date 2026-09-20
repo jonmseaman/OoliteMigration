@@ -36,54 +36,207 @@ MA 02110-1301, USA.
 #import "StationEntity.h"
 #import "GameController.h"
 
+#include "ooscript/JSEngine.hpp"
+#include <cstring>
+#include <cstdint>
 
+/*
+	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
+	oo-sdz, the sweep exemplar): the class dispatch table becomes a static ooscript::ClassDef
+	(the stub hooks are nullptr), InitClass becomes ooscript::initClass, native methods and
+	class hooks take the façade's hook signature (Context/Object/PropertyId/Value pointer/
+	CallArgs reference), and the directly spelled numeric-conversion / object-conversion /
+	property-lookup calls (NewNumberValue, ValueToBoolean, ValueToNumber, ValueToInt32,
+	ValueToObject, GetProperty) become their ooscript:: façade equivalents. A tiny shim at the
+	top of each native method recovers the old JSContext pointer, uintN and jsval pointer
+	locals so the OOJS_* argument-marshalling macros and the rest of each function body are
+	UNCHANGED, because ooscript::Value/Object/PropertyId are byte copies of jsval, JSObject*, and jsid
+	(JSEngine.hpp's own contract) and views onto them are therefore reinterpret_cast, not
+	conversion. `this` is renamed to `thisObj` because it is a reserved word once this file
+	compiles as Objective-C++ (ADR-0001).
+
+	Station is registered as a Ship subclass and object converter with the ENGINE's own
+	JSClass* (OOJSRegisterSubclass/OOJSRegisterObjectConverter and getJSClass:andPrototype:
+	are shared, not-yet-retargeted plumbing that still speaks jsapi's JSClass); ClassDef's
+	`backend` slot is filled in by ooscript::initClass() before InitOOJSStation() makes those
+	calls, so RawStationClass() below is a reinterpret_cast onto already-attached storage, not
+	a conversion (see OOJSVector.mm/OOJSWaypoint.mm for the same pattern).
+*/
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+using ooscript::Value;
+using ooscript::PropertyId;
+using ooscript::CallArgs;
+using ooscript::ClassDef;
+using ooscript::ClassFlag;
+using ooscript::PropertyFlag;
+using ooscript::PropertySpec;
+using ooscript::FunctionSpec;
+
+// Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
+namespace {
+static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
+} // namespace
+namespace {
+static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
+} // namespace
+namespace {
+static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
+} // namespace
+namespace {
+static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
+} // namespace
+namespace {
+static inline Value     *OOJSFVALP(jsval *v)      { return reinterpret_cast<Value*>(v); }
+} // namespace
+namespace {
+static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
+} // namespace
+namespace {
+static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
+} // namespace
+namespace {
+static inline Object    *OOJSFOBJP(JSObject **o)  { return reinterpret_cast<Object*>(o); }
+} // namespace
+
+
+namespace {
 static JSObject		*sStationPrototype;
+} // namespace
 
+namespace {
 static BOOL JSStationGetStationEntity(JSContext *context, JSObject *stationObj, StationEntity **outEntity);
+} // namespace
 
 
-static JSBool StationGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value);
-static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value);
+namespace {
+static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
+} // namespace
+namespace {
+static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
+} // namespace
 
-static JSBool StationAbortAllDockings(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationAbortDockingForShip(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationCanDockShip(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationDockPlayer(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationIncreaseAlertLevel(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationDecreaseAlertLevel(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchShipWithRole(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchDefenseShip(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchEscort(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchScavenger(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchMiner(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchPirateShip(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchShuttle(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchPatrol(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationLaunchPolice(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationSetInterface(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationSetMarketPrice(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationSetMarketQuantity(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationAddShipToShipyard(JSContext *context, uintN argc, jsval *vp);
-static JSBool StationRemoveShipFromShipyard(JSContext *context, uintN argc, jsval *vp);
+namespace {
+static bool StationAbortAllDockings(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationAbortDockingForShip(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationCanDockShip(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationDockPlayer(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationIncreaseAlertLevel(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationDecreaseAlertLevel(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchShipWithRole(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchDefenseShip(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchEscort(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchScavenger(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchMiner(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchPirateShip(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchShuttle(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchPatrol(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationLaunchPolice(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationSetInterface(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationSetMarketPrice(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationSetMarketQuantity(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationAddShipToShipyard(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool StationRemoveShipFromShipyard(Context cx, CallArgs &oojsArgs);
+} // namespace
 
-static JSClass sStationClass =
+// Adapts the shared jsapi finalizer (OOJavaScriptEngine.m) to the façade's FinalizeHook
+// signature; the finalizer itself is untouched, shared plumbing outside this bead's scope.
+namespace {
+static void StationFinalize(Context cx, Object obj)
+{
+	OOJSObjectWrapperFinalize(reinterpret_cast<JSContext*>(cx), reinterpret_cast<JSObject*>(obj));
+}
+} // namespace
+
+
+// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the façade's
+// NativeFn signature, so `new Station()` keeps throwing "Station cannot be used as a
+// constructor." as it did before retargeting (see OOJSWaypoint.mm for the same pattern).
+namespace {
+static bool StationUnconstructableConstruct(Context cx, CallArgs &oojsArgs)
+{
+	return OOJSUnconstructableConstruct(reinterpret_cast<JSContext*>(cx), oojsArgs.count(), reinterpret_cast<jsval*>(oojsArgs.rawVp()));
+}
+} // namespace
+
+
+namespace {
+static ClassDef sStationClass =
 {
 	"Station",
-	JSCLASS_HAS_PRIVATE,
+	ClassFlag::HasPrivate,
 	
-	JS_PropertyStub,		// addProperty
-	JS_PropertyStub,		// delProperty
+	nullptr,				// addProperty (engine default: PropertyStub)
+	nullptr,				// delProperty (engine default: PropertyStub)
 	StationGetProperty,		// getProperty
 	StationSetProperty,		// setProperty
-	JS_EnumerateStub,		// enumerate
-	JS_ResolveStub,			// resolve
-	JS_ConvertStub,			// convert
-	OOJSObjectWrapperFinalize,// finalize
-	JSCLASS_NO_OPTIONAL_MEMBERS
+	nullptr,				// enumerate (engine default: EnumerateStub)
+	nullptr,				// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,				// resolve (engine default: ResolveStub)
+	nullptr,				// convert (engine default: ConvertStub)
+	StationFinalize,		// finalize
+	nullptr,				// call
+	nullptr,				// construct
+	nullptr,				// backend: owned by the façade backend, must start null
 };
+} // namespace
 
 
-enum
+// The engine's own JSClass* for sStationClass, for the not-yet-retargeted plumbing
+// (OOJSRegisterSubclass/OOJSRegisterObjectConverter, getJSClass:andPrototype:) that still
+// takes one; see OOJSWaypoint.mm for the same pattern. Valid only after InitOOJSStation() has
+// called ooscript::initClass(), which is the only thing that attaches sStationClass.backend.
+namespace {
+static inline JSClass *RawStationClass(void)
+{
+	return reinterpret_cast<JSClass*>(sStationClass.backend);
+}
+} // namespace
+
+
+enum : std::uint8_t
 {
 	// Property IDs
 	kStation_alertCondition,
@@ -107,9 +260,41 @@ enum
 };
 
 
-static JSPropertySpec sStationProperties[] =
+namespace {
+static PropertySpec sStationProperties[] =
 {
-	// JS name						ID									flags
+	// JS name									ID									flags							getter	setter
+	{ "alertCondition",				kStation_alertCondition,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "allegiance",					kStation_allegiance,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "allowsAutoDocking",			kStation_allowsAutoDocking,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "allowsFastDocking",			kStation_allowsFastDocking,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "breakPattern",				kStation_breakPattern,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "dockedContractors",			kStation_dockedContractors,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "dockedDefenders",			kStation_dockedDefenders,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "dockedPolice",				kStation_dockedPolice,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "equipmentPriceFactor",		kStation_equipmentPriceFactor,		PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "equivalentTechLevel",		kStation_equivalentTechLevel,		PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "hasNPCTraffic",				kStation_hasNPCTraffic,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "hasShipyard",				kStation_hasShipyard,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "isMainStation",				kStation_isMainStation,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "market",						kStation_market,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "requiresDockingClearance",	kStation_requiresDockingClearance,	PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "roll",						kStation_roll,						PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "suppressArrivalReports",		kStation_suppressArrivalReports,	PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "shipyard",					kStation_shipyard,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ 0 }
+};
+} // namespace
+
+
+// A raw jsapi mirror of sStationProperties, used only for the two bad-property error
+// reporters in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are
+// outside this bead's scope (shared across every binding file) and still take a
+// JSPropertySpec*, not ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+namespace {
+static JSPropertySpec sStationPropertiesRaw[] =
+{
+	// JS name									ID									flags
 	{ "alertCondition",				kStation_alertCondition,			OOJS_PROP_READWRITE_CB },
 	{ "allegiance",					kStation_allegiance,				OOJS_PROP_READWRITE_CB },
 	{ "allowsAutoDocking",			kStation_allowsAutoDocking,			OOJS_PROP_READWRITE_CB },
@@ -130,43 +315,48 @@ static JSPropertySpec sStationProperties[] =
 	{ "shipyard",                   kStation_shipyard,                  OOJS_PROP_READONLY_CB },
 	{ 0 }
 };
+} // namespace
 
 
-static JSFunctionSpec sStationMethods[] =
+namespace {
+static FunctionSpec sStationMethods[] =
 {
-	// JS name					Function						min args
-	{ "abortAllDockings",		StationAbortAllDockings,		0 },
-	{ "abortDockingForShip",	StationAbortDockingForShip,		1 },
-	{ "canDockShip",            StationCanDockShip,				1 },	
-	{ "dockPlayer",				StationDockPlayer,				0 },
-	{ "increaseAlertLevel",     StationIncreaseAlertLevel,      0 },
-	{ "decreaseAlertLevel",     StationDecreaseAlertLevel,      0 },
-	{ "launchDefenseShip",		StationLaunchDefenseShip,		0 },
-	{ "launchEscort",			StationLaunchEscort,			0 },
-	{ "launchMiner",			StationLaunchMiner,				0 },
-	{ "launchPatrol",			StationLaunchPatrol,			0 },
-	{ "launchPirateShip",		StationLaunchPirateShip,		0 },
-	{ "launchPolice",			StationLaunchPolice,			0 },
-	{ "launchScavenger",		StationLaunchScavenger,			0 },
-	{ "launchShipWithRole",		StationLaunchShipWithRole,		1 },
-	{ "launchShuttle",			StationLaunchShuttle,			0 },
-	{ "setInterface",			StationSetInterface,			0 },
-	{ "setMarketPrice",			StationSetMarketPrice,			2 },
-	{ "setMarketQuantity",		StationSetMarketQuantity,		2 },
-	{ "addShipToShipyard",      StationAddShipToShipyard,       1 },
-	{ "removeShipFromShipyard", StationRemoveShipFromShipyard,  1 },
+	// JS name					Function						min args	flags
+	{ "abortAllDockings",		StationAbortAllDockings,		0,			0 },
+	{ "abortDockingForShip",	StationAbortDockingForShip,		1,			0 },
+	{ "canDockShip",            StationCanDockShip,				1,			0 },
+	{ "dockPlayer",				StationDockPlayer,				0,			0 },
+	{ "increaseAlertLevel",     StationIncreaseAlertLevel,      0,			0 },
+	{ "decreaseAlertLevel",     StationDecreaseAlertLevel,      0,			0 },
+	{ "launchDefenseShip",		StationLaunchDefenseShip,		0,			0 },
+	{ "launchEscort",			StationLaunchEscort,			0,			0 },
+	{ "launchMiner",			StationLaunchMiner,				0,			0 },
+	{ "launchPatrol",			StationLaunchPatrol,			0,			0 },
+	{ "launchPirateShip",		StationLaunchPirateShip,		0,			0 },
+	{ "launchPolice",			StationLaunchPolice,			0,			0 },
+	{ "launchScavenger",		StationLaunchScavenger,			0,			0 },
+	{ "launchShipWithRole",		StationLaunchShipWithRole,		1,			0 },
+	{ "launchShuttle",			StationLaunchShuttle,			0,			0 },
+	{ "setInterface",			StationSetInterface,			0,			0 },
+	{ "setMarketPrice",			StationSetMarketPrice,			2,			0 },
+	{ "setMarketQuantity",		StationSetMarketQuantity,		2,			0 },
+	{ "addShipToShipyard",      StationAddShipToShipyard,       1,			0 },
+	{ "removeShipFromShipyard", StationRemoveShipFromShipyard,  1,			0 },
 	{ 0 }
 };
+} // namespace
 
 
 void InitOOJSStation(JSContext *context, JSObject *global)
 {
-	sStationPrototype = JS_InitClass(context, global, JSShipPrototype(), &sStationClass, OOJSUnconstructableConstruct, 0, sStationProperties, sStationMethods, NULL, NULL);
-	OOJSRegisterObjectConverter(&sStationClass, OOJSBasicPrivateObjectConverter);
-	OOJSRegisterSubclass(&sStationClass, JSShipClass());
+	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), OOJSFOBJ(JSShipPrototype()), &sStationClass, StationUnconstructableConstruct, 0, sStationProperties, sStationMethods, NULL, NULL);
+	sStationPrototype = OOJSROBJ(proto);
+	OOJSRegisterObjectConverter(RawStationClass(), OOJSBasicPrivateObjectConverter);
+	OOJSRegisterSubclass(RawStationClass(), JSShipClass());
 }
 
 
+namespace {
 static BOOL JSStationGetStationEntity(JSContext *context, JSObject *stationObj, StationEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
@@ -187,7 +377,9 @@ static BOOL JSStationGetStationEntity(JSContext *context, JSObject *stationObj, 
 	
 	OOJS_PROFILE_EXIT
 }
+} // namespace
 
+namespace {
 static BOOL JSStationGetShipEntity(JSContext *context, JSObject *shipObj, ShipEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
@@ -208,13 +400,14 @@ static BOOL JSStationGetShipEntity(JSContext *context, JSObject *shipObj, ShipEn
 	
 	OOJS_PROFILE_EXIT
 }
+} // namespace
 
 
 @implementation StationEntity (OOJavaScriptExtensions)
 
 - (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype
 {
-	*outClass = &sStationClass;
+	*outClass = RawStationClass();
 	*outPrototype = sStationPrototype;
 }
 
@@ -227,83 +420,88 @@ static BOOL JSStationGetShipEntity(JSContext *context, JSObject *shipObj, ShipEn
 @end
 
 
-static JSBool StationGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value)
+namespace {
+static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = OOJSRCX(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
+	jsval *value_raw = OOJSRVAL(value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity				*entity = nil;
 	
-	if (!JSStationGetStationEntity(context, this, &entity))  return NO;
-	if (entity == nil)  { *value = JSVAL_VOID; return YES; }
+	if (!JSStationGetStationEntity(context, thisObj, &entity))  return NO;
+	if (entity == nil)  { *value_raw = JSVAL_VOID; return YES; }
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kStation_isMainStation:
-			*value = OOJSValueFromBOOL(entity == [UNIVERSE station]);
+			*value_raw = OOJSValueFromBOOL(entity == [UNIVERSE station]);
 			return YES;
 		
 		case kStation_hasNPCTraffic:
-			*value = OOJSValueFromBOOL([entity hasNPCTraffic]);
+			*value_raw = OOJSValueFromBOOL([entity hasNPCTraffic]);
 			return YES;
 			
 		case kStation_hasShipyard:
-			*value = OOJSValueFromBOOL([entity hasShipyard]);
+			*value_raw = OOJSValueFromBOOL([entity hasShipyard]);
 			return YES;
 		
 		case kStation_alertCondition:
-			*value = INT_TO_JSVAL([entity alertLevel]);
+			*value_raw = INT_TO_JSVAL([entity alertLevel]);
 			return YES;
 
 		case kStation_allegiance:
 		{
 			NSString *result = [entity allegiance];
-			*value = OOJSValueFromNativeObject(context, result);
+			*value_raw = OOJSValueFromNativeObject(context, result);
 			return YES;
 		}
 			
 		case kStation_requiresDockingClearance:
-			*value = OOJSValueFromBOOL([entity requiresDockingClearance]);
+			*value_raw = OOJSValueFromBOOL([entity requiresDockingClearance]);
 			return YES;
 			
 		case kStation_roll:
 			// same as in ship definition, but this time read/write below
-			return JS_NewNumberValue(context, [entity flightRoll], value);
+			return ooscript::newNumberValue(cx, [entity flightRoll], value);
 			
 		case kStation_allowsFastDocking:
-			*value = OOJSValueFromBOOL([entity allowsFastDocking]);
+			*value_raw = OOJSValueFromBOOL([entity allowsFastDocking]);
 			return YES;
 			
 		case kStation_allowsAutoDocking:
-			*value = OOJSValueFromBOOL([entity allowsAutoDocking]);
+			*value_raw = OOJSValueFromBOOL([entity allowsAutoDocking]);
 			return YES;
 
 		case kStation_dockedContractors:
-			*value = INT_TO_JSVAL([entity countOfDockedContractors]);
+			*value_raw = INT_TO_JSVAL([entity countOfDockedContractors]);
 			return YES;
 			
 		case kStation_dockedPolice:
-			*value = INT_TO_JSVAL([entity countOfDockedPolice]);
+			*value_raw = INT_TO_JSVAL([entity countOfDockedPolice]);
 			return YES;
 			
 		case kStation_dockedDefenders:
-			*value = INT_TO_JSVAL([entity countOfDockedDefenders]);
+			*value_raw = INT_TO_JSVAL([entity countOfDockedDefenders]);
 			return YES;
 			
 		case kStation_equivalentTechLevel:
-			*value = INT_TO_JSVAL((int32_t)[entity equivalentTechLevel]);
+			*value_raw = INT_TO_JSVAL((int32_t)[entity equivalentTechLevel]);
 			return YES;
 			
 		case kStation_equipmentPriceFactor:
-			return JS_NewNumberValue(context, [entity equipmentPriceFactor], value);
+			return ooscript::newNumberValue(cx, [entity equipmentPriceFactor], value);
 			
 		case kStation_suppressArrivalReports:
-			*value = OOJSValueFromBOOL([entity suppressArrivalReports]);
+			*value_raw = OOJSValueFromBOOL([entity suppressArrivalReports]);
 			return YES;
 			
 		case kStation_breakPattern:
-			*value = OOJSValueFromBOOL([entity hasBreakPattern]);
+			*value_raw = OOJSValueFromBOOL([entity hasBreakPattern]);
 			return YES;
 
 		case kStation_shipyard:
@@ -311,13 +509,13 @@ static JSBool StationGetProperty(JSContext *context, JSObject *this, jsid propID
 			if (![entity hasShipyard]) 
 			{
 				// return null if station has no shipyard
-				*value = OOJSValueFromNativeObject(context, nil);
+				*value_raw = OOJSValueFromNativeObject(context, nil);
 			} 
 			else 
 			{
 				if ([entity localShipyard] == nil) [entity generateShipyard];
 				NSMutableArray *shipyard = [entity localShipyard];
-				*value = OOJSValueFromNativeObject(context, shipyard);
+				*value_raw = OOJSValueFromNativeObject(context, shipyard);
 			}
 			return YES;
 		}
@@ -325,38 +523,44 @@ static JSBool StationGetProperty(JSContext *context, JSObject *this, jsid propID
 		case kStation_market:
 		{
 			NSDictionary *market = [entity localMarketForScripting];
-			*value = OOJSValueFromNativeObject(context, market);
+			*value_raw = OOJSValueFromNativeObject(context, market);
 			return YES;
 		}
 
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sStationProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sStationPropertiesRaw);
 			return NO;
 	}
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value)
+namespace {
+static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = OOJSRCX(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
+	jsval *value_raw = OOJSRVAL(value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity				*entity = nil;
-	JSBool						bValue;
+	bool						bValue;
 	int32						iValue;
 	jsdouble					fValue;
 	NSString					*sValue = nil;
 	
-	if (!JSStationGetStationEntity(context, this, &entity)) return NO;
+	if (!JSStationGetStationEntity(context, thisObj, &entity)) return NO;
 	if (entity == nil)  return YES;
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kStation_hasNPCTraffic:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setHasNPCTraffic:bValue];
 				return YES;
@@ -364,15 +568,15 @@ static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID
 			break;
 		
 		case kStation_alertCondition:
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(cx, *value, &iValue))
 			{
-				[entity setAlertLevel:iValue signallingScript:NO];	// Performs range checking
+				[entity setAlertLevel:(OOStationAlertLevel)iValue signallingScript:NO];	// Performs range checking
 				return YES;
 			}
 			break;
 
 		case kStation_allegiance:
-			sValue = OOStringFromJSValue(context,*value);
+			sValue = OOStringFromJSValue(context,*value_raw);
 			if (sValue != nil)
 			{
 				[entity setAllegiance:sValue];
@@ -382,7 +586,7 @@ static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID
 
 			
 		case kStation_requiresDockingClearance:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setRequiresDockingClearance:bValue];
 				return YES;
@@ -390,7 +594,7 @@ static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID
 			break;
 			
 		case kStation_roll:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 /*				if (fValue < -2.0)  fValue = -2.0;
 				if (fValue > 2.0)  fValue = 2.0;	// clamping to -2.0...2.0 gives us ±M_PI actual maximum rotation
@@ -404,7 +608,7 @@ static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID
 			break;
 
 		case kStation_allowsFastDocking:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setAllowsFastDocking:bValue];
 				return YES;
@@ -412,7 +616,7 @@ static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID
 			break;
 			
 		case kStation_allowsAutoDocking:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setAllowsAutoDocking:bValue];
 				return YES;
@@ -420,7 +624,7 @@ static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID
 			break;
 
 		case kStation_suppressArrivalReports:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setSuppressArrivalReports:bValue];
 				return YES;
@@ -428,7 +632,7 @@ static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID
 			break;
 
 		case kStation_breakPattern:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[entity setHasBreakPattern:bValue];
 				return YES;
@@ -436,21 +640,33 @@ static JSBool StationSetProperty(JSContext *context, JSObject *this, jsid propID
 			break;
 		
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sStationProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sStationPropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, this, propID, sStationProperties, *value);
+	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sStationPropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // *** Methods ***
 
-static JSBool StationAbortAllDockings(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationAbortAllDockings(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -461,9 +677,21 @@ static JSBool StationAbortAllDockings(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
-static JSBool StationAbortDockingForShip(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationAbortDockingForShip(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count();
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -485,11 +713,23 @@ static JSBool StationAbortDockingForShip(JSContext *context, uintN argc, jsval *
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 // canDockShip(shipEntity) : boolean
 // Proposed by phkb (Nick Rogers) 20161206
-static JSBool StationCanDockShip(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationCanDockShip(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count();
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
    OOJS_NATIVE_ENTER(context)
 
    BOOL         result = YES;
@@ -518,12 +758,24 @@ static JSBool StationCanDockShip(JSContext *context, uintN argc, jsval *vp)
    OOJS_RETURN_BOOL(result);
    OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // dockPlayer()
 // Proposed and written by Frame 20090729
-static JSBool StationDockPlayer(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationDockPlayer(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity	*player = OOPlayerForScripting();
@@ -551,10 +803,22 @@ static JSBool StationDockPlayer(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationIncreaseAlertLevel(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationIncreaseAlertLevel(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	StationEntity	*station = nil;
 
@@ -569,9 +833,21 @@ static JSBool StationIncreaseAlertLevel(JSContext *context, uintN argc, jsval *v
 	OOJS_RETURN_VOID;
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
-static JSBool StationDecreaseAlertLevel(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationDecreaseAlertLevel(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	StationEntity	*station = nil;
 
@@ -586,16 +862,28 @@ static JSBool StationDecreaseAlertLevel(JSContext *context, uintN argc, jsval *v
 	OOJS_RETURN_VOID;
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 // launchShipWithRole(role : String [, abortAllDockings : boolean]) : shipEntity
-static JSBool StationLaunchShipWithRole(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchShipWithRole(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count();
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString		*shipRole = nil;
 	StationEntity	*station = nil;
 	ShipEntity		*result = nil;
-	JSBool			abortAllDockings = NO;
+	bool			abortAllDockings = NO;
 	
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 	
@@ -606,7 +894,7 @@ static JSBool StationLaunchShipWithRole(JSContext *context, uintN argc, jsval *v
 		return NO;
 	}
 	
-	if (argc > 1)  JS_ValueToBoolean(context, OOJS_ARGV[1], &abortAllDockings);
+	if (argc > 1)  ooscript::valueToBoolean(OOJSFCX(context), OOJSFVAL(OOJS_ARGV[1]), &abortAllDockings);
 
 	OOJS_BEGIN_FULL_NATIVE(context)
 	result = [station launchIndependentShip:shipRole];
@@ -616,10 +904,22 @@ static JSBool StationLaunchShipWithRole(JSContext *context, uintN argc, jsval *v
 	OOJS_RETURN_OBJECT(result);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationLaunchDefenseShip(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchDefenseShip(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -633,10 +933,22 @@ static JSBool StationLaunchDefenseShip(JSContext *context, uintN argc, jsval *vp
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationLaunchEscort(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchEscort(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -650,10 +962,22 @@ static JSBool StationLaunchEscort(JSContext *context, uintN argc, jsval *vp)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationLaunchScavenger(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchScavenger(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -667,10 +991,22 @@ static JSBool StationLaunchScavenger(JSContext *context, uintN argc, jsval *vp)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationLaunchMiner(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchMiner(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -683,10 +1019,22 @@ static JSBool StationLaunchMiner(JSContext *context, uintN argc, jsval *vp)
 	OOJS_RETURN_OBJECT(launched);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationLaunchPirateShip(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchPirateShip(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -700,10 +1048,22 @@ static JSBool StationLaunchPirateShip(JSContext *context, uintN argc, jsval *vp)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationLaunchShuttle(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchShuttle(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -716,10 +1076,22 @@ static JSBool StationLaunchShuttle(JSContext *context, uintN argc, jsval *vp)
 	OOJS_RETURN_OBJECT(launched);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationLaunchPatrol(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchPatrol(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -732,10 +1104,22 @@ static JSBool StationLaunchPatrol(JSContext *context, uintN argc, jsval *vp)
 	OOJS_RETURN_OBJECT(launched);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationLaunchPolice(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationLaunchPolice(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count(); (void)argc;
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 	
 	StationEntity *station = nil;
@@ -748,9 +1132,21 @@ static JSBool StationLaunchPolice(JSContext *context, uintN argc, jsval *vp)
 	OOJS_RETURN_OBJECT(launched);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
-static JSBool StationSetInterface(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationSetInterface(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count();
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 
 	StationEntity *station = nil;
@@ -779,14 +1175,14 @@ static JSBool StationSetInterface(JSContext *context, uintN argc, jsval *vp)
 	NSString      *summary = nil;
 	NSString      *category = nil;
 
-	if (!JS_ValueToObject(context, OOJS_ARGV[1], &params))
+	if (!ooscript::valueToObject(cx, OOJSFVAL(OOJS_ARGV[1]), OOJSFOBJP(&params)))
 	{
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(argc, 1U), OOJS_ARGV, NULL, @"key [, definition]");
 		return NO;
 	}
 
 	// get and validate title
-	if (JS_GetProperty(context, params, "title", &value) == JS_FALSE || JSVAL_IS_VOID(value))
+	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "title", OOJSFVALP(&value)) || JSVAL_IS_VOID(value))
 	{
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(argc, 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, it must have a 'title' property.");
 		return NO;
@@ -799,7 +1195,7 @@ static JSBool StationSetInterface(JSContext *context, uintN argc, jsval *vp)
 	}
 
 	// get category with default
-	if (JS_GetProperty(context, params, "category", &value) == JS_FALSE || JSVAL_IS_VOID(value))
+	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "category", OOJSFVALP(&value)) || JSVAL_IS_VOID(value))
 	{
 		category = [NSString stringWithString:DESC(@"interfaces-category-uncategorised")];
 	}
@@ -812,7 +1208,7 @@ static JSBool StationSetInterface(JSContext *context, uintN argc, jsval *vp)
 	}
 
 	// get and validate summary
-	if (JS_GetProperty(context, params, "summary", &value) == JS_FALSE || JSVAL_IS_VOID(value))
+	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "summary", OOJSFVALP(&value)) || JSVAL_IS_VOID(value))
 	{
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(argc, 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, it must have a 'summary' property.");
 		return NO;
@@ -825,7 +1221,7 @@ static JSBool StationSetInterface(JSContext *context, uintN argc, jsval *vp)
 	}
 
 	// get and validate callback
-	if (JS_GetProperty(context, params, "callback", &callback) == JS_FALSE || JSVAL_IS_VOID(callback))
+	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "callback", OOJSFVALP(&callback)) || JSVAL_IS_VOID(callback))
 	{
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(argc, 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, it must have a 'callback' property.");
 		return NO;
@@ -843,9 +1239,9 @@ static JSBool StationSetInterface(JSContext *context, uintN argc, jsval *vp)
 	[definition setCallback:callback];
 
 	// get callback 'this'
-	if (JS_GetProperty(context, params, "cbThis", &value) == JS_TRUE && !JSVAL_IS_VOID(value))
+	if (ooscript::getProperty(cx, OOJSFOBJ(params), "cbThis", OOJSFVALP(&value)) && !JSVAL_IS_VOID(value))
 	{
-		JS_ValueToObject(context, value, &callbackThis);
+		ooscript::valueToObject(cx, OOJSFVAL(value), OOJSFOBJP(&callbackThis));
 		[definition setCallbackThis:callbackThis];
 		// can do .bind(this) for callback instead
 	}
@@ -858,10 +1254,22 @@ static JSBool StationSetInterface(JSContext *context, uintN argc, jsval *vp)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationSetMarketPrice(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationSetMarketPrice(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count();
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 
 	StationEntity *station = nil;
@@ -881,7 +1289,7 @@ static JSBool StationSetMarketPrice(JSContext *context, uintN argc, jsval *vp)
 	}
 
 	int32 price;
-	BOOL gotPrice = JS_ValueToInt32(context, OOJS_ARGV[1], &price);
+	BOOL gotPrice = ooscript::valueToInt32(OOJSFCX(context), OOJSFVAL(OOJS_ARGV[1]), &price);
 	if (EXPECT_NOT(!gotPrice || price < 0))
 	{
 		OOJSReportBadArguments(context, @"Station", @"setMarketPrice", MIN(argc, 2U), OOJS_ARGV, NULL, @"Price must be at least 0 decicredits");
@@ -899,10 +1307,22 @@ static JSBool StationSetMarketPrice(JSContext *context, uintN argc, jsval *vp)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationSetMarketQuantity(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationSetMarketQuantity(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count();
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 
 	StationEntity *station = nil;
@@ -922,7 +1342,7 @@ static JSBool StationSetMarketQuantity(JSContext *context, uintN argc, jsval *vp
 	}
 
 	int32 quantity;
-	BOOL gotQuantity = JS_ValueToInt32(context, OOJS_ARGV[1], &quantity);
+	BOOL gotQuantity = ooscript::valueToInt32(OOJSFCX(context), OOJSFVAL(OOJS_ARGV[1]), &quantity);
 	if (EXPECT_NOT(!gotQuantity || quantity < 0 || (OOCargoQuantity)quantity > [[station localMarket] capacityForGood:commodity]))
 	{
 		OOJSReportBadArguments(context, @"Station", @"setMarketQuantity", MIN(argc, 2U), OOJS_ARGV, NULL, @"Quantity must be between 0 and the station market capacity");
@@ -940,17 +1360,29 @@ static JSBool StationSetMarketQuantity(JSContext *context, uintN argc, jsval *vp
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationAddShipToShipyard(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationAddShipToShipyard(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count();
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 
 	JSObject *params = NULL;
 	StationEntity *station = nil;
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 
-	if (argc != 1 || (!JSVAL_IS_NULL(OOJS_ARGV[0]) && !JS_ValueToObject(context, OOJS_ARGV[0], &params)))
+	if (argc != 1 || (!JSVAL_IS_NULL(OOJS_ARGV[0]) && !ooscript::valueToObject(OOJSFCX(context), OOJSFVAL(OOJS_ARGV[0]), OOJSFOBJP(&params))))
 	{
 		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(argc, 1U), OOJS_ARGV, NULL, @"shipyard item definition");
 		return NO;
@@ -1108,10 +1540,22 @@ static JSBool StationAddShipToShipyard(JSContext *context, uintN argc, jsval *vp
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool StationRemoveShipFromShipyard(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool StationRemoveShipFromShipyard(Context cx, CallArgs &oojsArgs)
+
 {
+
+	JSContext *context = OOJSRCX(cx);
+
+	uintN argc = oojsArgs.count();
+
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+
+	
+
 	OOJS_NATIVE_ENTER(context)
 
 	StationEntity *station = nil;
@@ -1128,7 +1572,7 @@ static JSBool StationRemoveShipFromShipyard(JSContext *context, uintN argc, jsva
 	
 	int32 shipIndex = -1;
 	BOOL gotIndex = YES;
-	gotIndex = JS_ValueToInt32(context, OOJS_ARGV[0], &shipIndex);
+	gotIndex = ooscript::valueToInt32(OOJSFCX(context), OOJSFVAL(OOJS_ARGV[0]), &shipIndex);
 
 	if (argc != 1 || (!JSVAL_IS_NULL(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > [shipyard count]) 
 	{
@@ -1148,4 +1592,5 @@ static JSBool StationRemoveShipFromShipyard(JSContext *context, uintN argc, jsva
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 

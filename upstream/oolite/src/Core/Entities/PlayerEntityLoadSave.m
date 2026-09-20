@@ -242,7 +242,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 
 		[self setShowDemoShips:NO];
 
-		for (i = page*n_rows ; i < count && row < start_row + n_rows ; i++)
+		for (i = (NSUInteger)page*n_rows ; i < count && row < start_row + n_rows ; i++)
 		{
 			scenario = [[UNIVERSE scenarios] objectAtIndex:i];
 			NSString *scenarioName = [NSString stringWithFormat:@" %@ ",[scenario oo_stringForKey:@"name"]];
@@ -251,7 +251,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 			++row;
 		}
 
-		if ((page+1) * n_rows < count)
+		if ((NSUInteger)(page+1) * n_rows < count)
 		{
 			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ", nil] forRow:row];
 			[gui setColor:[OOColor greenColor] forRow:row];
@@ -385,7 +385,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	}
 	else
 	{
-		idx=([gui selectedRow] - STARTROW) + (currentPage * NUMROWS);
+		idx=([gui selectedRow] - STARTROW) + (OOGUIRow)(currentPage * NUMROWS);
 	}
 	
 	// handle page <-- and page --> keys
@@ -1008,8 +1008,9 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];	// FIXME: should be YES, but was NO before introducing new mouse mode stuff. If set to YES, choices can be selected but not activated.
 }
 
-NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
+static NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
 {
+	(void)context;
 	return [[cdr1 objectForKey:@"saved_game_path"] localizedCompare:[cdr2 objectForKey:@"saved_game_path"]];
 }
 

@@ -31,7 +31,15 @@ MA 02110-1301, USA.
 @class OOWaypointEntity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSWaypoint(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
 
 @interface OOWaypointEntity (OOJavaScriptExtensions)
 
