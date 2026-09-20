@@ -9,7 +9,7 @@ oolite_sources += files(
     'OOJSEngineDebuggerHelpers.mm',
     'OOJSEngineTimeManagement.m',
     'OOJSEntity.m',
-    'OOJSEquipmentInfo.m',
+    'OOJSEquipmentInfo.mm',
     'OOJSExhaustPlume.m',
     'OOJSFlasher.m',
     'OOJSFont.m',
