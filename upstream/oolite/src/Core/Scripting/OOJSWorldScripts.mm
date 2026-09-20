@@ -82,7 +82,7 @@ static bool WorldScriptsEnumerate(Context cx, Object obj);
 
 
 static const PropertyFlag kWorldScriptsObjectFlags = PropertyFlag::ReadOnly | PropertyFlag::Enumerate | PropertyFlag::Permanent;
-static const PropertyFlag kWorldScriptsPropertyFlags = PropertyFlag::ReadOnly | PropertyFlag::Shared;
+static const PropertyFlag kWorldScriptsPropertyFlags = PropertyFlag::ReadOnly | PropertyFlag::Shared | PropertyFlag::Permanent | PropertyFlag::Enumerate;
 
 
 namespace {
