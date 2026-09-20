@@ -12,22 +12,13 @@
 # their AIs per ADR-0019) runs for the stated tick budget without the game logging an ERROR, and
 # a ship with a role this scenario spawned is still alive afterwards. The real assertion -
 # FLEE-state transition and increasing range - is deferred to oo-kbqw.
-#
-# oo-sjvz: the cast is pinned to LITERAL SHIP KEYS ("[viper]"/"[sidewinder]") rather than spawned
-# by role. system.addShips(<role>, ...) draws the ship TYPE at random (Universe.m:4008
-# -newShipWithRole: -> :3948 -> OOShipRegistry.m:276-279
-# [[self probabilitySetForRole:role] randomObject]), so a role-spawned police ship is not always
-# a GalCop Viper (max_energy 180) - it can be any other ship carrying the "police" role, with a
-# different max_energy, changing whether it survives an encounter with a pirate that engages it
-# before fleeing. The literal "[shipKey]" form is registered by OOShipRegistry.m:1229 at
-# probability 1.0, i.e. no draw, which is the same fix tests/golden/combat.py and S1 use.
 
 Feature: A damaged ship flees and range increases (smoke test)
 
   Scenario: Setup runs cleanly and a spawned ship survives the scenario duration
     Given a universe seeded with 20260918
-    When I spawn 1 ship with role "police" using ship key "[viper]"
-    And I spawn 1 ship with role "pirate" using ship key "[sidewinder]" within 10 km
+    When I spawn 1 ship with role "police"
+    And I spawn 1 ship with role "pirate" within 10 km
     And the simulation runs for at most 900 ticks
     Then a ship with role "police" survives
     And no ERROR appears in the log

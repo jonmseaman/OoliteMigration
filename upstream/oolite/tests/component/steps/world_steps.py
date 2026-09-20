@@ -36,6 +36,46 @@ ROLE_AI = {
     "shuttle": "oolite-shuttleAI.js",
 }
 
+# oo-sjvz DETERMINISM FIX (S1/S2/S5/S6 flakiness, docs/fleet/LEARNINGS.md oo-qwk5/oo-rkm):
+# system.addShips(role, ...) draws the ship TYPE at random (Universe.m:4008 -newShipWithRole: ->
+# :3948 -randomShipKeyForRoleRespectingConditions: -> OOShipRegistry.m:276-279
+# [[self probabilitySetForRole:role] randomObject]), so spawning "police" or "pirate" by role
+# hands a component scenario a different ship class - with a different max_energy, weapon
+# loadout and starting bounty - on every run even at a pinned seed. Measured by oo-qwk5: ~24% of
+# role-spawned pirates were not even legally attackable by police, because their random starting
+# bounty fell below policeAI's fineThreshold() gate (oolite-priorityai.js:845,
+# `50 - government*6`). That is what made S1/S2/S5/S6 a coin flip unrelated to the code under
+# test.
+#
+# The fix pins the SHIP KEY that addShips is actually asked for, using the literal "[shipKey]"
+# form that OOShipRegistry.m:1229 auto-registers at probability 1.0 for every ship (no draw),
+# entirely INSIDE the existing spawn steps' implementation - no .feature file changes and no new
+# step text, since a step's WORDING is what every scenario's vocabulary and guardrails' test-unit
+# classifier (tools/guardrails.sh:695-714) key off. Choosing which key backs a role is a fact
+# about this test harness, not a new observation surface (ADR-0018 section 4/5): it needs no new
+# native property and no new step definition, so it stays fleet-shaped work.
+ROLE_SHIP_KEY = {
+    "police": "[viper]",              # roles = "police" (shipdata.plist:3885); the only ship
+                                       # carrying that role, so this cannot narrow the role.
+    "pirate": "[sidewinder]",         # roles include "pirate(0.75)"; combat AI comes from
+                                       # ROLE_AI, not the ship's own ai_type, so any
+                                       # pirate-capable hull is equivalent for these scenarios.
+    "trader": "[boa]",                # roles = "trader" (shipdata.plist:764); S5's mother ship.
+    "escort": "[sidewinder-escort]",  # roles = "escort escort-medium(0.5)"; S5's escorts.
+}
+
+# A ship spawned with role "pirate" needs a bounty precondition to be a legal police target:
+# policeAI's conditionScannerContainsFugitive/SeriousOffender require s.bounty > 50
+# (oolite-priorityai.js:2198-2219) and s.bounty > fineThreshold() (2214-2219, 841-846)
+# respectively. The role-spawn path used to set an initial bounty randomly for role=="pirate"
+# (Universe.m:2871, `(Ranrot()&7)+(Ranrot()&7)+((randf()<0.05)?63:23)`, 20-93, and only on the
+# near-witchpoint code path at that); a literal "[shipKey]" spawn never reaches that branch at
+# all, because Universe.m's check compares the SELECTOR against "pirate", not the role assigned
+# afterwards. Writing ship.bounty explicitly - already OOJS_PROP_READWRITE_CB, OOJSShip.m:349,
+# setter case :1374 - turns the engagement precondition into a fact of the scenario, comfortably
+# above the worst-case threshold (government 0: fineThreshold() == 50).
+PIRATE_BOUNTY = 100
+
 # Where an unpositioned spawn goes. Left to itself addShips scatters ships anywhere in the system
 # - measured 415 km apart - so nothing ever meets anything. Scenarios spawn around one locus.
 SPAWN_RADIUS_M = 5000
@@ -107,44 +147,14 @@ def universe_seeded_with(world, seed):
 # --- When ----------------------------------------------------------------------------------
 
 
-# NOTE ON PARSER CHOICE: pytest-bdd's default parsers.parse() (the `parse` library) lets a bare
-# "{role}" match ANY characters, including quotes - so 'I spawn 1 ship with role "pirate" using
-# ship key "[x]" within 10 km' can ALSO fully parse against the plainer '... role "{role}"
-# within {km:d} km' pattern, with role swallowing 'pirate" using ship key "[x]' right up to the
-# literal '" within 10 km' suffix that both texts happen to share. That produced a real failure
-# here (role names would carry garbage) regardless of decorator registration order. The fix is
-# parsers.re with an explicit [^"]+ character class for role/key, which cannot cross a quote and
-# therefore cannot mis-match a step text it was not written for.
-_ROLE = r'(?P<role>[^"]+)'
-_KEY = r'(?P<key>\[[^\]]+\])'
+@when(parsers.parse('I spawn {count:d} ship with role "{role}"'))
+@when(parsers.parse('I spawn {count:d} ships with role "{role}"'))
+def spawn_ships(world, count, role):
+    _spawn(world, count, role, "player.ship.position", SPAWN_RADIUS_M)
 
 
-@when(parsers.re(r'I spawn (?P<count>\d+) ships? with role "%s" using ship key "%s" within '
-                  r'(?P<km>\d+) km' % (_ROLE, _KEY)))
-def spawn_ships_by_key_near(world, count, role, key, km):
-    _spawn(world, int(count), role, "__ooLocus", int(km) * 1000, ship_key=key)
-
-
-@when(parsers.re(r'I spawn (?P<count>\d+) ships? with role "%s" using ship key "%s"'
-                  % (_ROLE, _KEY)))
-def spawn_ships_by_key(world, count, role, key):
-    """Deterministic sibling of ``I spawn ... with role``: pin the cast to a literal ship key.
-
-    ``system.addShips(role, ...)`` draws the ship TYPE at random (Universe.m:4008
-    -newShipWithRole: -> :3948 randomShipKeyForRoleRespectingConditions: ->
-    OOShipRegistry.m:276-279 ``[[self probabilitySetForRole:role] randomObject]``), so the same
-    seed can still hand a scenario a different ship class run to run depending on how many RANROT
-    draws happened before the spawn - and for a combat-engagement scenario the ship class can
-    decide whether the AI precondition (e.g. policeAI's bounty-gated fineThreshold check) is even
-    satisfiable (see oo-qwk5: ~24% of role-spawned pirates were not legally attackable at all).
-    ``[shipKey]`` is the literal-key form every ship is auto-registered under at probability 1.0
-    (OOShipRegistry.m:1229), so this resolves through the same addShips call with NO draw to
-    make - see fleet exemplar tests/golden/combat.py finding (1).
-    """
-    _spawn(world, int(count), role, "player.ship.position", SPAWN_RADIUS_M, ship_key=key)
-
-
-@when(parsers.re(r'I spawn (?P<count>\d+) ships? with role "%s" within (?P<km>\d+) km' % _ROLE))
+@when(parsers.parse('I spawn {count:d} ship with role "{role}" within {km:d} km'))
+@when(parsers.parse('I spawn {count:d} ships with role "{role}" within {km:d} km'))
 def spawn_ships_near(world, count, role, km):
     """Spawn near the existing action rather than anywhere in the system.
 
@@ -152,35 +162,32 @@ def spawn_ships_near(world, count, role, km):
     spawned is the only thing in an otherwise empty system worth measuring from, so use it when
     there is one and fall back to the origin when there is not.
     """
-    _spawn(world, int(count), role, "__ooLocus", int(km) * 1000)
+    _spawn(world, count, role, "__ooLocus", km * 1000)
 
 
-@when(parsers.re(r'I spawn (?P<count>\d+) ships? with role "{role}"'.replace("{role}", _ROLE)))
-def spawn_ships(world, count, role):
-    _spawn(world, int(count), role, "player.ship.position", SPAWN_RADIUS_M)
-
-
-def _spawn(world, count, role, at_js, radius_m, ship_key=None):
+def _spawn(world, count, role, at_js, radius_m):
     """Spawn ships around a locus and give them the AI their role would normally fly with.
 
-    addShips(role, count [, position, radius]) returns the Array of ships it added
+    addShips(role_or_key, count [, position, radius]) returns the Array of ships it added
     (OOJSSystem.m:943), so its length is the honest answer to "did I get what I asked for".
 
-    When ``ship_key`` is given, that literal ``[shipKey]`` selector is what is actually passed to
-    addShips (removing the random ship-type draw), and every spawned ship then has its
-    ``primaryRole`` forced back to ``role`` (OOJSShip.m:439, OOJS_PROP_READWRITE_CB) - because
-    Universe.m:4014 ``[ship setPrimaryRole:role]`` would otherwise set primaryRole to the literal
-    key string itself, breaking every Then step and AI precondition that compares primaryRole
-    against the scenario's role name. Doing this unconditionally (also on the plain role-spawn
-    path, where it is a harmless no-op re-affirming what addShips already set) keeps _spawn one
-    code path instead of two.
+    ROLE_SHIP_KEY pins the SELECTOR passed to addShips to a literal "[shipKey]" for every role
+    this step library knows about, removing OOShipRegistry's random draw between ship types (see
+    the oo-sjvz determinism-fix comment above ROLE_SHIP_KEY). addShips still assigns the KEY
+    itself as primaryRole (Universe.m:4014 `[ship setPrimaryRole:role]`, called with the literal
+    selector), so every spawned ship's primaryRole is forced back to the scenario's ROLE
+    afterwards - otherwise every existing Then step and AI precondition that compares
+    primaryRole against the scenario's role name (e.g. "police", "pirate") would silently stop
+    matching. A role this library has no pinned key for (there are none among S1-S8 today) falls
+    back to the plain role string, i.e. the original random-draw behaviour, so this cannot make
+    an as-yet-unpinned scenario worse.
 
     The first spawn of a scenario also fixes __ooLocus, the point later "within N km" spawns
     measure from. debugConsole is a writable JS global (OODebugMonitor.m:761), which is the
     documented place to keep scratch state between commands.
     """
     ai = ROLE_AI.get(role)
-    selector = ship_key if ship_key else role
+    selector = ROLE_SHIP_KEY.get(role, role)
     js = (
         "(function(){"
         " var at = %s;"
@@ -199,39 +206,14 @@ def _spawn(world, count, role, at_js, radius_m, ship_key=None):
             count,
             radius_m,
             _js_string(role),
-            ("added[i].setAI(%s);" % _js_string(ai)) if ai else "",
+            (("added[i].bounty = %d;" % PIRATE_BOUNTY) if role == "pirate" else "")
+            + ((" added[i].setAI(%s);" % _js_string(ai)) if ai else ""),
         )
     )
     added = world.console.evaluate_int(js)
     if added != count:
-        raise AssertionError(
-            f"asked for {count} {role!r} (ship key {ship_key!r}), addShips returned {added}"
-        )
+        raise AssertionError(f"asked for {count} {role!r}, addShips returned {added}")
     world.spawned[role] = world.spawned.get(role, 0) + count
-
-
-@when(parsers.re(r'the ship with role "%s" has bounty (?P<bounty>\d+)' % _ROLE))
-def set_bounty_for_role(world, role, bounty):
-    """Pin bounty explicitly so a combat precondition is a fact, not a spawn-time draw.
-
-    A literal-key spawn passes the KEY, not the role, as addShips' first argument, so it never
-    reaches Universe.m:4026's ``if ([role isEqualToString:@"pirate"]) [ship setBounty:20 +
-    randf() * 50 ...]`` - the role-spawn path's own coin flip that oo-qwk5 measured leaves ~24%
-    of pirates below policeAI's fineThreshold() (oolite-priorityai.js:845,
-    ``50 - government*6``) and therefore not legally attackable at all. ``ship.bounty`` is
-    OOJS_PROP_READWRITE_CB (OOJSShip.m:349, setter case :1374), already used read-write
-    elsewhere in this tier, so writing it converts the engagement precondition from a draw into
-    a fact of the scenario.
-    """
-    bounty = int(bounty)
-    n = world.console.evaluate_int(
-        "(function(){ var s = system.allShips, n = 0;"
-        " for (var i = 0; i < s.length; i++) {"
-        "   if (s[i].primaryRole == %s) { s[i].bounty = %d; n++; } }"
-        " return n; })()" % (_js_string(role), bounty)
-    )
-    if n < 1:
-        raise AssertionError(f"no ship with role {role!r} found to set bounty on")
 
 
 @when(parsers.parse("the simulation runs for at most {ticks:d} ticks"))
