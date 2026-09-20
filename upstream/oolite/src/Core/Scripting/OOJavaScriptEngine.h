@@ -151,13 +151,13 @@ extern NSString * const kOOJavaScriptEngineDidResetNotification;
 	Note that after reporting an error in a JavaScript callback, the caller
 	must return NO to signal an error.
 */
-void OOJSReportError(JSContext *context, NSString *format, ...);
-void OOJSReportErrorWithArguments(JSContext *context, NSString *format, va_list args);
-void OOJSReportErrorForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportError(JSContext *context, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportErrorWithArguments(JSContext *context, NSString *format, va_list args);
+OOJS_EXTERN_C void OOJSReportErrorForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...);
 
-void OOJSReportWarning(JSContext *context, NSString *format, ...);
-void OOJSReportWarningWithArguments(JSContext *context, NSString *format, va_list args);
-void OOJSReportWarningForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportWarning(JSContext *context, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportWarningWithArguments(JSContext *context, NSString *format, va_list args);
+OOJS_EXTERN_C void OOJSReportWarningForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...);
 
 OOJS_EXTERN_C void OOJSReportBadPropertySelector(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec);
 OOJS_EXTERN_C void OOJSReportBadPropertyValue(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec, jsval value);
@@ -363,8 +363,8 @@ BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 
 // These require a request on context.
-id OOJSNativeObjectFromJSValue(JSContext *context, jsval value);
-id OOJSNativeObjectFromJSObject(JSContext *context, JSObject *object);
+OOJS_EXTERN_C id OOJSNativeObjectFromJSValue(JSContext *context, jsval value);
+OOJS_EXTERN_C id OOJSNativeObjectFromJSObject(JSContext *context, JSObject *object);
 id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class requiredClass);
 id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Class requiredClass);
 
