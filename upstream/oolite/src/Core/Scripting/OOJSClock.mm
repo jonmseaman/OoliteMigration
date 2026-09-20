@@ -38,8 +38,8 @@ MA 02110-1301, USA.
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
 	oo-sdz, the sweep exemplar): the class dispatch table becomes a static ooscript::ClassDef
-	(the stub hooks are nullptr), InitClass becomes ooscript::initClass, JS_DefineObject
-	becomes ooscript::defineObject, and the directly spelled numeric-conversion call becomes
+	(the stub hooks are nullptr), InitClass becomes ooscript::initClass, the engine's
+	DefineObject call becomes ooscript::defineObject, and the directly spelled numeric-conversion call becomes
 	ooscript::newNumberValue. `this` is renamed to `thisObj` because it is a reserved word once
 	this file compiles as Objective-C++ (ADR-0001). The OOJS_* argument-marshalling macros
 	(OOJS_NATIVE_ENTER, OOJS_ARGV, OOJS_RETURN_*) are unchanged, byte-identical façade views as
