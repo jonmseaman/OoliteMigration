@@ -40,6 +40,79 @@ MA 02110-1301, USA.
 #import "NSFileManagerOOExtensions.h"
 #import "OOJSGuiScreenKeyDefinition.h"
 
+#include "ooscript/JSEngine.hpp"
+#include <cstring>
+
+/*
+	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-8yi, the same way bead oo-sdz
+	retargeted OOJSVector.mm (the exemplar for this sweep; see its header comment for the full
+	rationale). This file's directly-spelled engine calls -- the JSClass hook-stub family
+	(PropertyStub/EnumerateStub/ResolveStub/ConvertStub), NewNumberValue, ValueToNumber,
+	ValueToBoolean, ValueToObject, GetProperty, DefineProperty, DefineProperties,
+	DefineFunctions, NewCompartmentAndGlobalObject and SetGlobalObject -- become their
+	ooscript:: façade equivalents per ooscript/README.md's retarget map; the OOJS_*
+	argument-marshalling macros (OOJS_ARGV, OOJS_THIS, OOJS_NATIVE_ENTER/EXIT, OOJS_RETURN_*)
+	are OOJS_*-spelled, not themselves the engine's own prefix at these call sites, and stay
+	exactly as before, out of scope for the sweep.
+
+	SetGlobalObject had no façade equivalent yet; ooscript::setGlobalObject is added to
+	JSEngine.hpp/JSEngine_spidermonkey.cpp by this bead following the existing
+	newGlobalObject/getGlobalObject pattern (JS_SetGlobalObject's only call site in the tree).
+
+	Retargeting DefineProperties/DefineFunctions requires sGlobalProperties/sGlobalMethods to
+	become ooscript::PropertySpec/FunctionSpec tables (the façade's DefineProperties and
+	DefineFunctions take those, not the engine's JSPropertySpec / JSFunctionSpec pointers),
+	every JS global method to take the façade's NativeFn hook signature
+	(Context, CallArgs&) rather than the engine's (JSContext *, uintN argc, jsval *vp). A small
+	shim at the top of each recovers the old JSContext *, uintN, and jsval * locals so the
+	OOJS_* argument-marshalling macros and the rest of each body are UNCHANGED, exactly as
+	OOJSVector.mm's own retarget does it. GlobalGetProperty/GlobalSetProperty take the façade's
+	PropertyGetter/PropertySetter hook signature for the same reason (they are wired into
+	sGlobalClass, now a ClassDef). `this` is renamed to `thisObj` because it is a reserved word
+	once this file compiles as Objective-C++ (ADR-0001).
+*/
+
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+using ooscript::Value;
+using ooscript::PropertyId;
+using ooscript::CallArgs;
+using ooscript::ClassDef;
+using ooscript::ClassFlag;
+using ooscript::PropertyFlag;
+using ooscript::PropertySpec;
+using ooscript::FunctionSpec;
+
+// Byte-identical façade <-> jsapi views, local to this call site (JSEngine.hpp: Value/PropertyId
+// and the handle types are byte copies of jsval/jsid/JS*; see OOJSVector.mm for the same,
+// non-exported, pattern).
+namespace {
+static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
+} // namespace
+namespace {
+static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
+} // namespace
+namespace {
+static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
+} // namespace
+namespace {
+static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
+} // namespace
+namespace {
+static inline Value     *OOJSFVALP(jsval *v)      { return reinterpret_cast<Value*>(v); }
+} // namespace
+namespace {
+static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
+} // namespace
+namespace {
+static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
+} // namespace
+
+
 #if OOJSENGINE_MONITOR_SUPPORT
 
 @interface OOJavaScriptEngine (OOMonitorSupportInternal)
@@ -56,57 +129,105 @@ MA 02110-1301, USA.
 static NSString * const kOOLogDebugMessage = @"script.debug.message";
 
 
-static JSBool GlobalGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value);
+namespace {
+static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
+} // namespace
 #ifndef NDEBUG
-static JSBool GlobalSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value);
+namespace {
+static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
+} // namespace
 #endif
 
-static JSBool GlobalLog(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalExpandDescription(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalKeyBindingDescription(JSContext *context, uintN argc, jsval *vp); 
-static JSBool GlobalExpandMissionText(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalDisplayNameForCommodity(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalRandomName(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalRandomInhabitantsDescription(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalSetScreenBackground(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalSetScreenOverlay(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalGetScreenBackgroundForKey(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalSetScreenBackgroundForKey(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalAutoAIForRole(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalPauseGame(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalQuitGame(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalGetGuiColorSettingForKey(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalSetGuiColorSettingForKey(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalSetExtraGuiScreenKeys(JSContext *context, uintN argc, jsval *vp);
-static JSBool GlobalClearExtraGuiScreenKeys(JSContext *context, uintN argc, jsval *vp);
+namespace {
+static bool GlobalLog(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalExpandDescription(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalKeyBindingDescription(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalExpandMissionText(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalDisplayNameForCommodity(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalRandomName(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalRandomInhabitantsDescription(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalSetScreenBackground(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalSetScreenOverlay(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalGetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalSetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalAutoAIForRole(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalPauseGame(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalQuitGame(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalGetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalSetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool GlobalClearExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs);
+} // namespace
 
 #ifndef NDEBUG
-static JSBool GlobalTakeSnapShot(JSContext *context, uintN argc, jsval *vp);
+namespace {
+static bool GlobalTakeSnapShot(Context cx, CallArgs &oojsArgs);
+} // namespace
 #endif
 
 
-static JSClass sGlobalClass =
+namespace {
+static ClassDef sGlobalClass =
 {
 	"Global",
-	JSCLASS_GLOBAL_FLAGS,
-	
-	JS_PropertyStub,
-	JS_PropertyStub,
-	GlobalGetProperty,
+	ClassFlag::Global,
+
+	nullptr,			// addProperty (engine default: PropertyStub)
+	nullptr,			// delProperty (engine default: PropertyStub)
+	GlobalGetProperty,	// getProperty
 #ifndef NDEBUG
-	GlobalSetProperty,
+	GlobalSetProperty,	// setProperty
 #else
 	// No writeable properties in non-debug builds
-	JS_StrictPropertyStub,
+	nullptr,			// setProperty (engine default: StrictPropertyStub)
 #endif
-	JS_EnumerateStub,
-	JS_ResolveStub,
-	JS_ConvertStub,
-	JS_FinalizeStub
+	nullptr,			// enumerate (engine default: EnumerateStub)
+	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// resolve (engine default: ResolveStub)
+	nullptr,			// convert (engine default: ConvertStub)
+	nullptr,			// finalize (engine default: FinalizeStub)
+	nullptr,			// call
+	nullptr,			// construct
+	nullptr,			// backend: owned by the façade backend, must start null
 };
+} // namespace
 
 
-enum
+enum : std::int8_t
 {
 	// Property IDs
 	kGlobal_galaxyNumber,		// galaxy number, integer, read-only
@@ -118,7 +239,30 @@ enum
 };
 
 
-static JSPropertySpec sGlobalProperties[] =
+namespace {
+static constexpr PropertyFlag kGlobalROPropFlags  = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared;
+#ifndef NDEBUG
+static constexpr PropertyFlag kGlobalRWPropFlags  = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared;
+#endif
+static PropertySpec sGlobalProperties[] =
+{
+	// JS name					ID							flags									getter	setter
+	{ "galaxyNumber",			kGlobal_galaxyNumber,		kGlobalROPropFlags,	nullptr, nullptr },
+	{ "guiScreen",				kGlobal_guiScreen,			kGlobalROPropFlags,	nullptr, nullptr },
+#ifndef NDEBUG
+	{ "timeAccelerationFactor",	kGlobal_timeAccelerationFactor,	kGlobalRWPropFlags,	nullptr, nullptr },
+#endif
+	{ 0 }
+};
+} // namespace
+
+
+// A raw jsapi mirror of sGlobalProperties, used only for the two bad-property error reporters
+// in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are outside this
+// bead's scope (they are shared across every binding file) and still take a JSPropertySpec*,
+// not ooscript::PropertySpec*, the same as OOJSVector.mm's sVectorPropertiesRaw.
+namespace {
+static JSPropertySpec sGlobalPropertiesRaw[] =
 {
 	// JS name					ID							flags
 	{ "galaxyNumber",			kGlobal_galaxyNumber,		OOJS_PROP_READONLY_CB },
@@ -128,100 +272,122 @@ static JSPropertySpec sGlobalProperties[] =
 #endif
 	{ 0 }
 };
+} // namespace
 
 
-static JSFunctionSpec sGlobalMethods[] =
+namespace {
+static FunctionSpec sGlobalMethods[] =
 {
-	// JS name							Function								min args
-	{ "log",							GlobalLog,							1 },
-	{ "autoAIForRole",					GlobalAutoAIForRole,				1 },
-	{ "expandDescription",				GlobalExpandDescription,			1 },
-	{ "expandMissionText",				GlobalExpandMissionText,			1 },
-	{ "displayNameForCommodity",		GlobalDisplayNameForCommodity,		1 },
-	{ "randomName",						GlobalRandomName,					0 },
-	{ "randomInhabitantsDescription",	GlobalRandomInhabitantsDescription,	1 },
-	{ "setScreenBackground",			GlobalSetScreenBackground,			1 },
-	{ "getScreenBackgroundForKey",      GlobalGetScreenBackgroundForKey,    1 },
-	{ "setScreenBackgroundForKey",      GlobalSetScreenBackgroundForKey,    2 },
-	{ "setScreenOverlay",				GlobalSetScreenOverlay,				1 },
-	{ "getGuiColorSettingForKey",       GlobalGetGuiColorSettingForKey,     1 },
-	{ "setGuiColorSettingForKey",       GlobalSetGuiColorSettingForKey,     2 },
-	{ "keyBindingDescription",       	GlobalKeyBindingDescription,		1 },
-	{ "setExtraGuiScreenKeys",			GlobalSetExtraGuiScreenKeys,		2 },
-	{ "clearExtraGuiScreenKeys",		GlobalClearExtraGuiScreenKeys,		2 },
+	// JS name								Function								min args	flags
+	{ "log",								GlobalLog,							1,			0 },
+	{ "autoAIForRole",						GlobalAutoAIForRole,				1,			0 },
+	{ "expandDescription",					GlobalExpandDescription,			1,			0 },
+	{ "expandMissionText",					GlobalExpandMissionText,			1,			0 },
+	{ "displayNameForCommodity",			GlobalDisplayNameForCommodity,		1,			0 },
+	{ "randomName",							GlobalRandomName,					0,			0 },
+	{ "randomInhabitantsDescription",		GlobalRandomInhabitantsDescription,	1,			0 },
+	{ "setScreenBackground",				GlobalSetScreenBackground,			1,			0 },
+	{ "getScreenBackgroundForKey",      GlobalGetScreenBackgroundForKey,    1,			0 },
+	{ "setScreenBackgroundForKey",      GlobalSetScreenBackgroundForKey,    2,			0 },
+	{ "setScreenOverlay",					GlobalSetScreenOverlay,				1,			0 },
+	{ "getGuiColorSettingForKey",       GlobalGetGuiColorSettingForKey,     1,			0 },
+	{ "setGuiColorSettingForKey",       GlobalSetGuiColorSettingForKey,     2,			0 },
+	{ "keyBindingDescription",       	GlobalKeyBindingDescription,		1,			0 },
+	{ "setExtraGuiScreenKeys",			GlobalSetExtraGuiScreenKeys,		2,			0 },
+	{ "clearExtraGuiScreenKeys",		GlobalClearExtraGuiScreenKeys,		2,			0 },
 
 #ifndef NDEBUG
-	{ "takeSnapShot",					GlobalTakeSnapShot,					1 },
-	{ "quitGame",						GlobalQuitGame,						0 },
+	{ "takeSnapShot",					GlobalTakeSnapShot,					1,			0 },
+	{ "quitGame",						GlobalQuitGame,						0,			0 },
 #endif
-	{ "pauseGame",						GlobalPauseGame,					0 },
+	{ "pauseGame",						GlobalPauseGame,					0,			0 },
 	{ 0 }
 };
+} // namespace
+
+
+namespace {
+static constexpr PropertyFlag kGlobalSelfPropertyFlags = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly;
+} // namespace
 
 
 void CreateOOJSGlobal(JSContext *context, JSObject **outGlobal)
 {
 	assert(outGlobal != NULL);
 	
-	*outGlobal = JS_NewCompartmentAndGlobalObject(context, &sGlobalClass, NULL);
+	Context cx = OOJSFCX(context);
+	Object global = ooscript::newGlobalObject(cx, &sGlobalClass);
+	*outGlobal = OOJSROBJ(global);
 	
-	JS_SetGlobalObject(context, *outGlobal);
-	JS_DefineProperty(context, *outGlobal, "global", OBJECT_TO_JSVAL(*outGlobal), NULL, NULL, OOJS_PROP_READONLY);
+	ooscript::setGlobalObject(cx, global);
+	ooscript::defineProperty(cx, global, "global", ooscript::objectValue(global), nullptr, nullptr,
+							  kGlobalSelfPropertyFlags);
 }
 
 
 void SetUpOOJSGlobal(JSContext *context, JSObject *global)
 {
-	JS_DefineProperties(context, global, sGlobalProperties);
-	JS_DefineFunctions(context, global, sGlobalMethods);
+	Context cx = OOJSFCX(context);
+	Object obj = OOJSFOBJ(global);
+	ooscript::defineProperties(cx, obj, sGlobalProperties);
+	ooscript::defineFunctions(cx, obj, sGlobalMethods);
 }
 
 
-static JSBool GlobalGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value)
+namespace {
+static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = OOJSRCX(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity				*player = OOPlayerForScripting();
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kGlobal_galaxyNumber:
-			*value = INT_TO_JSVAL([player currentGalaxyID]);
+			*value = ooscript::int32Value([player currentGalaxyID]);
 			return YES;
 			
 		case kGlobal_guiScreen:
-			*value = OOJSValueFromGUIScreenID(context, [player guiScreen]);
+			*value = OOJSFVAL(OOJSValueFromGUIScreenID(context, [player guiScreen]));
 			return YES;
 			
 #ifndef NDEBUG
 		case kGlobal_timeAccelerationFactor:
-			return JS_NewNumberValue(context, [UNIVERSE timeAccelerationFactor], value);
+			return ooscript::newNumberValue(cx, [UNIVERSE timeAccelerationFactor], value);
 #endif
 			
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sGlobalProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sGlobalPropertiesRaw);
 			return NO;
 	}
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 #ifndef NDEBUG
-static JSBool GlobalSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value)
+namespace {
+static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = OOJSRCX(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	jsdouble					fValue;
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kGlobal_timeAccelerationFactor:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[UNIVERSE setTimeAccelerationFactor:fValue];
 				return YES;
@@ -229,22 +395,28 @@ static JSBool GlobalSetProperty(JSContext *context, JSObject *this, jsid propID,
 			break;
 	
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sGlobalProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sGlobalPropertiesRaw);
 	}
 	
-	OOJSReportBadPropertyValue(context, this, propID, sGlobalProperties, *value);
+	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sGlobalPropertiesRaw, *OOJSRVAL(value));
 	return NO;
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 #endif
 
 
 // *** Methods ***
 
 // log([messageClass : String,] message : string, ...)
-static JSBool GlobalLog(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalLog(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*message = nil;
@@ -285,11 +457,17 @@ static JSBool GlobalLog(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // expandDescription(description : String [, overrides : object (dictionary)]) : String
-static JSBool GlobalExpandDescription(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalExpandDescription(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
@@ -314,9 +492,15 @@ static JSBool GlobalExpandDescription(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
-static JSBool GlobalKeyBindingDescription(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalKeyBindingDescription(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
@@ -337,11 +521,17 @@ static JSBool GlobalKeyBindingDescription(JSContext *context, uintN argc, jsval 
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // expandMissionText(textKey : String [, overrides : object (dictionary)]) : String
-static JSBool GlobalExpandMissionText(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalExpandMissionText(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
@@ -365,11 +555,17 @@ static JSBool GlobalExpandMissionText(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // displayNameForCommodity(commodityName : String) : String
-static JSBool GlobalDisplayNameForCommodity(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalDisplayNameForCommodity(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
@@ -384,18 +580,23 @@ static JSBool GlobalDisplayNameForCommodity(JSContext *context, uintN argc, jsva
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // randomName() : String
-static JSBool GlobalRandomName(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalRandomName(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	/*	Temporarily set the system generation seed to a "really random" seed,
 		so randomName() isn't repeatable.
 	*/
 	RNG_Seed savedSeed = currentRandomSeed();
-	setRandomSeed((RNG_Seed){ Ranrot(), Ranrot(), Ranrot(), Ranrot() });
+	setRandomSeed((RNG_Seed){ (int32_t)Ranrot(), (int32_t)Ranrot(), (int32_t)Ranrot(), (int32_t)Ranrot() });
 	
 	NSString *result = OOExpand(@"%N");
 	
@@ -406,33 +607,45 @@ static JSBool GlobalRandomName(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // randomInhabitantsDescription() : String
-static JSBool GlobalRandomInhabitantsDescription(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalRandomInhabitantsDescription(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
 	Random_Seed			aSeed;
-	JSBool				isPlural = YES;
+	bool				isPlural = true;
 	
-	if (argc > 0 && !JS_ValueToBoolean(context, OOJS_ARGV[0], &isPlural))
+	if (argc > 0 && !ooscript::valueToBoolean(cx, OOJSFVAL(OOJS_ARGV[0]), &isPlural))
 	{
 		OOJSReportBadArguments(context, nil, @"randomInhabitantsDescription", 1, OOJS_ARGV, nil, @"boolean");
 		return NO;
 	}
 	
 	make_pseudo_random_seed(&aSeed);
-	string = [UNIVERSE getSystemInhabitants:Ranrot()%OO_SYSTEMS_PER_GALAXY plural:isPlural];
+	string = [UNIVERSE getSystemInhabitants:Ranrot()%OO_SYSTEMS_PER_GALAXY plural:(isPlural ? YES : NO)];
 	OOJS_RETURN_OBJECT(string);
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool GlobalClearExtraGuiScreenKeys(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalClearExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	BOOL				result = NO;
@@ -465,9 +678,15 @@ static JSBool GlobalClearExtraGuiScreenKeys(JSContext *context, uintN argc, jsva
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
-static JSBool GlobalSetExtraGuiScreenKeys(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	BOOL				result = NO;
@@ -488,13 +707,17 @@ static JSBool GlobalSetExtraGuiScreenKeys(JSContext *context, uintN argc, jsval 
 	key = OOStringFromJSValue(context, OOJS_ARGV[0]);
 
 	// Validate arguments.
-	if (argc < 2 || !JS_ValueToObject(context, OOJS_ARGV[1], &params))
 	{
-		OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], nil, @"key, definition: definition is not a valid dictionary.");
-		return NO;
+		Object paramsObj = nullptr;
+		if (argc < 2 || !ooscript::valueToObject(cx, OOJSFVAL(OOJS_ARGV[1]), &paramsObj))
+		{
+			OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], nil, @"key, definition: definition is not a valid dictionary.");
+			return NO;
+		}
+		params = OOJSROBJ(paramsObj);
 	}
 
-	if (JS_GetProperty(context, params, "guiScreen", &value) == JS_FALSE || JSVAL_IS_VOID(value))
+	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "guiScreen", OOJSFVALP(&value)) || JSVAL_IS_VOID(value))
 	{
 		OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], nil, @"key, definition: must have a 'guiScreen' property.");
 		return NO;
@@ -510,7 +733,7 @@ static JSBool GlobalSetExtraGuiScreenKeys(JSContext *context, uintN argc, jsval 
 		return NO;
 	}
 
-	if (JS_GetProperty(context, params, "registerKeys", &value) == JS_FALSE || JSVAL_IS_VOID(value))
+	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "registerKeys", OOJSFVALP(&value)) || JSVAL_IS_VOID(value))
 	{
 		OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], nil, @"key, definition: must have a 'registerKeys' property.");
 		return NO;
@@ -528,7 +751,7 @@ static JSBool GlobalSetExtraGuiScreenKeys(JSContext *context, uintN argc, jsval 
 		}
 	}
 
-	if (JS_GetProperty(context, params, "callback", &callback) == JS_FALSE || JSVAL_IS_VOID(callback))
+	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "callback", OOJSFVALP(&callback)) || JSVAL_IS_VOID(callback))
 	{
 		OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], NULL, @"key, definition; must have a 'callback' property.");
 		return NO;
@@ -545,9 +768,11 @@ static JSBool GlobalSetExtraGuiScreenKeys(JSContext *context, uintN argc, jsval 
 	[definition setCallback:callback];
 
 	// get callback 'this'
-	if (JS_GetProperty(context, params, "cbThis", &value) == JS_TRUE && !JSVAL_IS_VOID(value))
+	if (ooscript::getProperty(cx, OOJSFOBJ(params), "cbThis", OOJSFVALP(&value)) && !JSVAL_IS_VOID(value))
 	{
-		JS_ValueToObject(context, value, &callbackThis);
+		Object callbackThisObj = nullptr;
+		ooscript::valueToObject(cx, OOJSFVAL(value), &callbackThisObj);
+		callbackThis = OOJSROBJ(callbackThisObj);
 		[definition setCallbackThis:callbackThis];
 		// can do .bind(this) for callback instead
 	}
@@ -559,11 +784,17 @@ static JSBool GlobalSetExtraGuiScreenKeys(JSContext *context, uintN argc, jsval 
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // setScreenBackground(descriptor : guiTextureDescriptor) : Boolean
-static JSBool GlobalSetScreenBackground(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalSetScreenBackground(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
@@ -594,10 +825,16 @@ static JSBool GlobalSetScreenBackground(JSContext *context, uintN argc, jsval *v
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool GlobalGetScreenBackgroundForKey(JSContext *context, uintN argc, jsval *vp) 
+namespace {
+static bool GlobalGetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(argc == 0))
@@ -617,10 +854,16 @@ static JSBool GlobalGetScreenBackgroundForKey(JSContext *context, uintN argc, js
 	
 	OOJS_NATIVE_EXIT
 } 
+} // namespace
 
 // setScreenBackgroundDefault (key : NSString, descriptor : guiTextureDescriptor) : boolean
-static JSBool GlobalSetScreenBackgroundForKey(JSContext *context, uintN argc, jsval *vp) 
+namespace {
+static bool GlobalSetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
@@ -649,11 +892,17 @@ static JSBool GlobalSetScreenBackgroundForKey(JSContext *context, uintN argc, js
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // setScreenOverlay(descriptor : guiTextureDescriptor) : Boolean
-static JSBool GlobalSetScreenOverlay(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalSetScreenOverlay(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
@@ -681,10 +930,16 @@ static JSBool GlobalSetScreenOverlay(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool GlobalGetGuiColorSettingForKey(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalGetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(argc == 0))
@@ -711,11 +966,17 @@ static JSBool GlobalGetGuiColorSettingForKey(JSContext *context, uintN argc, jsv
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // setGuiColorForKey(descriptor : OOColor) : boolean
-static JSBool GlobalSetGuiColorSettingForKey(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalSetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
@@ -758,12 +1019,18 @@ static JSBool GlobalSetGuiColorSettingForKey(JSContext *context, uintN argc, jsv
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 #ifndef NDEBUG
 // takeSnapShot([name : alphanumeric String]) : Boolean
-static JSBool GlobalTakeSnapShot(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalTakeSnapShot(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString				*value = nil;
@@ -804,11 +1071,17 @@ static JSBool GlobalTakeSnapShot(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 #endif
 
 // autoAIForRole(role : String) : String
-static JSBool GlobalAutoAIForRole(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalAutoAIForRole(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
@@ -827,10 +1100,15 @@ static JSBool GlobalAutoAIForRole(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 // pauseGame() : Boolean
-static JSBool GlobalPauseGame(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalPauseGame(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
@@ -855,10 +1133,15 @@ static JSBool GlobalPauseGame(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 // quitGame() : Boolean
-static JSBool GlobalQuitGame(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool GlobalQuitGame(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	OOLog(@"script.debug.quit", @"%@", @"Quit requested via JavaScript global.quitGame()");
@@ -869,3 +1152,4 @@ static JSBool GlobalQuitGame(JSContext *context, uintN argc, jsval *vp)
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace

@@ -260,6 +260,7 @@ struct ClassDef
 
 Object newObject(Context cx, ClassDef* def, Object proto, Object parent);              // engine: NewObject
 Object newGlobalObject(Context cx, ClassDef* def);                                     // engine: NewCompartmentAndGlobalObject
+void   setGlobalObject(Context cx, Object global);                                     // engine: SetGlobalObject
 bool   initStandardClasses(Context cx, Object global);                                 // engine: InitStandardClasses
 Object initClass(Context cx, Object obj, Object parentProto, ClassDef* def,            // engine: InitClass
                  NativeFn constructor, unsigned nargs,

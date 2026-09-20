@@ -587,6 +587,11 @@ Object newGlobalObject(Context cx, ClassDef* def)
 	return wrap(JS_NewCompartmentAndGlobalObject(CX(cx), claspFor(def), nullptr));
 }
 
+void setGlobalObject(Context cx, Object global)
+{
+	JS_SetGlobalObject(CX(cx), OBJ(global));
+}
+
 bool initStandardClasses(Context cx, Object global)
 {
 	return JS_InitStandardClasses(CX(cx), OBJ(global)) != JS_FALSE;
