@@ -19,3 +19,5 @@ recorded RED, because a schedule nobody watches is exactly where a vacuous green
 | started | job | verdict | rc | wall | log | note |
 |---|---|---|---|---|---|---|
 | 2026-09-19 03:04:35 | tier-c | RED | 1 | 65s | `build/nightly/tier-c-20260919-030434.log` | rc=1; tier-b: FAIL (stage tests): tests/golden failed (pytest rc=1, 1065 passed); full log C:/Users/jon/scoop/apps/msys2/2025- |
+| 2026-09-20 02:00:03 | tier-c | RED | 1 | 50s | `build/nightly/tier-c-20260920-020002.log` | rc=1; tier-b: FAIL (stage build): the build failed; last 30 lines above, full log C:/Users/jon/scoop/apps/msys2/2025-12-13/tmp |
+| 2026-09-20 03:00:01 | corpus-tier3 | RED | 1 | 6199s | `build/nightly/corpus-tier3-20260920-030001.log` | rc=1; NOTLOADED_DEPS gsagostinho.CobraMkIV                             8.7s  'gsagostinho.CobraMkIV.oxz' is ABSENT from the [s |

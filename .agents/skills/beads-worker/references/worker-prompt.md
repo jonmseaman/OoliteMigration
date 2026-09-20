@@ -39,6 +39,15 @@ finish, write them with `bd update {id} --acceptance "<one command per line>"`; 
 from the repository root on the merged tree, and `accept.sh` runs that field, not the description.
 A block that is only comments or `exit 1` is rejected.
 
+`accept.sh` runs EACH LINE of the stored acceptance as its OWN independent `bash -o pipefail -c`
+invocation — shell state (variables, `cd`, `set -e`) does NOT carry from one line to the next. A
+multi-statement script that sets a variable on one line and reads it on a later line (e.g.
+`B="$TMPDIR/x"` then `mkdir -p "$B"`) will see `$B` empty on the second line and fail with a
+confusing error. If your acceptance needs shared state across statements, join them into ONE
+LOGICAL LINE with `;` or `&&` (not real newlines) before storing, and verify the joined line
+passes under `bash -o pipefail -c "$CMD"` exactly as accept.sh will invoke it, before calling
+`bd update --acceptance`.
+
 Work only inside {worktree_path}. If the notes report a merge conflict from a previous attempt,
 start with `git merge {base_branch}` in the worktree and resolve it. Run the acceptance commands
 yourself before you finish. **Commit everything** with message "bead {id}: {title}" and confirm
