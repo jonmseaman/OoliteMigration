@@ -155,7 +155,7 @@ def spawn_ships_near(world, count, role, km):
     _spawn(world, int(count), role, "__ooLocus", int(km) * 1000)
 
 
-@when(parsers.re(r'I spawn (?P<count>\d+) ships? with role "%s"' % _ROLE))
+@when(parsers.re(r'I spawn (?P<count>\d+) ships? with role "{role}"'.replace("{role}", _ROLE)))
 def spawn_ships(world, count, role):
     _spawn(world, int(count), role, "player.ship.position", SPAWN_RADIUS_M)
 

@@ -1,0 +1,24 @@
+==> tier-b (windows-x64, flavour test, budget 1200s, --fast)
+    repo      C:/Users/jon/OoliteMigration/.worktrees/oo-sjvz
+    run root  C:/Users/jon/scoop/apps/msys2/2025-12-13/tmp/tier-b-134898-pmuERZ
+
+==> [guardrails] tools/guardrails.sh (goldens, suppression, tests, deny-list)
+guardrails: base bde769bc202b94d111c5340e02aaae53387a5de2 (bde769b)
+guardrails: tests: classifier matches 315 tracked test files
+guardrails: tests: upstream/oolite/tests/component/features/s1_police_kills_pirate.feature is emptied - these live test units existed at bde769b and do not now (CLAUDE.md rule 2: never modify a test to make it pass):
+    - step:A police viper engages a lone pirate|And I spawn 1 ship with role "pirate" within 10 km
+    - step:A police viper engages a lone pirate|When I spawn 1 ship with role "police"
+guardrails: tests: upstream/oolite/tests/component/features/s5_escorts_converge_on_their_mother.feature is emptied - these live test units existed at bde769b and do not now (CLAUDE.md rule 2: never modify a test to make it pass):
+    - step:A mother ship and her escorts fly without error|And I spawn 2 ships with role "escort" within 5 km
+    - step:A mother ship and her escorts fly without error|When I spawn 1 ship with role "trader"
+guardrails: tests: upstream/oolite/tests/component/features/s6_damaged_ship_flees.feature is emptied - these live test units existed at bde769b and do not now (CLAUDE.md rule 2: never modify a test to make it pass):
+    - step:Setup runs cleanly and a spawned ship survives the scenario duration|And I spawn 1 ship with role "pirate" within 10 km
+    - step:Setup runs cleanly and a spawned ship survives the scenario duration|When I spawn 1 ship with role "police"
+guardrails: tests: upstream/oolite/tests/component/steps/world_steps.py is emptied - these live test units existed at bde769b and do not now (CLAUDE.md rule 2: never modify a test to make it pass):
+    - when:{role}
+guardrails: deny-list: 18 patterns, canary scores 2
+guardrails: FAIL
+
+tier-b: FAIL (stage guardrails): tools/guardrails.sh found a violation of CLAUDE.md rules 1/2/3/8 (see above); this is the deny-list and goldens/ guard, not a style check
+tier-b: RED after 6s
+tier-b: logs kept at C:/Users/jon/scoop/apps/msys2/2025-12-13/tmp/tier-b-134898-pmuERZ
