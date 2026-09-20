@@ -470,9 +470,9 @@ OOINLINE BOOL NAME(JSContext *context, JSObject *inObject, OBJCCLASSNAME **outOb
 
 // For DEFINE_JS_OBJECT_GETTER()'s use.
 #ifndef NDEBUG
-BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *requiredJSClass, Class requiredObjCClass, const char *name, id *outObject);
+OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *requiredJSClass, Class requiredObjCClass, const char *name, id *outObject);
 #else
-BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *requiredJSClass, id *outObject);
+OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *requiredJSClass, id *outObject);
 #endif
 
 
@@ -495,7 +495,7 @@ BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *
 	Test whether putativeSubclass is a equal to superclass or a registered
 	subclass of superclass, recursively.
 */
-void OOJSRegisterSubclass(JSClass *subclass, JSClass *superclass);
+OOJS_EXTERN_C void OOJSRegisterSubclass(JSClass *subclass, JSClass *superclass);
 OOJS_EXTERN_C BOOL OOJSIsSubclass(JSClass *putativeSubclass, JSClass *superclass);
 OOINLINE BOOL OOJSIsMemberOfSubclass(JSContext *context, JSObject *object, JSClass *superclass)
 {
@@ -516,9 +516,9 @@ OOINLINE BOOL OOJSIsMemberOfSubclass(JSContext *context, JSObject *object, JSCla
 	It is not automatically propagated to subclasses.
 */
 typedef id (*OOJSClassConverterCallback)(JSContext *context, JSObject *object);
-id OOJSBasicPrivateObjectConverter(JSContext *context, JSObject *object);
+OOJS_EXTERN_C id OOJSBasicPrivateObjectConverter(JSContext *context, JSObject *object);
 
-void OOJSRegisterObjectConverter(JSClass *theClass, OOJSClassConverterCallback converter);
+OOJS_EXTERN_C void OOJSRegisterObjectConverter(JSClass *theClass, OOJSClassConverterCallback converter);
 
 
 /*	JS root handling
@@ -617,7 +617,7 @@ void OOJSMarkConsoleEvalLocation(JSContext *context, JSStackFrame *stackFrame);
 	
 	Constructor callback for pseudo-classes which can't be constructed.
 */
-JSBool OOJSUnconstructableConstruct(JSContext *context, uintN argc, jsval *vp);
+OOJS_EXTERN_C JSBool OOJSUnconstructableConstruct(JSContext *context, uintN argc, jsval *vp);
 
 
 /*	OOJSObjectWrapperFinalize
@@ -625,7 +625,7 @@ JSBool OOJSUnconstructableConstruct(JSContext *context, uintN argc, jsval *vp);
 	Finalizer for JS classes whose private storage is a retained object
 	reference (generally an OOWeakReference, but doesn't have to be).
 */
-void OOJSObjectWrapperFinalize(JSContext *context, JSObject *thisObj);
+OOJS_EXTERN_C void OOJSObjectWrapperFinalize(JSContext *context, JSObject *thisObj);
 
 
 /*	OOJSObjectWrapperToString
