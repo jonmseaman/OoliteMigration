@@ -33,4 +33,12 @@ SOFTWARE.
 #include <jsapi.h>
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSFont(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif

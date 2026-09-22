@@ -49,7 +49,15 @@ SOFTWARE.
 #import "OOFunctionAttributes.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 id OODeepCopy(id object) OO_RETURNS_RETAINED;
+
+#ifdef __cplusplus
+}
+#endif
 
 
 @interface NSObject (OODeepCopy)

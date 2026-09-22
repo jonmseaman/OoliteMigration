@@ -29,4 +29,12 @@ MA 02110-1301, USA.
 @class OOSoundSource;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSSoundSource(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
