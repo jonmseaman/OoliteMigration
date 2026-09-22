@@ -1,0 +1,60 @@
+==> tier-b (windows-x64, flavour test, budget 1200s, --fast)
+    repo      C:/Users/jon/OoliteMigration/.worktrees/oo-f7w
+    run root  C:/Users/jon/scoop/apps/msys2/2025-12-13/tmp/tier-b-522869-RGgskq
+
+==> [guardrails] tools/guardrails.sh (goldens, suppression, tests, deny-list)
+    guardrails: base c0aadc5d0131cda33a6bab5562ee383aa85aaf74 (c0aadc5)
+    guardrails: deny-list: 18 patterns, canary scores 2
+    guardrails: tests: classifier matches 315 tracked test files
+    stage guardrails ok in 17s
+
+==> [build] SKIPPED (--fast): accept.sh replays this in a checkout with no build (bead oo-ae9)
+    using the shared build at C:/Users/jon/OoliteMigration/.worktrees/oo-9n2k/upstream/oolite/build/meson_test/oolite.app
+    binary    10429952 bytes, mtime 2026-09-21 21:24:20.733043600 -0400
+    mesa      2 DLL(s) staged from /ucrt64/bin (llvmpipe beside the binary)
+
+==> [tests] offline module tests (3 suites, floors enforced)
+    tests/golden   1069 passed (floor 69)
+    tools          181 passed (floor 86)
+    tests/fleet     23 passed (floor 23)
+    stage tests ok: 1273 tests in 172s
+
+==> [parity] tests/golden/dump/test_launch_preflight.py: tier-b's environment must produce a developer shell's verdict
+    inside and bare shell agree: 8 passed, 0 failed (14s)
+
+==> [goldens] every blessed scenario under goldens/windows-x64 (floor 2)
+    001-launch-dock.json: launched (1 engine event(s)), flew 24 ticks, docked (1 engine event(s)); 2 entities, 17 market goods, ends docked
+    001-launch-dock    MATCH   30s  port 56853
+    001                MATCH   12s  port 56878
+    stage goldens ok: 2 scenario(s) in 44s
+
+==> [component] upstream/oolite/tests/component
+
+self = <console.DebugConsole object at 0x000002212afdad70>, timeout = 60
+
+    def _accept(self, timeout):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if self._proc.poll() is not None:
+                raise ConsoleError(
+                    f"Oolite exited with {self._proc.returncode} before connecting to the console"
+                )
+            readable, _, _ = select.select([self._server], [], [], 1)
+            if readable:
+                self._conn, _ = self._server.accept()
+                self._conn.setblocking(True)
+                return
+>       raise ConsoleError(f"Oolite did not connect to the console within {timeout}s")
+E       console.ConsoleError: Oolite did not connect to the console within 60s
+
+console.py:143: ConsoleError
+=========================== short test summary info ===========================
+FAILED test_s1_police_kills_pirate.py::test_a_police_viper_engages_a_lone_pirate
+FAILED test_s2_pirate_attacks_target_registers_attacker.py::test_a_pirate_attacks_a_trader_the_setup_runs_cleanly
+FAILED test_s3_hostile_spawn_drives_ship_into_attack.py::test_a_hostile_spawn_drives_a_ship_into_attack_the_setup_runs_cleanly
+FAILED test_s4_missile_armed_ship_kills_by_missile.py::test_a_missilearmed_ship_kills_by_missile_smoke
+4 failed, 4 passed in 975.05s (0:16:15)
+
+tier-b: FAIL (stage component): the component tier failed (pytest rc=1, 4 passed); C:/Users/jon/scoop/apps/msys2/2025-12-13/tmp/tier-b-522869-RGgskq/component.log
+tier-b: RED after 1225s
+tier-b: logs kept at C:/Users/jon/scoop/apps/msys2/2025-12-13/tmp/tier-b-522869-RGgskq
