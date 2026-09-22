@@ -635,7 +635,7 @@ OOJS_EXTERN_C void OOJSObjectWrapperFinalize(JSContext *context, JSObject *thisO
 	
 	Calls -oo_jsDescription and, if that fails, -description.
 */
-JSBool OOJSObjectWrapperToString(JSContext *context, uintN argc, jsval *vp);
+OOJS_EXTERN_C JSBool OOJSObjectWrapperToString(JSContext *context, uintN argc, jsval *vp);
 
 
 
