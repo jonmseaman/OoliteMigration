@@ -86,7 +86,7 @@ where the number points.
 | 11 | Per-platform goldens **and** quantised floats; `-ffp-contract=off`; pinned `-O` | ADR-0013, [Phase 0](docs/phases/0-safety-net.md) |
 | 12 | `clang-refactor` for ~40% of JS sites, fleet for the rest | [Phase 1](docs/phases/1-js-engine.md) |
 | 13 | Existing C is reused, never rewritten; `oomath` is a rename | [ADR-0012](docs/decisions/0012-c-stays-c.md) |
-| 14 | Merges to `main` are automatic on Tier C green; Jon's only in-loop gate is re-blessing goldens | ADR-0013 |
+| 14 | Merges to `main` are automatic when the bead's acceptance block passes inside a five-minute budget; Tier C runs nightly and at phase end, not per merge; Jon's only in-loop gate is re-blessing goldens | ADR-0013, [ADR-0021](docs/decisions/0021-fast-gate-at-merge-full-gate-nightly.md) |
 | 15 | Claude Code with **Claude Opus 5** is the frontier runtime (the per-phase review beads run on **Claude Fable 5.1**); Hermes Agent `/goal` drives local-model sweeps against on-prem endpoints; beads is the queue; `accept`, `merge-queue`, `run-story` are in-repo scripts. No Gas Town / Gas City | [ADR-0014](docs/decisions/0014-claude-code-opencode-beads.md), [ADR-0015](docs/decisions/0015-hermes-goal-loop.md) |
 | 16 | `upstream/oolite` is a git subtree of the fork; the merge queue pushes `main` and the subtree after each Tier C green batch (weekly by Jon until it exists); the GUI tier runs in Tier C and nightly, never per bead | [ADR-0017](docs/decisions/0017-native-windows-subtree.md) |
 

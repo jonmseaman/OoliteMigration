@@ -1,0 +1,14 @@
+# tests/nightly/checks.txt — the slow proofs (ADR-0021).
+#
+# One shell command per line, run from the repository root by tools/run-nightly-checks.sh every
+# night and at the end of a phase. A bead whose proof cannot finish inside accept.sh's five-minute
+# budget (a 10-run stability sweep, a mutant sweep, a repeated launch) puts that proof HERE and
+# keeps a one-line fast proof in its acceptance block. Prefix a line with the owning bead in
+# square brackets so a red night points at a bead:
+#
+#   [oo-z22] export PATH="/ucrt64/bin:$PATH"; tests/golden/pending/002-witchspace/replay-stability.sh 10
+#
+# Blank lines and # lines are ignored. Each line runs as its own `bash -o pipefail -c`, with a
+# per-line timeout of OO_NIGHTLY_LINE_TIMEOUT seconds (default 1800). Every line runs even after
+# a failure. The file is intentionally empty of executable lines until the first bead moves a
+# proof here; tools/run-nightly-checks.sh --list shows what would run.
