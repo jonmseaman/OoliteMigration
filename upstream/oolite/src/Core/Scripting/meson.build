@@ -18,7 +18,7 @@ oolite_sources += files(
     'OOJSGlobal.mm',
     'OOJSGuiScreenKeyDefinition.mm',
     'OOJSInterfaceDefinition.m',
-    'OOJSManifest.m',
+    'OOJSManifest.mm',
     'OOJSMission.m',
     'OOJSMissionVariables.mm',
     'OOJSOolite.m',
