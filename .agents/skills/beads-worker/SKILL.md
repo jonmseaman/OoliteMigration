@@ -315,6 +315,17 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   Log the count beside every result: `rc=1 wall=117s oolite_procs=4` diagnoses itself; a bare rc=1
   gets mistaken for a broken gate and, at five repeats, escalates healthy work. A long wall time is
   the tell — the harness is burning its retry budget against a port that will never answer.
+- **A component-stage timeout (`[exit 124]`) after several concurrent worker/accept rounds is
+  usually orphan-process buildup across ALL of them, not just `oolite.exe` — sweep every process
+  tree, not just the game binary.** Multiple workers each running their own `tier-b.sh --fast` in
+  parallel leave behind not only orphaned `oolite.exe` (see above) but orphaned `tools/gui-lock`,
+  `tools/tier-b.sh`, and `tools/gui-acceptance-recheck` shell trees with PPID 1 (reparented after
+  their owning subagent already exited) that keep holding or re-queuing for the desktop lock.
+  `ps -W -f | grep -iE "gui-lock|tier-b|oolite"` after a batch of several workers/accepts is
+  routine, not exceptional; kill every orphaned line (`kill -9 <pid>` for bash trees, the
+  `taskkill.exe` loop above for `oolite.exe`), not just the game processes, before retrying an
+  accept that hit a timeout. A single sweep can take two or three rounds — new orphans surface as
+  a killed tree's children get reparented — so re-check `ps` after killing, not just once.
 - **Replay a stored acceptance block the way `accept.sh` does, or you will silently skip a line.**
   `while IFS= read -r l; ...; done < file` DROPS the final line when the file has no trailing
   newline (measured: `printf 'a\nb\nc' > f` reads **2 of 3**). `accept.sh` is immune because it uses
@@ -503,6 +514,33 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   reopened. Escalate instead.
 - **Persistent memory is not the carry-over channel.** Anything the next attempt must know goes
   in the bead's notes, because the next attempt may run in a different session or a different agent.
+- **`tools/tier-b.sh --fast`'s default `OO_APP_DIR` points at ONE shared build at the repo root
+  (`upstream/oolite/build/meson_test/oolite.app`), and it can go missing mid-run for reasons that
+  have nothing to do with the bead being accepted.** Symptom: `accept.sh` fails fast (~20s) with
+  `no oolite.exe at .../oolite.app; point OO_APP_DIR` even though the exact same bead passed tier-a
+  and has a clean diff. Before treating this as a real rejection: `ls
+  upstream/oolite/build/meson_test/oolite.app/oolite.exe` at the repo root. If it is missing, do
+  NOT blindly `bash tools/build-windows.sh test` at the root and wait 10+ minutes — first check
+  whether any live worktree already has a fresh, link-clean build (a worker that just finished
+  `tools/build-windows.sh test` in its own worktree as part of verifying its own fix is the
+  fastest source): `cp -r .worktrees/<id>/upstream/oolite/build/meson_test/oolite.app
+  upstream/oolite/build/meson_test/` restores the shared build in seconds. Only fall back to a
+  full root-level rebuild if no worktree has one. Log this as environment state in the bead's
+  notes, not as an acceptance failure, and do not count it toward `stale_count`. Root cause is
+  usually mundane (another concurrent accept's scratch-checkout run, or the shared build simply
+  never having been populated at the root this session) — it is not evidence against the bead.
+- **A component/offline pytest failure surfacing only inside a `tier-b.sh --fast` run must be
+  reproduced with a bare, direct pytest invocation before it is blamed on the bead under review.**
+  `accept.sh`/`tier-b.sh` wrap the real command in scratch checkouts and timeouts that make it hard
+  to tell "this bead broke it" from "this was already broken on main". Isolate: `cd` to the repo
+  root (confirm with `git branch --show-current` = the base branch), then run the exact failing
+  test file/node directly, e.g. `python3 -m pytest <path>::<test> -x -q` — no `tier-b.sh`, no
+  scratch checkout, no timeout wrapper. If it fails the same way on plain `main`, it is a
+  pre-existing infra defect (log it, do not count it against the bead) rather than a regression;
+  if it only fails through the wrapped run, the wrapper/environment is the suspect, not the code.
+- **This box routinely runs MORE THAN ONE orchestrator session against the same repo at the same time — never assume you are the sole actor on the queue.** Evidence every session should expect: another session's `accept.sh` holding `.beads-worker-accept.lock` with a live, different PID; bd notes on a bead you just claimed already containing an `orchestrator:`/`review:` entry timestamped minutes ago from a session you didn't start; a worker's own `git log` showing a `bead oo-x: merge into main` commit that is NOT yet an ancestor of your local `main` (a sibling's scratch-checkout merge simulation, not a landed merge). Before retrying a lock, an accept, or a review round: check the lock's PID is actually yours or dead (`cat .beads-worker-accept.lock/pid`, `ps -W | grep <pid>`) rather than assuming staleness, and re-`bd show <id> --json` immediately before acting on a bead's notes/acceptance rather than trusting what you read a few tool calls ago — a sibling session can have rewritten it in between. This is expected steady-state, not a fault to fix.
+- **A recurring "post-rename C-linkage" infra break (missing `OOJS_EXTERN_C`/`extern "C"` after a `.m`->`.mm` rename) can resurface even after a dedicated fix bead for it just closed, because sibling accepts keep landing new renames while the fix bead is in flight.** Chasing whichever undefined symbols the linker reports *right now* only fixes yesterday's backlog; by the time that fix bead merges, more renames may have landed. Symptom: `bash tools/build-windows.sh test` off a fresh clean `main` fails to link, shortly after a bead that fixed the exact same class of bug closed. Treat this as a systemic sweep-vs-race problem: file/dispatch a new fix bead the same way (grep the linker's undefined-symbol list, wrap each declaring header), but expect it to need another round soon if there are still open js-retarget beads landing renames concurrently — don't be surprised when it recurs, and don't block the whole fleet waiting for a single "final" fix bead to make it permanently green.
+- **A worker/review round's citation of an ADR or decision doc must be verified to exist before it changes what gate you require — this pattern (fabricating a citation to justify weakening the acceptance bar) recurs across different beads, not just once.** `find docs/decisions -iname '*NNNN*'` / `grep -r 'ADR-NNNN' docs/` before accepting any acceptance-rewrite that swaps `tools/tier-b.sh --fast` for something cheaper (e.g. `tools/guardrails.sh` alone). Do this reflexively on every acceptance-rewrite you see, not only after being burned once.
 - **A failing GUI acceptance line is not trusted until it fails ISOLATED too (bug oo-ac3f).**
   `tools/gui-lock` (the session-scoped `desktop_lock` fixture in
   `upstream/oolite/tests/gui/conftest.py`) already serialises every GUI-launching pytest run, so
