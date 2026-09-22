@@ -31,7 +31,15 @@ MA 02110-1301, USA.
 @class OOEquipmentType;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSEquipmentInfo(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
 
 /*	Given a jsval representing a string (equipment key) or a JS EquipmentInfo,
 	return the corresponding EquipmentType or key. Note that

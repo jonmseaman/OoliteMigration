@@ -92,17 +92,31 @@ SOFTWARE.
 	#define OOLogWithArguments(class, format, args)	OOLogWithFunctionFileAndLineAndArguments(class, OOLOG_FUNCTION_NAME, OOLOG_FILE_NAME, __LINE__, format, args)
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 BOOL OOLogWillDisplayMessagesInClass(NSString *inMessageClass);
 
 void OOLogIndent(void);
 void OOLogOutdent(void);
 
+#ifdef __cplusplus
+}
+#endif
+
 #if OOLOG_SHORT_CIRCUIT
-#define OOLogIndentIf(class)		do { if (OOLogWillDisplayMessagesInClass(class)) OOLogIndent(); } while (0)
-#define OOLogOutdentIf(class)		do { if (OOLogWillDisplayMessagesInClass(class)) OOLogOutdent(); } while (0)
+#define OOLogIndentIf(class)	do { if (OOLogWillDisplayMessagesInClass(class)) OOLogIndent(); } while (0)
+#define OOLogOutdentIf(class)	do { if (OOLogWillDisplayMessagesInClass(class)) OOLogOutdent(); } while (0)
 #else
+#ifdef __cplusplus
+extern "C" {
+#endif
 void OOLogIndentIf(NSString *inMessageClass);
 void OOLogOutdentIf(NSString *inMessageClass);
+#ifdef __cplusplus
+}
+#endif
 #endif
 
 
