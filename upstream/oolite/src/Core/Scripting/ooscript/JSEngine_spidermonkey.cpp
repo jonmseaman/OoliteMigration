@@ -779,6 +779,13 @@ bool          stringEqualsAscii(Context cx, String str, const char* ascii, bool*
 bool          stringHasBeenInterned(Context /*cx*/, String str)              { return JS_StringHasBeenInterned(STR(str)) != JS_FALSE; }
 void          setCStringsAreUTF8()                                           { JS_SetCStringsAreUTF8(); }
 
+// MARK: Regular expressions -----------------------------------------------------------------
+
+Object newUCRegExpObjectNoStatics(Context cx, const Char16* chars, std::size_t length, std::uint32_t flags)
+{
+	return wrap(JS_NewUCRegExpObjectNoStatics(CX(cx), const_cast<jschar*>(JSCHARS(chars)), length, static_cast<uintN>(flags)));
+}
+
 // MARK: Exceptions and error reporting --------------------------------------------------------
 
 bool isExceptionPending(Context cx)                   { return JS_IsExceptionPending(CX(cx)) != JS_FALSE; }
