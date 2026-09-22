@@ -88,7 +88,15 @@ NSArray *ComponentsFromVersionString(NSString *string);
 NSComparisonResult CompareVersions(NSArray *version1, NSArray *version2);
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSString *ClockToString(double clock, BOOL adjusting);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #if DEBUG_GRAPHVIZ
