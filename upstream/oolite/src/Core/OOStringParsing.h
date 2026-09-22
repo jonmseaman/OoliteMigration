@@ -32,6 +32,10 @@ MA 02110-1301, USA.
 @class Entity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSMutableArray *ScanTokensFromString(NSString *values);
 
 // Note: these functions will leave their out values untouched if they fail (and return NO). They will not log an error if passed a NULL string (but will return NO). This means they can be used to, say, read dictionary entries which might not exist. They also ignore any extra components in the string.
@@ -49,8 +53,21 @@ NSPoint PointFromString(NSString *xyString);
 Random_Seed RandomSeedFromString(NSString *abcdefString);
 NSString *StringFromRandomSeed(Random_Seed seed);
 
+#ifdef __cplusplus
+}
+#endif
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol);
+
+#ifdef __cplusplus
+}
+#endif
+
 OOINLINE NSString *OOStringFromIntCredits(OOCreditsQuantity integerCredits, BOOL includeSymbol)
 {
 	return OOStringFromDeciCredits(integerCredits * 10, NO, includeSymbol);
@@ -65,7 +82,15 @@ OOINLINE NSString *OOIntCredits(OOCreditsQuantity integerCredits)
 	return OOStringFromIntCredits(integerCredits, YES);
 }
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSString *OOPadStringToEms(NSString * string, float numEms);
+
+#ifdef __cplusplus
+}
+#endif
 
 @interface NSString (OOUtilities)
 
@@ -75,6 +100,10 @@ NSString *OOPadStringToEms(NSString * string, float numEms);
 
 @end
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Given a string of the form 1.2.3.4 (with arbitrarily many components), return an array of unsigned ints.
 NSArray *ComponentsFromVersionString(NSString *string);
@@ -86,6 +115,10 @@ NSArray *ComponentsFromVersionString(NSString *string);
 	component is treated as 0. Thus "1.7" < "1.60", and "1.2.3.0" == "1.2.3".
 */
 NSComparisonResult CompareVersions(NSArray *version1, NSArray *version2);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #ifdef __cplusplus
@@ -100,6 +133,11 @@ NSString *ClockToString(double clock, BOOL adjusting);
 
 
 #if DEBUG_GRAPHVIZ
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSString *EscapedGraphVizString(NSString *string);
 
 /*	GraphVizTokenString()
@@ -112,5 +150,9 @@ NSString *EscapedGraphVizString(NSString *string);
 	and strict.
 */
 NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
