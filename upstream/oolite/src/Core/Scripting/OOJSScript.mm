@@ -44,7 +44,6 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
-#include <jsxdrapi.h>
 
 #if OO_CACHE_JS_SCRIPTS
 #import "OOCacheManager.h"
@@ -65,17 +64,15 @@ MA 02110-1301, USA.
 	engine calls, so they are untouched and out of scope for this bead (see JSEngine.hpp's own
 	header comment and OOJSVector.mm's exemplar comment).
 
-	Left un-retargeted, deliberately: JS_DefinePropertyById (the class's own defineProperty:
-	method) and the compiled-script cache (JS_CompileUCScript / JS_NewScriptObject /
-	JS_ExecuteScript / JS_DestroyScript and the JS_XDR* serialisation family, all confined to
-	this file's LoadScriptWithName/CompiledScriptData/ScriptWithCompiledData). Neither has a
-	façade equivalent, ooscript/README.md's "Not in the façade" list calls the JS_XDR* family
-	out by name as engine-private, and this bead's sizing caps it at "no new interfaces": it
-	must not extend JSEngine.hpp/JSEngine_spidermonkey.cpp itself. Filed as dedicated seam bead
-	oo-1gc.1 (same pattern as oo-whgj for OORegExpMatcher.m/oo-1cl) and blocked on it; these
-	call sites keep their literal JS_ names below and are excluded from the acceptance grep's
-	`\bJS_[A-Za-z]+` scan only via the seam bead landing first, not via any suppression added
-	by this bead.
+	The class's own defineProperty: method and the compiled-script cache (LoadScriptWithName /
+	CompiledScriptData / ScriptWithCompiledData) used to spell out the engine's read-only
+	property definition and precompiled-script/XDR calls directly, with no façade equivalent to
+	retarget onto. Seam bead oo-1gc.1 (same pattern as oo-whgj for OORegExpMatcher.m/oo-1cl)
+	added that equivalent to the façade -- ooscript::definePropertyById, the opaque
+	ooscript::Script handle plus compileUCScript/newScriptObject/executeScript/destroyScript,
+	and ooscript::serializeScript/deserializeScript wrapping the engine's XDR family (the serialised
+	format itself stays backend-private, per ooscript/README.md's "Not in the façade" note) --
+	so this rework moves those call sites onto it too, same as everything else in this file.
 
 	toString() is a shared native (OOJSObjectWrapperToString, OOJavaScriptEngine.m) that still
 	speaks the engine's own native signature; ScriptToStringFacade adapts it to the façade's
@@ -97,6 +94,9 @@ using ooscript::CallArgs;
 using ooscript::ClassDef;
 using ooscript::ClassFlag;
 using ooscript::FunctionSpec;
+using ooscript::Script;
+using ooscript::ByteBuffer;
+using ooscript::PropertyFlag;
 
 // Byte-identical façade <-> jsapi views, local to this call site (JSEngine.hpp: Value/PropertyId
 // and the handle types are byte copies of jsval/jsid/JS*; see OOJSVector.mm for the same,
@@ -145,11 +145,11 @@ static RunningStack		*sRunningStack = NULL;
 
 static void AddStackToArrayReversed(NSMutableArray *array, RunningStack *stack);
 
-static JSScript *LoadScriptWithName(JSContext *context, NSString *path, JSObject *object, JSObject **outScriptObject, NSString **outErrorMessage);
+static Script LoadScriptWithName(JSContext *context, NSString *path, JSObject *object, JSObject **outScriptObject, NSString **outErrorMessage);
 
 #if OO_CACHE_JS_SCRIPTS
-static NSData *CompiledScriptData(JSContext *context, JSScript *script);
-static JSScript *ScriptWithCompiledData(JSContext *context, NSData *data);
+static NSData *CompiledScriptData(JSContext *context, Script script);
+static Script ScriptWithCompiledData(JSContext *context, NSData *data);
 #endif
 
 static NSString *StrippedName(NSString *string);
@@ -223,6 +223,11 @@ static FunctionSpec sScriptMethods[] =
 } // namespace
 
 
+// Same flag combination OOJS_PROP_READONLY expands to (JSPROP_PERMANENT | JSPROP_ENUMERATE |
+// JSPROP_READONLY), for the defineProperty:withID:inContext: call site below.
+static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly;
+
+
 @interface OOJSScript (OOPrivate)
 
 - (NSString *)scriptNameFromPath:(NSString *)path;
@@ -243,7 +248,7 @@ static FunctionSpec sScriptMethods[] =
 {
 	JSContext				*context = NULL;
 	NSString				*problem = nil;	// Acts as error flag.
-	JSScript					*script = NULL;
+	Script					script = NULL;
 	JSObject				*scriptObject = NULL;
 	jsval					returnValue = JSVAL_VOID;
 	NSString				*key = nil;
@@ -349,14 +354,14 @@ static FunctionSpec sScriptMethods[] =
 		if (!problem)
 		{
 			OOJSStartTimeLimiterWithTimeLimit(kOOJSLongTimeLimit);
-			if (!JS_ExecuteScript(context, _jsSelf, script, &returnValue))
+			if (!ooscript::executeScript(OOJSFCX(context), OOJSFOBJ(_jsSelf), script, OOJSFVALP(&returnValue)))
 			{
 				problem = @"could not run script";
 			}
 			OOJSStopTimeLimiter();
 			
 			// We don't need the script any more - the event handlers hang around as long as the JS object exists.
-			JS_DestroyScript(context, script);
+			ooscript::destroyScript(OOJSFCX(context), script);
 		}
 		
 		ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&scriptObject));
@@ -607,7 +612,7 @@ static FunctionSpec sScriptMethods[] =
 	if (_jsSelf == NULL)  return NO;
 	
 	jsval jsValue = OOJSValueFromNativeObject(context, value);
-	return JS_DefinePropertyById(context, _jsSelf, propID, jsValue, NULL, NULL, OOJS_PROP_READONLY);
+	return ooscript::definePropertyById(OOJSFCX(context), OOJSFOBJ(_jsSelf), OOJSFJSID(propID), OOJSFVAL(jsValue), nullptr, nullptr, kScriptDefinePropertyFlags);
 }
 
 
@@ -684,6 +689,92 @@ static FunctionSpec sScriptMethods[] =
 @end
 
 
+@implementation OOJSScript (OOPrivate)
+
+
+
+/*	Generate default name for script which doesn't set its name property when
+	first run.
+ 
+	The generated name is <name>.anon-script, where <name> is selected as
+	follows:
+	* If path is nil (futureproofing), use the address of the script object.
+	* If the file's name is something other than script.*, use the file name.
+	* If the containing directory is something other than Config, use the
+	containing directory's name.
+	* Otherwise, use the containing directory's parent (which will generally
+											be an OXP root directory).
+	* If either of the two previous steps results in an empty string, fall
+	back on the full path.
+*/
+- (NSString *)scriptNameFromPath:(NSString *)path
+{
+	NSString		*lastComponent = nil;
+	NSString		*truncatedPath = nil;
+	NSString		*theName = nil;
+	
+	if (path == nil) theName = [NSString stringWithFormat:@"%p", self];
+	else
+	{
+		lastComponent = [path lastPathComponent];
+		if (![lastComponent hasPrefix:@"script."]) theName = lastComponent;
+		else
+		{
+			truncatedPath = [path stringByDeletingLastPathComponent];
+			if (NSOrderedSame == [[truncatedPath lastPathComponent] caseInsensitiveCompare:@"Config"])
+			{
+				truncatedPath = [truncatedPath stringByDeletingLastPathComponent];
+			}
+			if (NSOrderedSame == [[truncatedPath pathExtension] caseInsensitiveCompare:@"oxp"])
+			{
+				truncatedPath = [truncatedPath stringByDeletingPathExtension];
+			}
+			
+			lastComponent = [truncatedPath lastPathComponent];
+			theName = lastComponent;
+		}
+	}
+	
+	if (0 == [theName length]) theName = path;
+	
+	return StrippedName([theName stringByAppendingString:@".anon-script"]);
+}
+
+
+- (NSDictionary *) defaultPropertiesFromPath:(NSString *)path
+{
+	// remove file name, remove OXP subfolder, add manifest.plist
+	NSString *manifestPath = [[[path stringByDeletingLastPathComponent] stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"manifest.plist"];
+	NSDictionary *manifest = OODictionaryFromFile(manifestPath);
+	NSMutableDictionary *properties = [NSMutableDictionary dictionaryWithCapacity:3];
+	/* __oolite.tmp.* is allocated for OXPs without manifests. Its
+	 * values are meaningless and shouldn't be used here */
+	if (manifest != nil && ![[manifest oo_stringForKey:kOOManifestIdentifier] hasPrefix:@"__oolite.tmp."])
+	{
+		if ([manifest objectForKey:kOOManifestVersion] != nil)
+		{
+			[properties setObject:[manifest oo_stringForKey:kOOManifestVersion] forKey:@"version"];
+		}
+		if ([manifest objectForKey:kOOManifestIdentifier] != nil)
+		{
+			// used for system info
+			[properties setObject:[manifest oo_stringForKey:kOOManifestIdentifier] forKey:kLocalManifestProperty];
+		}
+		if ([manifest objectForKey:kOOManifestAuthor] != nil)
+		{
+			[properties setObject:[manifest oo_stringForKey:kOOManifestAuthor] forKey:@"author"];
+		}
+		if ([manifest objectForKey:kOOManifestLicense] != nil)
+		{
+			[properties setObject:[manifest oo_stringForKey:kOOManifestLicense] forKey:@"license"];
+		}
+	}
+	return properties;
+}
+
+@end
+
+
 @implementation OOScript (JavaScriptEvents)
 
 - (BOOL) callMethod:(jsid)methodID
@@ -740,14 +831,14 @@ static void AddStackToArrayReversed(NSMutableArray *array, RunningStack *stack)
 
 
 namespace {
-static JSScript *LoadScriptWithName(JSContext *context, NSString *path, JSObject *object, JSObject **outScriptObject, NSString **outErrorMessage)
+static Script LoadScriptWithName(JSContext *context, NSString *path, JSObject *object, JSObject **outScriptObject, NSString **outErrorMessage)
 {
 #if OO_CACHE_JS_SCRIPTS
 	OOCacheManager				*cache = nil;
 #endif
 	NSString					*fileContents = nil;
 	NSData						*data = nil;
-	JSScript					*script = NULL;
+	Script						script = NULL;
 	
 	NSCParameterAssert(outScriptObject != NULL && outErrorMessage != NULL);
 	*outErrorMessage = nil;
@@ -789,8 +880,8 @@ static JSScript *LoadScriptWithName(JSContext *context, NSString *path, JSObject
 		if (data == nil)  *outErrorMessage = @"could not load file";
 		else
 		{
-			script = JS_CompileUCScript(context, object, static_cast<const jschar*>([data bytes]), [data length] / sizeof(unichar), [path UTF8String], 1);
-			if (script != NULL)  *outScriptObject = JS_NewScriptObject(context, script);
+			script = ooscript::compileUCScript(OOJSFCX(context), OOJSFOBJ(object), static_cast<const ooscript::Char16*>([data bytes]), [data length] / sizeof(unichar), [path UTF8String], 1);
+			if (script != NULL)  *outScriptObject = OOJSROBJ(ooscript::newScriptObject(OOJSFCX(context), script));
 			else  *outErrorMessage = @"compilation failed";
 		}
 		
@@ -809,52 +900,29 @@ static JSScript *LoadScriptWithName(JSContext *context, NSString *path, JSObject
 
 
 #if OO_CACHE_JS_SCRIPTS
-static NSData *CompiledScriptData(JSContext *context, JSScript *script)
+static NSData *CompiledScriptData(JSContext *context, Script script)
 {
-	JSXDRState					*xdr = NULL;
 	NSData						*result = nil;
-	uint32						length;
-	void						*bytes = NULL;
+	ByteBuffer					buffer = { NULL, 0 };
 	
-	xdr = JS_XDRNewMem(context, JSXDR_ENCODE);
-	if (xdr != NULL)
+	if (ooscript::serializeScript(OOJSFCX(context), script, &buffer))
 	{
-		if (JS_XDRScript(xdr, &script))
-		{
-			bytes = JS_XDRMemGetData(xdr, &length);
-			if (bytes != NULL)
-			{
-				result = [NSData dataWithBytes:bytes length:length];
-			}
-		}
-		JS_XDRDestroy(xdr);
+		result = [NSData dataWithBytes:buffer.data length:buffer.length];
 	}
+	ooscript::destroyByteBuffer(&buffer);
 	
 	return result;
 }
 
 
-static JSScript *ScriptWithCompiledData(JSContext *context, NSData *data)
+static Script ScriptWithCompiledData(JSContext *context, NSData *data)
 {
-	JSXDRState					*xdr = NULL;
-	JSScript					*result = NULL;
-	
 	if (data == nil)  return NULL;
 	
-	xdr = JS_XDRNewMem(context, JSXDR_DECODE);
-	if (xdr != NULL)
-	{
-		NSUInteger length = [data length];
-		if (EXPECT_NOT(length > UINT32_MAX))  return NULL;
-		
-		JS_XDRMemSetData(xdr, (void *)[data bytes], (uint32_t)length);
-		if (!JS_XDRScript(xdr, &result))  result = NULL;
-		
-		JS_XDRMemSetData(xdr, NULL, 0);	// Don't let it be freed by XDRDestroy
-		JS_XDRDestroy(xdr);
-	}
+	NSUInteger length = [data length];
+	if (EXPECT_NOT(length > UINT32_MAX))  return NULL;
 	
-	return result;
+	return ooscript::deserializeScript(OOJSFCX(context), static_cast<const std::uint8_t*>([data bytes]), (std::size_t)length);
 }
 #endif
 
