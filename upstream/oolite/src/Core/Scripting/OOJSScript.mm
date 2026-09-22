@@ -1,6 +1,6 @@
 /*
 
-OOJSScript.m
+OOJSScript.mm
 
 JavaScript support for Oolite
 Copyright (C) 2007-2013 David Taylor and Jens Ayton.
@@ -42,10 +42,92 @@ MA 02110-1301, USA.
 #import "OOPListParsing.h"
 #import "OODebugStandards.h"
 
-#if OO_CACHE_JS_SCRIPTS
+#include "ooscript/JSEngine.hpp"
+#include <cstring>
 #include <jsxdrapi.h>
+
+#if OO_CACHE_JS_SCRIPTS
 #import "OOCacheManager.h"
 #endif
+
+/*
+	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
+	oo-sdz, the sweep exemplar): the class dispatch table becomes a static ooscript::ClassDef
+	(the stub hooks are nullptr), the engine's InitClass call becomes ooscript::initClass, and
+	the directly spelled engine calls (NewObject, SetPrivate, IsExceptionPending,
+	ClearPendingException, ReportPendingException, RemoveObjectRoot, IsInRequest,
+	GetMethodById, CallFunctionValue, GetPropertyById, SetPropertyById, StringEqualsAscii) go
+	through ooscript:: instead. `this` is renamed to `thisObj` because it is a reserved word
+	once this file compiles as Objective-C++ (ADR-0001).
+
+	OOJSAcquireContext, OOJSRelinquishContext, OOJSAddGCObjectRoot, OOJSStartTimeLimiter*,
+	OOJSStopTimeLimiter and the OOJS_PROP_* flag macros are OOJS_*-spelled, not directly spelled
+	engine calls, so they are untouched and out of scope for this bead (see JSEngine.hpp's own
+	header comment and OOJSVector.mm's exemplar comment).
+
+	Left un-retargeted, deliberately: JS_DefinePropertyById (the class's own defineProperty:
+	method) and the compiled-script cache (JS_CompileUCScript / JS_NewScriptObject /
+	JS_ExecuteScript / JS_DestroyScript and the JS_XDR* serialisation family, all confined to
+	this file's LoadScriptWithName/CompiledScriptData/ScriptWithCompiledData). Neither has a
+	façade equivalent, ooscript/README.md's "Not in the façade" list calls the JS_XDR* family
+	out by name as engine-private, and this bead's sizing caps it at "no new interfaces": it
+	must not extend JSEngine.hpp/JSEngine_spidermonkey.cpp itself. Filed as dedicated seam bead
+	oo-1gc.1 (same pattern as oo-whgj for OORegExpMatcher.m/oo-1cl) and blocked on it; these
+	call sites keep their literal JS_ names below and are excluded from the acceptance grep's
+	`\bJS_[A-Za-z]+` scan only via the seam bead landing first, not via any suppression added
+	by this bead.
+
+	toString() is a shared native (OOJSObjectWrapperToString, OOJavaScriptEngine.m) that still
+	speaks the engine's own native signature; ScriptToStringFacade adapts it to the façade's
+	NativeFn signature exactly as OOJSTimer.mm's TimerToStringFacade adapts the same shared
+	native. ScriptAddProperty (the class's addProperty hook, used to warn about the removed
+	tickle() handler) is a PropertyGetter in façade terms; ScriptUnconstructableConstruct
+	adapts the shared jsapi OOJSUnconstructableConstruct to the façade's NativeFn signature the
+	same way OOJSStation.mm's StationUnconstructableConstruct does, and ScriptFinalizeFacade
+	adapts the shared jsapi OOJSObjectWrapperFinalize to the façade's FinalizeHook signature the
+	same way OOJSStation.mm's StationFinalize does.
+*/
+
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+using ooscript::Value;
+using ooscript::PropertyId;
+using ooscript::CallArgs;
+using ooscript::ClassDef;
+using ooscript::ClassFlag;
+using ooscript::FunctionSpec;
+
+// Byte-identical façade <-> jsapi views, local to this call site (JSEngine.hpp: Value/PropertyId
+// and the handle types are byte copies of jsval/jsid/JS*; see OOJSVector.mm for the same,
+// non-exported, pattern).
+namespace {
+static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
+} // namespace
+namespace {
+static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
+} // namespace
+namespace {
+static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
+} // namespace
+namespace {
+static inline Object    *OOJSFOBJP(JSObject **o)  { return reinterpret_cast<Object*>(o); }
+} // namespace
+namespace {
+static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
+} // namespace
+namespace {
+static inline Value     *OOJSFVALP(jsval *v)      { return reinterpret_cast<Value*>(v); }
+} // namespace
+namespace {
+static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
+} // namespace
+namespace {
+static inline PropertyId OOJSFJSID(jsid id)       { PropertyId r; std::memcpy(&r, &id, sizeof r); return r; }
+} // namespace
 
 
 typedef struct RunningStack RunningStack;
@@ -56,6 +138,7 @@ struct RunningStack
 };
 
 
+namespace {
 static JSObject			*sScriptPrototype;
 static RunningStack		*sRunningStack = NULL;
 
@@ -70,33 +153,74 @@ static JSScript *ScriptWithCompiledData(JSContext *context, NSData *data);
 #endif
 
 static NSString *StrippedName(NSString *string);
+} // namespace
 
 
-static JSBool ScriptAddProperty(JSContext *context, JSObject *this, jsid propID, jsval *value);
+namespace {
+static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *value);
+} // namespace
 
 
-static JSClass sScriptClass =
+// Adapts the shared jsapi OOJSObjectWrapperFinalize (OOJavaScriptEngine.m) to the façade's
+// FinalizeHook signature, exactly as OOJSStation.mm's StationFinalize does.
+namespace {
+static void ScriptFinalizeFacade(Context cx, Object obj)
+{
+	OOJSObjectWrapperFinalize(OOJSRCX(cx), OOJSROBJ(obj));
+}
+} // namespace
+
+
+// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the façade's
+// NativeFn signature, exactly as OOJSStation.mm's StationUnconstructableConstruct does.
+namespace {
+static bool ScriptUnconstructableConstruct(Context cx, CallArgs &oojsArgs)
+{
+	return OOJSUnconstructableConstruct(OOJSRCX(cx), oojsArgs.count(), OOJSRVAL(oojsArgs.rawVp()));
+}
+} // namespace
+
+
+// Adapts the shared jsapi OOJSObjectWrapperToString (OOJavaScriptEngine.m) to the façade's
+// NativeFn signature, exactly as OOJSTimer.mm's TimerToStringFacade does.
+namespace {
+static bool ScriptToStringFacade(Context cx, CallArgs &oojsArgs)
+{
+	return OOJSObjectWrapperToString(OOJSRCX(cx), oojsArgs.count(), OOJSRVAL(oojsArgs.rawVp()));
+}
+} // namespace
+
+
+namespace {
+static ClassDef sScriptClass =
 {
 	"Script",
-	JSCLASS_HAS_PRIVATE,
-	
-	ScriptAddProperty,
-	JS_PropertyStub,
-	JS_PropertyStub,
-	JS_StrictPropertyStub,
-	JS_EnumerateStub,
-	JS_ResolveStub,
-	JS_ConvertStub,
-	OOJSObjectWrapperFinalize
+	ClassFlag::HasPrivate,
+
+	ScriptAddProperty,		// addProperty
+	nullptr,				// delProperty (engine default: PropertyStub)
+	nullptr,				// getProperty (engine default: PropertyStub)
+	nullptr,				// setProperty (engine default: StrictPropertyStub)
+	nullptr,				// enumerate (engine default: EnumerateStub)
+	nullptr,				// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,				// resolve (engine default: ResolveStub)
+	nullptr,				// convert (engine default: ConvertStub)
+	ScriptFinalizeFacade,	// finalize
+	nullptr,				// call
+	nullptr,				// construct
+	nullptr,				// backend: owned by the façade backend, must start null
 };
+} // namespace
 
 
-static JSFunctionSpec sScriptMethods[] =
+namespace {
+static FunctionSpec sScriptMethods[] =
 {
 	// JS name					Function					min args
-	{ "toString",				OOJSObjectWrapperToString,	0, },
+	{ "toString",				ScriptToStringFacade,		0,			0 },
 	{ 0 }
 };
+} // namespace
 
 
 @interface OOJSScript (OOPrivate)
@@ -118,8 +242,8 @@ static JSFunctionSpec sScriptMethods[] =
 - (id) initWithPath:(NSString *)path properties:(NSDictionary *)properties
 {
 	JSContext				*context = NULL;
-	NSString				*problem = nil;		// Acts as error flag.
-	JSScript				*script = NULL;
+	NSString				*problem = nil;	// Acts as error flag.
+	JSScript					*script = NULL;
 	JSObject				*scriptObject = NULL;
 	jsval					returnValue = JSVAL_VOID;
 	NSString				*key = nil;
@@ -131,16 +255,16 @@ static JSFunctionSpec sScriptMethods[] =
 	{
 		context = OOJSAcquireContext();
 		
-		if (JS_IsExceptionPending(context))
+		if (ooscript::isExceptionPending(OOJSFCX(context)))
 		{
-			JS_ClearPendingException(context);
+			ooscript::clearPendingException(OOJSFCX(context));
 			OOLogERR(@"script.javaScript.load.waitingException", @"Prior to loading script %@, there was a pending JavaScript exception, which has been cleared. This is an internal error, please report it.", path);
 		}
 		
 		// Set up JS object
 		if (!problem)
 		{
-			_jsSelf = JS_NewObject(context, &sScriptClass, sScriptPrototype, NULL);
+			_jsSelf = OOJSROBJ(ooscript::newObject(OOJSFCX(context), &sScriptClass, OOJSFOBJ(sScriptPrototype), nullptr));
 			if (_jsSelf == NULL) problem = @"allocation failure";
 		}
 		
@@ -156,7 +280,7 @@ static JSFunctionSpec sScriptMethods[] =
 		
 		if (!problem)
 		{
-			if (!JS_SetPrivate(context, _jsSelf, OOConsumeReference([self weakRetain])))
+			if (!ooscript::setPrivate(OOJSFCX(context), OOJSFOBJ(_jsSelf), OOConsumeReference([self weakRetain])))
 			{
 				problem = @"could not set private backreference";
 			}
@@ -235,7 +359,7 @@ static JSFunctionSpec sScriptMethods[] =
 			JS_DestroyScript(context, script);
 		}
 		
-		JS_RemoveObjectRoot(context, &scriptObject);
+		ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&scriptObject));
 		
 		sRunningStack = stackElement.back;
 		
@@ -264,7 +388,7 @@ static JSFunctionSpec sScriptMethods[] =
 	if (problem)
 	{
 		OOLog(@"script.javaScript.load.failed", @"***** Error loading JavaScript script %@ -- %@", path, problem);
-		JS_ReportPendingException(context);
+		ooscript::reportPendingException(OOJSFCX(context));
 		DESTROY(self);
 	}
 	
@@ -273,9 +397,9 @@ static JSFunctionSpec sScriptMethods[] =
 	if (self != nil)
 	{
 		[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(javaScriptEngineWillReset:)
-													 name:kOOJavaScriptEngineWillResetNotification
-												   object:[OOJavaScriptEngine sharedEngine]];
+												   selector:@selector(javaScriptEngineWillReset:)
+													   name:kOOJavaScriptEngineWillResetNotification
+													 object:[OOJavaScriptEngine sharedEngine]];
 	}
 	
 	return self;
@@ -285,8 +409,8 @@ static JSFunctionSpec sScriptMethods[] =
 - (void) dealloc
 {
 	[[NSNotificationCenter defaultCenter] removeObserver:self
-													name:kOOJavaScriptEngineWillResetNotification
-												  object:[OOJavaScriptEngine sharedEngine]];
+													   name:kOOJavaScriptEngineWillResetNotification
+													 object:[OOJavaScriptEngine sharedEngine]];
 	
 	DESTROY(name);
 	DESTROY(description);
@@ -298,7 +422,7 @@ static JSFunctionSpec sScriptMethods[] =
 		JSContext *context = OOJSAcquireContext();
 		
 		OOJSObjectWrapperFinalize(context, _jsSelf);	// Release weakref to self
-		JS_RemoveObjectRoot(context, &_jsSelf);			// Unroot jsSelf
+		ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_jsSelf));		// Unroot jsSelf
 		
 		OOJSRelinquishContext(context);
 	}
@@ -329,7 +453,7 @@ static JSFunctionSpec sScriptMethods[] =
 	{
 		_jsSelf = NULL;
 		JSContext *context = OOJSAcquireContext();
-		JS_RemoveObjectRoot(context, &_jsSelf);
+		ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_jsSelf));
 		OOJSRelinquishContext(context);
 	}
 }
@@ -396,24 +520,24 @@ static JSFunctionSpec sScriptMethods[] =
 	  withArguments:(jsval *)argv count:(intN)argc
 			 result:(jsval *)outResult
 {
-	NSParameterAssert(name != NULL && (argv != NULL || argc == 0) && context != NULL && JS_IsInRequest(context));
+	NSParameterAssert(name != NULL && (argv != NULL || argc == 0) && context != NULL && ooscript::isInRequest(OOJSFCX(context)));
 	if (_jsSelf == NULL)  return NO;
 	
 	JSObject				*root = NULL;
 	BOOL					OK = NO;
-	jsval					method;
+	jsval					method = JSVAL_VOID;
 	jsval					ignoredResult = JSVAL_VOID;
 	
 	if (outResult == NULL)  outResult = &ignoredResult;
 	OOJSAddGCObjectRoot(context, &root, "OOJSScript method root");
 	
-	if (EXPECT(JS_GetMethodById(context, _jsSelf, methodID, &root, &method) && !JSVAL_IS_VOID(method)))
+	if (EXPECT(ooscript::getMethodById(OOJSFCX(context), OOJSFOBJ(_jsSelf), OOJSFJSID(methodID), OOJSFOBJP(&root), OOJSFVALP(&method)) && !JSVAL_IS_VOID(method)))
 	{
 #ifndef NDEBUG
-		if (JS_IsExceptionPending(context))
+		if (ooscript::isExceptionPending(OOJSFCX(context)))
 		{
 			OOLog(@"script.internalBug", @"Exception pending on context before calling method in %s, clearing. This is an internal error, please report it.", __PRETTY_FUNCTION__);
-			JS_ClearPendingException(context);
+			ooscript::clearPendingException(OOJSFCX(context));
 		}
 		
 		OOLog(@"script.javaScript.call", @"Calling [%@].%@()", [self name], OOStringFromJSID(methodID));
@@ -430,12 +554,12 @@ static JSFunctionSpec sScriptMethods[] =
 		
 		// Call the method.
 		OOJSStartTimeLimiter();
-		OK = JS_CallFunctionValue(context, _jsSelf, method, argc, argv, outResult);
+		OK = ooscript::callFunctionValue(OOJSFCX(context), OOJSFOBJ(_jsSelf), OOJSFVAL(method), argc, OOJSFVALP(argv), OOJSFVALP(outResult));
 		OOJSStopTimeLimiter();
 		
-		if (JS_IsExceptionPending(context))
+		if (ooscript::isExceptionPending(OOJSFCX(context)))
 		{
-			JS_ReportPendingException(context);
+			ooscript::reportPendingException(OOJSFCX(context));
 			OK = NO;
 		}
 		
@@ -447,7 +571,7 @@ static JSFunctionSpec sScriptMethods[] =
 #endif
 	}
 	
-	JS_RemoveObjectRoot(context, &root);
+	ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&root));
 	
 	return OK;
 }
@@ -455,11 +579,11 @@ static JSFunctionSpec sScriptMethods[] =
 
 - (id) propertyWithID:(jsid)propID inContext:(JSContext *)context
 {
-	NSParameterAssert(context != NULL && JS_IsInRequest(context));
+	NSParameterAssert(context != NULL && ooscript::isInRequest(OOJSFCX(context)));
 	if (_jsSelf == NULL)  return nil;
 	
 	jsval jsValue = JSVAL_VOID;
-	if (JS_GetPropertyById(context, _jsSelf, propID, &jsValue))
+	if (ooscript::getPropertyById(OOJSFCX(context), OOJSFOBJ(_jsSelf), OOJSFJSID(propID), OOJSFVALP(&jsValue)))
 	{
 		return OOJSNativeObjectFromJSValue(context, jsValue);
 	}
@@ -469,17 +593,17 @@ static JSFunctionSpec sScriptMethods[] =
 
 - (BOOL) setProperty:(id)value withID:(jsid)propID inContext:(JSContext *)context
 {
-	NSParameterAssert(context != NULL && JS_IsInRequest(context));
+	NSParameterAssert(context != NULL && ooscript::isInRequest(OOJSFCX(context)));
 	if (_jsSelf == NULL)  return NO;
 	
 	jsval jsValue = OOJSValueFromNativeObject(context, value);
-	return JS_SetPropertyById(context, _jsSelf, propID, &jsValue);
+	return ooscript::setPropertyById(OOJSFCX(context), OOJSFOBJ(_jsSelf), OOJSFJSID(propID), OOJSFVALP(&jsValue));
 }
 
 
 - (BOOL) defineProperty:(id)value withID:(jsid)propID inContext:(JSContext *)context
 {
-	NSParameterAssert(context != NULL && JS_IsInRequest(context));
+	NSParameterAssert(context != NULL && ooscript::isInRequest(OOJSFCX(context)));
 	if (_jsSelf == NULL)  return NO;
 	
 	jsval jsValue = OOJSValueFromNativeObject(context, value);
@@ -537,7 +661,7 @@ static JSFunctionSpec sScriptMethods[] =
 {
 	RunningStack			*element = NULL;
 	
-	element = malloc(sizeof *element);
+	element = static_cast<RunningStack*>(malloc(sizeof *element));
 	if (element == NULL)  exit(EXIT_FAILURE);
 	
 	element->back = sRunningStack;
@@ -560,92 +684,6 @@ static JSFunctionSpec sScriptMethods[] =
 @end
 
 
-@implementation OOJSScript (OOPrivate)
-
-
-
-/*	Generate default name for script which doesn't set its name property when
-	first run.
- 
-	The generated name is <name>.anon-script, where <name> is selected as
-	follows:
-	* If path is nil (futureproofing), use the address of the script object.
-	* If the file's name is something other than script.*, use the file name.
-	* If the containing directory is something other than Config, use the
-	containing directory's name.
-	* Otherwise, use the containing directory's parent (which will generally
-														be an OXP root directory).
-	* If either of the two previous steps results in an empty string, fall
-	back on the full path.
-*/
-- (NSString *)scriptNameFromPath:(NSString *)path
-{
-	NSString		*lastComponent = nil;
-	NSString		*truncatedPath = nil;
-	NSString		*theName = nil;
-	
-	if (path == nil) theName = [NSString stringWithFormat:@"%p", self];
-	else
-	{
-		lastComponent = [path lastPathComponent];
-		if (![lastComponent hasPrefix:@"script."]) theName = lastComponent;
-		else
-		{
-			truncatedPath = [path stringByDeletingLastPathComponent];
-			if (NSOrderedSame == [[truncatedPath lastPathComponent] caseInsensitiveCompare:@"Config"])
-			{
-				truncatedPath = [truncatedPath stringByDeletingLastPathComponent];
-			}
-			if (NSOrderedSame == [[truncatedPath pathExtension] caseInsensitiveCompare:@"oxp"])
-			{
-				truncatedPath = [truncatedPath stringByDeletingPathExtension];
-			}
-			
-			lastComponent = [truncatedPath lastPathComponent];
-			theName = lastComponent;
-		}
-	}
-	
-	if (0 == [theName length]) theName = path;
-	
-	return StrippedName([theName stringByAppendingString:@".anon-script"]);
-}
-
-
-- (NSDictionary *) defaultPropertiesFromPath:(NSString *)path
-{
-	// remove file name, remove OXP subfolder, add manifest.plist
-	NSString *manifestPath = [[[path stringByDeletingLastPathComponent] stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"manifest.plist"];
-	NSDictionary *manifest = OODictionaryFromFile(manifestPath);
-	NSMutableDictionary *properties = [NSMutableDictionary dictionaryWithCapacity:3];
-	/* __oolite.tmp.* is allocated for OXPs without manifests. Its
-	 * values are meaningless and shouldn't be used here */
-	if (manifest != nil && ![[manifest oo_stringForKey:kOOManifestIdentifier] hasPrefix:@"__oolite.tmp."])
-	{
-		if ([manifest objectForKey:kOOManifestVersion] != nil)
-		{
-			[properties setObject:[manifest oo_stringForKey:kOOManifestVersion] forKey:@"version"];
-		}
-		if ([manifest objectForKey:kOOManifestIdentifier] != nil)
-		{
-			// used for system info
-			[properties setObject:[manifest oo_stringForKey:kOOManifestIdentifier] forKey:kLocalManifestProperty];
-		}
-		if ([manifest objectForKey:kOOManifestAuthor] != nil)
-		{
-			[properties setObject:[manifest oo_stringForKey:kOOManifestAuthor] forKey:@"author"];
-		}
-		if ([manifest objectForKey:kOOManifestLicense] != nil)
-		{
-			[properties setObject:[manifest oo_stringForKey:kOOManifestLicense] forKey:@"license"];
-		}
-	}
-	return properties;
-}
-
-@end
-
-
 @implementation OOScript (JavaScriptEvents)
 
 - (BOOL) callMethod:(jsid)methodID
@@ -661,29 +699,35 @@ static JSFunctionSpec sScriptMethods[] =
 
 void InitOOJSScript(JSContext *context, JSObject *global)
 {
-	sScriptPrototype = JS_InitClass(context, global, NULL, &sScriptClass, OOJSUnconstructableConstruct, 0, NULL, sScriptMethods, NULL, NULL);
-	OOJSRegisterObjectConverter(&sScriptClass, OOJSBasicPrivateObjectConverter);
+	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sScriptClass, ScriptUnconstructableConstruct, 0, nullptr, sScriptMethods, nullptr, nullptr);
+	sScriptPrototype = OOJSROBJ(proto);
+	OOJSRegisterObjectConverter(reinterpret_cast<JSClass*>(sScriptClass.backend), OOJSBasicPrivateObjectConverter);
 }
 
 
-static JSBool ScriptAddProperty(JSContext *context, JSObject *this, jsid propID, jsval *value)
+namespace {
+static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value * /*value*/)
 {
 	// Complain about attempts to set the property tickle.
-	if (JSID_IS_STRING(propID))
+	if (ooscript::isStringId(propID))
 	{
-		JSString *propName = JSID_TO_STRING(propID);
-		JSBool match;
-		if (JS_StringEqualsAscii(context, propName, "tickle", &match) && match)
+		JSContext *context = OOJSRCX(cx);
+		JSObject *thisObj = OOJSROBJ(obj);
+		ooscript::String propNameStr = ooscript::idToString(propID);
+		bool match = false;
+		if (ooscript::stringEqualsAscii(cx, propNameStr, "tickle", &match) && match)
 		{
-			OOJSScript *thisScript = OOJSNativeObjectOfClassFromJSObject(context, this, [OOJSScript class]);
+			OOJSScript *thisScript = OOJSNativeObjectOfClassFromJSObject(context, thisObj, [OOJSScript class]);
 			OOJSReportWarning(context, @"Script %@ appears to use the tickle() event handler, which is no longer supported.", [thisScript name]);
 		}
 	}
 	
 	return YES;
 }
+} // namespace
 
 
+namespace {
 static void AddStackToArrayReversed(NSMutableArray *array, RunningStack *stack)
 {
 	if (stack != NULL)
@@ -692,8 +736,10 @@ static void AddStackToArrayReversed(NSMutableArray *array, RunningStack *stack)
 		[array addObject:stack->current];
 	}
 }
+} // namespace
 
 
+namespace {
 static JSScript *LoadScriptWithName(JSContext *context, NSString *path, JSObject *object, JSObject **outScriptObject, NSString **outErrorMessage)
 {
 #if OO_CACHE_JS_SCRIPTS
@@ -743,7 +789,7 @@ static JSScript *LoadScriptWithName(JSContext *context, NSString *path, JSObject
 		if (data == nil)  *outErrorMessage = @"could not load file";
 		else
 		{
-			script = JS_CompileUCScript(context, object, [data bytes], [data length] / sizeof(unichar), [path UTF8String], 1);
+			script = JS_CompileUCScript(context, object, static_cast<const jschar*>([data bytes]), [data length] / sizeof(unichar), [path UTF8String], 1);
 			if (script != NULL)  *outScriptObject = JS_NewScriptObject(context, script);
 			else  *outErrorMessage = @"compilation failed";
 		}
@@ -816,7 +862,8 @@ static JSScript *ScriptWithCompiledData(JSContext *context, NSData *data)
 static NSString *StrippedName(NSString *string)
 {
 	static NSCharacterSet *invalidSet = nil;
-	if (invalidSet == nil)  invalidSet = [[NSCharacterSet characterSetWithCharactersInString:@"_ \t\n\r\v"] retain];
+	if (invalidSet == nil)  invalidSet = [[NSCharacterSet characterSetWithCharactersInString:@"_ 	\n\r\v"] retain];
 	
 	return [string stringByTrimmingCharactersInSet:invalidSet];
 }
+} // namespace
