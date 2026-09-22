@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCollectionExtractors.h"
+#import "OOJSPlayerShip.h"
 #import "OOJSPlayer.h"
 #import "OOJSEntity.h"
 #import "OOJSShip.h"
@@ -46,63 +47,222 @@ MA 02110-1301, USA.
 #import "OOEquipmentType.h"
 #import "OOJSEquipmentInfo.h"
 
+#include "ooscript/JSEngine.hpp"
+#include <cstring>
 
+/*
+	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
+	oo-sdz, the sweep exemplar): the class dispatch table becomes a static ooscript::ClassDef
+	(the stub hooks are nullptr), InitClass/DefineObject become ooscript::initClass /
+	ooscript::defineObject, native methods and class hooks take the façade's hook signature
+	(Context/Object/PropertyId/Value pointer/CallArgs reference), and the directly spelled
+	numeric-conversion calls (NewNumberValue, ValueToNumber, ValueToBoolean, ValueToInt32,
+	ValueToECMAUint32, SetPrivate, RemoveObjectRoot) become their ooscript:: façade
+	equivalents. A tiny shim at the top of each native method recovers the old JSContext
+	pointer, uintN and jsval pointer locals so the OOJS_* argument-marshalling macros and the
+	rest of each function body are UNCHANGED, because ooscript::Value/Object/PropertyId are
+	byte copies of jsval, JSObject*, and jsid (JSEngine.hpp's own contract) and views onto them
+	are therefore reinterpret_cast, not conversion. `this` is renamed to `thisObj` because it
+	is a reserved word once this file compiles as Objective-C++ (ADR-0001).
+*/
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+using ooscript::Value;
+using ooscript::PropertyId;
+using ooscript::CallArgs;
+using ooscript::ClassDef;
+using ooscript::ClassFlag;
+using ooscript::PropertyFlag;
+using ooscript::PropertySpec;
+using ooscript::FunctionSpec;
+
+// Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
+namespace {
+static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
+} // namespace
+namespace {
+static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
+} // namespace
+namespace {
+static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
+} // namespace
+namespace {
+static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
+} // namespace
+namespace {
+static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
+} // namespace
+namespace {
+static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
+} // namespace
+namespace {
+static inline Object    *OOJSFOBJP(JSObject **o)  { return reinterpret_cast<Object*>(o); }
+} // namespace
+
+
+namespace {
 static JSObject		*sPlayerShipPrototype;
+} // namespace
+namespace {
 static JSObject		*sPlayerShipObject;
+} // namespace
 
 
-static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value);
-static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value);
+namespace {
+static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
+} // namespace
+namespace {
+static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
+} // namespace
 
-static JSBool PlayerShipLaunch(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipRemoveAllCargo(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipUseSpecialCargo(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipEngageAutopilotToStation(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipDisengageAutopilot(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipRequestDockingClearance(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipCancelDockingRequest(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipAwardEquipmentToCurrentPylon(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipAddPassenger(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipRemovePassenger(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipAddParcel(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipRemoveParcel(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipAwardContract(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipRemoveContract(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipSetCustomView(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipSetPrimedEquipment(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipResetCustomView(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipResetScannerZoom(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipTakeInternalDamage(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipBeginHyperspaceCountdown(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipCancelHyperspaceCountdown(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipBeginGalacticHyperspaceCountdown(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipSetMultiFunctionDisplay(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipSetMultiFunctionText(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipHideHUDSelector(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipShowHUDSelector(JSContext *context, uintN argc, jsval *vp);
-static JSBool PlayerShipSetCustomHUDDial(JSContext *context, uintN argc, jsval *vp);
+namespace {
+static bool PlayerShipLaunch(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipRemoveAllCargo(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipUseSpecialCargo(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipEngageAutopilotToStation(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipDisengageAutopilot(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipRequestDockingClearance(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipCancelDockingRequest(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipAwardEquipmentToCurrentPylon(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipAddPassenger(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipRemovePassenger(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipAddParcel(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipRemoveParcel(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipAwardContract(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipRemoveContract(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipSetCustomView(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipSetPrimedEquipment(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipResetCustomView(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipResetScannerZoom(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipTakeInternalDamage(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipBeginHyperspaceCountdown(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipCancelHyperspaceCountdown(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipBeginGalacticHyperspaceCountdown(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipSetMultiFunctionDisplay(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipSetMultiFunctionText(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipHideHUDSelector(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipShowHUDSelector(Context cx, CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool PlayerShipSetCustomHUDDial(Context cx, CallArgs &oojsArgs);
+} // namespace
 
+namespace {
 static BOOL ValidateContracts(JSContext *context, uintN argc, jsval *vp, BOOL isCargo, OOSystemID *start, OOSystemID *destination, double *eta, double *fee, double *premium, NSString *functionName, unsigned *risk);
+} // namespace
 
 
-static JSClass sPlayerShipClass =
+// Adapts the shared jsapi finalizer (OOJavaScriptEngine.m) to the façade's FinalizeHook
+// signature; the finalizer itself is untouched, shared plumbing outside this bead's scope
+// (see OOJSStation.mm/OOJSVector.mm for the same pattern).
+namespace {
+static void PlayerShipFinalize(Context cx, Object obj)
+{
+	OOJSObjectWrapperFinalize(OOJSRCX(cx), OOJSROBJ(obj));
+}
+} // namespace
+
+
+// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the façade's
+// NativeFn signature (see OOJSStation.mm for the same pattern).
+namespace {
+static bool PlayerShipUnconstructableConstruct(Context cx, CallArgs &oojsArgs)
+{
+	return OOJSUnconstructableConstruct(OOJSRCX(cx), oojsArgs.count(), OOJSRVAL(oojsArgs.rawVp()));
+}
+} // namespace
+
+
+namespace {
+static ClassDef sPlayerShipClass =
 {
 	"PlayerShip",
-	JSCLASS_HAS_PRIVATE,
+	ClassFlag::HasPrivate,
 	
-	JS_PropertyStub,		// addProperty
-	JS_PropertyStub,		// delProperty
+	nullptr,				// addProperty (engine default: PropertyStub)
+	nullptr,				// delProperty (engine default: PropertyStub)
 	PlayerShipGetProperty,	// getProperty
 	PlayerShipSetProperty,	// setProperty
-	JS_EnumerateStub,		// enumerate
-	JS_ResolveStub,			// resolve
-	JS_ConvertStub,			// convert
-	OOJSObjectWrapperFinalize,// finalize
-	JSCLASS_NO_OPTIONAL_MEMBERS
+	nullptr,				// enumerate (engine default: EnumerateStub)
+	nullptr,				// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,				// resolve (engine default: ResolveStub)
+	nullptr,				// convert (engine default: ConvertStub)
+	PlayerShipFinalize,		// finalize
+	nullptr,				// call
+	nullptr,				// construct
+	nullptr,				// backend: owned by the façade backend, must start null
 };
+} // namespace
 
 
-enum
+// The engine's own JSClass* for sPlayerShipClass, for the not-yet-retargeted plumbing
+// (OOJSRegisterSubclass/OOJSRegisterObjectConverter) that still takes one; see
+// OOJSStation.mm/OOJSWaypoint.mm for the same pattern. Valid only after InitOOJSPlayerShip()
+// has called ooscript::initClass(), which is the only thing that attaches
+// sPlayerShipClass.backend.
+namespace {
+static inline JSClass *RawPlayerShipClass(void)
+{
+	return reinterpret_cast<JSClass*>(sPlayerShipClass.backend);
+}
+} // namespace
+
+
+enum : std::uint8_t
 {
 	// Property IDs
 	kPlayerShip_activeMissile,                  // index in 'missiles' array of current active missile
@@ -129,7 +289,7 @@ enum
 	kPlayerShip_galaxyCoordinates,				// galaxy coordinates (unscaled), Vector3D, read only
 	kPlayerShip_galaxyCoordinatesInLY,			// galaxy coordinates (in LY), Vector3D, read only
 	kPlayerShip_hud,							// hud name identifier, string, read/write
-	kPlayerShip_hudAllowsBigGui,				// hud big gui, string, read only 
+	kPlayerShip_hudAllowsBigGui,				// hud big gui, string, read only
 	kPlayerShip_hudHidden,						// hud visibility, boolean, read/write
 	kPlayerShip_injectorsEngaged,				// injectors in use, boolean, read-only
 	kPlayerShip_massLockable,					// mass-lockability of player ship, read/write
@@ -172,9 +332,88 @@ enum
 };
 
 
-static JSPropertySpec sPlayerShipProperties[] =
+namespace {
+static PropertySpec sPlayerShipProperties[] =
 {
-	// JS name							ID											flags
+	// JS name								ID											flags									getter	setter
+	{ "activeMissile",                  kPlayerShip_activeMissile,                  PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "aftShield",						kPlayerShip_aftShield,						PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "aftShieldRechargeRate",			kPlayerShip_aftShieldRechargeRate,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "chartHighlightMode",             kPlayerShip_chartHightlightMode,            PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "compassMode",					kPlayerShip_compassMode,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "compassTarget",					kPlayerShip_compassTarget,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "compassType",					kPlayerShip_compassType,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "currentWeapon",					kPlayerShip_currentWeapon,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "crosshairs",						kPlayerShip_crosshairs,						PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "cursorCoordinates",				kPlayerShip_cursorCoordinates,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "cursorCoordinatesInLY",			kPlayerShip_cursorCoordinatesInLY,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "docked",							kPlayerShip_docked,							PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "dockedStation",					kPlayerShip_dockedStation,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "fastEquipmentA",					kPlayerShip_fastEquipmentA,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "fastEquipmentB",					kPlayerShip_fastEquipmentB,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "forwardShield",					kPlayerShip_forwardShield,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "forwardShieldRechargeRate",		kPlayerShip_forwardShieldRechargeRate,		PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "fuelLeakRate",					kPlayerShip_fuelLeakRate,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "galacticHyperspaceBehaviour",	kPlayerShip_galacticHyperspaceBehaviour,	PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "galacticHyperspaceFixedCoords",	kPlayerShip_galacticHyperspaceFixedCoords,	PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "galacticHyperspaceFixedCoordsInLY",	kPlayerShip_galacticHyperspaceFixedCoordsInLY,	PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "galaxyCoordinates",				kPlayerShip_galaxyCoordinates,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "galaxyCoordinatesInLY",			kPlayerShip_galaxyCoordinatesInLY,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "hud",							kPlayerShip_hud,							PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "hudAllowsBigGui",				kPlayerShip_hudAllowsBigGui,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "hudHidden",						kPlayerShip_hudHidden,						PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "injectorsEngaged",				kPlayerShip_injectorsEngaged,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "massLockable",					kPlayerShip_massLockable,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	// manifest defined in OOJSManifest.m
+	{ "maxAftShield",					kPlayerShip_maxAftShield,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "maxForwardShield",				kPlayerShip_maxForwardShield,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "messageGuiTextColor",			kPlayerShip_messageGuiTextColor,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "messageGuiTextCommsColor",		kPlayerShip_messageGuiTextCommsColor,		PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "missilesOnline",					kPlayerShip_missilesOnline,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "multiFunctionDisplays",			kPlayerShip_multiFunctionDisplays,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "multiFunctionDisplayList",  		kPlayerShip_multiFunctionDisplayList,		PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "price",							kPlayerShip_price,							PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "pitch",							kPlayerShip_pitch,							PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "primedEquipment",				kPlayerShip_primedEquipment,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "renovationCost",					kPlayerShip_renovationCost,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "reticleColorTarget",				kPlayerShip_reticleColorTarget,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "reticleColorTargetSensitive",	kPlayerShip_reticleColorTargetSensitive,	PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "reticleColorWormhole",			kPlayerShip_reticleColorWormhole,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "renovationMultiplier",			kPlayerShip_renovationMultiplier,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "reticleTargetSensitive",			kPlayerShip_reticleTargetSensitive,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "roll",							kPlayerShip_roll,							PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "routeMode",						kPlayerShip_routeMode,						PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "scannerMinimalistic",				kPlayerShip_scannerMinimalistic,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "scannerNonLinear",				kPlayerShip_scannerNonLinear,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "scannerUltraZoom",				kPlayerShip_scannerUltraZoom,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "scoopOverride",					kPlayerShip_scoopOverride,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "serviceLevel",					kPlayerShip_serviceLevel,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "specialCargo",					kPlayerShip_specialCargo,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "targetSystem",					kPlayerShip_targetSystem,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "nextSystem",                     kPlayerShip_nextSystem,                     PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "infoSystem",						kPlayerShip_infoSystem,						PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "previousSystem",					kPlayerShip_previousSystem,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "torusEngaged",					kPlayerShip_torusEngaged,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "viewDirection",					kPlayerShip_viewDirection,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "viewPositionAft",				kPlayerShip_viewPositionAft,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "viewPositionForward",			kPlayerShip_viewPositionForward,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "viewPositionPort",				kPlayerShip_viewPositionPort,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "viewPositionStarboard",			kPlayerShip_viewPositionStarboard,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "weaponsOnline",					kPlayerShip_weaponsOnline,					PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "yaw",							kPlayerShip_yaw,							PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ 0 }			
+};
+} // namespace
+
+
+// A raw jsapi mirror of sPlayerShipProperties, used only for the two bad-property error
+// reporters in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are
+// outside this bead's scope (shared across every binding file) and still take a
+// JSPropertySpec*, not ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+namespace {
+static JSPropertySpec sPlayerShipPropertiesRaw[] =
+{
+	// JS name								ID											flags
 	{ "activeMissile",                  kPlayerShip_activeMissile,                  OOJS_PROP_READONLY_CB },
 	{ "aftShield",						kPlayerShip_aftShield,						OOJS_PROP_READWRITE_CB },
 	{ "aftShieldRechargeRate",			kPlayerShip_aftShieldRechargeRate,			OOJS_PROP_READWRITE_CB },
@@ -240,55 +479,60 @@ static JSPropertySpec sPlayerShipProperties[] =
 	{ "viewPositionStarboard",			kPlayerShip_viewPositionStarboard,			OOJS_PROP_READONLY_CB },
 	{ "weaponsOnline",					kPlayerShip_weaponsOnline,					OOJS_PROP_READONLY_CB },
 	{ "yaw",							kPlayerShip_yaw,							OOJS_PROP_READWRITE_CB },
-	{ 0 }			
-};
-
-
-static JSFunctionSpec sPlayerShipMethods[] =
-{
-	// JS name						Function							min args
-	{ "addParcel",   					PlayerShipAddParcel,						0 },
-	{ "addPassenger",					PlayerShipAddPassenger,						0 },
-	{ "awardContract",					PlayerShipAwardContract,					0 },
-	{ "awardEquipmentToCurrentPylon",	PlayerShipAwardEquipmentToCurrentPylon,		1 },
-	{ "beginHyperspaceCountdown",       PlayerShipBeginHyperspaceCountdown,         0 },
-	{ "cancelDockingRequest",			PlayerShipCancelDockingRequest,             1 },
-	{ "cancelHyperspaceCountdown",      PlayerShipCancelHyperspaceCountdown,        0 },
-	{ "beginGalacticHyperspaceCountdown", PlayerShipBeginGalacticHyperspaceCountdown, 1 },
-	{ "disengageAutopilot",				PlayerShipDisengageAutopilot,				0 },
-	{ "engageAutopilotToStation",		PlayerShipEngageAutopilotToStation,			1 },
-	{ "hideHUDSelector",				PlayerShipHideHUDSelector,					1 },
-	{ "launch",							PlayerShipLaunch,							0 },
-	{ "removeAllCargo",					PlayerShipRemoveAllCargo,					0 },
-	{ "removeContract",					PlayerShipRemoveContract,					2 },
-	{ "removeParcel",                   PlayerShipRemoveParcel,                     1 },
-	{ "removePassenger",				PlayerShipRemovePassenger,					1 },
-	{ "requestDockingClearance",        PlayerShipRequestDockingClearance,          1 },
-	{ "resetCustomView",				PlayerShipResetCustomView,					0 },
-	{ "resetScannerZoom",				PlayerShipResetScannerZoom,					0 },
-	{ "setCustomView",					PlayerShipSetCustomView,					2 },
-	{ "setCustomHUDDial",				PlayerShipSetCustomHUDDial,					2 },
-	{ "setMultiFunctionDisplay",		PlayerShipSetMultiFunctionDisplay,			1 },
-	{ "setMultiFunctionText",			PlayerShipSetMultiFunctionText,				1 },
-	{ "setPrimedEquipment",				PlayerShipSetPrimedEquipment,               1 },
-	{ "showHUDSelector",				PlayerShipShowHUDSelector,					1 },
-	{ "takeInternalDamage",				PlayerShipTakeInternalDamage,				0 },
-	{ "useSpecialCargo",				PlayerShipUseSpecialCargo,					1 },
 	{ 0 }
 };
+} // namespace
+
+
+namespace {
+static FunctionSpec sPlayerShipMethods[] =
+{
+	// JS name							Function								min args	flags
+	{ "addParcel",   					PlayerShipAddParcel,						0,			0 },
+	{ "addPassenger",					PlayerShipAddPassenger,						0,			0 },
+	{ "awardContract",					PlayerShipAwardContract,					0,			0 },
+	{ "awardEquipmentToCurrentPylon",	PlayerShipAwardEquipmentToCurrentPylon,		1,			0 },
+	{ "beginHyperspaceCountdown",       PlayerShipBeginHyperspaceCountdown,         0,			0 },
+	{ "cancelDockingRequest",			PlayerShipCancelDockingRequest,             1,			0 },
+	{ "cancelHyperspaceCountdown",      PlayerShipCancelHyperspaceCountdown,        0,			0 },
+	{ "beginGalacticHyperspaceCountdown", PlayerShipBeginGalacticHyperspaceCountdown, 1,			0 },
+	{ "disengageAutopilot",				PlayerShipDisengageAutopilot,				0,			0 },
+	{ "engageAutopilotToStation",		PlayerShipEngageAutopilotToStation,			1,			0 },
+	{ "hideHUDSelector",				PlayerShipHideHUDSelector,					1,			0 },
+	{ "launch",							PlayerShipLaunch,							0,			0 },
+	{ "removeAllCargo",					PlayerShipRemoveAllCargo,					0,			0 },
+	{ "removeContract",					PlayerShipRemoveContract,					2,			0 },
+	{ "removeParcel",                   PlayerShipRemoveParcel,                     1,			0 },
+	{ "removePassenger",				PlayerShipRemovePassenger,					1,			0 },
+	{ "requestDockingClearance",        PlayerShipRequestDockingClearance,          1,			0 },
+	{ "resetCustomView",				PlayerShipResetCustomView,					0,			0 },
+	{ "resetScannerZoom",				PlayerShipResetScannerZoom,					0,			0 },
+	{ "setCustomView",					PlayerShipSetCustomView,					2,			0 },
+	{ "setCustomHUDDial",				PlayerShipSetCustomHUDDial,					2,			0 },
+	{ "setMultiFunctionDisplay",		PlayerShipSetMultiFunctionDisplay,			1,			0 },
+	{ "setMultiFunctionText",			PlayerShipSetMultiFunctionText,				1,			0 },
+	{ "setPrimedEquipment",				PlayerShipSetPrimedEquipment,               1,			0 },
+	{ "showHUDSelector",				PlayerShipShowHUDSelector,					1,			0 },
+	{ "takeInternalDamage",				PlayerShipTakeInternalDamage,				0,			0 },
+	{ "useSpecialCargo",				PlayerShipUseSpecialCargo,					1,			0 },
+	{ 0 }
+};
+} // namespace
 
 
 void InitOOJSPlayerShip(JSContext *context, JSObject *global)
 {
-	sPlayerShipPrototype = JS_InitClass(context, global, JSShipPrototype(), &sPlayerShipClass, OOJSUnconstructableConstruct, 0, sPlayerShipProperties, sPlayerShipMethods, NULL, NULL);
-	OOJSRegisterObjectConverter(&sPlayerShipClass, OOJSBasicPrivateObjectConverter);
-	OOJSRegisterSubclass(&sPlayerShipClass, JSShipClass());
+	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), OOJSFOBJ(JSShipPrototype()), &sPlayerShipClass, PlayerShipUnconstructableConstruct, 0, sPlayerShipProperties, sPlayerShipMethods, nullptr, nullptr);
+	sPlayerShipPrototype = OOJSROBJ(proto);
+	OOJSRegisterObjectConverter(RawPlayerShipClass(), OOJSBasicPrivateObjectConverter);
+	OOJSRegisterSubclass(RawPlayerShipClass(), JSShipClass());
 	
 	PlayerEntity *player = [PlayerEntity sharedPlayer];	// NOTE: at time of writing, this creates the player entity. Don't use PLAYER here.
 	
 	// Create ship object as a property of the player object.
-	sPlayerShipObject = JS_DefineObject(context, JSPlayerObject(), "ship", &sPlayerShipClass, sPlayerShipPrototype, OOJS_PROP_READONLY);
-	JS_SetPrivate(context, sPlayerShipObject, OOConsumeReference([player weakRetain]));
+	Object shipObj = ooscript::defineObject(OOJSFCX(context), OOJSFOBJ(JSPlayerObject()), "ship", &sPlayerShipClass, proto, PropertyFlag::ReadOnly);
+	sPlayerShipObject = OOJSROBJ(shipObj);
+	ooscript::setPrivate(OOJSFCX(context), shipObj, OOConsumeReference([player weakRetain]));
 	[player setJSSelf:sPlayerShipObject context:context];
 	// Analyzer: object leaked. [Expected, object is retained by JS object.]
 }
@@ -296,7 +540,7 @@ void InitOOJSPlayerShip(JSContext *context, JSObject *global)
 
 JSClass *JSPlayerShipClass(void)
 {
-	return &sPlayerShipClass;
+	return RawPlayerShipClass();
 }
 
 
@@ -335,14 +579,14 @@ JSObject *JSPlayerShipObject(void)
 - (void) javaScriptEngineWillReset:(NSNotification *)notification
 {
 	[[NSNotificationCenter defaultCenter] removeObserver:self
-													name:kOOJavaScriptEngineWillResetNotification
-												  object:[OOJavaScriptEngine sharedEngine]];
+													 name:kOOJavaScriptEngineWillResetNotification
+												   object:[OOJavaScriptEngine sharedEngine]];
 	
 	if (_jsSelf != NULL)
 	{
 		
 		JSContext *context = OOJSAcquireContext();
-		JS_RemoveObjectRoot(context, &_jsSelf);
+		ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_jsSelf));
 		_jsSelf = NULL;
 		OOJSRelinquishContext(context);
 	}
@@ -351,27 +595,32 @@ JSObject *JSPlayerShipObject(void)
 @end
 
 
-static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value)
+namespace {
+static bool PlayerShipGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = OOJSRCX(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
+	jsval *value_raw = OOJSRVAL(value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	if (EXPECT_NOT(OOIsPlayerStale() || this == sPlayerShipPrototype))  { *value = JSVAL_VOID; return YES; }
+	if (EXPECT_NOT(OOIsPlayerStale() || thisObj == sPlayerShipPrototype))  { *value_raw = JSVAL_VOID; return YES; }
 	
 	id							result = nil;
 	PlayerEntity				*player = OOPlayerForScripting();
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kPlayerShip_activeMissile:
-			return JS_NewNumberValue(context, [player activeMissile], value);
+			return ooscript::newNumberValue(cx, [player activeMissile], value);
                       
 		case kPlayerShip_fuelLeakRate:
-			return JS_NewNumberValue(context, [player fuelLeakRate], value);
+			return ooscript::newNumberValue(cx, [player fuelLeakRate], value);
 			
 		case kPlayerShip_docked:
-			*value = OOJSValueFromBOOL([player isDocked]);
+			*value_raw = OOJSValueFromBOOL([player isDocked]);
 			return YES;
 			
 		case kPlayerShip_dockedStation:
@@ -395,18 +644,18 @@ static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_reticleTargetSensitive:
-			*value = OOJSValueFromBOOL([[player hud] reticleTargetSensitive]);
+			*value_raw = OOJSValueFromBOOL([[player hud] reticleTargetSensitive]);
 			return YES;
 			
 		case kPlayerShip_galacticHyperspaceBehaviour:
-			*value = OOJSValueFromGalacticHyperspaceBehaviour(context, [player galacticHyperspaceBehaviour]);
+			*value_raw = OOJSValueFromGalacticHyperspaceBehaviour(context, [player galacticHyperspaceBehaviour]);
 			return YES;
 			
 		case kPlayerShip_galacticHyperspaceFixedCoords:
-			return NSPointToVectorJSValue(context, [player galacticHyperspaceFixedCoords], value);
+			return NSPointToVectorJSValue(context, [player galacticHyperspaceFixedCoords], value_raw);
 			
 		case kPlayerShip_galacticHyperspaceFixedCoordsInLY:
-			return VectorToJSValue(context, OOGalacticCoordinatesFromInternal([player galacticHyperspaceFixedCoords]), value);
+			return VectorToJSValue(context, OOGalacticCoordinatesFromInternal([player galacticHyperspaceFixedCoords]), value_raw);
 
 		case kPlayerShip_fastEquipmentA:
 			result = [player fastEquipmentA];
@@ -421,34 +670,34 @@ static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_forwardShield:
-			return JS_NewNumberValue(context, [player forwardShieldLevel], value);
+			return ooscript::newNumberValue(cx, [player forwardShieldLevel], value);
 			
 		case kPlayerShip_aftShield:
-			return JS_NewNumberValue(context, [player aftShieldLevel], value);
+			return ooscript::newNumberValue(cx, [player aftShieldLevel], value);
 			
 		case kPlayerShip_maxForwardShield:
-			return JS_NewNumberValue(context, [player maxForwardShieldLevel], value);
+			return ooscript::newNumberValue(cx, [player maxForwardShieldLevel], value);
 			
 		case kPlayerShip_maxAftShield:
-			return JS_NewNumberValue(context, [player maxAftShieldLevel], value);
+			return ooscript::newNumberValue(cx, [player maxAftShieldLevel], value);
 			
 		case kPlayerShip_forwardShieldRechargeRate:
 			// No distinction made internally
-			return JS_NewNumberValue(context, [player forwardShieldRechargeRate], value);
+			return ooscript::newNumberValue(cx, [player forwardShieldRechargeRate], value);
 
 		case kPlayerShip_aftShieldRechargeRate:
 			// No distinction made internally
-			return JS_NewNumberValue(context, [player aftShieldRechargeRate], value);
+			return ooscript::newNumberValue(cx, [player aftShieldRechargeRate], value);
 			
 		case kPlayerShip_multiFunctionDisplays:
-			return JS_NewNumberValue(context, [[player hud] mfdCount], value);
+			return ooscript::newNumberValue(cx, [[player hud] mfdCount], value);
 
 		case kPlayerShip_multiFunctionDisplayList:
 			result = [player multiFunctionDisplayList];
 			break;
 
 		case kPlayerShip_missilesOnline:
-			*value = OOJSValueFromBOOL(![player dialIdentEngaged]);
+			*value_raw = OOJSValueFromBOOL(![player dialIdentEngaged]);
 			return YES;
 
 		case kPlayerShip_chartHightlightMode:
@@ -456,31 +705,31 @@ static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_galaxyCoordinates:
-			return NSPointToVectorJSValue(context, [player galaxy_coordinates], value);
+			return NSPointToVectorJSValue(context, [player galaxy_coordinates], value_raw);
 			
 		case kPlayerShip_galaxyCoordinatesInLY:
-			return VectorToJSValue(context, OOGalacticCoordinatesFromInternal([player galaxy_coordinates]), value);
+			return VectorToJSValue(context, OOGalacticCoordinatesFromInternal([player galaxy_coordinates]), value_raw);
 			
 		case kPlayerShip_cursorCoordinates:
-			return NSPointToVectorJSValue(context, [player cursor_coordinates], value);
+			return NSPointToVectorJSValue(context, [player cursor_coordinates], value_raw);
 
 		case kPlayerShip_cursorCoordinatesInLY:
-			return VectorToJSValue(context, OOGalacticCoordinatesFromInternal([player cursor_coordinates]), value);
+			return VectorToJSValue(context, OOGalacticCoordinatesFromInternal([player cursor_coordinates]), value_raw);
 			
 		case kPlayerShip_targetSystem:
-			*value = INT_TO_JSVAL([player targetSystemID]);
+			*value_raw = INT_TO_JSVAL([player targetSystemID]);
 			return YES;
 
 		case kPlayerShip_nextSystem:
-			*value = INT_TO_JSVAL([player nextHopTargetSystemID]);
+			*value_raw = INT_TO_JSVAL([player nextHopTargetSystemID]);
 			return YES;
 			
 		case kPlayerShip_infoSystem:
-			*value = INT_TO_JSVAL([player infoSystemID]);
+			*value_raw = INT_TO_JSVAL([player infoSystemID]);
 			return YES;
 
 		case kPlayerShip_previousSystem:
-			*value = INT_TO_JSVAL([player previousSystemID]);
+			*value_raw = INT_TO_JSVAL([player previousSystemID]);
 			return YES;
 			
 		case kPlayerShip_routeMode:
@@ -502,31 +751,31 @@ static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid pro
 		}
 		
 		case kPlayerShip_scannerMinimalistic:
-			*value = OOJSValueFromBOOL([[player hud] minimalisticScanner]);
+			*value_raw = OOJSValueFromBOOL([[player hud] minimalisticScanner]);
 			return YES;
 			
 		case kPlayerShip_scannerNonLinear:
-			*value = OOJSValueFromBOOL([[player hud] nonlinearScanner]);
+			*value_raw = OOJSValueFromBOOL([[player hud] nonlinearScanner]);
 			return YES;
 			
 		case kPlayerShip_scannerUltraZoom:
-			*value = OOJSValueFromBOOL([[player hud] scannerUltraZoom]);
+			*value_raw = OOJSValueFromBOOL([[player hud] scannerUltraZoom]);
 			return YES;
 			
 		case kPlayerShip_scoopOverride:
-			*value = OOJSValueFromBOOL([player scoopOverride]);
+			*value_raw = OOJSValueFromBOOL([player scoopOverride]);
 			return YES;
 
 		case kPlayerShip_injectorsEngaged:
-			*value = OOJSValueFromBOOL([player injectorsEngaged]);
+			*value_raw = OOJSValueFromBOOL([player injectorsEngaged]);
 			return YES;
 			
 		case kPlayerShip_massLockable:
-			*value = OOJSValueFromBOOL([player massLockable]);
+			*value_raw = OOJSValueFromBOOL([player massLockable]);
 			return YES;
 
 		case kPlayerShip_torusEngaged:
-			*value = OOJSValueFromBOOL([player hyperspeedEngaged]);
+			*value_raw = OOJSValueFromBOOL([player hyperspeedEngaged]);
 			return YES;
 			
 		case kPlayerShip_compassTarget:
@@ -535,11 +784,11 @@ static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid pro
 			
 		case kPlayerShip_compassType:
 			result = [OOStringFromCompassMode([player compassMode]) isEqualToString:@"COMPASS_MODE_BASIC"] ?
-														@"OO_COMPASSTYPE_BASIC" : @"OO_COMPASSTYPE_ADVANCED";
+										@"OO_COMPASSTYPE_BASIC" : @"OO_COMPASSTYPE_ADVANCED";
 			break;
 			
 		case kPlayerShip_compassMode:
-			*value = OOJSValueFromCompassMode(context, [player compassMode]);
+			*value_raw = OOJSValueFromCompassMode(context, [player compassMode]);
 			return YES;
 			
 		case kPlayerShip_hud:
@@ -551,60 +800,60 @@ static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_hudAllowsBigGui:
-			*value = OOJSValueFromBOOL([[player hud] allowBigGui]);
+			*value_raw = OOJSValueFromBOOL([[player hud] allowBigGui]);
 			return YES;
 
 		case kPlayerShip_hudHidden:
-			*value = OOJSValueFromBOOL([[player hud] isHidden]);
+			*value_raw = OOJSValueFromBOOL([[player hud] isHidden]);
 			return YES;
 			
 		case kPlayerShip_weaponsOnline:
-			*value = OOJSValueFromBOOL([player weaponsOnline]);
+			*value_raw = OOJSValueFromBOOL([player weaponsOnline]);
 			return YES;
 			
 		case kPlayerShip_viewDirection:
-			*value = OOJSValueFromViewID(context, [UNIVERSE viewDirection]);
+			*value_raw = OOJSValueFromViewID(context, [UNIVERSE viewDirection]);
 			return YES;
 
 		case kPlayerShip_viewPositionAft:
-			return VectorToJSValue(context, [player viewpointOffsetAft], value);
+			return VectorToJSValue(context, [player viewpointOffsetAft], value_raw);
 
 		case kPlayerShip_viewPositionForward:
-			return VectorToJSValue(context, [player viewpointOffsetForward], value);
+			return VectorToJSValue(context, [player viewpointOffsetForward], value_raw);
 
 		case kPlayerShip_viewPositionPort:
-			return VectorToJSValue(context, [player viewpointOffsetPort], value);
+			return VectorToJSValue(context, [player viewpointOffsetPort], value_raw);
 
 		case kPlayerShip_viewPositionStarboard:
-			return VectorToJSValue(context, [player viewpointOffsetStarboard], value);
+			return VectorToJSValue(context, [player viewpointOffsetStarboard], value_raw);
 
 		case kPlayerShip_currentWeapon:
 			result = [player weaponTypeForFacing:[player currentWeaponFacing] strict:NO];
 			break;
 		
 	  case kPlayerShip_price:
-			return JS_NewNumberValue(context, [UNIVERSE tradeInValueForCommanderDictionary:[player commanderDataDictionary]], value);
+			return ooscript::newNumberValue(cx, [UNIVERSE tradeInValueForCommanderDictionary:[player commanderDataDictionary]], value);
 
 	  case kPlayerShip_serviceLevel:
-			return JS_NewNumberValue(context, [player tradeInFactor], value);
+			return ooscript::newNumberValue(cx, [player tradeInFactor], value);
 
 		case kPlayerShip_renovationCost:
-			return JS_NewNumberValue(context, [player renovationCosts], value);
+			return ooscript::newNumberValue(cx, [player renovationCosts], value);
 
 		case kPlayerShip_renovationMultiplier:
-			return JS_NewNumberValue(context, [player renovationFactor], value);
+			return ooscript::newNumberValue(cx, [player renovationFactor], value);
 
 
 			// make roll, pitch, yaw reported to JS use same +/- convention as
 			// for NPC ships
 		case kPlayerShip_pitch:
-			return JS_NewNumberValue(context, -[player flightPitch], value);
+			return ooscript::newNumberValue(cx, -[player flightPitch], value);
 
 		case kPlayerShip_roll:
-			return JS_NewNumberValue(context, -[player flightRoll], value);
+			return ooscript::newNumberValue(cx, -[player flightRoll], value);
 
 		case kPlayerShip_yaw:
-			return JS_NewNumberValue(context, -[player flightYaw], value);
+			return ooscript::newNumberValue(cx, -[player flightYaw], value);
 			
 		case kPlayerShip_messageGuiTextColor:
 			result = [[[UNIVERSE messageGUI] textColor] normalizedArray];
@@ -615,19 +864,25 @@ static JSBool PlayerShipGetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sPlayerShipProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sPlayerShipPropertiesRaw);
 	}
 	
-	*value = OOJSValueFromNativeObject(context, result);
+	*value_raw = OOJSValueFromNativeObject(context, result);
 	return YES;
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value)
+namespace {
+static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = OOJSRCX(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
+	jsval *value_raw = OOJSRVAL(value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -635,7 +890,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 	
 	PlayerEntity				*player = OOPlayerForScripting();
 	jsdouble					fValue;
-	JSBool						bValue;
+	bool						bValue;
 	int32						iValue;
 	NSString					*sValue = nil;
 	OOGalacticHyperspaceBehaviour ghBehaviour;
@@ -643,10 +898,10 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 	OOColor						*colorForScript = nil;
 	Entity						*eValue = nil;
 
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kPlayerShip_fuelLeakRate:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[player setFuelLeakRate:fValue];
 				return YES;
@@ -654,7 +909,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_massLockable:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[player setMassLockable:bValue];
 				return YES;
@@ -662,7 +917,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_reticleTargetSensitive:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[[player hud] setReticleTargetSensitive:bValue];
 				return YES;
@@ -670,7 +925,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 		
 		case kPlayerShip_chartHightlightMode:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = OOStringFromJSValue(context, *value_raw);
 			if (sValue != nil) 
 			{
 				OOLongRangeChartMode chartMode = OOLongRangeChartModeFromString(sValue);
@@ -689,10 +944,10 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_compassMode:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = OOStringFromJSValue(context, *value_raw);
 			if(sValue != nil)
 			{
-				OOCompassMode mode = OOCompassModeFromJSValue(context, *value);
+				OOCompassMode mode = OOCompassModeFromJSValue(context, *value_raw);
 				[player setCompassMode:mode];
 				[player validateCompassTarget];
 				return YES;
@@ -700,7 +955,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_compassType:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = OOStringFromJSValue(context, *value_raw);
 			if (sValue != nil)
 			{
 				if ([sValue isEqualToString:@"OO_COMPASSTYPE_BASIC"])
@@ -732,7 +987,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 				return NO;
 			}
 			// make sure we have a valid entity
-			if (!JSVAL_IS_NULL(*value) && JSValueToEntity(context, *value, &eValue)) 
+			if (!JSVAL_IS_NULL(*value_raw) && JSValueToEntity(context, *value_raw, &eValue)) 
 			{
 				Entity *current = [player compassTarget];
 				[player setNextCompassMode];
@@ -753,7 +1008,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_galacticHyperspaceBehaviour:
-			ghBehaviour = OOGalacticHyperspaceBehaviourFromJSValue(context, *value);
+			ghBehaviour = OOGalacticHyperspaceBehaviourFromJSValue(context, *value_raw);
 			if (ghBehaviour != GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN)
 			{
 				[player setGalacticHyperspaceBehaviour:ghBehaviour];
@@ -762,7 +1017,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_galacticHyperspaceFixedCoords:
-			if (JSValueToVector(context, *value, &vValue))
+			if (JSValueToVector(context, *value_raw, &vValue))
 			{
 				NSPoint coords = { vValue.x, vValue.y };
 				[player setGalacticHyperspaceFixedCoords:coords];
@@ -771,7 +1026,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_galacticHyperspaceFixedCoordsInLY:
-			if (JSValueToVector(context, *value, &vValue))
+			if (JSValueToVector(context, *value_raw, &vValue))
 			{
 				NSPoint coords = OOInternalCoordinatesFromGalactic(vValue);
 				[player setGalacticHyperspaceFixedCoords:coords];
@@ -780,7 +1035,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_fastEquipmentA:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = OOStringFromJSValue(context, *value_raw);
 			if (sValue != nil)
 			{
 				[player setFastEquipmentA:sValue];
@@ -789,7 +1044,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_fastEquipmentB:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = OOStringFromJSValue(context, *value_raw);
 			if (sValue != nil)
 			{
 				[player setFastEquipmentB:sValue];
@@ -798,7 +1053,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_primedEquipment:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = OOStringFromJSValue(context, *value_raw);
 			if (sValue != nil)
 			{
 				return [player setPrimedEquipment:sValue showMessage:NO];
@@ -806,7 +1061,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_pitch:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				if (!isnan(fValue)) // guard against undefined
 				{
@@ -817,7 +1072,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_roll:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				if (!isnan(fValue)) // guard against undefined
 				{
@@ -828,7 +1083,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_yaw:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				if (!isnan(fValue)) // guard against undefined
 				{
@@ -839,7 +1094,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_forwardShield:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[player setForwardShieldLevel:fValue];
 				return YES;
@@ -847,7 +1102,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_aftShield:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[player setAftShieldLevel:fValue];
 				return YES;
@@ -855,7 +1110,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_maxForwardShield:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[player setMaxForwardShieldLevel:fValue];
 				return YES;
@@ -863,7 +1118,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_maxAftShield:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[player setMaxAftShieldLevel:fValue];
 				return YES;
@@ -871,7 +1126,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_forwardShieldRechargeRate:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[player setForwardShieldRechargeRate:fValue];
 				return YES;
@@ -879,7 +1134,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_aftShieldRechargeRate:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[player setAftShieldRechargeRate:fValue];
 				return YES;
@@ -887,7 +1142,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_scannerMinimalistic:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[[player hud] setMinimalisticScanner:bValue];
 				return YES;
@@ -895,7 +1150,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_scannerNonLinear:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[[player hud] setNonlinearScanner:bValue];
 				return YES;
@@ -903,7 +1158,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_scannerUltraZoom:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[[player hud] setScannerUltraZoom:bValue];
 				return YES;
@@ -911,7 +1166,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_scoopOverride:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[player setScoopOverride:bValue];
 				return YES;
@@ -919,7 +1174,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_hud:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = OOStringFromJSValue(context, *value_raw);
 			if (sValue != nil)
 			{
 				[player switchHudTo:sValue];	// EMMSTRAN: logged error should be a JS warning.
@@ -933,7 +1188,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_crosshairs:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = OOStringFromJSValue(context, *value_raw);
 			if (sValue == nil)
 			{
 				// reset HUD back to its plist settings
@@ -953,7 +1208,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 		case kPlayerShip_hudHidden:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(cx, *value, &bValue))
 			{
 				[[player hud] setHidden:bValue];
 				return YES;
@@ -961,7 +1216,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 
 	  case kPlayerShip_serviceLevel:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				int newLevel = (int)fValue;
 				[player adjustTradeInFactorBy:(newLevel-[player tradeInFactor])];
@@ -971,7 +1226,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 		case kPlayerShip_currentWeapon:
 		{
 			BOOL exists = NO;
-			sValue = JSValueToEquipmentKeyRelaxed(context, *value, &exists);
+			sValue = JSValueToEquipmentKeyRelaxed(context, *value_raw, &exists);
 			if (!exists || sValue == nil) 
 			{
 				sValue = @"EQ_WEAPON_NONE";
@@ -998,7 +1253,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 				}
 #endif
 				
-				if (JS_ValueToInt32(context, *value, &iValue))
+				if (ooscript::valueToInt32(cx, *value, &iValue))
 				{
 					if (iValue >= 0 && iValue < OO_SYSTEMS_PER_GALAXY)
 					{ 
@@ -1018,7 +1273,7 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			}
 		
 		case kPlayerShip_infoSystem:
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(cx, *value, &iValue))
 			{
 				if (iValue >= 0 && iValue < OO_SYSTEMS_PER_GALAXY)
 				{ 
@@ -1033,8 +1288,8 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_messageGuiTextColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			if (colorForScript != nil || JSVAL_IS_NULL(*value_raw))
 			{
 				[[UNIVERSE messageGUI] setTextColor:colorForScript];
 				return YES;
@@ -1042,8 +1297,8 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_messageGuiTextCommsColor:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			if (colorForScript != nil || JSVAL_IS_NULL(*value_raw))
 			{
 				[[UNIVERSE messageGUI] setTextCommsColor:colorForScript];
 				return YES;
@@ -1051,46 +1306,51 @@ static JSBool PlayerShipSetProperty(JSContext *context, JSObject *this, jsid pro
 			break;
 			
 		case kPlayerShip_reticleColorTarget:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			if (colorForScript != nil || JSVAL_IS_NULL(*value_raw))
 			{
 				return [[player hud] setReticleColorForIndex:OO_RETICLE_COLOR_TARGET toColor:colorForScript];
 			}
 			break;
 			
 		case kPlayerShip_reticleColorTargetSensitive:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			if (colorForScript != nil || JSVAL_IS_NULL(*value_raw))
 			{
 				return [[player hud] setReticleColorForIndex:OO_RETICLE_COLOR_TARGET_SENSITIVE toColor:colorForScript];
 			}
 			break;
 			
 		case kPlayerShip_reticleColorWormhole:
-			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
+			if (colorForScript != nil || JSVAL_IS_NULL(*value_raw))
 			{
 				return [[player hud] setReticleColorForIndex:OO_RETICLE_COLOR_WORMHOLE toColor:colorForScript];
 			}
 			break;
 
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sPlayerShipProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sPlayerShipPropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, this, propID, sPlayerShipProperties, *value);
+	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sPlayerShipPropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // *** Methods ***
 
 // launch()
-static JSBool PlayerShipLaunch(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipLaunch(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(OOIsPlayerStale()))  OOJS_RETURN_VOID;
@@ -1100,11 +1360,16 @@ static JSBool PlayerShipLaunch(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // removeAllCargo()
-static JSBool PlayerShipRemoveAllCargo(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipRemoveAllCargo(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(OOIsPlayerStale()))  OOJS_RETURN_VOID;
@@ -1124,11 +1389,17 @@ static JSBool PlayerShipRemoveAllCargo(JSContext *context, uintN argc, jsval *vp
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // useSpecialCargo(name : String)
-static JSBool PlayerShipUseSpecialCargo(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipUseSpecialCargo(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(OOIsPlayerStale()))  OOJS_RETURN_VOID;
@@ -1148,11 +1419,17 @@ static JSBool PlayerShipUseSpecialCargo(JSContext *context, uintN argc, jsval *v
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // engageAutopilotToStation(stationForDocking : Station) : Boolean
-static JSBool PlayerShipEngageAutopilotToStation(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipEngageAutopilotToStation(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(OOIsPlayerStale()))  OOJS_RETURN_VOID;
@@ -1171,11 +1448,16 @@ static JSBool PlayerShipEngageAutopilotToStation(JSContext *context, uintN argc,
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // disengageAutopilot()
-static JSBool PlayerShipDisengageAutopilot(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipDisengageAutopilot(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(OOIsPlayerStale()))  OOJS_RETURN_VOID;
@@ -1185,9 +1467,15 @@ static JSBool PlayerShipDisengageAutopilot(JSContext *context, uintN argc, jsval
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
-static JSBool PlayerShipRequestDockingClearance(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipRequestDockingClearance(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(OOIsPlayerStale()))  OOJS_RETURN_VOID;
@@ -1207,9 +1495,15 @@ static JSBool PlayerShipRequestDockingClearance(JSContext *context, uintN argc, 
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
-static JSBool PlayerShipCancelDockingRequest(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipCancelDockingRequest(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(OOIsPlayerStale()))  OOJS_RETURN_VOID;
@@ -1229,10 +1523,16 @@ static JSBool PlayerShipCancelDockingRequest(JSContext *context, uintN argc, jsv
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 // awardEquipmentToCurrentPylon(externalTank: equipmentInfoExpression) : Boolean
-static JSBool PlayerShipAwardEquipmentToCurrentPylon(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipAwardEquipmentToCurrentPylon(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	if (EXPECT_NOT(OOIsPlayerStale()))  OOJS_RETURN_VOID;
@@ -1253,11 +1553,17 @@ static JSBool PlayerShipAwardEquipmentToCurrentPylon(JSContext *context, uintN a
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // addPassenger(name: string, start: int, destination: int, ETA: double, fee: double) : Boolean
-static JSBool PlayerShipAddPassenger(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipAddPassenger(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1289,11 +1595,17 @@ static JSBool PlayerShipAddPassenger(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // removePassenger(name :string)
-static JSBool PlayerShipRemovePassenger(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipRemovePassenger(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1314,11 +1626,17 @@ static JSBool PlayerShipRemovePassenger(JSContext *context, uintN argc, jsval *v
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // addParcel(description: string, start: int, destination: int, ETA: double, fee: double) : Boolean
-static JSBool PlayerShipAddParcel(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipAddParcel(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1349,11 +1667,17 @@ static JSBool PlayerShipAddParcel(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // removeParcel(description :string)
-static JSBool PlayerShipRemoveParcel(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipRemoveParcel(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1374,11 +1698,17 @@ static JSBool PlayerShipRemoveParcel(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // awardContract(quantity: int, commodity: string, start: int, destination: int, eta: double, fee: double) : Boolean
-static JSBool PlayerShipAwardContract(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipAwardContract(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1393,7 +1723,7 @@ static JSBool PlayerShipAwardContract(JSContext *context, uintN argc, jsval *vp)
 		return NO;
 	}
 	
-	if (!JS_ValueToInt32(context, OOJS_ARGV[0], &qty))
+	if (!ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[0]), &qty))
 	{
 		OOJSReportBadArguments(context, @"PlayerShip", @"awardContract", 1, &OOJS_ARGV[0], nil, @"positive integer (cargo quantity)");
 		return NO;
@@ -1413,11 +1743,17 @@ static JSBool PlayerShipAwardContract(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // removeContract(commodity: string, destination: int)
-static JSBool PlayerShipRemoveContract(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipRemoveContract(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1438,7 +1774,7 @@ static JSBool PlayerShipRemoveContract(JSContext *context, uintN argc, jsval *vp
 		return NO;
 	}
 	
-	if (!JS_ValueToInt32(context, OOJS_ARGV[1], &dest) || dest < 0 || dest > 255)
+	if (!ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &dest) || dest < 0 || dest > 255)
 	{
 		OOJSReportBadArguments(context, @"PlayerShip", @"removeContract", 1, &OOJS_ARGV[1], nil, @"system ID");
 		return NO;
@@ -1449,11 +1785,17 @@ static JSBool PlayerShipRemoveContract(JSContext *context, uintN argc, jsval *vp
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // setCustomView(position:vector, orientation:quaternion [, weapon:string])
-static JSBool PlayerShipSetCustomView(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipSetCustomView(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1509,11 +1851,16 @@ static JSBool PlayerShipSetCustomView(JSContext *context, uintN argc, jsval *vp)
 	OOJS_RETURN_BOOL(YES);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // resetCustomView()
-static JSBool PlayerShipResetCustomView(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipResetCustomView(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1531,11 +1878,16 @@ static JSBool PlayerShipResetCustomView(JSContext *context, uintN argc, jsval *v
 	OOJS_RETURN_BOOL(YES);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // resetScannerZoom()
-static JSBool PlayerShipResetScannerZoom(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipResetScannerZoom(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1545,11 +1897,16 @@ static JSBool PlayerShipResetScannerZoom(JSContext *context, uintN argc, jsval *
 	OOJS_RETURN_VOID;
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // takeInternalDamage()
-static JSBool PlayerShipTakeInternalDamage(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipTakeInternalDamage(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1559,11 +1916,17 @@ static JSBool PlayerShipTakeInternalDamage(JSContext *context, uintN argc, jsval
 	OOJS_RETURN_BOOL(took);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // beginHyperspaceCountdown([int: spin_time])
-static JSBool PlayerShipBeginHyperspaceCountdown(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipBeginHyperspaceCountdown(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1580,7 +1943,7 @@ static JSBool PlayerShipBeginHyperspaceCountdown(JSContext *context, uintN argc,
 	}
 	else
 	{
-		if (!JS_ValueToInt32(context, OOJS_ARGV[0], &spin_time) || spin_time < 5 || spin_time > 60)
+		if (!ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[0]), &spin_time) || spin_time < 5 || spin_time > 60)
 		{
 			OOJSReportBadArguments(context, @"PlayerShip", @"beginHyperspaceCountdown", 1, &OOJS_ARGV[0], nil, @"between 5 and 60 seconds");
 			return NO;
@@ -1602,11 +1965,16 @@ static JSBool PlayerShipBeginHyperspaceCountdown(JSContext *context, uintN argc,
 	OOJS_RETURN_BOOL(begun);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // cancelHyperspaceCountdown()
-static JSBool PlayerShipCancelHyperspaceCountdown(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipCancelHyperspaceCountdown(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
        
 	PlayerEntity            *player = OOPlayerForScripting();
@@ -1623,10 +1991,16 @@ static JSBool PlayerShipCancelHyperspaceCountdown(JSContext *context, uintN argc
 	OOJS_NATIVE_EXIT
 		
 }
+} // namespace
 
 
-static JSBool PlayerShipBeginGalacticHyperspaceCountdown(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipBeginGalacticHyperspaceCountdown(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
@@ -1636,7 +2010,7 @@ static JSBool PlayerShipBeginGalacticHyperspaceCountdown(JSContext *context, uin
 	if (argc == 1) 
 	{
 
-		if (!JS_ValueToInt32(context, OOJS_ARGV[0], &spin_time) || spin_time < 5 || spin_time > 60)
+		if (!ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[0]), &spin_time) || spin_time < 5 || spin_time > 60)
 		{
 			OOJSReportBadArguments(context, @"PlayerShip", @"beginGalacticHyperspaceCountdown", 1, &OOJS_ARGV[0], nil, @"between 5 and 60 seconds");
 			return NO;
@@ -1663,11 +2037,17 @@ static JSBool PlayerShipBeginGalacticHyperspaceCountdown(JSContext *context, uin
 	OOJS_RETURN_BOOL(begun);
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // setMultiFunctionDisplay(index,key)
-static JSBool PlayerShipSetMultiFunctionDisplay(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipSetMultiFunctionDisplay(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	NSString		*key = nil;
@@ -1677,7 +2057,7 @@ static JSBool PlayerShipSetMultiFunctionDisplay(JSContext *context, uintN argc, 
 
 	if (argc > 0)  
 	{
-		if (!JS_ValueToECMAUint32(context,OOJS_ARGV[0],&index))
+		if (!ooscript::valueToECMAUint32(cx, OOJSFVAL(OOJS_ARGV[0]), &index))
 		{
 			OOJSReportBadArguments(context, @"PlayerShip", @"setMultiFunctionDisplay", MIN(argc, 1U), OOJS_ARGV, nil, @"number (index) [, string (key)]");
 			return NO;
@@ -1695,17 +2075,23 @@ static JSBool PlayerShipSetMultiFunctionDisplay(JSContext *context, uintN argc, 
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // setMultiFunctionText(key,value)
-static JSBool PlayerShipSetMultiFunctionText(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipSetMultiFunctionText(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	NSString				*key = nil;
 	NSString				*value = nil;
 	PlayerEntity			*player = OOPlayerForScripting();
-	JSBool					reflow = NO;
+	bool					reflow = NO;
 
 	if (argc > 0)  
 	{
@@ -1720,7 +2106,7 @@ static JSBool PlayerShipSetMultiFunctionText(JSContext *context, uintN argc, jsv
 	{
 		value = OOStringFromJSValue(context, OOJS_ARGV[1]);
 	}
-	if (argc > 2 && EXPECT_NOT(!JS_ValueToBoolean(context, OOJS_ARGV[2], &reflow)))
+	if (argc > 2 && EXPECT_NOT(!ooscript::valueToBoolean(cx, OOJSFVAL(OOJS_ARGV[2]), &reflow)))
 	{
 		OOJSReportBadArguments(context, @"setMultiFunctionText", @"reflow", argc, OOJS_ARGV, nil, @"boolean");
 		return NO;
@@ -1741,15 +2127,21 @@ static JSBool PlayerShipSetMultiFunctionText(JSContext *context, uintN argc, jsv
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 // setPrimedEquipment(key, [noMessage])
-static JSBool PlayerShipSetPrimedEquipment(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipSetPrimedEquipment(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	NSString				*key = nil;
 	PlayerEntity			*player = OOPlayerForScripting();
-	JSBool					showMsg = YES;
+	bool					showMsg = YES;
 
 	if (argc > 0)  
 	{
@@ -1760,7 +2152,7 @@ static JSBool PlayerShipSetPrimedEquipment(JSContext *context, uintN argc, jsval
 		OOJSReportBadArguments(context, @"PlayerShip", @"setPrimedEquipment", MIN(argc, 1U), OOJS_ARGV, nil, @"string (key)");
 		return NO;
 	}
-	if (argc > 1 && EXPECT_NOT(!JS_ValueToBoolean(context, OOJS_ARGV[1], &showMsg)))
+	if (argc > 1 && EXPECT_NOT(!ooscript::valueToBoolean(cx, OOJSFVAL(OOJS_ARGV[1]), &showMsg)))
  	{
  		OOJSReportBadArguments(context, @"PlayerShip", @"setPrimedEquipment", MIN(argc, 2U), OOJS_ARGV, nil, @"boolean");
  		return NO;
@@ -1770,11 +2162,17 @@ static JSBool PlayerShipSetPrimedEquipment(JSContext *context, uintN argc, jsval
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // setCustomHUDDial(key,value)
-static JSBool PlayerShipSetCustomHUDDial(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipSetCustomHUDDial(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	NSString				*key = nil;
@@ -1806,10 +2204,16 @@ static JSBool PlayerShipSetCustomHUDDial(JSContext *context, uintN argc, jsval *
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool PlayerShipHideHUDSelector(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipHideHUDSelector(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	NSString				*key = nil;
@@ -1830,10 +2234,16 @@ static JSBool PlayerShipHideHUDSelector(JSContext *context, uintN argc, jsval *v
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool PlayerShipShowHUDSelector(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool PlayerShipShowHUDSelector(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 
 	NSString				*key = nil;
@@ -1854,27 +2264,30 @@ static JSBool PlayerShipShowHUDSelector(JSContext *context, uintN argc, jsval *v
 
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 
+namespace {
 static BOOL ValidateContracts(JSContext *context, uintN argc, jsval *vp, BOOL isCargo, OOSystemID *start, OOSystemID *destination, double *eta, double *fee, double *premium, NSString *functionName, unsigned *risk)
 {
 	OOJS_PROFILE_ENTER
 	
 	NSCParameterAssert(context != NULL && vp != NULL && start != NULL && destination != NULL && eta != NULL && fee != NULL);
 	
+	Context cx = OOJSFCX(context);
 	unsigned		uValue, offset = isCargo ? 2 : 1;
 	jsdouble		fValue;
 	int32			iValue;
 	
-	if (!JS_ValueToInt32(context, OOJS_ARGV[offset + 0], &iValue) || iValue < 0 || iValue > kOOMaximumSystemID)
+	if (!ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[offset + 0]), &iValue) || iValue < 0 || iValue > kOOMaximumSystemID)
 	{
 		OOJSReportBadArguments(context, @"PlayerShip", functionName, 1, &OOJS_ARGV[offset + 0], nil, @"system ID");
 		return NO;
 	}
 	*start = iValue;
 	
-	if (!JS_ValueToInt32(context, OOJS_ARGV[offset + 1], &iValue) || iValue < 0 || iValue > kOOMaximumSystemID)
+	if (!ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[offset + 1]), &iValue) || iValue < 0 || iValue > kOOMaximumSystemID)
 	{
 		OOJSReportBadArguments(context, @"PlayerShip", functionName, 1, &OOJS_ARGV[offset + 1], nil, @"system ID");
 		return NO;
@@ -1882,28 +2295,28 @@ static BOOL ValidateContracts(JSContext *context, uintN argc, jsval *vp, BOOL is
 	*destination = iValue;
 	
 	
-	if (!JS_ValueToNumber(context, OOJS_ARGV[offset + 2], &fValue) || !isfinite(fValue) || fValue <= [PLAYER clockTime])
+	if (!ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[offset + 2]), &fValue) || !isfinite(fValue) || fValue <= [PLAYER clockTime])
 	{
 		OOJSReportBadArguments(context, @"PlayerShip", functionName, 1, &OOJS_ARGV[offset + 2], nil, @"number (future time)");
 		return NO;
 	}
 	*eta = fValue;
 	
-	if (!JS_ValueToNumber(context, OOJS_ARGV[offset + 3], &fValue) || !isfinite(fValue) || fValue < 0.0)
+	if (!ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[offset + 3]), &fValue) || !isfinite(fValue) || fValue < 0.0)
 	{
 		OOJSReportBadArguments(context, @"PlayerShip", functionName, 1, &OOJS_ARGV[offset + 3], nil, @"number (credits quantity)");
 		return NO;
 	}
 	*fee = fValue;
 
-	if (argc > offset+4 && JS_ValueToNumber(context, OOJS_ARGV[offset + 4], &fValue) && isfinite(fValue) && fValue >= 0.0)
+	if (argc > offset+4 && ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[offset + 4]), &fValue) && isfinite(fValue) && fValue >= 0.0)
 	{
 		*premium = fValue;
 	}
 
 	if (!isCargo)
 	{
-		if (argc > offset+5 && JS_ValueToECMAUint32(context, OOJS_ARGV[offset + 5], &uValue) && isfinite((double)uValue))
+		if (argc > offset+5 && ooscript::valueToECMAUint32(cx, OOJSFVAL(OOJS_ARGV[offset + 5]), &uValue) && isfinite((double)uValue))
 		{
 			*risk = uValue;
 		}
@@ -1913,3 +2326,4 @@ static BOOL ValidateContracts(JSContext *context, uintN argc, jsval *vp, BOOL is
 	
 	OOJS_PROFILE_EXIT
 }
+} // namespace

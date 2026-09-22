@@ -29,6 +29,7 @@ Copyright (C) 2026 the Oolite migration project. GPL-2.0-or-later, as the rest o
 #include "JSEngine.hpp"
 
 #include <jsapi.h>
+#include <jsxdrapi.h>
 
 #include <array>
 #include <cmath>
@@ -659,6 +660,11 @@ bool getProperty(Context cx, Object obj, const char* name, Value* vp)        { r
 bool setProperty(Context cx, Object obj, const char* name, Value* vp)        { return JS_SetProperty(CX(cx), OBJ(obj), name, JSVP(vp)) != JS_FALSE; }
 bool getPropertyById(Context cx, Object obj, PropertyId id, Value* vp)       { return JS_GetPropertyById(CX(cx), OBJ(obj), toJS(id), JSVP(vp)) != JS_FALSE; }
 bool setPropertyById(Context cx, Object obj, PropertyId id, Value* vp)       { return JS_SetPropertyById(CX(cx), OBJ(obj), toJS(id), JSVP(vp)) != JS_FALSE; }
+bool definePropertyById(Context cx, Object obj, PropertyId id, Value value,
+                        PropertyGetter getter, PropertySetter setter, PropertyFlag flags)
+{
+	return JS_DefinePropertyById(CX(cx), OBJ(obj), toJS(id), toJS(value), getterFor(getter), setterFor(setter), attrs(flags)) != JS_FALSE;
+}
 bool lookupProperty(Context cx, Object obj, const char* name, Value* vp)     { return JS_LookupProperty(CX(cx), OBJ(obj), name, JSVP(vp)) != JS_FALSE; }
 bool lookupPropertyById(Context cx, Object obj, PropertyId id, Value* vp)    { return JS_LookupPropertyById(CX(cx), OBJ(obj), toJS(id), JSVP(vp)) != JS_FALSE; }
 bool hasProperty(Context cx, Object obj, const char* name, bool* found)
@@ -747,6 +753,69 @@ bool evaluateScript(Context cx, Object scope, const char* src, unsigned length, 
 bool evaluateUCScript(Context cx, Object scope, const Char16* src, unsigned length, const char* filename, unsigned lineno, Value* rval)
 {
 	return JS_EvaluateUCScript(CX(cx), OBJ(scope), JSCHARS(src), length, filename, lineno, JSVP(rval)) != JS_FALSE;
+}
+
+// MARK: Scripts -----------------------------------------------------------------------------
+
+inline JSScript* SCR(Script s)      { return reinterpret_cast<JSScript*>(s); }
+inline Script    wrap(JSScript* s)  { return reinterpret_cast<Script>(s); }
+
+Script compileUCScript(Context cx, Object scope, const Char16* src, unsigned length, const char* filename, unsigned lineno)
+{
+	return wrap(JS_CompileUCScript(CX(cx), OBJ(scope), JSCHARS(src), length, filename, lineno));
+}
+Object newScriptObject(Context cx, Script script)     { return wrap(JS_NewScriptObject(CX(cx), SCR(script))); }
+bool   executeScript(Context cx, Object obj, Script script, Value* rval)
+{
+	return JS_ExecuteScript(CX(cx), OBJ(obj), SCR(script), JSVP(rval)) != JS_FALSE;
+}
+void   destroyScript(Context cx, Script script)       { JS_DestroyScript(CX(cx), SCR(script)); }
+
+bool serializeScript(Context cx, Script script, ByteBuffer* out)
+{
+	out->data   = nullptr;
+	out->length = 0;
+	JSXDRState* xdr = JS_XDRNewMem(CX(cx), JSXDR_ENCODE);
+	if (xdr == nullptr)  return false;
+	JSScript* s = SCR(script);
+	bool ok = JS_XDRScript(xdr, &s) != JS_FALSE;
+	if (ok)
+	{
+		uint32 length = 0;
+		void* bytes = JS_XDRMemGetData(xdr, &length);
+		if (bytes != nullptr && length > 0)
+		{
+			std::uint8_t* copy = static_cast<std::uint8_t*>(std::malloc(length));
+			if (copy == nullptr)  { JS_XDRDestroy(xdr); return false; }
+			std::memcpy(copy, bytes, length);
+			out->data   = copy;
+			out->length = length;
+		}
+		else
+		{
+			ok = false;
+		}
+	}
+	JS_XDRDestroy(xdr);
+	return ok;
+}
+Script deserializeScript(Context cx, const std::uint8_t* data, std::size_t length)
+{
+	JSXDRState* xdr = JS_XDRNewMem(CX(cx), JSXDR_DECODE);
+	if (xdr == nullptr)  return nullptr;
+	JS_XDRMemSetData(xdr, const_cast<void*>(static_cast<const void*>(data)), static_cast<uint32>(length));
+	JSScript* result = nullptr;
+	if (!JS_XDRScript(xdr, &result))  result = nullptr;
+	JS_XDRMemSetData(xdr, nullptr, 0);   // don't let it be freed by XDRDestroy; the caller owns `data`
+	JS_XDRDestroy(xdr);
+	return wrap(result);
+}
+void destroyByteBuffer(ByteBuffer* buf)
+{
+	if (buf == nullptr)  return;
+	std::free(buf->data);
+	buf->data   = nullptr;
+	buf->length = 0;
 }
 
 // MARK: Strings ---------------------------------------------------------------------------------
