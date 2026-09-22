@@ -80,6 +80,7 @@ Generated from the header's declarations. One row per façade function that repl
 | `JS_NewStringCopyZ` | `ooscript::newStringCopyZ` |  |
 | `JS_NewStringCopyN` | `ooscript::newStringCopyN` |  |
 | `JS_NewUCStringCopyN` | `ooscript::newUCStringCopyN` |  |
+| `JS_NewUCRegExpObjectNoStatics` | `ooscript::newUCRegExpObjectNoStatics` | no RegExp.$1.. statics binding |
 | `JS_GetEmptyStringValue` | `ooscript::emptyStringValue` |  |
 | `JS_GetStringLength` | `ooscript::getStringLength` |  |
 | `JS_GetStringCharsAndLength` | `ooscript::getStringCharsAndLength` |  |
