@@ -30,4 +30,12 @@ MA 02110-1301, USA.
 @class DockEntity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSDock(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif

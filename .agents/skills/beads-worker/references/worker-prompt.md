@@ -48,6 +48,14 @@ LOGICAL LINE with `;` or `&&` (not real newlines) before storing, and verify the
 passes under `bash -o pipefail -c "$CMD"` exactly as accept.sh will invoke it, before calling
 `bd update --acceptance`.
 
+If your acceptance block contains a "must find zero matches" grep gate (e.g. a `js-retarget` bead's
+`grep -nE '\bJS_[A-Za-z]+' <file>`), the line MUST be negated with a leading `!` —
+`! grep -nE '\bJS_[A-Za-z]+' <file>` — never bare. A bare `grep` exits 1 when there are zero matches
+(the success case you want), and accept.sh's `bash -o pipefail -c "$cmd"` treats any nonzero exit as
+a FAILURE, wrongly rejecting an otherwise-correct bead. Before storing with `bd update --acceptance`,
+run the exact line under `bash -o pipefail -c "$CMD"; echo exit:$?` yourself and confirm it prints
+`exit:0` on your finished (zero-match) file.
+
 Work only inside {worktree_path}. If the notes report a merge conflict from a previous attempt,
 start with `git merge {base_branch}` in the worktree and resolve it. Run the acceptance commands
 yourself before you finish. **Commit everything** with message "bead {id}: {title}" and confirm

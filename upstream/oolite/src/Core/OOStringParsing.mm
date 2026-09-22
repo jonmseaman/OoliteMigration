@@ -1,6 +1,6 @@
 /*
 
-OOStringParsing.m
+OOStringParsing.mm
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -36,6 +36,43 @@ MA 02110-1301, USA.
 
 #import "OOJavaScriptEngine.h"
 #import "OOJSEngineTimeManagement.h"
+
+#include "ooscript/JSEngine.hpp"
+#include <cstring>
+
+/*
+	OOStringFromDeciCredits below is retargeted onto the ooscript façade (JSEngine.hpp), the
+	same call-site pattern OOJSVector.mm (bead oo-sdz) established: the small set of directly
+	spelled engine calls it makes (retrieving and restoring a pending exception, looking a
+	method up by id, the numeric-conversion call, and invoking a function value) become the
+	façade's equivalents, while the surrounding jsapi types (JSContext, JSObject, jsval) and the
+	OOJS_* helpers stay exactly as they were. A tiny set of byte-identical façade<->jsapi views,
+	local to this file, does the bridging; ooscript::Value/PropertyId are byte copies of
+	jsval/jsid (JSEngine.hpp's own contract), so the views are reinterpret_cast/memcpy, not
+	conversion.
+*/
+
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+using ooscript::Value;
+using ooscript::PropertyId;
+
+namespace {
+static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
+} // namespace
+namespace {
+static inline Value     *OOJSFVALP(jsval *v)      { return reinterpret_cast<Value*>(v); }
+} // namespace
+namespace {
+static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
+} // namespace
+namespace {
+static inline PropertyId OOJSFPID(jsid id)        { PropertyId r; std::memcpy(&r, &id, sizeof r); return r; }
+} // namespace
 
 
 static NSString * const kOOLogStringVectorConversion			= @"strings.conversion.vector";
@@ -285,7 +322,6 @@ NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includ
 {
 	JSContext			*context = OOJSAcquireContext();
 	JSObject			*global = [[OOJavaScriptEngine sharedEngine] globalObject];
-	JSObject			*fakeRoot;
 	jsval				method;
 	jsval				rval;
 	NSString			*result = nil;
@@ -301,26 +337,29 @@ NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includ
 	
 	reentrancyLock = YES;
 	
-	hadException = JS_GetPendingException(context, &exception);
-	JS_ClearPendingException(context);
+	hadException = ooscript::getPendingException(OOJSFCX(context), OOJSFVALP(&exception));
+	ooscript::clearPendingException(OOJSFCX(context));
 	
-	if (JS_GetMethodById(context, global, OOJSID("formatCredits"), &fakeRoot, &method))
 	{
-		jsval args[3];
-		if (JS_NewNumberValue(context, tenthsOfCredits * 0.1, &args[0]))
+		Object fakeRootFacade = NULL;
+		if (ooscript::getMethodById(OOJSFCX(context), OOJSFOBJ(global), OOJSFPID(OOJSID("formatCredits")), &fakeRootFacade, OOJSFVALP(&method)))
 		{
-			args[1] = OOJSValueFromBOOL(includeDecimal);
-			args[2] = OOJSValueFromBOOL(includeSymbol);
-			
-			OOJSStartTimeLimiter();
-			JS_CallFunctionValue(context, global, method, 3, args, &rval);
-			OOJSStopTimeLimiter();
-			
-			result = OOStringFromJSValue(context, rval);
+			jsval args[3];
+			if (ooscript::newNumberValue(OOJSFCX(context), tenthsOfCredits * 0.1, OOJSFVALP(&args[0])))
+			{
+				args[1] = OOJSValueFromBOOL(includeDecimal);
+				args[2] = OOJSValueFromBOOL(includeSymbol);
+				
+				OOJSStartTimeLimiter();
+				ooscript::callFunctionValue(OOJSFCX(context), OOJSFOBJ(global), OOJSFVAL(method), 3, OOJSFVALP(args), OOJSFVALP(&rval));
+				OOJSStopTimeLimiter();
+				
+				result = OOStringFromJSValue(context, rval);
+			}
 		}
 	}
 	
-	if (hadException)  JS_SetPendingException(context, exception);
+	if (hadException)  ooscript::setPendingException(OOJSFCX(context), OOJSFVAL(exception));
 	
 	OOJSRelinquishContext(context);
 	
@@ -450,32 +489,34 @@ NSString *EscapedGraphVizString(NSString *string)
 	
 	NSString * const *		src = srcStrings;
 	NSString * const *		sub = subStrings;
-	NSMutableString			*mutable = nil;
+	NSMutableString			*mutableString = nil;
 	NSString				*result = nil;
 	
-	mutable = [string mutableCopy];
+	mutableString = [string mutableCopy];
 	while (*src != nil)
 	{
-		[mutable replaceOccurrencesOfString:*src++
-								 withString:*sub++
-									options:0
-									  range:(NSRange){ 0, [mutable length] }];
+		[mutableString replaceOccurrencesOfString:*src++
+									 withString:*sub++
+										options:0
+										  range:(NSRange){ 0, [mutableString length] }];
 	}
 	
-	if ([mutable length] == [string length])
+	if ([mutableString length] == [string length])
 	{
 		result = string;
 	}
 	else
 	{
-		result = [[mutable copy] autorelease];
+		result = [[mutableString copy] autorelease];
 	}
-	[mutable release];
+	[mutableString release];
 	return result;
 }
 
 
+namespace {
 static BOOL NameIsTaken(NSString *name, NSSet *uniqueSet);
+} // namespace
 
 NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet)
 {
@@ -542,6 +583,7 @@ NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet)
 }
 
 
+namespace {
 static BOOL NameIsTaken(NSString *name, NSSet *uniqueSet)
 {
 	if ([uniqueSet containsObject:name])  return YES;
@@ -551,5 +593,6 @@ static BOOL NameIsTaken(NSString *name, NSSet *uniqueSet)
 	
 	return [keywords containsObject:[name lowercaseString]];
 }
+} // namespace
 
 #endif //DEBUG_GRAPHVIZ

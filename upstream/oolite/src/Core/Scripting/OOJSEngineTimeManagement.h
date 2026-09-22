@@ -52,8 +52,18 @@ SOFTWARE.
 #ifndef NDEBUG
 #define OOJSStartTimeLimiterWithTimeLimit(limit)  OOJSStartTimeLimiterWithTimeLimit_(limit, OOLOG_FILE_NAME, __LINE__)
 #define OOJSStopTimeLimiter()  OOJSStopTimeLimiter_(OOLOG_FILE_NAME, __LINE__)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void OOJSStartTimeLimiterWithTimeLimit_(OOTimeDelta limit, const char *file, unsigned line);
 void OOJSStopTimeLimiter_(const char *file, unsigned line);
+
+#ifdef __cplusplus
+}
+#endif
+
 #else
 void OOJSStartTimeLimiterWithTimeLimit(OOTimeDelta limit);
 void OOJSStopTimeLimiter(void);
