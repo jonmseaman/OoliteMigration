@@ -57,8 +57,17 @@ needs_build = pytest.mark.skipif(
     not os.path.isdir(APP_DIR), reason="no Oolite build at %s" % APP_DIR
 )
 
-# The three transitive dependencies the incident was actually about.
-GALLIUM_DEPS = {"libllvm-22.dll", "libspirv-tools.dll", "libsystre-0.dll"}
+# The transitive dependencies the incident was actually about. libtre-5.dll is not a direct
+# import of libgallium_wgl.dll; it is a transitive import of libsystre-0.dll itself (confirmed
+# via `objdump -p` on libsystre-0.dll: "DLL Name: libtre-5.dll"). Without it here, the
+# with_deps=True scratch app dir in _scratch_app_dir() stages the other three deps but still
+# reports libtre-5.dll as unresolved (see bead oo-qq69).
+GALLIUM_DEPS = {
+    "libllvm-22.dll",
+    "libspirv-tools.dll",
+    "libsystre-0.dll",
+    "libtre-5.dll",
+}
 
 
 def _runtime_dir():
