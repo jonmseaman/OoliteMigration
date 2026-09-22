@@ -262,6 +262,7 @@ Object newObject(Context cx, ClassDef* def, Object proto, Object parent);       
 Object newGlobalObject(Context cx, ClassDef* def);                                     // engine: NewCompartmentAndGlobalObject
 void   setGlobalObject(Context cx, Object global);                                     // engine: SetGlobalObject
 bool   initStandardClasses(Context cx, Object global);                                 // engine: InitStandardClasses
+void   clearScope(Context cx, Object obj);                                             // engine: ClearScope
 Object initClass(Context cx, Object obj, Object parentProto, ClassDef* def,            // engine: InitClass
                  NativeFn constructor, unsigned nargs,
                  const PropertySpec* ps, const FunctionSpec* fs,
@@ -367,6 +368,7 @@ void   destroyByteBuffer(ByteBuffer* buf);                                      
 // MARK: Strings ---------------------------------------------------------------------------------
 
 String        internString(Context cx, const char* s);                                 // engine: InternString
+String        internUCStringN(Context cx, const Char16* s, std::size_t n);             // engine: InternUCStringN
 String        newStringCopyZ(Context cx, const char* s);                               // engine: NewStringCopyZ
 String        newStringCopyN(Context cx, const char* s, std::size_t n);                // engine: NewStringCopyN
 String        newUCStringCopyN(Context cx, const Char16* s, std::size_t n);            // engine: NewUCStringCopyN
@@ -376,6 +378,7 @@ const Char16* getStringCharsAndLength(Context cx, String str, std::size_t* lengt
 const Char16* getInternedStringChars(String str);                                      // engine: GetInternedStringChars
 bool          stringEqualsAscii(Context cx, String str, const char* ascii, bool* match); // engine: StringEqualsAscii
 bool          stringHasBeenInterned(Context cx, String str);                           // engine: StringHasBeenInterned
+void          setCStringsAreUTF8();                                                    // engine: SetCStringsAreUTF8
 
 // MARK: Regular expressions -----------------------------------------------------------------
 
@@ -412,6 +415,7 @@ struct ErrorReport
 	const char*    filename;      // may be null
 	unsigned       lineno;
 	unsigned       flags;         // ReportFlag bits
+	unsigned       errorNumber;   // engine's numeric error code; 0 if not applicable
 	const Char16*  ucmessage;     // may be null
 	const Char16*  linebuf;       // may be null
 };
@@ -480,6 +484,7 @@ void    setContextPrivate(Context cx, void* data);                              
 void beginRequest(Context cx);                                                         // engine: BeginRequest
 void endRequest(Context cx);                                                           // engine: EndRequest
 bool isInRequest(Context cx);                                                          // engine: IsInRequest
+bool isThreadsafeBuild();                                                              // engine build config: THREADSAFE
 class Request
 {
 public:
@@ -504,7 +509,7 @@ enum class ContextOption : std::uint32_t
 };
 constexpr ContextOption operator|(ContextOption a, ContextOption b)
 {
-	return static_cast<ContextOption>(static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b));
+	return static_cast<ContextOption>(static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b));  // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange): this operator builds bitmask combinations of ContextOption flags; the analyzer treats the enum as a closed set of named values and flags any OR'd combination as "not a declared enumerator", which is a false positive for every legitimate multi-flag combination (see OOJavaScriptEngine.mm's OOJSENGINE_CONTEXT_OPTIONS).
 }
 ContextOption setOptions(Context cx, ContextOption options);                           // engine: SetOptions; returns the old set
 ContextOption getOptions(Context cx);                                                  // engine: GetOptions
@@ -531,6 +536,8 @@ enum class GCParam : unsigned
 std::uint32_t getGCParameter(Runtime rt, GCParam key);                                 // engine: GetGCParameter
 void          setGCParameter(Runtime rt, GCParam key, std::uint32_t value);            // engine: SetGCParameter
 void          gc(Context cx);                                                          // engine: GC
+void          setGCZeal(Context cx, std::uint8_t zeal);                                // engine: SetGCZeal; debug builds only
+bool          gcZealSupported();                                                       // engine build config: GC_ZEAL (whether setGCZeal is a real hook)
 void          maybeGC(Context cx);                                                     // engine: MaybeGC
 
 // The operation callback runs periodically during script execution (Oolite's time limiter).

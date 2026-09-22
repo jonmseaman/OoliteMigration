@@ -29,8 +29,16 @@ SOFTWARE.
 
 #import "OOJavaScriptEngine.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSFrameCallbacks(JSContext *context, JSObject *global);
 
 void OOJSFrameCallbacksInvoke(OOTimeDelta delta);
 
 void OOJSFrameCallbacksRemoveAll(void);
+
+#ifdef __cplusplus
+}
+#endif

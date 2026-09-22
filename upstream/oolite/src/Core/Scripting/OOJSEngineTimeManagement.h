@@ -102,6 +102,10 @@ void OOJSStopTimeLimiter(void);
 @class OOTimeProfile, OOTimeProfileEntry;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void OOJSBeginProfiling(BOOL trace);
 OOTimeProfile *OOJSEndProfiling(void);
 BOOL OOJSIsProfiling(void);
@@ -111,6 +115,10 @@ OOHighResTimeValue OOJSCopyTimeLimiterNominalStartTime(void);
 void OOJSResetTimeLimiter(void);
 OOTimeDelta OOJSGetTimeLimiterLimit(void);
 void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 /*
@@ -184,4 +192,12 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 
 @class OOJavaScriptEngine;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void OOJSTimeManagementInit(OOJavaScriptEngine *engine, JSRuntime *runtime);
+
+#ifdef __cplusplus
+}
+#endif

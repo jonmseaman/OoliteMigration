@@ -400,11 +400,12 @@ void ErrorReporterTramp(JSContext* cx, const char* message, JSErrorReport* repor
 	ErrorReport r{};
 	if (report != nullptr)
 	{
-		r.filename  = report->filename;
-		r.lineno    = report->lineno;
-		r.flags     = report->flags;
-		r.ucmessage = CHARS(report->ucmessage);
-		r.linebuf   = CHARS(reinterpret_cast<const jschar*>(report->uclinebuf));
+		r.filename    = report->filename;
+		r.lineno      = report->lineno;
+		r.flags       = report->flags;
+		r.errorNumber = report->errorNumber;
+		r.ucmessage   = CHARS(report->ucmessage);
+		r.linebuf     = CHARS(reinterpret_cast<const jschar*>(report->uclinebuf));
 	}
 	it->second.reporter(wrap(cx), message, report != nullptr ? &r : nullptr);
 }
@@ -596,6 +597,11 @@ void setGlobalObject(Context cx, Object global)
 bool initStandardClasses(Context cx, Object global)
 {
 	return JS_InitStandardClasses(CX(cx), OBJ(global)) != JS_FALSE;
+}
+
+void clearScope(Context cx, Object obj)
+{
+	JS_ClearScope(CX(cx), OBJ(obj));
 }
 
 Object initClass(Context cx, Object obj, Object parentProto, ClassDef* def,
@@ -821,6 +827,7 @@ void destroyByteBuffer(ByteBuffer* buf)
 // MARK: Strings ---------------------------------------------------------------------------------
 
 String        internString(Context cx, const char* s)                        { return wrap(JS_InternString(CX(cx), s)); }
+String        internUCStringN(Context cx, const Char16* s, std::size_t n)    { return wrap(JS_InternUCStringN(CX(cx), JSCHARS(s), n)); }
 String        newStringCopyZ(Context cx, const char* s)                      { return wrap(JS_NewStringCopyZ(CX(cx), s)); }
 String        newStringCopyN(Context cx, const char* s, std::size_t n)       { return wrap(JS_NewStringCopyN(CX(cx), s, n)); }
 String        newUCStringCopyN(Context cx, const Char16* s, std::size_t n)   { return wrap(JS_NewUCStringCopyN(CX(cx), JSCHARS(s), n)); }
@@ -839,6 +846,7 @@ bool          stringEqualsAscii(Context cx, String str, const char* ascii, bool*
 	return true;
 }
 bool          stringHasBeenInterned(Context /*cx*/, String str)              { return JS_StringHasBeenInterned(STR(str)) != JS_FALSE; }
+void          setCStringsAreUTF8()                                           { JS_SetCStringsAreUTF8(); }
 
 // MARK: Regular expressions -----------------------------------------------------------------
 
@@ -907,6 +915,7 @@ void    setContextPrivate(Context cx, void* data)          { JS_SetContextPrivat
 void beginRequest(Context cx)                              { JS_BeginRequest(CX(cx)); }
 void endRequest(Context cx)                                { JS_EndRequest(CX(cx)); }
 bool isInRequest(Context cx)                               { return JS_IsInRequest(CX(cx)) != JS_FALSE; }
+bool isThreadsafeBuild()                                    { return JS_THREADSAFE ? true : false; }
 
 ContextOption setOptions(Context cx, ContextOption options) { return optionsFrom(JS_SetOptions(CX(cx), optionBits(options))); }
 ContextOption getOptions(Context cx)                        { return optionsFrom(JS_GetOptions(CX(cx))); }
@@ -918,6 +927,13 @@ const char* versionToString(Version v)                     { return JS_VersionTo
 std::uint32_t getGCParameter(Runtime rt, GCParam key)                       { return JS_GetGCParameter(RT(rt), toJS(key)); }
 void          setGCParameter(Runtime rt, GCParam key, std::uint32_t value)  { JS_SetGCParameter(RT(rt), toJS(key), value); }
 void          gc(Context cx)                                                { JS_GC(CX(cx)); }
+#if JS_GC_ZEAL
+void          setGCZeal(Context cx, std::uint8_t zeal)                     { JS_SetGCZeal(CX(cx), zeal); }
+bool          gcZealSupported()                                            { return true; }
+#else
+void          setGCZeal(Context, std::uint8_t)                             { }
+bool          gcZealSupported()                                            { return false; }
+#endif
 void          maybeGC(Context cx)                                           { JS_MaybeGC(CX(cx)); }
 
 OperationCallback setOperationCallback(Context cx, OperationCallback cb)
