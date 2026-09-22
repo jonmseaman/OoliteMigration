@@ -76,7 +76,7 @@ oolite_sources += files(
     'OOProbabilitySet.m',
     'OOProfilingStopwatch.m',
     'OOQuaternion.m',
-    'OORegExpMatcher.m',
+    'OORegExpMatcher.mm',
     'OORoleSet.m',
     'OOShipGroup.m',
     'OOShipLibraryDescriptions.m',
