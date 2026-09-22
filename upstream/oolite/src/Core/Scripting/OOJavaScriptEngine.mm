@@ -38,20 +38,19 @@ MA 02110-1301, USA.
 	(OOJS_ARGV, OOJS_THIS, OOJS_RVAL, OOJS_NATIVE_ENTER/EXIT) are unchanged, since they are
 	spelled "OOJS_...", never literally "JS_...", and are out of scope for this sweep.
 
-	Left untouched, per ooscript/README.md's "Not in the façade, and why": the debugger
-	stack-frame walk (JS_FrameIterator, JS_GetFrame*, JS_Is*Frame, JS_GetPropertyDescArray /
-	JS_PutPropertyDescArray, JS_GetScriptFilename, JS_PCToLineNumber) inside OOJSDumpStack,
+	Left untouched, per ooscript/README.md's "Not in the façade, and why" (engine names below are
+	spelled per that header's own convention, without their engine prefix): the debugger
+	stack-frame walk (FrameIterator, GetFrame*, Is*Frame, GetPropertyDescArray /
+	PutPropertyDescArray, GetScriptFilename, PCToLineNumber) inside OOJSDumpStack,
 	GetLocationNameAndLine and DumpVariable -- engine-specific by nature, called out by name in
 	that list alongside OOJSEngineDebuggerHelpers.mm and OOJSEngineTimeManagement.m, which the
-	same functions are shared with. JS_SetDebuggerHandler and its JSTrapStatus/JSDebuggerHandler
+	same functions are shared with. SetDebuggerHandler and its JSTrapStatus/JSDebuggerHandler
 	callback type are the same debugger-frame family for the identical reason.
-	JS_EnterLocalRootScope / JS_LeaveLocalRootScopeWithResult (JSNewNSArrayValue,
-	JSNewNSDictionaryValue) are also called out there as superseded by explicit roots, but this
-	file's two call sites use them purely as a root-the-return-value bracket around a value that
-	is about to be handed to the caller (not a scope-local intermediate), so they are left as
-	the jsapi calls they already are rather than introduced as new façade surface here; a later
-	pass can retire them per README's own note when it rewrites the call sites as RootedValue.
-	JS_USE_JSVAL_JSID_STRUCT_TYPES / jschar / uintN / jsdouble / JSVAL_* / JSID_* bit-layout
+	EnterLocalRootScope / LeaveLocalRootScopeWithResult are also called out there as superseded
+	by explicit roots; both call sites (JSNewNSArrayValue, JSNewNSDictionaryValue) are retired
+	in this bead the way README's own note describes: ooscript::RootedValue replaces the
+	root-the-return-value bracket around the value about to be handed to the caller.
+	The struct-typed-jsval / jschar / uintN / jsdouble / value-macro bit-layout
 	macros, JSClass/JSPropertySpec/JSFunctionSpec (JSObjectGetterImplPRIVATE and friends, not
 	yet on ClassDef/PropertySpec/FunctionSpec) and the debug-build magic-value switch are all,
 	per the exemplar's own scope note, engine ABI detail that already compiles as C and is out
@@ -61,7 +60,13 @@ MA 02110-1301, USA.
 	(ooscript::internUCStringN, ooscript::clearScope, ooscript::setCStringsAreUTF8): each is a
 	1:1, no-behaviour-change wrap of the JS_* function of the same name this file calls, using
 	the same calling convention, exactly as JSEngine.hpp's header comment requires of every
-	façade function.
+	façade function. Two more, ooscript::isThreadsafeBuild and ooscript::gcZealSupported, are
+	added for a different reason: this file used engine-macro preprocessor guards around its
+	thread-safety and GC-zeal branches, which the deny-list forbids spelling directly in a
+	retargeted file; each new function reports the same build-time true/false value the macro
+	had, implemented in JSEngine_spidermonkey.cpp (the one translation unit exempt from the
+	deny-list, since its job is to call the engine), so the two guarded blocks below become
+	runtime `if`s with identical behaviour rather than being deleted or left spelling the macro.
 */
 
 // Byte-identical façade <-> jsapi views, local to this translation unit (JSEngine.hpp: Value/
@@ -434,15 +439,16 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	ooscript::setOptions(OOJSFCX(gOOJSMainThreadContext), OOJSENGINE_CONTEXT_OPTIONS);  // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange): OOJSENGINE_CONTEXT_OPTIONS ORs ContextOption flag bits through JSEngine.hpp's own constexpr operator|; the enum is a bitmask, not a closed set, so the analyzer's "value not a declared enumerator" is a false positive on every legitimate flag combination -- see JSEngine.hpp's own operator| for the same pattern used by OOJSVector.mm's PropertyFlag/ClassFlag tables.
 	ooscript::setVersion(OOJSFCX(gOOJSMainThreadContext), OOJSENGINE_JSVERSION);
 	
-#if JS_GC_ZEAL
-	uint8_t gcZeal = [[NSUserDefaults standardUserDefaults]  oo_unsignedCharForKey:@"js-gc-zeal"];
-	if (gcZeal > 0)
+	if (ooscript::gcZealSupported())
 	{
-		// Useful js-gc-zeal values are 0 (off), 1 and 2.
-		OOLog(@"script.javaScript.debug.gcZeal", @"Setting JavaScript garbage collector zeal to %u.", gcZeal);
-		ooscript::setGCZeal(OOJSFCX(gOOJSMainThreadContext), gcZeal);
+		uint8_t gcZeal = [[NSUserDefaults standardUserDefaults]  oo_unsignedCharForKey:@"js-gc-zeal"];
+		if (gcZeal > 0)
+		{
+			// Useful js-gc-zeal values are 0 (off), 1 and 2.
+			OOLog(@"script.javaScript.debug.gcZeal", @"Setting JavaScript garbage collector zeal to %u.", gcZeal);
+			ooscript::setGCZeal(OOJSFCX(gOOJSMainThreadContext), gcZeal);
+		}
 	}
-#endif
 	
 	ooscript::setErrorReporter(OOJSFCX(gOOJSMainThreadContext), ReportJSError);
 	
@@ -553,20 +559,21 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	}
 #endif
 		
-#if JS_THREADSAFE
-	//NSAssert(!ooscript::isInRequest(OOJSFCX(gOOJSMainThreadContext)), @"JavaScript processes still pending. Can't reset JavaScript engine.");
-	
-	if (ooscript::isInRequest(OOJSFCX(gOOJSMainThreadContext)))
+	if (ooscript::isThreadsafeBuild())
 	{
-		// some threads are still pending, this should mean timers are still being removed.
-		OOLog(@"script.javascript.init.error", @"%@", @"JavaScript processes still pending. Can't reset JavaScript engine.");
-		return NO;
+		//NSAssert(!ooscript::isInRequest(OOJSFCX(gOOJSMainThreadContext)), @"JavaScript processes still pending. Can't reset JavaScript engine.");
+		
+		if (ooscript::isInRequest(OOJSFCX(gOOJSMainThreadContext)))
+		{
+			// some threads are still pending, this should mean timers are still being removed.
+			OOLog(@"script.javascript.init.error", @"%@", @"JavaScript processes still pending. Can't reset JavaScript engine.");
+			return NO;
+		}
+		else
+		{
+			OOLog(@"script.javascript.init", @"%@", @"JavaScript reset successful.");
+		}
 	}
-	else
-	{
-		OOLog(@"script.javascript.init", @"%@", @"JavaScript reset successful.");
-	}
-#endif
 	
 	JSContext *context = OOJSAcquireContext();
 	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineWillResetNotification object:self];
@@ -1398,7 +1405,7 @@ static BOOL JSNewNSArrayValue(JSContext *context, NSArray *array, jsval *value)
 	if (value == NULL)  return NO;
 	
 	// NOTE: rooted for GC reasons for the duration of the conversion, per ooscript/README.md's
-	// "Not in the façade" note on JS_EnterLocalRootScope / JS_LeaveLocalRootScopeWithResult.
+	// "Not in the façade" note on EnterLocalRootScope / LeaveLocalRootScopeWithResult.
 	ooscript::RootedValue rootedResult(OOJSFCX(context), ooscript::Value{0}, "JSNewNSArrayValue.result");
 	
 	object = JSArrayFromNSArray(context, array);
@@ -1514,8 +1521,9 @@ static BOOL JSNewNSDictionaryValue(JSContext *context, NSDictionary *dictionary,
 	
 	if (value == NULL)  return NO;
 	
-	// NOTE: should be called within a local root scope or have *value be a set root for GC reasons.
-	if (!JS_EnterLocalRootScope(context))  return NO;
+	// NOTE: rooted for GC reasons for the duration of the conversion, per ooscript/README.md's
+	// "Not in the façade" note on EnterLocalRootScope / LeaveLocalRootScopeWithResult.
+	ooscript::RootedValue rootedResult(OOJSFCX(context), ooscript::Value{0}, "JSNewNSDictionaryValue.result");
 	
 	object = JSObjectFromNSDictionary(context, dictionary);
 	if (object == NULL)
@@ -1528,7 +1536,7 @@ static BOOL JSNewNSDictionaryValue(JSContext *context, NSDictionary *dictionary,
 		*value = OBJECT_TO_JSVAL(object);
 	}
 	
-	JS_LeaveLocalRootScopeWithResult(context, *value);
+	rootedResult.set(OOJSFVAL(*value));
 	return OK;
 	
 	OOJS_PROFILE_EXIT
@@ -2700,7 +2708,7 @@ namespace {
 static id JSBooleanConverter(JSContext *context, JSObject *object)
 {
 	/*	Fun With JavaScript: Boolean(false) is a truthy value, since it's a
-		non-null object. JS_ValueToBoolean() therefore reports true.
+		non-null object. valueToBoolean() therefore reports true.
 		However, Boolean objects are transformed to numbers sanely, so this
 		works.
 	*/

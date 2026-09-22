@@ -839,6 +839,7 @@ void    setContextPrivate(Context cx, void* data)          { JS_SetContextPrivat
 void beginRequest(Context cx)                              { JS_BeginRequest(CX(cx)); }
 void endRequest(Context cx)                                { JS_EndRequest(CX(cx)); }
 bool isInRequest(Context cx)                               { return JS_IsInRequest(CX(cx)) != JS_FALSE; }
+bool isThreadsafeBuild()                                    { return JS_THREADSAFE ? true : false; }
 
 ContextOption setOptions(Context cx, ContextOption options) { return optionsFrom(JS_SetOptions(CX(cx), optionBits(options))); }
 ContextOption getOptions(Context cx)                        { return optionsFrom(JS_GetOptions(CX(cx))); }
@@ -852,8 +853,10 @@ void          setGCParameter(Runtime rt, GCParam key, std::uint32_t value)  { JS
 void          gc(Context cx)                                                { JS_GC(CX(cx)); }
 #if JS_GC_ZEAL
 void          setGCZeal(Context cx, std::uint8_t zeal)                     { JS_SetGCZeal(CX(cx), zeal); }
+bool          gcZealSupported()                                            { return true; }
 #else
 void          setGCZeal(Context, std::uint8_t)                             { }
+bool          gcZealSupported()                                            { return false; }
 #endif
 void          maybeGC(Context cx)                                           { JS_MaybeGC(CX(cx)); }
 

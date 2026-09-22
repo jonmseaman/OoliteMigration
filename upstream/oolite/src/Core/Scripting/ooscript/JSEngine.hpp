@@ -443,6 +443,7 @@ void    setContextPrivate(Context cx, void* data);                              
 void beginRequest(Context cx);                                                         // engine: BeginRequest
 void endRequest(Context cx);                                                           // engine: EndRequest
 bool isInRequest(Context cx);                                                          // engine: IsInRequest
+bool isThreadsafeBuild();                                                              // engine build config: THREADSAFE
 class Request
 {
 public:
@@ -495,6 +496,7 @@ std::uint32_t getGCParameter(Runtime rt, GCParam key);                          
 void          setGCParameter(Runtime rt, GCParam key, std::uint32_t value);            // engine: SetGCParameter
 void          gc(Context cx);                                                          // engine: GC
 void          setGCZeal(Context cx, std::uint8_t zeal);                                // engine: SetGCZeal; debug builds only
+bool          gcZealSupported();                                                       // engine build config: GC_ZEAL (whether setGCZeal is a real hook)
 void          maybeGC(Context cx);                                                     // engine: MaybeGC
 
 // The operation callback runs periodically during script execution (Oolite's time limiter).
