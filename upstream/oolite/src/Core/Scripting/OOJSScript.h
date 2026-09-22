@@ -89,5 +89,5 @@ static NSString * const kLocalManifestProperty = @"oolite_manifest_identifier";
 @end
 
 
-void InitOOJSScript(JSContext *context, JSObject *global);
+OOJS_EXTERN_C void InitOOJSScript(JSContext *context, JSObject *global);
 

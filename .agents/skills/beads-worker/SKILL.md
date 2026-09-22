@@ -341,9 +341,22 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   root*; a dirty root makes that last step fail with `acceptance passed but fast-forwarding main
   ... failed (dirty checkout?)`, leaving a valid merge commit orphaned and the bead open. The mess
   is usually the fleet's own housekeeping — bd DB writes to `.beads/*.jsonl`, `docs/fleet/
-  LEARNINGS.md`, stale `.fleet-progress.*` files, untracked `.ctx/`. Commit or ignore it before the
-  accept batch, and re-run `accept.sh` afterwards: the work is not lost, the merge commit is intact
-  and the retry fast-forwards onto it.
+  LEARNINGS.md`, stale `.fleet-progress.*` files, untracked `.ctx/`. Commit the real tracked-file
+  changes (`git add <files> && git commit`) and/or `git clean -fd` the untracked scratch, then
+  re-run `accept.sh`: the work is not lost, the merge commit is intact and a plain retry usually
+  fast-forwards onto it.
+  **But if enough time passed between the failed accept and your retry that OTHER accepts landed
+  on main in between, the orphaned merge commit itself is now stale relative to main (it was built
+  as a fast-forward child of an OLDER main) — a bare retry's `--ff-only` will fail again with
+  "not possible" even though the root is now clean, because it's no longer a fast-forward, it's a
+  genuine divergence.** Diagnose with `git merge-base --is-ancestor <the reported merge sha> HEAD;
+  echo $?` (1 means it does NOT reach current main). Fix by merging it in for real:
+  `git merge <the reported merge sha> --no-edit` (resolve any trivial conflicts, e.g. two sessions'
+  appends to the same append-only log file — keep both sides) — this lands the bead's actual code
+  on main immediately, but the bead itself is still `in_progress` because `accept.sh` never got to
+  run its own close step. Re-run `accept.sh <id>` again (in the background is fine): it will
+  harvest/merge/rebuild/rerun acceptance against a tree that now already contains the fix (so it
+  should pass quickly) and complete the close/cleanup that the manual merge skipped.
 - **Two different live-launch failures look alike; only one is an orphan.** `rc=3
   ConnectionResetError [WinError 10054]` arrives FAST (6–10s) with `oolite_procs == 0` — a reset
   mid-handshake, measured at 3 of 5 attempts in one window and then 12 clean passes, clustering
@@ -508,13 +521,16 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   bd-data, not a tracked file — the orchestrator may write it directly after independently
   deriving and verifying a real, single-logical-line command (see the bd-data-not-tracked-file
   bullet above) rather than round-tripping a worker for a one-line store.
-- **Never touch a worktree's tracked files yourself, even for a one-line mechanical fix a reviewer
-  already fully specified.** The orchestrator delegates all code changes; `patch`/`write_file` on
-  a file under `.worktrees/<id>` is a rule violation regardless of how trivial or clearly-correct
-  the edit looks (e.g. adding one line to a known list in the exact format of its neighbors).
-  Dispatch a worker continuation round instead, even when you could type the fix faster yourself —
-  the discipline exists so every change has a worker attribution and passes through review/harvest
-  like every other change, not because the fix is hard.
+- **Never touch a worktree's tracked files yourself — not for a reviewer-specified one-liner, and
+  not for a fix you diagnosed yourself either, even a merge-artifact compile error that feels like
+  "obviously just restore the known-correct structure from main".** The orchestrator delegates all
+  code changes; `patch`/`write_file` on a file under `.worktrees/<id>` is a rule violation
+  regardless of how trivial, how clearly-correct, or how self-evidently mechanical the edit looks
+  (e.g. restoring a malformed `extern "C"` brace pair to match main's known-good structure after a
+  stale merge). Dispatch a worker continuation round instead, even when you could type the fix
+  faster yourself and even when you are confident you know exactly what's wrong — the discipline
+  exists so every change has a worker attribution and passes through review/harvest like every
+  other change, not because the fix is hard to get right.
 - **The orchestrating shell can be missing `LOCALAPPDATA` even when the same variable is visible in other command batches.** A plain `terminal()` call sometimes runs `accept.sh` without `LOCALAPPDATA` set (its acceptance lines use `${LOCALAPPDATA:-/tmp}` and get the wrong, empty-under-MSYS `/tmp` fallback on some invocations). Explicitly `export LOCALAPPDATA="C:\Users\<user>\AppData\Local"` alongside `PATH="/ucrt64/bin:$PATH"` at the top of every `accept.sh` call rather than assuming it is inherited.
 - **Nothing is done until it is on the base branch.** `accept.sh` closes only after the merge
   commit is verified to be an ancestor of the base branch, and `goal-check.sh` refuses to pass while
@@ -761,6 +777,33 @@ two reviews with the same findings. One Claude call per stuck bead, never per at
   a different session), claim and work THAT one instead of your own; close your duplicate only via
   the normal channel (never `--status closed` yourself — see above) by leaving it open with a note
   pointing at the real bead's id, so a human or `accept.sh`-driven process can retire it properly.
+- **When you manually merge a bead's already-diverged merge commit into main yourself (see the
+  dirty-checkout-fast-forward-failure bullet above), a SECOND `docs/fleet/LEARNINGS.md` (or other
+  append-only log) conflict on the retry is common if another accept landed in between — resolve it
+  the same way every time: `grep -n '^<<<<<<<\|^=======\|^>>>>>>>' <file>` to find the markers,
+  confirm both sides are independent appended lines (not edits to the same line), delete just the
+  three marker lines (`sed -i '<n1>d;<n2>d;<n3>d' <file>`, highest line number first if doing
+  several by hand) to keep both sides' content, `git add` and `git commit --no-edit`. Do not try to
+  pick a "winning" side on an append-only log — both sessions' entries are real and belong.
+  **After a manual merge like this, `bead/<id>`'s branch can end up with ZERO commits beyond main
+  once the merge is folded in** — `accept.sh` then rejects with "bead/<id> has no commits beyond
+  main" even though the bead's actual fix IS on main (verify with `git log --oneline main | grep
+  <the fix's known commit sha>`). This is not a real rejection: the code landed, there's just
+  nothing left on the branch to formally re-merge. Fix by adding one trivial commit to the branch
+  (e.g. append a one-line confirmation note to `docs/fleet/LEARNINGS.md` in the worktree) so
+  `accept.sh` has something to merge, then retry — it will pass acceptance quickly (the fix is
+  already compiled into main) and formally close the bead.
+- **Once a systemic root-cause bug bead (the kind filed after "escalate every sibling bead hitting
+  the SAME signature" above) lands on main, actively sweep for beads that were escalated for that
+  exact signature and un-stick them — do not leave them sitting in `escalated`/`frontier` waiting
+  to be noticed.** `bd list --all --json` for beads with `escalated` whose notes mention the fixed
+  signature (or whose worktree still exists with real uncommitted/committed work from before the
+  escalation); if the bead's actual implementation work is intact and unrelated to the now-fixed
+  systemic bug, `bd update <id> --claim --actor "<name>"`, note that the blocking flake is fixed
+  (cite the fix's bead id and merge commit), and re-queue `accept.sh` rather than treating
+  `escalated` as a terminal state. A parallel session's escalations for the same root cause you
+  just fixed are exactly the highest-value beads to reclaim next — they already have the retry
+  history and often just need the now-passing gate to confirm.
 
 ## Verification
 
