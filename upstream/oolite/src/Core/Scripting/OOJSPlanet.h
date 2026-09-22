@@ -31,4 +31,12 @@ MA 02110-1301, USA.
 @class OOPlanetEntity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSPlanet(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
