@@ -254,7 +254,7 @@ OOINLINE jsval OOJSValueFromNativeObject(JSContext *context, id object)
 	
 	Requires a request on context.
 */
-JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
+OOJS_EXTERN_C JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
 
 
 /*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.
