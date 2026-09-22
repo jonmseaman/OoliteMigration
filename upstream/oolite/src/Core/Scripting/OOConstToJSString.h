@@ -29,6 +29,10 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void OOConstToJSStringInit(JSContext *context);
 void OOConstToJSStringDestroy(void);
 
@@ -36,12 +40,10 @@ struct ConstTable;
 
 
 // Private functions, don't use directly.
-#ifdef __cplusplus
-extern "C" {
-#endif
 JSString *OOJSStringFromConstantPRIVATE(JSContext *context, NSInteger value, struct ConstTable *table);
 NSUInteger OOConstantFromJSStringPRIVATE(JSContext *context, JSString *string, struct ConstTable *table, NSInteger defaultValue);
 NSUInteger OOConstantFromJSValuePRIVATE(JSContext *context, jsval value, struct ConstTable *table, NSInteger defaultValue);
+
 #ifdef __cplusplus
 }
 #endif

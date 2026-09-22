@@ -31,9 +31,17 @@ MA 02110-1301, USA.
 @class Entity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSEntity(JSContext *context, JSObject *global);
 
 BOOL JSValueToEntity(JSContext *context, jsval value, Entity **outEntity);
+
+#ifdef __cplusplus
+}
+#endif
 
 extern JSClass gOOEntityJSClass;
 extern JSObject *gOOEntityJSPrototype;
@@ -53,7 +61,15 @@ OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 	scriptClass and function are non-nil, a warning will be reported to the
 	log.
 */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 BOOL EntityFromArgumentList(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, Entity **outEntity, uintN *outConsumed);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 /*

@@ -33,5 +33,13 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSSpecialFunctions(JSContext *context, JSObject *global);
 OOJSValue *JSSpecialFunctionsObjectWrapper(JSContext *context);
+
+#ifdef __cplusplus
+}
+#endif
