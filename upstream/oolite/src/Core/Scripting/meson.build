@@ -8,7 +8,7 @@ oolite_sources += files(
     'OOJSDock.m',
     'OOJSEngineDebuggerHelpers.mm',
     'OOJSEngineTimeManagement.m',
-    'OOJSEntity.m',
+    'OOJSEntity.mm',
     'OOJSEquipmentInfo.mm',
     'OOJSExhaustPlume.mm',
     'OOJSFlasher.mm',
