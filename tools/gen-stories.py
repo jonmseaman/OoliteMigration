@@ -377,7 +377,7 @@ def sweep_js_retarget():
         if p.name in GIANT: continue
         out.append((f"Retarget JS_* calls onto the façade: {p.name}",
                     f"Move every JS_* call in {rel} ({n} lines) onto ooscript/JSEngine.hpp, SpiderMonkey still underneath. Apply tools/refactor/js-stubs.sh first, then hand-retarget the rest. Behaviour must not change.",
-                    [f"! grep -nE '\\bJS_[A-Za-z]+' {rel}", f"tools/tier-a.sh {rel}", "tools/tier-b.sh --fast"], ["1.1x", "1.2"], "upstream/oolite/src/Core/Scripting/OOJSVector.m", 2 if n < 1500 else 3))
+                    [f"! grep -nE '\\bJS_[A-Za-z]+' {rel}", f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"], ["1.1x", "1.2"], "upstream/oolite/src/Core/Scripting/OOJSVector.m", 2 if n < 1500 else 3))
     return out
 
 def sweep_extractors():
