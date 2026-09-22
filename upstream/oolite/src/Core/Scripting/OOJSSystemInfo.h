@@ -30,7 +30,15 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSSystemInfo(JSContext *context, JSObject *global);
 
 // Returns JSVAL_NULL on failure (with a JS warning, but no exception).
 jsval GetJSSystemInfoForSystem(JSContext *context, OOGalaxyID galaxy, OOSystemID system);
+
+#ifdef __cplusplus
+}
+#endif

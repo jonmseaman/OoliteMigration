@@ -320,7 +320,7 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 
 
 // Convert a jsid to an NSString.
-NSString *OOStringFromJSID(jsid propID);
+OOJS_EXTERN_C NSString *OOStringFromJSID(jsid propID);
 
 // Convert an NSString to a jsid.
 jsid OOJSIDFromString(NSString *string);
@@ -366,7 +366,7 @@ BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 OOJS_EXTERN_C id OOJSNativeObjectFromJSValue(JSContext *context, jsval value);
 OOJS_EXTERN_C id OOJSNativeObjectFromJSObject(JSContext *context, JSObject *object);
 id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class requiredClass);
-id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Class requiredClass);
+OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Class requiredClass);
 
 
 OOINLINE JSClass *OOJSGetClass(JSContext *cx, JSObject *obj)  ALWAYS_INLINE_FUNC;
@@ -432,7 +432,7 @@ NSDictionary *OOJSDictionaryFromJSObject(JSContext *context, JSObject *object);
 	
 	Requires a request on context.
 */
-NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval value);
+OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval value);
 
 
 /*

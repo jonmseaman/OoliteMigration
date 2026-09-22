@@ -29,7 +29,15 @@ MA 02110-1301, USA.
 #import "OOExhaustPlumeEntity.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSExhaustPlume(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
 
 @interface OOExhaustPlumeEntity (OOJavaScriptExtensions)
 

@@ -40,7 +40,15 @@ void InitOOJSEquipmentInfo(JSContext *context, JSObject *global);
 	JSValueToEquipmentKeyRelaxed() will return any string that does not end
 	with _DAMAGED.
  */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 OOEquipmentType *JSValueToEquipmentType(JSContext *context, jsval value);
 NSString *JSValueToEquipmentKey(JSContext *context, jsval value);
 
 NSString *JSValueToEquipmentKeyRelaxed(JSContext *context, jsval value, BOOL *outExists);
+
+#ifdef __cplusplus
+}
+#endif

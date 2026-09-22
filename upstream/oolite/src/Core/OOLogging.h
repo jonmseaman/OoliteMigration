@@ -114,6 +114,10 @@ void OOLogOutdentIf(NSString *inMessageClass);
 
 
 // Remember/restore indent levels, for cases where an exception may occur while indented.
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void OOLogPushIndent(void);
 void OOLogPopIndent(void);
 
@@ -128,6 +132,10 @@ void OOLogGenericParameterErrorForFunction(const char *inFunction);
 // OOLogGenericSubclassResponsibility(): general subclass responsibility message, "***** $function_name is a subclass responsibility. (This is an internal programming error, please report it.)"
 #define OOLogGenericSubclassResponsibility()	OOLogGenericSubclassResponsibilityForFunction(OOLOG_FUNCTION_NAME)
 void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 #if OOLOG_POISON_NSLOG
