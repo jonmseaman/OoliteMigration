@@ -286,6 +286,8 @@ bool getProperty(Context cx, Object obj, const char* name, Value* vp);          
 bool setProperty(Context cx, Object obj, const char* name, Value* vp);                 // engine: SetProperty
 bool getPropertyById(Context cx, Object obj, PropertyId id, Value* vp);                // engine: GetPropertyById
 bool setPropertyById(Context cx, Object obj, PropertyId id, Value* vp);                // engine: SetPropertyById
+bool definePropertyById(Context cx, Object obj, PropertyId id, Value value,            // engine: DefinePropertyById
+                        PropertyGetter getter, PropertySetter setter, PropertyFlag flags);
 bool lookupProperty(Context cx, Object obj, const char* name, Value* vp);              // engine: LookupProperty
 bool lookupPropertyById(Context cx, Object obj, PropertyId id, Value* vp);             // engine: LookupPropertyById
 bool hasProperty(Context cx, Object obj, const char* name, bool* found);               // engine: HasProperty
@@ -332,6 +334,36 @@ bool evaluateScript(Context cx, Object scope, const char* src, unsigned length, 
 bool evaluateUCScript(Context cx, Object scope, const Char16* src, unsigned length,    // engine: EvaluateUCScript
                       const char* filename, unsigned lineno, Value* rval);
 
+// MARK: Scripts -----------------------------------------------------------------------------
+
+// A precompiled script (OOJSScript.m's compiled-script cache: LoadScriptWithName /
+// CompiledScriptData / ScriptWithCompiledData). compileUCScript compiles source into one of
+// these; newScriptObject wraps it in a garbage-collected JS object so it can be rooted the
+// same way any other Object is; executeScript runs it once; destroyScript frees the compiled
+// form after the run (OOJSScript.m destroys it right after executeScript -- the wrapper
+// object, not the compiled script, is what keeps the event handlers it defined alive).
+struct ScriptRep;
+using Script = ScriptRep*;
+
+Script compileUCScript(Context cx, Object scope, const Char16* src, unsigned length,   // engine: CompileUCScript
+                       const char* filename, unsigned lineno);
+Object newScriptObject(Context cx, Script script);                                     // engine: NewScriptObject
+bool   executeScript(Context cx, Object obj, Script script, Value* rval);              // engine: ExecuteScript
+void   destroyScript(Context cx, Script script);                                       // engine: DestroyScript
+
+// The compiled-script cache's on-disk form (OOCacheManager's "compiled JavaScript scripts"
+// cache, CompiledScriptData/ScriptWithCompiledData). serializeScript/deserializeScript move
+// the JS_XDR* call sites onto the façade; the byte layout stays the backend's own (see
+// README.md's "Not in the façade" note) -- callers only ever move the bytes, never read them.
+struct ByteBuffer
+{
+	std::uint8_t* data;
+	std::size_t   length;
+};
+bool   serializeScript(Context cx, Script script, ByteBuffer* out);                     // engine: XDRNewMem(ENCODE)+XDRScript+XDRMemGetData+XDRDestroy
+Script deserializeScript(Context cx, const std::uint8_t* data, std::size_t length);     // engine: XDRNewMem(DECODE)+XDRMemSetData+XDRScript+XDRDestroy
+void   destroyByteBuffer(ByteBuffer* buf);                                              // frees serializeScript's output; safe on a zeroed buffer
+
 // MARK: Strings ---------------------------------------------------------------------------------
 
 String        internString(Context cx, const char* s);                                 // engine: InternString
@@ -344,6 +376,15 @@ const Char16* getStringCharsAndLength(Context cx, String str, std::size_t* lengt
 const Char16* getInternedStringChars(String str);                                      // engine: GetInternedStringChars
 bool          stringEqualsAscii(Context cx, String str, const char* ascii, bool* match); // engine: StringEqualsAscii
 bool          stringHasBeenInterned(Context cx, String str);                           // engine: StringHasBeenInterned
+
+// MARK: Regular expressions -----------------------------------------------------------------
+
+// engine: NewUCRegExpObjectNoStatics. Compiles a RegExp object from UTF-16 source without
+// binding the engine's static RegExp.$1.. properties; OORegExpMatcher's cached-pattern path is
+// the only caller. `flags` carries the engine's regexp flag bits (e.g. ignore-case, global)
+// unchanged, exactly as the function it replaces.
+Object newUCRegExpObjectNoStatics(Context cx, const Char16* chars, std::size_t length,
+                                  std::uint32_t flags);
 
 // MARK: Exceptions and error reporting --------------------------------------------------------
 
