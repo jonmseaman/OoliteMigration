@@ -323,7 +323,7 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 OOJS_EXTERN_C NSString *OOStringFromJSID(jsid propID);
 
 // Convert an NSString to a jsid.
-jsid OOJSIDFromString(NSString *string);
+OOJS_EXTERN_C jsid OOJSIDFromString(NSString *string);
 
 
 @interface NSString (OOJavaScriptExtensions)
