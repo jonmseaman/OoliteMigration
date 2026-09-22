@@ -370,9 +370,12 @@ def sweep_component():
 
 def sweep_js_retarget():
     out = []
-    for p in m_files():
-        if not grep(p, r'jsapi\.h|OOJavaScriptEngine\.h'): continue
-        if p.name == "OOJSVector.m": continue
+    # The selector is the acceptance gate's own predicate (bead oo-utqt): a file is a target iff it
+    # has a JS_* token. Selecting by #include filed vacuous beads for clean files and none at all
+    # for files that call JS_* without including jsapi.h directly. ooscript/ is the backend.
+    for p in sorted(set(m_files()) | set(SRC.rglob("*.mm"))):
+        if "ooscript" in p.parts: continue
+        if not grep(p, r'\bJS_[A-Za-z]+'): continue
         n = count_lines(p); rel = p.relative_to(ROOT).as_posix()
         if p.name in GIANT: continue
         out.append((f"Retarget JS_* calls onto the façade: {p.name}",
