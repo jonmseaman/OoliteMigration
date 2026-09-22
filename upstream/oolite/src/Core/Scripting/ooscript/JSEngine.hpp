@@ -345,6 +345,15 @@ const Char16* getInternedStringChars(String str);                               
 bool          stringEqualsAscii(Context cx, String str, const char* ascii, bool* match); // engine: StringEqualsAscii
 bool          stringHasBeenInterned(Context cx, String str);                           // engine: StringHasBeenInterned
 
+// MARK: Regular expressions -----------------------------------------------------------------
+
+// engine: NewUCRegExpObjectNoStatics. Compiles a RegExp object from UTF-16 source without
+// binding the engine's static RegExp.$1.. properties; OORegExpMatcher's cached-pattern path is
+// the only caller. `flags` carries the engine's regexp flag bits (e.g. ignore-case, global)
+// unchanged, exactly as the function it replaces.
+Object newUCRegExpObjectNoStatics(Context cx, const Char16* chars, std::size_t length,
+                                  std::uint32_t flags);
+
 // MARK: Exceptions and error reporting --------------------------------------------------------
 
 bool isExceptionPending(Context cx);                                                   // engine: IsExceptionPending
