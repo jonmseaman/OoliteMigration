@@ -29,7 +29,15 @@ MA 02110-1301, USA.
 #import "OOFlasherEntity.h"
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSFlasher(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
 
 @interface OOFlasherEntity (OOJavaScriptExtensions)
 
