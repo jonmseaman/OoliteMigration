@@ -5,7 +5,7 @@ oolite_sources += files(
     'OOConstToJSString.m',
     'OOJSCall.m',
     'OOJSClock.mm',
-    'OOJSDock.m',
+    'OOJSDock.mm',
     'OOJSEngineDebuggerHelpers.mm',
     'OOJSEngineTimeManagement.m',
     'OOJSEntity.m',
