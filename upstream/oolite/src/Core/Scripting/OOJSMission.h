@@ -28,5 +28,13 @@ MA 02110-1301, USA.
 #import <Foundation/Foundation.h>
 #include <jsapi.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSMission(JSContext *context, JSObject *global);
 void MissionRunCallback(void);
+
+#ifdef __cplusplus
+}
+#endif

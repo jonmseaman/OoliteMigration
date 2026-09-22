@@ -31,9 +31,17 @@ MA 02110-1301, USA.
 @class Entity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSEntity(JSContext *context, JSObject *global);
 
 BOOL JSValueToEntity(JSContext *context, jsval value, Entity **outEntity);
+
+#ifdef __cplusplus
+}
+#endif
 
 extern JSClass gOOEntityJSClass;
 extern JSObject *gOOEntityJSPrototype;

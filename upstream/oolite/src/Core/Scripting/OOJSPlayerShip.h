@@ -37,8 +37,16 @@ MA 02110-1301, USA.
 @class PlayerEntity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSPlayerShip(JSContext *context, JSObject *global);
 
 JSClass *JSPlayerShipClass(void);
 JSObject *JSPlayerShipPrototype(void);
 JSObject *JSPlayerShipObject(void);
+
+#ifdef __cplusplus
+}
+#endif
