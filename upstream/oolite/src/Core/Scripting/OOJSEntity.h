@@ -61,7 +61,13 @@ OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 	scriptClass and function are non-nil, a warning will be reported to the
 	log.
 */
+#ifdef __cplusplus
+extern "C" {
+#endif
 BOOL EntityFromArgumentList(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, Entity **outEntity, uintN *outConsumed);
+#ifdef __cplusplus
+}
+#endif
 
 
 /*
