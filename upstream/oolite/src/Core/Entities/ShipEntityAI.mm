@@ -1,6 +1,6 @@
 /*
  
- ShipEntityAI.m
+ ShipEntityAI.mm
  
  Oolite
  Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -44,6 +44,23 @@
 #import "OOConstToJSString.h"
 #import "OOCollectionExtractors.h"
 #import "ResourceManager.h"
+
+#include "ooscript/JSEngine.hpp"
+
+/*
+	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
+	oo-sdz, the sweep exemplar): this file's one remaining direct engine call, the pending-
+	exception report at the end of -scanForNearestShipMatchingPredicate:, becomes the façade's
+	own reportPendingException entry point. SpiderMonkey still does the work underneath; only
+	the call target changes.
+*/
+namespace ooscript { }
+using ooscript::Context;
+
+// Byte-identical façade <-> jsapi view, local to this call site (see OOJSVector.mm).
+namespace {
+static inline Context OOJSFCX(JSContext *cx) { return reinterpret_cast<Context>(cx); }
+} // namespace
 
 
 
@@ -614,7 +631,7 @@
 				[self removeTarget:[self primaryTarget]];
 			}
 		}
-		docking_match_rotation = [dockingInstructions oo_boolForKey:@"match_rotation"];
+		docking_match_rotation = [dockingInstructions oo_boolForKey:@"match_rotation"];  // NOLINT(bugprone-signed-char-misuse): BOOL bitfield assign, pre-existing; behaviour unchanged by this retarget.
 	}
 }
 
@@ -1432,7 +1449,7 @@
 		HPVector pos = the_target->position;
 		Quaternion q;	quaternion_set_random(&q);
 		Vector v = vector_forward_from_quaternion(q);
-		GLfloat d = (randf() - randf()) * the_target->collision_radius;
+		GLfloat d = (randf() - randf()) * the_target->collision_radius;  // NOLINT(misc-redundant-expression): two independent randf() draws, pre-existing; behaviour unchanged by this retarget.
 		_destination = make_HPvector(pos.x + d * v.x, pos.y + d * v.y, pos.z + d * v.z);
 	}
 }
@@ -2432,7 +2449,7 @@
 		[[self getAI] message:@"NOTHING_FOUND"];
 	}
 	
-	JS_ReportPendingException(context);
+	ooscript::reportPendingException(OOJSFCX(context));
 	OOJSRelinquishContext(context);
 }
 
@@ -2918,7 +2935,7 @@
 // AI methods for stations, have no effect on normal ships.
 
 #define STATION_STUB_BASE(PROTO, NAME)  PROTO { OOLog(@"ai.invalid.notAStation", @"Attempt to use station AI method \"%s\" on non-station %@.", NAME, self); }
-#define STATION_STUB_NOARG(NAME)	STATION_STUB_BASE(- (void) NAME, #NAME)
+#define STATION_STUB_NOARG(NAME)	STATION_STUB_BASE(- (void) NAME, #NAME)  // NOLINT(bugprone-macro-parentheses): Objective-C method-name macro arg, pre-existing; behaviour unchanged by this retarget.
 #define STATION_STUB_ARG(NAME)		STATION_STUB_BASE(- (void) NAME (NSString *)param, #NAME)
 
 STATION_STUB_NOARG(increaseAlertLevel)
