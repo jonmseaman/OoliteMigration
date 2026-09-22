@@ -51,6 +51,7 @@ Generated from the header's declarations. One row per façade function that repl
 | `JS_SetProperty` | `ooscript::setProperty` |  |
 | `JS_GetPropertyById` | `ooscript::getPropertyById` |  |
 | `JS_SetPropertyById` | `ooscript::setPropertyById` |  |
+| `JS_DefinePropertyById` | `ooscript::definePropertyById` |  |
 | `JS_LookupProperty` | `ooscript::lookupProperty` |  |
 | `JS_LookupPropertyById` | `ooscript::lookupPropertyById` |  |
 | `JS_HasProperty` | `ooscript::hasProperty` |  |
@@ -76,6 +77,12 @@ Generated from the header's declarations. One row per façade function that repl
 | `JS_CallFunctionName` | `ooscript::callFunctionName` |  |
 | `JS_EvaluateScript` | `ooscript::evaluateScript` |  |
 | `JS_EvaluateUCScript` | `ooscript::evaluateUCScript` |  |
+| `JS_CompileUCScript` | `ooscript::compileUCScript` |  |
+| `JS_NewScriptObject` | `ooscript::newScriptObject` |  |
+| `JS_ExecuteScript` | `ooscript::executeScript` |  |
+| `JS_DestroyScript` | `ooscript::destroyScript` |  |
+| `JS_XDRNewMem`+`JS_XDRScript`+`JS_XDRMemGetData`+`JS_XDRDestroy` | `ooscript::serializeScript` | owned `ByteBuffer` out; wire format stays backend-private |
+| `JS_XDRNewMem`+`JS_XDRMemSetData`+`JS_XDRScript`+`JS_XDRDestroy` | `ooscript::deserializeScript` | wire format stays backend-private |
 | `JS_InternString` | `ooscript::internString` |  |
 | `JS_NewStringCopyZ` | `ooscript::newStringCopyZ` |  |
 | `JS_NewStringCopyN` | `ooscript::newStringCopyN` |  |
@@ -167,10 +174,6 @@ Generated from the header's declarations. One row per façade function that repl
 	JS_IsDebuggerFrame, JS_IsConstructorFrame, JS_GetPropertyDescArray (debugger frame walk,
 	OOJSEngineDebuggerHelpers.m, OOJSEngineTimeManagement.m): engine-specific by nature; the
 	QuickJS backend seam decides whether it gets an equivalent or the helpers become backend files.
-
-	JS_XDRScript, JS_XDRNewMem, JS_XDRMemSetData, JS_XDRMemGetData, JS_XDRDestroy (compiled-script
-	cache, OOCacheManager path): a serialisation format private to one engine; the cache is
-	rebuilt on backend change anyway.
 
 	JS_EnterLocalRootScope, JS_LeaveLocalRootScopeWithResult (three sites): superseded by
 	explicit roots; the retarget rewrites them as RootedValue.
