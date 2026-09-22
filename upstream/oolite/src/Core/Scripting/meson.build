@@ -43,7 +43,7 @@ oolite_sources += files(
     'OOJSVisualEffect.m',
     'OOJSWaypoint.mm',
     'OOJSWorldScripts.mm',
-    'OOJSWormhole.m',
+    'OOJSWormhole.mm',
     'OOJavaScriptEngine.m',
     'OOLegacyScriptWhitelist.m',
     'OOPListScript.m',
