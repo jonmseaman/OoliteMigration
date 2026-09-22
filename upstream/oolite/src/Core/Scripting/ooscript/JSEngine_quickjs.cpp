@@ -252,9 +252,15 @@ void FinalizeTramp(JSRuntime* rt, JSValueConst val)
 {
 	BackendClass* bc = classOf(val);
 	if (bc == nullptr || bc->def->finalize == nullptr)  return;
+	// gCtxForRuntime[rt] is the last live Context registered for this runtime; if destroyContext()
+	// already tore that context down (see destroyContext()'s own comment: bead oo-902s), the entry
+	// is gone and we must not hand out a stale/dangling JSContext*. Always call the finalize hook
+	// either way -- finalization is not conditional on having a live Context to report -- but pass
+	// wrap(nullptr) when there is none, so a finalizer that inspects its Context argument sees an
+	// honest "no context" rather than freed memory.
 	auto it = gCtxForRuntime.find(rt);
-	if (it == gCtxForRuntime.end())  return;   // no live context to hand the hook; nothing we can do
-	bc->def->finalize(wrap(it->second), wrapObj(val));
+	JSContext* liveCtx = (it != gCtxForRuntime.end()) ? it->second : nullptr;
+	bc->def->finalize(wrap(liveCtx), wrapObj(val));
 }
 
 BackendClass* attach(ClassDef* def, JSContext* ctx)
@@ -589,8 +595,10 @@ Runtime newRuntime(std::uint32_t maxBytes)
 void destroyRuntime(Runtime rt)
 {
 	// Erase after freeing, not before: JS_FreeRuntime is what drops the runtime's last references
-	// and runs pending finalizers, and FinalizeTramp needs gCtxForRuntime's entry to still be
-	// there when it looks up which façade Context to hand the hook.
+	// and runs the cycle collector's pending finalizers, and FinalizeTramp needs gCtxForRuntime's
+	// entry to still be there when it looks up which façade Context to hand the hook -- unless
+	// destroyContext() already erased it (bead oo-902s; see that function), in which case
+	// FinalizeTramp already knows to pass wrap(nullptr) instead of a dangling JSContext*.
 	JS_FreeRuntime(RT(rt));
 	gCtxForRuntime.erase(RT(rt));
 }
@@ -610,6 +618,24 @@ void destroyContext(Context cx)
 	// gContextExtras[CX(cx)]'s operator[] in setErrorReporter()/invokeReporter() (mirrors the
 	// SpiderMonkey exemplar's destroyContext(), which erases gExtras before JS_DestroyContext).
 	gContextExtras.erase(CX(cx));
+
+	// Erase gCtxForRuntime's entry for this context too (bead oo-902s), if it is still the one on
+	// file for its runtime, before freeing it: comparing/erasing here only touches map bookkeeping
+	// (pointer values, never dereferenced), so it is safe to do before JS_FreeContext. QuickJS-ng
+	// finalizes some objects lazily -- via the cycle-collector pass JS_FreeRuntime runs in
+	// destroyRuntime(), not synchronously inside JS_FreeContext here -- so without this erase, a
+	// destroyContext()-then-destroyRuntime() sequence on the same runtime/context pair (an
+	// ordering QuickJS-ng itself allows as two separate calls) would leave gCtxForRuntime pointing
+	// at this now-freed JSContext* right up until destroyRuntime()'s own post-JS_FreeRuntime erase;
+	// FinalizeTramp's lookup in between would find that stale entry and hand the dangling pointer
+	// straight to the façade's finalize hook. Erasing here instead means FinalizeTramp's lookup
+	// simply comes up empty afterwards and it passes wrap(nullptr) instead (see FinalizeTramp) --
+	// the same safe, honest "no context" outcome newContext() already produces by overwriting this
+	// entry when a new context replaces this one before the runtime is destroyed.
+	JSRuntime* rt = JS_GetRuntime(CX(cx));
+	auto it = gCtxForRuntime.find(rt);
+	if (it != gCtxForRuntime.end() && it->second == CX(cx))  gCtxForRuntime.erase(it);
+
 	JS_FreeContext(CX(cx));
 }
 Runtime getRuntime(Context cx)  { return wrap(JS_GetRuntime(CX(cx))); }

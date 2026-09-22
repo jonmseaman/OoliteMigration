@@ -350,16 +350,16 @@ typedef struct
 										// exception will have been reported.
 										// This also supresses further filtering.
 } JSFunctionPredicateParameter;
-BOOL JSFunctionPredicate(Entity *entity, void *parameter);
+OOJS_EXTERN_C BOOL JSFunctionPredicate(Entity *entity, void *parameter);
 
 // YES for ships and (normal) planets. Parameter: ignored.
-BOOL JSEntityIsJavaScriptVisiblePredicate(Entity *entity, void *parameter);
+OOJS_EXTERN_C BOOL JSEntityIsJavaScriptVisiblePredicate(Entity *entity, void *parameter);
 
 // YES for ships other than sub-entities and menu-display ships, and planets other than atmospheres and menu miniatures. Parameter: ignored.
-BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void *parameter);
+OOJS_EXTERN_C BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void *parameter);
 
 // YES for menu-display ships. Parameter: ignored
-BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
+OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 
 // These require a request on context.
