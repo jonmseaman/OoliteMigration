@@ -1330,9 +1330,15 @@ OOINLINE PlayerEntity *OOGetPlayer(void)
 #define MAX_GRAMS_IN_SAFE		((GRAMS_PER_POD / 2) - 1)
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 NSString *OODisplayRatingStringFromKillCount(unsigned kills);
 NSString *KillCountToRatingAndKillString(unsigned kills);
 NSString *OODisplayStringFromLegalStatus(int legalStatus);
+#ifdef __cplusplus
+}
+#endif
 
 NSString *OOStringFromGUIScreenID(OOGUIScreenID screen) CONST_FUNC;
 OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;

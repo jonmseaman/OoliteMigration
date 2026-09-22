@@ -85,6 +85,10 @@ declaration, in particular:
 	
 */
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSString *JSTypeToString(int /* JSType */ type) CONST_FUNC;
 
 NSString *CargoTypeToString(OOCargoType cargo) CONST_FUNC;
@@ -123,3 +127,7 @@ OOHDRToneMapper OOHDRToneMapperFromString( NSString *string);
 
 NSString *OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper);
 OOSDRToneMapper OOSDRToneMapperFromString( NSString *string);
+
+#ifdef __cplusplus
+}
+#endif
