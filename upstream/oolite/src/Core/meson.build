@@ -28,7 +28,7 @@ oolite_sources += files(
     'OOAsyncWorkManager.m',
     'OOCPUInfo.m',
     'OOCache.m',
-    'OOCacheManager.m',
+    'OOCacheManager.mm',
     'OOCharacter.m',
     'OOCocoa.m',
     'OOCollectionExtractors.m',

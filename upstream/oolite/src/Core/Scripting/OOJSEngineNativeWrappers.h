@@ -109,7 +109,7 @@ OOJS_EXTERN_C void OOJSReportWrappedException(JSContext *context, id exception);
 
 
 #ifndef NDEBUG
-void OOJSUnreachable(const char *function, const char *file, unsigned line)  NO_RETURN_FUNC;
+OOJS_EXTERN_C void OOJSUnreachable(const char *function, const char *file, unsigned line)  NO_RETURN_FUNC;
 #else
 #define OOJSUnreachable(function, file, line) OO_UNREACHABLE()
 #endif

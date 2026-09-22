@@ -21,3 +21,4 @@ tests/golden/artifacts/
 .fleet-briefs/
 .ctx/
 .beadinfo.json
+tierb*.log
