@@ -1311,7 +1311,13 @@ NSString *OOStringFromBehaviour(OOBehaviour behaviour) CONST_FUNC;
 
 // Weapon strings prefixed with EQ_, used in shipyard.plist.
 NSString *OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon) CONST_FUNC;
+#ifdef __cplusplus
+extern "C" {
+#endif
 OOWeaponType OOWeaponTypeFromEquipmentIdentifierSloppy(NSString *string) PURE_FUNC;	// Uses suffix match for backwards compatibility.
+#ifdef __cplusplus
+}
+#endif
 OOWeaponType OOWeaponTypeFromEquipmentIdentifierStrict(NSString *string) PURE_FUNC;
 OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string);
 
@@ -1319,7 +1325,13 @@ OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string);
 NSString *OOStringFromWeaponType(OOWeaponType weapon) CONST_FUNC;
 OOWeaponType OOWeaponTypeFromString(NSString *string) PURE_FUNC;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 BOOL isWeaponNone(OOWeaponType weapon);
+#ifdef __cplusplus
+}
+#endif
 
 NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
 

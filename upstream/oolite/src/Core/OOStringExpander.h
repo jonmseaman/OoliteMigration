@@ -105,7 +105,15 @@ typedef NSUInteger OOExpandOptions;
 	converted to line breaks. This is used for expanding missiontext.plist
 	entries, which may have literal \n especially in XML format.
 */
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides, NSDictionary *legacyLocals, NSString *systemName, OOExpandOptions options);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 /*
@@ -147,7 +155,13 @@ NSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);
 
 
 // Equivalent to [[UNIVERSE systemManager] getRandomSeedForCurrentSystem], without pulling in Universe.h.
+#ifdef __cplusplus
+extern "C" {
+#endif
 Random_Seed OOStringExpanderDefaultRandomSeed(void);
+#ifdef __cplusplus
+}
+#endif
 
 
 // MARK: Danger zone! Everything beyond this point is scary.

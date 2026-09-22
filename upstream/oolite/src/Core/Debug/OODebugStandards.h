@@ -28,6 +28,10 @@ SOFTWARE.
 */
 #import "OOCocoa.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Warn/exit if deprecated functionality used
 void OOStandardsDeprecated(NSString *message);
 
@@ -40,5 +44,9 @@ void OOStandardsError(NSString *message);
 BOOL OOEnforceStandards(void);
 
 void OOSetStandardsForOXPVerifierMode(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 

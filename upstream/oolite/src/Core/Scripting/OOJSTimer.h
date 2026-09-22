@@ -44,4 +44,12 @@ MA 02110-1301, USA.
 @end
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSTimer(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
