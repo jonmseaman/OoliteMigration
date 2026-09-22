@@ -365,7 +365,7 @@ BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 // These require a request on context.
 OOJS_EXTERN_C id OOJSNativeObjectFromJSValue(JSContext *context, jsval value);
 OOJS_EXTERN_C id OOJSNativeObjectFromJSObject(JSContext *context, JSObject *object);
-id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class requiredClass);
+OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class requiredClass);
 OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Class requiredClass);
 
 
