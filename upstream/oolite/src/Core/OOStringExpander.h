@@ -147,7 +147,13 @@ NSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name);
 
 
 // Equivalent to [[UNIVERSE systemManager] getRandomSeedForCurrentSystem], without pulling in Universe.h.
+#ifdef __cplusplus
+extern "C" {
+#endif
 Random_Seed OOStringExpanderDefaultRandomSeed(void);
+#ifdef __cplusplus
+}
+#endif
 
 
 // MARK: Danger zone! Everything beyond this point is scary.

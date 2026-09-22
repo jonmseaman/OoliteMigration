@@ -291,7 +291,7 @@ void OOJSStrLiteralCachePRIVATE(const char *string, jsval *strCache, BOOL *inite
 
 
 // Convert a JSString to an NSString.
-NSString *OOStringFromJSString(JSContext *context, JSString *string);
+OOJS_EXTERN_C NSString *OOStringFromJSString(JSContext *context, JSString *string);
 
 /*	Convert an arbitrary JS object to an NSString, calling JS_ValueToString.
 	OOStringFromJSValue() returns nil if value is null or undefined,
