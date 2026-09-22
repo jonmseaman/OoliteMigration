@@ -854,7 +854,13 @@ OOINLINE Universe *OOGetUniverse(void)
 NSComparisonResult populatorPrioritySort(id a, id b, void *context);
 NSComparisonResult equipmentSort(id a, id b, void *context);
 NSComparisonResult equipmentSortOutfitting(id a, id b, void *context);
+#ifdef __cplusplus
+extern "C" {
+#endif
 NSString *OOLookUpDescriptionPRIV(NSString *key);
+#ifdef __cplusplus
+}
+#endif
 NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);
 
 @interface OOSound (OOCustomSounds)

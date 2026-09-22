@@ -32,5 +32,13 @@ MA 02110-1301, USA.
 
 void InitOOJSShip(JSContext *context, JSObject *global);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 JSClass *JSShipClass(void);
 JSObject *JSShipPrototype(void);
+
+#ifdef __cplusplus
+}
+#endif

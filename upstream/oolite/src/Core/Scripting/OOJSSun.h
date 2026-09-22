@@ -29,4 +29,12 @@ MA 02110-1301, USA.
 #include <jsapi.h>
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSSun(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif

@@ -30,7 +30,15 @@ MA 02110-1301, USA.
 @class WormholeEntity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSWormhole(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
 
 @interface WormholeEntity (OOJavaScriptExtensions)
 

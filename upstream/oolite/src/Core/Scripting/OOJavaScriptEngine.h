@@ -291,7 +291,7 @@ void OOJSStrLiteralCachePRIVATE(const char *string, jsval *strCache, BOOL *inite
 
 
 // Convert a JSString to an NSString.
-NSString *OOStringFromJSString(JSContext *context, JSString *string);
+OOJS_EXTERN_C NSString *OOStringFromJSString(JSContext *context, JSString *string);
 
 /*	Convert an arbitrary JS object to an NSString, calling JS_ValueToString.
 	OOStringFromJSValue() returns nil if value is null or undefined,
@@ -320,7 +320,7 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 
 
 // Convert a jsid to an NSString.
-NSString *OOStringFromJSID(jsid propID);
+OOJS_EXTERN_C NSString *OOStringFromJSID(jsid propID);
 
 // Convert an NSString to a jsid.
 jsid OOJSIDFromString(NSString *string);
@@ -365,8 +365,8 @@ BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 // These require a request on context.
 OOJS_EXTERN_C id OOJSNativeObjectFromJSValue(JSContext *context, jsval value);
 OOJS_EXTERN_C id OOJSNativeObjectFromJSObject(JSContext *context, JSObject *object);
-id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class requiredClass);
-id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Class requiredClass);
+OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class requiredClass);
+OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Class requiredClass);
 
 
 OOINLINE JSClass *OOJSGetClass(JSContext *cx, JSObject *obj)  ALWAYS_INLINE_FUNC;
@@ -432,7 +432,7 @@ NSDictionary *OOJSDictionaryFromJSObject(JSContext *context, JSObject *object);
 	
 	Requires a request on context.
 */
-NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval value);
+OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval value);
 
 
 /*
@@ -635,7 +635,7 @@ OOJS_EXTERN_C void OOJSObjectWrapperFinalize(JSContext *context, JSObject *thisO
 	
 	Calls -oo_jsDescription and, if that fails, -description.
 */
-JSBool OOJSObjectWrapperToString(JSContext *context, uintN argc, jsval *vp);
+OOJS_EXTERN_C JSBool OOJSObjectWrapperToString(JSContext *context, uintN argc, jsval *vp);
 
 
 

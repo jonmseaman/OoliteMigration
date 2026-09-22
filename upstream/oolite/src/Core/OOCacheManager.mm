@@ -29,6 +29,16 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "NSFileManagerOOExtensions.h"
 
+/*
+	Phase 1 sweep js-retarget (bead oo-vz2), exemplar OOJSVector.mm: this file has no
+	directly-spelled scripting-engine call sites to move onto the ooscript facade (JSEngine.hpp)
+	-- it only imports OOJavaScriptEngine.h for shared logging/plist helpers and never touches
+	the engine's context, object or value types directly. The only change this bead makes is
+	compiling it as Objective-C++ (.m -> .mm, ADR-0001, same as every other file in the sweep)
+	and fixing constructs that are diagnosed defects only once compiled that way: an assignment
+	inside an `if` condition, and file-scope statics that must move into an anonymous namespace.
+*/
+
 
 #define WRITE_ASYNC				1
 #define PROFILE_WRITES			0
@@ -50,6 +60,7 @@ MA 02110-1301, USA.
 #endif
 
 
+namespace {
 static NSString * const kOOLogDataCacheFound				= @"dataCache.found";
 static NSString * const kOOLogDataCacheNotFound				= @"dataCache.notFound";
 static NSString * const kOOLogDataCacheRebuild				= @"dataCache.rebuild";
@@ -68,6 +79,7 @@ static NSString * const kCacheKeyVersion					= @"version";
 static NSString * const kCacheKeyEndianTag					= @"endian tag";
 static NSString * const kCacheKeyFormatVersion				= @"format version";
 static NSString * const kCacheKeyCaches						= @"caches";
+} // namespace
 
 
 enum
@@ -77,7 +89,9 @@ enum
 };
 
 
+namespace {
 static OOCacheManager *sSingleton = nil;
+} // namespace
 
 
 @interface OOCacheManager (Private)
@@ -706,7 +720,8 @@ static OOCacheManager *sSingleton = nil;
 
 - (id) initWithCacheContents:(NSDictionary *)cacheContents
 {
-	if ((self = [super init]))
+	self = [super init];
+	if (self)
 	{
 		_cacheContents = [cacheContents copy];
 		if (_cacheContents == nil)
