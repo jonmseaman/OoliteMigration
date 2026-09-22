@@ -22,7 +22,7 @@ oolite_sources += files(
     'OOJSMission.mm',
     'OOJSMissionVariables.mm',
     'OOJSOolite.m',
-    'OOJSPlanet.m',
+    'OOJSPlanet.mm',
     'OOJSPlayer.mm',
     'OOJSPlayerShip.mm',
     'OOJSPopulatorDefinition.mm',
