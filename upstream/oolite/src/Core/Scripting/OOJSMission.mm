@@ -192,6 +192,23 @@ static PropertySpec sMissionProperties[] =
 // bead's scope (they are shared across every binding file and are retargeted, if at all, by a
 // later seam) and still take a JSPropertySpec*, not ooscript::PropertySpec* (see OOJSVector.mm's
 // sVectorPropertiesRaw).
+// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the façade's
+// NativeFn signature, so `new Mission()` keeps throwing "Mission cannot be used as a
+// constructor." as it did before retargeting (see OOJSStation.mm/OOJSWaypoint.mm for the same
+// pattern). This also gives the class a non-null constructor hook, which is what makes
+// ooscript::initClass populate Mission.prototype (a nullptr constructor leaves
+// Mission.prototype undefined, which breaks oolite-global-prefix.js's
+// `defineMethod(Mission.prototype, ...)` call at load time -- see bead oo-dd16). Uses the
+// façade's own OOJSRCX/OOJSRVAL converters (already declared above in this file) rather than
+// a raw pointer cast, so this stays a deny-list no-op like the rest of the retarget.
+namespace {
+static bool MissionUnconstructableConstruct(Context cx, CallArgs &oojsArgs)
+{
+	return OOJSUnconstructableConstruct(OOJSRCX(cx), oojsArgs.count(), OOJSRVAL(oojsArgs.rawVp()));
+}
+} // namespace
+
+
 namespace {
 static JSPropertySpec sMissionPropertiesRaw[] =
 {
@@ -224,7 +241,7 @@ void InitOOJSMission(JSContext *context, JSObject *global)
 	sCallbackFunction = JSVAL_NULL;
 	sCallbackThis = JSVAL_NULL;
 	
-	Object missionPrototype = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sMissionClass, nullptr, 0, sMissionProperties, sMissionMethods, nullptr, nullptr);
+	Object missionPrototype = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sMissionClass, MissionUnconstructableConstruct, 0, sMissionProperties, sMissionMethods, nullptr, nullptr);
 	sMissionObject = OOJSROBJ(ooscript::defineObject(OOJSFCX(context), OOJSFOBJ(global), "mission", &sMissionClass, missionPrototype, kMissionObjectFlags));
 	
 	// Ensure JS objects are rooted.
