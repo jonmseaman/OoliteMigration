@@ -30,7 +30,11 @@ Check, in this order, and report each as a finding if violated:
    not `shared_ptr`, `isKindOfClass:` sites converted deliberately not blindly.
 3. Style drift from the exemplar: naming, header layout, error handling shape.
 4. Sizing: reads ≤ ~1,500 lines, writes ≤ ~400 lines, ≤ 8 files.
-5. Acceptance: the acceptance commands are plausible to pass; the diff does not game them.
+5. Acceptance: the acceptance commands are plausible to pass; the diff does not game them; and
+   the whole block plausibly finishes inside the five-minute budget `accept.sh` enforces
+   (ADR-0021): at most one game launch, no loops or sweeps. A block that cannot finish in time is
+   `request_changes` with "move <line> to tests/nightly/checks.txt", the same as one that cannot
+   fail.
 6. For a `frontier` bead, whose worker wrote its own executable acceptance in place of the prose
    `DONE WHEN`: run those commands yourself from the worktree root and run the DONE WHEN as the
    story states it. `request_changes` if either fails, if a command can pass without the work

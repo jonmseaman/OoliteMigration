@@ -69,18 +69,36 @@ acceptance="$(bead_acceptance "$id")"
 log="$(mktemp)"
 status=0
 ran=0
-if command -v timeout >/dev/null 2>&1; then TIMEOUT_CMD=(timeout "${BEADS_ACCEPT_TIMEOUT:-1500}")
-elif command -v gtimeout >/dev/null 2>&1; then TIMEOUT_CMD=(gtimeout "${BEADS_ACCEPT_TIMEOUT:-1500}")
-else TIMEOUT_CMD=(); fi
+# The whole block shares ONE budget (ADR-0021: the merge gate is about five minutes). Each line
+# gets what is left of it; a line that runs out exits 124 and the note names the budget, so the
+# fix is to move the slow proof into tests/nightly/checks.txt, not to raise the number.
+budget="${BEADS_ACCEPT_BUDGET:-300}"
+deadline=$(( $(date +%s) + budget ))
+if command -v timeout >/dev/null 2>&1; then TIMEOUT_BIN=timeout
+elif command -v gtimeout >/dev/null 2>&1; then TIMEOUT_BIN=gtimeout
+else TIMEOUT_BIN=""; fi
+over_budget=0
 while IFS= read -r cmd; do
   case "$cmd" in ''|'#'*) continue;; esac
   echo "\$ $cmd" >>"$log"
   ran=$((ran + 1))
   rc=0
-  ( cd "$tmp" && "${TIMEOUT_CMD[@]}" bash -o pipefail -c "$cmd" ) >>"$log" 2>&1 || rc=$?
+  left=$(( deadline - $(date +%s) ))
+  if [ "$left" -le 0 ]; then
+    rc=124
+  elif [ -n "$TIMEOUT_BIN" ]; then
+    ( cd "$tmp" && "$TIMEOUT_BIN" "$left" bash -o pipefail -c "$cmd" ) >>"$log" 2>&1 || rc=$?
+  else
+    ( cd "$tmp" && bash -o pipefail -c "$cmd" ) >>"$log" 2>&1 || rc=$?
+  fi
+  [ "$rc" -eq 124 ] && over_budget=1
   if [ "$rc" -ne 0 ]; then
     status=$rc
-    echo "[exit $status]" >>"$log"
+    if [ "$over_budget" -eq 1 ]; then
+      echo "[exit $status] ACCEPTANCE BUDGET EXCEEDED: the whole block must finish within BEADS_ACCEPT_BUDGET=${budget}s (ADR-0021, the five-minute merge gate). Move the slow proof (stability sweeps, mutant sweeps, repeated launches) into tests/nightly/checks.txt, where the nightly and phase-end runs execute it, and keep a fast proof here. Do not raise the budget." >>"$log"
+    else
+      echo "[exit $status]" >>"$log"
+    fi
     break
   fi
 done <<<"$acceptance"

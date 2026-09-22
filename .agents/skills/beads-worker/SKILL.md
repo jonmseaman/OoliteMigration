@@ -184,7 +184,10 @@ action. End the turn only when there is nothing left that could be started this 
 6. **Accept each approved bead, and only approved beads.** The review gates acceptance: a bead
    with `request_changes` goes back to step 4 with the findings, never to `accept.sh`. A finding
    is fixed on the bead branch before the merge, not filed as a new bead after it.
-   `terminal(command="scripts/accept.sh <id>", timeout=1800)`.
+   `terminal(command="scripts/accept.sh <id>", timeout=600)`. The acceptance block has a
+   five-minute budget in total (`BEADS_ACCEPT_BUDGET`, ADR-0021); a rejection that says
+   "ACCEPTANCE BUDGET EXCEEDED" goes back to the worker with "move the slow line to
+   `tests/nightly/checks.txt`", never with a bigger budget.
    You are closing your own work here, which is allowed because the reviewer approved it and
    because `accept.sh`, not you, decides: it merges the bead into the base branch in a clean
    checkout, runs the acceptance commands on the merged tree, and only on exit 0 fast-forwards the

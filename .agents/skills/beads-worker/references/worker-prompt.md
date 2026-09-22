@@ -39,6 +39,14 @@ finish, write them with `bd update {id} --acceptance "<one command per line>"`; 
 from the repository root on the merged tree, and `accept.sh` runs that field, not the description.
 A block that is only comments or `exit 1` is rejected.
 
+**The acceptance block has a five-minute budget** (ADR-0021; `accept.sh` enforces
+`BEADS_ACCEPT_BUDGET`, default 300 s, across the WHOLE block). It is the fast proof that the bead
+is done: offline checks, at most one game launch, no loops, no `for i in 1 2 3`, no stability or
+mutant sweeps. A block that runs out is rejected with the budget named; the fix is never to raise
+the budget. Anything slower belongs in `tests/nightly/checks.txt` (one shell command per line, run
+from the repository root by `tools/run-nightly-checks.sh` every night and at phase end): add your
+slow proof there in the same commit, and keep a one-line fast proof in the acceptance block.
+
 `accept.sh` runs EACH LINE of the stored acceptance as its OWN independent `bash -o pipefail -c`
 invocation — shell state (variables, `cd`, `set -e`) does NOT carry from one line to the next. A
 multi-statement script that sets a variable on one line and reads it on a later line (e.g.
