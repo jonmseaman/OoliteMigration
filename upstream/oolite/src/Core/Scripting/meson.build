@@ -29,7 +29,7 @@ oolite_sources += files(
     'OOJSQuaternion.mm',
     'OOJSScript.m',
     'OOJSShip.m',
-    'OOJSShipGroup.m',
+    'OOJSShipGroup.mm',
     'OOJSSound.m',
     'OOJSSoundSource.mm',
     'OOJSSpecialFunctions.m',
