@@ -57,23 +57,35 @@ needs_build = pytest.mark.skipif(
     not os.path.isdir(APP_DIR), reason="no Oolite build at %s" % APP_DIR
 )
 
-# The transitive dependencies the incident was actually about. libtre-5.dll is not a direct
-# import of libgallium_wgl.dll; it is a transitive import of libsystre-0.dll itself (confirmed
-# via `objdump -p` on libsystre-0.dll: "DLL Name: libtre-5.dll"). Without it here, the
-# with_deps=True scratch app dir in _scratch_app_dir() stages the other three deps but still
-# reports libtre-5.dll as unresolved (see bead oo-qq69).
+# The three transitive dependencies the incident was actually about. This is also the
+# assertion-target set for the two negative-arm tests below (unresolved_imports() ==
+# GALLIUM_DEPS, and the error names exactly these three) -- do not add to it for staging
+# convenience; see STAGE_EXTRA_DEPS for that.
 GALLIUM_DEPS = {
     "libllvm-22.dll",
     "libspirv-tools.dll",
     "libsystre-0.dll",
+}
+
+# libtre-5.dll is not a direct import of libgallium_wgl.dll; it is a transitive import of
+# libsystre-0.dll itself (confirmed via `objdump -p` on libsystre-0.dll: "DLL Name:
+# libtre-5.dll"). It must be staged by _scratch_app_dir()'s with_deps=True copy loop (and
+# confirmed present in whatever runtime dir supplies GALLIUM_DEPS) or that scratch dir still
+# reports libtre-5.dll as unresolved even with all of GALLIUM_DEPS present (see bead oo-qq69).
+# It is deliberately NOT part of GALLIUM_DEPS itself: the two negative-arm tests below assert
+# unresolved_imports() / the raised error name exactly the three DLLs the original incident was
+# about, and folding a fourth, unrelated-to-the-incident DLL into that set would make those
+# assertions describe a different incident than the one they document.
+STAGE_EXTRA_DEPS = {
     "libtre-5.dll",
 }
 
 
 def _runtime_dir():
+    needed = GALLIUM_DEPS | STAGE_EXTRA_DEPS
     for cand in state_dump._candidate_runtime_dirs():
         names = {n.lower() for n in os.listdir(cand)}
-        if GALLIUM_DEPS <= names:
+        if needed <= names:
             return cand
     return None
 
@@ -101,7 +113,7 @@ def _scratch_app_dir(tmp_path, with_deps):
         low = name.lower()
         if not (low.endswith(".exe") or low.endswith(".dll")):
             continue
-        if low in GALLIUM_DEPS and not with_deps:
+        if low in GALLIUM_DEPS | STAGE_EXTRA_DEPS and not with_deps:
             continue
         src = os.path.join(APP_DIR, name)
         dst = str(scratch / name)
@@ -115,7 +127,7 @@ def _scratch_app_dir(tmp_path, with_deps):
     if with_deps:
         have = {n.lower() for n in os.listdir(scratch)}
         runtime = _runtime_dir()
-        for dep in GALLIUM_DEPS - have:
+        for dep in (GALLIUM_DEPS | STAGE_EXTRA_DEPS) - have:
             if runtime is None:
                 pytest.skip("no directory on this host supplies %s" % dep)
             shutil.copy2(os.path.join(runtime, dep), str(scratch / dep))
