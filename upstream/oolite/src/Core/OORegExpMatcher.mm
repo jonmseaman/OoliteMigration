@@ -1,6 +1,6 @@
 /*
 
-OORegExpMatcher.m
+OORegExpMatcher.mm
 
 
 Copyright (C) 2010-2013 Jens Ayton
@@ -29,9 +29,35 @@ SOFTWARE.
 #import "OOJSFunction.h"
 #import "OOJavaScriptEngine.h"
 
+#include "ooscript/JSEngine.hpp"
+
+/*
+	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm was (bead oo-sdz):
+	the one directly-spelled engine call this file made — compiling a RegExp object from a
+	cached UTF-16 pattern — now goes through the façade's own regexp entry point, engine
+	still underneath. Everything else here (OOJSAcquireContext, OOJSRelinquishContext,
+	OOJSValue, OOJSFunction) already spoke the façade's older OOJS_* naming and is unchanged.
+	A tiny local reinterpret_cast, the same shape as OOJSVector.mm's OOJSFCX/OOJSROBJ, recovers
+	the plain engine-context and engine-object pointer locals so the rest of the function body is
+	byte for byte what it was.
+*/
+
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+
+namespace {
+static inline Context   OOJSFCX(JSContext *cx) { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline JSObject *OOJSROBJ(Object o)      { return reinterpret_cast<JSObject*>(o); }
+} // namespace
+
 
 // Pseudo-singleton: a single instance exists at a given time, but can be released.
+namespace {
 static OORegExpMatcher *sActiveInstance;
+} // namespace
 
 
 @implementation OORegExpMatcher
@@ -51,7 +77,8 @@ static OORegExpMatcher *sActiveInstance;
 
 - (id) init
 {
-	if ((self = [super init]))
+	self = [super init];
+	if (self != nil)
 	{	
 		const char *argumentNames[2] = { "string", "regexp" };
 		unsigned codeLine = __LINE__ + 1;	// NB: should remain line before code.
@@ -63,7 +90,7 @@ static OORegExpMatcher *sActiveInstance;
 		_tester = [[OOJSFunction alloc] initWithName:@"matchesRegExp"
 											   scope:NULL
 												code:code
-									   	argumentCount:2
+									   argumentCount:2
 									   argumentNames:argumentNames
 											fileName:[@__FILE__ lastPathComponent]
 										  lineNumber:codeLine
@@ -112,12 +139,13 @@ static OORegExpMatcher *sActiveInstance;
 		DESTROY(_cachedRegExpObject);
 		
 		unichar *buffer;
-		buffer = malloc(expLength * sizeof *buffer);
+		buffer = static_cast<unichar *>(malloc(expLength * sizeof *buffer));
 		if (EXPECT_NOT(buffer == NULL))  return NO;
 		[regExp getCharacters:buffer];
 		
 		_cachedRegExpString = [regExp retain];
-		JSObject *regExpObj = JS_NewUCRegExpObjectNoStatics(context, buffer, expLength, (uintN)flags);
+		Object regExpFacadeObj = ooscript::newUCRegExpObjectNoStatics(OOJSFCX(context), reinterpret_cast<const ooscript::Char16 *>(buffer), expLength, static_cast<std::uint32_t>(flags));
+		JSObject *regExpObj = OOJSROBJ(regExpFacadeObj);
 		_cachedRegExpObject = [[OOJSValue alloc] initWithJSObject:regExpObj inContext:context];
 		_cachedFlags = flags;
 		

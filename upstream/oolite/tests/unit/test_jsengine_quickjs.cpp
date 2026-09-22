@@ -61,6 +61,28 @@ void PointFinalize(Context /*cx*/, Object /*obj*/)
 ClassDef sPointClass = { "Point", ClassFlag::HasPrivate, nullptr, nullptr, nullptr, nullptr,
                           PointEnumerate, nullptr, PointResolve, nullptr, PointFinalize, nullptr, nullptr, nullptr };
 
+// Regression fixture for bead oo-902s: unlike PointFinalize above, this finalizer actually reads
+// its Context argument, so a dangling JSContext* handed to it (the bug this bead fixes) would
+// misbehave instead of going unnoticed. See its use in main() for the destroyContext()-then-
+// destroyRuntime() sequence that exercises it.
+bool gTouchFinalizeRan = false;
+bool gTouchFinalizeCtxOk = false;
+void TouchFinalize(Context fcx, Object /*obj*/)
+{
+	gTouchFinalizeRan = true;
+	// After the fix, destroyContext() erased this context's gCtxForRuntime entry, so
+	// FinalizeTramp's lookup for this runtime comes up empty and it passes wrap(nullptr) here --
+	// never this context's own (by-then-freed) JSContext*, and never some other, unrelated
+	// context's pointer either (see main()'s "noise" contexts, which are deliberately churned
+	// through newContext()/destroyContext() on the same runtime between destroyContext(cx) and
+	// destroyRuntime(rt) specifically to prove this: without the fix, each of those calls would
+	// leave its own stale entry in gCtxForRuntime, so this finalizer would receive whichever
+	// dangling pointer was left behind, never nullptr). So the fix is exactly: fcx must be null.
+	gTouchFinalizeCtxOk = (fcx == nullptr);
+}
+ClassDef sTouchClass = { "Touch", ClassFlag::HasPrivate, nullptr, nullptr, nullptr, nullptr,
+                          nullptr, nullptr, nullptr, nullptr, TouchFinalize, nullptr, nullptr, nullptr };
+
 // A second class reusing the same tinyids with a distinct resolve hook: the trampoline/exotic
 // dispatch must not confuse the two classes' hooks (JSClassID is per-class, not per-tinyid).
 int gScaledResolveCalls = 0;
@@ -275,10 +297,37 @@ int main()
 		(void)prevReporter;
 	}
 
+	// Regression (bead oo-902s): destroyContext() must erase gCtxForRuntime's entry for its
+	// runtime (or otherwise ensure FinalizeTramp never dereferences a freed context). Create an
+	// object of sTouchClass -- whose finalizer touches its Context argument, unlike PointFinalize
+	// above -- attach it to global so it only collects when cx/rt themselves tear down below, and
+	// drive destroyContext(cx) and destroyRuntime(rt) as SEPARATE calls (not combined into one
+	// call as most façade users would do) so a dangling JSContext* left behind by a stale
+	// gCtxForRuntime entry would misbehave instead of silently going unnoticed.
+	Object touchObj = newObject(cx, &sTouchClass, nullptr, nullptr);
+	CHECK(touchObj != nullptr);
+	CHECK(setPrivate(cx, touchObj, nullptr));
+	Value touchVal = objectValue(touchObj);
+	CHECK(setProperty(cx, global, "touchObj", &touchVal));
+
 	destroyContext(cx);
+	// Force fresh allocations into the freed JSContext's memory before destroyRuntime() below runs
+	// its finalizer pass: without this, JS_FreeContext's freed block can sit untouched and still
+	// look like a valid JSContext by accident (its rt field unclobbered), letting a dangling-
+	// pointer bug pass the CHECKs below by luck rather than by the fix actually being present.
+	// Allocating and freeing several throwaway contexts on the same runtime gives the allocator's
+	// freelist a strong chance to hand this same block back out and overwrite it before the
+	// finalizer pass below would dereference it.
+	for (int i = 0; i < 8; ++i)
+	{
+		Context noise = newContext(rt, 8192);
+		if (noise != nullptr)  destroyContext(noise);
+	}
 	destroyRuntime(rt);
 	shutDown();
 	CHECK(gFinalized >= 2);   // p and s both finalized when their runtime went away
+	CHECK(gTouchFinalizeRan);          // the finalizer actually ran (the regression is exercised)
+	CHECK(gTouchFinalizeCtxOk);        // and its Context argument was never a dangling pointer
 
 	CHECK(std::strcmp(backendName(), "quickjs-ng-0.16.2") == 0);
 

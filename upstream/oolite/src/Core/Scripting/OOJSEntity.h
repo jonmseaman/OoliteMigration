@@ -64,9 +64,7 @@ OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 BOOL EntityFromArgumentList(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, Entity **outEntity, uintN *outConsumed);
-
 #ifdef __cplusplus
 }
 #endif
