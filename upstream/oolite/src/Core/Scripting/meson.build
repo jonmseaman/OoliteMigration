@@ -21,7 +21,7 @@ oolite_sources += files(
     'OOJSManifest.m',
     'OOJSMission.m',
     'OOJSMissionVariables.mm',
-    'OOJSOolite.m',
+    'OOJSOolite.mm',
     'OOJSPlanet.m',
     'OOJSPlayer.mm',
     'OOJSPlayerShip.m',
