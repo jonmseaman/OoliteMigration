@@ -254,7 +254,7 @@ OOINLINE jsval OOJSValueFromNativeObject(JSContext *context, id object)
 	
 	Requires a request on context.
 */
-JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
+OOJS_EXTERN_C JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
 
 
 /*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.
@@ -323,7 +323,7 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 OOJS_EXTERN_C NSString *OOStringFromJSID(jsid propID);
 
 // Convert an NSString to a jsid.
-jsid OOJSIDFromString(NSString *string);
+OOJS_EXTERN_C jsid OOJSIDFromString(NSString *string);
 
 
 @interface NSString (OOJavaScriptExtensions)
@@ -598,10 +598,10 @@ OOJS_EXTERN_C void OOJSResumeTimeLimiter(void);
 	OOJSDescribeLocation().
 */
 #ifndef NDEBUG
-void OOJSDumpStack(JSContext *context);
+OOJS_EXTERN_C void OOJSDumpStack(JSContext *context);
 
-NSString *OOJSDescribeLocation(JSContext *context, JSStackFrame *stackFrame);
-void OOJSMarkConsoleEvalLocation(JSContext *context, JSStackFrame *stackFrame);
+OOJS_EXTERN_C NSString *OOJSDescribeLocation(JSContext *context, JSStackFrame *stackFrame);
+OOJS_EXTERN_C void OOJSMarkConsoleEvalLocation(JSContext *context, JSStackFrame *stackFrame);
 #else
 #define OOJSDumpStack(cx)						do {} while (0)
 #define OOJSDescribeLocation(cx, frame)			do {} while (0)
