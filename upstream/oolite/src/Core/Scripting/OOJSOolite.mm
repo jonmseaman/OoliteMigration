@@ -33,34 +33,95 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "OOConstToString.h"
 
+#include "ooscript/JSEngine.hpp"
+#include <cstring>
 
-static JSBool OoliteGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value);
-static JSBool OoliteSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value);
+// Retargeted onto the ooscript facade (JSEngine.hpp), the way OOJSWormhole.mm and
+// OOJSClock.mm do it (bead oo-sdz exemplar): the class dispatch table becomes a static
+// ooscript::ClassDef (stub hooks become nullptr), InitClass becomes ooscript::initClass,
+// numeric conversion becomes ooscript::newNumberValue/ooscript::valueToNumber, and `this` is
+// renamed to `thisObj` (reserved word in Objective-C++, ADR-0001).
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+using ooscript::Value;
+using ooscript::PropertyId;
+using ooscript::ClassDef;
+using ooscript::ClassFlag;
+using ooscript::PropertyFlag;
+using ooscript::PropertySpec;
+using ooscript::FunctionSpec;
+using ooscript::CallArgs;
 
+// Byte-identical facade <-> jsapi views, local to this call site (see OOJSVector.mm).
+namespace {
+static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
+} // namespace
+namespace {
+static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
+} // namespace
+namespace {
+static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
+} // namespace
+namespace {
+static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
+} // namespace
+namespace {
+static inline JSString  *OOJSRSTR(ooscript::String s) { return reinterpret_cast<JSString*>(s); }
+} // namespace
+
+
+namespace {
+static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
+} // namespace
+namespace {
+static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
+} // namespace
+
+namespace {
 static NSString *VersionString(void);
+} // namespace
+namespace {
 static NSArray *VersionComponents(void);
+} // namespace
 
-static JSBool OoliteCompareVersion(JSContext *context, uintN argc, jsval *vp);
+namespace {
+static bool OoliteCompareVersion(Context cx, CallArgs &oojsArgs);
+} // namespace
+
+// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the facade's
+// NativeFn signature, the way OOJSClock.mm's OOJSUnconstructableConstructFacade does it.
+namespace {
+static bool OOJSUnconstructableConstructFacade(Context cx, CallArgs &oojsArgs);
+} // namespace
 
 
-static JSClass sOoliteClass =
+namespace {
+static ClassDef sOoliteClass =
 {
 	"Oolite",
-	0,
+	ClassFlag::None,
 	
-	JS_PropertyStub,
-	JS_PropertyStub,
-	OoliteGetProperty,
-	OoliteSetProperty,
-	//JS_StrictPropertyStub,
-	JS_EnumerateStub,
-	JS_ResolveStub,
-	JS_ConvertStub,
-	JS_FinalizeStub
+	nullptr,		// addProperty (engine default: PropertyStub)
+	nullptr,		// delProperty (engine default: PropertyStub)
+	OoliteGetProperty,		// getProperty
+	OoliteSetProperty,		// setProperty
+	nullptr,		// enumerate (engine default: EnumerateStub)
+	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// resolve (engine default: ResolveStub)
+	nullptr,			// convert (engine default: ConvertStub)
+	nullptr,			// finalize (engine default: FinalizeStub)
+	nullptr,			// call
+	nullptr,			// construct
+	nullptr,			// backend: owned by the facade backend, must start null
 };
+} // namespace
 
 
-enum
+enum : std::uint8_t
 {
 	// Property IDs
 	kOolite_version,			// version number components, array, read-only
@@ -79,7 +140,38 @@ enum
 };
 
 
-static JSPropertySpec sOoliteProperties[] =
+namespace {
+constexpr PropertyFlag kOolitePropertyFlagsRO = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared;
+constexpr PropertyFlag kOolitePropertyFlagsRW = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared;
+} // namespace
+
+
+namespace {
+static PropertySpec sOoliteProperties[] =
+{
+	// JS name					ID							flags						getter	setter
+	{ "gameSettings",			kOolite_gameSettings,		kOolitePropertyFlagsRO, nullptr, nullptr },
+	{ "jsVersion",				kOolite_jsVersion,			kOolitePropertyFlagsRO, nullptr, nullptr },
+	{ "jsVersionString",		kOolite_jsVersionString,	kOolitePropertyFlagsRO, nullptr, nullptr },
+	{ "version",				kOolite_version,			kOolitePropertyFlagsRO, nullptr, nullptr },
+	{ "versionString",			kOolite_versionString,		kOolitePropertyFlagsRO, nullptr, nullptr },
+	{ "resourcePaths",			kOolite_resourcePaths,		kOolitePropertyFlagsRO, nullptr, nullptr },
+	{ "colorSaturation",		kOolite_colorSaturation,	kOolitePropertyFlagsRW, nullptr, nullptr },
+	{ "postFX",					kOolite_postFX,				kOolitePropertyFlagsRW, nullptr, nullptr },
+	{ "hdrToneMapper",			kOolite_hdrToneMapper, 		kOolitePropertyFlagsRW, nullptr, nullptr },
+	{ "sdrToneMapper",			kOolite_sdrToneMapper, 		kOolitePropertyFlagsRW, nullptr, nullptr },
+#ifndef NDEBUG
+	{ "timeAccelerationFactor",	kOolite_timeAccelerationFactor,	kOolitePropertyFlagsRW, nullptr, nullptr },
+#endif
+	{ 0 }
+};
+} // namespace
+
+
+// Raw jsapi mirror of sOoliteProperties for the shared error reporters that still take a
+// JSPropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+namespace {
+static JSPropertySpec sOolitePropertiesRaw[] =
 {
 	// JS name					ID							flags
 	{ "gameSettings",			kOolite_gameSettings,		OOJS_PROP_READONLY_CB },
@@ -97,33 +189,54 @@ static JSPropertySpec sOoliteProperties[] =
 #endif
 	{ 0 }
 };
+} // namespace
 
 
-static JSFunctionSpec sOoliteMethods[] =
+namespace {
+static FunctionSpec sOoliteMethods[] =
 {
 	// JS name					Function					min args
 	{ "compareVersion",			OoliteCompareVersion,		1 },
 	{ 0 }
 };
+} // namespace
+
+
+namespace {
+constexpr PropertyFlag kOoliteObjectFlags = PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly;
+} // namespace
 
 
 void InitOOJSOolite(JSContext *context, JSObject *global)
 {
-	JSObject *oolitePrototype = JS_InitClass(context, global, NULL, &sOoliteClass, OOJSUnconstructableConstruct, 0, sOoliteProperties, sOoliteMethods, NULL, NULL);
-	JS_DefineObject(context, global, "oolite", &sOoliteClass, oolitePrototype, OOJS_PROP_READONLY);
+	Object oolitePrototype = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sOoliteClass, OOJSUnconstructableConstructFacade, 0, sOoliteProperties, sOoliteMethods, nullptr, nullptr);
+	ooscript::defineObject(OOJSFCX(context), OOJSFOBJ(global), "oolite", &sOoliteClass, oolitePrototype, kOoliteObjectFlags);
 }
 
 
-static JSBool OoliteGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value)
+namespace {
+static bool OOJSUnconstructableConstructFacade(Context cx, CallArgs &oojsArgs)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	return OOJSUnconstructableConstruct(OOJSRCX(cx), oojsArgs.count(), reinterpret_cast<jsval*>(oojsArgs.rawVp()));
+}
+} // namespace
+
+
+namespace {
+static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
+{
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = OOJSRCX(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
+	jsval *value_raw = reinterpret_cast<jsval*>(value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	id						result = nil;
 	MyOpenGLView			*gameView = [UNIVERSE gameView];
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kOolite_version:
 			result = VersionComponents();
@@ -134,11 +247,11 @@ static JSBool OoliteGetProperty(JSContext *context, JSObject *this, jsid propID,
 			break;
 		
 		case kOolite_jsVersion:
-			*value = INT_TO_JSVAL(JS_GetVersion(context));
+			*value_raw = INT_TO_JSVAL(static_cast<int>(ooscript::getVersion(cx)));
 			return YES;
 		
 		case kOolite_jsVersionString:
-			*value = STRING_TO_JSVAL(JS_NewStringCopyZ(context, JS_VersionToString(JS_GetVersion(context))));
+			*value_raw = STRING_TO_JSVAL(OOJSRSTR(ooscript::newStringCopyZ(cx, ooscript::versionToString(ooscript::getVersion(cx)))));
 			return YES;
 		
 		case kOolite_gameSettings:
@@ -151,10 +264,10 @@ static JSBool OoliteGetProperty(JSContext *context, JSObject *this, jsid propID,
 			break;
 			
 		case kOolite_colorSaturation:
-			return JS_NewNumberValue(context, [gameView colorSaturation], value);
+			return ooscript::newNumberValue(cx, [gameView colorSaturation], value);
 			
 		case kOolite_postFX:
-			*value = INT_TO_JSVAL([UNIVERSE currentPostFX]);
+			*value_raw = INT_TO_JSVAL([UNIVERSE currentPostFX]);
 			return YES;
 			
 		case kOolite_hdrToneMapper:
@@ -183,36 +296,42 @@ static JSBool OoliteGetProperty(JSContext *context, JSObject *this, jsid propID,
 			
 #ifndef NDEBUG
 		case kOolite_timeAccelerationFactor:
-			return JS_NewNumberValue(context, [UNIVERSE timeAccelerationFactor], value);
+			return ooscript::newNumberValue(cx, [UNIVERSE timeAccelerationFactor], value);
 #endif
 		
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sOoliteProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sOolitePropertiesRaw);
 			return NO;
 	}
 	
-	*value = OOJSValueFromNativeObject(context, result);
+	*value_raw = OOJSValueFromNativeObject(context, result);
 	return YES;
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool OoliteSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value)
+namespace {
+static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = OOJSRCX(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
+	jsval *value_raw = reinterpret_cast<jsval*>(value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	jsdouble				fValue;
+	double					fValue;
 	int32					iValue;
 	NSString				*sValue = nil;
 	MyOpenGLView 			*gameView = [UNIVERSE gameView];
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kOolite_colorSaturation:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				float currentColorSaturation = [gameView colorSaturation];
 				[gameView adjustColorSaturation:fValue - currentColorSaturation];
@@ -221,7 +340,7 @@ static JSBool OoliteSetProperty(JSContext *context, JSObject *this, jsid propID,
 			break;
 			
 		case kOolite_postFX:
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(cx, *value, &iValue))
 			{
 				iValue = MAX(iValue, 0);
 				[UNIVERSE setCurrentPostFX:iValue];
@@ -230,8 +349,8 @@ static JSBool OoliteSetProperty(JSContext *context, JSObject *this, jsid propID,
 			break;
 			
 		case kOolite_hdrToneMapper:
-			if (!JSVAL_IS_STRING(*value))  break; // non-string is not allowed
-			sValue = OOStringFromJSValue(context,*value);
+			if (!JSVAL_IS_STRING(*value_raw))  break; // non-string is not allowed
+			sValue = OOStringFromJSValue(context,*value_raw);
 			if (sValue != nil)
 			{
 #if OOLITE_WINDOWS
@@ -243,8 +362,8 @@ static JSBool OoliteSetProperty(JSContext *context, JSObject *this, jsid propID,
 			break;
 			
 		case kOolite_sdrToneMapper:
-			if (!JSVAL_IS_STRING(*value))  break; // non-string is not allowed
-			sValue = OOStringFromJSValue(context,*value);
+			if (!JSVAL_IS_STRING(*value_raw))  break; // non-string is not allowed
+			sValue = OOStringFromJSValue(context,*value_raw);
 			if (sValue != nil)
 			{
 				if (![gameView hdrOutput])  [gameView setSDRToneMapper:OOSDRToneMapperFromString(sValue)];
@@ -255,7 +374,7 @@ static JSBool OoliteSetProperty(JSContext *context, JSObject *this, jsid propID,
 			
 #ifndef NDEBUG
 		case kOolite_timeAccelerationFactor:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(cx, *value, &fValue))
 			{
 				[UNIVERSE setTimeAccelerationFactor:fValue];
 				return YES;
@@ -264,27 +383,32 @@ static JSBool OoliteSetProperty(JSContext *context, JSObject *this, jsid propID,
 #endif
 			
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sOoliteProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sOolitePropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, this, propID, sOoliteProperties, *value);
+	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sOolitePropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
+namespace {
 static NSString *VersionString(void)
 {
 	return [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
 }
+} // namespace
 
 
+namespace {
 static NSArray *VersionComponents(void)
 {
 	return ComponentsFromVersionString(VersionString());
 }
+} // namespace
 
 
 /*	oolite.compareVersion(versionSpec) : Number
@@ -294,8 +418,13 @@ static NSArray *VersionComponents(void)
 	if (0 < oolite.compareVersion("1.70"))  log("Old version of Oolite!")
 	else  this.doStuffThatRequires170()
 */
-static JSBool OoliteCompareVersion(JSContext *context, uintN argc, jsval *vp)
+namespace {
+static bool OoliteCompareVersion(Context cx, CallArgs &oojsArgs)
 {
+	JSContext *context = OOJSRCX(cx);
+	uintN argc = oojsArgs.count();
+	jsval *vp = reinterpret_cast<jsval*>(oojsArgs.rawVp());
+	
 	OOJS_NATIVE_ENTER(context)
 	
 	id						components = nil;
@@ -334,3 +463,4 @@ static JSBool OoliteCompareVersion(JSContext *context, uintN argc, jsval *vp)
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
