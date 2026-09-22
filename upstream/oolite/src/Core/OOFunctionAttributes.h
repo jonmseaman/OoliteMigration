@@ -136,9 +136,11 @@ OOINLINE id OOConsumeReference(id OO_NS_CONSUMED value)
 // Externed to work around analyzer being too "clever" and ignoring attributes
 // when it's inlined.
 #ifdef __cplusplus
-extern "C" id OOConsumeReference(id OO_NS_CONSUMED value);
-#else
+extern "C" {
+#endif
 id OOConsumeReference(id OO_NS_CONSUMED value);
+#ifdef __cplusplus
+}
 #endif
 #endif
 #endif
