@@ -467,7 +467,7 @@ enum class ContextOption : std::uint32_t
 };
 constexpr ContextOption operator|(ContextOption a, ContextOption b)
 {
-	return static_cast<ContextOption>(static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b));
+	return static_cast<ContextOption>(static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b));  // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange): this operator builds bitmask combinations of ContextOption flags; the analyzer treats the enum as a closed set of named values and flags any OR'd combination as "not a declared enumerator", which is a false positive for every legitimate multi-flag combination (see OOJavaScriptEngine.mm's OOJSENGINE_CONTEXT_OPTIONS).
 }
 ContextOption setOptions(Context cx, ContextOption options);                           // engine: SetOptions; returns the old set
 ContextOption getOptions(Context cx);                                                  // engine: GetOptions
