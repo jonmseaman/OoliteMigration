@@ -24,7 +24,7 @@ oolite_sources += files(
     'OOJSOolite.m',
     'OOJSPlanet.m',
     'OOJSPlayer.mm',
-    'OOJSPlayerShip.m',
+    'OOJSPlayerShip.mm',
     'OOJSPopulatorDefinition.mm',
     'OOJSQuaternion.mm',
     'OOJSScript.m',
