@@ -1,5 +1,5 @@
 /*
-OOJSWormhole.m
+OOJSWormhole.mm
 
 Oolite
 Copyright (C) 2004-2013 Giles C Williams and contributors
@@ -29,34 +29,110 @@ MA 02110-1301, USA.
 #import "OOCollectionExtractors.h"
 #import "EntityOOJavaScriptExtensions.h"
 
+#include "ooscript/JSEngine.hpp"
+#include <cstring>
+#include <cstdint>
 
+// Retargeted onto the ooscript facade (JSEngine.hpp), the way OOJSVector.mm and
+// OOJSWaypoint.mm do it (bead oo-sdz exemplar): stub hooks become nullptr, InitClass
+// becomes ooscript::initClass, numeric conversion becomes ooscript::newNumberValue, and
+// `this` is renamed to `thisObj` (reserved word in Objective-C++, ADR-0001).
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+using ooscript::Value;
+using ooscript::PropertyId;
+using ooscript::ClassDef;
+using ooscript::ClassFlag;
+using ooscript::PropertyFlag;
+using ooscript::PropertySpec;
+using ooscript::FunctionSpec;
+using ooscript::CallArgs;
+
+// Byte-identical facade <-> jsapi views, local to this call site (see OOJSVector.mm).
+namespace {
+static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
+} // namespace
+namespace {
+static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
+} // namespace
+namespace {
+static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
+} // namespace
+namespace {
+static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
+} // namespace
+
+
+namespace {
 static JSObject		*sWormholePrototype;
+} // namespace
 
+namespace {
 static BOOL JSWormholeGetWormholeEntity(JSContext *context, JSObject *stationObj, WormholeEntity **outEntity);
+} // namespace
 
 
-static JSBool WormholeGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value);
-static JSBool WormholeSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value);
+namespace {
+static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
+} // namespace
+namespace {
+static bool WormholeSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
+} // namespace
 
 
-static JSClass sWormholeClass =
+// Adapts the shared jsapi finalizer to the facade's FinalizeHook signature (see OOJSWaypoint.mm).
+namespace {
+static void WormholeFinalize(Context cx, Object obj)
+{
+	OOJSObjectWrapperFinalize(reinterpret_cast<JSContext*>(cx), reinterpret_cast<JSObject*>(obj));
+}
+} // namespace
+
+
+// Adapts the shared jsapi OOJSUnconstructableConstruct to the facade's NativeFn signature
+// (see OOJSWaypoint.mm).
+namespace {
+static bool WormholeUnconstructableConstruct(Context cx, CallArgs &oojsArgs)
+{
+	return OOJSUnconstructableConstruct(reinterpret_cast<JSContext*>(cx), oojsArgs.count(), reinterpret_cast<jsval*>(oojsArgs.rawVp()));
+}
+} // namespace
+
+
+namespace {
+static ClassDef sWormholeClass =
 {
 	"Wormhole",
-	JSCLASS_HAS_PRIVATE,
+	ClassFlag::HasPrivate,
 	
-	JS_PropertyStub,		// addProperty
-	JS_PropertyStub,		// delProperty
+	nullptr,		// addProperty
+	nullptr,		// delProperty
 	WormholeGetProperty,		// getProperty
 	WormholeSetProperty,		// setProperty
-	JS_EnumerateStub,		// enumerate
-	JS_ResolveStub,			// resolve
-	JS_ConvertStub,			// convert
-	OOJSObjectWrapperFinalize,// finalize
-	JSCLASS_NO_OPTIONAL_MEMBERS
+	nullptr,		// enumerate
+	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// resolve
+	nullptr,			// convert
+	WormholeFinalize,// finalize
+	nullptr,			// call
+	nullptr,			// construct
+	nullptr,			// backend: owned by the facade backend, must start null
 };
+} // namespace
 
 
-enum
+// The engine's own JSClass* for sWormholeClass, needed by shared jsapi plumbing that has
+// not yet been retargeted (see OOJSWaypoint.mm's RawWaypointClass).
+namespace {
+static inline JSClass *RawWormholeClass(void)
+{
+	return reinterpret_cast<JSClass*>(sWormholeClass.backend);
+}
+} // namespace
+
+
+enum : std::uint8_t
 {
 	// Property IDs
 	kWormhole_arrivalTime,
@@ -67,33 +143,54 @@ enum
 };
 
 
-static JSPropertySpec sWormholeProperties[] =
+namespace {
+static PropertySpec sWormholeProperties[] =
 {
-	// JS name						ID									flags
+	// JS name							ID									flags
+	{ "arrivalTime",	     kWormhole_arrivalTime,	      PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "destination",	     kWormhole_destination,	      PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "expiryTime",	     kWormhole_expiryTime,	      PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ "origin",	     kWormhole_origin,	      PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly | PropertyFlag::Shared, nullptr, nullptr },
+	{ 0 }
+};
+} // namespace
+
+
+// Raw jsapi mirror of sWormholeProperties for the shared error reporters that still take a
+// JSPropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+namespace {
+static JSPropertySpec sWormholePropertiesRaw[] =
+{
+	// JS name							ID									flags
 	{ "arrivalTime",	     kWormhole_arrivalTime,	      OOJS_PROP_READONLY_CB },
 	{ "destination",	     kWormhole_destination,	      OOJS_PROP_READONLY_CB },
 	{ "expiryTime",	     kWormhole_expiryTime,	      OOJS_PROP_READONLY_CB },
 	{ "origin",	     kWormhole_origin,	      OOJS_PROP_READONLY_CB },
 	{ 0 }
 };
+} // namespace
 
 
-static JSFunctionSpec sWormholeMethods[] =
+namespace {
+static FunctionSpec sWormholeMethods[] =
 {
-	// JS name					Function						min args
-//	{ "",     WormholeDoStuff,    0 },
+	// JS name					Function						min args	flags
+//	{ "",     WormholeDoStuff,    0,	0 },
 	{ 0 }
 };
+} // namespace
 
 
 void InitOOJSWormhole(JSContext *context, JSObject *global)
 {
-	sWormholePrototype = JS_InitClass(context, global, JSEntityPrototype(), &sWormholeClass, OOJSUnconstructableConstruct, 0, sWormholeProperties, sWormholeMethods, NULL, NULL);
-	OOJSRegisterObjectConverter(&sWormholeClass, OOJSBasicPrivateObjectConverter);
-	OOJSRegisterSubclass(&sWormholeClass, JSEntityClass());
+	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), OOJSFOBJ(JSEntityPrototype()), &sWormholeClass, WormholeUnconstructableConstruct, 0, sWormholeProperties, sWormholeMethods, NULL, NULL);
+	sWormholePrototype = OOJSROBJ(proto);
+	OOJSRegisterObjectConverter(RawWormholeClass(), OOJSBasicPrivateObjectConverter);
+	OOJSRegisterSubclass(RawWormholeClass(), JSEntityClass());
 }
 
 
+namespace {
 static BOOL JSWormholeGetWormholeEntity(JSContext *context, JSObject *wormholeObj, WormholeEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
@@ -114,13 +211,14 @@ static BOOL JSWormholeGetWormholeEntity(JSContext *context, JSObject *wormholeOb
 	
 	OOJS_PROFILE_EXIT
 }
+} // namespace
 
 
 @implementation WormholeEntity (OOJavaScriptExtensions)
 
 - (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype
 {
-	*outClass = &sWormholeClass;
+	*outClass = RawWormholeClass();
 	*outPrototype = sWormholePrototype;
 }
 
@@ -138,68 +236,80 @@ static BOOL JSWormholeGetWormholeEntity(JSContext *context, JSObject *wormholeOb
 @end
 
 
-static JSBool WormholeGetProperty(JSContext *context, JSObject *this, jsid propID, jsval *value)
+namespace {
+static bool WormholeGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
+	
+	JSContext *context = reinterpret_cast<JSContext*>(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
+	jsval *value_raw = reinterpret_cast<jsval*>(value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	WormholeEntity				*entity = nil;
 	id result = nil;
 	
-	if (!JSWormholeGetWormholeEntity(context, this, &entity))  return NO;
-	if (entity == nil)  { *value = JSVAL_VOID; return YES; }
+	if (!JSWormholeGetWormholeEntity(context, thisObj, &entity))  return NO;
+	if (entity == nil)  { *value_raw = JSVAL_VOID; return YES; }
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
   case kWormhole_arrivalTime:
-		return JS_NewNumberValue(context, [entity arrivalTime], value);
+		return ooscript::newNumberValue(cx, [entity arrivalTime], value);
 
   case kWormhole_destination:
-		return JS_NewNumberValue(context, [entity destination], value);
+		return ooscript::newNumberValue(cx, [entity destination], value);
 
   case kWormhole_expiryTime:
-		return JS_NewNumberValue(context, [entity expiryTime], value);
+		return ooscript::newNumberValue(cx, [entity expiryTime], value);
 		
   case kWormhole_origin:
-		return JS_NewNumberValue(context, [entity origin], value);
+		return ooscript::newNumberValue(cx, [entity origin], value);
 
 	default:
-		OOJSReportBadPropertySelector(context, this, propID, sWormholeProperties);
+		OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sWormholePropertiesRaw);
 		return NO;
 	}
 
-	*value = OOJSValueFromNativeObject(context, result);
+	*value_raw = OOJSValueFromNativeObject(context, result);
 	return YES;
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
-static JSBool WormholeSetProperty(JSContext *context, JSObject *this, jsid propID, JSBool strict, jsval *value)
+namespace {
+static bool WormholeSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
 	
+	JSContext *context = reinterpret_cast<JSContext*>(cx);
+	JSObject *thisObj = OOJSROBJ(obj);
+	jsval *value_raw = reinterpret_cast<jsval*>(value);
+
 	OOJS_NATIVE_ENTER(context)
 
 	WormholeEntity				*entity = nil;
 
-	if (!JSWormholeGetWormholeEntity(context, this, &entity)) return NO;
+	if (!JSWormholeGetWormholeEntity(context, thisObj, &entity)) return NO;
 	if (entity == nil)  return YES;
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 
 		default:
-			OOJSReportBadPropertySelector(context, this, propID, sWormholeProperties);
+			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sWormholePropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, this, propID, sWormholeProperties, *value);
+	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sWormholePropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT
 }
+} // namespace
 
 
 // *** Methods ***
