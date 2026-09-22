@@ -1,0 +1,14 @@
+{
+	title = "Compatibility Shim";
+	identifier = "org.oolite.oolite.compat-shim";
+
+	version = "1.0";
+	required_oolite_version = "1.93";
+
+	license = "GPL 2+";
+	author = "Oolite migration project";
+	description = "Polyfills toSource()/quote() (bead oo-864) for expansions whose authors cannot update them for QuickJS-ng. See docs/EXPANSION_MIGRATION.md.";
+	information_url = "docs/EXPANSION_MIGRATION.md";
+
+	category = "Compatibility";
+}

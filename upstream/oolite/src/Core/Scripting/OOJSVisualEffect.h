@@ -30,7 +30,15 @@ MA 02110-1301, USA.
 @class OOVisualEffectEntity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSVisualEffect(JSContext *context, JSObject *global);
+
+#ifdef __cplusplus
+}
+#endif
 
 @interface OOVisualEffectEntity (OOJavaScriptExtensions)
 

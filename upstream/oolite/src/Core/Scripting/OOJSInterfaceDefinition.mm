@@ -1,6 +1,6 @@
 /*
 
-OOJSInterfaceDefinition.m
+OOJSInterfaceDefinition.mm
 
 
 Oolite
@@ -26,6 +26,29 @@ MA 02110-1301, USA.
 #import "OOJSInterfaceDefinition.h"
 #import "OOJavaScriptEngine.h"
 
+#include "ooscript/JSEngine.hpp"
+
+/*
+	Retargeted (bead oo-mqb) onto the ooscript façade (JSEngine.hpp), same pattern as the
+	Phase 1 exemplar OOJSVector.mm (bead oo-sdz): the two directly spelled engine calls this
+	file makes (RemoveValueRoot, RemoveObjectRoot) go through ooscript::removeValueRoot/
+	removeObjectRoot. OOJSAddGCValueRoot/OOJSAddGCObjectRoot are OOJS_* macros, not JS_*, so
+	they are out of scope for this sweep and unchanged. A tiny local shim recovers the
+	jsval / JSObject-pointer views onto the façade's Value/Object pointers (byte-identical
+	per JSEngine.hpp's own contract) so the rest of the file is unchanged.
+*/
+
+namespace ooscript { }
+using ooscript::Context;
+using ooscript::Object;
+using ooscript::Value;
+
+namespace {
+static inline Context  OOJSFCX(JSContext *cx)     { return reinterpret_cast<Context>(cx); }
+static inline Object  *OOJSFOBJP(JSObject **o)    { return reinterpret_cast<Object*>(o); }
+static inline Value   *OOJSFVALP(jsval *v)        { return reinterpret_cast<Value*>(v); }
+} // namespace
+
 
 @implementation OOJSInterfaceDefinition
 
@@ -50,8 +73,8 @@ MA 02110-1301, USA.
 	JSContext				*context = OOJSAcquireContext();
 	_callback = JSVAL_VOID;
 	_callbackThis = NULL;
-	JS_RemoveValueRoot(context, &_callback);
-	JS_RemoveObjectRoot(context, &_callbackThis);
+	ooscript::removeValueRoot(OOJSFCX(context), OOJSFVALP(&_callback));
+	ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_callbackThis));
 
 	OOJSRelinquishContext(context);
 
@@ -118,7 +141,7 @@ MA 02110-1301, USA.
 - (void)setCallback:(jsval)callback
 {
 	JSContext				*context = OOJSAcquireContext();
-	JS_RemoveValueRoot(context, &_callback);
+	ooscript::removeValueRoot(OOJSFCX(context), OOJSFVALP(&_callback));
 	_callback = callback;
 	OOJSAddGCValueRoot(context, &_callback, "OOJSInterfaceDefinition callback function");
 	OOJSRelinquishContext(context);
@@ -134,7 +157,7 @@ MA 02110-1301, USA.
 - (void)setCallbackThis:(JSObject *)callbackThis
 {
 	JSContext				*context = OOJSAcquireContext();
-	JS_RemoveObjectRoot(context, &_callbackThis);
+	ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_callbackThis));
 	_callbackThis = callbackThis;
 	OOJSAddGCObjectRoot(context, &_callbackThis, "OOJSInterfaceDefinition callback this");
 	OOJSRelinquishContext(context);
