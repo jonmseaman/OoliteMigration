@@ -1686,18 +1686,18 @@ static NSMutableDictionary *sStringCache;
 
 + (NSDictionary *) whitelistDictionary
 {
-	static id whitelistDictionary = nil;
+	static NSDictionary *whitelistDictionary = nil;
+	static BOOL loaded = NO;	// a missing whitelist is remembered as nil, not retried
 	
-	if (whitelistDictionary == nil)
+	if (!loaded)
 	{
 		NSString *path = [[[ResourceManager builtInPath] stringByAppendingPathComponent:@"Config"] stringByAppendingPathComponent:@"whitelist.plist"];
 		whitelistDictionary = [NSDictionary dictionaryWithContentsOfFile:path];
-		if (whitelistDictionary == nil)  whitelistDictionary = [NSNull null];
+		loaded = YES;
 		
 		[whitelistDictionary retain];
 	}
 	
-	if (whitelistDictionary == [NSNull null])  return nil;
 	return whitelistDictionary;
 }
 
@@ -1895,40 +1895,39 @@ static NSString *LogClassKeyRoot(NSString *key)
 	
 	if (shaderBindingTypesDictionary == nil)
 	{
-		NSAutoreleasePool *pool = [NSAutoreleasePool new];
-		
-		NSString *path = [[[ResourceManager builtInPath] stringByAppendingPathComponent:@"Config"] stringByAppendingPathComponent:@"shader-uniform-bindings.plist"];
-		NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithContentsOfFile:path];
-		NSArray *keys = [dict allKeys];
-		
-		// Resolve all $inherit keys.
-		unsigned changeCount = 0;
-		do {
-			changeCount = 0;
-			NSString *key = nil;
-			foreach (key, keys)
-			{
-				NSDictionary *value = [dict oo_dictionaryForKey:key];
-				NSString *inheritKey = [value oo_stringForKey:@"$inherit"];
-				if (inheritKey != nil)
+		@autoreleasepool
+		{
+			NSString *path = [[[ResourceManager builtInPath] stringByAppendingPathComponent:@"Config"] stringByAppendingPathComponent:@"shader-uniform-bindings.plist"];
+			NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithContentsOfFile:path];
+			NSArray *keys = [dict allKeys];
+			
+			// Resolve all $inherit keys.
+			unsigned changeCount = 0;
+			do {
+				changeCount = 0;
+				NSString *key = nil;
+				foreach (key, keys)
 				{
-					changeCount++;
-					NSMutableDictionary *mutableValue = [[value mutableCopy] autorelease];
-					[mutableValue removeObjectForKey:@"$inherit"];
-					NSDictionary *inherited = [dict oo_dictionaryForKey:inheritKey];
-					if (inherited != nil)
+					NSDictionary *value = [dict oo_dictionaryForKey:key];
+					NSString *inheritKey = [value oo_stringForKey:@"$inherit"];
+					if (inheritKey != nil)
 					{
-						[mutableValue addEntriesFromDictionary:inherited];
+						changeCount++;
+						NSMutableDictionary *mutableValue = [[value mutableCopy] autorelease];
+						[mutableValue removeObjectForKey:@"$inherit"];
+						NSDictionary *inherited = [dict oo_dictionaryForKey:inheritKey];
+						if (inherited != nil)
+						{
+							[mutableValue addEntriesFromDictionary:inherited];
+						}
+						
+						[dict setObject:[[mutableValue copy] autorelease] forKey:key];
 					}
-					
-					[dict setObject:[[mutableValue copy] autorelease] forKey:key];
 				}
-			}
-		} while (changeCount != 0);
-		
-		shaderBindingTypesDictionary = [dict copy];
-		
-		[pool release];
+			} while (changeCount != 0);
+			
+			shaderBindingTypesDictionary = [dict copy];
+		}
 	}
 	
 	return shaderBindingTypesDictionary;
@@ -2095,7 +2094,6 @@ static NSString *LogClassKeyRoot(NSString *key)
 	NSString					*path = nil;
 	OOScript					*script = nil;
 	NSString					*name = nil;
-	NSAutoreleasePool			*pool = nil;
 	
 	OOLog(@"script.load.world.begin", @"%@", @"Loading world scripts...");
 	
@@ -2108,29 +2106,28 @@ static NSString *LogClassKeyRoot(NSString *key)
 		// a problem.
 		if (![ResourceManager corePlist:@"world-scripts.plist" excludedAt:path])
 		{
-			pool = [[NSAutoreleasePool alloc] init];
-		
-			@try
+			@autoreleasepool
 			{
-				results = [OOScript worldScriptsAtPath:[path stringByAppendingPathComponent:@"Config"]];
-				if (results == nil) results = [OOScript worldScriptsAtPath:path];
-				if (results != nil)
+				@try
 				{
-					foreach (script, results)
+					results = [OOScript worldScriptsAtPath:[path stringByAppendingPathComponent:@"Config"]];
+					if (results == nil) results = [OOScript worldScriptsAtPath:path];
+					if (results != nil)
 					{
-						name = [script name];
-						if (name != nil)  [loadedScripts setObject:script forKey:name];
-						else  OOLog(@"script.load.unnamed", @"Discarding anonymous script %@", script);
+						foreach (script, results)
+						{
+							name = [script name];
+							if (name != nil)  [loadedScripts setObject:script forKey:name];
+							else  OOLog(@"script.load.unnamed", @"Discarding anonymous script %@", script);
+						}
 					}
 				}
+				@catch (NSException *exception)
+				{
+					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", __PRETTY_FUNCTION__, [exception name], [exception reason], path);
+					// Ignore exception and keep loading other scripts.
+				}
 			}
-			@catch (NSException *exception)
-			{
-				OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", __PRETTY_FUNCTION__, [exception name], [exception reason], path);
-				// Ignore exception and keep loading other scripts.
-			}
-		
-			[pool release];
 		}
 	}
 	

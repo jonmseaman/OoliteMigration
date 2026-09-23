@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOOpenALController.h"
+#include "oofnd/Process.hpp"
 #import "OOLogging.h"
 #import "OOALSoundMixer.h"
 
@@ -47,18 +48,10 @@ static id sSingleton = nil;
 	self = [super init];
 	if (self != nil)
 	{
-		NSArray				*arguments = nil;
-		NSEnumerator		*argEnum = nil;
-		NSString			*arg = nil;
-	
-		arguments = [[NSProcessInfo processInfo] arguments];
-		for (argEnum = [arguments objectEnumerator]; (arg = [argEnum nextObject]); )
+		if (oo::process::hasArgument("-nosound") || oo::process::hasArgument("--nosound"))
 		{
-			if ([arg isEqual:@"-nosound"] || [arg isEqual:@"--nosound"])  
-			{
-				[self release];
-				return nil;
-			}
+			[self release];
+			return nil;
 		}
 
 		ALuint error;

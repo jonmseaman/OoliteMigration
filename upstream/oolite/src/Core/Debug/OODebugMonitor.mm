@@ -282,9 +282,9 @@ static OODebugMonitor *sSingleton = nil;
 	if (klass == Nil)  klass = [NSObject class];
 	
 	result = [_configOverrides objectForKey:key];
-	if (![result isKindOfClass:klass] && result != [NSNull null])  result = [_configFromOXPs objectForKey:key];
-	if (![result isKindOfClass:klass] && result != [NSNull null])  result = [[value retain] autorelease];
-	if (result == [NSNull null])  result = nil;
+	if (![result isKindOfClass:klass] && result != [OONull null])  result = [_configFromOXPs objectForKey:key];
+	if (![result isKindOfClass:klass] && result != [OONull null])  result = [[value retain] autorelease];
+	if (result == [OONull null])  result = nil;
 	
 	return result;
 }

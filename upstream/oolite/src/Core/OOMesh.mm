@@ -36,6 +36,8 @@ MA 02110-1301, USA.
 */
 
 #import "OOMesh.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 #import "Universe.h"
 #import "OOMeshToOctreeConverter.h"
 #import "ResourceManager.h"
@@ -676,28 +678,27 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 		octree = [[OOCacheManager octreeForModel:baseFileOctreeCacheRef] retain];
 		if (octree == nil)
 		{
-			NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-			
-			OOMeshToOctreeConverter *converter = [OOMeshToOctreeConverter converterWithCapacity:faceCount];
-			OOMeshFaceCount i;
-			for (i = 0; i < faceCount; i++)
+			@autoreleasepool
 			{
-				// Somewhat surprisingly, this method doesn't even show up in profiles. -- Ahruman 2012-09-22
-				Triangle tri;
-				tri.v[0] = _vertices[_faces[i].vertex[0]];
-				tri.v[1] = _vertices[_faces[i].vertex[1]];
-				tri.v[2] = _vertices[_faces[i].vertex[2]];
-				[converter addTriangle:tri];
+				OOMeshToOctreeConverter *converter = [OOMeshToOctreeConverter converterWithCapacity:faceCount];
+				OOMeshFaceCount i;
+				for (i = 0; i < faceCount; i++)
+				{
+					// Somewhat surprisingly, this method doesn't even show up in profiles. -- Ahruman 2012-09-22
+					Triangle tri;
+					tri.v[0] = _vertices[_faces[i].vertex[0]];
+					tri.v[1] = _vertices[_faces[i].vertex[1]];
+					tri.v[2] = _vertices[_faces[i].vertex[2]];
+					[converter addTriangle:tri];
+				}
+				
+				octree = [converter findOctreeToDepth:[self octreeDepth]];
+				[octree retain];
+				if (EXPECT(_cacheWriteable))
+				{
+					[OOCacheManager setOctree:octree forModel:baseFileOctreeCacheRef];
+				}
 			}
-			
-			octree = [converter findOctreeToDepth:[self octreeDepth]];
-			[octree retain];
-			if (EXPECT(_cacheWriteable))
-			{
-				[OOCacheManager setOctree:octree forModel:baseFileOctreeCacheRef];
-			}
-			
-			[pool release];
 		}
 		else
 		{
@@ -885,53 +886,53 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	self = [super init];
 	if (self == nil)  return nil;
 	
-	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
- 	_normalMode = smooth ? kNormalModeSmooth : kNormalModePerFace;
-	_cacheWriteable = cacheWriteable;
-	
+	@autoreleasepool
+	{
+		_normalMode = smooth ? kNormalModeSmooth : kNormalModePerFace;
+		_cacheWriteable = cacheWriteable;
+		
 #if OOMESH_PROFILE
-	_stopwatch = [[OOProfilingStopwatch alloc] init];
+		_stopwatch = [[OOProfilingStopwatch alloc] init];
 #endif
-	
-	if ([self loadData:name scaleFactor:scale])
-	{
-		[self calculateBoundingVolumes];
-		PROFILE(@"finished calculateBoundingVolumes (again\?\?)");
 		
-		baseFile = [name copy];
-		baseFileOctreeCacheRef = [[NSString stringWithFormat:@"%@-%.3f", baseFile, scale] copy];
-		
-		/*	New in r3033: save the material-defining parameters here so we
-			can rebind the materials at any time.
-			-- Ahruman 2010-02-17
-		*/
-		_materialDict = [materialDict copy];
-		_shadersDict = [shadersDict copy];
-		_cacheKey = [cacheKey copy];
-		_shaderMacros = [macros copy];
-		_shaderBindingTarget = [target weakRetain];
-		
-		[self rebindMaterials];
-		PROFILE(@"finished material setup");
-		
-		[[OOGraphicsResetManager sharedManager] registerClient:self];
-	}
-	else
-	{
-		[self release];
-		self = nil;
-	}
+		if ([self loadData:name scaleFactor:scale])
+		{
+			[self calculateBoundingVolumes];
+			PROFILE(@"finished calculateBoundingVolumes (again\?\?)");
+			
+			baseFile = [name copy];
+			baseFileOctreeCacheRef = [[NSString stringWithFormat:@"%@-%.3f", baseFile, scale] copy];
+			
+			/*	New in r3033: save the material-defining parameters here so we
+				can rebind the materials at any time.
+				-- Ahruman 2010-02-17
+			*/
+			_materialDict = [materialDict copy];
+			_shadersDict = [shadersDict copy];
+			_cacheKey = [cacheKey copy];
+			_shaderMacros = [macros copy];
+			_shaderBindingTarget = [target weakRetain];
+			
+			[self rebindMaterials];
+			PROFILE(@"finished material setup");
+			
+			[[OOGraphicsResetManager sharedManager] registerClient:self];
+		}
+		else
+		{
+			[self release];
+			self = nil;
+		}
 #if OOMESH_PROFILE
-	DESTROY(_stopwatch);
+		DESTROY(_stopwatch);
 #endif
 #if OO_MULTITEXTURE
-	if (EXPECT(self != nil))
-	{
-		_textureUnitCount = NSNotFound;
-	}
+		if (EXPECT(self != nil))
+		{
+			_textureUnitCount = NSNotFound;
+		}
 #endif
-	
-	[pool release];
+	}
 	return self;
 	
 	OOJS_PROFILE_EXIT
@@ -1205,7 +1206,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		texFileName2Idx = [NSMutableDictionary dictionary];
 		
 		{
-			NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+			void *pool = objc_autoreleasePoolPush();
 			NSString *data = [ResourceManager stringFromFilesNamed:filename inFolder:@"Models" cache:NO];
 			if (data == nil)
 			{
@@ -1240,7 +1241,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			scanner = [NSScanner scannerWithString:data];
 			
 			[scanner retain];
-			[pool release];
+			objc_autoreleasePoolPop(pool);
 			[scanner autorelease];
 		}
 		

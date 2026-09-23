@@ -23,6 +23,8 @@ MA 02110-1301, USA.
 */
 
 #import "AI.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 #import "ResourceManager.h"
 #import "OOStringParsing.h"
 #import "OOWeakReference.h"
@@ -805,7 +807,7 @@ static AIStackElement *sStack = NULL;
 	OOCacheManager			*cacheMgr = [OOCacheManager sharedCache];
 	NSString				*stateKey = nil;
 	NSDictionary			*stateHandlers = nil;
-	NSAutoreleasePool		*pool = nil;
+	void					*pool = NULL;
 	
 	if (![smName isEqualToString:@"nullAI.plist"])
 	{
@@ -816,7 +818,7 @@ static AIStackElement *sStack = NULL;
 	
 	if (newSM == nil)
 	{
-		pool = [[NSAutoreleasePool alloc] init];
+		pool = objc_autoreleasePoolPush();
 		OOLog(@"ai.load", @"Loading and sanitizing AI \"%@\"", smName);
 		OOLogPushIndent();
 		OOLogIndentIf(@"ai.load");
@@ -876,7 +878,7 @@ static AIStackElement *sStack = NULL;
 		}
 		
 		[newSM retain];
-		[pool release];
+		objc_autoreleasePoolPop(pool);
 		[newSM autorelease];
 	}
 	

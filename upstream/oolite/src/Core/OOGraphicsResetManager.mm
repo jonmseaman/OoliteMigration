@@ -38,7 +38,6 @@ static OOGraphicsResetManager *sSingleton = nil;
 - (void) dealloc
 {
 	if (sSingleton == self)  sSingleton = nil;
-	[clients release];
 	
 	[super dealloc];
 }
@@ -55,23 +54,19 @@ static OOGraphicsResetManager *sSingleton = nil;
 {
 	if (client != nil)
 	{
-		if (clients == nil)  clients = [[NSMutableSet alloc] init];
-		[clients addObject:[NSValue valueWithPointer:client]];
+		clients.insert(client);
 	}
 }
 
 
 - (void) unregisterClient:(id<OOGraphicsResetClient>)client
 {
-	[clients removeObject:[NSValue valueWithPointer:client]];
+	clients.erase(client);
 }
 
 
 - (void) resetGraphicsState
 {
-	NSEnumerator			*clientEnum = nil;
-	id						client = nil;
-	
 	OOGL(glFinish());
 	
 	OOLog(@"rendering.reset.start", @"%@", @"Resetting graphics state.");
@@ -80,8 +75,13 @@ static OOGraphicsResetManager *sSingleton = nil;
 	[[OOOpenGLExtensionManager sharedManager] reset];
 	[OOTexture rebindAllTextures];
 	
-	for (clientEnum = [clients objectEnumerator]; (client = (id)[[clientEnum nextObject] pointerValue]); )
+	// A copy, so a client may register or unregister during the reset (one unregistered by an
+	// earlier client is skipped). Unordered, as the NSSet was: its order was pointer-hash order,
+	// so it already varied from run to run.
+	const std::vector<id> snapshot(clients.begin(), clients.end());
+	for (id client : snapshot)
 	{
+		if (clients.find(client) == clients.end())  continue;
 		@try
 		{
 			[client resetGraphicsState];

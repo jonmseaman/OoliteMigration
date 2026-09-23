@@ -34,6 +34,7 @@ SOFTWARE.
 
 #import "OOMaths.h"
 #import "OOHPVector.h"
+#include <objc/runtime.h>
 
 
 typedef enum
@@ -63,7 +64,11 @@ typedef enum
 } OOShaderUniformType;
 
 
-OOShaderUniformType OOShaderUniformTypeFromMethodSignature(NSMethodSignature *signature);
+/*	The uniform type of a method's return value, from the runtime's type encoding (its
+	arguments are not considered, as the method signature object's -methodReturnType did not
+	consider them; bead oo-3rb.15). NULL gives kOOShaderUniformTypeInvalid.
+*/
+OOShaderUniformType OOShaderUniformTypeFromMethod(Method method);
 
 long long OOCallIntegerMethod(id object, SEL selector, IMP method, OOShaderUniformType type);
 double OOCallFloatMethod(id object, SEL selector, IMP method, OOShaderUniformType type);
