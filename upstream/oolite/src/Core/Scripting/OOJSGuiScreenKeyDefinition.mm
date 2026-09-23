@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 //#import "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-6u8, the same way bead oo-sdz
@@ -96,29 +97,27 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 	[super dealloc];
 }
 
-- (NSString *)name 
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	return _name;
+	return oo::NSStringOrNil(_name);
 }
 
 
-- (void)setName:(NSString *)name
+- (void)setName:(id)name	// shared selector (proposed ADR-0043)
 {
-	[_name autorelease];
-	_name = [name retain];
+	_name = oo::OptionalString(name);
 }
 
 
-- (NSDictionary *)registerKeys
+- (oo::PList)registerKeys
 {
 	return _registerKeys;
 }
 
 
-- (void)setRegisterKeys:(NSDictionary *)registerKeys
+- (void)setRegisterKeys:(const oo::PList &)registerKeys
 {
-	[_registerKeys release];
-	_registerKeys = [registerKeys copy];
+	_registerKeys = registerKeys;
 }
 
 
@@ -154,7 +153,7 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 }
 
 
-- (void)runCallback:(NSString *)key
+- (void)runCallback:(id)key	// shared selector (proposed ADR-0043)
 {
 	OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
 	ooscript::Context context = OOJSAcquireContext();		
@@ -180,7 +179,11 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 
 - (NSComparisonResult)interfaceCompare:(OOJSGuiScreenKeyDefinition *)other
 {
-    return [_name caseInsensitiveCompare:[other name]];
+	// -caseInsensitiveCompare: as it was sent: a nil name answers NSOrderedSame (a message to nil); a
+	// nil other name compares as the empty string.
+	if (!_name.has_value())  return NSOrderedSame;
+	int order = oo::str::caseInsensitiveCompare(*_name, oo::OptionalString([other name]).value_or(std::string()));
+	return (order < 0) ? NSOrderedAscending : ((order > 0) ? NSOrderedDescending : NSOrderedSame);
 }
 
 @end
