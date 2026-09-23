@@ -2574,7 +2574,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	{
 		NSString *key = role;
 		NSArray *iconDef = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(key);
-		if (iconDef != nil)  result = [[OOPolygonSprite alloc] initWithDataArray:iconDef outlineWidth:kOutlineWidth name:key];
+		if (iconDef != nil)  result = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconDef) outlineWidth:kOutlineWidth name:oo::StdString(key)];
 		if (result == nil)	// No custom icon or bad data
 		{
 			/*	Backwards compatibility note:
@@ -2588,7 +2588,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 			else  key = kDefaultMineIconKey;
 			
 			iconDef = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(key);
-			result = [[OOPolygonSprite alloc] initWithDataArray:iconDef outlineWidth:kOutlineWidth name:key];
+			result = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconDef) outlineWidth:kOutlineWidth name:oo::StdString(key)];
 		}
 		
 		if (result != nil)
