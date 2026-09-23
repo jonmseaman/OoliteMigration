@@ -77,7 +77,7 @@ MA 02110-1301, USA.
    - (void) setGuiToKeyConfigScreen;
    - (void) setGuiToKeyConfigScreen:(BOOL) resetSelectedRow;
    - (void) handleKeyConfigKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView;
-   - (void) outputKeyDefinition:(NSString *)key shift:(NSString *)shift mod1:(NSString *)mod1 mod2:(NSString *)mod2 skiprows:(NSUInteger)skiprows;
+   - (void) outputKeyDefinition:(const std::string &)key shift:(const std::string &)shift mod1:(const std::string &)mod1 mod2:(const std::string &)mod2 skiprows:(NSUInteger)skiprows;
 
    - (void) setGuiToKeyConfigEntryScreen;
    - (void) handleKeyConfigEntryKeys:(GuiDisplayGen *)gui view:(MyOpenGLView *)gameView;
