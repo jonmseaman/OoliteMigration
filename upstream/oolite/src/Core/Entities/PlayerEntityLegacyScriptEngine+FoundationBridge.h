@@ -1,0 +1,41 @@
+/*
+
+PlayerEntityLegacyScriptEngine+FoundationBridge.h
+
+TRANSITIONAL (proposed ADR-0043, "Transitional bridges"; bead oo-3rb.190, chunk 1 of oo-j924).
+PlayerEntity (Scripting)'s Foundation-typed API as it was before its sweep, with the same selector
+names and types, forwarding to the cxx_ API in PlayerEntityLegacyScriptEngine.h. It exists so that
+the callers compile unchanged; each caller moves to the cxx_ API in its own sweep bead. The later
+chunks of oo-j924 (oo-3rb.191 .. oo-3rb.197) move their own selectors in here. When `git grep`
+finds no caller of anything declared here, the bridge bead deletes this file,
+PlayerEntityLegacyScriptEngine+FoundationBridge.mm, its line in Core/Entities/meson.build and the
+#import at the end of PlayerEntityLegacyScriptEngine.h. Never call it from migrated code. oo-qps
+(the removal of gnustep-base) cannot compile while it exists.
+
+Registry: src/oofnd/README.md, "Transitional bridges".
+
+Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityLegacyScriptEngine.h)
+
+*/
+
+// Imported only from the end of PlayerEntityLegacyScriptEngine.h (which declares everything used
+// here); never import it directly, and never import PlayerEntityLegacyScriptEngine.h from it (a cycle).
+#ifndef PLAYERENTITYLEGACYSCRIPTENGINE_FOUNDATIONBRIDGE_H
+#define PLAYERENTITYLEGACYSCRIPTENGINE_FOUNDATIONBRIDGE_H
+
+
+@interface PlayerEntity (ScriptingFoundationBridge)
+
+// Chunk 1 (oo-3rb.190): the legacy-script runner.
+- (void) runScriptActions:(NSArray *)sanitizedActions withContextName:(NSString *)contextName forTarget:(ShipEntity *)target;	// -> -cxx_runScriptActions:withContextName:forTarget:
+- (void) runUnsanitizedScriptActions:(NSArray *)unsanitizedActions allowingAIMethods:(BOOL)allowAIMethods withContextName:(NSString *)contextName forTarget:(ShipEntity *)target;	// -> -cxx_runUnsanitizedScriptActions:allowingAIMethods:withContextName:forTarget:
+
+// Test (sanitized) legacy script conditions array.
+- (BOOL) scriptTestConditions:(NSArray *)array;	// -> -cxx_scriptTestConditions:
+
+@end
+
+
+NSString *OOComparisonTypeToString(OOComparisonType type) CONST_FUNC;	// -> cxx_OOComparisonTypeToString
+
+#endif	// PLAYERENTITYLEGACYSCRIPTENGINE_FOUNDATIONBRIDGE_H
