@@ -111,6 +111,28 @@ public:
 
 @end
 
+// A singleton that allocates in +allocWithZone:, as OODebugMonitor, OOSoundMixer and others do.
+static id sTestSingleton = nil;
+static int sTestSingletonAllocs = 0;
+
+@interface OOTestSingleton : OOObject
+@end
+
+@implementation OOTestSingleton
+
++ (id) allocWithZone:(OOZone *)zone
+{
+	++sTestSingletonAllocs;
+	if (sTestSingleton == nil)
+	{
+		sTestSingleton = [super allocWithZone:zone];
+		return sTestSingleton;
+	}
+	return nil;
+}
+
+@end
+
 @interface OOTestForwarder : OOObject
 {
 @public
@@ -324,6 +346,19 @@ OO_TEST(copyGoesThroughCopyWithZone)
 	[thing release];
 	OO_CHECK_EQ(gLog.size(), 2u);
 }
+
+OO_TEST(allocGoesThroughAllocWithZone)
+{
+	// NSObject's +alloc and +new send +allocWithZone:, so an override there sees every allocation.
+	id first = [OOTestSingleton alloc];
+	OO_CHECK(first != nil);
+	OO_CHECK(first == sTestSingleton);
+	OO_CHECK([OOTestSingleton new] == nil);
+	OO_CHECK_EQ(sTestSingletonAllocs, 2);
+	[[first init] release];
+	sTestSingleton = nil;
+}
+
 
 OO_TEST(zoneIsTheOneCopyPasses)
 {
