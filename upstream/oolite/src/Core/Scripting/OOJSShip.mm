@@ -2276,7 +2276,7 @@ static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArg
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([thisEnt ejectShipOfRole:role]);
+	OOJS_RETURN_OBJECT([thisEnt ejectShipOfRole:oo::OptionalString(role)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2355,7 +2355,7 @@ static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([thisEnt ejectShipOfType:itemKey]);
+	OOJS_RETURN_OBJECT([thisEnt ejectShipOfType:oo::OptionalString(itemKey)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2428,7 +2428,7 @@ static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = [thisEnt spawnShipsWithRole:role count:count];
+	result = oo::NSArrayFromObjects([thisEnt spawnShipsWithRole:oo::StdString(role) count:count]);
 	OOJS_END_FULL_NATIVE
 
 	OOJS_RETURN_OBJECT(result);
