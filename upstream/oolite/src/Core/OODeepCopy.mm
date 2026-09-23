@@ -63,6 +63,24 @@ id OODeepCopy(id object)
 @end
 
 
+// NSObject (OODeepCopy) above, for classes rooted on OOObject (ADR-0029).
+@implementation OOObject (OODeepCopy)
+
+- (id) ooDeepCopyWithSharedObjects:(NSMutableSet *)objects
+{
+	if ([self conformsToProtocol:@protocol(OOCopying)])
+	{
+		return [self copy];
+	}
+	else
+	{
+		return [self retain];
+	}
+}
+
+@end
+
+
 @implementation NSString (OODeepCopy)
 
 - (id) ooDeepCopyWithSharedObjects:(NSMutableSet *)objects
