@@ -629,7 +629,9 @@ plistlib.dump({'console-host': '127.0.0.1', 'console-port': int(sys.argv[2])},
   local lock="$HERE/gui-lock"
   local runner=(); [ -x "$lock" ] && runner=("$lock" run --timeout "${OOLITE_TIER_C_LOCK_TIMEOUT:-900}" --)
 
-  ( cd "$app" && PATH="$dlldir:$PATH" \
+  # $dlldir is a native C:/... path; in an MSYS PATH its drive colon splits it into two bogus
+  # entries and the loader never finds libclang_rt.asan_dynamic-x86_64.dll (exit 127).
+  ( cd "$app" && PATH="$(cygpath -u "$dlldir"):$PATH" \
       ASAN_OPTIONS="halt_on_error=0:abort_on_error=0:detect_leaks=0:symbolize=1" \
       ASAN_SYMBOLIZER_PATH="$symbolizer_native" \
       LSAN_OPTIONS="suppressions=$(native "$ASAN_SUPPRESSIONS")" \
