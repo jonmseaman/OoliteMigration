@@ -37,6 +37,9 @@ SOFTWARE.
 #include "oofnd/Thread.hpp"
 #import "NSFileManagerOOExtensions.h"
 #include <SDL3/SDL_stdinc.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 
 #undef NSLog		// We need to be able to call the real NSLog.
@@ -93,7 +96,6 @@ static BOOL DirectoryExistCreatingIfNecessary(NSString *path);
 	OOAsyncQueue		*messageQueue;
 	NSConditionLock		*threadStateMonitor;
 	NSFileHandle		*logFile;
-	NSTimer				*flushTimer;
 }
 
 - (void)asyncLogMessage:(NSString *)message;
@@ -116,6 +118,17 @@ static BOOL						sSaturated = NO;
 static OOAsyncLogger			*sLogger = nil;
 static NSString					*sLogFileName = @"Latest.log";
 
+/*	The pending flush (was a one-shot run-loop timer, proposed ADR-0033): a deadline on
+	std::chrono::steady_clock that the frame loop checks. The timer was
+	scheduled on the logging thread's run loop, and only the main thread's run
+	loop ever runs, so a flush first requested from another thread never fired
+	and blocked later ones; kFlushNever keeps that.
+*/
+static const int64_t				kFlushNever = INT64_MAX;
+static std::atomic<bool>			sFlushPending{false};
+static std::atomic<int64_t>			sFlushDeadline{kFlushNever};	// steady_clock ticks since its epoch
+static std::thread::id				sMainThreadID;
+
 
 void OOLogOutputHandlerInit(void)
 {
@@ -125,6 +138,7 @@ void OOLogOutputHandlerInit(void)
 	InitCrashReporterInfo();
 #endif
 	
+	sMainThreadID = std::this_thread::get_id();
 	sLogger = [[OOAsyncLogger alloc] init];
 	sInited = YES;
 	
@@ -192,6 +206,14 @@ void OOLogOutputHandlerStopLoggingToStdout()
 {
 	sWriteToStdout = false;
 }
+
+void OOLogOutputHandlerFlushIfDue(void)
+{
+	if (!sFlushPending || sLogger == nil)  return;
+	if (std::chrono::steady_clock::now().time_since_epoch().count() < sFlushDeadline)  return;
+	[sLogger flushLog];
+}
+
 
 void OOLogOutputHandlerPrint(NSString *string)
 {
@@ -287,7 +309,6 @@ enum
 	DESTROY(messageQueue);
 	DESTROY(threadStateMonitor);
 	DESTROY(logFile);
-	// We don't own a reference to flushTimer.
 	
 	[super dealloc];
 }
@@ -411,10 +432,14 @@ enum
 		
 		[messageQueue enqueue:[message dataUsingEncoding:NSUTF8StringEncoding]];
 		
-		if (flushTimer == nil)
+		if (!sFlushPending.exchange(true))
 		{
 			// No pending flush
-			flushTimer = [NSTimer scheduledTimerWithTimeInterval:kFlushInterval target:self selector:@selector(flushLog) userInfo:nil repeats:NO];
+			if (std::this_thread::get_id() == sMainThreadID)
+			{
+				std::chrono::steady_clock::time_point deadline = std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(kFlushInterval));
+				sFlushDeadline = deadline.time_since_epoch().count();
+			}
 		}
 	}
 }
@@ -422,7 +447,8 @@ enum
 
 - (void)flushLog
 {
-	flushTimer = nil;
+	sFlushDeadline = kFlushNever;
+	sFlushPending = false;
 	[messageQueue enqueue:@"flush"];
 }
 
