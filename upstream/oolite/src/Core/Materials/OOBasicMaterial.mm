@@ -99,7 +99,7 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 }
 
 
-- (id)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
 	return oo::NSStringOrNil(materialName);
 }
@@ -342,7 +342,7 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 #ifndef NDEBUG
 - (id) allTextures
 {
-	return oo::NSSetFromObjects(std::vector<id>());	// an empty set: allTextures is a shared selector
+	return oo::NSSetFromObjects(std::vector<id>());	// an empty set; shared selector (proposed ADR-0043)
 }
 #endif
 
