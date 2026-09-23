@@ -523,6 +523,8 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 				std::chrono::duration<double> wait = sNextGameTick - std::chrono::steady_clock::now();
 				limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
 			}
+			// The OXZ download's callbacks, which the run loop delivered (proposed ADR-0043).
+			[[OOOXZManager sharedManager] processDownloadEvents];
 			if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && sGameTickScheduled)
 			{
 				// Nothing on the run loop to wait for: wait for the tick here.
@@ -769,21 +771,7 @@ static void RemovePreference(NSString *key)
 
 #elif OOLITE_SDL
 
-- (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create
-{
-	NSURL *url = [NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:DESC(@"snapshots-directory-name")]];
-	
-	if (create)
-	{
-		NSString *path = [url path];
-		NSFileManager *fmgr = [NSFileManager defaultManager];
-		if (![fmgr fileExistsAtPath:path])
-		{
-			[fmgr oo_createDirectoryAtPath:path attributes:nil];
-		}
-	}
-	return url;
-}
+// -snapshotsURLCreatingIfNeeded: is Mac-only: nothing on SDL called it (bead oo-3rb.13).
 
 #else
 	#error Unknown environment!

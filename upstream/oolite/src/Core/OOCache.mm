@@ -109,6 +109,8 @@ MA 02110-1301, USA.
 
 #import "OOCache.h"
 #import "OOStringParsing.h"
+#import "OOStringBridge.h"
+#include "oofnd/FileSystem.hpp"
 
 
 #ifndef OOCACHE_PERFORM_INTEGRITY_CHECKS
@@ -1101,7 +1103,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, NSString *context)
 }
 
 
-- (void) writeGraphVizToURL:(NSURL *)url
+- (void) writeGraphVizToPath:(NSString *)path
 {
 	NSString			*graphViz = nil;
 	NSData				*data = nil;
@@ -1111,14 +1113,9 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, NSString *context)
 	
 	if (data != nil)
 	{
-		[data writeToURL:url atomically:YES];
+		// -writeToURL:[NSURL fileURLWithPath:path] atomically:YES (bead oo-3rb.13).
+		(void)oo::fs::writeFile(oo::fs::pathFromUTF8(oo::StdString(path)), oo::Data([data bytes], [data length]), oo::fs::WriteMode::atomic);
 	}
-}
-
-
-- (void) writeGraphVizToPath:(NSString *)path
-{
-	[self writeGraphVizToURL:[NSURL fileURLWithPath:path]];
 }
 
 @end

@@ -110,16 +110,26 @@ if command -v ccache >/dev/null 2>&1; then
 fi
 jobs="${OO_OOFND_JOBS:-$(nproc 2>/dev/null || echo 4)}"
 
+# link_libs <test.cpp>: the system libraries a test links, from its "// oofnd-link-windows:" line
+# (Windows only; e.g. test_http: WinHTTP and winsock). Mirrors tests/unit/oofnd/meson.build.
+link_libs() {
+	case "$(uname -s)" in
+		MINGW*|MSYS*|CYGWIN*) sed -n 's|^// oofnd-link-windows: ||p' "$1" ;;
+	esac
+}
+
 # build_one <test.cpp> <plain|asan>: compile then link one binary; its log is kept for the report.
 build_one() {
 	local t="$1" kind="$2" name out
+	local -a libs
 	name="$(basename "$t" .cpp)"
+	read -r -a libs <<< "$(link_libs "$t")"
 	if [ "$kind" = plain ]; then
 		out="$work/$name"
-		"${cc[@]}" "${flags[@]}" "${incs[@]}" -c "$t" -o "$out.o" > "$out.build.log" 2>&1 			&& "$CXX" "${flags[@]}" "$out.o" -o "$out.exe" >> "$out.build.log" 2>&1
+		"${cc[@]}" "${flags[@]}" "${incs[@]}" -c "$t" -o "$out.o" > "$out.build.log" 2>&1 			&& "$CXX" "${flags[@]}" "$out.o" -o "$out.exe" "${libs[@]}" >> "$out.build.log" 2>&1
 	else
 		out="$work/${name}_asan"
-		"${cc[@]}" "${asan_flags[@]}" "${incs[@]}" -c "$t" -o "$out.o" > "$out.build.log" 2>&1 			&& "$CXX" "${asan_flags[@]}" -fuse-ld=lld "$out.o" -o "$out.exe" >> "$out.build.log" 2>&1
+		"${cc[@]}" "${asan_flags[@]}" "${incs[@]}" -c "$t" -o "$out.o" > "$out.build.log" 2>&1 			&& "$CXX" "${asan_flags[@]}" -fuse-ld=lld "$out.o" -o "$out.exe" "${libs[@]}" >> "$out.build.log" 2>&1
 	fi
 }
 

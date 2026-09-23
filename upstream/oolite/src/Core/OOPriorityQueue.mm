@@ -30,6 +30,8 @@ SOFTWARE.
 #import "OOPriorityQueue.h"
 #import "OOFunctionAttributes.h"
 #include "oofnd/objc/OOException.h"
+#import "OOStringBridge.h"
+#include "oofnd/FileSystem.hpp"
 
 
 /*	Capacity grows by 50% each time. kMinCapacity must be at least 2 or Bad
@@ -688,7 +690,7 @@ static NSString *EscapedString(NSString *string)
 }
 
 
-- (void) writeGraphVizToURL:(NSURL *)url
+- (void) writeGraphVizToPath:(NSString *)path
 {
 	NSString			*graphViz = nil;
 	NSData				*data = nil;
@@ -698,14 +700,9 @@ static NSString *EscapedString(NSString *string)
 	
 	if (data != nil)
 	{
-		[data writeToURL:url atomically:YES];
+		// -writeToURL:[NSURL fileURLWithPath:path] atomically:YES (bead oo-3rb.13).
+		(void)oo::fs::writeFile(oo::fs::pathFromUTF8(oo::StdString(path)), oo::Data([data bytes], [data length]), oo::fs::WriteMode::atomic);
 	}
-}
-
-
-- (void) writeGraphVizToPath:(NSString *)path
-{
-	[self writeGraphVizToURL:[NSURL fileURLWithPath:path]];
 }
 
 @end

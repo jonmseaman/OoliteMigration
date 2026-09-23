@@ -136,6 +136,7 @@ MA 02110-1301, USA.
 - (IBAction) showSnapshotsAction:(id)sender;
 - (IBAction) showAddOnsAction:(id)sender;
 - (void) recenterVirtualJoystick;
+- (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create;
 #endif
 
 - (void) exitAppWithContext:(NSString *)context;
@@ -173,8 +174,6 @@ MA 02110-1301, USA.
 - (void) setGameView:(MyOpenGLView *)view;
 
 - (void)windowDidResize;
-
-- (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create;
 
 @end
 
