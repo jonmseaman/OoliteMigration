@@ -30,6 +30,7 @@ SOFTWARE.
 */
 
 #import "OOOXPVerifier.h"
+#include "oofnd/objc/OORuntime.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
 
@@ -378,7 +379,7 @@ static void OpenLogFile(NSString *name);
 		{
 			if ([stageName isKindOfClass:[NSString class]])
 			{
-				stageClass = NSClassFromString(stageName);
+				stageClass = OOClassFromName([stageName UTF8String]);
 				if (stageClass == Nil)
 				{
 					OOLog(@"verifyOXP.registration.failed", @"Attempt to register unknown class %@ as a verifier stage, ignoring.", stageName);

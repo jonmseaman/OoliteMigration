@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "PlayerEntityLegacyScriptEngine.h"
+#include "oofnd/objc/OORuntime.h"
 #import "PlayerEntityScriptMethods.h"
 #import "PlayerEntitySound.h"
 #import "PlayerEntityContracts.h"
@@ -209,7 +210,7 @@ static void PerformActionStatment(NSArray *statement, Entity *target)
 	selectorString = [statement objectAtIndex:1];
 	if ([statement count] > 2)  argumentString = [statement objectAtIndex:2];
 	
-	selector = NSSelectorFromString(selectorString);
+	selector = OOSelectorFromName([selectorString UTF8String]);
 	
 	if (target == nil || ![target respondsToSelector:selector])
 	{
@@ -504,7 +505,7 @@ static BOOL sRunningScript = NO;
 	}
 	else
 	{
-		selector = NSSelectorFromString(selectorString);
+		selector = OOSelectorFromName([selectorString UTF8String]);
 	}
 	
 	expandedRHS = [self expandScriptRightHandSide:operandArray];
@@ -652,7 +653,7 @@ static BOOL sRunningScript = NO;
 		
 		if ([[component objectAtIndex:0] boolValue])
 		{
-			value = [[self performSelector:NSSelectorFromString(value)] description];
+			value = [[self performSelector:OOSelectorFromName([value UTF8String])] description];
 			if (value == nil)  value = @"(null)";	// for backwards compatibility
 		}
 		
@@ -822,7 +823,7 @@ static BOOL sRunningScript = NO;
 		}
 		else if (([valueString hasSuffix:@"_number"])||([valueString hasSuffix:@"_bool"])||([valueString hasSuffix:@"_string"]))
 		{
-			SEL valueselector = NSSelectorFromString(valueString);
+			SEL valueselector = OOSelectorFromName([valueString UTF8String]);
 			if ([self respondsToSelector:valueselector])
 			{
 				[resultString replaceOccurrencesOfString:valueString withString:[NSString stringWithFormat:@"%@", [self performSelector:valueselector]] options:NSLiteralSearch range:NSMakeRange(0, [resultString length])];

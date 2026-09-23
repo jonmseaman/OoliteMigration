@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OOPListSchemaVerifier.h"
+#include "oofnd/objc/OORuntime.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
 
@@ -707,7 +708,7 @@ static BOOL ApplyStringTest(NSString *string, id test, SEL testSelector, NSStrin
 	testIMP = (BOOL(*)(id, SEL, NSString *))[string methodForSelector:testSelector];
 	if (testIMP == NULL)
 	{
-		*outError = Error(kPListErrorInternal, &keyPath, @"OOPListSchemaVerifier internal error: NSString does not respond to test selector %@.", NSStringFromSelector(testSelector));
+		*outError = Error(kPListErrorInternal, &keyPath, @"OOPListSchemaVerifier internal error: NSString does not respond to test selector %s.", OOSelectorName(testSelector));
 		return NO;
 	}
 	

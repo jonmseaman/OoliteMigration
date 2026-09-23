@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "AI.h"
+#include "oofnd/objc/OORuntime.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
 #import "ResourceManager.h"
@@ -548,7 +549,7 @@ static AIStackElement *sStack = NULL;
 				dataString = [[tokens subarrayWithRange:NSMakeRange(1, tokenCount - 1)] componentsJoinedByString:@" "];
 			}
 			
-			SEL selector = NSSelectorFromString(selectorStr);
+			SEL selector = OOSelectorFromName([selectorStr UTF8String]);
 			if ([owner respondsToSelector:selector])
 			{
 				if (dataString != nil)  [owner performSelector:selector withObject:dataString];
