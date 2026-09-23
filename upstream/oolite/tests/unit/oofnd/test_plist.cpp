@@ -217,6 +217,31 @@ OO_TEST(loneSurrogatesAreKeptAsWtf8)
 	OO_CHECK_EQ(oo_test::dump(PList(w)), "S\"\\uD800\"");
 }
 
+OO_TEST(byteOrderMarksFollowNSString)
+{
+	// -initWithCharacters: drops a leading U+FEFF; a leading U+FFFE is dropped and the rest is
+	// byte-swapped (GNUstep 1.31.1: "\UFFFEx" -> U+7800, "\UFFFE\UFFFE\U2600" -> U+FEFF '&').
+	std::u16string a = u"﻿abc";
+	oo::plist_detail::applyInitWithCharactersBOM(a);
+	OO_CHECK(a == u"abc");
+	std::u16string b = u"￾x";
+	oo::plist_detail::applyInitWithCharactersBOM(b);
+	OO_CHECK(b == std::u16string(1, static_cast<char16_t>(0x7800)));
+	std::u16string c{static_cast<char16_t>(0xFFFE), static_cast<char16_t>(0xFFFE), static_cast<char16_t>(0x2600)};
+	oo::plist_detail::applyInitWithCharactersBOM(c);
+	OO_CHECK(c == (std::u16string{static_cast<char16_t>(0xFEFF), u'&'}));
+	std::u16string d = u"a﻿";   // only a LEADING mark
+	oo::plist_detail::applyInitWithCharactersBOM(d);
+	OO_CHECK(d == u"a﻿");
+	std::u16string e;
+	oo::plist_detail::applyInitWithCharactersBOM(e);
+	OO_CHECK(e.empty());
+	// From UTF-8 bytes only U+FEFF goes.
+	OO_CHECK_EQ(oo::plist_detail::utf8WithoutLeadingBOM("\xEF\xBB\xBFk"), "k");
+	OO_CHECK_EQ(oo::plist_detail::utf8WithoutLeadingBOM("\xEF\xBF\xBEy"), "\xEF\xBF\xBEy");
+	OO_CHECK_EQ(oo::plist_detail::utf8WithoutLeadingBOM("k\xEF\xBB\xBF"), "k\xEF\xBB\xBF");
+}
+
 OO_TEST(malformedUtf8ReadsAsLatin1Units)
 {
 	// A stray continuation byte and a truncated sequence each become one code unit.

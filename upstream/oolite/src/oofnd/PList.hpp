@@ -455,6 +455,35 @@ inline void appendUtf16AsUtf8(std::string& out, const char16_t* units, std::size
 	}
 }
 
+namespace plist_detail {
+
+// What GNUstep's -[NSString initWithCharacters:length:] does to the units it is given, and so
+// what every string built that way in the plist code gets (old-style quoted strings, XML
+// entities and \U escapes, the XML writer's escaped text): a leading U+FEFF is dropped, and a
+// leading U+FFFE is dropped AND the remaining units are byte-swapped ("\UFFFEx" is U+7800).
+// Strings made from UTF-8 bytes (-initWithBytes:length:encoding:) only lose a leading U+FEFF;
+// see utf8WithoutLeadingBOM(). Both verified against GNUstep 1.31.1.
+inline void applyInitWithCharactersBOM(std::u16string& units)
+{
+	if (units.empty()) return;
+	if (units[0] == 0xFEFF)
+	{
+		units.erase(0, 1);
+	}
+	else if (units[0] == 0xFFFE)
+	{
+		units.erase(0, 1);
+		for (char16_t& u : units) u = static_cast<char16_t>(((u & 0xFF) << 8) | (u >> 8));
+	}
+}
+
+inline std::string_view utf8WithoutLeadingBOM(std::string_view s)
+{
+	return s.substr(0, 3) == "\xEF\xBB\xBF" ? s.substr(3) : s;
+}
+
+} // namespace plist_detail
+
 inline std::string utf16ToUtf8(std::u16string_view s)
 {
 	std::string out;
