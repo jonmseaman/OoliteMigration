@@ -49,6 +49,7 @@ sets that will then be immutablized.
 #import "OOFunctionAttributes.h"
 #import "OOCollectionExtractors.h"
 #import "legacy_random.h"
+#include "oofnd/objc/OOException.h"
 
 
 static NSString * const	kObjectsKey = @"objects";
@@ -168,7 +169,7 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 	// If count is not zero and one of the paramters is nil, we've got us a programming error.
 	if (objects == NULL || weights == NULL)
 	{
-		[NSException raise:NSInvalidArgumentException format:@"Attempt to create %@ with non-zero count but nil objects or weights.", @"OOProbabilitySet"];
+		[OOException raise:OOInvalidArgumentException format:"Attempt to create %s with non-zero count but nil objects or weights.", "OOProbabilitySet"];
 	}
 	
 	// Single object: simple one-object set. Expected to be quite common.
@@ -810,7 +811,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 	if (count != 0 && (objects == NULL || weights == NULL))
 	{
 		[self release];
-		[NSException raise:NSInvalidArgumentException format:@"Attempt to create %@ with non-zero count but nil objects or weights.", @"OOMutableProbabilitySet"];
+		[OOException raise:OOInvalidArgumentException format:"Attempt to create %s with non-zero count but nil objects or weights.", "OOMutableProbabilitySet"];
 	}
 	
 	// Set up & go.
@@ -1074,6 +1075,6 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 
 static void ThrowAbstractionViolationException(id obj)
 {
-	[NSException raise:NSGenericException format:@"Attempt to use abstract class %@ - this indicates an incorrect initialization.", [obj class]];
+	[OOException raise:OOGenericException format:"Attempt to use abstract class %s - this indicates an incorrect initialization.", class_getName(object_getClass(obj))];
 	abort();	// unreachable
 }
