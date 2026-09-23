@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "OOJoystickManager.h"
 #import "OOLogging.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 
 
 static Class sStickHandlerClass = Nil;
@@ -389,9 +389,9 @@ static id sSharedStickHandler = nil;
 
 - (void) setFunction:(int)function withDict:(NSDictionary *)stickFn
 {
-	BOOL isAxis = [stickFn oo_boolForKey:STICK_ISAXIS];
-	int stickNum = [stickFn oo_intForKey:STICK_NUMBER];
-	int stickAxBt = [stickFn oo_intForKey:STICK_AXBUT];
+	BOOL isAxis = oo::PListView(stickFn).get<BOOL>(STICK_ISAXIS);
+	int stickNum = oo::PListView(stickFn).get<int>(STICK_NUMBER);
+	int stickAxBt = oo::PListView(stickFn).get<int>(STICK_AXBUT);
 	
 	if (isAxis)
 	{

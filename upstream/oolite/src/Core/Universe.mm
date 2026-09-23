@@ -4413,6 +4413,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			return 1 + (Ranrot() % 6) + (Ranrot() % 6) + (Ranrot() % 6);
 		case 2 :	// GRAMS
 			return 4 + (Ranrot() % 16) + (Ranrot() % 11) + (Ranrot() % 6);
+		case UNITS_UNKNOWN :	// not a unit (ADR-0036): warned about below, as any other value was
+			break;
 	}
 	OOLog(@"universe.commodityAmount.warning",@"Commodity %@ has an unrecognised mass unit, assuming tonnes",co_type);
 	return 1;

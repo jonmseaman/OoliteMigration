@@ -44,6 +44,7 @@ SOFTWARE.
 #import "OOJSScript.h"
 
 #import "OODebugStandards.h"
+#import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
 
@@ -1223,9 +1224,12 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 		to swap these roles here.
 	*/
 	
-	rolesAndWeights = OOParseRolesFromString(roles);
   // add default [shipKey] role
-	NSMutableDictionary *mutableDict = [NSMutableDictionary dictionaryWithDictionary:rolesAndWeights];
+	NSMutableDictionary *mutableDict = [NSMutableDictionary dictionary];
+	for (const auto &[parsedRole, weight] : OOParseRolesFromString(oo::StdString(roles)))
+	{
+		[mutableDict setObject:[NSNumber numberWithFloat:weight] forKey:oo::NSStringFrom(parsedRole)];
+	}
 	[mutableDict setObject:[NSNumber numberWithFloat:1.0] forKey:[[[NSString alloc] initWithFormat:@"[%@]",shipKey] autorelease]];
 	rolesAndWeights = mutableDict;
 	

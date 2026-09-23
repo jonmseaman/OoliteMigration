@@ -25,9 +25,10 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenALController.h"
 
-@interface OOSound: NSObject
+@interface OOSound: OOObject
 
 + (BOOL) setUp;
 + (void) update;

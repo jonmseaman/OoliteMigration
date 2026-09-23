@@ -27,7 +27,7 @@ SOFTWARE.
 
 #import "OOMaterialSpecifier.h"
 #import "OOColor.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOTexture.h"
 #import "Universe.h"
 #import "NSDictionaryOOExtensions.h"
@@ -149,21 +149,21 @@ NSString * const kOOMaterialLightMapsName					= @"light_map";
 
 - (NSDictionary *) oo_diffuseMapSpecifierWithDefaultName:(NSString *)name
 {
-	return [self oo_textureSpecifierForKey:kOOMaterialDiffuseMapName defaultName:name];
+	return oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialDiffuseMapName, name);
 }
 
 
 - (NSDictionary *) oo_combinedSpecularMapSpecifier
 {
 	if ([self oo_rawSpecularExponentValue] == 0)  return nil;
-	return [self oo_textureSpecifierForKey:kOOMaterialCombinedSpecularMapName defaultName:nil];
+	return oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialCombinedSpecularMapName, nil);
 }
 
 
 - (NSDictionary *) oo_specularColorMapSpecifier
 {
 	if ([self oo_rawSpecularExponentValue] == 0)  return nil;
-	NSDictionary *result = [self oo_textureSpecifierForKey:kOOMaterialSpecularColorMapName defaultName:nil];
+	NSDictionary *result = oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialSpecularColorMapName, nil);
 	if (result == nil)  result = [self oo_combinedSpecularMapSpecifier];
 	return result;
 }
@@ -172,7 +172,7 @@ NSString * const kOOMaterialLightMapsName					= @"light_map";
 - (NSDictionary *) oo_specularExponentMapSpecifier
 {
 	if ([self oo_rawSpecularExponentValue] == 0)  return nil;
-	NSDictionary *result = [self oo_textureSpecifierForKey:kOOMaterialSpecularExponentMapName defaultName:nil];
+	NSDictionary *result = oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialSpecularExponentMapName, nil);
 	if (result == nil)  result = [[self oo_combinedSpecularMapSpecifier] dictionaryByAddingObject:@"a" forKey:@"extract_channel"];
 	return result;
 }
@@ -181,13 +181,13 @@ NSString * const kOOMaterialLightMapsName					= @"light_map";
 - (NSDictionary *) oo_normalMapSpecifier
 {
 	if ([self oo_normalAndParallaxMapSpecifier] != nil)  return nil;
-	return [self oo_textureSpecifierForKey:kOOMaterialNormalMapName defaultName:nil];
+	return oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialNormalMapName, nil);
 }
 
 
 - (NSDictionary *) oo_parallaxMapSpecifier
 {
-	id spec = [self oo_textureSpecifierForKey:kOOMaterialParallaxMapName defaultName:nil];
+	id spec = oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialParallaxMapName, nil);
 	if (spec == nil)
 	{
 		// Default is alpha channel of normal_and_parallax_map.
@@ -201,50 +201,50 @@ NSString * const kOOMaterialLightMapsName					= @"light_map";
 
 - (NSDictionary *) oo_normalAndParallaxMapSpecifier
 {
-	return [self oo_textureSpecifierForKey:kOOMaterialNormalAndParallaxMapName defaultName:nil];
+	return oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialNormalAndParallaxMapName, nil);
 }
 
 
 - (NSDictionary *) oo_emissionMapSpecifier
 {
-	return [self oo_textureSpecifierForKey:kOOMaterialEmissionMapName defaultName:nil];
+	return oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialEmissionMapName, nil);
 }
 
 
 - (NSDictionary *) oo_illuminationMapSpecifier
 {
-	return [self oo_textureSpecifierForKey:kOOMaterialIlluminationMapName defaultName:nil];
+	return oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialIlluminationMapName, nil);
 }
 
 
 - (NSDictionary *) oo_emissionAndIlluminationMapSpecifier
 {
 	if ([self oo_emissionMapSpecifier] != nil || [self oo_illuminationMapSpecifier] != nil)  return nil;
-	return [self oo_textureSpecifierForKey:kOOMaterialEmissionAndIlluminationMapName defaultName:nil];
+	return oo::PListView(self).get<oo::TextureSpecifier>(kOOMaterialEmissionAndIlluminationMapName, nil);
 }
 
 
 - (float) oo_parallaxScale
 {
-	return [self oo_floatForKey:kOOMaterialParallaxScaleName defaultValue:kOOMaterialDefaultParallaxScale];
+	return oo::PListView(self).get<float>(kOOMaterialParallaxScaleName, kOOMaterialDefaultParallaxScale);
 }
 
 
 - (float) oo_parallaxBias
 {
-	return [self oo_floatForKey:kOOMaterialParallaxBiasName];
+	return oo::PListView(self).get<float>(kOOMaterialParallaxBiasName);
 }
 
 
 - (BOOL) oo_gammaCorrect
 {
-	return [self oo_boolForKey:kOOMaterialGammaCorrectName defaultValue:![[NSUserDefaults standardUserDefaults] boolForKey:@"no-gamma-correct"]];
+	return oo::PListView(self).get<BOOL>(kOOMaterialGammaCorrectName, ![[NSUserDefaults standardUserDefaults] boolForKey:@"no-gamma-correct"]);
 }
 
 
 - (float) oo_gloss
 {
-	return OOClamp_0_1_f([self oo_floatForKey:kOOMaterialGlossName defaultValue:0.375f]);
+	return OOClamp_0_1_f(oo::PListView(self).get<float>(kOOMaterialGlossName, 0.375f));
 }
 
 
