@@ -418,7 +418,7 @@ withPropertyList:(id)rootPList
 	expectedType:(id)localSchema	// shared selector (OOPListSchemaVerifierDelegate; proposed ADR-0043)
 {
 	// FIXME: use fancy new error codes to provide useful error descriptions.
-	[self message:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", name, [error plistKeyPathDescription], [error localizedFailureReason]];
+	[self message:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", name, oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:oo::PListFrom([[error userInfo] objectForKey:oo::NSStringFrom(kPListKeyPathErrorKey)])]), [error localizedFailureReason]];
 	return YES;
 }
 
