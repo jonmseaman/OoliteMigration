@@ -10,6 +10,8 @@
 #import <Foundation/NSFileManager.h>
 #import <Foundation/NSPathUtilities.h>
 #import <Foundation/NSDictionary.h>
+#import "OOStringBridge.h"
+#include "oofnd/Log.hpp"
 
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -45,7 +47,7 @@
 	} else {
 		// Fallback block prevents runtime crashes if files are missing during dev/build refactors
 		workingDict = [[NSMutableDictionary alloc] init];
-		NSLog(@"[Oolite-Core] Warning: Failed to find info-gnustep.plist at calculated path: %@", plistPath);
+		OO_LOG("unclassified", "[Oolite-Core] Warning: Failed to find info-gnustep.plist at calculated path: {}", oo::StdString(plistPath));
 	}
 
 	// Return the dictionary cleanly managed for memory
