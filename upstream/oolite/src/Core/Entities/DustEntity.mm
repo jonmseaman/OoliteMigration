@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 #endif
 
 #import "PlayerEntity.h"
+#import "OOFoundationBridge.h"
 
 
 #define FAR_PLANE		(DUST_SCALE * 0.50f)
@@ -213,10 +214,10 @@ enum
 		NSDictionary *attributes = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kTangentAttributeIndex]
 															   forKey:@"aWarpiness"];
 		
-		shader = [[OOShaderProgram shaderProgramWithVertexShaderName:@"oolite-dust.vertex"
-												  fragmentShaderName:@"oolite-dust.fragment"
-															  prefix:prefix
-												   attributeBindings:attributes] retain];
+		shader = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-dust.vertex"
+												  fragmentShaderName:"oolite-dust.fragment"
+															  prefix:oo::OptionalString(prefix)
+												   attributeBindings:oo::PListFrom(attributes)] retain];
 		
 		DESTROY(uniforms);
 		OOShaderUniform *uWarp = [[OOShaderUniform alloc] initWithName:@"uWarp"
