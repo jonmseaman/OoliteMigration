@@ -39,7 +39,7 @@ MA 02110-1301, USA.
 #import "NSScannerOOExtensions.h"
 #import "OODebugFlags.h"
 #import "NSObjectOOExtensions.h"
-#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #ifndef NDEBUG
 uint32_t gLiveEntityCount = 0;
@@ -47,14 +47,15 @@ size_t gTotalEntityMemory = 0;
 #endif
 
 
+// OOLog classes: oo::NSStringFrom() them.
 #ifndef NDEBUG
-static NSString * const kOOLogEntityAddToList				= @"entity.linkedList.add";
-static NSString * const kOOLogEntityAddToListError			= @"entity.linkedList.add.error";
-static NSString * const kOOLogEntityRemoveFromList			= @"entity.linkedList.remove";
-static NSString * const kOOLogEntityRemoveFromListError		= @"entity.linkedList.remove.error";
-static NSString * const kOOLogEntityUpdateError				= @"entity.linkedList.update.error";
+constexpr const char *kOOLogEntityAddToList				= "entity.linkedList.add";
+constexpr const char *kOOLogEntityAddToListError			= "entity.linkedList.add.error";
+constexpr const char *kOOLogEntityRemoveFromList			= "entity.linkedList.remove";
+constexpr const char *kOOLogEntityRemoveFromListError		= "entity.linkedList.remove.error";
+constexpr const char *kOOLogEntityUpdateError				= "entity.linkedList.update.error";
 #endif
-static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.verify.error";
+constexpr const char *kOOLogEntityVerificationError		= "entity.linkedList.verify.error";
 
 
 
@@ -80,8 +81,6 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 	
 	no_draw_distance = 100000.0;  //  10 km
 	
-	collidingEntities = [[NSMutableArray alloc] init];
-	
 	scanClass = CLASS_NOT_SET;
 	[self setStatus:STATUS_COCKPIT_DISPLAY];
 	
@@ -104,7 +103,6 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 - (void) dealloc
 {
 	[UNIVERSE ensureEntityReallyRemoved:self];
-	DESTROY(collidingEntities);
 	DESTROY(collisionRegion);
 	[self deleteJSSelf];
 	[self setOwner:nil];
@@ -119,9 +117,9 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 }
 
 
-- (NSString *)descriptionComponents
+- (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"position: %@ scanClass: %@ status: %@", HPVectorDescription([self position]), OOStringFromScanClass([self scanClass]), OOStringFromEntityStatus([self status])];
+	return oo::NSStringFrom(oo::str::format("position: %s scanClass: %s status: %s", cxx_HPVectorDescription([self position]).c_str(), oo::DescriptionOf(OOStringFromScanClass([self scanClass])).c_str(), oo::DescriptionOf(OOStringFromEntityStatus([self status])).c_str()));
 }
 
 
@@ -232,7 +230,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 {
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
-		OOLog(kOOLogEntityAddToList, @"DEBUG adding entity %@ to linked lists", self);
+		OOLog(oo::NSStringFrom(kOOLogEntityAddToList), @"DEBUG adding entity %@ to linked lists", self);
 #endif
 	//
 	// insert at the start
@@ -278,7 +276,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 	{
 		if (![self checkLinkedLists])
 		{
-			OOLog(kOOLogEntityAddToListError, @"DEBUG LINKED LISTS - problem encountered while adding %@ to linked lists", self);
+			OOLog(oo::NSStringFrom(kOOLogEntityAddToListError), @"DEBUG LINKED LISTS - problem encountered while adding %@ to linked lists", self);
 			[UNIVERSE debugDumpEntities];
 		}
 	}
@@ -290,7 +288,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 {
 #ifndef NDEBUG
 	if (gDebugFlags & DEBUG_LINKED_LISTS)
-		OOLog(kOOLogEntityRemoveFromList, @"DEBUG removing entity %@ from linked lists", self);
+		OOLog(oo::NSStringFrom(kOOLogEntityRemoveFromList), @"DEBUG removing entity %@ from linked lists", self);
 #endif
 	
 	if ((x_next == nil)&&(x_previous == nil))	// removed already!
@@ -325,7 +323,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 	{
 		if (![self checkLinkedLists])
 		{
-			OOLog(kOOLogEntityRemoveFromListError, @"DEBUG LINKED LISTS - problem encountered while removing %@ from linked lists", self);
+			OOLog(oo::NSStringFrom(kOOLogEntityRemoveFromListError), @"DEBUG LINKED LISTS - problem encountered while removing %@ from linked lists", self);
 			[UNIVERSE debugDumpEntities];
 		}
 	}
@@ -352,7 +350,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 		}
 		if ((check)||(n > 0))
 		{
-			OOLog(kOOLogEntityVerificationError, @"Broken x_next %@ list (%d) ***", UNIVERSE->x_list_start, n);
+			OOLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken x_next %@ list (%d) ***", UNIVERSE->x_list_start, n);
 			return NO;
 		}
 		//
@@ -361,7 +359,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 		while ((n--)&&(check))	check = check->x_previous;
 		if ((check)||(n > 0))
 		{
-			OOLog(kOOLogEntityVerificationError, @"Broken x_previous %@ list (%d) ***", UNIVERSE->x_list_start, n);
+			OOLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken x_previous %@ list (%d) ***", UNIVERSE->x_list_start, n);
 			return NO;
 		}
 		//
@@ -374,7 +372,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 		}
 		if ((check)||(n > 0))
 		{
-			OOLog(kOOLogEntityVerificationError, @"Broken y_next %@ list (%d) ***", UNIVERSE->y_list_start, n);
+			OOLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken y_next %@ list (%d) ***", UNIVERSE->y_list_start, n);
 			return NO;
 		}
 		//
@@ -383,7 +381,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 		while ((n--)&&(check))	check = check->y_previous;
 		if ((check)||(n > 0))
 		{
-			OOLog(kOOLogEntityVerificationError, @"Broken y_previous %@ list (%d) ***", UNIVERSE->y_list_start, n);
+			OOLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken y_previous %@ list (%d) ***", UNIVERSE->y_list_start, n);
 			return NO;
 		}
 		//
@@ -396,7 +394,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 		}
 		if ((check)||(n > 0))
 		{
-			OOLog(kOOLogEntityVerificationError, @"Broken z_next %@ list (%d) ***", UNIVERSE->z_list_start, n);
+			OOLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken z_next %@ list (%d) ***", UNIVERSE->z_list_start, n);
 			return NO;
 		}
 		//
@@ -405,7 +403,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 		while ((n--)&&(check))	check = check->z_previous;
 		if ((check)||(n > 0))
 		{
-			OOLog(kOOLogEntityVerificationError, @"Broken z_previous %@ list (%d) ***", UNIVERSE->z_list_start, n);
+			OOLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken z_previous %@ list (%d) ***", UNIVERSE->z_list_start, n);
 			return NO;
 		}
 	}
@@ -425,7 +423,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 	{
 		if (![self checkLinkedLists])
 		{
-			OOLog(kOOLogEntityVerificationError, @"DEBUG LINKED LISTS problem encountered before updating linked lists for %@", self);
+			OOLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"DEBUG LINKED LISTS problem encountered before updating linked lists for %@", self);
 			[UNIVERSE debugDumpEntities];
 		}
 	}
@@ -506,7 +504,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 	{
 		if (![self checkLinkedLists])
 		{
-			OOLog(kOOLogEntityUpdateError, @"DEBUG LINKED LISTS problem encountered after updating linked lists for %@", self);
+			OOLog(oo::NSStringFrom(kOOLogEntityUpdateError), @"DEBUG LINKED LISTS problem encountered after updating linked lists for %@", self);
 			[UNIVERSE debugDumpEntities];
 		}
 	}
@@ -923,9 +921,9 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 }
 
 
-- (NSMutableArray *) collisionArray
+- (std::vector<oo::ObjCRef<Entity *>> *) cxx_collidingEntities
 {
-	return collidingEntities;
+	return &collidingEntities;
 }
 
 
@@ -990,7 +988,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 }
 
 
-- (void) takeEnergyDamage:(double) amount from:(Entity *) ent becauseOf:(Entity *) other weaponIdentifier:(NSString *)weaponIdentifier
+- (void) takeEnergyDamage:(double) amount from:(Entity *) ent becauseOf:(Entity *) other weaponIdentifier:(id)weaponIdentifier	// shared selector (proposed ADR-0043)
 {
 	
 }
@@ -1015,9 +1013,9 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 
 - (void)dumpSelfState
 {
-	NSMutableArray		*flags = nil;
-	NSString			*flagsString = nil;
-	id					owner = [self owner];
+	std::vector<std::string>	flags;
+	std::string					flagsString;
+	id							owner = [self owner];
 	
 	if (owner == self)  owner = @"self";
 	else if (owner == nil)  owner = @"none";
@@ -1032,8 +1030,7 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 	OOLog(@"dumpState.entity", @"Mass: %g", mass);
 	OOLog(@"dumpState.entity", @"Owner: %@", owner);
 	
-	flags = [NSMutableArray array];
-	#define ADD_FLAG_IF_SET(x)		if (x) { [flags addObject:@#x]; }
+	#define ADD_FLAG_IF_SET(x)		if (x) { flags.push_back(#x); }
 	ADD_FLAG_IF_SET(isShip);
 	ADD_FLAG_IF_SET(isStation);
 	ADD_FLAG_IF_SET(isPlayer);
@@ -1043,8 +1040,13 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 	ADD_FLAG_IF_SET(hasRotated);
 	ADD_FLAG_IF_SET(isSunlit);
 	ADD_FLAG_IF_SET(throw_sparks);
-	flagsString = [flags count] ? [flags componentsJoinedByString:@", "] : (NSString *)@"none";
-	OOLog(@"dumpState.entity", @"Flags: %@", flagsString);
+	for (const std::string &flag : flags)
+	{
+		if (!flagsString.empty())  flagsString += ", ";	// -componentsJoinedByString:
+		flagsString += flag;
+	}
+	if (flags.empty())  flagsString = "none";
+	OOLog(@"dumpState.entity", @"Flags: %@", oo::NSStringFrom(flagsString));
 	OOLog(@"dumpState.entity", @"Collision Test Filter: %u", collisionTestFilter);
 
 }
@@ -1100,27 +1102,24 @@ static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.ver
 }
 
 #ifndef NDEBUG
-- (NSString *) descriptionForObjDumpBasic
+- (std::optional<std::string>) descriptionForObjDumpBasic
 {
-	NSString *result = [self descriptionComponents];
-	if (result != nil)  result = [NSString stringWithFormat:@"%s %@", OOClassName([self class]), result];
-	else  result = [self description];
-	
-	return result;
+	id components = [self descriptionComponents];
+	if (components != nil)  return oo::str::format("%s %s", OOClassName([self class]), oo::DescriptionOf(components).c_str());
+	return oo::OptionalString([self description]);
 }
 
 
-- (NSString *) descriptionForObjDump
+- (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
 {
-	NSString *result = [self descriptionForObjDumpBasic];
-	
-	result = [result stringByAppendingFormat:@" range: %g (visible: %@)", HPdistance([self position], [PLAYER position]), [self isVisible] ? @"yes" : @"no"];
-	
-	return result;
+	const std::optional<std::string> result = [self descriptionForObjDumpBasic];
+	if (!result)  return nil;	// -stringByAppendingFormat: sent to nil
+
+	return oo::NSStringFrom(*result + oo::str::format(" range: %g (visible: %s)", HPdistance([self position], [PLAYER position]), [self isVisible] ? "yes" : "no"));
 }
 
 
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
 	return nil;
 }
