@@ -484,6 +484,8 @@ TickClock::time_point NextGameTick()
 	performer was then never released (it leaked its target and argument).
 	Anything else thrown propagated.
 */
+namespace {
+
 struct OODeferredCall
 {
 	std::chrono::steady_clock::time_point	deadline;
@@ -492,7 +494,9 @@ struct OODeferredCall
 	id										argument;
 };
 
-static std::vector<OODeferredCall>			sDeferredCalls;	// in scheduling order
+std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
+
+}
 
 
 void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay)
@@ -511,8 +515,10 @@ void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval
 }
 
 
+namespace {
+
 // One step of the run loop's timer firing: the first due call in scheduling order.
-static void FireOneDueDeferredCall(void)
+void FireOneDueDeferredCall(void)
 {
 	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
 	for (std::vector<OODeferredCall>::iterator it = sDeferredCalls.begin(); it != sDeferredCalls.end(); ++it)
@@ -543,7 +549,7 @@ static void FireOneDueDeferredCall(void)
 
 
 // The earliest pending deferred call, if any: part of the run loop's wait limit.
-static bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline)
+bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline)
 {
 	bool found = false;
 	for (const OODeferredCall &call : sDeferredCalls)
@@ -555,6 +561,8 @@ static bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outD
 		}
 	}
 	return found;
+}
+
 }
 
 
