@@ -415,8 +415,8 @@ typedef enum
 	oo::PList::Array		parcels;			// Dicts (PlayerEntity (Contracts))
 	oo::PList::Dict			parcel_record;		// arrival time (double) by sender name
 	
-	NSMutableArray			*contracts;
-	NSMutableDictionary		*contract_record;
+	oo::PList::Array		contracts;			// cargo contract Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			contract_record;	// arrival time (double) by cargo ID
 	
 	NSMutableDictionary		*shipyard_record;
 	
