@@ -420,7 +420,10 @@ MA 02110-1301, USA.
 
 	float base = oo::PListView(good).get<float>(kOOCommodityQuantityAverage);
 	float econ = base * oo::PListView(good).get<float>(kOOCommodityQuantityEconomic) * bias;
-	float random = base * oo::PListView(good).get<float>(kOOCommodityQuantityRandom) * (randf() - randf());
+	// Two draws, in the order clang evaluated the operands of the former (randf() - randf()).
+	float firstDraw = randf();
+	float secondDraw = randf();
+	float random = base * oo::PListView(good).get<float>(kOOCommodityQuantityRandom) * (firstDraw - secondDraw);
 	base += econ + random;
 	if (base < 0.0)
 	{
@@ -439,7 +442,10 @@ MA 02110-1301, USA.
 
 	float base = oo::PListView(good).get<float>(kOOCommodityPriceAverage);
 	float econ = base * oo::PListView(good).get<float>(kOOCommodityPriceEconomic) * -bias;
-	float random = base * oo::PListView(good).get<float>(kOOCommodityPriceRandom) * (randf() - randf());
+	// Two draws, in the order clang evaluated the operands of the former (randf() - randf()).
+	float firstDraw = randf();
+	float secondDraw = randf();
+	float random = base * oo::PListView(good).get<float>(kOOCommodityPriceRandom) * (firstDraw - secondDraw);
 	base += econ + random;
 	if (base < 0.0)
 	{
