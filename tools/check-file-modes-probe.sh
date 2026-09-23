@@ -211,6 +211,35 @@ qprobe closed 'python triple-quoted docstring'   '"""\ntools/foo.sh --list\n"""\
 qprobe closed 'heredoc body is not a quote'      'cat <<EOF\ntools/foo.sh\nEOF\ntools/foo.sh\n' 4
 qprobe open   'still open after a blank line'    'V="\n\ntools/foo.sh\n"\n' 3
 
+echo "== defect G: the scan's hit/reject/open-quote set logic across a digit-count boundary =="
+# bead oo-3rb.169: the scan subtracted rejected line numbers with `comm -23` over `sort -n`
+# output. comm needs LEXICAL order, so once line numbers crossed 9 -> 10 it KEPT rejected
+# lines and could DROP real hits. These run the scan's REAL match_candidates and join_sites on
+# a synthetic candidate table whose line numbers span 1, 2 and 3 digits. Under the old
+# sort -n | comm logic, x.sh:10 and x.sh:100 (both rejected as prose) came back as call sites.
+sprobe() { # sprobe <label> <want: space-separated file:line list> <candidates> <open-quote keys>
+	local label="$1" want="$2" cands="$3" openq="$4" got
+	got=$(join_sites <(printf '%b' "$openq") \
+	          <(match_candidates <(pattern_line tools/foo.sh 1) <(printf '%b' "$cands")) \
+	      | cut -f2 | cut -d: -f1-2 | tr '\n' ' ')
+	got=${got% }
+	if [ "$got" = "$want" ]; then pass=$((pass+1)); printf 'ok   %s -> [%s]\n' "$label" "$got"
+	else failn=$((failn+1)); printf 'FAIL %s want=[%s] got=[%s]\n' "$label" "$want" "$got"; fi
+}
+G='x.sh:9\ttools/foo.sh\nx.sh:10\t# tools/foo.sh is prose\nx.sh:11\ttools/foo.sh --x\n'
+G="$G"'x.sh:12\ttools/foo.sh a\nx.sh:99\ttools/foo.sh b\nx.sh:100\t# tools/foo.sh was prose\n'
+G="$G"'x.sh:101\ttools/foo.sh c\ny.sh:2\tpython3 tools/foo.sh\n'
+sprobe 'rejects dropped, hits kept, 1-3 digit lines' 'x.sh:9 x.sh:11 x.sh:12 x.sh:99 x.sh:101' "$G" ''
+sprobe 'open-quote keys drop exactly their line'     'x.sh:9 x.sh:12 x.sh:101' "$G" 'x.sh:11\nx.sh:99\nx.sh:1\nx.sh:10\n'
+sprobe 'a key is file-qualified, not a bare number'  'x.sh:9 x.sh:11 x.sh:12 x.sh:99 x.sh:101' "$G" 'y.sh:9\ny.sh:11\n'
+sprobe 'no candidates at all'                         '' '' ''
+# The multi-file tracker the scan uses resets its state per file: a quote left open at the end
+# of one file must not swallow the next file's lines.
+okeys=$(printf 'a.sh:1:V="\na.sh:2:tools/foo.sh\nb.sh:1:tools/foo.sh\nb.sh:2:W="\nb.sh:3:x\n' \
+        | open_quote_keys | tr '\n' ' ')
+if [ "$okeys" = "a.sh:2 b.sh:3 " ]; then pass=$((pass+1)); echo "ok   open_quote_keys resets per file -> [$okeys]"
+else failn=$((failn+1)); echo "FAIL open_quote_keys resets per file: got [$okeys]"; fi
+
 echo
 echo "probes: pass=$pass fail=$failn"
 [ "$failn" -eq 0 ]

@@ -434,12 +434,16 @@ it. oo-qps cannot compile any of them.
 | `src/Core/Materials/OOTextureLoader+FoundationBridge.h/.mm` | oo-wzti | oo-x1s2 ("Delete OOTextureLoader+FoundationBridge") |
 | `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
 | `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
+| `src/Core/Entities/PlayerEntityScriptMethods+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptMethodsFoundationBridge)`) | oo-8mxr | oo-tj5w ("Delete PlayerEntityScriptMethods+FoundationBridge") |
 | `src/Core/OOCacheManager+FoundationBridge.h/.mm` | oo-19g0 | oo-5pae ("Delete OOCacheManager+FoundationBridge") |
 | `src/Core/GuiDisplayGen+FoundationBridge.h/.mm` (chunked: oo-3rb.92 made it; chunks oo-3rb.93-.96 move their own selectors in) | oo-3rb.92 (chunks of oo-ol63) | oo-q01b ("Delete GuiDisplayGen+FoundationBridge") |
 | `src/SDL/MyOpenGLView+FoundationBridge.h/.mm` (chunked: oo-3rb.110 made it; the later MyOpenGLView chunks move their own selectors in) | oo-3rb.110 | oo-xrkm ("Delete MyOpenGLView+FoundationBridge") |
 | `src/Core/AI+FoundationBridge.h/.mm` | oo-3rb.84 (AI.mm chunks oo-3rb.84..87) | oo-ag2w ("Delete AI+FoundationBridge") |
 | `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
 | `src/Core/ResourceManager+FoundationBridge.h/.mm` | oo-3rb.98 (chunks of oo-2wwr) | oo-0f7h ("Delete ResourceManager+FoundationBridge") |
+| `src/Core/OOSystemDescriptionManager+FoundationBridge.h/.mm` | oo-3rb.107 (chunks of oo-868e) | oo-caz5 ("Delete OOSystemDescriptionManager+FoundationBridge") |
+| `src/Core/Scripting/OOScript+FoundationBridge.h/.mm` | oo-du83 | oo-eu4j ("Delete OOScript+FoundationBridge") |
+| `src/Core/OOSystemDescriptionManager+FoundationBridge.h/.mm` | oo-3rb.107 (chunks of oo-868e) | oo-caz5 ("Delete OOSystemDescriptionManager+FoundationBridge") |
 | `src/Core/OXPVerifier/OOOXPVerifier+FoundationBridge.h/.mm` | oo-hkvv | oo-3rb.168 ("Delete OOOXPVerifier+FoundationBridge") |
 | `src/Core/OOShipRegistry+FoundationBridge.h/.mm` | oo-3rb.114 (chunks of oo-92mj) | oo-b7xq ("Delete OOShipRegistry+FoundationBridge") |
 | `src/Core/Entities/PlayerEntitySound+FoundationBridge.h/.mm` (category `PlayerEntity (SoundFoundationBridge)`) | oo-14c5 | oo-qx1l ("Delete PlayerEntitySound+FoundationBridge") |

@@ -31,7 +31,7 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "PlayerEntityLoadSave.h"
 #include <stdlib.h>
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOOXPVerifier.h"
 #import "OOLoggingExtended.h"
 #import "NSFileManagerOOExtensions.h"
@@ -100,7 +100,7 @@ static GameController *sSharedController = nil;
 		_finishedLaunching = NO;
 		last_timeInterval = [NSDate timeIntervalSinceReferenceDate];
 		delta_t = 0.01; // one hundredth of a second 
-		_animationTimerInterval = [[NSUserDefaults standardUserDefaults] oo_doubleForKey:@"animation_timer_interval" defaultValue:MINIMUM_ANIMATION_TICK];
+		_animationTimerInterval = oo::PListView([NSUserDefaults standardUserDefaults]).get<double>(@"animation_timer_interval", MINIMUM_ANIMATION_TICK);
 		
 		// rather than seeding this with the date repeatedly, seed it
 		// once here at startup
@@ -180,7 +180,7 @@ static GameController *sSharedController = nil;
 - (void) setEcoQoS: (BOOL)efficiencyModeRequested
 {
 #if OOLITE_WINDOWS
-	if ([[NSUserDefaults standardUserDefaults] oo_boolForKey:@"ecoqos" defaultValue:YES])
+	if (oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"ecoqos", YES))
 	{
 		BOOL setEfficiencyMode = !!efficiencyModeRequested; // yes or no, not 42
 		HANDLE currentProcess = GetCurrentProcess();
@@ -456,9 +456,19 @@ static GameController *sSharedController = nil;
 	the next deadline, for what still lives on it (the debug console's streams,
 	OXZ downloads) until their own beads take it off.
 */
-static bool									sGameTickScheduled = false;
-static std::chrono::steady_clock::time_point	sNextGameTick;
-static std::chrono::steady_clock::duration	sGameTickInterval;
+namespace {
+// Held as steady_clock tick counts, as OOLogOutputHandler's flush deadline is: a static
+// time_point or duration has a constructor that may throw (bugprone-throwing-static-initialization).
+using TickClock = std::chrono::steady_clock;
+bool				sGameTickScheduled = false;
+TickClock::rep		sNextGameTick = 0;		// ticks since the clock's epoch
+TickClock::rep		sGameTickInterval = 0;	// ticks
+
+TickClock::time_point NextGameTick()
+{
+	return TickClock::time_point(TickClock::duration(sNextGameTick));
+}
+}
 
 
 /*	Deferred calls (bead oo-3rb.57, proposed ADR-0040): Foundation's timed
@@ -555,8 +565,8 @@ static bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outD
 		NSTimeInterval ti = _animationTimerInterval; // default one two-hundredth of a second (should be a fair bit faster than expected frame rate ~60Hz to avoid problems with phase differences)
 		if (ti <= 0.0)  ti = 0.0001;	// as the Foundation timer did
 		
-		sGameTickInterval = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(ti));
-		sNextGameTick = std::chrono::steady_clock::now() + sGameTickInterval;
+		sGameTickInterval = std::chrono::duration_cast<TickClock::duration>(std::chrono::duration<double>(ti)).count();
+		sNextGameTick = TickClock::now().time_since_epoch().count() + sGameTickInterval;
 		sGameTickScheduled = true;
 	}
 }
@@ -572,10 +582,10 @@ static bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outD
 {
 	if (!sGameTickScheduled)  return;
 	
-	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	const TickClock::rep now = TickClock::now().time_since_epoch().count();
 	if (now < sNextGameTick)  return;
 	
-	std::chrono::steady_clock::time_point next = sNextGameTick + sGameTickInterval;
+	TickClock::rep next = sNextGameTick + sGameTickInterval;
 	while (next <= now)  next += sGameTickInterval;
 	sNextGameTick = next;
 	
@@ -613,9 +623,9 @@ static bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outD
 			// Wait for input until the tick or the next deferred call, whichever is first.
 			std::chrono::steady_clock::time_point wake;
 			bool haveWake = NextDeferredCallDeadline(&wake);
-			if (sGameTickScheduled && (!haveWake || sNextGameTick < wake))
+			if (sGameTickScheduled && (!haveWake || NextGameTick() < wake))
 			{
-				wake = sNextGameTick;
+				wake = NextGameTick();
 				haveWake = true;
 			}
 			
@@ -1199,8 +1209,8 @@ static void SetUpSparkle(void)
 #define DEFAULT_TEST_RELEASE	1
 #endif
 	
-	BOOL useTestReleases = [[NSUserDefaults standardUserDefaults] oo_boolForKey:@"use-test-release-updates"
-																   defaultValue:DEFAULT_TEST_RELEASE];
+	BOOL useTestReleases = oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"use-test-release-updates",
+																   DEFAULT_TEST_RELEASE);
 	
 	SUUpdater *updater = [SUUpdater sharedUpdater];
 	[updater setFeedURL:[NSURL URLWithString:useTestReleases ? TEST_RELEASE_FEED_URL : DEPLOYMENT_FEED_URL]];
