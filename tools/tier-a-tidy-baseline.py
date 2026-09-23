@@ -47,10 +47,15 @@ def read_lines(path):
 
 
 def git_baseline(root, base, rel):
-    """Lines of <rel> at <base>, or [] when it did not exist there. None = git itself failed."""
-    exists = subprocess.run(["git", "-C", root, "cat-file", "-e", f"{base}:{rel}"],
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    if exists.returncode != 0:
+    """Lines of <rel> at <base>, or [] when it did not exist there. None = git itself failed.
+
+    Absence is asked of `git ls-tree` (empty output, exit 0), never inferred from a failing
+    command: a git that cannot read the repo must not turn every header finding into "new file,
+    so new finding" -- or, worse, be mistaken for a pass."""
+    listed = subprocess.run(["git", "-C", root, "ls-tree", "--name-only", base, "--", rel], capture_output=True)
+    if listed.returncode != 0:
+        return None
+    if not listed.stdout.strip():
         return []
     shown = subprocess.run(["git", "-C", root, "show", f"{base}:{rel}"], capture_output=True)
     if shown.returncode != 0:
@@ -70,7 +75,13 @@ class Files:
     def get(self, path):
         k = key(path)
         if k not in self.cache:
-            rel = os.path.relpath(k, key(self.root))
+            # The path handed to git keeps the case the finding spelled it in: git paths are
+            # case-sensitive, and a normcase()d "src/core/oologging.h" is absent at every base
+            # ref. (ntpath.relpath already compares components case-insensitively.)
+            try:
+                rel = os.path.relpath(os.path.abspath(path), os.path.abspath(self.root))
+            except ValueError:   # another drive
+                rel = os.pardir
             if rel == os.pardir or rel.startswith(os.pardir + os.sep) or os.path.isabs(rel):
                 self.cache[k] = self.OUTSIDE
             else:
