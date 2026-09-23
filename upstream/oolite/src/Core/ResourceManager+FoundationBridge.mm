@@ -267,4 +267,79 @@ NSString *ArrayCacheKey(NSString *fileName, NSString *folderName, BOOL mergeFile
 	return oo::NSStringOrNil([self cxx_stringFromFilesNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName) cache:useCache]);
 }
 
+
+// oo-3rb.102: special dictionaries and scripts
+// The whitelist and shader binding types were loaded once and returned as the same object on
+// every call: the bridge converts them once and keeps that object (they are never reloaded).
+
++ (NSDictionary *) whitelistDictionary
+{
+	static NSDictionary *whitelistDictionary = nil;
+	static BOOL converted = NO;
+	if (!converted)
+	{
+		whitelistDictionary = [oo::ObjectFromPList([self cxx_whitelistDictionary]) retain];
+		converted = YES;
+	}
+	return whitelistDictionary;
+}
+
+
++ (NSDictionary *) shaderBindingTypesDictionary
+{
+	static NSDictionary *shaderBindingTypesDictionary = nil;
+	static BOOL converted = NO;
+	if (!converted)
+	{
+		shaderBindingTypesDictionary = [oo::ObjectFromPList([self cxx_shaderBindingTypesDictionary]) retain];
+		converted = YES;
+	}
+	return shaderBindingTypesDictionary;
+}
+
+
++ (NSDictionary *) logControlDictionary
+{
+	// Built afresh on every call, as before (a mutable dictionary).
+	return [NSMutableDictionary dictionaryWithDictionary:oo::ObjectFromPList([self cxx_logControlDictionary])];
+}
+
+
++ (NSDictionary *) roleCategoriesDictionary
+{
+	// Each category is a mutable set of roles, as the old merge built it.
+	NSMutableDictionary *roleCategories = [NSMutableDictionary dictionaryWithCapacity:16];
+	const oo::PList categories = [self cxx_roleCategoriesDictionary];
+	for (const auto &[category, roles] : *categories.getIf<oo::PList::Dict>())
+	{
+		NSMutableSet *contents = [NSMutableSet setWithCapacity:16];
+		for (const oo::PList &role : *roles.getIf<oo::PList::Array>())
+		{
+			id member = oo::ObjectFromPList(role);
+			if (member != nil)  [contents addObject:member];
+		}
+		[roleCategories setObject:contents forKey:oo::NSStringFrom(category)];
+	}
+	return [[roleCategories copy] autorelease];
+}
+
+
++ (NSDictionary *)loadScripts
+{
+	// The old mutable dictionary, filled in the old insertion order (so it enumerates as before).
+	NSMutableDictionary *loadedScripts = [NSMutableDictionary dictionary];
+	for (const auto &[name, script] : [self cxx_loadScripts])
+	{
+		[loadedScripts setObject:script.get() forKey:oo::NSStringFrom(name)];
+	}
+	return loadedScripts;
+}
+
+
++ (NSDictionary *) materialDefaults
+{
+	// The loader's cached object, as the old method returned it (see +dictionaryFromFilesNamed:...).
+	return [self dictionaryFromFilesNamed:@"material-defaults.plist" inFolder:@"Config" andMerge:YES];
+}
+
 @end
