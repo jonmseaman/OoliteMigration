@@ -1,6 +1,6 @@
 # Phase 1 — JS engine replacement (De-Mozilla)
 
-**Status:** not started · **Est.:** 4–7 eng-months · **Depends on:** [Phase 0](0-safety-net.md) exit
+**Status:** work items 1–5 landed on QuickJS-ng; review 1 done (2026-09-23), exit gate oo-5pr pending behind oo-1gc.8–.11 · **Est.:** 4–7 eng-months · **Depends on:** [Phase 0](0-safety-net.md) exit
 **Runs in parallel with:** [Phase 2](2-oofnd.md). Pure C work; does not touch Objective-C.
 
 ## Goal
@@ -74,3 +74,4 @@ vs `--backend=quickjs` (to be defined with the backend seam).
 ## Status log
 
 - 2026-09-06 — Phase doc created from MIGRATION_PLAN §6 and the executor-split resolution.
+- 2026-09-23 — Phase 1 review 1 (bead oo-iizf, on phase-1 @ af341a4; details in docs/fleet/LEARNINGS.md). 87 phase:1 beads: 80 closed, open are the epic, the gate, this review and four human/escalated survivors (oo-sjvz, oo-1gc.7, oo-w9rq, oo-859y). Work items: 1 façade (oo-e7c, oo-sdz), 2 retarget (oo-oio, oo-1gc.3 + 40 per-file beads, 11 of them vacuous from the #include-based generator, oo-utqt), 3 backend (oo-kte, oo-0kq, oo-s0y, oo-1gc.1, oo-1gc.2, oo-1gc.4), 4 differential (oo-2t6, oo-1gc.6: 0 golden / 0 Tier-1 corpus divergences, 0 API-surface differences per ADR-0024), 5 delete SpiderMonkey (oo-7wx). Leftovers grep of src/ is clean outside ooscript/JSEngine_quickjs.cpp (README mapping table and four `jsvalue` locals are not engine symbols). 44 offline acceptance lines re-run: all pass; the 2 failures name SpiderMonkey artefacts oo-7wx deleted. Exit gate: goldens 2/20 exist (scenarios 002–020 are open Phase 0 beads); Tier-2/Tier-3 corpus never run on QuickJS-ng (oo-1gc.11); QuickJS-era API snapshot not committed (oo-1gc.10); debian/flatpak/README still depend on SpiderMonkey/NSPR (oo-1gc.9); tier-b build stage RED because the QuickJS subproject compiles at -O3 without -ffp-contract=off (oo-1gc.8); tools/guardrails.sh resolves its base from main only, so on phase-1 it blames 6428276's test deletion on every bead and no phase-1 acceptance can pass accept.sh (oo-1gc.12); aarch64 box deferred to Phase 5 per ADR-0025. `gen-stories.py --dry-run` emits 0 js-retarget stories and nothing else for Phase 1: no generator bead.
