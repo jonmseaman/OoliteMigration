@@ -30,6 +30,7 @@
 	    ScanTokensFromString(s)                       oo::str::tokens(s)
 	    [s intValue] / longLongValue / doubleValue    oo::str::intValue(s) / longLongValue / doubleValue
 	    [s hasPrefix:p] / hasSuffix:                  oo::str::hasPrefix(s, p) / hasSuffix(s, p)
+	    [s compare:t] / [s caseInsensitiveCompare:t]  oo::str::compare(s, t) / caseInsensitiveCompare(s, t)  (<0, 0, >0)
 	    ComponentsFromVersionString(s)                oo::str::versionComponents(s)
 	    CompareVersions(a, b)                         oo::str::compareVersions(a, b)  (<0, 0, >0)
 	    [NSString stringWithFormat:f, ...] (no %@)    oo::str::format(f, ...)
@@ -560,6 +561,31 @@ inline std::vector<std::string> tokens(std::string_view s)
 		if (i > start) result.push_back(utf16ToUtf8(std::u16string_view(u).substr(start, i - start)));
 	}
 	return result;
+}
+
+// --- ordering -------------------------------------------------------------------------------
+
+// -compare: and -caseInsensitiveCompare: as orderings: < 0, 0, > 0 for NSOrderedAscending, Same,
+// Descending (the Foundation sweep, proposed ADR-0036; for sorting and ordered containers).
+// Both walk the UTF-16 units as NSString does; the caseInsensitive form first maps each unit
+// through toLower() (GNUstep folds to LOWER case: "_" sorts before "B", captured). Exact for every
+// ASCII pair (tests/unit/oofnd/test_string_compare.cpp pins digests captured from GNUstep 1.31.1).
+// Not modelled: GNUstep's composed-sequence equivalence between non-ASCII strings ("e" + U+0301
+// equals U+00E9 there, and orders by it); here the units decide.
+inline int compare(std::string_view a, std::string_view b)
+{
+	const std::u16string ua = utf8ToUtf16(a), ub = utf8ToUtf16(b);
+	const int c = ua.compare(ub);
+	return c < 0 ? -1 : (c > 0 ? 1 : 0);
+}
+
+inline int caseInsensitiveCompare(std::string_view a, std::string_view b)
+{
+	std::u16string ua = utf8ToUtf16(a), ub = utf8ToUtf16(b);
+	for (char16_t& u : ua) u = toLower(u);
+	for (char16_t& u : ub) u = toLower(u);
+	const int c = ua.compare(ub);
+	return c < 0 ? -1 : (c > 0 ? 1 : 0);
 }
 
 // --- numbers --------------------------------------------------------------------------------

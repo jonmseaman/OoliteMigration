@@ -37,6 +37,7 @@ SOFTWARE.
 #import "OOMaths.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOShaderUniformMethodType.h"
+#import "OOStringBridge.h"
 
 
 @interface OOShaderUniform (OOPrivate)
@@ -241,7 +242,7 @@ SOFTWARE.
 			case kOOShaderUniformTypeVector:
 				{
 					Vector v = { value.constVector[0], value.constVector[1], value.constVector[2] };
-					valueDesc = VectorDescription(v);
+					valueDesc = oo::NSStringFrom(VectorDescription(v));
 				}
 				break;
 				
