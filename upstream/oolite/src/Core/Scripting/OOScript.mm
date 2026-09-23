@@ -35,14 +35,6 @@ MA 02110-1301, USA.
 
 
 namespace {
-// The scripts in an array a callee still returns as a Foundation array; nullopt for nil.
-static std::optional<std::vector<oo::ObjCRef<OOScript *>>> ScriptsOrNil(id array)
-{
-	if (array == nil)  return std::nullopt;
-	return oo::ObjCRefsFrom<OOScript *>(array);
-}
-
-
 // The strings in an array a callee still returns as a Foundation array; nullopt for nil.
 static std::optional<std::vector<std::string>> StringsOrNil(id array)
 {
@@ -115,7 +107,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 				OOLog(@"script.load.pList", @"Trying to load property list script %@", oo::NSStringFrom(filePath));
 				OOLogIndentIf(@"script.load.pList");
 				
-				result = ScriptsOrNil([OOPListScript scriptsInPListFile:oo::NSStringFrom(filePath)]);
+				result = [OOPListScript scriptsInPListFile:filePath];
 				if (result.has_value())  OOLog(@"script.load.parseOK", @"Successfully loaded property list script %@", oo::NSStringFrom(filePath));
 				else  OOLogERR(@"script.load.parseError", @"Failed to load property list script %@", oo::NSStringFrom(filePath));
 			
@@ -188,7 +180,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 		{
 			return std::nullopt;
 		}
-		return ScriptsOrNil([OOPListScript scriptsInPListFile:oo::NSStringFrom(filePath)]);
+		return [OOPListScript scriptsInPListFile:filePath];
 	}
 	
 	OOLogERR(@"script.load.badName", @"Don't know how to load a script from %@.", oo::NSStringFrom(filePath));

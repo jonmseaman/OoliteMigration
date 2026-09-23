@@ -32,6 +32,7 @@ SOFTWARE.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 @class OOProbabilitySet;
 
@@ -41,9 +42,9 @@ SOFTWARE.
 @private
 	oo::PList				_shipData;		// ship key -> ship dictionary (null until loaded)
 	oo::PList				_effectData;	// effect key -> effect dictionary (null until loaded)
-	NSArray					*_demoShips;
-	std::vector<std::string>	_playerShips;
-NSDictionary			*_probabilitySets;
+	oo::PList				_demoShips;		// demo ship entries (dictionaries) grouped in arrays by class
+	std::vector<std::string>	_playerShips;	// shipyard keys, in shipyard.plist key order
+	std::optional<std::map<std::string, oo::ObjCRef<OOProbabilitySet *>, std::less<>>>	_probabilitySets;	// role -> ship keys; nullopt: none cached yet
 }
 
 + (OOShipRegistry *) sharedRegistry;
@@ -55,9 +56,9 @@ NSDictionary			*_probabilitySets;
 - (void) cxx_setShipInfoForKey:(const std::string &)key with:(const oo::PList &)newShipData;
 - (oo::PList) cxx_effectInfoForKey:(const std::string &)key;
 - (oo::PList) cxx_shipyardInfoForKey:(const std::string &)key;
-- (OOProbabilitySet *) probabilitySetForRole:(NSString *)role;
+- (OOProbabilitySet *) cxx_probabilitySetForRole:(const std::string &)role;
 
-- (NSArray *) demoShipKeys;
+- (oo::PList) cxx_demoShipKeys;	// arrays (one per class) of demo ship dictionaries
 - (std::vector<std::string>) cxx_playerShipKeys;
 
 @end
@@ -66,9 +67,9 @@ NSDictionary			*_probabilitySets;
 @interface OOShipRegistry (OOConveniences)
 
 - (std::vector<std::string>) cxx_shipKeys;		// in key order
-- (NSArray *) shipRoles;
-- (NSArray *) shipKeysWithRole:(NSString *)role;
-- (NSString *) randomShipKeyForRole:(NSString *)role;
+- (std::vector<std::string>) cxx_shipRoles;		// in role order
+- (std::vector<std::string>) cxx_shipKeysWithRole:(const std::string &)role;
+- (std::optional<std::string>) cxx_randomShipKeyForRole:(const std::string &)role;	// nullopt: no ship has the role
 
 @end
 
