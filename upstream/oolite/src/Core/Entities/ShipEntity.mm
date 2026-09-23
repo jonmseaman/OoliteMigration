@@ -92,6 +92,7 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OOJSVector.h"
 #import "OOJSEngineTimeManagement.h"
+#import "OOStringBridge.h"
 
 #define USEMASC 1
 
@@ -12153,7 +12154,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	
 	if (start.x == 0.0f && start.y == 0.0f && start.z <= 0.0f) // The kZeroVector as start is illegal also.
 	{
-		OOLog(@"ship.missileLaunch.invalidPosition", @"***** ERROR: The missile_launch_position defines a position %@ behind the %@. In future versions such missiles may explode on launch because they have to travel through the ship.", VectorDescription(start), self);
+		OOLog(@"ship.missileLaunch.invalidPosition", @"***** ERROR: The missile_launch_position defines a position %@ behind the %@. In future versions such missiles may explode on launch because they have to travel through the ship.", oo::NSStringFrom(VectorDescription(start)), self);
 		start.x = 0.0f;
 		start.y = boundingBox.min.y - 4.0f;
 		start.z = boundingBox.max.z + 1.0f;
@@ -14526,7 +14527,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		OOLogPopIndent();
 	}
 	OOLog(@"dumpState.shipEntity", @"Accuracy: %g", accuracy);
-	OOLog(@"dumpState.shipEntity", @"Jink position: %@", VectorDescription(jink));
+	OOLog(@"dumpState.shipEntity", @"Jink position: %@", oo::NSStringFrom(VectorDescription(jink)));
 	OOLog(@"dumpState.shipEntity", @"Frustration: %g", frustration);
 	OOLog(@"dumpState.shipEntity", @"Success factor: %g", success_factor);
 	OOLog(@"dumpState.shipEntity", @"Shots fired: %u", shot_counter);

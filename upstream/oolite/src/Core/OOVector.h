@@ -130,9 +130,13 @@ OOINLINE OOScalar triple_product(Vector first, Vector second, Vector third) INLI
 OOINLINE Vector normal_to_surface(Vector v1, Vector v2, Vector v3) CONST_FUNC;
 
 #if __OBJC__
-NSString *VectorDescription(Vector vector);	// @"(x, y, z)"
+/*	Objective-C++ only: OOMaths.h is included inside extern "C" (proposed ADR-0036, bead oo-g7k5). */
+extern "C++" {
+#include "oofnd/StdLib.hpp"
+std::string VectorDescription(Vector vector);	// "(x, y, z)"
+}
 
-/* For storing vectors in NSArrays */
+/* For storing vectors in Objective-C collections */
 @interface OONativeVector: OOObject
 {
 @private
