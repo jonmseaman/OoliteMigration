@@ -14657,7 +14657,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	argc = (unsigned)[arguments count];
 	if (argc != 0)
 	{
-		argv = (ooscript::Value *)malloc(sizeof *argv * argc);
+		argv = (decltype(argv))malloc(sizeof *argv * argc);
 		if (argv != NULL)
 		{
 			for (i = 0; i != argc; ++i)

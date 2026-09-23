@@ -988,29 +988,68 @@ check_denylist() {
   [ "${canary:-0}" -gt 0 ] || { bad "deny-list: canary text scores 0 against $DENY_LIST - the patterns are broken and this check cannot fire"; return; }
   note "deny-list: $npat patterns, canary scores $canary"
 
-  local p base now before
+  # Batched (bead oo-1gc.5): each pattern is run ONCE over every file in the change (and once over
+  # every baseline copy) with `grep -cE`, instead of once per pattern per file. The per-file number
+  # is the same as deny_count's: the lines matching each pattern, summed over the patterns. On the
+  # ~200-file .m -> .mm rename (oo-x7o) the per-file form spawned ~7,000 greps and took 16 minutes.
+  local p base i k n=0 pattern line f c
+  local -a now_paths=() base_paths=() now_count=() before_count=()
+  local tmpd
+  tmpd=$(mktemp -d) || { bad "deny-list: cannot create a scratch directory - this check cannot run"; return; }
   while IFS="$US" read -r p base; do
     [ -n "${p:-}" ] || continue
     is_code "$p" || continue
     is_exempt "$p" && continue
     [ -n "${base:-}" ] && is_exempt "$base" && continue
     [ -e "$p" ] || continue
-    now=$(cat -- "$p" | deny_count)
+    now_paths[n]="$p"
+    base_paths[n]=""
+    now_count[n]=0
+    before_count[n]=0
     if [ -n "${base:-}" ] && git cat-file -e "$BASE:$base" 2>/dev/null; then
-      before=$(git show "$BASE:$base" | deny_count)
-    else
-      before=0
+      git show "$BASE:$base" > "$tmpd/$n" && base_paths[n]="$tmpd/$n"
     fi
-    if [ "${now:-0}" -gt "${before:-0}" ]; then
-      bad "deny-list: $p reintroduces deny-listed symbols (${before} -> ${now} hits at $BASE_SHA):"
+    n=$(( n + 1 ))
+  done <<EOF
+$(scan_targets)
+EOF
+
+  # grep -cH prints "<file>:<count>" per file; the file name is matched back to its index. Repo
+  # paths and the scratch names contain no ':' before the count, so the LAST ':' splits the line.
+  declare -A idx_now=() idx_base=()
+  for (( i = 0; i < n; i++ )); do
+    idx_now["${now_paths[i]}"]=$i
+    [ -n "${base_paths[i]}" ] && idx_base["${base_paths[i]}"]=$i
+  done
+  if [ "$n" -gt 0 ]; then
+    while IFS= read -r pattern; do
+      case "$pattern" in ''|'#'*) continue ;; esac
+      while IFS= read -r line; do
+        f=${line%:*}; c=${line##*:}
+        [ -n "${idx_now[$f]+x}" ] || continue
+        k=${idx_now[$f]}; now_count[k]=$(( now_count[k] + c ))
+      done < <(printf '%s\0' "${now_paths[@]}" | xargs -0 grep -cHE -- "$pattern")
+      if [ "${#idx_base[@]}" -gt 0 ]; then
+        while IFS= read -r line; do
+          f=${line%:*}; c=${line##*:}
+          [ -n "${idx_base[$f]+x}" ] || continue
+          k=${idx_base[$f]}; before_count[k]=$(( before_count[k] + c ))
+        done < <(printf '%s\0' "${!idx_base[@]}" | xargs -0 grep -cHE -- "$pattern")
+      fi
+    done < "$DENY_LIST"
+  fi
+  rm -rf "$tmpd"
+
+  for (( i = 0; i < n; i++ )); do
+    p=${now_paths[i]}
+    if [ "${now_count[i]}" -gt "${before_count[i]}" ]; then
+      bad "deny-list: $p reintroduces deny-listed symbols (${before_count[i]} -> ${now_count[i]} hits at $BASE_SHA):"
       while IFS= read -r pattern; do
         case "$pattern" in ''|'#'*) continue ;; esac
         grep -nE "$pattern" -- "$p" | sed 's/^/    /' >&2
       done < "$DENY_LIST"
     fi
-  done <<EOF
-$(scan_targets)
-EOF
+  done
 }
 
 check_goldens
