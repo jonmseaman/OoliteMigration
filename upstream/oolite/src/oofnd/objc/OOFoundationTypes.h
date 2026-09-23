@@ -31,8 +31,11 @@
 #ifndef OOFND_OBJC_OOFOUNDATIONTYPES_H
 #define OOFND_OBJC_OOFOUNDATIONTYPES_H
 
-#if defined(GNUSTEP_BASE_LIBRARY) || defined(NSINTEGER_DEFINED) || defined(__NSRange_h_GNUSTEP_BASE_INCLUDE) || defined(__NSGeometry_h_GNUSTEP_BASE_INCLUDE)
-#error "oofnd/objc/OOFoundationTypes.h replaces Foundation's C types and cannot be used while Foundation is (GNUSTEP_BASE_LIBRARY or a Foundation header is defined)"
+// Any Foundation header defines GNUSTEP_BASE_MAJOR_VERSION (GSConfig.h) or one of these guards.
+// Included the other way round (this header first), Foundation's own NSNotFound and struct
+// _NSRange collide with these, so the two cannot be mixed silently in either order.
+#if defined(GNUSTEP_BASE_MAJOR_VERSION) || defined(NSINTEGER_DEFINED) || defined(__NSRange_h_GNUSTEP_BASE_INCLUDE) || defined(__NSGeometry_h_GNUSTEP_BASE_INCLUDE)
+#error "oofnd/objc/OOFoundationTypes.h replaces Foundation's C types and cannot be used together with Foundation"
 #endif
 
 #include <objc/runtime.h>	// BOOL

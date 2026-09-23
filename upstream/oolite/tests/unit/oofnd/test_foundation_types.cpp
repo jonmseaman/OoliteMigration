@@ -10,11 +10,6 @@
 	the game's current Foundation.
 */
 
-// Inside the game's meson project every C-family TU gets -DGNUSTEP_BASE_LIBRARY=1
-// (src/meson/meson.build). This TU uses no Foundation, so the define is false here, and the
-// header's refusal to compile beside Foundation is exactly what that define would trigger.
-#undef GNUSTEP_BASE_LIBRARY
-
 #include "oofnd/objc/OOFoundationTypes.h"
 
 #include <cmath>
