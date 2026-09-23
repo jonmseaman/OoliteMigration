@@ -193,8 +193,8 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, NSString *oo
 }
 
 
-// Template class providing method signature strings for the four signatures we support.
-@interface OOJSCallMethodSignatureTemplateClass: NSObject
+// Template class providing method type encodings for the three signatures matched here.
+@interface OOJSCallMethodSignatureTemplateClass: OOObject
 
 - (void)voidVoidMethod;
 - (void)voidObjectMethod:(id)object;
@@ -203,31 +203,52 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, NSString *oo
 @end
 
 
-static BOOL SignatureMatch(NSMethodSignature *sig, SEL selector)
+static BOOL SameTypeEncoding(char *a, char *b)
 {
-	NSMethodSignature		*methodTemplate = nil;
-	
-	methodTemplate = [OOJSCallMethodSignatureTemplateClass instanceMethodSignatureForSelector:selector];
-	return [sig isEqual:methodTemplate];
+	BOOL result = (a != NULL && b != NULL && strcmp(a, b) == 0);
+	free(a);
+	free(b);
+	return result;
+}
+
+
+/*	Whether method has the same signature as the template's method for selector: the same
+	return type and the same argument types, as the method signature objects' -isEqual:
+	compared them (bead oo-3rb.15; offsets and frame size are not compared).
+*/
+static BOOL SignatureMatch(Method method, SEL selector)
+{
+	Method methodTemplate = class_getInstanceMethod([OOJSCallMethodSignatureTemplateClass class], selector);
+
+	if (method == NULL || methodTemplate == NULL)  return NO;
+
+	unsigned argCount = method_getNumberOfArguments(method);
+	if (argCount != method_getNumberOfArguments(methodTemplate))  return NO;
+	if (!SameTypeEncoding(method_copyReturnType(method), method_copyReturnType(methodTemplate)))  return NO;
+	for (unsigned i = 0; i < argCount; i++)
+	{
+		if (!SameTypeEncoding(method_copyArgumentType(method, i), method_copyArgumentType(methodTemplate, i)))  return NO;
+	}
+	return YES;
 }
 
 
 static MethodType GetMethodType(id object, SEL selector)
 {
-	NSMethodSignature *sig = [object methodSignatureForSelector:selector];
-	
-	if (SignatureMatch(sig, @selector(voidVoidMethod)))  return kMethodTypeVoidVoid;
-	if (SignatureMatch(sig, @selector(voidObjectMethod:)))  return kMethodTypeVoidObject;
-	if (SignatureMatch(sig, @selector(objectObjectMethod:)))  return kMethodTypeObjectObject;
-	
-	MethodType type = (MethodType)OOShaderUniformTypeFromMethodSignature(sig);
+	Method method = class_getInstanceMethod(object_getClass(object), selector);
+
+	if (SignatureMatch(method, @selector(voidVoidMethod)))  return kMethodTypeVoidVoid;
+	if (SignatureMatch(method, @selector(voidObjectMethod:)))  return kMethodTypeVoidObject;
+	if (SignatureMatch(method, @selector(objectObjectMethod:)))  return kMethodTypeObjectObject;
+
+	MethodType type = (MethodType)OOShaderUniformTypeFromMethod(method);
 	if (type != kMethodTypeInvalid)  return type;
 	
 	return kMethodTypeInvalid;
 }
 
 
-@implementation OOJSCallMethodSignatureTemplateClass: NSObject
+@implementation OOJSCallMethodSignatureTemplateClass: OOObject
 
 - (void)voidVoidMethod {}
 

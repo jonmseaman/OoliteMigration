@@ -36,6 +36,14 @@ this.startUp = function () {
     var square = function (x) { return x * x; };
     var iife = (function () { return 1; })();
 
+    // ES2015 generators (function*, a *method), `yield` as a key and a property:
+    // only a plain function that yields is the legacy JS1.7 form
+    var gen = function* () { for (var i = 0; i < 2; i++) { yield i; } };
+    function* named() { if (ratio) { yield 1; } }
+    var holder = { *each() { yield 2; }, yield: 3 };
+    var viaKey = holder.yield + holder.each().next().value + named().next().value;
+    for (var g of gen()) { viaKey += g; }
+
     // try/catch without a condition
     try {
         square(ratio);

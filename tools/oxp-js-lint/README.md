@@ -4,7 +4,7 @@ Flags SpiderMonkey-only JavaScript — the constructs that will not survive a
 move to any other engine — across the cached OXP corpus and across the
 in-tree scripts.
 
-## The eight constructs
+## The nine constructs
 
 | rule | construct | removed from Firefox in |
 | --- | --- | --- |
@@ -16,10 +16,11 @@ in-tree scripts.
 | `let-block` | `let (x = 1) { ... }` (JS1.7) | 44 |
 | `legacy-accessor` | `__defineGetter__` / `__defineSetter__` / `__lookup*__` | (deprecated) |
 | `expression-closure` | `function (x) x * x` (JS1.8) | 60 |
+| `legacy-generator` | a plain `function` whose body uses `yield` (JS1.7), usually iterated with `for (x in gen())`; added by bead oo-1gc.16 | 58 |
 
 ## Why the detectors are text-based, not AST rules
 
-Four of the eight — conditional catch, E4X, let blocks, expression closures —
+Five of the nine — conditional catch, E4X, let blocks, expression closures, legacy generators —
 are *syntax* no conforming parser accepts. espree, acorn and every ES2015+
 parser raise `SyntaxError` on them, and an ESLint rule only runs on a file
 that parsed. An AST rule for `catch (e if cond)` is unreachable by
@@ -39,12 +40,14 @@ immediately reports three false positives (see `mutation-proof.sh`, mutant 2).
 | --- | --- |
 | `eslint.config.js` | **the** rule set: `MOZILLA_ONLY_RULES` decides what is enabled, for both consumers |
 | `plugin.js` | ESLint flat-config plugin wrapping the same detectors |
-| `rules.js` | masking + the eight detectors; no dependencies |
+| `rules.js` | masking + the nine detectors; no dependencies |
 | `lint.js` | runner: `scan` (files/dirs) and `corpus` (cached OXZ archives) |
 | `fixtures/*.js` | one positive fixture per rule + one clean negative fixture |
 | `crosscheck.js` | validation-only: raw unmasked regex sweep, an instrument independent of `lint.js` |
 | `mutation-proof.sh` | validation-only: drives each acceptance line RED then GREEN |
 | `acceptance.txt` | the five stored acceptance lines, byte-identical to the bead field |
+| `probe.js` | triage only (bead oo-1gc.13): a REDACTING view of one line of a corpus script (keywords, punctuators, allowlisted API names; every other identifier a placeholder, literals as STR/NUM/RE) plus declaration and `"use strict"` facts, so an agent can see a construct's shape without reading expansion content (CLAUDE.md rule 6) |
+| `probe-selftest.js`, `probe-fixtures/` | the probe's test on synthetic fixtures: nothing outside the allowlist leaks, and the structure and facts are right |
 
 Node stdlib only — no `node_modules`, no network. The corpus mode contains a
 minimal zip reader (stored + deflate + ZIP64) because OXZ archives are zips.
@@ -90,6 +93,27 @@ extras was inspected and is inside a comment — `this.shipDied = function()
 `try..catch blocks`. That is the false-positive class masking exists to kill,
 and it confirms the 5 findings are real rather than an artefact of rules that
 never loaded.
+
+### `legacy-generator` (bead oo-1gc.16, 2026-09-23)
+
+Added after the Tier-2/3 corpus run on QuickJS-ng (bead oo-1gc.11) logged `SyntaxError: expecting ';'`
+in four ship scripts from three authors that the eight rules above did not flag. Re-running the
+corpus with the rule:
+
+```
+818 expansions (818 read, 0 not cached, 0 unreadable), 1997 .js members,
+9 findings in 5 expansions
+  legacy-generator: 4  Wild_ships_1.11.4.oxz (wildShips_tembo.js), Aquatics_2.30.oxz
+                       (aquatics_congerPods.js), Kestrel_Falcon (bweed-kestrelfalcon-falcon.js,
+                       bweed-kestrelfalcon-kestrel.js)
+```
+
+Those four files are exactly the four the game failed to compile, and nothing else in the corpus is
+flagged. The detector tracks function frames over the masked text: `yield` is flagged only when its
+innermost enclosing function body is not a generator (`function*`, `function* name`, `*method`), and
+never as an object key (`{ yield: 1 }`) or a property (`o.yield`). `fixtures/clean.js` carries those
+near-misses; mutation-proof.sh mutants 6 and 7 blind the detector and break the generator-frame
+check respectively.
 
 ## Known limits
 

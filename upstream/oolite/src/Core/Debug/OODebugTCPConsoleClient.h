@@ -28,6 +28,7 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OODebuggerInterface.h"
 
 @class OODebugMonitor;
@@ -44,7 +45,7 @@ typedef enum
 } OOTCPClientConnectionStatus;
 
 
-@interface OODebugTCPConsoleClient: NSObject <OODebuggerInterface>
+@interface OODebugTCPConsoleClient: OOObject <OODebuggerInterface>
 {
 @private
 	NSHost						*_host;

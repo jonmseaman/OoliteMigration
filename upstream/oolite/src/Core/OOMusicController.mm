@@ -303,7 +303,7 @@ enum
 	NOTE: assumes single-threaded access.
 */
 
-+ (id) allocWithZone:(NSZone *)inZone
++ (id) allocWithZone:(OOZone *)inZone
 {
 	if (sSingleton == nil)
 	{
@@ -314,7 +314,7 @@ enum
 }
 
 
-- (id) copyWithZone:(NSZone *)inZone
+- (id) copyWithZone:(OOZone *)inZone
 {
 	return self;
 }
