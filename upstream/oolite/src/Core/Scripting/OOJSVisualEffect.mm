@@ -27,9 +27,10 @@ MA 02110-1301, USA.
 #import "OOJSVector.h"
 #import "OOJavaScriptEngine.h"
 #import "OOMesh.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "ResourceManager.h"
 #import "EntityOOJavaScriptExtensions.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -639,7 +640,7 @@ static bool VisualEffectGetMaterials(ooscript::Context cx, ooscript::CallArgs &o
 
 	GET_THIS_EFFECT(thisEnt);
 	
-	result = [[thisEnt mesh] materials];
+	result = oo::ObjectFromPList([[thisEnt mesh] materials]);
 	if (result == nil)  result = [NSDictionary dictionary];
 	OOJS_RETURN_OBJECT(result);
 	
@@ -660,7 +661,7 @@ static bool VisualEffectGetShaders(ooscript::Context cx, ooscript::CallArgs &ooj
 
 	GET_THIS_EFFECT(thisEnt);
 	
-	result = [[thisEnt mesh] shaders];
+	result = oo::ObjectFromPList([[thisEnt mesh] shaders]);
 	if (result == nil)  result = [NSDictionary dictionary];
 	OOJS_RETURN_OBJECT(result);
 	
@@ -762,7 +763,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	
 	if (fromShaders)
 	{
-		materials = [[thisEnt mesh] materials];
+		materials = oo::ObjectFromPList([[thisEnt mesh] materials]);
 		params = ooscript::toObject(OOJS_ARGV[0]);
 		shaders = OOJSNativeObjectFromJSObject(context, params);
 	}
@@ -777,7 +778,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 		}
 		else
 		{
-			shaders = [[thisEnt mesh] shaders];
+			shaders = oo::ObjectFromPList([[thisEnt mesh] shaders]);
 		}
 	}
 	
@@ -785,12 +786,12 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	NSDictionary 			*effectDict = [thisEnt effectInfoDictionary];
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:[effectDict oo_stringForKey:@"model"]
-							   cacheKey:nil
-					 materialDictionary:materials
-					  shadersDictionary:shaders
-								 smooth:[effectDict oo_boolForKey:@"smooth" defaultValue:NO]
-						   shaderMacros:[[ResourceManager materialDefaults] oo_dictionaryForKey:@"ship-prefix-macros"]
+	OOMesh *mesh = [OOMesh meshWithName:oo::StdString(oo::PListView(effectDict).get<NSString *>(@"model"))
+							   cacheKey:std::nullopt
+					 materialDictionary:oo::PListFrom(materials)
+					  shadersDictionary:oo::PListFrom(shaders)
+								 smooth:oo::PListView(effectDict).get<BOOL>(@"smooth", NO)
+						   shaderMacros:oo::PListFrom(oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros"))
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)

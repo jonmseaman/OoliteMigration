@@ -44,6 +44,7 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OODebugGLDrawing.h"
 #import "OODebugFlags.h"
+#import "OOStringBridge.h"
 
 
 @interface DockEntity (OOPrivate)
@@ -735,7 +736,7 @@ MA 02110-1301, USA.
 		
 		OOLog(@"docking.debug", @"Normalised port dimensions are %g x %g x %g.  Player bounding box is at %@-%@ -- %s (%X), range: %g",
 			ww * 2.0, hh * 2.0, dd,
-			VectorDescription(arbb.min), VectorDescription(arbb.max),
+			oo::NSStringFrom(VectorDescription(arbb.min)), oo::NSStringFrom(VectorDescription(arbb.max)),
 			inLane ? "in lane" : "out of lane", laneFlags,
 			range);
 	}

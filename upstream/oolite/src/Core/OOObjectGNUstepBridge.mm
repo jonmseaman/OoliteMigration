@@ -15,16 +15,19 @@ that removes each Foundation family replaces it:
     +instanceMethodSignatureForSelector:  called with an OOObject receiver; the NSInvocation
                                           follow-ups of oo-3rb.15 (OOWeakReference's proxy,
                                           OOOXZManager's filter) replace them
+    -className                            NSObject's own implementation (the class name as an
+                                          NSString; OOALSoundDecoder's -description); the
+                                          String seam replaces it
 
 -description is not here: in the game every NSObject's -description is OOCocoa.mm's
 NSObject (OODescriptionComponents), and OOObject (OODescriptionComponents) is its twin.
 
-Borrowing NSObject's IMPs keeps the behaviour identical: gnustep-base implements the two with
+Borrowing NSObject's IMPs keeps the behaviour identical: gnustep-base implements these with
 runtime functions on object_getClass(self), never with NSObject's instance layout.
 
 */
 
-#import "OOObjectGNUstepBridge.h"
+#import "OOCocoa.h"	// imports OOObjectGNUstepBridge.h after Foundation
 
 
 static IMP NSObjectInstanceIMP(SEL selector)
@@ -58,6 +61,13 @@ static IMP NSObjectClassIMP(SEL selector)
 {
 	typedef NSMethodSignature *(*SignatureIMP)(id, SEL, SEL);
 	return ((SignatureIMP)NSObjectInstanceIMP(_cmd))(self, _cmd, selector);
+}
+
+
+- (NSString *) className
+{
+	typedef NSString *(*ClassNameIMP)(id, SEL);
+	return ((ClassNameIMP)NSObjectInstanceIMP(_cmd))(self, _cmd);
 }
 
 @end

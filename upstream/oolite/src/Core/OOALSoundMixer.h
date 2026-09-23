@@ -30,6 +30,7 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 
 @class OOSoundChannel;
 
@@ -40,7 +41,7 @@ enum
 };
 
 
-@interface OOSoundMixer: NSObject
+@interface OOSoundMixer: OOObject
 {
 	OOSoundChannel				*_channels[kMixerGeneralChannels];
 	OOSoundChannel				*_freeList;
