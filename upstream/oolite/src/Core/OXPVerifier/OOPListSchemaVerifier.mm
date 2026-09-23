@@ -157,7 +157,9 @@ std::string KeyPathToString(BackLinkChain keyPath);
 static NSString *StringForErrorReport(NSString *string);
 static NSString *ArrayForErrorReport(NSArray *array);
 static NSString *SetForErrorReport(NSSet *set);
-static NSString *StringOrArrayForErrorReport(id value, NSString *arrayPrefix);
+namespace {
+NSString *StringOrArrayForErrorReport(id value, const char *arrayPrefix);
+} // namespace
 
 namespace {
 
@@ -828,25 +830,29 @@ static NSString *SetForErrorReport(NSSet *set)
 }
 
 
-static NSString *StringOrArrayForErrorReport(id value, NSString *arrayPrefix)
+namespace {
+
+NSString *StringOrArrayForErrorReport(id value, const char *arrayPrefix)
 {
 	if ([value isKindOfClass:[NSString class]])
 	{
 		return [NSString stringWithFormat:@"\"%@\"", StringForErrorReport(value)];
 	}
 	
-	if (arrayPrefix == nil)  arrayPrefix = @"";
+	NSString *prefix = oo::NSStringFrom(arrayPrefix != NULL ? arrayPrefix : "");
 	if ([value isKindOfClass:[NSArray class]])
 	{
-		return [arrayPrefix stringByAppendingString:ArrayForErrorReport(value)];
+		return [prefix stringByAppendingString:ArrayForErrorReport(value)];
 	}
 	if ([value isKindOfClass:[NSSet class]])
 	{
-		return [arrayPrefix stringByAppendingString:SetForErrorReport(value)];
+		return [prefix stringByAppendingString:SetForErrorReport(value)];
 	}
 	if (value == nil)  return @"(null)";
 	return @"<?>";
 }
+
+} // namespace
 
 
 // Specific type verifiers
@@ -880,7 +886,7 @@ static NSError *Verify_String(OOPListSchemaVerifier *verifier, id value, NSDicti
 	{
 		if (!ApplyStringTest(filteredString, testValue, @selector(hasPrefix:), @"prefix", keyPath, &error))
 		{
-			if (error == nil)  error = ErrorWithProperty(kPListErrorStringPrefixMissing, &keyPath, kMissingSubStringErrorKey, oo::PListFrom(testValue), "String \"%s\" does not have required %s %s.", oo::DescriptionOf(StringForErrorReport(value)).c_str(), "prefix", oo::DescriptionOf(StringOrArrayForErrorReport(testValue, @"in ")).c_str());
+			if (error == nil)  error = ErrorWithProperty(kPListErrorStringPrefixMissing, &keyPath, kMissingSubStringErrorKey, oo::PListFrom(testValue), "String \"%s\" does not have required %s %s.", oo::DescriptionOf(StringForErrorReport(value)).c_str(), "prefix", oo::DescriptionOf(StringOrArrayForErrorReport(testValue, "in ")).c_str());
 			return error;
 		}
 	}
@@ -890,7 +896,7 @@ static NSError *Verify_String(OOPListSchemaVerifier *verifier, id value, NSDicti
 	{
 		if (!ApplyStringTest(filteredString, testValue, @selector(hasSuffix:), @"suffix", keyPath, &error))
 		{
-			if (error == nil)  error = ErrorWithProperty(kPListErrorStringSuffixMissing, &keyPath, kMissingSubStringErrorKey, oo::PListFrom(testValue), "String \"%s\" does not have required %s %s.", oo::DescriptionOf(StringForErrorReport(value)).c_str(), "suffix", oo::DescriptionOf(StringOrArrayForErrorReport(testValue, @"in ")).c_str());
+			if (error == nil)  error = ErrorWithProperty(kPListErrorStringSuffixMissing, &keyPath, kMissingSubStringErrorKey, oo::PListFrom(testValue), "String \"%s\" does not have required %s %s.", oo::DescriptionOf(StringForErrorReport(value)).c_str(), "suffix", oo::DescriptionOf(StringOrArrayForErrorReport(testValue, "in ")).c_str());
 			return error;
 		}
 	}
@@ -900,7 +906,7 @@ static NSError *Verify_String(OOPListSchemaVerifier *verifier, id value, NSDicti
 	{
 		if (!ApplyStringTest(filteredString, testValue, @selector(ooPListVerifierHasSubString:), @"substring", keyPath, &error))
 		{
-			if (error == nil)  error = ErrorWithProperty(kPListErrorStringSubstringMissing, &keyPath, kMissingSubStringErrorKey, oo::PListFrom(testValue), "String \"%s\" does not have required %s %s.", oo::DescriptionOf(StringForErrorReport(value)).c_str(), "substring", oo::DescriptionOf(StringOrArrayForErrorReport(testValue, @"in ")).c_str());
+			if (error == nil)  error = ErrorWithProperty(kPListErrorStringSubstringMissing, &keyPath, kMissingSubStringErrorKey, oo::PListFrom(testValue), "String \"%s\" does not have required %s %s.", oo::DescriptionOf(StringForErrorReport(value)).c_str(), "substring", oo::DescriptionOf(StringOrArrayForErrorReport(testValue, "in ")).c_str());
 			return error;
 		}
 	}
