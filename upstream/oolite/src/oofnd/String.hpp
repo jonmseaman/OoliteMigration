@@ -31,6 +31,11 @@
 	    [s intValue] / longLongValue / doubleValue    oo::str::intValue(s) / longLongValue / doubleValue
 	    [s hasPrefix:p] / hasSuffix:                  oo::str::hasPrefix(s, p) / hasSuffix(s, p)
 	    [s compare:t] / [s caseInsensitiveCompare:t]  oo::str::compare(s, t) / caseInsensitiveCompare(s, t)  (<0, 0, >0)
+	    [s pathComponents] / +pathWithComponents:    oo::str::pathComponents(s) / pathWithComponents(v)
+	    [s lastPathComponent]                         oo::str::lastPathComponent(s)
+	    [s stringByDeletingLastPathComponent]         oo::str::deletingLastPathComponent(s)
+	    [s stringByAppendingPathComponent:c]          oo::str::appendingPathComponent(s, c)  (c: one component)
+	    %p in a format string                         %s with oo::str::pointerDescription(p).c_str()
 	    ComponentsFromVersionString(s)                oo::str::versionComponents(s)
 	    CompareVersions(a, b)                         oo::str::compareVersions(a, b)  (<0, 0, >0)
 	    [NSString stringWithFormat:f, ...] (no %@)    oo::str::format(f, ...)
@@ -561,6 +566,221 @@ inline std::vector<std::string> tokens(std::string_view s)
 		if (i > start) result.push_back(utf16ToUtf8(std::u16string_view(u).substr(start, i - start)));
 	}
 	return result;
+}
+
+// --- path components and pointers (the Foundation sweep, proposed ADR-0043) ------------------
+
+// -pathComponents, +pathWithComponents:, -lastPathComponent, -stringByDeletingLastPathComponent
+// and -stringByAppendingPathComponent: as GNUstep 1.31.1 answers them on Windows, where '/' and
+// '\' both separate. A path may start with a ROOT, kept verbatim as its first component:
+//   "\\host\share\" or "//host/share/" (UNC; the share must be followed by a separator),
+//   a drive "X:" (ASCII letter) and at most one separator after it ("C:", "C:/", "C:\"),
+//   "~user/" / "~/" (a tilde word WITH its separator; "~user" alone is an ordinary component),
+//   or else one leading separator ("/", "\"; further leading separators are skipped).
+// After the root, runs of separators split components; a path that ends in a separator after
+// its root gets a final "/" component. Pinned by tests/unit/oofnd/test_string_sweep.cpp, whose
+// rows are GNUstep's own answers for 71 paths and 33 component lists (captured on this
+// toolchain). appendingPathComponent takes ONE component (no separators in it).
+namespace detail {
+
+enum class PathRoot { none, separator, drive, driveSeparator, tilde, unc };
+
+struct PathParts
+{
+	PathRoot rootKind = PathRoot::none;
+	std::size_t rootLength = 0;
+	std::vector<std::pair<std::size_t, std::size_t>> spans;   // [begin, end) of each non-root component
+	bool trailingSeparator = false;                           // after the root, the path ends in one
+};
+
+constexpr bool isPathSep(char c) noexcept { return c == '/' || c == '\\'; }
+constexpr bool isAsciiLetter(char c) noexcept { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); }
+
+inline PathParts splitPath(std::string_view p)
+{
+	PathParts parts;
+	const std::size_t n = p.size();
+	std::size_t i = 0;
+	if (n >= 2 && isPathSep(p[0]) && isPathSep(p[1]))
+	{
+		// UNC: two separators, host, separator, share, separator.
+		std::size_t h = 2;
+		while (h < n && !isPathSep(p[h])) ++h;
+		if (h > 2 && h < n)
+		{
+			std::size_t s = h + 1;
+			while (s < n && !isPathSep(p[s])) ++s;
+			if (s > h + 1 && s < n)
+			{
+				parts.rootKind = PathRoot::unc;
+				parts.rootLength = s + 1;
+			}
+		}
+	}
+	if (parts.rootKind == PathRoot::none)
+	{
+		if (n >= 1 && isPathSep(p[0]))
+		{
+			parts.rootKind = PathRoot::separator;
+			parts.rootLength = 1;
+		}
+		else if (n >= 2 && p[1] == ':' && isAsciiLetter(p[0]))
+		{
+			const bool sep = n >= 3 && isPathSep(p[2]);
+			parts.rootKind = sep ? PathRoot::driveSeparator : PathRoot::drive;
+			parts.rootLength = sep ? 3 : 2;
+		}
+		else if (n >= 1 && p[0] == '~')
+		{
+			std::size_t t = 1;
+			while (t < n && !isPathSep(p[t])) ++t;
+			if (t < n)
+			{
+				parts.rootKind = PathRoot::tilde;
+				parts.rootLength = t + 1;
+			}
+		}
+	}
+	i = parts.rootLength;
+	const std::size_t restBegin = i;
+	while (i < n)
+	{
+		while (i < n && isPathSep(p[i])) ++i;
+		const std::size_t begin = i;
+		while (i < n && !isPathSep(p[i])) ++i;
+		if (i > begin) parts.spans.emplace_back(begin, i);
+	}
+	parts.trailingSeparator = n > restBegin && isPathSep(p[n - 1]);
+	return parts;
+}
+
+// Roots that survive -stringByDeletingLastPathComponent on their own.
+constexpr bool rootStandsAlone(PathRoot k) noexcept
+{
+	return k == PathRoot::separator || k == PathRoot::driveSeparator || k == PathRoot::unc;
+}
+
+} // namespace detail
+
+inline std::vector<std::string> pathComponents(std::string_view path)
+{
+	const detail::PathParts parts = detail::splitPath(path);
+	std::vector<std::string> result;
+	if (parts.rootLength > 0) result.emplace_back(path.substr(0, parts.rootLength));
+	for (const auto& [begin, end] : parts.spans) result.emplace_back(path.substr(begin, end - begin));
+	if (parts.trailingSeparator) result.emplace_back("/");
+	return result;
+}
+
+inline std::string pathWithComponents(const std::vector<std::string>& components)
+{
+	if (components.empty()) return std::string();
+	if (components.size() == 1) return components[0].empty() ? std::string("/") : components[0];
+	std::string result;
+	bool separatorNext = false;   // whether the next component needs a "/" before it
+	for (std::size_t c = 0; c < components.size(); ++c)
+	{
+		std::string_view s = components[c];
+		if (c == 0)
+		{
+			const detail::PathParts parts = detail::splitPath(s);
+			if (s.find_first_not_of("/\\") == std::string_view::npos)
+			{
+				result = "/";   // "", "/", "\\": the root
+				continue;
+			}
+			if (parts.rootKind == detail::PathRoot::drive || parts.rootKind == detail::PathRoot::driveSeparator)
+			{
+				result = std::string(s.substr(0, 2));
+				if (parts.rootKind == detail::PathRoot::driveSeparator) result += '/';
+				s = s.substr(parts.rootLength);
+			}
+			while (!s.empty() && detail::isPathSep(s.back())) s.remove_suffix(1);
+			if (!s.empty())
+			{
+				result += s;
+				separatorNext = true;
+			}
+			continue;
+		}
+		while (!s.empty() && detail::isPathSep(s.front())) s.remove_prefix(1);
+		while (!s.empty() && detail::isPathSep(s.back())) s.remove_suffix(1);
+		if (s.empty()) continue;
+		if (separatorNext) result += '/';
+		result += s;
+		separatorNext = true;
+	}
+	return result;
+}
+
+inline std::string lastPathComponent(std::string_view path)
+{
+	const detail::PathParts parts = detail::splitPath(path);
+	if (!parts.spans.empty())
+	{
+		const auto [begin, end] = parts.spans.back();
+		return std::string(path.substr(begin, end - begin));
+	}
+	if (parts.rootLength > 0)
+	{
+		std::string_view root = path.substr(0, parts.rootLength);
+		if (parts.rootKind == detail::PathRoot::tilde) root.remove_suffix(1);   // "~/" -> "~"
+		return std::string(root);
+	}
+	return std::string();
+}
+
+inline std::string deletingLastPathComponent(std::string_view path)
+{
+	const detail::PathParts parts = detail::splitPath(path);
+	const std::string_view root = path.substr(0, parts.rootLength);
+	if (parts.spans.empty())
+	{
+		return detail::rootStandsAlone(parts.rootKind) ? std::string(root) : std::string();
+	}
+	if (parts.spans.size() == 1) return std::string(root);
+	const std::size_t from = parts.spans.front().first, to = parts.spans[parts.spans.size() - 2].second;
+	return std::string(root) + std::string(path.substr(from, to - from));
+}
+
+inline std::string appendingPathComponent(std::string_view path, std::string_view component)
+{
+	const detail::PathParts parts = detail::splitPath(path);
+	if (path.empty()) return std::string(component);
+	if (parts.spans.empty())
+	{
+		switch (parts.rootKind)
+		{
+			case detail::PathRoot::separator: return "/" + std::string(component);
+			case detail::PathRoot::drive: return std::string(path.substr(0, 2)) + std::string(component);
+			case detail::PathRoot::driveSeparator: return std::string(path.substr(0, 2)) + "/" + std::string(component);
+			case detail::PathRoot::tilde: return std::string(path.substr(0, parts.rootLength - 1)) + "/" + std::string(component);
+			case detail::PathRoot::unc: return std::string(path.substr(0, parts.rootLength)) + std::string(component);
+			case detail::PathRoot::none: break;
+		}
+		return std::string(component);
+	}
+	// The path up to the end of its first component verbatim; later components joined by "/".
+	std::string result(path.substr(0, parts.spans.front().second));
+	for (std::size_t c = 1; c < parts.spans.size(); ++c)
+	{
+		const auto [begin, end] = parts.spans[c];
+		result += '/';
+		result += path.substr(begin, end - begin);
+	}
+	result += '/';
+	result += component;
+	return result;
+}
+
+// "%p" as -[NSString stringWithFormat:] prints it (GNUstep 1.31.1, 64-bit Windows): "(null)" for
+// NULL, otherwise the LOW 32 BITS as %#x ("0x1234"; "0" when they are all zero). Use it as a %s
+// argument where a formatted string had %p: oo::str::format("%s", oo::str::pointerDescription(p).c_str()).
+inline std::string pointerDescription(const void* pointer)
+{
+	if (pointer == nullptr) return "(null)";
+	const auto low = static_cast<unsigned>(reinterpret_cast<std::uintptr_t>(pointer) & 0xFFFFFFFFu);
+	return format("%#x", low);
 }
 
 // --- ordering -------------------------------------------------------------------------------

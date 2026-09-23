@@ -20,6 +20,7 @@ oofnd_tests = [
     'test_foundation_types',
     'test_string',
     'test_string_compare',
+    'test_string_sweep',
     'test_encoding',
     'test_log',
 ]
