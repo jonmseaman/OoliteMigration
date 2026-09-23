@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "StationEntity.h"
 #import "PlayerEntity.h"
 #import "OODebugFlags.h"
+#include "oofnd/objc/OOException.h"
 
 
 static BOOL positionIsWithinRegion(HPVector position, CollisionRegion *region);
@@ -216,7 +217,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 		Entity **new_store = (Entity **)realloc(entity_array, max_entities * sizeof(Entity *));
 		if (new_store == NULL)
 		{
-			[NSException raise:NSMallocException format:@"Not enough memory to grow collision region member list."];
+			[OOException raise:OOMallocException format:"Not enough memory to grow collision region member list."];
 		}
 		
 		entity_array = new_store;
