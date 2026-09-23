@@ -59,6 +59,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/Log.hpp"
 #include "oofnd/PListWriting.hpp"
 
 
@@ -70,7 +71,7 @@ static NSString * const kOOLogDebugOnMetaClass				= @"$scriptDebugOn";
 static NSString * const kOOLogDebugMessage					= @"script.debug.message";
 static NSString * const kOOLogDebugOnOff					= @"script.debug.onOff";
 static NSString * const kOOLogDebugAddPlanet				= @"script.debug.addPlanet";
-static NSString * const kOOLogDebugReplaceVariablesInString	= @"script.debug.replaceVariablesInString";
+static const char *const kOOLogDebugReplaceVariablesInString	= "script.debug.replaceVariablesInString";
 static NSString * const kOOLogDebugProcessSceneStringAddScene = @"script.debug.processSceneString.addScene";
 static NSString * const kOOLogDebugProcessSceneStringAddModel = @"script.debug.processSceneString.addModel";
 static NSString * const kOOLogDebugProcessSceneStringAddMiniPlanet = @"script.debug.processSceneString.addMiniPlanet";
@@ -78,7 +79,7 @@ static NSString * const kOOLogDebugProcessSceneStringAddMiniPlanet = @"script.de
 static NSString * const kOOLogNoteRemoveAllCargo			= @"script.debug.note.removeAllCargo";
 static NSString * const kOOLogNoteUseSpecialCargo			= @"script.debug.note.useSpecialCargo";
 static NSString * const kOOLogNoteAddShips					= @"script.debug.note.addShips";
-static NSString * const kOOLogNoteSet						= @"script.debug.note.set";
+static const char *const kOOLogNoteSet						= "script.debug.note.set";
 static NSString * const kOOLogNoteShowShipModel				= @"script.debug.note.showShipModel";
 static NSString * const kOOLogNoteFuelLeak					= @"script.debug.note.setFuelLeak";
 static NSString * const kOOLogNoteAddPlanet					= @"script.debug.note.addPlanet";
@@ -90,12 +91,12 @@ static NSString * const kOOLogSyntaxAwardEquipment			= @"script.debug.syntax.awa
 static NSString * const kOOLogSyntaxRemoveEquipment			= @"script.debug.syntax.removeEquipment";
 static NSString * const kOOLogSyntaxMessageShipAIs			= @"script.debug.syntax.messageShipAIs";
 static NSString * const kOOLogSyntaxAddShips				= @"script.debug.syntax.addShips";
-static NSString * const kOOLogSyntaxSet						= @"script.debug.syntax.set";
-static NSString * const kOOLogSyntaxReset					= @"script.debug.syntax.reset";
-static NSString * const kOOLogSyntaxIncrement				= @"script.debug.syntax.increment";
-static NSString * const kOOLogSyntaxDecrement				= @"script.debug.syntax.decrement";
-static NSString * const kOOLogSyntaxAdd						= @"script.debug.syntax.add";
-static NSString * const kOOLogSyntaxSubtract				= @"script.debug.syntax.subtract";
+static const char *const kOOLogSyntaxSet						= "script.debug.syntax.set";
+static const char *const kOOLogSyntaxReset					= "script.debug.syntax.reset";
+static const char *const kOOLogSyntaxIncrement				= "script.debug.syntax.increment";
+static const char *const kOOLogSyntaxDecrement				= "script.debug.syntax.decrement";
+static const char *const kOOLogSyntaxAdd						= "script.debug.syntax.add";
+static const char *const kOOLogSyntaxSubtract				= "script.debug.syntax.subtract";
 
 static NSString * const kOOLogRemoveAllCargoNotDocked		= @"script.error.removeAllCargo.notDocked";
 
@@ -120,7 +121,7 @@ static ShipEntity	*scriptTarget = nil;
 - (BOOL) scriptTestCondition:(const oo::PList &)scriptCondition;
 - (std::optional<std::string>) expandScriptRightHandSide:(const oo::PList &)rhsComponents;
 
-- (NSString *) expandMessage:(NSString *)valueString;
+- (std::optional<std::string>) expandMessage:(const std::string &)valueString;
 
 @end
 
@@ -171,6 +172,19 @@ bool IsWhitespaceNotNewline(char16_t c)
 {
 	return c == 0x09 || c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B)
 		   || c == 0x202F || c == 0x205F || c == 0x3000;
+}
+
+
+// -componentsJoinedByString:@" " of tokens[from...].
+std::string JoinedFrom(const std::vector<std::string> &tokens, std::size_t from)
+{
+	std::string result;
+	for (std::size_t i = from; i < tokens.size(); i++)
+	{
+		if (i != from)  result += " ";
+		result += tokens[i];
+	}
+	return result;
 }
 
 
@@ -282,7 +296,7 @@ void PerformActionStatment(const oo::PList &statement, Entity *target)
 	{
 		// Method with argument; substitute [description] expressions. The action is called by
 		// name, so its argument stays a string object (ADR-0043 item 21).
-		[target performSelector:selector withObject:OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(*argumentString), nil, [player localVariablesForMission:oo::NSStringOrNil(sCurrentMissionKey)], nil, kOOExpandNoOptions)];
+		[target performSelector:selector withObject:OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(*argumentString), nil, oo::ObjectFromPList([player localVariablesForMission:sCurrentMissionKey]), nil, kOOExpandNoOptions)];
 	}
 	else
 	{
@@ -539,7 +553,9 @@ static BOOL sRunningScript = NO;
 	}
 	else if (opType == OP_LOCAL_VAR)
 	{
-		sMissionStringValue = ConditionString([[self localVariablesForMission:oo::NSStringOrNil(sCurrentMissionKey)] objectForKey:oo::NSStringFrom(selectorString)]);
+		const oo::PList locals = [self localVariablesForMission:sCurrentMissionKey];
+		const oo::PList *local = locals.find(selectorString);
+		sMissionStringValue = ConditionString(local != nullptr ? *local : oo::PList());
 		selector = @selector(mission_string);
 		opType = OP_STRING;
 	}
@@ -721,44 +737,45 @@ static BOOL sRunningScript = NO;
 }
 
 
-- (NSMutableDictionary *)localVariablesForMission:(NSString *)missionKey
+/*	A mission's local variables, as a snapshot Dict (null for no mission). The per-mission tables in
+	the localVariables ivar (PlayerEntity.h's) are immutable dictionaries replaced on write; nothing
+	else reads or saves them, so the old create-an-empty-table-on-read side effect is not kept.
+*/
+- (oo::PList) localVariablesForMission:(const std::optional<std::string> &)missionKey
 {
-	NSMutableDictionary		*result = nil;
-	
-	if (missionKey == nil)  return nil;
-	
-	result = [localVariables objectForKey:missionKey];
-	if (result == nil)
-	{
-		result = [NSMutableDictionary dictionary];
-		[localVariables setObject:result forKey:missionKey];
-	}
-	
+	if (!missionKey.has_value())  return oo::PList();
+
+	oo::PList result = oo::PListFrom([localVariables objectForKey:oo::NSStringFrom(*missionKey)]);
+	if (!result.isDict())  result = oo::PList(oo::PList::Dict{});
 	return result;
 }
 
 
-- (NSString *)localVariableForKey:(NSString *)variableName andMission:(NSString *)missionKey
+- (std::optional<std::string>) localVariableForKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey
 {
-	return [oo::PListView(localVariables).get<NSDictionary *>(missionKey) objectForKey:variableName];
+	if (!missionKey.has_value())  return std::nullopt;
+	const oo::PList locals = [self localVariablesForMission:missionKey];
+	const oo::PList *value = locals.find(variableName);
+	if (value == nullptr)  return std::nullopt;
+	return ConditionString(*value);
 }
 
 
-- (void)setLocalVariable:(NSString *)value forKey:(NSString *)variableName andMission:(NSString *)missionKey
+- (void) setLocalVariable:(const std::optional<std::string> &)value forKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey
 {
-	NSMutableDictionary		*locals = nil;
-	
-	if (variableName != nil && missionKey != nil)
+	if (missionKey.has_value())
 	{
-		locals = [self localVariablesForMission:missionKey];
-		if (value != nil)
+		oo::PList locals = [self localVariablesForMission:missionKey];
+		oo::PList::Dict *table = locals.getIf<oo::PList::Dict>();
+		if (value.has_value())
 		{
-			[locals setObject:value forKey:variableName];
+			(*table)[variableName] = oo::PList(*value);
 		}
 		else
 		{
-			[locals removeObjectForKey:variableName];
+			table->erase(variableName);
 		}
+		[localVariables setObject:oo::ObjectFromPList(locals) forKey:oo::NSStringFrom(*missionKey)];
 	}
 }
 
@@ -834,44 +851,49 @@ static BOOL sRunningScript = NO;
 }
 
 
-- (NSString*) replaceVariablesInString:(NSString*) args
+- (std::optional<std::string>) replaceVariablesInString:(const std::string &)args
 {
-	NSMutableDictionary	*locals = [self localVariablesForMission:oo::NSStringOrNil(sCurrentMissionKey)];
-	NSMutableString		*resultString = [NSMutableString stringWithString: args];
-	NSString			*valueString;
-	unsigned			i;
-	NSMutableArray		*tokens = ScanTokensFromString(args);
-	
-	for (i = 0; i < [tokens  count]; i++)
+	const oo::PList		locals = [self localVariablesForMission:sCurrentMissionKey];
+	std::string			resultString = args;
+
+	// Each replacement is literal (NSLiteralSearch).
+	auto replace = [&resultString](const std::string &target, const std::string &replacement)
 	{
-		valueString = [tokens objectAtIndex:i];
-		
-		if ([valueString hasPrefix:@"mission_"] && [mission_variables objectForKey:valueString])
+		resultString = oo::str::replaceOccurrences(resultString, target, replacement, oo::str::Search::literal);
+	};
+
+	for (const std::string &valueString : oo::str::tokens(args))
+	{
+		const oo::PList missionValue = oo::str::hasPrefix(valueString, "mission_") ? [self cxx_missionVariableForKey:valueString] : oo::PList();
+		const oo::PList *localValue = locals.find(valueString);
+
+		if (!missionValue.isNull())
 		{
-			[resultString replaceOccurrencesOfString:valueString withString:[mission_variables objectForKey:valueString] options:NSLiteralSearch range:NSMakeRange(0, [resultString length])];
+			// (a non-string variable substitutes its description; the old code raised)
+			replace(valueString, ConditionString(missionValue).value_or(std::string()));
 		}
-		else if ([locals objectForKey:valueString])
+		else if (localValue != nullptr)
 		{
-			[resultString replaceOccurrencesOfString:valueString withString:[locals objectForKey:valueString] options:NSLiteralSearch range:NSMakeRange(0, [resultString length])];
+			replace(valueString, ConditionString(*localValue).value_or(std::string()));
 		}
-		else if (([valueString hasSuffix:@"_number"])||([valueString hasSuffix:@"_bool"])||([valueString hasSuffix:@"_string"]))
+		else if (oo::str::hasSuffix(valueString, "_number") || oo::str::hasSuffix(valueString, "_bool") || oo::str::hasSuffix(valueString, "_string"))
 		{
-			SEL valueselector = NSSelectorFromString(valueString);
+			SEL valueselector = NSSelectorFromString(oo::NSStringFrom(valueString));
 			if ([self respondsToSelector:valueselector])
 			{
-				[resultString replaceOccurrencesOfString:valueString withString:[NSString stringWithFormat:@"%@", [self performSelector:valueselector]] options:NSLiteralSearch range:NSMakeRange(0, [resultString length])];
+				// called by name; "%@" of the result, as +stringWithFormat: printed it
+				replace(valueString, oo::DescriptionOf([self performSelector:valueselector]));
 			}
 		}
-		else if ([valueString hasPrefix:@"["]&&[valueString hasSuffix:@"]"])
+		else if (oo::str::hasPrefix(valueString, "[") && oo::str::hasSuffix(valueString, "]"))
 		{
-			NSString* replaceString = OOExpand(valueString);
-			[resultString replaceOccurrencesOfString:valueString withString:replaceString options:NSLiteralSearch range:NSMakeRange(0, [resultString length])];
+			replace(valueString, oo::StdString(OOExpand(oo::NSStringFrom(valueString))));
 		}
 	}
-	
-	OOLog(kOOLogDebugReplaceVariablesInString, @"EXPANSION: \"%@\" becomes \"%@\"", args, resultString);
-	
-	return [NSString stringWithString: resultString];
+
+	OO_LOG(kOOLogDebugReplaceVariablesInString, "EXPANSION: \"{}\" becomes \"{}\"", args, resultString);
+
+	return resultString;
 }
 
 /*-----------------------------------------------------*/
@@ -907,7 +929,7 @@ static BOOL sRunningScript = NO;
 	}
 
 	text = OOExpand(text);
-	text = [self replaceVariablesInString: text];
+	text = oo::NSStringOrNil([self replaceVariablesInString:oo::StdString(text)]);
 
 	[mission_variables setObject:text forKey:key];
 }
@@ -930,7 +952,7 @@ static BOOL sRunningScript = NO;
 		if (text != nil)
 		{
 			text = OOExpand(text);
-			text = [self replaceVariablesInString: text];
+			text = oo::NSStringOrNil([self replaceVariablesInString:oo::StdString(text)]);
 			[expandedList addObject:text];
 		}
 	}
@@ -1219,7 +1241,7 @@ static int shipsFound;
 /*-----------------------------------------------------*/
 
 
-- (NSString *) expandMessage:(NSString *)valueString
+- (std::optional<std::string>) expandMessage:(const std::string &)valueString
 {
 	Random_Seed very_random_seed;
 	very_random_seed.a = rand() & 255;
@@ -1229,35 +1251,34 @@ static int shipsFound;
 	very_random_seed.e = rand() & 255;
 	very_random_seed.f = rand() & 255;
 	seed_RNG_only_for_planet_description(very_random_seed);
-	NSString* expandedMessage = OOExpand(valueString);
-	return [self replaceVariablesInString: expandedMessage];
+	return [self replaceVariablesInString:oo::StdString(OOExpand(oo::NSStringFrom(valueString)))];
 }
 
 
-- (void) commsMessage:(NSString *)valueString
-{	
-	[UNIVERSE addCommsMessage:[self expandMessage:valueString] forCount:4.5];
+- (void) commsMessage:(id)valueString	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+{
+	[UNIVERSE addCommsMessage:oo::NSStringOrNil([self expandMessage:oo::StdString(valueString)]) forCount:4.5];
 }
 
 
 // Enabled on 02-May-2008 - Nikos
 // This method does the same as -commsMessage, (which in fact calls), the difference being that scripts can use this
 // method to have unpiloted ship entities sending comms messages.
-- (void) commsMessageByUnpiloted:(NSString *)valueString
+- (void) commsMessageByUnpiloted:(id)valueString	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 {
 	[self commsMessage:valueString];
 }
 
 
-- (void) consoleMessage3s:(NSString *)valueString
+- (void) consoleMessage3s:(id)valueString	// called by name (ADR-0043 item 21)
 {
-	[UNIVERSE addMessage:[self expandMessage:valueString] forCount: 3];
+	[UNIVERSE addMessage:oo::NSStringOrNil([self expandMessage:oo::StdString(valueString)]) forCount: 3];
 }
 
 
-- (void) consoleMessage6s:(NSString *)valueString
+- (void) consoleMessage6s:(id)valueString	// called by name (ADR-0043 item 21)
 {
-	[UNIVERSE addMessage:[self expandMessage:valueString] forCount: 6];
+	[UNIVERSE addMessage:oo::NSStringOrNil([self expandMessage:oo::StdString(valueString)]) forCount: 6];
 }
 
 
@@ -1729,198 +1750,200 @@ static int shipsFound;
 }
 
 
-- (void) set:(NSString *)missionvariable_value
+- (void) set:(id)missionvariable_value	// called by name (ADR-0043 item 21)
 {
-	NSMutableArray		*tokens = ScanTokensFromString(missionvariable_value);
-	NSString			*missionVariableString = nil;
-	NSString			*valueString = nil;
+	const std::string	argument = oo::StdString(missionvariable_value);
+	std::vector<std::string>	tokens = oo::str::tokens(argument);
+	std::string			missionVariableString;
+	std::string			valueString;
 	BOOL				hasMissionPrefix, hasLocalPrefix;
 
-	if ([tokens count] < 2)
+	if (tokens.size() < 2)
 	{
-		OOLog(kOOLogSyntaxSet, @"***** SCRIPT ERROR: in %@, CANNOT SET '%@' (expected mission_variable or local_variable followed by value expression)", CurrentScriptDesc(), missionvariable_value);
+		OO_LOG(kOOLogSyntaxSet, "***** SCRIPT ERROR: in {}, CANNOT SET '{}' (expected mission_variable or local_variable followed by value expression)", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	missionVariableString = [tokens objectAtIndex:0];
-	[tokens removeObjectAtIndex:0];
-	valueString = [tokens componentsJoinedByString:@" "];
+	missionVariableString = tokens[0];
+	valueString = JoinedFrom(tokens, 1);
 
-	hasMissionPrefix = [missionVariableString hasPrefix:@"mission_"];
-	hasLocalPrefix = [missionVariableString hasPrefix:@"local_"];
+	hasMissionPrefix = oo::str::hasPrefix(missionVariableString, "mission_");
+	hasLocalPrefix = oo::str::hasPrefix(missionVariableString, "local_");
 
 	if (!hasMissionPrefix && !hasLocalPrefix)
 	{
-		OOLog(kOOLogSyntaxSet, @"***** SCRIPT ERROR: in %@, IDENTIFIER '%@' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDesc(), missionVariableString);
+		OO_LOG(kOOLogSyntaxSet, "***** SCRIPT ERROR: in {}, IDENTIFIER '{}' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDescription(), missionVariableString);
 		return;
 	}
 
-	OOLog(kOOLogNoteSet, @"DEBUG: script %@ is set to %@", missionVariableString, valueString);
-	
+	OO_LOG(kOOLogNoteSet, "DEBUG: script {} is set to {}", missionVariableString, valueString);
+
 	if (hasMissionPrefix)
 	{
-		[self setMissionVariable:valueString forKey:missionVariableString];
+		[self cxx_setMissionVariable:oo::PList(valueString) forKey:missionVariableString];
 	}
 	else
 	{
-		[self setLocalVariable:valueString forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
+		[self setLocalVariable:valueString forKey:missionVariableString andMission:sCurrentMissionKey];
 	}
 }
 
 
-- (void) reset:(NSString *)missionvariable
+- (void) reset:(id)missionvariable	// called by name (ADR-0043 item 21)
 {
-	NSString*   missionVariableString = [missionvariable stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	const std::string missionVariableString = TrimWhitespace(oo::StdString(missionvariable));
 	BOOL hasMissionPrefix, hasLocalPrefix;
 
-	hasMissionPrefix = [missionVariableString hasPrefix:@"mission_"];
-	hasLocalPrefix = [missionVariableString hasPrefix:@"local_"];
+	hasMissionPrefix = oo::str::hasPrefix(missionVariableString, "mission_");
+	hasLocalPrefix = oo::str::hasPrefix(missionVariableString, "local_");
 
 	if (hasMissionPrefix)
 	{
-		[self setMissionVariable:nil forKey:missionVariableString];
+		[self cxx_setMissionVariable:oo::PList() forKey:missionVariableString];
 	}
 	else if (hasLocalPrefix)
 	{
-		[self setLocalVariable:nil forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
+		[self setLocalVariable:std::nullopt forKey:missionVariableString andMission:sCurrentMissionKey];
 	}
 	else
 	{
-		OOLog(kOOLogSyntaxReset, @"***** SCRIPT ERROR: in %@, IDENTIFIER '%@' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDesc(), missionVariableString);
+		OO_LOG(kOOLogSyntaxReset, "***** SCRIPT ERROR: in {}, IDENTIFIER '{}' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDescription(), missionVariableString);
 	}
 }
 
 
-- (void) increment:(NSString *)missionVariableString
+- (void) increment:(id)missionVariableObject	// called by name (ADR-0043 item 21)
 {
+	const std::string missionVariableString = oo::StdString(missionVariableObject);
 	BOOL hasMissionPrefix, hasLocalPrefix;
 	int value = 0;
 
-	hasMissionPrefix = [missionVariableString hasPrefix:@"mission_"];
-	hasLocalPrefix = [missionVariableString hasPrefix:@"local_"];
+	hasMissionPrefix = oo::str::hasPrefix(missionVariableString, "mission_");
+	hasLocalPrefix = oo::str::hasPrefix(missionVariableString, "local_");
 
 	if (hasMissionPrefix)
 	{
-		value = [[self missionVariableForKey:missionVariableString] intValue];
+		value = oo::str::intValue(ConditionString([self cxx_missionVariableForKey:missionVariableString]).value_or(std::string()));
 		value++;
-		[self setMissionVariable:[NSString stringWithFormat:@"%d", value] forKey:missionVariableString];
+		[self cxx_setMissionVariable:oo::PList(oo::str::format("%d", value)) forKey:missionVariableString];
 	}
 	else if (hasLocalPrefix)
 	{
-		value = [[self localVariableForKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)] intValue];
+		value = oo::str::intValue([self localVariableForKey:missionVariableString andMission:sCurrentMissionKey].value_or(std::string()));
 		value++;
-		[self setLocalVariable:[NSString stringWithFormat:@"%d", value] forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
+		[self setLocalVariable:oo::str::format("%d", value) forKey:missionVariableString andMission:sCurrentMissionKey];
 	}
 	else
 	{
-		OOLog(kOOLogSyntaxIncrement, @"***** SCRIPT ERROR: in %@, IDENTIFIER '%@' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDesc(), missionVariableString);
+		OO_LOG(kOOLogSyntaxIncrement, "***** SCRIPT ERROR: in {}, IDENTIFIER '{}' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDescription(), missionVariableString);
 	}
 }
 
 
-- (void) decrement:(NSString *)missionVariableString
+- (void) decrement:(id)missionVariableObject	// called by name (ADR-0043 item 21)
 {
+	const std::string missionVariableString = oo::StdString(missionVariableObject);
 	BOOL hasMissionPrefix, hasLocalPrefix;
 	int value = 0;
 
-	hasMissionPrefix = [missionVariableString hasPrefix:@"mission_"];
-	hasLocalPrefix = [missionVariableString hasPrefix:@"local_"];
-	
+	hasMissionPrefix = oo::str::hasPrefix(missionVariableString, "mission_");
+	hasLocalPrefix = oo::str::hasPrefix(missionVariableString, "local_");
+
 	if (hasMissionPrefix)
 	{
-		value = [[self missionVariableForKey:missionVariableString] intValue];
+		value = oo::str::intValue(ConditionString([self cxx_missionVariableForKey:missionVariableString]).value_or(std::string()));
 		value--;
-		[self setMissionVariable:[NSString stringWithFormat:@"%d", value] forKey:missionVariableString];
+		[self cxx_setMissionVariable:oo::PList(oo::str::format("%d", value)) forKey:missionVariableString];
 	}
 	else if (hasLocalPrefix)
 	{
-		value = [[self localVariableForKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)] intValue];
+		value = oo::str::intValue([self localVariableForKey:missionVariableString andMission:sCurrentMissionKey].value_or(std::string()));
 		value--;
-		[self setLocalVariable:[NSString stringWithFormat:@"%d", value] forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
+		[self setLocalVariable:oo::str::format("%d", value) forKey:missionVariableString andMission:sCurrentMissionKey];
 	}
 	else
 	{
-		OOLog(kOOLogSyntaxDecrement, @"***** SCRIPT ERROR: in %@, IDENTIFIER '%@' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDesc(), missionVariableString);
+		OO_LOG(kOOLogSyntaxDecrement, "***** SCRIPT ERROR: in {}, IDENTIFIER '{}' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDescription(), missionVariableString);
 	}
 }
 
 
-- (void) add:(NSString *)missionVariableString_value
+- (void) add:(id)missionVariableString_value	// called by name (ADR-0043 item 21)
 {
-	NSString*   missionVariableString = nil;
-	NSString*   valueString;
+	const std::string	argument = oo::StdString(missionVariableString_value);
+	std::string			missionVariableString;
+	std::string			valueString;
 	double	value;
-	NSMutableArray*	tokens = ScanTokensFromString(missionVariableString_value);
+	std::vector<std::string>	tokens = oo::str::tokens(argument);
 	BOOL hasMissionPrefix, hasLocalPrefix;
 
-	if ([tokens count] < 2)
+	if (tokens.size() < 2)
 	{
-		OOLog(kOOLogSyntaxAdd, @"***** SCRIPT ERROR: in %@, CANNOT ADD: '%@'", CurrentScriptDesc(), missionVariableString_value);
+		OO_LOG(kOOLogSyntaxAdd, "***** SCRIPT ERROR: in {}, CANNOT ADD: '{}'", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	missionVariableString = [tokens objectAtIndex:0];
-	[tokens removeObjectAtIndex:0];
-	valueString = [tokens componentsJoinedByString:@" "];
+	missionVariableString = tokens[0];
+	valueString = JoinedFrom(tokens, 1);
 
-	hasMissionPrefix = [missionVariableString hasPrefix:@"mission_"];
-	hasLocalPrefix = [missionVariableString hasPrefix:@"local_"];
+	hasMissionPrefix = oo::str::hasPrefix(missionVariableString, "mission_");
+	hasLocalPrefix = oo::str::hasPrefix(missionVariableString, "local_");
 
 	if (hasMissionPrefix)
 	{
-		value = [[self missionVariableForKey:missionVariableString] doubleValue];
-		value += [valueString doubleValue];
-		[self setMissionVariable:[NSString stringWithFormat:@"%f", value] forKey:missionVariableString];
+		value = oo::str::doubleValue(ConditionString([self cxx_missionVariableForKey:missionVariableString]).value_or(std::string()));
+		value += oo::str::doubleValue(valueString);
+		[self cxx_setMissionVariable:oo::PList(oo::str::format("%f", value)) forKey:missionVariableString];
 	}
 	else if (hasLocalPrefix)
 	{
-		value = [[self localVariableForKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)] doubleValue];
-		value += [valueString doubleValue];
-		[self setLocalVariable:[NSString stringWithFormat:@"%f", value] forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
+		value = oo::str::doubleValue([self localVariableForKey:missionVariableString andMission:sCurrentMissionKey].value_or(std::string()));
+		value += oo::str::doubleValue(valueString);
+		[self setLocalVariable:oo::str::format("%f", value) forKey:missionVariableString andMission:sCurrentMissionKey];
 	}
 	else
 	{
-		OOLog(kOOLogSyntaxAdd, @"***** SCRIPT ERROR: in %@, CANNOT ADD: '%@' -- IDENTIFIER '%@' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDesc(), missionVariableString_value, missionVariableString_value);
+		OO_LOG(kOOLogSyntaxAdd, "***** SCRIPT ERROR: in {}, CANNOT ADD: '{}' -- IDENTIFIER '{}' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDescription(), argument, argument);
 	}
 }
 
 
-- (void) subtract:(NSString *)missionVariableString_value
+- (void) subtract:(id)missionVariableString_value	// called by name (ADR-0043 item 21)
 {
-	NSString*   missionVariableString = nil;
-	NSString*   valueString;
+	const std::string	argument = oo::StdString(missionVariableString_value);
+	std::string			missionVariableString;
+	std::string			valueString;
 	double	value;
-	NSMutableArray*	tokens = ScanTokensFromString(missionVariableString_value);
+	std::vector<std::string>	tokens = oo::str::tokens(argument);
 	BOOL hasMissionPrefix, hasLocalPrefix;
 
-	if ([tokens count] < 2)
+	if (tokens.size() < 2)
 	{
-		OOLog(kOOLogSyntaxSubtract, @"***** SCRIPT ERROR: in %@, CANNOT SUBTRACT: '%@'", CurrentScriptDesc(), missionVariableString_value);
+		OO_LOG(kOOLogSyntaxSubtract, "***** SCRIPT ERROR: in {}, CANNOT SUBTRACT: '{}'", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	missionVariableString = [tokens objectAtIndex:0];
-	[tokens removeObjectAtIndex:0];
-	valueString = [tokens componentsJoinedByString:@" "];
+	missionVariableString = tokens[0];
+	valueString = JoinedFrom(tokens, 1);
 
-	hasMissionPrefix = [missionVariableString hasPrefix:@"mission_"];
-	hasLocalPrefix = [missionVariableString hasPrefix:@"local_"];
-	
+	hasMissionPrefix = oo::str::hasPrefix(missionVariableString, "mission_");
+	hasLocalPrefix = oo::str::hasPrefix(missionVariableString, "local_");
+
 	if (hasMissionPrefix)
 	{
-		value = [[self missionVariableForKey:missionVariableString] doubleValue];
-		value -= [valueString doubleValue];
-		[self setMissionVariable:[NSString stringWithFormat:@"%f", value] forKey:missionVariableString];
+		value = oo::str::doubleValue(ConditionString([self cxx_missionVariableForKey:missionVariableString]).value_or(std::string()));
+		value -= oo::str::doubleValue(valueString);
+		[self cxx_setMissionVariable:oo::PList(oo::str::format("%f", value)) forKey:missionVariableString];
 	}
 	else if (hasLocalPrefix)
 	{
-		value = [[self localVariableForKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)] doubleValue];
-		value -= [valueString doubleValue];
-		[self setLocalVariable:[NSString stringWithFormat:@"%f", value] forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
+		value = oo::str::doubleValue([self localVariableForKey:missionVariableString andMission:sCurrentMissionKey].value_or(std::string()));
+		value -= oo::str::doubleValue(valueString);
+		[self setLocalVariable:oo::str::format("%f", value) forKey:missionVariableString andMission:sCurrentMissionKey];
 	}
 	else
 	{
-		OOLog(kOOLogSyntaxSubtract, @"***** SCRIPT ERROR: in %@, CANNOT SUBTRACT: '%@' -- IDENTIFIER '%@' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDesc(), missionVariableString_value, missionVariableString_value);
+		OO_LOG(kOOLogSyntaxSubtract, "***** SCRIPT ERROR: in {}, CANNOT SUBTRACT: '{}' -- IDENTIFIER '{}' DOES NOT BEGIN WITH 'mission_' or 'local_'", CurrentScriptDescription(), argument, argument);
 	}
 }
 
@@ -1951,7 +1974,7 @@ static int shipsFound;
 	text = oo::PListView([UNIVERSE missiontext]).get<NSString *>(textKey);
 	if (text == nil)  return;
 	text = OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandBackslashN, text);
-	text = [self replaceVariablesInString:text];
+	text = oo::NSStringOrNil([self replaceVariablesInString:oo::StdString(text)]);
 	
 	[self addLiteralMissionText:text];
 }
@@ -2094,7 +2117,7 @@ static int shipsFound;
 			continue; // invalid type
 		}
 		choiceText = OOExpand(choiceText);
-		choiceText = [self replaceVariablesInString:choiceText];
+		choiceText = oo::NSStringOrNil([self replaceVariablesInString:oo::StdString(choiceText)]);
 		// allow blank rows
 		if (![choiceText isEqualToString:@"  "])
 		{

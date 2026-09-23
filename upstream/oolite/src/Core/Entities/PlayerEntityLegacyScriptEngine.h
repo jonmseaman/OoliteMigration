@@ -82,9 +82,10 @@ typedef enum
 - (oo::PList) cxx_missionVariableForKey:(const std::string &)key;
 - (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key;	// null removes
 
-- (NSMutableDictionary *)localVariablesForMission:(NSString *)missionKey;
-- (NSString *)localVariableForKey:(NSString *)variableName andMission:(NSString *)missionKey;
-- (void)setLocalVariable:(NSString *)value forKey:(NSString *)variableName andMission:(NSString *)missionKey;
+// A mission's local variables (bead oo-3rb.192): a snapshot Dict, null for no mission.
+- (oo::PList) localVariablesForMission:(const std::optional<std::string> &)missionKey;
+- (std::optional<std::string>) localVariableForKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey;
+- (void) setLocalVariable:(const std::optional<std::string> &)value forKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey;	// nullopt removes
 
 /*-----------------------------------------------------*/
 
@@ -149,13 +150,13 @@ typedef enum
 - (void) setMissionDescription:(NSString *)textKey forMission:(NSString *)key;
 - (void) clearMissionDescriptionForMission:(NSString *)key;
 
-- (void) commsMessage:(NSString *)valueString;
-- (void) commsMessageByUnpiloted:(NSString *)valueString;  // Enabled 02-May-2008 - Nikos. Same as commsMessage, but
+- (void) commsMessage:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) commsMessageByUnpiloted:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
 							   // can be used by scripts to have unpiloted ships sending
 							   // commsMessages, if we want to.
 
-- (void) consoleMessage3s:(NSString *)valueString;
-- (void) consoleMessage6s:(NSString *)valueString;
+- (void) consoleMessage3s:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) consoleMessage6s:(id)valueString;	// called by name (ADR-0043 item 21)
 
 - (void) setLegalStatus:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 - (void) awardCredits:(NSString *)valueString;
@@ -184,8 +185,8 @@ typedef enum
 - (void) addShipsAtPrecisely:(NSString *)roles_number_system_x_y_z;
 - (void) addShipsWithinRadius:(NSString *)roles_number_system_x_y_z_r;
 - (void) spawnShip:(NSString *)ship_key;
-- (void) set:(NSString *)missionvariable_value;
-- (void) reset:(NSString *)missionvariable;
+- (void) set:(id)missionvariable_value;	// called by name (ADR-0043 item 21)
+- (void) reset:(id)missionvariable;	// called by name (ADR-0043 item 21)
 /*
 	set:missionvariable_value
 	add:missionvariable_value
@@ -202,11 +203,11 @@ typedef enum
 		subtract: mission_my_mission_clock d100_number
 */
 
-- (void) increment:(NSString *)missionVariableString;
-- (void) decrement:(NSString *)missionVariableString;
+- (void) increment:(id)missionVariableString;	// called by name (ADR-0043 item 21)
+- (void) decrement:(id)missionVariableString;	// called by name (ADR-0043 item 21)
 
-- (void) add:(NSString *)missionVariableString_value;
-- (void) subtract:(NSString *)missionVariableString_value;
+- (void) add:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
+- (void) subtract:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
 
 - (void) checkForShips: (NSString *)roleString;
 - (void) resetScriptTimer;
@@ -244,7 +245,7 @@ typedef enum
 - (void) debugOff;
 - (void) debugMessage:(NSString *)args;
 
-- (NSString*) replaceVariablesInString:(NSString*) args;
+- (std::optional<std::string>) replaceVariablesInString:(const std::string &)args;
 
 - (void) playSound:(NSString *) soundName;
 
