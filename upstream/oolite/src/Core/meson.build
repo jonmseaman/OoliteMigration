@@ -95,6 +95,7 @@ oolite_sources += files(
     'OOSpatialReference.mm',
     'OOStringExpander.mm',
     'OOStringParsing.mm',
+    'OOStringParsing+FoundationBridge.mm',
     'OOSystemDescriptionManager.mm',
     'OOSystemDescriptionManager+FoundationBridge.mm',
     'OOTextureScaling.mm',
