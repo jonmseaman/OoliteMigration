@@ -351,20 +351,20 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 /*
 	A background/foreground texture descriptor is a dictionary with a string
 	property keyed "name" and optional number properties keyed "width" and
-	"height".
+	"height". Chunk 4 (oo-3rb.94..95): descriptors are oo::PList (null = nil).
 */
 
-- (BOOL) setBackgroundTextureDescriptor:(NSDictionary *)descriptor;
-- (BOOL) setForegroundTextureDescriptor:(NSDictionary *)descriptor;
-- (BOOL) setBackgroundTextureKey:(NSString *)key;
-- (BOOL) setForegroundTextureKey:(NSString *)key;
+- (BOOL) cxx_setBackgroundTextureDescriptor:(const oo::PList &)descriptor;
+- (BOOL) cxx_setForegroundTextureDescriptor:(const oo::PList &)descriptor;
+- (BOOL) cxx_setBackgroundTextureKey:(const std::optional<std::string> &)key;
+- (BOOL) cxx_setForegroundTextureKey:(const std::optional<std::string> &)key;
 
-- (BOOL) preloadGUITexture:(NSDictionary *)descriptor;
+- (BOOL) cxx_preloadGUITexture:(const oo::PList &)descriptor;
 
 /*
 	Interpret a JavaScript value as a texture descriptor for
-	-[GUIDisplayGen set{Background|Foreground}TextureDescriptor:]. Also starts
-	preloading the texture.
+	-[GUIDisplayGen cxx_set{Background|Foreground}TextureDescriptor:]. Also starts
+	preloading the texture. Null: no such texture.
 	
 	callerDescription is a string describing the context in which this was
 	called, generally a method name (like "mission.runScreen()") for warning
@@ -372,7 +372,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 	
 	Requires a request on context.
 */
-- (NSDictionary *) textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(NSString *)callerDescription;
+- (oo::PList) cxx_textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(const std::optional<std::string> &)callerDescription;
 
 - (void) clearBackground;
 
