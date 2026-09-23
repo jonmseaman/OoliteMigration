@@ -28,6 +28,7 @@ SOFTWARE.
 #import "OORegExpMatcher.h"
 #import "OOJSFunction.h"
 #import "OOJavaScriptEngine.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Thread.hpp"
@@ -77,14 +78,14 @@ static OORegExpMatcher *sActiveInstance;
 	{	
 		const char *argumentNames[2] = { "string", "regexp" };
 		unsigned codeLine = __LINE__ + 1;	// NB: should remain line before code.
-		NSString *code = @"return regexp.test(string);";
+		const char *code = "return regexp.test(string);";
 		
 		[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
 		
 		ooscript::Context context = OOJSAcquireContext();
 		_tester = [[OOJSFunction alloc] initWithName:@"matchesRegExp"
 											   scope:NULL
-												code:code
+												code:oo::NSStringFrom(code)
 									   argumentCount:2
 									   argumentNames:argumentNames
 											fileName:[@__FILE__ lastPathComponent]
@@ -105,40 +106,40 @@ static OORegExpMatcher *sActiveInstance;
 	if (sActiveInstance == self)  sActiveInstance = nil;
 	
 	DESTROY(_tester);
-	DESTROY(_cachedRegExpString);
 	DESTROY(_cachedRegExpObject);
 	
 	[super dealloc];
 }
 
 
-- (BOOL) string:(NSString *)string matchesExpression:(NSString *)regExp
+- (BOOL) string:(const std::string &)string matchesExpression:(const std::string &)regExp
 {
 	return [self string:string matchesExpression:regExp flags:0];
 }
 
 
-- (BOOL) string:(NSString *)string matchesExpression:(NSString *)regExp flags:(NSUInteger)flags
+- (BOOL) string:(const std::string &)string matchesExpression:(const std::string &)regExp flags:(NSUInteger)flags
 {
 	NSAssert(oo::thread::isMainThread(), @"OORegExpMatcher may only be used on the main thread.");
-	
-	size_t expLength = [regExp length];
+
+	const std::u16string regExpUnits = oo::utf8ToUtf16(regExp);
+	size_t expLength = regExpUnits.size();
 	if (EXPECT_NOT(expLength == 0))  return NO;
 	
 	ooscript::Context context = OOJSAcquireContext();
 	
 	// Create new RegExp object if necessary.
-	if (flags != _cachedFlags || ![regExp isEqualToString:_cachedRegExpString])
+	if (flags != _cachedFlags || _cachedRegExpString != regExp)
 	{
-		DESTROY(_cachedRegExpString);
+		_cachedRegExpString.reset();
 		DESTROY(_cachedRegExpObject);
 		
 		unichar *buffer;
 		buffer = static_cast<unichar *>(malloc(expLength * sizeof *buffer));
 		if (EXPECT_NOT(buffer == NULL))  return NO;
-		[regExp getCharacters:buffer];
+		std::copy(regExpUnits.begin(), regExpUnits.end(), buffer);
 		
-		_cachedRegExpString = [regExp retain];
+		_cachedRegExpString = regExp;
 		Object regExpFacadeObj = ooscript::newUCRegExpObjectNoStatics((context), reinterpret_cast<const ooscript::Char16 *>(buffer), expLength, static_cast<std::uint32_t>(flags));
 		ooscript::Object regExpObj = (regExpFacadeObj);
 		_cachedRegExpObject = [[OOJSValue alloc] initWithJSObject:regExpObj inContext:context];
@@ -149,21 +150,11 @@ static OORegExpMatcher *sActiveInstance;
 	
 	BOOL result = [_tester evaluatePredicateWithContext:context
 												  scope:nil
-											  arguments:[NSArray arrayWithObjects:string, _cachedRegExpObject, nil]];
+											  arguments:oo::NSArrayFromObjects(std::vector<id>{ oo::NSStringFrom(string), _cachedRegExpObject })];
 	
 	OOJSRelinquishContext(context);
 	
 	return result;
-}
-
-@end
-
-
-@implementation NSString (OORegExpMatcher)
-
-- (BOOL) oo_matchesRegularExpression:(NSString *)regExp
-{
-	return [[OORegExpMatcher regExpMatcher] string:self matchesExpression:regExp];
 }
 
 @end

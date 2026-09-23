@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "MyOpenGLView.h"
 #import "OOConstToString.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -61,10 +62,11 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool st
 } // namespace
 
 namespace {
-static NSString *VersionString(void);
+static std::optional<std::string> VersionString(void);
 } // namespace
 namespace {
-static NSArray *VersionComponents(void);
+static std::vector<unsigned> VersionComponents(void);
+static unsigned UnsignedIntValue(const oo::PList &number);
 } // namespace
 
 namespace {
@@ -205,11 +207,16 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	switch (ooscript::idToInt32(propID))
 	{
 		case kOolite_version:
-			result = VersionComponents();
+		{
+			// The components as ComponentsFromVersionString() gave them: an array of unsigned numbers.
+			oo::PList::Array components;
+			for (unsigned component : VersionComponents())  components.push_back(oo::PList::unsignedInteger(component));
+			result = oo::ObjectFromPList(oo::PList(std::move(components)));
 			break;
+		}
 		
 		case kOolite_versionString:
-			result = VersionString();
+			result = oo::NSStringOrNil(VersionString());
 			break;
 		
 		case kOolite_jsVersion:
@@ -226,7 +233,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			
 		case kOolite_resourcePaths:
 			// user name in displayed paths masked for privacy - remember that the console can be run remotely too
-			result = [ResourceManager maskUserNameInPathArray:[ResourceManager paths]];
+			result = oo::NSArrayFromStrings([ResourceManager cxx_maskUserNameInPathArray:[ResourceManager cxx_paths]]);
 			break;
 			
 		case kOolite_colorSaturation:
@@ -238,25 +245,25 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			
 		case kOolite_hdrToneMapper:
 		{
-			NSString *toneMapperStr = @"OOHDR_TONEMAPPER_UNDEFINED";
+			std::optional<std::string> toneMapperStr = "OOHDR_TONEMAPPER_UNDEFINED";
 #if OOLITE_WINDOWS
 			if ([gameView hdrOutput])
 			{
-				toneMapperStr = OOStringFromHDRToneMapper([gameView hdrToneMapper]);
+				toneMapperStr = oo::OptionalString(OOStringFromHDRToneMapper([gameView hdrToneMapper]));
 			}
 #endif
-			result = toneMapperStr;
+			result = oo::NSStringOrNil(toneMapperStr);
 			break;
 		}
 		
 		case kOolite_sdrToneMapper:
 		{
-			NSString *toneMapperStr = @"OOSDR_TONEMAPPER_UNDEFINED";
+			std::optional<std::string> toneMapperStr = "OOSDR_TONEMAPPER_UNDEFINED";
 			if (![gameView hdrOutput])
 			{
-				toneMapperStr = OOStringFromSDRToneMapper([gameView sdrToneMapper]);
+				toneMapperStr = oo::OptionalString(OOStringFromSDRToneMapper([gameView sdrToneMapper]));
 			}
-			result = toneMapperStr;
+			result = oo::NSStringOrNil(toneMapperStr);
 			break;
 		}
 			
@@ -291,7 +298,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	
 	double					fValue;
 	int32_t					iValue;
-	NSString				*sValue = nil;
+	std::optional<std::string>	sValue;
 	MyOpenGLView 			*gameView = [UNIVERSE gameView];
 	
 	switch (ooscript::idToInt32(propID))
@@ -316,11 +323,11 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			
 		case kOolite_hdrToneMapper:
 			if (!ooscript::isString(*value_raw))  break; // non-string is not allowed
-			sValue = OOStringFromJSValue(context,*value_raw);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			if (sValue.has_value())
 			{
 #if OOLITE_WINDOWS
-				if ([gameView hdrOutput])  [gameView setHDRToneMapper:OOHDRToneMapperFromString(sValue)];
+				if ([gameView hdrOutput])  [gameView setHDRToneMapper:OOHDRToneMapperFromString(oo::NSStringFrom(*sValue))];
 				else  OOJSReportWarning(context, @"hdrToneMapper cannot be set if not running in HDR mode");
 #endif
 				return YES;
@@ -329,10 +336,10 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			
 		case kOolite_sdrToneMapper:
 			if (!ooscript::isString(*value_raw))  break; // non-string is not allowed
-			sValue = OOStringFromJSValue(context,*value_raw);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			if (sValue.has_value())
 			{
-				if (![gameView hdrOutput])  [gameView setSDRToneMapper:OOSDRToneMapperFromString(sValue)];
+				if (![gameView hdrOutput])  [gameView setSDRToneMapper:OOSDRToneMapperFromString(oo::NSStringFrom(*sValue))];
 				else  OOJSReportWarning(context, @"sdrToneMapper cannot be set if not running in SDR mode");
 				return YES;
 			}
@@ -362,17 +369,28 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 
 
 namespace {
-static NSString *VersionString(void)
+static std::optional<std::string> VersionString(void)
 {
-	return [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+	return oo::OptionalString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
 }
 } // namespace
 
 
 namespace {
-static NSArray *VersionComponents(void)
+static std::vector<unsigned> VersionComponents(void)
 {
-	return ComponentsFromVersionString(VersionString());
+	const std::optional<std::string> version = VersionString();
+	if (!version.has_value())  return {};	// ComponentsFromVersionString(nil) was empty
+	return oo::str::versionComponents(*version);
+}
+
+
+// A JavaScript number's -unsignedIntValue, as CompareVersions() read it: C conversions.
+static unsigned UnsignedIntValue(const oo::PList &number)
+{
+	if (const bool *boolean = number.getIf<bool>())  return *boolean ? 1u : 0u;
+	if (const oo::PList::Integer *integer = number.getIf<oo::PList::Integer>())  return static_cast<unsigned>(integer->value);
+	return static_cast<unsigned>(*number.getIf<double>());
 }
 } // namespace
 
@@ -390,33 +408,35 @@ static bool OoliteCompareVersion(ooscript::Context context, ooscript::CallArgs &
 	OOJS_NATIVE_ENTER(context)
 	
 	id						components = nil;
-	NSEnumerator			*componentEnum = nil;
-	id						component = nil;
+	std::optional<std::vector<unsigned>>	versionSpec;
 	
 	if (oojsArgs.count() == 0)  OOJS_RETURN_VOID;	// Backwards-compatibility: be overly lenient.
 	
 	components = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[0]);
-	if ([components isKindOfClass:[NSArray class]])
+	if (oo::IsNSArray(components))
 	{
 		// Require each element to be a number
-		for (componentEnum = [components objectEnumerator]; (component = [componentEnum nextObject]); )
+		std::vector<unsigned> numbers;
+		bool allNumbers = true;
+		for (const oo::PList &component : *oo::PListFrom(components).getIf<oo::PList::Array>())
 		{
-			if (![component isKindOfClass:[NSNumber class]])
+			if (!component.isNumber())
 			{
-				components = nil;
+				allNumbers = false;
 				break;
 			}
+			numbers.push_back(UnsignedIntValue(component));
 		}
+		if (allNumbers)  versionSpec = std::move(numbers);
 	}
-	else if ([components isKindOfClass:[NSString class]])
+	else if (oo::IsNSString(components))
 	{
-		components = ComponentsFromVersionString(components);
+		versionSpec = oo::str::versionComponents(oo::StdString(components));
 	}
-	else  components = nil;
 	
-	if (components != nil)
+	if (versionSpec.has_value())
 	{
-		OOJS_RETURN_INT((int32_t)CompareVersions(components, VersionComponents()));
+		OOJS_RETURN_INT((int32_t)oo::str::compareVersions(*versionSpec, VersionComponents()));
 	}
 	else
 	{

@@ -85,6 +85,8 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/String.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-4kf, the same way bead oo-sdz
@@ -108,10 +110,14 @@ namespace ooscript { }
 using ooscript::String;
 
 namespace {
-// NSString's -stringWithCharacters:length: wants unichar (unsigned short); the façade's
-// ooscript::Char16 is char16_t. Both are 16-bit code units, but Objective-C++ does not implicitly
-// convert between distinct pointee types, so this view makes the two spellings interchangeable.
-static inline const unichar *OOJSRUCHARS(const ooscript::Char16 *s)  { return reinterpret_cast<const unichar*>(s); }
+// The text a *SafeDbg function returns stays valid until the next such call (it was an autoreleased
+// string's UTF-8 buffer, valid until the pool drained); the debugger prints it straight away.
+static const char *DebuggerCString(std::string text)
+{
+	static std::string sText;
+	sText = std::move(text);
+	return sText.c_str();
+}
 } // namespace
 
 
@@ -160,11 +166,11 @@ const char *JSValueTypeDbg(ooscript::Value val)  // NOLINT(misc-use-internal-lin
 // Doesn't follow pointers, mess with requests or otherwise poke the SpiderMonkey.
 const char *JSValueToStrSafeDbg(ooscript::Value val)  // NOLINT(misc-use-internal-linkage): called by name from gdb, see file header.
 {
-	NSString *formatted = nil;
+	std::string formatted;
 	
-	if (ooscript::isInt32(val))			formatted = [NSString stringWithFormat:@"%i", ooscript::toInt32(val)];
-	else if (ooscript::isDouble(val))	formatted = [NSString stringWithFormat:@"%g", ooscript::toDouble(val)];
-	else if (ooscript::isBoolean(val))	formatted = (ooscript::toBoolean(val)) ? @"true" : @"false";
+	if (ooscript::isInt32(val))			formatted = oo::str::format("%i", ooscript::toInt32(val));
+	else if (ooscript::isDouble(val))	formatted = oo::str::format("%g", ooscript::toDouble(val));
+	else if (ooscript::isBoolean(val))	formatted = (ooscript::toBoolean(val)) ? "true" : "false";
 	else if (ooscript::isString(val))
 	{
 		ooscript::String string = ooscript::toString(val);
@@ -177,13 +183,13 @@ const char *JSValueToStrSafeDbg(ooscript::Value val)  // NOLINT(misc-use-interna
 		}
 		// Flat strings can be extracted without a context, but cannot be detected.
 		
-		if (chars == NULL)  formatted = [NSString stringWithFormat:@"string [%zu chars]", length];
-		else  formatted = [NSString stringWithCharacters:OOJSRUCHARS(chars) length:length];
+		if (chars == NULL)  formatted = oo::str::format("string [%zu chars]", length);
+		else  formatted = oo::utf16ToUtf8(std::u16string_view(chars, length));
 	}
 	else if (ooscript::isUndefined(val))	return "undefined";
 	else							return JSValueTypeDbg(val);
 	
-	return [formatted UTF8String];
+	return DebuggerCString(std::move(formatted));
 }
 
 
@@ -203,9 +209,9 @@ const char *JSStringToStrSafeDbg(ooscript::String str)  // NOLINT(misc-use-inter
 
 const char *JSIDToStrSafeDbg(ooscript::PropertyId anID)  // NOLINT(misc-use-internal-linkage): called by name from gdb, see file header.
 {
-	NSString *formatted = nil;
+	std::string formatted;
 	
-	if (ooscript::isInt32Id(anID))			formatted = [NSString stringWithFormat:@"%i", ooscript::idToInt32(anID)];
+	if (ooscript::isInt32Id(anID))			formatted = oo::str::format("%i", ooscript::idToInt32(anID));
 	else if (ooscript::isVoidId(anID))	return "void";
 	else if (ooscript::isStringId(anID))
 	{
@@ -222,10 +228,10 @@ const char *JSIDToStrSafeDbg(ooscript::PropertyId anID)  // NOLINT(misc-use-inte
 			// Bug; ooscript::PropertyId strings must be interned.
 			return "*** uninterned string in ooscript::PropertyId! ***";
 		}
-		formatted = [NSString stringWithCharacters:OOJSRUCHARS(chars) length:length];
+		formatted = oo::utf16ToUtf8(std::u16string_view(chars, length));
 	}
 	else  return "unknown";
 	
-	return [formatted UTF8String];
+	return DebuggerCString(std::move(formatted));
 }
 #endif

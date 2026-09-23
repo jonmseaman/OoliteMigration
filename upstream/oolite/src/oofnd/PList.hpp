@@ -19,6 +19,16 @@
 	    NSDate / NSCalendarDate                              PList(PList::Date{..})  Type::Date
 	    NSArray                                              PList(PList::Array{..}) Type::Array
 	    NSDictionary                                         PList(PList::Dict{..})  Type::Dict
+	    +numberWithFloat: (single precision)                 PList::singleReal(f)    Type::Real,
+	                                                                                 isSinglePrecision
+	    any other object (a colour, a texture, a             PList(PList::Object)    Type::Object
+	        placeholder) inside a configuration dictionary
+
+	The last two rows are the Foundation sweep's typed carrier for configuration dictionaries that mix
+	property-list data with live objects (proposed ADR-0043 Amendment 2). No parser produces either;
+	the game side (src/Core/OOFoundationBridge.h) makes them from Foundation objects and back, so a
+	round trip returns the same objects and the same NSNumber types. An Object is an oo::Ref to a
+	PListForeign, which oofnd never looks into: it compares by identity and describes itself.
 
 	Representation choices (ADR-0013 decision 4 and proposed ADR-0027):
 
@@ -60,6 +70,7 @@
 #undef false
 
 #include "oofnd/Data.hpp"
+#include "oofnd/Ref.hpp"
 
 #include <cmath>
 #include <compare>
@@ -83,6 +94,15 @@ namespace oo {
 template <class T>
 struct PListGet;
 
+// A value inside a PList that is not property-list data (proposed ADR-0043 Amendment 2): the game
+// side wraps an Objective-C object in a subclass. Compared by identity.
+class PListForeign : public RefCounted
+{
+public:
+	virtual std::string className() const = 0;     // for writer errors ("Class X does not support ...")
+	virtual std::string description() const = 0;   // what "%@" printed
+};
+
 class PList
 {
 public:
@@ -97,6 +117,7 @@ public:
 		Date,
 		Array,
 		Dict,
+		Object,
 	};
 
 	struct Integer
@@ -118,6 +139,7 @@ public:
 	using Data = ::oo::Data;   // NSData (oofnd/Data.hpp)
 	using Array = std::vector<PList>;
 	using Dict = std::map<std::string, PList, std::less<>>;
+	using Object = Ref<PListForeign>;
 
 	// --- construction ---------------------------------------------------------------------
 
@@ -144,9 +166,18 @@ public:
 	PList(Date d) noexcept : v_(std::in_place_type<Date>, d) {}
 	PList(Array a) noexcept : v_(std::in_place_type<Array>, std::move(a)) {}
 	PList(Dict d) noexcept : v_(std::in_place_type<Dict>, std::move(d)) {}
+	PList(Object o) noexcept : v_(std::in_place_type<Object>, std::move(o)) {}
 
 	static PList signedInteger(std::int64_t i) noexcept { return PList(Integer{i, false}); }
 	static PList unsignedInteger(std::uint64_t u) noexcept { return PList(Integer{static_cast<std::int64_t>(u), true}); }
+	// A real that was a single-precision NSNumber (+numberWithFloat:): it prints as %0.7g where a
+	// double prints as %0.16g, and compares unequal to the same value as a double (type-strict ==).
+	static PList singleReal(float f) noexcept
+	{
+		PList p(static_cast<double>(f));
+		p.single_ = true;
+		return p;
+	}
 
 	// --- type queries ---------------------------------------------------------------------
 
@@ -161,6 +192,8 @@ public:
 	bool isDate() const noexcept { return type() == Type::Date; }
 	bool isArray() const noexcept { return type() == Type::Array; }
 	bool isDict() const noexcept { return type() == Type::Dict; }
+	bool isObject() const noexcept { return type() == Type::Object; }
+	bool isSinglePrecision() const noexcept { return isReal() && single_; }
 	explicit operator bool() const noexcept { return !isNull(); }   // "!= nil"
 
 	// --- payload access -------------------------------------------------------------------
@@ -274,7 +307,8 @@ private:
 	}
 
 	// Order matches Type.
-	std::variant<std::monostate, bool, Integer, double, std::string, Data, Date, Array, Dict> v_;
+	std::variant<std::monostate, bool, Integer, double, std::string, Data, Date, Array, Dict, Object> v_;
+	bool single_ = false;   // meaningful for Type::Real only (see singleReal)
 };
 
 // NSPropertyListFormat, with GNUstep's numeric values: what a parser found (GNUstep reports
@@ -316,6 +350,7 @@ inline const char* typeName(PList::Type t) noexcept
 		case PList::Type::Date: return "date";
 		case PList::Type::Array: return "array";
 		case PList::Type::Dict: return "dict";
+		case PList::Type::Object: return "object";
 	}
 	return "?";
 }
@@ -331,8 +366,9 @@ namespace plist_detail {
 // " 2001" reads as 200), a space in the format skips any run of spaces, other literals must match
 // while input remains, trailing input is ignored, and out-of-range fields roll over (month 13 is
 // next January; absoluteGregorianDay counts every month past 12 as 31 days). nullopt where GNUstep
-// returns nil. One deliberate difference (ADR-0027 item 7): GNUstep reads the "Z" format in the
-// machine's LOCAL time zone (it has no %z); oofnd reads it as UTC, which is what the Z says.
+// returns nil (including a day or month of 0). One deliberate difference (ADR-0027 item 7):
+// GNUstep reads the "Z" format, and a %z offset beyond 18 hours, in the machine's LOCAL time zone;
+// oofnd reads them as UTC, which is what the Z says.
 inline std::optional<double> parseCalendarDate(std::string_view s, bool zulu)
 {
 	const std::string_view format = zulu ? "%Y-%m-%dT%H:%M:%SZ" : "%Y-%m-%d %H:%M:%S %z";
@@ -382,8 +418,14 @@ inline std::optional<double> parseCalendarDate(std::string_view s, bool zulu)
 		switch (format[++f])
 		{
 			case 'Y': src += getDigits(4, &year); break;
-			case 'm': src += getDigits(2, &month); break;
-			case 'd': src += getDigits(2, &day); break;
+			case 'm':
+				src += getDigits(2, &month);
+				if (!error && month < 1) error = true;   // "Month of year is zero"
+				break;
+			case 'd':
+				src += getDigits(2, &day);
+				if (!error && day < 1) error = true;   // "Day of month is zero"
+				break;
 			case 'H': src += getDigits(2, &hour); break;
 			case 'M': src += getDigits(2, &minute); break;
 			case 'S': src += getDigits(2, &second); break;
@@ -401,7 +443,10 @@ inline std::optional<double> parseCalendarDate(std::string_view s, bool zulu)
 				{
 					src += found;
 					if (found == 2) zone *= 100;
-					zoneSeconds = sign * ((zone / 100) * 60 + (zone % 100)) * 60;
+					// +timeZoneForSecondsFromGMT: is nil beyond 18 hours, and a nil zone is the
+					// local one: UTC in oofnd (ADR-0027 item 7).
+					const long seconds = ((zone / 100) * 60 + (zone % 100)) * 60;
+					zoneSeconds = seconds > 64800 ? 0 : sign * seconds;
 				}
 				break;
 			}

@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OOGraphicsResetManager.h"
 #import "MyOpenGLView.h"
+#import "OOFoundationBridge.h"
 
 
 #define PARTICLE_DISTANCE_SCALE_LOW		12.0
@@ -330,9 +331,9 @@ static OOTexture *sBlobTexture = nil;
 
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
-	return [NSSet setWithObject:[self texture]];
+	return oo::NSSetFromObjects(std::vector<id>{ [self texture] });
 }
 #endif
 
