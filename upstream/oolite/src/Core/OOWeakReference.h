@@ -18,7 +18,7 @@ messages to nil. (IMPORTANT: this means messages returning floating-point or
 struct values have undefined return values, so use -weakRefUnderlyingObject in
 such cases.) Example:
 
-@interface ThingWatcher: NSObject
+@interface ThingWatcher: OOObject
 {
 @private
 	Thing			*thing;
@@ -55,7 +55,7 @@ then, that's a filthy habit.
 
 OOWeakReferenceSupport implementation is also simple:
 
-@interface Thing: NSObject <OOWeakReferenceSupport>
+@interface Thing: OOObject <OOWeakReferenceSupport>
 {
 @private
 	OOWeakReference		*weakSelf;
@@ -94,6 +94,7 @@ This code is hereby placed in the public domain.
 
 #import <Foundation/Foundation.h>
 #import "OOFunctionAttributes.h"
+#import "oofnd/objc/OOObject.h"
 
 @class OOWeakReference;
 
@@ -129,12 +130,19 @@ This code is hereby placed in the public domain.
 @end
 
 
+@interface OOObject (OOWeakReference)
+
+- (id)weakRefUnderlyingObject;		// As NSObject (OOWeakReference), for classes rooted on OOObject.
+
+@end
+
+
 /*	OOWeakRefObject
 	Simple object implementing OOWeakReferenceSupport, to subclass. This
 	provides a full implementation for simplicity, but keep in mind that the
 	protocol can be implemented by any class.
 */
-@interface OOWeakRefObject: NSObject <OOWeakReferenceSupport>
+@interface OOWeakRefObject: OOObject <OOWeakReferenceSupport>
 {
 	OOWeakReference		*weakSelf;
 }
