@@ -460,7 +460,7 @@ static std::chrono::steady_clock::time_point	sNextGameTick;
 static std::chrono::steady_clock::duration	sGameTickInterval;
 
 
-/*	Deferred calls (bead oo-3rb.57, proposed ADR-0038): Foundation's timed
+/*	Deferred calls (bead oo-3rb.57, proposed ADR-0040): Foundation's timed
 	performers, which were one-shot timers on the main run loop. Measured
 	against gnustep-base 1.31: a performer's fire date is now + delay (a delay
 	<= 0 is 0.0001 s, the timer clamp); each run-loop pass fires the first due

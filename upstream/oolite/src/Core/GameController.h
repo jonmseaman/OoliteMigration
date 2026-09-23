@@ -165,7 +165,7 @@ MA 02110-1301, USA.
 	what the run loop's -limitDateForMode: did for the game while its tick and
 	deferred calls were run-loop timers. For code that must let the game tick
 	while it blocks the frame loop (the OXZ download callback). See proposed
-	ADR-0033 and ADR-0038.
+	ADR-0033 and ADR-0040.
 */
 - (void) fireDueTimers;
 
@@ -207,7 +207,7 @@ MA 02110-1301, USA.
 
 
 /*	OOScheduleDeferredCall(target, selector, argument, delay): what Foundation's
-	performer-after-delay did (bead oo-3rb.57, proposed ADR-0038). [target
+	performer-after-delay did (bead oo-3rb.57, proposed ADR-0040). [target
 	performSelector:selector withObject:argument] runs on the first frame-loop
 	pass at least delay seconds from now (a delay <= 0 is 0.0001 s), after that
 	pass's tick; target and argument are retained until then. Due calls fire in
