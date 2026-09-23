@@ -319,7 +319,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 	
 	if (uniformName == nil) return NO;
 	
-	uniform = [[OOShaderUniform alloc] initWithName:uniformName
+	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
 									  shaderProgram:shaderProgram
 									  boundToObject:source
 										   property:selector
@@ -371,7 +371,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 	
 	if (uniformName == nil) return;
 	
-	uniform = [[OOShaderUniform alloc] initWithName:uniformName
+	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
 									  shaderProgram:shaderProgram
 										   intValue:value];
 	if (uniform != nil)
@@ -394,7 +394,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 	
 	if (uniformName == nil) return;
 	
-	uniform = [[OOShaderUniform alloc] initWithName:uniformName
+	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
 									  shaderProgram:shaderProgram
 										 floatValue:value];
 	if (uniform != nil)
@@ -417,7 +417,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 	
 	if (uniformName == nil) return;
 	
-	uniform = [[OOShaderUniform alloc] initWithName:uniformName
+	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
 									  shaderProgram:shaderProgram
 										vectorValue:value];
 	if (uniform != nil)
@@ -455,7 +455,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 		vecArray[3] = 1.0;
 	}
 	
-	OOShaderUniform *uniform = [[OOShaderUniform alloc] initWithName:uniformName
+	OOShaderUniform *uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
 													   shaderProgram:shaderProgram
 														 vectorValue:vecArray];
 	if (uniform != nil)
@@ -478,7 +478,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 	
 	if (uniformName == nil) return;
 	
-	uniform = [[OOShaderUniform alloc] initWithName:uniformName
+	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
 									  shaderProgram:shaderProgram
 									quaternionValue:value
 										   asMatrix:asMatrix];

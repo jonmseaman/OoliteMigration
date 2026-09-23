@@ -220,12 +220,12 @@ enum
 												   attributeBindings:oo::PListFrom(attributes)] retain];
 		
 		DESTROY(uniforms);
-		OOShaderUniform *uWarp = [[OOShaderUniform alloc] initWithName:@"uWarp"
+		OOShaderUniform *uWarp = [[OOShaderUniform alloc] initWithName:"uWarp"
 														 shaderProgram:shader
 														 boundToObject:self
 															  property:@selector(warpVector)
 														convertOptions:0];
-		OOShaderUniform *uOffsetPlayerPosition = [[OOShaderUniform alloc] initWithName:@"uOffsetPlayerPosition"
+		OOShaderUniform *uOffsetPlayerPosition = [[OOShaderUniform alloc] initWithName:"uOffsetPlayerPosition"
 																   shaderProgram:shader
 																   boundToObject:self
 																		property:@selector(offsetPlayerPosition)

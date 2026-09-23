@@ -39,6 +39,9 @@
 #import "OOPlanetTextureGenerator.h"
 #import "OOPListView.h"
 #import "OOColor.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 #ifndef TEXGEN_TEST_RIG
 #import "OOTexture.h"
@@ -71,11 +74,11 @@ enum
 {
 @private
 	BOOL					_enqueued;
-	NSString				*_cacheKey;
+	std::string				_cacheKey;
 	RANROTSeed				_seed;
 }
 
-- (id) initWithCacheKey:(NSString *)cacheKey seed:(RANROTSeed)seed;
+- (id) initWithCacheKey:(const std::string &)cacheKey seed:(RANROTSeed)seed;
 
 - (void) completeWithData:(void *)data width:(unsigned)width height:(unsigned)height;
 
@@ -89,12 +92,12 @@ enum
 {
 @private
 	BOOL				_enqueued;
-	NSString				*_cacheKey;
+	std::string				_cacheKey;
 	RANROTSeed				_seed;
 	OOPlanetTextureGenerator	*_parent;
 }
 
-- (id) initWithCacheKey:(NSString *)cacheKey seed:(RANROTSeed)seed andParent:(OOPlanetTextureGenerator *)parent;
+- (id) initWithCacheKey:(const std::string &)cacheKey seed:(RANROTSeed)seed andParent:(OOPlanetTextureGenerator *)parent;
 
 - (void) completeWithData:(void *)data width:(unsigned)width height:(unsigned)height;
 
@@ -105,7 +108,7 @@ enum
 
 @interface OOPlanetTextureGenerator (Private)
 
-- (NSString *) cacheKeyForType:(NSString *)type;
+- (std::optional<std::string>) cacheKeyForType:(const std::string &)type;
 - (OOPlanetNormalMapGenerator *) normalMapGenerator;	// Must be called before generator is enqueued for rendering.
 - (OOPlanetAtmosphereGenerator *) atmosphereGenerator;	// Must be called before generator is enqueued for rendering.
 
@@ -116,7 +119,12 @@ enum
 @end
 
 
-static FloatRGB FloatRGBFromDictColor(NSDictionary *dictionary, NSString *key);
+namespace {
+
+FloatRGB FloatRGBFromDictColor(id dictionary, const std::string &key);	// dictionary: the planet info (holds OOColors; not a plist)
+
+}	// namespace
+
 
 static BOOL FillFBMBuffer(OOPlanetTextureGeneratorInfo *info);
 
@@ -146,21 +154,22 @@ enum
 
 @implementation OOPlanetTextureGenerator
 
-- (id) initWithPlanetInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
+- (id) initWithPlanetInfo:(id)planetInfo seed:(RANROTSeed)seed	// shared selector (proposed ADR-0043)
 {
 	OOLog(@"texture.planet.generate", @"%@", @"Initialising planetary generator");
 
 	// AllowCubeMap not used yet but might be in future
-	if ((self = [super initWithPath:[NSString stringWithFormat:@"OOPlanetTexture@%p", self] options:kOOTextureAllowCubeMap]))
+	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOPlanetTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	if (self != nil)
 	{
 		OOLog(@"texture.planet.generate", @"Extracting parameters for generator %@",self);
 
 		_info.landFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"land_fraction", 0.3));
 		_info.polarFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"polar_fraction", 0.05));
-		_info.landColor = FloatRGBFromDictColor(planetInfo, @"land_color");
-		_info.seaColor = FloatRGBFromDictColor(planetInfo, @"sea_color");
-		_info.paleLandColor = FloatRGBFromDictColor(planetInfo, @"polar_land_color");
-		_info.polarSeaColor = FloatRGBFromDictColor(planetInfo, @"polar_sea_color");
+		_info.landColor = FloatRGBFromDictColor(planetInfo, "land_color");
+		_info.seaColor = FloatRGBFromDictColor(planetInfo, "sea_color");
+		_info.paleLandColor = FloatRGBFromDictColor(planetInfo, "polar_land_color");
+		_info.polarSeaColor = FloatRGBFromDictColor(planetInfo, "polar_sea_color");
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
 		if ([planetInfo objectForKey:@"cloud_alpha"])
 		{
@@ -168,8 +177,8 @@ enum
 			// we have an atmosphere:
 			_info.cloudAlpha = oo::PListView(planetInfo).get<float>(@"cloud_alpha", 1.0f);
 			_info.cloudFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"cloud_fraction", 0.3));
-			_info.cloudColor = FloatRGBFromDictColor(planetInfo, @"cloud_color");
-			_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, @"polar_cloud_color");
+			_info.cloudColor = FloatRGBFromDictColor(planetInfo, "cloud_color");
+			_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, "polar_cloud_color");
 		}
 		
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
@@ -199,7 +208,7 @@ enum
 }
 
 
-+ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
++ (OOTexture *) planetTextureWithInfo:(id)planetInfo seed:(RANROTSeed)seed	// shared selector (proposed ADR-0043)
 {
 	OOTexture *result = nil;
 	OOPlanetTextureGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo seed:seed];
@@ -213,7 +222,7 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture andAtmosphere:(OOTexture **)atmosphere withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generatePlanetTexture:(OOTexture **)texture andAtmosphere:(OOTexture **)atmosphere withInfo:(id)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 	
@@ -232,7 +241,7 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture withInfo:(id)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 
@@ -257,7 +266,7 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture andAtmosphere:(OOTexture **)atmosphere withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture andAtmosphere:(OOTexture **)atmosphere withInfo:(id)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 	
@@ -305,9 +314,9 @@ enum
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"seed: %u,%u land: %g", _info.seed.high, _info.seed.low, _info.landFraction];
+	return oo::NSStringFrom(oo::str::format("seed: %u,%u land: %g", _info.seed.high, _info.seed.low, _info.landFraction));
 }
 
 
@@ -317,23 +326,23 @@ enum
 }
 
 
-- (NSString *) cacheKey
+- (id) cacheKey	// shared selector (proposed ADR-0043)
 {
-	NSString *type =(_nMapGenerator == nil) ? @"diffuse-baked" : @"diffuse-raw";
-	if (_atmoGenerator != nil) type = [NSString stringWithFormat:@"%@-atmo", type];
-	return [self cacheKeyForType:type];
+	std::string type =(_nMapGenerator == nil) ? "diffuse-baked" : "diffuse-raw";
+	if (_atmoGenerator != nil) type = oo::str::format("%s-atmo", type.c_str());
+	return oo::NSStringOrNil([self cacheKeyForType:type]);
 }
 
 
-- (NSString *) cacheKeyForType:(NSString *)type
+- (std::optional<std::string>) cacheKeyForType:(const std::string &)type
 {
-	return [NSString stringWithFormat:@"OOPlanetTextureGenerator-%@@%u\n%u,%u/%g/%u,%u/%f,%f,%f/%f,%f,%f/%f,%f,%f/%f,%f,%f",
-			type, _planetScale,
+	return oo::str::format("OOPlanetTextureGenerator-%s@%u\n%u,%u/%g/%u,%u/%f,%f,%f/%f,%f,%f/%f,%f,%f/%f,%f,%f",
+			type.c_str(), _planetScale,
 			_info.width, _info.height, _info.landFraction, _info.seed.high, _info.seed.low,
 			_info.landColor.r, _info.landColor.g, _info.landColor.b,
 			_info.seaColor.r, _info.seaColor.g, _info.seaColor.b,
 			_info.paleLandColor.r, _info.paleLandColor.g, _info.paleLandColor.b,
-			_info.polarSeaColor.r, _info.polarSeaColor.g, _info.polarSeaColor.b];
+			_info.polarSeaColor.r, _info.polarSeaColor.g, _info.polarSeaColor.b);
 }
 
 
@@ -341,7 +350,7 @@ enum
 {
 	if (_nMapGenerator == nil)
 	{
-		_nMapGenerator = [[OOPlanetNormalMapGenerator alloc] initWithCacheKey:[self cacheKeyForType:@"normal"] seed:_info.seed];
+		_nMapGenerator = [[OOPlanetNormalMapGenerator alloc] initWithCacheKey:*[self cacheKeyForType:"normal"] seed:_info.seed];
 	}
 	return _nMapGenerator;
 }
@@ -351,7 +360,7 @@ enum
 {
 	if (_atmoGenerator == nil)
 	{
-		_atmoGenerator = [[OOPlanetAtmosphereGenerator alloc] initWithCacheKey:[self cacheKeyForType:@"atmo"] seed:_info.seed andParent:self];
+		_atmoGenerator = [[OOPlanetAtmosphereGenerator alloc] initWithCacheKey:*[self cacheKeyForType:"atmo"] seed:_info.seed andParent:self];
 	}
 	return _atmoGenerator;
 }
@@ -562,11 +571,11 @@ END:
 #if DEBUG_DUMP
 	if (success)
 	{
-		NSString *diffuseName = [NSString stringWithFormat:@"planet-%u-%u-diffuse-new", _info.seed.high, _info.seed.low];
-		NSString *lightsName = [NSString stringWithFormat:@"planet-%u-%u-lights-new", _info.seed.high, _info.seed.low];
+		const std::string diffuseName = oo::str::format("planet-%u-%u-diffuse-new", _info.seed.high, _info.seed.low);
+		const std::string lightsName = oo::str::format("planet-%u-%u-lights-new", _info.seed.high, _info.seed.low);
 		
-		[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:diffuseName
-								   andGrayFileNamed:lightsName
+		[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:oo::NSStringFrom(diffuseName)
+								   andGrayFileNamed:oo::NSStringFrom(lightsName)
 											  bytes:buffer
 											  width:_width
 											 height:_height
@@ -580,7 +589,7 @@ END:
 
 - (void) dumpNoiseBuffer:(float *)noise
 {
-	NSString *noiseName = [NSString stringWithFormat:@"planet-%u-%u-noise-new", _info.seed.high, _info.seed.low];
+	const std::string noiseName = oo::str::format("planet-%u-%u-noise-new", _info.seed.high, _info.seed.low);
 	
 	uint8_t *noisePx = malloc(_width * _height);
 	unsigned x, y;
@@ -592,7 +601,7 @@ END:
 		}
 	}
 	
-	[[UNIVERSE gameView] dumpGrayToFileNamed:noiseName
+	[[UNIVERSE gameView] dumpGrayToFileNamed:oo::NSStringFrom(noiseName)
 									   bytes:noisePx
 									   width:_width
 									  height:_height
@@ -759,13 +768,17 @@ static FloatRGBA PlanetMix(OOPlanetTextureGeneratorInfo *info, float q, float ne
 }
 
 
-static FloatRGB FloatRGBFromDictColor(NSDictionary *dictionary, NSString *key)
+namespace {
+
+FloatRGB FloatRGBFromDictColor(id dictionary, const std::string &key)
 {
-	OOColor *color = [dictionary objectForKey:key];
+	OOColor *color = [dictionary objectForKey:oo::NSStringFrom(key)];
 	NSCAssert1([color isKindOfClass:[OOColor class]], @"Expected OOColor, got %@", [color class]);
 	
 	return (FloatRGB){ [color redComponent] * ALBEDO_FACTOR, [color greenComponent] * ALBEDO_FACTOR, [color blueComponent] * ALBEDO_FACTOR };
 }
+
+}	// namespace
 
 
 OOINLINE float Hermite(float q)
@@ -1186,13 +1199,14 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 
 @implementation OOPlanetNormalMapGenerator
 
-- (id) initWithCacheKey:(NSString *)cacheKey seed:(RANROTSeed)seed
+- (id) initWithCacheKey:(const std::string &)cacheKey seed:(RANROTSeed)seed
 {
 	// AllowCubeMap not used yet but might be in future
-	if ((self = [super initWithPath:[NSString stringWithFormat:@"OOPlanetNormalTexture@%p", self] options:kOOTextureAllowCubeMap]))
+	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOPlanetNormalTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	if (self != nil)
 	{
 		_enqueued = NO;
-		_cacheKey = [cacheKey copy];
+		_cacheKey = cacheKey;
 		_seed = seed;
 	}
 	return self;
@@ -1201,15 +1215,13 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 
 - (void) dealloc
 {
-	DESTROY(_cacheKey);
-	
 	[super dealloc];
 }
 
 
-- (NSString *) cacheKey
+- (id) cacheKey	// shared selector (proposed ADR-0043)
 {
-	return _cacheKey;
+	return oo::NSStringFrom(_cacheKey);
 }
 
 
@@ -1254,11 +1266,11 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 	[super enqueue];
 	
 #if DEBUG_DUMP
-	NSString *normalName = [NSString stringWithFormat:@"planet-%u-%u-normal-new", _seed.high, _seed.low];
-	NSString *specularName = [NSString stringWithFormat:@"planet-%u-%u-specular-new", _seed.high, _seed.low];
+	const std::string normalName = oo::str::format("planet-%u-%u-normal-new", _seed.high, _seed.low);
+	const std::string specularName = oo::str::format("planet-%u-%u-specular-new", _seed.high, _seed.low);
 	
-	[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:normalName
-							   andGrayFileNamed:specularName
+	[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:oo::NSStringFrom(normalName)
+							   andGrayFileNamed:oo::NSStringFrom(specularName)
 										  bytes:_data
 										  width:_width
 										 height:_height
@@ -1271,13 +1283,14 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 
 @implementation OOPlanetAtmosphereGenerator
 
-- (id) initWithCacheKey:(NSString *)cacheKey seed:(RANROTSeed)seed andParent:(OOPlanetTextureGenerator *)parent
+- (id) initWithCacheKey:(const std::string &)cacheKey seed:(RANROTSeed)seed andParent:(OOPlanetTextureGenerator *)parent
 {
-	OOLog(@"texture.planet.generate",@"Initialising atmosphere generator %@",cacheKey);
+	OOLog(@"texture.planet.generate",@"Initialising atmosphere generator %@",oo::NSStringFrom(cacheKey));
 	// AllowCubeMap not used yet but might be in future
-	if ((self = [super initWithPath:[NSString stringWithFormat:@"OOPlanetAtmoTexture@%p", self] options:kOOTextureAllowCubeMap]))
+	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOPlanetAtmoTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	if (self != nil)
 	{
-		_cacheKey = [cacheKey copy];
+		_cacheKey = cacheKey;
 		_seed = seed;
 		_parent = [parent retain];
 		_enqueued = NO;
@@ -1288,15 +1301,14 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 
 - (void) dealloc
 {
-	DESTROY(_cacheKey);
 	DESTROY(_parent);
 	[super dealloc];
 }
 
 
-- (NSString *) cacheKey
+- (id) cacheKey	// shared selector (proposed ADR-0043)
 {
-	return _cacheKey;
+	return oo::NSStringFrom(_cacheKey);
 }
 
 
@@ -1364,11 +1376,11 @@ static void SetMixConstants(OOPlanetTextureGeneratorInfo *info, float temperatur
 	[super enqueue];
 	
 #if DEBUG_DUMP
-	NSString *rgbName = [NSString stringWithFormat:@"planet-%u-%u-atmosphere-rgb-new", _seed.high, _seed.low];
-	NSString *alphaName = [NSString stringWithFormat:@"planet-%u-%u-atmosphere-alpha-new", _seed.high, _seed.low];
+	const std::string rgbName = oo::str::format("planet-%u-%u-atmosphere-rgb-new", _seed.high, _seed.low);
+	const std::string alphaName = oo::str::format("planet-%u-%u-atmosphere-alpha-new", _seed.high, _seed.low);
 	
-	[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:rgbName
-							   andGrayFileNamed:alphaName
+	[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:oo::NSStringFrom(rgbName)
+							   andGrayFileNamed:oo::NSStringFrom(alphaName)
 										  bytes:_data
 										  width:_width
 										 height:_height

@@ -192,6 +192,8 @@ module; open the one nearest your file and do what it does:
 | `src/Core/OORoleSet.mm` / `.h` | oo-hi38 | collections as std containers, `std::optional` results, unique and shared selectors, `-description` -> `-descriptionComponents`, sorting, four callers adapted |
 | `src/Core/Materials/OOBasicMaterial.mm` / `.h` | oo-ro7q | a class whose every NS-typed selector is shared: `id` at the boundary, a nil-able string ivar |
 | `src/Core/OOColor.mm` / `.h` + `OOColor+FoundationBridge.h/.mm` | oo-tms0 | fan-out over budget (15 caller files): `cxx_` API plus a transitional bridge (step 6) |
+| `src/Core/Materials/OOMaterialSpecifier.mm` / `.h` + `OOMaterialSpecifier+FoundationBridge.h/.mm` | oo-hiis | a category on NSDictionary over mixed configurations -> `cxx_` free functions over `const oo::PList &`, bridged (Amendment 2) |
+| `src/Core/Materials/OOMultiTextureMaterial.mm` / `.h` | oo-vpbt | a mixed configuration as `oo::PList`: read, copied minus two keys, handed on exactly |
 | `src/Core/OOALSoundDecoder.mm` / `.h` | oo-oz2y | path components (`oo::str::pathComponents` & co.), a private dictionary as `std::optional<std::map>`, `-description` with a dictionary |
 
 The class stays Objective-C. The file and its header end with no Foundation class name the
@@ -223,7 +225,7 @@ Use `oofnd/StdLib.hpp` for standard containers (never `<vector>` directly: OOCoc
 | `NSMutableString *` | `std::string` (`+=`, `oo::str::format`) | `std::string &` | as `NSString *` | as `NSString *` |
 | `NSArray *` of strings / numbers | `std::vector<std::string>` / `std::vector<float>` ... | `const std::vector<...> &` | `std::vector<...>` | `std::vector<...>` |
 | `NSArray *` of objects | `std::vector<oo::ObjCRef<OOFoo *>>` | `const std::vector<oo::ObjCRef<OOFoo *>> &` | `std::vector<oo::ObjCRef<OOFoo *>>` | same |
-| `NSDictionary *` read from a plist file | `oo::PList` (a Dict) | `const oo::PList &` | `oo::PList` (null = nil) | `oo::PList` |
+| `NSDictionary *` of plist data, or a configuration that also holds live objects (colours, textures, NSNull) or floats | `oo::PList` (a Dict; objects are `Object` nodes, floats single reals) | `const oo::PList &` | `oo::PList` (null = nil) | `oo::PList` |
 | `NSDictionary *` string -> value | `std::map<std::string, V, std::less<>>` | `const std::map<...> &` | `std::optional<std::map<...>>` | `std::map<...>` |
 | `NSDictionary *` string -> object | `std::map<std::string, oo::ObjCRef<OOFoo *>, std::less<>>` | as above | `std::optional<std::map<...>>` | `std::map<...>` |
 | `NSSet *` of strings | `std::set<std::string>` or a sorted `std::vector<std::string>` | `const std::vector<std::string> &` | `std::vector<std::string>` (sorted) | same |
@@ -311,9 +313,15 @@ Root-class selectors are shared by construction: `-description`, `-descriptionCo
   set: order-insensitive (lookup, membership, integer sums, building another map) needs nothing;
   order-sensitive (first match wins, weighted random pick, float accumulation, text or log output,
   the order of random draws) is allowed, but name it in the commit message. The goldens decide.
-- **Plist data only.** `oo::PListFrom` / `oo::ObjectFromPList` are for values read from a plist file.
-  A configuration dictionary may also hold colours, textures or other objects, which a PList drops:
-  keep such a dictionary `id` at your boundary and do not round-trip it.
+- **Mixed configurations** (Amendment 2). `oo::PListFrom` keeps any non-plist object as a
+  `PList::Object` node and a float as a single-precision real; `oo::ObjectFromPList` gives back the
+  same objects and NSNumber types. So a configuration that holds colours, textures or
+  placeholders is an `oo::PList` like any other: read it with `get<T>` / `find`, read an object
+  with `oo::ObjectIn(*config.find("key"))`, copy it and `erase` keys for a keyed copy, and hand
+  it to an unmigrated callee with `oo::ObjectFromPList`. Convert once per method, not per access;
+  where two arguments were the same object, convert once and pass the one object twice
+  (`OOMultiTextureMaterial.mm`). A float's text: `oo::plist_get::numberStringValue(v)` prints
+  it as `%@` did.
 - **Text.** Keep every formatted string byte-identical: same format string, same conversions.
   `oo::str::format` is `vsnprintf`, except `%p`: write `%s` with `oo::str::pointerDescription(p)`.
 - **Typedefs.** A typedef of a Foundation type (`OOCommodityType`, `OOALStringRef`,
@@ -388,6 +396,27 @@ else. Until then, a caller's sweep bead moves off them with:
 | `foreach` / `foreachkey` / `-objectEnumerator` over a std container | range-for |
 | `NSUserDefaults (Override)` | `oo::Defaults` (ADR-0032); retired with the last `NSUserDefaults` consumer |
 
+### 8. Materials order, chunk beads, C handles (Amendment 2)
+
+- **Materials:** `OOMaterialSpecifier` (done) -> `OOTextureLoader` -> `OOTexture` -> `OOCombinedEmissionMapGenerator` -> the materials -> `OODefaultShaderSynthesizer` -> `OOShaderMaterial` -> `OOMaterialConvenienceCreators`. Specifiers and configurations are `const oo::PList &` in every `cxx_` twin; `cxx_OOMaterial*` (OOMaterialSpecifier.h) replace the `-oo_*Color` / `-oo_*MapSpecifier` category methods.
+- **Chunk beads:** a file the orchestrator split (`sweep:foundation-chunk`) is done chunk by chunk, in order; each chunk touches only its listed selectors or body part and has its own acceptance; the parent bead's whole-file grep passes after the last chunk.
+- **A C file behind an abstraction layer** keeps its API; the layer's handles become `struct OOALObject *` (ADR-0043 item 14), defined in C++ in the layer's `.mm`.
+
+- **Floats written to disk** (savegames, caches, defaults): build them with `oo::PList::singleReal(f)`, never `oo::PList(double(f))`; the writers then print `%0.7g` as GNUstep did (ADR-0043 item 15). The saved game is written with `oo::writeXMLPList`.
+- **An `NSEnumerator` subclass** is replaced by C++ iteration in the owner's bead: range-for over the backing container, or a nested C++ iterator class behind a `cxx_` accessor; a shared `-objectEnumerator` stays `id` and returns `[oo::NSArrayFromObjects(snapshot) objectEnumerator]` (item 16).
+- **OOLog:** `OOLogging.h` keeps the `const char *` / `OO_LOG` API; the NSString API lives in `OOLogging+FoundationBridge.h` until every caller has moved (item 17). Do not touch it from a caller's bead; convert your own `OOLog` calls with "Migrating OOLog calls".
+
+### 9. Worktrees on the fleet machine
+
+`.agents/skills/beads-worker/scripts/worktree.sh <id>` run from MSYS2 records MSYS paths (`/c/Users/...`) in `.git/worktrees/<id>/gitdir`. Git for Windows (and anything it runs, such as an automatic `git gc`) cannot find that path and **prunes the worktree's registration**, after which the checkout is no longer a repository. The durable fix, once per worktree, from MSYS2:
+
+```bash
+wt=.worktrees/<id>
+cygpath -m "$PWD/$wt/.git" > "$(git rev-parse --git-common-dir)/worktrees/<id>/gitdir"
+```
+
+After it, `worktree.sh --remove <id>` run from MSYS2 no longer finds the worktree by its MSYS path: remove it with `git worktree remove` from Git for Windows (or give the `C:/` path). Never `git worktree prune` yourself.
+
 ### Transitional bridges
 
 Every `X+FoundationBridge` file in the tree, with the bead that made it and the bead that deletes
@@ -395,8 +424,10 @@ it. oo-qps cannot compile any of them.
 
 | Bridge | Made by | Deleted by |
 |---|---|---|
-| `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | see the bead with title "Delete OOColor+FoundationBridge" |
+| `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | oo-1hvf |
+| `src/Core/Materials/OOMaterialSpecifier+FoundationBridge.h/.mm` (also where the NSDictionary category retires) | oo-hiis | oo-kvlo |
 | `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
+| `src/Core/OOCacheManager+FoundationBridge.h/.mm` | oo-19g0 | oo-5pae ("Delete OOCacheManager+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
