@@ -298,6 +298,8 @@ bool TempConstruct(Context, CallArgs& args) { args.setRval(objectValue(args.this
 ClassDef sTempClass = { "Temp", ClassFlag::None, nullptr, nullptr, nullptr, nullptr,
                         nullptr, nullptr, nullptr, TempConvert, nullptr, nullptr, nullptr, nullptr };
 bool CallableCall(Context, CallArgs& args) { args.setRval(int32Value(5 + static_cast<std::int32_t>(args.count()))); return true; }
+ClassDef sShipScriptClass = { "ShipScript", ClassFlag::None, nullptr, nullptr, nullptr, nullptr,
+                              nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 ClassDef sCallableClass = { "Callable", ClassFlag::None, nullptr, nullptr, nullptr, nullptr,
                             nullptr, nullptr, nullptr, nullptr, nullptr, CallableCall, nullptr, nullptr };
 
@@ -525,6 +527,22 @@ void exerciseFacade(Runtime rt, Context cx)
 	gCap = Captured();
 	CHECK(!eval(cx, nullptr, "throw 42", &rv));
 	CHECK(gCap.calls == 1 && gCap.message == "uncaught exception: 42");
+
+	// -- One script file run for two objects (ship scripts): a bare name in a closure resolves through
+	// the object of the handler call, as SpiderMonkey's per-run scope chain did, not through the object
+	// the file last ran for (bead oo-1gc.15: `this.list = [...]; ... list[i]` in BUS_MegaBat_events.js).
+	Object shipA = newObject(cx, &sShipScriptClass, nullptr, nullptr);
+	RootedObject shipARoot(cx, shipA, "shipA");
+	Object shipB = newObject(cx, &sShipScriptClass, nullptr, nullptr);
+	RootedObject shipBRoot(cx, shipB, "shipB");
+	CHECK(eval(cx, shipA, "this.tag = 'A'; this.pick = function () { this.list = [this.tag]; return list[0]; };", &rv, "ship.js"));
+	CHECK(eval(cx, shipB, "this.tag = 'B'; this.pick = function () { this.list = [this.tag]; return list[0]; };", &rv, "ship.js"));
+	CHECK(callFunctionName(cx, shipA, "pick", 0, nullptr, &rv) && valIs(cx, rv, u"A"));   // B ran ship.js last
+	CHECK(callFunctionName(cx, shipB, "pick", 0, nullptr, &rv) && valIs(cx, rv, u"B"));
+	CHECK(eval(cx, shipA, "this.peek = function () { return tag; };", &rv, "ship.js"));
+	Value peekFn = undefinedValue();
+	CHECK(getProperty(cx, shipA, "peek", &peekFn));
+	CHECK(callFunctionValue(cx, nullptr, peekFn, 0, nullptr, &rv) && valIs(cx, rv, u"A")); // no marked `this`: the last run (A)
 
 	// -- Compiled scripts: compile, execute with a scope, serialize, deserialize ---------------------
 	const char16_t compiled[] = u"this.tag = 'compiled'; 6 * 7";
