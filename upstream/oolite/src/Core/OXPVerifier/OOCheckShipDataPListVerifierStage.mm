@@ -31,7 +31,7 @@ MA 02110-1301, USA.
 #import "OOFileScannerVerifierStage.h"
 #import "OOStringParsing.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOStringParsing.h"
 #import "OOPListSchemaVerifier.h"
 #import "OOAIStateMachineVerifierStage.h"
@@ -122,16 +122,16 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 	// Keys that apply to all ships
 	_ooliteShipNames = [NSSet setWithArray:[ooliteShipData allKeys]];
 	settings = [[self verifier] configurationDictionaryForKey:@"shipdataPListSettings"];
-	_basicKeys = [settings oo_setForKey:@"knownShipKeys"];
+	_basicKeys = oo::PListView(settings).get<NSSet *>(@"knownShipKeys");
 	
 	// Keys that apply to stations/carriers
 	mergeSet = [_basicKeys mutableCopy];
-	[mergeSet addObjectsFromArray:[settings oo_arrayForKey:@"knownStationKeys"]];
+	[mergeSet addObjectsFromArray:oo::PListView(settings).get<NSArray *>(@"knownStationKeys")];
 	_stationKeys = mergeSet;
 	
 	// Keys that apply to player ships
 	mergeSet = [_basicKeys mutableCopy];
-	[mergeSet addObjectsFromArray:[settings oo_arrayForKey:@"knownPlayerKeys"]];
+	[mergeSet addObjectsFromArray:oo::PListView(settings).get<NSArray *>(@"knownPlayerKeys")];
 	_playerKeys = [[mergeSet copy] autorelease];
 	
 	// Keys that apply to _any_ ship -- union of the above
@@ -146,7 +146,7 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 	{
 		pool = [[NSAutoreleasePool alloc] init];
 		
-		shipInfo = [_shipdataPList oo_dictionaryForKey:shipKey];
+		shipInfo = oo::PListView(_shipdataPList).get<NSDictionary *>(shipKey);
 		if (shipInfo == nil)
 		{
 			OOLog(@"verifyOXP.shipdata.badType", @"***** ERROR: shipdata.plist entry for \"%@\" is not a dictionary.", shipKey);
@@ -183,7 +183,7 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 	[self checkSchema];
 	[self checkModel];
 	
-	NSString *aiName = [info oo_stringForKey:@"ai_type"];
+	NSString *aiName = oo::PListView(info).get<NSString *>(@"ai_type");
 	if (aiName != nil) 
 	{
 		if (![aiName hasSuffix:@".js"])
@@ -249,12 +249,12 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 	rolesString = [_info objectForKey:@"roles"];
 	_roles = [self rolesFromString:rolesString];
 	_isPlayer = [_roles containsObject:@"player"];
-	_isStation = [_info oo_boolForKey:@"is_carrier" defaultValue:NO] ||
-				 [_info oo_boolForKey:@"isCarrier" defaultValue:NO] ||
+	_isStation = oo::PListView(_info).get<BOOL>(@"is_carrier", NO) ||
+				 oo::PListView(_info).get<BOOL>(@"isCarrier", NO) ||
 				 [rolesString rangeOfString:@"station"].location != NSNotFound ||
 				 [rolesString rangeOfString:@"carrier"].location != NSNotFound;
 	// the is_carrier or isCarrier key will be missed when it was insise a like_ship definition.
-	_isTemplate = [_info oo_boolForKey:@"is_template" defaultValue:NO];
+	_isTemplate = oo::PListView(_info).get<BOOL>(@"is_template", NO);
 
 	if (_isPlayer && _isStation)
 	{
@@ -308,9 +308,9 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 								materials = nil,
 								shaders = nil;
 	
-	model = [_info oo_stringForKey:@"model"];
-	materials = [_info oo_dictionaryForKey:@"materials"];
-	shaders = [_info oo_dictionaryForKey:@"shaders"];
+	model = oo::PListView(_info).get<NSString *>(@"model");
+	materials = oo::PListView(_info).get<NSDictionary *>(@"materials");
+	shaders = oo::PListView(_info).get<NSDictionary *>(@"shaders");
 	
 	if (model != nil)
 	{
@@ -325,7 +325,7 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 	}
 	else
 	{
-		if ([_info oo_stringForKey:@"like_ship"] == nil)
+		if (oo::PListView(_info).get<NSString *>(@"like_ship") == nil)
 		{
 			[self message:@"***** ERROR: ship does not specify model or like_ship."];
 		}
