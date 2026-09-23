@@ -34,4 +34,30 @@ collections, the property values' own objects and NSNumber types).
 	return oo::ObjectFromPList([self cxx_exportScriptedChanges]);
 }
 
+
+// oo-3rb.108: storage and write side
+
+- (void) setUniversalProperties:(NSDictionary *)properties
+{
+	[self cxx_setUniversalProperties:oo::PListFrom(properties)];
+}
+
+
+- (void) setInterstellarProperties:(NSDictionary *)properties
+{
+	[self cxx_setInterstellarProperties:oo::PListFrom(properties)];
+}
+
+
+- (void) setProperties:(NSDictionary *)properties forSystemKey:(NSString *)key
+{
+	[self cxx_setProperties:oo::PListFrom(properties) forSystemKey:oo::StdString(key)];
+}
+
+
+- (void) setProperty:(NSString *)property forSystemKey:(NSString *)key andLayer:(OOSystemLayer)layer toValue:(id)value fromManifest:(NSString *)manifest
+{
+	[self cxx_setProperty:oo::StdString(property) forSystemKey:oo::StdString(key) andLayer:layer toValue:oo::PListFrom(value) fromManifest:oo::OptionalString(manifest)];
+}
+
 @end
