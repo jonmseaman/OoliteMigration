@@ -12,3 +12,5 @@
 # per-line timeout of OO_NIGHTLY_LINE_TIMEOUT seconds (default 1800). Every line runs even after
 # a failure. The file is intentionally empty of executable lines until the first bead moves a
 # proof here; tools/run-nightly-checks.sh --list shows what would run.
+
+[oo-1gc.5] tools/guardrails-selftest
