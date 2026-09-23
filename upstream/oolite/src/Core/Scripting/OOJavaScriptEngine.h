@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "PlayerEntity.h"
 #import "PlayerEntityLegacyScriptEngine.h"
+#import "oofnd/objc/OOObject.h"
 #define OOJSENGINE_MONITOR_SUPPORT OOLITE_DEBUG
 
 
@@ -248,6 +249,21 @@ OOINLINE ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id
 	Requires a request on context.
 */
 OOJS_EXTERN_C ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object);
+
+
+/*	OONull: the placeholder for null inside native collections, which cannot
+	hold nil (was Foundation's null singleton, ADR-0029 Decision 5). A JS array
+	element that is null or undefined becomes [OONull null] in the NSArray, and
+	[OONull null] becomes JS null, so JS null round-trips as before. Game code
+	uses it where a collection slot is empty (MFD settings, target memory,
+	script event arguments). It describes itself as "<null>", as its
+	predecessor did, and -copy returns itself.
+*/
+@interface OONull: OOObject <OOCopying>
+
++ (OONull *) null;
+
+@end
 
 
 /*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.

@@ -28,9 +28,11 @@ MA 02110-1301, USA.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "OOFileScannerVerifierStage.h"
+#import "oofnd/objc/OOObject.h"
 
 static NSString * const kStageName	= @"Testing models";
 
+// Placeholder for a nil context/materials/shaders in the info dictionaries (was Foundation's null).
 static id NSNULL = nil;
 
 
@@ -51,7 +53,7 @@ static id NSNULL = nil;
 	self = [super init];
 	if (self != nil)
 	{
-		NSNULL = [[NSNull null] retain];
+		if (NSNULL == nil)  NSNULL = [[OOObject alloc] init];
 		_modelsToCheck = [[NSMutableSet alloc] init];
 	}
 	return self;
