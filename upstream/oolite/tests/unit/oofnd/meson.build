@@ -29,6 +29,7 @@ endforeach
 # table. -fuse-ld=lld comes from the native file (clang.ini): GNU ld cannot link the gnustep-2 ABI.
 oofnd_objc_tests = [
     'test_objc_floor',
+    'test_objc_exception',
 ]
 
 foreach t : oofnd_objc_tests
