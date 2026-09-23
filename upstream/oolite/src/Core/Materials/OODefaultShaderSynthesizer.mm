@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OODefaultShaderSynthesizer.h"
+#include "oofnd/objc/OORuntime.h"
 #import "OOMesh.h"
 #import "OOTexture.h"
 #import "OOColor.h"
@@ -265,31 +266,30 @@ BOOL OOSynthesizeMaterialShader(NSDictionary *configuration, NSString *materialK
 {
 	NSCParameterAssert(configuration != nil && outVertexShader != NULL && outFragmentShader != NULL && outTextureSpecs != NULL && outUniformSpecs != NULL);
 	
-	NSAutoreleasePool *pool = [NSAutoreleasePool new];
-	
-	OODefaultShaderSynthesizer *synthesizer = [[OODefaultShaderSynthesizer alloc]
-											   initWithMaterialConfiguration:configuration
-																 materialKey:materialKey
-																  entityName:entityName];
-	[synthesizer autorelease];
-	
-	BOOL OK = [synthesizer run];
-	if (OK)
+	@autoreleasepool
 	{
-		*outVertexShader = [[synthesizer vertexShader] retain];
-		*outFragmentShader = [[synthesizer fragmentShader] retain];
-		*outTextureSpecs = [[synthesizer textureSpecifications] retain];
-		*outUniformSpecs = [[synthesizer uniformSpecifications] retain];
-	}
-	else
-	{
-		*outVertexShader = nil;
-		*outFragmentShader = nil;
-		*outTextureSpecs = nil;
-		*outUniformSpecs = nil;
-	}
+		OODefaultShaderSynthesizer *synthesizer = [[OODefaultShaderSynthesizer alloc]
+												   initWithMaterialConfiguration:configuration
+																	 materialKey:materialKey
+																	  entityName:entityName];
+		[synthesizer autorelease];
 	
-	[pool release];
+		BOOL OK = [synthesizer run];
+		if (OK)
+		{
+			*outVertexShader = [[synthesizer vertexShader] retain];
+			*outFragmentShader = [[synthesizer fragmentShader] retain];
+			*outTextureSpecs = [[synthesizer textureSpecifications] retain];
+			*outUniformSpecs = [[synthesizer uniformSpecifications] retain];
+		}
+		else
+		{
+			*outVertexShader = nil;
+			*outFragmentShader = nil;
+			*outTextureSpecs = nil;
+			*outUniformSpecs = nil;
+		}
+	}
 	
 	[*outVertexShader autorelease];
 	[*outFragmentShader autorelease];
@@ -737,7 +737,7 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	// Ensure that we aren’t recursing.
 	if (NSHashGet(_stagesInProgress, stage) != NULL)
 	{
-		OOLogERR(@"material.synthesis.error.recursion", @"Shader synthesis recursion for stage %@.", NSStringFromSelector(stage));
+		OOLogERR(@"material.synthesis.error.recursion", @"Shader synthesis recursion for stage %s.", OOSelectorName(stage));
 		[NSException raise:NSInternalInconsistencyException format:@"stage recursion"];
 	}
 	

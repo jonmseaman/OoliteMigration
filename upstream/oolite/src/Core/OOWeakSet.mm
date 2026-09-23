@@ -120,18 +120,19 @@ This code is hereby placed in the public domain.
 	if ([self count] != [other count])  return NO;
 	
 	BOOL result = YES;
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	NSEnumerator *selfEnum = [self objectEnumerator];
-	id object = nil;
-	while ((object = [selfEnum nextObject]))
+	@autoreleasepool
 	{
-		if (![other containsObject:object])
+		NSEnumerator *selfEnum = [self objectEnumerator];
+		id object = nil;
+		while ((object = [selfEnum nextObject]))
 		{
-			result = NO;
-			break;
+			if (![other containsObject:object])
+			{
+				result = NO;
+				break;
+			}
 		}
 	}
-	DESTROY(pool);
 	
 	return result;
 }

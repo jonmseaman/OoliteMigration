@@ -15,3 +15,10 @@
 
 [oo-1gc.5] tools/guardrails-selftest
 [oo-g2k] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; python3 tools/plist_fuzz.py corpus && python3 tools/plist_fuzz.py fuzz --seed "$(date +%Y%m%d)" --count 100000
+
+# Tier-2 OXP corpus (150 expansions) on the current build: two shards in parallel, 558 s measured
+# (~20 min serial would crowd the 1800 s per-line timeout), under ONE gui-lock hold, because each load opens a real
+# game window. The hold is heartbeated only while this shell lives (kill -0), so a timed-out night
+# lets the lock go stale instead of wedging it. A fresh state dir per night: nothing is resumed.
+# Red while any Tier-2 expansion fails; the known ones are triaged in docs/phases/1-corpus-tier23-report.md.
+[oo-1gc.11] export PATH="/ucrt64/bin:$PATH" OO_GUI_LOCK_OWNER="nightly-corpus-tier2-$$"; s="build/nightly/corpus-tier2-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$s" || exit 1; tools/gui-lock acquire --timeout 900 || exit 1; p=$$; (while sleep 120 && kill -0 $p 2>/dev/null; do tools/gui-lock refresh >/dev/null || exit 0; done) & hb=$!; bash tools/corpus.sh tier2 --shard 0/2 --state "$s/0" > "$s/0.log" 2>&1 & a=$!; bash tools/corpus.sh tier2 --shard 1/2 --state "$s/1"; b=$?; wait $a; a=$?; cat "$s/0.log"; kill $hb; tools/gui-lock release; echo "corpus tier2 shards rc=$a,$b state=$s"; [ $a -eq 0 ] && [ $b -eq 0 ]

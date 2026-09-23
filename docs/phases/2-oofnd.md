@@ -83,3 +83,4 @@ From Phase 0. `meson test -C build --suite oofnd` for the library.
 ## Status log
 
 - 2026-09-06 — Phase doc created from MIGRATION_PLAN §7.
+- 2026-09-23 — Seam 2.4 (bead oo-u77): `oo::PList::get<T>`/`at<T>` (`src/oofnd/PListGet.hpp`) with OOCollectionExtractors' exact GNUstep conversions; sweeps bridge through `oo::PListView` (`src/Core/OOPListView.h`); exemplar `src/Core/Entities/OOWaypointEntity.mm`; recipe in `src/oofnd/README.md` "Migrating oo_*ForKey" (proposed ADR-0031).

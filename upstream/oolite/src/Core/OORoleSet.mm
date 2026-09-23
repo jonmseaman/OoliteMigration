@@ -28,7 +28,7 @@ SOFTWARE.
 #import "OORoleSet.h"
 
 #import "OOStringParsing.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOLogging.h"
 
 
@@ -105,7 +105,7 @@ SOFTWARE.
 }
 
 
-- (id)copyWithZone:(NSZone *)zone
+- (id)copyWithZone:(OOZone *)zone
 {
 	// Note: since object is immutable, a copy is no different from the original.
 	return [self retain];
@@ -154,7 +154,7 @@ SOFTWARE.
 
 - (float)probabilityForRole:(NSString *)role
 {
-	return [_rolesAndProbabilities oo_floatForKey:role defaultValue:0.0f];
+	return oo::PListView(_rolesAndProbabilities).get<float>(role, 0.0f);
 }
 
 
@@ -201,7 +201,7 @@ SOFTWARE.
 	
 	foreachkey (role, _rolesAndProbabilities)
 	{
-		prob += [_rolesAndProbabilities oo_floatForKey:role];
+		prob += oo::PListView(_rolesAndProbabilities).get<float>(role);
 		if (selected <= prob)  break;
 	}
 	if (role == nil)
@@ -280,7 +280,7 @@ SOFTWARE.
 	assert(_roles == nil && _roleString == nil);
 	
 	NSMutableDictionary		*tDict = [[dict mutableCopy] autorelease];
-	float					thargProb = [dict oo_floatForKey:@"thargon" defaultValue:0.0f];
+	float					thargProb = oo::PListView(dict).get<float>(@"thargon", 0.0f);
 	
 	if ( thargProb > 0.0f && [dict objectForKey:@"EQ_THARGON"] == nil)
 	{
@@ -292,7 +292,7 @@ SOFTWARE.
 	
 	foreachkey (role, dict)
 	{
-		prob = [dict oo_floatForKey:role defaultValue:-1];
+		prob = oo::PListView(dict).get<float>(role, -1);
 		if (prob < 0)
 		{
 			OOLog(@"roleSet.badValue", @"Attempt to create a role set with negative or non-numerical probability for role %@.", role);

@@ -41,8 +41,8 @@
 	value is another type - the shape of Oolite's `ValueIfClass(value, [NSDictionary class])`.
 	T is one of bool, PList::Integer, double, std::string, PList::Data, PList::Date,
 	PList::Array, PList::Dict. The typed, converting accessor that replaces
-	OOCollectionExtractors (PList::get<T>) is a later seam; this header has no conversions
-	beyond NSNumber's own (boolValue / longLongValue / unsignedLongLongValue / doubleValue).
+	OOCollectionExtractors, get<T>(key, fallback) / at<T>(index, fallback), is declared here and
+	defined in oofnd/PListGet.hpp (included at the end of this header; proposed ADR-0031).
 
 	Also here, shared by the parsers: oo::PListFormat (NSPropertyListFormat) and oo::PListError
 	(the error string GNUstep reports, and the -[NSError description] Oolite logged).
@@ -78,6 +78,10 @@
 #include <vector>
 
 namespace oo {
+
+// What get<T>/at<T> convert to and how (oofnd/PListGet.hpp). Specialised per requested type.
+template <class T>
+struct PListGet;
 
 class PList
 {
@@ -237,6 +241,18 @@ public:
 		if (const double* d = getIf<double>()) return *d;
 		return 0.0;
 	}
+
+	// OOCollectionExtractors' -oo_<type>ForKey:defaultValue: / -oo_<type>AtIndex:defaultValue:,
+	// with the same conversions (oofnd/PListGet.hpp has the table and the semantics). On a null
+	// PList they return the result type's zero, as messaging nil did.
+	template <class T>
+	typename PListGet<T>::Result get(std::string_view key, typename PListGet<T>::Fallback fallback) const;
+	template <class T>
+	typename PListGet<T>::Result get(std::string_view key) const;
+	template <class T>
+	typename PListGet<T>::Result at(std::size_t index, typename PListGet<T>::Fallback fallback) const;
+	template <class T>
+	typename PListGet<T>::Result at(std::size_t index) const;
 
 	friend bool operator==(const PList&, const PList&) = default;
 
@@ -554,3 +570,8 @@ inline std::u16string utf8ToUtf16(std::string_view s)
 #pragma pop_macro("true")
 
 #endif // OOFND_PLIST_HPP
+
+// The definitions of get<T>/at<T>. Outside the include guard so that PListGet.hpp, which includes
+// this header first, still sees the complete class when it is the header included first.
+#include "oofnd/PListGet.hpp"
+

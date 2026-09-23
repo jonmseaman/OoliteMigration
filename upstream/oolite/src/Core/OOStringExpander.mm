@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#include "oofnd/objc/OORuntime.h"
 #import "OOStringExpander.h"
 #import "Universe.h"
 #import "OOJavaScriptEngine.h"
@@ -184,46 +185,48 @@ NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictio
 		OOSetReallyRandomRANROTAndRndSeeds();
 	}
 	
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	NSString *result = nil, *intermediate = nil;
-	@try
+	NSString *result = nil;
+	@autoreleasepool
 	{
-		// TODO: profile caching the results. Would need to keep track of whether we've done something nondeterministic (array selection, %R etc).
-		if (options & kOOExpandKey)
+		NSString *intermediate = nil;
+		@try
 		{
-			intermediate = ExpandStringKey(&context, string, kStackAllocationLimit, kRecursionLimit);
+			// TODO: profile caching the results. Would need to keep track of whether we've done something nondeterministic (array selection, %R etc).
+			if (options & kOOExpandKey)
+			{
+				intermediate = ExpandStringKey(&context, string, kStackAllocationLimit, kRecursionLimit);
+			}
+			else
+			{
+				intermediate = Expand(&context, string, kStackAllocationLimit, kRecursionLimit);
+			}
+			if (!context.hasPercentR)
+			{
+				result = intermediate;
+			}
+			else
+			{
+				result = ExpandPercentR(&context, intermediate);
+			}
 		}
-		else
+		@finally
 		{
-			intermediate = Expand(&context, string, kStackAllocationLimit, kRecursionLimit);
+			[context.systemName release];
+			[context.overrides release];
+			[context.legacyLocals release];
+			[context.systemNameWithIan release];
+			[context.randomNameN release];
+			[context.randomNameR release];
+			[context.systemDescriptions release];
 		}
-		if (!context.hasPercentR)
+		
+		if (options & kOOExpandReseedRNG)
 		{
-			result = intermediate;
+			OORestoreRandomState(savedRandomState);
 		}
-		else
-		{
-			result = ExpandPercentR(&context, intermediate);
-		}
+		
+		result = [result copy];
 	}
-	@finally
-	{
-		[context.systemName release];
-		[context.overrides release];
-		[context.legacyLocals release];
-		[context.systemNameWithIan release];
-		[context.randomNameN release];
-		[context.randomNameR release];
-		[context.systemDescriptions release];
-	}
-	
-	if (options & kOOExpandReseedRNG)
-	{
-		OORestoreRandomState(savedRandomState);
-	}
-	
-	result = [result copy];
-	[pool release];
 	return [result autorelease];
 }
 
@@ -689,7 +692,7 @@ static NSString *ExpandStringKeySpecial(OOStringExpansionContext *context, NSStr
 	SEL selector = (SEL)NSMapGet(specials, key);
 	if (selector != NULL)
 	{
-		NSCAssert2([PLAYER respondsToSelector:selector], @"Special string expansion selector %@ for [%@] is not implemented.", NSStringFromSelector(selector), key);
+		NSCAssert2([PLAYER respondsToSelector:selector], @"Special string expansion selector %s for [%@] is not implemented.", OOSelectorName(selector), key);
 		
 		NSString *result = [PLAYER performSelector:selector];
 		if (result != nil)
@@ -869,7 +872,7 @@ static SEL LookUpLegacySelector(NSString *key)
 		
 		if ([whitelist containsObject:selectorName])
 		{
-			selector = NSSelectorFromString(selectorName);
+			selector = OOSelectorFromName([selectorName UTF8String]);
 			
 			/*	This is an assertion, not a warning, because whitelist.plist is
 				part of the game and cannot be overriden by OXPs. If there is an
