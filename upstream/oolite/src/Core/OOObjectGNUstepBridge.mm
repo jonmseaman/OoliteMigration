@@ -10,7 +10,7 @@ Logging seams remove %@. While gnustep-base is still linked, %@ and NSLog/OOLog 
 send it -description and raise without one (ADR-0029 measurement 11). This category gives
 OOObject exactly NSObject's GNUstep descriptions, so log output is unchanged by a reroot:
 
-    +description  the class name                 (NSObject: NSStringFromClass(self))
+    +description  "ClassName"                     (NSObject: the class name)
     -description  "<ClassName: 0xADDRESS>"        (NSObject: "<%s: %p>", class name, self)
 
 A rerooted class that already overrides -description (OORoleSet does) is unaffected.
@@ -33,7 +33,7 @@ A rerooted class that already overrides -description (OORoleSet does) is unaffec
 
 + (NSString *) description
 {
-	return NSStringFromClass(self);
+	return [NSString stringWithUTF8String:class_getName(self)];
 }
 
 
