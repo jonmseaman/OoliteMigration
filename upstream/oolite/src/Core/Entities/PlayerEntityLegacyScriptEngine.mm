@@ -64,8 +64,8 @@ MA 02110-1301, USA.
 
 
 static NSString * const kOOLogScriptAddShipsFailed			= @"script.addShips.failed";
-static NSString * const kOOLogScriptMissionDescNoText		= @"script.missionDescription.noMissionText";
-static NSString * const kOOLogScriptMissionDescNoKey		= @"script.missionDescription.noMissionKey";
+static const char *const kOOLogScriptMissionDescNoText		= "script.missionDescription.noMissionText";
+static const char *const kOOLogScriptMissionDescNoKey		= "script.missionDescription.noMissionKey";
 
 static NSString * const kOOLogDebugOnMetaClass				= @"$scriptDebugOn";
 static NSString * const kOOLogDebugMessage					= @"script.debug.message";
@@ -172,6 +172,27 @@ bool IsWhitespaceNotNewline(char16_t c)
 {
 	return c == 0x09 || c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B)
 		   || c == 0x202F || c == 0x205F || c == 0x3000;
+}
+
+
+// [UNIVERSE missiontext]'s entry as -oo_stringForKey: read it: a string, or a number's text.
+std::optional<std::string> MissionTextForKey(const std::string &key)
+{
+	const oo::PList value = oo::PListFrom([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(key)]);
+	if (const std::string *string = value.getIf<std::string>())  return *string;
+	if (value.isNumber())  return oo::plist_get::numberStringValue(value);
+	return std::nullopt;
+}
+
+
+// An element as -oo_stringAtIndex: read it (a string, or a number's text; else nullopt).
+std::optional<std::string> StringAtIndex(const oo::PList &array, std::size_t index)
+{
+	const oo::PList *value = array.at(index);
+	if (value == nullptr)  return std::nullopt;
+	if (const std::string *string = value->getIf<std::string>())  return *string;
+	if (value->isNumber())  return oo::plist_get::numberStringValue(*value);
+	return std::nullopt;
 }
 
 
@@ -780,74 +801,67 @@ static BOOL sRunningScript = NO;
 }
 
 
-- (NSArray *) missionsList
+- (oo::PList) cxx_missionsList
 {
-	NSEnumerator			*scriptEnum = nil;
-	NSString				*scriptName = nil;
-	NSString				*vars = nil;
-	NSMutableArray			*result1 = nil;
-	NSMutableArray			*result2 = nil;
-	
-	result1 = [NSMutableArray array];
-	result2 = [NSMutableArray array];
+	oo::PList::Array		result1;	// strings
+	oo::PList::Array		result2;	// arrays: a header, then entries
 
-	NSArray*	passengerManifest = [self passengerList];
-	NSArray*	contractManifest = [self contractList];
-	NSArray*	parcelManifest = [self parcelList]; 
+	// The manifests (PlayerEntityContracts, not migrated) as oo::PList arrays.
+	const oo::PList	passengerManifest = oo::PListFrom([self passengerList]);
+	const oo::PList	contractManifest = oo::PListFrom([self contractList]);
+	const oo::PList	parcelManifest = oo::PListFrom([self parcelList]);
 
-	if ([passengerManifest count] > 0)
+	auto addManifest = [&result2](const std::string &header, const oo::PList &manifest)
 	{
-		[result2 addObject:[[NSArray arrayWithObject:DESC(@"manifest-passengers")] arrayByAddingObjectsFromArray:passengerManifest]];
-	}
+		const oo::PList::Array *entries = manifest.getIf<oo::PList::Array>();
+		if (entries == nullptr || entries->empty())  return;
+		oo::PList::Array list{ oo::PList(header) };
+		list.insert(list.end(), entries->begin(), entries->end());
+		result2.push_back(oo::PList(std::move(list)));
+	};
 
-	if ([parcelManifest count] > 0)
-	{
-		[result2 addObject:[[NSArray arrayWithObject:DESC(@"manifest-parcels")] arrayByAddingObjectsFromArray:parcelManifest]];
-	}
-
-	if ([contractManifest count] > 0)
-	{
-		[result2 addObject:[[NSArray arrayWithObject:DESC(@"manifest-contracts")] arrayByAddingObjectsFromArray:contractManifest]];
-	}
+	addManifest(oo::StdString(DESC(@"manifest-passengers")), passengerManifest);
+	addManifest(oo::StdString(DESC(@"manifest-parcels")), parcelManifest);
+	addManifest(oo::StdString(DESC(@"manifest-contracts")), contractManifest);
 
 	/* For proper display, array entries need to all be after string
-	 * entries, so sort them now */	
-	for (scriptEnum = [worldScripts keyEnumerator]; (scriptName = [scriptEnum nextObject]); )
+	 * entries, so sort them now */
+	// (world scripts in -allKeys order, which is the -keyEnumerator order the loop used)
+	for (const std::string &scriptName : oo::StringsFrom([worldScripts allKeys]))
 	{
-		vars = [mission_variables objectForKey:scriptName];
-		
-		if (vars != nil)
-		{
-			if ([vars isKindOfClass:[NSString class]])
-			{
-				[result1 addObject:vars];
-			}
-			else if ([vars isKindOfClass:[NSArray class]])
-			{
-				BOOL found = NO;
-				NSArray *element = nil;
-				foreach (element, result2)
-				{
-					if ([oo::PListView(element).at<NSString *>(0) isEqualToString:oo::PListView((NSArray*)vars).at<NSString *>(0)])
-					{
+		const oo::PList vars = [self cxx_missionVariableForKey:scriptName];
 
-						[result2 removeObject:element];
-						NSRange notTheHeader;
-						notTheHeader.location = 1;
-						notTheHeader.length = [(NSArray*)vars count]-1;
-						[result2 addObject:[element arrayByAddingObjectsFromArray:[(NSArray*)vars subarrayWithRange:notTheHeader]]];
-						found = YES;
-						break;
-					}
-				}
-				if (!found)
+		if (vars.isString())
+		{
+			result1.push_back(vars);
+		}
+		else if (const oo::PList::Array *varList = vars.getIf<oo::PList::Array>())
+		{
+			BOOL found = NO;
+			const std::optional<std::string> header = StringAtIndex(vars, 0);
+			for (std::size_t i = 0; i < result2.size(); i++)
+			{
+				const std::optional<std::string> elementHeader = StringAtIndex(result2[i], 0);
+				if (elementHeader.has_value() && header.has_value() && *elementHeader == *header)
 				{
-					[result2 addObject:vars];
+					// -removeObject: (every equal element), then the merged list at the end.
+					const oo::PList element = result2[i];
+					std::erase(result2, element);
+					oo::PList::Array merged = *element.getIf<oo::PList::Array>();
+					merged.insert(merged.end(), varList->begin() + 1, varList->end());
+					result2.push_back(oo::PList(std::move(merged)));
+					found = YES;
+					break;
 				}
+			}
+			if (!found)
+			{
+				result2.push_back(vars);
 			}
 		}
 	}
-	return [result1 arrayByAddingObjectsFromArray:result2];
+	result1.insert(result1.end(), result2.begin(), result2.end());
+	return oo::PList(std::move(result1));
 }
 
 
@@ -899,65 +913,61 @@ static BOOL sRunningScript = NO;
 /*-----------------------------------------------------*/
 
 
-- (void) setMissionDescription:(NSString *)textKey
+- (void) setMissionDescription:(id)textKey	// called by name (ADR-0043 item 21)
 {
-	[self setMissionDescription:textKey forMission:oo::NSStringOrNil(sCurrentMissionKey)];
+	[self setMissionDescription:oo::StdString(textKey) forMission:sCurrentMissionKey];
 }
 
 
-- (void) setMissionDescription:(NSString *)textKey forMission:(NSString *)key
+- (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key
 {
-	NSString		*text = oo::PListView([UNIVERSE missiontext]).get<NSString *>(textKey);
-	
-	if (!text)
+	const std::optional<std::string> text = MissionTextForKey(textKey);
+
+	if (!text.has_value())
 	{
-		OOLogERR(kOOLogScriptMissionDescNoText, @"in %@, no mission text set for key '%@' [UNIVERSE missiontext] is:\n%@ ", CurrentScriptDesc(), textKey, [UNIVERSE missiontext]);
+		OO_LOG_ERR(kOOLogScriptMissionDescNoText, "in {}, no mission text set for key '{}' [UNIVERSE missiontext] is:\n{} ", CurrentScriptDescription(), textKey, oo::DescriptionOf([UNIVERSE missiontext]));
 		return;
 	}
-	
-	[self setMissionInstructions:text forMission:key];
+
+	[self cxx_setMissionInstructions:*text forMission:key];
 }
 
 
 // implementation of mission.setInstructions(), also final part of legacy setMissionDescription
-- (void) setMissionInstructions:(NSString *)text forMission:(NSString *)key
+- (void) cxx_setMissionInstructions:(const std::string &)text forMission:(const std::optional<std::string> &)key
 {
-	if (!key)
+	if (!key.has_value())
 	{
-		OOLogERR(kOOLogScriptMissionDescNoKey, @"in %@, mission key not set", CurrentScriptDesc());
+		OO_LOG_ERR(kOOLogScriptMissionDescNoKey, "in {}, mission key not set", CurrentScriptDescription());
 		return;
 	}
 
-	text = OOExpand(text);
-	text = oo::NSStringOrNil([self replaceVariablesInString:oo::StdString(text)]);
-
-	[mission_variables setObject:text forKey:key];
+	const std::string expanded = oo::StdString(OOExpand(oo::NSStringFrom(text)));
+	[self cxx_setMissionVariable:oo::PList([self replaceVariablesInString:expanded].value_or(std::string())) forKey:*key];
 }
 
 
-- (void) setMissionInstructionsList:(NSArray *)list forMission:(NSString *)key
+- (void) cxx_setMissionInstructionsList:(const oo::PList &)list forMission:(const std::optional<std::string> &)key
 {
-	if (!key)
+	if (!key.has_value())
 	{
-		OOLogERR(kOOLogScriptMissionDescNoKey, @"in %@, mission key not set", CurrentScriptDesc());
+		OO_LOG_ERR(kOOLogScriptMissionDescNoKey, "in {}, mission key not set", CurrentScriptDescription());
 		return;
 	}
 
-	NSString *text = nil;
-	NSUInteger i,ct = [list count];
-	NSMutableArray *expandedList = [NSMutableArray arrayWithCapacity:ct];
+	oo::PList::Array expandedList;
+	NSUInteger i,ct = list.count();
 	for (i=0 ; i<ct ; i++)
 	{
-		text = oo::PListView(list).at<NSString *>(i, nil);
-		if (text != nil)
+		const std::optional<std::string> text = StringAtIndex(list, i);
+		if (text.has_value())
 		{
-			text = OOExpand(text);
-			text = oo::NSStringOrNil([self replaceVariablesInString:oo::StdString(text)]);
-			[expandedList addObject:text];
+			const std::string expanded = oo::StdString(OOExpand(oo::NSStringFrom(*text)));
+			expandedList.push_back(oo::PList([self replaceVariablesInString:expanded].value_or(std::string())));
 		}
 	}
 
-	[mission_variables setObject:expandedList forKey:key];
+	[self cxx_setMissionVariable:oo::PList(std::move(expandedList)) forKey:*key];
 }
 
 
@@ -967,21 +977,20 @@ static BOOL sRunningScript = NO;
 }
 
 
-- (void) clearMissionDescriptionForMission:(NSString *)key
+- (void) clearMissionDescriptionForMission:(id)key	// called by name (ADR-0043 item 21)
 {
-	if (!key)
+	if (key == nil)
 	{
-		OOLogERR(kOOLogScriptMissionDescNoKey, @"in %@, mission key not set", CurrentScriptDesc());
+		OO_LOG_ERR(kOOLogScriptMissionDescNoKey, "in {}, mission key not set", CurrentScriptDescription());
 		return;
 	}
-	
-	if (![mission_variables objectForKey:key]) return;
-	
-	[mission_variables removeObjectForKey:key];
+
+	[self cxx_setMissionVariable:oo::PList() forKey:oo::StdString(key)];	// (removing an absent key does nothing)
 }
 
 
-- (id) mission_string	// called by name (ADR-0043 item 21)
+// called by name (ADR-0043 item 21), as are the queries below
+- (id) mission_string
 {
 	return oo::NSStringOrNil(sMissionStringValue);
 }
@@ -1962,34 +1971,32 @@ static int shipsFound;
 }
 
 
-- (void) addMissionText: (NSString *)textKey
+- (void) addMissionText:(id)textKey	// called by name (ADR-0043 item 21)
 {
-	NSString			*text = nil;
-	
-	if ([textKey isEqualToString:lastTextKey])  return; // don't repeatedly add the same text
+	const std::optional<std::string> key = oo::OptionalString(textKey);
+
+	if (key.has_value() && key == oo::OptionalString(lastTextKey))  return; // don't repeatedly add the same text
 	[lastTextKey release];
 	lastTextKey = [textKey copy];
-	
+
 	// Replace literal \n in strings with line breaks and perform expansions.
-	text = oo::PListView([UNIVERSE missiontext]).get<NSString *>(textKey);
-	if (text == nil)  return;
-	text = OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandBackslashN, text);
-	text = oo::NSStringOrNil([self replaceVariablesInString:oo::StdString(text)]);
-	
-	[self addLiteralMissionText:text];
+	const std::optional<std::string> text = MissionTextForKey(key.value_or(std::string()));
+	if (!key.has_value() || !text.has_value())  return;
+	const std::string expanded = oo::StdString(OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandBackslashN, oo::NSStringFrom(*text)));
+
+	[self addLiteralMissionText:oo::NSStringOrNil([self replaceVariablesInString:expanded])];
 }
 
 
-- (void) addLiteralMissionText:(NSString *)text
+- (void) addLiteralMissionText:(id)text	// called by name (ADR-0043 item 21)
 {
 	if (text != nil)
 	{
 		GuiDisplayGen *gui = [UNIVERSE gui];
-		
-		NSString *para = nil;
-		foreach (para, [text componentsSeparatedByString:@"\n"])
+
+		for (const std::string &para : oo::str::split(oo::StdString(text), "\n"))
 		{
-			missionTextRow = [gui addLongText:para startingAtRow:missionTextRow align:GUI_ALIGN_LEFT];
+			missionTextRow = [gui cxx_addLongText:para startingAtRow:missionTextRow align:GUI_ALIGN_LEFT];
 		}
 	}
 }
@@ -2233,19 +2240,17 @@ static int shipsFound;
 }
 
 
-- (NSString *) missionTitle
+- (std::optional<std::string>) cxx_missionTitle
 {
-	return _missionTitle;
+	return oo::OptionalString(_missionTitle);
 }
 
 
-- (void) setMissionTitle:(NSString *)value
+- (void) cxx_setMissionTitle:(const std::optional<std::string> &)value
 {
-	if (_missionTitle != value)
-	{
-		[_missionTitle release];
-		_missionTitle = [value copy];
-	}
+	// (nil matters: the mission screen then falls back to DESC(mission-information))
+	[_missionTitle release];
+	_missionTitle = [oo::NSStringOrNil(value) retain];	// PlayerEntity.h's ivar
 }
 
 
