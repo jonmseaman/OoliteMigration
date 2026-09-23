@@ -27,7 +27,7 @@ SOFTWARE.
 
 #import "OOJSFrameCallbacks.h"
 #import "OOJSEngineTimeManagement.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 
 
 /*
@@ -458,7 +458,7 @@ static void RunDeferredOperations(ooscript::Context context)
 	foreach (operation, sDeferredOps)
 	{
 		NSString	*opType = [operation objectForKey:@"operation"];
-		uint32_t		trackingID = [operation oo_intForKey:@"trackingID"];
+		uint32_t		trackingID = oo::PListView(operation).get<int>(@"trackingID");
 		
 		if ([opType isEqualToString:@"add"])
 		{
