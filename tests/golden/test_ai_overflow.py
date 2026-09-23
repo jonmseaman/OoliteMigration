@@ -55,7 +55,7 @@ PROVENANCE_CANDIDATES = (
 EVIDENCE = os.path.join(HERE, "check_ai_overflow_evidence.py")
 DIFF = os.path.join(HERE, "golden_diff.py")
 SCRIPT = os.path.join(HERE, "ai_overflow.py")
-AI_SOURCE = os.path.join(REPO_ROOT, "upstream", "oolite", "src", "Core", "AI.m")
+AI_SOURCE = os.path.join(REPO_ROOT, "upstream", "oolite", "src", "Core", "AI.mm")
 
 sys.path.insert(0, HERE)
 

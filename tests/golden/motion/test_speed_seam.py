@@ -26,7 +26,7 @@ import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-OOJSSHIP = os.path.join(REPO_ROOT, "upstream", "oolite", "src", "Core", "Scripting", "OOJSShip.m")
+OOJSSHIP = os.path.join(REPO_ROOT, "upstream", "oolite", "src", "Core", "Scripting", "OOJSShip.mm")
 VALUE_WITNESS = os.path.join(HERE, "fixtures", "value-policy.json")
 CONTRACT = os.path.join(REPO_ROOT, "oxp-contract", "js-api-1.93.json")
 
@@ -67,7 +67,7 @@ def setter_body(source, strip_comments=True):
        mutant M3 (remove the [entity setSpeed:] call, keep the comment) survived exactly that way.
        A guard that a comment can satisfy is a guard on documentation, not on behaviour.
     """
-    after = source.rsplit("static JSBool ShipSetProperty", 1)
+    after = source.rsplit("static bool ShipSetProperty", 1)
     assert len(after) == 2, "ShipSetProperty not found"
     assert "{" in after[1][:200], (
         "split landed on the forward declaration at the top of the file rather than the "
@@ -95,7 +95,7 @@ def test_speed_is_declared_readwrite(source):
 
 def test_the_setter_case_exists(source):
     """The other half. A writable declaration with no setter case fails at runtime, not at build."""
-    setter = source.split("static JSBool ShipSetProperty", 1)
+    setter = source.split("static bool ShipSetProperty", 1)
     assert len(setter) == 2, "ShipSetProperty not found"
     body = setter[1]
     assert re.search(r"case kShip_speed:", body), (
@@ -135,7 +135,7 @@ def test_the_comment_alone_does_not_satisfy_the_call_check(source):
 
 def test_the_getter_is_unchanged(source):
     """This bead adds a setter; it must not have altered what reading ship.speed means."""
-    assert re.search(r"case kShip_speed:\s*\n\s*return JS_NewNumberValue\(context, \[entity "
+    assert re.search(r"case kShip_speed:\s*\n\s*return ooscript::newNumberValue\(context, \[entity "
                      r"flightSpeed\], value\);", source), (
         "the ship.speed GETTER no longer reads [entity flightSpeed]; this bead was supposed to "
         "add a setter, not change the meaning of the property")

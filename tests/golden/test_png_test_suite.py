@@ -297,7 +297,7 @@ def test_the_texture_upload_regex_matches_the_engines_real_format():
     import png_test_suite
 
     source = os.path.join(REPO_ROOT, "upstream", "oolite", "src", "Core", "Materials",
-                          "OOConcreteTexture.m")
+                          "OOConcreteTexture.mm")
     with open(source, encoding="utf-8", errors="replace") as handle:
         text = handle.read()
     assert '@"Uploaded texture %u (%ux%u pixels, %@)"' in text, (
