@@ -33,6 +33,31 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "PlayerEntityScriptMethods.h"
 #import "PlayerEntity.h"
+#import "OOStringBridge.h"
+
+#include <optional>
+#include <string>
+#include <string_view>
+
+/*	The expansion engine works on UTF-16 code units, as it did on NSString's characters, held in
+	std::u16string; an empty optional stands for nil (bead oo-3rb.61, proposed ADR-0034 decision
+	4). Only the lookups (overrides, specials, descriptions.plist, key bindings, mission and
+	legacy local variables, legacy script selectors, system names) and the log and JavaScript
+	reports still speak NSString, converted exactly at that boundary.
+*/
+typedef std::u16string OOUnits;
+typedef std::optional<std::u16string> OOMaybeUnits;
+
+namespace {
+
+OOMaybeUnits UnitsFromNSString(NSString *string);
+NSString *NSStringFromUnits(const OOUnits &units);
+OOUnits UnitsWithCharacters(const char16_t *characters, NSUInteger length);
+NSUInteger FindUnits(const OOUnits &string, std::u16string_view target, NSUInteger from);
+bool HasPrefix(const OOUnits &string, std::u16string_view prefix);
+bool HasSuffix(const OOUnits &string, std::u16string_view suffix);
+
+}	// namespace
 
 // Don't bother with syntax warnings in Deployment builds.
 #define WARNINGS			OOLITE_DEBUG
@@ -70,7 +95,7 @@ enum
 typedef struct
 {
 	Random_Seed			seed;
-	NSString			*systemName;
+	OOMaybeUnits		systemName;
 	NSDictionary		*overrides;
 	NSDictionary		*legacyLocals;
 	bool				isJavaScript;
@@ -78,55 +103,57 @@ typedef struct
 	bool				hasPercentR;		// Set to indicate we need an ExpandPercentR() pass.
 	bool				useGoodRNG;
 	bool				disallowPercentI;
-	
-	NSString			*systemNameWithIan;	// Cache for %I
-	NSString			*randomNameN;		// Cache for %N
-	NSString			*randomNameR;		// Cache for %R
+
+	OOMaybeUnits		systemNameWithIan;	// Cache for %I
+	OOMaybeUnits		randomNameN;		// Cache for %N
+	OOMaybeUnits		randomNameR;		// Cache for %R
 	NSArray				*systemDescriptions;// Cache for system_description, used for numbered keys.
 	NSUInteger			sysDescCount;		// Count of systemDescriptions, valid after GetSystemDescriptions() called.
 } OOStringExpansionContext;
 
 
+namespace {
+
 /*	Accessors for lazily-instantiated caches in context.
 */
-static NSString *GetSystemName(OOStringExpansionContext *context);		// %H
-static NSString *GetSystemNameIan(OOStringExpansionContext *context);	// %I
-static NSString *GetRandomNameN(OOStringExpansionContext *context);		// %N
-static NSString *GetRandomNameR(OOStringExpansionContext *context);		// %R
-static NSArray *GetSystemDescriptions(OOStringExpansionContext *context);
+OOMaybeUnits GetSystemName(OOStringExpansionContext *context);		// %H
+OOMaybeUnits GetSystemNameIan(OOStringExpansionContext *context);	// %I
+OOMaybeUnits GetRandomNameN(OOStringExpansionContext *context);		// %N
+OOMaybeUnits GetRandomNameR(OOStringExpansionContext *context);		// %R
+NSArray *GetSystemDescriptions(OOStringExpansionContext *context);
 
-static void AppendCharacters(NSMutableString **result, const unichar *characters, NSUInteger start, NSUInteger end);
+void AppendCharacters(OOMaybeUnits *result, const char16_t *characters, NSUInteger start, NSUInteger end);
 
-static NSString *NewRandomDigrams(OOStringExpansionContext *context);
-static NSString *OldRandomDigrams(void);
+OOUnits NewRandomDigrams(OOStringExpansionContext *context);
+OOUnits OldRandomDigrams(void);
 
 
 // Various bits of expansion logic, each with a comment of its very own at the implementation.
-static NSString *Expand(OOStringExpansionContext *context, NSString *string, NSUInteger sizeLimit, NSUInteger recursionLimit);
+OOUnits Expand(OOStringExpansionContext *context, const OOUnits &string, NSUInteger sizeLimit, NSUInteger recursionLimit);
 
-static NSString *ExpandKey(OOStringExpansionContext *context, const unichar *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength, NSUInteger sizeLimit, NSUInteger recursionLimit);
-static NSString *ExpandDigitKey(OOStringExpansionContext *context, const unichar *characters, NSUInteger keyStart, NSUInteger keyLength, NSUInteger sizeLimit, NSUInteger recursionLimit);
-static NSString *ExpandStringKey(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit);
-static NSString *ExpandStringKeyOverride(OOStringExpansionContext *context, NSString *key);
-static NSString *ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key);
-static NSString *ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, NSString *key);
-static NSMapTable *SpecialSubstitutionSelectors(void);
-static NSString *ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit);
-static NSString *ExpandStringKeyMissionVariable(OOStringExpansionContext *context, NSString *key);
-static NSString *ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, NSString *key);
-static NSString *ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NSString *key);
-static SEL LookUpLegacySelector(NSString *key);
+OOMaybeUnits ExpandKey(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength, NSUInteger sizeLimit, NSUInteger recursionLimit);
+OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *characters, NSUInteger keyStart, NSUInteger keyLength, NSUInteger sizeLimit, NSUInteger recursionLimit);
+OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &key, NSUInteger sizeLimit, NSUInteger recursionLimit);
+OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, NSString *key);
+OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key);
+OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, const OOUnits &key);
+NSMapTable *SpecialSubstitutionSelectors(void);
+OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit);
+OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext *context, const OOUnits &key, NSString *keyString);
+OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, NSString *key);
+OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NSString *key);
+SEL LookUpLegacySelector(NSString *key);
 
-static NSString *ExpandPercentEscape(OOStringExpansionContext *context, const unichar *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
-static NSString *ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, const unichar *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
-static NSString *ExpandSystemNameEscape(OOStringExpansionContext *context, const unichar *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
-static NSString *ExpandPercentR(OOStringExpansionContext *context, NSString *input);
+OOMaybeUnits ExpandPercentEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
+OOMaybeUnits ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
+OOMaybeUnits ExpandSystemNameEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
+OOMaybeUnits ExpandPercentR(OOStringExpansionContext *context, const OOMaybeUnits &input);
 #if WARNINGS
-static void ReportWarningForUnknownKey(OOStringExpansionContext *context, NSString *key);
+void ReportWarningForUnknownKey(OOStringExpansionContext *context, const OOUnits &key, NSString *keyString);
 #endif
 
-static NSString *ApplyOperators(NSString *string, NSString *operatorsString);
-static NSString *ApplyOneOperator(NSString *string, NSString *op, NSString *param);
+OOMaybeUnits ApplyOperators(OOMaybeUnits string, const OOUnits &operatorsString);
+OOMaybeUnits ApplyOneOperator(const OOMaybeUnits &string, const OOUnits &op, const OOMaybeUnits &param);
 
 
 /*	SyntaxWarning(context, logMessageClass, format, ...)
@@ -145,7 +172,9 @@ static NSString *ApplyOneOperator(NSString *string, NSString *op, NSString *para
 	
 	Errors that are not syntax or invalid keys are reported with OOLogERR().
 */
-static void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, NSString *logMessageClass, NSString *prefix, NSString *format, ...)  OO_TAKES_FORMAT_STRING(7, 8);
+void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, NSString *logMessageClass, NSString *prefix, NSString *format, ...)  OO_TAKES_FORMAT_STRING(7, 8);
+}	// namespace
+
 #define SyntaxError(CONTEXT, CLASS, FORMAT, ...) SyntaxIssue(CONTEXT, OOLOG_FUNCTION_NAME, OOLOG_FILE_NAME, __LINE__, CLASS, OOLOG_WARNING_PREFIX, FORMAT, ## __VA_ARGS__)
 
 #if WARNINGS
@@ -165,66 +194,60 @@ NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictio
 	OOStringExpansionContext context =
 	{
 		.seed = seed,
-		.systemName = [systemName retain],
+		.systemName = UnitsFromNSString(systemName),
 		.overrides = [overrides retain],
 		.legacyLocals = [legacyLocals retain],
 		.isJavaScript = (bool)(options & kOOExpandForJavaScript),
 		.convertBackslashN = (bool)(options & kOOExpandBackslashN),
 		.useGoodRNG = (bool)(options & kOOExpandGoodRNG)
 	};
-	
+
 	// Avoid recursive %I expansion by pre-seeding cache with literal %I.
 	if (options & kOOExpandDisallowPercentI) {
-		context.systemNameWithIan = @"%I";
+		context.systemNameWithIan = OOUnits(u"%I");
 	}
-	
+
 	OORandomState savedRandomState;
 	if (options & kOOExpandReseedRNG)
 	{
 		savedRandomState = OOSaveRandomState();
 		OOSetReallyRandomRANROTAndRndSeeds();
 	}
-	
+
 	NSString *result = nil;
 	@autoreleasepool
 	{
-		NSString *intermediate = nil;
+		OOMaybeUnits intermediate;
 		@try
 		{
 			// TODO: profile caching the results. Would need to keep track of whether we've done something nondeterministic (array selection, %R etc).
+			const OOUnits units = *UnitsFromNSString(string);
 			if (options & kOOExpandKey)
 			{
-				intermediate = ExpandStringKey(&context, string, kStackAllocationLimit, kRecursionLimit);
+				intermediate = ExpandStringKey(&context, units, kStackAllocationLimit, kRecursionLimit);
 			}
 			else
 			{
-				intermediate = Expand(&context, string, kStackAllocationLimit, kRecursionLimit);
+				intermediate = Expand(&context, units, kStackAllocationLimit, kRecursionLimit);
 			}
-			if (!context.hasPercentR)
+			if (context.hasPercentR)
 			{
-				result = intermediate;
+				intermediate = ExpandPercentR(&context, intermediate);
 			}
-			else
-			{
-				result = ExpandPercentR(&context, intermediate);
-			}
+			if (intermediate.has_value())  result = NSStringFromUnits(*intermediate);
 		}
 		@finally
 		{
-			[context.systemName release];
 			[context.overrides release];
 			[context.legacyLocals release];
-			[context.systemNameWithIan release];
-			[context.randomNameN release];
-			[context.randomNameR release];
 			[context.systemDescriptions release];
 		}
-		
+
 		if (options & kOOExpandReseedRNG)
 		{
 			OORestoreRandomState(savedRandomState);
 		}
-		
+
 		result = [result copy];
 	}
 	return [result autorelease];
@@ -247,6 +270,8 @@ Random_Seed OOStringExpanderDefaultRandomSeed(void)
 // MARK: -
 // MARK: Guts
 
+namespace {
+
 
 /*	Expand(context, string, sizeLimit, recursionLimit)
 	
@@ -257,31 +282,30 @@ Random_Seed OOStringExpanderDefaultRandomSeed(void)
 	limits the number of recursive calls of Expand() that are permitted. If one
 	of the limits would be exceeded, Expand() returns the input string unmodified.
 */
-static NSString *Expand(OOStringExpansionContext *context, NSString *string, NSUInteger sizeLimit, NSUInteger recursionLimit)
+OOUnits Expand(OOStringExpansionContext *context, const OOUnits &string, NSUInteger sizeLimit, NSUInteger recursionLimit)
 {
-	NSCParameterAssert(string != nil && context != NULL && sizeLimit <= kStackAllocationLimit);
-	
-	const NSUInteger size = [string length];
-	
+	NSCParameterAssert(context != NULL && sizeLimit <= kStackAllocationLimit);
+
+	const NSUInteger size = string.size();
+
 	// Avoid stack overflow.
 	if (EXPECT_NOT(size > sizeLimit || recursionLimit == 0))  return string;
 	sizeLimit -= size;
 	recursionLimit--;
-	
+
 	// Nothing to expand in an empty string, and the size-1 thing below would be trouble.
 	if (size == 0)  return string;
-	
-	unichar characters[size];
-	[string getCharacters:characters range:(NSRange){ 0, size }];
-	
+
+	const char16_t *characters = string.data();
+
 	/*	Beginning of current range of non-special characters. If we encounter
 		a substitution, we'll be copying from here forward.
 	*/
 	NSUInteger copyRangeStart = 0;
-	
-	// Mutable string for result if we perform any substitutions.
-	NSMutableString *result = nil;
-	
+
+	// Result, if we perform any substitutions.
+	OOMaybeUnits result;
+
 	/*	The iteration limit is size - 1 because every valid substitution is at
 		least 2 characters long. This way, characters[idx + 1] is always valid.
 	*/
@@ -292,7 +316,7 @@ static NSString *Expand(OOStringExpansionContext *context, NSString *string, NSU
 			the insert replacement, and skip replaceLength characters forward
 			(minus one, because idx is incremented by the loop.)
 		*/
-		NSString *replacement = nil;
+		OOMaybeUnits replacement;
 		NSUInteger replaceLength = 0;
 		unichar thisChar = characters[idx];
 		
@@ -313,7 +337,7 @@ static NSString *Expand(OOStringExpansionContext *context, NSString *string, NSU
 			if (characters[idx + 1] == 'n')
 			{
 				replaceLength = 2;
-				replacement = @"\n";
+				replacement = OOUnits(u"\n");
 			}
 		}
 		else
@@ -321,43 +345,42 @@ static NSString *Expand(OOStringExpansionContext *context, NSString *string, NSU
 			// No token start character, so we definitely have no replacement.
 			continue;
 		}
-		
-		if (replacement != nil)
+
+		if (replacement.has_value())
 		{
 			/*	If replacement string is "\x7F", eat the following character.
 				This is used in system_description for the one empty string
 				in [22].
 			*/
-			if ([replacement isEqualToString:@"\x7F"] && replaceLength < size)
+			if (*replacement == u"\x7F" && replaceLength < size)
 			{
 				replaceLength++;
-				replacement = @"";
+				replacement = OOUnits();
 			}
-			
+
 			// Avoid copying if we're replacing the entire input string.
 			if (copyRangeStart == 0 && replaceLength == size)
 			{
-				return replacement;
+				return *replacement;
 			}
-			
+
 			// Write the pending literal segment to result. This also allocates result if needed.
 			AppendCharacters(&result, characters, copyRangeStart, idx);
-			
-			[result appendString:replacement];
-			
+
+			*result += *replacement;
+
 			// Skip over replaced part and start a new literal segment.
 			idx += replaceLength - 1;
 			copyRangeStart = idx + 1;
 		}
 	}
-	
-	if (result != nil)
+
+	if (result.has_value())
 	{
 		// Append any trailing literal segment.
 		AppendCharacters(&result, characters, copyRangeStart, size);
-		
-		// Don't turn result immutable; doing it once at top level is sufficient.
-		return result;
+
+		return *result;
 	}
 	else
 	{
@@ -379,7 +402,7 @@ static NSString *Expand(OOStringExpansionContext *context, NSString *string, NSU
 	operator is an identifier, optionally followed by a colon and additional
 	text, and may be terminated with another bar and operator.
 */
-static NSString *ExpandKey(OOStringExpansionContext *context, const unichar *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength, NSUInteger sizeLimit, NSUInteger recursionLimit)
+OOMaybeUnits ExpandKey(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength, NSUInteger sizeLimit, NSUInteger recursionLimit)
 {
 	NSCParameterAssert(context != NULL && characters != NULL && replaceLength != NULL);
 	NSCParameterAssert(characters[idx] == '[');
@@ -403,7 +426,7 @@ static NSString *ExpandKey(OOStringExpansionContext *context, const unichar *cha
 	if (EXPECT_NOT(balanceCount != 0))
 	{
 		SyntaxWarning(context, @"strings.expand.warning.unbalancedOpeningBracket", @"%@", @"Unbalanced [ in string.");
-		return nil;
+		return std::nullopt;
 	}
 	
 	NSUInteger totalLength = end - idx;
@@ -414,26 +437,26 @@ static NSString *ExpandKey(OOStringExpansionContext *context, const unichar *cha
 	if (EXPECT_NOT(keyLength == 0))
 	{
 		SyntaxWarning(context, @"strings.expand.warning.emptyKey", @"%@", @"Invalid expansion code [] string. (To avoid this message, use %%[%%].)");
-		return nil;
+		return std::nullopt;
 	}
-	
-	NSString *expanded = nil;
+
+	OOMaybeUnits expanded;
 	if (allDigits)
 	{
 		expanded = ExpandDigitKey(context, characters, keyStart, keyLength, sizeLimit, recursionLimit);
 	}
 	else
 	{
-		NSString *key = [NSString stringWithCharacters:characters + keyStart length:keyLength];
+		OOUnits key = UnitsWithCharacters(characters + keyStart, keyLength);
 		expanded = ExpandStringKey(context, key, sizeLimit, recursionLimit);
 	}
-	
+
 	if (firstBar != 0)
 	{
-		NSString *operators = [NSString stringWithCharacters:characters + firstBar + 1 length:end - firstBar - 2];
+		OOUnits operators = UnitsWithCharacters(characters + firstBar + 1, end - firstBar - 2);
 		expanded = ApplyOperators(expanded, operators);
 	}
-	
+
 	return expanded;
 }
 
@@ -444,66 +467,97 @@ static NSString *ExpandKey(OOStringExpansionContext *context, const unichar *cha
 	bars (or a single formatting operator), apply the operators, in sequence,
 	to the string.
  */
-static NSString *ApplyOperators(NSString *string, NSString *operatorsString)
+OOMaybeUnits ApplyOperators(OOMaybeUnits string, const OOUnits &operatorsString)
 {
-	NSArray *operators = [operatorsString componentsSeparatedByString:@"|"];
-	NSString *op = nil;
-	
-	foreach (op, operators)
+	// Each part of operatorsString between '|' separators (-componentsSeparatedByString:), in order.
+	NSUInteger partStart = 0;
+	for (;;)
 	{
-		NSString *param = nil;
-		NSRange colon = [op rangeOfString:@":"];
-		if (colon.location != NSNotFound)
+		const NSUInteger bar = FindUnits(operatorsString, u"|", partStart);
+		const NSUInteger partEnd = (bar == NSNotFound) ? operatorsString.size() : bar;
+		OOUnits op = operatorsString.substr(partStart, partEnd - partStart);
+
+		OOMaybeUnits param;
+		const NSUInteger colon = FindUnits(op, u":", 0);
+		if (colon != NSNotFound)
 		{
-			param = [op substringFromIndex:colon.location + colon.length];
-			op = [op substringToIndex:colon.location];
+			param = op.substr(colon + 1);
+			op.resize(colon);
 		}
 		string = ApplyOneOperator(string, op, param);
+
+		if (bar == NSNotFound)  break;
+		partStart = bar + 1;
 	}
-	
+
 	return string;
 }
 
 
-static NSString *Operator_cr(NSString *string, NSString *param)
+// -doubleValue / -longLongValue / -intValue, answering 0 for nil as messaging nil did.
+double DoubleValue(const OOMaybeUnits &string)
 {
-	return OOCredits([string doubleValue] * 10);
+	return string.has_value() ? oo::plist_get::doubleValue(*string) : 0.0;
 }
 
 
-static NSString *Operator_dcr(NSString *string, NSString *param)
+long long LongLongValue(const OOMaybeUnits &string)
 {
-	return OOCredits([string longLongValue]);
+	return string.has_value() ? oo::plist_get::longLongValue(*string) : 0;
 }
 
 
-static NSString *Operator_icr(NSString *string, NSString *param)
+int IntValue(const OOMaybeUnits &string)
 {
-	return OOIntCredits([string longLongValue]);
+	return string.has_value() ? oo::plist_get::intValue(*string) : 0;
 }
 
 
-static NSString *Operator_idcr(NSString *string, NSString *param)
+OOMaybeUnits UnitsFromUTF8(const std::string &string)
 {
-	return OOIntCredits(round([string doubleValue] / 10.0));
+	return oo::utf8ToUtf16(string);
 }
 
 
-static NSString *Operator_precision(NSString *string, NSString *param)
+OOMaybeUnits Operator_cr(const OOMaybeUnits &string, const OOMaybeUnits & /* param */)
 {
-	return [NSString stringWithFormat:@"%.*f", [param intValue], [string doubleValue]];
+	return UnitsFromNSString(OOCredits(DoubleValue(string) * 10));
 }
 
 
-static NSString *Operator_multiply(NSString *string, NSString *param)
+OOMaybeUnits Operator_dcr(const OOMaybeUnits &string, const OOMaybeUnits & /* param */)
 {
-	return [NSString stringWithFormat:@"%g", [string doubleValue] * [param doubleValue]];
+	return UnitsFromNSString(OOCredits(LongLongValue(string)));
 }
 
 
-static NSString *Operator_add(NSString *string, NSString *param)
+OOMaybeUnits Operator_icr(const OOMaybeUnits &string, const OOMaybeUnits & /* param */)
 {
-	return [NSString stringWithFormat:@"%g", [string doubleValue] + [param doubleValue]];
+	return UnitsFromNSString(OOIntCredits(LongLongValue(string)));
+}
+
+
+OOMaybeUnits Operator_idcr(const OOMaybeUnits &string, const OOMaybeUnits & /* param */)
+{
+	return UnitsFromNSString(OOIntCredits(round(DoubleValue(string) / 10.0)));
+}
+
+
+OOMaybeUnits Operator_precision(const OOMaybeUnits &string, const OOMaybeUnits &param)
+{
+	return UnitsFromUTF8(oo::str::format("%.*f", IntValue(param), DoubleValue(string)));
+}
+
+
+OOMaybeUnits Operator_multiply(const OOMaybeUnits &string, const OOMaybeUnits &param)
+{
+	return UnitsFromUTF8(oo::str::format("%g", DoubleValue(string) * DoubleValue(param)));
+}
+
+
+OOMaybeUnits Operator_add(const OOMaybeUnits &string, const OOMaybeUnits &param)
+{
+	return UnitsFromUTF8(oo::str::format("%g", DoubleValue(string) + DoubleValue(param)));
 }
 
 
@@ -516,31 +570,31 @@ static NSString *Operator_add(NSString *string, NSString *param)
 	
 	<param> may be nil, indicating an operator with no parameter (no colon).
  */
-static NSString *ApplyOneOperator(NSString *string, NSString *op, NSString *param)
+OOMaybeUnits ApplyOneOperator(const OOMaybeUnits &string, const OOUnits &op, const OOMaybeUnits &param)
 {
-	static NSDictionary *operators = nil;
-	
-	if (operators == nil)
+	static const struct
 	{
-		#define OPERATOR(name) [NSValue valueWithPointer:(const void *)Operator_##name], @#name
-		operators = [[NSDictionary alloc] initWithObjectsAndKeys:
-					 OPERATOR(dcr),
-					 OPERATOR(cr),
-					 OPERATOR(icr),
-					 OPERATOR(idcr),
-					 OPERATOR(precision),
-					 OPERATOR(multiply),
-					 OPERATOR(add),
-					 nil];
-	}
-	
-	NSString *(*operatorFn)(NSString *string, NSString *param) = (NSString *(*)(NSString *, NSString *))[[operators objectForKey:op] pointerValue];
-	if (operatorFn != NULL)
+		std::u16string_view name;
+		OOMaybeUnits (*function)(const OOMaybeUnits &string, const OOMaybeUnits &param);
+	} operators[] =
 	{
-		return operatorFn(string, param);
+		#define OPERATOR(name) { u ## #name, Operator_##name }
+		OPERATOR(dcr),
+		OPERATOR(cr),
+		OPERATOR(icr),
+		OPERATOR(idcr),
+		OPERATOR(precision),
+		OPERATOR(multiply),
+		OPERATOR(add),
+		#undef OPERATOR
+	};
+
+	for (const auto &entry : operators)
+	{
+		if (op == entry.name)  return entry.function(string, param);
 	}
-	
-	OOLogERR(@"strings.expand.invalidOperator", @"Unknown string expansion operator %@", op);
+
+	OOLogERR(@"strings.expand.invalidOperator", @"Unknown string expansion operator %@", NSStringFromUnits(op));
 	return string;
 }
 
@@ -555,34 +609,34 @@ static NSString *ApplyOneOperator(NSString *string, NSString *op, NSString *para
 	loose strings). When an array is retrieved, a string is selected from it
 	at random and the result is expanded recursively by calling Expand().
 */
-static NSString *ExpandDigitKey(OOStringExpansionContext *context, const unichar *characters, NSUInteger keyStart, NSUInteger keyLength, NSUInteger sizeLimit, NSUInteger recursionLimit)
+OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *characters, NSUInteger keyStart, NSUInteger keyLength, NSUInteger sizeLimit, NSUInteger recursionLimit)
 {
 	NSCParameterAssert(context != NULL && characters != NULL);
-	
+
 	NSUInteger keyValue = 0, idx;
 	for (idx = keyStart; idx < (keyStart + keyLength); idx++)
 	{
-		NSCAssert2(isdigit(characters[idx]), @"%s called with non-numeric key [%@].", __FUNCTION__, [NSString stringWithCharacters:characters + keyStart length:keyLength]);
-		
+		NSCAssert2(isdigit(characters[idx]), @"%s called with non-numeric key [%@].", __FUNCTION__, NSStringFromUnits(UnitsWithCharacters(characters + keyStart, keyLength)));
+
 		keyValue = keyValue * 10 + characters[idx] - '0';
 	}
-	
+
 	// Retrieve selected system_description entry.
 	NSArray *sysDescs = GetSystemDescriptions(context);
 	NSArray *entry = [sysDescs oo_arrayAtIndex:keyValue];
-	
+
 	if (EXPECT_NOT(entry == nil))
 	{
 		if (keyValue >= context->sysDescCount)
 		{
-			SyntaxWarning(context, @"strings.expand.warning.outOfRangeKey", @"Out-of-range system description expansion key [%@] in string.", [NSString stringWithCharacters:characters + keyStart length:keyLength]);
+			SyntaxWarning(context, @"strings.expand.warning.outOfRangeKey", @"Out-of-range system description expansion key [%@] in string.", NSStringFromUnits(UnitsWithCharacters(characters + keyStart, keyLength)));
 		}
 		else
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
 			OOLogERR(@"strings.expand.invalidData", @"%@", @"descriptions.plist entry system_description must be an array of arrays of strings.");
 		}
-		return nil;
+		return std::nullopt;
 	}
 	
 	// Select a random sub-entry.
@@ -604,8 +658,10 @@ static NSString *ExpandDigitKey(OOStringExpansionContext *context, const unichar
 	}
 	
 	// Look up and recursively expand string.
-	NSString *string = [entry oo_stringAtIndex:selection];
-	return Expand(context, string, sizeLimit, recursionLimit);
+	OOMaybeUnits string = UnitsFromNSString([entry oo_stringAtIndex:selection]);
+	NSCParameterAssert(string.has_value());
+	if (!string.has_value())  return std::nullopt;
+	return Expand(context, *string, sizeLimit, recursionLimit);
 }
 
 
@@ -614,37 +670,40 @@ static NSString *ExpandDigitKey(OOStringExpansionContext *context, const unichar
 	Expand a key (as per ExpandKey()) which doesn't consist entirely of digits.
 	Looks for the key in a number of different places in prioritized order.
 */
-static NSString *ExpandStringKey(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit)
+OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &key, NSUInteger sizeLimit, NSUInteger recursionLimit)
 {
-	NSCParameterAssert(context != NULL && key != nil);
-	
+	NSCParameterAssert(context != NULL);
+
+	// The lookups are keyed by NSString.
+	NSString *keyString = NSStringFromUnits(key);
+
 	// Overrides have top priority.
-	NSString *result = ExpandStringKeyOverride(context, key);
-	
+	OOMaybeUnits result = ExpandStringKeyOverride(context, keyString);
+
 	// Specials override descriptions.plist.
-	if (result == nil)  result = ExpandStringKeySpecial(context, key);
+	if (!result.has_value())  result = ExpandStringKeySpecial(context, keyString);
 
 	// Now try descriptions.plist.
-	if (result == nil)  result = ExpandStringKeyFromDescriptions(context, key, sizeLimit, recursionLimit);
+	if (!result.has_value())  result = ExpandStringKeyFromDescriptions(context, keyString, sizeLimit, recursionLimit);
 
 	// For efficiency, descriptions.plist overrides keybindings.
 	// OXPers should therefore avoid oolite_key_ description keys
-	if (result == nil)  result = ExpandStringKeyKeyboardBinding(context, key);
-	
+	if (!result.has_value())  result = ExpandStringKeyKeyboardBinding(context, key);
+
 	// Try mission variables.
-	if (result == nil)  result = ExpandStringKeyMissionVariable(context, key);
-	
+	if (!result.has_value())  result = ExpandStringKeyMissionVariable(context, key, keyString);
+
 	// Try legacy local variables.
-	if (result == nil)  result = ExpandStringKeyLegacyLocalVariable(context, key);
-	
-	// Try legacy script methods.
-	if (result == nil)  ExpandLegacyScriptSelectorKey(context, key);
-	
+	if (!result.has_value())  result = ExpandStringKeyLegacyLocalVariable(context, keyString);
+
+	// Try legacy script methods. (Upstream calls it for its side effects and discards the result.)
+	if (!result.has_value())  ExpandLegacyScriptSelectorKey(context, keyString);
+
 #if WARNINGS
 	// None of that worked, so moan a bit.
-	if (result == nil)  ReportWarningForUnknownKey(context, key);
+	if (!result.has_value())  ReportWarningForUnknownKey(context, key, keyString);
 #endif
-	
+
 	return result;
 }
 
@@ -658,7 +717,7 @@ static NSString *ExpandStringKey(OOStringExpansionContext *context, NSString *ke
 	
 	The main difference between overrides and legacy locals is priority.
 */
-static NSString *ExpandStringKeyOverride(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, NSString *key)
 {
 	NSCParameterAssert(context != NULL && key != nil);
 	
@@ -671,10 +730,10 @@ static NSString *ExpandStringKeyOverride(OOStringExpansionContext *context, NSSt
 			SyntaxWarning(context, @"strings.expand.warning.invalidOverride", @"String expansion override value %@ for [%@] is not a string or number.", [value shortDescription], key);
 		}
 #endif
-		return [value description];
+		return UnitsFromNSString([value description]);
 	}
-	
-	return nil;
+
+	return std::nullopt;
 }
 
 
@@ -684,7 +743,7 @@ static NSString *ExpandStringKeyOverride(OOStringExpansionContext *context, NSSt
 	call PlayerEntity methods but aren't legacy script methods. Also unlike
 	legacy script methods, all these methods return strings.
 */
-static NSString *ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key)
 {
 	NSCParameterAssert(context != NULL && key != nil);
 	
@@ -698,27 +757,27 @@ static NSString *ExpandStringKeySpecial(OOStringExpansionContext *context, NSStr
 		if (result != nil)
 		{
 			NSCAssert2([result isKindOfClass:[NSString class]], @"Special string expansion [%@] expanded to %@, but expected a string.", key, [result shortDescription]);
-			return result;
+			return UnitsFromNSString(result);
 		}
 	}
-	
-	return nil;
+
+	return std::nullopt;
 }
 
 
 /*	ExpandStringKeyKeyboardBinding(context, key)
-	
+
 	Attempt to expand a key by matching it against the keybindings
 */
-static NSString *ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, const OOUnits &key)
 {
-	NSCParameterAssert(context != NULL && key != nil);
-	if ([key hasPrefix:@"oolite_key_"])
+	NSCParameterAssert(context != NULL);
+	if (HasPrefix(key, u"oolite_key_"))
 	{
-		NSString *binding = [key substringFromIndex:7];
-		return [PLAYER keyBindingDescription2:binding];
+		NSString *binding = NSStringFromUnits(key.substr(7));
+		return UnitsFromNSString([PLAYER keyBindingDescription2:binding]);
 	}
-	return nil;
+	return std::nullopt;
 }
 
 
@@ -727,7 +786,7 @@ static NSString *ExpandStringKeyKeyboardBinding(OOStringExpansionContext *contex
 	Retrieve the mapping of special keys for ExpandStringKeySpecial() to
 	selectors.
 */
-static NSMapTable *SpecialSubstitutionSelectors(void)
+NSMapTable *SpecialSubstitutionSelectors(void)
 {
 	static NSMapTable *specials = NULL;
 	if (specials != NULL)  return specials;
@@ -764,7 +823,7 @@ static NSMapTable *SpecialSubstitutionSelectors(void)
 	
 	Matched strings are expanded recursively by calling Expand().
 */
-static NSString *ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit)
+OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit)
 {
 	id value = [[UNIVERSE descriptions] objectForKey:key];
 	if (value != nil)
@@ -779,29 +838,29 @@ static NSString *ExpandStringKeyFromDescriptions(OOStringExpansionContext *conte
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
 			OOLogERR(@"strings.expand.invalidData", @"String expansion value %@ for [%@] from descriptions.plist is not a string or number.", [value shortDescription], key);
-			return nil;
+			return std::nullopt;
 		}
-		
+
 		// Expand recursively.
-		return Expand(context, value, sizeLimit, recursionLimit);
+		return Expand(context, *UnitsFromNSString(value), sizeLimit, recursionLimit);
 	}
-	
-	return nil;
+
+	return std::nullopt;
 }
 
 
 /*	ExpandStringKeyMissionVariable(context, key)
-	
+
 	Attempt to expand a key by matching it to a mission variable.
 */
-static NSString *ExpandStringKeyMissionVariable(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* context */, const OOUnits &key, NSString *keyString)
 {
-	if ([key hasPrefix:@"mission_"])
+	if (HasPrefix(key, u"mission_"))
 	{
-		return [PLAYER missionVariableForKey:key];
+		return UnitsFromNSString([PLAYER missionVariableForKey:keyString]);
 	}
-	
-	return nil;
+
+	return std::nullopt;
 }
 
 
@@ -811,9 +870,9 @@ static NSString *ExpandStringKeyMissionVariable(OOStringExpansionContext *contex
 	
 	The main difference between overrides and legacy locals is priority.
 */
-static NSString *ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, NSString *key)
 {
-	return [[context->legacyLocals objectForKey:key] description];
+	return UnitsFromNSString([[context->legacyLocals objectForKey:key] description]);
 }
 
 
@@ -823,19 +882,19 @@ static NSString *ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *co
 	invoking it. Only whitelisted methods are permitted, and aliases are
 	respected.
 */
-static NSString *ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NSString *key)
 {
 	NSCParameterAssert(context != NULL && key != nil);
-	
+
 	SEL selector = LookUpLegacySelector(key);
-	
+
 	if (selector != NULL)
 	{
-		return [[PLAYER performSelector:selector] description];
+		return UnitsFromNSString([[PLAYER performSelector:selector] description]);
 	}
 	else
 	{
-		return nil;
+		return std::nullopt;
 	}
 }
 
@@ -845,7 +904,7 @@ static NSString *ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context
 	If <key> is a whitelisted legacy script query method, or aliases to one,
 	return the corresponding selector.
 */
-static SEL LookUpLegacySelector(NSString *key)
+SEL LookUpLegacySelector(NSString *key)
 {
 	SEL selector = NULL;
 	static NSMapTable *selectorCache = NULL;
@@ -903,9 +962,9 @@ static SEL LookUpLegacySelector(NSString *key)
 	above. If the key looks like a legacy script query method, assume it is
 	and report a bad selector. Otherwise, report it as an unknown key.
 */
-static void ReportWarningForUnknownKey(OOStringExpansionContext *context, NSString *key)
+void ReportWarningForUnknownKey(OOStringExpansionContext *context, const OOUnits &keyUnits, NSString *key)
 {
-	if ([key hasSuffix:@"_string"] || [key hasSuffix:@"_number"] || [key hasSuffix:@"_bool"])
+	if (HasSuffix(keyUnits, u"_string") || HasSuffix(keyUnits, u"_number") || HasSuffix(keyUnits, u"_bool"))
 	{
 		SyntaxError(context, @"strings.expand.invalidSelector", @"Unpermitted legacy script method [%@] in string.", key);
 	}
@@ -937,7 +996,7 @@ static void ReportWarningForUnknownKey(OOStringExpansionContext *context, NSStri
 	
 	Any other code results in a warning.
 */
-static NSString *ExpandPercentEscape(OOStringExpansionContext *context, const unichar *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength)
+OOMaybeUnits ExpandPercentEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength)
 {
 	NSCParameterAssert(context != NULL && characters != NULL && replaceLength != NULL);
 	NSCParameterAssert(characters[idx] == '%');
@@ -961,7 +1020,7 @@ static NSString *ExpandPercentEscape(OOStringExpansionContext *context, const un
 			// to keep planet description generation consistent with earlier versions
 			// this must be done after all other substitutions in a second pass.
 			context->hasPercentR = true;
-			return @"%R";
+			return OOUnits(u"%R");
 			
 		case 'G':
 			return ExpandSystemNameForGalaxyEscape(context, characters, size, idx, replaceLength);
@@ -970,13 +1029,13 @@ static NSString *ExpandPercentEscape(OOStringExpansionContext *context, const un
 			return ExpandSystemNameEscape(context, characters, size, idx, replaceLength);
 			
 		case '%':
-			return @"%";
+			return OOUnits(u"%");
 			
 		case '[':
-			return @"[";
+			return OOUnits(u"[");
 			
 		case ']':
-			return @"]";
+			return OOUnits(u"]");
 			
 			/*	These are NSString formatting specifiers that occur in
 				descriptions.plist. The '.' is for floating-point (g and f)
@@ -993,13 +1052,13 @@ static NSString *ExpandPercentEscape(OOStringExpansionContext *context, const un
 		case '@':
 		case 'd':
 		case '.':
-			return nil;
+			return std::nullopt;
 			
 		default:
 			// Yay, percent signs!
 			SyntaxWarning(context, @"strings.expand.warning.unknownPercentEscape", @"Unknown escape code in string: %%%lc. (To encode a %% sign without this warning, use %%%% - but prefer \"percent\" in prose writing.)", selector);
 			
-			return nil;
+			return std::nullopt;
 	}
 }
 
@@ -1009,15 +1068,16 @@ static NSString *ExpandPercentEscape(OOStringExpansionContext *context, const un
 	 Separate to allow this to be delayed to the end of the string expansion
 	 for compatibility with 1.76 expansion of %R in planet descriptions
 */
-static NSString *ExpandPercentR(OOStringExpansionContext *context, NSString *input)
+OOMaybeUnits ExpandPercentR(OOStringExpansionContext *context, const OOMaybeUnits &input)
 {
-	NSRange containsR = [input rangeOfString:@"%R"];
-	if (containsR.location == NSNotFound)
+	// [input rangeOfString:@"%R"] (a nil input answered location 0, i.e. found).
+	if (input.has_value() && FindUnits(*input, u"%R", 0) == NSNotFound)
 	{
 		return input; // no %Rs to replace
 	}
-	NSString *percentR = GetRandomNameR(context);
-	NSMutableString *output = [NSMutableString stringWithString:input];
+	const OOMaybeUnits percentR = GetRandomNameR(context);
+	if (!input.has_value())  return std::nullopt;	// Unreachable: %R is only seen in an expanded string.
+	OOUnits output = *input;
 
 	/* This loop should be completely unnecessary, but for some reason
 	 * replaceOccurrencesOfString sometimes only replaces the first
@@ -1032,10 +1092,25 @@ static NSString *ExpandPercentR(OOStringExpansionContext *context, NSString *inp
 	 * few years yet. - CIM 15/1/2013 */
 
 	do {
-		[output replaceOccurrencesOfString:@"%R" withString:percentR options:NSLiteralSearch range:NSMakeRange(0, [output length])];
-	} while([output rangeOfString:@"%R"].location != NSNotFound);
+		// Every "%R" replaced, unit for unit (it was -replaceOccurrencesOfString: with NSLiteralSearch).
+		OOUnits replaced;
+		replaced.reserve(output.size());
+		for (NSUInteger i = 0; i < output.size();)
+		{
+			if (i + 1 < output.size() && output[i] == u'%' && output[i + 1] == u'R')
+			{
+				replaced += *percentR;
+				i += 2;
+			}
+			else
+			{
+				replaced += output[i++];
+			}
+		}
+		output = replaced;
+	} while (FindUnits(output, u"%R", 0) != NSNotFound);
 
-	return [NSString stringWithString:output];
+	return output;
 }
 
 
@@ -1044,7 +1119,7 @@ static NSString *ExpandPercentR(OOStringExpansionContext *context, NSString *inp
 	Expand a %G###### code by looking up the corresponding system name in any
 	cgalaxy.
 */
-static NSString *ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, const unichar *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength)
+OOMaybeUnits ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength)
 {
 	NSCParameterAssert(context != NULL && characters != NULL && replaceLength != NULL);
 	NSCParameterAssert(characters[idx + 1] == 'G');
@@ -1057,7 +1132,7 @@ static NSString *ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *conte
 	{
 		// Too close to end of string to actually have six characters, let alone six digits.
 		SyntaxError(context, @"strings.expand.invalidJEscape", @"%@", kInvalidGEscapeMessage);
-		return nil;
+		return std::nullopt;
 	}
 	
 	char hundreds = characters[idx + 2];
@@ -1070,24 +1145,24 @@ static NSString *ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *conte
 	if (!(isdigit(hundreds) && isdigit(tens) && isdigit(units) && isdigit(galHundreds) && isdigit(galTens) && isdigit(galUnits)))
 	{
 		SyntaxError(context, @"strings.expand.invalidJEscape", @"%@", kInvalidGEscapeMessage);
-		return nil;
+		return std::nullopt;
 	}
 	
 	OOSystemID sysID = (hundreds - '0') * 100 + (tens - '0') * 10 + (units - '0');
 	if (sysID > kOOMaximumSystemID)
 	{
 		SyntaxError(context, @"strings.expand.invalidJEscape.range", @"String escape code %%G%3u for system is out of range (must be less than %u).", sysID, kOOMaximumSystemID + 1);
-		return nil;
+		return std::nullopt;
 	}
 	
 	OOGalaxyID galID = (galHundreds - '0') * 100 + (galTens - '0') * 10 + (galUnits - '0');
 	if (galID > kOOMaximumGalaxyID)
 	{
 		SyntaxError(context, @"strings.expand.invalidJEscape.range", @"String escape code %%G%3u for galaxy is out of range (must be less than %u).", galID, kOOMaximumGalaxyID + 1);
-		return nil;
+		return std::nullopt;
 	}
 	
-	return [UNIVERSE getSystemName:sysID forGalaxy:galID];
+	return UnitsFromNSString([UNIVERSE getSystemName:sysID forGalaxy:galID]);
 }
 
 
@@ -1096,7 +1171,7 @@ static NSString *ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *conte
 	Expand a %J### code by looking up the corresponding system name in the
 	current galaxy.
 */
-static NSString *ExpandSystemNameEscape(OOStringExpansionContext *context, const unichar *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength)
+OOMaybeUnits ExpandSystemNameEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength)
 {
 	NSCParameterAssert(context != NULL && characters != NULL && replaceLength != NULL);
 	NSCParameterAssert(characters[idx + 1] == 'J');
@@ -1109,7 +1184,7 @@ static NSString *ExpandSystemNameEscape(OOStringExpansionContext *context, const
 	{
 		// Too close to end of string to actually have three characters, let alone three digits.
 		SyntaxError(context, @"strings.expand.invalidJEscape", @"%@", kInvalidJEscapeMessage);
-		return nil;
+		return std::nullopt;
 	}
 	
 	char hundreds = characters[idx + 2];
@@ -1119,110 +1194,121 @@ static NSString *ExpandSystemNameEscape(OOStringExpansionContext *context, const
 	if (!(isdigit(hundreds) && isdigit(tens) && isdigit(units)))
 	{
 		SyntaxError(context, @"strings.expand.invalidJEscape", @"%@", kInvalidJEscapeMessage);
-		return nil;
+		return std::nullopt;
 	}
 	
 	OOSystemID sysID = (hundreds - '0') * 100 + (tens - '0') * 10 + (units - '0');
 	if (sysID > kOOMaximumSystemID)
 	{
 		SyntaxError(context, @"strings.expand.invalidJEscape.range", @"String escape code %%J%3u is out of range (must be less than %u).", sysID, kOOMaximumSystemID + 1);
-		return nil;
+		return std::nullopt;
 	}
 	
-	return [UNIVERSE getSystemName:sysID];
+	return UnitsFromNSString([UNIVERSE getSystemName:sysID]);
 }
 
 
-static void AppendCharacters(NSMutableString **result, const unichar *characters, NSUInteger start, NSUInteger end)
+void AppendCharacters(OOMaybeUnits *result, const char16_t *characters, NSUInteger start, NSUInteger end)
 {
 	NSCParameterAssert(result != NULL && characters != NULL && start <= end);
-	
-	if (*result == nil)
+
+	if (!result->has_value())
 	{
 		// Ensure there is a string. We want this even if the range is empty.
-		*result = [NSMutableString string];
+		result->emplace();
 	}
-	
+
 	if (start == end)  return;
-	
-	/*	What we want here is a method like -[NSMutableString
-		appendCharacters:(unichar)characters length:(NSUInteger)length], which
-		unfortunately doesn't exist. On Mac OS X, CoreFoundation provides an
-		equivalent. For GNUstep, we have to use a temporary string.
-		
-		TODO: build the output string in a fixed-size stack buffer instead.
-	*/
-#if OOLITE_MAC_OS_X
-	CFStringAppendCharacters((CFMutableStringRef)*result, characters + start, end - start);
-#else
-	NSString *temp = [[NSString alloc] initWithCharacters:characters + start length:end - start];
-	[*result appendString:temp];
-	[temp release];
-#endif
+
+	// The segment goes through -initWithCharacters:length:'s byte-order-mark handling, as the
+	// temporary NSString it used to be built as did.
+	**result += UnitsWithCharacters(characters + start, end - start);
 }
 
 
-static NSString *GetSystemName(OOStringExpansionContext *context)
+OOMaybeUnits GetSystemName(OOStringExpansionContext *context)
 {
 	NSCParameterAssert(context != NULL);
-	if (context->systemName == nil) {
-		context->systemName = [[UNIVERSE getSystemName:[PLAYER systemID]] retain];
+	if (!context->systemName.has_value()) {
+		context->systemName = UnitsFromNSString([UNIVERSE getSystemName:[PLAYER systemID]]);
 	}
-	
+
 	return context->systemName;
 }
 
 
-static NSString *GetSystemNameIan(OOStringExpansionContext *context)
+OOMaybeUnits GetSystemNameIan(OOStringExpansionContext *context)
 {
 	NSCParameterAssert(context != NULL);
-	
-	if (context->systemNameWithIan == nil)
+
+	if (!context->systemNameWithIan.has_value())
 	{
-		context->systemNameWithIan = [OOExpandWithOptions(context->seed, kOOExpandDisallowPercentI | kOOExpandGoodRNG | kOOExpandKey, @"planetname-possessive") retain];
+		context->systemNameWithIan = UnitsFromNSString(OOExpandWithOptions(context->seed, kOOExpandDisallowPercentI | kOOExpandGoodRNG | kOOExpandKey, @"planetname-possessive"));
 	}
-	
+
 	return context->systemNameWithIan;
 }
 
 
-static NSString *GetRandomNameN(OOStringExpansionContext *context)
+OOMaybeUnits GetRandomNameN(OOStringExpansionContext *context)
 {
 	NSCParameterAssert(context != NULL);
-	
-	if (context->randomNameN == nil)
+
+	if (!context->randomNameN.has_value())
 	{
-		context->randomNameN = [NewRandomDigrams(context) retain];
+		context->randomNameN = NewRandomDigrams(context);
 	}
-	
+
 	return context->randomNameN;
 }
 
 
-static NSString *GetRandomNameR(OOStringExpansionContext *context)
+OOMaybeUnits GetRandomNameR(OOStringExpansionContext *context)
 {
 	NSCParameterAssert(context != NULL);
-	
-	if (context->randomNameR == nil)
+
+	if (!context->randomNameR.has_value())
 	{
-		context->randomNameR = [OldRandomDigrams() retain];
+		context->randomNameR = OldRandomDigrams();
 	}
-	
+
 	return context->randomNameR;
 }
 
 
-static NSArray *GetSystemDescriptions(OOStringExpansionContext *context)
+NSArray *GetSystemDescriptions(OOStringExpansionContext *context)
 {
 	NSCParameterAssert(context != NULL);
-	
+
 	if (context->systemDescriptions == nil)
 	{
 		context->systemDescriptions = [[[UNIVERSE descriptions] oo_arrayForKey:@"system_description"] retain];
 		context->sysDescCount = [context->systemDescriptions count];
 	}
-	
+
 	return context->systemDescriptions;
+}
+
+
+/*	The digram at <location> of descriptions.plist's "digrams" string ([digrams
+	substringWithRange:NSMakeRange(location, 2)], which raises past the end).
+*/
+OOUnits Digram(NSString *digrams, const OOUnits &units, NSUInteger location)
+{
+	if (location + 2 > units.size())
+	{
+		// Raises NSRangeException, as it did; answers nil (nothing appended) for a nil <digrams>.
+		[digrams substringWithRange:NSMakeRange(location, 2)];
+		return OOUnits();
+	}
+	return units.substr(location, 2);
+}
+
+
+// -capitalizedString.
+OOUnits Capitalized(const OOUnits &name)
+{
+	return oo::utf8ToUtf16(oo::str::capitalized(oo::utf16ToUtf8(name)));
 }
 
 
@@ -1230,44 +1316,132 @@ static NSArray *GetSystemDescriptions(OOStringExpansionContext *context)
 	(world-generation consistent PRNG), but misses some possibilities. Used
 	for "%R" description string for backwards compatibility.
 */
-static NSString *OldRandomDigrams(void)
+OOUnits OldRandomDigrams(void)
 {
 	/* The only point of using %R is for world generation, so there's
 	 * no point in checking the context */
 	unsigned len = gen_rnd_number() & 3;
 	NSString *digrams = [[UNIVERSE descriptions] objectForKey:@"digrams"];
-	NSMutableString *name = [NSMutableString stringWithCapacity:256];
-	
+	const OOUnits digramUnits = UnitsFromNSString(digrams).value_or(OOUnits());
+	OOUnits name;
+
 	for (unsigned i = 0; i <=len; i++)
 	{
 		unsigned x =  gen_rnd_number() & 0x3e;
-		[name appendString:[digrams substringWithRange:NSMakeRange(x, 2)]];
+		name += Digram(digrams, digramUnits, x);
 	}
-	
-	return [name capitalizedString]; 
+
+	return Capitalized(name);
 }
 
 
 /*	Generates pseudo-random digram string. Used for "%N" description string.
 */
-static NSString *NewRandomDigrams(OOStringExpansionContext *context)
+OOUnits NewRandomDigrams(OOStringExpansionContext *context)
 {
 	unsigned length = (OO_EXPANDER_RANDOM % 4) + 1;
 	if ((OO_EXPANDER_RANDOM % 5) < ((length == 1) ? 3 : 1))  ++length;	// Make two-letter names rarer and 10-letter names happen sometimes
 	NSString *digrams = [[UNIVERSE descriptions] objectForKey:@"digrams"];
-	NSUInteger count = [digrams length] / 2;
-	NSMutableString *name = [NSMutableString stringWithCapacity:length * 2];
-	
+	const OOUnits digramUnits = UnitsFromNSString(digrams).value_or(OOUnits());
+	NSUInteger count = digramUnits.size() / 2;
+	OOUnits name;
+
 	for (unsigned i = 0; i != length; ++i)
 	{
-		[name appendString:[digrams substringWithRange:NSMakeRange((OO_EXPANDER_RANDOM % count) * 2, 2)]];
+		name += Digram(digrams, digramUnits, (OO_EXPANDER_RANDOM % count) * 2);
 	}
-	
-	return [name capitalizedString];
+
+	return Capitalized(name);
 }
 
 
-static void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, NSString *logMessageClass, NSString *prefix, NSString *format, ...)
+// MARK: -
+// MARK: NSString <-> UTF-16 units
+
+
+// NSString -> its UTF-16 units, exactly; nil -> nullopt.
+OOMaybeUnits UnitsFromNSString(NSString *string)
+{
+	if (string == nil)  return std::nullopt;
+	const NSUInteger length = [string length];
+	OOUnits units(length, u'\0');
+	if (length != 0)  [string getCharacters:reinterpret_cast<unichar *>(units.data()) range:NSMakeRange(0, length)];
+	return units;
+}
+
+
+// UTF-16 units -> NSString, unit for unit (an explicit byte order keeps a leading U+FEFF).
+NSString *NSStringFromUnits(const OOUnits &units)
+{
+	return [[[NSString alloc] initWithBytes:units.data()
+									 length:units.size() * sizeof(char16_t)
+								   encoding:NSUTF16LittleEndianStringEncoding] autorelease];
+}
+
+
+/*	+[NSString stringWithCharacters:length:] / -initWithCharacters:length:, which is how the
+	engine used to cut keys, operators and literal segments out of a string: GNUstep drops a
+	leading U+FEFF, or drops a leading U+FFFE and byte-swaps the rest, and does so twice
+	(probed on gnustep-base 1.31.1).
+*/
+OOUnits UnitsWithCharacters(const char16_t *characters, NSUInteger length)
+{
+	OOUnits units(characters, length);
+	for (int pass = 0; pass < 2 && !units.empty(); pass++)
+	{
+		if (units[0] == 0xFEFF)
+		{
+			units.erase(0, 1);
+		}
+		else if (units[0] == 0xFFFE)
+		{
+			units.erase(0, 1);
+			for (char16_t &c : units)  c = static_cast<char16_t>((c << 8) | (c >> 8));
+		}
+	}
+	return units;
+}
+
+
+/*	-rangeOfString:<target> options:0 range:<from to end>.location, NSNotFound if absent: literal
+	units, except that an occurrence a sequence-extending unit follows is inside a longer composed
+	sequence and does not count, and that a search starting inside a composed sequence (not at
+	the start of the string) cannot match at the first unit after it (oo::str::Scanner has the
+	same rule, probed on gnustep-base 1.31.1). <target> is ASCII.
+*/
+NSUInteger FindUnits(const OOUnits &string, std::u16string_view target, NSUInteger from)
+{
+	NSUInteger blind = NSNotFound;
+	if (from > 0 && from < string.size() && oo::str::detail::extendsSequence(string[from]))
+	{
+		blind = from;
+		while (blind < string.size() && oo::str::detail::extendsSequence(string[blind]))  blind++;
+	}
+	for (NSUInteger at = from; at + target.size() <= string.size(); at++)
+	{
+		if (at == blind || std::u16string_view(string).substr(at, target.size()) != target)  continue;
+		const NSUInteger end = at + target.size();
+		if (end < string.size() && oo::str::detail::extendsSequence(string[end]))  continue;
+		return at;
+	}
+	return NSNotFound;
+}
+
+
+// -hasPrefix: / -hasSuffix: (literal) with a non-empty ASCII argument.
+bool HasPrefix(const OOUnits &string, std::u16string_view prefix)
+{
+	return string.size() >= prefix.size() && std::u16string_view(string).substr(0, prefix.size()) == prefix;
+}
+
+
+bool HasSuffix(const OOUnits &string, std::u16string_view suffix)
+{
+	return string.size() >= suffix.size() && std::u16string_view(string).substr(string.size() - suffix.size()) == suffix;
+}
+
+
+void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, NSString *logMessageClass, NSString *prefix, NSString *format, ...)
 {
 	NSCParameterAssert(context != NULL);
 	
@@ -1295,3 +1469,5 @@ static void SyntaxIssue(OOStringExpansionContext *context, const char *function,
 	
 	va_end(args);
 }
+
+}	// namespace
