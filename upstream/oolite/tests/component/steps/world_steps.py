@@ -45,6 +45,8 @@ ROLE_AI = {
 # role-spawned pirates were not even legally attackable by police, because their random starting
 # bounty fell below policeAI's fineThreshold() gate (oolite-priorityai.js:845,
 # `50 - government*6`). That is what made S1/S5/S6 a coin flip unrelated to the code under test.
+# Pinning fixes the draw, not combat: S6 asserts the police ship survives up to 900 ticks of a
+# real-time 1-v-1 dogfight, which it sometimes loses whatever the hulls (oo-9aq4).
 #
 # The fix pins the SHIP KEY that addShips is actually asked for, using the literal "[shipKey]"
 # form that OOShipRegistry.mm:1253 registers at probability 1.0 for every ship (no draw),

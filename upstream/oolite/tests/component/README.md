@@ -52,6 +52,9 @@ between hulls, and the role path also draws a pirate's starting bounty (20-70) a
 (oo-sjvz; LEARNINGS oo-qwk5, oo-rkm). A spawned pirate's bounty is set to `PIRATE_BOUNTY` (100)
 for the same reason. A role with no pinned key falls back to the plain role draw. The step text is
 unchanged; add a key here, not a new step, when a new role needs to be deterministic.
+Pinning removes the draw, not the fight: a scenario that asserts who survives a long dogfight (S6)
+can still lose it, because a real-time fight on a software renderer is not seed-deterministic
+(oo-9aq4).
 
 ## What this tier deliberately cannot see
 
