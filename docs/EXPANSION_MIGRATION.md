@@ -21,7 +21,7 @@ flags it so you can check your own OXP before shipping.
 node tools/oxp-js-lint/lint.js scan path/to/your/Scripts
 ```
 
-runs the same eight detectors below (masking comments/strings/regexes first, so quoting a banned
+runs the same nine detectors below (masking comments/strings/regexes first, so quoting a banned
 construct in a string or a comment is not flagged). See `tools/oxp-js-lint/README.md` for the
 `corpus` mode, `eslint` integration, and known limits of the scan.
 
@@ -45,7 +45,7 @@ migration, measured against the entire catalogue, is two expansions.
 
 ## Removed — SpiderMonkey-only syntax (hard errors under QuickJS-ng)
 
-Each entry below is one of the eight detectors implemented in
+Each entry below is one of the nine detectors implemented in
 [`tools/oxp-js-lint/rules.js`](../tools/oxp-js-lint/rules.js) (`DETECTORS` object) and exercised by
 the fixtures in `tools/oxp-js-lint/fixtures/`.
 
@@ -136,11 +136,37 @@ SpiderMonkey-only, removed in Firefox 60.
 - **Lint rule:** [`expression-closure`](../tools/oxp-js-lint/rules.js) in
   `tools/oxp-js-lint/rules.js` (fixture: `tools/oxp-js-lint/fixtures/expression-closure.js`)
 
+#### `legacy-generator` — legacy (JS1.7) generators: `yield` in a plain `function`
+
+```js
+subs.each = function () { for (var i = 0; i < this.length; i++) yield this[i]; };
+for (var sub in subs.each()) { sub.script.owner = this.ship; }
+```
+
+SpiderMonkey 1.8.5 made any function whose body contains `yield` a generator (Oolite ran it at
+`JSVERSION_ECMA_5`, which is above the JS1.7 level that turns `yield` on), and `for (x in gen)`
+over one iterated the *yielded values*. Removed from Firefox in version 58; no other engine has
+either form. QuickJS-ng rejects the whole file (`SyntaxError: expecting ';'`), so the script never
+runs. Found by the Tier-2/3 corpus run (beads oo-1gc.11, oo-1gc.16) in four ship scripts:
+Thargoid.Wildships (`wildShips_tembo.js`), Thargoid.Aquatics (`aquatics_congerPods.js`) and
+zzz.Montana05.Kestrel_Falcon (`bweed-kestrelfalcon-falcon.js`, `bweed-kestrelfalcon-kestrel.js`).
+Those are the only files in the 818-expansion corpus that use it.
+
+- **Removed:** generator semantics for a function not declared `function*`, and value iteration by
+  `for...in` over a generator.
+- **Replacement:** for a list, no generator at all:
+  `this.ship.subEntities.forEach(function (sub) { ... }, this)` or
+  `for (var i = 0; i < subs.length; i++) { var sub = subs[i]; ... }`. If you do want a generator,
+  declare it `function* () { ... yield x; }` **and** iterate it with `for (var x of gen())`:
+  `for...in` over a standard generator runs zero times, silently.
+- **Lint rule:** [`legacy-generator`](../tools/oxp-js-lint/rules.js) in `tools/oxp-js-lint/rules.js`
+  (fixture: `tools/oxp-js-lint/fixtures/legacy-generator.js`)
+
 ## Not covered by the automated scan (rewrite by inspection)
 
 These two constructs are documented in the migration plan and in
 [architecture.md §5.3](architecture.md#53-what-expansion-authors-will-need-to-change-the-guide)
-but, unlike the eight above, have **no dedicated `oxp-js-lint` rule** as of this writing — file a
+but, unlike the nine above, have **no dedicated `oxp-js-lint` rule** as of this writing — file a
 bead if you want one added:
 
 | Construct | Replacement |
@@ -161,6 +187,10 @@ Behaviour that SpiderMonkey silently tolerated or coerced now throws at parse ti
   enforces it more completely) this throws `ReferenceError`.
 - `arguments.callee` — throws in strict mode. Name your function and call it by name, or use a
   named function expression, instead of self-referencing through `arguments.callee`.
+- Creating a property on a primitive in strict code (`"use strict"; var s = "a"; s.x = 1;`) throws
+  `TypeError: not an object`. SpiderMonkey 1.8.5 wrote it to a throwaway wrapper object and carried
+  on, so the line did nothing. The usual cause is a `reduce()` callback that returns the value it
+  assigned instead of the accumulator: write `m[k] = v; return m;`, not `return m[k] = v;`.
 
 None of these have a dedicated `oxp-js-lint` rule (they are standard ES strict-mode behaviour, not
 Mozilla-specific), but the C++-side `tools/deny-list.txt` deny-list (consumed by
@@ -193,12 +223,53 @@ byte-identical, and Oolite's own API surface matches the 1.93 contract with no d
   both sloppy and strict code. SpiderMonkey threw a `TypeError` in strict code; a script that
   relied on that exception was already failing.
 - **A bare name in a script's closure** that refers to a property of the script object (not
-  `this.name`, just `name`) resolves through the object the script file last ran for. That
-  matters only when one script file runs for several objects, such as a ship script, and code
-  uses bare names rather than `this.`.
+  `this.name`, just `name`) resolves through the script object of the handler call that is running,
+  which for Oolite's own calls (event handlers, timers, the script's first run) is the object the
+  closure was made for. Bead oo-1gc.15 fixed the case where one ship script file runs for several
+  ships: before it, the name resolved through whichever ship ran the file last. It can still differ
+  from SpiderMonkey when one ship's function is called directly from another ship's handler. Use
+  `this.name` and it never matters.
 - **More standard globals exist.** Scripts that list the global object see more names: a check
   for "global namespace pollution" reports `Map`, `Promise`, `globalThis` and others as
   unexpected.
+
+## Tier 2 and Tier 3 corpus findings (bead oo-1gc.11)
+
+The section above covers Tier 1 only. Bead oo-1gc.11 then loaded all 813 catalogue expansions
+(Tier 3), plus the 150-expansion nightly Tier 2 subset, on the QuickJS-ng build. Each expansion was
+loaded **solo**, twice, on two QuickJS-ng builds. Per-expansion results are in
+[docs/phases/1-corpus-tier23-report.md](phases/1-corpus-tier23-report.md). No SpiderMonkey build is
+left to compare against. So a failure counts as engine-independent only when its first error line
+comes from code the engine swap did not touch: the ObjC data loaders, Oolite's own argument checks,
+or the expansion's own message. Those failures are the rows below. They would fail the same way on
+1.93 with SpiderMonkey, and nothing about them is specific to QuickJS-ng. Authors should still fix
+them.
+
+| class | what the log says | what the author changes | expansions (Tier 3 unless marked) |
+|---|---|---|---|
+| E1 | `TypeError: cannot read property '$addMarketInterface'` / `'$customCrosshairs'` / `'$addMissionScreenException'` / `'auctioneers' of undefined` | A world script is read from another expansion that is not installed. Declare it in `requires_oxps`, or guard the lookup: `if (worldScripts.x) ...`. | redspear.demand_driven_economy, redspear.alien_systems, redspear.new_lasers (Tier 2), KillerWolf.SothisTC, cim.new-cargoes |
+| E2 | `Ship.setCargoType: Invalid arguments ... Can only be used on cargo pod carriers, not cargo pods (<ship>)`, thrown in `oolite-populator.js` | A ship given a trader or pirate role is defined as a cargo pod, so the populator's `setCargoType` call is rejected. Fix the `shipdata.plist` definition. The error only shows up when the ship happens to spawn. | Shipbuilder.ArachnidMark1 (Tier 2), .ChimeraGunship (Tier 2), .SerpentClassCruiser (Tier 2), .Fireball |
+| E3 | `script.load.notFound` (`griff_spawn_wreckage.js`), `PlayerEntity.switchHudTo.failed` (`GETter_HUD.plist`) | A file named in the data does not exist in the expansion. Ship the file, or declare the expansion that provides it. | gsagostinho.TexturePack.FerDeLance, gsagostinho.TexturePack.Python, Reval.GETTER_HUD |
+| E4 | `plist.parse.failed` (`missiontext.plist` and others) | Fix the property-list syntax. `plutil -lint` finds it. | Reval.Neutralizer, redspear.demand_driven_economy |
+| E5 | `oxp.versionMismatch: ... is incompatible with version 1.93 of Oolite`, then NOTLOADED | The manifest's `maximum_oolite_version` (or `required_oolite_version`) excludes 1.93. Widen it after testing. | gsagostinho.DangerousKeyconfig, Lone_Wolf.ReduceWeaponDamage, phkb.LoadoutByCategory190 |
+| E6 | `[XenonUI]: ERROR! No Xenon UI Resource packs installed` | Nothing: the expansion correctly reports a missing companion. Tier 1 pairs it with Pack A and it passes on both engines. | z.phkb.XenonUI (Tier 2) |
+| E7 | `shipData.merge.failed` (unresolved `like_ship`), `shipData.load.error` (unresolved subentity, non-existent model), `oxp-standards.error: Likely missing a dependency` | Ship data refers to entries or models from an expansion that is not declared. Declare it in `requires_oxps`, or mark the entry `is_external_dependency`. This is the same mechanism as Norby.Carriers in Tier 1 (bead oo-1gc.7). | DrNil.YAH-SetA to SetG (7), zzz.Montana05.GalTech_chimera_gunship_Fix, zzz.Montana05.GalTech_constitution_class_heavy_cruiser_Fix, ZygoUgo.noshaders_Asteroids, ZygoUgo.shadyAsteroids, amah.noshaders_extra_stations_addon, amah.noshaders_stations_for_sfep, smivs.classicVarietyPack, LittleBear.AssassinsGuildRebooted, Reval.Elite_Trader, Reval.Elite_Trader_Meta, Frame.FuelCollector, Svengali.Snoopers (Tier 2; its JS error is E8) |
+| E8 | `TypeError: could not delete property`, from a strict-mode `for (var k in this) ... delete this[k]` that spares only `name` and `version` | A world script object carries `oolite_manifest_identifier`, which Oolite defines read-only and permanent, on SpiderMonkey as well. A strict `delete` of it threw there too. Skip it in the loop, as RobertTodd.Taranis and Wildeblood.Untrumbled do. The loop runs on the missing-dependency path, so the error appears when the expansion is installed without its companions. (bead oo-1gc.14) | Svengali.Snoopers (Tier 2) |
+| E9 | `ReferenceError: X is not defined` for a name nothing declares, in strict code | The name was never a variable on any engine. UK_Eliter.InterstellarTweaks calls a method of one of its own `this.$...` objects without the object (`method(...)` for `this.$obj.method(...)`). The other three use an undeclared `for (k in obj)` loop variable in a `"use strict"` file or function (Taranis and Untrumbled on their missing-dependency path). Add the object, or declare the variable with `var`. (bead oo-1gc.15) | UK_Eliter.InterstellarTweaks (Tier 2), Norby.Towbar (Tier 2), RobertTodd.Taranis, Wildeblood.Untrumbled |
+| E10 | `TypeError: not an object` at the top level of a world script, which is then dropped | Strict code creates a property on a string: a `reduce()` callback returns the key instead of the accumulator. SpiderMonkey 1.8.5 ignored the write silently, so the result was already wrong there. See "Newly strict". (bead oo-1gc.16) | Alnivel.RoutePlanner |
+
+The other 13 failures were JavaScript exceptions that might have been engine differences. Beads
+oo-1gc.13 to oo-1gc.16 settled each one without reading expansion content, using the redacting
+`tools/oxp-js-lint/probe.js`:
+
+- **Engine differences, fixed in the facade (no author change):** `new Vector3D.random(n)` in the
+  rock-chunk spawn scripts of Griff.Asteroids and two amah.noshaders ports (`TypeError: not a
+  constructor`; SpiderMonkey let `new` call any native, oo-1gc.13), and a ship script reading a
+  bare name for its own `this.` property (`ReferenceError`, zzz.Montana05.BUS_MegaBat, oo-1gc.15;
+  see the bare-name bullet above).
+- **Mozilla-only syntax:** legacy generators in Thargoid.Wildships, Thargoid.Aquatics and
+  zzz.Montana05.Kestrel_Falcon, now the lint rule `legacy-generator` above (oo-1gc.16).
+- **Content defects:** rows E8 to E10.
 
 ## Newly available (opt-in, worth advertising to authors)
 
@@ -220,8 +291,8 @@ in the standard language up to ES2023, none of which SpiderMonkey 1.8.5 supporte
 
 | Tool | Role |
 |---|---|
-| [`tools/oxp-js-lint/`](../tools/oxp-js-lint/README.md) | ESLint config + standalone runner implementing the eight detectors above; also has a `corpus` mode over the cached OXZ catalogue |
-| `tools/oxp-js-lint/rules.js` | the eight detectors and their messages (source of truth for rule names used above) |
+| [`tools/oxp-js-lint/`](../tools/oxp-js-lint/README.md) | ESLint config + standalone runner implementing the nine detectors above; also has a `corpus` mode over the cached OXZ catalogue |
+| `tools/oxp-js-lint/rules.js` | the nine detectors and their messages (source of truth for rule names used above) |
 | `tools/oxp-js-lint/corpus-report.json` | the full per-expansion corpus scan result this guide's numbers are drawn from |
 | `tools/deny-list.txt` | the equivalent C/C++-side deny-list for the engine's own migration off the SpiderMonkey API — not for OXP authors, listed here for completeness |
 | bead oo-864 | compatibility-shim OXP polyfilling `toSource`/`quote` for expansions whose authors cannot update them |

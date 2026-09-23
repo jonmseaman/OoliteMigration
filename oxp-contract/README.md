@@ -121,3 +121,15 @@ records its position before each member so it can resume past the offender inste
 class; `native-opaque` is the honest answer for those members rather than a silent omission. If a
 later engine change makes them readable, the diff will say so, which is exactly what this file is
 for.
+
+## `js-api-quickjs.json`
+
+The runtime snapshot of the QuickJS-ng build, captured with `tools/js-api-snapshot.sh --output
+oxp-contract/js-api-quickjs.json` when Phase 1 closed (bead oo-1gc.10), and the QuickJS-era
+baseline that [ADR-0024](../docs/decisions/0024-js-api-gate-is-the-oolite-surface.md) names.
+`js-api-1.93.json` stays the contract: `tools/js_api_surface_compare.py oxp-contract/js-api-1.93.json
+oxp-contract/js-api-quickjs.json` must report 0 differences in the Oolite API surface (it did: 140
+globals, 86 Oolite, 54 ECMAScript, 39 native classes; the 72 additions are ECMAScript built-ins
+QuickJS-ng has and SpiderMonkey 1.8.5 did not, such as `WeakRef` and `queueMicrotask`). The Tier C
+`jsapi` stage runs that comparison. Regenerate this file only from a QuickJS-ng build, and review the
+comparison before committing it.
