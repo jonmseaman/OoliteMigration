@@ -149,4 +149,36 @@ and converts the result exactly as the old method produced it (nil for nil).
 	return oo::ObjectFromPList([self cxx_getLastLines]);
 }
 
+
+// Chunk 3 (oo-3rb.94).
+
+- (NSDictionary *) userSettings
+{
+	return oo::ObjectFromPList([self cxx_userSettings]);	// the same values and objects, a new dictionary
+}
+
+
+- (OOColor *) colorFromSetting:(NSString *)setting defaultValue:(OOColor *)def
+{
+	return [self cxx_colorFromSetting:oo::OptionalString(setting) defaultValue:def];
+}
+
+
+- (void) setGLColorFromSetting:(NSString *)setting defaultValue:(OOColor *)def alpha:(GLfloat)alpha
+{
+	[self cxx_setGLColorFromSetting:oo::OptionalString(setting) defaultValue:def alpha:alpha];
+}
+
+
+- (void) setGuiColorSettingFromKey:(NSString *)key color:(OOColor *)col
+{
+	[self cxx_setGuiColorSettingFromKey:oo::StdString(key) color:col];
+}
+
+
+- (void) overrideTabs:(OOGUITabSettings)stops from:(NSString *)setting length:(NSUInteger)len
+{
+	[self cxx_overrideTabs:stops from:oo::StdString(setting) length:len];
+}
+
 @end
