@@ -3078,20 +3078,20 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 // Equipment
 
-- (BOOL) hasOneEquipmentItem:(NSString *)itemKey includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
 {
-	if ([self hasOneEquipmentItem:itemKey includeMissiles:includeWeapons whileLoading:loading])  return YES;
+	if ([self cxx_hasOneEquipmentItem:itemKey includeMissiles:includeWeapons whileLoading:loading])  return YES;
 
-	if (loading) 
+	if (loading)
 	{
-		NSString *damaged = [itemKey stringByAppendingString:@"_DAMAGED"];
-		if ([_equipment containsObject:damaged])  return YES;
+		const std::string damaged = itemKey + "_DAMAGED";
+		if (std::ranges::find(_equipment, damaged) != _equipment.end())  return YES;
 	}
 
 	if (includeWeapons)
 	{
 		// Check for primary weapon
-		OOWeaponType weaponType = OOWeaponTypeFromEquipmentIdentifierStrict(itemKey);
+		OOWeaponType weaponType = OOWeaponTypeFromEquipmentIdentifierStrict(oo::NSStringFrom(itemKey));
 		if (!isWeaponNone(weaponType))
 		{
 			if ([self hasPrimaryWeapon:weaponType])  return YES;
@@ -3102,23 +3102,23 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (BOOL) hasOneEquipmentItem:(NSString *)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading
 {
-	if ([_equipment containsObject:itemKey])  return YES;
-	
-	if (loading) 
+	if (std::ranges::find(_equipment, itemKey) != _equipment.end())  return YES;
+
+	if (loading)
 	{
-		NSString *damaged = [itemKey stringByAppendingString:@"_DAMAGED"];
-		if ([_equipment containsObject:damaged])  return YES;
+		const std::string damaged = itemKey + "_DAMAGED";
+		if (std::ranges::find(_equipment, damaged) != _equipment.end())  return YES;
 	}
 
 	if (includeMissiles && missiles > 0)
 	{
 		unsigned i;
-		if ([itemKey isEqualToString:@"thargon"]) itemKey = @"EQ_THARGON";
+		const std::string key = (itemKey == "thargon") ? std::string("EQ_THARGON") : itemKey;
 		for (i = 0; i < missiles; i++)
 		{
-			if (missile_list[i] != nil && [[missile_list[i] identifier] isEqualTo:itemKey])  return YES;
+			if (missile_list[i] != nil && oo::StdString([missile_list[i] identifier]) == key)  return YES;
 		}
 	}
 	
@@ -3145,39 +3145,30 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (NSUInteger) countEquipmentItem:(NSString *)eqkey
+- (NSUInteger) cxx_countEquipmentItem:(const std::string &)eqkey
 {
-	NSString *eq = nil;
-	NSUInteger count = 0;
-	foreach (eq, _equipment)
-	{
-		if ([eqkey isEqualToString:eq])
-		{
-			++count;
-		}
-	}
-	return count;
+	return (NSUInteger)std::ranges::count(_equipment, eqkey);
 }
 
 
 - (BOOL) hasEquipmentItem:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
 {
 	// this method is also used internally to find out if an equipped item is undamaged.
-	if ([equipmentKeys isKindOfClass:[NSString class]])
+	if (oo::IsNSString(equipmentKeys))
 	{
-		return [self hasOneEquipmentItem:equipmentKeys includeWeapons:includeWeapons whileLoading:loading];
+		return [self cxx_hasOneEquipmentItem:oo::StdString(equipmentKeys) includeWeapons:includeWeapons whileLoading:loading];
 	}
 	else
 	{
-		NSParameterAssert([equipmentKeys isKindOfClass:[NSArray class]] || [equipmentKeys isKindOfClass:[NSSet class]]);
-		
-		id key = nil;
-		foreach (key, equipmentKeys)
+		NSParameterAssert(oo::IsNSArray(equipmentKeys) || oo::IsNSSet(equipmentKeys));
+
+		// Any match: order-insensitive. Only string keys can match an equipment key.
+		for (const std::string &key : oo::StringsFrom(equipmentKeys))
 		{
-			if ([self hasOneEquipmentItem:key includeWeapons:includeWeapons whileLoading:loading])  return YES;
+			if ([self cxx_hasOneEquipmentItem:key includeWeapons:includeWeapons whileLoading:loading])  return YES;
 		}
 	}
-	
+
 	return NO;
 }
 
@@ -3190,19 +3181,18 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 /* allows OXP equipment to provide core functions (or indeed OXP
  * functions, potentially) */
-- (BOOL) hasEquipmentItemProviding:(NSString *)equipmentType
+- (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType
 {
-	NSString *key = nil;
-	foreach (key, _equipment) {
-		if ([key isEqualToString:equipmentType])
+	for (const std::string &key : _equipment) {
+		if (key == equipmentType)
 		{
 			// equipment always provides itself
 			return YES;
 		}
 		else
 		{
-			OOEquipmentType *et = [OOEquipmentType equipmentTypeWithIdentifier:key];
-			if (et != nil && [et provides:equipmentType])
+			OOEquipmentType *et = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(key)];
+			if (et != nil && [et provides:oo::NSStringFrom(equipmentType)])
 			{
 				return YES;
 			}
@@ -3212,44 +3202,48 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (NSString *) equipmentItemProviding:(NSString *)equipmentType
+- (std::optional<std::string>) cxx_equipmentItemProviding:(const std::string &)equipmentType
 {
-	NSString *key = nil;
-	foreach (key, _equipment) {
-		if ([key isEqualToString:equipmentType])
+	for (const std::string &key : _equipment) {
+		if (key == equipmentType)
 		{
 			// equipment always provides itself
-			return [[key copy] autorelease];
+			return key;
 		}
 		else
 		{
-			OOEquipmentType *et = [OOEquipmentType equipmentTypeWithIdentifier:key];
-			if (et != nil && [et provides:equipmentType])
+			OOEquipmentType *et = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(key)];
+			if (et != nil && [et provides:oo::NSStringFrom(equipmentType)])
 			{
-				return [[key copy] autorelease];
+				return key;
 			}
 		}
 	}
-	return nil;
+	return std::nullopt;
 }
 
 
 - (BOOL) hasAllEquipment:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading
 {
-	NSEnumerator				*keyEnum = nil;
-	id							key = nil;
-	
-	if (_equipment == nil)  return NO;
-	
-	// Make sure it's an array or set, using a single-object set if it's a string.
-	if ([equipmentKeys isKindOfClass:[NSString class]])  equipmentKeys = [NSArray arrayWithObject:equipmentKeys];
-	else if (![equipmentKeys isKindOfClass:[NSArray class]] && ![equipmentKeys isKindOfClass:[NSSet class]])  return NO;
-	
-	for (keyEnum = [equipmentKeys objectEnumerator]; (key = [keyEnum nextObject]); )
+	if (_equipment.empty())  return NO;
+
+	// Make sure it's an array or set, using a single-element list if it's a string.
+	std::vector<std::string> keys;
+	if (oo::IsNSString(equipmentKeys))  keys.push_back(oo::StdString(equipmentKeys));
+	else if (oo::IsNSArray(equipmentKeys) || oo::IsNSSet(equipmentKeys))
 	{
-		if (![self hasOneEquipmentItem:key includeWeapons:includeWeapons whileLoading:loading])  return NO;
+		keys = oo::StringsFrom(equipmentKeys);
+		// A key that is not a string is never held: the whole test fails, as it did.
+		if (keys.size() != [equipmentKeys count])  return NO;
 	}
-	
+	else  return NO;
+
+	// All must match: order-insensitive.
+	for (const std::string &key : keys)
+	{
+		if (![self cxx_hasOneEquipmentItem:key includeWeapons:includeWeapons whileLoading:loading])  return NO;
+	}
+
 	return YES;
 }
 
@@ -3278,24 +3272,26 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (BOOL) canAddEquipment:(NSString *)equipmentKey inContext:(NSString *)context
+- (BOOL) canAddEquipment:(id)equipmentKeyObject inContext:(id)context	// shared selector (proposed ADR-0043)
 {
-	if ([equipmentKey hasSuffix:@"_DAMAGED"])
+	std::string equipmentKey = oo::StdString(equipmentKeyObject);
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
 	{
-		equipmentKey = [equipmentKey substringToIndex:[equipmentKey length] - [@"_DAMAGED" length]];
+		equipmentKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
 	}
-	
-	NSString * lcEquipmentKey = [equipmentKey lowercaseString];
-	if ([equipmentKey hasSuffix:@"MISSILE"]||[equipmentKey hasSuffix:@"MINE"]||([self isThargoid] && ([lcEquipmentKey hasPrefix:@"thargon"] || [lcEquipmentKey hasSuffix:@"thargon"])))
+
+	const std::string lcEquipmentKey = oo::str::lowercase(equipmentKey);
+	if (oo::str::hasSuffix(equipmentKey, "MISSILE")||oo::str::hasSuffix(equipmentKey, "MINE")||([self isThargoid] && (oo::str::hasPrefix(lcEquipmentKey, "thargon") || oo::str::hasSuffix(lcEquipmentKey, "thargon"))))
 	{
 		if (missiles >= max_missiles) return NO;
 	}
-	
-	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
-	
-	if (![eqType canCarryMultiple] && [self hasEquipmentItem:equipmentKey])  return NO;
-	if (![self equipmentValidToAdd:equipmentKey inContext:context])  return NO;
-	
+
+	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
+
+	// -hasEquipmentItem: with one string key.
+	if (![eqType canCarryMultiple] && [self cxx_hasOneEquipmentItem:equipmentKey includeWeapons:NO whileLoading:NO])  return NO;
+	if (![self cxx_equipmentValidToAdd:equipmentKey inContext:oo::StdString(context)])  return NO;
+
 	return YES;
 }
 
@@ -3403,66 +3399,68 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (NSArray *) equipmentListForScripting
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting
 {
-	NSArray				*eqTypes = [OOEquipmentType allEquipmentTypes];
-	NSMutableArray		*quip = [NSMutableArray arrayWithCapacity:[eqTypes count]];
+	std::vector<oo::ObjCRef<OOEquipmentType *>>	quip;
 	OOEquipmentType		*eqType = nil;
 	BOOL				isDamaged;
-	
-	foreach (eqType, eqTypes)
+
+	foreach (eqType, [OOEquipmentType allEquipmentTypes])
 	{
+		const std::string identifier = oo::StdString([eqType identifier]);
 		// Equipment list,  consistent with the rest of the API - Kaks
 		if ([eqType canCarryMultiple])
 		{
-			NSString *damagedIdentifier = [[eqType identifier] stringByAppendingString:@"_DAMAGED"];
+			const std::string damagedIdentifier = identifier + "_DAMAGED";
 			NSUInteger i, count = 0;
-			count += [self countEquipmentItem:[eqType identifier]];
-			count += [self countEquipmentItem:damagedIdentifier];
+			count += [self cxx_countEquipmentItem:identifier];
+			count += [self cxx_countEquipmentItem:damagedIdentifier];
 			for (i=0;i<count;i++)
 			{
-				[quip addObject:eqType];	
+				quip.emplace_back(eqType);
 			}
 		}
 		else
 		{
-			isDamaged = [self hasEquipmentItem:[[eqType identifier] stringByAppendingString:@"_DAMAGED"]];
-			if ([self hasEquipmentItem:[eqType identifier]] || isDamaged)
+			// -hasEquipmentItem: with one string key.
+			isDamaged = [self cxx_hasOneEquipmentItem:identifier + "_DAMAGED" includeWeapons:NO whileLoading:NO];
+			if ([self cxx_hasOneEquipmentItem:identifier includeWeapons:NO whileLoading:NO] || isDamaged)
 			{
-				[quip addObject:eqType];
+				quip.emplace_back(eqType);
 			}
 		}
 	}
-	
+
 	// Passengers - not supported yet for NPCs, but it's here for genericity.
 	if ([self passengerCapacity] > 0)
 	{
 		eqType = [OOEquipmentType equipmentTypeWithIdentifier:@"EQ_PASSENGER_BERTH"];
 		//[quip addObject:[self eqDictionaryWithType:eqType isDamaged:NO]];
-		[quip addObject:eqType];
+		quip.emplace_back(eqType);
 	}
-	
-	return [[quip copy] autorelease];
+
+	return quip;
 }
 
 
-- (BOOL) equipmentValidToAdd:(NSString *)equipmentKey inContext:(NSString *)context
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context
 {
-	return [self equipmentValidToAdd:equipmentKey whileLoading:NO inContext:context];
+	return [self cxx_equipmentValidToAdd:equipmentKey whileLoading:NO inContext:context];
 }
 
 
-- (BOOL) equipmentValidToAdd:(NSString *)equipmentKey whileLoading:(BOOL)loading inContext:(NSString *)context
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)fullEquipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context
 {
 	OOEquipmentType			*eqType = nil;
 	BOOL					validationForDamagedEquipment = NO;
-	
-	if ([equipmentKey hasSuffix:@"_DAMAGED"])
+
+	std::string equipmentKey = fullEquipmentKey;
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
 	{
-		equipmentKey = [equipmentKey substringToIndex:[equipmentKey length] - [@"_DAMAGED" length]];
+		equipmentKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
 	}
-	
-	eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
+
+	eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
 	if (eqType == nil)  return NO;
 	
 	// need to know if we are trying to add a Repair version of the equipment. In some cases
@@ -3491,17 +3489,17 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 	if (!loading)
 	{
-		NSString *condition_script = [eqType conditionScript];
-		if (condition_script != nil)
+		const std::optional<std::string> condition_script = oo::OptionalString([eqType conditionScript]);
+		if (condition_script.has_value())
 		{
-			OOJSScript *condScript = [UNIVERSE getConditionScript:condition_script];
+			OOJSScript *condScript = [UNIVERSE getConditionScript:oo::NSStringFrom(*condition_script)];
 			if (condScript != nil) // should always be non-nil, but just in case
 			{
 				ooscript::Context JScontext = OOJSAcquireContext();
 				BOOL OK;
 				bool allow_addition = false;
 				ooscript::Value result;
-				ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, equipmentKey) , OOJSValueFromNativeObject(JScontext, self) , OOJSValueFromNativeObject(JScontext, context)};
+				ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(equipmentKey)) , OOJSValueFromNativeObject(JScontext, self) , OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(context))};
 				
 				OK = [condScript callMethod:OOJSID("allowAwardEquipment")
 											inContext:JScontext
@@ -3529,11 +3527,20 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if (![eqType isAvailableToAll])  
 		{
 			// find options that agree with this ship. Only player ships have these options.
+			// (Membership only: the string elements of the two arrays.)
 			OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-			NSDictionary		*shipyardInfo = [registry shipyardInfoForKey:[self shipDataKey]];
-			NSMutableSet		*options = [NSMutableSet setWithArray:oo::PListView(shipyardInfo).get<NSArray *>(KEY_OPTIONAL_EQUIPMENT)];
-			[options addObjectsFromArray:oo::PListView(oo::PListView(shipyardInfo).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
-			if (![options containsObject:equipmentKey])  return NO;
+			const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+			std::set<std::string>	options;
+			const oo::PList		*standardEquipment = shipyardInfo.find(oo::StdString(KEY_STANDARD_EQUIPMENT));
+			for (const oo::PList *list : { ArrayForKey(shipyardInfo, oo::StdString(KEY_OPTIONAL_EQUIPMENT)),
+										   standardEquipment != nullptr ? ArrayForKey(*standardEquipment, oo::StdString(KEY_EQUIPMENT_EXTRAS)) : nullptr })
+			{
+				for (std::size_t i = 0; list != nullptr && i < list->count(); i++)
+				{
+					if (const std::string *option = list->at(i)->getIf<std::string>())  options.insert(*option);
+				}
+			}
+			if (!options.contains(equipmentKey))  return NO;
 		}
 	}
 	else
@@ -3545,7 +3552,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(id)eqKey	// shared selector (proposed ADR-0043)
 {
 	// sets WEAPON_NONE if not recognised
 	if (weapon_facings & facing) 
@@ -3582,39 +3589,43 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (BOOL) addEquipmentItem:(NSString *)equipmentKey inContext:(NSString *)context
+- (BOOL) addEquipmentItem:(id)equipmentKey inContext:(id)context	// shared selector (proposed ADR-0043)
 {
 	return [self addEquipmentItem:equipmentKey withValidation:YES inContext:context];
 }
 
 
-- (BOOL) addEquipmentItem:(NSString *)equipmentKey withValidation:(BOOL)validateAddition inContext:(NSString *)context
+- (BOOL) addEquipmentItem:(id)equipmentKeyObject withValidation:(BOOL)validateAddition inContext:(id)context	// shared selector (proposed ADR-0043)
 {
 	OOEquipmentType			*eqType = nil;
-	NSString				*lcEquipmentKey = [equipmentKey lowercaseString];
-	NSString				*damagedKey;
-	BOOL					isEqThargon = [lcEquipmentKey hasSuffix:@"thargon"] || [lcEquipmentKey hasPrefix:@"thargon"];
+	std::string				equipmentKey = oo::StdString(equipmentKeyObject);
+	const std::string		lcEquipmentKey = oo::str::lowercase(equipmentKey);
+	BOOL					isEqThargon = oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon");
 	BOOL					isRepairedEquipment = NO;
-	
-	if([lcEquipmentKey isEqualToString:@"thargon"]) equipmentKey = @"EQ_THARGON";
-	
-	// canAddEquipment always checks if the undamaged version is equipped.
-	if (validateAddition == YES && ![self canAddEquipment:equipmentKey inContext:context])  return NO;
-	
-	if ([equipmentKey hasSuffix:@"_DAMAGED"])
+
+	if(lcEquipmentKey == "thargon")
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:[equipmentKey substringToIndex:[equipmentKey length] - [@"_DAMAGED" length]]];
+		equipmentKey = "EQ_THARGON";
+		equipmentKeyObject = oo::NSStringFrom(equipmentKey);
 	}
-	else 
+
+	// canAddEquipment always checks if the undamaged version is equipped.
+	if (validateAddition == YES && ![self canAddEquipment:equipmentKeyObject inContext:context])  return NO;
+
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
+		eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey.substr(0, equipmentKey.size() - std::string_view("_DAMAGED").size()))];
+	}
+	else
+	{
+		eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
 		// in case we have the damaged version!
 		if (![eqType canCarryMultiple])
 		{
-			damagedKey = [equipmentKey stringByAppendingString:@"_DAMAGED"];
-			if ([_equipment containsObject:damagedKey])
+			const std::string damagedKey = equipmentKey + "_DAMAGED";
+			if (std::ranges::find(_equipment, damagedKey) != _equipment.end())
 			{
-				[_equipment removeObject:damagedKey];
+				std::erase(_equipment, damagedKey);	// -removeObject: removed every occurrence
 				isRepairedEquipment = YES;
 			}
 		}
@@ -3637,15 +3648,13 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if(isEqThargon) return NO;
 	
 	// we can theoretically add a damaged weapon, but not a working one.
-	if([equipmentKey hasPrefix:@"EQ_WEAPON"] && ![equipmentKey hasSuffix:@"_DAMAGED"])
+	if(oo::str::hasPrefix(equipmentKey, "EQ_WEAPON") && !oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
 	{
 		return NO;
 	}
 	// end special cases
-	
-	if (_equipment == nil)  _equipment = [[NSMutableArray alloc] init];
-	
-	if (![equipmentKey isEqualToString:@"EQ_PASSENGER_BERTH"] && !isRepairedEquipment) 
+
+	if (equipmentKey != "EQ_PASSENGER_BERTH" && !isRepairedEquipment)
 	{
 		// Add to equipment_weight with all other equipment.
 		equipment_weight += [eqType requiredCargoSpace];
@@ -3660,111 +3669,109 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	
 	if (!isPlayer)
 	{
-		if ([equipmentKey isEqual:@"EQ_CARGO_BAY"])
+		if (equipmentKey == "EQ_CARGO_BAY")
 		{
 			max_cargo += extra_cargo;
 		}
-		else if([equipmentKey isEqualToString:@"EQ_SHIELD_BOOSTER"]) 
+		else if(equipmentKey == "EQ_SHIELD_BOOSTER")
 		{
 			maxEnergy += 256.0f;
 		}
-		if([equipmentKey isEqualToString:@"EQ_SHIELD_ENHANCER"]) 
+		if(equipmentKey == "EQ_SHIELD_ENHANCER")
 		{
 			maxEnergy += 256.0f;
 			energy_recharge_rate *= 1.5;
 		}
-	} 
+	}
 	// add the equipment
-	[_equipment addObject:equipmentKey];
-	[self doScriptEvent:OOJSID("equipmentAdded") withArgument:equipmentKey];
+	_equipment.push_back(equipmentKey);
+	[self doScriptEvent:OOJSID("equipmentAdded") withArgument:equipmentKeyObject];
 	return YES;
 }
 
 
-- (NSEnumerator *) equipmentEnumerator
+- (std::vector<std::string>) cxx_equipmentKeys
 {
-	return [_equipment objectEnumerator];
+	return _equipment;
 }
 
 
 - (NSUInteger) equipmentCount
 {
-	return [_equipment count];
+	return _equipment.size();
 }
 
 
-- (void) removeEquipmentItem:(NSString *)equipmentKey
+- (void) removeEquipmentItem:(id)equipmentKeyObject	// shared selector (proposed ADR-0043)
 {
-	NSString		*equipmentTypeCheckKey = equipmentKey;
-	NSString		*lcEquipmentKey = [equipmentKey lowercaseString];
-	NSUInteger		equipmentIndex = NSNotFound;
+	// nil arrives as "", which no equipment key matches (as before).
+	const std::string	equipmentKey = oo::StdString(equipmentKeyObject);
+	std::string			equipmentTypeCheckKey = equipmentKey;
+	const std::string	lcEquipmentKey = oo::str::lowercase(equipmentKey);
 	// determine the equipment type and make sure it works also in the case of damaged equipment
-	if ([equipmentKey hasSuffix:@"_DAMAGED"])
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
 	{
-		equipmentTypeCheckKey = [equipmentKey substringToIndex:[equipmentKey length] - [@"_DAMAGED" length]];
+		equipmentTypeCheckKey.resize(equipmentKey.size() - std::string_view("_DAMAGED").size());
 	}
-	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentTypeCheckKey];
+	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentTypeCheckKey)];
 	if (eqType == nil)  return;
-	
-	if ([eqType isMissileOrMine] || ([self isThargoid] && ([lcEquipmentKey hasSuffix:@"thargon"] || [lcEquipmentKey hasPrefix:@"thargon"])))
+
+	if ([eqType isMissileOrMine] || ([self isThargoid] && (oo::str::hasSuffix(lcEquipmentKey, "thargon") || oo::str::hasPrefix(lcEquipmentKey, "thargon"))))
 	{
 		[self removeExternalStore:eqType];
 	}
 	else
 	{
-		if ([_equipment containsObject:equipmentKey])
+		if (std::ranges::find(_equipment, equipmentKey) != _equipment.end())
 		{
-			if (![equipmentKey isEqualToString:@"EQ_PASSENGER_BERTH"])
+			if (equipmentKey != "EQ_PASSENGER_BERTH")
 			{
 				equipment_weight -= [eqType requiredCargoSpace]; // all other cases;
 			}
 						
-			if ([equipmentKey isEqualToString:@"EQ_CLOAKING_DEVICE"])
+			if (equipmentKey == "EQ_CLOAKING_DEVICE")
 			{
 				if ([self isCloaked])  [self setCloaked:NO];
 			}
 
 			if (!isPlayer)
 			{
-				if([equipmentKey isEqualToString:@"EQ_SHIELD_BOOSTER"])
+				if(equipmentKey == "EQ_SHIELD_BOOSTER")
 				{
 					maxEnergy -= 256.0f;
 					if (maxEnergy < energy) energy = maxEnergy;
 				}
-				else if([equipmentKey isEqualToString:@"EQ_SHIELD_ENHANCER"]) 
+				else if(equipmentKey == "EQ_SHIELD_ENHANCER")
 				{
 					maxEnergy -= 256.0f;
 					energy_recharge_rate /= 1.5;
 					if (maxEnergy < energy) energy = maxEnergy;
 				}
-				else if ([equipmentKey isEqual:@"EQ_CARGO_BAY"])
+				else if (equipmentKey == "EQ_CARGO_BAY")
 				{
 					max_cargo -= extra_cargo;
 				}
 			}
 		}
-		
-		if (![equipmentKey hasSuffix:@"_DAMAGED"] && ![eqType canCarryMultiple])
+
+		if (!oo::str::hasSuffix(equipmentKey, "_DAMAGED") && ![eqType canCarryMultiple])
 		{
-			NSString *damagedKey = [equipmentKey stringByAppendingString:@"_DAMAGED"];
-			if ([_equipment containsObject:damagedKey])
+			const std::string damagedKey = equipmentKey + "_DAMAGED";
+			const auto damaged = std::ranges::find(_equipment, damagedKey);
+			if (damaged != _equipment.end())
 			{
-				equipmentIndex = [_equipment indexOfObject:damagedKey];
-				if (equipmentIndex != NSNotFound)
-				{
-					// remove damaged counterpart
-					[_equipment removeObjectAtIndex:equipmentIndex];
-				}
+				// remove damaged counterpart (the first occurrence, as -indexOfObject: found it)
+				_equipment.erase(damaged);
 				equipment_weight -= [eqType requiredCargoSpace];
 			}
 		}
-		equipmentIndex = [_equipment indexOfObject:equipmentKey];
-		if (equipmentIndex != NSNotFound)
+		const auto equipped = std::ranges::find(_equipment, equipmentKey);
+		if (equipped != _equipment.end())
 		{
-			[_equipment removeObjectAtIndex:equipmentIndex];
+			_equipment.erase(equipped);
 		}
 		// this event must come after the item is actually removed
-		[self doScriptEvent:OOJSID("equipmentRemoved") withArgument:equipmentKey];
+		[self doScriptEvent:OOJSID("equipmentRemoved") withArgument:equipmentKeyObject];
 		
 		// if all docking computers are damaged while active
 		if ([self isPlayer] && [self status] == STATUS_AUTOPILOT_ENGAGED && ![self hasDockingComputer])
@@ -3773,19 +3780,20 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 
 
-		if ([_equipment count] == 0)  [self removeAllEquipment];
+		if (_equipment.empty())  [self removeAllEquipment];
 	}
 }
 
 
 - (BOOL) removeExternalStore:(OOEquipmentType *)eqType
 {
-	NSString	*identifier = [eqType identifier];
+	// nil (a nil type) matches nothing, as -isEqualTo:nil did.
+	const std::optional<std::string>	identifier = oo::OptionalString([eqType identifier]);
 	unsigned	i;
-	
+
 	for (i = 0; i < missiles; i++)
 	{
-		if ([[missile_list[i] identifier] isEqualTo:identifier])
+		if (identifier.has_value() && oo::OptionalString([missile_list[i] identifier]) == identifier)
 		{
 			// now 'delete' [i] by compacting the array
 			while ( ++i < missiles ) missile_list[i - 1] = missile_list[i];
@@ -3947,8 +3955,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 - (void) removeAllEquipment
 {
-	[_equipment release];
-	_equipment = nil;
+	_equipment.clear();
 }
 
 
@@ -3998,26 +4005,26 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 /* This is used for e.g. displaying the HUD icon */
 - (BOOL) hasScoop
 {
-	return [self hasEquipmentItemProviding:@"EQ_FUEL_SCOOPS"] || [self hasEquipmentItemProviding:@"EQ_CARGO_SCOOPS"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"] || [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
 }
 
 
 - (BOOL) hasFuelScoop
 {
-	return [self hasEquipmentItemProviding:@"EQ_FUEL_SCOOPS"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_SCOOPS"];
 }
 
 
 /* No such core equipment item, but EQ_FUEL_SCOOPS provides it */
 - (BOOL) hasCargoScoop
 {
-	return [self hasEquipmentItemProviding:@"EQ_CARGO_SCOOPS"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_CARGO_SCOOPS"];
 }
 
 
 - (BOOL) hasECM
 {
-	return [self hasEquipmentItemProviding:@"EQ_ECM"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_ECM"];
 }
 
 
@@ -4031,7 +4038,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (BOOL) hasMilitaryScannerFilter
 {
 #if USEMASC
-	return [self hasEquipmentItemProviding:@"EQ_MILITARY_SCANNER_FILTER"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_SCANNER_FILTER"];
 #else
 	return NO;
 #endif
@@ -4041,7 +4048,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (BOOL) hasMilitaryJammer
 {
 #if USEMASC
-	return [self hasEquipmentItemProviding:@"EQ_MILITARY_JAMMER"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_MILITARY_JAMMER"];
 #else
 	return NO;
 #endif
@@ -4071,13 +4078,13 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 - (BOOL) hasHeatShield
 {
-	return [self hasEquipmentItemProviding:@"EQ_HEAT_SHIELD"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_HEAT_SHIELD"];
 }
 
 
 - (BOOL) hasFuelInjection
 {
-	return [self hasEquipmentItemProviding:@"EQ_FUEL_INJECTION"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_FUEL_INJECTION"];
 }
 
 
@@ -4092,19 +4099,19 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 - (BOOL) hasEscapePod
 {
-	return [self hasEquipmentItemProviding:@"EQ_ESCAPE_POD"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"];
 }
 
 
 - (BOOL) hasDockingComputer
 {
-	return [self hasEquipmentItemProviding:@"EQ_DOCK_COMP"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_DOCK_COMP"];
 }
 
 
 - (BOOL) hasGalacticHyperdrive
 {
-	return [self hasEquipmentItemProviding:@"EQ_GAL_DRIVE"];
+	return [self cxx_hasEquipmentItemProviding:"EQ_GAL_DRIVE"];
 }
 
 
@@ -13371,9 +13378,9 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 		{
 			OK = YES;
 			// if multiple items providing escape pod, remove all of them (NPC process)
-			while ([self hasEquipmentItemProviding:@"EQ_ESCAPE_POD"])
+			while ([self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"])
 			{
-				[self removeEquipmentItem:[self equipmentItemProviding:@"EQ_ESCAPE_POD"]];
+				[self removeEquipmentItem:oo::NSStringOrNil([self cxx_equipmentItemProviding:"EQ_ESCAPE_POD"])];
 			}
 			[self setAITo:@"nullAI.plist"];
 			behaviour = BEHAVIOUR_IDLE;
@@ -13407,9 +13414,9 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	{
 		// may still have launched passenger pods even if no crew
 		// if multiple items providing escape pod, remove all of them (NPC process)
-		while ([self hasEquipmentItemProviding:@"EQ_ESCAPE_POD"])
+		while ([self cxx_hasEquipmentItemProviding:"EQ_ESCAPE_POD"])
 		{
-			[self removeEquipmentItem:[self equipmentItemProviding:@"EQ_ESCAPE_POD"]];
+			[self removeEquipmentItem:oo::NSStringOrNil([self cxx_equipmentItemProviding:"EQ_ESCAPE_POD"])];
 		}
 
 	}
