@@ -71,9 +71,9 @@ static unsigned RepForRisk(unsigned risk);
 	
 	// step through the cargo removing crew from any escape pods
 	// No enumerator because we're mutating the array -- Ahruman
-	for (i = 0; i < [cargo count]; i++)
+	for (i = 0; i < cargo.size(); i++)
 	{
-		ShipEntity	*cargoItem = [cargo objectAtIndex:i];
+		ShipEntity	*cargoItem = cargo[i].get();
 		NSArray		*podCrew = [cargoItem crew];
 		
 		if (podCrew != nil)
@@ -81,7 +81,7 @@ static unsigned RepForRisk(unsigned risk);
 			// Has crew -> is escape pod.
 			[rescuees addObjectsFromArray:podCrew];
 			[cargoItem setCrew:nil];
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 			i--;
 		}
 	}

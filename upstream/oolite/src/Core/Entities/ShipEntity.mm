@@ -188,6 +188,19 @@ std::string RepeatString(std::string_view str, NSUInteger times)
 	return result;
 }
 
+
+/*	OOExpandKey(key, <argument>): the expansion of a description key with the one-entry argument
+	dictionary OOExpandKey's macro builds from the variable's name (OOShipLibraryDescriptions.mm's
+	pattern). A nil argument (which the macro could not have put in a dictionary) is left out.
+*/
+std::optional<std::string> ExpandKeyWithArgument(const char *key, const char *argumentName, const std::optional<std::string> &argument)
+{
+	oo::PList::Dict arguments;
+	if (argument.has_value())  arguments[argumentName] = *argument;
+	return oo::OptionalString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
+		oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey));
+}
+
 }	// namespace
 
 
@@ -710,15 +723,13 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	cargoString = oo::PListView(shipDict).get<NSString *>(@"cargo_type");
 	if (cargoString)
 	{
-		if (cargo != nil) [cargo autorelease];
-		cargo = [[NSMutableArray alloc] initWithCapacity:max_cargo]; // alloc retains;
-		
+		cargo.clear();
+
 		[self setUpCargoType:cargoString];
 	}
 	else if (scanClass != CLASS_CARGO)
 	{
-		if (cargo != nil) [cargo autorelease];
-		cargo = [[NSMutableArray alloc] initWithCapacity:max_cargo]; // alloc retains;
+		cargo.clear();
 		// if not CLASS_CARGO, and no cargo type set, default to CARGO_NOT_CARGO
 		cargo_type = CARGO_NOT_CARGO;
 	}
@@ -1139,7 +1150,6 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	DESTROY(_shipKey);
 	DESTROY(shipinfoDictionary);
 	DESTROY(shipAI);
-	DESTROY(cargo);
 	DESTROY(name);
 	DESTROY(shipUniqueName);
 	DESTROY(shipClassName);
@@ -8457,16 +8467,17 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 
 /* Note: this array probably contains some template cargo pods. Do not
- * pass it to Javascript without reifying them first. */
-- (NSMutableArray*) cargo
+ * pass it to Javascript without reifying them first. The live container: callers edit it in place
+ * (ADR-0043 Amendment 3 item 22); nullptr for a nil receiver. */
+- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo
 {
-	return cargo;
+	return &cargo;
 }
 
 
 - (NSUInteger) cxx_cargoCount
 {
-	return [cargo count];
+	return cargo.size();
 }
 
 
@@ -8478,9 +8489,9 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	NSUInteger			i, commodityCount = goods.size();
 	std::vector<OOCargoQuantity> quantityInHold(commodityCount, 0);
 
-	for (i = 0; i < [cargo count]; i++)
+	for (i = 0; i < cargo.size(); i++)
 	{
-		ShipEntity *container = [cargo objectAtIndex:i];
+		ShipEntity *container = cargo[i].get();
 		const std::optional<std::string> good = [container cxx_commodityType];
 		const auto j = good.has_value() ? std::ranges::find(goods, *good) : goods.end();
 		// A pod whose commodity is not a good (or has none) indexed past the array before; it is skipped.
@@ -8508,20 +8519,19 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 - (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
 {
-	[cargo removeAllObjects];
-	for (const auto &pod : some_cargo)  [cargo addObject:pod.get()];
+	cargo = some_cargo;
 }
 
 
 - (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
 {
-	if ([cargo count] + some_cargo.size() > [self maxAvailableCargoSpace])
+	if (cargo.size() + some_cargo.size() > [self maxAvailableCargoSpace])
 	{
 		return NO;
 	}
 	else
 	{
-		for (const auto &pod : some_cargo)  [cargo addObject:pod.get()];
+		cargo.insert(cargo.end(), some_cargo.begin(), some_cargo.end());
 		return YES;
 	}
 }
@@ -8530,10 +8540,9 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 - (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount
 {
 	OOCargoQuantity found = 0;
-	ShipEntity *pod = nil;
-	foreach (pod, cargo)
+	for (const auto &pod : cargo)
 	{
-		if ([pod cxx_commodityType] == commodity)
+		if ([pod.get() cxx_commodityType] == commodity)
 		{
 			found++;
 		}
@@ -8544,14 +8553,14 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		return NO;
 	}
 	
-	NSUInteger i = [cargo count] - 1;
+	NSUInteger i = cargo.size() - 1;
 	// iterate downwards to be safe removing during iteration
 	while (amount > 0)
 	{
-		if ([[cargo objectAtIndex:i] cxx_commodityType] == commodity)
+		if ([cargo[i].get() cxx_commodityType] == commodity)
 		{
 			amount--;
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 		}
 		// check above means array index can't underflow here
 		i--;
@@ -9154,13 +9163,13 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	Quaternion q;
 	int speed_low = 200;
 
-	NSArray *jetsam = nil;  // this will contain the stuff to get thrown out
+	std::vector<oo::ObjCRef<ShipEntity *>> jetsam;  // this will contain the stuff to get thrown out
 	unsigned cargo_chance = 70;
-	jetsam = [NSArray arrayWithArray:cargo];   // what the ship is carrying
-	[cargo removeAllObjects];   // dispense with it!
+	jetsam = cargo;   // what the ship is carrying
+	cargo.clear();   // dispense with it!
 	unsigned limit = 15;
 	//  Throw out cargo
-	NSUInteger n_jetsam = [jetsam count];
+	NSUInteger n_jetsam = jetsam.size();
 					
 	for (i = 0; i < n_jetsam; i++)
 	{
@@ -9179,7 +9188,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				}
 			}
 			limit--;
-			ShipEntity* cargoObj = [jetsam objectAtIndex:i];
+			ShipEntity* cargoObj = jetsam[i].get();
 			ShipEntity* container = [UNIVERSE reifyCargoPod:cargoObj];
 			/* TODO: this debris position/velocity setting code is
 			 * duplicated - sometimes not very cleanly - all over the
@@ -12566,20 +12575,20 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	ShipEntity				*jetto = nil;
 	NSUInteger				 i = 0;
 	
-	if (([cargo count] > 0)&&([UNIVERSE getTime] - cargo_dump_time > 0.5))  // space them 0.5s or 10m apart
+	if ((cargo.size() > 0)&&([UNIVERSE getTime] - cargo_dump_time > 0.5))  // space them 0.5s or 10m apart
 	{
 		if (!preferred.has_value())
 		{
-			jetto = [[[cargo objectAtIndex:0] retain] autorelease];
+			jetto = [[cargo[0].get() retain] autorelease];
 		}
 		else
 		{
 			BOOL found = NO;
-			for (i=0;i<[cargo count];i++)
+			for (i=0;i<cargo.size();i++)
 			{
-				if ([[cargo objectAtIndex:i] cxx_commodityType] == preferred)
+				if ([cargo[i].get() cxx_commodityType] == preferred)
 				{
-					jetto = [[[cargo objectAtIndex:i] retain] autorelease];
+					jetto = [[cargo[i].get() retain] autorelease];
 					found = YES;
 					break;
 				}
@@ -12587,14 +12596,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			if (found == NO)
 			{
 				// dump anything
-				jetto = [[[cargo objectAtIndex:0] retain] autorelease];
+				jetto = [[cargo[0].get() retain] autorelease];
 				i = 0;
 			}
 		}
 		if (jetto != nil)
 		{
 			[self dumpItem:jetto];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 			[self broadcastAIMessage:@"CARGO_DUMPED"]; // goes only to 16 nearby ships in range, but that should be enough.
 			unsigned i;
 			// only send script event to powered entities
@@ -12925,7 +12934,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 {
 	if (other == nil)							return NO;
 	if (![self hasCargoScoop])						return NO;
-	if ([cargo count] >= [self maxAvailableCargoSpace])	return NO;
+	if (cargo.size() >= [self maxAvailableCargoSpace])	return NO;
 	if (scanClass == CLASS_CARGO)				return NO;  // we have no power so we can't scoop
 	if ([other scanClass] != CLASS_CARGO)		return NO;
 	if ([other cargoType] == CARGO_NOT_CARGO)	return NO;
@@ -12993,7 +13002,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	OOCargoQuantity	co_amount;
 	
 	// don't even think of trying to scoop if the cargo hold is already full
-	if (max_cargo && [cargo count] >= [self maxAvailableCargoSpace])
+	if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])
 	{
 		[other setStatus:STATUS_IN_FLIGHT];
 		return;
@@ -13027,8 +13036,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 					if (isPlayer && [other showScoopMessage] && procMessages)
 					{
 						[UNIVERSE clearPreviousMessage];
-						NSString *shipName = [other displayName];
-						[UNIVERSE addMessage:OOExpandKey(@"scripted-item-scooped", shipName) forCount:4];
+						const std::optional<std::string> shipName = oo::OptionalString([other displayName]);
+						[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scripted-item-scooped", "shipName", shipName)) forCount:4];
 					}
 					[other cxx_setCommodityForPod:std::nullopt andAmount:0];
 					co_amount = 0;
@@ -13073,14 +13082,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 					for (i = 0; i < [[other crew] count]; i++)
 					{
 						OOCharacter *rescuee = [[other crew] objectAtIndex:i];
-						NSString *characterName = [rescuee name];
+						const std::optional<std::string> characterName = oo::OptionalString([rescuee name]);
 						if ([rescuee legalStatus])
 						{
-							[UNIVERSE addMessage:OOExpandKey(@"scoop-captured-character", characterName) forCount: 4.5];
+							[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scoop-captured-character", "characterName", characterName)) forCount: 4.5];
 						}
 						else if ([rescuee insuranceCredits])
 						{
-							[UNIVERSE addMessage:OOExpandKey(@"scoop-rescued-character", characterName) forCount: 4.5];
+							[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scoop-rescued-character", "characterName", characterName)) forCount: 4.5];
 						}
 						else
 						{
@@ -13102,11 +13111,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				}
 			}
 		}
-		[cargo insertObject:other atIndex:0];	// places most recently scooped object at eject position
+		cargo.insert(cargo.begin(), oo::ObjCRef<ShipEntity *>(other));	// places most recently scooped object at eject position
 		[other setStatus:STATUS_IN_HOLD];
 		[other performTumble];
 		[shipAI message:@"CARGO_SCOOPED"];
-		if (max_cargo && [cargo count] >= [self maxAvailableCargoSpace])  [shipAI message:@"HOLD_FULL"];
+		if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])  [shipAI message:@"HOLD_FULL"];
 	}
 	if (procEvents)
 	{
@@ -13117,9 +13126,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	// then remove it from the hold, or it will be over-retained
 	if ([other status] != STATUS_IN_HOLD) 
 	{
-		if ([cargo containsObject:other])
+		if ((std::find(cargo.begin(), cargo.end(), other) != cargo.end()))
 		{
-			[cargo removeObject:other];
+			std::erase(cargo, other);
 		}
 	}
 
