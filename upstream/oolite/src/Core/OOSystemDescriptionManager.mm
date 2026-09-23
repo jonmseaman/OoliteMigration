@@ -50,7 +50,7 @@ constexpr std::string_view kOOScriptedChangeJoiner = "~|~";
 - (void) setProperties:(const oo::PList &)properties inDescription:(OOSystemDescriptionEntry *)desc;
 - (oo::PList) calculatePropertiesForSystemKey:(const std::string &)key;
 - (void) updateCacheEntry:(NSUInteger)i;
-- (void) updateCacheEntry:(NSUInteger)i forProperty:(NSString *)property;
+- (void) updateCacheEntry:(NSUInteger)i forProperty:(const std::string &)property;
 - (oo::PList) getProperty:(const std::string &)property forSystemKey:(const std::string &)key withUniversal:(BOOL)universal;
 /* some planetinfo properties have two ways to specify
  * need to get the one with higher layer (if they're both at the same layer,
@@ -94,6 +94,16 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 	return value != nullptr ? *value : oo::PList();
 }
 
+
+// get<std::string> as the string extractor answered it: nullopt where that was nil (no such key,
+// or neither a string nor a number).
+std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
+{
+	const oo::PList *value = dict.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dict.get<std::string>(key);
+}
+
 }
 
 @implementation OOSystemDescriptionManager
@@ -107,10 +117,10 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 		interstellarSpace = [[OOSystemDescriptionEntry alloc] init];
 		for (NSUInteger i=0;i<OO_SYSTEM_CACHE_LENGTH;i++)
 		{
-			propertyCache[i] = [[NSMutableDictionary alloc] initWithCapacity:OO_LIKELY_PROPERTIES_PER_SYSTEM];
+			propertyCache[i] = oo::PList(oo::PList::Dict());
 			// hub count of 24 is considerably higher than occurs in
 			// standard planetinfo
-			neighbourCache[i] = [[NSMutableArray alloc] initWithCapacity:24];
+			neighbourCache[i].reserve(24);
 		}
 		scriptedChanges = oo::PList(oo::PList::Dict());
 	}
@@ -120,11 +130,6 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 - (void) dealloc
 {
 	DESTROY(interstellarSpace);
-	for (NSUInteger i=0;i<OO_SYSTEM_CACHE_LENGTH;i++)
-	{
-		DESTROY(propertyCache[i]);
-		DESTROY(neighbourCache[i]);
-	}
 	[super dealloc];
 }
 
@@ -135,7 +140,8 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 	// firstly, cache all coordinates
 	for (i=0;i<OO_SYSTEM_CACHE_LENGTH;i++)
 	{
-		coordinatesCache[i] = PointFromString(oo::PListView(propertyCache[i]).get<NSString *>(@"coordinates"));
+		// PointFromString (OOStringParsing) is an unmigrated callee: convert at the call.
+		coordinatesCache[i] = PointFromString(oo::NSStringOrNil(StringForKey(propertyCache[i], "coordinates")));
 	}
 	// now for each system find its neighbours
 	for (i=0;i<OO_GALAXIES_AVAILABLE;i++)
@@ -150,8 +156,8 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 				if (distanceBetweenPlanetPositions(coordinatesCache[jIndex].x,coordinatesCache[jIndex].y,coordinatesCache[kIndex].x,coordinatesCache[kIndex].y) <= MAX_JUMP_RANGE)
 				{
 					// arrays are of system number only
-					[neighbourCache[jIndex] addObject:[NSNumber numberWithUnsignedInteger:k]];
-					[neighbourCache[kIndex] addObject:[NSNumber numberWithUnsignedInteger:j]];
+					neighbourCache[jIndex].push_back(static_cast<OOSystemID>(k));
+					neighbourCache[kIndex].push_back(static_cast<OOSystemID>(j));
 				}
 			}
 		}
@@ -241,8 +247,7 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 		}
 		else
 		{
-			// -updateCacheEntry:forProperty: (chunk 3) takes an object: convert at the call.
-			[self updateCacheEntry:index forProperty:oo::NSStringFrom(property)];
+			[self updateCacheEntry:index forProperty:property];
 		}
 	}
 	// for interstellar updates, save but don't update cache
@@ -340,9 +345,9 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 			}
 			/* Fix for older savegames not having a larger sun radius
 			 * property set from the Nova mission. */
-			// -getProperty:forSystemKey: (chunk 3) answers an object: -floatValue as before.
-			id sr = [self getProperty:@"sun_radius" forSystemKey:oo::NSStringFrom(systemKey)];
-			float sr_num = [sr floatValue];
+			// -floatValue of the value (0 for nil)
+			const oo::PList sr = [self cxx_getProperty:"sun_radius" forSystemKey:systemKey];
+			float sr_num = oo::plist_get::realFrom<float>(&sr, 0.0f);
 			if (sr_num < 600000) {
 				// fix sun radius values (a float: written to disk as a single real)
 				[self cxx_setProperty:"sun_radius"
@@ -363,7 +368,7 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 }
 
 
-- (NSDictionary *) getPropertiesForCurrentSystem
+- (oo::PList) cxx_getPropertiesForCurrentSystem
 {
 	OOSystemID s = [UNIVERSE currentSystemID];
 	if (s >= 0)
@@ -372,7 +377,7 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 		if (index >= OO_SYSTEM_CACHE_LENGTH)
 		{
 			OOLog(@"system.description.error",@"'%zu' is an invalid system index for the current system. This is an internal error. Please report it.",index);
-			return [NSDictionary dictionary];
+			return oo::PList(oo::PList::Dict());
 		}
 		return propertyCache[index];
 	}
@@ -380,63 +385,62 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 	{
 		OOLog(@"system.description.error", @"%@", @"getPropertiesForCurrentSystem called while player in interstellar space. This is an internal error. Please report it.");
 		// this shouldn't be called for interstellar space
-		return [NSDictionary dictionary];
+		return oo::PList(oo::PList::Dict());
 	}
 }
 
 
-- (NSDictionary *) getPropertiesForSystemKey:(NSString *)key
+- (oo::PList) cxx_getPropertiesForSystemKey:(const std::string &)key
 {
-	NSArray  *tokens = ScanTokensFromString(key);
-	if ([tokens count] == 2 && oo::PListView(tokens).at<NSUInteger>(0) < OO_GALAXIES_AVAILABLE && oo::PListView(tokens).at<NSUInteger>(1) < OO_SYSTEMS_PER_GALAXY)
+	const oo::PList tokens = KeyTokens(key);
+	if (tokens.count() == 2 && tokens.at<NSUInteger>(0) < OO_GALAXIES_AVAILABLE && tokens.at<NSUInteger>(1) < OO_SYSTEMS_PER_GALAXY)
 	{
-		OOGalaxyID g = oo::PListView(tokens).at<NSUInteger>(0);
-		OOSystemID s = oo::PListView(tokens).at<NSUInteger>(1);
+		OOGalaxyID g = tokens.at<NSUInteger>(0);
+		OOSystemID s = tokens.at<NSUInteger>(1);
 		NSUInteger index = (g * OO_SYSTEMS_PER_GALAXY) + s;
 		if (index >= OO_SYSTEM_CACHE_LENGTH)
 		{
-			OOLog(@"system.description.error",@"'%@' is an invalid system key. This is an internal error. Please report it.",key);
-			return [NSDictionary dictionary];
+			OOLog(@"system.description.error",@"'%@' is an invalid system key. This is an internal error. Please report it.",oo::NSStringFrom(key));
+			return oo::PList(oo::PList::Dict());
 		}
 		return propertyCache[index];
 	}
-	// interstellar spaces aren't cached (the calculation takes C++ values: convert at the call)
-	return oo::ObjectFromPList([self calculatePropertiesForSystemKey:oo::StdString(key)]);
+	// interstellar spaces aren't cached
+	return [self calculatePropertiesForSystemKey:key];
 }
 
 
-- (NSDictionary *) getPropertiesForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g
+- (oo::PList) cxx_getPropertiesForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g
 {
 	NSUInteger index = (g * OO_SYSTEMS_PER_GALAXY) + s;
 	if (index >= OO_SYSTEM_CACHE_LENGTH)
 	{
 		OOLog(@"system.description.error",@"'%u, %u' is an invalid system. This is an internal error. Please report it.",g,s);
-		return [NSDictionary dictionary];
+		return oo::PList(oo::PList::Dict());
 	}
 	return propertyCache[index];
 }
 
 
-- (id) getProperty:(NSString *)property forSystemKey:(NSString *)key
+- (oo::PList) cxx_getProperty:(const std::string &)property forSystemKey:(const std::string &)key
 {
-	// The lookup takes C++ values (chunk 2); this getter (chunk 3) still answers an object.
-	return oo::ObjectFromPList([self getProperty:oo::StdString(property) forSystemKey:oo::StdString(key) withUniversal:YES]);
+	return [self getProperty:property forSystemKey:key withUniversal:YES];
 }
 
-- (id) getProperty:(NSString *)property forSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g
+- (oo::PList) cxx_getProperty:(const std::string &)property forSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g
 {
 	if (s < 0)
 	{
 		OOLog(@"system.description.error",@"'%d %d' is an invalid system key. This is an internal error. Please report it.",g,s);
-		return nil;
+		return oo::PList();
 	}
 	NSUInteger index = (g * OO_SYSTEMS_PER_GALAXY) + s;
 	if (index >= OO_SYSTEM_CACHE_LENGTH)
 	{
 		OOLog(@"system.description.error",@"'%d %d' is an invalid system key. This is an internal error. Please report it.",g,s);
-		return nil;
+		return oo::PList();
 	}
-	return [propertyCache[index] objectForKey:property];
+	return ValueForKey(propertyCache[index], property);
 }
 
 
@@ -583,27 +587,24 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 - (void) updateCacheEntry:(NSUInteger)i
 {
 	NSAssert(i < OO_SYSTEM_CACHE_LENGTH,@"Invalid cache entry number");
-	NSString *key = [NSString stringWithFormat:@"%zu %zu",i/OO_SYSTEMS_PER_GALAXY,i%OO_SYSTEMS_PER_GALAXY];
-	// propertyCache (chunk 3) still holds Foundation objects: convert at the call.
-	NSDictionary *current = oo::ObjectFromPList([self calculatePropertiesForSystemKey:oo::StdString(key)]);
-
-	[propertyCache[i] removeAllObjects];
-	[propertyCache[i] addEntriesFromDictionary:current];
+	const std::string key = oo::str::format("%zu %zu",i/OO_SYSTEMS_PER_GALAXY,i%OO_SYSTEMS_PER_GALAXY);
+	propertyCache[i] = [self calculatePropertiesForSystemKey:key];
 }
 
 
-- (void) updateCacheEntry:(NSUInteger)i forProperty:(NSString *)property
+- (void) updateCacheEntry:(NSUInteger)i forProperty:(const std::string &)property
 {
 	NSAssert(i < OO_SYSTEM_CACHE_LENGTH,@"Invalid cache entry number");
-	NSString *key = [NSString stringWithFormat:@"%zu %zu",i/OO_SYSTEMS_PER_GALAXY,i%OO_SYSTEMS_PER_GALAXY];
-	id current = [self getProperty:property forSystemKey:key];
-	if (current == nil)
+	const std::string key = oo::str::format("%zu %zu",i/OO_SYSTEMS_PER_GALAXY,i%OO_SYSTEMS_PER_GALAXY);
+	oo::PList current = [self cxx_getProperty:property forSystemKey:key];
+	oo::PList::Dict &cache = *propertyCache[i].getIf<oo::PList::Dict>();
+	if (current.isNull())
 	{
-		[propertyCache[i] removeObjectForKey:property];
+		cache.erase(property);
 	}
 	else
 	{
-		[propertyCache[i] setObject:current forKey:property];
+		cache[property] = std::move(current);
 	}
 }
 
@@ -625,18 +626,18 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 }
 
 
-- (NSArray *) getNeighbourIDsForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g
+- (std::vector<OOSystemID>) cxx_getNeighbourIDsForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g
 {
 	if (s < 0)
 	{
 		OOLog(@"system.description.error",@"'%d %d' is an invalid system key. This is an internal error. Please report it.",g,s);
-		return nil;
+		return {};
 	}
 	NSUInteger index = (g * OO_SYSTEMS_PER_GALAXY) + s;
 	if (index >= OO_SYSTEM_CACHE_LENGTH)
 	{
 		OOLog(@"system.description.error",@"'%d %d' is an invalid system key. This is an internal error. Please report it.",g,s);
-		return nil;
+		return {};
 	}
 
 	return neighbourCache[index];
@@ -658,7 +659,8 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 			OOLog(@"system.description.error",@"'%zu' is an invalid system index for the current system. This is an internal error. Please report it.",index);
 			return kNilRandomSeed;
 		}
-		return RandomSeedFromString(oo::PListView(propertyCache[index]).get<NSString *>(@"random_seed"));
+		// RandomSeedFromString (OOStringParsing) is an unmigrated callee: convert at the call.
+		return RandomSeedFromString(oo::NSStringOrNil(StringForKey(propertyCache[index], "random_seed")));
 	}
 }
 
@@ -676,7 +678,7 @@ oo::PList ValueForKey(const oo::PList &dict, const std::string &key)
 		OOLog(@"system.description.error",@"'%d %d' is an invalid system key. This is an internal error. Please report it.",g,s);
 		return kNilRandomSeed;
 	}
-	return RandomSeedFromString(oo::PListView(propertyCache[index]).get<NSString *>(@"random_seed"));
+	return RandomSeedFromString(oo::NSStringOrNil(StringForKey(propertyCache[index], "random_seed")));
 }
 
 
