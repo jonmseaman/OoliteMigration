@@ -205,7 +205,7 @@ static BOOL IsLegacyNormalMode(OOMeshNormalMode mode)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInvalidArgumentException format:@"Unexpected normal mode in %s", __PRETTY_FUNCTION__];
+	[OOException raise:OOInvalidArgumentException format:"Unexpected normal mode in %s", __PRETTY_FUNCTION__];
 #endif
 	return NO;	
 }
@@ -226,7 +226,7 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInvalidArgumentException format:@"Unexpected normal mode in %s", __PRETTY_FUNCTION__];
+	[OOException raise:OOInvalidArgumentException format:"Unexpected normal mode in %s", __PRETTY_FUNCTION__];
 #endif
 	return NO;
 }

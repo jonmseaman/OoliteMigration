@@ -35,6 +35,7 @@ SOFTWARE.
 #import "OOCollectionExtractors.h"
 #import "OORegExpMatcher.h"
 #import "OOConstToString.h"
+#include "oofnd/objc/OOException.h"
 
 
 /*	OpenGL version required, currently 1.1 or later (basic stuff like
@@ -257,8 +258,8 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 	if (![self versionIsAtLeastMajor:kMinMajorVersion minor:kMinMinorVersion])
 	{
 		OOLog(@"rendering.opengl.version.insufficient", @"***** Oolite requires OpenGL version %u.%u or later.", kMinMajorVersion, kMinMinorVersion);
-		[NSException raise:@"OoliteOpenGLTooOldException"
-					format:@"Oolite requires at least OpenGL %u.%u. You have %u.%u (\"%s\").", kMinMajorVersion, kMinMinorVersion, major, minor, versionString];
+		[OOException raise:"OoliteOpenGLTooOldException"
+					format:"Oolite requires at least OpenGL %u.%u. You have %u.%u (\"%s\").", kMinMajorVersion, kMinMinorVersion, major, minor, versionString];
 	}
 	
 	NSString *versionStr = [[[NSString alloc] initWithUTF8String:(const char *)versionString] autorelease];

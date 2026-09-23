@@ -28,6 +28,8 @@ SOFTWARE.
 #import "OOGraphicsResetManager.h"
 #import "OOTexture.h"
 #import "OOOpenGLExtensionManager.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 
 static OOGraphicsResetManager *sSingleton = nil;
@@ -86,7 +88,11 @@ static OOGraphicsResetManager *sSingleton = nil;
 		{
 			[client resetGraphicsState];
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(kOOLogException, @"***** EXCEPTION -- %@ : %@ -- ignored during graphics reset.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(kOOLogException, @"***** EXCEPTION -- %@ : %@ -- ignored during graphics reset.", [exception name], [exception reason]);
 		}
