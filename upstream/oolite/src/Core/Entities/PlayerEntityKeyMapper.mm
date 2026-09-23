@@ -41,15 +41,16 @@ static long current_row;
 static long kbd_row = GUI_ROW_KC_FUNCSTART;
 static BOOL has_error = NO;
 static BOOL last_shift = NO;
-static NSDictionary *selected_entry = nil;
-static NSMutableArray *key_list = nil;
-static NSDictionary *kdic_check = nil;
-static NSArray *nav_keys = nil;
-static NSArray *camera_keys = nil;
 
 
 namespace
 {
+
+oo::PList selected_entry;					// a copy of the chosen function entry; null: none (was nil)
+oo::PList key_list;							// an Array of key-definition Dicts being edited
+oo::PList kdic_check;						// keyconfig2.plist's definitions; null until -initCheckingDictionary
+std::vector<std::string> nav_keys;			// functions that can't be used with mod keys
+std::vector<std::string> camera_keys;		// functions that can't be used with ctrl
 
 // -oo_stringForKey: where the old code could read nil (proposed ADR-0043): a string, or a number's
 // -stringValue; nullopt when the key is absent or holds anything else.
@@ -73,13 +74,69 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 	return std::find(list.begin(), list.end(), item) != list.end();
 }
 
+
+// The "keyboard-code" default as -oo_stringForKey:defaultValue:@"default" read it
+// (MyOpenGLView+Input.mm).
+std::string KeyboardCode(void)
+{
+	const oo::PList kbdValue = oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:@"keyboard-code"]);
+	return oo::PListGet<std::string>::from(kbdValue.isNull() ? nullptr : &kbdValue, "default");
+}
+
+
+// [[s componentsSeparatedByString:@":"] objectAtIndex:1] intValue], for a row key known to hold a ':'.
+int SecondFieldIntValue(const std::string &s)
+{
+	const std::vector<std::string> fields = oo::str::split(s, ":");
+	return fields.size() > 1 ? oo::str::intValue(fields[1]) : 0;
+}
+
+
+// A GUI row built with +arrayWithObjects: stopped at the first nil column.
+std::vector<std::string> Columns(std::initializer_list<std::optional<std::string>> columns)
+{
+	std::vector<std::string> result;
+	for (const std::optional<std::string> &column : columns)
+	{
+		if (!column)  break;
+		result.push_back(*column);
+	}
+	return result;
+}
+
+
+// %@ of a string that may be nil, in a runtime format.
+oo::str::FormatArg TextArg(const std::optional<std::string> &string)
+{
+	return string ? oo::str::FormatArg(*string) : oo::str::FormatArg::null();
+}
+
+
+// Inserts or replaces entry <index> of the key list, as -insertObject:atIndex: /
+// -replaceObjectAtIndex:withObject: did (an index past the end appends; it used to raise).
+void StoreKeyDefinition(NSUInteger index, oo::PList definition)
+{
+	oo::PList::Array *keys = key_list.getIf<oo::PList::Array>();
+	if (keys == nullptr)  return;	// messaging a nil key_list
+	if (index >= keys->size())  keys->push_back(std::move(definition));
+	else  (*keys)[index] = std::move(definition);
+}
+
+
+// -isEqualToString:@"" on a value that may be absent.
+bool IsEmptyString(const oo::PList *value)
+{
+	const std::string *string = value != nullptr ? value->getIf<std::string>() : nullptr;
+	return string != nullptr && string->empty();
+}
+
 }	// namespace
 
 @interface PlayerEntity (KeyMapperInternal)
 
 - (void)resetKeyFunctions;
-- (void)updateKeyDefinition:(NSString *)keystring index:(NSUInteger)index;
-- (void)updateShiftKeyDefinition:(NSString *)key index:(NSUInteger)index;
+- (void)updateKeyDefinition:(const std::string &)keystring index:(NSUInteger)index;
+- (void)updateShiftKeyDefinition:(const std::string &)key index:(NSUInteger)index;
 - (void)displayKeyFunctionList:(GuiDisplayGen *)gui skip:(NSUInteger)skip;
 - (NSString *)keyboardDescription:(NSString *)kbd;
 - (void)displayKeyboardLayoutList:(GuiDisplayGen *)gui skip:(NSUInteger)skip;
@@ -108,39 +165,28 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 // sets up a copy of the raw keyconfig.plist file so we can run checks against it to tell if a key is set to default
 - (void) initCheckingDictionary
 {
-	NSMutableDictionary *kdicmaster = [NSMutableDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:@"keyconfig2.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	NSString *kbd = oo::PListView(defaults).get<NSString *>(@"keyboard-code", @"default");
-	NSMutableDictionary *kdic = [NSMutableDictionary dictionaryWithDictionary:[kdicmaster objectForKey:kbd]];
+	const oo::PList kdicmaster = [ResourceManager cxx_dictionaryFromFilesNamed:"keyconfig2.plist" inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
+	const std::string kbd = KeyboardCode();
+	const oo::PList *kdicValue = kdicmaster.get<oo::PList::Dict>(kbd);
+	oo::PList::Dict kdic = (kdicValue != nullptr) ? *kdicValue->getIf<oo::PList::Dict>() : oo::PList::Dict();
 
-	NSUInteger i;
-	NSArray *keys = nil;
-	id key = nil;
-	NSArray *def_list = nil;
-
-	keys = [kdic allKeys];
-	for (i = 0; i < [keys count]; i++)
+	for (auto &[key, value] : kdic)
 	{
-		key = [keys objectAtIndex:i];
-
-		if ([[kdic objectForKey: key] isKindOfClass:[NSArray class]])
+		if (value.isArray())
 		{
-			def_list = (NSArray*)[kdic objectForKey: key];
-			[kdic setObject:[self processKeyCode:def_list] forKey:key];
+			// -processKeyCode: returns a +1 array
+			value = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(value)]).get());
 		}
 	}
-	[kdic_check release];
-	kdic_check = [[NSDictionary alloc] initWithDictionary:kdic];
+	kdic_check = oo::PList(std::move(kdic));
 
 	// these keys can't be used with mod keys
-	[nav_keys release];
-	nav_keys = [[NSArray alloc] initWithObjects:@"key_roll_left", @"key_roll_right", @"key_pitch_forward", @"key_pitch_back", @"key_yaw_left", @"key_yaw_right", 
-		@"key_fire_lasers", @"key_gui_arrow_up", @"key_gui_arrow_down", @"key_gui_arrow_right", @"key_gui_arrow_left", nil];
+	nav_keys = { "key_roll_left", "key_roll_right", "key_pitch_forward", "key_pitch_back", "key_yaw_left", "key_yaw_right",
+		"key_fire_lasers", "key_gui_arrow_up", "key_gui_arrow_down", "key_gui_arrow_right", "key_gui_arrow_left" };
 	// these keys can't be used with ctrl
-	[camera_keys release];
-	camera_keys = [[NSArray alloc] initWithObjects:@"key_custom_view_zoom_out", @"key_custom_view_zoom_in", @"key_custom_view_roll_left", @"key_custom_view_roll_right",
-		@"key_custom_view_pan_left", @"key_custom_view_pan_right", @"key_custom_view_rotate_up", @"key_custom_view_rotate_down", @"key_custom_view_pan_down",
-		@"key_custom_view_pan_up", @"key_custom_view_rotate_left", @"key_custom_view_rotate_right", nil];
+	camera_keys = { "key_custom_view_zoom_out", "key_custom_view_zoom_in", "key_custom_view_roll_left", "key_custom_view_roll_right",
+		"key_custom_view_pan_left", "key_custom_view_pan_right", "key_custom_view_rotate_up", "key_custom_view_rotate_down", "key_custom_view_pan_down",
+		"key_custom_view_pan_up", "key_custom_view_rotate_left", "key_custom_view_rotate_right" };
 }
 
 
@@ -233,17 +279,17 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 
-	NSString *key = [gui keyForRow: [gui selectedRow]];
-	if ([key hasPrefix:@"Index:"])
-		selFunctionIdx=[[[key componentsSeparatedByString:@":"] objectAtIndex:1] intValue];
+	const std::string key = [gui cxx_keyForRow: [gui selectedRow]].value_or("");	// a nil key has no prefix
+	if (oo::str::hasPrefix(key, "Index:"))
+		selFunctionIdx=SecondFieldIntValue(key);
 	else
 		selFunctionIdx=-1;
 
 	if (selectKeyPress)
 	{
-		if ([key hasPrefix:@"More:"])
+		if (oo::str::hasPrefix(key, "More:"))
 		{
-			int from_function = [[[key componentsSeparatedByString:@":"] objectAtIndex:1] intValue];
+			int from_function = SecondFieldIntValue(key);
 			if (from_function < 0)  from_function = 0;
 
 			current_row = GUI_ROW_KC_FUNCSTART;
@@ -252,23 +298,24 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 			if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 			return;
 		}
-		if ([key hasPrefix:@"kbd:"])
+		if (oo::str::hasPrefix(key, "kbd:"))
 		{
 			[self setGuiToKeyboardLayoutScreen:0];
 			if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 			return;
 		}
 		current_row = [gui selectedRow];
-		selected_entry = [keyFunctions objectAtIndex:selFunctionIdx];
-		[key_list release];
-		if (![self entryIsDictCustomEquip:oo::PListFrom(selected_entry)]) 
+		selected_entry = oo::PListFrom([keyFunctions objectAtIndex:selFunctionIdx]);	// keyFunctions: chunk 3
+		oo::PList definitions;
+		if (![self entryIsDictCustomEquip:selected_entry])
 		{
-			key_list = [[NSMutableArray alloc] initWithArray:(NSArray *)[keyconfig2_settings objectForKey:[selected_entry objectForKey:KEY_KC_DEFINITION]] copyItems:YES];
+			definitions = oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_DEFINITION)))]);
 		}
-		else 
+		else
 		{
-			key_list = [[NSMutableArray alloc] initWithArray:oo::ObjectFromPList([self getCustomEquipArray:oo::StdString(oo::PListView(selected_entry).get<NSString *>(KEY_KC_DEFINITION))])];
+			definitions = [self getCustomEquipArray:selected_entry.get<std::string>(oo::StdString(KEY_KC_DEFINITION))];
 		}
+		key_list = definitions.isArray() ? definitions : oo::PList(oo::PList::Array());	// -initWithArray:nil was empty
 		[gameView clearKeys];	// try to stop key bounces
 		[self setGuiToKeyConfigScreen:YES];
 	}
@@ -276,7 +323,7 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 	if ([gameView isDown:'u'])
 	{
 		// pressed 'u' on an "more" line
-		if ([key hasPrefix:@"More:"]) return;
+		if (oo::str::hasPrefix(key, "More:")) return;
 
 		current_row = [gui selectedRow];
 		[self unsetKeySetting:[[keyFunctions objectAtIndex:selFunctionIdx] objectForKey:KEY_KC_DEFINITION]];
@@ -289,41 +336,42 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 		if (![gameView isCtrlDown]) 
 		{
 			// pressed 'r' on an "more" line
-			if ([key hasPrefix:@"More:"]) return;
+			if (oo::str::hasPrefix(key, "More:")) return;
 
 			current_row = [gui selectedRow];
 			
-			NSString *delkey = [[keyFunctions objectAtIndex:selFunctionIdx] objectForKey:KEY_KC_DEFINITION];
-			[self deleteKeySetting:delkey];
+			const std::optional<std::string> delkey = OptionalStringForKey(oo::PListFrom([keyFunctions objectAtIndex:selFunctionIdx]), oo::StdString(KEY_KC_DEFINITION));
+			[self deleteKeySetting:oo::NSStringOrNil(delkey)];
 			// special case - when default activate/mode key set in custom equipment
-			if ([self entryIsCustomEquip:oo::StdString(delkey)])
+			if ([self entryIsCustomEquip:delkey.value_or("")])
 			{
-				int idx = [self getCustomEquipIndex:oo::StdString(delkey)];
-				NSString *eq = nil;
-				NSString *lookupKey = nil;
+				int idx = [self getCustomEquipIndex:delkey.value_or("")];
+				std::optional<std::string> eq;
+				std::optional<std::string> lookupKey;
 				bool update = false;
 
-				if ([delkey hasPrefix:@"activate_"]) 
+				if (oo::str::hasPrefix(delkey.value_or(""), "activate_"))
 				{
-					eq = [delkey stringByReplacingOccurrencesOfString:@"activate_" withString:@""];
-					lookupKey = CUSTOMEQUIP_KEYACTIVATE;
+					eq = oo::str::replaceOccurrences(*delkey, "activate_", "");
+					lookupKey = oo::StdString(CUSTOMEQUIP_KEYACTIVATE);
 				}
-				if ([delkey hasPrefix:@"mode_"]) 
+				if (oo::str::hasPrefix(delkey.value_or(""), "mode_"))
 				{
-					eq = [delkey stringByReplacingOccurrencesOfString:@"mode_" withString:@""];
-					lookupKey = CUSTOMEQUIP_KEYMODE;
+					eq = oo::str::replaceOccurrences(*delkey, "mode_", "");
+					lookupKey = oo::StdString(CUSTOMEQUIP_KEYMODE);
 				}
 
-				OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:eq];
-				
-				if ([item defaultActivateKey] && [lookupKey isEqualToString:CUSTOMEQUIP_KEYACTIVATE]) 
+				OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(eq)];
+
+				// the live (mutable) customEquipActivation element is edited in place, as before
+				if ([item defaultActivateKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYACTIVATE))
 				{
-					[[customEquipActivation objectAtIndex:idx] setObject:[item defaultActivateKey] forKey:lookupKey];
+					[[customEquipActivation objectAtIndex:idx] setObject:[item defaultActivateKey] forKey:oo::NSStringOrNil(lookupKey)];
 					update = true;
 				}
-				if ([item defaultModeKey] && [lookupKey isEqualToString:CUSTOMEQUIP_KEYMODE]) 
+				if ([item defaultModeKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYMODE))
 				{
-					[[customEquipActivation objectAtIndex:idx] setObject:[item defaultModeKey] forKey:lookupKey];
+					[[customEquipActivation objectAtIndex:idx] setObject:[item defaultModeKey] forKey:oo::NSStringOrNil(lookupKey)];
 					update = true;
 				}
 
@@ -450,72 +498,69 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 	gui_screen = GUI_SCREEN_KEYBOARD_CONFIG;
 	BOOL guiChanged = (oldScreen != gui_screen);
 	[gui clear];
-	[gui setTitle:[NSString stringWithFormat:@"%@", DESC(@"oolite-keyconfig-update-title")]];
+	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-update-title")))];	// @"%@"
 
-	[gui setArray: [NSArray arrayWithObjects: 
-								DESC(@"oolite-keyconfig-update-function"), [selected_entry objectForKey: KEY_KC_GUIDESC], nil]
+	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-update-function")), OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_GUIDESC)) })
 					forRow: GUI_ROW_KC_UPDATE_FUNCNAME];
 	[gui setColor:[OOColor greenColor] forRow:GUI_ROW_KC_UPDATE_FUNCNAME];
 
-	NSString *keystring = nil;
-	NSString *keyshift = nil;
-	NSString *keymod1 = nil;
-	NSString *keymod2 = nil;
+	std::optional<std::string> keystring;
+	std::optional<std::string> keyshift;
+	std::optional<std::string> keymod1;
+	std::optional<std::string> keymod2;
 
-	NSDictionary *def = nil;
-	NSString *key = nil;
 	OOKeyCode k_int;
 
 	// get each key for the first two item in the selected entry
 	for (i = 0; i <= 1; i++)
 	{
-		keystring = DESC(@"oolite-keycode-unset");
-		keyshift = DESC(@"oolite-keyconfig-modkey-off");
-		keymod1 = DESC(@"oolite-keyconfig-modkey-off");
-		keymod2 = DESC(@"oolite-keyconfig-modkey-off");
+		keystring = oo::OptionalString(DESC(@"oolite-keycode-unset"));
+		keyshift = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-off"));
+		keymod1 = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-off"));
+		keymod2 = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-off"));
 
-		if ([key_list count] > i)
+		if (key_list.count() > i)
 		{
-			def = [key_list objectAtIndex:i];
-			key = [def objectForKey:@"key"];
-			k_int = (OOKeyCode)[key integerValue];
+			const oo::PList &def = *key_list.at(i);
+			k_int = (OOKeyCode)def.get<long long>("key");	// -integerValue
 			if (k_int > 0)
 			{
-				keystring = [self keyCodeDescription:k_int];
-				if ([[def objectForKey:@"shift"] boolValue] == YES) keyshift = DESC(@"oolite-keyconfig-modkey-on");
-				if ([[def objectForKey:@"mod1"] boolValue] == YES) keymod1 = DESC(@"oolite-keyconfig-modkey-on");
-				if ([[def objectForKey:@"mod2"] boolValue] == YES) keymod2 = DESC(@"oolite-keyconfig-modkey-on");
+				keystring = oo::OptionalString([self keyCodeDescription:k_int]);
+				if (def.get<bool>("shift") == YES) keyshift = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-on"));
+				if (def.get<bool>("mod1") == YES) keymod1 = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-on"));
+				if (def.get<bool>("mod2") == YES) keymod2 = oo::OptionalString(DESC(@"oolite-keyconfig-modkey-on"));
 			}
 		}
 
-		[self outputKeyDefinition:keystring shift:keyshift mod1:keymod1 mod2:keymod2 skiprows:(i * 5)];
+		[self outputKeyDefinition:keystring.value_or("") shift:keyshift.value_or("") mod1:keymod1.value_or("") mod2:keymod2.value_or("") skiprows:(i * 5)];
 	}
 
-	NSString *helper = DESC(@"oolite-keyconfig-update-helper");
-	if ([nav_keys containsObject:[selected_entry objectForKey: KEY_KC_DEFINITION]])
-		helper = [NSString stringWithFormat:@"%@ %@", helper, DESC(@"oolite-keyconfig-update-navkeys")];
-	if ([camera_keys containsObject:[selected_entry objectForKey: KEY_KC_DEFINITION]])
-		helper = [NSString stringWithFormat:@"%@ %@", helper, DESC(@"oolite-keyconfig-update-camkeys")];
-	[gui addLongText:helper startingAtRow:GUI_ROW_KC_UPDATE_INFO align:GUI_ALIGN_LEFT];
+	const std::string definition = selected_entry.get<std::string>(oo::StdString(KEY_KC_DEFINITION));
+	std::optional<std::string> helper = oo::OptionalString(DESC(@"oolite-keyconfig-update-helper"));
+	if (Contains(nav_keys, definition))
+		helper = oo::str::format("%s %s", DescriptionOfString(helper).c_str(), oo::DescriptionOf(DESC(@"oolite-keyconfig-update-navkeys")).c_str());
+	if (Contains(camera_keys, definition))
+		helper = oo::str::format("%s %s", DescriptionOfString(helper).c_str(), oo::DescriptionOf(DESC(@"oolite-keyconfig-update-camkeys")).c_str());
+	[gui cxx_addLongText:helper startingAtRow:GUI_ROW_KC_UPDATE_INFO align:GUI_ALIGN_LEFT];
 
-	[gui setText:@"" forRow:GUI_ROW_KC_VALIDATION];
+	[gui cxx_setText:"" forRow:GUI_ROW_KC_VALIDATION];
 
-	[gui setText:DESC(@"oolite-keyconfig-update-save") forRow:GUI_ROW_KC_SAVE align:GUI_ALIGN_CENTER];
-	[gui setKey:GUI_KEY_OK forRow:GUI_ROW_KC_SAVE];
-	
-	[gui setText:DESC(@"oolite-keyconfig-update-cancel") forRow:GUI_ROW_KC_CANCEL align:GUI_ALIGN_CENTER];
-	[gui setKey:GUI_KEY_OK forRow:GUI_ROW_KC_CANCEL];
+	[gui cxx_setText:oo::OptionalString(DESC(@"oolite-keyconfig-update-save")) forRow:GUI_ROW_KC_SAVE align:GUI_ALIGN_CENTER];
+	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW_KC_SAVE];
+
+	[gui cxx_setText:oo::OptionalString(DESC(@"oolite-keyconfig-update-cancel")) forRow:GUI_ROW_KC_CANCEL align:GUI_ALIGN_CENTER];
+	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW_KC_CANCEL];
 
 	[gui setSelectableRange: NSMakeRange(GUI_ROW_KC_KEY, (GUI_ROW_KC_CANCEL - GUI_ROW_KC_KEY) + 1)];
 
-	NSString *validate = oo::NSStringOrNil([self validateKey:oo::StdString([selected_entry objectForKey:KEY_KC_DEFINITION]) checkKeys:oo::PListFrom(key_list)]);
+	const std::optional<std::string> validate = [self validateKey:definition checkKeys:key_list];
 	if (validate)
 	{
 		for (i = 0; i < [keyFunctions count]; i++)
 		{
-			if ([[[keyFunctions objectAtIndex:i] objectForKey:KEY_KC_DEFINITION] isEqualToString:validate])
+			if (OptionalStringForKey(oo::PListFrom([keyFunctions objectAtIndex:i]), oo::StdString(KEY_KC_DEFINITION)) == validate)	// keyFunctions: chunk 3
 			{
-				[gui setText:[NSString stringWithFormat:DESC(@"oolite-keyconfig-update-validation-@"), (NSString *)[[keyFunctions objectAtIndex:i] objectForKey:KEY_KC_GUIDESC]] 
+				[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-keyconfig-update-validation-@")), { oo::DescriptionOf([[keyFunctions objectAtIndex:i] objectForKey:KEY_KC_GUIDESC]) })
 					forRow:GUI_ROW_KC_VALIDATION align:GUI_ALIGN_CENTER];
 				[gui setColor:[OOColor orangeColor] forRow:GUI_ROW_KC_VALIDATION];
 				break;
@@ -528,55 +573,50 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 		[gui setSelectedRow: GUI_ROW_KC_KEY];
 	}
 
-	[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay"];
-	[gui setBackgroundTextureKey:@"keyboardsettings"];
+	[gui cxx_setForegroundTextureKey:std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
+	[gui cxx_setBackgroundTextureKey:std::string("keyboardsettings")];
 	[[UNIVERSE gameView] clearMouse];
 	[[UNIVERSE gameView] clearKeys];
 	if (guiChanged) [self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 }
 
 
-- (void) outputKeyDefinition:(NSString *)key shift:(NSString *)shift mod1:(NSString *)mod1 mod2:(NSString *)mod2 skiprows:(NSUInteger)skiprows
+- (void) outputKeyDefinition:(const std::string &)key shift:(const std::string &)shift mod1:(const std::string &)mod1 mod2:(const std::string &)mod2 skiprows:(NSUInteger)skiprows
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
+	const std::string definition = selected_entry.get<std::string>(oo::StdString(KEY_KC_DEFINITION));
 
-	[gui setArray:[NSArray arrayWithObjects: 
-								(skiprows == 0 ? DESC(@"oolite-keyconfig-update-key") : DESC(@"oolite-keyconfig-update-alternate")), key, nil]
+	[gui cxx_setArray:Columns({ oo::OptionalString(skiprows == 0 ? DESC(@"oolite-keyconfig-update-key") : DESC(@"oolite-keyconfig-update-alternate")), key })
 					forRow:GUI_ROW_KC_KEY + skiprows];
-	[gui setKey:GUI_KEY_OK forRow:GUI_ROW_KC_KEY + skiprows];
+	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW_KC_KEY + skiprows];
 
-	if (![nav_keys containsObject:[selected_entry objectForKey: KEY_KC_DEFINITION]]) {
-		if (![key isEqualToString:DESC(@"oolite-keycode-unset")])
+	if (!Contains(nav_keys, definition)) {
+		if (!(oo::OptionalString(DESC(@"oolite-keycode-unset")) == key))
 		{
-			[gui setArray:[NSArray arrayWithObjects: 
-										DESC(@"oolite-keyconfig-update-shift"), shift, nil]
+			[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-update-shift")), shift })
 							forRow:GUI_ROW_KC_SHIFT + skiprows];
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW_KC_SHIFT + skiprows];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW_KC_SHIFT + skiprows];
 
 			// camera movement keys can't use ctrl
-			if (![camera_keys containsObject:[selected_entry objectForKey: KEY_KC_DEFINITION]]) {
-				[gui setArray:[NSArray arrayWithObjects: 
-											DESC(@"oolite-keyconfig-update-mod1"), mod1, nil]
+			if (!Contains(camera_keys, definition)) {
+				[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-update-mod1")), mod1 })
 								forRow:GUI_ROW_KC_MOD1 + skiprows];
-				[gui setKey:GUI_KEY_OK forRow:GUI_ROW_KC_MOD1 + skiprows];
-			} 
-			else 
+				[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW_KC_MOD1 + skiprows];
+			}
+			else
 			{
-				[gui setArray:[NSArray arrayWithObjects: 
-											DESC(@"oolite-keyconfig-update-mod1"), DESC(@"not-applicable"), nil]
+				[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-update-mod1")), oo::OptionalString(DESC(@"not-applicable")) })
 								forRow:GUI_ROW_KC_MOD1 + skiprows];
 			}
-					
+
 #if OOLITE_MAC_OS_X
-			[gui setArray:[NSArray arrayWithObjects: 
-										DESC(@"oolite-keyconfig-update-mod2-mac"), mod2, nil]
+			[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-update-mod2-mac")), mod2 })
 							forRow:GUI_ROW_KC_MOD2 + skiprows];
 #else
-			[gui setArray:[NSArray arrayWithObjects: 
-										DESC(@"oolite-keyconfig-update-mod2-pc"), mod2, nil]
+			[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-update-mod2-pc")), mod2 })
 							forRow: GUI_ROW_KC_MOD2 + skiprows];
 #endif
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW_KC_MOD2 + skiprows];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW_KC_MOD2 + skiprows];
 		}
 	}
 }
@@ -596,23 +636,23 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 
 	if (selectKeyPress && ([gui selectedRow] == GUI_ROW_KC_SHIFT || [gui selectedRow] == (GUI_ROW_KC_SHIFT + 5)))
 	{
-		[self updateShiftKeyDefinition:@"shift" index:([gui selectedRow] == GUI_ROW_KC_SHIFT ? 0 : 1)];
+		[self updateShiftKeyDefinition:"shift" index:([gui selectedRow] == GUI_ROW_KC_SHIFT ? 0 : 1)];
 		[self setGuiToKeyConfigScreen];
 	}
 	if (selectKeyPress && ([gui selectedRow] == GUI_ROW_KC_MOD1 || [gui selectedRow] == (GUI_ROW_KC_MOD1 + 5)))
 	{
-		[self updateShiftKeyDefinition:@"mod1" index:([gui selectedRow] == GUI_ROW_KC_MOD1 ? 0 : 1)];
+		[self updateShiftKeyDefinition:"mod1" index:([gui selectedRow] == GUI_ROW_KC_MOD1 ? 0 : 1)];
 		[self setGuiToKeyConfigScreen];
 	}
 	if (selectKeyPress && ([gui selectedRow] == GUI_ROW_KC_MOD2 || [gui selectedRow] == (GUI_ROW_KC_MOD2 + 5)))
 	{
-		[self updateShiftKeyDefinition:@"mod2" index:([gui selectedRow] == GUI_ROW_KC_MOD2 ? 0 : 1)];
+		[self updateShiftKeyDefinition:"mod2" index:([gui selectedRow] == GUI_ROW_KC_MOD2 ? 0 : 1)];
 		[self setGuiToKeyConfigScreen];
 	}
 
 	if (selectKeyPress && [gui selectedRow] == GUI_ROW_KC_SAVE)
 	{
-		[self saveKeySetting:[selected_entry objectForKey: KEY_KC_DEFINITION]];
+		[self saveKeySetting:oo::NSStringOrNil(OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_DEFINITION)))];
 		[self reloadPage];
 	}
 
@@ -631,43 +671,41 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 	OOGUIScreenID oldScreen = gui_screen;
 	gui_screen = GUI_SCREEN_KEYBOARD_ENTRY;
 	BOOL guiChanged = (oldScreen != gui_screen);
-	
+
 	// make sure the index we're looking for exists
-	if ([key_list count] < (key_index + 1))
+	oo::PList::Array *keys = key_list.getIf<oo::PList::Array>();
+	if (keys != nullptr && keys->size() < (key_index + 1))
 	{
 		// add the missing element to the array
-		NSMutableDictionary *key1 = [[NSMutableDictionary alloc] initWithObjectsAndKeys:@"", @"key", [NSNumber numberWithBool:NO], @"shift", [NSNumber numberWithBool:NO], @"mod1", [NSNumber numberWithBool:NO], @"mod2", nil];
-		[key_list addObject:key1];
-		[key1 release];
+		keys->push_back(oo::PList(oo::PList::Dict{ { "key", oo::PList("") }, { "shift", oo::PList(false) }, { "mod1", oo::PList(false) }, { "mod2", oo::PList(false) } }));
 	}
-	NSDictionary *def = [key_list objectAtIndex:key_index];
-	NSString *key = [def objectForKey:@"key"];
+	const oo::PList *def = key_list.at(key_index);
 	//if ([key isEqualToString:@"(not set)"]) key = @"";
-	OOKeyCode k_int = (OOKeyCode)[key integerValue];
+	OOKeyCode k_int = (OOKeyCode)(def != nullptr ? def->get<long long>("key") : 0);	// -integerValue
 	[gameView resetTypedString];
-	[gameView setTypedString:(k_int != 0 ? [self keyCodeDescriptionShort:k_int] : @"")];
+	[gameView cxx_setTypedString:(k_int != 0 ? oo::StdString([self keyCodeDescriptionShort:k_int]) : std::string())];
 	[gameView setStringInput:gvStringInputAll];
 
 	[gui clear];
-	[gui setTitle:[NSString stringWithFormat:@"%@", DESC(@"oolite-keyconfig-update-entry-title")]];
-	
+	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-update-entry-title")))];	// @"%@"
+
 	NSUInteger end_row = 21;
-	if ([[self hud] allowBigGui]) 
+	if ([[self hud] allowBigGui])
 	{
 		end_row = 27;
 	}
 
-	[gui addLongText:DESC(@"oolite-keyconfig-update-entry-info") startingAtRow:GUI_ROW_KC_ENTRY_INFO align:GUI_ALIGN_LEFT];
+	[gui cxx_addLongText:oo::OptionalString(DESC(@"oolite-keyconfig-update-entry-info")) startingAtRow:GUI_ROW_KC_ENTRY_INFO align:GUI_ALIGN_LEFT];
 
-	[gui setText:[NSString stringWithFormat:DESC(@"Key: %@"), [gameView typedString]] forRow:end_row align:GUI_ALIGN_LEFT];
+	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"Key: %@")), { TextArg([gameView cxx_typedString]) }) forRow:end_row align:GUI_ALIGN_LEFT];
 	[gui setColor:[OOColor cyanColor] forRow:end_row];
 	[gui setSelectableRange:NSMakeRange(0,0)];
 
 	[gui setShowTextCursor:YES];
 	[gui setCurrentRow:end_row];
 
-	[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay"];
-	[gui setBackgroundTextureKey:@"keyboardsettings"];
+	[gui cxx_setForegroundTextureKey:std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
+	[gui cxx_setBackgroundTextureKey:std::string("keyboardsettings")];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
 
 	[gameView clearMouse];
@@ -687,8 +725,8 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 	[self handleGUIUpDownArrowKeys];
 	if ([gameView lastKeyWasShifted]) last_shift = YES;
 
-	[gui setText:
-		[NSString stringWithFormat:DESC(@"Key: %@"), [gameView typedString]]
+	[gui cxx_setText:
+		oo::str::formatRuntime(oo::StdString(DESC(@"Key: %@")), { TextArg([gameView cxx_typedString]) })
 		  forRow: end_row];
 	[gui setColor:[OOColor cyanColor] forRow:end_row];
 
@@ -696,7 +734,7 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 	{
 		[gameView suppressKeysUntilKeyUp];
 		// update function key
-		[self updateKeyDefinition:[gameView typedString] index:key_index];
+		[self updateKeyDefinition:[gameView cxx_typedString].value_or("") index:key_index];
 		[gameView clearKeys];	// try to stop key bounces
 		[self setGuiToKeyConfigScreen:YES];
 	}
@@ -709,88 +747,70 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 }
 
 // updates the overridden definition of a key to a new keycode value
-- (void) updateKeyDefinition:(NSString *)keystring index:(NSUInteger)index
+- (void) updateKeyDefinition:(const std::string &)keystring index:(NSUInteger)index
 {
-	NSMutableDictionary *key_def = [[NSMutableDictionary alloc] initWithDictionary:(NSDictionary *)[key_list objectAtIndex:index] copyItems:YES];
-	[key_def setObject:keystring forKey:@"key"];
+	const oo::PList *entry = key_list.at(index);
+	oo::PList::Dict key_def = (entry != nullptr && entry->isDict()) ? *entry->getIf<oo::PList::Dict>() : oo::PList::Dict();	// a value copy
+	key_def["key"] = oo::PList(keystring);
 	// auto=turn on shift if the entered key was shifted
 
-	if (last_shift && [keystring length] == 1 && ![nav_keys containsObject:[selected_entry objectForKey: KEY_KC_DEFINITION]]) 
+	if (last_shift && oo::str::length(keystring) == 1 && !Contains(nav_keys, selected_entry.get<std::string>(oo::StdString(KEY_KC_DEFINITION))))
 	{
-		[key_def setObject:[NSNumber numberWithBool:YES] forKey:@"shift"];
+		key_def["shift"] = oo::PList(true);
 	}
-	if (!last_shift && [keystring length] == 1)
+	if (!last_shift && oo::str::length(keystring) == 1)
 	{
-		[key_def setObject:[NSNumber numberWithBool:NO] forKey:@"shift"];
+		key_def["shift"] = oo::PList(false);
 	}
 	last_shift = NO;
-	if (index > [key_list count] - 1)
-	{
-		[key_list insertObject:key_def atIndex:index];
-	}
-	else 
-	{
-		[key_list replaceObjectAtIndex:index withObject:key_def];
-	}
-	[key_def release];
-	NSArray *new_array = [self processKeyCode:key_list];
-	[key_list release];
-	key_list = [[NSMutableArray alloc] initWithArray:new_array copyItems:YES];
-	[new_array release];
+	StoreKeyDefinition(index, oo::PList(std::move(key_def)));
+	// -processKeyCode: returns a +1 array
+	key_list = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(key_list)]).get());
 }
 
 
 // changes the shift/ctrl/alt state of an overridden definition
-- (void) updateShiftKeyDefinition:(NSString *)key index:(NSUInteger)index
+- (void) updateShiftKeyDefinition:(const std::string &)key index:(NSUInteger)index
 {
-	NSMutableDictionary *key_def = [[NSMutableDictionary alloc] initWithDictionary:(NSDictionary *)[key_list objectAtIndex:index] copyItems:YES];
-	BOOL current = [[key_def objectForKey:key] boolValue];
+	const oo::PList *entry = key_list.at(index);
+	oo::PList key_def = (entry != nullptr && entry->isDict()) ? *entry : oo::PList(oo::PList::Dict());	// a value copy
+	oo::PList::Dict &key_fields = *key_def.getIf<oo::PList::Dict>();
+	BOOL current = key_def.get<bool>(key);
 	BOOL keycode_changed = NO;
 	current = !current;
-	[key_def setObject:[NSNumber numberWithBool:current] forKey:key];
-	if ([key isEqualToString:@"shift"]) 
+	key_fields[key] = oo::PList(static_cast<bool>(current));
+	if (key == "shift")
 	{
 		// force the key into upper or lower case, to limit invalid key combos as much as possible
-		NSString* keycode = [key_def objectForKey:@"key"];
-		NSInteger k_int = (OOKeyCode)[keycode integerValue];
+		NSInteger k_int = (OOKeyCode)key_def.get<long long>("key");	// -integerValue
 		if (k_int > 0)
 		{
-			NSString* keystring = [self keyCodeDescription:k_int];
-			NSString* newstring;
-			if ([keystring length] == 1) 
+			const std::optional<std::string> keystring = oo::OptionalString([self keyCodeDescription:k_int]);
+			std::optional<std::string> newstring;
+			if (keystring && oo::str::length(*keystring) == 1)
 			{
 				// try switching the case. for characters that can't be switched (eg 1,2,3,etc), this should do nothing
-				if (current) 
+				if (current)
 				{
-					newstring = [keystring uppercaseString];
-				} 
-				else 
-				{
-					newstring = [keystring lowercaseString];
+					newstring = oo::str::uppercase(*keystring);
 				}
-				if (![newstring isEqualToString:keystring]) 
+				else
 				{
-					[key_def setObject:newstring forKey:@"key"];
+					newstring = oo::str::lowercase(*keystring);
+				}
+				if (newstring != keystring)
+				{
+					key_fields["key"] = oo::PList(*newstring);
 					keycode_changed = YES;
 				}
 			}
 		}
 	}
-	if (index > [key_list count] - 1)
+	StoreKeyDefinition(index, std::move(key_def));
+	if (keycode_changed)
 	{
-		[key_list insertObject:key_def atIndex:index];
-	}
-	else 
-	{
-		[key_list replaceObjectAtIndex:index withObject:key_def];
-	}
-	[key_def release];
-	if (keycode_changed) 
-	{
-		NSArray *new_array = [self processKeyCode:key_list];
-		[key_list release];
-		key_list = [[NSMutableArray alloc] initWithArray:new_array copyItems:YES];
-		[new_array release];
+		// -processKeyCode: returns a +1 array
+		key_list = oo::PListFrom(oo::adoptObjC([self processKeyCode:oo::ObjectFromPList(key_list)]).get());
 	}
 }
 
@@ -799,27 +819,27 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
 	OOGUIScreenID oldScreen = gui_screen;
-	
+
 	gui_screen = GUI_SCREEN_KEYBOARD_CONFIRMCLEAR;
 	BOOL guiChanged = (oldScreen != gui_screen);
-	
+
 	[gui clear];
-	[gui setTitle:[NSString stringWithFormat:@"%@", DESC(@"oolite-keyconfig-clear-overrides-title")]];
-	
-	[gui addLongText:[NSString stringWithFormat:@"%@", DESC(@"oolite-keyconfig-clear-overrides")]
+	[gui setTitle:oo::NSStringFrom(oo::DescriptionOf(DESC(@"oolite-keyconfig-clear-overrides-title")))];	// @"%@"
+
+	[gui cxx_addLongText:oo::DescriptionOf(DESC(@"oolite-keyconfig-clear-overrides"))	// @"%@"
 								startingAtRow:GUI_ROW_KC_CONFIRMCLEAR align:GUI_ALIGN_LEFT];
-	
-	[gui setText:DESC(@"oolite-keyconfig-clear-yes") forRow: GUI_ROW_KC_CONFIRMCLEAR_YES align:GUI_ALIGN_CENTER];
-	[gui setKey:GUI_KEY_OK forRow:GUI_ROW_KC_CONFIRMCLEAR_YES];
-	
-	[gui setText:DESC(@"oolite-keyconfig-clear-no") forRow:GUI_ROW_KC_CONFIRMCLEAR_NO align:GUI_ALIGN_CENTER];
-	[gui setKey:GUI_KEY_OK forRow:GUI_ROW_KC_CONFIRMCLEAR_NO];
-	
+
+	[gui cxx_setText:oo::OptionalString(DESC(@"oolite-keyconfig-clear-yes")) forRow: GUI_ROW_KC_CONFIRMCLEAR_YES align:GUI_ALIGN_CENTER];
+	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW_KC_CONFIRMCLEAR_YES];
+
+	[gui cxx_setText:oo::OptionalString(DESC(@"oolite-keyconfig-clear-no")) forRow:GUI_ROW_KC_CONFIRMCLEAR_NO align:GUI_ALIGN_CENTER];
+	[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW_KC_CONFIRMCLEAR_NO];
+
 	[gui setSelectableRange:NSMakeRange(GUI_ROW_KC_CONFIRMCLEAR_YES, 2)];
 	[gui setSelectedRow:GUI_ROW_KC_CONFIRMCLEAR_NO];
 
-	[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay"];
-	[gui setBackgroundTextureKey:@"keyboardsettings"];
+	[gui cxx_setForegroundTextureKey:std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
+	[gui cxx_setBackgroundTextureKey:std::string("keyboardsettings")];
 
 	[[UNIVERSE gameView] clearMouse];
 	[[UNIVERSE gameView] clearKeys];
@@ -835,12 +855,14 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 	if ([gameView isDown:gvMouseDoubleClick]) [gameView clearMouse];
 
 	// Translation issue: we can't confidently use raw Y and N ascii as shortcuts. It's better to use the load-previous-commander keys.
-	id valueYes = [oo::PListView([UNIVERSE descriptions]).get<NSString *>(@"load-previous-commander-yes", @"y") lowercaseString];
-	id valueNo = [oo::PListView([UNIVERSE descriptions]).get<NSString *>(@"load-previous-commander-no", @"n") lowercaseString];
+	const oo::PList yesValue = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"load-previous-commander-yes"]);
+	const oo::PList noValue = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"load-previous-commander-no"]);
+	const std::u16string valueYes = oo::utf8ToUtf16(oo::str::lowercase(oo::PListGet<std::string>::from(yesValue.isNull() ? nullptr : &yesValue, "y")));
+	const std::u16string valueNo = oo::utf8ToUtf16(oo::str::lowercase(oo::PListGet<std::string>::from(noValue.isNull() ? nullptr : &noValue, "n")));
 	unsigned char cYes, cNo;
-	
-	cYes = [valueYes characterAtIndex: 0] & 0x00ff;	// Use lower byte of unichar.
-	cNo = [valueNo characterAtIndex: 0] & 0x00ff;	// Use lower byte of unichar.
+
+	cYes = (valueYes.empty() ? 0 : valueYes[0]) & 0x00ff;	// Use lower byte of unichar.
+	cNo = (valueNo.empty() ? 0 : valueNo[0]) & 0x00ff;	// Use lower byte of unichar.
 	
 	if ((selectKeyPress && ([gui selectedRow] == GUI_ROW_KC_CONFIRMCLEAR_YES))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
 	{
@@ -1601,8 +1623,9 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 // compares the currently stored key_list against the base default from keyconfig2.plist
 - (BOOL) entryIsEqualToDefault:(const std::string &)key
 {
-	const oo::PList def = oo::PListFrom([kdic_check objectForKey:oo::NSStringFrom(key)]);
-	const oo::PList keys = oo::PListFrom(key_list);	// the key_list static, until chunk 2 retypes it
+	const oo::PList *defValue = kdic_check.find(key);
+	const oo::PList def = defValue != nullptr ? *defValue : oo::PList();
+	const oo::PList &keys = key_list;
 	NSUInteger i;
 
 	if (def.count() != keys.count()) return NO;
@@ -1635,21 +1658,22 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 - (void) saveKeySetting:(NSString*)key
 {
 	// check for a blank entry
-	if ([key_list count] > 1 && [[(NSDictionary*)[key_list objectAtIndex:1] objectForKey:@"key"] integerValue] == 0) 
+	oo::PList::Array *keys = key_list.getIf<oo::PList::Array>();
+	if (key_list.count() > 1 && key_list.at(1)->get<long long>("key") == 0)
 	{
-		[key_list removeObjectAtIndex:1];
+		keys->erase(keys->begin() + 1);
 	}
 	// make sure the primary and alternate keys are different
-	if ([key_list count] > 1) {
-		if ([self compareKeyEntries:oo::PListFrom([key_list objectAtIndex:0]) second:oo::PListFrom([key_list objectAtIndex:1])])
+	if (key_list.count() > 1) {
+		if ([self compareKeyEntries:*key_list.at(0) second:*key_list.at(1)])
 		{
-			[key_list removeObjectAtIndex:1];
+			keys->erase(keys->begin() + 1);
 		}
 	}
 	// see if we've set the key settings to blank - in which case, delete the override
-	if ([[(NSDictionary*)[key_list objectAtIndex:0] objectForKey:@"key"] integerValue] == 0)
+	if ((key_list.at(0) != nullptr ? key_list.at(0)->get<long long>("key") : 0) == 0)	// -integerValue
 	{
-		if ([key_list count] == 1 || ([key_list count] > 1 && [[(NSDictionary*)[key_list objectAtIndex:1] objectForKey:@"key"] isEqualToString:@""]))
+		if (key_list.count() == 1 || (key_list.count() > 1 && IsEmptyString(key_list.at(1)->find("key"))))
 		{
 			[self deleteKeySetting:key];
 			// reload settings
@@ -1673,7 +1697,7 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 			return;
 		}
 		NSMutableDictionary *keyconf = [NSMutableDictionary dictionaryWithDictionary:[defaults objectForKey:KEYCONFIG_OVERRIDES]];
-		[keyconf setObject:key_list forKey:key];
+		[keyconf setObject:oo::ObjectFromPList(key_list) forKey:key];
 		[defaults setObject:keyconf forKey:KEYCONFIG_OVERRIDES];
 	}
 	else 
@@ -1681,7 +1705,7 @@ bool Contains(const std::vector<std::string> &list, const std::string &item)
 		NSUInteger idx = [self getCustomEquipIndex:oo::StdString(key)];
 		NSString *custkey = oo::NSStringOrNil([self getCustomEquipKeyDefType:oo::StdString(key)]);
 		NSMutableDictionary *custEquip = [[customEquipActivation objectAtIndex:idx] mutableCopy];
-		[custEquip setObject:key_list forKey:custkey];
+		[custEquip setObject:oo::ObjectFromPList(key_list) forKey:custkey];
 		[customEquipActivation replaceObjectAtIndex:idx withObject:custEquip];
 		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
