@@ -408,7 +408,7 @@ MA 02110-1301, USA.
 	{
 		return UNITS_TONS;
 	}
-	return (OOMassUnit)oo::PListView(definition).get<unsigned int>(kOOCommodityContainer);
+	return OOMassUnitFromNumber(oo::PListView(definition).get<unsigned int>(kOOCommodityContainer));
 }
 
 
