@@ -704,11 +704,12 @@ stage_corpus() {
   [ "$rc" -eq 0 ] || { tail -20 "$log" >&2; fail corpus "the Tier 1 subset failed (rc=$rc); $(native "$log")"; }
   local checked passes
   checked="$(grep -oE '[0-9]+ group\(s\) checked' "$log" | tail -1 | grep -oE '[0-9]+' || echo 0)"
-  passes="$(grep -c '^PASS ' "$log" || true)"
+  # KNOWN: an exact, byte-pinned known content failure (oo-1gc.7, proposed ADR-0047).
+  passes="$(grep -cE '^(PASS|KNOWN) ' "$log" || true)"
   [ "$checked" -eq "$CORPUS_GROUPS" ] \
     || fail corpus "asked for $CORPUS_GROUPS group(s) but corpus.sh checked $checked; a run that staged nothing reports 0 checked and exits 0"
   [ "$passes" -eq "$CORPUS_GROUPS" ] \
-    || fail corpus "$passes of $CORPUS_GROUPS group(s) reported PASS"
+    || fail corpus "$passes of $CORPUS_GROUPS group(s) reported PASS (or KNOWN)"
   detail "$passes/$checked expansion group(s) loaded in $(( SECONDS - t0 ))s"
 }
 
