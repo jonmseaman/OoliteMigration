@@ -552,7 +552,7 @@ stage_asan() {
   local bdir="$OOLITE/build/meson_$flavour"
   local binary="$bdir/oolite.app/oolite.exe"
   detail "building flavour '$flavour' with -fsanitize=address (resource-dir $rd)"
-  ( cd "$REPO_ROOT" && bash "$HERE/build-windows.sh" "$flavour" --setup-flags="-Db_sanitize=address -Db_lundef=false -Dc_args=-resource-dir=$rd -Dcpp_args=-resource-dir=$rd -Dobjc_args=-resource-dir=$rd -Dc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition']" ) \
+  ( cd "$REPO_ROOT" && bash "$HERE/build-windows.sh" "$flavour" --setup-flags="-Db_sanitize=address -Db_lundef=false -Dc_args=-resource-dir=$rd -Dcpp_args=-resource-dir=$rd -Dobjc_args=-resource-dir=$rd -Dc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjcpp_args=-resource-dir=$rd -Dobjcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition']" ) \
     > "$blog" 2>&1 || brc=$?
   if [ "$brc" -ne 0 ]; then
     tail -30 "$blog" >&2
