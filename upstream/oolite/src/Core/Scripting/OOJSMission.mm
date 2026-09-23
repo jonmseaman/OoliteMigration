@@ -36,6 +36,8 @@ MA 02110-1301, USA.
 #import "OOMusicController.h"
 #import "GuiDisplayGen.h"
 #import "OODebugStandards.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -239,7 +241,12 @@ void MissionRunCallback()
 						  argv:args
 						result:&rval];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		// Squash any exception, allow cleanup to happen and so forth.
+		OOLog(kOOLogException, @"Ignoring exception %@:%@ during handling of mission screen completion callback.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		// Squash any exception, allow cleanup to happen and so forth.
 		OOLog(kOOLogException, @"Ignoring exception %@:%@ during handling of mission screen completion callback.", [exception name], [exception reason]);

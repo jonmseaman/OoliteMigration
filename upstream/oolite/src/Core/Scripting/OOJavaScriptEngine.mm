@@ -104,6 +104,8 @@ static inline const unichar *OOJSRUCHARS(const ooscript::Char16 *s)  { return re
 
 #import "OOProfilingStopwatch.h"
 #import "OOLoggingExtended.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 #include <stdlib.h>
 
@@ -929,7 +931,11 @@ void OOJSDumpStack(ooscript::Context context)
 				}
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(kOOLogException, @"Exception during JavaScript stack trace: %@:%@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(kOOLogException, @"Exception during JavaScript stack trace: %@:%@", [exception name], [exception reason]);
 		}
@@ -1010,13 +1016,13 @@ void OOJSInitJSIDCachePRIVATE(const char *name, ooscript::PropertyId *idCache)
 	ooscript::String string = (ooscript::internString((context), name));
 	if (EXPECT_NOT(string == NULL))
 	{
-		[NSException raise:NSGenericException format:@"Failed to initialize JS ID cache for \"%s\".", name];
+		[OOException raise:OOGenericException format:"Failed to initialize JS ID cache for \"%s\".", name];
 	}
 	
 	// The string is interned, so the engine's value-to-id conversion returns its atom id unchanged.
 	if (EXPECT_NOT(!ooscript::valueToId(context, ooscript::stringValue(string), idCache)))
 	{
-		[NSException raise:NSGenericException format:@"Failed to initialize JS ID cache for \"%s\".", name];
+		[OOException raise:OOGenericException format:"Failed to initialize JS ID cache for \"%s\".", name];
 	}
 	
 	OOJSRelinquishContext(context);
@@ -1139,7 +1145,8 @@ void OOJSReportWrappedException(ooscript::Context context, id exception)
 {
 	if (!ooscript::isExceptionPending((context)))
 	{
-		if ([exception isKindOfClass:[NSException class]])  OOJSReportError(context, @"Native exception: %@", [exception reason]);
+		if ([exception isKindOfClass:[OOException class]])  OOJSReportError(context, @"Native exception: %@", oo::NSStringFrom([(OOException *)exception reason]));
+		else if ([exception isKindOfClass:[OOFoundationException class]])  OOJSReportError(context, @"Native exception: %@", [(OOFoundationException *)exception reason]);
 		else  OOJSReportError(context, @"Unidentified native exception");
 	}
 	// Else, let the pending exception propagate.
@@ -1699,7 +1706,7 @@ void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, B
 	ooscript::String jsString = (ooscript::internString((context), string));
 	if (EXPECT_NOT(string == NULL))
 	{
-		[NSException raise:NSGenericException format:@"Failed to initialize JavaScript string literal cache for \"%@\".", [[NSString stringWithUTF8String:string] escapedForJavaScriptLiteral]];
+		[OOException raise:OOGenericException format:"Failed to initialize JavaScript string literal cache for \"%s\".", [[[NSString stringWithUTF8String:string] escapedForJavaScriptLiteral] UTF8String]];
 	}
 	
 	*strCache = ooscript::stringValue(jsString);
