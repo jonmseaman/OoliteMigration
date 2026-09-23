@@ -53,6 +53,14 @@ MA 02110-1301, USA.
 - (void) setProperties:(NSDictionary *)properties forSystemKey:(NSString *)key;	// -> -cxx_setProperties:forSystemKey:
 - (void) setProperty:(NSString *)property forSystemKey:(NSString *)key andLayer:(OOSystemLayer)layer toValue:(id)value fromManifest:(NSString *)manifest;	// -> -cxx_setProperty:forSystemKey:andLayer:toValue:fromManifest:
 
+// oo-3rb.109: property cache and read side
+- (NSDictionary *) getPropertiesForSystemKey:(NSString *)key;	// -> -cxx_getPropertiesForSystemKey:
+- (NSDictionary *) getPropertiesForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;	// -> -cxx_getPropertiesForSystem:inGalaxy:
+- (NSDictionary *) getPropertiesForCurrentSystem;				// -> -cxx_getPropertiesForCurrentSystem
+- (id) getProperty:(NSString *)property forSystemKey:(NSString *)key;	// -> -cxx_getProperty:forSystemKey:
+- (id) getProperty:(NSString *)property forSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;	// -> -cxx_getProperty:forSystem:inGalaxy:
+- (NSArray *) getNeighbourIDsForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;	// -> -cxx_getNeighbourIDsForSystem:inGalaxy:
+
 @end
 
 #endif	// OOSYSTEMDESCRIPTIONMANAGER_FOUNDATIONBRIDGE_H

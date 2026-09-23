@@ -39,11 +39,13 @@ oolite_sources += files(
     'PlayerEntityStickProfile.mm',
     'ProxyPlayerEntity.mm',
     'ShipEntity.mm',
+    'ShipEntity+FoundationBridge.mm',
     'ShipEntityAI.mm',
     'ShipEntityLoadRestore.mm',
     'ShipEntityScriptMethods.mm',
     'SkyEntity.mm',
     'StationEntity.mm',
+    'StationEntity+FoundationBridge.mm',
     'WormholeEntity.mm',
 )
 

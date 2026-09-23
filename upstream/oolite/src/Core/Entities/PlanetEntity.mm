@@ -42,6 +42,7 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "OODebugFlags.h"
 #import "OOGraphicsResetManager.h"
+#include "oofnd/objc/OOException.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PListGet.hpp"
@@ -236,7 +237,7 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 - (id) init
 {
 	[self release];
-	[NSException raise:NSInternalInconsistencyException format:@"%s, believed dead, called.", __PRETTY_FUNCTION__];
+	[OOException raise:OOInternalInconsistencyException format:"%s, believed dead, called.", __PRETTY_FUNCTION__];
 	return nil;
 }
 

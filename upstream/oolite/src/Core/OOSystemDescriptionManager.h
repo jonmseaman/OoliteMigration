@@ -82,10 +82,10 @@ typedef enum
 	oo::PList					universalProperties;	// a Dict: property -> value
 	OOSystemDescriptionEntry	*interstellarSpace;
 	std::map<std::string, oo::ObjCRef<OOSystemDescriptionEntry *>, std::less<>>	systemDescriptions;
-	NSMutableDictionary			*propertyCache[OO_SYSTEM_CACHE_LENGTH];
+	oo::PList					propertyCache[OO_SYSTEM_CACHE_LENGTH];	// each a Dict: property -> value
 	std::set<std::string>		propertiesInUse;
 	NSPoint						coordinatesCache[OO_SYSTEM_CACHE_LENGTH];
-	NSMutableArray				*neighbourCache[OO_SYSTEM_CACHE_LENGTH];
+	std::vector<OOSystemID>		neighbourCache[OO_SYSTEM_CACHE_LENGTH];	// system numbers
 	oo::PList					scriptedChanges;	// a Dict: joined override key -> value
 }
 
@@ -112,14 +112,15 @@ typedef enum
 - (void) cxx_importLegacyScriptedChanges:(const oo::PList &)scripted;
 - (oo::PList) cxx_exportScriptedChanges;	// a Dict, empty when there are none
 
-- (NSDictionary *) getPropertiesForSystemKey:(NSString *)key;
-- (NSDictionary *) getPropertiesForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
-- (NSDictionary *) getPropertiesForCurrentSystem;
-- (id) getProperty:(NSString *)property forSystemKey:(NSString *)key;
-- (id) getProperty:(NSString *)property forSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
+// Property dictionaries (Dicts; empty for an invalid system) and single values (null = nil).
+- (oo::PList) cxx_getPropertiesForSystemKey:(const std::string &)key;
+- (oo::PList) cxx_getPropertiesForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
+- (oo::PList) cxx_getPropertiesForCurrentSystem;
+- (oo::PList) cxx_getProperty:(const std::string &)property forSystemKey:(const std::string &)key;
+- (oo::PList) cxx_getProperty:(const std::string &)property forSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
 
 - (NSPoint) getCoordinatesForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
-- (NSArray *) getNeighbourIDsForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
+- (std::vector<OOSystemID>) cxx_getNeighbourIDsForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;	// empty for an invalid system
 
 - (Random_Seed) getRandomSeedForCurrentSystem;
 - (Random_Seed) getRandomSeedForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
