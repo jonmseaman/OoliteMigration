@@ -239,7 +239,15 @@ void OOGLNoteCurrentFunction(const char *func, unsigned line);
 #define OOGLNoteCurrentFunction(FUNC, line)  do {} while (0)
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSString *OOLogAbbreviatedFileName(const char *inName);
+
+#ifdef __cplusplus
+}
+#endif
 #define OOGL_PERFORM_CHECK(label, code)  OOCheckOpenGLErrors(@"%s %@:%u (%s)%s", label, OOLogAbbreviatedFileName(__FILE__), __LINE__, __PRETTY_FUNCTION__, code)
 #define OOGL(statement)  do { OOGLNoteCurrentFunction(__FUNCTION__, __LINE__); OOGL_PERFORM_CHECK("PRE", " -- " #statement); statement; OOGL_PERFORM_CHECK("POST", " -- " #statement); } while (0)
 #define CheckOpenGLErrorsHeavy OOCheckOpenGLErrors

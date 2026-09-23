@@ -30,11 +30,11 @@ MA 02110-1301, USA.
 @class ShipEntity;
 
 
-void InitOOJSShip(JSContext *context, JSObject *global);
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+void InitOOJSShip(JSContext *context, JSObject *global);
 
 JSClass *JSShipClass(void);
 JSObject *JSShipPrototype(void);

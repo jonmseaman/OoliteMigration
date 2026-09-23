@@ -31,6 +31,10 @@ MA 02110-1301, USA.
 @class Entity;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void InitOOJSEntity(JSContext *context, JSObject *global);
 
 BOOL JSValueToEntity(JSContext *context, jsval value, Entity **outEntity);
@@ -41,8 +45,13 @@ BOOL JSValueToEntity(JSContext *context, jsval value, Entity **outEntity);
 // OOJSSun.mm's RawSunClass() does for its own retargeted class. Declared as a real function
 // rather than OOINLINE because the façade type is not visible to plain-C/Objective-C callers
 // of this header.
-extern JSObject *gOOEntityJSPrototype;
 JSClass *JSEntityClass(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+extern JSObject *gOOEntityJSPrototype;
 DEFINE_JS_OBJECT_GETTER(OOJSEntityGetEntity, JSEntityClass(), gOOEntityJSPrototype, Entity)
 
 OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
@@ -58,7 +67,13 @@ OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 	scriptClass and function are non-nil, a warning will be reported to the
 	log.
 */
+#ifdef __cplusplus
+extern "C" {
+#endif
 BOOL EntityFromArgumentList(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, Entity **outEntity, uintN *outConsumed);
+#ifdef __cplusplus
+}
+#endif
 
 
 /*

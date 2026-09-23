@@ -336,8 +336,16 @@ enum
 	kOOScanClassDefault			= CLASS_NOT_SET
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSString *OOStringFromEntityStatus(OOEntityStatus status) CONST_FUNC;
 OOEntityStatus OOEntityStatusFromString(NSString *string) PURE_FUNC;
 
 NSString *OOStringFromScanClass(OOScanClass scanClass) CONST_FUNC;
 OOScanClass OOScanClassFromString(NSString *string) PURE_FUNC;
+
+#ifdef __cplusplus
+}
+#endif

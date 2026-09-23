@@ -34,6 +34,7 @@ Generated from the header's declarations. One row per façade function that repl
 | `JS_NewObject` | `ooscript::newObject` |  |
 | `JS_NewCompartmentAndGlobalObject` | `ooscript::newGlobalObject` |  |
 | `JS_InitStandardClasses` | `ooscript::initStandardClasses` |  |
+| `JS_ClearScope` | `ooscript::clearScope` |  |
 | `JS_InitClass` | `ooscript::initClass` |  |
 | `JS_DefineObject` | `ooscript::defineObject` |  |
 | `JS_GetConstructor` | `ooscript::getConstructor` |  |
@@ -84,6 +85,7 @@ Generated from the header's declarations. One row per façade function that repl
 | `JS_XDRNewMem`+`JS_XDRScript`+`JS_XDRMemGetData`+`JS_XDRDestroy` | `ooscript::serializeScript` | owned `ByteBuffer` out; wire format stays backend-private |
 | `JS_XDRNewMem`+`JS_XDRMemSetData`+`JS_XDRScript`+`JS_XDRDestroy` | `ooscript::deserializeScript` | wire format stays backend-private |
 | `JS_InternString` | `ooscript::internString` |  |
+| `JS_InternUCStringN` | `ooscript::internUCStringN` |  |
 | `JS_NewStringCopyZ` | `ooscript::newStringCopyZ` |  |
 | `JS_NewStringCopyN` | `ooscript::newStringCopyN` |  |
 | `JS_NewUCStringCopyN` | `ooscript::newUCStringCopyN` |  |
@@ -94,6 +96,8 @@ Generated from the header's declarations. One row per façade function that repl
 | `JS_GetInternedStringChars` | `ooscript::getInternedStringChars` |  |
 | `JS_StringEqualsAscii` | `ooscript::stringEqualsAscii` |  |
 | `JS_StringHasBeenInterned` | `ooscript::stringHasBeenInterned` |  |
+| `JS_SetCStringsAreUTF8` | `ooscript::setCStringsAreUTF8` |  |
+| `JS_SetGCZeal` | `ooscript::setGCZeal` |  |
 | `JS_IsExceptionPending` | `ooscript::isExceptionPending` |  |
 | `JS_GetPendingException` | `ooscript::getPendingException` |  |
 | `JS_SetPendingException` | `ooscript::setPendingException` |  |

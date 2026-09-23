@@ -169,7 +169,7 @@ OOJS_EXTERN_C void OOJSReportBadArguments(JSContext *context, NSString *scriptCl
 	Currently, if non-zero, no call site information is provided.
 	Ideally, we'd stack crawl instead.
 */
-void OOJSSetWarningOrErrorStackSkip(unsigned skip);
+OOJS_EXTERN_C void OOJSSetWarningOrErrorStackSkip(unsigned skip);
 
 
 /*	OOJSArgumentListGetNumber()
@@ -254,7 +254,7 @@ OOINLINE jsval OOJSValueFromNativeObject(JSContext *context, id object)
 	
 	Requires a request on context.
 */
-JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
+OOJS_EXTERN_C JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
 
 
 /*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.
@@ -287,7 +287,7 @@ JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
 	Create and cache a jsval referring to an interned string literal.
 */
 #define OOJSSTR(str) ({ static jsval strCache; static BOOL inited; if (EXPECT_NOT(!inited)) OOJSStrLiteralCachePRIVATE("" str, &strCache, &inited); strCache; })
-void OOJSStrLiteralCachePRIVATE(const char *string, jsval *strCache, BOOL *inited);
+OOJS_EXTERN_C void OOJSStrLiteralCachePRIVATE(const char *string, jsval *strCache, BOOL *inited);
 
 
 // Convert a JSString to an NSString.
@@ -306,7 +306,7 @@ OOJS_EXTERN_C NSString *OOStringFromJSValueEvenIfNull(JSContext *context, jsval 
 	Returns the name of a property given either a name or a tinyid. (Intended
 	for error reporting inside JSPropertyOps.)
 */
-NSString *OOStringFromJSPropertyIDAndSpec(JSContext *context, jsid propID, JSPropertySpec *propertySpec);
+OOJS_EXTERN_C NSString *OOStringFromJSPropertyIDAndSpec(JSContext *context, jsid propID, JSPropertySpec *propertySpec);
 
 
 /*	Describe a value for debugging or error reporting. Strings are quoted,
@@ -316,14 +316,14 @@ NSString *OOStringFromJSPropertyIDAndSpec(JSContext *context, jsid propID, JSPro
 	If abbreviateObjects, the description "[object Object]" is replaced with
 	"{...}", which may or may not be clearer depending on context.
 */
-NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObjects);
+OOJS_EXTERN_C NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObjects);
 
 
 // Convert a jsid to an NSString.
 OOJS_EXTERN_C NSString *OOStringFromJSID(jsid propID);
 
 // Convert an NSString to a jsid.
-jsid OOJSIDFromString(NSString *string);
+OOJS_EXTERN_C jsid OOJSIDFromString(NSString *string);
 
 
 @interface NSString (OOJavaScriptExtensions)
@@ -350,16 +350,16 @@ typedef struct
 										// exception will have been reported.
 										// This also supresses further filtering.
 } JSFunctionPredicateParameter;
-BOOL JSFunctionPredicate(Entity *entity, void *parameter);
+OOJS_EXTERN_C BOOL JSFunctionPredicate(Entity *entity, void *parameter);
 
 // YES for ships and (normal) planets. Parameter: ignored.
-BOOL JSEntityIsJavaScriptVisiblePredicate(Entity *entity, void *parameter);
+OOJS_EXTERN_C BOOL JSEntityIsJavaScriptVisiblePredicate(Entity *entity, void *parameter);
 
 // YES for ships other than sub-entities and menu-display ships, and planets other than atmospheres and menu miniatures. Parameter: ignored.
-BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void *parameter);
+OOJS_EXTERN_C BOOL JSEntityIsJavaScriptSearchablePredicate(Entity *entity, void *parameter);
 
 // YES for menu-display ships. Parameter: ignored
-BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
+OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 
 // These require a request on context.
@@ -417,8 +417,8 @@ OOINLINE BOOL OOJSValueIsArray(JSContext *context, jsval value)
 	
 	Requires a request on context.
 */
-NSDictionary *OOJSDictionaryFromJSValue(JSContext *context, jsval value);
-NSDictionary *OOJSDictionaryFromJSObject(JSContext *context, JSObject *object);
+OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSValue(JSContext *context, jsval value);
+OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSObject(JSContext *context, JSObject *object);
 
 
 /*	OOJSDictionaryFromStringTable(context, value)
@@ -598,10 +598,10 @@ OOJS_EXTERN_C void OOJSResumeTimeLimiter(void);
 	OOJSDescribeLocation().
 */
 #ifndef NDEBUG
-void OOJSDumpStack(JSContext *context);
+OOJS_EXTERN_C void OOJSDumpStack(JSContext *context);
 
-NSString *OOJSDescribeLocation(JSContext *context, JSStackFrame *stackFrame);
-void OOJSMarkConsoleEvalLocation(JSContext *context, JSStackFrame *stackFrame);
+OOJS_EXTERN_C NSString *OOJSDescribeLocation(JSContext *context, JSStackFrame *stackFrame);
+OOJS_EXTERN_C void OOJSMarkConsoleEvalLocation(JSContext *context, JSStackFrame *stackFrame);
 #else
 #define OOJSDumpStack(cx)						do {} while (0)
 #define OOJSDescribeLocation(cx, frame)			do {} while (0)

@@ -881,5 +881,11 @@ NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);
 @end
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 NSString *OODisplayStringFromGovernmentID(OOGovernmentID government);
 NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
+#ifdef __cplusplus
+}
+#endif
