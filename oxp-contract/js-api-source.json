@@ -101,7 +101,7 @@
         }
       },
       "property_count": 3,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSGlobal.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSGlobal.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -202,7 +202,7 @@
         }
       },
       "property_count": 13,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSClock.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSClock.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -365,7 +365,7 @@
         }
       },
       "property_count": 14,
-      "source": "upstream/oolite/src/Core/Debug/OOJSConsole.m",
+      "source": "upstream/oolite/src/Core/Debug/OOJSConsole.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -374,7 +374,7 @@
       "methods": {},
       "properties": {},
       "property_count": 0,
-      "source": "upstream/oolite/src/Core/Debug/OOJSConsole.m",
+      "source": "upstream/oolite/src/Core/Debug/OOJSConsole.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -420,7 +420,7 @@
         }
       },
       "property_count": 5,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSDock.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSDock.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -589,7 +589,7 @@
         }
       },
       "property_count": 25,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSEntity.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSEntity.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -832,14 +832,21 @@
         }
       },
       "property_count": 38,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSEquipmentInfo.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSEquipmentInfo.mm",
       "static_methods": {
         "infoForKey": {
           "arity": 0,
           "native": "EquipmentInfoStaticInfoForKey"
         }
       },
-      "static_properties": {}
+      "static_properties": {
+        "allEquipment": {
+          "access": "readonly",
+          "enumerable": true,
+          "flags": "OOJS_PROP_READONLY_CB",
+          "id": "0"
+        }
+      }
     },
     "ExhaustPlume": {
       "inherits": "Entity",
@@ -859,7 +866,7 @@
         }
       },
       "property_count": 1,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSExhaustPlume.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSExhaustPlume.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -911,7 +918,7 @@
         }
       },
       "property_count": 6,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSFlasher.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSFlasher.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -944,7 +951,7 @@
         }
       },
       "property_count": 1,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSManifest.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSManifest.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -1001,7 +1008,7 @@
         }
       },
       "property_count": 3,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSMission.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSMission.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -1082,7 +1089,7 @@
         }
       },
       "property_count": 11,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSOolite.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSOolite.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -1165,7 +1172,7 @@
         }
       },
       "property_count": 12,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSPlanet.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSPlanet.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -1368,7 +1375,7 @@
         }
       },
       "property_count": 22,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSPlayer.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSPlayer.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -1872,7 +1879,7 @@
         }
       },
       "property_count": 64,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSPlayerShip.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSPlayerShip.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -1963,7 +1970,7 @@
         }
       },
       "property_count": 4,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSQuaternion.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSQuaternion.mm",
       "static_methods": {
         "random": {
           "arity": 0,
@@ -1982,7 +1989,7 @@
       },
       "properties": {},
       "property_count": 0,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSScript.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSScript.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -3035,9 +3042,9 @@
           "id": "kShip_shipUniqueName"
         },
         "speed": {
-          "access": "readonly",
+          "access": "readwrite",
           "enumerable": true,
-          "flags": "OOJS_PROP_READONLY_CB",
+          "flags": "OOJS_PROP_READWRITE_CB",
           "id": "kShip_speed"
         },
         "starboardWeapon": {
@@ -3174,7 +3181,7 @@
         }
       },
       "property_count": 144,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSShip.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSShip.mm",
       "static_methods": {
         "keys": {
           "arity": 0,
@@ -3250,7 +3257,7 @@
         }
       },
       "property_count": 4,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSShipGroup.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSShipGroup.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -3271,7 +3278,7 @@
         }
       },
       "property_count": 1,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSSound.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSound.mm",
       "static_methods": {
         "load": {
           "arity": 1,
@@ -3357,7 +3364,7 @@
         }
       },
       "property_count": 7,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSSoundSource.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSoundSource.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -3557,7 +3564,7 @@
         }
       },
       "property_count": 18,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSStation.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSStation.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -3601,7 +3608,7 @@
         }
       },
       "property_count": 4,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSSun.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSun.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -3886,7 +3893,7 @@
         }
       },
       "property_count": 29,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSSystem.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSystem.mm",
       "static_methods": {
         "infoForSystem": {
           "arity": 2,
@@ -3954,7 +3961,7 @@
         }
       },
       "property_count": 4,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSSystemInfo.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSystemInfo.mm",
       "static_methods": {
         "filteredSystems": {
           "arity": 2,
@@ -4004,7 +4011,7 @@
         }
       },
       "property_count": 3,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSTimer.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSTimer.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -4109,7 +4116,7 @@
         }
       },
       "property_count": 3,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSVector.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSVector.mm",
       "static_methods": {
         "interpolate": {
           "arity": 3,
@@ -4298,7 +4305,7 @@
         }
       },
       "property_count": 22,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSVisualEffect.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSVisualEffect.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -4333,7 +4340,7 @@
         }
       },
       "property_count": 4,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSWaypoint.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSWaypoint.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -4368,7 +4375,7 @@
         }
       },
       "property_count": 4,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSWormhole.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSWormhole.mm",
       "static_methods": {},
       "static_properties": {}
     },
@@ -4386,7 +4393,7 @@
       },
       "properties": {},
       "property_count": 0,
-      "source": "upstream/oolite/src/Core/Scripting/OOJSSpecialFunctions.m",
+      "source": "upstream/oolite/src/Core/Scripting/OOJSSpecialFunctions.mm",
       "static_methods": {},
       "static_properties": {}
     }
@@ -4399,10 +4406,10 @@
     "files_with_tables": 31,
     "method_count": 285,
     "property_count": 469,
-    "readonly_properties": 269,
-    "readwrite_properties": 200,
+    "readonly_properties": 268,
+    "readwrite_properties": 201,
     "static_method_count": 21,
-    "static_property_count": 0,
+    "static_property_count": 1,
     "unregistered_tables": []
   }
 }

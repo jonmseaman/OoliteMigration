@@ -5,8 +5,8 @@
 
 	Scoped to what JSEngine_quickjs.cpp implements (Context/Value/Object/ClassDef lifecycle plus
 	resolve/enumerate mapped onto JSClassExoticMethods, and private-pointer attach/retrieve): see
-	that file's banner for the full list of what is out of scope for this bead. It is the same
-	shape of check as test_jsengine_spidermonkey.cpp for the parts both backends cover: number
+	that file's banner for the full list of what is out of scope for this bead. It began as the
+	same shape of check as the (since retired) SpiderMonkey backend's unit test: number
 	canonicalisation, private data through a class with a finalizer, and resolve/enumerate acting
 	through the façade's own PropertyId/hook types rather than any engine-specific handle.
 

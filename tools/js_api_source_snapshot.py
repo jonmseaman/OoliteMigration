@@ -17,7 +17,8 @@ opposite and the source is right:
     { "speed",  kShip_speed,  OOJS_PROP_READONLY_CB }
 
 That distinction is load-bearing, not cosmetic: bead oo-jou1 exists precisely because `speed` is
-READONLY and a scenario tried to assign to it.  A snapshot that reports every property as writable
+READONLY and a scenario tried to assign to it (oo-jou1 has since made it READWRITE_CB; the
+canary in check_floors now uses Ship.AI).  A snapshot that reports every property as writable
 cannot answer the question those beads ask.
 
 So this snapshot is generated from the declarative property/function tables in
@@ -392,10 +393,11 @@ def check_floors(doc, out=sys.stderr):
     # that the live-console snapshot does not.
     ship = classes.get("Ship", {})
     for name, want, why in (
-            ("speed", "readonly",
-             "bead oo-jou1 exists precisely because Ship.speed is OOJS_PROP_READONLY_CB"),
+            # Was Ship.speed until oo-jou1 made speed writable; retargeted by Jon in oo-w9rq.
+            ("AI", "readonly",
+             "Ship.AI is OOJS_PROP_READONLY_CB and has no setter"),
             ("velocity", "readwrite",
-             "it is the canonical OOJS_PROP_READWRITE_CB counterpart to speed"),
+             "it is the canonical OOJS_PROP_READWRITE_CB counterpart to AI"),
     ):
         got = ship.get("properties", {}).get(name)
         if got is None:
