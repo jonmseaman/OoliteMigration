@@ -79,7 +79,7 @@ struct CachedInfo
 	float width, height, alpha;
 };
 
-/*	One legend, dial or MFD. Was an NSArray tuple [info, boxed CachedInfo, boxed SEL,
+/*	One legend, dial or MFD. Was an array tuple [info, boxed CachedInfo, boxed SEL,
 	selector name] (bead oo-3rb.49); the widget lists are std::vectors of these, in the
 	same order, filled only while the HUD is initialised.
 */
@@ -3705,7 +3705,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 	}
 
 	ShipEntity		*target_ship = nil;
-	NSString		*legal_desc = nil;
+	std::optional<std::string>	legal_desc;
 	
 	GLfloat			scale = info.get<float>("reticle_scale", ONE_SIXTYFOURTH);
 	
@@ -3713,7 +3713,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 	if ([target isShip])
 	{
 		target_ship = (ShipEntity *)target;
-		legal_desc = [target_ship scanDescription];
+		legal_desc = oo::OptionalString([target_ship scanDescription]);
 	}
 
 	if ([target_ship isCloaked])  return;
@@ -3863,11 +3863,11 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 		if (range < 0.001f) range = 0.0f;	// avoids the occasional -0.001 km distance.
 		NSSize textsize = NSMakeSize(rdist * scale, rdist * scale);
 		float line_height = rdist * scale;
-		NSString*	infoline = [NSString stringWithFormat:@"%0.3f km", range];
-		if (legal_desc != nil) infoline = [NSString stringWithFormat:@"%@ (%@)", infoline, legal_desc];
+		std::string	infoline = oo::str::format("%0.3f km", range);
+		if (legal_desc.has_value()) infoline = oo::str::format("%s (%s)", infoline.c_str(), legal_desc->c_str());
 		// no need to set colour here
-		OODrawString([player1 dialTargetName], rs0, 0.5 * rs2, 0, textsize);
-		OODrawString(infoline, rs0, 0.5 * rs2 - line_height, 0, textsize);
+		cxx_OODrawString(oo::StdString([player1 dialTargetName]), rs0, 0.5 * rs2, 0, textsize);
+		cxx_OODrawString(infoline, rs0, 0.5 * rs2 - line_height, 0, textsize);
 	
 		if ([target isWormhole])
 		{
@@ -3882,8 +3882,9 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 				// unless we want a separate line Destination: XXX ?
 			case WH_SCANINFO_ARRIVAL_TIME:
 			{
-				NSString *wormholeETA = [NSString stringWithFormat:DESC(@"wormhole-ETA-@"), ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO)];
-				OODrawString(wormholeETA, rs0, 0.5 * rs2 - 3 * line_height, 0, textsize);
+				// a format read at run time (ADR-0043 item 19)
+				std::string wormholeETA = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-ETA-@")), { oo::DescriptionOf(ClockToString([(WormholeEntity *)target estimatedArrivalTime], NO)) });
+				cxx_OODrawString(wormholeETA, rs0, 0.5 * rs2 - 3 * line_height, 0, textsize);
 			}
 			case WH_SCANINFO_COLLAPSE_TIME:
 			{
@@ -3891,8 +3892,8 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 				int minutesToCollapse = floor (timeForCollapsing / 60.0);
 				int secondsToCollapse = (int)timeForCollapsing % 60;
 				
-				NSString *wormholeExpiringIn = [NSString stringWithFormat:DESC(@"wormhole-collapsing-in-mm:ss"), minutesToCollapse, secondsToCollapse];
-				OODrawString(wormholeExpiringIn, rs0, 0.5 * rs2 - 2 * line_height, 0, textsize);
+				std::string wormholeExpiringIn = oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-collapsing-in-mm:ss")), { minutesToCollapse, secondsToCollapse });
+				cxx_OODrawString(wormholeExpiringIn, rs0, 0.5 * rs2 - 2 * line_height, 0, textsize);
 			}
 			case WH_SCANINFO_SCANNED:
 			case WH_SCANINFO_NONE:
@@ -3959,8 +3960,8 @@ static void hudDrawWaypoint(OOWaypointEntity *waypoint, PlayerEntity *player1, G
 		if (range < 0.001f) range = 0.0f;	// avoids the occasional -0.001 km distance.
 		NSSize textsize = NSMakeSize(rdist * scale, rdist * scale);
 		float line_height = rdist * scale;
-		NSString*	infoline = [NSString stringWithFormat:@"%0.3f km", range];
-		OODrawString(infoline, rs0 * 0.5, -rs2 - line_height, 0, textsize);
+		std::string	infoline = oo::str::format("%0.3f km", range);
+		cxx_OODrawString(infoline, rs0 * 0.5, -rs2 - line_height, 0, textsize);
 	}
 
 	OOGLPopModelView();
@@ -4264,18 +4265,18 @@ void OODrawPlanetInfo(int gov, int eco, int tec, GLfloat x, GLfloat y, GLfloat z
 
 	OOGLBEGIN(GL_QUADS);
 	{
-		[[UNIVERSE gui] setGLColorFromSetting:[NSString stringWithFormat:kGuiChartEconomyUColor, (size_t)eco]
+		[[UNIVERSE gui] cxx_setGLColorFromSetting:oo::str::format(cxx_kGuiChartEconomyUColor, (size_t)eco)
 								 defaultValue:[OOColor colorWithRed:ce1 green:1.0f blue:0.0f alpha:1.0f] 
 										alpha:1.0];
 
 		// see OODrawHilightedPlanetInfo
 		cx += drawCharacterQuad(23 - eco, cx, y, z, siz);	// characters 16..23 are economy symbols
-		[[UNIVERSE gui] setGLColorFromSetting:[NSString stringWithFormat:kGuiChartGovernmentUColor, (size_t)gov]
+		[[UNIVERSE gui] cxx_setGLColorFromSetting:oo::str::format(cxx_kGuiChartGovernmentUColor, (size_t)gov)
 								 defaultValue:[OOColor colorWithRed:govcol[gov*3] green:govcol[1+(gov*3)] blue:govcol[2+(gov*3)] alpha:1.0f] 
 										alpha:1.0];
 
 		cx += drawCharacterQuad(gov, cx, y, z, siz) - sF6KernGovt;		// charcters 0..7 are government symbols
-		[[UNIVERSE gui] setGLColorFromSetting:kGuiChartTechColor
+		[[UNIVERSE gui] cxx_setGLColorFromSetting:cxx_kGuiChartTechColor
 								 defaultValue:[OOColor colorWithRed:0.5 green:1.0f blue:1.0f alpha:1.0f] 
 										alpha:1.0];
 
