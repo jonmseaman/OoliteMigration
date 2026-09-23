@@ -19,7 +19,11 @@ oofnd_tests = [
     'test_defaults',
     'test_foundation_types',
     'test_string',
+    'test_string_compare',
+    'test_string_sweep',
+    'test_string_format_runtime',
     'test_encoding',
+    'test_unicode_file',
     'test_log',
     'test_logfile',
 ]
@@ -61,6 +65,7 @@ oofnd_plist_tests = [
     'test_plist_writers',
     'test_plist_xml',
     'test_plist_get',
+    'test_plist_carrier',
 ]
 
 foreach t : oofnd_plist_tests
@@ -81,6 +86,7 @@ oofnd_objc_tests = [
     'test_objc_floor',
     'test_objc_runtime',
     'test_objc_exception',
+    'test_objc_ref',
 ]
 
 foreach t : oofnd_objc_tests

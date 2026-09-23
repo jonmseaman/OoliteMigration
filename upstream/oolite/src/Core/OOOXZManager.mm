@@ -454,20 +454,29 @@ static OOOXZManager *sSingleton = nil;
 
 	NSMutableArray *filteredList = [NSMutableArray arrayWithCapacity:[list count]];
 	NSDictionary *manifest		 = nil;
-	NSInvocation *invocation	 = [NSInvocation invocationWithMethodSignature:[[self class] instanceMethodSignatureForSelector:filterSelector]];
-	[invocation setSelector:filterSelector];
-	[invocation setTarget:self];
-	if (parameter != nil)
-	{
-		[invocation setArgument:&parameter atIndex:3];
-	}
+	/*	A typed call through the filter's IMP (bead oo-3rb.53; was a Foundation invocation object). The
+		one-argument filters take the manifest; the rest take the manifest and the
+		parameter, which is nil for them only if it was never set, as the invocation's
+		unset argument was.
+	*/
+	typedef BOOL (*OneArgumentFilter)(id, SEL, NSDictionary *);
+	typedef BOOL (*TwoArgumentFilter)(id, SEL, NSDictionary *, NSString *);
+	IMP filterIMP = [self methodForSelector:filterSelector];
+	BOOL twoArguments = !(sel_isEqual(filterSelector, @selector(applyFilterByNoFilter:)) ||
+						  sel_isEqual(filterSelector, @selector(applyFilterByUpdateRequired:)) ||
+						  sel_isEqual(filterSelector, @selector(applyFilterByInstallable:)));
 
 	foreach (manifest, list)
 	{
-		[invocation setArgument:&manifest atIndex:2];
-		[invocation invoke];
 		BOOL filterAccepted = NO;
-		[invocation getReturnValue:&filterAccepted];
+		if (twoArguments)
+		{
+			filterAccepted = ((TwoArgumentFilter)filterIMP)(self, filterSelector, manifest, parameter);
+		}
+		else
+		{
+			filterAccepted = ((OneArgumentFilter)filterIMP)(self, filterSelector, manifest);
+		}
 		if (filterAccepted)
 		{
 			[filteredList addObject:manifest];

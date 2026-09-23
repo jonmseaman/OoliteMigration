@@ -42,7 +42,7 @@ SOFTWARE.
 #import "OOShaderMaterial.h"
 #import "OOSingleTextureMaterial.h"
 #import "OOMultiTextureMaterial.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "Universe.h"
 #import "OOCacheManager.h"
 #import "OOTexture.h"
@@ -355,13 +355,13 @@ static BOOL sDumpShaderSource = NO;
 
 	if ([UNIVERSE useShaders])
 	{
-		configuration = [shadersDict oo_dictionaryForKey:name];
+		configuration = oo::PListView(shadersDict).get<NSDictionary *>(name);
 	}
 #endif
 	
 	if (configuration == nil)
 	{
-		configuration = [materialDict oo_dictionaryForKey:name];
+		configuration = oo::PListView(materialDict).get<NSDictionary *>(name);
 	}
 	
 	if (configuration == nil)
@@ -453,7 +453,7 @@ static void SynthDiffuse(OOMaterialSynthContext *context, NSString *name)
 	{
 		AddTexture(context, @"uDiffuseMap", kOOMaterialDiffuseMapName, @"OOSTD_DIFFUSE_MAP", diffuseMapSpec);
 		
-		if ([diffuseMapSpec oo_boolForKey:@"cube_map"])
+		if (oo::PListView(diffuseMapSpec).get<BOOL>(@"cube_map"))
 		{
 			[context->macros setObject:@"1" forKey:@"OOSTD_DIFFUSE_MAP_IS_CUBE_MAP"];
 		}
