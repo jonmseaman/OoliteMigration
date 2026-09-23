@@ -404,7 +404,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 
 	foreach (key, initialDemoShips)
 	{
-		NSString *conditions = oo::PListView(key).get<NSString *>(kOODemoShipConditions, nil);
+		NSString *conditions = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipConditions), nil);
 		if (conditions != nil)
 		{
 			[conditionScripts addObject:conditions];
@@ -439,14 +439,14 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	// Note: iterate over initialDemoShips to avoid mutating the collection being enu,erated.
 	foreach (key, initialDemoShips)
 	{
-		NSString *shipKey = oo::PListView(key).get<NSString *>(kOODemoShipKey);
+		NSString *shipKey = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipKey));
 		if (![key isKindOfClass:[NSDictionary class]] || [self shipInfoForKey:shipKey] == nil)
 		{
 			[demoShips removeObject:key];
 		}
 		else 
 		{
-			NSString *conditions = oo::PListView(key).get<NSString *>(kOODemoShipConditions, nil);
+			NSString *conditions = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipConditions), nil);
 			if (conditions != nil)
 			{
 				if ([PLAYER status] == STATUS_START_GAME)
@@ -497,7 +497,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 		{
 			shipKey = [[_shipData allKeys] objectAtIndex:0];
 		}
-		[demoShips addObject:[NSDictionary dictionaryWithObject:shipKey forKey:kOODemoShipKey]];
+		[demoShips addObject:[NSDictionary dictionaryWithObject:shipKey forKey:oo::NSStringFrom(kOODemoShipKey)]];
 	}
 	
 	// now separate out the demoships by class, and add some extra keys
@@ -505,10 +505,10 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	NSMutableArray *demoClass = nil;
 	foreach (key, demoShips)
 	{
-		NSString *klass = oo::PListView(key).get<NSString *>(kOODemoShipClass, @"ship");
-		if ([OOShipLibraryCategoryPlural(klass) length] == 0)
+		NSString *klass = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), @"ship");
+		if ([oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(klass))) length] == 0)
 		{
-			OOLog(@"shipdata.load.warning",@"Unexpected class '%@' in shiplibrary.plist for '%@'",klass,oo::PListView(key).get<NSString *>(kOODemoShipKey));
+			OOLog(@"shipdata.load.warning",@"Unexpected class '%@' in shiplibrary.plist for '%@'",klass,oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipKey)));
 			klass = @"ship";
 		}
 		demoClass = [demoList objectForKey:klass];
@@ -519,11 +519,11 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 		}
 		NSMutableDictionary *demoEntry = [NSMutableDictionary dictionaryWithDictionary:key];
 		// add "name" object to dictionary from ship definition
-		[demoEntry setObject:oo::PListView([self shipInfoForKey:oo::PListView(demoEntry).get<NSString *>(@"ship")]).get<NSString *>(kOODemoShipName) forKey:kOODemoShipName];
+		[demoEntry setObject:oo::PListView([self shipInfoForKey:oo::PListView(demoEntry).get<NSString *>(@"ship")]).get<NSString *>(oo::NSStringFrom(kOODemoShipName)) forKey:oo::NSStringFrom(kOODemoShipName)];
 		// set "class" object to standard ship if not otherwise set
-		if (![oo::PListView(demoEntry).get<NSString *>(kOODemoShipClass, nil) isEqualToString:klass])
+		if (![oo::PListView(demoEntry).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), nil) isEqualToString:klass])
 		{
-			[demoEntry setObject:klass forKey:kOODemoShipClass];
+			[demoEntry setObject:klass forKey:oo::NSStringFrom(kOODemoShipClass)];
 		}
 		[demoClass addObject:demoEntry];
 	}
@@ -1803,5 +1803,5 @@ static NSComparisonResult SortDemoShipsByName (id a, id b, void* context)
 
 static NSComparisonResult SortDemoCategoriesByName (id a, id b, void* context)
 {
-	return [OOShipLibraryCategoryPlural(oo::PListView(oo::PListView(a).at<NSDictionary *>(0)).get<NSString *>(@"class")) compare:OOShipLibraryCategoryPlural(oo::PListView(oo::PListView(b).at<NSDictionary *>(0)).get<NSString *>(@"class"))];
+	return [oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView(oo::PListView(a).at<NSDictionary *>(0)).get<NSString *>(@"class")))) compare:oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView(oo::PListView(b).at<NSDictionary *>(0)).get<NSString *>(@"class"))))];
 }
