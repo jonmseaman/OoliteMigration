@@ -34,11 +34,12 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 
 @class Entity;
 
 
-@interface OOScript: NSObject
+@interface OOScript: OOObject
 
 /*	Looks for path/world-scripts.plist, path/script.js, then path/script.plist.
 	May return zero or more scripts.

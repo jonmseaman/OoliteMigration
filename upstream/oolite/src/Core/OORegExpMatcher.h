@@ -32,6 +32,7 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
 @class OOJSFunction, OOJSValue;
 
@@ -43,7 +44,7 @@ enum
 };
 
 
-@interface OORegExpMatcher: NSObject
+@interface OORegExpMatcher: OOObject
 {
 @private
 	OOJSFunction			*_tester;
