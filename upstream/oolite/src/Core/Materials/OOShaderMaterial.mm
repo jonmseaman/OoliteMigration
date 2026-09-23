@@ -255,7 +255,6 @@ static NSString *MacrosToString(NSDictionary *macros);
 			}
 		}
 		
-		uniforms = [[NSMutableDictionary alloc] initWithCapacity:[uniformDefs count] + [textureArray count]];
 		[self addUniformsFromDictionary:uniformDefs withBindingTarget:target];
 		[self addTexturesFromArray:textureArray unitCount:textureUnits];
 	}
@@ -264,16 +263,16 @@ static NSString *MacrosToString(NSDictionary *macros);
 	{
 		// write gloss and gamma correction preference to the uniforms dictionary
 		
-		if (![uniforms objectForKey:@"uGloss"])
+		if (uniforms.find("uGloss") == uniforms.end())
 		{
 			float gloss = OOClamp_0_1_f(oo::PListView(configuration).get<float>(@"gloss", 0.5f));
-			[self setUniform:@"uGloss" floatValue:gloss];
+			[self setUniform:"uGloss" floatValue:gloss];
 		}
-		
-		if (![uniforms objectForKey:@"uGammaCorrect"])
+
+		if (uniforms.find("uGammaCorrect") == uniforms.end())
 		{
 			BOOL gammaCorrect = oo::PListView(configuration).get<BOOL>(@"gamma_correct", ![[NSUserDefaults standardUserDefaults] boolForKey:@"no-gamma-correct"]);
-			[self setUniform:@"uGammaCorrect" floatValue:(float)gammaCorrect];
+			[self setUniform:"uGammaCorrect" floatValue:(float)gammaCorrect];
 		}
 	}
 	
@@ -293,7 +292,6 @@ static NSString *MacrosToString(NSDictionary *macros);
 	[self willDealloc];
 	
 	[shaderProgram release];
-	[uniforms release];
 	
 	if (textures != NULL)
 	{
@@ -310,16 +308,14 @@ static NSString *MacrosToString(NSDictionary *macros);
 }
 
 
-- (BOOL)bindUniform:(NSString *)uniformName
+- (BOOL)bindUniform:(const std::string &)uniformName
 		   toObject:(id<OOWeakReferenceSupport>)source
 		   property:(SEL)selector
 	 convertOptions:(OOUniformConvertOptions)options
 {
 	OOShaderUniform			*uniform = nil;
-	
-	if (uniformName == nil) return NO;
-	
-	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
+
+	uniform = [[OOShaderUniform alloc] initWithName:uniformName
 									  shaderProgram:shaderProgram
 									  boundToObject:source
 										   property:selector
@@ -327,29 +323,28 @@ static NSString *MacrosToString(NSDictionary *macros);
 	if (uniform != nil)
 	{
 		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
-		[uniforms setObject:uniform forKey:uniformName];
-		[uniform release];
+		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 		return YES;
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", uniformName);
-		[uniforms removeObjectForKey:uniformName];
+		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		uniforms.erase(uniformName);
 		return NO;
 	}
 }
 
 
-- (BOOL)bindSafeUniform:(NSString *)uniformName
+- (BOOL)bindSafeUniform:(const std::string &)uniformName
 			   toObject:(id<OOWeakReferenceSupport>)target
-		  propertyNamed:(NSString *)property
+		  propertyNamed:(const std::optional<std::string> &)property
 		 convertOptions:(OOUniformConvertOptions)options
 {
 	SEL					selector = NULL;
-	
-	selector = OOSelectorFromName([property UTF8String]);
-	
-	if (selector != NULL && OOUniformBindingPermitted(property, target))
+
+	selector = OOSelectorFromName(property.has_value() ? property->c_str() : nullptr);
+
+	if (selector != NULL && OOUniformBindingPermitted(*property, target))
 	{
 		return [self bindUniform:uniformName
 						toObject:target
@@ -358,86 +353,75 @@ static NSString *MacrosToString(NSDictionary *macros);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unpermittedMethod", @"Did not bind uniform \"%@\" to property -[%@ %@] - unpermitted method.", uniformName, [target class], property);
+		OOLog(@"shader.uniform.unpermittedMethod", @"Did not bind uniform \"%@\" to property -[%@ %@] - unpermitted method.", oo::NSStringFrom(uniformName), [target class], oo::NSStringOrNil(property));
 	}
 	
 	return NO;
 }
 
 
-- (void)setUniform:(NSString *)uniformName intValue:(int)value
+- (void)setUniform:(const std::string &)uniformName intValue:(int)value
 {
 	OOShaderUniform			*uniform = nil;
 	
-	if (uniformName == nil) return;
-	
-	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
+	uniform = [[OOShaderUniform alloc] initWithName:uniformName
 									  shaderProgram:shaderProgram
 										   intValue:value];
 	if (uniform != nil)
 	{
 		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
-		[uniforms setObject:uniform forKey:uniformName];
-		[uniform release];
+		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", uniformName);
-		[uniforms removeObjectForKey:uniformName];
+		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		uniforms.erase(uniformName);
 	}
 }
 
 
-- (void)setUniform:(NSString *)uniformName floatValue:(float)value
+- (void)setUniform:(const std::string &)uniformName floatValue:(float)value
 {
 	OOShaderUniform			*uniform = nil;
 	
-	if (uniformName == nil) return;
-	
-	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
+	uniform = [[OOShaderUniform alloc] initWithName:uniformName
 									  shaderProgram:shaderProgram
 										 floatValue:value];
 	if (uniform != nil)
 	{
 		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
-		[uniforms setObject:uniform forKey:uniformName];
-		[uniform release];
+		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", uniformName);
-		[uniforms removeObjectForKey:uniformName];
+		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		uniforms.erase(uniformName);
 	}
 }
 
 
-- (void)setUniform:(NSString *)uniformName vectorValue:(GLfloat[4])value
+- (void)setUniform:(const std::string &)uniformName vectorValue:(GLfloat[4])value
 {
 	OOShaderUniform			*uniform = nil;
 	
-	if (uniformName == nil) return;
-	
-	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
+	uniform = [[OOShaderUniform alloc] initWithName:uniformName
 									  shaderProgram:shaderProgram
 										vectorValue:value];
 	if (uniform != nil)
 	{
 		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
-		[uniforms setObject:uniform forKey:uniformName];
-		[uniform release];
+		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", uniformName);
-		[uniforms removeObjectForKey:uniformName];
+		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		uniforms.erase(uniformName);
 	}
 }
 
 
-- (void)setUniform:(NSString *)uniformName vectorObjectValue:(id)value
+- (void)setUniform:(const std::string &)uniformName vectorObjectValue:(id)value
 {
-	if (uniformName == nil) return;
-	
 	GLfloat vecArray[4];
 	if ([value isKindOfClass:[NSArray class]] && [value count] == 4)
 	{
@@ -455,43 +439,39 @@ static NSString *MacrosToString(NSDictionary *macros);
 		vecArray[3] = 1.0;
 	}
 	
-	OOShaderUniform *uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
+	OOShaderUniform *uniform = [[OOShaderUniform alloc] initWithName:uniformName
 													   shaderProgram:shaderProgram
 														 vectorValue:vecArray];
 	if (uniform != nil)
 	{
 		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
-		[uniforms setObject:uniform forKey:uniformName];
-		[uniform release];
+		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", uniformName);
-		[uniforms removeObjectForKey:uniformName];
+		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		uniforms.erase(uniformName);
 	}
 }
 
 
-- (void)setUniform:(NSString *)uniformName quaternionValue:(Quaternion)value asMatrix:(BOOL)asMatrix
+- (void)setUniform:(const std::string &)uniformName quaternionValue:(Quaternion)value asMatrix:(BOOL)asMatrix
 {
 	OOShaderUniform			*uniform = nil;
 	
-	if (uniformName == nil) return;
-	
-	uniform = [[OOShaderUniform alloc] initWithName:oo::StdString(uniformName)
+	uniform = [[OOShaderUniform alloc] initWithName:uniformName
 									  shaderProgram:shaderProgram
 									quaternionValue:value
 										   asMatrix:asMatrix];
 	if (uniform != nil)
 	{
 		OOLog(@"shader.uniform.set", @"Set up uniform %@", uniform);
-		[uniforms setObject:uniform forKey:uniformName];
-		[uniform release];
+		uniforms[uniformName] = oo::ObjCRef<OOShaderUniform *>::adopt(uniform);
 	}
 	else
 	{
-		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", uniformName);
-		[uniforms removeObjectForKey:uniformName];
+		OOLog(@"shader.uniform.unSet", @"Did not set uniform \"%@\"", oo::NSStringFrom(uniformName));
+		uniforms.erase(uniformName);
 	}
 }
 
@@ -606,7 +586,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 			
 			if (gotValue)
 			{
-				[self setUniform:name floatValue:floatValue];
+				[self setUniform:oo::StdString(name) floatValue:floatValue];
 			}
 		}
 		else if ([type isEqualToString:@"int"] || [type isEqualToString:@"integer"] || [type isEqualToString:@"texture"])
@@ -620,13 +600,13 @@ static NSString *MacrosToString(NSDictionary *macros);
 			*/
 			if ([value respondsToSelector:@selector(intValue)])
 			{
-				[self setUniform:name intValue:[value intValue]];
+				[self setUniform:oo::StdString(name) intValue:[value intValue]];
 				gotValue = YES;
 			}
 		}
 		else if ([type isEqualToString:@"vector"])
 		{
-			[self setUniform:name vectorObjectValue:value];
+			[self setUniform:oo::StdString(name) vectorObjectValue:value];
 			gotValue = YES;
 		}
 		else if ([type isEqualToString:@"quaternion"])
@@ -635,7 +615,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 			{
 				quatAsMatrix = oo::PListView(definition).get<BOOL>(@"asMatrix", quatAsMatrix);
 			}
-			[self setUniform:name
+			[self setUniform:oo::StdString(name)
 			 quaternionValue:OOQuaternionFromObject(value, kIdentityQuaternion)
 					asMatrix:quatAsMatrix];
 			gotValue = YES;
@@ -658,7 +638,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 				convertOptions = kOOUniformConvertDefaults;
 			}
 			
-			[self bindSafeUniform:name toObject:target propertyNamed:binding convertOptions:convertOptions];
+			[self bindSafeUniform:oo::StdString(name) toObject:target propertyNamed:oo::OptionalString(binding) convertOptions:convertOptions];
 			gotValue = YES;
 		}
 		
@@ -674,7 +654,6 @@ static NSString *MacrosToString(NSDictionary *macros);
 
 - (BOOL)doApply
 {
-	OOShaderUniform			*uniform = nil;
 	uint32_t				i;
 	
 	OO_ENTER_OPENGL();
@@ -691,9 +670,9 @@ static NSString *MacrosToString(NSDictionary *macros);
 	
 	@try
 	{
-		foreach (uniform, [uniforms allValues])
+		for (const auto &[name, uniform] : uniforms)
 		{
-			[uniform apply];
+			[uniform.get() apply];
 		}
 	}
 	@catch (id exception) {}
@@ -762,7 +741,10 @@ static NSString *MacrosToString(NSDictionary *macros);
 
 - (void)setBindingTarget:(id<OOWeakReferenceSupport>)target
 {
-	[[uniforms allValues] makeObjectsPerformSelector:@selector(setBindingTarget:) withObject:target];
+	for (const auto &[name, uniform] : uniforms)
+	{
+		[uniform.get() setBindingTarget:target];
+	}
 	[bindingTarget release];
 	bindingTarget = [target weakRetain];
 }
