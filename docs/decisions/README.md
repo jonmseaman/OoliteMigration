@@ -30,5 +30,6 @@ changed* from the chain.
 | [0024](0024-js-api-gate-is-the-oolite-surface.md) | Phase 1's JS API gate compares Oolite's own API surface (tools/js_api_surface_compare.py), not the ES library of the old engine | Proposed — default in effect |
 | [0026](0026-oofnd-ref-semantics.md) | `oo::Ref` details ADR-0003 leaves open: retaining raw-pointer ctor + `adopt`, weak refs zeroed before the destructor, GNUstep autorelease order, ADR-0003's thread-safety only, insertion-ordered `WeakSet` | Proposed — default in effect |
 | [0028](0028-oofnd-filesystem-paths-data.md) | `oofnd` FileSystem/ResourcePaths/Data reproduce GNUstep's semantics and path spellings; `Data` is a value type; Objective-C++ builds as `gnu++20` with OOCocoa.h's true/false macros kept and guarded | Proposed — default in effect |
+| [0029](0029-objc-floor-without-foundation.md) | The Objective-C floor without Foundation: root class `OOObject` on libobjc2's own refcount/pool/weak refs, `OOConstantString` (+ tag-4 `OOTinyString`) behind `@"..."` flipped with oo-qps, ObjC exceptions kept in Phase 2, one bead per remaining Foundation family | Proposed — default in effect |
 
 Template: Status · Date · Context · Decision · Consequences · History.
