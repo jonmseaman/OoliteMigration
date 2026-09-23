@@ -869,7 +869,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	for (i = 0; i < [plumes count]; i++)
 	{
 		NSArray *definition = ScanTokensFromString(oo::PListView(plumes).at<NSString *>(i));
-		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:definition andScale:_scaleFactor];
+		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:oo::StringsFrom(definition) andScale:_scaleFactor];
 		[self addSubEntity:exhaust];
 	}
 	
@@ -14324,7 +14324,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	number = [numberString intValue];
 	
-	[self spawnShipsWithRole:roleString count:number];
+	[self spawnShipsWithRole:oo::StdString(roleString) count:number];
 }
 
 
@@ -14897,7 +14897,7 @@ NSDictionary *OODefaultShipShaderMacros(void)
 }
 
 // is this the right place for this function now? - CIM
-BOOL OOUniformBindingPermitted(NSString *propertyName, id bindingTarget)
+BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget)
 {
 	static NSSet			*entityWhitelist = nil;
 	static NSSet			*shipWhitelist = nil;
@@ -14912,21 +14912,23 @@ BOOL OOUniformBindingPermitted(NSString *propertyName, id bindingTarget)
 		playerShipWhitelist = [[NSSet alloc] initWithArray:oo::PListView(wlDict).get<NSArray *>(@"shader_player_ship_binding_methods")];
 		visualEffectWhitelist = [[NSSet alloc] initWithArray:oo::PListView(wlDict).get<NSArray *>(@"shader_visual_effect_binding_methods")];
 	}
+
+	id property = oo::NSStringFrom(propertyName);	// the whitelists hold the names as strings
 	
 	if ([bindingTarget isKindOfClass:[Entity class]])
 	{
-		if ([entityWhitelist containsObject:propertyName])  return YES;
+		if ([entityWhitelist containsObject:property])  return YES;
 		if ([bindingTarget isShip])
 		{
-			if ([shipWhitelist containsObject:propertyName])  return YES;
+			if ([shipWhitelist containsObject:property])  return YES;
 		}
 		if ([bindingTarget isPlayerLikeShip])
 		{
-			if ([playerShipWhitelist containsObject:propertyName])  return YES;
+			if ([playerShipWhitelist containsObject:property])  return YES;
 		}
 		if ([bindingTarget isVisualEffect])
 		{
-			if ([visualEffectWhitelist containsObject:propertyName])  return YES;
+			if ([visualEffectWhitelist containsObject:property])  return YES;
 		}
 	}
 	

@@ -24,8 +24,6 @@ MA 02110-1301, USA.
 
 #import "OOStringParsing.h"
 #import "OOLogging.h"
-#import "OOStringBridge.h"
-#include "oofnd/Scanner.hpp"
 #import "legacy_random.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
@@ -37,8 +35,11 @@ MA 02110-1301, USA.
 
 #import "OOJavaScriptEngine.h"
 #import "OOJSEngineTimeManagement.h"
+#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Scanner.hpp"
 
 /*
 	OOStringFromDeciCredits below is retargeted onto the ooscript façade (JSEngine.hpp), the
@@ -57,45 +58,23 @@ using ooscript::PropertyId;
 
 
 
-static NSString * const kOOLogStringVectorConversion			= @"strings.conversion.vector";
-static NSString * const kOOLogStringQuaternionConversion		= @"strings.conversion.quaternion";
-static NSString * const kOOLogStringRandomSeedConversion		= @"strings.conversion.randomSeed";
-
-
-NSMutableArray *ScanTokensFromString(NSString *values)
-{
-	NSMutableArray			*result = nil;
-	
-	// Note: Shark suggests we're getting a lot of early exits, but testing showed a pretty steady 2% early exit rate.
-	if (EXPECT_NOT(values == nil))  return [NSMutableArray array];
-	
-	result = [NSMutableArray array];
-	for (const std::string &token : oo::str::tokens(oo::StdString(values)))
-	{
-		[result addObject:oo::NSStringFrom(token)];
-	}
-	
-	return result;
-}
-
-
-BOOL ScanVectorFromString(NSString *xyzString, Vector *outVector)
+BOOL cxx_ScanVectorFromString(const std::optional<std::string> &xyzString, Vector *outVector)
 {
 	GLfloat					xyz[] = {0.0, 0.0, 0.0};
 	int						i = 0;
-	NSString				*error = nil;
-	
+	const char				*error = nullptr;
+
 	assert(outVector != NULL);
-	if (xyzString == nil) return NO;
-	
-	oo::str::Scanner		scanner(oo::StdString(xyzString));
+	if (!xyzString.has_value()) return NO;
+
+	oo::str::Scanner		scanner(*xyzString);
 	while (!scanner.isAtEnd() && i < 3 && !error)
 	{
-		if (!scanner.scanFloat(&xyz[i++]))  error = @"could not scan a float value.";
+		if (!scanner.scanFloat(&xyz[i++]))  error = "could not scan a float value.";
 	}
-	
-	if (!error && i < 3)  error = @"found less than three float values.";
-	
+
+	if (!error && i < 3)  error = "found less than three float values.";
+
 	if (!error)
 	{
 		*outVector = make_vector(xyz[0], xyz[1], xyz[2]);
@@ -103,16 +82,16 @@ BOOL ScanVectorFromString(NSString *xyzString, Vector *outVector)
 	}
 	else
 	{
-		 OOLogERR(kOOLogStringVectorConversion, @"cannot make vector from '%@': %@", xyzString, error);
+		 OOLogERR(@"strings.conversion.vector", @"cannot make vector from '%@': %s", oo::NSStringFrom(*xyzString), error);
 		 return NO;
 	}
 }
 
-BOOL ScanHPVectorFromString(NSString *xyzString, HPVector *outVector)
+BOOL cxx_ScanHPVectorFromString(const std::optional<std::string> &xyzString, HPVector *outVector)
 {
 	Vector scanVector;
 	assert(outVector != NULL);
-	BOOL result = ScanVectorFromString(xyzString, &scanVector);
+	BOOL result = cxx_ScanVectorFromString(xyzString, &scanVector);
 	if (!result)
 	{
 		return NO;
@@ -121,23 +100,23 @@ BOOL ScanHPVectorFromString(NSString *xyzString, HPVector *outVector)
 	return YES;
 }
 
-BOOL ScanQuaternionFromString(NSString *wxyzString, Quaternion *outQuaternion)
+BOOL cxx_ScanQuaternionFromString(const std::optional<std::string> &wxyzString, Quaternion *outQuaternion)
 {
 	GLfloat					wxyz[] = {1.0, 0.0, 0.0, 0.0};
 	int						i = 0;
-	NSString				*error = nil;
-	
+	const char				*error = nullptr;
+
 	assert(outQuaternion != NULL);
-	if (wxyzString == nil) return NO;
-	
-	oo::str::Scanner		scanner(oo::StdString(wxyzString));
+	if (!wxyzString.has_value()) return NO;
+
+	oo::str::Scanner		scanner(*wxyzString);
 	while (!scanner.isAtEnd() && i < 4 && !error)
 	{
-		if (!scanner.scanFloat(&wxyz[i++]))  error = @"could not scan a float value.";
+		if (!scanner.scanFloat(&wxyz[i++]))  error = "could not scan a float value.";
 	}
-	
-	if (!error && i < 4)  error = @"found less than four float values.";
-	
+
+	if (!error && i < 4)  error = "found less than four float values.";
+
 	if (!error)
 	{
 		outQuaternion->w = wxyz[0];
@@ -149,35 +128,35 @@ BOOL ScanQuaternionFromString(NSString *wxyzString, Quaternion *outQuaternion)
 	}
 	else
 	{
-		OOLogERR(kOOLogStringQuaternionConversion, @"cannot make quaternion from '%@': %@", wxyzString, error);
+		OOLogERR(@"strings.conversion.quaternion", @"cannot make quaternion from '%@': %s", oo::NSStringFrom(*wxyzString), error);
 		return NO;
 	}
 }
 
 
-BOOL ScanVectorAndQuaternionFromString(NSString *xyzwxyzString, Vector *outVector, Quaternion *outQuaternion)
+BOOL cxx_ScanVectorAndQuaternionFromString(const std::optional<std::string> &xyzwxyzString, Vector *outVector, Quaternion *outQuaternion)
 {
 	GLfloat					xyzwxyz[] = { 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
 	int						i = 0;
-	NSString				*error = nil;
-	
+	const char				*error = nullptr;
+
 	assert(outVector != NULL && outQuaternion != NULL);
-	if (xyzwxyzString == nil) return NO;
-	
-	oo::str::Scanner		scanner(oo::StdString(xyzwxyzString));
+	if (!xyzwxyzString.has_value()) return NO;
+
+	oo::str::Scanner		scanner(*xyzwxyzString);
 	while (!scanner.isAtEnd() && i < 7 && !error)
 	{
-		if (!scanner.scanFloat(&xyzwxyz[i++]))  error = @"Could not scan a float value.";
+		if (!scanner.scanFloat(&xyzwxyz[i++]))  error = "Could not scan a float value.";
 	}
-	
-	if (!error && i < 7)  error = @"Found less than seven float values.";
-	
+
+	if (!error && i < 7)  error = "Found less than seven float values.";
+
 	if (error)
 	{
-		OOLogERR(kOOLogStringQuaternionConversion, @"cannot make vector and quaternion from '%@': %@", xyzwxyzString, error);
+		OOLogERR(@"strings.conversion.quaternion", @"cannot make vector and quaternion from '%@': %s", oo::NSStringFrom(*xyzwxyzString), error);
 		return NO;
 	}
-	
+
 	outVector->x = xyzwxyz[0];
 	outVector->y = xyzwxyz[1];
 	outVector->z = xyzwxyz[2];
@@ -185,63 +164,62 @@ BOOL ScanVectorAndQuaternionFromString(NSString *xyzwxyzString, Vector *outVecto
 	outQuaternion->x = xyzwxyz[4];
 	outQuaternion->y = xyzwxyz[5];
 	outQuaternion->z = xyzwxyz[6];
-	
+
 	return YES;
 }
 
 
-Vector VectorFromString(NSString *xyzString, Vector defaultValue)
+Vector cxx_VectorFromString(const std::optional<std::string> &xyzString, Vector defaultValue)
 {
 	Vector result;
-	if (!ScanVectorFromString(xyzString, &result))  result = defaultValue;
+	if (!cxx_ScanVectorFromString(xyzString, &result))  result = defaultValue;
 	return result;
 }
 
 
-Quaternion QuaternionFromString(NSString *wxyzString, Quaternion defaultValue)
+Quaternion cxx_QuaternionFromString(const std::optional<std::string> &wxyzString, Quaternion defaultValue)
 {
 	Quaternion result;
-	if (!ScanQuaternionFromString(wxyzString, &result))  result = defaultValue;
+	if (!cxx_ScanQuaternionFromString(wxyzString, &result))  result = defaultValue;
 	return result;
 }
 
 
-NSString *StringFromPoint(NSPoint point)
+std::string cxx_StringFromPoint(NSPoint point)
 {
-	return [NSString stringWithFormat:@"%f %f", point.x, point.y];
+	return oo::str::format("%f %f", point.x, point.y);
 }
 
 
-NSPoint PointFromString(NSString *xyString)
+NSPoint cxx_PointFromString(const std::string &xyString)
 {
-	NSArray		*tokens = ScanTokensFromString(xyString);
+	const std::vector<std::string> tokens = oo::str::tokens(xyString);
 	NSPoint		result = NSZeroPoint;
-	
-	NSUInteger n_tokens = [tokens count];
-	if (n_tokens == 2)
+
+	if (tokens.size() == 2)
 	{
-		result.x = [[tokens objectAtIndex:0] doubleValue];
-		result.y = [[tokens objectAtIndex:1] doubleValue];
+		result.x = oo::str::doubleValue(tokens[0]);
+		result.y = oo::str::doubleValue(tokens[1]);
 	}
 	return result;
 }
 
 
-Random_Seed RandomSeedFromString(NSString *abcdefString)
+Random_Seed cxx_RandomSeedFromString(const std::optional<std::string> &abcdefString)
 {
 	Random_Seed				result;
 	int						abcdef[] = { 0, 0, 0, 0, 0, 0};
 	int						i = 0;
-	NSString				*error = nil;
-	oo::str::Scanner		scanner(oo::StdString(abcdefString));
-	
+	const char				*error = nullptr;
+	oo::str::Scanner		scanner(abcdefString.value_or(""));	// a nil string scans as an empty one (proposed ADR-0039)
+
 	while (!scanner.isAtEnd() && i < 6 && !error)
 	{
-		if (!scanner.scanInt(&abcdef[i++]))  error = @"could not scan a int value.";
+		if (!scanner.scanInt(&abcdef[i++]))  error = "could not scan a int value.";
 	}
-	
-	if (!error && i < 6)  error = @"found less than six int values.";
-	
+
+	if (!error && i < 6)  error = "found less than six int values.";
+
 	if (!error)
 	{
 		result.a = abcdef[0];
@@ -253,62 +231,63 @@ Random_Seed RandomSeedFromString(NSString *abcdefString)
 	}
 	else
 	{
-		OOLogERR(kOOLogStringRandomSeedConversion, @"cannot make Random_Seed from '%@': %@", abcdefString, error);
+		OOLogERR(@"strings.conversion.randomSeed", @"cannot make Random_Seed from '%@': %s", oo::NSStringOrNil(abcdefString), error);
 		result = kNilRandomSeed;
 	}
-	
+
 	return result;
 }
 
 
-NSString *StringFromRandomSeed(Random_Seed seed)
+std::string cxx_StringFromRandomSeed(Random_Seed seed)
 {
-	return [NSString stringWithFormat: @"%d %d %d %d %d %d", seed.a, seed.b, seed.c, seed.d, seed.e, seed.f];
+	return oo::str::format("%d %d %d %d %d %d", seed.a, seed.b, seed.c, seed.d, seed.e, seed.f);
 }
 
 
-NSString *OOPadStringToEms(NSString * string, float padEms)
+std::string cxx_OOPadStringToEms(const std::string &string, float padEms)
 {
-	NSString		*result = string;
-	float numEms = padEms - OOStringWidthInEm(result);
+	// OOStringWidthInEm (HeadUpDisplay) is an unmigrated callee: convert at the calls.
+	std::string		result = string;
+	float numEms = padEms - OOStringWidthInEm(oo::NSStringFrom(result));
 	if (numEms>0)
 	{
 		numEms /= OOStringWidthInEm(@" "); // start with wide space
-		result=[[@"" stringByPaddingToLength:(NSUInteger)numEms withString: @" " startingAtIndex:0] stringByAppendingString: result];
+		result = std::string((NSUInteger)numEms, ' ') + result;
 	}
 	// most of the way there, so switch to narrow space
-	numEms = padEms - OOStringWidthInEm(result);
+	numEms = padEms - OOStringWidthInEm(oo::NSStringFrom(result));
 	if (numEms>0)
 	{
 		numEms /= OOStringWidthInEm(@"\037"); // 037 is narrow space
-		result=[[@"" stringByPaddingToLength:(NSUInteger)numEms withString: @"\037" startingAtIndex:0] stringByAppendingString: result];
+		result = std::string((NSUInteger)numEms, '\037') + result;
 	}
 	return result;
 }
 
 
-NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol)
+std::string cxx_OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
 	ooscript::Value				method;
 	ooscript::Value				rval;
-	NSString			*result = nil;
+	std::optional<std::string>	result;
 	ooscript::Value				exception;
 	BOOL				hadException;
-	
+
 	/*	Because the |cr etc. formatting operators call this, and the
 		implementation may use string expansion, we need to ensure recursion
 		can't happen.
 	*/
 	static BOOL reentrancyLock;
-	if (reentrancyLock)  return [NSString stringWithFormat:@"%0.1f", tenthsOfCredits * 0.1];
-	
+	if (reentrancyLock)  return oo::str::format("%0.1f", tenthsOfCredits * 0.1);
+
 	reentrancyLock = YES;
-	
+
 	hadException = ooscript::getPendingException((context), (&exception));
 	ooscript::clearPendingException((context));
-	
+
 	{
 		Object fakeRootFacade = NULL;
 		if (ooscript::getMethodById((context), (global), OOJSID("formatCredits"), &fakeRootFacade, (&method)))
@@ -318,126 +297,61 @@ NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includ
 			{
 				args[1] = OOJSValueFromBOOL(includeDecimal);
 				args[2] = OOJSValueFromBOOL(includeSymbol);
-				
+
 				OOJSStartTimeLimiter();
 				ooscript::callFunctionValue((context), (global), (method), 3, (args), (&rval));
 				OOJSStopTimeLimiter();
-				
-				result = OOStringFromJSValue(context, rval);
+
+				// OOStringFromJSValue is an unmigrated callee (nil for null or undefined)
+				result = oo::OptionalString(OOStringFromJSValue(context, rval));
 			}
 		}
 	}
-	
+
 	if (hadException)  ooscript::setPendingException((context), (exception));
-	
+
 	OOJSRelinquishContext(context);
-	
-	if (EXPECT_NOT(result == nil))  result = [NSString stringWithFormat:@"%li", (long)(tenthsOfCredits) / 10];
-	
+
+	if (EXPECT_NOT(!result.has_value()))  result = oo::str::format("%li", (long)(tenthsOfCredits) / 10);
+
 	reentrancyLock = NO;
-	
-	return result;
+
+	return *result;
 }
 
 
-@implementation NSString (OOUtilities)
-
-- (BOOL)pathHasExtension:(NSString *)extension
+std::vector<unsigned> cxx_ComponentsFromVersionString(const std::string &string)
 {
-	return [[self pathExtension] caseInsensitiveCompare:extension] == NSOrderedSame;
+	return oo::str::versionComponents(string);
 }
 
 
-- (BOOL)pathHasExtensionInArray:(NSArray *)extensions
+NSComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2)
 {
-	NSString		*extension = nil;
-	
-	foreach (extension, extensions)
-	{
-		if ([[self pathExtension] caseInsensitiveCompare:extension] == NSOrderedSame) return YES;
-	}
-	
-	return NO;
-}
-
-@end
-
-
-NSArray *ComponentsFromVersionString(NSString *string)
-{
-	NSArray				*stringComponents = nil;
-	NSMutableArray		*result = nil;
-	NSUInteger			i, count;
-	int					value;
-	id					component;
-	
-	stringComponents = [string componentsSeparatedByString:@" "];
-	stringComponents = [[stringComponents objectAtIndex:0] componentsSeparatedByString:@"-"];
-	stringComponents = [[stringComponents objectAtIndex:0] componentsSeparatedByString:@"."];
-	count = [stringComponents count];
-	result = [NSMutableArray arrayWithCapacity:count];
-	
-	for (i = 0; i != count; ++i)
-	{
-		component = [stringComponents objectAtIndex:i];
-		if ([component respondsToSelector:@selector(intValue)])  value = MAX([component intValue], 0);
-		else  value = 0;
-		
-		[result addObject:[NSNumber numberWithUnsignedInt:value]];
-	}
-	
-	return result;
-}
-
-
-NSComparisonResult CompareVersions(NSArray *version1, NSArray *version2)
-{
-	NSEnumerator		*leftEnum = nil,
-						*rightEnum = nil;
-	NSNumber			*leftComponent = nil,
-						*rightComponent = nil;
-	unsigned			leftValue,
-						rightValue;
-	
-	leftEnum = [version1 objectEnumerator];
-	rightEnum = [version2 objectEnumerator];
-	
-	for (;;)
-	{
-		leftComponent = [leftEnum nextObject];
-		rightComponent = [rightEnum nextObject];
-		
-		if (leftComponent == nil && rightComponent == nil)  break;	// End of both versions
-		
-		// We'll get 0 if the component is nil, which is what we want.
-		leftValue = [leftComponent unsignedIntValue];
-		rightValue = [rightComponent unsignedIntValue];
-		
-		if (leftValue < rightValue) return NSOrderedAscending;
-		if (leftValue > rightValue) return NSOrderedDescending;
-	}
-	
-	// If there was a difference, we'd have returned already.
+	const int order = oo::str::compareVersions(version1, version2);
+	if (order < 0) return NSOrderedAscending;
+	if (order > 0) return NSOrderedDescending;
 	return NSOrderedSame;
 }
 
 
-NSString *ClockToString(double clock, BOOL adjusting)
+std::string cxx_ClockToString(double clock, BOOL adjusting)
 {
 	int				days, hrs, mins, secs;
-	NSString		*format = nil;
-	
+	std::string		format;
+
 	days = floor(clock / 86400.0);
 	secs = floor(clock - days * 86400.0);
 	hrs = floor(secs / 3600.0);
 	secs %= 3600;
 	mins = floor(secs / 60.0);
 	secs %= 60;
-	
-	if (adjusting)  format = DESC(@"clock-format-adjusting");
-	else  format = DESC(@"clock-format");
-	
-	return [NSString stringWithFormat:format, days, hrs, mins, secs];
+
+	// DESC() (Universe) is unmigrated: convert at the call. The format is read at run time.
+	if (adjusting)  format = oo::StdString(DESC(@"clock-format-adjusting"));
+	else  format = oo::StdString(DESC(@"clock-format"));
+
+	return oo::str::formatRuntime(format, {days, hrs, mins, secs});
 }
 
 

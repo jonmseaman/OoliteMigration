@@ -44,9 +44,11 @@ oolite_sources += files(
     'OOJSWorldScripts.mm',
     'OOJSWormhole.mm',
     'OOJavaScriptEngine.mm',
+    'OOJavaScriptEngine+FoundationBridge.mm',
     'OOLegacyScriptWhitelist.mm',
     'OOPListScript.mm',
     'OOScript.mm',
+    'OOScript+FoundationBridge.mm',
     'OOScriptTimer.mm',
 )
 
