@@ -29,15 +29,41 @@ MA 02110-1301, USA.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "OOFileScannerVerifierStage.h"
+#import "OOFoundationBridge.h"
 
-static NSString * const kStageName	= @"Checking plist well-formedness";
+static const char * const kStageName	= "Checking plist well-formedness";
+
+
+namespace {
+
+// The strings of <key>'s array in a configuration dictionary, in order (an array of plist names).
+std::vector<std::string> StringsForKey(const oo::PList &dictionary, std::string_view key)
+{
+	std::vector<std::string> result;
+	if (const oo::PList *array = dictionary.get<oo::PList::Array>(key))
+	{
+		for (const oo::PList &element : *array->getIf<oo::PList::Array>())
+		{
+			if (const std::string *string = element.getIf<std::string>())  result.push_back(*string);
+		}
+	}
+	return result;
+}
+
+
+bool Contains(const std::vector<std::string> &strings, const std::string &string)
+{
+	return std::find(strings.begin(), strings.end(), string) != strings.end();
+}
+
+}	// namespace
 
 
 @implementation OOCheckPListSyntaxVerifierStage
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	return kStageName;
+	return oo::NSStringFrom(kStageName);
 }
 
 
@@ -54,45 +80,45 @@ static NSString * const kStageName	= @"Checking plist well-formedness";
 	
 	fileScanner = [[self verifier] fileScannerStage];
 
-	NSArray *plists = oo::PListView([[self verifier] configurationDictionaryForKey:@"knownFiles"]).get<NSArray *>(@"Config");
-	NSArray *arrayPlists = oo::PListView([[self verifier] configurationDictionaryForKey:@"knownFiles"]).get<NSArray *>(@"ConfigArrays");
-	NSArray *dictionaryPlists = oo::PListView([[self verifier] configurationDictionaryForKey:@"knownFiles"]).get<NSArray *>(@"ConfigDictionaries");
+	const oo::PList knownFiles = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"knownFiles"]);
+	const std::vector<std::string> plists = StringsForKey(knownFiles, "Config");
+	const std::vector<std::string> arrayPlists = StringsForKey(knownFiles, "ConfigArrays");
+	const std::vector<std::string> dictionaryPlists = StringsForKey(knownFiles, "ConfigDictionaries");
 
-	NSString *plistName = nil;
-	foreach (plistName, plists)
+	for (const std::string &plistName : plists)
 	{
 		// don't scan a js file as a plist
-		if ([plistName isEqualToString:@"script.js"]) continue;
+		if (plistName == "script.js") continue;
 
-		if ([fileScanner fileExists:plistName
+		if ([fileScanner fileExists:oo::NSStringFrom(plistName)
 						   inFolder:@"Config"
 					 referencedFrom:nil
 					   checkBuiltIn:NO])
 		{
-			OOLog(@"verifyOXP.syntaxCheck",@"Checking %@",plistName);
-			id retrieve = [fileScanner plistNamed:plistName
+			OOLog(@"verifyOXP.syntaxCheck",@"Checking %@",oo::NSStringFrom(plistName));
+			id retrieve = [fileScanner plistNamed:oo::NSStringFrom(plistName)
 										 inFolder:@"Config"
 								   referencedFrom:nil
 									 checkBuiltIn:NO];
 			if (retrieve != nil)
 			{
-				if ([retrieve isKindOfClass:[NSArray class]])
+				if (oo::IsNSArray(retrieve))
 				{
-					if (![arrayPlists containsObject:plistName])
+					if (!Contains(arrayPlists, plistName))
 					{
-						OOLog(@"verifyOXP.syntaxCheck.error",@"%@ should be an array but isn't.",plistName);
+						OOLog(@"verifyOXP.syntaxCheck.error",@"%@ should be an array but isn't.",oo::NSStringFrom(plistName));
 					}
 				}
-				else if ([retrieve isKindOfClass:[NSDictionary class]])
+				else if (oo::IsNSDictionary(retrieve))
 				{
-					if (![dictionaryPlists containsObject:plistName])
+					if (!Contains(dictionaryPlists, plistName))
 					{
-						OOLog(@"verifyOXP.syntaxCheck.error",@"%@ should be an array but isn't.",plistName);
+						OOLog(@"verifyOXP.syntaxCheck.error",@"%@ should be an array but isn't.",oo::NSStringFrom(plistName));
 					}
 				}
 				else
 				{
-					OOLog(@"verifyOXP.syntaxCheck.error",@"%@ is neither an array nor a dictionary.",plistName);
+					OOLog(@"verifyOXP.syntaxCheck.error",@"%@ is neither an array nor a dictionary.",oo::NSStringFrom(plistName));
 				}
 			}
 		}
