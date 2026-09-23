@@ -61,6 +61,7 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
+#import "OOFoundationBridge.h"
 
 static void SwitchLogFile(NSString *name);
 static void NoteVerificationStage(NSString *displayName, NSString *stage);
@@ -666,7 +667,7 @@ static void OpenLogFile(NSString *name);
 	startTemplate = oo::PListView(graphVizTemplate).get<NSString *>(@"startArc");
 	foreach (stage, [_stagesByName allValues])
 	{
-		deps = [stage resolvedDependencies];
+		deps = oo::NSSetFromObjects([stage resolvedDependencies]);
 		if ([deps count] != 0)
 		{
 			foreach (dep, deps)
@@ -688,7 +689,7 @@ static void OpenLogFile(NSString *name);
 	endTemplate = oo::PListView(graphVizTemplate).get<NSString *>(@"endArc");
 	foreach (stage, [_stagesByName allValues])
 	{
-		deps = [stage resolvedDependents];
+		deps = oo::NSSetFromObjects([stage resolvedDependents]);
 		if ([deps count] != 0)
 		{
 			foreach (dep, deps)

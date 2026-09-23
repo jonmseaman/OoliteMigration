@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "OOConstToString.h"
 #import "OOJSEntity.h"
 #import "OOJSVector.h"
+#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -659,7 +660,7 @@ static bool QuaternionToString(ooscript::Context context, ooscript::CallArgs &oo
 	
 	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"toString"))) return NO;
 	
-	OOJS_RETURN_OBJECT(QuaternionDescription(thisq));
+	OOJS_RETURN_OBJECT(oo::NSStringFrom(QuaternionDescription(thisq)));
 	
 	OOJS_NATIVE_EXIT
 }
