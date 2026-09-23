@@ -453,6 +453,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OOShipRegistry+FoundationBridge.h/.mm` | oo-3rb.114 (chunks of oo-92mj) | oo-b7xq ("Delete OOShipRegistry+FoundationBridge") |
 | `src/Core/Entities/PlayerEntitySound+FoundationBridge.h/.mm` (category `PlayerEntity (SoundFoundationBridge)`) | oo-14c5 | oo-qx1l ("Delete PlayerEntitySound+FoundationBridge") |
 | `src/Core/Entities/StationEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.172 made it; chunks oo-3rb.173-.175 move their own selectors in) | oo-3rb.172 (chunks of oo-e7ab) | oo-nrkz ("Delete StationEntity+FoundationBridge") |
+| `src/Core/Scripting/OOJavaScriptEngine+FoundationBridge.h/.mm` (chunked: oo-3rb.198 made it; chunks oo-3rb.199-.203 move their own groups in, and the retiring JS-glue categories on Foundation classes, deleted just before oo-qps) | oo-3rb.198 (chunks of oo-rbqc) | oo-vp0y ("Delete OOJavaScriptEngine+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
