@@ -58,6 +58,8 @@ MA 02110-1301, USA.
 #if PROFILE_WRITES
 #import "OOProfilingStopwatch.h"
 #endif
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 
 namespace {
@@ -524,7 +526,12 @@ static OOCacheManager *sSingleton = nil;
 															  format:NULL
 													errorDescription:&errorString];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		errorString = oo::NSStringFrom([exception reason]);
+		contents = nil;
+	}
+	@catch (OOFoundationException *exception)
 	{
 		errorString = [exception reason];
 		contents = nil;

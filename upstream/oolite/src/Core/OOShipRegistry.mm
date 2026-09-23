@@ -44,6 +44,7 @@ SOFTWARE.
 #import "OOJSScript.h"
 
 #import "OODebugStandards.h"
+#include "oofnd/objc/OOException.h"
 
 #define PRELOAD 0
 
@@ -163,11 +164,11 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 				[self loadShipData];
 				if ([_shipData count] == 0)
 				{
-					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any ship data."];
+					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load any ship data."];
 				}
 				if ([_playerShips count] == 0)
 				{
-					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any player ships."];
+					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load any player ships."];
 				}
 			}
 			
@@ -175,7 +176,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 			[self loadDemoShips]; // testing only
 			if ([_demoShips count] == 0)
 			{
-				[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize any demo ships."];
+				[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load or synthesize any demo ships."];
 			}
 			
 			[self loadCachedRoleProbabilitySets];
@@ -184,7 +185,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 				[self buildRoleProbabilitySets];
 				if ([_probabilitySets count] == 0)
 				{
-					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize role probability sets."];
+					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load or synthesize role probability sets."];
 				}
 			}
 		}
