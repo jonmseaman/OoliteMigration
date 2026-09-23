@@ -7956,24 +7956,23 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 - (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced
 {
 	int						i;
-	NSAutoreleasePool		*pool = nil;
 	
 	if (galaxyID != g || forced) {
 		galaxyID = g;
 		
 		// systems
-		pool = [[NSAutoreleasePool alloc] init];
-			
-		for (i = 0; i < 256; i++)
+		@autoreleasepool
 		{
-			if (system_names[i])
+			for (i = 0; i < 256; i++)
 			{
-				[system_names[i] release];
-			}
-			system_names[i] = [[systemManager getProperty:@"name" forSystem:i inGalaxy:g] retain];
+				if (system_names[i])
+				{
+					[system_names[i] release];
+				}
+				system_names[i] = [[systemManager getProperty:@"name" forSystem:i inGalaxy:g] retain];
 
+			}
 		}
-		[pool release];
 	}
 }
 
@@ -10782,29 +10781,28 @@ static void PreloadOneSound(NSString *soundName)
 
 - (void) populateSpaceFromActiveWormholes
 {
-	NSAutoreleasePool	*pool = nil;
-	
 	while ([activeWormholes count])
 	{
-		pool = [[NSAutoreleasePool alloc] init];
-		@try
+		@autoreleasepool
 		{
-			WormholeEntity* whole = [activeWormholes objectAtIndex:0];		
-			// If the wormhole has been scanned by the player then the
-			// PlayerEntity will take care of it
-			if (![whole isScanned] &&
-				NSEqualPoints([PLAYER galaxy_coordinates], [whole destinationCoordinates]) )
+			@try
 			{
-				// this is a wormhole to this system
-				[whole disgorgeShips];
+				WormholeEntity* whole = [activeWormholes objectAtIndex:0];		
+				// If the wormhole has been scanned by the player then the
+				// PlayerEntity will take care of it
+				if (![whole isScanned] &&
+					NSEqualPoints([PLAYER galaxy_coordinates], [whole destinationCoordinates]) )
+				{
+					// this is a wormhole to this system
+					[whole disgorgeShips];
+				}
+				[activeWormholes removeObjectAtIndex:0];	// empty it out
 			}
-			[activeWormholes removeObjectAtIndex:0];	// empty it out
+			@catch (NSException *exception)
+			{
+				OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", [exception name], [exception reason]);
+			}
 		}
-		@catch (NSException *exception)
-		{
-			OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", [exception name], [exception reason]);
-		}
-		[pool release];
 	}
 }
 

@@ -25,6 +25,8 @@ MA 02110-1301, USA.
 */
 
 #import "OOOXZManager.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 #import "OOPListParsing.h"
 #import "OOStringParsing.h"
 #import "ResourceManager.h"
@@ -2269,14 +2271,14 @@ static OOOXZManager *sSingleton = nil;
 				// This is less efficient in memory use than just
 				// streaming out of the ZIP file onto disk
 				// but it makes error handling easier
-				NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+				void *pool = objc_autoreleasePoolPush();
 				NSData *tmp = [NSData oo_dataWithOXZFile:[oxzfile stringByAppendingPathComponent:componentName]];
 				if (tmp == nil)
 				{
 					OOLog(kOOOXZErrorLog,@"Sub file %@ could not be extracted from the OXZ",componentName);
 					[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-sub-failed")];
 					error = YES;
-					[pool release];
+					objc_autoreleasePoolPop(pool);
 					break;
 				}
 				else
@@ -2286,7 +2288,7 @@ static OOOXZManager *sSingleton = nil;
 						OOLog(kOOOXZErrorLog,@"Sub file %@ could not be created",componentName);
 						[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-sub-failed")];
 						error = YES;
-						[pool release];
+						objc_autoreleasePoolPop(pool);
 						break;
 					}
 					else
@@ -2294,7 +2296,7 @@ static OOOXZManager *sSingleton = nil;
 						++counter;
 					}
 				}
-				[pool release];
+				objc_autoreleasePoolPop(pool);
 
 			}
 		}
