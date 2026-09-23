@@ -32,6 +32,7 @@ SOFTWARE.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "OOLoggingExtended.h"
+#import "OOPListView.h"
 #import "OOMaths.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
