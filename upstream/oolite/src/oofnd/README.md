@@ -282,7 +282,9 @@ nothing else in the caller. A caller whose own bead has landed already holds C++
 directly.
 
 A header reached inside `extern "C"` (the `OOMaths.h` family) wraps its C++ declarations in
-`extern "C++" { ... }`, as `OOVector.h` does.
+`extern "C++" { ... }`, as `OOVector.h` does; the same goes for an `#include` of a C++ header (an
+oofnd `.hpp`, `oofnd/StdLib.hpp`) from such a header: `#ifdef __cplusplus` / `extern "C++" {
+#include "..." }` / `#endif`, the idiom `OOCocoa.h` and `OOLogging.h` use.
 
 ### 3. Shared selectors
 
@@ -440,6 +442,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/AI+FoundationBridge.h/.mm` | oo-3rb.84 (AI.mm chunks oo-3rb.84..87) | oo-ag2w ("Delete AI+FoundationBridge") |
 | `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
 | `src/Core/ResourceManager+FoundationBridge.h/.mm` | oo-3rb.98 (chunks of oo-2wwr) | oo-0f7h ("Delete ResourceManager+FoundationBridge") |
+| `src/Core/OOLogging+FoundationBridge.h/.mm` (the NSString message-class API and kOOLog* constants; the last bridge deleted) | oo-3rb.136 (chunks of oo-lskf) | oo-zcgz ("Delete OOLogging+FoundationBridge") |
 | `src/Core/Scripting/OOScript+FoundationBridge.h/.mm` | oo-du83 | oo-eu4j ("Delete OOScript+FoundationBridge") |
 | `src/Core/OXPVerifier/OOOXPVerifier+FoundationBridge.h/.mm` | oo-hkvv | oo-3rb.168 ("Delete OOOXPVerifier+FoundationBridge") |
 | `src/Core/OOShipRegistry+FoundationBridge.h/.mm` | oo-3rb.114 (chunks of oo-92mj) | oo-b7xq ("Delete OOShipRegistry+FoundationBridge") |

@@ -61,6 +61,7 @@ oolite_sources += files(
     'OOLogHeader.mm',
     'OOLogOutputHandler.mm',
     'OOLogging.mm',
+    'OOLogging+FoundationBridge.mm',
     'OOMatrix.mm',
     'OOMesh.mm',
     'OOMeshToOctreeConverter.mm',
