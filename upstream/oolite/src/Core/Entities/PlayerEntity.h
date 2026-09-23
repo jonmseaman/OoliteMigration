@@ -418,7 +418,7 @@ typedef enum
 	oo::PList::Array		contracts;			// cargo contract Dicts (PlayerEntity (Contracts))
 	oo::PList::Dict			contract_record;	// arrival time (double) by cargo ID
 	
-	NSMutableDictionary		*shipyard_record;
+	oo::PList::Dict			shipyard_record;	// shipdata key by shipyard ID of each ship bought
 	
 	NSMutableDictionary		*missionDestinations;
 	NSMutableArray			*roleWeights;
@@ -1300,7 +1300,7 @@ typedef enum
 - (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker;
 - (NSMutableDictionary*) getMissionDestinations;
 
-- (NSMutableDictionary*) shipyardRecord;
+- (oo::PList::Dict *) cxx_shipyardRecord;
 
 - (void) setLastShot:(NSArray *)shot;
 

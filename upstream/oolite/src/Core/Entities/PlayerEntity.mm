@@ -1101,7 +1101,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[result setObject:missionDestinations forKey:@"mission_destinations"];
 
 	//shipyard
-	[result setObject:shipyard_record forKey:@"shipyard_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(shipyard_record)) forKey:@"shipyard_record"];
 
 	//ship's clock
 	[result setObject:[NSNumber numberWithDouble:ship_clock] forKey:@"ship_clock"];
@@ -1487,9 +1487,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[self initialiseMissionDestinations:newDestinations andLegacy:legacyDestinations];
 	
 	// shipyard
-	DESTROY(shipyard_record);
-	shipyard_record = [oo::PListView(dict).get<NSDictionary *>(@"shipyard_record") mutableCopy];
-	if (shipyard_record == nil)  shipyard_record = [[NSMutableDictionary alloc] init];
+	const oo::PList savedShipyardRecord = oo::PListFrom([dict objectForKey:@"shipyard_record"]);
+	shipyard_record = savedShipyardRecord.isDict() ? *savedShipyardRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	
 	// Normalize cargo capacity
 	unsigned	original_hold_size = [UNIVERSE maxCargoForShip:[self shipDataKey]];
@@ -2053,8 +2052,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[missionDestinations release];
 	missionDestinations = [[NSMutableDictionary alloc] init];
 	
-	[shipyard_record release];
-	shipyard_record = [[NSMutableDictionary alloc] init];
+	shipyard_record.clear();
 	
 	[target_memory release];
 	target_memory = [[NSMutableArray alloc] initWithCapacity:PLAYER_TARGET_MEMORY_SIZE];
@@ -2402,7 +2400,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(roleWeightFlags);
 	DESTROY(roleSystemList);
 	DESTROY(missionDestinations);
-	DESTROY(shipyard_record);
 	
 	DESTROY(_missionOverlayDescriptor);
 	DESTROY(_missionBackgroundDescriptor);
@@ -13306,9 +13303,9 @@ else _dockTarget = NO_TARGET;
 }
 
 
-- (NSMutableDictionary*) shipyardRecord
+- (oo::PList::Dict *) cxx_shipyardRecord
 {
-	return shipyard_record;
+	return &shipyard_record;
 }
 
 
