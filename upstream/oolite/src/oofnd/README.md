@@ -39,7 +39,7 @@ Rules that hold for every component:
 | `src/oofnd/Process.hpp` | `oo::process` + `oo::env`: `NSProcessInfo` (arguments captured in `main`, `hasArgument`, `processName`, `processorCount`, `operatingSystemVersionString`) with GNUstep's measured semantics |
 | `src/oofnd/Thread.hpp` | `oo::thread`: `NSThread` on `std::thread`: `detach`, `isMainThread` (id captured at static init), `setCurrentName`, `setCurrentPriority` (GNUstep's measured Windows mapping) |
 | `src/oofnd/String.hpp` | `oo::str`: the `NSString` methods and Oolite `NSString` categories the game uses (`NSStringOOExtensions`, `OOStringParsing`'s `NSString (OOUtilities)`, `ScanTokensFromString`, the version helpers) over UTF-8 `std::string`, GNUstep 1.31.1's answers exactly: case tables, whitespace set, composed-sequence rules, `-pathExtension`, `-replaceOccurrencesOfString:`, `-hasPrefix:`, `-stringWithFormat:` without `%@` ([ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)) |
-| `src/oofnd/Encoding.hpp` | `oo::str::Encoding` / `encodeLossy` / `convertForFont`: `OOEncodingConverter`'s conversion to the five Windows code pages, including libiconv's transliterations as GNUstep runs them |
+| `src/oofnd/Encoding.hpp` | `oo::str::Encoding` / `encodeLossy` / `convertForFont`: `OOEncodingConverter`'s conversion to the five Windows code pages, including libiconv's transliterations as GNUstep runs them; `stringWithContentsOfUnicodeFile` / `decodeUnicodeText`: `+[NSString stringWithContentsOfUnicodeFile:]` (UTF-16 by BOM, else UTF-8, else Latin-1; plain files, captured, oo-3rb.123) |
 | `src/oofnd/Log.hpp` | `oo::log`: OOLogging without Foundation: message-class switches (inheritance, `$metaclasses`, `_default`/`_override`), per-thread indentation, the exact Latest.log line layout, OOLogging's own diagnostics, and the `OO_LOG("cls", "{}", ...)` std::format front end. `src/Core/OOLogging.mm` is its Objective-C shell ([ADR-0035](../../../../docs/decisions/0035-oofnd-logging.md)) |
 | `src/Core/OOStringBridge.h` (game side) | `oo::StdString` / `oo::NSStringFrom` / `oo::StringMap`: the exact `NSString` <-> `std::string` bridge for calling `oo::str` from files that still hold `NSString`s; see below |
 | `src/oofnd/objc/OOObjCRef.h` | `oo::ObjCRef<T *>`: a retaining reference to an Objective-C object for std containers (`objc_retain`/`objc_release`; `Ref<T>`'s API); `test_objc_ref.mm` also pins the nil-message zero-fill the sweep's return types rest on (proposed [ADR-0043](../../../../docs/decisions/0043-foundation-sweep-recipe.md)) |
@@ -149,7 +149,7 @@ oo-dps; proposed [ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)); 
    and `oo::str` of `""` is not always zero (`ooHash("")` is 5381). `oo::StringMap` keeps nil for
    `NSString` -> `NSString` methods; for any other result, test the receiver as the table does.
 3. **Leave alone:** everything else in the file, and methods not in the table (`%@` formatting
-   waits for Logging, oo-qpb; `+stringWithContentsOfUnicodeFile:` for its own bead).
+   waits for Logging, oo-qpb; `+stringWithContentsOfUnicodeFile:` is `oo::str::stringWithContentsOfUnicodeFile` in `Encoding.hpp`).
 4. **Check:** the file no longer names a category method, `tools/tier-a.sh <file>` passes, and
    the goldens still verify.
 
@@ -425,10 +425,13 @@ it. oo-qps cannot compile any of them.
 | Bridge | Made by | Deleted by |
 |---|---|---|
 | `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | oo-1hvf |
+| `src/Core/Debug/OODebugStandards+FoundationBridge.h/.mm` | oo-56ct | oo-4fah ("Delete OODebugStandards+FoundationBridge") |
 | `src/Core/Materials/OOMaterialSpecifier+FoundationBridge.h/.mm` (also where the NSDictionary category retires) | oo-hiis | oo-kvlo |
 | `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
 | `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
 | `src/Core/OOCacheManager+FoundationBridge.h/.mm` | oo-19g0 | oo-5pae ("Delete OOCacheManager+FoundationBridge") |
+| `src/Core/AI+FoundationBridge.h/.mm` | oo-3rb.84 (AI.mm chunks oo-3rb.84..87) | oo-ag2w ("Delete AI+FoundationBridge") |
+| `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
 | `src/Core/ResourceManager+FoundationBridge.h/.mm` | oo-3rb.98 (chunks of oo-2wwr) | oo-0f7h ("Delete ResourceManager+FoundationBridge") |
 
 ### Stop and report (do not stretch)
