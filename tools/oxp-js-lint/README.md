@@ -45,6 +45,8 @@ immediately reports three false positives (see `mutation-proof.sh`, mutant 2).
 | `crosscheck.js` | validation-only: raw unmasked regex sweep, an instrument independent of `lint.js` |
 | `mutation-proof.sh` | validation-only: drives each acceptance line RED then GREEN |
 | `acceptance.txt` | the five stored acceptance lines, byte-identical to the bead field |
+| `probe.js` | triage only (bead oo-1gc.13): a REDACTING view of one line of a corpus script (keywords, punctuators, allowlisted API names; every other identifier a placeholder, literals as STR/NUM/RE) plus declaration and `"use strict"` facts, so an agent can see a construct's shape without reading expansion content (CLAUDE.md rule 6) |
+| `probe-selftest.js`, `probe-fixtures/` | the probe's test on synthetic fixtures: nothing outside the allowlist leaks, and the structure and facts are right |
 
 Node stdlib only — no `node_modules`, no network. The corpus mode contains a
 minimal zip reader (stored + deflate + ZIP64) because OXZ archives are zips.
