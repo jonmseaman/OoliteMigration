@@ -89,5 +89,31 @@ report "RED?  line 2 (positive control, quote-method blinded)" 2
 restore "$RUL"
 report "GREEN line 2" 2
 
+echo "=========== MUTANT 6: legacy-generator detector blinded (line 2; bead oo-1gc.16) ==========="
+backup "$RUL"
+"$PY" - "$RUL" <<'EOF'
+import sys;p=sys.argv[1];s=open(p,encoding='utf-8').read()
+old='''        if (fn && !fn.gen) hits.push('''
+new='''        if (false) hits.push('''
+assert old in s, "anchor for the legacy-generator detector not found"
+open(p,'w',encoding='utf-8',newline='\n').write(s.replace(old,new,1))
+EOF
+report "RED?  line 2 (positive control, legacy-generator blinded)" 2
+restore "$RUL"
+report "GREEN line 2" 2
+
+echo "=========== MUTANT 7: generator frames not recognised (line 3: function* in clean.js; bead oo-1gc.16) ==========="
+backup "$RUL"
+"$PY" - "$RUL" <<'EOF'
+import sys;p=sys.argv[1];s=open(p,encoding='utf-8').read()
+old='''  if (k >= 0 && text[k] === "*") return { gen: true };'''
+new='''  if (k >= 0 && text[k] === "*") return { gen: false };'''
+assert old in s, "anchor for the function* frame not found"
+open(p,'w',encoding='utf-8',newline='\n').write(s.replace(old,new,1))
+EOF
+report "RED?  line 3 (false positive on an ES2015 generator)" 3
+restore "$RUL"
+report "GREEN line 3" 3
+
 echo "=========== git status after mutation sweep ==========="
 git status --porcelain
