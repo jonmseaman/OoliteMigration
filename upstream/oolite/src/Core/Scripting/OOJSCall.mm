@@ -194,7 +194,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, NSString *oo
 
 
 // Template class providing method type encodings for the three signatures matched here.
-@interface OOJSCallMethodSignatureTemplateClass: NSObject
+@interface OOJSCallMethodSignatureTemplateClass: OOObject
 
 - (void)voidVoidMethod;
 - (void)voidObjectMethod:(id)object;
@@ -248,7 +248,7 @@ static MethodType GetMethodType(id object, SEL selector)
 }
 
 
-@implementation OOJSCallMethodSignatureTemplateClass: NSObject
+@implementation OOJSCallMethodSignatureTemplateClass: OOObject
 
 - (void)voidVoidMethod {}
 

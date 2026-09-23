@@ -23,7 +23,7 @@ MA );-);, USA.
 */
 
 #import "OOConstToString.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 
 #import "Universe.h"
 #import "PlayerEntity.h"
@@ -419,13 +419,13 @@ NSString *OODisplayRatingStringFromKillCount(unsigned kills)
 						};
 	unsigned			i;
 	
-	ratingNames = [[UNIVERSE descriptions] oo_arrayForKey:@"rating"];
+	ratingNames = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"rating");
 	for (i = 0; i < kRatingCount - 1; ++i)
 	{
-		if (kills < killThresholds[i])  return [ratingNames oo_stringAtIndex:i];
+		if (kills < killThresholds[i])  return oo::PListView(ratingNames).at<NSString *>(i);
 	}
 	
-	return [ratingNames oo_stringAtIndex:kRatingCount - 1];
+	return oo::PListView(ratingNames).at<NSString *>(kRatingCount - 1);
 }
 
 
@@ -447,20 +447,20 @@ NSString *OODisplayStringFromLegalStatus(int legalStatus)
 						};
 	unsigned			i;
 	
-	statusNames = [[UNIVERSE descriptions] oo_arrayForKey:@"legal_status"];
+	statusNames = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"legal_status");
 	for (i = 0; i != kStatusCount - 1; ++i)
 	{
-		if (legalStatus < statusThresholds[i])  return [statusNames oo_stringAtIndex:i];
+		if (legalStatus < statusThresholds[i])  return oo::PListView(statusNames).at<NSString *>(i);
 	}
 	
-	return [statusNames oo_stringAtIndex:kStatusCount - 1];
+	return oo::PListView(statusNames).at<NSString *>(kStatusCount - 1);
 }
 
 
 NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition)
 {
-	NSArray *conditionNames = [[UNIVERSE descriptions] oo_arrayForKey:@"condition"];
-	return [conditionNames oo_stringAtIndex:alertCondition];
+	NSArray *conditionNames = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"condition");
+	return oo::PListView(conditionNames).at<NSString *>(alertCondition);
 }
 
 
@@ -512,7 +512,7 @@ NSString *CommodityDisplayNameForSymbolicName(NSString *symbolicName)
 
 NSString *CommodityDisplayNameForCommodityArray(NSArray *commodityDefinition)
 {
-	return CommodityDisplayNameForSymbolicName([commodityDefinition oo_stringAtIndex:MARKET_NAME]);
+	return CommodityDisplayNameForSymbolicName(oo::PListView(commodityDefinition).at<NSString *>(MARKET_NAME));
 }
 
 

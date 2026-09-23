@@ -87,7 +87,7 @@ static NSString * const kOOCommodityMarketTypeValueGood			= @"good";
 
 @class OOCommodityMarket, StationEntity;
 
-@interface OOCommodities: NSObject
+@interface OOCommodities: OOObject
 {
 @private
 	NSDictionary		*_commodityLists;

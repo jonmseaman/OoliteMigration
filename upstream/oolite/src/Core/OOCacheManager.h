@@ -30,9 +30,10 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 
 
-@interface OOCacheManager: NSObject
+@interface OOCacheManager: OOObject
 {
 @private
 	NSMutableDictionary		*_caches;
