@@ -106,3 +106,47 @@ NSString *StringFromRandomSeed(Random_Seed seed)
 }
 
 @end
+
+
+// oo-3rb.125: credits, em padding, versions, clock
+
+NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol)
+{
+	return oo::NSStringFrom(cxx_OOStringFromDeciCredits(tenthsOfCredits, includeDecimal, includeSymbol));
+}
+
+
+NSString *OOPadStringToEms(NSString * string, float numEms)
+{
+	// nil reads as the empty string (its width and length are 0 either way)
+	return oo::NSStringFrom(cxx_OOPadStringToEms(oo::StdString(string), numEms));
+}
+
+
+NSArray *ComponentsFromVersionString(NSString *string)
+{
+	// nil has no components (the empty string has one, 0)
+	NSMutableArray *result = [NSMutableArray array];
+	if (string == nil)  return result;
+	for (unsigned value : cxx_ComponentsFromVersionString(oo::StdString(string)))
+	{
+		[result addObject:[NSNumber numberWithUnsignedInt:value]];
+	}
+	return result;
+}
+
+
+NSComparisonResult CompareVersions(NSArray *version1, NSArray *version2)
+{
+	std::vector<unsigned> left, right;
+	id component = nil;
+	foreach (component, version1)  left.push_back([component unsignedIntValue]);
+	foreach (component, version2)  right.push_back([component unsignedIntValue]);
+	return cxx_CompareVersions(left, right);
+}
+
+
+NSString *ClockToString(double clock, BOOL adjusting)
+{
+	return oo::NSStringFrom(cxx_ClockToString(clock, adjusting));
+}
