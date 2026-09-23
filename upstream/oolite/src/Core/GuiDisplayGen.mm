@@ -40,10 +40,29 @@ MA 02110-1301, USA.
 #import "OOSystemDescriptionManager.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/String.hpp"
+
 OOINLINE BOOL RowInRange(OOGUIRow row, NSRange range)
 {
 	return ((int)range.location <= row && row < (int)(range.location + range.length));
 }
+
+
+namespace {
+
+// -[NSArray componentsJoinedByString:@" "] of words[from...].
+std::string WordsJoinedBySpace(const std::vector<std::string> &words, std::size_t from)
+{
+	std::string result;
+	for (std::size_t i = from; i < words.size(); i++)
+	{
+		if (i != from)  result += " ";
+		result += words[i];
+	}
+	return result;
+}
+
+}	// namespace
 
 @interface GuiDisplayGen (Internal)
 
@@ -706,84 +725,86 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (OOGUIRow) addLongText:(NSString *)str
-		   startingAtRow:(OOGUIRow)row
-				   align:(OOGUIAlignment)alignment
+- (OOGUIRow) cxx_addLongText:(const std::optional<std::string> &)str
+			   startingAtRow:(OOGUIRow)row
+					   align:(OOGUIAlignment)alignment
 {
+	// nil: -rangeOfString: answered location 0 and -componentsSeparatedByString: no lines.
+	if (!str.has_value())  return row;
 
-	if ([str rangeOfString:@"\n"].location != NSNotFound)
+	if (str->find('\n') != std::string::npos)
 	{
-		NSArray		*lines = [str componentsSeparatedByString:@"\n"];
-		unsigned	i;
-		for (i = 0; i < [lines count]; i++)
+		for (const std::string &line : oo::str::split(*str, "\n"))
 		{
-			row = [self addLongText:oo::PListView(lines).at<NSString *>(i) startingAtRow:row align:alignment];
+			row = [self cxx_addLongText:line startingAtRow:row align:alignment];
 		}
 		return row;
 	}
 	
 	NSSize chSize = pixel_text_size;
-	NSSize strsize = OORectFromString(str, 0.0f, 0.0f, chSize).size;
+	NSSize strsize = OORectFromString(oo::NSStringFrom(*str), 0.0f, 0.0f, chSize).size;
 	if (strsize.width < size_in_pixels.width)
 	{
-		[self setText:str forRow:row align:alignment];
+		[self cxx_setText:str forRow:row align:alignment];
 		return row + 1;
 	}
 	else
 	{
-		NSMutableArray	*words = ScanTokensFromString(str);
-		NSMutableString	*string1 = [NSMutableString stringWithCapacity:256];
-		NSMutableString	*string2 = [NSMutableString stringWithCapacity:256];
+		const std::vector<std::string>	words = oo::str::tokens(*str);
+		std::size_t						next = 0;	// words moved to string1
+		std::string						string1;
 		strsize.width = 0.0f;
-		while ((strsize.width < size_in_pixels.width)&&([words count] > 0))
+		while ((strsize.width < size_in_pixels.width)&&(next < words.size()))
 		{
-			[string1 appendString:(NSString *)[words objectAtIndex:0]];
-			[string1 appendString:@" "];
-			[words removeObjectAtIndex:0];
-			strsize = OORectFromString(string1, 0.0f, 0.0f, chSize).size;
-			if ([words count] > 0)
-				strsize.width += OORectFromString((NSString *)[words objectAtIndex:0], 0.0f, 0.0f, chSize).size.width;
+			string1 += words[next];
+			string1 += " ";
+			next++;
+			strsize = OORectFromString(oo::NSStringFrom(string1), 0.0f, 0.0f, chSize).size;
+			if (next < words.size())
+				strsize.width += OORectFromString(oo::NSStringFrom(words[next]), 0.0f, 0.0f, chSize).size.width;
 		}
-		[string2 appendString:[words componentsJoinedByString:@" "]];
-		[self setText:string1		forRow:row			align:alignment];
-		return  [self addLongText:string2   startingAtRow:row+1	align:alignment];
+		const std::string string2 = WordsJoinedBySpace(words, next);
+		[self cxx_setText:string1		forRow:row			align:alignment];
+		return  [self cxx_addLongText:string2   startingAtRow:row+1	align:alignment];
 	}
 }
 
 
-- (NSString *) reflowTextForMFD:(NSString *)input
+- (std::optional<std::string>) cxx_reflowTextForMFD:(const std::optional<std::string> &)input
 {
-	NSMutableString	*output = [[NSMutableString alloc] initWithCapacity:512];
-	NSArray			 *lines = [input componentsSeparatedByString:@"\n"];
-	NSSize  		 chSize = pixel_text_size;
-	NSUInteger  	  limit = chSize.width * 15;
-	NSString  		  *line = nil;
-	foreach (line, lines)
+	std::string		output;
+	NSSize  		chSize = pixel_text_size;
+	NSUInteger  	limit = chSize.width * 15;
+	// nil split into no lines: the result was an empty string, not nil.
+	if (!input.has_value())  return output;
+	for (const std::string &line : oo::str::split(*input, "\n"))
 	{
-		NSMutableArray	*words = ScanTokensFromString(line);
-		NSMutableString *accum = [NSMutableString stringWithCapacity:64];
-		if ([words count] > 0)
+		const std::vector<std::string>	words = oo::str::tokens(line);
+		std::size_t						first = 0;	// words consumed
+		std::string						accum;
+		if (!words.empty())
 		{
-			while ([words count] > 1)
+			while (words.size() - first > 1)
 			{
-				[accum appendString:oo::PListView(words).at<NSString *>(0)];
-				[accum appendString:@" "];
-				if (OORectFromString(accum, 0.0f, 0.0f,chSize).size.width + OORectFromString(oo::PListView(words).at<NSString *>(1), 0.0f, 0.0f,chSize).size.width > limit)
+				accum += words[first];
+				accum += " ";
+				if (OORectFromString(oo::NSStringFrom(accum), 0.0f, 0.0f,chSize).size.width + OORectFromString(oo::NSStringFrom(words[first + 1]), 0.0f, 0.0f,chSize).size.width > limit)
 				{
 					// can't fit next word on this line
-					[output appendString:[accum stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]];
-					[output appendString:@"\n"];
-					[accum setString:@""];
+					// (-whitespaceCharacterSet trimming: accum holds tokens and spaces, no newlines)
+					output += oo::str::trimWhitespaceAndNewlines(accum);
+					output += "\n";
+					accum.clear();
 				}
-				[words removeObjectAtIndex:0];
+				first++;
 			}
-			[output appendString:accum];
-			[output appendString:oo::PListView(words).at<NSString *>(0)];
+			output += accum;
+			output += words[first];
 		}
-		[output appendString:@"\n"];
+		output += "\n";
 	}
 
-	return [output autorelease];
+	return output;
 }
 
 
@@ -802,50 +823,59 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (NSArray *) getLastLines	// text, colour, fade time - text, colour, fade time
+- (oo::PList) cxx_getLastLines	// text, colour, fade time - text, colour, fade time
 {
-	if (n_rows <1) return nil;
+	if (n_rows <1) return oo::PList();
 	
 	// we have at least 1 row!
 	
 	unsigned				i = n_rows-1;
 	OORGBAComponents		col = [(OOColor *)[rowColor objectAtIndex:i] rgbaComponents];
+	oo::PList::Array		result;
+
+	/*	Row r's text, colour and fade time, as -arrayWithObjects: took them: the text is what
+		-oo_stringAtIndex: read (a string, or a number's -stringValue); anything else was nil, which
+		ended the list there. Returns whether it was appended.
+	*/
+	auto appendRow = [&](unsigned r, const OORGBAComponents &c) -> bool
+	{
+		const oo::PList text = oo::PListFrom([rowText objectAtIndex:r]);	// the row ivars are chunk 5's (oo-3rb.96)
+		if (!text.isString() && !text.isNumber())  return false;
+		result.emplace_back(oo::PList(oo::PList::Array{ text }).at<std::string>(0));
+		result.emplace_back(oo::str::format("%.3g %.3g %.3g %.3g", c.r, c.g, c.b, c.a));
+		result.push_back(oo::PList::singleReal(rowFadeTime[r]));	// +numberWithFloat:
+		return true;
+	};
 	
 	if (i>0)
 	{
 		// we have at least 2 rows!
 		OORGBAComponents	col0 = [(OOColor *)[rowColor objectAtIndex:i-1] rgbaComponents];
-		return [NSArray arrayWithObjects:oo::PListView(rowText).at<NSString *>(i-1),
-										[NSString stringWithFormat:@"%.3g %.3g %.3g %.3g", col0.r, col0.g, col0.b, col0.a],
-										[NSNumber numberWithFloat:rowFadeTime[i-1]],
-										oo::PListView(rowText).at<NSString *>(i),
-										[NSString stringWithFormat:@"%.3g %.3g %.3g %.3g", col.r, col.g, col.b, col.a],
-										[NSNumber numberWithFloat:rowFadeTime[i]], nil];
+		if (appendRow(i-1, col0))  appendRow(i, col);
 	}
 	else
 	{
-		return [NSArray arrayWithObjects:oo::PListView(rowText).at<NSString *>(i),
-										[NSString stringWithFormat:@"%.3g %.3g %.3g %.3g", col.r, col.g, col.b, col.a],
-										[NSNumber numberWithFloat:rowFadeTime[i]], nil];
+		appendRow(i, col);
 	}
+	return oo::PList(std::move(result));
 }
 
 
-- (void) printLongText:(NSString *)str
-				 align:(OOGUIAlignment) alignment
-				 color:(OOColor *)text_color
-			  fadeTime:(float)text_fade
-				   key:(NSString *)text_key
-			addToArray:(NSMutableArray *)text_array
+- (void) cxx_printLongText:(const std::optional<std::string> &)str
+					 align:(OOGUIAlignment) alignment
+					 color:(OOColor *)text_color
+				  fadeTime:(float)text_fade
+					   key:(const std::optional<std::string> &)text_key
+				addToArray:(std::vector<std::string> *)text_array
 {
 	// print a multi-line message
 	//
-	if ([str rangeOfString:@"\n"].location != NSNotFound)
+	// nil: -rangeOfString: answered location 0 and -componentsSeparatedByString: no lines.
+	if (!str.has_value())  return;
+	if (str->find('\n') != std::string::npos)
 	{
-		NSArray		*lines = [str componentsSeparatedByString:@"\n"];
-		unsigned	i;
-		for (i = 0; i < [lines count]; i++)
-			[self printLongText:oo::PListView(lines).at<NSString *>(i) align:alignment color:text_color fadeTime:text_fade key:text_key addToArray:text_array];
+		for (const std::string &line : oo::str::split(*str, "\n"))
+			[self cxx_printLongText:line align:alignment color:text_color fadeTime:text_fade key:text_key addToArray:text_array];
 		return;
 	}
 	
@@ -853,65 +883,65 @@ static BOOL _refreshStarChart = NO;
 	if (row == (OOGUIRow)n_rows - 1)
 		[self scrollUp:1];
 	NSSize chSize = pixel_text_size;
-	NSSize strsize = OORectFromString(str, 0.0f, 0.0f, chSize).size;
+	NSSize strsize = OORectFromString(oo::NSStringFrom(*str), 0.0f, 0.0f, chSize).size;
 	if (strsize.width < size_in_pixels.width)
 	{
-		[self setText:str forRow:row align:alignment];
+		[self cxx_setText:str forRow:row align:alignment];
 		if (text_color)
 			[self setColor:text_color forRow:row];
-		if (text_key)
-			[self setKey:text_key forRow:row];
+		if (text_key.has_value())
+			[self cxx_setKey:*text_key forRow:row];
 		rowFadeTime[row] = text_fade;
 		if (currentRow < (OOGUIRow)n_rows - 1)
 			currentRow++;
 		if (text_array)
-			[text_array addObject:str];
+			text_array->push_back(*str);
 	}
 	else
 	{
-		NSMutableArray	*words = ScanTokensFromString(str);
-		NSMutableString	*string1 = [NSMutableString stringWithCapacity:256];
-		NSMutableString	*string2 = [NSMutableString stringWithCapacity:256];	
+		const std::vector<std::string>	words = oo::str::tokens(*str);
+		std::size_t						next = 0;	// words moved to string1
+		std::string						string1;
 		strsize.width = 0.0f;
-		while ((strsize.width < size_in_pixels.width)&&([words count] > 0))
+		while ((strsize.width < size_in_pixels.width)&&(next < words.size()))
 		{
-			[string1 appendString:(NSString *)[words objectAtIndex:0]];
-			[string1 appendString:@" "];
-			[words removeObjectAtIndex:0];
-			strsize = OORectFromString(string1, 0.0f, 0.0f, chSize).size;
-			if ([words count] > 0)
-				strsize.width += OORectFromString(oo::PListView(words).at<NSString *>(0), 0.0f, 0.0f, chSize).size.width;
+			string1 += words[next];
+			string1 += " ";
+			next++;
+			strsize = OORectFromString(oo::NSStringFrom(string1), 0.0f, 0.0f, chSize).size;
+			if (next < words.size())
+				strsize.width += OORectFromString(oo::NSStringFrom(words[next]), 0.0f, 0.0f, chSize).size.width;
 		}
 
-		[self setText:string1		forRow:row			align:alignment];
+		[self cxx_setText:string1		forRow:row			align:alignment];
 
-		[string2 appendString:[words componentsJoinedByString:@" "]];
+		const std::string string2 = WordsJoinedBySpace(words, next);
 		if (text_color)
 			[self setColor:text_color forRow:row];
-		if (text_key)
-			[self setKey:text_key forRow:row];
+		if (text_key.has_value())
+			[self cxx_setKey:*text_key forRow:row];
 		if (text_array)
-			[text_array addObject:string1];
+			text_array->push_back(string1);
 		rowFadeTime[row] = text_fade;
-		[self printLongText:string2 align:alignment color:text_color fadeTime:text_fade key:text_key addToArray:text_array];
+		[self cxx_printLongText:string2 align:alignment color:text_color fadeTime:text_fade key:text_key addToArray:text_array];
 	}
 }
 
 
-- (void) printLineNoScroll:(NSString *)str
-					 align:(OOGUIAlignment)alignment
-					  color:(OOColor *)text_color
-				  fadeTime:(float)text_fade
-					   key:(NSString *)text_key
-				addToArray:(NSMutableArray *)text_array
+- (void) cxx_printLineNoScroll:(const std::optional<std::string> &)str
+						 align:(OOGUIAlignment)alignment
+						 color:(OOColor *)text_color
+					  fadeTime:(float)text_fade
+						   key:(const std::optional<std::string> &)text_key
+					addToArray:(std::vector<std::string> *)text_array
 {
-	[self setText:str forRow:currentRow align:alignment];
+	[self cxx_setText:str forRow:currentRow align:alignment];
 	if (text_color)
 		[self setColor:text_color forRow:currentRow];
-	if (text_key)
-		[self setKey:text_key forRow:currentRow];
-	if (text_array)
-		[text_array addObject:str];
+	if (text_key.has_value())
+		[self cxx_setKey:*text_key forRow:currentRow];
+	if (text_array && str.has_value())	// adding nil raised
+		text_array->push_back(*str);
 	rowFadeTime[currentRow] = text_fade;
 }
 
@@ -923,18 +953,18 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) insertItemsFromArray:(NSArray *)items
-					 withKeys:(NSArray *)item_keys
-					  intoRow:(OOGUIRow)row
-						color:(OOColor *)text_color
+- (void) cxx_insertItemsFromArray:(const oo::PList &)items
+						 withKeys:(const oo::PList &)item_keys
+						  intoRow:(OOGUIRow)row
+							color:(OOColor *)text_color
 {
-	if (!items)
+	if (items.isNull())
 		return;
-	if([items count] == 0)
+	if(items.count() == 0)
 		return;
 	
-	NSUInteger n_items = [items count];
-	if ((item_keys)&&([item_keys count] != n_items))
+	NSUInteger n_items = items.count();
+	if ((!item_keys.isNull())&&(item_keys.count() != n_items))
 	{
 		// throw exception
 		[NSException raise:@"ArrayLengthMismatchException"
@@ -944,28 +974,35 @@ static BOOL _refreshStarChart = NO;
 	unsigned i;
 	for (i = n_rows; i >= row + n_items ; i--)
 	{
-		[self setKey:[self keyForRow:i - n_items] forRow:i];
+		[self cxx_setKey:[self cxx_keyForRow:i - n_items].value_or("") forRow:i];
 		id	old_row_info = [self objectForRow:i - n_items];
-		if ([old_row_info isKindOfClass:[NSArray class]])
-			[self setArray:old_row_info forRow:i];
-		if ([old_row_info isKindOfClass:[NSString class]])
-			[self setText:(NSString *)old_row_info forRow:i];
+		if (oo::IsNSArray(old_row_info))
+			[self cxx_setArray:oo::StringsFrom(old_row_info) forRow:i];
+		if (oo::IsNSString(old_row_info))
+			[self cxx_setText:oo::StdString(old_row_info) forRow:i];
 	}
 	for (i = 0; i < n_items; i++)
 	{
-		id new_row_info = [items objectAtIndex:i];
+		const oo::PList &new_row_info = *items.at(i);
 		if (text_color)
 			[self setColor:text_color forRow: row + i];
 		else
 			[self setColor:textColor forRow: row + i];
-		if ([new_row_info isKindOfClass:[NSArray class]])
-			[self setArray:new_row_info forRow: row + i];
-		if ([new_row_info isKindOfClass:[NSString class]])
-			[self setText:(NSString *)new_row_info forRow: row + i];
-		if (item_keys)
-			[self setKey:[item_keys objectAtIndex:i] forRow: row + i];
+		if (const oo::PList::Array *columns = new_row_info.getIf<oo::PList::Array>())
+		{
+			std::vector<std::string> columnTexts;
+			for (const oo::PList &column : *columns)
+			{
+				if (const std::string *text = column.getIf<std::string>())  columnTexts.push_back(*text);
+			}
+			[self cxx_setArray:columnTexts forRow: row + i];
+		}
+		if (const std::string *text = new_row_info.getIf<std::string>())
+			[self cxx_setText:*text forRow: row + i];
+		if (!item_keys.isNull())
+			[self cxx_setKey:item_keys.at<std::string>(i) forRow: row + i];
 		else
-			[self setKey:@"" forRow: row + i];
+			[self cxx_setKey:"" forRow: row + i];
 	}
 }
 
