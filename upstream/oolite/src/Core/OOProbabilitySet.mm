@@ -47,7 +47,7 @@ sets that will then be immutablized.
 
 #import "OOProbabilitySet.h"
 #import "OOFunctionAttributes.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "legacy_random.h"
 #include "oofnd/objc/OOException.h"
 
@@ -188,8 +188,8 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 	id						*rawObjects = NULL;
 	float					*rawWeights = NULL;
 	
-	objects = [plist oo_arrayForKey:kObjectsKey];
-	weights = [plist oo_arrayForKey:kWeightsKey];
+	objects = oo::PListView(plist).get<NSArray *>(kObjectsKey);
+	weights = oo::PListView(plist).get<NSArray *>(kWeightsKey);
 	
 	// Validate
 	if (objects == nil || weights == nil)
@@ -216,7 +216,7 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 		// Extract and convert weights.
 		for (i = 0; i < count; ++i)
 		{
-			rawWeights[i] = fmax([weights oo_floatAtIndex:i], 0.0f);
+			rawWeights[i] = fmax(oo::PListView(weights).at<float>(i), 0.0f);
 		}
 		
 		self = [self initWithObjects:rawObjects weights:rawWeights count:count];
@@ -838,8 +838,8 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 	
 	if (OK)
 	{
-		objects = [plist oo_arrayForKey:kObjectsKey];
-		weights = [plist oo_arrayForKey:kWeightsKey];
+		objects = oo::PListView(plist).get<NSArray *>(kObjectsKey);
+		weights = oo::PListView(plist).get<NSArray *>(kWeightsKey);
 		
 		// Validate
 		if (objects == nil || weights == nil)  OK = NO;
@@ -851,7 +851,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 	{
 		for (i = 0; i < count; ++i)
 		{
-			[self setWeight:[weights oo_floatAtIndex:i] forObject:[objects objectAtIndex:i]];
+			[self setWeight:oo::PListView(weights).at<float>(i) forObject:[objects objectAtIndex:i]];
 		}
 	}
 	
@@ -901,7 +901,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 	
 	for (i = 0; i < count; ++i)
 	{
-		sum += [_weights oo_floatAtIndex:i];
+		sum += oo::PListView(_weights).at<float>(i);
 		if (sum >= target)  return [_objects objectAtIndex:i];
 	}
 	
@@ -919,8 +919,8 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 		NSUInteger index = [_objects indexOfObject:object];
 		if (index != NSNotFound)
 		{
-			result = [_weights oo_floatAtIndex:index];
-			if (index != 0)  result -= [_weights oo_floatAtIndex:index - 1];
+			result = oo::PListView(_weights).at<float>(index);
+			if (index != 0)  result -= oo::PListView(_weights).at<float>(index - 1);
 		}
 	}
 	return result;
@@ -937,7 +937,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 		_sumOfWeights = 0.0f;
 		for (i = 0; i < count; ++i)
 		{
-			_sumOfWeights += [_weights oo_floatAtIndex:i];
+			_sumOfWeights += oo::PListView(_weights).at<float>(i);
 		}
 	}
 	return _sumOfWeights;
@@ -1012,7 +1012,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 		
 		for (i = 0; i < count; ++i)
 		{
-			weights[i] = [_weights oo_floatAtIndex:i];
+			weights[i] = oo::PListView(_weights).at<float>(i);
 		}
 		
 		result = [[OOProbabilitySet probabilitySetWithObjects:objects weights:weights count:count] retain];

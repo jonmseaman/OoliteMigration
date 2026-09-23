@@ -86,7 +86,7 @@ SOFTWARE.
 
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
 	return nil;
 }

@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOConstToString.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOJSScript.h"
+#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -595,7 +596,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 		
 		if (propValue != nil)
 		{
-			if ([propValue isKindOfClass:[NSNumber class]] || OOIsNumberLiteral([propValue description], YES))
+			if ([propValue isKindOfClass:[NSNumber class]] || OOIsNumberLiteral(oo::StdString([propValue description]), YES))
 			{
 				BOOL OK = ooscript::newNumberValue(cx, [propValue doubleValue], value);
 				if (!OK)

@@ -51,6 +51,7 @@ MA 02110-1301, USA.
 #import "OOGraphicsResetManager.h"
 #import "OOStringExpander.h"
 #import "OOOpenGLMatrixManager.h"
+#import "OOFoundationBridge.h"
 
 
 #define OO_TERMINATOR_THRESHOLD_VECTOR_DEFAULT	(make_vector(0.105, 0.18, 0.28))	// used to be (0.1, 0.105, 0.12);
@@ -68,6 +69,11 @@ MA 02110-1301, USA.
 
 
 @implementation OOPlanetEntity
+{
+	// The texture generators' noise seed, handed to them directly; was a value box
+	// under "noise_map_seed" in planetInfo / _materialParameters (bead oo-3rb.48).
+	RANROTSeed				_noiseMapSeed;
+}
 
 // this is exclusively called to initialise the main planet.
 - (id) initAsMainPlanetForSystem:(OOSystemID)s
@@ -144,8 +150,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	_terminatorThresholdVector = oo::PListView(planetInfo).get<Vector>(@"terminator_threshold_vector", OO_TERMINATOR_THRESHOLD_VECTOR_DEFAULT);
 	
 	// Load material parameters, including atmosphere.
-	RANROTSeed planetNoiseSeed = RANROTGetFullSeed();
-	[planetInfo setObject:[NSValue valueWithBytes:&planetNoiseSeed objCType:@encode(RANROTSeed)] forKey:@"noise_map_seed"];
+	_noiseMapSeed = RANROTGetFullSeed();
 	[self setUpLandParametersWithSourceInfo:dict targetInfo:planetInfo];
 	
 	_airColor = nil;	// default to no air
@@ -176,7 +181,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 		_airDensity = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"air_density"));
 		// OOLog (@"planet.debug",@" translated air colour:%@ cloud colour:%@ polar cloud color:%@", [_airColor rgbaDescription],[(OOColor *)[planetInfo objectForKey:@"cloud_color"] rgbaDescription],[(OOColor *)[planetInfo objectForKey:@"polar_cloud_color"] rgbaDescription]);
 
-		_materialParameters = [planetInfo dictionaryWithValuesForKeys:[NSArray arrayWithObjects:@"cloud_fraction", @"air_color", @"air_color_mix_ratio", @"air_density", @"cloud_color", @"polar_cloud_color", @"cloud_alpha", @"land_fraction", @"land_color", @"sea_color", @"polar_land_color", @"polar_sea_color", @"noise_map_seed", @"economy", @"polar_fraction", @"isMiniature", @"perlin_3d", @"terminator_threshold_vector", nil]];
+		_materialParameters = [planetInfo dictionaryWithValuesForKeys:[NSArray arrayWithObjects:@"cloud_fraction", @"air_color", @"air_color_mix_ratio", @"air_density", @"cloud_color", @"polar_cloud_color", @"cloud_alpha", @"land_fraction", @"land_color", @"sea_color", @"polar_land_color", @"polar_sea_color", @"economy", @"polar_fraction", @"isMiniature", @"perlin_3d", @"terminator_threshold_vector", nil]];
 	}
 	else
 #else
@@ -189,7 +194,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	if (YES) // create _materialParameters when NEW_ATMOSPHERE is set to 0
 #endif
 	{
-		_materialParameters = [planetInfo dictionaryWithValuesForKeys:[NSArray arrayWithObjects:@"land_fraction", @"land_color", @"sea_color", @"polar_land_color", @"polar_sea_color", @"noise_map_seed", @"economy", @"polar_fraction",  @"isMiniature", @"perlin_3d", @"terminator_threshold_vector", @"illumination_color", nil]];
+		_materialParameters = [planetInfo dictionaryWithValuesForKeys:[NSArray arrayWithObjects:@"land_fraction", @"land_color", @"sea_color", @"polar_land_color", @"polar_sea_color", @"economy", @"polar_fraction",  @"isMiniature", @"perlin_3d", @"terminator_threshold_vector", @"illumination_color", nil]];
 	}
 	[_materialParameters retain];
 	
@@ -941,7 +946,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 // FIXME: need material model.
 - (NSString *) textureFileName
 {
-	return [_planetDrawable textureName];
+	return oo::NSStringOrNil([_planetDrawable textureName]);
 }
 
 
@@ -1013,7 +1018,8 @@ static OOColor *ColorWithHSBColor(Vector c)
 	{
 		[OOPlanetTextureGenerator generatePlanetTexture:&diffuseMap
 									   secondaryTexture:(detailLevel >= DETAIL_LEVEL_SHADERS) ? &normalMap : NULL
-											   withInfo:_materialParameters];
+											   withInfo:_materialParameters
+												   seed:_noiseMapSeed];
 
 		if (shadersOn)
 		{
@@ -1029,11 +1035,12 @@ static OOColor *ColorWithHSBColor(Vector c)
 		/* Generate a standalone atmosphere texture */
 		OOTexture *atmosphere = nil;
 		[OOStandaloneAtmosphereGenerator generateAtmosphereTexture:&atmosphere
-														withInfo:_materialParameters];
+														withInfo:_materialParameters
+															seed:_noiseMapSeed];
 		
 		OOLog(@"texture.planet.generate",@"Planet %@ has atmosphere %@",self,atmosphere);
 		
-		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:@"dynamic" texture:atmosphere configuration:nil];
+		OOSingleTextureMaterial *dynamicMaterial = [[OOSingleTextureMaterial alloc] initWithName:"dynamic" texture:atmosphere configuration:nil];
 		[_atmosphereDrawable setMaterial:dynamicMaterial];
 
 		if (shadersOn)
@@ -1094,7 +1101,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 #endif
 	if (material == nil)
 	{
-		material = [[OOSingleTextureMaterial alloc] initWithName:textureName texture:diffuseMap configuration:nil];
+		material = [[OOSingleTextureMaterial alloc] initWithName:oo::OptionalString(textureName) texture:diffuseMap configuration:nil];
 		[material autorelease];
 	}
 	[_planetDrawable setMaterial:material];

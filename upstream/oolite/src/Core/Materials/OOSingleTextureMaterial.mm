@@ -27,36 +27,37 @@ SOFTWARE.
 
 #import "OOSingleTextureMaterial.h"
 #import "OOTexture.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOFunctionAttributes.h"
+#import "OOFoundationBridge.h"
 
 
 @implementation OOSingleTextureMaterial
 
-- (id)initWithName:(NSString *)name configuration:(NSDictionary *)configuration
+- (id)initWithName:(id)name configuration:(id)configuration
 {
 	id					texSpec = nil;
 	
 	if (configuration != nil)
 	{
-		texSpec = [configuration oo_textureSpecifierForKey:@"diffuse_map" defaultName:name];
+		texSpec = oo::PListView(configuration).get<oo::TextureSpecifier>(@"diffuse_map", name);
 	}
 	else
 	{
 		texSpec = name;
 	}
 	
-	return [self initWithName:name
+	return [self initWithName:oo::OptionalString(name)
 					  texture:[OOTexture textureWithConfiguration:texSpec]
 				configuration:configuration];
 }
 
 
-- (id) initWithName:(NSString *)name texture:(OOTexture *)texture configuration:(NSDictionary *)configuration
+- (id) initWithName:(const std::optional<std::string> &)name texture:(OOTexture *)texture configuration:(id)configuration
 {
-	if (name != nil && texture != nil)
+	if (name.has_value() && texture != nil)
 	{
-		self = [super initWithName:name configuration:configuration];
+		self = [super initWithName:oo::NSStringOrNil(name) configuration:configuration];
 		if (self != nil)
 		{
 			_texture = [texture retain];
@@ -81,7 +82,7 @@ SOFTWARE.
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
 	return [_texture description];
 }
@@ -122,9 +123,9 @@ SOFTWARE.
 
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
-	return [NSSet setWithObject:_texture];
+	return oo::NSSetFromObjects(std::vector<id>{ _texture });
 }
 #endif
 

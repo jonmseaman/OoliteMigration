@@ -31,7 +31,7 @@ SOFTWARE.
 
 
 #import "OODebugMonitor.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOLoggingExtended.h"
 #import "ResourceManager.h"
 #import "NSStringOOExtensions.h"
@@ -597,7 +597,7 @@ typedef struct
 			usage = @", active";
 		}
 		
-		// As oo_unsignedIntForKey: read the boxed count: 0 if absent, else its longLongValue clamped to unsigned.
+		// As the PListView get<unsigned int> read of the boxed count gave: 0 if absent, else its longLongValue clamped to unsigned.
 		auto refCountEntry = textureRefCounts.find(tex);
 		unsigned refCount = (refCountEntry != textureRefCounts.end()) ? (unsigned)OOClampInteger((long long)refCountEntry->second, 0, UINT_MAX) : 0;
 		

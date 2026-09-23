@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "PlayerEntityScriptMethods.h"
 #import "PlayerEntity.h"
+#include "oofnd/StdLib.hpp"
 
 // Don't bother with syntax warnings in Deployment builds.
 #define WARNINGS			OOLITE_DEBUG
@@ -110,7 +111,20 @@ static NSString *ExpandStringKey(OOStringExpansionContext *context, NSString *ke
 static NSString *ExpandStringKeyOverride(OOStringExpansionContext *context, NSString *key);
 static NSString *ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key);
 static NSString *ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, NSString *key);
-static NSMapTable *SpecialSubstitutionSelectors(void);
+/*	Key -> selector tables, keyed by the key's UTF-8 (NSString equality). Were map tables with
+	object keys and non-owned selector values (bead oo-3rb.20); never iterated.
+*/
+typedef std::unordered_map<std::string, SEL> OOSelectorTable;
+
+static SEL LookUpSelector(const OOSelectorTable *table, NSString *key)
+{
+	const char *utf8 = [key UTF8String];
+	if (table == NULL || utf8 == NULL)  return NULL;
+	auto found = table->find(utf8);
+	return (found != table->end()) ? found->second : NULL;
+}
+
+static const OOSelectorTable *SpecialSubstitutionSelectors(void);
 static NSString *ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit);
 static NSString *ExpandStringKeyMissionVariable(OOStringExpansionContext *context, NSString *key);
 static NSString *ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, NSString *key);
@@ -704,8 +718,7 @@ static NSString *ExpandStringKeySpecial(OOStringExpansionContext *context, NSStr
 {
 	NSCParameterAssert(context != NULL && key != nil);
 	
-	NSMapTable *specials = SpecialSubstitutionSelectors();
-	SEL selector = (SEL)NSMapGet(specials, key);
+	SEL selector = LookUpSelector(SpecialSubstitutionSelectors(), key);
 	if (selector != NULL)
 	{
 		NSCAssert2([PLAYER respondsToSelector:selector], @"Special string expansion selector %s for [%@] is not implemented.", OOSelectorName(selector), key);
@@ -743,9 +756,9 @@ static NSString *ExpandStringKeyKeyboardBinding(OOStringExpansionContext *contex
 	Retrieve the mapping of special keys for ExpandStringKeySpecial() to
 	selectors.
 */
-static NSMapTable *SpecialSubstitutionSelectors(void)
+static const OOSelectorTable *SpecialSubstitutionSelectors(void)
 {
-	static NSMapTable *specials = NULL;
+	static OOSelectorTable *specials = NULL;
 	if (specials != NULL)  return specials;
 	
 	struct { NSString *key; SEL selector; } selectors[] =
@@ -762,10 +775,11 @@ static NSMapTable *SpecialSubstitutionSelectors(void)
 	};
 	unsigned i, count = sizeof selectors / sizeof *selectors;
 	
-	specials = NSCreateMapTable(NSObjectMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, count);
+	specials = new OOSelectorTable;
+	specials->reserve(count);
 	for (i = 0; i < count; i++)
 	{
-		NSMapInsertKnownAbsent(specials, selectors[i].key, selectors[i].selector);
+		specials->emplace([selectors[i].key UTF8String], selectors[i].selector);
 	}
 	
 	return specials;
@@ -864,13 +878,10 @@ static NSString *ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context
 static SEL LookUpLegacySelector(NSString *key)
 {
 	SEL selector = NULL;
-	static NSMapTable *selectorCache = NULL;
-	
+	static OOSelectorTable *selectorCache = NULL;
+
 	// Try cache lookup.
-	if (selectorCache != NULL)
-	{
-		selector = (SEL)NSMapGet(selectorCache, key);
-	}
+	selector = LookUpSelector(selectorCache, key);
 	
 	if (selector == NULL)
 	{
@@ -902,9 +913,11 @@ static SEL LookUpLegacySelector(NSString *key)
 			// Add it to cache.
 			if (selectorCache == NULL)
 			{
-				selectorCache = NSCreateMapTable(NSObjectMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, [whitelist count]);
+				selectorCache = new OOSelectorTable;
+				selectorCache->reserve([whitelist count]);
 			}
-			NSMapInsertKnownAbsent(selectorCache, key, selector);
+			const char *utf8 = [key UTF8String];
+			if (utf8 != NULL)  selectorCache->emplace(utf8, selector);
 		}
 	}
 	
