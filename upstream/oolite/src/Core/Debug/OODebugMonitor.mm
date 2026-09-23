@@ -993,7 +993,7 @@ See also +sharedDebugMonitor above.
 NOTE: assumes single-threaded access.
 */
 
-+ (id)allocWithZone:(NSZone *)inZone
++ (id)allocWithZone:(OOZone *)inZone
 {
 	if (sSingleton == nil)
 	{
@@ -1004,7 +1004,7 @@ NOTE: assumes single-threaded access.
 }
 
 
-- (id)copyWithZone:(NSZone *)inZone
+- (id)copyWithZone:(OOZone *)inZone
 {
 	return self;
 }
