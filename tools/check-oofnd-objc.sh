@@ -157,8 +157,8 @@ for t in "${tests[@]}"; do
 	cat "$exe.build.log" >&2
 	[ "$(cat "$exe.build.rc" 2>/dev/null)" = 0 ] || fail "$t does not build"
 	imports="$(objdump -p "$exe" | sed -n 's/^[[:space:]]*DLL Name:[[:space:]]*//p')"
-	printf '%s\n' "$imports" | grep -qi '^libobjc' || fail "$name does not import libobjc; the floor is not on the runtime it claims"
-	if printf '%s\n' "$imports" | grep -qi 'gnustep'; then
+	grep -qi '^libobjc' <<<"$imports" || fail "$name does not import libobjc; the floor is not on the runtime it claims"
+	if grep -qi 'gnustep' <<<"$imports"; then
 		fail "$name imports a GNUstep Foundation DLL: $(printf '%s\n' "$imports" | grep -i gnustep | tr '\n' ' ')"
 	fi
 	echo "   $name imports: $(printf '%s\n' "$imports" | grep -vi '^api-ms-win' | tr '\n' ' ')"
