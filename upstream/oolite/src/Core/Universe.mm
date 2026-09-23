@@ -1293,7 +1293,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	/*- the sky backdrop -*/
 	OOColor *col1 = [OOColor colorWithRed:0.0 green:1.0 blue:0.5 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	quaternion_set_random(&randomQ);
 	[thing setOrientation:randomQ];
@@ -1445,7 +1445,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOColor *col1 = [OOColor colorWithHue:h1 saturation:randf() brightness:0.5 + randf()/2.0 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithHue:h2 saturation:0.5 + randf()/2.0 brightness:0.5 + randf()/2.0 alpha:1.0];
 	
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	[self addEntity:thing];
 //	bgcolor = [(SkyEntity *)thing skyColor];
@@ -8366,7 +8366,7 @@ static void VerifyDesc(NSString *key, id desc)
 			
 			if (the_sky != nil)
 			{
-				[the_sky changeProperty:key withDictionary:sysInfo];
+				[the_sky changeProperty:oo::StdString(key) withDictionary:oo::PListFrom(sysInfo)];
 				
 				if ([key isEqualToString:@"sun_color"])
 				{
