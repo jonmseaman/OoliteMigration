@@ -33,6 +33,7 @@ oolite_sources += files(
     'PlayerEntityScriptMethods.mm',
     'PlayerEntityScriptMethods+FoundationBridge.mm',
     'PlayerEntitySound.mm',
+    'PlayerEntitySound+FoundationBridge.mm',
     'PlayerEntityStickMapper.mm',
     'PlayerEntityStickProfile.mm',
     'ProxyPlayerEntity.mm',
