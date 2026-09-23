@@ -27,69 +27,70 @@ MA 02110-1301, USA.
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "OOLegacyScriptWhitelist.h"
 #import "OOCacheManager.h"
-#import "OOPListView.h"
+#import "OOFoundationBridge.h"
 
 
-static NSString * const kMDKeyName			= @"name";
-static NSString * const kMDKeyDescription	= @"description";
-static NSString * const kMDKeyVersion		= @"version";
-static NSString * const kKeyMetadata		= @"!metadata!";
-static NSString * const kKeyScript			= @"script";
+namespace {
+constexpr const char *kMDKeyName			= "name";
+constexpr const char *kMDKeyDescription		= "description";
+constexpr const char *kMDKeyVersion			= "version";
+constexpr const char *kKeyMetadata			= "!metadata!";
+constexpr const char *kKeyScript			= "script";
 
-static NSString * const kCacheName			= @"sanitized legacy scripts";
+constexpr const char *kCacheName				= "sanitized legacy scripts";
+
+
+// -objectForKey: of a dictionary held as a PList: the value as an Objective-C object, or nil.
+id ObjectForKey(const oo::PList &dictionary, const char *key)
+{
+	const oo::PList *value = dictionary.get<oo::PList>(key);
+	return (value != nullptr) ? oo::ObjectFromPList(*value) : nil;
+}
+} // namespace
 
 
 @interface OOPListScript (SetUp)
 
-+ (NSArray *)scriptsFromDictionaryOfScripts:(NSDictionary *)dictionary filePath:(NSString *)filePath;
-+ (NSArray *) loadCachedScripts:(NSDictionary *)cachedScripts;
-- (id)initWithName:(NSString *)name scriptArray:(NSArray *)script metadata:(NSDictionary *)metadata;
++ (std::vector<oo::ObjCRef<OOScript *>>)scriptsFromDictionaryOfScripts:(const oo::PList &)dictionary filePath:(const std::string &)filePath;
++ (std::vector<oo::ObjCRef<OOScript *>>) loadCachedScripts:(const oo::PList &)cachedScripts;
+- (id)initWithName:(const std::string &)name scriptArray:(const oo::PList &)script metadata:(const oo::PList *)metadata;
 
 @end
 
 
 @implementation OOPListScript
 
-+ (NSArray *)scriptsInPListFile:(NSString *)filePath
++ (std::optional<std::vector<oo::ObjCRef<OOScript *>>>)scriptsInPListFile:(const std::string &)filePath
 {
-	NSDictionary *cachedScripts = [[OOCacheManager sharedCache] objectForKey:filePath inCache:kCacheName];
-	if (cachedScripts != nil)
+	const oo::PList cachedScripts = oo::PListFrom([[OOCacheManager sharedCache] cxx_objectForKey:filePath inCache:kCacheName]);
+	if (cachedScripts)
 	{
 		return [self loadCachedScripts:cachedScripts];
 	}
 	else
 	{
-		NSDictionary *dict = OODictionaryFromFile(filePath);
-		if (dict == nil)  return nil;
+		const oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(filePath)));
+		if (!dict)  return std::nullopt;
 		return [self scriptsFromDictionaryOfScripts:dict filePath:filePath];
 	}
 }
 
 
-- (void)dealloc
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	[_script release];
-	[_metadata release];
-	
-	[super dealloc];
+	return ObjectForKey(_metadata, kMDKeyName);
 }
 
 
-- (NSString *)name
+- (id)scriptDescription	// shared selector (proposed ADR-0043)
 {
-	return [_metadata objectForKey:kMDKeyName];
+	return ObjectForKey(_metadata, kMDKeyDescription);
 }
 
 
-- (NSString *)scriptDescription
+- (id)version	// shared selector (proposed ADR-0043)
 {
-	return [_metadata objectForKey:kMDKeyDescription];
-}
-
-
-- (NSString *)version
-{
-	return [_metadata objectForKey:kMDKeyVersion];
+	return ObjectForKey(_metadata, kMDKeyVersion);
 }
 
 
@@ -106,14 +107,14 @@ static NSString * const kCacheName			= @"sanitized legacy scripts";
 		OOLog(@"script.legacy.run.badTarget", @"Expected ShipEntity or nil for target, got %@.", [target class]);
 		return;
 	}
-	
+
 	OOLog(@"script.legacy.run", @"Running script %@", [self displayName]);
 	OOLogIndentIf(@"script.legacy.run");
-	
-	[PLAYER runScriptActions:_script
+
+	[PLAYER runScriptActions:oo::ObjectFromPList(_script)
 			 withContextName:[self name]
 				   forTarget:(ShipEntity *)target];
-	
+
 	OOLogOutdentIf(@"script.legacy.run");
 }
 
@@ -122,92 +123,87 @@ static NSString * const kCacheName			= @"sanitized legacy scripts";
 
 @implementation OOPListScript (SetUp)
 
-+ (NSArray *)scriptsFromDictionaryOfScripts:(NSDictionary *)dictionary filePath:(NSString *)filePath
++ (std::vector<oo::ObjCRef<OOScript *>>)scriptsFromDictionaryOfScripts:(const oo::PList &)dictionary filePath:(const std::string &)filePath
 {
-	NSMutableArray		*result = nil;
-	NSString			*key = nil;
-	NSArray				*scriptArray = nil;
-	NSDictionary		*metadata = nil;
-	NSMutableDictionary	*cachedScripts = nil;
+	std::vector<oo::ObjCRef<OOScript *>>	result;
+	oo::PList::Dict		cachedScripts;
+	const oo::PList		*metadata = nullptr;
 	OOPListScript		*script = nil;
-	
-	NSUInteger count = [dictionary count];
-	result = [NSMutableArray arrayWithCapacity:count];
-	cachedScripts = [NSMutableDictionary dictionaryWithCapacity:count];
-	
-	metadata = [dictionary objectForKey:kKeyMetadata];
-	if (![metadata isKindOfClass:[NSDictionary class]]) metadata = nil;
-	
-	foreachkey (key, dictionary)
+
+	result.reserve(dictionary.count());
+
+	metadata = dictionary.get<oo::PList::Dict>(kKeyMetadata);	// nil unless a dictionary
+
+	// Order-sensitive: the scripts come out in key order (they came out in hash order).
+	for (const auto &[key, scriptArray] : *dictionary.getIf<oo::PList::Dict>())
 	{
-		scriptArray = [dictionary objectForKey:key];
-		if ([key isKindOfClass:[NSString class]] &&
-			[scriptArray isKindOfClass:[NSArray class]] &&
-			![key isEqual:kKeyMetadata])
+		// (every key is a string: a dictionary with another key read as no dictionary)
+		if (scriptArray.isArray() && key != kKeyMetadata)
 		{
-			scriptArray = OOSanitizeLegacyScript(scriptArray, key, NO);
-			if (scriptArray != nil)
+			const oo::PList sanitized = oo::PListFrom(OOSanitizeLegacyScript(oo::ObjectFromPList(scriptArray), oo::NSStringFrom(key), NO));
+			if (sanitized)
 			{
-				script = [[self alloc] initWithName:key scriptArray:scriptArray metadata:metadata];
+				script = [[self alloc] initWithName:key scriptArray:sanitized metadata:metadata];
 				if (script != nil)
 				{
-					[result addObject:script];
-					[cachedScripts setObject:[NSDictionary dictionaryWithObjectsAndKeys:scriptArray, kKeyScript, metadata, kKeyMetadata, nil] forKey:key];
-					
+					result.emplace_back(script);
+					// +dictionaryWithObjectsAndKeys: stopped at a nil metadata.
+					oo::PList::Dict cacheEntry;
+					cacheEntry[kKeyScript] = sanitized;
+					if (metadata != nullptr)  cacheEntry[kKeyMetadata] = *metadata;
+					cachedScripts[key] = oo::PList(std::move(cacheEntry));
+
 					[script release];
 				}
 			}
 		}
 	}
-	
-	[[OOCacheManager sharedCache] setObject:cachedScripts forKey:filePath inCache:kCacheName];
-	
-	return [[result copy] autorelease];
+
+	[[OOCacheManager sharedCache] cxx_setObject:oo::ObjectFromPList(oo::PList(std::move(cachedScripts))) forKey:filePath inCache:kCacheName];
+
+	return result;
 }
 
 
-+ (NSArray *) loadCachedScripts:(NSDictionary *)cachedScripts
++ (std::vector<oo::ObjCRef<OOScript *>>) loadCachedScripts:(const oo::PList &)cachedScripts
 {
-	NSString			*key = nil;
-	
-	NSMutableArray *result = [NSMutableArray arrayWithCapacity:[cachedScripts count]];
-	
-	foreachkey (key, cachedScripts)
+	std::vector<oo::ObjCRef<OOScript *>> result;
+	result.reserve(cachedScripts.count());
+
+	const oo::PList::Dict *entries = cachedScripts.getIf<oo::PList::Dict>();
+	if (entries == nullptr)  return result;
+
+	// Order-sensitive: the scripts come out in key order (they came out in hash order).
+	for (const auto &[key, entry] : *entries)
 	{
-		NSDictionary *cacheValue = oo::PListView(cachedScripts).get<NSDictionary *>(key);
-		NSArray *scriptArray = oo::PListView(cacheValue).get<NSArray *>(kKeyScript);
-		NSDictionary *metadata = oo::PListView(cacheValue).get<NSDictionary *>(kKeyMetadata);
-		OOPListScript *script = [[self alloc] initWithName:key scriptArray:scriptArray metadata:metadata];
+		const oo::PList *cacheValue = entry.isDict() ? &entry : nullptr;
+		const oo::PList *scriptArray = (cacheValue != nullptr) ? cacheValue->get<oo::PList::Array>(kKeyScript) : nullptr;
+		const oo::PList *metadata = (cacheValue != nullptr) ? cacheValue->get<oo::PList::Dict>(kKeyMetadata) : nullptr;
+		OOPListScript *script = [[self alloc] initWithName:key scriptArray:((scriptArray != nullptr) ? *scriptArray : oo::PList()) metadata:metadata];
 		if (script != nil)
 		{
-			[result addObject:script];
+			result.emplace_back(script);
 			[script release];
 		}
 	}
-	
-	return [[result copy] autorelease];
+
+	return result;
 }
 
 
-- (id)initWithName:(NSString *)name scriptArray:(NSArray *)script metadata:(NSDictionary *)metadata
+- (id)initWithName:(const std::string &)name scriptArray:(const oo::PList &)script metadata:(const oo::PList *)metadata
 {
 	self = [super init];
 	if (self != nil)
 	{
-		_script = [script retain];
-		if (name != nil)
-		{
-			if (metadata == nil)  metadata = [NSDictionary dictionaryWithObject:name forKey:kMDKeyName];
-			else
-			{
-				NSMutableDictionary *mutableMetadata = [[metadata mutableCopy] autorelease];
-				[mutableMetadata setObject:name forKey:kMDKeyName];
-				metadata = mutableMetadata;
-			}
-		}
-		_metadata = [metadata copy];
+		_script = script;
+		// (every caller passes a name: the "no name" branch, which kept the metadata as given, is gone)
+		oo::PList::Dict namedMetadata;
+		if (metadata != nullptr)  namedMetadata = *metadata->getIf<oo::PList::Dict>();
+		namedMetadata[kMDKeyName] = name;
+		_metadata = oo::PList(std::move(namedMetadata));
 	}
-	
+
 	return self;
 }
 

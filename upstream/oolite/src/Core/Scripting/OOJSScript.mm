@@ -41,6 +41,9 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOPListParsing.h"
 #import "OODebugStandards.h"
+#import "OOFoundationBridge.h"
+#import "NSDataOOExtensions.h"
+#include "oofnd/Encoding.hpp"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -107,16 +110,23 @@ static ooscript::Object sScriptPrototype;
 static RunningStack		*sRunningStack = NULL;
 
 
-static void AddStackToArrayReversed(NSMutableArray *array, RunningStack *stack);
+static void AddStackToArrayReversed(std::vector<oo::ObjCRef<OOJSScript *>> &array, RunningStack *stack);
 
-static Script LoadScriptWithName(ooscript::Context context, NSString *path, ooscript::Object object, ooscript::Object *outScriptObject, NSString **outErrorMessage);
+static Script LoadScriptWithName(ooscript::Context context, const std::optional<std::string> &path, ooscript::Object object, ooscript::Object *outScriptObject, std::optional<std::string> *outErrorMessage);
 
 #if OO_CACHE_JS_SCRIPTS
-static NSData *CompiledScriptData(ooscript::Context context, Script script);
-static Script ScriptWithCompiledData(ooscript::Context context, NSData *data);
+static std::optional<oo::Data> CompiledScriptData(ooscript::Context context, Script script);
+static Script ScriptWithCompiledData(ooscript::Context context, const oo::Data &data);
 #endif
 
-static NSString *StrippedName(NSString *string);
+static std::optional<std::string> StrippedName(const std::optional<std::string> &string);
+
+// [[object description] copy]: nil stays nil.
+static std::optional<std::string> DescriptionOrNil(id object);
+
+// -oo_stringForKey: with its nil; a string value for -setObject:forKey:, which raised on nil.
+static std::optional<std::string> StringForKey(const oo::PList &dictionary, const std::string &key);
+static std::string ValueForKey(const std::optional<std::string> &value, id key);
 } // namespace
 
 
@@ -164,32 +174,30 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 
 @interface OOJSScript (OOPrivate)
 
-- (NSString *)scriptNameFromPath:(NSString *)path;
-- (NSDictionary *)defaultPropertiesFromPath:(NSString *)path;
+- (std::string)scriptNameFromPath:(const std::optional<std::string> &)path;
+- (oo::PList::Dict)defaultPropertiesFromPath:(const std::optional<std::string> &)path;
 
 @end
 
 
 @implementation OOJSScript
 
-+ (id) scriptWithPath:(NSString *)path properties:(NSDictionary *)properties
++ (id) scriptWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties
 {
 	return [[[self alloc] initWithPath:path properties:properties] autorelease];
 }
 
 
-- (id) initWithPath:(NSString *)path properties:(NSDictionary *)properties
+- (id) initWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties
 {
 	ooscript::Context context = NULL;
-	NSString				*problem = nil;	// Acts as error flag.
+	std::optional<std::string>	problem;	// Acts as error flag.
 	Script					script = NULL;
 	ooscript::Object scriptObject = NULL;
 	ooscript::Value					returnValue = ooscript::undefinedValue();
-	NSString				*key = nil;
-	id						property = nil;
 	
 	self = [super init];
-	if (self == nil) problem = @"allocation failure";
+	if (self == nil) problem = "allocation failure";
 	else
 	{
 		context = OOJSAcquireContext();
@@ -197,31 +205,31 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 		if (ooscript::isExceptionPending((context)))
 		{
 			ooscript::clearPendingException((context));
-			OOLogERR(@"script.javaScript.load.waitingException", @"Prior to loading script %@, there was a pending JavaScript exception, which has been cleared. This is an internal error, please report it.", path);
+			OOLogERR(@"script.javaScript.load.waitingException", @"Prior to loading script %@, there was a pending JavaScript exception, which has been cleared. This is an internal error, please report it.", oo::NSStringOrNil(path));
 		}
 		
 		// Set up JS object
-		if (!problem)
+		if (!problem.has_value())
 		{
 			_jsSelf = (ooscript::newObject((context), &sScriptClass, (sScriptPrototype), nullptr));
-			if (_jsSelf == NULL) problem = @"allocation failure";
+			if (_jsSelf == NULL) problem = "allocation failure";
 		}
 		
-		if (!problem && !OOJSAddGCObjectRoot(context, &_jsSelf, "Script object"))
+		if (!problem.has_value() && !OOJSAddGCObjectRoot(context, &_jsSelf, "Script object"))
 		{
-			problem = @"could not add JavaScript root object";
+			problem = "could not add JavaScript root object";
 		}
 		
-		if (!problem && !OOJSAddGCObjectRoot(context, &scriptObject, "Script GC holder"))
+		if (!problem.has_value() && !OOJSAddGCObjectRoot(context, &scriptObject, "Script GC holder"))
 		{
-			problem = @"could not add JavaScript root object";
+			problem = "could not add JavaScript root object";
 		}
 		
-		if (!problem)
+		if (!problem.has_value())
 		{
 			if (!ooscript::setPrivate((context), (_jsSelf), OOConsumeReference([self weakRetain])))
 			{
-				problem = @"could not set private backreference";
+				problem = "could not set private backreference";
 			}
 		}
 		
@@ -233,44 +241,41 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 		};
 		sRunningStack = &stackElement;
 		
-		filePath = [path retain];
+		filePath = path;
 		
-		if (!problem)
+		if (!problem.has_value())
 		{
-			OOLog(@"script.javaScript.willLoad", @"About to load JavaScript %@", path);
+			OOLog(@"script.javaScript.willLoad", @"About to load JavaScript %@", oo::NSStringOrNil(path));
 			script = LoadScriptWithName(context, path, _jsSelf, &scriptObject, &problem);
 		}
 		OOLogIndentIf(@"script.javaScript.willLoad");
 		
 		// Set default properties from manifest.plist
-		NSDictionary *defaultProperties = [self defaultPropertiesFromPath:path];
-		foreachkey (key, defaultProperties)
+		// Order-sensitive: the properties are set in key order (they were set in hash order).
+		const oo::PList::Dict defaultProperties = [self defaultPropertiesFromPath:path];
+		for (const auto &[key, property] : defaultProperties)
 		{
-			if ([key isKindOfClass:[NSString class]])
+			if (key == kLocalManifestProperty)
 			{
-				property = [defaultProperties objectForKey:key];
-				if ([key isEqualToString:kLocalManifestProperty])
-				{
-					// this must not be editable
-					[self defineProperty:property named:key];
-				}
-				else
-				{
-					// can be overwritten by script itself
-					[self setProperty:property named:key];
-				}
+				// this must not be editable
+				[self defineProperty:oo::ObjectFromPList(property) named:key];
+			}
+			else
+			{
+				// can be overwritten by script itself
+				[self setProperty:oo::ObjectFromPList(property) named:key];
 			}
 		}
 
 		// Set properties. (read-only)
-		if (!problem && properties != nil)
+		// Order-sensitive: defined in key order (they were defined in hash order).
+		if (!problem.has_value() && !properties.isNull())
 		{
-			foreachkey (key, properties)
+			if (const oo::PList::Dict *propertyDict = properties.getIf<oo::PList::Dict>())
 			{
-				if ([key isKindOfClass:[NSString class]])
+				for (const auto &[key, property] : *propertyDict)
 				{
-					property = [properties objectForKey:key];
-					[self defineProperty:property named:key];
+					[self defineProperty:oo::ObjectFromPList(property) named:key];
 				}
 			}
 		}
@@ -282,15 +287,15 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 			probably also be achieved by fiddling with JS property attributes.
 		*/
 		ooscript::PropertyId nameID = OOJSID("name");
-		[self setProperty:[self scriptNameFromPath:path] withID:nameID inContext:context];
+		[self setProperty:oo::NSStringFrom([self scriptNameFromPath:path]) withID:nameID inContext:context];
 		
 		// Run the script (allowing it to set up the properties we need, as well as setting up those event handlers)
-		if (!problem)
+		if (!problem.has_value())
 		{
 			OOJSStartTimeLimiterWithTimeLimit(kOOJSLongTimeLimit);
 			if (!ooscript::executeScript((context), (_jsSelf), script, (&returnValue)))
 			{
-				problem = @"could not run script";
+				problem = "could not run script";
 			}
 			OOJSStopTimeLimiter();
 			
@@ -302,31 +307,31 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 		
 		sRunningStack = stackElement.back;
 		
-		if (!problem)
+		if (!problem.has_value())
 		{
 			// Get display attributes from script
-			DESTROY(name);
-			name = [StrippedName([[self propertyWithID:nameID inContext:context] description]) copy];
-			if (name == nil)
+			name.reset();
+			name = StrippedName(DescriptionOrNil([self propertyWithID:nameID inContext:context]));
+			if (!name.has_value())
 			{
-				name = [[self scriptNameFromPath:path] retain];
-				[self setProperty:name withID:nameID inContext:context];
+				name = [self scriptNameFromPath:path];
+				[self setProperty:oo::NSStringFrom(*name) withID:nameID inContext:context];
 			}
 			
-			version = [[[self propertyWithID:OOJSID("version") inContext:context] description] copy];
-			description = [[[self propertyWithID:OOJSID("description") inContext:context] description] copy];
+			version = DescriptionOrNil([self propertyWithID:OOJSID("version") inContext:context]);
+			description = DescriptionOrNil([self propertyWithID:OOJSID("description") inContext:context]);
 			
-			OOLog(@"script.javaScript.load.success", @"Loaded JavaScript: %@ -- %@", [self displayName], description ? description : (NSString *)@"(no description)");
+			OOLog(@"script.javaScript.load.success", @"Loaded JavaScript: %@ -- %@", [self displayName], oo::NSStringFrom(description.value_or("(no description)")));
 		}
 		
 		OOLogOutdentIf(@"script.javaScript.willLoad");
 		
-		DESTROY(filePath);	// Only used for error reporting during startup.
+		filePath.reset();	// Only used for error reporting during startup.
 	}
 	
-	if (problem)
+	if (problem.has_value())
 	{
-		OOLog(@"script.javaScript.load.failed", @"***** Error loading JavaScript script %@ -- %@", path, problem);
+		OOLog(@"script.javaScript.load.failed", @"***** Error loading JavaScript script %@ -- %@", oo::NSStringOrNil(path), oo::NSStringFrom(*problem));
 		ooscript::reportPendingException((context));
 		DESTROY(self);
 	}
@@ -351,11 +356,6 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 													   name:kOOJavaScriptEngineWillResetNotification
 													 object:[OOJavaScriptEngine sharedEngine]];
 	
-	DESTROY(name);
-	DESTROY(description);
-	DESTROY(version);
-	DESTROY(filePath);
-	
 	if (_jsSelf != NULL)
 	{
 		ooscript::Context context = OOJSAcquireContext();
@@ -372,13 +372,13 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (NSString *) oo_jsClassName
+- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
 {
 	return @"Script";
 }
 
 
-- (NSString *)descriptionComponents
+- (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
 	if (_jsSelf != NULL)  return [super descriptionComponents];
 	else  return @"invalid script";
@@ -405,11 +405,10 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-+ (NSArray *) scriptStack
++ (std::vector<oo::ObjCRef<OOJSScript *>>) scriptStack
 {
-	NSMutableArray			*result = nil;
+	std::vector<oo::ObjCRef<OOJSScript *>>	result;
 	
-	result = [NSMutableArray array];
 	AddStackToArrayReversed(result, sRunningStack);
 	return result;
 }
@@ -428,23 +427,24 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (NSString *) name
+- (id) name	// shared selector (proposed ADR-0043)
 {
-	if (name == nil)  name = [[self propertyNamed:@"name"] copy];
-	if (name == nil)  return [self scriptNameFromPath:filePath];	// Special case for parse errors during load.
-	return name;
+	// (the property as text: a string is itself, anything else its -description)
+	if (!name.has_value())  name = DescriptionOrNil([self propertyNamed:"name"]);
+	if (!name.has_value())  return oo::NSStringFrom([self scriptNameFromPath:filePath]);	// Special case for parse errors during load.
+	return oo::NSStringFrom(*name);
 }
 
 
-- (NSString *) scriptDescription
+- (id) scriptDescription	// shared selector (proposed ADR-0043)
 {
-	return description;
+	return oo::NSStringOrNil(description);
 }
 
 
-- (NSString *) version
+- (id) version	// shared selector (proposed ADR-0043)
 {
-	return version;
+	return oo::NSStringOrNil(version);
 }
 
 
@@ -459,7 +459,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	  withArguments:(ooscript::Value *)argv count:(int)argc
 			 result:(ooscript::Value *)outResult
 {
-	NSParameterAssert(name != NULL && (argv != NULL || argc == 0) && context != NULL && ooscript::isInRequest((context)));
+	NSParameterAssert(name.has_value() && (argv != NULL || argc == 0) && context != NULL && ooscript::isInRequest((context)));
 	if (_jsSelf == NULL)  return NO;
 	
 	ooscript::Object root = NULL;
@@ -550,39 +550,38 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (id) propertyNamed:(NSString *)propName
+- (id) propertyNamed:(const std::string &)propName
 {
-	if (propName == nil)  return nil;
 	if (_jsSelf == NULL)  return nil;
 	
 	ooscript::Context context = OOJSAcquireContext();
-	id result = [self propertyWithID:OOJSIDFromString(propName) inContext:context];
+	id result = [self propertyWithID:OOJSIDFromString(oo::NSStringFrom(propName)) inContext:context];
 	OOJSRelinquishContext(context);
 	
 	return result;
 }
 
 
-- (BOOL) setProperty:(id)value named:(NSString *)propName
+- (BOOL) setProperty:(id)value named:(const std::string &)propName
 {
-	if (value == nil || propName == nil)  return NO;
+	if (value == nil)  return NO;
 	if (_jsSelf == NULL)  return NO;
 	
 	ooscript::Context context = OOJSAcquireContext();
-	BOOL result = [self setProperty:value withID:OOJSIDFromString(propName) inContext:context];
+	BOOL result = [self setProperty:value withID:OOJSIDFromString(oo::NSStringFrom(propName)) inContext:context];
 	OOJSRelinquishContext(context);
 	
 	return result;
 }
 
 
-- (BOOL) defineProperty:(id)value named:(NSString *)propName
+- (BOOL) defineProperty:(id)value named:(const std::string &)propName
 {
-	if (value == nil || propName == nil)  return NO;
+	if (value == nil)  return NO;
 	if (_jsSelf == NULL)  return NO;
 	
 	ooscript::Context context = OOJSAcquireContext();
-	BOOL result = [self defineProperty:value withID:OOJSIDFromString(propName) inContext:context];
+	BOOL result = [self defineProperty:value withID:OOJSIDFromString(oo::NSStringFrom(propName)) inContext:context];
 	OOJSRelinquishContext(context);
 	
 	return result;
@@ -641,66 +640,69 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	* If either of the two previous steps results in an empty string, fall
 	back on the full path.
 */
-- (NSString *)scriptNameFromPath:(NSString *)path
+- (std::string)scriptNameFromPath:(const std::optional<std::string> &)path
 {
-	NSString		*lastComponent = nil;
-	NSString		*truncatedPath = nil;
-	NSString		*theName = nil;
+	std::string		lastComponent;
+	std::string		truncatedPath;
+	std::string		theName;
 	
-	if (path == nil) theName = [NSString stringWithFormat:@"%p", self];
+	if (!path.has_value()) theName = oo::str::pointerDescription(self);
 	else
 	{
-		lastComponent = [path lastPathComponent];
-		if (![lastComponent hasPrefix:@"script."]) theName = lastComponent;
+		lastComponent = oo::str::lastPathComponent(*path);
+		if (!oo::str::hasPrefix(lastComponent, "script.")) theName = lastComponent;
 		else
 		{
-			truncatedPath = [path stringByDeletingLastPathComponent];
-			if (NSOrderedSame == [[truncatedPath lastPathComponent] caseInsensitiveCompare:@"Config"])
+			truncatedPath = oo::str::deletingLastPathComponent(*path);
+			if (0 == oo::str::caseInsensitiveCompare(oo::str::lastPathComponent(truncatedPath), "Config"))
 			{
-				truncatedPath = [truncatedPath stringByDeletingLastPathComponent];
+				truncatedPath = oo::str::deletingLastPathComponent(truncatedPath);
 			}
-			if (NSOrderedSame == [[truncatedPath pathExtension] caseInsensitiveCompare:@"oxp"])
+			const std::string extension = oo::str::pathExtension(truncatedPath);
+			if (0 == oo::str::caseInsensitiveCompare(extension, "oxp"))
 			{
-				truncatedPath = [truncatedPath stringByDeletingPathExtension];
+				// -stringByDeletingPathExtension: the ".oxp" at the end goes (the path has no trailing
+				// separator, having just lost a component).
+				truncatedPath.resize(truncatedPath.size() - extension.size() - 1);
 			}
 			
-			lastComponent = [truncatedPath lastPathComponent];
+			lastComponent = oo::str::lastPathComponent(truncatedPath);
 			theName = lastComponent;
 		}
 	}
 	
-	if (0 == [theName length]) theName = path;
+	if (theName.empty()) theName = path.value_or("");
 	
-	return StrippedName([theName stringByAppendingString:@".anon-script"]);
+	return *StrippedName(theName + ".anon-script");
 }
 
 
-- (NSDictionary *) defaultPropertiesFromPath:(NSString *)path
+- (oo::PList::Dict) defaultPropertiesFromPath:(const std::optional<std::string> &)path
 {
-	// remove file name, remove OXP subfolder, add manifest.plist
-	NSString *manifestPath = [[[path stringByDeletingLastPathComponent] stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"manifest.plist"];
-	NSDictionary *manifest = OODictionaryFromFile(manifestPath);
-	NSMutableDictionary *properties = [NSMutableDictionary dictionaryWithCapacity:3];
+	// remove file name, remove OXP subfolder, add manifest.plist (a nil path messaged nil: no manifest)
+	const oo::PList manifest = path.has_value() ? oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::deletingLastPathComponent(oo::str::deletingLastPathComponent(*path)), "manifest.plist")))) : oo::PList();
+	oo::PList::Dict properties;
 	/* __oolite.tmp.* is allocated for OXPs without manifests. Its
 	 * values are meaningless and shouldn't be used here */
-	if (manifest != nil && ![oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) hasPrefix:@"__oolite.tmp."])
+	const std::optional<std::string> identifier = StringForKey(manifest, oo::StdString(kOOManifestIdentifier));
+	if (manifest && !(identifier.has_value() && oo::str::hasPrefix(*identifier, "__oolite.tmp.")))
 	{
-		if ([manifest objectForKey:kOOManifestVersion] != nil)
+		if (manifest.get<oo::PList>(oo::StdString(kOOManifestVersion)) != nullptr)
 		{
-			[properties setObject:oo::PListView(manifest).get<NSString *>(kOOManifestVersion) forKey:@"version"];
+			properties["version"] = ValueForKey(StringForKey(manifest, oo::StdString(kOOManifestVersion)), @"version");
 		}
-		if ([manifest objectForKey:kOOManifestIdentifier] != nil)
+		if (manifest.get<oo::PList>(oo::StdString(kOOManifestIdentifier)) != nullptr)
 		{
 			// used for system info
-			[properties setObject:oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) forKey:kLocalManifestProperty];
+			properties[kLocalManifestProperty] = ValueForKey(identifier, oo::NSStringFrom(kLocalManifestProperty));
 		}
-		if ([manifest objectForKey:kOOManifestAuthor] != nil)
+		if (manifest.get<oo::PList>(oo::StdString(kOOManifestAuthor)) != nullptr)
 		{
-			[properties setObject:oo::PListView(manifest).get<NSString *>(kOOManifestAuthor) forKey:@"author"];
+			properties["author"] = ValueForKey(StringForKey(manifest, oo::StdString(kOOManifestAuthor)), @"author");
 		}
-		if ([manifest objectForKey:kOOManifestLicense] != nil)
+		if (manifest.get<oo::PList>(oo::StdString(kOOManifestLicense)) != nullptr)
 		{
-			[properties setObject:oo::PListView(manifest).get<NSString *>(kOOManifestLicense) forKey:@"license"];
+			properties["license"] = ValueForKey(StringForKey(manifest, oo::StdString(kOOManifestLicense)), @"license");
 		}
 	}
 	return properties;
@@ -753,78 +755,84 @@ static bool ScriptAddProperty(Context cx, Object obj, PropertyId propID, Value *
 
 
 namespace {
-static void AddStackToArrayReversed(NSMutableArray *array, RunningStack *stack)
+static void AddStackToArrayReversed(std::vector<oo::ObjCRef<OOJSScript *>> &array, RunningStack *stack)
 {
 	if (stack != NULL)
 	{
 		AddStackToArrayReversed(array, stack->back);
-		[array addObject:stack->current];
+		// -addObject: raised on the nil a script-less push leaves (GNUstep 1.31.1's text).
+		if (stack->current == nil)  [NSException raise:NSInvalidArgumentException format:@"Tried to add nil to array"];
+		array.emplace_back(stack->current);
 	}
 }
 } // namespace
 
 
 namespace {
-static Script LoadScriptWithName(ooscript::Context context, NSString *path, ooscript::Object object, ooscript::Object *outScriptObject, NSString **outErrorMessage)
+static Script LoadScriptWithName(ooscript::Context context, const std::optional<std::string> &path, ooscript::Object object, ooscript::Object *outScriptObject, std::optional<std::string> *outErrorMessage)
 {
 #if OO_CACHE_JS_SCRIPTS
 	OOCacheManager				*cache = nil;
 #endif
-	NSString					*fileContents = nil;
-	NSData						*data = nil;
+	std::optional<std::string>	fileContents;
+	std::optional<std::u16string>	data;	// the script's UTF-16 units
 	Script						script = NULL;
 	
 	NSCParameterAssert(outScriptObject != NULL && outErrorMessage != NULL);
-	*outErrorMessage = nil;
+	outErrorMessage->reset();
 	
 #if OO_CACHE_JS_SCRIPTS
-	// Look for cached compiled script
+	// Look for cached compiled script (a nil path is the key "", as the cache read it)
 	cache = [OOCacheManager sharedCache];
-	data = [cache objectForKey:path inCache:@"compiled JavaScript scripts"];
-	if (data != nil)
+	const oo::PList cached = oo::PListFrom([cache cxx_objectForKey:path.value_or("") inCache:"compiled JavaScript scripts"]);
+	if (const oo::Data *cachedData = cached.getIf<oo::PList::Data>())
 	{
-		script = ScriptWithCompiledData(context, data);
+		script = ScriptWithCompiledData(context, *cachedData);
 	}
 #endif
 	
 	if (script == NULL)
 	{
-		fileContents = [NSString stringWithContentsOfUnicodeFile:path];
+		// +stringWithContentsOfUnicodeFile: (it read through .oxz archives)
+		if (path.has_value())
+		{
+			if (const std::optional<oo::Data> bytes = OODataFromOXZFile(*path))  fileContents = oo::str::decodeUnicodeText(bytes->stringView());
+		}
 
-		if (fileContents != nil) 
+		if (fileContents.has_value())
 		{
 #ifndef NDEBUG
 		/* FIXME: this isn't strictly the right test, since strict
 		 * mode can be enabled with this string within a function
 		 * definition, but it seems unlikely anyone is actually doing
 		 * that here. */
-		if ([fileContents rangeOfString:@"\"use strict\";"].location == NSNotFound && [fileContents rangeOfString:@"'use strict';"].location == NSNotFound)
+		if (fileContents->find("\"use strict\";") == std::string::npos && fileContents->find("'use strict';") == std::string::npos)
 		{
-			OOStandardsDeprecated([NSString stringWithFormat:@"Script %@ does not \"use strict\";",path]);
+			cxx_OOStandardsDeprecated("Script " + oo::DescriptionOf(oo::NSStringOrNil(path)) + " does not \"use strict\";");
 			if (OOEnforceStandards())
 			{
 				// prepend it anyway
 				// TODO: some time after 1.82, make this required
-				fileContents = [@"\"use strict\";\n" stringByAppendingString:fileContents];
+				fileContents = "\"use strict\";\n" + *fileContents;
 			}
 		}
 #endif
-			data = [fileContents utf16DataWithBOM:NO];
+			data = oo::utf8ToUtf16(*fileContents);
 		}
-		if (data == nil)  *outErrorMessage = @"could not load file";
+		if (!data.has_value())  *outErrorMessage = "could not load file";
 		else
 		{
-			script = ooscript::compileUCScript((context), (object), static_cast<const ooscript::Char16*>([data bytes]), [data length] / sizeof(unichar), [path UTF8String], 1);
+			script = ooscript::compileUCScript((context), (object), reinterpret_cast<const ooscript::Char16*>(data->data()), data->size(), path.has_value() ? path->c_str() : NULL, 1);
 			if (script != NULL)  *outScriptObject = (ooscript::newScriptObject((context), script));
-			else  *outErrorMessage = @"compilation failed";
+			else  *outErrorMessage = "compilation failed";
 		}
 		
 #if OO_CACHE_JS_SCRIPTS
 		if (script != NULL)
 		{
 			// Write compiled script to cache
-			data = CompiledScriptData(context, script);
-			[cache setObject:data forKey:path inCache:@"compiled JavaScript scripts"];
+			const std::optional<oo::Data> compiled = CompiledScriptData(context, script);
+			[cache cxx_setObject:(compiled.has_value() ? oo::ObjectFromPList(oo::PList(*compiled)) : nil) forKey:path.value_or("") inCache:"compiled JavaScript scripts"];
 		}
 #endif
 	}
@@ -834,14 +842,14 @@ static Script LoadScriptWithName(ooscript::Context context, NSString *path, oosc
 
 
 #if OO_CACHE_JS_SCRIPTS
-static NSData *CompiledScriptData(ooscript::Context context, Script script)
+static std::optional<oo::Data> CompiledScriptData(ooscript::Context context, Script script)
 {
-	NSData						*result = nil;
+	std::optional<oo::Data>		result;
 	ByteBuffer					buffer = { NULL, 0 };
 	
 	if (ooscript::serializeScript((context), script, &buffer))
 	{
-		result = [NSData dataWithBytes:buffer.data length:buffer.length];
+		result = oo::Data(buffer.data, buffer.length);
 	}
 	ooscript::destroyByteBuffer(&buffer);
 	
@@ -849,23 +857,48 @@ static NSData *CompiledScriptData(ooscript::Context context, Script script)
 }
 
 
-static Script ScriptWithCompiledData(ooscript::Context context, NSData *data)
+static Script ScriptWithCompiledData(ooscript::Context context, const oo::Data &data)
 {
-	if (data == nil)  return NULL;
-	
-	NSUInteger length = [data length];
+	std::size_t length = data.length();
 	if (EXPECT_NOT(length > UINT32_MAX))  return NULL;
 	
-	return ooscript::deserializeScript((context), static_cast<const std::uint8_t*>([data bytes]), (std::size_t)length);
+	return ooscript::deserializeScript((context), static_cast<const std::uint8_t*>(data.bytes()), length);
 }
 #endif
 
 
-static NSString *StrippedName(NSString *string)
+// -stringByTrimmingCharactersInSet: of "_", space, tab, LF, CR and VT (all ASCII, so UTF-8 bytes).
+static std::optional<std::string> StrippedName(const std::optional<std::string> &string)
 {
-	static NSCharacterSet *invalidSet = nil;
-	if (invalidSet == nil)  invalidSet = [[NSCharacterSet characterSetWithCharactersInString:@"_ 	\n\r\v"] retain];
-	
-	return [string stringByTrimmingCharactersInSet:invalidSet];
+	if (!string.has_value())  return std::nullopt;
+	static constexpr std::string_view kInvalid = "_ \t\n\r\v";
+	const std::size_t first = string->find_first_not_of(kInvalid);
+	if (first == std::string::npos)  return std::string();
+	const std::size_t last = string->find_last_not_of(kInvalid);
+	return string->substr(first, last - first + 1);
+}
+
+
+static std::optional<std::string> DescriptionOrNil(id object)
+{
+	if (object == nil)  return std::nullopt;
+	return oo::OptionalString([object description]);
+}
+
+
+// -oo_stringForKey: with its nil: the string, a number's -stringValue, or nothing.
+static std::optional<std::string> StringForKey(const oo::PList &dictionary, const std::string &key)
+{
+	const oo::PList *value = dictionary.get<oo::PList>(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dictionary.get<std::string>(key);
+}
+
+
+// A string value for -setObject:forKey:, which raised on nil (GNUstep 1.31.1's text).
+static std::string ValueForKey(const std::optional<std::string> &value, id key)
+{
+	if (!value.has_value())  [NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%@' to dictionary", key];
+	return *value;
 }
 } // namespace

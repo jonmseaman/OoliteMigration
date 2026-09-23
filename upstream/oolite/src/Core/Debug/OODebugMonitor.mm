@@ -38,6 +38,7 @@ SOFTWARE.
 
 #import "OOJSConsole.h"
 #import "OOJSScript.h"
+#import "OOFoundationBridge.h"
 #import "OOJSEngineTimeManagement.h"
 #import "OOJSSpecialFunctions.h"
 
@@ -45,9 +46,6 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
-#include "oofnd/PListGet.hpp"
-#include "oofnd/Encoding.hpp"
-#import "NSDataOOExtensions.h"
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
 
@@ -60,42 +58,44 @@ static OODebugMonitor *sSingleton = nil;
 - (void) setUpDebugConsoleScript;
 - (void) javaScriptEngineWillReset:(NSNotification *)notification;
 
-- (void)disconnectDebuggerWithMessage:(const std::optional<std::string> &)message;	// nullopt: no message (the TCP client sends a bare close)
+- (void)disconnectDebuggerWithMessage:(NSString *)message;
 
-- (oo::PList)mergedConfiguration;
+- (NSDictionary *)mergedConfiguration;
 
 /*	Convert a configuration dictionary to a standard form. In particular,
 	convert all colour specifiers to RGBA arrays with values in [0, 1], and
 	converts "show-console" values to booleans.
 */
-- (oo::PList)normalizeConfigDictionary:(const oo::PList &)dictionary;	// always a Dict (empty for null)
-- (oo::PList)normalizeConfigValue:(const oo::PList &)value forKey:(const std::string &)key;	// null: dropped
+- (NSMutableDictionary *)normalizeConfigDictionary:(NSDictionary *)dictionary;
+- (id)normalizeConfigValue:(id)value forKey:(NSString *)key;
 
-- (std::optional<std::vector<std::string>>)loadSourceFile:(const std::string &)filePath;	// nullopt: can't be read
+- (NSArray *)loadSourceFile:(NSString *)filePath;
 
 @end
 
 
 @implementation OODebugMonitor
 #if OOLITE_GNUSTEP
-namespace {
-	id							NSApplicationWillTerminateNotification = @"ApplicationWillTerminate";	// file-private (no other file names it)
-} // namespace
+	NSString					*NSApplicationWillTerminateNotification = @"ApplicationWillTerminate";
 #endif
 
 - (id)init
 {
 	NSUserDefaults				*defaults = nil;
-
+	NSMutableDictionary			*config = nil;
+	
 	self = [super init];
 	if (self != nil)
 	{
-		_configFromOXPs = [self normalizeConfigDictionary:oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"debugConfig.plist"
-																										   inFolder:@"Config"
-																										   andMerge:YES])];
-
+		config = [[[ResourceManager dictionaryFromFilesNamed:@"debugConfig.plist"
+													inFolder:@"Config"
+													andMerge:YES] mutableCopy] autorelease];
+		_configFromOXPs = [[self normalizeConfigDictionary:config] copy];
+		
 		defaults = [NSUserDefaults standardUserDefaults];
-		_configOverrides = [self normalizeConfigDictionary:oo::PListFrom([defaults dictionaryForKey:@"debug-settings-override"])];
+		config = [self normalizeConfigDictionary:[defaults dictionaryForKey:@"debug-settings-override"]];
+		if (config == nil)  config = [NSMutableDictionary dictionary];
+		_configOverrides = [config retain];
 		
 		_TCPIgnoresDroppedPackets = NO;
 		
@@ -128,9 +128,14 @@ namespace {
 
 - (void)dealloc
 {
-	[self disconnectDebuggerWithMessage:"Debug controller object destroyed while debugging in progress."];
-
+	[self disconnectDebuggerWithMessage:@"Debug controller object destroyed while debugging in progress."];
 	
+	[_configFromOXPs release];
+	[_configOverrides release];
+	
+	[_fgColors release];
+	[_bgColors release];
+	[_sourceFiles release];
 	
 	if (_jsSelf != NULL)
 	{
@@ -155,18 +160,18 @@ namespace {
 
 - (BOOL)setDebugger:(id<OODebuggerInterface>)newDebugger
 {
-	id							error = nil;	// the shared -connectDebugMonitor:errorMessage:'s string
-
+	NSString					*error = nil;
+	
 	if (newDebugger != _debugger)
 	{
 		// Disconnect existing debugger, if any.
 		if (newDebugger != nil)
 		{
-			[self disconnectDebuggerWithMessage:"New debugger set."];
+			[self disconnectDebuggerWithMessage:@"New debugger set."];
 		}
 		else
 		{
-			[self disconnectDebuggerWithMessage:"Debugger disconnected programatically."];
+			[self disconnectDebuggerWithMessage:@"Debugger disconnected programatically."];
 		}
 		
 		// If a new debugger was specified, try to connect it.
@@ -177,7 +182,7 @@ namespace {
 				if ([newDebugger connectDebugMonitor:self errorMessage:&error])
 				{
 					[newDebugger debugMonitor:self
-							noteConfiguration:oo::ObjectFromPList([self mergedConfiguration])];
+							noteConfiguration:[self mergedConfiguration]];
 					_debugger = [newDebugger retain];
 				}
 				else
@@ -196,7 +201,7 @@ namespace {
 }
 
 
-- (oneway void)performJSConsoleCommand:(in id)command	// shared selector (proposed ADR-0043)
+- (oneway void)performJSConsoleCommand:(in NSString *)command
 {
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value commandVal = OOJSValueFromNativeObject(context, command);
@@ -208,7 +213,7 @@ namespace {
 
 
 - (void)appendJSConsoleLine:(id)string
-				   colorKey:(const std::optional<std::string> &)colorKey
+				   colorKey:(NSString *)colorKey
 			  emphasisRange:(NSRange)emphasisRange
 {
 	if (string == nil)  return;
@@ -217,7 +222,7 @@ namespace {
 	{
 		[_debugger debugMonitor:self
 				jsConsoleOutput:string
-					   colorKey:oo::NSStringOrNil(colorKey)
+					   colorKey:colorKey
 				  emphasisRange:emphasisRange];
 	}
 	@catch (NSException *exception)
@@ -229,7 +234,7 @@ namespace {
 
 
 - (void)appendJSConsoleLine:(id)string
-				   colorKey:(const std::optional<std::string> &)colorKey
+				   colorKey:(NSString *)colorKey
 {
 	[self appendJSConsoleLine:string
 					 colorKey:colorKey
@@ -267,39 +272,33 @@ namespace {
 }
 
 
-- (id)configurationValueForKey:(in id)key	// shared selector (proposed ADR-0043)
+- (id)configurationValueForKey:(in NSString *)key
 {
-	return [self configurationValueForKey:oo::StdString(key) class:Nil defaultValue:nil];
+	return [self configurationValueForKey:key class:Nil defaultValue:nil];
 }
 
 
-- (id)configurationValueForKey:(const std::string &)key class:(Class)klass defaultValue:(id)value
+- (id)configurationValueForKey:(NSString *)key class:(Class)klass defaultValue:(id)value
 {
 	id							result = nil;
-
+	
 	if (klass == Nil)  klass = [NSObject class];
-
-	// The stored objects: an Object node gives back the same object, any other node an equal one.
-	const oo::PList *overrideValue = _configOverrides.find(key);
-	result = (overrideValue != nullptr) ? oo::ObjectFromPList(*overrideValue) : nil;
-	if (![result isKindOfClass:klass] && result != [OONull null])
-	{
-		const oo::PList *oxpValue = _configFromOXPs.find(key);
-		result = (oxpValue != nullptr) ? oo::ObjectFromPList(*oxpValue) : nil;
-	}
+	
+	result = [_configOverrides objectForKey:key];
+	if (![result isKindOfClass:klass] && result != [OONull null])  result = [_configFromOXPs objectForKey:key];
 	if (![result isKindOfClass:klass] && result != [OONull null])  result = [[value retain] autorelease];
 	if (result == [OONull null])  result = nil;
-
+	
 	return result;
 }
 
 
-- (long long)configurationIntValueForKey:(const std::string &)key defaultValue:(long long)value
+- (long long)configurationIntValueForKey:(NSString *)key defaultValue:(long long)value
 {
 	long long					result;
 	id							object = nil;
-
-	object = [self configurationValueForKey:key class:Nil defaultValue:nil];
+	
+	object = [self configurationValueForKey:key];
 	if ([object respondsToSelector:@selector(longLongValue)])  result = [object longLongValue];
 	else if ([object respondsToSelector:@selector(intValue)])  result = [object intValue];
 	else  result = value;
@@ -308,33 +307,27 @@ namespace {
 }
 
 
-- (void)setConfigurationValue:(in id)value forKey:(in id)key	// shared selector (proposed ADR-0043)
+- (void)setConfigurationValue:(in id)value forKey:(in NSString *)key
 {
 	if (key == nil)  return;
-
-	const std::string keyString = oo::StdString(key);
-	const oo::PList normalized = [self normalizeConfigValue:oo::PListFrom(value) forKey:keyString];
-
-	if (!_configOverrides.isDict())  _configOverrides = oo::PList(oo::PList::Dict());
-	oo::PList::Dict &overrides = *_configOverrides.getIf<oo::PList::Dict>();
-	if (!normalized)
+	
+	value = [self normalizeConfigValue:value forKey:key];
+	
+	if (value == nil)
 	{
-		overrides.erase(keyString);
+		[_configOverrides removeObjectForKey:key];
 	}
 	else
 	{
-		overrides[keyString] = normalized;
+		if (_configOverrides == nil)  _configOverrides = [[NSMutableDictionary alloc] init];
+		[_configOverrides setObject:value forKey:key];
 	}
-
+	
 	// Send changed value to debugger
-	if (!normalized)
+	if (value == nil)
 	{
 		// Setting a nil value removes an override, and may reveal an underlying OXP-defined value
-		value = [self configurationValueForKey:keyString class:Nil defaultValue:nil];
-	}
-	else
-	{
-		value = oo::ObjectFromPList(normalized);
+		value = [self configurationValueForKey:key];
 	}
 	@try
 	{
@@ -349,21 +342,15 @@ namespace {
 }
 
 
-- (std::vector<std::string>)configurationKeys
+- (NSArray *)configurationKeys
 {
-	std::set<std::string>		keys;
-
-	for (const oo::PList *config : { &_configFromOXPs, &_configOverrides })
-	{
-		if (const oo::PList::Dict *entries = config->getIf<oo::PList::Dict>())
-		{
-			for (const auto &entry : *entries)  keys.insert(entry.first);
-		}
-	}
-
-	std::vector<std::string> result(keys.begin(), keys.end());
-	std::stable_sort(result.begin(), result.end(), [](const std::string &a, const std::string &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; });
-	return result;
+	NSMutableSet				*result = nil;
+	
+	result = [NSMutableSet setWithCapacity:[_configFromOXPs count] + [_configOverrides count]];
+	[result addObjectsFromArray:[_configFromOXPs allKeys]];
+	[result addObjectsFromArray:[_configOverrides allKeys]];
+	
+	return [[result allObjects] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
 }
 
 
@@ -376,7 +363,7 @@ namespace {
 - (void) writeMemStat:(const std::string &)line
 {
 	OOLog(@"debug.memStats", @"%@", oo::NSStringFrom(line));
-	[self appendJSConsoleLine:oo::NSStringFrom(line) colorKey:"command-result"];
+	[self appendJSConsoleLine:oo::NSStringFrom(line) colorKey:@"command-result"];
 }
 
 
@@ -677,34 +664,35 @@ struct EntityDumpState
 }
 
 
-- (id)sourceCodeForFile:(in id)filePath line:(in unsigned)line	// shared selector (proposed ADR-0043)
+- (NSString *)sourceCodeForFile:(in NSString *)filePath line:(in unsigned)line
 {
-	const std::string			path = oo::StdString(filePath);
-	auto						cached = _sourceFiles.find(path);
-
-	if (cached == _sourceFiles.end())
+	id							linesForFile = nil;
+	
+	linesForFile = [_sourceFiles objectForKey:filePath];
+	
+	if (linesForFile == nil)
 	{
-		std::optional<std::vector<std::string>> lines = [self loadSourceFile:path];
-		if (!lines.has_value())  lines = std::vector<std::string>{ oo::str::format("<Can't load file %s>", oo::DescriptionOf(filePath).c_str()) };
-
-		cached = _sourceFiles.emplace(path, std::move(*lines)).first;
+		linesForFile = [self loadSourceFile:filePath];
+		if (linesForFile == nil)  linesForFile = [NSArray arrayWithObject:[NSString stringWithFormat:@"<Can't load file %@>", filePath]];
+		
+		if (_sourceFiles == nil)  _sourceFiles = [[NSMutableDictionary alloc] init];
+		[_sourceFiles setObject:linesForFile forKey:filePath];
 	}
-
-	const std::vector<std::string> &linesForFile = cached->second;
-	if (linesForFile.size() < line || line == 0)  return oo::NSStringFrom("<line out of range!>");
-
-	return oo::NSStringFrom(linesForFile[line - 1]);
+	
+	if ([linesForFile count] < line || line == 0)  return @"<line out of range!>";
+	
+	return [linesForFile objectAtIndex:line - 1];
 }
 
 
 - (void)disconnectDebugger:(in id<OODebuggerInterface>)debugger
-				   message:(in id)message	// shared selector (proposed ADR-0043)
+				   message:(in NSString *)message
 {
 	if (debugger == nil)  return;
-
+		
 	if (debugger == _debugger)
 	{
-		[self disconnectDebuggerWithMessage:oo::OptionalString(message)];
+		[self disconnectDebuggerWithMessage:message];
 	}
 	else
 	{
@@ -723,12 +711,12 @@ struct EntityDumpState
 
 - (void)applicationWillTerminate:(NSNotification *)notification
 {
-	if (_configOverrides)
+	if (_configOverrides != nil)
 	{
-		[[NSUserDefaults standardUserDefaults] setObject:oo::ObjectFromPList(_configOverrides) forKey:@"debug-settings-override"];
+		[[NSUserDefaults standardUserDefaults] setObject:_configOverrides forKey:@"debug-settings-override"];
 	}
-
-	[self disconnectDebuggerWithMessage:"Oolite is terminating."];
+	
+	[self disconnectDebuggerWithMessage:@"Oolite is terminating."];
 }
 
 
@@ -744,20 +732,19 @@ struct EntityDumpState
 		so that we can reload it when resetting into strict mode.
 		-- Ahruman 2011-02-06
 	*/
-	static std::optional<std::string> path;
-
-	if (!path)
+	static NSString *path = nil;
+	
+	if (path == nil)
 	{
-		path = [ResourceManager cxx_pathForFileNamed:"oolite-debug-console.js" inFolder:std::string("Scripts")];
+		path = [[ResourceManager pathForFileNamed:@"oolite-debug-console.js" inFolder:@"Scripts"] retain];
 	}
-	if (path)
+	if (path != nil)
 	{
-		// Live objects as Object nodes; a nil special-functions wrapper leaves "special" out, as the nil-terminated list did.
-		oo::PList::Dict jsProps;
-		jsProps["console"] = oo::PListObject(self);
-		id special = JSSpecialFunctionsObjectWrapper(context);
-		if (special != nil)  jsProps["special"] = oo::PListObject(special);
-		_script = [[OOJSScript scriptWithPath:oo::NSStringFrom(*path) properties:oo::ObjectFromPList(oo::PList(std::move(jsProps)))] retain];
+		NSDictionary *jsProps = [NSDictionary dictionaryWithObjectsAndKeys:
+								 self, @"console",
+								 JSSpecialFunctionsObjectWrapper(context), @"special",
+								 nil];
+		_script = [[OOJSScript scriptWithPath:oo::OptionalString(path) properties:oo::PListFrom(jsProps)] retain];
 	}
 	
 	// If no script, just make console visible globally as debugConsole.
@@ -780,11 +767,11 @@ struct EntityDumpState
 }
 
 
-- (void)disconnectDebuggerWithMessage:(const std::optional<std::string> &)message
+- (void)disconnectDebuggerWithMessage:(NSString *)message
 {
 	@try
 	{
-		[_debugger disconnectDebugMonitor:self message:oo::NSStringOrNil(message)];
+		[_debugger disconnectDebugMonitor:self message:message];
 	}
 	@catch (NSException *exception)
 	{
@@ -797,75 +784,74 @@ struct EntityDumpState
 }
 
 
-- (oo::PList)mergedConfiguration
+- (NSDictionary *)mergedConfiguration
 {
-	oo::PList::Dict				result;
-
-	if (const oo::PList::Dict *entries = _configFromOXPs.getIf<oo::PList::Dict>())  result = *entries;
-	if (const oo::PList::Dict *entries = _configOverrides.getIf<oo::PList::Dict>())
-	{
-		for (const auto &[key, value] : *entries)  result[key] = value;
-	}
-
-	return oo::PList(std::move(result));
+	NSMutableDictionary			*result = nil;
+	
+	result = [NSMutableDictionary dictionary];
+	if (_configFromOXPs != nil)  [result addEntriesFromDictionary:_configFromOXPs];
+	if (_configOverrides != nil)  [result addEntriesFromDictionary:_configOverrides];
+	
+	return result;
 }
 
 
-- (std::optional<std::vector<std::string>>)loadSourceFile:(const std::string &)filePath
+- (NSArray *)loadSourceFile:(NSString *)filePath
 {
-	// The Unicode-file reading of the file's bytes (read from inside an OXZ too, as before).
-	const std::optional<oo::Data> data = OODataFromOXZFile(filePath);
-	if (!data.has_value())  return std::nullopt;
-	const std::string contents = oo::str::decodeUnicodeText(data->stringView());
-
+	NSString					*contents = nil;
+	NSArray						*lines = nil;
+	
+	if (filePath == nil)  return nil;
+	
+	contents = [NSString stringWithContentsOfUnicodeFile:filePath];
+	if (contents == nil)  return nil;
+	
 	/*	Extract lines from file.
 FIXME: this works with CRLF and LF, but not CR.
 		*/
-	return oo::str::split(contents, "\n");
+	lines = [contents componentsSeparatedByString:@"\n"];
+	return lines;
 }
 
 
-- (oo::PList)normalizeConfigDictionary:(const oo::PList &)dictionary
+- (NSMutableDictionary *)normalizeConfigDictionary:(NSDictionary *)dictionary
 {
-	oo::PList::Dict			result;
-
-	// Order-free: builds another map.
-	if (const oo::PList::Dict *entries = dictionary.getIf<oo::PList::Dict>())
+	NSMutableDictionary		*result = nil;
+	NSString				*key = nil;
+	id						value = nil;
+	
+	result = [NSMutableDictionary dictionaryWithCapacity:[dictionary count]];
+	foreachkey (key, dictionary)
 	{
-		for (const auto &[key, value] : *entries)
-		{
-			oo::PList normalized = [self normalizeConfigValue:value forKey:key];
-			if (normalized)  result[key] = std::move(normalized);
-		}
+		value = [dictionary objectForKey:key];
+		value = [self normalizeConfigValue:value forKey:key];
+		
+		if (key != nil && value != nil)  [result setObject:value forKey:key];
 	}
-
-	return oo::PList(std::move(result));
+	
+	return result;
 }
 
 
-- (oo::PList)normalizeConfigValue:(const oo::PList &)value forKey:(const std::string &)key
+- (id)normalizeConfigValue:(id)value forKey:(NSString *)key
 {
 	OOColor					*color = nil;
 	BOOL					boolValue;
-
-	if (value)
+	
+	if (value != nil)
 	{
-		if (oo::str::hasSuffix(key, "-color") || oo::str::hasSuffix(key, "-colour"))
+		if ([key hasSuffix:@"-color"] || [key hasSuffix:@"-colour"])
 		{
-			// OOColor reads the same object; the normalized array holds +numberWithFloat: values.
-			color = [OOColor colorWithDescription:oo::ObjectFromPList(value)];
-			if (color == nil)  return oo::PList();
-			oo::PList::Array components;
-			for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
-			return oo::PList(std::move(components));
+			color = [OOColor colorWithDescription:value];
+			value = [color normalizedArray];
 		}
-		else if (oo::str::hasPrefix(key, "show-console"))
+		else if ([key hasPrefix:@"show-console"])
 		{
-			boolValue = OOBooleanFromObject(oo::ObjectFromPList(value), NO);
-			return oo::PList(static_cast<bool>(boolValue));
+			boolValue = OOBooleanFromObject(value, NO);
+			value = [NSNumber numberWithBool:boolValue];
 		}
 	}
-
+	
 	return value;
 }
 
@@ -875,81 +861,82 @@ FIXME: this works with CRLF and LF, but not CR.
 				  error:(in ooscript::ErrorReport *)errorReport
 			  stackSkip:(in unsigned)stackSkip
 		showingLocation:(in BOOL)showLocation
-			withMessage:(in id)message
+			withMessage:(in NSString *)message
 {
-	std::string					colorKey;
-	std::string					prefix;
-	std::string					filePath;
-	std::optional<std::string>	scriptLine;
-	std::string					formattedMessage;
+	NSString					*colorKey = nil;
+	NSString					*prefix = nil;
+	NSString					*filePath = nil;
+	NSString					*sourceLine = nil;
+	NSString					*scriptLine = nil;
+	NSMutableString				*formattedMessage = nil;
 	NSRange						emphasisRange;
-	const char					*showKey = nullptr;
-
+	NSString					*showKey = nil;
+	
 	if (_debugger == nil)  return;
-
+	
 	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))
 	{
-		colorKey = "warning";
-		prefix = "Warning";
+		colorKey = @"warning";
+		prefix = @"Warning";
 	}
 	else if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Exception))
 	{
-		colorKey = "exception";
-		prefix = "Exception";
+		colorKey = @"exception";
+		prefix = @"Exception";
 	}
 	else
 	{
-		colorKey = "error";
-		prefix = "Error";
+		colorKey = @"error";
+		prefix = @"Error";
 	}
-
+	
 	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Strict))
 	{
-		prefix += " (strict mode)";
+		prefix = [prefix stringByAppendingString:@" (strict mode)"];
 	}
-
-	// Prefix and subsequent colon should be bold (the prefixes are ASCII, so bytes are UTF-16 units):
-	emphasisRange = NSMakeRange(0, prefix.size() + 1);
-
-	formattedMessage = oo::str::format("%s: %s", prefix.c_str(), oo::DescriptionOf(message).c_str());
-
+	
+	// Prefix and subsequent colon should be bold:
+	emphasisRange = NSMakeRange(0, [prefix length] + 1);
+	
+	formattedMessage = [NSMutableString stringWithFormat:@"%@: %@", prefix, message];
+	
 	// Note that the "active script" isn't necessarily the one causing the
 	// error, since one script can call another's methods.
-
+	
 	// avoid windows DEP exceptions!
 	OOJSScript *thisScript = [[OOJSScript currentlyRunningScript] weakRetain];
-	scriptLine = oo::OptionalString([[thisScript weakRefUnderlyingObject] displayName]);
+	scriptLine = [[thisScript weakRefUnderlyingObject] displayName];
 	[thisScript release];
-
-	if (scriptLine.has_value())
+	
+	if (scriptLine != nil)
 	{
-		formattedMessage += "\n    Active script: " + *scriptLine;
+		[formattedMessage appendFormat:@"\n    Active script: %@", scriptLine];
 	}
-
+	
 	if (showLocation && stackSkip == 0)
 	{
 		// Append file name and line
-		if (errorReport->filename != NULL)  filePath = errorReport->filename;
-		if (!filePath.empty())
+		if (errorReport->filename != NULL)  filePath = [NSString stringWithUTF8String:errorReport->filename];
+		if ([filePath length] != 0)
 		{
-			formattedMessage += oo::str::format("\n    %s, line %u", oo::str::lastPathComponent(filePath).c_str(), errorReport->lineno);
-
-			// Append source code (-sourceCodeForFile:line: is a shared selector: a string in and out)
-			const std::optional<std::string> sourceLine = oo::OptionalString([self sourceCodeForFile:oo::NSStringFrom(filePath) line:errorReport->lineno]);
-			if (sourceLine.has_value())
+			[formattedMessage appendFormat:@"\n    %@, line %u", [filePath lastPathComponent], errorReport->lineno];
+			
+			// Append source code
+			sourceLine = [self sourceCodeForFile:filePath line:errorReport->lineno];
+			if (sourceLine != nil)
 			{
-				formattedMessage += ":\n    " + *sourceLine;
+				[formattedMessage appendFormat:@":\n    %@", sourceLine];
 			}
 		}
 	}
-
-	[self appendJSConsoleLine:oo::NSStringFrom(formattedMessage)
+	
+	[self appendJSConsoleLine:formattedMessage
 					 colorKey:colorKey
 				emphasisRange:emphasisRange];
-
-	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  showKey = "show-console-on-warning";
-	else  showKey = "show-console-on-error";	// if not a warning, it's a proper error.
-	if (OOBooleanFromObject([self configurationValueForKey:oo::NSStringFrom(showKey)], NO))
+	
+	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  showKey = @"show-console-on-warning";
+	else  showKey = @"show-console-on-error";	// if not a warning, it's a proper error.
+	if (OOBooleanFromObject([self configurationValueForKey:showKey], NO))
 	{
 		[self showJSConsole];
 	}
@@ -958,11 +945,11 @@ FIXME: this works with CRLF and LF, but not CR.
 
 - (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
 				context:(in ooscript::Context)context
-			 logMessage:(in id)message
-				ofClass:(in id)messageClass
+			 logMessage:(in NSString *)message
+				ofClass:(in NSString *)messageClass
 {
-	[self appendJSConsoleLine:message colorKey:"log"];
-	if (OOBooleanFromObject([self configurationValueForKey:oo::NSStringFrom("show-console-on-log")], NO))
+	[self appendJSConsoleLine:message colorKey:@"log"];
+	if (OOBooleanFromObject([self configurationValueForKey:@"show-console-on-log"], NO))
 	{
 		[self showJSConsole];
 	}
