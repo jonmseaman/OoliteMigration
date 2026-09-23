@@ -28,12 +28,13 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOMaths.h"
 #import "OOWeakReference.h"
 
 
-@interface OODrawable: NSObject
+@interface OODrawable: OOObject
 
 - (void)renderOpaqueParts;
 - (void)renderTranslucentParts;
