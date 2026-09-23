@@ -21,6 +21,7 @@ oofnd_tests = [
     'test_string',
     'test_string_compare',
     'test_string_sweep',
+    'test_string_format_runtime',
     'test_encoding',
     'test_unicode_file',
     'test_log',
