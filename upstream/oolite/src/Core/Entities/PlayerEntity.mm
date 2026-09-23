@@ -10793,7 +10793,7 @@ static NSString *last_outfitting_key=nil;
 		}
 		cargoQtyOnBoard += quantity;
 	}
-	cargoQtyOnBoard += [[self cargo] count];
+	cargoQtyOnBoard += [self cxx_cargoCount];
 	
 	return cargoQtyOnBoard;
 }
