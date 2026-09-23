@@ -43,20 +43,20 @@ SOFTWARE.
 @interface OOPListSchemaVerifier: OOObject
 {
 @private
-	NSDictionary				*_schema;
-	NSDictionary				*_definitions;
+	oo::PList					_schema;
+	oo::PList					_definitions;		// the schema's $definitions (null if none)
 	
 	id							_delegate;
 	uint32_t					_badDelegateWarning: 1;
 }
 
-+ (instancetype)verifierWithSchema:(NSDictionary *)schema;
-- (id)initWithSchema:(NSDictionary *)schema;
++ (instancetype)verifierWithSchema:(const oo::PList &)schema;	// nil for a null schema
+- (id)initWithSchema:(const oo::PList &)schema;
 
 - (void)setDelegate:(id)delegate;
 - (id)delegate;
 
-- (BOOL)verifyPropertyList:(id)plist named:(NSString *)name;
+- (BOOL)verifyPropertyList:(const oo::PList &)plist named:(const std::string &)name;
 
 /*	Convert a key path (such as provided to the delegate method
 	-verifier:withPropertyList:failedForProperty:atPath:expectedType:) to a
