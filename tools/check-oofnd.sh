@@ -119,4 +119,7 @@ for t in "${tests[@]}"; do
 	! grep -qi 'AddressSanitizer' "$work/${name}_asan.log" || fail "${name} printed an AddressSanitizer report"
 done
 
+# --- the Objective-C floor (bead oo-3rb.1): Objective-C++ tests on libobjc2 alone -----------------
+bash "$script_dir/check-oofnd-objc.sh" || fail "the oofnd Objective-C floor check (tools/check-oofnd-objc.sh) failed"
+
 echo "PASS: oofnd — ${#headers[@]} header(s) canary-clean; ${#tests[@]} test file(s), $total_tests tests, $total_checks checks, green plain and under ASan ($(( $(date +%s) - t0 ))s)"
