@@ -139,6 +139,14 @@ OOINLINE void OOJSRelinquishContext(ooscript::Context context)
 extern NSString * const kOOJavaScriptEngineWillResetNotification;
 extern NSString * const kOOJavaScriptEngineDidResetNotification;
 
+/*	The same notifications on oo::NotificationCenter (oofnd/Notification.hpp, bead oo-3rb.9),
+	posted with the engine as the object. Until the last NSNotificationCenter observer is
+	migrated, -reset posts each notification to both centers (oo::NotificationCenter first); the
+	NSString names above go with that last observer.
+*/
+extern const char * const kOOJavaScriptEngineWillResetNotificationName;
+extern const char * const kOOJavaScriptEngineDidResetNotificationName;
+
 
 /*	Error and warning reporters.
 	
