@@ -244,22 +244,22 @@ static NSDictionary		*sMissilesRegistry = nil;
 		if (extra != nil)
 		{
 			
-			_isAvailableToAll = oo::PListView(extra).get<BOOL>(@"available_to_all", _isAvailableToAll);
-			_isAvailableToPlayer = oo::PListView(extra).get<BOOL>(@"available_to_player", _isAvailableToPlayer);
-			_isAvailableToNPCs = oo::PListView(extra).get<BOOL>(@"available_to_NPCs", _isAvailableToNPCs);
+			_isAvailableToAll = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_all", _isAvailableToAll);
+			_isAvailableToPlayer = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_player", _isAvailableToPlayer);
+			_isAvailableToNPCs = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_NPCs", _isAvailableToNPCs);
 			
-			_isMissileOrMine = oo::PListView(extra).get<BOOL>(@"is_external_store", _isMissileOrMine);
-			_requiresEmptyPylon = oo::PListView(extra).get<BOOL>(@"requires_empty_pylon", _requiresEmptyPylon);
-			_requiresMountedPylon = oo::PListView(extra).get<BOOL>(@"requires_mounted_pylon", _requiresMountedPylon);
-			_requiresClean = oo::PListView(extra).get<BOOL>(@"requires_clean", _requiresClean);
-			_requiresNotClean = oo::PListView(extra).get<BOOL>(@"requires_not_clean", _requiresNotClean);
-			_portableBetweenShips = oo::PListView(extra).get<BOOL>(@"portable_between_ships", _portableBetweenShips);
-			_requiresFreePassengerBerth = oo::PListView(extra).get<BOOL>(@"requires_free_passenger_berth", _requiresFreePassengerBerth);
-			_requiresFullFuel = oo::PListView(extra).get<BOOL>(@"requires_full_fuel", _requiresFullFuel);
-			_requiresNonFullFuel = oo::PListView(extra).get<BOOL>(@"requires_non_full_fuel", _requiresNonFullFuel);
-			_isVisible = oo::PListView(extra).get<BOOL>(@"visible", _isVisible);
-			_canCarryMultiple = oo::PListView(extra).get<BOOL>(@"can_carry_multiple", NO);
-			_hideValues = oo::PListView(extra).get<BOOL>(@"hide_values", NO);
+			_isMissileOrMine = (unsigned char)oo::PListView(extra).get<BOOL>(@"is_external_store", _isMissileOrMine);
+			_requiresEmptyPylon = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_empty_pylon", _requiresEmptyPylon);
+			_requiresMountedPylon = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_mounted_pylon", _requiresMountedPylon);
+			_requiresClean = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_clean", _requiresClean);
+			_requiresNotClean = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_not_clean", _requiresNotClean);
+			_portableBetweenShips = (unsigned char)oo::PListView(extra).get<BOOL>(@"portable_between_ships", _portableBetweenShips);
+			_requiresFreePassengerBerth = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_free_passenger_berth", _requiresFreePassengerBerth);
+			_requiresFullFuel = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_full_fuel", _requiresFullFuel);
+			_requiresNonFullFuel = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_non_full_fuel", _requiresNonFullFuel);
+			_isVisible = (unsigned char)oo::PListView(extra).get<BOOL>(@"visible", _isVisible);
+			_canCarryMultiple = (unsigned char)oo::PListView(extra).get<BOOL>(@"can_carry_multiple", NO);
+			_hideValues = (unsigned char)oo::PListView(extra).get<BOOL>(@"hide_values", NO);
 
 			_requiredCargoSpace = oo::PListView(extra).get<unsigned int>(@"requires_cargo_space", _requiredCargoSpace);
 
