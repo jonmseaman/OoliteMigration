@@ -72,7 +72,11 @@ endif
 #
 # It is applied UNCONDITIONALLY, not only for golden builds: a flag that is only on in one
 # configuration is a flag whose absence nobody notices.
-add_project_arguments('-ffp-contract=off', language: c_family)
+#
+# GLOBAL, not project, arguments (bead oo-5pr): QuickJS-ng is a meson subproject linked into the
+# game binary, its number code produces floats that land in the dumps, and project arguments do
+# not reach a subproject (nor does a subproject() c_args default option).
+add_global_arguments('-ffp-contract=off', language: c_family)
 
 if get_option('no_shaders')
     add_project_arguments('-DNO_SHADERS=1', language: c_family)
