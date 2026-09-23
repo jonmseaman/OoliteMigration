@@ -99,7 +99,7 @@ This code is hereby placed in the public domain.
 
 // MARK: Protocol conformance
 
-- (id) copyWithZone:(NSZone *)zone
+- (id) copyWithZone:(OOZone *)zone
 {
 	[self compact];
 	OOWeakSet *result = [[OOWeakSet allocWithZone:zone] init];
@@ -108,7 +108,7 @@ This code is hereby placed in the public domain.
 }
 
 
-- (id) mutableCopyWithZone:(NSZone *)zone
+- (id) mutableCopyWithZone:(OOZone *)zone
 {
 	return [self copyWithZone:zone];
 }

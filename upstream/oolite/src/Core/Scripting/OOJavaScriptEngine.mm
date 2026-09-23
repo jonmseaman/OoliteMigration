@@ -1527,7 +1527,61 @@ static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dict
 
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal
 {
-	
+
+}
+
+@end
+
+
+// NSObject (OOJavaScriptConversion) above, for classes rooted on OOObject (ADR-0029).
+@implementation OOObject (OOJavaScriptConversion)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+{
+	return ooscript::undefinedValue();
+}
+
+
+- (NSString *) oo_jsClassName
+{
+	return nil;
+}
+
+
+- (NSString *) oo_jsDescription
+{
+	return [self oo_jsDescriptionWithClassName:[self oo_jsClassName]];
+}
+
+
+- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className
+{
+	OOJS_PROFILE_ENTER
+
+	NSString				*components = nil;
+	NSString				*description = nil;
+
+	components = [self descriptionComponents];
+	if (className == nil)  className = [[self class] description];
+
+	if (components != nil)
+	{
+		description = [NSString stringWithFormat:@"[%@ %@]", className, components];
+	}
+	else
+	{
+		description = [NSString stringWithFormat:@"[object %@]", className];
+	}
+
+	return description;
+
+	OOJS_PROFILE_EXIT
+}
+
+
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal
+{
+
 }
 
 @end
