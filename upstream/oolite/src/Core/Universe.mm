@@ -6119,7 +6119,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	{
 		NSString *key = (randf() < 0.5) ? @"oolite-hull-spark" : @"oolite-hull-spark-b";
 		NSDictionary *settings = [UNIVERSE explosionSetting:key];
-		OOExplosionCloudEntity* burst = [OOExplosionCloudEntity explosionCloudFromEntity:target withSettings:settings];
+		OOExplosionCloudEntity* burst = [OOExplosionCloudEntity explosionCloudFromEntity:target withSettings:oo::PListFrom(settings)];
 		[burst setPosition:pos];
 		[self addEntity: burst];
 		if ([target energy] * randf() < damage)
