@@ -13510,7 +13510,7 @@ else _dockTarget = NO_TARGET;
 - (BOOL) suppressClangStuff
 {
 	return missionChoice &&
-	commanderNameString &&
+	!commanderNameString.empty() &&
 	cdrDetailArray &&
 	currentPage &&
 	n_key_roll_left &&
