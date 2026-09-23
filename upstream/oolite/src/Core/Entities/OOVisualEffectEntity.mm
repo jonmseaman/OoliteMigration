@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOFilteringEnumerator.h"
 
 #import "MyOpenGLView.h"
+#import "OOFoundationBridge.h"
 
 @interface OOVisualEffectEntity (Private)
 
@@ -823,7 +824,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 		if (length > 1)
 		{
 			NSArray *iconData = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(beaconCode);
-			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:beaconCode];
+			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconData) outlineWidth:0.5 name:oo::StdString(beaconCode)];
 		}
 		
 		if (_beaconDrawable == nil)

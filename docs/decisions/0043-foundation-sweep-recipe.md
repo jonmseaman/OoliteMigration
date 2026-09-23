@@ -218,3 +218,61 @@ rule.
     that value (pinned by a captured test). C++ consumers read a handle with
     `const oo::PList &OOALObjectPList(OOALObjectRef)`, declared under `__cplusplus`. The `.c` file
     does not change. Not chunked (266 lines); it lands before `OODebugTCPConsoleClient` (oo-prwr).
+15. **A float written to disk stays a float.** Savegame records (`OOTrumble -dictionary`), cache
+    entries (`Octree -dictionaryRepresentation`) and defaults (`OOJoystickManager` spline points)
+    build their values with `oo::PList::singleReal(f)`, never `oo::PList(double(f))`: the flag makes
+    `oo::ObjectFromPList` give back `+numberWithFloat:`, and oofnd's XML writer and the defaults
+    writer print it `%0.7g` as GNUstep printed an NSNumber float (`test_plist_carrier.cpp` pins
+    both), so `"0.1"` stays `"0.1"` in every `.oolite-save`, cache and `.GNUstepDefaults`. A value
+    read back by `get<float>` is the same float either way. oo-9h0e shipped doubles; oo-gj2i
+    restores the seven-digit text. **The saved-game writer** (`OOXMLExtensions`, oo-a1dr) moves
+    to `oo::writeXMLPList`, which is already pinned byte for byte against
+    `+[NSPropertyListSerialization dataFromPropertyList:format:NSPropertyListXMLFormat_v1_0...]`
+    (`test_plist_writers.cpp`, bead oo-pig); with singles that closes the one gap. The category
+    retires (item 7): its one caller, `PlayerEntityLoadSave`, calls a free function
+    `bool OOWriteXMLPListToFile(const oo::PList &, const std::string &path, std::string *outError)`
+    in `OOXMLExtensions.h` (same error texts), converting the save dictionary once with
+    `oo::PListFrom`. Savegame goldens decide.
+16. **Foundation enumerator subclasses become C++ iteration.** A private `NSEnumerator` subclass
+    (`OOPriorityQueueEnumerator`, `OOProbabilitySetEnumerator`, `OOShipGroupEnumerator`,
+    `OOWeakRefUnpackingEnumerator`, and the public `OOFilteringEnumerator` /
+    `OOExcludeObjectEnumerator`) is not rerooted on OOObject. Its owner gets C++ iteration in the
+    same bead: a range-for over the backing container, or, where the state is non-trivial (the
+    ship group's mutation check, weak-reference unpacking), a small C++ iterator class nested in
+    the owner's `.mm`/`.h` with `begin()`/`end()` reached through a `cxx_` accessor
+    (`for (ShipEntity *ship : [group cxx_members])`). Users inside the bead's file budget move to
+    it in the same bead. `-objectEnumerator` / `-mutationSafeEnumerator` are shared or have
+    fast-enumerating callers past the budget: they stay, typed `id`, and return
+    `[oo::NSArrayFromObjects(snapshot) objectEnumerator]` (a snapshot is what the mutation-safe
+    enumerator already was; the plain one iterated live storage, and no caller mutates while
+    enumerating, which the owner's bead checks). Those methods live in the owner's bridge when it
+    has one and retire with it. `%p` in `-debugDescription` and in `<Dead %@ %p>` is
+    `oo::str::pointerDescription` (Amendment 1), which closes oo-ndqg's and oo-vfhi's other stop.
+17. **OOLogging keeps a Foundation-free API and bridges the NSString one.** `OOLogging.h` keeps
+    the C/C++ logging surface (message classes as `const char *`, `OOLogIndent`/`OOLogOutdent`,
+    the `OO_LOG` `std::format` front end of ADR-0035) and gains `const char *` twins of the
+    class-taking functions; the `NSString`-format API (`OOLogWithFunctionFileAndLine`,
+    `OOLogWithFunctionFileAndLineAndArguments`, `OOLogWillDisplayMessagesInClass(NSString *)`,
+    `OOLogIndentIf`, the `kOOLog*` `NSString` constants) moves verbatim into
+    `OOLogging+FoundationBridge.h/.mm`, imported as the last line of `OOLogging.h`, so the `OOLog`
+    macro still expands and 122 calling files compile unchanged. Each caller moves to `OO_LOG` with
+    the "Migrating OOLog calls" recipe in its own sweep bead; the bridge is deleted last, just
+    before oo-qps. `OOCheckOpenGLErrors(NSString *format, ...)` (OOOpenGL) is bridged the same
+    way with a `const char *` twin. Chunked (oo-lskf, oo-zpz4).
+18. **Other stops, decided.** (a) `OOLogOutputHandler` (oo-vjts): gnustep-base fixes the NSLog
+    hook's type as `void (*)(NSString *)`; the hook and its handler move into
+    `OOLogOutputHandler+FoundationBridge.mm` (the NSLog hook is the whole bridge, deleted with
+    gnustep-base by oo-qps), and the rest of the file converts (its queue carries `oo::Data` /
+    `std::string`). (b) Mac-only Foundation out-parameters (`OOMusicController`'s
+    `-[NSAppleScript executeAndReturnError:]`, oo-spph): the two iTunes helpers are
+    `OOLITE_MAC_OS_X` code that the fleet never compiles; like oo-s208 they are deferred to Phase 5
+    (the Mac port), fenced as they are, and the grep skips the `#if OOLITE_MAC_OS_X` block; the rest
+    of the file converts now. (c) `OldSchoolPropertyListWriting` (oo-n8gx) is categories only: it
+    retires (item 7) once its two callers (ResourceManager's diagnostic dump,
+    OOConvertSystemDescriptions) call `oo::writeOldStylePList` (oofnd, pinned against this very
+    writer by `test_plist_writers.cpp`); then the file is deleted. (d) `-typedString`
+    (oo-7r78): `PlayerEntityLoadSave` keeps an unretained pointer to MyOpenGLView's live buffer.
+    The fix is ownership, not a snapshot: `commanderNameString` becomes an owned `std::string`
+    that the load/save screen refreshes from `[gameView cxx_typedString]` each frame it reads it,
+    done in the MyOpenGLView chunk that converts the buffer (oo-8i15), with `-typedString`'s
+    NSString form kept in MyOpenGLView's bridge for the other callers until they move.

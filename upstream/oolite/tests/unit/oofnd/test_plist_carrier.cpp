@@ -109,4 +109,22 @@ OO_TEST(the_openstep_writer_uses_the_single_precision_flag)
 	OO_CHECK(text.find("d = \"0.1000000014901161\";") != std::string::npos);
 }
 
+OO_TEST(the_xml_writer_uses_the_single_precision_flag)
+{
+	// GNUstep 1.31.1 (captured): +dataFromPropertyList:format:NSPropertyListXMLFormat_v1_0 wrote
+	// <real>0.1</real> for both 0.1f and 0.1, <real>3.141593</real> for 3.14159265f and
+	// <real>1e+30</real> for 1e30f.
+	const oo::PList p(oo::PList::Dict{{"f", oo::PList::singleReal(0.1f)}, {"d", oo::PList(0.1)},
+									   {"pi", oo::PList::singleReal(3.14159265f)}, {"big", oo::PList::singleReal(1e30f)},
+									   {"fd", oo::PList(static_cast<double>(0.1f))}});
+	const auto out = oo::writeXMLPList(p);
+	OO_CHECK(out.has_value());
+	const std::string text = out.has_value() ? std::string(reinterpret_cast<const char*>(out->bytes()), out->length()) : std::string();
+	OO_CHECK(text.find("<key>f</key>\n    <real>0.1</real>") != std::string::npos);
+	OO_CHECK(text.find("<key>d</key>\n    <real>0.1</real>") != std::string::npos);
+	OO_CHECK(text.find("<real>3.141593</real>") != std::string::npos);
+	OO_CHECK(text.find("<real>1e+30</real>") != std::string::npos);
+	OO_CHECK(text.find("<key>fd</key>\n    <real>0.1000000014901161</real>") != std::string::npos);   // a double stays a double
+}
+
 OO_TEST_MAIN()
