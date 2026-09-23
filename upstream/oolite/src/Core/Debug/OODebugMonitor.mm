@@ -45,6 +45,7 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
+#include "oofnd/PListGet.hpp"
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
 
@@ -57,16 +58,16 @@ static OODebugMonitor *sSingleton = nil;
 - (void) setUpDebugConsoleScript;
 - (void) javaScriptEngineWillReset:(NSNotification *)notification;
 
-- (void)disconnectDebuggerWithMessage:(NSString *)message;
+- (void)disconnectDebuggerWithMessage:(const std::optional<std::string> &)message;	// nullopt: no message (the TCP client sends a bare close)
 
-- (NSDictionary *)mergedConfiguration;
+- (oo::PList)mergedConfiguration;
 
 /*	Convert a configuration dictionary to a standard form. In particular,
 	convert all colour specifiers to RGBA arrays with values in [0, 1], and
 	converts "show-console" values to booleans.
 */
-- (NSMutableDictionary *)normalizeConfigDictionary:(NSDictionary *)dictionary;
-- (id)normalizeConfigValue:(id)value forKey:(NSString *)key;
+- (oo::PList)normalizeConfigDictionary:(const oo::PList &)dictionary;	// always a Dict (empty for null)
+- (oo::PList)normalizeConfigValue:(const oo::PList &)value forKey:(const std::string &)key;	// null: dropped
 
 - (NSArray *)loadSourceFile:(NSString *)filePath;
 
@@ -75,26 +76,24 @@ static OODebugMonitor *sSingleton = nil;
 
 @implementation OODebugMonitor
 #if OOLITE_GNUSTEP
-	NSString					*NSApplicationWillTerminateNotification = @"ApplicationWillTerminate";
+namespace {
+	id							NSApplicationWillTerminateNotification = @"ApplicationWillTerminate";	// file-private (no other file names it)
+} // namespace
 #endif
 
 - (id)init
 {
 	NSUserDefaults				*defaults = nil;
-	NSMutableDictionary			*config = nil;
-	
+
 	self = [super init];
 	if (self != nil)
 	{
-		config = [[[ResourceManager dictionaryFromFilesNamed:@"debugConfig.plist"
-													inFolder:@"Config"
-													andMerge:YES] mutableCopy] autorelease];
-		_configFromOXPs = [[self normalizeConfigDictionary:config] copy];
-		
+		_configFromOXPs = [self normalizeConfigDictionary:oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"debugConfig.plist"
+																										   inFolder:@"Config"
+																										   andMerge:YES])];
+
 		defaults = [NSUserDefaults standardUserDefaults];
-		config = [self normalizeConfigDictionary:[defaults dictionaryForKey:@"debug-settings-override"]];
-		if (config == nil)  config = [NSMutableDictionary dictionary];
-		_configOverrides = [config retain];
+		_configOverrides = [self normalizeConfigDictionary:oo::PListFrom([defaults dictionaryForKey:@"debug-settings-override"])];
 		
 		_TCPIgnoresDroppedPackets = NO;
 		
@@ -127,10 +126,8 @@ static OODebugMonitor *sSingleton = nil;
 
 - (void)dealloc
 {
-	[self disconnectDebuggerWithMessage:@"Debug controller object destroyed while debugging in progress."];
-	
-	[_configFromOXPs release];
-	[_configOverrides release];
+	[self disconnectDebuggerWithMessage:"Debug controller object destroyed while debugging in progress."];
+
 	
 	[_fgColors release];
 	[_bgColors release];
@@ -159,18 +156,18 @@ static OODebugMonitor *sSingleton = nil;
 
 - (BOOL)setDebugger:(id<OODebuggerInterface>)newDebugger
 {
-	NSString					*error = nil;
-	
+	id							error = nil;	// the shared -connectDebugMonitor:errorMessage:'s string
+
 	if (newDebugger != _debugger)
 	{
 		// Disconnect existing debugger, if any.
 		if (newDebugger != nil)
 		{
-			[self disconnectDebuggerWithMessage:@"New debugger set."];
+			[self disconnectDebuggerWithMessage:"New debugger set."];
 		}
 		else
 		{
-			[self disconnectDebuggerWithMessage:@"Debugger disconnected programatically."];
+			[self disconnectDebuggerWithMessage:"Debugger disconnected programatically."];
 		}
 		
 		// If a new debugger was specified, try to connect it.
@@ -181,7 +178,7 @@ static OODebugMonitor *sSingleton = nil;
 				if ([newDebugger connectDebugMonitor:self errorMessage:&error])
 				{
 					[newDebugger debugMonitor:self
-							noteConfiguration:[self mergedConfiguration]];
+							noteConfiguration:oo::ObjectFromPList([self mergedConfiguration])];
 					_debugger = [newDebugger retain];
 				}
 				else
@@ -200,7 +197,7 @@ static OODebugMonitor *sSingleton = nil;
 }
 
 
-- (oneway void)performJSConsoleCommand:(in NSString *)command
+- (oneway void)performJSConsoleCommand:(in id)command	// shared selector (proposed ADR-0043)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value commandVal = OOJSValueFromNativeObject(context, command);
@@ -271,33 +268,39 @@ static OODebugMonitor *sSingleton = nil;
 }
 
 
-- (id)configurationValueForKey:(in NSString *)key
+- (id)configurationValueForKey:(in id)key	// shared selector (proposed ADR-0043)
 {
-	return [self configurationValueForKey:key class:Nil defaultValue:nil];
+	return [self configurationValueForKey:oo::StdString(key) class:Nil defaultValue:nil];
 }
 
 
-- (id)configurationValueForKey:(NSString *)key class:(Class)klass defaultValue:(id)value
+- (id)configurationValueForKey:(const std::string &)key class:(Class)klass defaultValue:(id)value
 {
 	id							result = nil;
-	
+
 	if (klass == Nil)  klass = [NSObject class];
-	
-	result = [_configOverrides objectForKey:key];
-	if (![result isKindOfClass:klass] && result != [OONull null])  result = [_configFromOXPs objectForKey:key];
+
+	// The stored objects: an Object node gives back the same object, any other node an equal one.
+	const oo::PList *overrideValue = _configOverrides.find(key);
+	result = (overrideValue != nullptr) ? oo::ObjectFromPList(*overrideValue) : nil;
+	if (![result isKindOfClass:klass] && result != [OONull null])
+	{
+		const oo::PList *oxpValue = _configFromOXPs.find(key);
+		result = (oxpValue != nullptr) ? oo::ObjectFromPList(*oxpValue) : nil;
+	}
 	if (![result isKindOfClass:klass] && result != [OONull null])  result = [[value retain] autorelease];
 	if (result == [OONull null])  result = nil;
-	
+
 	return result;
 }
 
 
-- (long long)configurationIntValueForKey:(NSString *)key defaultValue:(long long)value
+- (long long)configurationIntValueForKey:(const std::string &)key defaultValue:(long long)value
 {
 	long long					result;
 	id							object = nil;
-	
-	object = [self configurationValueForKey:key];
+
+	object = [self configurationValueForKey:key class:Nil defaultValue:nil];
 	if ([object respondsToSelector:@selector(longLongValue)])  result = [object longLongValue];
 	else if ([object respondsToSelector:@selector(intValue)])  result = [object intValue];
 	else  result = value;
@@ -306,27 +309,33 @@ static OODebugMonitor *sSingleton = nil;
 }
 
 
-- (void)setConfigurationValue:(in id)value forKey:(in NSString *)key
+- (void)setConfigurationValue:(in id)value forKey:(in id)key	// shared selector (proposed ADR-0043)
 {
 	if (key == nil)  return;
-	
-	value = [self normalizeConfigValue:value forKey:key];
-	
-	if (value == nil)
+
+	const std::string keyString = oo::StdString(key);
+	const oo::PList normalized = [self normalizeConfigValue:oo::PListFrom(value) forKey:keyString];
+
+	if (!_configOverrides.isDict())  _configOverrides = oo::PList(oo::PList::Dict());
+	oo::PList::Dict &overrides = *_configOverrides.getIf<oo::PList::Dict>();
+	if (!normalized)
 	{
-		[_configOverrides removeObjectForKey:key];
+		overrides.erase(keyString);
 	}
 	else
 	{
-		if (_configOverrides == nil)  _configOverrides = [[NSMutableDictionary alloc] init];
-		[_configOverrides setObject:value forKey:key];
+		overrides[keyString] = normalized;
 	}
-	
+
 	// Send changed value to debugger
-	if (value == nil)
+	if (!normalized)
 	{
 		// Setting a nil value removes an override, and may reveal an underlying OXP-defined value
-		value = [self configurationValueForKey:key];
+		value = [self configurationValueForKey:keyString class:Nil defaultValue:nil];
+	}
+	else
+	{
+		value = oo::ObjectFromPList(normalized);
 	}
 	@try
 	{
@@ -341,15 +350,21 @@ static OODebugMonitor *sSingleton = nil;
 }
 
 
-- (NSArray *)configurationKeys
+- (std::vector<std::string>)configurationKeys
 {
-	NSMutableSet				*result = nil;
-	
-	result = [NSMutableSet setWithCapacity:[_configFromOXPs count] + [_configOverrides count]];
-	[result addObjectsFromArray:[_configFromOXPs allKeys]];
-	[result addObjectsFromArray:[_configOverrides allKeys]];
-	
-	return [[result allObjects] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
+	std::set<std::string>		keys;
+
+	for (const oo::PList *config : { &_configFromOXPs, &_configOverrides })
+	{
+		if (const oo::PList::Dict *entries = config->getIf<oo::PList::Dict>())
+		{
+			for (const auto &entry : *entries)  keys.insert(entry.first);
+		}
+	}
+
+	std::vector<std::string> result(keys.begin(), keys.end());
+	std::stable_sort(result.begin(), result.end(), [](const std::string &a, const std::string &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; });
+	return result;
 }
 
 
@@ -663,7 +678,7 @@ struct EntityDumpState
 }
 
 
-- (NSString *)sourceCodeForFile:(in NSString *)filePath line:(in unsigned)line
+- (id)sourceCodeForFile:(in id)filePath line:(in unsigned)line	// shared selector (proposed ADR-0043)
 {
 	id							linesForFile = nil;
 	
@@ -685,13 +700,13 @@ struct EntityDumpState
 
 
 - (void)disconnectDebugger:(in id<OODebuggerInterface>)debugger
-				   message:(in NSString *)message
+				   message:(in id)message	// shared selector (proposed ADR-0043)
 {
 	if (debugger == nil)  return;
-		
+
 	if (debugger == _debugger)
 	{
-		[self disconnectDebuggerWithMessage:message];
+		[self disconnectDebuggerWithMessage:oo::OptionalString(message)];
 	}
 	else
 	{
@@ -710,12 +725,12 @@ struct EntityDumpState
 
 - (void)applicationWillTerminate:(NSNotification *)notification
 {
-	if (_configOverrides != nil)
+	if (_configOverrides)
 	{
-		[[NSUserDefaults standardUserDefaults] setObject:_configOverrides forKey:@"debug-settings-override"];
+		[[NSUserDefaults standardUserDefaults] setObject:oo::ObjectFromPList(_configOverrides) forKey:@"debug-settings-override"];
 	}
-	
-	[self disconnectDebuggerWithMessage:@"Oolite is terminating."];
+
+	[self disconnectDebuggerWithMessage:"Oolite is terminating."];
 }
 
 
@@ -731,19 +746,20 @@ struct EntityDumpState
 		so that we can reload it when resetting into strict mode.
 		-- Ahruman 2011-02-06
 	*/
-	static NSString *path = nil;
-	
-	if (path == nil)
+	static std::optional<std::string> path;
+
+	if (!path)
 	{
-		path = [[ResourceManager pathForFileNamed:@"oolite-debug-console.js" inFolder:@"Scripts"] retain];
+		path = [ResourceManager cxx_pathForFileNamed:"oolite-debug-console.js" inFolder:std::string("Scripts")];
 	}
-	if (path != nil)
+	if (path)
 	{
-		NSDictionary *jsProps = [NSDictionary dictionaryWithObjectsAndKeys:
-								 self, @"console",
-								 JSSpecialFunctionsObjectWrapper(context), @"special",
-								 nil];
-		_script = [[OOJSScript scriptWithPath:path properties:jsProps] retain];
+		// Live objects as Object nodes; a nil special-functions wrapper leaves "special" out, as the nil-terminated list did.
+		oo::PList::Dict jsProps;
+		jsProps["console"] = oo::PListObject(self);
+		id special = JSSpecialFunctionsObjectWrapper(context);
+		if (special != nil)  jsProps["special"] = oo::PListObject(special);
+		_script = [[OOJSScript scriptWithPath:oo::NSStringFrom(*path) properties:oo::ObjectFromPList(oo::PList(std::move(jsProps)))] retain];
 	}
 	
 	// If no script, just make console visible globally as debugConsole.
@@ -766,11 +782,11 @@ struct EntityDumpState
 }
 
 
-- (void)disconnectDebuggerWithMessage:(NSString *)message
+- (void)disconnectDebuggerWithMessage:(const std::optional<std::string> &)message
 {
 	@try
 	{
-		[_debugger disconnectDebugMonitor:self message:message];
+		[_debugger disconnectDebugMonitor:self message:oo::NSStringOrNil(message)];
 	}
 	@catch (NSException *exception)
 	{
@@ -783,15 +799,17 @@ struct EntityDumpState
 }
 
 
-- (NSDictionary *)mergedConfiguration
+- (oo::PList)mergedConfiguration
 {
-	NSMutableDictionary			*result = nil;
-	
-	result = [NSMutableDictionary dictionary];
-	if (_configFromOXPs != nil)  [result addEntriesFromDictionary:_configFromOXPs];
-	if (_configOverrides != nil)  [result addEntriesFromDictionary:_configOverrides];
-	
-	return result;
+	oo::PList::Dict				result;
+
+	if (const oo::PList::Dict *entries = _configFromOXPs.getIf<oo::PList::Dict>())  result = *entries;
+	if (const oo::PList::Dict *entries = _configOverrides.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[key, value] : *entries)  result[key] = value;
+	}
+
+	return oo::PList(std::move(result));
 }
 
 
@@ -813,44 +831,47 @@ FIXME: this works with CRLF and LF, but not CR.
 }
 
 
-- (NSMutableDictionary *)normalizeConfigDictionary:(NSDictionary *)dictionary
+- (oo::PList)normalizeConfigDictionary:(const oo::PList &)dictionary
 {
-	NSMutableDictionary		*result = nil;
-	NSString				*key = nil;
-	id						value = nil;
-	
-	result = [NSMutableDictionary dictionaryWithCapacity:[dictionary count]];
-	foreachkey (key, dictionary)
+	oo::PList::Dict			result;
+
+	// Order-free: builds another map.
+	if (const oo::PList::Dict *entries = dictionary.getIf<oo::PList::Dict>())
 	{
-		value = [dictionary objectForKey:key];
-		value = [self normalizeConfigValue:value forKey:key];
-		
-		if (key != nil && value != nil)  [result setObject:value forKey:key];
+		for (const auto &[key, value] : *entries)
+		{
+			oo::PList normalized = [self normalizeConfigValue:value forKey:key];
+			if (normalized)  result[key] = std::move(normalized);
+		}
 	}
-	
-	return result;
+
+	return oo::PList(std::move(result));
 }
 
 
-- (id)normalizeConfigValue:(id)value forKey:(NSString *)key
+- (oo::PList)normalizeConfigValue:(const oo::PList &)value forKey:(const std::string &)key
 {
 	OOColor					*color = nil;
 	BOOL					boolValue;
-	
-	if (value != nil)
+
+	if (value)
 	{
-		if ([key hasSuffix:@"-color"] || [key hasSuffix:@"-colour"])
+		if (oo::str::hasSuffix(key, "-color") || oo::str::hasSuffix(key, "-colour"))
 		{
-			color = [OOColor colorWithDescription:value];
-			value = [color normalizedArray];
+			// OOColor reads the same object; the normalized array holds +numberWithFloat: values.
+			color = [OOColor colorWithDescription:oo::ObjectFromPList(value)];
+			if (color == nil)  return oo::PList();
+			oo::PList::Array components;
+			for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+			return oo::PList(std::move(components));
 		}
-		else if ([key hasPrefix:@"show-console"])
+		else if (oo::str::hasPrefix(key, "show-console"))
 		{
-			boolValue = OOBooleanFromObject(value, NO);
-			value = [NSNumber numberWithBool:boolValue];
+			boolValue = OOBooleanFromObject(oo::ObjectFromPList(value), NO);
+			return oo::PList(static_cast<bool>(boolValue));
 		}
 	}
-	
+
 	return value;
 }
 
