@@ -28,6 +28,8 @@ MA 02110-1301, USA.
 #import "OOWeakReference.h"
 #import "OOTypes.h"
 
+#include "oofnd/StdLib.hpp"
+
 #define AI_THINK_INTERVAL					0.125
 
 
@@ -60,13 +62,15 @@ MA 02110-1301, USA.
 - (NSString *) associatedJS;
 - (NSString *) state;
 
-- (void) setStateMachine:(NSString *)smName withJSScript:(NSString *)script;
-- (void) setState:(NSString *)stateName;
+- (void) cxx_setStateMachine:(const std::string &)smName withJSScript:(const std::string &)script;
+- (void) cxx_setState:(const std::string &)stateName;
 
-- (void) setStateMachine:(NSString *)smName afterDelay:(NSTimeInterval)delay;
-- (void) setState:(NSString *)stateName afterDelay:(NSTimeInterval)delay;
+- (void) cxx_setStateMachine:(const std::string &)smName afterDelay:(NSTimeInterval)delay;
+- (void) cxx_setState:(const std::string &)stateName afterDelay:(NSTimeInterval)delay;
 
-- (id) initWithStateMachine:(NSString *) smName andState:(NSString *) stateName;
+// std::nullopt where the Foundation version took nil (no state machine / no initial state). An
+// initializer outside the init family by name, so the ownership it returns (+1) is declared.
+- (id) cxx_initWithStateMachine:(const std::optional<std::string> &)smName andState:(const std::optional<std::string> &)stateName OO_RETURNS_RETAINED;
 
 - (ShipEntity *)owner;
 - (void) setOwner:(ShipEntity *)ship;
@@ -76,7 +80,7 @@ MA 02110-1301, USA.
 - (void) restorePreviousStateMachine;
 
 - (BOOL) hasSuspendedStateMachines;
-- (void) exitStateMachineWithMessage:(NSString *)message;
+- (void) cxx_exitStateMachineWithMessage:(const std::optional<std::string> &)message;	// nullopt: "RESTARTED"
 
 - (NSUInteger) stackDepth;
 
@@ -105,3 +109,11 @@ MA 02110-1301, USA.
 - (void)dumpState;
 
 @end
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before the AI.mm sweep (beads oo-3rb.84-87, oo-gtl8), forwarding to the cxx_ methods
+	above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep
+	beads; the bridge goes in its own bead.
+*/
+#import "AI+FoundationBridge.h"

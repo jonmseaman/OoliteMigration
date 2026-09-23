@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
 #import "oofnd/objc/OOObject.h"
+#import "OOFoundationBridge.h"
 
 
 enum
@@ -76,6 +77,8 @@ static AI *sCurrentlyRunningAI = nil;
 // Wrapper for performSelector:withObject:afterDelay: to catch/fix bugs.
 - (void) performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay;
 + (void) deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info;
+// The target of -cxx_setState:afterDelay:'s deferred call: stateName is an Objective-C string.
+- (void) deferredSetState:(id)stateName;
 
 - (void) refreshOwnerDesc;
 
@@ -156,14 +159,14 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 }
 
 
-- (id) initWithStateMachine:(NSString *)smName andState:(NSString *)stateName
+- (id) cxx_initWithStateMachine:(const std::optional<std::string> &)smName andState:(const std::optional<std::string> &)stateName
 {
 	if ((self = [self init]))
 	{
-		if (smName != nil)  [self setStateMachine:smName withJSScript:@"oolite-nullAI.js"];
-		if (stateName != nil)  currentState = [stateName retain];
+		if (smName.has_value())  [self cxx_setStateMachine:*smName withJSScript:"oolite-nullAI.js"];
+		if (stateName.has_value())  currentState = [oo::NSStringFrom(*stateName) retain];
 	}
-	
+
 	return self;
 }
 
@@ -312,25 +315,24 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 }
 
 
-- (void) exitStateMachineWithMessage:(NSString *)message
+- (void) cxx_exitStateMachineWithMessage:(const std::optional<std::string> &)message
 {
 	if ([aiStack count] != 0)
 	{
 		[self restorePreviousStateMachine];
-		if (message == nil)  message = @"RESTARTED";
-		[self reactToMessage:message context:@"suspended AI restart"];
+		[self reactToMessage:oo::NSStringFrom(message.value_or("RESTARTED")) context:@"suspended AI restart"];
 	}
 }
 
 
-- (void) setStateMachine:(NSString *)smName withJSScript:(NSString *)script
+- (void) cxx_setStateMachine:(const std::string &)smName withJSScript:(const std::string &)script
 {
-	NSDictionary *newSM = [self loadStateMachine:smName jsName:script];
+	NSDictionary *newSM = [self loadStateMachine:oo::NSStringFrom(smName) jsName:oo::NSStringFrom(script)];
 
 	if (newSM)
 	{
 		[self preserveCurrentStateMachine];
-		[self directSetStateMachine:newSM name:smName];
+		[self directSetStateMachine:newSM name:oo::NSStringFrom(smName)];
 		[self directSetState:@"GLOBAL"];
 		
 		nextThinkTime = 0.0;	// think at next tick
@@ -350,9 +352,9 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 }
 
 
-- (void) setState:(NSString *) stateName
+- (void) cxx_setState:(const std::string &) stateName
 {
-	if ([stateMachine objectForKey:stateName])
+	if ([stateMachine objectForKey:oo::NSStringFrom(stateName)])
 	{
 		/*	CRASH in objc_msgSend, apparently on [self reactToMessage:@"EXIT"] (1.69, OS X/x86).
 			Analysis: self corrupted. We're being called by __NSFireDelayedPerform, which doesn't go
@@ -362,21 +364,25 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 			 -- Ahruman, 20070706
 		*/
 		[self reactToMessage:@"EXIT" context:@"changing state"];
-		[self directSetState:stateName];
+		[self directSetState:oo::NSStringFrom(stateName)];
 		[self reactToMessage:@"ENTER" context:@"changing state"];
 	}
 }
 
 
-- (void) setStateMachine:(NSString *)smName afterDelay:(NSTimeInterval)delay
+/*	The deferred call's parameter is retained here and released by the trampoline (which released
+	the caller's string before: harmless for the literals callers passed, and now balanced for the
+	string made here).
+*/
+- (void) cxx_setStateMachine:(const std::string &)smName afterDelay:(NSTimeInterval)delay
 {
-	[self performDeferredCall:@selector(setStateMachine:) withObject:smName afterDelay:delay];
+	[self performDeferredCall:@selector(setStateMachine:) withObject:[oo::NSStringFrom(smName) retain] afterDelay:delay];
 }
 
 
-- (void) setState:(NSString *)stateName afterDelay:(NSTimeInterval)delay
+- (void) cxx_setState:(const std::string &)stateName afterDelay:(NSTimeInterval)delay
 {
-	[self performDeferredCall:@selector(setState:) withObject:stateName afterDelay:delay];
+	[self performDeferredCall:@selector(deferredSetState:) withObject:[oo::NSStringFrom(stateName) retain] afterDelay:delay];
 }
 
 
@@ -754,6 +760,12 @@ static AIStackElement *sStack = NULL;
 						 afterDelay:delay];
 		[info release];
 	}
+}
+
+
+- (void) deferredSetState:(id)stateName
+{
+	[self cxx_setState:oo::StdString(stateName)];
 }
 
 
