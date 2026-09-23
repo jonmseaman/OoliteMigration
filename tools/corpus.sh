@@ -200,6 +200,67 @@ cmd_selftest() {
 	[ "$rc" -eq 0 ] || { echo "   FAIL (rc=$rc)"; fail=1; }
 
 	echo
+	echo "== 6. a known content failure is KNOWN only on an exact, byte-pinned match (oo-1gc.7) =="
+	"$PY" - <<-'PYEOF'
+		import copy, json, pathlib, random, sys, tempfile
+		sys.path.insert(0, str(pathlib.Path("tools").resolve()))
+		import oxp_load_check as c
+		V = c.Verdict
+		known = c.load_known_failures()
+		assert known, "the committed known-content-failures.json is empty or missing"
+		for g, e in known.items():
+		    assert e["beads"] and e["diagnosis"] and e["expected_errors"], g
+		name = "oolite.oxp.Norby.Carriers"
+		e = known[name]
+		shas = dict(e["members_sha256"])
+		# The run's lines as the game writes them: timestamped, in any order.
+		lines = ["14:01:03.8%02d %s" % (i, l) for i, l in enumerate(e["expected_errors"])]
+		random.Random(7).shuffle(lines)
+		def run(errs, verdict=V.ERRORS, s=shas, n=name):
+		    return c.apply_known_failure(n, verdict, "d", errs, s, known)[0]
+		# GREEN: the exact reviewed lines, on the pinned bytes, re-label to KNOWN, and
+		# KNOWN is a non-failing group state.
+		assert run(lines) == V.KNOWN, run(lines)
+		assert run(lines, V.DEPERRORS) == V.KNOWN
+		assert V.KNOWN in c.GROUP_OK_STATES and V.KNOWNCHANGED not in c.GROUP_OK_STATES
+		# RED: any new error line.
+		new = lines + ["14:01:04.000 [script.javaScript.exception.notDefined]: ***** "
+		               "JavaScript exception (x 1.0): ReferenceError: y is not defined"]
+		assert run(new) == V.KNOWNCHANGED, "a NEW error line was absorbed"
+		# RED: a duplicated expected line (multiset, not set).
+		assert run(lines + [lines[0]]) == V.KNOWNCHANGED, "a repeated line was absorbed"
+		# RED: one expected line changed (a different key named in the same message).
+		changed = [l.replace("viper.", "gecko.") for l in lines]
+		assert changed != lines and run(changed) == V.KNOWNCHANGED, "a CHANGED line was absorbed"
+		# RED: one expected line gone, and all of them gone (the loader changed).
+		assert run(lines[1:]) == V.KNOWNCHANGED, "a MISSING line was accepted"
+		assert run([], V.PASS) == V.KNOWNCHANGED, "vanished errors were accepted silently"
+		# RED: same lines, different member bytes.
+		other = dict(shas); other[name] = "0" * 64
+		assert run(lines, s=other) == V.KNOWNCHANGED, "an unpinned content change was accepted"
+		# UNTOUCHED: a failure before the error scan stays what it was (red), and a
+		# group with no entry is never re-labelled, even with the very same lines.
+		assert run(lines, V.NOTLOADED) == V.NOTLOADED
+		assert run(lines, n="some.other.group") == V.ERRORS
+		# A malformed list is a harness error, not an empty list.
+		bad = json.loads(c.KNOWN_FAILURES_JSON.read_text("utf-8"))
+		del bad["entries"][0]["diagnosis"]
+		with tempfile.TemporaryDirectory() as d:
+		    p = pathlib.Path(d) / "k.json"
+		    p.write_text(json.dumps(bad), encoding="utf-8")
+		    try:
+		        c.load_known_failures(p)
+		    except ValueError:
+		        pass
+		    else:
+		        raise AssertionError("an entry with no diagnosis was accepted")
+		print("   ok: exact match -> KNOWN; new/duplicated/changed/missing/vanished line, "
+		      "other bytes -> KNOWNCHG; pre-scan failure and unlisted group untouched")
+	PYEOF
+	rc=$?
+	[ "$rc" -eq 0 ] || { echo "   FAIL (rc=$rc)"; fail=1; }
+
+	echo
 	if [ "$fail" -ne 0 ]; then
 		echo "SELFTEST FAILED"
 		return 1

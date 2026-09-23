@@ -822,13 +822,16 @@ stage_corpus() {
     > "$log" 2>&1 || rc=$?
   local checked passes
   checked="$(grep -oE '[0-9]+ group\(s\) checked' "$log" | tail -1 | grep -oE '[0-9]+' || echo 0)"
-  passes="$(grep -c '^PASS ' "$log" || true)"
+  # KNOWN (oo-1gc.7, proposed ADR-0047) counts with PASS: an exact, byte-pinned match of a reviewed
+  # entry in tools/oxp-corpus/known-content-failures.json. Any drift from the entry is KNOWNCHG,
+  # which fails corpus.sh (rc != 0) and is not counted here.
+  passes="$(grep -cE '^(PASS|KNOWN) ' "$log" || true)"
   [ "$rc" -eq 0 ] || { tail -25 "$log" >&2
     fail corpus "the full Tier 1 corpus failed (rc=$rc, $checked checked, ${passes:-0} PASS); $(native "$log")"; }
   [ "${checked:-0}" -ge "$CORPUS_FLOOR" ] \
     || fail corpus "corpus.sh checked only ${checked:-0} group(s), fewer than the committed floor of $CORPUS_FLOOR -- this is the FULL tier, and a run that staged nothing reports 0 checked and exits 0"
   [ "${passes:-0}" -eq "${checked:-0}" ] \
-    || fail corpus "${passes:-0} of ${checked:-0} group(s) reported PASS"
+    || fail corpus "${passes:-0} of ${checked:-0} group(s) reported PASS (or KNOWN)"
   detail "$passes/$checked expansion group(s) loaded in $(( SECONDS - t0 ))s"
 }
 
