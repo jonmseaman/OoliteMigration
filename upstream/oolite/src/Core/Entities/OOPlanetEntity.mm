@@ -51,6 +51,7 @@ MA 02110-1301, USA.
 #import "OOGraphicsResetManager.h"
 #import "OOStringExpander.h"
 #import "OOOpenGLMatrixManager.h"
+#import "OOFoundationBridge.h"
 
 
 #define OO_TERMINATOR_THRESHOLD_VECTOR_DEFAULT	(make_vector(0.105, 0.18, 0.28))	// used to be (0.1, 0.105, 0.12);
@@ -945,7 +946,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 // FIXME: need material model.
 - (NSString *) textureFileName
 {
-	return [_planetDrawable textureName];
+	return oo::NSStringOrNil([_planetDrawable textureName]);
 }
 
 
