@@ -87,6 +87,14 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (GuiDisplayGen.h)
 - (void) setGuiColorSettingFromKey:(NSString *) key color:(OOColor *)col;	// -> -cxx_setGuiColorSettingFromKey:color:
 - (void) overrideTabs:(OOGUITabSettings)stops from:(NSString *)setting length:(NSUInteger)len;	// -> -cxx_overrideTabs:from:length:
 
+// Chunk 4 (oo-3rb.95): background and foreground textures.
+- (BOOL) setBackgroundTextureDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setBackgroundTextureDescriptor:
+- (BOOL) setForegroundTextureDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setForegroundTextureDescriptor:
+- (BOOL) setBackgroundTextureKey:(NSString *)key;	// -> -cxx_setBackgroundTextureKey:
+- (BOOL) setForegroundTextureKey:(NSString *)key;	// -> -cxx_setForegroundTextureKey:
+- (BOOL) preloadGUITexture:(NSDictionary *)descriptor;	// -> -cxx_preloadGUITexture:
+- (NSDictionary *) textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(NSString *)callerDescription;	// -> -cxx_textureDescriptorFromJSValue:inContext:callerDescription:
+
 @end
 
 
