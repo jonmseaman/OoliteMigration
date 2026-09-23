@@ -32,6 +32,10 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityContracts
 - (NSString *) checkPassengerContracts;	// -> -cxx_checkPassengerContracts
 - (void) addMessageToReport:(NSString*) report;	// -> -cxx_addMessageToReport:
 
+// oo-3rb.181 (chunk 3): passengers
+- (BOOL) addPassenger:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee advance:(double)advance risk:(unsigned)risk;	// -> -cxx_addPassenger:start:destination:eta:fee:advance:risk:
+- (BOOL) removePassenger:(NSString*)Name;	// -> -cxx_removePassenger:
+
 @end
 
 #endif	// PLAYERENTITYCONTRACTS_FOUNDATIONBRIDGE_H
