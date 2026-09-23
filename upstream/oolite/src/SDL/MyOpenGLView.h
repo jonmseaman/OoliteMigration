@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOOpenGLMatrixManager.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 
 
 #include <SDL3/SDL_video.h>
@@ -176,8 +177,8 @@ extern int debug;
 	GameController		*gameController;
 	BOOL				keys[NUM_KEYS];
 	int					scancode2Unicode[NUM_KEYS];
-	NSDictionary 		*keyMappings_normal;
-	NSDictionary		*keyMappings_shifted;
+	oo::PList			keyMappings_normal;		// the keyboard's mapping_normal / mapping_shifted (null if none)
+	oo::PList			keyMappings_shifted;
 
 	BOOL				suppressKeys;    // DJS
 
@@ -212,7 +213,7 @@ extern int debug;
 	BOOL				_msaa;
 
    // Full screen sizes
-	NSMutableArray		*screenSizes;
+	std::vector<oo::PList>	screenSizes;	// mode Dicts: Width, Height (integers), RefreshRate (a single real; the native mode's an integer 0)
 	int					currentSize;	//we need an int!
 	BOOL				fullScreen;
 
@@ -263,7 +264,7 @@ extern int debug;
  */
 - (id) init;
 
-- (NSString*) getWindowCaption;
+- (std::optional<std::string>) getWindowCaption;
 - (void) createWindowWithSize: (NSSize) size;
 - (void) initSplashScreen;
 - (void) endSplashScreen;
@@ -311,7 +312,7 @@ extern int debug;
 - (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename;	// nullopt: auto-numbered "oolite-NNN"
 
 - (SDL_DisplayID) getDisplayId;
-- (NSMutableDictionary *) getNativeSize;
+- (oo::PList) getNativeSize;
 
 - (void) setFullScreenMode:(BOOL)fsm;
 - (BOOL) inFullScreenMode;
@@ -319,7 +320,7 @@ extern int debug;
 - (void) setDisplayMode:(int)mode fullScreen:(BOOL)fsm;
 
 - (void) setScreenSize: (int)sizeIndex;
-- (NSMutableArray *)getScreenSizeArray;
+- (std::vector<oo::PList>) getScreenSizeArray;
 - (void) populateFullScreenModelist;
 - (NSSize) modeAsSize: (int)sizeIndex;
 - (void) saveWindowSize: (NSSize) windowSize;
@@ -328,7 +329,7 @@ extern int debug;
 - (int) findDisplayModeForWidth: (unsigned int) d_width Height:(unsigned int) d_height
                         Refresh: (unsigned int)d_refresh;
 - (NSSize) currentScreenSize;
-- (NSDictionary*) currentScreenMode;
+- (oo::PList) currentScreenMode;	// null: no mode
 
 
 

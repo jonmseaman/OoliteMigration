@@ -17,6 +17,7 @@ Oolite
 #import "OOPListView.h"
 #import "NSFileManagerOOExtensions.h" // to find savedir
 #include "oofnd/Date.hpp"
+#import "OOFoundationBridge.h"
 
 #define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
 
@@ -42,10 +43,8 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 	NSString *kbd = oo::PListView(prefs).get<NSString *>(@"keyboard-code", @"default");
 	NSDictionary *subset = [kmap objectForKey:kbd];
 
-	[keyMappings_normal release];
-	keyMappings_normal = [[subset objectForKey:@"mapping_normal"] copy];
-	[keyMappings_shifted release];
-	keyMappings_shifted = [[subset objectForKey:@"mapping_shifted"] copy];
+	keyMappings_normal = oo::PListFrom([subset objectForKey:@"mapping_normal"]);
+	keyMappings_shifted = oo::PListFrom([subset objectForKey:@"mapping_shifted"]);
 }
 - (void) autoShowMouse
 {
