@@ -35,7 +35,7 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOMacroOpenGL.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OODebugFlags.h"
 #import "Universe.h"
 #import "MyOpenGLView.h"
@@ -393,7 +393,7 @@ static BOOL ValidateShaderObject(GLhandleARB object, NSString *name)
 	
 	foreachkey (attrKey, attributeBindings)
 	{
-		OOGL(glBindAttribLocationARB(program, [attributeBindings oo_unsignedIntForKey:attrKey], [attrKey UTF8String]));
+		OOGL(glBindAttribLocationARB(program, oo::PListView(attributeBindings).get<unsigned int>(attrKey), [attrKey UTF8String]));
 	}
 }
 
@@ -413,14 +413,14 @@ static BOOL ValidateShaderObject(GLhandleARB object, NSString *name)
 			if ([obj isKindOfClass:[NSArray class]])
 			{
 				pair = (NSArray*)obj;
-				if ([[pair oo_stringAtIndex: 2] compare: @"mat3"] == 0)
+				if ([oo::PListView(pair).at<NSString *>(2) compare: @"mat3"] == 0)
 				{
-					OOGL(GLUniformMatrix3([pair oo_intAtIndex: 0], [matrixManager getMatrix: [pair oo_intAtIndex: 1]]));
+					OOGL(GLUniformMatrix3(oo::PListView(pair).at<int>(0), [matrixManager getMatrix: oo::PListView(pair).at<int>(1)]));
 				}
 				else
 				{
-					OOMatrix matrix = [matrixManager getMatrix: [pair oo_intAtIndex: 1]];
-					GLUniformMatrix([pair oo_intAtIndex: 0], matrix);
+					OOMatrix matrix = [matrixManager getMatrix: oo::PListView(pair).at<int>(1)];
+					GLUniformMatrix(oo::PListView(pair).at<int>(0), matrix);
 				}
 			}
 		}
