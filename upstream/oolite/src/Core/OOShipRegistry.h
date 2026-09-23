@@ -30,40 +30,52 @@ SOFTWARE.
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 @class OOProbabilitySet;
 
 
 @interface OOShipRegistry: OOObject
 {
 @private
-	NSDictionary			*_shipData;
-	NSDictionary			*_effectData;
+	oo::PList				_shipData;		// ship key -> ship dictionary (null until loaded)
+	oo::PList				_effectData;	// effect key -> effect dictionary (null until loaded)
 	NSArray					*_demoShips;
-	NSArray					*_playerShips;
-	NSDictionary			*_probabilitySets;
+	std::vector<std::string>	_playerShips;
+NSDictionary			*_probabilitySets;
 }
 
 + (OOShipRegistry *) sharedRegistry;
 
 + (void) reload;
 
-- (NSDictionary *) shipInfoForKey:(NSString *)key;
-- (void) setShipInfoForKey:(NSString *)key with:(NSDictionary *)newShipData;
-- (NSDictionary *) effectInfoForKey:(NSString *)key;
-- (NSDictionary *) shipyardInfoForKey:(NSString *)key;
+// A null PList where there is no such entry (was nil).
+- (oo::PList) cxx_shipInfoForKey:(const std::string &)key;
+- (void) cxx_setShipInfoForKey:(const std::string &)key with:(const oo::PList &)newShipData;
+- (oo::PList) cxx_effectInfoForKey:(const std::string &)key;
+- (oo::PList) cxx_shipyardInfoForKey:(const std::string &)key;
 - (OOProbabilitySet *) probabilitySetForRole:(NSString *)role;
 
 - (NSArray *) demoShipKeys;
-- (NSArray *) playerShipKeys;
+- (std::vector<std::string>) cxx_playerShipKeys;
 
 @end
 
 
 @interface OOShipRegistry (OOConveniences)
 
-- (NSArray *) shipKeys;
+- (std::vector<std::string>) cxx_shipKeys;		// in key order
 - (NSArray *) shipRoles;
 - (NSArray *) shipKeysWithRole:(NSString *)role;
 - (NSString *) randomShipKeyForRole:(NSString *)role;
 
 @end
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before its sweep (bead oo-92mj, chunks oo-3rb.114 ff.), forwarding to the cxx_ methods
+	above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep
+	beads; the bridge goes in its own bead.
+*/
+#import "OOShipRegistry+FoundationBridge.h"
