@@ -48,4 +48,35 @@ arguments and results at the boundary (nil for nil).
 	[self cxx_exitStateMachineWithMessage:oo::OptionalString(message)];
 }
 
+
++ (NSString *) currentlyRunningAIDescription
+{
+	return oo::NSStringOrNil([self cxx_currentlyRunningAIDescription]);
+}
+
+
+- (NSString *) associatedJS
+{
+	return oo::NSStringOrNil([self cxx_associatedJS]);
+}
+
+
+- (void) reactToMessage:(NSString *) message context:(NSString *)debugContext
+{
+	if (message == nil)  return;	// as the old dispatcher did first
+	[self cxx_reactToMessage:oo::StdString(message) context:oo::OptionalString(debugContext)];
+}
+
+
+- (void) takeAction:(NSString *) action
+{
+	[self cxx_takeAction:oo::StdString(action)];
+}
+
+
+- (void) dropMessage:(NSString *) ms
+{
+	[self cxx_dropMessage:oo::StdString(ms)];
+}
+
 @end
