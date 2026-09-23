@@ -36,6 +36,7 @@ MA 02110-1301, USA.
 #import "OOCommodityMarket.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource, OOSoundReferencePoint;
@@ -786,7 +787,7 @@ typedef enum
 	// For PlayerEntity (StickMapper)
 	int						selFunctionIdx;
 	NSArray					*stickFunctions; 
-	NSArray					*keyFunctions;
+	std::vector<oo::PList>	keyFunctions;	// PlayerEntity (KeyMapper)'s function list; empty until built
 	NSArray					*kbdLayouts;
 	NSString				*keyShiftText;
 	NSString				*keyMod1Text;
