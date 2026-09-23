@@ -751,11 +751,11 @@ static unsigned IntegerFromString(const GLubyte **ioString)
 
 namespace {
 
-// -oo_matchesRegularExpression: sent to a string that may be nil (a nil string matched nothing).
+// The regexp test sent to a string that may be nil (a nil string matched nothing).
 BOOL MatchesRegExp(const std::optional<std::string> &string, const std::string &regexp)
 {
 	if (!string.has_value())  return NO;
-	return [oo::NSStringFrom(*string) oo_matchesRegularExpression:oo::NSStringFrom(regexp)];
+	return [[OORegExpMatcher regExpMatcher] string:*string matchesExpression:regexp];
 }
 
 
