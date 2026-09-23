@@ -39,9 +39,9 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 
 
-static std::string AdditionalLogHeaderInfo(void);
-
-std::string OOPlatformDescription(void);
+namespace {
+std::string AdditionalLogHeaderInfo(void);
+}
 
 
 #ifdef ALLOW_PROCEDURAL_PLANETS
@@ -212,7 +212,8 @@ static std::optional<std::string> GetSysCtlString(const char *name);
 static unsigned long long GetSysCtlInt(const char *name);
 static std::string GetCPUDescription(void);
 
-static std::string AdditionalLogHeaderInfo(void)
+namespace {
+std::string AdditionalLogHeaderInfo(void)
 {
 	std::optional<std::string>	sysModel;
 	unsigned long long		sysPhysMem;
@@ -222,6 +223,7 @@ static std::string AdditionalLogHeaderInfo(void)
 
 	// "%@" printed a nil model as "(null)".
 	return oo::str::format("Machine type: %s, %zu MiB memory, %s.", sysModel ? sysModel->c_str() : "(null)", sysPhysMem >> 20, GetCPUDescription().c_str());
+}
 }
 
 #ifndef CPUFAMILY_INTEL_MEROM
@@ -355,12 +357,14 @@ static unsigned long long GetSysCtlInt(const char *name)
 }
 
 #else
-static std::string AdditionalLogHeaderInfo(void)
+namespace {
+std::string AdditionalLogHeaderInfo(void)
 {
 	unsigned cpuCount = OOCPUCount();
 	const std::string cpuDescription = oo::DescriptionOf(OOCPUDescription());	// "(null)" for nil, as "%@" printed
 	OOMemoryStatus systemMemoryStatus = OOSystemMemoryStatus();
 	
 	return oo::str::format("%s %u processor%s detected. System RAM: %llu MB (free: %llu MB).", cpuDescription.c_str(), cpuCount, cpuCount != 1 ? "s" : "", systemMemoryStatus.ooPhysicalMemory, systemMemoryStatus.ooAvailableMemory);
+}
 }
 #endif

@@ -31,5 +31,10 @@ SOFTWARE.
 
 #import "OOCocoa.h"
 
+#include "oofnd/StdLib.hpp"
+
 
 void OOPrintLogHeader(void);
+
+// "<system> (<cpu> <variant>)", as JavaScript's console.platformDescription shows it.
+std::string OOPlatformDescription(void);
