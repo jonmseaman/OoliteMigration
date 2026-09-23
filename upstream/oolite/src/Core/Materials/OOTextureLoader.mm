@@ -28,7 +28,7 @@ SOFTWARE.
 #import "OOPNGTextureLoader.h"
 #import "OOTextureLoader.h"
 #import "OOFunctionAttributes.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMaths.h"
 #import "Universe.h"
 #import "OOTextureScaling.h"
@@ -299,7 +299,7 @@ static BOOL					sHaveSetUp = NO;
 	OOLog(@"texture.load.rescale.maxSize", @"GL maximum texture size: %u", sGLMaxSize);
 	
 	// Why 0x80000000? Because it's the biggest number OORoundUpToPowerOf2() can handle.
-	sUserMaxSize = [[NSUserDefaults standardUserDefaults] oo_unsignedIntForKey:@"max-texture-size" defaultValue:0x80000000];
+	sUserMaxSize = oo::PListView([NSUserDefaults standardUserDefaults]).get<unsigned int>(@"max-texture-size", 0x80000000);
 	if (sUserMaxSize < 0x80000000)  OOLog(@"texture.load.rescale.maxSize", @"User maximum texture size: %u", sUserMaxSize);
 	sUserMaxSize = OORoundUpToPowerOf2_32(sUserMaxSize);
 	sUserMaxSize = MAX(sUserMaxSize, 64U);
