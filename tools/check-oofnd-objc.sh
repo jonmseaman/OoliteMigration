@@ -18,6 +18,10 @@
 #                 not name any gnustep-base DLL: the proof that the floor needs no Foundation;
 #   5. asan       each is rebuilt under -fsanitize=address and run.
 #
+# Every build and run happens concurrently (bead oo-n712; OO_OOFND_JOBS bounds it, default nproc),
+# each run with its own TMP/TEMP/TMPDIR; the report then walks the logs in the fixed order above
+# and fails at the first failure, as a serial run did.
+#
 # lld is required: GNU ld cannot resolve the gnustep-2 ABI's COFF selector symbols (ADR-0029).
 set -euo pipefail
 
@@ -71,18 +75,77 @@ done
 
 total_tests=0
 total_checks=0
-run_test() {
-	local exe="$1" log="$2" rc=0
-	"$exe" > "$log" 2>&1 || rc=$?
+# report_test <exe> <log>: reports one finished run (exit status in <log>.rc); fails on nonzero
+# exit, no summary line, or zero tests.
+report_test() {
+	local exe="$1" log="$2" rc=1 line summary=""
+	[ ! -f "$log.rc" ] || read -r rc < "$log.rc" || true
 	cat "$log"
-	[ "$rc" -eq 0 ] || fail "$(basename "$exe") exited $rc"
-	local summary
-	summary="$(grep -m1 '^oo_test: ' "$log" || true)"
-	[ -n "$summary" ] || fail "$(basename "$exe") printed no oo_test summary line"
-	LAST_TESTS="$(printf '%s\n' "$summary" | sed -E 's/.*: ([0-9]+) tests, ([0-9]+) checks, ([0-9]+) failures.*/\1/')"
-	LAST_CHECKS="$(printf '%s\n' "$summary" | sed -E 's/.*: ([0-9]+) tests, ([0-9]+) checks, ([0-9]+) failures.*/\2/')"
-	[ "$LAST_TESTS" -gt 0 ] || fail "$(basename "$exe") ran zero tests"
+	[ "$rc" -eq 0 ] || fail "${exe##*/} exited $rc"
+	# The first "oo_test: " line (as grep -m1 '^oo_test: '), parsed with builtins: forks are the
+	# expensive part of this loop on MSYS.
+	while IFS= read -r line || [ -n "$line" ]; do
+		if [[ $line == 'oo_test: '* ]]; then summary="$line"; break; fi
+	done < "$log"
+	[ -n "$summary" ] || fail "${exe##*/} printed no oo_test summary line"
+	local re='.*: ([0-9]+) tests, ([0-9]+) checks, ([0-9]+) failures'
+	[[ $summary =~ $re ]] && [ "${BASH_REMATCH[1]}" -gt 0 ] || fail "${exe##*/} ran zero tests"
+	LAST_TESTS="${BASH_REMATCH[1]}"; LAST_CHECKS="${BASH_REMATCH[2]}"
 }
+
+# --- build and run everything concurrently (bead oo-n712), then report in the serial order -------
+# Same compiles, same runs as one test at a time; each keeps its own log and exit status, and the
+# report below walks them in the fixed order, failing at the first failure exactly as before.
+rd_ok=1; rd="" dlldir=""
+rd="$(bash "$script_dir/asan-resource-dir.sh" --print)" || rd_ok=0
+[ "$rd_ok" -eq 0 ] || dlldir="$(bash "$script_dir/asan-resource-dir.sh" --dll-dir)" || rd_ok=2
+jobs="${OO_OOFND_JOBS:-$(nproc 2>/dev/null || echo 4)}"
+throttle() { while [ "$(jobs -rp | wc -l)" -ge "$jobs" ]; do wait -n || true; done; }
+bg_rc() { local rcf="$1"; shift; ( rc=0; "$@" || rc=$?; echo "$rc" > "$rcf" ) & }
+# build_one <test.mm> <plain|asan> <exe>; run_one <exe> <log>: TMP/TEMP/TMPDIR is a private dir.
+build_one() {
+	if [ "$2" = plain ]; then
+		"$CXX" "${flags[@]}" "${incs[@]}" "$1" "${sources[@]}" "${link[@]}" -o "$3"
+	else
+		"$CXX" "${flags[@]}" -fsanitize=address -fno-omit-frame-pointer -g -O1 -resource-dir "$rd" \
+			"${incs[@]}" "$1" "${sources[@]}" "${link[@]}" -o "$3"
+	fi
+}
+run_one() {
+	local sbx="$PWD/$work/sandbox/$(basename "$1" .exe)"
+	mkdir -p "$sbx"
+	sbx="$(cygpath -w "$sbx" 2>/dev/null || printf '%s' "$sbx")"
+	TMP="$sbx" TEMP="$sbx" TMPDIR="$sbx" "$1" > "$2" 2>&1
+}
+kinds=(plain)
+[ "$rd_ok" -ne 1 ] || kinds+=(asan)
+for t in "${tests[@]}"; do
+	name="$(basename "$t" .mm)"
+	for kind in "${kinds[@]}"; do
+		[ "$kind" = plain ] && exe="$work/$name.exe" || exe="$work/${name}_asan.exe"
+		throttle
+		bg_rc "$exe.build.rc" build_one "$t" "$kind" "$exe" > "$exe.build.log" 2>&1
+	done
+done
+wait
+if [ "$rd_ok" -eq 1 ]; then
+	cp "$dlldir/libclang_rt.asan_dynamic-x86_64.dll" "$work/" 2>/dev/null || true
+	cp "$dlldir/libc++.dll" "$work/" 2>/dev/null || true   # the ASan runtime imports it
+fi
+asan_opts="${ASAN_OPTIONS:-halt_on_error=1:abort_on_error=0:detect_leaks=0}"
+for t in "${tests[@]}"; do
+	name="$(basename "$t" .mm)"
+	if [ "$(cat "$work/$name.exe.build.rc" 2>/dev/null)" = 0 ]; then
+		throttle
+		bg_rc "$work/$name.log.rc" run_one "$work/$name.exe" "$work/$name.log"
+	fi
+	if [ "$(cat "$work/${name}_asan.exe.build.rc" 2>/dev/null)" = 0 ]; then
+		throttle
+		ASAN_OPTIONS="$asan_opts" PATH="$work:$dlldir:$PATH" \
+			bg_rc "$work/${name}_asan.log.rc" run_one "$work/${name}_asan.exe" "$work/${name}_asan.log"
+	fi
+done
+wait
 
 # --- 3 + 4. build, prove the imports, run -------------------------------------------------------
 step "3/5 unit tests: libobjc2 only, -Wall -Wextra -Werror, --fatal-warnings"
@@ -91,30 +154,28 @@ for t in "${tests[@]}"; do
 	name="$(basename "$t" .mm)"
 	exe="$work/$name.exe"
 	echo "   link: $CXX ... $t ${sources[*]} ${link[*]}"
-	"$CXX" "${flags[@]}" "${incs[@]}" "$t" "${sources[@]}" "${link[@]}" -o "$exe" || fail "$t does not build"
+	cat "$exe.build.log" >&2
+	[ "$(cat "$exe.build.rc" 2>/dev/null)" = 0 ] || fail "$t does not build"
 	imports="$(objdump -p "$exe" | sed -n 's/^[[:space:]]*DLL Name:[[:space:]]*//p')"
 	printf '%s\n' "$imports" | grep -qi '^libobjc' || fail "$name does not import libobjc; the floor is not on the runtime it claims"
 	if printf '%s\n' "$imports" | grep -qi 'gnustep'; then
 		fail "$name imports a GNUstep Foundation DLL: $(printf '%s\n' "$imports" | grep -i gnustep | tr '\n' ' ')"
 	fi
 	echo "   $name imports: $(printf '%s\n' "$imports" | grep -vi '^api-ms-win' | tr '\n' ' ')"
-	run_test "$exe" "$work/$name.log"
+	report_test "$exe" "$work/$name.log"
 	total_tests=$((total_tests + LAST_TESTS))
 	total_checks=$((total_checks + LAST_CHECKS))
 done
 
 # --- 5. ASan ------------------------------------------------------------------------------------
 step "5/5 unit tests under -fsanitize=address"
-rd="$(bash "$script_dir/asan-resource-dir.sh" --print)" || fail "could not build the spliced ASan resource directory"
-dlldir="$(bash "$script_dir/asan-resource-dir.sh" --dll-dir)" || fail "could not locate the ASan runtime DLL directory"
-cp "$dlldir/libclang_rt.asan_dynamic-x86_64.dll" "$work/" 2>/dev/null || true
-cp "$dlldir/libc++.dll" "$work/" 2>/dev/null || true   # the ASan runtime imports it
-export ASAN_OPTIONS="${ASAN_OPTIONS:-halt_on_error=1:abort_on_error=0:detect_leaks=0}"
+[ "$rd_ok" -ne 0 ] || fail "could not build the spliced ASan resource directory"
+[ "$rd_ok" -ne 2 ] || fail "could not locate the ASan runtime DLL directory"
 for t in "${tests[@]}"; do
 	name="$(basename "$t" .mm)"
-	"$CXX" "${flags[@]}" -fsanitize=address -fno-omit-frame-pointer -g -O1 -resource-dir "$rd" \
-		"${incs[@]}" "$t" "${sources[@]}" "${link[@]}" -o "$work/${name}_asan.exe" || fail "$t does not build under -fsanitize=address"
-	PATH="$work:$dlldir:$PATH" run_test "$work/${name}_asan.exe" "$work/${name}_asan.log"
+	cat "$work/${name}_asan.exe.build.log" >&2
+	[ "$(cat "$work/${name}_asan.exe.build.rc" 2>/dev/null)" = 0 ] || fail "$t does not build under -fsanitize=address"
+	report_test "$work/${name}_asan.exe" "$work/${name}_asan.log"
 	! grep -qi 'AddressSanitizer' "$work/${name}_asan.log" || fail "${name} printed an AddressSanitizer report"
 done
 
