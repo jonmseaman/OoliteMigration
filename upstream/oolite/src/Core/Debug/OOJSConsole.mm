@@ -724,7 +724,7 @@ static bool ConsoleScriptStack(ooscript::Context context, ooscript::CallArgs &oo
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	OOJS_RETURN_OBJECT([OOJSScript scriptStack]);
+	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects([OOJSScript scriptStack]));
 	
 	OOJS_NATIVE_EXIT
 }

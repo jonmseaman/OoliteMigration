@@ -284,7 +284,8 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 
 - (id) subEntitiesForScript	// shared selector (proposed ADR-0043)
 {
-	return [[self visualEffectSubEntityEnumerator] allObjects];
+	const auto subs = [self visualEffectSubEntityEnumerator];
+	return subs.has_value() ? oo::NSArrayFromObjects(*subs) : nil;	// nil before the first subentity, as before
 }
 
 @end
@@ -318,7 +319,7 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 			break;
 
 		case kVisualEffect_dataKey:
-			result = [entity effectKey];
+			result = oo::NSStringOrNil([entity effectKey]);
 			break;
 
 		case kVisualEffect_isBreakPattern:
@@ -783,14 +784,19 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	const oo::PList		effectDict = oo::PListFrom([thisEnt effectInfoDictionary]);
+	const oo::PList		effectDict = [thisEnt effectInfoDictionary];
+	// -oo_stringForKey: / -oo_dictionaryForKey: as the mesh call read them: nil unless a string (or a
+	// number's text) / a dictionary.
+	const oo::PList		*model = effectDict.get<oo::PList>("model");
+	std::optional<std::string>	modelName;
+	if (model != nullptr && (model->isString() || model->isNumber()))  modelName = effectDict.get<std::string>("model");
 	// The ship-prefix-macros default as the mesh call read it: a dictionary, else nothing.
 	const oo::PList		materialDefaults = [ResourceManager cxx_materialDefaults];
 	const oo::PList		*macros = materialDefaults.get<oo::PList::Dict>("ship-prefix-macros");
 	const oo::PList		shaderMacros = (macros != nullptr) ? *macros : oo::PList();
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:effectDict.get<std::string>("model")
+	OOMesh *mesh = [OOMesh meshWithName:modelName.value_or(std::string())
 							   cacheKey:std::nullopt
 					 materialDictionary:materials
 					  shadersDictionary:shaders
