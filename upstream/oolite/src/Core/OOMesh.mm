@@ -335,7 +335,9 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 }
 
 
-static const char *NormalModeDescription(OOMeshNormalMode mode)
+namespace {
+
+const char *NormalModeDescription(OOMeshNormalMode mode)
 {
 	switch (mode)
 	{
@@ -346,6 +348,8 @@ static const char *NormalModeDescription(OOMeshNormalMode mode)
 
 	return "unknown";
 }
+
+} // namespace
 
 
 - (id)descriptionComponents	// shared selector (proposed ADR-0043)
