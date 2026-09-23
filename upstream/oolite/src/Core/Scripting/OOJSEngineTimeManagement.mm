@@ -474,50 +474,49 @@ static void FunctionCallback(ooscript::Function function, ooscript::Script scrip
 	
 	OOHighResTimeValue start = OOGetHighResTime();
 	
-	NSAutoreleasePool *pool = [NSAutoreleasePool new];
-	
-	if (entering > 0)
+	@autoreleasepool
 	{
-		// Create profile entry up front so we can shove the JS function in it.
-		OOTimeProfileEntry *entry = (OOTimeProfileEntry *)NSMapGet(sProfileInfo, function);
-		if (entry == nil)
+		if (entering > 0)
 		{
-			entry = [[OOTimeProfileEntry alloc] initWithJSFunction:function context:context];
-			NSMapInsertKnownAbsent(sProfileInfo, function, entry);
-			[entry release];
+			// Create profile entry up front so we can shove the JS function in it.
+			OOTimeProfileEntry *entry = (OOTimeProfileEntry *)NSMapGet(sProfileInfo, function);
+			if (entry == nil)
+			{
+				entry = [[OOTimeProfileEntry alloc] initWithJSFunction:function context:context];
+				NSMapInsertKnownAbsent(sProfileInfo, function, entry);
+				[entry release];
+			}
+			
+			if (EXPECT_NOT(sTracing))
+			{
+				// We use EXPECT_NOT here because profiles are time-critical and traces are not.
+				TraceEnterJSFunction(context, function, entry);
+			}
+			
+			// Make a stack frame on the heap.
+			OOJSProfileStackFrame *frame = (OOJSProfileStackFrame *)malloc(sizeof(OOJSProfileStackFrame));
+			assert(frame != NULL);
+			
+			*frame = (OOJSProfileStackFrame)
+			{
+				.back = sProfileStack,
+				.key = function,
+				.startTime = start,
+				.subTime = 0.0,
+				.total = &sProfilerTotalJavaScriptTime,
+				.cleanup = CleanUpJSFrame
+			};
+			
+			sProfileStack = frame;
 		}
-		
-		if (EXPECT_NOT(sTracing))
+		else
 		{
-			// We use EXPECT_NOT here because profiles are time-critical and traces are not.
-			TraceEnterJSFunction(context, function, entry);
+			// Exiting.
+			assert(sProfileStack != NULL && sProfileStack->cleanup == CleanUpJSFrame);
+			
+			UpdateProfileForFrame(start, sProfileStack);
 		}
-		
-		// Make a stack frame on the heap.
-		OOJSProfileStackFrame *frame = (OOJSProfileStackFrame *)malloc(sizeof(OOJSProfileStackFrame));
-		assert(frame != NULL);
-		
-		*frame = (OOJSProfileStackFrame)
-		{
-			.back = sProfileStack,
-			.key = function,
-			.startTime = start,
-			.subTime = 0.0,
-			.total = &sProfilerTotalJavaScriptTime,
-			.cleanup = CleanUpJSFrame
-		};
-		
-		sProfileStack = frame;
 	}
-	else
-	{
-		// Exiting.
-		assert(sProfileStack != NULL && sProfileStack->cleanup == CleanUpJSFrame);
-		
-		UpdateProfileForFrame(start, sProfileStack);
-	}
-	
-	[pool release];
 	
 	OOHighResTimeValue end = OOGetHighResTime();
 	double currentOverhead = OOHighResTimeDeltaInSeconds(start, end);
@@ -555,25 +554,25 @@ void OOJSProfileExit(OOJSProfileStackFrame *frame)
 	if (EXPECT(!sProfiling))  return;
 	
 	OOHighResTimeValue	now = OOGetHighResTime();
-	NSAutoreleasePool	*pool = [NSAutoreleasePool new];
-	BOOL				done = NO;
-	
-	/*
-		It's possible there could be JavaScript frames on top of this frame if
-		a JS native returned false. Or possibly not. The semantics of
-		the engine's function callback aren't specified in detail.
-		-- Ahruman 2011-01-16
-	*/
-	for (;;)
+	@autoreleasepool
 	{
-		assert(sProfileStack != NULL);
+		BOOL				done = NO;
 		
-		done = (sProfileStack == frame);
-		UpdateProfileForFrame(now, sProfileStack);
-		if (EXPECT(done))  break;
+		/*
+			It's possible there could be JavaScript frames on top of this frame if
+			a JS native returned false. Or possibly not. The semantics of
+			the engine's function callback aren't specified in detail.
+			-- Ahruman 2011-01-16
+		*/
+		for (;;)
+		{
+			assert(sProfileStack != NULL);
+			
+			done = (sProfileStack == frame);
+			UpdateProfileForFrame(now, sProfileStack);
+			if (EXPECT(done))  break;
+		}
 	}
-	
-	[pool release];
 	
 	OODisposeHighResTime(frame->startTime);
 	
