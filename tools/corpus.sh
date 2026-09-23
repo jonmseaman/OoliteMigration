@@ -6,6 +6,8 @@
 #   regen         regenerate tools/oxp-corpus/tier1.json from the corpus
 #   check-list    assert the committed tier1.json matches a fresh regeneration
 #   selftest      offline proof that the load check's vacuity guards discriminate
+#   tally LOG     count the passing groups of a tier1 log (PASS, KNOWN, and NOMANIF
+#                 only for a fixture listed in oxp-corpus/manifestless-fixtures.tsv)
 #   tier1         LOAD every Tier 1 expansion on a headless build and assert that
 #                 each one really loaded and produced no ERROR lines
 #
@@ -261,12 +263,153 @@ cmd_selftest() {
 	[ "$rc" -eq 0 ] || { echo "   FAIL (rc=$rc)"; fail=1; }
 
 	echo
+	echo "== 7. tally counts a LISTED manifest-less fixture, never an unlisted one (oo-88hv) =="
+	selftest_tally || fail=1
+
+	echo
 	if [ "$fail" -ne 0 ]; then
 		echo "SELFTEST FAILED"
 		return 1
 	fi
 	echo "SELFTEST OK"
 	return 0
+}
+
+# ------------------------------------------------------------------- tally
+#
+# THE ONE DEFINITION OF "THIS GROUP PASSED" FOR THE TIER GATES (bead oo-88hv).
+# tools/tier-b.sh and tools/tier-c.sh compare the number of passing groups in a
+# `tier1` log against the number checked. Each used to grep '^(PASS|KNOWN) '
+# itself, so the five legacy test-oxps that finish NOMANIF -- a state
+# oxp_load_check.py already treats as non-fatal (corpus.sh exits 0) -- counted
+# as failures and the full Tier 1 in tier-c could never be green.
+#
+# Counting every NOMANIF instead would be too wide: NOMANIF is decided per run
+# from the log, so a catalogue expansion that lost its manifest would pass
+# silently. So a NOMANIF group counts ONLY if it is named, with a reason, in
+# tools/oxp-corpus/manifestless-fixtures.tsv, and that list may only name the
+# in-tree test-oxps of tier1.json. An unlisted NOMANIF group is reported on
+# stderr and not counted, which leaves the gate red until someone reviews it.
+#
+# Usage: corpus.sh tally LOG. Prints the passing count on stdout and one line
+# per counted or refused NOMANIF group on stderr. Exit 0, or 2 if the log is
+# missing or the fixture list breaks its rules (never a silent 0).
+# CORPUS_TALLY_LIST / CORPUS_TALLY_TIER1 override the two inputs (selftest only).
+cmd_tally() {
+	local log="${1:-}"
+	[ -n "$log" ] && [ -f "$log" ] || { echo "tally: no such log: ${log:-<none>}" >&2; return 2; }
+	if command -v cygpath >/dev/null 2>&1; then log="$(cygpath -m "$log")"; fi
+	TALLY_LOG="$log" \
+	TALLY_LIST="${CORPUS_TALLY_LIST:-$REPO_ROOT/tools/oxp-corpus/manifestless-fixtures.tsv}" \
+	TALLY_TIER1="${CORPUS_TALLY_TIER1:-$TIER1_JSON}" \
+	"$PY" - <<-'PYEOF'
+		import json, os, re, sys
+		NAME_W = 44   # oxp_load_check.py prints "%-10s %-44s": verdict, then the name
+		def refuse(msg):
+		    sys.stderr.write("tally: REFUSED: %s\n" % msg)
+		    sys.exit(2)
+		try:
+		    fixtures = {e["name"] for e in json.load(
+		        open(os.environ["TALLY_TIER1"], encoding="utf-8"))["test_oxps"]}
+		except (OSError, ValueError, KeyError, TypeError) as exc:
+		    refuse("cannot read the test_oxps of %s: %s" % (os.environ["TALLY_TIER1"], exc))
+		listed = {}
+		try:
+		    lines = open(os.environ["TALLY_LIST"], encoding="utf-8").read().splitlines()
+		except OSError as exc:
+		    refuse("cannot read the fixture list: %s" % exc)
+		for n, raw in enumerate(lines, 1):
+		    if not raw.strip() or raw.lstrip().startswith("#"):
+		        continue
+		    name, _, reason = raw.partition("\t")
+		    if not reason.strip():
+		        refuse("fixture list line %d names %r with no reason" % (n, name))
+		    if name not in fixtures:
+		        refuse("fixture list line %d names %r, which is not an in-tree test-oxp "
+		               "in tier1.json; only those may be listed" % (n, name))
+		    if len(name) > NAME_W:
+		        refuse("fixture list line %d: %r is longer than the %d-column name field"
+		               % (n, name, NAME_W))
+		    if name in listed:
+		        refuse("fixture list line %d repeats %r" % (n, name))
+		    listed[name] = reason.strip()
+		passes = 0
+		verdict_re = re.compile(r"^(PASS|KNOWN|NOMANIF) ")
+		for line in open(os.environ["TALLY_LOG"], encoding="utf-8", errors="replace"):
+		    line = line.rstrip("\r\n")
+		    m = verdict_re.match(line)
+		    if not m:
+		        continue
+		    if m.group(1) != "NOMANIF":
+		        passes += 1
+		        continue
+		    name = line[11:11 + NAME_W].rstrip()
+		    if name in listed:
+		        passes += 1
+		        sys.stderr.write("tally: NOMANIF %s counted: listed fixture (%s)\n"
+		                         % (name, listed[name]))
+		    else:
+		        sys.stderr.write("tally: NOMANIF %s NOT counted: not in "
+		                         "tools/oxp-corpus/manifestless-fixtures.tsv\n" % name)
+		print(passes)
+	PYEOF
+}
+
+# selftest_tally -- case 7 of `selftest`: the REAL cmd_tally on synthetic logs in
+# the exact oxp_load_check.py verdict-line format, in both directions.
+selftest_tally() {
+	local d rc=0 got listed_log unlisted_log err
+	d="$(mktemp -d)" || return 1
+	vline() { printf '%-10s %-44s %6.1fs  %s\n' "$1" "$2" 6.5 "synthetic"; }
+	{
+		vline PASS "oolite.oxp.Griff.Cobra_MkIII"
+		vline KNOWN "oolite.oxp.Norby.Carriers"
+		vline NOMANIF "AI overflow test.oxp"
+		printf '           | 12:00:00.000 [oxp-standards.error]: OXP x has no manifest.plist\n'
+		vline NOMANIF "JavaScript Interface Tests.oxp"
+		vline NOMANIF "PNGTestSuite.oxp"
+		vline NOMANIF "RetroMissions.oxp"
+		vline NOMANIF "Fallback test.oxp"
+		vline PASS "Material Test Suite.oxp"
+		vline ERRORS "oolite.oxp.Some.Broken"
+		echo '--- 9 group(s) checked, 1 failed (ERRORS=1, KNOWN=1, NOMANIF=5, PASS=2) ---'
+	} >"$d/listed.log"
+	{
+		vline PASS "oolite.oxp.Griff.Cobra_MkIII"
+		vline NOMANIF "oolite.oxp.Someone.LostItsManifest"
+		vline NOMANIF "RetroMissions.oxp"
+		echo '--- 3 group(s) checked, 0 failed (NOMANIF=2, PASS=1) ---'
+	} >"$d/unlisted.log"
+
+	# GREEN direction: the 5 listed fixtures count; ERRORS never does.
+	got="$(cmd_tally "$d/listed.log" 2>"$d/err")"
+	if [ "$got" = 8 ]; then echo "   ok: 2 PASS + 1 KNOWN + 5 listed NOMANIF = 8 of 9; ERRORS not counted"
+	else echo "   FAIL: listed log tallied '$got', want 8"; cat "$d/err"; rc=1; fi
+
+	# RED direction: an unlisted manifest-less group is NOT counted, and is named.
+	got="$(cmd_tally "$d/unlisted.log" 2>"$d/err")"
+	err="$(cat "$d/err")"
+	if [ "$got" = 2 ] && [[ "$err" == *"LostItsManifest NOT counted"* ]]; then
+		echo "   ok: an unlisted NOMANIF group is not counted (2 of 3) and is named on stderr"
+	else echo "   FAIL: unlisted log tallied '$got', want 2 with a NOT-counted note"; echo "$err"; rc=1; fi
+
+	# The list cannot be widened quietly: a catalogue name, a missing reason, or an
+	# unreadable list is a REFUSAL (exit 2), never a count.
+	printf 'oolite.oxp.Someone.LostItsManifest\tit is fine\n' >"$d/wide.tsv"
+	printf 'RetroMissions.oxp\t \n' >"$d/noreason.tsv"
+	local l
+	for l in wide noreason missing; do
+		CORPUS_TALLY_LIST="$(cygpath -m "$d/$l.tsv" 2>/dev/null || echo "$d/$l.tsv")" \
+			cmd_tally "$d/unlisted.log" >"$d/out" 2>"$d/err"
+		if [ "$?" -eq 2 ] && [ ! -s "$d/out" ]; then echo "   ok: list '$l' refused (exit 2, no count)"
+		else echo "   FAIL: list '$l' was not refused"; cat "$d/out" "$d/err"; rc=1; fi
+	done
+	cmd_tally "$d/no-such.log" >/dev/null 2>&1
+	if [ "$?" -eq 2 ]; then echo "   ok: a missing log is refused (exit 2)"
+	else echo "   FAIL: a missing log was not refused"; rc=1; fi
+
+	rm -rf "$d"
+	return "$rc"
 }
 
 # ------------------------------------------------------------------- tier1
@@ -633,6 +776,7 @@ case "${1:-}" in
 	regen)       shift; cmd_regen "$@" ;;
 	check-list)  shift; cmd_check_list "$@" ;;
 	selftest)    shift; cmd_selftest "$@" ;;
+	tally)       shift; cmd_tally "$@" ;;
 	tier1)       shift; cmd_tier1 "$@" ;;
 	list2)       shift; cmd_list2 "$@" ;;
 	regen2)      shift; cmd_regen2 "$@" ;;
@@ -641,5 +785,5 @@ case "${1:-}" in
 	tier2)       shift; cmd_tier2 "$@" ;;
 	tier3)       shift; cmd_tier3 "$@" ;;
 	report)      shift; cmd_report "$@" ;;
-	*) die "usage: tools/corpus.sh {list|regen|check-list|selftest|tier1|list2|regen2|check-list2|selftest2|tier2|tier3|report} [options]" ;;
+	*) die "usage: tools/corpus.sh {list|regen|check-list|selftest|tally|tier1|list2|regen2|check-list2|selftest2|tier2|tier3|report} [options]" ;;
 esac
