@@ -131,7 +131,7 @@ static BOOL _refreshStarChart = NO;
 		
 		backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
 
-		guiUserSettings = [[ResourceManager dictionaryFromFilesNamed:@"gui-settings.plist" inFolder:@"Config" andMerge:YES] retain];
+		guiUserSettings = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"gui-settings.plist" inFolder:@"Config" andMerge:YES]);
 	}
 	return self;
 }
@@ -194,7 +194,6 @@ static BOOL _refreshStarChart = NO;
 	[rowText release];
 	[rowKey release];
 	[rowColor release];
-	[guiUserSettings release];
 
 	[super dealloc];
 }
@@ -331,7 +330,7 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (NSDictionary *) userSettings
+- (oo::PList) cxx_userSettings
 {
 	return guiUserSettings;
 }
@@ -410,12 +409,13 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (OOColor *) colorFromSetting:(NSString *)setting defaultValue:(OOColor *)def
+- (OOColor *) cxx_colorFromSetting:(const std::optional<std::string> &)setting defaultValue:(OOColor *)def
 {
 	
 	OOColor *col = nil;
-	if (setting != nil) {
-		col = [OOColor colorWithDescription:[guiUserSettings objectForKey:setting]];
+	if (setting.has_value()) {
+		const oo::PList *description = guiUserSettings.find(*setting);
+		col = [OOColor colorWithDescription:(description != nullptr) ? oo::ObjectFromPList(*description) : nil];
 	}
 	if (col == nil) {
 		if (def != nil) {
@@ -429,30 +429,29 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) setGLColorFromSetting:(NSString *)setting defaultValue:(OOColor *)def alpha:(GLfloat)alpha
+- (void) cxx_setGLColorFromSetting:(const std::optional<std::string> &)setting defaultValue:(OOColor *)def alpha:(GLfloat)alpha
 {
 	GLfloat r,g,b,a;
-	OOColor *col = [self colorFromSetting:setting defaultValue:def];
+	OOColor *col = [self cxx_colorFromSetting:setting defaultValue:def];
 	[col getRed:&r green:&g blue:&b alpha:&a];
 
 	OOGL(glColor4f(r, g, b, a*alpha));
 }
 
 
-- (void) setGuiColorSettingFromKey:(NSString *)key color:(OOColor *)col
+- (void) cxx_setGuiColorSettingFromKey:(const std::string &)key color:(OOColor *)col
 {
-	NSMutableDictionary *guiCopy = [guiUserSettings mutableCopy];
+	// With no settings (nil), the mutable copy was nil too and nothing changed.
+	oo::PList::Dict *settings = guiUserSettings.getIf<oo::PList::Dict>();
+	if (settings == nullptr)  return;
 	if (col == nil)
 	{
-		[guiCopy removeObjectForKey:key];
-	} 
+		settings->erase(key);
+	}
 	else
 	{
-		[guiCopy setObject:col forKey:key];
+		(*settings)[key] = oo::PListObject(col);
 	}
-	[guiUserSettings release];
-	guiUserSettings = [guiCopy copy];
-	[guiCopy release];
 }
 
 
@@ -656,9 +655,9 @@ static BOOL _refreshStarChart = NO;
 	if (stops != NULL)  memmove(tabStops, stops, sizeof tabStops);
 }
 
-- (void) overrideTabs:(OOGUITabSettings)stops from:(NSString *)setting length:(NSUInteger)len
+- (void) cxx_overrideTabs:(OOGUITabSettings)stops from:(const std::string &)setting length:(NSUInteger)len
 {
-	NSArray *override = oo::PListView(guiUserSettings).get<NSArray *>(setting, nil);
+	const oo::PList *override = guiUserSettings.get<oo::PList::Array>(setting, nullptr);
 	NSUInteger i;
 	if (stops != NULL && override != nil)
 	{
@@ -668,7 +667,7 @@ static BOOL _refreshStarChart = NO;
 		}
 		for (i=0;i<len;i++) 
 		{
-			stops[i] = oo::PListView(override).at<NSUInteger>(i, stops[i]);
+			stops[i] = override->at<NSUInteger>(i, stops[i]);
 		}
 	}
 }
@@ -1346,7 +1345,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	
 	if (statusPage > 1)
 	{
-		[self setColor:[self colorFromSetting:kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow];
+		[self setColor:[self cxx_colorFromSetting:cxx_kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow];
 		[self setArray:[NSArray arrayWithObjects:DESC(@"gui-back"),  @"", @" <-- ",nil] forRow:firstRow];
 		[self setKey:GUI_KEY_OK forRow:firstRow];
 		firstY -= 16; // start 1 row down!
@@ -1358,7 +1357,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	}
 	if (statusPage < pageCount)
 	{
-		[self setColor:[self colorFromSetting:kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow + maxRows];
+		[self setColor:[self cxx_colorFromSetting:cxx_kGuiStatusEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:firstRow + maxRows];
 		[self setArray:[NSArray arrayWithObjects:DESC(@"gui-more"),  @"", @" --> ",nil] forRow:firstRow + maxRows];
 		[self setKey:GUI_KEY_OK forRow:firstRow + maxRows];
 		if (statusPage == 1)
@@ -1386,13 +1385,13 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		if (damaged) 
 		{
 			// Damaged items show up orange.
-			[self setGLColorFromSetting:@"status_equipment_damaged_color" defaultValue:[OOColor orangeColor] alpha:1.0];
+			[self cxx_setGLColorFromSetting:"status_equipment_damaged_color" defaultValue:[OOColor orangeColor] alpha:1.0];
 		} 
 		else /// add color selection here
 		{
 			OOColor				*dispCol = oo::PListView(info).at<id>(2);
 			// Normal items in default colour
-			[self setGLColorFromSetting:@"status_equipment_ok_color" defaultValue:dispCol alpha:1.0];
+			[self cxx_setGLColorFromSetting:"status_equipment_ok_color" defaultValue:dispCol alpha:1.0];
 		}
 		
 		if (i - start < itemsPerColumn)
@@ -1597,13 +1596,13 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		// draw the title
 		//
 		strsize = OORectFromString(title, 0.0f, 0.0f, titleCharacterSize).size;
-		[self setGLColorFromSetting:kGuiScreenTitleColor defaultValue:[OOColor redColor] alpha:alpha];
+		[self cxx_setGLColorFromSetting:cxx_kGuiScreenTitleColor defaultValue:[OOColor redColor] alpha:alpha];
 
 		OODrawString(title, x + pixel_row_center - strsize.width/2.0, y + size_in_pixels.height - pixel_title_size.height, z, titleCharacterSize);
 		
 		// draw a horizontal divider
 		//
-		[self setGLColorFromSetting:kGuiScreenDividerColor defaultValue:[OOColor colorWithWhite:0.75 alpha:1.0] alpha:alpha];
+		[self cxx_setGLColorFromSetting:cxx_kGuiScreenDividerColor defaultValue:[OOColor colorWithWhite:0.75 alpha:1.0] alpha:alpha];
 
 		OOGLBEGIN(GL_QUADS);
 			glVertex3f(x + 0,					y + size_in_pixels.height - pixel_title_size.height + 4,	z);
@@ -1643,14 +1642,14 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 				{
 					NSRect		block = OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
 					OOStopDrawingStrings();
-					[self setGLColorFromSetting:kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
 					OOGLBEGIN(GL_QUADS);
 						glVertex3f(block.origin.x,						block.origin.y,						z);
 						glVertex3f(block.origin.x + block.size.width,	block.origin.y,						z);
 						glVertex3f(block.origin.x + block.size.width,	block.origin.y + block.size.height,	z);
 						glVertex3f(block.origin.x,						block.origin.y + block.size.height,	z);
 					OOGLEND();
-					[self setGLColorFromSetting:kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
 					OOStartDrawingStrings();
 				}
 				OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize, NO);
@@ -1665,7 +1664,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 					tr.size.width = 0.5f * characterSize.width;
 					GLfloat g_alpha = 0.5f * (1.0f + (float)sin(6 * [UNIVERSE getTime]));
 					OOStopDrawingStrings();
-					[self setGLColorFromSetting:kGuiTextInputCursorColor defaultValue:[OOColor redColor] alpha:row_alpha[i]*g_alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiTextInputCursorColor defaultValue:[OOColor redColor] alpha:row_alpha[i]*g_alpha];
 					OOGLBEGIN(GL_QUADS);
 						glVertex3f(tr.origin.x,					tr.origin.y,					z);
 						glVertex3f(tr.origin.x + tr.size.width,	tr.origin.y,					z);
@@ -1733,14 +1732,14 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 					if (i == (unsigned)selectedRow)
 					{
 						OOStopDrawingStrings();
-						[self setGLColorFromSetting:kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
+						[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
 						OOGLBEGIN(GL_QUADS);
 							glVertex3f(block.origin.x,						block.origin.y,						z);
 							glVertex3f(block.origin.x + block.size.width,	block.origin.y,						z);
 							glVertex3f(block.origin.x + block.size.width,	block.origin.y + block.size.height,	z);
 							glVertex3f(block.origin.x,						block.origin.y + block.size.height,	z);
 						OOGLEND();
-						[self setGLColorFromSetting:kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
+						[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
 						OOStartDrawingStrings();
 					}
 					OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize,NO);
@@ -2025,7 +2024,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	{
 		// draw fuel range circle
 		OOGL(GLScaledLineWidth(2.0f));
-		[self setGLColorFromSetting:kGuiChartRangeColor defaultValue:[OOColor greenColor] alpha:alpha];
+		[self cxx_setGLColorFromSetting:cxx_kGuiChartRangeColor defaultValue:[OOColor greenColor] alpha:alpha];
 						
 		GLDrawOval(x + cu.x, y + cu.y, z, NSMakeSize((float)(fuel*hscale), 2*(float)(fuel*vscale)), 5);
 	}
@@ -2033,14 +2032,14 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	
 	// draw crosshairs over current location
 	//
-	[self setGLColorFromSetting:kGuiChartCrosshairColor defaultValue:[OOColor greenColor] alpha:alpha];
+	[self cxx_setGLColorFromSetting:cxx_kGuiChartCrosshairColor defaultValue:[OOColor greenColor] alpha:alpha];
 
 	[self drawCrossHairsWithSize:12/zoom+2 x:x + cu.x y:y + cu.y z:z];
 
 
 	// draw crosshairs over cursor
 	//
-	[self setGLColorFromSetting:kGuiChartCursorColor defaultValue:[OOColor redColor] alpha:alpha];
+	[self cxx_setGLColorFromSetting:cxx_kGuiChartCursorColor defaultValue:[OOColor redColor] alpha:alpha];
 	cu = NSMakePoint((float)(hscale*cursor_coordinates.x+hoffset),(float)(vscale*cursor_coordinates.y+voffset));
 	[self drawCrossHairsWithSize:7/zoom+2 x:x + cu.x y:y + cu.y z:z];
 
@@ -2066,7 +2065,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		}
 
 		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxy_id];
-		float blob_factor = oo::PListView(guiUserSettings).get<float>(kGuiChartCircleScale, 0.0017);
+		float blob_factor = guiUserSettings.get<float>(cxx_kGuiChartCircleScale, 0.0017);
 		float blob_size = (1.0f + blob_factor * oo::PListView(systemInfo).get<float>(@"radius"))/zoom;
 		if (blob_size < 0.5) blob_size = 0.5;
 
@@ -2095,7 +2094,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 				{
 					systemParameter = nearby_systems[i].eco;
 					GLfloat ce1 = 1.0f - 0.125f * systemParameter;
-					[self setGLColorFromSetting:[NSString stringWithFormat:kGuiChartEconomyUColor, systemParameter]
+					[self cxx_setGLColorFromSetting:oo::str::format(cxx_kGuiChartEconomyUColor, systemParameter)
 								   defaultValue:[OOColor colorWithRed:ce1 green:1.0f blue:0.0f alpha:1.0f] 
 										  alpha:1.0];
 				}
@@ -2109,7 +2108,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 				if (EXPECT(noNova))
 				{
 					systemParameter = nearby_systems[i].gov;
-					[self setGLColorFromSetting:[NSString stringWithFormat:kGuiChartGovernmentUColor, systemParameter]
+					[self cxx_setGLColorFromSetting:oo::str::format(cxx_kGuiChartGovernmentUColor, systemParameter)
 								   defaultValue:[OOColor colorWithRed:govcol[systemParameter*3] green:govcol[1+(systemParameter*3)] blue:govcol[2+(systemParameter*3)] alpha:1.0f] 
 										  alpha:1.0];
 				}
@@ -2159,10 +2158,10 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	
 	// draw found stars and captions
 	//
-	GLfloat systemNameScale = oo::PListView(guiUserSettings).get<float>(kGuiChartLabelScale, 1.0);
+	GLfloat systemNameScale = guiUserSettings.get<float>(cxx_kGuiChartLabelScale, 1.0);
 
 	OOGL(GLScaledLineWidth(1.5f));
-	[self setGLColorFromSetting:kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
+	[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
 
 	int n_matches = 0, foundIndex = -1;
 	
@@ -2211,9 +2210,9 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 					if (n_matches == 1) foundSystem = 0;
 					if (zoom > CHART_ZOOM_SHOW_LABELS && advancedNavArrayMode == OPTIMIZED_BY_NONE)
 					{
-						[self setGLColorFromSetting:kGuiChartMatchLabelColor defaultValue:[OOColor cyanColor] alpha:alpha];
+						[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchLabelColor defaultValue:[OOColor cyanColor] alpha:alpha];
 						OODrawString([UNIVERSE systemNameIndex:i] , x + star.x + 2.0, y + star.y - 10.0f, z, NSMakeSize(10*systemNameScale,10*systemNameScale));
-						[self setGLColorFromSetting:kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
+						[self cxx_setGLColorFromSetting:cxx_kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
 					}
 				}
 				else if (zoom > CHART_ZOOM_SHOW_LABELS)
@@ -2265,11 +2264,11 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 				d = distanceBetweenPlanetPositions(galaxy_coordinates.x, galaxy_coordinates.y, sys_coordinates.x, sys_coordinates.y);
 				if (d <= jumpRange)
 				{
-					[self setGLColorFromSetting:kGuiChartLabelReachableColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelReachableColor defaultValue:[OOColor yellowColor] alpha:alpha];
 				}
 				else
 				{
-					[self setGLColorFromSetting:kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
 
 				}
 
@@ -2279,7 +2278,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 			{
 				if (concealment[i] >= OO_SYSTEMCONCEALMENT_NODATA)
 				{
-					[self setGLColorFromSetting:kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
 					OODrawHilightedString(@"???", x + star.x + 2.0, y + star.y, z, chSize);
 				}
 				else
@@ -2307,11 +2306,11 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 				d = distanceBetweenPlanetPositions(galaxy_coordinates.x, galaxy_coordinates.y, sys_coordinates.x, sys_coordinates.y);
 				if (d <= jumpRange)
 				{
-					[self setGLColorFromSetting:kGuiChartLabelReachableColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelReachableColor defaultValue:[OOColor yellowColor] alpha:alpha];
 				}
 				else
 				{
-					[self setGLColorFromSetting:kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
 				
 				}
 
@@ -2321,7 +2320,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 			{
 				if (concealment[targetIdx] >= OO_SYSTEMCONCEALMENT_NODATA)
 				{
-					[self setGLColorFromSetting:kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
+					[self cxx_setGLColorFromSetting:cxx_kGuiChartLabelColor defaultValue:[OOColor yellowColor] alpha:alpha];
 					OODrawHilightedString(@"???", x + star.x + 2.0, y + star.y, z, chSize);
 				}
 				else
@@ -2336,7 +2335,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	tab_stops[0] = 0;
 	tab_stops[1] = 96;
 	tab_stops[2] = 288;
-	[self overrideTabs:tab_stops from:kGuiChartTraveltimeTabs length:3];
+	[self cxx_overrideTabs:tab_stops from:cxx_kGuiChartTraveltimeTabs length:3];
 	[self setTabStops:tab_stops];
 	NSString *targetName = [[UNIVERSE getSystemName:target] retain];
 
@@ -2375,7 +2374,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 
 	// draw planet info circle
 	OOGL(GLScaledLineWidth(2.0f));
-	[self setGLColorFromSetting: kGuiChartInfoMarkerColor defaultValue:[OOColor blueColor] alpha:alpha];
+	[self cxx_setGLColorFromSetting: cxx_kGuiChartInfoMarkerColor defaultValue:[OOColor blueColor] alpha:alpha];
 	cu = NSMakePoint((float)(hscale*info_system_coordinates.x+hoffset),(float)(vscale*info_system_coordinates.y+voffset));
 	GLDrawOval(x + cu.x, y + cu.y, z, NSMakeSize(6.0f/zoom+2.0f, 6.0f/zoom+2.0f), 5);
 
@@ -2383,7 +2382,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	OOGL(glDisable(GL_SCISSOR_TEST));
 
 	// Draw bottom divider
-	[self setGLColorFromSetting:kGuiScreenDividerColor defaultValue:[OOColor colorWithWhite:0.75 alpha:1.0] alpha:alpha];
+	[self cxx_setGLColorFromSetting:cxx_kGuiScreenDividerColor defaultValue:[OOColor colorWithWhite:0.75 alpha:1.0] alpha:alpha];
 	OOGLBEGIN(GL_QUADS);
 		glVertex3f(x + 0, (float)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height),	z);
 		glVertex3f(x + size_in_pixels.width, (GLfloat)(y + size_in_pixels.height - (textRow-1)*MAIN_GUI_ROW_HEIGHT - pixel_title_size.height), z);
@@ -2529,9 +2528,9 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	OOGalaxyID		g = [PLAYER galaxyNumber];
 	OOSystemID planetNumber = [PLAYER systemID];
 
-	OOColor *defaultConnectionColor = [self colorFromSetting:kGuiChartConnectionColor defaultValue:[OOColor colorWithWhite:0.25 alpha:1.0]];
-	OOColor *currentJumpColorStart = [self colorFromSetting:kGuiChartCurrentJumpStartColor defaultValue:[OOColor colorWithWhite:0.25 alpha:0.0]];
-	OOColor *currentJumpColorEnd = [self colorFromSetting:kGuiChartCurrentJumpEndColor defaultValue:[OOColor colorWithWhite:0.25 alpha:0.0]];
+	OOColor *defaultConnectionColor = [self cxx_colorFromSetting:cxx_kGuiChartConnectionColor defaultValue:[OOColor colorWithWhite:0.25 alpha:1.0]];
+	OOColor *currentJumpColorStart = [self cxx_colorFromSetting:cxx_kGuiChartCurrentJumpStartColor defaultValue:[OOColor colorWithWhite:0.25 alpha:0.0]];
+	OOColor *currentJumpColorEnd = [self cxx_colorFromSetting:cxx_kGuiChartCurrentJumpEndColor defaultValue:[OOColor colorWithWhite:0.25 alpha:0.0]];
 
 	OOColor *thisConnectionColor = nil;
 	OOColor *thatConnectionColor = nil;
@@ -2647,12 +2646,12 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		if (optimizeBy == OPTIMIZED_BY_JUMPS)
 		{
 			// route optimised by distance
-			[self setGLColorFromSetting:kGuiChartRouteShortColor defaultValue:[OOColor yellowColor] alpha:alpha];
+			[self cxx_setGLColorFromSetting:cxx_kGuiChartRouteShortColor defaultValue:[OOColor yellowColor] alpha:alpha];
 		}
 		else
 		{
 			// route optimised by time
-			[self setGLColorFromSetting:kGuiChartRouteQuickColor defaultValue:[OOColor cyanColor] alpha:alpha];
+			[self cxx_setGLColorFromSetting:cxx_kGuiChartRouteQuickColor defaultValue:[OOColor cyanColor] alpha:alpha];
 		}
 		OOSystemID loc;
 		for (i = 0; i < route_hops; i++)
