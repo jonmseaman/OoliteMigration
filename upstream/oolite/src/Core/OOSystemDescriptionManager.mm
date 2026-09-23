@@ -57,6 +57,21 @@ static NSString * const kOOScriptedChangeJoiner = @"~|~";
 
 static NSString *kOOSystemLayerProperty = @"layer";
 
+namespace {
+
+// A layer number read from data, as an OOSystemLayer. 0-3 are the layers themselves; anything
+// else (only a hand-edited saved game gives one) takes the rule -setProperties:inDescription:
+// applies to a bad layer number, OO_LAYER_OXP_PRIORITY, read as the enum's own unsigned
+// underlying type would read it, so a negative number is a large one. Clamping as an integer
+// means the enum is only ever given one of its own values; the bare cast this replaces was
+// undefined for any other value and then indexed past layers[] (bead oo-2eby).
+OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
+{
+	return (number > OO_LAYER_OXP_PRIORITY) ? OO_LAYER_OXP_PRIORITY : static_cast<OOSystemLayer>(number);
+}
+
+}
+
 @implementation OOSystemDescriptionManager
 
 - (id) init
@@ -251,7 +266,7 @@ static NSString *kOOSystemLayerProperty = @"layer";
 //				OOLog(@"importing",@"%@ -> %@",keyStr,[scripted objectForKey:keyStr]);
 				[self setProperty:oo::PListView(key).at<NSString *>(2)
 					 forSystemKey:oo::PListView(key).at<NSString *>(1)
-						 andLayer:(OOSystemLayer)oo::PListView(key).at<int>(3)
+						 andLayer:OOSystemLayerFromNumber(static_cast<unsigned int>(oo::PListView(key).at<int>(3)))
 						  toValue:[scripted objectForKey:keyStr]
 					 fromManifest:manifest];
 				// and doing this set stores it into the manager's copy
@@ -482,12 +497,13 @@ static NSString *kOOSystemLayerProperty = @"layer";
 
 - (void) setProperties:(NSDictionary *)properties inDescription:(OOSystemDescriptionEntry *)desc
 {
-	OOSystemLayer layer = (OOSystemLayer)oo::PListView(properties).get<unsigned int>(kOOSystemLayerProperty, OO_LAYER_OXP_STATIC);
-	if (layer > OO_LAYER_OXP_PRIORITY)
+	// Range-checked as the number it is read as, then converted: the enum only ever holds a layer.
+	unsigned int layerNumber = oo::PListView(properties).get<unsigned int>(kOOSystemLayerProperty, OO_LAYER_OXP_STATIC);
+	if (layerNumber > OO_LAYER_OXP_PRIORITY)
 	{
-		OOLog(@"system.description.error",@"Layer %u is not a valid layer number in system information.",layer);
-		layer = OO_LAYER_OXP_PRIORITY;
+		OOLog(@"system.description.error",@"Layer %u is not a valid layer number in system information.",layerNumber);
 	}
+	OOSystemLayer layer = OOSystemLayerFromNumber(layerNumber);
 	NSString *key = nil;
 	foreachkey (key, properties)
 	{
