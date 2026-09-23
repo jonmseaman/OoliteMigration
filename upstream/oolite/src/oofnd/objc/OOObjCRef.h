@@ -1,6 +1,6 @@
 /*	oofnd/objc/OOObjCRef.h
 	oo::ObjCRef<T *>: a strong reference to an Objective-C object that a C++ container can own
-	(the Foundation sweep, proposed ADR-0036). It is what an NSArray / NSSet / NSDictionary did
+	(the Foundation sweep, proposed ADR-0043). It is what an NSArray / NSSet / NSDictionary did
 	for the objects it held: retain on the way in, release on the way out.
 
 	    Objective-C (manual retain/release)            oofnd

@@ -566,7 +566,7 @@ inline std::vector<std::string> tokens(std::string_view s)
 // --- ordering -------------------------------------------------------------------------------
 
 // -compare: and -caseInsensitiveCompare: as orderings: < 0, 0, > 0 for NSOrderedAscending, Same,
-// Descending (the Foundation sweep, proposed ADR-0036; for sorting and ordered containers).
+// Descending (the Foundation sweep, proposed ADR-0043; for sorting and ordered containers).
 // Both walk the UTF-16 units as NSString does; the caseInsensitive form first maps each unit
 // through toLower() (GNUstep folds to LOWER case: "_" sorts before "B", captured). Exact for every
 // ASCII pair (tests/unit/oofnd/test_string_compare.cpp pins digests captured from GNUstep 1.31.1).
