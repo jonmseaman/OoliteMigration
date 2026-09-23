@@ -19,7 +19,9 @@
 	    Escapes: \a \b \t \r \n \v \f; \ followed by 1-3 octal digits; \U or \u followed by 0-4
 	    hex digits (so "\u4x" is U+0004 then 'x', and "\u" alone is U+0000); any other escaped
 	    character is itself. An octal or hex escape still open at the closing quote is DROPPED
-	    ("a\u12" is "a"). Lone surrogates survive (as WTF-8, see PList.hpp).
+	    ("a\u12" is "a"). Lone surrogates survive (as WTF-8, see PList.hpp). As in any NSString
+	    GNUstep builds from UTF-16 units, a leading U+FEFF is dropped and a leading U+FFFE drops
+	    itself and byte-swaps the rest ("\UFFFEx" is U+7800).
 	  * Line numbers in error messages count newlines, and a newline that terminates an octal or
 	    hex escape is counted twice (GNUstep rescans it); "char" is the byte offset + 1.
 	  * After the top-level item only whitespace and comments may follow.
@@ -389,7 +391,9 @@ private:
 					chars += c;
 				}
 			}
-			// An escape still open here is dropped, as GNUstep's length = k drops it.
+			// An escape still open here is dropped, as GNUstep's length = k drops it. The units
+			// then become an NSString through -initWithCharactersNoCopy:, BOM rules and all.
+			applyInitWithCharactersBOM(chars);
 			appendUtf16AsUtf8(text, chars.data(), chars.size());
 		}
 		pos_++;

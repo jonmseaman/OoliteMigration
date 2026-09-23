@@ -151,6 +151,22 @@ OO_TEST(case13_unterminatedAndEmptyInput)
 	OO_CHECK_EQ(parsed(""), failure("line 1 (char 1) - reached end of string"));
 }
 
+OO_TEST(byteOrderMarksInQuotedStrings)
+{
+	// The quoted string's units go through -initWithCharactersNoCopy:, which drops a leading
+	// U+FEFF and byte-swaps after a leading U+FFFE - escaped or raw UTF-8 alike.
+	OO_CHECK_EQ(parsed(R"("\UFEFFabc")"), "S\"abc\"");
+	OO_CHECK_EQ(parsed(R"("a\UFEFF")"), "S\"a\\uFEFF\"");
+	OO_CHECK_EQ(parsed(R"("\UFFFEx")"), "S\"\\u7800\"");
+	OO_CHECK_EQ(parsed(R"("\uFEFF")"), "S\"\"");
+	OO_CHECK_EQ(parsed(R"("x\uFFFE\uFEFFy")"), "S\"x\\uFFFE\\uFEFFy\"");
+	OO_CHECK_EQ(parsed("\"\xef\xbb\xbf" "b\""), "S\"b\"");
+	OO_CHECK_EQ(parsed("\"x\xef\xbb\xbf\""), "S\"x\\uFEFF\"");
+	OO_CHECK_EQ(parsed("\"\xef\xbf\xbey\""), "S\"\\u7900\"");
+	OO_CHECK_EQ(parsed(R"("\UFFFE\UFFFE\U2600")"), "S\"\\uFEFF&\"");
+	OO_CHECK_EQ(parsed(R"("\UFFFE\UFEFF\U4100")"), "S\"\\uFFFEA\"");
+}
+
 OO_TEST(case14_lineNumbers)
 {
 	OO_CHECK_EQ(parsed("\n\n\"x\" y"), failure("line 3 (char 7) - extra data after parsed string"));
