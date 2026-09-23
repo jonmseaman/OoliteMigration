@@ -11,6 +11,7 @@ oofnd_tests = [
     'test_filesystem',
     'test_resourcepaths',
     'test_cocoa_macros',
+    'test_foundation_types',
 ]
 
 foreach t : oofnd_tests
