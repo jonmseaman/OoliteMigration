@@ -946,7 +946,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 // FIXME: need material model.
 - (NSString *) textureFileName
 {
-	return [_planetDrawable textureName];
+	return oo::NSStringOrNil([_planetDrawable textureName]);
 }
 
 
