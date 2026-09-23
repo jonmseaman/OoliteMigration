@@ -11,6 +11,11 @@ read over the console socket. (Confirmed by comparison, not assumption: world_st
 fixture takes tools/gui-lock only because console.py deliberately does not - see console.py's
 module docstring - and this script has the identical "no synthetic input, no window click"
 profile golden_run.py's docstring gives as the reason it is exempt too.)
+
+NO DESKTOP LOCK, deliberately (bead oo-hub0, ADR-0046): this is the golden tier's dump runner,
+launched only by the golden stages (tools/tier-b.sh / tier-c.sh goldens, blessing) as part of the
+golden harness that CLAUDE.md exempts; tools/check-desktop-lock.sh lists it with golden_run.py.
+If it ever needs the foreground it must take tools/gui-lock like every other launcher.
 """
 
 import argparse

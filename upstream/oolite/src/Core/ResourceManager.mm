@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 
 #import "ResourceManager.h"
 #import "NSScannerOOExtensions.h"
-#import "NSMutableDictionaryOOExtensions.h"
 #import "NSStringOOExtensions.h"
 #import "OOSound.h"
 #import "OOCacheManager.h"
@@ -35,7 +34,6 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOLogOutputHandler.h"
 #import "NSFileManagerOOExtensions.h"
-#import "OldSchoolPropertyListWriting.h"
 #import "OOOXZManager.h"
 #import "unzip.h"
 #import "HeadUpDisplay.h"
@@ -46,12 +44,15 @@ MA 02110-1301, USA.
 #import "OOPListScript.h"
 
 #import "OOManifestProperties.h"
+#import "NSDataOOExtensions.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/PListParsing.hpp"
+#include "oofnd/PListWriting.hpp"
+#include "oofnd/Encoding.hpp"
 
 namespace {
 
@@ -63,9 +64,6 @@ constexpr const char *kOOCacheKeyModificationDates	= "modification dates";
 
 }	// namespace
 
-
-
-extern NSDictionary* ParseOOSScripts(NSString* script);
 
 
 @interface ResourceManager (OOPrivate)
@@ -113,8 +111,8 @@ std::map<std::string, oo::PList, std::less<>>	sOXPManifests;	// identifier -> ma
 std::optional<std::vector<std::string>>	sSearchPaths;	// empty and nullopt both mean "scan again" (was [sSearchPaths count] > 0)
 
 
-// A manifest string property as get<NSString *>(key) answered it: nullopt where that was nil
-// (missing, or neither a string nor a number).
+// A manifest string property as the string extractor (oo_stringForKey:) answered it: nullopt
+// where that was nil (missing, or neither a string nor a number).
 std::optional<std::string> ManifestString(const oo::PList &manifest, const std::string &key)
 {
 	const oo::PList *value = manifest.find(key);
@@ -166,8 +164,8 @@ void RemovePath(std::vector<std::string> &searchPaths, const std::optional<std::
 }
 
 
-// Whether +[NSString stringWithUTF8String:] would have accepted these bytes (it returns nil for
-// malformed UTF-8): they survive the round trip through UTF-16 unchanged.
+// Whether +stringWithUTF8String: would have accepted these bytes (it returns nil for malformed
+// UTF-8): they survive the round trip through UTF-16 unchanged.
 bool IsWellFormedUTF8(const std::string &bytes)
 {
 	return oo::utf16ToUtf8(oo::utf8ToUtf16(bytes)) == bytes;
@@ -186,7 +184,7 @@ bool PListIsEqual(const oo::PList *a, const oo::PList *b)
 }
 
 
-// The value if it is an array (at<NSArray *>), else nullptr.
+// The value if it is an array (the array extractor), else nullptr.
 const oo::PList *AsArray(const oo::PList *value)
 {
 	return (value != nullptr && value->isArray()) ? value : nullptr;
@@ -212,7 +210,7 @@ void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &v
 }
 
 
-// -[NSMutableDictionary(OOExtensions) mergeEntriesFromDictionary:]: a key only in other is added;
+// The dictionary category's -mergeEntriesFromDictionary: (OOExtensions): a key only in other is added;
 // two unequal dictionaries merge recursively, two unequal arrays concatenate; anything else is
 // replaced by other's value.
 void MergeEntries(oo::PList::Dict &self, const oo::PList::Dict &other)
@@ -260,7 +258,7 @@ const oo::PList *TextureListKey(const oo::PList *value)
 }
 
 
-// +[NSDictionary dictionaryWithContentsOfFile:]: the file's property list if it is a dictionary,
+// +dictionaryWithContentsOfFile: of the dictionary class: the file's property list if it is a dictionary,
 // else (missing, unreadable, unparsable, another kind) a null PList.
 oo::PList DictionaryWithContentsOfFile(const std::string &path)
 {
@@ -311,8 +309,12 @@ static BOOL				sAllMet = NO;
 
 // caches allow us to load any given file once only
 //
-static NSMutableDictionary *sSoundCache;
-static NSMutableDictionary *sStringCache;
+namespace {
+
+std::map<std::string, oo::ObjCRef<id>, std::less<>>	sSoundCache;
+std::map<std::string, std::string, std::less<>>		sStringCache;
+
+}	// namespace
 
 
 
@@ -2004,58 +2006,63 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
-	return [self pathForFileNamed:fileName inFolder:folderName cache:YES];
+	return [self cxx_pathForFileNamed:fileName inFolder:folderName cache:YES];
 }
 
 
 /* This is extremely expensive to call with useCache:NO */
-+ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache
 {
-	NSString		*result = nil;
-	NSString		*cacheKey = nil;
+	std::optional<std::string>	result;
+	std::string		cacheKey;
 	OOCacheManager	*cache = [OOCacheManager sharedCache];
-	NSString		*path = nil;
-	NSString		*filePath = nil;
+	std::string		filePath;
 	NSFileManager	*fmgr = nil;
-	
-	if (fileName == nil)  return nil;
-	
+
+	// (The resolved-paths cache is consulted whatever useCache says: the old test was of the cache
+	// manager, which always exists.) OOCacheManager is an unmigrated callee: it holds the path as a
+	// Foundation string.
 	if (cache)
 	{
-		if (folderName != nil)  cacheKey = [NSString stringWithFormat:@"%@/%@", folderName, fileName];
+		if (folderName.has_value())  cacheKey = *folderName + "/" + fileName;
 		else  cacheKey = fileName;
-		result = [cache objectForKey:cacheKey inCache:@"resolved paths"];
-		if (result != nil)  return result;
+		result = oo::OptionalString([cache cxx_objectForKey:cacheKey inCache:"resolved paths"]);
+		if (result.has_value())  return result;
 	}
-	
+
 	// Search for file
+	// (-oo_oxzFileExistsAtPath:, the NSFileManager category that also looks inside OXZs, has no
+	// oo::fs form yet: it answers through the bridged path.)
 	fmgr = [NSFileManager defaultManager];
 	// reverse object enumerator allows OXPs to override core
-	foreach (path, [oo::NSArrayFromStrings([ResourceManager cxx_paths]) reverseObjectEnumerator])
+	const std::vector<std::string> paths = [ResourceManager cxx_paths];
+	for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 	{
-		filePath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-		if ([fmgr oo_oxzFileExistsAtPath:filePath])
+		const std::string &path = *pathIt;
+		// appending a nil folder left the path as it was
+		filePath = oo::str::appendingPathComponent(folderName.has_value() ? oo::str::appendingPathComponent(path, *folderName) : path, fileName);
+		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
 		{
 			result = filePath;
 			break;
 		}
-		
-		filePath = [path stringByAppendingPathComponent:fileName];
-		if ([fmgr oo_oxzFileExistsAtPath:filePath])
+
+		filePath = oo::str::appendingPathComponent(path, fileName);
+		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
 		{
 			result = filePath;
 			break;
 		}
 	}
-	
-	if (result != nil)
+
+	if (result.has_value())
 	{
-		OOLog(@"resourceManager.foundFile", @"Found %@/%@ at %@", folderName, fileName, filePath);
+		OOLog(@"resourceManager.foundFile", @"Found %@/%@ at %@", oo::NSStringOrNil(folderName), oo::NSStringFrom(fileName), oo::NSStringFrom(filePath));
 		if (useCache)
 		{
-			[cache setObject:result forKey:cacheKey inCache:@"resolved paths"];
+			[cache cxx_setObject:oo::NSStringFrom(*result) forKey:cacheKey inCache:"resolved paths"];
 		}
 	}
 	return result;
@@ -2064,57 +2071,52 @@ static NSMutableDictionary *sStringCache;
 
 /* use extreme caution in calling with usePathCache:NO - this can be
  * an extremely expensive operation */
-+ (id) retrieveFileNamed:(NSString *)fileName
-				inFolder:(NSString *)folderName
-				   cache:(NSMutableDictionary **)ioCache
-					 key:(NSString *)key
++ (id) retrieveFileNamed:(const std::string &)fileName
+				inFolder:(const std::optional<std::string> &)folderName
+				   cache:(std::map<std::string, oo::ObjCRef<id>, std::less<>> *)ioCache
+					 key:(std::optional<std::string>)key
 				   class:(Class)klass
 			usePathCache:(BOOL)useCache
 {
 	id				result = nil;
-	NSString		*path = nil;
-	
+
 	if (ioCache)
 	{
-		if (key == nil)  key = [NSString stringWithFormat:@"%@:%@", folderName, fileName];
-		if (*ioCache != nil)
-		{
-			// return the cached object, if any
-			result = [*ioCache objectForKey:key];
-			if (result)  return result;
-		}
+		if (!key.has_value())  key = oo::str::format("%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str());
+		// return the cached object, if any
+		auto cached = ioCache->find(*key);
+		if (cached != ioCache->end())  return cached->second.get();
 	}
-	
-	path = [self pathForFileNamed:fileName inFolder:folderName cache:useCache];
-	if (path != nil)  result = [[[klass alloc] initWithContentsOfFile:path] autorelease];
-	
+
+	const std::optional<std::string> path = [self cxx_pathForFileNamed:fileName inFolder:folderName cache:useCache];
+	if (path.has_value())  result = [[[klass alloc] initWithContentsOfFile:oo::NSStringFrom(*path)] autorelease];
+
 	if (result != nil && ioCache != NULL)
 	{
-		if (*ioCache == nil)  *ioCache = [[NSMutableDictionary alloc] init];
-		[*ioCache setObject:result forKey:key];
+		(*ioCache)[*key] = oo::ObjCRef<id>(result);
 	}
-	
+
 	return result;
 }
 
 
-+ (OOMusic *) ooMusicNamed:(NSString *)fileName inFolder:(NSString *)folderName
++ (OOMusic *) cxx_ooMusicNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
 	return [self retrieveFileNamed:fileName
 						  inFolder:folderName
 							 cache:NULL	// Don't cache music objects; minimizing latency isn't really important.
-							   key:[NSString stringWithFormat:@"OOMusic:%@:%@", folderName, fileName]
+							   key:oo::str::format("OOMusic:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str())
 							 class:[OOMusic class]
 					  usePathCache:YES];
 }
 
 
-+ (OOSound *) ooSoundNamed:(NSString *)fileName inFolder:(NSString *)folderName
++ (OOSound *) cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
 	return [self retrieveFileNamed:fileName
 						  inFolder:folderName
 							 cache:&sSoundCache
-							   key:[NSString stringWithFormat:@"OOSound:%@:%@", folderName, fileName]
+							   key:oo::str::format("OOSound:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str())
 							 class:[OOSound class]
 					  usePathCache:YES];
 }
@@ -2126,37 +2128,34 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-// The twin exists from oo-3rb.101 (the loaders' header line shares "FromFilesNamed"); its body,
-// sStringCache and the path lookup convert in oo-3rb.103.
-+ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileNameString inFolder:(const std::optional<std::string> &)folderNameString cache:(BOOL)useCache
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache
 {
-	id				result = nil;
-	NSString		*path = nil;
-	NSString		*key = nil;
-	NSString		*fileName = oo::NSStringFrom(fileNameString);
-	NSString		*folderName = oo::NSStringOrNil(folderNameString);
-	
+	std::optional<std::string>	result;
+	std::string		key;
+
 	if (useCache)
 	{
-		key = [NSString stringWithFormat:@"%@:%@", folderName, fileName];
-		if (sStringCache != nil)
-		{
-			// return the cached object, if any
-			result = [sStringCache objectForKey:key];
-			if (result)  return oo::OptionalString(result);
-		}
+		key = oo::str::format("%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str());
+		// return the cached object, if any
+		auto cached = sStringCache.find(key);
+		if (cached != sStringCache.end())  return cached->second;
 	}
-	
-	path = [self pathForFileNamed:fileName inFolder:folderName cache:YES];
-	if (path != nil)  result = [NSString stringWithContentsOfUnicodeFile:path];
-	
-	if (result != nil && useCache)
+
+	const std::optional<std::string> path = [self cxx_pathForFileNamed:fileName inFolder:folderName cache:YES];
+	if (path.has_value())
 	{
-		if (sStringCache == nil)  sStringCache = [[NSMutableDictionary alloc] init];
-		[sStringCache setObject:result forKey:key];
+		// +stringWithContentsOfUnicodeFile: (NSStringOOExtensions): the file's bytes, read as it read
+		// them (through the OXZ reader), decoded as it decoded them.
+		const std::optional<oo::Data> data = OODataFromOXZFile(*path);
+		if (data.has_value())  result = oo::str::decodeUnicodeText(data->stringView());
 	}
-	
-	return oo::OptionalString(result);
+
+	if (result.has_value() && useCache)
+	{
+		sStringCache[key] = *result;
+	}
+
+	return result;
 }
 
 
@@ -2236,48 +2235,49 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) writeDiagnosticData:(NSData *)data toFileNamed:(NSString *)name
++ (BOOL) cxx_writeDiagnosticData:(const oo::Data &)data toFileNamed:(const std::string &)name
 {
-	if (data == nil || name == nil)  return NO;
-	
-	NSString *directory = oo::NSStringOrNil([self cxx_diagnosticFileLocation]);
-	if (directory == nil)  return NO;
-	
-	NSArray *nameComponents = [name componentsSeparatedByString:@"/"];
-	NSUInteger count = [nameComponents count];
+	std::optional<std::string> directory = [self cxx_diagnosticFileLocation];
+	if (!directory.has_value())  return NO;
+
+	std::string fileName = name;
+	const std::vector<std::string> nameComponents = oo::str::split(name, "/");
+	std::size_t count = nameComponents.size();
 	if (count > 1)
 	{
-		name = [nameComponents lastObject];
-		
-		for (NSUInteger i = 0; i < count - 1; i++)
+		fileName = nameComponents.back();
+
+		for (std::size_t i = 0; i < count - 1; i++)
 		{
-			NSString *component = [nameComponents objectAtIndex:i];
-			if ([component hasPrefix:@"."])
+			std::string component = nameComponents[i];
+			if (oo::str::hasPrefix(component, "."))
 			{
-				component = [@"!" stringByAppendingString:[component substringFromIndex:1]];
+				component = "!" + component.substr(1);
 			}
-			directory = [directory stringByAppendingPathComponent:component];
-			[[NSFileManager defaultManager] oo_createDirectoryAtPath:directory attributes:nil];
+			// appending an empty component left the directory as it was
+			if (!component.empty())  *directory = oo::str::appendingPathComponent(*directory, component);
+			(void)oo::fs::createDirectories(oo::fs::pathFromUTF8(*directory));
 		}
 	}
-	
-	return [data writeToFile:[directory stringByAppendingPathComponent:name] atomically:YES];
+
+	return oo::fs::writeFile(oo::fs::pathFromUTF8(oo::str::appendingPathComponent(*directory, fileName)), data, oo::fs::WriteMode::atomic).has_value();
 }
 
 
-+ (BOOL) writeDiagnosticString:(NSString *)string toFileNamed:(NSString *)name
++ (BOOL) cxx_writeDiagnosticString:(const std::string &)string toFileNamed:(const std::string &)name
 {
-	return [self writeDiagnosticData:[string dataUsingEncoding:NSUTF8StringEncoding] toFileNamed:name];
+	return [self cxx_writeDiagnosticData:oo::Data::fromString(string) toFileNamed:name];
 }
 
 
-+ (BOOL) writeDiagnosticPList:(id)plist toFileNamed:(NSString *)name
++ (BOOL) cxx_writeDiagnosticPList:(id)plist toFileNamed:(const std::string &)name
 {
-	NSData *data = [plist oldSchoolPListFormatWithErrorDescription:NULL];
-	if (data == nil)  [NSPropertyListSerialization dataFromPropertyList:plist format:NSPropertyListXMLFormat_v1_0 errorDescription:NULL];
-	if (data == nil)  return NO;
-	
-	return [self writeDiagnosticData:data toFileNamed:name];
+	// The old-school writer (oo::writeOldStylePList, the port of OldSchoolPropertyListWriting). Its
+	// XML fallback's result was never used, so a plist it cannot write is not written.
+	const auto data = oo::writeOldStylePList(oo::PListFrom(plist));
+	if (!data.has_value())  return NO;
+
+	return [self cxx_writeDiagnosticData:*data toFileNamed:name];
 }
 
 
@@ -2287,28 +2287,27 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL)directoryExists:(NSString *)inPath create:(BOOL)inCreate
++ (BOOL)directoryExists:(const std::string &)inPath create:(BOOL)inCreate
 {
-	BOOL				exists, directory;
-	NSFileManager		*fmgr =  [NSFileManager defaultManager];
-	
-	exists = [fmgr fileExistsAtPath:inPath isDirectory:&directory];
-	
+	const oo::fs::FileType	type = oo::fs::fileType(oo::fs::pathFromUTF8(inPath));
+	const BOOL				exists = type != oo::fs::FileType::none;
+	const BOOL				directory = type == oo::fs::FileType::directory;
+
 	if (exists && !directory)
 	{
-		OOLog(@"resourceManager.write.buildPath.failed", @"Expected %@ to be a folder, but it is a file.", inPath);
+		OOLog(@"resourceManager.write.buildPath.failed", @"Expected %@ to be a folder, but it is a file.", oo::NSStringFrom(inPath));
 		return NO;
 	}
 	if (!exists)
 	{
 		if (!inCreate) return NO;
-		if (![fmgr oo_createDirectoryAtPath:inPath attributes:nil])
+		if (!oo::fs::createDirectories(oo::fs::pathFromUTF8(inPath)))
 		{
-			OOLog(@"resourceManager.write.buildPath.failed", @"Could not create folder %@.", inPath);
+			OOLog(@"resourceManager.write.buildPath.failed", @"Could not create folder %@.", oo::NSStringFrom(inPath));
 			return NO;
 		}
 	}
-	
+
 	return YES;
 }
 
@@ -2342,10 +2341,8 @@ static NSMutableDictionary *sStringCache;
 
 + (void) clearCaches
 {
-	[sSoundCache release];
-	sSoundCache = nil;
-	[sStringCache release];
-	sStringCache = nil;
+	sSoundCache.clear();
+	sStringCache.clear();
 }
 
 @end
