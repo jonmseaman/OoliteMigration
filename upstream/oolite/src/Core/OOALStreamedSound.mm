@@ -28,6 +28,7 @@ SOFTWARE.
 
 #import "OOALStreamedSound.h"
 #import "OOALSoundDecoder.h"
+#import "OOFoundationBridge.h"
 
 @implementation OOALStreamedSound
 
@@ -40,9 +41,9 @@ SOFTWARE.
 	[super dealloc];
 }
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	return _name;
+	return oo::NSStringOrNil(_name);
 }
 
 
@@ -62,7 +63,7 @@ SOFTWARE.
 	
 	if (OK)
 	{
-		_name = [[inDecoder name] copy];
+		_name = oo::OptionalString([inDecoder name]);
 		_sampleRate = [inDecoder sampleRate];
 		_stereo = [inDecoder isStereo];
 		_reachedEnd = NO;
