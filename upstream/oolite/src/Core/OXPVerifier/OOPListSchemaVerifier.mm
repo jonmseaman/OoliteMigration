@@ -498,7 +498,7 @@ VERIFY_LEAF_PROTO(Quaternion);
 	}
 	@catch (OOException *exception)
 	{
-		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf(oo::NSStringFrom([exception name])).c_str(), oo::DescriptionOf(oo::NSStringFrom([exception reason])).c_str(), oo::DescriptionOf(name).c_str(), KeyPathToString(keyPath).c_str());
+		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf(oo::NSStringFrom([exception name])).c_str(), oo::DescriptionOf(oo::NSStringFrom([exception reason])).c_str(), name.c_str(), KeyPathToString(keyPath).c_str());
 	}
 	@catch (OOFoundationException *exception)
 	{
