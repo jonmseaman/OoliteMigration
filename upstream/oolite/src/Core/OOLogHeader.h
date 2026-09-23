@@ -36,5 +36,5 @@ SOFTWARE.
 
 void OOPrintLogHeader(void);
 
-// "<system> (<cpu> <variant>)", as JavaScript's console.platformDescription shows it.
+// "<system> (<cpu><variant>)", as the log header prints it; console.platformDescription.
 std::string OOPlatformDescription(void);

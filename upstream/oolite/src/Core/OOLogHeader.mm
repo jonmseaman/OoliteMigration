@@ -34,9 +34,9 @@ SOFTWARE.
 #import "OOStellarBody.h"
 #import "OOJavaScriptEngine.h"
 #import "OOSound.h"
+#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/String.hpp"
-#import "OOFoundationBridge.h"
 
 
 namespace {
@@ -159,7 +159,7 @@ void OOPrintLogHeader(void)
 	#if (OOLITE_MAC_OS_X || !OOLITE_WINDOWS)
 		std::string systemString = oo::str::format(OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str());
 	#elif OOLITE_WINDOWS
-		std::string systemString = oo::str::format(OS_TYPE_STRING " %s %s-bit", oo::DescriptionOf(operatingSystemFullVersion()).c_str(), is64BitSystem() ? "64":"32");
+		std::string systemString = oo::str::format(OS_TYPE_STRING " %s %s-bit", operatingSystemFullVersion().c_str(), is64BitSystem() ? "64":"32");
 	#else
 		#define systemString std::string(OS_TYPE_STRING)
 	#endif
@@ -191,15 +191,17 @@ void OOPrintLogHeader(void)
 }
 
 
+// Foundation sweep (proposed ADR-0043, bead oo-vnsl): a std::string, for OOJSConsole's
+// console.platformDescription; the same "<system> (<cpu><variant>)" text.
 std::string OOPlatformDescription(void)
 {
 	#if OOLITE_MAC_OS_X
-		std::string systemString = oo::str::format(OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str());
+		const std::string platformSystem = OS_TYPE_STRING " " + oo::process::operatingSystemVersionString();
 	#else
-		#define systemString std::string(OS_TYPE_STRING)
+		const std::string platformSystem = OS_TYPE_STRING;
 	#endif
 
-	return oo::str::format("%s (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ")", systemString.c_str());
+	return platformSystem + " (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ")";
 }
 
 
@@ -361,7 +363,7 @@ namespace {
 std::string AdditionalLogHeaderInfo(void)
 {
 	unsigned cpuCount = OOCPUCount();
-	const std::string cpuDescription = oo::DescriptionOf(OOCPUDescription());	// "(null)" for nil, as "%@" printed
+	const std::string cpuDescription = OOCPUDescription();
 	OOMemoryStatus systemMemoryStatus = OOSystemMemoryStatus();
 	
 	return oo::str::format("%s %u processor%s detected. System RAM: %llu MB (free: %llu MB).", cpuDescription.c_str(), cpuCount, cpuCount != 1 ? "s" : "", systemMemoryStatus.ooPhysicalMemory, systemMemoryStatus.ooAvailableMemory);

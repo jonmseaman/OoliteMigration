@@ -44,6 +44,8 @@ SOFTWARE.
 #import "OOLogging.h"
 #import "OODebugFlags.h"
 #import "OOStringParsing.h"
+#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 
 NSString * const kOOVertexShaderSourceKey		= @"_oo_vertex_shader_source";
@@ -180,13 +182,13 @@ static NSString *MacrosToString(NSDictionary *macros);
 			NSString *cacheKey = [NSString stringWithFormat:@"$VERTEX:\n%@\n\n$FRAGMENT:\n%@\n\n$MACROS:\n%@\n", vsCacheKey, fsCacheKey, macroString];
 			
 			OOLogIndent();
-			shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:vertexShader
-															fragmentShader:fragmentShader
-														  vertexShaderName:vsName
-														fragmentShaderName:fsName
-																	prefix:macroString
-														 attributeBindings:attributeBindings
-																  cacheKey:cacheKey];
+			shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:oo::OptionalString(vertexShader)
+															fragmentShader:oo::OptionalString(fragmentShader)
+														  vertexShaderName:oo::OptionalString(vsName)
+														fragmentShaderName:oo::OptionalString(fsName)
+																	prefix:oo::OptionalString(macroString)
+														 attributeBindings:oo::PListFrom(attributeBindings)
+																  cacheKey:oo::OptionalString(cacheKey)];
 			OOLogOutdent();
 
 // no reduced complexity mode now
@@ -207,13 +209,13 @@ static NSString *MacrosToString(NSDictionary *macros);
 					cacheKey = [cacheKey stringByAppendingString:@"\n$SIMPLIFIED FALLBACK\n"];
 					
 					OOLogIndent();
-					shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:vertexShader
-																	fragmentShader:fragmentShader
-																  vertexShaderName:vsName
-																fragmentShaderName:fsName
-																			prefix:macroString
-																 attributeBindings:attributeBindings
-																		  cacheKey:cacheKey];
+					shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:oo::OptionalString(vertexShader)
+																	fragmentShader:oo::OptionalString(fragmentShader)
+																  vertexShaderName:oo::OptionalString(vsName)
+																fragmentShaderName:oo::OptionalString(fsName)
+																			prefix:oo::OptionalString(macroString)
+																 attributeBindings:oo::PListFrom(attributeBindings)
+																		  cacheKey:oo::OptionalString(cacheKey)];
 					OOLogOutdent();
 					
 					if (shaderProgram != nil)
@@ -550,7 +552,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 		}
 		else if ([definition isKindOfClass:[NSString class]])
 		{
-			if (OOIsNumberLiteral(definition, NO))
+			if (OOIsNumberLiteral(oo::StdString(definition), NO))
 			{
 				value = definition;
 				type = @"float";

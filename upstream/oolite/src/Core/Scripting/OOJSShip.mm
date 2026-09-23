@@ -45,7 +45,7 @@ MA 02110-1301, USA.
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMesh.h"
 #import "OOConstToString.h"
 #import "OOEntityFilterPredicate.h"
@@ -3345,12 +3345,12 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	NSDictionary 			*shipDict = [thisEnt shipInfoDictionary];
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:[shipDict oo_stringForKey:@"model"]
+	OOMesh *mesh = [OOMesh meshWithName:oo::PListView(shipDict).get<NSString *>(@"model")
 							   cacheKey:nil
 					 materialDictionary:materials
 					  shadersDictionary:shaders
-								 smooth:[shipDict oo_boolForKey:@"smooth" defaultValue:NO]
-						   shaderMacros:[[ResourceManager materialDefaults] oo_dictionaryForKey:@"ship-prefix-macros"]
+								 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
+						   shaderMacros:oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros")
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)
