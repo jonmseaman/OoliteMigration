@@ -28,6 +28,7 @@ SOFTWARE.
 
 #import "OOALBufferedSound.h"
 #import "OOALSoundDecoder.h"
+#import "OOFoundationBridge.h"
 
 @implementation OOALBufferedSound
 
@@ -35,14 +36,13 @@ SOFTWARE.
 {
 	free(_buffer);
 	_buffer = NULL;
-	DESTROY(_name);
 	
 	[super dealloc];
 }
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	return _name;
+	return oo::NSStringOrNil(_name);
 }
 
 
@@ -62,7 +62,7 @@ SOFTWARE.
 	
 	if (OK)
 	{
-		_name = [[inDecoder name] copy];
+		_name = oo::OptionalString([inDecoder name]);
 		_sampleRate = [inDecoder sampleRate];
 		OK = [inDecoder readCreatingBuffer:&_buffer withFrameCount:&_size];
 		_stereo = [inDecoder isStereo];
