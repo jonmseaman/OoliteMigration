@@ -143,8 +143,6 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 			   alpha:(float)nebulaAlpha
 			   scale:(float)nebulaScale
 {
-	NSAutoreleasePool		*pool = nil;
-	
 	if (!sInited)
 	{
 		sInited = YES;
@@ -161,19 +159,20 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 	_starCount = starCount;
 	_nebulaCount = nebulaCount;
 	
-	pool = [[NSAutoreleasePool alloc] init];
-	[self setUpStarsWithColor1:color1 color2:color2];
-	
-	if (![UNIVERSE reducedDetail])
+	@autoreleasepool
 	{
-		[self setUpNebulaeWithColor1:color3
-							  color2:color4
-					   clusterFactor:nebulaClusterFactor
-						nebulaHueFix:nebulaHueFix
-							   alpha:nebulaAlpha
-							   scale:nebulaScale];
+		[self setUpStarsWithColor1:color1 color2:color2];
+	
+		if (![UNIVERSE reducedDetail])
+		{
+			[self setUpNebulaeWithColor1:color3
+								  color2:color4
+						   clusterFactor:nebulaClusterFactor
+							nebulaHueFix:nebulaHueFix
+								   alpha:nebulaAlpha
+								   scale:nebulaScale];
+		}
 	}
-	[pool release];
 	
 	[[OOGraphicsResetManager sharedManager] registerClient:self];
 	
