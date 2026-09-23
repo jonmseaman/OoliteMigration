@@ -58,11 +58,13 @@ static OOSoundSource		*sAfterburnerSources[2];
 
 // Weapon identifier -> sound key (empty: no sound key, as @"" was).
 using OOWeaponSoundMap = std::map<std::string, std::string, std::less<>>;
-static OOWeaponSoundMap		weaponShotMiss;
-static OOWeaponSoundMap		weaponShotHit;
-static OOWeaponSoundMap		weaponShieldHit;
-static OOWeaponSoundMap		weaponUnshieldedHit;
-static OOWeaponSoundMap		weaponLaunched;
+namespace {
+OOWeaponSoundMap		weaponShotMiss;
+OOWeaponSoundMap		weaponShotHit;
+OOWeaponSoundMap		weaponShieldHit;
+OOWeaponSoundMap		weaponUnshieldedHit;
+OOWeaponSoundMap		weaponLaunched;
+}	// namespace
 
 static const Vector	 kInterfaceBeepPosition		= { 0.0f, -0.2f, 0.5f };
 static const Vector	 kInterfaceWarningPosition	= { 0.0f, -0.2f, 0.4f };
@@ -134,25 +136,25 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 	unshieldedHitSounds["EQ_WEAPON_PLASMA_SHOT"] = "[player-direct-hit]";
 	// grab a local copy of the sound identifiers for weapons to make the process of looking up a sound ref as fast as possible
 	// a missing sound identifier is stored as an empty key
-	#define OO_ASSIGN_SOUNDSTR_TO_SOUNDS(soundStr, sounds) do { \
-		sounds[oo::StdString([eqType identifier])] = oo::StdString([eqType soundStr]); \
-	} while(0)
+	auto assignSound = [](OOWeaponSoundMap &sounds, OOEquipmentType *eqType, std::string soundName) {
+		sounds[oo::StdString([eqType identifier])] = std::move(soundName);
+	};
 
 	for (const oo::ObjCRef<OOEquipmentType *> &eqTypeRef : oo::ObjCRefsFrom<OOEquipmentType *>([OOEquipmentType allEquipmentTypes]))
 	{
 		OOEquipmentType *eqType = eqTypeRef.get();
 		if (oo::str::hasPrefix(oo::StdString([eqType identifier]), "EQ_WEAPON"))
 		{
-			OO_ASSIGN_SOUNDSTR_TO_SOUNDS(fxShotMissName, shotMissSounds);
-			OO_ASSIGN_SOUNDSTR_TO_SOUNDS(fxShotHitName, shotHitSounds);
-			OO_ASSIGN_SOUNDSTR_TO_SOUNDS(fxShieldHitName, shieldHitSounds);
-			OO_ASSIGN_SOUNDSTR_TO_SOUNDS(fxUnshieldedHitName, unshieldedHitSounds);
+			assignSound(shotMissSounds, eqType, oo::StdString([eqType fxShotMissName]));
+			assignSound(shotHitSounds, eqType, oo::StdString([eqType fxShotHitName]));
+			assignSound(shieldHitSounds, eqType, oo::StdString([eqType fxShieldHitName]));
+			assignSound(unshieldedHitSounds, eqType, oo::StdString([eqType fxUnshieldedHitName]));
 		}
 		if ([eqType isMissileOrMine])
 		{
-			OO_ASSIGN_SOUNDSTR_TO_SOUNDS(fxWeaponLaunchedName, weaponLaunchedSounds);
-			OO_ASSIGN_SOUNDSTR_TO_SOUNDS(fxShieldHitName, shieldHitSounds);
-			OO_ASSIGN_SOUNDSTR_TO_SOUNDS(fxUnshieldedHitName, unshieldedHitSounds);
+			assignSound(weaponLaunchedSounds, eqType, oo::StdString([eqType fxWeaponLaunchedName]));
+			assignSound(shieldHitSounds, eqType, oo::StdString([eqType fxShieldHitName]));
+			assignSound(unshieldedHitSounds, eqType, oo::StdString([eqType fxUnshieldedHitName]));
 		}
 	}
 
