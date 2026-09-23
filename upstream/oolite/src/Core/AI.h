@@ -56,10 +56,10 @@ MA 02110-1301, USA.
 }
 
 + (AI *) currentlyRunningAI;
-+ (NSString *) currentlyRunningAIDescription;
++ (std::optional<std::string>) cxx_currentlyRunningAIDescription;
 
 - (NSString *) name;
-- (NSString *) associatedJS;
+- (std::optional<std::string>) cxx_associatedJS;
 - (NSString *) state;
 
 - (void) cxx_setStateMachine:(const std::string &)smName withJSScript:(const std::string &)script;
@@ -84,15 +84,16 @@ MA 02110-1301, USA.
 
 - (NSUInteger) stackDepth;
 
-// Immediately handle a message. This is the core dispatcher. DebugContext is a textual hint for diagnostics.
-- (void) reactToMessage:(NSString *) message context:(NSString *)debugContext;
+// Immediately handle a message. This is the core dispatcher. DebugContext is a textual hint for
+// diagnostics (std::nullopt where the Foundation version took nil).
+- (void) cxx_reactToMessage:(const std::string &) message context:(const std::optional<std::string> &)debugContext;
 
-- (void) takeAction:(NSString *) action;
+- (void) cxx_takeAction:(const std::string &) action;
 
 - (void) think;
 
 - (void) message:(NSString *) ms;
-- (void) dropMessage:(NSString *) ms;
+- (void) cxx_dropMessage:(const std::string &) ms;
 - (NSSet *) pendingMessages;
 - (void) debugDumpPendingMessages;
 
