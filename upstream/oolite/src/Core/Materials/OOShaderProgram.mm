@@ -35,7 +35,7 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOMacroOpenGL.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OODebugFlags.h"
 #import "Universe.h"
 #import "MyOpenGLView.h"

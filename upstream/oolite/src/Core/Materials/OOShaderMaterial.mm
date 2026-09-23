@@ -46,6 +46,21 @@ SOFTWARE.
 #import "OOStringParsing.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/PListGet.hpp"
+#include "oofnd/String.hpp"
+
+namespace {
+
+// -[NSDictionary oo_stringForKey:] as the old code read it: a string, or a number's -stringValue;
+// nullopt (nil) for anything else or a missing key.
+std::optional<std::string> StringForKey(const oo::PList &dictionary, std::string_view key)
+{
+	const oo::PList *entry = dictionary.find(key);
+	if (entry == nullptr || !(entry->isString() || entry->isNumber()))  return std::nullopt;
+	return dictionary.get<std::string>(key);
+}
+
+} // namespace
 
 
 NSString * const kOOVertexShaderSourceKey		= @"_oo_vertex_shader_source";
@@ -243,7 +258,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 	if (OK)
 	{
 		// Load uniforms and textures, which are a flavour of uniform for our purpose.
-		NSDictionary *uniformDefs = oo::PListView(configuration).get<NSDictionary *>(kOOUniformsKey);
+		NSDictionary *uniformDefs = oo::PListView(configuration).get<NSDictionary *>(kOOUniformsKey);	// until chunk 4
 		
 		NSArray *textureArray = oo::PListView(configuration).get<NSArray *>(kOOTextureObjectsKey);
 		if (textureArray == nil)
@@ -255,7 +270,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 			}
 		}
 		
-		[self addUniformsFromDictionary:uniformDefs withBindingTarget:target];
+		[self addUniformsFromDictionary:oo::PListFrom(uniformDefs) withBindingTarget:target];
 		[self addTexturesFromArray:textureArray unitCount:textureUnits];
 	}
 	
@@ -420,19 +435,19 @@ static NSString *MacrosToString(NSDictionary *macros);
 }
 
 
-- (void)setUniform:(const std::string &)uniformName vectorObjectValue:(id)value
+- (void)setUniform:(const std::string &)uniformName vectorObjectValue:(const oo::PList &)value
 {
 	GLfloat vecArray[4];
-	if ([value isKindOfClass:[NSArray class]] && [value count] == 4)
+	if (value.isArray() && value.count() == 4)
 	{
 		for (unsigned i = 0; i < 4; i++)
 		{
-			vecArray[i] = OOFloatFromObject([value objectAtIndex:i], 0.0f);
+			vecArray[i] = value.at<float>(i, 0.0f);	// OOFloatFromObject's conversion
 		}
 	}
 	else
 	{
-		Vector vec = OOVectorFromObject(value, kZeroVector);
+		Vector vec = OOVectorFromObject(oo::ObjectFromPList(value), kZeroVector);
 		vecArray[0] = vec.x;
 		vecArray[1] = vec.y;
 		vecArray[2] = vec.z;
@@ -476,22 +491,19 @@ static NSString *MacrosToString(NSDictionary *macros);
 }
 
 
--(void)addUniformsFromDictionary:(NSDictionary *)uniformDefs withBindingTarget:(id<OOWeakReferenceSupport>)target
+-(void)addUniformsFromDictionary:(const oo::PList &)uniformDefs withBindingTarget:(id<OOWeakReferenceSupport>)target
 {
-	NSString				*name = nil;
-	id						definition = nil;
-	id						value = nil;
-	NSString				*binding = nil;
-	NSString				*type = nil;
-	GLfloat					floatValue;
-	BOOL					gotValue;
-	OOUniformConvertOptions	convertOptions;
-	BOOL					quatAsMatrix = YES;
-	GLfloat					scale = 1.0;
-	uint32_t				randomSeed;
-	RANROTSeed				savedSeed;
-	NSArray					*keys = nil;
-	
+	oo::PList					value;
+	std::optional<std::string>	binding;
+	std::optional<std::string>	type;
+	GLfloat						floatValue;
+	BOOL						gotValue;
+	OOUniformConvertOptions		convertOptions;
+	BOOL						quatAsMatrix = YES;
+	GLfloat						scale = 1.0;
+	uint32_t					randomSeed;
+	RANROTSeed					savedSeed;
+
 	if ([target respondsToSelector:@selector(randomSeedForShaders)])
 	{
 		randomSeed = [(id)target randomSeedForShaders];
@@ -502,94 +514,96 @@ static NSString *MacrosToString(NSDictionary *macros);
 	}
 	savedSeed = RANROTGetFullSeed();
 	ranrot_srand(randomSeed);
-	
-	keys = [[uniformDefs allKeys] sortedArrayUsingSelector:@selector(compare:)];
-	foreach (name, keys)
+
+	// The std::map's byte order is the old -compare:-sorted key order (literal UTF-16 order, the
+	// same as UTF-8 byte order).
+	const oo::PList::Dict *definitions = uniformDefs.getIf<oo::PList::Dict>();
+	for (const auto &[name, definition] : (definitions != nullptr) ? *definitions : oo::PList::Dict())
 	{
 		gotValue = NO;
-		definition = [uniformDefs objectForKey:name];
-		
-		type = nil;
-		value = nil;
-		binding = nil;
-		
-		if ([definition isKindOfClass:[NSDictionary class]])
+
+		type.reset();
+		value = oo::PList();
+		binding.reset();
+
+		if (definition.isDict())
 		{
-			value = [(NSDictionary *)definition objectForKey:@"value"];
-			binding = oo::PListView((NSDictionary *)definition).get<NSString *>(@"binding");
-			type = oo::PListView((NSDictionary *)definition).get<NSString *>(@"type");
-			scale = oo::PListView((NSDictionary *)definition).get<float>(@"scale", 1.0);
-			if (type == nil)
+			const oo::PList *valueEntry = definition.find("value");
+			if (valueEntry != nullptr)  value = *valueEntry;
+			binding = StringForKey(definition, "binding");
+			type = StringForKey(definition, "type");
+			scale = definition.get<float>("scale", 1.0);
+			if (!type.has_value())
 			{
-				if (value == nil && binding != nil)  type = @"binding";
-				else  type = @"float";
+				if (!value && binding.has_value())  type = "binding";
+				else  type = "float";
 			}
 		}
-		else if ([definition isKindOfClass:[NSNumber class]])
+		else if (definition.isNumber())
 		{
 			value = definition;
-			type = @"float";
+			type = "float";
 		}
-		else if ([definition isKindOfClass:[NSString class]])
+		else if (const std::string *string = definition.getIf<std::string>())
 		{
-			if (OOIsNumberLiteral(oo::StdString(definition), NO))
+			if (OOIsNumberLiteral(*string, NO))
 			{
 				value = definition;
-				type = @"float";
+				type = "float";
 			}
 			else
 			{
-				binding = definition;
-				type = @"binding";
+				binding = *string;
+				type = "binding";
 			}
 		}
-		else if ([definition isKindOfClass:[NSArray class]])
+		else if (definition.isArray())
 		{
-			binding = definition;
-			type = @"vector";
+			// (The old code kept the array as the binding; only a "binding" type reads it.)
+			type = "vector";
 		}
-		
+
 		// Transform random values to concrete values
-		if ([type isEqualToString:@"randomFloat"])
+		if (type == "randomFloat")
 		{
-			type = @"float";
-			value = [NSNumber numberWithFloat:randf() * scale];
+			type = "float";
+			value = oo::PList::singleReal(randf() * scale);
 		}
-		else if ([type isEqualToString:@"randomUnitVector"])
+		else if (type == "randomUnitVector")
 		{
-			type = @"vector";
-			value = OOPropertyListFromVector(vector_multiply_scalar(OORandomUnitVector(), scale));
+			type = "vector";
+			value = oo::PListFrom(OOPropertyListFromVector(vector_multiply_scalar(OORandomUnitVector(), scale)));
 		}
-		else if ([type isEqualToString:@"randomVectorSpatial"])
+		else if (type == "randomVectorSpatial")
 		{
-			type = @"vector";
-			value = OOPropertyListFromVector(OOVectorRandomSpatial(scale));
+			type = "vector";
+			value = oo::PListFrom(OOPropertyListFromVector(OOVectorRandomSpatial(scale)));
 		}
-		else if ([type isEqualToString:@"randomVectorRadial"])
+		else if (type == "randomVectorRadial")
 		{
-			type = @"vector";
-			value = OOPropertyListFromVector(OOVectorRandomRadial(scale));
+			type = "vector";
+			value = oo::PListFrom(OOPropertyListFromVector(OOVectorRandomRadial(scale)));
 		}
-		else if ([type isEqualToString:@"randomQuaternion"])
+		else if (type == "randomQuaternion")
 		{
-			type = @"quaternion";
-			value = OOPropertyListFromQuaternion(OORandomQuaternion());
+			type = "quaternion";
+			value = oo::PListFrom(OOPropertyListFromQuaternion(OORandomQuaternion()));
 		}
-		
-		if ([type isEqualToString:@"float"] || [type isEqualToString:@"real"])
+
+		if (type == "float" || type == "real")
 		{
+			// -floatValue: only a number or a string answers it.
 			gotValue = YES;
-			if ([value respondsToSelector:@selector(floatValue)])  floatValue = [value floatValue];
-			else if ([value respondsToSelector:@selector(doubleValue)])  floatValue = [value doubleValue];
-			else if ([value respondsToSelector:@selector(intValue)])  floatValue = [value intValue];
+			if (value.isNumber())  floatValue = oo::plist_get::numberFloatValue(value);
+			else if (const std::string *string = value.getIf<std::string>())  floatValue = (float)oo::str::doubleValue(*string);
 			else gotValue = NO;
-			
+
 			if (gotValue)
 			{
-				[self setUniform:oo::StdString(name) floatValue:floatValue];
+				[self setUniform:name floatValue:floatValue];
 			}
 		}
-		else if ([type isEqualToString:@"int"] || [type isEqualToString:@"integer"] || [type isEqualToString:@"texture"])
+		else if (type == "int" || type == "integer" || type == "texture")
 		{
 			/*	"texture" is allowed as a synonym for "int" because shader
 				uniforms are mapped to texture units by specifying an integer
@@ -598,56 +612,62 @@ static NSString *MacrosToString(NSDictionary *macros);
 				means "bind uniform diffuseMap to texture unit 0" (which will
 				have the first texture in the textures array).
 			*/
-			if ([value respondsToSelector:@selector(intValue)])
+			// -intValue: only a number or a string answers it.
+			if (value.isNumber())
 			{
-				[self setUniform:oo::StdString(name) intValue:[value intValue]];
+				[self setUniform:name intValue:(int)value.int64Value()];
+				gotValue = YES;
+			}
+			else if (const std::string *string = value.getIf<std::string>())
+			{
+				[self setUniform:name intValue:oo::str::intValue(*string)];
 				gotValue = YES;
 			}
 		}
-		else if ([type isEqualToString:@"vector"])
+		else if (type == "vector")
 		{
-			[self setUniform:oo::StdString(name) vectorObjectValue:value];
+			[self setUniform:name vectorObjectValue:value];
 			gotValue = YES;
 		}
-		else if ([type isEqualToString:@"quaternion"])
+		else if (type == "quaternion")
 		{
-			if ([definition isKindOfClass:[NSDictionary class]])
+			if (definition.isDict())
 			{
-				quatAsMatrix = oo::PListView(definition).get<BOOL>(@"asMatrix", quatAsMatrix);
+				quatAsMatrix = definition.get<bool>("asMatrix", quatAsMatrix);
 			}
-			[self setUniform:oo::StdString(name)
-			 quaternionValue:OOQuaternionFromObject(value, kIdentityQuaternion)
+			[self setUniform:name
+			 quaternionValue:OOQuaternionFromObject(oo::ObjectFromPList(value), kIdentityQuaternion)
 					asMatrix:quatAsMatrix];
 			gotValue = YES;
 		}
-		else if (target != nil && [type isEqualToString:@"binding"])
+		else if (target != nil && type == "binding")
 		{
-			if ([definition isKindOfClass:[NSDictionary class]])
+			if (definition.isDict())
 			{
 				convertOptions = 0;
-				if (oo::PListView(definition).get<BOOL>(@"clamped", NO))  convertOptions |= kOOUniformConvertClamp;
-				if (oo::PListView(definition).get<BOOL>(@"normalized", oo::PListView(definition).get<BOOL>(@"normalised", NO)))
+				if (definition.get<bool>("clamped", false))  convertOptions |= kOOUniformConvertClamp;
+				if (definition.get<bool>("normalized", definition.get<bool>("normalised", false)))
 				{
 					convertOptions |= kOOUniformConvertNormalize;
 				}
-				if (oo::PListView(definition).get<BOOL>(@"asMatrix", YES))  convertOptions |= kOOUniformConvertToMatrix;
-				if (!oo::PListView(definition).get<BOOL>(@"bindToSubentity", NO))  convertOptions |= kOOUniformBindToSuperTarget;
+				if (definition.get<bool>("asMatrix", true))  convertOptions |= kOOUniformConvertToMatrix;
+				if (!definition.get<bool>("bindToSubentity", false))  convertOptions |= kOOUniformBindToSuperTarget;
 			}
 			else
 			{
 				convertOptions = kOOUniformConvertDefaults;
 			}
-			
-			[self bindSafeUniform:oo::StdString(name) toObject:target propertyNamed:oo::OptionalString(binding) convertOptions:convertOptions];
+
+			[self bindSafeUniform:name toObject:target propertyNamed:binding convertOptions:convertOptions];
 			gotValue = YES;
 		}
-		
+
 		if (!gotValue)
 		{
-			OOLog(@"shader.uniform.badDescription", @"----- Warning: could not bind uniform \"%@\" for target %@ -- could not interpret definition:\n%@", name, target, definition);
+			OOLog(@"shader.uniform.badDescription", @"----- Warning: could not bind uniform \"%@\" for target %@ -- could not interpret definition:\n%@", oo::NSStringFrom(name), target, oo::ObjectFromPList(definition));
 		}
 	}
-	
+
 	RANROTSetFullSeed(savedSeed);
 }
 

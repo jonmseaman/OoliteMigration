@@ -3896,34 +3896,48 @@ static void hudRotateViewpointForVirtualDepth(PlayerEntity * player1, Vector p1)
 
 static void InitTextEngine(void)
 {
-	NSDictionary			*fontSpec = nil;
-	NSArray					*widths = nil;
-	NSString				*texName = nil;
+	oo::PList				fontSpec;
+	const oo::PList			*widths = nullptr;
+	std::string				texName;
 	NSUInteger				i, count;
-	
-	fontSpec = [ResourceManager dictionaryFromFilesNamed:@"oolite-font.plist"
-												inFolder:@"Config"
-												andMerge:NO];
-	
-	texName = oo::PListView(fontSpec).get<NSString *>(@"texture", @"oolite-font.png");
-	sFontTexture = [OOTexture textureWithName:texName
-									 inFolder:@"Textures"
-									  options:kFontTextureOptions
-								   anisotropy:0.0f
-									  lodBias:-0.75f];
-	[sFontTexture retain];
-	
-	sF6KernGovt = oo::PListView(fontSpec).get<float>(@"f6KernGovernment", 1.0);	
-	sF6KernTL = oo::PListView(fontSpec).get<float>(@"f6KernTechLevel", 2.0);
 
-	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:fontSpec];
-	widths = oo::PListView(fontSpec).get<NSArray *>(@"widths");
-	count = [widths count];
+	fontSpec = [ResourceManager cxx_dictionaryFromFilesNamed:"oolite-font.plist"
+													inFolder:std::string("Config")
+													andMerge:NO];
+
+	texName = fontSpec.get<std::string>("texture", "oolite-font.png");
+	sFontTexture = [OOTexture cxx_textureWithName:texName
+										 inFolder:std::string("Textures")
+										  options:kFontTextureOptions
+									   anisotropy:0.0f
+										  lodBias:-0.75f];
+	[sFontTexture retain];
+
+	sF6KernGovt = fontSpec.get<float>("f6KernGovernment", 1.0);
+	sF6KernTL = fontSpec.get<float>("f6KernTechLevel", 2.0);
+
+	// OOEncodingConverter is not migrated yet (oo-gosz): it gets the font specification as the
+	// dictionary it read before.
+	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:oo::ObjectFromPList(fontSpec)];
+	widths = fontSpec.find("widths");	// used only if it is an array, as before
+	count = (widths != nullptr && widths->isArray()) ? widths->count() : 0;
 	if (count > 256)  count = 256;
 	for (i = 0; i != count; ++i)
 	{
-		sGlyphWidths[i] = oo::PListView(widths).at<float>(i) * GLYPH_SCALE_FACTOR;
+		sGlyphWidths[i] = widths->at<float>(i) * GLYPH_SCALE_FACTOR;
 	}
+}
+
+
+/*	The display-encoded bytes of text. OOEncodingConverter is not migrated yet (oo-gosz): the text
+	goes to -convertString: through the bridge, and its result comes back as oo::Data (empty where
+	it was nil).
+*/
+static oo::Data ConvertedString(const std::string &text)
+{
+	const oo::PList converted = oo::PListFrom([sEncodingCoverter convertString:oo::NSStringFrom(text)]);
+	if (const oo::Data *data = converted.getIf<oo::Data>())  return *data;
+	return oo::Data();
 }
 
 
@@ -3956,16 +3970,16 @@ static GLfloat drawCharacterQuad(uint8_t chr, GLfloat x, GLfloat y, GLfloat z, N
 }
 
 
-NSRect OORectFromString(NSString *text, GLfloat x, GLfloat y, NSSize siz)
+NSRect cxx_OORectFromString(const std::string &text, GLfloat x, GLfloat y, NSSize siz)
 {
 	GLfloat				w = 0;
-	NSData				*data = nil;
+	oo::Data			data;
 	const uint8_t		*bytes = NULL;
 	NSUInteger			i, length;
-	
-	data = [sEncodingCoverter convertString:text];
-	bytes = (const uint8_t *)[data bytes];
-	length = [data length];
+
+	data = ConvertedString(text);
+	bytes = (const uint8_t *)data.bytes();
+	length = data.length();
 	
 	for (i = 0; i < length; i++)
 	{
@@ -3976,9 +3990,9 @@ NSRect OORectFromString(NSString *text, GLfloat x, GLfloat y, NSSize siz)
 }
 
 
-CGFloat OOStringWidthInEm(NSString *text)
+CGFloat cxx_OOStringWidthInEm(const std::string &text)
 {
-	return OORectFromString(text, 0, 0, NSMakeSize(1.0 / (GLYPH_SCALE_FACTOR * 8.0), 1.0)).size.width;
+	return cxx_OORectFromString(text, 0, 0, NSMakeSize(1.0 / (GLYPH_SCALE_FACTOR * 8.0), 1.0)).size.width;
 }
 
 
@@ -4013,16 +4027,16 @@ void drawHighlight(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat alpha)
 }
 
 
-void OODrawString(NSString *text, GLfloat x, GLfloat y, GLfloat z, NSSize siz)
+void cxx_OODrawString(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz)
 {
-	OODrawStringAligned(text,x,y,z,siz,NO);
+	cxx_OODrawStringAligned(text,x,y,z,siz,NO);
 }
 
 
-void OODrawStringAligned(NSString *text, GLfloat x, GLfloat y, GLfloat z, NSSize siz, BOOL rightAlign)
+void cxx_OODrawStringAligned(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz, BOOL rightAlign)
 {
 	OOStartDrawingStrings();
-	OODrawStringQuadsAligned(text,x,y,z,siz,rightAlign);
+	cxx_OODrawStringQuadsAligned(text,x,y,z,siz,rightAlign);
 	OOStopDrawingStrings();
 }
 
@@ -4035,20 +4049,20 @@ void OOStartDrawingStrings() {
 
 }
 
-void OODrawStringQuadsAligned(NSString *text, GLfloat x, GLfloat y, GLfloat z, NSSize siz, BOOL rightAlign)
+void cxx_OODrawStringQuadsAligned(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz, BOOL rightAlign)
 {
 	GLfloat			cx = x;
 	NSInteger		i, length;
-	NSData			*data = nil;
+	oo::Data		data;
 	const uint8_t	*bytes = NULL;
-	
-	data = [sEncodingCoverter convertString:text];
-	length = [data length];
-	bytes = (const uint8_t *)[data bytes];
+
+	data = ConvertedString(text);
+	length = data.length();
+	bytes = (const uint8_t *)data.bytes();
 
 	if (EXPECT_NOT(rightAlign))
 	{
-		cx -= OORectFromString(text, 0.0f, 0.0f, siz).size.width;
+		cx -= cxx_OORectFromString(text, 0.0f, 0.0f, siz).size.width;
 	}
 
 	for (i = 0; i < length; i++)
@@ -4067,12 +4081,12 @@ void OOStopDrawingStrings() {
 }
 
 
-void OODrawHilightedString(NSString *text, GLfloat x, GLfloat y, GLfloat z, NSSize siz)
+void cxx_OODrawHilightedString(const std::string &text, GLfloat x, GLfloat y, GLfloat z, NSSize siz)
 {
 	GLfloat color[4];
-	
+
 	// get the physical dimensions of the string
-	NSSize strsize = OORectFromString(text, 0.0f, 0.0f, siz).size;
+	NSSize strsize = cxx_OORectFromString(text, 0.0f, 0.0f, siz).size;
 	strsize.width += 0.5f;
 	
 	OOSetOpenGLState(OPENGL_STATE_OVERLAY);
@@ -4083,8 +4097,8 @@ void OODrawHilightedString(NSString *text, GLfloat x, GLfloat y, GLfloat z, NSSi
 	drawHighlight(x, y, z, strsize, color[3]);
 	
 	OOGL(glPopAttrib());	//restore the colour
-	
-	OODrawString(text, x, y, z, siz);
+
+	cxx_OODrawString(text, x, y, z, siz);
 	
 	OOVerifyOpenGLState();
 }
@@ -4439,28 +4453,6 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 @end
 
 
-@implementation NSString (OODisplayEncoding)
-
-- (const char *) cStringUsingOoliteEncoding
-{
-	if (sEncodingCoverter == nil)  InitTextEngine();
-	
-	// Note: the data will be autoreleased, so the bytes behave as though they're autoreleased too.
-	return (const char *)[[self dataUsingEncoding:[sEncodingCoverter encoding] allowLossyConversion:YES] bytes];
-}
-
-
-- (const char *) cStringUsingOoliteEncodingAndRemapping
-{
-	if (sEncodingCoverter == nil)  InitTextEngine();
-	
-	// Note: the data will be autoreleased, so the bytes behave as though they're autoreleased too.
-	return (const char *)[[sEncodingCoverter convertString:self] bytes];
-}
-
-@end
-
-
 @implementation OOPolygonSprite (OOHUDBeaconIcon)
 
 - (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z
@@ -4480,16 +4472,6 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 	glColor4f(0.0, 0.0, 0.0, 0.5 * alpha);
 	[self drawOutline];
 	OOGLPopModelView();
-}
-
-@end
-
-
-@implementation NSString (OOHUDBeaconIcon)
-
-- (void) oo_drawHUDBeaconIconAt:(NSPoint)where size:(NSSize)size alpha:(GLfloat)alpha z:(GLfloat)z
-{
-	OODrawString(self, where.x - 2.5 * size.width, where.y - 3.0 * size.height, z, NSMakeSize(size.width * 2, size.height * 2));
 }
 
 @end
