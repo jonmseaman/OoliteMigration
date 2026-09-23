@@ -39,7 +39,6 @@ oolite_sources += files(
     'OOJSSystemInfo.mm',
     'OOJSTimer.mm',
     'OOJSVector.mm',
-    'ooscript/JSEngine_spidermonkey.cpp',
     'OOJSVisualEffect.mm',
     'OOJSWaypoint.mm',
     'OOJSWorldScripts.mm',
@@ -50,6 +49,9 @@ oolite_sources += files(
     'OOScript.mm',
     'OOScriptTimer.mm',
 )
+
+# Exactly one façade backend is compiled: the engine selected by the js_backend option.
+oolite_sources += files(js_backend == 'quickjs' ? 'ooscript/JSEngine_quickjs.cpp' : 'ooscript/JSEngine_spidermonkey.cpp')
 
 oolite_includes += include_directories('.')
 

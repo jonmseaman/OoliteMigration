@@ -365,7 +365,7 @@ OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, 
 OOINLINE ooscript::ClassDef *OOJSGetClass(ooscript::Context cx, ooscript::Object obj)  ALWAYS_INLINE_FUNC;
 OOINLINE ooscript::ClassDef *OOJSGetClass(ooscript::Context cx, ooscript::Object obj)
 {
-	return const_cast<ooscript::ClassDef *>(ooscript::getClass(cx, obj));
+	return const_cast<ooscript::ClassDef *>(ooscript::getObjectClass(cx, obj));
 }
 
 

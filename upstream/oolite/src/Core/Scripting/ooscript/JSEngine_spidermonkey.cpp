@@ -647,6 +647,12 @@ Object getGlobalForObject(Context cx, Object obj)     { return wrap(JS_GetGlobal
 
 const ClassDef* getClass(Context cx, Object obj)
 {
+	BackendClass* bc = backendFor(JS_GetClass(CX(cx), OBJ(obj)));
+	return bc ? bc->def : nullptr;
+}
+
+const ClassDef* getObjectClass(Context cx, Object obj)
+{
 	JSClass* clasp = JS_GetClass(CX(cx), OBJ(obj));
 	if (clasp == nullptr)  return nullptr;
 	BackendClass* bc = backendFor(clasp);

@@ -45,7 +45,8 @@ done
 
 step "1/4 meson builds the vendored QuickJS-ng library (-Djs_backend=quickjs)"
 if [ ! -d "$builddir" ]; then
-	( cd "$oo" && meson setup "$builddir_name" -Djs_backend=quickjs )
+	# The game links QuickJS-ng statically (bead oo-1gc.4); this unit-test build keeps its DLL.
+	( cd "$oo" && meson setup "$builddir_name" -Djs_backend=quickjs -Dquickjs-ng:default_library=shared )
 fi
 qjs_rel="subprojects/quickjs-0.16.2"
 ( cd "$oo" && ninja -C "$builddir_name" "$qjs_rel/libqjs-0.dll" >/dev/null )

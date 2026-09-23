@@ -8,7 +8,6 @@ oolite_dependencies = [
     dependency('openal'),
     dependency('vorbisfile'),
     dependency('vorbis'),
-    dependency('nspr'),
     dependency('zlib'),
 ]
 
@@ -17,13 +16,16 @@ if get_option('espeak')
     add_project_arguments('-DHAVE_LIBESPEAK=1', language: c_family)
 endif
 
-# QuickJS-ng backend build plumbing (Phase 1 seam 1.4a, bead oo-kte). This only builds
-# libquickjs when selected; nothing links against it or includes its headers yet - that is
-# seam 1.4b/oo-0kq's job. Kept out of oolite_dependencies on purpose so choosing this backend
-# cannot change the SpiderMonkey build it is meant to eventually replace.
-if get_option('js_backend') == 'quickjs'
-    quickjs_ng_proj = subproject('quickjs-ng')
+# The JavaScript engine behind ooscript/JSEngine.hpp (Phase 1; bead oo-1gc.4). QuickJS-ng is
+# the vendored subproject; SpiderMonkey 1.8.5 (and the NSPR it needs) comes from the platform's
+# packages, found in src/meson/<platform>/meson.build only when it is the selected backend.
+js_backend = get_option('js_backend')
+if js_backend == 'quickjs'
+    quickjs_ng_proj = subproject('quickjs-ng', default_options: ['default_library=static'])
     quickjs_ng_dep = quickjs_ng_proj.get_variable('qjs_dep')
+    oolite_dependencies += [quickjs_ng_dep]
+else
+    oolite_dependencies += [dependency('nspr')]
 endif
 
 subdir('meson')
