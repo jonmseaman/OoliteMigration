@@ -26,6 +26,8 @@ SOFTWARE.
 */
 
 #import "OOPListSchemaVerifier.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 
 #if OO_OXP_VERIFIER_ENABLED
 
@@ -418,11 +420,11 @@ VERIFY_PROTO(DelegatedType);
 	SchemaType				type = kTypeUnknown;
 	NSError					*error = nil;
 	NSDictionary			*resolvedSpecifier = nil;
-	NSAutoreleasePool		*pool = nil;
+	void					*pool = NULL;
 	
 	assert(outStop != NULL);
 	
-	pool = [[NSAutoreleasePool alloc] init];
+	pool = objc_autoreleasePoolPush();
 	
 	DebugDumpPushIndent();
 	
@@ -480,12 +482,12 @@ VERIFY_PROTO(DelegatedType);
 	if (outError != NULL && error != nil)
 	{
 		*outError = [error retain];
-		[pool release];
+		objc_autoreleasePoolPop(pool);
 		[error autorelease];
 	}
 	else
 	{
-		[pool release];
+		objc_autoreleasePoolPop(pool);
 	}
 	
 	return error == nil;
@@ -770,30 +772,29 @@ static NSString *ArrayForErrorReport(NSArray *array)
 	NSString				*result = nil;
 	NSString				*string = nil;
 	NSUInteger				i, count;
-	NSAutoreleasePool		*pool = nil;
 	
 	count = [array count];
 	if (count == 0)  return @"( )";
 	
-	pool = [[NSAutoreleasePool alloc] init];
-	
-	result = [NSString stringWithFormat:@"(%@", [array objectAtIndex:0]];
-	
-	for (i = 1; i != count; ++i)
+	@autoreleasepool
 	{
-		string = [result stringByAppendingFormat:@", %@", [array objectAtIndex:i]];
-		if (kMaximumLengthForStringInErrorMessage < [string length])
+		result = [NSString stringWithFormat:@"(%@", [array objectAtIndex:0]];
+		
+		for (i = 1; i != count; ++i)
 		{
-			result = [result stringByAppendingString:@", ..."];
-			break;
+			string = [result stringByAppendingFormat:@", %@", [array objectAtIndex:i]];
+			if (kMaximumLengthForStringInErrorMessage < [string length])
+			{
+				result = [result stringByAppendingString:@", ..."];
+				break;
+			}
+			result = string;
 		}
-		result = string;
+		
+		result = [result stringByAppendingString:@")"];
+		
+		[result retain];
 	}
-	
-	result = [result stringByAppendingString:@")"];
-	
-	[result retain];
-	[pool release];
 	return [result autorelease];
 }
 

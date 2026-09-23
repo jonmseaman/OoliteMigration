@@ -31,7 +31,6 @@ SOFTWARE.
 #import "OOAsyncQueue.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
-#import "NSThreadOOExtensions.h"
 #include <stdlib.h>
 
 #ifndef OO_BUGGY_PTHREADS

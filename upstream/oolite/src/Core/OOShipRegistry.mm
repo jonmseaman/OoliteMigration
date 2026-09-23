@@ -151,43 +151,43 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 {
 	if ((self = [super init]))
 	{
-		NSAutoreleasePool		*pool = [[NSAutoreleasePool alloc] init];
-		OOCacheManager			*cache = [OOCacheManager sharedCache];
-		
-		_shipData = [[cache objectForKey:kShipDataCacheKey inCache:kShipRegistryCacheName] retain];
-		_playerShips = [[cache objectForKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName] retain];
-		_effectData = [[cache objectForKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName] retain];
-		if ([_shipData count] == 0)	// Don't accept nil or empty
+		@autoreleasepool
 		{
-			[self loadShipData];
-			if ([_shipData count] == 0)
+			OOCacheManager			*cache = [OOCacheManager sharedCache];
+			
+			_shipData = [[cache objectForKey:kShipDataCacheKey inCache:kShipRegistryCacheName] retain];
+			_playerShips = [[cache objectForKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName] retain];
+			_effectData = [[cache objectForKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName] retain];
+			if ([_shipData count] == 0)	// Don't accept nil or empty
 			{
-				[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any ship data."];
+				[self loadShipData];
+				if ([_shipData count] == 0)
+				{
+					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any ship data."];
+				}
+				if ([_playerShips count] == 0)
+				{
+					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any player ships."];
+				}
 			}
-			if ([_playerShips count] == 0)
+			
+			[self loadDemoShipConditions];
+			[self loadDemoShips]; // testing only
+			if ([_demoShips count] == 0)
 			{
-				[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any player ships."];
+				[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize any demo ships."];
+			}
+			
+			[self loadCachedRoleProbabilitySets];
+			if (_probabilitySets == nil)
+			{
+				[self buildRoleProbabilitySets];
+				if ([_probabilitySets count] == 0)
+				{
+					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize role probability sets."];
+				}
 			}
 		}
-		
-		[self loadDemoShipConditions];
-		[self loadDemoShips]; // testing only
-		if ([_demoShips count] == 0)
-		{
-			[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize any demo ships."];
-		}
-		
-		[self loadCachedRoleProbabilitySets];
-		if (_probabilitySets == nil)
-		{
-			[self buildRoleProbabilitySets];
-			if ([_probabilitySets count] == 0)
-			{
-				[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize role probability sets."];
-			}
-		}
-		
-		[pool release];
 	}
 	return self;
 }
@@ -1166,7 +1166,6 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	BOOL					remove;
 	NSString				*modelName = nil;
 	OOMesh					*mesh = nil;
-	NSAutoreleasePool		*pool = nil;
 	NSUInteger				i = 0, count;
 	
 	count = [ioData count];
@@ -1174,22 +1173,21 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	// Preload ship meshes. (Iterates over a copy of keys since it mutates the dictionary.)
 	for (shipKeyEnum = [[ioData allKeys] objectEnumerator]; (shipKey = [shipKeyEnum nextObject]); )
 	{
-		pool = [[NSAutoreleasePool alloc] init];
-		
-		[[GameController sharedController] setProgressBarValue:(float)i++ / (float)count];
-		
-		shipEntry = [ioData objectForKey:shipKey];
-		remove = NO;
-		
-		modelName = [shipEntry oo_stringForKey:@"model"];
-		mesh = [OOMesh meshWithName:modelName
-				 materialDictionary:[shipEntry oo_dictionaryForKey:@"materials"]
-				  shadersDictionary:[shipEntry oo_dictionaryForKey:@"shaders"]
-							 smooth:[shipEntry oo_boolForKey:@"smooth"]
-					   shaderMacros:nil
-				shaderBindingTarget:nil];
-		
-		[pool release];	// NOTE: mesh is now invalid, but pointer nil check is OK.
+		@autoreleasepool
+		{
+			[[GameController sharedController] setProgressBarValue:(float)i++ / (float)count];
+			
+			shipEntry = [ioData objectForKey:shipKey];
+			remove = NO;
+			
+			modelName = [shipEntry oo_stringForKey:@"model"];
+			mesh = [OOMesh meshWithName:modelName
+					 materialDictionary:[shipEntry oo_dictionaryForKey:@"materials"]
+					  shadersDictionary:[shipEntry oo_dictionaryForKey:@"shaders"]
+								 smooth:[shipEntry oo_boolForKey:@"smooth"]
+						   shaderMacros:nil
+					shaderBindingTarget:nil];
+		}	// NOTE: mesh is now invalid, but pointer nil check is OK.
 		
 		if (mesh == nil)
 		{
@@ -1729,25 +1727,26 @@ static void DumpStringAddrs(NSDictionary *dict, NSString *context)
 	if (dump == NULL)  dump = fopen("strings.txt", "w");
 	if (dump == NULL)  return;
 	
-	NSAutoreleasePool *pool = [NSAutoreleasePool new];
-	NSMutableSet *strings = [NSMutableSet set];
-	GatherStringAddrs(dict, strings, context);
-	
-	NSDictionary *entry = nil;
-	foreach (entry, strings)
+	@autoreleasepool
 	{
-		NSString *string = [entry objectForKey:@"string"];
-		NSString *context = [entry objectForKey:@"context"];
-		void *pointer = [[entry objectForKey:@"address"] pointerValue];
+		NSMutableSet *strings = [NSMutableSet set];
+		GatherStringAddrs(dict, strings, context);
 		
-		string = [NSString stringWithFormat:@"%p\t%@:  \"%@\"", pointer, context, string];
+		NSDictionary *entry = nil;
+		foreach (entry, strings)
+		{
+			NSString *string = [entry objectForKey:@"string"];
+			NSString *context = [entry objectForKey:@"context"];
+			void *pointer = [[entry objectForKey:@"address"] pointerValue];
+			
+			string = [NSString stringWithFormat:@"%p\t%@:  \"%@\"", pointer, context, string];
+			
+			fprintf(dump, "%s\n", [string UTF8String]);
+		}
 		
-		fprintf(dump, "%s\n", [string UTF8String]);
+		fprintf(dump, "\n");
+		fflush(dump);
 	}
-	
-	fprintf(dump, "\n");
-	fflush(dump);
-	[pool release];
 }
 
 

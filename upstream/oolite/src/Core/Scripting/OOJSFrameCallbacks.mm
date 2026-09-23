@@ -28,6 +28,7 @@ SOFTWARE.
 #import "OOJSFrameCallbacks.h"
 #import "OOJSEngineTimeManagement.h"
 #import "OOCollectionExtractors.h"
+#include "oofnd/Date.hpp"
 
 
 /*
@@ -124,7 +125,7 @@ void InitOOJSFrameCallbacks(ooscript::Context context, ooscript::Object global)
 	sNextID = 1;
 #else
 	// Set randomish initial ID to catch bad habits.
-	sNextID =  [[NSDate date] timeIntervalSinceReferenceDate];
+	sNextID =  oo::date::timeIntervalSinceReferenceDate();
 #endif
 }
 

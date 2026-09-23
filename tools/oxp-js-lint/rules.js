@@ -202,7 +202,7 @@ function byRegex(re) {
 }
 
 /* ------------------------------------------------------------------ */
-/* the eight detectors                                                 */
+/* the detectors (the eight of bead oo-ctq, then legacy-generator)    */
 /* ------------------------------------------------------------------ */
 
 const DETECTORS = {
@@ -297,7 +297,63 @@ const DETECTORS = {
       return hits;
     },
   },
+
+  // Bead oo-1gc.16: three authors' ship scripts do
+  //   subs.each = function () { for (...) yield this[i]; }  for (let s in subs.each()) ...
+  // SpiderMonkey 1.8.5 (Oolite ran it at JSVERSION_ECMA_5 = 185, above the 1.7 that enables `yield`)
+  // made any function containing `yield` a generator, and for-in over one iterated its values. No
+  // other engine has either; QuickJS-ng fails the whole file with "SyntaxError: expecting ';'".
+  "legacy-generator": {
+    description: "legacy generator: a function (not function*) whose body uses yield (JS1.7, SpiderMonkey only)",
+    message: "yield in a function not declared function*: SpiderMonkey-only JS1.7 legacy generator, removed in Firefox 58",
+    detect(masked) {
+      const hits = [];
+      const frames = [];   // one per open '{': null for a plain block, else { gen } for a function body
+      const rx = /[{}]|(?<![.\w$])yield(?![\w$])/g;
+      let m;
+      while ((m = rx.exec(masked)) !== null) {
+        if (m[0] === "{") { frames.push(functionBodyAt(masked, m.index)); continue; }
+        if (m[0] === "}") { frames.pop(); continue; }
+        if (masked[nextNonSpace(masked, m.index + 5)] === ":") continue;   // { yield: 1 } is a key
+        let fn = null;
+        for (let k = frames.length - 1; k >= 0 && !fn; k--) fn = frames[k];
+        if (fn && !fn.gen) hits.push({ index: m.index, length: 5 });
+      }
+      return hits;
+    },
+  },
 };
+
+/** Index of the last non-space character before `i`, or -1. */
+function prevNonSpace(text, i) {
+  while (i >= 0 && /\s/.test(text[i])) i--;
+  return i;
+}
+
+/**
+ * Classify the '{' at `brace`: null for a block/object literal, or { gen } when it opens a function
+ * body -- `function [*] [name] (...) {`, a method `[*] name (...) {`, or an arrow `=> {`.
+ */
+function functionBodyAt(text, brace) {
+  let j = prevNonSpace(text, brace - 1);
+  if (j >= 1 && text[j] === ">" && text[j - 1] === "=") return { gen: false };
+  if (text[j] !== ")") return null;
+  let depth = 0;
+  for (; j >= 0; j--) {
+    if (text[j] === ")") depth++;
+    else if (text[j] === "(" && --depth === 0) break;
+  }
+  let k = prevNonSpace(text, j - 1);
+  if (k >= 0 && text[k] === "*") return { gen: true };                  // function* (
+  let w = k;
+  while (w >= 0 && /[\w$]/.test(text[w])) w--;
+  const word = text.slice(w + 1, k + 1);
+  if (!word) return null;
+  if (/^(?:if|for|while|switch|catch|with)$/.test(word)) return null;
+  if (word === "function") return { gen: false };
+  k = prevNonSpace(text, w);
+  return { gen: k >= 0 && text[k] === "*" };                           // function* name ( / *method (
+}
 
 const RULE_NAMES = Object.keys(DETECTORS);
 
