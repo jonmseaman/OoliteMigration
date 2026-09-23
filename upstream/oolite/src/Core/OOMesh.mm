@@ -56,6 +56,8 @@ MA 02110-1301, USA.
 
 #import "OOJavaScriptEngine.h"
 #import "OODebugStandards.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 
@@ -524,14 +526,24 @@ const char *NormalModeDescription(OOMeshNormalMode mode)
 		listsReady = YES;
 		brokenInRender = NO;
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		if (!brokenInRender)
+		{
+			OOLog(kOOLogException, @"***** %s for %@ encountered exception: %@ : %@ *****", __PRETTY_FUNCTION__, self, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			brokenInRender = YES;
+		}
+		if (strncmp([exception name], "Oolite", 6) == 0)  [UNIVERSE handleOoliteException:exception];	// handle these ourself
+		else  @throw exception;	// pass these on
+	}
+	@catch (OOFoundationException *exception)
 	{
 		if (!brokenInRender)
 		{
 			OOLog(kOOLogException, @"***** %s for %@ encountered exception: %@ : %@ *****", __PRETTY_FUNCTION__, self, [exception name], [exception reason]);
 			brokenInRender = YES;
 		}
-		if ([[exception name] hasPrefix:@"Oolite"])  [UNIVERSE handleOoliteException:exception];	// handle these ourself
+		if ([[exception name] hasPrefix:@"Oolite"])  [UNIVERSE handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];	// handle these ourself
 		else  @throw exception;	// pass these on
 	}
 	

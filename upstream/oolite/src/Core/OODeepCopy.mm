@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OODeepCopy.h"
+#include "oofnd/objc/OOException.h"
 
 
 id OODeepCopy(id object)
@@ -142,7 +143,7 @@ id OODeepCopy(id object)
 	members = (id *)calloc(sizeof *members, count);
 	if (members == NULL)
 	{
-		[NSException raise:NSMallocException format:@"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
+		[OOException raise:OOMallocException format:"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
 	}
 	
 	// Ensure there's an objects set even if passed nil.
@@ -198,7 +199,7 @@ id OODeepCopy(id object)
 	members = (id *)malloc(sizeof *members * count);
 	if (members == NULL)
 	{
-		[NSException raise:NSMallocException format:@"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
+		[OOException raise:OOMallocException format:"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
 	}
 	
 	// Ensure there's an objects set even if passed nil.
@@ -260,7 +261,7 @@ id OODeepCopy(id object)
 	{
 		free(keys);
 		free(values);
-		[NSException raise:NSMallocException format:@"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
+		[OOException raise:OOMallocException format:"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
 	}
 	
 	// Ensure there's an objects set even if passed nil.
