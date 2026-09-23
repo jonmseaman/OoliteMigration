@@ -14758,7 +14758,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		NSEnumerator *sEnum = [_defenseTargets objectEnumerator];
 		ShipEntity *ship = nil;
 		double scanrange2 = scannerRange * scannerRange;
-		// FIXME: OOWeakSet doesn't implement NSFastEnumeration protocol.
+		// FIXME: OOWeakSet doesn't support for-in enumeration.
 		foreach (ship, sEnum)
 		{
 			if ([ship hasHostileTarget] || ([ship isPlayer] && [PLAYER weaponsOnline]))
