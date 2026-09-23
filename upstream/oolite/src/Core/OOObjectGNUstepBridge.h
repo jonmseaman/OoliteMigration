@@ -7,7 +7,7 @@ OOCocoa.h. See OOObjectGNUstepBridge.mm.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"	// imports this header after Foundation; the Foundation types used here come from there
 #import "oofnd/objc/OOObject.h"
 
 
