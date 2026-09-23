@@ -49,6 +49,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -1170,7 +1171,7 @@ static bool PlayerShipSetProperty(Context cx, Object obj, PropertyId propID, boo
 		case kPlayerShip_currentWeapon:
 		{
 			BOOL exists = NO;
-			sValue = JSValueToEquipmentKeyRelaxed(context, *value_raw, &exists);
+			sValue = oo::NSStringOrNil(JSValueToEquipmentKeyRelaxed(context, *value_raw, &exists));
 			if (!exists || sValue == nil) 
 			{
 				sValue = @"EQ_WEAPON_NONE";
@@ -1464,7 +1465,7 @@ static bool PlayerShipAwardEquipmentToCurrentPylon(ooscript::Context context, oo
 	NSString				*key = nil;
 	OOEquipmentType			*eqType = nil;
 	
-	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKey(context, OOJS_ARGV[0]));
 	if (key != nil)  eqType = [OOEquipmentType equipmentTypeWithIdentifier:key];
 	if (EXPECT_NOT(![eqType isMissileOrMine]))
 	{
