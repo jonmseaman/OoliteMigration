@@ -223,10 +223,9 @@ def test_the_detector_actually_detects():
 # obviously-correct hardening somebody will apply one day, and applying it to one of these
 # breaks the file instantly and silently.
 #
-# They are pinned rather than converted. tools/check-file-modes.sh's two sites are inside
-# line_is_call_site(), which is the single source of truth for the call-site grammar and is
-# shared with tools/check-file-modes-probe.sh; rewriting that grammar to dodge a bug that
-# cannot fire today is a large, risky change to somebody else's gate for no behavioural gain.
+# They are pinned rather than converted. (tools/check-file-modes.sh was listed here with 3
+# sites until bead oo-3rb.169 rewrote its scan to judge lines in one awk process for runtime;
+# that removed every `| grep -q` from it, so its entry was deleted as this comment directs.)
 # The pin is worth more than the conversion: a conversion can be reverted silently, whereas
 # test_no_new_piped_grep_q_in_any_pipefail_script goes RED the moment one of these acquires
 # pipefail while the idiom is still present (the file is absent from KNOWN_SITES, so its
@@ -236,7 +235,6 @@ def test_the_detector_actually_detects():
 # read WHY before updating it: either it was converted (good, delete the entry) or it gained
 # pipefail (in which case the ratchet test above is already red and must be fixed, not listed).
 LATENT_SET = {
-    "tools/check-file-modes.sh": 3,
     "tools/check-file-modes-probe.sh": 1,
 }
 
