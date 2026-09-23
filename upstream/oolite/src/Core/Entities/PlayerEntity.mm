@@ -86,6 +86,8 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "PlayerEntityKeyMapper.h"
 #import "OOSystemDescriptionManager.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
 
@@ -330,8 +332,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	{
 		OOLogERR(@"player.loadCargoPods.noContainer", @"%@", @"couldn't create a container in [PlayerEntity loadCargoPods]");
 		// throw an exception here...
-		[NSException raise:OOLITE_EXCEPTION_FATAL
-								format:@"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
+		[OOException raise:OOLITE_EXCEPTION_FATAL
+								format:"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
 	}
 }
 
@@ -2592,7 +2594,12 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 									NSString * volatile updateStage = @"initialisation"; \
 									@try {
 #define STAGE_TRACKING_END			} \
-									@catch (NSException *exception) \
+									@catch (OOException *exception) \
+									{ \
+										OOLog(kOOLogException, @"***** Exception during [%@] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])); \
+										@throw exception; \
+									} \
+									@catch (OOFoundationException *exception) \
 									{ \
 										OOLog(kOOLogException, @"***** Exception during [%@] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, [exception name], [exception reason]); \
 										@throw exception; \
@@ -7348,7 +7355,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	// set the new market seed now!
 	// reseeding the RNG should be completely unnecessary here
-//	ranrot_srand((uint32_t)[[NSDate date] timeIntervalSince1970]);	// seed randomiser by time
+//	ranrot_srand((uint32_t)oo::date::timeIntervalSince1970());	// seed randomiser by time
 	market_rnd = ranrot_rand() & 255;						// random factor for market values is reset
 }
 
