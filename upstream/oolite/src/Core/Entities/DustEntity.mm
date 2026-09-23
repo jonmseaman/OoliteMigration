@@ -100,7 +100,7 @@ enum
 	dust_color = [[OOColor colorWithRed:0.5 green:1.0 blue:1.0 alpha:1.0] retain];
 	[self setStatus:STATUS_ACTIVE];
 
-	hasPointSprites = [[OOOpenGLExtensionManager sharedManager] haveExtension:@"GL_ARB_point_sprite"];
+	hasPointSprites = [[OOOpenGLExtensionManager sharedManager] haveExtension:"GL_ARB_point_sprite"];
 	
 	if (hasPointSprites)
 	{
