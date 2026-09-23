@@ -99,6 +99,7 @@ python-string, python-kwarg, shell, batch, powershell) precisely because the def
 lived where two branches disagreed, not in any one branch's depth.
 """
 
+import ast
 import os
 import re
 import sys
@@ -553,5 +554,57 @@ def scan(roots, skip=SELF_REFERENTIAL):
     return sorted(set(out))
 
 
+# --- members of an exempt harness (bead oo-hub0, proposed ADR-0046) ------------------------------
+#
+# A harness that is exempt because it runs N games at once (tests/golden/golden_run.py) is not one
+# file: each golden scenario driver is a main program that launches its game THROUGH the harness -
+# golden_run.reserve_port / stage_app / the private debugConfig.plist - so the driver's launch is
+# the harness's launch, one member of its fan-out. Such a driver is a MEMBER, and inherits the
+# exemption, only when BOTH hold:
+#
+#   * it lives in the harness's own directory tree (a file in tools/ that imports golden_run is
+#     not a golden scenario, it is a new launcher that happens to borrow a helper), and
+#   * its CODE imports the harness module - an ast.Import/ImportFrom, not a comment, a string or
+#     a docstring that names it, so prose cannot enrol a rogue.
+#
+# Anything else that spawns the game is still unclassified and fails check 2.
+
+def imports_module(text, module):
+    """True when real code in ``text`` imports ``module`` (``import m`` / ``from m import x``)."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return False
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import) and any(a.name == module for a in node.names):
+            return True
+        if isinstance(node, ast.ImportFrom) and node.level == 0 and node.module == module:
+            return True
+    return False
+
+
+def harness_members(harness, candidates):
+    """The ``candidates`` (repo-relative paths) that are members of the exempt ``harness``."""
+    harness = harness.replace("\\", "/")
+    root = os.path.dirname(harness) + "/"
+    module = os.path.splitext(os.path.basename(harness))[0]
+    out = []
+    for path in candidates:
+        path = path.replace("\\", "/")
+        if path == harness or not path.endswith(".py") or not path.startswith(root):
+            continue
+        try:
+            text = open(path, "r", encoding="utf-8", errors="replace").read()
+        except OSError:
+            continue
+        if imports_module(text, module):
+            out.append(path)
+    return sorted(set(out))
+
+
 if __name__ == "__main__":
-    print("\n".join(scan(sys.argv[1:])))
+    if sys.argv[1:2] == ["--members-of"]:
+        # launcher_scan.py --members-of <harness.py> <file>...: those files that are its members.
+        print("\n".join(harness_members(sys.argv[2], sys.argv[3:])))
+    else:
+        print("\n".join(scan(sys.argv[1:])))

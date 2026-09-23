@@ -36,6 +36,7 @@ MA 02110-1301, USA.
 
 #import "OOJavaScriptEngine.h"
 #import "OOJSEngineTimeManagement.h"
+#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 
@@ -78,8 +79,10 @@ NSMutableArray *ScanTokensFromString(NSString *values)
 	while (![scanner isAtEnd])
 	{
 		[scanner ooliteScanCharactersFromSet:space_set intoString:NULL];
-		if ([scanner ooliteScanUpToCharactersFromSet:space_set intoString:&token])
+		std::string scannedToken;
+		if ([scanner ooliteScanUpToCharactersFromSet:space_set intoString:&scannedToken])
 		{
+			token = oo::NSStringFrom(scannedToken);
 			[result addObject:token];
 		}
 	}

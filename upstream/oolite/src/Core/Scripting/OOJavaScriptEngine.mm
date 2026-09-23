@@ -2307,7 +2307,8 @@ BOOL JSEntityIsDemoShipPredicate(Entity *entity, void * /*parameter*/)
 }
 
 namespace {
-static NSMapTable *sRegisteredSubClasses;
+// JS subclass -> superclass, by pointer. Was a non-owned pointer map table (bead oo-3rb.20).
+static std::unordered_map<const ooscript::ClassDef *, ooscript::ClassDef *> *sRegisteredSubClasses;
 } // namespace
 
 void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *superclass)
@@ -2316,19 +2317,19 @@ void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *supe
 	
 	if (sRegisteredSubClasses == NULL)
 	{
-		sRegisteredSubClasses = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 0);
+		sRegisteredSubClasses = new std::unordered_map<const ooscript::ClassDef *, ooscript::ClassDef *>;
 	}
-	
-	NSCAssert(NSMapGet(sRegisteredSubClasses, subclass) == NULL, @"A JS class cannot be registered as a subclass of multiple classes.");
-	
-	NSMapInsertKnownAbsent(sRegisteredSubClasses, subclass, superclass);
+
+	NSCAssert(sRegisteredSubClasses->count(subclass) == 0, @"A JS class cannot be registered as a subclass of multiple classes.");
+
+	sRegisteredSubClasses->emplace(subclass, superclass);
 }
 
 
 namespace {
 static void UnregisterSubclasses(void)
 {
-	NSFreeMapTable(sRegisteredSubClasses);
+	delete sRegisteredSubClasses;
 	sRegisteredSubClasses = NULL;
 }
 } // namespace
@@ -2343,7 +2344,8 @@ BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *su
 	{
 		if (putativeSubclass == superclass)  return YES;
 		
-		putativeSubclass = static_cast<ooscript::ClassDef*>(NSMapGet(sRegisteredSubClasses, putativeSubclass));
+		auto registered = sRegisteredSubClasses->find(putativeSubclass);
+		putativeSubclass = (registered != sRegisteredSubClasses->end()) ? registered->second : NULL;
 	}
 	while (putativeSubclass != NULL);
 	
