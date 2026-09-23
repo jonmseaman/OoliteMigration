@@ -33,6 +33,7 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#include "oofnd/StdLib.hpp"
 
 
 @protocol OOGraphicsResetClient
@@ -45,7 +46,7 @@ SOFTWARE.
 @interface OOGraphicsResetManager: NSObject
 {
 @private
-	NSMutableSet			*clients;
+	std::unordered_set<id>	clients;	// not retained; was an NSMutableSet of boxed values (bead oo-3rb.10)
 }
 
 + (OOGraphicsResetManager *) sharedManager;
