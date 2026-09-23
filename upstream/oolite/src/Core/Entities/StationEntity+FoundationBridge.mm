@@ -79,6 +79,30 @@ and converts the result exactly as the old method produced it (the same NSNumber
 	return oo::NSStringOrNil([self cxx_acceptDockingClearanceRequestFrom:other]);
 }
 
+
+// oo-3rb.174 (chunk 3): shipyard and interfaces
+
+// -initWithArray:nil gave an empty shipyard, not none; so does this.
+- (void) setLocalShipyard:(NSArray *)market
+{
+	const oo::PList shipyard = oo::PListFrom(market);
+	const oo::PList::Array *entries = shipyard.getIf<oo::PList::Array>();
+	[self cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];
+}
+
+
+// A fresh snapshot per call (the old method returned the live dictionary): its callers
+// (PlayerEntity's interfaces screen) only read it. Changes go through -cxx_setInterfaceDefinition:forKey:.
+- (NSMutableDictionary *) localInterfaces
+{
+	NSMutableDictionary *result = [NSMutableDictionary dictionary];
+	for (const auto &[key, definition] : *[self cxx_localInterfaces])
+	{
+		[result setObject:definition.get() forKey:oo::NSStringFrom(key)];
+	}
+	return result;
+}
+
 @end
 
 

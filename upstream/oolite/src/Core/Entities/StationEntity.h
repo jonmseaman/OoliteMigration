@@ -87,11 +87,9 @@ typedef enum
 	OOCargoQuantity			marketCapacity;
 	oo::PList				marketDefinition;			// an array; null: none (was nil)
 	std::optional<std::string>	marketScriptName;		// nullopt: none (was nil)
-//	NSMutableArray			*localPassengers;
-//	NSMutableArray			*localContracts;
-	NSMutableArray			*localShipyard;
+	std::optional<std::vector<oo::PList>>	localShipyard;	// nullopt: not generated yet (was nil)
 	
-	NSMutableDictionary *localInterfaces;
+	std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>>	localInterfaces;
 
 	unsigned				docked_shuttles;
 	double					last_shuttle_launch_time;
@@ -129,16 +127,14 @@ typedef enum
 - (void) cxx_setPrice:(OOCreditsQuantity) price forCommodity:(const std::string &) commodity;
 - (void) cxx_setQuantity:(OOCargoQuantity) quantity forCommodity:(const std::string &) commodity;
 
-/*- (NSMutableArray *) localPassengers;
-- (void) setLocalPassengers:(NSArray *)market;
-- (NSMutableArray *) localContracts;
-- (void) setLocalContracts:(NSArray *)market; */
-- (NSMutableArray *) localShipyard;
-- (void) setLocalShipyard:(NSArray *)market;
+// The live shipyard, which callers edit in place (proposed ADR-0043 item 22): nullptr on a nil
+// receiver or before -generateShipyard.
+- (std::vector<oo::PList> *) cxx_localShipyard;
+- (void) cxx_setLocalShipyard:(const std::vector<oo::PList> &)shipyard;
 - (void) generateShipyard;
 - (void) generateShipyard:(OOTechLevelID)stationTechLevel;
-- (NSMutableDictionary *) localInterfaces;
-- (void) setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(NSString *)key;
+- (std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>> *) cxx_localInterfaces;	// the live map; nullptr on nil
+- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key;	// nil removes
 
 - (OOCommodityMarket *) initialiseLocalMarket;
 

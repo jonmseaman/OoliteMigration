@@ -56,12 +56,19 @@
 namespace
 {
 
+std::optional<std::string> OptionalStringValue(const oo::PList *value)
+{
+	if (value == nullptr)  return std::nullopt;
+	if (const std::string *string = value->getIf<std::string>())  return *string;
+	if (value->isNumber())  return oo::plist_get::numberStringValue(*value);
+	return std::nullopt;
+}
+
+
 std::optional<std::string> OptionalStringValue(id object)
 {
 	const oo::PList value = oo::PListFrom(object);
-	if (const std::string *string = value.getIf<std::string>())  return *string;
-	if (value.isNumber())  return oo::plist_get::numberStringValue(value);
-	return std::nullopt;
+	return OptionalStringValue(&value);
 }
 
 }	// namespace
@@ -234,35 +241,33 @@ std::optional<std::string> OptionalStringValue(id object)
 }
 
 
-- (NSMutableArray *) localShipyard
+- (std::vector<oo::PList> *) cxx_localShipyard
 {
-	return localShipyard;
+	return localShipyard ? &*localShipyard : nullptr;
 }
 
 
-- (void) setLocalShipyard:(NSArray *) some_market
+- (void) cxx_setLocalShipyard:(const std::vector<oo::PList> &) some_market
 {
-	if (localShipyard)
-		[localShipyard release];
-	localShipyard = [[NSMutableArray alloc] initWithArray:some_market];
+	localShipyard = some_market;
 }
 
 
-- (NSMutableDictionary *) localInterfaces
+- (std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>> *) cxx_localInterfaces
 {
-	return localInterfaces;
+	return &localInterfaces;
 }
 
 
-- (void) setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(NSString *)key
+- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key
 {
 	if (definition == nil)
 	{
-		[localInterfaces removeObjectForKey:key];
+		localInterfaces.erase(key);
 	}
 	else
 	{
-		[localInterfaces setObject:definition forKey:key];
+		localInterfaces[key] = oo::ObjCRef<OOJSInterfaceDefinition *>(definition);
 	}
 }
 
@@ -641,7 +646,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		isStation = YES;
 		_shipsOnHold = [[OOWeakSet alloc] init];
 		hasBreakPattern = YES;
-		localInterfaces = [[NSMutableDictionary alloc] init];
 	}
 	return self;
 	
@@ -655,8 +659,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	DESTROY(localMarket);
 //	DESTROY(localPassengers);
 //	DESTROY(localContracts);
-	DESTROY(localShipyard);
-	DESTROY(localInterfaces);
 
 	[super dealloc];
 }
@@ -2331,7 +2333,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	// NOTE: non-standard capitalization is documented and entrenched.
 	if (determinant)
 	{		
-		if ([determinant isKindOfClass:[NSArray class]])
+		if (oo::IsNSArray(determinant))
 		{
 			return [PLAYER scriptTestConditions:OOSanitizeLegacyScriptConditions(determinant, nil)];
 		}
@@ -2357,20 +2359,22 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	unsigned		i;
 
-	if ([self localShipyard] == nil)
+	if ([self cxx_localShipyard] == nullptr)
 	{
-		[self setLocalShipyard:[UNIVERSE shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:[PLAYER clockTime]]];
+		const oo::PList forSale = oo::PListFrom([UNIVERSE shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:[PLAYER clockTime]]);
+		const oo::PList::Array *entries = forSale.getIf<oo::PList::Array>();
+		[self cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];	// nil gave an empty shipyard
 	}
 
-	NSMutableArray *shipyard = [self localShipyard];
+	std::vector<oo::PList> *shipyard = [self cxx_localShipyard];
 		
 	// remove ships that the player has already bought
-	for (i = 0; i < [shipyard count]; i++)
+	for (i = 0; i < shipyard->size(); i++)
 	{
-		NSString *shipID = oo::PListView(oo::PListView(shipyard).at<NSDictionary *>(i)).get<NSString *>(SHIPYARD_KEY_ID);
-		if ([[PLAYER shipyardRecord] objectForKey:shipID])
+		const std::optional<std::string> shipID = OptionalStringValue((*shipyard)[i].find("id"));	// SHIPYARD_KEY_ID
+		if ([[PLAYER shipyardRecord] objectForKey:oo::NSStringOrNil(shipID)])
 		{
-			[shipyard removeObjectAtIndex:i--];
+			shipyard->erase(shipyard->begin() + i--);
 		}
 	}
 }
