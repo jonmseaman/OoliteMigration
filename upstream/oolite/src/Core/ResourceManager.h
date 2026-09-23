@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #import "NSFileManagerOOExtensions.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 
 @class OOSound, OOMusic, OOSystemDescriptionManager;
 
@@ -73,14 +74,14 @@ typedef enum
 + (void) cxx_setUseAddOns:(const std::string &)useAddOns;
 + (void) cxx_addExternalPath:(const std::string &)fileName;
 
-// get manifest data for identifier
-+ (NSDictionary *)manifestForIdentifier:(NSString *)identifier;
-// compatibility checks
-+ (BOOL) checkVersionCompatibility:(NSDictionary *)manifest forOXP:(NSString *)title;
-+ (BOOL) manifestHasConflicts:(NSDictionary *)manifest logErrors:(BOOL)logErrors;
-+ (BOOL) manifestHasMissingDependencies:(NSDictionary *)manifest logErrors:(BOOL)logErrors;
-+ (BOOL) manifest:(NSDictionary *)manifest HasUnmetDependency:(NSDictionary *)required logErrors:(BOOL)logErrors;
-+ (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version;
+// get manifest data for identifier (a null PList when there is none)
++ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier;
+// compatibility checks (a manifest or relation is a Dict; title is nullopt where nil was passed)
++ (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title;
++ (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors;
++ (BOOL) cxx_manifestHasMissingDependencies:(const oo::PList &)manifest logErrors:(BOOL)logErrors;
++ (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors;
++ (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version;
 
 
 
