@@ -36,6 +36,7 @@ SOFTWARE.
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
 #import "OOStringBridge.h"
+#import "OOFoundationException.h"
 
 #include "oofnd/Log.hpp"
 
@@ -215,7 +216,12 @@ void OOLogWithFunctionFileAndLineAndArguments(NSString *inMessageClass, const ch
 			NSString *formattedMessage = [[[NSString alloc] initWithFormat:inFormat arguments:inArguments] autorelease];
 			oo::log::logger().write(ClassString(inMessageClass), inFunction, inFile, inLine, oo::StdString(formattedMessage));
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			oo::log::logger().internal("OOLogWithFunctionFileAndLineAndArguments",
+				oo::StdString([NSString stringWithFormat:@"***** Exception thrown during logging: %@ : %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])]));
+		}
+		@catch (OOFoundationException *exception)
 		{
 			oo::log::logger().internal("OOLogWithFunctionFileAndLineAndArguments",
 				oo::StdString([NSString stringWithFormat:@"***** Exception thrown during logging: %@ : %@", [exception name], [exception reason]]));

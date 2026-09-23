@@ -86,6 +86,8 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "PlayerEntityKeyMapper.h"
 #import "OOSystemDescriptionManager.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 
 #define PLAYER_DEFAULT_NAME				@"Jameson"
@@ -329,8 +331,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	{
 		OOLogERR(@"player.loadCargoPods.noContainer", @"%@", @"couldn't create a container in [PlayerEntity loadCargoPods]");
 		// throw an exception here...
-		[NSException raise:OOLITE_EXCEPTION_FATAL
-								format:@"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
+		[OOException raise:OOLITE_EXCEPTION_FATAL
+								format:"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
 	}
 }
 
@@ -2607,7 +2609,12 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 									NSString * volatile updateStage = @"initialisation"; \
 									@try {
 #define STAGE_TRACKING_END			} \
-									@catch (NSException *exception) \
+									@catch (OOException *exception) \
+									{ \
+										OOLog(kOOLogException, @"***** Exception during [%@] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])); \
+										@throw exception; \
+									} \
+									@catch (OOFoundationException *exception) \
 									{ \
 										OOLog(kOOLogException, @"***** Exception during [%@] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, [exception name], [exception reason]); \
 										@throw exception; \

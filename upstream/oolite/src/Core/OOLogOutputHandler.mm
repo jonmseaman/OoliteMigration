@@ -36,6 +36,7 @@ SOFTWARE.
 #include <stdio.h>
 #include "oofnd/Thread.hpp"
 #import "NSFileManagerOOExtensions.h"
+#import "OOFoundationException.h"
 #include <SDL3/SDL_stdinc.h>
 #include <atomic>
 #include <chrono>
@@ -503,7 +504,8 @@ enum
 			[pool release];
 		}
 	}
-	@catch (NSException *exception) {}
+	@catch (OOException *exception) {}
+	@catch (OOFoundationException *exception) {}
 	[pool release];
 	
 	// Clean up; after this, ivars are out of bounds.

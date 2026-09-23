@@ -38,6 +38,7 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "PlayerEntityStickProfile.h"
 #import "OOSystemDescriptionManager.h"
+#include "oofnd/objc/OOException.h"
 
 OOINLINE BOOL RowInRange(OOGUIRow row, NSRange range)
 {
@@ -935,8 +936,8 @@ static BOOL _refreshStarChart = NO;
 	if ((item_keys)&&([item_keys count] != n_items))
 	{
 		// throw exception
-		[NSException raise:@"ArrayLengthMismatchException"
-					format:@"The NSArray sent as 'item_keys' to insertItemsFromArray::: must contain the same number of objects as the NSArray 'items'"];
+		[OOException raise:"ArrayLengthMismatchException"
+					format:"The NSArray sent as 'item_keys' to insertItemsFromArray::: must contain the same number of objects as the NSArray 'items'"];
 	}
 
 	unsigned i;

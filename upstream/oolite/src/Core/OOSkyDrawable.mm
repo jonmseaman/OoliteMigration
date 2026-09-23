@@ -38,6 +38,7 @@ SOFTWARE.
 #import "OOCollectionExtractors.h"
 
 #include "oofnd/Defaults.hpp"
+#include "oofnd/objc/OOException.h"
 
 
 #define SKY_ELEMENT_SCALE_FACTOR		(BILLBOARD_DEPTH / 500.0f)
@@ -458,7 +459,7 @@ static OOColor *DebugColor(Vector orientation)
 									  lodBias:-0.0f];
 		if (sStarTextures == nil)
 		{
-			[NSException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:@"No star textures could be loaded."];
+			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No star textures could be loaded."];
 		}
 	}
 	
@@ -478,7 +479,7 @@ static OOColor *DebugColor(Vector orientation)
 									  lodBias:0.0f];
 		if (sNebulaTextures == nil)
 		{
-			[NSException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:@"No nebula textures could be loaded."];
+			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No nebula textures could be loaded."];
 		}
 	}
 	
