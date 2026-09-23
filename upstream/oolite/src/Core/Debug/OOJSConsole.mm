@@ -44,6 +44,7 @@ SOFTWARE.
 #import "OODebugMonitor.h"
 #import "OOProfilingStopwatch.h"
 #import "ResourceManager.h"
+#import "OOFoundationBridge.h"
 
 
 @interface Entity (OODebugInspector)
@@ -363,11 +364,11 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_glVendorString:
-			*value = OOJSValueFromNativeObject(context, [[OOOpenGLExtensionManager sharedManager] vendorString]);
+			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([[OOOpenGLExtensionManager sharedManager] vendorString]));
 			break;
 			
 		case kConsole_glRendererString:
-			*value = OOJSValueFromNativeObject(context, [[OOOpenGLExtensionManager sharedManager] rendererString]);
+			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([[OOOpenGLExtensionManager sharedManager] rendererString]));
 			break;
 			
 		case kConsole_glFixedFunctionTextureUnitCount:
