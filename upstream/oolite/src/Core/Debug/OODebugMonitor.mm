@@ -31,7 +31,7 @@ SOFTWARE.
 
 
 #import "OODebugMonitor.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOLoggingExtended.h"
 #import "ResourceManager.h"
 #import "NSStringOOExtensions.h"
@@ -593,7 +593,7 @@ typedef struct
 			usage = @", active";
 		}
 		
-		unsigned refCount = [textureRefCounts oo_unsignedIntForKey:[NSValue valueWithNonretainedObject:tex]];
+		unsigned refCount = oo::PListView(textureRefCounts).get<unsigned int>([NSValue valueWithNonretainedObject:tex]);
 		
 		[self writeMemStat:@"%@: [%u refs%@] %@%@",
 		 [tex name],
