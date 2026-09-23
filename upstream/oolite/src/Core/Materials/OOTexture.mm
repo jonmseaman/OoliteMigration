@@ -42,6 +42,7 @@
 #import "OOPixMap.h"
 
 #include "oofnd/StdLib.hpp"
+#import "OOFoundationBridge.h"
 
 
 NSString * const kOOTextureSpecifierNameKey					= @"name";
@@ -174,7 +175,7 @@ static NSString *sGlobalTraceContext = nil;
 		}
 		
 		// No existing texture, load texture.
-		result = [[[OOConcreteTexture alloc] initWithPath:path key:key options:options anisotropy:anisotropy lodBias:lodBias] autorelease];
+		result = [[[OOConcreteTexture alloc] initWithPath:oo::StdString(path) key:oo::OptionalString(key) options:options anisotropy:anisotropy lodBias:lodBias] autorelease];
 	}
 	
 	
@@ -241,7 +242,7 @@ static NSString *sGlobalTraceContext = nil;
 	OOLog(@"texture.generator.queue", @"Queued texture generator %@", generator);
 	
 	OOTexture *result = [[[OOConcreteTexture alloc] initWithLoader:generator
-															   key:[generator cacheKey]
+															   key:oo::OptionalString([generator cacheKey])
 														   options:OOApplyTextureOptionDefaults([generator textureOptions])
 														anisotropy:[generator anisotropy]
 														   lodBias:[generator lodBias]] autorelease];
