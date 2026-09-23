@@ -77,6 +77,62 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 	return dict->get<std::string>(key);
 }
 
+
+
+// get<Vector> / get<Quaternion>: OOCollectionExtractors' readers (unmigrated) of the value,
+// handed back to them as a Foundation object; the defaults of a missing key are theirs.
+Vector VectorForKey(const oo::PList &dict, const char *key)
+{
+	const oo::PList *value = dict.find(key);
+	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroVector);
+}
+
+
+Quaternion QuaternionForKey(const oo::PList &dict, const char *key)
+{
+	const oo::PList *value = dict.find(key);
+	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
+}
+
+
+// oo_setVector: / oo_setQuaternion:: OOPropertyListFromVector / OOPropertyListFromQuaternion's
+// dictionaries (float components), as property lists.
+oo::PList VectorPList(Vector value)
+{
+	return oo::PListFrom(OOPropertyListFromVector(value));
+}
+
+
+oo::PList QuaternionPList(Quaternion value)
+{
+	return oo::PListFrom(OOPropertyListFromQuaternion(value));
+}
+
+
+// The first token of a string, as [ScanTokensFromString(s) objectAtIndex:0] read it: an empty
+// token list raised.
+std::string FirstToken(const std::vector<std::string> &tokens)
+{
+	if (tokens.empty())
+	{
+		[NSException raise:NSRangeException format:@"Index 0 is out of range 0 (in 'objectAtIndex:')"];
+	}
+	return tokens[0];
+}
+
+
+// The tokens joined by single spaces (-componentsJoinedByString:@" ").
+std::string JoinTokens(const std::vector<std::string> &tokens)
+{
+	std::string joined;
+	for (std::size_t i = 0; i != tokens.size(); ++i)
+	{
+		if (i != 0)  joined += ' ';
+		joined += tokens[i];
+	}
+	return joined;
+}
+
 }	// namespace
 
 
@@ -104,32 +160,34 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 - (NSMutableDictionary *) mergeShip:(NSDictionary *)child withParent:(NSDictionary *)parent;
 - (void) mergeShipRoles:(const std::string &)roles forShipKey:(const std::string &)shipKey intoProbabilityMap:(std::map<std::string, oo::ObjCRef<OOMutableProbabilitySet *>, std::less<>> &)probabilitySets;
 
-- (NSDictionary *) canonicalizeSubentityDeclaration:(id)declaration
-											forShip:(NSString *)shipKey
-										   shipData:(NSDictionary *)shipData
+// Declarations and ship data are property lists; a result is a declaration dictionary, or a
+// null PList where it was nil.
+- (oo::PList) canonicalizeSubentityDeclaration:(const oo::PList &)declaration
+									   forShip:(const std::string &)shipKey
+									  shipData:(const oo::PList &)shipData
+									fatalError:(BOOL *)outFatalError;
+- (oo::PList) translateOldStyleSubentityDeclaration:(const std::string &)declaration
+											forShip:(const std::string &)shipKey
+										   shipData:(const oo::PList &)shipData
 										 fatalError:(BOOL *)outFatalError;
-- (NSDictionary *) translateOldStyleSubentityDeclaration:(NSString *)declaration
-												 forShip:(NSString *)shipKey
-												shipData:(NSDictionary *)shipData
-											  fatalError:(BOOL *)outFatalError;
-- (NSDictionary *) translateOldStyleFlasherDeclaration:(NSArray *)tokens
-											   forShip:(NSString *)shipKey
-											fatalError:(BOOL *)outFatalError;
-- (NSDictionary *) translateOldStandardBasicSubentityDeclaration:(NSArray *)tokens
-														 forShip:(NSString *)shipKey
-														shipData:(NSDictionary *)shipData
-													  fatalError:(BOOL *)outFatalError;
-- (NSDictionary *) validateNewStyleSubentityDeclaration:(NSDictionary *)declaration
-												forShip:(NSString *)shipKey
-											 fatalError:(BOOL *)outFatalError;
-- (NSDictionary *) validateNewStyleFlasherDeclaration:(NSDictionary *)declaration
-											  forShip:(NSString *)shipKey
-										   fatalError:(BOOL *)outFatalError;
-- (NSDictionary *) validateNewStyleStandardSubentityDeclaration:(NSDictionary *)declaration
-														forShip:(NSString *)shipKey
-													 fatalError:(BOOL *)outFatalError;
+- (oo::PList) translateOldStyleFlasherDeclaration:(const oo::PList &)tokens
+										  forShip:(const std::string &)shipKey
+									   fatalError:(BOOL *)outFatalError;
+- (oo::PList) translateOldStandardBasicSubentityDeclaration:(const oo::PList &)tokens
+													forShip:(const std::string &)shipKey
+												   shipData:(const oo::PList &)shipData
+												 fatalError:(BOOL *)outFatalError;
+- (oo::PList) validateNewStyleSubentityDeclaration:(const oo::PList &)declaration
+										   forShip:(const std::string &)shipKey
+										fatalError:(BOOL *)outFatalError;
+- (oo::PList) validateNewStyleFlasherDeclaration:(const oo::PList &)declaration
+										 forShip:(const std::string &)shipKey
+									  fatalError:(BOOL *)outFatalError;
+- (oo::PList) validateNewStyleStandardSubentityDeclaration:(const oo::PList &)declaration
+												   forShip:(const std::string &)shipKey
+												fatalError:(BOOL *)outFatalError;
 
-- (BOOL) shipIsBallTurretForKey:(NSString *)shipKey inShipData:(NSDictionary *)shipData;
+- (BOOL) shipIsBallTurretForKey:(const std::string &)shipKey inShipData:(const oo::PList &)shipData;
 
 @end
 
@@ -940,6 +998,10 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 	// Convert all subentity declarations to dictionaries and add
 	// _oo_is_subentity=YES to all entries used as subentities.
 	
+	// The declaration helpers take property lists: one snapshot of the ship data per call (they
+	// read only "frangible" and "setup_actions", which this loop never writes).
+	const oo::PList shipDataSnapshot = oo::PListFrom(ioData);
+
 	// Iterate over all ships. (Iterates over a copy of keys since it mutates the dictionary.)
 	foreach (shipKey, [ioData allKeys])
 	{
@@ -954,7 +1016,7 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 			okSubentities = [NSMutableArray arrayWithCapacity:[subentityDeclarations count]];
 			foreach (subentityDecl, subentityDeclarations)
 			{
-				subentityDict = [self canonicalizeSubentityDeclaration:subentityDecl forShip:shipKey shipData:ioData fatalError:&fatal];
+				subentityDict = oo::ObjectFromPList([self canonicalizeSubentityDeclaration:oo::PListFrom(subentityDecl) forShip:oo::StdString(shipKey) shipData:shipDataSnapshot fatalError:&fatal]);
 				
 				// If entry is broken, we need to kill this ship.
 				if (fatal)
@@ -1281,28 +1343,28 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 }
 
 
-- (NSDictionary *) canonicalizeSubentityDeclaration:(id)declaration
-											forShip:(NSString *)shipKey
-										   shipData:(NSDictionary *)shipData
-										 fatalError:(BOOL *)outFatalError
+- (oo::PList) canonicalizeSubentityDeclaration:(const oo::PList &)declaration
+									   forShip:(const std::string &)shipKey
+									  shipData:(const oo::PList &)shipData
+									fatalError:(BOOL *)outFatalError
 {
-	NSDictionary			*result = nil;
-	
+	oo::PList				result;
+
 	assert(outFatalError != NULL);
 	*outFatalError = NO;
-	
-	if ([declaration isKindOfClass:[NSString class]])
+
+	if (declaration.isString())
 	{
 		// Update old-style string-based declaration.
-		OOStandardsDeprecated([NSString stringWithFormat:@"Old style sub-entity declarations are deprecated in %@",shipKey]);
+		cxx_OOStandardsDeprecated(oo::str::format("Old style sub-entity declarations are deprecated in %s", shipKey.c_str()));
 		if (!OOEnforceStandards())
 		{
-			result = [self translateOldStyleSubentityDeclaration:declaration
+			result = [self translateOldStyleSubentityDeclaration:*declaration.getIf<std::string>()
 														 forShip:shipKey
 														shipData:shipData
 													  fatalError:outFatalError];
 		}
-		if (result != nil)
+		if (!result.isNull())
 		{
 			// Ensure internal translation made sense, and clean up a bit.
 			result = [self validateNewStyleSubentityDeclaration:result
@@ -1310,7 +1372,7 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 													 fatalError:outFatalError];
 		}
 	}
-	else if ([declaration isKindOfClass:[NSDictionary class]])
+	else if (declaration.isDict())
 	{
 		// Validate dictionary-based declaration.
 		result = [self validateNewStyleSubentityDeclaration:declaration
@@ -1319,46 +1381,52 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 	}
 	else
 	{
-		OOLogERR(@"shipData.load.error.badSubentity", @"subentity declaration for ship %@ should be string or dictionary, found %@.", shipKey, [declaration class]);
+		// (%@ of the declaration's class: the class of the object the property list gives back)
+		OOLogERR(@"shipData.load.error.badSubentity", @"subentity declaration for ship %@ should be string or dictionary, found %@.", oo::NSStringFrom(shipKey), [oo::ObjectFromPList(declaration) class]);
 		*outFatalError = YES;
 	}
-	
+
 	// For frangible ships, bad subentities are non-fatal.
-	if (*outFatalError && oo::PListView(oo::PListView(shipData).get<NSDictionary *>(shipKey)).get<BOOL>(@"frangible"))  *outFatalError = NO;
-	
+	const oo::PList *shipEntry = shipData.get<oo::PList::Dict>(shipKey);
+	if (*outFatalError && shipEntry != nullptr && shipEntry->get<bool>("frangible"))  *outFatalError = NO;
+
 	return result;
 }
 
 
-- (NSDictionary *) translateOldStyleSubentityDeclaration:(NSString *)declaration
-												 forShip:(NSString *)shipKey
-												shipData:(NSDictionary *)shipData
-											  fatalError:(BOOL *)outFatalError
+- (oo::PList) translateOldStyleSubentityDeclaration:(const std::string &)declaration
+											forShip:(const std::string &)shipKey
+										   shipData:(const oo::PList &)shipData
+										 fatalError:(BOOL *)outFatalError
 {
-	NSArray					*tokens = nil;
-	NSString				*subentityKey = nil;
-	BOOL					isFlasher;
-	
-	tokens = ScanTokensFromString(declaration);
-	
-	subentityKey = [tokens objectAtIndex:0];
-	isFlasher = [subentityKey isEqualToString:@"*FLASHER*"];
-	
+	const std::vector<std::string>	tokenStrings = oo::str::tokens(declaration);
+	std::string						subentityKey;
+	BOOL							isFlasher;
+
+	subentityKey = FirstToken(tokenStrings);
+	isFlasher = subentityKey == "*FLASHER*";
+
 	// Sanity check: require eight tokens.
-	if ([tokens count] != 8)
+	if (tokenStrings.size() != 8)
 	{
 		if (!isFlasher)
 		{
-			OOLogERR(@"shipData.load.error.badSubentity", @"the shipdata.plist entry \"%@\" has a broken subentity definition \"%@\" (should have 8 tokens, has %zu).", shipKey, subentityKey, [tokens count]);
+			OOLogERR(@"shipData.load.error.badSubentity", @"the shipdata.plist entry \"%@\" has a broken subentity definition \"%@\" (should have 8 tokens, has %zu).", oo::NSStringFrom(shipKey), oo::NSStringFrom(subentityKey), tokenStrings.size());
 			*outFatalError = YES;
 		}
 		else
 		{
-			OOLogWARN(@"shipData.load.warning.badFlasher", @"the shipdata.plist entry \"%@\" has a broken flasher definition (should have 8 tokens, has %zu). This flasher will be ignored.", shipKey, [tokens count]);
+			OOLogWARN(@"shipData.load.warning.badFlasher", @"the shipdata.plist entry \"%@\" has a broken flasher definition (should have 8 tokens, has %zu). This flasher will be ignored.", oo::NSStringFrom(shipKey), tokenStrings.size());
 		}
-		return nil;
+		return oo::PList();
 	}
-	
+
+	// The tokens as an array of strings, read with at<float> as the string tokens were.
+	oo::PList::Array tokenArray;
+	tokenArray.reserve(tokenStrings.size());
+	for (const std::string &token : tokenStrings)  tokenArray.emplace_back(token);
+	const oo::PList tokens(std::move(tokenArray));
+
 	if (isFlasher)
 	{
 		return [self translateOldStyleFlasherDeclaration:tokens
@@ -1375,210 +1443,208 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 }
 
 
-- (NSDictionary *) translateOldStyleFlasherDeclaration:(NSArray *)tokens
-											   forShip:(NSString *)shipKey
-											fatalError:(BOOL *)outFatalError
+- (oo::PList) translateOldStyleFlasherDeclaration:(const oo::PList &)tokens
+										  forShip:(const std::string &)shipKey
+									   fatalError:(BOOL *)outFatalError
 {
 	Vector					position;
 	float					size, frequency, phase, hue;
-	NSDictionary			*colorDict = nil;
-	NSDictionary			*result = nil;
-	
-	position.x = oo::PListView(tokens).at<float>(1);
-	position.y = oo::PListView(tokens).at<float>(2);
-	position.z = oo::PListView(tokens).at<float>(3);
-	
-	hue = oo::PListView(tokens).at<float>(4);
-	frequency = oo::PListView(tokens).at<float>(5);
-	phase = oo::PListView(tokens).at<float>(6);
-	size = oo::PListView(tokens).at<float>(7);
-	
-	colorDict = [NSDictionary dictionaryWithObject:[NSNumber numberWithFloat:hue] forKey:@"hue"];
-	
-	result = [NSDictionary dictionaryWithObjectsAndKeys:
-			  @"flasher", @"type",
-			  OOPropertyListFromVector(position), @"position",
-			  [NSArray arrayWithObject:colorDict], @"colors",
-			  [NSNumber numberWithFloat:frequency], @"frequency",
-			  [NSNumber numberWithFloat:phase], @"phase",
-			  [NSNumber numberWithFloat:size], @"size",
-			  nil];
-	
-	OOLog(@"shipData.translateSubentity.flasher", @"Translated flasher declaration \"%@\" to %@", [tokens componentsJoinedByString:@" "], result);
-	
-	return result;
+
+	position.x = tokens.at<float>(1);
+	position.y = tokens.at<float>(2);
+	position.z = tokens.at<float>(3);
+
+	hue = tokens.at<float>(4);
+	frequency = tokens.at<float>(5);
+	phase = tokens.at<float>(6);
+	size = tokens.at<float>(7);
+
+	// (the +numberWithFloat: values are single reals)
+	oo::PList::Dict colorDict;
+	colorDict.emplace("hue", oo::PList::singleReal(hue));
+
+	oo::PList::Dict result;
+	result.emplace("type", "flasher");
+	result.emplace("position", VectorPList(position));
+	result.emplace("colors", oo::PList::Array{ oo::PList(std::move(colorDict)) });
+	result.emplace("frequency", oo::PList::singleReal(frequency));
+	result.emplace("phase", oo::PList::singleReal(phase));
+	result.emplace("size", oo::PList::singleReal(size));
+	const oo::PList resultPList(std::move(result));
+
+	std::vector<std::string> tokenStrings;
+	for (std::size_t i = 0; i != tokens.count(); ++i)  tokenStrings.push_back(tokens.at<std::string>(i));
+	OOLog(@"shipData.translateSubentity.flasher", @"Translated flasher declaration \"%@\" to %@", oo::NSStringFrom(JoinTokens(tokenStrings)), oo::ObjectFromPList(resultPList));
+
+	return resultPList;
 }
 
 
-- (NSDictionary *) translateOldStandardBasicSubentityDeclaration:(NSArray *)tokens
-														 forShip:(NSString *)shipKey
-														shipData:(NSDictionary *)shipData
-													  fatalError:(BOOL *)outFatalError
+- (oo::PList) translateOldStandardBasicSubentityDeclaration:(const oo::PList &)tokens
+													forShip:(const std::string &)shipKey
+												   shipData:(const oo::PList &)shipData
+												 fatalError:(BOOL *)outFatalError
 {
-	NSString				*subentityKey = nil;
+	std::string				subentityKey;
 	Vector					position;
 	Quaternion				orientation;
-	NSMutableDictionary		*result = nil;
 	BOOL					isTurret, isDock = NO;
-	
-	subentityKey = oo::PListView(tokens).at<NSString *>(0);
-	
+
+	subentityKey = tokens.at<std::string>(0);
+
 	isTurret = [self shipIsBallTurretForKey:subentityKey inShipData:shipData];
-	
-	position.x = oo::PListView(tokens).at<float>(1);
-	position.y = oo::PListView(tokens).at<float>(2);
-	position.z = oo::PListView(tokens).at<float>(3);
-	
-	orientation.w = oo::PListView(tokens).at<float>(4);
-	orientation.x = oo::PListView(tokens).at<float>(5);
-	orientation.y = oo::PListView(tokens).at<float>(6);
-	orientation.z = oo::PListView(tokens).at<float>(7);
-	
-	if(orientation.w == 0 && orientation.x == 0 && orientation.y == 0 && orientation.z == 0) 
+
+	position.x = tokens.at<float>(1);
+	position.y = tokens.at<float>(2);
+	position.z = tokens.at<float>(3);
+
+	orientation.w = tokens.at<float>(4);
+	orientation.x = tokens.at<float>(5);
+	orientation.y = tokens.at<float>(6);
+	orientation.z = tokens.at<float>(7);
+
+	if(orientation.w == 0 && orientation.x == 0 && orientation.y == 0 && orientation.z == 0)
 	{
 		orientation.w = 1; // avoid dividing by zero.
-		OOLogWARN(@"shipData.load.error", @"The ship %@ has an undefined orientation for its %@ subentity. Setting it now at (1,0,0,0)", shipKey, subentityKey);
+		OOLogWARN(@"shipData.load.error", @"The ship %@ has an undefined orientation for its %@ subentity. Setting it now at (1,0,0,0)", oo::NSStringFrom(shipKey), oo::NSStringFrom(subentityKey));
 	}
-	
+
 	quaternion_normalize(&orientation);
-	
+
 	if (!isTurret)
 	{
-		isDock = [subentityKey rangeOfString:@"dock"].location != NSNotFound;
+		isDock = subentityKey.find("dock") != std::string::npos;
 	}
-	
-	result = [NSMutableDictionary dictionaryWithCapacity:5];
-	[result setObject:isTurret ? @"ball_turret" : @"standard" forKey:@"type"];
-	[result setObject:subentityKey forKey:@"subentity_key"];
-	[result oo_setVector:position forKey:@"position"];
-	[result oo_setQuaternion:orientation forKey:@"orientation"];
-	if (isDock)  [result oo_setBool:YES forKey:@"is_dock"];
-	
-	OOLog(@"shipData.translateSubentity.standard", @"Translated subentity declaration \"%@\" to %@", [tokens componentsJoinedByString:@" "], result);
-	
-	return [[result copy] autorelease];
+
+	oo::PList::Dict result;
+	result.emplace("type", isTurret ? "ball_turret" : "standard");
+	result.emplace("subentity_key", subentityKey);
+	result.emplace("position", VectorPList(position));
+	result.emplace("orientation", QuaternionPList(orientation));
+	if (isDock)  result.emplace("is_dock", true);
+	const oo::PList resultPList(std::move(result));
+
+	std::vector<std::string> tokenStrings;
+	for (std::size_t i = 0; i != tokens.count(); ++i)  tokenStrings.push_back(tokens.at<std::string>(i));
+	OOLog(@"shipData.translateSubentity.standard", @"Translated subentity declaration \"%@\" to %@", oo::NSStringFrom(JoinTokens(tokenStrings)), oo::ObjectFromPList(resultPList));
+
+	return resultPList;
 }
 
 
-- (NSDictionary *) validateNewStyleSubentityDeclaration:(NSDictionary *)declaration
-												forShip:(NSString *)shipKey
-											 fatalError:(BOOL *)outFatalError
+- (oo::PList) validateNewStyleSubentityDeclaration:(const oo::PList &)declaration
+										   forShip:(const std::string &)shipKey
+										fatalError:(BOOL *)outFatalError
 {
-	NSString				*type = nil;
-	
-	type = oo::PListView(declaration).get<NSString *>(@"type");
-	if (type == nil)  type = @"standard";
-	
-	if ([type isEqualToString:@"flasher"])
+	const std::string		type = StringForKey(&declaration, "type").value_or("standard");
+
+	if (type == "flasher")
 	{
 		return [self validateNewStyleFlasherDeclaration:declaration forShip:shipKey fatalError:outFatalError];
 	}
-	else if ([type isEqualToString:@"standard"] || [type isEqualToString:@"ball_turret"])
+	else if (type == "standard" || type == "ball_turret")
 	{
 		return [self validateNewStyleStandardSubentityDeclaration:declaration forShip:shipKey fatalError:outFatalError];
 	}
 	else
 	{
-		OOLogERR(@"shipData.load.error.badSubentity", @"subentity declaration for ship %@ does not declare a valid type (must be standard, flasher or ball_turret).", shipKey);
+		OOLogERR(@"shipData.load.error.badSubentity", @"subentity declaration for ship %@ does not declare a valid type (must be standard, flasher or ball_turret).", oo::NSStringFrom(shipKey));
 		*outFatalError = YES;
-		return nil;
+		return oo::PList();
 	}
 }
 
 
-- (NSDictionary *) validateNewStyleFlasherDeclaration:(NSDictionary *)declaration
-											  forShip:(NSString *)shipKey
-										   fatalError:(BOOL *)outFatalError
+- (oo::PList) validateNewStyleFlasherDeclaration:(const oo::PList &)declaration
+										 forShip:(const std::string &)shipKey
+									  fatalError:(BOOL *)outFatalError
 {
-	NSMutableDictionary		*result = nil;
 	Vector					position = kZeroVector;
-	NSArray					*colors = nil;
-	id						colorDesc = nil;
 	float					size, frequency, phase, brightfraction;
 	BOOL					initiallyOn;
-	
-#define kDefaultFlasherColor @"redColor"
-	
+
+#define kDefaultFlasherColor "redColor"
+
 	// "Validate" is really "clean up", since all values have defaults.
-	colors = oo::PListView(declaration).get<NSArray *>(@"colors");
-	if ([colors count] == 0)
+	const oo::PList *colorList = declaration.get<oo::PList::Array>("colors");
+	oo::PList colors = colorList != nullptr ? *colorList : oo::PList();
+	if (colors.count() == 0)
 	{
-		colorDesc = [declaration objectForKey:@"color"];
-		if (colorDesc == nil) colorDesc = kDefaultFlasherColor;
-		if ([colorDesc isKindOfClass:[NSArray class]])
+		const oo::PList *color = declaration.find("color");
+		const oo::PList colorDesc = color != nullptr ? *color : oo::PList(kDefaultFlasherColor);
+		if (colorDesc.isArray())
 		{
 			// an easy made error is adding an array to "color" instead of "colors"
-			OOLogWARN(@"shipData.load.warning.flasher.badColor", @"changing flasher for ship %@ from a color to a colors definition.", shipKey);
+			OOLogWARN(@"shipData.load.warning.flasher.badColor", @"changing flasher for ship %@ from a color to a colors definition.", oo::NSStringFrom(shipKey));
 			colors = colorDesc;
 		}
 		else
 		{
-			colors = [NSArray arrayWithObject:colorDesc];
+			colors = oo::PList(oo::PList::Array{ colorDesc });
 		}
 	}
-	
-	// Validate colours.
-	NSMutableArray *validColors = [NSMutableArray arrayWithCapacity:[colors count]];
-	foreach (colorDesc, colors)
+
+	// Validate colours. (OOColor is converted at the call; its components are single reals.)
+	oo::PList::Array validColors;
+	for (std::size_t i = 0; i != colors.count(); ++i)
 	{
-		OOColor *color = [OOColor colorWithDescription:colorDesc];
+		OOColor *color = [OOColor colorWithDescription:oo::ObjectFromPList(*colors.at(i))];
 		if (color != nil)
 		{
-			[validColors addObject:[color normalizedArray]];
+			oo::PList::Array components;
+			for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+			validColors.emplace_back(std::move(components));
 		}
 		else
 		{
-			OOLogWARN(@"shipdata.load.warning.flasher.badColor", @"skipping invalid colour specifier for flasher for ship %@.", shipKey);
+			OOLogWARN(@"shipdata.load.warning.flasher.badColor", @"skipping invalid colour specifier for flasher for ship %@.", oo::NSStringFrom(shipKey));
 		}
 	}
 	// Ensure there's at least one.
-	if ([validColors count] == 0)
+	if (validColors.empty())
 	{
-		[validColors addObject:kDefaultFlasherColor];
-	}
-	colors = validColors;
-	
-	position = oo::PListView(declaration).get<Vector>(@"position");
-	
-	size = oo::PListView(declaration).get<float>(@"size", 8.0);
-	
-	if (size <= 0)
-	{
-		OOLogWARN(@"shipData.load.warning.flasher.badSize", @"skipping flasher of invalid size %g for ship %@.", size, shipKey);
-		return nil;
+		validColors.emplace_back(kDefaultFlasherColor);
 	}
 
-	brightfraction = oo::PListView(declaration).get<float>(@"bright_fraction", 0.5);
+	position = VectorForKey(declaration, "position");
+
+	size = declaration.get<float>("size", 8.0);
+
+	if (size <= 0)
+	{
+		OOLogWARN(@"shipData.load.warning.flasher.badSize", @"skipping flasher of invalid size %g for ship %@.", size, oo::NSStringFrom(shipKey));
+		return oo::PList();
+	}
+
+	brightfraction = declaration.get<float>("bright_fraction", 0.5);
 	if (brightfraction < 0.0 || brightfraction > 1.0)
 	{
-		OOLogWARN(@"shipData.load.warning.flasher.badFraction", @"skipping flasher of invalid bright fraction %g for ship %@.", brightfraction, shipKey);
-		return nil;
+		OOLogWARN(@"shipData.load.warning.flasher.badFraction", @"skipping flasher of invalid bright fraction %g for ship %@.", brightfraction, oo::NSStringFrom(shipKey));
+		return oo::PList();
 	}
-	
-	frequency = oo::PListView(declaration).get<float>(@"frequency", 2.0);
-	phase = oo::PListView(declaration).get<float>(@"phase", 0.0);
-	initiallyOn = oo::PListView(declaration).get<BOOL>(@"initially_on", YES);
-	
-	result = [NSMutableDictionary dictionaryWithCapacity:8];
-	[result setObject:@"flasher" forKey:@"type"];
-	[result setObject:colors forKey:@"colors"];
-	[result oo_setVector:position forKey:@"position"];
-	[result setObject:[NSNumber numberWithFloat:size] forKey:@"size"];
-	[result setObject:[NSNumber numberWithFloat:frequency] forKey:@"frequency"];
-	if (phase != 0)  [result setObject:[NSNumber numberWithFloat:phase] forKey:@"phase"];
-	[result setObject:[NSNumber numberWithFloat:brightfraction] forKey:@"bright_fraction"];
-	[result setObject:[NSNumber numberWithBool:initiallyOn] forKey:@"initially_on"];
-	
-	return [[result copy] autorelease];
+
+	frequency = declaration.get<float>("frequency", 2.0);
+	phase = declaration.get<float>("phase", 0.0);
+	initiallyOn = declaration.get<bool>("initially_on", true);
+
+	oo::PList::Dict result;
+	result.emplace("type", "flasher");
+	result.emplace("colors", std::move(validColors));
+	result.emplace("position", VectorPList(position));
+	result.emplace("size", oo::PList::singleReal(size));
+	result.emplace("frequency", oo::PList::singleReal(frequency));
+	if (phase != 0)  result.emplace("phase", oo::PList::singleReal(phase));
+	result.emplace("bright_fraction", oo::PList::singleReal(brightfraction));
+	result.emplace("initially_on", initiallyOn ? true : false);
+
+	return oo::PList(std::move(result));
 }
 
 
-- (NSDictionary *) validateNewStyleStandardSubentityDeclaration:(NSDictionary *)declaration
-														forShip:(NSString *)shipKey
-													 fatalError:(BOOL *)outFatalError
+- (oo::PList) validateNewStyleStandardSubentityDeclaration:(const oo::PList &)declaration
+												   forShip:(const std::string &)shipKey
+												fatalError:(BOOL *)outFatalError
 {
-	NSMutableDictionary		*result = nil;
-	NSString				*subentityKey = nil;
 	Vector					position = kZeroVector;
 	Quaternion				orientation = kIdentityQuaternion;
 	BOOL					isTurret;
@@ -1586,104 +1652,102 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 	float					fireRate = -1.0f; // out of range constants
 	float					weaponRange = -1.0f;
 	float					weaponEnergy = -1.0f;
-	NSDictionary			*scriptInfo = nil;
-	
-	subentityKey = [declaration objectForKey:@"subentity_key"];
-	if (subentityKey == nil)
+
+	const oo::PList *subentityKey = declaration.find("subentity_key");
+	if (subentityKey == nullptr)
 	{
-		OOLogERR(@"shipData.load.error.badSubentity", @"subentity declaration for ship %@ specifies no subentity_key.", shipKey);
+		OOLogERR(@"shipData.load.error.badSubentity", @"subentity declaration for ship %@ specifies no subentity_key.", oo::NSStringFrom(shipKey));
 		*outFatalError = YES;
-		return nil;
+		return oo::PList();
 	}
-	
-	isTurret = [oo::PListView(declaration).get<NSString *>(@"type") isEqualToString:@"ball_turret"];
+
+	isTurret = StringForKey(&declaration, "type") == "ball_turret";
 	if (isTurret)
 	{
-		fireRate = oo::PListView(declaration).get<float>(@"fire_rate", -1.0f);
+		fireRate = declaration.get<float>("fire_rate", -1.0f);
 		if (fireRate < 0.25f && fireRate >= 0.0f)
 		{
-			OOLogWARN(@"shipData.load.warning.turret.badFireRate", @"ball turret fire rate of %g for subentity of ship %@ is invalid, using 0.25.", fireRate, shipKey);
+			OOLogWARN(@"shipData.load.warning.turret.badFireRate", @"ball turret fire rate of %g for subentity of ship %@ is invalid, using 0.25.", fireRate, oo::NSStringFrom(shipKey));
 			fireRate = 0.25f;
 		}
-		weaponRange = oo::PListView(declaration).get<float>(@"weapon_range", -1.0f);
+		weaponRange = declaration.get<float>("weapon_range", -1.0f);
 		if (weaponRange > TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR)
 		{
-			OOLogWARN(@"shipData.load.warning.turret.badWeaponRange", @"ball turret weapon range of %g for subentity of ship %@ is too high, using %.1f.", weaponRange, shipKey, TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR);
+			OOLogWARN(@"shipData.load.warning.turret.badWeaponRange", @"ball turret weapon range of %g for subentity of ship %@ is too high, using %.1f.", weaponRange, oo::NSStringFrom(shipKey), TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR);
 			weaponRange = TURRET_SHOT_RANGE * COMBAT_WEAPON_RANGE_FACTOR; // approx. range of primary plasma canon.
 		}
 
-		weaponEnergy = oo::PListView(declaration).get<float>(@"weapon_energy", -1.0f);
+		weaponEnergy = declaration.get<float>("weapon_energy", -1.0f);
 		if (weaponEnergy > 100.0f)
-			
+
 		{
-			OOLogWARN(@"shipData.load.warning.turret.badWeaponEnergy", @"ball turret weapon energy of %g for subentity of ship %@ is too high, using 100.", weaponEnergy, shipKey);
+			OOLogWARN(@"shipData.load.warning.turret.badWeaponEnergy", @"ball turret weapon energy of %g for subentity of ship %@ is too high, using 100.", weaponEnergy, oo::NSStringFrom(shipKey));
 			weaponEnergy = 100.0f;
 		}
 	}
 	else
 	{
-		isDock = oo::PListView(declaration).get<BOOL>(@"is_dock");
+		isDock = declaration.get<bool>("is_dock");
 	}
-	
-	position = oo::PListView(declaration).get<Vector>(@"position");
-	orientation = oo::PListView(declaration).get<Quaternion>(@"orientation");
+
+	position = VectorForKey(declaration, "position");
+	orientation = QuaternionForKey(declaration, "orientation");
 	quaternion_normalize(&orientation);
-	
-	scriptInfo = oo::PListView(declaration).get<NSDictionary *>(@"script_info");
-	
-	result = [NSMutableDictionary dictionaryWithCapacity:10];
-	[result setObject:isTurret ? @"ball_turret" : @"standard" forKey:@"type"];
-	[result setObject:subentityKey forKey:@"subentity_key"];
-	[result oo_setVector:position forKey:@"position"];
-	[result oo_setQuaternion:orientation forKey:@"orientation"];
-	if (isDock) 
+
+	const oo::PList *scriptInfo = declaration.get<oo::PList::Dict>("script_info");
+
+	oo::PList::Dict result;
+	result.emplace("type", isTurret ? "ball_turret" : "standard");
+	result.emplace("subentity_key", *subentityKey);
+	result.emplace("position", VectorPList(position));
+	result.emplace("orientation", QuaternionPList(orientation));
+	if (isDock)
 	{
-		[result oo_setBool:YES forKey:@"is_dock"];
+		result["is_dock"] = true;
 
-		NSString* docklabel = oo::PListView(declaration).get<NSString *>(@"dock_label", @"the docking bay");
-		[result setObject:docklabel forKey:@"dock_label"];
+		result["dock_label"] = declaration.get<std::string>("dock_label", "the docking bay");
 
-		BOOL dockable = oo::PListView(declaration).get<BOOL>(@"allow_docking", YES);
-		BOOL playerdockable = oo::PListView(declaration).get<BOOL>(@"disallowed_docking_collides", NO);
-		BOOL undockable = oo::PListView(declaration).get<BOOL>(@"allow_launching", YES);
+		BOOL dockable = declaration.get<bool>("allow_docking", true);
+		BOOL playerdockable = declaration.get<bool>("disallowed_docking_collides", false);
+		BOOL undockable = declaration.get<bool>("allow_launching", true);
 
-		[result oo_setBool:dockable forKey:@"allow_docking"];
-		[result oo_setBool:playerdockable forKey:@"disallowed_docking_collides"];
-		[result oo_setBool:undockable forKey:@"allow_launching"];
+		result["allow_docking"] = dockable ? true : false;
+		result["disallowed_docking_collides"] = playerdockable ? true : false;
+		result["allow_launching"] = undockable ? true : false;
 
 	}
 
 	if (isTurret)
 	{
 		// default constants are defined and set in shipEntity
-		if (fireRate > 0) [result oo_setFloat:fireRate forKey:@"fire_rate"];
-		if (weaponRange >= 0) [result oo_setFloat:weaponRange forKey:@"weapon_range"];
-		if (weaponEnergy >= 0) [result oo_setFloat:weaponEnergy forKey:@"weapon_energy"];
+		// (oo_setFloat: stored the float as a double number)
+		if (fireRate > 0) result["fire_rate"] = static_cast<double>(fireRate);
+		if (weaponRange >= 0) result["weapon_range"] = static_cast<double>(weaponRange);
+		if (weaponEnergy >= 0) result["weapon_energy"] = static_cast<double>(weaponEnergy);
 	}
-	
-	if (scriptInfo != nil)
+
+	if (scriptInfo != nullptr)
 	{
-		[result setObject:scriptInfo forKey:@"script_info"];
+		result["script_info"] = *scriptInfo;
 	}
-	
-	return [[result copy] autorelease];
+
+	return oo::PList(std::move(result));
 }
 
 
-- (BOOL) shipIsBallTurretForKey:(NSString *)shipKey inShipData:(NSDictionary *)shipData
+- (BOOL) shipIsBallTurretForKey:(const std::string &)shipKey inShipData:(const oo::PList &)shipData
 {
 	// Test for presence of setup_actions containing initialiseTurret.
-	NSArray					*setupActions = nil;
-	NSString				*action = nil;
-	
-	setupActions = oo::PListView(oo::PListView(shipData).get<NSDictionary *>(shipKey)).get<NSArray *>(@"setup_actions");
-	
-	foreach (action, setupActions)
+	const oo::PList *shipEntry = shipData.get<oo::PList::Dict>(shipKey);
+	const oo::PList *setupActions = shipEntry != nullptr ? shipEntry->get<oo::PList::Array>("setup_actions") : nullptr;
+
+	for (std::size_t i = 0; setupActions != nullptr && i != setupActions->count(); ++i)
 	{
-		if ([[ScanTokensFromString(action) objectAtIndex:0] isEqualToString:@"initialiseTurret"])  return YES;
+		const std::string *action = setupActions->at(i)->getIf<std::string>();
+		if (FirstToken(oo::str::tokens(action != nullptr ? *action : std::string())) == "initialiseTurret")  return YES;
 	}
-	
-	if ([shipKey isEqualToString:@"ballturret"])
+
+	if (shipKey == "ballturret")
 	{
 		// compatibility for OXPs using old subentity declarations and the
 		// core turret entity
