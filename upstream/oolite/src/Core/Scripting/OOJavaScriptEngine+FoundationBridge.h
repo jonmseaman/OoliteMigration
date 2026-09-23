@@ -44,6 +44,21 @@ OOJS_EXTERN_C ooscript::PropertyId OOJSIDFromString(NSString *string);	// -> cxx
 OOJS_EXTERN_C NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);	// -> cxx_OOJSDescribeValue
 
 
+// Error and warning reporters with NSString formats (bead oo-3rb.200) -> the cxx_ reporters, which
+// take printf formats; the bridge formats %@ with GNUstep and hands over the finished text.
+OOJS_EXTERN_C void OOJSReportError(ooscript::Context context, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportErrorWithArguments(ooscript::Context context, NSString *format, va_list args);
+OOJS_EXTERN_C void OOJSReportErrorForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
+
+OOJS_EXTERN_C void OOJSReportWarning(ooscript::Context context, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args);
+OOJS_EXTERN_C void OOJSReportWarningForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
+
+OOJS_EXTERN_C void OOJSReportBadArguments(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, NSString *message, NSString *expectedArgsDescription);
+
+OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
+
+
 // Retiring category on a Foundation class (ADR-0043 Amendment 1 item 7; bead oo-3rb.199). The
 // three helpers forward to cxx_OOJSStringWithJavaScriptParameters,
 // cxx_OOJSConcatenationOfStringsFromJavaScriptValues and cxx_OOJSEscapedForJavaScriptLiteral.
