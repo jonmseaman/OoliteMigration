@@ -35,6 +35,7 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOPListSchemaVerifier.h"
 #import "OOAIStateMachineVerifierStage.h"
+#import "OOFoundationBridge.h"
 
 static NSString * const kStageName	= @"Checking shipdata.plist";
 
@@ -312,11 +313,11 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 	
 	if (model != nil)
 	{
-		if (![[[self verifier] modelVerifierStage] modelNamed:model
-												 usedForEntry:_name
-													   inFile:@"shipdata.plist"
-												withMaterials:materials
-												   andShaders:shaders])
+		if (![[[self verifier] modelVerifierStage] modelNamed:oo::StdString(model)
+												 usedForEntry:oo::OptionalString(_name)
+													   inFile:"shipdata.plist"
+												withMaterials:oo::PListFrom(materials)
+												   andShaders:oo::PListFrom(shaders)])
 		{
 			[self message:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", model, [[self verifier] oxpDisplayName]];
 		}
