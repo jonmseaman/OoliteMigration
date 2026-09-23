@@ -15,7 +15,7 @@
 	        without '-', old-style <*I...>)                                          isUnsigned
 	    NSNumber of double/float (XML <real>, <*R...>)       PList(double)           Type::Real
 	    NSString                                             PList("text")           Type::String
-	    NSData                                               PList(PList::Data{..})  Type::Data
+	    NSData                                               PList(oo::Data(..))     Type::Data
 	    NSDate / NSCalendarDate                              PList(PList::Date{..})  Type::Date
 	    NSArray                                              PList(PList::Array{..}) Type::Array
 	    NSDictionary                                         PList(PList::Dict{..})  Type::Dict
@@ -50,6 +50,16 @@
 
 #ifndef OOFND_PLIST_HPP
 #define OOFND_PLIST_HPP
+
+// Objective-C++ callers see OOCocoa.h's `#define true 1` / `#define false 0`; C++20 needs the
+// keywords. Suspend the macros for this header and restore them at its end (as oofnd/Data.hpp
+// does; proposed ADR-0028).
+#pragma push_macro("true")
+#pragma push_macro("false")
+#undef true
+#undef false
+
+#include "oofnd/Data.hpp"
 
 #include <cmath>
 #include <compare>
@@ -101,7 +111,7 @@ public:
 		friend bool operator==(const Date&, const Date&) = default;
 	};
 
-	using Data = std::vector<std::uint8_t>;
+	using Data = ::oo::Data;   // NSData (oofnd/Data.hpp)
 	using Array = std::vector<PList>;
 	using Dict = std::map<std::string, PList, std::less<>>;
 
@@ -500,5 +510,8 @@ inline std::u16string utf8ToUtf16(std::string_view s)
 }
 
 } // namespace oo
+
+#pragma pop_macro("false")
+#pragma pop_macro("true")
 
 #endif // OOFND_PLIST_HPP

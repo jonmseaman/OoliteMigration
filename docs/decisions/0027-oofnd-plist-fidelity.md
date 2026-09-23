@@ -27,7 +27,9 @@ representation choices ADR-0013 did not make.
    data / date / array / dict. Strings are UTF-8 `std::string` (ADR-0013 decision 4); a lone
    UTF-16 surrogate that an escape can produce is kept as WTF-8, so nothing parsed is lost.
    Integers keep NSNumber's signedness (GNUstep stores a non-negative `<integer>` as `unsigned long
-   long`; the writers print `%llu`/`%lld`). Dates are seconds since 2001-01-01Z. Dicts iterate in
+   long`; the writers print `%llu`/`%lld`). Data is `oo::Data` (ADR-0028). Dates are seconds
+   since 2001-01-01Z. Like every oofnd header a game file includes, the PList headers suspend
+   OOCocoa.h's `true`/`false` macros and restore them (ADR-0028). Dicts iterate in
    byte order of the key (NSDictionary's hash order was unspecified; the writers sort as GNUstep
    does, so no output depends on it). `==` is structural and type-strict.
 2. **Dictionary keys are strings.** GNUstep's old-style scanner accepts any item as a key

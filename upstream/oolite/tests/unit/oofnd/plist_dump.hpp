@@ -82,7 +82,7 @@ inline void dump(const oo::PList& p, std::string& out)
 			break;
 		case oo::PList::Type::Data:
 			out += "D<";
-			for (std::uint8_t b : *p.getIf<oo::PList::Data>())
+			for (std::uint8_t b : p.getIf<oo::PList::Data>()->span())
 			{
 				std::snprintf(buf, sizeof buf, "%02x", b);
 				out += buf;

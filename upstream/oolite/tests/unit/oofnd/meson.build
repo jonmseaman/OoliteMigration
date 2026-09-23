@@ -7,6 +7,10 @@ oofnd_tests = [
     'test_expected',
     'test_ref',
     'test_weakset',
+    'test_data',
+    'test_filesystem',
+    'test_resourcepaths',
+    'test_cocoa_macros',
 ]
 
 foreach t : oofnd_tests

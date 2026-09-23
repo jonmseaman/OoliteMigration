@@ -29,6 +29,9 @@ oolite_dependencies += [quickjs_ng_proj.get_variable('qjs_dep')]
 
 subdir('meson')
 subdir('oofnd')
+# Game sources include oofnd headers, which are C++20 (ADR-0011): Objective-C++ builds as gnu++20.
+oolite_dependencies += [oofnd_dep]
+oolite_override_options += ['cpp_std=gnu++20']   # meson's cpp_std also governs Objective-C++
 subdir('Core')
 subdir('SDL')
 

@@ -5,20 +5,37 @@
 	meson test --suite oofnd-plist
 */
 
+// PList.hpp is included by Objective-C++ game code after OOCocoa.h, which defines true/false as
+// 1/0: it must compile under those macros and hand them back unchanged (as test_cocoa_macros.cpp
+// checks for Data/FileSystem/ResourcePaths).
+#define true						1
+#define false						0
 #include "oofnd/PList.hpp"
+static_assert(std::is_same_v<decltype(true), int>, "PList.hpp must restore OOCocoa.h's true macro");
+static_assert(std::is_same_v<decltype(false), int>, "PList.hpp must restore OOCocoa.h's false macro");
+#undef true
+#undef false
 
 #include "oo_test.hpp"
 #include "plist_dump.hpp"
 
 #include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 using oo::PList;
+
+namespace {
+
+oo::Data bytes(std::initializer_list<std::uint8_t> b) { return oo::Data(std::vector<std::uint8_t>(b)); }
+
+} // namespace
 
 OO_TEST(defaultIsNull)
 {
@@ -44,7 +61,7 @@ OO_TEST(eachKindHasItsType)
 	OO_CHECK(PList("s").type() == PList::Type::String);
 	OO_CHECK(PList(std::string("s")).type() == PList::Type::String);
 	OO_CHECK(PList(std::string_view("s")).type() == PList::Type::String);
-	OO_CHECK(PList(PList::Data{1, 2}).type() == PList::Type::Data);
+	OO_CHECK(PList(bytes({1, 2})).type() == PList::Type::Data);
 	OO_CHECK(PList(PList::Date{3.0}).type() == PList::Type::Date);
 	OO_CHECK(PList(PList::Array{}).type() == PList::Type::Array);
 	OO_CHECK(PList(PList::Dict{}).type() == PList::Type::Dict);
@@ -70,8 +87,8 @@ OO_TEST(getIfReturnsPayloadOnlyForItsType)
 	OO_CHECK_EQ(i.getIf<PList::Integer>()->value, -7);
 	OO_CHECK(!i.getIf<PList::Integer>()->isUnsigned);
 
-	PList d(PList::Data{0xde, 0xad});
-	OO_CHECK(d.getIf<PList::Data>()->size() == 2 && (*d.getIf<PList::Data>())[1] == 0xad);
+	PList d(bytes({0xde, 0xad}));
+	OO_CHECK(d.getIf<PList::Data>()->length() == 2 && d.getIf<PList::Data>()->bytes()[1] == 0xad);
 	OO_CHECK_EQ(PList(PList::Date{12.5}).getIf<PList::Date>()->sinceReferenceDate, 12.5);
 }
 
@@ -172,7 +189,7 @@ OO_TEST(equalityIsStructuralAndTypeStrict)
 	OO_CHECK(PList(PList::Array{1, "x"}) != PList(PList::Array{"x", 1}));
 	OO_CHECK(PList(PList::Dict{{"a", 1}}) == PList(PList::Dict{{"a", 1}}));
 	OO_CHECK(PList(PList::Dict{{"a", 1}}) != PList(PList::Dict{{"a", 2}}));
-	OO_CHECK(PList(PList::Data{1}) != PList(PList::Data{1, 0}));
+	OO_CHECK(PList(bytes({1})) != PList(bytes({1, 0})));
 	OO_CHECK(PList(PList::Date{1.0}) == PList(PList::Date{1.0}));
 }
 
