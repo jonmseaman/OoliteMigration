@@ -50,18 +50,15 @@ SOFTWARE.
 
 
 static void DumpStringAddrs(NSDictionary *dict, NSString *context);
-static NSComparisonResult SortDemoShipsByName (id a, id b, void* context);
-static NSComparisonResult SortDemoCategoriesByName (id a, id b, void* context);
 
 
 static OOShipRegistry	*sSingleton = nil;
 
 
-static NSString * const	kRoleWeightsCacheKey = @"role weights";
-static NSString * const	kDefaultDemoShip = @"coriolis-station";
-
-
 namespace {
+
+constexpr const char *kRoleWeightsCacheKey			= "role weights";
+constexpr const char *kDefaultDemoShip				= "coriolis-station";
 
 // OOCacheManager caches and keys.
 constexpr const char *kShipRegistryCacheName			= "ship registry";
@@ -105,7 +102,7 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 #endif
 
 - (NSMutableDictionary *) mergeShip:(NSDictionary *)child withParent:(NSDictionary *)parent;
-- (void) mergeShipRoles:(NSString *)roles forShipKey:(NSString *)shipKey intoProbabilityMap:(NSMutableDictionary *)probabilitySets;
+- (void) mergeShipRoles:(const std::string &)roles forShipKey:(const std::string &)shipKey intoProbabilityMap:(std::map<std::string, oo::ObjCRef<OOMutableProbabilitySet *>, std::less<>> &)probabilitySets;
 
 - (NSDictionary *) canonicalizeSubentityDeclaration:(id)declaration
 											forShip:(NSString *)shipKey
@@ -192,16 +189,16 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 			
 			[self loadDemoShipConditions];
 			[self loadDemoShips]; // testing only
-			if ([_demoShips count] == 0)
+			if (_demoShips.count() == 0)
 			{
 				[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize any demo ships."];
 			}
 			
 			[self loadCachedRoleProbabilitySets];
-			if (_probabilitySets == nil)
+			if (!_probabilitySets.has_value())
 			{
 				[self buildRoleProbabilitySets];
-				if ([_probabilitySets count] == 0)
+				if (_probabilitySets->empty())
 				{
 					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize role probability sets."];
 				}
@@ -214,8 +211,6 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 
 - (void) dealloc
 {
-	[_demoShips release];
-	[_probabilitySets release];
 
 	[super dealloc];
 }
@@ -251,19 +246,20 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 }
 
 
-- (OOProbabilitySet *) probabilitySetForRole:(NSString *)role
+- (OOProbabilitySet *) cxx_probabilitySetForRole:(const std::string &)role
 {
-	if (role == nil)  return nil;
-	return [_probabilitySets objectForKey:role];
+	if (!_probabilitySets.has_value())  return nil;
+	auto set = _probabilitySets->find(role);
+	return set != _probabilitySets->end() ? set->second.get() : nil;
 }
 
 
-- (NSArray *) demoShipKeys
+- (oo::PList) cxx_demoShipKeys
 {
 	// with condition scripts in use, can't cache this value
 	[self loadDemoShips];
 
-	return [[_demoShips copy] autorelease]; 
+	return _demoShips;
 }
 
 
@@ -288,20 +284,27 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 	return keys;
 }
 
-- (NSArray *) shipRoles
+- (std::vector<std::string>) cxx_shipRoles
 {
-	return [_probabilitySets allKeys];
+	std::vector<std::string> roles;
+	if (_probabilitySets.has_value())
+	{
+		roles.reserve(_probabilitySets->size());
+		for (const auto &[role, set] : *_probabilitySets)  roles.push_back(role);
+	}
+	return roles;
 }
 
-- (NSArray *) shipKeysWithRole:(NSString *)role
+- (std::vector<std::string>) cxx_shipKeysWithRole:(const std::string &)role
 {
-	return [[self probabilitySetForRole:role] allObjects];
+	// OOProbabilitySet is an unmigrated callee: its objects (ship keys) arrive through oo::StringsFrom.
+	return oo::StringsFrom([[self cxx_probabilitySetForRole:role] allObjects]);
 }
 
 
-- (NSString *) randomShipKeyForRole:(NSString *)role
+- (std::optional<std::string>) cxx_randomShipKeyForRole:(const std::string &)role
 {
-	return [[self probabilitySetForRole:role] randomObject];
+	return oo::OptionalString([[self cxx_probabilitySetForRole:role] randomObject]);
 }
 
 @end
@@ -416,26 +419,27 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 
 - (void) loadDemoShipConditions
 {
-	NSMutableArray *conditionScripts = [[NSMutableArray alloc] init];
-	NSDictionary			*key = nil;
-	NSArray					*initialDemoShips = nil;
+	std::vector<std::string>	conditionScripts;
 
-	initialDemoShips = [ResourceManager arrayFromFilesNamed:@"shiplibrary.plist"
-												   inFolder:@"Config"
-												   andMerge:YES
-													  cache:NO];
+	// ResourceManager's loader and OOCacheManager are unmigrated callees: convert at the calls.
+	const oo::PList initialDemoShips = oo::PListFrom([ResourceManager arrayFromFilesNamed:@"shiplibrary.plist"
+																				   inFolder:@"Config"
+																				   andMerge:YES
+																					  cache:NO]);
 
-	foreach (key, initialDemoShips)
+	if (const oo::PList::Array *entries = initialDemoShips.getIf<oo::PList::Array>())
 	{
-		NSString *conditions = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipConditions), nil);
-		if (conditions != nil)
+		for (const oo::PList &key : *entries)
 		{
-			[conditionScripts addObject:conditions];
+			std::optional<std::string> conditions = StringForKey(&key, kOODemoShipConditions);
+			if (conditions.has_value())
+			{
+				conditionScripts.push_back(std::move(*conditions));
+			}
 		}
 	}
 
-	[[OOCacheManager sharedCache] setObject:conditionScripts forKey:@"demoship conditions" inCache:@"condition scripts"];
-	[conditionScripts release];
+	[[OOCacheManager sharedCache] cxx_setObject:oo::NSArrayFromStrings(conditionScripts) forKey:"demoship conditions" inCache:"condition scripts"];
 }
 
 
@@ -447,172 +451,182 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 */
 - (void) loadDemoShips
 {
-	NSDictionary			*key = nil;
-	NSArray					*initialDemoShips = nil;
-	NSMutableArray			*demoShips = nil;
-	
-	DESTROY(_demoShips);
-	
-	initialDemoShips = [ResourceManager arrayFromFilesNamed:@"shiplibrary.plist"
-												   inFolder:@"Config"
-												   andMerge:YES
-													  cache:NO];
-	demoShips = [NSMutableArray arrayWithArray:initialDemoShips];
-	
-	// Note: iterate over initialDemoShips to avoid mutating the collection being enu,erated.
-	foreach (key, initialDemoShips)
+	_demoShips = oo::PList();
+
+	// ResourceManager's loader is an unmigrated callee: its array arrives through oo::PListFrom.
+	const oo::PList initialDemoShips = oo::PListFrom([ResourceManager arrayFromFilesNamed:@"shiplibrary.plist"
+																				   inFolder:@"Config"
+																				   andMerge:YES
+																					  cache:NO]);
+	const oo::PList::Array noShips;
+	const oo::PList::Array &initialEntries = initialDemoShips.isArray() ? *initialDemoShips.getIf<oo::PList::Array>() : noShips;
+	oo::PList::Array demoShips = initialEntries;
+	// -removeObject: took every equal entry out
+	auto removeEntry = [&demoShips](const oo::PList &entry)
 	{
-		NSString *shipKey = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipKey));
-		if (!oo::IsNSDictionary(key) || _shipData.find(oo::StdString(shipKey)) == nullptr)
+		demoShips.erase(std::remove(demoShips.begin(), demoShips.end(), entry), demoShips.end());
+	};
+
+	// Note: iterate over initialDemoShips to avoid mutating the collection being enu,erated.
+	for (const oo::PList &key : initialEntries)
+	{
+		const std::optional<std::string> shipKey = StringForKey(&key, kOODemoShipKey);
+		if (!key.isDict() || !shipKey.has_value() || _shipData.find(*shipKey) == nullptr)
 		{
-			[demoShips removeObject:key];
+			removeEntry(key);
 		}
-		else 
+		else
 		{
-			NSString *conditions = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipConditions), nil);
-			if (conditions != nil)
+			const std::optional<std::string> conditions = StringForKey(&key, kOODemoShipConditions);
+			if (conditions.has_value())
 			{
 				if ([PLAYER status] == STATUS_START_GAME)
 				{
 					// conditions always false here
-					[demoShips removeObject:key];
+					removeEntry(key);
 				}
 				else
 				{
-					OOJSScript *condScript = [UNIVERSE getConditionScript:conditions];
+					OOJSScript *condScript = [UNIVERSE getConditionScript:oo::NSStringFrom(*conditions)];
 					if (condScript != nil) // should always be non-nil, but just in case
 					{
 						ooscript::Context context = OOJSAcquireContext();
 						BOOL OK;
 						bool allow_use;
 						ooscript::Value result;
-						ooscript::Value args[] = { OOJSValueFromNativeObject(context, shipKey) };
-						
+						ooscript::Value args[] = { OOJSValueFromNativeObject(context, oo::NSStringFrom(*shipKey)) };
+
 						OK = [condScript callMethod:OOJSID("allowShowLibraryShip")
 										  inContext:context
 									  withArguments:args count:sizeof args / sizeof *args
 											 result:&result];
 
 						if (OK) OK = ooscript::valueToBoolean(context, result, &allow_use);
-			
+
 						OOJSRelinquishContext(context);
 						if (OK && !allow_use)
 						{
 							/* if the script exists, the function exists, the function
 							 * returns a bool, and that bool is false, hide the
 							 * ship. Otherwise allow it as default */
-							[demoShips removeObject:key];
+							removeEntry(key);
 						}
 					}
 				}
 			}
 		}
 	}
-	
-	if ([demoShips count] == 0)
+
+	if (demoShips.empty())
 	{
-		NSString *shipKey = nil;
-		if (_shipData.find(oo::StdString(kDefaultDemoShip)) != nullptr)
+		std::string shipKey;
+		if (_shipData.find(kDefaultDemoShip) != nullptr)
 		{
 			shipKey = kDefaultDemoShip;
 		}
 		else
 		{
-			shipKey = oo::NSStringFrom(_shipData.getIf<oo::PList::Dict>()->begin()->first);	// the first key in key order (was hash order)
+			shipKey = _shipData.getIf<oo::PList::Dict>()->begin()->first;	// the first key in key order (was hash order)
 		}
-		[demoShips addObject:[NSDictionary dictionaryWithObject:shipKey forKey:oo::NSStringFrom(kOODemoShipKey)]];
-	}
-	
-	// now separate out the demoships by class, and add some extra keys
-	NSMutableDictionary *demoList = [NSMutableDictionary dictionaryWithCapacity:8];
-	NSMutableArray *demoClass = nil;
-	foreach (key, demoShips)
-	{
-		NSString *klass = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), @"ship");
-		if ([oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(klass))) length] == 0)
-		{
-			OOLog(@"shipdata.load.warning",@"Unexpected class '%@' in shiplibrary.plist for '%@'",klass,oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipKey)));
-			klass = @"ship";
-		}
-		demoClass = [demoList objectForKey:klass];
-		if (demoClass == nil)
-		{
-			[demoList setObject:[NSMutableArray array] forKey:klass];
-			demoClass = [demoList objectForKey:klass];
-		}
-		NSMutableDictionary *demoEntry = [NSMutableDictionary dictionaryWithDictionary:key];
-		// add "name" object to dictionary from ship definition
-		const std::string demoShipKey = oo::StdString(oo::PListView(demoEntry).get<NSString *>(@"ship"));
-		[demoEntry setObject:oo::NSStringOrNil(StringForKey(_shipData.find(demoShipKey), kOODemoShipName)) forKey:oo::NSStringFrom(kOODemoShipName)];
-		// set "class" object to standard ship if not otherwise set
-		if (![oo::PListView(demoEntry).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), nil) isEqualToString:klass])
-		{
-			[demoEntry setObject:klass forKey:oo::NSStringFrom(kOODemoShipClass)];
-		}
-		[demoClass addObject:demoEntry];
-	}
-	// sort each ship list by name
-	NSString *demoClassName = nil;
-	foreach (demoClassName, demoList)
-	{
-		[[demoList objectForKey:demoClassName] sortUsingFunction:SortDemoShipsByName context:NULL];
+		oo::PList::Dict entry;
+		entry.emplace(kOODemoShipKey, shipKey);
+		demoShips.emplace_back(std::move(entry));
 	}
 
-	// and then sort the ship list list by class name
-	_demoShips = [[[demoList allValues] sortedArrayUsingFunction:SortDemoCategoriesByName context:NULL] retain];
+	// now separate out the demoships by class, and add some extra keys
+	std::map<std::string, oo::PList::Array, std::less<>> demoList;
+	for (const oo::PList &key : demoShips)
+	{
+		std::string klass = key.get<std::string>(kOODemoShipClass, "ship");
+		if (OOShipLibraryCategoryPlural(klass).empty())
+		{
+			OOLog(@"shipdata.load.warning",@"Unexpected class '%@' in shiplibrary.plist for '%@'",oo::NSStringFrom(klass),oo::NSStringOrNil(StringForKey(&key, kOODemoShipKey)));
+			klass = "ship";
+		}
+		oo::PList::Array &demoClass = demoList[klass];
+		oo::PList demoEntry = key;
+		oo::PList::Dict &demoEntryValues = *demoEntry.getIf<oo::PList::Dict>();
+		// add "name" object to dictionary from ship definition
+		const std::optional<std::string> name = StringForKey(_shipData.find(demoEntry.get<std::string>("ship")), kOODemoShipName);
+		if (!name.has_value())
+		{
+			// -setObject:nil forKey: raised
+			[NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%s' to dictionary", kOODemoShipName];
+		}
+		demoEntryValues[kOODemoShipName] = *name;
+		// set "class" object to standard ship if not otherwise set
+		if (StringForKey(&demoEntry, kOODemoShipClass) != klass)
+		{
+			demoEntryValues[kOODemoShipClass] = klass;
+		}
+		demoClass.push_back(std::move(demoEntry));
+	}
+	// sort each ship list by name (-compare:)
+	oo::PList::Array categories;
+	categories.reserve(demoList.size());
+	for (auto &[demoClassName, demoClass] : demoList)
+	{
+		std::stable_sort(demoClass.begin(), demoClass.end(), [](const oo::PList &a, const oo::PList &b)
+		{
+			return oo::str::compare(a.get<std::string>("name"), b.get<std::string>("name")) < 0;
+		});
+		categories.emplace_back(std::move(demoClass));
+	}
+
+	// and then sort the ship list list by class name (the plural category name, -compare:)
+	std::stable_sort(categories.begin(), categories.end(), [](const oo::PList &a, const oo::PList &b)
+	{
+		return oo::str::compare(OOShipLibraryCategoryPlural(a.at(0)->get<std::string>("class")), OOShipLibraryCategoryPlural(b.at(0)->get<std::string>("class"))) < 0;
+	});
+	_demoShips = oo::PList(std::move(categories));
 }
 
 
 - (void) loadCachedRoleProbabilitySets
 {
-	NSDictionary			*cachedSets = nil;
-	NSMutableDictionary		*restoredSets = nil;
-	NSString				*role = nil;
-	
-	cachedSets = [[OOCacheManager sharedCache] cxx_objectForKey:oo::StdString(kRoleWeightsCacheKey) inCache:kShipRegistryCacheName];
-	if (cachedSets == nil)  return;
-	
-	restoredSets = [NSMutableDictionary dictionaryWithCapacity:[cachedSets count]];
-	foreachkey (role, cachedSets)
+	// OOCacheManager and OOProbabilitySet are unmigrated callees: convert at the calls.
+	const oo::PList cachedSets = oo::PListFrom([[OOCacheManager sharedCache] cxx_objectForKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName]);
+	if (cachedSets.isNull())  return;
+
+	std::map<std::string, oo::ObjCRef<OOProbabilitySet *>, std::less<>> restoredSets;
+	if (const oo::PList::Dict *sets = cachedSets.getIf<oo::PList::Dict>())
 	{
-		[restoredSets setObject:[OOProbabilitySet probabilitySetWithPropertyListRepresentation:[cachedSets objectForKey:role]] forKey:role];
+		for (const auto &[role, representation] : *sets)
+		{
+			restoredSets[role] = oo::ObjCRef<OOProbabilitySet *>([OOProbabilitySet probabilitySetWithPropertyListRepresentation:oo::ObjectFromPList(representation)]);
+		}
 	}
-	
-	_probabilitySets = [restoredSets copy];
+
+	_probabilitySets = std::move(restoredSets);
 }
 
 
 - (void) buildRoleProbabilitySets
 {
-	NSMutableDictionary		*probabilitySets = nil;
-	NSString				*role = nil;
-	OOProbabilitySet		*pset = nil;
-	NSMutableDictionary		*cacheEntry = nil;
-	
-	probabilitySets = [NSMutableDictionary dictionary];
-	
+	std::map<std::string, oo::ObjCRef<OOMutableProbabilitySet *>, std::less<>>	probabilitySets;
+
 	// Build role sets (ships in key order; was hash order)
 	if (const oo::PList::Dict *ships = _shipData.getIf<oo::PList::Dict>())
 	{
 		for (const auto &[shipKey, shipEntry] : *ships)
 		{
-			[self mergeShipRoles:oo::NSStringOrNil(StringForKey(&shipEntry, "roles")) forShipKey:oo::NSStringFrom(shipKey) intoProbabilityMap:probabilitySets];
+			[self mergeShipRoles:StringForKey(&shipEntry, "roles").value_or("") forShipKey:shipKey intoProbabilityMap:probabilitySets];
 		}
 	}
-	
+
 	// Convert role sets to immutable form, and build cache entry.
-	// Note: we iterate over a copy of the keys to avoid mutating while iterating.
-	cacheEntry = [NSMutableDictionary dictionaryWithCapacity:[probabilitySets count]];
-	foreach (role, [probabilitySets allKeys])
+	std::map<std::string, oo::ObjCRef<OOProbabilitySet *>, std::less<>>	sets;
+	oo::PList::Dict		cacheEntry;
+	for (const auto &[role, mutableSet] : probabilitySets)
 	{
-		pset = [probabilitySets objectForKey:role];
-		pset = [[pset copy] autorelease];
-		[probabilitySets setObject:pset forKey:role];
-		[cacheEntry setObject:[pset propertyListRepresentation] forKey:role];
+		OOProbabilitySet *pset = [[mutableSet.get() copy] autorelease];
+		sets[role] = oo::ObjCRef<OOProbabilitySet *>(pset);
+		// OOProbabilitySet is an unmigrated callee (its weights are floats: single reals, written to disk)
+		cacheEntry[role] = oo::PListFrom([pset propertyListRepresentation]);
 	}
-	
-	_probabilitySets = [probabilitySets copy];
-	[[OOCacheManager sharedCache] cxx_setObject:cacheEntry forKey:oo::StdString(kRoleWeightsCacheKey) inCache:kShipRegistryCacheName];
+
+	_probabilitySets = std::move(sets);
+	[[OOCacheManager sharedCache] cxx_setObject:oo::ObjectFromPList(oo::PList(std::move(cacheEntry))) forKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
 }
 
 
@@ -1227,50 +1241,42 @@ std::optional<std::string> StringForKey(const oo::PList *dict, const std::string
 #endif
 
 
-- (void) mergeShipRoles:(NSString *)roles
-			 forShipKey:(NSString *)shipKey
-	 intoProbabilityMap:(NSMutableDictionary *)probabilitySets
+- (void) mergeShipRoles:(const std::string &)roles
+			 forShipKey:(const std::string &)shipKey
+	 intoProbabilityMap:(std::map<std::string, oo::ObjCRef<OOMutableProbabilitySet *>, std::less<>> &)probabilitySets
 {
-	NSDictionary			*rolesAndWeights = nil;
-	NSString				*role = nil;
-	OOMutableProbabilitySet	*probSet = nil;
-
-	
 	/*	probabilitySets is a dictionary whose keys are roles and whose values
 		are mutable probability sets, whose values are ship keys.
-		
+
 		When creating new ships Oolite looks up this probability map.
 		To upgrade all soliton 'thargon' roles to 'EQ_THARGON' we need
 		to swap these roles here.
 	*/
-	
+
   // add default [shipKey] role
-	NSMutableDictionary *mutableDict = [NSMutableDictionary dictionary];
-	for (const auto &[parsedRole, weight] : OOParseRolesFromString(oo::StdString(roles)))
+	std::map<std::string, float, std::less<>> rolesAndWeights;
+	for (const auto &[parsedRole, weight] : OOParseRolesFromString(roles))
 	{
-		[mutableDict setObject:[NSNumber numberWithFloat:weight] forKey:oo::NSStringFrom(parsedRole)];
+		rolesAndWeights[parsedRole] = weight;
 	}
-	[mutableDict setObject:[NSNumber numberWithFloat:1.0] forKey:[[[NSString alloc] initWithFormat:@"[%@]",shipKey] autorelease]];
-	rolesAndWeights = mutableDict;
-	
-	id thargonValue = [rolesAndWeights objectForKey:@"thargon"];
-	if (thargonValue != nil && [rolesAndWeights objectForKey:@"EQ_THARGON"] == nil)
+	rolesAndWeights[oo::str::format("[%s]", shipKey.c_str())] = 1.0f;
+
+	auto thargonValue = rolesAndWeights.find("thargon");
+	if (thargonValue != rolesAndWeights.end() && rolesAndWeights.find("EQ_THARGON") == rolesAndWeights.end())
 	{
-		NSMutableDictionary *mutableDict = [NSMutableDictionary dictionaryWithDictionary:rolesAndWeights];
-		[mutableDict setObject:thargonValue forKey:@"EQ_THARGON"];
-		rolesAndWeights = mutableDict;
+		rolesAndWeights["EQ_THARGON"] = thargonValue->second;
 	}
-	
-	foreachkey (role, rolesAndWeights)
+
+	// (roles in role order; was hash order: each role's set is separate)
+	for (const auto &[role, weight] : rolesAndWeights)
 	{
-		probSet = [probabilitySets objectForKey:role];
-		if (probSet == nil)
+		oo::ObjCRef<OOMutableProbabilitySet *> &probSet = probabilitySets[role];
+		if (probSet.get() == nil)
 		{
-			probSet = [OOMutableProbabilitySet probabilitySet];
-			[probabilitySets setObject:probSet forKey:role];
+			probSet = oo::ObjCRef<OOMutableProbabilitySet *>([OOMutableProbabilitySet probabilitySet]);
 		}
-		
-		[probSet setWeight:oo::PListView(rolesAndWeights).get<float>(role) forObject:shipKey];
+
+		[probSet.get() setWeight:weight forObject:oo::NSStringFrom(shipKey)];
 	}
 }
 
@@ -1817,13 +1823,3 @@ static void GatherStringAddrs(id object, NSMutableSet *strings, NSString *contex
 }
 
 
-static NSComparisonResult SortDemoShipsByName (id a, id b, void* context)
-{
-	return [oo::PListView(a).get<NSString *>(@"name") compare:oo::PListView(b).get<NSString *>(@"name")];
-}
-
-
-static NSComparisonResult SortDemoCategoriesByName (id a, id b, void* context)
-{
-	return [oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView(oo::PListView(a).at<NSDictionary *>(0)).get<NSString *>(@"class")))) compare:oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView(oo::PListView(b).at<NSDictionary *>(0)).get<NSString *>(@"class"))))];
-}

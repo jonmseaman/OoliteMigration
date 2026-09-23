@@ -55,4 +55,41 @@ dictionary).
 	return oo::NSArrayFromStrings([self cxx_shipKeys]);
 }
 
+
+
+// oo-3rb.115: role probability sets and demo ships
+
+- (OOProbabilitySet *) probabilitySetForRole:(NSString *)role
+{
+	if (role == nil)  return nil;
+	return [self cxx_probabilitySetForRole:oo::StdString(role)];
+}
+
+
+- (NSArray *) demoShipKeys
+{
+	return oo::ObjectFromPList([self cxx_demoShipKeys]);
+}
+
+
+- (NSArray *) shipRoles
+{
+	return oo::NSArrayFromStrings([self cxx_shipRoles]);
+}
+
+
+- (NSArray *) shipKeysWithRole:(NSString *)role
+{
+	// nil where there was no set (a message to nil), else the set's objects
+	if ([self probabilitySetForRole:role] == nil)  return nil;
+	return oo::NSArrayFromStrings([self cxx_shipKeysWithRole:oo::StdString(role)]);
+}
+
+
+- (NSString *) randomShipKeyForRole:(NSString *)role
+{
+	if (role == nil)  return nil;
+	return oo::NSStringOrNil([self cxx_randomShipKeyForRole:oo::StdString(role)]);
+}
+
 @end
