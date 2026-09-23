@@ -9775,7 +9775,7 @@ static NSString *last_outfitting_key=nil;
 
 				[gui setColor:[gui colorFromSetting:kGuiInterfaceEntryColor defaultValue:nil] forRow:row];
 				[gui setKey:interfaceKey forRow:row];
-				[gui setArray:[NSArray arrayWithObjects:[definition title],[definition category], nil] forRow:row];
+				[gui setArray:[NSArray arrayWithObjects:[definition title],oo::NSStringOrNil([definition category]), nil] forRow:row];
 
 				row++;
 			}
@@ -9852,7 +9852,7 @@ static NSString *last_outfitting_key=nil;
 		OOJSInterfaceDefinition *definition = [interfaces objectForKey:interfaceKey];
 		if (definition)
 		{
-			[gui addLongText:[definition summary] startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
+			[gui addLongText:oo::NSStringOrNil([definition summary]) startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
 		}
 	}
 
