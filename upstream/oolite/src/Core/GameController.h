@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOFunctionAttributes.h"
 #import "OOFullScreenController.h"
 #import "OOMouseInteractionMode.h"
@@ -49,7 +50,7 @@ MA 02110-1301, USA.
 #define OO_USE_FULLSCREEN_CONTROLLER	OOLITE_MAC_OS_X
 
 
-@interface GameController: NSObject
+@interface GameController: OOObject
 {
 @private
 #if OOLITE_MAC_OS_X
