@@ -26,10 +26,11 @@ MA 02110-1301, USA.
 #ifdef GNUSTEP_BASE_LIBRARY
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
-#import <Foundation/NSString.h>
 #import "GameController.h"
 #include "oofnd/Process.hpp"
+#include "oofnd/String.hpp"
 #import "OOLoggingExtended.h"
+#import "OOStringBridge.h"
 
 #if OOLITE_WINDOWS
 #include <locale.h>
@@ -166,10 +167,11 @@ int main(int argc, char *argv[])
 			{
 				i++;
 			}
-			NSString *argument = [NSString stringWithCString:argv[i]];
-			if (i < argc && [[argument lowercaseString] hasSuffix:@".oolite-save"])
+			// argv is UTF-8 (SDL_main); an argument past the end reads as nothing, as nil did.
+			const std::string argument = (i < argc) ? argv[i] : "";
+			if (i < argc && oo::str::hasSuffix(oo::str::lowercase(argument), ".oolite-save"))
 			{
-				[controller setPlayerFileToLoad:argument];
+				[controller setPlayerFileToLoad:oo::NSStringFrom(argument)];
 			}
 
    			if (!strcmp("-help", argv[i]) || !strcmp("--help", argv[i]))

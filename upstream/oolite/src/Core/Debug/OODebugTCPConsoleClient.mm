@@ -55,7 +55,7 @@ SOFTWARE.
 #include <math.h>
 #include <thread>
 
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOTCPStreamDecoder.h"
 
 
@@ -817,7 +817,7 @@ noteChangedConfigrationValue:(in id)newValue
 		// Build "Connected..." message with two optional parts, console identity and host name.
 		connectedMessage = [NSMutableString stringWithString:@"Connected to debug console"];
 		
-		consoleIdentity = [packet oo_stringForKey:kOOTCPConsoleIdentity];
+		consoleIdentity = oo::PListView(packet).get<NSString *>(kOOTCPConsoleIdentity);
 		if (consoleIdentity != nil)  [connectedMessage appendFormat:@" \"%@\"", consoleIdentity];
 		
 		hostName = _hostName;
@@ -851,7 +851,7 @@ noteChangedConfigrationValue:(in id)newValue
 		OOLog(@"debugTCP.protocolError.outOfOrder", @"Got %@ packet from debug console in wrong context.", kOOTCPPacket_RejectConnection);
 	}
 	
-	message = [packet oo_stringForKey:kOOTCPMessage];
+	message = oo::PListView(packet).get<NSString *>(kOOTCPMessage);
 	if (message == nil)  message = @"Console refused connection.";
 	[self breakConnectionWithMessage:message];
 }
@@ -865,7 +865,7 @@ noteChangedConfigrationValue:(in id)newValue
 	{
 		OOLog(@"debugTCP.protocolError.outOfOrder", @"Got %@ packet from debug console in wrong context.", kOOTCPPacket_CloseConnection);
 	}
-	message = [packet oo_stringForKey:kOOTCPMessage];
+	message = oo::PListView(packet).get<NSString *>(kOOTCPMessage);
 	if (message == nil)  message = @"Console closed connection.";
 	[self breakConnectionWithMessage:message];
 }
@@ -881,7 +881,7 @@ noteChangedConfigrationValue:(in id)newValue
 	
 	if (_monitor == nil)  return;
 	
-	configuration = [packet oo_dictionaryForKey:kOOTCPConfiguration];
+	configuration = oo::PListView(packet).get<NSDictionary *>(kOOTCPConfiguration);
 	if (configuration != nil)
 	{
 		foreachkey (key, configuration)
@@ -891,7 +891,7 @@ noteChangedConfigrationValue:(in id)newValue
 		}
 	}
 	
-	removed = [configuration oo_arrayForKey:kOOTCPRemovedConfigurationKeys];
+	removed = oo::PListView(configuration).get<NSArray *>(kOOTCPRemovedConfigurationKeys);
 	for (keyEnum = [removed objectEnumerator]; (key = [keyEnum nextObject]); )
 	{
 		[_monitor setConfigurationValue:nil forKey:key];
@@ -903,7 +903,7 @@ noteChangedConfigrationValue:(in id)newValue
 {
 	NSString				*message = nil;
 	
-	message = [packet oo_stringForKey:kOOTCPMessage];
+	message = oo::PListView(packet).get<NSString *>(kOOTCPMessage);
 	if (message != nil)  [_monitor performJSConsoleCommand:message];
 }
 
@@ -913,7 +913,7 @@ noteChangedConfigrationValue:(in id)newValue
 	NSString				*key = nil;
 	id						value = nil;
 	
-	key = [packet oo_stringForKey:kOOTCPConfigurationKey];
+	key = oo::PListView(packet).get<NSString *>(kOOTCPConfigurationKey);
 	if (key != nil)
 	{
 		value = [_monitor configurationValueForKey:key];
