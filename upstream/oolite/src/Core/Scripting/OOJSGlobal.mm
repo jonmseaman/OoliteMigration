@@ -500,7 +500,7 @@ static bool GlobalKeyBindingDescription(ooscript::Context context, ooscript::Cal
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	string = oo::OptionalString([player keyBindingDescription2:oo::NSStringFrom(*string)]);
+	string = [player cxx_keyBindingDescription2:*string];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
@@ -733,7 +733,7 @@ static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::Cal
 
 	OOJSGuiScreenKeyDefinition* definition = [[OOJSGuiScreenKeyDefinition alloc] init];
 	[definition setName:oo::NSStringOrNil(key)];
-	[definition setRegisterKeys:oo::ObjectFromPList(keydefs)];
+	[definition setRegisterKeys:keydefs];
 	[definition setCallback:callback];
 
 	// get callback 'this'

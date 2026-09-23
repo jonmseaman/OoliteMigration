@@ -29,33 +29,28 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "legacy_random.h"
 
+#include "oofnd/StdLib.hpp"
+
 @class Entity;
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// Tokens of a string: oo::str::tokens (oofnd/String.hpp).
 
-NSMutableArray *ScanTokensFromString(NSString *values);
+// Note: these functions will leave their out values untouched if they fail (and return NO). They will not log an error if passed a null string (nullopt; but will return NO). This means they can be used to, say, read dictionary entries which might not exist. They also ignore any extra components in the string.
+BOOL cxx_ScanVectorFromString(const std::optional<std::string> &xyzString, Vector *outVector);
+BOOL cxx_ScanHPVectorFromString(const std::optional<std::string> &xyzString, HPVector *outVector);
+BOOL cxx_ScanQuaternionFromString(const std::optional<std::string> &wxyzString, Quaternion *outQuaternion);
+BOOL cxx_ScanVectorAndQuaternionFromString(const std::optional<std::string> &xyzwxyzString, Vector *outVector, Quaternion *outQuaternion);
 
-// Note: these functions will leave their out values untouched if they fail (and return NO). They will not log an error if passed a NULL string (but will return NO). This means they can be used to, say, read dictionary entries which might not exist. They also ignore any extra components in the string.
-BOOL ScanVectorFromString(NSString *xyzString, Vector *outVector);
-BOOL ScanHPVectorFromString(NSString *xyzString, HPVector *outVector);
-BOOL ScanQuaternionFromString(NSString *wxyzString, Quaternion *outQuaternion);
-BOOL ScanVectorAndQuaternionFromString(NSString *xyzwxyzString, Vector *outVector, Quaternion *outQuaternion);
+Vector cxx_VectorFromString(const std::optional<std::string> &xyzString, Vector defaultValue);
+Quaternion cxx_QuaternionFromString(const std::optional<std::string> &wxyzString, Quaternion defaultValue);
 
-Vector VectorFromString(NSString *xyzString, Vector defaultValue);
-Quaternion QuaternionFromString(NSString *wxyzString, Quaternion defaultValue);
+std::string cxx_StringFromPoint(NSPoint point);
+NSPoint cxx_PointFromString(const std::string &xyString);
 
-NSString *StringFromPoint(NSPoint point);
-NSPoint PointFromString(NSString *xyString);
-
-Random_Seed RandomSeedFromString(NSString *abcdefString);
-NSString *StringFromRandomSeed(Random_Seed seed);
-
-#ifdef __cplusplus
-}
-#endif
+// nullopt is read as nil was (a conversion error, logged, and kNilRandomSeed).
+Random_Seed cxx_RandomSeedFromString(const std::optional<std::string> &abcdefString);
+std::string cxx_StringFromRandomSeed(Random_Seed seed);
 
 
 #ifdef __cplusplus
@@ -91,15 +86,6 @@ NSString *OOPadStringToEms(NSString * string, float numEms);
 #ifdef __cplusplus
 }
 #endif
-
-@interface NSString (OOUtilities)
-
-// Case-insensitive match of [self pathExtension]
-- (BOOL)pathHasExtension:(NSString *)extension;
-- (BOOL)pathHasExtensionInArray:(NSArray *)extensions;
-
-@end
-
 
 #ifdef __cplusplus
 extern "C" {
@@ -156,3 +142,11 @@ NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet);
 #endif
 
 #endif
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API as it was
+	declared before its sweep (bead oo-1886, chunks oo-3rb.124 ff.), forwarding to the cxx_
+	functions above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
+	own sweep beads; the bridge goes in its own bead.
+*/
+#import "OOStringParsing+FoundationBridge.h"
