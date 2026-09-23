@@ -198,11 +198,6 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 	self = [super init];
 	if (self != nil)
 	{
-#if OOOPENGLEXTMGR_LOCK_SET_ACCESS
-		lock = [[NSLock alloc] init];
-		[lock setName:@"OOOpenGLExtensionManager extension set lock"];
-#endif
-		
 		[self reset];
 	}
 	
@@ -321,9 +316,6 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 {
 	if (sSingleton == self)  sSingleton = nil;
 	
-#if OOOPENGLEXTMGR_LOCK_SET_ACCESS
-	[lock release];
-#endif
 	DESTROY(extensions);
 	DESTROY(vendor);
 	DESTROY(renderer);
@@ -344,13 +336,13 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 {
 // NSSet is documented as thread-safe under OS X, but I'm not sure about GNUstep. -- Ahruman
 #if OOOPENGLEXTMGR_LOCK_SET_ACCESS
-	[lock lock];
+	lock.lock();
 #endif
 	
 	BOOL result = [extensions containsObject:extension];
 	
 #if OOOPENGLEXTMGR_LOCK_SET_ACCESS
-	[lock unlock];
+	lock.unlock();
 #endif
 	
 	return result;
