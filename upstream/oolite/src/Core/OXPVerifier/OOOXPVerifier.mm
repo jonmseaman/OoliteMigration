@@ -57,6 +57,7 @@ SOFTWARE.
 #import "GameController.h"
 #import "OOCacheManager.h"
 #import "OODebugStandards.h"
+#include "oofnd/FileSystem.hpp"
 
 static void SwitchLogFile(NSString *name);
 static void NoteVerificationStage(NSString *displayName, NSString *stage);
@@ -131,7 +132,9 @@ static void OpenLogFile(NSString *name);
 	}
 	
 	// We got a path; does it point to a directory?
-	exists = [[NSFileManager defaultManager] fileExistsAtPath:foundPath isDirectory:&isDirectory];
+	oo::fs::FileType foundType = oo::fs::fileType(oo::fs::pathFromUTF8([foundPath UTF8String]));
+	exists = (foundType != oo::fs::FileType::none);
+	isDirectory = (foundType == oo::fs::FileType::directory);
 	if (!exists)
 	{
 		OOLog(@"verifyOXP.badPath", @"***** ERROR: no OXP exists at path \"%@\"; nothing to verify.", foundPath);
@@ -275,7 +278,7 @@ static void OpenLogFile(NSString *name);
 	_verifierPList = [[NSDictionary dictionaryWithContentsOfFile:verifierPListPath] retain];
 	
 	_basePath = [path copy];
-	_displayName = [[NSFileManager defaultManager] displayNameAtPath:_basePath];
+	_displayName = [_basePath lastPathComponent];	// what GNUstep's -displayNameAtPath: returns
 	if (_displayName == nil)  _displayName = [_basePath lastPathComponent];
 	[_displayName retain];
 	
