@@ -87,12 +87,12 @@ bool Contains(const std::vector<std::string> &strings, std::string_view string)
 		const std::string fileExt = oo::str::lowercase(oo::str::pathExtension(scriptFile));
 		if (fileExt == "js" || fileExt == "es")
 		{
-			OOScript	*script = [OOJSScript scriptWithPath:[fileScanner pathForFile:oo::NSStringFrom(scriptFile) inFolder:@"Scripts" referencedFrom:nil checkBuiltIn:NO] properties:nil];
+			OOScript	*script = [OOJSScript scriptWithPath:oo::OptionalString([fileScanner pathForFile:oo::NSStringFrom(scriptFile) inFolder:@"Scripts" referencedFrom:nil checkBuiltIn:NO]) properties:oo::PList()];
 			(void)script;
 		}
 	}
 	if (configScript == YES) {
-		OOScript	*script = [OOJSScript scriptWithPath:[fileScanner pathForFile:@"script.js" inFolder:@"Config" referencedFrom:nil checkBuiltIn:NO] properties:nil];
+		OOScript	*script = [OOJSScript scriptWithPath:oo::OptionalString([fileScanner pathForFile:@"script.js" inFolder:@"Config" referencedFrom:nil checkBuiltIn:NO]) properties:oo::PList()];
 		(void)script;
 	}
 }

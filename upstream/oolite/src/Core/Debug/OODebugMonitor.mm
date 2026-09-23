@@ -38,6 +38,7 @@ SOFTWARE.
 
 #import "OOJSConsole.h"
 #import "OOJSScript.h"
+#import "OOFoundationBridge.h"
 #import "OOJSEngineTimeManagement.h"
 #import "OOJSSpecialFunctions.h"
 
@@ -751,7 +752,7 @@ typedef struct
 								 self, @"console",
 								 JSSpecialFunctionsObjectWrapper(context), @"special",
 								 nil];
-		_script = [[OOJSScript scriptWithPath:path properties:jsProps] retain];
+		_script = [[OOJSScript scriptWithPath:oo::OptionalString(path) properties:oo::PListFrom(jsProps)] retain];
 	}
 	
 	// If no script, just make console visible globally as debugConsole.
