@@ -28,7 +28,7 @@ SOFTWARE.
 #import "OOProbabilisticTextureManager.h"
 #import "ResourceManager.h"
 #import "OOTexture.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "PlayerEntityScriptMethods.h"
 
 
@@ -95,8 +95,8 @@ SOFTWARE.
 			galID = -1;
 			if ([entry isKindOfClass:[NSDictionary class]])
 			{
-				name = [(NSDictionary *)entry oo_stringForKey:@"texture"];
-				probability = [entry oo_floatForKey:@"probability" defaultValue:1.0f];
+				name = oo::PListView((NSDictionary *)entry).get<NSString *>(@"texture");
+				probability = oo::PListView(entry).get<float>(@"probability", 1.0f);
 				object = [entry objectForKey:@"galaxy"];
 				if ([object isKindOfClass:[NSString class]])  
 				{
