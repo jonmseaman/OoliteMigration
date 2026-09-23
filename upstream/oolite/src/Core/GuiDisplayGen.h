@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "OOFunctionAttributes.h"
 
+#include "oofnd/PList.hpp"
 #include "oofnd/StdLib.hpp"
 #define GUI_DEFAULT_COLUMNS			6
 #define GUI_DEFAULT_ROWS			30
@@ -311,29 +312,33 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (void) cxx_setKey:(const std::string &)str forRow:(OOGUIRow)row;
 - (void) cxx_setText:(const std::string &)str forRow:(OOGUIRow)row;
 - (void) cxx_setText:(const std::optional<std::string> &)str forRow:(OOGUIRow)row align:(OOGUIAlignment)alignment;	// nullopt: no change
-- (NSString *) reflowTextForMFD:(NSString *)input;
-- (OOGUIRow) addLongText:(NSString *)str
-		   startingAtRow:(OOGUIRow)row
-				   align:(OOGUIAlignment)alignment;
-- (void) printLongText:(NSString *)str
-				 align:(OOGUIAlignment)alignment
-				 color:(OOColor *)text_color
-			  fadeTime:(float)text_fade
-				   key:(NSString *)text_key
-			addToArray:(NSMutableArray *)text_array;
-- (void) printLineNoScroll:(NSString *)str
+// Chunk 2 (oo-3rb.93): a nil text or key is std::nullopt (nothing printed / no key set, as before);
+// text_array, when not nullptr, receives each line printed.
+- (std::optional<std::string>) cxx_reflowTextForMFD:(const std::optional<std::string> &)input;
+- (OOGUIRow) cxx_addLongText:(const std::optional<std::string> &)str
+			   startingAtRow:(OOGUIRow)row
+					   align:(OOGUIAlignment)alignment;
+- (void) cxx_printLongText:(const std::optional<std::string> &)str
 					 align:(OOGUIAlignment)alignment
 					 color:(OOColor *)text_color
 				  fadeTime:(float)text_fade
-					   key:(NSString *)text_key
-				addToArray:(NSMutableArray *)text_array;
+					   key:(const std::optional<std::string> &)text_key
+				addToArray:(std::vector<std::string> *)text_array;
+- (void) cxx_printLineNoScroll:(const std::optional<std::string> &)str
+						 align:(OOGUIAlignment)alignment
+						 color:(OOColor *)text_color
+					  fadeTime:(float)text_fade
+						   key:(const std::optional<std::string> &)text_key
+					addToArray:(std::vector<std::string> *)text_array;
 
 - (void) cxx_setArray:(const std::vector<std::string> &)arr forRow:(OOGUIRow)row;	// one string per column
 
-- (void) insertItemsFromArray:(NSArray *)items
-					 withKeys:(NSArray *)item_keys
-					  intoRow:(OOGUIRow)row
-						color:(OOColor *)text_color;
+// items: an array of row texts (a string, or an array of column strings); item_keys: null or an
+// array of the same length.
+- (void) cxx_insertItemsFromArray:(const oo::PList &)items
+						 withKeys:(const oo::PList &)item_keys
+						  intoRow:(OOGUIRow)row
+							color:(OOColor *)text_color;
 
 /////////////////////////////////////////////////////
 
@@ -371,7 +376,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (void) clearBackground;
 
 - (void) leaveLastLine;
-- (NSArray *) getLastLines;
+- (oo::PList) cxx_getLastLines;	// text, colour, fade time (x 2); null with no rows
 
 - (int) drawGUI:(GLfloat) alpha drawCursor:(BOOL) drawCursor;
 - (void) drawGUIBackground;
