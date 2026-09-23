@@ -3,10 +3,10 @@
 # the ooscript façade's QuickJS-ng backend (Context/Value/Object/ClassDef lifecycle, with
 # resolve/enumerate mapped onto JSClassExoticMethods, and private-pointer attach/retrieve).
 #
-# Complements tools/check-jsengine-facade.sh (the SpiderMonkey backend's acceptance, unchanged
-# by this bead): together the two scripts are "façade unit tests pass on both backends".
+# Complements tools/check-jsengine-facade.sh (the header's engine-neutrality and, since bead
+# oo-7wx deleted SpiderMonkey, the tree's): QuickJS-ng is the only backend.
 #
-#   1. meson configures and builds libquickjs-ng under -Djs_backend=quickjs;
+#   1. meson configures and builds libquickjs-ng (since bead oo-7wx the only engine, so no option selects it);
 #   2. the façade header still compiles unmodified against the QuickJS-ng backend's include path;
 #   3. the backend compiles clean under -std=c++20 -Wall -Wextra -Werror;
 #   4. its unit test (tests/unit/test_jsengine_quickjs.cpp) links against the vendored QuickJS-ng
@@ -43,10 +43,10 @@ for f in "$hdr" "$impl" "$test_src"; do
 	[ -f "$f" ] || fail "missing $f"
 done
 
-step "1/4 meson builds the vendored QuickJS-ng library (-Djs_backend=quickjs)"
+step "1/4 meson builds the vendored QuickJS-ng library"
 if [ ! -d "$builddir" ]; then
 	# The game links QuickJS-ng statically (bead oo-1gc.4); this unit-test build keeps its DLL.
-	( cd "$oo" && meson setup "$builddir_name" -Djs_backend=quickjs -Dquickjs-ng:default_library=shared )
+	( cd "$oo" && meson setup "$builddir_name" -Dquickjs-ng:default_library=shared )
 fi
 qjs_rel="subprojects/quickjs-0.16.2"
 ( cd "$oo" && ninja -C "$builddir_name" "$qjs_rel/libqjs-0.dll" >/dev/null )

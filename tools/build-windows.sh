@@ -151,8 +151,8 @@ say "ccache $(ccache --version | head -1 | awk '{print $3}'), cache_dir $(ccache
 STARTED_AT=$SECONDS
 for flavour in "${FLAVOURS[@]}"; do
   case "$flavour" in
-    deployment|test|test_quickjs|dev|debug) ;;
-    *) die "unknown flavour '$flavour' (expected: deployment, test, test_quickjs, dev, debug)" ;;
+    deployment|test|dev|debug) ;;
+    *) die "unknown flavour '$flavour' (expected: deployment, test, dev, debug)" ;;
   esac
 
   if $CLEAN; then

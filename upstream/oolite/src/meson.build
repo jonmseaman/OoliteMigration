@@ -16,17 +16,10 @@ if get_option('espeak')
     add_project_arguments('-DHAVE_LIBESPEAK=1', language: c_family)
 endif
 
-# The JavaScript engine behind ooscript/JSEngine.hpp (Phase 1; bead oo-1gc.4). QuickJS-ng is
-# the vendored subproject; SpiderMonkey 1.8.5 (and the NSPR it needs) comes from the platform's
-# packages, found in src/meson/<platform>/meson.build only when it is the selected backend.
-js_backend = get_option('js_backend')
-if js_backend == 'quickjs'
-    quickjs_ng_proj = subproject('quickjs-ng', default_options: ['default_library=static'])
-    quickjs_ng_dep = quickjs_ng_proj.get_variable('qjs_dep')
-    oolite_dependencies += [quickjs_ng_dep]
-else
-    oolite_dependencies += [dependency('nspr')]
-endif
+# The JavaScript engine behind ooscript/JSEngine.hpp: the vendored QuickJS-ng, linked statically
+# (Phase 1; SpiderMonkey 1.8.5 and NSPR were removed by bead oo-7wx).
+quickjs_ng_proj = subproject('quickjs-ng', default_options: ['default_library=static'])
+oolite_dependencies += [quickjs_ng_proj.get_variable('qjs_dep')]
 
 subdir('meson')
 subdir('Core')

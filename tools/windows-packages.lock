@@ -28,7 +28,6 @@ mingw-w64-ucrt-x86_64-python-pytest 9.1.1-1
 mingw-w64-ucrt-x86_64-python-setuptools 84.0.0-1
 mingw-w64-ucrt-x86_64-python-wheel 0.48.0-1
 mingw-w64-ucrt-x86_64-sdl3 3.4.16-1
-mingw-w64-ucrt-x86_64-spidermonkey 4+3740c7c-1
 pactoys r65.b5fcc0f-1
 PyAutoGUI 0.9.54
 pytest-bdd 8.1.0
