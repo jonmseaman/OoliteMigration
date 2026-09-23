@@ -102,6 +102,7 @@ import re
 import select
 import socket
 import struct
+import sys
 import tempfile
 import time
 
@@ -117,8 +118,14 @@ from conftest import (
 HERE = os.path.dirname(os.path.abspath(__file__))
 OOLITE_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 SRC_DIR = os.path.join(OOLITE_ROOT, "src")
-PLAYER_ENTITY = os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntity.m")
-PLAYER_CONTROLS = os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntityControls.m")
+TESTS_DIR = os.path.abspath(os.path.join(HERE, ".."))
+if TESTS_DIR not in sys.path:
+    sys.path.insert(0, TESTS_DIR)
+
+# Sources are named by STEM: the migration renames .m -> .mm -> .cpp (source_paths.py, oo-7j3t).
+from source_paths import iter_source_files, resolve_source  # noqa: E402
+PLAYER_ENTITY = resolve_source("Core", "Entities", "PlayerEntity")
+PLAYER_CONTROLS = resolve_source("Core", "Entities", "PlayerEntityControls")
 
 # The start screen, the only screen this test navigates from. G5 pins that this identifier is
 # assigned in exactly one place in the tree.
@@ -186,9 +193,11 @@ def exit_row_dispatch():
     context string the game will log, so neither is hardcoded here.
     """
     body = _method_body(_read(PLAYER_CONTROLS), "- (void) pollDemoControls:(double)delta_t")
-    match = re.search(r"int\s+row_zero\s*=\s*(\d+)\s*;", body)
+    # `int row_zero = N;` became `int row_zero; row_zero = N;` in the .m -> .mm switch (oo-x7o):
+    # C++ forbids a case label jumping past an initialisation. Either spelling carries N.
+    match = re.search(r"int\s+row_zero\s*(?:=|;\s*row_zero\s*=)\s*(\d+)\s*;", body)
     assert match, (
-        "the start-screen dispatcher no longer declares `int row_zero = N;`, so G2 cannot derive "
+        "the start-screen dispatcher no longer declares `int row_zero = N;` (or `int row_zero; row_zero = N;`), so G2 cannot derive "
         "which row ` Exit Game ` is"
     )
     row_zero = int(match.group(1))
@@ -212,7 +221,7 @@ def ship_library_row():
     against the wrong row.
     """
     body = _method_body(_read(PLAYER_CONTROLS), "- (void) pollDemoControls:(double)delta_t")
-    row_zero = int(re.search(r"int\s+row_zero\s*=\s*(\d+)\s*;", body).group(1))
+    row_zero = int(re.search(r"int\s+row_zero\s*(?:=|;\s*row_zero\s*=)\s*(\d+)\s*;", body).group(1))
     branch = re.search(
         r"\[gui selectedRow\]\s*==\s*(\d+)\s*\+\s*row_zero\s*\)\s*\{\s*"
         r"\[self setGuiToIntroFirstGo:NO\]",
@@ -549,11 +558,7 @@ def test_g2_exit_via_keyboard(screen_witness, game):
 
 
 def _objc_sources():
-    sources = []
-    for root, _dirs, files in os.walk(SRC_DIR):
-        for name in files:
-            if name.endswith((".m", ".mm", ".c", ".h")):
-                sources.append(os.path.join(root, name))
+    sources = list(iter_source_files(SRC_DIR))
     assert sources, f"no Objective-C sources under {SRC_DIR}"
     return sources
 
@@ -685,7 +690,7 @@ def test_each_calibration_screen_is_reachable_from_exactly_one_start_row():
     read and its row->screen map checked for collisions.
     """
     body = _method_body(_read(PLAYER_CONTROLS), "- (void) pollDemoControls:(double)delta_t")
-    row_zero = int(re.search(r"int\s+row_zero\s*=\s*(\d+)\s*;", body).group(1))
+    row_zero = int(re.search(r"int\s+row_zero\s*(?:=|;\s*row_zero\s*=)\s*(\d+)\s*;", body).group(1))
     dispatches = re.findall(
         r"\[gui selectedRow\]\s*==\s*(\d+)\s*\+\s*row_zero\s*\)\s*\{(.*?)\n\t\t\t\t\}",
         body,

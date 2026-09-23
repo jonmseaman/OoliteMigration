@@ -25,6 +25,8 @@ MA 02110-1301, USA.
 
 #import "OOSDLJoystickManager.h"
 #include "oofnd/Log.hpp"
+#include "oofnd/String.hpp"
+#import "OOStringBridge.h"
 
 #define kOOLogUnconvertedNSLog @"unclassified.OOSDLJoystickManager"
 
@@ -35,7 +37,7 @@ MA 02110-1301, USA.
 {
 	int i;
 
-	NSMutableDictionary *idMap = [[[NSMutableDictionary alloc] init] autorelease];
+	std::map<std::string, int, std::less<>> idMap;
 
 	// Find and open the sticks. Make sure that we don't fail if more joysticks than MAX_STICKS are detected.
 	SDL_JoystickID *joystickIds = SDL_GetJoysticks(&stickCount);
@@ -57,7 +59,7 @@ MA 02110-1301, USA.
 			stick[i]=SDL_OpenJoystick(joystickIds[i]);
 			if(stick[i])
 			{
-				[idMap setObject: [NSNumber numberWithInt: i] forKey: [NSString stringWithFormat: @"%d", joystickIds[i]]];
+				idMap[oo::str::format("%d", joystickIds[i])] = i;
 			}
 			else
 			{
@@ -67,24 +69,23 @@ MA 02110-1301, USA.
 		SDL_SetJoystickEventsEnabled(true);
 	}
 	SDL_free(joystickIds);
-	joystickIdMap = [idMap copy];
+	joystickIdMap = std::move(idMap);
 	return [super init];
 }
 
 
 - (void) dealloc
 {
-	[joystickIdMap release];
 	[super dealloc];
 }
 
 
 - (NSInteger) getJoystickIndexFromId: (SDL_JoystickID) joystickId
 {
-	NSNumber *index = [joystickIdMap valueForKey: [NSString stringWithFormat: @"%d", joystickId]];
-	if (index)
+	const auto index = joystickIdMap.find(oo::str::format("%d", joystickId));
+	if (index != joystickIdMap.end())
 	{
-		return [index integerValue];
+		return index->second;
 	}
 	return -1;
 }
@@ -179,10 +180,11 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *) nameOfJoystick:(NSUInteger)stickNumber
+- (id) nameOfJoystick:(NSUInteger)stickNumber	// shared selector (proposed ADR-0043)
 {
 	if (stickNumber >= stickCount)  return @"(unknown joystick)";
-	return [NSString stringWithUTF8String:SDL_GetJoystickName(stick[stickNumber])];
+	const char *name = SDL_GetJoystickName(stick[stickNumber]);
+	return (name != NULL) ? oo::NSStringFrom(name) : nil;	// no string for a NULL name, as before
 }
 
 

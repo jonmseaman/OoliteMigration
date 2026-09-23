@@ -217,7 +217,17 @@ deny_count() {
 # resolve_base_ref <repo-root> -- print the commit the deny-list baseline is read from.
 # Exit 1 (never a silent fallback to HEAD) when no baseline can be resolved.
 resolve_base_ref() {
-  local root="$1" branch="${OOLITE_TIER_A_BASE_BRANCH:-main}" ref='' cand head
+  local root="$1" branch ref='' cand head branches
+  # Which branch the change is measured against (bead oo-3rb.71): OOLITE_TIER_A_BASE_BRANCH when
+  # set; otherwise the branch accept.sh merges into (BEADS_WORKER_BASE_BRANCH, e.g. phase-2) and
+  # then main -- tools/guardrails.sh's order. Baselining a phase-branch bead on main counted every
+  # file the PHASE had changed since main as part of the bead, so a pre-existing finding in a
+  # header the phase added failed an unrelated bead once findings were judged per file (oo-3rb.60).
+  if [ -n "${OOLITE_TIER_A_BASE_BRANCH:-}" ]; then
+    branches="$OOLITE_TIER_A_BASE_BRANCH"
+  else
+    branches="${BEADS_WORKER_BASE_BRANCH:+$BEADS_WORKER_BASE_BRANCH }main"
+  fi
   if [ -n "${OOLITE_TIER_A_BASE:-}" ]; then
     ref="$(git -C "$root" rev-parse --verify --quiet "${OOLITE_TIER_A_BASE}^{commit}")" || ref=''
     if [ -z "$ref" ]; then
@@ -230,16 +240,19 @@ resolve_base_ref() {
     # fetched one branch); try both before giving up. This is the resolution order
     # tools/guardrails.sh uses, and it is what makes the gate live in accept.sh's DETACHED
     # merged checkout, where HEAD is the merge commit and `main` is still a local branch.
-    for cand in "$branch" "origin/$branch" "refs/remotes/origin/$branch"; do
-      git -C "$root" rev-parse --verify --quiet "${cand}^{commit}" >/dev/null || continue
-      ref="$(git -C "$root" merge-base HEAD "$cand" 2>/dev/null)" || ref=''
+    for branch in $branches; do
+      for cand in "$branch" "origin/$branch" "refs/remotes/origin/$branch"; do
+        git -C "$root" rev-parse --verify --quiet "${cand}^{commit}" >/dev/null || continue
+        ref="$(git -C "$root" merge-base HEAD "$cand" 2>/dev/null)" || ref=''
+        [ -n "$ref" ] && break
+      done
       [ -n "$ref" ] && break
     done
     if [ -z "$ref" ]; then
-      printf 'tier-a: no merge base between HEAD and %s in %s.\n' "$branch" "$root" >&2
+      printf 'tier-a: no merge base between HEAD and %s in %s.\n' "$branches" "$root" >&2
       printf 'tier-a: refusing to run the deny-list against HEAD itself -- that compares the\n' >&2
       printf 'tier-a: file with itself and can never fail. Fetch %s, or set OOLITE_TIER_A_BASE.\n' \
-        "$branch" >&2
+        "$branches" >&2
       return 1
     fi
   fi
@@ -285,7 +298,7 @@ baseline_path() {
 }
 
 # tidy_gate <repo-root> <base-ref> <source-file> <source-rel-path> <tidy-output>
-#   0 = every finding sits on a line whose text also appears in the file at the baseline
+#   0 = every finding sits on a line whose text also appears in THE FILE IT NAMES at the baseline
 #   (pre-existing), 1 = at least one finding is on a new or edited line, 2 = cannot evaluate.
 tidy_gate() {
   local root="$1" base="$2" file="$3" rel="$4" out="$5" base_rel base_file
@@ -295,7 +308,10 @@ tidy_gate() {
     git -C "$root" show "$base:$base_rel" >"$base_file" || { rm -f "$base_file"; return 2; }
   fi
   local rc=0
-  python "$(cygpath -m "$TIDY_BASELINE")" "$(cygpath -m "$file")" "$(cygpath -m "$base_file")" "$(cygpath -m "$out")" || rc=$?
+  # Root and base ref too: a finding in ANOTHER repo file (a header) is judged against that
+  # file's own baseline, never against the same line number of $file (bead oo-3rb.60).
+  python "$(cygpath -m "$TIDY_BASELINE")" "$(cygpath -m "$file")" "$(cygpath -m "$base_file")" "$(cygpath -m "$out")" \
+    "$(cygpath -m "$root")" "$base" || rc=$?
   rm -f "$base_file"
   return "$rc"
 }

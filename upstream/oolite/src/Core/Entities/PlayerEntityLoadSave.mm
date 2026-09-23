@@ -47,6 +47,7 @@
 #import "NSStringOOExtensions.h"
 #import "NSNumberOOExtensions.h"
 #import "OOJavaScriptEngine.h"
+#import "OOStringBridge.h"
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.
@@ -470,9 +471,9 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		{
 			[self showCommanderShip: idx];
 			if (oo::PListView((NSDictionary *)[cdrDetailArray objectAtIndex:idx]).get<BOOL>(@"isSavedGame"))	// don't show things that aren't saved games
-				commanderNameString = oo::PListView(oo::PListView(cdrDetailArray).at<NSDictionary *>(idx)).get<NSString *>(@"player_save_name", oo::PListView(oo::PListView(cdrDetailArray).at<NSDictionary *>(idx)).get<NSString *>(@"player_name"));
+				commanderNameString = oo::StdString(oo::PListView(oo::PListView(cdrDetailArray).at<NSDictionary *>(idx)).get<NSString *>(@"player_save_name", oo::PListView(oo::PListView(cdrDetailArray).at<NSDictionary *>(idx)).get<NSString *>(@"player_name")));
 			else
-				commanderNameString = [gameView typedString];
+				commanderNameString = oo::StdString([gameView typedString]);
 		}
 		else
 		{
@@ -484,13 +485,13 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	}
 	else
 	{
-		commanderNameString = [gameView typedString];
+		commanderNameString = oo::StdString([gameView typedString]);
 	}
 	
-	[gameView setTypedString: commanderNameString];
+	[gameView setTypedString: oo::NSStringFrom(commanderNameString)];
 	
 	[gui setText:
-		[NSString stringWithFormat:DESC(@"savescreen-commander-name-@"), commanderNameString]
+		[NSString stringWithFormat:DESC(@"savescreen-commander-name-@"), oo::NSStringFrom(commanderNameString)]
 		  forRow: INPUTROW];
 	[gui setColor:[OOColor cyanColor] forRow:INPUTROW];
 	
@@ -512,7 +513,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	}
 	
 	// ignore Ctrl if pressed together with Enter for the moment - we check for it explicitly immediately after
-	if(([self checkKeyPress:n_key_gui_select ignore_ctrl:YES]||[gameView isDown:gvMouseDoubleClick]) && [commanderNameString length])
+	if(([self checkKeyPress:n_key_gui_select ignore_ctrl:YES]||[gameView isDown:gvMouseDoubleClick]) && !commanderNameString.empty())
 	{
 		if ([gameView isCommandModifierKeyDown]||[gameView isDown:gvMouseDoubleClick])
 		{
@@ -534,14 +535,14 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		else
 		{
 			pollControls = YES;
-			if ([self existingNativeSave: commanderNameString])
+			if ([self existingNativeSave: oo::NSStringFrom(commanderNameString)])
 			{
 				[gameView suppressKeysUntilKeyUp];
-				[self setGuiToOverwriteScreen: commanderNameString];
+				[self setGuiToOverwriteScreen: oo::NSStringFrom(commanderNameString)];
 			}
 			else
 			{
-				[self nativeSavePlayer: commanderNameString];
+				[self nativeSavePlayer: oo::NSStringFrom(commanderNameString)];
 				[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 				[self setGuiToStatusScreen];
 			}
@@ -576,7 +577,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	if (([self checkKeyPress:n_key_gui_select] && ([gui selectedRow] == SAVE_OVERWRITE_YES_ROW))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
 	{
 		pollControls=YES;
-		[self nativeSavePlayer: commanderNameString];
+		[self nativeSavePlayer: oo::NSStringFrom(commanderNameString)];
 		[self playSaveOverwriteYes];
 		[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 		[self setGuiToStatusScreen];

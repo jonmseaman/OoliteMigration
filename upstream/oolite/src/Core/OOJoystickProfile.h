@@ -32,6 +32,11 @@ MA 02110-1301, USA.
 
 */
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOObjCRef.h"
+
+@class OOJoystickSplineSegment;
+
 #define STICKPROFILE_TYPE_STANDARD	1
 #define STICKPROFILE_TYPE_SPLINE	2
 #define STICKPROFILE_MAX_POWER		10.0
@@ -71,8 +76,10 @@ MA 02110-1301, USA.
 @interface OOJoystickSplineAxisProfile: OOJoystickAxisProfile
 {
 @private
-	NSMutableArray *controlPoints;
-	NSArray *segments;
+	// Was a Foundation mutable array of valueWithPoint: boxes (bead oo-3rb.48).
+	std::vector<NSPoint> controlPoints;
+	// Was a Foundation array of segments (Foundation sweep, proposed ADR-0043, bead oo-r71k).
+	std::vector<oo::ObjCRef<OOJoystickSplineSegment *>> segments;
 }
 
 - (id) init;
@@ -86,7 +93,7 @@ MA 02110-1301, USA.
 - (void) moveControl: (NSInteger) index point: (NSPoint) point;
 - (double) rawValue: (double) x;
 - (double) gradient: (double) x;
-- (NSArray *) controlPoints;
+- (std::vector<NSPoint>) controlPoints;
 
 @end
 
