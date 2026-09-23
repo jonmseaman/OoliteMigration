@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 typedef enum
 {
@@ -60,11 +61,12 @@ typedef enum
 @interface OOSystemDescriptionEntry: OOObject
 {
 @private
-	NSMutableDictionary			*layers[OO_SYSTEM_LAYERS];
+	oo::PList					layers[OO_SYSTEM_LAYERS];	// each a Dict: property -> value
 }
 
-- (void) setProperty:(NSString *)property forLayer:(OOSystemLayer)layer toValue:(id)value;
-- (id) getProperty:(NSString *)property forLayer:(OOSystemLayer)layer;
+// value / result null = nil (setting nil removes the property)
+- (void) setProperty:(const std::string &)property forLayer:(OOSystemLayer)layer toValue:(const oo::PList &)value;
+- (oo::PList) getProperty:(const std::string &)property forLayer:(OOSystemLayer)layer;
 
 @end
 
@@ -77,11 +79,11 @@ typedef enum
 @interface OOSystemDescriptionManager: OOObject
 {
 @private
-	NSMutableDictionary			*universalProperties;
+	oo::PList					universalProperties;	// a Dict: property -> value
 	OOSystemDescriptionEntry	*interstellarSpace;
-	NSMutableDictionary			*systemDescriptions;
+	std::map<std::string, oo::ObjCRef<OOSystemDescriptionEntry *>, std::less<>>	systemDescriptions;
 	NSMutableDictionary			*propertyCache[OO_SYSTEM_CACHE_LENGTH];
-	NSMutableSet				*propertiesInUse;
+	std::set<std::string>		propertiesInUse;
 	NSPoint						coordinatesCache[OO_SYSTEM_CACHE_LENGTH];
 	NSMutableArray				*neighbourCache[OO_SYSTEM_CACHE_LENGTH];
 	oo::PList					scriptedChanges;	// a Dict: joined override key -> value
@@ -93,14 +95,16 @@ typedef enum
 // called just after the manager data is loaded.
 - (void) buildRouteCache;
 
-- (void) setUniversalProperties:(NSDictionary *)properties;
-- (void) setInterstellarProperties:(NSDictionary *)properties;
+// Property dictionaries are oo::PList Dicts whose values are the properties' values (any objects:
+// Object nodes where they are not property-list data); a single value is an oo::PList (null = nil).
+- (void) cxx_setUniversalProperties:(const oo::PList &)properties;
+- (void) cxx_setInterstellarProperties:(const oo::PList &)properties;
 
 // this is used by planetinfo.plist and has default layer 1
-- (void) setProperties:(NSDictionary *)properties forSystemKey:(NSString *)key;
+- (void) cxx_setProperties:(const oo::PList &)properties forSystemKey:(const std::string &)key;
 
-// this is used by Javascript property setting
-- (void) setProperty:(NSString *)property forSystemKey:(NSString *)key andLayer:(OOSystemLayer)layer toValue:(id)value fromManifest:(NSString *)manifest;
+// this is used by Javascript property setting (manifest nullopt = nil: the change is not saved)
+- (void) cxx_setProperty:(const std::string &)property forSystemKey:(const std::string &)key andLayer:(OOSystemLayer)layer toValue:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest;
 
 // The save game's scripted overrides: property lists (Dicts) whose values are the properties'
 // values (any objects: Object nodes where they are not property-list data).

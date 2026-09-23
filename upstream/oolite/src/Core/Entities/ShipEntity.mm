@@ -14392,7 +14392,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	number = [numberString intValue];
 	
-	[self spawnShipsWithRole:roleString count:number];
+	[self spawnShipsWithRole:oo::StdString(roleString) count:number];
 }
 
 

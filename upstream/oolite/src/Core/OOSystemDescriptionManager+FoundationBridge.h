@@ -47,6 +47,12 @@ MA 02110-1301, USA.
 - (void) importLegacyScriptedChanges:(NSDictionary *)scripted;	// -> -cxx_importLegacyScriptedChanges:
 - (NSDictionary *) exportScriptedChanges;						// -> -cxx_exportScriptedChanges
 
+// oo-3rb.108: storage and write side
+- (void) setUniversalProperties:(NSDictionary *)properties;		// -> -cxx_setUniversalProperties:
+- (void) setInterstellarProperties:(NSDictionary *)properties;	// -> -cxx_setInterstellarProperties:
+- (void) setProperties:(NSDictionary *)properties forSystemKey:(NSString *)key;	// -> -cxx_setProperties:forSystemKey:
+- (void) setProperty:(NSString *)property forSystemKey:(NSString *)key andLayer:(OOSystemLayer)layer toValue:(id)value fromManifest:(NSString *)manifest;	// -> -cxx_setProperty:forSystemKey:andLayer:toValue:fromManifest:
+
 @end
 
 #endif	// OOSYSTEMDESCRIPTIONMANAGER_FOUNDATIONBRIDGE_H
