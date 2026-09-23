@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
+#include "oofnd/PList.hpp"
 #include <cstring>
 
 /*
@@ -1029,30 +1030,12 @@ void OOJSInitJSIDCachePRIVATE(const char *name, ooscript::PropertyId *idCache)
 }
 
 
-ooscript::PropertyId OOJSIDFromString(NSString *string)
+ooscript::PropertyId cxx_OOJSIDFromString(const std::string &string)
 {
-	if (EXPECT_NOT(string == nil))  return ooscript::voidId();
-	
 	ooscript::Context context = OOJSAcquireContext();
 	
-	enum : std::uint16_t { kStackBufSize = 1024 };
-	unichar stackBuf[kStackBufSize];
-	unichar *buffer;
-	size_t length = [string length];
-	if (length < kStackBufSize)
-	{
-		buffer = stackBuf;
-	}
-	else
-	{
-		buffer = static_cast<unichar*>(malloc(sizeof (unichar) * length));
-		if (EXPECT_NOT(buffer == NULL))  return ooscript::voidId();
-	}
-	[string getCharacters:buffer];
-	
-	ooscript::String jsString = (ooscript::internUCStringN((context), reinterpret_cast<const ooscript::Char16*>(buffer), length));
-	
-	if (EXPECT_NOT(buffer != stackBuf))  free(buffer);
+	const std::u16string units = oo::utf8ToUtf16(string);
+	ooscript::String jsString = (ooscript::internUCStringN((context), units.data(), units.size()));
 	
 	// The string is interned, so the engine's value-to-id conversion returns its atom id unchanged.
 	ooscript::PropertyId result = ooscript::voidId();
@@ -1064,15 +1047,15 @@ ooscript::PropertyId OOJSIDFromString(NSString *string)
 }
 
 
-NSString *OOStringFromJSID(ooscript::PropertyId propID)
+std::optional<std::string> cxx_OOStringFromJSID(ooscript::PropertyId propID)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	
 	ooscript::Value	value;
-	NSString	*result = nil;
+	std::optional<std::string>	result;
 	if (ooscript::idToValue((context), (propID), &value))
 	{
-		result = OOStringFromJSString(context, (ooscript::valueToString((context), value)));
+		result = cxx_OOStringFromJSString(context, (ooscript::valueToString((context), value)));
 	}
 	
 	OOJSRelinquishContext(context);
@@ -1716,60 +1699,60 @@ void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, B
 }
 
 
-NSString *OOStringFromJSString(ooscript::Context context, ooscript::String string)
+std::optional<std::string> cxx_OOStringFromJSString(ooscript::Context context, ooscript::String string)
 {
 	OOJS_PROFILE_ENTER
 	
-	if (EXPECT_NOT(string == NULL))  return nil;
+	if (EXPECT_NOT(string == NULL))  return std::nullopt;
 	
 	size_t length;
 	const ooscript::Char16 *chars = ooscript::getStringCharsAndLength((context), (string), &length);
 	
 	if (EXPECT(chars != NULL))
 	{
-		return [NSString stringWithCharacters:OOJSRUCHARS(chars) length:length];
+		return oo::utf16ToUtf8(std::u16string_view(chars, length));
 	}
 	else
 	{
-		return nil;
+		return std::nullopt;
 	}
 	
-	OOJS_PROFILE_EXIT
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
-NSString *OOStringFromJSValueEvenIfNull(ooscript::Context context, ooscript::Value value)
+std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context context, ooscript::Value value)
 {
 	OOJS_PROFILE_ENTER
 	
 	NSCParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	
 	ooscript::String string = (ooscript::valueToString((context), (value)));	// Calls the value's toString method if needed.
-	return OOStringFromJSString(context, string);
+	return cxx_OOStringFromJSString(context, string);
 	
-	OOJS_PROFILE_EXIT
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
-NSString *OOStringFromJSValue(ooscript::Context context, ooscript::Value value)
+std::optional<std::string> cxx_OOStringFromJSValue(ooscript::Context context, ooscript::Value value)
 {
 	OOJS_PROFILE_ENTER
 	
 	if (EXPECT(!ooscript::isNull(value) && !ooscript::isUndefined(value)))
 	{
-		return OOStringFromJSValueEvenIfNull(context, value);
+		return cxx_OOStringFromJSValueEvenIfNull(context, value);
 	}
-	return nil;
+	return std::nullopt;
 	
-	OOJS_PROFILE_EXIT
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
-NSString *OOStringFromJSPropertyIDAndSpec(ooscript::Context context, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec)
+std::optional<std::string> cxx_OOStringFromJSPropertyIDAndSpec(ooscript::Context context, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec)
 {
 	if (ooscript::isStringId(propID))
 	{
-		return OOStringFromJSString(context, ooscript::idToString(propID));
+		return cxx_OOStringFromJSString(context, ooscript::idToString(propID));
 	}
 	else if (ooscript::isInt32Id(propID) && propertySpec != NULL)
 	{
@@ -1777,14 +1760,14 @@ NSString *OOStringFromJSPropertyIDAndSpec(ooscript::Context context, ooscript::P
 		
 		while (propertySpec->name != NULL)
 		{
-			if (propertySpec->tinyid == tinyid)  return [NSString stringWithUTF8String:propertySpec->name];
+			if (propertySpec->tinyid == tinyid)  return std::string(propertySpec->name);
 			propertySpec++;
 		}
 	}
 	
 	ooscript::Value value;
-	if (!ooscript::idToValue((context), (propID), (&value)))  return @"unknown";
-	return OOStringFromJSString(context, (ooscript::valueToString((context), (value))));
+	if (!ooscript::idToValue((context), (propID), (&value)))  return std::string("unknown");
+	return cxx_OOStringFromJSString(context, (ooscript::valueToString((context), (value))));
 }
 
 

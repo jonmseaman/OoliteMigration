@@ -63,6 +63,7 @@ SOFTWARE.
 #include "oofnd/Process.hpp"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
+#include "oofnd/Date.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OORuntime.h"
@@ -647,7 +648,7 @@ void OpenLogFile();
 
 	// The templates are data (verifyOXP.plist), so they are formatted at run time (ADR-0043 item 19).
 	const oo::PList graphVizTemplate = [self cxx_configurationDictionaryForKey:"debugGraphvizTempate"];
-	std::string graphViz = oo::str::formatRuntime(graphVizTemplate.get<std::string>("preamble"), {oo::DescriptionOf([NSDate date])});
+	std::string graphViz = oo::str::formatRuntime(graphVizTemplate.get<std::string>("preamble"), {oo::date::description()});
 
 	/*	Pass 1: enumerate over graph setting node attributes for each stage.
 		We use pointers as node names for simplicity of generation.

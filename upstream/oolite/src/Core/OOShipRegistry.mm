@@ -516,11 +516,11 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 {
 	std::vector<std::string>	conditionScripts;
 
-	// ResourceManager's loader and OOCacheManager are unmigrated callees: convert at the calls.
-	const oo::PList initialDemoShips = oo::PListFrom([ResourceManager arrayFromFilesNamed:@"shiplibrary.plist"
-																				   inFolder:@"Config"
-																				   andMerge:YES
-																					  cache:NO]);
+	// OOCacheManager is an unmigrated callee: convert at the call.
+	const oo::PList initialDemoShips = [ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
+																	   inFolder:"Config"
+																	   andMerge:YES
+																		  cache:NO];
 
 	if (const oo::PList::Array *entries = initialDemoShips.getIf<oo::PList::Array>())
 	{
@@ -548,11 +548,10 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 {
 	_demoShips = oo::PList();
 
-	// ResourceManager's loader is an unmigrated callee: its array arrives through oo::PListFrom.
-	const oo::PList initialDemoShips = oo::PListFrom([ResourceManager arrayFromFilesNamed:@"shiplibrary.plist"
-																				   inFolder:@"Config"
-																				   andMerge:YES
-																					  cache:NO]);
+	const oo::PList initialDemoShips = [ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
+																	   inFolder:"Config"
+																	   andMerge:YES
+																		  cache:NO];
 	const oo::PList::Array noShips;
 	const oo::PList::Array &initialEntries = initialDemoShips.isArray() ? *initialDemoShips.getIf<oo::PList::Array>() : noShips;
 	oo::PList::Array demoShips = initialEntries;
@@ -1043,7 +1042,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 							if (!subentityKey.has_value())
 							{
 								// -addObject:nil raised
-								[NSException raise:NSInvalidArgumentException format:@"Tried to add nil to set"];
+								[OOException raise:OOInvalidArgumentException format:"Tried to add nil to set"];
 							}
 							badSubentities.insert(*subentityKey);
 						}

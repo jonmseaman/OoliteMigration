@@ -27,6 +27,9 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
+#import "OOStringBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 #define kQuiriumCascadeDuration			(20.0)	// seconds
@@ -67,9 +70,9 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"%f seconds passed of %f", _timePassed, kQuiriumCascadeDuration];
+	return oo::NSStringFrom(oo::str::format("%f seconds passed of %f", _timePassed, kQuiriumCascadeDuration));
 }
 
 
