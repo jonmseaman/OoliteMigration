@@ -147,4 +147,31 @@ NSString *ClockToString(double clock, BOOL adjusting);
 }
 #endif
 
+
+// oo-3rb.126: GraphViz helpers (-> cxx_EscapedGraphVizString, cxx_GraphVizTokenString)
+#if DEBUG_GRAPHVIZ
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+NSString *EscapedGraphVizString(NSString *string);
+
+/*	GraphVizTokenString()
+	Generate a C-style identifier. Sequences of invalid characters and
+	underscores are replaced with single underscores. If uniqueSet is not nil,
+	uniqueness is achieved by appending numbers if necessary.
+	
+	This can be used for any C-based langauge, but note that it excludes the
+	case-insensitive GraphViz keywords node, edge, graph, digraph, subgraph
+	and strict.
+*/
+NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
 #endif	// OOSTRINGPARSING_FOUNDATIONBRIDGE_H
