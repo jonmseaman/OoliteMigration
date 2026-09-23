@@ -30,7 +30,7 @@ SOFTWARE.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "OOLoggingExtended.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMaths.h"
 #include <limits.h>
 
@@ -224,7 +224,7 @@ VERIFY_PROTO(DelegatedType);
 	if (self != nil)
 	{
 		_schema = [schema retain];
-		_definitions = [[_schema oo_dictionaryForKey:@"$definitions"] retain];
+		_definitions = [oo::PListView(_schema).get<NSDictionary *>(@"$definitions") retain];
 		sDebugDump = [[NSUserDefaults standardUserDefaults] boolForKey:@"plist-schema-verifier-dump-structure"];
 		if (sDebugDump)  OOLogSetDisplayMessagesInClass(@"verifyOXP.verbose.plistDebugDump", YES);
 		
@@ -883,13 +883,13 @@ static NSError *Verify_String(OOPListSchemaVerifier *verifier, id value, NSDicti
 	
 	// Apply length bounds.
 	length = [filteredString length];
-	lengthConstraint = [params oo_unsignedIntegerForKey:@"minLength"];
+	lengthConstraint = oo::PListView(params).get<NSUInteger>(@"minLength");
 	if (length < lengthConstraint)
 	{
 		return  Error(kPListErrorMinimumConstraintNotMet, &keyPath, @"String \"%@\" is too short (%u bytes, minimum is %u).", StringForErrorReport(filteredString), length, lengthConstraint);
 	}
 	
-	lengthConstraint = [params oo_unsignedIntegerForKey:@"maxLength" defaultValue:NSUIntegerMax];
+	lengthConstraint = oo::PListView(params).get<NSUInteger>(@"maxLength", NSUIntegerMax);
 	if (lengthConstraint < length)
 	{
 		return  Error(kPListErrorMaximumConstraintNotMet, &keyPath, @"String \"%@\" is too long (%u bytes, maximum is %u).", StringForErrorReport(filteredString), length, lengthConstraint);
@@ -914,13 +914,13 @@ static NSError *Verify_Array(OOPListSchemaVerifier *verifier, id value, NSDictio
 	
 	// Apply count bounds.
 	count = [value count];
-	constraint = [params oo_unsignedIntegerForKey:@"minCount" defaultValue:0];
+	constraint = oo::PListView(params).get<NSUInteger>(@"minCount", 0);
 	if (count < constraint)
 	{
 		return  Error(kPListErrorMinimumConstraintNotMet, &keyPath, @"Array has too few members (%u, minimum is %u).", count, constraint);
 	}
 	
-	constraint = [params oo_unsignedIntegerForKey:@"maxCount" defaultValue:NSUIntegerMax];
+	constraint = oo::PListView(params).get<NSUInteger>(@"maxCount", NSUIntegerMax);
 	if (constraint < count)
 	{
 		return  Error(kPListErrorMaximumConstraintNotMet, &keyPath, @"Array has too many members (%u, maximum is %u).", count, constraint);
@@ -977,22 +977,22 @@ static NSError *Verify_Dictionary(OOPListSchemaVerifier *verifier, id value, NSD
 	
 	// Apply count bounds.
 	count = [value count];
-	constraint = [params oo_unsignedIntegerForKey:@"minCount" defaultValue:0];
+	constraint = oo::PListView(params).get<NSUInteger>(@"minCount", 0);
 	if (count < constraint)
 	{
 		return  Error(kPListErrorMinimumConstraintNotMet, &keyPath, @"Dictionary has too few pairs (%u, minimum is %u).", count, constraint);
 	}
-	constraint = [params oo_unsignedIntegerForKey:@"maxCount" defaultValue:NSUIntegerMax];
+	constraint = oo::PListView(params).get<NSUInteger>(@"maxCount", NSUIntegerMax);
 	if (constraint < count)
 	{
 		return  Error(kPListErrorMaximumConstraintNotMet, &keyPath, @"Dictionary has too manu pairs (%u, maximum is %u).", count, constraint);
 	}
 	
 	// Get schema.
-	schema = [params oo_dictionaryForKey:@"schema"];
+	schema = oo::PListView(params).get<NSDictionary *>(@"schema");
 	valueType = [params objectForKey:@"valueType"];
-	allowOthers = [params oo_boolForKey:@"allowOthers" defaultValue:YES];
-	requiredKeyList = [params oo_arrayForKey:@"requiredKeys"];
+	allowOthers = oo::PListView(params).get<BOOL>(@"allowOthers", YES);
+	requiredKeyList = oo::PListView(params).get<NSArray *>(@"requiredKeys");
 	
 	// If these conditions are met, all members must pass:
 	if (schema == nil && valueType == nil && requiredKeyList == nil && allowOthers)  return nil;
@@ -1085,13 +1085,13 @@ static NSError *Verify_Integer(OOPListSchemaVerifier *verifier, id value, NSDict
 	}
 	
 	// Check constraints.
-	constraint = [params oo_longLongForKey:@"minimum" defaultValue:LLONG_MIN];
+	constraint = oo::PListView(params).get<long long>(@"minimum", LLONG_MIN);
 	if (numericValue < constraint)
 	{
 		return  Error(kPListErrorMinimumConstraintNotMet, &keyPath, @"Number is too small (%lli, minimum is %lli).", numericValue, constraint);
 	}
 	
-	constraint = [params oo_longLongForKey:@"maximum" defaultValue:LLONG_MAX];
+	constraint = oo::PListView(params).get<long long>(@"maximum", LLONG_MAX);
 	if (constraint < numericValue)
 	{
 		return  Error(kPListErrorMaximumConstraintNotMet, &keyPath, @"Number is too large (%lli, maximum is %lli).", numericValue, constraint);
@@ -1117,13 +1117,13 @@ static NSError *Verify_PositiveInteger(OOPListSchemaVerifier *verifier, id value
 	}
 	
 	// Check constraints.
-	constraint = [params oo_unsignedLongLongForKey:@"minimum" defaultValue:0];
+	constraint = oo::PListView(params).get<unsigned long long>(@"minimum", 0);
 	if (numericValue < constraint)
 	{
 		return  Error(kPListErrorMinimumConstraintNotMet, &keyPath, @"Number is too small (%zu, minimum is %zu).", numericValue, constraint);
 	}
 	
-	constraint = [params oo_unsignedLongLongForKey:@"maximum" defaultValue:ULLONG_MAX];
+	constraint = oo::PListView(params).get<unsigned long long>(@"maximum", ULLONG_MAX);
 	if (constraint < numericValue)
 	{
 		return  Error(kPListErrorMaximumConstraintNotMet, &keyPath, @"Number is too large (%zu, maximum is %zu).", numericValue, constraint);
@@ -1149,13 +1149,13 @@ static NSError *Verify_Float(OOPListSchemaVerifier *verifier, id value, NSDictio
 	}
 	
 	// Check constraints.
-	constraint = [params oo_doubleForKey:@"minimum" defaultValue:-INFINITY];
+	constraint = oo::PListView(params).get<double>(@"minimum", -INFINITY);
 	if (numericValue < constraint)
 	{
 		return  Error(kPListErrorMinimumConstraintNotMet, &keyPath, @"Number is too small (%g, minimum is %g).", numericValue, constraint);
 	}
 	
-	constraint = [params oo_doubleForKey:@"maximum" defaultValue:INFINITY];
+	constraint = oo::PListView(params).get<double>(@"maximum", INFINITY);
 	if (constraint < numericValue)
 	{
 		return  Error(kPListErrorMaximumConstraintNotMet, &keyPath, @"Number is too large (%g, maximum is %g).", numericValue, constraint);
@@ -1186,13 +1186,13 @@ static NSError *Verify_PositiveFloat(OOPListSchemaVerifier *verifier, id value, 
 	}
 	
 	// Check constraints.
-	constraint = [params oo_doubleForKey:@"minimum" defaultValue:0];
+	constraint = oo::PListView(params).get<double>(@"minimum", 0);
 	if (numericValue < constraint)
 	{
 		return  Error(kPListErrorMinimumConstraintNotMet, &keyPath, @"Number is too small (%g, minimum is %g).", numericValue, constraint);
 	}
 	
-	constraint = [params oo_doubleForKey:@"maximum" defaultValue:INFINITY];
+	constraint = oo::PListView(params).get<double>(@"maximum", INFINITY);
 	if (constraint < numericValue)
 	{
 		return  Error(kPListErrorMaximumConstraintNotMet, &keyPath, @"Number is too large (%g, maximum is %g).", numericValue, constraint);
@@ -1212,7 +1212,7 @@ static NSError *Verify_OneOf(OOPListSchemaVerifier *verifier, id value, NSDictio
 	
 	DebugDump(@"%@", @"* oneOf");
 	
-	options = [params oo_arrayForKey:@"options"];
+	options = oo::PListView(params).get<NSArray *>(@"options");
 	if (options == nil)
 	{
 		*outStop = YES;
@@ -1261,7 +1261,7 @@ static NSError *Verify_Enumeration(OOPListSchemaVerifier *verifier, id value, NS
 	
 	REQUIRE_TYPE(NSString, @"string");
 	
-	values = [params oo_arrayForKey:@"values"];
+	values = oo::PListView(params).get<NSArray *>(@"values");
 	DebugDump(@"  - \"%@\" in %@", StringForErrorReport(value), ArrayForErrorReport(values));
 	
 	if (values == nil)
@@ -1371,7 +1371,7 @@ static NSError *Verify_DelegatedType(OOPListSchemaVerifier *verifier, id value, 
 
 - (NSArray *)plistKeyPath
 {
-	return [[self userInfo] oo_arrayForKey:kPListKeyPathErrorKey];
+	return oo::PListView([self userInfo]).get<NSArray *>(kPListKeyPathErrorKey);
 }
 
 
@@ -1383,7 +1383,7 @@ static NSError *Verify_DelegatedType(OOPListSchemaVerifier *verifier, id value, 
 
 - (NSSet *)missingRequiredKeys
 {
-	return [[self userInfo] oo_setForKey:kMissingRequiredKeysErrorKey];
+	return oo::PListView([self userInfo]).get<NSSet *>(kMissingRequiredKeysErrorKey);
 }
 
 
