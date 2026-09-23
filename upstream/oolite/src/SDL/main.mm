@@ -33,6 +33,8 @@ MA 02110-1301, USA.
 #import "GameController.h"
 #include "oofnd/Process.hpp"
 #import "OOLoggingExtended.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 #if OOLITE_WINDOWS
 #include <locale.h>
@@ -234,7 +236,12 @@ int main(int argc, char *argv[])
 		// GNUstep port.
 		[controller applicationDidFinishLaunching];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLogERR(kOOLogException, @"Root exception handler hit - terminating. This is an internal error, please report it. Exception name: %@, reason: %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		return EXIT_FAILURE;
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLogERR(kOOLogException, @"Root exception handler hit - terminating. This is an internal error, please report it. Exception name: %@, reason: %@", [exception name], [exception reason]);
 		return EXIT_FAILURE;

@@ -45,6 +45,8 @@ MA 02110-1301, USA.
 #import "OOOXZManager.h"
 #import "OOOpenGLMatrixManager.h"
 #import "OOEnumerationShuffle.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #include <chrono>
 #include <thread>
 
@@ -65,7 +67,7 @@ static GameController *sSharedController = nil;
 
 @interface GameController (OOPrivate)
 
-- (void)reportUnhandledStartupException:(NSException *)exception;
+- (void)reportUnhandledStartupExceptionName:(NSString *)name reason:(NSString *)reason;
 
 - (void)doPerformGameTick;
 
@@ -89,7 +91,7 @@ static GameController *sSharedController = nil;
 	if (sSharedController != nil)
 	{
 		[self release];
-		[NSException raise:NSInternalInconsistencyException format:@"%s: expected only one GameController to exist at a time.", __PRETTY_FUNCTION__];
+		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one GameController to exist at a time.", __PRETTY_FUNCTION__];
 	}
 	
 	if ((self = [super init]))
@@ -314,9 +316,14 @@ static GameController *sSharedController = nil;
 		
 		[self endSplashScreen];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		[self reportUnhandledStartupException:exception];
+		[self reportUnhandledStartupExceptionName:oo::NSStringFrom([exception name]) reason:oo::NSStringFrom([exception reason])];
+		exit(EXIT_FAILURE);
+	}
+	@catch (OOFoundationException *exception)
+	{
+		[self reportUnhandledStartupExceptionName:[exception name] reason:[exception reason]];
 		exit(EXIT_FAILURE);
 	}
 	
@@ -423,7 +430,17 @@ static GameController *sSharedController = nil;
 	}
 	@catch (id exception) 
 	{
-		OOLog(@"exception.backtrace",@"%@",[exception callStackSymbols]);
+		if ([exception isKindOfClass:[OOException class]])
+		{
+			// -callStackSymbols is Foundation's; an OOException does not answer it (sending it raised
+			// out of this handler), so name the exception instead (proposed ADR-0037).
+			OOException *ooException = (OOException *)exception;
+			OOLog(@"exception.backtrace",@"%@ : %@",oo::NSStringFrom([ooException name]),oo::NSStringFrom([ooException reason]));
+		}
+		else
+		{
+			OOLog(@"exception.backtrace",@"%@",[exception callStackSymbols]);
+		}
 	}
 	
 	@try
@@ -1053,14 +1070,14 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (void)reportUnhandledStartupException:(NSException *)exception
+- (void)reportUnhandledStartupExceptionName:(NSString *)name reason:(NSString *)reason
 {
-	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", [exception name], [exception reason]);
+	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", name, reason);
 	
 	#if OOLITE_MAC_OS_X
 		// Display an error alert.
 		// TODO: provide better information on reporting bugs in the manual, and refer to it here.
-		NSRunCriticalAlertPanel(@"Oolite failed to start up, because an unhandled exception occurred.", @"An exception of type %@ occurred. If this problem persists, please file a bug report.", @"OK", NULL, NULL, [exception name]);
+		NSRunCriticalAlertPanel(@"Oolite failed to start up, because an unhandled exception occurred.", @"An exception of type %@ occurred. If this problem persists, please file a bug report.", @"OK", NULL, NULL, name);
 	#endif
 }
 

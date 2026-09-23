@@ -46,6 +46,8 @@ MA 02110-1301, USA.
 #import "OOPListScript.h"
 
 #import "OOManifestProperties.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 static NSString * const kOOLogCacheUpToDate				= @"dataCache.upToDate";
 static NSString * const kOOLogCacheExplicitFlush		= @"dataCache.rebuild.explicitFlush";
@@ -2122,7 +2124,12 @@ static NSString *LogClassKeyRoot(NSString *key)
 						}
 					}
 				}
-				@catch (NSException *exception)
+				@catch (OOException *exception)
+				{
+					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", __PRETTY_FUNCTION__, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), path);
+					// Ignore exception and keep loading other scripts.
+				}
+				@catch (OOFoundationException *exception)
 				{
 					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", __PRETTY_FUNCTION__, [exception name], [exception reason], path);
 					// Ignore exception and keep loading other scripts.
