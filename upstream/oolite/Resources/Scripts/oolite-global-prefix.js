@@ -320,7 +320,8 @@ if (global.timeAccelerationFactor === undefined)
 	// Array.prototype.toSource(): same removal; own definition so it wins
 	// over the generic Object.prototype one and formats as "[...]" per the
 	// historical SpiderMonkey behaviour rather than "({0:..., 1:...})".
-	if (typeof Array.prototype.toSource !== "function")
+	// Own-property test: once Object.prototype.toSource exists, Array.prototype inherits it.
+	if (!Object.prototype.hasOwnProperty.call(Array.prototype, "toSource"))
 	{
 		Object.defineProperty(Array.prototype, "toSource", {
 			value: function toSource()
@@ -353,10 +354,16 @@ if (global.timeAccelerationFactor === undefined)
 	// the ones most likely to also call the bare global.
 	if (typeof global.uneval !== "function")
 	{
-		global.uneval = function uneval(value)
-		{
-			return toSourceValue(value, []);
-		};
+		// Non-enumerable, like SpiderMonkey's own global functions.
+		Object.defineProperty(global, "uneval", {
+			value: function uneval(value)
+			{
+				return toSourceValue(value, []);
+			},
+			writable: true,
+			configurable: true,
+			enumerable: false
+		});
 	}
 }).call(this);
 

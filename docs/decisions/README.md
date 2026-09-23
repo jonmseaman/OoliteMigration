@@ -27,5 +27,6 @@ changed* from the chain.
 | [0018](0018-component-test-tier.md) | A component test tier: Gherkin scenarios over the debug console in Python (pytest-bdd, not cucumber-cpp); `OO_RANDOM_SEED` as its one enabler | Proposed — default in effect |
 | [0022](0022-phase1-finishes-on-objcpp-with-a-debug-facade.md) | Phase 1 finishes on an all-Objective-C++ tree (seam 2.1 pulled forward); the rest of the retarget is a codemod; the façade carries a reduced-capability debug API; QuickJS-ng values live in a GC-emulating arena | Proposed — default in effect |
 | [0023](0023-built-in-mozilla-compat-polyfills.md) | The QuickJS-ng build ships the toSource/quote/uneval and Array/String-generics polyfills built in (guarded no-ops on SpiderMonkey) | Proposed — default in effect |
+| [0024](0024-js-api-gate-is-the-oolite-surface.md) | Phase 1's JS API gate compares Oolite's own API surface (tools/js_api_surface_compare.py), not the ES library of the old engine | Proposed — default in effect |
 
 Template: Status · Date · Context · Decision · Consequences · History.

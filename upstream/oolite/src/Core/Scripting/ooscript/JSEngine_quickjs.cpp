@@ -847,6 +847,15 @@ std::unordered_map<JSClassID, BackendClass*> gClasses;
 struct DefineCollector { void* target; std::vector<JSAtom> atoms; };
 DefineCollector* gDefineCollector = nullptr;
 
+// SpiderMonkey's "shared permanent" rule (js_HasOwnProperty): a Shared|Permanent property found on
+// a prototype of the SAME class as the object is reported as the object's own. That is why
+// Object.keys(clock) lists clock's properties and hasOwnProperty("credits") is true for player.
+// The PropertySpec accessors each class prototype carries are recorded here (atom, enumerable,
+// read-only) so own-property queries and enumeration can report them the same way; property
+// reads are unaffected. (bead oo-1gc.6)
+struct SharedPermanent { JSAtom atom; bool enumerable; bool readOnly; };
+std::unordered_map<void*, std::vector<SharedPermanent>> gSharedPermanent;   // prototype -> entries (atoms owned)
+
 
 BackendClass* classOf(JSValueConst obj)
 {
@@ -979,10 +988,45 @@ int ownLookup(JSContext* ctx, JSPropertyDescriptor* desc, JSValueConst obj, JSAt
 	return 0;
 }
 
+// The first Shared|Permanent entry for `atom` on a same-class prototype of `obj`, or nullptr.
+const SharedPermanent* sharedPermanentFor(JSContext* ctx, JSValueConst obj, JSAtom atom)
+{
+	if (gSharedPermanent.empty())  return nullptr;
+	const JSClassID cls = JS_GetClassID(obj);
+	JSValue p = JS_GetPrototype(ctx, obj);
+	const SharedPermanent* found = nullptr;
+	while (found == nullptr && JS_IsObject(p) && JS_GetClassID(p) == cls)
+	{
+		auto it = gSharedPermanent.find(JS_VALUE_GET_PTR(p));
+		if (it != gSharedPermanent.end())
+		{
+			for (const SharedPermanent& e : it->second)  if (e.atom == atom) { found = &e; break; }
+		}
+		JSValue next = JS_GetPrototype(ctx, p);
+		JS_FreeValue(ctx, p);
+		p = next;
+	}
+	JS_FreeValue(ctx, p);
+	return found;
+}
+
 int ExGetOwnProperty(JSContext* ctx, JSPropertyDescriptor* desc, JSValueConst obj, JSAtom atom)
 {
 	bool fromShape = false;
-	return ownLookup(ctx, desc, obj, atom, &fromShape);
+	const int r = ownLookup(ctx, desc, obj, atom, &fromShape);
+	if (r != 0 || rsOf(ctx)->shapeOnly != 0)  return r;   // a shape-only probe sees the shape alone
+	const SharedPermanent* sp = sharedPermanentFor(ctx, obj, atom);
+	if (sp == nullptr)  return 0;
+	if (desc != nullptr)
+	{
+		JSValue v = JS_GetProperty(ctx, obj, atom);   // the class hook, as SpiderMonkey's lookup ran it
+		if (JS_IsException(v))  return -1;
+		desc->flags  = (sp->enumerable ? JS_PROP_ENUMERABLE : 0) | (sp->readOnly ? 0 : JS_PROP_WRITABLE);
+		desc->value  = v;
+		desc->getter = JS_UNDEFINED;
+		desc->setter = JS_UNDEFINED;
+	}
+	return 1;
 }
 
 int ExGetOwnPropertyNames(JSContext* ctx, JSPropertyEnum** ptab, std::uint32_t* plen, JSValueConst obj)
@@ -1043,6 +1087,23 @@ int ExGetOwnPropertyNames(JSContext* ctx, JSPropertyEnum** ptab, std::uint32_t* 
 		for (JSAtom a : collect.atoms)  lateNames.push_back(a);
 	}
 	for (const auto& p : bc->tinyidProps)  addUnique(JS_NewAtom(ctx, p.first.c_str()));
+	{
+		// Same-class prototypes' Shared|Permanent properties are the object's own (SpiderMonkey).
+		const JSClassID cls = JS_GetClassID(obj);
+		JSValue p = JS_GetPrototype(ctx, obj);
+		while (JS_IsObject(p) && JS_GetClassID(p) == cls)
+		{
+			auto it = gSharedPermanent.find(JS_VALUE_GET_PTR(p));
+			if (it != gSharedPermanent.end())
+			{
+				for (const SharedPermanent& e : it->second)  addUnique(JS_DupAtom(ctx, e.atom));
+			}
+			JSValue next = JS_GetPrototype(ctx, p);
+			JS_FreeValue(ctx, p);
+			p = next;
+		}
+		JS_FreeValue(ctx, p);
+	}
 	if (ObjRec* rec = recOf(obj))
 	{
 		for (const Slot& s : rec->slots)  addUnique(JS_DupAtom(ctx, s.atom));
@@ -1064,7 +1125,8 @@ int ExGetOwnPropertyNames(JSContext* ctx, JSPropertyEnum** ptab, std::uint32_t* 
 	for (std::size_t i = 0; i < atoms.size(); ++i)
 	{
 		tab[i].atom = atoms[i];
-		tab[i].is_enumerable = true;
+		const SharedPermanent* sp = sharedPermanentFor(ctx, obj, atoms[i]);
+		tab[i].is_enumerable = sp == nullptr || sp->enumerable;
 	}
 	*ptab = tab;
 	*plen = static_cast<std::uint32_t>(atoms.size());
@@ -1228,7 +1290,11 @@ int ExSetProperty(JSContext* ctx, JSValueConst obj, JSAtom atom, JSValueConst va
 	}
 
 	JSPropertyDescriptor d;
-	int r = ExGetOwnProperty(ctx, &d, obj, atom);
+	// The object's own properties proper: the shared-permanent emulation in ExGetOwnProperty only
+	// changes how prototype properties are REPORTED; an assignment still reaches the prototype's
+	// setter, as it did under SpiderMonkey.
+	bool fromShape = false;
+	int r = ownLookup(ctx, &d, obj, atom, &fromShape);
 	if (r < 0)  return -1;
 	if (r > 0)
 	{
@@ -1691,13 +1757,21 @@ bool defineAccessor(JSContext* ctx, JSValueConst obj, JSAtom atom, PropertyGette
 	if (keep < 0)  return false;
 	if (keep > 0)  return true;
 	const auto b = static_cast<std::uint8_t>(flags);
+	// A read-only property gets no setter at all, so its descriptor
+	// says it is not writable and assignment behaves as SpiderMonkey's did for a read-only
+	// property: ignored in sloppy code, a TypeError in strict code (bead oo-1gc.6).
+	const bool readOnly = (b & static_cast<std::uint8_t>(PropertyFlag::ReadOnly)) != 0;
 	auto* rec = new AccessorRec{JS_GetRuntime(ctx), get, set, byTinyid, tinyid,
 	                            byTinyid ? JS_ATOM_NULL : JS_DupAtom(ctx, atom),
-	                            (b & static_cast<std::uint8_t>(PropertyFlag::ReadOnly)) != 0, 2};
+	                            readOnly, readOnly ? 1 : 2};
 	JSValue g = JS_NewCClosure(ctx, AccessorGetTramp, "", AccessorRelease, 0, 0, rec);
 	if (JS_IsException(g))  { rec->refs = 1; AccessorRelease(rec); return false; }
-	JSValue s = JS_NewCClosure(ctx, AccessorSetTramp, "", AccessorRelease, 1, 0, rec);
-	if (JS_IsException(s))  { JS_FreeValue(ctx, g); AccessorRelease(rec); return false; }
+	JSValue s = JS_UNDEFINED;
+	if (!readOnly)
+	{
+		s = JS_NewCClosure(ctx, AccessorSetTramp, "", AccessorRelease, 1, 0, rec);
+		if (JS_IsException(s))  { JS_FreeValue(ctx, g); AccessorRelease(rec); return false; }
+	}
 	int f = JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_CONFIGURABLE | JS_PROP_HAS_ENUMERABLE | JS_PROP_NO_EXOTIC | JS_PROP_THROW;
 	if ((b & static_cast<std::uint8_t>(PropertyFlag::Enumerate)) != 0)  f |= JS_PROP_ENUMERABLE;
 	if ((b & static_cast<std::uint8_t>(PropertyFlag::Permanent)) == 0)  f |= JS_PROP_CONFIGURABLE;
@@ -1759,6 +1833,14 @@ bool definePropertySpecs(JSContext* ctx, JSValueConst obj, const PropertySpec* p
 			? defineAccessor(ctx, obj, atom.atom, get, set, true, ps->tinyid, ps->flags)
 			: defineData(ctx, obj, atom.atom, JS_UNDEFINED, jsFlags(ps->flags));
 		if (!ok)  return false;
+		const auto fb = static_cast<std::uint8_t>(ps->flags);
+		const auto sp = static_cast<std::uint8_t>(PropertyFlag::Shared) | static_cast<std::uint8_t>(PropertyFlag::Permanent);
+		if ((fb & sp) == sp && (get != nullptr || set != nullptr))
+		{
+			gSharedPermanent[JS_VALUE_GET_PTR(obj)].push_back(SharedPermanent{ JS_DupAtom(ctx, atom.atom),
+				(fb & static_cast<std::uint8_t>(PropertyFlag::Enumerate)) != 0,
+				(fb & static_cast<std::uint8_t>(PropertyFlag::ReadOnly)) != 0 });
+		}
 	}
 	return true;
 }
@@ -3120,6 +3202,11 @@ void destroyRuntime(Runtime rt)
 	{
 		rs->roots.clear();
 		releaseScopes(jrt);
+		for (auto& e : gSharedPermanent)
+		{
+			for (SharedPermanent& sp : e.second)  JS_FreeAtomRT(jrt, sp.atom);
+		}
+		gSharedPermanent.clear();
 		flushArena(rs, false);
 		for (auto& c : rs->chars)  JS_FreeCStringRT_UTF16(jrt, c.second.p);
 		rs->chars.clear();
