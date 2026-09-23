@@ -74,6 +74,7 @@ oolite_sources += files(
     'OOOpenGLMatrixManager.mm',
     'OOOpenGLStateManager.mm',
     'OOPListParsing.mm',
+    'OOPListParsing+FoundationBridge.mm',
     'OOPlanetData.c',
     'OOPlanetDrawable.mm',
     'OOPolygonSprite.mm',
