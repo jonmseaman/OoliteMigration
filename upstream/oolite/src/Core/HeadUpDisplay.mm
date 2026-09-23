@@ -872,7 +872,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	{
 		// trigger the targetChanged event with whom == null
 		_compassActive = NO;
-		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:[NSArray arrayWithObjects:[NSNull null], OOStringFromCompassMode([PLAYER compassMode]), nil]];
+		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:[NSArray arrayWithObjects:[OONull null], OOStringFromCompassMode([PLAYER compassMode]), nil]];
 	}
 	
 }
@@ -2723,7 +2723,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 		for (unsigned i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 		{
 			id sec_id = [targetMemory objectAtIndex:i];
-			// isProxy = weakref ; not = NSNull (in this case...)
+			// isProxy = weakref ; not = OONull (in this case...)
 			// can't use isKindOfClass because that throws
 			// NSInvalidArgumentException when called on a weakref
 			// with a dropped object.

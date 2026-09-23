@@ -1686,18 +1686,18 @@ static NSMutableDictionary *sStringCache;
 
 + (NSDictionary *) whitelistDictionary
 {
-	static id whitelistDictionary = nil;
+	static NSDictionary *whitelistDictionary = nil;
+	static BOOL loaded = NO;	// a missing whitelist is remembered as nil, not retried
 	
-	if (whitelistDictionary == nil)
+	if (!loaded)
 	{
 		NSString *path = [[[ResourceManager builtInPath] stringByAppendingPathComponent:@"Config"] stringByAppendingPathComponent:@"whitelist.plist"];
 		whitelistDictionary = [NSDictionary dictionaryWithContentsOfFile:path];
-		if (whitelistDictionary == nil)  whitelistDictionary = [NSNull null];
+		loaded = YES;
 		
 		[whitelistDictionary retain];
 	}
 	
-	if (whitelistDictionary == [NSNull null])  return nil;
 	return whitelistDictionary;
 }
 
