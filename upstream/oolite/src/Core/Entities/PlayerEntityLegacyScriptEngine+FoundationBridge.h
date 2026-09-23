@@ -56,6 +56,9 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityLegacyScr
 - (void) removeEqScriptForKey:(NSString *)eq_key;	// -> -cxx_removeEqScriptForKey:
 - (NSUInteger) eqScriptIndexForKey:(NSString *)eq_key;	// -> -cxx_eqScriptIndexForKey:
 
+// Chunk 8 (oo-3rb.197): scene backgrounds.
+- (void) setBackgroundFromDescriptionsKey:(NSString*) d_key;	// -> -cxx_setBackgroundFromDescriptionsKey:
+
 @end
 
 

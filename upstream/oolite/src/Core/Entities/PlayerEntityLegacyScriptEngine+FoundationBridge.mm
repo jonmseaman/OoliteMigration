@@ -136,6 +136,13 @@ cxx_ counterpart and converts the result exactly as the old method produced it (
 	return [self cxx_eqScriptIndexForKey:oo::StdString(eq_key)];
 }
 
+
+- (void) setBackgroundFromDescriptionsKey:(NSString*) d_key
+{
+	if (d_key == nil)  return;	// (no description has a nil key)
+	[self cxx_setBackgroundFromDescriptionsKey:oo::StdString(d_key)];
+}
+
 @end
 
 

@@ -39,7 +39,6 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOConstToString.h"
 #import "OOTexture.h"
-#import "OOPListView.h"
 #import "OOLoggingExtended.h"
 #import "OOSound.h"
 #import "OOSunEntity.h"
@@ -68,14 +67,14 @@ static const char *const kOOLogScriptAddShipsFailed			= "script.addShips.failed"
 static const char *const kOOLogScriptMissionDescNoText		= "script.missionDescription.noMissionText";
 static const char *const kOOLogScriptMissionDescNoKey		= "script.missionDescription.noMissionKey";
 
-static NSString * const kOOLogDebugOnMetaClass				= @"$scriptDebugOn";
-static NSString * const kOOLogDebugMessage					= @"script.debug.message";
-static NSString * const kOOLogDebugOnOff					= @"script.debug.onOff";
+static const char *const kOOLogDebugOnMetaClass				= "$scriptDebugOn";
+static const char *const kOOLogDebugMessage					= "script.debug.message";
+static const char *const kOOLogDebugOnOff					= "script.debug.onOff";
 static const char *const kOOLogDebugAddPlanet				= "script.debug.addPlanet";
 static const char *const kOOLogDebugReplaceVariablesInString	= "script.debug.replaceVariablesInString";
-static NSString * const kOOLogDebugProcessSceneStringAddScene = @"script.debug.processSceneString.addScene";
-static NSString * const kOOLogDebugProcessSceneStringAddModel = @"script.debug.processSceneString.addModel";
-static NSString * const kOOLogDebugProcessSceneStringAddMiniPlanet = @"script.debug.processSceneString.addMiniPlanet";
+static const char *const kOOLogDebugProcessSceneStringAddScene = "script.debug.processSceneString.addScene";
+static const char *const kOOLogDebugProcessSceneStringAddModel = "script.debug.processSceneString.addModel";
+static const char *const kOOLogDebugProcessSceneStringAddMiniPlanet = "script.debug.processSceneString.addMiniPlanet";
 
 static const char *const kOOLogNoteRemoveAllCargo			= "script.debug.note.removeAllCargo";
 static const char *const kOOLogNoteUseSpecialCargo			= "script.debug.note.useSpecialCargo";
@@ -84,7 +83,7 @@ static const char *const kOOLogNoteSet						= "script.debug.note.set";
 static const char *const kOOLogNoteShowShipModel				= "script.debug.note.showShipModel";
 static const char *const kOOLogNoteFuelLeak					= "script.debug.note.setFuelLeak";
 static const char *const kOOLogNoteAddPlanet					= "script.debug.note.addPlanet";
-static NSString * const kOOLogNoteProcessSceneString		= @"script.debug.note.processSceneString";
+static const char *const kOOLogNoteProcessSceneString		= "script.debug.note.processSceneString";
 
 static const char *const kOOLogSyntaxSetPlanetInfo			= "script.debug.syntax.setPlanetInfo";
 static const char *const kOOLogSyntaxAwardCargo				= "script.debug.syntax.awardCargo";
@@ -144,15 +143,6 @@ std::string CurrentScriptNameOr(const std::string &alternative)
 std::string CurrentScriptDescription(void)
 {
 	return CurrentScriptNameOr("<anonymous actions>");
-}
-
-
-/*	TRANSITIONAL (bead oo-3rb.190): the unconverted OOLog calls of the later chunks of oo-j924 take
-	the description as an object for %@. Chunk 8 (oo-3rb.197) deletes this wrapper.
-*/
-OOINLINE id CurrentScriptDesc(void)
-{
-	return oo::NSStringFrom(CurrentScriptDescription());
 }
 
 
@@ -2460,25 +2450,25 @@ static int shipsFound;
 
 - (void) debugOn
 {
-	OOLogSetDisplayMessagesInClass(kOOLogDebugOnMetaClass, YES);
-	OOLog(kOOLogDebugOnOff, @"%@", @"SCRIPT debug messages ON");
+	oo::log::logger().setDisplay(kOOLogDebugOnMetaClass, true);
+	OO_LOG(kOOLogDebugOnOff, "{}", "SCRIPT debug messages ON");
 }
 
 
 - (void) debugOff
 {
-	OOLog(kOOLogDebugOnOff, @"%@", @"SCRIPT debug messages OFF");
-	OOLogSetDisplayMessagesInClass(kOOLogDebugOnMetaClass, NO);
+	OO_LOG(kOOLogDebugOnOff, "{}", "SCRIPT debug messages OFF");
+	oo::log::logger().setDisplay(kOOLogDebugOnMetaClass, false);
 }
 
 
-- (void) debugMessage:(NSString *)args
+- (void) debugMessage:(id)args	// called by name (ADR-0043 item 21)
 {
-	OOLog(kOOLogDebugMessage, @"SCRIPT debugMessage: %@", args);
+	OO_LOG(kOOLogDebugMessage, "SCRIPT debugMessage: {}", oo::DescriptionOf(args));
 }
 
 
-- (void) playSound:(NSString *) soundName
+- (void) playSound:(id) soundName	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 {
 	[self playLegacyScriptSound:oo::StdString(soundName)];
 }
@@ -2620,11 +2610,11 @@ static int shipsFound;
 }
 
 
-- (void) setBackgroundFromDescriptionsKey:(NSString*) d_key
+- (void) cxx_setBackgroundFromDescriptionsKey:(const std::string &)d_key
 {
-	NSArray * items = (NSArray *)[[UNIVERSE descriptions] objectForKey:d_key];
+	const oo::PList items = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(d_key)]);
 	//
-	if (!items)
+	if (items.isNull())
 		return;
 	//
 	[self addScene: items atOffset: kZeroVector];
@@ -2633,24 +2623,22 @@ static int shipsFound;
 }
 
 
-- (void) addScene:(NSArray *)items atOffset:(Vector)off
+- (void) addScene:(const oo::PList &)items atOffset:(Vector)off
 {
-	unsigned				i;
-	
-	if (items == nil)  return;
-	
-	for (i = 0; i < [items count]; i++)
+	const oo::PList::Array *itemArray = items.getIf<oo::PList::Array>();
+	if (itemArray == nullptr)  return;
+
+	for (const oo::PList &item : *itemArray)
 	{
-		id item = [items objectAtIndex:i];
-		if ([item isKindOfClass:[NSString class]])
+		if (const std::string *itemString = item.getIf<std::string>())
 		{
-			[self processSceneString:item atOffset: off];
+			[self processSceneString:*itemString atOffset: off];
 		}
-		else if ([item isKindOfClass:[NSArray class]])
+		else if (item.isArray())
 		{
 			[self addScene:item atOffset: off];
 		}
-		else if ([item isKindOfClass:[NSDictionary class]])
+		else if (item.isDict())
 		{
 			[self processSceneDictionary:item atOffset: off];
 		}
@@ -2658,73 +2646,85 @@ static int shipsFound;
 }
 
 
-- (BOOL) processSceneDictionary:(NSDictionary *) couplet atOffset:(Vector) off
+- (BOOL) processSceneDictionary:(const oo::PList &) couplet atOffset:(Vector) off
 {
-	NSArray *conditions = [couplet objectForKey:@"conditions"];
-	NSArray *actions = nil;
-	if ([couplet objectForKey:@"do"])
-		actions = [NSArray arrayWithObject: [couplet objectForKey:@"do"]];
-	NSArray *else_actions = nil;
-	if ([couplet objectForKey:@"else"])
-		else_actions = [NSArray arrayWithObject: [couplet objectForKey:@"else"]];
+	const oo::PList *conditions = couplet.find("conditions");
+	oo::PList actions;
+	if (const oo::PList *doActions = couplet.find("do"))
+		actions = oo::PList(oo::PList::Array{ *doActions });
+	oo::PList else_actions;
+	if (const oo::PList *elseActions = couplet.find("else"))
+		else_actions = oo::PList(oo::PList::Array{ *elseActions });
 	BOOL success = YES;
-	if (conditions == nil)
+	// ("%@" of the dictionaries: their round-tripped descriptions, the same text)
+	if (conditions == nullptr)
 	{
-		OOLog(@"script.scene.couplet.badConditions", @"***** SCENE ERROR: %@ - conditions not %@, returning %@.", [couplet description], @" found",@"YES and performing 'do' actions");
+		OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(oo::ObjectFromPList(couplet)), " found","YES and performing 'do' actions");
 	}
 	else
 	{
-		if (![conditions isKindOfClass:[NSArray class]])
+		if (!conditions->isArray())
 		{
-			OOLog(@"script.scene.couplet.badConditions", @"***** SCENE ERROR: %@ - conditions not %@, returning %@.", [conditions description], @"an array",@"NO");
+			OO_LOG("script.scene.couplet.badConditions", "***** SCENE ERROR: {} - conditions not {}, returning {}.", oo::DescriptionOf(oo::ObjectFromPList(*conditions)), "an array","NO");
 			return NO;
 		}
 	}
 
 	// check conditions..
-	success = TestScriptConditions(OOSanitizeLegacyScriptConditions(oo::PListFrom(conditions), "<scene dictionary conditions>"));
+	success = TestScriptConditions(OOSanitizeLegacyScriptConditions(conditions != nullptr ? *conditions : oo::PList(), "<scene dictionary conditions>"));
 
 	// perform successful actions...
-	if ((success) && (actions) && [actions count])
+	if ((success) && actions.count())
 		[self addScene: actions atOffset: off];
 
 	// perform unsuccessful actions
-	if ((!success) && (else_actions) && [else_actions count])
+	if ((!success) && else_actions.count())
 		[self addScene: else_actions atOffset: off];
 
 	return success;
 }
 
 
-- (BOOL) processSceneString:(NSString*) item atOffset:(Vector) off
+- (BOOL) processSceneString:(const std::string &) item atOffset:(Vector) off
 {
 	Vector	model_p0;
 	Quaternion	model_q;
-	
-	if (!item)
-		return NO;
-	NSArray * i_info = ScanTokensFromString(item);
-	if (!i_info)
-		return NO;
-	NSString* i_key = [(NSString*)[i_info objectAtIndex:0] lowercaseString];
 
-	OOLog(kOOLogNoteProcessSceneString, @"..... processing %@ (%@)", i_info, i_key);
+	const std::vector<std::string> i_info = oo::str::tokens(item);
+	if (i_info.empty())
+		return NO;	// (nil returned NO; an all-blank string raised on -objectAtIndex:0)
+	const std::string i_key = oo::str::lowercase(i_info[0]);
+
+	// ("%@" of the token array: the same description)
+	OO_LOG(kOOLogNoteProcessSceneString, "..... processing {} ({})", oo::DescriptionOf(oo::NSArrayFromStrings(i_info)), i_key);
+
+	// tokens [from, from + count) joined by " ", as -subarrayWithRange: then -componentsJoinedByString:@" "
+	auto joined = [&i_info](std::size_t from, std::size_t count)
+	{
+		std::string result;
+		for (std::size_t i = from; i < from + count; i++)
+		{
+			if (i != from)  result += " ";
+			result += i_info[i];
+		}
+		return result;
+	};
 
 	//
 	// recursively add further scenes:
 	//
-	if ([i_key isEqualToString:@"scene"])
+	if (i_key == "scene")
 	{
-		if ([i_info count] != 5)	// must be scene_key_x_y_z
+		if (i_info.size() != 5)	// must be scene_key_x_y_z
 			return NO;				//		   0.... 1.. 2 3 4
-		NSString* scene_key = (NSString*)[i_info objectAtIndex: 1];
+		const std::string &scene_key = i_info[1];
 		Vector	scene_offset = {0};
-		ScanVectorFromString([[i_info subarrayWithRange:NSMakeRange(2, 3)] componentsJoinedByString:@" "], &scene_offset);
+		ScanVectorFromString(oo::NSStringFrom(joined(2, 3)), &scene_offset);
 		scene_offset.x += off.x;	scene_offset.y += off.y;	scene_offset.z += off.z;
-		NSArray * scene_items = (NSArray *)[[UNIVERSE descriptions] objectForKey:scene_key];
-		OOLog(kOOLogDebugProcessSceneStringAddScene, @"::::: adding scene: '%@'", scene_key);
+		const oo::PList scene_items = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(scene_key)]);
+		OO_LOG(kOOLogDebugProcessSceneStringAddScene, "::::: adding scene: '{}'", scene_key);
 		//
-		if (scene_items)
+		if (!scene_items.isNull())
 		{
 			[self addScene: scene_items atOffset: scene_offset];
 			return YES;
@@ -2735,32 +2735,32 @@ static int shipsFound;
 	//
 	// Add ship models:
 	//
-	if ([i_key isEqualToString:@"ship"]||[i_key isEqualToString:@"model"]||[i_key isEqualToString:@"role"])
+	if (i_key == "ship" || i_key == "model" || i_key == "role")
 	{
-		if ([i_info count] != 10)	// must be item_name_x_y_z_W_X_Y_Z_align
+		if (i_info.size() != 10)	// must be item_name_x_y_z_W_X_Y_Z_align
 		{
 			return NO;				//		   0... 1... 2 3 4 5 6 7 8 9....
 		}
-		
+
 		ShipEntity* ship = nil;
-		
-		if ([i_key isEqualToString:@"ship"]||[i_key isEqualToString:@"model"])
+
+		if (i_key == "ship" || i_key == "model")
 		{
-			ship = [UNIVERSE newShipWithName:oo::PListView(i_info).at<NSString *>(1)];
+			ship = [UNIVERSE newShipWithName:oo::NSStringFrom(i_info[1])];
 		}
-		else if ([i_key isEqualToString:@"role"])
+		else if (i_key == "role")
 		{
-			ship = [UNIVERSE newShipWithRole:oo::PListView(i_info).at<NSString *>(1)];
+			ship = [UNIVERSE newShipWithRole:oo::NSStringFrom(i_info[1])];
 		}
 		if (!ship)
 			return NO;
 
-		ScanVectorAndQuaternionFromString([[i_info subarrayWithRange:NSMakeRange(2, 7)] componentsJoinedByString:@" "], &model_p0, &model_q);
-		
-		Vector	model_offset = positionOffsetForShipInRotationToAlignment(ship, model_q, oo::PListView(i_info).at<NSString *>(9));
+		ScanVectorAndQuaternionFromString(oo::NSStringFrom(joined(2, 7)), &model_p0, &model_q);
+
+		Vector	model_offset = positionOffsetForShipInRotationToAlignment(ship, model_q, oo::NSStringFrom(i_info[9]));
 		model_p0 = vector_add(model_p0, vector_subtract(off, model_offset));
 
-		OOLog(kOOLogDebugProcessSceneStringAddModel, @"::::: adding model to scene:'%@'", ship);
+		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(ship));
 		[ship setOrientation: model_q];
 		[ship setPosition: vectorToHPVector(model_p0)];
 		[UNIVERSE setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }]; // set light origin
@@ -2779,23 +2779,23 @@ static int shipsFound;
 	//
 	// Add player ship model:
 	//
-	if ([i_key isEqualToString:@"player"])
+	if (i_key == "player")
 	{
-		if ([i_info count] != 9)	// must be player_x_y_z_W_X_Y_Z_align
+		if (i_info.size() != 9)	// must be player_x_y_z_W_X_Y_Z_align
 			return NO;				//		   0..... 1 2 3 4 5 6 7 8....
 
 		ShipEntity* doppelganger = [UNIVERSE newShipWithName:[self shipDataKey]];   // retain count = 1
 		if (!doppelganger)
 			return NO;
-		
-		ScanVectorAndQuaternionFromString([[i_info subarrayWithRange:NSMakeRange( 1, 7)] componentsJoinedByString:@" "], &model_p0, &model_q);
-		
-		Vector	model_offset = positionOffsetForShipInRotationToAlignment( doppelganger, model_q, (NSString*)[i_info objectAtIndex:8]);
+
+		ScanVectorAndQuaternionFromString(oo::NSStringFrom(joined(1, 7)), &model_p0, &model_q);
+
+		Vector	model_offset = positionOffsetForShipInRotationToAlignment( doppelganger, model_q, oo::NSStringFrom(i_info[8]));
 		model_p0.x += off.x - model_offset.x;
 		model_p0.y += off.y - model_offset.y;
 		model_p0.z += off.z - model_offset.z;
 
-		OOLog(kOOLogDebugProcessSceneStringAddModel, @"::::: adding model to scene:'%@'", doppelganger);
+		OO_LOG(kOOLogDebugProcessSceneStringAddModel, "::::: adding model to scene:'{}'", oo::DescriptionOf(doppelganger));
 		[doppelganger setOrientation: model_q];
 		[doppelganger setPosition: vectorToHPVector(model_p0)];
 		[UNIVERSE setMainLightPosition:(Vector){ DEMO_LIGHT_POSITION }]; // set light origin
@@ -2814,11 +2814,11 @@ static int shipsFound;
 	//
 	// Add  planet model: selected via gui-scene-show-planet/-local-planet
 	//
-	if ([i_key isEqualToString:@"local-planet"] || [i_key isEqualToString:@"target-planet"])
+	if (i_key == "local-planet" || i_key == "target-planet")
 	{
-		if ([i_info count] != 4)	// must be xxxxx-planet_x_y_z
+		if (i_info.size() != 4)	// must be xxxxx-planet_x_y_z
 			return NO;				//		   0........... 1 2 3
-		
+
 		// sunlight position for F7 screen is chosen pseudo randomly from  4 different positions.
 		if (info_system_id & 8)
 		{
@@ -2830,10 +2830,10 @@ static int shipsFound;
 		}
 
 		[UNIVERSE setMainLightPosition:_sysInfoLight]; // set light origin
-		
+
 #if NEW_PLANETS
 		OOPlanetEntity *originalPlanet = nil;
-		if ([i_key isEqualToString:@"local-planet"] && [UNIVERSE sun])
+		if (i_key == "local-planet" && [UNIVERSE sun])
 		{
 			originalPlanet = [UNIVERSE planet];
 		}
@@ -2845,58 +2845,61 @@ static int shipsFound;
 		if (doppelganger == nil)  return NO;
 
 #else
+		// (the planet info is a mixed configuration: plist data and the texture object, Amendment 2)
 		OOPlanetEntity* doppelganger = nil;
-		NSMutableDictionary *planetInfo = [NSMutableDictionary dictionaryWithDictionary:[UNIVERSE generateSystemData:target_system_seed]];
-		
-		if ([i_key isEqualToString:@"local-planet"] && [UNIVERSE sun])
+		oo::PList planetInfo = oo::PListFrom([UNIVERSE generateSystemData:target_system_seed]);
+		if (!planetInfo.isDict())  planetInfo = oo::PList(oo::PList::Dict{});
+
+		if (i_key == "local-planet" && [UNIVERSE sun])
 		{
 			OOPlanetEntity *mainPlanet = [UNIVERSE planet];
 			OOTexture *texture = [mainPlanet texture];
 			if (texture != nil)
 			{
-				[planetInfo setObject:texture forKey:@"_oo_textureObject"];
-				[planetInfo oo_setBool:[mainPlanet isExplicitlyTextured] forKey:@"_oo_isExplicitlyTextured"];
-				[planetInfo oo_setBool:YES forKey:@"mainForLocalSystem"];
+				oo::PList::Dict &info = *planetInfo.getIf<oo::PList::Dict>();
+				info["_oo_textureObject"] = oo::PListObject(texture);
+				info["_oo_isExplicitlyTextured"] = oo::PList((bool)[mainPlanet isExplicitlyTextured]);
+				info["mainForLocalSystem"] = oo::PList(true);
 				//[planetInfo oo_setQuaternion:[mainPlanet orientation] forKey:@"orientation"]; // the orientation is overwritten later on, without regard for the real planet's orientation.
 			}
 		}
-		
-		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:planetInfo withAtmosphere:YES andSeed:target_system_seed];
+
+		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:oo::ObjectFromPList(planetInfo) withAtmosphere:YES andSeed:target_system_seed];
 		[doppelganger miniaturize];
 		[doppelganger autorelease];
-		
+
 		if (doppelganger == nil)  return NO;
 #endif
-		
-		ScanVectorFromString([[i_info subarrayWithRange:NSMakeRange(1, 3)] componentsJoinedByString:@" "], &model_p0);
-		
+
+		ScanVectorFromString(oo::NSStringFrom(joined(1, 3)), &model_p0);
+
 		// miniature radii are roughly between 60 and 120. Place miniatures with a radius bigger than 60 a bit futher away.
 		model_p0 = vector_multiply_scalar(model_p0, 1 - 0.5 * ((60 - [doppelganger radius]) / 60));
-		
+
 		model_p0 = vector_add(model_p0, off);
-		
-		// TODO: find better quaternion values.		
+
+		// TODO: find better quaternion values.
 #if NEW_PLANETS
 		//Quaternion model_q = { 0.83, 0.365148, 0.182574, 0.0 }; // shows new planets' north pole.
 		//Quaternion model_q = { 0.83, -0.365148, 0.182574, 0.0 }; // shows new planets' south pole.
 		Quaternion model_q = { 0.83, 0.12, 0.44, 0.0 };	// new planets - default orientation.
 #else
 		//model_q = make_quaternion( M_SQRT1_2, 0.314, M_SQRT1_2, 0.0 );
-		Quaternion model_q = { 0.833492, 0.333396, 0.440611, 0.0 }; 
+		Quaternion model_q = { 0.833492, 0.333396, 0.440611, 0.0 };
 #endif
-		OOLog(kOOLogDebugProcessSceneStringAddMiniPlanet, @"::::: adding %@ to scene:'%@'", i_key, doppelganger);
+		OO_LOG(kOOLogDebugProcessSceneStringAddMiniPlanet, "::::: adding {} to scene:'{}'", i_key, oo::DescriptionOf(doppelganger));
 		[doppelganger setOrientation: model_q];
 		// HPVect: mission screen coordinates are small enough that we don't need high-precision for calculations
 		[doppelganger setPosition: vectorToHPVector(model_p0)];
-		/* MKW - add rotation based on current time 
+		/* MKW - add rotation based on current time
 		 *     - necessary to duplicate the rotation already performed in PlanetEntity.m since we reset the orientation above. */
 		int		deltaT = floor(fmod([self clockTimeAdjusted], 86400));
 		[doppelganger update: deltaT];
 		[UNIVERSE addEntity:doppelganger];
-		
+
 		return YES;
 	}
-	
+
 	return NO;
 }
 
