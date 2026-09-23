@@ -415,7 +415,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 #if OOLITE_ESPEAK
 	if (!SDL_getenv("ESPEAK_DATA_PATH"))
 	{
-		espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [[ResourceManager builtInPath] UTF8String], 0);
+		espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [ResourceManager cxx_builtInPath].value_or(std::string()).c_str(), 0);
 	}
 	else
 	{
@@ -473,7 +473,6 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	// ensure no chance of a divide by zero later on
 	if (_mouseVirtualStickSensitivityFactor < 0.005f)  _mouseVirtualStickSensitivityFactor = 0.005f;
 
-	typedString = [[NSMutableString alloc] initWithString:@""];
 	allowingStringInput = gvStringInputNo;
 	isAlphabetKeyDown = NO;
 
@@ -662,9 +661,6 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 
 - (void) dealloc
 {
-	if (typedString)
-		[typedString release];
-
 	if (window)
 	{
 		SDL_DestroyWindow(window);
@@ -824,7 +820,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	SDL_Surface     	*image=NULL;
 	SDL_Rect			dest;
 
-	const std::string	imagesDir = oo::str::appendingPathComponent(oo::StdString([ResourceManager builtInPath]), "Images");
+	const std::string	imagesDir = oo::str::appendingPathComponent([ResourceManager cxx_builtInPath].value_or(std::string()), "Images");
 
 	image = SDL_LoadBMP(oo::str::appendingPathComponent(imagesDir, "splash.bmp").c_str());
 

@@ -92,4 +92,93 @@ and converts the result exactly as the old method produced it (nil for nil).
 	[self cxx_setArray:oo::StringsFrom(arr) forRow:row];
 }
 
+
+// Chunk 2 (oo-3rb.93).
+
+- (NSString *) reflowTextForMFD:(NSString *)input
+{
+	return oo::NSStringOrNil([self cxx_reflowTextForMFD:oo::OptionalString(input)]);
+}
+
+
+- (OOGUIRow) addLongText:(NSString *)str
+		   startingAtRow:(OOGUIRow)row
+				   align:(OOGUIAlignment)alignment
+{
+	return [self cxx_addLongText:oo::OptionalString(str) startingAtRow:row align:alignment];
+}
+
+
+- (void) printLongText:(NSString *)str
+				 align:(OOGUIAlignment)alignment
+				 color:(OOColor *)text_color
+			  fadeTime:(float)text_fade
+				   key:(NSString *)text_key
+			addToArray:(NSMutableArray *)text_array
+{
+	std::vector<std::string> lines;
+	[self cxx_printLongText:oo::OptionalString(str) align:alignment color:text_color fadeTime:text_fade key:oo::OptionalString(text_key) addToArray:(text_array != nil) ? &lines : nullptr];
+	for (const std::string &line : lines)  [text_array addObject:oo::NSStringFrom(line)];
+}
+
+
+- (void) printLineNoScroll:(NSString *)str
+					 align:(OOGUIAlignment)alignment
+					 color:(OOColor *)text_color
+				  fadeTime:(float)text_fade
+					   key:(NSString *)text_key
+				addToArray:(NSMutableArray *)text_array
+{
+	std::vector<std::string> lines;
+	[self cxx_printLineNoScroll:oo::OptionalString(str) align:alignment color:text_color fadeTime:text_fade key:oo::OptionalString(text_key) addToArray:(text_array != nil) ? &lines : nullptr];
+	for (const std::string &line : lines)  [text_array addObject:oo::NSStringFrom(line)];
+}
+
+
+- (void) insertItemsFromArray:(NSArray *)items
+					 withKeys:(NSArray *)item_keys
+					  intoRow:(OOGUIRow)row
+						color:(OOColor *)text_color
+{
+	[self cxx_insertItemsFromArray:oo::PListFrom(items) withKeys:oo::PListFrom(item_keys) intoRow:row color:text_color];
+}
+
+
+- (NSArray *) getLastLines
+{
+	return oo::ObjectFromPList([self cxx_getLastLines]);
+}
+
+
+// Chunk 3 (oo-3rb.94).
+
+- (NSDictionary *) userSettings
+{
+	return oo::ObjectFromPList([self cxx_userSettings]);	// the same values and objects, a new dictionary
+}
+
+
+- (OOColor *) colorFromSetting:(NSString *)setting defaultValue:(OOColor *)def
+{
+	return [self cxx_colorFromSetting:oo::OptionalString(setting) defaultValue:def];
+}
+
+
+- (void) setGLColorFromSetting:(NSString *)setting defaultValue:(OOColor *)def alpha:(GLfloat)alpha
+{
+	[self cxx_setGLColorFromSetting:oo::OptionalString(setting) defaultValue:def alpha:alpha];
+}
+
+
+- (void) setGuiColorSettingFromKey:(NSString *)key color:(OOColor *)col
+{
+	[self cxx_setGuiColorSettingFromKey:oo::StdString(key) color:col];
+}
+
+
+- (void) overrideTabs:(OOGUITabSettings)stops from:(NSString *)setting length:(NSUInteger)len
+{
+	[self cxx_overrideTabs:stops from:oo::StdString(setting) length:len];
+}
+
 @end
