@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 #import "OOLegacyScriptWhitelist.h"
 #import "OOCacheManager.h"
 #import "OOPListView.h"
+#import "OOFoundationBridge.h"
 
 
 static NSString * const kMDKeyName			= @"name";
@@ -145,7 +146,7 @@ static NSString * const kCacheName			= @"sanitized legacy scripts";
 			[scriptArray isKindOfClass:[NSArray class]] &&
 			![key isEqual:kKeyMetadata])
 		{
-			scriptArray = OOSanitizeLegacyScript(scriptArray, key, NO);
+			scriptArray = oo::ObjectFromPList(OOSanitizeLegacyScript(oo::PListFrom(scriptArray), oo::OptionalString(key), NO));
 			if (scriptArray != nil)
 			{
 				script = [[self alloc] initWithName:key scriptArray:scriptArray metadata:metadata];

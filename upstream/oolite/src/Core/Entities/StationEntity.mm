@@ -48,6 +48,7 @@
 #import "OODebugFlags.h"
 #import "OODebugStandards.h"
 #import "OOWeakSet.h"
+#import "OOFoundationBridge.h"
 
 
 @interface StationEntity (OOPrivate)
@@ -2358,7 +2359,7 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	{		
 		if ([determinant isKindOfClass:[NSArray class]])
 		{
-			return [PLAYER scriptTestConditions:OOSanitizeLegacyScriptConditions(determinant, nil)];
+			return [PLAYER scriptTestConditions:oo::ObjectFromPList(OOSanitizeLegacyScriptConditions(oo::PListFrom(determinant), std::nullopt))];
 		}
 		else
 		{

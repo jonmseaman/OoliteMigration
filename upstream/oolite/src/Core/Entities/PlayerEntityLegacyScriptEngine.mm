@@ -54,6 +54,7 @@ MA 02110-1301, USA.
 #import "OOSystemDescriptionManager.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 
 static NSString * const kOOLogScriptAddShipsFailed			= @"script.addShips.failed";
@@ -391,7 +392,7 @@ static BOOL sRunningScript = NO;
 
 - (void) runUnsanitizedScriptActions:(NSArray *)actions allowingAIMethods:(BOOL)allowAIMethods withContextName:(NSString *)contextName forTarget:(ShipEntity *)target
 {
-	[self runScriptActions:OOSanitizeLegacyScript(actions, contextName, allowAIMethods)
+	[self runScriptActions:oo::ObjectFromPList(OOSanitizeLegacyScript(oo::PListFrom(actions), oo::OptionalString(contextName), allowAIMethods))
 		   withContextName:contextName
 				 forTarget:target];
 }
@@ -2629,7 +2630,7 @@ static int shipsFound;
 	}
 
 	// check conditions..
-	success = TestScriptConditions(OOSanitizeLegacyScriptConditions(conditions, @"<scene dictionary conditions>"));
+	success = TestScriptConditions(oo::ObjectFromPList(OOSanitizeLegacyScriptConditions(oo::PListFrom(conditions), "<scene dictionary conditions>")));
 
 	// perform successful actions...
 	if ((success) && (actions) && [actions count])
