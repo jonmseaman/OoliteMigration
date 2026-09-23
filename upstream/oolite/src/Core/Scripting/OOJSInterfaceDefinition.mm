@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Notification.hpp"
 
 /*
 	Retargeted (bead oo-mqb) onto the ooscript façade (JSEngine.hpp), same pattern as the
@@ -46,10 +47,9 @@ MA 02110-1301, USA.
 
 	_owningScript = [[OOJSScript currentlyRunningScript] weakRetain];
 
-	[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(deleteJSPointers)
-												 name:kOOJavaScriptEngineWillResetNotification
-											   object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+														[OOJavaScriptEngine sharedEngine],
+														[self](const oo::Notification &) { [self deleteJSPointers]; });
 
 	return self;
 }
@@ -65,9 +65,8 @@ MA 02110-1301, USA.
 
 	OOJSRelinquishContext(context);
 
-	[[NSNotificationCenter defaultCenter] removeObserver:self
-													name:kOOJavaScriptEngineWillResetNotification
-												  object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+															[OOJavaScriptEngine sharedEngine]);
 
 }
 
