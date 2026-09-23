@@ -530,25 +530,25 @@ static NSString *sGlobalTraceContext = nil;
 	BOOL						ver130 = [extMgr versionIsAtLeastMajor:1 minor:3];
 	
 #if GL_EXT_texture_filter_anisotropic
-	gOOTextureInfo.anisotropyAvailable = [extMgr haveExtension:@"GL_EXT_texture_filter_anisotropic"];
+	gOOTextureInfo.anisotropyAvailable = [extMgr haveExtension:"GL_EXT_texture_filter_anisotropic"];
 	OOGL(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &gOOTextureInfo.anisotropyScale));
 	gOOTextureInfo.anisotropyScale *= OOClamp_0_1_f([[NSUserDefaults standardUserDefaults] oo_floatForKey:@"texture-anisotropy-scale" defaultValue:0.5]);
 #endif
 	
 #ifdef GL_CLAMP_TO_EDGE
-	gOOTextureInfo.clampToEdgeAvailable = ver120 || [extMgr haveExtension:@"GL_SGIS_texture_edge_clamp"];
+	gOOTextureInfo.clampToEdgeAvailable = ver120 || [extMgr haveExtension:"GL_SGIS_texture_edge_clamp"];
 #endif
 	
 #if OO_GL_CLIENT_STORAGE
-	gOOTextureInfo.clientStorageAvailable = [extMgr haveExtension:@"GL_APPLE_client_storage"];
+	gOOTextureInfo.clientStorageAvailable = [extMgr haveExtension:"GL_APPLE_client_storage"];
 #endif
 	
-	gOOTextureInfo.textureMaxLevelAvailable = ver120 || [extMgr haveExtension:@"GL_SGIS_texture_lod"];
+	gOOTextureInfo.textureMaxLevelAvailable = ver120 || [extMgr haveExtension:"GL_SGIS_texture_lod"];
 	
 #if GL_EXT_texture_lod_bias
 	if ([[NSUserDefaults standardUserDefaults] oo_boolForKey:@"use-texture-lod-bias" defaultValue:YES])
 	{
-		gOOTextureInfo.textureLODBiasAvailable = [extMgr haveExtension:@"GL_EXT_texture_lod_bias"];
+		gOOTextureInfo.textureLODBiasAvailable = [extMgr haveExtension:"GL_EXT_texture_lod_bias"];
 	}
 	else
 	{
@@ -557,13 +557,13 @@ static NSString *sGlobalTraceContext = nil;
 #endif
 	
 #if GL_EXT_texture_rectangle
-	gOOTextureInfo.rectangleTextureAvailable = [extMgr haveExtension:@"GL_EXT_texture_rectangle"];
+	gOOTextureInfo.rectangleTextureAvailable = [extMgr haveExtension:"GL_EXT_texture_rectangle"];
 #endif
 	
 #if OO_TEXTURE_CUBE_MAP
 	if (![[NSUserDefaults standardUserDefaults] boolForKey:@"disable-cube-maps"])
 	{
-		gOOTextureInfo.cubeMapAvailable = ver130 || [extMgr haveExtension:@"GL_ARB_texture_cube_map"];
+		gOOTextureInfo.cubeMapAvailable = ver130 || [extMgr haveExtension:"GL_ARB_texture_cube_map"];
 	}
 	else
 	{
