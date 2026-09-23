@@ -168,3 +168,53 @@ Foundation usage") carries the mechanics.
 Consequences: bridges add `cxx_` selectors and a few hundred forwarding lines that exist only
 until their callers are swept; the dependency graph (callers before categories, callers before
 bridge deletions, all before oo-qps) is recorded in beads, not here.
+
+## Amendment 2 — after the Materials / OXPVerifier / Debug batch (2026-09-23, beads oo-hiis, oo-vpbt)
+
+The batch returned 19 done and 20 stops; Amendment 1 covers most of them. Three classes had no
+rule.
+
+11. **A configuration that mixes property-list data with live objects is an `oo::PList`.**
+    `oo::PList` gains `Type::Object`, an `oo::Ref<PListForeign>` compared by identity, which oofnd
+    never interprets (no parser produces one; the old-style writer refuses it with GNUstep's
+    "Class X does not support OldSchoolPropertyListWriting"), and **single-precision reals**
+    (`PList::singleReal`, `isSinglePrecision()`), which print `%0.7g` as `+numberWithFloat:` did
+    where a double prints `%0.16g` (captured; `test_plist_carrier.cpp`). On the game side
+    `oo::PListFrom` keeps every non-plist object (an OOColor, an OOTexture, NSNull, a placeholder)
+    as an Object node and every float as a single real (gnustep-base reports `objCType` `d` for
+    floats; the class name tells), and `oo::ObjectFromPList` returns the same objects and the same
+    NSNumber types, so a round trip is exact: a mixed dictionary comes back `-isEqual:` and with the
+    same `-description` (checked against gnustep-base). `oo::ObjectIn(plist)` reads an Object
+    node's object. The recipe's "plist data only" restriction is lifted. A dedicated configuration
+    type was considered and rejected: every consumer (`get<T>`, the writers, the bridges) would
+    need a second implementation, and the configurations are plist data plus a few objects.
+    Exemplars: `OOMaterialSpecifier.mm` (the NSDictionary category becomes `cxx_OOMaterial*` free
+    functions over `const oo::PList &`, bridged) and `OOMultiTextureMaterial.mm` (a keyed copy of a
+    mixed configuration handed to a superclass).
+12. **Materials order.** `OOMaterialSpecifier` (done) → `OOTextureLoader` → `OOTexture`
+    (`OOTextureSpecFromObject`, `+textureWithConfiguration:` get `cxx_` twins over `oo::PList`,
+    bridged) → `OOCombinedEmissionMapGenerator` → the materials (`OOBasicMaterial`,
+    `OOSingleTextureMaterial`, `OOMultiTextureMaterial` done) → `OODefaultShaderSynthesizer` →
+    `OOShaderMaterial` → `OOMaterialConvenienceCreators`, where the NSDictionary from
+    ResourceManager becomes a PList. Because the round trip is exact, any order builds and plays
+    the same; this order makes each file's callees speak PList first, so the conversions at call
+    sites disappear instead of moving. Bridges: `OOMaterialSpecifier+FoundationBridge` (made), and
+    one for `OOTexture` (its 20+ callers).
+13. **An oversized file is split into chunk beads by the orchestrator** (labels
+    `fleet,phase:2,sweep:foundation-chunk`, the pattern of oo-3rb.84-.96): each chunk moves one
+    group of selectors or one part of the body, with an acceptance that checks that group only;
+    the original bead depends on all its chunks and keeps the whole-file grep. A file-private
+    category on a Foundation class (`NSString (OOPListSchemaVerifierHelpers)`) retires in the
+    chunk that removes its last use; a public one (`NSError (OOPListSchemaVerifierConveniences)`)
+    retires by Amendment 1 item 7, after its callers. First application: oo-vvxy.
+14. **A C file's Foundation handles become opaque C++ handles.** Where plain C (kept C, ADR-0012)
+    receives Foundation objects through an abstraction layer (`OOTCPStreamDecoderAbstractionLayer`
+    for `OOTCPStreamDecoder.c`), the layer's handle types become pointers to one incomplete struct,
+    `struct OOALObject`, in C and Objective-C++ alike, and the layer's `.mm` defines it in C++ over
+    `oo::PList` / `oo::Data`: owned handles are created +1 and freed by `OOALRelease`; a dictionary
+    value is a borrowed handle cached in its parent (valid while the parent lives, as
+    `-objectForKey:` results were). `OOALStringCreateWithFormatAndArguments` formats the
+    conversions the C file uses (`%u`, `%zu`, `%@`), `%@` giving the description GNUstep printed for
+    that value (pinned by a captured test). C++ consumers read a handle with
+    `const oo::PList &OOALObjectPList(OOALObjectRef)`, declared under `__cplusplus`. The `.c` file
+    does not change. Not chunked (266 lines); it lands before `OODebugTCPConsoleClient` (oo-prwr).
