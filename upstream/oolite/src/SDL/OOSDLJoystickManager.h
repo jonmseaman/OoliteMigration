@@ -9,7 +9,7 @@ stored as a simple array rather than an ObjC dictionary since this
 will be examined fairly often (once per frame during gameplay).
 
 Conversion methods are provided to convert between the internal
-representation and an NSDictionary (for loading/saving user defaults
+representation and a property-list dictionary (for loading/saving user defaults
 and for use in areas where portability/ease of coding are more important
 than performance such as the GUI)
 
@@ -39,13 +39,15 @@ MA 02110-1301, USA.
 #import <SDL3/SDL_events.h>
 #import "OOJoystickManager.h"
 
+#include "oofnd/StdLib.hpp"
+
 
 
 
 @interface OOSDLJoystickManager: OOJoystickManager
 {
 @private
-	NSDictionary		*joystickIdMap;
+	std::map<std::string, int, std::less<>>	joystickIdMap;	// "%d" of an SDL joystick id -> stick index (proposed ADR-0043)
 	SDL_Joystick		*stick[MAX_STICKS];
 	int			stickCount;
 }
@@ -53,7 +55,7 @@ MA 02110-1301, USA.
 - (id) init;
 - (void) dealloc;
 - (BOOL) handleSDLEvent: (SDL_Event *)evt;
-- (NSString *) nameOfJoystick:(NSUInteger)stickNumber;
+- (id) nameOfJoystick:(NSUInteger)stickNumber;	// an Objective-C string. Shared selector (proposed ADR-0043).
 - (int16_t) getAxisWithStick:(NSUInteger) stickNum axis:(NSUInteger) axisNum ;
 - (JoyAxisEvent) makeJoyAxisEvent: (SDL_JoyAxisEvent*) sdlevt;
 - (JoyButtonEvent) makeJoyButtonEvent: (SDL_JoyButtonEvent*) sdlevt;

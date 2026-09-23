@@ -421,7 +421,8 @@ it. oo-qps cannot compile any of them.
 | Bridge | Made by | Deleted by |
 |---|---|---|
 | `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | oo-1hvf |
-| `src/Core/Materials/OOMaterialSpecifier+FoundationBridge.h/.mm` (also where the NSDictionary category retires) | oo-hiis | see the bead titled "Delete OOMaterialSpecifier+FoundationBridge" |
+| `src/Core/Materials/OOMaterialSpecifier+FoundationBridge.h/.mm` (also where the NSDictionary category retires) | oo-hiis | oo-kvlo |
+| `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
