@@ -41,4 +41,23 @@ OOJS_EXTERN_C NSString *OOStringFromJSID(ooscript::PropertyId propID);	// -> cxx
 // Convert an NSString to a ooscript::PropertyId.
 OOJS_EXTERN_C ooscript::PropertyId OOJSIDFromString(NSString *string);	// -> cxx_OOJSIDFromString
 
+OOJS_EXTERN_C NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);	// -> cxx_OOJSDescribeValue
+
+
+// Retiring category on a Foundation class (ADR-0043 Amendment 1 item 7; bead oo-3rb.199). The
+// three helpers forward to cxx_OOJSStringWithJavaScriptParameters,
+// cxx_OOJSConcatenationOfStringsFromJavaScriptValues and cxx_OOJSEscapedForJavaScriptLiteral.
+@interface NSString (OOJavaScriptExtensions)
+
+// For diagnostic messages; produces things like @"(42, true, "a string", an object description)".
++ (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context;
+
+// Concatenate sequence of arbitrary JS objects into string.
++ (NSString *) concatenationOfStringsFromJavaScriptValues:(ooscript::Value *)values count:(size_t)count separator:(NSString *)separator inContext:(ooscript::Context)context;
+
+// Add escape codes for string so that it's a valid JavaScript literal (if you put "" or '' around it).
+- (NSString *) escapedForJavaScriptLiteral;
+
+@end
+
 #endif	// OOJAVASCRIPTENGINE_FOUNDATIONBRIDGE_H
