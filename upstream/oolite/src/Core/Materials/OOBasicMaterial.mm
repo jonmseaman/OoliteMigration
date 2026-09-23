@@ -31,6 +31,7 @@ SOFTWARE.
 #import "Universe.h"
 #import "OOMaterialSpecifier.h"
 #import "OOTexture.h"
+#import "OOFoundationBridge.h"
 
 
 static OOBasicMaterial *sDefaultMaterial = nil;
@@ -41,12 +42,12 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 
 @implementation OOBasicMaterial
 
-- (id)initWithName:(NSString *)name
+- (id)initWithName:(id)name
 {
 	self = [super init];
 	if (EXPECT_NOT(self == nil))  return nil;
 	
-	materialName = [name copy];
+	materialName = oo::OptionalString(name);
 	
 	[self setDiffuseRed:1.0f green:1.0f blue:1.0f alpha:1.0f];
 	[self setAmbientRed:1.0f green:1.0f blue:1.0f alpha:1.0f];
@@ -57,7 +58,7 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 }
 
 
-- (id)initWithName:(NSString *)name configuration:(NSDictionary *)configuration
+- (id)initWithName:(id)name configuration:(id)configuration
 {
 	id					colorDesc = nil;
 	int					specularExponent;
@@ -65,7 +66,8 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 	self = [self initWithName:name];
 	if (EXPECT_NOT(self == nil))  return nil;
 	
-	if (configuration == nil)  configuration = [NSDictionary dictionary];
+	// An empty dictionary, not nil: the specifier defaults (a specular exponent of 10) apply.
+	if (configuration == nil)  configuration = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));
 	
 	colorDesc = [configuration oo_diffuseColor];
 	if (colorDesc != nil)  [self setDiffuseColor:[OOColor colorWithDescription:colorDesc]];
@@ -92,15 +94,14 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 - (void)dealloc
 {
 	[super willDealloc];
-	[materialName release];
 	
 	[super dealloc];
 }
 
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	return materialName;
+	return oo::NSStringOrNil(materialName);
 }
 
 
@@ -339,9 +340,9 @@ static OOBasicMaterial *sDefaultMaterial = nil;
 
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures
 {
-	return [NSSet set];
+	return oo::NSSetFromObjects(std::vector<id>());	// an empty set; shared selector (proposed ADR-0043)
 }
 #endif
 
