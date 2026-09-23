@@ -33,7 +33,6 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "OOStringParsing.h"
 #import "OOStringExpander.h"
-#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 
@@ -49,21 +48,73 @@ MA 02110-1301, USA.
 
 #import "OOJSScript.h"
 
-#import "OOFilteringEnumerator.h"
 
 #import "MyOpenGLView.h"
 #import "OOFoundationBridge.h"
+#import "OOCollectionExtractors.h"	// OOHPVectorFromObject() & co. (unmigrated callees)
+
+#include "oofnd/PListGet.hpp"
 
 @interface OOVisualEffectEntity (Private)
 
 - (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent;
 
 - (void) addSubEntity:(Entity<OOSubEntity> *) subent;
-- (BOOL) setUpOneSubentity:(NSDictionary *) subentDict;
-- (BOOL) setUpOneFlasher:(NSDictionary *) subentDict;
-- (BOOL) setUpOneStandardSubentity:(NSDictionary *)subentDict;
+- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict;
+- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict;
+- (BOOL) setUpOneStandardSubentity:(const oo::PList &)subentDict;
 
 @end
+
+
+namespace {
+
+// -objectForKey: for a callee that still takes an Objective-C object (nil when absent).
+id ObjectForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+}
+
+
+// get<std::string> where the Foundation code read nil: std::nullopt when the key is absent or its
+// value is neither a string nor a number.
+std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dict.get<std::string>(key);
+}
+
+
+// get<PList::Dict> handed on to an unmigrated callee: the dictionary's object, or nil.
+id DictionaryObjectForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.get<oo::PList::Dict>(key);
+	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+}
+
+
+// A copy of the subentity list to walk (the Foundation code walked a copy of the array).
+OOVisualEffectSubEntities SubEntitiesOf(const std::optional<OOVisualEffectSubEntities> &subEntities)
+{
+	return subEntities.value_or(OOVisualEffectSubEntities{});
+}
+
+
+// The subentities that answer YES to -isVisualEffect (OOFilteringEnumerator's test).
+std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualEffectSubEntities &subEntities)
+{
+	std::vector<oo::ObjCRef<OOVisualEffectEntity *>> result;
+	for (const auto &sub : subEntities)
+	{
+		if (![sub.get() isVisualEffect])  continue;
+		result.emplace_back((OOVisualEffectEntity *)sub.get());
+	}
+	return result;
+}
+
+}	// namespace
 
 
 @implementation OOVisualEffectEntity
@@ -73,7 +124,7 @@ MA 02110-1301, USA.
 	return [self initWithKey:@"" definition:nil];
 }
 
-- (id)initWithKey:(NSString *)key definition:(NSDictionary *)dict
+- (id)initWithKey:(id)key definition:(id)dict	// shared selector (proposed ADR-0043)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -82,9 +133,9 @@ MA 02110-1301, USA.
 	self = [super init];
 	if (self == nil)  return nil;
 
-	_effectKey = [key retain];
+	_effectKey = oo::OptionalString(key);
 
-	if (![self setUpVisualEffectFromDictionary:dict])
+	if (![self setUpVisualEffectFromDictionary:oo::PListFrom(dict)])
 	{
 		[self release];
 		self = nil;
@@ -98,33 +149,33 @@ MA 02110-1301, USA.
 }
 
 
-- (BOOL) setUpVisualEffectFromDictionary:(NSDictionary *) effectDict
+- (BOOL) setUpVisualEffectFromDictionary:(const oo::PList &) effectDict
 {
 	OOJS_PROFILE_ENTER
 
-	effectinfoDictionary = [effectDict copy];
-	if (effectinfoDictionary == nil)  effectinfoDictionary = [[NSDictionary alloc] init];
+	effectinfoDictionary = effectDict;
+	if (effectinfoDictionary.isNull())  effectinfoDictionary = oo::PList(oo::PList::Dict{});
 
 	orientation = kIdentityQuaternion;
 	rotMatrix	= kIdentityMatrix;
 
 	collision_radius = 0.0;
 
-	NSString *modelName = oo::PListView(effectDict).get<NSString *>(@"model");
-	if (modelName != nil)
+	const std::optional<std::string> modelName = OptionalStringForKey(effectDict, "model");
+	if (modelName.has_value())
 	{
-		OOMesh *mesh = [OOMesh meshWithName:modelName
-								   cacheKey:_effectKey
-						 materialDictionary:oo::PListView(effectDict).get<NSDictionary *>(@"materials")
-						  shadersDictionary:oo::PListView(effectDict).get<NSDictionary *>(@"shaders")
-									 smooth:oo::PListView(effectDict).get<BOOL>(@"smooth", NO)
+		OOMesh *mesh = [OOMesh meshWithName:oo::NSStringFrom(*modelName)
+								   cacheKey:oo::NSStringOrNil(_effectKey)
+						 materialDictionary:DictionaryObjectForKey(effectDict, "materials")
+						  shadersDictionary:DictionaryObjectForKey(effectDict, "shaders")
+									 smooth:effectDict.get<bool>("smooth", NO)
 							   shaderMacros:OODefaultShipShaderMacros()
 						shaderBindingTarget:self];
 		if (mesh == nil)  return NO;
 		[self setMesh:mesh];
 	}
 
-	isImmuneToBreakPatternHide = oo::PListView(effectDict).get<bool>(@"is_break_pattern");
+	isImmuneToBreakPatternHide = effectDict.get<bool>("is_break_pattern");
 	scaleX = 1.0;
 	scaleY = 1.0;
 	scaleZ = 1.0;
@@ -147,11 +198,13 @@ MA 02110-1301, USA.
 	_shaderVector1 = kZeroVector;
 	_shaderVector2 = kZeroVector;
 
-	[self setBeaconCode:oo::PListView(effectDict).get<NSString *>(@"beacon")];
-	[self setBeaconLabel:oo::PListView(effectDict).get<NSString *>(@"beacon_label", [self beaconCode])];
+	[self setBeaconCode:oo::NSStringOrNil(OptionalStringForKey(effectDict, "beacon"))];
+	const std::optional<std::string> beaconLabel = OptionalStringForKey(effectDict, "beacon_label");
+	[self setBeaconLabel:beaconLabel.has_value() ? oo::NSStringFrom(*beaconLabel) : [self beaconCode]];
 
-	scriptInfo = [oo::PListView(effectDict).get<NSDictionary *>(@"script_info", nil) retain];
-	[self setScript:oo::PListView(effectDict).get<NSString *>(@"script")];
+	const oo::PList *scriptInfoValue = effectDict.get<oo::PList::Dict>("script_info");
+	scriptInfo = scriptInfoValue != nullptr ? *scriptInfoValue : oo::PList();
+	[self setScript:OptionalStringForKey(effectDict, "script")];
 
 	return YES;
 
@@ -162,14 +215,9 @@ MA 02110-1301, USA.
 - (void) dealloc
 {
 	[self clearSubEntities];
-	DESTROY(_effectKey);
-	DESTROY(effectinfoDictionary);
 	DESTROY(scanner_display_color1);
 	DESTROY(scanner_display_color2);
-	DESTROY(scriptInfo);
 	DESTROY(script);
-	DESTROY(_beaconCode);
-	DESTROY(_beaconLabel);
 	DESTROY(_beaconDrawable);
 
 	[super dealloc];
@@ -209,7 +257,7 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *)effectKey
+- (std::optional<std::string>)effectKey
 {
 	return _effectKey;
 }
@@ -223,9 +271,8 @@ MA 02110-1301, USA.
 
 - (void) clearSubEntities 
 {
-	[subEntities makeObjectsPerformSelector:@selector(setOwner:) withObject:nil];	// Ensure backlinks are broken
-	[subEntities release];
-	subEntities = nil;
+	for (const auto &sub : SubEntitiesOf(subEntities))  [sub.get() setOwner:nil];	// Ensure backlinks are broken
+	subEntities.reset();
 	
 	// reset size & mass!
 	if ([self mesh])
@@ -244,11 +291,12 @@ MA 02110-1301, USA.
 {
 	unsigned int	i;
 	_profileRadius = collision_radius;
-	NSArray *subs = oo::PListView(effectinfoDictionary).get<NSArray *>(@"subentities");
-	
-	for (i = 0; i < [subs count]; i++)
+	const oo::PList *subs = effectinfoDictionary.get<oo::PList::Array>("subentities");
+
+	for (i = 0; subs != nullptr && i < subs->count(); i++)
 	{
-		[self setUpOneSubentity:oo::PListView(subs).at<NSDictionary *>(i)];
+		const oo::PList *subentDict = subs->at<oo::PList::Dict>(i);	// nil for anything but a dictionary
+		[self setUpOneSubentity:subentDict != nullptr ? *subentDict : oo::PList()];
 	}
 
 	[self setNoDrawDistance];
@@ -260,7 +308,7 @@ MA 02110-1301, USA.
 - (void) removeSubEntity:(Entity<OOSubEntity> *)sub
 {
 	[sub setOwner:nil];
-	[subEntities removeObject:sub];
+	if (subEntities.has_value())  std::erase_if(*subEntities, [sub](const auto &entry) { return entry.get() == sub; });
 }
 
 
@@ -272,10 +320,10 @@ MA 02110-1301, USA.
 }
 
 
-- (BOOL) setUpOneSubentity:(NSDictionary *) subentDict 
+- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict
 {
-	NSString *type = oo::PListView(subentDict).get<NSString *>(@"type");
-	if ([type isEqualToString:@"flasher"])
+	const std::optional<std::string> type = OptionalStringForKey(subentDict, "type");
+	if (type == "flasher")
 	{
 		return [self setUpOneFlasher:subentDict];
 	}
@@ -288,36 +336,36 @@ MA 02110-1301, USA.
 }
 
 
-- (BOOL) setUpOneFlasher:(NSDictionary *) subentDict
+- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict
 {
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:oo::PListFrom(subentDict)];
-	[flasher setPosition:oo::PListView(subentDict).get<HPVector>(@"position")];
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
+	[flasher setPosition:subentDict ? OOHPVectorFromObject(ObjectForKey(subentDict, "position"), kZeroHPVector) : kZeroHPVector];
 	[self addSubEntity:flasher];
 	return YES;
 }
 
 
-- (BOOL) setUpOneStandardSubentity:(NSDictionary *)subentDict 
+- (BOOL) setUpOneStandardSubentity:(const oo::PList &)subentDict
 {
 	OOVisualEffectEntity			*subentity = nil;
-	NSString			*subentKey = nil;
+	std::optional<std::string>	subentKey;
 	HPVector				subPosition;
 	Quaternion			subOrientation;
 	
-	subentKey = oo::PListView(subentDict).get<NSString *>(@"subentity_key");
-	if (subentKey == nil) {
-		OOLog(@"setup.visualeffect.badEntry.subentities",@"Failed to set up entity - no subentKey in %@",subentDict);
+	subentKey = OptionalStringForKey(subentDict, "subentity_key");
+	if (!subentKey.has_value()) {
+		OOLog(@"setup.visualeffect.badEntry.subentities",@"Failed to set up entity - no subentKey in %@",oo::ObjectFromPList(subentDict));
 		return NO;
 	}
 	
-	subentity = [UNIVERSE newVisualEffectWithName:subentKey];
+	subentity = [UNIVERSE newVisualEffectWithName:oo::NSStringFrom(*subentKey)];
 	if (subentity == nil) {
-		OOLog(@"setup.visualeffect.badEntry.subentities",@"Failed to set up entity %@",subentKey);
+		OOLog(@"setup.visualeffect.badEntry.subentities",@"Failed to set up entity %@",oo::NSStringFrom(*subentKey));
 		return NO;
 	}
 	
-	subPosition = oo::PListView(subentDict).get<HPVector>(@"position");
-	subOrientation = oo::PListView(subentDict).get<Quaternion>(@"orientation");
+	subPosition = OOHPVectorFromObject(ObjectForKey(subentDict, "position"), kZeroHPVector);
+	subOrientation = OOQuaternionFromObject(ObjectForKey(subentDict, "orientation"), kIdentityQuaternion);
 	
 	[subentity setPosition:subPosition];
 	[subentity setOrientation:subOrientation];
@@ -334,10 +382,10 @@ MA 02110-1301, USA.
 {
 	if (sub == nil)  return;
 	
-	if (subEntities == nil)  subEntities = [[NSMutableArray alloc] init];
+	if (!subEntities.has_value())  subEntities.emplace();
 	sub->isSubEntity = YES;
 	// Order matters - need consistent state in setOwner:. -- Ahruman 2008-04-20
-	[subEntities addObject:sub];
+	subEntities->emplace_back(sub);
 	[sub setOwner:self];
 
 	double distance = HPmagnitude([sub position]) + [sub findCollisionRadius];
@@ -348,45 +396,54 @@ MA 02110-1301, USA.
 }
 
 
-- (NSArray *)subEntities 
+- (id)subEntities	// shared selector (proposed ADR-0043)
 {
-	return [[subEntities copy] autorelease];
+	return subEntities.has_value() ? oo::NSArrayFromObjects(*subEntities) : nil;
 }
 
 
 - (NSUInteger) subEntityCount
 {
-	return [subEntities count];
+	return subEntities.has_value() ? subEntities->size() : 0;
 }
 
 
-- (NSEnumerator *) visualEffectSubEntityEnumerator
+- (std::optional<std::vector<oo::ObjCRef<OOVisualEffectEntity *>>>) visualEffectSubEntityEnumerator
 {
-	return [[self subEntities] objectEnumeratorFilteredWithSelector:@selector(isVisualEffect)];
+	if (!subEntities.has_value())  return std::nullopt;
+	return VisualEffectsIn(*subEntities);
 }
 
 
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub 
 {
-	return [subEntities containsObject:sub];
+	if (!subEntities.has_value())  return NO;
+	return std::find_if(subEntities->begin(), subEntities->end(), [sub](const auto &entry) { return entry.get() == sub; }) != subEntities->end();
 }
 
 
-- (NSEnumerator *)subEntityEnumerator 
+- (id)subEntityEnumerator	// shared selector (proposed ADR-0043)
 {
 	return [[self subEntities] objectEnumerator];
 }
 
 
-- (NSEnumerator *)effectSubEntityEnumerator 
+- (std::vector<oo::ObjCRef<OOVisualEffectEntity *>>)effectSubEntityEnumerator
 {
-	return [[self subEntities] objectEnumeratorFilteredWithSelector:@selector(isVisualEffect)];
+	return VisualEffectsIn(SubEntitiesOf(subEntities));
 }
 
 
-- (NSEnumerator *)flasherEnumerator 
+- (id)flasherEnumerator	// shared selector (proposed ADR-0043)
 {
-	return [[self subEntities] objectEnumeratorFilteredWithSelector:@selector(isFlasher)];
+	if (!subEntities.has_value())  return nil;
+	std::vector<Entity<OOSubEntity> *> flashers;
+	for (const auto &sub : *subEntities)
+	{
+		if (![sub.get() isFlasher])  continue;
+		flashers.push_back(sub.get());
+	}
+	return [oo::NSArrayFromObjects(flashers) objectEnumerator];
 }
 
 
@@ -414,8 +471,9 @@ MA 02110-1301, USA.
 	
 	// rescale subentities
 	Entity<OOSubEntity>	*se = nil;
-	foreach (se, [self subEntities])
+	for (const auto &seRef : SubEntitiesOf(subEntities))
 	{
+		se = seRef.get();
 		[se setPosition:HPvector_multiply_scalar([se position], factor)];
 		[se rescaleBy:factor];
 	}
@@ -468,8 +526,9 @@ MA 02110-1301, USA.
 	// rescale subentities
 	Entity<OOSubEntity>	*se = nil;
 	GLfloat flasher_factor = pow(factor/scaleX,1.0/3.0);
-	foreach (se, [self subEntities])
+	for (const auto &seRef : SubEntitiesOf(subEntities))
 	{
+		se = seRef.get();
 		HPVector move = [se position];
 		move.x *= factor/scaleX;
 		[se setPosition:move];
@@ -499,8 +558,9 @@ MA 02110-1301, USA.
 	// rescale subentities
 	Entity<OOSubEntity>	*se = nil;
 	GLfloat flasher_factor = pow(factor/scaleY,1.0/3.0);
-	foreach (se, [self subEntities])
+	for (const auto &seRef : SubEntitiesOf(subEntities))
 	{
+		se = seRef.get();
 		HPVector move = [se position];
 		move.y *= factor/scaleY;
 		[se setPosition:move];
@@ -530,8 +590,9 @@ MA 02110-1301, USA.
 	// rescale subentities
 	Entity<OOSubEntity>	*se = nil;
 	GLfloat flasher_factor = pow(factor/scaleZ,1.0/3.0);
-	foreach (se, [self subEntities])
+	for (const auto &seRef : SubEntitiesOf(subEntities))
 	{
+		se = seRef.get();
 		HPVector move = [se position];
 		move.z *= factor/scaleZ;
 		[se setPosition:move];
@@ -603,7 +664,7 @@ MA 02110-1301, USA.
 {
 	DESTROY(scanner_display_color1);
 	
-	if (color == nil)  color = [OOColor colorWithDescription:[effectinfoDictionary objectForKey:@"scanner_display_color1"]];
+	if (color == nil)  color = [OOColor colorWithDescription:ObjectForKey(effectinfoDictionary, "scanner_display_color1")];
 	scanner_display_color1 = [color retain];
 }
 
@@ -612,7 +673,7 @@ MA 02110-1301, USA.
 {
 	DESTROY(scanner_display_color2);
 	
-	if (color == nil)  color = [OOColor colorWithDescription:[effectinfoDictionary objectForKey:@"scanner_display_color2"]];
+	if (color == nil)  color = [OOColor colorWithDescription:ObjectForKey(effectinfoDictionary, "scanner_display_color2")];
 	scanner_display_color2 = [color retain];
 }
 
@@ -667,8 +728,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 	if (!immediate)	// TODO: is this relevant any longer?
 	{
 		Entity<OOSubEntity> *subEntity = nil;
-		foreach (subEntity, [self subEntities])
+		for (const auto &subEntityRef : SubEntitiesOf(subEntities))
 		{
+			subEntity = subEntityRef.get();
 			[subEntity drawSubEntityImmediate:immediate translucent:translucent];
 		}
 	}
@@ -685,8 +747,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 	}
 
 	Entity *se = nil;
-	foreach (se, [self subEntities])
+	for (const auto &seRef : SubEntitiesOf(subEntities))
 	{
+		se = seRef.get();
 		[se update:delta_t];
 	}
 }
@@ -704,7 +767,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 }
 
 
-- (NSDictionary *)effectInfoDictionary
+- (oo::PList)effectInfoDictionary
 {
 	return effectinfoDictionary;
 }
@@ -712,15 +775,14 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 
 /* scripting */
 
-- (void) setScript:(NSString *)script_name
+- (void) setScript:(const std::optional<std::string> &)script_name
 {
-	NSMutableDictionary		*properties = nil;
-	
-	properties = [NSMutableDictionary dictionary];
-	[properties setObject:self forKey:@"visualEffect"];
-	
+	oo::PList::Dict propertyList;
+	propertyList["visualEffect"] = oo::PListObject(self);
+	id properties = oo::ObjectFromPList(oo::PList(std::move(propertyList)));
+
 	[script autorelease];
-	script = [OOScript jsScriptFromFileNamed:script_name properties:properties];
+	script = [OOScript jsScriptFromFileNamed:oo::NSStringOrNil(script_name) properties:properties];
 	// does not support legacy scripting
 	if (script == nil) {
 		script = [OOScript jsScriptFromFileNamed:@"oolite-default-effect-script.js" properties:properties];
@@ -735,9 +797,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 }
 
 
-- (NSDictionary *)scriptInfo
+- (id)scriptInfo	// shared selector (proposed ADR-0043)
 {
-	return (scriptInfo != nil) ? scriptInfo : (NSDictionary *)[NSDictionary dictionary];
+	return oo::ObjectFromPList(scriptInfo ? scriptInfo : oo::PList(oo::PList::Dict{}));
 }
 
 // unlikely to need events with arguments
@@ -764,46 +826,48 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 }
 
 
-- (NSString *) beaconCode
+- (id) beaconCode	// shared selector (proposed ADR-0043)
 {
-	return _beaconCode;
+	return oo::NSStringOrNil(_beaconCode);
 }
 
 
-- (void) setBeaconCode:(NSString *)bcode
+// bcode: an Objective-C string or nil. The Foundation version compared the new string with the
+// old by pointer, so any new string (every string this class hands out is new) replaced it.
+- (void) setBeaconCode:(id)bcode	// shared selector (proposed ADR-0043)
 {
-	if ([bcode length] == 0)  bcode = nil;
-	
-	if (_beaconCode != bcode)
+	std::optional<std::string> code = oo::OptionalString(bcode);
+	if (code.has_value() && code->empty())  code.reset();
+
+	if (code.has_value() || _beaconCode.has_value())
 	{
-		[_beaconCode release];
-		_beaconCode = [bcode copy];
-		
+		_beaconCode = code;
+
 		DESTROY(_beaconDrawable);
 	}
 	// if not blanking code and label is currently blank, default label to code
-	if (bcode != nil && (_beaconLabel == nil || [_beaconLabel length] == 0))
+	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
 	{
-		[self setBeaconLabel:bcode];
+		[self setBeaconLabel:oo::NSStringFrom(*code)];
 	}
 
 }
 
 
-- (NSString *) beaconLabel
+- (id) beaconLabel	// shared selector (proposed ADR-0043)
 {
-	return _beaconLabel;
+	return oo::NSStringOrNil(_beaconLabel);
 }
 
 
-- (void) setBeaconLabel:(NSString *)blabel
+- (void) setBeaconLabel:(id)blabel	// shared selector (proposed ADR-0043): an Objective-C string or nil
 {
-	if ([blabel length] == 0)  blabel = nil;
-	
-	if (_beaconLabel != blabel)
+	std::optional<std::string> label = oo::OptionalString(blabel);
+	if (label.has_value() && label->empty())  label.reset();
+
+	if (label.has_value() || _beaconLabel.has_value())
 	{
-		[_beaconLabel release];
-		_beaconLabel = [OOExpand(blabel) retain];
+		_beaconLabel = oo::OptionalString(OOExpand(oo::NSStringOrNil(label)));
 	}
 }
 
@@ -818,18 +882,18 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 {
 	if (_beaconDrawable == nil)
 	{
-		NSString	*beaconCode = [self beaconCode];
-		NSUInteger	length = [beaconCode length];
-		
+		const std::u16string	beaconCode = oo::utf8ToUtf16(_beaconCode.value_or(std::string()));
+		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
+
 		if (length > 1)
 		{
-			NSArray *iconData = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(beaconCode);
-			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconData) outlineWidth:0.5 name:oo::StdString(beaconCode)];
+			const oo::PList iconData = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(*_beaconCode)]);
+			if (iconData.isArray())  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
 		}
-		
+
 		if (_beaconDrawable == nil)
 		{
-			if (length > 0)  _beaconDrawable = [[beaconCode substringToIndex:1] retain];
+			if (length > 0)  _beaconDrawable = [oo::NSStringFrom(oo::utf16ToUtf8(beaconCode.substr(0, 1))) retain];	// -substringToIndex:1
 			else  _beaconDrawable = @"";
 		}
 	}
