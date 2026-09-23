@@ -31,10 +31,11 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 #include "oofnd/StdLib.hpp"
 
 
-@interface OOAsyncQueue: NSObject
+@interface OOAsyncQueue: OOObject
 {
 @private
 	// The Foundation condition lock as its three parts (bead oo-3rb.7): the lock, the
