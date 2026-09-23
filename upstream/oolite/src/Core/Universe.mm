@@ -3855,7 +3855,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 	if (definition != nil)
 	{
-		waypoint = [OOWaypointEntity waypointWithDictionary:definition];
+		waypoint = [OOWaypointEntity waypointWithDictionary:oo::PListFrom(definition)];
 		if (waypoint != nil)
 		{
 			[self addEntity:waypoint];
