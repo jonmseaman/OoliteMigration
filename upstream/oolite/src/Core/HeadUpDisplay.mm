@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#include "oofnd/objc/OORuntime.h"
 #import "HeadUpDisplay.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -751,7 +752,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		return;
 	}
 	
-	SEL selector = NSSelectorFromString(selectorString);
+	SEL selector = OOSelectorFromName([selectorString UTF8String]);
 	
 	NSAssert2([self respondsToSelector:selector], @"HUD dial in %@ uses selector \"%@\" which is in whitelist, but not implemented.", hudName, selectorString);
 	
