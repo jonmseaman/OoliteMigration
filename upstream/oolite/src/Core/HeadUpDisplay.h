@@ -180,44 +180,44 @@ struct OOHUDWidget;	// HeadUpDisplay.mm
 #define MFD_TEXT_WIDTH			10
 #define MFD_TEXT_HEIGHT			10
 
-#define DIALS_KEY				@"dials"
-#define LEGENDS_KEY				@"legends"
-#define MFDS_KEY				@"multi_function_displays"
-#define X_KEY					@"x"
-#define Y_KEY					@"y"
-#define X_ORIGIN_KEY			@"x_origin"
-#define Y_ORIGIN_KEY			@"y_origin"
-#define SPACING_KEY				@"spacing"
-#define ALPHA_KEY				@"alpha"
-#define SELECTOR_KEY			@"selector"
-#define IMAGE_KEY				@"image"
-#define WIDTH_KEY				@"width"
-#define HEIGHT_KEY				@"height"
-#define SPRITE_KEY				@"sprite"
-#define DRAW_SURROUND_KEY		@"draw_surround"
-#define EQUIPMENT_REQUIRED_KEY	@"equipment_required"
-#define ALERT_CONDITIONS_KEY	@"alert_conditions"
-#define VIEWSCREEN_KEY			@"viewscreen_only"
-#define DIAL_REQUIRED_KEY		@"with_dial"
-#define LABELLED_KEY			@"labelled"
-#define TEXT_KEY				@"text"
-#define RGB_COLOR_KEY			@"rgb_color"
-#define COLOR_KEY				@"color"
-#define COLOR_KEY_LOW			@"color_low"
-#define COLOR_KEY_MEDIUM		@"color_medium"
-#define COLOR_KEY_HIGH			@"color_high"
-#define COLOR_KEY_CRITICAL		@"color_critical"
-#define COLOR_KEY_SURROUND		@"color_surround"
-#define N_BARS_KEY				@"n_bars"
-#define CUSTOM_DIAL_KEY			@"data_source"
+#define DIALS_KEY				"dials"
+#define LEGENDS_KEY				"legends"
+#define MFDS_KEY				"multi_function_displays"
+#define X_KEY					"x"
+#define Y_KEY					"y"
+#define X_ORIGIN_KEY			"x_origin"
+#define Y_ORIGIN_KEY			"y_origin"
+#define SPACING_KEY				"spacing"
+#define ALPHA_KEY				"alpha"
+#define SELECTOR_KEY			"selector"
+#define IMAGE_KEY				"image"
+#define WIDTH_KEY				"width"
+#define HEIGHT_KEY				"height"
+#define SPRITE_KEY				"sprite"
+#define DRAW_SURROUND_KEY		"draw_surround"
+#define EQUIPMENT_REQUIRED_KEY	"equipment_required"
+#define ALERT_CONDITIONS_KEY	"alert_conditions"
+#define VIEWSCREEN_KEY			"viewscreen_only"
+#define DIAL_REQUIRED_KEY		"with_dial"
+#define LABELLED_KEY			"labelled"
+#define TEXT_KEY				"text"
+#define RGB_COLOR_KEY			"rgb_color"
+#define COLOR_KEY				"color"
+#define COLOR_KEY_LOW			"color_low"
+#define COLOR_KEY_MEDIUM		"color_medium"
+#define COLOR_KEY_HIGH			"color_high"
+#define COLOR_KEY_CRITICAL		"color_critical"
+#define COLOR_KEY_SURROUND		"color_surround"
+#define N_BARS_KEY				"n_bars"
+#define CUSTOM_DIAL_KEY			"data_source"
 
-#define ROWS_KEY				@"rows"
-#define COLUMNS_KEY				@"columns"
-#define ROW_HEIGHT_KEY			@"row_height"
-#define ROW_START_KEY			@"row_start"
-#define TITLE_KEY				@"title"
-#define BACKGROUND_RGBA_KEY		@"background_rgba"
-#define OVERALL_ALPHA_KEY		@"overall_alpha"
+#define ROWS_KEY				"rows"
+#define COLUMNS_KEY				"columns"
+#define ROW_HEIGHT_KEY			"row_height"
+#define ROW_START_KEY			"row_start"
+#define TITLE_KEY				"title"
+#define BACKGROUND_RGBA_KEY		"background_rgba"
+#define OVERALL_ALPHA_KEY		"overall_alpha"
 #define NONLINEAR_SCANNER		@"nonlinear_scanner"
 
 #define Z1						[(MyOpenGLView *)[[player universe] gameView] display_z]
@@ -272,7 +272,7 @@ enum
 
 	int					last_transmitter;
 
-	NSMutableSet		*_hiddenSelectors;
+	std::set<std::string>	_hiddenSelectors;
 	
 	// Crosshairs
 	OOCrosshairs		*_crosshairs;
@@ -320,8 +320,8 @@ enum
 
 - (BOOL) allowBigGui;
 
-- (BOOL) hasHidden:(NSString *)selectorName;
-- (void) setHiddenSelector:(NSString *)selectorName hidden:(BOOL)hide;
+- (BOOL) hasHidden:(const std::optional<std::string> &)selectorName;	// nullopt (was nil): NO
+- (void) cxx_setHiddenSelector:(const std::string &)selectorName hidden:(BOOL)hide;
 - (void) clearHiddenSelectors;
 
 - (BOOL) isCompassActive;
@@ -333,9 +333,10 @@ enum
 - (NSString *) crosshairDefinition;
 - (BOOL) setCrosshairDefinition:(NSString *)newDefinition;
 
-- (void) addLegend:(NSDictionary *)info;
-- (void) addDial:(NSDictionary *)info;
-- (void) addMFD:(NSDictionary *)info;
+// Each takes one hud.plist entry; a null PList where the entry was not a dictionary.
+- (void) addLegend:(const oo::PList &)info;
+- (void) addDial:(const oo::PList &)info;
+- (void) addMFD:(const oo::PList &)info;
 
 - (NSUInteger) mfdCount;
 
