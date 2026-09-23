@@ -229,6 +229,18 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 @end
 
 
+// NSObject (OOJavaScript) above, for classes rooted on OOObject (ADR-0029).
+@interface OOObject (OOJavaScript)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
+- (NSString *) oo_jsDescription;
+- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className;
+- (NSString *) oo_jsClassName;
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
+
+@end
+
+
 /*	OOJSValueFromNativeObject()
 	Return a JavaScript value representation of an object, or null if passed
 	nil.
