@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "DustEntity.h"
+#include "oofnd/Process.hpp"
 
 #import "OOMaths.h"
 #import "Universe.h"
@@ -94,7 +95,7 @@ enum
 	shaderMode = kShaderModeUnknown;
 #endif
 	
-	drawDust = ![[[NSProcessInfo processInfo] arguments] containsObject:@"-nodust"];
+	drawDust = !oo::process::hasArgument("-nodust");
 	
 	dust_color = [[OOColor colorWithRed:0.5 green:1.0 blue:1.0 alpha:1.0] retain];
 	[self setStatus:STATUS_ACTIVE];
