@@ -11971,7 +11971,7 @@ static NSString *last_outfitting_key=nil;
 		NSString *commanderName = [self commanderName];
 		if ([commanderName length] > 0)
 		{
-			[trumbleDigrams appendFormat:@"%@%@", commanderName, [[self mesh] modelName]];
+			[trumbleDigrams appendFormat:@"%@%@", commanderName, oo::NSStringOrNil([[self mesh] modelName])];
 		}
 		else
 		{
