@@ -301,7 +301,9 @@ inline std::string unescapeXMLPListString(const std::string& utf8)
 		{
 			const char16_t v = static_cast<char16_t>((hexVal(value[loc + 2]) << 12) | (hexVal(value[loc + 3]) << 8)
 													 | (hexVal(value[loc + 4]) << 4) | hexVal(value[loc + 5]));
-			value.replace(loc, 6, 1, v);
+			// The replacement is [NSString initWithCharacters:&v length:1], so U+FEFF and U+FFFE
+			// become "" (and the location still steps on by one).
+			value.replace(loc, 6, (v == 0xFEFF || v == 0xFFFE) ? 0 : 1, v);
 			loc += 1;
 			len = 0;
 		}
@@ -485,7 +487,8 @@ private:
 
 	void foundCharacters(std::size_t start, std::size_t length)
 	{
-		appendCharacters(std::string_view(reinterpret_cast<const char*>(bytes_) + start, length));
+		// Each chunk is its own NSString from UTF-8 bytes: a leading U+FEFF is dropped.
+		appendCharacters(utf8WithoutLeadingBOM(std::string_view(reinterpret_cast<const char*>(bytes_) + start, length)));
 	}
 
 	// -_parseEntity: after '&', up to ';'. False if a '<' or the end comes first.
@@ -541,6 +544,7 @@ private:
 					{
 						u += static_cast<char16_t>(val);
 					}
+					applyInitWithCharactersBOM(u);   // -initWithCharacters:length:
 					return utf16ToUtf8(u);
 				}
 			}

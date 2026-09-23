@@ -149,6 +149,22 @@ OO_TEST(backslashUEscapesInStringsAndKeys)
 	OO_CHECK_EQ(parsed("<?xml version=\"1.0\"?><plist><string>\\U00411</string></plist>"), "S\"A1\"");
 }
 
+OO_TEST(byteOrderMarks)
+{
+	// Entities and \U replacements are NSStrings from UTF-16 units (U+FEFF and U+FFFE vanish;
+	// after a vanished \U the scan skips one character); text chunks are NSStrings from UTF-8
+	// (only a chunk-leading U+FEFF vanishes).
+	OO_CHECK_EQ(parsed("<?xml version=\"1.0\"?><plist><array><string>&#xFEFF;a</string><string>a&#xFEFF;</string>"
+					   "<string>&#xFFFE;</string><string>\\UFEFFa</string><string>x\\UFEFF\\U0041</string></array></plist>"),
+				"[S\"a\",S\"a\",S\"\",S\"a\",S\"x\\\\U0041\"]");
+	OO_CHECK_EQ(parsed("<?xml version=\"1.0\"?><plist><array><string>\xef\xbb\xbf" "a</string><string>a\xef\xbb\xbf</string>"
+					   "<string> \xef\xbb\xbf</string></array></plist>"),
+				"[S\"a\",S\"a\\uFEFF\",S\" \"]");
+	OO_CHECK_EQ(parsed("<?xml version=\"1.0\"?><plist><array><string>\xef\xbf\xbey</string><string>a&amp;\xef\xbb\xbf" "b</string>"
+					   "<string>a&amp;\xef\xbf\xbe" "b</string><string>\\UFFFEy</string></array></plist>"),
+				"[S\"\\uFFFEy\",S\"a&b\",S\"a&\\uFFFEb\",S\"y\"]");
+}
+
 OO_TEST(markupThatIsSkipped)
 {
 	// CDATA is dropped (no foundCDATA callback); comments, PIs, attributes and DOCTYPE subsets
