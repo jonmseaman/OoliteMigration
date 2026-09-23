@@ -34,22 +34,15 @@ SOFTWARE.
 #import "OOStellarBody.h"
 #import "OOJavaScriptEngine.h"
 #import "OOSound.h"
+#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
-#import "OOStringBridge.h"
-
-#include <string>
-#include <vector>
 
 
 namespace {
-
 std::string AdditionalLogHeaderInfo(void);
-
-}	// namespace
-
-NSString *OOPlatformDescription(void);
+}
 
 
 #ifdef ALLOW_PROCEDURAL_PLANETS
@@ -163,26 +156,27 @@ void OOPrintLogHeader(void)
 	
 	};
 	
-	// systemString: system type and possibly version.
+	// systemString: UTF-8 string with system type and possibly version.
 	#if (OOLITE_MAC_OS_X || !OOLITE_WINDOWS)
-		const std::string systemString = OS_TYPE_STRING " " + oo::process::operatingSystemVersionString();
+		std::string systemString = oo::str::format(OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str());
 	#elif OOLITE_WINDOWS
-		NSString *fullVersion = operatingSystemFullVersion();
-		const std::string systemString = std::string(OS_TYPE_STRING " ") + (fullVersion != nil ? oo::StdString(fullVersion) : std::string("(null)")) + " " + (is64BitSystem() ? "64" : "32") + "-bit";
+		std::string systemString = oo::str::format(OS_TYPE_STRING " %s %s-bit", operatingSystemFullVersion().c_str(), is64BitSystem() ? "64":"32");
 	#else
-		const std::string systemString = OS_TYPE_STRING;
+		#define systemString std::string(OS_TYPE_STRING)
 	#endif
-	
+
+	std::string versionString;
 	#if (defined (DEV_RELEASE))
-		const std::string versionString = "development version " OO_VERSION_FULL;
+		versionString = "development version " OO_VERSION_FULL;
 	#else
-		const std::string versionString = "version " OO_VERSION_FULL;
+		versionString = "version " OO_VERSION_FULL;
 	#endif
-	
-	std::string miscString = "Opening log for Oolite " + versionString + " by " OO_BUILDER " (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ") under " + systemString + " at " + oo::date::description() + ".\n";
-	
+	if (versionString.empty())  versionString = "<unknown version>";
+
+	std::string miscString = oo::str::format("Opening log for Oolite %s by %s (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ") under %s at %s.\n", versionString.c_str(), OO_BUILDER, systemString.c_str(), oo::date::description().c_str());
+
 	miscString += AdditionalLogHeaderInfo();
-	
+
 	std::string featureDesc;
 	for (const std::string &feature : featureStrings)
 	{
@@ -190,23 +184,25 @@ void OOPrintLogHeader(void)
 		featureDesc += feature;
 	}
 	if (featureDesc.empty())  featureDesc = "none";
-	miscString += "\nBuild options: " + featureDesc + ".\n";
-	
+	miscString += oo::str::format("\nBuild options: %s.\n", featureDesc.c_str());
+
 	miscString += "\nNote that the contents of the log file can be adjusted by editing logcontrol.plist.";
-	
+
 	OO_LOG("log.header", "{}\n", miscString);
 }
 
 
-NSString *OOPlatformDescription(void)
+// Foundation sweep (proposed ADR-0043, bead oo-vnsl): a std::string, for OOJSConsole's
+// console.platformDescription; the same "<system> (<cpu><variant>)" text.
+std::string OOPlatformDescription(void)
 {
 	#if OOLITE_MAC_OS_X
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str()];
+		const std::string platformSystem = OS_TYPE_STRING " " + oo::process::operatingSystemVersionString();
 	#else
-		#define systemString @OS_TYPE_STRING
+		const std::string platformSystem = OS_TYPE_STRING;
 	#endif
-	
-	return [NSString stringWithFormat:@"%@ (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ")", systemString];
+
+	return platformSystem + " (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ")";
 }
 
 
@@ -215,24 +211,23 @@ NSString *OOPlatformDescription(void)
 #include <sys/sysctl.h>
 
 
-static NSString *GetSysCtlString(const char *name);
+static std::optional<std::string> GetSysCtlString(const char *name);
 static unsigned long long GetSysCtlInt(const char *name);
-static NSString *GetCPUDescription(void);
+static std::string GetCPUDescription(void);
 
 namespace {
-
 std::string AdditionalLogHeaderInfo(void)
 {
-	NSString				*sysModel = nil;
+	std::optional<std::string>	sysModel;
 	unsigned long long		sysPhysMem;
-	
+
 	sysModel = GetSysCtlString("hw.model");
 	sysPhysMem = GetSysCtlInt("hw.memsize");
-	
-	return [[NSString stringWithFormat:@"Machine type: %@, %zu MiB memory, %@.", sysModel, sysPhysMem >> 20, GetCPUDescription()] UTF8String];
-}
 
-}	// namespace
+	// "%@" printed a nil model as "(null)".
+	return oo::str::format("Machine type: %s, %zu MiB memory, %s.", sysModel ? sysModel->c_str() : "(null)", sysPhysMem >> 20, GetCPUDescription().c_str());
+}
+}
 
 #ifndef CPUFAMILY_INTEL_MEROM
 	#define CPUFAMILY_INTEL_MEROM		0x426f69ef
@@ -251,9 +246,9 @@ std::string AdditionalLogHeaderInfo(void)
 #endif
 
 
-static NSString *GetCPUDescription(void)
+static std::string GetCPUDescription(void)
 {
-	NSString			*typeStr = nil, *subTypeStr = nil;
+	std::optional<std::string>	typeStr, subTypeStr;
 	
 	unsigned long long sysCPUType = GetSysCtlInt("hw.cputype");
 	unsigned long long sysCPUFamily = GetSysCtlInt("hw.cpufamily");
@@ -269,80 +264,81 @@ static NSString *GetCPUDescription(void)
 	switch (sysCPUType)
 	{
 		case CPU_TYPE_POWERPC:
-			typeStr = @"PowerPC";
+			typeStr = "PowerPC";
 			break;
 			
 		case CPU_TYPE_I386:
-			typeStr = @"x86";
+			typeStr = "x86";
 			switch (sysCPUFamily)
 			{
 				case CPUFAMILY_INTEL_MEROM:
-					subTypeStr = @" (Core 2/Merom)";
+					subTypeStr = " (Core 2/Merom)";
 					break;
 					
 				case CPUFAMILY_INTEL_PENRYN:
-					subTypeStr = @" (Penryn)";
+					subTypeStr = " (Penryn)";
 					break;
 					
 				case CPUFAMILY_INTEL_NEHALEM:
-					subTypeStr = @" (Nehalem)";
+					subTypeStr = " (Nehalem)";
 					break;
 					
 				case CPUFAMILY_INTEL_WESTMERE:
-					subTypeStr = @" (Westmere)";
+					subTypeStr = " (Westmere)";
 					break;
 					
 				case CPUFAMILY_INTEL_SANDYBRIDGE:
-					subTypeStr = @" (Sandy Bridge)";
+					subTypeStr = " (Sandy Bridge)";
 					break;
 					
 				case CPUFAMILY_INTEL_IVYBRIDGE:
-					subTypeStr = @" (Ivy Bridge)";
+					subTypeStr = " (Ivy Bridge)";
 					break;
 					
 				case CPUFAMILY_INTEL_HASWELL:
-					subTypeStr = @" (Haswell)";
+					subTypeStr = " (Haswell)";
 					break;
 					
 				case CPUFAMILY_INTEL_BROADWELL:
-					subTypeStr = @" (Broadwell)";
+					subTypeStr = " (Broadwell)";
 					break;
 					
 				case CPUFAMILY_INTEL_SKYLAKE:
-					subTypeStr = @" (Skylake)";
+					subTypeStr = " (Skylake)";
 					break;
 					
 				default:
-					subTypeStr = [NSString stringWithFormat:@" (family 0x%llx)", sysCPUFamily];
+					subTypeStr = oo::str::format(" (family 0x%llx)", sysCPUFamily);
 			}
 			break;
 		
 		case CPU_TYPE_ARM:
-			typeStr = @"ARM";
+			typeStr = "ARM";
 	}
 	
-	if (typeStr == nil)  typeStr = [NSString stringWithFormat:@"CPU type %zu", sysCPUType];
-	
-	NSString *countStr = nil;
-	if (sysCPUCount == sysLogicalCPUCount)  countStr = [NSString stringWithFormat:@"%zu", sysCPUCount];
-	else countStr = [NSString stringWithFormat:@"%zu (%zu logical)", sysCPUCount, sysLogicalCPUCount];
-	
-	return [NSString stringWithFormat:@"%@ x %@%@ @ %zu MHz", countStr, typeStr, subTypeStr, (sysCPUFrequency + 500000) / 1000000];
+	if (!typeStr.has_value())  typeStr = oo::str::format("CPU type %zu", sysCPUType);
+
+	std::string countStr;
+	if (sysCPUCount == sysLogicalCPUCount)  countStr = oo::str::format("%zu", sysCPUCount);
+	else countStr = oo::str::format("%zu (%zu logical)", sysCPUCount, sysLogicalCPUCount);
+
+	// "%@" printed a nil sub-type as "(null)".
+	return oo::str::format("%s x %s%s @ %zu MHz", countStr.c_str(), typeStr->c_str(), subTypeStr ? subTypeStr->c_str() : "(null)", (sysCPUFrequency + 500000) / 1000000);
 }
 
 
-static NSString *GetSysCtlString(const char *name)
+static std::optional<std::string> GetSysCtlString(const char *name)
 {
 	char					*buffer = NULL;
 	size_t					size = 0;
-	
+
 	// Get size
 	sysctlbyname(name, NULL, &size, NULL, 0);
-	if (size == 0)  return nil;
-	
+	if (size == 0)  return std::nullopt;
+
 	buffer = alloca(size);
-	if (sysctlbyname(name, buffer, &size, NULL, 0) != 0)  return nil;
-	return [NSString stringWithUTF8String:buffer];
+	if (sysctlbyname(name, buffer, &size, NULL, 0) != 0)  return std::nullopt;
+	return std::string(buffer);
 }
 
 
@@ -365,15 +361,13 @@ static unsigned long long GetSysCtlInt(const char *name)
 
 #else
 namespace {
-
 std::string AdditionalLogHeaderInfo(void)
 {
 	unsigned cpuCount = OOCPUCount();
-	NSString *cpuDescription = OOCPUDescription();
+	const std::string cpuDescription = OOCPUDescription();
 	OOMemoryStatus systemMemoryStatus = OOSystemMemoryStatus();
-
-	return oo::str::format("%s %u processor%s detected. System RAM: %llu MB (free: %llu MB).", cpuDescription != nil ? oo::StdString(cpuDescription).c_str() : "(null)", cpuCount, cpuCount != 1 ? "s" : "", systemMemoryStatus.ooPhysicalMemory, systemMemoryStatus.ooAvailableMemory);
+	
+	return oo::str::format("%s %u processor%s detected. System RAM: %llu MB (free: %llu MB).", cpuDescription.c_str(), cpuCount, cpuCount != 1 ? "s" : "", systemMemoryStatus.ooPhysicalMemory, systemMemoryStatus.ooAvailableMemory);
 }
-
-}	// namespace
+}
 #endif

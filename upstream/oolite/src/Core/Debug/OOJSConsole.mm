@@ -44,6 +44,10 @@ SOFTWARE.
 #import "OODebugMonitor.h"
 #import "OOProfilingStopwatch.h"
 #import "ResourceManager.h"
+#import "OOFoundationBridge.h"
+#import "OOLogHeader.h"	// OOPlatformDescription()
+
+#include "oofnd/String.hpp"
 
 
 @interface Entity (OODebugInspector)
@@ -54,7 +58,6 @@ SOFTWARE.
 @end
 
 
-NSString *OOPlatformDescription(void);
 
 
 static ooscript::Object sConsolePrototype = NULL;
@@ -96,7 +99,9 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool strict, ooscript::Value *value);
 
 #if OOJS_PROFILE
-static bool PerformProfiling(ooscript::Context context, NSString *nominalFunction, unsigned argc, ooscript::Value *argv, ooscript::Value *rval, BOOL trace, OOTimeProfile **profile);
+namespace {
+bool PerformProfiling(ooscript::Context context, const char *nominalFunction, unsigned argc, ooscript::Value *argv, ooscript::Value *rval, BOOL trace, OOTimeProfile **profile);
+}	// namespace
 #endif
 
 
@@ -336,7 +341,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_platformDescription:
-			*value = OOJSValueFromNativeObject(context, OOPlatformDescription());
+			*value = OOJSValueFromNativeObject(context, oo::NSStringFrom(OOPlatformDescription()));
 			break;
 			
 		case kConsole_pedanticMode:
@@ -363,11 +368,11 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_glVendorString:
-			*value = OOJSValueFromNativeObject(context, [[OOOpenGLExtensionManager sharedManager] vendorString]);
+			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([[OOOpenGLExtensionManager sharedManager] vendorString]));
 			break;
 			
 		case kConsole_glRendererString:
-			*value = OOJSValueFromNativeObject(context, [[OOOpenGLExtensionManager sharedManager] rendererString]);
+			*value = OOJSValueFromNativeObject(context, oo::NSStringOrNil([[OOOpenGLExtensionManager sharedManager] rendererString]));
 			break;
 			
 		case kConsole_glFixedFunctionTextureUnitCount:
@@ -412,7 +417,7 @@ static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisO
 	
 	int32_t						iValue;
 	bool						bValue = NO;
-	NSString					*sValue;
+	std::optional<std::string>	sValue;
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -425,9 +430,9 @@ static bool ConsoleSetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 #endif		
 		case kConsole_detailLevel:
-			sValue = OOStringFromJSValue(context, *value);
+			sValue = oo::OptionalString(OOStringFromJSValue(context, *value));
 			OOJS_BEGIN_FULL_NATIVE(context)
-			[UNIVERSE setDetailLevel:OOGraphicsDetailFromString(sValue)];
+			[UNIVERSE setDetailLevel:OOGraphicsDetailFromString(oo::NSStringOrNil(sValue))];
 			OOJS_END_FULL_NATIVE
 			break;
 			
@@ -534,11 +539,11 @@ static bool ConsoleSettingsDeleteProperty(ooscript::Context context, ooscript::O
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	NSString			*key = nil;
+	std::optional<std::string>	key;
 	id					monitor = nil;
-	
+
 	if (!ooscript::isStringId(propID))  return NO;
-	key = OOStringFromJSString(context, ooscript::idToString(propID));
+	key = oo::OptionalString(OOStringFromJSString(context, ooscript::idToString(propID)));
 	
 	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
 	if (![monitor isKindOfClass:[OODebugMonitor class]])
@@ -547,7 +552,7 @@ static bool ConsoleSettingsDeleteProperty(ooscript::Context context, ooscript::O
 		return NO;
 	}
 	
-	[monitor setConfigurationValue:nil forKey:key];
+	[monitor setConfigurationValue:nil forKey:oo::NSStringOrNil(key)];
 	*value = ooscript::trueValue();
 	return YES;
 	
@@ -561,20 +566,20 @@ static bool ConsoleSettingsGetProperty(ooscript::Context context, ooscript::Obje
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	NSString			*key = nil;
+	std::optional<std::string>	key;
 	id					settingValue = nil;
 	id					monitor = nil;
-	
-	key = OOStringFromJSString(context, ooscript::idToString(propID));
-	
+
+	key = oo::OptionalString(OOStringFromJSString(context, ooscript::idToString(propID)));
+
 	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
 	if (![monitor isKindOfClass:[OODebugMonitor class]])
 	{
 		OOJSReportError(context, @"Expected OODebugMonitor, got %@ in %s. %@", [monitor class], __PRETTY_FUNCTION__, @"This is an internal error, please report it.");
 		return NO;
 	}
-	
-	settingValue = [monitor configurationValueForKey:key];
+
+	settingValue = [monitor configurationValueForKey:oo::NSStringOrNil(key)];
 	if (settingValue != NULL)  *value = [settingValue oo_jsValueInContext:context];
 	else  *value = ooscript::undefinedValue();
 	
@@ -590,31 +595,31 @@ static bool ConsoleSettingsSetProperty(ooscript::Context context, ooscript::Obje
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	NSString			*key = nil;
+	std::optional<std::string>	key;
 	id					settingValue = nil;
 	id					monitor = nil;
-	
-	key = OOStringFromJSString(context, ooscript::idToString(propID));
-	
+
+	key = oo::OptionalString(OOStringFromJSString(context, ooscript::idToString(propID)));
+
 	monitor = OOJSNativeObjectFromJSObject(context, thisObject);
 	if (![monitor isKindOfClass:[OODebugMonitor class]])
 	{
 		OOJSReportError(context, @"Expected OODebugMonitor, got %@ in %s. %@", [monitor class], __PRETTY_FUNCTION__, @"This is an internal error, please report it.");
 		return NO;
 	}
-	
+
 	// Not OOJS_BEGIN_FULL_NATIVE() - we use JSAPI while paused.
 	OOJSPauseTimeLimiter();
 	if (ooscript::isNull(*value) || ooscript::isUndefined(*value))
 	{
-		[monitor setConfigurationValue:nil forKey:key];
+		[monitor setConfigurationValue:nil forKey:oo::NSStringOrNil(key)];
 	}
 	else
 	{
 		settingValue = OOJSNativeObjectFromJSValue(context, *value);
 		if (settingValue != nil)
 		{
-			[monitor setConfigurationValue:settingValue forKey:key];
+			[monitor setConfigurationValue:settingValue forKey:oo::NSStringOrNil(key)];
 		}
 		else
 		{
@@ -639,8 +644,8 @@ static bool ConsoleConsoleMessage(ooscript::Context context, ooscript::CallArgs 
 	OOJS_NATIVE_ENTER(context)
 	
 	id					monitor = nil;
-	NSString			*colorKey = nil,
-						*message = nil;
+	std::optional<std::string>	colorKey,
+								message;
 	double			location, length;
 	
 	// Not OOJS_BEGIN_FULL_NATIVE() - we use JSAPI while paused.
@@ -653,8 +658,8 @@ static bool ConsoleConsoleMessage(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 	
-	if (oojsArgs.count() > 0) colorKey = OOStringFromJSValue(context,OOJS_ARGV[0]);
-	if (oojsArgs.count() > 1) message = OOStringFromJSValue(context,OOJS_ARGV[1]);
+	if (oojsArgs.count() > 0) colorKey = oo::OptionalString(OOStringFromJSValue(context,OOJS_ARGV[0]));
+	if (oojsArgs.count() > 1) message = oo::OptionalString(OOStringFromJSValue(context,OOJS_ARGV[1]));
 	
 	if (oojsArgs.count() > 3)
 	{
@@ -666,23 +671,23 @@ static bool ConsoleConsoleMessage(ooscript::Context context, ooscript::CallArgs 
 		}
 	}
 	
-	if (message == nil)
+	if (!message.has_value())
 	{
-		if (colorKey == nil)
+		if (!colorKey.has_value())
 		{
 			OOJSReportWarning(context, @"Console.consoleMessage() called with no parameters.");
 		}
 		else
 		{
 			message = colorKey;
-			colorKey = @"command-result";
+			colorKey = "command-result";
 		}
 	}
 	
-	if (message != nil)
+	if (message.has_value())
 	{
-		[monitor appendJSConsoleLine:message
-							colorKey:colorKey
+		[monitor appendJSConsoleLine:oo::NSStringFrom(*message)
+							colorKey:oo::NSStringOrNil(colorKey)
 					   emphasisRange:emphasisRange];
 	}
 	OOJSResumeTimeLimiter();
@@ -767,7 +772,7 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	
 	OOJSPauseTimeLimiter();
 	result = ooscript::undefinedValue();
-	OK = OOJSCallObjCObjectMethod(context, object, [object oo_jsClassName], oojsArgs.count(), OOJS_ARGV, &result);
+	OK = OOJSCallObjCObjectMethod(context, object, oo::StdString([object oo_jsClassName]), oojsArgs.count(), OOJS_ARGV, &result);
 	OOJSResumeTimeLimiter();
 	
 	OOJS_SET_RVAL(result);
@@ -814,9 +819,8 @@ static bool ConsoleIsExecutableJavaScript(ooscript::Context context, ooscript::C
 	OOJSPauseTimeLimiter();
 	
 	// FIXME: this must be possible using just JSAPI functions.
-	NSString *string = OOStringFromJSValue(context, OOJS_ARGV[1]);
-	NSData *stringData = [string dataUsingEncoding:NSUTF8StringEncoding];
-	result = ooscript::bufferIsCompilableUnit(context, target, (const char *)[stringData bytes], [stringData length]);
+	const std::string string = oo::StdString(OOStringFromJSValue(context, OOJS_ARGV[1]));	// its UTF-8 bytes
+	result = ooscript::bufferIsCompilableUnit(context, target, string.data(), string.size());
 	
 	OOJSResumeTimeLimiter();
 	
@@ -831,10 +835,10 @@ static bool ConsoleDisplayMessagesInClass(ooscript::Context context, ooscript::C
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	NSString				*messageClass = nil;
-	
-	messageClass = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	OOJS_RETURN_BOOL(messageClass != nil && OOLogWillDisplayMessagesInClass(messageClass));
+	std::optional<std::string>	messageClass;
+
+	messageClass = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	OOJS_RETURN_BOOL(messageClass.has_value() && OOLogWillDisplayMessagesInClass(oo::NSStringFrom(*messageClass)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -845,13 +849,13 @@ static bool ConsoleSetDisplayMessagesInClass(ooscript::Context context, ooscript
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	NSString				*messageClass = nil;
+	std::optional<std::string>	messageClass;
 	bool					flag;
-	
-	messageClass = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (messageClass != nil && ooscript::valueToBoolean(context, OOJS_ARGV[1], &flag))
+
+	messageClass = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (messageClass.has_value() && ooscript::valueToBoolean(context, OOJS_ARGV[1], &flag))
 	{
-		OOLogSetDisplayMessagesInClass(messageClass, flag);
+		OOLogSetDisplayMessagesInClass(oo::NSStringFrom(*messageClass), flag);
 	}
 	OOJS_RETURN_VOID;
 	
@@ -910,7 +914,7 @@ static bool ConsoleGarbageCollect(ooscript::Context context, ooscript::CallArgs 
 	ooscript::gc(context);
 	uint32_t bytesAfter = ooscript::getGCParameter(ooscript::getRuntime(context), ooscript::GCParam::Bytes);
 	
-	OOJS_RETURN_OBJECT(([NSString stringWithFormat:@"Bytes before: %u Bytes after: %u", bytesBefore, bytesAfter]));
+	OOJS_RETURN_OBJECT((oo::NSStringFrom(oo::str::format("Bytes before: %u Bytes after: %u", bytesBefore, bytesAfter))));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -954,8 +958,8 @@ static bool ConsoleDumpNamedRoots(ooscript::Context context, ooscript::CallArgs 
 	BOOL OK = NO;
 	@autoreleasepool
 	{
-		NSString *path = [[ResourceManager diagnosticFileLocation] stringByAppendingPathComponent:@"js-roots.txt"];
-		FILE *file = fopen([path UTF8String], "w");
+		const std::string path = oo::StdString([[ResourceManager diagnosticFileLocation] stringByAppendingPathComponent:@"js-roots.txt"]);
+		FILE *file = fopen(path.c_str(), "w");
 		if (file != NULL)
 		{
 			DumpCallbackData data =
@@ -980,8 +984,8 @@ static bool ConsoleDumpHeap(ooscript::Context context, ooscript::CallArgs &oojsA
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL OK = NO;
-	NSString *path = [[ResourceManager diagnosticFileLocation] stringByAppendingPathComponent:@"js-heaps.txt"];
-	FILE *file = fopen([path UTF8String], "w");
+	const std::string path = oo::StdString([[ResourceManager diagnosticFileLocation] stringByAppendingPathComponent:@"js-heaps.txt"]);
+	FILE *file = fopen(path.c_str(), "w");
 	if (file != NULL)
 	{
 		OK = ooscript::dumpHeap(context, file);
@@ -1013,7 +1017,7 @@ static bool ConsoleProfile(ooscript::Context context, ooscript::CallArgs &oojsAr
 	{
 		OOTimeProfile		*profile = nil;
 		
-		result = PerformProfiling(context, @"profile", oojsArgs.count(), OOJS_ARGV, NULL, NO, &profile);
+		result = PerformProfiling(context, "profile", oojsArgs.count(), OOJS_ARGV, NULL, NO, &profile);
 		if (result)
 		{
 			OOJS_SET_RVAL(OOJSValueFromNativeObject(context, [profile description]));
@@ -1043,7 +1047,7 @@ static bool ConsoleGetProfile(ooscript::Context context, ooscript::CallArgs &ooj
 	{
 		OOTimeProfile		*profile = nil;
 		
-		result = PerformProfiling(context, @"getProfile", oojsArgs.count(), OOJS_ARGV, NULL, NO, &profile);
+		result = PerformProfiling(context, "getProfile", oojsArgs.count(), OOJS_ARGV, NULL, NO, &profile);
 		if (result)
 		{
 			OOJS_SET_RVAL(OOJSValueFromNativeObject(context, profile));
@@ -1071,7 +1075,7 @@ static bool ConsoleTrace(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	bool result;
 	@autoreleasepool
 	{
-		result = PerformProfiling(context, @"trace", oojsArgs.count(), OOJS_ARGV, &rval, YES, NULL);
+		result = PerformProfiling(context, "trace", oojsArgs.count(), OOJS_ARGV, &rval, YES, NULL);
 		if (result)
 		{
 			OOJS_SET_RVAL(rval);
@@ -1084,13 +1088,15 @@ static bool ConsoleTrace(ooscript::Context context, ooscript::CallArgs &oojsArgs
 }
 
 
-static bool PerformProfiling(ooscript::Context context, NSString *nominalFunction, unsigned argc, ooscript::Value *argv, ooscript::Value *outRval, BOOL trace, OOTimeProfile **outProfile)
+namespace {
+
+bool PerformProfiling(ooscript::Context context, const char *nominalFunction, unsigned argc, ooscript::Value *argv, ooscript::Value *outRval, BOOL trace, OOTimeProfile **outProfile)
 {
 	// Get function.
 	ooscript::Value function = argv[0];
 	if (!OOJSValueIsFunction(context, function))
 	{
-		OOJSReportBadArguments(context, @"Console", nominalFunction, 1, argv, nil, @"function");
+		OOJSReportBadArguments(context, @"Console", oo::NSStringFrom(nominalFunction), 1, argv, nil, @"function");
 		return NO;
 	}
 	
@@ -1135,6 +1141,8 @@ static bool PerformProfiling(ooscript::Context context, NSString *nominalFunctio
 	
 	return result;
 }
+
+}	// namespace
 
 #endif // OOJS_PROFILE
 

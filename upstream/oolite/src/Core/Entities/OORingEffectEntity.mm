@@ -26,6 +26,9 @@ MA 02110-1301, USA.
 #import "OORingEffectEntity.h"
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
+#import "OOStringBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 #define kRingDuration					(2.0f)	// seconds
@@ -110,9 +113,9 @@ static struct { float x, y; } sCircleVerts[kCircleSegments];	// holds vector coo
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"%f seconds passed of %f", _timePassed, kRingDuration];
+	return oo::NSStringFrom(oo::str::format("%f seconds passed of %f", _timePassed, kRingDuration));
 }
 
 

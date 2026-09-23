@@ -21,7 +21,7 @@ Rules that hold for every component:
 | Path | What |
 |---|---|
 | `src/oofnd/Expected.hpp` | `oo::Expected<T, E>`, `oo::Unexpected<E>`, `oo::unexpect`, `oo::BadExpectedAccess<E>`: `std::expected`'s C++23 API |
-| `src/oofnd/Ref.hpp` | `oo::RefCounted`, `oo::Ref<T>`, `oo::WeakRef<T>`, `oo::AutoreleaseScope`: ObjC retain/release/autorelease and `OOWeakReference` 1:1 ([ADR-0003](../../../../docs/decisions/0003-intrusive-refcount.md), [ADR-0026](../../../../docs/decisions/0026-oofnd-ref-semantics.md)); the banner maps each ObjC idiom |
+| `src/oofnd/Ref.hpp` | `oo::RefCounted`, `oo::Ref<T>`, `oo::WeakRef<T>`, `oo::AutoreleaseScope`: ObjC retain/release/autorelease and `OOWeakReference` 1:1 ([ADR-0003](../../../../docs/decisions/0003-intrusive-refcount.md), [ADR-0026](../../../../docs/decisions/0026-oofnd-ref-semantics.md), drain order [ADR-0045](../../../../docs/decisions/0045-autorelease-scope-drains-lifo.md)); the banner maps each ObjC idiom |
 | `src/oofnd/WeakSet.hpp` | `oo::WeakSet<T>`: `OOWeakSet` |
 | `src/oofnd/PList.hpp` | `oo::PList`: the property-list value (null/bool/integer/real/string/data/date/array/dict) replacing the Foundation plist object graph; UTF-16 <-> UTF-8 helpers ([ADR-0027](../../../../docs/decisions/0027-oofnd-plist-fidelity.md)) |
 | `src/oofnd/PListOldStyle.hpp` | `oo::parseOldStylePList`: GNUstep's old-style (OpenStep) scanner, `parsePlItem`, ported quirk-for-quirk |
@@ -39,10 +39,13 @@ Rules that hold for every component:
 | `src/oofnd/Process.hpp` | `oo::process` + `oo::env`: `NSProcessInfo` (arguments captured in `main`, `hasArgument`, `processName`, `processorCount`, `operatingSystemVersionString`) with GNUstep's measured semantics |
 | `src/oofnd/Thread.hpp` | `oo::thread`: `NSThread` on `std::thread`: `detach`, `isMainThread` (id captured at static init), `setCurrentName`, `setCurrentPriority` (GNUstep's measured Windows mapping) |
 | `src/oofnd/String.hpp` | `oo::str`: the `NSString` methods and Oolite `NSString` categories the game uses (`NSStringOOExtensions`, `OOStringParsing`'s `NSString (OOUtilities)`, `ScanTokensFromString`, the version helpers) over UTF-8 `std::string`, GNUstep 1.31.1's answers exactly: case tables, whitespace set, composed-sequence rules, `-pathExtension`, `-replaceOccurrencesOfString:`, `-hasPrefix:`, `-stringWithFormat:` without `%@` ([ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)) |
-| `src/oofnd/Encoding.hpp` | `oo::str::Encoding` / `encodeLossy` / `convertForFont`: `OOEncodingConverter`'s conversion to the five Windows code pages, including libiconv's transliterations as GNUstep runs them |
+| `src/oofnd/Encoding.hpp` | `oo::str::Encoding` / `encodeLossy` / `convertForFont`: `OOEncodingConverter`'s conversion to the five Windows code pages, including libiconv's transliterations as GNUstep runs them; `stringWithContentsOfUnicodeFile` / `decodeUnicodeText`: `+[NSString stringWithContentsOfUnicodeFile:]` (UTF-16 by BOM, else UTF-8, else Latin-1; plain files, captured, oo-3rb.123) |
 | `src/oofnd/Log.hpp` | `oo::log`: OOLogging without Foundation: message-class switches (inheritance, `$metaclasses`, `_default`/`_override`), per-thread indentation, the exact Latest.log line layout, OOLogging's own diagnostics, and the `OO_LOG("cls", "{}", ...)` std::format front end. `src/Core/OOLogging.mm` is its Objective-C shell ([ADR-0035](../../../../docs/decisions/0035-oofnd-logging.md)) |
 | `src/oofnd/LogFile.hpp` | `oo::log::FileWriter`, `logFileBytes`, `consoleBytes`, `rotateToPrevious`: the Latest.log writer (OOLogOutputHandler's OOAsyncLogger) without Foundation, byte for byte: CRLF, lone-surrogate lines dropped, 1 GiB saturation, Previous.log rotation ([ADR-0042](../../../../docs/decisions/0042-oofnd-log-file-writer.md)) |
 | `src/Core/OOStringBridge.h` (game side) | `oo::StdString` / `oo::NSStringFrom` / `oo::StringMap`: the exact `NSString` <-> `std::string` bridge for calling `oo::str` from files that still hold `NSString`s; see below |
+| `src/oofnd/objc/OOObjCRef.h` | `oo::ObjCRef<T *>`: a retaining reference to an Objective-C object for std containers (`objc_retain`/`objc_release`; `Ref<T>`'s API); `test_objc_ref.mm` also pins the nil-message zero-fill the sweep's return types rest on (proposed [ADR-0043](../../../../docs/decisions/0043-foundation-sweep-recipe.md)) |
+| `src/Core/OOFoundationBridge.h` (game side) | the Foundation sweep's boundary helpers: nil-able strings, kind tests, string and object collections, `oo::PList` <-> property-list objects, `%@` text; see "Migrating Foundation usage" |
+| `tools/check-selector-types.py` | which of a header's selectors are shared (keep `id`) and the tree-wide guard against a selector family disagreeing on a C++ type |
 | `src/oofnd/Defaults.hpp` | `oo::Defaults`: `NSUserDefaults` with `NSUserDefaults+Override`/`NSBundle+Override` as the game runs them: same `GNUstep/Defaults/oolite.plist`, same search list and coercions, `oo::writeOpenStepPList` (GNUstep's OpenStep writer, byte-identical) ([ADR-0032](../../../../docs/decisions/0032-oofnd-defaults.md)) |
 | `src/oofnd/objc/OOObject.h`, `.mm` | `OOObject`: the Foundation-free Objective-C root class on libobjc2's own refcount and pool; `OOObjCInstallFloor()` ([ADR-0029](../../../../docs/decisions/0029-objc-floor-without-foundation.md)). Objective-C++, not linked into the game until the reroot bead |
 | `src/oofnd/objc/OOObject.h`, `.mm` | `OOObject`: the Foundation-free Objective-C root class on libobjc2's own refcount and pool; `OOObjCInstallFloor()` ([ADR-0029](../../../../docs/decisions/0029-objc-floor-without-foundation.md)). Objective-C++; linked into the game by bead oo-3rb.2 (exemplar reroot: `Core/OORoleSet`), but `OOObjCInstallFloor()` is not called until the constant-string flip |
@@ -147,7 +150,7 @@ oo-dps; proposed [ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)); 
    and `oo::str` of `""` is not always zero (`ooHash("")` is 5381). `oo::StringMap` keeps nil for
    `NSString` -> `NSString` methods; for any other result, test the receiver as the table does.
 3. **Leave alone:** everything else in the file, and methods not in the table (`%@` formatting
-   waits for Logging, oo-qpb; `+stringWithContentsOfUnicodeFile:` for its own bead).
+   waits for Logging, oo-qpb; `+stringWithContentsOfUnicodeFile:` is `oo::str::stringWithContentsOfUnicodeFile` in `Encoding.hpp`).
 4. **Check:** the file no longer names a category method, `tools/tier-a.sh <file>` passes, and
    the goldens still verify.
 
@@ -177,6 +180,286 @@ remaining `OOLog` calls, so a converted line reads exactly as it did.
 3. **Leave alone:** `%@` of anything but an `NSString` (its `-description` has no oo::log form
    yet), `OOLogWithArguments`, and every other line.
 4. **Check:** `tools/tier-a.sh <file>` passes and the goldens verify.
+
+## Migrating Foundation usage (sweep:foundation)
+
+The recipe for every `sweep:foundation` bead ("Migrate Foundation usage to oofnd: <file>"). Proposed
+[ADR-0043](../../../../docs/decisions/0043-foundation-sweep-recipe.md). Exemplars, one per early
+module; open the one nearest your file and do what it does:
+
+| Exemplar | Bead | Shows |
+|---|---|---|
+| `src/Core/OOVector.mm` / `.h` | oo-g7k5 | a C function returning a string; a header reached inside `extern "C"`; callers wrapped at the call |
+| `src/Core/OORoleSet.mm` / `.h` | oo-hi38 | collections as std containers, `std::optional` results, unique and shared selectors, `-description` -> `-descriptionComponents`, sorting, four callers adapted |
+| `src/Core/Materials/OOBasicMaterial.mm` / `.h` | oo-ro7q | a class whose every NS-typed selector is shared: `id` at the boundary, a nil-able string ivar |
+| `src/Core/OOColor.mm` / `.h` + `OOColor+FoundationBridge.h/.mm` | oo-tms0 | fan-out over budget (15 caller files): `cxx_` API plus a transitional bridge (step 6) |
+| `src/Core/Materials/OOMaterialSpecifier.mm` / `.h` + `OOMaterialSpecifier+FoundationBridge.h/.mm` | oo-hiis | a category on NSDictionary over mixed configurations -> `cxx_` free functions over `const oo::PList &`, bridged (Amendment 2) |
+| `src/Core/Materials/OOMultiTextureMaterial.mm` / `.h` | oo-vpbt | a mixed configuration as `oo::PList`: read, copied minus two keys, handed on exactly |
+| `src/Core/OOALSoundDecoder.mm` / `.h` | oo-oz2y | path components (`oo::str::pathComponents` & co.), a private dictionary as `std::optional<std::map>`, `-description` with a dictionary |
+
+The class stays Objective-C. The file and its header end with no Foundation class name the
+acceptance grep matches (comments included), the whole tree builds, and the game behaves the same.
+
+### 0. Size it before you edit
+
+1. `python3 tools/check-selector-types.py <file.h>` prints every method as `unique` or `shared`
+   (declared by another class or protocol, in the tree or in Foundation). Only `unique` selectors
+   and C functions change their types; `shared` ones keep an Objective-C object type (step 3).
+2. For each `unique` selector and C function whose declaration names an NS type, find its direct
+   callers: `grep -rn 'firstPartOfSelector:' upstream/oolite/src` (or the function name).
+3. If your file, your header and those callers exceed 8 files: use a **transitional bridge**
+   (step 6) instead of adapting the callers. If the file's own migration exceeds ~400 written
+   lines even with a bridge, stop and report (the orchestrator splits it by selector group).
+4. If the header declares a category on a Foundation class (`@interface NSString (OOExtensions)`),
+   or a subclass of one (`: NSEnumerator`), this is not a sweep: step 7.
+
+### 1. Types
+
+Use `oofnd/StdLib.hpp` for standard containers (never `<vector>` directly: OOCocoa.h's
+`true`/`false` macros), `oofnd/String.hpp` for `oo::str`, `oofnd/PList.hpp` for `oo::PList`,
+`oofnd/objc/OOObjCRef.h` for `oo::ObjCRef`, and `#import "OOFoundationBridge.h"` (which brings
+`OOStringBridge.h`) for the boundary helpers.
+
+| Foundation | inside the file (ivars, locals, statics) | parameter of a unique selector / C function | result of a unique **method** (receiver may be nil) | result of a C function |
+|---|---|---|---|---|
+| `NSString *` | `std::string`; `std::optional<std::string>` if nil and `@""` behave differently | `const std::string &` | `std::optional<std::string>` | `std::string` |
+| `NSMutableString *` | `std::string` (`+=`, `oo::str::format`) | `std::string &` | as `NSString *` | as `NSString *` |
+| `NSArray *` of strings / numbers | `std::vector<std::string>` / `std::vector<float>` ... | `const std::vector<...> &` | `std::vector<...>` | `std::vector<...>` |
+| `NSArray *` of objects | `std::vector<oo::ObjCRef<OOFoo *>>` | `const std::vector<oo::ObjCRef<OOFoo *>> &` | `std::vector<oo::ObjCRef<OOFoo *>>` | same |
+| `NSDictionary *` of plist data, or a configuration that also holds live objects (colours, textures, NSNull) or floats | `oo::PList` (a Dict; objects are `Object` nodes, floats single reals) | `const oo::PList &` | `oo::PList` (null = nil) | `oo::PList` |
+| `NSDictionary *` string -> value | `std::map<std::string, V, std::less<>>` | `const std::map<...> &` | `std::optional<std::map<...>>` | `std::map<...>` |
+| `NSDictionary *` string -> object | `std::map<std::string, oo::ObjCRef<OOFoo *>, std::less<>>` | as above | `std::optional<std::map<...>>` | `std::map<...>` |
+| `NSSet *` of strings | `std::set<std::string>` or a sorted `std::vector<std::string>` | `const std::vector<std::string> &` | `std::vector<std::string>` (sorted) | same |
+| `NSSet *` of objects (identity) | `std::vector<oo::ObjCRef<OOFoo *>>` + `std::find` | as `NSArray` | as `NSArray` | as `NSArray` |
+| `NSNumber *` | the scalar it held (`float`, `int`, `BOOL`) | the scalar | the scalar | the scalar |
+| `NSData *` | `oo::Data` | `const oo::Data &` | `oo::Data` (empty = nil) | `oo::Data` |
+
+**Why methods differ from C functions.** A message to nil returns zero-filled storage. That is a
+valid empty `std::vector`, a disengaged `std::optional`, a null `oo::ObjCRef` or `oo::PList`; it is
+**not** a valid `std::string` (copying it crashes) or `std::map`. So a method never returns
+`std::string`, `std::map`, `std::set` or a reference; it returns them inside `std::optional`.
+
+| Foundation idiom | becomes |
+|---|---|
+| `foreach (x, array)`, `foreachkey (k, dict)`, `NSEnumerator`, `for (x in y)` | range-for: `for (const auto &x : v)`, `for (const auto &[k, v] : map)` |
+| `[a count]`, `[a objectAtIndex:i]`, `[d objectForKey:k]`, `[d setObject:v forKey:k]` | `.size()`, `[i]`, `find`, `m[k] = v` |
+| `[[d mutableCopy] autorelease]`, `[a copy]` | a value copy |
+| `[a isEqual:b]` (two collections) / `[d hash]` | `a == b` / `d.size()` (GNUstep hashes a dictionary to its count) |
+| `@"..."` that feeds a `std::string` | `"..."` |
+| `[NSString stringWithFormat:f, ...]` / `-appendFormat:` without `%@` | `oo::str::format(f, ...)` / `s += oo::str::format(...)` |
+| `%@` of a string you now hold as `std::string`, inside `oo::str::format` | `%s` with `s.c_str()` |
+| `%@` of an object, inside `oo::str::format` | `%s` with `oo::DescriptionOf(obj).c_str()` (`(null)` for nil, as `%@` printed) |
+| `OOLog(...)` argument that is now a `std::string` | keep `%@`, pass `oo::NSStringFrom(s)` (`oo::NSStringOrNil(opt)` if it can be nil). Converting to `OO_LOG` is the OOLog recipe's job, not this one's |
+| `NSString` methods and categories | `oo::str` (the table in `String.hpp`), including `oo::str::compare` / `caseInsensitiveCompare` |
+| `sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)` | `std::stable_sort(v.begin(), v.end(), [](auto &a, auto &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; })` |
+| `[x isKindOfClass:[NSString class]]` (& NSArray/NSDictionary/NSSet/NSNumber/NSData) | `oo::IsNSString(x)` (& co.) |
+| `ScanTokensFromString(s)` | `oo::str::tokens(s)` |
+| `NSScanner -scanFloat:` / `-scanDouble:` on a string you hold | `oo::plist_get::scanDouble(oo::utf8ToUtf16(s), &d)` (the NSScanner port; narrow for float) |
+| `-pathComponents`, `+pathWithComponents:`, `-lastPathComponent`, `-stringByDeletingLastPathComponent`, `-stringByAppendingPathComponent:c` | `oo::str::pathComponents(s)`, `pathWithComponents(v)`, `lastPathComponent(s)`, `deletingLastPathComponent(s)`, `appendingPathComponent(s, c)` (GNUstep's Windows rules; `c` is one component) |
+| `%p` in a format string | `%s` with `oo::str::pointerDescription(p).c_str()` (GNUstep's text: low 32 bits, `(null)`) |
+| `[s UTF8String]` to hand a path to a C API | `s.c_str()` |
+| `OOCommodityType` (a typedef of `NSString *`) | `std::string`; never name the typedef in a migrated file (also `OOALStringRef` & co.) |
+
+Leave alone: `NSInteger`/`NSUInteger`/`NSRange`/`NSNotFound` (they stay, ADR-0029), and the other
+Foundation families (`NSScanner`, `NSNotification`, `NSDate`, `NSValue`, `NSException`...), which
+have their own beads, unless one forces a matched NS name into your file.
+
+### 2. Unique selectors and C functions
+
+Change the declaration in the header and the definition in the `.mm` per the table, then adapt each
+direct caller **at the call expression only**, in the same commit:
+
+| the caller has | and calls your | write |
+|---|---|---|
+| `NSString *s` | `const std::string &` parameter | `oo::StdString(s)` (nil arrives as `""`) |
+| `@"lit"` | `const std::string &` parameter | `"lit"` |
+| use of the result as `NSString *` | `std::optional<std::string>` / `std::string` result | `oo::NSStringOrNil([x foo])` / `oo::NSStringFrom(Foo())` |
+| use of the result as `NSArray *` of strings | `std::vector<std::string>` | `oo::NSArrayFromStrings(...)` |
+| use of the result as a dictionary of numbers | `std::optional<std::map<std::string, float>>` | build it in the caller's own Foundation code: `for (const auto &[k, v] : *m) [d setObject:[NSNumber numberWithFloat:v] forKey:oo::NSStringFrom(k)];` (the exact NSNumber type the old code stored) |
+| a nil receiver whose nil result mattered (e.g. handed to JavaScript, where nil is not `[]`) | any collection result | test the receiver: `r != nil ? oo::NSArrayFromStrings([r foo]) : nil` (`OOJSShip.mm`, `kShip_roles`) |
+
+Add `#import "OOFoundationBridge.h"` (or `OOStringBridge.h`) after the caller's last import. Change
+nothing else in the caller. A caller whose own bead has landed already holds C++ values: pass them
+directly.
+
+A header reached inside `extern "C"` (the `OOMaths.h` family) wraps its C++ declarations in
+`extern "C++" { ... }`, as `OOVector.h` does.
+
+### 3. Shared selectors
+
+For each `shared` selector, every parameter or result that was an NS type becomes `id` and nothing
+else about the selector changes: callers, subclasses and the other classes in the family are
+untouched. Inside, convert with the bridge (`oo::StdString(x)`, `oo::OptionalString(x)`,
+`oo::NSStringOrNil(opt)`, `oo::StringsFrom(set)`, `oo::NSSetFromObjects(refs)`,
+`oo::ObjectFromPList(plist)` ...). Mark the declaration `// shared selector (proposed ADR-0043)`.
+Root-class selectors are shared by construction: `-description`, `-descriptionComponents`,
+`-shortDescriptionComponents`, `-copyWithZone:`, `-isEqual:`, `-hash`, the JavaScript glue.
+
+- A `-description` whose format is exactly `@"<%@ %p>{%@}", [self class], self, X` is replaced by
+  `- (id)descriptionComponents { return <X as an NSString via the bridge>; }`: the root class's
+  `-description` prints the same text (`OORoleSet.mm`).
+- `id` is for this and nothing else. Never `@[]`, `@{}`, `@()`, a typedef or a macro to keep a
+  Foundation value out of the grep's sight. Where the old code built an empty Foundation collection
+  for a callee (`[NSDictionary dictionary]`), build it with the bridge
+  (`oo::ObjectFromPList(oo::PList(oo::PList::Dict{}))`, `OOBasicMaterial.mm`).
+
+### 4. nil, order, and text
+
+- **nil.** `oo::StdString(nil)` is `""`. Where the file tested a string against nil, returned nil,
+  or stored nil, and `@""` would behave differently, carry `std::optional<std::string>`. An empty
+  role, key or name may stand for nil only where the old code could never see an empty one (say so
+  in the header comment, as `OORoleSet.h` does).
+- **Order.** A dictionary or set used to enumerate in hash order; a `std::map` enumerates in byte
+  order of the key, a vector in insertion order. Classify every loop over a former dictionary or
+  set: order-insensitive (lookup, membership, integer sums, building another map) needs nothing;
+  order-sensitive (first match wins, weighted random pick, float accumulation, text or log output,
+  the order of random draws) is allowed, but name it in the commit message. The goldens decide.
+- **Mixed configurations** (Amendment 2). `oo::PListFrom` keeps any non-plist object as a
+  `PList::Object` node and a float as a single-precision real; `oo::ObjectFromPList` gives back the
+  same objects and NSNumber types. So a configuration that holds colours, textures or
+  placeholders is an `oo::PList` like any other: read it with `get<T>` / `find`, read an object
+  with `oo::ObjectIn(*config.find("key"))`, copy it and `erase` keys for a keyed copy, and hand
+  it to an unmigrated callee with `oo::ObjectFromPList`. Convert once per method, not per access;
+  where two arguments were the same object, convert once and pass the one object twice
+  (`OOMultiTextureMaterial.mm`). A float's text: `oo::plist_get::numberStringValue(v)` prints
+  it as `%@` did.
+- **Text.** Keep every formatted string byte-identical: same format string, same conversions.
+  `oo::str::format` is `vsnprintf`, except `%p`: write `%s` with `oo::str::pointerDescription(p)`.
+- **Typedefs.** A typedef of a Foundation type (`OOCommodityType`, `OOALStringRef`,
+  `OOALDataRef`, `OOALMutableDataRef`, `OOALDictionaryRef`) is that Foundation type: the migrated
+  file must not name it. `grep -nE '\b(OOCommodityType|OOAL(String|Data|MutableData|Dictionary)Ref)\b'`
+  over your two files prints nothing. The typedef goes with the bead of its last user.
+
+### 5. Check, commit, note
+
+1. The acceptance grep prints nothing.
+2. `python3 tools/check-selector-types.py --check` reports 0 families.
+3. `tools/build-windows.sh test` succeeds, with no new warning in a file you touched (grep the build
+   output for their names; `multiple methods named` anywhere is a stop).
+4. `OOLITE_TIER_A_BUDGET=120 tools/tier-a.sh <file.mm>` and the same for every adapted caller.
+5. `bash tools/guardrails.sh`.
+6. `bash tools/tier-c.sh --only goldens` (after the build): `2 blessed verified`. Mandatory when you
+   changed an iteration order or a formatted string.
+7. Commit as `bead <id>: ...`, listing the shared selectors kept `id`, the order-sensitive loops, and
+   the nil decisions. Put the same three lists in the bead's notes (`bd update <id> --notes`): the
+   family beads and the callers' own beads read them.
+
+### 6. Over budget: a transitional bridge
+
+For a file `X` whose unique Foundation-typed API has too many direct callers (exemplar
+`OOColor.mm`):
+
+1. In `X.h` / `X.mm`, give each such method or C function a C++-typed twin named with a **`cxx_`
+   prefix** (`+colorFromString:` -> `+cxx_colorFromString:(const std::string &)`,
+   `OORGBAComponentsDescription()` -> `cxx_OORGBAComponentsDescription()`), with the types of
+   step 1, and delete the old declaration and definition from `X.h` / `X.mm`. Migrate the body.
+2. Create `X+FoundationBridge.h`: the banner of `OOColor+FoundationBridge.h` (say which bead made
+   it), an include guard, no imports, and a category `@interface X (OOFoundationBridge)` holding
+   the old declarations **copied exactly** (same selector names, same types) plus the old C
+   function prototypes. Create `X+FoundationBridge.mm`: `#import "X.h"` and
+   `#import "OOFoundationBridge.h"`, and implement each old method by forwarding to its `cxx_`
+   twin and converting the result as the old code built it (the same NSNumber type, nil for nil,
+   immutable collections).
+3. Add `#import "X+FoundationBridge.h"` as the LAST line of `X.h`, under a comment saying it is
+   transitional, and add `'X+FoundationBridge.mm'` after `'X.mm'` in the directory's `meson.build`.
+4. Callers are untouched. Do not call the bridge from migrated code; never add to a bridge later.
+5. Add a row to "Transitional bridges" below, and file its deletion bead:
+   `bd create "Delete X+FoundationBridge" -t task -p 2 -l fleet,phase:2,sweep:foundation-bridge`
+   with acceptance `! test -e <dir>/X+FoundationBridge.mm`, `! grep -n FoundationBridge <dir>/X.h
+   <dir>/meson.build`, `tools/build-windows.sh test`, `bash tools/guardrails.sh`; then
+   `bd dep add <deletion> <caller's sweep bead>` for every caller file's open sweep bead, and
+   `bd dep add oo-qps <deletion>`.
+
+A caller's own sweep bead replaces `[x foo:s]` with `[x cxx_foo:...]` (C++ values in, C++ values
+out). The deletion bead, once `git grep` finds no use of a bridged name outside the bridge, deletes
+the two files, the `meson.build` line and the import in `X.h`.
+
+### 7. Categories on Foundation classes, and Foundation subclasses: retire, do not sweep
+
+`@interface NSString (OOExtensions)` and its kind (`NSData`, `NSDictionary`, `NSMutableDictionary`,
+`NSNumber`, `NSFileManager`, `OOCollectionExtractors`, `OODeepCopy`, OOCocoa.h's `NSEnumerator`
+category) and subclasses of Foundation classes (`OOFilteringEnumerator`,
+`OOExcludeObjectEnumerator`) cannot stop naming Foundation while they exist. Their beads wait on
+the sweep beads of their callers (the dependency is recorded). The bead is ready when `git grep`
+finds none of the category's selectors (or the subclass's name) outside its own files; it then
+deletes its `.h` / `.mm`, their `meson.build` line and every `#import` of the header, and nothing
+else. Until then, a caller's sweep bead moves off them with:
+
+| retiring | replacement in the caller |
+|---|---|
+| `NSString (OOExtensions)`, `(OOUtilities)` | `oo::str` (tables above and in `String.hpp`) |
+| `NSFileManager (OOExtensions)`, `NSData` file reading | `oo::fs` (`oofnd/FileSystem.hpp`) |
+| `NSDictionary` / `NSMutableDictionary (OOExtensions)`, `OOCollectionExtractors` | `oo::PList` / std containers; `get<T>` (the `oo_*ForKey` recipe) |
+| `NSNumber (OOExtensions)` | the scalar |
+| `OODeepCopy(x)` | a value copy of the `oo::PList` / std container (already deep) |
+| `[e objectEnumeratorFilteredWithSelector:@selector(isFoo)]` & co. | `for (const auto &r : v) { if (![r.get() isFoo]) continue; ... }` |
+| `[e objectEnumeratorExcludingObject:x]` | `for (const auto &r : v) { if (r.get() == x) continue; ... }` |
+| `foreach` / `foreachkey` / `-objectEnumerator` over a std container | range-for |
+| `NSUserDefaults (Override)` | `oo::Defaults` (ADR-0032); retired with the last `NSUserDefaults` consumer |
+
+### 8. Materials order, chunk beads, C handles (Amendment 2)
+
+- **Materials:** `OOMaterialSpecifier` (done) -> `OOTextureLoader` -> `OOTexture` -> `OOCombinedEmissionMapGenerator` -> the materials -> `OODefaultShaderSynthesizer` -> `OOShaderMaterial` -> `OOMaterialConvenienceCreators`. Specifiers and configurations are `const oo::PList &` in every `cxx_` twin; `cxx_OOMaterial*` (OOMaterialSpecifier.h) replace the `-oo_*Color` / `-oo_*MapSpecifier` category methods.
+- **Chunk beads:** a file the orchestrator split (`sweep:foundation-chunk`) is done chunk by chunk, in order; each chunk touches only its listed selectors or body part and has its own acceptance; the parent bead's whole-file grep passes after the last chunk.
+- **A C file behind an abstraction layer** keeps its API; the layer's handles become `struct OOALObject *` (ADR-0043 item 14), defined in C++ in the layer's `.mm`.
+
+- **Floats written to disk** (savegames, caches, defaults): build them with `oo::PList::singleReal(f)`, never `oo::PList(double(f))`; the writers then print `%0.7g` as GNUstep did (ADR-0043 item 15). The saved game is written with `oo::writeXMLPList`.
+- **An `NSEnumerator` subclass** is replaced by C++ iteration in the owner's bead: range-for over the backing container, or a nested C++ iterator class behind a `cxx_` accessor; a shared `-objectEnumerator` stays `id` and returns `[oo::NSArrayFromObjects(snapshot) objectEnumerator]` (item 16).
+- **OOLog:** `OOLogging.h` keeps the `const char *` / `OO_LOG` API; the NSString API lives in `OOLogging+FoundationBridge.h` until every caller has moved (item 17). Do not touch it from a caller's bead; convert your own `OOLog` calls with "Migrating OOLog calls".
+
+- **A format string that is data** (a `DESC(...)` entry, a plist template) goes through `oo::str::formatRuntime(fmt, {args...})`, each argument an `oo::str::FormatArg`: an object's `oo::DescriptionOf(obj)` for `%@`, `FormatArg::null()` for nil, `FormatArg::pointer(p)` for `%p`, numbers as themselves (`FormatArg::single(f)` for a float). Only a literal format uses `oo::str::format` (ADR-0043 item 19; exemplar OOOXPVerifier `-dumpDebugGraphviz`).
+- **An error message or comment that names a Foundation class** and that no player, golden or script sees is reworded ("array", "string"), not kept (item 20).
+
+### 9. Worktrees on the fleet machine
+
+`.agents/skills/beads-worker/scripts/worktree.sh <id>` run from MSYS2 records MSYS paths (`/c/Users/...`) in `.git/worktrees/<id>/gitdir`. Git for Windows (and anything it runs, such as an automatic `git gc`) cannot find that path and **prunes the worktree's registration**, after which the checkout is no longer a repository. The durable fix, once per worktree, from MSYS2:
+
+```bash
+wt=.worktrees/<id>
+cygpath -m "$PWD/$wt/.git" > "$(git rev-parse --git-common-dir)/worktrees/<id>/gitdir"
+```
+
+After it, `worktree.sh --remove <id>` run from MSYS2 no longer finds the worktree by its MSYS path: remove it with `git worktree remove` from Git for Windows (or give the `C:/` path). Never `git worktree prune` yourself.
+
+### Transitional bridges
+
+Every `X+FoundationBridge` file in the tree, with the bead that made it and the bead that deletes
+it. oo-qps cannot compile any of them.
+
+| Bridge | Made by | Deleted by |
+|---|---|---|
+| `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | oo-1hvf |
+| `src/Core/Debug/OODebugStandards+FoundationBridge.h/.mm` | oo-56ct | oo-4fah ("Delete OODebugStandards+FoundationBridge") |
+| `src/Core/Materials/OOMaterialSpecifier+FoundationBridge.h/.mm` (also where the NSDictionary category retires) | oo-hiis | oo-kvlo |
+| `src/Core/Materials/OOTexture+FoundationBridge.h/.mm` (also the NSString `kOOTextureSpecifier*Key` constants) | oo-japz | oo-x3ni ("Delete OOTexture+FoundationBridge") |
+| `src/Core/Materials/OOTextureLoader+FoundationBridge.h/.mm` | oo-wzti | oo-x1s2 ("Delete OOTextureLoader+FoundationBridge") |
+| `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
+| `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
+| `src/Core/OOCacheManager+FoundationBridge.h/.mm` | oo-19g0 | oo-5pae ("Delete OOCacheManager+FoundationBridge") |
+| `src/Core/GuiDisplayGen+FoundationBridge.h/.mm` (chunked: oo-3rb.92 made it; chunks oo-3rb.93-.96 move their own selectors in) | oo-3rb.92 (chunks of oo-ol63) | oo-q01b ("Delete GuiDisplayGen+FoundationBridge") |
+| `src/SDL/MyOpenGLView+FoundationBridge.h/.mm` (chunked: oo-3rb.110 made it; the later MyOpenGLView chunks move their own selectors in) | oo-3rb.110 | oo-xrkm ("Delete MyOpenGLView+FoundationBridge") |
+| `src/Core/AI+FoundationBridge.h/.mm` | oo-3rb.84 (AI.mm chunks oo-3rb.84..87) | oo-ag2w ("Delete AI+FoundationBridge") |
+| `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
+| `src/Core/ResourceManager+FoundationBridge.h/.mm` | oo-3rb.98 (chunks of oo-2wwr) | oo-0f7h ("Delete ResourceManager+FoundationBridge") |
+| `src/Core/OXPVerifier/OOOXPVerifier+FoundationBridge.h/.mm` | oo-hkvv | oo-3rb.168 ("Delete OOOXPVerifier+FoundationBridge") |
+| `src/Core/OOShipRegistry+FoundationBridge.h/.mm` | oo-3rb.114 (chunks of oo-92mj) | oo-b7xq ("Delete OOShipRegistry+FoundationBridge") |
+| `src/Core/Entities/PlayerEntitySound+FoundationBridge.h/.mm` (category `PlayerEntity (SoundFoundationBridge)`) | oo-14c5 | oo-qx1l ("Delete PlayerEntitySound+FoundationBridge") |
+
+### Stop and report (do not stretch)
+
+- The file's own migration exceeds ~400 written lines even with a bridge (step 0).
+- A shared selector would have to change type (only its family bead may).
+- A value you must change is a dictionary holding non-plist objects that a not-yet-migrated callee
+  consumes: report the callee as a prerequisite.
+- A method result has no zero-valid C++ form, even inside `std::optional`.
+- Formatted text you cannot keep byte-identical.
+- A Foundation operation with no oofnd equivalent in the tables: report it, name the method; a
+  frontier bead adds the helper with captured tests (as `oo::str::pathComponents` was added).
+- A golden differs, a test fails, `check-selector-types.py --check` fails, or the build warns about
+  `multiple methods named`. Never re-bless, never sort to make a golden match, never edit a test.
+
+When a family's last member has been swept, its **family bead** changes every `id` of that selector
+to the C++ type in all declarations and callers at once; the bridges go with gnustep-base (oo-qps).
 
 ## Testing
 

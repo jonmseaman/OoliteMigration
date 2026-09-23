@@ -40,6 +40,7 @@ SOFTWARE.
 #include "oofnd/Log.hpp"
 #include "oofnd/LogFile.hpp"
 #include "oofnd/ResourcePaths.hpp"
+#include "oofnd/StdLib.hpp"
 #include <SDL3/SDL_stdinc.h>
 #include <atomic>
 #include <chrono>
@@ -173,10 +174,10 @@ void OOLogOutputHandlerInit(void)
 		OOLog(@"logging.nsLogFilter.install.failed", @"Failed to install NSLog() filter; system messages will not be logged in log file.");
 	}
 #elif GNUSTEP_BASE_LIBRARY
-	NSRecursiveLock *lock = GSLogLock();
-	[lock lock];
+	// gnustep-base's own NSLog lock, not ours to replace: it goes with the NSLog hook (oo-qps).
+	[GSLogLock() lock];
 	_NSLog_printf_handler = OONSLogPrintfHandler;
-	[lock unlock];
+	[GSLogLock() unlock];
 #endif
 
 	atexit(OOLogOutputHandlerClose);
@@ -218,10 +219,9 @@ void OOLogOutputHandlerClose(void)
 			sDefaultLogCStringFunction = NULL;
 		}
 #elif GNUSTEP_BASE_LIBRARY
-		NSRecursiveLock *lock = GSLogLock();
-		[lock lock];
+		[GSLogLock() lock];
 		_NSLog_printf_handler = NULL;
-		[lock unlock];
+		[GSLogLock() unlock];
 #endif
 	}
 }
@@ -577,7 +577,7 @@ std::optional<std::string> LogPath(void)
 
 static char **sCrashReporterInfo = NULL;
 static char *sOldCrashReporterInfo = NULL;
-static NSLock *sCrashReporterInfoLock = nil;
+static std::mutex sCrashReporterInfoLock;
 
 // Evil hackery based on http://www.allocinit.net/blog/2008/01/04/application-specific-information-in-leopard-crash-reports/
 static void InitCrashReporterInfo(void)
@@ -585,15 +585,7 @@ static void InitCrashReporterInfo(void)
 	sCrashReporterInfo = dlsym(RTLD_DEFAULT, "__crashreporter_info__");
 	if (sCrashReporterInfo != NULL)
 	{
-		sCrashReporterInfoLock = [[NSLock alloc] init];
-		if (sCrashReporterInfoLock != nil)
-		{
-			sCrashReporterInfoAvailable = YES;
-		}
-		else
-		{
-			sCrashReporterInfo = NULL;
-		}
+		sCrashReporterInfoAvailable = YES;
 	}
 }
 
@@ -614,11 +606,11 @@ static void SetCrashReporterInfo(const char *info)
 		Note that we keep a separate pointer to the old value, in case
 		something else overwrites __crashreporter_info__.
 	*/
-	[sCrashReporterInfoLock lock];
+	sCrashReporterInfoLock.lock();
 	*sCrashReporterInfo = copy;
 	old = sOldCrashReporterInfo;
 	sOldCrashReporterInfo = copy;
-	[sCrashReporterInfoLock unlock];
+	sCrashReporterInfoLock.unlock();
 	
 	// Delete our old string.
 	if (old != NULL)  free(old);

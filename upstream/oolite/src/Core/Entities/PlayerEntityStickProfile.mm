@@ -513,7 +513,7 @@ static BOOL stickProfileArrow_pressed;
 	OOJoystickSplineAxisProfile *spline_profile;
 	NSInteger i;
 	NSPoint point;
-	NSArray *control_points;
+	std::vector<NSPoint> control_points;
 
 	if (!profile) return;
 	graphRect = NSMakeRect(at.x, at.y, size.width, size.height);
@@ -540,7 +540,7 @@ static BOOL stickProfileArrow_pressed;
 	{
 		spline_profile = (OOJoystickSplineAxisProfile *)profile;
 		control_points = [spline_profile controlPoints];
-		for (i = 0; i < (NSInteger)[control_points count]; i++)
+		for (i = 0; i < (NSInteger)control_points.size(); i++)
 		{
 			if (i == selected_control_point)
 			{
@@ -550,7 +550,7 @@ static BOOL stickProfileArrow_pressed;
 			{
 				OOGL(glColor4f(0.0,1.0,0.0,alpha));
 			}
-			point = [[control_points objectAtIndex: i] pointValue];
+			point = control_points[i];
 			GLDrawFilledOval(at.x+10+point.x*(size.width - 20),at.y+10+point.y*(size.height-20),at.z,NSMakeSize(4,4),20);
 		}
 	}

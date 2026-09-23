@@ -120,6 +120,9 @@ SRC_DIR = os.path.join(OOLITE_ROOT, "src")
 if TESTS_DIR not in sys.path:
     sys.path.insert(0, TESTS_DIR)
 
+# Sources are named by STEM: the migration renames .m -> .mm -> .cpp (source_paths.py, oo-7j3t).
+from source_paths import iter_source_files, resolve_source, source_stem  # noqa: E402
+
 # The staging helpers, imported rather than re-written - the same ones G7 uses. unstage_app in
 # particular removes junctions AS LINKS, so a teardown cannot recurse into the real build.
 from launch_snapshot import stage_app, unstage_app  # noqa: E402
@@ -779,12 +782,9 @@ def _find_surface_line(log_path, offset, mode):
 
 
 def _tree_sources():
-    for root, _dirs, files in os.walk(SRC_DIR):
-        for name in sorted(files):
-            if name.endswith((".m", ".h")):
-                path = os.path.join(root, name)
-                with open(path, "r", encoding="utf-8", errors="replace") as handle:
-                    yield path, handle.read()
+    for path in iter_source_files(SRC_DIR):
+        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            yield path, handle.read()
 
 
 @pytest.mark.offline
@@ -808,7 +808,7 @@ def test_the_games_view_size_has_exactly_one_assignment_in_the_tree():
         "with the size the OS gave the window; with more than one assignment the value is no "
         "longer attributable to the resize and this test's central witness is a proxy."
     )
-    assert "SDL/MyOpenGLView.m" in sites[0].replace("\\", "/"), (
+    assert source_stem(sites[0].split(":")[0]) == "SDL/MyOpenGLView", (
         f"the single assignment moved to {sites[0]}; check it is still inside -updateGLSize:"
     )
 
@@ -886,16 +886,16 @@ def test_the_fullscreen_toggle_has_exactly_two_routes_and_g6_takes_only_the_key(
         "must be shown to be unreachable from the start screen before this expectation is "
         "raised."
     )
-    by_file = {site.split(":")[0].replace("\\", "/"): site for site, _ in callers}
+    by_file = {source_stem(site.split(":")[0]): site for site, _ in callers}
 
-    key_site = by_file.get("SDL/MyOpenGLView+Input.m")
+    key_site = by_file.get("SDL/MyOpenGLView+Input")
     assert key_site, f"no -toggleScreenMode call in SDL/MyOpenGLView+Input.m; callers: {callers}"
     assert "SDLK_F12" in _source_window(key_site, before=4), (
         f"the key route to -toggleScreenMode ({key_site}) is no longer in the SDLK_F12 case; "
         "the lines before it are:\n" + _source_window(key_site, before=4)
     )
 
-    menu_site = by_file.get("Core/Entities/PlayerEntityControls.m")
+    menu_site = by_file.get("Core/Entities/PlayerEntityControls")
     assert menu_site, f"no -toggleScreenMode call in PlayerEntityControls.m; callers: {callers}"
     guard = _source_window(menu_site, before=3)
     assert "GUI_ROW(GAME,DISPLAYSTYLE)" in guard, (
@@ -1034,7 +1034,7 @@ def test_the_surface_log_line_spells_the_mode():
     A typo here would make the fullscreen phase fail every healthy run and read as "fullscreen
     is broken" rather than "the test is looking for the wrong string".
     """
-    view = os.path.join(SRC_DIR, "SDL", "MyOpenGLView.m")
+    view = resolve_source("SDL", "MyOpenGLView")
     assert os.path.isfile(view), f"no MyOpenGLView.m at {view}"
     with open(view, "r", encoding="utf-8", errors="replace") as handle:
         source = handle.read()

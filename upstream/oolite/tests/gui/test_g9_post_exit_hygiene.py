@@ -65,6 +65,7 @@ takes tools/gui-lock for the duration via the ``game`` fixture and launches noth
 
 import ast
 import os
+import sys
 
 import pytest
 
@@ -80,6 +81,12 @@ from conftest import (
 )
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+TESTS_DIR = os.path.abspath(os.path.join(HERE, ".."))
+if TESTS_DIR not in sys.path:
+    sys.path.insert(0, TESTS_DIR)
+
+# Sources are named by STEM: the migration renames .m -> .mm -> .cpp (source_paths.py, oo-7j3t).
+from source_paths import iter_source_files, resolve_source  # noqa: E402
 
 # Same budget as G1/G3: a close that has not taken the game down by now has not worked.
 EXIT_TIMEOUT_SECONDS = 10
@@ -326,12 +333,9 @@ def test_every_exit_context_in_the_tree_is_distinguished_from_the_expected_one()
 
     src = os.path.abspath(os.path.join(HERE, "..", "..", "src"))
     contexts = set()
-    for root, _dirs, files in os.walk(src):
-        for name in files:
-            if not name.endswith((".m", ".h")):
-                continue
-            with open(os.path.join(root, name), "r", encoding="utf-8", errors="replace") as fh:
-                contexts |= set(re.findall(r'exitAppWithContext:@"([^"]+)"', fh.read()))
+    for path in iter_source_files(src):
+        with open(path, "r", encoding="utf-8", errors="replace") as fh:
+            contexts |= set(re.findall(r'exitAppWithContext:@"([^"]+)"', fh.read()))
     assert EXPECTED_EXIT_CONTEXT in contexts, (
         f"{EXPECTED_EXIT_CONTEXT!r} is not an exit context in the game's source any more; this "
         f"test would then never pass. Found: {sorted(contexts)}"
@@ -814,9 +818,8 @@ def test_the_witnesses_are_the_strings_the_game_really_writes():
     for the wrong string". Both source files are asserted to EXIST first, so a moved file is a
     failure rather than a check that quietly stops running.
     """
-    src = os.path.abspath(os.path.join(HERE, "..", "..", "src", "Core"))
-    controller = os.path.join(src, "GameController.m")
-    handler = os.path.join(src, "OOLogOutputHandler.m")
+    controller = resolve_source("Core", "GameController")
+    handler = resolve_source("Core", "OOLogOutputHandler")
     for path in (controller, handler):
         assert os.path.isfile(path), (
             f"no {os.path.basename(path)} at {path}; this guard cannot verify the witnesses "

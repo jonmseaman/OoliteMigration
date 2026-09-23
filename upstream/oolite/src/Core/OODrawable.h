@@ -52,7 +52,7 @@ SOFTWARE.
 - (void)dumpSelfState;
 
 #ifndef NDEBUG
-- (NSSet *) allTextures;
+- (id) allTextures;	// an Objective-C set of textures. Shared selector (proposed ADR-0043).
 - (size_t) totalSize;	// Size including dynamic data, not counting textures.
 #endif
 
