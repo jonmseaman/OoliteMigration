@@ -216,18 +216,18 @@ typedef enum
 - (void) addLiteralMissionText:(id)text;	// called by name (ADR-0043 item 21)
 
 - (void) setMissionChoiceByTextEntry:(BOOL)enable;
-- (void) setMissionChoices:(NSString *)choicesKey;	// choicesKey is a key for a dictionary of
+- (void) setMissionChoices:(id)choicesKey;	// called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of
 													// choices/choice phrases in missiontext.plist and also..
-- (void) setMissionChoicesDictionary:(NSDictionary *)choicesDict;
+- (void) cxx_setMissionChoicesDictionary:(const oo::PList &)choicesDict;	// keys are strings (bead oo-3rb.194)
 - (void) resetMissionChoice;						// resets MissionChoice to nil
 
 - (void) clearMissionScreen;
 
-- (void) addMissionDestination:(NSString *)destinations;	// mark a system on the star charts
-- (void) removeMissionDestination:(NSString *)destinations; // stop a system being marked on star charts
+- (void) addMissionDestination:(id)destinations;	// called by name (ADR-0043 item 21); mark a system on the star charts
+- (void) removeMissionDestination:(id)destinations;	// called by name (ADR-0043 item 21); stop a system being marked on star charts
 
-- (void) showShipModel:(NSString *)shipKey;
-- (void) setMissionMusic:(NSString *)value;
+- (void) showShipModel:(id)shipKey;	// called by name (ADR-0043 item 21)
+- (void) setMissionMusic:(id)value;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 
 - (std::optional<std::string>) cxx_missionTitle;
 - (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
@@ -263,8 +263,8 @@ typedef enum
 /*-----------------------------------------------------*/
 
 - (void) clearMissionScreenID;
-- (void) setMissionScreenID:(NSString *)msid;
-- (NSString *) missionScreenID;
+- (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid;
+- (std::optional<std::string>) cxx_missionScreenID;
 - (void) setGuiToMissionScreen;
 - (void) refreshMissionScreenTextEntry;
 - (void) setGuiToMissionScreenWithCallback:(BOOL) callback;

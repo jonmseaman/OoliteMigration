@@ -55,6 +55,7 @@ MA 02110-1301, USA.
 #import "OOEntityFilterPredicate.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#import "MyOpenGLView+Input.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
@@ -80,7 +81,7 @@ static NSString * const kOOLogNoteRemoveAllCargo			= @"script.debug.note.removeA
 static NSString * const kOOLogNoteUseSpecialCargo			= @"script.debug.note.useSpecialCargo";
 static NSString * const kOOLogNoteAddShips					= @"script.debug.note.addShips";
 static const char *const kOOLogNoteSet						= "script.debug.note.set";
-static NSString * const kOOLogNoteShowShipModel				= @"script.debug.note.showShipModel";
+static const char *const kOOLogNoteShowShipModel				= "script.debug.note.showShipModel";
 static NSString * const kOOLogNoteFuelLeak					= @"script.debug.note.setFuelLeak";
 static NSString * const kOOLogNoteAddPlanet					= @"script.debug.note.addPlanet";
 static NSString * const kOOLogNoteProcessSceneString		= @"script.debug.note.processSceneString";
@@ -193,6 +194,13 @@ std::optional<std::string> StringAtIndex(const oo::PList &array, std::size_t ind
 	if (const std::string *string = value->getIf<std::string>())  return *string;
 	if (value->isNumber())  return oo::plist_get::numberStringValue(*value);
 	return std::nullopt;
+}
+
+
+// A by-name value that turns a mission resource off: empty, or "none" in any case.
+bool IsNoneValue(const std::string &value)
+{
+	return value.empty() || oo::str::lowercase(value) == "none";
 }
 
 
@@ -2010,21 +2018,19 @@ static int shipsFound;
 }
 
 
-- (void) setMissionChoices:(NSString *)choicesKey	// choicesKey is a key for a dictionary of
+- (void) setMissionChoices:(id)choicesKey	// called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of
 {													// choices/choice phrases in missiontext.plist and also..
-	NSDictionary *choicesDict = oo::PListView([UNIVERSE missiontext]).get<NSDictionary *>(choicesKey);
-	if ([choicesDict count] == 0)
+	const oo::PList choicesDict = oo::PListFrom([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(oo::StdString(choicesKey))]);
+	if (!choicesDict.isDict() || choicesDict.count() == 0)
 	{
 		return;
 	}
-	[self setMissionChoicesDictionary:choicesDict];
+	[self cxx_setMissionChoicesDictionary:choicesDict];
 }
 
 
-- (void) setMissionChoicesDictionary:(NSDictionary *)choicesDict
+- (void) cxx_setMissionChoicesDictionary:(const oo::PList &)choicesDict
 {
-	unsigned i;
-	bool keysOK = true;
 	GuiDisplayGen* gui = [UNIVERSE gui];
 	// TODO: MORE STUFF HERE
 	//
@@ -2037,82 +2043,73 @@ static int shipsFound;
 	// and only if the selectable range is not present ask:
 	// Press Space Commander...
 	//
-	
+
 	NSUInteger end_row = 21;
-	if ([[self hud] allowBigGui]) 
+	if ([[self hud] allowBigGui])
 	{
 		end_row = 27;
 	}
 
-	NSArray *choiceKeys = [choicesDict allKeys];
-	/* Guard against potential for numeric keys in dictionary, which
-	 * would cause an unhandled exception in the sorter. See
-	 * OOJavaScriptEngine::OOJSDictionaryFromJSObject for further
-	 * thoughts. - CIM 15/2/13 */
-	for (i=0; i < [choiceKeys count]; i++)
+	// The keys, case-insensitively sorted (a Dict's keys are strings; the bridge form logs and
+	// describes any non-string key). The sort is stable over byte order, where the unstable sort
+	// started from hash order.
+	std::vector<std::string> choiceKeys;
+	if (const oo::PList::Dict *choices = choicesDict.getIf<oo::PList::Dict>())
 	{
-		if (![[choiceKeys objectAtIndex:i] isKindOfClass:[NSString class]])
-		{
-			OOLog(@"test.script.error",@"Choices list in mission screen has non-string value %@",[choiceKeys objectAtIndex:i]);
-			keysOK = false;
-		}
-	}	
-	if (keysOK)
-	{
-		// only try this if they're all strings
-		choiceKeys = [choiceKeys sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
+		for (const auto &[key, value] : *choices)  choiceKeys.push_back(key);
 	}
+	std::stable_sort(choiceKeys.begin(), choiceKeys.end(), [](const std::string &a, const std::string &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; });
 
-	NSInteger keysCount = [choiceKeys count];
-	if ((end_row + 1) < [choiceKeys count]) {
-		OOLogERR(kOOLogException, @"in mission.runScreen choices: number of choices defined (%zu) is greater than available lines (%zu). Check HUD settings for allowBigGui.",  [choiceKeys count], (end_row + 1));
+	NSInteger keysCount = choiceKeys.size();
+	if ((end_row + 1) < choiceKeys.size()) {
+		OOLogERR(kOOLogException, @"in mission.runScreen choices: number of choices defined (%zu) is greater than available lines (%zu). Check HUD settings for allowBigGui.",  choiceKeys.size(), (end_row + 1));
 		keysCount = end_row + 1;
 	}
 
-	[gui setText:@"" forRow:end_row];				// clears out the 'Press spacebar' message
-	[gui setKey:@"" forRow:end_row];					// clears the key to enable pollDemoControls to check for a selection
+	[gui cxx_setText:std::string() forRow:end_row];				// clears out the 'Press spacebar' message
+	[gui cxx_setKey:std::string() forRow:end_row];					// clears the key to enable pollDemoControls to check for a selection
 	[gui setSelectableRange:NSMakeRange(0,0)];	// clears the selectable range
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES]; // enables mouse selection of the choices list items
-	
+
 	OOGUIRow			choicesRow = (end_row+1) - keysCount;
-	NSString			*choiceKey = nil;
-	id            		choiceValue = nil;
-	NSString			*choiceText = nil;
-	
+	std::string			choiceText;
+
 	BOOL selectableRowExists = NO;
 	NSUInteger firstSelectableRow = end_row;
 
-	foreach (choiceKey, choiceKeys)
+	for (const std::string &choiceKey : choiceKeys)
 	{
-		choiceValue = [choicesDict objectForKey:choiceKey];
+		const oo::PList &choiceValue = *choicesDict.find(choiceKey);
 		OOGUIAlignment alignment = GUI_ALIGN_CENTER;
 		OOColor *rowColor = [OOColor yellowColor];
 		BOOL selectable = YES;
-		if ([choiceValue isKindOfClass:[NSString class]])
+		if (const std::string *text = choiceValue.getIf<std::string>())
 		{
-			choiceText = [NSString stringWithFormat:@" %@ ",(NSString*)choiceValue];
-		} 
-		else if ([choiceValue isKindOfClass:[NSDictionary class]])
+			choiceText = " " + *text + " ";
+		}
+		else if (choiceValue.isDict())
 		{
-			NSDictionary *choiceOpts = (NSDictionary*)choiceValue;
-			choiceText = [NSString stringWithFormat:@" %@ ",oo::PListView(choiceOpts).get<NSString *>(@"text")];
-			NSString *alignmentChoice = oo::PListView(choiceOpts).get<NSString *>(@"alignment", @"CENTER");
-			if ([alignmentChoice isEqualToString:@"LEFT"])
+			// "%@" of -oo_stringForKey:@"text": a string or a number's text; "(null)" if neither.
+			const oo::PList *textValue = choiceValue.find("text");
+			const bool hasText = textValue != nullptr && (textValue->isString() || textValue->isNumber());
+			choiceText = " " + (hasText ? choiceValue.get<std::string>("text") : std::string("(null)")) + " ";
+			const std::string alignmentChoice = choiceValue.get<std::string>("alignment", "CENTER");
+			if (alignmentChoice == "LEFT")
 			{
 				alignment = GUI_ALIGN_LEFT;
 			}
-			else if ([alignmentChoice isEqualToString:@"RIGHT"])
+			else if (alignmentChoice == "RIGHT")
 			{
 				alignment = GUI_ALIGN_RIGHT;
 			}
-			id colorDesc = [choiceOpts objectForKey:@"color"];
-			if (oo::PListView(choiceOpts).get<BOOL>(@"unselectable"))
+			const oo::PList *colorDesc = choiceValue.find("color");
+			if (choiceValue.get<bool>("unselectable"))
 			{
 				selectable = NO;
 			}
-			if (colorDesc != nil)
+			if (colorDesc != nullptr)
 			{
-				rowColor = [OOColor colorWithDescription:colorDesc];
+				rowColor = [OOColor colorWithDescription:oo::ObjectFromPList(*colorDesc)];
 			}
 			else if (!selectable) // different default
 			{
@@ -2123,19 +2120,19 @@ static int shipsFound;
 		{
 			continue; // invalid type
 		}
-		choiceText = OOExpand(choiceText);
-		choiceText = oo::NSStringOrNil([self replaceVariablesInString:oo::StdString(choiceText)]);
+		choiceText = oo::StdString(OOExpand(oo::NSStringFrom(choiceText)));
+		choiceText = [self replaceVariablesInString:choiceText].value_or(std::string());
 		// allow blank rows
-		if (![choiceText isEqualToString:@"  "])
+		if (choiceText != "  ")
 		{
-			[gui setText:choiceText forRow:choicesRow align: alignment];
+			[gui cxx_setText:choiceText forRow:choicesRow align: alignment];
 			if (selectable)
 			{
-				[gui setKey:choiceKey forRow:choicesRow];
+				[gui cxx_setKey:choiceKey forRow:choicesRow];
 			}
 			else
 			{
-				[gui setKey:GUI_KEY_SKIP forRow:choicesRow];
+				[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:choicesRow];
 			}
 			[gui setColor:rowColor forRow:choicesRow];
 			if (selectable && !selectableRowExists)
@@ -2144,25 +2141,25 @@ static int shipsFound;
 				firstSelectableRow = choicesRow;
 			}
 		}
-		else 
+		else
 		{
-			[gui setKey:GUI_KEY_SKIP forRow:choicesRow];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_SKIP) forRow:choicesRow];
 		}
 		choicesRow++;
 		if (choicesRow > (end_row + 1)) break;
 	}
-	
+
 	if (!selectableRowExists)
 	{
 		// just in case choices are set but they're all blank.
-		[gui setText:@"  " forRow:end_row align: GUI_ALIGN_CENTER];
-		[gui setKey:@"" forRow:end_row];
+		[gui cxx_setText:std::optional<std::string>("  ") forRow:end_row align: GUI_ALIGN_CENTER];
+		[gui cxx_setKey:std::string() forRow:end_row];
 		[gui setColor:[OOColor yellowColor] forRow:end_row];
 	}
 
 	[gui setSelectableRange:NSMakeRange((end_row+1) - keysCount, keysCount)];
 	[gui setSelectedRow: firstSelectableRow];
-	
+
 	[self resetMissionChoice];
 }
 
@@ -2178,21 +2175,17 @@ static int shipsFound;
 	[self setMissionOverlayDescriptor:nil];
 	[self setMissionBackgroundDescriptor:nil];
 	[self setMissionBackgroundSpecial:nil];
-	[self setMissionTitle:nil];
+	[self cxx_setMissionTitle:std::nullopt];
 	[self setMissionMusic:nil];
 	[self showShipModel:nil];
 }
 
 
-- (void) addMissionDestination:(NSString *)destinations
+- (void) addMissionDestination:(id)destinations	// called by name (ADR-0043 item 21)
 {
-	unsigned j;
-	int dest;
-	NSMutableArray *tokens = ScanTokensFromString(destinations);
-	
-	for (j = 0; j < [tokens count]; j++)
+	for (const std::string &token : oo::str::tokens(oo::StdString(destinations)))
 	{
-		dest = oo::PListView(tokens).at<int>(j);
+		const int dest = oo::str::intValue(token);	// -oo_intAtIndex: of the token
 		if (dest < 0 || dest > 255)
 			continue;
 
@@ -2201,15 +2194,11 @@ static int shipsFound;
 }
 
 
-- (void) removeMissionDestination:(NSString *)destinations
+- (void) removeMissionDestination:(id)destinations	// called by name (ADR-0043 item 21)
 {
-	unsigned			j;
-	int					dest;
-	NSMutableArray		*tokens = ScanTokensFromString(destinations);
-
-	for (j = 0; j < [tokens count]; j++)
+	for (const std::string &token : oo::str::tokens(oo::StdString(destinations)))
 	{
-		dest = [[tokens objectAtIndex:j] intValue];
+		const int dest = oo::str::intValue(token);
 		if (dest < 0 || dest > 255)  continue;
 
 		[self removeMissionDestinationMarker:[self defaultMarker:dest]];
@@ -2217,26 +2206,24 @@ static int shipsFound;
 }
 
 
-- (void) showShipModel:(NSString *)role
+- (void) showShipModel:(id)role	// called by name (ADR-0043 item 21)
 {
-	if ([role isEqualToString:@"none"] || [role length] == 0)
+	const std::string roleString = oo::StdString(role);
+	if (roleString == "none" || roleString.empty())
 	{
 		[UNIVERSE removeDemoShips];
 		return;
 	}
-	
+
 	ShipEntity *ship = [UNIVERSE makeDemoShipWithRole:role spinning:YES];
-	OOLog(kOOLogNoteShowShipModel, @"::::: showShipModel:'%@' (%@) (%@)", role, ship, [ship name]);
+	OO_LOG(kOOLogNoteShowShipModel, "::::: showShipModel:'{}' ({}) ({})", roleString, oo::DescriptionOf(ship), oo::DescriptionOf([ship name]));
 }
 
 
-- (void) setMissionMusic:(NSString *)value
+- (void) setMissionMusic:(id)value	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 {
-	if ([value length] == 0 || [[value lowercaseString] isEqualToString:@"none"])
-	{
-		value = nil;
-	}
-	[[OOMusicController	sharedController] setMissionMusic:value];
+	// nil and "none" still pass nil on
+	[[OOMusicController	sharedController] setMissionMusic:IsNoneValue(oo::StdString(value)) ? nil : value];
 }
 
 
@@ -2254,11 +2241,13 @@ static int shipsFound;
 }
 
 
-- (void) setMissionImage:(NSString *)value
+// Not declared in the header; called by name (setMissionImage: is whitelisted) (ADR-0043 item 21).
+- (void) setMissionImage:(id)value
 {
-	if ([value length] != 0 && ![[value lowercaseString] isEqualToString:@"none"])
+	const std::string name = oo::StdString(value);
+	if (!IsNoneValue(name))
  	{
-		[self setMissionOverlayDescriptor:[NSDictionary dictionaryWithObject:value forKey:@"name"]];
+		[self setMissionOverlayDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
 	}
 	else
 	{
@@ -2268,11 +2257,13 @@ static int shipsFound;
 }
 
 
-- (void) setMissionBackground:(NSString *)value
+// called by name (ADR-0043 item 21)
+- (void) setMissionBackground:(id)value
 {
-	if ([value length] != 0 && ![[value lowercaseString] isEqualToString:@"none"])
+	const std::string name = oo::StdString(value);
+	if (!IsNoneValue(name))
  	{
-		[self setMissionBackgroundDescriptor:[NSDictionary dictionaryWithObject:value forKey:@"name"]];
+		[self setMissionBackgroundDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
 	}
 	else
 	{
@@ -2519,15 +2510,15 @@ static int shipsFound;
 }
 
 
-- (void) setMissionScreenID:(NSString *)msid
+- (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid
 {
-	_missionScreenID = [msid retain];
+	_missionScreenID = [oo::NSStringOrNil(msid) retain];	// PlayerEntity.h's ivar; retained as before
 }
 
 
-- (NSString *) missionScreenID
+- (std::optional<std::string>) cxx_missionScreenID
 {
-	return _missionScreenID;
+	return oo::OptionalString(_missionScreenID);
 }
 
 
@@ -2566,7 +2557,9 @@ static int shipsFound;
 		end_row = 27;
 	}
 
-	[gui setText:[NSString stringWithFormat:DESC(@"mission-screen-text-prompt-@"), [gameView typedString]] forRow:end_row align:GUI_ALIGN_LEFT];
+	// The DESC entry is the format (data): ADR-0043 item 19.
+	const std::optional<std::string> typed = [gameView cxx_typedString];
+	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"mission-screen-text-prompt-@")), { typed.has_value() ? oo::str::FormatArg(*typed) : oo::str::FormatArg::null() }) forRow:end_row align:GUI_ALIGN_LEFT];
 	[gui setColor:[OOColor cyanColor] forRow:end_row];
 	
 	[gui setShowTextCursor:YES];
@@ -2588,13 +2581,13 @@ static int shipsFound;
 	// GUI stuff
 	{
 		[gui clear];
-		[gui setTitle:[self missionTitle] ?: DESC(@"mission-information")];
-		
+		[gui setTitle:oo::NSStringFrom([self cxx_missionTitle].value_or(oo::StdString(DESC(@"mission-information"))))];
+
 		if (!_missionTextEntry)
 		{
-			[gui setText:DESC(@"press-space-commander") forRow:end_row align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::OptionalString(DESC(@"press-space-commander")) forRow:end_row align:GUI_ALIGN_CENTER];
 			[gui setColor:[OOColor yellowColor] forRow:end_row];
-			[gui setKey:@"spacebar" forRow:end_row];
+			[gui cxx_setKey:"spacebar" forRow:end_row];
 			[gui setShowTextCursor:NO];
 		}
 		else
@@ -2603,9 +2596,8 @@ static int shipsFound;
 		}
 		[gui setSelectableRange:NSMakeRange(0,0)];
 		
-		[gui setForegroundTextureDescriptor:[self missionOverlayDescriptorOrDefault]];
-		NSDictionary *background_desc = [self missionBackgroundDescriptorOrDefault];
-		[gui setBackgroundTextureDescriptor:background_desc];
+		[gui cxx_setForegroundTextureDescriptor:oo::PListFrom([self missionOverlayDescriptorOrDefault])];
+		[gui cxx_setBackgroundTextureDescriptor:oo::PListFrom([self missionBackgroundDescriptorOrDefault])];
 		// must set special second as setting the descriptor resets it
 		BOOL overridden = ([self missionBackgroundDescriptor] != nil);
 		[gui setBackgroundTextureSpecial:[self missionBackgroundSpecial] withBackground:!overridden];

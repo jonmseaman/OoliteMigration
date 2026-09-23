@@ -80,6 +80,41 @@ cxx_ counterpart and converts the result exactly as the old method produced it (
 	[self cxx_setMissionTitle:oo::OptionalString(value)];
 }
 
+
+- (void) setMissionChoicesDictionary:(NSDictionary *)choicesDict
+{
+	/* Guard against potential for numeric keys in dictionary, which
+	 * would cause an unhandled exception in the sorter. See
+	 * OOJavaScriptEngine::OOJSDictionaryFromJSObject for further
+	 * thoughts. - CIM 15/2/13
+	 * An oo::PList Dict is keyed by strings, so a non-string key is logged as before and then
+	 * stands for its description; the choices are then sorted, where they used to be left in
+	 * hash order.
+	 */
+	oo::PList::Dict choices;
+	for (id key in [choicesDict allKeys])
+	{
+		if (!oo::IsNSString(key))
+		{
+			OOLog(@"test.script.error",@"Choices list in mission screen has non-string value %@",key);
+		}
+		choices[oo::IsNSString(key) ? oo::StdString(key) : oo::DescriptionOf(key)] = oo::PListFrom([choicesDict objectForKey:key]);
+	}
+	[self cxx_setMissionChoicesDictionary:oo::PList(std::move(choices))];
+}
+
+
+- (void) setMissionScreenID:(NSString *)msid
+{
+	[self cxx_setMissionScreenID:oo::OptionalString(msid)];
+}
+
+
+- (NSString *) missionScreenID
+{
+	return oo::NSStringOrNil([self cxx_missionScreenID]);
+}
+
 @end
 
 
