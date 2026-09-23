@@ -160,7 +160,7 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 
 - (id) initWithObjects:(id *)objects weights:(float *)weights count:(NSUInteger)count
 {
-	NSZone *zone = [self zone];
+	OOZone *zone = [self zone];
 	DESTROY(self);
 	
 	// Zero objects: return empty-set singleton.
@@ -282,7 +282,7 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 }
 
 
-- (id) copyWithZone:(NSZone *)zone
+- (id) copyWithZone:(OOZone *)zone
 {
 	if (zone == [self zone])
 	{
@@ -295,7 +295,7 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 }
 
 
-- (id) mutableCopyWithZone:(NSZone *)zone
+- (id) mutableCopyWithZone:(OOZone *)zone
 {
 	return [[OOMutableProbabilitySet allocWithZone:zone] initWithPropertyListRepresentation:[self propertyListRepresentation]];
 }
@@ -380,7 +380,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) mutableCopyWithZone:(NSZone *)zone
+- (id) mutableCopyWithZone:(OOZone *)zone
 {
 	// A mutable copy of an empty probability set is equivalent to a new empty mutable probability set.
 	return [[OOConcreteMutableProbabilitySet allocWithZone:zone] initPriv];
@@ -398,7 +398,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 	NOTE: assumes single-threaded access.
 */
 
-+ (id) allocWithZone:(NSZone *)inZone
++ (id) allocWithZone:(OOZone *)inZone
 {
 	if (sOOEmptyProbabilitySetSingleton == nil)
 	{
@@ -409,7 +409,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) copyWithZone:(NSZone *)inZone
+- (id) copyWithZone:(OOZone *)inZone
 {
 	return self;
 }
@@ -507,7 +507,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) mutableCopyWithZone:(NSZone *)zone
+- (id) mutableCopyWithZone:(OOZone *)zone
 {
 	return [[OOConcreteMutableProbabilitySet allocWithZone:zone] initWithObjects:&_object weights:&_weight count:1];
 }
@@ -694,7 +694,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) mutableCopyWithZone:(NSZone *)zone
+- (id) mutableCopyWithZone:(OOZone *)zone
 {
 	id						result = nil;
 	float					*weights = NULL;
@@ -731,7 +731,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 
 - (id) init
 {
-	NSZone *zone = [self zone];
+	OOZone *zone = [self zone];
 	[self release];
 	return [[OOConcreteMutableProbabilitySet allocWithZone:zone] initPriv];
 }
@@ -739,7 +739,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 
 - (id) initWithObjects:(id *)objects weights:(float *)weights count:(NSUInteger)count
 {
-	NSZone *zone = [self zone];
+	OOZone *zone = [self zone];
 	[self release];
 	return [[OOConcreteMutableProbabilitySet allocWithZone:zone] initWithObjects:objects weights:weights count:count];
 }
@@ -747,13 +747,13 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 
 - (id) initWithPropertyListRepresentation:(NSDictionary *)plist
 {
-	NSZone *zone = [self zone];
+	OOZone *zone = [self zone];
 	[self release];
 	return [[OOConcreteMutableProbabilitySet allocWithZone:zone] initWithPropertyListRepresentation:plist];
 }
 
 
-- (id) copyWithZone:(NSZone *)zone
+- (id) copyWithZone:(OOZone *)zone
 {
 	return [[OOProbabilitySet allocWithZone:zone] initWithPropertyListRepresentation:[self propertyListRepresentation]];
 }
@@ -994,7 +994,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) copyWithZone:(NSZone *)zone
+- (id) copyWithZone:(OOZone *)zone
 {
 	id						result = nil;
 	id						*objects = NULL;
@@ -1025,10 +1025,11 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) mutableCopyWithZone:(NSZone *)zone
+- (id) mutableCopyWithZone:(OOZone *)zone
 {
-	return [[OOConcreteMutableProbabilitySet alloc] initPrivWithObjectArray:[[_objects mutableCopyWithZone:zone] autorelease]
-															   weightsArray:[[_weights mutableCopyWithZone:zone] autorelease]
+	// Foundation arrays: -mutableCopy is -mutableCopyWithZone: with the default zone (zones unused).
+	return [[OOConcreteMutableProbabilitySet alloc] initPrivWithObjectArray:[[_objects mutableCopy] autorelease]
+															   weightsArray:[[_weights mutableCopy] autorelease]
 																		sum:_sumOfWeights];
 }
 
