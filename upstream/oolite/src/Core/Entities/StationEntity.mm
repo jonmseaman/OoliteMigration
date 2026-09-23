@@ -695,28 +695,28 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	max_police = oo::PListView(dict).get<unsigned int>(@"max_police", STATION_MAX_POLICE);
 	equipmentPriceFactor = oo::PListView(dict).get<oo::NonNegative<float>>(@"equipment_price_factor", 1.0);
 	equipmentPriceFactor = fmax(equipmentPriceFactor, 0.5f);
-	hasNPCTraffic = oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_npc_traffic", (maxFlightSpeed == 0)); // carriers default to NO
+	hasNPCTraffic = (unsigned char)oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_npc_traffic", (maxFlightSpeed == 0)); // carriers default to NO
 	hasPatrolShips = oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_patrol_ships", NO);
-	suppress_arrival_reports = oo::PListView(dict).get<BOOL>(@"suppress_arrival_reports", NO);
+	suppress_arrival_reports = (unsigned char)oo::PListView(dict).get<BOOL>(@"suppress_arrival_reports", NO);
 	[self setAllegiance:oo::PListView(dict).get<NSString *>(@"allegiance")];
 
 	marketCapacity = oo::PListView(dict).get<unsigned int>(@"market_capacity", MAIN_SYSTEM_MARKET_LIMIT);
 	marketDefinition = [oo::PListView(dict).get<NSArray *>(@"market_definition", nil) retain];
 	marketScriptName = [oo::PListView(dict).get<NSString *>(@"market_script", nil) retain];
-	marketMonitored = oo::PListView(dict).get<BOOL>(@"market_monitored", NO);
-	marketBroadcast = oo::PListView(dict).get<BOOL>(@"market_broadcast", YES);
+	marketMonitored = (unsigned char)oo::PListView(dict).get<BOOL>(@"market_monitored", NO);
+	marketBroadcast = (unsigned char)oo::PListView(dict).get<BOOL>(@"market_broadcast", YES);
 
 	// Non main stations may have requiresDockingClearance set to yes as a result of the code below,
 	// but this variable should be irrelevant for them, as they do not make use of it anyway.
-	requiresDockingClearance = oo::PListView(dict).get<BOOL>(@"requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
+	requiresDockingClearance = (unsigned char)oo::PListView(dict).get<BOOL>(@"requires_docking_clearance", [UNIVERSE dockingClearanceProtocolActive]);
 	
-	allowsFastDocking = oo::PListView(dict).get<BOOL>(@"allows_fast_docking", NO);
+	allowsFastDocking = (unsigned char)oo::PListView(dict).get<BOOL>(@"allows_fast_docking", NO);
 	
-	allowsAutoDocking = oo::PListView(dict).get<BOOL>(@"allows_auto_docking", YES);
+	allowsAutoDocking = (unsigned char)oo::PListView(dict).get<BOOL>(@"allows_auto_docking", YES);
 	
 	allowsSaving = [UNIVERSE deterministicPopulation];
 
-	interstellarUndockingAllowed = oo::PListView(dict).get<BOOL>(@"interstellar_undocking", NO);
+	interstellarUndockingAllowed = (unsigned char)oo::PListView(dict).get<BOOL>(@"interstellar_undocking", NO);
 	
 	double unitime = [UNIVERSE getTime];
 
