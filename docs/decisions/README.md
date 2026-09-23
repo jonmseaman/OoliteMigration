@@ -29,5 +29,6 @@ changed* from the chain.
 | [0023](0023-built-in-mozilla-compat-polyfills.md) | The QuickJS-ng build ships the toSource/quote/uneval and Array/String-generics polyfills built in (guarded no-ops on SpiderMonkey) | Proposed — default in effect |
 | [0024](0024-js-api-gate-is-the-oolite-surface.md) | Phase 1's JS API gate compares Oolite's own API surface (tools/js_api_surface_compare.py), not the ES library of the old engine | Proposed — default in effect |
 | [0026](0026-oofnd-ref-semantics.md) | `oo::Ref` details ADR-0003 leaves open: retaining raw-pointer ctor + `adopt`, weak refs zeroed before the destructor, GNUstep autorelease order, ADR-0003's thread-safety only, insertion-ordered `WeakSet` | Proposed — default in effect |
+| [0027](0027-oofnd-plist-fidelity.md) | `oo::PList` is a UTF-8 value type reproducing GNUstep's plist parsers and writers quirk-for-quirk, except: string keys only, no binary plists, GNUstep's undefined behaviour made defined, non-ASCII quoted by the old-style writer, UTF-8/Latin-1 XML only | Proposed � default in effect |
 
 Template: Status · Date · Context · Decision · Consequences · History.

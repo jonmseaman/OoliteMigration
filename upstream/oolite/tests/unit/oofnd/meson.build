@@ -19,3 +19,20 @@ foreach t : oofnd_tests
     )
     test(t, exe, suite: 'oofnd', timeout: 60)
 endforeach
+
+# The PList component (value type, old-style and XML parsers, writers) is also its own suite:
+# meson test -C build/meson_<type> --suite oofnd-plist
+oofnd_plist_tests = [
+    'test_plist',
+]
+
+foreach t : oofnd_plist_tests
+    exe = executable(
+        'oofnd_' + t,
+        t + '.cpp',
+        dependencies: oofnd_dep,
+        override_options: oofnd_override_options,
+        install: false,
+    )
+    test(t, exe, suite: ['oofnd', 'oofnd-plist'], timeout: 60)
+endforeach
