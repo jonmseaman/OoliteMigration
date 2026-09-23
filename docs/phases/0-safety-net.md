@@ -23,25 +23,28 @@ this phase is what makes it safe to exist.
 
 Original gate (MIGRATION_PLAN §5.7) plus the substrate checks (AI_EXECUTION_PLAN §9), merged:
 
-- [ ] Windows build green and reproducible **locally from a clean clone**, scripted; no CI ([ADR-0016](../decisions/0016-no-forge-local-verification.md)); Windows is the only platform until Phase 5 ([ADR-0017](../decisions/0017-native-windows-subtree.md))
-- [ ] ≥ 20 scenarios producing stable goldens across 10 consecutive runs, from **two independent clean worktrees** on the one machine
-- [ ] Iteration-order non-determinism found, fixed in Objective-C, and submitted upstream
-- [ ] `oxp-contract/js-api-1.93.json` committed and reproduced by Tier C
-- [ ] Tier 1 / 2 / 3 OXP corpus automated (per-commit / nightly / weekly)
-- [ ] Mozilla-only-JS scan report published; a hand-audited random 50 agrees with the model at an acceptable rate
-- [ ] PyAutoGUI G1–G4 green on Windows, run by Tier C and nightly under the desktop lock (never per bead)
-- [ ] Component tier S1–S8 green on Windows, five consecutive runs with no flake; the tagged subset in Tier B, the full suite in Tier C ([0-component-tier.md](0-component-tier.md))
-- [ ] `tools/tier-a.sh` measured **< 30 s** on `OOColor.m` and `OORoleSet.m`
-- [ ] N golden game processes (N from the [I0](../infra/0-machines.md) RAM budget, at least 4) run concurrently with no port or output collision
-- [ ] A deliberately perturbed market-price calculation is caught by Tier B, not by a reviewer
-- [ ] A deliberately introduced use-after-free is caught by ASan in Tier C
-- [ ] Reintroducing a `JS_*` or `libgnustep-base` symbol fails Tier B on the deny-list
-- [ ] A bead branch touching `goldens/` without an approved re-bless (Jon, weekly queue) fails Tier B
-- [ ] A batch of 8 branches with one bad one: `tools/merge-queue` bisects to the culprit and requeues its bead
-- [ ] `tools/fleet/accept` closes a bead only after acceptance exits 0 in a fresh clone; an agent attempting `bd close` directly is refused
-- [ ] `tools/fleet/goal-check` returns 0 for a phase whose only open beads are `rebless` / `proposed-adr` / `frontier`
-- [ ] `docs/templates/story.md`, `docs/stories/G1-exit-via-mouse.md`, and `tools/gen-stories` exist
-- [ ] Cross-platform golden policy (decision 11: per-platform + quantised floats) implemented **before the first golden is blessed**
+Reviewed 2026-09-19 (oo-do10, Claude Fable 5.1). A checked box names the evidence in the tree; an
+unchecked one names the bead (or Jon's action) that closes it.
+
+- [x] Windows build green and reproducible **locally from a clean clone**, scripted; no CI ([ADR-0016](../decisions/0016-no-forge-local-verification.md)); Windows is the only platform until Phase 5 ([ADR-0017](../decisions/0017-native-windows-subtree.md)) — `tools/build-windows.sh test` (oo-2a, oo-3b); re-run 2026-09-19 on the shared build dir, 39 s warm. The stale-build-dir trap that made `tier-a` red for a day after oo-ss8 touched `meson.build` is oo-1bf.8.
+- [ ] ≥ 20 scenarios producing stable goldens across 10 consecutive runs, from **two independent clean worktrees** on the one machine — 17 of 20 built and 10-run stable in their own `provenance.json`, each from a bead worktree (002–017, oo-z22 … oo-zyj1). Only 001 is under `goldens/`; 14 wait in `tests/golden/pending/` and 006 in `tests/golden/staged/` for **Jon's landing** (each carries a rehearsed `LANDING.md`; `goldens/` is his). 018–020 are oo-1bf.5, oo-1bf.6, oo-1bf.7.
+- [x] Iteration-order non-determinism found, fixed in Objective-C, and submitted upstream — found (oo-r3r shuffle) and fixed (oo-djn); "submitted upstream" is satisfied as amended by [ADR-0013](../decisions/0013-decide-up-front-minimise-human.md) decision 2 (upstream PRs are batched at Phase 5).
+- [x] `oxp-contract/js-api-1.93.json` committed and reproduced by Tier C — `oxp-contract/` (oo-5k2, oo-1xz); `tools/tier-c.sh` jsapi stage (oo-j4u).
+- [ ] Tier 1 / 2 / 3 OXP corpus automated (per-commit / nightly / weekly) — per-commit exists: `tools/corpus.sh tier1` in `tier-b` (oo-het), tier 2/3 runners (oo-4z6). Nothing schedules nightly or weekly: oo-1bf.11.
+- [ ] Mozilla-only-JS scan report published; a hand-audited random 50 agrees with the model at an acceptable rate — report: `tools/oxp-js-lint/corpus-report.json` (oo-ctq); the local-model pilot reports a confusion matrix (oo-l7u). **The hand audit of a random 50 is Jon's and is not recorded.**
+- [ ] PyAutoGUI G1–G4 green on Windows, run by Tier C and nightly under the desktop lock (never per bead) — G1–G11 exist under `upstream/oolite/tests/gui`; `tier-c` runs them under `tools/gui-lock` (oo-j4u). No green Tier C run can be cited today: Tier B is red on `main` (oo-1bf.13). Nightly: oo-1bf.11.
+- [ ] Component tier S1–S8 green on Windows, five consecutive runs with no flake; the tagged subset in Tier B, the full suite in Tier C ([0-component-tier.md](0-component-tier.md)) — S1–S8 exist; S2–S8 are smoke scenarios by [ADR-0020](../decisions/0020-component-scenarios-are-smoke-tests-for-now.md); `tier-b` runs them per commit, one run each (Jon, 2026-09-18). "Five consecutive runs" is not recorded; the Tier C run is blocked by oo-1bf.13.
+- [x] `tools/tier-a.sh` measured **< 30 s** on `OOColor.m` and `OORoleSet.m` — 6 s and 4 s warm on 2026-09-19; 15–17 s cold (oo-sp1c, "Commands" below).
+- [x] N golden game processes (N from the [I0](../infra/0-machines.md) RAM budget, at least 4) run concurrently with no port or output collision — `tests/golden/run.sh 001 --check-isolation --plan-count 4` (oo-gla, item 0.4b).
+- [ ] A deliberately perturbed market-price calculation is caught by Tier B, not by a reviewer — no evidence in the tree: oo-1bf.10.
+- [x] A deliberately introduced use-after-free is caught by ASan in Tier C — `tools/tier-c-mutants.sh` asan stage (oo-j4u).
+- [ ] Reintroducing a `JS_*` or `libgnustep-base` symbol fails Tier B on the deny-list — the deny-list runs in `tier-a` and in `tools/guardrails.sh` (baseline-relative, `tools/deny-list.txt`); `tier-b` has no guardrails stage: oo-1bf.9.
+- [ ] A bead branch touching `goldens/` without an approved re-bless (Jon, weekly queue) fails Tier B — `tools/guardrails.sh` `check_goldens` + `tools/rebless-approvals.txt` (oo-5ggu exercised it); in Tier B: oo-1bf.9.
+- [x] A batch of 8 branches with one bad one: `tools/merge-queue` bisects to the culprit and requeues its bead — `tools/merge-queue.sh`, `tools/merge-queue-selftest`, `tools/merge-queue-mutants.sh` (oo-pmg).
+- [x] `accept` closes a bead only after acceptance exits 0 in a fresh clone; an agent attempting `bd close` directly is refused — the accept is `.agents/skills/beads-worker/scripts/accept.sh` (detached checkout of `main`, merge, acceptance on the merged tree, close on 0); the guard shim `scripts/bin/bd` refuses `bd close` (exit 77). 100+ phase 0 beads closed only that way. (`tools/fleet/accept` never materialised under that name; the box now names what exists.)
+- [x] `goal-check` returns 0 for a phase whose only open beads are `rebless` / `proposed-adr` / `frontier` — `scripts/goal-check.sh` excludes `review`, `rebless`, `proposed-adr`, `escalated`, and counts `frontier` only when the session takes it (`BEADS_WORKER_LABELS`); 2026-09-19: "phase 0: no open fleet frontier beads".
+- [x] `docs/templates/story.md`, `docs/stories/G1-exit-via-mouse.md`, and `tools/gen-stories` exist — all three; the generator's end-to-end check (oo-hq8) is escalated to Phase 1 by its own definition of done; its scenario sweep is hard-coded to 002–017: oo-1bf.12.
+- [x] Cross-platform golden policy (decision 11: per-platform + quantised floats) implemented **before the first golden is blessed** — `tests/golden/GOLDEN_STORAGE.md` (oo-ss8) landed before 001 was blessed.
 
 ## Seams
 
@@ -332,4 +335,5 @@ once such a target exists.
 - 2026-09-11 — Rewritten for native Windows only (ADR-0017): no Linux build, no containers; scenarios 13–17 are the checklist saves; the GUI tier runs in Tier C and nightly.
 - 2026-09-18 — Scenarios 018-020 defined (oo-9w5): the list reaches 20 with a one-line purpose each, machine-readable in `scenario-catalogue.json` and argued in [0-scenarios-18-20.md](0-scenarios-18-20.md). Gate: `tools/check-scenario-catalogue.py`.
 - 2026-09-17 — Tier A timings in "Commands" re-measured cold and warm (oo-sp1c). The retired "~8 s from no build directory" was the script's self-reported time, which excludes `meson setup`; wall clock is ~15 s, and ccache warmth changes a steady-state run by under a second.
+- 2026-09-19 — Phase 0 review (oo-do10, Claude Fable 5.1). Fleet queue drained (102 phase 0 beads closed, all work on `main`). Exit gate: 11 of 19 boxes checked with evidence; 8 open. Gaps filed under the epic as `sweep:review-0`: scenarios 018–020 (oo-1bf.5/.6/.7), the `tier-a` reconfigure trap (oo-1bf.8), a guardrails stage in `tier-b` (oo-1bf.9), the market-price mutant proof (oo-1bf.10), nightly/weekly scheduling (oo-1bf.11), the generator's hard-coded scenario list (oo-1bf.12), and the Tier B red on `main` from `test_launch_preflight.py`'s stale premise (oo-1bf.13, a rule-2 decision for Jon). Jon's own items: land the 15 staged goldens (`tests/golden/pending/*`, `tests/golden/staged/006-save-load`), and the hand audit of 50 lint hits. The review reopens behind all of these. oo-phi (the gate bead) had been closed by hand with every box unchecked; this entry is the walk it was meant to record.
 - 2026-09-21 — ADR-0021 (Jon): the merge gate is the bead's acceptance block with a five-minute budget (`accept.sh`, `BEADS_ACCEPT_BUDGET`); slow proofs move to `tests/nightly/checks.txt` (`tools/run-nightly-checks.sh`); Tier C runs nightly and at phase end, not per merge. The exit-gate boxes that say "run by Tier C" mean the nightly and phase-end runs.
