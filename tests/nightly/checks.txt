@@ -40,9 +40,18 @@
 
 # RunDetachedAndWait waits unbounded now (oo-3rb.68); three consecutive green oofnd runs is the
 # stability proof its bead asked for, too slow (3 x 90-220 s) for the five-minute accept budget.
+[oo-3rb.68] for i in 1 2 3; do bash tools/check-oofnd.sh || exit 1; done
+
+# Component scenarios S1 and S5 spawn a pinned cast now (oo-sjvz: ROLE_SHIP_KEY/PIRATE_BOUNTY in
+# upstream/oolite/tests/component/steps/world_steps.py). The proof that pinning removed their flake
+# is repeated runs: 5 consecutive green sessions per line, two lines = 10 runs of each. S6 is left
+# out on purpose: its residual failure is the outcome of a real-time dogfight, not the hull draw
+# (oo-9aq4). One S1+S5 session is ~140 s, so 5 fit the 1800 s per-line timeout comfortably. The
+# component conftest takes tools/gui-lock per session.
+[oo-sjvz] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; cd upstream/oolite/tests/component && for i in 1 2 3 4 5; do python3 -m pytest test_s1_police_kills_pirate.py test_s5_escorts_converge_on_their_mother.py -q -p no:cacheprovider || { echo "oo-sjvz: S1/S5 red on run $i of 5"; exit 1; }; done
+[oo-sjvz] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; cd upstream/oolite/tests/component && for i in 1 2 3 4 5; do python3 -m pytest test_s1_police_kills_pirate.py test_s5_escorts_converge_on_their_mother.py -q -p no:cacheprovider || { echo "oo-sjvz: S1/S5 red on run $i of 5"; exit 1; }; done
 # The memo (oo-n712) must not answer a stability proof: every run here is a real one.
 [oo-3rb.68] for i in 1 2 3; do OO_CHECK_OOFND_NO_MEMO=1 bash tools/check-oofnd.sh || exit 1; done
-
 # check-oofnd.sh answers accept from a memo of its last fully green run with the same inputs
 # (oo-n712); the night always runs it for real, so a flake or toolchain drift the memo's hash
 # missed still turns the night red.

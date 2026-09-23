@@ -64,6 +64,8 @@ MA 02110-1301, USA.
 
 #import "OODebugSupport.h"
 #import "OODebugMonitor.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #import "OOFoundationBridge.h"
 
@@ -707,7 +709,11 @@ static NSTimeInterval	time_last_frame;
 			}
 		}
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
 	}
@@ -1127,7 +1133,11 @@ static NSTimeInterval	time_last_frame;
 			hide_hud_pressed = NO;
 		}
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
 	}
@@ -2029,7 +2039,11 @@ static NSTimeInterval	time_last_frame;
 			pause_pressed = NO;
 		}
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
 	}
@@ -2604,7 +2618,23 @@ static NSTimeInterval	time_last_frame;
 						disc_operation_in_progress = YES;
 						[self quicksavePlayer];
 					}
-					@catch (NSException *exception)
+					@catch (OOException *exception)
+					{
+						OOLog(kOOLogException, @"\n\n***** Handling exception: %@ : %@ *****\n\n",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+						if (strcmp([exception name], "GameNotSavedException") == 0)	// try saving game instead
+						{
+							OOLog(kOOLogException, @"%@", @"\n\n***** Trying a normal save instead *****\n\n");
+							if ([controller inFullScreenMode])
+								[controller pauseFullScreenModeToPerform:@selector(savePlayer) onTarget:self];
+							else
+								[self savePlayer];
+						}
+						else
+						{
+							@throw exception;
+						}
+					}
+					@catch (OOFoundationException *exception)
 					{
 						OOLog(kOOLogException, @"\n\n***** Handling exception: %@ : %@ *****\n\n",[exception name], [exception reason]);
 						if ([[exception name] isEqual:@"GameNotSavedException"])	// try saving game instead
@@ -4910,7 +4940,11 @@ static BOOL autopilot_pause;
 		
 		[self pollGuiArrowKeyControls:delta_t];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
 	}
