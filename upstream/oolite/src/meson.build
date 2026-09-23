@@ -8,7 +8,6 @@ oolite_dependencies = [
     dependency('openal'),
     dependency('vorbisfile'),
     dependency('vorbis'),
-    dependency('nspr'),
     dependency('zlib'),
 ]
 
@@ -16,6 +15,11 @@ if get_option('espeak')
     oolite_dependencies += [dependency('espeak-ng')]
     add_project_arguments('-DHAVE_LIBESPEAK=1', language: c_family)
 endif
+
+# The JavaScript engine behind ooscript/JSEngine.hpp: the vendored QuickJS-ng, linked statically
+# (Phase 1; SpiderMonkey 1.8.5 and NSPR were removed by bead oo-7wx).
+quickjs_ng_proj = subproject('quickjs-ng', default_options: ['default_library=static'])
+oolite_dependencies += [quickjs_ng_proj.get_variable('qjs_dep')]
 
 subdir('meson')
 subdir('Core')

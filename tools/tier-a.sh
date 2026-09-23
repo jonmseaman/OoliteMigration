@@ -9,7 +9,8 @@
 #
 #   1. compile   the single TU, via its ninja object target (so it is byte-for-byte the
 #                command the real build uses, and it hits the shared ccache)
-#   2. tidy      clang-tidy with the repo's .clang-tidy, findings are failures
+#   2. tidy      clang-tidy with the repo's .clang-tidy; a finding on a line this change wrote fails
+#                (findings on lines unchanged since the merge base are baseline debt, bead oo-utqt)
 #   3. deny-list grep for reintroduced JS_* / libgnustep-base symbols, counted against
 #                the merge base so pre-existing sites do not fail every run
 #
@@ -150,6 +151,7 @@ BUILD_DIR="$OOLITE/build/meson_$BUILD_FLAVOUR"
 NATIVE_FILE="$REPO_ROOT/tools/meson/ccache-clang.ini"
 DENY_LIST="$REPO_ROOT/tools/deny-list.txt"
 COMPDB_READER="$REPO_ROOT/tools/tier-a-compdb.py"
+TIDY_BASELINE="$REPO_ROOT/tools/tier-a-tidy-baseline.py"
 
 STARTED_AT=$SECONDS
 step()   { printf '==> %s\n' "$*"; }
@@ -250,12 +252,60 @@ resolve_base_ref() {
   printf '%s' "$ref"
 }
 
+# baseline_path <repo-root> <base-ref> <rel-path>
+#   Prints the path $rel had at $base: itself, or what it was renamed FROM (see the comment
+#   inside). Shared by the deny-list and clang-tidy gates so they agree on what the baseline is.
+baseline_path() {
+  local root="$1" base="$2" rel="$3" base_rel="$3"
+  if ! git -C "$root" cat-file -e "$base:$rel" 2>/dev/null; then
+    # $rel does not exist at the baseline under its CURRENT name. Before treating this as a
+    # brand-new file (bead oo-sdz): a retarget bead renames its file (.m -> .mm, ADR-0001) as
+    # part of the SAME change that is under test here, so the current name genuinely has no
+    # history yet. Comparing that against zero would let every deny-listed identifier in the
+    # file "reappear" as new on every single retarget-and-rename bead in this sweep, which is
+    # not a regression -- it is the same bytes under a new name. tools/guardrails.sh already
+    # does this (its own comment: "this migration renames files BY DESIGN"); tier-a's per-file
+    # gate did not, until this fix. Ask git to find what $rel was renamed FROM, scoped to just
+    # these two paths so the detector is not confused by unrelated renames elsewhere in the tree.
+    local rename_line old_path
+    rename_line="$(git -C "$root" diff --find-renames=30% --name-status "$base" \
+      | awk -F'\t' -v want="$rel" '$1 ~ /^R/ && $3 == want { print; exit }')"
+    case "$rename_line" in
+      R*)
+        old_path="$(printf '%s' "$rename_line" | cut -f2)"
+        if [ -n "$old_path" ] && git -C "$root" cat-file -e "$base:$old_path" 2>/dev/null; then
+          detail "treating $rel as a rename of $old_path at ${base:0:12} for the baseline" >&2
+          base_rel="$old_path"
+        fi
+        ;;
+    esac
+  fi
+
+  printf '%s' "$base_rel"
+}
+
+# tidy_gate <repo-root> <base-ref> <source-file> <source-rel-path> <tidy-output>
+#   0 = every finding sits on a line whose text also appears in the file at the baseline
+#   (pre-existing), 1 = at least one finding is on a new or edited line, 2 = cannot evaluate.
+tidy_gate() {
+  local root="$1" base="$2" file="$3" rel="$4" out="$5" base_rel base_file
+  base_rel="$(baseline_path "$root" "$base" "$rel")"
+  base_file="$(mktemp)"
+  if git -C "$root" cat-file -e "$base:$base_rel" 2>/dev/null; then
+    git -C "$root" show "$base:$base_rel" >"$base_file" || { rm -f "$base_file"; return 2; }
+  fi
+  local rc=0
+  python "$(cygpath -m "$TIDY_BASELINE")" "$(cygpath -m "$file")" "$(cygpath -m "$base_file")" "$(cygpath -m "$out")" || rc=$?
+  rm -f "$base_file"
+  return "$rc"
+}
+
 # deny_gate <repo-root> <base-ref> <source-file> <source-rel-path>
 #   0 = no new hits, 1 = REGRESSION (more occurrences than the baseline), 2 = the gate could
 #   not be evaluated (bad ref, unusable pattern). 2 is never reported as a pass.
 deny_gate() {
   local root="$1" base="$2" file="$3" rel="$4"
-  local now_count base_count base_text pattern rc parent
+  local now_count base_count base_text pattern rc parent base_rel
 
   [ -f "$file" ] || { printf 'tier-a: no such file: %s\n' "$file" >&2; return 2; }
   git -C "$root" rev-parse --verify --quiet "${base}^{commit}" >/dev/null \
@@ -263,7 +313,8 @@ deny_gate() {
 
   now_count="$(deny_count <"$file")" || return 2
 
-  if git -C "$root" cat-file -e "$base:$rel" 2>/dev/null; then
+  base_rel="$(baseline_path "$root" "$base" "$rel")"
+  if git -C "$root" cat-file -e "$base:$base_rel" 2>/dev/null; then
     # THE VACUITY CHECK. If the baseline is HEAD itself and the file on disk is byte-identical
     # to the blob at HEAD, both counts are computed from the SAME BYTES: the comparison is a
     # tautology and step 3 cannot fail, whatever the file contains. That is exactly the state
@@ -273,7 +324,7 @@ deny_gate() {
     # "unmodified" is decided with `git diff` on the REPO-RELATIVE path, not by hashing an
     # absolute one: on MSYS an absolute /c/... path handed to native git resolves elsewhere.
     if [ "$base" = "$(git -C "$root" rev-parse --verify --quiet 'HEAD^{commit}')" ] \
-       && git -C "$root" diff --quiet "$base" -- "$rel"; then
+       && [ "$base_rel" = "$rel" ] && git -C "$root" diff --quiet "$base" -- "$rel"; then
       parent="$(git -C "$root" rev-parse --verify --quiet "${base}^1^{commit}")" || parent=''
       if [ -n "$parent" ] && git -C "$root" cat-file -e "$parent:$rel" 2>/dev/null; then
         printf 'tier-a: baseline %s is HEAD and %s is unmodified there; using %s instead\n' \
@@ -287,8 +338,8 @@ deny_gate() {
         return 2
       fi
     fi
-    base_text="$(git -C "$root" show "$base:$rel")" \
-      || { printf 'tier-a: cannot read %s at %s\n' "$rel" "$base" >&2; return 2; }
+    base_text="$(git -C "$root" show "$base:$base_rel")" \
+      || { printf 'tier-a: cannot read %s at %s\n' "$base_rel" "$base" >&2; return 2; }
     base_count="$(printf '%s\n' "$base_text" | deny_count)" || return 2
   else
     # Genuinely absent at the baseline (a newly added file): compared against zero. This is
@@ -537,11 +588,24 @@ detail "$(( SECONDS - T0 ))s"
 
 step "2/3 tidy     clang-tidy"
 T0=$SECONDS
-( cd "$BUILD_DIR" && clang-tidy \
-    --quiet \
-    -header-filter='$^' \
-    --warnings-as-errors='*' \
-    "$SOURCE_NATIVE" -- clang "${CLANG_ARGS[@]}" ) || fail "clang-tidy"
+TIDY_OUT="$(mktemp)"
+trap 'rm -f "$COMPDB_OUT" "$TIDY_OUT"' EXIT
+TIDY_RC=0
+( cd "$BUILD_DIR" && clang-tidy     --quiet     -header-filter='$^'     --warnings-as-errors='*'     "$SOURCE_NATIVE" -- clang "${CLANG_ARGS[@]}" ) >"$TIDY_OUT" 2>&1 || TIDY_RC=$?
+if [ "$TIDY_RC" -ne 0 ]; then
+  # Baseline-relative, like the deny-list (bead oo-utqt): a finding on a line whose text is
+  # unchanged from the merge base is pre-existing debt, not this change's; a finding on a line
+  # this change wrote or edited still fails. A tidy run that produced no parseable finding
+  # (a crash, a bad argument) is a failure, never a pass.
+  TIDY_BASE="$(resolve_base_ref "$REPO_ROOT")" || die "cannot resolve a clang-tidy baseline"
+  TIDY_GATE_RC=0
+  tidy_gate "$REPO_ROOT" "$TIDY_BASE" "$SOURCE_ABS" "$SOURCE_REL" "$TIDY_OUT" || TIDY_GATE_RC=$?
+  case "$TIDY_GATE_RC" in
+    0) ;;
+    1) cat "$TIDY_OUT"; fail "clang-tidy" ;;
+    *) cat "$TIDY_OUT"; die "the clang-tidy baseline for $SOURCE_REL could not be evaluated (exit $TIDY_GATE_RC); refusing to report PASS" ;;
+  esac
+fi
 detail "$(( SECONDS - T0 ))s"
 
 # --- 3. Deny-list -------------------------------------------------------------------------

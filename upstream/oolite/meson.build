@@ -1,6 +1,6 @@
 project(
     'oolite',
-    ['c', 'cpp', 'objc'],
+    ['c', 'cpp', 'objc', 'objcpp'],
     meson_version: '>= 1.4.0',
     version: run_command(
         'bash',
@@ -20,7 +20,7 @@ project(
 )
 
 host_os = host_machine.system()
-c_family = ['c', 'cpp', 'objc']
+c_family = ['c', 'cpp', 'objc', 'objcpp']
 
 version_string = meson.project_version()
 cat_cmd = find_program('cat', required: true)
@@ -117,10 +117,6 @@ if get_option('dev_release')
         '-DDEV_RELEASE',
         language: c_family,
     )
-endif
-
-if get_option('oo_javascript_trace')
-    add_project_arguments('-DMOZ_TRACE_JSCALLS=1', language: c_family)
 endif
 
 gnustep_folder = ''  # Not needed for Windows

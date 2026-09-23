@@ -77,7 +77,7 @@ SOFTWARE.
 - (double) oo_nonNegativeDoubleAtIndex:(NSUInteger)index defaultValue:(double)value;
 
 - (id) oo_objectAtIndex:(NSUInteger)index defaultValue:(id)value;
-- (id) oo_objectOfClass:(Class)class atIndex:(NSUInteger)index defaultValue:(id)value;
+- (id) oo_objectOfClass:(Class)aClass atIndex:(NSUInteger)index defaultValue:(id)value;
 - (NSString *) oo_stringAtIndex:(NSUInteger)index defaultValue:(NSString *)value;
 - (NSArray *) oo_arrayAtIndex:(NSUInteger)index defaultValue:(NSArray *)value;
 - (NSSet *) oo_setAtIndex:(NSUInteger)index defaultValue:(NSSet *)value;
@@ -119,7 +119,7 @@ SOFTWARE.
 
 // Default: nil
 - (id) oo_objectAtIndex:(NSUInteger)index;	// Differs from objectAtIndex: in that it returns nil rather than throwing NSRangeException.
-- (id) oo_objectOfClass:(Class)class atIndex:(NSUInteger)index;
+- (id) oo_objectOfClass:(Class)aClass atIndex:(NSUInteger)index;
 - (NSString *) oo_stringAtIndex:(NSUInteger)index;
 - (NSArray *) oo_arrayAtIndex:(NSUInteger)index;
 - (NSSet *) oo_setAtIndex:(NSUInteger)index;
@@ -163,7 +163,7 @@ SOFTWARE.
 - (double) oo_nonNegativeDoubleForKey:(id)key defaultValue:(double)value;
 
 - (id) oo_objectForKey:(id)key defaultValue:(id)value;
-- (id) oo_objectOfClass:(Class)class forKey:(id)key defaultValue:(id)value;
+- (id) oo_objectOfClass:(Class)aClass forKey:(id)key defaultValue:(id)value;
 - (NSString *) oo_stringForKey:(id)key defaultValue:(NSString *)value;
 - (NSArray *) oo_arrayForKey:(id)key defaultValue:(NSArray *)value;
 - (NSSet *) oo_setForKey:(id)key defaultValue:(NSSet *)value;
@@ -207,7 +207,7 @@ SOFTWARE.
 
 // Default: nil
 // - (id)objectForKey:(id)key;	// Already defined
-- (id) oo_objectOfClass:(Class)class forKey:(id)key;
+- (id) oo_objectOfClass:(Class)aClass forKey:(id)key;
 - (NSString *) oo_stringForKey:(id)key;
 - (NSArray *) oo_arrayForKey:(id)key;
 - (NSSet *) oo_setForKey:(id)key;
@@ -254,7 +254,7 @@ SOFTWARE.
 - (double) oo_nonNegativeDoubleForKey:(id)key defaultValue:(double)value;
 
 - (id) oo_objectForKey:(id)key defaultValue:(id)value;
-- (id) oo_objectOfClass:(Class)class forKey:(id)key defaultValue:(id)value;
+- (id) oo_objectOfClass:(Class)aClass forKey:(id)key defaultValue:(id)value;
 - (NSString *) oo_stringForKey:(id)key defaultValue:(NSString *)value;
 - (NSArray *) oo_arrayForKey:(id)key defaultValue:(NSArray *)value;
 - (NSSet *) oo_setForKey:(id)key defaultValue:(NSSet *)value;
@@ -289,7 +289,7 @@ SOFTWARE.
 
 // Default: nil
 // - (id) objectForKey:(id)key;	// Already defined
-- (id) oo_objectOfClass:(Class)class forKey:(id)key;
+- (id) oo_objectOfClass:(Class)aClass forKey:(id)key;
 // - (NSString *) stringForKey:(id)key;
 // - (NSArray *) arrayForKey:(id)key;
 - (NSSet *) oo_setForKey:(id)key;

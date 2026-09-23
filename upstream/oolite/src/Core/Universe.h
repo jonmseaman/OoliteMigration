@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOOpenGL.h"
 #import "OOShaderProgram.h"
 #import "legacy_random.h"
@@ -53,7 +54,9 @@ typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
 
 #ifndef OO_SCANCLASS_TYPE
 #define OO_SCANCLASS_TYPE
+#ifndef __cplusplus
 typedef enum OOScanClass OOScanClass;
+#endif
 #endif
 
 
@@ -745,7 +748,7 @@ enum
 
 - (NSArray*) listBeaconsWithCode:(NSString*) code;
 
-- (void) allShipsDoScriptEvent:(jsid)event andReactToAIMessage:(NSString *)message;
+- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message;
 
 ///////////////////////////////////////
 
@@ -852,7 +855,13 @@ OOINLINE Universe *OOGetUniverse(void)
 NSComparisonResult populatorPrioritySort(id a, id b, void *context);
 NSComparisonResult equipmentSort(id a, id b, void *context);
 NSComparisonResult equipmentSortOutfitting(id a, id b, void *context);
+#ifdef __cplusplus
+extern "C" {
+#endif
 NSString *OOLookUpDescriptionPRIV(NSString *key);
+#ifdef __cplusplus
+}
+#endif
 NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);
 
 @interface OOSound (OOCustomSounds)
@@ -873,5 +882,11 @@ NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);
 @end
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 NSString *OODisplayStringFromGovernmentID(OOGovernmentID government);
 NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
+#ifdef __cplusplus
+}
+#endif

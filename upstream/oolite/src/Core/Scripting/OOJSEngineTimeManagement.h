@@ -52,8 +52,18 @@ SOFTWARE.
 #ifndef NDEBUG
 #define OOJSStartTimeLimiterWithTimeLimit(limit)  OOJSStartTimeLimiterWithTimeLimit_(limit, OOLOG_FILE_NAME, __LINE__)
 #define OOJSStopTimeLimiter()  OOJSStopTimeLimiter_(OOLOG_FILE_NAME, __LINE__)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void OOJSStartTimeLimiterWithTimeLimit_(OOTimeDelta limit, const char *file, unsigned line);
 void OOJSStopTimeLimiter_(const char *file, unsigned line);
+
+#ifdef __cplusplus
+}
+#endif
+
 #else
 void OOJSStartTimeLimiterWithTimeLimit(OOTimeDelta limit);
 void OOJSStopTimeLimiter(void);
@@ -92,6 +102,10 @@ void OOJSStopTimeLimiter(void);
 @class OOTimeProfile, OOTimeProfileEntry;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void OOJSBeginProfiling(BOOL trace);
 OOTimeProfile *OOJSEndProfiling(void);
 BOOL OOJSIsProfiling(void);
@@ -101,6 +115,10 @@ OOHighResTimeValue OOJSCopyTimeLimiterNominalStartTime(void);
 void OOJSResetTimeLimiter(void);
 OOTimeDelta OOJSGetTimeLimiterLimit(void);
 void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
+
+#ifdef __cplusplus
+}
+#endif
 
 
 /*
@@ -146,7 +164,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 	double						_totalTimeMax;
 	double						_selfTimeMax;
 #ifdef MOZ_TRACE_JSCALLS
-	JSFunction					*_jsFunction;
+	ooscript::Function _jsFunction;
 #endif
 }
 
@@ -174,4 +192,12 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 
 @class OOJavaScriptEngine;
 
-void OOJSTimeManagementInit(OOJavaScriptEngine *engine, JSRuntime *runtime);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void OOJSTimeManagementInit(OOJavaScriptEngine *engine, ooscript::Runtime runtime);
+
+#ifdef __cplusplus
+}
+#endif

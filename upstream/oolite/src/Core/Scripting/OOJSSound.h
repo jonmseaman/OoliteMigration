@@ -25,11 +25,15 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
+#include "ooscript/JSEngine.hpp"
 @class OOSound;
 
 
-void InitOOJSSound(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void InitOOJSSound(ooscript::Context context, ooscript::Object global);
 
 
 /*	SoundFromJSValue()
@@ -37,4 +41,8 @@ void InitOOJSSound(JSContext *context, JSObject *global);
 	Convert a JS value to a sound. The value may be either a Sound object or a
 	string specifying a sound name.
  */
-OOSound *SoundFromJSValue(JSContext *context, jsval value);
+OOSound *SoundFromJSValue(ooscript::Context context, ooscript::Value value);
+
+#ifdef __cplusplus
+}
+#endif

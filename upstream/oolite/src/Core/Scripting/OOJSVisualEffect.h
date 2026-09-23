@@ -25,16 +25,23 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class OOVisualEffectEntity;
 
 
-void InitOOJSVisualEffect(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void InitOOJSVisualEffect(ooscript::Context context, ooscript::Object global);
+
+#ifdef __cplusplus
+}
+#endif
 
 @interface OOVisualEffectEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype;
+- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (NSString *) oo_jsClassName;
 - (BOOL) isVisibleToScripts;
 - (NSArray *) subEntitiesForScript;

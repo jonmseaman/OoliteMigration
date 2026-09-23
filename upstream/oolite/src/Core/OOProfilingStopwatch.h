@@ -73,11 +73,11 @@ typedef DWORD OOHighResTimeValue;	// Rolls over once every 50 days, but we can l
 #define OOCopyHighResTime(time) ((OOHighResTimeValue)time)
 
 #else
-/*	...otherwise, use JS_Now() for higher precision. The Windows implementation
-	does the messy work of calibrating performance counters against low-res
-	timers.
+/*	...otherwise, use a microsecond count from std::chrono::steady_clock for higher
+	precision (formerly the script engine's own clock; bead oo-1gc.3). Only
+	differences between two readings are ever used.
 */
-#define OO_PROFILING_STOPWATCH_JS_NOW 1
+#define OO_PROFILING_STOPWATCH_MICROSECONDS 1
 #endif
 
 #else
@@ -101,11 +101,15 @@ OOINLINE OOHighResTimeValue OOGetHighResTime(void)
 
 #endif
 
-#if OO_PROFILING_STOPWATCH_JS_NOW
-#include <jsapi.h>
-typedef int64 OOHighResTimeValue;
+#if OO_PROFILING_STOPWATCH_MICROSECONDS
+#include <chrono>
+#include <cstdint>
+typedef int64_t OOHighResTimeValue;
 
-#define OOGetHighResTime JS_Now
+OOINLINE OOHighResTimeValue OOGetHighResTime(void)
+{
+	return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
 #define OODisposeHighResTime(time)  do { (void)time; } while (0)
 #define OOCopyHighResTime(time) ((OOHighResTimeValue)time)
 #endif

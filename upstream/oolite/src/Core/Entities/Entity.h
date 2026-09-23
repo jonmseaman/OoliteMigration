@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 
 
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOMaths.h"
 #import "OOCacheManager.h"
 #import "OOTypes.h"
@@ -64,7 +65,13 @@ typedef enum OOEntityStatus
 
 #ifndef OO_SCANCLASS_TYPE
 #define OO_SCANCLASS_TYPE
+#ifndef __cplusplus
+/* ISO C++ forbids a forward reference to an unscoped enum with no fixed underlying
+   type (this used to compile only because this file was Objective-C, not Objective-C++;
+   ADR-0001). The full definition is three lines below in this same file, so C++
+   translation units never need the forward tag at all. */
 typedef enum OOScanClass OOScanClass;
+#endif
 #endif
 
 enum OOScanClass
@@ -149,7 +156,7 @@ enum OOScanClass
 	
 	OOTimeAbsolute			spawnTime;
 	
-	struct JSObject			*_jsSelf;
+	ooscript::Object _jsSelf;
 	NSUInteger				lastDrawCounter;
 	
 @private
@@ -330,8 +337,16 @@ enum
 	kOOScanClassDefault			= CLASS_NOT_SET
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 NSString *OOStringFromEntityStatus(OOEntityStatus status) CONST_FUNC;
 OOEntityStatus OOEntityStatusFromString(NSString *string) PURE_FUNC;
 
 NSString *OOStringFromScanClass(OOScanClass scanClass) CONST_FUNC;
 OOScanClass OOScanClassFromString(NSString *string) PURE_FUNC;
+
+#ifdef __cplusplus
+}
+#endif

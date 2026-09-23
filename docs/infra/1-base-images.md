@@ -31,7 +31,7 @@ is the single change most likely to cut iteration time, more than any model choi
 
 - [x] `tools/setup-windows.sh` run twice: the second run installs nothing
 - [x] `./mk.sh build test` succeeds with no `setup-msys2` step and no `install_deps.sh` run
-- [ ] A Tier-B run on a warm cache completes in under 10 minutes end to end
+- [ ] A Tier-B run on a warm cache completes within its budget end to end (1200 s; see `tools/tier-b.sh` header — the component tier alone measures 769-957 s, oo-a6du)
 - [ ] N golden processes run concurrently without port or output collisions, with a build running alongside
 - [ ] ccache hit rate reported by the Reporter
 

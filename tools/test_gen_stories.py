@@ -96,7 +96,7 @@ class ClassifierTest(unittest.TestCase):
 class RealTreeTest(unittest.TestCase):
     """The four files bead oo-qnmv named, as they stand in the upstream tree."""
 
-    KNOWN = ["OOQuaternion.m", "OOMatrix.m", "OOMouseInteractionMode.m", "OOIsNumberLiteral.m"]
+    KNOWN = ["OOQuaternion.mm", "OOMatrix.mm", "OOMouseInteractionMode.mm", "OOIsNumberLiteral.mm"]  # .m before seam 2.1 (oo-x7o)
 
     def test_known_offenders_are_not_renames(self):
         by_name = {p.name: p for p in gs.m_files()}

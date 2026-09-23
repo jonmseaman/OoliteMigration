@@ -80,21 +80,21 @@ _FLAG_ACCESS = {
 }
 
 _CLASS_RE = re.compile(
-    r"(?:static\s+)?JSClass\s+(?P<ident>\w+)\s*=\s*\{\s*\"(?P<name>[A-Za-z_][\w.]*)\"", re.S)
+    r"(?:static\s+)?(?:JSClass|(?:ooscript::)?ClassDef)\s+(?P<ident>\w+)\s*=\s*\{\s*\"(?P<name>[A-Za-z_][\w.]*)\"", re.S)
 # The AUTHORITATIVE binding. JS_InitClass names, in order: context, global, parent_proto,
 # &clazz, constructor, nargs, ps, fs, static_ps, static_fs. Reading the registration call rather
 # than guessing from an identifier prefix means a table that is DEFINED but never REGISTERED is
 # not silently promoted into the API, and a class whose C variable is named nothing like its
 # tables (gOOEntityJSClass / sEntityProperties) still binds correctly.
 _INITCLASS_RE = re.compile(
-    r"JS_InitClass\s*\(\s*(?P<args>[^;]*?)\)\s*;", re.S)
+    r"(?:JS_InitClass|ooscript::initClass)\s*\(\s*(?P<args>[^;]*?)\)\s*;", re.S)
 _DEFINE_RE = re.compile(
-    r"JS_Define(?P<kind>Properties|Functions)\s*\(\s*[^,]+,\s*(?P<target>\w+)\s*,\s*(?P<table>\w+)\s*\)\s*;", re.S)
+    r"(?:JS_Define|ooscript::define)(?P<kind>Properties|Functions)\s*\(\s*[^,]+,\s*(?P<target>\w+)\s*,\s*(?P<table>\w+)\s*\)\s*;", re.S)
 _TABLE_RE = re.compile(
-    r"static\s+JS(?P<kind>PropertySpec|FunctionSpec)\s+(?P<ident>\w+)\s*\[\s*\]\s*=\s*\{(?P<body>.*?)\r?\n\};",
+    r"static\s+(?:JS|ooscript::)?(?P<kind>PropertySpec|FunctionSpec)\s+(?P<ident>\w+)\s*\[\s*\]\s*=\s*\{(?P<body>.*?)\r?\n\};",
     re.S)
 _PROP_ROW_RE = re.compile(
-    r"\{\s*\"(?P<name>[^\"]+)\"\s*,\s*(?P<id>[\w+\-]+)\s*,\s*(?P<flags>OOJS_PROP_\w+)\s*\}")
+    r"\{\s*\"(?P<name>[^\"]+)\"\s*,\s*(?P<id>[\w+\-]+)\s*,\s*(?P<flags>OOJS_PROP_\w+|\w+|PropertyFlag::\w+(?:\s*\|\s*PropertyFlag::\w+)*)\s*(?:,[^}]*)?\}")
 _FUNC_ROW_RE = re.compile(
     r"\{\s*\"(?P<name>[^\"]+)\"\s*,\s*(?P<fn>\w+)\s*,\s*(?P<arity>\d+)\s*(?:,[^}]*)?\}")
 
@@ -105,13 +105,13 @@ def _read(path):
 
 
 def _iter_sources(root):
-    """Every .m under src/. os.walk deliberately: the repo's grep/search tooling silently returns
+    """Every .m and .mm under src/. os.walk deliberately: the repo's grep/search tooling silently returns
     zero matches for upstream/oolite/src, so a search-tool-based scraper here would find nothing
     and report a clean empty snapshot."""
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames.sort()
         for name in sorted(filenames):
-            if name.endswith(".m"):
+            if name.endswith((".m", ".mm")):
                 yield os.path.join(dirpath, name)
 
 
@@ -133,10 +133,75 @@ def _split_args(args):
     return out
 
 
-def _parse_prop_table(body):
+# Since bead oo-7wx a table row's flags may be spelled with the façade's own vocabulary -- a
+# `PropertyFlag::A | PropertyFlag::B` expression, or a file-local `constexpr PropertyFlag k... = ...`
+# naming one. Each is resolved to its set of PropertyFlag atoms and recorded under the OOJS_PROP_*
+# name with that same set (OOJavaScriptEngine.h), so a table converted from macro to expression
+# is not a change in the recorded API.
+_OOJS_PROP_ATOMS = {
+    "OOJS_PROP_READWRITE": {"Permanent", "Enumerate"},
+    "OOJS_PROP_READONLY": {"Permanent", "Enumerate", "ReadOnly"},
+    "OOJS_PROP_HIDDEN_READWRITE": {"Permanent"},
+    "OOJS_PROP_HIDDEN_READONLY": {"Permanent", "ReadOnly"},
+    "OOJS_PROP_READWRITE_CB": {"Permanent", "Enumerate", "Shared"},
+    "OOJS_PROP_READONLY_CB": {"Permanent", "Enumerate", "ReadOnly", "Shared"},
+    "OOJS_PROP_HIDDEN_READWRITE_CB": {"Permanent", "Shared"},
+    "OOJS_PROP_HIDDEN_READONLY_CB": {"Permanent", "ReadOnly", "Shared"},
+}
+_FLAG_CONST_RE = re.compile(
+    r"constexpr\s+(?:ooscript::)?PropertyFlag\s+(?P<name>\w+)\s*=\s*(?P<expr>[^;]+);")
+
+
+def _flag_consts(text):
+    return {m.group("name"): m.group("expr") for m in _FLAG_CONST_RE.finditer(text)}
+
+
+def _flag_atoms(expr, consts, depth=0):
+    atoms = set()
+    for term in re.split(r"\|", expr.replace("(", " ").replace(")", " ")):
+        term = term.strip()
+        if term.startswith("ooscript::"):
+            term = term[len("ooscript::"):]
+        if term.startswith("PropertyFlag::"):
+            atoms.add(term[len("PropertyFlag::"):])
+        elif term in _OOJS_PROP_ATOMS:
+            atoms |= _OOJS_PROP_ATOMS[term]
+        elif term in consts and depth < 8:
+            got = _flag_atoms(consts[term], consts, depth + 1)
+            if got is None:
+                return None
+            atoms |= got
+        else:
+            return None
+    return atoms
+
+
+def _canonical_flags(flags, consts):
+    if flags in _FLAG_ACCESS:
+        return flags
+    atoms = _flag_atoms(flags, consts)
+    for name, want in _OOJS_PROP_ATOMS.items():
+        if atoms == want and name in _FLAG_ACCESS:
+            return name
+    return flags
+
+
+def _unparen(arg):
+    while arg.startswith("(") and arg.endswith(")") and not _split_args(arg[1:-1])[1:]:
+        depth = 0
+        for i, ch in enumerate(arg):
+            depth += ch == "("
+            depth -= ch == ")"
+            if depth == 0 and i < len(arg) - 1:
+                return arg
+        arg = arg[1:-1].strip()
+    return arg
+
+
+def _parse_prop_table(body, consts=None):
     props = {}
     for pm in _PROP_ROW_RE.finditer(body):
-        flags = pm.group("flags")
+        flags = _canonical_flags(pm.group("flags").strip(), consts or {})
         access, enumerable = _FLAG_ACCESS.get(flags, ("unknown", True))
         props[pm.group("name")] = {
             "access": access,
@@ -166,18 +231,19 @@ def scrape(src_root=SRC_ROOT):
 
     for path in _iter_sources(src_root):
         text = _read(path)
-        if "JSPropertySpec" not in text and "JSFunctionSpec" not in text:
+        if "PropertySpec" not in text and "FunctionSpec" not in text:
             continue
         rel = os.path.relpath(path, _REPO).replace(os.sep, "/")
         files_with_tables += 1
 
+        consts = _flag_consts(text)
         class_names = {m.group("ident"): m.group("name") for m in _CLASS_RE.finditer(text)}
         tables = {}
         for tm in _TABLE_RE.finditer(text):
             kind = tm.group("kind")
             body = tm.group("body")
             tables[tm.group("ident")] = (
-                kind, _parse_prop_table(body) if kind == "PropertySpec" else _parse_func_table(body))
+                kind, _parse_prop_table(body, consts) if kind == "PropertySpec" else _parse_func_table(body))
         used = set()
 
         def slot_for(name, parent=None):
@@ -190,7 +256,8 @@ def scrape(src_root=SRC_ROOT):
             return rec
 
         for im in _INITCLASS_RE.finditer(text):
-            a = _split_args(im.group("args"))
+            # The façade spelling wraps arguments in parentheses, `(context)`, `(JSShipPrototype())`.
+            a = [_unparen(x) for x in _split_args(im.group("args"))]
             if len(a) < 10:
                 continue
             cls_ident = a[3].lstrip("&").strip()
@@ -207,7 +274,7 @@ def scrape(src_root=SRC_ROOT):
             for idx, field in ((6, "properties"), (7, "methods"),
                                (8, "static_properties"), (9, "static_methods")):
                 ident = a[idx]
-                if ident in ("NULL", "0", "nil"):
+                if ident in ("NULL", "0", "nil", "nullptr"):
                     continue
                 entry = tables.get(ident)
                 if entry is None:
@@ -223,11 +290,26 @@ def scrape(src_root=SRC_ROOT):
             used.add(ident)
             # JS_DefineProperties/Functions install onto an existing object, named by the C
             # variable: `global` is the true JS global, `special` is Oolite's SpecialFunctions.
-            target = {"global": "<global>"}.get(dm.group("target"), dm.group("target"))
+            # The façade port spells `Object obj = (global);` before the call; follow such a plain
+            # alias one step so the table still lands on the object it is installed onto.
+            target = dm.group("target")
+            am = re.search(r"\b(?:ooscript::)?Object\s+%s\s*=\s*\(?\s*(\w+)\s*\)?\s*;" % re.escape(target), text)
+            if am and am.group(1) not in ("NULL", "nullptr", "0", "nil"):
+                target = am.group(1)
+            target = {"global": "<global>"}.get(target, target)
             rec = slot_for(target)
             rec["properties" if entry[0] == "PropertySpec" else "methods"].update(entry[1])
 
-        for ident in sorted(set(tables) - used):
+        # A converted class keeps a mirror of its property table, flagged the OOJS_PROP_* way, only for
+        # the bad-selector/bad-value error reporters (OOJSVector.mm's sVectorPropertiesRaw is the
+        # exemplar); the table initClass() registers is the API. A mirror is recognised by being
+        # handed to OOJSReportBadProperty* and registered nowhere, and is not an unregistered table.
+        mirrors = set()
+        for rm in re.finditer(r"OOJSReportBadProperty(?:Selector|Value)\s*\((?P<args>[^;]*)\)\s*;", text):
+            a = _split_args(rm.group("args"))
+            if len(a) >= 4:
+                mirrors.add(a[3])
+        for ident in sorted(set(tables) - used - mirrors):
             unregistered.append("%s:%s" % (rel, ident))
 
     out = {}

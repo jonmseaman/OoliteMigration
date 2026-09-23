@@ -31,7 +31,7 @@ static NSString * const kLocalManifestProperty = @"oolite_manifest_identifier";
 @interface OOJSScript: OOScript <OOWeakReferenceSupport>
 {
 @private
-	JSObject			*_jsSelf;
+	ooscript::Object _jsSelf;
 	
 	NSString			*name;
 	NSString			*description;
@@ -60,16 +60,16 @@ static NSString * const kLocalManifestProperty = @"oolite_manifest_identifier";
 	Requires a request on context.
 	outResult may be NULL.
 */
-- (BOOL) callMethod:(jsid)methodID
-		  inContext:(JSContext *)context
-	  withArguments:(jsval *)argv count:(intN)argc
-			 result:(jsval *)outResult;
+- (BOOL) callMethod:(ooscript::PropertyId)methodID
+		  inContext:(ooscript::Context)context
+	  withArguments:(ooscript::Value *)argv count:(int)argc
+			 result:(ooscript::Value *)outResult;
 
-- (id) propertyWithID:(jsid)propID inContext:(JSContext *)context;
+- (id) propertyWithID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
 // Set a property which can be modified or deleted by the script.
-- (BOOL) setProperty:(id)value withID:(jsid)propID inContext:(JSContext *)context;
+- (BOOL) setProperty:(id)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
 // Set a special property which cannot be modified or deleted by the script.
-- (BOOL) defineProperty:(id)value withID:(jsid)propID inContext:(JSContext *)context;
+- (BOOL) defineProperty:(id)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
 
 - (id) propertyNamed:(NSString *)name;
 - (BOOL) setProperty:(id)value named:(NSString *)name;
@@ -81,13 +81,13 @@ static NSString * const kLocalManifestProperty = @"oolite_manifest_identifier";
 @interface OOScript (JavaScriptEvents)
 
 // For simplicity, calling methods on non-JS scripts works but does nothing.
-- (BOOL) callMethod:(jsid)methodID
-		  inContext:(JSContext *)context
-	  withArguments:(jsval *)argv count:(intN)argc
-			 result:(jsval *)outResult;
+- (BOOL) callMethod:(ooscript::PropertyId)methodID
+		  inContext:(ooscript::Context)context
+	  withArguments:(ooscript::Value *)argv count:(int)argc
+			 result:(ooscript::Value *)outResult;
 
 @end
 
 
-void InitOOJSScript(JSContext *context, JSObject *global);
+OOJS_EXTERN_C void InitOOJSScript(ooscript::Context context, ooscript::Object global);
 

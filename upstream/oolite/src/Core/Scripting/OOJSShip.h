@@ -25,12 +25,19 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class ShipEntity;
 
 
-void InitOOJSShip(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-JSClass *JSShipClass(void);
-JSObject *JSShipPrototype(void);
+void InitOOJSShip(ooscript::Context context, ooscript::Object global);
+
+ooscript::ClassDef *JSShipClass(void);
+ooscript::Object JSShipPrototype(void);
+
+#ifdef __cplusplus
+}
+#endif

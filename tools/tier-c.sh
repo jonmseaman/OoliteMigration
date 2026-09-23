@@ -9,6 +9,11 @@
 #     tools/tier-c.sh --only a,b,c       # a comma-separated subset of stage names
 #     tools/tier-c.sh --skip asan        # run everything except these
 #     tools/tier-c.sh --dry-run          # resolve and print the plan, run no stage
+#     tools/tier-c.sh --backend=<sm|quickjs>  # point the goldens/corpus/gui stages at the named
+#                                        # backend's pre-built app dir (bead oo-2t6) instead of
+#                                        # the plain meson_test build. Combine with tools/tier-c-
+#                                        # diff.sh, which runs this once per backend and diffs the
+#                                        # two backends' golden dumps and corpus verdicts.
 #
 # ================================================================================================
 # WHAT THIS RUNS, AND WHAT IT COSTS.  THE ARITHMETIC CAME FIRST AND SHAPED THE DESIGN.
@@ -157,7 +162,7 @@ fail() {
 
 # --- Arguments -------------------------------------------------------------------------------------
 
-LIST=0; DRY=0; ONLY=""; SKIP=""
+LIST=0; DRY=0; ONLY=""; SKIP=""; BACKEND=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --list)    LIST=1 ;;
@@ -166,11 +171,26 @@ while [ $# -gt 0 ]; do
     --only=*)  ONLY="${1#--only=}" ;;
     --skip)    SKIP="${2:?--skip needs a comma-separated stage list}"; shift ;;
     --skip=*)  SKIP="${1#--skip=}" ;;
+    --backend) BACKEND="${2:?--backend needs sm or quickjs}"; shift ;;
+    --backend=*) BACKEND="${1#--backend=}" ;;
     -h|--help) sed -n '2,20p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown argument '$1' (try --help)" ;;
   esac
   shift
 done
+
+# --backend=<sm|quickjs> (bead oo-2t6). Normalise the two accepted spellings for each engine
+# ('sm'/'spidermonkey', 'quickjs'/'quickjs-ng') to the meson option value, so a typo is a FATAL
+# usage error rather than a silent fall-through to the default app dir (which would make a
+# "quickjs" run quietly re-check the SpiderMonkey build and report a meaningless match).
+BACKEND_LABEL=""
+if [ -n "$BACKEND" ]; then
+  case "$BACKEND" in
+    sm|spidermonkey) BACKEND_LABEL="spidermonkey" ;;
+    quickjs|quickjs-ng) BACKEND_LABEL="quickjs" ;;
+    *) die "unknown --backend '$BACKEND' (expected 'sm' or 'quickjs')" ;;
+  esac
+fi
 
 all_stage_names() { printf '%b\n' "$STAGES" | while IFS=$'\t' read -r n c d; do [ -n "$n" ] && printf '%s\n' "$n"; done; }
 
@@ -249,6 +269,7 @@ done
 if [ "$DRY" = 1 ]; then
   printf 'tier-c: plan (%d stage(s)): %s\n' "${#SELECTED[@]}" "${SELECTED[*]}"
   printf 'tier-c: budget %ss, platform %s, repo %s\n' "$BUDGET_SECONDS" "$PLATFORM" "$REPO_NATIVE"
+  [ -n "$BACKEND_LABEL" ] && printf 'tier-c: backend %s\n' "$BACKEND_LABEL"
   exit 0
 fi
 
@@ -262,7 +283,27 @@ command -v cygpath >/dev/null 2>&1 || die "no cygpath on PATH; this is not an MS
 # Default the app dir rather than assuming a local build. accept.sh replays stored lines on a
 # FRESH worktree with NO BUILD DIRECTORY (bead oo-1xz); a line that needs the game must say where
 # the game is, in both places.
-APP_DIR="${OO_APP_DIR:-$OOLITE/build/meson_test/oolite.app}"
+#
+# --backend picks the meson flavour directory each backend is built into (bead oo-2t6): the
+# QuickJS-ng backend build lives at build/meson_test_quickjs (a SEPARATE build directory from the
+# plain SpiderMonkey build at build/meson_test, so choosing one never overwrites the other and the
+# differential runner can hold both at once). OO_APP_DIR still wins outright when set, exactly as
+# it does with no --backend, so a caller pointing this at an ad-hoc build is never overridden.
+#
+# Since bead oo-7wx the tree has one engine, QuickJS-ng, built into the ordinary
+# build/meson_test. A SpiderMonkey build exists only if someone builds a pre-oo-7wx tree into
+# build/meson_test_spidermonkey (or points OO_APP_DIR at one) for a historical differential run;
+# otherwise --backend=sm fails at the app-dir check below, loudly, rather than re-checking the
+# QuickJS build under the wrong name.
+if [ -n "$BACKEND_LABEL" ]; then
+  case "$BACKEND_LABEL" in
+    spidermonkey) DEFAULT_APP_DIR="$OOLITE/build/meson_test_spidermonkey/oolite.app" ;;
+    quickjs)       DEFAULT_APP_DIR="$OOLITE/build/meson_test/oolite.app" ;;
+  esac
+else
+  DEFAULT_APP_DIR="$OOLITE/build/meson_test/oolite.app"
+fi
+APP_DIR="${OO_APP_DIR:-$DEFAULT_APP_DIR}"
 
 RUN_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/tier-c-$$-XXXXXX")" || die "cannot create a run root"
 RUN_ROOT_NATIVE="$(native "$RUN_ROOT")"
@@ -289,6 +330,7 @@ printf '==> tier-c (%s, budget %ss, %d stage(s): %s)\n' \
 detail "repo      $REPO_NATIVE"
 detail "run root  $RUN_ROOT_NATIVE"
 detail "app dir   $(native "$APP_DIR")"
+[ -n "$BACKEND_LABEL" ] && detail "backend   $BACKEND_LABEL"
 
 # ================================================================================================
 # STAGE tier-b -- THE WHOLE PER-COMMIT GATE

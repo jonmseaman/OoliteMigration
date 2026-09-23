@@ -31,16 +31,27 @@ MA 02110-1301, USA.
 @class Entity;
 
 
-void InitOOJSEntity(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-BOOL JSValueToEntity(JSContext *context, jsval value, Entity **outEntity);
+void InitOOJSEntity(ooscript::Context context, ooscript::Object global);
 
-extern JSClass gOOEntityJSClass;
-extern JSObject *gOOEntityJSPrototype;
-DEFINE_JS_OBJECT_GETTER(OOJSEntityGetEntity, &gOOEntityJSClass, gOOEntityJSPrototype, Entity)
+BOOL JSValueToEntity(ooscript::Context context, ooscript::Value value, Entity **outEntity);
 
-OOINLINE JSClass *JSEntityClass(void)  { return &gOOEntityJSClass; }
-OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
+// The Entity class is an ooscript::ClassDef owned by OOJSEntity.mm (bead oo-oap); JSEntityClass()
+// returns it. Declared as a real function rather than OOINLINE so the class definition stays
+// private to OOJSEntity.mm.
+ooscript::ClassDef *JSEntityClass(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+extern ooscript::Object gOOEntityJSPrototype;
+DEFINE_JS_OBJECT_GETTER(OOJSEntityGetEntity, JSEntityClass(), gOOEntityJSPrototype, Entity)
+
+OOINLINE ooscript::Object JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 
 
 /*	EntityFromArgumentList()
@@ -53,7 +64,13 @@ OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 	scriptClass and function are non-nil, a warning will be reported to the
 	log.
 */
-BOOL EntityFromArgumentList(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, Entity **outEntity, uintN *outConsumed);
+#ifdef __cplusplus
+extern "C" {
+#endif
+BOOL EntityFromArgumentList(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed);
+#ifdef __cplusplus
+}
+#endif
 
 
 /*

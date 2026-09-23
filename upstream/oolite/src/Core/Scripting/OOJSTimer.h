@@ -26,22 +26,28 @@ MA 02110-1301, USA.
 */
 
 #import "OOScriptTimer.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOJSScript.h"
-#include <jsapi.h>
-
-
 @interface OOJSTimer: OOScriptTimer
 {
 @private
-	jsval				_function;
-	JSObject			*_jsThis;	// The object that is 'this' in the function call.
+	ooscript::Value				_function;
+	ooscript::Object _jsThis;	// The object that is 'this' in the function call.
 	
 	OOJSScript			*_owningScript;
 	
-	JSObject			*_jsSelf;	// The JS Timer object proxy for this OOJSTimer.
+	ooscript::Object _jsSelf;	// The JS Timer object proxy for this OOJSTimer.
 }
 
 @end
 
 
-void InitOOJSTimer(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void InitOOJSTimer(ooscript::Context context, ooscript::Object global);
+
+#ifdef __cplusplus
+}
+#endif

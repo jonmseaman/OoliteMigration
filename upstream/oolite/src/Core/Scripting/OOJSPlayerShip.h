@@ -32,13 +32,20 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class PlayerEntity;
 
 
-void InitOOJSPlayerShip(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-JSClass *JSPlayerShipClass(void);
-JSObject *JSPlayerShipPrototype(void);
-JSObject *JSPlayerShipObject(void);
+void InitOOJSPlayerShip(ooscript::Context context, ooscript::Object global);
+
+ooscript::ClassDef *JSPlayerShipClass(void);
+ooscript::Object JSPlayerShipPrototype(void);
+ooscript::Object JSPlayerShipObject(void);
+
+#ifdef __cplusplus
+}
+#endif

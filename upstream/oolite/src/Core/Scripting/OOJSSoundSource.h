@@ -25,8 +25,16 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
+#include "ooscript/JSEngine.hpp"
 @class OOSoundSource;
 
 
-void InitOOJSSoundSource(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void InitOOJSSoundSource(ooscript::Context context, ooscript::Object global);
+
+#ifdef __cplusplus
+}
+#endif

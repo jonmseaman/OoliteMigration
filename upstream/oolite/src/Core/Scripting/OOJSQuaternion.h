@@ -25,17 +25,21 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
+#include "ooscript/JSEngine.hpp"
 #import "OOMaths.h"
 
 
-void InitOOJSQuaternion(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void InitOOJSQuaternion(ooscript::Context context, ooscript::Object global);
 
 
-JSObject *JSQuaternionWithQuaternion(JSContext *context, Quaternion quaternion)  NONNULL_FUNC;
+ooscript::Object JSQuaternionWithQuaternion(ooscript::Context context, Quaternion quaternion)  NONNULL_FUNC;
 
-BOOL QuaternionToJSValue(JSContext *context, Quaternion quaternion, jsval *outValue)  NONNULL_FUNC;
-BOOL JSValueToQuaternion(JSContext *context, jsval value, Quaternion *outQuaternion)  NONNULL_FUNC;
+BOOL QuaternionToJSValue(ooscript::Context context, Quaternion quaternion, ooscript::Value *outValue)  NONNULL_FUNC;
+BOOL JSValueToQuaternion(ooscript::Context context, ooscript::Value value, Quaternion *outQuaternion)  NONNULL_FUNC;
 
 /*	Given a JS Quaternion object, get the corresponding Vector struct. Given a
 	JS Entity, get its orientation. Given a JS Array with exactly four
@@ -43,10 +47,10 @@ BOOL JSValueToQuaternion(JSContext *context, jsval value, Quaternion *outQuatern
 	anything else, return NO. (Other implicit conversions may be added in
 	future.)
 */
-BOOL JSObjectGetQuaternion(JSContext *context, JSObject *quaternionObj, Quaternion *outQuaternion)  GCC_ATTR((nonnull (1, 3)));
+BOOL JSObjectGetQuaternion(ooscript::Context context, ooscript::Object quaternionObj, Quaternion *outQuaternion)  GCC_ATTR((nonnull (1, 3)));
 
 //	Set the value of a JS quaternion object.
-BOOL JSQuaternionSetQuaternion(JSContext *context, JSObject *quaternionObj, Quaternion quaternion)  GCC_ATTR((nonnull (1)));
+BOOL JSQuaternionSetQuaternion(ooscript::Context context, ooscript::Object quaternionObj, Quaternion quaternion)  GCC_ATTR((nonnull (1)));
 
 
 /*	QuaternionFromArgumentList()
@@ -59,10 +63,16 @@ BOOL JSQuaternionSetQuaternion(JSContext *context, JSObject *quaternionObj, Quat
 	On failure, it will return NO and raise an error. If the caller is a JS
 	callback, it must return NO to signal an error.
 */
-BOOL QuaternionFromArgumentList(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, Quaternion *outQuaternion, uintN *outConsumed)  GCC_ATTR((nonnull (1, 5, 6)));
+BOOL QuaternionFromArgumentList(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, Quaternion *outQuaternion, unsigned *outConsumed)  GCC_ATTR((nonnull (1, 5, 6)));
 
 /*	QuaternionFromArgumentList()
 	
 	Like VectorFromArgumentList(), but does not report an error on failure.
 */
-BOOL QuaternionFromArgumentListNoError(JSContext *context, uintN argc, jsval *argv, Quaternion *outVector, uintN *outConsumed)  GCC_ATTR((nonnull (1, 3, 4)));
+BOOL QuaternionFromArgumentListNoError(ooscript::Context context, unsigned argc, ooscript::Value *argv, Quaternion *outVector, unsigned *outConsumed)  GCC_ATTR((nonnull (1, 3, 4)));
+
+
+#ifdef __cplusplus
+}
+#endif
+

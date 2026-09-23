@@ -13,7 +13,10 @@
 # ================================================================================================
 #
 # It is the thing that turns N Tier-B-green branches into ONE Tier C run and a fast-forward of
-# main. It does not re-implement a single check: the gate is `tools/tier-c.sh` (7 stages, ~1327 s
+# main. Since ADR-0021 it is the NIGHTLY and PHASE-END batch verifier, not the per-bead merge
+# gate: the fleet lands a bead through scripts/accept.sh (acceptance block, five-minute budget),
+# and this queue bisects a red night to its commit. It does not re-implement a single check: the
+# gate is `tools/tier-c.sh` (7 stages, ~1327 s
 # projected, bead oo-j4u), invoked as an opaque command whose only contract is its EXIT STATUS.
 # Swap it with OO_MQ_GATE and the queue is unchanged; that is also how the selftest drives every
 # merge and bisect path in ~3 s against synthetic repositories instead of ~3 h against the real one.

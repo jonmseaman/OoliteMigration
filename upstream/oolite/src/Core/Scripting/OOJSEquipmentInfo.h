@@ -25,22 +25,38 @@ MA 02110-1301, USA.
 
 */
 
-#include <jsapi.h>
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 
 @class OOEquipmentType;
 
 
-void InitOOJSEquipmentInfo(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/*	Given a jsval representing a string (equipment key) or a JS EquipmentInfo,
+void InitOOJSEquipmentInfo(ooscript::Context context, ooscript::Object global);
+
+#ifdef __cplusplus
+}
+#endif
+
+/*	Given a ooscript::Value representing a string (equipment key) or a JS EquipmentInfo,
 	return the corresponding EquipmentType or key. Note that
 	JSValueToEquipmentKey() will not return arbitrary strings, only valid
 	equipment keys.
 	JSValueToEquipmentKeyRelaxed() will return any string that does not end
 	with _DAMAGED.
  */
-OOEquipmentType *JSValueToEquipmentType(JSContext *context, jsval value);
-NSString *JSValueToEquipmentKey(JSContext *context, jsval value);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-NSString *JSValueToEquipmentKeyRelaxed(JSContext *context, jsval value, BOOL *outExists);
+OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Value value);
+NSString *JSValueToEquipmentKey(ooscript::Context context, ooscript::Value value);
+
+NSString *JSValueToEquipmentKeyRelaxed(ooscript::Context context, ooscript::Value value, BOOL *outExists);
+
+#ifdef __cplusplus
+}
+#endif

@@ -30,7 +30,13 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
+#include "ooscript/JSEngine.hpp"
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+void InitOOJSFont(ooscript::Context context, ooscript::Object global);
 
-void InitOOJSFont(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+}
+#endif

@@ -39,6 +39,31 @@ finish, write them with `bd update {id} --acceptance "<one command per line>"`; 
 from the repository root on the merged tree, and `accept.sh` runs that field, not the description.
 A block that is only comments or `exit 1` is rejected.
 
+**The acceptance block has a five-minute budget** (ADR-0021; `accept.sh` enforces
+`BEADS_ACCEPT_BUDGET`, default 300 s, across the WHOLE block). It is the fast proof that the bead
+is done: offline checks, at most one game launch, no loops, no `for i in 1 2 3`, no stability or
+mutant sweeps. A block that runs out is rejected with the budget named; the fix is never to raise
+the budget. Anything slower belongs in `tests/nightly/checks.txt` (one shell command per line, run
+from the repository root by `tools/run-nightly-checks.sh` every night and at phase end): add your
+slow proof there in the same commit, and keep a one-line fast proof in the acceptance block.
+
+`accept.sh` runs EACH LINE of the stored acceptance as its OWN independent `bash -o pipefail -c`
+invocation — shell state (variables, `cd`, `set -e`) does NOT carry from one line to the next. A
+multi-statement script that sets a variable on one line and reads it on a later line (e.g.
+`B="$TMPDIR/x"` then `mkdir -p "$B"`) will see `$B` empty on the second line and fail with a
+confusing error. If your acceptance needs shared state across statements, join them into ONE
+LOGICAL LINE with `;` or `&&` (not real newlines) before storing, and verify the joined line
+passes under `bash -o pipefail -c "$CMD"` exactly as accept.sh will invoke it, before calling
+`bd update --acceptance`.
+
+If your acceptance block contains a "must find zero matches" grep gate (e.g. a `js-retarget` bead's
+`grep -nE '\bJS_[A-Za-z]+' <file>`), the line MUST be negated with a leading `!` —
+`! grep -nE '\bJS_[A-Za-z]+' <file>` — never bare. A bare `grep` exits 1 when there are zero matches
+(the success case you want), and accept.sh's `bash -o pipefail -c "$cmd"` treats any nonzero exit as
+a FAILURE, wrongly rejecting an otherwise-correct bead. Before storing with `bd update --acceptance`,
+run the exact line under `bash -o pipefail -c "$CMD"; echo exit:$?` yourself and confirm it prints
+`exit:0` on your finished (zero-match) file.
+
 Work only inside {worktree_path}. If the notes report a merge conflict from a previous attempt,
 start with `git merge {base_branch}` in the worktree and resolve it. Run the acceptance commands
 yourself before you finish. **Commit everything** with message "bead {id}: {title}" and confirm

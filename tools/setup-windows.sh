@@ -41,9 +41,9 @@ UCRT_PKGS=(
 )
 
 # Installed by upstream's install_deps.sh from the oolite_windeps_build releases, not from a
-# repository: SpiderMonkey and the GNUstep/libobjc2 stack built against clang. Phases 1 and 2
-# delete these; until then the build needs them.
-WINDEPS_PKGS=(spidermonkey libobjc2 gnustep-make gnustep-base)
+# repository: the GNUstep/libobjc2 stack built against clang. Phase 2 deletes these; until then
+# the build needs them. (SpiderMonkey left with Phase 1, bead oo-7wx.)
+WINDEPS_PKGS=(libobjc2 gnustep-make gnustep-base)
 
 # Pure-Python, no MSYS2 package exists. pytest-bdd drives the component tier (ADR-0018);
 # pyautogui drives the GUI tier against a real window (docs/phases/0-gui-tier.md). The GUI
@@ -133,7 +133,7 @@ elif want "ucrt64: ${needed_ucrt[*]}"; then
   pacman -S --needed --noconfirm "${needed_ucrt[@]}"
 fi
 
-# --- 3. Oolite Windows dependencies (SpiderMonkey, libobjc2, GNUstep) ------------------------
+# --- 3. Oolite Windows dependencies (libobjc2, GNUstep) ---------------------------------------
 #
 # Delegated to upstream's install_deps.sh so this stays in step with CI. That script is not
 # idempotent - it re-downloads every release asset and re-runs pacman -U - so it is gated on the

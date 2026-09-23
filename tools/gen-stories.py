@@ -100,9 +100,10 @@ def grep(p, pat):
     except OSError: return False
 
 def m_files():
-    return sorted(SRC.rglob("*.m"))
+    # The Objective-C sources: .m before seam 2.1 (bead oo-x7o) renamed the tree to .mm.
+    return sorted(set(SRC.rglob("*.m")) | set(SRC.rglob("*.mm")))
 
-GIANT = {"ShipEntity.m", "PlayerEntity.m", "Universe.m", "PlayerEntityControls.m", "HeadUpDisplay.m", "OOJSShip.m"}
+GIANT = {f"{n}{ext}" for n in ("ShipEntity", "PlayerEntity", "Universe", "PlayerEntityControls", "HeadUpDisplay", "OOJSShip") for ext in (".m", ".mm")}
 
 def module_of(p: Path):
     rel = p.relative_to(SRC).as_posix()
@@ -370,14 +371,17 @@ def sweep_component():
 
 def sweep_js_retarget():
     out = []
+    # The selector is the acceptance gate's own predicate (bead oo-utqt): a file is a target iff it
+    # has a JS_* token. Selecting by #include filed vacuous beads for clean files and none at all
+    # for files that call JS_* without including jsapi.h directly. ooscript/ is the backend.
     for p in m_files():
-        if not grep(p, r'jsapi\.h|OOJavaScriptEngine\.h'): continue
-        if p.name == "OOJSVector.m": continue
+        if "ooscript" in p.parts: continue
+        if not grep(p, r'\bJS_[A-Za-z]+'): continue
         n = count_lines(p); rel = p.relative_to(ROOT).as_posix()
         if p.name in GIANT: continue
         out.append((f"Retarget JS_* calls onto the façade: {p.name}",
                     f"Move every JS_* call in {rel} ({n} lines) onto ooscript/JSEngine.hpp, SpiderMonkey still underneath. Apply tools/refactor/js-stubs.sh first, then hand-retarget the rest. Behaviour must not change.",
-                    [f"! grep -nE '\\bJS_[A-Za-z]+' {rel}", f"tools/tier-a.sh {rel}", "tools/tier-b.sh --fast"], ["1.1x", "1.2"], "upstream/oolite/src/Core/Scripting/OOJSVector.m", 2 if n < 1500 else 3))
+                    [f"! grep -nE '\\bJS_[A-Za-z]+' {rel}", f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"], ["1.1x", "1.2"], "upstream/oolite/src/Core/Scripting/OOJSVector.m", 2 if n < 1500 else 3))
     return out
 
 def sweep_extractors():
@@ -387,7 +391,7 @@ def sweep_extractors():
         if p.name in GIANT: continue
         n = count_lines(p); rel = p.relative_to(ROOT).as_posix().replace(".m", ".mm")
         out.append((f"Retire oo_*ForKey in {p.name}", f"Replace every oo_*ForKey:defaultValue: call in {rel} ({n} lines) with PList::get<T>, the way the exemplar consumer does it. No other change.",
-                    [f"! grep -nE 'oo_[a-zA-Z]+ForKey' {rel}", f"tools/tier-a.sh {rel}", "tools/tier-b.sh --fast"], ["2.4"], "the consumer migrated in bead 2.4 (see its notes)", 2 if n < 1500 else 3))
+                    [f"! grep -nE 'oo_[a-zA-Z]+ForKey' {rel}", f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"], ["2.4"], "the consumer migrated in bead 2.4 (see its notes)", 2 if n < 1500 else 3))
     return out
 
 def sweep_foundation():
@@ -410,7 +414,7 @@ def sweep_foundation():
                      " is updated in the same commit. Until that lands this file cannot be renamed to .c"
                      " (ADR-0012); the rename bead is emitted only after this bead closes.")
         out.append((f"Migrate Foundation usage to oofnd: {p.name}", f"Replace NSString/NSArray/NSDictionary/NSSet/NSNumber/NSData usage in {rel} ({n} lines, module {mod}) with oofnd types, the class still Objective-C. Do not convert the class.{extra}",
-                    [f"! grep -nE '\\bNS(String|Array|Dictionary|Set|Number|Data|Enumerator|Mutable[A-Za-z]+)\\b' {grep_files}", f"tools/tier-a.sh {rel}", "tools/tier-b.sh --fast"],
+                    [f"! grep -nE '\\bNS(String|Array|Dictionary|Set|Number|Data|Enumerator|Mutable[A-Za-z]+)\\b' {grep_files}", f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"],
                     ["2.10"], "the exemplar consumers named in beads 2.4-2.8", MODULE_ORDER[mod]))
     return out
 
@@ -553,7 +557,7 @@ def sweep_convert():
                 else f"Convert the class in {rel} (and {hrel or 'its header'}) from Objective-C to conservative C++20 per the recipe in docs/phases/3-cpp-conversion.md: class shell, member functions, oo::Ref, dynamic_cast where isKindOfClass: genuinely needs it. Plain-C method bodies stay verbatim.")
         what += " If the conversion touches observable ship, AI or weapon behaviour, add a component scenario under upstream/oolite/tests/component/features/ using existing steps (ADR-0018); a missing step is a new interface, so report it rather than writing one."
         out.append((f"Convert to C++20: {p.name}", f"{what}\n\n## Files\n{files}",
-                    [f"! grep -nE '@implementation|@interface|@selector|@protocol' {rel}" + (f" {hrel}" if hrel else ""), f"tools/tier-a.sh {rel}", "tools/tier-b.sh --fast"], [seam], f"seam:{seam}", MODULE_ORDER[mod]))
+                    [f"! grep -nE '@implementation|@interface|@selector|@protocol' {rel}" + (f" {hrel}" if hrel else ""), f"tools/tier-a.sh {rel}", "bash tools/guardrails.sh"], [seam], f"seam:{seam}", MODULE_ORDER[mod]))
     return out, presplit
 
 SWEEPS = [  # key, phase, label, generator

@@ -26,9 +26,16 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class OOPlanetEntity;
 
 
-void InitOOJSPlanet(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void InitOOJSPlanet(ooscript::Context context, ooscript::Object global);
+
+#ifdef __cplusplus
+}
+#endif

@@ -25,15 +25,23 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
+#include "ooscript/JSEngine.hpp"
 #import "OOExhaustPlumeEntity.h"
 
 
-void InitOOJSExhaustPlume(JSContext *context, JSObject *global);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object global);
+
+#ifdef __cplusplus
+}
+#endif
 
 @interface OOExhaustPlumeEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype;
+- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (NSString *) oo_jsClassName;
 - (BOOL) isVisibleToScripts;
 

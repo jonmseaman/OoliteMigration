@@ -24,13 +24,12 @@ MA 02110-1301, USA.
 */
 
 #import "OOJSScript.h"
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @interface OOJSGuiScreenKeyDefinition: OOWeakRefObject
 {
 @private
-	jsval				_callback;
-	JSObject			*_callbackThis;
+	ooscript::Value				_callback;
+	ooscript::Object _callbackThis;
 	OOJSScript			*_owningScript;
 
 	NSString			*_name;
@@ -41,10 +40,10 @@ MA 02110-1301, USA.
 - (void)setName:(NSString *)name;
 - (NSDictionary *)registerKeys;
 - (void)setRegisterKeys:(NSDictionary *)registerKeys;
-- (jsval)callback;
-- (void)setCallback:(jsval)callback;
-- (JSObject *)callbackThis;
-- (void)setCallbackThis:(JSObject *)callbackthis;
+- (ooscript::Value)callback;
+- (void)setCallback:(ooscript::Value)callback;
+- (ooscript::Object)callbackThis;
+- (void)setCallbackThis:(ooscript::Object)callbackthis;
 
 - (void)runCallback:(NSString *)key;
 

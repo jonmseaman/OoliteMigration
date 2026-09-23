@@ -26,6 +26,7 @@
  */
 
 #import "OOEntityWithDrawable.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOPlanetEntity.h"
 #import "OOJSPropID.h"
 
@@ -613,7 +614,7 @@ typedef enum
 - (BOOL) addEquipmentItem:(NSString *)equipmentKey withValidation:(BOOL)validateAddition inContext:(NSString *)context;
 - (BOOL) hasHyperspaceMotor;
 - (float) hyperspaceSpinTime;
-- (void) setHyperspaceSpinTime:(float)new;
+- (void) setHyperspaceSpinTime:(float)newValue;
 
 
 - (NSEnumerator *) equipmentEnumerator;
@@ -667,17 +668,17 @@ typedef enum
 - (double) maxHyperspaceDistance;
 - (float) afterburnerFactor;
 - (float) afterburnerRate;
-- (void) setAfterburnerFactor:(GLfloat)new;
-- (void) setAfterburnerRate:(GLfloat)new;
+- (void) setAfterburnerFactor:(GLfloat)newValue;
+- (void) setAfterburnerRate:(GLfloat)newValue;
 - (float) maxThrust;
 - (float) thrust;
 
-- (void) setMaxThrust:(GLfloat)new;
-- (void) setMaxFlightPitch:(GLfloat)new;
-- (void) setMaxFlightSpeed:(GLfloat)new;
-- (void) setMaxFlightRoll:(GLfloat)new;
-- (void) setMaxFlightYaw:(GLfloat)new;
-- (void) setEnergyRechargeRate:(GLfloat)new;
+- (void) setMaxThrust:(GLfloat)newValue;
+- (void) setMaxFlightPitch:(GLfloat)newValue;
+- (void) setMaxFlightSpeed:(GLfloat)newValue;
+- (void) setMaxFlightRoll:(GLfloat)newValue;
+- (void) setMaxFlightYaw:(GLfloat)newValue;
+- (void) setEnergyRechargeRate:(GLfloat)newValue;
 
 
 - (void) processBehaviour:(OOTimeDelta)delta_t;
@@ -910,7 +911,7 @@ typedef enum
 - (OOCargoQuantity) commodityAmount;
 
 - (OOCargoQuantity) maxAvailableCargoSpace;
-- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)new;
+- (void) setMaxAvailableCargoSpace:(OOCargoQuantity)newValue;
 - (OOCargoQuantity) availableCargoSpace;
 - (OOCargoQuantity) cargoQuantityOnBoard;
 - (OOCargoType) cargoType;
@@ -1253,32 +1254,32 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	For NPC ships, these call doEvent: on the ship script.
 	For the player, they do that and also call doWorldScriptEvent:.
 */
-- (void) doScriptEvent:(jsid)message;
-- (void) doScriptEvent:(jsid)message withArgument:(id)argument;
-- (void) doScriptEvent:(jsid)message withArgument:(id)argument1 andArgument:(id)argument2;
-- (void) doScriptEvent:(jsid)message withArguments:(NSArray *)arguments;
-- (void) doScriptEvent:(jsid)message withArguments:(jsval *)argv count:(uintN)argc;
-- (void) doScriptEvent:(jsid)message inContext:(JSContext *)context withArguments:(jsval *)argv count:(uintN)argc;
+- (void) doScriptEvent:(ooscript::PropertyId)message;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument1 andArgument:(id)argument2;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(NSArray *)arguments;
+- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc;
+- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 
 /*	Convenience to send an event with raw JS values, for example:
-	ShipScriptEventNoCx(ship, "doSomething", INT_TO_JSVAL(42));
+	ShipScriptEventNoCx(ship, "doSomething", ooscript::int32Value(42));
 */
 #define ShipScriptEvent(context, ship, event, ...) do { \
-jsval argv[] = { __VA_ARGS__ }; \
-uintN argc = sizeof argv / sizeof *argv; \
+ooscript::Value argv[] = { __VA_ARGS__ }; \
+unsigned argc = sizeof argv / sizeof *argv; \
 [ship doScriptEvent:OOJSID(event) inContext:context withArguments:argv count:argc]; \
 } while (0)
 
 #define ShipScriptEventNoCx(ship, event, ...) do { \
-jsval argv[] = { __VA_ARGS__ }; \
-uintN argc = sizeof argv / sizeof *argv; \
+ooscript::Value argv[] = { __VA_ARGS__ }; \
+unsigned argc = sizeof argv / sizeof *argv; \
 [ship doScriptEvent:OOJSID(event) withArguments:argv count:argc]; \
 } while (0)
 
 - (void) reactToAIMessage:(NSString *)message context:(NSString *)debugContext;	// Immediate message
 - (void) sendAIMessage:(NSString *)message;		// Queued message
-- (void) doScriptEvent:(jsid)scriptEvent andReactToAIMessage:(NSString *)aiMessage;
-- (void) doScriptEvent:(jsid)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage;
+- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage;
+- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage;
 
 @end
 
@@ -1311,7 +1312,13 @@ NSString *OOStringFromBehaviour(OOBehaviour behaviour) CONST_FUNC;
 
 // Weapon strings prefixed with EQ_, used in shipyard.plist.
 NSString *OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon) CONST_FUNC;
+#ifdef __cplusplus
+extern "C" {
+#endif
 OOWeaponType OOWeaponTypeFromEquipmentIdentifierSloppy(NSString *string) PURE_FUNC;	// Uses suffix match for backwards compatibility.
+#ifdef __cplusplus
+}
+#endif
 OOWeaponType OOWeaponTypeFromEquipmentIdentifierStrict(NSString *string) PURE_FUNC;
 OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string);
 
@@ -1319,7 +1326,13 @@ OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string);
 NSString *OOStringFromWeaponType(OOWeaponType weapon) CONST_FUNC;
 OOWeaponType OOWeaponTypeFromString(NSString *string) PURE_FUNC;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 BOOL isWeaponNone(OOWeaponType weapon);
+#ifdef __cplusplus
+}
+#endif
 
 NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
 

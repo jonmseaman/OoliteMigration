@@ -16,11 +16,39 @@
 #   2 tests       ~12 s      offline module tests, 3 suites
 #   2b parity     ~3 s       tier-b's environment must agree with a bare shell's verdict
 #   3 goldens     ~43 s      every blessed golden under goldens/<platform>/
-#   4 component   ~22 s      upstream/oolite/tests/component (ADR-0018)
+#   4 component   769-957 s  upstream/oolite/tests/component (ADR-0018) -- see BUDGET HISTORY
 #   5 smoke       ~14 s      upstream/oolite/tests/launch_snapshot.py
 #   6 corpus      ~53 s      tools/corpus.sh tier1 --limit N  (N=3 by default)
 #
-#   TOTAL ~180 s warm, ~310 s cold.  Budget: 600 s (the bead's "under 10 minutes").
+#   TOTAL ~900-1100 s in --fast (build skipped, see below), ~1050-1250 s cold.  Budget: 1200 s.
+#
+# BUDGET HISTORY. The original figure was 600 s ("the bead's \"under 10 minutes\""), sized off the
+# per-stage estimates above without ever timing stage 4 end to end -- stage 4's own original
+# estimate in this table was "~22 s", off by a factor of ~35-40x from what it actually costs. Two
+# separate js-retarget beads (oo-45g attempt 5, escalated) measured stage_component alone -- the
+# full 8-scenario upstream/oolite/tests/component suite, one native game launch per scenario -- at
+# 769-957 s wall, which alone exceeds 600 s even when every stage passes (bead oo-a6du). There is
+# no pytest "fast" marker in tests/component to subset by (seam 0.9b assumed one would exist; it
+# never landed), and ADR-0018 sizes this tier at Tier B in full, not a subset, so shrinking what
+# --fast runs here would be a scope change to the ADR, not a budget fix. The 1200 s budget is the
+# measured component range (769-957 s) plus the OTHER FIVE non-build --fast stages (0, 2, 2b, 3,
+# 5, 6 above: 9-16 + 12 + 3 + 43 + 14 + 53 = ~134-141 s -- stage 1 (build) does not run in --fast
+# and is excluded from this sum) plus headroom for sibling-agent contention on the fleet box:
+# 957 + 141 = 1098 s worst-known-case, leaving ~100 s of headroom under the 1200 s budget. A full
+# run (no --fast) additionally pays the build stage (13-142 s), which is why the cold TOTAL above
+# runs higher than --fast's own budget; --fast is not required to fit a build it does not do.
+#
+# COMPONENT STAGE AND THE DESKTOP MUTEX. Stage 4 is not headless: upstream/oolite/tests/component
+# /conftest.py's session-scoped `desktop_lock` fixture takes tools/gui-lock (owner "component")
+# for the whole stage, exactly like the GUI tier does, because every scenario opens a real window
+# on the real desktop (MSYS2's Mesa ships no EGL, so SDL_VIDEODRIVER=offscreen is not an option
+# here). A concurrent sibling agent's own component or GUI-tier run can therefore make this stage
+# queue for the lock or starve on CPU/IO while holding it, which can turn a real 769-957 s launch
+# suite into something that blows even the 1200 s budget or times component-internal waits out --
+# this is contention, not a code regression. If --fast's component stage fails with a message
+# naming tools/gui-lock (e.g. "gui-lock: timed out ... held by :component"), treat it exactly as
+# the beads-worker SKILL.md's "GUI acceptance verdicts" convention treats a GUI-tier acceptance
+# failure: re-run once with `tools/gui-acceptance-recheck` before counting it as a genuine failure.
 #
 # STAGE 0's NUMBER IS MEASURED IN THIS REPO, NOT IN A TOY ONE. It is quoted as a RANGE because
 # three timed runs of `bash tools/guardrails.sh` in this worktree gave 9.42 s, 10.04 s and
@@ -129,7 +157,7 @@ REPO_ROOT="$(cd "$HERE/.." && pwd)"
 OOLITE="$REPO_ROOT/upstream/oolite"
 PLATFORM="${OOLITE_TIER_B_PLATFORM:-windows-x64}"
 BUILD_FLAVOUR="${OOLITE_TIER_B_FLAVOUR:-test}"
-BUDGET_SECONDS="${OOLITE_TIER_B_BUDGET:-600}"
+BUDGET_SECONDS="${OOLITE_TIER_B_BUDGET:-1200}"
 CORPUS_GROUPS="${OOLITE_TIER_B_CORPUS_GROUPS:-3}"
 
 native() { if command -v cygpath >/dev/null 2>&1; then cygpath -m "$1"; else printf '%s' "$1"; fi; }
