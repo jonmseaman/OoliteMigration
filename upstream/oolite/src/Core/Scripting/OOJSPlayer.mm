@@ -260,7 +260,7 @@ void InitOOJSPlayer(ooscript::Context context, ooscript::Object global)
 	OOJSRegisterObjectConverter(&sPlayerClass, OOJSBasicPrivateObjectConverter);
 
 	// Create player object as a property of the global object.
-	Object playerObj = ooscript::defineObject((context), (global), "player", &sPlayerClass, proto, PropertyFlag::ReadOnly);
+	Object playerObj = ooscript::defineObject((context), (global), "player", &sPlayerClass, proto, OOJS_PROP_READONLY);
 	sPlayerObject = (playerObj);
 }
 

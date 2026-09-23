@@ -474,7 +474,7 @@ void InitOOJSPlayerShip(ooscript::Context context, ooscript::Object global)
 	PlayerEntity *player = [PlayerEntity sharedPlayer];	// NOTE: at time of writing, this creates the player entity. Don't use PLAYER here.
 	
 	// Create ship object as a property of the player object.
-	Object shipObj = ooscript::defineObject((context), (JSPlayerObject()), "ship", &sPlayerShipClass, proto, PropertyFlag::ReadOnly);
+	Object shipObj = ooscript::defineObject((context), (JSPlayerObject()), "ship", &sPlayerShipClass, proto, OOJS_PROP_READONLY);
 	sPlayerShipObject = (shipObj);
 	ooscript::setPrivate((context), shipObj, OOConsumeReference([player weakRetain]));
 	[player setJSSelf:sPlayerShipObject context:context];

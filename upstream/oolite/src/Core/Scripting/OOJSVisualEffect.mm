@@ -154,7 +154,7 @@ static PropertySpec sVisualEffectProperties[] =
 	// JS name						ID									flags																			getter		setter
 	{ "beaconCode",	   kVisualEffect_beaconCode,	  PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "beaconLabel",   kVisualEffect_beaconLabel,	  PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "dataKey",	     kVisualEffect_dataKey,	      PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "dataKey",	     kVisualEffect_dataKey,	      OOJS_PROP_READONLY_CB, nullptr, nullptr },
 	{ "isBreakPattern",	kVisualEffect_isBreakPattern,	PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "scaleX", kVisualEffect_scaleX, PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "scaleY", kVisualEffect_scaleY, PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },	
@@ -162,18 +162,18 @@ static PropertySpec sVisualEffectProperties[] =
 	{ "scannerDisplayColor1", kVisualEffect_scannerDisplayColor1, PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "scannerDisplayColor2", kVisualEffect_scannerDisplayColor2, PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "hullHeatLevel", kVisualEffect_hullHeatLevel, PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "script",				 kVisualEffect_script,				PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "scriptInfo", 	 kVisualEffect_scriptInfo,		PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "script",				 kVisualEffect_script,				OOJS_PROP_READONLY_CB, nullptr, nullptr },
+	{ "scriptInfo", 	 kVisualEffect_scriptInfo,		OOJS_PROP_READONLY_CB, nullptr, nullptr },
 	{ "shaderFloat1",  kVisualEffect_shaderFloat1,  PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "shaderFloat2",  kVisualEffect_shaderFloat2,  PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "shaderInt1",    kVisualEffect_shaderInt1,    PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "shaderInt2",    kVisualEffect_shaderInt2,    PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "shaderVector1", kVisualEffect_shaderVector1, PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "shaderVector2", kVisualEffect_shaderVector2, PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "subEntities",			kVisualEffect_subEntities,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "vectorForward", kVisualEffect_vectorForward,	PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "vectorRight",	 kVisualEffect_vectorRight,		PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "vectorUp",			 kVisualEffect_vectorUp,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "subEntities",			kVisualEffect_subEntities,			OOJS_PROP_READONLY_CB, nullptr, nullptr },
+	{ "vectorForward", kVisualEffect_vectorForward,	OOJS_PROP_READONLY_CB, nullptr, nullptr },
+	{ "vectorRight",	 kVisualEffect_vectorRight,		OOJS_PROP_READONLY_CB, nullptr, nullptr },
+	{ "vectorUp",			 kVisualEffect_vectorUp,			OOJS_PROP_READONLY_CB, nullptr, nullptr },
 	{ 0 }
 };
 } // namespace

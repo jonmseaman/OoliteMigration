@@ -168,6 +168,38 @@ Mozilla-specific), but the C++-side `tools/deny-list.txt` deny-list (consumed by
 C/C++ call sites: no reintroduced `JS_*`/`JSRuntime`/`JSContext`/`jsval` symbol once a file is
 migrated off the SpiderMonkey C API.
 
+## Measured differences between the engines (Phase 1 differential, bead oo-1gc.6)
+
+These came out of running the goldens, the 36-group Tier-1 corpus and the JS API snapshot on
+both engines (`tools/tier-c-diff.sh`, `tools/js_api_surface_compare.py`). The golden dumps were
+byte-identical, and Oolite's own API surface matches the 1.93 contract with no differences
+(ADR-0024). What an expansion can still observe:
+
+- **Kept built in** ([ADR-0023](decisions/0023-built-in-mozilla-compat-polyfills.md)):
+  - `toSource()` / `quote()` / `uneval()`, in the CompatShim's best-effort form rather than
+    SpiderMonkey's exact source reflection;
+  - the Array and String "generics" (`Array.forEach(list, fn)`, `String.replace(s, ...)`).
+
+  Migrate away from them anyway: `JSON.stringify()`, `list.forEach(fn)`.
+- **Removed, not polyfilled:**
+  - `Object.prototype.watch` / `unwatch`;
+  - E4X (`XML`, `XMLList`, `Namespace`, `QName`, `isXMLName`);
+  - `Iterator` / `StopIteration`;
+  - the `RegExp.$1`...`$9` statics;
+  - `Date.prototype.toLocaleFormat`;
+  - the `arity` / `caller` / `arguments` properties of functions;
+  - `fileName` / `lineNumber` on error objects.
+- **Assignment to a read-only native property** (for example `clock.seconds = 5`) is ignored in
+  both sloppy and strict code. SpiderMonkey threw a `TypeError` in strict code; a script that
+  relied on that exception was already failing.
+- **A bare name in a script's closure** that refers to a property of the script object (not
+  `this.name`, just `name`) resolves through the object the script file last ran for. That
+  matters only when one script file runs for several objects, such as a ship script, and code
+  uses bare names rather than `this.`.
+- **More standard globals exist.** Scripts that list the global object see more names: a check
+  for "global namespace pollution" reports `Map`, `Promise`, `globalThis` and others as
+  unexpected.
+
 ## Newly available (opt-in, worth advertising to authors)
 
 QuickJS-ng is a modern ES2023 engine. Once the migration lands, expansion scripts may use anything

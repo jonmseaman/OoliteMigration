@@ -111,7 +111,7 @@ static ClassDef sMissionVariablesClass =
 
 void InitOOJSMissionVariables(ooscript::Context context, ooscript::Object global)
 {
-	ooscript::defineObject((context), (global), "missionVariables", &sMissionVariablesClass, nullptr, PropertyFlag::ReadOnly);
+	ooscript::defineObject((context), (global), "missionVariables", &sMissionVariablesClass, nullptr, OOJS_PROP_READONLY);
 	
 #ifndef NDEBUG
 	// Allow callObjC() on missionVariables to call methods on the mission variables dictionary.

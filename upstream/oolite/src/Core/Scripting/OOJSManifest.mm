@@ -187,13 +187,13 @@ void InitOOJSManifest(ooscript::Context context, ooscript::Object global)
 	sManifestPrototype = (proto);
 	
 	// Create manifest object as a property of the player.ship object.
-	Object manifestObj = ooscript::defineObject((context), (JSPlayerShipObject()), "manifest", &sManifestClass, proto, PropertyFlag::ReadOnly);
+	Object manifestObj = ooscript::defineObject((context), (JSPlayerShipObject()), "manifest", &sManifestClass, proto, OOJS_PROP_READONLY);
 	sManifestObject = (manifestObj);
 	ooscript::setPrivate((context), manifestObj, NULL);
 	
 	// Also define manifest object as a property of the global object.
 	// Wait, what? Why? Oh well, too late now. Deprecate for EMMSTRAN? -- Ahruman 2011-02-10
-	ooscript::defineObject((context), (global), "manifest", &sManifestClass, proto, PropertyFlag::ReadOnly);
+	ooscript::defineObject((context), (global), "manifest", &sManifestClass, proto, OOJS_PROP_READONLY);
 	
 }
 

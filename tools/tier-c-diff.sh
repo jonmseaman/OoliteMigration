@@ -86,8 +86,10 @@ run_backend() {
   local label="$1" flag="$2" app_override="$3"
   local log="$OUT/tier-c-$label.log" rc=0
   printf '==> running backend %s (tools/tier-c.sh --backend=%s --only goldens,corpus)\n' "$label" "$flag"
+  # Through env: a ${...:+VAR=...} expansion ahead of an assignment turns the assignment into a
+  # command name (exit 127 on the first real run, bead oo-1gc.6).
   ( cd "$REPO_ROOT" \
-    && ${app_override:+OO_APP_DIR="$(native "$app_override")"} \
+    && env ${app_override:+OO_APP_DIR="$(native "$app_override")"} \
        OOLITE_TIER_C_KEEP=1 \
        bash "$HERE/tier-c.sh" --backend="$flag" --only goldens,corpus ) \
     > "$log" 2>&1 || rc=$?
