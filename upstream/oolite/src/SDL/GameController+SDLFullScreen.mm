@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 - (void) setUpDisplayModes
 {
 	// The screen's mode dictionaries, in its order (Foundation sweep, proposed ADR-0043).
-	const std::vector<oo::ObjCRef<id>>	modes = oo::ObjCRefsFrom<id>([gameView getScreenSizeArray]);
+	const std::vector<oo::ObjCRef<id>>	modes = oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array([gameView getScreenSizeArray]))));
 	std::vector<oo::ObjCRef<id>>		usableModes;
 	unsigned	int		modeWidth, modeHeight;
 
@@ -59,7 +59,7 @@ MA 02110-1301, USA.
 	}
 	displayModes = [oo::NSArrayFromObjects(usableModes) mutableCopy];	// owned (+1), as the ivar was
 
-	const oo::PList currentMode = oo::PListFrom([gameView currentScreenMode]);
+	const oo::PList currentMode = [gameView currentScreenMode];
 	if (currentMode)
 	{
 		width = currentMode.get<int>(oo::StdString(kOODisplayWidth));
