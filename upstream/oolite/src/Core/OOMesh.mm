@@ -43,7 +43,7 @@ MA 02110-1301, USA.
 #import "Octree.h"
 #import "OOMaterialConvenienceCreators.h"
 #import "OOBasicMaterial.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOGraphicsResetManager.h"
 #import "OODebugGLDrawing.h"
@@ -277,7 +277,7 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 	
 	if (placeholderMaterial == nil)
 	{
-		placeholderMaterial = [[OOBasicMaterial alloc] initWithName:@"/placeholder/" configuration:[[ResourceManager materialDefaults] oo_dictionaryForKey:@"no-textures-material"]];
+		placeholderMaterial = [[OOBasicMaterial alloc] initWithName:@"/placeholder/" configuration:oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"no-textures-material")];
 	}
 	
 	return placeholderMaterial;
@@ -1080,17 +1080,17 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	
 	if (dict == nil || ![dict isKindOfClass:[NSDictionary class]])  return NO;
 	
-	vertexCount = [dict oo_unsignedIntForKey:@"vertex count"];
-	faceCount = [dict oo_unsignedIntForKey:@"face count"];
+	vertexCount = oo::PListView(dict).get<unsigned int>(@"vertex count");
+	faceCount = oo::PListView(dict).get<unsigned int>(@"face count");
 	
 	if (vertexCount == 0 || faceCount == 0)  return NO;
 	
 	// Read data elements from dictionary.
-	vertData = [dict oo_dataForKey:@"vertex data"];
-	faceData = [dict oo_dataForKey:@"face data"];
+	vertData = oo::PListView(dict).get<NSData *>(@"vertex data");
+	faceData = oo::PListView(dict).get<NSData *>(@"face data");
 	
-	mtlKeys = [dict oo_arrayForKey:@"material keys"];
-	_normalMode = [dict oo_unsignedCharForKey:@"normal mode"];
+	mtlKeys = oo::PListView(dict).get<NSArray *>(@"material keys");
+	_normalMode = oo::PListView(dict).get<unsigned char>(@"normal mode");
 	BOOL includeNormals = IsPerVertexNormalMode((OOMeshNormalMode)_normalMode);
 	
 	// Ensure we have all the required data elements.
@@ -1104,8 +1104,8 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	
 	if (includeNormals)
 	{
-		normData = [dict oo_dataForKey:@"normal data"];
-		tanData = [dict oo_dataForKey:@"tangent data"];
+		normData = oo::PListView(dict).get<NSData *>(@"normal data");
+		tanData = oo::PListView(dict).get<NSData *>(@"tangent data");
 		if (normData == nil || tanData == nil)
 		{
 			OOLog(@"mesh.load.error.badCacheData", @"Ignoring bad normal/tangent cache data for mesh \"%@\".", fileName);
@@ -1144,7 +1144,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	materialCount = [mtlKeys count];
 	for (i = 0; i != materialCount; ++i)
 	{
-		key = [mtlKeys oo_stringAtIndex:i];
+		key = oo::PListView(mtlKeys).at<NSString *>(i);
 		if (key != nil)  materialKeys[i] = [key copy];
 		else
 		{
@@ -2292,7 +2292,7 @@ static NSUInteger VFRGetFaceAtIndex(VertexFaceRef *vfr, NSUInteger index)
 	NSCParameterAssert(vfr != NULL && index < VFRGetCount(vfr));
 	
 	if (index < vfr->internCount)  return vfr->internFaces[index];
-	else  return [vfr->extra oo_unsignedIntegerAtIndex:index - vfr->internCount];
+	else  return oo::PListView(vfr->extra).at<NSUInteger>(index - vfr->internCount);
 }
 
 @end
