@@ -191,6 +191,8 @@ module; open the one nearest your file and do what it does:
 | `src/Core/OOVector.mm` / `.h` | oo-g7k5 | a C function returning a string; a header reached inside `extern "C"`; callers wrapped at the call |
 | `src/Core/OORoleSet.mm` / `.h` | oo-hi38 | collections as std containers, `std::optional` results, unique and shared selectors, `-description` -> `-descriptionComponents`, sorting, four callers adapted |
 | `src/Core/Materials/OOBasicMaterial.mm` / `.h` | oo-ro7q | a class whose every NS-typed selector is shared: `id` at the boundary, a nil-able string ivar |
+| `src/Core/OOColor.mm` / `.h` + `OOColor+FoundationBridge.h/.mm` | oo-tms0 | fan-out over budget (15 caller files): `cxx_` API plus a transitional bridge (step 6) |
+| `src/Core/OOALSoundDecoder.mm` / `.h` | oo-oz2y | path components (`oo::str::pathComponents` & co.), a private dictionary as `std::optional<std::map>`, `-description` with a dictionary |
 
 The class stays Objective-C. The file and its header end with no Foundation class name the
 acceptance grep matches (comments included), the whole tree builds, and the game behaves the same.
@@ -202,8 +204,11 @@ acceptance grep matches (comments included), the whole tree builds, and the game
    and C functions change their types; `shared` ones keep an Objective-C object type (step 3).
 2. For each `unique` selector and C function whose declaration names an NS type, find its direct
    callers: `grep -rn 'firstPartOfSelector:' upstream/oolite/src` (or the function name).
-3. If your file, your header and those callers exceed 8 files or ~400 written lines: **stop and
-   report the fan-out** (the files and call counts). Do not start.
+3. If your file, your header and those callers exceed 8 files: use a **transitional bridge**
+   (step 6) instead of adapting the callers. If the file's own migration exceeds ~400 written
+   lines even with a bridge, stop and report (the orchestrator splits it by selector group).
+4. If the header declares a category on a Foundation class (`@interface NSString (OOExtensions)`),
+   or a subclass of one (`: NSEnumerator`), this is not a sweep: step 7.
 
 ### 1. Types
 
@@ -247,6 +252,10 @@ valid empty `std::vector`, a disengaged `std::optional`, a null `oo::ObjCRef` or
 | `[x isKindOfClass:[NSString class]]` (& NSArray/NSDictionary/NSSet/NSNumber/NSData) | `oo::IsNSString(x)` (& co.) |
 | `ScanTokensFromString(s)` | `oo::str::tokens(s)` |
 | `NSScanner -scanFloat:` / `-scanDouble:` on a string you hold | `oo::plist_get::scanDouble(oo::utf8ToUtf16(s), &d)` (the NSScanner port; narrow for float) |
+| `-pathComponents`, `+pathWithComponents:`, `-lastPathComponent`, `-stringByDeletingLastPathComponent`, `-stringByAppendingPathComponent:c` | `oo::str::pathComponents(s)`, `pathWithComponents(v)`, `lastPathComponent(s)`, `deletingLastPathComponent(s)`, `appendingPathComponent(s, c)` (GNUstep's Windows rules; `c` is one component) |
+| `%p` in a format string | `%s` with `oo::str::pointerDescription(p).c_str()` (GNUstep's text: low 32 bits, `(null)`) |
+| `[s UTF8String]` to hand a path to a C API | `s.c_str()` |
+| `OOCommodityType` (a typedef of `NSString *`) | `std::string`; never name the typedef in a migrated file (also `OOALStringRef` & co.) |
 
 Leave alone: `NSInteger`/`NSUInteger`/`NSRange`/`NSNotFound` (they stay, ADR-0029), and the other
 Foundation families (`NSScanner`, `NSNotification`, `NSDate`, `NSValue`, `NSException`...), which
@@ -306,8 +315,11 @@ Root-class selectors are shared by construction: `-description`, `-descriptionCo
   A configuration dictionary may also hold colours, textures or other objects, which a PList drops:
   keep such a dictionary `id` at your boundary and do not round-trip it.
 - **Text.** Keep every formatted string byte-identical: same format string, same conversions.
-  `oo::str::format` is `vsnprintf`; `%p` differs (GNUstep printed `0x` and the low 32 bits, or
-  `(null)`), so a `%p` outside the `-description` pattern above is a stop.
+  `oo::str::format` is `vsnprintf`, except `%p`: write `%s` with `oo::str::pointerDescription(p)`.
+- **Typedefs.** A typedef of a Foundation type (`OOCommodityType`, `OOALStringRef`,
+  `OOALDataRef`, `OOALMutableDataRef`, `OOALDictionaryRef`) is that Foundation type: the migrated
+  file must not name it. `grep -nE '\b(OOCommodityType|OOAL(String|Data|MutableData|Dictionary)Ref)\b'`
+  over your two files prints nothing. The typedef goes with the bead of its last user.
 
 ### 5. Check, commit, note
 
@@ -323,14 +335,78 @@ Root-class selectors are shared by construction: `-description`, `-descriptionCo
    the nil decisions. Put the same three lists in the bead's notes (`bd update <id> --notes`): the
    family beads and the callers' own beads read them.
 
+### 6. Over budget: a transitional bridge
+
+For a file `X` whose unique Foundation-typed API has too many direct callers (exemplar
+`OOColor.mm`):
+
+1. In `X.h` / `X.mm`, give each such method or C function a C++-typed twin named with a **`cxx_`
+   prefix** (`+colorFromString:` -> `+cxx_colorFromString:(const std::string &)`,
+   `OORGBAComponentsDescription()` -> `cxx_OORGBAComponentsDescription()`), with the types of
+   step 1, and delete the old declaration and definition from `X.h` / `X.mm`. Migrate the body.
+2. Create `X+FoundationBridge.h`: the banner of `OOColor+FoundationBridge.h` (say which bead made
+   it), an include guard, no imports, and a category `@interface X (OOFoundationBridge)` holding
+   the old declarations **copied exactly** (same selector names, same types) plus the old C
+   function prototypes. Create `X+FoundationBridge.mm`: `#import "X.h"` and
+   `#import "OOFoundationBridge.h"`, and implement each old method by forwarding to its `cxx_`
+   twin and converting the result as the old code built it (the same NSNumber type, nil for nil,
+   immutable collections).
+3. Add `#import "X+FoundationBridge.h"` as the LAST line of `X.h`, under a comment saying it is
+   transitional, and add `'X+FoundationBridge.mm'` after `'X.mm'` in the directory's `meson.build`.
+4. Callers are untouched. Do not call the bridge from migrated code; never add to a bridge later.
+5. Add a row to "Transitional bridges" below, and file its deletion bead:
+   `bd create "Delete X+FoundationBridge" -t task -p 2 -l fleet,phase:2,sweep:foundation-bridge`
+   with acceptance `! test -e <dir>/X+FoundationBridge.mm`, `! grep -n FoundationBridge <dir>/X.h
+   <dir>/meson.build`, `tools/build-windows.sh test`, `bash tools/guardrails.sh`; then
+   `bd dep add <deletion> <caller's sweep bead>` for every caller file's open sweep bead, and
+   `bd dep add oo-qps <deletion>`.
+
+A caller's own sweep bead replaces `[x foo:s]` with `[x cxx_foo:...]` (C++ values in, C++ values
+out). The deletion bead, once `git grep` finds no use of a bridged name outside the bridge, deletes
+the two files, the `meson.build` line and the import in `X.h`.
+
+### 7. Categories on Foundation classes, and Foundation subclasses: retire, do not sweep
+
+`@interface NSString (OOExtensions)` and its kind (`NSData`, `NSDictionary`, `NSMutableDictionary`,
+`NSNumber`, `NSFileManager`, `OOCollectionExtractors`, `OODeepCopy`, OOCocoa.h's `NSEnumerator`
+category) and subclasses of Foundation classes (`OOFilteringEnumerator`,
+`OOExcludeObjectEnumerator`) cannot stop naming Foundation while they exist. Their beads wait on
+the sweep beads of their callers (the dependency is recorded). The bead is ready when `git grep`
+finds none of the category's selectors (or the subclass's name) outside its own files; it then
+deletes its `.h` / `.mm`, their `meson.build` line and every `#import` of the header, and nothing
+else. Until then, a caller's sweep bead moves off them with:
+
+| retiring | replacement in the caller |
+|---|---|
+| `NSString (OOExtensions)`, `(OOUtilities)` | `oo::str` (tables above and in `String.hpp`) |
+| `NSFileManager (OOExtensions)`, `NSData` file reading | `oo::fs` (`oofnd/FileSystem.hpp`) |
+| `NSDictionary` / `NSMutableDictionary (OOExtensions)`, `OOCollectionExtractors` | `oo::PList` / std containers; `get<T>` (the `oo_*ForKey` recipe) |
+| `NSNumber (OOExtensions)` | the scalar |
+| `OODeepCopy(x)` | a value copy of the `oo::PList` / std container (already deep) |
+| `[e objectEnumeratorFilteredWithSelector:@selector(isFoo)]` & co. | `for (const auto &r : v) { if (![r.get() isFoo]) continue; ... }` |
+| `[e objectEnumeratorExcludingObject:x]` | `for (const auto &r : v) { if (r.get() == x) continue; ... }` |
+| `foreach` / `foreachkey` / `-objectEnumerator` over a std container | range-for |
+| `NSUserDefaults (Override)` | `oo::Defaults` (ADR-0032); retired with the last `NSUserDefaults` consumer |
+
+### Transitional bridges
+
+Every `X+FoundationBridge` file in the tree, with the bead that made it and the bead that deletes
+it. oo-qps cannot compile any of them.
+
+| Bridge | Made by | Deleted by |
+|---|---|---|
+| `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | see the bead with title "Delete OOColor+FoundationBridge" |
+
 ### Stop and report (do not stretch)
 
-- The fan-out of step 0 is over budget.
+- The file's own migration exceeds ~400 written lines even with a bridge (step 0).
 - A shared selector would have to change type (only its family bead may).
 - A value you must change is a dictionary holding non-plist objects that a not-yet-migrated callee
   consumes: report the callee as a prerequisite.
 - A method result has no zero-valid C++ form, even inside `std::optional`.
-- A `%p` outside the description pattern, or any formatted text you cannot keep byte-identical.
+- Formatted text you cannot keep byte-identical.
+- A Foundation operation with no oofnd equivalent in the tables: report it, name the method; a
+  frontier bead adds the helper with captured tests (as `oo::str::pathComponents` was added).
 - A golden differs, a test fails, `check-selector-types.py --check` fails, or the build warns about
   `multiple methods named`. Never re-bless, never sort to make a golden match, never edit a test.
 
