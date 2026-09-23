@@ -32,15 +32,14 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class OOJSFunction, OOJSValue;
 
 
 enum
 {
-	kOORegExpCaseInsensitive	= JSREG_FOLD,
-	kOORegExpMultiLine			= JSREG_MULTILINE
+	kOORegExpCaseInsensitive	= ooscript::RegExpFoldCase,
+	kOORegExpMultiLine			= ooscript::RegExpMultiline
 };
 
 

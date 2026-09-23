@@ -30,11 +30,10 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class OODebugMonitor;
 
 
-JSObject *DebugMonitorToJSConsole(JSContext *context, OODebugMonitor *monitor);
+ooscript::Object DebugMonitorToJSConsole(ooscript::Context context, OODebugMonitor *monitor);
 
 void OOJSConsoleDestroy(void);

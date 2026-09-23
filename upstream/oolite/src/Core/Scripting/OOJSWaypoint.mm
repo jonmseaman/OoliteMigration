@@ -41,15 +41,8 @@ MA 02110-1301, USA.
 	renamed to `thisObj` because it is a reserved word once this file compiles as
 	Objective-C++ (ADR-0001).
 
-	Waypoint is registered as an Entity subclass and object converter with the ENGINE's own
-	JSClass* (OOJSRegisterSubclass/OOJSRegisterObjectConverter and getJSClass:andPrototype:
-	are shared, not-yet-retargeted plumbing that still speaks jsapi's JSClass, and
-	JSEntityClass() -- OOJSEntity.m, bead oo-oap -- still returns one too). ClassDef's
-	`backend` slot is a BackendClass* whose first member is the real JSClass (JSEngine_spidermonkey.cpp:
-	"JSClass is the first member ... so a JSClass* the engine hands back converts to its
-	BackendClass*"), and it is filled in by ooscript::initClass() before InitOOJSWaypoint()
-	makes those calls, so RawWaypointClass() below is a reinterpret_cast onto already-attached
-	storage, not a conversion.
+	Waypoint is registered as an Entity subclass and object converter with &sWaypointClass, the
+	same ooscript::ClassDef that ooscript::getClass() reports for its instances.
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -64,26 +57,14 @@ using ooscript::FunctionSpec;
 using ooscript::CallArgs;
 
 // Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
-namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
 
 
 namespace {
-static JSObject		*sWaypointPrototype;
+static ooscript::Object sWaypointPrototype;
 } // namespace
 
 namespace {
-static BOOL JSWaypointGetWaypointEntity(JSContext *context, JSObject *stationObj, OOWaypointEntity **outEntity);
+static BOOL JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Object stationObj, OOWaypointEntity **outEntity);
 } // namespace
 
 
@@ -92,28 +73,6 @@ static bool WaypointGetProperty(Context cx, Object obj, PropertyId propID, Value
 } // namespace
 namespace {
 static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
-} // namespace
-
-
-// Adapts the shared jsapi finalizer (OOJavaScriptEngine.m) to the façade's FinalizeHook
-// signature; the finalizer itself is untouched, shared plumbing outside this bead's scope.
-namespace {
-static void WaypointFinalize(Context cx, Object obj)
-{
-	OOJSObjectWrapperFinalize(reinterpret_cast<JSContext*>(cx), reinterpret_cast<JSObject*>(obj));
-}
-} // namespace
-
-
-// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the façade's
-// NativeFn signature, so `new Waypoint()` keeps throwing "Waypoint cannot be used as a
-// constructor." as it did before retargeting (originally passed directly as the constructor
-// argument to the engine's own class-init call).
-namespace {
-static bool WaypointUnconstructableConstruct(Context cx, CallArgs &oojsArgs)
-{
-	return OOJSUnconstructableConstruct(reinterpret_cast<JSContext*>(cx), oojsArgs.count(), reinterpret_cast<jsval*>(oojsArgs.rawVp()));
-}
 } // namespace
 
 
@@ -128,26 +87,14 @@ static ClassDef sWaypointClass =
 	WaypointGetProperty,		// getProperty
 	WaypointSetProperty,		// setProperty
 	nullptr,			// enumerate (engine default: EnumerateStub)
-	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
-	WaypointFinalize,		// finalize
+	OOJSObjectWrapperFinalize,		// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the façade backend, must start null
 };
-} // namespace
-
-
-// The engine's own JSClass* for sWaypointClass, for the not-yet-retargeted plumbing
-// (OOJSRegisterSubclass/OOJSRegisterObjectConverter, getJSClass:andPrototype:) that still
-// takes one; see the comment above. Valid only after InitOOJSWaypoint() has called
-// ooscript::initClass(), which is the only thing that attaches sWaypointClass.backend.
-namespace {
-static inline JSClass *RawWaypointClass(void)
-{
-	return reinterpret_cast<JSClass*>(sWaypointClass.backend);
-}
 } // namespace
 
 
@@ -177,9 +124,9 @@ static PropertySpec sWaypointProperties[] =
 // A raw jsapi mirror of sWaypointProperties, used only for the two bad-property error
 // reporters in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are
 // outside this bead's scope (shared across every binding file) and still take a
-// JSPropertySpec*, not ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+// ooscript::PropertySpec*, not ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
 namespace {
-static JSPropertySpec sWaypointPropertiesRaw[] =
+static ooscript::PropertySpec sWaypointPropertiesRaw[] =
 {
 	// JS name							ID						flags
 	{ "beaconCode",	    kWaypoint_beaconCode,	OOJS_PROP_READWRITE_CB },
@@ -201,17 +148,17 @@ static FunctionSpec sWaypointMethods[] =
 } // namespace
 
 
-void InitOOJSWaypoint(JSContext *context, JSObject *global)
+void InitOOJSWaypoint(ooscript::Context context, ooscript::Object global)
 {
-	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), OOJSFOBJ(JSEntityPrototype()), &sWaypointClass, WaypointUnconstructableConstruct, 0, sWaypointProperties, sWaypointMethods, nullptr, nullptr);
-	sWaypointPrototype = OOJSROBJ(proto);
-	OOJSRegisterObjectConverter(RawWaypointClass(), OOJSBasicPrivateObjectConverter);
-	OOJSRegisterSubclass(RawWaypointClass(), JSEntityClass());
+	Object proto = ooscript::initClass((context), (global), (JSEntityPrototype()), &sWaypointClass, OOJSUnconstructableConstruct, 0, sWaypointProperties, sWaypointMethods, nullptr, nullptr);
+	sWaypointPrototype = (proto);
+	OOJSRegisterObjectConverter(&sWaypointClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterSubclass(&sWaypointClass, JSEntityClass());
 }
 
 
 namespace {
-static BOOL JSWaypointGetWaypointEntity(JSContext *context, JSObject *wormholeObj, OOWaypointEntity **outEntity)
+static BOOL JSWaypointGetWaypointEntity(ooscript::Context context, ooscript::Object wormholeObj, OOWaypointEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -236,9 +183,9 @@ static BOOL JSWaypointGetWaypointEntity(JSContext *context, JSObject *wormholeOb
 
 @implementation OOWaypointEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype
+- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
-	*outClass = RawWaypointClass();
+	*outClass = &sWaypointClass;
 	*outPrototype = sWaypointPrototype;
 }
 
@@ -261,9 +208,9 @@ static bool WaypointGetProperty(Context cx, Object obj, PropertyId propID, Value
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = reinterpret_cast<JSContext*>(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = reinterpret_cast<jsval*>(value);
+	ooscript::Context context = reinterpret_cast<ooscript::Context >(cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = reinterpret_cast<ooscript::Value*>(value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -272,7 +219,7 @@ static bool WaypointGetProperty(Context cx, Object obj, PropertyId propID, Value
 	Quaternion q = kIdentityQuaternion;
 
 	if (!JSWaypointGetWaypointEntity(context, thisObj, &entity))  return NO;
-	if (entity == nil)  { *value_raw = JSVAL_VOID; return YES; }
+	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return YES; }
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -296,7 +243,7 @@ static bool WaypointGetProperty(Context cx, Object obj, PropertyId propID, Value
 		return ooscript::newNumberValue(cx, [entity size], value);
 
 	default:
-		OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sWaypointPropertiesRaw);
+		OOJSReportBadPropertySelector(context, thisObj, (propID), sWaypointPropertiesRaw);
 		return NO;
 	}
 
@@ -313,14 +260,14 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = reinterpret_cast<JSContext*>(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = reinterpret_cast<jsval*>(value);
+	ooscript::Context context = reinterpret_cast<ooscript::Context >(cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = reinterpret_cast<ooscript::Value*>(value);
 
 	OOJS_NATIVE_ENTER(context)
 
 	OOWaypointEntity				*entity = nil;
-	jsdouble        fValue;
+	double        fValue;
 	NSString					*sValue = nil;
 	Quaternion			qValue;
 
@@ -386,11 +333,11 @@ static bool WaypointSetProperty(Context cx, Object obj, PropertyId propID, bool 
 			break;
 
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sWaypointPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sWaypointPropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sWaypointPropertiesRaw, *value_raw);
+	OOJSReportBadPropertyValue(context, thisObj, (propID), sWaypointPropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT

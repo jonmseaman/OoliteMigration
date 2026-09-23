@@ -47,13 +47,7 @@ using ooscript::Object;
 using ooscript::Value;
 
 namespace {
-static inline Context  OOJSFCX(JSContext *cx)      { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline Value    *OOJSFVALP(jsval *v)         { return reinterpret_cast<Value*>(v); }
-} // namespace
-namespace {
-static inline Object   *OOJSFOBJP(JSObject **o)     { return reinterpret_cast<Object*>(o); }
+static inline Object   *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_cast<Object*>(o); }
 } // namespace
 
 
@@ -61,7 +55,7 @@ static inline Object   *OOJSFOBJP(JSObject **o)     { return reinterpret_cast<Ob
 
 - (id) init {
 	self = [super init];
-	_callback = JSVAL_VOID;
+	_callback = ooscript::undefinedValue();
 	_callbackThis = NULL;
 
 	_owningScript = [[OOJSScript currentlyRunningScript] weakRetain];
@@ -77,11 +71,11 @@ static inline Object   *OOJSFOBJP(JSObject **o)     { return reinterpret_cast<Ob
 - (void) deleteJSPointers
 {
 
-	JSContext				*context = OOJSAcquireContext();
-	_callback = JSVAL_VOID;
+	ooscript::Context context = OOJSAcquireContext();
+	_callback = ooscript::undefinedValue();
 	_callbackThis = NULL;
-	ooscript::removeValueRoot(OOJSFCX(context), OOJSFVALP(&_callback));
-	ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_callbackThis));
+	ooscript::removeValueRoot((context), (&_callback));
+	ooscript::removeObjectRoot((context), OOJSFOBJP(&_callbackThis));
 
 	OOJSRelinquishContext(context);
 
@@ -100,32 +94,32 @@ static inline Object   *OOJSFOBJP(JSObject **o)     { return reinterpret_cast<Ob
 	[super dealloc];
 }
 
-- (jsval)callback
+- (ooscript::Value)callback
 {
 	return _callback;
 }
 
 
-- (void)setCallback:(jsval)callback
+- (void)setCallback:(ooscript::Value)callback
 {
-	JSContext				*context = OOJSAcquireContext();
-	ooscript::removeValueRoot(OOJSFCX(context), OOJSFVALP(&_callback));
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::removeValueRoot((context), (&_callback));
 	_callback = callback;
 	OOJSAddGCValueRoot(context, &_callback, "OOJSPopulatorDefinition callback function");
 	OOJSRelinquishContext(context);
 }
 
 
-- (JSObject *)callbackThis
+- (ooscript::Object)callbackThis
 {
 	return _callbackThis;
 }
 
 
-- (void)setCallbackThis:(JSObject *)callbackThis
+- (void)setCallbackThis:(ooscript::Object)callbackThis
 {
-	JSContext				*context = OOJSAcquireContext();
-	ooscript::removeObjectRoot(OOJSFCX(context), OOJSFOBJP(&_callbackThis));
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::removeObjectRoot((context), OOJSFOBJP(&_callbackThis));
 	_callbackThis = callbackThis;
 	OOJSAddGCObjectRoot(context, &_callbackThis, "OOJSPopulatorDefinition callback this");
 	OOJSRelinquishContext(context);
@@ -135,8 +129,8 @@ static inline Object   *OOJSFOBJP(JSObject **o)     { return reinterpret_cast<Ob
 - (void)runCallback:(HPVector)location
 {
 	OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
-	JSContext			*context = OOJSAcquireContext();		
-	jsval					loc, rval = JSVAL_VOID;
+	ooscript::Context context = OOJSAcquireContext();		
+	ooscript::Value					loc, rval = ooscript::undefinedValue();
 
 	VectorToJSValue(context, HPVectorToVector(location), &loc);
 

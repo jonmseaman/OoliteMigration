@@ -48,7 +48,7 @@ typedef struct
 {
 	NSInteger			value;
 	const char			*cString;
-	JSString			*jsString;
+	ooscript::String jsString;
 } TableEntry;
 
 typedef struct ConstTable
@@ -66,7 +66,7 @@ static BOOL sInited = NO;
 	The interned string "UNDEFINED", returned by OOJSStringFromConstantPRIVATE()
 	if passed a bogus constant value.
 */
-static JSString *sUndefinedString;
+static ooscript::String sUndefinedString;
 
 
 /*	
@@ -136,17 +136,17 @@ ConstTable gOOShipDamageTypeConstTable				= TABLE(sOOShipDamageTypeTableEntries)
 ConstTable gOOLegalStatusReasonConstTable			= TABLE(sOOLegalStatusReasonTableEntries);
 ConstTable gOOLongRangeChartModeConstTable			= TABLE(sOOLongRangeChartModeTableEntries);
 
-static void InitTable(JSContext *context, ConstTable *table);
+static void InitTable(ooscript::Context context, ConstTable *table);
 
 
 // MARK: Initialization
 
-void OOConstToJSStringInit(JSContext *context)
+void OOConstToJSStringInit(ooscript::Context context)
 {
 	NSCAssert(!sInited, @"OOConstToJSStringInit() called while already inited.");
-	NSCParameterAssert(context != NULL && JS_IsInRequest(context));
+	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	
-	sUndefinedString = JS_InternString(context, "UNDEFINED");
+	sUndefinedString = ooscript::internString(context, "UNDEFINED");
 	
 	InitTable(context, &gOOEntityStatusConstTable);
 	InitTable(context, &gOOCompassModeConstTable);
@@ -181,14 +181,14 @@ static int CompareEntries(const void *a, const void *b)
 }
 
 
-static void InitTable(JSContext *context, ConstTable *table)
+static void InitTable(ooscript::Context context, ConstTable *table)
 {
-	NSCParameterAssert(context != NULL && JS_IsInRequest(context) && table != NULL);
+	NSCParameterAssert(context != NULL && ooscript::isInRequest(context) && table != NULL);
 	
 	NSUInteger i;
 	for(i = 0; i < table->count; i++)
 	{
-		table->entries[i].jsString = JS_InternString(context, table->entries[i].cString);
+		table->entries[i].jsString = ooscript::internString(context, table->entries[i].cString);
 	}
 	
 	qsort(table->entries, table->count, sizeof *table->entries, CompareEntries);
@@ -197,10 +197,10 @@ static void InitTable(JSContext *context, ConstTable *table)
 
 // MARK: Lookup
 
-JSString *OOJSStringFromConstantPRIVATE(JSContext *context, NSInteger value, struct ConstTable *table)
+ooscript::String OOJSStringFromConstantPRIVATE(ooscript::Context context, NSInteger value, struct ConstTable *table)
 {
 	NSCAssert1(sInited, @"%s called before OOConstToJSStringInit().", __PRETTY_FUNCTION__);
-	NSCParameterAssert(context != NULL && JS_IsInRequest(context));
+	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	NSCParameterAssert(table != NULL && table->count > 0);
 	
 	// Binary search.
@@ -229,10 +229,10 @@ JSString *OOJSStringFromConstantPRIVATE(JSContext *context, NSInteger value, str
 }
 
 
-NSUInteger OOConstantFromJSStringPRIVATE(JSContext *context, JSString *string, struct ConstTable *table, NSInteger defaultValue)
+NSUInteger OOConstantFromJSStringPRIVATE(ooscript::Context context, ooscript::String string, struct ConstTable *table, NSInteger defaultValue)
 {
 	NSCAssert1(sInited, @"%s called before OOConstToJSStringInit().", __PRETTY_FUNCTION__);
-	NSCParameterAssert(context != NULL && JS_IsInRequest(context) && table != NULL);
+	NSCParameterAssert(context != NULL && ooscript::isInRequest(context) && table != NULL);
 	
 	// Quick pass: look for pointer-equal string.
 	NSUInteger i, count = table->count;
@@ -250,8 +250,8 @@ NSUInteger OOConstantFromJSStringPRIVATE(JSContext *context, JSString *string, s
 	{
 		for(i = 0; i < count; i++)
 		{
-			int32 result;
-			if (JS_CompareStrings(context, string, table->entries[i].jsString, &result) && result == 0)
+			int32_t result;
+			if (ooscript::compareStrings(context, string, table->entries[i].jsString, &result) && result == 0)
 			{
 				return table->entries[i].value;
 			}
@@ -263,11 +263,11 @@ NSUInteger OOConstantFromJSStringPRIVATE(JSContext *context, JSString *string, s
 }
 
 
-NSUInteger OOConstantFromJSValuePRIVATE(JSContext *context, jsval value, struct ConstTable *table, NSInteger defaultValue)
+NSUInteger OOConstantFromJSValuePRIVATE(ooscript::Context context, ooscript::Value value, struct ConstTable *table, NSInteger defaultValue)
 {
-	if (EXPECT(JSVAL_IS_STRING(value)))
+	if (EXPECT(ooscript::isString(value)))
 	{
-		return OOConstantFromJSStringPRIVATE(context, JSVAL_TO_STRING(value), table, defaultValue);
+		return OOConstantFromJSStringPRIVATE(context, ooscript::toString(value), table, defaultValue);
 	}
 	else
 	{

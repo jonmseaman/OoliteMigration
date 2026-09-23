@@ -25,8 +25,8 @@ MA 02110-1301, USA.
 
 */
 
-#include <jsapi.h>
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 
 @class OOEquipmentType;
 
@@ -35,13 +35,13 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSEquipmentInfo(JSContext *context, JSObject *global);
+void InitOOJSEquipmentInfo(ooscript::Context context, ooscript::Object global);
 
 #ifdef __cplusplus
 }
 #endif
 
-/*	Given a jsval representing a string (equipment key) or a JS EquipmentInfo,
+/*	Given a ooscript::Value representing a string (equipment key) or a JS EquipmentInfo,
 	return the corresponding EquipmentType or key. Note that
 	JSValueToEquipmentKey() will not return arbitrary strings, only valid
 	equipment keys.
@@ -52,10 +52,10 @@ void InitOOJSEquipmentInfo(JSContext *context, JSObject *global);
 extern "C" {
 #endif
 
-OOEquipmentType *JSValueToEquipmentType(JSContext *context, jsval value);
-NSString *JSValueToEquipmentKey(JSContext *context, jsval value);
+OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Value value);
+NSString *JSValueToEquipmentKey(ooscript::Context context, ooscript::Value value);
 
-NSString *JSValueToEquipmentKeyRelaxed(JSContext *context, jsval value, BOOL *outExists);
+NSString *JSValueToEquipmentKeyRelaxed(ooscript::Context context, ooscript::Value value, BOOL *outExists);
 
 #ifdef __cplusplus
 }

@@ -1168,20 +1168,20 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 }
 
 
-- (NSDictionary *) textureDescriptorFromJSValue:(jsval)value
-									  inContext:(JSContext *)context
+- (NSDictionary *) textureDescriptorFromJSValue:(ooscript::Value)value
+									  inContext:(ooscript::Context)context
 							  callerDescription:(NSString *)callerDescription
 {
 	OOJS_PROFILE_ENTER
 	
 	NSDictionary	*result = nil;
 	
-	if (JSVAL_IS_OBJECT(value))
+	if (ooscript::isObjectOrNull(value))
 	{
 		// Null may be used to indicate no texture.
-		if (JSVAL_IS_NULL(value))  return [NSDictionary dictionary];
+		if (ooscript::isNull(value))  return [NSDictionary dictionary];
 		
-		JSObject *objValue = JSVAL_TO_OBJECT(value);
+		ooscript::Object objValue = ooscript::toObject(value);
 		
 		if (OOJSGetClass(context, objValue) != [[OOJavaScriptEngine sharedEngine] stringClass])
 		{

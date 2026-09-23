@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 
 
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOMaths.h"
 #import "OOCacheManager.h"
 #import "OOTypes.h"
@@ -155,7 +156,7 @@ enum OOScanClass
 	
 	OOTimeAbsolute			spawnTime;
 	
-	struct JSObject			*_jsSelf;
+	ooscript::Object _jsSelf;
 	NSUInteger				lastDrawCounter;
 	
 @private

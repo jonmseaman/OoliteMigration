@@ -304,6 +304,7 @@ tools/check-jsengine-facade.sh|the façade's acceptance: it greps the header for
 tools/tier-b-guardrails-proof.sh|plants the deny-listed symbol that proves tier-b's stage 0 fires
 tools/refactor/js-stubs.sh|documents, in comments/usage text, the JS_* call-site patterns it mechanically rewrites onto the façade (bead oo-oio); it does not itself call any engine function
 tools/refactor/js_stubs.py|implements the mechanical JS_*-to-façade rewrite bead oo-oio describes; the JS_* names are pattern text (regex/docstrings), never engine calls made by this file
+tools/refactor/js-types.py|implements the mechanical SpiderMonkey-vocabulary-to-façade rewrite of bead oo-1gc.3 (seam 1.2b); every engine name in it is pattern text in a rewrite table, never a call
 tools/refactor/js-stubs-selftest.sh|acceptance test asserting js-stubs.sh removes JS_* call sites from its fixture; quotes the targeted names to check for their absence
 tools/refactor/testdata/OOJSVector.pre-retarget.m|frozen pre-retarget fixture (restored from git history) used only to prove js-stubs.sh's rewrite (bead oo-oio); never built, never linked
 tools/refactor/testdata/js-stubs-string-literal.m|regression fixture proving js-stubs.sh leaves JS_* tokens inside string literals untouched (bead oo-oio review round 2); never built, never linked

@@ -68,7 +68,7 @@ static MethodType GetMethodType(id object, SEL selector);
 OOINLINE BOOL MethodExpectsParameter(MethodType type)	{ return type == kMethodTypeVoidObject || type == kMethodTypeObjectObject; }
 
 
-BOOL OOJSCallObjCObjectMethod(JSContext *context, id object, NSString *oo_jsClassName, uintN argc, jsval *argv, jsval *outResult)
+BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, NSString *oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -156,14 +156,14 @@ BOOL OOJSCallObjCObjectMethod(JSContext *context, id object, NSString *oo_jsClas
 				case kMethodTypeVectorVoid:
 				{
 					Vector v = ((VectorReturnMsgSend)method)(object, selector);
-					*outResult = OBJECT_TO_JSVAL(JSVectorWithVector(context, v));
+					*outResult = ooscript::objectValue(JSVectorWithVector(context, v));
 					break;
 				}
 					
 				case kMethodTypeQuaternionVoid:
 				{
 					Quaternion q = ((QuaternionReturnMsgSend)method)(object, selector);
-					*outResult = OBJECT_TO_JSVAL(JSQuaternionWithQuaternion(context, q));
+					*outResult = ooscript::objectValue(JSQuaternionWithQuaternion(context, q));
 					break;
 				}
 					

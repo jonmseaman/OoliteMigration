@@ -439,9 +439,9 @@ MA 02110-1301, USA.
 }
 
 
-- (void) doScriptEvent:(jsid)message
+- (void) doScriptEvent:(ooscript::PropertyId)message
 {
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[_script callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
 	OOJSRelinquishContext(context);
 }

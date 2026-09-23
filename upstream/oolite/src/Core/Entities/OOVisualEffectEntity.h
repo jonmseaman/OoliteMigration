@@ -25,6 +25,7 @@
  */
 
 #import "OOEntityWithDrawable.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOPlanetEntity.h"
 #import "OOJSPropID.h"
 #import "HeadUpDisplay.h"
@@ -115,7 +116,7 @@
 - (void) setScript:(NSString *)script_name;
 - (OOJSScript *)script;
 - (NSDictionary *)scriptInfo;
-- (void) doScriptEvent:(jsid)message;
+- (void) doScriptEvent:(ooscript::PropertyId)message;
 - (void) remove;
 
 - (GLfloat) scaleMax; // used for calculating frustum cull size

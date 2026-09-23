@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
+#include "ooscript/JSEngine.hpp"
 #import "WormholeEntity.h"
 #import "ShipEntity.h"
 #import "GuiDisplayGen.h"
@@ -1260,8 +1261,8 @@ typedef enum
 // *** World script events.
 // In general, script events should be sent through doScriptEvent:..., which
 // will forward to the world scripts.
-- (BOOL) doWorldEventUntilMissionScreen:(jsid)message;
-- (void) doWorldScriptEvent:(jsid)message inContext:(JSContext *)context withArguments:(jsval *)argv count:(uintN)argc timeLimit:(OOTimeDelta)limit;
+- (BOOL) doWorldEventUntilMissionScreen:(ooscript::PropertyId)message;
+- (void) doWorldScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc timeLimit:(OOTimeDelta)limit;
 
 - (BOOL)showInfoFlag;
 

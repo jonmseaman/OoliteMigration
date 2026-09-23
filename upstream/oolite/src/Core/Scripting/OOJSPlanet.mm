@@ -39,11 +39,9 @@ MA 02110-1301, USA.
 // OOJSFlasher.mm do it (bead oo-sdz exemplar): stub hooks become nullptr, InitClass
 // becomes ooscript::initClass, numeric conversion becomes ooscript::newNumberValue/
 // valueToNumber, and `this` is renamed to `thisObj` (reserved word in Objective-C++,
-// ADR-0001). The class dispatch table itself becomes an ooscript::ClassDef; a raw
-// JSClass* mirror (RawPlanetClass()) is still exposed to jsapi plumbing that this
-// bead's scope excludes (DEFINE_JS_OBJECT_GETTER, getJSClass:andPrototype:,
-// OOJSRegisterObjectConverter/OOJSRegisterSubclass), the way OOJSFlasher.mm's
-// RawFlasherClass() does it.
+// ADR-0001). The class dispatch table itself becomes an ooscript::ClassDef, and
+// &sPlanetClass is what DEFINE_JS_OBJECT_GETTER, getJSClass:andPrototype: and
+// OOJSRegisterObjectConverter/OOJSRegisterSubclass receive.
 namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
@@ -56,28 +54,10 @@ using ooscript::PropertySpec;
 using ooscript::CallArgs;
 
 // Byte-identical facade <-> jsapi views, local to this call site (see OOJSVector.mm).
-namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-namespace {
-static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
-} // namespace
 
 
 namespace {
-static JSObject		*sPlanetPrototype;
+static ooscript::Object sPlanetPrototype;
 } // namespace
 
 
@@ -86,27 +66,6 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 } // namespace
 namespace {
 static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
-} // namespace
-
-
-// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the
-// facade's NativeFn signature, the way OOJSFlasher.mm's FlasherUnconstructableConstruct
-// and OOJSClock.mm's OOJSUnconstructableConstructFacade do it.
-namespace {
-static bool OOJSUnconstructableConstructFacade(Context cx, CallArgs &oojsArgs)
-{
-	return OOJSUnconstructableConstruct(OOJSRCX(cx), oojsArgs.count(), OOJSRVAL(oojsArgs.rawVp()));
-}
-} // namespace
-
-
-// Adapts the shared jsapi finalizer to the facade's FinalizeHook signature (see
-// OOJSFlasher.mm's FlasherFinalize).
-namespace {
-static void PlanetFinalize(Context cx, Object obj)
-{
-	OOJSObjectWrapperFinalize(OOJSRCX(cx), OOJSROBJ(obj));
-}
 } // namespace
 
 
@@ -121,24 +80,14 @@ static ClassDef sPlanetClass =
 	PlanetGetProperty,	// getProperty
 	PlanetSetProperty,	// setProperty
 	nullptr,			// enumerate
-	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve
 	nullptr,			// convert
-	PlanetFinalize,		// finalize
+	OOJSObjectWrapperFinalize,		// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the facade backend, must start null
 };
-} // namespace
-
-
-// The engine's own JSClass* for sPlanetClass, needed by shared jsapi plumbing that has
-// not yet been retargeted (see OOJSFlasher.mm's RawFlasherClass).
-namespace {
-static inline JSClass *RawPlanetClass(void)
-{
-	return reinterpret_cast<JSClass*>(sPlanetClass.backend);
-}
 } // namespace
 
 
@@ -182,9 +131,9 @@ static PropertySpec sPlanetProperties[] =
 
 
 // Raw jsapi mirror of sPlanetProperties for the shared error reporters that still take a
-// JSPropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+// ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
 namespace {
-static JSPropertySpec sPlanetPropertiesRaw[] =
+static ooscript::PropertySpec sPlanetPropertiesRaw[] =
 {
 	// JS name						ID							flags
 	{ "airColor",				kPlanet_airColor,					OOJS_PROP_READWRITE_CB },
@@ -205,16 +154,16 @@ static JSPropertySpec sPlanetPropertiesRaw[] =
 
 
 namespace {
-DEFINE_JS_OBJECT_GETTER(JSPlanetGetPlanetEntity, RawPlanetClass(), sPlanetPrototype, OOPlanetEntity)
+DEFINE_JS_OBJECT_GETTER(JSPlanetGetPlanetEntity, &sPlanetClass, sPlanetPrototype, OOPlanetEntity)
 } // namespace
 
 
-void InitOOJSPlanet(JSContext *context, JSObject *global)
+void InitOOJSPlanet(ooscript::Context context, ooscript::Object global)
 {
-	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), OOJSFOBJ(JSEntityPrototype()), &sPlanetClass, OOJSUnconstructableConstructFacade, 0, sPlanetProperties, nullptr, nullptr, nullptr);
-	sPlanetPrototype = OOJSROBJ(proto);
-	OOJSRegisterObjectConverter(RawPlanetClass(), OOJSBasicPrivateObjectConverter);
-	OOJSRegisterSubclass(RawPlanetClass(), JSEntityClass());
+	Object proto = ooscript::initClass((context), (global), (JSEntityPrototype()), &sPlanetClass, OOJSUnconstructableConstruct, 0, sPlanetProperties, nullptr, nullptr, nullptr);
+	sPlanetPrototype = (proto);
+	OOJSRegisterObjectConverter(&sPlanetClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterSubclass(&sPlanetClass, JSEntityClass());
 }
 
 
@@ -227,9 +176,9 @@ void InitOOJSPlanet(JSContext *context, JSObject *global)
 }
 
 
-- (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype
+- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
-	*outClass = RawPlanetClass();
+	*outClass = &sPlanetClass;
 	*outPrototype = sPlanetPrototype;
 }
 
@@ -255,9 +204,9 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = (value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -309,7 +258,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return VectorToJSValue(context, [planet terminatorThresholdVector], value_raw);
 		
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sPlanetPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sPlanetPropertiesRaw);
 			return NO;
 	}
 	
@@ -323,9 +272,9 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = (value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -333,7 +282,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	NSString				*sValue = nil;
 	Quaternion				qValue;
 	Vector					vValue;
-	jsdouble				dValue;
+	double				dValue;
 	OOColor				*colorForScript = nil;
 	
 	if (!JSPlanetGetPlanetEntity(context, thisObj, &planet))  return NO;
@@ -342,7 +291,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	{
 		case kPlanet_airColor:
 			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value_raw))
+			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[planet setAirColor:colorForScript];
 				return YES;
@@ -367,7 +316,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			
 		case kPlanet_illuminationColor:
 			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value_raw)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value_raw))
+			if (colorForScript != nil || ooscript::isNull(*value_raw))
 			{
 				[planet setIlluminationColor:colorForScript];
 				return YES;
@@ -435,11 +384,11 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 			
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sPlanetPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sPlanetPropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sPlanetPropertiesRaw, *value_raw);
+	OOJSReportBadPropertyValue(context, thisObj, (propID), sPlanetPropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT

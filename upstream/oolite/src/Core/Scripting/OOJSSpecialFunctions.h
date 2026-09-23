@@ -37,8 +37,8 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSSpecialFunctions(JSContext *context, JSObject *global);
-OOJSValue *JSSpecialFunctionsObjectWrapper(JSContext *context);
+void InitOOJSSpecialFunctions(ooscript::Context context, ooscript::Object global);
+OOJSValue *JSSpecialFunctionsObjectWrapper(ooscript::Context context);
 
 #ifdef __cplusplus
 }

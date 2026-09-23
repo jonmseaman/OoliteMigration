@@ -27,12 +27,10 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "PlayerEntity.h"
 #import "PlayerEntityLegacyScriptEngine.h"
-#include <jsapi.h>
-
-
 #define OOJSENGINE_MONITOR_SUPPORT OOLITE_DEBUG
 
 
+#include "ooscript/JSEngine.hpp"
 #import "OOJSPropID.h"
 
 #ifdef __cplusplus
@@ -48,15 +46,15 @@ MA 02110-1301, USA.
 @interface OOJavaScriptEngine: NSObject
 {
 @private
-	JSRuntime						*_runtime;
-	JSObject						*_globalObject;
+	ooscript::Runtime _runtime;
+	ooscript::Object _globalObject;
 	BOOL							_showErrorLocations;
 	
-	JSClass							*_objectClass;
-	JSClass							*_stringClass;
-	JSClass							*_arrayClass;
-	JSClass							*_numberClass;
-	JSClass							*_booleanClass;
+	ooscript::ClassDef							*_objectClass;
+	ooscript::ClassDef							*_stringClass;
+	ooscript::ClassDef							*_arrayClass;
+	ooscript::ClassDef							*_numberClass;
+	ooscript::ClassDef							*_booleanClass;
 	
 #ifndef NDEBUG
 	BOOL							_dumpStackForErrors;
@@ -69,7 +67,7 @@ MA 02110-1301, USA.
 
 + (OOJavaScriptEngine *) sharedEngine;
 
-- (JSObject *) globalObject;
+- (ooscript::Object) globalObject;
 
 - (void) runMissionCallback;
 
@@ -78,26 +76,26 @@ MA 02110-1301, USA.
 */
 - (BOOL) reset;
 
-// Call a JS function, setting up new contexts as necessary. Caller is responsible for ensuring the jsval passed really is a function.
-- (BOOL) callJSFunction:(jsval)function
-			  forObject:(JSObject *)jsThis
-				   argc:(uintN)argc
-				   argv:(jsval *)argv
-				 result:(jsval *)outResult;
+// Call a JS function, setting up new contexts as necessary. Caller is responsible for ensuring the ooscript::Value passed really is a function.
+- (BOOL) callJSFunction:(ooscript::Value)function
+			  forObject:(ooscript::Object)jsThis
+				   argc:(unsigned)argc
+				   argv:(ooscript::Value *)argv
+				 result:(ooscript::Value *)outResult;
 
-- (void) removeGCObjectRoot:(JSObject **)rootPtr;
-- (void) removeGCValueRoot:(jsval *)rootPtr;
+- (void) removeGCObjectRoot:(ooscript::Object *)rootPtr;
+- (void) removeGCValueRoot:(ooscript::Value *)rootPtr;
 
 - (void) garbageCollectionOpportunity:(BOOL)force;
 
 - (BOOL) showErrorLocations;
 - (void) setShowErrorLocations:(BOOL)value;
 
-- (JSClass *) objectClass;
-- (JSClass *) stringClass;
-- (JSClass *) arrayClass;
-- (JSClass *) numberClass;
-- (JSClass *) booleanClass;
+- (ooscript::ClassDef *) objectClass;
+- (ooscript::ClassDef *) stringClass;
+- (ooscript::ClassDef *) arrayClass;
+- (ooscript::ClassDef *) numberClass;
+- (ooscript::ClassDef *) booleanClass;
 
 #ifndef NDEBUG
 - (BOOL) dumpStackForErrors;
@@ -113,31 +111,26 @@ MA 02110-1301, USA.
 @end
 
 
-#if !JS_THREADSAFE
-#define JS_IsInRequest(context)		(((void)(context)), YES)
-#define JS_BeginRequest(context)	do {} while (0)
-#define JS_EndRequest(context)		do {} while (0)
-#endif
 
 
 // Get the main thread's JS context, and begin a request on it.
-OOINLINE JSContext *OOJSAcquireContext(void)
+OOINLINE ooscript::Context OOJSAcquireContext(void)
 {
-	extern JSContext *gOOJSMainThreadContext;
+	extern ooscript::Context gOOJSMainThreadContext;
 	NSCAssert(gOOJSMainThreadContext != NULL, @"Attempt to use JavaScript context before JavaScript engine is initialized.");
-	JS_BeginRequest(gOOJSMainThreadContext);
+	ooscript::beginRequest(gOOJSMainThreadContext);
 	return gOOJSMainThreadContext;
 }
 
 
 // End a request on the main thread's context.
-OOINLINE void OOJSRelinquishContext(JSContext *context)
+OOINLINE void OOJSRelinquishContext(ooscript::Context context)
 {
 #ifndef NDEBUG
-	extern JSContext *gOOJSMainThreadContext;
-	NSCParameterAssert(context == gOOJSMainThreadContext && JS_IsInRequest(context));
+	extern ooscript::Context gOOJSMainThreadContext;
+	NSCParameterAssert(context == gOOJSMainThreadContext && ooscript::isInRequest(context));
 #endif
-	JS_EndRequest(context);
+	ooscript::endRequest(context);
 }
 
 
@@ -151,17 +144,17 @@ extern NSString * const kOOJavaScriptEngineDidResetNotification;
 	Note that after reporting an error in a JavaScript callback, the caller
 	must return NO to signal an error.
 */
-OOJS_EXTERN_C void OOJSReportError(JSContext *context, NSString *format, ...);
-OOJS_EXTERN_C void OOJSReportErrorWithArguments(JSContext *context, NSString *format, va_list args);
-OOJS_EXTERN_C void OOJSReportErrorForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportError(ooscript::Context context, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportErrorWithArguments(ooscript::Context context, NSString *format, va_list args);
+OOJS_EXTERN_C void OOJSReportErrorForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
 
-OOJS_EXTERN_C void OOJSReportWarning(JSContext *context, NSString *format, ...);
-OOJS_EXTERN_C void OOJSReportWarningWithArguments(JSContext *context, NSString *format, va_list args);
-OOJS_EXTERN_C void OOJSReportWarningForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportWarning(ooscript::Context context, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args);
+OOJS_EXTERN_C void OOJSReportWarningForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
 
-OOJS_EXTERN_C void OOJSReportBadPropertySelector(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec);
-OOJS_EXTERN_C void OOJSReportBadPropertyValue(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec, jsval value);
-OOJS_EXTERN_C void OOJSReportBadArguments(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, NSString *message, NSString *expectedArgsDescription);
+OOJS_EXTERN_C void OOJSReportBadPropertySelector(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec);
+OOJS_EXTERN_C void OOJSReportBadPropertyValue(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec, ooscript::Value value);
+OOJS_EXTERN_C void OOJSReportBadArguments(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, NSString *message, NSString *expectedArgsDescription);
 
 /*	OOJSSetWarningOrErrorStackSkip()
 	
@@ -181,20 +174,20 @@ OOJS_EXTERN_C void OOJSSetWarningOrErrorStackSkip(unsigned skip);
 	On failure, it will return NO and raise an error. If the caller is a JS
 	callback, it must return NO to signal an error.
 */
-OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, double *outNumber, uintN *outConsumed);
+OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
 
 /*	OOJSArgumentListGetNumberNoError()
 	
 	Like OOJSArgumentListGetNumber(), but does not report an error on failure.
 */
-OOJS_EXTERN_C BOOL OOJSArgumentListGetNumberNoError(JSContext *context, uintN argc, jsval *argv, double *outNumber, uintN *outConsumed);
+OOJS_EXTERN_C BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
 
 
 // Typed as int rather than BOOL to work with more general expressions such as bitfield tests.
-OOINLINE jsval OOJSValueFromBOOL(int b) INLINE_CONST_FUNC;
-OOINLINE jsval OOJSValueFromBOOL(int b)
+OOINLINE ooscript::Value OOJSValueFromBOOL(int b) INLINE_CONST_FUNC;
+OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 {
-	return BOOLEAN_TO_JSVAL(b != NO);
+	return ooscript::booleanValue(b != NO);
 }
 
 
@@ -203,10 +196,10 @@ OOINLINE jsval OOJSValueFromBOOL(int b)
 /*	-oo_jsValueInContext:
 	
 	Return the JavaScript value representation of an object. The default
-	implementation returns JSVAL_VOID.
+	implementation returns ooscript::undefinedValue().
 	
 	SAFETY NOTE: if this message is sent to nil, the return value depends on
-	the platform and whether JS_USE_JSVAL_JSID_STRUCT_TYPES is set. If the
+	the platform and the engine's value representation. If the
 	receiver may be nil, use OOJSValueFromNativeObject() instead.
 	
 	One case where it is safe to use oo_jsValueInContext: is with objects
@@ -214,7 +207,7 @@ OOINLINE jsval OOJSValueFromBOOL(int b)
 	
 	Requires a request on context.
 */
-- (jsval) oo_jsValueInContext:(JSContext *)context;
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
 
 /*	-oo_jsDescription
 	-oo_jsDescriptionWithClassName:
@@ -230,7 +223,7 @@ OOINLINE jsval OOJSValueFromBOOL(int b)
 	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
 	collected. The default implementation does nothing.
 */
-- (void) oo_clearJSSelf:(JSObject *)selfVal;
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
 
 @end
 
@@ -241,10 +234,10 @@ OOINLINE jsval OOJSValueFromBOOL(int b)
 	
 	Requires a request on context.
 */
-OOINLINE jsval OOJSValueFromNativeObject(JSContext *context, id object)
+OOINLINE ooscript::Value OOJSValueFromNativeObject(ooscript::Context context, id object)
 {
 	if (object != nil)  return [object oo_jsValueInContext:context];
-	return  JSVAL_NULL;
+	return  ooscript::nullValue();
 }
 
 
@@ -254,7 +247,7 @@ OOINLINE jsval OOJSValueFromNativeObject(JSContext *context, id object)
 	
 	Requires a request on context.
 */
-OOJS_EXTERN_C JSObject *OOJSObjectFromNativeObject(JSContext *context, id object);
+OOJS_EXTERN_C ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object);
 
 
 /*	OOJSValue: an object whose purpose in life is to hold a JavaScript value.
@@ -267,14 +260,14 @@ OOJS_EXTERN_C JSObject *OOJSObjectFromNativeObject(JSContext *context, id object
 */
 @interface OOJSValue: NSObject
 {
-	jsval					_val;
+	ooscript::Value					_val;
 }
 
-+ (id) valueWithJSValue:(jsval)value inContext:(JSContext *)context;
-+ (id) valueWithJSObject:(JSObject *)object inContext:(JSContext *)context;
++ (id) valueWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context;
++ (id) valueWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context;
 
-- (id) initWithJSValue:(jsval)value inContext:(JSContext *)context;
-- (id) initWithJSObject:(JSObject *)object inContext:(JSContext *)context;
+- (id) initWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context;
+- (id) initWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context;
 
 @end
 
@@ -284,21 +277,21 @@ OOJS_EXTERN_C JSObject *OOJSObjectFromNativeObject(JSContext *context, id object
 
 /*	OOJSSTR(const char * [literal])
 	
-	Create and cache a jsval referring to an interned string literal.
+	Create and cache a ooscript::Value referring to an interned string literal.
 */
-#define OOJSSTR(str) ({ static jsval strCache; static BOOL inited; if (EXPECT_NOT(!inited)) OOJSStrLiteralCachePRIVATE("" str, &strCache, &inited); strCache; })
-OOJS_EXTERN_C void OOJSStrLiteralCachePRIVATE(const char *string, jsval *strCache, BOOL *inited);
+#define OOJSSTR(str) ({ static ooscript::Value strCache; static BOOL inited; if (EXPECT_NOT(!inited)) OOJSStrLiteralCachePRIVATE("" str, &strCache, &inited); strCache; })
+OOJS_EXTERN_C void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, BOOL *inited);
 
 
 // Convert a JSString to an NSString.
-OOJS_EXTERN_C NSString *OOStringFromJSString(JSContext *context, JSString *string);
+OOJS_EXTERN_C NSString *OOStringFromJSString(ooscript::Context context, ooscript::String string);
 
-/*	Convert an arbitrary JS object to an NSString, calling JS_ValueToString.
+/*	Convert an arbitrary JS object to an NSString, calling ooscript::valueToString.
 	OOStringFromJSValue() returns nil if value is null or undefined,
 	OOStringFromJSValueEvenIfNull() returns "null" or "undefined".
 */
-OOJS_EXTERN_C NSString *OOStringFromJSValue(JSContext *context, jsval value);
-OOJS_EXTERN_C NSString *OOStringFromJSValueEvenIfNull(JSContext *context, jsval value);
+OOJS_EXTERN_C NSString *OOStringFromJSValue(ooscript::Context context, ooscript::Value value);
+OOJS_EXTERN_C NSString *OOStringFromJSValueEvenIfNull(ooscript::Context context, ooscript::Value value);
 
 
 /*	OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec)
@@ -306,7 +299,7 @@ OOJS_EXTERN_C NSString *OOStringFromJSValueEvenIfNull(JSContext *context, jsval 
 	Returns the name of a property given either a name or a tinyid. (Intended
 	for error reporting inside JSPropertyOps.)
 */
-OOJS_EXTERN_C NSString *OOStringFromJSPropertyIDAndSpec(JSContext *context, jsid propID, JSPropertySpec *propertySpec);
+OOJS_EXTERN_C NSString *OOStringFromJSPropertyIDAndSpec(ooscript::Context context, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec);
 
 
 /*	Describe a value for debugging or error reporting. Strings are quoted,
@@ -316,23 +309,23 @@ OOJS_EXTERN_C NSString *OOStringFromJSPropertyIDAndSpec(JSContext *context, jsid
 	If abbreviateObjects, the description "[object Object]" is replaced with
 	"{...}", which may or may not be clearer depending on context.
 */
-OOJS_EXTERN_C NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObjects);
+OOJS_EXTERN_C NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);
 
 
-// Convert a jsid to an NSString.
-OOJS_EXTERN_C NSString *OOStringFromJSID(jsid propID);
+// Convert a ooscript::PropertyId to an NSString.
+OOJS_EXTERN_C NSString *OOStringFromJSID(ooscript::PropertyId propID);
 
-// Convert an NSString to a jsid.
-OOJS_EXTERN_C jsid OOJSIDFromString(NSString *string);
+// Convert an NSString to a ooscript::PropertyId.
+OOJS_EXTERN_C ooscript::PropertyId OOJSIDFromString(NSString *string);
 
 
 @interface NSString (OOJavaScriptExtensions)
 
 // For diagnostic messages; produces things like @"(42, true, "a string", an object description)".
-+ (NSString *) stringWithJavaScriptParameters:(jsval *)params count:(uintN)count inContext:(JSContext *)context;
++ (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context;
 
 // Concatenate sequence of arbitrary JS objects into string.
-+ (NSString *) concatenationOfStringsFromJavaScriptValues:(jsval *)values count:(size_t)count separator:(NSString *)separator inContext:(JSContext *)context;
++ (NSString *) concatenationOfStringsFromJavaScriptValues:(ooscript::Value *)values count:(size_t)count separator:(NSString *)separator inContext:(ooscript::Context)context;
 
 // Add escape codes for string so that it's a valid JavaScript literal (if you put "" or '' around it).
 - (NSString *) escapedForJavaScriptLiteral;
@@ -343,9 +336,9 @@ OOJS_EXTERN_C jsid OOJSIDFromString(NSString *string);
 // OOEntityFilterPredicate wrapping a JavaScript function.
 typedef struct
 {
-	JSContext				*context;
-	jsval					function;	// Caller is responsible for ensuring this is a function object (using OOJSValueIsFunction()).
-	JSObject				*jsThis;
+	ooscript::Context context;
+	ooscript::Value					function;	// Caller is responsible for ensuring this is a function object (using OOJSValueIsFunction()).
+	ooscript::Object jsThis;
 	BOOL					errorFlag;	// Set if a JS exception occurs. The
 										// exception will have been reported.
 										// This also supresses further filtering.
@@ -363,46 +356,41 @@ OOJS_EXTERN_C BOOL JSEntityIsDemoShipPredicate(Entity *entity, void *parameter);
 
 
 // These require a request on context.
-OOJS_EXTERN_C id OOJSNativeObjectFromJSValue(JSContext *context, jsval value);
-OOJS_EXTERN_C id OOJSNativeObjectFromJSObject(JSContext *context, JSObject *object);
-OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class requiredClass);
-OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Class requiredClass);
+OOJS_EXTERN_C id OOJSNativeObjectFromJSValue(ooscript::Context context, ooscript::Value value);
+OOJS_EXTERN_C id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object object);
+OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSValue(ooscript::Context context, ooscript::Value value, Class requiredClass);
+OOJS_EXTERN_C id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Object object, Class requiredClass);
 
 
-OOINLINE JSClass *OOJSGetClass(JSContext *cx, JSObject *obj)  ALWAYS_INLINE_FUNC;
-OOINLINE JSClass *OOJSGetClass(JSContext *cx, JSObject *obj)
+OOINLINE ooscript::ClassDef *OOJSGetClass(ooscript::Context cx, ooscript::Object obj)  ALWAYS_INLINE_FUNC;
+OOINLINE ooscript::ClassDef *OOJSGetClass(ooscript::Context cx, ooscript::Object obj)
 {
-#if JS_THREADSAFE
-	return JS_GetClass(cx, obj);
-#else
-	return JS_GetClass(obj);
-#endif
+	return const_cast<ooscript::ClassDef *>(ooscript::getClass(cx, obj));
 }
 
 
 /*	OOJSValueIsFunction(context, value)
 	
-	Test whether a jsval is a function object. The main tripping point here
-	is that JSVAL_IS_OBJECT() is true for JSVAL_NULL, but JS_ObjectIsFunction()
+	Test whether a ooscript::Value is a function object. The main tripping point here
+	is that ooscript::isObjectOrNull() is true for ooscript::nullValue(), but ooscript::objectIsFunction()
 	crashes if passed null.
 */
-OOINLINE BOOL OOJSValueIsFunction(JSContext *context, jsval value)
+OOINLINE BOOL OOJSValueIsFunction(ooscript::Context context, ooscript::Value value)
 {
-	return JSVAL_IS_OBJECT(value) && !JSVAL_IS_NULL(value) && JS_ObjectIsFunction(context, JSVAL_TO_OBJECT(value));
+	return ooscript::isObjectOrNull(value) && !ooscript::isNull(value) && ooscript::objectIsFunction(context, ooscript::toObject(value));
 }
 
 
 /*	OOJSValueIsArray(context, value)
 	
-	Test whether a jsval is an array object. The main tripping point here
-	is that JSVAL_IS_OBJECT() is true for JSVAL_NULL, but JS_IsArrayObject()
+	Test whether a ooscript::Value is an array object. The main tripping point here
+	is that ooscript::isObjectOrNull() is true for ooscript::nullValue(), but ooscript::isArrayObject()
 	crashes if passed null.
 	
-	Also, it should be called JS_ObjectIsArray() for consistency.
 */
-OOINLINE BOOL OOJSValueIsArray(JSContext *context, jsval value)
+OOINLINE BOOL OOJSValueIsArray(ooscript::Context context, ooscript::Value value)
 {
-	return JSVAL_IS_OBJECT(value) && !JSVAL_IS_NULL(value) && JS_IsArrayObject(context, JSVAL_TO_OBJECT(value));
+	return ooscript::isObjectOrNull(value) && !ooscript::isNull(value) && ooscript::isArrayObject(context, ooscript::toObject(value));
 }
 
 
@@ -417,22 +405,22 @@ OOINLINE BOOL OOJSValueIsArray(JSContext *context, jsval value)
 	
 	Requires a request on context.
 */
-OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSValue(JSContext *context, jsval value);
-OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSObject(JSContext *context, JSObject *object);
+OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSValue(ooscript::Context context, ooscript::Value value);
+OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object);
 
 
 /*	OOJSDictionaryFromStringTable(context, value)
 	
 	Treat an arbitrary JavaScript object as a dictionary mapping strings to
 	strings, and convert to a corresponding NSDictionary. The values are
-	converted to strings using JS_ValueToString().
+	converted to strings using ooscript::valueToString().
 	
 	Only enumerable own (i.e., not inherited) properties with string keys are
 	included.
 	
 	Requires a request on context.
 */
-OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval value);
+OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Value value);
 
 
 /*
@@ -445,15 +433,15 @@ OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, js
 	their relationships with OOJSRegisterSubclass() below.
 	
 	The signature of the generator is:
-	BOOL <name>(JSContext *context, JSObject *inObject, <class>** outObject)
+	BOOL <name>(ooscript::Context context, ooscript::Object inObject, <class>** outObject)
 	If it returns NO, inObject is of the wrong class and an error has been
 	raised. Otherwise, outObject is either a native object of the specified
 	class (or a subclass) or nil.
 */
 #ifndef NDEBUG
 #define DEFINE_JS_OBJECT_GETTER(NAME, JSCLASS, JSPROTO, OBJCCLASSNAME) \
-static BOOL NAME(JSContext *context, JSObject *inObject, OBJCCLASSNAME **outObject)  GCC_ATTR((unused)); \
-static BOOL NAME(JSContext *context, JSObject *inObject, OBJCCLASSNAME **outObject) \
+static BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject)  GCC_ATTR((unused)); \
+static BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject) \
 { \
 	NSCParameterAssert(outObject != NULL); \
 	static Class cls = Nil; \
@@ -462,7 +450,7 @@ static BOOL NAME(JSContext *context, JSObject *inObject, OBJCCLASSNAME **outObje
 }
 #else
 #define DEFINE_JS_OBJECT_GETTER(NAME, JSCLASS, JSPROTO, OBJCCLASSNAME) \
-OOINLINE BOOL NAME(JSContext *context, JSObject *inObject, OBJCCLASSNAME **outObject) \
+OOINLINE BOOL NAME(ooscript::Context context, ooscript::Object inObject, OBJCCLASSNAME **outObject) \
 { \
 	return OOJSObjectGetterImplPRIVATE(context, inObject, JSCLASS, (id *)outObject); \
 }
@@ -470,9 +458,9 @@ OOINLINE BOOL NAME(JSContext *context, JSObject *inObject, OBJCCLASSNAME **outOb
 
 // For DEFINE_JS_OBJECT_GETTER()'s use.
 #ifndef NDEBUG
-OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *requiredJSClass, Class requiredObjCClass, const char *name, id *outObject);
+OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, Class requiredObjCClass, const char *name, id *outObject);
 #else
-OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *requiredJSClass, id *outObject);
+OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass, id *outObject);
 #endif
 
 
@@ -486,18 +474,18 @@ OOJS_EXTERN_C BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *obj
 	OOJSEntityGetEntity() must be able to know that Ship is a subclass of
 	Entity. This is done using OOJSIsSubclass().
 	
-	void OOJSRegisterSubclass(JSClass *subclass, JSClass *superclass)
+	void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *superclass)
 	Register subclass as a subclass of superclass. Subclass must not previously
 	have been registered as a subclass of any class (i.e., single inheritance
 	is required).
  
-	BOOL OOJSIsSubclass(JSClass *putativeSubclass, JSClass *superclass)
+	BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass)
 	Test whether putativeSubclass is a equal to superclass or a registered
 	subclass of superclass, recursively.
 */
-OOJS_EXTERN_C void OOJSRegisterSubclass(JSClass *subclass, JSClass *superclass);
-OOJS_EXTERN_C BOOL OOJSIsSubclass(JSClass *putativeSubclass, JSClass *superclass);
-OOINLINE BOOL OOJSIsMemberOfSubclass(JSContext *context, JSObject *object, JSClass *superclass)
+OOJS_EXTERN_C void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *superclass);
+OOJS_EXTERN_C BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass);
+OOINLINE BOOL OOJSIsMemberOfSubclass(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *superclass)
 {
 	return OOJSIsSubclass(OOJSGetClass(context, object), superclass);
 }
@@ -515,15 +503,15 @@ OOINLINE BOOL OOJSIsMemberOfSubclass(JSContext *context, JSObject *object, JSCla
 	OOJSRegisterObjectConverter() registers a callback for a specific JS class.
 	It is not automatically propagated to subclasses.
 */
-typedef id (*OOJSClassConverterCallback)(JSContext *context, JSObject *object);
-OOJS_EXTERN_C id OOJSBasicPrivateObjectConverter(JSContext *context, JSObject *object);
+typedef id (*OOJSClassConverterCallback)(ooscript::Context context, ooscript::Object object);
+OOJS_EXTERN_C id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object);
 
-OOJS_EXTERN_C void OOJSRegisterObjectConverter(JSClass *theClass, OOJSClassConverterCallback converter);
+OOJS_EXTERN_C void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJSClassConverterCallback converter);
 
 
 /*	JS root handling
 	
-	The name parameter to JS_AddNamed*Root is assigned with no overhead, not
+	The name parameter to the façade's addNamed*Root is assigned with no overhead, not
 	copied, but the strings serve no purpose in a release build so we may as
 	well strip them out.
 	
@@ -531,15 +519,13 @@ OOJS_EXTERN_C void OOJSRegisterObjectConverter(JSClass *theClass, OOJSClassConve
 	string literal.
 */
 #ifdef NDEBUG
-#define OOJSAddGCValueRoot(context, root, name)		JS_AddValueRoot((context), (root))
-#define OOJSAddGCStringRoot(context, root, name)	JS_AddStringRoot((context), (root))
-#define OOJSAddGCObjectRoot(context, root, name)	JS_AddObjectRoot((context), (root))
-#define OOJSAddGCThingRoot(context, root, name)		JS_AddGCThingRoot((context), (root))
+#define OOJSAddGCValueRoot(context, root, name)		ooscript::addNamedValueRoot((context), (root), nullptr)
+#define OOJSAddGCStringRoot(context, root, name)	ooscript::addNamedStringRoot((context), (root), nullptr)
+#define OOJSAddGCObjectRoot(context, root, name)	ooscript::addNamedObjectRoot((context), (root), nullptr)
 #else
-#define OOJSAddGCValueRoot(context, root, name)		JS_AddNamedValueRoot((context), (root), "" name)
-#define OOJSAddGCStringRoot(context, root, name)	JS_AddNamedStringRoot((context), (root), "" name)
-#define OOJSAddGCObjectRoot(context, root, name)	JS_AddNamedObjectRoot((context), (root), "" name)
-#define OOJSAddGCThingRoot(context, root, name)		JS_AddNamedGCThingRoot((context), (root), "" name)
+#define OOJSAddGCValueRoot(context, root, name)		ooscript::addNamedValueRoot((context), (root), "" name)
+#define OOJSAddGCStringRoot(context, root, name)	ooscript::addNamedStringRoot((context), (root), "" name)
+#define OOJSAddGCObjectRoot(context, root, name)	ooscript::addNamedObjectRoot((context), (root), "" name)
 #endif
 
 
@@ -554,15 +540,15 @@ OOJS_EXTERN_C void OOJSRegisterObjectConverter(JSClass *theClass, OOJSClassConve
 
 // Sent for JS errors or warnings.
 - (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in JSContext *)context
-				  error:(in JSErrorReport *)errorReport
+				context:(in ooscript::Context)context
+				  error:(in ooscript::ErrorReport *)errorReport
 			  stackSkip:(in unsigned)stackSkip
 		showingLocation:(in BOOL)showLocation
 			withMessage:(in NSString *)message;
 
 // Sent for JS log messages. Note: messageClass will be nil if Log() is used rather than LogWithClass().
 - (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in JSContext *)context
+				context:(in ooscript::Context)context
 			 logMessage:(in NSString *)message
 				ofClass:(in NSString *)messageClass;
 
@@ -598,10 +584,10 @@ OOJS_EXTERN_C void OOJSResumeTimeLimiter(void);
 	OOJSDescribeLocation().
 */
 #ifndef NDEBUG
-OOJS_EXTERN_C void OOJSDumpStack(JSContext *context);
+OOJS_EXTERN_C void OOJSDumpStack(ooscript::Context context);
 
-OOJS_EXTERN_C NSString *OOJSDescribeLocation(JSContext *context, JSStackFrame *stackFrame);
-OOJS_EXTERN_C void OOJSMarkConsoleEvalLocation(JSContext *context, JSStackFrame *stackFrame);
+OOJS_EXTERN_C NSString *OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame);
+OOJS_EXTERN_C void OOJSMarkConsoleEvalLocation(ooscript::Context context, ooscript::StackFrame stackFrame);
 #else
 #define OOJSDumpStack(cx)						do {} while (0)
 #define OOJSDescribeLocation(cx, frame)			do {} while (0)
@@ -617,7 +603,7 @@ OOJS_EXTERN_C void OOJSMarkConsoleEvalLocation(JSContext *context, JSStackFrame 
 	
 	Constructor callback for pseudo-classes which can't be constructed.
 */
-OOJS_EXTERN_C JSBool OOJSUnconstructableConstruct(JSContext *context, uintN argc, jsval *vp);
+OOJS_EXTERN_C bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 
 
 /*	OOJSObjectWrapperFinalize
@@ -625,7 +611,7 @@ OOJS_EXTERN_C JSBool OOJSUnconstructableConstruct(JSContext *context, uintN argc
 	Finalizer for JS classes whose private storage is a retained object
 	reference (generally an OOWeakReference, but doesn't have to be).
 */
-OOJS_EXTERN_C void OOJSObjectWrapperFinalize(JSContext *context, JSObject *thisObj);
+OOJS_EXTERN_C void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object thisObj);
 
 
 /*	OOJSObjectWrapperToString
@@ -635,55 +621,56 @@ OOJS_EXTERN_C void OOJSObjectWrapperFinalize(JSContext *context, JSObject *thisO
 	
 	Calls -oo_jsDescription and, if that fails, -description.
 */
-OOJS_EXTERN_C JSBool OOJSObjectWrapperToString(JSContext *context, uintN argc, jsval *vp);
+OOJS_EXTERN_C bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 
 
 
 /***** Appropriate flags for host-defined read/write and read-only properties *****/
 
-// Slot-based (defined with JS_Define{Property/Object/Function}() and no callbacks)
-#define OOJS_PROP_READWRITE				(JSPROP_PERMANENT | JSPROP_ENUMERATE)
-#define OOJS_PROP_READONLY				(JSPROP_PERMANENT | JSPROP_ENUMERATE | JSPROP_READONLY)
+// Slot-based (defined with ooscript::defineProperty/defineObject/defineFunction and no callbacks)
+#define OOJS_PROP_READWRITE				(ooscript::PropertyFlag::Permanent | ooscript::PropertyFlag::Enumerate)
+#define OOJS_PROP_READONLY				(ooscript::PropertyFlag::Permanent | ooscript::PropertyFlag::Enumerate | ooscript::PropertyFlag::ReadOnly)
 
 // Non-enumerable properties
-#define OOJS_PROP_HIDDEN_READWRITE		(JSPROP_PERMANENT)
-#define OOJS_PROP_HIDDEN_READONLY		(JSPROP_PERMANENT | JSPROP_READONLY)
+#define OOJS_PROP_HIDDEN_READWRITE		(ooscript::PropertyFlag::Permanent)
+#define OOJS_PROP_HIDDEN_READONLY		(ooscript::PropertyFlag::Permanent | ooscript::PropertyFlag::ReadOnly)
 
 // Methods should be non-enumerable
 #define OOJS_METHOD_READONLY			OOJS_PROP_HIDDEN_READONLY
 
 // Callback-based (includes all properties specified in JSPropertySpecs)
-#define OOJS_PROP_READWRITE_CB			(OOJS_PROP_READWRITE | JSPROP_SHARED)
-#define OOJS_PROP_READONLY_CB			(OOJS_PROP_READONLY | JSPROP_SHARED)
+#define OOJS_PROP_READWRITE_CB			(OOJS_PROP_READWRITE | ooscript::PropertyFlag::Shared)
+#define OOJS_PROP_READONLY_CB			(OOJS_PROP_READONLY | ooscript::PropertyFlag::Shared)
 
-#define OOJS_PROP_HIDDEN_READWRITE_CB	(OOJS_PROP_HIDDEN_READWRITE | JSPROP_SHARED)
-#define OOJS_PROP_HIDDEN_READONLY_CB	(OOJS_PROP_HIDDEN_READONLY | JSPROP_SHARED)
+#define OOJS_PROP_HIDDEN_READWRITE_CB	(OOJS_PROP_HIDDEN_READWRITE | ooscript::PropertyFlag::Shared)
+#define OOJS_PROP_HIDDEN_READONLY_CB	(OOJS_PROP_HIDDEN_READONLY | ooscript::PropertyFlag::Shared)
 
 
 
 
 /***** Helpers for native callbacks. *****/
-#define OOJS_THIS						JS_THIS_OBJECT(context, vp)
-#define OOJS_ARGV						JS_ARGV(context, vp)
-#define OOJS_RVAL						JS_RVAL(context, vp)
-#define OOJS_SET_RVAL(v)				JS_SET_RVAL(context, vp, v)
+// Every native is `bool Name(ooscript::Context context, ooscript::CallArgs &oojsArgs)`.
+#define OOJS_THIS						(oojsArgs.thisObject())
+#define OOJS_ARGV						(oojsArgs.argv())
+#define OOJS_RVAL						(oojsArgs.rval())
+#define OOJS_SET_RVAL(v)				oojsArgs.setRval(v)
 
 #define OOJS_RETURN(v)					do { OOJS_SET_RVAL(v); return YES; } while (0)
-#define OOJS_RETURN_JSOBJECT(o)			OOJS_RETURN(OBJECT_TO_JSVAL(o))
-#define OOJS_RETURN_VOID				OOJS_RETURN(JSVAL_VOID)
-#define OOJS_RETURN_NULL				OOJS_RETURN(JSVAL_NULL)
+#define OOJS_RETURN_JSOBJECT(o)			OOJS_RETURN(ooscript::objectValue(o))
+#define OOJS_RETURN_VOID				OOJS_RETURN(ooscript::undefinedValue())
+#define OOJS_RETURN_NULL				OOJS_RETURN(ooscript::nullValue())
 #define OOJS_RETURN_BOOL(v)				OOJS_RETURN(OOJSValueFromBOOL(v))
-#define OOJS_RETURN_INT(v)				OOJS_RETURN(INT_TO_JSVAL(v))
+#define OOJS_RETURN_INT(v)				OOJS_RETURN(ooscript::int32Value(v))
 #define OOJS_RETURN_OBJECT(o)			OOJS_RETURN(OOJSValueFromNativeObject(context, o))
 
 #define OOJS_RETURN_WITH_HELPER(helper, value) \
 do { \
-	jsval jsresult; \
+	ooscript::Value jsresult; \
 	BOOL OK = helper(context, value, &jsresult); \
-	JS_SET_RVAL(context, vp, jsresult); return OK; \
+	oojsArgs.setRval(jsresult); return OK; \
 } while (0)
 
 #define OOJS_RETURN_VECTOR(value)		OOJS_RETURN_WITH_HELPER(VectorToJSValue, value)
 #define OOJS_RETURN_HPVECTOR(value)		OOJS_RETURN_WITH_HELPER(HPVectorToJSValue, value)
 #define OOJS_RETURN_QUATERNION(value)	OOJS_RETURN_WITH_HELPER(QuaternionToJSValue, value)
-#define OOJS_RETURN_DOUBLE(value)		OOJS_RETURN_WITH_HELPER(JS_NewNumberValue, value)
+#define OOJS_RETURN_DOUBLE(value)		OOJS_RETURN_WITH_HELPER(ooscript::newNumberValue, value)

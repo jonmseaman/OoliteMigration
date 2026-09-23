@@ -25,5 +25,6 @@ changed* from the chain.
 | [0016](0016-no-forge-local-verification.md) | No CI/CD forge for now; Tier B/C and the merge-queue gate run locally | Accepted; defers 0008 |
 | [0017](0017-native-windows-subtree.md) | Native Windows only (no WSL2); `upstream/oolite` is a subtree of the fork; Linux joins at Phase 5; merge queue pushes after each green batch | Accepted; amends 0010, 0014, 0016 |
 | [0018](0018-component-test-tier.md) | A component test tier: Gherkin scenarios over the debug console in Python (pytest-bdd, not cucumber-cpp); `OO_RANDOM_SEED` as its one enabler | Proposed — default in effect |
+| [0022](0022-phase1-finishes-on-objcpp-with-a-debug-facade.md) | Phase 1 finishes on an all-Objective-C++ tree (seam 2.1 pulled forward); the rest of the retarget is a codemod; the façade carries a reduced-capability debug API; QuickJS-ng values live in a GC-emulating arena | Proposed — default in effect |
 
 Template: Status · Date · Context · Decision · Consequences · History.

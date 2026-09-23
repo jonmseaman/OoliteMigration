@@ -23,7 +23,6 @@ MA );-);, USA.
 */
 
 #import "OOConstToString.h"
-#include <jsapi.h>
 #import "OOCollectionExtractors.h"
 
 #import "Universe.h"
@@ -243,20 +242,21 @@ NSString *OODisplayStringFromEconomyID(OOEconomyID economy)
 }
 
 
-NSString *JSTypeToString(int /* JSType */ type)
+NSString *JSTypeToString(int /* ooscript::Type */ type)
 {
-	switch ((JSType)type)
+	// The strings are the engine's own type-constant names, as this function has always returned.
+	switch ((ooscript::Type)type)
 	{
-		CASE(JSTYPE_VOID);
-		CASE(JSTYPE_OBJECT);
-		CASE(JSTYPE_FUNCTION);
-		CASE(JSTYPE_STRING);
-		CASE(JSTYPE_NUMBER);
-		CASE(JSTYPE_BOOLEAN);
-		CASE(JSTYPE_NULL);
-		CASE(JSTYPE_XML);
-		CASE(JSTYPE_LIMIT);
+		case ooscript::Type::Void: return @"JSTYPE_VOID";
+		case ooscript::Type::Object: return @"JSTYPE_OBJECT";
+		case ooscript::Type::Function: return @"JSTYPE_FUNCTION";
+		case ooscript::Type::String: return @"JSTYPE_STRING";
+		case ooscript::Type::Number: return @"JSTYPE_NUMBER";
+		case ooscript::Type::Boolean: return @"JSTYPE_BOOLEAN";
+		case ooscript::Type::Null: return @"JSTYPE_NULL";
+		case ooscript::Type::XML: return @"JSTYPE_XML";
 	}
+	if (type == (int)ooscript::Type::XML + 1)  return @"JSTYPE_LIMIT";
 	return [NSString stringWithFormat:@"unknown (%u)", type];
 }
 

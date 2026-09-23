@@ -25,8 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class WormholeEntity;
 
 
@@ -34,7 +33,7 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSWormhole(JSContext *context, JSObject *global);
+void InitOOJSWormhole(ooscript::Context context, ooscript::Object global);
 
 #ifdef __cplusplus
 }
@@ -42,7 +41,7 @@ void InitOOJSWormhole(JSContext *context, JSObject *global);
 
 @interface WormholeEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype;
+- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (NSString *) oo_jsClassName;
 - (BOOL) isVisibleToScripts;
 

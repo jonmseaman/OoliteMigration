@@ -56,18 +56,14 @@
 	façade's hook signature (Context/Object/PropertyId/Value pointer/CallArgs reference), and
 	the directly spelled numeric- and object-conversion calls (NewNumberValue, ValueToNumber,
 	ValueToBoolean, ValueToInt32, ValueToObject, GetProperty) become their ooscript::
-	equivalents. A tiny shim at the top of each native method recovers the old JSContext
-	pointer, uintN and jsval pointer locals so the OOJS_* argument-marshalling macros and the
-	rest of each function body are UNCHANGED, because ooscript::Value/Object/PropertyId are
-	byte copies of jsval, JSObject*, and jsid (JSEngine.hpp's own contract) and views onto
-	them are therefore reinterpret_cast, not conversion. `this` is renamed to `thisObj`
+	equivalents. Natives take the
+	façade signature directly (ooscript::Context and a CallArgs reference) and the OOJS_*
+	argument-marshalling macros expand to the CallArgs accessors, so the rest of each function
+	body is UNCHANGED. `this` is renamed to `thisObj`
 	because it is a reserved word once this file compiles as Objective-C++ (ADR-0001).
 
-	System's constructor is unconstructable, the same as Vector's and Station's, so
-	SystemUnconstructableConstructFacade below adapts the shared jsapi
-	OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the façade's NativeFn signature,
-	the way OOJSClock.mm's OOJSUnconstructableConstructFacade and OOJSStation.mm's
-	StationUnconstructableConstruct do it.
+	System's constructor is unconstructable, the same as Vector's and Station's: the shared
+	OOJSUnconstructableConstruct native is passed to ooscript::initClass directly.
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -83,42 +79,18 @@ using ooscript::FunctionSpec;
 
 // Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
 namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
-} // namespace
-namespace {
-static inline Value     *OOJSFVALP(jsval *v)      { return reinterpret_cast<Value*>(v); }
-} // namespace
-namespace {
-static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-namespace {
-static inline Object    *OOJSFOBJP(JSObject **o)  { return reinterpret_cast<Object*>(o); }
+static inline Object    *OOJSFOBJP(ooscript::Object *o)  { return reinterpret_cast<Object*>(o); }
 } // namespace
 
 
 namespace {
-static JSObject *sSystemPrototype;
+static ooscript::Object sSystemPrototype;
 } // namespace
 
 
 // Support functions for entity search methods.
 namespace {
-static BOOL GetRelativeToAndRange(JSContext *context, NSString *methodName, uintN *ioArgc, jsval **ioArgv, Entity **outRelativeTo, double *outRange);
+static BOOL GetRelativeToAndRange(ooscript::Context context, NSString *methodName, unsigned *ioArgc, ooscript::Value **ioArgv, Entity **outRelativeTo, double *outRange);
 } // namespace
 namespace {
 static NSArray *FindJSVisibleEntities(EntityFilterPredicate predicate, void *parameter, Entity *relativeTo, double range);
@@ -146,102 +118,91 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool st
 } // namespace
 
 namespace {
-static bool SystemToString(Context cx, CallArgs &oojsArgs);
+static bool SystemToString(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemAddPlanet(Context cx, CallArgs &oojsArgs);
+static bool SystemAddPlanet(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemAddMoon(Context cx, CallArgs &oojsArgs);
+static bool SystemAddMoon(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemSendAllShipsAway(Context cx, CallArgs &oojsArgs);
+static bool SystemSendAllShipsAway(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemCountShipsWithPrimaryRole(Context cx, CallArgs &oojsArgs);
+static bool SystemCountShipsWithPrimaryRole(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemCountShipsWithRole(Context cx, CallArgs &oojsArgs);
+static bool SystemCountShipsWithRole(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemCountEntitiesWithScanClass(Context cx, CallArgs &oojsArgs);
+static bool SystemCountEntitiesWithScanClass(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemShipsWithPrimaryRole(Context cx, CallArgs &oojsArgs);
+static bool SystemShipsWithPrimaryRole(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemShipsWithRole(Context cx, CallArgs &oojsArgs);
+static bool SystemShipsWithRole(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemEntitiesWithScanClass(Context cx, CallArgs &oojsArgs);
+static bool SystemEntitiesWithScanClass(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemFilteredEntities(Context cx, CallArgs &oojsArgs);
-} // namespace
-
-namespace {
-static bool SystemLocationFromCode(Context cx, CallArgs &oojsArgs);
-} // namespace
-namespace {
-static bool SystemAddShips(Context cx, CallArgs &oojsArgs);
-} // namespace
-namespace {
-static bool SystemAddGroup(Context cx, CallArgs &oojsArgs);
-} // namespace
-namespace {
-static bool SystemAddShipsToRoute(Context cx, CallArgs &oojsArgs);
-} // namespace
-namespace {
-static bool SystemAddGroupToRoute(Context cx, CallArgs &oojsArgs);
-} // namespace
-namespace {
-static bool SystemAddVisualEffect(Context cx, CallArgs &oojsArgs);
-} // namespace
-namespace {
-static bool SystemSetPopulator(Context cx, CallArgs &oojsArgs);
-} // namespace
-namespace {
-static bool SystemSetWaypoint(Context cx, CallArgs &oojsArgs);
+static bool SystemFilteredEntities(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 namespace {
-static bool SystemLegacyAddShips(Context cx, CallArgs &oojsArgs);
+static bool SystemLocationFromCode(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemLegacyAddSystemShips(Context cx, CallArgs &oojsArgs);
+static bool SystemAddShips(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemLegacyAddShipsAt(Context cx, CallArgs &oojsArgs);
+static bool SystemAddGroup(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemLegacyAddShipsAtPrecisely(Context cx, CallArgs &oojsArgs);
+static bool SystemAddShipsToRoute(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemLegacyAddShipsWithinRadius(Context cx, CallArgs &oojsArgs);
+static bool SystemAddGroupToRoute(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemLegacySpawnShip(Context cx, CallArgs &oojsArgs);
+static bool SystemAddVisualEffect(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool SystemSetPopulator(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool SystemSetWaypoint(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
+} // namespace
+
+namespace {
+static bool SystemLegacyAddShips(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool SystemLegacyAddSystemShips(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool SystemLegacyAddShipsAt(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool SystemLegacyAddShipsAtPrecisely(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool SystemLegacyAddShipsWithinRadius(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
+} // namespace
+namespace {
+static bool SystemLegacySpawnShip(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 namespace {
-static bool SystemStaticSystemNameForID(Context cx, CallArgs &oojsArgs);
+static bool SystemStaticSystemNameForID(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemStaticSystemIDForName(Context cx, CallArgs &oojsArgs);
+static bool SystemStaticSystemIDForName(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SystemStaticInfoForSystem(Context cx, CallArgs &oojsArgs);
-} // namespace
-
-
-// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the
-// façade's NativeFn signature, the way OOJSClock.mm's OOJSUnconstructableConstructFacade and
-// OOJSStation.mm's StationUnconstructableConstruct do it.
-namespace {
-static bool SystemUnconstructableConstructFacade(Context cx, CallArgs &oojsArgs)
-{
-	return OOJSUnconstructableConstruct(OOJSRCX(cx), oojsArgs.count(), reinterpret_cast<jsval*>(oojsArgs.rawVp()));
-}
+static bool SystemStaticInfoForSystem(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 
@@ -256,7 +217,7 @@ static ClassDef sSystemClass =
 	SystemGetProperty,	// getProperty
 	SystemSetProperty,	// setProperty
 	nullptr,			// enumerate (engine default: EnumerateStub)
-	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
 	nullptr,			// finalize (engine default: FinalizeStub)
@@ -350,10 +311,10 @@ static PropertySpec sSystemProperties[] =
 // A raw jsapi mirror of sSystemProperties, used only for the two bad-property error
 // reporters in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are
 // outside this bead's scope (shared across every binding file and are retargeted, if at all,
-// by a later seam) and still take a JSPropertySpec*, not ooscript::PropertySpec* (see
+// by a later seam) and still take a ooscript::PropertySpec*, not ooscript::PropertySpec* (see
 // OOJSVector.mm's sVectorPropertiesRaw).
 namespace {
-static JSPropertySpec sSystemPropertiesRaw[] =
+static ooscript::PropertySpec sSystemPropertiesRaw[] =
 {
 	// JS name						ID								flags
 	{ "allDemoShips",			kSystem_allDemoShips,			OOJS_PROP_READONLY_CB },
@@ -437,15 +398,15 @@ static FunctionSpec sSystemStaticMethods[] =
 } // namespace
 
 
-void InitOOJSSystem(JSContext *context, JSObject *global)
+void InitOOJSSystem(ooscript::Context context, ooscript::Object global)
 {
-	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sSystemClass,
-										SystemUnconstructableConstructFacade, 0, sSystemProperties, sSystemMethods,
+	Object proto = ooscript::initClass((context), (global), nullptr, &sSystemClass,
+										OOJSUnconstructableConstruct, 0, sSystemProperties, sSystemMethods,
 										nullptr, sSystemStaticMethods);
-	sSystemPrototype = OOJSROBJ(proto);
+	sSystemPrototype = (proto);
 
 	// Create system object as a property of the global object.
-	ooscript::defineObject(OOJSFCX(context), OOJSFOBJ(global), "system", &sSystemClass, proto, PropertyFlag::ReadOnly);
+	ooscript::defineObject((context), (global), "system", &sSystemClass, proto, PropertyFlag::ReadOnly);
 }
 
 
@@ -454,9 +415,9 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = (value);
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -471,7 +432,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 	switch (ooscript::idToInt32(propID))
 	{
 		case kSystem_ID:
-			*value_raw = INT_TO_JSVAL([player currentSystemID]);
+			*value_raw = ooscript::int32Value([player currentSystemID]);
 			return YES;
 			
 		case kSystem_isInterstellarSpace:
@@ -546,11 +507,11 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return ooscript::newNumberValue(cx, [player systemPseudoRandomFloat], value);
 			
 		case kSystem_pseudoRandom100:
-			*value_raw = INT_TO_JSVAL([player systemPseudoRandom100]);
+			*value_raw = ooscript::int32Value([player systemPseudoRandom100]);
 			return YES;
 			
 		case kSystem_pseudoRandom256:
-			*value_raw = INT_TO_JSVAL([player systemPseudoRandom256]);
+			*value_raw = ooscript::int32Value([player systemPseudoRandom256]);
 			return YES;
 
 		case kSystem_breakPattern:
@@ -584,7 +545,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					break;
 					
 				case kSystem_government:
-					*value_raw = INT_TO_JSVAL([systemData oo_intForKey:KEY_GOVERNMENT]);
+					*value_raw = ooscript::int32Value([systemData oo_intForKey:KEY_GOVERNMENT]);
 					return YES;
 					
 				case kSystem_governmentDescription:
@@ -593,7 +554,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					break;
 					
 				case kSystem_economy:
-					*value_raw = INT_TO_JSVAL([systemData oo_intForKey:KEY_ECONOMY]);
+					*value_raw = ooscript::int32Value([systemData oo_intForKey:KEY_ECONOMY]);
 					return YES;
 					
 				case kSystem_economyDescription:
@@ -602,19 +563,19 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					break;
 				
 				case kSystem_techLevel:
-					*value_raw = INT_TO_JSVAL([systemData oo_intForKey:KEY_TECHLEVEL]);
+					*value_raw = ooscript::int32Value([systemData oo_intForKey:KEY_TECHLEVEL]);
 					return YES;
 					
 				case kSystem_population:
-					*value_raw = INT_TO_JSVAL([systemData oo_intForKey:KEY_POPULATION]);
+					*value_raw = ooscript::int32Value([systemData oo_intForKey:KEY_POPULATION]);
 					return YES;
 					
 				case kSystem_productivity:
-					*value_raw = INT_TO_JSVAL([systemData oo_intForKey:KEY_PRODUCTIVITY]);
+					*value_raw = ooscript::int32Value([systemData oo_intForKey:KEY_PRODUCTIVITY]);
 					return YES;
 					
 				default:
-					OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sSystemPropertiesRaw);
+					OOJSReportBadPropertySelector(context, thisObj, (propID), sSystemPropertiesRaw);
 					return NO;
 			}
 		}
@@ -636,7 +597,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					break;
 					
 				case kSystem_government:
-					*value_raw = INT_TO_JSVAL(-1);
+					*value_raw = ooscript::int32Value(-1);
 					return YES;
 					
 				case kSystem_governmentDescription:
@@ -644,7 +605,7 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					break;
 					
 				case kSystem_economy:
-					*value_raw = INT_TO_JSVAL(-1);
+					*value_raw = ooscript::int32Value(-1);
 					return YES;
 					
 				case kSystem_economyDescription:
@@ -652,16 +613,16 @@ static bool SystemGetProperty(Context cx, Object obj, PropertyId propID, Value *
 					break;
 				
 				case kSystem_techLevel:
-					*value_raw = INT_TO_JSVAL(-1);
+					*value_raw = ooscript::int32Value(-1);
 					return YES;
 					
 				case kSystem_population:
 				case kSystem_productivity:
-					*value_raw = INT_TO_JSVAL(0);
+					*value_raw = ooscript::int32Value(0);
 					return YES;
 					
 				default:
-					OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sSystemPropertiesRaw);
+					OOJSReportBadPropertySelector(context, thisObj, (propID), sSystemPropertiesRaw);
 					return NO;
 			}
 		}
@@ -680,9 +641,9 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = (value);
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -691,8 +652,8 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 	OOSystemID					system;
 	NSString					*stringValue = nil;
 	NSString					*manifest = nil;
-	jsdouble					fValue;
-	int32						iValue;
+	double					fValue;
+	int32_t						iValue;
 	bool						bValue;
 	
 	player = OOPlayerForScripting();
@@ -804,11 +765,11 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 			
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sSystemPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sSystemPropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sSystemPropertiesRaw, *value_raw);
+	OOJSReportBadPropertyValue(context, thisObj, (propID), sSystemPropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT
@@ -820,10 +781,8 @@ static bool SystemSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 
 // toString() : String
 namespace {
-static bool SystemToString(Context cx, CallArgs &oojsArgs)
+static bool SystemToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -840,11 +799,8 @@ static bool SystemToString(Context cx, CallArgs &oojsArgs)
 
 // addPlanet(key : String) : Planet
 namespace {
-static bool SystemAddPlanet(Context cx, CallArgs &oojsArgs)
+static bool SystemAddPlanet(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -852,10 +808,10 @@ static bool SystemAddPlanet(Context cx, CallArgs &oojsArgs)
 	NSString			*key = nil;
 	OOPlanetEntity		*planet = nil;
 	
-	if (argc > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(key == nil))
 	{
-		OOJSReportBadArguments(context, @"System", @"addPlanet", MIN(argc, 1U), OOJS_ARGV, nil, @"string (planet key)");
+		OOJSReportBadArguments(context, @"System", @"addPlanet", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (planet key)");
 		return NO;
 	}
 	
@@ -872,11 +828,8 @@ static bool SystemAddPlanet(Context cx, CallArgs &oojsArgs)
 
 // addMoon(key : String) : Planet
 namespace {
-static bool SystemAddMoon(Context cx, CallArgs &oojsArgs)
+static bool SystemAddMoon(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -884,10 +837,10 @@ static bool SystemAddMoon(Context cx, CallArgs &oojsArgs)
 	NSString			*key = nil;
 	OOPlanetEntity		*planet = nil;
 	
-	if (argc > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(key == nil))
 	{
-		OOJSReportBadArguments(context, @"System", @"addMoon", MIN(argc, 1U), OOJS_ARGV, nil, @"string (planet key)");
+		OOJSReportBadArguments(context, @"System", @"addMoon", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (planet key)");
 		return NO;
 	}
 	
@@ -904,10 +857,8 @@ static bool SystemAddMoon(Context cx, CallArgs &oojsArgs)
 
 // sendAllShipsAway()
 namespace {
-static bool SystemSendAllShipsAway(Context cx, CallArgs &oojsArgs)
+static bool SystemSendAllShipsAway(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -923,11 +874,8 @@ static bool SystemSendAllShipsAway(Context cx, CallArgs &oojsArgs)
 
 // countShipsWithPrimaryRole(role : String [, relativeTo : Entity [, range : Number]]) : Number
 namespace {
-static bool SystemCountShipsWithPrimaryRole(Context cx, CallArgs &oojsArgs)
+static bool SystemCountShipsWithPrimaryRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -936,16 +884,16 @@ static bool SystemCountShipsWithPrimaryRole(Context cx, CallArgs &oojsArgs)
 	double				range = -1;
 	unsigned			result;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(role == nil))
 	{
-		OOJSReportBadArguments(context, @"System", @"countShipsWithPrimaryRole", MIN(argc, 1U), OOJS_ARGV, nil, @"string (role)");
+		OOJSReportBadArguments(context, @"System", @"countShipsWithPrimaryRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
 	}
 	
 	// Get optional arguments
-	argc -= 1;
-	jsval *argv = OOJS_ARGV + 1;
+	unsigned argc = oojsArgs.count() - 1;
+	ooscript::Value *argv = OOJS_ARGV + 1;
 	if (EXPECT_NOT(!GetRelativeToAndRange(context, @"countShipsWithPrimaryRole", &argc, &argv, &relativeTo, &range)))  return NO;
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
@@ -961,11 +909,8 @@ static bool SystemCountShipsWithPrimaryRole(Context cx, CallArgs &oojsArgs)
 
 // countShipsWithRole(role : String [, relativeTo : Entity [, range : Number]]) : Number
 namespace {
-static bool SystemCountShipsWithRole(Context cx, CallArgs &oojsArgs)
+static bool SystemCountShipsWithRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -974,16 +919,16 @@ static bool SystemCountShipsWithRole(Context cx, CallArgs &oojsArgs)
 	double				range = -1;
 	unsigned			result;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(role == nil))
 	{
-		OOJSReportBadArguments(context, @"System", @"countShipsWithRole", MIN(argc, 1U), OOJS_ARGV, nil, @"string (role)");
+		OOJSReportBadArguments(context, @"System", @"countShipsWithRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
 	}
 	
 	// Get optional arguments
-	argc -= 1;
-	jsval *argv = OOJS_ARGV + 1;
+	unsigned argc = oojsArgs.count() - 1;
+	ooscript::Value *argv = OOJS_ARGV + 1;
 	if (EXPECT_NOT(!GetRelativeToAndRange(context, @"countShipsWithRole", &argc, &argv, &relativeTo, &range)))  return NO;
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
@@ -999,11 +944,8 @@ static bool SystemCountShipsWithRole(Context cx, CallArgs &oojsArgs)
 
 // shipsWithPrimaryRole(role : String [, relativeTo : Entity [, range : Number]]) : Array (Entity)
 namespace {
-static bool SystemShipsWithPrimaryRole(Context cx, CallArgs &oojsArgs)
+static bool SystemShipsWithPrimaryRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1012,16 +954,16 @@ static bool SystemShipsWithPrimaryRole(Context cx, CallArgs &oojsArgs)
 	double				range = -1;
 	NSArray				*result = nil;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(role == nil))
 	{
-		OOJSReportBadArguments(context, @"System", @"countShipsWithRole", MIN(argc, 1U), OOJS_ARGV, nil, @"string (role)");
+		OOJSReportBadArguments(context, @"System", @"countShipsWithRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
 	}
 	
 	// Get optional arguments
-	argc -= 1;
-	jsval *argv = OOJS_ARGV + 1;
+	unsigned argc = oojsArgs.count() - 1;
+	ooscript::Value *argv = OOJS_ARGV + 1;
 	if (EXPECT_NOT(!GetRelativeToAndRange(context, @"shipsWithPrimaryRole", &argc, &argv, &relativeTo, &range)))  return NO;
 	
 	// Search for entities
@@ -1038,11 +980,8 @@ static bool SystemShipsWithPrimaryRole(Context cx, CallArgs &oojsArgs)
 
 // shipsWithRole(role : String [, relativeTo : Entity [, range : Number]]) : Array (Entity)
 namespace {
-static bool SystemShipsWithRole(Context cx, CallArgs &oojsArgs)
+static bool SystemShipsWithRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1051,16 +990,16 @@ static bool SystemShipsWithRole(Context cx, CallArgs &oojsArgs)
 	double				range = -1;
 	NSArray				*result = nil;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(role == nil))
 	{
-		OOJSReportBadArguments(context, @"System", @"shipsWithRole", MIN(argc, 1U), OOJS_ARGV, nil, @"string (role)");
+		OOJSReportBadArguments(context, @"System", @"shipsWithRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
 	}
 	
 	// Get optional arguments
-	argc -= 1;
-	jsval *subargv = OOJS_ARGV + 1;
+	unsigned argc = oojsArgs.count() - 1;
+	ooscript::Value *subargv = OOJS_ARGV + 1;
 	if (EXPECT_NOT(!GetRelativeToAndRange(context, @"shipsWithRole", &argc, &subargv, &relativeTo, &range)))  return NO;
 	
 	// Search for entities
@@ -1077,11 +1016,8 @@ static bool SystemShipsWithRole(Context cx, CallArgs &oojsArgs)
 
 // countEntitiesWithScanClass(scanClass : String [, relativeTo : Entity [, range : Number]]) : Number
 namespace {
-static bool SystemCountEntitiesWithScanClass(Context cx, CallArgs &oojsArgs)
+static bool SystemCountEntitiesWithScanClass(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1090,16 +1026,16 @@ static bool SystemCountEntitiesWithScanClass(Context cx, CallArgs &oojsArgs)
 	double				range = -1;
 	unsigned			result;
 	
-	if (argc > 0)  scanClass = OOScanClassFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  scanClass = OOScanClassFromJSValue(context, OOJS_ARGV[0]);
 	if (scanClass == CLASS_NOT_SET)
 	{
-		OOJSReportBadArguments(context, @"System", @"countEntitiesWithScanClass", MIN(argc, 1U), OOJS_ARGV, nil, @"string (scan class)");
+		OOJSReportBadArguments(context, @"System", @"countEntitiesWithScanClass", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (scan class)");
 		return NO;
 	}
 	
 	// Get optional arguments
-	argc -= 1;
-	jsval *argv = OOJS_ARGV + 1;
+	unsigned argc = oojsArgs.count() - 1;
+	ooscript::Value *argv = OOJS_ARGV + 1;
 	if (EXPECT_NOT(!GetRelativeToAndRange(context, @"countEntitiesWithScanClass", &argc, &argv, &relativeTo, &range)))  return NO;
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
@@ -1115,11 +1051,8 @@ static bool SystemCountEntitiesWithScanClass(Context cx, CallArgs &oojsArgs)
 
 // entitiesWithScanClass(scanClass : String [, relativeTo : Entity [, range : Number]]) : Array (Entity)
 namespace {
-static bool SystemEntitiesWithScanClass(Context cx, CallArgs &oojsArgs)
+static bool SystemEntitiesWithScanClass(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1128,16 +1061,16 @@ static bool SystemEntitiesWithScanClass(Context cx, CallArgs &oojsArgs)
 	double				range = -1;
 	NSArray				*result = nil;
 	
-	if (argc > 0)  scanClass = OOScanClassFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  scanClass = OOScanClassFromJSValue(context, OOJS_ARGV[0]);
 	if (scanClass == CLASS_NOT_SET)
 	{
-		OOJSReportBadArguments(context, @"System", @"countEntitiesWithScanClass", MIN(argc, 1U), OOJS_ARGV, nil, @"string (scan class)");
+		OOJSReportBadArguments(context, @"System", @"countEntitiesWithScanClass", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (scan class)");
 		return NO;
 	}
 	
 	// Get optional arguments
-	argc -= 1;
-	jsval *argv = OOJS_ARGV + 1;
+	unsigned argc = oojsArgs.count() - 1;
+	ooscript::Value *argv = OOJS_ARGV + 1;
 	if (EXPECT_NOT(!GetRelativeToAndRange(context, @"entitiesWithScanClass", &argc, &argv, &relativeTo, &range)))  return NO;
 	
 	// Search for entities
@@ -1154,31 +1087,28 @@ static bool SystemEntitiesWithScanClass(Context cx, CallArgs &oojsArgs)
 
 // filteredEntities(this : Object, predicate : Function [, relativeTo : Entity [, range : Number]]) : Array (Entity)
 namespace {
-static bool SystemFilteredEntities(Context cx, CallArgs &oojsArgs)
+static bool SystemFilteredEntities(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
-	JSObject			*jsThis = NULL;
-	jsval				predicate;
+	ooscript::Object jsThis = NULL;
+	ooscript::Value				predicate;
 	Entity				*relativeTo = nil;
 	double				range = -1;
 	NSArray				*result = nil;
 	
 	// Get this and predicate arguments
-	if (argc < 2 || !OOJSValueIsFunction(context, OOJS_ARGV[1]) || !ooscript::valueToObject(cx, OOJSFVAL(OOJS_ARGV[0]), OOJSFOBJP(&jsThis)))
+	if (oojsArgs.count() < 2 || !OOJSValueIsFunction(context, OOJS_ARGV[1]) || !ooscript::valueToObject(context, (OOJS_ARGV[0]), OOJSFOBJP(&jsThis)))
 	{
-		OOJSReportBadArguments(context, @"System", @"filteredEntities", argc, OOJS_ARGV, nil, @"this, predicate function, and optional reference entity and range");
+		OOJSReportBadArguments(context, @"System", @"filteredEntities", oojsArgs.count(), OOJS_ARGV, nil, @"this, predicate function, and optional reference entity and range");
 		return NO;
 	}
 	predicate = OOJS_ARGV[1];
 	
 	// Get optional arguments
-	argc -= 2;
-	jsval *argv = OOJS_ARGV + 2;
+	unsigned argc = oojsArgs.count() - 2;
+	ooscript::Value *argv = OOJS_ARGV + 2;
 	if (EXPECT_NOT(!GetRelativeToAndRange(context, @"filteredEntities", &argc, &argv, &relativeTo, &range)))  return NO;
 	
 	// Search for entities
@@ -1198,22 +1128,19 @@ static bool SystemFilteredEntities(Context cx, CallArgs &oojsArgs)
 
 // locationFromCode(populator_named_region : String)
 namespace {
-static bool SystemLocationFromCode(Context cx, CallArgs &oojsArgs)
+static bool SystemLocationFromCode(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*code = nil;
-	if (argc > 0)  
+	if (oojsArgs.count() > 0)  
 	{
 		code = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	}
 	if (EXPECT_NOT(code == nil))
 	{
-		OOJSReportBadArguments(context, @"System", @"locationFromCode", argc, OOJS_ARGV, nil, @"location code");
+		OOJSReportBadArguments(context, @"System", @"locationFromCode", oojsArgs.count(), OOJS_ARGV, nil, @"location code");
 		return NO;
 	}
 	OOSunEntity *sun = [UNIVERSE sun];
@@ -1237,7 +1164,7 @@ static bool SystemLocationFromCode(Context cx, CallArgs &oojsArgs)
 
 // addShips(role : String, count : Number [, position: Vector [, radius: Number]]) : Array
 namespace {
-static bool SystemAddShips(Context cx, CallArgs &oojsArgs)
+static bool SystemAddShips(ooscript::Context cx, ooscript::CallArgs &oojsArgs)
 {
 	return SystemAddShipsOrGroup(cx, oojsArgs, NO);
 }
@@ -1246,7 +1173,7 @@ static bool SystemAddShips(Context cx, CallArgs &oojsArgs)
 
 // addGroup(role : String, count : Number [, position: Vector [, radius: Number]]) : Array
 namespace {
-static bool SystemAddGroup(Context cx, CallArgs &oojsArgs)
+static bool SystemAddGroup(ooscript::Context cx, ooscript::CallArgs &oojsArgs)
 {
 	return SystemAddShipsOrGroup(cx, oojsArgs, YES);
 }
@@ -1255,7 +1182,7 @@ static bool SystemAddGroup(Context cx, CallArgs &oojsArgs)
 
 // addShipsToRoute(role : String, count : Number [, position: Number [, route: String]])
 namespace {
-static bool SystemAddShipsToRoute(Context cx, CallArgs &oojsArgs)
+static bool SystemAddShipsToRoute(ooscript::Context cx, ooscript::CallArgs &oojsArgs)
 {
 	return SystemAddShipsOrGroupToRoute(cx, oojsArgs, NO);
 }
@@ -1264,7 +1191,7 @@ static bool SystemAddShipsToRoute(Context cx, CallArgs &oojsArgs)
 
 // addGroupToRoute(role : String, count : Number,  position: Number[, route: String])
 namespace {
-static bool SystemAddGroupToRoute(Context cx, CallArgs &oojsArgs)
+static bool SystemAddGroupToRoute(ooscript::Context cx, ooscript::CallArgs &oojsArgs)
 {
 	return SystemAddShipsOrGroupToRoute(cx, oojsArgs, YES);
 }
@@ -1273,26 +1200,23 @@ static bool SystemAddGroupToRoute(Context cx, CallArgs &oojsArgs)
 
 // legacy_addShips(role : String, count : Number)
 namespace {
-static bool SystemLegacyAddShips(Context cx, CallArgs &oojsArgs)
+static bool SystemLegacyAddShips(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOStandardsDeprecated(@"system.legacy_addShips() is deprecated");
 
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 		
 	NSString			*role = nil;
-	int32				count;
+	int32_t				count;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(role == nil ||
-				   !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &count) ||
-				   argc < 2 ||
+				   !ooscript::valueToInt32(context, (OOJS_ARGV[1]), &count) ||
+				   oojsArgs.count() < 2 ||
 				   count < 1 || 64 < count))
 	{
-		OOJSReportBadArguments(context, @"System", @"legacy_addShips", argc, OOJS_ARGV, nil, @"role and positive count no greater than 64");
+		OOJSReportBadArguments(context, @"System", @"legacy_addShips", oojsArgs.count(), OOJS_ARGV, nil, @"role and positive count no greater than 64");
 		return NO;
 	}
 	
@@ -1309,28 +1233,25 @@ static bool SystemLegacyAddShips(Context cx, CallArgs &oojsArgs)
 
 // legacy_addSystemShips(role : String, count : Number, location : Number)
 namespace {
-static bool SystemLegacyAddSystemShips(Context cx, CallArgs &oojsArgs)
+static bool SystemLegacyAddSystemShips(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOStandardsDeprecated(@"system.legacy_addSystemShips() is deprecated");
 
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
-	jsdouble			position;
+	double			position;
 	NSString			*role = nil;
-	int32				count;
+	int32_t				count;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(role == nil ||
-				   !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &count) ||
+				   !ooscript::valueToInt32(context, (OOJS_ARGV[1]), &count) ||
 				   count < 1 || 64 < count ||
-				   argc < 3 ||
-				   !ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[2]), &position)))
+				   oojsArgs.count() < 3 ||
+				   !ooscript::valueToNumber(context, (OOJS_ARGV[2]), &position)))
 	{
-		OOJSReportBadArguments(context, @"System", @"legacy_addSystemShips", argc, OOJS_ARGV, nil, @"role, positive count no greater than 64, and position along route");
+		OOJSReportBadArguments(context, @"System", @"legacy_addSystemShips", oojsArgs.count(), OOJS_ARGV, nil, @"role, positive count no greater than 64, and position along route");
 		return NO;
 	}
 	
@@ -1347,33 +1268,30 @@ static bool SystemLegacyAddSystemShips(Context cx, CallArgs &oojsArgs)
 
 // legacy_addShipsAt(role : String, count : Number, coordScheme : String, coords : vectorExpression)
 namespace {
-static bool SystemLegacyAddShipsAt(Context cx, CallArgs &oojsArgs)
+static bool SystemLegacyAddShipsAt(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOStandardsDeprecated(@"system.legacy_addShipsAt() is deprecated");
 
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
 	HPVector				where;
 	NSString			*role = nil;
-	int32				count;
+	int32_t				count;
 	NSString			*coordScheme = nil;
 	NSString			*arg = nil;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	coordScheme = OOStringFromJSValue(context, OOJS_ARGV[2]);
 	if (EXPECT_NOT(role == nil ||
-				   !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &count) ||
+				   !ooscript::valueToInt32(context, (OOJS_ARGV[1]), &count) ||
 				   count < 1 || 64 < count ||
 				   coordScheme == nil ||
-				   argc < 4 ||
-				   !VectorFromArgumentListNoError(context, argc - 3, OOJS_ARGV + 3, &where, NULL)))
+				   oojsArgs.count() < 4 ||
+				   !VectorFromArgumentListNoError(context, oojsArgs.count() - 3, OOJS_ARGV + 3, &where, NULL)))
 	{
-		OOJSReportBadArguments(context, @"System", @"legacy_addShipsAt", argc, OOJS_ARGV, nil, @"role, positive count no greater than 64, coordinate scheme and coordinates");
+		OOJSReportBadArguments(context, @"System", @"legacy_addShipsAt", oojsArgs.count(), OOJS_ARGV, nil, @"role, positive count no greater than 64, coordinate scheme and coordinates");
 		return NO;
 	}
 	
@@ -1391,33 +1309,30 @@ static bool SystemLegacyAddShipsAt(Context cx, CallArgs &oojsArgs)
 
 // legacy_addShipsAtPrecisely(role : String, count : Number, coordScheme : String, coords : vectorExpression)
 namespace {
-static bool SystemLegacyAddShipsAtPrecisely(Context cx, CallArgs &oojsArgs)
+static bool SystemLegacyAddShipsAtPrecisely(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOStandardsDeprecated(@"system.legacy_addShipsAtPrecisely() is deprecated");
 
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
 	HPVector				where;
 	NSString			*role = nil;
-	int32				count;
+	int32_t				count;
 	NSString			*coordScheme = nil;
 	NSString			*arg = nil;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	coordScheme = OOStringFromJSValue(context, OOJS_ARGV[2]);
 	if (EXPECT_NOT(role == nil ||
-				   !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &count) ||
+				   !ooscript::valueToInt32(context, (OOJS_ARGV[1]), &count) ||
 				   count < 1 || 64 < count ||
 				   coordScheme == nil ||
-				   argc < 4 ||
-				   !VectorFromArgumentListNoError(context, argc - 3, OOJS_ARGV + 3, &where, NULL)))
+				   oojsArgs.count() < 4 ||
+				   !VectorFromArgumentListNoError(context, oojsArgs.count() - 3, OOJS_ARGV + 3, &where, NULL)))
 	{
-		OOJSReportBadArguments(context, @"System", @"legacy_addShipsAtPrecisely", argc, OOJS_ARGV, nil, @"role, positive count no greater than 64, coordinate scheme and coordinates");
+		OOJSReportBadArguments(context, @"System", @"legacy_addShipsAtPrecisely", oojsArgs.count(), OOJS_ARGV, nil, @"role, positive count no greater than 64, coordinate scheme and coordinates");
 		return NO;
 	}
 	
@@ -1435,36 +1350,33 @@ static bool SystemLegacyAddShipsAtPrecisely(Context cx, CallArgs &oojsArgs)
 
 // legacy_addShipsWithinRadius(role : String, count : Number, coordScheme : String, coords : vectorExpression, radius : Number)
 namespace {
-static bool SystemLegacyAddShipsWithinRadius(Context cx, CallArgs &oojsArgs)
+static bool SystemLegacyAddShipsWithinRadius(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOStandardsDeprecated(@"system.legacy_addShipsWithinRadius() is deprecated");
 
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity		*player = OOPlayerForScripting();
 	HPVector				where;
-	jsdouble			radius;
+	double			radius;
 	NSString			*role = nil;
-	int32				count;
+	int32_t				count;
 	NSString			*coordScheme = nil;
 	NSString			*arg = nil;
-	uintN				consumed = 0;
+	unsigned				consumed = 0;
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (argc > 2)  coordScheme = OOStringFromJSValue(context, OOJS_ARGV[2]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 2)  coordScheme = OOStringFromJSValue(context, OOJS_ARGV[2]);
 	if (EXPECT_NOT(role == nil ||
-				   !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &count) ||
+				   !ooscript::valueToInt32(context, (OOJS_ARGV[1]), &count) ||
 				   count < 1 || 64 < count ||
 				   coordScheme == nil ||
-				   argc < 5 ||
-				   !VectorFromArgumentListNoError(context, argc - 3, OOJS_ARGV + 3, &where, &consumed) ||
-				   !ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[3 + consumed]), &radius)))
+				   oojsArgs.count() < 5 ||
+				   !VectorFromArgumentListNoError(context, oojsArgs.count() - 3, OOJS_ARGV + 3, &where, &consumed) ||
+				   !ooscript::valueToNumber(context, (OOJS_ARGV[3 + consumed]), &radius)))
 	{
-		OOJSReportBadArguments(context, @"System", @"legacy_addShipWithinRadius", argc, OOJS_ARGV, nil, @"role, positive count no greater than 64, coordinate scheme, coordinates and radius");
+		OOJSReportBadArguments(context, @"System", @"legacy_addShipWithinRadius", oojsArgs.count(), OOJS_ARGV, nil, @"role, positive count no greater than 64, coordinate scheme, coordinates and radius");
 		return NO;
 	}
 	
@@ -1482,23 +1394,20 @@ static bool SystemLegacyAddShipsWithinRadius(Context cx, CallArgs &oojsArgs)
 
 // legacy_spawnShip(key : string)
 namespace {
-static bool SystemLegacySpawnShip(Context cx, CallArgs &oojsArgs)
+static bool SystemLegacySpawnShip(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOStandardsDeprecated(@"system.legacy_spawnShip() is deprecated");
 
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*key = nil;
 	OOPlayerForScripting();	// For backwards-compatibility
 	
-	if (argc > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (key == nil)
 	{
-		OOJSReportBadArguments(context, @"System", @"legacy_spawnShip", MIN(argc, 1U), OOJS_ARGV, nil, @"string (ship key)");
+		OOJSReportBadArguments(context, @"System", @"legacy_spawnShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (ship key)");
 		return NO;
 	}
 	
@@ -1517,19 +1426,16 @@ static bool SystemLegacySpawnShip(Context cx, CallArgs &oojsArgs)
 
 // systemNameForID(ID : Number) : String
 namespace {
-static bool SystemStaticSystemNameForID(Context cx, CallArgs &oojsArgs)
+static bool SystemStaticSystemNameForID(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
-	int32				systemID;
+	int32_t				systemID;
 	
-	if (argc < 1 || !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[0]), &systemID) || systemID < -1 || kOOMaximumSystemID < systemID)	// -1 interstellar space!
+	if (oojsArgs.count() < 1 || !ooscript::valueToInt32(context, (OOJS_ARGV[0]), &systemID) || systemID < -1 || kOOMaximumSystemID < systemID)	// -1 interstellar space!
 	{
-		OOJSReportBadArguments(context, @"System", @"systemNameForID", MIN(argc, 1U), OOJS_ARGV, nil, @"system ID");
+		OOJSReportBadArguments(context, @"System", @"systemNameForID", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"system ID");
 		return NO;
 	}
 	
@@ -1545,21 +1451,18 @@ static bool SystemStaticSystemNameForID(Context cx, CallArgs &oojsArgs)
 
 // systemIDForName(name : String) : Number
 namespace {
-static bool SystemStaticSystemIDForName(Context cx, CallArgs &oojsArgs)
+static bool SystemStaticSystemIDForName(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*name = nil;
 	unsigned			result;
 	
-	if (argc > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (name == nil)
 	{
-		OOJSReportBadArguments(context, @"System", @"systemIDForName", MIN(argc, 1U), OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, @"System", @"systemIDForName", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
 	
@@ -1578,20 +1481,17 @@ static bool SystemStaticSystemIDForName(Context cx, CallArgs &oojsArgs)
 
 // infoForSystem(galaxyID : Number, systemID : Number) : SystemInfo
 namespace {
-static bool SystemStaticInfoForSystem(Context cx, CallArgs &oojsArgs)
+static bool SystemStaticInfoForSystem(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
-	int32				galaxyID;
-	int32				systemID;
+	int32_t				galaxyID;
+	int32_t				systemID;
 	
-	if (argc < 2 || !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[0]), &galaxyID) || !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &systemID))
+	if (oojsArgs.count() < 2 || !ooscript::valueToInt32(context, (OOJS_ARGV[0]), &galaxyID) || !ooscript::valueToInt32(context, (OOJS_ARGV[1]), &systemID))
 	{
-		OOJSReportBadArguments(context, @"System", @"infoForSystem", argc, OOJS_ARGV, nil, @"galaxy ID and system ID");
+		OOJSReportBadArguments(context, @"System", @"infoForSystem", oojsArgs.count(), OOJS_ARGV, nil, @"galaxy ID and system ID");
 		return NO;
 	}
 	
@@ -1615,29 +1515,26 @@ static bool SystemStaticInfoForSystem(Context cx, CallArgs &oojsArgs)
 
 
 namespace {
-static bool SystemAddVisualEffect(Context cx, CallArgs &oojsArgs)
+static bool SystemAddVisualEffect(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*key = nil;
 	HPVector         where;
 	
-	uintN				consumed = 0;
+	unsigned				consumed = 0;
 
-	if (argc > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (key == nil)
 	{
-		OOJSReportBadArguments(context, @"System", @"addVisualEffect", MIN(argc, 1U), &OOJS_ARGV[0], nil, @"string (key)");
+		OOJSReportBadArguments(context, @"System", @"addVisualEffect", MIN(oojsArgs.count(), 1U), &OOJS_ARGV[0], nil, @"string (key)");
 		return NO;
 	}
 
-	if (!VectorFromArgumentListNoError(context, argc - 1, OOJS_ARGV + 1, &where, &consumed))
+	if (!VectorFromArgumentListNoError(context, oojsArgs.count() - 1, OOJS_ARGV + 1, &where, &consumed))
 	{
-		OOJSReportBadArguments(context, @"System", @"addVisualEffect", MIN(argc - 1, 1U), &OOJS_ARGV[1], nil, @"vector");
+		OOJSReportBadArguments(context, @"System", @"addVisualEffect", MIN(oojsArgs.count() - 1, 1U), &OOJS_ARGV[1], nil, @"vector");
 		return NO;
 	}
 
@@ -1656,30 +1553,27 @@ static bool SystemAddVisualEffect(Context cx, CallArgs &oojsArgs)
 } // namespace
 
 namespace {
-static bool SystemSetPopulator(Context cx, CallArgs &oojsArgs)
+static bool SystemSetPopulator(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 
 	NSString *key;
 	NSMutableDictionary *settings;
-	JSObject			*params = NULL;
+	ooscript::Object params = NULL;
 
-	if (argc < 1) 
+	if (oojsArgs.count() < 1) 
 	{
-		OOJSReportBadArguments(context, @"System", @"setPopulator", MIN(argc, 0U), &OOJS_ARGV[0], nil, @"string (key), object (settings)");
+		OOJSReportBadArguments(context, @"System", @"setPopulator", MIN(oojsArgs.count(), 0U), &OOJS_ARGV[0], nil, @"string (key), object (settings)");
 		return NO;
 	}
 	key = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (key == nil)
 	{
-		OOJSReportBadArguments(context, @"System", @"setPopulator", MIN(argc, 0U), &OOJS_ARGV[0], nil, @"key, settings");
+		OOJSReportBadArguments(context, @"System", @"setPopulator", MIN(oojsArgs.count(), 0U), &OOJS_ARGV[0], nil, @"key, settings");
 		return NO;
 	}
-	if (argc < 2 || JSVAL_IS_NULL(OOJS_ARGV[1]))
+	if (oojsArgs.count() < 2 || ooscript::isNull(OOJS_ARGV[1]))
 	{
 		// clearing
 		[UNIVERSE setPopulatorSetting:key to:nil];
@@ -1687,26 +1581,26 @@ static bool SystemSetPopulator(Context cx, CallArgs &oojsArgs)
 	else
 	{
 		// adding
-		if (!ooscript::valueToObject(cx, OOJSFVAL(OOJS_ARGV[1]), OOJSFOBJP(&params)))
+		if (!ooscript::valueToObject(context, (OOJS_ARGV[1]), OOJSFOBJP(&params)))
 		{
-			OOJSReportBadArguments(context, @"System", @"setPopulator", MIN(argc, 1U), OOJS_ARGV, NULL, @"key, settings");
+			OOJSReportBadArguments(context, @"System", @"setPopulator", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key, settings");
 			return NO;
 		}
-		jsval				callback = JSVAL_NULL;
-		if (!ooscript::getProperty(cx, OOJSFOBJ(params), "callback", OOJSFVALP(&callback)) || JSVAL_IS_VOID(callback))
+		ooscript::Value				callback = ooscript::nullValue();
+		if (!ooscript::getProperty(context, (params), "callback", (&callback)) || ooscript::isUndefined(callback))
 		{
-			OOJSReportBadArguments(context, @"System", @"setPopulator", MIN(argc, 1U), OOJS_ARGV, NULL, @"settings must have a 'callback' property.");
+			OOJSReportBadArguments(context, @"System", @"setPopulator", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"settings must have a 'callback' property.");
 			return NO;
 		}
 
 		OOJSPopulatorDefinition *populator = [[OOJSPopulatorDefinition alloc] init];
 		[populator setCallback:callback];
 
-		settings = OOJSNativeObjectFromJSObject(context, JSVAL_TO_OBJECT(OOJS_ARGV[1]));
+		settings = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[1]));
 		[settings setObject:populator forKey:@"callbackObj"];
 
-		jsval				coords = JSVAL_NULL;
-		if (ooscript::getProperty(cx, OOJSFOBJ(params), "coordinates", OOJSFVALP(&coords)) && !JSVAL_IS_VOID(coords))
+		ooscript::Value				coords = ooscript::nullValue();
+		if (ooscript::getProperty(context, (params), "coordinates", (&coords)) && !ooscript::isUndefined(coords))
 		{
 			Vector coordinates = kZeroVector;
 			if (JSValueToVector(context, coords, &coordinates))
@@ -1729,11 +1623,8 @@ static bool SystemSetPopulator(Context cx, CallArgs &oojsArgs)
 
 
 namespace {
-static bool SystemSetWaypoint(Context cx, CallArgs &oojsArgs)
+static bool SystemSetWaypoint(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 
@@ -1742,18 +1633,18 @@ static bool SystemSetWaypoint(Context cx, CallArgs &oojsArgs)
 	HPVector position;
 	Quaternion orientation;
 
-	if (argc < 1) 
+	if (oojsArgs.count() < 1) 
 	{
-		OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(argc, 0U), &OOJS_ARGV[0], nil, @"key, position, orientation, definition");
+		OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(oojsArgs.count(), 0U), &OOJS_ARGV[0], nil, @"key, position, orientation, definition");
 		return NO;
 	}
 	key = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (key == nil)
 	{
-		OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(argc, 0U), &OOJS_ARGV[0], nil, @"key, position, orientation, definition");
+		OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(oojsArgs.count(), 0U), &OOJS_ARGV[0], nil, @"key, position, orientation, definition");
 		return NO;
 	}
-	if (argc < 4 || JSVAL_IS_NULL(OOJS_ARGV[3]))
+	if (oojsArgs.count() < 4 || ooscript::isNull(OOJS_ARGV[3]))
 	{
 		// clearing
 		[UNIVERSE defineWaypoint:nil forKey:key];
@@ -1763,21 +1654,21 @@ static bool SystemSetWaypoint(Context cx, CallArgs &oojsArgs)
 		// adding
 		if (!JSValueToHPVector(context, OOJS_ARGV[1], &position))
 		{
-			OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(argc, 2U), OOJS_ARGV, NULL, @"key, position, orientation, definition");
+			OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(oojsArgs.count(), 2U), OOJS_ARGV, NULL, @"key, position, orientation, definition");
 			return NO;
 		}
 		if (!JSValueToQuaternion(context, OOJS_ARGV[2], &orientation))
 		{
-			OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(argc, 3U), OOJS_ARGV, NULL, @"key, position, orientation, definition");
+			OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(oojsArgs.count(), 3U), OOJS_ARGV, NULL, @"key, position, orientation, definition");
 			return NO;
 		}
-		if (!JSVAL_IS_OBJECT(OOJS_ARGV[3]) || JSVAL_IS_NULL(OOJS_ARGV[3]))
+		if (!ooscript::isObjectOrNull(OOJS_ARGV[3]) || ooscript::isNull(OOJS_ARGV[3]))
 		{
-			OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(argc, 4U), OOJS_ARGV, NULL, @"key, position, orientation, definition");
+			OOJSReportBadArguments(context, @"System", @"setWaypoint", MIN(oojsArgs.count(), 4U), OOJS_ARGV, NULL, @"key, position, orientation, definition");
 			return NO;
 		}
 		
-		settings = [[OOJSNativeObjectFromJSObject(context, JSVAL_TO_OBJECT(OOJS_ARGV[3])) mutableCopy] autorelease];
+		settings = [[OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[3])) mutableCopy] autorelease];
 		[settings setObject:[NSArray arrayWithObjects:[NSNumber numberWithDouble:position.x],[NSNumber numberWithDouble:position.y],[NSNumber numberWithDouble:position.z],nil] forKey:@"position"];
 		[settings setObject:[NSArray arrayWithObjects:[NSNumber numberWithDouble:orientation.w],[NSNumber numberWithDouble:orientation.x],[NSNumber numberWithDouble:orientation.y],[NSNumber numberWithDouble:orientation.z],nil] forKey:@"orientation"];
 
@@ -1796,15 +1687,14 @@ static bool SystemSetWaypoint(Context cx, CallArgs &oojsArgs)
 namespace {
 static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	ooscript::Context context = (cx);
+	unsigned argc = oojsArgs.count();
 
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*role = nil;
-	int32				count = 0;
-	uintN				consumed = 0;
+	int32_t				count = 0;
+	unsigned				consumed = 0;
 	HPVector				where;
 	double				radius = NSNotFound;	// a negative value means 
 	id					result = nil;
@@ -1817,7 +1707,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 		OOJSReportBadArguments(context, @"System", func, MIN(argc, 1U), &OOJS_ARGV[0], nil, @"string (role)");
 		return NO;
 	}
-	if (argc < 2 || !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &count) || count < 1 || 64 < count)
+	if (argc < 2 || !ooscript::valueToInt32(cx, (OOJS_ARGV[1]), &count) || count < 1 || 64 < count)
 	{
 		OOJSReportBadArguments(context, @"System", func, MIN(argc - 1, 1U), &OOJS_ARGV[1], nil, @"number (positive count no greater than 64)");
 		return NO;
@@ -1838,7 +1728,7 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 		
 		if (argc > 2 + consumed)
 		{
-			if (!ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[2 + consumed]), &radius))
+			if (!ooscript::valueToNumber(cx, (OOJS_ARGV[2 + consumed]), &radius))
 			{
 				OOJSReportBadArguments(context, @"System", func, MIN(argc - 2 - consumed, 1U), &OOJS_ARGV[2 + consumed], nil, @"number (radius)");
 				return NO;
@@ -1868,16 +1758,15 @@ static bool SystemAddShipsOrGroup(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 namespace {
 static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL isGroup)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
+	ooscript::Context context = (cx);
+	unsigned argc = oojsArgs.count();
 
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*role = nil;
 	NSString			*route = @"st"; // default route witchpoint -> station. ("st" itself is not selectable by script)
 	static NSSet		*validRoutes = nil;
-	int32				count = 0;
+	int32_t				count = 0;
 	double				where = NSNotFound;		// a negative value means random positioning!
 	id					result = nil;
 	
@@ -1889,7 +1778,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL is
 		OOJSReportBadArguments(context, @"System", func, MIN(argc, 1U), &OOJS_ARGV[0], nil, @"string (role)");
 		return NO;
 	}
-	if (argc < 2 || !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[1]), &count) || count < 1 || 64 < count)
+	if (argc < 2 || !ooscript::valueToInt32(cx, (OOJS_ARGV[1]), &count) || count < 1 || 64 < count)
 	{
 		OOJSReportBadArguments(context, @"System", func, MIN(argc - 1, 1U), &OOJS_ARGV[1], nil, @"number (positive count no greater than 64)");
 		return NO;
@@ -1897,7 +1786,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL is
 	
 	if (argc > 2)
 	{
-		if (!ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[2]), &where) || !isfinite(where) || where < 0.0f || where > 1.0f)
+		if (!ooscript::valueToNumber(cx, (OOJS_ARGV[2]), &where) || !isfinite(where) || where < 0.0f || where > 1.0f)
 		{
 			OOJSReportBadArguments(context, @"System", func, MIN(argc - 2, 1U), &OOJS_ARGV[2], nil, @"number (position along route)");
 			return NO;
@@ -1940,7 +1829,7 @@ static bool SystemAddShipsOrGroupToRoute(Context cx, CallArgs &oojsArgs, BOOL is
 
 
 namespace {
-static BOOL GetRelativeToAndRange(JSContext *context, NSString *methodName, uintN *ioArgc, jsval **ioArgv, Entity **outRelativeTo, double *outRange)
+static BOOL GetRelativeToAndRange(ooscript::Context context, NSString *methodName, unsigned *ioArgc, ooscript::Value **ioArgv, Entity **outRelativeTo, double *outRange)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1950,7 +1839,7 @@ static BOOL GetRelativeToAndRange(JSContext *context, NSString *methodName, uint
 	// Get optional argument relativeTo : Entity
 	if (*ioArgc != 0)
 	{
-		if (EXPECT_NOT(JSVAL_IS_NULL(**ioArgv) || !JSValueToEntity(context, **ioArgv, outRelativeTo)))
+		if (EXPECT_NOT(ooscript::isNull(**ioArgv) || !JSValueToEntity(context, **ioArgv, outRelativeTo)))
 		{
 			OOJSReportBadArguments(context, @"System", methodName, 1, *ioArgv, nil, @"entity");
 			return NO;
@@ -1961,7 +1850,7 @@ static BOOL GetRelativeToAndRange(JSContext *context, NSString *methodName, uint
 	// Get optional argument range : Number
 	if (*ioArgc != 0)
 	{
-		if (!EXPECT_NOT(ooscript::valueToNumber(OOJSFCX(context), OOJSFVAL(**ioArgv), outRange)))
+		if (!EXPECT_NOT(ooscript::valueToNumber((context), (**ioArgv), outRange)))
 		{
 			OOJSReportBadArguments(context, @"System", methodName, 1, *ioArgv, nil, @"number");
 			return NO;

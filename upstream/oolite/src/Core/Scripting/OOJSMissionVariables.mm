@@ -43,11 +43,7 @@ MA 02110-1301, USA.
 	ooscript::newNumberValue. `this` is renamed to `thisObj` because it is a reserved word once
 	this file compiles as Objective-C++ (ADR-0001). The class hooks (delProperty, getProperty,
 	setProperty) and the new-enumerate protocol hook now take the façade's Context/Object/
-	PropertyId/Value signature instead of the engine's; a tiny shim at the top of each recovers
-	the old JSContext/JSObject/jsid/jsval locals so the rest of each function body (including
-	OOJS_NATIVE_ENTER/EXIT) is UNCHANGED, because ooscript::Value and ooscript::PropertyId are
-	byte copies of jsval and jsid (JSEngine.hpp's own contract, verified by the backend's static
-	asserts).
+	PropertyId/Value signature directly, so no conversion is needed anywhere in the file.
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -59,39 +55,12 @@ using ooscript::ClassFlag;
 using ooscript::PropertyFlag;
 using ooscript::EnumerateOp;
 
-// Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
 namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
-} // namespace
-namespace {
-static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-namespace {
-static inline PropertyId *OOJSFJSIDP(jsid *id)    { return reinterpret_cast<PropertyId*>(id); }
-} // namespace
-
-
-namespace {
-static NSString *KeyForPropertyID(JSContext *context, jsid propID)
+static NSString *KeyForPropertyID(ooscript::Context context, ooscript::PropertyId propID)
 {
-	NSCParameterAssert(JSID_IS_STRING(propID));
+	NSCParameterAssert(ooscript::isStringId(propID));
 	
-	NSString *key = OOStringFromJSString(context, JSID_TO_STRING(propID));
+	NSString *key = OOStringFromJSString(context, ooscript::idToString(propID));
 	if ([key hasPrefix:@"_"])  return nil;
 	return [@"mission_" stringByAppendingString:key];
 }
@@ -113,7 +82,7 @@ static bool MissionVariablesEnumerate(Context cx, Object obj, EnumerateOp enumOp
 
 #ifndef NDEBUG
 namespace {
-static id MissionVariablesConverter(JSContext *context, JSObject *object);
+static id MissionVariablesConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 #endif
 
@@ -128,7 +97,7 @@ static ClassDef sMissionVariablesClass =
 	MissionVariablesDeleteProperty,	// delProperty
 	MissionVariablesGetProperty,		// getProperty
 	MissionVariablesSetProperty,		// setProperty
-	nullptr,							// enumerate (JSCLASS_NEW_ENUMERATE: newEnumerate used instead)
+	nullptr,							// enumerate (ooscript::ClassFlag::NewEnumerate: newEnumerate used instead)
 	MissionVariablesEnumerate,			// newEnumerate
 	nullptr,							// resolve (engine default: ResolveStub)
 	nullptr,							// convert (engine default: ConvertStub)
@@ -140,34 +109,20 @@ static ClassDef sMissionVariablesClass =
 } // namespace
 
 
-// The engine's own JSClass* for sMissionVariablesClass, for the not-yet-retargeted
-// OOJSRegisterObjectConverter (OOJavaScriptEngine.h) that still takes a JSClass*. ClassDef's
-// `backend` slot is a BackendClass* whose first member is the real JSClass
-// (JSEngine_spidermonkey.cpp), and it is filled in by ooscript::defineObject() before
-// InitOOJSMissionVariables() registers the converter (see OOJSWaypoint.mm's
-// RawWaypointClass for the same pattern).
-namespace {
-static inline JSClass *RawMissionVariablesClass(void)
+void InitOOJSMissionVariables(ooscript::Context context, ooscript::Object global)
 {
-	return reinterpret_cast<JSClass*>(sMissionVariablesClass.backend);
-}
-} // namespace
-
-
-void InitOOJSMissionVariables(JSContext *context, JSObject *global)
-{
-	ooscript::defineObject(OOJSFCX(context), OOJSFOBJ(global), "missionVariables", &sMissionVariablesClass, nullptr, PropertyFlag::ReadOnly);
+	ooscript::defineObject((context), (global), "missionVariables", &sMissionVariablesClass, nullptr, PropertyFlag::ReadOnly);
 	
 #ifndef NDEBUG
 	// Allow callObjC() on missionVariables to call methods on the mission variables dictionary.
-	OOJSRegisterObjectConverter(RawMissionVariablesClass(), MissionVariablesConverter);
+	OOJSRegisterObjectConverter(&sMissionVariablesClass, MissionVariablesConverter);
 #endif
 }
 
 
 #ifndef NDEBUG
 namespace {
-static id MissionVariablesConverter(JSContext *context, JSObject *object)
+static id MissionVariablesConverter(ooscript::Context context, ooscript::Object object)
 {
 	(void)context;
 	(void)object;
@@ -180,9 +135,9 @@ static id MissionVariablesConverter(JSContext *context, JSObject *object)
 namespace {
 static bool MissionVariablesDeleteProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsid jsPropID = OOJSRJSID(propID);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::PropertyId jsPropID = (propID);
 	(void)thisObj;
 	(void)value;
 	
@@ -190,7 +145,7 @@ static bool MissionVariablesDeleteProperty(Context cx, Object obj, PropertyId pr
 	
 	PlayerEntity				*player = OOPlayerForScripting();
 	
-	if (JSID_IS_STRING(jsPropID))
+	if (ooscript::isStringId(jsPropID))
 	{
 		NSString *key = KeyForPropertyID(context, jsPropID);
 		[player setMissionVariable:nil forKey:key];
@@ -205,17 +160,17 @@ static bool MissionVariablesDeleteProperty(Context cx, Object obj, PropertyId pr
 namespace {
 static bool MissionVariablesGetProperty(Context cx, Object obj, PropertyId propID, Value *value)
 {
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsid jsPropID = OOJSRJSID(propID);
-	jsval *jsvalue = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::PropertyId jsPropID = (propID);
+	ooscript::Value *jsvalue = (value);
 	(void)thisObj;
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity				*player = OOPlayerForScripting();
 	
-	if (JSID_IS_STRING(jsPropID))
+	if (ooscript::isStringId(jsPropID))
 	{
 		NSString *key = KeyForPropertyID(context, jsPropID);
 		if (key == nil)  return YES;
@@ -242,17 +197,17 @@ static bool MissionVariablesGetProperty(Context cx, Object obj, PropertyId propI
 namespace {
 static bool MissionVariablesSetProperty(Context cx, Object obj, PropertyId propID, bool /*strict*/, Value *value)
 {
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsid jsPropID = OOJSRJSID(propID);
-	jsval *jsvalue = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::PropertyId jsPropID = (propID);
+	ooscript::Value *jsvalue = (value);
 	(void)thisObj;
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	PlayerEntity				*player = OOPlayerForScripting();
 	
-	if (JSID_IS_STRING(jsPropID))
+	if (ooscript::isStringId(jsPropID))
 	{
 		NSString *key = KeyForPropertyID(context, jsPropID);
 		if (key == nil)
@@ -274,13 +229,11 @@ static bool MissionVariablesSetProperty(Context cx, Object obj, PropertyId propI
 
 
 namespace {
-static bool MissionVariablesEnumerate(Context cx, Object obj, EnumerateOp enumOp, Value *state, PropertyId *idp)
+static bool MissionVariablesEnumerate(Context cx, Object /*obj*/, EnumerateOp enumOp, Value *state, PropertyId *idp)
 {
-	JSContext *context = OOJSRCX(cx);
-	JSObject *object = OOJSROBJ(obj);
-	jsval *jsstate = OOJSRVAL(state);
-	jsid *jsidp = idp != NULL ? reinterpret_cast<jsid*>(idp) : NULL;
-	(void)object;
+	ooscript::Context context = (cx);
+	ooscript::Value *jsstate = (state);
+	ooscript::PropertyId *jsidp = idp;
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -294,17 +247,17 @@ static bool MissionVariablesEnumerate(Context cx, Object obj, EnumerateOp enumOp
 			// -allKeys implicitly makes a copy, which is good since the enumerating code might mutate.
 			NSArray *mvars = [[PLAYER missionVariables] allKeys];
 			enumerator = [[mvars objectEnumerator] retain];
-			*jsstate = PRIVATE_TO_JSVAL(enumerator);
+			*jsstate = ooscript::privateValue(enumerator);
 			
 			NSUInteger count = [mvars count];
 			assert(count <= INT32_MAX);
-			if (jsidp != NULL)  *jsidp = INT_TO_JSID((uint32_t)count);
+			if (jsidp != NULL)  *jsidp = ooscript::int32Id((uint32_t)count);
 			return YES;
 		}
 		
 		case EnumerateOp::Next:
 		{
-			enumerator = (NSEnumerator*)JSVAL_TO_PRIVATE(*jsstate);
+			enumerator = (NSEnumerator*)ooscript::toPrivate(*jsstate);
 			for (;;)
 			{
 				NSString *next = [enumerator nextObject];
@@ -313,24 +266,24 @@ static bool MissionVariablesEnumerate(Context cx, Object obj, EnumerateOp enumOp
 				
 				next = [next substringFromIndex:8];		// Cut off "mission_".
 				
-				jsval val = [next oo_jsValueInContext:context];
-				return ooscript::valueToId(cx, OOJSFVAL(val), OOJSFJSIDP(jsidp));
+				ooscript::Value val = [next oo_jsValueInContext:context];
+				return ooscript::valueToId(cx, (val), jsidp);
 			}
 			
 			// If we got here, we've hit the end of the enumerator.
-			*jsstate = JSVAL_NULL;
+			*jsstate = ooscript::nullValue();
 			// Fall through.
 		}
 		
 		case EnumerateOp::Destroy:
 		{
-			if (enumerator == nil && JSVAL_IS_DOUBLE(*jsstate))
+			if (enumerator == nil && ooscript::isDouble(*jsstate))
 			{
-				enumerator = (NSEnumerator*)JSVAL_TO_PRIVATE(*jsstate);
+				enumerator = (NSEnumerator*)ooscript::toPrivate(*jsstate);
 			}
 			[enumerator release];
 			
-			if (jsidp != NULL)  *jsidp = JSID_VOID;
+			if (jsidp != NULL)  *jsidp = ooscript::voidId();
 			return YES;
 		}
 	}

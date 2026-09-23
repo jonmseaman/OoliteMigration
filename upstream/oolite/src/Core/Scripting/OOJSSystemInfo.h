@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
+#include "ooscript/JSEngine.hpp"
 #import "OOTypes.h"
 
 
@@ -34,10 +34,10 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSSystemInfo(JSContext *context, JSObject *global);
+void InitOOJSSystemInfo(ooscript::Context context, ooscript::Object global);
 
-// Returns JSVAL_NULL on failure (with a JS warning, but no exception).
-jsval GetJSSystemInfoForSystem(JSContext *context, OOGalaxyID galaxy, OOSystemID system);
+// Returns ooscript::nullValue() on failure (with a JS warning, but no exception).
+ooscript::Value GetJSSystemInfoForSystem(ooscript::Context context, OOGalaxyID galaxy, OOSystemID system);
 
 #ifdef __cplusplus
 }

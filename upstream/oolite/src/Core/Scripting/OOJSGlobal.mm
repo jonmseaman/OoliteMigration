@@ -46,7 +46,7 @@ MA 02110-1301, USA.
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) per bead oo-8yi, the same way bead oo-sdz
 	retargeted OOJSVector.mm (the exemplar for this sweep; see its header comment for the full
-	rationale). This file's directly-spelled engine calls -- the JSClass hook-stub family
+	rationale). This file's directly-spelled engine calls -- the ooscript::ClassDef hook-stub family
 	(PropertyStub/EnumerateStub/ResolveStub/ConvertStub), NewNumberValue, ValueToNumber,
 	ValueToBoolean, ValueToObject, GetProperty, DefineProperty, DefineProperties,
 	DefineFunctions, NewCompartmentAndGlobalObject and SetGlobalObject -- become their
@@ -61,10 +61,10 @@ MA 02110-1301, USA.
 
 	Retargeting DefineProperties/DefineFunctions requires sGlobalProperties/sGlobalMethods to
 	become ooscript::PropertySpec/FunctionSpec tables (the façade's DefineProperties and
-	DefineFunctions take those, not the engine's JSPropertySpec / JSFunctionSpec pointers),
+	DefineFunctions take those, not the engine's ooscript::PropertySpec / ooscript::FunctionSpec pointers),
 	every JS global method to take the façade's NativeFn hook signature
-	(Context, CallArgs&) rather than the engine's (JSContext *, uintN argc, jsval *vp). A small
-	shim at the top of each recovers the old JSContext *, uintN, and jsval * locals so the
+	(Context, CallArgs&) rather than the engine's (ooscript::Context, unsigned argc, ooscript::Value *vp). A small
+	shim at the top of each recovers the old ooscript::Context, unsigned, and ooscript::Value * locals so the
 	OOJS_* argument-marshalling macros and the rest of each body are UNCHANGED, exactly as
 	OOJSVector.mm's own retarget does it. GlobalGetProperty/GlobalSetProperty take the façade's
 	PropertyGetter/PropertySetter hook signature for the same reason (they are wired into
@@ -85,32 +85,8 @@ using ooscript::PropertySpec;
 using ooscript::FunctionSpec;
 
 // Byte-identical façade <-> jsapi views, local to this call site (JSEngine.hpp: Value/PropertyId
-// and the handle types are byte copies of jsval/jsid/JS*; see OOJSVector.mm for the same,
+// and the handle types are byte copies of ooscript::Value/ooscript::PropertyId/JS*; see OOJSVector.mm for the same,
 // non-exported, pattern).
-namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
-} // namespace
-namespace {
-static inline Value     *OOJSFVALP(jsval *v)      { return reinterpret_cast<Value*>(v); }
-} // namespace
-namespace {
-static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
 
 
 #if OOJSENGINE_MONITOR_SUPPORT
@@ -119,7 +95,7 @@ static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id,
 
 - (void)sendMonitorLogMessage:(NSString *)message
 			 withMessageClass:(NSString *)messageClass
-					inContext:(JSContext *)context;
+					inContext:(ooscript::Context)context;
 
 @end
 
@@ -139,63 +115,63 @@ static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool st
 #endif
 
 namespace {
-static bool GlobalLog(Context cx, CallArgs &oojsArgs);
+static bool GlobalLog(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalExpandDescription(Context cx, CallArgs &oojsArgs);
+static bool GlobalExpandDescription(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalKeyBindingDescription(Context cx, CallArgs &oojsArgs);
+static bool GlobalKeyBindingDescription(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalExpandMissionText(Context cx, CallArgs &oojsArgs);
+static bool GlobalExpandMissionText(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalDisplayNameForCommodity(Context cx, CallArgs &oojsArgs);
+static bool GlobalDisplayNameForCommodity(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalRandomName(Context cx, CallArgs &oojsArgs);
+static bool GlobalRandomName(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalRandomInhabitantsDescription(Context cx, CallArgs &oojsArgs);
+static bool GlobalRandomInhabitantsDescription(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalSetScreenBackground(Context cx, CallArgs &oojsArgs);
+static bool GlobalSetScreenBackground(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalSetScreenOverlay(Context cx, CallArgs &oojsArgs);
+static bool GlobalSetScreenOverlay(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalGetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs);
+static bool GlobalGetScreenBackgroundForKey(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalSetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs);
+static bool GlobalSetScreenBackgroundForKey(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalAutoAIForRole(Context cx, CallArgs &oojsArgs);
+static bool GlobalAutoAIForRole(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalPauseGame(Context cx, CallArgs &oojsArgs);
+static bool GlobalPauseGame(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalQuitGame(Context cx, CallArgs &oojsArgs);
+static bool GlobalQuitGame(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalGetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs);
+static bool GlobalGetGuiColorSettingForKey(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalSetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs);
+static bool GlobalSetGuiColorSettingForKey(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs);
+static bool GlobalSetExtraGuiScreenKeys(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool GlobalClearExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs);
+static bool GlobalClearExtraGuiScreenKeys(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 #ifndef NDEBUG
 namespace {
-static bool GlobalTakeSnapShot(Context cx, CallArgs &oojsArgs);
+static bool GlobalTakeSnapShot(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 #endif
 
@@ -216,7 +192,7 @@ static ClassDef sGlobalClass =
 	nullptr,			// setProperty (engine default: StrictPropertyStub)
 #endif
 	nullptr,			// enumerate (engine default: EnumerateStub)
-	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
 	nullptr,			// finalize (engine default: FinalizeStub)
@@ -259,10 +235,10 @@ static PropertySpec sGlobalProperties[] =
 
 // A raw jsapi mirror of sGlobalProperties, used only for the two bad-property error reporters
 // in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are outside this
-// bead's scope (they are shared across every binding file) and still take a JSPropertySpec*,
+// bead's scope (they are shared across every binding file) and still take a ooscript::PropertySpec*,
 // not ooscript::PropertySpec*, the same as OOJSVector.mm's sVectorPropertiesRaw.
 namespace {
-static JSPropertySpec sGlobalPropertiesRaw[] =
+static ooscript::PropertySpec sGlobalPropertiesRaw[] =
 {
 	// JS name					ID							flags
 	{ "galaxyNumber",			kGlobal_galaxyNumber,		OOJS_PROP_READONLY_CB },
@@ -311,13 +287,13 @@ static constexpr PropertyFlag kGlobalSelfPropertyFlags = PropertyFlag::Permanent
 } // namespace
 
 
-void CreateOOJSGlobal(JSContext *context, JSObject **outGlobal)
+void CreateOOJSGlobal(ooscript::Context context, ooscript::Object *outGlobal)
 {
 	assert(outGlobal != NULL);
 	
-	Context cx = OOJSFCX(context);
+	Context cx = (context);
 	Object global = ooscript::newGlobalObject(cx, &sGlobalClass);
-	*outGlobal = OOJSROBJ(global);
+	*outGlobal = (global);
 	
 	ooscript::setGlobalObject(cx, global);
 	ooscript::defineProperty(cx, global, "global", ooscript::objectValue(global), nullptr, nullptr,
@@ -325,10 +301,10 @@ void CreateOOJSGlobal(JSContext *context, JSObject **outGlobal)
 }
 
 
-void SetUpOOJSGlobal(JSContext *context, JSObject *global)
+void SetUpOOJSGlobal(ooscript::Context context, ooscript::Object global)
 {
-	Context cx = OOJSFCX(context);
-	Object obj = OOJSFOBJ(global);
+	Context cx = (context);
+	Object obj = (global);
 	ooscript::defineProperties(cx, obj, sGlobalProperties);
 	ooscript::defineFunctions(cx, obj, sGlobalMethods);
 }
@@ -339,8 +315,8 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -353,7 +329,7 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 			
 		case kGlobal_guiScreen:
-			*value = OOJSFVAL(OOJSValueFromGUIScreenID(context, [player guiScreen]));
+			*value = (OOJSValueFromGUIScreenID(context, [player guiScreen]));
 			return YES;
 			
 #ifndef NDEBUG
@@ -362,7 +338,7 @@ static bool GlobalGetProperty(Context cx, Object obj, PropertyId propID, Value *
 #endif
 			
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sGlobalPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sGlobalPropertiesRaw);
 			return NO;
 	}
 	
@@ -377,12 +353,12 @@ static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	jsdouble					fValue;
+	double					fValue;
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -395,10 +371,10 @@ static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 	
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sGlobalPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sGlobalPropertiesRaw);
 	}
 	
-	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sGlobalPropertiesRaw, *OOJSRVAL(value));
+	OOJSReportBadPropertyValue(context, thisObj, (propID), sGlobalPropertiesRaw, *(value));
 	return NO;
 	
 	OOJS_NATIVE_EXIT
@@ -411,22 +387,19 @@ static bool GlobalSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 
 // log([messageClass : String,] message : string, ...)
 namespace {
-static bool GlobalLog(Context cx, CallArgs &oojsArgs)
+static bool GlobalLog(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*message = nil;
 	NSString			*messageClass = nil;
 	
-	if (EXPECT_NOT(argc < 1))
+	if (EXPECT_NOT(oojsArgs.count() < 1))
 	{
 		OOJS_RETURN_VOID;
 	}
-	if (argc < 2)
+	if (oojsArgs.count() < 2)
 	{
 		messageClass = kOOLogDebugMessage;
 		message = OOStringFromJSValue(context, OOJS_ARGV[0]);
@@ -440,7 +413,7 @@ static bool GlobalLog(Context cx, CallArgs &oojsArgs)
 			OOJS_RETURN_VOID;
 		}
 		
-		message = [NSString concatenationOfStringsFromJavaScriptValues:OOJS_ARGV + 1 count:argc - 1 separator:@", " inContext:context];
+		message = [NSString concatenationOfStringsFromJavaScriptValues:OOJS_ARGV + 1 count:oojsArgs.count() - 1 separator:@", " inContext:context];
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
@@ -462,24 +435,21 @@ static bool GlobalLog(Context cx, CallArgs &oojsArgs)
 
 // expandDescription(description : String [, overrides : object (dictionary)]) : String
 namespace {
-static bool GlobalExpandDescription(Context cx, CallArgs &oojsArgs)
+static bool GlobalExpandDescription(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
 	NSDictionary		*overrides = nil;
 	
-	if (argc > 0)  string = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  string = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (string == nil)
 	{
-		OOJSReportBadArguments(context, nil, @"expandDescription", MIN(argc, 1U), OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, nil, @"expandDescription", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
-	if (argc > 1)
+	if (oojsArgs.count() > 1)
 	{
 		overrides = OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]);
 	}
@@ -495,21 +465,18 @@ static bool GlobalExpandDescription(Context cx, CallArgs &oojsArgs)
 } // namespace
 
 namespace {
-static bool GlobalKeyBindingDescription(Context cx, CallArgs &oojsArgs)
+static bool GlobalKeyBindingDescription(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
 	PlayerEntity				*player = OOPlayerForScripting();
 	
-	if (argc > 0)  string = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  string = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (string == nil)
 	{
-		OOJSReportBadArguments(context, nil, @"keyBindingDescription", MIN(argc, 1U), OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, nil, @"keyBindingDescription", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
 	
@@ -526,24 +493,21 @@ static bool GlobalKeyBindingDescription(Context cx, CallArgs &oojsArgs)
 
 // expandMissionText(textKey : String [, overrides : object (dictionary)]) : String
 namespace {
-static bool GlobalExpandMissionText(Context cx, CallArgs &oojsArgs)
+static bool GlobalExpandMissionText(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
 	NSDictionary		*overrides = nil;
 	
-	if (argc > 0)  string = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  string = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (string == nil)
 	{
-		OOJSReportBadArguments(context, nil, @"expandMissionText", MIN(argc, 1U), OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, nil, @"expandMissionText", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
-	if (argc > 1)
+	if (oojsArgs.count() > 1)
 	{
 		overrides = OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]);
 	}
@@ -560,20 +524,17 @@ static bool GlobalExpandMissionText(Context cx, CallArgs &oojsArgs)
 
 // displayNameForCommodity(commodityName : String) : String
 namespace {
-static bool GlobalDisplayNameForCommodity(Context cx, CallArgs &oojsArgs)
+static bool GlobalDisplayNameForCommodity(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
 	
-	if (argc > 0)  string = OOStringFromJSValue(context,OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  string = OOStringFromJSValue(context,OOJS_ARGV[0]);
 	if (string == nil)
 	{
-		OOJSReportBadArguments(context, nil, @"displayNameForCommodity", MIN(argc, 1U), OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, nil, @"displayNameForCommodity", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
 	OOJS_RETURN_OBJECT(CommodityDisplayNameForSymbolicName(string));
@@ -585,10 +546,8 @@ static bool GlobalDisplayNameForCommodity(Context cx, CallArgs &oojsArgs)
 
 // randomName() : String
 namespace {
-static bool GlobalRandomName(Context cx, CallArgs &oojsArgs)
+static bool GlobalRandomName(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -612,11 +571,8 @@ static bool GlobalRandomName(Context cx, CallArgs &oojsArgs)
 
 // randomInhabitantsDescription() : String
 namespace {
-static bool GlobalRandomInhabitantsDescription(Context cx, CallArgs &oojsArgs)
+static bool GlobalRandomInhabitantsDescription(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -624,7 +580,7 @@ static bool GlobalRandomInhabitantsDescription(Context cx, CallArgs &oojsArgs)
 	Random_Seed			aSeed;
 	bool				isPlural = true;
 	
-	if (argc > 0 && !ooscript::valueToBoolean(cx, OOJSFVAL(OOJS_ARGV[0]), &isPlural))
+	if (oojsArgs.count() > 0 && !ooscript::valueToBoolean(context, (OOJS_ARGV[0]), &isPlural))
 	{
 		OOJSReportBadArguments(context, nil, @"randomInhabitantsDescription", 1, OOJS_ARGV, nil, @"boolean");
 		return NO;
@@ -640,18 +596,15 @@ static bool GlobalRandomInhabitantsDescription(Context cx, CallArgs &oojsArgs)
 
 
 namespace {
-static bool GlobalClearExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
+static bool GlobalClearExtraGuiScreenKeys(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 
 	BOOL				result = NO;
 	PlayerEntity		*player = OOPlayerForScripting();
 
-	if (EXPECT_NOT(argc < 2))
+	if (EXPECT_NOT(oojsArgs.count() < 2))
 	{
 		OOJSReportBadArguments(context, nil, @"setExtraGuiScreenKeys", 0, OOJS_ARGV, nil, @"missing arguments");
 		return NO;
@@ -681,25 +634,22 @@ static bool GlobalClearExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
 } // namespace
 
 namespace {
-static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
+static bool GlobalSetExtraGuiScreenKeys(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 
 	BOOL				result = NO;
-	jsval				callback = JSVAL_NULL;
-	JSObject			*callbackThis = NULL;
-	jsval				value = JSVAL_NULL;
+	ooscript::Value				callback = ooscript::nullValue();
+	ooscript::Object callbackThis = NULL;
+	ooscript::Value				value = ooscript::nullValue();
 	NSString			*key = nil;
 	OOGUIScreenID 		gui;
 	NSDictionary		*keydefs = NULL;
-	JSObject			*params = NULL;
+	ooscript::Object params = NULL;
 	PlayerEntity		*player = OOPlayerForScripting();
 
-	if (EXPECT_NOT(argc < 1))
+	if (EXPECT_NOT(oojsArgs.count() < 1))
 	{
 		OOJSReportBadArguments(context, nil, @"setExtraGuiScreenKeys", 0, OOJS_ARGV, nil, @"key, definition");
 		return NO;
@@ -709,15 +659,15 @@ static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
 	// Validate arguments.
 	{
 		Object paramsObj = nullptr;
-		if (argc < 2 || !ooscript::valueToObject(cx, OOJSFVAL(OOJS_ARGV[1]), &paramsObj))
+		if (oojsArgs.count() < 2 || !ooscript::valueToObject(context, (OOJS_ARGV[1]), &paramsObj))
 		{
 			OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], nil, @"key, definition: definition is not a valid dictionary.");
 			return NO;
 		}
-		params = OOJSROBJ(paramsObj);
+		params = (paramsObj);
 	}
 
-	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "guiScreen", OOJSFVALP(&value)) || JSVAL_IS_VOID(value))
+	if (!ooscript::getProperty(context, (params), "guiScreen", (&value)) || ooscript::isUndefined(value))
 	{
 		OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], nil, @"key, definition: must have a 'guiScreen' property.");
 		return NO;
@@ -733,16 +683,16 @@ static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
 		return NO;
 	}
 
-	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "registerKeys", OOJSFVALP(&value)) || JSVAL_IS_VOID(value))
+	if (!ooscript::getProperty(context, (params), "registerKeys", (&value)) || ooscript::isUndefined(value))
 	{
 		OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], nil, @"key, definition: must have a 'registerKeys' property.");
 		return NO;
 	}
-	if (!JSVAL_IS_NULL(value))
+	if (!ooscript::isNull(value))
 	{
-		if (JSVAL_IS_OBJECT(value))
+		if (ooscript::isObjectOrNull(value))
 		{
-			keydefs = OOJSNativeObjectFromJSObject(context, JSVAL_TO_OBJECT(value));
+			keydefs = OOJSNativeObjectFromJSObject(context, ooscript::toObject(value));
 		}
 		else 
 		{
@@ -751,7 +701,7 @@ static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
 		}
 	}
 
-	if (!ooscript::getProperty(cx, OOJSFOBJ(params), "callback", OOJSFVALP(&callback)) || JSVAL_IS_VOID(callback))
+	if (!ooscript::getProperty(context, (params), "callback", (&callback)) || ooscript::isUndefined(callback))
 	{
 		OOJSReportBadArguments(context, @"global", @"setExtraGuiScreenKeys", 2, &OOJS_ARGV[1], NULL, @"key, definition; must have a 'callback' property.");
 		return NO;
@@ -768,11 +718,11 @@ static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
 	[definition setCallback:callback];
 
 	// get callback 'this'
-	if (ooscript::getProperty(cx, OOJSFOBJ(params), "cbThis", OOJSFVALP(&value)) && !JSVAL_IS_VOID(value))
+	if (ooscript::getProperty(context, (params), "cbThis", (&value)) && !ooscript::isUndefined(value))
 	{
 		Object callbackThisObj = nullptr;
-		ooscript::valueToObject(cx, OOJSFVAL(value), &callbackThisObj);
-		callbackThis = OOJSROBJ(callbackThisObj);
+		ooscript::valueToObject(context, (value), &callbackThisObj);
+		callbackThis = (callbackThisObj);
 		[definition setCallbackThis:callbackThis];
 		// can do .bind(this) for callback instead
 	}
@@ -789,22 +739,19 @@ static bool GlobalSetExtraGuiScreenKeys(Context cx, CallArgs &oojsArgs)
 
 // setScreenBackground(descriptor : guiTextureDescriptor) : Boolean
 namespace {
-static bool GlobalSetScreenBackground(Context cx, CallArgs &oojsArgs)
+static bool GlobalSetScreenBackground(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
-	jsval			value = (argc > 0) ? OOJS_ARGV[0] : JSVAL_NULL;
+	ooscript::Value			value = (oojsArgs.count() > 0) ? OOJS_ARGV[0] : ooscript::nullValue();
 	
-	if (EXPECT_NOT(argc == 0))
+	if (EXPECT_NOT(oojsArgs.count() == 0))
 	{
 		OOJSReportWarning(context, @"Usage error: %@() called with no arguments. Treating as %@(null). This call may fail in a future version of Oolite.", @"setScreenBackground", @"setScreenBackground");
 	}
-	else if (EXPECT_NOT(JSVAL_IS_VOID(value)))
+	else if (EXPECT_NOT(ooscript::isUndefined(value)))
 	{
 		OOJSReportBadArguments(context, nil, @"setScreenBackground", 1, &value, nil, @"GUI texture descriptor");
 		return NO;
@@ -829,15 +776,12 @@ static bool GlobalSetScreenBackground(Context cx, CallArgs &oojsArgs)
 
 
 namespace {
-static bool GlobalGetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs)
+static bool GlobalGetScreenBackgroundForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	if (EXPECT_NOT(argc == 0))
+	if (EXPECT_NOT(oojsArgs.count() == 0))
 	{
 		OOJSReportBadArguments(context, nil, @"getScreenBackgroundDefault", 0, OOJS_ARGV, nil, @"missing arguments");
 		return NO;
@@ -858,24 +802,21 @@ static bool GlobalGetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs)
 
 // setScreenBackgroundDefault (key : NSString, descriptor : guiTextureDescriptor) : boolean
 namespace {
-static bool GlobalSetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs)
+static bool GlobalSetScreenBackgroundForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
 	
-	if (EXPECT_NOT(argc < 2))
+	if (EXPECT_NOT(oojsArgs.count() < 2))
 	{
 		OOJSReportBadArguments(context, nil, @"setScreenBackgroundDefault", 0, OOJS_ARGV, nil, @"missing arguments");
 		return NO;
 	}
 
 	NSString		*key = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	jsval			value = OOJS_ARGV[1];
+	ooscript::Value			value = OOJS_ARGV[1];
 	if (EXPECT_NOT(key == nil || [key isEqualToString:@""]))
 	{
 		OOJSReportBadArguments(context, nil, @"setScreenBackgroundDefault", 0, OOJS_ARGV, nil, @"key");
@@ -897,22 +838,19 @@ static bool GlobalSetScreenBackgroundForKey(Context cx, CallArgs &oojsArgs)
 
 // setScreenOverlay(descriptor : guiTextureDescriptor) : Boolean
 namespace {
-static bool GlobalSetScreenOverlay(Context cx, CallArgs &oojsArgs)
+static bool GlobalSetScreenOverlay(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
-	jsval			value = (argc > 0) ? OOJS_ARGV[0] : JSVAL_NULL;
+	ooscript::Value			value = (oojsArgs.count() > 0) ? OOJS_ARGV[0] : ooscript::nullValue();
 	
-	if (EXPECT_NOT(argc == 0))
+	if (EXPECT_NOT(oojsArgs.count() == 0))
 	{
 		OOJSReportWarning(context, @"Usage error: %@() called with no arguments. Treating as %@(null). This call may fail in a future version of Oolite.", @"setScreenOverlay", @"setScreenOverlay");
 	}
-	else if (EXPECT_NOT(JSVAL_IS_VOID(value)))
+	else if (EXPECT_NOT(ooscript::isUndefined(value)))
 	{
 		OOJSReportBadArguments(context, nil, @"setScreenOverlay", 1, &value, nil, @"GUI texture descriptor");
 		return NO;
@@ -934,15 +872,12 @@ static bool GlobalSetScreenOverlay(Context cx, CallArgs &oojsArgs)
 
 
 namespace {
-static bool GlobalGetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs)
+static bool GlobalGetGuiColorSettingForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	if (EXPECT_NOT(argc == 0))
+	if (EXPECT_NOT(oojsArgs.count() == 0))
 	{
 		OOJSReportBadArguments(context, nil, @"getGuiColorForKey", 0, OOJS_ARGV, nil, @"missing arguments");
 		return NO;
@@ -971,25 +906,22 @@ static bool GlobalGetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs)
 
 // setGuiColorForKey(descriptor : OOColor) : boolean
 namespace {
-static bool GlobalSetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs)
+static bool GlobalSetGuiColorSettingForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	BOOL			result = NO;
 	OOColor			*col = nil;
 	
-	if (EXPECT_NOT(argc != 2))
+	if (EXPECT_NOT(oojsArgs.count() != 2))
 	{
 		OOJSReportBadArguments(context, nil, @"setGuiColorForKey", 0, OOJS_ARGV, nil, @"missing arguments");
 		return NO;
 	}
 
 	NSString		*key = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	jsval			value = OOJS_ARGV[1];
+	ooscript::Value			value = OOJS_ARGV[1];
 	if (EXPECT_NOT(key == nil || [key isEqualToString:@""]))
 	{
 		OOJSReportBadArguments(context, nil, @"setGuiColorForKey", 0, OOJS_ARGV, nil, @"key");
@@ -1001,7 +933,7 @@ static bool GlobalSetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs)
 		return NO;
 	}
 
-	if (!JSVAL_IS_NULL(value))
+	if (!ooscript::isNull(value))
 	{
 		col = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, value)];
 		if (col == nil)
@@ -1025,11 +957,8 @@ static bool GlobalSetGuiColorSettingForKey(Context cx, CallArgs &oojsArgs)
 #ifndef NDEBUG
 // takeSnapShot([name : alphanumeric String]) : Boolean
 namespace {
-static bool GlobalTakeSnapShot(Context cx, CallArgs &oojsArgs)
+static bool GlobalTakeSnapShot(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1039,12 +968,12 @@ static bool GlobalTakeSnapShot(Context cx, CallArgs &oojsArgs)
 	
 	[allowedChars addCharactersInString:@"_-"];
 	
-	if (argc > 0)
+	if (oojsArgs.count() > 0)
 	{
 		value = OOStringFromJSValue(context, OOJS_ARGV[0]);
 		if (EXPECT_NOT(value == nil || [value rangeOfCharacterFromSet:[allowedChars invertedSet]].location != NSNotFound))
 		{
-			OOJSReportBadArguments(context, nil, @"takeSnapShot", argc, OOJS_ARGV, nil, @"alphanumeric string");
+			OOJSReportBadArguments(context, nil, @"takeSnapShot", oojsArgs.count(), OOJS_ARGV, nil, @"alphanumeric string");
 			return NO;
 		}
 	}
@@ -1076,20 +1005,17 @@ static bool GlobalTakeSnapShot(Context cx, CallArgs &oojsArgs)
 
 // autoAIForRole(role : String) : String
 namespace {
-static bool GlobalAutoAIForRole(Context cx, CallArgs &oojsArgs)
+static bool GlobalAutoAIForRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	NSString			*string = nil;
 	
-	if (argc > 0)  string = OOStringFromJSValue(context,OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  string = OOStringFromJSValue(context,OOJS_ARGV[0]);
 	if (string == nil)
 	{
-		OOJSReportBadArguments(context, nil, @"autoAIForRole", MIN(argc, 1U), OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, nil, @"autoAIForRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
 
@@ -1104,10 +1030,8 @@ static bool GlobalAutoAIForRole(Context cx, CallArgs &oojsArgs)
 
 // pauseGame() : Boolean
 namespace {
-static bool GlobalPauseGame(Context cx, CallArgs &oojsArgs)
+static bool GlobalPauseGame(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1137,10 +1061,8 @@ static bool GlobalPauseGame(Context cx, CallArgs &oojsArgs)
 
 // quitGame() : Boolean
 namespace {
-static bool GlobalQuitGame(Context cx, CallArgs &oojsArgs)
+static bool GlobalQuitGame(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 

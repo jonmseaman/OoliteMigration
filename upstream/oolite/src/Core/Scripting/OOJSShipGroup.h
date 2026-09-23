@@ -25,14 +25,11 @@ MA 02110-1301, USA.
 
 */
 
-#include <jsapi.h>
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void InitOOJSShipGroup(JSContext *context, JSObject *global);
+void InitOOJSShipGroup(ooscript::Context context, ooscript::Object global);
 
 #ifdef __cplusplus
 }

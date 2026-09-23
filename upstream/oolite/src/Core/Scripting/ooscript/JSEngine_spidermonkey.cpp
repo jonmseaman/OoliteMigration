@@ -29,6 +29,7 @@ Copyright (C) 2026 the Oolite migration project. GPL-2.0-or-later, as the rest o
 #include "JSEngine.hpp"
 
 #include <jsapi.h>
+#include <jsdbgapi.h>
 #include <jsxdrapi.h>
 
 #include <array>
@@ -646,8 +647,17 @@ Object getGlobalForObject(Context cx, Object obj)     { return wrap(JS_GetGlobal
 
 const ClassDef* getClass(Context cx, Object obj)
 {
-	BackendClass* bc = backendFor(JS_GetClass(CX(cx), OBJ(obj)));
-	return bc ? bc->def : nullptr;
+	JSClass* clasp = JS_GetClass(CX(cx), OBJ(obj));
+	if (clasp == nullptr)  return nullptr;
+	BackendClass* bc = backendFor(clasp);
+	if (bc != nullptr)  return bc->def;
+	// One of the engine's own classes (Object, Array, String, ...): a stable descriptor per engine
+	// class, so callers can key on it and read its name exactly as they keyed on the engine's class
+	// pointer (bead oo-1gc.3). Every hook is nullptr; it is never attached to anything.
+	static std::unordered_map<JSClass*, ClassDef*> sForeign;
+	ClassDef*& def = sForeign[clasp];
+	if (def == nullptr)  def = new ClassDef { clasp->name, ClassFlag::None, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+	return def;
 }
 
 bool  instanceOf(Context cx, Object obj, ClassDef* def, Value* argv)
@@ -946,6 +956,178 @@ OperationCallback setOperationCallback(Context cx, OperationCallback cb)
 }
 void triggerOperationCallback(Context cx)                  { JS_TriggerOperationCallback(CX(cx)); }
 void triggerAllOperationCallbacks(Runtime rt)              { JS_TriggerAllOperationCallbacks(RT(rt)); }
+
+// MARK: Completing the retarget (bead oo-1gc.3) -------------------------------------------------
+
+#if JS_THREADSAFE
+unsigned suspendRequest(Context cx)                        { return static_cast<unsigned>(JS_SuspendRequest(CX(cx))); }
+void     resumeRequest(Context cx, unsigned token)         { JS_ResumeRequest(CX(cx), static_cast<jsrefcount>(token)); }
+#else
+unsigned suspendRequest(Context)                           { return 0; }
+void     resumeRequest(Context, unsigned)                  { }
+#endif
+
+bool compareStrings(Context cx, String a, String b, std::int32_t* result)
+{
+	return JS_CompareStrings(CX(cx), STR(a), STR(b), result) != JS_FALSE;
+}
+bool freezeObject(Context cx, Object obj)                  { return JS_FreezeObject(CX(cx), OBJ(obj)) != JS_FALSE; }
+Function compileUCFunction(Context cx, Object scope, const char* name, unsigned nargs, const char** argnames,
+                           const Char16* chars, std::size_t length, const char* filename, unsigned lineno)
+{
+	return wrap(JS_CompileUCFunction(CX(cx), OBJ(scope), name, nargs, argnames, JSCHARS(chars), length, filename, lineno));
+}
+bool callFunction(Context cx, Object thisObj, Function fn, unsigned argc, Value* argv, Value* rval)
+{
+	return JS_CallFunction(CX(cx), OBJ(thisObj), FUN(fn), argc, JSVP(argv), JSVP(rval)) != JS_FALSE;
+}
+bool bufferIsCompilableUnit(Context cx, Object obj, const char* bytes, std::size_t length)
+{
+	return JS_BufferIsCompilableUnit(CX(cx), OBJ(obj), bytes, length) != JS_FALSE;
+}
+static_assert(RegExpFoldCase == JSREG_FOLD && RegExpGlobal == JSREG_GLOB && RegExpMultiline == JSREG_MULTILINE,
+              "façade regexp flags are the engine's");
+
+// MARK: Debugging and profiling -----------------------------------------------------------------
+
+namespace {
+inline JSStackFrame* FP(StackFrame f)       { return reinterpret_cast<JSStackFrame*>(f); }
+inline StackFrame    wrap(JSStackFrame* f)  { return reinterpret_cast<StackFrame>(f); }
+}
+
+StackFrame frameIterator(Context cx, StackFrame* iter)
+{
+	JSStackFrame* fp = FP(*iter);
+	JSStackFrame* next = JS_FrameIterator(CX(cx), &fp);
+	*iter = wrap(fp);
+	return wrap(next);
+}
+bool        frameIsScript(Context cx, StackFrame fp)       { return JS_IsScriptFrame(CX(cx), FP(fp)) != JS_FALSE; }
+bool        frameIsConstructor(Context cx, StackFrame fp)  { return JS_IsConstructorFrame(CX(cx), FP(fp)) != JS_FALSE; }
+bool        frameIsDebugger(Context cx, StackFrame fp)     { return JS_IsDebuggerFrame(CX(cx), FP(fp)) != JS_FALSE; }
+Script      frameScript(Context cx, StackFrame fp)         { return wrap(JS_GetFrameScript(CX(cx), FP(fp))); }
+const char* scriptFilename(Context cx, Script script)      { return JS_GetScriptFilename(CX(cx), SCR(script)); }
+unsigned    frameLineNumber(Context cx, StackFrame fp)
+{
+	JSScript* script = JS_GetFrameScript(CX(cx), FP(fp));
+	if (script == nullptr)  return 0;
+	return JS_PCToLineNumber(CX(cx), script, JS_GetFramePC(CX(cx), FP(fp)));
+}
+Function    frameFunction(Context cx, StackFrame fp)       { return wrap(JS_GetFrameFunction(CX(cx), FP(fp))); }
+bool        frameThis(Context cx, StackFrame fp, Value* thisv)
+{
+	return JS_GetFrameThis(CX(cx), FP(fp), JSVP(thisv)) != JS_FALSE;
+}
+Object      frameScopeChain(Context cx, StackFrame fp)     { return wrap(JS_GetFrameScopeChain(CX(cx), FP(fp))); }
+
+bool getScopeVariables(Context cx, Object scope, VariableList* out)
+{
+	out->length = 0; out->vars = nullptr; out->backend = nullptr;
+	JSPropertyDescArray* pda = new JSPropertyDescArray { 0, nullptr };
+	if (!JS_GetPropertyDescArray(CX(cx), OBJ(scope), pda))  { delete pda; return false; }
+	Variable* vars = new Variable[pda->length > 0 ? pda->length : 1];
+	for (uint32 i = 0; i < pda->length; i++)
+	{
+		const JSPropertyDesc& d = pda->array[i];
+		jsid id;
+		if (!JS_ValueToId(CX(cx), d.id, &id))  id = JSID_VOID;
+		unsigned flags = 0;
+		if (d.flags & JSPD_ENUMERATE)  flags |= static_cast<unsigned>(VariableFlag::Enumerate);
+		if (d.flags & JSPD_READONLY)   flags |= static_cast<unsigned>(VariableFlag::ReadOnly);
+		if (d.flags & JSPD_PERMANENT)  flags |= static_cast<unsigned>(VariableFlag::Permanent);
+		if (d.flags & JSPD_ALIAS)      flags |= static_cast<unsigned>(VariableFlag::Alias);
+		if (d.flags & JSPD_ARGUMENT)   flags |= static_cast<unsigned>(VariableFlag::Argument);
+		if (d.flags & JSPD_VARIABLE)   flags |= static_cast<unsigned>(VariableFlag::Variable);
+		if (d.flags & JSPD_EXCEPTION)  flags |= static_cast<unsigned>(VariableFlag::Exception);
+		if (d.flags & JSPD_ERROR)      flags |= static_cast<unsigned>(VariableFlag::Error);
+		vars[i] = Variable { fromJS(id), fromJS(d.value), flags, fromJS(d.alias) };
+	}
+	out->length = pda->length; out->vars = vars; out->backend = pda;
+	return true;
+}
+void destroyScopeVariables(Context cx, VariableList* list)
+{
+	if (list == nullptr || list->backend == nullptr)  return;
+	JSPropertyDescArray* pda = static_cast<JSPropertyDescArray*>(list->backend);
+	JS_PutPropertyDescArray(CX(cx), pda);
+	delete pda;
+	delete[] list->vars;
+	list->length = 0; list->vars = nullptr; list->backend = nullptr;
+}
+
+namespace {
+struct DebuggerHook { DebuggerHandler handler; void* closure; };
+DebuggerHook gDebuggerHook { nullptr, nullptr };
+JSTrapStatus DebuggerTramp(JSContext* cx, JSScript*, jsbytecode*, jsval*, void*)
+{
+	if (gDebuggerHook.handler != nullptr)  gDebuggerHook.handler(wrap(cx), gDebuggerHook.closure);
+	return JSTRAP_CONTINUE;
+}
+FunctionCallback gFunctionCallback = nullptr;
+#if MOZ_TRACE_JSCALLS
+void FunctionCallbackTramp(const JSFunction* fun, const JSScript* scr, const JSContext* cx, int entering)
+{
+	if (gFunctionCallback != nullptr)
+	{
+		gFunctionCallback(wrap(const_cast<JSFunction*>(fun)), reinterpret_cast<Script>(const_cast<JSScript*>(scr)),
+		                  wrap(const_cast<JSContext*>(cx)), entering);
+	}
+}
+#endif
+ContextCallback gContextCallback = nullptr;
+JSBool ContextCallbackTramp(JSContext* cx, uintN op)
+{
+	if (gContextCallback == nullptr)  return JS_TRUE;
+	return B(gContextCallback(wrap(cx), op == JSCONTEXT_NEW ? ContextOp::New : ContextOp::Destroy));
+}
+}
+
+void setDebuggerHandler(Runtime rt, DebuggerHandler handler, void* closure)
+{
+	gDebuggerHook = DebuggerHook { handler, closure };
+	JS_SetDebuggerHandler(RT(rt), handler != nullptr ? DebuggerTramp : nullptr, nullptr);
+}
+#if MOZ_TRACE_JSCALLS
+bool setFunctionCallback(Context cx, FunctionCallback cb)
+{
+	gFunctionCallback = cb;
+	JS_SetFunctionCallback(CX(cx), cb != nullptr ? FunctionCallbackTramp : nullptr);
+	return true;
+}
+#else
+bool setFunctionCallback(Context, FunctionCallback)         { return false; }
+#endif
+ContextCallback setContextCallback(Runtime rt, ContextCallback cb)
+{
+	ContextCallback old = gContextCallback;
+	gContextCallback = cb;
+	JS_SetContextCallback(RT(rt), cb != nullptr ? ContextCallbackTramp : nullptr);
+	return old;
+}
+
+#ifdef DEBUG
+namespace {
+struct RootDumpData { RootDumper dump; void* data; };
+void RootDumpTramp(const char* name, void* rp, JSGCRootType type, void* data)
+{
+	RootDumpData* d = static_cast<RootDumpData*>(data);
+	d->dump(name, rp, type == JS_GC_ROOT_VALUE_PTR ? RootKind::Value : RootKind::GCThing, d->data);
+}
+}
+bool dumpNamedRoots(Runtime rt, RootDumper dump, void* data)
+{
+	RootDumpData d { dump, data };
+	JS_DumpNamedRoots(RT(rt), RootDumpTramp, &d);
+	return true;
+}
+bool dumpHeap(Context cx, void* file)
+{
+	return JS_DumpHeap(CX(cx), static_cast<FILE*>(file), nullptr, 0, nullptr, SIZE_MAX, nullptr) != JS_FALSE;
+}
+#else
+bool dumpNamedRoots(Runtime, RootDumper, void*)            { return false; }
+bool dumpHeap(Context, void*)                              { return false; }
+#endif
 
 // MARK: Backend identity ------------------------------------------------------------------------
 

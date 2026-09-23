@@ -25,9 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
-
+#include "ooscript/JSEngine.hpp"
 @class OOWaypointEntity;
 
 
@@ -35,7 +33,7 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSWaypoint(JSContext *context, JSObject *global);
+void InitOOJSWaypoint(ooscript::Context context, ooscript::Object global);
 
 #ifdef __cplusplus
 }
@@ -43,7 +41,7 @@ void InitOOJSWaypoint(JSContext *context, JSObject *global);
 
 @interface OOWaypointEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype;
+- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (NSString *) oo_jsClassName;
 - (BOOL) isVisibleToScripts;
 

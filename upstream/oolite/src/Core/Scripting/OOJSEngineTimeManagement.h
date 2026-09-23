@@ -164,7 +164,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 	double						_totalTimeMax;
 	double						_selfTimeMax;
 #ifdef MOZ_TRACE_JSCALLS
-	JSFunction					*_jsFunction;
+	ooscript::Function _jsFunction;
 #endif
 }
 
@@ -196,7 +196,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 extern "C" {
 #endif
 
-void OOJSTimeManagementInit(OOJavaScriptEngine *engine, JSRuntime *runtime);
+void OOJSTimeManagementInit(OOJavaScriptEngine *engine, ooscript::Runtime runtime);
 
 #ifdef __cplusplus
 }

@@ -22,7 +22,6 @@ MA 02110-1301, USA.
 
 */
 
-#include <jsdbgapi.h>
 #import "OOJavaScriptEngine.h"
 #import "OOJSEngineTimeManagement.h"
 #import "OOJSScript.h"
@@ -32,90 +31,29 @@ MA 02110-1301, USA.
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
-	oo-sdz, the sweep exemplar): every directly spelled JS_* call becomes its ooscript::
-	equivalent, byte-identical façade <-> jsapi views local to this translation unit stand in
-	for the reinterpret_casts the exemplar uses, and the OOJS_* argument-marshalling macros
-	(OOJS_ARGV, OOJS_THIS, OOJS_RVAL, OOJS_NATIVE_ENTER/EXIT) are unchanged, since they are
-	spelled "OOJS_...", never literally "JS_...", and are out of scope for this sweep.
+	oo-sdz, the sweep exemplar): every engine call goes through its ooscript:: equivalent, and
+	the natives shared with the class files (OOJSUnconstructableConstruct,
+	OOJSObjectWrapperToString, OOJSObjectWrapperFinalize) take the façade signatures directly.
 
-	Left untouched, per ooscript/README.md's "Not in the façade, and why" (engine names below are
-	spelled per that header's own convention, without their engine prefix): the debugger
-	stack-frame walk (FrameIterator, GetFrame*, Is*Frame, GetPropertyDescArray /
-	PutPropertyDescArray, GetScriptFilename, PCToLineNumber) inside OOJSDumpStack,
-	GetLocationNameAndLine and DumpVariable -- engine-specific by nature, called out by name in
-	that list alongside OOJSEngineDebuggerHelpers.mm and OOJSEngineTimeManagement.m, which the
-	same functions are shared with. SetDebuggerHandler and its JSTrapStatus/JSDebuggerHandler
-	callback type are the same debugger-frame family for the identical reason.
-	EnterLocalRootScope / LeaveLocalRootScopeWithResult are also called out there as superseded
-	by explicit roots; both call sites (JSNewNSArrayValue, JSNewNSDictionaryValue) are retired
-	in this bead the way README's own note describes: ooscript::RootedValue replaces the
-	root-the-return-value bracket around the value about to be handed to the caller.
-	The struct-typed-jsval / jschar / uintN / jsdouble / value-macro bit-layout
-	macros, JSClass/JSPropertySpec/JSFunctionSpec (JSObjectGetterImplPRIVATE and friends, not
-	yet on ClassDef/PropertySpec/FunctionSpec) and the debug-build magic-value switch are all,
-	per the exemplar's own scope note, engine ABI detail that already compiles as C and is out
-	of scope for this bead.
+	The debugging support below -- the stack walk in OOJSDumpStack, GetLocationNameAndLine and
+	DumpVariable, and the `debugger` statement hook -- uses the façade's "Debugging and
+	profiling" section (frameIterator / frameScript / frameScopeChain / getScopeVariables /
+	setDebuggerHandler, bead oo-1gc.3). The engine's local root scopes around
+	JSNewNSArrayValue and JSNewNSDictionaryValue are superseded by explicit roots, as
+	ooscript/README.md describes: ooscript::RootedValue roots the value about to be handed to
+	the caller.
 
-	Three façade functions did not exist before this bead and are added alongside it
-	(ooscript::internUCStringN, ooscript::clearScope, ooscript::setCStringsAreUTF8): each is a
-	1:1, no-behaviour-change wrap of the JS_* function of the same name this file calls, using
-	the same calling convention, exactly as JSEngine.hpp's header comment requires of every
-	façade function. Two more, ooscript::isThreadsafeBuild and ooscript::gcZealSupported, are
-	added for a different reason: this file used engine-macro preprocessor guards around its
-	thread-safety and GC-zeal branches, which the deny-list forbids spelling directly in a
-	retargeted file; each new function reports the same build-time true/false value the macro
-	had, implemented in JSEngine_spidermonkey.cpp (the one translation unit exempt from the
-	deny-list, since its job is to call the engine), so the two guarded blocks below become
-	runtime `if`s with identical behaviour rather than being deleted or left spelling the macro.
+	Three façade functions were added for this file (ooscript::internUCStringN,
+	ooscript::clearScope, ooscript::setCStringsAreUTF8), each a 1:1 wrap of the engine call of
+	the same name. Two more, ooscript::isThreadsafeBuild and ooscript::gcZealSupported, report
+	the engine build-configuration values this file used to test with preprocessor guards, so
+	the two guarded blocks below are runtime `if`s with identical behaviour.
 */
 
-// Byte-identical façade <-> jsapi views, local to this translation unit (JSEngine.hpp: Value/
-// PropertyId and the handle types are byte copies of jsval/jsid/JS*; see OOJSVector.mm's
-// OOJSFCX/OOJSFVALP/OOJSFOBJ for the same, non-exported, pattern).
 namespace {
-static inline ooscript::Context   OOJSFCX(JSContext *cx)   { return reinterpret_cast<ooscript::Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext          *OOJSRCX(ooscript::Context cx)   { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline ooscript::Object    OOJSFOBJ(JSObject *o)    { return reinterpret_cast<ooscript::Object>(o); }
-} // namespace
-namespace {
-static inline JSObject           *OOJSROBJ(ooscript::Object o) { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline ooscript::Value    *OOJSFVALP(jsval *v)      { return reinterpret_cast<ooscript::Value*>(v); }
-} // namespace
-namespace {
-static inline ooscript::Value     OOJSFVAL(jsval v)        { ooscript::Value r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
-namespace {
-static inline jsval               OOJSRVALV(ooscript::Value v) { jsval r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
-namespace {
-static inline ooscript::String    OOJSFSTR(JSString *s)    { return reinterpret_cast<ooscript::String>(s); }
-} // namespace
-namespace {
+// NSString wants unichar (unsigned short); the façade's ooscript::Char16 is char16_t. Both are
+// 16-bit code units, but Objective-C++ does not implicitly convert between distinct pointee types.
 static inline const unichar *OOJSRUCHARS(const ooscript::Char16 *s)  { return reinterpret_cast<const unichar*>(s); }
-} // namespace
-namespace {
-static inline const jschar *OOJSRCHARS(const ooscript::Char16 *s)  { return reinterpret_cast<const jschar*>(s); }
-} // namespace
-namespace {
-static inline JSString           *OOJSRSTR(ooscript::String s) { return reinterpret_cast<JSString*>(s); }
-} // namespace
-namespace {
-static inline ooscript::Runtime   OOJSFRT(JSRuntime *rt)   { return reinterpret_cast<ooscript::Runtime>(rt); }
-} // namespace
-namespace {
-static inline JSRuntime          *OOJSRRT(ooscript::Runtime rt) { return reinterpret_cast<JSRuntime*>(rt); }
-} // namespace
-namespace {
-static inline ooscript::PropertyId OOJSFJSID(jsid id)      { ooscript::PropertyId r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-namespace {
-static inline jsid                OOJSRJSID(ooscript::PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
 } // namespace
 
 #import "OOCollectionExtractors.h"
@@ -189,7 +127,7 @@ namespace {
 static unsigned				sErrorHandlerStackSkip = 0;
 } // namespace
 
-JSContext					*gOOJSMainThreadContext = NULL;
+ooscript::Context gOOJSMainThreadContext = NULL;
 
 
 NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
@@ -200,13 +138,13 @@ NSString * const kOOJavaScriptEngineDidResetNotification = @"org.aegidian.oolite
 
 @interface OOJavaScriptEngine (OOMonitorSupportInternal)
 
-- (void)sendMonitorError:(JSErrorReport *)errorReport
+- (void)sendMonitorError:(ooscript::ErrorReport *)errorReport
 			 withMessage:(NSString *)message
-			   inContext:(JSContext *)context;
+			   inContext:(ooscript::Context)context;
 
 - (void)sendMonitorLogMessage:(NSString *)message
 			 withMessageClass:(NSString *)messageClass
-					inContext:(JSContext *)context;
+					inContext:(ooscript::Context)context;
 
 @end
 
@@ -229,16 +167,16 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 } // namespace
 
 namespace {
-static id JSArrayConverter(JSContext *context, JSObject *object);
+static id JSArrayConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSStringConverter(JSContext *context, JSObject *object);
+static id JSStringConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSNumberConverter(JSContext *context, JSObject *object);
+static id JSNumberConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 namespace {
-static id JSBooleanConverter(JSContext *context, JSObject *object);
+static id JSBooleanConverter(ooscript::Context context, ooscript::Object object);
 } // namespace
 
 
@@ -262,7 +200,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	BOOL				showLocation = [jsEng showErrorLocations];
 	
-	// Not OOJS_BEGIN_FULL_NATIVE() - we use JSAPI while paused.
+	// Not OOJS_BEGIN_FULL_NATIVE() - we use the engine while paused.
 	OOJSPauseTimeLimiter();
 	
 	static const ooscript::Char16 emptyUC[1] = { 0 };
@@ -331,23 +269,15 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 		BOOL dump;
 		if (report->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  dump = [jsEng dumpStackForWarnings];
 		else  dump = [jsEng dumpStackForErrors];
-		if (dump)  OOJSDumpStack(OOJSRCX(context));
+		if (dump)  OOJSDumpStack((context));
 #endif
 		
 #if OOJSENGINE_MONITOR_SUPPORT
 		ooscript::ExceptionState *exState = ooscript::saveExceptionState(context);
-		JSErrorReport nativeReport =
-		{
-			.filename = report->filename,
-			.lineno = report->lineno,
-			.uclinebuf = reinterpret_cast<const jschar*>(report->linebuf),
-			.flags = report->flags,
-			.errorNumber = report->errorNumber,
-			.ucmessage = reinterpret_cast<const jschar*>(report->ucmessage),
-		};
+		ooscript::ErrorReport nativeReport = *report;
 		[[OOJavaScriptEngine sharedEngine] sendMonitorError:&nativeReport
 														withMessage:messageText
-														  inContext:OOJSRCX(context)];
+														  inContext:(context)];
 		ooscript::restoreExceptionState(context, exState);
 #endif
 	}
@@ -398,11 +328,11 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	[self setDumpStackForWarnings:[defaults boolForKey:@"dump-stack-for-warnings"]];
 #endif
 	
-	assert(sizeof(jschar) == sizeof(unichar));
+	assert(sizeof(ooscript::Char16) == sizeof(unichar));
 	
 	// initialize the JS run time, and return result in runtime.
 	uint32_t jsRuntimeInMiB = [defaults oo_intForKey:@"jsruntime-size-mib" defaultValue:OOJS_RUNTIME_SIZE_MiB];
-	_runtime = OOJSRRT(ooscript::newRuntime(jsRuntimeInMiB * 1024L * 1024L));
+	_runtime = ooscript::newRuntime(jsRuntimeInMiB * 1024L * 1024L);
 	
 	// if runtime creation failed, end the program here.
 	if (_runtime == NULL)
@@ -425,7 +355,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	NSAssert(gOOJSMainThreadContext == NULL, @"-[OOJavaScriptEngine createMainThreadContext] called while the main thread context exists.");
 	
 	// create a context and associate it with the JS runtime.
-	gOOJSMainThreadContext = OOJSRCX(ooscript::newContext(OOJSFRT(_runtime), OOJS_STACK_SIZE));
+	gOOJSMainThreadContext = (ooscript::newContext(_runtime, OOJS_STACK_SIZE));
 	
 	// if context creation failed, end the program here.
 	if (gOOJSMainThreadContext == NULL)
@@ -434,10 +364,10 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 		exit(1);
 	}
 	
-	ooscript::beginRequest(OOJSFCX(gOOJSMainThreadContext));
+	ooscript::beginRequest((gOOJSMainThreadContext));
 	
-	ooscript::setOptions(OOJSFCX(gOOJSMainThreadContext), OOJSENGINE_CONTEXT_OPTIONS);  // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange): OOJSENGINE_CONTEXT_OPTIONS ORs ContextOption flag bits through JSEngine.hpp's own constexpr operator|; the enum is a bitmask, not a closed set, so the analyzer's "value not a declared enumerator" is a false positive on every legitimate flag combination -- see JSEngine.hpp's own operator| for the same pattern used by OOJSVector.mm's PropertyFlag/ClassFlag tables.
-	ooscript::setVersion(OOJSFCX(gOOJSMainThreadContext), OOJSENGINE_JSVERSION);
+	ooscript::setOptions((gOOJSMainThreadContext), OOJSENGINE_CONTEXT_OPTIONS);  // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange): OOJSENGINE_CONTEXT_OPTIONS ORs ContextOption flag bits through JSEngine.hpp's own constexpr operator|; the enum is a bitmask, not a closed set, so the analyzer's "value not a declared enumerator" is a false positive on every legitimate flag combination -- see JSEngine.hpp's own operator| for the same pattern used by OOJSVector.mm's PropertyFlag/ClassFlag tables.
+	ooscript::setVersion((gOOJSMainThreadContext), OOJSENGINE_JSVERSION);
 	
 	if (ooscript::gcZealSupported())
 	{
@@ -446,17 +376,17 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 		{
 			// Useful js-gc-zeal values are 0 (off), 1 and 2.
 			OOLog(@"script.javaScript.debug.gcZeal", @"Setting JavaScript garbage collector zeal to %u.", gcZeal);
-			ooscript::setGCZeal(OOJSFCX(gOOJSMainThreadContext), gcZeal);
+			ooscript::setGCZeal((gOOJSMainThreadContext), gcZeal);
 		}
 	}
 	
-	ooscript::setErrorReporter(OOJSFCX(gOOJSMainThreadContext), ReportJSError);
+	ooscript::setErrorReporter((gOOJSMainThreadContext), ReportJSError);
 	
 	// Create the global object.
 	CreateOOJSGlobal(gOOJSMainThreadContext, &_globalObject);
 	
 	// Initialize the built-in JS objects and the global object.
-	ooscript::initStandardClasses(OOJSFCX(gOOJSMainThreadContext), OOJSFOBJ(_globalObject));
+	ooscript::initStandardClasses((gOOJSMainThreadContext), (_globalObject));
 	if (![self lookUpStandardClassPointers])
 	{
 		OOLog(@"script.javaScript.init.error", @"%@", @"***** FATAL ERROR: failed to look up standard JavaScript classes.");
@@ -506,7 +436,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 						   properties:[NSDictionary dictionaryWithObject:JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext)
 																  forKey:@"special"]];
 	
-	ooscript::endRequest(OOJSFCX(gOOJSMainThreadContext));
+	ooscript::endRequest((gOOJSMainThreadContext));
 	
 	OOLog(@"script.javaScript.init.success", @"%@", @"Set up JavaScript context.");
 }
@@ -516,8 +446,8 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 {
 	if (gOOJSMainThreadContext != NULL)
 	{
-		JSContext *context = OOJSAcquireContext();
-		ooscript::clearScope(OOJSFCX(gOOJSMainThreadContext), OOJSFOBJ(_globalObject));
+		ooscript::Context context = OOJSAcquireContext();
+		ooscript::clearScope((gOOJSMainThreadContext), (_globalObject));
 		
 		_globalObject = NULL;
 		_objectClass = NULL;
@@ -533,7 +463,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 		OOJSRelinquishContext(context);
 		
 		_globalObject = NULL;
-		ooscript::destroyContext(OOJSFCX(gOOJSMainThreadContext));	// Forces unconditional GC.
+		ooscript::destroyContext((gOOJSMainThreadContext));	// Forces unconditional GC.
 		gOOJSMainThreadContext = NULL;
 	}
 }
@@ -561,9 +491,9 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 		
 	if (ooscript::isThreadsafeBuild())
 	{
-		//NSAssert(!ooscript::isInRequest(OOJSFCX(gOOJSMainThreadContext)), @"JavaScript processes still pending. Can't reset JavaScript engine.");
+		//NSAssert(!ooscript::isInRequest((gOOJSMainThreadContext)), @"JavaScript processes still pending. Can't reset JavaScript engine.");
 		
-		if (ooscript::isInRequest(OOJSFCX(gOOJSMainThreadContext)))
+		if (ooscript::isInRequest((gOOJSMainThreadContext)))
 		{
 			// some threads are still pending, this should mean timers are still being removed.
 			OOLog(@"script.javascript.init.error", @"%@", @"JavaScript processes still pending. Can't reset JavaScript engine.");
@@ -575,7 +505,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 		}
 	}
 	
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineWillResetNotification object:self];
 	OOJSRelinquishContext(context);
 	
@@ -598,25 +528,25 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	OOJSFrameCallbacksRemoveAll();
 	
 	[self destroyMainThreadContext];
-	ooscript::destroyRuntime(OOJSFRT(_runtime));
+	ooscript::destroyRuntime(_runtime);
 	
 	[super dealloc];
 }
 
 
-- (JSObject *) globalObject
+- (ooscript::Object) globalObject
 {
 	return _globalObject;
 }
 
 
-- (BOOL) callJSFunction:(jsval)function
-			  forObject:(JSObject *)jsThis
-				   argc:(uintN)argc
-				   argv:(jsval *)argv
-				 result:(jsval *)outResult
+- (BOOL) callJSFunction:(ooscript::Value)function
+			  forObject:(ooscript::Object)jsThis
+				   argc:(unsigned)argc
+				   argv:(ooscript::Value *)argv
+				 result:(ooscript::Value *)outResult
 {
-	JSContext					*context = NULL;
+	ooscript::Context context = NULL;
 	BOOL						result;
 	
 	NSParameterAssert(OOJSValueIsFunction(context, function));
@@ -624,42 +554,42 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	context = OOJSAcquireContext();
 	
 	OOJSStartTimeLimiter();
-	result = ooscript::callFunctionValue(OOJSFCX(context), OOJSFOBJ(jsThis), OOJSFVAL(function), argc, OOJSFVALP(argv), OOJSFVALP(outResult));
+	result = ooscript::callFunctionValue((context), (jsThis), (function), argc, (argv), (outResult));
 	OOJSStopTimeLimiter();
 	
-	ooscript::reportPendingException(OOJSFCX(context));
+	ooscript::reportPendingException((context));
 	OOJSRelinquishContext(context);
 	
 	return result;
 }
 
 
-- (void) removeGCObjectRoot:(JSObject **)rootPtr
+- (void) removeGCObjectRoot:(ooscript::Object *)rootPtr
 {
-	JSContext *context = OOJSAcquireContext();
-	ooscript::removeObjectRoot(OOJSFCX(context), reinterpret_cast<ooscript::Object*>(rootPtr));
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::removeObjectRoot((context), rootPtr);
 	OOJSRelinquishContext(context);
 }
 
 
-- (void) removeGCValueRoot:(jsval *)rootPtr
+- (void) removeGCValueRoot:(ooscript::Value *)rootPtr
 {
-	JSContext *context = OOJSAcquireContext();
-	ooscript::removeValueRoot(OOJSFCX(context), OOJSFVALP(rootPtr));
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::removeValueRoot((context), (rootPtr));
 	OOJSRelinquishContext(context);
 }
 
 
 - (void) garbageCollectionOpportunity:(BOOL)force
 {
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	if (force)
 	{
-		ooscript::gc(OOJSFCX(context));
+		ooscript::gc((context));
 	}
 	else
 	{
-		ooscript::maybeGC(OOJSFCX(context));
+		ooscript::maybeGC((context));
 	}
 	OOJSRelinquishContext(context);
 }
@@ -677,31 +607,31 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 }
 
 
-- (JSClass *) objectClass
+- (ooscript::ClassDef *) objectClass
 {
 	return _objectClass;
 }
 
 
-- (JSClass *) stringClass
+- (ooscript::ClassDef *) stringClass
 {
 	return _stringClass;
 }
 
 
-- (JSClass *) arrayClass
+- (ooscript::ClassDef *) arrayClass
 {
 	return _arrayClass;
 }
 
 
-- (JSClass *) numberClass
+- (ooscript::ClassDef *) numberClass
 {
 	return _numberClass;
 }
 
 
-- (JSClass *) booleanClass
+- (ooscript::ClassDef *) booleanClass
 {
 	return _booleanClass;
 }
@@ -709,34 +639,34 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 
 - (BOOL) lookUpStandardClassPointers
 {
-	JSObject				*templateObject = NULL;
+	ooscript::Object templateObject = NULL;
 	
-	templateObject = OOJSROBJ(ooscript::newObject(OOJSFCX(gOOJSMainThreadContext), NULL, NULL, NULL));
+	templateObject = (ooscript::newObject((gOOJSMainThreadContext), NULL, NULL, NULL));
 	if (EXPECT_NOT(templateObject == NULL))  return NO;
 	_objectClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
 	
 	{
-		ooscript::Object obj = OOJSFOBJ(templateObject);
-		if (EXPECT_NOT(!ooscript::valueToObject(OOJSFCX(gOOJSMainThreadContext), ooscript::emptyStringValue(OOJSFCX(gOOJSMainThreadContext)), &obj)))  return NO;
-		templateObject = OOJSROBJ(obj);
+		ooscript::Object obj = (templateObject);
+		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::emptyStringValue((gOOJSMainThreadContext)), &obj)))  return NO;
+		templateObject = (obj);
 	}
 	_stringClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
 	
-	templateObject = OOJSROBJ(ooscript::newArrayObject(OOJSFCX(gOOJSMainThreadContext), 0, NULL));
+	templateObject = (ooscript::newArrayObject((gOOJSMainThreadContext), 0, NULL));
 	if (EXPECT_NOT(templateObject == NULL))  return NO;
 	_arrayClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
 	
 	{
-		ooscript::Object obj = OOJSFOBJ(templateObject);
-		if (EXPECT_NOT(!ooscript::valueToObject(OOJSFCX(gOOJSMainThreadContext), ooscript::int32Value(0), &obj)))  return NO;
-		templateObject = OOJSROBJ(obj);
+		ooscript::Object obj = (templateObject);
+		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::int32Value(0), &obj)))  return NO;
+		templateObject = (obj);
 	}
 	_numberClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
 	
 	{
-		ooscript::Object obj = OOJSFOBJ(templateObject);
-		if (EXPECT_NOT(!ooscript::valueToObject(OOJSFCX(gOOJSMainThreadContext), ooscript::falseValue(), &obj)))  return NO;
-		templateObject = OOJSROBJ(obj);
+		ooscript::Object obj = (templateObject);
+		if (EXPECT_NOT(!ooscript::valueToObject((gOOJSMainThreadContext), ooscript::falseValue(), &obj)))  return NO;
+		templateObject = (obj);
 	}
 	_booleanClass = OOJSGetClass(gOOJSMainThreadContext, templateObject);
 	
@@ -756,7 +686,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 
 #ifndef NDEBUG
 namespace {
-static JSTrapStatus DebuggerHook(JSContext *context, JSScript * /*script*/, jsbytecode * /*pc*/, jsval * /*rval*/, void * /*closure*/)
+static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 {
 	OOJSPauseTimeLimiter();
 	
@@ -764,8 +694,6 @@ static JSTrapStatus DebuggerHook(JSContext *context, JSScript * /*script*/, jsby
 	OOJSDumpStack(context);
 	
 	OOJSResumeTimeLimiter();
-	
-	return JSTRAP_CONTINUE;
 }
 } // namespace
 
@@ -796,7 +724,7 @@ static JSTrapStatus DebuggerHook(JSContext *context, JSScript * /*script*/, jsby
 
 - (void) enableDebuggerStatement
 {
-	JS_SetDebuggerHandler(_runtime, DebuggerHook, self);
+	ooscript::setDebuggerHandler(_runtime, DebuggerHook, self);
 }
 #endif
 
@@ -818,9 +746,9 @@ static JSTrapStatus DebuggerHook(JSContext *context, JSScript * /*script*/, jsby
 
 @implementation OOJavaScriptEngine (OOMonitorSupportInternal)
 
-- (void) sendMonitorError:(JSErrorReport *)errorReport
+- (void) sendMonitorError:(ooscript::ErrorReport *)errorReport
 			  withMessage:(NSString *)message
-				inContext:(JSContext *)theContext
+				inContext:(ooscript::Context)theContext
 {
 	if ([_monitor respondsToSelector:@selector(jsEngine:context:error:stackSkip:showingLocation:withMessage:)])
 	{
@@ -831,7 +759,7 @@ static JSTrapStatus DebuggerHook(JSContext *context, JSScript * /*script*/, jsby
 
 - (void) sendMonitorLogMessage:(NSString *)message
 			  withMessageClass:(NSString *)messageClass
-					 inContext:(JSContext *)theContext
+					 inContext:(ooscript::Context)theContext
 {
 	if ([_monitor respondsToSelector:@selector(jsEngine:context:logMessage:ofClass:)])
 	{
@@ -847,24 +775,26 @@ static JSTrapStatus DebuggerHook(JSContext *context, JSScript * /*script*/, jsby
 #ifndef NDEBUG
 
 namespace {
-static void DumpVariable(JSContext *context, JSPropertyDesc *prop)
+static void DumpVariable(ooscript::Context context, ooscript::Variable *prop)
 {
-	NSString *name = OOStringFromJSValueEvenIfNull(context, prop->id);
+	ooscript::Value nameVal = ooscript::undefinedValue();
+	ooscript::idToValue(context, prop->id, &nameVal);
+	NSString *name = OOStringFromJSValueEvenIfNull(context, nameVal);
 	NSString *value = OOJSDescribeValue(context, prop->value, YES);
 	
 	enum   // NOLINT(performance-enum-size): kInterestingFlags is a bitwise complement of small flag values; forcing a narrow base type would truncate the ~ result.
 	{
-		kInterestingFlags = ~(JSPD_ENUMERATE | JSPD_PERMANENT | JSPD_VARIABLE | JSPD_ARGUMENT)
+		kInterestingFlags = ~(static_cast<unsigned>(ooscript::VariableFlag::Enumerate) | static_cast<unsigned>(ooscript::VariableFlag::Permanent) | static_cast<unsigned>(ooscript::VariableFlag::Variable) | static_cast<unsigned>(ooscript::VariableFlag::Argument))
 	};
 	
 	NSString *flagStr = @"";
 	if ((prop->flags & kInterestingFlags) != 0)
 	{
 		NSMutableArray *flags = [NSMutableArray array];
-		if (prop->flags & JSPD_READONLY)  [flags addObject:@"read-only"];
-		if (prop->flags & JSPD_ALIAS)  [flags addObject:[NSString stringWithFormat:@"alias (%@)", OOJSDescribeValue(context, prop->alias, YES)]];
-		if (prop->flags & JSPD_EXCEPTION)  [flags addObject:@"exception"];
-		if (prop->flags & JSPD_ERROR)  [flags addObject:@"error"];
+		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::ReadOnly))  [flags addObject:@"read-only"];
+		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Alias))  [flags addObject:[NSString stringWithFormat:@"alias (%@)", OOJSDescribeValue(context, prop->alias, YES)]];
+		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Exception))  [flags addObject:@"exception"];
+		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Error))  [flags addObject:@"error"];
 		
 		flagStr = [NSString stringWithFormat:@" [%@]", [flags componentsJoinedByString:@", "]];
 	}
@@ -874,26 +804,26 @@ static void DumpVariable(JSContext *context, JSPropertyDesc *prop)
 } // namespace
 
 
-void OOJSDumpStack(JSContext *context)
+void OOJSDumpStack(ooscript::Context context)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	
 	@try
 	{
-		JSStackFrame	*frame = NULL;
+		ooscript::StackFrame	frame = NULL;
 		unsigned		idx = 0;
 		unsigned		skip = sErrorHandlerStackSkip;
 		
-		while (JS_FrameIterator(context, &frame) != NULL)
+		while (ooscript::frameIterator(context, &frame) != NULL)
 		{
-			JSScript			*script = JS_GetFrameScript(context, frame);
+			ooscript::Script script = ooscript::frameScript(context, frame);
 			NSString			*desc = nil;
-			JSPropertyDescArray	properties = { 0 , NULL };
+			ooscript::VariableList	properties = { 0, NULL, NULL };
 			BOOL				gotProperties = NO;
 			
 			idx++;
 			
-			if (!JS_IsScriptFrame(context, frame))
+			if (!ooscript::frameIsScript(context, frame))
 			{
 				continue;
 			}
@@ -907,19 +837,19 @@ void OOJSDumpStack(JSContext *context)
 			if (script != NULL)
 			{
 				NSString	*location = OOJSDescribeLocation(context, frame);
-				JSObject	*scope = JS_GetFrameScopeChain(context, frame);
+				ooscript::Object scope = ooscript::frameScopeChain(context, frame);
 				
-				if (scope != NULL)  gotProperties = JS_GetPropertyDescArray(context, scope, &properties);
+				if (scope != NULL)  gotProperties = ooscript::getScopeVariables(context, scope, &properties);
 				
 				NSString *funcDesc = nil;
-				JSFunction *function = JS_GetFrameFunction(context, frame);
+				ooscript::Function function = ooscript::frameFunction(context, frame);
 				if (function != NULL)
 				{
-					JSString *funcName = JS_GetFunctionId(function);
+					ooscript::String funcName = ooscript::getFunctionId(function);
 					if (funcName != NULL)
 					{
 						funcDesc = OOStringFromJSString(context, funcName);
-						if (!JS_IsConstructorFrame(context, frame))
+						if (!ooscript::frameIsConstructor(context, frame))
 						{
 							funcDesc = [funcDesc stringByAppendingString:@"()"];
 						}
@@ -941,7 +871,7 @@ void OOJSDumpStack(JSContext *context)
 				
 				desc = [NSString stringWithFormat:@"(%@) %@", location, funcDesc];
 			}
-			else if (JS_IsDebuggerFrame(context, frame))
+			else if (ooscript::frameIsDebugger(context, frame))
 			{
 				desc = @"<debugger frame>";
 			}
@@ -954,17 +884,17 @@ void OOJSDumpStack(JSContext *context)
 			
 			if (gotProperties)
 			{
-				jsval thisVal;
-				if (JS_GetFrameThis(context, frame, &thisVal))
+				ooscript::Value thisVal;
+				if (ooscript::frameThis(context, frame, &thisVal))
 				{
 					static BOOL haveThis = NO;
-					static jsval thisAtom;
+					static ooscript::PropertyId thisAtom;
 					if (EXPECT_NOT(!haveThis))
 					{
-						thisAtom = STRING_TO_JSVAL(OOJSRSTR(ooscript::internString(OOJSFCX(context), "this")));
+						ooscript::valueToId(context, ooscript::stringValue((ooscript::internString((context), "this"))), &thisAtom);
 						haveThis = YES;
 					}
-					JSPropertyDesc thisDesc = { .id = thisAtom, .value = thisVal };
+					ooscript::Variable thisDesc = { .id = thisAtom, .value = thisVal, .flags = 0, .alias = ooscript::undefinedValue() };
 					DumpVariable(context, &thisDesc);
 				}
 				
@@ -972,25 +902,25 @@ void OOJSDumpStack(JSContext *context)
 				unsigned i;
 				for (i = 0; i < properties.length; i++)
 				{
-					JSPropertyDesc *prop = &properties.array[i];
-					if (prop->flags & JSPD_ARGUMENT)  DumpVariable(context, prop);
+					ooscript::Variable *prop = &properties.vars[i];
+					if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Argument))  DumpVariable(context, prop);
 				}
 				
 				// Dump locals.
 				for (i = 0; i < properties.length; i++)
 				{
-					JSPropertyDesc *prop = &properties.array[i];
-					if (prop->flags & JSPD_VARIABLE)  DumpVariable(context, prop);
+					ooscript::Variable *prop = &properties.vars[i];
+					if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Variable))  DumpVariable(context, prop);
 				}
 				
 				// Dump anything else.
 				for (i = 0; i < properties.length; i++)
 				{
-					JSPropertyDesc *prop = &properties.array[i];
-					if (!(prop->flags & (JSPD_ARGUMENT | JSPD_VARIABLE)))  DumpVariable(context, prop);
+					ooscript::Variable *prop = &properties.vars[i];
+					if (!(prop->flags & (static_cast<unsigned>(ooscript::VariableFlag::Argument) | static_cast<unsigned>(ooscript::VariableFlag::Variable))))  DumpVariable(context, prop);
 				}
 				
-				JS_PutPropertyDescArray(context, &properties);
+				ooscript::destroyScopeVariables(context, &properties);
 			}
 		}
 	}
@@ -1012,24 +942,23 @@ static NSUInteger sConsoleEvalLineNo;
 
 
 namespace {
-static void GetLocationNameAndLine(JSContext *context, JSStackFrame *stackFrame, const char **name, NSUInteger *line)
+static void GetLocationNameAndLine(ooscript::Context context, ooscript::StackFrame stackFrame, const char **name, NSUInteger *line)
 {
 	NSCParameterAssert(context != NULL && stackFrame != NULL && name != NULL && line != NULL);
 	
 	*name = NULL;
 	*line = 0;
 	
-	JSScript *script = JS_GetFrameScript(context, stackFrame);
+	ooscript::Script script = ooscript::frameScript(context, stackFrame);
 	if (script != NULL)
 	{
-		*name = JS_GetScriptFilename(context, script);
+		*name = ooscript::scriptFilename(context, script);
 		if (name != NULL)
 		{
-			jsbytecode *PC = JS_GetFramePC(context, stackFrame);
-			*line = JS_PCToLineNumber(context, script, PC);
+			*line = ooscript::frameLineNumber(context, stackFrame);
 		}
 	}
-	else if (JS_IsDebuggerFrame(context, stackFrame))
+	else if (ooscript::frameIsDebugger(context, stackFrame))
 	{
 		*name = "<debugger frame>";
 	}
@@ -1037,7 +966,7 @@ static void GetLocationNameAndLine(JSContext *context, JSStackFrame *stackFrame,
 } // namespace
 
 
-NSString *OOJSDescribeLocation(JSContext *context, JSStackFrame *stackFrame)
+NSString *OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame)
 {
 	NSCParameterAssert(context != NULL && stackFrame != NULL);
 	
@@ -1061,36 +990,40 @@ NSString *OOJSDescribeLocation(JSContext *context, JSStackFrame *stackFrame)
 }
 
 
-void OOJSMarkConsoleEvalLocation(JSContext *context, JSStackFrame *stackFrame)
+void OOJSMarkConsoleEvalLocation(ooscript::Context context, ooscript::StackFrame stackFrame)
 {
 	GetLocationNameAndLine(context, stackFrame, &sConsoleScriptName, &sConsoleEvalLineNo);
 }
 #endif
 
 
-void OOJSInitJSIDCachePRIVATE(const char *name, jsid *idCache)
+void OOJSInitJSIDCachePRIVATE(const char *name, ooscript::PropertyId *idCache)
 {
 	NSCParameterAssert(name != NULL && name[0] != '\0' && idCache != NULL);
 	
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	
-	JSString *string = OOJSRSTR(ooscript::internString(OOJSFCX(context), name));
+	ooscript::String string = (ooscript::internString((context), name));
 	if (EXPECT_NOT(string == NULL))
 	{
 		[NSException raise:NSGenericException format:@"Failed to initialize JS ID cache for \"%s\".", name];
 	}
 	
-	*idCache = INTERNED_STRING_TO_JSID(string);
+	// The string is interned, so the engine's value-to-id conversion returns its atom id unchanged.
+	if (EXPECT_NOT(!ooscript::valueToId(context, ooscript::stringValue(string), idCache)))
+	{
+		[NSException raise:NSGenericException format:@"Failed to initialize JS ID cache for \"%s\".", name];
+	}
 	
 	OOJSRelinquishContext(context);
 }
 
 
-jsid OOJSIDFromString(NSString *string)
+ooscript::PropertyId OOJSIDFromString(NSString *string)
 {
-	if (EXPECT_NOT(string == nil))  return JSID_VOID;
+	if (EXPECT_NOT(string == nil))  return ooscript::voidId();
 	
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	
 	enum : std::uint16_t { kStackBufSize = 1024 };
 	unichar stackBuf[kStackBufSize];
@@ -1103,30 +1036,33 @@ jsid OOJSIDFromString(NSString *string)
 	else
 	{
 		buffer = static_cast<unichar*>(malloc(sizeof (unichar) * length));
-		if (EXPECT_NOT(buffer == NULL))  return JSID_VOID;
+		if (EXPECT_NOT(buffer == NULL))  return ooscript::voidId();
 	}
 	[string getCharacters:buffer];
 	
-	JSString *jsString = OOJSRSTR(ooscript::internUCStringN(OOJSFCX(context), reinterpret_cast<const ooscript::Char16*>(buffer), length));
+	ooscript::String jsString = (ooscript::internUCStringN((context), reinterpret_cast<const ooscript::Char16*>(buffer), length));
 	
 	if (EXPECT_NOT(buffer != stackBuf))  free(buffer);
 	
+	// The string is interned, so the engine's value-to-id conversion returns its atom id unchanged.
+	ooscript::PropertyId result = ooscript::voidId();
+	if (EXPECT(jsString != NULL) && !ooscript::valueToId(context, ooscript::stringValue(jsString), &result))  result = ooscript::voidId();
+	
 	OOJSRelinquishContext(context);
 	
-	if (EXPECT(jsString != NULL))  return INTERNED_STRING_TO_JSID(jsString);
-	else  return JSID_VOID;
+	return result;
 }
 
 
-NSString *OOStringFromJSID(jsid propID)
+NSString *OOStringFromJSID(ooscript::PropertyId propID)
 {
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	
 	ooscript::Value	value;
 	NSString	*result = nil;
-	if (ooscript::idToValue(OOJSFCX(context), OOJSFJSID(propID), &value))
+	if (ooscript::idToValue((context), (propID), &value))
 	{
-		result = OOStringFromJSString(context, OOJSRSTR(ooscript::valueToString(OOJSFCX(context), value)));
+		result = OOStringFromJSString(context, (ooscript::valueToString((context), value)));
 	}
 	
 	OOJSRelinquishContext(context);
@@ -1145,7 +1081,7 @@ static NSString *CallerPrefix(NSString *scriptClass, NSString *function)
 } // namespace
 
 
-void OOJSReportError(JSContext *context, NSString *format, ...)
+void OOJSReportError(ooscript::Context context, NSString *format, ...)
 {
 	va_list					args;
 	
@@ -1155,7 +1091,7 @@ void OOJSReportError(JSContext *context, NSString *format, ...)
 }
 
 
-void OOJSReportErrorForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...)
+void OOJSReportErrorForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...)
 {
 	va_list					args;
 	NSString				*msg = nil;
@@ -1176,16 +1112,16 @@ void OOJSReportErrorForCaller(JSContext *context, NSString *scriptClass, NSStrin
 }
 
 
-void OOJSReportErrorWithArguments(JSContext *context, NSString *format, va_list args)
+void OOJSReportErrorWithArguments(ooscript::Context context, NSString *format, va_list args)
 {
 	NSString				*msg = nil;
 	
-	NSCParameterAssert(ooscript::isInRequest(OOJSFCX(context)));
+	NSCParameterAssert(ooscript::isInRequest((context)));
 	
 	@try
 	{
 		msg = [[NSString alloc] initWithFormat:format arguments:args];
-		ooscript::reportError(OOJSFCX(context), [msg UTF8String]);
+		ooscript::reportError((context), [msg UTF8String]);
 	}
 	@catch (id exception)
 	{
@@ -1195,9 +1131,9 @@ void OOJSReportErrorWithArguments(JSContext *context, NSString *format, va_list 
 }
 
 
-void OOJSReportWrappedException(JSContext *context, id exception)
+void OOJSReportWrappedException(ooscript::Context context, id exception)
 {
-	if (!ooscript::isExceptionPending(OOJSFCX(context)))
+	if (!ooscript::isExceptionPending((context)))
 	{
 		if ([exception isKindOfClass:[NSException class]])  OOJSReportError(context, @"Native exception: %@", [exception reason]);
 		else  OOJSReportError(context, @"Unidentified native exception");
@@ -1217,7 +1153,7 @@ void OOJSUnreachable(const char *function, const char *file, unsigned line)
 #endif
 
 
-void OOJSReportWarning(JSContext *context, NSString *format, ...)
+void OOJSReportWarning(ooscript::Context context, NSString *format, ...)
 {
 	va_list					args;
 	
@@ -1227,7 +1163,7 @@ void OOJSReportWarning(JSContext *context, NSString *format, ...)
 }
 
 
-void OOJSReportWarningForCaller(JSContext *context, NSString *scriptClass, NSString *function, NSString *format, ...)
+void OOJSReportWarningForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...)
 {
 	va_list					args;
 	NSString				*msg = nil;
@@ -1248,14 +1184,14 @@ void OOJSReportWarningForCaller(JSContext *context, NSString *scriptClass, NSStr
 }
 
 
-void OOJSReportWarningWithArguments(JSContext *context, NSString *format, va_list args)
+void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args)
 {
 	NSString				*msg = nil;
 	
 	@try
 	{
 		msg = [[NSString alloc] initWithFormat:format arguments:args];
-		ooscript::reportWarning(OOJSFCX(context), [msg UTF8String]);
+		ooscript::reportWarning((context), [msg UTF8String]);
 	}
 	@catch (id exception)
 	{
@@ -1265,7 +1201,7 @@ void OOJSReportWarningWithArguments(JSContext *context, NSString *format, va_lis
 }
 
 
-void OOJSReportBadPropertySelector(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec)
+void OOJSReportBadPropertySelector(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec)
 {
 	NSString	*propName = OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec);
 	const char	*className = OOJSGetClass(context, thisObj)->name;
@@ -1274,7 +1210,7 @@ void OOJSReportBadPropertySelector(JSContext *context, JSObject *thisObj, jsid p
 }
 
 
-void OOJSReportBadPropertyValue(JSContext *context, JSObject *thisObj, jsid propID, JSPropertySpec *propertySpec, jsval value)
+void OOJSReportBadPropertyValue(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec, ooscript::Value value)
 {
 	NSString	*propName = OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec);
 	const char	*className = OOJSGetClass(context, thisObj)->name;
@@ -1284,7 +1220,7 @@ void OOJSReportBadPropertyValue(JSContext *context, JSObject *thisObj, jsid prop
 }
 
 
-void OOJSReportBadArguments(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, NSString *message, NSString *expectedArgsDescription)
+void OOJSReportBadArguments(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, NSString *message, NSString *expectedArgsDescription)
 {
 	@try
 	{
@@ -1307,7 +1243,7 @@ void OOJSSetWarningOrErrorStackSkip(unsigned skip)
 }
 
 
-BOOL OOJSArgumentListGetNumber(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, double *outNumber, uintN *outConsumed)
+BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed)
 {
 	if (OOJSArgumentListGetNumberNoError(context, argc, argv, outNumber, outConsumed))
 	{
@@ -1322,7 +1258,7 @@ BOOL OOJSArgumentListGetNumber(JSContext *context, NSString *scriptClass, NSStri
 }
 
 
-BOOL OOJSArgumentListGetNumberNoError(JSContext *context, uintN argc, jsval *argv, double *outNumber, uintN *outConsumed)
+BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1331,7 +1267,7 @@ BOOL OOJSArgumentListGetNumberNoError(JSContext *context, uintN argc, jsval *arg
 	NSCParameterAssert(context != NULL && (argv != NULL || argc == 0) && outNumber != NULL);
 	
 	// Get value, if possible.
-	if (EXPECT_NOT(!ooscript::valueToNumber(OOJSFCX(context), OOJSFVAL(argv[0]), &value) || isnan(value)))
+	if (EXPECT_NOT(!ooscript::valueToNumber((context), (argv[0]), &value) || isnan(value)))
 	{
 		if (outConsumed != NULL)  *outConsumed = 0;
 		return NO;
@@ -1347,11 +1283,11 @@ BOOL OOJSArgumentListGetNumberNoError(JSContext *context, uintN argc, jsval *arg
 
 
 namespace {
-static JSObject *JSArrayFromNSArray(JSContext *context, NSArray *array)
+static ooscript::Object JSArrayFromNSArray(ooscript::Context context, NSArray *array)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*result = NULL;
+	ooscript::Object result = NULL;
 	
 	if (array == nil)  return NULL;
 	
@@ -1365,14 +1301,14 @@ static JSObject *JSArrayFromNSArray(JSContext *context, NSArray *array)
 		
 		uint32_t i, count = (int32_t)fullCount;
 		
-		result = OOJSROBJ(ooscript::newArrayObject(OOJSFCX(context), 0, NULL));
+		result = (ooscript::newArrayObject((context), 0, NULL));
 		if (result != NULL)
 		{
 			for (i = 0; i != count; ++i)
 			{
-				jsval value = [[array objectAtIndex:i] oo_jsValueInContext:context];
-				ooscript::Value fval = OOJSFVAL(value);
-				BOOL OK = ooscript::setElement(OOJSFCX(context), OOJSFOBJ(result), i, &fval);
+				ooscript::Value value = [[array objectAtIndex:i] oo_jsValueInContext:context];
+				ooscript::Value fval = (value);
+				BOOL OK = ooscript::setElement((context), (result), i, &fval);
 				
 				if (EXPECT_NOT(!OK))
 				{
@@ -1387,7 +1323,7 @@ static JSObject *JSArrayFromNSArray(JSContext *context, NSArray *array)
 		result = NULL;
 	}
 	
-	return (JSObject *)result;
+	return (ooscript::Object)result;
 	
 	OOJS_PROFILE_EXIT
 }
@@ -1395,31 +1331,31 @@ static JSObject *JSArrayFromNSArray(JSContext *context, NSArray *array)
 
 
 namespace {
-static BOOL JSNewNSArrayValue(JSContext *context, NSArray *array, jsval *value)
+static BOOL JSNewNSArrayValue(ooscript::Context context, NSArray *array, ooscript::Value *value)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*object = NULL;
+	ooscript::Object object = NULL;
 	BOOL					OK = YES;
 	
 	if (value == NULL)  return NO;
 	
 	// NOTE: rooted for GC reasons for the duration of the conversion, per ooscript/README.md's
 	// "Not in the façade" note on EnterLocalRootScope / LeaveLocalRootScopeWithResult.
-	ooscript::RootedValue rootedResult(OOJSFCX(context), ooscript::Value{0}, "JSNewNSArrayValue.result");
+	ooscript::RootedValue rootedResult((context), ooscript::Value{0}, "JSNewNSArrayValue.result");
 	
 	object = JSArrayFromNSArray(context, array);
 	if (object == NULL)
 	{
-		*value = JSVAL_VOID;
+		*value = ooscript::undefinedValue();
 		OK = NO;
 	}
 	else
 	{
-		*value = OBJECT_TO_JSVAL(object);
+		*value = ooscript::objectValue(object);
 	}
 	
-	rootedResult.set(OOJSFVAL(*value));
+	rootedResult.set((*value));
 	return OK;
 	
 	OOJS_PROFILE_EXIT
@@ -1432,21 +1368,21 @@ static BOOL JSNewNSArrayValue(JSContext *context, NSArray *array, jsval *value)
 	and	whose values have a non-void JS representation, are converted.
 */
 namespace {
-static JSObject *JSObjectFromNSDictionary(JSContext *context, NSDictionary *dictionary)
+static ooscript::Object JSObjectFromNSDictionary(ooscript::Context context, NSDictionary *dictionary)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*result = NULL;
+	ooscript::Object result = NULL;
 	BOOL					OK = YES;
 	id						key = nil;
-	jsval					value;
-	jsint					index;
+	ooscript::Value					value;
+	int32_t					index;
 	
 	if (dictionary == nil)  return NULL;
 	
 	@try
 	{
-		result = OOJSROBJ(ooscript::newObject(OOJSFCX(context), NULL, NULL, NULL));	// create object of class Object
+		result = (ooscript::newObject((context), NULL, NULL, NULL));	// create object of class Object
 		if (result != NULL)
 		{
 			foreachkey (key, dictionary)
@@ -1470,9 +1406,9 @@ static JSObject *JSObjectFromNSDictionary(JSContext *context, NSDictionary *dict
 					value = [tmp oo_jsValueInContext:context];
 #endif
 #endif
-					if (!JSVAL_IS_VOID(value))
+					if (!ooscript::isUndefined(value))
 					{
-						OK = ooscript::setPropertyById(OOJSFCX(context), OOJSFOBJ(result), OOJSFJSID(OOJSIDFromString(key)), OOJSFVALP(&value));
+						OK = ooscript::setPropertyById((context), (result), (OOJSIDFromString(key)), (&value));
 						if (EXPECT_NOT(!OK))  break;
 					}
 				}
@@ -1482,9 +1418,9 @@ static JSObject *JSObjectFromNSDictionary(JSContext *context, NSDictionary *dict
 					if (0 < index)
 					{
 						value = [[dictionary objectForKey:key] oo_jsValueInContext:context];
-						if (!JSVAL_IS_VOID(value))
+						if (!ooscript::isUndefined(value))
 						{
-							OK = ooscript::setElement(OOJSFCX(context), OOJSFOBJ((JSObject *)result), index, OOJSFVALP(&value));
+							OK = ooscript::setElement((context), ((ooscript::Object)result), index, (&value));
 							if (EXPECT_NOT(!OK))  break;
 						}
 					}
@@ -1504,7 +1440,7 @@ static JSObject *JSObjectFromNSDictionary(JSContext *context, NSDictionary *dict
 		result = NULL;
 	}
 	
-	return (JSObject *)result;
+	return (ooscript::Object)result;
 	
 	OOJS_PROFILE_EXIT
 }
@@ -1512,31 +1448,31 @@ static JSObject *JSObjectFromNSDictionary(JSContext *context, NSDictionary *dict
 
 
 namespace {
-static BOOL JSNewNSDictionaryValue(JSContext *context, NSDictionary *dictionary, jsval *value)
+static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dictionary, ooscript::Value *value)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*object = NULL;
+	ooscript::Object object = NULL;
 	BOOL					OK = YES;
 	
 	if (value == NULL)  return NO;
 	
 	// NOTE: rooted for GC reasons for the duration of the conversion, per ooscript/README.md's
 	// "Not in the façade" note on EnterLocalRootScope / LeaveLocalRootScopeWithResult.
-	ooscript::RootedValue rootedResult(OOJSFCX(context), ooscript::Value{0}, "JSNewNSDictionaryValue.result");
+	ooscript::RootedValue rootedResult((context), ooscript::Value{0}, "JSNewNSDictionaryValue.result");
 	
 	object = JSObjectFromNSDictionary(context, dictionary);
 	if (object == NULL)
 	{
-		*value = JSVAL_VOID;
+		*value = ooscript::undefinedValue();
 		OK = NO;
 	}
 	else
 	{
-		*value = OBJECT_TO_JSVAL(object);
+		*value = ooscript::objectValue(object);
 	}
 	
-	rootedResult.set(OOJSFVAL(*value));
+	rootedResult.set((*value));
 	return OK;
 	
 	OOJS_PROFILE_EXIT
@@ -1546,9 +1482,9 @@ static BOOL JSNewNSDictionaryValue(JSContext *context, NSDictionary *dictionary,
 
 @implementation NSObject (OOJavaScriptConversion)
 
-- (jsval) oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
-	return JSVAL_VOID;
+	return ooscript::undefinedValue();
 }
 
 
@@ -1589,7 +1525,7 @@ static BOOL JSNewNSDictionaryValue(JSContext *context, NSDictionary *dictionary,
 }
 
 
-- (void) oo_clearJSSelf:(JSObject *)selfVal
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal
 {
 	
 }
@@ -1597,18 +1533,18 @@ static BOOL JSNewNSDictionaryValue(JSContext *context, NSDictionary *dictionary,
 @end
 
 
-JSObject *OOJSObjectFromNativeObject(JSContext *context, id object)
+ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object)
 {
-	jsval value = OOJSValueFromNativeObject(context, object);
+	ooscript::Value value = OOJSValueFromNativeObject(context, object);
 	ooscript::Object result = nullptr;
-	if (ooscript::valueToObject(OOJSFCX(context), OOJSFVAL(value), &result))  return OOJSROBJ(result);
+	if (ooscript::valueToObject((context), (value), &result))  return (result);
 	return NULL;
 }
 
 
 @implementation OOJSValue
 
-+ (id) valueWithJSValue:(jsval)value inContext:(JSContext *)context
++ (id) valueWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1618,7 +1554,7 @@ JSObject *OOJSObjectFromNativeObject(JSContext *context, id object)
 }
 
 
-+ (id) valueWithJSObject:(JSObject *)object inContext:(JSContext *)context
++ (id) valueWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1628,7 +1564,7 @@ JSObject *OOJSObjectFromNativeObject(JSContext *context, id object)
 }
 
 
-- (id) initWithJSValue:(jsval)value inContext:(JSContext *)context
+- (id) initWithJSValue:(ooscript::Value)value inContext:(ooscript::Context)context
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1643,9 +1579,9 @@ JSObject *OOJSObjectFromNativeObject(JSContext *context, id object)
 		}
 		
 		_val = value;
-		if (!JSVAL_IS_VOID(_val))
+		if (!ooscript::isUndefined(_val))
 		{
-			ooscript::addNamedValueRoot(OOJSFCX(context), OOJSFVALP(&_val), "OOJSValue");
+			ooscript::addNamedValueRoot((context), (&_val), "OOJSValue");
 			
 			[[NSNotificationCenter defaultCenter] addObserver:self
 													 selector:@selector(deleteJSValue)
@@ -1661,21 +1597,21 @@ JSObject *OOJSObjectFromNativeObject(JSContext *context, id object)
 }
 
 
-- (id) initWithJSObject:(JSObject *)object inContext:(JSContext *)context
+- (id) initWithJSObject:(ooscript::Object)object inContext:(ooscript::Context)context
 {
-	return [self initWithJSValue:OBJECT_TO_JSVAL(object) inContext:context];
+	return [self initWithJSValue:ooscript::objectValue(object) inContext:context];
 }
 
 
 - (void) deleteJSValue
 {
-	if (!JSVAL_IS_VOID(_val))
+	if (!ooscript::isUndefined(_val))
 	{
-		JSContext *context = OOJSAcquireContext();
-		ooscript::removeValueRoot(OOJSFCX(context), OOJSFVALP(&_val));
+		ooscript::Context context = OOJSAcquireContext();
+		ooscript::removeValueRoot((context), (&_val));
 		OOJSRelinquishContext(context);
 		
-		_val = JSVAL_VOID;
+		_val = ooscript::undefinedValue();
 		[[NSNotificationCenter defaultCenter] removeObserver:self
 														name:kOOJavaScriptEngineWillResetNotification
 													  object:[OOJavaScriptEngine sharedEngine]];
@@ -1690,7 +1626,7 @@ JSObject *OOJSObjectFromNativeObject(JSContext *context, id object)
 }
 
 
-- (jsval) oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
 	return _val;
 }
@@ -1698,37 +1634,37 @@ JSObject *OOJSObjectFromNativeObject(JSContext *context, id object)
 @end
 
 
-void OOJSStrLiteralCachePRIVATE(const char *string, jsval *strCache, BOOL *inited)
+void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, BOOL *inited)
 {
 	NSCParameterAssert(string != NULL && strCache != NULL && inited != NULL && !*inited);
 	
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	
-	JSString *jsString = OOJSRSTR(ooscript::internString(OOJSFCX(context), string));
+	ooscript::String jsString = (ooscript::internString((context), string));
 	if (EXPECT_NOT(string == NULL))
 	{
 		[NSException raise:NSGenericException format:@"Failed to initialize JavaScript string literal cache for \"%@\".", [[NSString stringWithUTF8String:string] escapedForJavaScriptLiteral]];
 	}
 	
-	*strCache = STRING_TO_JSVAL(jsString);
+	*strCache = ooscript::stringValue(jsString);
 	*inited = YES;
 	
 	OOJSRelinquishContext(context);
 }
 
 
-NSString *OOStringFromJSString(JSContext *context, JSString *string)
+NSString *OOStringFromJSString(ooscript::Context context, ooscript::String string)
 {
 	OOJS_PROFILE_ENTER
 	
 	if (EXPECT_NOT(string == NULL))  return nil;
 	
 	size_t length;
-	const jschar *chars = OOJSRCHARS(ooscript::getStringCharsAndLength(OOJSFCX(context), OOJSFSTR(string), &length));
+	const ooscript::Char16 *chars = ooscript::getStringCharsAndLength((context), (string), &length);
 	
 	if (EXPECT(chars != NULL))
 	{
-		return [NSString stringWithCharacters:OOJSRUCHARS(reinterpret_cast<const ooscript::Char16*>(chars)) length:length];
+		return [NSString stringWithCharacters:OOJSRUCHARS(chars) length:length];
 	}
 	else
 	{
@@ -1739,24 +1675,24 @@ NSString *OOStringFromJSString(JSContext *context, JSString *string)
 }
 
 
-NSString *OOStringFromJSValueEvenIfNull(JSContext *context, jsval value)
+NSString *OOStringFromJSValueEvenIfNull(ooscript::Context context, ooscript::Value value)
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(OOJSFCX(context)));
+	NSCParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	
-	JSString *string = OOJSRSTR(ooscript::valueToString(OOJSFCX(context), OOJSFVAL(value)));	// Calls the value's toString method if needed.
+	ooscript::String string = (ooscript::valueToString((context), (value)));	// Calls the value's toString method if needed.
 	return OOStringFromJSString(context, string);
 	
 	OOJS_PROFILE_EXIT
 }
 
 
-NSString *OOStringFromJSValue(JSContext *context, jsval value)
+NSString *OOStringFromJSValue(ooscript::Context context, ooscript::Value value)
 {
 	OOJS_PROFILE_ENTER
 	
-	if (EXPECT(!JSVAL_IS_NULL(value) && !JSVAL_IS_VOID(value)))
+	if (EXPECT(!ooscript::isNull(value) && !ooscript::isUndefined(value)))
 	{
 		return OOStringFromJSValueEvenIfNull(context, value);
 	}
@@ -1766,15 +1702,15 @@ NSString *OOStringFromJSValue(JSContext *context, jsval value)
 }
 
 
-NSString *OOStringFromJSPropertyIDAndSpec(JSContext *context, jsid propID, JSPropertySpec *propertySpec)
+NSString *OOStringFromJSPropertyIDAndSpec(ooscript::Context context, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec)
 {
-	if (JSID_IS_STRING(propID))
+	if (ooscript::isStringId(propID))
 	{
-		return OOStringFromJSString(context, JSID_TO_STRING(propID));
+		return OOStringFromJSString(context, ooscript::idToString(propID));
 	}
-	else if (JSID_IS_INT(propID) && propertySpec != NULL)
+	else if (ooscript::isInt32Id(propID) && propertySpec != NULL)
 	{
-		int tinyid = JSID_TO_INT(propID);
+		int tinyid = ooscript::idToInt32(propID);
 		
 		while (propertySpec->name != NULL)
 		{
@@ -1783,68 +1719,68 @@ NSString *OOStringFromJSPropertyIDAndSpec(JSContext *context, jsid propID, JSPro
 		}
 	}
 	
-	jsval value;
-	if (!ooscript::idToValue(OOJSFCX(context), OOJSFJSID(propID), OOJSFVALP(&value)))  return @"unknown";
-	return OOStringFromJSString(context, OOJSRSTR(ooscript::valueToString(OOJSFCX(context), OOJSFVAL(value))));
+	ooscript::Value value;
+	if (!ooscript::idToValue((context), (propID), (&value)))  return @"unknown";
+	return OOStringFromJSString(context, (ooscript::valueToString((context), (value))));
 }
 
 
 namespace {
-static NSString *DescribeValue(JSContext *context, jsval value, BOOL abbreviateObjects, BOOL recursing)
+static NSString *DescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects, BOOL recursing)
 {
 	OOJS_PROFILE_ENTER
 	
-	NSCParameterAssert(context != NULL && ooscript::isInRequest(OOJSFCX(context)));
+	NSCParameterAssert(context != NULL && ooscript::isInRequest((context)));
 	
 	if (OOJSValueIsFunction(context, value))
 	{
-		JSString *name = OOJSRSTR(ooscript::getFunctionId(ooscript::valueToFunction(OOJSFCX(context), OOJSFVAL(value))));
+		ooscript::String name = (ooscript::getFunctionId(ooscript::valueToFunction((context), (value))));
 		if (name != NULL)  return [NSString stringWithFormat:@"function %@", OOStringFromJSString(context, name)];
 		else  return @"function";
 	}
 	
 	NSString		*result = nil;
-	JSClass				*valueClass = NULL;
+	ooscript::ClassDef				*valueClass = NULL;
 	OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	
-	if (JSVAL_IS_OBJECT(value) && !JSVAL_IS_NULL(value))
+	if (ooscript::isObjectOrNull(value) && !ooscript::isNull(value))
 	{
-		valueClass = OOJSGetClass(context, JSVAL_TO_OBJECT(value));
+		valueClass = OOJSGetClass(context, ooscript::toObject(value));
 	}
 	
 	// Convert String objects to strings.
 	if (valueClass == [jsEng stringClass])
 	{
-		value = STRING_TO_JSVAL(OOJSRSTR(ooscript::valueToString(OOJSFCX(context), OOJSFVAL(value))));
+		value = ooscript::stringValue((ooscript::valueToString((context), (value))));
 	}
 	
-	if (JSVAL_IS_STRING(value))
+	if (ooscript::isString(value))
 	{
 		enum : std::uint8_t { kMaxLength = 200 };
 		
-		JSString *string = JSVAL_TO_STRING(value);
+		ooscript::String string = ooscript::toString(value);
 		size_t length;
-		const jschar *chars = OOJSRCHARS(ooscript::getStringCharsAndLength(OOJSFCX(context), OOJSFSTR(string), &length));
+		const ooscript::Char16 *chars = ooscript::getStringCharsAndLength((context), (string), &length);
 		
-		result = [NSString stringWithCharacters:OOJSRUCHARS(reinterpret_cast<const ooscript::Char16*>(chars)) length:MIN(length, (size_t)kMaxLength)];
+		result = [NSString stringWithCharacters:OOJSRUCHARS(chars) length:MIN(length, (size_t)kMaxLength)];
 		result = [NSString stringWithFormat:@"\"%@%@\"", [result escapedForJavaScriptLiteral], (length > kMaxLength) ? @"..." : @""];
 	}
 	else if (valueClass == [jsEng arrayClass])
 	{
 		// Descibe up to four elements of an array.
-		jsuint count;
-		JSObject *obj = JSVAL_TO_OBJECT(value);
-		if (ooscript::getArrayLength(OOJSFCX(context), OOJSFOBJ(obj), &count))
+		uint32_t count;
+		ooscript::Object obj = ooscript::toObject(value);
+		if (ooscript::getArrayLength((context), (obj), &count))
 		{
 			if (!recursing)
 			{
 				NSMutableString *arrayDesc = [NSMutableString stringWithString:@"["];
-				jsuint i, effectiveCount = MIN(count, (jsuint)4);
+				uint32_t i, effectiveCount = MIN(count, (uint32_t)4);
 				for (i = 0; i < effectiveCount; i++)
 				{
-					jsval item;
+					ooscript::Value item;
 					NSString *itemDesc = @"?";
-					if (ooscript::getElement(OOJSFCX(context), OOJSFOBJ(obj), i, OOJSFVALP(&item)))
+					if (ooscript::getElement((context), (obj), i, (&item)))
 					{
 						itemDesc = DescribeValue(context, item, YES /* always abbreviate objects in arrays */, YES);
 					}
@@ -1893,7 +1829,7 @@ static NSString *DescribeValue(JSContext *context, jsval value, BOOL abbreviateO
 } // namespace
 
 
-NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObjects)
+NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects)
 {
 	return DescribeValue(context, value, abbreviateObjects, NO);
 }
@@ -1901,13 +1837,13 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 
 @implementation NSString (OOJavaScriptExtensions)
 
-+ (NSString *) stringWithJavaScriptParameters:(jsval *)params count:(uintN)count inContext:(JSContext *)context
++ (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context
 {
 	OOJS_PROFILE_ENTER
 	
 	if (params == NULL && count != 0) return nil;
 	
-	uintN					i;
+	unsigned					i;
 	NSMutableString			*result = [NSMutableString stringWithString:@"("];
 	
 	for (i = 0; i < count; ++i)
@@ -1923,37 +1859,37 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 }
 
 
-- (jsval) oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
 	OOJS_PROFILE_ENTER
 	
 	size_t					length = [self length];
 	unichar					*buffer = NULL;
-	JSString				*string = NULL;
+	ooscript::String string = NULL;
 	
 	if (length == 0)
 	{
-		jsval result = OOJSRVALV(ooscript::emptyStringValue(OOJSFCX(context)));
+		ooscript::Value result = ooscript::emptyStringValue((context));
 		return result;
 	}
 	else
 	{
 		buffer = static_cast<unichar*>(malloc(length * sizeof *buffer));
-		if (buffer == NULL) return JSVAL_VOID;
+		if (buffer == NULL) return ooscript::undefinedValue();
 		
 		[self getCharacters:buffer];
 		
-		string = OOJSRSTR(ooscript::newUCStringCopyN(OOJSFCX(context), reinterpret_cast<const ooscript::Char16*>(buffer), length));
+		string = (ooscript::newUCStringCopyN((context), reinterpret_cast<const ooscript::Char16*>(buffer), length));
 		
 		free(buffer);
-		return STRING_TO_JSVAL(string);
+		return ooscript::stringValue(string);
 	}
 	
 	OOJS_PROFILE_EXIT_JSVAL
 }
 
 
-+ (NSString *) concatenationOfStringsFromJavaScriptValues:(jsval *)values count:(size_t)count separator:(NSString *)separator inContext:(JSContext *)context
++ (NSString *) concatenationOfStringsFromJavaScriptValues:(ooscript::Value *)values count:(size_t)count separator:(NSString *)separator inContext:(ooscript::Context)context
 {
 	OOJS_PROFILE_ENTER
 	
@@ -2057,9 +1993,9 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 
 @implementation NSArray (OOJavaScriptConversion)
 
-- (jsval)oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
-	jsval value = JSVAL_VOID;
+	ooscript::Value value = ooscript::undefinedValue();
 	JSNewNSArrayValue(context, self, &value);
 	return value;
 }
@@ -2068,9 +2004,9 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 
 @implementation OONativeVector (OOJavaScriptConversion)
 
-- (jsval)oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
-	jsval value = JSVAL_VOID;
+	ooscript::Value value = ooscript::undefinedValue();
 	VectorToJSValue(context, v, &value);
 	return value;
 }
@@ -2080,9 +2016,9 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 
 @implementation NSDictionary (OOJavaScriptConversion)
 
-- (jsval)oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
-	jsval value = JSVAL_VOID;
+	ooscript::Value value = ooscript::undefinedValue();
 	JSNewNSDictionaryValue(context, self, &value);
 	return value;
 }
@@ -2092,11 +2028,11 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 
 @implementation NSNumber (OOJavaScriptConversion)
 
-- (jsval)oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
 	OOJS_PROFILE_ENTER
 	
-	jsval					result;
+	ooscript::Value					result;
 	BOOL					isFloat = NO;
 	long long				longLongValue;
 	
@@ -2104,20 +2040,20 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 	if (!isFloat)
 	{
 		longLongValue = [self longLongValue];
-		if (longLongValue < (long long)JSVAL_INT_MIN || (long long)JSVAL_INT_MAX < longLongValue)
+		if (longLongValue < (long long)INT32_MIN || (long long)INT32_MAX < longLongValue)
 		{
-			// values outside JSVAL_INT range are returned as doubles.
+			// values outside int32 range are returned as doubles.
 			isFloat = YES;
 		}
 	}
 	
 	if (isFloat)
 	{
-		if (!ooscript::newNumberValue(OOJSFCX(context), [self doubleValue], OOJSFVALP(&result))) result = JSVAL_VOID;
+		if (!ooscript::newNumberValue((context), [self doubleValue], (&result))) result = ooscript::undefinedValue();
 	}
 	else
 	{
-		result = INT_TO_JSVAL((int32_t)longLongValue);
+		result = ooscript::int32Value((int32_t)longLongValue);
 	}
 	
 	return result;
@@ -2136,20 +2072,20 @@ NSString *OOJSDescribeValue(JSContext *context, jsval value, BOOL abbreviateObje
 
 @implementation NSNull (OOJavaScriptConversion)
 
-- (jsval)oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
-	return JSVAL_NULL;
+	return ooscript::nullValue();
 }
 
 @end
 
 
-JSBool OOJSUnconstructableConstruct(JSContext *context, uintN /*argc*/, jsval *vp)
+bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	ooscript::Function function = ooscript::valueToFunction(OOJSFCX(context), OOJSFVAL(vp[0]));	// vp[0] is the callee slot (ooscript::CallArgs::callee()'s own layout)
-	NSString *name = OOStringFromJSString(context, OOJSRSTR(ooscript::getFunctionId(function)));
+	ooscript::Function function = ooscript::valueToFunction((context), oojsArgs.callee());
+	NSString *name = OOStringFromJSString(context, (ooscript::getFunctionId(function)));
 	
 	OOJSReportError(context, @"%@ cannot be used as a constructor.", name);
 	return NO;
@@ -2158,29 +2094,29 @@ JSBool OOJSUnconstructableConstruct(JSContext *context, uintN /*argc*/, jsval *v
 }
 
 
-void OOJSObjectWrapperFinalize(JSContext *context, JSObject *thisObj)
+void OOJSObjectWrapperFinalize(ooscript::Context context, ooscript::Object thisObj)
 {
 	OOJS_PROFILE_ENTER
 	
-	id object = (id)ooscript::getPrivate(OOJSFCX(context), OOJSFOBJ(thisObj));
+	id object = (id)ooscript::getPrivate((context), (thisObj));
 	if (object != nil)
 	{
 		[[object weakRefUnderlyingObject] oo_clearJSSelf:thisObj];
 		[object release];
-		ooscript::setPrivate(OOJSFCX(context), OOJSFOBJ(thisObj), nil);
+		ooscript::setPrivate((context), (thisObj), nil);
 	}
 	
 	OOJS_PROFILE_EXIT_VOID
 }
 
 
-JSBool OOJSObjectWrapperToString(JSContext *context, uintN /*argc*/, jsval *vp)
+bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
 	id						object = nil;
 	NSString				*description = nil;
-	JSClass					*jsClass = NULL;
+	ooscript::ClassDef					*jsClass = NULL;
 	
 	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (object != nil)
@@ -2209,12 +2145,12 @@ BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 	OOJS_PROFILE_ENTER
 	
 	JSFunctionPredicateParameter	*param = static_cast<JSFunctionPredicateParameter*>(parameter);
-	jsval							args[1];
-	jsval							rval = JSVAL_VOID;
-	JSBool							result = NO;
+	ooscript::Value							args[1];
+	ooscript::Value							rval = ooscript::undefinedValue();
+	bool							result = NO;
 	
 	NSCParameterAssert(entity != nil && param != NULL);
-	NSCParameterAssert(param->context != NULL && ooscript::isInRequest(OOJSFCX(param->context)));
+	NSCParameterAssert(param->context != NULL && ooscript::isInRequest((param->context)));
 	NSCParameterAssert(OOJSValueIsFunction(param->context, param->function));
 	
 	if (EXPECT_NOT(param->errorFlag))  return NO;
@@ -2223,18 +2159,18 @@ BOOL JSFunctionPredicate(Entity *entity, void *parameter)
 	
 	OOJSStartTimeLimiter();
 	OOJSResumeTimeLimiter();
-	BOOL success = ooscript::callFunctionValue(OOJSFCX(param->context), OOJSFOBJ(param->jsThis), OOJSFVAL(param->function), 1, OOJSFVALP(args), OOJSFVALP(&rval));
+	BOOL success = ooscript::callFunctionValue((param->context), (param->jsThis), (param->function), 1, (args), (&rval));
 	OOJSPauseTimeLimiter();
 	OOJSStopTimeLimiter();
 	
 	if (success)
 	{
 		bool boolResult = false;
-		if (!ooscript::valueToBoolean(OOJSFCX(param->context), OOJSFVAL(rval), &boolResult))  boolResult = false;
-		result = static_cast<JSBool>(static_cast<unsigned char>(boolResult));
-		if (ooscript::isExceptionPending(OOJSFCX(param->context)))
+		if (!ooscript::valueToBoolean((param->context), (rval), &boolResult))  boolResult = false;
+		result = static_cast<bool>(static_cast<unsigned char>(boolResult));
+		if (ooscript::isExceptionPending((param->context)))
 		{
-			ooscript::reportPendingException(OOJSFCX(param->context));
+			ooscript::reportPendingException((param->context));
 			param->errorFlag = YES;
 		}
 	}
@@ -2302,7 +2238,7 @@ namespace {
 static NSMapTable *sRegisteredSubClasses;
 } // namespace
 
-void OOJSRegisterSubclass(JSClass *subclass, JSClass *superclass)
+void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *superclass)
 {
 	NSCParameterAssert(subclass != NULL && superclass != NULL);
 	
@@ -2326,7 +2262,7 @@ static void UnregisterSubclasses(void)
 } // namespace
 
 
-BOOL OOJSIsSubclass(JSClass *putativeSubclass, JSClass *superclass)
+BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *superclass)
 {
 	NSCParameterAssert(putativeSubclass != NULL && superclass != NULL);
 	NSCAssert(sRegisteredSubClasses != NULL, @"OOJSIsSubclass() called before any subclasses registered (disallowed for hot path efficiency).");
@@ -2335,7 +2271,7 @@ BOOL OOJSIsSubclass(JSClass *putativeSubclass, JSClass *superclass)
 	{
 		if (putativeSubclass == superclass)  return YES;
 		
-		putativeSubclass = static_cast<JSClass*>(NSMapGet(sRegisteredSubClasses, putativeSubclass));
+		putativeSubclass = static_cast<ooscript::ClassDef*>(NSMapGet(sRegisteredSubClasses, putativeSubclass));
 	}
 	while (putativeSubclass != NULL);
 	
@@ -2343,7 +2279,7 @@ BOOL OOJSIsSubclass(JSClass *putativeSubclass, JSClass *superclass)
 }
 
 
-BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *requiredJSClass,
+BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object object, ooscript::ClassDef *requiredJSClass,
 #ifndef NDEBUG
 	Class requiredObjCClass, const char *name,
 #endif
@@ -2369,16 +2305,16 @@ BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *
 		Objective-C class test, and I don't think that's any faster.
 		TODO: profile.
 	*/
-	JSClass *actualClass = OOJSGetClass(context, object);
+	ooscript::ClassDef *actualClass = OOJSGetClass(context, object);
 	if (EXPECT_NOT(!OOJSIsSubclass(actualClass, requiredJSClass)))
 	{
-		OOJSReportError(context, @"Native method expected %s, got %@.", requiredJSClass->name, OOStringFromJSValue(context, OBJECT_TO_JSVAL(object)));
+		OOJSReportError(context, @"Native method expected %s, got %@.", requiredJSClass->name, OOStringFromJSValue(context, ooscript::objectValue(object)));
 		return NO;
 	}
-	NSCAssert(actualClass->flags & JSCLASS_HAS_PRIVATE, @"Native object accessor requires JS class with private storage.");
+	NSCAssert(static_cast<std::uint32_t>(actualClass->flags) & static_cast<std::uint32_t>(ooscript::ClassFlag::HasPrivate), @"Native object accessor requires JS class with private storage.");
 	
 	// Get the underlying object.
-	*outObject = [(id)ooscript::getPrivate(OOJSFCX(context), OOJSFOBJ(object)) weakRefUnderlyingObject];
+	*outObject = [(id)ooscript::getPrivate((context), (object)) weakRefUnderlyingObject];
 	
 #ifndef NDEBUG
 	// Double-check that the underlying object is of the expected ObjC class.
@@ -2395,33 +2331,33 @@ BOOL OOJSObjectGetterImplPRIVATE(JSContext *context, JSObject *object, JSClass *
 }
 
 
-NSDictionary *OOJSDictionaryFromJSValue(JSContext *context, jsval value)
+NSDictionary *OOJSDictionaryFromJSValue(ooscript::Context context, ooscript::Value value)
 {
 	OOJS_PROFILE_ENTER
 	
 	ooscript::Object object = nullptr;
-	if (EXPECT_NOT(!ooscript::valueToObject(OOJSFCX(context), OOJSFVAL(value), &object) || object == nullptr))
+	if (EXPECT_NOT(!ooscript::valueToObject((context), (value), &object) || object == nullptr))
 	{
 		return nil;
 	}
-	return OOJSDictionaryFromJSObject(context, OOJSROBJ(object));
+	return OOJSDictionaryFromJSObject(context, (object));
 	
 	OOJS_PROFILE_EXIT
 }
 
 
-NSDictionary *OOJSDictionaryFromJSObject(JSContext *context, JSObject *object)
+NSDictionary *OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object)
 {
 	OOJS_PROFILE_ENTER
 	
 	ooscript::IdArray			*ids = NULL;
 	std::size_t					i;
 	NSMutableDictionary			*result = nil;
-	jsval						value = JSVAL_VOID;
+	ooscript::Value						value = ooscript::undefinedValue();
 	id							objKey = nil;
 	id							objValue = nil;
 	
-	ids = ooscript::enumerate(OOJSFCX(context), OOJSFOBJ(object));
+	ids = ooscript::enumerate((context), (object));
 	if (EXPECT_NOT(ids == NULL))
 	{
 		return nil;
@@ -2430,30 +2366,30 @@ NSDictionary *OOJSDictionaryFromJSObject(JSContext *context, JSObject *object)
 	result = [NSMutableDictionary dictionaryWithCapacity:ids->length];
 	for (i = 0; i != ids->length; ++i)
 	{
-		jsid thisID = OOJSRJSID(ids->ids[i]);
+		ooscript::PropertyId thisID = (ids->ids[i]);
 		
-		if (JSID_IS_STRING(thisID))
+		if (ooscript::isStringId(thisID))
 		{
-			objKey = OOStringFromJSString(context, JSID_TO_STRING(thisID));
+			objKey = OOStringFromJSString(context, ooscript::idToString(thisID));
 		}
-		else if (JSID_IS_INT(thisID))
+		else if (ooscript::isInt32Id(thisID))
 		{
 			/* this causes problems with native functions which expect string keys
 			 * e.g. in mission.runScreen with the 'choices' parameter
 			 * should this instead be making the objKey a string?
 			 * is there anything that relies on the current behaviour?
 			 * - CIM 15/2/13 */
-			objKey = [NSNumber numberWithInt:JSID_TO_INT(thisID)];
+			objKey = [NSNumber numberWithInt:ooscript::idToInt32(thisID)];
 		}
 		else
 		{
 			objKey = nil;
 		}
 		
-		value = JSVAL_VOID;
-		if (objKey != nil && !ooscript::lookupPropertyById(OOJSFCX(context), OOJSFOBJ(object), OOJSFJSID(thisID), OOJSFVALP(&value)))  value = JSVAL_VOID;
+		value = ooscript::undefinedValue();
+		if (objKey != nil && !ooscript::lookupPropertyById((context), (object), (thisID), (&value)))  value = ooscript::undefinedValue();
 		
-		if (objKey != nil && !JSVAL_IS_VOID(value))
+		if (objKey != nil && !ooscript::isUndefined(value))
 		{
 			objValue = OOJSNativeObjectFromJSValue(context, value);
 			if (objValue != nil)
@@ -2463,14 +2399,14 @@ NSDictionary *OOJSDictionaryFromJSObject(JSContext *context, JSObject *object)
 		}
 	}
 	
-	ooscript::destroyIdArray(OOJSFCX(context), ids);
+	ooscript::destroyIdArray((context), ids);
 	return result;
 	
 	OOJS_PROFILE_EXIT
 }
 
 
-NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval tableValue)
+NSDictionary *OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Value tableValue)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -2478,16 +2414,16 @@ NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval tableValue
 	ooscript::IdArray			*ids;
 	std::size_t					i;
 	NSMutableDictionary			*result = nil;
-	jsval						value = JSVAL_VOID;
+	ooscript::Value						value = ooscript::undefinedValue();
 	id							objKey = nil;
 	id							objValue = nil;
 	
-	if (EXPECT_NOT(JSVAL_IS_NULL(tableValue) || !ooscript::valueToObject(OOJSFCX(context), OOJSFVAL(tableValue), &tableObject)))
+	if (EXPECT_NOT(ooscript::isNull(tableValue) || !ooscript::valueToObject((context), (tableValue), &tableObject)))
 	{
 		return nil;
 	}
 	
-	ids = ooscript::enumerate(OOJSFCX(context), tableObject);
+	ids = ooscript::enumerate((context), tableObject);
 	if (EXPECT_NOT(ids == NULL))
 	{
 		return nil;
@@ -2496,21 +2432,21 @@ NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval tableValue
 	result = [NSMutableDictionary dictionaryWithCapacity:ids->length];
 	for (i = 0; i != ids->length; ++i)
 	{
-		jsid thisID = OOJSRJSID(ids->ids[i]);
+		ooscript::PropertyId thisID = (ids->ids[i]);
 		
-		if (JSID_IS_STRING(thisID))
+		if (ooscript::isStringId(thisID))
 		{
-			objKey = OOStringFromJSString(context, JSID_TO_STRING(thisID));
+			objKey = OOStringFromJSString(context, ooscript::idToString(thisID));
 		}
 		else
 		{
 			objKey = nil;
 		}
 		
-		value = JSVAL_VOID;
-		if (objKey != nil && !ooscript::lookupPropertyById(OOJSFCX(context), tableObject, OOJSFJSID(thisID), OOJSFVALP(&value)))  value = JSVAL_VOID;
+		value = ooscript::undefinedValue();
+		if (objKey != nil && !ooscript::lookupPropertyById((context), tableObject, (thisID), (&value)))  value = ooscript::undefinedValue();
 		
-		if (objKey != nil && !JSVAL_IS_VOID(value))
+		if (objKey != nil && !ooscript::isUndefined(value))
 		{
 			objValue = OOStringFromJSValueEvenIfNull(context, value);
 			
@@ -2521,7 +2457,7 @@ NSDictionary *OOJSDictionaryFromStringTable(JSContext *context, jsval tableValue
 		}
 	}
 	
-	ooscript::destroyIdArray(OOJSFCX(context), ids);
+	ooscript::destroyIdArray((context), ids);
 	return result;
 	
 	OOJS_PROFILE_EXIT
@@ -2533,31 +2469,31 @@ static NSMutableDictionary *sObjectConverters;
 } // namespace
 
 
-id OOJSNativeObjectFromJSValue(JSContext *context, jsval value)
+id OOJSNativeObjectFromJSValue(ooscript::Context context, ooscript::Value value)
 {
 	OOJS_PROFILE_ENTER
 	
-	if (JSVAL_IS_NULL(value) || JSVAL_IS_VOID(value))  return nil;
+	if (ooscript::isNull(value) || ooscript::isUndefined(value))  return nil;
 	
-	if (JSVAL_IS_INT(value))
+	if (ooscript::isInt32(value))
 	{
-		return [NSNumber numberWithInt:JSVAL_TO_INT(value)];
+		return [NSNumber numberWithInt:ooscript::toInt32(value)];
 	}
-	if (JSVAL_IS_DOUBLE(value))
+	if (ooscript::isDouble(value))
 	{
-		return [NSNumber numberWithDouble:JSVAL_TO_DOUBLE(value)];
+		return [NSNumber numberWithDouble:ooscript::toDouble(value)];
 	}
-	if (JSVAL_IS_BOOLEAN(value))
+	if (ooscript::isBoolean(value))
 	{
-		return [NSNumber numberWithBool:JSVAL_TO_BOOLEAN(value)];
+		return [NSNumber numberWithBool:ooscript::toBoolean(value)];
 	}
-	if (JSVAL_IS_STRING(value))
+	if (ooscript::isString(value))
 	{
 		return OOStringFromJSValue(context, value);
 	}
-	if (JSVAL_IS_OBJECT(value))
+	if (ooscript::isObjectOrNull(value))
 	{
-		return OOJSNativeObjectFromJSObject(context, JSVAL_TO_OBJECT(value));
+		return OOJSNativeObjectFromJSObject(context, ooscript::toObject(value));
 	}
 	return nil;
 	
@@ -2565,14 +2501,14 @@ id OOJSNativeObjectFromJSValue(JSContext *context, jsval value)
 }
 
 
-id OOJSNativeObjectFromJSObject(JSContext *context, JSObject *tableObject)
+id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object tableObject)
 {
 	OOJS_PROFILE_ENTER
 	
 	NSValue					*wrappedClass = nil;
 	NSValue					*wrappedConverter = nil;
 	OOJSClassConverterCallback converter = NULL;
-	JSClass					*tableClass = NULL;
+	ooscript::ClassDef					*tableClass = NULL;
 	
 	if (tableObject == NULL)  return nil;
 	
@@ -2590,7 +2526,7 @@ id OOJSNativeObjectFromJSObject(JSContext *context, JSObject *tableObject)
 }
 
 
-id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class requiredClass)
+id OOJSNativeObjectOfClassFromJSValue(ooscript::Context context, ooscript::Value value, Class requiredClass)
 {
 	id result = OOJSNativeObjectFromJSValue(context, value);
 	if (![result isKindOfClass:requiredClass])  result = nil;
@@ -2598,7 +2534,7 @@ id OOJSNativeObjectOfClassFromJSValue(JSContext *context, jsval value, Class req
 }
 
 
-id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Class requiredClass)
+id OOJSNativeObjectOfClassFromJSObject(ooscript::Context context, ooscript::Object object, Class requiredClass)
 {
 	id result = OOJSNativeObjectFromJSObject(context, object);
 	if (![result isKindOfClass:requiredClass])  result = nil;
@@ -2606,7 +2542,7 @@ id OOJSNativeObjectOfClassFromJSObject(JSContext *context, JSObject *object, Cla
 }
 
 
-id OOJSBasicPrivateObjectConverter(JSContext *context, JSObject *object)
+id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object object)
 {
 	id						result;
 	
@@ -2614,12 +2550,12 @@ id OOJSBasicPrivateObjectConverter(JSContext *context, JSObject *object)
 		weakRefUnderlyingObject returns the object itself. For nil, of course,
 		it returns nil.
 	*/
-	result = (id)ooscript::getPrivate(OOJSFCX(context), OOJSFOBJ(object));
+	result = (id)ooscript::getPrivate((context), (object));
 	return [result weakRefUnderlyingObject];
 }
 
 
-void OOJSRegisterObjectConverter(JSClass *theClass, OOJSClassConverterCallback converter)
+void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJSClassConverterCallback converter)
 {
 	NSValue					*wrappedClass = nil;
 	NSValue					*wrappedConverter = nil;
@@ -2649,17 +2585,17 @@ static void UnregisterObjectConverters(void)
 
 
 namespace {
-static id JSArrayConverter(JSContext *context, JSObject *array)
+static id JSArrayConverter(ooscript::Context context, ooscript::Object array)
 {
-	jsuint						i, count;
+	uint32_t						i, count;
 	id							*values = NULL;
-	jsval						value = JSVAL_VOID;
+	ooscript::Value						value = ooscript::undefinedValue();
 	id							object = nil;
 	NSArray						*result = nil;
 	
 	// Convert a JS array to an NSArray by calling OOJSNativeObjectFromJSValue() on all its elements.
-	if (!ooscript::isArrayObject(OOJSFCX(context), OOJSFOBJ(array))) return nil;
-	if (!ooscript::getArrayLength(OOJSFCX(context), OOJSFOBJ(array), &count)) return nil;
+	if (!ooscript::isArrayObject((context), (array))) return nil;
+	if (!ooscript::getArrayLength((context), (array), &count)) return nil;
 	
 	if (count == 0)  return [NSArray array];
 	
@@ -2668,8 +2604,8 @@ static id JSArrayConverter(JSContext *context, JSObject *array)
 	
 	for (i = 0; i != count; ++i)
 	{
-		value = JSVAL_VOID;
-		if (!ooscript::getElement(OOJSFCX(context), OOJSFOBJ(array), i, OOJSFVALP(&value)))  value = JSVAL_VOID;
+		value = ooscript::undefinedValue();
+		if (!ooscript::getElement((context), (array), i, (&value)))  value = ooscript::undefinedValue();
 		
 		object = OOJSNativeObjectFromJSValue(context, value);
 		if (object == nil)  object = [NSNull null];
@@ -2684,18 +2620,18 @@ static id JSArrayConverter(JSContext *context, JSObject *array)
 
 
 namespace {
-static id JSStringConverter(JSContext *context, JSObject *object)
+static id JSStringConverter(ooscript::Context context, ooscript::Object object)
 {
-	return OOStringFromJSValue(context, OBJECT_TO_JSVAL(object));
+	return OOStringFromJSValue(context, ooscript::objectValue(object));
 }
 } // namespace
 
 
 namespace {
-static id JSNumberConverter(JSContext *context, JSObject *object)
+static id JSNumberConverter(ooscript::Context context, ooscript::Object object)
 {
 	double value;
-	if (ooscript::valueToNumber(OOJSFCX(context), OOJSFVAL(OBJECT_TO_JSVAL(object)), &value))
+	if (ooscript::valueToNumber((context), (ooscript::objectValue(object)), &value))
 	{
 		return [NSNumber numberWithDouble:value];
 	}
@@ -2705,7 +2641,7 @@ static id JSNumberConverter(JSContext *context, JSObject *object)
 
 
 namespace {
-static id JSBooleanConverter(JSContext *context, JSObject *object)
+static id JSBooleanConverter(ooscript::Context context, ooscript::Object object)
 {
 	/*	Fun With JavaScript: Boolean(false) is a truthy value, since it's a
 		non-null object. valueToBoolean() therefore reports true.
@@ -2713,7 +2649,7 @@ static id JSBooleanConverter(JSContext *context, JSObject *object)
 		works.
 	*/
 	double value;
-	if (ooscript::valueToNumber(OOJSFCX(context), OOJSFVAL(OBJECT_TO_JSVAL(object)), &value))
+	if (ooscript::valueToNumber((context), (ooscript::objectValue(object)), &value))
 	{
 		return [NSNumber numberWithBool:(value != 0)];
 	}

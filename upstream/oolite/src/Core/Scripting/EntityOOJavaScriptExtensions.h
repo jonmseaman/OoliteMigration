@@ -36,7 +36,7 @@ MA 02110-1301, USA.
 - (NSString *) oo_jsClassName;
 
 // Internal:
-- (void) getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype;
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (void) deleteJSSelf;
 
 @end
@@ -54,6 +54,6 @@ MA 02110-1301, USA.
 
 @interface PlayerEntity (OOJavaScriptExtensions)
 
-- (void) setJSSelf:(JSObject *)val context:(JSContext *)context;
+- (void) setJSSelf:(ooscript::Object)val context:(ooscript::Context)context;
 
 @end

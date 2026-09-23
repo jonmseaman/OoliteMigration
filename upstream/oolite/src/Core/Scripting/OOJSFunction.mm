@@ -30,7 +30,7 @@ MA 02110-1301, USA.
 
 @implementation OOJSFunction
 
-- (id) initWithFunction:(JSFunction *)function context:(JSContext *)context
+- (id) initWithFunction:(ooscript::Function)function context:(ooscript::Context)context
 {
 	NSParameterAssert(context != NULL);
 	
@@ -43,8 +43,8 @@ MA 02110-1301, USA.
 	if ((self = [super init]))
 	{
 		_function = function;
-		OOJSAddGCObjectRoot(context, (JSObject **)&_function, "OOJSFunction._function");
-		_name = [OOStringFromJSString(context, JS_GetFunctionId(function)) retain];
+		OOJSAddGCObjectRoot(context, (ooscript::Object *)&_function, "OOJSFunction._function");
+		_name = [OOStringFromJSString(context, ooscript::getFunctionId(function)) retain];
 		
 		[[NSNotificationCenter defaultCenter] addObserver:self
 												 selector:@selector(deleteJSValue)
@@ -57,19 +57,19 @@ MA 02110-1301, USA.
 
 
 - (id) initWithName:(NSString *)name
-			  scope:(JSObject *)scope
+			  scope:(ooscript::Object)scope
 			   code:(NSString *)code
 	  argumentCount:(NSUInteger)argCount
 	  argumentNames:(const char **)argNames
 		   fileName:(NSString *)fileName
 		 lineNumber:(NSUInteger)lineNumber
-			context:(JSContext *)context
+			context:(ooscript::Context)context
 {
 	BOOL						OK = YES;
 	BOOL						releaseContext = NO;
-	jschar						*buffer = NULL;
+	ooscript::Char16						*buffer = NULL;
 	size_t						length = 0;
-	JSFunction					*function;
+	ooscript::Function function;
 	
 	if (context == NULL)
 	{
@@ -82,11 +82,11 @@ MA 02110-1301, USA.
 	
 	if (OK)
 	{
-		// jschar and unichar are both defined to be 16-bit elements.
-		assert(sizeof(jschar) == sizeof(unichar));
+		// ooscript::Char16 and unichar are both defined to be 16-bit elements.
+		assert(sizeof(ooscript::Char16) == sizeof(unichar));
 		
 		length = [code length];
-		buffer = (jschar *)malloc(sizeof(jschar) * length);
+		buffer = (ooscript::Char16 *)malloc(sizeof(ooscript::Char16) * length);
 		if (buffer == NULL)  OK = NO;
 	}
 	
@@ -96,7 +96,7 @@ MA 02110-1301, USA.
 		
 		[code getCharacters:(unichar *)buffer];
 		
-		function = JS_CompileUCFunction(context, scope, [name UTF8String], (uint32_t)argCount, argNames, buffer, length, [fileName UTF8String], (uint32_t)lineNumber);
+		function = ooscript::compileUCFunction(context, scope, [name UTF8String], (uint32_t)argCount, argNames, buffer, length, [fileName UTF8String], (uint32_t)lineNumber);
 		if (function == NULL)  OK = NO;
 		
 		free(buffer);
@@ -121,8 +121,8 @@ MA 02110-1301, USA.
 {
 	if (_function != NULL)
 	{
-		JSContext *context = OOJSAcquireContext();
-		JS_RemoveObjectRoot(context, (JSObject **)&_function);
+		ooscript::Context context = OOJSAcquireContext();
+		ooscript::removeObjectRoot(context, (ooscript::Object *)&_function);
 		OOJSRelinquishContext(context);
 		
 		_function = NULL;
@@ -156,35 +156,35 @@ MA 02110-1301, USA.
 }
 
 
-- (JSFunction *) function
+- (ooscript::Function) function
 {
 	return _function;
 }
 
 
-- (jsval) functionValue
+- (ooscript::Value) functionValue
 {
 	if (EXPECT(_function != NULL))
 	{
-		return OBJECT_TO_JSVAL(JS_GetFunctionObject(_function));
+		return ooscript::objectValue(ooscript::getFunctionObject(_function));
 	}
 	else
 	{
-		return JSVAL_NULL;
+		return ooscript::nullValue();
 	}
 
 }
 
 
-- (BOOL) evaluateWithContext:(JSContext *)context
-					   scope:(JSObject *)jsThis
-						argc:(uintN)argc
-						argv:(jsval *)argv
-					  result:(jsval *)result
+- (BOOL) evaluateWithContext:(ooscript::Context)context
+					   scope:(ooscript::Object)jsThis
+						argc:(unsigned)argc
+						argv:(ooscript::Value *)argv
+					  result:(ooscript::Value *)result
 {
 	[OOJSScript pushScript:nil];
 	OOJSStartTimeLimiter();
-	BOOL OK = JS_CallFunction(context, jsThis, _function, argc, argv, result);
+	BOOL OK = ooscript::callFunction(context, jsThis, _function, argc, argv, result);
 	OOJSStopTimeLimiter();
 	[OOJSScript popScript:nil];
 	
@@ -192,14 +192,14 @@ MA 02110-1301, USA.
 }
 
 // Semi-raw evaluation shared by convenience methods below.
-- (BOOL) evaluateWithContext:(JSContext *)context
+- (BOOL) evaluateWithContext:(ooscript::Context)context
 					   scope:(id)jsThis
 				   arguments:(NSArray *)arguments
-					  result:(jsval *)result
+					  result:(ooscript::Value *)result
 {
 	NSUInteger i, argc = [arguments count];
 	assert(argc < UINT32_MAX);
-	jsval argv[argc];
+	ooscript::Value argv[argc];
 	
 	for (i = 0; i < argc; i++)
 	{
@@ -207,9 +207,9 @@ MA 02110-1301, USA.
 		OOJSAddGCValueRoot(context, &argv[i], "OOJSFunction argv");
 	}
 	
-	JSObject *scopeObj = NULL;
+	ooscript::Object scopeObj = NULL;
 	BOOL OK = YES;
-	if (jsThis != nil)  OK = JS_ValueToObject(context, [jsThis oo_jsValueInContext:context], &scopeObj);
+	if (jsThis != nil)  OK = ooscript::valueToObject(context, [jsThis oo_jsValueInContext:context], &scopeObj);
 	if (OK)  OK = [self evaluateWithContext:context
 									  scope:scopeObj
 									   argc:(uint32_t)argc
@@ -218,18 +218,18 @@ MA 02110-1301, USA.
 	
 	for (i = 0; i < argc; i++)
 	{
-		JS_RemoveValueRoot(context, &argv[i]);
+		ooscript::removeValueRoot(context, &argv[i]);
 	}
 	
 	return OK;
 }
 
 
-- (id) evaluateWithContext:(JSContext *)context
+- (id) evaluateWithContext:(ooscript::Context)context
 					 scope:(id)jsThis
 				 arguments:(NSArray *)arguments
 {
-	jsval result;
+	ooscript::Value result;
 	BOOL OK = [self evaluateWithContext:context
 								  scope:jsThis
 							  arguments:arguments
@@ -240,17 +240,17 @@ MA 02110-1301, USA.
 }
 			   
 
-- (BOOL) evaluatePredicateWithContext:(JSContext *)context
+- (BOOL) evaluatePredicateWithContext:(ooscript::Context)context
 								scope:(id)jsThis
 							arguments:(NSArray *)arguments
 {
-	jsval result;
+	ooscript::Value result;
 	BOOL OK = [self evaluateWithContext:context
 								  scope:jsThis
 							  arguments:arguments
 								 result:&result];
-	JSBool retval = NO;
-	if (OK)  OK = JS_ValueToBoolean(context, result, &retval);
+	bool retval = NO;
+	if (OK)  OK = ooscript::valueToBoolean(context, result, &retval);
 	return OK && retval;
 }
 

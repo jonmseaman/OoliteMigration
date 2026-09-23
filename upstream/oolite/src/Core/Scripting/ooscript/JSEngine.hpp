@@ -275,7 +275,8 @@ Object getParent(Context cx, Object obj);                                       
 Object getGlobalObject(Context cx);                                                    // engine: GetGlobalObject
 Object getGlobalForObject(Context cx, Object obj);                                     // engine: GetGlobalForObject
 
-const ClassDef* getClass(Context cx, Object obj);        // engine: GetClass; nullptr if the class is not ours
+const ClassDef* getClass(Context cx, Object obj);        // engine: GetClass; the engine's own classes get a stable,
+                                                         // hook-less descriptor carrying their name
 bool   instanceOf(Context cx, Object obj, ClassDef* def, Value* argv);                 // engine: InstanceOf
 bool   setPrivate(Context cx, Object obj, void* data);                                 // engine: SetPrivate
 void*  getPrivate(Context cx, Object obj);                                             // engine: GetPrivate
@@ -546,6 +547,102 @@ using OperationCallback = bool (*)(Context cx);
 OperationCallback setOperationCallback(Context cx, OperationCallback cb);              // engine: SetOperationCallback; returns the old one
 void triggerOperationCallback(Context cx);                                             // engine: TriggerOperationCallback
 void triggerAllOperationCallbacks(Runtime rt);                                         // engine: TriggerAllOperationCallbacks
+
+// MARK: Completing the retarget (bead oo-1gc.3) -------------------------------------------------
+//
+// What the last game files needed that the histogram-sized first cut left out. Same rule as the
+// rest of the header: each replaces one engine call and keeps its calling convention.
+
+// Value and id identity is the engine's own: jsval/jsid compared bitwise, and both backends keep
+// one canonical bit pattern per value (int32 stays int32, one pointer per object).
+inline bool operator==(Value a, Value b)           { return a.bits == b.bits; }
+inline bool operator!=(Value a, Value b)           { return a.bits != b.bits; }
+inline bool operator==(PropertyId a, PropertyId b) { return a.bits == b.bits; }
+inline bool operator!=(PropertyId a, PropertyId b) { return a.bits != b.bits; }
+
+// A request suspended around long native work (OOJS_BEGIN_FULL_NATIVE); the token restores it.
+unsigned suspendRequest(Context cx);                                                   // engine: SuspendRequest
+void     resumeRequest(Context cx, unsigned token);                                    // engine: ResumeRequest
+
+bool compareStrings(Context cx, String a, String b, std::int32_t* result);             // engine: CompareStrings
+bool freezeObject(Context cx, Object obj);                                             // engine: FreezeObject
+Function compileUCFunction(Context cx, Object scope, const char* name,                 // engine: CompileUCFunction
+                           unsigned nargs, const char** argnames,
+                           const Char16* chars, std::size_t length,
+                           const char* filename, unsigned lineno);
+bool callFunction(Context cx, Object thisObj, Function fn,                             // engine: CallFunction
+                  unsigned argc, Value* argv, Value* rval);
+bool bufferIsCompilableUnit(Context cx, Object obj, const char* bytes, std::size_t length); // engine: BufferIsCompilableUnit
+
+// newUCRegExpObjectNoStatics `flags`: the engine's regexp flag bits, spelled here.
+constexpr std::uint32_t RegExpFoldCase  = 0x01;   // JSREG_FOLD: /i
+constexpr std::uint32_t RegExpGlobal    = 0x02;   // JSREG_GLOB: /g
+constexpr std::uint32_t RegExpMultiline = 0x04;   // JSREG_MULTILINE: /m
+constexpr std::uint32_t RegExpSticky    = 0x08;   // JSREG_STICKY: /y
+
+// MARK: Debugging and profiling (debug console, stack dumps, the JS profiler) -------------------
+//
+// Engine-specific by nature (README.md, "Not in the façade"): a backend may answer these with
+// less than SpiderMonkey does (no frames, no variables, no hook) and the game degrades to the
+// diagnostics it can get. Nothing here may be used for anything a golden can observe.
+
+struct StackFrameRep;
+using StackFrame = StackFrameRep*;
+
+// Walk the running script's frames, innermost first: start with *iter == nullptr; returns the next
+// frame (also stored in *iter) or nullptr when there are no more.
+StackFrame frameIterator(Context cx, StackFrame* iter);                                // engine: FrameIterator
+bool        frameIsScript(Context cx, StackFrame fp);                                  // engine: IsScriptFrame
+bool        frameIsConstructor(Context cx, StackFrame fp);                             // engine: IsConstructorFrame
+bool        frameIsDebugger(Context cx, StackFrame fp);                                // engine: IsDebuggerFrame
+Script      frameScript(Context cx, StackFrame fp);                                    // engine: GetFrameScript; null for native frames
+const char* scriptFilename(Context cx, Script script);                                 // engine: GetScriptFilename
+unsigned    frameLineNumber(Context cx, StackFrame fp);                                // engine: PCToLineNumber(GetFrameScript, GetFramePC)
+Function    frameFunction(Context cx, StackFrame fp);                                  // engine: GetFrameFunction
+bool        frameThis(Context cx, StackFrame fp, Value* thisv);                        // engine: GetFrameThis
+Object      frameScopeChain(Context cx, StackFrame fp);                                // engine: GetFrameScopeChain
+
+// The variables visible in a scope object (engine: GetPropertyDescArray / PutPropertyDescArray).
+enum class VariableFlag : unsigned
+{
+	None = 0, Enumerate = 0x01, ReadOnly = 0x02, Permanent = 0x04, Alias = 0x08,
+	Argument = 0x10, Variable = 0x20, Exception = 0x40, Error = 0x80,
+};
+struct Variable
+{
+	PropertyId id;
+	Value      value;
+	unsigned   flags;      // VariableFlag bits
+	Value      alias;      // meaningful with VariableFlag::Alias
+};
+struct VariableList
+{
+	std::size_t length;
+	Variable*   vars;
+	void*       backend;
+};
+bool getScopeVariables(Context cx, Object scope, VariableList* out);                  // false if unsupported
+void destroyScopeVariables(Context cx, VariableList* list);
+
+// The `debugger` statement (engine: SetDebuggerHandler). Execution always continues.
+using DebuggerHandler = void (*)(Context cx, void* closure);
+void setDebuggerHandler(Runtime rt, DebuggerHandler handler, void* closure);
+
+// Function entry/exit, for the JS profiler (engine: SetFunctionCallback, MOZ_TRACE_JSCALLS builds).
+using FunctionCallback = void (*)(Function fn, Script script, Context cx, int entering);
+bool setFunctionCallback(Context cx, FunctionCallback cb);                             // false if unsupported
+
+// Context creation/destruction (engine: SetContextCallback).
+enum class ContextOp : unsigned { New = 0, Destroy = 1 };
+using ContextCallback = bool (*)(Context cx, ContextOp op);
+ContextCallback setContextCallback(Runtime rt, ContextCallback cb);                   // returns the old one
+
+// Debug-console dumps (engine: DumpNamedRoots, DumpHeap; DEBUG engine builds only). `file` is a
+// FILE*. Both return false when the backend cannot produce the dump.
+enum class RootKind : unsigned { Value, GCThing };
+using RootDumper = void (*)(const char* name, void* rp, RootKind kind, void* data);
+bool dumpNamedRoots(Runtime rt, RootDumper dump, void* data);
+bool dumpHeap(Context cx, void* file);
 
 // MARK: Backend identity ------------------------------------------------------------------------
 

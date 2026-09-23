@@ -210,12 +210,12 @@ MA 02110-1301, USA.
 - (NSDictionary *) modifyGood:(NSDictionary *)good withScript:(OOScript *)script atStation:(StationEntity *)station inSystem:(OOSystemID)system localMode:(BOOL)localMode
 {
 	NSDictionary 		*result = nil;
-	JSContext			*context = OOJSAcquireContext();
-	jsval				rval;
-	jsval				args[] = { 
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::Value				rval;
+	ooscript::Value				args[] = { 
 		OOJSValueFromNativeObject(context, good),
 		OOJSValueFromNativeObject(context, station),
-		INT_TO_JSVAL(system) 
+		ooscript::int32Value(system) 
 	};
 	BOOL				OK = YES;
 	NSString			*errorType = nil;
@@ -246,14 +246,14 @@ MA 02110-1301, USA.
 		return good;
 	}
 
-	if (!JSVAL_IS_OBJECT(rval))
+	if (!ooscript::isObjectOrNull(rval))
 	{
 		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",errorType,[good oo_stringForKey:kOOCommodityKey]);
 		OOJSRelinquishContext(context);
 		return good;
 	}
 
-	result = OOJSNativeObjectFromJSObject(context, JSVAL_TO_OBJECT(rval));
+	result = OOJSNativeObjectFromJSObject(context, ooscript::toObject(rval));
 	OOJSRelinquishContext(context);
 	if (![result isKindOfClass:[NSDictionary class]])
 	{

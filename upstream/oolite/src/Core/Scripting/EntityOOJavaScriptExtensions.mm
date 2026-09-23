@@ -51,21 +51,21 @@ MA 02110-1301, USA.
 }
 
 
-- (jsval) oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
-	JSClass					*jsClass = NULL;
-	JSObject				*prototype = NULL;
-	jsval					result = JSVAL_NULL;
+	ooscript::ClassDef					*jsClass = NULL;
+	ooscript::Object prototype = NULL;
+	ooscript::Value					result = ooscript::nullValue();
 	
 	if (_jsSelf == NULL && [self isVisibleToScripts])
 	{
 		// Create JS object
 		[self getJSClass:&jsClass andPrototype:&prototype];
 		
-		_jsSelf = JS_NewObject(context, jsClass, prototype, NULL);
+		_jsSelf = ooscript::newObject(context, jsClass, prototype, NULL);
 		if (_jsSelf != NULL)
 		{
-			if (!JS_SetPrivate(context, _jsSelf, OOConsumeReference([self weakRetain])))  _jsSelf = NULL;
+			if (!ooscript::setPrivate(context, _jsSelf, OOConsumeReference([self weakRetain])))  _jsSelf = NULL;
 		}
 		
 		if (_jsSelf != NULL)
@@ -78,14 +78,14 @@ MA 02110-1301, USA.
 		}
 	}
 	
-	if (_jsSelf != NULL)  result = OBJECT_TO_JSVAL(_jsSelf);
+	if (_jsSelf != NULL)  result = ooscript::objectValue(_jsSelf);
 	
 	return result;
 	// Analyzer: object leaked. [Expected, object is retained by JS object.]
 }
 
 
-- (void) getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
 	*outClass = JSEntityClass();
 	*outPrototype = JSEntityPrototype();
@@ -97,8 +97,8 @@ MA 02110-1301, USA.
 	if (_jsSelf != NULL)
 	{
 		_jsSelf = NULL;
-		JSContext *context = OOJSAcquireContext();
-		JS_RemoveObjectRoot(context, &_jsSelf);
+		ooscript::Context context = OOJSAcquireContext();
+		ooscript::removeObjectRoot(context, &_jsSelf);
 		OOJSRelinquishContext(context);
 		
 		[[NSNotificationCenter defaultCenter] removeObserver:self
@@ -118,7 +118,7 @@ MA 02110-1301, USA.
 }
 
 
-- (void) getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype
+- (void) getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
 	*outClass = JSShipClass();
 	*outPrototype = JSShipPrototype();

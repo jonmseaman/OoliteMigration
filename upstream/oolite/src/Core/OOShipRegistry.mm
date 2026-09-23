@@ -458,18 +458,18 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 					OOJSScript *condScript = [UNIVERSE getConditionScript:conditions];
 					if (condScript != nil) // should always be non-nil, but just in case
 					{
-						JSContext			*context = OOJSAcquireContext();
+						ooscript::Context context = OOJSAcquireContext();
 						BOOL OK;
-						JSBool allow_use;
-						jsval result;
-						jsval args[] = { OOJSValueFromNativeObject(context, shipKey) };
+						bool allow_use;
+						ooscript::Value result;
+						ooscript::Value args[] = { OOJSValueFromNativeObject(context, shipKey) };
 						
 						OK = [condScript callMethod:OOJSID("allowShowLibraryShip")
 										  inContext:context
 									  withArguments:args count:sizeof args / sizeof *args
 											 result:&result];
 
-						if (OK) OK = JS_ValueToBoolean(context, result, &allow_use);
+						if (OK) OK = ooscript::valueToBoolean(context, result, &allow_use);
 			
 						OOJSRelinquishContext(context);
 						if (OK && !allow_use)

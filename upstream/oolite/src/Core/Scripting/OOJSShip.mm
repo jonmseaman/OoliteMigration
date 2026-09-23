@@ -52,127 +52,130 @@ MA 02110-1301, USA.
 #import "OOCharacter.h"
 
 
-static JSObject *sShipPrototype;
+static ooscript::Object sShipPrototype;
 
 
-static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid propID, jsval *value);
-static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid propID, JSBool strict, jsval *value);
+static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, ooscript::Value *value);
+static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool strict, ooscript::Value *value);
 
-static JSBool ShipSetScript(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSetAI(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSwitchAI(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipExitAI(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipReactToAIMessage(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSendAIMessage(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipDeployEscorts(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipDockEscorts(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipHasRole(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipEjectItem(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipEjectSpecificItem(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipDumpCargo(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipAddCargoEntity(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSpawn(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipDealEnergyDamage(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipExplode(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipRemove(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipRunLegacyScriptActions(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipCommsMessage(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipFireECM(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipAbandonShip(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipCanAwardEquipment(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipAwardEquipment(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipAdjustCargo(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipRequestHelpFromGroup(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPatrolReportIn(JSContext *context, uintN argc, jsval *vp);
+static bool ShipSetScript(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSetAI(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSwitchAI(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipExitAI(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipReactToAIMessage(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSendAIMessage(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipDeployEscorts(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipDockEscorts(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipHasRole(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipAddCargoEntity(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipDealEnergyDamage(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipExplode(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipRemove(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipCommsMessage(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipFireECM(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipAbandonShip(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipRequestHelpFromGroup(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPatrolReportIn(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 
-static JSBool ShipRemoveEquipment(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipRestoreSubEntities(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipHasEquipmentProviding(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipEquipmentStatus(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSetEquipmentStatus(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSelectNewMissile(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipFireMissile(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipFindNearestStation(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSetBounty(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSetCargo(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSetMaterials(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSetShaders(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipExitSystem(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipUpdateEscortFormation(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipClearDefenseTargets(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipAddDefenseTarget(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipRemoveDefenseTarget(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipAddCollisionException(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipRemoveCollisionException(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipGetMaterials(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipGetShaders(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipBecomeCascadeExplosion(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipBroadcastCascadeImminent(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipBroadcastDistressMessage(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipOfferToEscort(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipMarkTargetForFines(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipEnterWormhole(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipNotifyGroupOfWormhole(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipThrowSpark(JSContext *context, uintN argc, jsval *vp);
+static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipRestoreSubEntities(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipHasEquipmentProviding(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipEquipmentStatus(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSelectNewMissile(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipFireMissile(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSetBounty(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSetCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSetMaterials(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSetShaders(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipExitSystem(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipUpdateEscortFormation(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipClearDefenseTargets(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipAddDefenseTarget(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipRemoveDefenseTarget(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipAddCollisionException(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipRemoveCollisionException(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipGetMaterials(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipGetShaders(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipBecomeCascadeExplosion(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipBroadcastCascadeImminent(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipBroadcastDistressMessage(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipOfferToEscort(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipMarkTargetForFines(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipEnterWormhole(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipNotifyGroupOfWormhole(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipThrowSpark(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 
-static JSBool ShipPerformAttack(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformCollect(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformEscort(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformFaceDestination(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformFlee(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformFlyToRangeFromDestination(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformHold(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformIdle(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformIntercept(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformLandOnPlanet(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformMining(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformScriptedAI(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformScriptedAttackAI(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformStop(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipPerformTumble(JSContext *context, uintN argc, jsval *vp);
+static bool ShipPerformAttack(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformCollect(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformEscort(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformFaceDestination(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformFlee(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformFlyToRangeFromDestination(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformHold(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformIdle(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformIntercept(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformLandOnPlanet(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformMining(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformScriptedAI(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformScriptedAttackAI(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformStop(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipPerformTumble(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 
-static JSBool ShipRequestDockingInstructions(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipRecallDockingInstructions(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipCheckCourseToDestination(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipGetSafeCourseToDestination(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipCheckScanner(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipThreatAssessment(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipDamageAssessment(JSContext *context, uintN argc, jsval *vp);
+static bool ShipRequestDockingInstructions(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipRecallDockingInstructions(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipCheckCourseToDestination(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipGetSafeCourseToDestination(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipCheckScanner(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipDamageAssessment(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 static double ShipThreatAssessmentWeapon(OOWeaponType wt);
 
-static JSBool ShipSetCargoType(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipSetCrew(JSContext *context, uintN argc, jsval *vp);
+static bool ShipSetCargoType(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 
-static BOOL RemoveOrExplodeShip(JSContext *context, uintN argc, jsval *vp, BOOL explode);
-static JSBool ShipSetMaterialsInternal(JSContext *context, uintN argc, jsval *vp, ShipEntity *thisEnt, BOOL fromShaders);
+static BOOL RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &oojsArgs, BOOL explode);
+static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallArgs &oojsArgs, ShipEntity *thisEnt, BOOL fromShaders);
 
-static JSBool ShipStaticKeysForRole(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipStaticKeys(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipStaticRoles(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipStaticRoleIsInCategory(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipStaticShipDataForKey(JSContext *context, uintN argc, jsval *vp);
-static JSBool ShipStaticSetShipDataForKey(JSContext *context, uintN argc, jsval *vp);
+static bool ShipStaticKeysForRole(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipStaticKeys(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipStaticRoles(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipStaticRoleIsInCategory(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipStaticShipDataForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs);
+static bool ShipStaticSetShipDataForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 
-static JSClass sShipClass =
+static ooscript::ClassDef sShipClass =
 {
 	"Ship",
-	JSCLASS_HAS_PRIVATE,
+	ooscript::ClassFlag::HasPrivate,
 	
-	JS_PropertyStub,		// addProperty
-	JS_PropertyStub,		// delProperty
+	nullptr,		// addProperty
+	nullptr,		// delProperty
 	ShipGetProperty,		// getProperty
 	ShipSetProperty,		// setProperty
-	JS_EnumerateStub,		// enumerate
-	JS_ResolveStub,			// resolve
-	JS_ConvertStub,			// convert
+	nullptr,		// enumerate
+	nullptr,		// newEnumerate
+	nullptr,			// resolve
+	nullptr,			// convert
 	OOJSObjectWrapperFinalize,// finalize
-	JSCLASS_NO_OPTIONAL_MEMBERS
+	nullptr,		// call
+	nullptr,		// construct
+	nullptr,		// backend
 };
 
 
 /* It turns out that the value in SpiderMonkey used to identify these
  * enums is an 8-bit signed int:
- * developer.mozilla.org/en/docs/SpiderMonkey/JSAPI_Reference/JSPropertySpec
+ * (see the engine reference for its property-spec table)
  * which puts a limit of 256 properties on the ship object.  Moved the
  * enum to start at -128, so we can use the full 256 rather than just
  * 128 of them. I don't think any of our other classes are getting
@@ -329,7 +332,7 @@ enum
 };
 
 
-static JSPropertySpec sShipProperties[] =
+static ooscript::PropertySpec sShipProperties[] =
 {
 	// JS name					ID							flags
 	{ "accuracy",				kShip_accuracy,				OOJS_PROP_READWRITE_CB },
@@ -481,7 +484,7 @@ static JSPropertySpec sShipProperties[] =
 	{ 0 }
 };
 
-static JSFunctionSpec sShipMethods[] =
+static ooscript::FunctionSpec sShipMethods[] =
 {
 	// JS name					Function					min args
 	{ "abandonShip",			ShipAbandonShip,			0 },
@@ -568,7 +571,7 @@ static JSFunctionSpec sShipMethods[] =
 	{ 0 }
 };
 
-static JSFunctionSpec sShipStaticMethods[] =
+static ooscript::FunctionSpec sShipStaticMethods[] =
 {
 	// JS name				Function						min args
 	{ "keys",				ShipStaticKeys,					0 },
@@ -584,29 +587,29 @@ static JSFunctionSpec sShipStaticMethods[] =
 DEFINE_JS_OBJECT_GETTER(JSShipGetShipEntity, &sShipClass, sShipPrototype, ShipEntity)
 
 
-void InitOOJSShip(JSContext *context, JSObject *global)
+void InitOOJSShip(ooscript::Context context, ooscript::Object global)
 {
-	sShipPrototype = JS_InitClass(context, global, JSEntityPrototype(), &sShipClass, OOJSUnconstructableConstruct, 0, sShipProperties, sShipMethods, NULL, sShipStaticMethods);
+	sShipPrototype = ooscript::initClass(context, global, JSEntityPrototype(), &sShipClass, OOJSUnconstructableConstruct, 0, sShipProperties, sShipMethods, NULL, sShipStaticMethods);
 	OOJSRegisterObjectConverter(&sShipClass, OOJSBasicPrivateObjectConverter);
 	OOJSRegisterSubclass(&sShipClass, JSEntityClass());
 }
 
 
-JSClass *JSShipClass(void)
+ooscript::ClassDef *JSShipClass(void)
 {
 	return &sShipClass;
 }
 
 
-JSObject *JSShipPrototype(void)
+ooscript::Object JSShipPrototype(void)
 {
 	return sShipPrototype;
 }
 
 
-static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid propID, jsval *value)
+static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, ooscript::Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -614,9 +617,9 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 	id							result = nil;
 	
 	if (EXPECT_NOT(!JSShipGetShipEntity(context, thisObject, &entity)))  return NO;
-	if (OOIsStaleEntity(entity)) { *value = JSVAL_VOID; return YES; }
+	if (OOIsStaleEntity(entity)) { *value = ooscript::undefinedValue(); return YES; }
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kShip_name:
 			result = [entity name];
@@ -667,7 +670,7 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_alertCondition:
-			return JS_NewNumberValue(context, [entity realAlertCondition], value);
+			return ooscript::newNumberValue(context, [entity realAlertCondition], value);
 
 		case kShip_autoAI:
 			*value = OOJSValueFromBOOL([entity hasAutoAI]);
@@ -678,16 +681,16 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			return YES;
 		
 		case kShip_accuracy:
-			return JS_NewNumberValue(context, [entity accuracy], value);
+			return ooscript::newNumberValue(context, [entity accuracy], value);
 			
 		case kShip_fuel:
-			return JS_NewNumberValue(context, [entity fuel] * 0.1, value);
+			return ooscript::newNumberValue(context, [entity fuel] * 0.1, value);
 			
 		case kShip_fuelChargeRate:
-			return JS_NewNumberValue(context, [entity fuelChargeRate], value);
+			return ooscript::newNumberValue(context, [entity fuelChargeRate], value);
 			
 		case kShip_bounty:
-			return JS_NewNumberValue(context, [entity bounty], value);
+			return ooscript::newNumberValue(context, [entity bounty], value);
 			return YES;
 			
 		case kShip_subEntities:
@@ -703,7 +706,7 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_subEntityCapacity:
-			return JS_NewNumberValue(context, [entity maxShipSubEntities], value);
+			return ooscript::newNumberValue(context, [entity maxShipSubEntities], value);
 			return YES;
 			
 		case kShip_subEntityRotation:
@@ -747,19 +750,19 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_temperature:
-			return JS_NewNumberValue(context, [entity temperature] / SHIP_MAX_CABIN_TEMP, value);
+			return ooscript::newNumberValue(context, [entity temperature] / SHIP_MAX_CABIN_TEMP, value);
 			
 		case kShip_heatInsulation:
-			return JS_NewNumberValue(context, [entity heatInsulation], value);
+			return ooscript::newNumberValue(context, [entity heatInsulation], value);
 			
 		case kShip_heading:
 			return VectorToJSValue(context, [entity forwardVector], value);
 			
 		case kShip_energyRechargeRate:
-			return JS_NewNumberValue(context, [entity energyRechargeRate], value);
+			return ooscript::newNumberValue(context, [entity energyRechargeRate], value);
 
 		case kShip_entityPersonality:
-			*value = INT_TO_JSVAL([entity entityPersonalityInt]);
+			*value = ooscript::int32Value([entity entityPersonalityInt]);
 			return YES;
 			
 		case kShip_isBeacon:
@@ -803,18 +806,18 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			return YES;
 		
 		case kShip_hyperspaceSpinTime:
-			return JS_NewNumberValue(context, [entity hyperspaceSpinTime], value);
+			return ooscript::newNumberValue(context, [entity hyperspaceSpinTime], value);
 
 		case kShip_weaponRange:
-			return JS_NewNumberValue(context, [entity weaponRange], value);
+			return ooscript::newNumberValue(context, [entity weaponRange], value);
 
 		case kShip_weaponFacings:
 			if ([entity isPlayer])
 			{
 				PlayerEntity *pent = (PlayerEntity*)entity;
-				return JS_NewNumberValue(context, [pent availableFacings], value);
+				return ooscript::newNumberValue(context, [pent availableFacings], value);
 			}
-			return JS_NewNumberValue(context, [entity weaponFacings], value);
+			return ooscript::newNumberValue(context, [entity weaponFacings], value);
 		
 		case kShip_weaponPositionAft:
 			result = [entity aftWeaponOffset];
@@ -834,10 +837,10 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_scannerRange:
-			return JS_NewNumberValue(context, [entity scannerRange], value);
+			return ooscript::newNumberValue(context, [entity scannerRange], value);
 		
 		case kShip_reactionTime:
-			return JS_NewNumberValue(context, [entity reactionTime], value);
+			return ooscript::newNumberValue(context, [entity reactionTime], value);
 			
 		case kShip_reportAIMessages:
 			*value = OOJSValueFromBOOL([entity reportAIMessages]);
@@ -848,15 +851,15 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			return YES;
 		
 		case kShip_cargoSpaceCapacity:
-			*value = INT_TO_JSVAL([entity maxAvailableCargoSpace]);
+			*value = ooscript::int32Value([entity maxAvailableCargoSpace]);
 			return YES;
 		
 		case kShip_cargoSpaceUsed:
-			*value = INT_TO_JSVAL([entity maxAvailableCargoSpace] - [entity availableCargoSpace]);
+			*value = ooscript::int32Value([entity maxAvailableCargoSpace] - [entity availableCargoSpace]);
 			return YES;
 		
 		case kShip_cargoSpaceAvailable:
-			*value = INT_TO_JSVAL([entity availableCargoSpace]);
+			*value = ooscript::int32Value([entity availableCargoSpace]);
 			return YES;
 
 	  case kShip_cargoList:
@@ -864,7 +867,7 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_extraCargo:
-			return JS_NewNumberValue(context, [entity extraCargo], value);
+			return ooscript::newNumberValue(context, [entity extraCargo], value);
 			return YES;
 		
 		case kShip_commodity:
@@ -875,7 +878,7 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_commodityAmount:
-			*value = INT_TO_JSVAL([entity commodityAmount]);
+			*value = ooscript::int32Value([entity commodityAmount]);
 			return YES;
 
 	  case kShip_collisionExceptions:
@@ -884,20 +887,20 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 
 			
 		case kShip_speed:
-			return JS_NewNumberValue(context, [entity flightSpeed], value);
+			return ooscript::newNumberValue(context, [entity flightSpeed], value);
 			
 		case kShip_cruiseSpeed:
-			return JS_NewNumberValue(context, [entity cruiseSpeed], value);
+			return ooscript::newNumberValue(context, [entity cruiseSpeed], value);
 		
 		case kShip_dataKey:
 			result = [entity shipDataKey];
 			break;
 			
 		case kShip_desiredRange:
-			return JS_NewNumberValue(context, [entity desiredRange], value);
+			return ooscript::newNumberValue(context, [entity desiredRange], value);
 		
 		case kShip_desiredSpeed:
-			return JS_NewNumberValue(context, [entity desiredSpeed], value);
+			return ooscript::newNumberValue(context, [entity desiredSpeed], value);
 			
 		case kShip_destination:
 			return HPVectorToJSValue(context, [entity destination], value);
@@ -907,25 +910,25 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			return YES;
 
 		case kShip_maxEscorts:
-			return JS_NewNumberValue(context, [entity maxEscortCount], value);
+			return ooscript::newNumberValue(context, [entity maxEscortCount], value);
 
 		case kShip_maxPitch:
-			return JS_NewNumberValue(context, [entity maxFlightPitch], value);
+			return ooscript::newNumberValue(context, [entity maxFlightPitch], value);
 		
 		case kShip_maxSpeed:
-			return JS_NewNumberValue(context, [entity maxFlightSpeed], value);
+			return ooscript::newNumberValue(context, [entity maxFlightSpeed], value);
 		
 		case kShip_maxRoll:
-			return JS_NewNumberValue(context, [entity maxFlightRoll], value);
+			return ooscript::newNumberValue(context, [entity maxFlightRoll], value);
 		
 		case kShip_maxYaw:
-			return JS_NewNumberValue(context, [entity maxFlightYaw], value);
+			return ooscript::newNumberValue(context, [entity maxFlightYaw], value);
 
 		case kShip_injectorBurnRate:
-			return JS_NewNumberValue(context, [entity afterburnerRate], value);
+			return ooscript::newNumberValue(context, [entity afterburnerRate], value);
 
 		case kShip_injectorSpeedFactor:
-			return JS_NewNumberValue(context, [entity afterburnerFactor], value);
+			return ooscript::newNumberValue(context, [entity afterburnerFactor], value);
 			
 		case kShip_script:
 			result = [entity shipScript];
@@ -936,15 +939,15 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_AIScriptWakeTime:
-			return JS_NewNumberValue(context, [entity shipAIScriptWakeTime], value);
+			return ooscript::newNumberValue(context, [entity shipAIScriptWakeTime], value);
 			break;
 
 		case kShip_destinationSystem:
-			return JS_NewNumberValue(context, [entity destinationSystem], value);
+			return ooscript::newNumberValue(context, [entity destinationSystem], value);
 			break;
 
 		case kShip_homeSystem:
-			return JS_NewNumberValue(context, [entity homeSystem], value);
+			return ooscript::newNumberValue(context, [entity homeSystem], value);
 			break;
 			
 		case kShip_isPirate:
@@ -1023,7 +1026,7 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			return YES;
 
 		case kShip_scriptedMisjumpRange:
-			return JS_NewNumberValue(context, [entity scriptedMisjumpRange], value);
+			return ooscript::newNumberValue(context, [entity scriptedMisjumpRange], value);
 			
 		case kShip_scriptInfo:
 			result = [entity scriptInfo];
@@ -1031,26 +1034,26 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_sunGlareFilter:
-			return JS_NewNumberValue(context, [entity sunGlareFilter], value);
+			return ooscript::newNumberValue(context, [entity sunGlareFilter], value);
 			
 		case kShip_trackCloseContacts:
 			*value = OOJSValueFromBOOL([entity trackCloseContacts]);
 			return YES;
 			
 		case kShip_passengerCount:
-			return JS_NewNumberValue(context, [entity passengerCount], value);
+			return ooscript::newNumberValue(context, [entity passengerCount], value);
 
 		case kShip_parcelCount:
-			return JS_NewNumberValue(context, [entity parcelCount], value);
+			return ooscript::newNumberValue(context, [entity parcelCount], value);
 			
 		case kShip_passengerCapacity:
-			return JS_NewNumberValue(context, [entity passengerCapacity], value);
+			return ooscript::newNumberValue(context, [entity passengerCapacity], value);
 		
 		case kShip_missileCapacity:
-			return JS_NewNumberValue(context, [entity missileCapacity], value);
+			return ooscript::newNumberValue(context, [entity missileCapacity], value);
 			
 		case kShip_missileLoadTime:
-			return JS_NewNumberValue(context, [entity missileLoadTime], value);
+			return ooscript::newNumberValue(context, [entity missileLoadTime], value);
 		
 		case kShip_savedCoordinates:
 			return HPVectorToJSValue(context,[entity coordinates], value);
@@ -1080,19 +1083,19 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_laserHeatLevel:
-			return JS_NewNumberValue(context, [entity laserHeatLevel], value);
+			return ooscript::newNumberValue(context, [entity laserHeatLevel], value);
 		
 		case kShip_laserHeatLevelAft:
-			return JS_NewNumberValue(context, [entity laserHeatLevelAft], value);
+			return ooscript::newNumberValue(context, [entity laserHeatLevelAft], value);
 		
 		case kShip_laserHeatLevelForward:
-			return JS_NewNumberValue(context, [entity laserHeatLevelForward], value);
+			return ooscript::newNumberValue(context, [entity laserHeatLevelForward], value);
 		
 		case kShip_laserHeatLevelPort:
-			return JS_NewNumberValue(context, [entity laserHeatLevelPort], value);
+			return ooscript::newNumberValue(context, [entity laserHeatLevelPort], value);
 		
 		case kShip_laserHeatLevelStarboard:
-			return JS_NewNumberValue(context, [entity laserHeatLevelStarboard], value);
+			return ooscript::newNumberValue(context, [entity laserHeatLevelStarboard], value);
 		
 		case kShip_missiles:
 			result = [entity missilesList];
@@ -1135,10 +1138,10 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_maxThrust:
-			return JS_NewNumberValue(context, [entity maxThrust], value);
+			return ooscript::newNumberValue(context, [entity maxThrust], value);
 			
 		case kShip_thrust:
-			return JS_NewNumberValue(context, [entity thrust], value);
+			return ooscript::newNumberValue(context, [entity thrust], value);
 			
 		case kShip_lightsActive:
 			*value = OOJSValueFromBOOL([entity lightsActive]);
@@ -1160,13 +1163,13 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			return VectorToJSValue(context, [entity thrustVector], value);
 		
 		case kShip_pitch:
-			return JS_NewNumberValue(context, [entity flightPitch], value);
+			return ooscript::newNumberValue(context, [entity flightPitch], value);
 		
 		case kShip_roll:
-			return JS_NewNumberValue(context, [entity flightRoll], value);
+			return ooscript::newNumberValue(context, [entity flightRoll], value);
 		
 		case kShip_yaw:
-			return JS_NewNumberValue(context, [entity flightYaw], value);
+			return ooscript::newNumberValue(context, [entity flightYaw], value);
 		
 		case kShip_boundingBox:
 			{
@@ -1197,18 +1200,18 @@ static JSBool ShipGetProperty(JSContext *context, JSObject *thisObject, jsid pro
 }
 
 
-static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid propID, JSBool strict, jsval *value)
+static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, bool strict, ooscript::Value *value)
 {
-	if (!JSID_IS_INT(propID))  return YES;
+	if (!ooscript::isInt32Id(propID))  return YES;
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity					*entity = nil;
 	ShipEntity					*target = nil;
 	NSString					*sValue = nil;
-	jsdouble					fValue;
-	int32						iValue;
-	JSBool						bValue;
+	double					fValue;
+	int32_t						iValue;
+	bool						bValue;
 	Vector						vValue;
 	Quaternion					qValue;
 	HPVector						hpvValue;
@@ -1221,7 +1224,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 
 	NSCAssert(![entity isTemplateCargoPod], @"-OOJSShip: a template cargo pod has become accessible to Javascript");
 	
-	switch (JSID_TO_INT(propID))
+	switch (ooscript::idToInt32(propID))
 	{
 		case kShip_name:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
@@ -1335,7 +1338,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_accuracy:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				[entity setAccuracy:fValue];
 				return YES;
@@ -1343,7 +1346,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_fuel:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				fValue = OOClamp_0_max_d(fValue, MAX_JUMP_RANGE);
 				[entity setFuel:lround(fValue * 10.0)];
@@ -1352,9 +1355,9 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_entityPersonality:
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(context, *value, &iValue))
 			{
-				if (iValue < 0 || iValue > (int32)ENTITY_PERSONALITY_MAX)
+				if (iValue < 0 || iValue > (int32_t)ENTITY_PERSONALITY_MAX)
 				{
 					OOJSReportError(context, @"ship.%@ must be >= 0 and <= %u.", OOStringFromJSPropertyIDAndSpec(context, propID, sShipProperties),ENTITY_PERSONALITY_MAX);
 					return NO;
@@ -1364,7 +1367,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			}
 
 		case kShip_hyperspaceSpinTime:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				[entity setHyperspaceSpinTime:fValue];
 				return YES;
@@ -1372,7 +1375,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_bounty:
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(context, *value, &iValue))
 			{
 				if (iValue < 0)  iValue = 0;
 				[entity setBounty:iValue withReason:kOOLegalStatusReasonByScript];
@@ -1381,7 +1384,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_cargoSpaceCapacity:
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(context, *value, &iValue))
 			{
 				if (iValue < 0)  iValue = 0;
 				// OXPs using equipment with weight requirements may make us end up with more allocated
@@ -1401,7 +1404,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 
 
 		case kShip_destinationSystem:
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(context, *value, &iValue))
 			{
 				if (iValue < 0)  iValue = 0;
 				[entity setDestinationSystem:iValue];
@@ -1410,7 +1413,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_homeSystem:
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(context, *value, &iValue))
 			{
 				if (iValue < 0)  iValue = 0;
 				[entity setHomeSystem:iValue];
@@ -1419,7 +1422,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_target:
-			if (JSVAL_IS_NULL(*value))
+			if (ooscript::isNull(*value))
 			{
 				[entity setTargetForScript:nil];
 				return YES;
@@ -1434,7 +1437,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_AIFoundTarget:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JSVAL_IS_NULL(*value))
+			if (ooscript::isNull(*value))
 			{
 				[entity setFoundTarget:nil];
 				return YES;
@@ -1449,7 +1452,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_AIPrimaryAggressor:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JSVAL_IS_NULL(*value))
+			if (ooscript::isNull(*value))
 			{
 				[entity setPrimaryAggressor:nil];
 				return YES;
@@ -1463,7 +1466,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			
 		case kShip_group:
 			group = OOJSNativeObjectOfClassFromJSValue(context, *value, [OOShipGroup class]);
-			if (group != nil || JSVAL_IS_NULL(*value))
+			if (group != nil || ooscript::isNull(*value))
 			{
 				[entity setGroup:group];
 				return YES;
@@ -1471,7 +1474,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_AIScriptWakeTime:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				[entity setAIScriptWakeTime:fValue];
 				return YES;
@@ -1479,7 +1482,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_temperature:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				fValue = fmax(fValue, 0.0);
 				[entity setTemperature:fValue * SHIP_MAX_CABIN_TEMP];
@@ -1488,7 +1491,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_heatInsulation:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				fValue = fmax(fValue, 0.125);
 				[entity setHeatInsulation:fValue];
@@ -1497,7 +1500,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_isCloaked:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
 				[entity setCloaked:bValue];
 				return YES;
@@ -1505,7 +1508,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_cloakAutomatic:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
 				[entity setAutoCloak:bValue];
 				return YES;
@@ -1513,7 +1516,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_missileLoadTime:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				[entity setMissileLoadTime:fmax(0.0, fValue)];
 				return YES;
@@ -1523,7 +1526,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_reactionTime:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				[entity setReactionTime:fValue];
 				return YES;
@@ -1531,7 +1534,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_reportAIMessages:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
 				[entity setReportAIMessages:bValue];
 				return YES;
@@ -1539,7 +1542,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_trackCloseContacts:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
 				[entity setTrackCloseContacts:bValue];
 				return YES;
@@ -1549,7 +1552,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_isBoulder:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
 				[entity setIsBoulder:bValue];
 				return YES;
@@ -1571,7 +1574,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_desiredSpeed:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				[entity setDesiredSpeed:fmax(fValue, 0.0)];
 				return YES;
@@ -1596,7 +1599,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			// here would be silently reverted - a setter that does not stick is worse than none.
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				// NEGATIVE IS REFUSED, NOT CLAMPED, matching maxSpeed/maxPitch/maxRoll below.
 				// flightSpeed is a magnitude - thrustVector is v_forward scaled by it - so a
@@ -1625,7 +1628,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_desiredRange:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				[entity setDesiredRange:fmax(fValue, 0.0)];
 				return YES;
@@ -1642,7 +1645,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			
 		case kShip_scannerDisplayColor1:
 			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setScannerDisplayColor1:colorForScript];
 				return YES;
@@ -1651,7 +1654,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			
 		case kShip_scannerDisplayColor2:
 			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setScannerDisplayColor2:colorForScript];
 				return YES;
@@ -1660,7 +1663,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			
 		case kShip_scannerHostileDisplayColor1:
 			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setScannerDisplayColorHostile1:colorForScript];
 				return YES;
@@ -1669,7 +1672,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			
 		case kShip_scannerHostileDisplayColor2:
 			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setScannerDisplayColorHostile2:colorForScript];
 				return YES;
@@ -1678,7 +1681,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			
 		case kShip_exhaustEmissiveColor:
 			colorForScript = [OOColor colorWithDescription:OOJSNativeObjectFromJSValue(context, *value)];
-			if (colorForScript != nil || JSVAL_IS_NULL(*value))
+			if (colorForScript != nil || ooscript::isNull(*value))
 			{
 				[entity setExhaustEmissiveColor:colorForScript];
 				return YES;
@@ -1686,7 +1689,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 			
 		case kShip_scriptedMisjump:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
 				[entity setScriptedMisjump:bValue];
 				return YES;
@@ -1694,7 +1697,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_scriptedMisjumpRange:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue > 0.0 && fValue < 1.0)
 				{
@@ -1719,7 +1722,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 
 			
 		case kShip_sunGlareFilter:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue >= 0.0f && fValue <= 1.0f)
 				{
@@ -1737,7 +1740,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_thrust:
 //			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				[entity setThrust:OOClamp_0_max_f(fValue, [entity maxThrust])];
 				return YES;
@@ -1745,7 +1748,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_maxPitch:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue < 0)
 				{
@@ -1759,7 +1762,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 
 		
 		case kShip_maxSpeed:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue < 0)
 				{
@@ -1772,7 +1775,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_maxRoll:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue < 0)
 				{
@@ -1785,7 +1788,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 		
 		case kShip_maxYaw:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue < 0)
 				{
@@ -1798,7 +1801,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_injectorBurnRate:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue < 0)
 				{
@@ -1811,7 +1814,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_injectorSpeedFactor:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue < 1)
 				{
@@ -1836,7 +1839,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 
 
 		case kShip_maxThrust:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue < 0)
 				{
@@ -1849,7 +1852,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			break;
 
 		case kShip_energyRechargeRate:
-			if (JS_ValueToNumber(context, *value, &fValue))
+			if (ooscript::valueToNumber(context, *value, &fValue))
 			{
 				if (fValue < 0)
 				{
@@ -1863,7 +1866,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 			
 
 		case kShip_lightsActive:
-			if (JS_ValueToBoolean(context, *value, &bValue))
+			if (ooscript::valueToBoolean(context, *value, &bValue))
 			{
 				if (bValue)  [entity switchLightsOn];
 				else  [entity switchLightsOff];
@@ -1891,7 +1894,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 				sValue = @"EQ_WEAPON_NONE";
 			}
 			OOWeaponFacing facing = WEAPON_FACING_FORWARD;
-			switch (JSID_TO_INT(propID))
+			switch (ooscript::idToInt32(propID))
 			{
 				case kShip_aftWeapon: 
 					facing = WEAPON_FACING_AFT;
@@ -1924,7 +1927,7 @@ static JSBool ShipSetProperty(JSContext *context, JSObject *thisObject, jsid pro
 		case kShip_maxEscorts:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			if (JS_ValueToInt32(context, *value, &iValue))
+			if (ooscript::valueToInt32(context, *value, &iValue))
 			{
 				if ((NSInteger)iValue < (NSInteger)[[entity escortGroup] count] - 1)
 				{
@@ -1975,7 +1978,7 @@ npcReadOnly:
 
 
 // setScript(scriptName : String)
-static JSBool ShipSetScript(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetScript(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1983,10 +1986,10 @@ static JSBool ShipSetScript(JSContext *context, uintN argc, jsval *vp)
 	NSString				*name = nil;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (argc > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(name == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setScript", MIN(argc, 1U), OOJS_ARGV, nil, @"string (script name)");
+		OOJSReportBadArguments(context, @"Ship", @"setScript", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (script name)");
 		return NO;
 	}
 	if (EXPECT_NOT([thisEnt isPlayer]))
@@ -2003,7 +2006,7 @@ static JSBool ShipSetScript(JSContext *context, uintN argc, jsval *vp)
 
 
 // setAI(aiName : String)
-static JSBool ShipSetAI(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2011,10 +2014,10 @@ static JSBool ShipSetAI(JSContext *context, uintN argc, jsval *vp)
 	NSString				*name = nil;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (argc > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(name == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setAI", MIN(argc, 1U), OOJS_ARGV, nil, @"string (AI name)");
+		OOJSReportBadArguments(context, @"Ship", @"setAI", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (AI name)");
 		return NO;
 	}
 	if (EXPECT_NOT([thisEnt isPlayer]))
@@ -2031,7 +2034,7 @@ static JSBool ShipSetAI(JSContext *context, uintN argc, jsval *vp)
 
 
 // switchAI(aiName : String)
-static JSBool ShipSwitchAI(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSwitchAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2039,10 +2042,10 @@ static JSBool ShipSwitchAI(JSContext *context, uintN argc, jsval *vp)
 	NSString				*name = nil;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (argc > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(name == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"switchAI", MIN(argc, 1U), OOJS_ARGV, nil, @"string (AI name)");
+		OOJSReportBadArguments(context, @"Ship", @"switchAI", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (AI name)");
 		return NO;
 	}
 	if (EXPECT_NOT([thisEnt isPlayer]))
@@ -2059,7 +2062,7 @@ static JSBool ShipSwitchAI(JSContext *context, uintN argc, jsval *vp)
 
 
 // exitAI()
-static JSBool ShipExitAI(JSContext *context, uintN argc, jsval *vp)
+static bool ShipExitAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2077,7 +2080,7 @@ static JSBool ShipExitAI(JSContext *context, uintN argc, jsval *vp)
 	
 	if ([thisAI hasSuspendedStateMachines])
 	{
-		if (argc > 0)
+		if (oojsArgs.count() > 0)
 		{
 			message = OOStringFromJSValue(context, OOJS_ARGV[0]);
 		}
@@ -2096,7 +2099,7 @@ static JSBool ShipExitAI(JSContext *context, uintN argc, jsval *vp)
 
 
 // reactToAIMessage(message : String)
-static JSBool ShipReactToAIMessage(JSContext *context, uintN argc, jsval *vp)
+static bool ShipReactToAIMessage(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2104,10 +2107,10 @@ static JSBool ShipReactToAIMessage(JSContext *context, uintN argc, jsval *vp)
 	NSString				*message = nil;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (argc > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(message == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"reactToAIMessage", MIN(argc, 1U), OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, @"Ship", @"reactToAIMessage", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
 	if (EXPECT_NOT([thisEnt isPlayer]))
@@ -2124,7 +2127,7 @@ static JSBool ShipReactToAIMessage(JSContext *context, uintN argc, jsval *vp)
 
 
 // sendAIMessage(message : String)
-static JSBool ShipSendAIMessage(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSendAIMessage(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2132,10 +2135,10 @@ static JSBool ShipSendAIMessage(JSContext *context, uintN argc, jsval *vp)
 	NSString				*message = nil;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (argc > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(message == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"sendAIMessage", MIN(argc, 1U), OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, @"Ship", @"sendAIMessage", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
 	if (EXPECT_NOT([thisEnt isPlayer]))
@@ -2152,7 +2155,7 @@ static JSBool ShipSendAIMessage(JSContext *context, uintN argc, jsval *vp)
 
 
 // deployEscorts()
-static JSBool ShipDeployEscorts(JSContext *context, uintN argc, jsval *vp)
+static bool ShipDeployEscorts(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2168,7 +2171,7 @@ static JSBool ShipDeployEscorts(JSContext *context, uintN argc, jsval *vp)
 
 
 // dockEscorts()
-static JSBool ShipDockEscorts(JSContext *context, uintN argc, jsval *vp)
+static bool ShipDockEscorts(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2184,7 +2187,7 @@ static JSBool ShipDockEscorts(JSContext *context, uintN argc, jsval *vp)
 
 
 // hasEquipmentProviding(equipment : String) : Boolean
-static JSBool ShipHasEquipmentProviding(JSContext *context, uintN argc, jsval *vp)
+static bool ShipHasEquipmentProviding(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2193,10 +2196,10 @@ static JSBool ShipHasEquipmentProviding(JSContext *context, uintN argc, jsval *v
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  equipment = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  equipment = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(equipment == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"hasEquipmentProviding", MIN(argc, 1U), OOJS_ARGV, nil, @"string (equipment)");
+		OOJSReportBadArguments(context, @"Ship", @"hasEquipmentProviding", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (equipment)");
 		return NO;
 	}
 	
@@ -2207,7 +2210,7 @@ static JSBool ShipHasEquipmentProviding(JSContext *context, uintN argc, jsval *v
 
 
 // hasRole(role : String) : Boolean
-static JSBool ShipHasRole(JSContext *context, uintN argc, jsval *vp)
+static bool ShipHasRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2216,10 +2219,10 @@ static JSBool ShipHasRole(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(role == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"hasRole", MIN(argc, 1U), OOJS_ARGV, nil, @"string (role)");
+		OOJSReportBadArguments(context, @"Ship", @"hasRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
 	}
 	
@@ -2230,7 +2233,7 @@ static JSBool ShipHasRole(JSContext *context, uintN argc, jsval *vp)
 
 
 // ejectItem(role : String) : Ship
-static JSBool ShipEjectItem(JSContext *context, uintN argc, jsval *vp)
+static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2239,10 +2242,10 @@ static JSBool ShipEjectItem(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(role == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"ejectItem", MIN(argc, 1U), OOJS_ARGV, nil, @"string (role)");
+		OOJSReportBadArguments(context, @"Ship", @"ejectItem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
 	}
 	
@@ -2253,13 +2256,13 @@ static JSBool ShipEjectItem(JSContext *context, uintN argc, jsval *vp)
 
 
 // addCargoEntity: ship
-static JSBool ShipAddCargoEntity(JSContext *context, uintN argc, jsval *vp)
+static bool ShipAddCargoEntity(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	ShipEntity				*thisEnt = nil;
 	ShipEntity              *target = nil;
-	JSBool					procEvents = NO;
-	JSBool					procMessages = NO;
+	bool					procEvents = NO;
+	bool					procMessages = NO;
 
 	GET_THIS_SHIP(thisEnt);
 
@@ -2268,12 +2271,12 @@ static JSBool ShipAddCargoEntity(JSContext *context, uintN argc, jsval *vp)
 		OOJSReportWarningForCaller(context, @"PlayerShip", @"addCargoEntity", @"Can't add cargo entity while docked, ignoring.");
 		return NO;
 	}
-	if (EXPECT_NOT(argc == 0 ||
-				   JSVAL_IS_NULL(OOJS_ARGV[0]) ||
-				   !JSVAL_IS_OBJECT(OOJS_ARGV[0]) ||
-				   !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &target)))
+	if (EXPECT_NOT(oojsArgs.count() == 0 ||
+				   ooscript::isNull(OOJS_ARGV[0]) ||
+				   !ooscript::isObjectOrNull(OOJS_ARGV[0]) ||
+				   !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))
 	{
-		OOJSReportBadArguments(context, @"PlayerShip", @"addCargoEntity", MIN(argc, 1U), OOJS_ARGV, nil, @"scoopable entity.");
+		OOJSReportBadArguments(context, @"PlayerShip", @"addCargoEntity", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"scoopable entity.");
 		return NO;
 	}
 	if ([target scanClass] != CLASS_CARGO) 
@@ -2286,14 +2289,14 @@ static JSBool ShipAddCargoEntity(JSContext *context, uintN argc, jsval *vp)
 		OOJSReportWarningForCaller(context, @"PlayerShip", @"addCargoEntity", @"Scoopable entity not in flight.");
 		return NO;
 	}
-	if (argc >= 2 && EXPECT_NOT(!JS_ValueToBoolean(context, OOJS_ARGV[1], &procEvents)))
+	if (oojsArgs.count() >= 2 && EXPECT_NOT(!ooscript::valueToBoolean(context, OOJS_ARGV[1], &procEvents)))
 	{
-		OOJSReportBadArguments(context, @"PlayerShip", @"addCargoEntity", MIN(argc, 2U), OOJS_ARGV, nil, @"boolean");
+		OOJSReportBadArguments(context, @"PlayerShip", @"addCargoEntity", MIN(oojsArgs.count(), 2U), OOJS_ARGV, nil, @"boolean");
 		return NO;
 	}
-	if (argc == 3 && EXPECT_NOT(!JS_ValueToBoolean(context, OOJS_ARGV[2], &procMessages)))
+	if (oojsArgs.count() == 3 && EXPECT_NOT(!ooscript::valueToBoolean(context, OOJS_ARGV[2], &procMessages)))
 	{
-		OOJSReportBadArguments(context, @"PlayerShip", @"addCargoEntity", MIN(argc, 3U), OOJS_ARGV, nil, @"boolean");
+		OOJSReportBadArguments(context, @"PlayerShip", @"addCargoEntity", MIN(oojsArgs.count(), 3U), OOJS_ARGV, nil, @"boolean");
 		return NO;
 	}
 	
@@ -2309,7 +2312,7 @@ static JSBool ShipAddCargoEntity(JSContext *context, uintN argc, jsval *vp)
 
 
 // ejectSpecificItem(itemKey : String) : Ship
-static JSBool ShipEjectSpecificItem(JSContext *context, uintN argc, jsval *vp)
+static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2318,10 +2321,10 @@ static JSBool ShipEjectSpecificItem(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  itemKey = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  itemKey = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(itemKey == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"ejectSpecificItem", MIN(argc, 1U), OOJS_ARGV, nil, @"string (ship key)");
+		OOJSReportBadArguments(context, @"Ship", @"ejectSpecificItem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (ship key)");
 		return NO;
 	}
 	
@@ -2332,7 +2335,7 @@ static JSBool ShipEjectSpecificItem(JSContext *context, uintN argc, jsval *vp)
 
 
 // dumpCargo() : Ship
-static JSBool ShipDumpCargo(JSContext *context, uintN argc, jsval *vp)
+static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2347,7 +2350,7 @@ static JSBool ShipDumpCargo(JSContext *context, uintN argc, jsval *vp)
 		OOJS_RETURN_NULL;
 	}
 	
-	if (argc > 1)
+	if (oojsArgs.count() > 1)
 	{
 		pref = OOStringFromJSValue(context, OOJS_ARGV[1]);
 	}
@@ -2355,12 +2358,12 @@ static JSBool ShipDumpCargo(JSContext *context, uintN argc, jsval *vp)
 	// NPCs can queue multiple items to dump
 	if (!EXPECT_NOT([thisEnt isPlayer]))
 	{
-		int32					i, count = 1;
+		int32_t					i, count = 1;
 		BOOL					gotCount = YES;
-		if (argc > 0)  gotCount = JS_ValueToInt32(context, OOJS_ARGV[0], &count);
+		if (oojsArgs.count() > 0)  gotCount = ooscript::valueToInt32(context, OOJS_ARGV[0], &count);
 		if (EXPECT_NOT(!gotCount || count < 1 || count > 64))
 		{
-			OOJSReportBadArguments(context, @"Ship", @"dumpCargo", MIN(argc, 1U), OOJS_ARGV, nil, @"optional quantity (1 to 64), optional preferred commodity");
+			OOJSReportBadArguments(context, @"Ship", @"dumpCargo", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"optional quantity (1 to 64), optional preferred commodity");
 			return NO;
 		}
 
@@ -2377,23 +2380,23 @@ static JSBool ShipDumpCargo(JSContext *context, uintN argc, jsval *vp)
 
 
 // spawn(role : String [, number : count]) : Array
-static JSBool ShipSpawn(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
 	NSString				*role = nil;
-	int32					count = 1;
+	int32_t					count = 1;
 	BOOL					gotCount = YES;
 	NSArray					*result = nil;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (argc > 1)  gotCount = JS_ValueToInt32(context, OOJS_ARGV[1], &count);
+	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 1)  gotCount = ooscript::valueToInt32(context, OOJS_ARGV[1], &count);
 	if (EXPECT_NOT(role == nil || !gotCount || count < 1 || count > 64))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"spawn", MIN(argc, 1U), OOJS_ARGV, nil, @"role and optional quantity (1 to 64)");
+		OOJSReportBadArguments(context, @"Ship", @"spawn", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"role and optional quantity (1 to 64)");
 		return NO;
 	}
 	
@@ -2408,43 +2411,43 @@ static JSBool ShipSpawn(JSContext *context, uintN argc, jsval *vp)
 
 
 // dealEnergyDamage(). Replaces AI's dealEnergyDamageWithinDesiredRange
-static JSBool ShipDealEnergyDamage(JSContext *context, uintN argc, jsval *vp)
+static bool ShipDealEnergyDamage(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	jsdouble baseDamage;
-	jsdouble range;
-	jsdouble velocityBias = 0.0;
+	double baseDamage;
+	double range;
+	double velocityBias = 0.0;
 	BOOL gotDamage;
 	BOOL gotRange;
 	BOOL gotVBias;
 	GET_THIS_SHIP(thisEnt);
 
-	if (argc < 2)
+	if (oojsArgs.count() < 2)
 	{
-		OOJSReportBadArguments(context, @"Ship", @"dealEnergyDamage", argc, OOJS_ARGV, nil, @"damage and range needed");
+		OOJSReportBadArguments(context, @"Ship", @"dealEnergyDamage", oojsArgs.count(), OOJS_ARGV, nil, @"damage and range needed");
 		return NO;
 	}
 	
-	gotDamage = JS_ValueToNumber(context, OOJS_ARGV[0], &baseDamage);
+	gotDamage = ooscript::valueToNumber(context, OOJS_ARGV[0], &baseDamage);
 	if (EXPECT_NOT(!gotDamage || baseDamage < 0))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"dealEnergyDamage", argc, OOJS_ARGV, nil, @"damage must be positive");
+		OOJSReportBadArguments(context, @"Ship", @"dealEnergyDamage", oojsArgs.count(), OOJS_ARGV, nil, @"damage must be positive");
 		return NO;
 	}
-	gotRange = JS_ValueToNumber(context, OOJS_ARGV[1], &range);
+	gotRange = ooscript::valueToNumber(context, OOJS_ARGV[1], &range);
 	if (EXPECT_NOT(!gotRange || range < 0))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"dealEnergyDamage", argc, OOJS_ARGV, nil, @"range must be positive");
+		OOJSReportBadArguments(context, @"Ship", @"dealEnergyDamage", oojsArgs.count(), OOJS_ARGV, nil, @"range must be positive");
 		return NO;
 	}
-	if (argc >= 3) 
+	if (oojsArgs.count() >= 3) 
 	{
-		gotVBias = JS_ValueToNumber(context, OOJS_ARGV[2], &velocityBias);
+		gotVBias = ooscript::valueToNumber(context, OOJS_ARGV[2], &velocityBias);
 		if (!gotVBias)
 		{
-			OOJSReportBadArguments(context, @"Ship", @"dealEnergyDamage", argc, OOJS_ARGV, nil, @"velocity bias must be a number");
+			OOJSReportBadArguments(context, @"Ship", @"dealEnergyDamage", oojsArgs.count(), OOJS_ARGV, nil, @"velocity bias must be a number");
 			return NO;
 		}
 	}
@@ -2458,23 +2461,23 @@ static JSBool ShipDealEnergyDamage(JSContext *context, uintN argc, jsval *vp)
 
 
 // explode()
-static JSBool ShipExplode(JSContext *context, uintN argc, jsval *vp)
+static bool ShipExplode(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	return RemoveOrExplodeShip(context, argc, vp, YES);
+	return RemoveOrExplodeShip(context, oojsArgs, YES);
 	
 	OOJS_NATIVE_EXIT
 }
 
 
 // remove([suppressDeathEvent : Boolean = false])
-static JSBool ShipRemove(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRemove(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	JSBool					suppressDeathEvent = NO;
+	bool					suppressDeathEvent = NO;
 	
 	GET_THIS_SHIP(thisEnt);
 	
@@ -2484,9 +2487,9 @@ static JSBool ShipRemove(JSContext *context, uintN argc, jsval *vp)
 		return NO;
 	}
 	
-	if (argc > 0 && EXPECT_NOT(!JS_ValueToBoolean(context, OOJS_ARGV[0], &suppressDeathEvent)))
+	if (oojsArgs.count() > 0 && EXPECT_NOT(!ooscript::valueToBoolean(context, OOJS_ARGV[0], &suppressDeathEvent)))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"remove", argc, OOJS_ARGV, nil, @"boolean");
+		OOJSReportBadArguments(context, @"Ship", @"remove", oojsArgs.count(), OOJS_ARGV, nil, @"boolean");
 		return NO;
 	}
 
@@ -2496,14 +2499,14 @@ static JSBool ShipRemove(JSContext *context, uintN argc, jsval *vp)
 	{
 		[thisEnt removeScript];
 	}
-	return RemoveOrExplodeShip(context, argc, vp, NO);
+	return RemoveOrExplodeShip(context, oojsArgs, NO);
 	
 	OOJS_NATIVE_EXIT
 }
 
 
 // __runLegacyScriptActions(target : Ship, actions : Array)
-static JSBool ShipRunLegacyScriptActions(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2515,13 +2518,13 @@ static JSBool ShipRunLegacyScriptActions(JSContext *context, uintN argc, jsval *
 	player = OOPlayerForScripting();
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 1)  actions = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[1]);
-	if (EXPECT_NOT(argc != 2 ||
-				   !JSVAL_IS_OBJECT(OOJS_ARGV[0]) ||
-				   !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &target) ||
+	if (oojsArgs.count() > 1)  actions = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[1]);
+	if (EXPECT_NOT(oojsArgs.count() != 2 ||
+				   !ooscript::isObjectOrNull(OOJS_ARGV[0]) ||
+				   !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target) ||
 				   ![actions isKindOfClass:[NSArray class]]))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"__runLegacyScriptActions", argc, OOJS_ARGV, nil, @"target and array of actions");
+		OOJSReportBadArguments(context, @"Ship", @"__runLegacyScriptActions", oojsArgs.count(), OOJS_ARGV, nil, @"target and array of actions");
 		return NO;
 	}
 	
@@ -2541,7 +2544,7 @@ static JSBool ShipRunLegacyScriptActions(JSContext *context, uintN argc, jsval *
 
 
 // commsMessage(message : String[,target : Ship])
-static JSBool ShipCommsMessage(JSContext *context, uintN argc, jsval *vp)
+static bool ShipCommsMessage(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2551,14 +2554,14 @@ static JSBool ShipCommsMessage(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(message == nil || (argc > 1 && (JSVAL_IS_NULL(OOJS_ARGV[1]) || !JSVAL_IS_OBJECT(OOJS_ARGV[1]) || !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[1]), &target)))))
+	if (oojsArgs.count() > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (EXPECT_NOT(message == nil || (oojsArgs.count() > 1 && (ooscript::isNull(OOJS_ARGV[1]) || !ooscript::isObjectOrNull(OOJS_ARGV[1]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[1]), &target)))))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"commsMessage", MIN(argc, 1U), OOJS_ARGV, nil, @"message and optional target");
+		OOJSReportBadArguments(context, @"Ship", @"commsMessage", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"message and optional target");
 		return NO;
 	}
 	
-	if (argc < 2)
+	if (oojsArgs.count() < 2)
 	{
 		[thisEnt commsMessage:message withUnpilotedOverride:YES];	// generic broadcast
 	}
@@ -2573,7 +2576,7 @@ static JSBool ShipCommsMessage(JSContext *context, uintN argc, jsval *vp)
 
 
 // fireECM()
-static JSBool ShipFireECM(JSContext *context, uintN argc, jsval *vp)
+static bool ShipFireECM(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2595,7 +2598,7 @@ static JSBool ShipFireECM(JSContext *context, uintN argc, jsval *vp)
 
 
 // abandonShip()
-static JSBool ShipAbandonShip(JSContext *context, uintN argc, jsval *vp)
+static bool ShipAbandonShip(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2609,7 +2612,7 @@ static JSBool ShipAbandonShip(JSContext *context, uintN argc, jsval *vp)
 
 
 // canAwardEquipment(type : equipmentInfoExpression)
-static JSBool ShipCanAwardEquipment(JSContext *context, uintN argc, jsval *vp)
+static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2621,21 +2624,21 @@ static JSBool ShipCanAwardEquipment(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  key = JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists);
+	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists);
 	if (EXPECT_NOT(key == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"canAwardEquipment", MIN(argc, 1U), OOJS_ARGV, nil, @"equipment type");
+		OOJSReportBadArguments(context, @"Ship", @"canAwardEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
 		return NO;
 	}
 	
 	if (exists)
 	{
-		if (argc > 1)
+		if (oojsArgs.count() > 1)
 		{
 			ctx = OOStringFromJSValue(context, OOJS_ARGV[1]);
 			if (![ctx isEqualToString:@"scripted"] && ![ctx isEqualToString:@"purchase"] && ![ctx isEqualToString:@"newShip"] && ![ctx isEqualToString:@"npc"])
 			{
-				OOJSReportBadArguments(context, @"Ship", @"canAwardEquipment", MIN(argc, 2U), OOJS_ARGV, nil, @"context");
+				OOJSReportBadArguments(context, @"Ship", @"canAwardEquipment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, nil, @"context");
 				return NO;
 			}
 		}
@@ -2659,7 +2662,7 @@ static JSBool ShipCanAwardEquipment(JSContext *context, uintN argc, jsval *vp)
 
 
 // awardEquipment(type : equipmentInfoExpression) : Boolean
-static JSBool ShipAwardEquipment(JSContext *context, uintN argc, jsval *vp)
+static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2672,10 +2675,10 @@ static JSBool ShipAwardEquipment(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  eqType = JSValueToEquipmentType(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  eqType = JSValueToEquipmentType(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(eqType == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"awardEquipment", MIN(argc, 1U), OOJS_ARGV, nil, @"equipment type");
+		OOJSReportBadArguments(context, @"Ship", @"awardEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
 		return NO;
 	}
 	
@@ -2752,7 +2755,7 @@ static JSBool ShipAwardEquipment(JSContext *context, uintN argc, jsval *vp)
 
 
 // removeEquipment(type : equipmentInfoExpression)
-static JSBool ShipRemoveEquipment(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2762,10 +2765,10 @@ static JSBool ShipRemoveEquipment(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(key == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"removeEquipment", MIN(argc, 1U), OOJS_ARGV, nil, @"equipment type");
+		OOJSReportBadArguments(context, @"Ship", @"removeEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
 		return NO;
 	}
 	// berths are not in hasOneEquipmentItem
@@ -2811,7 +2814,7 @@ static JSBool ShipRemoveEquipment(JSContext *context, uintN argc, jsval *vp)
 
 
 // restoreSubEntities(): boolean
-static JSBool ShipRestoreSubEntities(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRestoreSubEntities(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2842,7 +2845,7 @@ static JSBool ShipRestoreSubEntities(JSContext *context, uintN argc, jsval *vp)
 
 
 // setEquipmentStatus(type : equipmentInfoExpression, status : String): boolean
-static JSBool ShipSetEquipmentStatus(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2857,9 +2860,9 @@ static JSBool ShipSetEquipmentStatus(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc < 2)
+	if (oojsArgs.count() < 2)
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setEquipmentStatus", argc, OOJS_ARGV, nil, @"equipment type and status");
+		OOJSReportBadArguments(context, @"Ship", @"setEquipmentStatus", oojsArgs.count(), OOJS_ARGV, nil, @"equipment type and status");
 		return NO;
 	}
 	
@@ -2937,7 +2940,7 @@ static JSBool ShipSetEquipmentStatus(JSContext *context, uintN argc, jsval *vp)
 
 
 // equipmentStatus(type : equipmentInfoExpression) : String
-static JSBool ShipEquipmentStatus(JSContext *context, uintN argc, jsval *vp)
+static bool ShipEquipmentStatus(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -2946,29 +2949,29 @@ static JSBool ShipEquipmentStatus(JSContext *context, uintN argc, jsval *vp)
 		Interned strings are guaranteed to survive for the lifetime of the JS
 		runtime, which lasts as long as Oolite is running.
 	*/
-	static jsval strOK, strDamaged, strUnavailable, strUnknown;
+	static ooscript::Value strOK, strDamaged, strUnavailable, strUnknown;
 	static BOOL inited = NO;
 	if (EXPECT_NOT(!inited))
 	{
 		inited = YES;
-		strOK = STRING_TO_JSVAL(JS_InternString(context, "EQUIPMENT_OK"));
-		strDamaged = STRING_TO_JSVAL(JS_InternString(context, "EQUIPMENT_DAMAGED"));
-		strUnavailable = STRING_TO_JSVAL(JS_InternString(context, "EQUIPMENT_UNAVAILABLE"));
-		strUnknown = STRING_TO_JSVAL(JS_InternString(context, "EQUIPMENT_UNKNOWN"));
+		strOK = ooscript::stringValue(ooscript::internString(context, "EQUIPMENT_OK"));
+		strDamaged = ooscript::stringValue(ooscript::internString(context, "EQUIPMENT_DAMAGED"));
+		strUnavailable = ooscript::stringValue(ooscript::internString(context, "EQUIPMENT_UNAVAILABLE"));
+		strUnknown = ooscript::stringValue(ooscript::internString(context, "EQUIPMENT_UNKNOWN"));
 	}
 	
 	ShipEntity				*thisEnt = nil;
 	NSString				*key = nil;
-	JSBool					asDict = NO;
+	bool					asDict = NO;
 	NSDictionary			*dict = nil;
 
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
-	if (argc > 1)  JS_ValueToBoolean(context, OOJS_ARGV[1], &asDict);
+	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 1)  ooscript::valueToBoolean(context, OOJS_ARGV[1], &asDict);
 	if (EXPECT_NOT(key == nil))
 	{
-		if (argc > 0 && JSVAL_IS_STRING(OOJS_ARGV[0]))
+		if (oojsArgs.count() > 0 && ooscript::isString(OOJS_ARGV[0]))
 		{
 			if (asDict)
 			{
@@ -2981,7 +2984,7 @@ static JSBool ShipEquipmentStatus(JSContext *context, uintN argc, jsval *vp)
 			}
 		}
 		
-		OOJSReportBadArguments(context, @"Ship", @"equipmentStatus", MIN(argc, 1U), &OOJS_ARGV[0], nil, @"equipment type");
+		OOJSReportBadArguments(context, @"Ship", @"equipmentStatus", MIN(oojsArgs.count(), 1U), &OOJS_ARGV[0], nil, @"equipment type");
 		return NO;
 	}
 	
@@ -3003,7 +3006,7 @@ static JSBool ShipEquipmentStatus(JSContext *context, uintN argc, jsval *vp)
 
 
 // selectNewMissile()
-static JSBool ShipSelectNewMissile(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSelectNewMissile(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -3022,7 +3025,7 @@ static JSBool ShipSelectNewMissile(JSContext *context, uintN argc, jsval *vp)
 
 
 // fireMissile()
-static JSBool ShipFireMissile(JSContext *context, uintN argc, jsval *vp)
+static bool ShipFireMissile(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -3031,7 +3034,7 @@ static JSBool ShipFireMissile(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  result = [thisEnt fireMissileWithIdentifier:OOStringFromJSValue(context, OOJS_ARGV[0]) andTarget:[thisEnt primaryTarget]];
+	if (oojsArgs.count() > 0)  result = [thisEnt fireMissileWithIdentifier:OOStringFromJSValue(context, OOJS_ARGV[0]) andTarget:[thisEnt primaryTarget]];
 	else  result = [thisEnt fireMissile];
 	
 	OOJS_RETURN_OBJECT(result);
@@ -3041,7 +3044,7 @@ static JSBool ShipFireMissile(JSContext *context, uintN argc, jsval *vp)
 
 
 // findNearestStation
-static JSBool ShipFindNearestStation(JSContext *context, uintN argc, jsval *vp)
+static bool ShipFindNearestStation(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -3071,22 +3074,22 @@ static JSBool ShipFindNearestStation(JSContext *context, uintN argc, jsval *vp)
 
 
 // setBounty(amount, reason)
-static JSBool ShipSetBounty(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetBounty(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
 	NSString				*reason = nil;
-	int32					newbounty = 0;
+	int32_t					newbounty = 0;
 	BOOL					gotBounty = YES;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  gotBounty = JS_ValueToInt32(context, OOJS_ARGV[0], &newbounty);
-	if (argc > 1)  reason = OOStringFromJSValue(context, OOJS_ARGV[1]);
+	if (oojsArgs.count() > 0)  gotBounty = ooscript::valueToInt32(context, OOJS_ARGV[0], &newbounty);
+	if (oojsArgs.count() > 1)  reason = OOStringFromJSValue(context, OOJS_ARGV[1]);
 	if (EXPECT_NOT(reason == nil || !gotBounty || newbounty < 0))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setBounty", argc, OOJS_ARGV, nil, @"new bounty and reason");
+		OOJSReportBadArguments(context, @"Ship", @"setBounty", oojsArgs.count(), OOJS_ARGV, nil, @"new bounty and reason");
 		return NO;
 	}
 	
@@ -3099,22 +3102,22 @@ static JSBool ShipSetBounty(JSContext *context, uintN argc, jsval *vp)
 
 
 // setCargo(cargoType : String [, number : count])
-static JSBool ShipSetCargo(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
 	OOCommodityType			commodity = nil;
-	int32					count = 1;
+	int32_t					count = 1;
 	BOOL					gotCount = YES;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  commodity = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (argc > 1)  gotCount = JS_ValueToInt32(context, OOJS_ARGV[1], &count);
+	if (oojsArgs.count() > 0)  commodity = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 1)  gotCount = ooscript::valueToInt32(context, OOJS_ARGV[1], &count);
 	if (EXPECT_NOT(commodity == nil || !gotCount || count < 1))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setCargo", argc, OOJS_ARGV, nil, @"cargo name and optional positive quantity");
+		OOJSReportBadArguments(context, @"Ship", @"setCargo", oojsArgs.count(), OOJS_ARGV, nil, @"cargo name and optional positive quantity");
 		return NO;
 	}
 	
@@ -3130,7 +3133,7 @@ static JSBool ShipSetCargo(JSContext *context, uintN argc, jsval *vp)
 
 
 // setCrew(crewDefinition : Object)
-static JSBool ShipSetCrew(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	/* TODO: ships can in theory have multiple crew, so this could
 	 * allow that to be set. Probably not necessary for now. */
@@ -3138,26 +3141,26 @@ static JSBool ShipSetCrew(JSContext *context, uintN argc, jsval *vp)
 	
 	ShipEntity				*thisEnt = nil;
 	NSDictionary			*crewDefinition = nil;
-	JSObject			*params = NULL;
+	ooscript::Object params = NULL;
 
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc < 1 || (!JSVAL_IS_NULL(OOJS_ARGV[0]) && !JS_ValueToObject(context, OOJS_ARGV[0], &params)))
+	if (oojsArgs.count() < 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::valueToObject(context, OOJS_ARGV[0], &params)))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setCrew", MIN(argc, 1U), OOJS_ARGV, NULL, @"definition");
+		OOJSReportBadArguments(context, @"Ship", @"setCrew", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"definition");
 		return NO;
 	}
 	BOOL success = YES;
 
 	if (![thisEnt isExplicitlyUnpiloted])
 	{
-		if (JSVAL_IS_NULL(OOJS_ARGV[0]))
+		if (ooscript::isNull(OOJS_ARGV[0]))
 		{
 			[thisEnt setCrew:nil];
 		}
 		else
 		{
-			crewDefinition = OOJSNativeObjectFromJSObject(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]));
+			crewDefinition = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
 			OOCharacter *crew = [OOCharacter characterWithDictionary:crewDefinition];
 			[thisEnt setCrew:[NSArray arrayWithObject:crew]];
 		}
@@ -3174,7 +3177,7 @@ static JSBool ShipSetCrew(JSContext *context, uintN argc, jsval *vp)
 
 
 // setCargoType(cargoType : String)
-static JSBool ShipSetCargoType(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetCargoType(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -3183,15 +3186,15 @@ static JSBool ShipSetCargoType(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0)  cargoType = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  cargoType = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	if (EXPECT_NOT(cargoType == nil))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setCargoType", argc, OOJS_ARGV, nil, @"cargo type name");
+		OOJSReportBadArguments(context, @"Ship", @"setCargoType", oojsArgs.count(), OOJS_ARGV, nil, @"cargo type name");
 		return NO;
 	}
 	if ([thisEnt cargoType] != CARGO_NOT_CARGO)
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setCargoType", argc, OOJS_ARGV, nil, [NSString stringWithFormat:@"Can only be used on cargo pod carriers, not cargo pods (%@)",[thisEnt shipDataKey]]);
+		OOJSReportBadArguments(context, @"Ship", @"setCargoType", oojsArgs.count(), OOJS_ARGV, nil, [NSString stringWithFormat:@"Can only be used on cargo pod carriers, not cargo pods (%@)",[thisEnt shipDataKey]]);
 		return NO;
 	}
 	BOOL ok = YES;
@@ -3225,13 +3228,13 @@ static JSBool ShipSetCargoType(JSContext *context, uintN argc, jsval *vp)
 }
 
 // setMaterials(params: dict, [shaders: dict])  // sets materials dictionary. Optional parameter sets the shaders dictionary too.
-static JSBool ShipSetMaterials(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetMaterials(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
 	
-	if (argc < 1)
+	if (oojsArgs.count() < 1)
 	{
 		OOJSReportBadArguments(context, @"Ship", @"setMaterials", 0, OOJS_ARGV, nil, @"parameter object");
 		return NO;
@@ -3239,14 +3242,14 @@ static JSBool ShipSetMaterials(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	return ShipSetMaterialsInternal(context, argc, vp, thisEnt, NO);
+	return ShipSetMaterialsInternal(context, oojsArgs, thisEnt, NO);
 	
 	OOJS_NATIVE_EXIT
 }
 
 
 // setShaders(params: dict) 
-static JSBool ShipSetShaders(JSContext *context, uintN argc, jsval *vp)
+static bool ShipSetShaders(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
@@ -3254,31 +3257,31 @@ static JSBool ShipSetShaders(JSContext *context, uintN argc, jsval *vp)
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc < 1)
+	if (oojsArgs.count() < 1)
 	{
 		OOJSReportBadArguments(context, @"Ship", @"setShaders", 0, OOJS_ARGV, nil, @"parameter object");
 		return NO;
 	}
 	
-	if (JSVAL_IS_NULL(OOJS_ARGV[0]) || (!JSVAL_IS_NULL(OOJS_ARGV[0]) && !JSVAL_IS_OBJECT(OOJS_ARGV[0])))
+	if (ooscript::isNull(OOJS_ARGV[0]) || (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::isObjectOrNull(OOJS_ARGV[0])))
 	{
-		// EMMSTRAN: JS_ValueToObject() and normal error handling here.
+		// EMMSTRAN: ooscript::valueToObject() and normal error handling here.
 		OOJSReportWarning(context, @"Ship.%@: expected %@ instead of '%@'.", @"setShaders", @"object", OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[0]));
 		OOJS_RETURN_BOOL(NO);
 	}
 	
 	OOJS_ARGV[1] = OOJS_ARGV[0];
-	return ShipSetMaterialsInternal(context, argc, vp, thisEnt, YES);
+	return ShipSetMaterialsInternal(context, oojsArgs, thisEnt, YES);
 	
 	OOJS_NATIVE_EXIT
 }
 
 
-static JSBool ShipSetMaterialsInternal(JSContext *context, uintN argc, jsval *vp, ShipEntity *thisEnt, BOOL fromShaders)
+static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallArgs &oojsArgs, ShipEntity *thisEnt, BOOL fromShaders)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*params = NULL;
+	ooscript::Object params = NULL;
 	NSDictionary			*materials;
 	NSDictionary			*shaders;
 	BOOL					withShaders = NO;
@@ -3286,16 +3289,16 @@ static JSBool ShipSetMaterialsInternal(JSContext *context, uintN argc, jsval *vp
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (JSVAL_IS_NULL(OOJS_ARGV[0]) || (!JSVAL_IS_NULL(OOJS_ARGV[0]) && !JSVAL_IS_OBJECT(OOJS_ARGV[0])))
+	if (ooscript::isNull(OOJS_ARGV[0]) || (!ooscript::isNull(OOJS_ARGV[0]) && !ooscript::isObjectOrNull(OOJS_ARGV[0])))
 	{
 		OOJSReportWarning(context, @"Ship.%@: expected %@ instead of '%@'.", @"setMaterials", @"object", OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[0]));
 		OOJS_RETURN_BOOL(NO);
 	}
 	
-	if (argc > 1)
+	if (oojsArgs.count() > 1)
 	{
 		withShaders = YES;
-		if (JSVAL_IS_NULL(OOJS_ARGV[1]) || (!JSVAL_IS_NULL(OOJS_ARGV[1]) && !JSVAL_IS_OBJECT(OOJS_ARGV[1])))
+		if (ooscript::isNull(OOJS_ARGV[1]) || (!ooscript::isNull(OOJS_ARGV[1]) && !ooscript::isObjectOrNull(OOJS_ARGV[1])))
 		{
 			OOJSReportWarning(context, @"Ship.%@: expected %@ instead of '%@'.",  @"setMaterials", @"object as second parameter", OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[1]));
 			withShaders = NO;
@@ -3305,16 +3308,16 @@ static JSBool ShipSetMaterialsInternal(JSContext *context, uintN argc, jsval *vp
 	if (fromShaders)
 	{
 		materials = [[thisEnt mesh] materials];
-		params = JSVAL_TO_OBJECT(OOJS_ARGV[0]);
+		params = ooscript::toObject(OOJS_ARGV[0]);
 		shaders = OOJSNativeObjectFromJSObject(context, params);
 	}
 	else
 	{
-		params = JSVAL_TO_OBJECT(OOJS_ARGV[0]);
+		params = ooscript::toObject(OOJS_ARGV[0]);
 		materials = OOJSNativeObjectFromJSObject(context, params);
 		if (withShaders)
 		{
-			params = JSVAL_TO_OBJECT(OOJS_ARGV[1]);
+			params = ooscript::toObject(OOJS_ARGV[1]);
 			shaders = OOJSNativeObjectFromJSObject(context, params);
 		}
 		else
@@ -3349,12 +3352,12 @@ static JSBool ShipSetMaterialsInternal(JSContext *context, uintN argc, jsval *vp
 
 
 // exitSystem([int systemID])
-static JSBool ShipExitSystem(JSContext *context, uintN argc, jsval *vp)
+static bool ShipExitSystem(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity			*thisEnt = nil;
-	int32				systemID = -1;
+	int32_t				systemID = -1;
 	BOOL				OK = NO;
 	
 	GET_THIS_SHIP(thisEnt);
@@ -3364,11 +3367,11 @@ static JSBool ShipExitSystem(JSContext *context, uintN argc, jsval *vp)
 		return NO;
 	}
 	
-	if (argc > 0)
+	if (oojsArgs.count() > 0)
 	{
-		if (!JS_ValueToInt32(context, OOJS_ARGV[0], &systemID) || systemID < 0 || 255 < systemID)
+		if (!ooscript::valueToInt32(context, OOJS_ARGV[0], &systemID) || systemID < 0 || 255 < systemID)
 		{
-			OOJSReportBadArguments(context, @"Ship", @"exitSystem", MIN(argc, 1U), OOJS_ARGV, nil, @"system ID");
+			OOJSReportBadArguments(context, @"Ship", @"exitSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"system ID");
 			return NO;
 		}
 	}
@@ -3381,7 +3384,7 @@ static JSBool ShipExitSystem(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipUpdateEscortFormation(JSContext *context, uintN argc, jsval *vp)
+static bool ShipUpdateEscortFormation(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3394,7 +3397,7 @@ static JSBool ShipUpdateEscortFormation(JSContext *context, uintN argc, jsval *v
 	OOJS_PROFILE_EXIT
 }
 
-static BOOL RemoveOrExplodeShip(JSContext *context, uintN argc, jsval *vp, BOOL explode)
+static BOOL RemoveOrExplodeShip(ooscript::Context context, ooscript::CallArgs &oojsArgs, BOOL explode)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3443,7 +3446,7 @@ static BOOL RemoveOrExplodeShip(JSContext *context, uintN argc, jsval *vp, BOOL 
 	OOJS_PROFILE_EXIT
 }
 
-static JSBool ShipClearDefenseTargets(JSContext *context, uintN argc, jsval *vp)
+static bool ShipClearDefenseTargets(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3457,7 +3460,7 @@ static JSBool ShipClearDefenseTargets(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipAddDefenseTarget(JSContext *context, uintN argc, jsval *vp)
+static bool ShipAddDefenseTarget(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3465,7 +3468,7 @@ static JSBool ShipAddDefenseTarget(JSContext *context, uintN argc, jsval *vp)
 	ShipEntity				*target = nil;
 
 	GET_THIS_SHIP(thisEnt);
-	if (EXPECT_NOT(argc == 0 || (argc > 0 && (JSVAL_IS_NULL(OOJS_ARGV[0]) || !JSVAL_IS_OBJECT(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &target)))))
+	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"addDefenseTarget", 1U, OOJS_ARGV, nil, @"target");
 		return NO;
@@ -3479,7 +3482,7 @@ static JSBool ShipAddDefenseTarget(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipRemoveDefenseTarget(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRemoveDefenseTarget(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3487,7 +3490,7 @@ static JSBool ShipRemoveDefenseTarget(JSContext *context, uintN argc, jsval *vp)
 	ShipEntity				*target = nil;
 
 	GET_THIS_SHIP(thisEnt);
-	if (EXPECT_NOT(argc == 0 || (argc > 0 && (JSVAL_IS_NULL(OOJS_ARGV[0]) || !JSVAL_IS_OBJECT(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &target)))))
+	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"removeDefenseTarget", 1U, OOJS_ARGV, nil, @"target");
 		return NO;
@@ -3501,7 +3504,7 @@ static JSBool ShipRemoveDefenseTarget(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipAddCollisionException(JSContext *context, uintN argc, jsval *vp)
+static bool ShipAddCollisionException(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3509,7 +3512,7 @@ static JSBool ShipAddCollisionException(JSContext *context, uintN argc, jsval *v
 	ShipEntity				*target = nil;
 
 	GET_THIS_SHIP(thisEnt);
-	if (EXPECT_NOT(argc == 0 || (argc > 0 && (JSVAL_IS_NULL(OOJS_ARGV[0]) || !JSVAL_IS_OBJECT(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &target)))))
+	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"addCollisionException", 1U, OOJS_ARGV, nil, @"other ship");
 		return NO;
@@ -3527,7 +3530,7 @@ static JSBool ShipAddCollisionException(JSContext *context, uintN argc, jsval *v
 }
 
 
-static JSBool ShipRemoveCollisionException(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRemoveCollisionException(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3535,7 +3538,7 @@ static JSBool ShipRemoveCollisionException(JSContext *context, uintN argc, jsval
 	ShipEntity				*target = nil;
 
 	GET_THIS_SHIP(thisEnt);
-	if (EXPECT_NOT(argc == 0 || (argc > 0 && (JSVAL_IS_NULL(OOJS_ARGV[0]) || !JSVAL_IS_OBJECT(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &target)))))
+	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"removeCollisionException", 1U, OOJS_ARGV, nil, @"other ship");
 		return NO;
@@ -3552,7 +3555,7 @@ static JSBool ShipRemoveCollisionException(JSContext *context, uintN argc, jsval
 
 
 //getMaterials()
-static JSBool ShipGetMaterials(JSContext *context, uintN argc, jsval *vp)
+static bool ShipGetMaterials(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3569,7 +3572,7 @@ static JSBool ShipGetMaterials(JSContext *context, uintN argc, jsval *vp)
 }
 
 //getShaders()
-static JSBool ShipGetShaders(JSContext *context, uintN argc, jsval *vp)
+static bool ShipGetShaders(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3585,7 +3588,7 @@ static JSBool ShipGetShaders(JSContext *context, uintN argc, jsval *vp)
 	OOJS_PROFILE_EXIT
 }
 
-static JSBool ShipBroadcastCascadeImminent(JSContext *context, uintN argc, jsval *vp)
+static bool ShipBroadcastCascadeImminent(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3598,7 +3601,7 @@ static JSBool ShipBroadcastCascadeImminent(JSContext *context, uintN argc, jsval
 	OOJS_PROFILE_EXIT
 }
 
-static JSBool ShipBecomeCascadeExplosion(JSContext *context, uintN argc, jsval *vp)
+static bool ShipBecomeCascadeExplosion(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3612,7 +3615,7 @@ static JSBool ShipBecomeCascadeExplosion(JSContext *context, uintN argc, jsval *
 }
 
 
-static JSBool ShipOfferToEscort(JSContext *context, uintN argc, jsval *vp)
+static bool ShipOfferToEscort(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3620,7 +3623,7 @@ static JSBool ShipOfferToEscort(JSContext *context, uintN argc, jsval *vp)
 	ShipEntity				*mother = nil;
 
 	GET_THIS_SHIP(thisEnt);
-	if (EXPECT_NOT(argc == 0 || (argc > 0 && (JSVAL_IS_NULL(OOJS_ARGV[0]) || !JSVAL_IS_OBJECT(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &mother)))))
+	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &mother)))))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"offerToEscort", 1U, OOJS_ARGV, nil, @"target");
 		return NO;
@@ -3634,7 +3637,7 @@ static JSBool ShipOfferToEscort(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipRequestHelpFromGroup(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRequestHelpFromGroup(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3650,7 +3653,7 @@ static JSBool ShipRequestHelpFromGroup(JSContext *context, uintN argc, jsval *vp
 }
 
 
-static JSBool ShipPatrolReportIn(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPatrolReportIn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3658,7 +3661,7 @@ static JSBool ShipPatrolReportIn(JSContext *context, uintN argc, jsval *vp)
 	ShipEntity				*target = nil;
 
 	GET_THIS_SHIP(thisEnt);
-	if (EXPECT_NOT(argc == 0 || (argc > 0 && (JSVAL_IS_NULL(OOJS_ARGV[0]) || !JSVAL_IS_OBJECT(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &target)))))
+	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && (ooscript::isNull(OOJS_ARGV[0]) || !ooscript::isObjectOrNull(OOJS_ARGV[0]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target)))))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"addDefenseTarget", 1U, OOJS_ARGV, nil, @"target");
 		return NO;
@@ -3675,7 +3678,7 @@ static JSBool ShipPatrolReportIn(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipMarkTargetForFines(JSContext *context, uintN argc, jsval *vp)
+static bool ShipMarkTargetForFines(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3696,7 +3699,7 @@ static JSBool ShipMarkTargetForFines(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipEnterWormhole(JSContext *context, uintN argc, jsval *vp)
+static bool ShipEnterWormhole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3710,7 +3713,7 @@ static JSBool ShipEnterWormhole(JSContext *context, uintN argc, jsval *vp)
 	}
 
 	GET_THIS_SHIP(thisEnt);
-	if (EXPECT_NOT(argc == 0 || (argc > 0 && !JSVAL_IS_NULL(OOJS_ARGV[0]) && (!JSVAL_IS_OBJECT(OOJS_ARGV[0]) || !OOJSEntityGetEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &hole)))))
+	if (EXPECT_NOT(oojsArgs.count() == 0 || (oojsArgs.count() > 0 && !ooscript::isNull(OOJS_ARGV[0]) && (!ooscript::isObjectOrNull(OOJS_ARGV[0]) || !OOJSEntityGetEntity(context, ooscript::toObject(OOJS_ARGV[0]), &hole)))))
 	{
 		[thisEnt enterPlayerWormhole];
 	}
@@ -3731,7 +3734,7 @@ static JSBool ShipEnterWormhole(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipNotifyGroupOfWormhole(JSContext *context, uintN argc, jsval *vp)
+static bool ShipNotifyGroupOfWormhole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3746,7 +3749,7 @@ static JSBool ShipNotifyGroupOfWormhole(JSContext *context, uintN argc, jsval *v
 }
 
 
-static JSBool ShipThrowSpark(JSContext *context, uintN argc, jsval *vp)
+static bool ShipThrowSpark(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3761,7 +3764,7 @@ static JSBool ShipThrowSpark(JSContext *context, uintN argc, jsval *vp)
 
 
 
-static JSBool ShipPerformAttack(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformAttack(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3775,7 +3778,7 @@ static JSBool ShipPerformAttack(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformCollect(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformCollect(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3789,7 +3792,7 @@ static JSBool ShipPerformCollect(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformEscort(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformEscort(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3803,7 +3806,7 @@ static JSBool ShipPerformEscort(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformFaceDestination(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformFaceDestination(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3817,7 +3820,7 @@ static JSBool ShipPerformFaceDestination(JSContext *context, uintN argc, jsval *
 }
 
 
-static JSBool ShipPerformFlee(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformFlee(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3831,7 +3834,7 @@ static JSBool ShipPerformFlee(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformFlyToRangeFromDestination(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformFlyToRangeFromDestination(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3845,7 +3848,7 @@ static JSBool ShipPerformFlyToRangeFromDestination(JSContext *context, uintN arg
 }
 
 
-static JSBool ShipPerformHold(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformHold(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3859,7 +3862,7 @@ static JSBool ShipPerformHold(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformIdle(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformIdle(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3873,7 +3876,7 @@ static JSBool ShipPerformIdle(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformIntercept(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformIntercept(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3887,7 +3890,7 @@ static JSBool ShipPerformIntercept(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformLandOnPlanet(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformLandOnPlanet(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3901,7 +3904,7 @@ static JSBool ShipPerformLandOnPlanet(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformMining(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformMining(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3915,7 +3918,7 @@ static JSBool ShipPerformMining(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformScriptedAI(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformScriptedAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3929,7 +3932,7 @@ static JSBool ShipPerformScriptedAI(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformScriptedAttackAI(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformScriptedAttackAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3943,7 +3946,7 @@ static JSBool ShipPerformScriptedAttackAI(JSContext *context, uintN argc, jsval 
 }
 
 
-static JSBool ShipPerformStop(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformStop(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3957,7 +3960,7 @@ static JSBool ShipPerformStop(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipPerformTumble(JSContext *context, uintN argc, jsval *vp)
+static bool ShipPerformTumble(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3971,7 +3974,7 @@ static JSBool ShipPerformTumble(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipRequestDockingInstructions(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRequestDockingInstructions(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -3993,7 +3996,7 @@ static JSBool ShipRequestDockingInstructions(JSContext *context, uintN argc, jsv
 }
 
 
-static JSBool ShipRecallDockingInstructions(JSContext *context, uintN argc, jsval *vp)
+static bool ShipRecallDockingInstructions(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -4015,7 +4018,7 @@ static JSBool ShipRecallDockingInstructions(JSContext *context, uintN argc, jsva
 }
 
 
-static JSBool ShipBroadcastDistressMessage(JSContext *context, uintN argc, jsval *vp)
+static bool ShipBroadcastDistressMessage(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -4029,7 +4032,7 @@ static JSBool ShipBroadcastDistressMessage(JSContext *context, uintN argc, jsval
 }
 
 
-static JSBool ShipCheckCourseToDestination(JSContext *context, uintN argc, jsval *vp)
+static bool ShipCheckCourseToDestination(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -4044,7 +4047,7 @@ static JSBool ShipCheckCourseToDestination(JSContext *context, uintN argc, jsval
 }
 
 
-static JSBool ShipGetSafeCourseToDestination(JSContext *context, uintN argc, jsval *vp)
+static bool ShipGetSafeCourseToDestination(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -4060,18 +4063,18 @@ static JSBool ShipGetSafeCourseToDestination(JSContext *context, uintN argc, jsv
 }
 
 
-static JSBool ShipCheckScanner(JSContext *context, uintN argc, jsval *vp)
+static bool ShipCheckScanner(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
 	ShipEntity *thisEnt = nil;
-	JSBool	onlyCheckPowered = NO;
+	bool	onlyCheckPowered = NO;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0 && EXPECT_NOT(!JS_ValueToBoolean(context, OOJS_ARGV[0], &onlyCheckPowered)))
+	if (oojsArgs.count() > 0 && EXPECT_NOT(!ooscript::valueToBoolean(context, OOJS_ARGV[0], &onlyCheckPowered)))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"checkScanner", argc, OOJS_ARGV, nil, @"boolean");
+		OOJSReportBadArguments(context, @"Ship", @"checkScanner", oojsArgs.count(), OOJS_ARGV, nil, @"boolean");
 		return NO;
 	}
 
@@ -4096,26 +4099,26 @@ static JSBool ShipCheckScanner(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipAdjustCargo(JSContext *context, uintN argc, jsval *vp)
+static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
 	ShipEntity *thisEnt = nil;
 	NSString *commodity = @"";
-	int32 adjustment = 0;
+	int32_t adjustment = 0;
 
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc < 2)
+	if (oojsArgs.count() < 2)
 	{
-		OOJSReportBadArguments(context, @"Ship", @"adjustCargo", argc, OOJS_ARGV, nil, @"commodity, amount");
+		OOJSReportBadArguments(context, @"Ship", @"adjustCargo", oojsArgs.count(), OOJS_ARGV, nil, @"commodity, amount");
 		return NO;
 	}
 
 	commodity = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (!JS_ValueToInt32(context, OOJS_ARGV[1], &adjustment))
+	if (!ooscript::valueToInt32(context, OOJS_ARGV[1], &adjustment))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"adjustCargo", argc, OOJS_ARGV, nil, @"commodity, amount");
+		OOJSReportBadArguments(context, @"Ship", @"adjustCargo", oojsArgs.count(), OOJS_ARGV, nil, @"commodity, amount");
 		return NO;
 	}
 
@@ -4146,7 +4149,7 @@ static JSBool ShipAdjustCargo(JSContext *context, uintN argc, jsval *vp)
 
 
 /* 0 = no significant damage or consumable loss, higher numbers mean some */
-static JSBool ShipDamageAssessment(JSContext *context, uintN argc, jsval *vp)
+static bool ShipDamageAssessment(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -4177,18 +4180,18 @@ static JSBool ShipDamageAssessment(JSContext *context, uintN argc, jsval *vp)
 
 
 
-static JSBool ShipThreatAssessment(JSContext *context, uintN argc, jsval *vp)
+static bool ShipThreatAssessment(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER
 	
 	ShipEntity *thisEnt = nil;
-	JSBool	fullCheck = NO;
+	bool	fullCheck = NO;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (argc > 0 && EXPECT_NOT(!JS_ValueToBoolean(context, OOJS_ARGV[0], &fullCheck)))
+	if (oojsArgs.count() > 0 && EXPECT_NOT(!ooscript::valueToBoolean(context, OOJS_ARGV[0], &fullCheck)))
 	{
-		OOJSReportBadArguments(context, @"Ship", @"threatAssessment", argc, OOJS_ARGV, nil, @"boolean");
+		OOJSReportBadArguments(context, @"Ship", @"threatAssessment", oojsArgs.count(), OOJS_ARGV, nil, @"boolean");
 		return NO;
 	}
 	// start with 2.5 per ship
@@ -4339,7 +4342,7 @@ static double ShipThreatAssessmentWeapon(OOWeaponType wt)
 
 /** Static methods */
 
-static JSBool ShipStaticKeys(JSContext *context, uintN argc, jsval *vp)
+static bool ShipStaticKeys(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
@@ -4350,12 +4353,12 @@ static JSBool ShipStaticKeys(JSContext *context, uintN argc, jsval *vp)
 	OOJS_NATIVE_EXIT
 }
 
-static JSBool ShipStaticKeysForRole(JSContext *context, uintN argc, jsval *vp)
+static bool ShipStaticKeysForRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
 
-	if (argc > 0)
+	if (oojsArgs.count() > 0)
 	{
 		NSString *role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 		NSArray *keys = [registry shipKeysWithRole:role];
@@ -4363,7 +4366,7 @@ static JSBool ShipStaticKeysForRole(JSContext *context, uintN argc, jsval *vp)
 	}
 	else
 	{
-		OOJSReportBadArguments(context, @"Ship", @"shipKeysForRole", MIN(argc, 1U), OOJS_ARGV, nil, @"ship role");
+		OOJSReportBadArguments(context, @"Ship", @"shipKeysForRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"ship role");
 		return NO;
 	}
 
@@ -4371,11 +4374,11 @@ static JSBool ShipStaticKeysForRole(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipStaticRoleIsInCategory(JSContext *context, uintN argc, jsval *vp)
+static bool ShipStaticRoleIsInCategory(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
 
-	if (argc > 1)
+	if (oojsArgs.count() > 1)
 	{
 		NSString *role = OOStringFromJSValue(context, OOJS_ARGV[0]);
 		NSString *category = OOStringFromJSValue(context, OOJS_ARGV[1]);
@@ -4384,7 +4387,7 @@ static JSBool ShipStaticRoleIsInCategory(JSContext *context, uintN argc, jsval *
 	}
 	else
 	{
-		OOJSReportBadArguments(context, @"Ship", @"roleIsInCategory", MIN(argc, 2U), OOJS_ARGV, nil, @"role, category");
+		OOJSReportBadArguments(context, @"Ship", @"roleIsInCategory", MIN(oojsArgs.count(), 2U), OOJS_ARGV, nil, @"role, category");
 		return NO;
 	}
 
@@ -4392,7 +4395,7 @@ static JSBool ShipStaticRoleIsInCategory(JSContext *context, uintN argc, jsval *
 }
 
 
-static JSBool ShipStaticRoles(JSContext *context, uintN argc, jsval *vp)
+static bool ShipStaticRoles(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
@@ -4404,12 +4407,12 @@ static JSBool ShipStaticRoles(JSContext *context, uintN argc, jsval *vp)
 }
 
 
-static JSBool ShipStaticShipDataForKey(JSContext *context, uintN argc, jsval *vp)
+static bool ShipStaticShipDataForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
 
-	if (argc > 0)
+	if (oojsArgs.count() > 0)
 	{
 		NSString *key = OOStringFromJSValue(context, OOJS_ARGV[0]);
 		NSDictionary *keys = [registry shipInfoForKey:key];
@@ -4417,28 +4420,28 @@ static JSBool ShipStaticShipDataForKey(JSContext *context, uintN argc, jsval *vp
 	}
 	else
 	{
-		OOJSReportBadArguments(context, @"Ship", @"shipDataForKey", MIN(argc, 1U), OOJS_ARGV, nil, @"key");
+		OOJSReportBadArguments(context, @"Ship", @"shipDataForKey", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"key");
 		return NO;
 	}
 	OOJS_NATIVE_EXIT
 }
 
 
-static JSBool ShipStaticSetShipDataForKey(JSContext *context, uintN argc, jsval *vp)
+static bool ShipStaticSetShipDataForKey(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_NATIVE_ENTER(context);
 	OOShipRegistry                  *registry = [OOShipRegistry sharedRegistry];
 
-	if (argc >= 2)
+	if (oojsArgs.count() >= 2)
 	{
 		NSString *key = OOStringFromJSValue(context, OOJS_ARGV[0]);
-		NSDictionary *newShipData = OOJSNativeObjectFromJSObject(context, JSVAL_TO_OBJECT(OOJS_ARGV[1]));
+		NSDictionary *newShipData = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[1]));
 		[registry setShipInfoForKey:key with:newShipData];
 		OOJS_RETURN_BOOL(YES);
 	}
 	else
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setShipInfoForKey", MIN(argc, 2U), OOJS_ARGV, nil, @"key shipdata");
+		OOJSReportBadArguments(context, @"Ship", @"setShipInfoForKey", MIN(oojsArgs.count(), 2U), OOJS_ARGV, nil, @"key shipdata");
 		return NO;
 	}
 	OOJS_NATIVE_EXIT

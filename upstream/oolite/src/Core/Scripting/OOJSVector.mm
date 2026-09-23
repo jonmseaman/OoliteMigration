@@ -40,31 +40,23 @@ MA 02110-1301, USA.
 
 /*
 	This is the Phase 1 seam 1.1x exemplar (bead oo-sdz): the first binding file retargeted onto
-	the ooscript façade (JSEngine.hpp). Oolite's remaining ~110 binding files still speak jsapi
-	(JSContext *, JSObject *, jsval, jsid) at their call sites and through OOJavaScriptEngine.h's
-	OOJS_* argument-marshalling macros (OOJS_ARGV, OOJS_THIS, OOJS_RETURN_*), none of which are
-	touched here or by later retarget beads: those macros are textually spelled "OOJS_...", never
-	literally "JS_...", so they carry no engine name of their own and are out of scope for the
-	sweep (docs/phases/1-js-engine.md work item 2 - "mechanical ... goldens must not move").
+	the ooscript façade (JSEngine.hpp); every other binding file follows its style. Nothing here
+	includes the engine's own header or names its types: handles are ooscript::Context /
+	Object / Value / PropertyId, and OOJavaScriptEngine.h's OOJS_* argument-marshalling macros
+	(OOJS_ARGV, OOJS_THIS, OOJS_RETURN_*) expand to the ooscript::CallArgs accessors.
 
-	What actually changes at each retargeted call site is only the small set of DIRECTLY spelled
-	engine calls (InitClass, NewObject, SetPrivate, GetInstancePrivate, IsArrayObject,
-	GetArrayLength, LookupElement, ValueToNumber, GetPrivate, InstanceOf, NewNumberValue,
-	NewArrayObject, SetElement) and the class dispatch table (the PropertyStub / EnumerateStub /
-	ResolveStub / ConvertStub family, replaced by nullptr hooks in ooscript::ClassDef per
-	JSEngine.hpp). Native methods and class hooks that the
-	façade's ClassDef/PropertySpec/FunctionSpec now dispatch through (VectorGetProperty,
-	VectorSetProperty, VectorFinalize, VectorConstruct, and every JSFunctionSpec entry) take the
-	façade's hook signature (ooscript::Context / Object / PropertyId / Value pointer / CallArgs
-	reference) rather than the
-	engine's; a tiny shim at the top of each recovers the old JSContext pointer, uintN and jsval
-	pointer locals so the
-	OOJS_* macros and the rest of each function body are UNCHANGED, because ooscript::Value and
-	ooscript::PropertyId are byte copies of jsval and jsid (JSEngine.hpp's own contract, verified
-	by the backend's static_asserts) and views onto them are therefore reinterpret_cast, not
-	conversion. `this` and `private` are renamed to `thisObj`/`priv` because both are reserved
-	words once this file compiles as Objective-C++ (ADR-0001; JSEngine.hpp's own header comment:
-	"Consumers that are still Objective-C are compiled as Objective-C++ when they are retargeted").
+	The class dispatch table is a static ooscript::ClassDef (the engine's PropertyStub /
+	EnumerateStub / ResolveStub / ConvertStub family become nullptr hooks), and each engine call
+	(InitClass, NewObject, SetPrivate, GetInstancePrivate, IsArrayObject, GetArrayLength,
+	LookupElement, ValueToNumber, GetPrivate, InstanceOf, NewNumberValue, NewArrayObject,
+	SetElement) is its ooscript:: equivalent with the same calling convention. Class hooks
+	(VectorGetProperty, VectorSetProperty, VectorFinalize) and natives (VectorConstruct and every
+	ooscript::FunctionSpec entry) take the façade's hook signature directly (ooscript::Context /
+	Object / PropertyId / Value pointer / CallArgs reference); a native that consumes its
+	arguments piecemeal copies oojsArgs.count() into a local argc first. `this` and `private` are
+	renamed to `thisObj`/`priv` because both are reserved words once this file compiles as
+	Objective-C++ (ADR-0001; JSEngine.hpp's own header comment: "Consumers that are still
+	Objective-C are compiled as Objective-C++ when they are retargeted").
 */
 
 namespace ooscript { }
@@ -79,42 +71,14 @@ using ooscript::PropertyFlag;
 using ooscript::PropertySpec;
 using ooscript::FunctionSpec;
 
-// Byte-identical façade <-> jsapi views, local to this call site (JSEngine.hpp: Value/PropertyId
-// and the handle types are byte copies of jsval/jsid/JS*; see the backend's own JSVP/OBJ/CX for
-// the same, non-exported, pattern).
+
 namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
-} // namespace
-namespace {
-static inline Value     *OOJSFVALP(jsval *v)      { return reinterpret_cast<Value*>(v); }
-} // namespace
-namespace {
-static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
+static ooscript::Object sVectorPrototype;
 } // namespace
 
 
 namespace {
-static JSObject *sVectorPrototype;
-} // namespace
-
-
-namespace {
-static BOOL GetThisVector(JSContext *context, JSObject *vectorObj, HPVector *outVector, NSString *method)  NONNULL_FUNC;
+static BOOL GetThisVector(ooscript::Context context, ooscript::Object vectorObj, HPVector *outVector, NSString *method)  NONNULL_FUNC;
 } // namespace
 
 
@@ -128,80 +92,80 @@ namespace {
 static void VectorFinalize(Context cx, Object obj);
 } // namespace
 namespace {
-static bool VectorConstruct(Context cx, CallArgs &oojsArgs);
+static bool VectorConstruct(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 // Methods
 namespace {
-static bool VectorToString(Context cx, CallArgs &oojsArgs);
+static bool VectorToString(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorToSource(Context cx, CallArgs &oojsArgs);
+static bool VectorToSource(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorAdd(Context cx, CallArgs &oojsArgs);
+static bool VectorAdd(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorSubtract(Context cx, CallArgs &oojsArgs);
+static bool VectorSubtract(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorDistanceTo(Context cx, CallArgs &oojsArgs);
+static bool VectorDistanceTo(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorSquaredDistanceTo(Context cx, CallArgs &oojsArgs);
+static bool VectorSquaredDistanceTo(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorMultiply(Context cx, CallArgs &oojsArgs);
+static bool VectorMultiply(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorDot(Context cx, CallArgs &oojsArgs);
+static bool VectorDot(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorAngleTo(Context cx, CallArgs &oojsArgs);
+static bool VectorAngleTo(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorFromCoordinateSystem(Context cx, CallArgs &oojsArgs);
+static bool VectorFromCoordinateSystem(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorToCoordinateSystem(Context cx, CallArgs &oojsArgs);
+static bool VectorToCoordinateSystem(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorCross(Context cx, CallArgs &oojsArgs);
+static bool VectorCross(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorTripleProduct(Context cx, CallArgs &oojsArgs);
+static bool VectorTripleProduct(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorDirection(Context cx, CallArgs &oojsArgs);
+static bool VectorDirection(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorMagnitude(Context cx, CallArgs &oojsArgs);
+static bool VectorMagnitude(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorSquaredMagnitude(Context cx, CallArgs &oojsArgs);
+static bool VectorSquaredMagnitude(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorRotationTo(Context cx, CallArgs &oojsArgs);
+static bool VectorRotationTo(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorRotateBy(Context cx, CallArgs &oojsArgs);
+static bool VectorRotateBy(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorToArray(Context cx, CallArgs &oojsArgs);
+static bool VectorToArray(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 // Static methods
 namespace {
-static bool VectorStaticInterpolate(Context cx, CallArgs &oojsArgs);
+static bool VectorStaticInterpolate(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorStaticRandom(Context cx, CallArgs &oojsArgs);
+static bool VectorStaticRandom(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorStaticRandomDirection(Context cx, CallArgs &oojsArgs);
+static bool VectorStaticRandomDirection(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool VectorStaticRandomDirectionAndLength(Context cx, CallArgs &oojsArgs);
+static bool VectorStaticRandomDirectionAndLength(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 
@@ -216,7 +180,7 @@ static ClassDef sVectorClass =
 	VectorGetProperty,	// getProperty
 	VectorSetProperty,	// setProperty
 	nullptr,			// enumerate (engine default: EnumerateStub)
-	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
 	VectorFinalize,		// finalize
@@ -246,21 +210,6 @@ static PropertySpec sVectorProperties[] =
 	{ 0 }
 };
 } // namespace
-
-// A raw jsapi mirror of sVectorProperties, used only for the two bad-property error reporters
-// in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are outside this
-// bead's scope (they are shared across every binding file and are retargeted, if at all, by a
-// later seam) and still take a JSPropertySpec*, not ooscript::PropertySpec*.
-namespace {
-static JSPropertySpec sVectorPropertiesRaw[] =
-{
-	{ "x",						kVector_x,					OOJS_PROP_READWRITE_CB },
-	{ "y",						kVector_y,					OOJS_PROP_READWRITE_CB },
-	{ "z",						kVector_z,					OOJS_PROP_READWRITE_CB },
-	{ 0 }
-};
-} // namespace
-
 
 namespace {
 static FunctionSpec sVectorMethods[] =
@@ -305,20 +254,20 @@ static FunctionSpec sVectorStaticMethods[] =
 
 // *** Public ***
 
-void InitOOJSVector(JSContext *context, JSObject *global)
+void InitOOJSVector(ooscript::Context context, ooscript::Object global)
 {
-	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sVectorClass,
+	Object proto = ooscript::initClass((context), (global), nullptr, &sVectorClass,
 										VectorConstruct, 0, sVectorProperties, sVectorMethods,
 										nullptr, sVectorStaticMethods);
-	sVectorPrototype = OOJSROBJ(proto);
+	sVectorPrototype = (proto);
 }
 
 
-JSObject *JSVectorWithVector(JSContext *context, Vector vector)
+ooscript::Object JSVectorWithVector(ooscript::Context context, Vector vector)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*result = NULL;
+	ooscript::Object result = NULL;
 	HPVector					*priv = NULL;
 	
 	priv = static_cast<HPVector*>(malloc(sizeof *priv));
@@ -326,10 +275,10 @@ JSObject *JSVectorWithVector(JSContext *context, Vector vector)
 	
 	*priv = vectorToHPVector(vector);
 	
-	result = OOJSROBJ(ooscript::newObject(OOJSFCX(context), &sVectorClass, OOJSFOBJ(sVectorPrototype), nullptr));
+	result = (ooscript::newObject((context), &sVectorClass, (sVectorPrototype), nullptr));
 	if (result != NULL)
 	{
-		if (EXPECT_NOT(!ooscript::setPrivate(OOJSFCX(context), OOJSFOBJ(result), priv)))  result = NULL;
+		if (EXPECT_NOT(!ooscript::setPrivate((context), (result), priv)))  result = NULL;
 	}
 	
 	if (EXPECT_NOT(result == NULL)) free(priv);
@@ -340,28 +289,28 @@ JSObject *JSVectorWithVector(JSContext *context, Vector vector)
 }
 
 
-BOOL VectorToJSValue(JSContext *context, Vector vector, jsval *outValue)
+BOOL VectorToJSValue(ooscript::Context context, Vector vector, ooscript::Value *outValue)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*object = NULL;
+	ooscript::Object object = NULL;
 	
 	assert(outValue != NULL);
 	
 	object = JSVectorWithVector(context, vector);
 	if (EXPECT_NOT(object == NULL)) return NO;
 	
-	*outValue = OBJECT_TO_JSVAL(object);
+	*outValue = ooscript::objectValue(object);
 	return YES;
 	
 	OOJS_PROFILE_EXIT
 }
 
-JSObject *JSVectorWithHPVector(JSContext *context, HPVector vector)
+ooscript::Object JSVectorWithHPVector(ooscript::Context context, HPVector vector)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*result = NULL;
+	ooscript::Object result = NULL;
 	HPVector					*priv = NULL;
 	
 	priv = static_cast<HPVector*>(malloc(sizeof *priv));
@@ -369,10 +318,10 @@ JSObject *JSVectorWithHPVector(JSContext *context, HPVector vector)
 	
 	*priv = vector;
 	
-	result = OOJSROBJ(ooscript::newObject(OOJSFCX(context), &sVectorClass, OOJSFOBJ(sVectorPrototype), nullptr));
+	result = (ooscript::newObject((context), &sVectorClass, (sVectorPrototype), nullptr));
 	if (result != NULL)
 	{
-		if (EXPECT_NOT(!ooscript::setPrivate(OOJSFCX(context), OOJSFOBJ(result), priv)))  result = NULL;
+		if (EXPECT_NOT(!ooscript::setPrivate((context), (result), priv)))  result = NULL;
 	}
 	
 	if (EXPECT_NOT(result == NULL)) free(priv);
@@ -383,42 +332,42 @@ JSObject *JSVectorWithHPVector(JSContext *context, HPVector vector)
 }
 
 
-BOOL HPVectorToJSValue(JSContext *context, HPVector vector, jsval *outValue)
+BOOL HPVectorToJSValue(ooscript::Context context, HPVector vector, ooscript::Value *outValue)
 {
 	OOJS_PROFILE_ENTER
 	
-	JSObject				*object = NULL;
+	ooscript::Object object = NULL;
 	
 	assert(outValue != NULL);
 	
 	object = JSVectorWithHPVector(context, vector);
 	if (EXPECT_NOT(object == NULL)) return NO;
 	
-	*outValue = OBJECT_TO_JSVAL(object);
+	*outValue = ooscript::objectValue(object);
 	return YES;
 	
 	OOJS_PROFILE_EXIT
 }
 
 
-BOOL NSPointToVectorJSValue(JSContext *context, NSPoint point, jsval *outValue)
+BOOL NSPointToVectorJSValue(ooscript::Context context, NSPoint point, ooscript::Value *outValue)
 {
 	return VectorToJSValue(context, make_vector(point.x, point.y, 0), outValue);
 }
 
 
-BOOL JSValueToHPVector(JSContext *context, jsval value, HPVector *outVector)
+BOOL JSValueToHPVector(ooscript::Context context, ooscript::Value value, HPVector *outVector)
 {
-	if (EXPECT_NOT(!JSVAL_IS_OBJECT(value)))  return NO;
+	if (EXPECT_NOT(!ooscript::isObjectOrNull(value)))  return NO;
 	
-	return JSObjectGetVector(context, JSVAL_TO_OBJECT(value), outVector);
+	return JSObjectGetVector(context, ooscript::toObject(value), outVector);
 }
 
-BOOL JSValueToVector(JSContext *context, jsval value, Vector *outVector)
+BOOL JSValueToVector(ooscript::Context context, ooscript::Value value, Vector *outVector)
 {
-	if (EXPECT_NOT(!JSVAL_IS_OBJECT(value)))  return NO;
+	if (EXPECT_NOT(!ooscript::isObjectOrNull(value)))  return NO;
 	HPVector tmp = kZeroHPVector;
-	BOOL result = JSObjectGetVector(context, JSVAL_TO_OBJECT(value), &tmp);
+	BOOL result = JSObjectGetVector(context, ooscript::toObject(value), &tmp);
 	*outVector = HPVectorToVector(tmp);
 	return result;
 }
@@ -487,7 +436,7 @@ static VectorStatistics sVectorConversionStats;
 #endif
 
 
-BOOL JSObjectGetVector(JSContext *context, JSObject *vectorObj, HPVector *outVector)
+BOOL JSObjectGetVector(ooscript::Context context, ooscript::Object vectorObj, HPVector *outVector)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -495,13 +444,13 @@ BOOL JSObjectGetVector(JSContext *context, JSObject *vectorObj, HPVector *outVec
 	
 	HPVector					*priv = NULL;
 	std::uint32_t			arrayLength;
-	jsval					arrayX, arrayY, arrayZ;
-	jsdouble				x, y, z;
+	ooscript::Value					arrayX, arrayY, arrayZ;
+	double				x, y, z;
 	
-	Context cx = OOJSFCX(context);
-	Object obj = OOJSFOBJ(vectorObj);
+	Context cx = (context);
+	Object obj = (vectorObj);
 	
-	// vectorObj can legitimately be NULL, e.g. when a null value is converted to a JSObject *.
+	// vectorObj can legitimately be NULL, e.g. when a null value is converted to a ooscript::Object .
 	if (EXPECT_NOT(vectorObj == NULL))
 	{
 		COUNT(nullCount);
@@ -523,14 +472,14 @@ BOOL JSObjectGetVector(JSContext *context, JSObject *vectorObj, HPVector *outVec
 		// ...and it has exactly three elements...
 		if (ooscript::getArrayLength(cx, obj, &arrayLength) && arrayLength == 3)
 		{
-			if (ooscript::lookupElement(cx, obj, 0, OOJSFVALP(&arrayX)) &&
-				ooscript::lookupElement(cx, obj, 1, OOJSFVALP(&arrayY)) &&
-				ooscript::lookupElement(cx, obj, 2, OOJSFVALP(&arrayZ)))
+			if (ooscript::lookupElement(cx, obj, 0, (&arrayX)) &&
+				ooscript::lookupElement(cx, obj, 1, (&arrayY)) &&
+				ooscript::lookupElement(cx, obj, 2, (&arrayZ)))
 			{
 				// ...use the three numbers as [x, y, z]
-				if (ooscript::valueToNumber(cx, OOJSFVAL(arrayX), &x) &&
-					ooscript::valueToNumber(cx, OOJSFVAL(arrayY), &y) &&
-					ooscript::valueToNumber(cx, OOJSFVAL(arrayZ), &z))
+				if (ooscript::valueToNumber(cx, (arrayX), &x) &&
+					ooscript::valueToNumber(cx, (arrayY), &y) &&
+					ooscript::valueToNumber(cx, (arrayZ), &z))
 				{
 					COUNT(arrayCount);
 					*outVector = make_HPvector(x, y, z);
@@ -571,24 +520,24 @@ BOOL JSObjectGetVector(JSContext *context, JSObject *vectorObj, HPVector *outVec
 
 
 namespace {
-static BOOL GetThisVector(JSContext *context, JSObject *vectorObj, HPVector *outVector, NSString *method)
+static BOOL GetThisVector(ooscript::Context context, ooscript::Object vectorObj, HPVector *outVector, NSString *method)
 {
 	if (EXPECT(JSObjectGetVector(context, vectorObj, outVector)))  return YES;
 	
-	jsval arg = OBJECT_TO_JSVAL(vectorObj);
+	ooscript::Value arg = ooscript::objectValue(vectorObj);
 	OOJSReportBadArguments(context, @"Vector3D", method, 1, &arg, @"Invalid target object", @"Vector3D");
 	return NO;
 }
 } // namespace
 
 
-BOOL JSVectorSetVector(JSContext *context, JSObject *vectorObj, Vector vector)
+BOOL JSVectorSetVector(ooscript::Context context, ooscript::Object vectorObj, Vector vector)
 {
 	return JSVectorSetHPVector(context,vectorObj,vectorToHPVector(vector));
 }
 
 
-BOOL JSVectorSetHPVector(JSContext *context, JSObject *vectorObj, HPVector vector)
+BOOL JSVectorSetHPVector(ooscript::Context context, ooscript::Object vectorObj, HPVector vector)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -596,8 +545,8 @@ BOOL JSVectorSetHPVector(JSContext *context, JSObject *vectorObj, HPVector vecto
 	
 	if (EXPECT_NOT(vectorObj == NULL))  return NO;
 	
-	Context cx = OOJSFCX(context);
-	Object obj = OOJSFOBJ(vectorObj);
+	Context cx = (context);
+	Object obj = (vectorObj);
 	
 	priv = static_cast<HPVector*>(ooscript::getInstancePrivate(cx, obj, &sVectorClass, nullptr));
 	if (priv != NULL)	// If this is a (JS) Vector...
@@ -619,7 +568,7 @@ BOOL JSVectorSetHPVector(JSContext *context, JSObject *vectorObj, HPVector vecto
 
 
 namespace {
-static BOOL VectorFromArgumentListNoErrorInternal(JSContext *context, uintN argc, jsval *argv, HPVector *outVector, uintN *outConsumed, BOOL permitNumberList)
+static BOOL VectorFromArgumentListNoErrorInternal(ooscript::Context context, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed, BOOL permitNumberList)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -631,9 +580,9 @@ static BOOL VectorFromArgumentListNoErrorInternal(JSContext *context, uintN argc
 	if (outConsumed != NULL)  *outConsumed = 0;
 	
 	// Is first object a vector, array or entity?
-	if (JSVAL_IS_OBJECT(argv[0]))
+	if (ooscript::isObjectOrNull(argv[0]))
 	{
-		if (JSObjectGetVector(context, JSVAL_TO_OBJECT(argv[0]), outVector))
+		if (JSObjectGetVector(context, ooscript::toObject(argv[0]), outVector))
 		{
 			if (outConsumed != NULL)  *outConsumed = 1;
 			return YES;
@@ -646,10 +595,10 @@ static BOOL VectorFromArgumentListNoErrorInternal(JSContext *context, uintN argc
 	if (argc < 3)  return NO;
 	
 	// Given a string, valueToNumber() returns YES but provides a NaN number.
-	Context cx = OOJSFCX(context);
-	if (EXPECT_NOT(!ooscript::valueToNumber(cx, OOJSFVAL(argv[0]), &x) || isnan(x)))  return NO;
-	if (EXPECT_NOT(!ooscript::valueToNumber(cx, OOJSFVAL(argv[1]), &y) || isnan(y)))  return NO;
-	if (EXPECT_NOT(!ooscript::valueToNumber(cx, OOJSFVAL(argv[2]), &z) || isnan(z)))  return NO;
+	Context cx = (context);
+	if (EXPECT_NOT(!ooscript::valueToNumber(cx, (argv[0]), &x) || isnan(x)))  return NO;
+	if (EXPECT_NOT(!ooscript::valueToNumber(cx, (argv[1]), &y) || isnan(y)))  return NO;
+	if (EXPECT_NOT(!ooscript::valueToNumber(cx, (argv[2]), &z) || isnan(z)))  return NO;
 	
 	// We got our three numbers.
 	*outVector = make_HPvector(x, y, z);
@@ -663,7 +612,7 @@ static BOOL VectorFromArgumentListNoErrorInternal(JSContext *context, uintN argc
 
 
 // EMMSTRAN: remove outConsumed, since it can only be 1 except in failure (constructor is an exception, but it uses VectorFromArgumentListNoErrorInternal() directly).
-BOOL VectorFromArgumentList(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, HPVector *outVector, uintN *outConsumed)
+BOOL VectorFromArgumentList(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed)
 {
 	if (VectorFromArgumentListNoErrorInternal(context, argc, argv, outVector, outConsumed, NO))  return YES;
 	else
@@ -676,7 +625,7 @@ BOOL VectorFromArgumentList(JSContext *context, NSString *scriptClass, NSString 
 }
 
 
-BOOL VectorFromArgumentListNoError(JSContext *context, uintN argc, jsval *argv, HPVector *outVector, uintN *outConsumed)
+BOOL VectorFromArgumentListNoError(ooscript::Context context, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed)
 {
 	return VectorFromArgumentListNoErrorInternal(context, argc, argv, outVector, outConsumed, NO);
 }
@@ -689,8 +638,8 @@ static bool VectorGetProperty(Context cx, Object obj, PropertyId propID, Value *
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 	
 	OOJS_PROFILE_ENTER
 	
@@ -714,7 +663,7 @@ static bool VectorGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			break;
 		
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sVectorPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sVectorProperties);
 			return NO;
 	}
 	
@@ -730,18 +679,18 @@ static bool VectorSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 	
 	OOJS_PROFILE_ENTER
 	
 	HPVector				vector;
-	jsdouble			dval;
+	double			dval;
 	
 	if (EXPECT_NOT(!JSObjectGetVector(context, thisObj, &vector)))  return NO;
 	if (EXPECT_NOT(!ooscript::valueToNumber(cx, *value, &dval)))
 	{
-		OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sVectorPropertiesRaw, *OOJSRVAL(value));
+		OOJSReportBadPropertyValue(context, thisObj, (propID), sVectorProperties, *(value));
 		return NO;
 	}
 	
@@ -760,7 +709,7 @@ static bool VectorSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 		
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sVectorPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sVectorProperties);
 			return NO;
 	}
 	
@@ -790,30 +739,27 @@ static void VectorFinalize(Context cx, Object obj)
 
 
 namespace {
-static bool VectorConstruct(Context cx, CallArgs &oojsArgs)
+static bool VectorConstruct(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	HPVector					vector = kZeroHPVector;
 	HPVector					*priv = NULL;
-	JSObject				*thisObj = NULL;
+	ooscript::Object thisObj = NULL;
 	
 	priv = static_cast<HPVector*>(malloc(sizeof *priv));
 	if (EXPECT_NOT(priv == NULL))  return NO;
 	
-	thisObj = OOJSROBJ(ooscript::newObject(cx, &sVectorClass, nullptr, nullptr));
+	thisObj = (ooscript::newObject(context, &sVectorClass, nullptr, nullptr));
 	if (EXPECT_NOT(thisObj == NULL))  return NO;
 	
-	if (argc != 0)
+	if (oojsArgs.count() != 0)
 	{
-		if (EXPECT_NOT(!VectorFromArgumentListNoErrorInternal(context, argc, OOJS_ARGV, &vector, NULL, YES)))
+		if (EXPECT_NOT(!VectorFromArgumentListNoErrorInternal(context, oojsArgs.count(), OOJS_ARGV, &vector, NULL, YES)))
 		{
 			free(priv);
-			OOJSReportBadArguments(context, NULL, NULL, argc, OOJS_ARGV,
+			OOJSReportBadArguments(context, NULL, NULL, oojsArgs.count(), OOJS_ARGV,
 								   @"Could not construct vector from parameters",
 								   @"Vector, Entity or array of three numbers");
 			return NO;
@@ -822,7 +768,7 @@ static bool VectorConstruct(Context cx, CallArgs &oojsArgs)
 	
 	*priv = vector;
 	
-	if (EXPECT_NOT(!ooscript::setPrivate(cx, OOJSFOBJ(thisObj), priv)))
+	if (EXPECT_NOT(!ooscript::setPrivate(context, (thisObj), priv)))
 	{
 		free(priv);
 		return NO;
@@ -839,10 +785,8 @@ static bool VectorConstruct(Context cx, CallArgs &oojsArgs)
 
 // toString() : String
 namespace {
-static bool VectorToString(Context cx, CallArgs &oojsArgs)
+static bool VectorToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -859,10 +803,8 @@ static bool VectorToString(Context cx, CallArgs &oojsArgs)
 
 // toSource() : String
 namespace {
-static bool VectorToSource(Context cx, CallArgs &oojsArgs)
+static bool VectorToSource(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -880,18 +822,15 @@ static bool VectorToSource(Context cx, CallArgs &oojsArgs)
 
 // add(v : vectorExpression) : Vector3D
 namespace {
-static bool VectorAdd(Context cx, CallArgs &oojsArgs)
+static bool VectorAdd(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	HPVector					thisv, thatv, result;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"add"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"add", argc, OOJS_ARGV, &thatv, NULL)))  return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"add", oojsArgs.count(), OOJS_ARGV, &thatv, NULL)))  return NO;
 	
 	result = HPvector_add(thisv, thatv);
 	
@@ -904,18 +843,15 @@ static bool VectorAdd(Context cx, CallArgs &oojsArgs)
 
 // subtract(v : vectorExpression) : Vector3D
 namespace {
-static bool VectorSubtract(Context cx, CallArgs &oojsArgs)
+static bool VectorSubtract(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	HPVector					thisv, thatv, result;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"subtract"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"subtract", argc, OOJS_ARGV, &thatv, NULL)))  return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"subtract", oojsArgs.count(), OOJS_ARGV, &thatv, NULL)))  return NO;
 	
 	result = HPvector_subtract(thisv, thatv);
 	
@@ -928,11 +864,8 @@ static bool VectorSubtract(Context cx, CallArgs &oojsArgs)
 
 // distanceTo(v : vectorExpression) : Number
 namespace {
-static bool VectorDistanceTo(Context cx, CallArgs &oojsArgs)
+static bool VectorDistanceTo(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -940,7 +873,7 @@ static bool VectorDistanceTo(Context cx, CallArgs &oojsArgs)
 	double						result;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"distanceTo"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"distanceTo", argc, OOJS_ARGV, &thatv, NULL)))  return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"distanceTo", oojsArgs.count(), OOJS_ARGV, &thatv, NULL)))  return NO;
 	
 	result = HPdistance(thisv, thatv);
 	
@@ -953,11 +886,8 @@ static bool VectorDistanceTo(Context cx, CallArgs &oojsArgs)
 
 // squaredDistanceTo(v : vectorExpression) : Number
 namespace {
-static bool VectorSquaredDistanceTo(Context cx, CallArgs &oojsArgs)
+static bool VectorSquaredDistanceTo(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -965,7 +895,7 @@ static bool VectorSquaredDistanceTo(Context cx, CallArgs &oojsArgs)
 	double						result;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"squaredDistanceTo"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"squaredDistanceTo", argc, OOJS_ARGV, &thatv, NULL)))  return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"squaredDistanceTo", oojsArgs.count(), OOJS_ARGV, &thatv, NULL)))  return NO;
 	
 	result = HPdistance2(thisv, thatv);
 	
@@ -978,11 +908,8 @@ static bool VectorSquaredDistanceTo(Context cx, CallArgs &oojsArgs)
 
 // multiply(n : Number) : Vector3D
 namespace {
-static bool VectorMultiply(Context cx, CallArgs &oojsArgs)
+static bool VectorMultiply(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -990,7 +917,7 @@ static bool VectorMultiply(Context cx, CallArgs &oojsArgs)
 	double						scalar;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"multiply"))) return NO;
-	if (EXPECT_NOT(!OOJSArgumentListGetNumber(context, @"Vector3D", @"multiply", argc, OOJS_ARGV, &scalar, NULL)))  return NO;
+	if (EXPECT_NOT(!OOJSArgumentListGetNumber(context, @"Vector3D", @"multiply", oojsArgs.count(), OOJS_ARGV, &scalar, NULL)))  return NO;
 	
 	result = HPvector_multiply_scalar(thisv, scalar);
 	
@@ -1003,11 +930,8 @@ static bool VectorMultiply(Context cx, CallArgs &oojsArgs)
 
 // dot(v : vectorExpression) : Number
 namespace {
-static bool VectorDot(Context cx, CallArgs &oojsArgs)
+static bool VectorDot(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -1015,7 +939,7 @@ static bool VectorDot(Context cx, CallArgs &oojsArgs)
 	double						result;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"dot"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"dot", argc, OOJS_ARGV, &thatv, NULL)))  return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"dot", oojsArgs.count(), OOJS_ARGV, &thatv, NULL)))  return NO;
 	
 	result = HPdot_product(thisv, thatv);
 	
@@ -1028,11 +952,8 @@ static bool VectorDot(Context cx, CallArgs &oojsArgs)
 
 // angleTo(v : vectorExpression) : Number
 namespace {
-static bool VectorAngleTo(Context cx, CallArgs &oojsArgs)
+static bool VectorAngleTo(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -1040,7 +961,7 @@ static bool VectorAngleTo(Context cx, CallArgs &oojsArgs)
 	double						result;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"angleTo"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"angleTo", argc, OOJS_ARGV, &thatv, NULL)))  return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"angleTo", oojsArgs.count(), OOJS_ARGV, &thatv, NULL)))  return NO;
 	
 	result = HPdot_product(HPvector_normal(thisv), HPvector_normal(thatv));
 	if (result > 1.0) result = 1.0;
@@ -1058,18 +979,15 @@ static bool VectorAngleTo(Context cx, CallArgs &oojsArgs)
 
 // cross(v : vectorExpression) : Vector3D
 namespace {
-static bool VectorCross(Context cx, CallArgs &oojsArgs)
+static bool VectorCross(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	HPVector					thisv, thatv, result;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"cross"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"cross", argc, OOJS_ARGV, &thatv, NULL)))  return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"cross", oojsArgs.count(), OOJS_ARGV, &thatv, NULL)))  return NO;
 	
 	result = HPtrue_cross_product(thisv, thatv);
 	
@@ -1082,18 +1000,16 @@ static bool VectorCross(Context cx, CallArgs &oojsArgs)
 
 // tripleProduct(v : vectorExpression, u : vectorExpression) : Number
 namespace {
-static bool VectorTripleProduct(Context cx, CallArgs &oojsArgs)
+static bool VectorTripleProduct(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	HPVector					thisv, thatv, theotherv;
 	double						result;
-	uintN						consumed;
-	jsval						*argv = OOJS_ARGV;
+	unsigned						consumed;
+	unsigned						argc = oojsArgs.count();
+	ooscript::Value						*argv = OOJS_ARGV;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"tripleProduct"))) return NO;
 	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"tripleProduct", argc, argv, &thatv, &consumed)))  return NO;
@@ -1112,10 +1028,8 @@ static bool VectorTripleProduct(Context cx, CallArgs &oojsArgs)
 
 // direction() : Vector3D
 namespace {
-static bool VectorDirection(Context cx, CallArgs &oojsArgs)
+static bool VectorDirection(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -1134,10 +1048,8 @@ static bool VectorDirection(Context cx, CallArgs &oojsArgs)
 
 // magnitude() : Number
 namespace {
-static bool VectorMagnitude(Context cx, CallArgs &oojsArgs)
+static bool VectorMagnitude(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -1157,10 +1069,8 @@ static bool VectorMagnitude(Context cx, CallArgs &oojsArgs)
 
 // squaredMagnitude() : Number
 namespace {
-static bool VectorSquaredMagnitude(Context cx, CallArgs &oojsArgs)
+static bool VectorSquaredMagnitude(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -1180,11 +1090,8 @@ static bool VectorSquaredMagnitude(Context cx, CallArgs &oojsArgs)
 
 // rotationTo(v : vectorExpression [, limit : Number]) : Quaternion
 namespace {
-static bool VectorRotationTo(Context cx, CallArgs &oojsArgs)
+static bool VectorRotationTo(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -1192,8 +1099,9 @@ static bool VectorRotationTo(Context cx, CallArgs &oojsArgs)
 	double						limit;
 	BOOL						gotLimit;
 	Quaternion					result;
-	uintN						consumed;
-	jsval						*argv = OOJS_ARGV;
+	unsigned						consumed;
+	unsigned						argc = oojsArgs.count();
+	ooscript::Value						*argv = OOJS_ARGV;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"rotationTo"))) return NO;
 	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"rotationTo", argc, OOJS_ARGV, &thatv, &consumed)))  return NO;
@@ -1219,11 +1127,8 @@ static bool VectorRotationTo(Context cx, CallArgs &oojsArgs)
 
 // rotateBy(q : quaternionExpression) : Vector3D
 namespace {
-static bool VectorRotateBy(Context cx, CallArgs &oojsArgs)
+static bool VectorRotateBy(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
@@ -1231,7 +1136,7 @@ static bool VectorRotateBy(Context cx, CallArgs &oojsArgs)
 	Quaternion					q;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"rotateBy"))) return NO;
-	if (EXPECT_NOT(!QuaternionFromArgumentList(context, @"Vector3D", @"rotateBy", argc, OOJS_ARGV, &q, NULL)))  return NO;
+	if (EXPECT_NOT(!QuaternionFromArgumentList(context, @"Vector3D", @"rotateBy", oojsArgs.count(), OOJS_ARGV, &q, NULL)))  return NO;
 	
 	result = quaternion_rotate_HPvector(q, thisv);
 	
@@ -1244,34 +1149,32 @@ static bool VectorRotateBy(Context cx, CallArgs &oojsArgs)
 
 // toArray() : Array
 namespace {
-static bool VectorToArray(Context cx, CallArgs &oojsArgs)
+static bool VectorToArray(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	HPVector					thisv;
-	JSObject				*result = NULL;
-	jsval					nVal;
+	ooscript::Object result = NULL;
+	ooscript::Value					nVal;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"toArray"))) return NO;
 	
-	result = OOJSROBJ(ooscript::newArrayObject(cx, 0, nullptr));
+	result = (ooscript::newArrayObject(context, 0, nullptr));
 	if (result != NULL)
 	{
 		// We do this at the top because the return value slot is a GC root.
-		OOJS_SET_RVAL(OBJECT_TO_JSVAL(result));
+		OOJS_SET_RVAL(ooscript::objectValue(result));
 		
-		Object resultObj = OOJSFOBJ(result);
-		if (ooscript::newNumberValue(cx, thisv.x, OOJSFVALP(&nVal)) && ooscript::setElement(cx, resultObj, 0, OOJSFVALP(&nVal)) &&
-			ooscript::newNumberValue(cx, thisv.y, OOJSFVALP(&nVal)) && ooscript::setElement(cx, resultObj, 1, OOJSFVALP(&nVal)) &&
-			ooscript::newNumberValue(cx, thisv.z, OOJSFVALP(&nVal)) && ooscript::setElement(cx, resultObj, 2, OOJSFVALP(&nVal)))
+		Object resultObj = (result);
+		if (ooscript::newNumberValue(context, thisv.x, (&nVal)) && ooscript::setElement(context, resultObj, 0, (&nVal)) &&
+			ooscript::newNumberValue(context, thisv.y, (&nVal)) && ooscript::setElement(context, resultObj, 1, (&nVal)) &&
+			ooscript::newNumberValue(context, thisv.z, (&nVal)) && ooscript::setElement(context, resultObj, 2, (&nVal)))
 		{
 			return YES;
 		}
 		// If we get here, the conversion and stuffing in the previous condition failed.
-		OOJS_SET_RVAL(JSVAL_VOID);
+		OOJS_SET_RVAL(ooscript::undefinedValue());
 	}
 	
 	return YES;
@@ -1283,11 +1186,8 @@ static bool VectorToArray(Context cx, CallArgs &oojsArgs)
 
 // toCoordinateSystem(coordScheme : String)
 namespace {
-static bool VectorToCoordinateSystem(Context cx, CallArgs &oojsArgs)
+static bool VectorToCoordinateSystem(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1297,10 +1197,10 @@ static bool VectorToCoordinateSystem(Context cx, CallArgs &oojsArgs)
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"toCoordinateSystem"))) return NO;
 	
-	coordScheme = (argc >= 1) ? OOStringFromJSValue(context, OOJS_ARGV[0]) : nil;
-	if (EXPECT_NOT(argc < 1 || coordScheme == nil))
+	coordScheme = (oojsArgs.count() >= 1) ? OOStringFromJSValue(context, OOJS_ARGV[0]) : nil;
+	if (EXPECT_NOT(oojsArgs.count() < 1 || coordScheme == nil))
 	{
-		OOJSReportBadArguments(context, @"Vector3D", @"toCoordinateSystem", MIN(argc, 1U), OOJS_ARGV, nil, @"coordinate system");
+		OOJSReportBadArguments(context, @"Vector3D", @"toCoordinateSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"coordinate system");
 		return NO;
 	}
 	
@@ -1317,11 +1217,8 @@ static bool VectorToCoordinateSystem(Context cx, CallArgs &oojsArgs)
 
 // fromCoordinateSystem(coordScheme : String)
 namespace {
-static bool VectorFromCoordinateSystem(Context cx, CallArgs &oojsArgs)
+static bool VectorFromCoordinateSystem(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -1331,10 +1228,10 @@ static bool VectorFromCoordinateSystem(Context cx, CallArgs &oojsArgs)
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"fromCoordinateSystem"))) return NO;
 	
-	coordScheme = (argc >= 1) ? OOStringFromJSValue(context, OOJS_ARGV[0]) : nil;
-	if (EXPECT_NOT(argc < 1 || coordScheme == nil))
+	coordScheme = (oojsArgs.count() >= 1) ? OOStringFromJSValue(context, OOJS_ARGV[0]) : nil;
+	if (EXPECT_NOT(oojsArgs.count() < 1 || coordScheme == nil))
 	{
-		OOJSReportBadArguments(context, @"Vector3D", @"fromCoordinateSystem", MIN(argc, 1U), OOJS_ARGV, nil, @"coordinate system");
+		OOJSReportBadArguments(context, @"Vector3D", @"fromCoordinateSystem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"coordinate system");
 		return NO;
 	}
 	
@@ -1355,21 +1252,19 @@ static bool VectorFromCoordinateSystem(Context cx, CallArgs &oojsArgs)
 
 // interpolate(v : Vector3D, u : Vector3D, alpha : Number) : Vector3D
 namespace {
-static bool VectorStaticInterpolate(Context cx, CallArgs &oojsArgs)
+static bool VectorStaticInterpolate(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	HPVector					av, bv;
 	double						interp;
 	HPVector					result;
-	uintN						consumed;
-	uintN						inArgc = argc;
-	jsval						*argv = OOJS_ARGV;
-	jsval						*inArgv = argv;
+	unsigned						consumed;
+	unsigned						argc = oojsArgs.count();
+	unsigned						inArgc = argc;
+	ooscript::Value						*argv = OOJS_ARGV;
+	ooscript::Value						*inArgv = argv;
 	
 	if (EXPECT_NOT(argc < 3))  goto INSUFFICIENT_ARGUMENTS;
 	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Vector3D", @"interpolate", argc, argv, &av, &consumed)))  return NO;
@@ -1399,17 +1294,14 @@ INSUFFICIENT_ARGUMENTS:
 
 // random([maxLength : Number]) : Vector3D
 namespace {
-static bool VectorStaticRandom(Context cx, CallArgs &oojsArgs)
+static bool VectorStaticRandom(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	double					maxLength;
 	
-	if (argc == 0 || !OOJSArgumentListGetNumberNoError(context, argc, OOJS_ARGV, &maxLength, NULL))  maxLength = 1.0;
+	if (oojsArgs.count() == 0 || !OOJSArgumentListGetNumberNoError(context, oojsArgs.count(), OOJS_ARGV, &maxLength, NULL))  maxLength = 1.0;
 	
 	OOJS_RETURN_HPVECTOR(OOHPVectorRandomSpatial(maxLength));
 	
@@ -1420,17 +1312,14 @@ static bool VectorStaticRandom(Context cx, CallArgs &oojsArgs)
 
 // randomDirection([scale : Number]) : Vector3D
 namespace {
-static bool VectorStaticRandomDirection(Context cx, CallArgs &oojsArgs)
+static bool VectorStaticRandomDirection(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	double					scale;
 	
-	if (argc == 0 || !OOJSArgumentListGetNumberNoError(context, argc, OOJS_ARGV, &scale, NULL))  scale = 1.0;
+	if (oojsArgs.count() == 0 || !OOJSArgumentListGetNumberNoError(context, oojsArgs.count(), OOJS_ARGV, &scale, NULL))  scale = 1.0;
 	
 	OOJS_RETURN_HPVECTOR(HPvector_multiply_scalar(OORandomUnitHPVector(), scale));
 	
@@ -1441,17 +1330,14 @@ static bool VectorStaticRandomDirection(Context cx, CallArgs &oojsArgs)
 
 // randomDirectionAndLength([maxLength : Number]) : Vector3D
 namespace {
-static bool VectorStaticRandomDirectionAndLength(Context cx, CallArgs &oojsArgs)
+static bool VectorStaticRandomDirectionAndLength(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_PROFILE_ENTER
 	
 	double					maxLength;
 	
-	if (argc == 0 || !OOJSArgumentListGetNumberNoError(context, argc, OOJS_ARGV, &maxLength, NULL))  maxLength = 1.0;
+	if (oojsArgs.count() == 0 || !OOJSArgumentListGetNumberNoError(context, oojsArgs.count(), OOJS_ARGV, &maxLength, NULL))  maxLength = 1.0;
 	
 	OOJS_RETURN_HPVECTOR(OOHPVectorRandomRadial(maxLength));
 	
