@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOJavaScriptEngine.h"
+#import "OOFoundationBridge.h"
 
 
 // NOTE: these values are documented for scripting, be careful about changing them.
@@ -80,11 +81,11 @@ MA 02110-1301, USA.
 		radius *= SCANNER_MAX_RANGE;
 		_blastsRemaining--;
 		
-		NSArray *targets = [UNIVERSE findEntitiesMatchingPredicate:IsShipPredicate
+		const std::vector<oo::ObjCRef<ShipEntity *>> targets = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE findEntitiesMatchingPredicate:IsShipPredicate
 														 parameter:NULL
 														   inRange:radius
-														  ofEntity:self];
-		NSUInteger i, count = [targets count];
+														  ofEntity:self]);
+		NSUInteger i, count = targets.size();
 		if (count > 0)
 		{
 			ooscript::Context context = OOJSAcquireContext();
@@ -93,7 +94,7 @@ MA 02110-1301, USA.
 			
 			for (i = 0; i < count; i++)
 			{
-				ShipEntity *target = [targets objectAtIndex:i];
+				ShipEntity *target = targets[i].get();
 				ShipScriptEvent(context, target, "shipHitByECM", ecmPulsesRemaining, whomVal);
 				[target reactToAIMessage:@"ECM" context:nil];
 				[target noticeECM];
