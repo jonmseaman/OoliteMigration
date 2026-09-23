@@ -1491,7 +1491,7 @@ static int shipsFound;
 - (void) ejectItem:(NSString *)itemKey
 {
 	if (scriptTarget == nil)  scriptTarget = self;
-	[scriptTarget ejectShipOfType:itemKey];
+	[scriptTarget ejectShipOfType:oo::OptionalString(itemKey)];
 }
 
 
