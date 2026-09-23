@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOSoundSourcePool.h"
 #import "OOMaths.h"
 #import "OOEquipmentType.h"
+#import "OOStringBridge.h"
 
 
 // Sizes of sound source pools
@@ -496,37 +497,37 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 
 - (void) playBuyCommodity
 {
-	[sBuySellSourcePool playSoundWithKey:@"[buy-commodity]"];
+	[sBuySellSourcePool playSoundWithKey:"[buy-commodity]"];
 }
 
 
 - (void) playBuyShip
 {
-	[sBuySellSourcePool playSoundWithKey:@"[buy-ship]"];
+	[sBuySellSourcePool playSoundWithKey:"[buy-ship]"];
 }
 
 
 - (void) playSellCommodity
 {
-	[sBuySellSourcePool playSoundWithKey:@"[sell-commodity]"];
+	[sBuySellSourcePool playSoundWithKey:"[sell-commodity]"];
 }
 
 
 - (void) playCantBuyCommodity
 {
-	[sBuySellSourcePool playSoundWithKey:@"[could-not-buy-commodity]"];
+	[sBuySellSourcePool playSoundWithKey:"[could-not-buy-commodity]"];
 }
 
 
 - (void) playCantSellCommodity
 {
-	[sBuySellSourcePool playSoundWithKey:@"[could-not-sell-commodity]"];
+	[sBuySellSourcePool playSoundWithKey:"[could-not-sell-commodity]"];
 }
 
 
 - (void) playCantBuyShip
 {
-	[sBuySellSourcePool playSoundWithKey:@"[could-not-buy-ship]"];
+	[sBuySellSourcePool playSoundWithKey:"[could-not-buy-ship]"];
 }
 
 
@@ -580,67 +581,67 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 
 - (void) playHostileWarning
 {
-	[sWarningSoundPool playSoundWithKey:@"[hostile-warning]" priority:1 position:kInterfaceWarningPosition];
+	[sWarningSoundPool playSoundWithKey:"[hostile-warning]" priority:1 position:kInterfaceWarningPosition];
 }
 
 
 - (void) playAlertConditionRed
 {
-	[sWarningSoundPool playSoundWithKey:@"[alert-condition-red]" priority:2 position:kInterfaceWarningPosition];
+	[sWarningSoundPool playSoundWithKey:"[alert-condition-red]" priority:2 position:kInterfaceWarningPosition];
 }
 
 
 - (void) playIncomingMissile:(Vector)missileVector
 {
-	[sWarningSoundPool playSoundWithKey:@"[incoming-missile]" priority:3 position:missileVector];
+	[sWarningSoundPool playSoundWithKey:"[incoming-missile]" priority:3 position:missileVector];
 }
 
 
 - (void) playEnergyLow
 {
-	[sWarningSoundPool playSoundWithKey:@"[energy-low]" priority:0.5 position:kInterfaceWarningPosition];
+	[sWarningSoundPool playSoundWithKey:"[energy-low]" priority:0.5 position:kInterfaceWarningPosition];
 }
 
 
 - (void) playDockingDenied
 {
-	[sWarningSoundPool playSoundWithKey:@"[autopilot-denied]" priority:1 position:kInterfaceWarningPosition];
+	[sWarningSoundPool playSoundWithKey:"[autopilot-denied]" priority:1 position:kInterfaceWarningPosition];
 }
 
 
 - (void) playWitchjumpFailure
 {
-	[sWarningSoundPool playSoundWithKey:@"[witchdrive-failure]" priority:1.5 position:kWitchspacePosition];
+	[sWarningSoundPool playSoundWithKey:"[witchdrive-failure]" priority:1.5 position:kWitchspacePosition];
 }
 
 
 - (void) playWitchjumpMisjump
 {
-	[sWarningSoundPool playSoundWithKey:@"[witchdrive-malfunction]" priority:1.5 position:kWitchspacePosition];
+	[sWarningSoundPool playSoundWithKey:"[witchdrive-malfunction]" priority:1.5 position:kWitchspacePosition];
 }
 
 
 - (void) playWitchjumpBlocked
 {
-	[sWarningSoundPool playSoundWithKey:@"[witch-blocked-by-@]" priority:1.3 position:kWitchspacePosition];
+	[sWarningSoundPool playSoundWithKey:"[witch-blocked-by-@]" priority:1.3 position:kWitchspacePosition];
 }
 
 
 - (void) playWitchjumpDistanceTooGreat
 {
-	[sWarningSoundPool playSoundWithKey:@"[witch-too-far]" priority:1.3 position:kWitchspacePosition];
+	[sWarningSoundPool playSoundWithKey:"[witch-too-far]" priority:1.3 position:kWitchspacePosition];
 }
 
 
 - (void) playWitchjumpInsufficientFuel
 {
-	[sWarningSoundPool playSoundWithKey:@"[witch-no-fuel]" priority:1.3 position:kWitchspacePosition];
+	[sWarningSoundPool playSoundWithKey:"[witch-no-fuel]" priority:1.3 position:kWitchspacePosition];
 }
 
 
 - (void) playFuelLeak
 {
-	[sWarningSoundPool playSoundWithKey:@"[fuel-leak]" priority:0.5 position:kWitchspacePosition];
+	[sWarningSoundPool playSoundWithKey:"[fuel-leak]" priority:0.5 position:kWitchspacePosition];
 }
 
 
@@ -648,7 +649,7 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 {
 	NSString *identifier = [weaponShieldHit objectForKey:weaponIdentifier];
 	if (!identifier)  identifier = @"[player-hit-by-weapon]";
-	[sDamageSoundPool playSoundWithKey:identifier position:attackVector];
+	[sDamageSoundPool playSoundWithKey:oo::StdString(identifier) position:attackVector];
 }
 
 
@@ -656,13 +657,13 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 {
 	NSString *identifier = [weaponUnshieldedHit objectForKey:weaponIdentifier];
 	if (!identifier)  identifier = @"[player-direct-hit]";
-	[sDamageSoundPool playSoundWithKey:identifier position:attackVector];
+	[sDamageSoundPool playSoundWithKey:oo::StdString(identifier) position:attackVector];
 }
 
 
 - (void) playScrapeDamage:(Vector)attackVector
 {
-	[sDamageSoundPool playSoundWithKey:@"[player-scrape-damage]" position:attackVector];
+	[sDamageSoundPool playSoundWithKey:"[player-scrape-damage]" position:attackVector];
 }
 
 
@@ -673,13 +674,13 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 	{
 		identifier = [weaponShotHit objectForKey:weaponIdentifier];
 		if (!identifier)  identifier = @"[player-laser-hit]";
-		[sWeaponSoundPool playSoundWithKey:identifier priority:1.0 expiryTime:0.05 overlap:YES position:weaponOffset];
+		[sWeaponSoundPool playSoundWithKey:oo::StdString(identifier) priority:1.0 expiryTime:0.05 overlap:YES position:weaponOffset];
 	}
 	else
 	{
 		identifier = [weaponShotMiss objectForKey:weaponIdentifier];
 		if (!identifier)  identifier = @"[player-laser-miss]";
-		[sWeaponSoundPool playSoundWithKey:identifier priority:1.0 expiryTime:0.05 overlap:YES position:weaponOffset];
+		[sWeaponSoundPool playSoundWithKey:oo::StdString(identifier) priority:1.0 expiryTime:0.05 overlap:YES position:weaponOffset];
 
 	}
 }
@@ -687,7 +688,7 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 
 - (void) playWeaponOverheated:(Vector)weaponOffset
 {
-	[sWeaponSoundPool playSoundWithKey:@"[weapon-overheat]" overlap:NO position:weaponOffset];
+	[sWeaponSoundPool playSoundWithKey:"[weapon-overheat]" overlap:NO position:weaponOffset];
 }
 
 
@@ -695,7 +696,7 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 {
 	NSString *identifier = [weaponLaunched objectForKey:weaponIdentifier];
 	if (!identifier)  identifier = @"[missile_launched]";
-	[sWeaponSoundPool playSoundWithKey:identifier position:weaponOffset];
+	[sWeaponSoundPool playSoundWithKey:oo::StdString(identifier) position:weaponOffset];
 }
 
 
@@ -703,37 +704,37 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 {
 	NSString *identifier = [weaponLaunched objectForKey:weaponIdentifier];
 	if (!identifier)  identifier = @"[mine_launched]";
-	[sWeaponSoundPool playSoundWithKey:identifier position:weaponOffset];
+	[sWeaponSoundPool playSoundWithKey:oo::StdString(identifier) position:weaponOffset];
 }
 
 
 - (void) playEscapePodScooped
 {
-	[sMiscSoundPool playSoundWithKey:@"[escape-pod-scooped]" position:kInterfaceBeepPosition];
+	[sMiscSoundPool playSoundWithKey:"[escape-pod-scooped]" position:kInterfaceBeepPosition];
 }
 
 
 - (void) playAegisCloseToPlanet
 {
-	[sMiscSoundPool playSoundWithKey:@"[aegis-planet]" position:kInterfaceBeepPosition];
+	[sMiscSoundPool playSoundWithKey:"[aegis-planet]" position:kInterfaceBeepPosition];
 }
 
 
 - (void) playAegisCloseToStation
 {
-	[sMiscSoundPool playSoundWithKey:@"[aegis-station]" position:kInterfaceBeepPosition];
+	[sMiscSoundPool playSoundWithKey:"[aegis-station]" position:kInterfaceBeepPosition];
 }
 
 
 - (void) playGameOver
 {
-	[sMiscSoundPool playSoundWithKey:@"[game-over]"];
+	[sMiscSoundPool playSoundWithKey:"[game-over]"];
 }
 
 
 - (void) playLegacyScriptSound:(NSString *)key
 {
-	[sMiscSoundPool playSoundWithKey:key priority:1.1];
+	[sMiscSoundPool playSoundWithKey:oo::StdString(key) priority:1.1];
 }
 
 @end

@@ -23,18 +23,18 @@ MA 02110-1301, USA.
 */
 
 #import "NSScannerOOExtensions.h"
+#import "OOStringBridge.h"
 
 
 @implementation NSScanner (OOExtensions)
 
-- (BOOL) ooliteScanCharactersFromSet:(NSCharacterSet *)set intoString:(NSString **)value
+- (BOOL) ooliteScanCharactersFromSet:(NSCharacterSet *)set intoString:(std::string *)value
 {
 	NSUInteger		currentLocation = [self scanLocation];
 	NSRange			matchedRange = NSMakeRange( currentLocation, 0);
-	NSString		*scanString = [self string];
-	NSUInteger		scanLength = [scanString length];
+	NSUInteger		scanLength = [[self string] length];
 	
-	while ((currentLocation < scanLength)&&([set characterIsMember:[scanString characterAtIndex:currentLocation]]))
+	while ((currentLocation < scanLength)&&([set characterIsMember:[[self string] characterAtIndex:currentLocation]]))
 	{
 		currentLocation++;
 	}
@@ -47,21 +47,20 @@ MA 02110-1301, USA.
 	
 	if (value != NULL)
 	{
-		*value = [scanString substringWithRange:matchedRange];
+		*value = oo::StdString([[self string] substringWithRange:matchedRange]);
 	}
 	
 	return YES;
 }
 
 
-- (BOOL) ooliteScanUpToCharactersFromSet:(NSCharacterSet *)set intoString:(NSString **)value
+- (BOOL) ooliteScanUpToCharactersFromSet:(NSCharacterSet *)set intoString:(std::string *)value
 {
 	NSUInteger		currentLocation = [self scanLocation];
 	NSRange			matchedRange = NSMakeRange( currentLocation, 0);
-	NSString		*scanString = [self string];
-	NSUInteger		scanLength = [scanString length];
+	NSUInteger		scanLength = [[self string] length];
 	
-	while ((currentLocation < scanLength)&&(![set characterIsMember:[scanString characterAtIndex:currentLocation]]))
+	while ((currentLocation < scanLength)&&(![set characterIsMember:[[self string] characterAtIndex:currentLocation]]))
 	{
 		currentLocation++;
 	}
@@ -74,7 +73,7 @@ MA 02110-1301, USA.
 	
 	if (value != NULL)
 	{
-		*value = [scanString substringWithRange:matchedRange];
+		*value = oo::StdString([[self string] substringWithRange:matchedRange]);
 	}
 	
 	return YES;

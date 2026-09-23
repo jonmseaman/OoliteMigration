@@ -42,6 +42,7 @@
 #import "OOPixMap.h"
 
 #include "oofnd/StdLib.hpp"
+#import "OOFoundationBridge.h"
 
 
 NSString * const kOOTextureSpecifierNameKey					= @"name";
@@ -174,7 +175,7 @@ static NSString *sGlobalTraceContext = nil;
 		}
 		
 		// No existing texture, load texture.
-		result = [[[OOConcreteTexture alloc] initWithPath:path key:key options:options anisotropy:anisotropy lodBias:lodBias] autorelease];
+		result = [[[OOConcreteTexture alloc] initWithPath:oo::StdString(path) key:oo::OptionalString(key) options:options anisotropy:anisotropy lodBias:lodBias] autorelease];
 	}
 	
 	
@@ -241,7 +242,7 @@ static NSString *sGlobalTraceContext = nil;
 	OOLog(@"texture.generator.queue", @"Queued texture generator %@", generator);
 	
 	OOTexture *result = [[[OOConcreteTexture alloc] initWithLoader:generator
-															   key:[generator cacheKey]
+															   key:oo::OptionalString([generator cacheKey])
 														   options:OOApplyTextureOptionDefaults([generator textureOptions])
 														anisotropy:[generator anisotropy]
 														   lodBias:[generator lodBias]] autorelease];
@@ -530,25 +531,25 @@ static NSString *sGlobalTraceContext = nil;
 	BOOL						ver130 = [extMgr versionIsAtLeastMajor:1 minor:3];
 	
 #if GL_EXT_texture_filter_anisotropic
-	gOOTextureInfo.anisotropyAvailable = [extMgr haveExtension:@"GL_EXT_texture_filter_anisotropic"];
+	gOOTextureInfo.anisotropyAvailable = [extMgr haveExtension:"GL_EXT_texture_filter_anisotropic"] ? 1 : 0;
 	OOGL(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &gOOTextureInfo.anisotropyScale));
 	gOOTextureInfo.anisotropyScale *= OOClamp_0_1_f([[NSUserDefaults standardUserDefaults] oo_floatForKey:@"texture-anisotropy-scale" defaultValue:0.5]);
 #endif
 	
 #ifdef GL_CLAMP_TO_EDGE
-	gOOTextureInfo.clampToEdgeAvailable = ver120 || [extMgr haveExtension:@"GL_SGIS_texture_edge_clamp"];
+	gOOTextureInfo.clampToEdgeAvailable = ver120 || [extMgr haveExtension:"GL_SGIS_texture_edge_clamp"];
 #endif
 	
 #if OO_GL_CLIENT_STORAGE
-	gOOTextureInfo.clientStorageAvailable = [extMgr haveExtension:@"GL_APPLE_client_storage"];
+	gOOTextureInfo.clientStorageAvailable = [extMgr haveExtension:"GL_APPLE_client_storage"] ? 1 : 0;
 #endif
 	
-	gOOTextureInfo.textureMaxLevelAvailable = ver120 || [extMgr haveExtension:@"GL_SGIS_texture_lod"];
+	gOOTextureInfo.textureMaxLevelAvailable = ver120 || [extMgr haveExtension:"GL_SGIS_texture_lod"];
 	
 #if GL_EXT_texture_lod_bias
 	if ([[NSUserDefaults standardUserDefaults] oo_boolForKey:@"use-texture-lod-bias" defaultValue:YES])
 	{
-		gOOTextureInfo.textureLODBiasAvailable = [extMgr haveExtension:@"GL_EXT_texture_lod_bias"];
+		gOOTextureInfo.textureLODBiasAvailable = [extMgr haveExtension:"GL_EXT_texture_lod_bias"] ? 1 : 0;
 	}
 	else
 	{
@@ -557,13 +558,13 @@ static NSString *sGlobalTraceContext = nil;
 #endif
 	
 #if GL_EXT_texture_rectangle
-	gOOTextureInfo.rectangleTextureAvailable = [extMgr haveExtension:@"GL_EXT_texture_rectangle"];
+	gOOTextureInfo.rectangleTextureAvailable = [extMgr haveExtension:"GL_EXT_texture_rectangle"];
 #endif
 	
 #if OO_TEXTURE_CUBE_MAP
 	if (![[NSUserDefaults standardUserDefaults] boolForKey:@"disable-cube-maps"])
 	{
-		gOOTextureInfo.cubeMapAvailable = ver130 || [extMgr haveExtension:@"GL_ARB_texture_cube_map"];
+		gOOTextureInfo.cubeMapAvailable = ver130 || [extMgr haveExtension:"GL_ARB_texture_cube_map"];
 	}
 	else
 	{

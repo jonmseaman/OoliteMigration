@@ -117,3 +117,54 @@ the guardrails passing, and `tools/tier-c.sh --only goldens` reporting both bles
 verified. Probes (throwaway, linked against gnustep-base): nil-message returns, `-compare:` /
 `-caseInsensitiveCompare:` digests (now `test_string_compare.cpp`), `-[NSDictionary hash]`,
 NSScanner role parsing, `%p`, and the bridge's round trips.
+
+## Amendment 1 — after batch 1 (2026-09-23, beads oo-tms0, oo-oz2y)
+
+Batch 1 (48 Core-leaf beads) returned 16 done and 31 stops. The stops were gaps in this decision,
+not worker errors. Each gap gets a default here; the recipe (`src/oofnd/README.md`, "Migrating
+Foundation usage") carries the mechanics.
+
+6. **Fan-out over budget goes through a transitional bridge, not a split.** When a file's unique
+   Foundation-typed API has more direct callers than the sizing rule allows, the bead gives that
+   API **new C++-typed selectors and functions named with a `cxx_` prefix** (`+cxx_colorFromString:`,
+   `cxx_OORGBAComponentsDescription()`), and moves the old declarations, **with the same names and
+   types exactly**, into a category `X (OOFoundationBridge)` in `X+FoundationBridge.h/.mm`, whose
+   methods forward to the `cxx_` ones. `X.h` imports the bridge header as its last line, so every
+   caller compiles unchanged; the bead touches its own two files, the two bridge files and one line
+   of `meson.build`. This keeps fact 2 safe: the old selectors keep their old types in every class
+   that declares them, and the `cxx_` selectors are new, so `check-selector-types.py` sees them as
+   unique. Each caller switches to the `cxx_` API in its own sweep bead. Each bridge has a
+   **deletion bead** that depends on its callers' sweep beads and blocks oo-qps (which could not
+   compile a bridge anyway: that is the backstop). Registry: the "Transitional bridges" table in
+   the README. `cxx_` names are Phase 2 scaffolding; Phase 3 drops the prefix as it turns
+   `[x cxx_foo]` into `x->foo()`. Exemplar: `src/Core/OOColor.mm` (15 caller files).
+   A file whose migration exceeds ~400 written lines even with a bridge is split by selector group
+   (each group adds its `cxx_` methods and bridge entries; the last bead does the body) by the
+   orchestrator, not by the worker.
+7. **Categories on Foundation classes and subclasses of Foundation classes are retired, not
+   swept.** `NSString (OOExtensions)`, `NSDictionary (...)`, `NSFileManager (...)`, the
+   `NSEnumerator` subclasses, `OODeepCopy`, `OOCollectionExtractors`, OOCocoa.h's `NSEnumerator`
+   category: a Foundation class name is their receiver, so no type migration makes the grep pass.
+   Their beads depend on the sweep beads of their callers (`bd dep add`); when `git grep` finds no
+   caller outside the category's own files, the bead deletes the files, their `meson.build` line and
+   every import. Callers stop using them in their own sweep beads, with the replacements the recipe
+   lists (`oo::str`, `oo::fs`, `oo::PList` copies, range-for with `if`/`continue` for the filtering
+   and excluding enumerators). `NSUserDefaults+Override` goes the same way when the last
+   `NSUserDefaults` consumer has moved to `oo::Defaults` (ADR-0032), because it overrides a private
+   gnustep-base method and writes the same file oo::Defaults writes.
+8. **`%p` is reproducible.** `oo::str::pointerDescription(p)` is GNUstep's `%p` on 64-bit Windows
+   (`(null)`; else the low 32 bits as `%#x`, so `"0"` when they are zero), pinned by captured rows.
+   `%p` becomes `%s` with it, anywhere; it is no longer a stop.
+9. **Path components are reproducible.** `oo::str::pathComponents`, `pathWithComponents`,
+   `lastPathComponent`, `deletingLastPathComponent`, `appendingPathComponent` reproduce GNUstep's
+   Windows rules (both separators; UNC, drive, `~user/` and single-separator roots kept verbatim),
+   pinned by 71 captured paths and 33 component lists. Exemplar: `src/Core/OOALSoundDecoder.mm`.
+10. **A typedef of a Foundation type is a Foundation type.** `OOCommodityType` (`NSString *`) and the
+   `OOAL*Ref` typedefs of the TCP stream decoder may not appear in a migrated file: it holds
+   `std::string` (or the oofnd type) and converts at the boundary as for any unmigrated API; a
+   unique selector that took `OOCommodityType` takes `const std::string &`. The typedef is deleted by
+   the bead of its last user. No bead retypes it tree-wide.
+
+Consequences: bridges add `cxx_` selectors and a few hundred forwarding lines that exist only
+until their callers are swept; the dependency graph (callers before categories, callers before
+bridge deletions, all before oo-qps) is recorded in beads, not here.

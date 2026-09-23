@@ -25,6 +25,8 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 
+#include "oofnd/StdLib.hpp"
+
 
 /*
 	OOMouseInteractionMode
@@ -52,6 +54,6 @@ typedef enum
 } OOMouseInteractionMode;
 
 
-NSString *OOStringFromMouseInteractionMode(OOMouseInteractionMode mode);
+std::string OOStringFromMouseInteractionMode(OOMouseInteractionMode mode);
 BOOL OOMouseInteractionModeIsUIScreen(OOMouseInteractionMode mode);
 BOOL OOMouseInteractionModeIsFlightMode(OOMouseInteractionMode mode);

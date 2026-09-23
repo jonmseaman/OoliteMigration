@@ -44,6 +44,7 @@ SOFTWARE.
 #import "OOLogging.h"
 #import "OODebugFlags.h"
 #import "OOStringParsing.h"
+#import "OOStringBridge.h"
 
 
 NSString * const kOOVertexShaderSourceKey		= @"_oo_vertex_shader_source";
@@ -550,7 +551,7 @@ static NSString *MacrosToString(NSDictionary *macros);
 		}
 		else if ([definition isKindOfClass:[NSString class]])
 		{
-			if (OOIsNumberLiteral(definition, NO))
+			if (OOIsNumberLiteral(oo::StdString(definition), NO))
 			{
 				value = definition;
 				type = @"float";

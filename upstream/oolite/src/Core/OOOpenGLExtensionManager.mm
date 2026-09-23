@@ -32,9 +32,11 @@ SOFTWARE.
 #include <stdlib.h>
 
 #import "ResourceManager.h"
-#import "OOPListView.h"
 #import "OORegExpMatcher.h"
 #import "OOConstToString.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 /*	OpenGL version required, currently 1.1 or later (basic stuff like
@@ -145,7 +147,9 @@ PFNGLCLAMPCOLORPROC						glClampColor					= (PFNGLCLAMPCOLORPROC)&OOBadOpenGLExt
 #endif
 
 
-static NSString * const kOOLogOpenGLShaderSupport		= @"rendering.opengl.shader.support";
+namespace {
+constexpr const char *kOOLogOpenGLShaderSupport		= "rendering.opengl.shader.support";
+}
 
 
 static OOOpenGLExtensionManager *sSingleton = nil;
@@ -173,22 +177,33 @@ static unsigned IntegerFromString(const GLubyte **ioString);
 - (void)checkTextureCombinersSupported;
 #endif
 
-- (NSDictionary *) lookUpPerGPUSettingsWithVersionString:(NSString *)version extensionsString:(NSString *)extensionsStr;
+- (oo::PList) lookUpPerGPUSettingsWithVersionString:(const std::optional<std::string> &)version extensionsString:(const std::optional<std::string> &)extensionsStr;
 
 @end
 
 
-static NSArray *ArrayOfExtensions(NSString *extensionString)
+namespace {
+
+std::vector<std::string> ArrayOfExtensions(const std::optional<std::string> &extensionString)
 {
-	NSArray *components = [extensionString componentsSeparatedByString:@" "];
-	NSMutableArray *result = [NSMutableArray arrayWithCapacity:[components count]];
-	NSString *extStr = nil;
-	foreach (extStr, components)
+	std::vector<std::string> result;
+	if (!extensionString.has_value())  return result;
+	for (std::string &extStr : oo::str::split(*extensionString, " "))
 	{
-		if ([extStr length] > 0)  [result addObject:extStr];
+		if (!extStr.empty())  result.push_back(std::move(extStr));
 	}
 	return result;
 }
+
+
+// What -initWithUTF8String: gave for a glGetString() result: nil for NULL.
+std::optional<std::string> OptionalGLString(const GLubyte *string)
+{
+	if (string == NULL)  return std::nullopt;
+	return std::string(reinterpret_cast<const char *>(string));
+}
+
+}	// namespace
 
 
 @implementation OOOpenGLExtensionManager
@@ -209,15 +224,14 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 {
 	const GLubyte		*versionString = NULL, *curr = NULL;
 	
-	DESTROY(extensions);
-	DESTROY(vendor);
-	DESTROY(renderer);
+	const std::optional<std::string> extensionsStr = OptionalGLString(glGetString(GL_EXTENSIONS));
+	{
+		const std::vector<std::string> extensionList = ArrayOfExtensions(extensionsStr);
+		extensions = std::set<std::string>(extensionList.begin(), extensionList.end());
+	}
 	
-	NSString *extensionsStr = [NSString stringWithUTF8String:(char *)glGetString(GL_EXTENSIONS)];
-	extensions = [[NSSet alloc] initWithArray:ArrayOfExtensions(extensionsStr)];
-	
-	vendor = [[NSString alloc] initWithUTF8String:(const char *)glGetString(GL_VENDOR)];
-	renderer = [[NSString alloc] initWithUTF8String:(const char *)glGetString(GL_RENDERER)];
+	vendor = OptionalGLString(glGetString(GL_VENDOR));
+	renderer = OptionalGLString(glGetString(GL_RENDERER));
 	
 	versionString = glGetString(GL_VERSION);
 	if (versionString != NULL)
@@ -246,8 +260,17 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 	 */
 	[ResourceManager paths];
 	
-	OOLog(@"rendering.opengl.version", @"OpenGL renderer version: %u.%u.%u (\"%s\"). Vendor: \"%@\". Renderer: \"%@\".", major, minor, release, versionString, vendor, renderer);
-	OOLog(@"rendering.opengl.extensions", @"OpenGL extensions (%zu):\n%@", [extensions count], [[extensions allObjects] componentsJoinedByString:@", "]);
+	OOLog(@"rendering.opengl.version", @"OpenGL renderer version: %u.%u.%u (\"%s\"). Vendor: \"%@\". Renderer: \"%@\".", major, minor, release, versionString, oo::NSStringOrNil(vendor), oo::NSStringOrNil(renderer));
+	{
+		// Listed in byte order of the name (the set's hash order before; proposed ADR-0043).
+		std::string extensionList;
+		for (const std::string &extension : extensions)
+		{
+			if (!extensionList.empty())  extensionList += ", ";
+			extensionList += extension;
+		}
+		OOLog(@"rendering.opengl.extensions", @"OpenGL extensions (%zu):\n%@", extensions.size(), oo::NSStringFrom(extensionList));
+	}
 	
 	if (![self versionIsAtLeastMajor:kMinMajorVersion minor:kMinMinorVersion])
 	{
@@ -256,23 +279,28 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 					format:@"Oolite requires at least OpenGL %u.%u. You have %u.%u (\"%s\").", kMinMajorVersion, kMinMinorVersion, major, minor, versionString];
 	}
 	
-	NSString *versionStr = [[[NSString alloc] initWithUTF8String:(const char *)versionString] autorelease];
-	NSDictionary *gpuConfig = [self lookUpPerGPUSettingsWithVersionString:versionStr extensionsString:extensionsStr];
+	const std::optional<std::string> versionStr = OptionalGLString(versionString);
+	const oo::PList gpuConfig = [self lookUpPerGPUSettingsWithVersionString:versionStr extensionsString:extensionsStr];
 	
 #if OO_SHADERS
 	[self checkShadersSupported];
 	
 	if (shadersAvailable)
 	{
-		defaultShaderSetting = OOShaderSettingFromString(oo::PListView(gpuConfig).get<NSString *>(@"default_shader_level",
-																   @"SHADERS_FULL"));
-		maximumShaderSetting = OOShaderSettingFromString(oo::PListView(gpuConfig).get<NSString *>(@"maximum_shader_level",
-																   @"SHADERS_FULL"));
+		defaultShaderSetting = OOShaderSettingFromString(oo::NSStringFrom(gpuConfig.get<std::string>("default_shader_level",
+																   "SHADERS_FULL")));
+		maximumShaderSetting = OOShaderSettingFromString(oo::NSStringFrom(gpuConfig.get<std::string>("maximum_shader_level",
+																   "SHADERS_FULL")));
 		if (maximumShaderSetting <= SHADERS_OFF)
 		{
 			shadersAvailable = NO;
 			maximumShaderSetting = SHADERS_NOT_SUPPORTED;
-			OOLog(kOOLogOpenGLShaderSupport, @"Shaders will not be used (disallowed for GPU type \"%@\").", oo::PListView(gpuConfig).get<NSString *>(@"name", renderer));
+			{
+				// A name that is not a string fell back to the renderer, which may itself be nil.
+				const oo::PList *name = gpuConfig.find("name");
+				const bool hasName = name != nullptr && (name->isString() || name->isNumber());
+				OOLog(oo::NSStringFrom(kOOLogOpenGLShaderSupport), @"Shaders will not be used (disallowed for GPU type \"%@\").", hasName ? oo::NSStringFrom(gpuConfig.get<std::string>("name")) : oo::NSStringOrNil(renderer));
+			}
 		}
 		if (maximumShaderSetting < defaultShaderSetting)
 		{
@@ -281,7 +309,7 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 		
 		if (shadersAvailable)
 		{
-			OOLog(kOOLogOpenGLShaderSupport, @"%@", @"Shaders are supported.");
+			OOLog(oo::NSStringFrom(kOOLogOpenGLShaderSupport), @"%@", @"Shaders are supported.");
 		}
 	}
 	else
@@ -290,7 +318,7 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 		maximumShaderSetting = SHADERS_NOT_SUPPORTED;
 	}
 	
-	GLint texImageUnitOverride = oo::PListView(gpuConfig).get<int>(@"texture_image_units", textureImageUnitCount);
+	GLint texImageUnitOverride = gpuConfig.get<int>("texture_image_units", textureImageUnitCount);
 	if (texImageUnitOverride < textureImageUnitCount)  textureImageUnitCount = MAX(texImageUnitOverride, 0);
 #endif
 	
@@ -302,23 +330,19 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 #endif
 #if OO_MULTITEXTURE
 	[self checkTextureCombinersSupported];
-	GLint texUnitOverride = oo::PListView(gpuConfig).get<int>(@"texture_units", textureUnitCount);
+	GLint texUnitOverride = gpuConfig.get<int>("texture_units", textureUnitCount);
 	if (texUnitOverride < textureUnitCount)  textureUnitCount = MAX(texUnitOverride, 0);
 #endif
 	
-	usePointSmoothing = oo::PListView(gpuConfig).get<BOOL>(@"smooth_points", YES);
-	useLineSmoothing = oo::PListView(gpuConfig).get<BOOL>(@"smooth_lines", YES);
-	useDustShader = oo::PListView(gpuConfig).get<BOOL>(@"use_dust_shader", YES);
+	usePointSmoothing = gpuConfig.get<bool>("smooth_points", YES) ? YES : NO;
+	useLineSmoothing = gpuConfig.get<bool>("smooth_lines", YES) ? YES : NO;
+	useDustShader = gpuConfig.get<bool>("use_dust_shader", YES) ? YES : NO;
 }
 
 
 - (void)dealloc
 {
 	if (sSingleton == self)  sSingleton = nil;
-	
-	DESTROY(extensions);
-	DESTROY(vendor);
-	DESTROY(renderer);
 	
 	[super dealloc];
 }
@@ -332,14 +356,14 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 }
 
 
-- (BOOL)haveExtension:(NSString *)extension
+- (BOOL)haveExtension:(const std::string &)extension
 {
-// NSSet is documented as thread-safe under OS X, but I'm not sure about GNUstep. -- Ahruman
+// The Foundation set was documented as thread-safe under OS X, but I'm not sure about GNUstep. -- Ahruman
 #if OOOPENGLEXTMGR_LOCK_SET_ACCESS
 	lock.lock();
 #endif
 	
-	BOOL result = [extensions containsObject:extension];
+	BOOL result = extensions.contains(extension) ? YES : NO;
 	
 #if OOOPENGLEXTMGR_LOCK_SET_ACCESS
 	lock.unlock();
@@ -485,13 +509,13 @@ static NSArray *ArrayOfExtensions(NSString *extensionString)
 }
 
 
-- (NSString *) vendorString
+- (std::optional<std::string>) vendorString
 {
 	return vendor;
 }
 
 
-- (NSString *) rendererString
+- (std::optional<std::string>) rendererString
 {
 	return renderer;
 }
@@ -559,27 +583,27 @@ static unsigned IntegerFromString(const GLubyte **ioString)
 		if (arg == "-noshaders" || arg == "--noshaders")
 		{
 			shadersForceDisabled = YES;
-			OOLog(kOOLogOpenGLShaderSupport, @"%@", @"Shaders will not be used (disabled on command line).");
+			OOLog(oo::NSStringFrom(kOOLogOpenGLShaderSupport), @"%@", @"Shaders will not be used (disabled on command line).");
 			return;
 		}
 	}	
 
-	NSString * const requiredExtension[] = 
+	const char * const requiredExtension[] =
 						{
-							@"GL_ARB_shading_language_100",
-							@"GL_ARB_fragment_shader",
-							@"GL_ARB_vertex_shader",
-							@"GL_ARB_multitexture",
-							@"GL_ARB_shader_objects",
-							nil	// sentinel - don't remove!
+							"GL_ARB_shading_language_100",
+							"GL_ARB_fragment_shader",
+							"GL_ARB_vertex_shader",
+							"GL_ARB_multitexture",
+							"GL_ARB_shader_objects",
+							NULL	// sentinel - don't remove!
 						};
-	NSString * const *required = NULL;
+	const char * const *required = NULL;
 	
-	for (required = requiredExtension; *required != nil; ++required)
+	for (required = requiredExtension; *required != NULL; ++required)
 	{
 		if (![self haveExtension:*required])
 		{
-			OOLog(kOOLogOpenGLShaderSupport, @"Shaders will not be used (OpenGL extension %@ is not available).", *required);
+			OOLog(oo::NSStringFrom(kOOLogOpenGLShaderSupport), @"Shaders will not be used (OpenGL extension %@ is not available).", oo::NSStringFrom(*required));
 			return;
 		}
 	}
@@ -622,7 +646,7 @@ static unsigned IntegerFromString(const GLubyte **ioString)
 {
 	vboSupported = NO;
 	
-	if ([self versionIsAtLeastMajor:1 minor:5] || [self haveExtension:@"GL_ARB_vertex_buffer_object"])
+	if ([self versionIsAtLeastMajor:1 minor:5] || [self haveExtension:"GL_ARB_vertex_buffer_object"])
 	{
 		vboSupported = YES;
 	}
@@ -645,7 +669,7 @@ static unsigned IntegerFromString(const GLubyte **ioString)
 {
 	fboSupported = NO;
 	
-	if ([self haveExtension:@"GL_EXT_framebuffer_object"])
+	if ([self haveExtension:"GL_EXT_framebuffer_object"])
 	{
 		fboSupported = YES;
 	}
@@ -703,7 +727,7 @@ static unsigned IntegerFromString(const GLubyte **ioString)
 #if OO_MULTITEXTURE
 - (void)checkTextureCombinersSupported
 {
-	textureCombinersSupported = [self haveExtension:@"GL_ARB_texture_env_combine"];
+	textureCombinersSupported = [self haveExtension:"GL_ARB_texture_env_combine"];
 	
 	if (textureCombinersSupported)
 	{
@@ -725,90 +749,101 @@ static unsigned IntegerFromString(const GLubyte **ioString)
 #endif
 
 
-// regexps may be a single string or an array of strings (in which case results are ANDed).
-static BOOL CheckRegExps(NSString *string, id regexps)
+namespace {
+
+// The regexp test sent to a string that may be nil (a nil string matched nothing).
+BOOL MatchesRegExp(const std::optional<std::string> &string, const std::string &regexp)
 {
-	if (regexps == nil)  return YES;	// No restriction == match.
-	if ([regexps isKindOfClass:[NSString class]])
+	if (!string.has_value())  return NO;
+	return [[OORegExpMatcher regExpMatcher] string:*string matchesExpression:regexp];
+}
+
+
+// regexps may be a single string or an array of strings (in which case results are ANDed).
+BOOL CheckRegExps(const std::optional<std::string> &string, const oo::PList &regexps)
+{
+	if (regexps.isNull())  return YES;	// No restriction == match.
+	if (const std::string *regexp = regexps.getIf<std::string>())
 	{
-		return [string oo_matchesRegularExpression:regexps];
+		return MatchesRegExp(string, *regexp);
 	}
-	if ([regexps isKindOfClass:[NSArray class]])
+	if (const oo::PList::Array *array = regexps.getIf<oo::PList::Array>())
 	{
-		NSEnumerator *regexpEnum = nil;
-		NSString *regexp = nil;
-		
-		for (regexpEnum = [regexps objectEnumerator]; (regexp = [regexpEnum nextObject]); )
+		for (const oo::PList &element : *array)
 		{
-			if (EXPECT_NOT(![regexp isKindOfClass:[NSString class]]))
+			const std::string *regexp = element.getIf<std::string>();
+			if (EXPECT_NOT(regexp == nullptr))
 			{
 				// Invalid type -- match fails.
 				return NO;
 			}
-			
-			if (![string oo_matchesRegularExpression:regexp])  return NO;
+
+			if (!MatchesRegExp(string, *regexp))  return NO;
 		}
 		return YES;
 	}
-	
+
 	// Invalid type -- match fails.
 	return NO;
 }
 
 
-NSComparisonResult CompareGPUSettingsByPriority(id a, id b, void *context)
+// oo_stringForKey: on a dictionary that may be nil: a string, a number's string value, or nil.
+oo::PList StringForKey(const oo::PList *dict, std::string_view key)
 {
-	NSString		*keyA = a;
-	NSString		*keyB = b;
-	NSDictionary	*configurations = (NSDictionary *)context;
-	NSDictionary	*dictA = oo::PListView(configurations).get<NSDictionary *>(keyA);
-	NSDictionary	*dictB = oo::PListView(configurations).get<NSDictionary *>(keyB);
-	double			precedenceA = oo::PListView(dictA).get<double>(@"precedence", 1);
-	double			precedenceB = oo::PListView(dictB).get<double>(@"precedence", 1);
-	
-	if (precedenceA > precedenceB)  return NSOrderedAscending;
-	if (precedenceA < precedenceB)  return NSOrderedDescending;
-	
-	return [keyA caseInsensitiveCompare:keyB];
+	const oo::PList *value = (dict != nullptr) ? dict->find(key) : nullptr;
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return oo::PList();
+	return oo::PList(dict->get<std::string>(key));
 }
 
+}	// namespace
 
-- (NSDictionary *) lookUpPerGPUSettingsWithVersionString:(NSString *)versionStr extensionsString:(NSString *)extensionsStr
+
+- (oo::PList) lookUpPerGPUSettingsWithVersionString:(const std::optional<std::string> &)versionStr extensionsString:(const std::optional<std::string> &)extensionsStr
 {
-	NSDictionary *configurations = [ResourceManager dictionaryFromFilesNamed:@"gpu-settings.plist"
+	const oo::PList configurations = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"gpu-settings.plist"
 																	inFolder:@"Config"
-																	andMerge:YES];
-	
-	NSArray *keys = [[configurations allKeys] sortedArrayUsingFunction:CompareGPUSettingsByPriority context:configurations];
-	
-	NSString *key = nil;
-	NSDictionary *config = nil;
-	
-	foreach (key, keys)
+																	andMerge:YES]);
+
+	// Highest precedence first, then case-insensitive name order (keys were taken in hash order
+	// before sorting; ties between names equal but for case now keep byte order).
+	std::vector<std::string> keys;
+	if (const oo::PList::Dict *dict = configurations.getIf<oo::PList::Dict>())
 	{
-		config = oo::PListView(configurations).get<NSDictionary *>(key);
-		if (EXPECT_NOT(config == nil))  continue;
-		
-		NSDictionary *match = oo::PListView(config).get<NSDictionary *>(@"match");
-		NSString *expr = nil;
-		
-		expr = [match objectForKey:@"vendor"];
-		if (!CheckRegExps(vendor, expr))  continue;
-		
-		expr = oo::PListView(match).get<NSString *>(@"renderer");
-		if (!CheckRegExps(renderer, expr))  continue;
-		
-		expr = oo::PListView(match).get<NSString *>(@"version");
-		if (!CheckRegExps(versionStr, expr))  continue;
-		
-		expr = oo::PListView(match).get<NSString *>(@"extensions");
-		if (!CheckRegExps(extensionsStr, expr))  continue;
-		
-		OOLog(@"rendering.opengl.gpuSpecific", @"Matched GPU configuration \"%@\".", key);
-		return config;
+		for (const auto &entry : *dict)  keys.push_back(entry.first);
 	}
-	
-	return [NSDictionary dictionary];
+	std::stable_sort(keys.begin(), keys.end(), [&configurations](const std::string &keyA, const std::string &keyB)
+	{
+		const oo::PList	*dictA = configurations.get<oo::PList::Dict>(keyA);
+		const oo::PList	*dictB = configurations.get<oo::PList::Dict>(keyB);
+		const double	precedenceA = dictA != nullptr ? dictA->get<double>("precedence", 1) : 0;
+		const double	precedenceB = dictB != nullptr ? dictB->get<double>("precedence", 1) : 0;
+
+		if (precedenceA != precedenceB)  return precedenceA > precedenceB;
+		return oo::str::caseInsensitiveCompare(keyA, keyB) < 0;
+	});
+
+	for (const std::string &key : keys)
+	{
+		const oo::PList *config = configurations.get<oo::PList::Dict>(key);
+		if (EXPECT_NOT(config == nullptr))  continue;
+
+		const oo::PList *match = config->get<oo::PList::Dict>("match");
+		const oo::PList *vendorExpr = (match != nullptr) ? match->find("vendor") : nullptr;
+
+		if (!CheckRegExps(vendor, vendorExpr != nullptr ? *vendorExpr : oo::PList()))  continue;
+
+		if (!CheckRegExps(renderer, StringForKey(match, "renderer")))  continue;
+
+		if (!CheckRegExps(versionStr, StringForKey(match, "version")))  continue;
+
+		if (!CheckRegExps(extensionsStr, StringForKey(match, "extensions")))  continue;
+
+		OOLog(@"rendering.opengl.gpuSpecific", @"Matched GPU configuration \"%@\".", oo::NSStringFrom(key));
+		return *config;
+	}
+
+	return oo::PList(oo::PList::Dict{});
 }
 
 @end

@@ -35,48 +35,98 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOPListSchemaVerifier.h"
 #import "OOAIStateMachineVerifierStage.h"
+#import "OOFoundationBridge.h"
 
-static NSString * const kStageName	= @"Checking shipdata.plist";
+#include "oofnd/PListGet.hpp"
+#include "oofnd/String.hpp"
+
+static const char * const kStageName	= "Checking shipdata.plist";
+
+
+namespace {
+
+// Adding to a set of strings kept as a sorted vector.
+void AddString(std::vector<std::string> &set, const std::string &string)
+{
+	const auto where = std::lower_bound(set.begin(), set.end(), string);
+	if (where == set.end() || *where != string)  set.insert(where, string);
+}
+
+
+bool ContainsString(const std::vector<std::string> &set, const std::string &string)
+{
+	return std::binary_search(set.begin(), set.end(), string);
+}
+
+
+// oo_setForKey: the strings of an array value as a set (sorted vector); empty where it was nil.
+std::vector<std::string> StringSetForKey(const oo::PList &dictionary, std::string_view key)
+{
+	std::vector<std::string> result;
+	if (const oo::PList *array = dictionary.get<oo::PList::Array>(key))
+	{
+		for (const oo::PList &element : *array->getIf<oo::PList::Array>())
+		{
+			if (const std::string *string = element.getIf<std::string>())  AddString(result, *string);
+		}
+	}
+	return result;
+}
+
+
+// oo_stringForKey: a string, or a number's string value; nullopt where it answered nil.
+std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std::string_view key)
+{
+	const oo::PList *value = dictionary.get<oo::PList>(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dictionary.get<std::string>(key);
+}
+
+}	// namespace
 
 
 @interface OOCheckShipDataPListVerifierStage (OOPrivate)
 
-- (void)verifyShipInfo:(NSDictionary *)info withName:(NSString *)name;
+- (void)verifyShipInfo:(const oo::PList &)info withName:(const std::string &)name;
 
-- (void)message:(NSString *)format, ...;
-- (void)verboseMessage:(NSString *)format, ...;
+- (void)message:(id)format, ...;	// an Objective-C format string. Shared selector (AI; proposed ADR-0043).
+- (void)verboseMessage:(const char *)format, ...;
 
 - (void)getRoles;
 - (void)checkKeys;
 - (void)checkSchema;
 - (void)checkModel;
 
-- (NSSet *)rolesFromString:(NSString *)string;
+- (std::vector<std::string>)rolesFromString:(const std::string &)string;
 
 @end
 
 
 @implementation OOCheckShipDataPListVerifierStage
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	return kStageName;
+	return oo::NSStringFrom(kStageName);
 }
 
 
-- (NSSet *)dependents
+- (id)dependents	// shared selector (proposed ADR-0043)
 {
-	NSMutableSet *result = [[super dependents] mutableCopy];
-	[result addObject:[OOModelVerifierStage nameForReverseDependencyForVerifier:[self verifier]]];
-	[result addObject:[OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]]];
-	return [result autorelease];
+	std::vector<std::string> result = oo::StringsFrom([super dependents]);
+	for (id reverse : { [OOModelVerifierStage nameForReverseDependencyForVerifier:[self verifier]],
+						[OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]] })
+	{
+		const std::string name = oo::StdString(reverse);
+		if (std::find(result.begin(), result.end(), name) == result.end())  result.push_back(name);
+	}
+	return oo::NSSetFromStrings(result);
 }
 
 
 - (BOOL)shouldRun
 {
 	OOFileScannerVerifierStage	*fileScanner = nil;
-	
+
 	fileScanner = [[self verifier] fileScannerStage];
 	return [fileScanner fileExists:@"shipdata.plist"
 						  inFolder:@"Config"
@@ -88,80 +138,78 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 - (void)run
 {
 	OOFileScannerVerifierStage	*fileScanner = nil;
-	NSEnumerator				*shipEnum = nil;
-	NSString					*shipKey = nil;
-	NSDictionary				*shipInfo = nil;
-	NSDictionary				*ooliteShipData = nil;
-	NSDictionary				*settings = nil;
-	NSMutableSet				*mergeSet = nil;
-	NSArray						*shipList = nil;
-	
+	std::vector<std::string>	ooliteShipData;	// the keys of Oolite's own merged shipdata.plist
+	oo::PList					settings;
+	std::vector<std::string>	shipList;
+
 	fileScanner = [[self verifier] fileScannerStage];
-	_shipdataPList = [fileScanner plistNamed:@"shipdata.plist"
-									inFolder:@"Config"
-							  referencedFrom:nil
-								checkBuiltIn:NO];
-	
-	if (_shipdataPList == nil)  return;
-	
+	_shipdataPList = oo::PListFrom([fileScanner plistNamed:@"shipdata.plist"
+												 inFolder:@"Config"
+										   referencedFrom:nil
+											 checkBuiltIn:NO]);
+
+	if (_shipdataPList.isNull())  return;
+
 	// Get AI verifier stage (may be nil).
 	_aiVerifierStage = [[self verifier] stageWithName:[OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]]];
 	
-	ooliteShipData = [ResourceManager dictionaryFromFilesNamed:@"shipdata.plist"
-													  inFolder:@"Config"
-													  andMerge:YES];
+	ooliteShipData = oo::StringsFrom([ResourceManager dictionaryFromFilesNamed:@"shipdata.plist"
+																	  inFolder:@"Config"
+																	  andMerge:YES]);
 	
 	// Check that it's a dictionary
-	if (![_shipdataPList isKindOfClass:[NSDictionary class]])
+	if (!_shipdataPList.isDict())
 	{
 		OOLog(@"verifyOXP.shipdataPList.notDict", @"%@", @"***** ERROR: shipdata.plist is not a dictionary.");
 		return;
 	}
-	
+
 	// Keys that apply to all ships
-	_ooliteShipNames = [NSSet setWithArray:[ooliteShipData allKeys]];
-	settings = [[self verifier] configurationDictionaryForKey:@"shipdataPListSettings"];
-	_basicKeys = [settings oo_setForKey:@"knownShipKeys"];
-	
+	for (const std::string &shipName : ooliteShipData)  AddString(_ooliteShipNames, shipName);
+	settings = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"shipdataPListSettings"]);
+	_basicKeys = StringSetForKey(settings, "knownShipKeys");
+
 	// Keys that apply to stations/carriers
-	mergeSet = [_basicKeys mutableCopy];
-	[mergeSet addObjectsFromArray:[settings oo_arrayForKey:@"knownStationKeys"]];
-	_stationKeys = mergeSet;
-	
+	_stationKeys = _basicKeys;
+	for (const std::string &key : StringSetForKey(settings, "knownStationKeys"))  AddString(_stationKeys, key);
+
 	// Keys that apply to player ships
-	mergeSet = [_basicKeys mutableCopy];
-	[mergeSet addObjectsFromArray:[settings oo_arrayForKey:@"knownPlayerKeys"]];
-	_playerKeys = [[mergeSet copy] autorelease];
-	
+	_playerKeys = _basicKeys;
+	for (const std::string &key : StringSetForKey(settings, "knownPlayerKeys"))  AddString(_playerKeys, key);
+
 	// Keys that apply to _any_ ship -- union of the above
-	[mergeSet unionSet:_stationKeys];
-	_allKeys = mergeSet;
-	
+	_allKeys = _playerKeys;
+	for (const std::string &key : _stationKeys)  AddString(_allKeys, key);
+
 	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:[ResourceManager dictionaryFromFilesNamed:@"shipdataEntrySchema.plist" inFolder:@"Schemata" andMerge:NO]];
 	[_schemaVerifier setDelegate:self];
-	
-	shipList = [[_shipdataPList allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
-	for (shipEnum = [shipList objectEnumerator]; (shipKey = [shipEnum nextObject]); )
+
+	for (const auto &[shipKey, value] : *_shipdataPList.getIf<oo::PList::Dict>())  shipList.push_back(shipKey);
+	std::stable_sort(shipList.begin(), shipList.end(), [](const std::string &a, const std::string &b)
+	{
+		return oo::str::caseInsensitiveCompare(a, b) < 0;
+	});
+	for (const std::string &shipKey : shipList)
 	{
 		@autoreleasepool
 		{
-			shipInfo = [_shipdataPList oo_dictionaryForKey:shipKey];
-			if (shipInfo == nil)
+			const oo::PList *shipInfo = _shipdataPList.get<oo::PList::Dict>(shipKey);
+			if (shipInfo == nullptr)
 			{
-				OOLog(@"verifyOXP.shipdata.badType", @"***** ERROR: shipdata.plist entry for \"%@\" is not a dictionary.", shipKey);
+				OOLog(@"verifyOXP.shipdata.badType", @"***** ERROR: shipdata.plist entry for \"%@\" is not a dictionary.", oo::NSStringFrom(shipKey));
 			}
 			else
 			{
-				[self verifyShipInfo:shipInfo withName:shipKey];
+				[self verifyShipInfo:*shipInfo withName:shipKey];
 			}
 		}
 	}
-	
-	_shipdataPList = nil;
-	_ooliteShipNames = nil;
-	_basicKeys = nil;
-	_stationKeys = nil;
-	_playerKeys = nil;
+
+	_shipdataPList = oo::PList();
+	_ooliteShipNames.clear();
+	_basicKeys.clear();
+	_stationKeys.clear();
+	_playerKeys.clear();
 }
 
 @end
@@ -169,90 +217,95 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 
 @implementation OOCheckShipDataPListVerifierStage (OOPrivate)
 
-- (void)verifyShipInfo:(NSDictionary *)info withName:(NSString *)name
+- (void)verifyShipInfo:(const oo::PList &)info withName:(const std::string &)name
 {
 	_name = name;
 	_info = info;
 	_havePrintedMessage = NO;
 	OOLogPushIndent();
-	
+
 	[self getRoles];
 	[self checkKeys];
 	[self checkSchema];
 	[self checkModel];
-	
-	NSString *aiName = [info oo_stringForKey:@"ai_type"];
-	if (aiName != nil) 
+
+	const std::optional<std::string> aiName = OptionalStringForKey(info, "ai_type");
+	if (aiName.has_value())
 	{
-		if (![aiName hasSuffix:@".js"])
+		if (!oo::str::hasSuffix(*aiName, ".js"))
 		{
-			[_aiVerifierStage stateMachineNamed:aiName usedByShip:name];
+			[_aiVerifierStage stateMachineNamed:*aiName usedByShip:name];
 		}
 	}
-	
+
 	// Todo: check for pirates with 0 bounty
-	
+
 	OOLogPopIndent();
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.verbose.shipData.OK", @"- ship \"%@\" OK.", _name);
+		OOLog(@"verifyOXP.verbose.shipData.OK", @"- ship \"%@\" OK.", oo::NSStringFrom(_name));
 	}
-	_name = nil;
-	_info = nil;
-	_roles = nil;
+	_name.clear();
+	_info = oo::PList();
+	_roles.clear();
 }
 
 
 // Custom log method to group messages by ship.
-- (void)message:(NSString *)format, ...
+- (void)message:(id)format, ...
 {
 	va_list						args;
-	
+
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.shipData.firstMessage", @"Ship \"%@\":", _name);
+		OOLog(@"verifyOXP.shipData.firstMessage", @"Ship \"%@\":", oo::NSStringFrom(_name));
 		OOLogIndent();
 		_havePrintedMessage = YES;
 	}
-	
+
 	va_start(args, format);
 	OOLogWithFunctionFileAndLineAndArguments(@"verifyOXP.shipData", NULL, NULL, 0, format, args);
 	va_end(args);
 }
 
 
-- (void)verboseMessage:(NSString *)format, ...
+- (void)verboseMessage:(const char *)format, ...
 {
 	va_list						args;
-	
+
 	if (!OOLogWillDisplayMessagesInClass(@"verifyOXP.verbose.shipData"))  return;
-	
+
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.shipData.firstMessage", @"Ship \"%@\":", _name);
+		OOLog(@"verifyOXP.shipData.firstMessage", @"Ship \"%@\":", oo::NSStringFrom(_name));
 		OOLogIndent();
 		_havePrintedMessage = YES;
 	}
-	
+
 	va_start(args, format);
-	OOLogWithFunctionFileAndLineAndArguments(@"verifyOXP.verbose.shipData", NULL, NULL, 0, format, args);
+	OOLogWithFunctionFileAndLineAndArguments(@"verifyOXP.verbose.shipData", NULL, NULL, 0, oo::NSStringFrom(format), args);
 	va_end(args);
 }
 
 
 - (void)getRoles
 {
-	NSString					*rolesString = nil;
-	
-	rolesString = [_info objectForKey:@"roles"];
-	_roles = [self rolesFromString:rolesString];
-	_isPlayer = [_roles containsObject:@"player"];
-	_isStation = [_info oo_boolForKey:@"is_carrier" defaultValue:NO] ||
-				 [_info oo_boolForKey:@"isCarrier" defaultValue:NO] ||
-				 [rolesString rangeOfString:@"station"].location != NSNotFound ||
-				 [rolesString rangeOfString:@"carrier"].location != NSNotFound;
+	std::optional<std::string>	rolesString;
+
+	if (const oo::PList *roles = _info.find("roles"))
+	{
+		if (const std::string *string = roles->getIf<std::string>())  rolesString = *string;
+	}
+	_roles = [self rolesFromString:rolesString.value_or("")];
+	_isPlayer = ContainsString(_roles, "player");
+	// A nil roles string answered -rangeOfString: with location 0 (found), as messaging nil does.
+	_isStation = _info.get<bool>("is_carrier", false) ||
+				 _info.get<bool>("isCarrier", false) ||
+				 !rolesString.has_value() ||
+				 rolesString->find("station") != std::string::npos ||
+				 rolesString->find("carrier") != std::string::npos;
 	// the is_carrier or isCarrier key will be missed when it was insise a like_ship definition.
-	_isTemplate = [_info oo_boolForKey:@"is_template" defaultValue:NO];
+	_isTemplate = _info.get<bool>("is_template", false);
 
 	if (_isPlayer && _isStation)
 	{
@@ -264,30 +317,28 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 
 - (void)checkKeys
 {
-	NSSet						*referenceSet = nil;
-	NSEnumerator				*keyEnum = nil;
-	NSString					*key = nil;
-	
-	if (_isPlayer)  referenceSet = _playerKeys;
-	else if (_isStation)  referenceSet = _stationKeys;
-	else  referenceSet = _basicKeys;
-	
-	for (keyEnum = [_info keyEnumerator]; (key = [keyEnum nextObject]); )
+	const std::vector<std::string>	*referenceSet = nullptr;
+
+	if (_isPlayer)  referenceSet = &_playerKeys;
+	else if (_isStation)  referenceSet = &_stationKeys;
+	else  referenceSet = &_basicKeys;
+
+	for (const auto &[key, value] : *_info.getIf<oo::PList::Dict>())
 	{
-		if (![referenceSet containsObject:key])
+		if (!ContainsString(*referenceSet, key))
 		{
-			if ([_allKeys containsObject:key])
+			if (ContainsString(_allKeys, key))
 			{
 				if (!_isTemplate)
 				{
 					// if it's a template, this key might apply to a descendant
 					// as happens in the core files
-					[self message:@"----- WARNING: key \"%@\" does not apply to this category of ship.", key];
+					[self message:@"----- WARNING: key \"%@\" does not apply to this category of ship.", oo::NSStringFrom(key)];
 				}
 			}
 			else
 			{
-				[self message:@"----- WARNING: unknown key \"%@\".", key];
+				[self message:@"----- WARNING: unknown key \"%@\".", oo::NSStringFrom(key)];
 			}
 		}
 	}
@@ -296,34 +347,30 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 
 - (void)checkSchema
 {
-	[_schemaVerifier verifyPropertyList:_info named:_name];
+	[_schemaVerifier verifyPropertyList:oo::ObjectFromPList(_info) named:oo::NSStringFrom(_name)];
 }
 
 
 - (void)checkModel
 {
-	id							model = nil,
-								materials = nil,
-								shaders = nil;
-	
-	model = [_info oo_stringForKey:@"model"];
-	materials = [_info oo_dictionaryForKey:@"materials"];
-	shaders = [_info oo_dictionaryForKey:@"shaders"];
-	
-	if (model != nil)
+	const std::optional<std::string>	model = OptionalStringForKey(_info, "model");
+	const oo::PList						*materials = _info.get<oo::PList::Dict>("materials");
+	const oo::PList						*shaders = _info.get<oo::PList::Dict>("shaders");
+
+	if (model.has_value())
 	{
-		if (![[[self verifier] modelVerifierStage] modelNamed:model
+		if (![[[self verifier] modelVerifierStage] modelNamed:*model
 												 usedForEntry:_name
-													   inFile:@"shipdata.plist"
-												withMaterials:materials
-												   andShaders:shaders])
+													   inFile:"shipdata.plist"
+												withMaterials:materials != nullptr ? *materials : oo::PList()
+												   andShaders:shaders != nullptr ? *shaders : oo::PList()])
 		{
-			[self message:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", model, [[self verifier] oxpDisplayName]];
+			[self message:@"----- WARNING: model \"%@\" could not be found in %@ or in Oolite.", oo::NSStringFrom(*model), [[self verifier] oxpDisplayName]];
 		}
 	}
 	else
 	{
-		if ([_info oo_stringForKey:@"like_ship"] == nil)
+		if (!OptionalStringForKey(_info, "like_ship").has_value())
 		{
 			[self message:@"***** ERROR: ship does not specify model or like_ship."];
 		}
@@ -332,55 +379,43 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 
 
 // Convert a roles string to a set of role names, discarding probabilities.
-- (NSSet *)rolesFromString:(NSString *)string
+- (std::vector<std::string>)rolesFromString:(const std::string &)string
 {
-	NSArray						*parts = nil;
-	NSMutableSet				*result = nil;
-	NSUInteger					i, count;
-	NSString					*role = nil;
-	NSRange						parenRange;
-	
-	if (string == nil)  return [NSSet set];
-	
-	parts = ScanTokensFromString(string);
-	count = [parts count];
-	if (count == 0)  return [NSSet set];
-	
-	result = [NSMutableSet setWithCapacity:count];
-	for (i = 0; i != count; ++i)
+	std::vector<std::string>	result;
+
+	for (std::string role : oo::str::tokens(string))
 	{
-		role = [parts objectAtIndex:i];
-		parenRange = [role rangeOfString:@"("];
-		if (parenRange.location != NSNotFound)
+		const std::size_t paren = role.find('(');
+		if (paren != std::string::npos)
 		{
-			role = [role substringToIndex:parenRange.location];
+			role = role.substr(0, paren);
 		}
-		[result addObject:role];
+		AddString(result, role);
 	}
-	
+
 	return result;
 }
 
 
 - (BOOL)verifier:(OOPListSchemaVerifier *)verifier
 withPropertyList:(id)rootPList
-		   named:(NSString *)name
+		   named:(id)name
 	testProperty:(id)subPList
-		  atPath:(NSArray *)keyPath
-	 againstType:(NSString *)typeKey
-		   error:(NSError **)outError
+		  atPath:(id)keyPath
+	 againstType:(id)typeKey
+		   error:(NSError **)outError	// shared selector (OOPListSchemaVerifierDelegate; proposed ADR-0043)
 {
-	[self verboseMessage:@"- Skipping verification for type %@ at %@.%@.", typeKey, _name, [OOPListSchemaVerifier descriptionForKeyPath:keyPath]];
+	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", typeKey, oo::NSStringFrom(_name), [OOPListSchemaVerifier descriptionForKeyPath:keyPath]];
 	return YES;
 }
 
 
 - (BOOL)verifier:(OOPListSchemaVerifier *)verifier
 withPropertyList:(id)rootPList
-		   named:(NSString *)name
+		   named:(id)name
  failedForProperty:(id)subPList
 	   withError:(NSError *)error
-	expectedType:(NSDictionary *)localSchema
+	expectedType:(id)localSchema	// shared selector (OOPListSchemaVerifierDelegate; proposed ADR-0043)
 {
 	// FIXME: use fancy new error codes to provide useful error descriptions.
 	[self message:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", name, [error plistKeyPathDescription], [error localizedFailureReason]];

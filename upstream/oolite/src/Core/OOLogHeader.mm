@@ -34,12 +34,12 @@ SOFTWARE.
 #import "OOStellarBody.h"
 #import "OOJavaScriptEngine.h"
 #import "OOSound.h"
+#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 
 
 static NSString *AdditionalLogHeaderInfo(void);
 
-NSString *OOPlatformDescription(void);
 
 
 #ifdef ALLOW_PROCEDURAL_PLANETS
@@ -157,7 +157,7 @@ void OOPrintLogHeader(void)
 	#if (OOLITE_MAC_OS_X || !OOLITE_WINDOWS)
 		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str()];
 	#elif OOLITE_WINDOWS
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@ %@-bit", operatingSystemFullVersion(), is64BitSystem() ? @"64":@"32"];
+		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@ %@-bit", oo::NSStringFrom(operatingSystemFullVersion()), is64BitSystem() ? @"64":@"32"];
 	#else
 		#define systemString @OS_TYPE_STRING
 	#endif
@@ -184,15 +184,17 @@ void OOPrintLogHeader(void)
 }
 
 
-NSString *OOPlatformDescription(void)
+// Foundation sweep (proposed ADR-0043, bead oo-vnsl): a std::string, for OOJSConsole's
+// console.platformDescription; the same "<system> (<cpu><variant>)" text.
+std::string OOPlatformDescription(void)
 {
 	#if OOLITE_MAC_OS_X
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str()];
+		const std::string platformSystem = OS_TYPE_STRING " " + oo::process::operatingSystemVersionString();
 	#else
-		#define systemString @OS_TYPE_STRING
+		const std::string platformSystem = OS_TYPE_STRING;
 	#endif
-	
-	return [NSString stringWithFormat:@"%@ (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ")", systemString];
+
+	return platformSystem + " (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ")";
 }
 
 
@@ -349,7 +351,7 @@ static unsigned long long GetSysCtlInt(const char *name)
 static NSString *AdditionalLogHeaderInfo(void)
 {
 	unsigned cpuCount = OOCPUCount();
-	NSString *cpuDescription = OOCPUDescription();
+	NSString *cpuDescription = oo::NSStringFrom(OOCPUDescription());
 	OOMemoryStatus systemMemoryStatus = OOSystemMemoryStatus();
 	
 	return [NSString stringWithFormat:@"%@ %u processor%@ detected. System RAM: %llu MB (free: %llu MB).", cpuDescription, cpuCount, cpuCount != 1 ? @"s" : @"", systemMemoryStatus.ooPhysicalMemory, systemMemoryStatus.ooAvailableMemory];
