@@ -189,6 +189,14 @@ Random_Seed OOStringExpanderDefaultRandomSeed(void);
 	except if the parameter is an NSString * in which case it is returned
 	unmodified.
  */
+#ifdef __cplusplus
+/*	Objective-C++ has neither __builtin_choose_expr nor __builtin_types_compatible_p (seam 2.1,
+	bead oo-x7o), so the same classification is done by overload resolution: one overload per
+	type the C branch below recognises, each forwarding to the helper that branch would pick.
+	A type the C branch does not recognise has no overload here either.
+*/
+#define OO_CAST_PARAMETER(ITEM) OOCastParam(ITEM)
+#else
 #define OO_CAST_PARAMETER(ITEM) \
 	__builtin_choose_expr( \
 		OOEXPAND_IS_OBJECT(ITEM), \
@@ -256,6 +264,7 @@ Random_Seed OOStringExpanderDefaultRandomSeed(void);
 #define OOEXPAND_IS_DOUBLE(ITEM) ( \
 	__builtin_types_compatible_p(typeof(ITEM), double) || \
 	__builtin_types_compatible_p(typeof(ITEM), long double))
+#endif
 
 // OO_CAST_PARAMETER() boils down to one of these.
 static inline id OOCastParamObject(id object) { return object; }
@@ -263,6 +272,25 @@ static inline id OOCastParamSignedInteger(long long value) { return [NSNumber nu
 static inline id OOCastParamUnsignedInteger(unsigned long long value) { return [NSNumber numberWithUnsignedLongLong:value]; }
 static inline id OOCastParamFloat(float value) { return [NSNumber numberWithFloat:value]; }
 static inline id OOCastParamDouble(double value) { return [NSNumber numberWithDouble:value]; }
+
+
+#ifdef __cplusplus
+static inline id OOCastParam(NSString *value) { return OOCastParamObject(value); }
+static inline id OOCastParam(NSNumber *value) { return OOCastParamObject(value); }
+static inline id OOCastParam(char value) { return OOCastParamSignedInteger(value); }
+static inline id OOCastParam(short value) { return OOCastParamSignedInteger(value); }
+static inline id OOCastParam(int value) { return OOCastParamSignedInteger(value); }
+static inline id OOCastParam(long value) { return OOCastParamSignedInteger(value); }
+static inline id OOCastParam(long long value) { return OOCastParamSignedInteger(value); }
+static inline id OOCastParam(unsigned char value) { return OOCastParamUnsignedInteger(value); }
+static inline id OOCastParam(unsigned short value) { return OOCastParamUnsignedInteger(value); }
+static inline id OOCastParam(unsigned int value) { return OOCastParamUnsignedInteger(value); }
+static inline id OOCastParam(unsigned long value) { return OOCastParamUnsignedInteger(value); }
+static inline id OOCastParam(unsigned long long value) { return OOCastParamUnsignedInteger(value); }
+static inline id OOCastParam(float value) { return OOCastParamFloat(value); }
+static inline id OOCastParam(double value) { return OOCastParamDouble(value); }
+static inline id OOCastParam(long double value) { return OOCastParamDouble(value); }
+#endif
 
 
 /*

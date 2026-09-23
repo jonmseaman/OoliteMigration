@@ -395,7 +395,7 @@ arm_market_price() {
   assert_repo_clean "before staging"
   stage_scratch_tree
 
-  local src="$SCRATCH/upstream/oolite/src/Core/OOCommodityMarket.m"
+  local src="$SCRATCH/upstream/oolite/src/Core/OOCommodityMarket.mm"
   [ -f "$src" ] || { printf '  RESULT: cannot find OOCommodityMarket.m in the scratch tree\n'; FAIL=$(( FAIL + 1 )); return 1; }
 
   # ---- CONTROL: the perturbation is ABSENT ------------------------------------------------------

@@ -42,7 +42,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OOLITE="$REPO_ROOT/upstream/oolite"
 CORE="$OOLITE/src/Core"
 COCOA_H="$CORE/OOCocoa.h"
-SHUFFLE_M="$CORE/OOEnumerationShuffle.m"
+SHUFFLE_M="$CORE/OOEnumerationShuffle.mm"
 UNIT_TEST="$OOLITE/tests/unit/test_enumeration_shuffle.c"
 
 step() { printf '==> %s\n' "$*"; }
@@ -121,7 +121,7 @@ printf '    OO_DEBUG=1 -> %s\n' "$DEBUG_EXPANSION"
 # called. Tracks preprocessor conditional depth so a definition smuggled in after the guard
 # closes is caught, which a plain grep would not do.
 
-step "3/4 guarded      OOEnumerationShuffle.m"
+step "3/4 guarded      OOEnumerationShuffle.mm"
 awk '
   /^[[:space:]]*#[[:space:]]*if.*OO_DEBUG/ { depth++; guard[depth] = 1; next }
   /^[[:space:]]*#[[:space:]]*if/           { depth++; guard[depth] = 0; next }
