@@ -53,7 +53,7 @@ static NSDictionary *CanonicalizeMaterialSpecifier(NSDictionary *spec, NSString 
 static NSString *FormatFloat(double value);
 
 
-@interface OODefaultShaderSynthesizer: NSObject
+@interface OODefaultShaderSynthesizer: OOObject
 {
 @private
 	NSDictionary				*_configuration;
