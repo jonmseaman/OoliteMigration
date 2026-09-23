@@ -121,7 +121,7 @@ static OOCacheManager *sSingleton = nil;
 
 
 #if WRITE_ASYNC
-@interface OOAsyncCacheWriter: NSObject <OOAsyncWorkTask>
+@interface OOAsyncCacheWriter: OOObject <OOAsyncWorkTask>
 {
 @private
 	NSDictionary			*_cacheContents;
@@ -674,7 +674,7 @@ static OOCacheManager *sSingleton = nil;
 	NOTE: assumes single-threaded access.
 */
 
-+ (id)allocWithZone:(NSZone *)inZone
++ (id)allocWithZone:(OOZone *)inZone
 {
 	if (sSingleton == nil)
 	{
@@ -685,7 +685,7 @@ static OOCacheManager *sSingleton = nil;
 }
 
 
-- (id)copyWithZone:(NSZone *)inZone
+- (id)copyWithZone:(OOZone *)inZone
 {
 	return self;
 }
