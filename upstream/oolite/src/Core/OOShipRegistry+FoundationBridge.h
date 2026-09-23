@@ -33,6 +33,13 @@ Copyright (C) 2008-2013 Jens Ayton and contributors (OOShipRegistry.h)
 - (NSArray *) playerShipKeys;	// -> -cxx_playerShipKeys
 - (NSArray *) shipKeys;		// -> -cxx_shipKeys
 
+// oo-3rb.115: role probability sets and demo ships
+- (OOProbabilitySet *) probabilitySetForRole:(NSString *)role;	// -> -cxx_probabilitySetForRole:
+- (NSArray *) demoShipKeys;	// -> -cxx_demoShipKeys
+- (NSArray *) shipRoles;	// -> -cxx_shipRoles
+- (NSArray *) shipKeysWithRole:(NSString *)role;	// -> -cxx_shipKeysWithRole:
+- (NSString *) randomShipKeyForRole:(NSString *)role;	// -> -cxx_randomShipKeyForRole:
+
 @end
 
 #endif	// OOSHIPREGISTRY_FOUNDATIONBRIDGE_H

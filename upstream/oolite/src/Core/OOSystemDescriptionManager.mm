@@ -31,10 +31,15 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "Universe.h"
 #import "ResourceManager.h"
+#import "OOFoundationBridge.h"
+
+namespace {
 
 // character sequence which can't be in property name, system key or layer
 // and is highly unlikely to be in a manifest identifier
-static NSString * const kOOScriptedChangeJoiner = @"~|~";
+constexpr std::string_view kOOScriptedChangeJoiner = "~|~";
+
+}
 
 // likely maximum number of planetinfo properties to be applied to a system
 // just for efficiency - no harm in exceeding it
@@ -51,7 +56,8 @@ static NSString * const kOOScriptedChangeJoiner = @"~|~";
  * go with property1) */
 - (id) getProperty:(NSString *)property1 orProperty:(NSString *)property2 forSystemKey:(NSString *)key withUniversal:(BOOL)universal;
 
-- (void) saveScriptedChangeToProperty:(NSString *)property forSystemKey:(NSString *)key andLayer:(OOSystemLayer)layer toValue:(id)value fromManifest:(NSString *)manifest;
+// value null = nil (removes the saved change); manifest nullopt = nil (cancels saving it)
+- (void) saveScriptedChangeToProperty:(const std::string &)property forSystemKey:(const std::string &)key andLayer:(OOSystemLayer)layer toValue:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest;
 
 @end
 
@@ -91,7 +97,7 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 			neighbourCache[i] = [[NSMutableArray alloc] initWithCapacity:24];
 		}
 		propertiesInUse = [[NSMutableSet alloc] initWithCapacity:OO_LIKELY_PROPERTIES_PER_SYSTEM];
-		scriptedChanges = [[NSMutableDictionary alloc] initWithCapacity:64];
+		scriptedChanges = oo::PList(oo::PList::Dict());
 	}
 	return self;
 }
@@ -107,7 +113,6 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 		DESTROY(neighbourCache[i]);
 	}
 	DESTROY(propertiesInUse);
-	DESTROY(scriptedChanges);
 	[super dealloc];
 }
 
@@ -205,9 +210,9 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 	NSArray  *tokens = ScanTokensFromString(key);
 	if ([tokens count] == 2 && oo::PListView(tokens).at<NSUInteger>(0) < OO_GALAXIES_AVAILABLE && oo::PListView(tokens).at<NSUInteger>(1) < OO_SYSTEMS_PER_GALAXY)
 	{
-		[self saveScriptedChangeToProperty:property forSystemKey:key andLayer:layer toValue:value fromManifest:manifest];
-	
-		OOGalaxyID g = oo::PListView(tokens).at<NSUInteger>(0);
+		[self saveScriptedChangeToProperty:oo::StdString(property) forSystemKey:oo::StdString(key) andLayer:layer toValue:oo::PListFrom(value) fromManifest:oo::OptionalString(manifest)];
+
+		OOGalaxyID g= oo::PListView(tokens).at<NSUInteger>(0);
 		OOSystemID s = oo::PListView(tokens).at<NSUInteger>(1);
 		NSUInteger index = (g * OO_SYSTEMS_PER_GALAXY) + s;
 		if (index >= OO_SYSTEM_CACHE_LENGTH)
@@ -222,53 +227,60 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 	// for interstellar updates, save but don't update cache
 	else if ([tokens count] == 4 && oo::PListView(tokens).at<NSUInteger>(1) < OO_GALAXIES_AVAILABLE && oo::PListView(tokens).at<NSUInteger>(2) < OO_SYSTEMS_PER_GALAXY && oo::PListView(tokens).at<NSUInteger>(3) < OO_SYSTEMS_PER_GALAXY)
 	{
-		[self saveScriptedChangeToProperty:property forSystemKey:key andLayer:layer toValue:value fromManifest:manifest];
+		[self saveScriptedChangeToProperty:oo::StdString(property) forSystemKey:oo::StdString(key) andLayer:layer toValue:oo::PListFrom(value) fromManifest:oo::OptionalString(manifest)];
 	}
 }
 
 
-- (void) saveScriptedChangeToProperty:(NSString *)property forSystemKey:(NSString *)key andLayer:(OOSystemLayer)layer toValue:(id)value fromManifest:(NSString *)manifest
+- (void) saveScriptedChangeToProperty:(const std::string &)property forSystemKey:(const std::string &)key andLayer:(OOSystemLayer)layer toValue:(const oo::PList &)value fromManifest:(const std::optional<std::string> &)manifest
 {
 	// if OXP doesn't have a manifest, cancel saving the change
-	if (manifest == nil)
+	if (!manifest.has_value())
 	{
 		return;
 	}
 //	OOLog(@"saving change",@"%@ %@ %@ %d",manifest,key,property,layer);
-	NSArray *overrideKey = [NSArray arrayWithObjects:manifest,key,property,[[NSNumber numberWithInt:layer] stringValue],nil];
-	// Obj-C copes with NSArray keys to dictionaries fine, but the
-	// plist format doesn't, so they can't be saved.
-	NSString *overrideKeyStr = [overrideKey componentsJoinedByString:kOOScriptedChangeJoiner];
-	if (value != nil)
+	// The four parts (the layer as its number's text) joined into one key: the plist
+	// format can't have array keys, so they couldn't be saved.
+	std::string overrideKeyStr = *manifest;
+	overrideKeyStr += kOOScriptedChangeJoiner;
+	overrideKeyStr += key;
+	overrideKeyStr += kOOScriptedChangeJoiner;
+	overrideKeyStr += property;
+	overrideKeyStr += kOOScriptedChangeJoiner;
+	overrideKeyStr += std::to_string(static_cast<int>(layer));
+	oo::PList::Dict &changes = *scriptedChanges.getIf<oo::PList::Dict>();
+	if (!value.isNull())
 	{
-		[scriptedChanges setObject:value forKey:overrideKeyStr];
+		changes[overrideKeyStr] = value;
 	}
 	else
 	{
-		[scriptedChanges removeObjectForKey:overrideKeyStr];
+		changes.erase(overrideKeyStr);
 	}
 }
 
 
-- (void) importScriptedChanges:(NSDictionary *)scripted
+- (void) cxx_importScriptedChanges:(const oo::PList &)scripted
 {
-	NSArray *key = nil;
-	NSString *keyStr = nil;
-	NSString *manifest = nil;
-	foreachkey (keyStr, scripted)
+	const oo::PList::Dict *changes = scripted.getIf<oo::PList::Dict>();
+	if (changes == nullptr)  return;
+	// (in key order; was hash order: a later key overwrites the same property and layer)
+	for (const auto &[keyStr, value] : *changes)
 	{
-		key = [keyStr componentsSeparatedByString:kOOScriptedChangeJoiner];
-		if ([key count] == 4)
+		const std::vector<std::string> key = oo::str::split(keyStr, kOOScriptedChangeJoiner);
+		if (key.size() == 4)
 		{
-			manifest = oo::PListView(key).at<NSString *>(0);
-			if ([ResourceManager manifestForIdentifier:manifest] != nil)
+			const std::string &manifest = key[0];
+			if (![ResourceManager cxx_manifestForIdentifier:manifest].isNull())
 			{
 //				OOLog(@"importing",@"%@ -> %@",keyStr,[scripted objectForKey:keyStr]);
-				[self setProperty:oo::PListView(key).at<NSString *>(2)
-					 forSystemKey:oo::PListView(key).at<NSString *>(1)
-						 andLayer:OOSystemLayerFromNumber(static_cast<unsigned int>(oo::PListView(key).at<int>(3)))
-						  toValue:[scripted objectForKey:keyStr]
-					 fromManifest:manifest];
+				// -setProperty:forSystemKey:andLayer:toValue:fromManifest: (chunk 2) takes objects: convert at the call.
+				[self setProperty:oo::NSStringFrom(key[2])
+					 forSystemKey:oo::NSStringFrom(key[1])
+						 andLayer:OOSystemLayerFromNumber(static_cast<unsigned int>(oo::str::intValue(key[3])))
+						  toValue:oo::ObjectFromPList(value)
+					 fromManifest:oo::NSStringFrom(manifest)];
 				// and doing this set stores it into the manager's copy
 				// of scripted changes
 				// this means in theory we could import more than one
@@ -277,7 +289,7 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 		}
 		else
 		{
-			OOLog(@"systemManager.import",@"Key '%@' has unexpected format - skipping",keyStr);
+			OOLog(@"systemManager.import",@"Key '%@' has unexpected format - skipping",oo::NSStringFrom(keyStr));
 		}
 	}
 
@@ -285,38 +297,39 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 
 
 // import of the old local_planetinfo_overrides dictionary
-- (void) importLegacyScriptedChanges:(NSDictionary *)scripted
+- (void) cxx_importLegacyScriptedChanges:(const oo::PList &)scripted
 {
-	NSString *systemKey = nil;
-	NSString *propertyKey = nil;
-	NSString *defaultManifest = @"org.oolite.oolite";
-	
-	foreachkey (systemKey,scripted)
+	const oo::PList::Dict *systems = scripted.getIf<oo::PList::Dict>();
+	if (systems == nullptr)  return;
+	// -setProperty:... and -getProperty:forSystemKey: (chunk 2) take objects: convert at the calls.
+	const std::string defaultManifest = "org.oolite.oolite";
+
+	// (systems and properties in key order; was hash order: each is set once)
+	for (const auto &[systemKey, systemChanges] : *systems)
 	{
-		NSDictionary *legacyChanges = oo::PListView(scripted).get<NSDictionary *>(systemKey);
-		if ([legacyChanges objectForKey:@"sun_gone_nova"] != nil)
+		if (systemChanges.isDict() && systemChanges.find("sun_gone_nova") != nullptr)
 		{
 			// then this is a change to import even if we don't know
 			// if the OXP is still installed
-			foreachkey (propertyKey, legacyChanges)
+			for (const auto &[propertyKey, value] : *systemChanges.getIf<oo::PList::Dict>())
 			{
-				[self setProperty:propertyKey
-					 forSystemKey:systemKey
+				[self setProperty:oo::NSStringFrom(propertyKey)
+					 forSystemKey:oo::NSStringFrom(systemKey)
 						 andLayer:OO_LAYER_OXP_DYNAMIC
-						  toValue:[legacyChanges objectForKey:propertyKey]
-					 fromManifest:defaultManifest];
+						  toValue:oo::ObjectFromPList(value)
+					 fromManifest:oo::NSStringFrom(defaultManifest)];
 			}
 			/* Fix for older savegames not having a larger sun radius
 			 * property set from the Nova mission. */
-			id sr = [self getProperty:@"sun_radius" forSystemKey:systemKey];
+			id sr = [self getProperty:@"sun_radius" forSystemKey:oo::NSStringFrom(systemKey)];
 			float sr_num = [sr floatValue];
 			if (sr_num < 600000) {
-				// fix sun radius values
+				// fix sun radius values (a float: written to disk as a single real)
 				[self setProperty:@"sun_radius"
-					 forSystemKey:systemKey
+					 forSystemKey:oo::NSStringFrom(systemKey)
 						 andLayer:OO_LAYER_OXP_DYNAMIC
-						  toValue:[NSNumber numberWithFloat:sr_num+600000.0f]
-					 fromManifest:defaultManifest];
+						  toValue:oo::ObjectFromPList(oo::PList::singleReal(sr_num+600000.0f))
+					 fromManifest:oo::NSStringFrom(defaultManifest)];
 			}
 		}
 	}
@@ -324,9 +337,9 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 }
 
 
-- (NSDictionary *) exportScriptedChanges
+- (oo::PList) cxx_exportScriptedChanges
 {
-	return [[scriptedChanges copy] autorelease];
+	return scriptedChanges;
 }
 
 
