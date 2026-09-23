@@ -289,18 +289,18 @@ enum
 	kOOShaderSettingDefault		= SHADERS_NOT_SUPPORTED
 };
 
-// Programmer-readable shader mode strings.
-OOShaderSetting OOShaderSettingFromString(NSString *string);
-NSString *OOStringFromShaderSetting(OOShaderSetting setting);
-// Localized shader mode strings.
-NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting);
+// The shader mode strings (OOShaderSettingFromString() and friends) are declared in OOConstToString.h.
 
 
 #ifndef NDEBUG
 
-NSString *OOGLColorToString(GLfloat color[4]);
-NSString *OOGLEnumToString(GLenum value);
-NSString *OOGLFlagToString(bool value);
+#ifdef __cplusplus
+extern "C++" {	// (this header is sometimes reached from inside OOMaths.h's extern "C" block)
+std::string OOGLColorToString(GLfloat color[4]);
+std::string OOGLEnumToString(GLenum value);
+std::string OOGLFlagToString(bool value);
+}
+#endif
 
 #endif
 
