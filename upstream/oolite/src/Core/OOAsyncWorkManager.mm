@@ -391,28 +391,24 @@ static void InitAsyncWorkManager(void)
 
 - (void) queueTask:(NSNumber *)threadNumber
 {
-	NSAutoreleasePool			*rootPool = nil, *pool = nil;
-	
-	rootPool = [[NSAutoreleasePool alloc] init];
-	
-	SetUpWorkThread(threadNumber);
-	
-	for (;;)
+	@autoreleasepool
 	{
-		pool = [[NSAutoreleasePool alloc] init];
+		SetUpWorkThread(threadNumber);
 		
-		id<OOAsyncWorkTask> task = [_taskQueue dequeue];
-		@try
+		for (;;)
 		{
-			[task performAsyncTask];
+			@autoreleasepool
+			{
+				id<OOAsyncWorkTask> task = [_taskQueue dequeue];
+				@try
+				{
+					[task performAsyncTask];
+				}
+				@catch (id exception) {}
+				[self queueResult:task];
+			}
 		}
-		@catch (id exception) {}
-		[self queueResult:task];
-		
-		[pool release];
 	}
-	
-	[rootPool release];
 }
 
 @end

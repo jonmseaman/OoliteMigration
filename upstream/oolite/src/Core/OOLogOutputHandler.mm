@@ -32,6 +32,8 @@ SOFTWARE.
 #import "OOLogOutputHandler.h"
 #import "OOLogging.h"
 #import "OOAsyncQueue.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "oofnd/StdLib.hpp"
@@ -477,70 +479,70 @@ enum
 - (void)loggerThread
 {
 	id					message = nil;
-	NSAutoreleasePool	*rootPool = nil, *pool = nil;
+	void				*pool = NULL;
 	NSUInteger			size = 0;
 	
-	rootPool = [[NSAutoreleasePool alloc] init];
-	oo::thread::setCurrentName("loggerThread");
-	
-	// Signal readiness
-	[messageQueue retain];
-	if (haveThreadStateMonitor)
+	@autoreleasepool
 	{
-		std::lock_guard<std::mutex> stateLock(threadStateLock);
-		threadState = kConditionWorking;
-		threadStateChanged.notify_all();
-	}
-	
-	@try
-	{
-		for (;;)
+		oo::thread::setCurrentName("loggerThread");
+		
+		// Signal readiness
+		[messageQueue retain];
+		if (haveThreadStateMonitor)
 		{
-			pool = [[NSAutoreleasePool alloc] init];
-			
-			message = [messageQueue dequeue];
-			
-			if (!sSaturated && [message isKindOfClass:[NSData class]])
+			std::lock_guard<std::mutex> stateLock(threadStateLock);
+			threadState = kConditionWorking;
+			threadStateChanged.notify_all();
+		}
+		
+		@try
+		{
+			for (;;)
 			{
-				size += [message length];
-				if (size > 1 << 30)	// 1 GiB
+				pool = objc_autoreleasePoolPush();
+				
+				message = [messageQueue dequeue];
+				
+				if (!sSaturated && [message isKindOfClass:[NSData class]])
 				{
-					sSaturated = YES;
+					size += [message length];
+					if (size > 1 << 30)	// 1 GiB
+					{
+						sSaturated = YES;
 #if OOLITE_WINDOWS
-					message = @"\r\n\r\n\r\n***** LOG TRUNCATED DUE TO EXCESSIVE LENGTH *****\r\n";
+						message = @"\r\n\r\n\r\n***** LOG TRUNCATED DUE TO EXCESSIVE LENGTH *****\r\n";
 #else
-					message = @"\n\n\n***** LOG TRUNCATED DUE TO EXCESSIVE LENGTH *****\n";
+						message = @"\n\n\n***** LOG TRUNCATED DUE TO EXCESSIVE LENGTH *****\n";
 #endif
-					message = [message dataUsingEncoding:NSUTF8StringEncoding];
+						message = [message dataUsingEncoding:NSUTF8StringEncoding];
+					}
+					
+					[logFile writeData:message];
+				}
+				else if ([message isEqual:@"flush"])
+				{
+					[logFile synchronizeFile];
+				}
+				else if ([message isEqual:@"die"])
+				{
+					break;
 				}
 				
-				[logFile writeData:message];
+				objc_autoreleasePoolPop(pool);
 			}
-			else if ([message isEqual:@"flush"])
-			{
-				[logFile synchronizeFile];
-			}
-			else if ([message isEqual:@"die"])
-			{
-				break;
-			}
-			
-			[pool release];
+		}
+		@catch (NSException *exception) {}
+		objc_autoreleasePoolPop(pool);
+		
+		// Clean up; after this, ivars are out of bounds.
+		[messageQueue release];
+		if (haveThreadStateMonitor)
+		{
+			std::lock_guard<std::mutex> stateLock(threadStateLock);
+			threadState = kConditionReadyToDealloc;
+			threadStateChanged.notify_all();
 		}
 	}
-	@catch (NSException *exception) {}
-	[pool release];
-	
-	// Clean up; after this, ivars are out of bounds.
-	[messageQueue release];
-	if (haveThreadStateMonitor)
-	{
-		std::lock_guard<std::mutex> stateLock(threadStateLock);
-		threadState = kConditionReadyToDealloc;
-		threadStateChanged.notify_all();
-	}
-	
-	[rootPool release];
 }
 
 @end
