@@ -94,27 +94,69 @@ run_test() {
 	LAST_TESTS="$nt"; LAST_CHECKS="$nc"
 }
 
-# --- 3. plain build + run ------------------------------------------------------------------------
+# --- build every test binary (plain and ASan) in parallel, through ccache when it is installed --
+#
+# Bead oo-3rb.56: this script sits in every oofnd bead's acceptance block (300 s budget, ADR-0021),
+# and compiling each test twice, serially and uncached, grew past the budget as components landed.
+# Same TUs, same flags, same runs: each TU is compiled with -c (the only form ccache can cache;
+# relative paths plus CCACHE_BASEDIR make clean clones hit), then linked, all jobs concurrently.
+rd="$(bash "$script_dir/asan-resource-dir.sh" --print)" || fail "could not build the spliced ASan resource directory"
+dlldir="$(bash "$script_dir/asan-resource-dir.sh" --dll-dir)" || fail "could not locate the ASan runtime DLL directory"
+asan_flags=("${flags[@]}" -fsanitize=address -fno-omit-frame-pointer -g -O1 -resource-dir "$rd")
+cc=("$CXX")
+if command -v ccache >/dev/null 2>&1; then
+	cc=(ccache "$CXX")
+	export CCACHE_BASEDIR="${CCACHE_BASEDIR:-$(cygpath -m "$PWD" 2>/dev/null || pwd)}"
+fi
+jobs="${OO_OOFND_JOBS:-$(nproc 2>/dev/null || echo 4)}"
+
+# build_one <test.cpp> <plain|asan>: compile then link one binary; its log is kept for the report.
+build_one() {
+	local t="$1" kind="$2" name out
+	name="$(basename "$t" .cpp)"
+	if [ "$kind" = plain ]; then
+		out="$work/$name"
+		"${cc[@]}" "${flags[@]}" "${incs[@]}" -c "$t" -o "$out.o" > "$out.build.log" 2>&1 			&& "$CXX" "${flags[@]}" "$out.o" -o "$out.exe" >> "$out.build.log" 2>&1
+	else
+		out="$work/${name}_asan"
+		"${cc[@]}" "${asan_flags[@]}" "${incs[@]}" -c "$t" -o "$out.o" > "$out.build.log" 2>&1 			&& "$CXX" "${asan_flags[@]}" -fuse-ld=lld "$out.o" -o "$out.exe" >> "$out.build.log" 2>&1
+	fi
+}
+
+step "3/4 build: ${#tests[@]} test file(s) x {plain, -fsanitize=address}, $jobs job(s)"
+pids=(); what=()
+for t in "${tests[@]}"; do
+	for kind in plain asan; do
+		while [ "$(jobs -rp | wc -l)" -ge "$jobs" ]; do wait -n || true; done
+		build_one "$t" "$kind" & pids+=("$!"); what+=("$t:$kind")
+	done
+done
+build_failed=0
+for i in "${!pids[@]}"; do
+	if ! wait "${pids[$i]}"; then
+		t="${what[$i]%:*}"; kind="${what[$i]##*:}"; name="$(basename "$t" .cpp)"
+		[ "$kind" = plain ] && log="$work/$name.build.log" || log="$work/${name}_asan.build.log"
+		cat "$log" >&2
+		echo "FAIL: $t does not compile ($kind)" >&2
+		build_failed=1
+	fi
+done
+[ "$build_failed" -eq 0 ] || fail "one or more oofnd tests do not compile"
+
 step "3/4 unit tests: -std=c++20 -Wall -Wextra -Werror"
 for t in "${tests[@]}"; do
 	name="$(basename "$t" .cpp)"
-	"$CXX" "${flags[@]}" "${incs[@]}" "$t" -o "$work/$name.exe" || fail "$t does not compile"
 	run_test "$work/$name.exe" "$work/$name.log"
 	total_tests=$((total_tests + LAST_TESTS))
 	total_checks=$((total_checks + LAST_CHECKS))
 done
 
-# --- 4. ASan build + run -------------------------------------------------------------------------
 step "4/4 unit tests under -fsanitize=address"
-rd="$(bash "$script_dir/asan-resource-dir.sh" --print)" || fail "could not build the spliced ASan resource directory"
-dlldir="$(bash "$script_dir/asan-resource-dir.sh" --dll-dir)" || fail "could not locate the ASan runtime DLL directory"
-asan_flags=("${flags[@]}" -fsanitize=address -fno-omit-frame-pointer -g -O1 -resource-dir "$rd" -fuse-ld=lld)
 cp "$dlldir/libclang_rt.asan_dynamic-x86_64.dll" "$work/" 2>/dev/null || true
 cp "$dlldir/libc++.dll" "$work/" 2>/dev/null || true
 export ASAN_OPTIONS="${ASAN_OPTIONS:-halt_on_error=1:abort_on_error=0:detect_leaks=0}"
 for t in "${tests[@]}"; do
 	name="$(basename "$t" .cpp)"
-	"$CXX" "${asan_flags[@]}" "${incs[@]}" "$t" -o "$work/${name}_asan.exe" || fail "$t does not compile under -fsanitize=address"
 	PATH="$work:$dlldir:$PATH" run_test "$work/${name}_asan.exe" "$work/${name}_asan.log"
 	! grep -qi 'AddressSanitizer' "$work/${name}_asan.log" || fail "${name} printed an AddressSanitizer report"
 done

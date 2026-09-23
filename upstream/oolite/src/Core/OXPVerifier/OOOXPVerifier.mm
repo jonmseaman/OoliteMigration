@@ -58,6 +58,7 @@ SOFTWARE.
 #import "OOCacheManager.h"
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/Process.hpp"
 
 static void SwitchLogFile(NSString *name);
 static void NoteVerificationStage(NSString *displayName, NSString *stage);
@@ -96,9 +97,6 @@ static void OpenLogFile(NSString *name);
  */
 + (BOOL)runVerificationIfRequested
 {
-	NSArray				*arguments = nil;
-	NSEnumerator		*argEnum = nil;
-	NSString			*arg = nil;
 	NSString			*foundPath = nil;
 	BOOL				exists, isDirectory;
 	OOOXPVerifier		*verifier = nil;
@@ -106,17 +104,18 @@ static void OpenLogFile(NSString *name);
 	
 	pool = [[NSAutoreleasePool alloc] init];
 	
-	arguments = [[NSProcessInfo processInfo] arguments];
-	
+	const std::vector<std::string> &arguments = oo::process::arguments();
+
 	// Scan for -verify-oxp or --verify-oxp followed by relative path
-	for (argEnum = [arguments objectEnumerator]; (arg = [argEnum nextObject]); )
+	for (size_t argIndex = 0; argIndex < arguments.size(); argIndex++)
 	{
-		if ([arg isEqual:@"-verify-oxp"] || [arg isEqual:@"--verify-oxp"])
+		const std::string &arg = arguments[argIndex];
+		if (arg == "-verify-oxp" || arg == "--verify-oxp")
 		{
-			foundPath = [argEnum nextObject];
+			if (argIndex + 1 < arguments.size())  foundPath = [NSString stringWithUTF8String:arguments[argIndex + 1].c_str()];
 			if (foundPath == nil)
 			{
-				OOLog(@"verifyOXP.noPath", @"***** ERROR: %@ passed without path argument; nothing to verify.", arg);
+				OOLog(@"verifyOXP.noPath", @"***** ERROR: %s passed without path argument; nothing to verify.", arg.c_str());
 				[pool release];
 				return YES;
 			}
