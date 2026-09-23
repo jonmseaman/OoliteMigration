@@ -108,7 +108,7 @@ SOFTWARE.
 	OOAL(alGenBuffers(1,&buffer));
 	if ((error = alGetError()) != AL_NO_ERROR)
 	{
-		OOLog(kOOLogSoundLoadingError, @"%@", @"Could not create OpenAL buffer");
+		OOLog(oo::NSStringFrom(kOOLogSoundLoadingError), @"%@", @"Could not create OpenAL buffer");
 		return 0;
 	}
 	else
