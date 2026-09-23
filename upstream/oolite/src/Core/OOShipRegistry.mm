@@ -1674,7 +1674,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	NOTE: assumes single-threaded access.
 */
 
-+ (id) allocWithZone:(NSZone *)inZone
++ (id) allocWithZone:(OOZone *)inZone
 {
 	if (sSingleton == nil)
 	{
@@ -1686,7 +1686,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 }
 
 
-- (id) copyWithZone:(NSZone *)inZone
+- (id) copyWithZone:(OOZone *)inZone
 {
 	return self;
 }
