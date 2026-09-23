@@ -26,6 +26,8 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OORuntime.h"
 #import "OOCollectionExtractors.h"
 #import "OOMaths.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 
 
 @implementation OOColor
@@ -215,13 +217,13 @@ MA 02110-1301, USA.
 + (OOColor *) colorFromString:(NSString*) colorFloatString
 {
 	float			rgbaValue[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	NSScanner		*scanner = [NSScanner scannerWithString:colorFloatString];
+	oo::str::Scanner	scanner(oo::StdString(colorFloatString));
 	float			factor = 1.0f;
 	int				i;
 	
 	for (i = 0; i != 4; ++i)
 	{
-		if (![scanner scanFloat:&rgbaValue[i]])
+		if (!scanner.scanFloat(&rgbaValue[i]))
 		{
 			// Less than three floats or non-float, can't parse -> quit
 			if (i < 3) return nil;

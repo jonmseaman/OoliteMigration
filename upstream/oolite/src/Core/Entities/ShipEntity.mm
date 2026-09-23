@@ -38,7 +38,8 @@ MA 02110-1301, USA.
 #import "OOCollectionExtractors.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
-#import "NSScannerOOExtensions.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 #import "OOFilteringEnumerator.h"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
@@ -605,11 +606,11 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 			OOCommodityType	c_commodity = nil;
 			int				c_amount = 1;
-			NSScanner		*scanner = [NSScanner scannerWithString:cargoString];
-			if ([scanner scanInt:&c_amount])
+			oo::str::Scanner	scanner(oo::StdString(cargoString));
+			if (scanner.scanInt(&c_amount))
 			{
-				[scanner ooliteScanCharactersFromSet:[NSCharacterSet whitespaceCharacterSet] intoString:NULL];	// skip whitespace
-				c_commodity = [[scanner string] substringFromIndex:[scanner scanLocation]];
+				scanner.scanCharactersFromSetNoSkip(oo::str::CharacterSet::whitespace());	// skip whitespace
+				c_commodity = oo::NSStringFrom(scanner.remainder());
 				if ([[UNIVERSE commodities] goodDefined:c_commodity])
 				{
 					[self setCommodityForPod:c_commodity andAmount:c_amount];

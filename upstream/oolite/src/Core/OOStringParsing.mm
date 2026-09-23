@@ -24,7 +24,8 @@ MA 02110-1301, USA.
 
 #import "OOStringParsing.h"
 #import "OOLogging.h"
-#import "NSScannerOOExtensions.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 #import "legacy_random.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
@@ -64,24 +65,14 @@ static NSString * const kOOLogStringRandomSeedConversion		= @"strings.conversion
 NSMutableArray *ScanTokensFromString(NSString *values)
 {
 	NSMutableArray			*result = nil;
-	NSScanner				*scanner = nil;
-	NSString				*token = nil;
-	static NSCharacterSet	*space_set = nil;
 	
 	// Note: Shark suggests we're getting a lot of early exits, but testing showed a pretty steady 2% early exit rate.
 	if (EXPECT_NOT(values == nil))  return [NSMutableArray array];
-	if (EXPECT_NOT(space_set == nil)) space_set = [[NSCharacterSet whitespaceAndNewlineCharacterSet] retain];
 	
 	result = [NSMutableArray array];
-	scanner = [NSScanner scannerWithString:values];
-	
-	while (![scanner isAtEnd])
+	for (const std::string &token : oo::str::tokens(oo::StdString(values)))
 	{
-		[scanner ooliteScanCharactersFromSet:space_set intoString:NULL];
-		if ([scanner ooliteScanUpToCharactersFromSet:space_set intoString:&token])
-		{
-			[result addObject:token];
-		}
+		[result addObject:oo::NSStringFrom(token)];
 	}
 	
 	return result;
@@ -93,15 +84,14 @@ BOOL ScanVectorFromString(NSString *xyzString, Vector *outVector)
 	GLfloat					xyz[] = {0.0, 0.0, 0.0};
 	int						i = 0;
 	NSString				*error = nil;
-	NSScanner				*scanner = nil;
 	
 	assert(outVector != NULL);
 	if (xyzString == nil) return NO;
 	
-	if (!error) scanner = [NSScanner scannerWithString:xyzString];
-	while (![scanner isAtEnd] && i < 3 && !error)
+	oo::str::Scanner		scanner(oo::StdString(xyzString));
+	while (!scanner.isAtEnd() && i < 3 && !error)
 	{
-		if (![scanner scanFloat:&xyz[i++]])  error = @"could not scan a float value.";
+		if (!scanner.scanFloat(&xyz[i++]))  error = @"could not scan a float value.";
 	}
 	
 	if (!error && i < 3)  error = @"found less than three float values.";
@@ -136,15 +126,14 @@ BOOL ScanQuaternionFromString(NSString *wxyzString, Quaternion *outQuaternion)
 	GLfloat					wxyz[] = {1.0, 0.0, 0.0, 0.0};
 	int						i = 0;
 	NSString				*error = nil;
-	NSScanner				*scanner = nil;
 	
 	assert(outQuaternion != NULL);
 	if (wxyzString == nil) return NO;
 	
-	if (!error) scanner = [NSScanner scannerWithString:wxyzString];
-	while (![scanner isAtEnd] && i < 4 && !error)
+	oo::str::Scanner		scanner(oo::StdString(wxyzString));
+	while (!scanner.isAtEnd() && i < 4 && !error)
 	{
-		if (![scanner scanFloat:&wxyz[i++]])  error = @"could not scan a float value.";
+		if (!scanner.scanFloat(&wxyz[i++]))  error = @"could not scan a float value.";
 	}
 	
 	if (!error && i < 4)  error = @"found less than four float values.";
@@ -171,15 +160,14 @@ BOOL ScanVectorAndQuaternionFromString(NSString *xyzwxyzString, Vector *outVecto
 	GLfloat					xyzwxyz[] = { 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
 	int						i = 0;
 	NSString				*error = nil;
-	NSScanner				*scanner = nil;
 	
 	assert(outVector != NULL && outQuaternion != NULL);
 	if (xyzwxyzString == nil) return NO;
 	
-	if (!error) scanner = [NSScanner scannerWithString:xyzwxyzString];
-	while (![scanner isAtEnd] && i < 7 && !error)
+	oo::str::Scanner		scanner(oo::StdString(xyzwxyzString));
+	while (!scanner.isAtEnd() && i < 7 && !error)
 	{
-		if (![scanner scanFloat:&xyzwxyz[i++]])  error = @"Could not scan a float value.";
+		if (!scanner.scanFloat(&xyzwxyz[i++]))  error = @"Could not scan a float value.";
 	}
 	
 	if (!error && i < 7)  error = @"Found less than seven float values.";
@@ -245,11 +233,11 @@ Random_Seed RandomSeedFromString(NSString *abcdefString)
 	int						abcdef[] = { 0, 0, 0, 0, 0, 0};
 	int						i = 0;
 	NSString				*error = nil;
-	NSScanner				*scanner = [NSScanner scannerWithString:abcdefString];
+	oo::str::Scanner		scanner(oo::StdString(abcdefString));
 	
-	while (![scanner isAtEnd] && i < 6 && !error)
+	while (!scanner.isAtEnd() && i < 6 && !error)
 	{
-		if (![scanner scanInt:&abcdef[i++]])  error = @"could not scan a int value.";
+		if (!scanner.scanInt(&abcdef[i++]))  error = @"could not scan a int value.";
 	}
 	
 	if (!error && i < 6)  error = @"found less than six int values.";

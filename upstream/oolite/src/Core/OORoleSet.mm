@@ -30,6 +30,8 @@ SOFTWARE.
 #import "OOStringParsing.h"
 #import "OOPListView.h"
 #import "OOLogging.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 
 
 @interface OORoleSet (OOPrivate)
@@ -316,7 +318,6 @@ NSDictionary *OOParseRolesFromString(NSString *string)
 	NSUInteger				i, count;
 	NSString				*role = nil;
 	float					probability;
-	NSScanner				*scanner = nil;
 	
 	// Split string at spaces, sanity checks, set-up.
 	if (string == nil)  return nil;
@@ -335,13 +336,12 @@ NSDictionary *OOParseRolesFromString(NSString *string)
 		probability = 1.0f;
 		if ([role rangeOfString:@"("].location != NSNotFound)
 		{
-			scanner = [[NSScanner alloc] initWithString:role];
-			[scanner scanUpToString:@"(" intoString:&role];
-			[scanner scanString:@"(" intoString:NULL];
-			if (![scanner scanFloat:&probability])	probability = 1.0f;
+			oo::str::Scanner scanner(oo::StdString(role));
+			std::string head;
+			if (scanner.scanUpToString("(", &head))  role = oo::NSStringFrom(head);
+			scanner.scanString("(");
+			if (!scanner.scanFloat(&probability))	probability = 1.0f;
 			// Ignore rest of string
-			
-			[scanner release];
 		}
 		
 		// shipKey roles start with [ so other roles can't

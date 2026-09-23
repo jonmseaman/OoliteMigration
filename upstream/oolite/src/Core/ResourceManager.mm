@@ -23,7 +23,6 @@ MA 02110-1301, USA.
 */
 
 #import "ResourceManager.h"
-#import "NSScannerOOExtensions.h"
 #import "NSMutableDictionaryOOExtensions.h"
 #import "NSStringOOExtensions.h"
 #import "OOSound.h"

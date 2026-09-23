@@ -36,7 +36,6 @@ MA 02110-1301, USA.
 
 #import "CollisionRegion.h"
 
-#import "NSScannerOOExtensions.h"
 #import "OODebugFlags.h"
 #import "NSObjectOOExtensions.h"
 

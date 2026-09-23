@@ -39,6 +39,7 @@ Rules that hold for every component:
 | `src/oofnd/Process.hpp` | `oo::process` + `oo::env`: `NSProcessInfo` (arguments captured in `main`, `hasArgument`, `processName`, `processorCount`, `operatingSystemVersionString`) with GNUstep's measured semantics |
 | `src/oofnd/Thread.hpp` | `oo::thread`: `NSThread` on `std::thread`: `detach`, `isMainThread` (id captured at static init), `setCurrentName`, `setCurrentPriority` (GNUstep's measured Windows mapping) |
 | `src/oofnd/String.hpp` | `oo::str`: the `NSString` methods and Oolite `NSString` categories the game uses (`NSStringOOExtensions`, `OOStringParsing`'s `NSString (OOUtilities)`, `ScanTokensFromString`, the version helpers) over UTF-8 `std::string`, GNUstep 1.31.1's answers exactly: case tables, whitespace set, composed-sequence rules, `-pathExtension`, `-replaceOccurrencesOfString:`, `-hasPrefix:`, `-stringWithFormat:` without `%@` ([ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)) |
+| `src/oofnd/Scanner.hpp` | `oo::str::CharacterSet` / `oo::str::Scanner` and `trim` / `findFirstOf` / `findLastOf` / `splitByCharacters`: `NSCharacterSet` (the named sets as GNUstep 1.31.1 tables, custom, inverted), `NSScanner` (skipping, case-insensitive matching, failure locations, `scanInt`/`scanDouble`) and `NSScannerOOExtensions`, exactly (bead oo-3rb.12, [ADR-0039](../../../../docs/decisions/0039-oofnd-scanner.md)) |
 | `src/oofnd/Encoding.hpp` | `oo::str::Encoding` / `encodeLossy` / `convertForFont`: `OOEncodingConverter`'s conversion to the five Windows code pages, including libiconv's transliterations as GNUstep runs them |
 | `src/oofnd/Log.hpp` | `oo::log`: OOLogging without Foundation: message-class switches (inheritance, `$metaclasses`, `_default`/`_override`), per-thread indentation, the exact Latest.log line layout, OOLogging's own diagnostics, and the `OO_LOG("cls", "{}", ...)` std::format front end. `src/Core/OOLogging.mm` is its Objective-C shell ([ADR-0035](../../../../docs/decisions/0035-oofnd-logging.md)) |
 | `src/Core/OOStringBridge.h` (game side) | `oo::StdString` / `oo::NSStringFrom` / `oo::StringMap`: the exact `NSString` <-> `std::string` bridge for calling `oo::str` from files that still hold `NSString`s; see below |
@@ -154,6 +155,36 @@ When the Foundation sweep turns the file's strings into `std::string`, `oo::Stri
 becomes `f(s)` and the bridge header goes. Performance rule from the decision-4 benchmark
 ([2-string-benchmark.md](../../../../docs/phases/2-string-benchmark.md)): where Objective-C
 retained a string, take `std::string_view` / `const std::string&` or move; copy only where it copied.
+
+## Migrating NSScanner / NSCharacterSet calls (oo::str::Scanner)
+
+The recipe for the `NSScanner` / `NSCharacterSet` chunk beads (bead oo-3rb.12; proposed
+[ADR-0039](../../../../docs/decisions/0039-oofnd-scanner.md)); exemplars `src/Core/OOColor.mm`,
+`src/Core/OORoleSet.mm`, `src/Core/OOStringParsing.mm`. The file keeps its `NSString`s and bridges
+per call (`OOStringBridge.h`).
+
+1. **Include** `#import "OOStringBridge.h"` and `#include "oofnd/Scanner.hpp"` after the last `#import`.
+2. **Rewrite each call** (the full table is in `Scanner.hpp`'s banner):
+
+   | Objective-C | becomes |
+   |---|---|
+   | `NSScanner *sc = [NSScanner scannerWithString:s];` | `oo::str::Scanner sc(oo::StdString(s));` |
+   | `[sc scanFloat:&f]` / `scanInt:` / `scanDouble:` / `isAtEnd` | `sc.scanFloat(&f)` / `scanInt` / `scanDouble` / `isAtEnd()` |
+   | `[sc scanString:@"x" intoString:NULL]` | `sc.scanString("x")` |
+   | `[sc scanUpToString:@"x" intoString:&r]` | `std::string t; if (sc.scanUpToString("x", &t)) r = oo::NSStringFrom(t);` |
+   | `[NSCharacterSet whitespaceCharacterSet]` (and the other named sets) | `oo::str::CharacterSet::whitespace()` ... |
+   | `[NSCharacterSet characterSetWithCharactersInString:@"ab"]` / `[set invertedSet]` | `oo::str::CharacterSet::fromCharacters("ab")` / `set.inverted()` |
+   | `x = [s stringByTrimmingCharactersInSet:set]` | `x = oo::StringMap(s, [&](std::string_view v) { return oo::str::trim(v, set); })` |
+   | `[s rangeOfCharacterFromSet:set].location == NSNotFound` | `oo::str::findFirstOf(oo::StdString(s), set) == std::string_view::npos` |
+
+   An `intoString:` target is assigned only when the scan succeeds, as before. A `static
+   NSCharacterSet *` cache becomes a local `const oo::str::CharacterSet` (construction is cheap).
+3. **nil:** `[NSScanner scannerWithString:nil]` scanned as an empty string (and GNUstep logged
+   "Scanner initialised with nil string", which is not reproduced: ADR-0039); `oo::StdString(nil)`
+   is `""`, so a scanner needs no nil test. A trim or find on a nil receiver still needs one
+   (`StringMap` keeps nil; `findFirstOf` of `""` is npos where messaging nil gave location 0).
+4. **Check:** the file no longer names `NSScanner`/`NSCharacterSet`, `tools/tier-a.sh <file>`
+   passes, and the goldens verify.
 
 ## Migrating OOLog calls (oo::log)
 
