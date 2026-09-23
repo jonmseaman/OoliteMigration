@@ -927,7 +927,7 @@ for (unsigned i=0;i<amount;i++)
 
 - (BOOL) cxx_addPassenger:(const std::string &)Name start:(unsigned)start destination:(unsigned)Destination eta:(double)eta fee:(double)fee advance:(double)advance risk:(unsigned)risk
 {
-	// the NSNumber kinds the old dictionary held: +numberWithInt:, +numberWithDouble:, +numberWithUnsignedInt:
+	// the number kinds the old dictionary held: +numberWithInt:, +numberWithDouble:, +numberWithUnsignedInt:
 	const oo::PList passenger_info(oo::PList::Dict{
 		{ oo::StdString(PASSENGER_KEY_NAME),								oo::PList(Name) },
 		{ oo::StdString(CONTRACT_KEY_START),				oo::PList::signedInteger(static_cast<int>(start)) },
@@ -981,7 +981,7 @@ for (unsigned i=0;i<amount;i++)
 
 - (BOOL) cxx_addParcel:(const std::string &)Name start:(unsigned)start destination:(unsigned)Destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk
 {
-	// the NSNumber kinds the old dictionary held: +numberWithInt:, +numberWithDouble:, +numberWithUnsignedInt:
+	// the number kinds the old dictionary held: +numberWithInt:, +numberWithDouble:, +numberWithUnsignedInt:
 	const oo::PList parcel_info(oo::PList::Dict{
 		{ oo::StdString(PASSENGER_KEY_NAME),								oo::PList(Name) },
 		{ oo::StdString(CONTRACT_KEY_START),				oo::PList::signedInteger(static_cast<int>(start)) },
@@ -1055,7 +1055,7 @@ for (unsigned i=0;i<amount;i++)
 		cargo_ID = oo::str::format("%06x-%06x", sr1, sr2);
 	}
 
-	// the NSNumber kinds the old dictionary held: +numberWithInt:, +numberWithDouble:
+	// the number kinds the old dictionary held: +numberWithInt:, +numberWithDouble:
 	const oo::PList cargo_info(oo::PList::Dict{
 		{ oo::StdString(CARGO_KEY_ID),						oo::PList(cargo_ID) },
 		{ oo::StdString(CARGO_KEY_TYPE),					oo::PList(type) },
@@ -1207,12 +1207,12 @@ for (unsigned i=0;i<amount;i++)
 		OOColor *scrollColor = [gui colorFromSetting:kGuiManifestScrollColor defaultValue:[OOColor greenColor]];
 		OOColor *noScrollColor = [gui colorFromSetting:kGuiManifestNoScrollColor defaultValue:[OOColor darkGrayColor]];
 
-		NSArray*	cargoManifest = [self cargoList];
-		NSArray*	missionsManifest = [self missionsList];
-		
+		const std::vector<std::string>	cargoManifest = oo::StringsFrom([self cargoList]);
+		id			missionsManifest = [self missionsList];	// strings and arrays of strings
+
 		NSUInteger	i = 0;
 		NSUInteger	max_rows = 20;
-		NSUInteger	manifestCount = [cargoManifest count];
+		NSUInteger	manifestCount = cargoManifest.size();
 		NSUInteger	cargoRowCount = (manifestCount + 1)/2;
 		OOGUIRow	cargoRow = 2;
 		OOGUIRow	missionsRow = 2;
@@ -1226,16 +1226,15 @@ for (unsigned i=0;i<amount;i++)
 		}
 
 		NSUInteger mmRows = 0;
-		id mmEntry = nil;
-		foreach (mmEntry, missionsManifest)
+		for (id mmEntry in missionsManifest)
 		{
-			if ([mmEntry isKindOfClass:[NSString class]])
+			if (oo::IsNSString(mmEntry))
 			{
 				++mmRows;
 			}
-			else if ([mmEntry isKindOfClass:[NSArray class]])
+			else if (oo::IsNSArray(mmEntry))
 			{
-				mmRows += [(NSArray *)mmEntry count];
+				mmRows += [mmEntry count];
 			}
 		}
 		
@@ -1270,30 +1269,30 @@ for (unsigned i=0;i<amount;i++)
 		
 		current = current_cargo;
 		max = [self maxAvailableCargoSpace];
-		NSString *cargoString = OOExpandKey(@"oolite-manifest-cargo", current, max);
-		current = [[self passengerList] count];
+		const std::string cargoString = oo::StdString(OOExpandKey(@"oolite-manifest-cargo", current, max));
+		current = [self cxx_passengerList].size();
 		max = max_passengers;
-		NSString *cabinString = OOExpandKey(@"oolite-manifest-cabins", current, max);
-		NSArray *manifestHeader = [NSArray arrayWithObjects:cargoString,cabinString,nil];
+		const std::string cabinString = oo::StdString(OOExpandKey(@"oolite-manifest-cabins", current, max));
+		const std::vector<std::string> manifestHeader = { cargoString, cabinString };
 
-		SET_MANIFEST_ROW( manifestHeader , entryColor, cargoRow - 1);
+		SET_MANIFEST_ROW( oo::NSArrayFromStrings(manifestHeader) , entryColor, cargoRow - 1);
 		
 		if (manifestCount > 0)
 		{
 			for (i = 0; i < cargoRowCount; i++)
 			{
-				NSMutableArray*		row_info = [NSMutableArray arrayWithCapacity:3];
+				std::vector<std::string>	row_info;
 				// i is always smaller than manifest_count, no need to test.
-				[row_info addObject:[cargoManifest objectAtIndex:i]];
+				row_info.push_back(cargoManifest[i]);
 				if (i + cargoRowCount < manifestCount)
 				{
-					[row_info addObject:[cargoManifest objectAtIndex:i + cargoRowCount]];
+					row_info.push_back(cargoManifest[i + cargoRowCount]);
 				}
 				else
 				{
-					[row_info addObject:@""];
+					row_info.emplace_back();
 				}
-				SET_MANIFEST_ROW( (NSArray *)row_info, subheadColor, cargoRow + i);
+				SET_MANIFEST_ROW( oo::NSArrayFromStrings(row_info), subheadColor, cargoRow + i);
 			}
 		}
 		else
@@ -1309,7 +1308,7 @@ for (unsigned i=0;i<amount;i++)
 		
 		if (manifestCount > 0)
 		{
-			if ([[missionsManifest objectAtIndex:0] isKindOfClass:[NSString class]])
+			if (oo::IsNSString([missionsManifest objectAtIndex:0]))
 			{
 				// then there's at least one without its own heading
 				// to go under the generic 'missions' heading
@@ -1323,27 +1322,25 @@ for (unsigned i=0;i<amount;i++)
 			NSUInteger mmRow = 0;
 			for (i = 0; i < manifestCount; i++)
 			{
-				NSString *mmItem = nil;
-				mmEntry = [missionsManifest objectAtIndex:i];
-				if ([mmEntry isKindOfClass:[NSString class]])
+				id mmEntry = [missionsManifest objectAtIndex:i];
+				if (oo::IsNSString(mmEntry))
 				{
-					mmItem = [NSString stringWithFormat:@"\t%@",(NSString *)mmEntry];
-					SET_MANIFEST_ROW( (mmItem) , subheadColor, missionsRow + mmRow);
+					const std::string mmItem = "\t" + oo::DescriptionOf(mmEntry);	// @"\t%@"
+					SET_MANIFEST_ROW( oo::NSStringFrom(mmItem) , subheadColor, missionsRow + mmRow);
 					++mmRow;
 				}
-				else if ([mmEntry isKindOfClass:[NSArray class]])
+				else if (oo::IsNSArray(mmEntry))
 				{
 					BOOL isHeading = YES;
-					foreach (mmItem, mmEntry)
+					for (id mmItem in mmEntry)
 					{
 						if (isHeading)
 						{
-							SET_MANIFEST_ROW( ((NSString *)mmItem) , entryColor , missionsRow + mmRow);
+							SET_MANIFEST_ROW( mmItem , entryColor , missionsRow + mmRow);
 						}
 						else
 						{
-							mmItem = [NSString stringWithFormat:@"\t%@",(NSString *)mmItem];
-							SET_MANIFEST_ROW( ((NSString *)mmItem) , subheadColor , missionsRow + mmRow);
+							SET_MANIFEST_ROW( oo::NSStringFrom("\t" + oo::DescriptionOf(mmItem)) , subheadColor , missionsRow + mmRow);	// @"\t%@"
 						}
 						isHeading = NO;
 						++mmRow;
@@ -1366,7 +1363,7 @@ for (unsigned i=0;i<amount;i++)
 				[gui setColor:noScrollColor forRow:MANIFEST_SCREEN_ROW_BACK];
 				r_start = nextPageRow;
 			}
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ",nil] forRow:MANIFEST_SCREEN_ROW_BACK];
+			[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " } forRow:MANIFEST_SCREEN_ROW_BACK];
 
 			if (total_rows > max_rows + page_offset)
 			{
@@ -1378,7 +1375,7 @@ for (unsigned i=0;i<amount;i++)
 				[gui setColor:noScrollColor forRow:nextPageRow];
 				r_end = MANIFEST_SCREEN_ROW_BACK;
 			}
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ",nil] forRow:nextPageRow];
+			[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " } forRow:nextPageRow];
 
 			[gui setSelectableRange:NSMakeRange(r_start,r_end+1-r_start)];
 			[gui setSelectedRow:r_start];
@@ -1413,13 +1410,13 @@ for (unsigned i=0;i<amount;i++)
 	if (disp_row < 1 || disp_row > max_rows) return;
 	if (multi) disp_row++;
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	if ([object isKindOfClass:[NSString class]])
+	if (oo::IsNSString(object))
 	{
-		[gui setText:(NSString*)object forRow:disp_row];
+		[gui cxx_setText:oo::StdString(object) forRow:disp_row];
 	}
-	else if ([object isKindOfClass:[NSArray class]])
+	else if (oo::IsNSArray(object))
 	{
-		[gui setArray:(NSArray*)object forRow:disp_row];
+		[gui cxx_setArray:oo::StringsFrom(object) forRow:disp_row];
 	}
 	[gui setColor:color forRow:disp_row];
 }
