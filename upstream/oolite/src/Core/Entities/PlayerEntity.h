@@ -36,6 +36,7 @@ MA 02110-1301, USA.
 #import "OOCommodityMarket.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource, OOSoundReferencePoint;
@@ -405,17 +406,17 @@ typedef enum
 	
 	BOOL					found_equipment;
 	
-	NSMutableDictionary		*reputation;
+	oo::PList::Dict			reputation;			// signed integers by key (PlayerEntity (Contracts))
 	
 	unsigned				max_passengers;
-	NSMutableArray			*passengers;
-	NSMutableDictionary		*passenger_record;
+	oo::PList::Array		passengers;			// Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			passenger_record;	// arrival time (double) by passenger name
 
-	NSMutableArray			*parcels;
-	NSMutableDictionary		*parcel_record;
+	oo::PList::Array		parcels;			// Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			parcel_record;		// arrival time (double) by sender name
 	
-	NSMutableArray			*contracts;
-	NSMutableDictionary		*contract_record;
+	oo::PList::Array		contracts;			// cargo contract Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			contract_record;	// arrival time (double) by cargo ID
 	
 	NSMutableDictionary		*shipyard_record;
 	
@@ -731,7 +732,7 @@ typedef enum
 	
 	
 	// docking reports
-	NSMutableString			*dockingReport;
+	std::string				dockingReport;
 	
 	// Woo, flags.
 	unsigned				suppressTargetLost: 1,		// smart target lst reports
