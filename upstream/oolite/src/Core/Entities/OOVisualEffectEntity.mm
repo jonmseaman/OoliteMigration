@@ -290,7 +290,7 @@ MA 02110-1301, USA.
 
 - (BOOL) setUpOneFlasher:(NSDictionary *) subentDict
 {
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:oo::PListFrom(subentDict)];
 	[flasher setPosition:oo::PListView(subentDict).get<HPVector>(@"position")];
 	[self addSubEntity:flasher];
 	return YES;
