@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
 		
 		// Call applicationDidFinishLaunching because NSApp is not running in
 		// GNUstep port.
-		[controller applicationDidFinishLaunching: nil];
+		[controller applicationDidFinishLaunching];
 	}
 	@catch (NSException *exception)
 	{

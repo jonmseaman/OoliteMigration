@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Notification.hpp"
 #include <cstring>
 
 /*
@@ -132,6 +133,8 @@ ooscript::Context gOOJSMainThreadContext = NULL;
 
 NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
 NSString * const kOOJavaScriptEngineDidResetNotification = @"org.aegidian.oolite OOJavaScriptEngine did reset";
+const char * const kOOJavaScriptEngineWillResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine will reset";
+const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine did reset";
 
 
 #if OOJSENGINE_MONITOR_SUPPORT
@@ -506,6 +509,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	}
 	
 	ooscript::Context context = OOJSAcquireContext();
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, self);
 	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineWillResetNotification object:self];
 	OOJSRelinquishContext(context);
 	
@@ -513,6 +517,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	[self createMainThreadContext];
 	
 	context = OOJSAcquireContext();
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, self);
 	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineDidResetNotification object:self];
 	OOJSRelinquishContext(context);
 	
@@ -1583,10 +1588,9 @@ ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object
 		{
 			ooscript::addNamedValueRoot((context), (&_val), "OOJSValue");
 			
-			[[NSNotificationCenter defaultCenter] addObserver:self
-													 selector:@selector(deleteJSValue)
-														 name:kOOJavaScriptEngineWillResetNotification
-													   object:[OOJavaScriptEngine sharedEngine]];
+			oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+																[OOJavaScriptEngine sharedEngine],
+																[self](const oo::Notification &) { [self deleteJSValue]; });
 		}
 		
 		if (tempCtxt)  OOJSRelinquishContext(context);
@@ -1612,9 +1616,8 @@ ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object
 		OOJSRelinquishContext(context);
 		
 		_val = ooscript::undefinedValue();
-		[[NSNotificationCenter defaultCenter] removeObserver:self
-														name:kOOJavaScriptEngineWillResetNotification
-													  object:[OOJavaScriptEngine sharedEngine]];
+		oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+																[OOJavaScriptEngine sharedEngine]);
 	}
 }
 

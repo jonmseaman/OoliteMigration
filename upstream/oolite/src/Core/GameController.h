@@ -106,7 +106,7 @@ MA 02110-1301, USA.
 
 + (GameController *) sharedController;
 
-- (void) applicationDidFinishLaunching:(NSNotification *)notification;
+- (void) applicationDidFinishLaunching;
 - (BOOL) finishedLaunching;
 
 - (BOOL) isGamePaused;
@@ -165,7 +165,7 @@ MA 02110-1301, USA.
 - (MyOpenGLView *) gameView;
 - (void) setGameView:(MyOpenGLView *)view;
 
-- (void)windowDidResize:(NSNotification *)aNotification;
+- (void)windowDidResize;
 
 - (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create;
 
