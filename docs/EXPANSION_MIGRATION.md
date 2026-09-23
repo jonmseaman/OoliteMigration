@@ -187,6 +187,10 @@ Behaviour that SpiderMonkey silently tolerated or coerced now throws at parse ti
   enforces it more completely) this throws `ReferenceError`.
 - `arguments.callee` — throws in strict mode. Name your function and call it by name, or use a
   named function expression, instead of self-referencing through `arguments.callee`.
+- Creating a property on a primitive in strict code (`"use strict"; var s = "a"; s.x = 1;`) throws
+  `TypeError: not an object`. SpiderMonkey 1.8.5 wrote it to a throwaway wrapper object and carried
+  on, so the line did nothing. The usual cause is a `reduce()` callback that returns the value it
+  assigned instead of the accumulator: write `m[k] = v; return m;`, not `return m[k] = v;`.
 
 None of these have a dedicated `oxp-js-lint` rule (they are standard ES strict-mode behaviour, not
 Mozilla-specific), but the C++-side `tools/deny-list.txt` deny-list (consumed by
@@ -219,9 +223,12 @@ byte-identical, and Oolite's own API surface matches the 1.93 contract with no d
   both sloppy and strict code. SpiderMonkey threw a `TypeError` in strict code; a script that
   relied on that exception was already failing.
 - **A bare name in a script's closure** that refers to a property of the script object (not
-  `this.name`, just `name`) resolves through the object the script file last ran for. That
-  matters only when one script file runs for several objects, such as a ship script, and code
-  uses bare names rather than `this.`.
+  `this.name`, just `name`) resolves through the script object of the handler call that is running,
+  which for Oolite's own calls (event handlers, timers, the script's first run) is the object the
+  closure was made for. Bead oo-1gc.15 fixed the case where one ship script file runs for several
+  ships: before it, the name resolved through whichever ship ran the file last. It can still differ
+  from SpiderMonkey when one ship's function is called directly from another ship's handler. Use
+  `this.name` and it never matters.
 - **More standard globals exist.** Scripts that list the global object see more names: a check
   for "global namespace pollution" reports `Map`, `Promise`, `globalThis` and others as
   unexpected.
@@ -246,14 +253,23 @@ them.
 | E4 | `plist.parse.failed` (`missiontext.plist` and others) | Fix the property-list syntax. `plutil -lint` finds it. | Reval.Neutralizer, redspear.demand_driven_economy |
 | E5 | `oxp.versionMismatch: ... is incompatible with version 1.93 of Oolite`, then NOTLOADED | The manifest's `maximum_oolite_version` (or `required_oolite_version`) excludes 1.93. Widen it after testing. | gsagostinho.DangerousKeyconfig, Lone_Wolf.ReduceWeaponDamage, phkb.LoadoutByCategory190 |
 | E6 | `[XenonUI]: ERROR! No Xenon UI Resource packs installed` | Nothing: the expansion correctly reports a missing companion. Tier 1 pairs it with Pack A and it passes on both engines. | z.phkb.XenonUI (Tier 2) |
-| E7 | `shipData.merge.failed` (unresolved `like_ship`), `shipData.load.error` (unresolved subentity, non-existent model), `oxp-standards.error: Likely missing a dependency` | Ship data refers to entries or models from an expansion that is not declared. Declare it in `requires_oxps`, or mark the entry `is_external_dependency`. This is the same mechanism as Norby.Carriers in Tier 1 (bead oo-1gc.7). | DrNil.YAH-SetA to SetG (7), zzz.Montana05.GalTech_chimera_gunship_Fix, zzz.Montana05.GalTech_constitution_class_heavy_cruiser_Fix, ZygoUgo.noshaders_Asteroids, ZygoUgo.shadyAsteroids, amah.noshaders_extra_stations_addon, amah.noshaders_stations_for_sfep, smivs.classicVarietyPack, LittleBear.AssassinsGuildRebooted, Reval.Elite_Trader, Reval.Elite_Trader_Meta, Frame.FuelCollector, Svengali.Snoopers (Tier 2; its JS error is oo-1gc.14) |
+| E7 | `shipData.merge.failed` (unresolved `like_ship`), `shipData.load.error` (unresolved subentity, non-existent model), `oxp-standards.error: Likely missing a dependency` | Ship data refers to entries or models from an expansion that is not declared. Declare it in `requires_oxps`, or mark the entry `is_external_dependency`. This is the same mechanism as Norby.Carriers in Tier 1 (bead oo-1gc.7). | DrNil.YAH-SetA to SetG (7), zzz.Montana05.GalTech_chimera_gunship_Fix, zzz.Montana05.GalTech_constitution_class_heavy_cruiser_Fix, ZygoUgo.noshaders_Asteroids, ZygoUgo.shadyAsteroids, amah.noshaders_extra_stations_addon, amah.noshaders_stations_for_sfep, smivs.classicVarietyPack, LittleBear.AssassinsGuildRebooted, Reval.Elite_Trader, Reval.Elite_Trader_Meta, Frame.FuelCollector, Svengali.Snoopers (Tier 2; its JS error is E8) |
+| E8 | `TypeError: could not delete property`, from a strict-mode `for (var k in this) ... delete this[k]` that spares only `name` and `version` | A world script object carries `oolite_manifest_identifier`, which Oolite defines read-only and permanent, on SpiderMonkey as well. A strict `delete` of it threw there too. Skip it in the loop, as RobertTodd.Taranis and Wildeblood.Untrumbled do. The loop runs on the missing-dependency path, so the error appears when the expansion is installed without its companions. (bead oo-1gc.14) | Svengali.Snoopers (Tier 2) |
+| E9 | `ReferenceError: X is not defined` for a name nothing declares, in strict code | The name was never a variable on any engine. UK_Eliter.InterstellarTweaks calls a method of one of its own `this.$...` objects without the object (`method(...)` for `this.$obj.method(...)`). The other three use an undeclared `for (k in obj)` loop variable in a `"use strict"` file or function (Taranis and Untrumbled on their missing-dependency path). Add the object, or declare the variable with `var`. (bead oo-1gc.15) | UK_Eliter.InterstellarTweaks (Tier 2), Norby.Towbar (Tier 2), RobertTodd.Taranis, Wildeblood.Untrumbled |
+| E10 | `TypeError: not an object` at the top level of a world script, which is then dropped | Strict code creates a property on a string: a `reduce()` callback returns the key instead of the accumulator. SpiderMonkey 1.8.5 ignored the write silently, so the result was already wrong there. See "Newly strict". (bead oo-1gc.16) | Alnivel.RoutePlanner |
 
-The other 13 failures are JavaScript exceptions that may be engine differences. Each is a Phase 1
-bead: oo-1gc.13 (`not a constructor`, three rock-chunk spawn scripts), oo-1gc.14 (`could not delete
-property`, Svengali.Snoopers), oo-1gc.15 (five `ReferenceError: X is not defined`) and oo-1gc.16
-(`SyntaxError: expecting ';'` in three ship scripts, and one `not an object`). An outcome that turns
-out to be an expansion-side change becomes a row here, and a new construct gets a `####` section
-above with its lint rule.
+The other 13 failures were JavaScript exceptions that might have been engine differences. Beads
+oo-1gc.13 to oo-1gc.16 settled each one without reading expansion content, using the redacting
+`tools/oxp-js-lint/probe.js`:
+
+- **Engine differences, fixed in the facade (no author change):** `new Vector3D.random(n)` in the
+  rock-chunk spawn scripts of Griff.Asteroids and two amah.noshaders ports (`TypeError: not a
+  constructor`; SpiderMonkey let `new` call any native, oo-1gc.13), and a ship script reading a
+  bare name for its own `this.` property (`ReferenceError`, zzz.Montana05.BUS_MegaBat, oo-1gc.15;
+  see the bare-name bullet above).
+- **Mozilla-only syntax:** legacy generators in Thargoid.Wildships, Thargoid.Aquatics and
+  zzz.Montana05.Kestrel_Falcon, now the lint rule `legacy-generator` above (oo-1gc.16).
+- **Content defects:** rows E8 to E10.
 
 ## Newly available (opt-in, worth advertising to authors)
 
