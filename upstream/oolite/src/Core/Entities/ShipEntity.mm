@@ -130,20 +130,22 @@ static GLfloat calcFuelChargeRate (GLfloat myMass)
 #endif
 
 
+namespace {
+
 /*	Readers for a subentity / ship configuration held as an oo::PList (the Foundation sweep,
 	proposed ADR-0043): what oo::PListView(dict).get<NSArray *> / get<NSString *> / get<HPVector> /
 	get<Quaternion> answered. A string is nil (nullopt) when the key is absent or holds neither a
 	string nor a number; vectors and quaternions go through OOCollectionExtractors' readers
 	(unmigrated), with their defaults for a missing key.
 */
-static const oo::PList *ArrayForKey(const oo::PList &dict, std::string_view key)
+const oo::PList *ArrayForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
 	return (value != nullptr && value->isArray()) ? value : nullptr;
 }
 
 
-static std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view key)
+std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
 	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
@@ -151,18 +153,42 @@ static std::optional<std::string> StringForKey(const oo::PList &dict, std::strin
 }
 
 
-static HPVector HPVectorForKey(const oo::PList &dict, std::string_view key)
+HPVector HPVectorForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
 	return OOHPVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroHPVector);
 }
 
 
-static Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
+Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.find(key);
 	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
 }
+
+
+// get<Vector>(key, kZeroVector) / at<Vector>(i, kZeroVector): nullptr is a missing value.
+Vector VectorFromPList(const oo::PList *value)
+{
+	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroVector);
+}
+
+
+// Was the private -repeatString:times:.
+std::string RepeatString(std::string_view str, NSUInteger times)
+{
+	std::string result;
+	result.reserve(str.size() * times);
+	
+	for (NSUInteger i = 0; i < times; i++)
+	{
+	    result += str;
+	}
+	
+	return result;
+}
+
+}	// namespace
 
 
 @interface ShipEntity (Private)
@@ -193,7 +219,7 @@ static Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
 - (ShipEntity *) launchPodWithCrew:(NSArray *)podCrew;
 
 // equipment
-- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(NSString *)role;
+- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role;
 
 - (void) setShipHitByLaser:(ShipEntity *)ship;
 
@@ -524,12 +550,13 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	}
 
 	// set weapon offsets
-	NSString *weaponMountMode = oo::PListView(shipDict).get<NSString *>(@"weapon_mount_mode", @"single");
-	_multiplyWeapons = [weaponMountMode isEqualToString:@"multiply"];
-	forwardWeaponOffset = [[self getWeaponOffsetFrom:shipDict withKey:@"weapon_position_forward" inMode:weaponMountMode] retain];
-	aftWeaponOffset = [[self getWeaponOffsetFrom:shipDict withKey:@"weapon_position_aft" inMode:weaponMountMode] retain];
-	portWeaponOffset = [[self getWeaponOffsetFrom:shipDict withKey:@"weapon_position_port" inMode:weaponMountMode] retain];
-	starboardWeaponOffset = [[self getWeaponOffsetFrom:shipDict withKey:@"weapon_position_starboard" inMode:weaponMountMode] retain];
+	const oo::PList weaponMounts = oo::PListFrom(shipDict);	// the ship dictionary, until oo-3rb.241 holds it as an oo::PList
+	const std::string weaponMountMode = weaponMounts.get<std::string>("weapon_mount_mode", "single");
+	_multiplyWeapons = weaponMountMode == "multiply";
+	forwardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_forward" inMode:weaponMountMode];
+	aftWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_aft" inMode:weaponMountMode];
+	portWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_port" inMode:weaponMountMode];
+	starboardWeaponOffset = [self cxx_weaponOffsetsFrom:weaponMounts withKey:"weapon_position_starboard" inMode:weaponMountMode];
 
 	
 	tractor_position = vector_multiply_scalar(oo::PListView(shipDict).get<Vector>(@"scoop_position"),_scaleFactor);
@@ -716,7 +743,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 
 	// Populate the missiles here. Must come after scanClass.
-	_missileRole = oo::PListView(shipDict).get<NSString *>(@"missile_role");
+	_missileRole = oo::OptionalString(oo::PListView(shipDict).get<NSString *>(@"missile_role"));
 	unsigned	i, j;
 	for (i = 0, j = 0; i < missiles; i++)
 	{
@@ -832,21 +859,6 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-// Was the private -repeatString:times:.
-static std::string RepeatString(std::string_view str, NSUInteger times)
-{
-	std::string result;
-	result.reserve(str.size() * times);
-	
-	for (NSUInteger i = 0; i < times; i++)
-	{
-	    result += str;
-	}
-	
-	return result;
-}
-
- 
 - (std::optional<std::string>) cxx_serializeShipSubEntities
 {	
 	std::string			result;
@@ -1156,11 +1168,6 @@ static std::string RepeatString(std::string_view str, NSUInteger times)
 	DESTROY(_defenseTargets);
 	DESTROY(_collisionExceptions);
 
-	DESTROY(forwardWeaponOffset);
-	DESTROY(aftWeaponOffset);
-	DESTROY(portWeaponOffset);
-	DESTROY(starboardWeaponOffset);
-	
 	DESTROY(commodity_type);
 
 	[self setSubEntityTakingDamage:nil];
@@ -2052,53 +2059,52 @@ static std::string RepeatString(std::string_view str, NSUInteger times)
 }
 
 
-#define MAKE_VECTOR_ARRAY(v) [[[OONativeVector alloc] initWithVector:v] autorelease]
-
-- (NSArray *) getWeaponOffsetFrom:(NSDictionary *)dict withKey:(NSString *)key inMode:(NSString *)mode
+- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode
 {
 	Vector offset;
-	if ([mode isEqualToString:@"single"])
+	if (mode == "single")
 	{
-		offset = vector_multiply_scalar(oo::PListView(dict).get<Vector>(key, kZeroVector),_scaleFactor);
-		return [NSArray arrayWithObject:MAKE_VECTOR_ARRAY(offset)];
+		offset = vector_multiply_scalar(VectorFromPList(dict.find(key)),_scaleFactor);
+		return { offset };
 	}
 	else
 	{
-		NSArray *offsets = oo::PListView(dict).get<NSArray *>(key, nil);
-		if (offsets == nil) {
+		const oo::PList *offsets = ArrayForKey(dict, key);
+		if (offsets == nullptr) {
 			offset = kZeroVector;
-			return [NSArray arrayWithObject:MAKE_VECTOR_ARRAY(offset)];
+			return { offset };
 		}
-		NSMutableArray *output = [NSMutableArray arrayWithCapacity:[offsets count]];
+		std::vector<Vector> output;
+		output.reserve(offsets->count());
 		NSUInteger i;
-		for (i=0;i<[offsets count];i++) {
-			offset = vector_multiply_scalar(oo::PListView(offsets).at<Vector>(i, kZeroVector),_scaleFactor);
-			[output addObject:MAKE_VECTOR_ARRAY(offset)];
+		for (i=0;i<offsets->count();i++) {
+			offset = vector_multiply_scalar(VectorFromPList(offsets->at(i)),_scaleFactor);
+			output.push_back(offset);
 		}
-		return [NSArray arrayWithArray:output];
+		return output;
 	}
 }
 
 
-- (NSArray *) aftWeaponOffset
+- (std::vector<Vector>) cxx_aftWeaponOffset
 {
 	return aftWeaponOffset;
 }
 
 
-- (NSArray *) forwardWeaponOffset
+- (std::vector<Vector>) cxx_forwardWeaponOffset
 {
 	return forwardWeaponOffset;
 }
 
 
-- (NSArray *) portWeaponOffset
+- (std::vector<Vector>) cxx_portWeaponOffset
 {
 	return portWeaponOffset;
 }
 
 
-- (NSArray *) starboardWeaponOffset
+- (std::vector<Vector>) cxx_starboardWeaponOffset
 {
 	return starboardWeaponOffset;
 }
@@ -3350,11 +3356,16 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (NSArray *) missilesList
+- (id) missilesList	// shared selector (proposed ADR-0043)
 {
-	// if missile_list is empty, avoid exception and return empty NSArray instead
-	return missile_list[0] != nil ?	[NSArray arrayWithObjects:missile_list count:missiles] :
-									[NSArray array];
+	// if missile_list is empty, avoid exception and return an empty array instead
+	std::vector<oo::ObjCRef<OOEquipmentType *>> list;
+	if (missile_list[0] != nil)
+	{
+		list.reserve(missiles);
+		for (unsigned i = 0; i < missiles; i++)  list.emplace_back(missile_list[i]);
+	}
+	return oo::NSArrayFromObjects(list);
 }
 
 
@@ -3376,7 +3387,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(NSString *)role
+- (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role
 {
 	/* 	The generated missile equipment type provides for backward compatibility with pre-1.74 OXPs  missile_roles
 		and follows this template:
@@ -3391,11 +3402,11 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			}
 		)
 	*/
-	NSArray  *itemInfo = [NSArray arrayWithObjects:@"100", @"100000", @"Missile", role, @"Unidentified missile type.",
-							[NSDictionary dictionaryWithObjectsAndKeys: @"true", @"is_external_store", nil], nil];
-	
-	[OOEquipmentType addEquipmentWithInfo:itemInfo];
-	return [OOEquipmentType equipmentTypeWithIdentifier:role];
+	const oo::PList itemInfo(oo::PList::Array{ "100", "100000", "Missile", role, "Unidentified missile type.",
+							oo::PList(oo::PList::Dict{ { "is_external_store", oo::PList("true") } }) });
+
+	[OOEquipmentType addEquipmentWithInfo:oo::ObjectFromPList(itemInfo)];
+	return [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(role)];
 }
 
 
@@ -3806,88 +3817,89 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (OOEquipmentType *) verifiedMissileTypeFromRole:(NSString *)role
+- (OOEquipmentType *) verifiedMissileTypeFromRole:(const std::string &)requestedRole
 {
-	NSString			*eqRole = nil;
-	NSString			*shipKey = nil;
+	std::string			role = requestedRole;
+	std::optional<std::string> eqRole;
+	std::optional<std::string> shipKey;
 	ShipEntity			*missile = nil;
 	OOEquipmentType		*missileType = nil;
-	BOOL				isRandomMissile = [role isEqualToString:@"missile"];
-	
+	BOOL				isRandomMissile = role == "missile";
+
 	if (isRandomMissile)
 	{
-		while (!shipKey)
+		while (!shipKey.has_value())
 		{
-			shipKey = [UNIVERSE randomShipKeyForRoleRespectingConditions:role];
-			if (!shipKey) 
+			shipKey = oo::OptionalString([UNIVERSE randomShipKeyForRoleRespectingConditions:oo::NSStringFrom(role)]);
+			if (!shipKey.has_value())
 			{
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", shipKey, [self name], @"shipdata",  @"Trying another missile.");
+				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringOrNil(shipKey), [self name], @"shipdata",  @"Trying another missile.");
 			}
 		}
 	}
 	else
 	{
-		shipKey = [UNIVERSE randomShipKeyForRoleRespectingConditions:role];
-		if (!shipKey) 
+		shipKey = oo::OptionalString([UNIVERSE randomShipKeyForRoleRespectingConditions:oo::NSStringFrom(role)]);
+		if (!shipKey.has_value())
 		{
-			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", role, [self name], @"shipdata", @" Using defaults instead.");
+			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), [self name], @"shipdata", @" Using defaults instead.");
 			return nil;
 		}
 	}
-	
-	eqRole = [OOEquipmentType getMissileRegistryRoleForShip:shipKey];	// eqRole != role for generic missiles.
-	
-	if (eqRole == nil)
+
+	eqRole = oo::OptionalString([OOEquipmentType getMissileRegistryRoleForShip:oo::NSStringFrom(*shipKey)]);	// eqRole != role for generic missiles.
+
+	if (!eqRole.has_value())
 	{
-		missile = [UNIVERSE newShipWithName:shipKey];
+		missile = [UNIVERSE newShipWithName:oo::NSStringFrom(*shipKey)];
 		if (!missile)
 		{
 			if (isRandomMissile)
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", shipKey, [self name], @"shipdata",  @"Trying another missile.");
+				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"random missile", oo::NSStringFrom(*shipKey), [self name], @"shipdata",  @"Trying another missile.");
 			else
-				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", role, [self name], @"shipdata", @" Using defaults instead.");
-				
-			[OOEquipmentType setMissileRegistryRole:@"" forShip:shipKey];	// no valid role for this shipKey
+				OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", @"missile_role", oo::NSStringFrom(role), [self name], @"shipdata", @" Using defaults instead.");
+
+			[OOEquipmentType setMissileRegistryRole:@"" forShip:oo::NSStringFrom(*shipKey)];	// no valid role for this shipKey
 			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];
 			else return nil;
 		}
-		
+
 		if(isRandomMissile)
 		{
 			for (const std::string &value : [[missile roleSet] roles])
 			{
-				role = oo::NSStringFrom(value);
-				missileType = [OOEquipmentType equipmentTypeWithIdentifier:role];
+				role = value;
+				missileType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(role)];
 				// ensure that we have a missile or mine
 				if ([missileType isMissileOrMine]) break;
 			}
-		
+
 			if (![missileType isMissileOrMine])
 			{
-				role = shipKey;	// unique identifier to use in lieu of a valid equipment type if none are defined inside the generic missile roleset.
+				role = *shipKey;	// unique identifier to use in lieu of a valid equipment type if none are defined inside the generic missile roleset.
 			}
 		}
-		
-		missileType = [OOEquipmentType equipmentTypeWithIdentifier:role];
-		
+
+		missileType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(role)];
+
 		if (!missileType)
 		{
-			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", (isRandomMissile ? @"random missile" : @"missile_role"), role, [self name], @"equipment", @" Enabling compatibility mode.");
+			OOLogWARN(@"ship.setUp.missiles", @"%@ \"%@\" used in ship \"%@\" needs a valid %@.plist entry.%@", (isRandomMissile ? @"random missile" : @"missile_role"), oo::NSStringFrom(role), [self name], @"equipment", @" Enabling compatibility mode.");
 			missileType = [self generateMissileEquipmentTypeFrom:role];
 		}
-		
-		[OOEquipmentType setMissileRegistryRole:role forShip:shipKey];
+
+		[OOEquipmentType setMissileRegistryRole:oo::NSStringFrom(role) forShip:oo::NSStringFrom(*shipKey)];
 		[missile release];
 	}
 	else
 	{
-		if ([eqRole isEqualToString:@""])
+		if (eqRole->empty())
 		{
 			// wrong ship definition, already written to the log in a previous call.
 			if (isRandomMissile) return [self verifiedMissileTypeFromRole:role];	// try and find a valid missile with role 'missile'.
 			return nil;
 		}
-		missileType = [OOEquipmentType equipmentTypeWithIdentifier:eqRole];
+		missileType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*eqRole)];
 	}
 
 	return missileType;
@@ -3897,16 +3909,16 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (OOEquipmentType *) selectMissile
 {
 	OOEquipmentType		*missileType = nil;
-	NSString			*role = nil;
+	std::string			role;
 	double				chance = randf();
 	BOOL				thargoidMissile = NO;
-	
+
 	if ([self isThargoid])
 	{
-		if (_missileRole != nil) missileType = [self verifiedMissileTypeFromRole:_missileRole];
+		if (_missileRole.has_value()) missileType = [self verifiedMissileTypeFromRole:*_missileRole];
 		if (missileType == nil) {
-			_missileRole = @"EQ_THARGON";	// no valid missile_role defined, use thargoid fallback from now on.
-			missileType = [self verifiedMissileTypeFromRole:_missileRole];
+			_missileRole = "EQ_THARGON";	// no valid missile_role defined, use thargoid fallback from now on.
+			missileType = [self verifiedMissileTypeFromRole:*_missileRole];
 		}
 	}
 	else
@@ -3915,31 +3927,31 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		// Without auto weapons, never random.
 		float randomSelectionChance = chance;
 		if(![self hasAutoWeapons])  randomSelectionChance = 0.0f;
-		if (randomSelectionChance < 0.9f && _missileRole != nil)
+		if (randomSelectionChance < 0.9f && _missileRole.has_value())
 		{
-			missileType = [self verifiedMissileTypeFromRole:_missileRole];
+			missileType = [self verifiedMissileTypeFromRole:*_missileRole];
 		}
-		
+
 		if (missileType == nil)	// the random 10% , or no valid missile_role defined
 		{
-			if (chance < 0.9f && _missileRole != nil)	// no valid missile_role defined?
+			if (chance < 0.9f && _missileRole.has_value())	// no valid missile_role defined?
 			{
-				_missileRole = nil;	// use generic ship fallback from now on.
+				_missileRole = std::nullopt;	// use generic ship fallback from now on.
 			}
-			
+
 			// assign random missiles 20% of the time without missile_role (or 10% with valid missile_role)
-			if (chance > 0.8f) role = @"missile";
+			if (chance > 0.8f) role = "missile";
 			// otherwise use the standard role
-			else role = @"EQ_MISSILE";
-			
+			else role = "EQ_MISSILE";
+
 			missileType = [self verifiedMissileTypeFromRole:role];
 		}
 	}
-	
-	if (missileType == nil) OOLogERR(@"ship.setUp.missiles", @"could not resolve missile / mine type for ship \"%@\". Original missile role:\"%@\".", [self name],_missileRole);
-	
-	role = [[missileType identifier] lowercaseString];
-	thargoidMissile = [self isThargoid] && ([role hasSuffix:@"thargon"] || [role hasPrefix:@"thargon"]);
+
+	if (missileType == nil) OOLogERR(@"ship.setUp.missiles", @"could not resolve missile / mine type for ship \"%@\". Original missile role:\"%@\".", [self name],oo::NSStringOrNil(_missileRole));
+
+	role = oo::str::lowercase(oo::StdString([missileType identifier]));
+	thargoidMissile = [self isThargoid] && (oo::str::hasSuffix(role, "thargon") || oo::str::hasPrefix(role, "thargon"));
 
 	if (thargoidMissile || (!thargoidMissile && [missileType isMissileOrMine]))
 	{
@@ -9601,11 +9613,12 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (Vector) positionOffsetForAlignment:(NSString*) align
+- (Vector) positionOffsetForAlignment:(const std::string &) align
 {
-	NSString* padAlign = [NSString stringWithFormat:@"%@---", align];
+	// indexed in UTF-16 units, as -characterAtIndex: was
+	const std::u16string padAlign = oo::utf8ToUtf16(oo::str::format("%s---", align.c_str()));
 	Vector result = kZeroVector;
-	switch ([padAlign characterAtIndex:0])
+	switch (padAlign[0])
 	{
 		case (unichar)'c':
 		case (unichar)'C':
@@ -9618,7 +9631,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			result.x = boundingBox.min.x;
 			break;
 	}
-	switch ([padAlign characterAtIndex:1])
+	switch (padAlign[1])
 	{
 		case (unichar)'c':
 		case (unichar)'C':
@@ -9631,7 +9644,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			result.y = boundingBox.min.y;
 			break;
 	}
-	switch ([padAlign characterAtIndex:2])
+	switch (padAlign[2])
 	{
 		case (unichar)'c':
 		case (unichar)'C':
@@ -9648,15 +9661,16 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, NSString* align)
+Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, const std::string &align)
 {
-	NSString* padAlign = [NSString stringWithFormat:@"%@---", align];
+	// indexed in UTF-16 units, as -characterAtIndex: was
+	const std::u16string padAlign = oo::utf8ToUtf16(oo::str::format("%s---", align.c_str()));
 	Vector i = vector_right_from_quaternion(q);
 	Vector j = vector_up_from_quaternion(q);
 	Vector k = vector_forward_from_quaternion(q);
 	BoundingBox arbb = [ship findBoundingBoxRelativeToPosition:kZeroHPVector InVectors:i :j :k];
 	Vector result = kZeroVector;
-	switch ([padAlign characterAtIndex:0])
+	switch (padAlign[0])
 	{
 		case (unichar)'c':
 		case (unichar)'C':
@@ -9669,7 +9683,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 			result.x = arbb.min.x;
 			break;
 	}
-	switch ([padAlign characterAtIndex:1])
+	switch (padAlign[1])
 	{
 		case (unichar)'c':
 		case (unichar)'C':
@@ -9682,7 +9696,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 			result.y = arbb.min.y;
 			break;
 	}
-	switch ([padAlign characterAtIndex:2])
+	switch (padAlign[2])
 	{
 		case (unichar)'c':
 		case (unichar)'C':
@@ -11531,7 +11545,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	if (_multiplyWeapons)
 	{
 		// multiple fitted
-		multiplier = [[self laserPortOffset:direction] count];
+		multiplier = [self cxx_laserPortOffset:direction].size();
 	}
 
 	if (energy <= weapon_energy_use * multiplier) return NO;
@@ -11553,7 +11567,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 		}
 		else
 		{
-			[self fireLaserShotInDirection:direction weaponIdentifier:[weapon_type identifier]];
+			[self cxx_fireLaserShotInDirection:direction weaponIdentifier:oo::StdString([weapon_type identifier])];
 			fired = YES;
 		}
 	}
@@ -11967,9 +11981,9 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 }
 
 
-- (NSArray *) laserPortOffset:(OOWeaponFacing)direction
+- (std::vector<Vector>) cxx_laserPortOffset:(OOWeaponFacing)direction
 {
-	NSArray *laserPortOffset = nil;
+	std::vector<Vector> laserPortOffset;
 	switch (direction)
 	{
 		case WEAPON_FACING_FORWARD:
@@ -11993,17 +12007,18 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 }
 
 
-- (BOOL) fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(NSString *)weaponIdentifier
+- (BOOL) cxx_fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(const std::string &)weaponIdentifier
 {
 	double			range_limit2 = weaponRange * weaponRange;
 	GLfloat			hit_at_range;
 	NSUInteger		i, barrels;
 	Vector			vel = vector_multiply_scalar(v_forward, flightSpeed);
-	NSArray 		*laserPortOffsets = [self laserPortOffset:direction];
+	const std::vector<Vector> laserPortOffsets = [self cxx_laserPortOffset:direction];
 	OOLaserShotEntity *shot = nil;
 
-	barrels = [laserPortOffsets count];
-	NSMutableArray *shotEntities = [NSMutableArray arrayWithCapacity:barrels];
+	barrels = laserPortOffsets.size();
+	std::vector<oo::ObjCRef<OOLaserShotEntity *>> shotEntities;
+	shotEntities.reserve(barrels);
 
 	
 	GLfloat			effective_damage = weapon_damage;
@@ -12015,7 +12030,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	
 	for (i=0;i<barrels;i++)
 	{
-		Vector 			laserPortOffset = oo::PListView(laserPortOffsets).at<Vector>(i);
+		Vector 			laserPortOffset = laserPortOffsets[i];
 	
 		last_shot_time = [UNIVERSE getTime];
 
@@ -12025,7 +12040,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 		shot = [OOLaserShotEntity laserFromShip:self direction:direction offset:laserPortOffset];
 		if ([self isPlayer])
 		{
-			[shotEntities addObject:shot];
+			shotEntities.emplace_back(shot);
 		}
 	
 		[shot setColor:laser_color];
@@ -12052,13 +12067,13 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 			if (subent != nil && [victim isFrangible])
 			{
 				// do 1% bleed-through damage...
-				[victim takeEnergyDamage: 0.01 * effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];
+				[victim takeEnergyDamage: 0.01 * effective_damage from:self becauseOf:self weaponIdentifier:oo::NSStringFrom(weaponIdentifier)];
 				victim = subent;
 			}
 		
 			if (hit_at_range * hit_at_range < range_limit2)
 			{
-				[victim takeEnergyDamage:effective_damage from:self becauseOf:self weaponIdentifier:weaponIdentifier];	// a very palpable hit
+				[victim takeEnergyDamage:effective_damage from:self becauseOf:self weaponIdentifier:oo::NSStringFrom(weaponIdentifier)];	// a very palpable hit
 
 				[shot setRange:hit_at_range];
 				Vector vd = vector_forward_from_quaternion([shot orientation]);
@@ -12108,7 +12123,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	
 	if ([self isPlayer])
 	{
-		[(PlayerEntity *)self setLastShot:shotEntities];
+		[(PlayerEntity *)self setLastShot:oo::NSArrayFromObjects(shotEntities)];
 	}
 	
 	[self resetShotTime];
@@ -12223,12 +12238,13 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 
 - (ShipEntity *) fireMissile
 {
-	return [self fireMissileWithIdentifier:nil andTarget:[self primaryTarget]];
+	return [self cxx_fireMissileWithIdentifier:std::nullopt andTarget:[self primaryTarget]];
 }
 
 
-- (ShipEntity *) fireMissileWithIdentifier:(NSString *) identifier andTarget:(Entity *) target
+- (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) requestedIdentifier andTarget:(Entity *) target
 {
+	std::optional<std::string>	identifier = requestedIdentifier;
 	// both players and NPCs!
 	//
 	ShipEntity		*missile = nil;
@@ -12265,12 +12281,12 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	}
 	
 	unsigned i;
-	if (identifier == nil)
+	if (!identifier.has_value())
 	{
 		// use a random missile from the list
 		i = floor(randf()*(double)missiles);
-		identifier = [missile_list[i] identifier];
-		missile = [UNIVERSE newShipWithRole:identifier];
+		identifier = oo::OptionalString([missile_list[i] identifier]);
+		missile = [UNIVERSE newShipWithRole:oo::NSStringOrNil(identifier)];
 		if (EXPECT_NOT(missile == nil))	// invalid missile role.
 		{
 			// remove that invalid missile role from the missiles list.
@@ -12279,13 +12295,13 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 		}
 	}
 	else
-		missile = [UNIVERSE newShipWithRole:identifier];
+		missile = [UNIVERSE newShipWithRole:oo::NSStringFrom(*identifier)];
 	
 	if (EXPECT_NOT(missile == nil))	return nil;
 	
 	// By definition, the player will always have the specified missile.
 	// What if the NPC didn't actually have the specified missile to begin with?
-	if (!isPlayer && ![self removeExternalStore:[OOEquipmentType equipmentTypeWithIdentifier:identifier]])
+	if (!isPlayer && ![self removeExternalStore:[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(identifier)]])
 	{
 		[missile release];
 		return nil;

@@ -9524,7 +9524,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(forward_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [forwardWeaponOffset count];
+									multiplier = forwardWeaponOffset.size();
 								}
 								break;
 								
@@ -9534,7 +9534,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(aft_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [aftWeaponOffset count];
+									multiplier = aftWeaponOffset.size();
 								}
 								break;
 								
@@ -9544,7 +9544,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(port_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [portWeaponOffset count];
+									multiplier = portWeaponOffset.size();
 								}
 								break;
 								
@@ -9554,7 +9554,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(starboard_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [starboardWeaponOffset count];
+									multiplier = starboardWeaponOffset.size();
 								}
 								break;
 						}
@@ -10366,7 +10366,7 @@ static NSString *last_outfitting_key=nil;
 				forward_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [forwardWeaponOffset count];
+					multiplier = forwardWeaponOffset.size();
 				}
 				break;
 				
@@ -10375,7 +10375,7 @@ static NSString *last_outfitting_key=nil;
 				aft_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [aftWeaponOffset count];
+					multiplier = aftWeaponOffset.size();
 				}
 				break;
 				
@@ -10384,7 +10384,7 @@ static NSString *last_outfitting_key=nil;
 				port_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [portWeaponOffset count];
+					multiplier = portWeaponOffset.size();
 				}
 				break;
 				
@@ -10393,7 +10393,7 @@ static NSString *last_outfitting_key=nil;
 				starboard_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [starboardWeaponOffset count];
+					multiplier = starboardWeaponOffset.size();
 				}
 				break;
 				
