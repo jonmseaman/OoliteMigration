@@ -34,6 +34,8 @@ MA 02110-1301, USA.
 
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOFoundationBridge.h"
 
@@ -266,8 +268,8 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 	{
 		[self reportStackOverflow];
 		
-		[NSException raise:@"OoliteException"
-					format:@"AI stack overflow for %@", _owner];
+		[OOException raise:"OoliteException"
+					format:"AI stack overflow for %s", [[_owner description] UTF8String]];
 	}
 	
 	const oo::PList *script = stateMachine.find("jsScript");
@@ -518,7 +520,11 @@ static AIStackElement *sStack = NULL;
 				[self cxx_takeAction:actions.at<std::string>(i)];
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(kOOLogException, @"Squashing exception %@:%@ in AI handler %@:%@.%@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(currentState), oo::NSStringFrom(message));
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(kOOLogException, @"Squashing exception %@:%@ in AI handler %@:%@.%@", [exception name], [exception reason], oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(currentState), oo::NSStringFrom(message));
 		}
