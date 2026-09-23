@@ -34,6 +34,7 @@ SOFTWARE.
 #import "OOStellarBody.h"
 #import "OOJavaScriptEngine.h"
 #import "OOSound.h"
+#include "oofnd/Date.hpp"
 
 
 static NSString *AdditionalLogHeaderInfo(void);
@@ -169,7 +170,7 @@ void OOPrintLogHeader(void)
 	#endif
 	if (versionString == nil)  versionString = @"<unknown version>";
 	
-	NSMutableString *miscString = [NSMutableString stringWithFormat:@"Opening log for Oolite %@ by %@ (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ") under %@ at %@.\n", versionString, @OO_BUILDER, systemString, [NSDate date]];
+	NSMutableString *miscString = [NSMutableString stringWithFormat:@"Opening log for Oolite %@ by %@ (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ") under %@ at %@.\n", versionString, @OO_BUILDER, systemString, [NSString stringWithUTF8String:oo::date::description().c_str()]];
 	
 	[miscString appendString:AdditionalLogHeaderInfo()];
 	

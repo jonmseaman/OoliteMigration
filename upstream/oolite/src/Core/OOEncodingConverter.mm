@@ -52,8 +52,12 @@ static const NSUInteger kCachePruneThreshold = 200;
 
 
 #if PROFILE_ENCODING_CONVERTER
-static OOEncodingConverter	*sProfiledConverter = nil;
-static NSTimer				*sProfileTimer = nil;
+#include <chrono>
+
+// The 5-second profile report was a repeating run-loop timer; it is now a deadline checked on each conversion (proposed ADR-0033).
+static const std::chrono::seconds				kProfileInterval{5};
+static OOEncodingConverter						*sProfiledConverter = nil;
+static std::chrono::steady_clock::time_point	sProfileDeadline;
 
 static unsigned				sCacheHits = 0;
 static unsigned				sCacheMisses = 0;
@@ -63,6 +67,9 @@ static unsigned				sCacheMisses = 0;
 @interface OOEncodingConverter (Private)
 
 - (NSData *) performConversionForString:(NSString *)string;
+#if PROFILE_ENCODING_CONVERTER
+- (void) profileFire:(id)junk;
+#endif
 
 @end
 
@@ -84,7 +91,7 @@ static unsigned				sCacheMisses = 0;
 		if (sProfiledConverter == nil)
 		{
 			sProfiledConverter = self;
-			sProfileTimer = [NSTimer scheduledTimerWithTimeInterval:5 target:self selector:@selector(profileFire:) userInfo:nil repeats:YES];
+			sProfileDeadline = std::chrono::steady_clock::now() + kProfileInterval;
 		}
 #endif
 	}
@@ -106,8 +113,6 @@ static unsigned				sCacheMisses = 0;
 	
 #if PROFILE_ENCODING_CONVERTER
 	sProfiledConverter = nil;
-	[sProfileTimer invalidate];
-	sProfileTimer = nil;
 	sCacheHits = 0;
 	sCacheMisses = 0;
 #endif
@@ -147,6 +152,19 @@ static unsigned				sCacheMisses = 0;
 		++sCacheHits;
 #endif
 	}
+	
+#if PROFILE_ENCODING_CONVERTER
+	if (self == sProfiledConverter)
+	{
+		std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+		if (now >= sProfileDeadline)
+		{
+			do  sProfileDeadline += kProfileInterval;
+			while (sProfileDeadline <= now);
+			[self profileFire:nil];
+		}
+	}
+#endif
 	
 	return data;
 }
