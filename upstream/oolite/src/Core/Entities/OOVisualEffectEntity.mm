@@ -113,12 +113,12 @@ MA 02110-1301, USA.
 	NSString *modelName = oo::PListView(effectDict).get<NSString *>(@"model");
 	if (modelName != nil)
 	{
-		OOMesh *mesh = [OOMesh meshWithName:modelName
-								   cacheKey:_effectKey
-						 materialDictionary:oo::PListView(effectDict).get<NSDictionary *>(@"materials")
-						  shadersDictionary:oo::PListView(effectDict).get<NSDictionary *>(@"shaders")
+		OOMesh *mesh = [OOMesh meshWithName:oo::StdString(modelName)
+								   cacheKey:oo::OptionalString(_effectKey)
+						 materialDictionary:oo::PListFrom(oo::PListView(effectDict).get<NSDictionary *>(@"materials"))
+						  shadersDictionary:oo::PListFrom(oo::PListView(effectDict).get<NSDictionary *>(@"shaders"))
 									 smooth:oo::PListView(effectDict).get<BOOL>(@"smooth", NO)
-							   shaderMacros:OODefaultShipShaderMacros()
+							   shaderMacros:oo::PListFrom(OODefaultShipShaderMacros())
 						shaderBindingTarget:self];
 		if (mesh == nil)  return NO;
 		[self setMesh:mesh];
