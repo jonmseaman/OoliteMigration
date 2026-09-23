@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 
 #import "Universe.h"
 #include "oofnd/Process.hpp"
+#include "oofnd/Date.hpp"
 #import "MyOpenGLView.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -94,6 +95,7 @@ MA 02110-1301, USA.
 #import "OOJSPopulatorDefinition.h"
 #import "OOOpenGL.h"
 #import "OOShaderProgram.h"
+#import "OOFoundationException.h"
 #import "OOStringBridge.h"
 
 
@@ -711,7 +713,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	if (gSharedUniverse != nil)
 	{
 		[self release];
-		[NSException raise:NSInternalInconsistencyException format:@"%s: expected only one Universe to exist at a time.", __PRETTY_FUNCTION__];
+		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one Universe to exist at a time.", __PRETTY_FUNCTION__];
 	}
 	
 	OO_DEBUG_PROGRESS(@"%@", @"Universe initWithGameView:");
@@ -721,7 +723,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	_doingStartUp = YES;
 
-	OOInitReallyRandom([NSDate timeIntervalSinceReferenceDate] * 1e9);
+	OOInitReallyRandom(oo::date::timeIntervalSinceReferenceDate() * 1e9);
 	
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
 	
@@ -1308,7 +1310,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	/*- the sky backdrop -*/
 	OOColor *col1 = [OOColor colorWithRed:0.0 green:1.0 blue:0.5 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	quaternion_set_random(&randomQ);
 	[thing setOrientation:randomQ];
@@ -1364,7 +1366,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	NSMutableDictionary *planetDict = [NSMutableDictionary dictionaryWithDictionary:[systemManager getPropertiesForCurrentSystem]];
 	[planetDict oo_setBool:YES forKey:@"mainForLocalSystem"];
-	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:oo::PListView(planetDict).get<BOOL>(@"has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
+	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(planetDict) withAtmosphere:oo::PListView(planetDict).get<BOOL>(@"has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
 	
 	double planet_zpos = oo::PListView(planetDict).get<float>(@"planet_distance", 500000);
 	planet_zpos *= oo::PListView(planetDict).get<float>(@"planet_distance_multiplier", 1.0);
@@ -1460,7 +1462,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOColor *col1 = [OOColor colorWithHue:h1 saturation:randf() brightness:0.5 + randf()/2.0 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithHue:h2 saturation:0.5 + randf()/2.0 brightness:0.5 + randf()/2.0 alpha:1.0];
 	
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	[self addEntity:thing];
 //	bgcolor = [(SkyEntity *)thing skyColor];
@@ -1600,7 +1602,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOLog(@"planetinfo.record",@"corona_hues = %f",oo::PListView(sun_dict).get<float>(@"corona_hues"));
 	OOLog(@"planetinfo.record",@"sun_color = %@",[bgcolor descriptionComponents]);
 #endif
-	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
+	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:oo::PListFrom(sun_dict)];	// alloc retains!
 	
 	[a_sun setStatus:STATUS_ACTIVE];
 	[a_sun setPosition:sunPos]; // sets also light origin
@@ -3871,7 +3873,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 	if (definition != nil)
 	{
-		waypoint = [OOWaypointEntity waypointWithDictionary:definition];
+		waypoint = [OOWaypointEntity waypointWithDictionary:oo::PListFrom(definition)];
 		if (waypoint != nil)
 		{
 			[self addEntity:waypoint];
@@ -4076,11 +4078,11 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	{
 		effect = [[OOVisualEffectEntity alloc] initWithKey:effectKey definition:effectDict];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		if ([[exception name] isEqual:OOLITE_EXCEPTION_DATA_NOT_FOUND])
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newVisualEffectWithName: %@ ] *****", [exception reason], effectKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newVisualEffectWithName: %@ ] *****", oo::NSStringFrom([exception reason]), effectKey);
 		}
 		else  @throw exception;
 	}
@@ -4142,11 +4144,11 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		ship = [[shipClass alloc] initWithKey:shipKey definition:shipDict];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		if ([[exception name] isEqual:OOLITE_EXCEPTION_DATA_NOT_FOUND])
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newShipWithName: %@ ] *****", [exception reason], shipKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newShipWithName: %@ ] *****", oo::NSStringFrom([exception reason]), shipKey);
 		}
 		else  @throw exception;
 	}
@@ -4182,11 +4184,11 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		dock = [[DockEntity alloc] initWithKey:shipDataKey definition:shipDict];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		if ([[exception name] isEqual:OOLITE_EXCEPTION_DATA_NOT_FOUND])
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newDockWithName: %@ ] *****", [exception reason], shipDataKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newDockWithName: %@ ] *****", oo::NSStringFrom([exception reason]), shipDataKey);
 		}
 		else  @throw exception;
 	}
@@ -5282,13 +5284,27 @@ static const OOMatrix	starboard_matrix =
 				framesDoneThisUpdate++;
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			no_update = NO;	// make sure we don't get stuck in all subsequent frames.
+			
+			if (strncmp([exception name], "Oolite", 6) == 0)
+			{
+				[self handleOoliteException:exception];
+			}
+			else
+			{
+				OOLog(kOOLogException, @"***** Exception: %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				@throw exception;
+			}
+		}
+		@catch (OOFoundationException *exception)
 		{
 			no_update = NO;	// make sure we don't get stuck in all subsequent frames.
 			
 			if ([[exception name] hasPrefix:@"Oolite"])
 			{
-				[self handleOoliteException:exception];
+				[self handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];
 			}
 			else
 			{
@@ -7346,11 +7362,26 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 				doLinkedListMaintenanceThisUpdate = NO;
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			if (strncmp([exception name], "Oolite", 6) == 0)
+			{
+				[self handleOoliteException:exception];
+			}
+			else
+			{
+#ifndef NDEBUG
+				if (update_stage_param != nil)  update_stage = [NSString stringWithFormat:update_stage, update_stage_param];
+#endif
+				OOLog(kOOLogException, @"***** Exception during [%@] in [Universe update:] : %@ : %@ *****", update_stage, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				@throw exception;
+			}
+		}
+		@catch (OOFoundationException *exception)
 		{
 			if ([[exception name] hasPrefix:@"Oolite"])
 			{
-				[self handleOoliteException:exception];
+				[self handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];
 			}
 			else
 			{
@@ -8352,7 +8383,7 @@ static void VerifyDesc(NSString *key, id desc)
 			
 			if (the_sky != nil)
 			{
-				[the_sky changeProperty:key withDictionary:sysInfo];
+				[the_sky changeProperty:oo::StdString(key) withDictionary:oo::PListFrom(sysInfo)];
 				
 				if ([key isEqualToString:@"sun_color"])
 				{
@@ -8371,7 +8402,7 @@ static void VerifyDesc(NSString *key, id desc)
 		}
 		else if (the_sun != nil && ([key hasPrefix:@"sun_"] || [key hasPrefix:@"corona_"]))
 		{
-			[the_sun changeSunProperty:key withDictionary:sysInfo];
+			[the_sun changeSunProperty:oo::StdString(key) withDictionary:oo::PListFrom(sysInfo)];
 		}
 		else if ([key isEqualToString:@"texture"])
 		{
@@ -10104,23 +10135,23 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 }
 
 
-- (void) handleOoliteException:(NSException *)exception
+- (void) handleOoliteException:(OOException *)exception
 {
 	if (exception != nil)
 	{
-		if ([[exception name] isEqual:OOLITE_EXCEPTION_FATAL])
+		if (strcmp([exception name], OOLITE_EXCEPTION_FATAL) == 0)
 		{
 			PlayerEntity *player = PLAYER;
 			[player setStatus:STATUS_HANDLING_ERROR];
 			
-			OOLog(kOOLogException, @"***** Handling Fatal : %@ : %@ *****",[exception name], [exception reason]);
-			NSString* exception_msg = [NSString stringWithFormat:@"Exception : %@ : %@ Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]];
+			OOLog(kOOLogException, @"***** Handling Fatal : %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			NSString* exception_msg = [NSString stringWithFormat:@"Exception : %@ : %@ Please take a screenshot and/or press esc or Q to quit.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])];
 			[self addMessage:exception_msg forCount:30.0];
 			[[self gameController] setGamePaused:YES];
 		}
 		else
 		{
-			OOLog(kOOLogException, @"***** Handling Non-fatal : %@ : %@ *****",[exception name], [exception reason]);
+			OOLog(kOOLogException, @"***** Handling Non-fatal : %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 		}
 	}
 }
@@ -10819,7 +10850,11 @@ static void PreloadOneSound(NSString *soundName)
 				}
 				[activeWormholes removeObjectAtIndex:0];	// empty it out
 			}
-			@catch (NSException *exception)
+			@catch (OOException *exception)
+			{
+				OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			}
+			@catch (OOFoundationException *exception)
 			{
 				OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", [exception name], [exception reason]);
 			}
