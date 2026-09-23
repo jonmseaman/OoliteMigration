@@ -224,7 +224,7 @@ def main() -> int:
     for name, want_writable in (("AI", False), ("velocity", True)):
         if name not in src_ship:
             refuse(f"Ship.{name} is missing from the source snapshot; the parser has stopped "
-                   f"reading OOJSShip.m's property table")
+                   f"reading OOJSShip's property table")
         if name not in rt_ship:
             refuse(f"Ship.{name} is missing from the runtime snapshot's prototype_members")
         src_rw = src_ship[name].get("access") == "readwrite"
