@@ -8700,7 +8700,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 }	// namespace
 
 
-- (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations
+- (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations	// passengers, parcels, contracts, then mission destinations
 {
 	// get a list of systems marked as contract destinations
 	std::map<int, std::vector<oo::PList>>	destinations;
