@@ -2495,7 +2495,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 						Vector  pos1 = make_vector(dot_product(dpos, v_right), dot_product(dpos, v_up), dot_product(dpos, v_forward));
 						Vector	pos0 = {0, 0, 0};
 						const auto contact = closeContactsInfo.find(other_key);
-						ScanVectorFromString(contact != closeContactsInfo.end() ? oo::NSStringFrom(contact->second) : nil, &pos0);
+						cxx_ScanVectorFromString(contact != closeContactsInfo.end() ? std::optional<std::string>(contact->second) : std::nullopt, &pos0);
 						// send AI messages about the contact
 						OOWeakReference *temp = _primaryTarget;
 						_primaryTarget = [other weakRetain];
