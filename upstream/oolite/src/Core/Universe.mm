@@ -94,6 +94,7 @@ MA 02110-1301, USA.
 #import "OOJSPopulatorDefinition.h"
 #import "OOOpenGL.h"
 #import "OOShaderProgram.h"
+#import "OOStringBridge.h"
 
 
 #if OO_LOCALIZATION_TOOLS
@@ -3237,13 +3238,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		NSArray *subList = nil;
 		foreach (subList, demo_ships)
 		{
-			if ([[[subList oo_dictionaryAtIndex:0] oo_stringForKey:kOODemoShipClass] isEqualToString:@"ship"])
+			if ([[[subList oo_dictionaryAtIndex:0] oo_stringForKey:oo::NSStringFrom(kOODemoShipClass)] isEqualToString:@"ship"])
 			{
 				demo_ship_index = [demo_ships indexOfObject:subList];
 				NSDictionary *shipEntry = nil;
 				foreach (shipEntry, subList)
 				{
-					if ([[shipEntry oo_stringForKey:kOODemoShipKey] isEqualToString:@"cobra3-trader"])
+					if ([[shipEntry oo_stringForKey:oo::NSStringFrom(kOODemoShipKey)] isEqualToString:@"cobra3-trader"])
 					{
 						demo_ship_subindex = [subList indexOfObject:shipEntry];
 						break;
@@ -3254,7 +3255,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 
 
-		if (!demo_ship)	ship = [self newShipWithName:[[[demo_ships oo_arrayAtIndex:demo_ship_index] oo_dictionaryAtIndex:demo_ship_subindex] oo_stringForKey:kOODemoShipKey] usePlayerProxy:NO];
+		if (!demo_ship)	ship = [self newShipWithName:[[[demo_ships oo_arrayAtIndex:demo_ship_index] oo_dictionaryAtIndex:demo_ship_subindex] oo_stringForKey:oo::NSStringFrom(kOODemoShipKey)] usePlayerProxy:NO];
 		// stop consistency problems on the ship library screen
 		[ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
 		[ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
@@ -3334,14 +3335,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	
 	/* Row 1: ScanClass, Name, Summary */
-	override = [librarySettings oo_stringForKey:kOODemoShipClass defaultValue:@"ship"];
-	field1 = OOShipLibraryCategorySingular(override);
+	override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipClass) defaultValue:@"ship"];
+	field1 = oo::NSStringFrom(OOShipLibraryCategorySingular(oo::StdString(override)));
 
 
 	field2 = [demo_ship shipClassName];
 
 
-	override = [librarySettings oo_stringForKey:kOODemoShipSummary defaultValue:nil];
+	override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipSummary) defaultValue:nil];
 	if (override != nil)
 	{
 		field3 = OOExpand(override);
@@ -3354,7 +3355,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[gui setColor:[OOColor greenColor] forRow:1];
 
 	// ship_data defaults to true for "ship" class, false for everything else
-	if (![librarySettings oo_boolForKey:kOODemoShipShipData defaultValue:[[librarySettings oo_stringForKey:kOODemoShipClass defaultValue:@"ship"] isEqualToString:@"ship"]])
+	if (![librarySettings oo_boolForKey:oo::NSStringFrom(kOODemoShipShipData) defaultValue:[[librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipClass) defaultValue:@"ship"] isEqualToString:@"ship"]])
 	{
 		descRow = 3;
 	}
@@ -3362,7 +3363,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		/* Row 2: Speed, Turn Rate, Cargo */
 
-		override = [librarySettings oo_stringForKey:kOODemoShipSpeed defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipSpeed) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3376,11 +3377,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field1 = OOShipLibrarySpeed(demo_ship);
+			field1 = oo::NSStringFrom(OOShipLibrarySpeed(demo_ship));
 		}
 		
 
-		override = [librarySettings oo_stringForKey:kOODemoShipTurnRate defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipTurnRate) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3394,11 +3395,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field2 = OOShipLibraryTurnRate(demo_ship);
+			field2 = oo::NSStringFrom(OOShipLibraryTurnRate(demo_ship));
 		}
 
 
-		override = [librarySettings oo_stringForKey:kOODemoShipCargo defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipCargo) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3412,14 +3413,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field3 = OOShipLibraryCargo(demo_ship);
+			field3 = oo::NSStringFrom(OOShipLibraryCargo(demo_ship));
 		}
 	
 
 		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:3];
 
 		/* Row 3: recharge rate, energy banks, witchspace */
-		override = [librarySettings oo_stringForKey:kOODemoShipGenerator defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipGenerator) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3433,11 +3434,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field1 = OOShipLibraryGenerator(demo_ship);
+			field1 = oo::NSStringFrom(OOShipLibraryGenerator(demo_ship));
 		}
 
 
-		override = [librarySettings oo_stringForKey:kOODemoShipShields defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipShields) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3451,11 +3452,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field2 = OOShipLibraryShields(demo_ship);
+			field2 = oo::NSStringFrom(OOShipLibraryShields(demo_ship));
 		}
 
 
-		override = [librarySettings oo_stringForKey:kOODemoShipWitchspace defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipWitchspace) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3469,7 +3470,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field3 = OOShipLibraryWitchspace(demo_ship);
+			field3 = oo::NSStringFrom(OOShipLibraryWitchspace(demo_ship));
 		}
 
 
@@ -3477,7 +3478,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 
 		/* Row 4: weapons, turrets, size */
-		override = [librarySettings oo_stringForKey:kOODemoShipWeapons defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipWeapons) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3491,10 +3492,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field1 = OOShipLibraryWeapons(demo_ship);
+			field1 = oo::NSStringFrom(OOShipLibraryWeapons(demo_ship));
 		}
 
-		override = [librarySettings oo_stringForKey:kOODemoShipTurrets defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipTurrets) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3508,10 +3509,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field2 = OOShipLibraryTurrets(demo_ship);
+			field2 = oo::NSStringFrom(OOShipLibraryTurrets(demo_ship));
 		}
 
-		override = [librarySettings oo_stringForKey:kOODemoShipSize defaultValue:nil];
+		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipSize) defaultValue:nil];
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3525,13 +3526,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		else
 		{
-			field3 = OOShipLibrarySize(demo_ship);
+			field3 = oo::NSStringFrom(OOShipLibrarySize(demo_ship));
 		}
 
 		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:5];
 	}
 
-	override = [librarySettings oo_stringForKey:kOODemoShipDescription defaultValue:nil];
+	override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipDescription) defaultValue:nil];
 	if (override != nil)
 	{
 		[gui addLongText:OOExpand(override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
@@ -3539,9 +3540,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	
 	// line 19: ship categories
-	field1 = [NSString stringWithFormat:@"<-- %@",OOShipLibraryCategoryPlural([[[demo_ships objectAtIndex:((demo_ship_index+[demo_ships count]-1)%[demo_ships count])] objectAtIndex:0] oo_stringForKey:kOODemoShipClass])];
-	field2 = OOShipLibraryCategoryPlural([[[demo_ships objectAtIndex:demo_ship_index] objectAtIndex:0] oo_stringForKey:kOODemoShipClass]);
-	field3 = [NSString stringWithFormat:@"%@ -->",OOShipLibraryCategoryPlural([[[demo_ships objectAtIndex:((demo_ship_index+1)%[demo_ships count])] objectAtIndex:0] oo_stringForKey:kOODemoShipClass])];
+	field1 = [NSString stringWithFormat:@"<-- %@",oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString([[[demo_ships objectAtIndex:((demo_ship_index+[demo_ships count]-1)%[demo_ships count])] objectAtIndex:0] oo_stringForKey:oo::NSStringFrom(kOODemoShipClass)])))];
+	field2 = oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString([[[demo_ships objectAtIndex:demo_ship_index] objectAtIndex:0] oo_stringForKey:oo::NSStringFrom(kOODemoShipClass)])));
+	field3 = [NSString stringWithFormat:@"%@ -->",oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString([[[demo_ships objectAtIndex:((demo_ship_index+1)%[demo_ships count])] objectAtIndex:0] oo_stringForKey:oo::NSStringFrom(kOODemoShipClass)])))];
 	
 	[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:19];
 	[gui setColor:[OOColor greenColor] forRow:19];
@@ -3559,7 +3560,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	field3 = @"";
 	for (i = start ; i <= end ; i++)
 	{
-		field2 = [[subList objectAtIndex:i] oo_stringForKey:kOODemoShipName];
+		field2 = [[subList objectAtIndex:i] oo_stringForKey:oo::NSStringFrom(kOODemoShipName)];
 		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:row];
 		if (i == demo_ship_subindex)
 		{
@@ -7184,7 +7185,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 								NSDictionary	*shipDict = nil; */
 								
 								demo_ship_subindex = (demo_ship_subindex + 1) % [[demo_ships objectAtIndex:demo_ship_index] count];
-								demo_ship = [self newShipWithName:[[self demoShipData] oo_stringForKey:kOODemoShipKey] usePlayerProxy:NO];
+								demo_ship = [self newShipWithName:[[self demoShipData] oo_stringForKey:oo::NSStringFrom(kOODemoShipKey)] usePlayerProxy:NO];
 								
 								if (demo_ship != nil)
 								{
