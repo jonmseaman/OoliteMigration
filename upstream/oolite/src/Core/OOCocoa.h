@@ -380,8 +380,14 @@ enum {
    without updating that script. */
 #if OO_DEBUG
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 id OOShuffledKeys(id dictionary);
 id OOShuffledObjects(id collection);
+#ifdef __cplusplus
+}
+#endif
 
 #define foreach(VAR, COLLECTION)	for(VAR in OOShuffledObjects(COLLECTION))
 #define foreachkey(VAR, DICT)		for(VAR in OOShuffledKeys(DICT))

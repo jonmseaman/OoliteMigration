@@ -564,7 +564,7 @@ stage_asan() {
   local bdir="$OOLITE/build/meson_$flavour"
   local binary="$bdir/oolite.app/oolite.exe"
   detail "building flavour '$flavour' with -fsanitize=address (resource-dir $rd)"
-  ( cd "$REPO_ROOT" && bash "$HERE/build-windows.sh" "$flavour" --setup-flags="-Db_sanitize=address -Db_lundef=false -Dc_args=-resource-dir=$rd -Dcpp_args=-resource-dir=$rd -Dobjc_args=-resource-dir=$rd -Dc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition']" ) \
+  ( cd "$REPO_ROOT" && bash "$HERE/build-windows.sh" "$flavour" --setup-flags="-Db_sanitize=address -Db_lundef=false -Dc_args=-resource-dir=$rd -Dcpp_args=-resource-dir=$rd -Dobjc_args=-resource-dir=$rd -Dc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjcpp_args=-resource-dir=$rd -Dobjcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition']" ) \
     > "$blog" 2>&1 || brc=$?
   if [ "$brc" -ne 0 ]; then
     tail -30 "$blog" >&2
@@ -590,8 +590,10 @@ stage_asan() {
   # stripped or mismatched binary would leave every frame unattributable and the attribution check
   # below would report "0 oolite frames" for a run full of engine defects.
   local symtest sym_addr
+  # objdump prints the address as 8 hex digits under the 0x140000000 image base (hence the "0x1"
+  # prefix) or, on the current toolchain, as the full 16-digit VA; take either as it comes.
   sym_addr="$(objdump -d "$binary" 2>/dev/null \
-              | awk '/<_i_OOOpenALController__init>:/{print "0x1"$1; exit}' | tr -d ':' || true)"
+              | awk '/<_i_OOOpenALController__init>:/{a=$1; sub(":","",a); print (length(a) <= 8 ? "0x1" a : "0x" a); exit}' || true)"
   # Fall back to the entry point when that symbol moves; what matters is that SOME engine address
   # resolves to a src/ path, not which one.
   [ -n "$sym_addr" ] || sym_addr="$(objdump -f "$binary" 2>/dev/null | awk '/start address/{print $NF}')"
@@ -639,7 +641,9 @@ plistlib.dump({'console-host': '127.0.0.1', 'console-port': int(sys.argv[2])},
   local lock="$HERE/gui-lock"
   local runner=(); [ -x "$lock" ] && runner=("$lock" run --timeout "${OOLITE_TIER_C_LOCK_TIMEOUT:-900}" --)
 
-  ( cd "$app" && PATH="$dlldir:$PATH" \
+  # $dlldir is a native C:/... path; in an MSYS PATH its drive colon splits it into two bogus
+  # entries and the loader never finds libclang_rt.asan_dynamic-x86_64.dll (exit 127).
+  ( cd "$app" && PATH="$(cygpath -u "$dlldir"):$PATH" \
       ASAN_OPTIONS="halt_on_error=0:abort_on_error=0:detect_leaks=0:symbolize=1" \
       ASAN_SYMBOLIZER_PATH="$symbolizer_native" \
       LSAN_OPTIONS="suppressions=$(native "$ASAN_SUPPRESSIONS")" \

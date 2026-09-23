@@ -13,7 +13,7 @@
 # sound, a build where --nosound stops being honoured) still fails only on defects that are ours.
 #
 # ------------------------------------------------------------------------------------------------
-# WHY THESE REPORTS ARE NOT OOLITE DEFECTS
+# WHY THESE REPORTS ARE NOT GAME DEFECTS
 # ------------------------------------------------------------------------------------------------
 #
 # The two reports seen without --nosound are:
@@ -25,30 +25,30 @@
 #
 # Both call paths run alcOpenDevice -> alcCaptureStart inside the PREBUILT libopenal-1.dll, through
 # pthread_once in libwinpthread-1.dll, into ucrtbase.dll's onexit-table registration. The only
-# oolite.exe frame in either stack symbolises (llvm-symbolizer, --obj on the sanitized binary) to
+# game-executable frame in either stack symbolises (llvm-symbolizer, --obj on the sanitized binary) to
 #
 #   _i_OOOpenALController__init   ../../src/Core/OOOpenALController.m:65:12
 #
 # which is the alcOpenDevice CALL, not an allocation. This is the classic Windows ASan interceptor
 # mismatch: ASan intercepts HeapSize/free for the instrumented module, a prebuilt DLL allocates
 # through a different allocator, and ASan correctly reports a pointer it does not own. Nothing in
-# the engine allocated or freed it. Reporting these as Oolite memory bugs would be a false positive.
+# the engine allocated or freed it. Reporting these as game memory bugs would be a false positive.
 #
 # ------------------------------------------------------------------------------------------------
 # SCOPE DISCIPLINE
 # ------------------------------------------------------------------------------------------------
 #
 # Every entry names a SPECIFIC third-party module. There is deliberately no entry matching
-# oolite.exe, no wildcard that could match it, and no blanket halt_on_error=0 in the shipped
+# the game executable, no wildcard that could match it, and no blanket halt_on_error=0 in the shipped
 # configuration -- exploration used one, a gate must not. tools/tier_c_selftest.py asserts that no
-# line here mentions oolite, and tools/tier-c.sh's attribution check runs on the SYMBOLISED output,
-# so a report with an oolite.exe frame goes red whatever this file says.
+# line here mentions the game, and tools/tier-c.sh's attribution check runs on the SYMBOLISED output,
+# so a report with a frame in the game executable goes red whatever this file says.
 
 # ucrtbase.dll owns the CRT onexit table. libopenal's DllMain-time registration allocates inside
 # it with the CRT's own allocator, which ASan's HeapSize/free interceptors do not own. Not ours.
 interceptor_via_lib:ucrtbase.dll
 
-# The prebuilt libopenal-1.dll shipped in oolite.app is not instrumented and not built by us; its
+# The prebuilt libopenal-1.dll shipped in the app bundle is not instrumented and not built by us; its
 # internal allocations are invisible to ASan's shadow memory. Excluded via --nosound in the normal
 # Tier C run; this entry covers a run that initialises audio anyway.
 interceptor_via_lib:libopenal-1.dll
