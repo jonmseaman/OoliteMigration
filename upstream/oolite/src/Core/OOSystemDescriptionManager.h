@@ -29,6 +29,9 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "legacy_random.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 typedef enum
 {
 	OO_LAYER_CORE = 0,
@@ -81,7 +84,7 @@ typedef enum
 	NSMutableSet				*propertiesInUse;
 	NSPoint						coordinatesCache[OO_SYSTEM_CACHE_LENGTH];
 	NSMutableArray				*neighbourCache[OO_SYSTEM_CACHE_LENGTH];
-	NSMutableDictionary			*scriptedChanges;
+	oo::PList					scriptedChanges;	// a Dict: joined override key -> value
 }
 
 // this needs to be re-called every time system coordinates change
@@ -99,9 +102,11 @@ typedef enum
 // this is used by Javascript property setting
 - (void) setProperty:(NSString *)property forSystemKey:(NSString *)key andLayer:(OOSystemLayer)layer toValue:(id)value fromManifest:(NSString *)manifest;
 
-- (void) importScriptedChanges:(NSDictionary *)scripted;
-- (void) importLegacyScriptedChanges:(NSDictionary *)scripted;
-- (NSDictionary *) exportScriptedChanges;
+// The save game's scripted overrides: property lists (Dicts) whose values are the properties'
+// values (any objects: Object nodes where they are not property-list data).
+- (void) cxx_importScriptedChanges:(const oo::PList &)scripted;
+- (void) cxx_importLegacyScriptedChanges:(const oo::PList &)scripted;
+- (oo::PList) cxx_exportScriptedChanges;	// a Dict, empty when there are none
 
 - (NSDictionary *) getPropertiesForSystemKey:(NSString *)key;
 - (NSDictionary *) getPropertiesForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
@@ -116,5 +121,13 @@ typedef enum
 - (Random_Seed) getRandomSeedForSystem:(OOSystemID)s inGalaxy:(OOGalaxyID)g;
 
 @end
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API as it was
+	declared before its sweep (bead oo-868e, chunks oo-3rb.107 ff.), forwarding to the cxx_ methods
+	above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep
+	beads; the bridge goes in its own bead.
+*/
+#import "OOSystemDescriptionManager+FoundationBridge.h"
 
 
