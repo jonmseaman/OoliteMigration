@@ -406,7 +406,7 @@ std::string SizeString(size_t size)
 }
 
 
-// Sets of objects by identity (the NSMutableSets of textures and entities compared by identity).
+// Sets of objects by identity (the mutable sets of textures and entities compared by identity).
 struct EntityDumpState
 {
 	std::set<oo::ObjCRef<id>>	entityTextures;
