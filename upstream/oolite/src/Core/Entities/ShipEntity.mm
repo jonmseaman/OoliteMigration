@@ -868,7 +868,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	for (i = 0; i < [plumes count]; i++)
 	{
 		NSArray *definition = ScanTokensFromString(oo::PListView(plumes).at<NSString *>(i));
-		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:definition andScale:_scaleFactor];
+		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:oo::StringsFrom(definition) andScale:_scaleFactor];
 		[self addSubEntity:exhaust];
 	}
 	
@@ -14323,7 +14323,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	number = [numberString intValue];
 	
-	[self spawnShipsWithRole:roleString count:number];
+	[self spawnShipsWithRole:oo::StdString(roleString) count:number];
 }
 
 
