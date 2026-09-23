@@ -46,6 +46,8 @@ SOFTWARE.
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
 
+#include "oofnd/StdLib.hpp"
+
 
 static OODebugMonitor *sSingleton = nil;
 
@@ -511,13 +513,15 @@ typedef struct
 	
 	//	Get texture retain counts before the entity dumper starts messing with them.
 	NSSet *allTextures = [OOTexture allTextures];
-	NSMutableDictionary *textureRefCounts = [NSMutableDictionary dictionaryWithCapacity:[allTextures count]];
+	// Not retaining its keys; was an NSMutableDictionary keyed by valueWithNonretainedObject: (bead oo-3rb.47).
+	std::unordered_map<OOTexture *, NSUInteger> textureRefCounts;
+	textureRefCounts.reserve([allTextures count]);
 	
 	OOTexture *tex = nil;
 	foreach (tex, allTextures)
 	{
 		// We subtract one because allTextures retains the textures.
-		[textureRefCounts setObject:[NSNumber numberWithUnsignedInteger:[tex retainCount] - 1] forKey:[NSValue valueWithNonretainedObject:tex]];
+		textureRefCounts[tex] = [tex retainCount] - 1;
 	}
 	
 	size_t totalSize = 0;
@@ -593,7 +597,9 @@ typedef struct
 			usage = @", active";
 		}
 		
-		unsigned refCount = [textureRefCounts oo_unsignedIntForKey:[NSValue valueWithNonretainedObject:tex]];
+		// As oo_unsignedIntForKey: read the boxed count: 0 if absent, else its longLongValue clamped to unsigned.
+		auto refCountEntry = textureRefCounts.find(tex);
+		unsigned refCount = (refCountEntry != textureRefCounts.end()) ? (unsigned)OOClampInteger((long long)refCountEntry->second, 0, UINT_MAX) : 0;
 		
 		[self writeMemStat:@"%@: [%u refs%@] %@%@",
 		 [tex name],

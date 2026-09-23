@@ -45,6 +45,8 @@ SOFTWARE.
 
 #import "OODebugStandards.h"
 
+#include "oofnd/StdLib.hpp"
+
 #define PRELOAD 0
 
 
@@ -1715,9 +1717,23 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 @end
 
 
-static void GatherStringAddrsDict(NSDictionary *dict, NSMutableSet *strings, NSString *context);
-static void GatherStringAddrsArray(NSArray *array, NSMutableSet *strings, NSString *context);
-static void GatherStringAddrs(id object, NSMutableSet *strings, NSString *context);
+/*	One gathered string: the string, its address and where it was found. Was an
+	NSDictionary with the address in a pointer box, collected in an NSMutableSet
+	(bead oo-3rb.47). A tree walk never meets the same string object twice in the same
+	context, so the set's deduplication never applied; the list keeps walk order (the
+	set's was hash order), and nothing reads it but the disabled dump below.
+*/
+struct StringAddr
+{
+	NSString	*string;
+	const void	*address;
+	NSString	*context;
+};
+typedef std::vector<StringAddr> StringAddrList;
+
+static void GatherStringAddrsDict(NSDictionary *dict, StringAddrList &strings, NSString *context);
+static void GatherStringAddrsArray(NSArray *array, StringAddrList &strings, NSString *context);
+static void GatherStringAddrs(id object, StringAddrList &strings, NSString *context);
 
 
 static void DumpStringAddrs(NSDictionary *dict, NSString *context)
@@ -1729,15 +1745,14 @@ static void DumpStringAddrs(NSDictionary *dict, NSString *context)
 	
 	@autoreleasepool
 	{
-		NSMutableSet *strings = [NSMutableSet set];
+		StringAddrList strings;
 		GatherStringAddrs(dict, strings, context);
-		
-		NSDictionary *entry = nil;
-		foreach (entry, strings)
+
+		for (const StringAddr &entry : strings)
 		{
-			NSString *string = [entry objectForKey:@"string"];
-			NSString *context = [entry objectForKey:@"context"];
-			void *pointer = [[entry objectForKey:@"address"] pointerValue];
+			NSString *string = entry.string;
+			NSString *context = entry.context;
+			const void *pointer = entry.address;
 			
 			string = [NSString stringWithFormat:@"%p\t%@:  \"%@\"", pointer, context, string];
 			
@@ -1750,7 +1765,7 @@ static void DumpStringAddrs(NSDictionary *dict, NSString *context)
 }
 
 
-static void GatherStringAddrsDict(NSDictionary *dict, NSMutableSet *strings, NSString *context)
+static void GatherStringAddrsDict(NSDictionary *dict, StringAddrList &strings, NSString *context)
 {
 	id key = nil;
 	NSString *keyContext = [context stringByAppendingString:@" key"];
@@ -1762,7 +1777,7 @@ static void GatherStringAddrsDict(NSDictionary *dict, NSMutableSet *strings, NSS
 }
 
 
-static void GatherStringAddrsArray(NSArray *array, NSMutableSet *strings, NSString *context)
+static void GatherStringAddrsArray(NSArray *array, StringAddrList &strings, NSString *context)
 {
 	NSString *v = nil;
 	unsigned i = 0;
@@ -1773,12 +1788,12 @@ static void GatherStringAddrsArray(NSArray *array, NSMutableSet *strings, NSStri
 }
 
 
-static void GatherStringAddrs(id object, NSMutableSet *strings, NSString *context)
+static void GatherStringAddrs(id object, StringAddrList &strings, NSString *context)
 {
 	if ([object isKindOfClass:[NSString class]])
 	{
-		NSDictionary *entry = [NSDictionary dictionaryWithObjectsAndKeys:object, @"string", [NSValue valueWithPointer:object], @"address", context, @"context", nil];
-		[strings addObject:entry];
+		// The strings and contexts live in the dictionary and the dump's pool, which outlive the list.
+		strings.push_back(StringAddr{ object, object, context });
 	}
 	else if ([object isKindOfClass:[NSArray class]])
 	{
