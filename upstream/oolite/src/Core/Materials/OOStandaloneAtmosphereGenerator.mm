@@ -93,7 +93,7 @@ enum
 
 @implementation OOStandaloneAtmosphereGenerator
 
-- (id) initWithPlanetInfo:(NSDictionary *)planetInfo
+- (id) initWithPlanetInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
 {
 	OOLog(@"texture.planet.generate", @"%@", @"Initialising standalone atmosphere generator");
 
@@ -101,7 +101,7 @@ enum
 	if ((self = [super initWithPath:[NSString stringWithFormat:@"OOStandaloneAtmosphereTexture@%p", self] options:kOOTextureAllowCubeMap]))
 	{
 		OOLog(@"texture.planet.generate",@"Extracting parameters for generator %@",self);
-		[[planetInfo objectForKey:@"noise_map_seed"] getValue:&_info.seed];
+		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
 		OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
 		// we are an atmosphere:
 		_info.cloudAlpha = [planetInfo oo_floatForKey:@"cloud_alpha" defaultValue:1.0f];
@@ -132,10 +132,10 @@ enum
 }
 
 
-+ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo
++ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
 {
 	OOTexture *result = nil;
-	OOStandaloneAtmosphereGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo];
+	OOStandaloneAtmosphereGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo seed:seed];
 	if (generator != nil)
 	{
 		result = [OOTexture textureWithGenerator:generator];
@@ -146,11 +146,11 @@ enum
 }
 
 
-+ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(NSDictionary *)planetInfo
++ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 	
-	OOStandaloneAtmosphereGenerator *atmoGen = [[[self alloc] initWithPlanetInfo:planetInfo] autorelease];
+	OOStandaloneAtmosphereGenerator *atmoGen = [[[self alloc] initWithPlanetInfo:planetInfo seed:seed] autorelease];
 	if (atmoGen == nil)  return NO;
 	
 	*texture = [OOTexture textureWithGenerator:atmoGen];
