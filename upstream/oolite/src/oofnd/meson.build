@@ -24,6 +24,6 @@ oofnd_dep = declare_dependency(include_directories: oofnd_inc)
 oofnd_objc_args = ['-fno-constant-cfstrings', '-fconstant-string-class=OOConstantString']
 oofnd_objc_dep = declare_dependency(
     include_directories: oofnd_inc,
-    sources: files('objc/OOObject.mm', 'objc/OOConstantString.mm'),
+    sources: files('objc/OOObject.mm', 'objc/OOConstantString.mm', 'objc/OOException.mm'),
     dependencies: cc.find_library('objc', required: true),
 )

@@ -36,6 +36,7 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "OOShipGroup.h"
 #import "OOMaths.h"
+#include "oofnd/objc/OOException.h"
 
 
 enum
@@ -475,7 +476,7 @@ static id ShipGroupIterate(OOShipGroupEnumerator *enumerator)
 	
 	if (enumerator->_updateCount != group->_updateCount)
 	{
-		[NSException raise:NSGenericException format:@"Collection <OOShipGroup: %p> was mutated while being enumerated.", group];
+		[OOException raise:OOGenericException format:"Collection <OOShipGroup: %p> was mutated while being enumerated.", (void *)group];
 	}
 	
 	while (enumerator->_index < group->_count)

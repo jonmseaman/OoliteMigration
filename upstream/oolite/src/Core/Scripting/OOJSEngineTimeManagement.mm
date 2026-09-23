@@ -31,6 +31,7 @@ SOFTWARE.
 #import "OOCollectionExtractors.h"
 #import "OOLoggingExtended.h"
 #include "oofnd/StdLib.hpp"
+#include "oofnd/Thread.hpp"
 
 #if OOLITE_LINUX
 // Workaround for clang/glibc incompatibility.
@@ -256,9 +257,16 @@ static bool ContextCallback(ooscript::Context context, ooscript::ContextOp conte
 
 void OOJSTimeManagementInit(OOJavaScriptEngine *engine, ooscript::Runtime runtime)
 {
-	[NSThread detachNewThreadSelector:@selector(watchdogTimerThread)
-							 toTarget:engine
-						   withObject:nil];
+	// The watchdog holds the engine for its (endless) life, as a detached selector thread did.
+	[engine retain];
+	oo::thread::detach([engine]()
+	{
+		@autoreleasepool
+		{
+			[engine watchdogTimerThread];
+		}
+		[engine release];
+	});
 	
 	ooscript::setContextCallback(runtime, ContextCallback);
 }

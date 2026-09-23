@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 
 
 #import "OOJSCall.h"
+#include "oofnd/objc/OORuntime.h"
 #import "OOJavaScriptEngine.h"
 
 #import "OOFunctionAttributes.h"
@@ -100,7 +101,7 @@ BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, NSString *oo
 		paramString = [NSString concatenationOfStringsFromJavaScriptValues:argv + 1 count:argc - 1 separator:@" " inContext:context];
 	}
 	
-	selector = NSSelectorFromString(selectorString);
+	selector = OOSelectorFromName([selectorString UTF8String]);
 	
 	if ([object respondsToSelector:selector])
 	{

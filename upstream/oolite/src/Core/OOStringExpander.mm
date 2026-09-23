@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#include "oofnd/objc/OORuntime.h"
 #import "OOStringExpander.h"
 #import "Universe.h"
 #import "OOJavaScriptEngine.h"
@@ -702,7 +703,7 @@ static NSString *ExpandStringKeySpecial(OOStringExpansionContext *context, NSStr
 	SEL selector = LookUpSelector(SpecialSubstitutionSelectors(), key);
 	if (selector != NULL)
 	{
-		NSCAssert2([PLAYER respondsToSelector:selector], @"Special string expansion selector %@ for [%@] is not implemented.", NSStringFromSelector(selector), key);
+		NSCAssert2([PLAYER respondsToSelector:selector], @"Special string expansion selector %s for [%@] is not implemented.", OOSelectorName(selector), key);
 		
 		NSString *result = [PLAYER performSelector:selector];
 		if (result != nil)
@@ -880,7 +881,7 @@ static SEL LookUpLegacySelector(NSString *key)
 		
 		if ([whitelist containsObject:selectorName])
 		{
-			selector = NSSelectorFromString(selectorName);
+			selector = OOSelectorFromName([selectorName UTF8String]);
 			
 			/*	This is an assertion, not a warning, because whitelist.plist is
 				part of the game and cannot be overriden by OXPs. If there is an
