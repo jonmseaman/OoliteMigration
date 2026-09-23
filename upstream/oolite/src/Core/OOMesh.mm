@@ -57,6 +57,8 @@ MA 02110-1301, USA.
 
 #import "OOJavaScriptEngine.h"
 #import "OODebugStandards.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
 
 // If set, collision octree depth varies depending on the size of the mesh.
 #define ADAPTIVE_OCTREE_DEPTH		1
@@ -131,12 +133,12 @@ static NSUInteger VFRGetFaceAtIndex(VertexFaceRef *vfr, NSUInteger index);
 
 @interface OOMesh (Private) <OOMutableCopying, OOGraphicsResetClient>
 
-- (id)initWithName:(NSString *)name
-		  cacheKey:(NSString *)cacheKey
-materialDictionary:(NSDictionary *)materialDict
- shadersDictionary:(NSDictionary *)shadersDict
+- (id)initWithName:(const std::string &)name
+		  cacheKey:(const std::optional<std::string> &)cacheKey
+materialDictionary:(const oo::PList &)materialDict
+ shadersDictionary:(const oo::PList &)shadersDict
 			smooth:(BOOL)smooth
-	  shaderMacros:(NSDictionary *)macros
+	  shaderMacros:(const oo::PList &)macros
 shaderBindingTarget:(id<OOWeakReferenceSupport>)object
 	   scaleFactor:(float)scale
 	cacheWriteable:(BOOL)cacheWriteable;
@@ -174,7 +176,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)object
 - (BOOL) allocateFaceBuffersWithCount:(NSUInteger)count;
 - (BOOL) allocateVertexArrayBuffersWithCount:(NSUInteger)count;
 
-- (void) renameTexturesFrom:(NSString *)from to:(NSString *)to;
+- (void) renameTexturesFrom:(const std::string &)from to:(const std::string &)to;
 
 @end
 
@@ -232,12 +234,12 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 
 @implementation OOMesh
 
-+ (instancetype) meshWithName:(NSString *)name
-					 cacheKey:(NSString *)cacheKey
-		   materialDictionary:(NSDictionary *)materialDict
-			shadersDictionary:(NSDictionary *)shadersDict
++ (instancetype) meshWithName:(const std::string &)name
+					 cacheKey:(const std::optional<std::string> &)cacheKey
+		   materialDictionary:(const oo::PList &)materialDict
+			shadersDictionary:(const oo::PList &)shadersDict
 					   smooth:(BOOL)smooth
-				 shaderMacros:(NSDictionary *)macros
+				 shaderMacros:(const oo::PList &)macros
 		  shaderBindingTarget:(id<OOWeakReferenceSupport>)object
 {
 	return [[[self alloc] initWithName:name
@@ -251,12 +253,12 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 						cacheWriteable:YES] autorelease];
 }
 
-+ (instancetype) meshWithName:(NSString *)name
-					 cacheKey:(NSString *)cacheKey
-		   materialDictionary:(NSDictionary *)materialDict
-			shadersDictionary:(NSDictionary *)shadersDict
++ (instancetype) meshWithName:(const std::string &)name
+					 cacheKey:(const std::optional<std::string> &)cacheKey
+		   materialDictionary:(const oo::PList &)materialDict
+			shadersDictionary:(const oo::PList &)shadersDict
 					   smooth:(BOOL)smooth
-				 shaderMacros:(NSDictionary *)macros
+				 shaderMacros:(const oo::PList &)macros
 		  shaderBindingTarget:(id<OOWeakReferenceSupport>)object
 				  scaleFactor:(float)scale
 			   cacheWriteable:(BOOL)cacheWriteable
@@ -291,8 +293,8 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 	self = [super init];
 	if (self == nil)  return nil;
 	
-	baseFile = @"No Model";
-	baseFileOctreeCacheRef = @"No Model-0.000";
+	baseFile = "No Model";
+	baseFileOctreeCacheRef = "No Model-0.000";
 	_cacheWriteable = YES;
 #if OO_MULTITEXTURE
 	_textureUnitCount = NSNotFound;
@@ -310,8 +312,6 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 {
 	unsigned				i;
 	
-	DESTROY(baseFileOctreeCacheRef);
-	DESTROY(baseFile);
 	DESTROY(octree);
 	
 	[self deleteDisplayLists];
@@ -319,17 +319,12 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 	for (i = 0; i != kOOMeshMaxMaterials; ++i)
 	{
 		DESTROY(materials[i]);
-		DESTROY(materialKeys[i]);
 	}
 	
 	[[OOGraphicsResetManager sharedManager] unregisterClient:self];
 	
 	DESTROY(_retainedObjects);
 	
-	DESTROY(_materialDict);
-	DESTROY(_shadersDict);
-	DESTROY(_cacheKey);
-	DESTROY(_shaderMacros);
 	DESTROY(_shaderBindingTarget);
 	
 #if OOMESH_PROFILE
@@ -340,22 +335,23 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 }
 
 
-static NSString *NormalModeDescription(OOMeshNormalMode mode)
+static const char *NormalModeDescription(OOMeshNormalMode mode)
 {
 	switch (mode)
 	{
-		case kNormalModePerFace:  return @"per-face";
-		case kNormalModeSmooth:  return @"smooth";
-		case kNormalModeExplicit:  return @"explicit";
+		case kNormalModePerFace:  return "per-face";
+		case kNormalModeSmooth:  return "smooth";
+		case kNormalModeExplicit:  return "explicit";
 	}
-	
-	return @"unknown";
+
+	return "unknown";
 }
 
 
-- (NSString *)descriptionComponents
+- (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"\"%@\", %zu vertices, %zu faces, radius: %g m normals: %@", [self modelName], [self vertexCount], [self faceCount], [self collisionRadius], NormalModeDescription((OOMeshNormalMode)_normalMode)];
+	const std::optional<std::string> modelName = [self modelName];
+	return oo::NSStringFrom(oo::str::format("\"%s\", %zu vertices, %zu faces, radius: %g m normals: %s", modelName ? modelName->c_str() : "(null)", [self vertexCount], [self faceCount], [self collisionRadius], NormalModeDescription((OOMeshNormalMode)_normalMode)));
 }
 
 
@@ -366,7 +362,7 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 }
 
 
-- (NSString *) modelName
+- (std::optional<std::string>) modelName
 {
 	return baseFile;
 }
@@ -570,20 +566,25 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 {
 	OOMeshMaterialCount		i;
 	OOMaterial				*material = nil;
-	
+
 	if (materialCount != 0)
 	{
+		// OOMaterialConvenienceCreators is not migrated: hand it the same objects, converted once.
+		id materialDict = oo::ObjectFromPList(_materialDict);
+		id shadersDict = oo::ObjectFromPList(_shadersDict);
+		id shaderMacros = oo::ObjectFromPList(_shaderMacros);
+
 		for (i = 0; i != materialCount; ++i)
 		{
 			OOMaterial *oldMaterial = materials[i];
-			
-			if (![materialKeys[i] isEqualToString:@"_oo_placeholder_material"])
+
+			if (materialKeys[i] != "_oo_placeholder_material")
 			{
-				material = [OOMaterial materialWithName:materialKeys[i]
-											   cacheKey:_cacheKey
-									 materialDictionary:_materialDict
-									  shadersDictionary:_shadersDict
-												 macros:_shaderMacros
+				material = [OOMaterial materialWithName:oo::NSStringFrom(materialKeys[i])
+											   cacheKey:oo::NSStringOrNil(_cacheKey)
+									 materialDictionary:materialDict
+									  shadersDictionary:shadersDict
+												 macros:shaderMacros
 										  bindingTarget:[_shaderBindingTarget weakRefUnderlyingObject]	// Windows DEP fix.
 										forSmoothedMesh:IsPerVertexNormalMode((OOMeshNormalMode)_normalMode)];
 			}
@@ -610,13 +611,13 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 }
 
 
-- (NSDictionary *) materials
+- (oo::PList) materials
 {
 	return _materialDict;
 }
 
 
-- (NSDictionary *) shaders
+- (oo::PList) shaders
 {
 	return _shadersDict;
 }
@@ -660,7 +661,7 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 		result++;
 	}
 	
-	OOLog(@"mesh.load.octree.size", @"Selected octree depth %u for size %g for %@", result, size, baseFile);
+	OOLog(@"mesh.load.octree.size", @"Selected octree depth %u for size %g for %@", result, size, oo::NSStringOrNil(baseFile));
 	return result;
 }
 #else
@@ -675,7 +676,7 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 {
 	if (octree == nil)
 	{
-		octree = [[OOCacheManager octreeForModel:baseFileOctreeCacheRef] retain];
+		octree = [[OOCacheManager octreeForModel:oo::NSStringOrNil(baseFileOctreeCacheRef)] retain];
 		if (octree == nil)
 		{
 			@autoreleasepool
@@ -696,13 +697,13 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 				[octree retain];
 				if (EXPECT(_cacheWriteable))
 				{
-					[OOCacheManager setOctree:octree forModel:baseFileOctreeCacheRef];
+					[OOCacheManager setOctree:octree forModel:oo::NSStringOrNil(baseFileOctreeCacheRef)];
 				}
 			}
 		}
 		else
 		{
-			OOLog(@"mesh.load.octreeCached", @"Retrieved octree \"%@\" from cache.", baseFileOctreeCacheRef);
+			OOLog(@"mesh.load.octreeCached", @"Retrieved octree \"%@\" from cache.", oo::NSStringOrNil(baseFileOctreeCacheRef));
 		}
 	}
 	
@@ -813,24 +814,25 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 {
 	[super dumpSelfState];
 	
-	if (baseFile != nil)  OOLog(@"dumpState.mesh", @"Model file: %@", baseFile);
+	if (baseFile)  OOLog(@"dumpState.mesh", @"Model file: %@", oo::NSStringFrom(*baseFile));
 	OOLog(@"dumpState.mesh", @"Vertex count: %u, face count: %u", vertexCount, faceCount);
-	OOLog(@"dumpState.mesh", @"Normals: %@", NormalModeDescription((OOMeshNormalMode)_normalMode));
+	OOLog(@"dumpState.mesh", @"Normals: %@", oo::NSStringFrom(NormalModeDescription((OOMeshNormalMode)_normalMode)));
 }
 #endif
 
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
-	NSMutableSet *result = [NSMutableSet set];
+	// Every material's textures; NSSetFromObjects drops duplicates as -unionSet: did.
+	std::vector<oo::ObjCRef<id>> result;
 	OOMeshMaterialCount i;
 	for (i = 0; i != materialCount; i++)
 	{
-		[result unionSet:[materials[i] allTextures]];
+		for (const oo::ObjCRef<id> &texture : oo::ObjCRefsFrom<id>([materials[i] allTextures]))  result.push_back(texture);
 	}
-	
-	return result;
+
+	return oo::NSSetFromObjects(result);
 }
 
 
@@ -871,12 +873,12 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 
 @implementation OOMesh (Private)
 
-- (id)initWithName:(NSString *)name
-		  cacheKey:(NSString *)cacheKey
-materialDictionary:(NSDictionary *)materialDict
- shadersDictionary:(NSDictionary *)shadersDict
+- (id)initWithName:(const std::string &)name
+		  cacheKey:(const std::optional<std::string> &)cacheKey
+materialDictionary:(const oo::PList &)materialDict
+ shadersDictionary:(const oo::PList &)shadersDict
 			smooth:(BOOL)smooth
-	  shaderMacros:(NSDictionary *)macros
+	  shaderMacros:(const oo::PList &)macros
 shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	   scaleFactor:(float)scale
 	cacheWriteable:(BOOL)cacheWriteable
@@ -895,22 +897,22 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		_stopwatch = [[OOProfilingStopwatch alloc] init];
 #endif
 		
-		if ([self loadData:name scaleFactor:scale])
+		if ([self loadData:oo::NSStringFrom(name) scaleFactor:scale])
 		{
 			[self calculateBoundingVolumes];
 			PROFILE(@"finished calculateBoundingVolumes (again\?\?)");
 			
-			baseFile = [name copy];
-			baseFileOctreeCacheRef = [[NSString stringWithFormat:@"%@-%.3f", baseFile, scale] copy];
+			baseFile = name;
+			baseFileOctreeCacheRef = oo::str::format("%s-%.3f", name.c_str(), scale);
 			
 			/*	New in r3033: save the material-defining parameters here so we
 				can rebind the materials at any time.
 				-- Ahruman 2010-02-17
 			*/
-			_materialDict = [materialDict copy];
-			_shadersDict = [shadersDict copy];
-			_cacheKey = [cacheKey copy];
-			_shaderMacros = [macros copy];
+			_materialDict = materialDict;
+			_shadersDict = shadersDict;
+			_cacheKey = cacheKey;
+			_shaderMacros = macros;
 			_shaderBindingTarget = [target weakRetain];
 			
 			[self rebindMaterials];
@@ -952,19 +954,23 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	
 	if (result != nil)
 	{
-		[result->baseFile retain];
-		[result->baseFileOctreeCacheRef retain];
+		/*	The C++ ivars were copied bitwise too, so the copy's aliases self's storage: construct
+			each afresh over the copy (never assign, which would free self's buffers), where the
+			Objective-C ivars get their -retain.
+		*/
+		new (&result->baseFile) std::optional<std::string>(baseFile);
+		new (&result->baseFileOctreeCacheRef) std::optional<std::string>(baseFileOctreeCacheRef);
 		[result->octree retain];
 		[result->_retainedObjects retain];
-		[result->_materialDict retain];
-		[result->_shadersDict retain];
-		[result->_cacheKey retain];
-		[result->_shaderMacros retain];
+		new (&result->_materialDict) oo::PList(_materialDict);
+		new (&result->_shadersDict) oo::PList(_shadersDict);
+		new (&result->_cacheKey) std::optional<std::string>(_cacheKey);
+		new (&result->_shaderMacros) oo::PList(_shaderMacros);
 		[result->_shaderBindingTarget retain];
-		
+
 		for (i = 0; i != kOOMeshMaxMaterials; ++i)
 		{
-			[result->materialKeys[i] retain];
+			new (&result->materialKeys[i]) std::string(materialKeys[i]);
 			[result->materials[i] retain];
 		}
 		
@@ -1027,7 +1033,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	
 	if (materialCount != 0)
 	{
-		mtlKeys = [NSArray arrayWithObjects:materialKeys count:materialCount];
+		mtlKeys = oo::NSArrayFromStrings(std::vector<std::string>(materialKeys, materialKeys + materialCount));
 	}
 	else
 	{
@@ -1150,7 +1156,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	for (i = 0; i != materialCount; ++i)
 	{
 		key = oo::PListView(mtlKeys).at<NSString *>(i);
-		if (key != nil)  materialKeys[i] = [key copy];
+		if (key != nil)  materialKeys[i] = oo::StdString(key);
 		else
 		{
 			OOLog(@"mesh.load.error.badCacheData", @"Ignoring bad cache data for mesh \"%@\".", fileName);
@@ -1391,7 +1397,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 						}
 						else if (n_v > 3)
 						{
-							OOLogWARN(@"mesh.load.warning.nonTriangular", @"Face[%u] of %@ has %u vertices specified. Only the first three will be used.", j, baseFile, n_v);
+							OOLogWARN(@"mesh.load.warning.nonTriangular", @"Face[%u] of %@ has %u vertices specified. Only the first three will be used.", j, oo::NSStringOrNil(baseFile), n_v);
 							n_v = 3;
 						}
 					}
@@ -1460,7 +1466,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 								return NO;
 							}
 							_faces[j].materialIndex = materialCount;
-							materialKeys[materialCount] = [materialKey retain];
+							materialKeys[materialCount] = oo::StdString(materialKey);
 							index = [NSNumber numberWithUnsignedInt:materialCount];
 							[texFileName2Idx setObject:index forKey:materialKey];
 							++materialCount;
@@ -1501,7 +1507,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		{
 			failFlag = YES;
 			failString = [failString stringByAppendingString:@"Failed to find TEXTURES data (will use placeholder material)\n"];
-			materialKeys[0] = @"_oo_placeholder_material";
+			materialKeys[0] = "_oo_placeholder_material";
 			materialCount = 1;
 			
 			for (j = 0; j < faceCount; j++)
@@ -1531,7 +1537,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					}
 					else
 					{
-						[self renameTexturesFrom:[NSString stringWithFormat:@"%u", j] to:name];
+						[self renameTexturesFrom:oo::str::format("%u", j) to:oo::StdString(name)];
 					}
 				}
 			}
@@ -2045,8 +2051,8 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 	
 	[self calculateBoundingVolumes];
 	DESTROY(octree);
-	DESTROY(baseFile);	// Avoid octree cache.
-	DESTROY(baseFileOctreeCacheRef);
+	baseFile.reset();	// Avoid octree cache.
+	baseFileOctreeCacheRef.reset();
 }
 
 
@@ -2197,7 +2203,7 @@ static void Scribble(void *bytes, size_t size)
 }
 
 
-- (void) renameTexturesFrom:(NSString *)from to:(NSString *)to
+- (void) renameTexturesFrom:(const std::string &)from to:(const std::string &)to
 {
 	/*	IMPORTANT: this has to be called before setUpMaterials..., so it can
 		only be used during loading.
@@ -2205,10 +2211,9 @@ static void Scribble(void *bytes, size_t size)
 	OOMeshMaterialCount i;
 	for (i = 0; i != materialCount; i++)
 	{
-		if ([materialKeys[i] isEqualToString:from])
+		if (materialKeys[i] == from)
 		{
-			[materialKeys[i] release];
-			materialKeys[i] = [to copy];
+			materialKeys[i] = to;
 		}
 	}
 }
