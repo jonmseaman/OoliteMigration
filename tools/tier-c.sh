@@ -432,6 +432,18 @@ stage_jsapi() {
       || fail jsapi "the reconciliation exited 0 without reporting what it compared; a cross-check that compared nothing agrees perfectly"
     detail "$(head -1 "$rlog" | cut -c1-150)"
   fi
+
+  # --- THE QUICKJS-ERA BASELINE (ADR-0024, bead oo-1gc.10). oxp-contract/js-api-quickjs.json is the
+  # runtime snapshot of the QuickJS-ng build, committed when Phase 1 closed; the Oolite surface it
+  # describes must still be the 1.93 contract's. Offline: it compares two committed files.
+  local slog="$RUN_ROOT/jsapi-surface.log" src=0
+  [ -f "$REPO_ROOT/oxp-contract/js-api-quickjs.json" ]     || fail jsapi "no committed QuickJS-era snapshot at oxp-contract/js-api-quickjs.json (ADR-0024); regenerate with tools/js-api-snapshot.sh --output oxp-contract/js-api-quickjs.json"
+  ( cd "$REPO_ROOT" && "$PY" "$(native "$HERE/js_api_surface_compare.py")" oxp-contract/js-api-1.93.json oxp-contract/js-api-quickjs.json ) > "$slog" 2>&1 || src=$?
+  if [ "$src" -ne 0 ]; then
+    sed -n '1,30p' "$slog" >&2
+    fail jsapi "the QuickJS-era snapshot's Oolite API surface differs from the 1.93 contract (rc=$src)"
+  fi
+  detail "$(tail -1 "$slog" | cut -c1-150)"
   detail "stage jsapi ok in $(( SECONDS - t0 ))s"
 }
 
@@ -552,7 +564,7 @@ stage_asan() {
   local bdir="$OOLITE/build/meson_$flavour"
   local binary="$bdir/oolite.app/oolite.exe"
   detail "building flavour '$flavour' with -fsanitize=address (resource-dir $rd)"
-  ( cd "$REPO_ROOT" && bash "$HERE/build-windows.sh" "$flavour" --setup-flags="-Db_sanitize=address -Db_lundef=false -Dc_args=-resource-dir=$rd -Dcpp_args=-resource-dir=$rd -Dobjc_args=-resource-dir=$rd -Dc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition']" ) \
+  ( cd "$REPO_ROOT" && bash "$HERE/build-windows.sh" "$flavour" --setup-flags="-Db_sanitize=address -Db_lundef=false -Dc_args=-resource-dir=$rd -Dcpp_args=-resource-dir=$rd -Dobjc_args=-resource-dir=$rd -Dc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjc_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition'] -Dobjcpp_args=-resource-dir=$rd -Dobjcpp_link_args=['-resource-dir=$rd','-Wl,--allow-multiple-definition']" ) \
     > "$blog" 2>&1 || brc=$?
   if [ "$brc" -ne 0 ]; then
     tail -30 "$blog" >&2
@@ -578,8 +590,10 @@ stage_asan() {
   # stripped or mismatched binary would leave every frame unattributable and the attribution check
   # below would report "0 oolite frames" for a run full of engine defects.
   local symtest sym_addr
+  # objdump prints the address as 8 hex digits under the 0x140000000 image base (hence the "0x1"
+  # prefix) or, on the current toolchain, as the full 16-digit VA; take either as it comes.
   sym_addr="$(objdump -d "$binary" 2>/dev/null \
-              | awk '/<_i_OOOpenALController__init>:/{print "0x1"$1; exit}' | tr -d ':' || true)"
+              | awk '/<_i_OOOpenALController__init>:/{a=$1; sub(":","",a); print (length(a) <= 8 ? "0x1" a : "0x" a); exit}' || true)"
   # Fall back to the entry point when that symbol moves; what matters is that SOME engine address
   # resolves to a src/ path, not which one.
   [ -n "$sym_addr" ] || sym_addr="$(objdump -f "$binary" 2>/dev/null | awk '/start address/{print $NF}')"
@@ -627,7 +641,9 @@ plistlib.dump({'console-host': '127.0.0.1', 'console-port': int(sys.argv[2])},
   local lock="$HERE/gui-lock"
   local runner=(); [ -x "$lock" ] && runner=("$lock" run --timeout "${OOLITE_TIER_C_LOCK_TIMEOUT:-900}" --)
 
-  ( cd "$app" && PATH="$dlldir:$PATH" \
+  # $dlldir is a native C:/... path; in an MSYS PATH its drive colon splits it into two bogus
+  # entries and the loader never finds libclang_rt.asan_dynamic-x86_64.dll (exit 127).
+  ( cd "$app" && PATH="$(cygpath -u "$dlldir"):$PATH" \
       ASAN_OPTIONS="halt_on_error=0:abort_on_error=0:detect_leaks=0:symbolize=1" \
       ASAN_SYMBOLIZER_PATH="$symbolizer_native" \
       LSAN_OPTIONS="suppressions=$(native "$ASAN_SUPPRESSIONS")" \
