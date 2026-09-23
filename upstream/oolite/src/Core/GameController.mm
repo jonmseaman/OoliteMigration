@@ -45,6 +45,9 @@ MA 02110-1301, USA.
 #import "OOOXZManager.h"
 #import "OOOpenGLMatrixManager.h"
 #import "OOEnumerationShuffle.h"
+#ifndef NDEBUG
+#import "OODebugTCPConsoleClient.h"
+#endif
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #include <chrono>
@@ -452,15 +455,16 @@ static GameController *sSharedController = nil;
 	
 	Each pass of the loop fires what is due (the tick first, then the log
 	flush, then up to two deferred calls), then runs the run loop once, up to
-	the next deadline, for what still lives on it (the debug console's streams,
-	OXZ downloads) until their own beads take it off.
+	the next deadline, for what still lives on it (OXZ downloads) until its own
+	bead takes it off; while the debug console's socket is open, the wait is on
+	that socket instead (bead oo-3rb.14).
 */
 static bool									sGameTickScheduled = false;
 static std::chrono::steady_clock::time_point	sNextGameTick;
 static std::chrono::steady_clock::duration	sGameTickInterval;
 
 
-/*	Deferred calls (bead oo-3rb.57, proposed ADR-0038): Foundation's timed
+/*	Deferred calls (bead oo-3rb.57, proposed ADR-0040): Foundation's timed
 	performers, which were one-shot timers on the main run loop. Measured
 	against gnustep-base 1.31: a performer's fire date is now + delay (a delay
 	<= 0 is 0.0001 s, the timer clamp); each run-loop pass fires the first due
@@ -618,16 +622,37 @@ static bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outD
 				haveWake = true;
 			}
 			
-			NSDate *limit = [NSDate distantFuture];
-			if (haveWake)
+#ifndef NDEBUG
+			if (OODebugTCPConsoleIsWaitingForInput())
 			{
-				std::chrono::duration<double> wait = wake - std::chrono::steady_clock::now();
-				limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
+				/*	The debug console's socket is no longer on the run loop (bead oo-3rb.14,
+					proposed ADR-0041): run the run loop without waiting (its timers and ready
+					input), then wait on the socket as the run loop waited on the console's
+					streams, handling what arrives before the next deadline.
+				*/
+				[runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]];
+				double timeout = -1.0;
+				if (haveWake)
+				{
+					timeout = std::chrono::duration<double>(wake - std::chrono::steady_clock::now()).count();
+					if (timeout < 0.0)  timeout = 0.0;
+				}
+				OODebugTCPConsoleServiceInput(timeout);
 			}
-			if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && haveWake)
+			else
+#endif
 			{
-				// Nothing on the run loop to wait for: wait here.
-				std::this_thread::sleep_until(wake);
+				NSDate *limit = [NSDate distantFuture];
+				if (haveWake)
+				{
+					std::chrono::duration<double> wait = wake - std::chrono::steady_clock::now();
+					limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
+				}
+				if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && haveWake)
+				{
+					// Nothing on the run loop to wait for: wait here.
+					std::this_thread::sleep_until(wake);
+				}
 			}
 		}
 	}
