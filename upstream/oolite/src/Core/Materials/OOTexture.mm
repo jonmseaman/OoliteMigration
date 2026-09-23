@@ -402,7 +402,8 @@ static NSString *sGlobalTraceContext = nil;
 
 + (NSArray *) cachedTexturesByAge
 {
-	return [sRecentTextures objectsByAge];
+	const std::vector<oo::ObjCRef<id>> textures = [sRecentTextures objectsByAge];
+	return textures.empty() ? nil : oo::NSArrayFromObjects(textures);	// nil when empty, as before
 }
 
 
