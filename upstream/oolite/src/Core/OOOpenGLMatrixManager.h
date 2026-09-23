@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOMaths.h"
+#include "oofnd/StdLib.hpp"
 
 extern const char* ooliteStandardMatrixUniforms[];
 
@@ -49,7 +50,7 @@ enum
 @interface OOOpenGLMatrixStack: NSObject
 {
 @private
-	NSMutableArray	*stack;
+	std::vector<OOMatrix>	stack;	// was an NSMutableArray of boxed values (bead oo-3rb.10)
 }
 
 - (id) init;
