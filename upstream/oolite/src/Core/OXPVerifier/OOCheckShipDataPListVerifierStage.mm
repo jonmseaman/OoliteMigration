@@ -187,7 +187,7 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 	{
 		if (![aiName hasSuffix:@".js"])
 		{
-			[_aiVerifierStage stateMachineNamed:aiName usedByShip:name];
+			[_aiVerifierStage stateMachineNamed:oo::StdString(aiName) usedByShip:oo::StdString(name)];
 		}
 	}
 	
