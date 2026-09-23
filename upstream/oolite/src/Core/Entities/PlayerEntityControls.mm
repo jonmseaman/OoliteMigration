@@ -64,6 +64,7 @@ MA 02110-1301, USA.
 
 #import "OODebugSupport.h"
 #import "OODebugMonitor.h"
+#include "oofnd/Date.hpp"
 
 #define CUSTOM_VIEW_ROTATE_SPEED	1.0
 #define CUSTOM_VIEW_ZOOM_SPEED		5.0
@@ -1624,7 +1625,7 @@ static NSTimeInterval	time_last_frame;
 						{
 							escapePodKey_pressed = YES;
 							// first keypress will unregister in KEY_REPEAT_INTERVAL seconds
-							escapePodKeyResetTime = [NSDate timeIntervalSinceReferenceDate] + KEY_REPEAT_INTERVAL;
+							escapePodKeyResetTime = oo::date::monotonicSeconds() + KEY_REPEAT_INTERVAL;
 							//[gameView clearKey:key_launch_escapepod];
 							[gameView clearKey:[self getFirstKeyCode:n_key_launch_escapepod]];
 							if ([stickHandler joystickCount])
@@ -1634,7 +1635,7 @@ static NSTimeInterval	time_last_frame;
 						}
 						else
 						{
-							OOTimeDelta timeNow = [NSDate timeIntervalSinceReferenceDate];
+							OOTimeDelta timeNow = oo::date::monotonicSeconds();	// same clock as escapePodKeyResetTime
 							escapePodKey_pressed = NO;
 							if (timeNow < escapePodKeyResetTime)  goodToLaunch = YES;
 						}
@@ -1857,7 +1858,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if ([UNIVERSE pauseMessageVisible]) [[UNIVERSE messageGUI] leaveLastLine];
 				else [[UNIVERSE messageGUI] clear];
-				NSTimeInterval	time_this_frame = [NSDate timeIntervalSinceReferenceDate];
+				NSTimeInterval	time_this_frame = oo::date::monotonicSeconds();	// intervals only (time_last_frame)
 				OOTimeDelta		time_delta;
 				if (![[GameController sharedController] isGamePaused])
 				{
@@ -4044,7 +4045,7 @@ static NSTimeInterval	time_last_frame;
 	}
 	else
 		customView_pressed = NO;
-	NSTimeInterval this_time = [NSDate timeIntervalSinceReferenceDate];
+	NSTimeInterval this_time = oo::date::monotonicSeconds();	// intervals only (last_time)
 	if ([UNIVERSE viewDirection] > VIEW_STARBOARD && [gameView isCapsLockOn])
 	{
 		BOOL ctrl_down = [gameView isCtrlDown];

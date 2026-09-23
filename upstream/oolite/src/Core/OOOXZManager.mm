@@ -47,6 +47,7 @@ MA 02110-1301, USA.
 #import "unzip.h"
 
 #import "OOManifestProperties.h"
+#include "oofnd/Date.hpp"
 
 /* The URL for the manifest.plist array. */
 /* switching (temporarily maybe) to oolite.space - Nikos 20230507 */
@@ -546,7 +547,7 @@ static OOOXZManager *sSingleton = nil;
 	else
 	{
 		NSUInteger updated = [manifest oo_unsignedIntegerForKey:kOOManifestUploadDate];
-		NSUInteger now = (NSUInteger)[[NSDate date] timeIntervalSince1970];
+		NSUInteger now = (NSUInteger)oo::date::timeIntervalSince1970();
 		return (updated + (86400 * i) > now);
 	}
 }
@@ -1914,10 +1915,10 @@ static OOOXZManager *sSingleton = nil;
 			if (timestamp > 0)
 			{
 				// list of installable OXZs
-				NSDate *updated = [NSDate dateWithTimeIntervalSince1970:timestamp];
+				NSString *updated = [NSString stringWithUTF8String:oo::date::description(oo::date::dateWithTimeIntervalSince1970(timestamp)).c_str()];
 			
 				//keep only the first part of the date string description, which should be in YYYY-MM-DD format
-				updatedDesc = [[[updated description] componentsSeparatedByString:@" "] oo_stringAtIndex:0];
+				updatedDesc = [[updated componentsSeparatedByString:@" "] oo_stringAtIndex:0];
 				
 				[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-oxzmanager-infoline-size"),[self humanSize:size],DESC(@"oolite-oxzmanager-infoline-date"),updatedDesc,nil] forRow:OXZ_GUI_ROW_LISTINFO2];
 			} 

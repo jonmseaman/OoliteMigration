@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 
 #import "Universe.h"
 #include "oofnd/Process.hpp"
+#include "oofnd/Date.hpp"
 #import "MyOpenGLView.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -703,7 +704,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	_doingStartUp = YES;
 
-	OOInitReallyRandom([NSDate timeIntervalSinceReferenceDate] * 1e9);
+	OOInitReallyRandom(oo::date::timeIntervalSinceReferenceDate() * 1e9);
 	
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
 	

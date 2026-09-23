@@ -61,6 +61,7 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
+#include "oofnd/Date.hpp"
 
 static void SwitchLogFile(NSString *name);
 static void NoteVerificationStage(NSString *displayName, NSString *stage);
@@ -647,7 +648,7 @@ static void OpenLogFile(NSString *name);
 	OOOXPVerifierStage			*dep = nil;
 	
 	graphVizTemplate = [self configurationDictionaryForKey:@"debugGraphvizTempate"];
-	graphViz = [NSMutableString stringWithFormat:[graphVizTemplate oo_stringForKey:@"preamble"], [NSDate date]];
+	graphViz = [NSMutableString stringWithFormat:[graphVizTemplate oo_stringForKey:@"preamble"], [NSString stringWithUTF8String:oo::date::description().c_str()]];
 	
 	/*	Pass 1: enumerate over graph setting node attributes for each stage.
 		We use pointers as node names for simplicity of generation.
