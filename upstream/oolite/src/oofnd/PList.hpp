@@ -59,6 +59,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -292,6 +293,118 @@ inline const char* typeName(PList::Type t) noexcept
 	}
 	return "?";
 }
+
+// --- NSCalendarDate strings -> PList::Date ---------------------------------------------------
+
+namespace plist_detail {
+
+// -[NSCalendarDate initWithString:calendarFormat:] for the two formats GNUstep's plist parsers
+// pass it: "%Y-%m-%d %H:%M:%S %z" (old-style <*D...>, and XML <date> in general) and, when
+// `zulu`, "%Y-%m-%dT%H:%M:%SZ" (XML <date> of exactly 20 characters ending in Z). Ported from
+// NSCalendarDate.m: each field reads up to its width in digits after optional leading spaces (so
+// " 2001" reads as 200), a space in the format skips any run of spaces, other literals must match
+// while input remains, trailing input is ignored, and out-of-range fields roll over (month 13 is
+// next January; absoluteGregorianDay counts every month past 12 as 31 days). nullopt where GNUstep
+// returns nil. One deliberate difference (ADR-0027 item 7): GNUstep reads the "Z" format in the
+// machine's LOCAL time zone (it has no %z); oofnd reads it as UTC, which is what the Z says.
+inline std::optional<double> parseCalendarDate(std::string_view s, bool zulu)
+{
+	const std::string_view format = zulu ? "%Y-%m-%dT%H:%M:%SZ" : "%Y-%m-%d %H:%M:%S %z";
+	auto at = [&](std::size_t i) -> unsigned char { return i < s.size() ? static_cast<unsigned char>(s[i]) : 0; };
+	auto isSpace = [](unsigned char c) { return c == ' ' || (c >= '\t' && c <= '\r'); };
+	auto isDigit = [](unsigned char c) { return c >= '0' && c <= '9'; };
+	bool error = false;
+	std::size_t src = 0;
+	// getDigits(): returns the characters consumed; *value gets the digits' value.
+	auto getDigits = [&](unsigned limit, long* value) {
+		unsigned i = 0;
+		bool found = false;
+		*value = 0;
+		for (; i < limit; ++i)
+		{
+			const unsigned char c = at(src + i);
+			if (isDigit(c))
+			{
+				*value = *value * 10 + (c - '0');
+				found = true;
+			}
+			else if (!(isSpace(c) && !found))
+			{
+				break;
+			}
+		}
+		if (!found) error = true;
+		return i;
+	};
+	long year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0, zoneSeconds = 0;
+	for (std::size_t f = 0; !error && f < format.size(); ++f)
+	{
+		const char fc = format[f];
+		if (fc != '%')
+		{
+			if (fc == ' ')
+			{
+				while (at(src) != 0 && isSpace(at(src))) ++src;
+			}
+			else if (src < s.size())
+			{
+				if (at(src) != static_cast<unsigned char>(fc)) error = true;
+				++src;
+			}
+			continue;
+		}
+		switch (format[++f])
+		{
+			case 'Y': src += getDigits(4, &year); break;
+			case 'm': src += getDigits(2, &month); break;
+			case 'd': src += getDigits(2, &day); break;
+			case 'H': src += getDigits(2, &hour); break;
+			case 'M': src += getDigits(2, &minute); break;
+			case 'S': src += getDigits(2, &second); break;
+			case 'z':
+			{
+				long sign = 1, zone = 0;
+				if (at(src) == '+') ++src;
+				else if (at(src) == '-')
+				{
+					sign = -1;
+					++src;
+				}
+				const unsigned found = getDigits(4, &zone);
+				if (found > 0)
+				{
+					src += found;
+					if (found == 2) zone *= 100;
+					zoneSeconds = sign * ((zone / 100) * 60 + (zone % 100)) * 60;
+				}
+				break;
+			}
+			default: break;
+		}
+	}
+	if (error) return std::nullopt;
+
+	auto lastDayOfMonth = [](long m, long y) -> long {
+		switch (m)
+		{
+			case 2: return ((y % 4 == 0 && y % 100 != 0) || y % 400 == 0) ? 29 : 28;
+			case 4:
+			case 6:
+			case 9:
+			case 11: return 30;
+			default: return 31;
+		}
+	};
+	auto absoluteDay = [&](long d, long m, long y) {
+		while (--m > 0) d += lastDayOfMonth(m, y);
+		if (y > 0) --y;
+		return d + 365 * y + y / 4 - y / 100 + y / 400;
+	};
+	const long days = absoluteDay(day, month, year) - absoluteDay(1, 1, 2001);
+	return static_cast<double>(days) * 86400.0 + static_cast<double>(hour * 3600 + minute * 60 + second - zoneSeconds);
+}
+
+} // namespace plist_detail
 
 // --- UTF-16 <-> UTF-8 (NSString's code units <-> PList strings) ------------------------------
 

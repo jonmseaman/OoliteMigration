@@ -13,7 +13,9 @@
 #include <cmath>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 
 using oo::PList;
@@ -216,6 +218,54 @@ OO_TEST(errorDescriptionIsNSErrorsWording)
 	OO_CHECK_EQ(static_cast<int>(oo::PListFormat::OpenStep), 1);
 	OO_CHECK_EQ(static_cast<int>(oo::PListFormat::XML), 100);
 	OO_CHECK_EQ(static_cast<int>(oo::PListFormat::GNUstep), 1000);
+}
+
+namespace {
+
+double calendarDate(std::string_view s, bool zulu = false)
+{
+	std::optional<double> d = oo::plist_detail::parseCalendarDate(s, zulu);
+	return d ? *d : -1e300;   // sentinel for "GNUstep returned nil"
+}
+
+} // namespace
+
+// Expected values captured from GNUstep 1.31.1 (old-style <*D...> through NSPropertyListSerialization).
+OO_TEST(calendarDatesParseLikeNSCalendarDate)
+{
+	OO_CHECK_EQ(calendarDate("2001-01-01 00:00:00 +0000"), 0.0);
+	OO_CHECK_EQ(calendarDate("2001-01-01 00:00:00 +0130"), -5400.0);
+	OO_CHECK_EQ(calendarDate("2024-02-29 12:34:56 -0800"), 730931696.0);
+	OO_CHECK_EQ(calendarDate("1970-01-01 00:00:00 +0000"), -978307200.0);
+	OO_CHECK_EQ(calendarDate("1600-03-01 00:00:00 +0000"), -12649219200.0);
+	OO_CHECK_EQ(calendarDate("0001-01-01 00:00:00 +0000"), -63113904000.0);
+	// Two zone digits are hours; one digit is minutes.
+	OO_CHECK_EQ(calendarDate("2001-01-01 00:00:10 +00"), 10.0);
+	OO_CHECK_EQ(calendarDate("2001-01-01 00:00:00 +1"), -60.0);
+	OO_CHECK_EQ(calendarDate("2001-01-01 00:00:00 -0030"), 1800.0);
+	// Short fields, runs of spaces, trailing junk and out-of-range fields are all accepted.
+	OO_CHECK_EQ(calendarDate("2001-1-2 3:4:5 +0000"), 97445.0);
+	OO_CHECK_EQ(calendarDate("2001-01-01   00:00:00+0000"), 0.0);
+	OO_CHECK_EQ(calendarDate("2001-01-01 00:00:00 +0000 junk"), 0.0);
+	OO_CHECK_EQ(calendarDate("2001-13-40 25:61:61 +0000"), 34999321.0);
+}
+
+OO_TEST(calendarDatesGNUstepRejects)
+{
+	OO_CHECK_EQ(calendarDate("2001-01-01 00:00:00"), -1e300);          // no zone digits
+	OO_CHECK_EQ(calendarDate("2001-01-01T00:00:00 +0000"), -1e300);    // wrong literal
+	OO_CHECK_EQ(calendarDate("12345-01-01 00:00:00 +0000"), -1e300);   // %Y reads 4 digits
+	OO_CHECK_EQ(calendarDate(" 2001- 1- 1  0:0:0 +0000"), -1e300);     // " 200" then '1' != '-'
+	OO_CHECK_EQ(calendarDate("garbage"), -1e300);
+}
+
+OO_TEST(zuluDatesAreUtc)
+{
+	// GNUstep reads this format in the machine's local zone (it captured 18000 on a UTC-5
+	// machine); oofnd reads it as UTC (ADR-0027 item 7).
+	OO_CHECK_EQ(calendarDate("2001-01-01T00:00:00Z", true), 0.0);
+	OO_CHECK_EQ(calendarDate("2001-07-01T00:00:00Z", true), 15638400.0);
+	OO_CHECK_EQ(calendarDate("2001-07-01 00:00:00Z", true), -1e300);
 }
 
 OO_TEST_MAIN()

@@ -52,9 +52,13 @@ representation choices ADR-0013 did not make.
 6. **XML input encodings.** UTF-8, with GNUstep's fallback to ISO-8859-1 when the bytes are not
    valid UTF-8 or the declaration names ISO-8859-1/Latin-1. UTF-16/UTF-32 XML plists (which
    GNUstep would transcode) fail. The game ships none.
-7. **Dates** are read in exactly the two `NSCalendarDate` formats GNUstep's plist code asks for
-   (`%Y-%m-%dT%H:%M:%SZ`; `%Y-%m-%d %H:%M:%S %z`); anything that does not match them fails the
-   parse (GNUstep would insert nil and raise).
+7. **Dates** are read in the two `NSCalendarDate` formats GNUstep's plist code asks for
+   (`%Y-%m-%dT%H:%M:%SZ`; `%Y-%m-%d %H:%M:%S %z`) with `NSCalendarDate`'s own leniency (short
+   fields, rollover, trailing junk). GNUstep reads the `...Z` form in the machine's *local* time
+   zone (it has no `%z`), so its result depends on where it runs; oofnd reads it as UTC. Where
+   GNUstep's date is nil, oofnd follows it (old-style: the whole plist is nil, no error; XML at
+   top level: nil), except inside an XML container, where GNUstep raises
+   `NSInvalidArgumentException` out of the parser and oofnd returns an error instead.
 8. **GNUstep defaults.** Behaviour is that of the game's GNUstep defaults: `GSMacOSXCompatible` is
    NO (so a missing `;` before `}` is accepted, and the XML writer escapes control characters as
    `\Uxxxx`). GNUstep's `NSWarnFLog` for the missing `;` is not reproduced.
