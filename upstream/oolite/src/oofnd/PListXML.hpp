@@ -26,6 +26,8 @@
 	        GSMimeDocument's lenient base64; <date> see PList.hpp's parseCalendarDate().
 	      - The result is the LAST completed top-level value; an empty <plist/> is nil without an
 	        error (a null PList here). A value in a dict without a preceding <key> fails.
+	      - Byte-order marks follow NSString (see PList.hpp): an entity or \U escape for U+FEFF
+	        or U+FFFE is "", and a text chunk starting with U+FEFF loses it.
 	      - The bytes are UTF-8, or ISO-8859-1 when they are not valid UTF-8 or the declaration
 	        says so (GNUstep scans the whole document for encoding="..."). UTF-16/32 fail.
 
