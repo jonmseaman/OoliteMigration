@@ -1903,7 +1903,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_forwardWeapon:
 		case kShip_currentWeapon:
 			{
-			sValue = JSValueToEquipmentKeyRelaxed(context, *value, &exists);
+			sValue = oo::NSStringOrNil(JSValueToEquipmentKeyRelaxed(context, *value, &exists));
 			if (sValue == nil) 
 			{
 				sValue = @"EQ_WEAPON_NONE";
@@ -2264,7 +2264,7 @@ static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArg
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([thisEnt ejectShipOfRole:role]);
+	OOJS_RETURN_OBJECT([thisEnt ejectShipOfRole:oo::OptionalString(role)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2343,7 +2343,7 @@ static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([thisEnt ejectShipOfType:itemKey]);
+	OOJS_RETURN_OBJECT([thisEnt ejectShipOfType:oo::OptionalString(itemKey)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2416,7 +2416,7 @@ static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = [thisEnt spawnShipsWithRole:role count:count];
+	result = oo::NSArrayFromObjects([thisEnt spawnShipsWithRole:oo::StdString(role) count:count]);
 	OOJS_END_FULL_NATIVE
 
 	OOJS_RETURN_OBJECT(result);
@@ -2639,7 +2639,7 @@ static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs 
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists);
+	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists));
 	if (EXPECT_NOT(key == nil))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"canAwardEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
@@ -2780,7 +2780,7 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKey(context, OOJS_ARGV[0]));
 	if (EXPECT_NOT(key == nil))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"removeEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
@@ -2982,7 +2982,7 @@ static bool ShipEquipmentStatus(ooscript::Context context, ooscript::CallArgs &o
 
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKey(context, OOJS_ARGV[0]));
 	if (oojsArgs.count() > 1)  ooscript::valueToBoolean(context, OOJS_ARGV[1], &asDict);
 	if (EXPECT_NOT(key == nil))
 	{

@@ -868,7 +868,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	for (i = 0; i < [plumes count]; i++)
 	{
 		NSArray *definition = ScanTokensFromString(oo::PListView(plumes).at<NSString *>(i));
-		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:definition andScale:_scaleFactor];
+		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:oo::StringsFrom(definition) andScale:_scaleFactor];
 		[self addSubEntity:exhaust];
 	}
 	
@@ -927,7 +927,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 - (BOOL) setUpOneFlasher:(NSDictionary *) subentDict
 {
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:oo::PListFrom(subentDict)];
 	[flasher setPosition:HPvector_multiply_scalar(oo::PListView(subentDict).get<HPVector>(@"position"),_scaleFactor)];
 	[flasher rescaleBy:_scaleFactor];
 	[self addSubEntity:flasher];
@@ -8899,7 +8899,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// and a visual sign of the explosion
 	// "fireball" explosion effect
 	NSDictionary *explosion = [UNIVERSE explosionSetting:@"oolite-default-ship-explosion"];
-	[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSize:range*3.0 andSettings:explosion]];
+	[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSize:range*3.0 andSettings:oo::PListFrom(explosion)]];
 
 }
 
@@ -9246,7 +9246,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 					if (explosionType == nil)
 					{
 						explosion = [UNIVERSE explosionSetting:explosionKey];
-						[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:explosion]];
+						[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:oo::PListFrom(explosion)]];
 						// 3. flash
 						[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
 					}
@@ -9271,7 +9271,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 							else
 							{
 								explosion = [UNIVERSE explosionSetting:explosionKey];
-								[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:explosion]];
+								[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:oo::PListFrom(explosion)]];
 							}
 						}
 					}
@@ -14323,7 +14323,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	
 	number = [numberString intValue];
 	
-	[self spawnShipsWithRole:roleString count:number];
+	[self spawnShipsWithRole:oo::StdString(roleString) count:number];
 }
 
 
@@ -14896,7 +14896,7 @@ NSDictionary *OODefaultShipShaderMacros(void)
 }
 
 // is this the right place for this function now? - CIM
-BOOL OOUniformBindingPermitted(NSString *propertyName, id bindingTarget)
+BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget)
 {
 	static NSSet			*entityWhitelist = nil;
 	static NSSet			*shipWhitelist = nil;
@@ -14911,21 +14911,23 @@ BOOL OOUniformBindingPermitted(NSString *propertyName, id bindingTarget)
 		playerShipWhitelist = [[NSSet alloc] initWithArray:oo::PListView(wlDict).get<NSArray *>(@"shader_player_ship_binding_methods")];
 		visualEffectWhitelist = [[NSSet alloc] initWithArray:oo::PListView(wlDict).get<NSArray *>(@"shader_visual_effect_binding_methods")];
 	}
+
+	id property = oo::NSStringFrom(propertyName);	// the whitelists hold the names as strings
 	
 	if ([bindingTarget isKindOfClass:[Entity class]])
 	{
-		if ([entityWhitelist containsObject:propertyName])  return YES;
+		if ([entityWhitelist containsObject:property])  return YES;
 		if ([bindingTarget isShip])
 		{
-			if ([shipWhitelist containsObject:propertyName])  return YES;
+			if ([shipWhitelist containsObject:property])  return YES;
 		}
 		if ([bindingTarget isPlayerLikeShip])
 		{
-			if ([playerShipWhitelist containsObject:propertyName])  return YES;
+			if ([playerShipWhitelist containsObject:property])  return YES;
 		}
 		if ([bindingTarget isVisualEffect])
 		{
-			if ([visualEffectWhitelist containsObject:propertyName])  return YES;
+			if ([visualEffectWhitelist containsObject:property])  return YES;
 		}
 	}
 	

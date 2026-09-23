@@ -276,3 +276,59 @@ rule.
     that the load/save screen refreshes from `[gameView cxx_typedString]` each frame it reads it,
     done in the MyOpenGLView chunk that converts the buffer (oo-8i15), with `-typedString`'s
     NSString form kept in MyOpenGLView's bridge for the other callers until they move.
+
+## Amendment 3 — runtime format strings; error texts that name a class (2026-09-23, bead oo-hkvv)
+
+19. **A format string read at run time is formatted by `oo::str::formatRuntime`.** DESC(...)
+    entries (OOOXZManager, ResourceManager `+errors`, the chart titles), verifyOXP.plist's GraphViz
+    templates (OOOXPVerifier `-dumpDebugGraphviz`) and any other format that is data, not a
+    literal, cannot go through `oo::str::format` (its format is checked at compile time and has no
+    `%@`), and rewriting `%@` to `%s` inside data is not a conversion. `formatRuntime(fmt,
+    {args...})` (oofnd/String.hpp) takes each argument as an `oo::str::FormatArg`, which carries
+    its kind: text (an object's description, `oo::DescriptionOf(obj)`; a C string), nil, signed
+    and unsigned integers, reals (`FormatArg::single(f)` for a `+numberWithFloat:`), and
+    `FormatArg::pointer(p)`. It reproduces GNUstep 1.31.1's `-stringWithFormat:` for every
+    conversion Oolite's runtime strings use: `%@` (width and precision in UTF-16 units; a number
+    prints its NSNumber description), `%p` (`pointerDescription`, with width), `%d %i %u %x %X %o
+    %c` with `hh h l ll q z j t`, `%f %e %g` (and upper case), `%s`, `%%`, flags and widths
+    including `*`, positional `%2$@`; an unknown conversion and a trailing `%` are copied as GNUstep
+    copies them. Numbers are rendered with `std::to_chars`, never through a runtime printf format.
+    Where GNUstep reads memory that is not there (too few arguments), oofnd prints what nil / zero
+    prints: an ADR-0027 difference no correct string reaches. Pinned in
+    `tests/unit/oofnd/test_string_format_runtime.cpp` against captured GNUstep output. Exemplar:
+    `OOOXPVerifier.mm` `-dumpDebugGraphviz` (oo-hkvv).
+20. **An error text that names a Foundation class is reworded to name the concept.** Where the
+    only NS name left in a file is inside a programming-error message that no golden or player sees
+    (GuiDisplayGen's `ArrayLengthMismatchException`: "The NSArray sent as 'item_keys' ..." becomes
+    "The array sent as 'item_keys' ..."), or inside a comment, the text is reworded ("array",
+    "string", "dictionary"). Text a player, a log golden or a script can see is never reworded
+    under this item.
+21. **A selector the game sends by name is shared.** AI actions (named in AI state machines and
+    whitelist.plist's `ai_methods`), legacy-script actions and queries, HUD dials and shader
+    bindings (whitelist.plist), and every selector reached through `-performSelector:`,
+    `NSSelectorFromString`, a notification, a timer or a stored callback (`-updateFunction:`,
+    oo-u76k) have a second declaration the compiler never sees: the dispatcher, which passes and
+    expects Objective-C objects. They keep object types as `id` (commented
+    `// called by name (ADR-0043 item 21)`), with a `cxx_` twin where C++ callers want typed
+    access. `tools/check-selector-types.py` reports them `shared ... called by name (<source>)`
+    from whitelist.plist, the AI plists, every `@selector(...)` literal outside
+    `-respondsToSelector:`, and `tools/dynamic-selectors.txt` for the rest; `--check` fails when one
+    takes or returns a C++ type. Applies to oo-xk5h (ShipEntityAI), oo-j924
+    (PlayerEntityLegacyScriptEngine), oo-u76k.
+22. **A live mutable container is reached through a pointer.** Where an accessor hands out a
+    mutable container its callers edit in place (Entity `-collisionArray` and the
+    `collidingEntities` ivar, oo-2qdy; StationEntity `-localShipyard` / `-localInterfaces`,
+    oo-e7ab), the ivar becomes the std container and a `cxx_` accessor returns a pointer to it,
+    e.g. `- (std::vector<oo::ObjCRef<Entity *>> *) cxx_collidingEntities;`: a nil receiver gives
+    `nullptr`, which is zero-safe, so the item-3 rule on return types holds. A snapshot is never
+    handed out where callers mutate. Direct ivar access from a giant file is converted in that
+    file's own chunk; until then the Foundation-typed accessor lives in the owner's bridge,
+    and the chunk that changes the ivar moves every mutating call site with it.
+23. **Error and debug log text of a collection may change.** `%@` of a dictionary or array in an
+    OOLogERR / OOLogWARN / debug log that no golden, test or save file reads (DockEntity
+    `shipsOnApproach`, oo-u7fq) is printed with `oo::writeOldStylePList` (or a describe helper);
+    the exact GNUstep `-description` is not required there, and the commit names the change.
+    Byte identity stays mandatory for any output a golden, test or save file reads.
+24. **Runtime DESC formats use `formatRuntime`.** Every `-stringWithFormat:DESC(...)` (or other
+    format that is data) with `%@` is item 19: oo-ys2e (WormholeEntity) and the ~10 PlayerEntity
+    sites are unblocked.
