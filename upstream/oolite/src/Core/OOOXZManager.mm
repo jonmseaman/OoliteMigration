@@ -453,7 +453,7 @@ static OOOXZManager *sSingleton = nil;
 
 	NSMutableArray *filteredList = [NSMutableArray arrayWithCapacity:[list count]];
 	NSDictionary *manifest		 = nil;
-	/*	A typed call through the filter's IMP (bead oo-3rb.53; was an NSInvocation). The
+	/*	A typed call through the filter's IMP (bead oo-3rb.53; was a Foundation invocation object). The
 		one-argument filters take the manifest; the rest take the manifest and the
 		parameter, which is nil for them only if it was never set, as the invocation's
 		unset argument was.
