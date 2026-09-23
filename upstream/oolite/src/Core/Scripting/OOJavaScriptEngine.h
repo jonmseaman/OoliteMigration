@@ -153,18 +153,23 @@ extern const char * const kOOJavaScriptEngineDidResetNotificationName;
 	
 	Note that after reporting an error in a JavaScript callback, the caller
 	must return NO to signal an error.
+	The cxx_ forms (proposed ADR-0043 item 17's pattern; bead oo-3rb.200) take printf formats
+	(no %@: pass an object's text as %s with oo::DescriptionOf), formatted by oo::str::vformat.
+	A nullopt function means no caller prefix; a nullopt scriptClass prefixes "function: ".
+	Plain C++, not OOJS_EXTERN_C.
 */
-OOJS_EXTERN_C void OOJSReportError(ooscript::Context context, NSString *format, ...);
-OOJS_EXTERN_C void OOJSReportErrorWithArguments(ooscript::Context context, NSString *format, va_list args);
-OOJS_EXTERN_C void OOJSReportErrorForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
+void cxx_OOJSReportError(ooscript::Context context, const char *format, ...) __attribute__((format(printf, 2, 3)));
+void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *format, va_list args) __attribute__((format(printf, 2, 0)));
+void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...) __attribute__((format(printf, 4, 5)));
 
-OOJS_EXTERN_C void OOJSReportWarning(ooscript::Context context, NSString *format, ...);
-OOJS_EXTERN_C void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args);
-OOJS_EXTERN_C void OOJSReportWarningForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
+void cxx_OOJSReportWarning(ooscript::Context context, const char *format, ...) __attribute__((format(printf, 2, 3)));
+void cxx_OOJSReportWarningWithArguments(ooscript::Context context, const char *format, va_list args) __attribute__((format(printf, 2, 0)));
+void cxx_OOJSReportWarningForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...) __attribute__((format(printf, 4, 5)));
 
 OOJS_EXTERN_C void OOJSReportBadPropertySelector(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec);
 OOJS_EXTERN_C void OOJSReportBadPropertyValue(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec, ooscript::Value value);
-OOJS_EXTERN_C void OOJSReportBadArguments(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, NSString *message, NSString *expectedArgsDescription);
+// A nullopt message is "Invalid arguments"; a nullopt expectedArgsDescription adds no " -- expected ..." suffix.
+void cxx_OOJSReportBadArguments(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, const std::optional<std::string> &message, const std::optional<std::string> &expectedArgsDescription);
 
 /*	OOJSSetWarningOrErrorStackSkip()
 	
@@ -184,11 +189,11 @@ OOJS_EXTERN_C void OOJSSetWarningOrErrorStackSkip(unsigned skip);
 	On failure, it will return NO and raise an error. If the caller is a JS
 	callback, it must return NO to signal an error.
 */
-OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
+BOOL cxx_OOJSArgumentListGetNumber(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
 
 /*	OOJSArgumentListGetNumberNoError()
 	
-	Like OOJSArgumentListGetNumber(), but does not report an error on failure.
+	Like cxx_OOJSArgumentListGetNumber(), but does not report an error on failure.
 */
 OOJS_EXTERN_C BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
 
