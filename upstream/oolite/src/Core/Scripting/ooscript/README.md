@@ -172,6 +172,10 @@ Generated from the header's declarations. One row per façade function that repl
 	JS_THIS_OBJECT, JS_RVAL, JS_SET_RVAL, JS_CALLEE, behind OOJS_ARGV and friends) map onto
 	ooscript::CallArgs.
 
+## The QuickJS-ng backend
+
+`JSEngine_quickjs.cpp` implements every function in `JSEngine.hpp` (bead oo-1gc.2) against the vendored QuickJS-ng; `tools/check-jsengine-facade-quickjs.sh` and `tools/check-jsengine-facade-quickjs-asan.sh` are its acceptance. Its file banner is the design record: the handle arena that stands in for SpiderMonkey's conservative stack scan (roots are addresses read at `gc()`/`maybeGC()` time), strings and property ids, how `ClassDef` hooks map onto exotic methods and per-object slots, natives, scripts, errors, and every place it knowingly diverges from SpiderMonkey 1.8.5 (grep `DIVERGENCE`).
+
 ## Not in the façade, and why
 
 	JS_FrameIterator, JS_GetFrameScript, JS_GetFrameThis, JS_GetFrameScopeChain,
