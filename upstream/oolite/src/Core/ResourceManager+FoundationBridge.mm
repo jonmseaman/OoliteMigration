@@ -9,6 +9,38 @@ and converts the result exactly as the old method produced it (nil for nil, immu
 
 #import "ResourceManager.h"	// declares the bridge category at its end
 #import "OOFoundationBridge.h"
+#import "OOCacheManager.h"
+
+
+/*	The loaders' cache keys (the same text +cxx_dictionaryFromFilesNamed:... and
+	+cxx_arrayFromFilesNamed:... build). With cache:YES the old methods returned the object held in
+	OOCacheManager, the same object on every call; the bridge returns that object too (for arrays,
+	the fresh +arrayWithArray: copy of it the old method made), so a cached load is never rebuilt
+	as a Foundation graph per call, and the cache's own clearing drops it.
+*/
+namespace {
+
+NSString *DictionaryCacheKey(NSString *fileName, NSString *folderName, OOResourceMergeMode mergeMode)
+{
+	NSString *mergeType = nil;
+	switch (mergeMode)
+	{
+		case MERGE_NONE:	mergeType = @"none";	break;
+		case MERGE_BASIC:	mergeType = @"basic";	break;
+		case MERGE_SMART:	mergeType = @"smart";	break;
+	}
+	if (mergeType == nil)  return nil;
+	if (folderName != nil)  return [NSString stringWithFormat:@"%@/%@ merge:%@", folderName, fileName, mergeType];
+	return [NSString stringWithFormat:@"%@ merge:%@", fileName, mergeType];
+}
+
+
+NSString *ArrayCacheKey(NSString *fileName, NSString *folderName, BOOL mergeFiles)
+{
+	return [NSString stringWithFormat:@"%@%@ merge:%@", (folderName != nil) ? [folderName stringByAppendingString:@"/"] : (NSString *)@"", fileName, mergeFiles ? @"yes" : @"no"];
+}
+
+}	// namespace
 
 
 @implementation ResourceManager (OOFoundationBridge)
@@ -143,6 +175,171 @@ and converts the result exactly as the old method produced it (nil for nil, immu
 + (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version
 {
 	return [self cxx_matchVersions:oo::PListFrom(rangeDict) withVersion:oo::StdString(version)];
+}
+
+
+// oo-3rb.101: merged plist loading
+
++ (BOOL) corePlist:(NSString *)fileName excludedAt:(NSString *)path
+{
+	if (path == nil || fileName == nil)  return NO;	// messaging nil answered NO: not excluded
+	return [self cxx_corePlist:oo::StdString(fileName) excludedAt:oo::StdString(path)];
+}
+
+
++ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
+								  inFolder:(NSString *)folderName
+								  andMerge:(BOOL) mergeFiles
+{
+	return [self dictionaryFromFilesNamed:fileName inFolder:folderName mergeMode:mergeFiles ? MERGE_BASIC : MERGE_NONE cache:YES];
+}
+
+
++ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
+								  inFolder:(NSString *)folderName
+								 mergeMode:(OOResourceMergeMode)mergeMode
+									 cache:(BOOL)useCache
+{
+	if (fileName == nil)  return nil;
+
+	NSString *cacheKey = useCache ? DictionaryCacheKey(fileName, folderName, mergeMode) : nil;
+	OOCacheManager *cacheMgr = [OOCacheManager sharedCache];
+	if (cacheKey != nil)
+	{
+		id cached = [cacheMgr objectForKey:cacheKey inCache:@"dictionaries"];
+		if (cached != nil)  return cached;
+	}
+
+	const oo::PList result = [self cxx_dictionaryFromFilesNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName) mergeMode:mergeMode cache:useCache];
+	if (cacheKey != nil)
+	{
+		id cached = [cacheMgr objectForKey:cacheKey inCache:@"dictionaries"];	// what the load just cached
+		if (cached != nil)  return cached;
+	}
+	return oo::ObjectFromPList(result);
+}
+
+
++ (NSArray *)arrayFromFilesNamed:(NSString *)fileName
+						inFolder:(NSString *)folderName
+						andMerge:(BOOL) mergeFiles
+{
+	return [self arrayFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles cache:YES];
+}
+
+
++ (NSArray *)arrayFromFilesNamed:(NSString *)fileName
+						inFolder:(NSString *)folderName
+						andMerge:(BOOL) mergeFiles
+						   cache:(BOOL)useCache
+{
+	if (fileName == nil)  return nil;
+
+	NSString *cacheKey = useCache ? ArrayCacheKey(fileName, folderName, mergeFiles) : nil;
+	OOCacheManager *cacheMgr = [OOCacheManager sharedCache];
+	if (cacheKey != nil)
+	{
+		id cached = [cacheMgr objectForKey:cacheKey inCache:@"arrays"];
+		if (cached != nil)  return [NSArray arrayWithArray:cached];
+	}
+
+	const oo::PList result = [self cxx_arrayFromFilesNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName) andMerge:mergeFiles cache:useCache];
+	if (cacheKey != nil)
+	{
+		id cached = [cacheMgr objectForKey:cacheKey inCache:@"arrays"];	// what the load just cached
+		if (cached != nil)  return [NSArray arrayWithArray:cached];
+	}
+	// No file to merge was nil; a missing unmerged array went through +arrayWithArray: of nil, an empty array.
+	if (result.isNull() && mergeFiles)  return nil;
+	return [NSArray arrayWithArray:oo::ObjectFromPList(result)];
+}
+
+
++ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName
+{
+	return [self stringFromFilesNamed:fileName inFolder:folderName cache:YES];
+}
+
+
++ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache
+{
+	if (fileName == nil)  return nil;	// no path was found for a nil name
+	return oo::NSStringOrNil([self cxx_stringFromFilesNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName) cache:useCache]);
+}
+
+
+// oo-3rb.102: special dictionaries and scripts
+// The whitelist and shader binding types were loaded once and returned as the same object on
+// every call: the bridge converts them once and keeps that object (they are never reloaded).
+
++ (NSDictionary *) whitelistDictionary
+{
+	static NSDictionary *whitelistDictionary = nil;
+	static BOOL converted = NO;
+	if (!converted)
+	{
+		whitelistDictionary = [oo::ObjectFromPList([self cxx_whitelistDictionary]) retain];
+		converted = YES;
+	}
+	return whitelistDictionary;
+}
+
+
++ (NSDictionary *) shaderBindingTypesDictionary
+{
+	static NSDictionary *shaderBindingTypesDictionary = nil;
+	static BOOL converted = NO;
+	if (!converted)
+	{
+		shaderBindingTypesDictionary = [oo::ObjectFromPList([self cxx_shaderBindingTypesDictionary]) retain];
+		converted = YES;
+	}
+	return shaderBindingTypesDictionary;
+}
+
+
++ (NSDictionary *) logControlDictionary
+{
+	// Built afresh on every call, as before (a mutable dictionary).
+	return [NSMutableDictionary dictionaryWithDictionary:oo::ObjectFromPList([self cxx_logControlDictionary])];
+}
+
+
++ (NSDictionary *) roleCategoriesDictionary
+{
+	// Each category is a mutable set of roles, as the old merge built it.
+	NSMutableDictionary *roleCategories = [NSMutableDictionary dictionaryWithCapacity:16];
+	const oo::PList categories = [self cxx_roleCategoriesDictionary];
+	for (const auto &[category, roles] : *categories.getIf<oo::PList::Dict>())
+	{
+		NSMutableSet *contents = [NSMutableSet setWithCapacity:16];
+		for (const oo::PList &role : *roles.getIf<oo::PList::Array>())
+		{
+			id member = oo::ObjectFromPList(role);
+			if (member != nil)  [contents addObject:member];
+		}
+		[roleCategories setObject:contents forKey:oo::NSStringFrom(category)];
+	}
+	return [[roleCategories copy] autorelease];
+}
+
+
++ (NSDictionary *)loadScripts
+{
+	// The old mutable dictionary, filled in the old insertion order (so it enumerates as before).
+	NSMutableDictionary *loadedScripts = [NSMutableDictionary dictionary];
+	for (const auto &[name, script] : [self cxx_loadScripts])
+	{
+		[loadedScripts setObject:script.get() forKey:oo::NSStringFrom(name)];
+	}
+	return loadedScripts;
+}
+
+
++ (NSDictionary *) materialDefaults
+{
+	// The loader's cached object, as the old method returned it (see +dictionaryFromFilesNamed:...).
+	return [self dictionaryFromFilesNamed:@"material-defaults.plist" inFolder:@"Config" andMerge:YES];
 }
 
 @end

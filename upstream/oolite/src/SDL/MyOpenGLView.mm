@@ -415,7 +415,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 #if OOLITE_ESPEAK
 	if (!SDL_getenv("ESPEAK_DATA_PATH"))
 	{
-		espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [[ResourceManager builtInPath] UTF8String], 0);
+		espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [ResourceManager cxx_builtInPath].value_or(std::string()).c_str(), 0);
 	}
 	else
 	{
@@ -820,7 +820,7 @@ bool SameMode(const oo::PList &a, const oo::PList &b)
 	SDL_Surface     	*image=NULL;
 	SDL_Rect			dest;
 
-	const std::string	imagesDir = oo::str::appendingPathComponent(oo::StdString([ResourceManager builtInPath]), "Images");
+	const std::string	imagesDir = oo::str::appendingPathComponent([ResourceManager cxx_builtInPath].value_or(std::string()), "Images");
 
 	image = SDL_LoadBMP(oo::str::appendingPathComponent(imagesDir, "splash.bmp").c_str());
 
