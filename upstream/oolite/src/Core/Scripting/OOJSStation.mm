@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 #include <cstring>
 #include <cstdint>
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -451,9 +452,9 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			} 
 			else 
 			{
-				if ([entity localShipyard] == nil) [entity generateShipyard];
-				NSMutableArray *shipyard = [entity localShipyard];
-				*value_raw = OOJSValueFromNativeObject(context, shipyard);
+				if ([entity cxx_localShipyard] == nullptr) [entity generateShipyard];
+				std::vector<oo::PList> *shipyard = [entity cxx_localShipyard];
+				*value_raw = OOJSValueFromNativeObject(context, shipyard != nullptr ? oo::ObjectFromPList(oo::PList(*shipyard)) : nil);
 			}
 			return YES;
 		}
@@ -946,7 +947,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 
 	if (oojsArgs.count() < 2 || ooscript::isNull(OOJS_ARGV[1]))
 	{
-		[station setInterfaceDefinition:nil forKey:key];
+		[station cxx_setInterfaceDefinition:nil forKey:oo::StdString(key)];
 		OOJS_RETURN_VOID;
 	}
 	
@@ -1031,7 +1032,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 		// can do .bind(this) for callback instead
 	}
 	
-	[station setInterfaceDefinition:definition forKey:key];
+	[station cxx_setInterfaceDefinition:definition forKey:oo::StdString(key)];
 
 	[definition release];
 
@@ -1149,8 +1150,8 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	// make sure the shipyard has been generated
-	if (![station localShipyard]) [station generateShipyard];
-	NSMutableArray *shipyard = [station localShipyard];
+	if (![station cxx_localShipyard]) [station generateShipyard];
+	std::vector<oo::PList> *shipyard = [station cxx_localShipyard];
 
 	if (ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
 
@@ -1283,7 +1284,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	// add the ship spec
 	[result setObject:shipInfo forKey:SHIPYARD_KEY_SHIP];
 	// add it to the station's shipyard
-	[shipyard addObject:result];
+	if (shipyard != nullptr)  shipyard->push_back(oo::PListFrom(result));
 
 	// refresh the screen if the shipyard is currently being displayed
 	if(station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_SHIPYARD)
@@ -1312,20 +1313,20 @@ static bool StationRemoveShipFromShipyard(ooscript::Context context, ooscript::C
 		return NO;
 	}
 	// make sure the shipyard has been generated
-	if (![station localShipyard]) [station generateShipyard];
-	NSMutableArray *shipyard = [station localShipyard];
+	if (![station cxx_localShipyard]) [station generateShipyard];
+	std::vector<oo::PList> *shipyard = [station cxx_localShipyard];
 	
 	int32_t shipIndex = -1;
 	BOOL gotIndex = YES;
 	gotIndex = ooscript::valueToInt32((context), (OOJS_ARGV[0]), &shipIndex);
 
-	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > [shipyard count]) 
+	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > (shipyard != nullptr ? shipyard->size() : 0)) 
 	{
 		OOJSReportBadArguments(context, @"Station", @"removeShipFromShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"valid ship index");
 		return NO;
 	}
 
-	[shipyard removeObjectAtIndex:shipIndex];
+	shipyard->erase(shipyard->begin() + shipIndex);
 
 	// refresh the screen if the shipyard is currently being displayed
 	if(station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_SHIPYARD)

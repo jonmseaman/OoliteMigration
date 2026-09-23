@@ -39,6 +39,11 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (StationEntity.h)
 - (NSString *)allegiance;	// -> -cxx_allegiance
 - (NSString *) acceptDockingClearanceRequestFrom:(ShipEntity *)other;	// -> -cxx_acceptDockingClearanceRequestFrom:
 
+// oo-3rb.174 (chunk 3): shipyard and interfaces. -localShipyard is NOT bridged: its callers edit
+// the live array, which a snapshot would silently drop (they use -cxx_localShipyard).
+- (void) setLocalShipyard:(NSArray *)market;	// -> -cxx_setLocalShipyard:
+- (NSMutableDictionary *) localInterfaces;	// -> -cxx_localInterfaces (a fresh snapshot per call; its callers only read it)
+
 @end
 
 
