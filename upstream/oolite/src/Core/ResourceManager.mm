@@ -173,6 +173,92 @@ bool IsWellFormedUTF8(const std::string &bytes)
 }
 
 
+// -[a isEqual:b] for two property-list values; a missing one (nil) is never equal. Strings
+// compare directly; anything else goes through Foundation's -isEqual: (numbers compare by value,
+// which PList's type-strict == does not).
+bool PListIsEqual(const oo::PList *a, const oo::PList *b)
+{
+	if (a == nullptr || b == nullptr)  return false;
+	const std::string *aString = a->getIf<std::string>(), *bString = b->getIf<std::string>();
+	if (aString != nullptr && bString != nullptr)  return *aString == *bString;
+	return [oo::ObjectFromPList(*a) isEqual:oo::ObjectFromPList(*b)];
+}
+
+
+// The value if it is an array (at<NSArray *>), else nullptr.
+const oo::PList *AsArray(const oo::PList *value)
+{
+	return (value != nullptr && value->isArray()) ? value : nullptr;
+}
+
+
+// Element index of an array value; nullptr for a missing array or an index past its end (at<id>).
+const oo::PList *ArrayElement(const oo::PList *array, std::size_t index)
+{
+	return array != nullptr ? array->at(index) : nullptr;
+}
+
+
+// -replaceObjectAtIndex:withObject: on an array value, raising as GSMutableArray did past the end.
+void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &value)
+{
+	oo::PList::Array &elements = *array.getIf<oo::PList::Array>();
+	if (index >= elements.size())
+	{
+		[NSException raise:NSRangeException format:@"Index %lu is out of range %lu (in 'replaceObjectAtIndex:withObject:')", (unsigned long)index, (unsigned long)elements.size()];
+	}
+	elements[index] = value;
+}
+
+
+// -[NSMutableDictionary(OOExtensions) mergeEntriesFromDictionary:]: a key only in other is added;
+// two unequal dictionaries merge recursively, two unequal arrays concatenate; anything else is
+// replaced by other's value.
+void MergeEntries(oo::PList::Dict &self, const oo::PList::Dict &other)
+{
+	for (const auto &[key, otherObject] : other)
+	{
+		auto existing = self.find(key);
+		if (existing == self.end())
+		{
+			self.emplace(key, otherObject);
+			continue;
+		}
+		oo::PList &thisObject = existing->second;
+		BOOL merged = NO;
+		if (thisObject.isDict() && otherObject.isDict() && !PListIsEqual(&thisObject, &otherObject))
+		{
+			oo::PList mergeObject = thisObject;
+			MergeEntries(*mergeObject.getIf<oo::PList::Dict>(), *otherObject.getIf<oo::PList::Dict>());
+			thisObject = std::move(mergeObject);
+			merged = YES;
+		}
+		else if (thisObject.isArray() && otherObject.isArray() && !PListIsEqual(&thisObject, &otherObject))
+		{
+			oo::PList::Array &elements = *thisObject.getIf<oo::PList::Array>();
+			for (const oo::PList &element : *otherObject.getIf<oo::PList::Array>())  elements.push_back(element);
+			merged = YES;
+		}
+		if (!merged)  thisObject = otherObject;
+	}
+}
+
+
+// A star or nebula texture entry's merge key: the string itself, or a dictionary's "key" (else
+// its "texture"); nullptr for anything else.
+const oo::PList *TextureListKey(const oo::PList *value)
+{
+	if (value == nullptr)  return nullptr;
+	if (value->isString())  return value;
+	if (value->isDict())
+	{
+		const oo::PList *key = value->find("key");
+		return key != nullptr ? key : value->find("texture");
+	}
+	return nullptr;
+}
+
+
 // [path lastPathComponent] of a nil-able path, as %@ printed it.
 std::optional<std::string> LastPathComponent(const std::optional<std::string> &path)
 {
@@ -1248,20 +1334,19 @@ static NSMutableDictionary *sStringCache;
  * excluded by not including the plists which reference them, and
  * everything else can be excluded by not referencing it from a plist.
  */
-+ (BOOL) corePlist:(NSString *)fileName excludedAt:(NSString *)path
++ (BOOL) cxx_corePlist:(const std::string &)fileName excludedAt:(const std::string &)path
 {
-	if (![path isEqualToString:oo::NSStringOrNil([self cxx_builtInPath])])
+	if (path != [self cxx_builtInPath])
 	{
 		// non-core paths always okay
 		return NO;
 	}
-	for (const std::string &uaoPart : sUseAddOnsParts)
+	const std::string noPList = oo::StdString(SCENARIO_OXP_DEFINITION_NOPLIST);
+	for (const std::string &uaoBit : sUseAddOnsParts)
 	{
-		NSString *uaoBit = oo::NSStringFrom(uaoPart);	// corePlist:excludedAt: converts in oo-3rb.101
-		if ([uaoBit hasPrefix:SCENARIO_OXP_DEFINITION_NOPLIST])
+		if (oo::str::hasPrefix(uaoBit, noPList))
 		{
-			NSString *plist = [uaoBit substringFromIndex:[SCENARIO_OXP_DEFINITION_NOPLIST length]];
-			if ([plist isEqualToString:fileName])
+			if (uaoBit.substr(noPList.size()) == fileName)
 			{
 				// this core plist file should not be loaded at all
 				return YES;
@@ -1273,264 +1358,245 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
-								  inFolder:(NSString *)folderName
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
 								  andMerge:(BOOL) mergeFiles
 {
-	return [ResourceManager dictionaryFromFilesNamed:fileName inFolder:folderName mergeMode:mergeFiles ? MERGE_BASIC : MERGE_NONE cache:YES];
+	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName mergeMode:mergeFiles ? MERGE_BASIC : MERGE_NONE cache:YES];
 }
 
 
-+ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
-								  inFolder:(NSString *)folderName
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
 								 mergeMode:(OOResourceMergeMode)mergeMode
 									 cache:(BOOL)cache
 {
-	id				result = nil;
-	NSMutableArray	*results = nil;
-	NSString		*cacheKey = nil;
-	NSString		*mergeType = nil;
+	oo::PList		result;
+	std::string		cacheKey;
+	const char		*mergeType = nullptr;
 	OOCacheManager	*cacheMgr = [OOCacheManager sharedCache];
-	NSEnumerator	*enumerator = nil;
-	NSString		*path = nil;
-	NSString		*dictPath = nil;
-	NSDictionary	*dict = nil;
-	
-	if (fileName == nil)  return nil;
-	
+
 	switch (mergeMode)
 	{
 		case MERGE_NONE:
-			mergeType = @"none";
+			mergeType = "none";
 			break;
-		
+
 		case MERGE_BASIC:
-			mergeType = @"basic";
+			mergeType = "basic";
 			break;
-		
+
 		case MERGE_SMART:
-			mergeType = @"smart";
+			mergeType = "smart";
 			break;
 	}
-	if (mergeType == nil)
+	if (mergeType == nullptr)
 	{
-		OOLog(kOOLogParameterError, @"Unknown dictionary merge mode %u for %@. (This is an internal programming error, please report it.)", mergeMode, fileName);
-		return nil;
+		OOLog(kOOLogParameterError, @"Unknown dictionary merge mode %u for %@. (This is an internal programming error, please report it.)", mergeMode, oo::NSStringFrom(fileName));
+		return oo::PList();
 	}
-	
+
+	// OOCacheManager holds Foundation objects (an unmigrated callee): what it stores is
+	// oo::ObjectFromPList(result), and what it returns arrives through oo::PListFrom.
 	if (cache)
 	{
-	
-		if (folderName != nil)
+
+		if (folderName.has_value())
 		{
-			cacheKey = [NSString stringWithFormat:@"%@/%@ merge:%@", folderName, fileName, mergeType];
+			cacheKey = oo::str::format("%s/%s merge:%s", folderName->c_str(), fileName.c_str(), mergeType);
 		}
 		else
 		{
-			cacheKey = [NSString stringWithFormat:@"%@ merge:%@", fileName, mergeType];
+			cacheKey = oo::str::format("%s merge:%s", fileName.c_str(), mergeType);
 		}
-		result = [cacheMgr objectForKey:cacheKey inCache:@"dictionaries"];
-		if (result != nil)  return result;
+		id cached = [cacheMgr cxx_objectForKey:cacheKey inCache:"dictionaries"];
+		if (cached != nil)  return oo::PListFrom(cached);
 	}
-	
+
+	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
 	if (mergeMode == MERGE_NONE)
 	{
 		// Find "last" matching dictionary
-		for (enumerator = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) reverseObjectEnumerator]; (path = [enumerator nextObject]); )
+		const std::vector<std::string> paths = [ResourceManager cxx_paths];
+		for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 		{
-			if (folderName != nil)
+			const std::string &path = *pathIt;
+			if (folderName.has_value())
 			{
-				dictPath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-				dict = OODictionaryFromFile(dictPath);
-				if (dict != nil)  break;
+				result = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				if (!result.isNull())  break;
 			}
-			dictPath = [path stringByAppendingPathComponent:fileName];
-			dict = OODictionaryFromFile(dictPath);
-			if (dict != nil)  break;
+			result = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			if (!result.isNull())  break;
 		}
-		result = dict;
 	}
 	else
 	{
 		// Find all matching dictionaries
-		results = [NSMutableArray array];
-		for (enumerator = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) objectEnumerator]; (path = [enumerator nextObject]); )
+		std::vector<oo::PList> results;
+		for (const std::string &path : [ResourceManager cxx_paths])
 		{
-			if ([ResourceManager corePlist:fileName excludedAt:path])
+			if ([ResourceManager cxx_corePlist:fileName excludedAt:path])
 			{
 				continue;
 			}
-			dictPath = [path stringByAppendingPathComponent:fileName];
-			dict = OODictionaryFromFile(dictPath);
-			if (dict != nil)  [results addObject:dict];
-			if (folderName != nil)
+			oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			if (!dict.isNull())  results.push_back(std::move(dict));
+			if (folderName.has_value())
 			{
-				dictPath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-				dict = OODictionaryFromFile(dictPath);
-				if (dict != nil)  [results addObject:dict];
+				dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				if (!dict.isNull())  results.push_back(std::move(dict));
 			}
 		}
-		
-		if ([results count] == 0)  return nil;
-		
+
+		if (results.empty())  return oo::PList();
+
 		// Merge result
-		result = [NSMutableDictionary dictionary];
-		
-		for (enumerator = [results objectEnumerator]; (dict = [enumerator nextObject]); )
+		oo::PList::Dict merged;
+
+		for (const oo::PList &dict : results)
 		{
-			if (mergeMode == MERGE_SMART)  [result mergeEntriesFromDictionary:dict];
-			else  [result addEntriesFromDictionary:dict];
+			const oo::PList::Dict &entries = *dict.getIf<oo::PList::Dict>();
+			if (mergeMode == MERGE_SMART)  MergeEntries(merged, entries);
+			else  for (const auto &[key, value] : entries)  merged[key] = value;	// -addEntriesFromDictionary:
 		}
-		result = [[result copy] autorelease];	// Make immutable
+		result = oo::PList(std::move(merged));
 	}
-	
-	if (cache && result != nil)  [cacheMgr setObject:result forKey:cacheKey inCache:@"dictionaries"];
-	
+
+	if (cache && !result.isNull())  [cacheMgr cxx_setObject:oo::ObjectFromPList(result) forKey:cacheKey inCache:"dictionaries"];
+
 	return result;
 }
 
 
-+ (NSArray *) arrayFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName andMerge:(BOOL) mergeFiles
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL) mergeFiles
 {
-	return [self arrayFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles cache:YES];
+	return [self cxx_arrayFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles cache:YES];
 }
 
 
-+ (NSArray *) arrayFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName andMerge:(BOOL) mergeFiles cache:(BOOL)useCache
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL) mergeFiles cache:(BOOL)useCache
 {
-	id				result = nil;
-	NSMutableArray	*results = nil;
-	NSString		*cacheKey = nil;
+	oo::PList		result;
+	std::string		cacheKey;
 	OOCacheManager	*cache = [OOCacheManager sharedCache];
-	NSEnumerator	*enumerator = nil;
-	NSString		*path = nil;
-	NSString		*arrayPath = nil;
-	NSMutableArray	*array = nil;
-	NSArray			*arrayNonEditable = nil;
-	
-	if (fileName == nil)  return nil;
-	
+	const std::string lowercaseName = oo::str::lowercase(fileName);
+	const bool		textureList = lowercaseName == "nebulatextures.plist" || lowercaseName == "startextures.plist";
+
+	// OOCacheManager holds Foundation objects (an unmigrated callee): what it stores is
+	// oo::ObjectFromPList(result), and what it returns arrives through oo::PListFrom.
 	if (useCache)
 	{
-		cacheKey = [NSString stringWithFormat:@"%@%@ merge:%@", (folderName != nil) ? [folderName stringByAppendingString:@"/"] : (NSString *)@"", fileName, mergeFiles ? @"yes" : @"no"];
-		result = [cache objectForKey:cacheKey inCache:@"arrays"];
-		if (result != nil)  return result;
+		cacheKey = oo::str::format("%s%s merge:%s", folderName.has_value() ? (*folderName + "/").c_str() : "", fileName.c_str(), mergeFiles ? "yes" : "no");
+		id cached = [cache cxx_objectForKey:cacheKey inCache:"arrays"];
+		if (cached != nil)  return oo::PListFrom(cached);
 	}
-	
+
+	// OOArrayFromFile (OOPListParsing) is an unmigrated callee: its arrays arrive through oo::PListFrom.
 	if (!mergeFiles)
 	{
 		// Find "last" matching array
-		for (enumerator = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) reverseObjectEnumerator]; (path = [enumerator nextObject]); )
+		const std::vector<std::string> paths = [ResourceManager cxx_paths];
+		for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 		{
-			if (folderName != nil)
+			const std::string &path = *pathIt;
+			if (folderName.has_value())
 			{
-				arrayPath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-				arrayNonEditable = OOArrayFromFile(arrayPath);
-				if (arrayNonEditable != nil)  break;
+				result = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				if (!result.isNull())  break;
 			}
-			arrayPath = [path stringByAppendingPathComponent:fileName];
-			arrayNonEditable = OOArrayFromFile(arrayPath);
-			if (arrayNonEditable != nil)  break;
+			result = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			if (!result.isNull())  break;
 		}
-		result = arrayNonEditable;
 	}
 	else
 	{
-		// Find all matching arrays
-		results = [NSMutableArray array];
-		for (enumerator = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) objectEnumerator]; (path = [enumerator nextObject]); )
+		// Find all matching arrays (an array of arrays, merged in place by the handlers below)
+		oo::PList results = oo::PList(oo::PList::Array());
+		oo::PList::Array &resultArrays = *results.getIf<oo::PList::Array>();
+		for (const std::string &path : [ResourceManager cxx_paths])
 		{
-			if ([ResourceManager corePlist:fileName excludedAt:path])
+			if ([ResourceManager cxx_corePlist:fileName excludedAt:path])
 			{
 				continue;
 			}
 
-			arrayPath = [path stringByAppendingPathComponent:fileName];
-			array = [[OOArrayFromFile(arrayPath) mutableCopy] autorelease];
-			if (array != nil) [results addObject:array];
-	
-			// Special handling for arrays merging. Currently, only equipment.plist, nebulatextures.plist and 
-			// startextures.plist gets their objects merged.
-			// A lookup index is required. For the equipment.plist items, this is the index corresponding to the
-			// EQ_* string, which describes the role of an equipment item and is unique.
-			// For nebula and star textures, this is the texture filename, although it can be overridden with a 
-			// "key" property
-			if ([array count] != 0 && ([[fileName lowercaseString] isEqualToString:@"nebulatextures.plist"] || 
-				[[fileName lowercaseString] isEqualToString:@"startextures.plist"]))
-				[self handleStarNebulaListMerging:results];
-
-			if ([array count] != 0 && [[array objectAtIndex:0] isKindOfClass:[NSArray class]])
+			std::vector<std::string> arrayPaths = { oo::str::appendingPathComponent(path, fileName) };
+			if (folderName.has_value())  arrayPaths.push_back(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
+			for (const std::string &arrayPath : arrayPaths)
 			{
-				if ([[fileName lowercaseString] isEqualToString:@"equipment.plist"])
-					[self handleEquipmentListMerging:results forLookupIndex:3]; // Index 3 is the role string (EQ_*).
-			}
-			if (folderName != nil)
-			{
-				arrayPath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-				array = [[OOArrayFromFile(arrayPath) mutableCopy] autorelease];
-				if (array != nil)  [results addObject:array];
+				oo::PList array = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(arrayPath)));
+				if (array.isNull())  continue;	// a nil array was not added, and counted 0 below
+				resultArrays.push_back(std::move(array));
 
-				if ([array count] != 0 && ([[fileName lowercaseString] isEqualToString:@"nebulatextures.plist"] || 
-					[[fileName lowercaseString] isEqualToString:@"startextures.plist"]))
+				// Special handling for arrays merging. Currently, only equipment.plist, nebulatextures.plist and
+				// startextures.plist gets their objects merged.
+				// A lookup index is required. For the equipment.plist items, this is the index corresponding to the
+				// EQ_* string, which describes the role of an equipment item and is unique.
+				// For nebula and star textures, this is the texture filename, although it can be overridden with a
+				// "key" property
+				// (The array just added is the last of results, which the handlers edit in place.)
+				if (resultArrays.back().count() != 0 && textureList)
 					[self handleStarNebulaListMerging:results];
 
-				if ([array count] != 0 && [[array objectAtIndex:0] isKindOfClass:[NSArray class]])
+				if (resultArrays.back().count() != 0 && resultArrays.back().at(0)->isArray())
 				{
-					if ([[fileName lowercaseString] isEqualToString:@"equipment.plist"])
+					if (lowercaseName == "equipment.plist")
 						[self handleEquipmentListMerging:results forLookupIndex:3]; // Index 3 is the role string (EQ_*).
 				}
 			}
 		}
-		
-		if ([results count] == 0)  return nil;
-		
+
+		if (resultArrays.empty())  return oo::PList();
+
 		// Merge result
-		result = [NSMutableArray array];
-		
-		for (enumerator = [results objectEnumerator]; (array = [enumerator nextObject]); )
+		result = oo::PList(oo::PList::Array());
+		oo::PList::Array &merged = *result.getIf<oo::PList::Array>();
+
+		for (const oo::PList &array : resultArrays)
 		{
-			[result addObjectsFromArray:array];
+			for (const oo::PList &element : *array.getIf<oo::PList::Array>())  merged.push_back(element);
 		}
 		// if we're doing equipment.plist, do equipment overrides now, while the array is still mutable
-		if ([[fileName lowercaseString] isEqualToString:@"equipment.plist"]) 
+		if (lowercaseName == "equipment.plist")
 		{
 			[self handleEquipmentOverrides:result];
 		}
-		result = [[result copy] autorelease];	// Make immutable
 	}
-	
-	if (useCache && result != nil)  [cache setObject:result forKey:cacheKey inCache:@"arrays"];
-	
-	return [NSArray arrayWithArray:result];
+
+	if (useCache && !result.isNull())  [cache cxx_setObject:oo::ObjectFromPList(result) forKey:cacheKey inCache:"arrays"];
+
+	return result;
 }
 
 
 // A method for handling merging of arrays. Currently used with the equipment.plist entries.
 // The arrayToProcess array is scanned for repetitions of the item at lookup index location and, if found,
 // the latest entry replaces the earliest.
-+ (void) handleEquipmentListMerging: (NSMutableArray *)arrayToProcess forLookupIndex:(unsigned)lookupIndex
++ (void) handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex
 {
 	NSUInteger i,j,k;
-	NSMutableArray *refArray = [arrayToProcess objectAtIndex:[arrayToProcess count] - 1];
-	
+	oo::PList::Array &lists = *arrayToProcess.getIf<oo::PList::Array>();
+	oo::PList &refArray = lists[lists.size() - 1];
+
 	// Any change to refArray will directly modify arrayToProcess.
-	
-	for (i = 0; i < [refArray count]; i++)
+
+	for (i = 0; i < refArray.count(); i++)
 	{
-		for (j = 0; j < [arrayToProcess count] - 1; j++)
+		for (j = 0; j < lists.size() - 1; j++)
 		{
-			NSUInteger count = [oo::PListView(arrayToProcess).at<NSArray *>(j) count];
+			NSUInteger count = lists[j].isArray() ? lists[j].count() : 0;
 			if (count == 0)  continue;
-			
+
 			for (k=0; k < count; k++)
 			{
-				id processValue = oo::PListView(oo::PListView(oo::PListView(arrayToProcess).at<NSArray *>(j)).at<NSArray *>(k)).at<id>(lookupIndex, nil);
-				id refValue = oo::PListView(oo::PListView(refArray).at<NSArray *>(i)).at<id>(lookupIndex, nil);
-				
-				if ([processValue isEqual:refValue])
+				const oo::PList *processValue = ArrayElement(AsArray(ArrayElement(&lists[j], k)), lookupIndex);
+				const oo::PList *refValue = ArrayElement(AsArray(ArrayElement(&refArray, i)), lookupIndex);
+
+				if (PListIsEqual(processValue, refValue))
 				{
-					[[arrayToProcess objectAtIndex:j] replaceObjectAtIndex:k withObject:[refArray objectAtIndex:i]];
-					[refArray removeObjectAtIndex:i];
+					ReplaceArrayElement(lists[j], k, *refArray.at(i));
+					refArray.getIf<oo::PList::Array>()->erase(refArray.getIf<oo::PList::Array>()->begin() + static_cast<std::ptrdiff_t>(i));
 				}
 			}
 		}
@@ -1543,97 +1609,73 @@ static NSMutableDictionary *sStringCache;
 // format of file is slightly different to the standard equipment.plist file, in that it is a 
 // dictionary of dictionary objects (rather than an array of arrays). this allows properties like
 // techlevel, price, name/short_description and description/long_description to be updated via the overrides file.
-+ (void) handleEquipmentOverrides: (NSMutableArray *)arrayToProcess
++ (void) handleEquipmentOverrides: (oo::PList &)arrayToProcess
 {
-	NSEnumerator			*equipKeyEnum = nil;
-	NSString				*equipKey = nil;
-	NSDictionary			*overrides = nil;
-	NSDictionary			*overridesEntry = nil;
-	int 					i;
-
-	overrides = [ResourceManager dictionaryFromFilesNamed:@"equipment-overrides.plist"
-												 inFolder:@"Config"
-												mergeMode:MERGE_SMART
-													cache:NO];
+	const oo::PList overrides = [ResourceManager cxx_dictionaryFromFilesNamed:"equipment-overrides.plist"
+															 inFolder:std::string("Config")
+															mergeMode:MERGE_SMART
+																cache:NO];
+	const oo::PList::Dict *overrideEntries = overrides.getIf<oo::PList::Dict>();
+	if (overrideEntries == nullptr)  return;
+	oo::PList::Array &entries = *arrayToProcess.getIf<oo::PList::Array>();
 
 	// cycle through all the equipment keys found in override files
-	for (equipKeyEnum = [overrides keyEnumerator]; (equipKey = [equipKeyEnum nextObject]); )
+	for (const auto &[equipKey, overridesEntry] : *overrideEntries)
 	{
-		overridesEntry = [overrides objectForKey:equipKey];
+		const oo::PList::Dict *overrideInfo = overridesEntry.getIf<oo::PList::Dict>();
 		// loop through our data array to find a match
-		for (i = 0; i < [arrayToProcess count]; i++)
+		for (std::size_t i = 0; i < entries.size(); i++)
 		{
-			NSMutableArray	*equipArray = [[[arrayToProcess objectAtIndex:i] mutableCopy] autorelease];
-			id refValue = oo::PListView(equipArray).at<id>(EQUIPMENT_KEY_INDEX, nil);
+			const oo::PList *refValue = ArrayElement(AsArray(&entries[i]), EQUIPMENT_KEY_INDEX);
 			// does the overridden equipment item exist in the equipment array? if so, get working
-			if ([equipKey isEqual:refValue])
+			const std::string *refKey = refValue != nullptr ? refValue->getIf<std::string>() : nullptr;
+			if (refKey != nullptr && *refKey == equipKey)
 			{
-				NSEnumerator 			*infoKeyEnum = nil;
-				NSString				*infoKey;
+				oo::PList equipArray = entries[i];
 				// cycle through all the properties found for this equipment key in the overrides file
-				for (infoKeyEnum = [overridesEntry keyEnumerator]; (infoKey = [infoKeyEnum nextObject]); )
+				if (overrideInfo != nullptr)  for (const auto &[infoKey, infoValue] : *overrideInfo)
 				{
 					// special cases for the array items that don't have a direct keyname
-					if ([infoKey isEqualToString:@"techlevel"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_TECH_LEVEL_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"price"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_PRICE_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"short_description"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_SHORT_DESC_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"name"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_SHORT_DESC_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"long_description"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_LONG_DESC_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"description"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_LONG_DESC_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else 
+					if (infoKey == "techlevel")
+						ReplaceArrayElement(equipArray, EQUIPMENT_TECH_LEVEL_INDEX, infoValue);
+					else if (infoKey == "price")
+						ReplaceArrayElement(equipArray, EQUIPMENT_PRICE_INDEX, infoValue);
+					else if (infoKey == "short_description" || infoKey == "name")
+						ReplaceArrayElement(equipArray, EQUIPMENT_SHORT_DESC_INDEX, infoValue);
+					else if (infoKey == "long_description" || infoKey == "description")
+						ReplaceArrayElement(equipArray, EQUIPMENT_LONG_DESC_INDEX, infoValue);
+					else
 					{
-						NSMutableDictionary		*extra = nil;
 						// for everything else
-						// do we actually have an extras dictionary?
-						if (!oo::PListView(equipArray).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)) 
-						{
-							// if not, create a blank one we can add to
-							extra = [NSMutableDictionary dictionary];
-						}
-						else
-						{
-							extra = [oo::PListView(equipArray).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX) mutableCopy];
-						}
+						// do we actually have an extras dictionary? if not, start from a blank one we can add to
+						const oo::PList *existingExtra = equipArray.at(EQUIPMENT_EXTRA_INFO_INDEX);
+						oo::PList extra = (existingExtra != nullptr && existingExtra->isDict()) ? *existingExtra : oo::PList(oo::PList::Dict());
+						oo::PList::Dict &extraEntries = *extra.getIf<oo::PList::Dict>();
 						// special case for weapon_info && script_info, which are child dictionaries
-						if ([infoKey isEqualToString:@"weapon_info"] || [infoKey isEqualToString:@"script_info"])
+						if (infoKey == "weapon_info" || infoKey == "script_info")
 						{
-							NSEnumerator			*subEnum = nil;
-							NSString				*subKey;
-							NSMutableDictionary		*subInfo = nil;
-							NSDictionary			*subOverrides = nil;
-							// do we actually have a weapon_info/script_info dictionary?
-							if (!oo::PListView(extra).get<NSDictionary *>(infoKey)) 
-							{
-								// if not, create a blank dictionary we can add to
-								subInfo = [NSMutableDictionary dictionary];
-							} 
-							else 
-							{
-								subInfo = [oo::PListView(extra).get<NSDictionary *>(infoKey) mutableCopy];
-							}
-							subOverrides = oo::PListView(overridesEntry).get<NSDictionary *>(infoKey);
+							// do we actually have a weapon_info/script_info dictionary? if not, start from a blank one
+							const oo::PList *existingSubInfo = extra.get<oo::PList::Dict>(infoKey);
+							oo::PList subInfo = existingSubInfo != nullptr ? *existingSubInfo : oo::PList(oo::PList::Dict());
 							// cycle through all the sub keys found in the overrides file for this equipment key item
-							for (subEnum = [subOverrides keyEnumerator]; (subKey = [subEnum nextObject]); )
+							if (const oo::PList::Dict *subOverrides = infoValue.getIf<oo::PList::Dict>())
 							{
-								[subInfo setObject:[subOverrides objectForKey:subKey] forKey:subKey];
+								for (const auto &[subKey, subValue] : *subOverrides)
+								{
+									(*subInfo.getIf<oo::PList::Dict>())[subKey] = subValue;
+								}
 							}
-							[extra setObject:[[subInfo copy] autorelease] forKey:infoKey];
+							extraEntries[infoKey] = std::move(subInfo);
 						}
 						else
 						{
 							// for all other keys in the extras dictionary
-							[extra setObject:[overridesEntry objectForKey:infoKey] forKey:infoKey];
+							extraEntries[infoKey] = infoValue;
 						}
-						[equipArray replaceObjectAtIndex:EQUIPMENT_EXTRA_INFO_INDEX withObject:[[extra copy] autorelease]];
+						ReplaceArrayElement(equipArray, EQUIPMENT_EXTRA_INFO_INDEX, extra);
 					}
 				}
-				[arrayToProcess replaceObjectAtIndex:i withObject:equipArray];
+				entries[i] = std::move(equipArray);
 			}
 		}
 	}
@@ -1642,64 +1684,35 @@ static NSMutableDictionary *sStringCache;
 
 // A method for handling merging of arrays. Currently used with the nebulatextures.plist and startextures.plist entries.
 // uses the "texture" filename as the key value, or "key" if found
-+ (void) handleStarNebulaListMerging: (NSMutableArray *)arrayToProcess
++ (void) handleStarNebulaListMerging: (oo::PList &)arrayToProcess
 {
 	NSUInteger i,j,k;
-	NSMutableArray *refArray = [arrayToProcess objectAtIndex:[arrayToProcess count] - 1];
+	oo::PList::Array &lists = *arrayToProcess.getIf<oo::PList::Array>();
+	oo::PList &refArray = lists[lists.size() - 1];
 
-	// Any change to refArray will directly modify arrayToProcess.	
-	for (i = 0; i < [refArray count]; i++)
+	// Any change to refArray will directly modify arrayToProcess.
+	for (i = 0; i < refArray.count(); i++)
 	{
-		for (j = 0; j < [arrayToProcess count] - 1; j++)
+		for (j = 0; j < lists.size() - 1; j++)
 		{
-			NSUInteger count = [oo::PListView(arrayToProcess).at<NSArray *>(j) count];
+			NSUInteger count = lists[j].isArray() ? lists[j].count() : 0;
 			if (count == 0)  continue;
 
-			for (k = 0; k < count; k++) 
+			for (k = 0; k < count; k++)
 			{
-				id processValue = oo::PListView(oo::PListView(arrayToProcess).at<NSArray *>(j)).at<id>(k, nil);
-				id refValue = oo::PListView(refArray).at<id>(i, nil);
-				NSString *key1 = nil;
-				NSString *key2 = nil;
+				const oo::PList *processValue = ArrayElement(&lists[j], k);
+				const oo::PList *refValue = ArrayElement(&refArray, i);
 
-				if ([processValue isKindOfClass:[NSString class]]) 
-				{
-					key1 = processValue;
-				}
-				else if ([processValue isKindOfClass:[NSDictionary class]])
-				{
-					if (![processValue objectForKey:@"key"]) 
-					{
-						key1 = [processValue objectForKey:@"texture"];
-					}
-					else
-					{
-						key1 = [processValue objectForKey:@"key"];
-					}
-				}
+				const oo::PList *key1 = TextureListKey(processValue);
 				if (!key1) continue;
 
-				if ([refValue isKindOfClass:[NSString class]]) 
-				{
-					key2 = refValue;
-				}
-				else if ([refValue isKindOfClass:[NSDictionary class]])
-				{
-					if (![refValue objectForKey:@"key"])
-					{
-						key2 = [refValue objectForKey:@"texture"];
-					}
-					else
-					{
-						key2 = [refValue objectForKey:@"key"];
-					}
-				}
+				const oo::PList *key2 = TextureListKey(refValue);
 				if (!key2) continue;
 
-				if ([key1 isEqual:key2])
+				if (PListIsEqual(key1, key2))
 				{
-					[[arrayToProcess objectAtIndex:j] replaceObjectAtIndex:k withObject:[refArray objectAtIndex:i]];
-					[refArray removeObjectAtIndex:i];
+					ReplaceArrayElement(lists[j], k, *refArray.at(i));
+					refArray.getIf<oo::PList::Array>()->erase(refArray.getIf<oo::PList::Array>()->begin() + static_cast<std::ptrdiff_t>(i));
 				}
 
 			}
@@ -2075,17 +2088,21 @@ static NSString *LogClassKeyRoot(NSString *key)
 }
 
 
-+ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
-	return [self stringFromFilesNamed:fileName inFolder:folderName cache:YES];
+	return [self cxx_stringFromFilesNamed:fileName inFolder:folderName cache:YES];
 }
 
 
-+ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache
+// The twin exists from oo-3rb.101 (the loaders' header line shares "FromFilesNamed"); its body,
+// sStringCache and the path lookup convert in oo-3rb.103.
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileNameString inFolder:(const std::optional<std::string> &)folderNameString cache:(BOOL)useCache
 {
 	id				result = nil;
 	NSString		*path = nil;
 	NSString		*key = nil;
+	NSString		*fileName = oo::NSStringFrom(fileNameString);
+	NSString		*folderName = oo::NSStringOrNil(folderNameString);
 	
 	if (useCache)
 	{
@@ -2094,7 +2111,7 @@ static NSString *LogClassKeyRoot(NSString *key)
 		{
 			// return the cached object, if any
 			result = [sStringCache objectForKey:key];
-			if (result)  return result;
+			if (result)  return oo::OptionalString(result);
 		}
 	}
 	
@@ -2107,7 +2124,7 @@ static NSString *LogClassKeyRoot(NSString *key)
 		[sStringCache setObject:result forKey:key];
 	}
 	
-	return result;
+	return oo::OptionalString(result);
 }
 
 
