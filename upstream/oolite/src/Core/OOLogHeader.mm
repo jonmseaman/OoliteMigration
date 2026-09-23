@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OOLogHeader.h"
+#include "oofnd/Process.hpp"
 #import "OOCPUInfo.h"
 #import "OOLogging.h"
 #import "OOOXPVerifier.h"
@@ -153,7 +154,7 @@ void OOPrintLogHeader(void)
 	
 	// systemString: NSString with system type and possibly version.
 	#if (OOLITE_MAC_OS_X || !OOLITE_WINDOWS)
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@", [[NSProcessInfo processInfo] operatingSystemVersionString]];
+		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str()];
 	#elif OOLITE_WINDOWS
 		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@ %@-bit", operatingSystemFullVersion(), is64BitSystem() ? @"64":@"32"];
 	#else
@@ -185,7 +186,7 @@ void OOPrintLogHeader(void)
 NSString *OOPlatformDescription(void)
 {
 	#if OOLITE_MAC_OS_X
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@", [[NSProcessInfo processInfo] operatingSystemVersionString]];
+		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str()];
 	#else
 		#define systemString @OS_TYPE_STRING
 	#endif

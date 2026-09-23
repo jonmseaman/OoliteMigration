@@ -27,6 +27,7 @@ SOFTWARE.
 
 
 #import "OOShaderUniform.h"
+#include "oofnd/objc/OORuntime.h"
 
 #if OO_SHADERS
 
@@ -170,7 +171,7 @@ SOFTWARE.
 		if (location == -1)
 		{
 			OK = NO;
-			OOLog(@"shader.uniform.bind.failed", @"Could not bind uniform \"%@\" to -[%@ %@] (no uniform of that name could be found).", uniformName, [target class], NSStringFromSelector(selector));
+			OOLog(@"shader.uniform.bind.failed", @"Could not bind uniform \"%@\" to -[%@ %s] (no uniform of that name could be found).", uniformName, [target class], OOSelectorName(selector));
 		}
 	}
 	
@@ -218,7 +219,7 @@ SOFTWARE.
 		object = [value.binding.object weakRefUnderlyingObject];
 		if (object != nil)
 		{
-			valueDesc = [NSString stringWithFormat:@"[<%@ %p> %@]", [object class], value.binding.object, NSStringFromSelector(value.binding.selector)];
+			valueDesc = [NSString stringWithFormat:@"[<%@ %p> %s]", [object class], value.binding.object, OOSelectorName(value.binding.selector)];
 		}
 		else
 		{
@@ -394,7 +395,7 @@ SOFTWARE.
 	}
 	
 	isActiveBinding = OK;
-	if (!OK)  OOLog(@"shader.uniform.bind.failed", @"Shader could not bind uniform \"%@\" to -[%@ %@] (%@).", name, [target class], NSStringFromSelector(value.binding.selector), methodProblem);
+	if (!OK)  OOLog(@"shader.uniform.bind.failed", @"Shader could not bind uniform \"%@\" to -[%@ %s] (%@).", name, [target class], OOSelectorName(value.binding.selector), methodProblem);
 }
 
 @end

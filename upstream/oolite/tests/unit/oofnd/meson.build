@@ -11,6 +11,9 @@ oofnd_tests = [
     'test_filesystem',
     'test_resourcepaths',
     'test_cocoa_macros',
+    'test_process',
+    'test_thread',
+    'test_defaults',
     'test_foundation_types',
 ]
 
@@ -33,6 +36,7 @@ oofnd_plist_tests = [
     'test_plist_oldstyle_structures',
     'test_plist_writers',
     'test_plist_xml',
+    'test_plist_get',
 ]
 
 foreach t : oofnd_plist_tests
@@ -51,6 +55,8 @@ endforeach
 # table. -fuse-ld=lld comes from the native file (clang.ini): GNU ld cannot link the gnustep-2 ABI.
 oofnd_objc_tests = [
     'test_objc_floor',
+    'test_objc_runtime',
+    'test_objc_exception',
 ]
 
 foreach t : oofnd_objc_tests
