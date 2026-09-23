@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
 #include <cstring>
+#include "oofnd/StdLib.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -2541,7 +2542,11 @@ NSDictionary *OOJSDictionaryFromStringTable(ooscript::Context context, ooscript:
 
 
 namespace {
-static NSMutableDictionary *sObjectConverters;
+/*	JS class -> converter. Was an NSMutableDictionary of boxed class and function pointers
+	(bead oo-3rb.50); allocated on first registration and deleted by
+	UnregisterObjectConverters(), as the dictionary was released there.
+*/
+static std::unordered_map<const ooscript::ClassDef *, OOJSClassConverterCallback> *sObjectConverters;
 } // namespace
 
 
@@ -2581,20 +2586,20 @@ id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object tabl
 {
 	OOJS_PROFILE_ENTER
 	
-	NSValue					*wrappedClass = nil;
-	NSValue					*wrappedConverter = nil;
 	OOJSClassConverterCallback converter = NULL;
 	ooscript::ClassDef					*tableClass = NULL;
 	
 	if (tableObject == NULL)  return nil;
 	
 	tableClass = OOJSGetClass(context, tableObject);
-	wrappedClass = [NSValue valueWithPointer:tableClass];
-	if (wrappedClass != nil)  wrappedConverter = [sObjectConverters objectForKey:wrappedClass];
-	if (wrappedConverter != nil)
+	if (sObjectConverters != NULL)
 	{
-		converter = reinterpret_cast<OOJSClassConverterCallback>([wrappedConverter pointerValue]);
-		return converter(context, tableObject);
+		auto it = sObjectConverters->find(tableClass);
+		if (it != sObjectConverters->end())
+		{
+			converter = it->second;
+			return converter(context, tableObject);
+		}
 	}
 	return nil;
 	
@@ -2633,21 +2638,16 @@ id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object o
 
 void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJSClassConverterCallback converter)
 {
-	NSValue					*wrappedClass = nil;
-	NSValue					*wrappedConverter = nil;
-	
 	if (theClass == NULL)  return;
-	if (sObjectConverters == nil)  sObjectConverters = [[NSMutableDictionary alloc] init];
+	if (sObjectConverters == NULL)  sObjectConverters = new std::unordered_map<const ooscript::ClassDef *, OOJSClassConverterCallback>;
 	
-	wrappedClass = [NSValue valueWithPointer:theClass];
 	if (converter != NULL)
 	{
-		wrappedConverter = [NSValue valueWithPointer:reinterpret_cast<const void*>(converter)];
-		[sObjectConverters setObject:wrappedConverter forKey:wrappedClass];
+		(*sObjectConverters)[theClass] = converter;
 	}
 	else
 	{
-		[sObjectConverters removeObjectForKey:wrappedClass];
+		sObjectConverters->erase(theClass);
 	}
 }
 
@@ -2655,7 +2655,8 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJSClassConverte
 namespace {
 static void UnregisterObjectConverters(void)
 {
-	DESTROY(sObjectConverters);
+	delete sObjectConverters;
+	sObjectConverters = NULL;
 }
 } // namespace
 

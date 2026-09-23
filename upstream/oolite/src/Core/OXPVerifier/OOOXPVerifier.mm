@@ -61,6 +61,7 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
+#include "oofnd/StdLib.hpp"
 
 static void SwitchLogFile(NSString *name);
 static void NoteVerificationStage(NSString *displayName, NSString *stage);
@@ -397,20 +398,21 @@ static void OpenLogFile(NSString *name);
 	NSString				*stageKey = nil;
 	OOOXPVerifierStage		*stage = nil;
 	NSString				*name = nil;
-	NSMutableDictionary		*dependenciesByStage = nil,
-							*dependentsByStage = nil;
 	NSSet					*dependencies = nil,
 							*dependents = nil;
-	NSValue					*key = nil;
 	
 	@autoreleasepool
 	{
 		/*	Iterate over all stages, getting dependency and dependent sets.
 			This is done in advance so that -dependencies and -dependents may
 			register stages.
+			Keyed by stage, not retaining it; were NSMutableDictionaries keyed by
+			valueWithNonretainedObject: (bead oo-3rb.50). Only looked up, never
+			iterated. The sets are retained and autoreleased into this pool, which
+			is when the autoreleased dictionaries released them.
 		*/
-		dependenciesByStage = [NSMutableDictionary dictionary];
-		dependentsByStage = [NSMutableDictionary dictionary];
+		std::unordered_map<OOOXPVerifierStage *, NSSet *> dependenciesByStage;
+		std::unordered_map<OOOXPVerifierStage *, NSSet *> dependentsByStage;
 		
 		for (;;)
 		{
@@ -422,20 +424,16 @@ static void OpenLogFile(NSString *name);
 			if (stage == nil)  break;
 			[_waitingStages removeObject:stage];
 			
-			key = [NSValue valueWithNonretainedObject:stage];
-			
 			dependencies = [stage dependencies];
 			if (dependencies != nil)
 			{
-				[dependenciesByStage setObject:dependencies
-										forKey:key];
+				dependenciesByStage[stage] = [[dependencies retain] autorelease];
 			}
 			
 			dependents = [stage dependents];
 			if (dependents != nil)
 			{
-				[dependentsByStage setObject:dependents
-									  forKey:key];
+				dependentsByStage[stage] = [[dependents retain] autorelease];
 			}
 		}
 		[_waitingStages release];
@@ -460,8 +458,8 @@ static void OpenLogFile(NSString *name);
 			}
 			
 			// Get dependency set
-			key = [NSValue valueWithNonretainedObject:stage];
-			dependencies = [dependenciesByStage objectForKey:key];
+			auto foundDependencies = dependenciesByStage.find(stage);
+			dependencies = (foundDependencies != dependenciesByStage.end()) ? foundDependencies->second : nil;
 			
 			if (dependencies != nil && ![self setUpDependencies:dependencies forStage:stage])
 			{
@@ -481,8 +479,8 @@ static void OpenLogFile(NSString *name);
 			if (stage == nil)  continue;
 			
 			// Get dependent set
-			key = [NSValue valueWithNonretainedObject:stage];
-			dependents = [dependentsByStage objectForKey:key];
+			auto foundDependents = dependentsByStage.find(stage);
+			dependents = (foundDependents != dependentsByStage.end()) ? foundDependents->second : nil;
 			
 			if (dependents != nil)
 			{

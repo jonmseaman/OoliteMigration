@@ -48,6 +48,8 @@ SOFTWARE.
 #import "OOPointMaths.h"
 #import "OOGraphicsResetManager.h"
 
+#include "oofnd/StdLib.hpp"
+
 
 #ifndef APIENTRY
 #define APIENTRY
@@ -64,6 +66,14 @@ SOFTWARE.
 @end
 
 
+/*	A contour is a list of points; the tesselator's vertex data pointers point into these
+	lists, so they must not change while a polygon is being tesselated. Contours were
+	NSArrays of valueWithPoint: boxes, which the pointers pointed at (bead oo-3rb.50).
+*/
+typedef std::vector<NSPoint> OOContour;
+typedef std::vector<OOContour> OOContourList;
+
+
 typedef struct
 {
 	GLfloat			*data;
@@ -73,6 +83,7 @@ typedef struct
 	size_t			vCount;				// Number of vertices so far in primitive.
 	NSPoint			pending0, pending1;	// Used for splitting GL_TRIANGLE_STRIP/GL_TRIANGLE_FAN primitives.
 	BOOL			OK;					// Set to false to indicate error.
+	std::vector<std::unique_ptr<NSPoint>> *combinedVertices;	// Vertices made by TessCombineCallback, freed after tesselation.
 #ifndef NDEBUG
 	BOOL			generatingOutline;
 	unsigned		svgID;
@@ -82,10 +93,10 @@ typedef struct
 } TessPolygonData;
 
 
-static NSArray *DataArrayToPoints(TessPolygonData *data, NSArray *dataArray);
-static NSArray *BuildOutlineContour(NSArray *dataArray, GLfloat width, BOOL inner);
+static OOContourList DataArrayToPoints(TessPolygonData *data, NSArray *dataArray);
+static OOContour BuildOutlineContour(const OOContour &dataArray, GLfloat width, BOOL inner);
 
-static void SubmitVertices(GLUtesselator *tesselator, TessPolygonData *polygonData, NSArray *contour);
+static void SubmitVertices(GLUtesselator *tesselator, TessPolygonData *polygonData, const OOContour &contour);
 
 static BOOL GrowTessPolygonData(TessPolygonData *data, size_t capacityHint);	// Returns true if capacity grew by at least one.
 static BOOL AppendVertex(TessPolygonData *data, NSPoint vertex);
@@ -95,7 +106,7 @@ static void SVGDumpBegin(TessPolygonData *data);
 static void SVGDumpEnd(TessPolygonData *data);
 static void SVGDumpBeginGroup(TessPolygonData *data, NSString *name);
 static void SVGDumpEndGroup(TessPolygonData *data);
-static void SVGDumpAppendBaseContour(TessPolygonData *data, NSArray *points);
+static void SVGDumpAppendBaseContour(TessPolygonData *data, const OOContour &points);
 static void SVGDumpBeginPrimitive(TessPolygonData *data);
 static void SVGDumpEndPrimitive(TessPolygonData *data);
 static void SVGDumpAppendTriangle(TessPolygonData *data, NSPoint v0, NSPoint v1, NSPoint v2);
@@ -266,6 +277,10 @@ typedef GLvoid (*TessFuncPtr)();
 	TessPolygonData polygonData;
 	memset(&polygonData, 0, sizeof polygonData);
 	polygonData.OK = YES;
+	std::vector<std::unique_ptr<NSPoint>> combinedVertices;
+	polygonData.combinedVertices = &combinedVertices;
+	OOContourList contours;
+	OOContourList outlineContours;
 #ifndef NDEBUG
 	polygonData.name = _name;
 	if ([[NSUserDefaults standardUserDefaults] boolForKey:@"polygon-sprite-dump-svg"])  SVGDumpBegin(&polygonData);
@@ -285,8 +300,8 @@ typedef GLvoid (*TessFuncPtr)();
 		goto END;
 	}
 	
-	dataArray = DataArrayToPoints(&polygonData, dataArray);
-	
+	contours = DataArrayToPoints(&polygonData, dataArray);
+
 	/*** Tesselate polygon fill ***/
 	gluTessCallback(tesselator, GLU_TESS_BEGIN_DATA, (TessFuncPtr)TessBeginCallback);
 	gluTessCallback(tesselator, GLU_TESS_VERTEX_DATA, (TessFuncPtr)TessVertexCallback);
@@ -298,19 +313,13 @@ typedef GLvoid (*TessFuncPtr)();
 	SVGDumpBeginGroup(&polygonData, @"Fill");
 	
 	NSUInteger contourCount, contourIndex;
-	contourCount = [dataArray count];
+	contourCount = contours.size();
 	for (contourIndex = 0; contourIndex < contourCount && polygonData.OK; contourIndex++)
 	{
-		NSArray *contour = [dataArray oo_arrayAtIndex:contourIndex];
-		if (contour == nil)
-		{
-			polygonData.OK = NO;
-			break;
-		}
-		
-		SubmitVertices(tesselator, &polygonData, contour);
+		// Every contour is a list now; the old nil check (not an array) could not fire.
+		SubmitVertices(tesselator, &polygonData, contours[contourIndex]);
 	}
-	
+
 	gluTessEndPolygon(tesselator);
 	SVGDumpEndGroup(&polygonData);
 	
@@ -368,20 +377,19 @@ typedef GLvoid (*TessFuncPtr)();
 	SVGDumpBeginGroup(&polygonData, @"Outline");
 	
 	outlineWidth *= 0.5f; // Half the width in, half the width out.
-	contourCount = [dataArray count];
+	contourCount = contours.size();
+	// Kept until the polygon ends: the tesselator holds pointers into them.
+	outlineContours.reserve(contourCount * 2);
 	for (contourIndex = 0; contourIndex < contourCount && polygonData.OK; contourIndex++)
 	{
-		NSArray *contour = [dataArray oo_arrayAtIndex:contourIndex];
-		if (contour == nil)
-		{
-			polygonData.OK = NO;
-			break;
-		}
-	
-		SubmitVertices(tesselator, &polygonData, BuildOutlineContour(contour, outlineWidth, NO));
-		SubmitVertices(tesselator, &polygonData, BuildOutlineContour(contour, outlineWidth, YES));
+		const OOContour &contour = contours[contourIndex];
+
+		outlineContours.push_back(BuildOutlineContour(contour, outlineWidth, NO));
+		SubmitVertices(tesselator, &polygonData, outlineContours.back());
+		outlineContours.push_back(BuildOutlineContour(contour, outlineWidth, YES));
+		SubmitVertices(tesselator, &polygonData, outlineContours.back());
 	}
-	
+
 	gluTessEndPolygon(tesselator);
 	SVGDumpEndGroup(&polygonData);
 	
@@ -421,20 +429,20 @@ END:
 @end
 
 
-static void SubmitVertices(GLUtesselator *tesselator, TessPolygonData *polygonData, NSArray *contour)
+static void SubmitVertices(GLUtesselator *tesselator, TessPolygonData *polygonData, const OOContour &contour)
 {
-	NSUInteger vertexCount = [contour count], vertexIndex;
+	NSUInteger vertexCount = contour.size(), vertexIndex;
 	if (vertexCount > 2)
 	{
 		gluTessBeginContour(tesselator);
-		
+
 		for (vertexIndex = 0; vertexIndex < vertexCount && polygonData->OK; vertexIndex++)
 		{
-			NSValue *pointValue = [contour objectAtIndex:vertexIndex];
-			NSPoint p = [pointValue pointValue];
+			const NSPoint *pointValue = &contour[vertexIndex];
+			NSPoint p = *pointValue;
 			GLdouble vert[3] = { p.x, p.y, 0.0 };
-			
-			gluTessVertex(tesselator, vert, pointValue);
+
+			gluTessVertex(tesselator, vert, (void *)pointValue);
 		}
 		
 		gluTessEndContour(tesselator);
@@ -442,11 +450,11 @@ static void SubmitVertices(GLUtesselator *tesselator, TessPolygonData *polygonDa
 }
 
 
-static NSArray *DataArrayToPoints(TessPolygonData *data, NSArray *dataArray)
+static OOContourList DataArrayToPoints(TessPolygonData *data, NSArray *dataArray)
 {
 	/*	This converts an icon definition in the form of an array of array of
-		numbers to internal data in the form of an array of arrays of NSValues
-		containing NSPoint data. In addition to repacking the data, it performs
+		numbers to internal data in the form of a list of contours (lists of
+		NSPoints). In addition to repacking the data, it performs
 		the following data processing:
 		  * Sequences of duplicate vertices are removed (including across the
 		    beginning and end, in case of manually closed contours).
@@ -458,13 +466,14 @@ static NSArray *DataArrayToPoints(TessPolygonData *data, NSArray *dataArray)
 	SVGDumpBeginGroup(data, @"Base contours");
 	
 	NSUInteger polyIter, polyCount = [dataArray count];
-	NSArray *subArrays[polyCount];
-	
+	OOContourList subArrays(polyCount);
+
 	for (polyIter = 0; polyIter < polyCount; polyIter++)
 	{
 		NSArray *polyDef = [dataArray objectAtIndex:polyIter];
 		NSUInteger vertIter, vertCount = [polyDef count] / 2;
-		NSMutableArray *newPolyDef = [NSMutableArray arrayWithCapacity:vertCount];
+		OOContour newPolyDef;
+		newPolyDef.reserve(vertCount);
 		CGFloat area = 0;
 		
 		CGFloat oldX = [polyDef oo_doubleAtIndex:(vertCount -1) * 2];
@@ -485,35 +494,33 @@ static NSArray *DataArrayToPoints(TessPolygonData *data, NSArray *dataArray)
 			oldX = x;
 			oldY = y;
 			
-			[newPolyDef addObject:[NSValue valueWithPoint:NSMakePoint(x, y)]];
+			newPolyDef.push_back(NSMakePoint(x, y));
 		}
 		
 		// Eliminate duplicates at ends - the initialization of oldX and oldY will catch one pair, but not extra-silly cases.
-		while ([newPolyDef count] > 1 && [[newPolyDef objectAtIndex:0] isEqual:[newPolyDef lastObject]])
+		// (Point equality is ==, as the boxes' -isEqual: was: 0 equals -0.)
+		while (newPolyDef.size() > 1 && newPolyDef.front().x == newPolyDef.back().x && newPolyDef.front().y == newPolyDef.back().y)
 		{
-			[newPolyDef removeLastObject];
+			newPolyDef.pop_back();
 		}
-		
-		if (area >= 0)
+
+		if (!(area >= 0))	// as the old else-branch: NaN reverses too
 		{
-			subArrays[polyIter] = newPolyDef;
+			std::reverse(newPolyDef.begin(), newPolyDef.end());
 		}
-		else
-		{
-			subArrays[polyIter] = [[newPolyDef reverseObjectEnumerator] allObjects];
-		}
+		subArrays[polyIter] = std::move(newPolyDef);
 		
 		SVGDumpAppendBaseContour(data, subArrays[polyIter]);
 	}
 	
 	SVGDumpEndGroup(data);
-	return [NSArray arrayWithObjects:subArrays count:polyCount];
+	return subArrays;
 }
 
 
-static NSArray *BuildOutlineContour(NSArray *dataArray, GLfloat width, BOOL inner)
+static OOContour BuildOutlineContour(const OOContour &dataArray, GLfloat width, BOOL inner)
 {
-	NSUInteger i, count = [dataArray count];
+	NSUInteger i, count = dataArray.size();
 	if (count < 2)  return dataArray;
 	
 	/*
@@ -553,18 +560,19 @@ static NSArray *BuildOutlineContour(NSArray *dataArray, GLfloat width, BOOL inne
 	NSPoint prev, current, next;
 	if (inner)
 	{
-		prev = [[dataArray objectAtIndex:0] pointValue];
-		current = [[dataArray objectAtIndex:count -1] pointValue];
-		next = [[dataArray objectAtIndex:count - 2] pointValue];	
+		prev = dataArray[0];
+		current = dataArray[count -1];
+		next = dataArray[count - 2];	
 	}
 	else
 	{
-		prev = [[dataArray objectAtIndex:count - 1] pointValue];
-		current = [[dataArray objectAtIndex:0] pointValue];
-		next = [[dataArray objectAtIndex:1] pointValue];
+		prev = dataArray[count - 1];
+		current = dataArray[0];
+		next = dataArray[1];
 	}
 	
-	NSMutableArray *result = [NSMutableArray arrayWithCapacity:count];
+	OOContour result;
+	result.reserve(count);
 	
 	for (i = 0; i < count; i++)
 	{
@@ -582,7 +590,7 @@ static NSArray *BuildOutlineContour(NSArray *dataArray, GLfloat width, BOOL inne
 			
 			if (!isnan(v.x) && !isnan(v.y))
 			{
-				[result addObject:[NSValue valueWithPoint:PtAdd(v, current)]];
+				result.push_back(PtAdd(v, current));
 			}
 		}
 		else
@@ -593,11 +601,11 @@ static NSArray *BuildOutlineContour(NSArray *dataArray, GLfloat width, BOOL inne
 			
 			if (!isnan(v1.x) && !isnan(v1.y))
 			{
-				[result addObject:[NSValue valueWithPoint:PtAdd(v1, current)]];
+				result.push_back(PtAdd(v1, current));
 			}
 			if (!isnan(v2.x) && !isnan(v2.y))
 			{
-				[result addObject:[NSValue valueWithPoint:PtAdd(v2, current)]];
+				result.push_back(PtAdd(v2, current));
 			}
 		}
 		
@@ -606,11 +614,11 @@ static NSArray *BuildOutlineContour(NSArray *dataArray, GLfloat width, BOOL inne
 		
 		if (inner)
 		{
-			next = [[dataArray objectAtIndex:(count * 2 - 3 - i) % count] pointValue];
+			next = dataArray[(count * 2 - 3 - i) % count];
 		}
 		else
 		{
-			next = [[dataArray objectAtIndex:(i + 2) % count] pointValue];
+			next = dataArray[(i + 2) % count];
 		}
 	}
 	
@@ -675,11 +683,11 @@ static void APIENTRY TessBeginCallback(GLenum type, void *polygonData)
 static void APIENTRY TessVertexCallback(void *vertexData, void *polygonData)
 {
 	TessPolygonData *data = (TessPolygonData *)polygonData;
-	NSValue *vertValue = (NSValue *)vertexData;
+	const NSPoint *vertValue = (const NSPoint *)vertexData;
 	NSCParameterAssert(vertValue != NULL && data != NULL);
 	if (!data->OK)  return;
-	
-	NSPoint p = [vertValue pointValue];
+
+	NSPoint p = *vertValue;
 	NSPoint vertex = { p.x, p.y };
 	size_t vCount = data->vCount++;
 	
@@ -763,8 +771,11 @@ static void APIENTRY TessVertexCallback(void *vertexData, void *polygonData)
 
 static void APIENTRY TessCombineCallback(GLdouble	coords[3], void *vertexData[4], GLfloat weight[4], void **outData, void *polygonData)
 {
+	TessPolygonData *data = (TessPolygonData *)polygonData;
 	NSPoint point = { coords[0], coords[1] };
-	*outData = [NSValue valueWithPoint:point];
+	// Owned by loadPolygons, which outlives the tesselator (was an autoreleased box).
+	data->combinedVertices->push_back(std::unique_ptr<NSPoint>(new NSPoint(point)));
+	*outData = data->combinedVertices->back().get();
 }
 
 
@@ -838,22 +849,24 @@ static void SVGDumpEndGroup(TessPolygonData *data)
 }
 
 
-static void SVGDumpAppendBaseContour(TessPolygonData *data, NSArray *points)
+static void SVGDumpAppendBaseContour(TessPolygonData *data, const OOContour &points)
 {
 	if (data->debugSVG == nil)  return;
 	
 	NSString *groupName = [NSString stringWithFormat:@"contour %u", data->svgID++];
 	[data->debugSVG appendFormat:@"\t\t<g id=\"%@\" stroke=\"#BBB\" fill=\"none\">\n\t\t<path stroke-width=\"0.05\" d=\"", groupName];
 	
-	NSUInteger i, count = [points count];
+	NSUInteger i, count = points.size();
 	for (i = 0; i < count; i++)
 	{
-		NSPoint p = [[points objectAtIndex:i] pointValue];
+		NSPoint p = points[i];
 		[data->debugSVG appendFormat:@"%c %f %f ", (i == 0) ? 'M' : 'L', p.x, -p.y];
 	}
 	
 	// Close and add a circle at the first vertex. (SVG has support for end markers, but this isn’t reliable across implementations.)
-	NSPoint p = [[points objectAtIndex:0] pointValue];
+	// An empty contour raised here when it was an empty NSArray; keep that.
+	if (count == 0)  [NSException raise:NSRangeException format:@"Index 0 is out of range 0 (in 'objectAtIndex:')"];
+	NSPoint p = points[0];
 	[data->debugSVG appendFormat:@"z\"/>\n\t\t\t<circle cx=\"%f\" cy=\"%f\" r=\"0.1\" fill=\"#BBB\" stroke=\"none\"/>\n\t\t</g>\n", p.x, -p.y];
 }
 
