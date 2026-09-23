@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OOOpenGLExtensionManager.h"
+#include "oofnd/Process.hpp"
 #import "OOLogging.h"
 #import "OOFunctionAttributes.h"
 #include <stdlib.h>
@@ -560,12 +561,10 @@ static unsigned IntegerFromString(const GLubyte **ioString)
 	 * about them; for those we don't being able to run with
 	 * -noshaders may help get the game up and running at a frame rate
 	 * where thegraphics settings can be changed.  - CIM */
-	NSArray 		*arguments = [[NSProcessInfo processInfo] arguments];
-	NSString 		*arg = nil;
 	// scan for shader overrides: -noshaders || --noshaders
-	foreach (arg, arguments)
+	for (const std::string &arg : oo::process::arguments())
 	{
-		if ([arg isEqual:@"-noshaders"] || [arg isEqual:@"--noshaders"])
+		if (arg == "-noshaders" || arg == "--noshaders")
 		{
 			shadersForceDisabled = YES;
 			OOLog(kOOLogOpenGLShaderSupport, @"%@", @"Shaders will not be used (disabled on command line).");
