@@ -841,6 +841,13 @@ struct BackendClass
 
 std::unordered_map<JSClassID, BackendClass*> gClasses;
 
+// Names an old-style enumerate hook defines while ExGetOwnPropertyNames runs it (bead oo-1gc.4):
+// QuickJS-ng snapshots the shape's names before calling the exotic hook, so a name the hook adds
+// would otherwise be missing from that enumeration.
+struct DefineCollector { void* target; std::vector<JSAtom> atoms; };
+DefineCollector* gDefineCollector = nullptr;
+
+
 BackendClass* classOf(JSValueConst obj)
 {
 	if (!JS_IsObject(obj))  return nullptr;
@@ -987,6 +994,7 @@ int ExGetOwnPropertyNames(JSContext* ctx, JSPropertyEnum** ptab, std::uint32_t* 
 	RuntimeState* rs = rsOf(ctx);
 	void* key = JS_VALUE_GET_PTR(obj);
 	std::vector<JSAtom> atoms;   // owned references
+	std::vector<JSAtom> lateNames;   // owned: defined by an old-style enumerate hook just now
 	auto addUnique = [&](JSAtom a) {
 		if (std::find(atoms.begin(), atoms.end(), a) != atoms.end())  { JS_FreeAtom(ctx, a); return; }
 		atoms.push_back(a);
@@ -1022,7 +1030,17 @@ int ExGetOwnPropertyNames(JSContext* ctx, JSPropertyEnum** ptab, std::uint32_t* 
 	else if (bc->def->enumerate != nullptr)
 	{
 		NativeScope scope(rs);
-		if (!bc->def->enumerate(wrap(ctx), objOf(obj)))  return failInt(ctx);
+		DefineCollector collect{ key, {} };
+		DefineCollector* outer = gDefineCollector;
+		gDefineCollector = &collect;
+		const bool ok = bc->def->enumerate(wrap(ctx), objOf(obj));
+		gDefineCollector = outer;
+		if (!ok)
+		{
+			for (JSAtom a : collect.atoms)  JS_FreeAtom(ctx, a);
+			return failInt(ctx);
+		}
+		for (JSAtom a : collect.atoms)  lateNames.push_back(a);
 	}
 	for (const auto& p : bc->tinyidProps)  addUnique(JS_NewAtom(ctx, p.first.c_str()));
 	if (ObjRec* rec = recOf(obj))
@@ -1037,6 +1055,9 @@ int ExGetOwnPropertyNames(JSContext* ctx, JSPropertyEnum** ptab, std::uint32_t* 
 		if (r > 0)  { JS_FreeAtom(ctx, *it); it = atoms.erase(it); }
 		else        ++it;
 	}
+	// ...except those the enumerate hook added during this call: the engine's own listing was
+	// taken before the hook ran, so it does not have them.
+	for (JSAtom a : lateNames)  addUnique(a);
 
 	auto* tab = static_cast<JSPropertyEnum*>(js_mallocz(ctx, sizeof(JSPropertyEnum) * (atoms.empty() ? 1 : atoms.size())));
 	if (tab == nullptr)  { for (JSAtom a : atoms) JS_FreeAtom(ctx, a); return -1; }
@@ -1613,9 +1634,34 @@ int jsFlags(PropertyFlag f)
 	return flags;
 }
 
+void noteDefined(JSContext* ctx, JSValueConst obj, JSAtom atom)
+{
+	if (gDefineCollector == nullptr || gDefineCollector->target != JS_VALUE_GET_PTR(obj))  return;
+	const int has = JS_GetOwnProperty(ctx, nullptr, obj, atom);   // only names that are new
+	if (has < 0)  { JS_FreeValue(ctx, JS_GetException(ctx)); return; }
+	if (has == 0)  gDefineCollector->atoms.push_back(JS_DupAtom(ctx, atom));
+}
+
+// SpiderMonkey's native define overwrote an existing permanent property silently; QuickJS-ng
+// refuses to redefine a non-configurable one. A repeat definition keeps the existing property
+// (the game's repeats -- an enumerate hook redefining every name each time -- are identical).
+int keepsExisting(JSContext* ctx, JSValueConst obj, JSAtom atom)
+{
+	JSPropertyDescriptor d;
+	const int has = JS_GetOwnProperty(ctx, &d, obj, atom);
+	if (has <= 0)  return has;
+	const bool fixed = (d.flags & JS_PROP_CONFIGURABLE) == 0;
+	freeDesc(ctx, &d);
+	return fixed ? 1 : 0;
+}
+
 bool defineAccessor(JSContext* ctx, JSValueConst obj, JSAtom atom, PropertyGetter get, PropertySetter set,
                     bool byTinyid, std::int32_t tinyid, PropertyFlag flags)
 {
+	noteDefined(ctx, obj, atom);
+	const int keep = keepsExisting(ctx, obj, atom);
+	if (keep < 0)  return false;
+	if (keep > 0)  return true;
 	const auto b = static_cast<std::uint8_t>(flags);
 	auto* rec = new AccessorRec{JS_GetRuntime(ctx), get, set, byTinyid, tinyid,
 	                            byTinyid ? JS_ATOM_NULL : JS_DupAtom(ctx, atom),
@@ -1659,6 +1705,10 @@ bool definePropertyImpl(JSContext* ctx, JSValueConst obj, JSAtom atom, JSValueCo
 		if (setter == nullptr && def != nullptr)  setter = def->setProperty;
 		return defineAccessor(ctx, obj, atom, getter, setter, false, 0, flags);
 	}
+	noteDefined(ctx, obj, atom);
+	const int keep = keepsExisting(ctx, obj, atom);
+	if (keep < 0)  return false;
+	if (keep > 0)  return true;
 	return defineData(ctx, obj, atom, value, jsFlags(flags));
 }
 
@@ -1669,6 +1719,12 @@ bool definePropertySpecs(JSContext* ctx, JSValueConst obj, const PropertySpec* p
 	{
 		AtomRef atom(ctx, JS_NewAtom(ctx, ps->name));
 		if (atom.atom == JS_ATOM_NULL)  return false;
+		// A table that lists a name twice (Ship's has "homeSystem" twice, same tinyid) was a
+		// silent redefinition under SpiderMonkey's native define; QuickJS-ng refuses to redefine a
+		// permanent property, which failed the whole initClass. The first entry stands.
+		const int exists = JS_GetOwnProperty(ctx, nullptr, obj, atom.atom);
+		if (exists < 0)  return false;
+		if (exists > 0)  continue;
 		PropertyGetter get = ps->getter != nullptr ? ps->getter : (def != nullptr ? def->getProperty : nullptr);
 		PropertySetter set = ps->setter != nullptr ? ps->setter : (def != nullptr ? def->setProperty : nullptr);
 		const bool ok = (get != nullptr || set != nullptr)
@@ -1782,11 +1838,103 @@ JSEvalOptions evalOptions(const char* filename, unsigned lineno, int flags)
 	return o;
 }
 
+// SpiderMonkey runs a script with its scope object at the head of the scope chain, so a bare name
+// that the global lacks resolves through the script object -- at top level and in every closure
+// the script creates (oolite-global-prefix.js reads the engine-provided `special` that way,
+// oolite-priorityai.js its own `this.PriorityAIController`). QuickJS-ng global code has only the
+// global scope. The global's prototype is therefore a "scope fallback" exotic object: a name the
+// global does not have is looked up on the scope object of the script whose code is running,
+// identified by the running function's filename (every script is registered under its file when
+// it runs; the same file run for several objects -- ship scripts -- resolves to the last one run).
+// DIVERGENCE: an assignment to such a name defines it on the global rather than the script object;
+// console-evaluated code (not from a script file) gets no fallback. (bead oo-1gc.4)
+JSClassID gScopeFallbackClassId = 0;
+std::unordered_map<std::string, JSValue> gScopeByFile;   // owned references
+
+void registerScope(JSContext* ctx, const char* filename, JSValueConst scope)
+{
+	if (filename == nullptr || *filename == 0)  return;
+	auto it = gScopeByFile.find(filename);
+	if (it != gScopeByFile.end())
+	{
+		if (JS_VALUE_GET_PTR(it->second) == JS_VALUE_GET_PTR(scope))  return;
+		JS_FreeValue(ctx, it->second);
+		it->second = JS_DupValue(ctx, scope);
+	}
+	else
+	{
+		gScopeByFile.emplace(filename, JS_DupValue(ctx, scope));
+	}
+}
+
+bool runningScope(JSContext* ctx, JSValue* scope)
+{
+	if (gScopeByFile.empty())  return false;
+	// The innermost frame that belongs to a registered script: code eval()ed inside a script (the
+	// debug console's evaluate) has its own pseudo-filename, and SpiderMonkey resolved its names
+	// through the calling script's scope chain.
+	for (int level = 0; level < 8; ++level)
+	{
+		const JSAtom a = JS_GetScriptOrModuleName(ctx, level);
+		if (a == JS_ATOM_NULL)  continue;
+		const char* name = JS_AtomToCString(ctx, a);
+		JS_FreeAtom(ctx, a);
+		if (name == nullptr)  { JS_FreeValue(ctx, JS_GetException(ctx)); return false; }
+		auto it = gScopeByFile.find(name);
+		JS_FreeCString(ctx, name);
+		if (it != gScopeByFile.end())  { *scope = it->second; return true; }
+	}
+	return false;
+}
+
+int ScopeFallbackGetOwnProperty(JSContext* ctx, JSPropertyDescriptor* desc, JSValueConst /*obj*/, JSAtom atom)
+{
+	JSValue scope;
+	if (!runningScope(ctx, &scope))  return 0;
+	const int has = JS_HasProperty(ctx, scope, atom);
+	if (has <= 0)  return has;
+	if (desc != nullptr)
+	{
+		JSValue v = JS_GetProperty(ctx, scope, atom);
+		if (JS_IsException(v))  return -1;
+		desc->flags  = JS_PROP_WRITABLE | JS_PROP_CONFIGURABLE;
+		desc->value  = v;
+		desc->getter = JS_UNDEFINED;
+		desc->setter = JS_UNDEFINED;
+	}
+	return 1;
+}
+
+JSClassExoticMethods gScopeFallbackExotic = [] {
+	JSClassExoticMethods m{};
+	m.get_own_property = ScopeFallbackGetOwnProperty;
+	return m;
+}();
+
+void installScopeFallback(JSContext* ctx)
+{
+	JSValue global = JS_GetGlobalObject(ctx);
+	JSValue proto = JS_GetPrototype(ctx, global);
+	JSValue fallback = JS_NewObjectProtoClass(ctx, proto, gScopeFallbackClassId);
+	if (!JS_IsException(fallback))  JS_SetPrototype(ctx, global, fallback);
+	else                            JS_FreeValue(ctx, JS_GetException(ctx));
+	JS_FreeValue(ctx, fallback);
+	JS_FreeValue(ctx, proto);
+	JS_FreeValue(ctx, global);
+}
+
+void releaseScopes(JSRuntime* rt)
+{
+	for (auto& e : gScopeByFile)  JS_FreeValueRT(rt, e.second);
+	gScopeByFile.clear();
+}
+
 bool evalWithThis(JSContext* ctx, Object scope, const std::string& src, const char* filename, unsigned lineno, Value* rval)
 {
 	JSValue global = JS_GetGlobalObject(ctx);
 	JSValue thisObj = scope != nullptr ? OBJVAL(scope) : global;
 	JSEvalOptions o = evalOptions(filename, lineno, 0);
+	if (scope != nullptr && JS_VALUE_GET_PTR(thisObj) != JS_VALUE_GET_PTR(global))  registerScope(ctx, filename, thisObj);
 	JSValue r = JS_EvalThis2(ctx, thisObj, src.c_str(), src.size(), &o);
 	JS_FreeValue(ctx, global);
 	if (JS_IsException(r))
@@ -2141,12 +2289,57 @@ Object getGlobalObject(Context cx)
 	return out;
 }
 
+// The engine's own classes (Object, Array, String, ...) answer a stable, hook-less descriptor per
+// engine class id, named as SpiderMonkey names them, so the game can key its object converters
+// on them exactly as it keyed on the engine's class pointer (bead oo-1gc.4). The name comes from
+// Object.prototype.toString's tag the first time an id is seen.
+const ClassDef* foreignClassDef(JSContext* ctx, JSValueConst obj)
+{
+	static std::unordered_map<JSClassID, ClassDef*> sForeign;
+	const JSClassID id = JS_GetClassID(obj);
+	auto it = sForeign.find(id);
+	if (it != sForeign.end())  return it->second;
+	std::string name = "Object";
+	JSValue global = JS_GetGlobalObject(ctx);
+	JSValue objectCtor = JS_GetPropertyStr(ctx, global, "Object");
+	JSValue objectProto = JS_GetPropertyStr(ctx, objectCtor, "prototype");
+	JSValue toStr = JS_GetPropertyStr(ctx, objectProto, "toString");
+	JSValue tag = JS_Call(ctx, toStr, obj, 0, nullptr);
+	if (JS_IsString(tag))
+	{
+		const std::string t = toStdString(ctx, tag);   // "[object Name]"
+		if (t.size() > 9 && t.compare(0, 8, "[object ") == 0)  name = t.substr(8, t.size() - 9);
+	}
+	else if (JS_IsException(tag))
+	{
+		JS_FreeValue(ctx, JS_GetException(ctx));
+	}
+	JS_FreeValue(ctx, tag);
+	JS_FreeValue(ctx, toStr);
+	JS_FreeValue(ctx, objectProto);
+	JS_FreeValue(ctx, objectCtor);
+	JS_FreeValue(ctx, global);
+	auto* def = new ClassDef { nullptr, ClassFlag::None, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+	                           nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+	def->name = (new std::string(name))->c_str();
+	sForeign.emplace(id, def);
+	return def;
+}
+
 const ClassDef* getClass(Context cx, Object obj)
 {
 	if (obj == nullptr)  return nullptr;
 	if (BackendClass* bc = classOf(OBJVAL(obj)))  return bc->def;
 	JSContext* ctx = ctxOr(cx);
 	return ctx != nullptr ? classDefOf(ctx, OBJVAL(obj)) : nullptr;
+}
+
+const ClassDef* getObjectClass(Context cx, Object obj)
+{
+	if (obj == nullptr)  return nullptr;
+	if (const ClassDef* def = getClass(cx, obj))  return def;
+	JSContext* ctx = ctxOr(cx);
+	return ctx != nullptr ? foreignClassDef(ctx, OBJVAL(obj)) : nullptr;
 }
 
 namespace {
@@ -2880,6 +3073,11 @@ Runtime newRuntime(std::uint32_t maxBytes)
 	script.class_name = "Script";
 	script.finalizer  = ScriptObjectFinalizer;
 	JS_NewClass(rt, gScriptClassId, &script);
+	if (gScopeFallbackClassId == 0)  gScopeFallbackClassId = allocClassId();
+	JSClassDef fallback{};
+	fallback.class_name = "Object";
+	fallback.exotic     = &gScopeFallbackExotic;
+	JS_NewClass(rt, gScopeFallbackClassId, &fallback);
 	return wrap(rt);
 }
 
@@ -2890,6 +3088,7 @@ void destroyRuntime(Runtime rt)
 	if (rs != nullptr)
 	{
 		rs->roots.clear();
+		releaseScopes(jrt);
 		flushArena(rs, false);
 		for (auto& c : rs->chars)  JS_FreeCStringRT_UTF16(jrt, c.second.p);
 		rs->chars.clear();
@@ -2921,6 +3120,7 @@ Context newContext(Runtime rt, std::size_t /*stackChunkSize*/)
 	rs->contexts.push_back(cs);
 	gCtxForRuntime[jrt] = ctx;
 	gDefaultCtx = ctx;
+	installScopeFallback(ctx);
 	if (gContextCallbackHook != nullptr)  gContextCallbackHook(wrap(ctx), ContextOp::New);
 	return wrap(ctx);
 }
@@ -2940,6 +3140,7 @@ void destroyContext(Context cx)
 			// contexts still alive the arena is left for the next gc(): the caller may be holding
 			// unrooted handles, which SpiderMonkey's conservative scan would have kept.)
 			rs->roots.clear();
+			releaseScopes(JS_GetRuntime(ctx));
 			flushArena(rs, false);
 		}
 		for (JSValue v : cs->held)  JS_FreeValue(ctx, v);

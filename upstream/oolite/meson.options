@@ -14,9 +14,9 @@ option('oo_javascript_trace', type: 'boolean', value: true,
 
 option('js_backend', type: 'combo', choices: ['spidermonkey', 'quickjs'], value: 'spidermonkey',
        description: 'JavaScript engine backend behind ooscript/JSEngine.hpp (Phase 1, ADR-0002). ' +
-                     '"spidermonkey" is the shipped patched SpiderMonkey 1.8.5 (default, unchanged ' +
-                     'behaviour). "quickjs" builds the vendored QuickJS-ng subproject as build ' +
-                     'plumbing only (seam 1.4a); nothing in the engine consumes it yet.')
+                     '"spidermonkey" is the patched SpiderMonkey 1.8.5 (and NSPR) from the platform ' +
+                     'packages. "quickjs" links the game against the vendored QuickJS-ng subproject ' +
+                     '(bead oo-1gc.4); neither SpiderMonkey nor NSPR is needed then.')
 
 option('oo_fov_inflight_control_enabled', type: 'boolean', value: false,
        description: 'Enable in-flight Field of View (FOV) control adjustments')

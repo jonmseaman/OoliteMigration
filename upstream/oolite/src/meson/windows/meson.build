@@ -22,8 +22,10 @@ dep_libs = [
     'ws2_32',
     'objc',
     'gnustep-base',
-    'js' + win_js_suffix,
 ]
+if js_backend == 'spidermonkey'
+    dep_libs += ['js' + win_js_suffix]
+endif
 foreach lib : dep_libs
     oolite_dependencies += [cc.find_library(lib, required: true)]
 endforeach

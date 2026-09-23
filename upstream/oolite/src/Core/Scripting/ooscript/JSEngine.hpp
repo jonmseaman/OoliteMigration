@@ -275,8 +275,10 @@ Object getParent(Context cx, Object obj);                                       
 Object getGlobalObject(Context cx);                                                    // engine: GetGlobalObject
 Object getGlobalForObject(Context cx, Object obj);                                     // engine: GetGlobalForObject
 
-const ClassDef* getClass(Context cx, Object obj);        // engine: GetClass; the engine's own classes get a stable,
-                                                         // hook-less descriptor carrying their name
+const ClassDef* getClass(Context cx, Object obj);        // engine: GetClass; nullptr if the class is not ours
+const ClassDef* getObjectClass(Context cx, Object obj);  // engine: GetClass for any object: our classes as getClass,
+                                                         // the engine's own (Object, Array, ...) a stable hook-less
+                                                         // descriptor carrying their name (bead oo-1gc.3)
 bool   instanceOf(Context cx, Object obj, ClassDef* def, Value* argv);                 // engine: InstanceOf
 bool   setPrivate(Context cx, Object obj, void* data);                                 // engine: SetPrivate
 void*  getPrivate(Context cx, Object obj);                                             // engine: GetPrivate
