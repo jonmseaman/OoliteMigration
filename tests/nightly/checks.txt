@@ -29,6 +29,15 @@
 [oo-1gc.11] export PATH="/ucrt64/bin:$PATH" OO_GUI_LOCK_OWNER="nightly-corpus-tier2-$$"; s="build/nightly/corpus-tier2-$(date +%Y%m%d-%H%M%S)"; mkdir -p "$s" || exit 1; tools/gui-lock acquire --timeout 900 || exit 1; p=$$; (while sleep 120 && kill -0 $p 2>/dev/null; do tools/gui-lock refresh >/dev/null || exit 0; done) & hb=$!; bash tools/corpus.sh tier2 --shard 0/2 --state "$s/0" > "$s/0.log" 2>&1 & a=$!; bash tools/corpus.sh tier2 --shard 1/2 --state "$s/1"; b=$?; wait $a; a=$?; cat "$s/0.log"; kill $hb; tools/gui-lock release; echo "corpus tier2 shards rc=$a,$b state=$s"; [ $a -eq 0 ] && [ $b -eq 0 ]
 [oo-3rb.76] OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/Entities/PlayerEntityControls.mm
 
+# Tier A on the other five giant files (oo-0bkc): their Foundation-sweep chunk beads drop the
+# tier-a line from acceptance because clang-tidy on the whole file overruns accept.sh's 300 s
+# budget (ADR-0021); the proof runs here, tagged with each file's giant-file sweep bead.
+[oo-3rb.73] OOLITE_TIER_A_BUDGET=1500 tools/tier-a.sh upstream/oolite/src/Core/Entities/ShipEntity.mm
+[oo-3rb.75] OOLITE_TIER_A_BUDGET=1500 tools/tier-a.sh upstream/oolite/src/Core/Entities/PlayerEntity.mm
+[oo-3rb.79] OOLITE_TIER_A_BUDGET=1500 tools/tier-a.sh upstream/oolite/src/Core/Universe.mm
+[oo-3rb.81] OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/HeadUpDisplay.mm
+[oo-3rb.83] OOLITE_TIER_A_BUDGET=900 tools/tier-a.sh upstream/oolite/src/Core/Scripting/OOJSShip.mm
+
 # RunDetachedAndWait waits unbounded now (oo-3rb.68); three consecutive green oofnd runs is the
 # stability proof its bead asked for, too slow (3 x 90-220 s) for the five-minute accept budget.
 # The memo (oo-n712) must not answer a stability proof: every run here is a real one.
