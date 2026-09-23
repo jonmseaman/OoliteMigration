@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 
 #import "Universe.h"
 #include "oofnd/Process.hpp"
+#include "oofnd/Date.hpp"
 #import "MyOpenGLView.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -705,7 +706,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	_doingStartUp = YES;
 
-	OOInitReallyRandom([NSDate timeIntervalSinceReferenceDate] * 1e9);
+	OOInitReallyRandom(oo::date::timeIntervalSinceReferenceDate() * 1e9);
 	
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
 	
@@ -1292,7 +1293,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	/*- the sky backdrop -*/
 	OOColor *col1 = [OOColor colorWithRed:0.0 green:1.0 blue:0.5 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	quaternion_set_random(&randomQ);
 	[thing setOrientation:randomQ];
@@ -1444,7 +1445,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOColor *col1 = [OOColor colorWithHue:h1 saturation:randf() brightness:0.5 + randf()/2.0 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithHue:h2 saturation:0.5 + randf()/2.0 brightness:0.5 + randf()/2.0 alpha:1.0];
 	
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	[self addEntity:thing];
 //	bgcolor = [(SkyEntity *)thing skyColor];
@@ -1584,7 +1585,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOLog(@"planetinfo.record",@"corona_hues = %f",[sun_dict oo_floatForKey:@"corona_hues"]);
 	OOLog(@"planetinfo.record",@"sun_color = %@",[bgcolor descriptionComponents]);
 #endif
-	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
+	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:oo::PListFrom(sun_dict)];	// alloc retains!
 	
 	[a_sun setStatus:STATUS_ACTIVE];
 	[a_sun setPosition:sunPos]; // sets also light origin
@@ -3855,7 +3856,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 	if (definition != nil)
 	{
-		waypoint = [OOWaypointEntity waypointWithDictionary:definition];
+		waypoint = [OOWaypointEntity waypointWithDictionary:oo::PListFrom(definition)];
 		if (waypoint != nil)
 		{
 			[self addEntity:waypoint];
@@ -8336,7 +8337,7 @@ static void VerifyDesc(NSString *key, id desc)
 			
 			if (the_sky != nil)
 			{
-				[the_sky changeProperty:key withDictionary:sysInfo];
+				[the_sky changeProperty:oo::StdString(key) withDictionary:oo::PListFrom(sysInfo)];
 				
 				if ([key isEqualToString:@"sun_color"])
 				{
@@ -8355,7 +8356,7 @@ static void VerifyDesc(NSString *key, id desc)
 		}
 		else if (the_sun != nil && ([key hasPrefix:@"sun_"] || [key hasPrefix:@"corona_"]))
 		{
-			[the_sun changeSunProperty:key withDictionary:sysInfo];
+			[the_sun changeSunProperty:oo::StdString(key) withDictionary:oo::PListFrom(sysInfo)];
 		}
 		else if ([key isEqualToString:@"texture"])
 		{
