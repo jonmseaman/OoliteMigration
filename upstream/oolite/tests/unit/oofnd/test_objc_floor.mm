@@ -325,6 +325,27 @@ OO_TEST(copyGoesThroughCopyWithZone)
 	OO_CHECK_EQ(gLog.size(), 2u);
 }
 
+OO_TEST(zoneIsTheOneCopyPasses)
+{
+	// -zone is nil, the zone -copy/-mutableCopy pass, so "zone == [self zone]" (OOMesh,
+	// OOProbabilitySet) still recognises a plain -copy.
+	OOTestThing *thing = [[OOTestThing alloc] initWithName:"zone"];
+	OO_CHECK([thing zone] == nullptr);
+	[thing release];
+}
+
+
+OO_TEST(hashIsGNUstepNSObjects)
+{
+	// gnustep-base's -[NSObject hash] is the address >> 4 (measured, bead oo-3rb.42). Rerooting
+	// must keep it, or hashed collections of rerooted objects iterate in a different order.
+	OOTestThing *thing = [[OOTestThing alloc] initWithName:"hash"];
+	const void *address = thing;
+	OO_CHECK_EQ([thing hash], reinterpret_cast<uintptr_t>(address) >> 4);
+	[thing release];
+}
+
+
 OO_TEST(longLiteralIsAConstantString)
 {
 	id s = @"a string literal longer than eight";

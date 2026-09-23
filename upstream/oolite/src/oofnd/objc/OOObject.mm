@@ -251,8 +251,10 @@ void OOObjCInstallFloor(void)
 
 - (uintptr_t) hash
 {
+	// gnustep-base's NSObject value (measured: the address shifted right by 4), so a rerooted
+	// object lands in the same NSSet/NSDictionary bucket and iteration order does not change.
 	const void *address = self;
-	return reinterpret_cast<uintptr_t>(address);
+	return reinterpret_cast<uintptr_t>(address) >> 4;
 }
 
 - (id) performSelector:(SEL)selector
@@ -271,6 +273,11 @@ void OOObjCInstallFloor(void)
 {
 	IMP imp = class_getMethodImplementation(object_getClass(self), selector);
 	return reinterpret_cast<OOObjectMethod2>(imp)(self, selector, object1, object2);
+}
+
+- (OOZone *) zone
+{
+	return nullptr;
 }
 
 - (id) copy
