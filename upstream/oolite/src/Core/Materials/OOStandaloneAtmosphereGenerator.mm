@@ -36,7 +36,7 @@
 #define ALBEDO_FACTOR		0.7f	// Overall darkening of everything, allowing better contrast for snow and specular highlights.
 
 #import "OOStandaloneAtmosphereGenerator.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOColor.h"
 
 #ifndef TEXGEN_TEST_RIG
@@ -104,8 +104,8 @@ enum
 		[[planetInfo objectForKey:@"noise_map_seed"] getValue:&_info.seed];
 		OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
 		// we are an atmosphere:
-		_info.cloudAlpha = [planetInfo oo_floatForKey:@"cloud_alpha" defaultValue:1.0f];
-		_info.cloudFraction = OOClamp_0_1_f([planetInfo oo_floatForKey:@"cloud_fraction" defaultValue:0.3]);
+		_info.cloudAlpha = oo::PListView(planetInfo).get<float>(@"cloud_alpha", 1.0f);
+		_info.cloudFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"cloud_fraction", 0.3));
 		_info.cloudColor = FloatRGBFromDictColor(planetInfo, @"cloud_color");
 		_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, @"polar_cloud_color");
 		
@@ -123,7 +123,7 @@ enum
 #else
 		_planetScale = kPlanetScale4096x4096;
 #endif
-		_info.perlin3d = [planetInfo oo_boolForKey:@"perlin_3d" defaultValue:detailLevel > DETAIL_LEVEL_SHADERS];
+		_info.perlin3d = oo::PListView(planetInfo).get<BOOL>(@"perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
 		_info.planetAspectRatio = _info.perlin3d ? 2 : 1;
 		_info.planetScaleOffset	= 8 - _info.planetAspectRatio;
 	}
