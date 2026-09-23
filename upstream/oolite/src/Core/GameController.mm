@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "GameController.h"
+#import <objc/objc-arc.h>
 #import "Universe.h"
 #import "ResourceManager.h"
 #import "MyOpenGLView.h"
@@ -255,10 +256,10 @@ static GameController *sSharedController = nil;
 
 - (void) applicationDidFinishLaunching:(NSNotification *)notification
 {
-	NSAutoreleasePool	*pool = nil;
+	void				*pool = NULL;
 	unsigned			i;
 	
-	pool = [[NSAutoreleasePool alloc] init];
+	pool = objc_autoreleasePoolPush();
 	
 	@try
 	{
@@ -327,7 +328,7 @@ static GameController *sSharedController = nil;
 	_finishedLaunching = YES;
 	
 	// Release anything allocated above that is not required.
-	[pool release];
+	objc_autoreleasePoolPop(pool);
 	
 #if !OOLITE_MAC_OS_X
 	[[NSRunLoop currentRunLoop] run];
@@ -383,12 +384,12 @@ static GameController *sSharedController = nil;
 
 - (void) performGameTick:(id)sender
 {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	void *pool = objc_autoreleasePoolPush();
 	
 	[gameView pollControls];
 	[self doPerformGameTick];
 	
-	[pool release];
+	objc_autoreleasePoolPop(pool);
 }
 
 #endif

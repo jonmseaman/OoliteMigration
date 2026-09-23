@@ -265,31 +265,30 @@ BOOL OOSynthesizeMaterialShader(NSDictionary *configuration, NSString *materialK
 {
 	NSCParameterAssert(configuration != nil && outVertexShader != NULL && outFragmentShader != NULL && outTextureSpecs != NULL && outUniformSpecs != NULL);
 	
-	NSAutoreleasePool *pool = [NSAutoreleasePool new];
-	
-	OODefaultShaderSynthesizer *synthesizer = [[OODefaultShaderSynthesizer alloc]
-											   initWithMaterialConfiguration:configuration
-																 materialKey:materialKey
-																  entityName:entityName];
-	[synthesizer autorelease];
-	
-	BOOL OK = [synthesizer run];
-	if (OK)
+	@autoreleasepool
 	{
-		*outVertexShader = [[synthesizer vertexShader] retain];
-		*outFragmentShader = [[synthesizer fragmentShader] retain];
-		*outTextureSpecs = [[synthesizer textureSpecifications] retain];
-		*outUniformSpecs = [[synthesizer uniformSpecifications] retain];
-	}
-	else
-	{
-		*outVertexShader = nil;
-		*outFragmentShader = nil;
-		*outTextureSpecs = nil;
-		*outUniformSpecs = nil;
-	}
+		OODefaultShaderSynthesizer *synthesizer = [[OODefaultShaderSynthesizer alloc]
+												   initWithMaterialConfiguration:configuration
+																	 materialKey:materialKey
+																	  entityName:entityName];
+		[synthesizer autorelease];
 	
-	[pool release];
+		BOOL OK = [synthesizer run];
+		if (OK)
+		{
+			*outVertexShader = [[synthesizer vertexShader] retain];
+			*outFragmentShader = [[synthesizer fragmentShader] retain];
+			*outTextureSpecs = [[synthesizer textureSpecifications] retain];
+			*outUniformSpecs = [[synthesizer uniformSpecifications] retain];
+		}
+		else
+		{
+			*outVertexShader = nil;
+			*outFragmentShader = nil;
+			*outTextureSpecs = nil;
+			*outUniformSpecs = nil;
+		}
+	}
 	
 	[*outVertexShader autorelease];
 	[*outFragmentShader autorelease];
