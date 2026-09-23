@@ -8,9 +8,10 @@ This code is hereby placed in the public domain.
 */
 
 #import "OOWeakReference.h"
+#import "OOCocoa.h"	// OOObject's -description and the GNUstep bridge (-methodSignatureForSelector:)
 
 
-@interface OOWeakReferenceTemplates: NSObject
+@interface OOWeakReferenceTemplates: OOObject
 
 + (void)weakRefDrop;
 + (id)weakRefUnderlyingObject;
@@ -138,6 +139,16 @@ This code is hereby placed in the public domain.
 
 
 @implementation NSObject (OOWeakReference)
+
+- (id)weakRefUnderlyingObject
+{
+	return self;
+}
+
+@end
+
+
+@implementation OOObject (OOWeakReference)
 
 - (id)weakRefUnderlyingObject
 {

@@ -106,10 +106,10 @@ NSString *OOEnumerationShuffleReport(void)
 	shuffle degrades to "still a permutation, not reproducible" - noted rather than fixed,
 	because no dictionary in the tree is keyed by such an object.
 */
-static NSInteger CompareByDescription(id a, id b, void *context)
+static NSComparisonResult CompareByDescription(id a, id b, void *context)
 {
 	(void)context;
-	return (NSInteger)[[a description] compare:[b description]];
+	return [[a description] compare:[b description]];
 }
 
 
@@ -120,7 +120,7 @@ static NSArray *ShuffledArrayFromCollection(NSArray *members)
 
 	NSArray *canonical = [members sortedArrayUsingFunction:CompareByDescription context:NULL];
 
-	uint32_t *order = calloc(count, sizeof *order);
+	uint32_t *order = static_cast<uint32_t *>(calloc(count, sizeof *order));
 	if (order == NULL)  return canonical;	// Out of memory in instrumentation: degrade, do not crash.
 
 	OOEnumerationShufflePermutation(OOEnumerationShuffleSeed(), (size_t)count, order);

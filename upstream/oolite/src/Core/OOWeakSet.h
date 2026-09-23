@@ -26,7 +26,7 @@ This code is hereby placed in the public domain.
 #import "OOWeakReference.h"
 
 
-@interface OOWeakSet: NSObject <NSCopying, NSMutableCopying>
+@interface OOWeakSet: OOObject <OOCopying, OOMutableCopying>
 {
 @private
 	NSMutableSet			*_objects;

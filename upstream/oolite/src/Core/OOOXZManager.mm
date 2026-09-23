@@ -25,6 +25,8 @@ MA 02110-1301, USA.
 */
 
 #import "OOOXZManager.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 #import "OOPListParsing.h"
 #import "OOStringParsing.h"
 #import "ResourceManager.h"
@@ -36,10 +38,11 @@ MA 02110-1301, USA.
 #import "OOCollectionExtractors.h"
 #import "NSFileManagerOOExtensions.h"
 #import "NSDataOOExtensions.h"
-#import "NSStringOOExtensions.h"
+#import "OOStringBridge.h"
 #import "OOColor.h"
 #import "OOStringExpander.h"
 #import "MyOpenGLView.h"
+#import "GameController.h"
 
 #import "unzip.h"
 
@@ -500,7 +503,7 @@ static OOOXZManager *sSingleton = nil;
 	NSArray *parameters = [NSArray arrayWithObjects:kOOManifestTitle,kOOManifestDescription,kOOManifestCategory,nil];
  	
   	// trim any eventual leading whitespace from input string
-	keyword = [keyword stringByTrimmingLeadingWhitespaceAndNewlineCharacters];
+	keyword = oo::StringMap(keyword, oo::str::trimLeadingWhitespaceAndNewlines);
  	
 	foreach (parameter,parameters)
 	{
@@ -526,7 +529,7 @@ static OOOXZManager *sSingleton = nil;
 - (BOOL) applyFilterByAuthor:(NSDictionary *)manifest author:(NSString *)author
 {
 	// trim any eventual leading whitespace from input string
-	author = [author stringByTrimmingLeadingWhitespaceAndNewlineCharacters];
+	author = oo::StringMap(author, oo::str::trimLeadingWhitespaceAndNewlines);
  	
 	NSString *mAuth = [manifest oo_stringForKey:kOOManifestAuthor];
 	return ([mAuth rangeOfString:author options:NSCaseInsensitiveSearch].location != NSNotFound);
@@ -555,7 +558,7 @@ static OOOXZManager *sSingleton = nil;
 	NSArray *parameters = [manifest oo_arrayForKey:kOOManifestTags];
 
   	// trim any eventual leading whitespace from input string
-	tag = [tag stringByTrimmingLeadingWhitespaceAndNewlineCharacters];
+	tag = oo::StringMap(tag, oo::str::trimLeadingWhitespaceAndNewlines);
  	
 	foreach (parameter,parameters)
 	{
@@ -572,7 +575,7 @@ static OOOXZManager *sSingleton = nil;
 - (BOOL) applyFilterByCategory:(NSDictionary *)manifest category:(NSString *)category
 {
 	// trim any eventual leading whitespace from input string
-	category = [category stringByTrimmingLeadingWhitespaceAndNewlineCharacters];
+	category = oo::StringMap(category, oo::str::trimLeadingWhitespaceAndNewlines);
  	
 	NSString *mCategory = [manifest oo_stringForKey:kOOManifestCategory];
 	return ([mCategory rangeOfString:category options:NSCaseInsensitiveSearch].location != NSNotFound);
@@ -2269,14 +2272,14 @@ static OOOXZManager *sSingleton = nil;
 				// This is less efficient in memory use than just
 				// streaming out of the ZIP file onto disk
 				// but it makes error handling easier
-				NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+				void *pool = objc_autoreleasePoolPush();
 				NSData *tmp = [NSData oo_dataWithOXZFile:[oxzfile stringByAppendingPathComponent:componentName]];
 				if (tmp == nil)
 				{
 					OOLog(kOOOXZErrorLog,@"Sub file %@ could not be extracted from the OXZ",componentName);
 					[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-sub-failed")];
 					error = YES;
-					[pool release];
+					objc_autoreleasePoolPop(pool);
 					break;
 				}
 				else
@@ -2286,7 +2289,7 @@ static OOOXZManager *sSingleton = nil;
 						OOLog(kOOOXZErrorLog,@"Sub file %@ could not be created",componentName);
 						[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-sub-failed")];
 						error = YES;
-						[pool release];
+						objc_autoreleasePoolPop(pool);
 						break;
 					}
 					else
@@ -2294,7 +2297,7 @@ static OOOXZManager *sSingleton = nil;
 						++counter;
 					}
 				}
-				[pool release];
+				objc_autoreleasePoolPop(pool);
 
 			}
 		}
@@ -2354,8 +2357,12 @@ static OOOXZManager *sSingleton = nil;
 	 * (>20Mb) OXZ files.
 	 *
 	 * CIM 6 July 2014
+	 *
+	 * The game tick is no longer a run-loop timer, so GameController fires
+	 * it (and the run loop's own due timers) here, as the run loop did.
+	 * Proposed ADR-0033.
 	 */
-	[[NSRunLoop currentRunLoop] limitDateForMode:NSDefaultRunLoopMode];
+	[[GameController sharedController] fireDueTimers];
 #endif
 }
 

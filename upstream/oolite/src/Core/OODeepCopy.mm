@@ -30,17 +30,16 @@ SOFTWARE.
 
 id OODeepCopy(id object)
 {
-	NSAutoreleasePool			*pool = nil;
 	NSMutableSet				*objects = nil;
 	
 	if (object == nil)  return nil;
 	
-	pool = [[NSAutoreleasePool alloc] init];
-	objects = [NSMutableSet set];
-	
-	object = [object ooDeepCopyWithSharedObjects:objects];
-	
-	[pool release];
+	@autoreleasepool
+	{
+		objects = [NSMutableSet set];
+		
+		object = [object ooDeepCopyWithSharedObjects:objects];
+	}
 	
 	return object;
 }

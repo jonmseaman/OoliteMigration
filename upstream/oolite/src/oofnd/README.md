@@ -33,8 +33,14 @@ Rules that hold for every component:
 | `src/oofnd/Data.hpp` | `oo::Data`: `NSData` / `NSMutableData` as a value type ([ADR-0028](../../../../docs/decisions/0028-oofnd-filesystem-paths-data.md)) |
 | `src/oofnd/FileSystem.hpp` | `oo::fs`: `NSFileManager` + its OOExtensions category + NSData file I/O, on `std::filesystem` with GNUstep semantics |
 | `src/oofnd/ResourcePaths.hpp` | `oo::ResourcePaths`: the game's Resources/AddOns/saves/logs/caches locations, exactly as computed today on Windows and Linux |
+| `src/oofnd/Notification.hpp` | `oo::NotificationCenter`, `oo::Notification`: `NSNotificationCenter` / `NSNotification` (named, synchronous, registration order; bead oo-3rb.9, ADR-0029 Decision 5) |
+| `src/oofnd/Date.hpp` | `oo::date`: `NSDate` on `std::chrono`: the reference-date (2001) wall clock, a monotonic clock for intervals, NSDate's `-description` (bead oo-3rb.11) |
+| `src/oofnd/StdLib.hpp` | the standard containers and clocks game code uses instead of Foundation collections, `NSValue` boxes and `NSDate`, included under the OOCocoa.h `true`/`false` guard (bead oo-3rb.10); game code includes it rather than `<vector>` etc. |
 | `src/oofnd/Process.hpp` | `oo::process` + `oo::env`: `NSProcessInfo` (arguments captured in `main`, `hasArgument`, `processName`, `processorCount`, `operatingSystemVersionString`) with GNUstep's measured semantics |
 | `src/oofnd/Thread.hpp` | `oo::thread`: `NSThread` on `std::thread`: `detach`, `isMainThread` (id captured at static init), `setCurrentName`, `setCurrentPriority` (GNUstep's measured Windows mapping) |
+| `src/oofnd/String.hpp` | `oo::str`: the `NSString` methods and Oolite `NSString` categories the game uses (`NSStringOOExtensions`, `OOStringParsing`'s `NSString (OOUtilities)`, `ScanTokensFromString`, the version helpers) over UTF-8 `std::string`, GNUstep 1.31.1's answers exactly: case tables, whitespace set, composed-sequence rules, `-pathExtension`, `-replaceOccurrencesOfString:`, `-hasPrefix:`, `-stringWithFormat:` without `%@` ([ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)) |
+| `src/oofnd/Encoding.hpp` | `oo::str::Encoding` / `encodeLossy` / `convertForFont`: `OOEncodingConverter`'s conversion to the five Windows code pages, including libiconv's transliterations as GNUstep runs them |
+| `src/Core/OOStringBridge.h` (game side) | `oo::StdString` / `oo::NSStringFrom` / `oo::StringMap`: the exact `NSString` <-> `std::string` bridge for calling `oo::str` from files that still hold `NSString`s; see below |
 | `src/oofnd/Defaults.hpp` | `oo::Defaults`: `NSUserDefaults` with `NSUserDefaults+Override`/`NSBundle+Override` as the game runs them: same `GNUstep/Defaults/oolite.plist`, same search list and coercions, `oo::writeOpenStepPList` (GNUstep's OpenStep writer, byte-identical) ([ADR-0032](../../../../docs/decisions/0032-oofnd-defaults.md)) |
 | `src/oofnd/objc/OOObject.h`, `.mm` | `OOObject`: the Foundation-free Objective-C root class on libobjc2's own refcount and pool; `OOObjCInstallFloor()` ([ADR-0029](../../../../docs/decisions/0029-objc-floor-without-foundation.md)). Objective-C++, not linked into the game until the reroot bead |
 | `src/oofnd/objc/OOObject.h`, `.mm` | `OOObject`: the Foundation-free Objective-C root class on libobjc2's own refcount and pool; `OOObjCInstallFloor()` ([ADR-0029](../../../../docs/decisions/0029-objc-floor-without-foundation.md)). Objective-C++; linked into the game by bead oo-3rb.2 (exemplar reroot: `Core/OORoleSet`), but `OOObjCInstallFloor()` is not called until the constant-string flip |
@@ -114,6 +120,39 @@ Semantics worth knowing (all preserved, so nothing to do): a nil receiver return
 Later, when the Foundation sweep turns a file's collections into `oo::PList`, `oo::PListView(x).`
 becomes `x.` and the Objective-C types map to `std::string`, `PList::Array`, `PList::Dict`,
 `oo::PList` (`oofnd/PListGet.hpp` has the C++ table and the full semantics).
+
+## Migrating NSString category calls (oo::str)
+
+The recipe for a file's `NSStringOOExtensions` / `NSString (OOUtilities)` calls (seam 2.5b, bead
+oo-dps; proposed [ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)); exemplar
+`src/Core/OOOXZManager.mm`. The file keeps its `NSString`s; each call goes through the bridge in
+`src/Core/OOStringBridge.h`.
+
+1. **Import.** Replace `#import "NSStringOOExtensions.h"` with `#import "OOStringBridge.h"`; if the
+   file has no such import (the call came through `OOStringParsing.h`), add it after its last
+   `#import`. Keep `OOStringParsing.h` if the file uses anything else from it.
+2. **Rewrite each call** (the table is in `String.hpp`'s banner):
+
+   | Objective-C | becomes |
+   |---|---|
+   | `x = [s stringByTrimmingLeadingWhitespaceAndNewlineCharacters]` | `x = oo::StringMap(s, oo::str::trimLeadingWhitespaceAndNewlines)` |
+   | `x = [s stringByTrimmingTrailingWhitespaceAndNewlineCharacters]` | `x = oo::StringMap(s, oo::str::trimTrailingWhitespaceAndNewlines)` |
+   | `[s pathHasExtension:e]` (e ASCII) | `(s != nil && oo::str::pathHasExtension(oo::StdString(s), oo::StdString(e)))` |
+   | `[s oo_hash]` | `(s != nil ? oo::str::ooHash(oo::StdString(s)) : 0)` |
+   | `OOTabString(n)` | `oo::NSStringFrom(oo::str::tabString(n))` |
+
+   **nil is the one trap.** Messaging nil answers nil / 0 / NO, but `oo::StdString(nil)` is `""`,
+   and `oo::str` of `""` is not always zero (`ooHash("")` is 5381). `oo::StringMap` keeps nil for
+   `NSString` -> `NSString` methods; for any other result, test the receiver as the table does.
+3. **Leave alone:** everything else in the file, and methods not in the table (`%@` formatting
+   waits for Logging, oo-qpb; `+stringWithContentsOfUnicodeFile:` for its own bead).
+4. **Check:** the file no longer names a category method, `tools/tier-a.sh <file>` passes, and
+   the goldens still verify.
+
+When the Foundation sweep turns the file's strings into `std::string`, `oo::StringMap(s, f)`
+becomes `f(s)` and the bridge header goes. Performance rule from the decision-4 benchmark
+([2-string-benchmark.md](../../../../docs/phases/2-string-benchmark.md)): where Objective-C
+retained a string, take `std::string_view` / `const std::string&` or move; copy only where it copied.
 
 ## Testing
 

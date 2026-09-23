@@ -11,10 +11,15 @@ oofnd_tests = [
     'test_filesystem',
     'test_resourcepaths',
     'test_cocoa_macros',
+    'test_notification',
+    'test_date',
+    'test_stdlib',
     'test_process',
     'test_thread',
     'test_defaults',
     'test_foundation_types',
+    'test_string',
+    'test_encoding',
 ]
 
 foreach t : oofnd_tests

@@ -51,6 +51,7 @@ extern "C" int SaveEXRSnapshot(const char* outfilename, int width, int height, c
 
 
 #include <ctype.h>
+#include "oofnd/Date.hpp"
 
 #if OOLITE_WINDOWS
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -445,7 +446,7 @@ enum PreferredAppMode
 	allowingStringInput = gvStringInputNo;
 	isAlphabetKeyDown = NO;
 
-	timeIntervalAtLastClick = timeSinceLastMouseWheel = [NSDate timeIntervalSinceReferenceDate];
+	timeIntervalAtLastClick = timeSinceLastMouseWheel = oo::date::monotonicSeconds();	// intervals only (MyOpenGLView+Input.mm)
 
 	_mouseWheelDelta = 0.0f;
 
