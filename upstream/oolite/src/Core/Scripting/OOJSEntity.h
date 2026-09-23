@@ -39,15 +39,21 @@ void InitOOJSEntity(JSContext *context, JSObject *global);
 
 BOOL JSValueToEntity(JSContext *context, jsval value, Entity **outEntity);
 
+// gOOEntityJSClass (a plain JSClass) is retargeted onto the ooscript façade (JSEngine.hpp,
+// bead oo-oap): the class is now an ooscript::ClassDef owned by OOJSEntity.mm, and
+// JSEntityClass() reads the backend's own engine-side JSClass* off it, exactly as
+// OOJSSun.mm's RawSunClass() does for its own retargeted class. Declared as a real function
+// rather than OOINLINE because the façade type is not visible to plain-C/Objective-C callers
+// of this header.
+JSClass *JSEntityClass(void);
+
 #ifdef __cplusplus
 }
 #endif
 
-extern JSClass gOOEntityJSClass;
 extern JSObject *gOOEntityJSPrototype;
-DEFINE_JS_OBJECT_GETTER(OOJSEntityGetEntity, &gOOEntityJSClass, gOOEntityJSPrototype, Entity)
+DEFINE_JS_OBJECT_GETTER(OOJSEntityGetEntity, JSEntityClass(), gOOEntityJSPrototype, Entity)
 
-OOINLINE JSClass *JSEntityClass(void)  { return &gOOEntityJSClass; }
 OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 
 
