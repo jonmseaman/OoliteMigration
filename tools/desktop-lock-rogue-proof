@@ -43,6 +43,12 @@
 #                               oolite.app paths for exactly this purpose, so it was a live hazard.
 #  17  a shell log reader       the same thing in shell: tail "$LOGS/latest.log"
 #
+# 36-40  HARNESS MEMBERSHIP (bead oo-hub0, ADR-0046). A spawner inherits golden_run.py's exemption
+#        only if it lives under tests/golden/ AND its code imports golden_run. 36 (in the harness
+#        tree, golden_run named only in prose), 37 (imports golden_run but lives in tools/) and 38
+#        (imports it through a string, importlib-style) must be caught; 39 (a member that takes the
+#        lock) must fail check 3; 40 (a genuine new scenario driver) must be clean.
+#
 # 19-35  THE RULE x BRANCH PROBE MATRIX (review 3). Every finding review 3 measured was the RULE
 #        DISAGREEING WITH ITSELF across two branches, not a missing spelling - so the same launch
 #        and the same log reader are now written in EVERY branch the scanner has (python-list,
@@ -452,6 +458,67 @@ cat >tools/rogue35_n_batch.bat <<'EOF'
 type "%OO_APP_DIR%\oolite.app\logs\latest.log"
 EOF
 expect_clean tools/rogue35_n_batch.bat "MATRIX negative batch (log reader)"
+
+echo "=== 36. HARNESS: a golden-tree launcher that names golden_run only in prose ==="
+cat >tests/golden/rogue36_prose_member.py <<'EOF'
+"""A scenario driver that says it reuses golden_run.py wholesale - but never imports it.
+import golden_run
+"""
+import os, subprocess
+# import golden_run  (a comment cannot enrol a file in the harness either)
+APP = os.environ["OO_APP_DIR"]
+subprocess.Popen([os.path.join(APP, "oolite.exe"), "--no-splash"])
+EOF
+expect_caught tests/golden/rogue36_prose_member.py "HARNESS: golden-tree launcher whose only golden_run is prose"
+
+echo "=== 37. HARNESS: a tools/ launcher that imports golden_run (wrong tree) ==="
+cat >tools/rogue37_borrowed_helper.py <<'EOF'
+import os, subprocess, sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tests", "golden"))
+import golden_run
+port = golden_run.reserve_port("/tmp")
+subprocess.Popen([os.path.join(os.environ["OO_APP_DIR"], "oolite.exe"), "--no-splash"])
+EOF
+expect_caught tools/rogue37_borrowed_helper.py "HARNESS: a tools/ launcher that borrows golden_run"
+
+echo "=== 38. HARNESS: golden_run named in a string, imported dynamically ==="
+cat >tests/golden/rogue38_dynamic_import.py <<'EOF'
+import importlib, os, subprocess
+harness = importlib.import_module("golden_run")
+subprocess.Popen([os.path.join(os.environ["OO_APP_DIR"], "oolite.exe"), "--no-splash"])
+EOF
+expect_caught tests/golden/rogue38_dynamic_import.py "HARNESS: a golden-tree launcher that only string-imports golden_run"
+
+echo "=== 39. HARNESS: a member that takes the desktop lock (would serialise the fan-out) ==="
+cat >tests/golden/rogue39_locking_member.py <<'EOF'
+import os, subprocess, sys
+import golden_run
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools"))
+from desktop_lock import desktop_lock
+with desktop_lock("rogue39"):
+    subprocess.Popen([os.path.join(os.environ["OO_APP_DIR"], "oolite.exe"), "--no-splash"])
+EOF
+PLANTED=tests/golden/rogue39_locking_member.py
+out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?
+rm -f tests/golden/rogue39_locking_member.py; PLANTED=""
+echo "  rogue tests/golden/rogue39_locking_member.py -> check-desktop-lock exit $rc"
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "rogue39_locking_member.py is a member of an exempt harness but takes the desktop lock"; then
+	ok "HARNESS: a member that takes the lock fails check 3 (exit $rc, named in the report)"
+else
+	no "HARNESS: a member that takes the lock WAS NOT CAUGHT (exit $rc)"
+fi
+
+echo "=== 40. HARNESS NEGATIVE: a genuine new scenario driver launching through golden_run ==="
+cat >tests/golden/rogue40_new_scenario.py <<'EOF'
+import os, sys
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "..", "upstream", "oolite", "tests", "component"))
+import golden_run  # noqa: E402
+from console import DebugConsole  # noqa: E402
+port = golden_run.reserve_port(HERE)
+console = DebugConsole(os.environ["OO_APP_DIR"], port)
+EOF
+expect_clean tests/golden/rogue40_new_scenario.py "HARNESS NEGATIVE: a new golden scenario driver that imports golden_run"
 
 echo "=== 18. the tree is back to clean ==="
 out="$(bash tools/check-desktop-lock.sh 2>&1)"; rc=$?

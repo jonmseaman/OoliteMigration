@@ -45,7 +45,7 @@ MA 02110-1301, USA.
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMesh.h"
 #import "OOConstToString.h"
 #import "OOEntityFilterPredicate.h"
@@ -3322,7 +3322,7 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	
 	if (fromShaders)
 	{
-		materials = [[thisEnt mesh] materials];
+		materials = oo::ObjectFromPList([[thisEnt mesh] materials]);
 		params = ooscript::toObject(OOJS_ARGV[0]);
 		shaders = OOJSNativeObjectFromJSObject(context, params);
 	}
@@ -3337,7 +3337,7 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 		}
 		else
 		{
-			shaders = [[thisEnt mesh] shaders];
+			shaders = oo::ObjectFromPList([[thisEnt mesh] shaders]);
 		}
 	}
 	
@@ -3345,12 +3345,12 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	NSDictionary 			*shipDict = [thisEnt shipInfoDictionary];
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:[shipDict oo_stringForKey:@"model"]
-							   cacheKey:nil
-					 materialDictionary:materials
-					  shadersDictionary:shaders
-								 smooth:[shipDict oo_boolForKey:@"smooth" defaultValue:NO]
-						   shaderMacros:[[ResourceManager materialDefaults] oo_dictionaryForKey:@"ship-prefix-macros"]
+	OOMesh *mesh = [OOMesh meshWithName:oo::StdString(oo::PListView(shipDict).get<NSString *>(@"model"))
+							   cacheKey:std::nullopt
+					 materialDictionary:oo::PListFrom(materials)
+					  shadersDictionary:oo::PListFrom(shaders)
+								 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
+						   shaderMacros:oo::PListFrom(oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros"))
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)
@@ -3579,7 +3579,7 @@ static bool ShipGetMaterials(ooscript::Context context, ooscript::CallArgs &oojs
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	result = [[thisEnt mesh] materials];
+	result = oo::ObjectFromPList([[thisEnt mesh] materials]);
 	if (result == nil)  result = [NSDictionary dictionary];
 	OOJS_RETURN_OBJECT(result);
 	
@@ -3596,7 +3596,7 @@ static bool ShipGetShaders(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	result = [[thisEnt mesh] shaders];
+	result = oo::ObjectFromPList([[thisEnt mesh] shaders]);
 	if (result == nil)  result = [NSDictionary dictionary];
 	OOJS_RETURN_OBJECT(result);
 	

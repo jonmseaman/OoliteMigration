@@ -39,6 +39,8 @@ MA 02110-1301, USA.
 #include <string>
 #include <string_view>
 
+#include "oofnd/StdLib.hpp"
+
 /*	The expansion engine works on UTF-16 code units, as it did on NSString's characters, held in
 	std::u16string; an empty optional stands for nil (bead oo-3rb.61, proposed ADR-0034 decision
 	4). Only the lookups (overrides, specials, descriptions.plist, key bindings, mission and
@@ -137,7 +139,20 @@ OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &k
 OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, NSString *key);
 OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key);
 OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, const OOUnits &key);
-NSMapTable *SpecialSubstitutionSelectors(void);
+/*	Key -> selector tables, keyed by the key's UTF-8 (NSString equality). Were map tables with
+	object keys and non-owned selector values (bead oo-3rb.20); never iterated.
+*/
+typedef std::unordered_map<std::string, SEL> OOSelectorTable;
+
+SEL LookUpSelector(const OOSelectorTable *table, NSString *key)
+{
+	const char *utf8 = [key UTF8String];
+	if (table == NULL || utf8 == NULL)  return NULL;
+	auto found = table->find(utf8);
+	return (found != table->end()) ? found->second : NULL;
+}
+
+const OOSelectorTable *SpecialSubstitutionSelectors(void);
 OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit);
 OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext *context, const OOUnits &key, NSString *keyString);
 OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, NSString *key);
@@ -747,8 +762,7 @@ OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, NSString 
 {
 	NSCParameterAssert(context != NULL && key != nil);
 	
-	NSMapTable *specials = SpecialSubstitutionSelectors();
-	SEL selector = (SEL)NSMapGet(specials, key);
+	SEL selector = LookUpSelector(SpecialSubstitutionSelectors(), key);
 	if (selector != NULL)
 	{
 		NSCAssert2([PLAYER respondsToSelector:selector], @"Special string expansion selector %s for [%@] is not implemented.", OOSelectorName(selector), key);
@@ -786,9 +800,9 @@ OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, c
 	Retrieve the mapping of special keys for ExpandStringKeySpecial() to
 	selectors.
 */
-NSMapTable *SpecialSubstitutionSelectors(void)
+const OOSelectorTable *SpecialSubstitutionSelectors(void)
 {
-	static NSMapTable *specials = NULL;
+	static OOSelectorTable *specials = NULL;
 	if (specials != NULL)  return specials;
 	
 	struct { NSString *key; SEL selector; } selectors[] =
@@ -805,10 +819,11 @@ NSMapTable *SpecialSubstitutionSelectors(void)
 	};
 	unsigned i, count = sizeof selectors / sizeof *selectors;
 	
-	specials = NSCreateMapTable(NSObjectMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, count);
+	specials = new OOSelectorTable;
+	specials->reserve(count);
 	for (i = 0; i < count; i++)
 	{
-		NSMapInsertKnownAbsent(specials, selectors[i].key, selectors[i].selector);
+		specials->emplace([selectors[i].key UTF8String], selectors[i].selector);
 	}
 	
 	return specials;
@@ -907,13 +922,10 @@ OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NS
 SEL LookUpLegacySelector(NSString *key)
 {
 	SEL selector = NULL;
-	static NSMapTable *selectorCache = NULL;
-	
+	static OOSelectorTable *selectorCache = NULL;
+
 	// Try cache lookup.
-	if (selectorCache != NULL)
-	{
-		selector = (SEL)NSMapGet(selectorCache, key);
-	}
+	selector = LookUpSelector(selectorCache, key);
 	
 	if (selector == NULL)
 	{
@@ -945,9 +957,11 @@ SEL LookUpLegacySelector(NSString *key)
 			// Add it to cache.
 			if (selectorCache == NULL)
 			{
-				selectorCache = NSCreateMapTable(NSObjectMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, [whitelist count]);
+				selectorCache = new OOSelectorTable;
+				selectorCache->reserve([whitelist count]);
 			}
-			NSMapInsertKnownAbsent(selectorCache, key, selector);
+			const char *utf8 = [key UTF8String];
+			if (utf8 != NULL)  selectorCache->emplace(utf8, selector);
 		}
 	}
 	

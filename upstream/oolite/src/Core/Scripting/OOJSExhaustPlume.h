@@ -42,7 +42,7 @@ void InitOOJSExhaustPlume(ooscript::Context context, ooscript::Object global);
 @interface OOExhaustPlumeEntity (OOJavaScriptExtensions)
 
 - (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (NSString *) oo_jsClassName;
+- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
 - (BOOL) isVisibleToScripts;
 
 @end
