@@ -32,8 +32,11 @@ SOFTWARE.
 #import "OOLogOutputHandler.h"
 #import "OOLogging.h"
 #import "OOAsyncQueue.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #import "NSFileManagerOOExtensions.h"
 #import "OOFoundationException.h"
@@ -95,7 +98,17 @@ static BOOL DirectoryExistCreatingIfNecessary(NSString *path);
 {
 @private
 	OOAsyncQueue		*messageQueue;
-	NSConditionLock		*threadStateMonitor;
+	
+	/*	threadStateMonitor, a Foundation condition lock until bead oo-3rb.7, as its parts: the
+		lock, the state it guards (kCondition* below), the broadcast a change makes, and whether
+		there is a monitor at all (it was released and set to nil when the thread failed to
+		start, which made every later message to it a no-op).
+	*/
+	std::mutex				threadStateLock;
+	std::condition_variable	threadStateChanged;
+	int						threadState;
+	BOOL					haveThreadStateMonitor;
+	
 	NSFileHandle		*logFile;
 }
 
@@ -164,10 +177,10 @@ void OOLogOutputHandlerInit(void)
 		OOLog(@"logging.nsLogFilter.install.failed", @"Failed to install NSLog() filter; system messages will not be logged in log file.");
 	}
 #elif GNUSTEP_BASE_LIBRARY
-	NSRecursiveLock *lock = GSLogLock();
-	[lock lock];
+	// gnustep-base's own NSLog lock, not ours to replace: it goes with the NSLog hook (oo-qps).
+	[GSLogLock() lock];
 	_NSLog_printf_handler = OONSLogPrintfHandler;
-	[lock unlock];
+	[GSLogLock() unlock];
 #endif
 	
 	atexit(OOLogOutputHandlerClose);
@@ -191,10 +204,9 @@ void OOLogOutputHandlerClose(void)
 			sDefaultLogCStringFunction = NULL;
 		}
 #elif GNUSTEP_BASE_LIBRARY
-		NSRecursiveLock *lock = GSLogLock();
-		[lock lock];
+		[GSLogLock() lock];
 		_NSLog_printf_handler = NULL;
-		[lock unlock];
+		[GSLogLock() unlock];
 #endif
 	}
 }
@@ -308,7 +320,6 @@ enum
 - (void)dealloc
 {
 	DESTROY(messageQueue);
-	DESTROY(threadStateMonitor);
 	DESTROY(logFile);
 	
 	[super dealloc];
@@ -332,9 +343,11 @@ enum
 	if (OK)
 	{
 		// set up threadStateMonitor -- used as a binary semaphore of sorts to check when the worker thread starts and stops.
-		threadStateMonitor = [[NSConditionLock alloc] initWithCondition:kConditionReadyToDealloc];
-		if (threadStateMonitor == nil)  OK = NO;
-		[threadStateMonitor setName:@"OOLogOutputHandler.stateMonitor"];
+		{
+			std::lock_guard<std::mutex> stateLock(threadStateLock);
+			threadState = kConditionReadyToDealloc;
+		}
+		haveThreadStateMonitor = YES;
 	}
 	
 	if (OK)
@@ -352,17 +365,25 @@ enum
 			[self release];
 		});
 		// Wait for it to start.
-		if (![threadStateMonitor lockWhenCondition:kConditionWorking beforeDate:[NSDate dateWithTimeIntervalSinceNow:5.0]])
+		const std::chrono::steady_clock::time_point startDeadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+		std::unique_lock<std::mutex> stateLock(threadStateLock);
+		while (threadState != kConditionWorking && threadStateChanged.wait_until(stateLock, startDeadline) != std::cv_status::timeout)  {}
+		if (threadState != kConditionWorking)
 		{
+			stateLock.unlock();
 			// If it doesn't signal a start within five seconds, assume something's wrong.
 			// Send kill signal, just in case it comes to life...
 			[messageQueue enqueue:@"die"];
 			// ...and stop -dealloc from waiting for thread death
-			[threadStateMonitor release];
-			threadStateMonitor = nil;
+			haveThreadStateMonitor = NO;
 			OK = NO;
 		}
-		[threadStateMonitor unlockWithCondition:kConditionWorking];
+		else
+		{
+			threadState = kConditionWorking;
+			threadStateChanged.notify_all();
+			stateLock.unlock();
+		}
 	}
 	
 	if (OK)
@@ -395,14 +416,16 @@ enum
 {
 	NSString				*postamble = nil;
 	
-	if (messageQueue != nil && threadStateMonitor != nil)
+	if (messageQueue != nil && haveThreadStateMonitor)
 	{
 		// We're fully inited; write postamble, wait for worker thread to terminate cleanly, and close file.
 		postamble = [NSString stringWithFormat:@"\nClosing log at %@.", [NSDate date]];
 		[self asyncLogMessage:postamble];
 		[messageQueue enqueue:@"die"];	// Kill message
-		[threadStateMonitor lockWhenCondition:kConditionReadyToDealloc];
-		[threadStateMonitor unlock];
+		{
+			std::unique_lock<std::mutex> stateLock(threadStateLock);
+			while (threadState != kConditionReadyToDealloc)  threadStateChanged.wait(stateLock);
+		}
 		
 		[logFile closeFile];
 	}
@@ -457,63 +480,71 @@ enum
 - (void)loggerThread
 {
 	id					message = nil;
-	NSAutoreleasePool	*rootPool = nil, *pool = nil;
+	void				*pool = NULL;
 	NSUInteger			size = 0;
 	
-	rootPool = [[NSAutoreleasePool alloc] init];
-	oo::thread::setCurrentName("loggerThread");
-	
-	// Signal readiness
-	[messageQueue retain];
-	[threadStateMonitor lock];
-	[threadStateMonitor unlockWithCondition:kConditionWorking];
-	
-	@try
+	@autoreleasepool
 	{
-		for (;;)
+		oo::thread::setCurrentName("loggerThread");
+		
+		// Signal readiness
+		[messageQueue retain];
+		if (haveThreadStateMonitor)
 		{
-			pool = [[NSAutoreleasePool alloc] init];
-			
-			message = [messageQueue dequeue];
-			
-			if (!sSaturated && [message isKindOfClass:[NSData class]])
+			std::lock_guard<std::mutex> stateLock(threadStateLock);
+			threadState = kConditionWorking;
+			threadStateChanged.notify_all();
+		}
+		
+		@try
+		{
+			for (;;)
 			{
-				size += [message length];
-				if (size > 1 << 30)	// 1 GiB
+				pool = objc_autoreleasePoolPush();
+				
+				message = [messageQueue dequeue];
+				
+				if (!sSaturated && [message isKindOfClass:[NSData class]])
 				{
-					sSaturated = YES;
+					size += [message length];
+					if (size > 1 << 30)	// 1 GiB
+					{
+						sSaturated = YES;
 #if OOLITE_WINDOWS
-					message = @"\r\n\r\n\r\n***** LOG TRUNCATED DUE TO EXCESSIVE LENGTH *****\r\n";
+						message = @"\r\n\r\n\r\n***** LOG TRUNCATED DUE TO EXCESSIVE LENGTH *****\r\n";
 #else
-					message = @"\n\n\n***** LOG TRUNCATED DUE TO EXCESSIVE LENGTH *****\n";
+						message = @"\n\n\n***** LOG TRUNCATED DUE TO EXCESSIVE LENGTH *****\n";
 #endif
-					message = [message dataUsingEncoding:NSUTF8StringEncoding];
+						message = [message dataUsingEncoding:NSUTF8StringEncoding];
+					}
+					
+					[logFile writeData:message];
+				}
+				else if ([message isEqual:@"flush"])
+				{
+					[logFile synchronizeFile];
+				}
+				else if ([message isEqual:@"die"])
+				{
+					break;
 				}
 				
-				[logFile writeData:message];
+				objc_autoreleasePoolPop(pool);
 			}
-			else if ([message isEqual:@"flush"])
-			{
-				[logFile synchronizeFile];
-			}
-			else if ([message isEqual:@"die"])
-			{
-				break;
-			}
-			
-			[pool release];
+		}
+		@catch (OOException *exception) {}
+		@catch (OOFoundationException *exception) {}
+		objc_autoreleasePoolPop(pool);
+		
+		// Clean up; after this, ivars are out of bounds.
+		[messageQueue release];
+		if (haveThreadStateMonitor)
+		{
+			std::lock_guard<std::mutex> stateLock(threadStateLock);
+			threadState = kConditionReadyToDealloc;
+			threadStateChanged.notify_all();
 		}
 	}
-	@catch (OOException *exception) {}
-	@catch (OOFoundationException *exception) {}
-	[pool release];
-	
-	// Clean up; after this, ivars are out of bounds.
-	[messageQueue release];
-	[threadStateMonitor lock];
-	[threadStateMonitor unlockWithCondition:kConditionReadyToDealloc];
-	
-	[rootPool release];
 }
 
 @end
@@ -694,7 +725,7 @@ NSString *OOLogHandlerGetLogBasePath(void)
 
 static char **sCrashReporterInfo = NULL;
 static char *sOldCrashReporterInfo = NULL;
-static NSLock *sCrashReporterInfoLock = nil;
+static std::mutex sCrashReporterInfoLock;
 
 // Evil hackery based on http://www.allocinit.net/blog/2008/01/04/application-specific-information-in-leopard-crash-reports/
 static void InitCrashReporterInfo(void)
@@ -702,15 +733,7 @@ static void InitCrashReporterInfo(void)
 	sCrashReporterInfo = dlsym(RTLD_DEFAULT, "__crashreporter_info__");
 	if (sCrashReporterInfo != NULL)
 	{
-		sCrashReporterInfoLock = [[NSLock alloc] init];
-		if (sCrashReporterInfoLock != nil)
-		{
-			sCrashReporterInfoAvailable = YES;
-		}
-		else
-		{
-			sCrashReporterInfo = NULL;
-		}
+		sCrashReporterInfoAvailable = YES;
 	}
 }
 
@@ -731,11 +754,11 @@ static void SetCrashReporterInfo(const char *info)
 		Note that we keep a separate pointer to the old value, in case
 		something else overwrites __crashreporter_info__.
 	*/
-	[sCrashReporterInfoLock lock];
+	sCrashReporterInfoLock.lock();
 	*sCrashReporterInfo = copy;
 	old = sOldCrashReporterInfo;
 	sOldCrashReporterInfo = copy;
-	[sCrashReporterInfoLock unlock];
+	sCrashReporterInfoLock.unlock();
 	
 	// Delete our old string.
 	if (old != NULL)  free(old);

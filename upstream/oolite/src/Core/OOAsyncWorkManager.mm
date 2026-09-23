@@ -31,6 +31,7 @@ SOFTWARE.
 #import "OOCollectionExtractors.h"
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OOObjCRef.h"
 
 // OOCocoa.h defines true/false as macros; the standard headers want the keywords (oofnd/Data.hpp).
 #pragma push_macro("true")
@@ -41,6 +42,8 @@ SOFTWARE.
 #include <deque>
 #include <mutex>
 #include <string>
+#include <vector>
+#include <algorithm>
 #pragma pop_macro("false")
 #pragma pop_macro("true")
 
@@ -62,8 +65,9 @@ static OOAsyncWorkManager *sSingleton = nil;
 @private
 	OOAsyncQueue			*_readyQueue;
 	
-	NSMutableSet			*_pendingCompletableOperations;
-	NSLock					*_pendingOpsLock;
+	// Tasks awaiting completion, a set by identity (the task classes do not override -isEqual:).
+	std::vector<oo::ObjCRef<id>>	_pendingCompletableOperations;
+	std::mutex				_pendingOpsLock;
 }
 
 - (void) queueResult:(id<OOAsyncWorkTask>)task;
@@ -79,7 +83,7 @@ static OOAsyncWorkManager *sSingleton = nil;
 	OOAsyncQueue			*_taskQueue;
 }
 
-- (void) queueTask:(NSNumber *)threadNumber;
+- (void) queueTask:(unsigned)threadNumber;
 
 @end
 
@@ -89,12 +93,14 @@ static OOAsyncWorkManager *sSingleton = nil;
 	queuePriority. A queued task is retained until a work thread has dispatched it, as the
 	invocation operation retained its argument.
 */
+namespace {
 struct OOPrioritizedTaskQueue
 {
 	std::mutex				mutex;
 	std::condition_variable	available;
 	std::deque<id>			tasks[3];	// indexed by OOAsyncWorkPriority: low, medium, high
 };
+}	// namespace
 
 
 @interface OOOperationQueueAsyncWorkManager: OOAsyncWorkManagerInternal
@@ -105,7 +111,7 @@ struct OOPrioritizedTaskQueue
 
 + (BOOL) canBeUsed;
 
-- (void) workThread:(NSNumber *)threadNumber;
+- (void) workThread:(unsigned)threadNumber;
 - (void) dispatchTask:(id<OOAsyncWorkTask>)task;
 
 @end
@@ -117,7 +123,9 @@ enum
 };
 
 
-static unsigned WorkThreadCount(void)
+namespace {
+
+unsigned WorkThreadCount(void)
 {
 #if OO_DEBUG
 	return kMaxWorkThreads;
@@ -127,35 +135,52 @@ static unsigned WorkThreadCount(void)
 }
 
 
-/*	Starts `count` detached work threads running [manager selector:threadNumber], numbered from 1,
-	as Foundation's detachNewThreadSelector:toTarget:withObject: did. The manager is an immortal
+/*	Starts `count` detached work threads running body(threadNumber), numbered from 1, as
+	Foundation's detachNewThreadSelector:toTarget:withObject: did with [manager selector:threadNumber].
+	The thread number is a plain unsigned now (proposed ADR-0043). The manager is an immortal
 	singleton, so a thread needs no retain on it; the thread body opens its own pool.
 */
-static void StartWorkThreads(OOAsyncWorkManager *manager, SEL selector, unsigned count)
+template <class Body>
+void StartWorkThreads(Body body, unsigned count)
 {
 	for (unsigned threadNumber = 1; threadNumber <= count; threadNumber++)
 	{
-		oo::thread::detach([manager, selector, threadNumber]()
+		oo::thread::detach([body, threadNumber]()
 		{
 			@autoreleasepool
 			{
-				[manager performSelector:selector withObject:[NSNumber numberWithUnsignedInt:threadNumber]];
+				body(threadNumber);
 			}
 		});
 	}
 }
 
 
-static void SetUpWorkThread(NSNumber *threadNumber)
+void SetUpWorkThread(unsigned threadNumber)
 {
 	oo::thread::setCurrentPriority(0.5);
-	oo::thread::setCurrentName("OOAsyncWorkManager thread " + std::to_string([threadNumber unsignedIntValue]));
+	oo::thread::setCurrentName("OOAsyncWorkManager thread " + std::to_string(threadNumber));
+}
+
+
+bool PendingContains(const std::vector<oo::ObjCRef<id>> &pending, id task)
+{
+	return std::find(pending.begin(), pending.end(), task) != pending.end();
+}
+
+
+void PendingRemove(std::vector<oo::ObjCRef<id>> &pending, id task)
+{
+	const auto it = std::find(pending.begin(), pending.end(), task);	// removes the one entry, as the set did
+	if (it != pending.end())  pending.erase(it);
 }
 
 
 #if !USE_PTHREAD_ONCE
-static NSLock *sInitLock = nil;
+std::mutex sInitLock;
 #endif
+
+}	// namespace
 
 
 static void InitAsyncWorkManager(void)
@@ -183,18 +208,6 @@ static void InitAsyncWorkManager(void)
 
 @implementation OOAsyncWorkManager
 
-#if !USE_PTHREAD_ONCE
-+ (void) initialize
-{
-	if (sInitLock == nil)
-	{
-		sInitLock = [[NSLock alloc] init];
-		NSAssert(sInitLock != nil, @"Async Work Manager init failed");
-	}
-}
-#endif
-
-
 + (OOAsyncWorkManager *) sharedAsyncWorkManager
 {
 #if USE_PTHREAD_ONCE
@@ -202,13 +215,13 @@ static void InitAsyncWorkManager(void)
 	pthread_once(&once, InitAsyncWorkManager);
 	NSAssert(sSingleton != nil, @"Async Work Manager init failed");
 #else
-	[sInitLock lock];
+	sInitLock.lock();
 	if (sSingleton == nil)
 	{
 		InitAsyncWorkManager();
 		NSAssert(sSingleton != nil, @"Async Work Manager init failed");
 	}
-	[sInitLock unlock];
+	sInitLock.unlock();
 #endif
 	
 	return sSingleton;
@@ -286,14 +299,6 @@ static void InitAsyncWorkManager(void)
 			return nil;
 		}
 		
-		_pendingCompletableOperations = [[NSMutableSet alloc] init];
-		_pendingOpsLock = [[NSLock alloc] init];
-		
-		if (_pendingCompletableOperations == nil || _pendingOpsLock == nil)
-		{
-			[self release];
-			return nil;
-		}
 	}
 	
 	return self;
@@ -304,16 +309,16 @@ static void InitAsyncWorkManager(void)
 {
 	id next = nil;
 	
-	[_pendingOpsLock lock];
+	_pendingOpsLock.lock();
 	for (;;)
 	{
 		next = [_readyQueue tryDequeue];
 		if (next == nil)  break;
 		
-		[_pendingCompletableOperations removeObject:next];
+		PendingRemove(_pendingCompletableOperations, next);
 		[next completeAsyncTask];
 	}
-	[_pendingOpsLock unlock];
+	_pendingOpsLock.unlock();
 }
 
 
@@ -326,10 +331,10 @@ static void InitAsyncWorkManager(void)
 	NSAssert1(oo::thread::isMainThread(), @"%s can only be called from the main thread.", __PRETTY_FUNCTION__);
 #endif
 	
-	[_pendingOpsLock lock];
-	BOOL exists = [_pendingCompletableOperations containsObject:task];
-	if (exists)  [_pendingCompletableOperations removeObject:task];
-	[_pendingOpsLock unlock];
+	_pendingOpsLock.lock();
+	BOOL exists = PendingContains(_pendingCompletableOperations, task);
+	if (exists)  PendingRemove(_pendingCompletableOperations, task);
+	_pendingOpsLock.unlock();
 	
 	if (!exists)  return;
 	
@@ -338,9 +343,9 @@ static void InitAsyncWorkManager(void)
 	{
 		// Dequeue a task and complete it.
 		next = [_readyQueue dequeue];
-		[_pendingOpsLock lock];
-		[_pendingCompletableOperations removeObject:next];
-		[_pendingOpsLock unlock];
+		_pendingOpsLock.lock();
+		PendingRemove(_pendingCompletableOperations, next);
+		_pendingOpsLock.unlock();
 	
 		[next completeAsyncTask];
 		
@@ -359,9 +364,9 @@ static void InitAsyncWorkManager(void)
 
 - (void) noteTaskQueued:(id<OOAsyncWorkTask>)task
 {
-	[_pendingOpsLock lock];
-	[_pendingCompletableOperations addObject:task];
-	[_pendingOpsLock unlock];
+	_pendingOpsLock.lock();
+	if (!PendingContains(_pendingCompletableOperations, task))  _pendingCompletableOperations.emplace_back(task);	// a set: added once
+	_pendingOpsLock.unlock();
 }
 
 @end
@@ -385,7 +390,7 @@ static void InitAsyncWorkManager(void)
 		}
 		
 		// Set up loading threads.
-		StartWorkThreads(self, @selector(queueTask:), WorkThreadCount());
+		StartWorkThreads([self](unsigned threadNumber) { [self queueTask:threadNumber]; }, WorkThreadCount());
 	}
 	
 	return self;
@@ -403,30 +408,26 @@ static void InitAsyncWorkManager(void)
 }
 
 
-- (void) queueTask:(NSNumber *)threadNumber
+- (void) queueTask:(unsigned)threadNumber
 {
-	NSAutoreleasePool			*rootPool = nil, *pool = nil;
-	
-	rootPool = [[NSAutoreleasePool alloc] init];
-	
-	SetUpWorkThread(threadNumber);
-	
-	for (;;)
+	@autoreleasepool
 	{
-		pool = [[NSAutoreleasePool alloc] init];
+		SetUpWorkThread(threadNumber);
 		
-		id<OOAsyncWorkTask> task = [_taskQueue dequeue];
-		@try
+		for (;;)
 		{
-			[task performAsyncTask];
+			@autoreleasepool
+			{
+				id<OOAsyncWorkTask> task = [_taskQueue dequeue];
+				@try
+				{
+					[task performAsyncTask];
+				}
+				@catch (id exception) {}
+				[self queueResult:task];
+			}
 		}
-		@catch (id exception) {}
-		[self queueResult:task];
-		
-		[pool release];
 	}
-	
-	[rootPool release];
 }
 
 @end
@@ -451,7 +452,7 @@ static void InitAsyncWorkManager(void)
 	if ((self = [super init]))
 	{
 		_operationQueue = new OOPrioritizedTaskQueue;
-		StartWorkThreads(self, @selector(workThread:), WorkThreadCount());
+		StartWorkThreads([self](unsigned threadNumber) { [self workThread:threadNumber]; }, WorkThreadCount());
 	}
 
 	return self;
@@ -477,7 +478,7 @@ static void InitAsyncWorkManager(void)
 }
 
 
-- (void) workThread:(NSNumber *)threadNumber
+- (void) workThread:(unsigned)threadNumber
 {
 	SetUpWorkThread(threadNumber);
 

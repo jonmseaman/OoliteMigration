@@ -32,7 +32,7 @@ SOFTWARE.
 #import "OOPListParsing.h"
 #import "OOFunctionAttributes.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
 #import "OOStringBridge.h"
@@ -404,10 +404,10 @@ static void LoadExplicitSettings(void)
 	// Load display settings.
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
 	oo::log::Options options;
-	options.showFunction = [prefs oo_boolForKey:@"logging-show-function" defaultValue:NO];
-	options.showFileAndLine = [prefs oo_boolForKey:@"logging-show-file-and-line" defaultValue:NO];
-	options.showTime = [prefs oo_boolForKey:@"logging-show-time" defaultValue:YES];
-	options.showClass = [prefs oo_boolForKey:@"logging-show-class" defaultValue:YES];
+	options.showFunction = oo::PListView(prefs).get<BOOL>(@"logging-show-function", NO);
+	options.showFileAndLine = oo::PListView(prefs).get<BOOL>(@"logging-show-file-and-line", NO);
+	options.showTime = oo::PListView(prefs).get<BOOL>(@"logging-show-time", YES);
+	options.showClass = oo::PListView(prefs).get<BOOL>(@"logging-show-class", YES);
 	oo::log::logger().setOptions(options);
 
 	/*

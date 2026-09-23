@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "GameController.h"
 #import "MyOpenGLView.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 
 
 #if OOLITE_MAC_OS_X	// TEMP, should be used for SDL too
@@ -66,14 +66,14 @@ MA 02110-1301, USA.
 	
 	// Load preferred display mode, falling back to current mode if no preferences set.
 	NSDictionary *currentMode = [fullScreenController currentDisplayMode];
-	NSUInteger width = [currentMode oo_unsignedIntegerForKey:kOODisplayWidth];
-	NSUInteger height = [currentMode oo_unsignedIntegerForKey:kOODisplayHeight];
-	NSUInteger refresh = [currentMode oo_unsignedIntegerForKey:kOODisplayRefreshRate];
+	NSUInteger width = oo::PListView(currentMode).get<NSUInteger>(kOODisplayWidth);
+	NSUInteger height = oo::PListView(currentMode).get<NSUInteger>(kOODisplayHeight);
+	NSUInteger refresh = oo::PListView(currentMode).get<NSUInteger>(kOODisplayRefreshRate);
 	
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-	width = [userDefaults oo_unsignedIntegerForKey:@"display_width" defaultValue:width];
-	height = [userDefaults oo_unsignedIntegerForKey:@"display_height" defaultValue:height];
-	refresh = [userDefaults oo_unsignedIntegerForKey:@"display_refresh" defaultValue:refresh];
+	width = oo::PListView(userDefaults).get<NSUInteger>(@"display_width", width);
+	height = oo::PListView(userDefaults).get<NSUInteger>(@"display_height", height);
+	refresh = oo::PListView(userDefaults).get<NSUInteger>(@"display_refresh", refresh);
 	
 	[fullScreenController setDisplayWidth:width height:height refreshRate:refresh];
 	

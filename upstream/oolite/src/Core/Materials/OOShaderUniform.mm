@@ -37,11 +37,15 @@ SOFTWARE.
 #import "OOMaths.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OOShaderUniformMethodType.h"
+#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 @interface OOShaderUniform (OOPrivate)
 
-- (id)initWithName:(NSString *)uniformName shaderProgram:(OOShaderProgram *)shaderProgram;
+- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram;
 
 - (void)applySimple;
 - (void)applyBinding;
@@ -51,7 +55,7 @@ SOFTWARE.
 
 @implementation OOShaderUniform
 
-- (id)initWithName:(NSString *)uniformName shaderProgram:(OOShaderProgram *)shaderProgram intValue:(GLint)constValue
+- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram intValue:(GLint)constValue
 {
 	self = [self initWithName:uniformName shaderProgram:shaderProgram];
 	if (self != nil)
@@ -64,7 +68,7 @@ SOFTWARE.
 }
 
 
-- (id)initWithName:(NSString *)uniformName shaderProgram:(OOShaderProgram *)shaderProgram floatValue:(GLfloat)constValue
+- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram floatValue:(GLfloat)constValue
 {
 	self = [self initWithName:uniformName shaderProgram:shaderProgram];
 	if (self != nil)
@@ -77,7 +81,7 @@ SOFTWARE.
 }
 
 
-- (id)initWithName:(NSString *)uniformName shaderProgram:(OOShaderProgram *)shaderProgram vectorValue:(GLfloat[4])constValue
+- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram vectorValue:(GLfloat[4])constValue
 {
 	self = [self initWithName:uniformName shaderProgram:shaderProgram];
 	if (self != nil)
@@ -90,7 +94,7 @@ SOFTWARE.
 }
 
 
-- (id)initWithName:(NSString *)uniformName shaderProgram:(OOShaderProgram *)shaderProgram colorValue:(OOColor *)constValue
+- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram colorValue:(OOColor *)constValue
 {
 	if (EXPECT_NOT(constValue == nil))
 	{
@@ -112,7 +116,7 @@ SOFTWARE.
 }
 
 
-- (id)initWithName:(NSString *)uniformName shaderProgram:(OOShaderProgram *)shaderProgram quaternionValue:(Quaternion)constValue asMatrix:(BOOL)asMatrix
+- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram quaternionValue:(Quaternion)constValue asMatrix:(BOOL)asMatrix
 {
 	self = [self initWithName:uniformName shaderProgram:shaderProgram];
 	if (self != nil)
@@ -136,7 +140,7 @@ SOFTWARE.
 }
 
 
-- (id)initWithName:(NSString *)uniformName shaderProgram:(OOShaderProgram *)shaderProgram matrixValue:(OOMatrix)constValue
+- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram matrixValue:(OOMatrix)constValue
 {
 	self = [self initWithName:uniformName shaderProgram:shaderProgram];
 	if (self != nil)
@@ -149,7 +153,7 @@ SOFTWARE.
 }
 
 
-- (id)initWithName:(NSString *)uniformName
+- (id)initWithName:(const std::string &)uniformName
 	 shaderProgram:(OOShaderProgram *)shaderProgram
 	 boundToObject:(id<OOWeakReferenceSupport>)target
 		  property:(SEL)selector
@@ -157,7 +161,7 @@ SOFTWARE.
 {
 	BOOL					OK = YES;
 	
-	if (EXPECT_NOT(uniformName == NULL || shaderProgram == NULL || selector == NULL)) OK = NO;
+	if (EXPECT_NOT(shaderProgram == NULL || selector == NULL)) OK = NO;
 	
 	if (OK)
 	{
@@ -167,18 +171,18 @@ SOFTWARE.
 	
 	if (OK)
 	{
-		location = glGetUniformLocationARB([shaderProgram program], [uniformName UTF8String]);
+		location = glGetUniformLocationARB([shaderProgram program], uniformName.c_str());
 		if (location == -1)
 		{
 			OK = NO;
-			OOLog(@"shader.uniform.bind.failed", @"Could not bind uniform \"%@\" to -[%@ %s] (no uniform of that name could be found).", uniformName, [target class], OOSelectorName(selector));
+			OOLog(@"shader.uniform.bind.failed", @"Could not bind uniform \"%@\" to -[%@ %s] (no uniform of that name could be found).", oo::NSStringFrom(uniformName), [target class], OOSelectorName(selector));
 		}
 	}
 	
 	// If we're still OK, it's a bindable method.
 	if (OK)
 	{
-		name = [uniformName retain];
+		name = uniformName;
 		isBinding = YES;
 		value.binding.selector = selector;
 		
@@ -201,17 +205,16 @@ SOFTWARE.
 
 - (void)dealloc
 {
-	[name release];
 	if (isBinding)  [value.binding.object release];
 	
 	[super dealloc];
 }
 
 
-- (NSString *)description
+- (id)description	// shared selector (proposed ADR-0043)
 {
-	NSString					*valueDesc = nil;
-	NSString					*valueType = nil;
+	std::optional<std::string>	valueDesc;
+	const char					*valueType = nullptr;
 	id							object;
 	
 	if (isBinding)
@@ -219,11 +222,11 @@ SOFTWARE.
 		object = [value.binding.object weakRefUnderlyingObject];
 		if (object != nil)
 		{
-			valueDesc = [NSString stringWithFormat:@"[<%@ %p> %s]", [object class], value.binding.object, OOSelectorName(value.binding.selector)];
+			valueDesc = oo::str::format("[<%s %s> %s]", oo::DescriptionOf([object class]).c_str(), oo::str::pointerDescription(value.binding.object).c_str(), OOSelectorName(value.binding.selector));
 		}
 		else
 		{
-			valueDesc = @"0";
+			valueDesc = "0";
 		}
 	}
 	else
@@ -231,11 +234,11 @@ SOFTWARE.
 		switch (type)
 		{
 			case kOOShaderUniformTypeInt:
-				valueDesc = [NSString stringWithFormat:@"%i", value.constInt];
+				valueDesc = oo::str::format("%i", value.constInt);
 				break;
 			
 			case kOOShaderUniformTypeFloat:
-				valueDesc = [NSString stringWithFormat:@"%g", value.constFloat];
+				valueDesc = oo::str::format("%g", value.constFloat);
 				break;
 				
 			case kOOShaderUniformTypeVector:
@@ -261,44 +264,44 @@ SOFTWARE.
 		case kOOShaderUniformTypeUnsignedInt:
 		case kOOShaderUniformTypeLong:
 		case kOOShaderUniformTypeUnsignedLong:
-			valueType = @"int";
+			valueType = "int";
 			break;
 		
 		case kOOShaderUniformTypeFloat:
 		case kOOShaderUniformTypeDouble:
-			valueType = @"float";
+			valueType = "float";
 			break;
 			
 		case kOOShaderUniformTypeVector:
 		case kOOShaderUniformTypeHPVector:
-			valueType = @"vec4";
+			valueType = "vec4";
 			break;
 			
 		case kOOShaderUniformTypeQuaternion:
-			valueType = @"vec4 (quaternion)";
+			valueType = "vec4 (quaternion)";
 			break;
 			
 		case kOOShaderUniformTypeMatrix:
-			valueType = @"matrix";
+			valueType = "matrix";
 			break;
 			
 		case kOOShaderUniformTypePoint:
-			valueType = @"vec2";
+			valueType = "vec2";
 			break;
 			
 		case kOOShaderUniformTypeObject:
-			valueType = @"object-binding";
+			valueType = "object-binding";
 			break;
 			
 	}
-	if (valueType == nil)  valueDesc = @"INVALID";
-	if (valueDesc == nil)  valueDesc = @"INVALID";
+	if (valueType == nullptr)  valueDesc = "INVALID";
+	if (!valueDesc.has_value())  valueDesc = "INVALID";
 	
 	/*	Examples:
 			<OOShaderUniform 0xf00>{1: int tex1 = 1;}
 			<OOShaderUniform 0xf00>{3: float laser_heat_level = [<ShipEntity 0xba8> laserHeatLevel];}
 	*/
-	return [NSString stringWithFormat:@"<%@ %p>{%i: %@ %@ = %@;}", [self class], self, location, valueType, name, valueDesc];
+	return oo::NSStringFrom(oo::str::format("<%s %s>{%i: %s %s = %s;}", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str(), location, valueType != nullptr ? valueType : "(null)", name.c_str(), valueDesc->c_str()));
 }
 
 
@@ -318,7 +321,7 @@ SOFTWARE.
 	BOOL					OK = YES;
 	Method					method = NULL;
 	NSUInteger				argCount;
-	NSString				*methodProblem = nil;
+	std::string				methodProblem;
 	id<OOWeakReferenceSupport> superCandidate = nil;
 	
 	if (!isBinding)  return;
@@ -349,7 +352,7 @@ SOFTWARE.
 	{
 		if (![target respondsToSelector:value.binding.selector])
 		{
-			methodProblem = @"target does not respond to selector";
+			methodProblem = "target does not respond to selector";
 			OK = NO;
 		}
 	}
@@ -359,7 +362,7 @@ SOFTWARE.
 		value.binding.method = [(id)target methodForSelector:value.binding.selector];
 		if (value.binding.method == NULL)
 		{
-			methodProblem = @"could not retrieve method implementation";
+			methodProblem = "could not retrieve method implementation";
 			OK = NO;
 		}
 	}
@@ -369,7 +372,7 @@ SOFTWARE.
 		method = class_getInstanceMethod(object_getClass((id)target), value.binding.selector);
 		if (method == NULL)
 		{
-			methodProblem = @"could not retrieve method signature";
+			methodProblem = "could not retrieve method signature";
 			OK = NO;
 		}
 	}
@@ -379,7 +382,7 @@ SOFTWARE.
 		argCount = method_getNumberOfArguments(method);
 		if (argCount != 2)	// "no-arguments" methods actually take two arguments, self and _msg.
 		{
-			methodProblem = @"only methods which do not require arguments may be bound to";
+			methodProblem = "only methods which do not require arguments may be bound to";
 			OK = NO;
 		}
 	}
@@ -391,13 +394,13 @@ SOFTWARE.
 		{
 			OK = NO;
 			char *returnType = method_copyReturnType(method);
-			methodProblem = [NSString stringWithFormat:@"unsupported type \"%s\"", returnType];
+			methodProblem = oo::str::format("unsupported type \"%s\"", returnType);
 			free(returnType);
 		}
 	}
 	
 	isActiveBinding = OK;
-	if (!OK)  OOLog(@"shader.uniform.bind.failed", @"Shader could not bind uniform \"%@\" to -[%@ %s] (%@).", name, [target class], OOSelectorName(value.binding.selector), methodProblem);
+	if (!OK)  OOLog(@"shader.uniform.bind.failed", @"Shader could not bind uniform \"%@\" to -[%@ %s] (%@).", oo::NSStringFrom(name), [target class], OOSelectorName(value.binding.selector), oo::NSStringFrom(methodProblem));
 }
 
 @end
@@ -406,11 +409,11 @@ SOFTWARE.
 @implementation OOShaderUniform (OOPrivate)
 
 // Designated initializer.
-- (id)initWithName:(NSString *)uniformName shaderProgram:(OOShaderProgram *)shaderProgram
+- (id)initWithName:(const std::string &)uniformName shaderProgram:(OOShaderProgram *)shaderProgram
 {
 	BOOL					OK = YES;
 	
-	if (EXPECT_NOT(uniformName == NULL || shaderProgram == NULL)) OK = NO;
+	if (EXPECT_NOT(shaderProgram == NULL)) OK = NO;
 	
 	if (OK)
 	{
@@ -420,13 +423,13 @@ SOFTWARE.
 	
 	if (OK)
 	{
-		location = glGetUniformLocationARB([shaderProgram program], [uniformName UTF8String]);
+		location = glGetUniformLocationARB([shaderProgram program], uniformName.c_str());
 		if (location == -1)  OK = NO;
 	}
 	
 	if (OK)
 	{
-		name = [uniformName copy];
+		name = uniformName;
 	}
 	
 	if (!OK)
@@ -554,7 +557,7 @@ SOFTWARE.
 		
 		case kOOShaderUniformTypeObject:
 			objVal = ((ObjectReturnMsgSend)value.binding.method)(object, value.binding.selector);
-			if ([objVal isKindOfClass:[NSNumber class]])
+			if (oo::IsNSNumber(objVal))
 			{
 				fVal = [objVal floatValue];
 				isFloat = YES;

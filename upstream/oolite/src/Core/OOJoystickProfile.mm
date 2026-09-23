@@ -351,8 +351,8 @@ MA 02110-1301, USA.
 {
 	if ((self = [super init]))
 	{
-		controlPoints = [[NSMutableArray alloc] initWithCapacity: 2];
-		segments = nil;
+		controlPoints.reserve(2);
+		segments.clear();
 		[self makeSegments];
 	}
 	return self;
@@ -360,8 +360,6 @@ MA 02110-1301, USA.
 
 - (void) dealloc
 {
-	[controlPoints release];
-	[segments release];
 	[super dealloc];
 	return;
 }
@@ -369,8 +367,8 @@ MA 02110-1301, USA.
 - (id) copyWithZone: (OOZone *) zone
 {
 	OOJoystickSplineAxisProfile *copy = [[[self class] alloc] init];
-	copy->controlPoints = [controlPoints copy];	// Foundation arrays: -copy is -copyWithZone: with the default zone (zones unused)
-	copy->segments = [segments copy];
+	copy->controlPoints = controlPoints;
+	copy->segments = segments;	// the same segment objects, as the array copy held
 	return copy;
 }
 
@@ -387,11 +385,11 @@ MA 02110-1301, USA.
 
 	left.x = 0.0;
 	left.y = 0.0;
-	for (i = 0; i <= [controlPoints count]; i++ )
+	for (i = 0; i <= controlPoints.size(); i++ )
 	{
-		if (i < [controlPoints count])
+		if (i < controlPoints.size())
 		{
-			right = [[controlPoints objectAtIndex: i] pointValue];
+			right = controlPoints[i];
 		}
 		else
 		{
@@ -403,13 +401,13 @@ MA 02110-1301, USA.
 			{
 				return -1;
 			}
-			[controlPoints replaceObjectAtIndex: i - 1 withObject: [NSValue valueWithPoint: point]];
+			controlPoints[i - 1] = point;
 			[self makeSegments];
 			return i - 1;
 		}
 		if ((right.x - point.x) >= SPLINE_POINT_MIN_SPACING)
 		{
-			[controlPoints insertObject: [NSValue valueWithPoint: point] atIndex: i];
+			controlPoints.insert(controlPoints.begin() + i, point);
 			[self makeSegments];
 			return i;
 		}
@@ -426,27 +424,27 @@ MA 02110-1301, USA.
 		point.x = 0.0;
 		point.y = 0.0;
 	}
-	else if (index >= (NSInteger)[controlPoints count])
+	else if (index >= (NSInteger)controlPoints.size())
 	{
 		point.x = 1.0;
 		point.y = 1.0;
 	}
 	else
 	{
-		point = [[controlPoints objectAtIndex: index] pointValue];
+		point = controlPoints[index];
 	}
 	return point;
 }
 
 - (int) countPoints
 {
-	return [controlPoints count];
+	return controlPoints.size();
 }
 
 
-- (NSArray *) controlPoints
+- (std::vector<NSPoint>) controlPoints
 {
-	return [NSArray arrayWithArray: controlPoints];
+	return controlPoints;
 }
 
 // Calculate segments from control points
@@ -457,22 +455,23 @@ MA 02110-1301, USA.
 	double gradientleft, gradientright;
 	OOJoystickSplineSegment* segment;
 	BOOL first_segment = YES;
-	NSMutableArray *new_segments = [NSMutableArray arrayWithCapacity: ([controlPoints count] + 1)];
+	std::vector<oo::ObjCRef<OOJoystickSplineSegment *>> new_segments;
+	new_segments.reserve(controlPoints.size() + 1);
 
 	left.x = 0.0;
 	left.y = 0.0;
-	if ([controlPoints count] == 0)
+	if (controlPoints.size() == 0)
 	{
 		right.x = 1.0;
 		right.y = 1.0;
 		segment = [OOJoystickSplineSegment segmentWithData: left right: right];
-		[new_segments addObject:segment];
+		new_segments.emplace_back(segment);
 	}
 	else
 	{
 		gradientleft = 1.0;
-		right = [[controlPoints objectAtIndex: 0] pointValue];
-		for (i = 0; i < [controlPoints count]; i++)
+		right = controlPoints[0];
+		for (i = 0; i < controlPoints.size(); i++)
 		{
 			next = [self pointAtIndex: i + 1];
 			if (next.x - left.x > 0.0)
@@ -493,7 +492,7 @@ MA 02110-1301, USA.
 				}
 				else
 				{
-					[new_segments addObject: segment];
+					new_segments.emplace_back(segment);
 					gradientleft = gradientright;
 					first_segment = NO;
 					left = right;
@@ -508,18 +507,17 @@ MA 02110-1301, USA.
 		{
 			return NO;
 		}
-		[new_segments addObject: segment];
+		new_segments.emplace_back(segment);
 	}
-	[segments release];
-	segments = [[NSArray arrayWithArray: new_segments] retain];
+	segments = std::move(new_segments);
 	return YES;
 }
 
 - (void) removeControl: (NSInteger) index
 {
-	if (index >= 0 && index < (NSInteger)[controlPoints count])
+	if (index >= 0 && index < (NSInteger)controlPoints.size())
 	{
-		[controlPoints removeObjectAtIndex: index];
+		controlPoints.erase(controlPoints.begin() + index);
 		[self makeSegments];
 	}
 	return;
@@ -527,7 +525,7 @@ MA 02110-1301, USA.
 
 - (void) clearControlPoints
 {
-	[controlPoints removeAllObjects];
+	controlPoints.clear();
 	[self makeSegments];
 }
 
@@ -537,7 +535,7 @@ MA 02110-1301, USA.
 
 	point.x = OOClamp_0_1_d(point.x);
 	point.y = OOClamp_0_1_d(point.y);
-	if (index < 0 || index >= (NSInteger)[controlPoints count])
+	if (index < 0 || index >= (NSInteger)controlPoints.size())
 	{
 		return;
 	}
@@ -548,16 +546,16 @@ MA 02110-1301, USA.
 	}
 	else
 	{
-		left = [[controlPoints objectAtIndex: (index-1)] pointValue];
+		left = controlPoints[index-1];
 	}
-	if (index == (NSInteger)[controlPoints count] - 1)
+	if (index == (NSInteger)controlPoints.size() - 1)
 	{
 		right.x = 1.0;
 		right.y = 1.0;
 	}
 	else
 	{
-		right = [[controlPoints objectAtIndex: (index+1)] pointValue];
+		right = controlPoints[index+1];
 	}
 	// preserve order of control points - if we attempt to move this control point beyond
 	// either of its neighbours, move it back inside.  Also keep neighbours a distance of at least SPLINE_POINT_MIN_SPACING apart
@@ -577,7 +575,7 @@ MA 02110-1301, USA.
 			point.x = (left.x + right.x)/2;
 		}
 	}
-	[controlPoints replaceObjectAtIndex: index withObject: [NSValue valueWithPoint: point]];
+	controlPoints[index] = point;
 	[self makeSegments];
 	return;
 }
@@ -597,9 +595,9 @@ MA 02110-1301, USA.
 	{
 		sign = 1.0;
 	}
-	for (i = 0; i < [segments count]; i++)
+	for (i = 0; i < segments.size(); i++)
 	{
-		segment = [segments objectAtIndex: i];
+		segment = segments[i].get();
 		if ([segment end] > x)
 		{
 			return sign * OOClamp_0_1_d([segment value:x]);
@@ -612,9 +610,9 @@ MA 02110-1301, USA.
 {
 	NSUInteger i;
 	OOJoystickSplineSegment *segment;
-	for (i = 0; i < [segments count]; i++)
+	for (i = 0; i < segments.size(); i++)
 	{
-		segment = [segments objectAtIndex: i];
+		segment = segments[i].get();
 		if ([segment end] > x)
 		{
 			return [segment gradient:x];

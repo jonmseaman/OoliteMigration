@@ -40,6 +40,9 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 #define DUMP_CONVERTED_CUBE_MAPS	0
@@ -75,26 +78,26 @@ static BOOL					sHaveSetUp = NO;
 
 @implementation OOTextureLoader
 
-+ (id)loaderWithPath:(NSString *)inPath options:(uint32_t)options
++ (id)cxx_loaderWithPath:(const std::optional<std::string> &)inPath options:(uint32_t)options
 {
-	NSString				*extension = nil;
+	std::string				extension;
 	id						result = nil;
 	
-	if (EXPECT_NOT(inPath == nil)) return nil;
+	if (EXPECT_NOT(!inPath.has_value())) return nil;
 	if (EXPECT_NOT(!sHaveSetUp))  [self setUp];
 	
 	// Get reduced detail setting (every time, in case it changes; we don't want to call through to Universe on the loading thread in case the implementation becomes non-trivial).
 	sReducedDetail = [UNIVERSE reducedDetail];
 	
 	// Get a suitable loader. FIXME -- this should sniff the data instead of relying on extensions.
-	extension = [[inPath pathExtension] lowercaseString];
-	if ([extension isEqualToString:@"png"])
+	extension = oo::str::lowercase(oo::str::pathExtension(*inPath));
+	if (extension == "png")
 	{
-		result = [[[OOPNGTextureLoader alloc] initWithPath:inPath options:options] autorelease];
+		result = [[[OOPNGTextureLoader alloc] cxx_initWithPath:inPath options:options] autorelease];
 	}
 	else
 	{
-		OOLog(@"texture.load.unknownType", @"Can't use %@ as a texture - extension \"%@\" does not identify a known type.", inPath, extension);
+		OOLog(@"texture.load.unknownType", @"Can't use %@ as a texture - extension \"%@\" does not identify a known type.", oo::NSStringFrom(*inPath), oo::NSStringFrom(extension));
 	}
 	
 	if (result != nil)
@@ -106,40 +109,40 @@ static BOOL					sHaveSetUp = NO;
 }
 
 
-+ (id)loaderWithTextureSpecifier:(id)specifier extraOptions:(uint32_t)extraOptions folder:(NSString *)folder
++ (id)cxx_loaderWithTextureSpecifier:(const oo::PList &)specifier extraOptions:(uint32_t)extraOptions folder:(const std::optional<std::string> &)folder
 {
-	NSString		*name = nil;
-	NSString		*path = nil;
-	uint32_t		options = 0;
+	std::string					name;
+	std::optional<std::string>	path;
+	uint32_t					options = 0;
 	
-	if (!OOInterpretTextureSpecifier(specifier, &name, &options, NULL, NULL, NO))  return nil;
+	if (!cxx_OOInterpretTextureSpecifier(specifier, &name, &options, NULL, NULL, NO))  return nil;
 	options |= extraOptions;
-	path = [ResourceManager pathForFileNamed:name inFolder:folder];
-	if (path == nil)
+	path = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(name) inFolder:oo::NSStringOrNil(folder)]);
+	if (!path.has_value())
 	{
 		if (!(options & kOOTextureNoFNFMessage))
 		{
-			OOLogWARN(kOOLogFileNotFound, @"Could not find texture file \"%@\".", name);
-			OOStandardsError(@"Texture file not found");
+			OOLogWARN(kOOLogFileNotFound, @"Could not find texture file \"%@\".", oo::NSStringFrom(name));
+			cxx_OOStandardsError("Texture file not found");
 		}
 		return nil;
 	}
 	
-	return [self loaderWithPath:path options:options];
+	return [self cxx_loaderWithPath:path options:options];
 }
 
 
-- (id)initWithPath:(NSString *)inPath options:(uint32_t)options
+- (id)cxx_initWithPath:(const std::optional<std::string> &)inPath options:(uint32_t)options
 {
 	self = [super init];
 	if (self == nil)  return nil;
 	
-	_path = [inPath copy];
-	if (EXPECT_NOT(_path == nil))
+	if (EXPECT_NOT(!inPath.has_value()))
 	{
 		[self release];
 		return nil;
 	}
+	_path = *inPath;
 	
 	_options = options;
 	
@@ -197,8 +200,6 @@ static BOOL					sHaveSetUp = NO;
 
 - (void)dealloc
 {
-	[_path autorelease];
-	_path = nil;
 	free(_data);
 	_data = NULL;
 	
@@ -206,34 +207,34 @@ static BOOL					sHaveSetUp = NO;
 }
 
 
-- (NSString *)descriptionComponents
+- (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	NSString			*state = nil;
+	const char			*state = nullptr;
 	
 	if (_ready)
 	{
-		if (_data != NULL)  state = @"ready";
-		else  state = @"failed";
+		if (_data != NULL)  state = "ready";
+		else  state = "failed";
 	}
 	else
 	{
-		state = @"loading";
+		state = "loading";
 #if INSTRUMENT_TEXTURE_LOADING
-		if (debugHasLoaded)  state = @"loaded";
+		if (debugHasLoaded)  state = "loaded";
 #endif
 	}
 	
-	return [NSString stringWithFormat:@"{%@ -- %@}", _path, state];
+	return oo::NSStringFrom(oo::str::format("{%s -- %s}", _path.c_str(), state));
 }
 
 
-- (NSString *)shortDescriptionComponents
+- (id)shortDescriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [_path lastPathComponent];
+	return oo::NSStringFrom(oo::str::lastPathComponent(_path));
 }
 
 
-- (NSString *)path
+- (std::optional<std::string>)cxx_path
 {
 	return _path;
 }
@@ -280,9 +281,9 @@ static BOOL					sHaveSetUp = NO;
 }
 
 
-- (NSString *) cacheKey
+- (id) cacheKey	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"%@:0x%.4X", [[self path] lastPathComponent], _options];
+	return oo::NSStringFrom(oo::str::format("%s:0x%.4X", oo::str::lastPathComponent(*[self cxx_path]).c_str(), _options));
 }
 
 
@@ -317,14 +318,14 @@ static BOOL					sHaveSetUp = NO;
 {
 	@try
 	{
-		OOLog(@"texture.load.asyncLoad", @"Loading texture %@", [_path lastPathComponent]);
+		OOLog(@"texture.load.asyncLoad", @"Loading texture %@", oo::NSStringFrom(oo::str::lastPathComponent(_path)));
 		
 		[self loadTexture];
 		
 		// Catch an error I've seen but not diagnosed yet.
 		if (_data != NULL && OOTextureComponentsForFormat(_format) == 0)
 		{
-			OOLog(@"texture.load.failed.internalError", @"Texture loader internal error for %@: data is non-null but data format is invalid (%u).", _path, _format);
+			OOLog(@"texture.load.failed.internalError", @"Texture loader internal error for %@: data is non-null but data format is invalid (%u).", oo::NSStringFrom(_path), _format);
 			free(_data);
 			_data = NULL;
 		}
@@ -335,7 +336,7 @@ static BOOL					sHaveSetUp = NO;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(@"texture.load.asyncLoad.exception", @"***** Exception loading texture %@: %@ (%@).", _path, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(@"texture.load.asyncLoad.exception", @"***** Exception loading texture %@: %@ (%@).", oo::NSStringFrom(_path), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 		
 		// Be sure to signal load failure.
 		free(_data);
@@ -343,7 +344,7 @@ static BOOL					sHaveSetUp = NO;
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(@"texture.load.asyncLoad.exception", @"***** Exception loading texture %@: %@ (%@).", _path, [exception name], [exception reason]);
+		OOLog(@"texture.load.asyncLoad.exception", @"***** Exception loading texture %@: %@ (%@).", oo::NSStringFrom(_path), [exception name], [exception reason]);
 		
 		// Be sure to signal load failure.
 		free(_data);
@@ -412,7 +413,7 @@ static BOOL					sHaveSetUp = NO;
 		}
 		else
 		{
-			OOLogWARN(@"texture.load.extractChannel.invalid", @"Cannot extract channel from texture \"%@\"", [_path lastPathComponent]);
+			OOLogWARN(@"texture.load.extractChannel.invalid", @"Cannot extract channel from texture \"%@\"", oo::NSStringFrom(oo::str::lastPathComponent(_path)));
 		}
 	}
 	
@@ -431,7 +432,7 @@ static BOOL					sHaveSetUp = NO;
 		_isCubeMap = NO;
 		
 #if DUMP_CONVERTED_CUBE_MAPS
-		OODumpPixMap(pixMap, [NSString stringWithFormat:@"converted cube map %@", [[_path lastPathComponent] stringByDeletingPathExtension]]);
+		OODumpPixMap(pixMap, oo::str::format("converted cube map %s", oo::StdString([oo::NSStringFrom(oo::str::lastPathComponent(_path)) stringByDeletingPathExtension]).c_str()));
 #endif
 	}
 	
@@ -444,7 +445,7 @@ static BOOL					sHaveSetUp = NO;
 		if (_isCubeMap)  leaveSpaceForMipMaps = NO;
 #endif
 		
-		OOLog(@"texture.load.rescale", @"Rescaling texture \"%@\" from %u x %u to %u x %u.", [_path lastPathComponent], pixMap.width, pixMap.height, desiredWidth, desiredHeight);
+		OOLog(@"texture.load.rescale", @"Rescaling texture \"%@\" from %u x %u to %u x %u.", oo::NSStringFrom(oo::str::lastPathComponent(_path)), pixMap.width, pixMap.height, desiredWidth, desiredHeight);
 		
 		pixMap = OOScalePixMap(pixMap, desiredWidth, desiredHeight, leaveSpaceForMipMaps);
 		if (EXPECT_NOT(!OOIsValidPixMap(pixMap)))  return;

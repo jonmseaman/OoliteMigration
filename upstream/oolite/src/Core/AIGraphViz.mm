@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "OOStringParsing.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 
 
 // Generate and track unique identifiers for state-handler pairs.
@@ -60,7 +60,7 @@ void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSString *smN
 		{
 			[graphViz appendFormat:@"\t\n\tsubgraph cluster_%@\n\t{\n\t\tlabel=\"%@\"\n", stateKey, EscapedGraphVizString(stateKey)];
 		
-			NSDictionary *state = [stateMachine oo_dictionaryForKey:stateKey];
+			NSDictionary *state = oo::PListView(stateMachine).get<NSDictionary *>(stateKey);
 			NSString *handlerKey = nil;
 			foreachkey (handlerKey, state)
 			{
@@ -78,7 +78,7 @@ void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSString *smN
 			// Go through each handler looking for interesting methods.
 			foreachkey (handlerKey, state)
 			{
-				NSArray *handlerCommands = [state oo_arrayForKey:handlerKey];
+				NSArray *handlerCommands = oo::PListView(state).get<NSArray *>(handlerKey);
 				NSUInteger commandIter, commandCount = [handlerCommands count];
 				BOOL haveSetOrSwichAI = NO;
 			
@@ -108,7 +108,7 @@ void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSString *smN
 
 static NSString *HandlerToken(NSString *state, NSString *handler, NSMutableDictionary *handlerKeys, NSMutableSet *uniqueSet)
 {
-	NSString *result = [[handlerKeys oo_dictionaryForKey:state] oo_stringForKey:handler];
+	NSString *result = oo::PListView(oo::PListView(handlerKeys).get<NSDictionary *>(state)).get<NSString *>(handler);
 	
 	if (result == nil)
 	{
@@ -131,7 +131,7 @@ static NSString *HandlerToken(NSString *state, NSString *handler, NSMutableDicti
 
 static void HandleOneCommand(NSMutableString *graphViz, NSString *stateKey, NSString *handlerKey, NSMutableDictionary *handlerKeys, NSArray *handlerCommands, NSUInteger commandIter, NSUInteger commandCount, NSMutableSet *specialNodes, NSMutableSet *uniqueSet, BOOL *haveSetOrSwichAI)
 {
-	NSString *command = [handlerCommands oo_stringAtIndex:commandIter];
+	NSString *command = oo::PListView(handlerCommands).at<NSString *>(commandIter);
 	if (EXPECT_NOT(command == nil))  return;
 	
 	NSArray *components = ScanTokensFromString(command);
@@ -242,7 +242,7 @@ static void AddChangeAINode(NSMutableString *graphViz, NSString *handlerToken, N
 		NSUInteger j = commandIter;
 		for (; j < commandCount; j++)
 		{
-			NSString *command = [handlerCommands oo_stringAtIndex:j];
+			NSString *command = oo::PListView(handlerCommands).at<NSString *>(j);
 			if ([command hasPrefix:@"setStateTo:"])
 			{
 				NSArray *components = ScanTokensFromString(command);

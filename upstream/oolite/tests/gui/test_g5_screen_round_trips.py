@@ -89,6 +89,12 @@ from conftest import (
 HERE = os.path.dirname(os.path.abspath(__file__))
 OOLITE_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 SRC_DIR = os.path.join(OOLITE_ROOT, "src")
+TESTS_DIR = os.path.abspath(os.path.join(HERE, ".."))
+if TESTS_DIR not in sys.path:
+    sys.path.insert(0, TESTS_DIR)
+
+# Sources are named by STEM: the migration renames .m -> .mm -> .cpp (source_paths.py, oo-7j3t).
+from source_paths import iter_source_files  # noqa: E402
 
 # --- the start screen's rows (PlayerEntity.m:9913-9955, ``initialRow = 22``) --------------------
 SHIP_LIBRARY_ROW = 24
@@ -423,11 +429,7 @@ def test_each_screens_observable_is_assigned_in_exactly_one_place():
     one assignment each, all three in PlayerEntity.m.
     """
     assert os.path.isdir(SRC_DIR), f"no source tree at {SRC_DIR}"
-    sources = []
-    for root, _dirs, files in os.walk(SRC_DIR):
-        for name in files:
-            if name.endswith((".m", ".c", ".h", ".mm")):
-                sources.append(os.path.join(root, name))
+    sources = list(iter_source_files(SRC_DIR))
     assert sources, f"no Objective-C sources under {SRC_DIR}"
 
     for screen in ("GUI_SCREEN_SHIPLIBRARY", "GUI_SCREEN_GAMEOPTIONS", "GUI_SCREEN_OXZMANAGER"):
