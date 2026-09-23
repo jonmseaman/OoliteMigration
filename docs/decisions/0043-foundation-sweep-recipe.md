@@ -303,3 +303,32 @@ rule.
     "The array sent as 'item_keys' ..."), or inside a comment, the text is reworded ("array",
     "string", "dictionary"). Text a player, a log golden or a script can see is never reworded
     under this item.
+21. **A selector the game sends by name is shared.** AI actions (named in AI state machines and
+    whitelist.plist's `ai_methods`), legacy-script actions and queries, HUD dials and shader
+    bindings (whitelist.plist), and every selector reached through `-performSelector:`,
+    `NSSelectorFromString`, a notification, a timer or a stored callback (`-updateFunction:`,
+    oo-u76k) have a second declaration the compiler never sees: the dispatcher, which passes and
+    expects Objective-C objects. They keep object types as `id` (commented
+    `// called by name (ADR-0043 item 21)`), with a `cxx_` twin where C++ callers want typed
+    access. `tools/check-selector-types.py` reports them `shared ... called by name (<source>)`
+    from whitelist.plist, the AI plists, every `@selector(...)` literal outside
+    `-respondsToSelector:`, and `tools/dynamic-selectors.txt` for the rest; `--check` fails when one
+    takes or returns a C++ type. Applies to oo-xk5h (ShipEntityAI), oo-j924
+    (PlayerEntityLegacyScriptEngine), oo-u76k.
+22. **A live mutable container is reached through a pointer.** Where an accessor hands out a
+    mutable container its callers edit in place (Entity `-collisionArray` and the
+    `collidingEntities` ivar, oo-2qdy; StationEntity `-localShipyard` / `-localInterfaces`,
+    oo-e7ab), the ivar becomes the std container and a `cxx_` accessor returns a pointer to it,
+    e.g. `- (std::vector<oo::ObjCRef<Entity *>> *) cxx_collidingEntities;`: a nil receiver gives
+    `nullptr`, which is zero-safe, so the item-3 rule on return types holds. A snapshot is never
+    handed out where callers mutate. Direct ivar access from a giant file is converted in that
+    file's own chunk; until then the Foundation-typed accessor lives in the owner's bridge,
+    and the chunk that changes the ivar moves every mutating call site with it.
+23. **Error and debug log text of a collection may change.** `%@` of a dictionary or array in an
+    OOLogERR / OOLogWARN / debug log that no golden, test or save file reads (DockEntity
+    `shipsOnApproach`, oo-u7fq) is printed with `oo::writeOldStylePList` (or a describe helper);
+    the exact GNUstep `-description` is not required there, and the commit names the change.
+    Byte identity stays mandatory for any output a golden, test or save file reads.
+24. **Runtime DESC formats use `formatRuntime`.** Every `-stringWithFormat:DESC(...)` (or other
+    format that is data) with `%@` is item 19: oo-ys2e (WormholeEntity) and the ~10 PlayerEntity
+    sites are unblocked.
