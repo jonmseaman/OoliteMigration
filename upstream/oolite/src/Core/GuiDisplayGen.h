@@ -30,6 +30,9 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #import "OOMaths.h"
 #import "OOTypes.h"
+#import "OOFunctionAttributes.h"
+
+#include "oofnd/StdLib.hpp"
 #define GUI_DEFAULT_COLUMNS			6
 #define GUI_DEFAULT_ROWS			30
 
@@ -219,22 +222,27 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 }
 
 - (id) init;
-- (id) initWithPixelSize:(NSSize)gui_size
-				 columns:(int)gui_cols 
-					rows:(int)gui_rows 
-			   rowHeight:(int)gui_row_height
-				rowStart:(int)gui_row_start
-				   title:(NSString*)gui_title;
-
-- (void) resizeWithPixelSize:(NSSize)gui_size
+/*	Foundation sweep (proposed ADR-0043, chunk 1 of oo-ol63: bead oo-3rb.92): titles, row texts and
+	row keys are UTF-8 std::strings, std::optional where the old code accepted or returned nil.
+	The Foundation-typed selectors moved to GuiDisplayGen+FoundationBridge.h (transitional),
+	forwarding to these cxx_ ones.
+*/
+- (id) cxx_initWithPixelSize:(NSSize)gui_size
 					 columns:(int)gui_cols
 						rows:(int)gui_rows
 				   rowHeight:(int)gui_row_height
 					rowStart:(int)gui_row_start
-					   title:(NSString*) gui_title;
-- (void) resizeTo:(NSSize)gui_size
-  characterHeight:(int)csize
-			title:(NSString*)gui_title;
+					   title:(const std::optional<std::string> &)gui_title OO_RETURNS_RETAINED;
+
+- (void) cxx_resizeWithPixelSize:(NSSize)gui_size
+						 columns:(int)gui_cols
+							rows:(int)gui_rows
+					   rowHeight:(int)gui_row_height
+						rowStart:(int)gui_row_start
+						   title:(const std::optional<std::string> &)gui_title;
+- (void) cxx_resizeTo:(NSSize)gui_size
+	  characterHeight:(int)csize
+				title:(const std::optional<std::string> &)gui_title;
 - (NSSize)size;
 - (unsigned)columns;
 - (unsigned)rows;
@@ -275,16 +283,16 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (void) setColor:(OOColor *)color forRow:(OOGUIRow)row;
 
 - (id) objectForRow:(OOGUIRow)row;
-- (NSString *) keyForRow:(OOGUIRow)row;
-- (OOGUIRow) rowForKey:(NSString*)key;
+- (std::optional<std::string>) cxx_keyForRow:(OOGUIRow)row;
+- (OOGUIRow) cxx_rowForKey:(const std::optional<std::string> &)key;
 - (OOGUIRow) selectedRow;
 - (BOOL) setSelectedRow:(OOGUIRow)row;
 - (BOOL) setNextRow:(int) direction;
 - (BOOL) setFirstSelectableRow;
 - (BOOL) setLastSelectableRow;
 - (void) setNoSelectedRow;
-- (NSString *) selectedRowText;
-- (NSString *) selectedRowKey;
+- (std::optional<std::string>) cxx_selectedRowText;
+- (std::optional<std::string>) cxx_selectedRowKey;
 - (void) reportSelectedRow:(int) row;
 
 - (void) setShowTextCursor:(BOOL) yesno;
@@ -300,9 +308,9 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (void) clear;
 - (void) clearAndKeepBackground:(BOOL)keepBackground;
 
-- (void) setKey:(NSString *)str forRow:(OOGUIRow)row;
-- (void) setText:(NSString *)str forRow:(OOGUIRow)row;
-- (void) setText:(NSString *)str forRow:(OOGUIRow)row align:(OOGUIAlignment)alignment;
+- (void) cxx_setKey:(const std::string &)str forRow:(OOGUIRow)row;
+- (void) cxx_setText:(const std::string &)str forRow:(OOGUIRow)row;
+- (void) cxx_setText:(const std::optional<std::string> &)str forRow:(OOGUIRow)row align:(OOGUIAlignment)alignment;	// nullopt: no change
 - (NSString *) reflowTextForMFD:(NSString *)input;
 - (OOGUIRow) addLongText:(NSString *)str
 		   startingAtRow:(OOGUIRow)row
@@ -320,7 +328,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 					   key:(NSString *)text_key
 				addToArray:(NSMutableArray *)text_array;
 
-- (void) setArray:(NSArray *)arr forRow:(OOGUIRow)row;
+- (void) cxx_setArray:(const std::vector<std::string> &)arr forRow:(OOGUIRow)row;	// one string per column
 
 - (void) insertItemsFromArray:(NSArray *)items
 					 withKeys:(NSArray *)item_keys
@@ -375,3 +383,11 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (OOSystemID) targetNextFoundSystem:(int)direction;
 
 @end
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before the GuiDisplayGen sweep (chunks oo-3rb.92 to .96 of oo-ol63), forwarding to the
+	cxx_ API above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
+	own sweep beads; the bridge goes in its own bead.
+*/
+#import "GuiDisplayGen+FoundationBridge.h"
