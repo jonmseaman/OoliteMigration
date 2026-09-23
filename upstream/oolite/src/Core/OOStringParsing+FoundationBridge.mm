@@ -150,3 +150,31 @@ NSString *ClockToString(double clock, BOOL adjusting)
 {
 	return oo::NSStringFrom(cxx_ClockToString(clock, adjusting));
 }
+
+
+// oo-3rb.126: GraphViz helpers
+
+#if DEBUG_GRAPHVIZ
+
+NSString *EscapedGraphVizString(NSString *string)
+{
+	if (string == nil)  return nil;	// messaging nil answered nil
+	return oo::NSStringFrom(cxx_EscapedGraphVizString(oo::StdString(string)));
+}
+
+
+NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet)
+{
+	// The set's strings go in, the new token comes back out into it (a nil set stays nil).
+	std::set<std::string> unique;
+	if (uniqueSet != nil)
+	{
+		for (std::string &name : oo::StringsFrom(uniqueSet))  unique.insert(std::move(name));
+	}
+	const std::string token = cxx_GraphVizTokenString(oo::StdString(string), uniqueSet != nil ? &unique : nullptr);
+	NSString *result = oo::NSStringFrom(token);
+	[uniqueSet addObject:result];
+	return result;
+}
+
+#endif //DEBUG_GRAPHVIZ

@@ -361,125 +361,113 @@ std::string cxx_ClockToString(double clock, BOOL adjusting)
 
 #if DEBUG_GRAPHVIZ
 
-NSString *EscapedGraphVizString(NSString *string)
+std::string cxx_EscapedGraphVizString(const std::string &string)
 {
-	NSString * const srcStrings[] =
+	const char * const srcStrings[] =
 	{
 		//Note: backslash must be first.
-		@"\\", @"\"", @"\'", @"\r", @"\n", @"\t", nil
+		"\\", "\"", "\'", "\r", "\n", "\t", nullptr
 	};
-	NSString * const subStrings[] =
+	const char * const subStrings[] =
 	{
 		//Note: must be same order.
-		@"\\\\", @"\\\"", @"\\\'", @"\\r", @"\\n", @"\\t", nil
+		"\\\\", "\\\"", "\\\'", "\\r", "\\n", "\\t", nullptr
 	};
-	
-	NSString * const *		src = srcStrings;
-	NSString * const *		sub = subStrings;
-	NSMutableString			*mutableString = nil;
-	NSString				*result = nil;
-	
-	mutableString = [string mutableCopy];
-	while (*src != nil)
+
+	const char * const *	src = srcStrings;
+	const char * const *	sub = subStrings;
+	std::string				result = string;
+
+	while (*src != nullptr)
 	{
-		[mutableString replaceOccurrencesOfString:*src++
-									 withString:*sub++
-										options:0
-										  range:(NSRange){ 0, [mutableString length] }];
+		// -replaceOccurrencesOfString:withString:options:0 range:(the whole string)
+		result = oo::str::replaceOccurrences(result, *src++, *sub++);
 	}
-	
-	if ([mutableString length] == [string length])
-	{
-		result = string;
-	}
-	else
-	{
-		result = [[mutableString copy] autorelease];
-	}
-	[mutableString release];
+
 	return result;
 }
 
 
 namespace {
-static BOOL NameIsTaken(NSString *name, NSSet *uniqueSet);
+
+// The GraphViz keywords, matched case-insensitively (-lowercaseString).
+constexpr std::string_view kGraphVizKeywords[] = { "node", "edge", "graph", "digraph", "subgraph", "strict" };
+
+BOOL NameIsTaken(const std::string &name, const std::set<std::string> *uniqueSet)
+{
+	if (uniqueSet != nullptr && uniqueSet->contains(name))  return YES;
+
+	const std::string lowercaseName = oo::str::lowercase(name);
+	for (std::string_view keyword : kGraphVizKeywords)
+	{
+		if (lowercaseName == keyword)  return YES;
+	}
+	return NO;
+}
+
 } // namespace
 
-NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet)
+std::string cxx_GraphVizTokenString(const std::string &string, std::set<std::string> *uniqueSet)
 {
-	NSString *token = nil;
-	@autoreleasepool
+	std::string token;
+	BOOL lastWasUnderscore = NO;
+	// UTF-16 units, as -characterAtIndex: read them
+	const std::u16string units = oo::utf8ToUtf16(string);
+	std::size_t i, length = units.size();
+	std::u16string result;
+	result.reserve(length);
+
+	if (length > 0)
 	{
-		BOOL lastWasUnderscore = NO;
-		NSUInteger i, length = [string length], ri = 0;
-		unichar result[length];
-	
-		if (length > 0)
+		// Special case for first char - can't be digit.
+		char16_t c = units[0];
+		if (!isalpha(c))
 		{
-			// Special case for first char - can't be digit.
-			unichar c = [string characterAtIndex:0];
-			if (!isalpha(c))
+			c = '_';
+			lastWasUnderscore = YES;
+		}
+		result.push_back(c);
+
+		for (i = 1; i < length; i++)
+		{
+			c = units[i];
+			if (!isalnum(c))
 			{
+				if (lastWasUnderscore)  continue;
 				c = '_';
 				lastWasUnderscore = YES;
 			}
-			result[ri++] = c;
-		
-			for (i = 1; i < length; i++)
+			else
 			{
-				c = [string characterAtIndex:i];
-				if (!isalnum(c))
-				{
-					if (lastWasUnderscore)  continue;
-					c = '_';
-					lastWasUnderscore = YES;
-				}
-				else
-				{
-					lastWasUnderscore = NO;
-				}
-			
-				result[ri++] = c;
+				lastWasUnderscore = NO;
 			}
-		
-			token = [NSString stringWithCharacters:result length:ri];
+
+			result.push_back(c);
 		}
-		else
-		{
-			token = @"_";
-		}
-	
-		if (NameIsTaken(token, uniqueSet))
-		{
-			if (!lastWasUnderscore)  token = [token stringByAppendingString:@"_"];
-			NSString *uniqueToken = nil;
-			unsigned uniqueID = 2;
-		
-			for (;;)
-			{
-				uniqueToken = [NSString stringWithFormat:@"%@%u", token, uniqueID];
-				if (!NameIsTaken(uniqueToken, uniqueSet))  break;
-			}
-			token = uniqueToken;
-		}
-		[uniqueSet addObject:token];
-	
-		[token retain];
+
+		token = oo::utf16ToUtf8(result);
 	}
-	return [token autorelease];
-}
+	else
+	{
+		token = "_";
+	}
 
+	if (NameIsTaken(token, uniqueSet))
+	{
+		if (!lastWasUnderscore)  token += "_";
+		std::string uniqueToken;
+		unsigned uniqueID = 2;
 
-namespace {
-static BOOL NameIsTaken(NSString *name, NSSet *uniqueSet)
-{
-	if ([uniqueSet containsObject:name])  return YES;
-	
-	static NSSet *keywords = nil;
-	if (keywords == nil)  keywords = [[NSSet alloc] initWithObjects:@"node", @"edge", @"graph", @"digraph", @"subgraph", @"strict", nil];
-	
-	return [keywords containsObject:[name lowercaseString]];
+		for (;;)
+		{
+			uniqueToken = oo::str::format("%s%u", token.c_str(), uniqueID);
+			if (!NameIsTaken(uniqueToken, uniqueSet))  break;
+		}
+		token = uniqueToken;
+	}
+	if (uniqueSet != nullptr)  uniqueSet->insert(token);
+
+	return token;
 }
-} // namespace
 
 #endif //DEBUG_GRAPHVIZ
