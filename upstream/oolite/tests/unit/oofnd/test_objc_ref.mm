@@ -1,6 +1,6 @@
 /*	test_objc_ref.mm
 	Unit tests for oo::ObjCRef (src/oofnd/objc/OOObjCRef.h; the Foundation sweep, proposed
-	ADR-0036): a strong reference to an Objective-C object that a std container can own.
+	ADR-0043): a strong reference to an Objective-C object that a std container can own.
 
 	Also pins the compiler fact the sweep's return-type rule rests on: a message to nil whose
 	method returns a C++ class by value yields ZERO-FILLED storage (on the GNUstep runtime clang

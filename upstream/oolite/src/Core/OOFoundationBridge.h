@@ -3,7 +3,7 @@
 OOFoundationBridge.h
 
 The boundary between a file the Foundation sweep has migrated to oofnd types and the code around
-it that still holds Foundation objects (proposed ADR-0036; recipe in src/oofnd/README.md,
+it that still holds Foundation objects (proposed ADR-0043; recipe in src/oofnd/README.md,
 "Migrating Foundation usage"). Objective-C++ only; deleted with gnustep-base (oo-qps), when no
 Foundation object is left to bridge. Strings are OOStringBridge.h's (imported here).
 

@@ -1,6 +1,6 @@
 /*	test_string_compare.cpp
 	oo::str::compare / caseInsensitiveCompare (oofnd/String.hpp; the Foundation sweep, proposed
-	ADR-0036) against -[NSString compare:] / -caseInsensitiveCompare: of GNUstep base 1.31.1.
+	ADR-0043) against -[NSString compare:] / -caseInsensitiveCompare: of GNUstep base 1.31.1.
 
 	The digests were captured on this toolchain by a throwaway Objective-C++ probe linked against
 	gnustep-base: it built the two corpora below exactly as corpus1()/corpus2() do, compared every

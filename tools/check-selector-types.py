@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Selector families for the Foundation sweep (proposed ADR-0036, bead oo-g7k5).
+"""Selector families for the Foundation sweep (proposed ADR-0043, bead oo-g7k5).
 
 WHY THIS EXISTS
 
