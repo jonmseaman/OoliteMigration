@@ -28,6 +28,10 @@ MA 02110-1301, USA.
 #import "OOJSInterfaceDefinition.h"
 #import "Universe.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
+
 @class OOWeakSet;
 
 
@@ -77,12 +81,12 @@ typedef enum
 	
 	OOUniversalID			planet;
 
-	NSString				*allegiance;
+	std::optional<std::string>	allegiance;			// nullopt: none (was nil)
 	
 	OOCommodityMarket		*localMarket;
 	OOCargoQuantity			marketCapacity;
-	NSArray					*marketDefinition;
-	NSString				*marketScriptName;
+	oo::PList				marketDefinition;			// an array; null: none (was nil)
+	std::optional<std::string>	marketScriptName;		// nullopt: none (was nil)
 //	NSMutableArray			*localPassengers;
 //	NSMutableArray			*localContracts;
 	NSMutableArray			*localShipyard;
@@ -113,17 +117,17 @@ typedef enum
 
 
 - (OOCargoQuantity) marketCapacity;
-- (NSArray *) marketDefinition;
-- (NSString *) marketScriptName;
+- (oo::PList) cxx_marketDefinition;	// null: none
+- (std::optional<std::string>) cxx_marketScriptName;
 - (BOOL) marketMonitored;
 - (BOOL) marketBroadcast;
 - (OOCreditsQuantity) legalStatusOfManifest:(OOCommodityMarket *)manifest export:(BOOL)isExport;
 
 - (OOCommodityMarket *) localMarket;
-- (void) setLocalMarket:(NSArray *)market;
-- (NSDictionary *) localMarketForScripting;
-- (void) setPrice:(OOCreditsQuantity) price forCommodity:(OOCommodityType) commodity;
-- (void) setQuantity:(OOCargoQuantity) quantity forCommodity:(OOCommodityType) commodity;
+- (void) cxx_setLocalMarket:(const oo::PList &)market;	// [[key, quantity, price], ...] (OOCommodityMarket -cxx_loadStationAmounts:)
+- (oo::PList) cxx_localMarketForScripting;
+- (void) cxx_setPrice:(OOCreditsQuantity) price forCommodity:(const std::string &) commodity;
+- (void) cxx_setQuantity:(OOCargoQuantity) quantity forCommodity:(const std::string &) commodity;
 
 /*- (NSMutableArray *) localPassengers;
 - (void) setLocalPassengers:(NSArray *)market;
@@ -141,7 +145,7 @@ typedef enum
 - (OOTechLevelID) equivalentTechLevel;
 - (void) setEquivalentTechLevel:(OOTechLevelID)value;
 
-- (NSEnumerator *) dockSubEntityEnumerator;
+- (std::vector<oo::ObjCRef<DockEntity *>>) cxx_dockSubEntities;	// the -isDock subentities, in subentity order (a snapshot)
 - (Vector) virtualPortDimensions;
 - (DockEntity*) playerReservedDock;
 
@@ -153,8 +157,8 @@ typedef enum
 
 - (OOPlanetEntity *) planet;
 
-- (void) setAllegiance:(NSString *)newAllegiance;
-- (NSString *)allegiance;
+- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance;
+- (std::optional<std::string>) cxx_allegiance;	// nullopt: none
 
 - (unsigned) countOfDockedContractors;
 - (unsigned) countOfDockedPolice;
@@ -166,7 +170,7 @@ typedef enum
 
 - (Vector) portUpVectorForShip:(ShipEntity *)ship;
 
-- (NSDictionary *) dockingInstructionsForShip:(ShipEntity *)ship;
+- (id) dockingInstructionsForShip:(ShipEntity *)ship;	// shared selector (proposed ADR-0043)
 
 - (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
 
@@ -221,7 +225,7 @@ typedef enum
 
 - (void) acceptPatrolReportFrom:(ShipEntity *)patrol_ship;
 
-- (NSString *) acceptDockingClearanceRequestFrom:(ShipEntity *)other;
+- (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other;
 - (BOOL) requiresDockingClearance;
 - (void) setRequiresDockingClearance:(BOOL)newValue;
 
@@ -234,7 +238,7 @@ typedef enum
 - (BOOL) allowsSaving;
 // no setting this after station creation
 
-- (NSString *) marketOverrideName;
+- (std::optional<std::string>) marketOverrideName;	// nullopt: no "market" key
 - (BOOL) isRotatingStation;
 - (BOOL) hasShipyard;
 
@@ -251,4 +255,14 @@ typedef enum
 
 
 
-NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords, float speed, float range, NSString *ai_message, NSString *comms_message, BOOL match_rotation, int docking_stage);
+// A mixed configuration (proposed ADR-0043 Amendment 2): "station" is an Object node holding the
+// station's weak reference; ai_message / comms_message absent when nullopt.
+oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords, float speed, float range, const std::optional<std::string> &ai_message, const std::optional<std::string> &comms_message, BOOL match_rotation, int docking_stage);
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before bead oo-3rb.172 (chunks of oo-e7ab), forwarding to the cxx_ API above, so
+	unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads; the
+	bridge goes in its own bead.
+*/
+#import "StationEntity+FoundationBridge.h"
