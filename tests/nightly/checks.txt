@@ -14,6 +14,8 @@
 # proof here; tools/run-nightly-checks.sh --list shows what would run.
 
 [oo-1gc.5] tools/guardrails-selftest
+# The desktop-lock guard's anti-vacuity proof (oo-hub0, ADR-0046): ~45 full runs of the guard, 1-7 min.
+[oo-hub0] tools/desktop-lock-rogue-proof
 [oo-g2k] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; python3 tools/plist_fuzz.py corpus && python3 tools/plist_fuzz.py fuzz --seed "$(date +%Y%m%d)" --count 100000
 
 # Tier-2 OXP corpus (150 expansions) on the current build: two shards in parallel, 558 s measured
