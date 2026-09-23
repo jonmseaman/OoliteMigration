@@ -454,9 +454,19 @@ static GameController *sSharedController = nil;
 	lives on it (performSelector:afterDelay:, the debug console's streams, OXZ
 	downloads) until their own beads take it off.
 */
-static bool									sGameTickScheduled = false;
-static std::chrono::steady_clock::time_point	sNextGameTick;
-static std::chrono::steady_clock::duration	sGameTickInterval;
+namespace {
+// Held as steady_clock tick counts, as OOLogOutputHandler's flush deadline is: a static
+// time_point or duration has a constructor that may throw (bugprone-throwing-static-initialization).
+using TickClock = std::chrono::steady_clock;
+bool				sGameTickScheduled = false;
+TickClock::rep		sNextGameTick = 0;		// ticks since the clock's epoch
+TickClock::rep		sGameTickInterval = 0;	// ticks
+
+TickClock::time_point NextGameTick()
+{
+	return TickClock::time_point(TickClock::duration(sNextGameTick));
+}
+}
 
 
 - (void) startAnimationTimer
@@ -466,8 +476,8 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 		NSTimeInterval ti = _animationTimerInterval; // default one two-hundredth of a second (should be a fair bit faster than expected frame rate ~60Hz to avoid problems with phase differences)
 		if (ti <= 0.0)  ti = 0.0001;	// as the Foundation timer did
 		
-		sGameTickInterval = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(ti));
-		sNextGameTick = std::chrono::steady_clock::now() + sGameTickInterval;
+		sGameTickInterval = std::chrono::duration_cast<TickClock::duration>(std::chrono::duration<double>(ti)).count();
+		sNextGameTick = TickClock::now().time_since_epoch().count() + sGameTickInterval;
 		sGameTickScheduled = true;
 	}
 }
@@ -483,10 +493,10 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 {
 	if (!sGameTickScheduled)  return;
 	
-	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	const TickClock::rep now = TickClock::now().time_since_epoch().count();
 	if (now < sNextGameTick)  return;
 	
-	std::chrono::steady_clock::time_point next = sNextGameTick + sGameTickInterval;
+	TickClock::rep next = sNextGameTick + sGameTickInterval;
 	while (next <= now)  next += sGameTickInterval;
 	sNextGameTick = next;
 	
@@ -521,13 +531,13 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 			NSDate *limit = [NSDate distantFuture];
 			if (sGameTickScheduled)
 			{
-				std::chrono::duration<double> wait = sNextGameTick - std::chrono::steady_clock::now();
+				std::chrono::duration<double> wait = NextGameTick() - TickClock::now();
 				limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
 			}
 			if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && sGameTickScheduled)
 			{
 				// Nothing on the run loop to wait for: wait for the tick here.
-				std::this_thread::sleep_until(sNextGameTick);
+				std::this_thread::sleep_until(NextGameTick());
 			}
 		}
 	}
