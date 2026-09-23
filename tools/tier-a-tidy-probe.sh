@@ -68,12 +68,14 @@ PY
 
 # --- the fixture: a repo whose source and header BOTH have a line 3 --------------------------
 R="$TMP/repo"
-mkdir -p "$R/src" "$TMP/sys"
+mkdir -p "$R/src/Core" "$TMP/sys"
 git -C "$R" init -q
 git -C "$R" config user.email probe@example.invalid
 git -C "$R" config user.name probe
 printf '%s\n' '// header' '#pragma once' '#import "Cycle.h"' 'int h_old(void);' >"$R/src/h.h"
 printf '%s\n' '// source' '#import "h.h"' '#import "Old.h"' 'int f(void) { return 1; }' >"$R/src/a.mm"
+# Mixed case, as the real tree is (src/Core/OOLogging.h): git paths are case-sensitive.
+printf '%s\n' '// logging' '#pragma once' '#import "OOCocoa.h"' >"$R/src/Core/OOLogging.h"
 git -C "$R" add -A && git -C "$R" commit -qm base
 BASE="$(git -C "$R" rev-parse HEAD)"
 : >"$TMP/sys/stdio.h"
@@ -125,7 +127,22 @@ check "backslash spelling of the source path is still the source" 1 "$(gate)"
 { finding "$(native "$R/src/h.h")" 3; finding "$(native "$R/src/a.mm")" 3; } >"$OUT"
 check "one new finding among pre-existing ones fails the whole run" 1 "$(gate)"
 
+echo "== a MixedCase header path, in the main checkout and in a linked worktree =="
+# The first fix normcase()d the path it handed to git ("src/core/oologging.h"), which is absent
+# at every base ref, so on the real tree the oo-z8zd header finding was STILL reported as new.
+finding "$(native "$R/src/Core/OOLogging.h")" 3 >"$OUT"
+check "pre-existing finding in src/Core/OOLogging.h passes" 0 "$(gate)"
+W="$TMP/wt"
+git -C "$R" worktree add -q --detach "$W" "$BASE" 2>/dev/null
+cp "$R/src/a.mm" "$W/src/a.mm"
+finding "$(native "$W/src/Core/OOLogging.h")" 3 >"$OUT"
+tidy_gate "$W" "$BASE" "$W/src/a.mm" src/a.mm "$OUT" >/dev/null 2>&1
+check "the same finding in a linked worktree (how the fleet runs) passes" 0 "$?"
+
 echo "== never a silent pass =="
+finding "$(native "$R/src/Core/OOLogging.h")" 3 >"$OUT"
+tidy_gate "$R" 0123456789abcdef0123456789abcdef01234567 "$R/src/a.mm" src/a.mm "$OUT" >/dev/null 2>&1
+check "a base ref git cannot read is 'cannot evaluate', not 'new file'" 2 "$?"
 printf 'Segmentation fault\n' >"$OUT"
 check "tidy output with no parseable finding cannot pass" 2 "$(gate)"
 finding "$(native "$R/src/h.h")" 3 >"$OUT"
