@@ -34,6 +34,8 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOMaths.h"
 
+#include "oofnd/StdLib.hpp"
+
 
 @interface OOProbabilisticTextureManager: OOObject
 {
@@ -56,12 +58,12 @@ SOFTWARE.
 	
 	If no seed is specified, the current seed will be copied.
 */
-- (id)initWithPListName:(NSString *)plistName 
+- (id)initWithPListName:(const std::string &)plistName
 				options:(uint32_t)options
 			 anisotropy:(GLfloat)anisotropy
 				lodBias:(GLfloat)lodBias;
 
-- (id)initWithPListName:(NSString *)plistName 
+- (id)initWithPListName:(const std::string &)plistName 
 				options:(uint32_t)options
 			 anisotropy:(GLfloat)anisotropy
 				lodBias:(GLfloat)lodBias

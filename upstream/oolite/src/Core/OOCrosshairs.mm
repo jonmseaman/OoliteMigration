@@ -28,7 +28,7 @@ SOFTWARE.
 
 #import "OOCrosshairs.h"
 #import "OOColor.h"
-#import "OOCollectionExtractors.h"
+#include "oofnd/PListGet.hpp"
 #import "Universe.h"
 #import "MyOpenGLView.h"
 #import "OOMacroOpenGL.h"
@@ -36,12 +36,13 @@ SOFTWARE.
 
 @interface OOCrosshairs (Private)
 
-- (void) setUpDataWithPoints:(NSArray *)points
+- (void) setUpDataWithPoints:(const oo::PList &)points
 					   scale:(GLfloat)scale
 					   color:(OOColor *)color
 				overallAlpha:(GLfloat)alpha;
 
-- (void) setUpDataForOnePoint:(NSArray *)pointInfo
+// pointInfo: nullptr for an entry that is not an array (as nil was).
+- (void) setUpDataForOnePoint:(const oo::PList *)pointInfo
 						scale:(GLfloat)scale
 				   colorComps:(float[4])colorComps
 				 overallAlpha:(GLfloat)alpha
@@ -52,7 +53,7 @@ SOFTWARE.
 
 @implementation OOCrosshairs
 
-- (id) initWithPoints:(NSArray *)points
+- (id) initWithPoints:(const oo::PList &)points
 				scale:(GLfloat)scale
 				color:(OOColor *)color
 		 overallAlpha:(GLfloat)alpha
@@ -110,7 +111,7 @@ SOFTWARE.
 }
 
 
-- (void) setUpDataWithPoints:(NSArray *)points
+- (void) setUpDataWithPoints:(const oo::PList &)points
 					   scale:(GLfloat)scale
 					   color:(OOColor *)color
 				overallAlpha:(GLfloat)alpha
@@ -119,17 +120,17 @@ SOFTWARE.
 	float					colorComps[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 	GLfloat					*data = NULL;
 	
-	_count = [points count];
+	_count = points.count();
 	if (_count == 0)  return;
 	
 	_data = (GLfloat *)malloc(sizeof (GLfloat) * 12 * _count);	// 2 coordinates, 4 colour components for each endpoint of each line segment
 	[color getRed:&colorComps[0] green:&colorComps[1] blue:&colorComps[2] alpha:&colorComps[3]];
 	
-	// Turn NSArray into GL-friendly element array
+	// Turn the point array into GL-friendly element array
 	data = _data;
 	for (i = 0; i < _count; i++)
 	{
-		[self setUpDataForOnePoint:[points oo_arrayAtIndex:i]
+		[self setUpDataForOnePoint:points.at<oo::PList::Array>(i)
 							 scale:scale
 						colorComps:colorComps
 					  overallAlpha:alpha
@@ -139,7 +140,7 @@ SOFTWARE.
 }
 
 
-- (void) setUpDataForOnePoint:(NSArray *)pointInfo
+- (void) setUpDataForOnePoint:(const oo::PList *)pointInfo
 						scale:(GLfloat)scale
 				   colorComps:(float[4])colorComps
 				 overallAlpha:(GLfloat)alpha
@@ -148,14 +149,14 @@ SOFTWARE.
 	GLfloat					x1, y1, a1, x2, y2, a2;
 	GLfloat					r, g, b, a;
 	
-	if ([pointInfo count] >= 6)
+	if (pointInfo != nullptr && pointInfo->count() >= 6)
 	{
-		a1 = [pointInfo oo_floatAtIndex:0];
-		x1 = [pointInfo oo_floatAtIndex:1] * scale;
-		y1 = [pointInfo oo_floatAtIndex:2] * scale;
-		a2 = [pointInfo oo_floatAtIndex:3];
-		x2 = [pointInfo oo_floatAtIndex:4] * scale;
-		y2 = [pointInfo oo_floatAtIndex:5] * scale;
+		a1 = pointInfo->at<float>(0);
+		x1 = pointInfo->at<float>(1) * scale;
+		y1 = pointInfo->at<float>(2) * scale;
+		a2 = pointInfo->at<float>(3);
+		x2 = pointInfo->at<float>(4) * scale;
+		y2 = pointInfo->at<float>(5) * scale;
 		r = colorComps[0];
 		g = colorComps[1];
 		b = colorComps[2];
