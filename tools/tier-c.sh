@@ -432,6 +432,18 @@ stage_jsapi() {
       || fail jsapi "the reconciliation exited 0 without reporting what it compared; a cross-check that compared nothing agrees perfectly"
     detail "$(head -1 "$rlog" | cut -c1-150)"
   fi
+
+  # --- THE QUICKJS-ERA BASELINE (ADR-0024, bead oo-1gc.10). oxp-contract/js-api-quickjs.json is the
+  # runtime snapshot of the QuickJS-ng build, committed when Phase 1 closed; the Oolite surface it
+  # describes must still be the 1.93 contract's. Offline: it compares two committed files.
+  local slog="$RUN_ROOT/jsapi-surface.log" src=0
+  [ -f "$REPO_ROOT/oxp-contract/js-api-quickjs.json" ]     || fail jsapi "no committed QuickJS-era snapshot at oxp-contract/js-api-quickjs.json (ADR-0024); regenerate with tools/js-api-snapshot.sh --output oxp-contract/js-api-quickjs.json"
+  ( cd "$REPO_ROOT" && "$PY" "$(native "$HERE/js_api_surface_compare.py")" oxp-contract/js-api-1.93.json oxp-contract/js-api-quickjs.json ) > "$slog" 2>&1 || src=$?
+  if [ "$src" -ne 0 ]; then
+    sed -n '1,30p' "$slog" >&2
+    fail jsapi "the QuickJS-era snapshot's Oolite API surface differs from the 1.93 contract (rc=$src)"
+  fi
+  detail "$(tail -1 "$slog" | cut -c1-150)"
   detail "stage jsapi ok in $(( SECONDS - t0 ))s"
 }
 

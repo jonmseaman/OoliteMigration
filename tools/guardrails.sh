@@ -321,7 +321,10 @@ BASE="${OO_GUARDRAILS_BASE:-}"
 if [ "${1:-}" = "--base" ]; then BASE="${2:-}"; [ -n "$BASE" ] || { note "--base needs a ref"; exit 2; }; fi
 
 if [ -z "$BASE" ]; then
-  for cand in main origin/main; do
+  # The branch accept.sh merges into (BEADS_WORKER_BASE_BRANCH; phase branches stack on main) comes
+  # first: diffing a phase-N bead against main would charge it with everything phase-N already
+  # carries, including changes Jon approved there (bead oo-1gc.12).
+  for cand in ${BEADS_WORKER_BASE_BRANCH:+"$BEADS_WORKER_BASE_BRANCH"} main origin/main; do
     if b=$(git merge-base HEAD "$cand" 2>/dev/null) && [ -n "$b" ]; then BASE="$b"; break; fi
   done
   if [ -z "$BASE" ] && [ "$(git rev-list --parents -n 1 HEAD 2>/dev/null | wc -w)" -gt 2 ]; then
