@@ -123,6 +123,23 @@ void StoreKeyDefinition(NSUInteger index, oo::PList definition)
 }
 
 
+// keyFunctions entry <index>; a null PList out of range (-objectAtIndex: raised).
+const oo::PList &KeyFunctionAt(const std::vector<oo::PList> &functions, NSInteger index)
+{
+	static const oo::PList none;
+	return (index >= 0 && static_cast<std::size_t>(index) < functions.size()) ? functions[index] : none;
+}
+
+
+// Element <index> of an array; a null PList for anything else.
+const oo::PList &ElementAt(const oo::PList &array, std::size_t index)
+{
+	static const oo::PList none;
+	const oo::PList *element = array.at(index);
+	return element != nullptr ? *element : none;
+}
+
+
 // -isEqualToString:@"" on a value that may be absent.
 bool IsEmptyString(const oo::PList *value)
 {
@@ -145,7 +162,7 @@ bool IsEmptyString(const oo::PList *value)
 - (BOOL)entryIsCustomEquip:(const std::string &)entry;
 - (oo::PList)getCustomEquipArray:(const std::string &)key_def;	// null: none (was nil)
 - (std::optional<std::string>)getCustomEquipKeyDefType:(const std::string &)key_def;	// always engaged ("" for neither)
-- (NSArray *)keyFunctionList;
+- (std::vector<oo::PList>)keyFunctionList;
 - (std::vector<std::string>)validateAllKeys;
 - (std::optional<std::string>)searchArrayForMatch:(const std::vector<std::string> &)search_list key:(const std::string &)key checkKeys:(const oo::PList &)check_keys;
 - (NSUInteger)getCustomEquipIndex:(const std::string &)key_def;
@@ -192,8 +209,7 @@ bool IsEmptyString(const oo::PList *value)
 
 - (void) resetKeyFunctions
 {
-	[keyFunctions release];
-	keyFunctions = nil;
+	keyFunctions.clear();
 }
 
 
@@ -204,8 +220,7 @@ bool IsEmptyString(const oo::PList *value)
 
 - (void) setGuiToKeyMapperScreen:(unsigned)skip resetCurrentRow:(BOOL)resetCurrentRow
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	NSString *kbd = oo::PListView(defaults).get<NSString *>(@"keyboard-code", @"default");
+	const std::string kbd = KeyboardCode();
 
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	MyOpenGLView *gameView = [UNIVERSE gameView];
@@ -223,11 +238,11 @@ bool IsEmptyString(const oo::PList *value)
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	[gui clear];
-	[gui setTitle:[NSString stringWithFormat:@"Configure Keyboard"]];
+	[gui setTitle:oo::NSStringFrom(std::string("Configure Keyboard"))];
 
 	// show keyboard layout
-	[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-keyconfig-keyboard"), [self keyboardDescription:kbd], nil] forRow:GUI_ROW_KC_SELECTKBD];
-	[gui setKey:[NSString stringWithFormat:@"kbd:%@", kbd] forRow:GUI_ROW_KC_SELECTKBD];
+	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-keyboard")), oo::OptionalString([self keyboardDescription:oo::NSStringFrom(kbd)]) }) forRow:GUI_ROW_KC_SELECTKBD];	// -keyboardDescription: is chunk 4's
+	[gui cxx_setKey:oo::str::format("kbd:%s", kbd.c_str()) forRow:GUI_ROW_KC_SELECTKBD];
 	[gui setColor:[OOColor yellowColor] forRow:GUI_ROW_KC_SELECTKBD];
 
 	[self displayKeyFunctionList:gui skip:skip];
@@ -236,25 +251,25 @@ bool IsEmptyString(const oo::PList *value)
 	if (![self validateAllKeys].empty())
 	{
 		has_error = YES;
-		[gui setText:DESC(@"oolite-keyconfig-validation-error") forRow:GUI_ROW_KC_ERROR align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-keyconfig-validation-error")) forRow:GUI_ROW_KC_ERROR align:GUI_ALIGN_CENTER];
 		[gui setColor:[OOColor redColor] forRow:GUI_ROW_KC_ERROR];
 
 	}
-	[gui setArray:[NSArray arrayWithObject:DESC(@"oolite-keyconfig-initial-info-1")] forRow:GUI_ROW_KC_INSTRUCT];
-	[gui setText:DESC(@"oolite-keyconfig-initial-info-2") forRow:GUI_ROW_KC_INSTRUCT+1 align:GUI_ALIGN_CENTER];
+	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-initial-info-1")) }) forRow:GUI_ROW_KC_INSTRUCT];
+	[gui cxx_setText:oo::OptionalString(DESC(@"oolite-keyconfig-initial-info-2")) forRow:GUI_ROW_KC_INSTRUCT+1 align:GUI_ALIGN_CENTER];
 	if (has_error)
 	{
-		[gui setText:DESC(@"oolite-keyconfig-initial-error") forRow:GUI_ROW_KC_INSTRUCT+2 align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-keyconfig-initial-error")) forRow:GUI_ROW_KC_INSTRUCT+2 align:GUI_ALIGN_CENTER];
 	}
 	else
 	{
-		[gui setText:DESC(@"oolite-keyconfig-initial-info-3") forRow:GUI_ROW_KC_INSTRUCT+2 align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::OptionalString(DESC(@"oolite-keyconfig-initial-info-3")) forRow:GUI_ROW_KC_INSTRUCT+2 align:GUI_ALIGN_CENTER];
 	}
 
 	if (resetCurrentRow)
 	{
 		int offset = 0;
-		if ([[keyFunctions objectAtIndex:skip] objectForKey:KEY_KC_HEADER]) offset = 1;
+		if (KeyFunctionAt(keyFunctions, skip).find(oo::StdString(KEY_KC_HEADER)) != nullptr) offset = 1;
 		[gui setSelectedRow:GUI_ROW_KC_FUNCSTART + offset];
 	}
 	else 
@@ -262,8 +277,8 @@ bool IsEmptyString(const oo::PList *value)
 		[gui setSelectedRow:current_row];
 	}
 
-	[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay"];
-	[gui setBackgroundTextureKey:@"keyboardsettings"];
+	[gui cxx_setForegroundTextureKey:std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
+	[gui cxx_setBackgroundTextureKey:std::string("keyboardsettings")];
 
 	[gameView clearMouse];
 	[gameView clearKeys];
@@ -305,7 +320,7 @@ bool IsEmptyString(const oo::PList *value)
 			return;
 		}
 		current_row = [gui selectedRow];
-		selected_entry = oo::PListFrom([keyFunctions objectAtIndex:selFunctionIdx]);	// keyFunctions: chunk 3
+		selected_entry = KeyFunctionAt(keyFunctions, selFunctionIdx);
 		oo::PList definitions;
 		if (![self entryIsDictCustomEquip:selected_entry])
 		{
@@ -326,7 +341,7 @@ bool IsEmptyString(const oo::PList *value)
 		if (oo::str::hasPrefix(key, "More:")) return;
 
 		current_row = [gui selectedRow];
-		[self unsetKeySetting:[[keyFunctions objectAtIndex:selFunctionIdx] objectForKey:KEY_KC_DEFINITION]];
+		[self unsetKeySetting:oo::NSStringOrNil(OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), oo::StdString(KEY_KC_DEFINITION)))];
 		[self reloadPage];
 	}
 
@@ -340,7 +355,7 @@ bool IsEmptyString(const oo::PList *value)
 
 			current_row = [gui selectedRow];
 			
-			const std::optional<std::string> delkey = OptionalStringForKey(oo::PListFrom([keyFunctions objectAtIndex:selFunctionIdx]), oo::StdString(KEY_KC_DEFINITION));
+			const std::optional<std::string> delkey = OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), oo::StdString(KEY_KC_DEFINITION));
 			[self deleteKeySetting:oo::NSStringOrNil(delkey)];
 			// special case - when default activate/mode key set in custom equipment
 			if ([self entryIsCustomEquip:delkey.value_or("")])
@@ -395,7 +410,7 @@ bool IsEmptyString(const oo::PList *value)
 
 - (BOOL) entryIsIndexCustomEquip:(NSUInteger)idx
 {
-	return [self entryIsCustomEquip:oo::PListFrom([keyFunctions objectAtIndex:idx]).get<std::string>(oo::StdString(KEY_KC_DEFINITION))];
+	return [self entryIsCustomEquip:KeyFunctionAt(keyFunctions, idx).get<std::string>(oo::StdString(KEY_KC_DEFINITION))];
 }
 
 
@@ -556,11 +571,11 @@ bool IsEmptyString(const oo::PList *value)
 	const std::optional<std::string> validate = [self validateKey:definition checkKeys:key_list];
 	if (validate)
 	{
-		for (i = 0; i < [keyFunctions count]; i++)
+		for (i = 0; i < keyFunctions.size(); i++)
 		{
-			if (OptionalStringForKey(oo::PListFrom([keyFunctions objectAtIndex:i]), oo::StdString(KEY_KC_DEFINITION)) == validate)	// keyFunctions: chunk 3
+			if (OptionalStringForKey(keyFunctions[i], oo::StdString(KEY_KC_DEFINITION)) == validate)
 			{
-				[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-keyconfig-update-validation-@")), { oo::DescriptionOf([[keyFunctions objectAtIndex:i] objectForKey:KEY_KC_GUIDESC]) })
+				[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-keyconfig-update-validation-@")), { TextArg(OptionalStringForKey(keyFunctions[i], oo::StdString(KEY_KC_GUIDESC))) })
 					forRow:GUI_ROW_KC_VALIDATION align:GUI_ALIGN_CENTER];
 				[gui setColor:[OOColor orangeColor] forRow:GUI_ROW_KC_VALIDATION];
 				break;
@@ -883,20 +898,19 @@ bool IsEmptyString(const oo::PList *value)
 - (void) displayKeyFunctionList:(GuiDisplayGen *)gui skip:(NSUInteger)skip
 {
 	[gui setColor:[OOColor greenColor] forRow:GUI_ROW_KC_HEADING];
-	[gui setArray:[NSArray arrayWithObjects:
-				   @"Function", @"Assigned to", @"Overrides", nil]
+	[gui cxx_setArray:{ "Function", "Assigned to", "Overrides" }
 		   forRow:GUI_ROW_KC_HEADING];
 
-	NSDictionary *overrides = [self loadKeySettings];
+	const oo::PList overrides = oo::PListFrom([self loadKeySettings]);	// -loadKeySettings is chunk 4's
 
-	if(!keyFunctions)
+	if(keyFunctions.empty())	// the list is never empty once built
 	{
-		keyFunctions = [[self keyFunctionList] retain];
+		keyFunctions = [self keyFunctionList];
 	}
 
-	NSUInteger i, n_functions = [keyFunctions count];
+	NSUInteger i, n_functions = keyFunctions.size();
 	NSInteger n_rows, start_row, previous = 0;
-	NSString *validate = nil;
+	std::optional<std::string> validate;
 
 	if (skip >= n_functions)
 		skip = n_functions - 1;
@@ -928,55 +942,58 @@ bool IsEmptyString(const oo::PList *value)
 		if (skip > 0)
 		{
 			[gui setColor:[OOColor greenColor] forRow:GUI_ROW_KC_FUNCSTART];
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ", nil] forRow:GUI_ROW_KC_FUNCSTART];
-			[gui setKey:[NSString stringWithFormat:@"More:%zd", previous] forRow:GUI_ROW_KC_FUNCSTART];
+			[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"gui-back")), " <-- " }) forRow:GUI_ROW_KC_FUNCSTART];
+			[gui cxx_setKey:oo::str::format("More:%zd", previous) forRow:GUI_ROW_KC_FUNCSTART];
 		}
 		
 		for(i = 0; i < (n_functions - skip) && (int)i < n_rows; i++)
 		{
-			NSDictionary *entry = [keyFunctions objectAtIndex:i + skip];
-			if ([entry objectForKey:KEY_KC_HEADER]) {
-				NSString *header = [entry objectForKey:KEY_KC_HEADER];
-				[gui setArray:[NSArray arrayWithObjects:header, @"", @"", nil] forRow:i + start_row];
+			const oo::PList &entry = keyFunctions[i + skip];
+			if (entry.find(oo::StdString(KEY_KC_HEADER)) != nullptr) {
+				const std::optional<std::string> header = OptionalStringForKey(entry, oo::StdString(KEY_KC_HEADER));
+				[gui cxx_setArray:Columns({ header, "", "" }) forRow:i + start_row];
 				[gui setColor:[OOColor cyanColor] forRow:i + start_row];
 			}
 			else
 			{
-				NSString *assignment = nil;
-				NSString *override = nil;
-				if (![self entryIsDictCustomEquip:oo::PListFrom(entry)])
+				const std::optional<std::string> definition = OptionalStringForKey(entry, oo::StdString(KEY_KC_DEFINITION));
+				std::optional<std::string> assignment;
+				std::string override;
+				if (![self entryIsDictCustomEquip:entry])
 				{
 					// Find out what's assigned for this function currently.
-					assignment = [PLAYER keyBindingDescription2:[entry objectForKey:KEY_KC_DEFINITION]];
-					override = ([overrides objectForKey:[entry objectForKey:KEY_KC_DEFINITION]] ? @"Yes" : @""); // work out whether this assignment is overriding the setting in keyconfig2.plist
-					validate = oo::NSStringOrNil([self validateKey:oo::StdString([entry objectForKey:KEY_KC_DEFINITION]) checkKeys:oo::PListFrom([keyconfig2_settings objectForKey:[entry objectForKey:KEY_KC_DEFINITION]])]);
+					assignment = oo::OptionalString([PLAYER keyBindingDescription2:oo::NSStringOrNil(definition)]);
+					override = (definition && overrides.find(*definition) != nullptr ? "Yes" : ""); // work out whether this assignment is overriding the setting in keyconfig2.plist
+					validate = [self validateKey:definition.value_or("") checkKeys:oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(definition)])];
 				}
 				else
 				{
-					NSString *custom_keytype = oo::NSStringOrNil([self getCustomEquipKeyDefType:oo::StdString(oo::PListView(entry).get<NSString *>(KEY_KC_DEFINITION))]);
-					NSUInteger idx = [self getCustomEquipIndex:oo::StdString(oo::PListView(entry).get<NSString *>(KEY_KC_DEFINITION))];
-					assignment = [PLAYER getKeyBindingDescription:oo::PListView([customEquipActivation objectAtIndex:idx]).get<NSArray *>(custom_keytype)];
-					OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView([customEquipActivation objectAtIndex:idx]).get<NSString *>(CUSTOMEQUIP_EQUIPKEY)];
+					const std::optional<std::string> custom_keytype = [self getCustomEquipKeyDefType:definition.value_or("")];
+					NSUInteger idx = [self getCustomEquipIndex:definition.value_or("")];
+					const oo::PList equip = oo::PListFrom([customEquipActivation objectAtIndex:idx]);
+					const oo::PList *keyArray = equip.get<oo::PList::Array>(custom_keytype.value_or(""));	// -oo_arrayForKey:
+					assignment = oo::OptionalString([PLAYER getKeyBindingDescription:(keyArray != nullptr ? oo::ObjectFromPList(*keyArray) : nil)]);
+					OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPKEY)))];
 					bool result = true;
 					int j, k;
-					NSArray *defArray = nil;
-					NSArray *compArray = nil;
+					oo::PList defArray;
+					oo::PList compArray;
 
-					if ([custom_keytype isEqualToString:CUSTOMEQUIP_KEYACTIVATE]) 
+					if (custom_keytype == oo::StdString(CUSTOMEQUIP_KEYACTIVATE))
 					{
-						defArray = [item defaultActivateKey];
-						compArray = oo::PListView([customEquipActivation objectAtIndex:idx]).get<NSArray *>(custom_keytype);
+						defArray = oo::PListFrom([item defaultActivateKey]);
+						compArray = keyArray != nullptr ? *keyArray : oo::PList();
 					}
-					if ([custom_keytype isEqualToString:CUSTOMEQUIP_KEYMODE]) 
+					if (custom_keytype == oo::StdString(CUSTOMEQUIP_KEYMODE))
 					{
-						defArray = [item defaultModeKey];
-						compArray = oo::PListView([customEquipActivation objectAtIndex:idx]).get<NSArray *>(custom_keytype);
+						defArray = oo::PListFrom([item defaultModeKey]);
+						compArray = keyArray != nullptr ? *keyArray : oo::PList();
 					}
-					for (j = 0; j < [defArray count]; j++) 
+					for (j = 0; j < defArray.count(); j++)
 					{
-						for (k = 0; k < [compArray count]; k++)
+						for (k = 0; k < compArray.count(); k++)
 						{
-							if (![self compareKeyEntries:oo::PListFrom([defArray objectAtIndex:j]) second:oo::PListFrom([compArray objectAtIndex:k])])
+							if (![self compareKeyEntries:ElementAt(defArray, j) second:ElementAt(compArray, k)])
 							{
 								result = false;
 								break;
@@ -985,18 +1002,17 @@ bool IsEmptyString(const oo::PList *value)
 						if (result == false) break;
 					}
 
-					override = (!result ? @"Yes" : @"");
-					validate = oo::NSStringOrNil([self validateKey:oo::StdString([entry objectForKey:KEY_KC_DEFINITION]) checkKeys:oo::PListFrom(oo::PListView([customEquipActivation objectAtIndex:idx]).get<NSArray *>(custom_keytype))]);
+					override = (!result ? "Yes" : "");
+					validate = [self validateKey:definition.value_or("") checkKeys:(keyArray != nullptr ? *keyArray : oo::PList())];
 				}
-				if (assignment == nil)
+				if (!assignment)
 				{
-					assignment = @"   -   ";
+					assignment = "   -   ";
 				}
-				
-				[gui setArray:[NSArray arrayWithObjects: 
-								[entry objectForKey:KEY_KC_GUIDESC], assignment, override, nil]
+
+				[gui cxx_setArray:Columns({ OptionalStringForKey(entry, oo::StdString(KEY_KC_GUIDESC)), assignment, override })
 					forRow:i + start_row];
-				[gui setKey:[NSString stringWithFormat:@"Index:%zu", i + skip] forRow:i + start_row];
+				[gui cxx_setKey:oo::str::format("Index:%zu", i + skip) forRow:i + start_row];
 				if (validate) 
 				{
 					[gui setColor:[OOColor orangeColor] forRow:i + start_row];
@@ -1006,8 +1022,8 @@ bool IsEmptyString(const oo::PList *value)
 		if (i < n_functions - skip)
 		{
 			[gui setColor:[OOColor greenColor] forRow:start_row + i];
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ", nil] forRow:start_row + i];
-			[gui setKey:[NSString stringWithFormat:@"More:%zu", n_rows + skip] forRow:start_row + i];
+			[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"gui-more")), " --> " }) forRow:start_row + i];
+			[gui cxx_setKey:oo::str::format("More:%zu", n_rows + skip) forRow:start_row + i];
 			i++;
 		}
 		
@@ -1016,193 +1032,198 @@ bool IsEmptyString(const oo::PList *value)
 }
 
 
-- (NSArray *)keyFunctionList
+- (std::vector<oo::PList>)keyFunctionList
 {
-	NSMutableArray *funcList = [NSMutableArray array];
+	std::vector<oo::PList> funcList;
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-screen-access")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_launch_ship") keyDef:@"key_launch_ship"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_screen_options") keyDef:@"key_gui_screen_options"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_screen_equipship") keyDef:@"key_gui_screen_equipship"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_screen_interfaces") keyDef:@"key_gui_screen_interfaces"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_screen_status") keyDef:@"key_gui_screen_status"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_chart_screens") keyDef:@"key_gui_chart_screens"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_system_data") keyDef:@"key_gui_system_data"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_market") keyDef:@"key_gui_market"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-screen-access"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_launch_ship")) keyDef:"key_launch_ship"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_screen_options")) keyDef:"key_gui_screen_options"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_screen_equipship")) keyDef:"key_gui_screen_equipship"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_screen_interfaces")) keyDef:"key_gui_screen_interfaces"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_screen_status")) keyDef:"key_gui_screen_status"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_chart_screens")) keyDef:"key_gui_chart_screens"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_system_data")) keyDef:"key_gui_system_data"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_market")) keyDef:"key_gui_market"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-propulsion")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_roll_left") keyDef:@"key_roll_left"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_roll_right") keyDef:@"key_roll_right"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_pitch_forward") keyDef:@"key_pitch_forward"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_pitch_back") keyDef:@"key_pitch_back"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_yaw_left") keyDef:@"key_yaw_left"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_yaw_right") keyDef:@"key_yaw_right"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-propulsion"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_roll_left")) keyDef:"key_roll_left"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_roll_right")) keyDef:"key_roll_right"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_pitch_forward")) keyDef:"key_pitch_forward"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_pitch_back")) keyDef:"key_pitch_back"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_yaw_left")) keyDef:"key_yaw_left"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_yaw_right")) keyDef:"key_yaw_right"]);
 
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_increase_speed") keyDef:@"key_increase_speed"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_decrease_speed") keyDef:@"key_decrease_speed"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_inject_fuel") keyDef:@"key_inject_fuel"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_jumpdrive") keyDef:@"key_jumpdrive"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_hyperspace") keyDef:@"key_hyperspace"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_galactic_hyperspace") keyDef:@"key_galactic_hyperspace"]];
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_increase_speed")) keyDef:"key_increase_speed"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_decrease_speed")) keyDef:"key_decrease_speed"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_inject_fuel")) keyDef:"key_inject_fuel"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_jumpdrive")) keyDef:"key_jumpdrive"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_hyperspace")) keyDef:"key_hyperspace"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_galactic_hyperspace")) keyDef:"key_galactic_hyperspace"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-navigation")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_next_compass_mode") keyDef:@"key_next_compass_mode"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_prev_compass_mode") keyDef:@"key_prev_compass_mode"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_scanner_zoom") keyDef:@"key_scanner_zoom"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_scanner_unzoom") keyDef:@"key_scanner_unzoom"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_view_forward") keyDef:@"key_view_forward"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_view_aft") keyDef:@"key_view_aft"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_view_port") keyDef:@"key_view_port"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_view_starboard") keyDef:@"key_view_starboard"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_ident_system") keyDef:@"key_ident_system"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-navigation"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_next_compass_mode")) keyDef:"key_next_compass_mode"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_prev_compass_mode")) keyDef:"key_prev_compass_mode"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_scanner_zoom")) keyDef:"key_scanner_zoom"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_scanner_unzoom")) keyDef:"key_scanner_unzoom"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_view_forward")) keyDef:"key_view_forward"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_view_aft")) keyDef:"key_view_aft"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_view_port")) keyDef:"key_view_port"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_view_starboard")) keyDef:"key_view_starboard"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_ident_system")) keyDef:"key_ident_system"]);
 
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_docking_clearance_request") keyDef:@"key_docking_clearance_request"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_autopilot") keyDef:@"key_autopilot"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_autodock") keyDef:@"key_autodock"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_docking_music") keyDef:@"key_docking_music"]];
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_docking_clearance_request")) keyDef:"key_docking_clearance_request"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_autopilot")) keyDef:"key_autopilot"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_autodock")) keyDef:"key_autodock"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_docking_music")) keyDef:"key_docking_music"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-offensive")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_weapons_online_toggle") keyDef:@"key_weapons_online_toggle"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_fire_lasers") keyDef:@"key_fire_lasers"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_launch_missile") keyDef:@"key_launch_missile"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_target_missile") keyDef:@"key_target_missile"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_untarget_missile") keyDef:@"key_untarget_missile"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_target_incoming_missile") keyDef:@"key_target_incoming_missile"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_next_missile") keyDef:@"key_next_missile"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_next_target") keyDef:@"key_next_target"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_previous_target") keyDef:@"key_previous_target"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-offensive"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_weapons_online_toggle")) keyDef:"key_weapons_online_toggle"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_fire_lasers")) keyDef:"key_fire_lasers"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_launch_missile")) keyDef:"key_launch_missile"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_target_missile")) keyDef:"key_target_missile"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_untarget_missile")) keyDef:"key_untarget_missile"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_target_incoming_missile")) keyDef:"key_target_incoming_missile"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_next_missile")) keyDef:"key_next_missile"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_next_target")) keyDef:"key_next_target"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_previous_target")) keyDef:"key_previous_target"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-defensive")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_ecm") keyDef:@"key_ecm"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_dump_cargo") keyDef:@"key_dump_cargo"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_rotate_cargo") keyDef:@"key_rotate_cargo"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_launch_escapepod") keyDef:@"key_launch_escapepod"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-defensive"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_ecm")) keyDef:"key_ecm"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_dump_cargo")) keyDef:"key_dump_cargo"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_rotate_cargo")) keyDef:"key_rotate_cargo"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_launch_escapepod")) keyDef:"key_launch_escapepod"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-special-equip")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_cycle_next_mfd") keyDef:@"key_cycle_next_mfd"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_cycle_previous_mfd") keyDef:@"key_cycle_previous_mfd"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_switch_next_mfd") keyDef:@"key_switch_next_mfd"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_switch_previous_mfd") keyDef:@"key_switch_previous_mfd"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-special-equip"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_cycle_next_mfd")) keyDef:"key_cycle_next_mfd"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_cycle_previous_mfd")) keyDef:"key_cycle_previous_mfd"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_switch_next_mfd")) keyDef:"key_switch_next_mfd"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_switch_previous_mfd")) keyDef:"key_switch_previous_mfd"]);
 
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_prime_next_equipment") keyDef:@"key_prime_next_equipment"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_prime_previous_equipment") keyDef:@"key_prime_previous_equipment"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_activate_equipment") keyDef:@"key_activate_equipment"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_mode_equipment") keyDef:@"key_mode_equipment"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_fastactivate_equipment_a") keyDef:@"key_fastactivate_equipment_a"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_fastactivate_equipment_b") keyDef:@"key_fastactivate_equipment_b"]];
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_prime_next_equipment")) keyDef:"key_prime_next_equipment"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_prime_previous_equipment")) keyDef:"key_prime_previous_equipment"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_activate_equipment")) keyDef:"key_activate_equipment"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_mode_equipment")) keyDef:"key_mode_equipment"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_fastactivate_equipment_a")) keyDef:"key_fastactivate_equipment_a"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_fastactivate_equipment_b")) keyDef:"key_fastactivate_equipment_b"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-chart-screen")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_advanced_nav_array_next") keyDef:@"key_advanced_nav_array_next"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_advanced_nav_array_previous") keyDef:@"key_advanced_nav_array_previous"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_map_home") keyDef:@"key_map_home"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_map_end") keyDef:@"key_map_end"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_map_info") keyDef:@"key_map_info"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_map_zoom_in") keyDef:@"key_map_zoom_in"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_map_zoom_out") keyDef:@"key_map_zoom_out"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_map_next_system") keyDef:@"key_map_next_system"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_map_previous_system") keyDef:@"key_map_previous_system"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_chart_highlight") keyDef:@"key_chart_highlight"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-chart-screen"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_advanced_nav_array_next")) keyDef:"key_advanced_nav_array_next"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_advanced_nav_array_previous")) keyDef:"key_advanced_nav_array_previous"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_map_home")) keyDef:"key_map_home"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_map_end")) keyDef:"key_map_end"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_map_info")) keyDef:"key_map_info"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_map_zoom_in")) keyDef:"key_map_zoom_in"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_map_zoom_out")) keyDef:"key_map_zoom_out"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_map_next_system")) keyDef:"key_map_next_system"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_map_previous_system")) keyDef:"key_map_previous_system"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_chart_highlight")) keyDef:"key_chart_highlight"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-planet-info-screen")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_system_home") keyDef:@"key_system_home"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_system_end") keyDef:@"key_system_end"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_system_next_system") keyDef:@"key_system_next_system"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_system_previous_system") keyDef:@"key_system_previous_system"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-planet-info-screen"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_system_home")) keyDef:"key_system_home"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_system_end")) keyDef:"key_system_end"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_system_next_system")) keyDef:"key_system_next_system"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_system_previous_system")) keyDef:"key_system_previous_system"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-market-screen")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_market_filter_cycle") keyDef:@"key_market_filter_cycle"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_market_sorter_cycle") keyDef:@"key_market_sorter_cycle"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_market_buy_one") keyDef:@"key_market_buy_one"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_market_sell_one") keyDef:@"key_market_sell_one"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_market_buy_max") keyDef:@"key_market_buy_max"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_market_sell_max") keyDef:@"key_market_sell_max"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-market-screen"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_market_filter_cycle")) keyDef:"key_market_filter_cycle"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_market_sorter_cycle")) keyDef:"key_market_sorter_cycle"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_market_buy_one")) keyDef:"key_market_buy_one"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_market_sell_one")) keyDef:"key_market_sell_one"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_market_buy_max")) keyDef:"key_market_buy_max"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_market_sell_max")) keyDef:"key_market_sell_max"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-misc")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_snapshot") keyDef:@"key_snapshot"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_pausebutton") keyDef:@"key_pausebutton"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_show_fps") keyDef:@"key_show_fps"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-misc"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_snapshot")) keyDef:"key_snapshot"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_pausebutton")) keyDef:"key_pausebutton"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_show_fps")) keyDef:"key_show_fps"]);
 	//[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_bloom_toggle") keyDef:@"key_bloom_toggle"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_mouse_control_roll") keyDef:@"key_mouse_control_roll"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_mouse_control_yaw") keyDef:@"key_mouse_control_yaw"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_hud_toggle") keyDef:@"key_hud_toggle"]];
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_mouse_control_roll")) keyDef:"key_mouse_control_roll"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_mouse_control_yaw")) keyDef:"key_mouse_control_yaw"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_hud_toggle")) keyDef:"key_hud_toggle"]);
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_inc_field_of_view") keyDef:@"key_inc_field_of_view"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_dec_field_of_view") keyDef:@"key_dec_field_of_view"]];
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_inc_field_of_view")) keyDef:"key_inc_field_of_view"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_dec_field_of_view")) keyDef:"key_dec_field_of_view"]);
 #endif
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_comms_log") keyDef:@"key_comms_log"]];
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_comms_log")) keyDef:"key_comms_log"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-custom-view")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view") keyDef:@"key_custom_view"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_zoom_in") keyDef:@"key_custom_view_zoom_in"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_zoom_out") keyDef:@"key_custom_view_zoom_out"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_roll_left") keyDef:@"key_custom_view_roll_left"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_roll_right") keyDef:@"key_custom_view_roll_right"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_pan_left") keyDef:@"key_custom_view_pan_left"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_pan_right") keyDef:@"key_custom_view_pan_right"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_pan_up") keyDef:@"key_custom_view_pan_up"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_pan_down") keyDef:@"key_custom_view_pan_down"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_rotate_left") keyDef:@"key_custom_view_rotate_left"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_rotate_right") keyDef:@"key_custom_view_rotate_right"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_rotate_up") keyDef:@"key_custom_view_rotate_up"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_custom_view_rotate_down") keyDef:@"key_custom_view_rotate_down"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-custom-view"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view")) keyDef:"key_custom_view"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_zoom_in")) keyDef:"key_custom_view_zoom_in"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_zoom_out")) keyDef:"key_custom_view_zoom_out"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_roll_left")) keyDef:"key_custom_view_roll_left"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_roll_right")) keyDef:"key_custom_view_roll_right"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_pan_left")) keyDef:"key_custom_view_pan_left"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_pan_right")) keyDef:"key_custom_view_pan_right"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_pan_up")) keyDef:"key_custom_view_pan_up"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_pan_down")) keyDef:"key_custom_view_pan_down"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_rotate_left")) keyDef:"key_custom_view_rotate_left"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_rotate_right")) keyDef:"key_custom_view_rotate_right"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_rotate_up")) keyDef:"key_custom_view_rotate_up"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_custom_view_rotate_down")) keyDef:"key_custom_view_rotate_down"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-oxz-manager")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_oxzmanager_setfilter") keyDef:@"key_oxzmanager_setfilter"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_oxzmanager_showinfo") keyDef:@"key_oxzmanager_showinfo"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_oxzmanager_extract") keyDef:@"key_oxzmanager_extract"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-oxz-manager"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_oxzmanager_setfilter")) keyDef:"key_oxzmanager_setfilter"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_oxzmanager_showinfo")) keyDef:"key_oxzmanager_showinfo"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_oxzmanager_extract")) keyDef:"key_oxzmanager_extract"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-gui")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_arrow_left") keyDef:@"key_gui_arrow_left"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_arrow_right") keyDef:@"key_gui_arrow_right"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_arrow_up") keyDef:@"key_gui_arrow_up"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_arrow_down") keyDef:@"key_gui_arrow_down"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_page_down") keyDef:@"key_gui_page_down"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_page_up") keyDef:@"key_gui_page_up"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_gui_select") keyDef:@"key_gui_select"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-gui"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_arrow_left")) keyDef:"key_gui_arrow_left"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_arrow_right")) keyDef:"key_gui_arrow_right"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_arrow_up")) keyDef:"key_gui_arrow_up"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_arrow_down")) keyDef:"key_gui_arrow_down"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_page_down")) keyDef:"key_gui_page_down"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_page_up")) keyDef:"key_gui_page_up"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_gui_select")) keyDef:"key_gui_select"]);
 
-	[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-debug")]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_dump_target_state") keyDef:@"key_dump_target_state"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_dump_entity_list") keyDef:@"key_dump_entity_list"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_debug_full") keyDef:@"key_debug_full"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_debug_collision") keyDef:@"key_debug_collision"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_debug_console_connect") keyDef:@"key_debug_console_connect"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_debug_bounding_boxes") keyDef:@"key_debug_bounding_boxes"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_debug_shaders") keyDef:@"key_debug_shaders"]];
-	[funcList addObject:[self makeKeyGuiDict:DESC(@"oolite-keydesc-key_debug_off") keyDef:@"key_debug_off"]];
+	funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-debug"))]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_dump_target_state")) keyDef:"key_dump_target_state"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_dump_entity_list")) keyDef:"key_dump_entity_list"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_debug_full")) keyDef:"key_debug_full"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_debug_collision")) keyDef:"key_debug_collision"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_debug_console_connect")) keyDef:"key_debug_console_connect"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_debug_bounding_boxes")) keyDef:"key_debug_bounding_boxes"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_debug_shaders")) keyDef:"key_debug_shaders"]);
+	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_debug_off")) keyDef:"key_debug_off"]);
 
 	if ([customEquipActivation count] > 0) 
 	{
-		[funcList addObject:[self makeKeyGuiDictHeader:DESC(@"oolite-keydesc-header-oxp-equip")]];
+		funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-oxp-equip"))]);
 		int i;
 		for (i = 0; i < [customEquipActivation count]; i++)
 		{
-			[funcList addObject:[self makeKeyGuiDict:[NSString stringWithFormat: @"Activate '%@'", oo::PListView([customEquipActivation objectAtIndex:i]).get<NSString *>(CUSTOMEQUIP_EQUIPNAME)] 
-				keyDef:[NSString stringWithFormat:@"activate_%@", oo::PListView([customEquipActivation objectAtIndex:i]).get<NSString *>(CUSTOMEQUIP_EQUIPKEY)]]];
-			[funcList addObject:[self makeKeyGuiDict:[NSString stringWithFormat: @"Mode '%@'", oo::PListView([customEquipActivation objectAtIndex:i]).get<NSString *>(CUSTOMEQUIP_EQUIPNAME)] 
-				keyDef:[NSString stringWithFormat:@"mode_%@", oo::PListView([customEquipActivation objectAtIndex:i]).get<NSString *>(CUSTOMEQUIP_EQUIPKEY)]]];
+			const oo::PList equip = oo::PListFrom([customEquipActivation objectAtIndex:i]);
+			const std::string equipName = DescriptionOfString(OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPNAME)));	// %@: "(null)" for nil
+			const std::string equipKey = DescriptionOfString(OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPKEY)));
+			funcList.push_back([self makeKeyGuiDict:oo::str::format("Activate '%s'", equipName.c_str())
+				keyDef:oo::str::format("activate_%s", equipKey.c_str())]);
+			funcList.push_back([self makeKeyGuiDict:oo::str::format("Mode '%s'", equipName.c_str())
+				keyDef:oo::str::format("mode_%s", equipKey.c_str())]);
 		}
 	}
 	return funcList;
 }
 
 
-- (NSDictionary *)makeKeyGuiDict:(NSString *)what keyDef:(NSString*)key_def
+- (oo::PList)makeKeyGuiDict:(const std::string &)what keyDef:(const std::string &)key_def
 {
-	NSMutableDictionary *guiDict = [NSMutableDictionary dictionary];
-	if ([what length] > 50) what = [[what substringToIndex:48] stringByAppendingString:@"..."];
-	[guiDict setObject:what forKey:KEY_KC_GUIDESC];
-	[guiDict setObject:key_def forKey:KEY_KC_DEFINITION];
-	return guiDict;
+	// more than 50 UTF-16 units: the first 48 and "...", as -substringToIndex:48 cut it
+	const std::u16string units = oo::utf8ToUtf16(what);
+	const std::string description = (units.size() > 50) ? oo::utf16ToUtf8(units.substr(0, 48)) + "..." : what;
+	oo::PList::Dict guiDict;
+	guiDict[oo::StdString(KEY_KC_GUIDESC)] = oo::PList(description);
+	guiDict[oo::StdString(KEY_KC_DEFINITION)] = oo::PList(key_def);
+	return oo::PList(std::move(guiDict));
 }
 
 
-- (NSDictionary *)makeKeyGuiDictHeader:(NSString *)header
+- (oo::PList)makeKeyGuiDictHeader:(const std::string &)header
 {
-	NSMutableDictionary *guiDict = [NSMutableDictionary dictionary];
-	[guiDict setObject:header forKey:KEY_KC_HEADER];
-	[guiDict setObject:@"" forKey:KEY_KC_GUIDESC];
-	[guiDict setObject:@"" forKey:KEY_KC_DEFINITION];
-	return guiDict;
+	oo::PList::Dict guiDict;
+	guiDict[oo::StdString(KEY_KC_HEADER)] = oo::PList(header);
+	guiDict[oo::StdString(KEY_KC_GUIDESC)] = oo::PList("");
+	guiDict[oo::StdString(KEY_KC_DEFINITION)] = oo::PList("");
+	return oo::PList(std::move(guiDict));
 }
 
 
@@ -1433,9 +1454,9 @@ bool IsEmptyString(const oo::PList *value)
 	std::vector<std::string> failed;
 	NSUInteger i;
 
-	for (i = 0; i < [keyFunctions count]; i++)
+	for (i = 0; i < keyFunctions.size(); i++)
 	{
-		const std::optional<std::string> definition = OptionalStringForKey(oo::PListFrom([keyFunctions objectAtIndex:i]), oo::StdString(KEY_KC_DEFINITION));
+		const std::optional<std::string> definition = OptionalStringForKey(keyFunctions[i], oo::StdString(KEY_KC_DEFINITION));
 		const std::optional<std::string> validate = [self validateKey:definition.value_or("") checkKeys:oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(definition)])];
 		if (validate)
 		{
