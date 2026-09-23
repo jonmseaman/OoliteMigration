@@ -92,4 +92,61 @@ and converts the result exactly as the old method produced it (nil for nil).
 	[self cxx_setArray:oo::StringsFrom(arr) forRow:row];
 }
 
+
+// Chunk 2 (oo-3rb.93).
+
+- (NSString *) reflowTextForMFD:(NSString *)input
+{
+	return oo::NSStringOrNil([self cxx_reflowTextForMFD:oo::OptionalString(input)]);
+}
+
+
+- (OOGUIRow) addLongText:(NSString *)str
+		   startingAtRow:(OOGUIRow)row
+				   align:(OOGUIAlignment)alignment
+{
+	return [self cxx_addLongText:oo::OptionalString(str) startingAtRow:row align:alignment];
+}
+
+
+- (void) printLongText:(NSString *)str
+				 align:(OOGUIAlignment)alignment
+				 color:(OOColor *)text_color
+			  fadeTime:(float)text_fade
+				   key:(NSString *)text_key
+			addToArray:(NSMutableArray *)text_array
+{
+	std::vector<std::string> lines;
+	[self cxx_printLongText:oo::OptionalString(str) align:alignment color:text_color fadeTime:text_fade key:oo::OptionalString(text_key) addToArray:(text_array != nil) ? &lines : nullptr];
+	for (const std::string &line : lines)  [text_array addObject:oo::NSStringFrom(line)];
+}
+
+
+- (void) printLineNoScroll:(NSString *)str
+					 align:(OOGUIAlignment)alignment
+					 color:(OOColor *)text_color
+				  fadeTime:(float)text_fade
+					   key:(NSString *)text_key
+				addToArray:(NSMutableArray *)text_array
+{
+	std::vector<std::string> lines;
+	[self cxx_printLineNoScroll:oo::OptionalString(str) align:alignment color:text_color fadeTime:text_fade key:oo::OptionalString(text_key) addToArray:(text_array != nil) ? &lines : nullptr];
+	for (const std::string &line : lines)  [text_array addObject:oo::NSStringFrom(line)];
+}
+
+
+- (void) insertItemsFromArray:(NSArray *)items
+					 withKeys:(NSArray *)item_keys
+					  intoRow:(OOGUIRow)row
+						color:(OOColor *)text_color
+{
+	[self cxx_insertItemsFromArray:oo::PListFrom(items) withKeys:oo::PListFrom(item_keys) intoRow:row color:text_color];
+}
+
+
+- (NSArray *) getLastLines
+{
+	return oo::ObjectFromPList([self cxx_getLastLines]);
+}
+
 @end
