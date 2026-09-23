@@ -48,6 +48,7 @@ MA 02110-1301, USA.
 #ifndef NDEBUG
 #import "OODebugTCPConsoleClient.h"
 #endif
+#include "oofnd/Date.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #include <chrono>
@@ -100,7 +101,7 @@ static GameController *sSharedController = nil;
 	if ((self = [super init]))
 	{
 		_finishedLaunching = NO;
-		last_timeInterval = [NSDate timeIntervalSinceReferenceDate];
+		last_timeInterval = oo::date::monotonicSeconds();	// the frame clock: intervals only (-doPerformGameTick)
 		delta_t = 0.01; // one hundredth of a second 
 		_animationTimerInterval = [[NSUserDefaults standardUserDefaults] oo_doubleForKey:@"animation_timer_interval" defaultValue:MINIMUM_ANIMATION_TICK];
 		
@@ -117,7 +118,7 @@ static GameController *sSharedController = nil;
 		}
 		else
 		{
-			ranrot_srand((uint32_t)[[NSDate date] timeIntervalSince1970]);   // reset randomiser with current time
+			ranrot_srand((uint32_t)oo::date::timeIntervalSince1970());   // reset randomiser with current time
 		}
 		
 #if OO_DEBUG
@@ -129,7 +130,7 @@ static GameController *sSharedController = nil;
 		(void)OOEnumerationShuffleEnabled();
 #endif
 		
-		_splashStart = [[NSDate alloc] init];
+		_splashStart = oo::date::monotonicSeconds();
 	}
 	
 	return self;
@@ -325,7 +326,7 @@ static GameController *sSharedController = nil;
 		exit(EXIT_FAILURE);
 	}
 	
-	OOLog(@"startup.complete", @"========== Loading complete in %.2f seconds. ==========", -[_splashStart timeIntervalSinceNow]);
+	OOLog(@"startup.complete", @"========== Loading complete in %.2f seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
 	[self setFullScreenMode:[[NSUserDefaults standardUserDefaults] boolForKey:@"fullscreen"]];
@@ -409,7 +410,7 @@ static GameController *sSharedController = nil;
 			delta_t = 0.0;  // no movement!
 		else
 		{
-			delta_t = [NSDate timeIntervalSinceReferenceDate] - last_timeInterval;
+			delta_t = oo::date::monotonicSeconds() - last_timeInterval;
 			last_timeInterval += delta_t;
 			if (delta_t > MINIMUM_GAME_TICK)
 				delta_t = MINIMUM_GAME_TICK;		// peg the maximum pause (at 0.5->1.0 seconds) to protect against when the machine sleeps	
@@ -925,7 +926,7 @@ static void RemovePreference(NSString *key)
 #endif
 	if([message length] > 0)
 	{
-		OOLog(@"startup.progress", @"===== [%.2f s] %@", -[_splashStart timeIntervalSinceNow], message);
+		OOLog(@"startup.progress", @"===== [%.2f s] %@", oo::date::monotonicSeconds() - _splashStart, message);
 	}
 }
 

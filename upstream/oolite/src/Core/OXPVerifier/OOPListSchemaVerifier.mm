@@ -1486,7 +1486,9 @@ static NSError *ErrorTypeMismatch(Class expectedClass, NSString *expectedClassNa
 	else if ([actualObject isKindOfClass:[NSArray class]])  className = @"array";
 	else if ([actualObject isKindOfClass:[NSDictionary class]])  className = @"dictionary";
 	else if ([actualObject isKindOfClass:[NSData class]])  className = @"data";
-	else if ([actualObject isKindOfClass:[NSDate class]])  className = @"date";
+	// A plist date (oo::PList's Type::Date, "date") is the only plist value that answers the date
+	// reference-interval message; asked of the class it was (bead oo-3rb.52), the same answer.
+	else if ([actualObject respondsToSelector:@selector(timeIntervalSinceReferenceDate)])  className = @"date";
 	else  className = [[actualObject class] description];
 	
 	return ErrorWithDictionary(kPListErrorTypeMismatch, &keyPath, dict, @"Expected %@, found %@.", expectedClassName, className);

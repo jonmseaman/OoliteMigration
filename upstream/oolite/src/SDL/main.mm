@@ -26,9 +26,6 @@ MA 02110-1301, USA.
 #ifdef GNUSTEP_BASE_LIBRARY
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
-#if (GNUSTEP_BASE_MAJOR_VERSION == 1 && (GNUSTEP_BASE_MINOR_VERSION == 24 && GNUSTEP_BASE_SUBMINOR_VERSION >= 9) || (GNUSTEP_BASE_MINOR_VERSION > 24)) || (GNUSTEP_BASE_MAJOR_VERSION > 1)
-#import <Foundation/NSDate.h>
-#endif
 #import <Foundation/NSString.h>
 #import "GameController.h"
 #include "oofnd/Process.hpp"
@@ -76,10 +73,6 @@ int main(int argc, char *argv[])
 
 #ifdef GNUSTEP_BASE_LIBRARY
 	int i;
-
-#if (GNUSTEP_BASE_MAJOR_VERSION == 1 && (GNUSTEP_BASE_MINOR_VERSION == 24 && GNUSTEP_BASE_SUBMINOR_VERSION >= 9) || (GNUSTEP_BASE_MINOR_VERSION > 24)) || (GNUSTEP_BASE_MAJOR_VERSION > 1)
-	[NSDate class]; // See github issue #202
-#endif
 
 #if OOLITE_WINDOWS
 

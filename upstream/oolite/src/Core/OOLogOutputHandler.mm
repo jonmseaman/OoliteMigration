@@ -34,6 +34,7 @@ SOFTWARE.
 #import "OOAsyncQueue.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "oofnd/Date.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #import "NSFileManagerOOExtensions.h"
@@ -416,7 +417,7 @@ enum
 	if (messageQueue != nil && haveThreadStateMonitor)
 	{
 		// We're fully inited; write postamble, wait for worker thread to terminate cleanly, and close file.
-		postamble = [NSString stringWithFormat:@"\nClosing log at %@.", [NSDate date]];
+		postamble = [NSString stringWithFormat:@"\nClosing log at %@.", [NSString stringWithUTF8String:oo::date::description().c_str()]];
 		[self asyncLogMessage:postamble];
 		[messageQueue enqueue:@"die"];	// Kill message
 		{
