@@ -1048,6 +1048,21 @@ sed -i 's|^    tests/\*\|\*/tests/\*) return 0 ;;|    __no_such_path__) return 0
 sed -i 's|^    test_\*\.py\|\*_test\.py\|test_\*\.c\|test_\*\.m\|\*\.feature\|conftest\.py) return 0 ;;|    __no_such_file__) return 0 ;;|' tools/guardrails.sh
 expect_fail "a test classifier that matches nothing fails the run" "cannot fire"
 
+echo "=== base branch: a stacked phase branch is the base when BEADS_WORKER_BASE_BRANCH names it ==="
+# accept.sh merges a bead into BEADS_WORKER_BASE_BRANCH (a phase branch stacked on main). A change
+# the phase branch already carries (here a human-approved test deletion) is not the bead's, and must
+# not be charged to it; without the variable the guard falls back to main and does charge it.
+fixture base_branch || exit 1
+git_c checkout -q -b phase-x
+git rm -q upstream/oolite/tests/component/features/s1.feature
+git_c commit -qm "human-approved test deletion on the phase branch"
+git_c checkout -q -b bead/x
+echo "an ordinary note" > notes.txt; git_c add notes.txt; git_c commit -qm "bead work"
+export BEADS_WORKER_BASE_BRANCH=phase-x
+expect_pass "BEADS_WORKER_BASE_BRANCH=phase-x: the phase branch's own changes are not the bead's"
+unset BEADS_WORKER_BASE_BRANCH
+expect_fail "no base branch named: the guard falls back to main and sees the phase branch's deletion" "is deleted (CLAUDE.md rule 2"
+
 echo
 cd "$REPO" || exit 1
 printf 'guardrails-selftest: %d cases\n' "$cases"
