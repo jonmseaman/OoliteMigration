@@ -3110,7 +3110,7 @@ static NSTimeInterval	time_last_frame;
 		NSString *key = nil;
 		while (kc--) {
 			definition = [keys objectAtIndex:kc];
-			keydefs = [definition registerKeys];
+			keydefs = oo::ObjectFromPList([definition registerKeys]);
 			foreach (key, [keydefs allKeys])
 			{
 				if ([self checkKeyPress:[keydefs objectForKey:key]]) 
