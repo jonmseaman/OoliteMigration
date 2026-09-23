@@ -36,6 +36,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 
 
 // Enums are used here rather than a more complex ObjC object because
@@ -243,7 +244,7 @@ typedef struct
 
 #import "OOJoystickProfile.h"
 
-@interface OOJoystickManager: NSObject 
+@interface OOJoystickManager: OOObject 
 {
 @private
 	// Axis/button mapping arrays

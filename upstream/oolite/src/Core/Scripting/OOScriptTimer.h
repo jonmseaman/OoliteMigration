@@ -33,10 +33,11 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOTypes.h"
 
 
-@interface OOScriptTimer: NSObject
+@interface OOScriptTimer: OOObject
 {
 @private
 	OOTimeAbsolute				_nextTime;
