@@ -33,7 +33,7 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
 #import "HeadUpDisplay.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOTexture.h"
 #import "OOJavaScriptEngine.h"
 #import "PlayerEntityStickProfile.h"
@@ -637,7 +637,7 @@ static BOOL _refreshStarChart = NO;
 
 - (void) overrideTabs:(OOGUITabSettings)stops from:(NSString *)setting length:(NSUInteger)len
 {
-	NSArray *override = [guiUserSettings oo_arrayForKey:setting defaultValue:nil];
+	NSArray *override = oo::PListView(guiUserSettings).get<NSArray *>(setting, nil);
 	NSUInteger i;
 	if (stops != NULL && override != nil)
 	{
@@ -647,7 +647,7 @@ static BOOL _refreshStarChart = NO;
 		}
 		for (i=0;i<len;i++) 
 		{
-			stops[i] = [override oo_unsignedIntegerAtIndex:i defaultValue:stops[i]];
+			stops[i] = oo::PListView(override).at<NSUInteger>(i, stops[i]);
 		}
 	}
 }
@@ -715,7 +715,7 @@ static BOOL _refreshStarChart = NO;
 		unsigned	i;
 		for (i = 0; i < [lines count]; i++)
 		{
-			row = [self addLongText:[lines oo_stringAtIndex:i] startingAtRow:row align:alignment];
+			row = [self addLongText:oo::PListView(lines).at<NSString *>(i) startingAtRow:row align:alignment];
 		}
 		return row;
 	}
@@ -764,9 +764,9 @@ static BOOL _refreshStarChart = NO;
 		{
 			while ([words count] > 1)
 			{
-				[accum appendString:[words oo_stringAtIndex:0]];
+				[accum appendString:oo::PListView(words).at<NSString *>(0)];
 				[accum appendString:@" "];
-				if (OORectFromString(accum, 0.0f, 0.0f,chSize).size.width + OORectFromString([words oo_stringAtIndex:1], 0.0f, 0.0f,chSize).size.width > limit)
+				if (OORectFromString(accum, 0.0f, 0.0f,chSize).size.width + OORectFromString(oo::PListView(words).at<NSString *>(1), 0.0f, 0.0f,chSize).size.width > limit)
 				{
 					// can't fit next word on this line
 					[output appendString:[accum stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]];
@@ -776,7 +776,7 @@ static BOOL _refreshStarChart = NO;
 				[words removeObjectAtIndex:0];
 			}
 			[output appendString:accum];
-			[output appendString:[words oo_stringAtIndex:0]];
+			[output appendString:oo::PListView(words).at<NSString *>(0)];
 		}
 		[output appendString:@"\n"];
 	}
@@ -813,16 +813,16 @@ static BOOL _refreshStarChart = NO;
 	{
 		// we have at least 2 rows!
 		OORGBAComponents	col0 = [(OOColor *)[rowColor objectAtIndex:i-1] rgbaComponents];
-		return [NSArray arrayWithObjects:[rowText oo_stringAtIndex:i-1],
+		return [NSArray arrayWithObjects:oo::PListView(rowText).at<NSString *>(i-1),
 										[NSString stringWithFormat:@"%.3g %.3g %.3g %.3g", col0.r, col0.g, col0.b, col0.a],
 										[NSNumber numberWithFloat:rowFadeTime[i-1]],
-										[rowText oo_stringAtIndex:i],
+										oo::PListView(rowText).at<NSString *>(i),
 										[NSString stringWithFormat:@"%.3g %.3g %.3g %.3g", col.r, col.g, col.b, col.a],
 										[NSNumber numberWithFloat:rowFadeTime[i]], nil];
 	}
 	else
 	{
-		return [NSArray arrayWithObjects:[rowText oo_stringAtIndex:i],
+		return [NSArray arrayWithObjects:oo::PListView(rowText).at<NSString *>(i),
 										[NSString stringWithFormat:@"%.3g %.3g %.3g %.3g", col.r, col.g, col.b, col.a],
 										[NSNumber numberWithFloat:rowFadeTime[i]], nil];
 	}
@@ -843,7 +843,7 @@ static BOOL _refreshStarChart = NO;
 		NSArray		*lines = [str componentsSeparatedByString:@"\n"];
 		unsigned	i;
 		for (i = 0; i < [lines count]; i++)
-			[self printLongText:[lines oo_stringAtIndex:i] align:alignment color:text_color fadeTime:text_fade key:text_key addToArray:text_array];
+			[self printLongText:oo::PListView(lines).at<NSString *>(i) align:alignment color:text_color fadeTime:text_fade key:text_key addToArray:text_array];
 		return;
 	}
 	
@@ -878,7 +878,7 @@ static BOOL _refreshStarChart = NO;
 			[words removeObjectAtIndex:0];
 			strsize = OORectFromString(string1, 0.0f, 0.0f, chSize).size;
 			if ([words count] > 0)
-				strsize.width += OORectFromString([words oo_stringAtIndex:0], 0.0f, 0.0f, chSize).size.width;
+				strsize.width += OORectFromString(oo::PListView(words).at<NSString *>(0), 0.0f, 0.0f, chSize).size.width;
 		}
 
 		[self setText:string1		forRow:row			align:alignment];
@@ -1009,7 +1009,7 @@ static OOTexture *TextureForGUITexture(NSDictionary *descriptor, uint32_t srgbaO
 		Also, remember that if no shaders are in use (as in lower detail levels), then we don't need to declare anything.
 	*/
 	if (![UNIVERSE useShaders])  srgbaOption = 0;
-	return [OOTexture textureWithName:[descriptor oo_stringForKey:@"name"]
+	return [OOTexture textureWithName:oo::PListView(descriptor).get<NSString *>(@"name")
 							 inFolder:@"Images"
 							  options:kOOTextureDefaultOptions | kOOTextureNoShrink | srgbaOption
 						   anisotropy:kOOTextureDefaultAnisotropy
@@ -1029,8 +1029,8 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	texture = TextureForGUITexture(descriptor, srgbaOption);
 	if (texture == nil)  return nil;
 	
-	double specifiedWidth = [descriptor oo_doubleForKey:@"width" defaultValue:-INFINITY];
-	double specifiedHeight = [descriptor oo_doubleForKey:@"height" defaultValue:-INFINITY];
+	double specifiedWidth = oo::PListView(descriptor).get<double>(@"width", -INFINITY);
+	double specifiedHeight = oo::PListView(descriptor).get<double>(@"height", -INFINITY);
 	BOOL haveWidth = isfinite(specifiedWidth);
 	BOOL haveHeight = isfinite(specifiedHeight);
 	
@@ -1203,7 +1203,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	// Start loading the texture, and return nil if it doesn't exist.
 	if (result != nil && ![self preloadGUITexture:result])
 	{
-		OOJSReportWarning(context, @"%@: texture \"%@\" could not be found.", callerDescription, [result oo_stringForKey:@"name"]);
+		OOJSReportWarning(context, @"%@: texture \"%@\" could not be found.", callerDescription, oo::PListView(result).get<NSString *>(@"name"));
 		result = nil;
 	}
 	
@@ -1339,11 +1339,11 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	eqptCount = (NSInteger)OOClampInteger(eqptCount, 1, start + itemsPerColumn * 2);
 	for (i = start; i < eqptCount; i++)
 	{
-		info = [eqptList oo_arrayAtIndex:i];
-		name = [info oo_stringAtIndex:0];
+		info = oo::PListView(eqptList).at<NSArray *>(i);
+		name = oo::PListView(info).at<NSString *>(0);
 		if([name length] > 42)  name = [[name substringToIndex:40] stringByAppendingString:@"..."];
 		
-		damaged = ![info oo_boolAtIndex:1];
+		damaged = !oo::PListView(info).at<BOOL>(1);
 		if (damaged) 
 		{
 			// Damaged items show up orange.
@@ -1351,7 +1351,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		} 
 		else /// add color selection here
 		{
-			OOColor				*dispCol = [info oo_objectAtIndex:2];
+			OOColor				*dispCol = oo::PListView(info).at<id>(2);
 			// Normal items in default colour
 			[self setGLColorFromSetting:@"status_equipment_ok_color" defaultValue:dispCol alpha:1.0];
 		}
@@ -1639,13 +1639,13 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		}
 		if ([[rowText objectAtIndex:i] isKindOfClass:[NSArray class]])
 		{
-			NSArray		*array = [rowText oo_arrayAtIndex:i];
+			NSArray		*array = oo::PListView(rowText).at<NSArray *>(i);
 			NSUInteger	j, max_columns = MIN([array count], n_columns);
 			BOOL		isLeftAligned;
 			
 			for (j = 0; j < max_columns; j++)
 			{
-				NSString*   text = [array oo_stringAtIndex:j];
+				NSString*   text = oo::PListView(array).at<NSString *>(j);
 				if ([text length] != 0)
 				{
 					isLeftAligned = tabStops[j] >= 0;
@@ -1810,7 +1810,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	NSInteger concealment[256];
 	for (i=0;i<256;i++) {
 		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxy_id];
-		concealment[i] = [systemInfo oo_intForKey:@"concealment" defaultValue:OO_SYSTEMCONCEALMENT_NONE];
+		concealment[i] = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 	
 	BOOL		*systemsFound = [UNIVERSE systemsFound];
@@ -1881,19 +1881,19 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		{
 
 			NSDictionary* sys_info = [UNIVERSE generateSystemData:i];
-			if (EXPECT_NOT([sys_info oo_boolForKey:@"sun_gone_nova"]))
+			if (EXPECT_NOT(oo::PListView(sys_info).get<BOOL>(@"sun_gone_nova")))
 			{
 				nearby_systems[ num_nearby_systems ].gov = -1;	// Flag up nova systems!
 			}
 			else
 			{
-				nearby_systems[ num_nearby_systems ].tec = [sys_info oo_intForKey:KEY_TECHLEVEL];
-				nearby_systems[ num_nearby_systems ].eco = [sys_info oo_intForKey:KEY_ECONOMY];
-				nearby_systems[ num_nearby_systems ].gov = [sys_info oo_intForKey:KEY_GOVERNMENT];
+				nearby_systems[ num_nearby_systems ].tec = oo::PListView(sys_info).get<int>(KEY_TECHLEVEL);
+				nearby_systems[ num_nearby_systems ].eco = oo::PListView(sys_info).get<int>(KEY_ECONOMY);
+				nearby_systems[ num_nearby_systems ].gov = oo::PListView(sys_info).get<int>(KEY_GOVERNMENT);
 			}
 			nearby_systems[ num_nearby_systems ].sysid = i;
-			nearby_systems[ num_nearby_systems ].p_name = [[sys_info oo_stringForKey:KEY_NAME] retain];
-			nearby_systems[ num_nearby_systems ].nova = [[UNIVERSE generateSystemData:i] oo_boolForKey:@"sun_gone_nova"];
+			nearby_systems[ num_nearby_systems ].p_name = [oo::PListView(sys_info).get<NSString *>(KEY_NAME) retain];
+			nearby_systems[ num_nearby_systems ].nova = oo::PListView([UNIVERSE generateSystemData:i]).get<BOOL>(@"sun_gone_nova");
 			num_nearby_systems++;
 		}
 		saved_galaxy_id = [player galaxyNumber];
@@ -1942,9 +1942,9 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 
 		if (routeExists)
 		{
-			distance = [routeInfo oo_doubleForKey:@"distance"];
-			time = [routeInfo oo_doubleForKey:@"time"];
-			jumps = [routeInfo oo_intForKey:@"jumps"];
+			distance = oo::PListView(routeInfo).get<double>(@"distance");
+			time = oo::PListView(routeInfo).get<double>(@"time");
+			jumps = oo::PListView(routeInfo).get<int>(@"jumps");
 
 			if (distance == 0.0 && planetNumber != destNumber)
 			{
@@ -2027,8 +2027,8 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		}
 
 		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxy_id];
-		float blob_factor = [guiUserSettings oo_floatForKey:kGuiChartCircleScale defaultValue:0.0017];
-		float blob_size = (1.0f + blob_factor * [systemInfo oo_floatForKey:@"radius"])/zoom;
+		float blob_factor = oo::PListView(guiUserSettings).get<float>(kGuiChartCircleScale, 0.0017);
+		float blob_size = (1.0f + blob_factor * oo::PListView(systemInfo).get<float>(@"radius"))/zoom;
 		if (blob_size < 0.5) blob_size = 0.5;
 
 		star.x = (float)(sys_coordinates.x * hscale + hoffset);
@@ -2120,7 +2120,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	
 	// draw found stars and captions
 	//
-	GLfloat systemNameScale = [guiUserSettings oo_floatForKey:kGuiChartLabelScale defaultValue:1.0];
+	GLfloat systemNameScale = oo::PListView(guiUserSettings).get<float>(kGuiChartLabelScale, 1.0);
 
 	OOGL(GLScaledLineWidth(1.5f));
 	[self setGLColorFromSetting:kGuiChartMatchBoxColor defaultValue:[OOColor greenColor] alpha:alpha];
@@ -2366,11 +2366,11 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 
 - (void) drawSystemMarker:(NSDictionary *)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
 {
-	NSString *colorDesc = [marker oo_stringForKey:@"markerColor" defaultValue:@"redColor"];
+	NSString *colorDesc = oo::PListView(marker).get<NSString *>(@"markerColor", @"redColor");
 	OORGBAComponents color = [[OOColor colorWithDescription:colorDesc] rgbaComponents];
 	
 	OOGL(glColor4f(color.r, color.g, color.b, alpha));	// red
-	GLfloat mark_size = [marker oo_floatForKey:@"markerScale" defaultValue:1.0];
+	GLfloat mark_size = oo::PListView(marker).get<float>(@"markerScale", 1.0);
 	if (mark_size > 2.0)
 	{
 		mark_size = 2.0;
@@ -2381,7 +2381,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	}
 	mark_size *= scale;
 
-	NSString *shape = [marker oo_stringForKey:@"markerShape" defaultValue:@"MARKER_X"];
+	NSString *shape = oo::PListView(marker).get<NSString *>(@"markerShape", @"MARKER_X");
 
 	OOGLBEGIN(GL_LINES);
 	if ([shape isEqualToString:@"MARKER_X"])
@@ -2502,7 +2502,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	NSInteger concealment[256];
 	for (NSUInteger i=0;i<256;i++) {
 		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:g];
-		concealment[i] = [systemInfo oo_intForKey:@"concealment" defaultValue:OO_SYSTEMCONCEALMENT_NONE];
+		concealment[i] = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 
 	
@@ -2603,7 +2603,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 
 	if (routeInfo)
 	{
-		NSUInteger i, route_hops = [[routeInfo oo_arrayForKey:@"route"] count] - 1;
+		NSUInteger i, route_hops = [oo::PListView(routeInfo).get<NSArray *>(@"route") count] - 1;
 		
 		if (optimizeBy == OPTIMIZED_BY_JUMPS)
 		{
@@ -2618,9 +2618,9 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		OOSystemID loc;
 		for (i = 0; i < route_hops; i++)
 		{
-			loc = [[routeInfo objectForKey:@"route"] oo_intAtIndex:i];
+			loc = oo::PListView([routeInfo objectForKey:@"route"]).at<int>(i);
 			starabs = [systemManager getCoordinatesForSystem:loc inGalaxy:g];
-			star2abs = [systemManager getCoordinatesForSystem:[[routeInfo objectForKey:@"route"] oo_intAtIndex:i+1] inGalaxy:g];
+			star2abs = [systemManager getCoordinatesForSystem:oo::PListView([routeInfo objectForKey:@"route"]).at<int>(i+1) inGalaxy:g];
 
 			star.x = (float)(starabs.x * hscale);
 			star.y = (float)(starabs.y * vscale);
@@ -2643,7 +2643,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		// Label the destination, which was not included in the above loop.
 		if (zoom > CHART_ZOOM_SHOW_LABELS)
 		{
-			loc = [[routeInfo objectForKey:@"route"] oo_intAtIndex:i];
+			loc = oo::PListView([routeInfo objectForKey:@"route"]).at<int>(i);
 			if(concealment[loc] < OO_SYSTEMCONCEALMENT_NONAME)
 			{
 				OODrawString([UNIVERSE systemNameIndex:loc], x + star2.x + 2.0, y + star2.y, z, NSMakeSize(10,10));

@@ -32,11 +32,12 @@ SOFTWARE.
 #ifndef OOENCODINGCONVERTER_EXCLUDE	// For the convenience of fonttexgen
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 
 @class OOCache;
 
 
-@interface OOEncodingConverter: NSObject
+@interface OOEncodingConverter: OOObject
 {
 @private
 	NSStringEncoding			_encoding;

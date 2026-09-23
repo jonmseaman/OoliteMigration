@@ -30,6 +30,7 @@ SOFTWARE.
 #import "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Thread.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm was (bead oo-sdz):
@@ -58,7 +59,7 @@ static OORegExpMatcher *sActiveInstance;
 
 + (instancetype) regExpMatcher
 {
-	NSAssert(![NSThread respondsToSelector:@selector(isMainThread)] || [[NSThread currentThread] isMainThread], @"OORegExpMatcher may only be used on the main thread.");
+	NSAssert(oo::thread::isMainThread(), @"OORegExpMatcher may only be used on the main thread.");
 	
 	if (sActiveInstance == nil)
 	{
@@ -119,7 +120,7 @@ static OORegExpMatcher *sActiveInstance;
 
 - (BOOL) string:(NSString *)string matchesExpression:(NSString *)regExp flags:(NSUInteger)flags
 {
-	NSAssert(![NSThread respondsToSelector:@selector(isMainThread)] || [[NSThread currentThread] isMainThread], @"OORegExpMatcher may only be used on the main thread.");
+	NSAssert(oo::thread::isMainThread(), @"OORegExpMatcher may only be used on the main thread.");
 	
 	size_t expLength = [regExp length];
 	if (EXPECT_NOT(expLength == 0))  return NO;

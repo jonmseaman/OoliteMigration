@@ -88,7 +88,6 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 - (void)run
 {
 	OOFileScannerVerifierStage	*fileScanner = nil;
-	NSAutoreleasePool			*pool = nil;
 	NSEnumerator				*shipEnum = nil;
 	NSString					*shipKey = nil;
 	NSDictionary				*shipInfo = nil;
@@ -144,19 +143,18 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 	shipList = [[_shipdataPList allKeys] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
 	for (shipEnum = [shipList objectEnumerator]; (shipKey = [shipEnum nextObject]); )
 	{
-		pool = [[NSAutoreleasePool alloc] init];
-		
-		shipInfo = oo::PListView(_shipdataPList).get<NSDictionary *>(shipKey);
-		if (shipInfo == nil)
+		@autoreleasepool
 		{
-			OOLog(@"verifyOXP.shipdata.badType", @"***** ERROR: shipdata.plist entry for \"%@\" is not a dictionary.", shipKey);
+			shipInfo = oo::PListView(_shipdataPList).get<NSDictionary *>(shipKey);
+			if (shipInfo == nil)
+			{
+				OOLog(@"verifyOXP.shipdata.badType", @"***** ERROR: shipdata.plist entry for \"%@\" is not a dictionary.", shipKey);
+			}
+			else
+			{
+				[self verifyShipInfo:shipInfo withName:shipKey];
+			}
 		}
-		else
-		{
-			[self verifyShipInfo:shipInfo withName:shipKey];
-		}
-		
-		[pool release];
 	}
 	
 	_shipdataPList = nil;
@@ -254,7 +252,7 @@ static NSString * const kStageName	= @"Checking shipdata.plist";
 				 [rolesString rangeOfString:@"station"].location != NSNotFound ||
 				 [rolesString rangeOfString:@"carrier"].location != NSNotFound;
 	// the is_carrier or isCarrier key will be missed when it was insise a like_ship definition.
-	_isTemplate = (unsigned char)oo::PListView(_info).get<BOOL>(@"is_template", NO);
+	_isTemplate = oo::PListView(_info).get<BOOL>(@"is_template", NO);
 
 	if (_isPlayer && _isStation)
 	{

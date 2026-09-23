@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOMouseInteractionMode.h"
 
 @class MyOpenGLView;
@@ -52,7 +53,7 @@ MA 02110-1301, USA.
 #define DISPLAY_MAX_HEIGHT		4320
 
 
-@interface OOFullScreenController: NSObject
+@interface OOFullScreenController: OOObject
 {
 @private
 	MyOpenGLView			*_gameView;

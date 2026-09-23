@@ -820,6 +820,7 @@ struct ObjRec
 {
 	void*             priv = nullptr;
 	std::vector<Slot> slots;   // plain data properties of hooked classes (see the banner)
+	std::string       scopeFile;   // the script file this object is the scope of (registerScope)
 
 	Slot* find(JSAtom atom)
 	{
@@ -1845,9 +1846,15 @@ bool definePropertySpecs(JSContext* ctx, JSValueConst obj, const PropertySpec* p
 	return true;
 }
 
+// Every native is constructible, as in SpiderMonkey 1.8.5: its InvokeConstructor created `this` from
+// the callee's `prototype` (Object.prototype when it has none), called the native, and returned the
+// native's object result or else that `this` (jsinterp.cpp, js_CreateThis then Invoke with
+// JSINVOKE_CONSTRUCT). Expansions rely on it: `new Vector3D.random(n)` (bead oo-1gc.13) is a
+// constructor call of a static method, which QuickJS-ng refuses without the constructor bit.
+// runNative already implements exactly that construct path for a native with no ctorClass.
 JSValue defineNative(JSContext* ctx, JSValueConst obj, const char* name, NativeFn call, unsigned nargs, std::uint16_t flags)
 {
-	JSValue f = newNativeFunction(ctx, name, call, nargs, nullptr, false);
+	JSValue f = newNativeFunction(ctx, name, call, nargs, nullptr, true);
 	if (JS_IsException(f))  return f;
 	AtomRef atom(ctx, JS_NewAtom(ctx, name));
 	if (!defineData(ctx, obj, atom.atom, f, jsFlags(static_cast<PropertyFlag>(flags & 0xFF)) | JS_PROP_NO_EXOTIC))
@@ -1955,15 +1962,34 @@ JSEvalOptions evalOptions(const char* filename, unsigned lineno, int flags)
 // global scope. The global's prototype is therefore a "scope fallback" exotic object: a name the
 // global does not have is looked up on the scope object of the script whose code is running,
 // identified by the running function's filename (every script is registered under its file when
-// it runs; the same file run for several objects -- ship scripts -- resolves to the last one run).
+// it runs).
+// The same file runs for several objects -- one ship script per ship -- and in SpiderMonkey each
+// run's closures resolve through their own run's object. So a façade-class scope object is also
+// marked with its file (ObjRec::scopeFile), and the lookup prefers the innermost `this` of a call
+// the façade made (a handler call, a timer, the script's own run) that is marked with the running
+// file; only when none is does it fall back to the object the file last ran for. Without that a
+// ship script whose handler sets `this.list` and then reads `list` failed with a ReferenceError
+// whenever another ship had run the same file since (bead oo-1gc.15: BUS_MegaBat_events.js).
 // DIVERGENCE: an assignment to such a name defines it on the global rather than the script object;
-// console-evaluated code (not from a script file) gets no fallback. (bead oo-1gc.4)
+// console-evaluated code (not from a script file) gets no fallback; a closure of one ship's run
+// called directly from another ship's handler (no façade call in between) resolves through the
+// caller's object. (beads oo-1gc.4, oo-1gc.15)
 JSClassID gScopeFallbackClassId = 0;
 std::unordered_map<std::string, JSValue> gScopeByFile;   // owned references
+std::vector<JSValue> gCallThis;                          // `this` of each façade call in progress (borrowed)
+
+struct CallThisMark
+{
+	explicit CallThisMark(JSValueConst thisVal) { gCallThis.push_back(thisVal); }
+	~CallThisMark() { gCallThis.pop_back(); }
+	CallThisMark(const CallThisMark&) = delete;
+	CallThisMark& operator=(const CallThisMark&) = delete;
+};
 
 void registerScope(JSContext* ctx, const char* filename, JSValueConst scope)
 {
 	if (filename == nullptr || *filename == 0)  return;
+	if (ObjRec* rec = recOf(scope))  rec->scopeFile = filename;
 	auto it = gScopeByFile.find(filename);
 	if (it != gScopeByFile.end())
 	{
@@ -1992,7 +2018,14 @@ bool runningScope(JSContext* ctx, JSValue* scope)
 		if (name == nullptr)  { JS_FreeValue(ctx, JS_GetException(ctx)); return false; }
 		auto it = gScopeByFile.find(name);
 		JS_FreeCString(ctx, name);
-		if (it != gScopeByFile.end())  { *scope = it->second; return true; }
+		if (it == gScopeByFile.end())  continue;
+		for (auto t = gCallThis.rbegin(); t != gCallThis.rend(); ++t)
+		{
+			const ObjRec* rec = recOf(*t);
+			if (rec != nullptr && rec->scopeFile == it->first)  { *scope = *t; return true; }
+		}
+		*scope = it->second;
+		return true;
 	}
 	return false;
 }
@@ -2045,7 +2078,11 @@ bool evalWithThis(JSContext* ctx, Object scope, const std::string& src, const ch
 	JSValue thisObj = scope != nullptr ? OBJVAL(scope) : global;
 	JSEvalOptions o = evalOptions(filename, lineno, 0);
 	if (scope != nullptr && JS_VALUE_GET_PTR(thisObj) != JS_VALUE_GET_PTR(global))  registerScope(ctx, filename, thisObj);
-	JSValue r = JS_EvalThis2(ctx, thisObj, src.c_str(), src.size(), &o);
+	JSValue r;
+	{
+		CallThisMark mark(thisObj);
+		r = JS_EvalThis2(ctx, thisObj, src.c_str(), src.size(), &o);
+	}
 	JS_FreeValue(ctx, global);
 	if (JS_IsException(r))
 	{
@@ -2758,7 +2795,11 @@ bool callFunctionValue(Context cx, Object thisObj, Value fn, unsigned argc, Valu
 	JSContext* ctx = CX(cx);
 	std::vector<JSValue> args(argc);
 	for (unsigned i = 0; i < argc; ++i)  args[i] = toJS(argv[i]);
-	JSValue r = JS_Call(ctx, toJS(fn), OBJVAL_OR_NULL(thisObj), static_cast<int>(argc), args.data());
+	JSValue r;
+	{
+		CallThisMark mark(OBJVAL_OR_NULL(thisObj));
+		r = JS_Call(ctx, toJS(fn), OBJVAL_OR_NULL(thisObj), static_cast<int>(argc), args.data());
+	}
 	if (JS_IsException(r))
 	{
 		if (rval != nullptr)  *rval = undefinedValue();

@@ -14,8 +14,9 @@ Oolite
 #import "OOSDLJoystickManager.h"
 #import "PlayerEntity.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "NSFileManagerOOExtensions.h" // to find savedir
+#include "oofnd/Date.hpp"
 
 #define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
 
@@ -38,7 +39,7 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 	NSDictionary *kmap = [NSDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:@"keymappings_linux.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
 #endif
 	// get the stored keyboard code from preferences
-	NSString *kbd = [prefs oo_stringForKey:@"keyboard-code" defaultValue:@"default"];
+	NSString *kbd = oo::PListView(prefs).get<NSString *>(@"keyboard-code", @"default");
 	NSDictionary *subset = [kmap objectForKey:kbd];
 
 	[keyMappings_normal release];
@@ -238,7 +239,7 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
  	float						mxdelta, mydelta;
 	float					mouseVirtualStickSensitivityX = viewSize.width * _mouseVirtualStickSensitivityFactor;
 	float					mouseVirtualStickSensitivityY = viewSize.height * _mouseVirtualStickSensitivityFactor;
-	NSTimeInterval			timeNow = [NSDate timeIntervalSinceReferenceDate];
+	NSTimeInterval			timeNow = oo::date::monotonicSeconds();	// same clock as MyOpenGLView.mm's -init
 	Uint16	 				key_id;
 	SDL_Scancode				scan_code;
 	float inDelta;

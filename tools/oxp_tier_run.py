@@ -202,6 +202,11 @@ def main(argv=None):
 
     base = Path(args.state) if args.state else Path(
         os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))) / "Temp" / "oo-4z6-state"
+    # ABSOLUTE, always (bead oo-1gc.11). The game runs with cwd=app_dir and is handed the log and
+    # AddOns directories through OO_LOGSDIR / OO_ADDITIONALADDONSDIRS, so a relative --state
+    # (e.g. the nightly line's build/nightly/...) resolved against the APP dir: every load then
+    # timed out at --timeout as HARNESS "produced NO log", 180 s per expansion.
+    base = base.resolve()
     state_dir = base / "results"
     work = base / "runs"
     staging = base / "staging"
