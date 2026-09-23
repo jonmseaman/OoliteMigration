@@ -217,7 +217,17 @@ deny_count() {
 # resolve_base_ref <repo-root> -- print the commit the deny-list baseline is read from.
 # Exit 1 (never a silent fallback to HEAD) when no baseline can be resolved.
 resolve_base_ref() {
-  local root="$1" branch="${OOLITE_TIER_A_BASE_BRANCH:-main}" ref='' cand head
+  local root="$1" branch ref='' cand head branches
+  # Which branch the change is measured against (bead oo-3rb.71): OOLITE_TIER_A_BASE_BRANCH when
+  # set; otherwise the branch accept.sh merges into (BEADS_WORKER_BASE_BRANCH, e.g. phase-2) and
+  # then main -- tools/guardrails.sh's order. Baselining a phase-branch bead on main counted every
+  # file the PHASE had changed since main as part of the bead, so a pre-existing finding in a
+  # header the phase added failed an unrelated bead once findings were judged per file (oo-3rb.60).
+  if [ -n "${OOLITE_TIER_A_BASE_BRANCH:-}" ]; then
+    branches="$OOLITE_TIER_A_BASE_BRANCH"
+  else
+    branches="${BEADS_WORKER_BASE_BRANCH:+$BEADS_WORKER_BASE_BRANCH }main"
+  fi
   if [ -n "${OOLITE_TIER_A_BASE:-}" ]; then
     ref="$(git -C "$root" rev-parse --verify --quiet "${OOLITE_TIER_A_BASE}^{commit}")" || ref=''
     if [ -z "$ref" ]; then
@@ -230,16 +240,19 @@ resolve_base_ref() {
     # fetched one branch); try both before giving up. This is the resolution order
     # tools/guardrails.sh uses, and it is what makes the gate live in accept.sh's DETACHED
     # merged checkout, where HEAD is the merge commit and `main` is still a local branch.
-    for cand in "$branch" "origin/$branch" "refs/remotes/origin/$branch"; do
-      git -C "$root" rev-parse --verify --quiet "${cand}^{commit}" >/dev/null || continue
-      ref="$(git -C "$root" merge-base HEAD "$cand" 2>/dev/null)" || ref=''
+    for branch in $branches; do
+      for cand in "$branch" "origin/$branch" "refs/remotes/origin/$branch"; do
+        git -C "$root" rev-parse --verify --quiet "${cand}^{commit}" >/dev/null || continue
+        ref="$(git -C "$root" merge-base HEAD "$cand" 2>/dev/null)" || ref=''
+        [ -n "$ref" ] && break
+      done
       [ -n "$ref" ] && break
     done
     if [ -z "$ref" ]; then
-      printf 'tier-a: no merge base between HEAD and %s in %s.\n' "$branch" "$root" >&2
+      printf 'tier-a: no merge base between HEAD and %s in %s.\n' "$branches" "$root" >&2
       printf 'tier-a: refusing to run the deny-list against HEAD itself -- that compares the\n' >&2
       printf 'tier-a: file with itself and can never fail. Fetch %s, or set OOLITE_TIER_A_BASE.\n' \
-        "$branch" >&2
+        "$branches" >&2
       return 1
     fi
   fi
@@ -422,6 +435,128 @@ stale_buildsystem_files() {
   done < <(buildsystem_files "$dir")
 }
 
+# --- the clang-tidy result cache (step 2), bead oo-ej77 -----------------------------------------
+#
+# clang-tidy on a heavy TU (ShipEntity.mm, ResourceManager.mm, anything that pulls in the
+# Universe/PlayerEntity headers) takes 200-320 s on a loaded fleet machine, although a worker
+# has usually just tidied the identical content. So the tidy INVOCATION is memoised -- nothing
+# else: its raw output and exit status are replayed and step 2 then runs the baseline gate
+# (tidy_gate) on them exactly as it does on a fresh run, so a finding on a changed line fails
+# on a hit just as on a miss.
+#
+# The key is sha256 of everything that decides what clang-tidy prints:
+#   * the TU preprocessed with the exact compile-database arguments (`clang <args> -E`), which
+#     covers the source, every header it includes (a header edit changes the -E text, or at
+#     least its line markers) and every define;
+#   * the clang-tidy argv;
+#   * the effective .clang-tidy configuration (`clang-tidy --dump-config <file>`);
+#   * `clang-tidy --version`.
+# The repository root is rewritten to a placeholder in the key material and in the stored
+# output, and back to THIS checkout's root on a hit, so the cache is shared across worktrees
+# (${XDG_CACHE_HOME:-$HOME/.cache}/oolite/tier-a-tidy/) and a replayed finding names the file
+# under test here, not in the worktree that produced it. An entry is written only after
+# clang-tidy exits normally (0: clean, 1: findings) -- never after a crash or a signal -- and
+# via a temp file + rename, so a concurrent reader never sees half an entry. If the TU cannot
+# be preprocessed the run is simply not cached. OOLITE_TIER_A_NO_TIDY_CACHE=1 disables the
+# cache entirely (neither read nor written); OOLITE_TIER_A_TIDY_CACHE_DIR relocates it (the
+# probe uses a private one).
+
+TIDY_CACHE_PY='
+import hashlib, re, sys
+
+def root_pattern(root):
+    # C:/x/y as clang may spell it: forward slashes, backslashes, or C-escaped backslashes
+    # (in -E line markers), with the drive letter in either case.
+    parts = [re.escape(p) for p in root.replace("\\", "/").split("/") if p]
+    sep = r"(?:/|\\\\|\\)"
+    return re.compile(sep.join(parts), re.IGNORECASE)
+
+mode, root = sys.argv[1], sys.argv[2]
+PLACEHOLDER = "@OOLITE_TIER_A_REPO_ROOT@"
+if mode == "key":
+    h = hashlib.sha256(b"tier-a tidy cache v1\n")
+    pat = root_pattern(root)
+    for path in sys.argv[3:]:
+        with open(path, "rb") as f:
+            data = f.read().decode("utf-8", "surrogateescape")
+        data = pat.sub(PLACEHOLDER, data)
+        blob = data.encode("utf-8", "surrogateescape")
+        h.update(str(len(blob)).encode() + b"\n")
+        h.update(blob)
+    print(h.hexdigest())
+elif mode == "store":
+    src, dst = sys.argv[3], sys.argv[4]
+    with open(src, "rb") as f:
+        data = f.read().decode("utf-8", "surrogateescape")
+    with open(dst, "wb") as f:
+        f.write(root_pattern(root).sub(PLACEHOLDER, data).encode("utf-8", "surrogateescape"))
+elif mode == "load":
+    src, dst = sys.argv[3], sys.argv[4]
+    with open(src, "rb") as f:
+        data = f.read().decode("utf-8", "surrogateescape")
+    with open(dst, "wb") as f:
+        f.write(data.replace(PLACEHOLDER, root).encode("utf-8", "surrogateescape"))
+else:
+    sys.exit(2)
+'
+
+tidy_cache_dir() {
+  printf '%s' "${OOLITE_TIER_A_TIDY_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/oolite/tier-a-tidy}"
+}
+
+# tidy_cached <repo-root> <build-dir> <source-native> <tidy-output> <clang-arg>...
+#   Runs step 2's clang-tidy (cwd = build dir) into <tidy-output> and returns its exit status,
+#   replaying a cached result when the key matches (and saying so: "tidy: cached (<key>)").
+tidy_cached() {
+  local root="$1" build="$2" src="$3" out="$4"
+  shift 4
+  local -a argv=(clang-tidy --quiet -header-filter='$^' --warnings-as-errors='*' "$src" -- clang "$@")
+  local rc=0
+  if [ "${OOLITE_TIER_A_NO_TIDY_CACHE:-0}" = 1 ]; then
+    ( cd "$build" && "${argv[@]}" ) >"$out" 2>&1 || rc=$?
+    return "$rc"
+  fi
+
+  local root_native dir work key entry
+  root_native="$(cygpath -m "$root")"
+  dir="$(tidy_cache_dir)"
+  work="$(mktemp -d)"
+  # Key material. A TU that does not preprocess is not cached (clang-tidy will report it).
+  if ( cd "$build" && clang "$@" -E "$src" ) >"$work/tu.i" 2>/dev/null \
+     && ( cd "$build" && clang-tidy --version && clang-tidy --dump-config "$src" ) >"$work/tool" 2>/dev/null \
+     && printf '%s\0' "${argv[@]}" >"$work/argv" \
+     && key="$(python -c "$TIDY_CACHE_PY" key "$root_native" \
+          "$(cygpath -m "$work/argv")" "$(cygpath -m "$work/tool")" "$(cygpath -m "$work/tu.i")")" \
+     && [ -n "$key" ]; then
+    entry="$dir/$key"
+    if [ -f "$entry" ] && read -r rc <"$entry" && [[ "$rc" =~ ^[01]$ ]]; then
+      tail -n +2 "$entry" >"$work/stored"
+      python -c "$TIDY_CACHE_PY" load "$root_native" "$(cygpath -m "$work/stored")" "$(cygpath -m "$out")" \
+        || { rm -rf "$work"; return 2; }
+      detail "tidy: cached (${key:0:16})"
+      rm -rf "$work"
+      return "$rc"
+    fi
+  else
+    key=""
+  fi
+
+  rc=0
+  ( cd "$build" && "${argv[@]}" ) >"$out" 2>&1 || rc=$?
+  if [ -n "$key" ] && { [ "$rc" = 0 ] || [ "$rc" = 1 ]; }; then
+    if mkdir -p "$dir" \
+       && python -c "$TIDY_CACHE_PY" store "$root_native" "$(cygpath -m "$out")" "$(cygpath -m "$work/stored")" \
+       && { printf '%s\n' "$rc"; cat "$work/stored"; } >"$dir/.tmp.$key.$$" \
+       && mv -f "$dir/.tmp.$key.$$" "$entry"; then
+      detail "tidy: stored (${key:0:16})"
+    else
+      rm -f "$dir/.tmp.$key.$$"
+    fi
+  fi
+  rm -rf "$work"
+  return "$rc"
+}
+
 # End of the sourced surface: a probe that sourced this file has what it came for. Keyed on
 # the seam, not on the bare variable, so an EXECUTED run with OOLITE_TIER_A_SOURCE_ONLY=1 in
 # its environment falls through here and runs the full three-step gate instead of exiting 0.
@@ -594,7 +729,9 @@ T0=$SECONDS
 TIDY_OUT="$(mktemp)"
 trap 'rm -f "$COMPDB_OUT" "$TIDY_OUT"' EXIT
 TIDY_RC=0
-( cd "$BUILD_DIR" && clang-tidy     --quiet     -header-filter='$^'     --warnings-as-errors='*'     "$SOURCE_NATIVE" -- clang "${CLANG_ARGS[@]}" ) >"$TIDY_OUT" 2>&1 || TIDY_RC=$?
+# Memoised by the preprocessed TU (bead oo-ej77; see tidy_cached above): only the invocation,
+# never the verdict -- the baseline gate below runs on replayed output exactly as on fresh output.
+tidy_cached "$REPO_ROOT" "$BUILD_DIR" "$SOURCE_NATIVE" "$TIDY_OUT" "${CLANG_ARGS[@]}" || TIDY_RC=$?
 if [ "$TIDY_RC" -ne 0 ]; then
   # Baseline-relative, like the deny-list (bead oo-utqt): a finding on a line whose text is
   # unchanged from the merge base is pre-existing debt, not this change's; a finding on a line
