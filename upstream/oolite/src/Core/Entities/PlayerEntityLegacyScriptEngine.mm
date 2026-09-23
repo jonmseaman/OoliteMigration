@@ -53,6 +53,7 @@ MA 02110-1301, USA.
 #import "HeadUpDisplay.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOEntityFilterPredicate.h"
+#import "OOStringBridge.h"
 
 
 static NSString * const kOOLogScriptAddShipsFailed			= @"script.addShips.failed";
@@ -2427,7 +2428,7 @@ static int shipsFound;
 
 - (void) playSound:(NSString *) soundName
 {
-	[self playLegacyScriptSound:soundName];
+	[self playLegacyScriptSound:oo::StdString(soundName)];
 }
 
 /*-----------------------------------------------------*/
