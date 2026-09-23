@@ -214,16 +214,17 @@ def main() -> int:
         refuse(f"only {report['properties_compared']} propert(ies) could be compared, fewer than "
                f"the floor of {MIN_PROPS_COMPARED}; a comparison this thin proves nothing")
 
-    # THE LOAD-BEARING SPOT CHECK. Bead oo-jou1 exists because Ship.speed is READONLY and
-    # Ship.velocity is READWRITE. If the reconciliation cannot still see that, it has stopped
-    # modelling the thing other beads consult it for -- and a count check would not notice.
+    # THE LOAD-BEARING SPOT CHECK. Ship.AI is READONLY and Ship.velocity is READWRITE. If the
+    # reconciliation cannot still see that, it has stopped modelling the thing other beads consult
+    # it for -- and a count check would not notice. (Was Ship.speed until oo-jou1 made speed
+    # writable; retargeted by Jon in oo-xa5h, as oo-w9rq did for js_api_source_snapshot.py.)
     src_ship = source.get("classes", {}).get("Ship", {}).get("properties", {})
     _rt = runtime_properties(runtime, "Ship")
     rt_ship = _rt[0] if _rt else {}
-    for name, want_writable in (("speed", False), ("velocity", True)):
+    for name, want_writable in (("AI", False), ("velocity", True)):
         if name not in src_ship:
             refuse(f"Ship.{name} is missing from the source snapshot; the parser has stopped "
-                   f"reading OOJSShip.m's property table")
+                   f"reading OOJSShip's property table")
         if name not in rt_ship:
             refuse(f"Ship.{name} is missing from the runtime snapshot's prototype_members")
         src_rw = src_ship[name].get("access") == "readwrite"
@@ -231,7 +232,8 @@ def main() -> int:
             print(f"js-api-reconcile: FAIL: Ship.{name} should be "
                   f"{'READWRITE' if want_writable else 'READONLY'} in both snapshots, but source "
                   f"says {src_ship[name].get('access')} and runtime says "
-                  f"{'readwrite' if rt_ship[name] else 'readonly'}. Bead oo-jou1 depends on this.",
+                  f"{'readwrite' if rt_ship[name] else 'readonly'}; the spot check can no longer "
+                  f"tell READONLY from READWRITE.",
                   file=sys.stderr)
             return 1
 
