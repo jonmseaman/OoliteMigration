@@ -304,7 +304,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 	[self directSetState:oo::OptionalString([preservedMachine.get() state])];
 
 	// restore JS script
-	[[self owner] setAIScript:oo::NSStringOrNil([preservedMachine.get() jsScript])];
+	[[self owner] setAIScript:[preservedMachine.get() jsScript].value_or("")];
 
 	const std::vector<std::string> preservedMessages = oo::StringsFrom([preservedMachine.get() pendingMessages]);
 	pendingMessages = std::set<std::string>(preservedMessages.begin(), preservedMessages.end());
