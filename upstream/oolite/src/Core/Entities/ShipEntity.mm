@@ -916,7 +916,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	{
 		// at<std::string>: a string, or a number's text, else "" (no tokens), as the string reader gave.
 		const std::vector<std::string> definition = oo::str::tokens(plumes->at<std::string>(i));
-		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:oo::NSArrayFromStrings(definition) andScale:_scaleFactor];
+		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:definition andScale:_scaleFactor];
 		[self addSubEntity:exhaust];
 	}
 
