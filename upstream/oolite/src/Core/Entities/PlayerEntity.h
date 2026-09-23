@@ -447,7 +447,7 @@ typedef enum
 	
 	// For OO-GUI based save screen
 	std::string				commanderNameString;	// owned; the save screen refreshes it from the typed string each frame
-	NSMutableArray			*cdrDetailArray;
+	std::vector<oo::PList>	cdrDetailArray;			// the load/save screen's entries (PlayerEntity (LoadSave))
 	int						currentPage;
 	BOOL					pollControls;
 // ...end save screen   
