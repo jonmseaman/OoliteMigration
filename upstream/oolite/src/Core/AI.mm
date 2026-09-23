@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
+#import "GameController.h"
 
 
 enum
@@ -56,7 +57,7 @@ static AI *sCurrentlyRunningAI = nil;
 
 @interface AI (OOPrivate)
 
-// Wrapper for performSelector:withObject:afterDelay: to catch/fix bugs.
+// Wrapper for a deferred call (OOScheduleDeferredCall) to catch/fix bugs.
 - (void) performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay;
 + (void) deferredCallTrampolineWithInfo:(NSValue *)info;
 
@@ -731,9 +732,7 @@ static AIStackElement *sStack = NULL;
 		
 		info = [[NSValue alloc] initWithBytes:&infoStruct objCType:@encode(OOAIDeferredCallTrampolineInfo)];
 		
-		[[AI class] performSelector:@selector(deferredCallTrampolineWithInfo:)
-						 withObject:info
-						 afterDelay:delay];
+		OOScheduleDeferredCall([AI class], @selector(deferredCallTrampolineWithInfo:), info, delay);
 		[info release];
 	}
 }

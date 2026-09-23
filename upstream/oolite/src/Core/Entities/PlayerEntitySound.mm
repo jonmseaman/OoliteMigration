@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOSoundSourcePool.h"
 #import "OOMaths.h"
 #import "OOEquipmentType.h"
+#import "GameController.h"
 
 
 // Sizes of sound source pools
@@ -465,9 +466,7 @@ static const Vector	 kAfterburner2Position		= { 0.1f, 0.0f, -1.0f };
 		[sAfterburnerSources[which] play];
 		which = !which;
 		
-		[self performSelector:@selector(updateAfterburnerSound)
-				   withObject:NULL
-				   afterDelay:1.25];	// and swap sounds in 1.25s time
+		OOScheduleDeferredCall(self, @selector(updateAfterburnerSound), nil, 1.25);	// and swap sounds in 1.25s time
 	}
 }
 
