@@ -96,6 +96,19 @@ triage therefore sorts every failure by **who emitted the first error line**:
 | **oo-1gc.15** | UK_Eliter.InterstellarTweaks (Tier 2), Norby.Towbar (Tier 2), zzz.Montana05.BUS_MegaBat, RobertTodd.Taranis, Wildeblood.Untrumbled | `ReferenceError: novelSubScenario_multiplyByMember` / `$BUS_MegaBat_space_jockey_cargo_array` / `c` / `prop is not defined` | (a) bare-name resolution through the script object, which the facade handles differently (already noted in EXPANSION_MIGRATION.md); (b) undeclared loop variables under the script's own `"use strict"`, which SpiderMonkey rejected as well. The facade does not force strict mode (`OOJSScript.mm:801-809`). |
 | **oo-1gc.16** | Thargoid.Wildships (Tier 2), Thargoid.Aquatics, zzz.Montana05.Kestrel_Falcon, Alnivel.RoutePlanner | `SyntaxError: expecting ';'` @ `wildShips_tembo.js:16`, `aquatics_congerPods.js:17`, `bweed-kestrelfalcon-*.js:14/16` (compilation failed); `TypeError: not an object` @ `route-planner-interface.js:14` | SpiderMonkey-only syntax that the linter does not detect, from three unrelated authors |
 
+**Outcome (beads oo-1gc.13 to oo-1gc.16, 2026-09-23).** Each construct was identified with the
+redacting `tools/oxp-js-lint/probe.js`, which prints a script line as keywords, punctuators, API
+names and placeholders only:
+
+| bead | construct (redacted) | verdict |
+|---|---|---|
+| oo-1gc.13 | `this.ship.velocity = new Vector3D.random(NUM + Math.random() * NUM)` | engine difference: SpiderMonkey 1.8.5 let `new` call any native. Facade fixed, module test. |
+| oo-1gc.14 | strict `for (var ID in this) { if (ID !== "name" && ID !== "version") delete this[ID]; }` | content defect E8: deletes the permanent `oolite_manifest_identifier`, which threw on SpiderMonkey as well |
+| oo-1gc.15 | BUS_MegaBat: `this.ID = [...]; ... ID[...]` in a ship script | engine difference in the facade's bare-name fallback (last-run object, not the handler's). Fixed, module test. |
+| oo-1gc.15 | InterstellarTweaks: bare call of a method of `this.$obj`; Towbar, Taranis, Untrumbled: undeclared `for (ID in ...)` under `"use strict"` | content defects E9: the same `ReferenceError` on SpiderMonkey |
+| oo-1gc.16 | `function () { for (...) yield this[ID]; }` iterated by `for (let ID in ...)` (Wildships, Aquatics, Kestrel_Falcon x2) | Mozilla-only legacy generator. New lint rule `legacy-generator`, which flags exactly these four files in the corpus. |
+| oo-1gc.16 | RoutePlanner: strict `reduce(function (ID, ID) { return ID[map[ID]] = ID; }, {})` | content defect E10: a strict write to a string primitive. SpiderMonkey 1.8.5 ignored it, QuickJS-ng throws as ES5 requires. |
+
 Every other failing expansion links to its class row (E1 to E7) in the tables below. The generator
 asserts that no failing expansion is left untriaged.
 

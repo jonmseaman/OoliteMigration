@@ -1845,9 +1845,15 @@ bool definePropertySpecs(JSContext* ctx, JSValueConst obj, const PropertySpec* p
 	return true;
 }
 
+// Every native is constructible, as in SpiderMonkey 1.8.5: its InvokeConstructor created `this` from
+// the callee's `prototype` (Object.prototype when it has none), called the native, and returned the
+// native's object result or else that `this` (jsinterp.cpp, js_CreateThis then Invoke with
+// JSINVOKE_CONSTRUCT). Expansions rely on it: `new Vector3D.random(n)` (bead oo-1gc.13) is a
+// constructor call of a static method, which QuickJS-ng refuses without the constructor bit.
+// runNative already implements exactly that construct path for a native with no ctorClass.
 JSValue defineNative(JSContext* ctx, JSValueConst obj, const char* name, NativeFn call, unsigned nargs, std::uint16_t flags)
 {
-	JSValue f = newNativeFunction(ctx, name, call, nargs, nullptr, false);
+	JSValue f = newNativeFunction(ctx, name, call, nargs, nullptr, true);
 	if (JS_IsException(f))  return f;
 	AtomRef atom(ctx, JS_NewAtom(ctx, name));
 	if (!defineData(ctx, obj, atom.atom, f, jsFlags(static_cast<PropertyFlag>(flags & 0xFF)) | JS_PROP_NO_EXOTIC))
