@@ -200,8 +200,8 @@ static OODebugMonitor *sSingleton = nil;
 
 - (oneway void)performJSConsoleCommand:(in NSString *)command
 {
-	JSContext *context = OOJSAcquireContext();
-	jsval commandVal = OOJSValueFromNativeObject(context, command);
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::Value commandVal = OOJSValueFromNativeObject(context, command);
 	OOJSStartTimeLimiterWithTimeLimit(kOOJSLongTimeLimit);
 	[_script callMethod:OOJSID("consolePerformJSCommand") inContext:context withArguments:&commandVal count:1 result:NULL];
 	OOJSStopTimeLimiter();
@@ -628,12 +628,12 @@ typedef struct
 
 - (size_t) dumpJSMemoryStatistics
 {
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	
-	JSRuntime *runtime = JS_GetRuntime(context);
-	size_t jsSize = JS_GetGCParameter(runtime, JSGC_BYTES);
-	size_t jsMax = JS_GetGCParameter(runtime, JSGC_MAX_BYTES);
-	uint32_t jsGCCount = JS_GetGCParameter(runtime, JSGC_NUMBER);
+	ooscript::Runtime runtime = ooscript::getRuntime(context);
+	size_t jsSize = ooscript::getGCParameter(runtime, ooscript::GCParam::Bytes);
+	size_t jsMax = ooscript::getGCParameter(runtime, ooscript::GCParam::MaxBytes);
+	uint32_t jsGCCount = ooscript::getGCParameter(runtime, ooscript::GCParam::NumberOfGCs);
 	
 	OOJSRelinquishContext(context);
 	
@@ -734,7 +734,7 @@ typedef struct
 
 - (void) setUpDebugConsoleScript
 {
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	/*	The path to the console script is saved in this here static variable
 		so that we can reload it when resetting into strict mode.
 		-- Ahruman 2011-02-06
@@ -757,8 +757,8 @@ typedef struct
 	// If no script, just make console visible globally as debugConsole.
 	if (_script == nil)
 	{
-		JSObject *global = [[OOJavaScriptEngine sharedEngine] globalObject];
-		JS_DefineProperty(context, global, "debugConsole", [self oo_jsValueInContext:context], NULL, NULL, JSPROP_ENUMERATE);
+		ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
+		ooscript::defineProperty(context, global, "debugConsole", [self oo_jsValueInContext:context], NULL, NULL, ooscript::PropertyFlag::Enumerate);
 	}
 	
 	OOJSRelinquishContext(context);
@@ -864,8 +864,8 @@ FIXME: this works with CRLF and LF, but not CR.
 
 
 - (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in JSContext *)context
-				  error:(in JSErrorReport *)errorReport
+				context:(in ooscript::Context)context
+				  error:(in ooscript::ErrorReport *)errorReport
 			  stackSkip:(in unsigned)stackSkip
 		showingLocation:(in BOOL)showLocation
 			withMessage:(in NSString *)message
@@ -881,12 +881,12 @@ FIXME: this works with CRLF and LF, but not CR.
 	
 	if (_debugger == nil)  return;
 	
-	if (errorReport->flags & JSREPORT_WARNING)
+	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))
 	{
 		colorKey = @"warning";
 		prefix = @"Warning";
 	}
-	else if (errorReport->flags & JSREPORT_EXCEPTION)
+	else if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Exception))
 	{
 		colorKey = @"exception";
 		prefix = @"Exception";
@@ -897,7 +897,7 @@ FIXME: this works with CRLF and LF, but not CR.
 		prefix = @"Error";
 	}
 	
-	if (errorReport->flags & JSREPORT_STRICT)
+	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Strict))
 	{
 		prefix = [prefix stringByAppendingString:@" (strict mode)"];
 	}
@@ -941,7 +941,7 @@ FIXME: this works with CRLF and LF, but not CR.
 					 colorKey:colorKey
 				emphasisRange:emphasisRange];
 	
-	if (errorReport->flags & JSREPORT_WARNING)  showKey = @"show-console-on-warning";
+	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  showKey = @"show-console-on-warning";
 	else  showKey = @"show-console-on-error";	// if not a warning, it's a proper error.
 	if (OOBooleanFromObject([self configurationValueForKey:showKey], NO))
 	{
@@ -951,7 +951,7 @@ FIXME: this works with CRLF and LF, but not CR.
 
 
 - (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
-				context:(in JSContext *)context
+				context:(in ooscript::Context)context
 			 logMessage:(in NSString *)message
 				ofClass:(in NSString *)messageClass
 {
@@ -963,7 +963,7 @@ FIXME: this works with CRLF and LF, but not CR.
 }
 
 
-- (jsval)oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
 	if (_jsSelf == NULL)
 	{
@@ -977,8 +977,8 @@ FIXME: this works with CRLF and LF, but not CR.
 		}
 	}
 	
-	if (_jsSelf != NULL)  return OBJECT_TO_JSVAL(_jsSelf);
-	else  return JSVAL_NULL;
+	if (_jsSelf != NULL)  return ooscript::objectValue(_jsSelf);
+	else  return ooscript::nullValue();
 }
 
 @end

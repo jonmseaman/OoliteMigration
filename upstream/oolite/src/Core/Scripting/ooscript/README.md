@@ -139,6 +139,18 @@ Generated from the header's declarations. One row per façade function that repl
 | `JS_SetOperationCallback` | `ooscript::setOperationCallback` | returns the old one |
 | `JS_TriggerOperationCallback` | `ooscript::triggerOperationCallback` |  |
 | `JS_TriggerAllOperationCallbacks` | `ooscript::triggerAllOperationCallbacks` |  |
+| `JS_SuspendRequest` / `JS_ResumeRequest` | `ooscript::suspendRequest` / `ooscript::resumeRequest` | token-based (bead oo-1gc.3) |
+| `JS_CompareStrings` | `ooscript::compareStrings` |  |
+| `JS_FreezeObject` | `ooscript::freezeObject` |  |
+| `JS_CompileUCFunction` | `ooscript::compileUCFunction` |  |
+| `JS_CallFunction` | `ooscript::callFunction` |  |
+| `JS_BufferIsCompilableUnit` | `ooscript::bufferIsCompilableUnit` |  |
+| `JSREG_FOLD` / `JSREG_GLOB` / `JSREG_MULTILINE` / `JSREG_STICKY` | `ooscript::RegExpFoldCase` / `RegExpGlobal` / `RegExpMultiline` / `RegExpSticky` | constants |
+| `JS_FrameIterator`, `JS_IsScriptFrame`, `JS_IsConstructorFrame`, `JS_IsDebuggerFrame`, `JS_GetFrameScript`, `JS_GetScriptFilename`, `JS_PCToLineNumber`+`JS_GetFramePC`, `JS_GetFrameFunction`, `JS_GetFrameThis`, `JS_GetFrameScopeChain` | `ooscript::frameIterator`, `frameIsScript`, `frameIsConstructor`, `frameIsDebugger`, `frameScript`, `scriptFilename`, `frameLineNumber`, `frameFunction`, `frameThis`, `frameScopeChain` | debug section; QuickJS-ng: file/line frames only (ADR-0022) |
+| `JS_GetPropertyDescArray` / `JS_PutPropertyDescArray` | `ooscript::getScopeVariables` / `destroyScopeVariables` | false on QuickJS-ng |
+| `JS_SetDebuggerHandler`, `JS_SetFunctionCallback`, `JS_SetContextCallback` | `ooscript::setDebuggerHandler`, `setFunctionCallback`, `setContextCallback` | debug section |
+| `JS_DumpNamedRoots`, `JS_DumpHeap` | `ooscript::dumpNamedRoots`, `ooscript::dumpHeap` | DEBUG engine builds / QuickJS-ng memory summary |
+| `JS_Now` | `std::chrono::steady_clock` (OOProfilingStopwatch.h) | not a façade call |
 
 ## Top-20 map: engine function -> façade call (histogram over upstream/oolite/src, 2026-09-18)
 
@@ -178,12 +190,10 @@ Generated from the header's declarations. One row per façade function that repl
 
 ## Not in the façade, and why
 
-	JS_FrameIterator, JS_GetFrameScript, JS_GetFrameThis, JS_GetFrameScopeChain,
-	JS_IsDebuggerFrame, JS_IsConstructorFrame, JS_GetPropertyDescArray (debugger frame walk,
-	OOJSEngineDebuggerHelpers.m, OOJSEngineTimeManagement.m): engine-specific by nature; the
-	QuickJS backend seam decides whether it gets an equivalent or the helpers become backend files.
+	JS_EnterLocalRootScope, JS_LeaveLocalRootScope: superseded. SpiderMonkey's conservative stack
+	scan and the QuickJS-ng backend's handle arena both keep a native's locals alive; the three
+	sites were deleted (bead oo-1gc.3).
 
-	JS_EnterLocalRootScope, JS_LeaveLocalRootScopeWithResult (three sites): superseded by
-	explicit roots; the retarget rewrites them as RootedValue.
-
-	JS_SetFunctionCallback (MOZ_TRACE_JSCALLS profiler hook): a build-time patch to this engine.
+	The engine's frame walk, debugger hook, function-call tracer and root/heap dumps used to be
+	listed here; they are now the façade's "Debugging and profiling" section, with the explicit
+	contract that a backend may answer with less (ADR-0022).

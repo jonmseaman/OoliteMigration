@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOWeakReference.h"
 
 @class ShipEntity;
@@ -40,7 +41,7 @@ MA 02110-1301, USA.
 	OOWeakReference			*_leader;
 	NSString				*_name;
 	
-	struct JSObject			*_jsSelf;
+	ooscript::Object _jsSelf;
 }
 
 - (id) init;

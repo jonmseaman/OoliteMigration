@@ -42,14 +42,9 @@ MA 02110-1301, USA.
 	ooscript::newNumberValue/valueToNumber. `this` is renamed to `thisObj` because it is a
 	reserved word once this file compiles as Objective-C++ (ADR-0001).
 
-	SoundSource has its own private-object getter (originally built by
-	DEFINE_JS_OBJECT_GETTER(), OOJavaScriptEngine.h) the way OOJSEquipmentInfo.mm's
-	JSEquipmentInfoGetEquipmentType does, because the macro still speaks jsapi's JSClass*.
-	RawSoundSourceClass() below is a reinterpret_cast onto sSoundSourceClass.backend, attached
-	by ooscript::initClass() in InitOOJSSoundSource(), not a conversion.
-
-	toString() is a shared native (OOJSObjectWrapperToString) adapted to the façade's NativeFn
-	signature exactly as OOJSEquipmentInfo.mm's EquipmentInfoToString does.
+	Natives and class hooks take the façade signature directly; the shared
+	OOJSObjectWrapperToString and OOJSObjectWrapperFinalize natives are used as-is in the class
+	and method tables.
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -63,32 +58,9 @@ using ooscript::PropertyFlag;
 using ooscript::PropertySpec;
 using ooscript::FunctionSpec;
 
-// Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
-namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-namespace {
-static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
-
 
 namespace {
-static JSObject *sSoundSourcePrototype;
+static ooscript::Object sSoundSourcePrototype;
 } // namespace
 
 
@@ -99,29 +71,18 @@ namespace {
 static bool SoundSourceSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
 } // namespace
 namespace {
-static bool SoundSourceConstruct(Context cx, CallArgs &oojsArgs);
+static bool SoundSourceConstruct(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 // Methods
 namespace {
-static bool SoundSourcePlay(Context cx, CallArgs &oojsArgs);
+static bool SoundSourcePlay(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SoundSourceStop(Context cx, CallArgs &oojsArgs);
+static bool SoundSourceStop(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool SoundSourcePlayOrRepeat(Context cx, CallArgs &oojsArgs);
-} // namespace
-
-
-// Adapts the shared jsapi finalizer (OOJavaScriptEngine.m) to the façade's FinalizeHook
-// signature; the finalizer itself is untouched, shared plumbing outside this bead's scope
-// (see OOJSWaypoint.mm's WaypointFinalize).
-namespace {
-static void SoundSourceFinalize(Context cx, Object obj)
-{
-	OOJSObjectWrapperFinalize(OOJSRCX(cx), OOJSROBJ(obj));
-}
+static bool SoundSourcePlayOrRepeat(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 
@@ -136,27 +97,14 @@ static ClassDef sSoundSourceClass =
 	SoundSourceGetProperty,	// getProperty
 	SoundSourceSetProperty,	// setProperty
 	nullptr,				// enumerate (engine default: EnumerateStub)
-	nullptr,				// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,				// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,				// resolve (engine default: ResolveStub)
 	nullptr,				// convert (engine default: ConvertStub)
-	SoundSourceFinalize,	// finalize
+	OOJSObjectWrapperFinalize,	// finalize
 	nullptr,				// call
 	nullptr,				// construct
 	nullptr,				// backend: owned by the façade backend, must start null
 };
-} // namespace
-
-
-// The engine's own JSClass* for sSoundSourceClass, for the not-yet-retargeted plumbing
-// (OOJSObjectGetterImplPRIVATE, via the getter below, and OOJSRegisterObjectConverter) that
-// still takes one; see the file-top comment and OOJSWaypoint.mm's RawWaypointClass(). Valid
-// only after InitOOJSSoundSource() has called ooscript::initClass(), which is the only thing
-// that attaches sSoundSourceClass.backend.
-namespace {
-static inline JSClass *RawSoundSourceClass(void)
-{
-	return reinterpret_cast<JSClass*>(sSoundSourceClass.backend);
-}
 } // namespace
 
 
@@ -189,41 +137,11 @@ static PropertySpec sSoundSourceProperties[] =
 } // namespace
 
 
-// A raw jsapi mirror of sSoundSourceProperties, used only for the two bad-property error
-// reporters in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are
-// outside this bead's scope (shared across every binding file) and still take a
-// JSPropertySpec*, not ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
-namespace {
-static JSPropertySpec sSoundSourcePropertiesRaw[] =
-{
-	// JS name					ID							flags
-	{ "isPlaying",				kSoundSource_isPlaying,		OOJS_PROP_READONLY_CB },
-	{ "loop",					kSoundSource_loop,			OOJS_PROP_READWRITE_CB },
-	{ "position",				kSoundSource_position,		OOJS_PROP_READWRITE_CB },
-	{ "positional",				kSoundSource_positional,	OOJS_PROP_READWRITE_CB },
-	{ "repeatCount",			kSoundSource_repeatCount,	OOJS_PROP_READWRITE_CB },
-	{ "sound",					kSoundSource_sound,			OOJS_PROP_READWRITE_CB },
-	{ "volume",					kSoundSource_volume,		OOJS_PROP_READWRITE_CB },
-	{ 0 }
-};
-} // namespace
-
-
-// Adapts the shared jsapi OOJSObjectWrapperToString (OOJavaScriptEngine.m) to the façade's
-// NativeFn signature, the way OOJSEquipmentInfo.mm's EquipmentInfoToString does.
-namespace {
-static bool SoundSourceToString(Context cx, CallArgs &oojsArgs)
-{
-	return OOJSObjectWrapperToString(OOJSRCX(cx), oojsArgs.count(), OOJSRVAL(oojsArgs.rawVp()));
-}
-} // namespace
-
-
 namespace {
 static FunctionSpec sSoundSourceMethods[] =
 {
 	// JS name					Function					min args	flags
-	{ "toString",				SoundSourceToString,		0,			0 },
+	{ "toString",				OOJSObjectWrapperToString,		0,			0 },
 	{ "play",					SoundSourcePlay,			0,			0 },
 	{ "playOrRepeat",			SoundSourcePlayOrRepeat,	0,			0 },
 	// playSound is defined in oolite-global-prefix.js.
@@ -233,44 +151,24 @@ static FunctionSpec sSoundSourceMethods[] =
 } // namespace
 
 
-// Equivalent of DEFINE_JS_OBJECT_GETTER(JSSoundSourceGetSoundSource, &sSoundSourceClass,
-// sSoundSourcePrototype, OOSoundSource), hand-written because the macro (and the shared
-// OOJSObjectGetterImplPRIVATE() helper it expands to) still take the engine's own JSClass*
-// (see the file-top comment and OOJSEquipmentInfo.mm's JSEquipmentInfoGetEquipmentType).
 namespace {
-#ifndef NDEBUG
-static BOOL JSSoundSourceGetSoundSource(JSContext *context, JSObject *inObject, OOSoundSource **outObject)  GCC_ATTR((unused));
-static BOOL JSSoundSourceGetSoundSource(JSContext *context, JSObject *inObject, OOSoundSource **outObject)
-{
-	NSCParameterAssert(outObject != NULL);
-	static Class cls = Nil;
-	if (EXPECT_NOT(cls == Nil))  cls = [OOSoundSource class];
-	return OOJSObjectGetterImplPRIVATE(context, inObject, RawSoundSourceClass(), cls, "JSSoundSourceGetSoundSource", (id *)outObject);
-}
-#else
-OOINLINE BOOL JSSoundSourceGetSoundSource(JSContext *context, JSObject *inObject, OOSoundSource **outObject)
-{
-	return OOJSObjectGetterImplPRIVATE(context, inObject, RawSoundSourceClass(), (id *)outObject);
-}
-#endif
+DEFINE_JS_OBJECT_GETTER(JSSoundSourceGetSoundSource, &sSoundSourceClass, sSoundSourcePrototype, OOSoundSource)
 } // namespace
 
 
 // *** Public ***
 
-void InitOOJSSoundSource(JSContext *context, JSObject *global)
+void InitOOJSSoundSource(ooscript::Context context, ooscript::Object global)
 {
-	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sSoundSourceClass, SoundSourceConstruct, 0, sSoundSourceProperties, sSoundSourceMethods, nullptr, nullptr);
-	sSoundSourcePrototype = OOJSROBJ(proto);
-	OOJSRegisterObjectConverter(RawSoundSourceClass(), OOJSBasicPrivateObjectConverter);
+	Object proto = ooscript::initClass((context), (global), nullptr, &sSoundSourceClass, SoundSourceConstruct, 0, sSoundSourceProperties, sSoundSourceMethods, nullptr, nullptr);
+	sSoundSourcePrototype = (proto);
+	OOJSRegisterObjectConverter(&sSoundSourceClass, OOJSBasicPrivateObjectConverter);
 }
 
 
 namespace {
-static bool SoundSourceConstruct(Context cx, CallArgs &oojsArgs)
+static bool SoundSourceConstruct(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 
@@ -294,9 +192,8 @@ static bool SoundSourceGetProperty(Context cx, Object obj, PropertyId propID, Va
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 
 	OOJS_NATIVE_ENTER(context)
 
@@ -307,26 +204,26 @@ static bool SoundSourceGetProperty(Context cx, Object obj, PropertyId propID, Va
 	switch (ooscript::idToInt32(propID))
 	{
 		case kSoundSource_sound:
-			*value_raw = OOJSValueFromNativeObject(context, [soundSource sound]);
+			*value = OOJSValueFromNativeObject(context, [soundSource sound]);
 			return YES;
 
 		case kSoundSource_isPlaying:
-			*value_raw = OOJSValueFromBOOL([soundSource isPlaying]);
+			*value = OOJSValueFromBOOL([soundSource isPlaying]);
 			return YES;
 
 		case kSoundSource_loop:
-			*value_raw = OOJSValueFromBOOL([soundSource loop]);
+			*value = OOJSValueFromBOOL([soundSource loop]);
 			return YES;
 
 		case kSoundSource_repeatCount:
-			*value_raw = INT_TO_JSVAL([soundSource repeatCount]);
+			*value = ooscript::int32Value([soundSource repeatCount]);
 			return YES;
 
 		case kSoundSource_position:
-			return VectorToJSValue(context, [soundSource position], value_raw);
+			return VectorToJSValue(context, [soundSource position], value);
 
 		case kSoundSource_positional:
-			*value_raw = OOJSValueFromBOOL([soundSource positional]);
+			*value = OOJSValueFromBOOL([soundSource positional]);
 			return YES;
 
 		case kSoundSource_volume:
@@ -334,7 +231,7 @@ static bool SoundSourceGetProperty(Context cx, Object obj, PropertyId propID, Va
 
 
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sSoundSourcePropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sSoundSourceProperties);
 			return NO;
 	}
 
@@ -348,14 +245,13 @@ static bool SoundSourceSetProperty(Context cx, Object obj, PropertyId propID, bo
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 
 	OOJS_NATIVE_ENTER(context)
 
 	OOSoundSource				*soundSource = nil;
-	int32						iValue;
+	int32_t						iValue;
 	bool						bValue;
 	Vector						vValue;
 	double						fValue;
@@ -365,7 +261,7 @@ static bool SoundSourceSetProperty(Context cx, Object obj, PropertyId propID, bo
 	switch (ooscript::idToInt32(propID))
 	{
 		case kSoundSource_sound:
-			[soundSource setSound:SoundFromJSValue(context, *value_raw)];
+			[soundSource setSound:SoundFromJSValue(context, *value)];
 			return YES;
 			break;
 
@@ -389,7 +285,7 @@ static bool SoundSourceSetProperty(Context cx, Object obj, PropertyId propID, bo
 
 
 		case kSoundSource_position:
-			if (JSValueToVector(context, *value_raw, &vValue))
+			if (JSValueToVector(context, *value, &vValue))
 			{
 				[soundSource setPosition:vValue];
 				return YES;
@@ -414,11 +310,11 @@ static bool SoundSourceSetProperty(Context cx, Object obj, PropertyId propID, bo
 			break;
 
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sSoundSourcePropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sSoundSourceProperties);
 			return NO;
 	}
 
-	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sSoundSourcePropertiesRaw, *value_raw);
+	OOJSReportBadPropertyValue(context, thisObj, (propID), sSoundSourceProperties, *value);
 	return NO;
 
 	OOJS_NATIVE_EXIT
@@ -430,19 +326,15 @@ static bool SoundSourceSetProperty(Context cx, Object obj, PropertyId propID, bo
 
 // play([count : Number])
 namespace {
-static bool SoundSourcePlay(Context cx, CallArgs &oojsArgs)
+static bool SoundSourcePlay(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	unsigned argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
-
 	OOJS_NATIVE_ENTER(context)
 
 	OOSoundSource			*thisv = nil;
-	int32					count = 0;
+	int32_t					count = 0;
 
 	if (EXPECT_NOT(!JSSoundSourceGetSoundSource(context, OOJS_THIS, &thisv)))  return NO;
-	if (argc > 0 && !JSVAL_IS_VOID(OOJS_ARGV[0]) && !ooscript::valueToInt32(cx, OOJSFVAL(OOJS_ARGV[0]), &count))
+	if (oojsArgs.count() > 0 && !ooscript::isUndefined(OOJS_ARGV[0]) && !ooscript::valueToInt32(context, (OOJS_ARGV[0]), &count))
 	{
 		OOJSReportBadArguments(context, @"SoundSource", @"play", 1, OOJS_ARGV, nil, @"integer count or no argument");
 		return NO;
@@ -467,10 +359,8 @@ static bool SoundSourcePlay(Context cx, CallArgs &oojsArgs)
 
 // stop()
 namespace {
-static bool SoundSourceStop(Context cx, CallArgs &oojsArgs)
+static bool SoundSourceStop(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 
@@ -491,10 +381,8 @@ static bool SoundSourceStop(Context cx, CallArgs &oojsArgs)
 
 // playOrRepeat()
 namespace {
-static bool SoundSourcePlayOrRepeat(Context cx, CallArgs &oojsArgs)
+static bool SoundSourcePlayOrRepeat(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 
@@ -515,17 +403,17 @@ static bool SoundSourcePlayOrRepeat(Context cx, CallArgs &oojsArgs)
 
 @implementation OOSoundSource (OOJavaScriptExtentions)
 
-- (jsval) oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
-	JSObject					*jsSelf = NULL;
-	jsval						result = JSVAL_NULL;
+	ooscript::Object jsSelf = NULL;
+	ooscript::Value						result = ooscript::nullValue();
 
-	jsSelf = OOJSROBJ(ooscript::newObject(OOJSFCX(context), &sSoundSourceClass, OOJSFOBJ(sSoundSourcePrototype), nullptr));
+	jsSelf = (ooscript::newObject((context), &sSoundSourceClass, (sSoundSourcePrototype), nullptr));
 	if (jsSelf != NULL)
 	{
-		if (!ooscript::setPrivate(OOJSFCX(context), OOJSFOBJ(jsSelf), [self retain]))  jsSelf = NULL;
+		if (!ooscript::setPrivate((context), (jsSelf), [self retain]))  jsSelf = NULL;
 	}
-	if (jsSelf != NULL)  result = OBJECT_TO_JSVAL(jsSelf);
+	if (jsSelf != NULL)  result = ooscript::objectValue(jsSelf);
 
 	return result;
 }

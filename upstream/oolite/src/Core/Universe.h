@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOOpenGL.h"
 #import "OOShaderProgram.h"
 #import "legacy_random.h"
@@ -747,7 +748,7 @@ enum
 
 - (NSArray*) listBeaconsWithCode:(NSString*) code;
 
-- (void) allShipsDoScriptEvent:(jsid)event andReactToAIMessage:(NSString *)message;
+- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message;
 
 ///////////////////////////////////////
 

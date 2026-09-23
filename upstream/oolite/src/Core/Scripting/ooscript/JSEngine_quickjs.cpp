@@ -269,7 +269,7 @@ struct ScriptRep
 
 namespace {
 
-enum class RootKind { Object, Value, String };
+enum class RootSlot { Object, Value, String };
 
 struct ContextState;
 
@@ -278,7 +278,7 @@ struct RuntimeState
 	JSRuntime* rt = nullptr;
 	std::vector<JSValue> arena;                 // one reference per value handed to the façade
 	std::vector<JSAtom>  arenaAtoms;            // one reference per atom id handed to the façade
-	std::unordered_map<void*, RootKind> roots;  // root ADDRESSES, read at flush time
+	std::unordered_map<void*, RootSlot> roots;  // root ADDRESSES, read at flush time
 	std::unordered_set<void*> permanentStrings; // interned strings, one reference each, runtime lifetime
 	std::unordered_set<void*> internedStrings;  // atom strings handed out this arena generation
 	struct Chars { const std::uint16_t* p; std::size_t len; };
@@ -312,6 +312,7 @@ struct ContextState
 std::unordered_map<JSContext*, ContextState*> gContexts;
 std::unordered_map<JSRuntime*, JSContext*>    gCtxForRuntime;   // finalizers get only a JSRuntime*
 JSContext*                                    gDefaultCtx = nullptr;   // for the ctx-less calls
+ContextCallback                               gContextCallbackHook = nullptr;   // setContextCallback (bead oo-1gc.3)
 std::vector<const Value*>                     gConstructing;   // vp blocks of constructor calls
 
 JSClassID gNativeClassId = 0;
@@ -580,9 +581,9 @@ void flushArena(RuntimeState* rs, bool rescanRoots)
 			JSValue v = JS_UNDEFINED;
 			switch (root.second)
 			{
-				case RootKind::Object: { Object o = *static_cast<Object*>(root.first); if (o != nullptr) v = OBJVAL(o); break; }
-				case RootKind::Value:  v = toJS(*static_cast<Value*>(root.first)); break;
-				case RootKind::String: { String s = *static_cast<String*>(root.first); if (s != nullptr) v = STRVAL(s); break; }
+				case RootSlot::Object: { Object o = *static_cast<Object*>(root.first); if (o != nullptr) v = OBJVAL(o); break; }
+				case RootSlot::Value:  v = toJS(*static_cast<Value*>(root.first)); break;
+				case RootSlot::String: { String s = *static_cast<String*>(root.first); if (s != nullptr) v = STRVAL(s); break; }
 			}
 			if (!JS_VALUE_HAS_REF_COUNT(v))  continue;
 			rs->arena.push_back(JS_DupValueRT(rt, v));
@@ -2822,7 +2823,7 @@ void dropExceptionState(Context cx, ExceptionState* state)
 
 namespace {
 
-bool addRoot(Context cx, void* addr, RootKind kind, JSValueConst current)
+bool addRoot(Context cx, void* addr, RootSlot kind, JSValueConst current)
 {
 	if (addr == nullptr)  return false;
 	JSContext* ctx = CX(cx);
@@ -2841,15 +2842,15 @@ bool removeRoot(Context cx, void* addr)
 
 bool addNamedObjectRoot(Context cx, Object* rp, const char* /*name*/)
 {
-	return addRoot(cx, rp, RootKind::Object, (rp != nullptr && *rp != nullptr) ? OBJVAL(*rp) : JS_NULL);
+	return addRoot(cx, rp, RootSlot::Object, (rp != nullptr && *rp != nullptr) ? OBJVAL(*rp) : JS_NULL);
 }
 bool addNamedValueRoot(Context cx, Value* vp, const char* /*name*/)
 {
-	return addRoot(cx, vp, RootKind::Value, vp != nullptr ? toJS(*vp) : JS_UNDEFINED);
+	return addRoot(cx, vp, RootSlot::Value, vp != nullptr ? toJS(*vp) : JS_UNDEFINED);
 }
 bool addNamedStringRoot(Context cx, String* sp, const char* /*name*/)
 {
-	return addRoot(cx, sp, RootKind::String, (sp != nullptr && *sp != nullptr) ? STRVAL(*sp) : JS_UNDEFINED);
+	return addRoot(cx, sp, RootSlot::String, (sp != nullptr && *sp != nullptr) ? STRVAL(*sp) : JS_UNDEFINED);
 }
 bool removeObjectRoot(Context cx, Object* rp)  { return removeRoot(cx, rp); }
 bool removeValueRoot(Context cx, Value* vp)    { return removeRoot(cx, vp); }
@@ -2920,12 +2921,14 @@ Context newContext(Runtime rt, std::size_t /*stackChunkSize*/)
 	rs->contexts.push_back(cs);
 	gCtxForRuntime[jrt] = ctx;
 	gDefaultCtx = ctx;
+	if (gContextCallbackHook != nullptr)  gContextCallbackHook(wrap(ctx), ContextOp::New);
 	return wrap(ctx);
 }
 
 void destroyContext(Context cx)
 {
 	JSContext* ctx = CX(cx);
+	if (gContextCallbackHook != nullptr)  gContextCallbackHook(cx, ContextOp::Destroy);
 	ContextState* cs = csOf(ctx);
 	RuntimeState* rs = rsOf(ctx);
 	if (cs != nullptr)
@@ -3101,6 +3104,197 @@ void triggerAllOperationCallbacks(Runtime rt)
 {
 	RuntimeState* rs = rsOf(RT(rt));
 	for (ContextState* cs : rs->contexts)  cs->triggered.store(true);
+}
+
+// MARK: Completing the retarget (bead oo-1gc.3) -------------------------------------------------
+
+// QuickJS-ng has no threads to hand a request to, so a suspension is a no-op token.
+unsigned suspendRequest(Context)                           { return 0; }
+void     resumeRequest(Context, unsigned)                  { }
+
+bool compareStrings(Context cx, String a, String b, std::int32_t* result)
+{
+	// SpiderMonkey compares UTF-16 code units lexicographically and returns their difference's sign.
+	JSContext* ctx = CX(cx);
+	const std::u16string sa = toU16(ctx, toJS(stringValue(a)));
+	const std::u16string sb = toU16(ctx, toJS(stringValue(b)));
+	const int c = sa.compare(sb);
+	*result = c < 0 ? -1 : (c > 0 ? 1 : 0);
+	return true;
+}
+
+bool freezeObject(Context cx, Object obj)
+{
+	JSContext* ctx = CX(cx);
+	JSValue global = JS_GetGlobalObject(ctx);
+	JSValue objectCtor = JS_GetPropertyStr(ctx, global, "Object");
+	JSValue freeze = JS_GetPropertyStr(ctx, objectCtor, "freeze");
+	JSValue arg = OBJVAL(obj);
+	JSValue r = JS_Call(ctx, freeze, objectCtor, 1, &arg);
+	const bool ok = !JS_IsException(r);
+	JS_FreeValue(ctx, r);
+	JS_FreeValue(ctx, freeze);
+	JS_FreeValue(ctx, objectCtor);
+	JS_FreeValue(ctx, global);
+	return ok ? true : finish(ctx, false);
+}
+
+Function compileUCFunction(Context cx, Object scope, const char* name, unsigned nargs, const char** argnames,
+                           const Char16* chars, std::size_t length, const char* filename, unsigned lineno)
+{
+	// The engine compiles a function from a body and a parameter list. The same source text is
+	// built here as one parenthesised function expression whose body starts on a new line, so the
+	// body's line numbers are the caller's `lineno` exactly (the header line is lineno - 1).
+	std::string src = "(function ";
+	if (name != nullptr)  src += name;
+	src += "(";
+	for (unsigned i = 0; i < nargs; ++i)
+	{
+		if (i != 0)  src += ", ";
+		src += argnames[i];
+	}
+	src += ") {\n";
+	src += toUtf8(chars, length);
+	src += "\n})";
+	Value fv = undefinedValue();
+	const unsigned headerLine = lineno > 1 ? lineno - 1 : 1;
+	if (!evalWithThis(CX(cx), scope, src, filename, headerLine, &fv))  return nullptr;
+	if (!isObject(fv))  return nullptr;
+	return reinterpret_cast<Function>(toObject(fv));
+}
+
+bool callFunction(Context cx, Object thisObj, Function fn, unsigned argc, Value* argv, Value* rval)
+{
+	return callFunctionValue(cx, thisObj, objectValue(reinterpret_cast<Object>(fn)), argc, argv, rval);
+}
+
+bool bufferIsCompilableUnit(Context cx, Object obj, const char* bytes, std::size_t length)
+{
+	// "Would more input help?" SpiderMonkey answers false only when compilation fails because the
+	// text ended early; any other outcome (success, or a different syntax error) is a unit.
+	JSContext* ctx = CX(cx);
+	JSValue global = JS_GetGlobalObject(ctx);
+	JSEvalOptions o = evalOptions("typein", 1, JS_EVAL_FLAG_COMPILE_ONLY);
+	const std::string src(bytes, length);
+	JSValue r = JS_EvalThis2(ctx, obj != nullptr ? OBJVAL(obj) : global, src.c_str(), src.size(), &o);
+	JS_FreeValue(ctx, global);
+	if (!JS_IsException(r))  { JS_FreeValue(ctx, r); return true; }
+	JSValue e = JS_GetException(ctx);
+	JSValue m = JS_IsObject(e) ? JS_GetPropertyStr(ctx, e, "message") : JS_UNDEFINED;
+	const std::string msg = JS_IsString(m) ? toStdString(ctx, m) : std::string();
+	JS_FreeValue(ctx, m);
+	JS_FreeValue(ctx, e);
+	return msg.find("end of") == std::string::npos && msg.find("unexpected end") == std::string::npos
+	    && msg.find("expecting") == std::string::npos;
+}
+
+// MARK: Debugging and profiling -----------------------------------------------------------------
+//
+// QuickJS-ng exposes no frame objects; the stack it can describe is the one an Error records. A
+// walk therefore snapshots `new Error().stack` when it starts and hands out 1-based indices into
+// that snapshot. Frames carry a filename and line only: no `this`, no scope chain, no variables,
+// and the debugger/profiler hooks have nothing to attach to. These are diagnostics only
+// (JSEngine.hpp: nothing here may affect what a golden observes).
+
+namespace {
+struct FrameSnapshot
+{
+	struct Frame { std::string file; unsigned line; };
+	std::vector<Frame> frames;
+};
+std::unordered_map<JSContext*, FrameSnapshot> gFrames;
+std::unordered_map<std::string, ScriptRep*>    gFrameScripts;   // one stable Script token per filename
+DebuggerHandler gDebuggerHandler = nullptr;
+
+void snapshotFrames(JSContext* ctx)
+{
+	FrameSnapshot& snap = gFrames[ctx];
+	snap.frames.clear();
+	JSValue e = JS_NewError(ctx);
+	if (JS_IsException(e))  { JS_FreeValue(ctx, JS_GetException(ctx)); return; }
+	JSValue st = JS_GetPropertyStr(ctx, e, "stack");
+	const std::string stack = JS_IsString(st) ? toStdString(ctx, st) : std::string();
+	JS_FreeValue(ctx, st);
+	JS_FreeValue(ctx, e);
+	std::size_t pos = 0;
+	while (pos < stack.size())
+	{
+		std::size_t end = stack.find('\n', pos);
+		if (end == std::string::npos)  end = stack.size();
+		std::string file;
+		unsigned line = 0;
+		if (parseLocation(stack.substr(pos, end - pos), &file, &line))  snap.frames.push_back({ file, line });
+		pos = end + 1;
+	}
+}
+
+const FrameSnapshot::Frame* frameAt(JSContext* ctx, StackFrame fp)
+{
+	const auto it = gFrames.find(ctx);
+	const std::size_t i = reinterpret_cast<std::uintptr_t>(fp);
+	if (it == gFrames.end() || i == 0 || i > it->second.frames.size())  return nullptr;
+	return &it->second.frames[i - 1];
+}
+}
+
+StackFrame frameIterator(Context cx, StackFrame* iter)
+{
+	JSContext* ctx = CX(cx);
+	std::uintptr_t i = reinterpret_cast<std::uintptr_t>(*iter);
+	if (i == 0)  snapshotFrames(ctx);
+	++i;
+	if (i > gFrames[ctx].frames.size())  { *iter = nullptr; return nullptr; }
+	*iter = reinterpret_cast<StackFrame>(i);
+	return *iter;
+}
+bool frameIsScript(Context cx, StackFrame fp)             { return frameAt(CX(cx), fp) != nullptr; }
+bool frameIsConstructor(Context, StackFrame)              { return false; }
+bool frameIsDebugger(Context, StackFrame)                 { return false; }
+Script frameScript(Context cx, StackFrame fp)
+{
+	const FrameSnapshot::Frame* f = frameAt(CX(cx), fp);
+	if (f == nullptr)  return nullptr;
+	ScriptRep*& token = gFrameScripts[f->file];
+	if (token == nullptr)
+	{
+		token = new ScriptRep();   // never compiled and never freed: an identity for the filename
+		token->filename = f->file;
+	}
+	return token;
+}
+const char* scriptFilename(Context, Script script)       { return script != nullptr ? script->filename.c_str() : nullptr; }
+unsigned frameLineNumber(Context cx, StackFrame fp)
+{
+	const FrameSnapshot::Frame* f = frameAt(CX(cx), fp);
+	return f != nullptr ? f->line : 0;
+}
+Function frameFunction(Context, StackFrame)               { return nullptr; }
+bool     frameThis(Context, StackFrame, Value*)           { return false; }
+Object   frameScopeChain(Context, StackFrame)             { return nullptr; }
+
+bool getScopeVariables(Context, Object, VariableList* out)
+{
+	out->length = 0; out->vars = nullptr; out->backend = nullptr;
+	return false;
+}
+void destroyScopeVariables(Context, VariableList*)        { }
+
+void setDebuggerHandler(Runtime, DebuggerHandler handler, void*)   { gDebuggerHandler = handler; }
+bool setFunctionCallback(Context, FunctionCallback)       { return false; }
+ContextCallback setContextCallback(Runtime, ContextCallback cb)
+{
+	ContextCallback old = gContextCallbackHook;
+	gContextCallbackHook = cb;
+	return old;
+}
+
+bool dumpNamedRoots(Runtime, RootDumper, void*)           { return false; }
+bool dumpHeap(Context cx, void* file)
+{
+	JSMemoryUsage u;
+	JS_ComputeMemoryUsage(JS_GetRuntime(CX(cx)), &u);
+	JS_DumpMemoryUsage(static_cast<FILE*>(file), &u, JS_GetRuntime(CX(cx)));
+	return true;
 }
 
 // MARK: Backend identity ----------------------------------------------------------------------

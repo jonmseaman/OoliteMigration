@@ -5490,7 +5490,7 @@ static BOOL autopilot_pause;
 	}
 	if ((oldViewDirection != viewDirection || viewDirection == VIEW_CUSTOM) && ![[UNIVERSE gameController] isGamePaused])
 	{
-		JSContext *context = OOJSAcquireContext();
+		ooscript::Context context = OOJSAcquireContext();
 		ShipScriptEvent(context, self, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, oldViewDirection));
 		OOJSRelinquishContext(context);
 	}

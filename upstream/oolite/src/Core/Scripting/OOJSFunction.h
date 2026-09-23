@@ -27,44 +27,42 @@ MA 02110-1301, USA.
 
 
 #import "OOCocoa.h"
-#include <jsapi.h>
-
-
+#include "ooscript/JSEngine.hpp"
 @interface OOJSFunction: NSObject
 {
 @private
-	JSFunction					*_function;
+	ooscript::Function _function;
 	NSString					*_name;
 }
 
-- (id) initWithFunction:(JSFunction *)function context:(JSContext *)context;
+- (id) initWithFunction:(ooscript::Function)function context:(ooscript::Context)context;
 - (id) initWithName:(NSString *)name
-			  scope:(JSObject *)scope		// may be NULL, in which case global object is used.
+			  scope:(ooscript::Object)scope		// may be NULL, in which case global object is used.
 			   code:(NSString *)code		// full JS code for function, including function declaration.
 	  argumentCount:(NSUInteger)argCount
 	  argumentNames:(const char **)argNames
 		   fileName:(NSString *)fileName
 		 lineNumber:(NSUInteger)lineNumber
-			context:(JSContext *)context;	// may be NULL. If not null, must be in a request.
+			context:(ooscript::Context)context;	// may be NULL. If not null, must be in a request.
 
 - (NSString *) name;
-- (JSFunction *) function;
-- (jsval) functionValue;
+- (ooscript::Function) function;
+- (ooscript::Value) functionValue;
 
 // Raw evaluation. Context may not be NULL and must be in a request.
-- (BOOL) evaluateWithContext:(JSContext *)context
-					   scope:(JSObject *)jsThis
-						argc:(uintN)argc
-						argv:(jsval *)argv
-					  result:(jsval *)result;
+- (BOOL) evaluateWithContext:(ooscript::Context)context
+					   scope:(ooscript::Object)jsThis
+						argc:(unsigned)argc
+						argv:(ooscript::Value *)argv
+					  result:(ooscript::Value *)result;
 
 // Object-wrapper evaluation.
-- (id) evaluateWithContext:(JSContext *)context
+- (id) evaluateWithContext:(ooscript::Context)context
 					 scope:(id)jsThis
 				 arguments:(NSArray *)arguments;
 
 // As above, but converts result to a boolean.
-- (BOOL) evaluatePredicateWithContext:(JSContext *)context
+- (BOOL) evaluatePredicateWithContext:(ooscript::Context)context
 								scope:(id)jsThis
 							arguments:(NSArray *)arguments;
 

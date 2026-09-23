@@ -234,13 +234,13 @@ MA 02110-1301, USA.
 	}
 
 	// callback to allow more complex filtering on accept/reject
-	JSContext	*context = OOJSAcquireContext();
-	jsval		rval = JSVAL_VOID;
-	jsval		args[] = { OOJSValueFromNativeObject(context, ship) };
-	JSBool accept = YES;
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::Value		rval = ooscript::undefinedValue();
+	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, ship) };
+	bool accept = YES;
 	
 	BOOL OK = [[self script] callMethod:OOJSID("acceptDockingRequestFrom") inContext:context withArguments:args count:1 result:&rval];
-	if (OK)  OK = JS_ValueToBoolean(context, rval, &accept);
+	if (OK)  OK = ooscript::valueToBoolean(context, rval, &accept);
 	if (!OK)  accept = YES; // default to permreject
 	OOJSRelinquishContext(context);
 
@@ -961,13 +961,13 @@ MA 02110-1301, USA.
 	}
 
 	// callback to allow more complex filtering on accept/reject
-	JSContext	*context = OOJSAcquireContext();
-	jsval		rval = JSVAL_VOID;
-	jsval		args[] = { OOJSValueFromNativeObject(context, ship) };
-	JSBool accept = YES;
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::Value		rval = ooscript::undefinedValue();
+	ooscript::Value		args[] = { OOJSValueFromNativeObject(context, ship) };
+	bool accept = YES;
 	
 	BOOL OK = [[self script] callMethod:OOJSID("acceptLaunchingRequestFrom") inContext:context withArguments:args count:1 result:&rval];
-	if (OK)  OK = JS_ValueToBoolean(context, rval, &accept);
+	if (OK)  OK = ooscript::valueToBoolean(context, rval, &accept);
 	if (!OK)  accept = YES; // default to permreject
 	OOJSRelinquishContext(context);
 	if (!accept)

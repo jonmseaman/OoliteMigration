@@ -26,14 +26,12 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
-
+#include "ooscript/JSEngine.hpp"
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void InitOOJSSun(JSContext *context, JSObject *global);
+void InitOOJSSun(ooscript::Context context, ooscript::Object global);
 
 #ifdef __cplusplus
 }

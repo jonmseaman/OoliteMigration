@@ -29,6 +29,7 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOTypes.h"
 #import "OOScript.h"
 #import "Universe.h"
@@ -76,7 +77,7 @@ SOFTWARE.
 	NSString				*_script;
 	NSString				*_condition_script;
 	
-	struct JSObject			*_jsSelf;
+	ooscript::Object _jsSelf;
 }
 
 + (void) loadEquipment;			// Load equipment data; called on loading and when changing to/from strict mode.

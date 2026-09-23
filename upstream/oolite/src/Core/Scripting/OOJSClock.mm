@@ -41,9 +41,9 @@ MA 02110-1301, USA.
 	(the stub hooks are nullptr), InitClass becomes ooscript::initClass, the engine's
 	DefineObject call becomes ooscript::defineObject, and the directly spelled numeric-conversion call becomes
 	ooscript::newNumberValue. `this` is renamed to `thisObj` because it is a reserved word once
-	this file compiles as Objective-C++ (ADR-0001). The OOJS_* argument-marshalling macros
-	(OOJS_NATIVE_ENTER, OOJS_ARGV, OOJS_RETURN_*) are unchanged, byte-identical façade views as
-	in OOJSVector.mm.
+	this file compiles as Objective-C++ (ADR-0001). Natives take the façade signature
+	(Context, CallArgs reference) directly, and the OOJS_* argument-marshalling macros
+	(OOJS_NATIVE_ENTER, OOJS_ARGV, OOJS_RETURN_*) expand to the CallArgs accessors.
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -57,46 +57,19 @@ using ooscript::PropertyFlag;
 using ooscript::PropertySpec;
 using ooscript::FunctionSpec;
 
-// Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
-namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-
-
 namespace {
 static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
 
-// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the façade's
-// NativeFn signature, the way OOJSWaypoint.mm's WaypointUnconstructableConstruct does it.
-namespace {
-static bool OOJSUnconstructableConstructFacade(Context cx, CallArgs &oojsArgs);
-} // namespace
-
 // Methods
 namespace {
-static bool JSClockToString(Context cx, CallArgs &oojsArgs);
+static bool JSClockToString(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool ClockClockStringForTime(Context cx, CallArgs &oojsArgs);
+static bool ClockClockStringForTime(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool ClockAddSeconds(Context cx, CallArgs &oojsArgs);
+static bool ClockAddSeconds(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 
@@ -111,7 +84,7 @@ static ClassDef sClockClass =
 	ClockGetProperty,	// getProperty
 	nullptr,			// setProperty (engine default: StrictPropertyStub)
 	nullptr,			// enumerate (engine default: EnumerateStub)
-	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
 	nullptr,			// finalize (engine default: FinalizeStub)
@@ -141,14 +114,11 @@ enum : std::uint8_t
 };
 
 
-// A raw jsapi mirror of the property table, used only for the property-selector error reporter
-// in OOJavaScriptEngine.m (OOJSReportBadPropertySelector): that helper is outside this bead's
-// scope (shared across every binding file) and still takes a JSPropertySpec*, not
-// ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw). Clock has no
-// ooscript::PropertySpec table of its own -- InitOOJSClock() uses ooscript::defineObject(),
-// which takes no property table -- so this mirror exists solely for that error reporter.
+// A mirror of the property table with the read-only flags the property-selector error reporter
+// in OOJavaScriptEngine.mm (OOJSReportBadPropertySelector) describes the properties by (see
+// OOJSVector.mm's sVectorPropertiesRaw); initClass() is given sClockPropertiesFacade.
 namespace {
-static JSPropertySpec sClockProperties[] =
+static ooscript::PropertySpec sClockProperties[] =
 {
 	// JS name					ID							flags
 	{ "absoluteSeconds",		kClock_absoluteSeconds,		OOJS_PROP_READONLY_CB },
@@ -213,19 +183,11 @@ constexpr PropertyFlag kClockObjectFlags = PropertyFlag::Permanent | PropertyFla
 } // namespace
 
 
-void InitOOJSClock(JSContext *context, JSObject *global)
+void InitOOJSClock(ooscript::Context context, ooscript::Object global)
 {
-	Object clockPrototype = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sClockClass, OOJSUnconstructableConstructFacade, 0, sClockPropertiesFacade, sClockMethods, nullptr, nullptr);
-	ooscript::defineObject(OOJSFCX(context), OOJSFOBJ(global), "clock", &sClockClass, clockPrototype, kClockObjectFlags);
+	Object clockPrototype = ooscript::initClass((context), (global), nullptr, &sClockClass, OOJSUnconstructableConstruct, 0, sClockPropertiesFacade, sClockMethods, nullptr, nullptr);
+	ooscript::defineObject((context), (global), "clock", &sClockClass, clockPrototype, kClockObjectFlags);
 }
-
-
-namespace {
-static bool OOJSUnconstructableConstructFacade(Context cx, CallArgs &oojsArgs)
-{
-	return OOJSUnconstructableConstruct(OOJSRCX(cx), oojsArgs.count(), reinterpret_cast<jsval*>(oojsArgs.rawVp()));
-}
-} // namespace
 
 
 namespace {
@@ -233,8 +195,8 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 
 	OOJS_NATIVE_ENTER(context)
 
@@ -258,28 +220,28 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 			return ooscript::newNumberValue(cx, floor(clockTime /3600.0), value);
 
 		case kClock_secondsComponent:
-			*reinterpret_cast<jsval*>(value) = INT_TO_JSVAL(fmod(clockTime, 60.0));
+			*value = ooscript::int32Value(fmod(clockTime, 60.0));
 			return YES;
 
 		case kClock_minutesComponent:
-			*reinterpret_cast<jsval*>(value) = INT_TO_JSVAL(fmod(floor(clockTime / 60.0), 60.0));
+			*value = ooscript::int32Value(fmod(floor(clockTime / 60.0), 60.0));
 			return YES;
 
 		case kClock_hoursComponent:
-			*reinterpret_cast<jsval*>(value) = INT_TO_JSVAL(fmod(floor(clockTime / 3600.0), 24.0));
+			*value = ooscript::int32Value(fmod(floor(clockTime / 3600.0), 24.0));
 			return YES;
 
 		case kClock_days:
 		case kClock_daysComponent:
-			*reinterpret_cast<jsval*>(value) = INT_TO_JSVAL(floor(clockTime / 86400.0));
+			*value = ooscript::int32Value(floor(clockTime / 86400.0));
 			return YES;
 
 		case kClock_clockString:
-			*reinterpret_cast<jsval*>(value) = OOJSValueFromNativeObject(context, [player dial_clock]);
+			*value = OOJSValueFromNativeObject(context, [player dial_clock]);
 			return YES;
 
 		case kClock_isAdjusting:
-			*reinterpret_cast<jsval*>(value) = OOJSValueFromBOOL([player clockAdjusting]);
+			*value = OOJSValueFromBOOL([player clockAdjusting]);
 			return YES;
 
 		case kClock_adjustedSeconds:
@@ -290,7 +252,7 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 			return ooscript::newNumberValue(cx, [player scriptTimer], value);
 
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sClockProperties);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sClockProperties);
 			return NO;
 	}
 
@@ -303,11 +265,8 @@ static bool ClockGetProperty(Context cx, Object obj, PropertyId propID, Value *v
 
 // toString() : String
 namespace {
-static bool JSClockToString(Context cx, CallArgs &oojsArgs)
+static bool JSClockToString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	jsval *vp = reinterpret_cast<jsval*>(oojsArgs.rawVp());
-
 	OOJS_NATIVE_ENTER(context)
 
 	OOJS_RETURN_OBJECT([OOPlayerForScripting() dial_clock]);
@@ -319,20 +278,16 @@ static bool JSClockToString(Context cx, CallArgs &oojsArgs)
 
 // clockStringForTime(time : Number) : String
 namespace {
-static bool ClockClockStringForTime(Context cx, CallArgs &oojsArgs)
+static bool ClockClockStringForTime(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = reinterpret_cast<jsval*>(oojsArgs.rawVp());
-
 	OOJS_NATIVE_ENTER(context)
 
 	double						time;
 
-	if (EXPECT_NOT(argc < 1 || !ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[0]), &time)))
+	if (EXPECT_NOT(oojsArgs.count() < 1 || !ooscript::valueToNumber(context, (OOJS_ARGV[0]), &time)))
 	{
-		jsval arg = JSVAL_VOID;
-		if (argc > 0)  arg = OOJS_ARGV[0];
+		ooscript::Value arg = ooscript::undefinedValue();
+		if (oojsArgs.count() > 0)  arg = OOJS_ARGV[0];
 		OOJSReportBadArguments(context, @"Clock", @"clockStringForTime", 1, &arg, nil, @"number");
 		return NO;
 	}
@@ -346,21 +301,17 @@ static bool ClockClockStringForTime(Context cx, CallArgs &oojsArgs)
 
 // addSeconds(seconds : Number) : String
 namespace {
-static bool ClockAddSeconds(Context cx, CallArgs &oojsArgs)
+static bool ClockAddSeconds(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = reinterpret_cast<jsval*>(oojsArgs.rawVp());
-
 	OOJS_NATIVE_ENTER(context)
 
 	double						time;
 	const double				kMaxTime = 30.0 * 24.0 * 3600.0;	// 30 days
 
-	if (EXPECT_NOT(argc < 1 || !ooscript::valueToNumber(cx, OOJSFVAL(OOJS_ARGV[0]), &time)))
+	if (EXPECT_NOT(oojsArgs.count() < 1 || !ooscript::valueToNumber(context, (OOJS_ARGV[0]), &time)))
 	{
-		jsval arg = JSVAL_VOID;
-		if (argc > 0)  arg = OOJS_ARGV[0];
+		ooscript::Value arg = ooscript::undefinedValue();
+		if (oojsArgs.count() > 0)  arg = OOJS_ARGV[0];
 		OOJSReportBadArguments(context, @"Clock", @"addSeconds", 1, &arg, nil, @"number");
 		return NO;
 	}

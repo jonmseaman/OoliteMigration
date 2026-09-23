@@ -25,8 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class PlayerEntity;
 
 
@@ -34,11 +33,11 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSPlayer(JSContext *context, JSObject *global);
+void InitOOJSPlayer(ooscript::Context context, ooscript::Object global);
 
-JSClass *JSPlayerClass(void);
-JSObject *JSPlayerPrototype(void);
-JSObject *JSPlayerObject(void);
+ooscript::ClassDef *JSPlayerClass(void);
+ooscript::Object JSPlayerPrototype(void);
+ooscript::Object JSPlayerObject(void);
 
 
 /*	All JS functions which talk to the player entity should call

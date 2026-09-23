@@ -42,17 +42,11 @@ MA 02110-1301, USA.
 	Objective-C++ (ADR-0001).
 
 	ShipGroup has its own private-object getter (originally built by DEFINE_JS_OBJECT_GETTER(),
-	OOJavaScriptEngine.h) the way OOJSSoundSource.mm's JSSoundSourceGetSoundSource does, because
-	the macro still speaks jsapi's JSClass*. RawShipGroupClass() below is a reinterpret_cast
-	onto sShipGroupClass.backend, attached by ooscript::initClass() in InitOOJSShipGroup(), not
-	a conversion.
+	OOJavaScriptEngine.h) the way OOJSSoundSource.mm's JSSoundSourceGetSoundSource does; it checks
+	against &sShipGroupClass, the same ooscript::ClassDef that ooscript::getClass() reports.
 
-	The finalizer is the shared jsapi OOJSObjectWrapperFinalize (OOJavaScriptEngine.m), adapted
-	to the façade's FinalizeHook signature exactly as OOJSSoundSource.mm's SoundSourceFinalize
-	does; that helper itself is shared plumbing outside this bead's scope.
-
-	toString() is a shared native (OOJSObjectWrapperToString) adapted to the façade's NativeFn
-	signature exactly as OOJSSoundSource.mm's SoundSourceToString does.
+	The finalizer (OOJSObjectWrapperFinalize) and toString() (OOJSObjectWrapperToString) are the
+	shared natives, which already take the façade signatures and go into the tables directly.
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -67,31 +61,10 @@ using ooscript::PropertySpec;
 using ooscript::FunctionSpec;
 
 // Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
-namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-namespace {
-static inline Value      OOJSFVAL(jsval v)        { Value r; std::memcpy(&r, &v, sizeof r); return r; }
-} // namespace
 
 
 namespace {
-static JSObject *sShipGroupPrototype;
+static ooscript::Object sShipGroupPrototype;
 } // namespace
 
 
@@ -102,29 +75,18 @@ namespace {
 static bool ShipGroupSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
 } // namespace
 namespace {
-static bool ShipGroupConstruct(Context cx, CallArgs &oojsArgs);
+static bool ShipGroupConstruct(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 // Methods
 namespace {
-static bool ShipGroupAddShip(Context cx, CallArgs &oojsArgs);
+static bool ShipGroupAddShip(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool ShipGroupRemoveShip(Context cx, CallArgs &oojsArgs);
+static bool ShipGroupRemoveShip(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 namespace {
-static bool ShipGroupContainsShip(Context cx, CallArgs &oojsArgs);
-} // namespace
-
-
-// Adapts the shared jsapi finalizer (OOJavaScriptEngine.m) to the façade's FinalizeHook
-// signature; the finalizer itself is untouched, shared plumbing outside this bead's scope
-// (see OOJSSoundSource.mm's SoundSourceFinalize).
-namespace {
-static void ShipGroupFinalize(Context cx, Object obj)
-{
-	OOJSObjectWrapperFinalize(OOJSRCX(cx), OOJSROBJ(obj));
-}
+static bool ShipGroupContainsShip(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 
@@ -139,27 +101,14 @@ static ClassDef sShipGroupClass =
 	ShipGroupGetProperty,	// getProperty
 	ShipGroupSetProperty,	// setProperty
 	nullptr,				// enumerate (engine default: EnumerateStub)
-	nullptr,				// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,				// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,				// resolve (engine default: ResolveStub)
 	nullptr,				// convert (engine default: ConvertStub)
-	ShipGroupFinalize,		// finalize
+	OOJSObjectWrapperFinalize,		// finalize
 	nullptr,				// call
 	nullptr,				// construct
 	nullptr,				// backend: owned by the façade backend, must start null
 };
-} // namespace
-
-
-// The engine's own JSClass* for sShipGroupClass, for the not-yet-retargeted plumbing
-// (DEFINE_JS_OBJECT_GETTER's OOJSObjectGetterImplPRIVATE) that still takes one; see the
-// file-top comment and OOJSSoundSource.mm's RawSoundSourceClass(). Valid only after
-// InitOOJSShipGroup() has called ooscript::initClass(), which is the only thing that
-// attaches sShipGroupClass.backend.
-namespace {
-static inline JSClass *RawShipGroupClass(void)
-{
-	return reinterpret_cast<JSClass*>(sShipGroupClass.backend);
-}
 } // namespace
 
 
@@ -189,9 +138,9 @@ static PropertySpec sShipGroupProperties[] =
 // A raw jsapi mirror of sShipGroupProperties, used only for the two bad-property error
 // reporters in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are
 // outside this bead's scope (shared across every binding file) and still take a
-// JSPropertySpec*, not ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+// ooscript::PropertySpec*, not ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
 namespace {
-static JSPropertySpec sShipGroupPropertiesRaw[] =
+static ooscript::PropertySpec sShipGroupPropertiesRaw[] =
 {
 	// JS name					ID							flags
 	{ "count",					kShipGroup_count,			OOJS_PROP_READONLY_CB },
@@ -203,21 +152,11 @@ static JSPropertySpec sShipGroupPropertiesRaw[] =
 } // namespace
 
 
-// Adapts the shared jsapi OOJSObjectWrapperToString (OOJavaScriptEngine.m) to the façade's
-// NativeFn signature, the way OOJSSoundSource.mm's SoundSourceToString does.
-namespace {
-static bool ShipGroupToString(Context cx, CallArgs &oojsArgs)
-{
-	return OOJSObjectWrapperToString(OOJSRCX(cx), oojsArgs.count(), OOJSRVAL(oojsArgs.rawVp()));
-}
-} // namespace
-
-
 namespace {
 static FunctionSpec sShipGroupMethods[] =
 {
 	// JS name					Function					min args	flags
-	{ "toString",				ShipGroupToString,			0,			0 },
+	{ "toString",				OOJSObjectWrapperToString,			0,			0 },
 	{ "addShip",				ShipGroupAddShip,			1,			0 },
 	{ "containsShip",			ShipGroupContainsShip,		1,			0 },
 	{ "removeShip",				ShipGroupRemoveShip,		1,			0 },
@@ -227,23 +166,22 @@ static FunctionSpec sShipGroupMethods[] =
 
 
 // Equivalent of DEFINE_JS_OBJECT_GETTER(JSShipGroupGetShipGroup, &sShipGroupClass,
-// sShipGroupPrototype, OOShipGroup), hand-written because the macro (and the shared
-// OOJSObjectGetterImplPRIVATE() helper it expands to) still take the engine's own JSClass*
-// (see the file-top comment and OOJSSoundSource.mm's JSSoundSourceGetSoundSource).
+// sShipGroupPrototype, OOShipGroup), kept hand-written (see the file-top comment and
+// OOJSSoundSource.mm's JSSoundSourceGetSoundSource).
 namespace {
 #ifndef NDEBUG
-static BOOL JSShipGroupGetShipGroup(JSContext *context, JSObject *inObject, OOShipGroup **outObject)  GCC_ATTR((unused));
-static BOOL JSShipGroupGetShipGroup(JSContext *context, JSObject *inObject, OOShipGroup **outObject)
+static BOOL JSShipGroupGetShipGroup(ooscript::Context context, ooscript::Object inObject, OOShipGroup **outObject)  GCC_ATTR((unused));
+static BOOL JSShipGroupGetShipGroup(ooscript::Context context, ooscript::Object inObject, OOShipGroup **outObject)
 {
 	NSCParameterAssert(outObject != NULL);
 	static Class cls = Nil;
 	if (EXPECT_NOT(cls == Nil))  cls = [OOShipGroup class];
-	return OOJSObjectGetterImplPRIVATE(context, inObject, RawShipGroupClass(), cls, "JSShipGroupGetShipGroup", (id *)outObject);
+	return OOJSObjectGetterImplPRIVATE(context, inObject, &sShipGroupClass, cls, "JSShipGroupGetShipGroup", (id *)outObject);
 }
 #else
-OOINLINE BOOL JSShipGroupGetShipGroup(JSContext *context, JSObject *inObject, OOShipGroup **outObject)
+OOINLINE BOOL JSShipGroupGetShipGroup(ooscript::Context context, ooscript::Object inObject, OOShipGroup **outObject)
 {
-	return OOJSObjectGetterImplPRIVATE(context, inObject, RawShipGroupClass(), (id *)outObject);
+	return OOJSObjectGetterImplPRIVATE(context, inObject, &sShipGroupClass, (id *)outObject);
 }
 #endif
 } // namespace
@@ -251,13 +189,13 @@ OOINLINE BOOL JSShipGroupGetShipGroup(JSContext *context, JSObject *inObject, OO
 
 // *** Public ***
 
-void InitOOJSShipGroup(JSContext *context, JSObject *global)
+void InitOOJSShipGroup(ooscript::Context context, ooscript::Object global)
 {
-	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sShipGroupClass,
+	Object proto = ooscript::initClass((context), (global), nullptr, &sShipGroupClass,
 										ShipGroupConstruct, 0, sShipGroupProperties, sShipGroupMethods,
 										nullptr, nullptr);
-	sShipGroupPrototype = OOJSROBJ(proto);
-	OOJSRegisterObjectConverter(RawShipGroupClass(), OOJSBasicPrivateObjectConverter);
+	sShipGroupPrototype = (proto);
+	OOJSRegisterObjectConverter(&sShipGroupClass, OOJSBasicPrivateObjectConverter);
 }
 
 
@@ -266,8 +204,8 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 
 	OOJS_NATIVE_ENTER(context)
 
@@ -296,11 +234,11 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 			return ooscript::newNumberValue(cx, [group count], value);
 			
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sShipGroupPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sShipGroupPropertiesRaw);
 			return NO;
 	}
 	
-	*value = OOJSFVAL(OOJSValueFromNativeObject(context, result));
+	*value = (OOJSValueFromNativeObject(context, result));
 	return YES;
 	
 	OOJS_NATIVE_EXIT
@@ -313,8 +251,8 @@ static bool ShipGroupSetProperty(Context cx, Object obj, PropertyId propID, bool
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
 
 	OOJS_NATIVE_ENTER(context)
 
@@ -326,7 +264,7 @@ static bool ShipGroupSetProperty(Context cx, Object obj, PropertyId propID, bool
 	switch (ooscript::idToInt32(propID))
 	{
 		case kShipGroup_leader:
-			shipValue = OOJSNativeObjectOfClassFromJSValue(context, *OOJSRVAL(value), [ShipEntity class]);
+			shipValue = OOJSNativeObjectOfClassFromJSValue(context, *(value), [ShipEntity class]);
 			if (shipValue != nil || ooscript::isNull(*value))
 			{
 				[group setLeader:shipValue];
@@ -335,16 +273,16 @@ static bool ShipGroupSetProperty(Context cx, Object obj, PropertyId propID, bool
 			break;
 			
 		case kShipGroup_name:
-			[group setName:OOStringFromJSValueEvenIfNull(context, *OOJSRVAL(value))];
+			[group setName:OOStringFromJSValueEvenIfNull(context, *(value))];
 			return YES;
 			break;
 			
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sShipGroupPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sShipGroupPropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sShipGroupPropertiesRaw, *OOJSRVAL(value));
+	OOJSReportBadPropertyValue(context, thisObj, (propID), sShipGroupPropertiesRaw, *(value));
 	return NO;
 	
 	OOJS_NATIVE_EXIT
@@ -354,11 +292,8 @@ static bool ShipGroupSetProperty(Context cx, Object obj, PropertyId propID, bool
 
 // new ShipGroup([name : String [, leader : Ship]]) : ShipGroup
 namespace {
-static bool ShipGroupConstruct(Context cx, CallArgs &oojsArgs)
+static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -371,9 +306,9 @@ static bool ShipGroupConstruct(Context cx, CallArgs &oojsArgs)
 	NSString				*name = nil;
 	ShipEntity				*leader = nil;
 	
-	if (argc >= 1)
+	if (oojsArgs.count() >= 1)
 	{
-		if (!JSVAL_IS_STRING(OOJS_ARGV[0]))
+		if (!ooscript::isString(OOJS_ARGV[0]))
 		{
 			OOJSReportBadArguments(context, nil, @"ShipGroup()", 1, OOJS_ARGV, @"Could not create ShipGroup", @"group name");
 			return NO;
@@ -381,10 +316,10 @@ static bool ShipGroupConstruct(Context cx, CallArgs &oojsArgs)
 		name = OOStringFromJSValue(context, OOJS_ARGV[0]);
 	}
 	
-	if (argc >= 2)
+	if (oojsArgs.count() >= 2)
 	{
 		leader = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[1], [ShipEntity class]);
-		if (leader == nil && !JSVAL_IS_NULL(OOJS_ARGV[1]))
+		if (leader == nil && !ooscript::isNull(OOJS_ARGV[1]))
 		{
 			OOJSReportBadArguments(context, nil, @"ShipGroup()", 1, OOJS_ARGV + 1, @"Could not create ShipGroup", @"ship");
 			return NO;
@@ -400,26 +335,26 @@ static bool ShipGroupConstruct(Context cx, CallArgs &oojsArgs)
 
 @implementation OOShipGroup (OOJavaScriptExtensions)
 
-- (jsval) oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
-	jsval					result = JSVAL_NULL;
+	ooscript::Value					result = ooscript::nullValue();
 	
 	if (_jsSelf == NULL)
 	{
-		_jsSelf = OOJSROBJ(ooscript::newObject(OOJSFCX(context), &sShipGroupClass, OOJSFOBJ(sShipGroupPrototype), nullptr));
+		_jsSelf = (ooscript::newObject((context), &sShipGroupClass, (sShipGroupPrototype), nullptr));
 		if (_jsSelf != NULL)
 		{
-			if (!ooscript::setPrivate(OOJSFCX(context), OOJSFOBJ(_jsSelf), [self retain]))  _jsSelf = NULL;
+			if (!ooscript::setPrivate((context), (_jsSelf), [self retain]))  _jsSelf = NULL;
 		}
 	}
 	
-	if (_jsSelf != NULL)  result = OBJECT_TO_JSVAL(_jsSelf);
+	if (_jsSelf != NULL)  result = ooscript::objectValue(_jsSelf);
 	
 	return result;
 }
 
 
-- (void) oo_clearJSSelf:(JSObject *)selfVal
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal
 {
 	if (_jsSelf == selfVal)  _jsSelf = NULL;
 }
@@ -432,11 +367,8 @@ static bool ShipGroupConstruct(Context cx, CallArgs &oojsArgs)
 
 // addShip(ship : Ship)
 namespace {
-static bool ShipGroupAddShip(Context cx, CallArgs &oojsArgs)
+static bool ShipGroupAddShip(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -446,12 +378,12 @@ static bool ShipGroupAddShip(Context cx, CallArgs &oojsArgs)
 	
 	if (EXPECT_NOT(!JSShipGroupGetShipGroup(context, OOJS_THIS, &thisGroup)))  return NO;
 	
-	if (argc > 0)  ship = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [ShipEntity class]);
+	if (oojsArgs.count() > 0)  ship = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [ShipEntity class]);
 	if (ship == nil)
 	{
-		if (argc > 0 && JSVAL_IS_NULL(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
+		if (oojsArgs.count() > 0 && ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
 		
-		OOJSReportBadArguments(context, @"ShipGroup", @"addShip", MIN(argc, 1U), OOJS_ARGV, nil, @"ship");
+		OOJSReportBadArguments(context, @"ShipGroup", @"addShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"ship");
 		return NO;
 	}
 	
@@ -508,11 +440,8 @@ static bool ShipGroupAddShip(Context cx, CallArgs &oojsArgs)
 
 // removeShip(ship : Ship)
 namespace {
-static bool ShipGroupRemoveShip(Context cx, CallArgs &oojsArgs)
+static bool ShipGroupRemoveShip(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -521,12 +450,12 @@ static bool ShipGroupRemoveShip(Context cx, CallArgs &oojsArgs)
 	
 	if (EXPECT_NOT(!JSShipGroupGetShipGroup(context, OOJS_THIS, &thisGroup)))  return NO;
 	
-	if (argc > 0)  ship = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [ShipEntity class]);
+	if (oojsArgs.count() > 0)  ship = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [ShipEntity class]);
 	if (ship == nil)
 	{
-		if (argc > 0 && JSVAL_IS_NULL(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
+		if (oojsArgs.count() > 0 && ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
 		
-		OOJSReportBadArguments(context, @"ShipGroup", @"removeShip", MIN(argc, 1U), OOJS_ARGV, nil, @"ship");
+		OOJSReportBadArguments(context, @"ShipGroup", @"removeShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"ship");
 		return NO;
 	}
 	
@@ -539,11 +468,8 @@ static bool ShipGroupRemoveShip(Context cx, CallArgs &oojsArgs)
 
 // containsShip(ship : Ship) : Boolean
 namespace {
-static bool ShipGroupContainsShip(Context cx, CallArgs &oojsArgs)
+static bool ShipGroupContainsShip(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 
 	OOJS_NATIVE_ENTER(context)
 	
@@ -552,12 +478,12 @@ static bool ShipGroupContainsShip(Context cx, CallArgs &oojsArgs)
 	
 	if (EXPECT_NOT(!JSShipGroupGetShipGroup(context, OOJS_THIS, &thisGroup)))  return NO;
 	
-	if (argc > 0)  ship = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [ShipEntity class]);
+	if (oojsArgs.count() > 0)  ship = OOJSNativeObjectOfClassFromJSValue(context, OOJS_ARGV[0], [ShipEntity class]);
 	if (ship == nil)
 	{
-		if (argc > 0 && JSVAL_IS_NULL(OOJS_ARGV[0]))  OOJS_RETURN_BOOL(NO); // OK, return false for null ship.
+		if (oojsArgs.count() > 0 && ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_BOOL(NO); // OK, return false for null ship.
 		
-		OOJSReportBadArguments(context, @"ShipGroup", @"containsShip", MIN(argc, 1U), OOJS_ARGV, nil, @"ship");
+		OOJSReportBadArguments(context, @"ShipGroup", @"containsShip", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"ship");
 		return NO;
 	}
 	

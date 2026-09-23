@@ -1279,7 +1279,7 @@ static void SyntaxIssue(OOStringExpansionContext *context, const char *function,
 				because we don't want to start throwing exceptions when the old
 				expander didn't.
 			*/
-			JSContext *jsc = OOJSAcquireContext();
+			ooscript::Context jsc = OOJSAcquireContext();
 			OOJSReportWarningWithArguments(jsc, format, args);
 			OOJSRelinquishContext(jsc);
 		}

@@ -25,8 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
-
+#include "ooscript/JSEngine.hpp"
 @class StationEntity;
 
 
@@ -34,7 +33,7 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSStation(JSContext *context, JSObject *global);
+void InitOOJSStation(ooscript::Context context, ooscript::Object global);
 
 #ifdef __cplusplus
 }

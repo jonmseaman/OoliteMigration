@@ -23,17 +23,16 @@ MA 02110-1301, USA.
 
 */
 
-#include <jsdbgapi.h>
 #import "OOJSSpecialFunctions.h"
 
 
-static JSBool SpecialJSWarning(JSContext *context, uintN argc, jsval *vp);
+static bool SpecialJSWarning(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 #ifndef NDEBUG
-static JSBool SpecialMarkConsoleEntryPoint(JSContext *context, uintN argc, jsval *vp);
+static bool SpecialMarkConsoleEntryPoint(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 #endif
 
 
-static JSFunctionSpec sSpecialFunctionsMethods[] =
+static ooscript::FunctionSpec sSpecialFunctionsMethods[] =
 {
 	// JS name					Function						min args
 	{ "jsWarning",				SpecialJSWarning,				1 },
@@ -44,12 +43,12 @@ static JSFunctionSpec sSpecialFunctionsMethods[] =
 };
 
 
-void InitOOJSSpecialFunctions(JSContext *context, JSObject *global)
+void InitOOJSSpecialFunctions(ooscript::Context context, ooscript::Object global)
 {
 }
 
 
-OOJSValue *JSSpecialFunctionsObjectWrapper(JSContext *context)
+OOJSValue *JSSpecialFunctionsObjectWrapper(ooscript::Context context)
 {
 	/*
 		Special object is created on the fly so it can be GCed (the debug
@@ -58,28 +57,28 @@ OOJSValue *JSSpecialFunctionsObjectWrapper(JSContext *context)
 		-- Ahruman 2011-03-30
 	*/
 	
-	JSObject *special = NULL;
+	ooscript::Object special = NULL;
 	OOJSAddGCObjectRoot(context, &special, "OOJSSpecialFunctions");
 	
-	special = JS_NewObject(context, NULL, NULL, NULL);
-	JS_DefineFunctions(context, special, sSpecialFunctionsMethods);
-	JS_FreezeObject(context, special);
+	special = ooscript::newObject(context, NULL, NULL, NULL);
+	ooscript::defineFunctions(context, special, sSpecialFunctionsMethods);
+	ooscript::freezeObject(context, special);
 	
 	OOJSValue *result = [OOJSValue valueWithJSObject:special inContext:context];
 	
-	JS_RemoveObjectRoot(context, &special);
+	ooscript::removeObjectRoot(context, &special);
 	
 	return result;
 }
 
 
-static JSBool SpecialJSWarning(JSContext *context, uintN argc, jsval *vp)
+static bool SpecialJSWarning(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	OOJS_PROFILE_ENTER	// These functions are exception-safe
 	
-	if (EXPECT_NOT(argc < 1))
+	if (EXPECT_NOT(oojsArgs.count() < 1))
 	{
-		OOJSReportBadArguments(context, @"special", @"jsWarning", argc, OOJS_ARGV, nil, @"string");
+		OOJSReportBadArguments(context, @"special", @"jsWarning", oojsArgs.count(), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
 	
@@ -94,12 +93,12 @@ static JSBool SpecialJSWarning(JSContext *context, uintN argc, jsval *vp)
 
 
 #ifndef NDEBUG
-static JSBool SpecialMarkConsoleEntryPoint(JSContext *context, uintN argc, jsval *vp)
+static bool SpecialMarkConsoleEntryPoint(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
 	// First stack frame will be in eval() in console.script.evaluate(), unless someone is playing silly buggers.
 	
-	JSStackFrame *frame = NULL;
-	if (JS_FrameIterator(context, &frame) != NULL)
+	ooscript::StackFrame frame = NULL;
+	if (ooscript::frameIterator(context, &frame) != NULL)
 	{
 		OOJSMarkConsoleEvalLocation(context, frame);
 	}

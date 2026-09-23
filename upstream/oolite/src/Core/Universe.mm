@@ -1055,10 +1055,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 		[player setWormhole:wormhole];
 		[player addScannedWormhole:wormhole];
-		JSContext *context = OOJSAcquireContext();
+		ooscript::Context context = OOJSAcquireContext();
 		[player setJumpCause:@"carried"];
 		[player setPreviousSystemID:[player systemID]];
-		ShipScriptEvent(context, player, "shipWillEnterWitchspace", STRING_TO_JSVAL(JS_InternString(context, [[player jumpCause] UTF8String])), INT_TO_JSVAL(dest));
+		ShipScriptEvent(context, player, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [[player jumpCause] UTF8String])), ooscript::int32Value(dest));
 		OOJSRelinquishContext(context);
 	
 		[self allShipsDoScriptEvent:OOJSID("playerWillEnterWitchspace") andReactToAIMessage:@"PLAYER WITCHSPACE"];
@@ -1312,7 +1312,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	NSString *populator = [systeminfo oo_stringForKey:@"populator" defaultValue:@"interstellarSpaceWillPopulate"];
 	[system_repopulator release];
 	system_repopulator = [[systeminfo oo_stringForKey:@"repopulator" defaultValue:@"interstellarSpaceWillRepopulate"] retain];
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[PLAYER doWorldScriptEvent:OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
 	[self populateSystemFromDictionariesWithSun:nil andPlanet:nil];
@@ -1733,7 +1733,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[system_repopulator release];
 		system_repopulator = [[systeminfo oo_stringForKey:@"repopulator" defaultValue:(sunGoneNova)?@"novaSystemWillRepopulate":@"systemWillRepopulate"] retain];
 
-		JSContext *context = OOJSAcquireContext();
+		ooscript::Context context = OOJSAcquireContext();
 		[PLAYER doWorldScriptEvent:OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 		OOJSRelinquishContext(context);
 		[self populateSystemFromDictionariesWithSun:cachedSun andPlanet:cachedPlanet];
@@ -3912,18 +3912,18 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		OOJSScript *condScript = [self getConditionScript:condition_script];
 		if (condScript != nil) // should always be non-nil, but just in case
 		{
-			JSContext			*context = OOJSAcquireContext();
+			ooscript::Context context = OOJSAcquireContext();
 			BOOL OK;
-			JSBool allow_instantiation;
-			jsval result;
-			jsval args[] = { OOJSValueFromNativeObject(context, shipKey) };
+			bool allow_instantiation;
+			ooscript::Value result;
+			ooscript::Value args[] = { OOJSValueFromNativeObject(context, shipKey) };
 			
 			OK = [condScript callMethod:OOJSID("allowSpawnShip")
 						  inContext:context
 					  withArguments:args count:sizeof args / sizeof *args
 							 result:&result];
 
-			if (OK) OK = JS_ValueToBoolean(context, result, &allow_instantiation);
+			if (OK) OK = ooscript::valueToBoolean(context, result, &allow_instantiation);
 			
 			OOJSRelinquishContext(context);
 
@@ -6794,7 +6794,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	[self setViewDirection:VIEW_GUI_DISPLAY];
 	if (viewDirection != vd) {
 		PlayerEntity	*player = PLAYER;
-		JSContext *context = OOJSAcquireContext();
+		ooscript::Context context = OOJSAcquireContext();
 		ShipScriptEvent(context, player, "viewDirectionChanged", OOJSValueFromViewID(context, viewDirection), OOJSValueFromViewID(context, vd));
 		OOJSRelinquishContext(context);
 	}
@@ -7097,7 +7097,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	{
 		return; // no need to be adding ships as this is not a "real" game
 	}
-	JSContext			*context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[PLAYER doWorldScriptEvent:OOJSIDFromString(system_repopulator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
 	next_repopulation = SYSTEM_REPOPULATION_INTERVAL;
@@ -7352,21 +7352,21 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 		 * pause when it happens. Doing it here is better than doing
 		 * it in the middle of the update when it might slow a
 		 * function into the timelimiter through no fault of its
-		 * own. JS_MaybeGC will only run a GC when it's
+		 * own. ooscript::maybeGC will only run a GC when it's
 		 * necessary. Merely checking is not significant in terms of
 		 * time. - CIM: 4/8/2013
 		 */
 		update_stage = @"JS Garbage Collection";
 		OOLog(@"universe.profile.update", @"%@", update_stage); 
 #ifndef NDEBUG
-		JSContext *context = OOJSAcquireContext(); 
-		uint32 gcbytes1 = JS_GetGCParameter(JS_GetRuntime(context),JSGC_BYTES);
+		ooscript::Context context = OOJSAcquireContext(); 
+		uint32_t gcbytes1 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
 		OOJSRelinquishContext(context);
 #endif
 		[[OOJavaScriptEngine sharedEngine] garbageCollectionOpportunity:NO];
 #ifndef NDEBUG
 		context = OOJSAcquireContext(); 
-		uint32 gcbytes2 = JS_GetGCParameter(JS_GetRuntime(context),JSGC_BYTES);
+		uint32_t gcbytes2 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
 		OOJSRelinquishContext(context);
 		if (gcbytes2 < gcbytes1)
 		{
@@ -9130,18 +9130,18 @@ static void VerifyDesc(NSString *key, id desc)
 				OOJSScript *condScript = [self getConditionScript:condition_script];
 				if (condScript != nil) // should always be non-nil, but just in case
 				{
-					JSContext			*context = OOJSAcquireContext();
+					ooscript::Context context = OOJSAcquireContext();
 					BOOL OK;
-					JSBool allow_purchase;
-					jsval result;
-					jsval args[] = { OOJSValueFromNativeObject(context, key) };
+					bool allow_purchase;
+					ooscript::Value result;
+					ooscript::Value args[] = { OOJSValueFromNativeObject(context, key) };
 			
 					OK = [condScript callMethod:OOJSID("allowOfferShip")
 												inContext:context
 										withArguments:args count:sizeof args / sizeof *args
 													 result:&result];
 
-					if (OK) OK = JS_ValueToBoolean(context, result, &allow_purchase);
+					if (OK) OK = ooscript::valueToBoolean(context, result, &allow_purchase);
 			
 					OOJSRelinquishContext(context);
 
@@ -9284,18 +9284,18 @@ static void VerifyDesc(NSString *key, id desc)
 						OOJSScript *condScript = [self getConditionScript:condition_script];
 						if (condScript != nil) // should always be non-nil, but just in case
 						{
-							JSContext			*JScontext = OOJSAcquireContext();
+							ooscript::Context JScontext = OOJSAcquireContext();
 							BOOL OK;
-							JSBool allow_addition;
-							jsval result;
-							jsval args[] = { OOJSValueFromNativeObject(JScontext, equipmentKey) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromNativeObject(JScontext, @"newShip")};
+							bool allow_addition;
+							ooscript::Value result;
+							ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, equipmentKey) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromNativeObject(JScontext, @"newShip")};
 				
 							OK = [condScript callMethod:OOJSID("allowAwardEquipment")
 																inContext:JScontext
 														withArguments:args count:sizeof args / sizeof *args
 																	 result:&result];
 
-							if (OK) OK = JS_ValueToBoolean(JScontext, result, &allow_addition);
+							if (OK) OK = ooscript::valueToBoolean(JScontext, result, &allow_addition);
 				
 							OOJSRelinquishContext(JScontext);
 
@@ -9911,7 +9911,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 }
 
 
-- (void) allShipsDoScriptEvent:(jsid)event andReactToAIMessage:(NSString *)message
+- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message
 {
 	int i;
 	int ent_count = n_entities;

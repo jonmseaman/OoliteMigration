@@ -25,7 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
-#include <jsapi.h>
+#include "ooscript/JSEngine.hpp"
 #import "OOFlasherEntity.h"
 
 
@@ -33,7 +33,7 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSFlasher(JSContext *context, JSObject *global);
+void InitOOJSFlasher(ooscript::Context context, ooscript::Object global);
 
 #ifdef __cplusplus
 }
@@ -41,7 +41,7 @@ void InitOOJSFlasher(JSContext *context, JSObject *global);
 
 @interface OOFlasherEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype;
+- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
 - (NSString *) oo_jsClassName;
 - (BOOL) isVisibleToScripts;
 

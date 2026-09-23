@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 
 
 #ifdef __cplusplus
@@ -94,7 +95,7 @@ MA 02110-1301, USA.
 
 #define OOJS_NATIVE_ENTER(cx) \
 	{ \
-		JSContext *oojsNativeContext = (cx); \
+		ooscript::Context oojsNativeContext = (cx); \
 		OOJS_PROFILE_ENTER_FOR_NATIVE
 
 #define OOJS_NATIVE_EXIT \
@@ -105,7 +106,7 @@ MA 02110-1301, USA.
 	}
 
 
-OOJS_EXTERN_C void OOJSReportWrappedException(JSContext *context, id exception);
+OOJS_EXTERN_C void OOJSReportWrappedException(ooscript::Context context, id exception);
 
 
 #ifndef NDEBUG
@@ -116,27 +117,26 @@ OOJS_EXTERN_C void OOJSUnreachable(const char *function, const char *file, unsig
 
 
 #define OOJS_PROFILE_EXIT		OOJS_PROFILE_EXIT_VAL(0)
-#define OOJS_PROFILE_EXIT_JSVAL	OOJS_PROFILE_EXIT_VAL(JSVAL_VOID)
+#define OOJS_PROFILE_EXIT_JSVAL	OOJS_PROFILE_EXIT_VAL(ooscript::undefinedValue())
 
 
 /*
 	OOJS_BEGIN_FULL_NATIVE() and OOJS_END_FULL_NATIVE
 	These macros are used to bracket sections of native Oolite code within JS
 	callbacks which may take a long time. Thet do two things: pause the
-	time limiter, and (in JS_THREADSAFE builds) suspend the current JS context
+	time limiter, and (in thread-safe engine builds) suspend the current JS context
 	request.
 	
 	These macros must be used in balanced pairs. They introduce a scope.
 	
-	JSAPI functions may not be used, directly or indirectily, between these
+	Script engine functions may not be used, directly or indirectily, between these
 	macros unless explicitly opening a request first.
 */
-#if JS_THREADSAFE
 #define OOJS_BEGIN_FULL_NATIVE(context) \
 	{ \
 		OOJSPauseTimeLimiter(); \
-		JSContext *oojsRequestContext = (context); \
-		jsrefcount oojsRequestRefCount = JS_SuspendRequest(oojsRequestContext); \
+		ooscript::Context oojsRequestContext = (context); \
+		unsigned oojsRequestRefCount = ooscript::suspendRequest(oojsRequestContext); \
 		@try \
 		{
 
@@ -144,26 +144,10 @@ OOJS_EXTERN_C void OOJSUnreachable(const char *function, const char *file, unsig
 		} \
 		@finally \
 		{ \
-			JS_ResumeRequest(oojsRequestContext, oojsRequestRefCount); \
+			ooscript::resumeRequest(oojsRequestContext, oojsRequestRefCount); \
 			OOJSResumeTimeLimiter(); \
 		} \
 	}
-#else
-#define OOJS_BEGIN_FULL_NATIVE(context) \
-	{ \
-		(void)(context); \
-		OOJSPauseTimeLimiter(); \
-		@try \
-		{
-
-#define OOJS_END_FULL_NATIVE \
-		} \
-		@finally \
-		{ \
-			OOJSResumeTimeLimiter(); \
-		} \
-	}
-#endif
 
 
 
@@ -181,7 +165,7 @@ typedef struct OOJSProfileStackFrame OOJSProfileStackFrame;
 struct OOJSProfileStackFrame
 {
 	OOJSProfileStackFrame	*back;			// Stack link
-	const void				*key;			// Key to look up profile entries. May be any pointer; currently const char * for native frames and JSFunction * for JS frames.
+	const void				*key;			// Key to look up profile entries. May be any pointer; currently const char * for native frames and ooscript::Function  for JS frames.
 	const char				*function;		// Name of function, for native frames.
 	OOHighResTimeValue		startTime;		// Time frame was entered.
 	OOTimeDelta				subTime;		// Time spent in subroutine calls.

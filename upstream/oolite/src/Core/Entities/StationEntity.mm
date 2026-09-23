@@ -521,14 +521,14 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			docking = [sub canAcceptShipForDocking:ship];
 			if ([docking isEqualToString:@"DOCK_CLOSED"])
 			{
-				JSContext	*context = OOJSAcquireContext();
-				jsval		rval = JSVAL_VOID;
-				jsval		args[] = { OOJSValueFromNativeObject(context, sub),
+				ooscript::Context context = OOJSAcquireContext();
+				ooscript::Value		rval = ooscript::undefinedValue();
+				ooscript::Value		args[] = { OOJSValueFromNativeObject(context, sub),
 													 OOJSValueFromNativeObject(context, ship) };
-				JSBool tempreject = NO;
+				bool tempreject = NO;
 
 				BOOL OK = [[self script] callMethod:OOJSID("willOpenDockingPortFor") inContext:context withArguments:args count:2 result:&rval];
-				if (OK)  OK = JS_ValueToBoolean(context, rval, &tempreject);
+				if (OK)  OK = ooscript::valueToBoolean(context, rval, &tempreject);
 				if (!OK)  tempreject = NO; // default to permreject
 				if (tempreject)
 				{
@@ -1392,7 +1392,7 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		alertLevel = level;
 		if (signallingScript)
 		{
-			ShipScriptEventNoCx(self, "alertConditionChanged", INT_TO_JSVAL(level), INT_TO_JSVAL(oldLevel));
+			ShipScriptEventNoCx(self, "alertConditionChanged", ooscript::int32Value(level), ooscript::int32Value(oldLevel));
 		}
 		switch (level)
 		{
@@ -2192,14 +2192,14 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				NSString *docking = [sub canAcceptShipForDocking:other];
 				if ([docking isEqualToString:@"DOCK_CLOSED"])
 				{
-					JSContext	*context = OOJSAcquireContext();
-					jsval		rval = JSVAL_VOID;
-					jsval		args[] = { OOJSValueFromNativeObject(context, sub),
+					ooscript::Context context = OOJSAcquireContext();
+					ooscript::Value		rval = ooscript::undefinedValue();
+					ooscript::Value		args[] = { OOJSValueFromNativeObject(context, sub),
 														 OOJSValueFromNativeObject(context, other) };
-					JSBool tempreject = NO;
+					bool tempreject = NO;
 
 					BOOL OK = [[self script] callMethod:OOJSID("willOpenDockingPortFor") inContext:context withArguments:args count:2 result:&rval];
-					if (OK)  OK = JS_ValueToBoolean(context, rval, &tempreject);
+					if (OK)  OK = ooscript::valueToBoolean(context, rval, &tempreject);
 					if (!OK)  tempreject = NO; // default to permreject
 					if (tempreject)
 					{

@@ -35,24 +35,13 @@ MA 02110-1301, USA.
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
-	oo-sdz, the sweep exemplar): the class dispatch table becomes a static ooscript::ClassDef
-	(the stub hooks are nullptr), InitClass becomes ooscript::initClass, native methods and
-	class hooks take the façade's hook signature (Context/Object/PropertyId/Value pointer/
-	CallArgs reference), and the directly spelled numeric-conversion calls (NewNumberValue,
-	ValueToBoolean) become their ooscript:: façade equivalents. A tiny shim at the top of each
-	native method recovers the old JSContext pointer, uintN and jsval pointer locals so the
-	OOJS_* argument-marshalling macros and the rest of each function body are UNCHANGED,
-	because ooscript::Value/Object/PropertyId are byte copies of jsval, JSObject*, and jsid
-	(JSEngine.hpp's own contract) and views onto them are therefore reinterpret_cast, not
-	conversion. `this` is renamed to `thisObj` because it is a reserved word once this file
-	compiles as Objective-C++ (ADR-0001).
-
-	Dock is registered as a Ship subclass and object converter with the ENGINE's own JSClass*
-	(OOJSRegisterSubclass/OOJSRegisterObjectConverter and getJSClass:andPrototype: are shared,
-	not-yet-retargeted plumbing that still speaks jsapi's JSClass); ClassDef's `backend` slot
-	is filled in by ooscript::initClass() before InitOOJSDock() makes those calls, so
-	RawDockClass() below is a reinterpret_cast onto already-attached storage, not a conversion
-	(see OOJSVector.mm/OOJSStation.mm for the same pattern).
+	oo-sdz, the sweep exemplar): the class dispatch table is a static ooscript::ClassDef (the
+	stub hooks are nullptr), native methods and class hooks take the façade's hook signatures
+	(Context/Object/PropertyId/Value pointer/CallArgs reference) directly, and the shared
+	OOJavaScriptEngine helpers (OOJSObjectWrapperFinalize, OOJSUnconstructableConstruct,
+	OOJSRegisterSubclass, OOJSRegisterObjectConverter) are used as the class's hooks and
+	registrations with &sDockClass itself. `this` is renamed to `thisObj` because it is a
+	reserved word once this file compiles as Objective-C++ (ADR-0001).
 */
 namespace ooscript { }
 using ooscript::Context;
@@ -66,40 +55,19 @@ using ooscript::PropertyFlag;
 using ooscript::PropertySpec;
 using ooscript::FunctionSpec;
 
-// Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
 namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsval     *OOJSRVAL(Value *v)       { return reinterpret_cast<jsval*>(v); }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-
-
-namespace {
-static JSObject		*sDockPrototype;
+static ooscript::Object sDockPrototype;
 } // namespace
 
 namespace {
-static BOOL JSDockGetDockEntity(JSContext *context, JSObject *stationObj, DockEntity **outEntity);
+static BOOL JSDockGetDockEntity(ooscript::Context context, ooscript::Object stationObj, DockEntity **outEntity);
 } // namespace
 namespace {
-static BOOL JSDockGetShipEntity(JSContext *context, JSObject *shipObj, ShipEntity **outEntity);
+static BOOL JSDockGetShipEntity(ooscript::Context context, ooscript::Object shipObj, ShipEntity **outEntity);
 } // namespace
 
 namespace {
-static bool DockIsQueued(Context cx, CallArgs &oojsArgs);
+static bool DockIsQueued(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 
@@ -108,27 +76,6 @@ static bool DockGetProperty(Context cx, Object obj, PropertyId propID, Value *va
 } // namespace
 namespace {
 static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
-} // namespace
-
-
-// Adapts the shared jsapi finalizer (OOJavaScriptEngine.m) to the façade's FinalizeHook
-// signature; the finalizer itself is untouched, shared plumbing outside this bead's scope.
-namespace {
-static void DockFinalize(Context cx, Object obj)
-{
-	OOJSObjectWrapperFinalize(reinterpret_cast<JSContext*>(cx), reinterpret_cast<JSObject*>(obj));
-}
-} // namespace
-
-
-// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the façade's
-// NativeFn signature, so `new Dock()` keeps throwing "Dock cannot be used as a constructor."
-// as it did before retargeting (see OOJSStation.mm for the same pattern).
-namespace {
-static bool DockUnconstructableConstruct(Context cx, CallArgs &oojsArgs)
-{
-	return OOJSUnconstructableConstruct(reinterpret_cast<JSContext*>(cx), oojsArgs.count(), reinterpret_cast<jsval*>(oojsArgs.rawVp()));
-}
 } // namespace
 
 
@@ -143,26 +90,14 @@ static ClassDef sDockClass =
 	DockGetProperty,	// getProperty
 	DockSetProperty,	// setProperty
 	nullptr,			// enumerate (engine default: EnumerateStub)
-	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
-	DockFinalize,		// finalize
+	OOJSObjectWrapperFinalize,	// finalize
 	nullptr,			// call
 	nullptr,			// construct
 	nullptr,			// backend: owned by the façade backend, must start null
 };
-} // namespace
-
-
-// The engine's own JSClass* for sDockClass, for the not-yet-retargeted plumbing
-// (OOJSRegisterSubclass/OOJSRegisterObjectConverter, getJSClass:andPrototype:) that still
-// takes one; see OOJSStation.mm for the same pattern. Valid only after InitOOJSDock() has
-// called ooscript::initClass(), which is the only thing that attaches sDockClass.backend.
-namespace {
-static inline JSClass *RawDockClass(void)
-{
-	return reinterpret_cast<JSClass*>(sDockClass.backend);
-}
 } // namespace
 
 
@@ -191,12 +126,11 @@ static PropertySpec sDockProperties[] =
 } // namespace
 
 
-// A raw jsapi mirror of sDockProperties, used only for the two bad-property error reporters
-// in OOJavaScriptEngine.m (OOJSReportBadPropertySelector/Value): those helpers are outside
-// this bead's scope (shared across every binding file) and still take a JSPropertySpec*, not
-// ooscript::PropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+// A mirror of sDockProperties with the read-only/read-write flags the two bad-property error
+// reporters in OOJavaScriptEngine.mm (OOJSReportBadPropertySelector/Value) describe the
+// properties by (see OOJSVector.mm's sVectorPropertiesRaw).
 namespace {
-static JSPropertySpec sDockPropertiesRaw[] =
+static ooscript::PropertySpec sDockPropertiesRaw[] =
 {
 	{ "allowsDocking",				kDock_allowsDocking,			OOJS_PROP_READWRITE_CB },
 	{ "disallowedDockingCollides",				kDock_disallowedDockingCollides,			OOJS_PROP_READWRITE_CB },
@@ -218,17 +152,17 @@ static FunctionSpec sDockMethods[] =
 } // namespace
 
 
-void InitOOJSDock(JSContext *context, JSObject *global)
+void InitOOJSDock(ooscript::Context context, ooscript::Object global)
 {
-	Object proto = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), OOJSFOBJ(JSShipPrototype()), &sDockClass, DockUnconstructableConstruct, 0, sDockProperties, sDockMethods, nullptr, nullptr);
-	sDockPrototype = OOJSROBJ(proto);
-	OOJSRegisterObjectConverter(RawDockClass(), OOJSBasicPrivateObjectConverter);
-	OOJSRegisterSubclass(RawDockClass(), JSShipClass());
+	Object proto = ooscript::initClass((context), (global), (JSShipPrototype()), &sDockClass, OOJSUnconstructableConstruct, 0, sDockProperties, sDockMethods, nullptr, nullptr);
+	sDockPrototype = (proto);
+	OOJSRegisterObjectConverter(&sDockClass, OOJSBasicPrivateObjectConverter);
+	OOJSRegisterSubclass(&sDockClass, JSShipClass());
 }
 
 
 namespace {
-static BOOL JSDockGetDockEntity(JSContext *context, JSObject *dockObj, DockEntity **outEntity)
+static BOOL JSDockGetDockEntity(ooscript::Context context, ooscript::Object dockObj, DockEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -252,7 +186,7 @@ static BOOL JSDockGetDockEntity(JSContext *context, JSObject *dockObj, DockEntit
 
 
 namespace {
-static BOOL JSDockGetShipEntity(JSContext *context, JSObject *shipObj, ShipEntity **outEntity)
+static BOOL JSDockGetShipEntity(ooscript::Context context, ooscript::Object shipObj, ShipEntity **outEntity)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -277,9 +211,9 @@ static BOOL JSDockGetShipEntity(JSContext *context, JSObject *shipObj, ShipEntit
 
 @implementation DockEntity (OOJavaScriptExtensions)
 
-- (void)getJSClass:(JSClass **)outClass andPrototype:(JSObject **)outPrototype
+- (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype
 {
-	*outClass = RawDockClass();
+	*outClass = &sDockClass;
 	*outPrototype = sDockPrototype;
 }
 
@@ -297,16 +231,16 @@ static bool DockGetProperty(Context cx, Object obj, PropertyId propID, Value *va
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = (value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	DockEntity				*entity = nil;
 	
 	if (!JSDockGetDockEntity(context, thisObj, &entity))  return NO;
-	if (entity == nil)  { *value_raw = JSVAL_VOID; return YES; }
+	if (entity == nil)  { *value_raw = ooscript::undefinedValue(); return YES; }
 	
 	switch (ooscript::idToInt32(propID))
 	{
@@ -329,7 +263,7 @@ static bool DockGetProperty(Context cx, Object obj, PropertyId propID, Value *va
 			return ooscript::newNumberValue(cx, [entity countOfShipsInLaunchQueue], value);
 			
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sDockPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sDockPropertiesRaw);
 			return NO;
 	}
 	
@@ -343,9 +277,9 @@ static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool /*st
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = OOJSRVAL(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = (value);
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -382,11 +316,11 @@ static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool /*st
 			break;
 
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sDockPropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sDockPropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sDockPropertiesRaw, *value_raw);
+	OOJSReportBadPropertyValue(context, thisObj, (propID), sDockPropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT
@@ -397,11 +331,8 @@ static bool DockSetProperty(Context cx, Object obj, PropertyId propID, bool /*st
 // *** Methods ***
 
 namespace {
-static bool DockIsQueued(Context cx, CallArgs &oojsArgs)
+static bool DockIsQueued(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = OOJSRVAL(oojsArgs.rawVp());
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -409,13 +340,13 @@ static bool DockIsQueued(Context cx, CallArgs &oojsArgs)
 	DockEntity *dock = nil;
 
 	JSDockGetDockEntity(context, OOJS_THIS, &dock); 
-	if (argc == 0)
+	if (oojsArgs.count() == 0)
 	{
-		OOJSReportBadArguments(context, @"Dock", @"isQueued", MIN(argc, 1U), OOJS_ARGV, nil, @"ship");
+		OOJSReportBadArguments(context, @"Dock", @"isQueued", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"ship");
 		return NO;
 	}
 	ShipEntity *ship = nil;
-	JSDockGetShipEntity(context, JSVAL_TO_OBJECT(OOJS_ARGV[0]), &ship);
+	JSDockGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &ship);
 	if (ship != nil)
 	{
 		result = [dock shipIsInDockingQueue:ship];

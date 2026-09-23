@@ -35,26 +35,23 @@ MA 02110-1301, USA.
 extern "C" {
 #endif
 
-void InitOOJSEntity(JSContext *context, JSObject *global);
+void InitOOJSEntity(ooscript::Context context, ooscript::Object global);
 
-BOOL JSValueToEntity(JSContext *context, jsval value, Entity **outEntity);
+BOOL JSValueToEntity(ooscript::Context context, ooscript::Value value, Entity **outEntity);
 
-// gOOEntityJSClass (a plain JSClass) is retargeted onto the ooscript façade (JSEngine.hpp,
-// bead oo-oap): the class is now an ooscript::ClassDef owned by OOJSEntity.mm, and
-// JSEntityClass() reads the backend's own engine-side JSClass* off it, exactly as
-// OOJSSun.mm's RawSunClass() does for its own retargeted class. Declared as a real function
-// rather than OOINLINE because the façade type is not visible to plain-C/Objective-C callers
-// of this header.
-JSClass *JSEntityClass(void);
+// The Entity class is an ooscript::ClassDef owned by OOJSEntity.mm (bead oo-oap); JSEntityClass()
+// returns it. Declared as a real function rather than OOINLINE so the class definition stays
+// private to OOJSEntity.mm.
+ooscript::ClassDef *JSEntityClass(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-extern JSObject *gOOEntityJSPrototype;
+extern ooscript::Object gOOEntityJSPrototype;
 DEFINE_JS_OBJECT_GETTER(OOJSEntityGetEntity, JSEntityClass(), gOOEntityJSPrototype, Entity)
 
-OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
+OOINLINE ooscript::Object JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 
 
 /*	EntityFromArgumentList()
@@ -70,7 +67,7 @@ OOINLINE JSObject *JSEntityPrototype(void)  { return gOOEntityJSPrototype; }
 #ifdef __cplusplus
 extern "C" {
 #endif
-BOOL EntityFromArgumentList(JSContext *context, NSString *scriptClass, NSString *function, uintN argc, jsval *argv, Entity **outEntity, uintN *outConsumed);
+BOOL EntityFromArgumentList(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed);
 #ifdef __cplusplus
 }
 #endif

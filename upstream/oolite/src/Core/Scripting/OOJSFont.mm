@@ -37,8 +37,8 @@ SOFTWARE.
 	class of its own: the engine's DefineObject and DefineFunction entry points become
 	ooscript::defineObject and ooscript::defineFunction. This file has no class hooks, no
 	property table and no argument-marshalling beyond the OOJS_* macros (OOJS_NATIVE_ENTER,
-	OOJS_ARGV, OOJS_RETURN_DOUBLE), which are unchanged, byte-identical façade views as in
-	OOJSVector.mm. `this` is not used here, so no renaming is required, but the file is still
+	OOJS_ARGV, OOJS_RETURN_DOUBLE), which expand to the CallArgs accessors of the façade
+	native signature. `this` is not used here, so no renaming is required, but the file is still
 	compiled as Objective-C++ (ADR-0001) because it now includes JSEngine.hpp.
 */
 namespace ooscript { }
@@ -47,17 +47,8 @@ using ooscript::Object;
 using ooscript::CallArgs;
 using ooscript::PropertyFlag;
 
-// Byte-identical façade <-> jsapi views, local to this call site (see OOJSVector.mm).
 namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-
-
-namespace {
-static bool FontMeasureString(Context cx, CallArgs &oojsArgs);
+static bool FontMeasureString(ooscript::Context context, ooscript::CallArgs &oojsArgs);
 } // namespace
 
 
@@ -71,28 +62,24 @@ constexpr PropertyFlag kFontMethodFlags = PropertyFlag::Permanent | PropertyFlag
 
 // MARK: Public
 
-void InitOOJSFont(JSContext *context, JSObject *global)
+void InitOOJSFont(ooscript::Context context, ooscript::Object global)
 {
-	Object fontObject = ooscript::defineObject(OOJSFCX(context), OOJSFOBJ(global), "defaultFont", nullptr, nullptr, kFontObjectFlags);
-	ooscript::defineFunction(OOJSFCX(context), fontObject, "measureString", FontMeasureString, 1, kFontMethodFlags);
+	Object fontObject = ooscript::defineObject((context), (global), "defaultFont", nullptr, nullptr, kFontObjectFlags);
+	ooscript::defineFunction((context), fontObject, "measureString", FontMeasureString, 1, kFontMethodFlags);
 }
 
 
 // MARK: Methods
 
 namespace {
-static bool FontMeasureString(Context cx, CallArgs &oojsArgs)
+static bool FontMeasureString(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = reinterpret_cast<JSContext*>(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = reinterpret_cast<jsval*>(oojsArgs.rawVp());
-	
 	OOJS_NATIVE_ENTER(context)
 	
-	if (EXPECT_NOT(argc < 1) || JSVAL_IS_VOID(OOJS_ARGV[0]))
+	if (EXPECT_NOT(oojsArgs.count() < 1) || ooscript::isUndefined(OOJS_ARGV[0]))
 	{
-		jsval undefined = JSVAL_VOID;
-		OOJSReportBadArguments(context, nil, @"defaultFont.measureString", MIN(argc, 1U), &undefined, nil, @"string");
+		ooscript::Value undefined = ooscript::undefinedValue();
+		OOJSReportBadArguments(context, nil, @"defaultFont.measureString", MIN(oojsArgs.count(), 1U), &undefined, nil, @"string");
 		return NO;
 	}
 	

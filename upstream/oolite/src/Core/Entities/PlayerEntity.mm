@@ -762,8 +762,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	{
 		OOSystemID old = info_system_id;
 		info_system_id = sid;
-		JSContext *context = OOJSAcquireContext();
-		ShipScriptEvent(context, self, "infoSystemWillChange", INT_TO_JSVAL(info_system_id), INT_TO_JSVAL(old));
+		ooscript::Context context = OOJSAcquireContext();
+		ShipScriptEvent(context, self, "infoSystemWillChange", ooscript::int32Value(info_system_id), ooscript::int32Value(old));
 		if (gui_screen == GUI_SCREEN_LONG_RANGE_CHART || gui_screen == GUI_SCREEN_SHORT_RANGE_CHART)
 		{
 			if(moveChart)
@@ -785,7 +785,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 				target_chart_focus = chart_focus_coordinates;
 			}
 		}
-		ShipScriptEvent(context, self, "infoSystemChanged", INT_TO_JSVAL(info_system_id), INT_TO_JSVAL(old));
+		ShipScriptEvent(context, self, "infoSystemChanged", ooscript::int32Value(info_system_id), ooscript::int32Value(old));
 		OOJSRelinquishContext(context);
 	}
 }
@@ -2265,7 +2265,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		[self validateCustomEquipActivationArray];
 	}
 
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[self doWorldScriptEvent:OOJSID("startUp") inContext:context withArguments:NULL count:0 timeLimit:MAX(0.0, [[NSUserDefaults standardUserDefaults] oo_floatForKey:@"start-script-limit-value" defaultValue:kOOJSLongTimeLimit])];
 	OOJSRelinquishContext(context);
 }
@@ -2273,7 +2273,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (void) startUpComplete
 {
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[self doWorldScriptEvent:OOJSID("startUpComplete") inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
 }
@@ -3436,7 +3436,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	OOTimeAbsolute t = [UNIVERSE getTime];
 	if (cond != lastScriptAlertCondition)
 	{
-		ShipScriptEventNoCx(self, "alertConditionChanged", INT_TO_JSVAL(cond), INT_TO_JSVAL(lastScriptAlertCondition));
+		ShipScriptEventNoCx(self, "alertConditionChanged", ooscript::int32Value(cond), ooscript::int32Value(lastScriptAlertCondition));
 		lastScriptAlertCondition = cond;
 	}
 	/* Update heuristic assessment of whether player is fleeing */
@@ -5580,9 +5580,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 			[self setMultiFunctionDisplay:index toKey:key];
 		}
 	}
-	JSContext *context = OOJSAcquireContext();
-	jsval keyVal = OOJSValueFromNativeObject(context,key);
-	ShipScriptEvent(context, self, "mfdKeyChanged", INT_TO_JSVAL(activeMFD), keyVal);
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::Value keyVal = OOJSValueFromNativeObject(context,key);
+	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
 
@@ -5617,9 +5617,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 			[self setMultiFunctionDisplay:index toKey:key];
 		}
 	}
-	JSContext *context = OOJSAcquireContext();
-	jsval keyVal = OOJSValueFromNativeObject(context,key);
-	ShipScriptEvent(context, self, "mfdKeyChanged", INT_TO_JSVAL(activeMFD), keyVal);
+	ooscript::Context context = OOJSAcquireContext();
+	ooscript::Value keyVal = OOJSValueFromNativeObject(context,key);
+	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
 
@@ -5630,8 +5630,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	activeMFD = (activeMFD + 1) % [[self hud] mfdCount];
 	NSUInteger mfdID = activeMFD + 1;
 	[UNIVERSE addMessage:OOExpandKey(@"mfd-N-selected", mfdID) forCount:3.0 ];
-	JSContext *context = OOJSAcquireContext();
-	ShipScriptEvent(context, self, "selectedMFDChanged", INT_TO_JSVAL(activeMFD));
+	ooscript::Context context = OOJSAcquireContext();
+	ShipScriptEvent(context, self, "selectedMFDChanged", ooscript::int32Value(activeMFD));
 	OOJSRelinquishContext(context);
 }
 
@@ -5649,8 +5649,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 	NSUInteger mfdID = activeMFD + 1;
 	[UNIVERSE addMessage:OOExpandKey(@"mfd-N-selected", mfdID) forCount:3.0 ];
-	JSContext *context = OOJSAcquireContext();
-	ShipScriptEvent(context, self, "selectedMFDChanged", INT_TO_JSVAL(activeMFD));
+	ooscript::Context context = OOJSAcquireContext();
+	ShipScriptEvent(context, self, "selectedMFDChanged", ooscript::int32Value(activeMFD));
 	OOJSRelinquishContext(context);
 }
 
@@ -6782,15 +6782,15 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(NSString *)reason
 {
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	
-	jsval amountVal = JSVAL_VOID;
+	ooscript::Value amountVal = ooscript::undefinedValue();
 	int amountVal2 = (int)amount-(int)legalStatus;
-	JS_NewNumberValue(context, amountVal2, &amountVal);
+	ooscript::newNumberValue(context, amountVal2, &amountVal);
 
 	legalStatus = (int)amount; // can't set the new bounty until the size of the change is known
 
-	jsval reasonVal = OOJSValueFromNativeObject(context,reason);
+	ooscript::Value reasonVal = OOJSValueFromNativeObject(context,reason);
 		
 	ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
 		
@@ -6820,15 +6820,15 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 {
 	if (![self isCloaked])
 	{
-		JSContext *context = OOJSAcquireContext();
+		ooscript::Context context = OOJSAcquireContext();
 	
-		jsval amountVal = JSVAL_VOID;
+		ooscript::Value amountVal = ooscript::undefinedValue();
 		int amountVal2 = (legalStatus | offence_value) - legalStatus;
-		JS_NewNumberValue(context, amountVal2, &amountVal);
+		ooscript::newNumberValue(context, amountVal2, &amountVal);
 
 		legalStatus |= offence_value; // can't set the new bounty until the size of the change is known
 
-		jsval reasonVal = OOJSValueFromLegalStatusReason(context, reason);
+		ooscript::Value reasonVal = OOJSValueFromLegalStatusReason(context, reason);
 		
 		ShipScriptEvent(context, self, "shipBountyChanged", amountVal, reasonVal);
 		
@@ -7499,9 +7499,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	if ([[self hud] isCompassActive])
 	{
 		// "the compass, it says we're lost!" :)
-		JSContext *context = OOJSAcquireContext();
-		jsval jsmode = OOJSValueFromCompassMode(context, [self compassMode]);
-		ShipScriptEvent(context, self, "compassTargetChanged", JSVAL_VOID, jsmode);
+		ooscript::Context context = OOJSAcquireContext();
+		ooscript::Value jsmode = OOJSValueFromCompassMode(context, [self compassMode]);
+		ShipScriptEvent(context, self, "compassTargetChanged", ooscript::undefinedValue(), jsmode);
 		OOJSRelinquishContext(context);
 		
 		[[self hud] setCompassActive:NO];	// ensure a target change when returning to normal space.
@@ -7523,10 +7523,10 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 
 	[self setStatus:STATUS_ENTERING_WITCHSPACE];
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[self setJumpCause:@"galactic jump"];
 	[self setPreviousSystemID:[self currentSystemID]];
-	ShipScriptEvent(context, self, "shipWillEnterWitchspace", STRING_TO_JSVAL(JS_InternString(context, [[self jumpCause] UTF8String])), INT_TO_JSVAL(destGalaxy));
+	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [[self jumpCause] UTF8String])), ooscript::int32Value(destGalaxy));
 	OOJSRelinquishContext(context);
 
 	[self noteCompassLostTarget];
@@ -7624,10 +7624,10 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	wormhole = [w_hole retain];
 	[self addScannedWormhole:wormhole];
 	[self setStatus:STATUS_ENTERING_WITCHSPACE];
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[self setJumpCause:@"wormhole"];
 	[self setPreviousSystemID:[self currentSystemID]];
-	ShipScriptEvent(context, self, "shipWillEnterWitchspace", STRING_TO_JSVAL(JS_InternString(context, [[self jumpCause] UTF8String])), INT_TO_JSVAL([w_hole destination]));
+	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [[self jumpCause] UTF8String])), ooscript::int32Value([w_hole destination]));
 	OOJSRelinquishContext(context);
 	if ([self scriptedMisjump]) 
 	{
@@ -7696,10 +7696,10 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[self addScannedWormhole:wormhole];
 	
 	[self setStatus:STATUS_ENTERING_WITCHSPACE];
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	[self setJumpCause:@"standard jump"];
 	[self setPreviousSystemID:[self currentSystemID]];
-	ShipScriptEvent(context, self, "shipWillEnterWitchspace", STRING_TO_JSVAL(JS_InternString(context, [[self jumpCause] UTF8String])), INT_TO_JSVAL(jumpTarget));
+	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [[self jumpCause] UTF8String])), ooscript::int32Value(jumpTarget));
 	OOJSRelinquishContext(context);
 
 	[self updateSystemMemory];
@@ -8242,7 +8242,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	if(index < [eqScripts count])
 	{
 		OOJSScript *eqScript = [[eqScripts oo_arrayAtIndex:index] objectAtIndex:1];
-		JSContext *context = OOJSAcquireContext();
+		ooscript::Context context = OOJSAcquireContext();
 		NSAssert1(mode <= OOPRIMEDEQUIP_MODE, @"Primable equipment mode %i out of range", (int)mode);
 		
 		switch (mode)
@@ -10112,7 +10112,7 @@ static NSString *last_outfitting_key=nil;
 
 - (void) noteGUIWillChangeTo:(OOGUIScreenID)toScreen
 {
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	ShipScriptEvent(context, self, "guiScreenWillChange", OOJSValueFromGUIScreenID(context, toScreen), OOJSValueFromGUIScreenID(context, gui_screen));
 	OOJSRelinquishContext(context);
 }
@@ -10157,7 +10157,7 @@ static NSString *last_outfitting_key=nil;
 		
 		if (![[UNIVERSE gameController] isGamePaused])
 		{
-			JSContext *context = OOJSAcquireContext();
+			ooscript::Context context = OOJSAcquireContext();
 			ShipScriptEvent(context, self, "guiScreenChanged", OOJSValueFromGUIScreenID(context, toScreen), OOJSValueFromGUIScreenID(context, fromScreen));
 			OOJSRelinquishContext(context);
 		}
@@ -10276,12 +10276,12 @@ static NSString *last_outfitting_key=nil;
 		OOJSScript *condScript = [UNIVERSE getConditionScript:condition_script];
 		if (condScript != nil) // should always be non-nil, but just in case
 		{
-			JSContext			*JScontext = OOJSAcquireContext();
+			ooscript::Context JScontext = OOJSAcquireContext();
 			BOOL OK;
-			jsval result;
-			int32 newPrice;
-			jsval args[] = { OOJSValueFromNativeObject(JScontext, eqKey) , JSVAL_NULL };
-			OK = JS_NewNumberValue(JScontext, price, &args[1]);
+			ooscript::Value result;
+			int32_t newPrice;
+			ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, eqKey) , ooscript::nullValue() };
+			OK = ooscript::newNumberValue(JScontext, price, &args[1]);
 				
 			if (OK)
 			{
@@ -10293,7 +10293,7 @@ static NSString *last_outfitting_key=nil;
 
 			if (OK)
 			{
-				OK = JS_ValueToInt32(JScontext, result, &newPrice);
+				OK = ooscript::valueToInt32(JScontext, result, &newPrice);
 				if (OK && newPrice >= 0)
 				{
 					price = (OOCreditsQuantity)newPrice;
@@ -12886,14 +12886,14 @@ static NSString *last_outfitting_key=nil;
 }
 
 
-- (void) doScriptEvent:(jsid)message inContext:(JSContext *)context withArguments:(jsval *)argv count:(uintN)argc
+- (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc
 {
 	[super doScriptEvent:message inContext:context withArguments:argv count:argc];
 	[self doWorldScriptEvent:message inContext:context withArguments:argv count:argc timeLimit:0.0];
 }
 
 
-- (BOOL) doWorldEventUntilMissionScreen:(jsid)message
+- (BOOL) doWorldEventUntilMissionScreen:(ooscript::PropertyId)message
 {
 	NSEnumerator	*scriptEnum = [worldScripts objectEnumerator];
 	OOScript		*theScript;
@@ -12906,7 +12906,7 @@ static NSString *last_outfitting_key=nil;
 		return YES;
 	}
 	
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	while ((theScript = [scriptEnum nextObject]) && gui_screen != GUI_SCREEN_MISSION && [self isDocked])
 	{
 		[theScript callMethod:message inContext:context withArguments:NULL count:0 result:NULL];
@@ -12924,9 +12924,9 @@ static NSString *last_outfitting_key=nil;
 }
 
 
-- (void) doWorldScriptEvent:(jsid)message inContext:(JSContext *)context withArguments:(jsval *)argv count:(uintN)argc timeLimit:(OOTimeDelta)limit
+- (void) doWorldScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc timeLimit:(OOTimeDelta)limit
 {
-	NSParameterAssert(context != NULL && JS_IsInRequest(context));
+	NSParameterAssert(context != NULL && ooscript::isInRequest(context));
 	
 	OOScript				*theScript = nil;
 	

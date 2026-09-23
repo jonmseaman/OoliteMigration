@@ -53,27 +53,6 @@ using ooscript::PropertySpec;
 using ooscript::FunctionSpec;
 using ooscript::CallArgs;
 
-// Byte-identical facade <-> jsapi views, local to this call site (see OOJSVector.mm).
-namespace {
-static inline Context    OOJSFCX(JSContext *cx)   { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSContext *OOJSRCX(Context cx)      { return reinterpret_cast<JSContext*>(cx); }
-} // namespace
-namespace {
-static inline Object     OOJSFOBJ(JSObject *o)    { return reinterpret_cast<Object>(o); }
-} // namespace
-namespace {
-static inline JSObject  *OOJSROBJ(Object o)       { return reinterpret_cast<JSObject*>(o); }
-} // namespace
-namespace {
-static inline jsid       OOJSRJSID(PropertyId id) { jsid r; std::memcpy(&r, &id, sizeof r); return r; }
-} // namespace
-namespace {
-static inline JSString  *OOJSRSTR(ooscript::String s) { return reinterpret_cast<JSString*>(s); }
-} // namespace
-
-
 namespace {
 static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 } // namespace
@@ -89,14 +68,9 @@ static NSArray *VersionComponents(void);
 } // namespace
 
 namespace {
-static bool OoliteCompareVersion(Context cx, CallArgs &oojsArgs);
+static bool OoliteCompareVersion(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
 
-// Adapts the shared jsapi OOJSUnconstructableConstruct (OOJavaScriptEngine.m) to the facade's
-// NativeFn signature, the way OOJSClock.mm's OOJSUnconstructableConstructFacade does it.
-namespace {
-static bool OOJSUnconstructableConstructFacade(Context cx, CallArgs &oojsArgs);
-} // namespace
 
 
 namespace {
@@ -110,7 +84,7 @@ static ClassDef sOoliteClass =
 	OoliteGetProperty,		// getProperty
 	OoliteSetProperty,		// setProperty
 	nullptr,		// enumerate (engine default: EnumerateStub)
-	nullptr,			// newEnumerate (JSCLASS_NEW_ENUMERATE not used)
+	nullptr,			// newEnumerate (ooscript::ClassFlag::NewEnumerate not used)
 	nullptr,			// resolve (engine default: ResolveStub)
 	nullptr,			// convert (engine default: ConvertStub)
 	nullptr,			// finalize (engine default: FinalizeStub)
@@ -168,10 +142,10 @@ static PropertySpec sOoliteProperties[] =
 } // namespace
 
 
-// Raw jsapi mirror of sOoliteProperties for the shared error reporters that still take a
-// JSPropertySpec* (see OOJSVector.mm's sVectorPropertiesRaw).
+// Mirror of sOoliteProperties with the read-only/read-write flags the shared error reporters
+// describe the properties by (see OOJSVector.mm's sVectorPropertiesRaw).
 namespace {
-static JSPropertySpec sOolitePropertiesRaw[] =
+static ooscript::PropertySpec sOolitePropertiesRaw[] =
 {
 	// JS name					ID							flags
 	{ "gameSettings",			kOolite_gameSettings,		OOJS_PROP_READONLY_CB },
@@ -207,19 +181,11 @@ constexpr PropertyFlag kOoliteObjectFlags = PropertyFlag::Permanent | PropertyFl
 } // namespace
 
 
-void InitOOJSOolite(JSContext *context, JSObject *global)
+void InitOOJSOolite(ooscript::Context context, ooscript::Object global)
 {
-	Object oolitePrototype = ooscript::initClass(OOJSFCX(context), OOJSFOBJ(global), nullptr, &sOoliteClass, OOJSUnconstructableConstructFacade, 0, sOoliteProperties, sOoliteMethods, nullptr, nullptr);
-	ooscript::defineObject(OOJSFCX(context), OOJSFOBJ(global), "oolite", &sOoliteClass, oolitePrototype, kOoliteObjectFlags);
+	Object oolitePrototype = ooscript::initClass((context), (global), nullptr, &sOoliteClass, OOJSUnconstructableConstruct, 0, sOoliteProperties, sOoliteMethods, nullptr, nullptr);
+	ooscript::defineObject((context), (global), "oolite", &sOoliteClass, oolitePrototype, kOoliteObjectFlags);
 }
-
-
-namespace {
-static bool OOJSUnconstructableConstructFacade(Context cx, CallArgs &oojsArgs)
-{
-	return OOJSUnconstructableConstruct(OOJSRCX(cx), oojsArgs.count(), reinterpret_cast<jsval*>(oojsArgs.rawVp()));
-}
-} // namespace
 
 
 namespace {
@@ -227,9 +193,9 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = reinterpret_cast<jsval*>(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = value;
 	
 	OOJS_NATIVE_ENTER(context)
 	
@@ -247,11 +213,11 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			break;
 		
 		case kOolite_jsVersion:
-			*value_raw = INT_TO_JSVAL(static_cast<int>(ooscript::getVersion(cx)));
+			*value_raw = ooscript::int32Value(static_cast<int>(ooscript::getVersion(cx)));
 			return YES;
 		
 		case kOolite_jsVersionString:
-			*value_raw = STRING_TO_JSVAL(OOJSRSTR(ooscript::newStringCopyZ(cx, ooscript::versionToString(ooscript::getVersion(cx)))));
+			*value_raw = ooscript::stringValue((ooscript::newStringCopyZ(cx, ooscript::versionToString(ooscript::getVersion(cx)))));
 			return YES;
 		
 		case kOolite_gameSettings:
@@ -267,7 +233,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return ooscript::newNumberValue(cx, [gameView colorSaturation], value);
 			
 		case kOolite_postFX:
-			*value_raw = INT_TO_JSVAL([UNIVERSE currentPostFX]);
+			*value_raw = ooscript::int32Value([UNIVERSE currentPostFX]);
 			return YES;
 			
 		case kOolite_hdrToneMapper:
@@ -300,7 +266,7 @@ static bool OoliteGetProperty(Context cx, Object obj, PropertyId propID, Value *
 #endif
 		
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sOolitePropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sOolitePropertiesRaw);
 			return NO;
 	}
 	
@@ -317,14 +283,14 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
 	
-	JSContext *context = OOJSRCX(cx);
-	JSObject *thisObj = OOJSROBJ(obj);
-	jsval *value_raw = reinterpret_cast<jsval*>(value);
+	ooscript::Context context = (cx);
+	ooscript::Object thisObj = (obj);
+	ooscript::Value *value_raw = value;
 	
 	OOJS_NATIVE_ENTER(context)
 	
 	double					fValue;
-	int32					iValue;
+	int32_t					iValue;
 	NSString				*sValue = nil;
 	MyOpenGLView 			*gameView = [UNIVERSE gameView];
 	
@@ -349,7 +315,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 			
 		case kOolite_hdrToneMapper:
-			if (!JSVAL_IS_STRING(*value_raw))  break; // non-string is not allowed
+			if (!ooscript::isString(*value_raw))  break; // non-string is not allowed
 			sValue = OOStringFromJSValue(context,*value_raw);
 			if (sValue != nil)
 			{
@@ -362,7 +328,7 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			break;
 			
 		case kOolite_sdrToneMapper:
-			if (!JSVAL_IS_STRING(*value_raw))  break; // non-string is not allowed
+			if (!ooscript::isString(*value_raw))  break; // non-string is not allowed
 			sValue = OOStringFromJSValue(context,*value_raw);
 			if (sValue != nil)
 			{
@@ -383,11 +349,11 @@ static bool OoliteSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 #endif
 			
 		default:
-			OOJSReportBadPropertySelector(context, thisObj, OOJSRJSID(propID), sOolitePropertiesRaw);
+			OOJSReportBadPropertySelector(context, thisObj, (propID), sOolitePropertiesRaw);
 			return NO;
 	}
 	
-	OOJSReportBadPropertyValue(context, thisObj, OOJSRJSID(propID), sOolitePropertiesRaw, *value_raw);
+	OOJSReportBadPropertyValue(context, thisObj, (propID), sOolitePropertiesRaw, *value_raw);
 	return NO;
 	
 	OOJS_NATIVE_EXIT
@@ -419,19 +385,15 @@ static NSArray *VersionComponents(void)
 	else  this.doStuffThatRequires170()
 */
 namespace {
-static bool OoliteCompareVersion(Context cx, CallArgs &oojsArgs)
+static bool OoliteCompareVersion(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 {
-	JSContext *context = OOJSRCX(cx);
-	uintN argc = oojsArgs.count();
-	jsval *vp = reinterpret_cast<jsval*>(oojsArgs.rawVp());
-	
 	OOJS_NATIVE_ENTER(context)
 	
 	id						components = nil;
 	NSEnumerator			*componentEnum = nil;
 	id						component = nil;
 	
-	if (argc == 0)  OOJS_RETURN_VOID;	// Backwards-compatibility: be overly lenient.
+	if (oojsArgs.count() == 0)  OOJS_RETURN_VOID;	// Backwards-compatibility: be overly lenient.
 	
 	components = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[0]);
 	if ([components isKindOfClass:[NSArray class]])

@@ -58,9 +58,6 @@ namespace ooscript { }
 using ooscript::Context;
 
 // Byte-identical façade <-> jsapi view, local to this call site (see OOJSVector.mm).
-namespace {
-static inline Context OOJSFCX(JSContext *cx) { return reinterpret_cast<Context>(cx); }
-} // namespace
 
 
 
@@ -2377,7 +2374,7 @@ static inline Context OOJSFCX(JSContext *cx) { return reinterpret_cast<Context>(
 	NSString					*aiName = nil;
 	NSString					*key = nil;
 	OOJSFunction				*function = nil;
-	JSContext					*context = NULL;
+	ooscript::Context context = NULL;
 	
 	context = OOJSAcquireContext();
 	
@@ -2449,7 +2446,7 @@ static inline Context OOJSFCX(JSContext *cx) { return reinterpret_cast<Context>(
 		[[self getAI] message:@"NOTHING_FOUND"];
 	}
 	
-	ooscript::reportPendingException(OOJSFCX(context));
+	ooscript::reportPendingException((context));
 	OOJSRelinquishContext(context);
 }
 

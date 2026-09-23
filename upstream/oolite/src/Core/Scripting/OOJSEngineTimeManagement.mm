@@ -25,7 +25,6 @@ SOFTWARE.
 
 */
 
-#include <jsdbgapi.h>
 #import "OOJSEngineTimeManagement.h"
 #import "OOProfilingStopwatch.h"
 #import "OOJSScript.h"
@@ -77,7 +76,7 @@ static unsigned sLastStoppedLine;
 
 
 #if OOJS_PROFILE && defined(MOZ_TRACE_JSCALLS)
-static void FunctionCallback(JSFunction *function, JSScript *script, JSContext *context, int entering);
+static void FunctionCallback(ooscript::Function function, ooscript::Script script, ooscript::Context context, int entering);
 #endif
 
 
@@ -209,7 +208,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit)
 		if (EXPECT_NOT(elapsed > sLimiterTimeLimit))
 		{
 			sStop = YES;
-			JS_TriggerAllOperationCallbacks(_runtime);
+			ooscript::triggerAllOperationCallbacks(_runtime);
 		}
 	}
 }
@@ -217,11 +216,11 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit)
 @end
 
 
-static JSBool OperationCallback(JSContext *context)
+static bool OperationCallback(ooscript::Context context)
 {
 	if (!sStop)  return YES;
 	
-    JS_ClearPendingException(context);
+    ooscript::clearPendingException(context);
 	
 	OOHighResTimeValue now = OOGetHighResTime();
 	OOTimeDelta elapsed = OOHighResTimeDeltaInSeconds(sLimiterStart, now);
@@ -240,27 +239,27 @@ static JSBool OperationCallback(JSContext *context)
 }
 
 
-static JSBool ContextCallback(JSContext *context, uintN contextOp)
+static bool ContextCallback(ooscript::Context context, ooscript::ContextOp contextOp)
 {
-	if (contextOp == JSCONTEXT_NEW)
+	if (contextOp == ooscript::ContextOp::New)
 	{
-		JS_SetOperationCallback(context, OperationCallback);
+		ooscript::setOperationCallback(context, OperationCallback);
 		
 #if OOJS_PROFILE && defined(MOZ_TRACE_JSCALLS)
-		JS_SetFunctionCallback(context, (JSFunctionCallback)FunctionCallback);	// Naughtily casts away consts, because const JSContexts and JSFunctions are useless.
+		ooscript::setFunctionCallback(context, FunctionCallback);
 #endif
 	}
 	return YES;
 }
 
 
-void OOJSTimeManagementInit(OOJavaScriptEngine *engine, JSRuntime *runtime)
+void OOJSTimeManagementInit(OOJavaScriptEngine *engine, ooscript::Runtime runtime)
 {
 	[NSThread detachNewThreadSelector:@selector(watchdogTimerThread)
 							 toTarget:engine
 						   withObject:nil];
 	
-	JS_SetContextCallback(runtime, ContextCallback);
+	ooscript::setContextCallback(runtime, ContextCallback);
 }
 
 
@@ -301,7 +300,7 @@ static OOHighResTimeValue		sProfilerStartTime;
 
 - (id) initWithCName:(const char *)name;
 #ifdef MOZ_TRACE_JSCALLS
-- (id) initWithJSFunction:(JSFunction *)function context:(JSContext *)context;
+- (id) initWithJSFunction:(ooscript::Function)function context:(ooscript::Context)context;
 #endif
 
 - (void) addSampleWithTotalTime:(OOTimeDelta)totalTime selfTime:(OOTimeDelta)selfTime;
@@ -396,51 +395,53 @@ static void CleanUpJSFrame(OOJSProfileStackFrame *frame)
 }
 
 
-static void TraceEnterJSFunction(JSContext *context, JSFunction *function, OOTimeProfileEntry *profileEntry)
+static void TraceEnterJSFunction(ooscript::Context context, ooscript::Function function, OOTimeProfileEntry *profileEntry)
 {
 	NSMutableString		*name = [NSMutableString stringWithFormat:@"%@(", [profileEntry function]];
-	BOOL				isNative = JS_GetFunctionNative(context, function) != NULL;
+	BOOL				isNative = ooscript::getFunctionNative(context, function) != NULL;
 	NSString			*frameTag = nil;
 	NSString			*logMsgClass = nil;
 	
 	if (!isNative)
 	{
 		// Get stack frame and find arguments.
-		JSStackFrame		*frame = NULL;
+		ooscript::StackFrame	frame = NULL;
 		BOOL				first = YES;
-		jsval				thisVal;
-		JSObject			*scope;
-		JSPropertyDescArray	properties = { 0 , NULL };
+		ooscript::Value				thisVal;
+		ooscript::Object scope;
+		ooscript::VariableList	properties = { 0, NULL, NULL };
 		unsigned			i;
 		
 		// Temporarily disable profiling as we'll call out to profiled functions to get value descriptions.
 		sProfiling = NO;
 		
-		if (JS_FrameIterator(context, &frame) != NULL)
+		if (ooscript::frameIterator(context, &frame) != NULL)
 		{
-			if (JS_IsConstructorFrame(context, frame))
+			if (ooscript::frameIsConstructor(context, frame))
 			{
 				[name insertString:@"new " atIndex:0];
 			}
 			
-			if (JS_GetFrameThis(context, frame, &thisVal))
+			if (ooscript::frameThis(context, frame, &thisVal))
 			{
 				[name appendFormat:@"this: %@", OOJSDescribeValue(context, thisVal, YES)];
 				first = NO;
 			}
 			
-			scope = JS_GetFrameScopeChain(context, frame);
-			if (scope != NULL && JS_GetPropertyDescArray(context, scope, &properties))
+			scope = ooscript::frameScopeChain(context, frame);
+			if (scope != NULL && ooscript::getScopeVariables(context, scope, &properties))
 			{
 				for (i = 0; i < properties.length; i++)
 				{
-					JSPropertyDesc *prop = &properties.array[i];
-					if (prop->flags & JSPD_ARGUMENT)
+					ooscript::Variable *prop = &properties.vars[i];
+					if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Argument))
 					{
 						if (!first)  [name appendFormat:@", "];
 						else  first = NO;
 						
-						[name appendFormat:@"%@: %@", OOStringFromJSValueEvenIfNull(context, prop->id), OOJSDescribeValue(context, prop->value, YES)];
+						ooscript::Value propName = ooscript::undefinedValue();
+						ooscript::idToValue(context, prop->id, &propName);
+						[name appendFormat:@"%@: %@", OOStringFromJSValueEvenIfNull(context, propName), OOJSDescribeValue(context, prop->value, YES)];
 					}
 				}
 			}
@@ -463,13 +464,13 @@ static void TraceEnterJSFunction(JSContext *context, JSFunction *function, OOTim
 }
 
 
-static void FunctionCallback(JSFunction *function, JSScript *script, JSContext *context, int entering)
+static void FunctionCallback(ooscript::Function function, ooscript::Script script, ooscript::Context context, int entering)
 {
 	if (EXPECT(!sProfiling))  return;
 	if (EXPECT_NOT(function == NULL))  return;
 	
 	// Ignore native functions. Ours get their own entries anyway, SpiderMonkey's are elided.
-	if (!sTracing && JS_GetFunctionNative(context, function) != NULL)  return;
+	if (!sTracing && ooscript::getFunctionNative(context, function) != NULL)  return;
 	
 	OOHighResTimeValue start = OOGetHighResTime();
 	
@@ -560,7 +561,7 @@ void OOJSProfileExit(OOJSProfileStackFrame *frame)
 	/*
 		It's possible there could be JavaScript frames on top of this frame if
 		a JS native returned false. Or possibly not. The semantics of
-		JS_SetFunctionCallback() aren't specified in detail.
+		the engine's function callback aren't specified in detail.
 		-- Ahruman 2011-01-16
 	*/
 	for (;;)
@@ -753,7 +754,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 }
 
 
-- (jsval) oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
 	return OOJSValueFromNativeObject(context, [self propertyListRepresentation]);
 }
@@ -802,7 +803,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 
 
 #if MOZ_TRACE_JSCALLS
-- (id) initWithJSFunction:(JSFunction *)function context:(JSContext *)context
+- (id) initWithJSFunction:(ooscript::Function)function context:(ooscript::Context)context
 {
 	if ((self = [self initWithCName:NULL]))
 	{
@@ -811,16 +812,16 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 		_jsFunction = function;
 		
 		NSString *funcName = nil;
-		JSString *jsName = JS_GetFunctionId(_jsFunction);
+		ooscript::String jsName = ooscript::getFunctionId(_jsFunction);
 		if (jsName != NULL)  funcName = [OOStringFromJSString(context, jsName) retain];
 		else  funcName = @"<anonymous>";
 		
 		// If it's a non-native function, get its source location.
 		NSString *location = nil;
-		if (JS_GetFunctionNative(context, function) == NULL)
+		if (ooscript::getFunctionNative(context, function) == NULL)
 		{
-			JSStackFrame *frame = NULL;
-			if (JS_FrameIterator(context, &frame) != NULL)
+			ooscript::StackFrame frame = NULL;
+			if (ooscript::frameIterator(context, &frame) != NULL)
 			{
 				location = OOJSDescribeLocation(context, frame);
 			}
@@ -985,7 +986,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 }
 
 
-- (jsval) oo_jsValueInContext:(JSContext *)context
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
 	return OOJSValueFromNativeObject(context, [self propertyListRepresentation]);
 }

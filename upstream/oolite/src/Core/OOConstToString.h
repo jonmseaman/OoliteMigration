@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
+#include "ooscript/JSEngine.hpp"
 #import "OOFunctionAttributes.h"
 #import "OOTypes.h"
 #import "MyOpenGLView.h"
@@ -89,7 +90,7 @@ declaration, in particular:
 extern "C" {
 #endif
 
-NSString *JSTypeToString(int /* JSType */ type) CONST_FUNC;
+NSString *JSTypeToString(int /* ooscript::Type */ type) CONST_FUNC;
 
 NSString *CargoTypeToString(OOCargoType cargo) CONST_FUNC;
 OOCargoType StringToCargoType(NSString *string) PURE_FUNC;

@@ -46,12 +46,6 @@ namespace ooscript { }
 using ooscript::Context;
 using ooscript::Object;
 
-namespace {
-static inline Context   OOJSFCX(JSContext *cx) { return reinterpret_cast<Context>(cx); }
-} // namespace
-namespace {
-static inline JSObject *OOJSROBJ(Object o)      { return reinterpret_cast<JSObject*>(o); }
-} // namespace
 
 
 // Pseudo-singleton: a single instance exists at a given time, but can be released.
@@ -86,7 +80,7 @@ static OORegExpMatcher *sActiveInstance;
 		
 		[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
 		
-		JSContext *context = OOJSAcquireContext();
+		ooscript::Context context = OOJSAcquireContext();
 		_tester = [[OOJSFunction alloc] initWithName:@"matchesRegExp"
 											   scope:NULL
 												code:code
@@ -130,7 +124,7 @@ static OORegExpMatcher *sActiveInstance;
 	size_t expLength = [regExp length];
 	if (EXPECT_NOT(expLength == 0))  return NO;
 	
-	JSContext *context = OOJSAcquireContext();
+	ooscript::Context context = OOJSAcquireContext();
 	
 	// Create new RegExp object if necessary.
 	if (flags != _cachedFlags || ![regExp isEqualToString:_cachedRegExpString])
@@ -144,8 +138,8 @@ static OORegExpMatcher *sActiveInstance;
 		[regExp getCharacters:buffer];
 		
 		_cachedRegExpString = [regExp retain];
-		Object regExpFacadeObj = ooscript::newUCRegExpObjectNoStatics(OOJSFCX(context), reinterpret_cast<const ooscript::Char16 *>(buffer), expLength, static_cast<std::uint32_t>(flags));
-		JSObject *regExpObj = OOJSROBJ(regExpFacadeObj);
+		Object regExpFacadeObj = ooscript::newUCRegExpObjectNoStatics((context), reinterpret_cast<const ooscript::Char16 *>(buffer), expLength, static_cast<std::uint32_t>(flags));
+		ooscript::Object regExpObj = (regExpFacadeObj);
 		_cachedRegExpObject = [[OOJSValue alloc] initWithJSObject:regExpObj inContext:context];
 		_cachedFlags = flags;
 		

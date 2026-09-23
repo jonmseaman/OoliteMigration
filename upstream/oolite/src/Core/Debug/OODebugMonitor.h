@@ -36,6 +36,7 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#include "ooscript/JSEngine.hpp"
 #import "OOWeakReference.h"
 #import "OODebuggerInterface.h"
 
@@ -69,7 +70,7 @@ SOFTWARE.
 	
 	// JavaScript console support.
 	OOJSScript							*_script;
-	struct JSObject						*_jsSelf;
+	ooscript::Object _jsSelf;
 	
 	NSDictionary						*_configFromOXPs;	// Settings from debugConfig.plist
 	NSMutableDictionary					*_configOverrides;	// Settings from preferences, modifiable through JS.

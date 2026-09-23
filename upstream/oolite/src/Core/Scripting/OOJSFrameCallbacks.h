@@ -33,7 +33,7 @@ SOFTWARE.
 extern "C" {
 #endif
 
-void InitOOJSFrameCallbacks(JSContext *context, JSObject *global);
+void InitOOJSFrameCallbacks(ooscript::Context context, ooscript::Object global);
 
 void OOJSFrameCallbacksInvoke(OOTimeDelta delta);
 

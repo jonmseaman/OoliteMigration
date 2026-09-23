@@ -87,9 +87,9 @@ MA 02110-1301, USA.
 		NSUInteger i, count = [targets count];
 		if (count > 0)
 		{
-			JSContext *context = OOJSAcquireContext();
-			jsval ecmPulsesRemaining = INT_TO_JSVAL(_blastsRemaining);
-			jsval whomVal = OOJSValueFromNativeObject(context, ship);
+			ooscript::Context context = OOJSAcquireContext();
+			ooscript::Value ecmPulsesRemaining = ooscript::int32Value(_blastsRemaining);
+			ooscript::Value whomVal = OOJSValueFromNativeObject(context, ship);
 			
 			for (i = 0; i < count; i++)
 			{
