@@ -487,8 +487,9 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			} 
 			else 
 			{
-				if ([entity localShipyard] == nil) [entity generateShipyard];
-				*value_raw = OOJSValueFromNativeObject(context, [entity localShipyard]);
+				if ([entity cxx_localShipyard] == nullptr) [entity generateShipyard];
+				std::vector<oo::PList> *shipyard = [entity cxx_localShipyard];
+				*value_raw = OOJSValueFromNativeObject(context, shipyard != nullptr ? oo::ObjectFromPList(oo::PList(*shipyard)) : nil);
 			}
 			return YES;
 		}
@@ -980,7 +981,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 
 	if (oojsArgs.count() < 2 || ooscript::isNull(OOJS_ARGV[1]))
 	{
-		[station setInterfaceDefinition:nil forKey:oo::NSStringOrNil(key)];
+		[station cxx_setInterfaceDefinition:nil forKey:key.value_or("")];
 		OOJS_RETURN_VOID;
 	}
 	
@@ -1065,7 +1066,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 		// can do .bind(this) for callback instead
 	}
 	
-	[station setInterfaceDefinition:definition forKey:oo::NSStringOrNil(key)];
+	[station cxx_setInterfaceDefinition:definition forKey:key.value_or("")];
 
 	[definition release];
 
@@ -1183,7 +1184,8 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	// make sure the shipyard has been generated
-	if (![station localShipyard]) [station generateShipyard];
+	if (![station cxx_localShipyard]) [station generateShipyard];
+	std::vector<oo::PList> *shipyard = [station cxx_localShipyard];
 
 	if (ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
 
@@ -1322,7 +1324,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	// add the ship spec
 	result[oo::StdString(SHIPYARD_KEY_SHIP)] = shipInfo;
 	// add it to the station's shipyard
-	[[station localShipyard] addObject:oo::ObjectFromPList(oo::PList(std::move(result)))];
+	if (shipyard != nullptr)  shipyard->push_back(oo::PList(std::move(result)));
 
 	// refresh the screen if the shipyard is currently being displayed
 	if(station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_SHIPYARD)
@@ -1351,19 +1353,20 @@ static bool StationRemoveShipFromShipyard(ooscript::Context context, ooscript::C
 		return NO;
 	}
 	// make sure the shipyard has been generated
-	if (![station localShipyard]) [station generateShipyard];
-		
+	if (![station cxx_localShipyard]) [station generateShipyard];
+	std::vector<oo::PList> *shipyard = [station cxx_localShipyard];
+	
 	int32_t shipIndex = -1;
 	BOOL gotIndex = YES;
 	gotIndex = ooscript::valueToInt32((context), (OOJS_ARGV[0]), &shipIndex);
 
-	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > [[station localShipyard] count]) 
+	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > (shipyard != nullptr ? shipyard->size() : 0)) 
 	{
 		OOJSReportBadArguments(context, @"Station", @"removeShipFromShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"valid ship index");
 		return NO;
 	}
 
-	[[station localShipyard] removeObjectAtIndex:shipIndex];
+	shipyard->erase(shipyard->begin() + shipIndex);
 
 	// refresh the screen if the shipyard is currently being displayed
 	if(station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_SHIPYARD)

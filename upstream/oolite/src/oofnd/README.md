@@ -448,6 +448,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/Entities/PlayerEntityContracts+FoundationBridge.h/.mm` (category `PlayerEntity (ContractsFoundationBridge)`; chunked: oo-3rb.179 made it; chunks oo-3rb.180-.185 move their own selectors in) | oo-3rb.179 (chunks of oo-ldqo) | oo-t8p6 ("Delete PlayerEntityContracts+FoundationBridge") |
 | `src/Core/OOShipRegistry+FoundationBridge.h/.mm` | oo-3rb.114 (chunks of oo-92mj) | oo-b7xq ("Delete OOShipRegistry+FoundationBridge") |
 | `src/Core/Entities/PlayerEntitySound+FoundationBridge.h/.mm` (category `PlayerEntity (SoundFoundationBridge)`) | oo-14c5 | oo-qx1l ("Delete PlayerEntitySound+FoundationBridge") |
+| `src/Core/Entities/StationEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.172 made it; chunks oo-3rb.173-.175 move their own selectors in) | oo-3rb.172 (chunks of oo-e7ab) | oo-nrkz ("Delete StationEntity+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
