@@ -81,12 +81,12 @@ typedef enum
 	
 	OOUniversalID			planet;
 
-	NSString				*allegiance;
+	std::optional<std::string>	allegiance;			// nullopt: none (was nil)
 	
 	OOCommodityMarket		*localMarket;
 	OOCargoQuantity			marketCapacity;
-	NSArray					*marketDefinition;
-	NSString				*marketScriptName;
+	oo::PList				marketDefinition;			// an array; null: none (was nil)
+	std::optional<std::string>	marketScriptName;		// nullopt: none (was nil)
 //	NSMutableArray			*localPassengers;
 //	NSMutableArray			*localContracts;
 	NSMutableArray			*localShipyard;
@@ -117,17 +117,17 @@ typedef enum
 
 
 - (OOCargoQuantity) marketCapacity;
-- (NSArray *) marketDefinition;
-- (NSString *) marketScriptName;
+- (oo::PList) cxx_marketDefinition;	// null: none
+- (std::optional<std::string>) cxx_marketScriptName;
 - (BOOL) marketMonitored;
 - (BOOL) marketBroadcast;
 - (OOCreditsQuantity) legalStatusOfManifest:(OOCommodityMarket *)manifest export:(BOOL)isExport;
 
 - (OOCommodityMarket *) localMarket;
-- (void) setLocalMarket:(NSArray *)market;
-- (NSDictionary *) localMarketForScripting;
-- (void) setPrice:(OOCreditsQuantity) price forCommodity:(OOCommodityType) commodity;
-- (void) setQuantity:(OOCargoQuantity) quantity forCommodity:(OOCommodityType) commodity;
+- (void) cxx_setLocalMarket:(const oo::PList &)market;	// [[key, quantity, price], ...] (OOCommodityMarket -cxx_loadStationAmounts:)
+- (oo::PList) cxx_localMarketForScripting;
+- (void) cxx_setPrice:(OOCreditsQuantity) price forCommodity:(const std::string &) commodity;
+- (void) cxx_setQuantity:(OOCargoQuantity) quantity forCommodity:(const std::string &) commodity;
 
 /*- (NSMutableArray *) localPassengers;
 - (void) setLocalPassengers:(NSArray *)market;
@@ -157,8 +157,8 @@ typedef enum
 
 - (OOPlanetEntity *) planet;
 
-- (void) setAllegiance:(NSString *)newAllegiance;
-- (NSString *)allegiance;
+- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance;
+- (std::optional<std::string>) cxx_allegiance;	// nullopt: none
 
 - (unsigned) countOfDockedContractors;
 - (unsigned) countOfDockedPolice;
@@ -225,7 +225,7 @@ typedef enum
 
 - (void) acceptPatrolReportFrom:(ShipEntity *)patrol_ship;
 
-- (NSString *) acceptDockingClearanceRequestFrom:(ShipEntity *)other;
+- (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other;
 - (BOOL) requiresDockingClearance;
 - (void) setRequiresDockingClearance:(BOOL)newValue;
 
@@ -238,7 +238,7 @@ typedef enum
 - (BOOL) allowsSaving;
 // no setting this after station creation
 
-- (NSString *) marketOverrideName;
+- (std::optional<std::string>) marketOverrideName;	// nullopt: no "market" key
 - (BOOL) isRotatingStation;
 - (BOOL) hasShipyard;
 
