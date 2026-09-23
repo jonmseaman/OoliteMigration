@@ -1348,7 +1348,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	NSMutableDictionary *planetDict = [NSMutableDictionary dictionaryWithDictionary:[systemManager getPropertiesForCurrentSystem]];
 	[planetDict oo_setBool:YES forKey:@"mainForLocalSystem"];
-	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:[planetDict oo_boolForKey:@"has_atmosphere" defaultValue:YES] andSeed:systemSeed forSystem:systemID];
+	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(planetDict) withAtmosphere:[planetDict oo_boolForKey:@"has_atmosphere" defaultValue:YES] andSeed:systemSeed forSystem:systemID];
 	
 	double planet_zpos = [planetDict oo_floatForKey:@"planet_distance" defaultValue:500000];
 	planet_zpos *= [planetDict oo_floatForKey:@"planet_distance_multiplier" defaultValue:1.0];
@@ -1584,7 +1584,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOLog(@"planetinfo.record",@"corona_hues = %f",[sun_dict oo_floatForKey:@"corona_hues"]);
 	OOLog(@"planetinfo.record",@"sun_color = %@",[bgcolor descriptionComponents]);
 #endif
-	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
+	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:oo::PListFrom(sun_dict)];	// alloc retains!
 	
 	[a_sun setStatus:STATUS_ACTIVE];
 	[a_sun setPosition:sunPos]; // sets also light origin
@@ -3855,7 +3855,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 	if (definition != nil)
 	{
-		waypoint = [OOWaypointEntity waypointWithDictionary:definition];
+		waypoint = [OOWaypointEntity waypointWithDictionary:oo::PListFrom(definition)];
 		if (waypoint != nil)
 		{
 			[self addEntity:waypoint];
@@ -8355,7 +8355,7 @@ static void VerifyDesc(NSString *key, id desc)
 		}
 		else if (the_sun != nil && ([key hasPrefix:@"sun_"] || [key hasPrefix:@"corona_"]))
 		{
-			[the_sun changeSunProperty:key withDictionary:sysInfo];
+			[the_sun changeSunProperty:oo::StdString(key) withDictionary:oo::PListFrom(sysInfo)];
 		}
 		else if ([key isEqualToString:@"texture"])
 		{
