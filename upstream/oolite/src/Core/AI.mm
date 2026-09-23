@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
+#import "oofnd/objc/OOObject.h"
 
 
 enum
@@ -51,6 +52,22 @@ typedef struct
 } OOAIDeferredCallTrampolineInfo;
 
 
+/*	Carries the trampoline info through -performSelector:withObject:afterDelay:,
+	which retains it until the call fires, as it did the value box that held the
+	struct before (bead oo-3rb.48).
+*/
+@interface OOAIDeferredCallTrampolineInfoHolder: OOObject
+{
+@public
+	OOAIDeferredCallTrampolineInfo	info;
+}
+@end
+
+
+@implementation OOAIDeferredCallTrampolineInfoHolder
+@end
+
+
 static AI *sCurrentlyRunningAI = nil;
 
 
@@ -58,7 +75,7 @@ static AI *sCurrentlyRunningAI = nil;
 
 // Wrapper for performSelector:withObject:afterDelay: to catch/fix bugs.
 - (void) performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay;
-+ (void) deferredCallTrampolineWithInfo:(NSValue *)info;
++ (void) deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info;
 
 - (void) refreshOwnerDesc;
 
@@ -721,7 +738,7 @@ static AIStackElement *sStack = NULL;
 - (void)performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay
 {
 	OOAIDeferredCallTrampolineInfo	infoStruct;
-	NSValue							*info = nil;
+	OOAIDeferredCallTrampolineInfoHolder	*info = nil;
 	
 	if (selector != NULL)
 	{
@@ -729,7 +746,8 @@ static AIStackElement *sStack = NULL;
 		infoStruct.selector = selector;
 		infoStruct.parameter = object;
 		
-		info = [[NSValue alloc] initWithBytes:&infoStruct objCType:@encode(OOAIDeferredCallTrampolineInfo)];
+		info = [[OOAIDeferredCallTrampolineInfoHolder alloc] init];
+		info->info = infoStruct;
 		
 		[[AI class] performSelector:@selector(deferredCallTrampolineWithInfo:)
 						 withObject:info
@@ -739,14 +757,13 @@ static AIStackElement *sStack = NULL;
 }
 
 
-+ (void)deferredCallTrampolineWithInfo:(NSValue *)info
++ (void)deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info
 {
 	OOAIDeferredCallTrampolineInfo	infoStruct;
 	
 	if (info != nil)
 	{
-		assert(strcmp([info objCType], @encode(OOAIDeferredCallTrampolineInfo)) == 0);
-		[info getValue:&infoStruct];
+		infoStruct = info->info;
 		
 		[infoStruct.ai performSelector:infoStruct.selector withObject:infoStruct.parameter];
 		

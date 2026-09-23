@@ -31,10 +31,11 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 
 #define OOAL_STREAM_CHUNK_SIZE (sizeof(char) * 409600)
 
-@interface OOALSoundDecoder: NSObject
+@interface OOALSoundDecoder: OOObject
 
 - (id)initWithPath:(NSString *)inPath;
 + (OOALSoundDecoder *)codecWithPath:(NSString *)inPath;

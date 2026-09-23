@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "OOEquipmentType.h"
 #import "AI.h"
 #import "ShipEntityAI.h"
+#import "OOFoundationBridge.h"
 
 
 #define KEY_SHIP_KEY				@"ship_key"
@@ -85,7 +86,7 @@ static OOShipGroup *GroupForGroupID(NSUInteger groupID, NSMutableDictionary *con
 	
 	NSMutableDictionary *updatedShipInfo = [NSMutableDictionary dictionaryWithDictionary:shipinfoDictionary];
 	
-	[updatedShipInfo setObject:[[self roleSet] roleString] forKey:KEY_ROLES];
+	[updatedShipInfo setObject:oo::NSStringOrNil([[self roleSet] roleString]) forKey:KEY_ROLES];
 	[updatedShipInfo oo_setUnsignedInteger:fuel forKey:KEY_FUEL];
 	[updatedShipInfo oo_setUnsignedLongLong:bounty forKey:KEY_BOUNTY];
 	[updatedShipInfo setObject:OOStringFromWeaponType(forward_weapon_type) forKey:KEY_FORWARD_WEAPON];

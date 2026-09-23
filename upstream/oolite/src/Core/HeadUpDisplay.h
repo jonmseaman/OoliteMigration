@@ -33,6 +33,10 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "ShipEntity.h"
 
+#include "oofnd/StdLib.hpp"
+
+struct OOHUDWidget;	// HeadUpDisplay.mm
+
 @class OOCrosshairs, OOColor;
 
 @protocol OOHUDBeaconIcon;
@@ -238,9 +242,10 @@ enum
 @interface HeadUpDisplay: OOObject
 {
 @private
-	NSMutableArray		*legendArray;
-	NSMutableArray		*dialArray;
-	NSMutableArray		*mfdArray;
+	// Widgets in draw order; were NSMutableArrays of NSArray tuples (bead oo-3rb.49).
+	std::vector<OOHUDWidget>	legendArray;
+	std::vector<OOHUDWidget>	dialArray;
+	std::vector<OOHUDWidget>	mfdArray;
 	
 	// zoom level
 	GLfloat				scanner_zoom;

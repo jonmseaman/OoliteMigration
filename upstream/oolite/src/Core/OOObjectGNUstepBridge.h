@@ -19,5 +19,6 @@ OOCocoa.h. See OOObjectGNUstepBridge.mm.
 + (NSMethodSignature *) instanceMethodSignatureForSelector:(SEL)selector;
 - (NSMethodSignature *) methodSignatureForSelector:(SEL)selector;
 - (void) performSelector:(SEL)selector withObject:(id)argument afterDelay:(NSTimeInterval)delay;
+- (NSString *) className;
 
 @end
