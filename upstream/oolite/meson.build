@@ -122,3 +122,6 @@ endif
 gnustep_folder = ''  # Not needed for Windows
 # dependencies, compiler/linker flags and build
 subdir('src')
+
+# Unit tests that need no game build (meson test --suite oofnd).
+subdir('tests/unit/oofnd')

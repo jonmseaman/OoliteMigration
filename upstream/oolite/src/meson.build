@@ -22,6 +22,7 @@ quickjs_ng_proj = subproject('quickjs-ng', default_options: ['default_library=st
 oolite_dependencies += [quickjs_ng_proj.get_variable('qjs_dep')]
 
 subdir('meson')
+subdir('oofnd')
 subdir('Core')
 subdir('SDL')
 
