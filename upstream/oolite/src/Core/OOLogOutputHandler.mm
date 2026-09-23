@@ -34,7 +34,7 @@ SOFTWARE.
 #import "OOAsyncQueue.h"
 #include <stdlib.h>
 #include <stdio.h>
-#import "NSThreadOOExtensions.h"
+#include "oofnd/Thread.hpp"
 #import "NSFileManagerOOExtensions.h"
 #include <SDL3/SDL_stdinc.h>
 #include <atomic>
@@ -340,7 +340,16 @@ enum
 	{
 		// Create work thread to actually handle messages.
 		// This needs to be done early to avoid messy state if something goes wrong.
-		[NSThread detachNewThreadSelector:@selector(loggerThread) toTarget:self withObject:nil];
+		// The thread holds the handler until -loggerThread returns, as a detached selector thread did.
+		[self retain];
+		oo::thread::detach([self]()
+		{
+			@autoreleasepool
+			{
+				[self loggerThread];
+			}
+			[self release];
+		});
 		// Wait for it to start.
 		if (![threadStateMonitor lockWhenCondition:kConditionWorking beforeDate:[NSDate dateWithTimeIntervalSinceNow:5.0]])
 		{
@@ -451,7 +460,7 @@ enum
 	NSUInteger			size = 0;
 	
 	rootPool = [[NSAutoreleasePool alloc] init];
-	[NSThread ooSetCurrentThreadName:@"loggerThread"];
+	oo::thread::setCurrentName("loggerThread");
 	
 	// Signal readiness
 	[messageQueue retain];
