@@ -70,6 +70,7 @@ oolite_sources += files(
     'OOObjectGNUstepBridge.mm',
     'OOOpenALController.mm',
     'OOOpenGL.mm',
+    'OOOpenGL+FoundationBridge.mm',
     'OOOpenGLExtensionManager.mm',
     'OOOpenGLMatrixManager.mm',
     'OOOpenGLStateManager.mm',
