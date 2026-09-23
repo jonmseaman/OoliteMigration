@@ -1491,7 +1491,7 @@ static int shipsFound;
 - (void) ejectItem:(NSString *)itemKey
 {
 	if (scriptTarget == nil)  scriptTarget = self;
-	[scriptTarget ejectShipOfType:itemKey];
+	[scriptTarget ejectShipOfType:oo::OptionalString(itemKey)];
 }
 
 
@@ -2808,7 +2808,7 @@ static int shipsFound;
 			}
 		}
 		
-		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:planetInfo withAtmosphere:YES andSeed:target_system_seed];
+		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(planetInfo) withAtmosphere:YES andSeed:target_system_seed];
 		[doppelganger miniaturize];
 		[doppelganger autorelease];
 		
