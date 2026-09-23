@@ -78,12 +78,7 @@ declaration, in particular:
 	Universe.h:
 	OODisplayStringFromGovernmentID()
 	OODisplayStringFromEconomyID()
-	
-	OOOpenGL.h:
-	OOShaderSettingFromString()
-	OOStringFromShaderSetting()
-	OODisplayStringFromShaderSetting()
-	
+
 */
 
 #ifdef __cplusplus
@@ -132,3 +127,11 @@ OOSDRToneMapper OOSDRToneMapperFromString( NSString *string);
 #ifdef __cplusplus
 }
 #endif
+
+
+// Shader settings (OOShaderSetting is OOOpenGL.h's), with C++ linkage as when OOOpenGL.h declared them.
+// Programmer-readable shader mode strings.
+OOShaderSetting OOShaderSettingFromString(NSString *string);
+NSString *OOStringFromShaderSetting(OOShaderSetting setting);
+// Localized shader mode strings.
+NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting);

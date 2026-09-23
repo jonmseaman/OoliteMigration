@@ -30,6 +30,10 @@
 #import "OOPlanetEntity.h"
 #import "OOJSPropID.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
+
 @class	OOColor, StationEntity, WormholeEntity, AI, Octree, OOMesh, OOScript,
 	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet,
 	OOExhaustPlumeEntity, OOFlasherEntity;
@@ -430,7 +434,7 @@ typedef enum
 	uint16_t				entity_personality;			// Per-entity random number. Exposed to shaders and scripts.
 	NSDictionary			*scriptInfo;				// script_info dictionary from shipdata.plist, exposed to scripts.
 	
-	NSMutableArray			*subEntities;
+	std::vector<oo::ObjCRef<Entity *>>	subEntities;	// empty == none (was nil)
 	OOEquipmentType			*missile_list[SHIPENTITY_MAX_MISSILES];
 
 	// various types of target
@@ -525,14 +529,15 @@ typedef enum
 - (Vector) upVector;
 - (Vector) rightVector;
 
-- (NSArray *)subEntities;
+- (id)subEntities;	// shared selector (proposed ADR-0043): an Objective-C array (a copy; nil when there are none)
 - (NSUInteger) subEntityCount;
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub;
 
-- (NSEnumerator *)subEntityEnumerator;
-- (NSEnumerator *)shipSubEntityEnumerator;
-- (NSEnumerator *)flasherEnumerator;
-- (NSEnumerator *)exhaustEnumerator;
+- (id)subEntityEnumerator;	// shared selector (proposed ADR-0043): an enumerator over a snapshot
+- (id)flasherEnumerator;	// shared selector (proposed ADR-0043): an enumerator over a snapshot
+// The ship / exhaust subentities, a snapshot in subentity order (empty for a nil receiver).
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities;
+- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts;
 
 - (ShipEntity *) subEntityTakingDamage;
 - (void) setSubEntityTakingDamage:(ShipEntity *)sub;
@@ -543,8 +548,8 @@ typedef enum
 - (void) setSubEntityRotationalVelocity:(Quaternion)rv;
 
 // subentities management
-- (NSString *) serializeShipSubEntities;
-- (void) deserializeShipSubEntitiesFrom:(NSString *)string;
+- (std::optional<std::string>) cxx_serializeShipSubEntities;
+- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string;
 - (NSUInteger) maxShipSubEntities;
 - (void) setSubIdx:(NSUInteger)value;
 - (NSUInteger) subIdx;
@@ -576,7 +581,7 @@ typedef enum
 - (BOOL)setUpFromDictionary:(NSDictionary *) shipDict;
 - (BOOL)setUpShipFromDictionary:(NSDictionary *) shipDict;
 - (BOOL)setUpSubEntities;
-- (BOOL) setUpOneStandardSubentity:(NSDictionary *) subentDict asTurret:(BOOL)asTurret;
+- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 - (GLfloat)frustumRadius;
 
 - (NSString *) shipDataKey;
@@ -1338,3 +1343,10 @@ NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
 
 NSString *OOStringFromShipDamageType(OOShipDamageType type) CONST_FUNC;
 
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before the ShipEntity.mm sweep (chunk beads oo-3rb.232-.242 of oo-3rb.73), forwarding
+	to the cxx_ methods above, so unmigrated callers compile unchanged. Callers move to the cxx_ API
+	in their own sweep beads; the bridge goes in its own bead.
+*/
+#import "ShipEntity+FoundationBridge.h"

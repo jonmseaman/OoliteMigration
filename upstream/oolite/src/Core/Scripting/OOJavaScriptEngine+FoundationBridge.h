@@ -41,4 +41,79 @@ OOJS_EXTERN_C NSString *OOStringFromJSID(ooscript::PropertyId propID);	// -> cxx
 // Convert an NSString to a ooscript::PropertyId.
 OOJS_EXTERN_C ooscript::PropertyId OOJSIDFromString(NSString *string);	// -> cxx_OOJSIDFromString
 
+OOJS_EXTERN_C NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);	// -> cxx_OOJSDescribeValue
+
+
+// Error and warning reporters with NSString formats (bead oo-3rb.200) -> the cxx_ reporters, which
+// take printf formats; the bridge formats %@ with GNUstep and hands over the finished text.
+OOJS_EXTERN_C void OOJSReportError(ooscript::Context context, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportErrorWithArguments(ooscript::Context context, NSString *format, va_list args);
+OOJS_EXTERN_C void OOJSReportErrorForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
+
+OOJS_EXTERN_C void OOJSReportWarning(ooscript::Context context, NSString *format, ...);
+OOJS_EXTERN_C void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args);
+OOJS_EXTERN_C void OOJSReportWarningForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
+
+OOJS_EXTERN_C void OOJSReportBadArguments(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, NSString *message, NSString *expectedArgsDescription);
+
+OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
+
+
+// Retiring category on a Foundation class (ADR-0043 Amendment 1 item 7; bead oo-3rb.199). The
+// three helpers forward to cxx_OOJSStringWithJavaScriptParameters,
+// cxx_OOJSConcatenationOfStringsFromJavaScriptValues and cxx_OOJSEscapedForJavaScriptLiteral.
+@interface NSString (OOJavaScriptExtensions)
+
+// For diagnostic messages; produces things like @"(42, true, "a string", an object description)".
++ (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context;
+
+// Concatenate sequence of arbitrary JS objects into string.
++ (NSString *) concatenationOfStringsFromJavaScriptValues:(ooscript::Value *)values count:(size_t)count separator:(NSString *)separator inContext:(ooscript::Context)context;
+
+// Add escape codes for string so that it's a valid JavaScript literal (if you put "" or '' around it).
+- (NSString *) escapedForJavaScriptLiteral;
+
+@end
+
+
+
+// The JS glue on the Foundation root class (retiring with gnustep-base, ADR-0043 Amendment 1
+// item 7; moved verbatim by bead oo-3rb.201). OOObject (OOJavaScript) in OOJavaScriptEngine.h
+// documents the methods.
+@interface NSObject (OOJavaScript)
+
+/*	-oo_jsValueInContext:
+	
+	Return the JavaScript value representation of an object. The default
+	implementation returns ooscript::undefinedValue().
+	
+	SAFETY NOTE: if this message is sent to nil, the return value depends on
+	the platform and the engine's value representation. If the
+	receiver may be nil, use OOJSValueFromNativeObject() instead.
+	
+	One case where it is safe to use oo_jsValueInContext: is with objects
+	retrieved from Foundation collections, as they can never be nil.
+	
+	Requires a request on context.
+*/
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
+
+/*	-oo_jsDescription
+	-oo_jsDescriptionWithClassName:
+	-oo_jsClassName
+	
+	See comments for -descriptionComponents in OOCocoa.h.
+*/
+- (NSString *) oo_jsDescription;
+- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className;
+- (NSString *) oo_jsClassName;
+
+/*	oo_clearJSSelf:
+	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
+	collected. The default implementation does nothing.
+*/
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
+
+@end
+
 #endif	// OOJAVASCRIPTENGINE_FOUNDATIONBRIDGE_H
