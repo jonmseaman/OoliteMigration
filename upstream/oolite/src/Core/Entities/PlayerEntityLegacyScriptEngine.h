@@ -160,26 +160,26 @@ typedef enum
 - (void) consoleMessage6s:(id)valueString;	// called by name (ADR-0043 item 21)
 
 - (void) setLegalStatus:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
-- (void) awardCredits:(NSString *)valueString;
-- (void) awardShipKills:(NSString *)valueString;
-- (void) awardEquipment:(NSString *)equipString;  //eg. EQ_NAVAL_ENERGY_UNIT
-- (void) removeEquipment:(NSString *)equipString;  //eg. EQ_NAVAL_ENERGY_UNIT
+- (void) awardCredits:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardShipKills:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
+- (void) removeEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 
-- (void) setPlanetinfo:(NSString *)key_valueString;	// uses key=value format
-- (void) setSpecificPlanetInfo:(NSString *)key_valueString;	// uses galaxy#=planet#=key=value
+- (void) setPlanetinfo:(id)key_valueString;	// called by name (ADR-0043 item 21); uses key=value format
+- (void) setSpecificPlanetInfo:(id)key_valueString;	// called by name (ADR-0043 item 21); uses galaxy#=planet#=key=value
 
-- (void) awardCargo:(NSString *)amount_typeString;
+- (void) awardCargo:(id)amount_typeString;	// called by name (ADR-0043 item 21)
 - (void) removeAllCargo;
 - (void) removeAllCargo:(BOOL)forceRemoval;
 
-- (void) useSpecialCargo:(NSString *)descriptionString;
+- (void) useSpecialCargo:(id)descriptionString;	// called by name (ADR-0043 item 21)
 
-- (void) testForEquipment:(NSString *)equipString;  //eg. EQ_NAVAL_ENERGY_UNIT
+- (void) testForEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 
-- (void) awardFuel:(NSString *)valueString;	// add to fuel up to 7.0 LY
+- (void) awardFuel:(id)valueString;	// called by name (ADR-0043 item 21); add to fuel up to 7.0 LY
 
 - (void) messageShipAIs:(NSString *)roles_message;
-- (void) ejectItem:(NSString *)item_key;
+- (void) ejectItem:(id)item_key;	// called by name (ADR-0043 item 21)
 - (void) addShips:(NSString *)roles_number;
 - (void) addSystemShips:(NSString *)roles_number_position;
 - (void) addShipsAt:(NSString *)roles_number_system_x_y_z;
@@ -232,9 +232,9 @@ typedef enum
 - (std::optional<std::string>) cxx_missionTitle;
 - (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
 
-- (void) setFuelLeak: (NSString *)value;
+- (void) setFuelLeak:(id)value;	// called by name (ADR-0043 item 21)
 - (id) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
-- (void) setSunNovaIn: (NSString *)time_value;
+- (void) setSunNovaIn:(id)time_value;	// called by name (ADR-0043 item 21)
 - (void) launchFromStation;
 - (void) blowUpStation;
 - (void) sendAllShipsAway;
@@ -250,15 +250,16 @@ typedef enum
 
 - (void) playSound:(NSString *) soundName;
 
-- (BOOL) addEqScriptForKey:(NSString *)eq_key;
-- (void) removeEqScriptForKey:(NSString *)eq_key;
-- (NSUInteger) eqScriptIndexForKey:(NSString *)eq_key;
+// Equipment scripts (bead oo-3rb.195): no equipment has an empty key.
+- (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key;
+- (void) cxx_removeEqScriptForKey:(const std::string &)eq_key;
+- (NSUInteger) cxx_eqScriptIndexForKey:(const std::string &)eq_key;	// the count of scripts if none
 
 - (void) targetNearestHostile;
 - (void) targetNearestIncomingMissile;
 
-- (void) setGalacticHyperspaceBehaviourTo:(NSString *) galacticHyperspaceBehaviourString;
-- (void) setGalacticHyperspaceFixedCoordsTo:(NSString *) galacticHyperspaceFixedCoordsString;
+- (void) setGalacticHyperspaceBehaviourTo:(id)galacticHyperspaceBehaviourString;	// called by name (ADR-0043 item 21)
+- (void) setGalacticHyperspaceFixedCoordsTo:(id)galacticHyperspaceFixedCoordsString;	// called by name (ADR-0043 item 21)
 
 /*-----------------------------------------------------*/
 

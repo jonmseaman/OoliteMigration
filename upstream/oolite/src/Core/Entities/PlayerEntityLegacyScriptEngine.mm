@@ -77,19 +77,19 @@ static NSString * const kOOLogDebugProcessSceneStringAddScene = @"script.debug.p
 static NSString * const kOOLogDebugProcessSceneStringAddModel = @"script.debug.processSceneString.addModel";
 static NSString * const kOOLogDebugProcessSceneStringAddMiniPlanet = @"script.debug.processSceneString.addMiniPlanet";
 
-static NSString * const kOOLogNoteRemoveAllCargo			= @"script.debug.note.removeAllCargo";
-static NSString * const kOOLogNoteUseSpecialCargo			= @"script.debug.note.useSpecialCargo";
+static const char *const kOOLogNoteRemoveAllCargo			= "script.debug.note.removeAllCargo";
+static const char *const kOOLogNoteUseSpecialCargo			= "script.debug.note.useSpecialCargo";
 static NSString * const kOOLogNoteAddShips					= @"script.debug.note.addShips";
 static const char *const kOOLogNoteSet						= "script.debug.note.set";
 static const char *const kOOLogNoteShowShipModel				= "script.debug.note.showShipModel";
-static NSString * const kOOLogNoteFuelLeak					= @"script.debug.note.setFuelLeak";
+static const char *const kOOLogNoteFuelLeak					= "script.debug.note.setFuelLeak";
 static NSString * const kOOLogNoteAddPlanet					= @"script.debug.note.addPlanet";
 static NSString * const kOOLogNoteProcessSceneString		= @"script.debug.note.processSceneString";
 
-static NSString * const kOOLogSyntaxSetPlanetInfo			= @"script.debug.syntax.setPlanetInfo";
-static NSString * const kOOLogSyntaxAwardCargo				= @"script.debug.syntax.awardCargo";
-static NSString * const kOOLogSyntaxAwardEquipment			= @"script.debug.syntax.awardEquipment";
-static NSString * const kOOLogSyntaxRemoveEquipment			= @"script.debug.syntax.removeEquipment";
+static const char *const kOOLogSyntaxSetPlanetInfo			= "script.debug.syntax.setPlanetInfo";
+static const char *const kOOLogSyntaxAwardCargo				= "script.debug.syntax.awardCargo";
+static const char *const kOOLogSyntaxAwardEquipment			= "script.debug.syntax.awardEquipment";
+static const char *const kOOLogSyntaxRemoveEquipment			= "script.debug.syntax.removeEquipment";
 static NSString * const kOOLogSyntaxMessageShipAIs			= @"script.debug.syntax.messageShipAIs";
 static NSString * const kOOLogSyntaxAddShips				= @"script.debug.syntax.addShips";
 static const char *const kOOLogSyntaxSet						= "script.debug.syntax.set";
@@ -99,7 +99,7 @@ static const char *const kOOLogSyntaxDecrement				= "script.debug.syntax.decreme
 static const char *const kOOLogSyntaxAdd						= "script.debug.syntax.add";
 static const char *const kOOLogSyntaxSubtract				= "script.debug.syntax.subtract";
 
-static NSString * const kOOLogRemoveAllCargoNotDocked		= @"script.error.removeAllCargo.notDocked";
+static const char *const kOOLogRemoveAllCargoNotDocked		= "script.error.removeAllCargo.notDocked";
 
 
 #define	ACTIONS_TEMP_PREFIX									"__oolite_actions_temp"
@@ -201,6 +201,15 @@ std::optional<std::string> StringAtIndex(const oo::PList &array, std::size_t ind
 bool IsNoneValue(const std::string &value)
 {
 	return value.empty() || oo::str::lowercase(value) == "none";
+}
+
+
+// Tokens as a PList array, so an element reads with -oo_intAtIndex: & co.'s rules (get<T>).
+oo::PList TokenArray(const std::vector<std::string> &tokens)
+{
+	oo::PList::Array result;
+	for (const std::string &token : tokens)  result.push_back(oo::PList(token));
+	return oo::PList(std::move(result));
 }
 
 
@@ -1299,52 +1308,54 @@ static int shipsFound;
 }
 
 
-- (void) awardCredits:(NSString *)valueString
+- (void) awardCredits:(id)valueString	// called by name (ADR-0043 item 21)
 {
 	if (scriptTarget != self)  return;
-	
+
 	/*	We can't use -longLongValue here for Mac OS X 10.4 compatibility, but
 		we don't need to since larger values have never been supported for
 		legacy scripts.
 	*/
-	int64_t award = [valueString intValue];
+	int64_t award = oo::str::intValue(oo::StdString(valueString));
 	award *= 10;
 	if (award < 0 && credits < (OOCreditsQuantity)-award)  credits = 0;
 	else  credits += award;
 }
 
 
-- (void) awardShipKills:(NSString *)valueString
+- (void) awardShipKills:(id)valueString	// called by name (ADR-0043 item 21)
 {
 	if (scriptTarget != self)  return;
-	
-	int value = [valueString intValue];
+
+	int value = oo::str::intValue(oo::StdString(valueString));
 	if (0 < value)  ship_kills += value;
 }
 
 
-- (void) awardEquipment:(NSString *)equipString  //eg. EQ_NAVAL_ENERGY_UNIT
+- (void) awardEquipment:(id)equipString	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 {
 	if (scriptTarget != self)  return;
-	
-	if ([equipString isEqualToString:@"EQ_FUEL"])
+
+	const std::string equipKey = oo::StdString(equipString);
+	if (equipKey == "EQ_FUEL")
 	{
 		[self setFuel:[self fuelCapacity]];
 	}
-	
+
 	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipString];
-	
+
 	if ([eqType isMissileOrMine])
 	{
 		[self mountMissileWithRole:equipString];
 	}
-	else if([equipString hasPrefix:@"EQ_WEAPON"] && ![equipString hasSuffix:@"_DAMAGED"])
+	else if(oo::str::hasPrefix(equipKey, "EQ_WEAPON") && !oo::str::hasSuffix(equipKey, "_DAMAGED"))
 	{
-		OOLog(kOOLogSyntaxAwardEquipment, @"***** SCRIPT ERROR: in %@, CANNOT award undamaged weapon:'%@'. Damaged weapons can be awarded instead.", CurrentScriptDesc(), equipString);
+		OO_LOG(kOOLogSyntaxAwardEquipment, "***** SCRIPT ERROR: in {}, CANNOT award undamaged weapon:'{}'. Damaged weapons can be awarded instead.", CurrentScriptDescription(), equipKey);
 	}
-	else if ([equipString hasSuffix:@"_DAMAGED"] && [self hasEquipmentItem:[equipString substringToIndex:[equipString length] - [@"_DAMAGED" length]]])
+	// (the "_DAMAGED" suffix is ASCII, so its bytes are its characters)
+	else if (oo::str::hasSuffix(equipKey, "_DAMAGED") && [self hasEquipmentItem:oo::NSStringFrom(equipKey.substr(0, equipKey.size() - 8))])
 	{
-		OOLog(kOOLogSyntaxAwardEquipment, @"***** SCRIPT ERROR: in %@, CANNOT award damaged equipment:'%@'. Undamaged version already equipped.", CurrentScriptDesc(), equipString);
+		OO_LOG(kOOLogSyntaxAwardEquipment, "***** SCRIPT ERROR: in {}, CANNOT award damaged equipment:'{}'. Undamaged version already equipped.", CurrentScriptDescription(), equipKey);
 	}
 	else if ([eqType canCarryMultiple] || ![self hasEquipmentItem:equipString])
 	{
@@ -1353,113 +1364,113 @@ static int shipsFound;
 }
 
 
-- (void) removeEquipment:(NSString *)equipKey  //eg. EQ_NAVAL_ENERGY_UNIT
+- (void) removeEquipment:(id)equipString	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 {
 	if (scriptTarget != self)  return;
 
-	if ([equipKey isEqualToString:@"EQ_FUEL"])
+	const std::string equipKey = oo::StdString(equipString);
+	if (equipKey == "EQ_FUEL")
 	{
 		fuel = 0;
 		return;
 	}
-	
-	if ([equipKey isEqualToString:@"EQ_CARGO_BAY"] && [self hasEquipmentItem:equipKey]
+
+	if (equipKey == "EQ_CARGO_BAY" && [self hasEquipmentItem:equipString]
 			&& ([self extraCargo] > [self availableCargoSpace]))
 	{
-		OOLog(kOOLogSyntaxRemoveEquipment, @"***** SCRIPT ERROR: in %@, CANNOT remove cargo bay. Too much cargo.", CurrentScriptDesc());
+		OO_LOG(kOOLogSyntaxRemoveEquipment, "***** SCRIPT ERROR: in {}, CANNOT remove cargo bay. Too much cargo.", CurrentScriptDescription());
 		return;
 	}
-	if ([self hasEquipmentItem:equipKey] || [self hasEquipmentItem:[equipKey stringByAppendingString:@"_DAMAGED"]])
+	if ([self hasEquipmentItem:equipString] || [self hasEquipmentItem:oo::NSStringFrom(equipKey + "_DAMAGED")])
 	{
-		[self removeEquipmentItem:equipKey];
+		[self removeEquipmentItem:equipString];
 	}
 
 }
 
 
-- (void) setPlanetinfo:(NSString *)key_valueString	// uses key=value format
+- (void) setPlanetinfo:(id)key_valueString	// called by name (ADR-0043 item 21); uses key=value format
 {
-	NSArray *	tokens = [key_valueString componentsSeparatedByString:@"="];
-	NSString*   keyString = nil;
-	NSString*	valueString = nil;
+	const std::string argument = oo::StdString(key_valueString);
+	const std::vector<std::string> tokens = oo::str::split(argument, "=");
 
-	if ([tokens count] != 2)
+	if (tokens.size() != 2)
 	{
-		OOLog(kOOLogSyntaxSetPlanetInfo, @"***** SCRIPT ERROR: in %@, CANNOT setPlanetinfo: '%@' (bad parameter count)", CurrentScriptDesc(), key_valueString);
+		OO_LOG(kOOLogSyntaxSetPlanetInfo, "***** SCRIPT ERROR: in {}, CANNOT setPlanetinfo: '{}' (bad parameter count)", CurrentScriptDescription(), argument);
 		return;
 	}
-	
-	keyString = [[tokens objectAtIndex:0] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-	valueString = [[tokens objectAtIndex:1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-	
+
+	const std::string keyString = TrimWhitespace(tokens[0]);
+	const std::string valueString = TrimWhitespace(tokens[1]);
+
 	/* Legacy script planetinfo settings are now non-persistent over save/load
 	 * Virtually nothing uses them any more, and expecting them to have a
 	 * manifest and identifying what it is if so seems unnecessary */
-	[UNIVERSE setSystemDataKey:keyString value:valueString fromManifest:@""];
+	[UNIVERSE setSystemDataKey:oo::NSStringFrom(keyString) value:oo::NSStringFrom(valueString) fromManifest:@""];
 
 }
 
 
-- (void) setSpecificPlanetInfo:(NSString *)key_valueString  // uses galaxy#=planet#=key=value
+- (void) setSpecificPlanetInfo:(id)key_valueString	// called by name (ADR-0043 item 21); uses galaxy#=planet#=key=value
 {
-	NSArray *	tokens = [key_valueString componentsSeparatedByString:@"="];
-	NSString*   keyString = nil;
-	NSString*	valueString = nil;
+	const std::string argument = oo::StdString(key_valueString);
+	const std::vector<std::string> tokens = oo::str::split(argument, "=");
 	int gnum, pnum;
 
-	if ([tokens count] != 4)
+	if (tokens.size() != 4)
 	{
-		OOLog(kOOLogSyntaxSetPlanetInfo, @"***** SCRIPT ERROR: in %@, CANNOT setSpecificPlanetInfo: '%@' (bad parameter count)", CurrentScriptDesc(), key_valueString);
+		OO_LOG(kOOLogSyntaxSetPlanetInfo, "***** SCRIPT ERROR: in {}, CANNOT setSpecificPlanetInfo: '{}' (bad parameter count)", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	gnum = oo::PListView(tokens).at<int>(0);
-	pnum = oo::PListView(tokens).at<int>(1);
-	keyString = [[tokens objectAtIndex:2] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-	valueString = [[tokens objectAtIndex:3] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	const oo::PList tokenArray = TokenArray(tokens);
+	gnum = tokenArray.at<int>(0);
+	pnum = tokenArray.at<int>(1);
+	const std::string keyString = TrimWhitespace(tokens[2]);
+	const std::string valueString = TrimWhitespace(tokens[3]);
 
-	[UNIVERSE setSystemDataForGalaxy:gnum planet:pnum key:keyString value:valueString fromManifest:@"" forLayer:OO_LAYER_OXP_DYNAMIC];
+	[UNIVERSE setSystemDataForGalaxy:gnum planet:pnum key:oo::NSStringFrom(keyString) value:oo::NSStringFrom(valueString) fromManifest:@"" forLayer:OO_LAYER_OXP_DYNAMIC];
 }
 
 
-- (void) awardCargo:(NSString *)amount_typeString
+- (void) awardCargo:(id)amount_typeString	// called by name (ADR-0043 item 21)
 {
 	if (scriptTarget != self)  return;
 
-	NSArray					*tokens = ScanTokensFromString(amount_typeString);
+	const std::string		argument = oo::StdString(amount_typeString);
+	const std::vector<std::string>	tokens = oo::str::tokens(argument);
 	OOCargoQuantityDelta	amount;
-	OOCommodityType			type;
 	OOMassUnit				unit;
 
-	if ([tokens count] != 2)
+	if (tokens.size() != 2)
 	{
-		OOLog(kOOLogSyntaxAwardCargo, @"***** SCRIPT ERROR: in %@, CANNOT awardCargo: '%@' (%@)", CurrentScriptDesc(), amount_typeString, @"bad parameter count");
+		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "bad parameter count");
 		return;
 	}
-	
 
-	type = oo::PListView(tokens).at<NSString *>(1);
-	if (![[UNIVERSE commodities] goodDefined:type])
+	const oo::PList tokenArray = TokenArray(tokens);
+	const std::string &type = tokens[1];	// the good (Amendment 1 item 10: a std::string)
+	if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)])
 	{
-		OOLog(kOOLogSyntaxAwardCargo, @"***** SCRIPT ERROR: in %@, CANNOT awardCargo: '%@' (%@)", CurrentScriptDesc(), amount_typeString, @"unknown type");
+		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "unknown type");
 		return;
 	}
-	
-	amount = oo::PListView(tokens).at<int>(0);
+
+	amount = tokenArray.at<int>(0);
 	if (amount < 0)
 	{
-		OOLog(kOOLogSyntaxAwardCargo, @"***** SCRIPT ERROR: in %@, CANNOT awardCargo: '%@' (%@)", CurrentScriptDesc(), amount_typeString, @"negative quantity");
+		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "negative quantity");
 		return;
 	}
-	
-	unit = [shipCommodityData massUnitForGood:type];
+
+	unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
 	if (specialCargo && unit == UNITS_TONS)
 	{
-		OOLog(kOOLogSyntaxAwardCargo, @"***** SCRIPT ERROR: in %@, CANNOT awardCargo: '%@' (%@)", CurrentScriptDesc(), amount_typeString, @"cargo hold full with special cargo");
+		OO_LOG(kOOLogSyntaxAwardCargo, "***** SCRIPT ERROR: in {}, CANNOT awardCargo: '{}' ({})", CurrentScriptDescription(), argument, "cargo hold full with special cargo");
 		return;
 	}
-	
-	[self awardCommodityType:type amount:amount];
+
+	[self awardCommodityType:oo::NSStringFrom(type) amount:amount];
 }
 
 
@@ -1471,23 +1482,21 @@ static int shipsFound;
 - (void) removeAllCargo:(BOOL)forceRemoval
 {
 	// Misnamed method. It only removes cargo measured in TONS, g & Kg items are not removed. --Kaks 20091004
-	OOCommodityType			type;
-	
 	if (scriptTarget != self)  return;
-	
+
 	if ([self status] != STATUS_DOCKED && !forceRemoval)
 	{
-		OOLogWARN(kOOLogRemoveAllCargoNotDocked, @"%@removeAllCargo only works when docked.", [NSString stringWithFormat:@" in %@, ", CurrentScriptDesc()]);
+		OO_LOG_WARN(kOOLogRemoveAllCargoNotDocked, "{}removeAllCargo only works when docked.", " in " + CurrentScriptDescription() + ", ");
 		return;
 	}
-	
-	OOLog(kOOLogNoteRemoveAllCargo, @"%@ removeAllCargo", forceRemoval ? @"Forcing" : @"Going to");
-	
-	foreach (type, [shipCommodityData goods])
+
+	OO_LOG(kOOLogNoteRemoveAllCargo, "{} removeAllCargo", forceRemoval ? "Forcing" : "Going to");
+
+	for (const std::string &type : oo::StringsFrom([shipCommodityData goods]))
 	{
-		if ([shipCommodityData massUnitForGood:type] == UNITS_TONS)
+		if ([shipCommodityData massUnitForGood:oo::NSStringFrom(type)] == UNITS_TONS)
 		{
-			[shipCommodityData setQuantity:0 forGood:type];
+			[shipCommodityData cxx_setQuantity:0 forGood:type];
 		}
 	}
 
@@ -1504,32 +1513,33 @@ static int shipsFound;
 			[cargo removeObjectAtIndex:i];
 		}
 	}
-	
+
 	DESTROY(specialCargo);
-	
+
 	[self calculateCurrentCargo];
 }
 
 
-- (void) useSpecialCargo:(NSString *)descriptionString
+- (void) useSpecialCargo:(id)descriptionString	// called by name (ADR-0043 item 21)
 {
 	if (scriptTarget != self)  return;
 
-	[self removeAllCargo:YES];	
-	OOLog(kOOLogNoteUseSpecialCargo, @"Going to useSpecialCargo:'%@'", descriptionString);
-	specialCargo = [OOExpand(descriptionString) retain];
+	const std::string description = oo::StdString(descriptionString);
+	[self removeAllCargo:YES];
+	OO_LOG(kOOLogNoteUseSpecialCargo, "Going to useSpecialCargo:'{}'", description);
+	specialCargo = [OOExpand(oo::NSStringFrom(description)) retain];
 }
 
 
-- (void) testForEquipment:(NSString *)equipString	//eg. EQ_NAVAL_ENERGY_UNIT
+- (void) testForEquipment:(id)equipString	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 {
 	found_equipment = [self hasEquipmentItem:equipString];
 }
 
 
-- (void) awardFuel:(NSString *)valueString	// add to fuel up to 7.0 LY
+- (void) awardFuel:(id)valueString	// called by name (ADR-0043 item 21); add to fuel up to 7.0 LY
 {
-	int delta  = 10 * [valueString floatValue];
+	int delta  = 10 * (float)oo::str::doubleValue(oo::StdString(valueString));
 	OOFuelQuantity scriptTargetFuelBeforeAward = [scriptTarget fuel];
 
 	if (delta < 0 && scriptTargetFuelBeforeAward < (unsigned)-delta)  [scriptTarget setFuel:0];
@@ -1568,7 +1578,7 @@ static int shipsFound;
 }
 
 
-- (void) ejectItem:(NSString *)itemKey
+- (void) ejectItem:(id)itemKey	// called by name (ADR-0043 item 21)
 {
 	if (scriptTarget == nil)  scriptTarget = self;
 	[scriptTarget ejectShipOfType:itemKey];
@@ -2272,20 +2282,20 @@ static int shipsFound;
 }
 
 
-- (void) setFuelLeak:(NSString *)value
-{	
+- (void) setFuelLeak:(id)value	// called by name (ADR-0043 item 21)
+{
 	if (scriptTarget != self)
 	{
 		[scriptTarget setFuel:0];
 		return;
 	}
 	
-	fuel_leak_rate = [value doubleValue];
+	fuel_leak_rate = oo::str::doubleValue(oo::StdString(value));
 	if (fuel_leak_rate > 0)
 	{
 		[self playFuelLeak];
 		[UNIVERSE addMessage:DESC(@"danger-fuel-leak") forCount:6];
-		OOLog(kOOLogNoteFuelLeak, @"%@", @"FUEL LEAK activated!");
+		OO_LOG(kOOLogNoteFuelLeak, "{}", "FUEL LEAK activated!");
 	}
 }
 
@@ -2296,9 +2306,9 @@ static int shipsFound;
 }
 
 
-- (void) setSunNovaIn:(NSString *)time_value
+- (void) setSunNovaIn:(id)time_value	// called by name (ADR-0043 item 21)
 {
-	double time_until_nova = [time_value doubleValue];
+	double time_until_nova = oo::str::doubleValue(oo::StdString(time_value));
 	[[UNIVERSE sun] setGoingNova:YES inTime: time_until_nova];
 }
 
@@ -2910,77 +2920,63 @@ static int shipsFound;
 }
 
 
-- (BOOL) addEqScriptForKey:(NSString *)eq_key
+- (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key
 {
-	if (eq_key == nil) return NO;
-	
-	NSString			*scriptName = [[OOEquipmentType equipmentTypeWithIdentifier:eq_key] scriptName];
-	
-	OOLog(@"player.equipmentScript", @"Added equipment %@, with the following script property: '%@'.", eq_key, scriptName);
+	const std::optional<std::string> scriptName = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]);
 
-	if (scriptName == nil) return NO;
-	
-	NSMutableDictionary	*properties = [NSMutableDictionary dictionary];
-	
-	// no duplicates!
-	NSArray *eqScript = nil;
-	foreach (eqScript, eqScripts)
-	{
-		NSString *key = oo::PListView(eqScript).at<NSString *>(0);
-		if ([key isEqualToString: eq_key])  return NO;
-	}
-	
-	[properties setObject:self forKey:@"ship"];
-	[properties setObject:eq_key forKey:@"equipmentKey"];
-	OOScript *s = [OOScript jsScriptFromFileNamed:scriptName properties:properties];
+	OOLog(@"player.equipmentScript", @"Added equipment %@, with the following script property: '%@'.", oo::NSStringFrom(eq_key), oo::NSStringOrNil(scriptName));
+
+	if (!scriptName.has_value()) return NO;
+
+	// no duplicates! (eqScripts, PlayerEntity.h's, holds (key, script) pairs)
+	if ([self cxx_eqScriptIndexForKey:eq_key] != [eqScripts count])  return NO;
+
+	// the script's properties: a mixed configuration (Amendment 2)
+	oo::PList::Dict properties;
+	properties["ship"] = oo::PListObject(self);
+	properties["equipmentKey"] = oo::PList(eq_key);
+	OOScript *s = [OOScript jsScriptFromFileNamed:oo::NSStringFrom(*scriptName) properties:oo::ObjectFromPList(oo::PList(std::move(properties)))];
 	if (s == nil) return NO;
-	
-	OOLog(@"player.equipmentScript", @"Script '%@': installation %@successful.", scriptName,(s == nil ? @"un" : @""));
-	
-	[eqScripts addObject:[NSArray arrayWithObjects:eq_key,s,nil]];
+
+	OOLog(@"player.equipmentScript", @"Script '%@': installation %@successful.", oo::NSStringFrom(*scriptName),(s == nil ? @"un" : @""));
+
+	[eqScripts addObject:oo::NSArrayFromObjects(std::vector<id>{ oo::NSStringFrom(eq_key), s })];
 	if (primedEquipment == [eqScripts count] - 1) primedEquipment++;	// if primed-none, keep it as primed-none.
 	OOLog(@"player.equipmentScript", @"Scriptable equipment available: %zu.", [eqScripts count]);
 	return YES;
 }
 
 
-- (void) removeEqScriptForKey:(NSString *)eq_key
+- (void) cxx_removeEqScriptForKey:(const std::string &)eq_key
 {
-	if (eq_key == nil) return;
-	
-	NSString			*key = nil;
 	NSUInteger			i, count = [eqScripts count];
-	
+
 	for (i = 0; i < count; i++)
 	{
-		key = oo::PListView(oo::PListView(eqScripts).at<NSArray *>(i)).at<NSString *>(0);
-		if ([key isEqualToString: eq_key]) 
+		// (count is not updated after a removal: an index past the end read nil, matching nothing)
+		if (i < [eqScripts count] && oo::StdString([[eqScripts objectAtIndex:i] objectAtIndex:0]) == eq_key)
 		{
 			[eqScripts removeObjectAtIndex:i];
-			
+
 			if (i == primedEquipment)  primedEquipment = count;	// primed-none
 			else if (i < primedEquipment)  primedEquipment--; // track the primed equipment
 			if (count == primedEquipment)  primedEquipment--; // the array has shrunk by one!
 
-			OOLog(@"player.equipmentScript", @"Removed equipment %@, with the following script property: '%@'.", eq_key, [[OOEquipmentType equipmentTypeWithIdentifier:eq_key] scriptName]);
+			OOLog(@"player.equipmentScript", @"Removed equipment %@, with the following script property: '%@'.", oo::NSStringFrom(eq_key), [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_key)] scriptName]);
 		}
 	}
 }
 
 
-- (NSUInteger) eqScriptIndexForKey:(NSString *)eq_key
+- (NSUInteger) cxx_eqScriptIndexForKey:(const std::string &)eq_key
 {
 	NSUInteger			i, count = [eqScripts count];
-	
-	if (eq_key != nil)
+
+	for (i = 0; i < count; i++)
 	{
-		for (i = 0; i < count; i++)
-		{
-			NSString *key = oo::PListView(oo::PListView(eqScripts).at<NSArray *>(i)).at<NSString *>(0);
-			if ([key isEqualToString: eq_key]) return i;
-		}
+		if (oo::StdString([[eqScripts objectAtIndex:i] objectAtIndex:0]) == eq_key) return i;
 	}
-	
+
 	return count;
 }
 
@@ -3011,7 +3007,7 @@ static int shipsFound;
 }
 
 
-- (void) setGalacticHyperspaceBehaviourTo:(NSString *)galacticHyperspaceBehaviourString
+- (void) setGalacticHyperspaceBehaviourTo:(id)galacticHyperspaceBehaviourString	// called by name (ADR-0043 item 21)
 {
 	OOGalacticHyperspaceBehaviour ghBehaviour = OOGalacticHyperspaceBehaviourFromString(galacticHyperspaceBehaviourString);
 	if (ghBehaviour == GALACTIC_HYPERSPACE_BEHAVIOUR_UNKNOWN)
@@ -3023,18 +3019,18 @@ static int shipsFound;
 }
 
 
-- (void) setGalacticHyperspaceFixedCoordsTo:(NSString *)galacticHyperspaceFixedCoordsString
-{	
-	NSArray *coord_vals = ScanTokensFromString(galacticHyperspaceFixedCoordsString);
-	if ([coord_vals count] < 2)	// Will be 0 if string is nil
+- (void) setGalacticHyperspaceFixedCoordsTo:(id)galacticHyperspaceFixedCoordsString	// called by name (ADR-0043 item 21)
+{
+	const oo::PList coord_vals = TokenArray(oo::str::tokens(oo::StdString(galacticHyperspaceFixedCoordsString)));
+	if (coord_vals.count() < 2)	// Will be 0 if string is nil
 	{
 		OOLog(@"player.setGalacticHyperspaceFixedCoords.invalidInput", @"%@",
 			  @"setGalacticHyperspaceFixedCoords: called with bad specifier. Defaulting to Oolite standard.");
 		galacticHyperspaceFixedCoords.x = galacticHyperspaceFixedCoords.y = 0x60;
 	}
 	
-	[self setGalacticHyperspaceFixedCoordsX:oo::PListView(coord_vals).at<unsigned char>(0)
-										  y:oo::PListView(coord_vals).at<unsigned char>(1)];
+	[self setGalacticHyperspaceFixedCoordsX:coord_vals.at<unsigned char>(0)
+										  y:coord_vals.at<unsigned char>(1)];
 }
 
 @end
