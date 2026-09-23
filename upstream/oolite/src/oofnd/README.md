@@ -429,6 +429,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
 | `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
 | `src/Core/OOCacheManager+FoundationBridge.h/.mm` | oo-19g0 | oo-5pae ("Delete OOCacheManager+FoundationBridge") |
+| `src/Core/ResourceManager+FoundationBridge.h/.mm` | oo-3rb.98 (chunks of oo-2wwr) | oo-0f7h ("Delete ResourceManager+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
