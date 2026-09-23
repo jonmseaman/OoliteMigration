@@ -86,6 +86,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "PlayerEntityKeyMapper.h"
 #import "OOSystemDescriptionManager.h"
+#import "OOFoundationBridge.h"
 
 
 #define PLAYER_DEFAULT_NAME				@"Jameson"
@@ -13381,7 +13382,7 @@ else _dockTarget = NO_TARGET;
 	NSMutableArray *newarray = nil;
 	NSString *key = nil;	
 	NSMutableDictionary *final = [[NSMutableDictionary alloc] init];
-	NSDictionary *keys = [definition registerKeys];
+	NSDictionary *keys = oo::ObjectFromPList([definition registerKeys]);
 	NSMutableArray *checklist = [[NSMutableArray alloc] init];
 
 	foreach (key, [keys allKeys])
@@ -13390,7 +13391,7 @@ else _dockTarget = NO_TARGET;
 		[checklist addObject:item];
 		[final setObject:item forKey:key];
 	}
-	[definition setRegisterKeys:[final copy]];
+	[definition setRegisterKeys:oo::PListFrom([final copy])];
 	[final release];
 
 	/// create the dictionary, if it doesn't already exist
@@ -13421,7 +13422,7 @@ else _dockTarget = NO_TARGET;
 			else 
 			{
 				// check whether any of those keycodes is already in use on this screen
-				NSDictionary *keydefs = [def_existing registerKeys];
+				NSDictionary *keydefs = oo::ObjectFromPList([def_existing registerKeys]);
 
 				foreach (key, [keydefs allKeys])
 				{
