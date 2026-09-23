@@ -43,7 +43,7 @@ SOFTWARE.
 	oo::PList				_shipData;		// ship key -> ship dictionary (null until loaded)
 	oo::PList				_effectData;	// effect key -> effect dictionary (null until loaded)
 	oo::PList				_demoShips;		// demo ship entries (dictionaries) grouped in arrays by class
-std::vector<std::string>	_playerShips;
+	std::vector<std::string>	_playerShips;	// shipyard keys, in shipyard.plist key order
 	std::optional<std::map<std::string, oo::ObjCRef<OOProbabilitySet *>, std::less<>>>	_probabilitySets;	// role -> ship keys; nullopt: none cached yet
 }
 

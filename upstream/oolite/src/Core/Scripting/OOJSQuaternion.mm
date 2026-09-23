@@ -743,7 +743,7 @@ static bool QuaternionRotate(ooscript::Context context, ooscript::CallArgs &oojs
 	ooscript::Value					*argv = OOJS_ARGV;
 	
 	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "rotate"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Quaternion", @"rotate", argc, argv, &axis, &consumed)))  return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, "Quaternion", "rotate", argc, argv, &axis, &consumed)))  return NO;
 	argv += consumed;
 	argc -= consumed;
 	if (argc > 0)
