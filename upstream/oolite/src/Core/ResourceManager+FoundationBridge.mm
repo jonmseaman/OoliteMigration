@@ -342,4 +342,69 @@ NSString *ArrayCacheKey(NSString *fileName, NSString *folderName, BOOL mergeFile
 	return [self dictionaryFromFilesNamed:@"material-defaults.plist" inFolder:@"Config" andMerge:YES];
 }
 
+
+
+// oo-3rb.103: file lookup, sounds and music, diagnostics
+
++ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName
+{
+	return [self pathForFileNamed:fileName inFolder:folderName cache:YES];
+}
+
+
++ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache
+{
+	if (fileName == nil)  return nil;
+
+	// A resolved path came back as the string object held in OOCacheManager; the bridge returns
+	// that object too (see the loaders above).
+	NSString *cacheKey = (folderName != nil) ? [NSString stringWithFormat:@"%@/%@", folderName, fileName] : fileName;
+	OOCacheManager *cacheMgr = [OOCacheManager sharedCache];
+	id cached = [cacheMgr objectForKey:cacheKey inCache:@"resolved paths"];
+	if (cached != nil)  return cached;
+
+	const std::optional<std::string> result = [self cxx_pathForFileNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName) cache:useCache];
+	if (useCache && result.has_value())
+	{
+		cached = [cacheMgr objectForKey:cacheKey inCache:@"resolved paths"];	// what the lookup just cached
+		if (cached != nil)  return cached;
+	}
+	return oo::NSStringOrNil(result);
+}
+
+
++ (OOSound *)ooSoundNamed:(NSString *)fileName inFolder:(NSString *)folderName
+{
+	if (fileName == nil)  return nil;	// no path was found for a nil name
+	return [self cxx_ooSoundNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName)];
+}
+
+
++ (OOMusic *)ooMusicNamed:(NSString *)fileName inFolder:(NSString *)folderName
+{
+	if (fileName == nil)  return nil;	// no path was found for a nil name
+	return [self cxx_ooMusicNamed:oo::StdString(fileName) inFolder:oo::OptionalString(folderName)];
+}
+
+
++ (BOOL) writeDiagnosticData:(NSData *)data toFileNamed:(NSString *)name
+{
+	if (data == nil || name == nil)  return NO;
+	return [self cxx_writeDiagnosticData:oo::Data([data bytes], [data length]) toFileNamed:oo::StdString(name)];
+}
+
+
++ (BOOL) writeDiagnosticString:(NSString *)string toFileNamed:(NSString *)name
+{
+	if (string == nil || name == nil)  return NO;	// -dataUsingEncoding: of nil was nil
+	return [self cxx_writeDiagnosticString:oo::StdString(string) toFileNamed:oo::StdString(name)];
+}
+
+
++ (BOOL) writeDiagnosticPList:(id)plist toFileNamed:(NSString *)name
+{
+	if (name == nil)  return NO;
+	return [self cxx_writeDiagnosticPList:plist toFileNamed:oo::StdString(name)];
+}
+
 @end
