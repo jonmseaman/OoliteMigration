@@ -37,7 +37,7 @@
 
 
 #import "OOPlanetTextureGenerator.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOColor.h"
 
 #ifndef TEXGEN_TEST_RIG
@@ -155,8 +155,8 @@ enum
 	{
 		OOLog(@"texture.planet.generate", @"Extracting parameters for generator %@",self);
 
-		_info.landFraction = OOClamp_0_1_f([planetInfo oo_floatForKey:@"land_fraction" defaultValue:0.3]);
-		_info.polarFraction = OOClamp_0_1_f([planetInfo oo_floatForKey:@"polar_fraction" defaultValue:0.05]);
+		_info.landFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"land_fraction", 0.3));
+		_info.polarFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"polar_fraction", 0.05));
 		_info.landColor = FloatRGBFromDictColor(planetInfo, @"land_color");
 		_info.seaColor = FloatRGBFromDictColor(planetInfo, @"sea_color");
 		_info.paleLandColor = FloatRGBFromDictColor(planetInfo, @"polar_land_color");
@@ -166,8 +166,8 @@ enum
 		{
 			OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
 			// we have an atmosphere:
-			_info.cloudAlpha = [planetInfo oo_floatForKey:@"cloud_alpha" defaultValue:1.0f];
-			_info.cloudFraction = OOClamp_0_1_f([planetInfo oo_floatForKey:@"cloud_fraction" defaultValue:0.3]);
+			_info.cloudAlpha = oo::PListView(planetInfo).get<float>(@"cloud_alpha", 1.0f);
+			_info.cloudFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"cloud_fraction", 0.3));
 			_info.cloudColor = FloatRGBFromDictColor(planetInfo, @"cloud_color");
 			_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, @"polar_cloud_color");
 		}
@@ -175,7 +175,7 @@ enum
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
 		
 #ifndef TEXGEN_TEST_RIG
-		if (detailLevel < DETAIL_LEVEL_SHADERS || [planetInfo oo_boolForKey:@"isMiniature" defaultValue:NO])
+		if (detailLevel < DETAIL_LEVEL_SHADERS || oo::PListView(planetInfo).get<BOOL>(@"isMiniature", NO))
 		{
 			_planetScale = kPlanetScaleReducedDetail;
 		}
@@ -190,7 +190,7 @@ enum
 #else
 		_planetScale = kPlanetScale4096x4096;
 #endif
-		_info.perlin3d = [planetInfo oo_boolForKey:@"perlin_3d" defaultValue:detailLevel > DETAIL_LEVEL_SHADERS];
+		_info.perlin3d = oo::PListView(planetInfo).get<BOOL>(@"perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
 		_info.planetAspectRatio = _info.perlin3d ? 2 : 1;
 		_info.planetScaleOffset = 8 - _info.planetAspectRatio;
 	}
@@ -435,7 +435,7 @@ enum
 	float normalScale = (1 << _planetScale)
 #ifndef NDEBUG
 						// test-release only, make normalScale adjustable from within user defaults
-						* [[NSUserDefaults standardUserDefaults] oo_floatForKey:@"p3dnsf" defaultValue:1.0f]
+						* oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"p3dnsf", 1.0f)
 #endif
 						; // float normalScale = ...
 	if (!generateNormalMap)  normalScale *= 3.0f;

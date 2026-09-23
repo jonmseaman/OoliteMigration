@@ -8,10 +8,11 @@
   "uneval",
   "let-block",
   "legacy-accessor",
-  "expression-closure"
+  "expression-closure",
+  "legacy-generator"
  ],
  "cache_dir": "C:\\Users\\jon\\AppData\\Local\\OoliteMigration\\oxp-cache",
- "manifest": "C:\\Users\\jon\\OoliteMigration\\.worktrees\\oo-ctq\\tools\\oxp-corpus\\manifest.json",
+ "manifest": "C:\\Users\\jon\\OoliteMigration\\.worktrees\\oo-1gc.16\\tools\\oxp-corpus\\manifest.json",
  "expansions": [
   {
    "url": "https://cim.sotl.org.uk/games/files/oolite/CameraDrones_1.4.oxz",
@@ -5604,8 +5605,18 @@
    "sha256": "4c6747ee4b2876ac625f7f0521984f36e996899b5c7513dbc67e33645b4b4ace",
    "status": "ok",
    "js_files": 4,
-   "findings": [],
-   "counts": {}
+   "findings": [
+    {
+     "file": "Scripts/wildShips_tembo.js",
+     "rule": "legacy-generator",
+     "line": 16,
+     "column": 73,
+     "snippet": "subs.items = function(){for (let loop = 0; loop < this.length; loop++) yield this[loop];}"
+    }
+   ],
+   "counts": {
+    "legacy-generator": 1
+   }
   },
   {
    "url": "https://wiki.alioth.net/img_auth.php/c/c2/Aliens_v1.2.oxz",
@@ -7008,8 +7019,18 @@
    "sha256": "af23d8a4ffb438da3e33bdda9f6c156879ba5b209c974bd996c7bcd9e74f710c",
    "status": "ok",
    "js_files": 24,
-   "findings": [],
-   "counts": {}
+   "findings": [
+    {
+     "file": "Scripts/aquatics_congerPods.js",
+     "rule": "legacy-generator",
+     "line": 17,
+     "column": 61,
+     "snippet": "e.items = function(){for (let i = 0; i < this.length; i++) yield this[i];}"
+    }
+   ],
+   "counts": {
+    "legacy-generator": 1
+   }
   },
   {
    "url": "https://wiki.alioth.net/img_auth.php/f/f1/EmailSystem.oxz",
@@ -7170,8 +7191,25 @@
    "sha256": "dd70682fd3c7ae63c4bce8342fa065df8ae6ff1eccdbc75d74bb29dc9d398294",
    "status": "ok",
    "js_files": 2,
-   "findings": [],
-   "counts": {}
+   "findings": [
+    {
+     "file": "Scripts/bweed-kestrelfalcon-falcon.js",
+     "rule": "legacy-generator",
+     "line": 16,
+     "column": 60,
+     "snippet": "e.items= function(){for (let i = 0; i < this.length; i++) yield this[i];}"
+    },
+    {
+     "file": "Scripts/bweed-kestrelfalcon-kestrel.js",
+     "rule": "legacy-generator",
+     "line": 14,
+     "column": 60,
+     "snippet": "e.items= function(){for (var i = 0; i < this.length; i++) yield this[i];}"
+    }
+   ],
+   "counts": {
+    "legacy-generator": 2
+   }
   },
   {
    "url": "https://wiki.alioth.net/img_auth.php/f/f7/Addons_for_Beginners.oxz",
@@ -7423,8 +7461,8 @@
   "missing": 0,
   "unreadable": 0,
   "js_files": 1997,
-  "flagged_expansions": 2,
-  "findings": 5
+  "flagged_expansions": 5,
+  "findings": 9
  },
  "by_rule": {
   "catch-if": 0,
@@ -7434,7 +7472,8 @@
   "uneval": 0,
   "let-block": 0,
   "legacy-accessor": 2,
-  "expression-closure": 0
+  "expression-closure": 0,
+  "legacy-generator": 4
  },
- "wall_seconds": 10
+ "wall_seconds": 6.7
 }

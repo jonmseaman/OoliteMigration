@@ -34,7 +34,7 @@ MA 02110-1301, USA.
 #import "OOCharacter.h"
 #import "OOStringParsing.h"
 #import "PlayerEntity.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OODebugFlags.h"
 #import "OOStringExpander.h"
 
@@ -132,15 +132,15 @@ MA 02110-1301, USA.
 	
 	scanClass = CLASS_NO_DRAW;
 	
-	_sunBrightnessFactor = [[NSUserDefaults standardUserDefaults] oo_floatForKey:@"sbf" defaultValue:80.0f];
-	_sunCoronaAlphaFactor = [[NSUserDefaults standardUserDefaults] oo_floatForKey:@"scaf" defaultValue:0.005f];
+	_sunBrightnessFactor = oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"sbf", 80.0f);
+	_sunCoronaAlphaFactor = oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(@"scaf", 0.005f);
 	
 	[self setSunColor:sun_color];
 
-	[self setName:OOExpand([dict oo_stringForKey:KEY_SUNNAME defaultValue:@"[oolite-default-star-name]"])];
+	[self setName:OOExpand(oo::PListView(dict).get<NSString *>(KEY_SUNNAME, @"[oolite-default-star-name]"))];
 	
-	corona_blending=OOClamp_0_1_f([dict oo_floatForKey:@"corona_hues" defaultValue:1.0f]);
-	corona_speed_factor=[dict oo_floatForKey:@"corona_shimmer" defaultValue:-1.0];
+	corona_blending=OOClamp_0_1_f(oo::PListView(dict).get<float>(@"corona_hues", 1.0f));
+	corona_speed_factor=oo::PListView(dict).get<float>(@"corona_shimmer", -1.0);
 	if(corona_speed_factor<0)
 	{
 		// from .22222 to 2
@@ -684,11 +684,11 @@ MA 02110-1301, USA.
 	if ([key isEqualToString:@"sun_radius"])
 	{
 		oldRadius =	[object doubleValue];	// clamp corona_flare in case planetinfo.plist / savegame contains the wrong value
-		[self setRadius:oldRadius andCorona:[dict oo_floatForKey:@"corona_flare" defaultValue:0.0f]];
+		[self setRadius:oldRadius andCorona:oo::PListView(dict).get<float>(@"corona_flare", 0.0f)];
 	}
 	else if ([key isEqualToString:KEY_SUNNAME])
 	{
-		[self setName:[dict oo_stringForKey:KEY_SUNNAME]];
+		[self setName:oo::PListView(dict).get<NSString *>(KEY_SUNNAME)];
 	}
 	else if ([key isEqualToString:@"corona_flare"])
 	{
@@ -705,7 +705,7 @@ MA 02110-1301, USA.
 	else if ([key isEqualToString:@"sun_gone_nova"])
 	{
 
-		if ([dict oo_boolForKey:key])
+		if (oo::PListView(dict).get<BOOL>(key))
 		{
 			[self setGoingNova:YES inTime:0];
 		}
@@ -713,7 +713,7 @@ MA 02110-1301, USA.
 		{
 			[self setGoingNova:NO inTime:0];
 			// oldRadius is always the radius we had before going nova...
-			[self setRadius: oldRadius andCorona:[dict oo_floatForKey:@"corona_flare" defaultValue:0.0f]];
+			[self setRadius: oldRadius andCorona:oo::PListView(dict).get<float>(@"corona_flare", 0.0f)];
 
 		}
 	}

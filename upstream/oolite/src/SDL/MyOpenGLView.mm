@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 #include <SDL3/SDL_init.h>
 #import "png.h"
 #import "MyOpenGLView.h"
+#include "oofnd/Process.hpp"
 #import "MyOpenGLView+Input.h"
 
 #import "GameController.h"
@@ -36,7 +37,7 @@ MA 02110-1301, USA.
 #import "GuiDisplayGen.h"
 #import "PlanetEntity.h"
 #import "OOGraphicsResetManager.h"
-#import "OOCollectionExtractors.h" // for splash screen settings
+#import "OOPListView.h" // for splash screen settings
 #import "OOFullScreenController.h"
 #import "ResourceManager.h"
 #import "OOConstToString.h"
@@ -50,6 +51,7 @@ extern "C" int SaveEXRSnapshot(const char* outfilename, int width, int height, c
 
 
 #include <ctype.h>
+#include "oofnd/Date.hpp"
 
 #if OOLITE_WINDOWS
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -170,7 +172,7 @@ enum PreferredAppMode
 	 * doesn't give any problems (other than speed on low-end graphics
 	 * cards) a game options entry might be useful. - CIM, 24 Aug 2013*/
 
-	if ([prefs oo_boolForKey:@"anti-aliasing" defaultValue:NO])
+	if (oo::PListView(prefs).get<BOOL>(@"anti-aliasing", NO))
 	{
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
@@ -281,12 +283,12 @@ enum PreferredAppMode
 	_colorSaturation = 1.0f;
 
 #if OOLITE_WINDOWS
-	_hdrMaxBrightness = [prefs oo_floatForKey:@"hdr-max-brightness" defaultValue:1000.0f];
-	_hdrPaperWhiteBrightness = [prefs oo_floatForKey:@"hdr-paperwhite-brightness" defaultValue:200.0f];
-	_hdrToneMapper = OOHDRToneMapperFromString([prefs oo_stringForKey:@"hdr-tone-mapper" defaultValue:@"OOHDR_TONEMAPPER_ACES_APPROX"]);
+	_hdrMaxBrightness = oo::PListView(prefs).get<float>(@"hdr-max-brightness", 1000.0f);
+	_hdrPaperWhiteBrightness = oo::PListView(prefs).get<float>(@"hdr-paperwhite-brightness", 200.0f);
+	_hdrToneMapper = OOHDRToneMapperFromString(oo::PListView(prefs).get<NSString *>(@"hdr-tone-mapper", @"OOHDR_TONEMAPPER_ACES_APPROX"));
 #endif
 
-	_sdrToneMapper = OOSDRToneMapperFromString([prefs oo_stringForKey:@"sdr-tone-mapper" defaultValue:@"OOSDR_TONEMAPPER_ACES"]);
+	_sdrToneMapper = OOSDRToneMapperFromString(oo::PListView(prefs).get<NSString *>(@"sdr-tone-mapper", @"OOSDR_TONEMAPPER_ACES"));
 
 	SDL_SetWindowSurfaceVSync(window, vSyncPreference);
 	OOLog(@"display.initGL", @"V-Sync %@requested.", vSyncPreference ? @"" : @"not ");
@@ -340,12 +342,10 @@ enum PreferredAppMode
 	// SDL splash screen  settings
 
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-	showSplashScreen = [prefs oo_boolForKey:@"splash-screen" defaultValue:YES];
-	vSyncPreference = [prefs oo_boolForKey:@"v-sync" defaultValue:YES];
-	bitsPerColorComponent = [prefs oo_boolForKey:@"hdr" defaultValue:NO] ? 16 : 8;
+	showSplashScreen = oo::PListView(prefs).get<BOOL>(@"splash-screen", YES);
+	vSyncPreference = oo::PListView(prefs).get<BOOL>(@"v-sync", YES);
+	bitsPerColorComponent = oo::PListView(prefs).get<BOOL>(@"hdr", NO) ? 16 : 8;
 
-	NSArray				*arguments = nil;
-	NSEnumerator		*argEnum = nil;
 	NSString			*arg = nil;
 	BOOL				noSplashArgFound = NO;
 
@@ -354,12 +354,11 @@ enum PreferredAppMode
 	// preload the printscreen key into our translation array because SDLK_PRINTSCREEN isn't available
 	scancode2Unicode[55] = gvPrintScreenKey;
 
-	arguments = [[NSProcessInfo processInfo] arguments];
-
 	// scan for splash screen overrides: -nosplash || --nosplash , -splash || --splash
 	// scan for V-sync disabling overrides: -novsync || --novsync
-	for (argEnum = [arguments objectEnumerator]; (arg = [argEnum nextObject]); )
+	for (const std::string &argument : oo::process::arguments())
 	{
+		arg = [NSString stringWithUTF8String:argument.c_str()];
 		if ([arg isEqual:@"-nosplash"] || [arg isEqual:@"--nosplash"])
 		{
 			showSplashScreen = NO;
@@ -439,7 +438,7 @@ enum PreferredAppMode
 	virtualJoystickPosition = NSMakePoint(0.0,0.0);
 	mouseWarped = NO;
 
-	_mouseVirtualStickSensitivityFactor = OOClamp_0_1_f([prefs oo_floatForKey:@"mouse-flight-sensitivity" defaultValue:0.95f]);
+	_mouseVirtualStickSensitivityFactor = OOClamp_0_1_f(oo::PListView(prefs).get<float>(@"mouse-flight-sensitivity", 0.95f));
 	// ensure no chance of a divide by zero later on
 	if (_mouseVirtualStickSensitivityFactor < 0.005f)  _mouseVirtualStickSensitivityFactor = 0.005f;
 
@@ -447,7 +446,7 @@ enum PreferredAppMode
 	allowingStringInput = gvStringInputNo;
 	isAlphabetKeyDown = NO;
 
-	timeIntervalAtLastClick = timeSinceLastMouseWheel = [NSDate timeIntervalSinceReferenceDate];
+	timeIntervalAtLastClick = timeSinceLastMouseWheel = oo::date::monotonicSeconds();	// intervals only (MyOpenGLView+Input.mm)
 
 	_mouseWheelDelta = 0.0f;
 
@@ -1226,7 +1225,7 @@ enum PreferredAppMode
 	// if outputting HDR signal, save also either an .exr or a Radiance .hdr snapshot
 	if ([self hdrOutput])
 	{
-		NSString *fileExtension = [[NSUserDefaults standardUserDefaults] oo_stringForKey:@"hdr-snapshot-format" defaultValue:SNAPSHOTHDR_EXTENSION_DEFAULT];
+		NSString *fileExtension = oo::PListView([NSUserDefaults standardUserDefaults]).get<NSString *>(@"hdr-snapshot-format", SNAPSHOTHDR_EXTENSION_DEFAULT);
 		
 		// we accept file extension with or without a leading dot; if it is without, insert it at the beginning now
 		if (![[fileExtension substringToIndex:1] isEqual:@"."])  fileExtension = [@"." stringByAppendingString:fileExtension];
@@ -1339,7 +1338,7 @@ enum PreferredAppMode
 	int width=0, height=0, refresh=0;
 	unsigned i;
 
-	NSArray* cmdline_arguments = [[NSProcessInfo processInfo] arguments];
+	const std::vector<std::string> &cmdline_arguments = oo::process::arguments();
 
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
 	if ([userDefaults objectForKey:@"display_width"])
@@ -1354,10 +1353,10 @@ enum PreferredAppMode
 	// Check if -fullscreen or -windowed has been passed on the command line. If yes,
 	// set it regardless of what is set by .GNUstepDefaults. If both are found in the
 	// arguments list, the one that comes last wins.
-	for (i = 0; i < [cmdline_arguments count]; i++)
+	for (i = 0; i < cmdline_arguments.size(); i++)
 	{
-		if ([[cmdline_arguments objectAtIndex:i] isEqual:@"-fullscreen"]) fullScreen = YES;
-		if ([[cmdline_arguments objectAtIndex:i] isEqual:@"-windowed"]) fullScreen = NO;
+		if (cmdline_arguments[i] == "-fullscreen") fullScreen = YES;
+		if (cmdline_arguments[i] == "-windowed") fullScreen = NO;
 	}
 	
    	if(width && height)

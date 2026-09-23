@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 
 
 #import "Universe.h"
+#include "oofnd/Process.hpp"
 #import "MyOpenGLView.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -150,7 +151,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void * context);
 /* TODO: route calculation is really slow - find a way to safely enable this */
 #undef CACHE_ROUTE_FROM_SYSTEM_RESULTS
 
-@interface RouteElement: NSObject
+@interface RouteElement: OOObject
 {
 @private
 	OOSystemID _location, _parent;
@@ -7956,24 +7957,23 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 - (void) setGalaxyTo:(OOGalaxyID) g andReinit:(BOOL) forced
 {
 	int						i;
-	NSAutoreleasePool		*pool = nil;
 	
 	if (galaxyID != g || forced) {
 		galaxyID = g;
 		
 		// systems
-		pool = [[NSAutoreleasePool alloc] init];
-			
-		for (i = 0; i < 256; i++)
+		@autoreleasepool
 		{
-			if (system_names[i])
+			for (i = 0; i < 256; i++)
 			{
-				[system_names[i] release];
-			}
-			system_names[i] = [[systemManager getProperty:@"name" forSystem:i inGalaxy:g] retain];
+				if (system_names[i])
+				{
+					[system_names[i] release];
+				}
+				system_names[i] = [[systemManager getProperty:@"name" forSystem:i inGalaxy:g] retain];
 
+			}
 		}
-		[pool release];
 	}
 }
 
@@ -10782,29 +10782,28 @@ static void PreloadOneSound(NSString *soundName)
 
 - (void) populateSpaceFromActiveWormholes
 {
-	NSAutoreleasePool	*pool = nil;
-	
 	while ([activeWormholes count])
 	{
-		pool = [[NSAutoreleasePool alloc] init];
-		@try
+		@autoreleasepool
 		{
-			WormholeEntity* whole = [activeWormholes objectAtIndex:0];		
-			// If the wormhole has been scanned by the player then the
-			// PlayerEntity will take care of it
-			if (![whole isScanned] &&
-				NSEqualPoints([PLAYER galaxy_coordinates], [whole destinationCoordinates]) )
+			@try
 			{
-				// this is a wormhole to this system
-				[whole disgorgeShips];
+				WormholeEntity* whole = [activeWormholes objectAtIndex:0];		
+				// If the wormhole has been scanned by the player then the
+				// PlayerEntity will take care of it
+				if (![whole isScanned] &&
+					NSEqualPoints([PLAYER galaxy_coordinates], [whole destinationCoordinates]) )
+				{
+					// this is a wormhole to this system
+					[whole disgorgeShips];
+				}
+				[activeWormholes removeObjectAtIndex:0];	// empty it out
 			}
-			[activeWormholes removeObjectAtIndex:0];	// empty it out
+			@catch (NSException *exception)
+			{
+				OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", [exception name], [exception reason]);
+			}
 		}
-		@catch (NSException *exception)
-		{
-			OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", [exception name], [exception reason]);
-		}
-		[pool release];
 	}
 }
 
@@ -10997,18 +10996,14 @@ static void PreloadOneSound(NSString *soundName)
 {
 	// Handle command line options to transform system_description array for easier localization
 	
-	NSArray				*arguments = nil;
-	NSString			*arg = nil;
 	BOOL				compileSysDesc = NO, exportSysDesc = NO, xml = NO;
-	
-	arguments = [[NSProcessInfo processInfo] arguments];
-	
-	foreach (arg, arguments)
+
+	for (const std::string &arg : oo::process::arguments())
 	{
-		if ([arg isEqual:@"--compile-sysdesc"])  compileSysDesc = YES;
-		else if ([arg isEqual:@"--export-sysdesc"])  exportSysDesc = YES;
-		else if ([arg isEqual:@"--xml"])  xml = YES;
-		else if ([arg isEqual:@"--openstep"])  xml = NO;
+		if (arg == "--compile-sysdesc")  compileSysDesc = YES;
+		else if (arg == "--export-sysdesc")  exportSysDesc = YES;
+		else if (arg == "--xml")  xml = YES;
+		else if (arg == "--openstep")  xml = NO;
 	}
 	
 	if (compileSysDesc)  CompileSystemDescriptions(xml);

@@ -36,9 +36,10 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 
 
-@interface OOProbabilitySet: NSObject <NSCopying, NSMutableCopying>
+@interface OOProbabilitySet: OOObject <OOCopying, OOMutableCopying>
 
 + (id) probabilitySet;
 + (id) probabilitySetWithObjects:(id *)objects weights:(float *)weights count:(NSUInteger)count;

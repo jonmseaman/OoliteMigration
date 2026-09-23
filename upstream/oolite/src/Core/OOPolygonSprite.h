@@ -30,11 +30,12 @@ SOFTWARE.
 
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOOpenGLExtensionManager.h"
 
 
-@interface OOPolygonSprite: NSObject
+@interface OOPolygonSprite: OOObject
 {
 @private
 	GLfloat					*_solidData;
