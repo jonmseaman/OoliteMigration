@@ -30,6 +30,7 @@ oofnd_plist_tests = [
     'test_plist',
     'test_plist_oldstyle_strings',
     'test_plist_oldstyle_structures',
+    'test_plist_xml',
 ]
 
 foreach t : oofnd_plist_tests
