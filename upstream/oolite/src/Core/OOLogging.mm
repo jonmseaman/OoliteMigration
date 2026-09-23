@@ -32,7 +32,7 @@ SOFTWARE.
 #import "OOPListParsing.h"
 #import "OOFunctionAttributes.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "NSThreadOOExtensions.h"
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
@@ -706,10 +706,10 @@ static void LoadExplicitSettings(void)
 {
 	// Load display settings.
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-	sShowFunction = [prefs oo_boolForKey:@"logging-show-function" defaultValue:NO];
-	sShowFileAndLine = [prefs oo_boolForKey:@"logging-show-file-and-line" defaultValue:NO];
-	sShowTime = [prefs oo_boolForKey:@"logging-show-time" defaultValue:YES];
-	sShowClass = [prefs oo_boolForKey:@"logging-show-class" defaultValue:YES];
+	sShowFunction = oo::PListView(prefs).get<BOOL>(@"logging-show-function", NO);
+	sShowFileAndLine = oo::PListView(prefs).get<BOOL>(@"logging-show-file-and-line", NO);
+	sShowTime = oo::PListView(prefs).get<BOOL>(@"logging-show-time", YES);
+	sShowClass = oo::PListView(prefs).get<BOOL>(@"logging-show-class", YES);
 	
 	NSDictionary *oldSettings = sExplicitSettings;
 	
