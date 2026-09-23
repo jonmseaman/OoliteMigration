@@ -42,6 +42,7 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "PlayerEntityScriptMethods.h"
 #import "OOShipGroup.h"
+#import "GameController.h"
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
 #import "ResourceManager.h"
@@ -2369,7 +2370,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 
 		for (i = 1; i < count; i++)
 		{
-			[thisEnt performSelector:@selector(dumpCargo) withObject:nil afterDelay:0.75 * i];	// drop 3 canisters per 2 seconds
+			OOScheduleDeferredCall(thisEnt, @selector(dumpCargo), nil, 0.75 * i);	// drop 3 canisters per 2 seconds
 		}
 	}
 
