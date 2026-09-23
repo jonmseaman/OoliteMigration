@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOPolygonSprite.h"
 #import "OOOpenGL.h"
 #import "OOMacroOpenGL.h"
+#import "OOFoundationBridge.h"
 
 #define OOWAYPOINT_KEY_POSITION		@"position"
 #define OOWAYPOINT_KEY_ORIENTATION	@"orientation"
@@ -263,7 +264,7 @@ MA 02110-1301, USA.
 		if (length > 1)
 		{
 			NSArray *iconData = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(beaconCode);
-			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:beaconCode];
+			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconData) outlineWidth:0.5 name:oo::StdString(beaconCode)];
 		}
 		
 		if (_beaconDrawable == nil)

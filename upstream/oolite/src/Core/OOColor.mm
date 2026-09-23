@@ -24,9 +24,11 @@ MA 02110-1301, USA.
 
 #import "OOColor.h"
 #include "oofnd/objc/OORuntime.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMaths.h"
-#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
 
 
@@ -135,7 +137,7 @@ MA 02110-1301, USA.
 
 + (OOColor *) colorWithDescription:(id)description saturationFactor:(float)factor
 {
-	NSDictionary			*dict = nil;
+	id						dict = nil;
 	OOColor					*result = nil;
 	
 	if (description == nil) return nil;
@@ -144,7 +146,7 @@ MA 02110-1301, USA.
 	{
 		result = [[description copy] autorelease];
 	}
-	else if ([description isKindOfClass:[NSString class]])
+	else if (oo::IsNSString(description))
 	{
 		if ([description hasSuffix:@"Color"])
 		{
@@ -155,26 +157,26 @@ MA 02110-1301, USA.
 		else
 		{
 			// Some other string
-			result = [self colorFromString:description];
+			result = [self cxx_colorFromString:oo::StdString(description)];
 		}
 	}
-	else if ([description isKindOfClass:[NSArray class]])
+	else if (oo::IsNSArray(description))
 	{
-		result = [self colorFromString:[description componentsJoinedByString:@" "]];
+		result = [self cxx_colorFromString:oo::StdString([description componentsJoinedByString:@" "])];
 	}
-	else if ([description isKindOfClass:[NSDictionary class]])
+	else if (oo::IsNSDictionary(description))
 	{
 		dict = description;	// Workaround for gnu-gcc's more agressive "multiple methods named..." warnings.
 		
 		if ([dict objectForKey:@"hue"] != nil)
 		{
 			// Treat as HSB(A) dictionary
-			float h = [dict oo_floatForKey:@"hue"];
-			float s = [dict oo_floatForKey:@"saturation" defaultValue:1.0f];
-			float b = [dict oo_floatForKey:@"brightness" defaultValue:-1.0f];
-			if (b < 0.0f)  b = [dict oo_floatForKey:@"value" defaultValue:1.0f];
-			float a = [dict oo_floatForKey:@"alpha" defaultValue:-1.0f];
-			if (a < 0.0f)  a = [dict oo_floatForKey:@"opacity" defaultValue:1.0f];
+			float h = oo::PListView(dict).get<float>(@"hue");
+			float s = oo::PListView(dict).get<float>(@"saturation", 1.0f);
+			float b = oo::PListView(dict).get<float>(@"brightness", -1.0f);
+			if (b < 0.0f)  b = oo::PListView(dict).get<float>(@"value", 1.0f);
+			float a = oo::PListView(dict).get<float>(@"alpha", -1.0f);
+			if (a < 0.0f)  a = oo::PListView(dict).get<float>(@"opacity", 1.0f);
 			
 			// Not "result =", because we handle the saturation scaling here to allow oversaturation.
 			return [OOColor colorWithHue:h / 360.0f saturation:s * factor brightness:b alpha:a];
@@ -182,11 +184,11 @@ MA 02110-1301, USA.
 		else
 		{
 			// Treat as RGB(A) dictionary
-			float r = [dict oo_floatForKey:@"red"];
-			float g = [dict oo_floatForKey:@"green"];
-			float b = [dict oo_floatForKey:@"blue"];
-			float a = [dict oo_floatForKey:@"alpha" defaultValue:-1.0f];
-			if (a < 0.0f)  a = [dict oo_floatForKey:@"opacity" defaultValue:1.0f];
+			float r = oo::PListView(dict).get<float>(@"red");
+			float g = oo::PListView(dict).get<float>(@"green");
+			float b = oo::PListView(dict).get<float>(@"blue");
+			float a = oo::PListView(dict).get<float>(@"alpha", -1.0f);
+			if (a < 0.0f)  a = oo::PListView(dict).get<float>(@"opacity", 1.0f);
 			
 			result = [OOColor colorWithRed:r green:g blue:b alpha:a];
 		}
@@ -214,10 +216,10 @@ MA 02110-1301, USA.
 }
 
 
-+ (OOColor *) colorFromString:(NSString*) colorFloatString
++ (OOColor *) cxx_colorFromString:(const std::string &)colorFloatString
 {
 	float			rgbaValue[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	oo::str::Scanner	scanner(oo::StdString(colorFloatString));
+	oo::str::Scanner	scanner(colorFloatString);
 	float			factor = 1.0f;
 	int				i;
 	
@@ -343,9 +345,9 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"%g, %g, %g, %g", rgba[0], rgba[1], rgba[2], rgba[3]];
+	return oo::NSStringFrom(oo::str::format("%g, %g, %g, %g", rgba[0], rgba[1], rgba[2], rgba[3]));
 }
 
 
@@ -511,40 +513,35 @@ MA 02110-1301, USA.
 }
 
 
-- (NSArray *) normalizedArray
+- (std::vector<float>) cxx_normalizedArray
 {
 	float r, g, b, a;
 	[self getRed:&r green:&g blue:&b alpha:&a];
-	return [NSArray arrayWithObjects:
-		[NSNumber numberWithFloat:r],
-		[NSNumber numberWithFloat:g],
-		[NSNumber numberWithFloat:b],
-		[NSNumber numberWithFloat:a],
-		nil];
+	return { r, g, b, a };
 }
 
 
-- (NSString *) rgbaDescription
+- (std::optional<std::string>) cxx_rgbaDescription
 {
-	return OORGBAComponentsDescription([self rgbaComponents]);
+	return cxx_OORGBAComponentsDescription([self rgbaComponents]);
 }
 
 
-- (NSString *) hsbaDescription
+- (std::optional<std::string>) cxx_hsbaDescription
 {
-	return OOHSBAComponentsDescription([self hsbaComponents]);
+	return cxx_OOHSBAComponentsDescription([self hsbaComponents]);
 }
 
 @end
 
 
-NSString *OORGBAComponentsDescription(OORGBAComponents components)
+std::string cxx_OORGBAComponentsDescription(OORGBAComponents components)
 {
-	return [NSString stringWithFormat:@"{%.3g, %.3g, %.3g, %.3g}", components.r, components.g, components.b, components.a];
+	return oo::str::format("{%.3g, %.3g, %.3g, %.3g}", components.r, components.g, components.b, components.a);
 }
 
 
-NSString *OOHSBAComponentsDescription(OOHSBAComponents components)
+std::string cxx_OOHSBAComponentsDescription(OOHSBAComponents components)
 {
-	return [NSString stringWithFormat:@"{%i, %.3g, %.3g, %.3g}", (int)components.h, components.s, components.b, components.a];
+	return oo::str::format("{%i, %.3g, %.3g, %.3g}", (int)components.h, components.s, components.b, components.a);
 }

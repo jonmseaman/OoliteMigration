@@ -27,13 +27,15 @@ SOFTWARE.
 #import "OOSound.h"
 #import "OOALSoundDecoder.h"
 
+#include "oofnd/StdLib.hpp"
+
 @interface OOALBufferedSound: OOSound
 {
 @private
 	char				*_buffer;
 	size_t				_size;
 	double				_sampleRate;
-	NSString			*_name;
+	std::optional<std::string>	_name;	// nil-able, as the name was (proposed ADR-0043)
 	BOOL				_stereo;
 }
 

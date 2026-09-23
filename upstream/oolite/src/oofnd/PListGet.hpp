@@ -424,7 +424,8 @@ inline std::string numberStringValue(const PList& v)
 	const double d = v.doubleValue();
 	if (std::isnan(d)) return "nan";
 	if (std::isinf(d)) return d < 0 ? "-inf" : "inf";
-	std::snprintf(buf, sizeof buf, "%0.16g", d);
+	if (v.isSinglePrecision()) std::snprintf(buf, sizeof buf, "%0.7g", static_cast<double>(static_cast<float>(d)));   // +numberWithFloat: (captured)
+	else std::snprintf(buf, sizeof buf, "%0.16g", d);
 	return buf;
 }
 
