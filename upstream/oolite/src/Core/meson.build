@@ -38,6 +38,7 @@ oolite_sources += files(
     'OOColor.mm',
     'OOColor+FoundationBridge.mm',
     'OOCommodities.mm',
+    'OOCommodities+FoundationBridge.mm',
     'OOCommodityMarket.mm',
     'OOCommodityMarket+FoundationBridge.mm',
     'OOConstToString.mm',
