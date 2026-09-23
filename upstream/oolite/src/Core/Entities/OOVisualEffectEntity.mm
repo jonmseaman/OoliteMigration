@@ -87,11 +87,11 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 }
 
 
-// get<PList::Dict> handed on to an unmigrated callee: the dictionary's object, or nil.
-id DictionaryObjectForKey(const oo::PList &dict, std::string_view key)
+// get<PList::Dict>: the dictionary, or null (nil).
+oo::PList DictionaryForKey(const oo::PList &dict, std::string_view key)
 {
 	const oo::PList *value = dict.get<oo::PList::Dict>(key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	return value != nullptr ? *value : oo::PList();
 }
 
 
@@ -164,12 +164,12 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	const std::optional<std::string> modelName = OptionalStringForKey(effectDict, "model");
 	if (modelName.has_value())
 	{
-		OOMesh *mesh = [OOMesh meshWithName:oo::NSStringFrom(*modelName)
-								   cacheKey:oo::NSStringOrNil(_effectKey)
-						 materialDictionary:DictionaryObjectForKey(effectDict, "materials")
-						  shadersDictionary:DictionaryObjectForKey(effectDict, "shaders")
+		OOMesh *mesh = [OOMesh meshWithName:*modelName
+								   cacheKey:_effectKey
+						 materialDictionary:DictionaryForKey(effectDict, "materials")
+						  shadersDictionary:DictionaryForKey(effectDict, "shaders")
 									 smooth:effectDict.get<bool>("smooth", NO)
-							   shaderMacros:OODefaultShipShaderMacros()
+							   shaderMacros:oo::PListFrom(OODefaultShipShaderMacros())
 						shaderBindingTarget:self];
 		if (mesh == nil)  return NO;
 		[self setMesh:mesh];

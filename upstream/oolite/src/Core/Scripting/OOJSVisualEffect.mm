@@ -641,7 +641,7 @@ static bool VisualEffectGetMaterials(ooscript::Context cx, ooscript::CallArgs &o
 
 	GET_THIS_EFFECT(thisEnt);
 	
-	result = [[thisEnt mesh] materials];
+	result = oo::ObjectFromPList([[thisEnt mesh] materials]);
 	if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// an empty dictionary
 	OOJS_RETURN_OBJECT(result);
 	
@@ -662,7 +662,7 @@ static bool VisualEffectGetShaders(ooscript::Context cx, ooscript::CallArgs &ooj
 
 	GET_THIS_EFFECT(thisEnt);
 	
-	result = [[thisEnt mesh] shaders];
+	result = oo::ObjectFromPList([[thisEnt mesh] shaders]);
 	if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// an empty dictionary
 	OOJS_RETURN_OBJECT(result);
 	
@@ -764,7 +764,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	
 	if (fromShaders)
 	{
-		materials = oo::PListFrom([[thisEnt mesh] materials]);
+		materials = [[thisEnt mesh] materials];
 		params = ooscript::toObject(OOJS_ARGV[0]);
 		shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
 	}
@@ -779,7 +779,7 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 		}
 		else
 		{
-			shaders = oo::PListFrom([[thisEnt mesh] shaders]);
+			shaders = [[thisEnt mesh] shaders];
 		}
 	}
 	
@@ -794,12 +794,12 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	if (!shaderMacros.isDict())  shaderMacros = oo::PList();
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:oo::NSStringOrNil(modelName)
-							   cacheKey:nil
-					 materialDictionary:oo::ObjectFromPList(materials)
-					  shadersDictionary:oo::ObjectFromPList(shaders)
+	OOMesh *mesh = [OOMesh meshWithName:modelName.value_or(std::string())
+							   cacheKey:std::nullopt
+					 materialDictionary:materials
+					  shadersDictionary:shaders
 								 smooth:effectDict.get<bool>("smooth", false)
-						   shaderMacros:oo::ObjectFromPList(shaderMacros)
+						   shaderMacros:shaderMacros
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)
