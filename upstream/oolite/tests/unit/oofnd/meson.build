@@ -21,7 +21,9 @@ oofnd_tests = [
     'test_string',
     'test_string_compare',
     'test_string_sweep',
+    'test_string_format_runtime',
     'test_encoding',
+    'test_unicode_file',
     'test_log',
 ]
 
@@ -45,6 +47,7 @@ oofnd_plist_tests = [
     'test_plist_writers',
     'test_plist_xml',
     'test_plist_get',
+    'test_plist_carrier',
 ]
 
 foreach t : oofnd_plist_tests

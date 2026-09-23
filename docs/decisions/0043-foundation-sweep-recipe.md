@@ -168,3 +168,138 @@ Foundation usage") carries the mechanics.
 Consequences: bridges add `cxx_` selectors and a few hundred forwarding lines that exist only
 until their callers are swept; the dependency graph (callers before categories, callers before
 bridge deletions, all before oo-qps) is recorded in beads, not here.
+
+## Amendment 2 — after the Materials / OXPVerifier / Debug batch (2026-09-23, beads oo-hiis, oo-vpbt)
+
+The batch returned 19 done and 20 stops; Amendment 1 covers most of them. Three classes had no
+rule.
+
+11. **A configuration that mixes property-list data with live objects is an `oo::PList`.**
+    `oo::PList` gains `Type::Object`, an `oo::Ref<PListForeign>` compared by identity, which oofnd
+    never interprets (no parser produces one; the old-style writer refuses it with GNUstep's
+    "Class X does not support OldSchoolPropertyListWriting"), and **single-precision reals**
+    (`PList::singleReal`, `isSinglePrecision()`), which print `%0.7g` as `+numberWithFloat:` did
+    where a double prints `%0.16g` (captured; `test_plist_carrier.cpp`). On the game side
+    `oo::PListFrom` keeps every non-plist object (an OOColor, an OOTexture, NSNull, a placeholder)
+    as an Object node and every float as a single real (gnustep-base reports `objCType` `d` for
+    floats; the class name tells), and `oo::ObjectFromPList` returns the same objects and the same
+    NSNumber types, so a round trip is exact: a mixed dictionary comes back `-isEqual:` and with the
+    same `-description` (checked against gnustep-base). `oo::ObjectIn(plist)` reads an Object
+    node's object. The recipe's "plist data only" restriction is lifted. A dedicated configuration
+    type was considered and rejected: every consumer (`get<T>`, the writers, the bridges) would
+    need a second implementation, and the configurations are plist data plus a few objects.
+    Exemplars: `OOMaterialSpecifier.mm` (the NSDictionary category becomes `cxx_OOMaterial*` free
+    functions over `const oo::PList &`, bridged) and `OOMultiTextureMaterial.mm` (a keyed copy of a
+    mixed configuration handed to a superclass).
+12. **Materials order.** `OOMaterialSpecifier` (done) → `OOTextureLoader` → `OOTexture`
+    (`OOTextureSpecFromObject`, `+textureWithConfiguration:` get `cxx_` twins over `oo::PList`,
+    bridged) → `OOCombinedEmissionMapGenerator` → the materials (`OOBasicMaterial`,
+    `OOSingleTextureMaterial`, `OOMultiTextureMaterial` done) → `OODefaultShaderSynthesizer` →
+    `OOShaderMaterial` → `OOMaterialConvenienceCreators`, where the NSDictionary from
+    ResourceManager becomes a PList. Because the round trip is exact, any order builds and plays
+    the same; this order makes each file's callees speak PList first, so the conversions at call
+    sites disappear instead of moving. Bridges: `OOMaterialSpecifier+FoundationBridge` (made), and
+    one for `OOTexture` (its 20+ callers).
+13. **An oversized file is split into chunk beads by the orchestrator** (labels
+    `fleet,phase:2,sweep:foundation-chunk`, the pattern of oo-3rb.84-.96): each chunk moves one
+    group of selectors or one part of the body, with an acceptance that checks that group only;
+    the original bead depends on all its chunks and keeps the whole-file grep. A file-private
+    category on a Foundation class (`NSString (OOPListSchemaVerifierHelpers)`) retires in the
+    chunk that removes its last use; a public one (`NSError (OOPListSchemaVerifierConveniences)`)
+    retires by Amendment 1 item 7, after its callers. First application: oo-vvxy.
+14. **A C file's Foundation handles become opaque C++ handles.** Where plain C (kept C, ADR-0012)
+    receives Foundation objects through an abstraction layer (`OOTCPStreamDecoderAbstractionLayer`
+    for `OOTCPStreamDecoder.c`), the layer's handle types become pointers to one incomplete struct,
+    `struct OOALObject`, in C and Objective-C++ alike, and the layer's `.mm` defines it in C++ over
+    `oo::PList` / `oo::Data`: owned handles are created +1 and freed by `OOALRelease`; a dictionary
+    value is a borrowed handle cached in its parent (valid while the parent lives, as
+    `-objectForKey:` results were). `OOALStringCreateWithFormatAndArguments` formats the
+    conversions the C file uses (`%u`, `%zu`, `%@`), `%@` giving the description GNUstep printed for
+    that value (pinned by a captured test). C++ consumers read a handle with
+    `const oo::PList &OOALObjectPList(OOALObjectRef)`, declared under `__cplusplus`. The `.c` file
+    does not change. Not chunked (266 lines); it lands before `OODebugTCPConsoleClient` (oo-prwr).
+15. **A float written to disk stays a float.** Savegame records (`OOTrumble -dictionary`), cache
+    entries (`Octree -dictionaryRepresentation`) and defaults (`OOJoystickManager` spline points)
+    build their values with `oo::PList::singleReal(f)`, never `oo::PList(double(f))`: the flag makes
+    `oo::ObjectFromPList` give back `+numberWithFloat:`, and oofnd's XML writer and the defaults
+    writer print it `%0.7g` as GNUstep printed an NSNumber float (`test_plist_carrier.cpp` pins
+    both), so `"0.1"` stays `"0.1"` in every `.oolite-save`, cache and `.GNUstepDefaults`. A value
+    read back by `get<float>` is the same float either way. oo-9h0e shipped doubles; oo-gj2i
+    restores the seven-digit text. **The saved-game writer** (`OOXMLExtensions`, oo-a1dr) moves
+    to `oo::writeXMLPList`, which is already pinned byte for byte against
+    `+[NSPropertyListSerialization dataFromPropertyList:format:NSPropertyListXMLFormat_v1_0...]`
+    (`test_plist_writers.cpp`, bead oo-pig); with singles that closes the one gap. The category
+    retires (item 7): its one caller, `PlayerEntityLoadSave`, calls a free function
+    `bool OOWriteXMLPListToFile(const oo::PList &, const std::string &path, std::string *outError)`
+    in `OOXMLExtensions.h` (same error texts), converting the save dictionary once with
+    `oo::PListFrom`. Savegame goldens decide.
+16. **Foundation enumerator subclasses become C++ iteration.** A private `NSEnumerator` subclass
+    (`OOPriorityQueueEnumerator`, `OOProbabilitySetEnumerator`, `OOShipGroupEnumerator`,
+    `OOWeakRefUnpackingEnumerator`, and the public `OOFilteringEnumerator` /
+    `OOExcludeObjectEnumerator`) is not rerooted on OOObject. Its owner gets C++ iteration in the
+    same bead: a range-for over the backing container, or, where the state is non-trivial (the
+    ship group's mutation check, weak-reference unpacking), a small C++ iterator class nested in
+    the owner's `.mm`/`.h` with `begin()`/`end()` reached through a `cxx_` accessor
+    (`for (ShipEntity *ship : [group cxx_members])`). Users inside the bead's file budget move to
+    it in the same bead. `-objectEnumerator` / `-mutationSafeEnumerator` are shared or have
+    fast-enumerating callers past the budget: they stay, typed `id`, and return
+    `[oo::NSArrayFromObjects(snapshot) objectEnumerator]` (a snapshot is what the mutation-safe
+    enumerator already was; the plain one iterated live storage, and no caller mutates while
+    enumerating, which the owner's bead checks). Those methods live in the owner's bridge when it
+    has one and retire with it. `%p` in `-debugDescription` and in `<Dead %@ %p>` is
+    `oo::str::pointerDescription` (Amendment 1), which closes oo-ndqg's and oo-vfhi's other stop.
+17. **OOLogging keeps a Foundation-free API and bridges the NSString one.** `OOLogging.h` keeps
+    the C/C++ logging surface (message classes as `const char *`, `OOLogIndent`/`OOLogOutdent`,
+    the `OO_LOG` `std::format` front end of ADR-0035) and gains `const char *` twins of the
+    class-taking functions; the `NSString`-format API (`OOLogWithFunctionFileAndLine`,
+    `OOLogWithFunctionFileAndLineAndArguments`, `OOLogWillDisplayMessagesInClass(NSString *)`,
+    `OOLogIndentIf`, the `kOOLog*` `NSString` constants) moves verbatim into
+    `OOLogging+FoundationBridge.h/.mm`, imported as the last line of `OOLogging.h`, so the `OOLog`
+    macro still expands and 122 calling files compile unchanged. Each caller moves to `OO_LOG` with
+    the "Migrating OOLog calls" recipe in its own sweep bead; the bridge is deleted last, just
+    before oo-qps. `OOCheckOpenGLErrors(NSString *format, ...)` (OOOpenGL) is bridged the same
+    way with a `const char *` twin. Chunked (oo-lskf, oo-zpz4).
+18. **Other stops, decided.** (a) `OOLogOutputHandler` (oo-vjts): gnustep-base fixes the NSLog
+    hook's type as `void (*)(NSString *)`; the hook and its handler move into
+    `OOLogOutputHandler+FoundationBridge.mm` (the NSLog hook is the whole bridge, deleted with
+    gnustep-base by oo-qps), and the rest of the file converts (its queue carries `oo::Data` /
+    `std::string`). (b) Mac-only Foundation out-parameters (`OOMusicController`'s
+    `-[NSAppleScript executeAndReturnError:]`, oo-spph): the two iTunes helpers are
+    `OOLITE_MAC_OS_X` code that the fleet never compiles; like oo-s208 they are deferred to Phase 5
+    (the Mac port), fenced as they are, and the grep skips the `#if OOLITE_MAC_OS_X` block; the rest
+    of the file converts now. (c) `OldSchoolPropertyListWriting` (oo-n8gx) is categories only: it
+    retires (item 7) once its two callers (ResourceManager's diagnostic dump,
+    OOConvertSystemDescriptions) call `oo::writeOldStylePList` (oofnd, pinned against this very
+    writer by `test_plist_writers.cpp`); then the file is deleted. (d) `-typedString`
+    (oo-7r78): `PlayerEntityLoadSave` keeps an unretained pointer to MyOpenGLView's live buffer.
+    The fix is ownership, not a snapshot: `commanderNameString` becomes an owned `std::string`
+    that the load/save screen refreshes from `[gameView cxx_typedString]` each frame it reads it,
+    done in the MyOpenGLView chunk that converts the buffer (oo-8i15), with `-typedString`'s
+    NSString form kept in MyOpenGLView's bridge for the other callers until they move.
+
+## Amendment 3 — runtime format strings; error texts that name a class (2026-09-23, bead oo-hkvv)
+
+19. **A format string read at run time is formatted by `oo::str::formatRuntime`.** DESC(...)
+    entries (OOOXZManager, ResourceManager `+errors`, the chart titles), verifyOXP.plist's GraphViz
+    templates (OOOXPVerifier `-dumpDebugGraphviz`) and any other format that is data, not a
+    literal, cannot go through `oo::str::format` (its format is checked at compile time and has no
+    `%@`), and rewriting `%@` to `%s` inside data is not a conversion. `formatRuntime(fmt,
+    {args...})` (oofnd/String.hpp) takes each argument as an `oo::str::FormatArg`, which carries
+    its kind: text (an object's description, `oo::DescriptionOf(obj)`; a C string), nil, signed
+    and unsigned integers, reals (`FormatArg::single(f)` for a `+numberWithFloat:`), and
+    `FormatArg::pointer(p)`. It reproduces GNUstep 1.31.1's `-stringWithFormat:` for every
+    conversion Oolite's runtime strings use: `%@` (width and precision in UTF-16 units; a number
+    prints its NSNumber description), `%p` (`pointerDescription`, with width), `%d %i %u %x %X %o
+    %c` with `hh h l ll q z j t`, `%f %e %g` (and upper case), `%s`, `%%`, flags and widths
+    including `*`, positional `%2$@`; an unknown conversion and a trailing `%` are copied as GNUstep
+    copies them. Numbers are rendered with `std::to_chars`, never through a runtime printf format.
+    Where GNUstep reads memory that is not there (too few arguments), oofnd prints what nil / zero
+    prints: an ADR-0027 difference no correct string reaches. Pinned in
+    `tests/unit/oofnd/test_string_format_runtime.cpp` against captured GNUstep output. Exemplar:
+    `OOOXPVerifier.mm` `-dumpDebugGraphviz` (oo-hkvv).
+20. **An error text that names a Foundation class is reworded to name the concept.** Where the
+    only NS name left in a file is inside a programming-error message that no golden or player sees
+    (GuiDisplayGen's `ArrayLengthMismatchException`: "The NSArray sent as 'item_keys' ..." becomes
+    "The array sent as 'item_keys' ..."), or inside a comment, the text is reworded ("array",
+    "string", "dictionary"). Text a player, a log golden or a script can see is never reworded
+    under this item.
