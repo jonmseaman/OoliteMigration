@@ -34,6 +34,13 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (AI.h)
 
 - (void) exitStateMachineWithMessage:(NSString *)message;	// -> -cxx_exitStateMachineWithMessage:
 
++ (NSString *) currentlyRunningAIDescription;	// -> +cxx_currentlyRunningAIDescription
+- (NSString *) associatedJS;	// -> -cxx_associatedJS
+
+- (void) reactToMessage:(NSString *) message context:(NSString *)debugContext;	// -> -cxx_reactToMessage:context:
+- (void) takeAction:(NSString *) action;	// -> -cxx_takeAction:
+- (void) dropMessage:(NSString *) ms;	// -> -cxx_dropMessage:
+
 @end
 
 #endif	// AI_FOUNDATIONBRIDGE_H
