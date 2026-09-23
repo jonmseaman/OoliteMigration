@@ -40,6 +40,7 @@ Rules that hold for every component:
 | `src/oofnd/Thread.hpp` | `oo::thread`: `NSThread` on `std::thread`: `detach`, `isMainThread` (id captured at static init), `setCurrentName`, `setCurrentPriority` (GNUstep's measured Windows mapping) |
 | `src/oofnd/String.hpp` | `oo::str`: the `NSString` methods and Oolite `NSString` categories the game uses (`NSStringOOExtensions`, `OOStringParsing`'s `NSString (OOUtilities)`, `ScanTokensFromString`, the version helpers) over UTF-8 `std::string`, GNUstep 1.31.1's answers exactly: case tables, whitespace set, composed-sequence rules, `-pathExtension`, `-replaceOccurrencesOfString:`, `-hasPrefix:`, `-stringWithFormat:` without `%@` ([ADR-0034](../../../../docs/decisions/0034-oofnd-strings.md)) |
 | `src/oofnd/Encoding.hpp` | `oo::str::Encoding` / `encodeLossy` / `convertForFont`: `OOEncodingConverter`'s conversion to the five Windows code pages, including libiconv's transliterations as GNUstep runs them |
+| `src/oofnd/Log.hpp` | `oo::log`: OOLogging without Foundation: message-class switches (inheritance, `$metaclasses`, `_default`/`_override`), per-thread indentation, the exact Latest.log line layout, OOLogging's own diagnostics, and the `OO_LOG("cls", "{}", ...)` std::format front end. `src/Core/OOLogging.mm` is its Objective-C shell ([ADR-0035](../../../../docs/decisions/0035-oofnd-logging.md)) |
 | `src/Core/OOStringBridge.h` (game side) | `oo::StdString` / `oo::NSStringFrom` / `oo::StringMap`: the exact `NSString` <-> `std::string` bridge for calling `oo::str` from files that still hold `NSString`s; see below |
 | `src/oofnd/Defaults.hpp` | `oo::Defaults`: `NSUserDefaults` with `NSUserDefaults+Override`/`NSBundle+Override` as the game runs them: same `GNUstep/Defaults/oolite.plist`, same search list and coercions, `oo::writeOpenStepPList` (GNUstep's OpenStep writer, byte-identical) ([ADR-0032](../../../../docs/decisions/0032-oofnd-defaults.md)) |
 | `src/oofnd/objc/OOObject.h`, `.mm` | `OOObject`: the Foundation-free Objective-C root class on libobjc2's own refcount and pool; `OOObjCInstallFloor()` ([ADR-0029](../../../../docs/decisions/0029-objc-floor-without-foundation.md)). Objective-C++, not linked into the game until the reroot bead |
@@ -153,6 +154,28 @@ When the Foundation sweep turns the file's strings into `std::string`, `oo::Stri
 becomes `f(s)` and the bridge header goes. Performance rule from the decision-4 benchmark
 ([2-string-benchmark.md](../../../../docs/phases/2-string-benchmark.md)): where Objective-C
 retained a string, take `std::string_view` / `const std::string&` or move; copy only where it copied.
+
+## Migrating OOLog calls (oo::log)
+
+The recipe for converting a file's `OOLog` family to the std::format front end (seam 2.8, bead
+oo-qpb; proposed [ADR-0035](../../../../docs/decisions/0035-oofnd-logging.md)); exemplar
+`src/SDL/OOSDLJoystickManager.mm`. Settings, indentation and line layout are shared with the
+remaining `OOLog` calls, so a converted line reads exactly as it did.
+
+1. **Include** `"oofnd/Log.hpp"` (replacing `#import "OOLogging.h"` if the file imports it).
+2. **Rewrite each call:** `OOLog(@"cls", @"fmt", args)` -> `OO_LOG("cls", "fmt'", args')`, and
+   `OOLogERR`/`OOLogWARN` -> `OO_LOG_ERR`/`OO_LOG_WARN`. The class is a string literal (an
+   `NSString *` constant becomes `oo::StdString(kConstant)`, from `OOStringBridge.h`).
+   Conversions: `%d %i %ld %lld` -> `{}`; `%u %lu %llu %zu` -> `{}` and `%x` -> `{:x}`, **with the
+   argument cast to the unsigned type the conversion read** if it is signed (`printf` reinterprets
+   `-1` as `4294967295` / `ffffffff`; std::format prints the argument's own value); `%c` -> `{:c}`
+   with a `char` argument; `%f` -> `{:f}`; `%.Nf` -> `{:.Nf}`; `%g` -> `{:g}`; `%s` -> `{}` (never
+   with a null pointer: `%s` printed `(null)`); `%%` -> `%`; a literal `{` or `}` -> `{{` / `}}`;
+   `%@` of an `NSString *` -> `{}` with `oo::StdString(x)`, **but only if x cannot be nil**
+   (`%@` printed nil as `(null)`, `oo::StdString(nil)` is empty).
+3. **Leave alone:** `%@` of anything but an `NSString` (its `-description` has no oo::log form
+   yet), `OOLogWithArguments`, and every other line.
+4. **Check:** `tools/tier-a.sh <file>` passes and the goldens verify.
 
 ## Testing
 
