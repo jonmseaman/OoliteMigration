@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 #include <assert.h>
 
 #import "PlayerEntity.h"
+#include "oofnd/Process.hpp"
 #import "PlayerEntityLegacyScriptEngine.h"
 #import "PlayerEntityContracts.h"
 #import "PlayerEntityControls.h"
@@ -4573,7 +4574,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 			}
 			else
 			{
-				[multiFunctionDisplaySettings addObject:[NSNull null]];
+				[multiFunctionDisplaySettings addObject:[OONull null]];
 			}
 		}
 		if (lastMFD < [hud mfdCount]) activeMFD = lastMFD;
@@ -5513,7 +5514,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		NSUInteger index;
 		while ((index = [multiFunctionDisplaySettings indexOfObject:key]) != NSNotFound)
 		{
-			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:[NSNull null]];
+			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:[OONull null]];
 		}
 	}
 }
@@ -5524,7 +5525,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	if (index >= [hud mfdCount])
 	{
 		// is first inactive display
-		index = [multiFunctionDisplaySettings indexOfObject:[NSNull null]];
+		index = [multiFunctionDisplaySettings indexOfObject:[OONull null]];
 		if (index == NSNotFound)
 		{
 			return NO;
@@ -5535,7 +5536,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	{
 		if (key == nil)
 		{
-			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:[NSNull null]];
+			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:[OONull null]];
 		}
 		else
 		{
@@ -5561,7 +5562,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		return;
 	}
 	id current = [multiFunctionDisplaySettings objectAtIndex:index];
-	if (current == [NSNull null])
+	if (current == [OONull null])
 	{
 		key = [keys objectAtIndex:0];
 		[self setMultiFunctionDisplay:index toKey:key];
@@ -5598,7 +5599,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		return;
 	}
 	id current = [multiFunctionDisplaySettings objectAtIndex:index];
-	if (current == [NSNull null])
+	if (current == [OONull null])
 	{
 		key = [keys objectAtIndex:([keys count]-1)];
 		[self setMultiFunctionDisplay:index toKey:key];
@@ -10023,21 +10024,21 @@ static NSString *last_outfitting_key=nil;
 		}
 		
 		// check for messages from the command line
-		NSArray* arguments = [[NSProcessInfo processInfo] arguments];
+		const std::vector<std::string> &arguments = oo::process::arguments();
 		unsigned i;
-		for (i = 0; i < [arguments count]; i++)
+		for (i = 0; i < arguments.size(); i++)
 		{
-			if (([[arguments objectAtIndex:i] isEqual:@"-message"])&&(i < [arguments count] - 1))
+			if ((arguments[i] == "-message")&&(i < arguments.size() - 1))
 			{
 				OOGUIRow ms_start = msgLine;
-				NSString* message = [arguments oo_stringAtIndex:i + 1];
+				NSString* message = [NSString stringWithUTF8String:arguments[i + 1].c_str()];
 				OOGUIRow i = msgLine = [gui addLongText:message startingAtRow:ms_start align:GUI_ALIGN_CENTER];
 				for (i-- ; i >= ms_start; i--)
 				{
 					[gui setColor:[OOColor magentaColor] forRow:i];
 				}
 			}
-			if ([[arguments objectAtIndex:i] isEqual:@"-showversion"])
+			if (arguments[i] == "-showversion")
 			{
 				OOGUIRow ms_start = msgLine;
 				NSString *version = @"Version " @OO_VERSION_FULL;
@@ -12263,7 +12264,7 @@ static NSString *last_outfitting_key=nil;
 		}		
 		else
 		{
-			i = [target_memory indexOfObject:[NSNull null]];
+			i = [target_memory indexOfObject:[OONull null]];
 			// find and use a blank space in memory
 			if (i != NSNotFound)
 			{
@@ -12310,11 +12311,11 @@ static NSString *last_outfitting_key=nil;
 	{
 		if (i < memoryCount)
 		{
-			[target_memory replaceObjectAtIndex:i withObject:[NSNull null]];
+			[target_memory replaceObjectAtIndex:i withObject:[OONull null]];
 		}
 		else
 		{
-			[target_memory addObject:[NSNull null]];
+			[target_memory addObject:[OONull null]];
 		}
 	}
 	target_memory_index = 0;
@@ -12372,7 +12373,7 @@ static NSString *last_outfitting_key=nil;
 			}
 			else
 			{
-				[target_memory replaceObjectAtIndex:target_memory_index withObject:[NSNull null]];
+				[target_memory replaceObjectAtIndex:target_memory_index withObject:[OONull null]];
 			}
 		}
 	}

@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OOLogHeader.h"
+#include "oofnd/Process.hpp"
 #import "OOCPUInfo.h"
 #import "OOLogging.h"
 #import "OOOXPVerifier.h"
@@ -33,6 +34,7 @@ SOFTWARE.
 #import "OOStellarBody.h"
 #import "OOJavaScriptEngine.h"
 #import "OOSound.h"
+#include "oofnd/Date.hpp"
 
 
 static NSString *AdditionalLogHeaderInfo(void);
@@ -153,7 +155,7 @@ void OOPrintLogHeader(void)
 	
 	// systemString: NSString with system type and possibly version.
 	#if (OOLITE_MAC_OS_X || !OOLITE_WINDOWS)
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@", [[NSProcessInfo processInfo] operatingSystemVersionString]];
+		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str()];
 	#elif OOLITE_WINDOWS
 		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@ %@-bit", operatingSystemFullVersion(), is64BitSystem() ? @"64":@"32"];
 	#else
@@ -168,7 +170,7 @@ void OOPrintLogHeader(void)
 	#endif
 	if (versionString == nil)  versionString = @"<unknown version>";
 	
-	NSMutableString *miscString = [NSMutableString stringWithFormat:@"Opening log for Oolite %@ by %@ (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ") under %@ at %@.\n", versionString, @OO_BUILDER, systemString, [NSDate date]];
+	NSMutableString *miscString = [NSMutableString stringWithFormat:@"Opening log for Oolite %@ by %@ (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ") under %@ at %@.\n", versionString, @OO_BUILDER, systemString, [NSString stringWithUTF8String:oo::date::description().c_str()]];
 	
 	[miscString appendString:AdditionalLogHeaderInfo()];
 	
@@ -185,7 +187,7 @@ void OOPrintLogHeader(void)
 NSString *OOPlatformDescription(void)
 {
 	#if OOLITE_MAC_OS_X
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@", [[NSProcessInfo processInfo] operatingSystemVersionString]];
+		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str()];
 	#else
 		#define systemString @OS_TYPE_STRING
 	#endif

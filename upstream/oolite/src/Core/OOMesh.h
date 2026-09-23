@@ -86,7 +86,7 @@ typedef struct
 } OOMeshDisplayLists;
 
 
-@interface OOMesh: OODrawable <NSCopying>
+@interface OOMesh: OODrawable <OOCopying>
 {
 @private
 	uint8_t					_normalMode: 2,

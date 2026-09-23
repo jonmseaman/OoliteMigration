@@ -28,9 +28,11 @@ MA 02110-1301, USA.
 #if OO_OXP_VERIFIER_ENABLED
 
 #import "OOFileScannerVerifierStage.h"
+#import "oofnd/objc/OOObject.h"
 
 static NSString * const kStageName	= @"Testing models";
 
+// Placeholder for a nil context/materials/shaders in the info dictionaries (was Foundation's null).
 static id NSNULL = nil;
 
 
@@ -51,7 +53,7 @@ static id NSNULL = nil;
 	self = [super init];
 	if (self != nil)
 	{
-		NSNULL = [[NSNull null] retain];
+		if (NSNULL == nil)  NSNULL = [[OOObject alloc] init];
 		_modelsToCheck = [[NSMutableSet alloc] init];
 	}
 	return self;
@@ -95,7 +97,6 @@ static id NSNULL = nil;
 - (void)run
 {
 	NSDictionary				*info = nil;
-	NSAutoreleasePool			*pool = nil;
 	NSString					*name = nil,
 								*context = nil;
 	NSDictionary				*materials = nil,
@@ -105,22 +106,21 @@ static id NSNULL = nil;
 	
 	foreach (info, _modelsToCheck)
 	{
-		pool = [[NSAutoreleasePool alloc] init];
-		
-		name = [info objectForKey:@"name"];
-		context = [info objectForKey:@"context"];
-		if (context == NSNULL)  context = nil;
-		materials = [info objectForKey:@"materials"];
-		if (materials == NSNULL)  materials = nil;
-		shaders = [info objectForKey:@"shaders"];
-		if (shaders == NSNULL)  shaders = nil;
-		
-		[self checkModel:name
-				 context:context
-			   materials:materials
-				 shaders:shaders];
-		
-		[pool release];
+		@autoreleasepool
+		{
+			name = [info objectForKey:@"name"];
+			context = [info objectForKey:@"context"];
+			if (context == NSNULL)  context = nil;
+			materials = [info objectForKey:@"materials"];
+			if (materials == NSNULL)  materials = nil;
+			shaders = [info objectForKey:@"shaders"];
+			if (shaders == NSNULL)  shaders = nil;
+			
+			[self checkModel:name
+					 context:context
+				   materials:materials
+					 shaders:shaders];
+		}
 	}
 	[_modelsToCheck release];
 	_modelsToCheck = nil;

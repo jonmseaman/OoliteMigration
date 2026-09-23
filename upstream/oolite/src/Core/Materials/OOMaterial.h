@@ -34,12 +34,13 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
 
 
-@interface OOMaterial: NSObject
+@interface OOMaterial: OOObject
 
 // Called once at startup (by -[Universe init]).
 + (void) setUp;
