@@ -87,26 +87,19 @@ std::string cxx_ClockToString(double clock, BOOL adjusting);
 
 #if DEBUG_GRAPHVIZ
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+std::string cxx_EscapedGraphVizString(const std::string &string);
 
-NSString *EscapedGraphVizString(NSString *string);
-
-/*	GraphVizTokenString()
+/*	cxx_GraphVizTokenString()
 	Generate a C-style identifier. Sequences of invalid characters and
-	underscores are replaced with single underscores. If uniqueSet is not nil,
-	uniqueness is achieved by appending numbers if necessary.
+	underscores are replaced with single underscores. If uniqueSet is not nullptr,
+	uniqueness is achieved by appending numbers if necessary, and the result is
+	added to it.
 	
 	This can be used for any C-based langauge, but note that it excludes the
 	case-insensitive GraphViz keywords node, edge, graph, digraph, subgraph
 	and strict.
 */
-NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet);
-
-#ifdef __cplusplus
-}
-#endif
+std::string cxx_GraphVizTokenString(const std::string &string, std::set<std::string> *uniqueSet);
 
 #endif
 
