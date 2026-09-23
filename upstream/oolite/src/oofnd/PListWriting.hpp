@@ -156,6 +156,10 @@ public:
 			case PList::Type::Date:
 				error = "Class NSCalendarDate does not support OldSchoolPropertyListWriting";
 				return false;
+			case PList::Type::Object:
+				// NSObject's -oldSchoolPListFormatWithIndentation:errorDescription: (Amendment 2 carrier).
+				error = "Class " + v.getIf<PList::Object>()->get()->className() + " does not support OldSchoolPropertyListWriting";
+				return false;
 			case PList::Type::Null: break;
 		}
 		nilResult = true;   // [nil oldSchoolPList...] is nil
@@ -409,7 +413,8 @@ inline void appendXML(std::string& out, const PList& v, unsigned level)
 			return;
 		}
 		case PList::Type::Real:
-			std::snprintf(buf, sizeof buf, "%0.16g", *v.getIf<double>());
+			if (v.isSinglePrecision())  std::snprintf(buf, sizeof buf, "%0.7g", static_cast<double>(static_cast<float>(*v.getIf<double>())));   // +numberWithFloat: (captured)
+			else  std::snprintf(buf, sizeof buf, "%0.16g", *v.getIf<double>());
 			out += "<real>";
 			out += buf;
 			out += "</real>\n";
@@ -467,6 +472,11 @@ inline void appendXML(std::string& out, const PList& v, unsigned level)
 		}
 		case PList::Type::Null:
 			out += "<string>(nil)</string>";   // OAppend's nil branch (no newline)
+			return;
+		case PList::Type::Object:
+			// Not property-list data (Amendment 2 carrier); the game never writes one. Written as its
+			// description in a <string>, like a string (not captured from GNUstep).
+			appendXML(out, PList(v.getIf<PList::Object>()->get()->description()), level);
 			return;
 	}
 }

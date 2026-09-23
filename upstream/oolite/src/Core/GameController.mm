@@ -45,6 +45,7 @@ MA 02110-1301, USA.
 #import "OOOXZManager.h"
 #import "OOOpenGLMatrixManager.h"
 #import "OOEnumerationShuffle.h"
+#import "OOStringBridge.h"
 #include <chrono>
 #include <thread>
 
@@ -213,7 +214,7 @@ static GameController *sSharedController = nil;
 	if (mode == oldMode)  return;
 	
 	_mouseMode = mode;
-	OOLog(@"input.mouseMode.changed", @"Mouse interaction mode changed from %@ to %@", OOStringFromMouseInteractionMode(oldMode), OOStringFromMouseInteractionMode(mode));
+	OOLog(@"input.mouseMode.changed", @"Mouse interaction mode changed from %@ to %@", oo::NSStringFrom(OOStringFromMouseInteractionMode(oldMode)), oo::NSStringFrom(OOStringFromMouseInteractionMode(mode)));
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
 	if ([self inFullScreenMode])

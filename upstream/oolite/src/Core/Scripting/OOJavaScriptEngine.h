@@ -44,7 +44,7 @@ MA 02110-1301, USA.
 @protocol OOJavaScriptEngineMonitor;
 
 
-@interface OOJavaScriptEngine: NSObject
+@interface OOJavaScriptEngine: OOObject
 {
 @private
 	ooscript::Runtime _runtime;
@@ -294,7 +294,7 @@ OOJS_EXTERN_C ooscript::Object OOJSObjectFromNativeObject(ooscript::Context cont
 	All methods take a context parameter, which must either be nil or a context
 	in a request.
 */
-@interface OOJSValue: NSObject
+@interface OOJSValue: OOObject
 {
 	ooscript::Value					_val;
 }

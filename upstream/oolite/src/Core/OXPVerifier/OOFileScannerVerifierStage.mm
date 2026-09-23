@@ -49,14 +49,22 @@ SOFTWARE.
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOCollectionExtractors.h"
 #import "ResourceManager.h"
+#import "OOFoundationBridge.h"
 
-static NSString * const kFileScannerStageName	= @"Scanning files";
-static NSString * const kUnusedListerStageName	= @"Checking for unused files";
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/PListParsing.hpp"
+#include "oofnd/String.hpp"
+
+namespace {
+
+const char * const kFileScannerStageName	= "Scanning files";
+const char * const kUnusedListerStageName	= "Checking for unused files";
 
 
-static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NSDictionary *rootFiles, NSString **outExisting, NSString **outExistingType);
+BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, std::string, std::less<>> &directoryCases, const std::map<std::string, std::string, std::less<>> &rootFiles, std::string *outExisting, std::string *outExistingType);
+
+}	// namespace
 
 
 @interface OOFileScannerVerifierStage (OOPrivate)
@@ -73,42 +81,32 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 	it will return
 		{ foo = Foo; bar = BAR }
 */
-- (NSDictionary *)lowercaseMap:(NSArray *)array;
+- (std::optional<std::map<std::string, std::string, std::less<>>>)lowercaseMap:(const std::vector<std::string> &)array;
 
-- (NSDictionary *)scanDirectory:(NSString *)path;
-- (void)checkPListFormat:(NSPropertyListFormat)format file:(NSString *)file folder:(NSString *)folder;
-- (NSSet *)constructReadMeNames;
+- (std::optional<std::map<std::string, std::string, std::less<>>>)scanDirectory:(const std::string &)path;
+- (void)checkPListFormat:(oo::PListFormat)format file:(const std::optional<std::string> &)file folder:(const std::optional<std::string> &)folder;
+- (std::vector<std::string>)constructReadMeNames;
+
+// The file name in a folder's listing (the root's is ""), in the case found on disk.
+- (std::optional<std::string>)realNameOf:(const std::string &)lcName inListing:(const std::string &)lcDirName;
 
 @end
 
 
 @implementation OOFileScannerVerifierStage
 
-- (void)dealloc
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	[_basePath release];
-	[_usedFiles release];
-	[_caseWarnings release];
-	[_directoryListings release];
-	[_directoryCases release];
-	[_badPLists release];
-	
-	[super dealloc];
-}
-
-
-- (NSString *)name
-{
-	return kFileScannerStageName;
+	return oo::NSStringFrom(kFileScannerStageName);
 }
 
 
 - (void)run
 {
 	
-	_usedFiles = [[NSMutableSet alloc] init];
-	_caseWarnings = [[NSMutableSet alloc] init];
-	_badPLists = [[NSMutableSet alloc] init];
+	_usedFiles.clear();
+	_caseWarnings.clear();
+	_badPLists.clear();
 	
 	@autoreleasepool
 	{
@@ -123,9 +121,9 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 }
 
 
-+ (NSString *)nameForDependencyForVerifier:(OOOXPVerifier *)verifier
++ (std::optional<std::string>)nameForDependencyForVerifier:(OOOXPVerifier *)verifier
 {
-	OOFileScannerVerifierStage *stage = [verifier stageWithName:kFileScannerStageName];
+	OOFileScannerVerifierStage *stage = [verifier stageWithName:oo::NSStringFrom(kFileScannerStageName)];
 	if (stage == nil)
 	{
 		stage = [[OOFileScannerVerifierStage alloc] init];
@@ -137,134 +135,138 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 }
 
 
-- (BOOL)fileExists:(NSString *)file
-		  inFolder:(NSString *)folder
-	referencedFrom:(NSString *)context
-	  checkBuiltIn:(BOOL)checkBuiltIn
+- (BOOL)cxx_fileExists:(const std::optional<std::string> &)file
+			  inFolder:(const std::optional<std::string> &)folder
+		referencedFrom:(const std::optional<std::string> &)context
+		  checkBuiltIn:(BOOL)checkBuiltIn
 {
-	return [self pathForFile:file inFolder:folder referencedFrom:context checkBuiltIn:checkBuiltIn] != nil;
+	return [self cxx_pathForFile:file inFolder:folder referencedFrom:context checkBuiltIn:checkBuiltIn].has_value();
 }
 
 
-- (NSString *)pathForFile:(NSString *)file
-				 inFolder:(NSString *)folder
-		   referencedFrom:(NSString *)context
-			 checkBuiltIn:(BOOL)checkBuiltIn
+- (std::optional<std::string>)cxx_pathForFile:(const std::optional<std::string> &)file
+									 inFolder:(const std::optional<std::string> &)folder
+							   referencedFrom:(const std::optional<std::string> &)context
+								 checkBuiltIn:(BOOL)checkBuiltIn
 {
-	NSString				*lcName = nil,
-							*lcDirName = nil,
-							*realDirName = nil,
-							*realFileName = nil,
-							*path = nil,
-							*expectedPath = nil;
+	std::string					lcName,
+								lcDirName;
+	std::optional<std::string>	realDirName,
+								realFileName,
+								path,
+								expectedPath;
 	
-	if (file == nil)  return nil;
-	lcName = [file lowercaseString];
+	if (!file.has_value())  return std::nullopt;
+	lcName = oo::str::lowercase(*file);
 	
-	if (folder != nil)
+	if (folder.has_value())
 	{
-		lcDirName = [folder lowercaseString];
-		realFileName = [[_directoryListings oo_dictionaryForKey:lcDirName] objectForKey:lcName];
+		lcDirName = oo::str::lowercase(*folder);
+		realFileName = [self realNameOf:lcName inListing:lcDirName];
 		
-		if (realFileName != nil)
+		if (realFileName.has_value())
 		{
-			realDirName = [_directoryCases objectForKey:lcDirName];
-			path = [realDirName stringByAppendingPathComponent:realFileName];
+			const auto dirCase = _directoryCases.find(lcDirName);
+			if (dirCase != _directoryCases.end())
+			{
+				realDirName = dirCase->second;
+				path = oo::str::appendingPathComponent(*realDirName, *realFileName);
+			}
 		}
 	}
 	
-	if (path == nil)
+	if (!path.has_value())
 	{
-		realFileName = [[_directoryListings oo_dictionaryForKey:@""] objectForKey:lcName];
+		realFileName = [self realNameOf:lcName inListing:""];
 		
-		if (realFileName != nil)
+		if (realFileName.has_value())
 		{
 			path = realFileName;
 		}
 	}
 	
-	if (path != nil)
+	if (path.has_value())
 	{
-		[_usedFiles addObject:path];
-		if (realDirName != nil && ![realDirName isEqual:folder])
+		_usedFiles.insert(*path);
+		if (realDirName.has_value() && *realDirName != *folder)
 		{
 			// Case mismatch for folder name
-			if (![_caseWarnings containsObject:lcDirName])
+			if (!_caseWarnings.contains(lcDirName))
 			{
-				[_caseWarnings addObject:lcDirName];
-				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: directory '%@' should be called '%@'.", realDirName, folder);
+				_caseWarnings.insert(lcDirName);
+				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: directory '%@' should be called '%@'.", oo::NSStringFrom(*realDirName), oo::NSStringFrom(*folder));
 			}
 		}
 		
-		if (![realFileName isEqual:file])
+		if (*realFileName != *file)
 		{
 			// Case mismatch for file name
-			if (![_caseWarnings containsObject:lcName])
+			if (!_caseWarnings.contains(lcName))
 			{
-				[_caseWarnings addObject:lcName];
+				_caseWarnings.insert(lcName);
 				
-				expectedPath = [self displayNameForFile:file andFolder:folder];
+				expectedPath = [self cxx_displayNameForFile:file andFolder:folder];
 				
-				if (context != nil)  context = [@" referenced in " stringByAppendingString:context];
-				else  context = @"";
+				const std::string contextText = context.has_value() ? " referenced in " + *context : std::string();
 				
-				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: request for file '%@'%@ resolved to '%@'.", expectedPath, context, path);
+				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: request for file '%@'%@ resolved to '%@'.", oo::NSStringOrNil(expectedPath), oo::NSStringFrom(contextText), oo::NSStringFrom(*path));
 			}
 		}
 		
-		return [_basePath stringByAppendingPathComponent:path];
+		// One component at a time: realDirName and realFileName are single names from the listing.
+		std::string fullPath = _basePath;
+		if (realDirName.has_value())  fullPath = oo::str::appendingPathComponent(fullPath, *realDirName);
+		return oo::str::appendingPathComponent(fullPath, *realFileName);
 	}
 	
 	// If we get here, the file wasn't found in the OXP.
 	// FIXME: should check case for built-in files.
-	if (checkBuiltIn)  return [ResourceManager pathForFileNamed:file inFolder:folder];
+	if (checkBuiltIn)  return oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringOrNil(file) inFolder:oo::NSStringOrNil(folder)]);
 	
-	return nil;
+	return std::nullopt;
 }
 
 
-- (NSData *)dataForFile:(NSString *)file
-			   inFolder:(NSString *)folder
-		 referencedFrom:(NSString *)context
+- (oo::Data)dataForFile:(const std::optional<std::string> &)file
+			   inFolder:(const std::optional<std::string> &)folder
+		 referencedFrom:(const std::optional<std::string> &)context
 		   checkBuiltIn:(BOOL)checkBuiltIn
 {
-	NSString				*path = nil;
+	const std::optional<std::string> path = [self cxx_pathForFile:file inFolder:folder referencedFrom:context checkBuiltIn:checkBuiltIn];
+	if (!path.has_value())  return oo::Data();
 	
-	path = [self pathForFile:file inFolder:folder referencedFrom:context checkBuiltIn:checkBuiltIn];
-	if (path == nil)  return nil;
-	
-	return [NSData dataWithContentsOfMappedFile:path];
+	oo::fs::Result<oo::Data> data = oo::fs::readFile(oo::fs::pathFromUTF8(*path));
+	return data ? std::move(*data) : oo::Data();
 }
 
 
-- (id)plistNamed:(NSString *)file
-		inFolder:(NSString *)folder
-  referencedFrom:(NSString *)context
-	checkBuiltIn:(BOOL)checkBuiltIn
+- (oo::PList)cxx_plistNamed:(const std::optional<std::string> &)file
+				   inFolder:(const std::optional<std::string> &)folder
+			 referencedFrom:(const std::optional<std::string> &)context
+			   checkBuiltIn:(BOOL)checkBuiltIn
 {
-	NSData					*data = nil;
-	NSString				*errorString = nil;
-	NSPropertyListFormat	format;
-	id						plist = nil;
-	NSArray					*errorLines = nil;
-	NSString				*displayName = nil,
-							*errorKey = nil;
+	oo::PListFormat				format = oo::PListFormat::OpenStep;
+	oo::PList					plist;
+	std::optional<std::string>	errorString,
+								displayName;
+	std::string					errorKey;
 	
-	data = [self dataForFile:file inFolder:folder referencedFrom:context checkBuiltIn:checkBuiltIn];
-	if (data == nil)  return nil;
+	// Not -dataForFile:, whose empty result also stands for "no file": an empty file is parsed
+	// (and reported), as it was.
+	const std::optional<std::string> path = [self cxx_pathForFile:file inFolder:folder referencedFrom:context checkBuiltIn:checkBuiltIn];
+	if (!path.has_value())  return oo::PList();
+	oo::fs::Result<oo::Data> data = oo::fs::readFile(oo::fs::pathFromUTF8(*path));
+	if (!data)  return oo::PList();
 	
 	@autoreleasepool
 	{
-		plist = [NSPropertyListSerialization propertyListFromData:data
-												 mutabilityOption:NSPropertyListImmutable
-														   format:&format
-												 errorDescription:&errorString];
+		// +[NSPropertyListSerialization propertyListFromData:...errorDescription:]; the error
+		// string it gave is PListError::description().
+		oo::Expected<oo::PList, oo::PListError> parsed = oo::parsePropertyListData(data->stringView(), &format);
+		if (parsed)  plist = std::move(*parsed);
+		else  errorString = parsed.error().description();
 		
-#if OOLITE_RELEASE_PLIST_ERROR_STRINGS
-		[errorString autorelease];
-#endif
-		
-		if (plist != nil)
+		if (!plist.isNull())
 		{
 			// PList is readable; check that it's in an official Oolite format.
 			[self checkPListFormat:format file:file folder:folder];
@@ -275,44 +277,49 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 				This is complicated somewhat by the need to present a possibly
 				multi-line error description while maintaining our indentation.
 			*/
-			displayName = [self displayNameForFile:file andFolder:folder];
-			errorKey = [displayName lowercaseString];
-			if (![_badPLists containsObject:errorKey])
+			displayName = [self cxx_displayNameForFile:file andFolder:folder];
+			errorKey = oo::str::lowercase(*displayName);
+			if (!_badPLists.contains(errorKey))
 			{
-				[_badPLists addObject:errorKey];
-				OOLog(@"verifyOXP.plist.parseError", @"Could not interpret property list %@.", displayName);
+				_badPLists.insert(errorKey);
+				OOLog(@"verifyOXP.plist.parseError", @"Could not interpret property list %@.", oo::NSStringOrNil(displayName));
 				OOLogIndent();
-				errorLines = [errorString componentsSeparatedByString:@"\n"];
-				foreach (errorString, errorLines)
+				if (errorString.has_value())
 				{
-					while ([errorString hasPrefix:@"\t"])
+					for (std::string errorLine : oo::str::split(*errorString, "\n"))
 					{
-						errorString = [@"    " stringByAppendingString:[errorString substringFromIndex:1]];
+						while (oo::str::hasPrefix(errorLine, "\t"))
+						{
+							errorLine = "    " + errorLine.substr(1);
+						}
+						OOLog(@"verifyOXP.plist.parseError", @"%@", oo::NSStringFrom(errorLine));
 					}
-					OOLog(@"verifyOXP.plist.parseError", @"%@", errorString);
 				}
 				OOLogOutdent();
 			}
 		}
-		
-		[plist retain];
 	}
 	
-	return [plist autorelease];
+	return plist;
 }
 
 
-- (id)displayNameForFile:(NSString *)file andFolder:(NSString *)folder
+- (std::optional<std::string>)cxx_displayNameForFile:(const std::optional<std::string> &)file andFolder:(const std::optional<std::string> &)folder
 {
-	if (file != nil && folder != nil)  return [folder stringByAppendingPathComponent:file];
+	if (file.has_value() && folder.has_value())  return oo::str::appendingPathComponent(*folder, *file);
 	return file;
 }
 
 
-- (NSArray *)filesInFolder:(NSString *)folder
+- (std::optional<std::vector<std::string>>)cxx_filesInFolder:(const std::optional<std::string> &)folder
 {
-	if (folder == nil)  return nil;
-	return [[_directoryListings objectForKey:[folder lowercaseString]] allValues];
+	if (!folder.has_value())  return std::nullopt;
+	const auto listing = _directoryListings.find(oo::str::lowercase(*folder));
+	if (listing == _directoryListings.end())  return std::nullopt;
+
+	std::vector<std::string> result;
+	for (const auto &[lcName, realName] : listing->second)  result.push_back(realName);
+	return result;
 }
 
 @end
@@ -320,152 +327,148 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 
 @implementation OOFileScannerVerifierStage (OOPrivate)
 
+- (std::optional<std::string>)realNameOf:(const std::string &)lcName inListing:(const std::string &)lcDirName
+{
+	const auto listing = _directoryListings.find(lcDirName);
+	if (listing == _directoryListings.end())  return std::nullopt;
+	const auto entry = listing->second.find(lcName);
+	if (entry == listing->second.end())  return std::nullopt;
+	return entry->second;
+}
+
+
 - (void)scanForFiles
 {
 	NSDirectoryEnumerator	*dirEnum = nil;
-	NSString				*name = nil,
-							*path = nil,
-							*type = nil,
-							*lcName = nil,
-							*existing = nil,
-							*existingType = nil;
-	NSMutableDictionary		*directoryListings = nil,
-							*directoryCases = nil,
-							*rootFiles = nil;
-	NSDictionary			*dirFiles = nil;
-	NSSet					*readMeNames = nil;
+	std::string				path,
+							lcName,
+							existing,
+							existingType;
+	std::map<std::string, std::map<std::string, std::string, std::less<>>, std::less<>>	directoryListings;
+	std::map<std::string, std::string, std::less<>>	directoryCases,
+													rootFiles;
+	std::set<std::string>	readMeNames;
 	
-	_basePath = [[[self verifier] oxpPath] copy];
+	_basePath = oo::StdString([[self verifier] oxpPath]);
 	
-	_junkFileNames = [[self verifier] configurationSetForKey:@"junkFiles"];
-	_skipDirectoryNames = [[self verifier] configurationSetForKey:@"skipDirectories"];
+	for (const std::string &junk : oo::StringsFrom([[self verifier] configurationSetForKey:@"junkFiles"]))  _junkFileNames.insert(junk);
+	for (const std::string &skip : oo::StringsFrom([[self verifier] configurationSetForKey:@"skipDirectories"]))  _skipDirectoryNames.insert(skip);
 	
-	directoryCases = [NSMutableDictionary dictionary];
-	directoryListings = [NSMutableDictionary dictionary];
-	rootFiles = [NSMutableDictionary dictionary];
-	readMeNames = [self constructReadMeNames];
+	for (const std::string &readMe : [self constructReadMeNames])  readMeNames.insert(readMe);
 	
-	dirEnum = [[NSFileManager defaultManager] enumeratorAtPath:_basePath];
-	while ((name = [dirEnum nextObject]))
+	dirEnum = [[NSFileManager defaultManager] enumeratorAtPath:oo::NSStringFrom(_basePath)];
+	for (;;)
 	{
-		path = [_basePath stringByAppendingPathComponent:name];
-		type = [[dirEnum fileAttributes] fileType];
-		lcName = [name lowercaseString];
+		const std::optional<std::string> nextName = oo::OptionalString([dirEnum nextObject]);
+		if (!nextName.has_value())  break;
+		const std::string &name = *nextName;
 		
-		if ([type isEqualToString:NSFileTypeDirectory])
+		path = oo::str::appendingPathComponent(_basePath, name);
+		const std::optional<std::string> type = oo::OptionalString([[dirEnum fileAttributes] fileType]);
+		lcName = oo::str::lowercase(name);
+
+		if (type == oo::StdString(NSFileTypeDirectory))
 		{
 			[dirEnum skipDescendents];
 			
-			if ([_skipDirectoryNames containsObject:name])
+			if (_skipDirectoryNames.contains(name))
 			{
 				// Silently skip .svn and CVS
-				OOLog(@"verifyOXP.verbose.listFiles", @"- Skipping %@/", name);
+				OOLog(@"verifyOXP.verbose.listFiles", @"- Skipping %@/", oo::NSStringFrom(name));
 			}
 			else if (!CheckNameConflict(lcName, directoryCases, rootFiles, &existing, &existingType))
 			{
-				OOLog(@"verifyOXP.verbose.listFiles", @"- %@/", name);
+				OOLog(@"verifyOXP.verbose.listFiles", @"- %@/", oo::NSStringFrom(name));
 				OOLogIndentIf(@"verifyOXP.verbose.listFiles");
-				dirFiles = [self scanDirectory:path];
-				[directoryListings setObject:dirFiles forKey:lcName];
-				[directoryCases setObject:name forKey:lcName];
+				directoryListings[lcName] = *[self scanDirectory:path];
+				directoryCases[lcName] = name;
 				OOLogOutdentIf(@"verifyOXP.verbose.listFiles");
 			}
 			else
 			{
-				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"directory", name, existingType, existing);
+				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"directory", oo::NSStringFrom(name), oo::NSStringFrom(existingType), oo::NSStringFrom(existing));
 			}
 		}
-		else if ([type isEqualToString:NSFileTypeRegular])
+		else if (type == oo::StdString(NSFileTypeRegular))
 		{
-			if ([_junkFileNames containsObject:name])
+			if (_junkFileNames.contains(name))
 			{
-				OOLog(@"verifyOXP.scanFiles.skipJunk", @"NOTE: skipping junk file %@.", name);
+				OOLog(@"verifyOXP.scanFiles.skipJunk", @"NOTE: skipping junk file %@.", oo::NSStringFrom(name));
 			}
-			else if ([readMeNames containsObject:lcName])
+			else if (readMeNames.contains(lcName))
 			{
-				OOLog(@"verifyOXP.scanFiles.readMe", @"----- WARNING: apparent Read Me file (\"%@\") inside OXP. This is the wrong place for a Read Me file, because it will not be read.", name);
+				OOLog(@"verifyOXP.scanFiles.readMe", @"----- WARNING: apparent Read Me file (\"%@\") inside OXP. This is the wrong place for a Read Me file, because it will not be read.", oo::NSStringFrom(name));
 			}
 			else if (!CheckNameConflict(lcName, directoryCases, rootFiles, &existing, &existingType))
 			{
-				OOLog(@"verifyOXP.verbose.listFiles", @"- %@", name);
-				[rootFiles setObject:name forKey:lcName];
+				OOLog(@"verifyOXP.verbose.listFiles", @"- %@", oo::NSStringFrom(name));
+				rootFiles[lcName] = name;
 			}
 			else
 			{
-				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"file", name, existingType, existing);
+				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"file", oo::NSStringFrom(name), oo::NSStringFrom(existingType), oo::NSStringFrom(existing));
 			}
 		}
-		else if ([type isEqualToString:NSFileTypeSymbolicLink])
+		else if (type == oo::StdString(NSFileTypeSymbolicLink))
 		{
-			OOLog(@"verifyOXP.scanFiles.symLink", @"----- WARNING: \"%@\" is a symbolic link, ignoring.", name);
+			OOLog(@"verifyOXP.scanFiles.symLink", @"----- WARNING: \"%@\" is a symbolic link, ignoring.", oo::NSStringFrom(name));
 		}
 		else
 		{
-			OOLog(@"verifyOXP.scanFiles.nonStandardFile", @"----- WARNING: \"%@\" is a non-standard file (%@), ignoring.", name, type);
+			OOLog(@"verifyOXP.scanFiles.nonStandardFile", @"----- WARNING: \"%@\" is a non-standard file (%@), ignoring.", oo::NSStringFrom(name), oo::NSStringOrNil(type));
 		}
 	}
 	
-	_junkFileNames = nil;
-	_skipDirectoryNames = nil;
+	_junkFileNames.clear();
+	_skipDirectoryNames.clear();
 	
-	[directoryListings setObject:rootFiles forKey:@""];
-	_directoryListings = [directoryListings copy];
-	_directoryCases = [directoryCases copy];
+	directoryListings[""] = rootFiles;
+	_directoryListings = std::move(directoryListings);
+	_directoryCases = std::move(directoryCases);
 }
 
 
 - (void)checkRootFolders
 {
-	NSArray					*knownNames = nil;
-	NSString				*name = nil;
-	NSString				*lcName = nil;
-	NSString				*actual = nil;
+	std::string				lcName;
 	
-	knownNames = [[self verifier] configurationArrayForKey:@"knownRootDirectories"];
-	foreach (name, knownNames)
+	for (const std::string &name : oo::StringsFrom([[self verifier] configurationArrayForKey:@"knownRootDirectories"]))
 	{
-		if (![name isKindOfClass:[NSString class]])  continue;
+		lcName = oo::str::lowercase(name);
+		const auto actual = _directoryCases.find(lcName);
+		if (actual == _directoryCases.end())  continue;
 		
-		lcName = [name lowercaseString];
-		actual = [_directoryCases objectForKey:lcName];
-		if (actual == nil)  continue;
-		
-		if (![actual isEqualToString:name])
+		if (actual->second != name)
 		{
-			OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: directory '%@' should be called '%@'.", actual, name);
+			OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: directory '%@' should be called '%@'.", oo::NSStringFrom(actual->second), oo::NSStringFrom(name));
 		}
-		[_caseWarnings addObject:lcName];
+		_caseWarnings.insert(lcName);
 	}
 }
 
 
 - (void)checkConfigFiles
 {
-	NSArray					*knownNames = nil;
-	NSString				*name = nil,
-		*lcName = nil,
-		*realFileName = nil;
-	BOOL					inConfigDir;
+	std::string					lcName;
+	std::optional<std::string>	realFileName;
+	BOOL						inConfigDir;
 	
-	knownNames = [[self verifier] configurationArrayForKey:@"knownConfigFiles"];
-	foreach (name, knownNames)
+	for (const std::string &name : oo::StringsFrom([[self verifier] configurationArrayForKey:@"knownConfigFiles"]))
 	{
-		if (![name isKindOfClass:[NSString class]])  continue;
-		
 		/*	In theory, we could use -fileExists:inFolder:referencedFrom:checkBuiltIn:
 		here, but we want a different error message.
 		*/
 		
-		lcName = [name lowercaseString];
-		realFileName = [[_directoryListings oo_dictionaryForKey:@"config"] objectForKey:lcName];
-		inConfigDir = realFileName != nil;
-		if (!inConfigDir)  realFileName = [[_directoryListings oo_dictionaryForKey:@""] objectForKey:lcName];
-		if (realFileName == nil)  continue;
+		lcName = oo::str::lowercase(name);
+		realFileName = [self realNameOf:lcName inListing:"config"];
+		inConfigDir = realFileName.has_value();
+		if (!inConfigDir)  realFileName = [self realNameOf:lcName inListing:""];
+		if (!realFileName.has_value())  continue;
 		
-		if (![realFileName isEqualToString:name])
+		if (*realFileName != name)
 		{
-			if (inConfigDir)  realFileName = [@"Config" stringByAppendingPathComponent:realFileName];
-			OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: configuration file '%@' should be called '%@'.", realFileName, name);
+			if (inConfigDir)  realFileName = oo::str::appendingPathComponent("Config", *realFileName);
+			OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: configuration file '%@' should be called '%@'.", oo::NSStringFrom(*realFileName), oo::NSStringFrom(name));
 		}
 	}
 }
@@ -473,133 +476,122 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 
 - (void)checkKnownFiles
 {
-	NSDictionary			*directories = nil;
-	NSString				*directory = nil,
-							*lcDirectory = nil;
-	NSArray					*fileList = nil;
-	NSString				*name = nil,
-							*lcName = nil,
-							*realFileName = nil;
-	BOOL					inDirectory;
+	std::string					lcDirectory,
+								lcName;
+	std::optional<std::string>	realFileName;
+	BOOL						inDirectory;
 	
-	directories = [[self verifier] configurationDictionaryForKey:@"knownFiles"];
-	foreachkey (directory, directories)
+	// Folders in byte order of their names (they were in dictionary order).
+	const oo::PList directories = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"knownFiles"]);
+	const oo::PList::Dict *directoryDict = directories.getIf<oo::PList::Dict>();
+	if (directoryDict == nullptr)  return;
+	for (const auto &[directory, fileList] : *directoryDict)
 	{
-		fileList = [directories objectForKey:directory];
-		lcDirectory = [directory lowercaseString];
-		foreach (name, fileList)
+		lcDirectory = oo::str::lowercase(directory);
+		const oo::PList::Array *files = fileList.getIf<oo::PList::Array>();
+		if (files == nullptr)  continue;
+		for (const oo::PList &entry : *files)
 		{
-			if (![name isKindOfClass:[NSString class]])  continue;
+			const std::string *name = entry.getIf<std::string>();
+			if (name == nullptr)  continue;
 			
 			/*	In theory, we could use -fileExists:inFolder:referencedFrom:checkBuiltIn:
 				here, but we want a different error message.
 			*/
 			
-			lcName = [name lowercaseString];
-			realFileName = [[_directoryListings oo_dictionaryForKey:lcDirectory] objectForKey:lcName];
-			inDirectory = (realFileName != nil);
+			lcName = oo::str::lowercase(*name);
+			realFileName = [self realNameOf:lcName inListing:lcDirectory];
+			inDirectory = realFileName.has_value();
 			if (!inDirectory)
 			{
 				// Allow for files in root directory of OXP
-				realFileName = [[_directoryListings oo_dictionaryForKey:@""] objectForKey:lcName];
+				realFileName = [self realNameOf:lcName inListing:""];
 			}
-			if (realFileName == nil)  continue;
+			if (!realFileName.has_value())  continue;
 			
-			if (![realFileName isEqualToString:name])
+			if (*realFileName != *name)
 			{
-				if (inDirectory)  realFileName = [directory stringByAppendingPathComponent:realFileName];
-				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: file '%@' should be called '%@'.", realFileName, name);
+				if (inDirectory)  realFileName = oo::str::appendingPathComponent(directory, *realFileName);
+				OOLog(@"verifyOXP.files.caseMismatch", @"***** ERROR: case mismatch: file '%@' should be called '%@'.", oo::NSStringFrom(*realFileName), oo::NSStringFrom(*name));
 			}
 		}
 	}
 }
 
 
-- (NSDictionary *)lowercaseMap:(NSArray *)array
+- (std::optional<std::map<std::string, std::string, std::less<>>>)lowercaseMap:(const std::vector<std::string> &)array
 {
-	NSUInteger				i, count;
-	NSString				*canonical = nil,
-							*lowercase = nil;
-	NSMutableDictionary		*result = nil;
+	std::map<std::string, std::string, std::less<>> result;
 	
-	count = [array count];
-	if (count == 0)  return [NSDictionary dictionary];
-	result = [NSMutableDictionary dictionaryWithCapacity:count];
-	
-	for (i = 0; i != count; ++i)
+	for (const std::string &canonical : array)
 	{
-		canonical = [array oo_stringAtIndex:i];
-		if (canonical != nil)
-		{
-			lowercase = [canonical lowercaseString];
-			[result setObject:canonical forKey:lowercase];
-		}
+		result[oo::str::lowercase(canonical)] = canonical;
 	}
 	
 	return result;
 }
 
 
-- (NSDictionary *)scanDirectory:(NSString *)path
+- (std::optional<std::map<std::string, std::string, std::less<>>>)scanDirectory:(const std::string &)path
 {
 	NSDirectoryEnumerator	*dirEnum = nil;
-	NSMutableDictionary		*result = nil;
-	NSString				*name = nil,
-							*lcName = nil,
-							*type = nil,
-							*dirName = nil,
-							*relativeName = nil,
-							*existing = nil;
+	std::map<std::string, std::string, std::less<>>	result;
+	std::string				lcName,
+							dirName,
+							relativeName;
 	
-	result = [NSMutableDictionary dictionary];
-	dirName = [path lastPathComponent];
+	dirName = oo::str::lastPathComponent(path);
 	
-	dirEnum = [[NSFileManager defaultManager] enumeratorAtPath:path];
-	while ((name = [dirEnum nextObject]))
+	dirEnum = [[NSFileManager defaultManager] enumeratorAtPath:oo::NSStringFrom(path)];
+	for (;;)
 	{
-		type = [[dirEnum fileAttributes] fileType];
-		relativeName = [dirName stringByAppendingPathComponent:name];
+		const std::optional<std::string> nextName = oo::OptionalString([dirEnum nextObject]);
+		if (!nextName.has_value())  break;
+		const std::string &name = *nextName;
 		
-		if ([_junkFileNames containsObject:name])
+		const std::optional<std::string> type = oo::OptionalString([[dirEnum fileAttributes] fileType]);
+		relativeName = oo::str::appendingPathComponent(dirName, name);
+
+		if (_junkFileNames.contains(name))
 		{
-			OOLog(@"verifyOXP.scanFiles.skipJunk", @"NOTE: skipping junk file %@/%@.", dirName, name);
+			OOLog(@"verifyOXP.scanFiles.skipJunk", @"NOTE: skipping junk file %@/%@.", oo::NSStringFrom(dirName), oo::NSStringFrom(name));
 		}
-		else if ([type isEqualToString:NSFileTypeRegular])
+		else if (type == oo::StdString(NSFileTypeRegular))
 		{
-			lcName = [name lowercaseString];
-			existing = [result objectForKey:lcName];
+			lcName = oo::str::lowercase(name);
+			const auto existing = result.find(lcName);
 			
-			if (existing == nil)
+			if (existing == result.end())
 			{
-				OOLog(@"verifyOXP.verbose.listFiles", @"- %@", name);
-				[result setObject:name forKey:lcName];
+				OOLog(@"verifyOXP.verbose.listFiles", @"- %@", oo::NSStringFrom(name));
+				result[lcName] = name;
 			}
 			else
 			{
-				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"file", relativeName, @"file", [dirName stringByAppendingPathComponent:existing]);
+				OOLog(@"verifyOXP.scanFiles.overloadedName", @"***** ERROR: %@ '%@' conflicts with %@ named '%@', ignoring. (OXPs must work on case-insensitive file systems!)", @"file", oo::NSStringFrom(relativeName), @"file", oo::NSStringFrom(oo::str::appendingPathComponent(dirName, existing->second)));
 			}
 		}
 		else
 		{
-			if ([type isEqualToString:NSFileTypeDirectory])
+			if (type == oo::StdString(NSFileTypeDirectory))
 			{
 				[dirEnum skipDescendents];
-				if (![_skipDirectoryNames containsObject:name])
+				if (!_skipDirectoryNames.contains(name))
 				{
-					OOLog(@"verifyOXP.scanFiles.directory", @"----- WARNING: \"%@\" is a nested directory, ignoring.", relativeName);
+					OOLog(@"verifyOXP.scanFiles.directory", @"----- WARNING: \"%@\" is a nested directory, ignoring.", oo::NSStringFrom(relativeName));
 				}
 				else
 				{
-					OOLog(@"verifyOXP.verbose.listFiles", @"- Skipping %@/%@/", dirName, name);
+					OOLog(@"verifyOXP.verbose.listFiles", @"- Skipping %@/%@/", oo::NSStringFrom(dirName), oo::NSStringFrom(name));
 				}
 			}
-			else if ([type isEqualToString:NSFileTypeSymbolicLink])
+			else if (type == oo::StdString(NSFileTypeSymbolicLink))
 			{
-				OOLog(@"verifyOXP.scanFiles.symLink", @"----- WARNING: \"%@\" is a symbolic link, ignoring.", relativeName);
+				OOLog(@"verifyOXP.scanFiles.symLink", @"----- WARNING: \"%@\" is a symbolic link, ignoring.", oo::NSStringFrom(relativeName));
 			}
 			else
 			{
-				OOLog(@"verifyOXP.scanFiles.nonStandardFile", @"----- WARNING: \"%@\" is a non-standard file (%@), ignoring.", relativeName, type);
+				OOLog(@"verifyOXP.scanFiles.nonStandardFile", @"----- WARNING: \"%@\" is a non-standard file (%@), ignoring.", oo::NSStringFrom(relativeName), oo::NSStringOrNil(type));
 			}
 		}
 	}
@@ -608,78 +600,77 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 }
 
 
-- (void)checkPListFormat:(NSPropertyListFormat)format file:(NSString *)file folder:(NSString *)folder
+- (void)checkPListFormat:(oo::PListFormat)format file:(const std::optional<std::string> &)file folder:(const std::optional<std::string> &)folder
 {
-	NSString				*weirdnessKey = nil;
-	NSString				*formatDesc = nil;
-	NSString				*displayPath = nil;
+	std::string					weirdnessKey;
+	std::string					formatDesc;
+	std::optional<std::string>	displayPath;
 	
-	if (format != NSPropertyListOpenStepFormat && format != NSPropertyListXMLFormat_v1_0)
+	if (format != oo::PListFormat::OpenStep && format != oo::PListFormat::XML)
 	{
-		displayPath = [self displayNameForFile:file andFolder:folder];
-		weirdnessKey = [displayPath lowercaseString];
+		displayPath = [self cxx_displayNameForFile:file andFolder:folder];
+		weirdnessKey = oo::str::lowercase(*displayPath);
 		
-		if (![_badPLists containsObject:weirdnessKey])
+		if (!_badPLists.contains(weirdnessKey))
 		{
 			// Warn about "non-standard" format
-			[_badPLists addObject:weirdnessKey];
+			_badPLists.insert(weirdnessKey);
 			
 			switch (format)
 			{
-				case NSPropertyListBinaryFormat_v1_0:
-					formatDesc = @"Apple binary format";
+				case oo::PListFormat::Binary:
+					formatDesc = "Apple binary format";
 					break;
 				
 #if OOLITE_GNUSTEP
-				case NSPropertyListGNUstepFormat:
-					formatDesc = @"GNUstep text format";
+				case oo::PListFormat::GNUstep:
+					formatDesc = "GNUstep text format";
 					break;
 				
-				case NSPropertyListGNUstepBinaryFormat:
-					formatDesc = @"GNUstep binary format";
+				case oo::PListFormat::GNUstepBinary:
+					formatDesc = "GNUstep binary format";
 					break;
 #endif
 				
 				default:
-					formatDesc = [NSString stringWithFormat:@"unknown format (%i)", (int)format];
+					formatDesc = oo::str::format("unknown format (%i)", (int)format);
 			}
 			
-			OOLog(@"verifyOXP.plist.weirdFormat", @"----- WARNING: Property list %@ is in %@; OpenStep text format and XML format are the recommended formats for Oolite.", displayPath, formatDesc);
+			OOLog(@"verifyOXP.plist.weirdFormat", @"----- WARNING: Property list %@ is in %@; OpenStep text format and XML format are the recommended formats for Oolite.", oo::NSStringOrNil(displayPath), oo::NSStringFrom(formatDesc));
 		}
 	}
 }
 
 
-- (NSSet *)constructReadMeNames
+- (std::vector<std::string>)constructReadMeNames
 {
-	NSDictionary			*dict = nil;
-	NSArray					*stems = nil,
-							*extensions = nil;
-	NSMutableSet			*result = nil;
-	NSUInteger				i, j, stemCount, extCount;
-	NSString				*stem = nil,
-							*extension = nil;
+	std::vector<std::string>	result;
+	std::size_t					i, j, stemCount, extCount;
+	std::string					stem,
+								extension;
 	
-	dict = [[self verifier] configurationDictionaryForKey:@"readMeNames"];
-	stems = [dict oo_arrayForKey:@"stems"];
-	extensions = [dict oo_arrayForKey:@"extensions"];
-	stemCount = [stems count];
-	extCount = [extensions count];
-	if (stemCount * extCount == 0)  return nil;
+	const oo::PList dict = oo::PListFrom([[self verifier] configurationDictionaryForKey:@"readMeNames"]);
+	const oo::PList *stems = dict.get<oo::PList::Array>("stems");
+	const oo::PList *extensions = dict.get<oo::PList::Array>("extensions");
+	stemCount = stems != nullptr ? stems->count() : 0;
+	extCount = extensions != nullptr ? extensions->count() : 0;
+	if (stemCount * extCount == 0)  return result;
 	
-	// Construct all stem+extension permutations
-	result = [NSMutableSet setWithCapacity:stemCount * extCount];
+	// Construct all stem+extension permutations; a stem or extension that is not a string (or
+	// number) was nil, and skipped.
 	for (i = 0; i != stemCount; ++i)
 	{
-		stem = [[stems oo_stringAtIndex:i] lowercaseString];
-		if (stem != nil)
+		const oo::PList *stemEntry = stems->at(i);
+		if (stemEntry->isString() || stemEntry->isNumber())
 		{
+			stem = oo::str::lowercase(stems->at<std::string>(i));
 			for (j = 0; j != extCount; ++j)
 			{
-				extension = [[extensions oo_stringAtIndex:j] lowercaseString];
-				if (extension != nil)
+				const oo::PList *extensionEntry = extensions->at(j);
+				if (extensionEntry->isString() || extensionEntry->isNumber())
 				{
-					[result addObject:[stem stringByAppendingString:extension]];
+					extension = oo::str::lowercase(extensions->at<std::string>(j));
+					result.push_back(stem + extension);
 				}
 			}
 		}
@@ -693,15 +684,15 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 
 @implementation OOListUnusedFilesStage: OOOXPVerifierStage
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
-	return kUnusedListerStageName;
+	return oo::NSStringFrom(kUnusedListerStageName);
 }
 
 
-- (NSSet *)dependencies
+- (id)dependencies	// shared selector (proposed ADR-0043)
 {
-	return [NSSet setWithObject:kFileScannerStageName];
+	return oo::NSSetFromStrings(std::vector<std::string>{ kFileScannerStageName });
 }
 
 
@@ -711,9 +702,9 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 }
 
 
-+ (NSString *)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
++ (id)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier	// shared selector (proposed ADR-0043)
 {
-	OOListUnusedFilesStage *stage = [verifier stageWithName:kUnusedListerStageName];
+	OOListUnusedFilesStage *stage = [verifier stageWithName:oo::NSStringFrom(kUnusedListerStageName)];
 	if (stage == nil)
 	{
 		stage = [[OOListUnusedFilesStage alloc] init];
@@ -721,7 +712,7 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 		[stage release];
 	}
 	
-	return kUnusedListerStageName;
+	return oo::NSStringFrom(kUnusedListerStageName);
 }
 
 @end
@@ -731,7 +722,7 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 
 - (OOFileScannerVerifierStage *)fileScannerStage
 {
-	return [self stageWithName:kFileScannerStageName];
+	return [self stageWithName:oo::NSStringFrom(kFileScannerStageName)];
 }
 
 @end
@@ -739,41 +730,43 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 
 @implementation OOFileHandlingVerifierStage
 
-- (NSSet *)dependencies
+- (id)dependencies	// shared selector (proposed ADR-0043)
 {
-	return [NSSet setWithObject:[OOFileScannerVerifierStage nameForDependencyForVerifier:[self verifier]]];
+	return oo::NSSetFromStrings(std::vector<std::string>{ *[OOFileScannerVerifierStage nameForDependencyForVerifier:[self verifier]] });
 }
 
 
-- (NSSet *)dependents
+- (id)dependents	// shared selector (proposed ADR-0043)
 {
-	return [NSSet setWithObject:[OOListUnusedFilesStage nameForReverseDependencyForVerifier:[self verifier]]];
+	return oo::NSSetFromStrings(std::vector<std::string>{ oo::StdString([OOListUnusedFilesStage nameForReverseDependencyForVerifier:[self verifier]]) });
 }
 
 @end
 
 
-static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NSDictionary *rootFiles, NSString **outExisting, NSString **outExistingType)
+namespace {
+
+BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, std::string, std::less<>> &directoryCases, const std::map<std::string, std::string, std::less<>> &rootFiles, std::string *outExisting, std::string *outExistingType)
 {
-	NSString				*existing = nil;
-	
-	existing = [directoryCases objectForKey:lcName];
-	if (existing != nil)
+	const auto directory = directoryCases.find(lcName);
+	if (directory != directoryCases.end())
 	{
-		if (outExisting != NULL)  *outExisting = existing;
-		if (outExistingType != NULL)  *outExistingType = @"directory";
+		if (outExisting != NULL)  *outExisting = directory->second;
+		if (outExistingType != NULL)  *outExistingType = "directory";
 		return YES;
 	}
 	
-	existing = [rootFiles objectForKey:lcName];
-	if (existing != nil)
+	const auto file = rootFiles.find(lcName);
+	if (file != rootFiles.end())
 	{
-		if (outExisting != NULL)  *outExisting = existing;
-		if (outExistingType != NULL)  *outExistingType = @"file";
+		if (outExisting != NULL)  *outExisting = file->second;
+		if (outExistingType != NULL)  *outExistingType = "file";
 		return YES;
 	}
 	
 	return NO;
 }
+
+}	// namespace
 
 #endif
