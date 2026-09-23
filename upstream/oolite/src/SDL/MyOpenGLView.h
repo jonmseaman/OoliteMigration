@@ -196,7 +196,7 @@ extern int debug;
 	NSTimeInterval		timeSinceLastMouseWheel;
 	BOOL				doubleClick;
 
-	NSMutableString		*typedString;
+	std::string			typedString;	// UTF-8; empty, never nil
 
 	NSPoint				virtualJoystickPosition;
 
