@@ -28,6 +28,7 @@ endforeach
 # meson test -C build/meson_<type> --suite oofnd-plist
 oofnd_plist_tests = [
     'test_plist',
+    'test_plist_xml',
 ]
 
 foreach t : oofnd_plist_tests
