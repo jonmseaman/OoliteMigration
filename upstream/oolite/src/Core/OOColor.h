@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 
 
@@ -41,7 +42,7 @@ typedef struct
 } OOHSBAComponents;
 
 
-@interface OOColor: NSObject <NSCopying>
+@interface OOColor: OOObject <OOCopying>
 {
 @private
 	float			rgba[4];

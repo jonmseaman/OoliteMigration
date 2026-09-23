@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 
 
@@ -67,7 +68,7 @@ enum trumble_mouth
 };
 
 
-@interface OOTrumble: NSObject
+@interface OOTrumble: OOObject
 {
 @private
 	PlayerEntity			*player;	// owning entity (not retained)
