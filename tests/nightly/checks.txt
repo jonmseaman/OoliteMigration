@@ -16,6 +16,9 @@
 [oo-1gc.5] tools/guardrails-selftest
 [oo-g2k] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; python3 tools/plist_fuzz.py corpus && python3 tools/plist_fuzz.py fuzz --seed "$(date +%Y%m%d)" --count 100000
 
+# Engine sources resolved by stem (oo-7j3t): the whole GUI tier, live, under its own gui-lock.
+[oo-7j3t] tools/gui-tier.sh
+
 # Tier-2 OXP corpus (150 expansions) on the current build: two shards in parallel, 558 s measured
 # (~20 min serial would crowd the 1800 s per-line timeout), under ONE gui-lock hold, because each load opens a real
 # game window. The hold is heartbeated only while this shell lives (kill -0), so a timed-out night

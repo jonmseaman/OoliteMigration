@@ -181,4 +181,42 @@ and converts the result exactly as the old method produced it (nil for nil).
 	[self cxx_overrideTabs:stops from:oo::StdString(setting) length:len];
 }
 
+
+// Chunk 4 (oo-3rb.95).
+
+- (BOOL) setBackgroundTextureDescriptor:(NSDictionary *)descriptor
+{
+	return [self cxx_setBackgroundTextureDescriptor:oo::PListFrom(descriptor)];
+}
+
+
+- (BOOL) setForegroundTextureDescriptor:(NSDictionary *)descriptor
+{
+	return [self cxx_setForegroundTextureDescriptor:oo::PListFrom(descriptor)];
+}
+
+
+- (BOOL) setBackgroundTextureKey:(NSString *)key
+{
+	return [self cxx_setBackgroundTextureKey:oo::OptionalString(key)];
+}
+
+
+- (BOOL) setForegroundTextureKey:(NSString *)key
+{
+	return [self cxx_setForegroundTextureKey:oo::OptionalString(key)];
+}
+
+
+- (BOOL) preloadGUITexture:(NSDictionary *)descriptor
+{
+	return [self cxx_preloadGUITexture:oo::PListFrom(descriptor)];
+}
+
+
+- (NSDictionary *) textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(NSString *)callerDescription
+{
+	return oo::ObjectFromPList([self cxx_textureDescriptorFromJSValue:value inContext:context callerDescription:oo::OptionalString(callerDescription)]);
+}
+
 @end
