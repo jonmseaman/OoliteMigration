@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Notification.hpp"
 #include <cstring>
 
 /*
@@ -56,7 +57,7 @@ namespace {
 static inline const unichar *OOJSRUCHARS(const ooscript::Char16 *s)  { return reinterpret_cast<const unichar*>(s); }
 } // namespace
 
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "Universe.h"
 #import "OOPlanetEntity.h"
 #import "NSStringOOExtensions.h"
@@ -132,6 +133,8 @@ ooscript::Context gOOJSMainThreadContext = NULL;
 
 NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
 NSString * const kOOJavaScriptEngineDidResetNotification = @"org.aegidian.oolite OOJavaScriptEngine did reset";
+const char * const kOOJavaScriptEngineWillResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine will reset";
+const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine did reset";
 
 
 #if OOJSENGINE_MONITOR_SUPPORT
@@ -234,7 +237,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	// Get string for error number, for useful log message classes
 	NSDictionary *errorNames = [ResourceManager dictionaryFromFilesNamed:@"javascript-errors.plist" inFolder:@"Config" andMerge:YES];
 	NSString *errorNumberStr = [NSString stringWithFormat:@"%u", report->errorNumber];
-	NSString *errorName = [errorNames oo_stringForKey:errorNumberStr];
+	NSString *errorName = oo::PListView(errorNames).get<NSString *>(errorNumberStr);
 	if (errorName == nil)  errorName = errorNumberStr;
 	
 	// Log message class
@@ -331,7 +334,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	assert(sizeof(ooscript::Char16) == sizeof(unichar));
 	
 	// initialize the JS run time, and return result in runtime.
-	uint32_t jsRuntimeInMiB = [defaults oo_intForKey:@"jsruntime-size-mib" defaultValue:OOJS_RUNTIME_SIZE_MiB];
+	uint32_t jsRuntimeInMiB = oo::PListView(defaults).get<int>(@"jsruntime-size-mib", OOJS_RUNTIME_SIZE_MiB);
 	_runtime = ooscript::newRuntime(jsRuntimeInMiB * 1024L * 1024L);
 	
 	// if runtime creation failed, end the program here.
@@ -371,7 +374,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	
 	if (ooscript::gcZealSupported())
 	{
-		uint8_t gcZeal = [[NSUserDefaults standardUserDefaults]  oo_unsignedCharForKey:@"js-gc-zeal"];
+		uint8_t gcZeal = oo::PListView([NSUserDefaults standardUserDefaults]).get<unsigned char>(@"js-gc-zeal");
 		if (gcZeal > 0)
 		{
 			// Useful js-gc-zeal values are 0 (off), 1 and 2.
@@ -506,6 +509,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	}
 	
 	ooscript::Context context = OOJSAcquireContext();
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, self);
 	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineWillResetNotification object:self];
 	OOJSRelinquishContext(context);
 	
@@ -513,6 +517,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	[self createMainThreadContext];
 	
 	context = OOJSAcquireContext();
+	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, self);
 	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineDidResetNotification object:self];
 	OOJSRelinquishContext(context);
 	
@@ -1526,7 +1531,61 @@ static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dict
 
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal
 {
-	
+
+}
+
+@end
+
+
+// NSObject (OOJavaScriptConversion) above, for classes rooted on OOObject (ADR-0029).
+@implementation OOObject (OOJavaScriptConversion)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+{
+	return ooscript::undefinedValue();
+}
+
+
+- (NSString *) oo_jsClassName
+{
+	return nil;
+}
+
+
+- (NSString *) oo_jsDescription
+{
+	return [self oo_jsDescriptionWithClassName:[self oo_jsClassName]];
+}
+
+
+- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className
+{
+	OOJS_PROFILE_ENTER
+
+	NSString				*components = nil;
+	NSString				*description = nil;
+
+	components = [self descriptionComponents];
+	if (className == nil)  className = [[self class] description];
+
+	if (components != nil)
+	{
+		description = [NSString stringWithFormat:@"[%@ %@]", className, components];
+	}
+	else
+	{
+		description = [NSString stringWithFormat:@"[object %@]", className];
+	}
+
+	return description;
+
+	OOJS_PROFILE_EXIT
+}
+
+
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal
+{
+
 }
 
 @end
@@ -1582,10 +1641,9 @@ ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object
 		{
 			ooscript::addNamedValueRoot((context), (&_val), "OOJSValue");
 			
-			[[NSNotificationCenter defaultCenter] addObserver:self
-													 selector:@selector(deleteJSValue)
-														 name:kOOJavaScriptEngineWillResetNotification
-													   object:[OOJavaScriptEngine sharedEngine]];
+			oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+																[OOJavaScriptEngine sharedEngine],
+																[self](const oo::Notification &) { [self deleteJSValue]; });
 		}
 		
 		if (tempCtxt)  OOJSRelinquishContext(context);
@@ -1611,9 +1669,8 @@ ooscript::Object OOJSObjectFromNativeObject(ooscript::Context context, id object
 		OOJSRelinquishContext(context);
 		
 		_val = ooscript::undefinedValue();
-		[[NSNotificationCenter defaultCenter] removeObserver:self
-														name:kOOJavaScriptEngineWillResetNotification
-													  object:[OOJavaScriptEngine sharedEngine]];
+		oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+																[OOJavaScriptEngine sharedEngine]);
 	}
 }
 
@@ -2069,7 +2126,27 @@ NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BO
 @end
 
 
-@implementation NSNull (OOJavaScriptConversion)
+@implementation OONull
+
++ (OONull *) null
+{
+	static OONull *sNull = nil;
+	if (sNull == nil)  sNull = [[OONull alloc] init];
+	return sNull;
+}
+
+
+- (id) copyWithZone:(OOZone *)zone
+{
+	return [self retain];
+}
+
+
+- (NSString *) description
+{
+	return @"<null>";
+}
+
 
 - (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
@@ -2234,7 +2311,8 @@ BOOL JSEntityIsDemoShipPredicate(Entity *entity, void * /*parameter*/)
 }
 
 namespace {
-static NSMapTable *sRegisteredSubClasses;
+// JS subclass -> superclass, by pointer. Was a non-owned pointer map table (bead oo-3rb.20).
+static std::unordered_map<const ooscript::ClassDef *, ooscript::ClassDef *> *sRegisteredSubClasses;
 } // namespace
 
 void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *superclass)
@@ -2243,19 +2321,19 @@ void OOJSRegisterSubclass(ooscript::ClassDef *subclass, ooscript::ClassDef *supe
 	
 	if (sRegisteredSubClasses == NULL)
 	{
-		sRegisteredSubClasses = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 0);
+		sRegisteredSubClasses = new std::unordered_map<const ooscript::ClassDef *, ooscript::ClassDef *>;
 	}
-	
-	NSCAssert(NSMapGet(sRegisteredSubClasses, subclass) == NULL, @"A JS class cannot be registered as a subclass of multiple classes.");
-	
-	NSMapInsertKnownAbsent(sRegisteredSubClasses, subclass, superclass);
+
+	NSCAssert(sRegisteredSubClasses->count(subclass) == 0, @"A JS class cannot be registered as a subclass of multiple classes.");
+
+	sRegisteredSubClasses->emplace(subclass, superclass);
 }
 
 
 namespace {
 static void UnregisterSubclasses(void)
 {
-	NSFreeMapTable(sRegisteredSubClasses);
+	delete sRegisteredSubClasses;
 	sRegisteredSubClasses = NULL;
 }
 } // namespace
@@ -2270,7 +2348,8 @@ BOOL OOJSIsSubclass(ooscript::ClassDef *putativeSubclass, ooscript::ClassDef *su
 	{
 		if (putativeSubclass == superclass)  return YES;
 		
-		putativeSubclass = static_cast<ooscript::ClassDef*>(NSMapGet(sRegisteredSubClasses, putativeSubclass));
+		auto registered = sRegisteredSubClasses->find(putativeSubclass);
+		putativeSubclass = (registered != sRegisteredSubClasses->end()) ? registered->second : NULL;
 	}
 	while (putativeSubclass != NULL);
 	
@@ -2607,7 +2686,7 @@ static id JSArrayConverter(ooscript::Context context, ooscript::Object array)
 		if (!ooscript::getElement((context), (array), i, (&value)))  value = ooscript::undefinedValue();
 		
 		object = OOJSNativeObjectFromJSValue(context, value);
-		if (object == nil)  object = [NSNull null];
+		if (object == nil)  object = [OONull null];
 		values[i] = object;
 	}
 	

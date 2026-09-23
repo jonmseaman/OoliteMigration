@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -218,7 +219,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 	{
 		case kShipGroup_ships:
 			result = [group memberArray];
-			if (result == nil)  result = [NSArray array];
+			if (result == nil)  result = oo::NSArrayFromObjects(std::vector<id>());	// an empty array
 			break;
 			
 		case kShipGroup_leader:
@@ -227,7 +228,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 			
 		case kShipGroup_name:
 			result = [group name];
-			if (result == nil)  result = [NSNull null];
+			if (result == nil)  result = [OONull null];
 			break;
 			
 		case kShipGroup_count:
@@ -303,7 +304,7 @@ static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oo
 		return NO;
 	}
 	
-	NSString				*name = nil;
+	std::optional<std::string>	name;
 	ShipEntity				*leader = nil;
 	
 	if (oojsArgs.count() >= 1)
@@ -313,7 +314,7 @@ static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oo
 			OOJSReportBadArguments(context, nil, @"ShipGroup()", 1, OOJS_ARGV, @"Could not create ShipGroup", @"group name");
 			return NO;
 		}
-		name = OOStringFromJSValue(context, OOJS_ARGV[0]);
+		name = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
 	}
 	
 	if (oojsArgs.count() >= 2)
@@ -326,7 +327,7 @@ static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oo
 		}
 	}
 	
-	OOJS_RETURN_OBJECT([OOShipGroup groupWithName:name leader:leader]);
+	OOJS_RETURN_OBJECT([OOShipGroup groupWithName:oo::NSStringOrNil(name) leader:leader]);
 	
 	OOJS_NATIVE_EXIT
 }

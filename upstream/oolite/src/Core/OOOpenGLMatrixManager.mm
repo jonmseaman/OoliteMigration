@@ -51,39 +51,33 @@ const char* ooliteStandardMatrixUniforms[] =
 
 - (id) init
 {
-	if ((self = [super init]))
-	{
-		stack = [[NSMutableArray alloc] init];
-	}
-	return self;
+	return [super init];
 }
 
 - (void) dealloc
 {
-	[stack release];
 	[super dealloc];
 }
 
 - (void) push: (OOMatrix) matrix
 {
-	[stack addObject: [NSValue valueWithBytes: &matrix objCType: @encode(OOMatrix)]];
+	stack.push_back(matrix);
 }
 
 - (OOMatrix) pop
 {
-	if ([stack count] == 0)
+	if (stack.empty())
 	{
 		return kIdentityMatrix;
 	}
-	OOMatrix matrix;
-	[[stack lastObject] getValue: &matrix];
-	[stack removeLastObject];
+	OOMatrix matrix = stack.back();
+	stack.pop_back();
 	return matrix;
 }
 
 - (NSUInteger) stackCount
 {
-	return [stack count];
+	return stack.size();
 }
 
 
@@ -410,11 +404,11 @@ const char* ooliteStandardMatrixUniforms[] =
 	return matrices[which];
 }
 
-- (NSArray*) standardMatrixUniformLocations: (GLhandleARB) program
+- (oo::PList) standardMatrixUniformLocations: (GLhandleARB) program
 {
 	GLint location;
 	NSUInteger i;
-	NSMutableArray *locationSet = [[[NSMutableArray alloc] init] autorelease];
+	oo::PList::Array locationSet;
     
     OO_ENTER_OPENGL();
 	
@@ -423,25 +417,21 @@ const char* ooliteStandardMatrixUniforms[] =
 		if (location >= 0) {
 			if (i == OOLITE_GL_MATRIX_NORMAL)
 			{
-				[locationSet addObject:
-					[NSArray arrayWithObjects:
-						[NSNumber numberWithInt: location],
-						[NSNumber numberWithInteger: i],
-						@"mat3",
-						nil]];
+				locationSet.push_back(oo::PList(oo::PList::Array{
+						oo::PList(location),
+						oo::PList(static_cast<NSInteger>(i)),
+						oo::PList("mat3") }));
 			}
 			else
 			{
-				[locationSet addObject:
-					[NSArray arrayWithObjects:
-						[NSNumber numberWithInt: location],
-						[NSNumber numberWithInteger: i],
-						@"mat4",
-						nil]];
+				locationSet.push_back(oo::PList(oo::PList::Array{
+						oo::PList(location),
+						oo::PList(static_cast<NSInteger>(i)),
+						oo::PList("mat4") }));
 			}
 		}
 	}
-	return [[NSArray arrayWithArray: locationSet] retain];
+	return oo::PList(std::move(locationSet));
 }
 
 @end

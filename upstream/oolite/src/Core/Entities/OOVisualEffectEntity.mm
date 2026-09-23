@@ -33,7 +33,7 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "OOStringParsing.h"
 #import "OOStringExpander.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 
@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOFilteringEnumerator.h"
 
 #import "MyOpenGLView.h"
+#import "OOFoundationBridge.h"
 
 @interface OOVisualEffectEntity (Private)
 
@@ -109,21 +110,21 @@ MA 02110-1301, USA.
 
 	collision_radius = 0.0;
 
-	NSString *modelName = [effectDict oo_stringForKey:@"model"];
+	NSString *modelName = oo::PListView(effectDict).get<NSString *>(@"model");
 	if (modelName != nil)
 	{
-		OOMesh *mesh = [OOMesh meshWithName:modelName
-								   cacheKey:_effectKey
-						 materialDictionary:[effectDict oo_dictionaryForKey:@"materials"]
-						  shadersDictionary:[effectDict oo_dictionaryForKey:@"shaders"]
-									 smooth:[effectDict oo_boolForKey:@"smooth" defaultValue:NO]
-							   shaderMacros:OODefaultShipShaderMacros()
+		OOMesh *mesh = [OOMesh meshWithName:oo::StdString(modelName)
+								   cacheKey:oo::OptionalString(_effectKey)
+						 materialDictionary:oo::PListFrom(oo::PListView(effectDict).get<NSDictionary *>(@"materials"))
+						  shadersDictionary:oo::PListFrom(oo::PListView(effectDict).get<NSDictionary *>(@"shaders"))
+									 smooth:oo::PListView(effectDict).get<BOOL>(@"smooth", NO)
+							   shaderMacros:oo::PListFrom(OODefaultShipShaderMacros())
 						shaderBindingTarget:self];
 		if (mesh == nil)  return NO;
 		[self setMesh:mesh];
 	}
 
-	isImmuneToBreakPatternHide = [effectDict oo_boolForKey:@"is_break_pattern"];
+	isImmuneToBreakPatternHide = oo::PListView(effectDict).get<bool>(@"is_break_pattern");
 	scaleX = 1.0;
 	scaleY = 1.0;
 	scaleZ = 1.0;
@@ -146,11 +147,11 @@ MA 02110-1301, USA.
 	_shaderVector1 = kZeroVector;
 	_shaderVector2 = kZeroVector;
 
-	[self setBeaconCode:[effectDict oo_stringForKey:@"beacon"]];
-	[self setBeaconLabel:[effectDict oo_stringForKey:@"beacon_label" defaultValue:[self beaconCode]]];
+	[self setBeaconCode:oo::PListView(effectDict).get<NSString *>(@"beacon")];
+	[self setBeaconLabel:oo::PListView(effectDict).get<NSString *>(@"beacon_label", [self beaconCode])];
 
-	scriptInfo = [[effectDict oo_dictionaryForKey:@"script_info" defaultValue:nil] retain];
-	[self setScript:[effectDict oo_stringForKey:@"script"]];
+	scriptInfo = [oo::PListView(effectDict).get<NSDictionary *>(@"script_info", nil) retain];
+	[self setScript:oo::PListView(effectDict).get<NSString *>(@"script")];
 
 	return YES;
 
@@ -243,11 +244,11 @@ MA 02110-1301, USA.
 {
 	unsigned int	i;
 	_profileRadius = collision_radius;
-	NSArray *subs = [effectinfoDictionary oo_arrayForKey:@"subentities"];
+	NSArray *subs = oo::PListView(effectinfoDictionary).get<NSArray *>(@"subentities");
 	
 	for (i = 0; i < [subs count]; i++)
 	{
-		[self setUpOneSubentity:[subs oo_dictionaryAtIndex:i]];
+		[self setUpOneSubentity:oo::PListView(subs).at<NSDictionary *>(i)];
 	}
 
 	[self setNoDrawDistance];
@@ -273,7 +274,7 @@ MA 02110-1301, USA.
 
 - (BOOL) setUpOneSubentity:(NSDictionary *) subentDict 
 {
-	NSString *type = [subentDict oo_stringForKey:@"type"];
+	NSString *type = oo::PListView(subentDict).get<NSString *>(@"type");
 	if ([type isEqualToString:@"flasher"])
 	{
 		return [self setUpOneFlasher:subentDict];
@@ -289,8 +290,8 @@ MA 02110-1301, USA.
 
 - (BOOL) setUpOneFlasher:(NSDictionary *) subentDict
 {
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
-	[flasher setPosition:[subentDict oo_hpvectorForKey:@"position"]];
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:oo::PListFrom(subentDict)];
+	[flasher setPosition:oo::PListView(subentDict).get<HPVector>(@"position")];
 	[self addSubEntity:flasher];
 	return YES;
 }
@@ -303,7 +304,7 @@ MA 02110-1301, USA.
 	HPVector				subPosition;
 	Quaternion			subOrientation;
 	
-	subentKey = [subentDict oo_stringForKey:@"subentity_key"];
+	subentKey = oo::PListView(subentDict).get<NSString *>(@"subentity_key");
 	if (subentKey == nil) {
 		OOLog(@"setup.visualeffect.badEntry.subentities",@"Failed to set up entity - no subentKey in %@",subentDict);
 		return NO;
@@ -315,8 +316,8 @@ MA 02110-1301, USA.
 		return NO;
 	}
 	
-	subPosition = [subentDict oo_hpvectorForKey:@"position"];
-	subOrientation = [subentDict oo_quaternionForKey:@"orientation"];
+	subPosition = oo::PListView(subentDict).get<HPVector>(@"position");
+	subOrientation = oo::PListView(subentDict).get<Quaternion>(@"orientation");
 	
 	[subentity setPosition:subPosition];
 	[subentity setOrientation:subOrientation];
@@ -822,8 +823,8 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 		
 		if (length > 1)
 		{
-			NSArray *iconData = [[UNIVERSE descriptions] oo_arrayForKey:beaconCode];
-			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:beaconCode];
+			NSArray *iconData = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(beaconCode);
+			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconData) outlineWidth:0.5 name:oo::StdString(beaconCode)];
 		}
 		
 		if (_beaconDrawable == nil)

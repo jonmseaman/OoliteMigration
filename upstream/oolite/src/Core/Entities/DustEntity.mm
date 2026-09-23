@@ -40,6 +40,9 @@ MA 02110-1301, USA.
 #endif
 
 #import "PlayerEntity.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 #define FAR_PLANE		(DUST_SCALE * 0.50f)
@@ -70,7 +73,7 @@ enum
 	int vi;
 	
 // this should be unnecessary
-//	ranrot_srand((uint32_t)[[NSDate date] timeIntervalSince1970]);	// seed randomiser by time
+//	ranrot_srand((uint32_t)oo::date::timeIntervalSince1970());	// seed randomiser by time
 	
 	self = [super init];
 	
@@ -100,7 +103,7 @@ enum
 	dust_color = [[OOColor colorWithRed:0.5 green:1.0 blue:1.0 alpha:1.0] retain];
 	[self setStatus:STATUS_ACTIVE];
 
-	hasPointSprites = [[OOOpenGLExtensionManager sharedManager] haveExtension:@"GL_ARB_point_sprite"];
+	hasPointSprites = [[OOOpenGLExtensionManager sharedManager] haveExtension:"GL_ARB_point_sprite"];
 	
 	if (hasPointSprites)
 	{
@@ -127,7 +130,7 @@ enum
 	DESTROY(texture);
 #if OO_SHADERS
 	DESTROY(shader);
-	DESTROY(uniforms);
+	uniforms.clear();
 #endif
 	
 	[super dealloc];
@@ -201,38 +204,37 @@ enum
 {
 	if (shader == nil)
 	{
-		NSString *prefix = [NSString stringWithFormat:
-						   @"#define OODUST_SCALE_MAX    (float(%g))\n"
+		std::string prefix = oo::str::format(
+						   "#define OODUST_SCALE_MAX    (float(%g))\n"
 							"#define OODUST_SCALE_FACTOR (float(%g))\n"
 							"#define OODUST_SIZE         (float(%g))\n",
 							FAR_PLANE / NEAR_PLANE,
 							1.0f / (FAR_PLANE - NEAR_PLANE),
-							(float)DUST_SCALE];
+							(float)DUST_SCALE);
 		
 		// Reuse tangent attribute ID for "warpiness", as we don't need a tangent.
-		NSDictionary *attributes = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kTangentAttributeIndex]
-															   forKey:@"aWarpiness"];
+		oo::PList::Dict attributes;
+		attributes["aWarpiness"] = oo::PList::signedInteger(kTangentAttributeIndex);	// +numberWithInt:
 		
-		shader = [[OOShaderProgram shaderProgramWithVertexShaderName:@"oolite-dust.vertex"
-												  fragmentShaderName:@"oolite-dust.fragment"
-															  prefix:prefix
-												   attributeBindings:attributes] retain];
+		shader = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-dust.vertex"
+												  fragmentShaderName:"oolite-dust.fragment"
+															  prefix:std::optional<std::string>(std::move(prefix))
+												   attributeBindings:oo::PList(std::move(attributes))] retain];
 		
-		DESTROY(uniforms);
-		OOShaderUniform *uWarp = [[OOShaderUniform alloc] initWithName:@"uWarp"
+		uniforms.clear();
+		OOShaderUniform *uWarp = [[OOShaderUniform alloc] initWithName:"uWarp"
 														 shaderProgram:shader
 														 boundToObject:self
 															  property:@selector(warpVector)
 														convertOptions:0];
-		OOShaderUniform *uOffsetPlayerPosition = [[OOShaderUniform alloc] initWithName:@"uOffsetPlayerPosition"
+		OOShaderUniform *uOffsetPlayerPosition = [[OOShaderUniform alloc] initWithName:"uOffsetPlayerPosition"
 																   shaderProgram:shader
 																   boundToObject:self
 																		property:@selector(offsetPlayerPosition)
 																  convertOptions:0];
 		
-		uniforms = [[NSArray alloc] initWithObjects:uWarp, uOffsetPlayerPosition, nil];
-		[uWarp release];
-		[uOffsetPlayerPosition release];
+		uniforms.push_back(oo::adoptObjC(uWarp));
+		uniforms.push_back(oo::adoptObjC(uOffsetPlayerPosition));
 	}
 	
 	return shader;
@@ -330,7 +332,7 @@ enum
 		if (useShader)
 		{
 			[[self shader] apply];
-			[uniforms makeObjectsPerformSelector:@selector(apply)];
+			for (const oo::ObjCRef<OOShaderUniform *> &uniform : uniforms)  [uniform.get() apply];
 		}
 		else
 #endif
@@ -431,7 +433,7 @@ enum
 {
 #if OO_SHADERS
 	DESTROY(shader);
-	DESTROY(uniforms);
+	uniforms.clear();
 	
 	shaderMode = kShaderModeUnknown;
 	
@@ -444,7 +446,7 @@ enum
 
 
 #ifndef NDEBUG
-- (NSString *) descriptionForObjDump
+- (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
 {
 	// Don't include range and visibility flag as they're irrelevant.
 	return [self descriptionForObjDumpBasic];

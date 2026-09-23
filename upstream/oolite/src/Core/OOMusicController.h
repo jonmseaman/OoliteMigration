@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOSoundSource.h"
 
 @class OOMusic;
@@ -48,7 +49,7 @@ typedef enum
 } OOMusicMode;
 
 
-@interface OOMusicController: NSObject
+@interface OOMusicController: OOObject
 {
 @private
 	OOMusicMode				_mode;

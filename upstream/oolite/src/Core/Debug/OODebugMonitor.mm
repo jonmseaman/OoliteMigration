@@ -31,7 +31,7 @@ SOFTWARE.
 
 
 #import "OODebugMonitor.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOLoggingExtended.h"
 #import "ResourceManager.h"
 #import "NSStringOOExtensions.h"
@@ -282,9 +282,9 @@ static OODebugMonitor *sSingleton = nil;
 	if (klass == Nil)  klass = [NSObject class];
 	
 	result = [_configOverrides objectForKey:key];
-	if (![result isKindOfClass:klass] && result != [NSNull null])  result = [_configFromOXPs objectForKey:key];
-	if (![result isKindOfClass:klass] && result != [NSNull null])  result = [[value retain] autorelease];
-	if (result == [NSNull null])  result = nil;
+	if (![result isKindOfClass:klass] && result != [OONull null])  result = [_configFromOXPs objectForKey:key];
+	if (![result isKindOfClass:klass] && result != [OONull null])  result = [[value retain] autorelease];
+	if (result == [OONull null])  result = nil;
 	
 	return result;
 }
@@ -593,7 +593,7 @@ typedef struct
 			usage = @", active";
 		}
 		
-		unsigned refCount = [textureRefCounts oo_unsignedIntForKey:[NSValue valueWithNonretainedObject:tex]];
+		unsigned refCount = oo::PListView(textureRefCounts).get<unsigned int>([NSValue valueWithNonretainedObject:tex]);
 		
 		[self writeMemStat:@"%@: [%u refs%@] %@%@",
 		 [tex name],
@@ -993,7 +993,7 @@ See also +sharedDebugMonitor above.
 NOTE: assumes single-threaded access.
 */
 
-+ (id)allocWithZone:(NSZone *)inZone
++ (id)allocWithZone:(OOZone *)inZone
 {
 	if (sSingleton == nil)
 	{
@@ -1004,7 +1004,7 @@ NOTE: assumes single-threaded access.
 }
 
 
-- (id)copyWithZone:(NSZone *)inZone
+- (id)copyWithZone:(OOZone *)inZone
 {
 	return self;
 }

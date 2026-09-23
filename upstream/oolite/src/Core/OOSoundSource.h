@@ -40,7 +40,7 @@ OUT OF OR
 @class OOSound, OOSoundChannel, OOSoundReferencePoint;
 
 
-@interface OOSoundSource: NSObject
+@interface OOSoundSource: OOObject
 {
 @private
 	OOSound						*_sound;

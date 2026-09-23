@@ -37,10 +37,13 @@ MA 02110-1301, USA.
 #import "GuiDisplayGen.h"
 #import "PlanetEntity.h"
 #import "OOGraphicsResetManager.h"
-#import "OOCollectionExtractors.h" // for splash screen settings
+#import "OOPListView.h" // for splash screen settings
 #import "OOFullScreenController.h"
 #import "ResourceManager.h"
 #import "OOConstToString.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/String.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #import "stb_image_write.h"
@@ -51,6 +54,7 @@ extern "C" int SaveEXRSnapshot(const char* outfilename, int width, int height, c
 
 
 #include <ctype.h>
+#include "oofnd/Date.hpp"
 
 #if OOLITE_WINDOWS
 #ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
@@ -80,6 +84,36 @@ enum PreferredAppMode
 
 @end
 
+
+namespace {
+
+// oo_stringForKey:defaultValue: over the user defaults: the value if it is a string, a number's
+// -stringValue, else the fallback.
+std::string DefaultsString(const char *key, const std::string &fallback)
+{
+	const oo::PList value = oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:oo::NSStringFrom(key)]);
+	return oo::PListGet<std::string>::from(value.isNull() ? nullptr : &value, fallback);
+}
+
+
+// A dictionary's -isEqual: over two mode dictionaries: the same keys, numbers equal by value (the
+// native mode's integer RefreshRate 0 equals a mode's single-real 0).
+bool SameMode(const oo::PList &a, const oo::PList &b)
+{
+	const oo::PList::Dict *da = a.getIf<oo::PList::Dict>();
+	const oo::PList::Dict *db = b.getIf<oo::PList::Dict>();
+	if (da == nullptr || db == nullptr || da->size() != db->size())  return false;
+	for (const auto &[key, value] : *da)
+	{
+		const auto other = db->find(key);
+		if (other == db->end() || !value.isNumber() || !other->second.isNumber())  return false;
+		if (value.doubleValue() != other->second.doubleValue())  return false;
+	}
+	return true;
+}
+
+} // namespace
+
 @implementation MyOpenGLView
 
 - (SDL_DisplayID) getDisplayId
@@ -106,9 +140,9 @@ enum PreferredAppMode
 	return displayId;
 }
 
-- (NSMutableDictionary *) getNativeSize
+- (oo::PList) getNativeSize
 {
-	NSMutableDictionary *mode=[[NSMutableDictionary alloc] init];
+	oo::PList::Dict mode;
 	int nativeDisplayWidth = 1024;
 	int nativeDisplayHeight = 768;
 
@@ -125,24 +159,23 @@ enum PreferredAppMode
 		OOLog(@"display.mode.list.native.failed", @"%@", @"SDL_GetWMInfo failed, defaulting to 1024x768 for native size");
 	}
 
-	[mode setValue: [NSNumber numberWithInt: nativeDisplayWidth] forKey:kOODisplayWidth];
-	[mode setValue: [NSNumber numberWithInt: nativeDisplayHeight] forKey: kOODisplayHeight];
-	[mode setValue: [NSNumber numberWithInt: 0] forKey: kOODisplayRefreshRate];
+	mode[oo::StdString(kOODisplayWidth)] = oo::PList(std::int64_t(nativeDisplayWidth));
+	mode[oo::StdString(kOODisplayHeight)] = oo::PList(std::int64_t(nativeDisplayHeight));
+	mode[oo::StdString(kOODisplayRefreshRate)] = oo::PList(std::int64_t(0));
 
-	return [mode autorelease];
+	return oo::PList(std::move(mode));
 }
 
-- (NSString*) getWindowCaption
+- (std::optional<std::string>) getWindowCaption
 {
-	NSString *caption = [NSString stringWithFormat:@"Oolite v%@ by %@ - %@", @OO_VERSION_FULL, @OO_BUILDER, @OO_BUILD_DATE];
-	return [[caption retain] autorelease];
+	return oo::str::format("Oolite v%s by %s - %s", OO_VERSION_FULL, OO_BUILDER, OO_BUILD_DATE);
 }
 
 - (void) createWindowWithSize: (NSSize) size
 {
 	Uint32          colorkey;
 	SDL_Surface     *icon=NULL;
-	NSString		*imagesDir;
+	std::string		imagesDir;
 
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
 
@@ -171,18 +204,18 @@ enum PreferredAppMode
 	 * doesn't give any problems (other than speed on low-end graphics
 	 * cards) a game options entry might be useful. - CIM, 24 Aug 2013*/
 
-	if ([prefs oo_boolForKey:@"anti-aliasing" defaultValue:NO])
+	if (oo::PListView(prefs).get<BOOL>(@"anti-aliasing", NO))
 	{
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
 		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 	}
 
-	NSString *windowCaption = [self getWindowCaption];
+	const std::string windowCaption = [self getWindowCaption].value_or(std::string());
 	Uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_BORDERLESS | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
 	// Define modern SDL3 properties for window configuration
 	SDL_PropertiesID props = SDL_CreateProperties();
-	SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, [windowCaption UTF8String]);
+	SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, windowCaption.c_str());
 	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, size.width);
 	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, size.height);
 	SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER, windowFlags);
@@ -266,8 +299,8 @@ enum PreferredAppMode
 #endif
 #endif //OOLITE_WINDOWS
 
-	imagesDir = [[[NSBundle mainBundle] resourcePath] stringByAppendingPathComponent:@"Images"];
-	icon = SDL_LoadBMP([[imagesDir stringByAppendingPathComponent:@"WMicon.bmp"] UTF8String]);
+	imagesDir = oo::str::appendingPathComponent(oo::StdString([[NSBundle mainBundle] resourcePath]), "Images");
+	icon = SDL_LoadBMP(oo::str::appendingPathComponent(imagesDir, "WMicon.bmp").c_str());
 
 	if (icon != NULL)
 	{
@@ -282,12 +315,12 @@ enum PreferredAppMode
 	_colorSaturation = 1.0f;
 
 #if OOLITE_WINDOWS
-	_hdrMaxBrightness = [prefs oo_floatForKey:@"hdr-max-brightness" defaultValue:1000.0f];
-	_hdrPaperWhiteBrightness = [prefs oo_floatForKey:@"hdr-paperwhite-brightness" defaultValue:200.0f];
-	_hdrToneMapper = OOHDRToneMapperFromString([prefs oo_stringForKey:@"hdr-tone-mapper" defaultValue:@"OOHDR_TONEMAPPER_ACES_APPROX"]);
+	_hdrMaxBrightness = oo::PListView(prefs).get<float>(@"hdr-max-brightness", 1000.0f);
+	_hdrPaperWhiteBrightness = oo::PListView(prefs).get<float>(@"hdr-paperwhite-brightness", 200.0f);
+	_hdrToneMapper = OOHDRToneMapperFromString(oo::NSStringFrom(DefaultsString("hdr-tone-mapper", "OOHDR_TONEMAPPER_ACES_APPROX")));
 #endif
 
-	_sdrToneMapper = OOSDRToneMapperFromString([prefs oo_stringForKey:@"sdr-tone-mapper" defaultValue:@"OOSDR_TONEMAPPER_ACES"]);
+	_sdrToneMapper = OOSDRToneMapperFromString(oo::NSStringFrom(DefaultsString("sdr-tone-mapper", "OOSDR_TONEMAPPER_ACES")));
 
 	SDL_SetWindowSurfaceVSync(window, vSyncPreference);
 	OOLog(@"display.initGL", @"V-Sync %@requested.", vSyncPreference ? @"" : @"not ");
@@ -336,16 +369,15 @@ enum PreferredAppMode
 {
 	self = [super init];
 
- 	NSString		*cmdLineArgsStr = @"Startup command: ";
+ 	std::string		cmdLineArgsStr = "Startup command: ";
 
 	// SDL splash screen  settings
 
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-	showSplashScreen = [prefs oo_boolForKey:@"splash-screen" defaultValue:YES];
-	vSyncPreference = [prefs oo_boolForKey:@"v-sync" defaultValue:YES];
-	bitsPerColorComponent = [prefs oo_boolForKey:@"hdr" defaultValue:NO] ? 16 : 8;
+	showSplashScreen = oo::PListView(prefs).get<BOOL>(@"splash-screen", YES);
+	vSyncPreference = oo::PListView(prefs).get<BOOL>(@"v-sync", YES);
+	bitsPerColorComponent = oo::PListView(prefs).get<BOOL>(@"hdr", NO) ? 16 : 8;
 
-	NSString			*arg = nil;
 	BOOL				noSplashArgFound = NO;
 
 	[self initKeyMappingData];
@@ -357,33 +389,33 @@ enum PreferredAppMode
 	// scan for V-sync disabling overrides: -novsync || --novsync
 	for (const std::string &argument : oo::process::arguments())
 	{
-		arg = [NSString stringWithUTF8String:argument.c_str()];
-		if ([arg isEqual:@"-nosplash"] || [arg isEqual:@"--nosplash"])
+		const std::string &arg = argument;
+		if (arg == "-nosplash" || arg == "--nosplash")
 		{
 			showSplashScreen = NO;
 			noSplashArgFound = YES;	// -nosplash always trumps -splash
 		}
-		else if (([arg isEqual:@"-splash"] || [arg isEqual:@"--splash"]) && !noSplashArgFound)
+		else if ((arg == "-splash" || arg == "--splash") && !noSplashArgFound)
 		{
 			showSplashScreen = YES;
 		}
 
 		// if V-sync is disabled at the command line, override the defaults file
-		if ([arg isEqual:@"-novsync"] || [arg isEqual:@"--novsync"])  vSyncPreference = NO;
+		if (arg == "-novsync" || arg == "--novsync")  vSyncPreference = NO;
 
-		if ([arg isEqual: @"-hdr"])  bitsPerColorComponent = 16;
+		if (arg == "-hdr")  bitsPerColorComponent = 16;
 
   		// build the startup command string so that we can log it
-		cmdLineArgsStr = [cmdLineArgsStr stringByAppendingFormat:@"%@ ", arg];
+		cmdLineArgsStr += arg + " ";
 	}
 
- 	OOLog(@"process.args", @"%@", cmdLineArgsStr);
+ 	OOLog(@"process.args", @"%@", oo::NSStringFrom(cmdLineArgsStr));
 
 #if OOLITE_SPEECH_SYNTH
 #if OOLITE_ESPEAK
 	if (!SDL_getenv("ESPEAK_DATA_PATH"))
 	{
-		espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [[ResourceManager builtInPath] UTF8String], 0);
+		espeak_Initialize(AUDIO_OUTPUT_PLAYBACK, 100, [ResourceManager cxx_builtInPath].value_or(std::string()).c_str(), 0);
 	}
 	else
 	{
@@ -437,15 +469,14 @@ enum PreferredAppMode
 	virtualJoystickPosition = NSMakePoint(0.0,0.0);
 	mouseWarped = NO;
 
-	_mouseVirtualStickSensitivityFactor = OOClamp_0_1_f([prefs oo_floatForKey:@"mouse-flight-sensitivity" defaultValue:0.95f]);
+	_mouseVirtualStickSensitivityFactor = OOClamp_0_1_f(oo::PListView(prefs).get<float>(@"mouse-flight-sensitivity", 0.95f));
 	// ensure no chance of a divide by zero later on
 	if (_mouseVirtualStickSensitivityFactor < 0.005f)  _mouseVirtualStickSensitivityFactor = 0.005f;
 
-	typedString = [[NSMutableString alloc] initWithString:@""];
 	allowingStringInput = gvStringInputNo;
 	isAlphabetKeyDown = NO;
 
-	timeIntervalAtLastClick = timeSinceLastMouseWheel = [NSDate timeIntervalSinceReferenceDate];
+	timeIntervalAtLastClick = timeSinceLastMouseWheel = oo::date::monotonicSeconds();	// intervals only (MyOpenGLView+Input.mm)
 
 	_mouseWheelDelta = 0.0f;
 
@@ -630,12 +661,6 @@ enum PreferredAppMode
 
 - (void) dealloc
 {
-	if (typedString)
-		[typedString release];
-
-	if (screenSizes)
-		[screenSizes release];
-
 	if (window)
 	{
 		SDL_DestroyWindow(window);
@@ -645,12 +670,6 @@ enum PreferredAppMode
 	{
 		SDL_GL_DestroyContext(glContext);
 	}
-
-	if (keyMappings_normal)
-		[keyMappings_normal release];
-	
-	if (keyMappings_shifted)
-		[keyMappings_shifted release];
 
 	SDL_Quit();
 
@@ -763,7 +782,7 @@ enum PreferredAppMode
 }
 
 
-- (NSMutableArray *)getScreenSizeArray
+- (std::vector<oo::PList>) getScreenSizeArray
 {
 	return screenSizes;
 }
@@ -771,9 +790,9 @@ enum PreferredAppMode
 
 - (NSSize) modeAsSize:(int)sizeIndex
 {
-	NSDictionary *mode=[screenSizes objectAtIndex: sizeIndex];
-	return NSMakeSize([[mode objectForKey: kOODisplayWidth] intValue],
-        		[[mode objectForKey: kOODisplayHeight] intValue]);
+	const oo::PList &mode = screenSizes.at(sizeIndex);
+	return NSMakeSize(mode.get<int>(oo::StdString(kOODisplayWidth)),
+        		mode.get<int>(oo::StdString(kOODisplayHeight)));
 }
 
 #endif
@@ -801,9 +820,9 @@ enum PreferredAppMode
 	SDL_Surface     	*image=NULL;
 	SDL_Rect			dest;
 
-	NSString		*imagesDir = [[ResourceManager builtInPath] stringByAppendingPathComponent:@"Images"];
+	const std::string	imagesDir = oo::str::appendingPathComponent([ResourceManager cxx_builtInPath].value_or(std::string()), "Images");
 
-	image = SDL_LoadBMP([[imagesDir stringByAppendingPathComponent:@"splash.bmp"] UTF8String]);
+	image = SDL_LoadBMP(oo::str::appendingPathComponent(imagesDir, "splash.bmp").c_str());
 
 	if (image == NULL)
 	{
@@ -940,11 +959,10 @@ enum PreferredAppMode
 }
 
 
-- (void) stringToClipboard:(NSString *)stringToCopy
+- (void) cxx_stringToClipboard:(const std::string &)stringToCopy
 {
-	if (stringToCopy)
 	{
-		const char *clipboardText = [stringToCopy cStringUsingEncoding:NSUTF8StringEncoding];
+		const char *clipboardText = stringToCopy.c_str();
 		const size_t clipboardTextLength = strlen(clipboardText) + 1;
 		HGLOBAL clipboardMem = GlobalAlloc(GMEM_MOVEABLE, clipboardTextLength);
 		if (clipboardMem)
@@ -955,7 +973,7 @@ enum PreferredAppMode
 			EmptyClipboard();
 			if (!SetClipboardData(CF_TEXT, clipboardMem))
 			{
-				OOLog(@"stringToClipboard.failed", @"Failed to copy string %@ to clipboard", stringToCopy);
+				OOLog(@"stringToClipboard.failed", @"Failed to copy string %@ to clipboard", oo::NSStringFrom(stringToCopy));
 				// free global allocated memory if clipboard copy failed
 				// note: no need to free it if copy succeeded; the OS becomes
 				// the owner of the copied memory once SetClipboardData has
@@ -1090,7 +1108,7 @@ enum PreferredAppMode
 }
 
 
-- (void) stringToClipboard:(NSString *)stringToCopy
+- (void) cxx_stringToClipboard:(const std::string &)stringToCopy
 {
 	// TODO: implement string clipboard copy for Linux
 }
@@ -1137,51 +1155,51 @@ enum PreferredAppMode
 }
 
 
-- (BOOL) snapShot:(NSString *)filename
+- (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename
 {
 	BOOL snapShotOK = YES;
 	SDL_Surface* tmpSurface;
 
 	// backup the previous directory
-	NSString* originalDirectory = [[NSFileManager defaultManager] currentDirectoryPath];
+	const auto originalDirectory = oo::fs::currentDirectory();
 	// use the snapshots directory
 	[[NSFileManager defaultManager] chdirToSnapshotPath];
 
-	BOOL				withFilename = (filename != nil);
+	BOOL				withFilename = filename.has_value();
 	static unsigned		imageNo = 0;
 	unsigned			tmpImageNo = 0;
-	NSString			*pathToPic = nil;
-	NSString			*baseName = @"oolite";
+	std::optional<std::string>	pathToPic;
+	std::string			baseName = "oolite";
 
 #if SNAPSHOTS_PNG_FORMAT
-	NSString			*extension = @".png";
+	const std::string	extension = ".png";
 #else
-	NSString			*extension = @".bmp";
+	const std::string	extension = ".bmp";
 #endif
 
 	if (withFilename)
 	{
-		baseName = filename;
-		pathToPic = [filename stringByAppendingString:extension];
+		baseName = *filename;
+		pathToPic = *filename + extension;
 	}
 	else
 	{
 		tmpImageNo = imageNo;
 	}
 
-	if (withFilename && [[NSFileManager defaultManager] fileExistsAtPath:pathToPic])
+	if (withFilename && oo::fs::fileExists(oo::fs::pathFromUTF8(*pathToPic)))
 	{
-		OOLog(@"screenshot.filenameExists", @"Snapshot \"%@%@\" already exists - adding numerical sequence.", pathToPic, extension);
-		pathToPic = nil;
+		OOLog(@"screenshot.filenameExists", @"Snapshot \"%@%@\" already exists - adding numerical sequence.", oo::NSStringFrom(*pathToPic), oo::NSStringFrom(extension));
+		pathToPic = std::nullopt;
 	}
 
-	if (pathToPic == nil)
+	if (!pathToPic.has_value())
 	{
 		do
 		{
 			tmpImageNo++;
-			pathToPic = [NSString stringWithFormat:@"%@-%03d%@", baseName, tmpImageNo, extension];
-		} while ([[NSFileManager defaultManager] fileExistsAtPath:pathToPic]);
+			pathToPic = oo::str::format("%s-%03d%s", baseName.c_str(), tmpImageNo, extension.c_str());
+		} while (oo::fs::fileExists(oo::fs::pathFromUTF8(*pathToPic)));
 	}
 
 	if (!withFilename)
@@ -1190,7 +1208,7 @@ enum PreferredAppMode
 	}
 
 	SDL_Surface *surface = SDL_GetWindowSurface(window);
-	OOLog(@"screenshot", @"Saving screen shot \"%@\" (%u x %u pixels).", pathToPic, surface->w, surface->h);
+	OOLog(@"screenshot", @"Saving screen shot \"%@\" (%u x %u pixels).", oo::NSStringFrom(*pathToPic), surface->w, surface->h);
 
 	int pitch = surface->pitch;
 	unsigned char *pixls = (unsigned char *)malloc(pitch * surface->h);
@@ -1203,58 +1221,58 @@ enum PreferredAppMode
 	{
 		glReadPixels(0, y, surface->w, 1, GL_BGRA, GL_UNSIGNED_BYTE, pixls + off);
 	}
-	
+
 	tmpSurface = SDL_CreateSurfaceFrom(surface->w, surface->h, surface->format, pixls, surface->pitch);
 #if SNAPSHOTS_PNG_FORMAT
-	if(!SDL_SavePNG(tmpSurface, [pathToPic UTF8String]))
+	if(!SDL_SavePNG(tmpSurface, pathToPic->c_str()))
 	{
-		OOLog(@"screenshotPNG", @"Failed to save %@", pathToPic);
+		OOLog(@"screenshotPNG", @"Failed to save %@", oo::NSStringFrom(*pathToPic));
 		snapShotOK = NO;
 	}
 #else
-	if (!SDL_SaveBMP(tmpSurface, [pathToPic UTF8String]))
+	if (!SDL_SaveBMP(tmpSurface, pathToPic->c_str()))
 	{
-		OOLog(@"screenshotBMP", @"Failed to save %@", pathToPic);
+		OOLog(@"screenshotBMP", @"Failed to save %@", oo::NSStringFrom(*pathToPic));
 		snapShotOK = NO;
 	}
 #endif
 	SDL_DestroySurface(tmpSurface);
 	free(pixls);
-	
+
 	// if outputting HDR signal, save also either an .exr or a Radiance .hdr snapshot
 	if ([self hdrOutput])
 	{
-		NSString *fileExtension = [[NSUserDefaults standardUserDefaults] oo_stringForKey:@"hdr-snapshot-format" defaultValue:SNAPSHOTHDR_EXTENSION_DEFAULT];
-		
+		std::string fileExtension = DefaultsString("hdr-snapshot-format", oo::StdString(SNAPSHOTHDR_EXTENSION_DEFAULT));
+
 		// we accept file extension with or without a leading dot; if it is without, insert it at the beginning now
-		if (![[fileExtension substringToIndex:1] isEqual:@"."])  fileExtension = [@"." stringByAppendingString:fileExtension];
-		
-		if (![fileExtension isEqual:SNAPSHOTHDR_EXTENSION_EXR] && ![fileExtension isEqual:SNAPSHOTHDR_EXTENSION_HDR])
+		if (!oo::str::hasPrefix(fileExtension, "."))  fileExtension = "." + fileExtension;
+
+		if (fileExtension != oo::StdString(SNAPSHOTHDR_EXTENSION_EXR) && fileExtension != oo::StdString(SNAPSHOTHDR_EXTENSION_HDR))
 		{
 			OOLog(@"screenshotHDR", @"Unrecognized HDR file format requested, defaulting to %@", SNAPSHOTHDR_EXTENSION_DEFAULT);
-			fileExtension = SNAPSHOTHDR_EXTENSION_DEFAULT;
+			fileExtension = oo::StdString(SNAPSHOTHDR_EXTENSION_DEFAULT);
 		}
-		
-		NSString *pathToPicHDR = [pathToPic stringByReplacingString:@".png" withString:fileExtension];
-		OOLog(@"screenshot", @"Saving screen shot \"%@\" (%u x %u pixels).", pathToPicHDR, surface->w, surface->h);
+
+		const std::string pathToPicHDR = oo::str::replaceOccurrences(*pathToPic, ".png", fileExtension);
+		OOLog(@"screenshot", @"Saving screen shot \"%@\" (%u x %u pixels).", oo::NSStringFrom(pathToPicHDR), surface->w, surface->h);
 		GLfloat *pixlsf = (GLfloat *)malloc(pitch * surface->h * sizeof(GLfloat));
 		for (y=surface->h-1, off=0; y>=0; y--, off+=pitch)
 		{
 			glReadPixels(0, y, surface->w, 1, GL_RGB, GL_FLOAT, pixlsf + off);
 		}
-		
-		if (([fileExtension isEqual:SNAPSHOTHDR_EXTENSION_EXR] && SaveEXRSnapshot([pathToPicHDR cStringUsingEncoding:NSUTF8StringEncoding], surface->w, surface->h, pixlsf) != 0) //TINYEXR_SUCCESS
-			|| ([fileExtension isEqual:SNAPSHOTHDR_EXTENSION_HDR] && !stbi_write_hdr([pathToPicHDR cStringUsingEncoding:NSUTF8StringEncoding], surface->w, surface->h, 3, pixlsf)))
+
+		if ((fileExtension == oo::StdString(SNAPSHOTHDR_EXTENSION_EXR) && SaveEXRSnapshot(pathToPicHDR.c_str(), surface->w, surface->h, pixlsf) != 0) //TINYEXR_SUCCESS
+			|| (fileExtension == oo::StdString(SNAPSHOTHDR_EXTENSION_HDR) && !stbi_write_hdr(pathToPicHDR.c_str(), surface->w, surface->h, 3, pixlsf)))
 		{
-			OOLog(@"screenshotHDR", @"Failed to save %@", pathToPicHDR);
+			OOLog(@"screenshotHDR", @"Failed to save %@", oo::NSStringFrom(pathToPicHDR));
 			snapShotOK = NO;
 		}
-		
+
 		free(pixlsf);
 	}
-	
+
 	// return to the previous directory
-	[[NSFileManager defaultManager] changeCurrentDirectoryPath:originalDirectory];
+	if (originalDirectory)  (void)oo::fs::setCurrentDirectory(*originalDirectory);
 	return snapShotOK;
 }
 
@@ -1266,15 +1284,13 @@ enum PreferredAppMode
 {
 	int i;
 	SDL_DisplayMode **modes;
-	NSMutableDictionary *mode;
 	SDL_DisplayID displayId = [self getDisplayId];
 
-	screenSizes=[[NSMutableArray alloc] init];
+	screenSizes.clear();
 
 	// The default resolution (slot 0) is the resolution we are
 	// already in since this is guaranteed to work.
-	mode=[self getNativeSize];
-	[screenSizes addObject: mode];
+	screenSizes.push_back([self getNativeSize]);
 
 	int displayModeCount;
 	modes = SDL_GetFullscreenDisplayModes(displayId, &displayModeCount);
@@ -1286,16 +1302,14 @@ enum PreferredAppMode
 
 	for(i=0; i < displayModeCount; i++)
 	{
-		mode = [NSMutableDictionary dictionary];
-		[mode setValue: [NSNumber numberWithInt: (int)modes[i]->w]
-				forKey: kOODisplayWidth];
-		[mode setValue: [NSNumber numberWithInt: (int)modes[i]->h]
-				forKey: kOODisplayHeight];
-		[mode setValue: [NSNumber numberWithFloat: (int)modes[i]->refresh_rate]
-				forKey: kOODisplayRefreshRate];
-		if (![screenSizes containsObject:mode])
+		oo::PList::Dict modeDict;
+		modeDict[oo::StdString(kOODisplayWidth)] = oo::PList(std::int64_t((int)modes[i]->w));
+		modeDict[oo::StdString(kOODisplayHeight)] = oo::PList(std::int64_t((int)modes[i]->h));
+		modeDict[oo::StdString(kOODisplayRefreshRate)] = oo::PList::singleReal((float)(int)modes[i]->refresh_rate);	// +numberWithFloat:
+		const oo::PList mode(std::move(modeDict));
+		if (std::find_if(screenSizes.begin(), screenSizes.end(), [&](const oo::PList &m) { return SameMode(m, mode); }) == screenSizes.end())
 		{
-			[screenSizes addObject: mode];
+			screenSizes.push_back(mode);
 			OOLog(@"display.mode.list", @"Added res %d x %d", modes[i]->w, modes[i]->h);
 		}
 	}
@@ -1370,47 +1384,45 @@ enum PreferredAppMode
 - (int) findDisplayModeForWidth:(unsigned int) d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh
 {
 	int i, modeCount;
-	NSDictionary *mode;
 	unsigned int modeWidth, modeHeight, modeRefresh;
 
-	modeCount = [screenSizes count];
+	modeCount = (int)screenSizes.size();
 
 	for (i = 0; i < modeCount; i++)
 	{
-		mode = [screenSizes objectAtIndex: i];
-		modeWidth = [[mode objectForKey: kOODisplayWidth] intValue];
-		modeHeight = [[mode objectForKey: kOODisplayHeight] intValue];
-		modeRefresh = [[mode objectForKey: kOODisplayRefreshRate] intValue];
+		const oo::PList &mode = screenSizes[i];
+		modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
+		modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
+		modeRefresh = mode.get<int>(oo::StdString(kOODisplayRefreshRate));
 		if ((modeWidth == d_width)&&(modeHeight == d_height)&&(modeRefresh == d_refresh))
 		{
-			OOLog(@"display.mode.found", @"Found mode %@", mode);
+			OOLog(@"display.mode.found", @"Found mode %@", oo::ObjectFromPList(mode));
 			return i;
 		}
 	}
 
 	OOLog(@"display.mode.found.failed", @"Failed to find mode: width=%d height=%d refresh=%d", d_width, d_height, d_refresh);
-	OOLog(@"display.mode.found.failed.list", @"Contents of list: %@", screenSizes);
+	OOLog(@"display.mode.found.failed.list", @"Contents of list: %@", oo::ObjectFromPList(oo::PList(oo::PList::Array(screenSizes))));
 	return 0;
 }
 
 
 - (NSSize) currentScreenSize
 {
-	NSDictionary *mode=[screenSizes objectAtIndex: currentSize];
+	const oo::PList &mode = screenSizes.at(currentSize);
 
 	if(mode)
 	{
-		return NSMakeSize([[mode objectForKey: kOODisplayWidth] intValue],
-				[[mode objectForKey: kOODisplayHeight] intValue]);
+		return NSMakeSize(mode.get<int>(oo::StdString(kOODisplayWidth)),
+				mode.get<int>(oo::StdString(kOODisplayHeight)));
 	}
 	OOLog(@"display.mode.unknown", @"%@", @"Screen size unknown!");
 	return NSMakeSize(WINDOW_SIZE_DEFAULT_WIDTH, WINDOW_SIZE_DEFAULT_HEIGHT);
 }
 
-- (NSDictionary *) currentScreenMode
+- (oo::PList) currentScreenMode
 {
-	NSDictionary *mode=[screenSizes objectAtIndex: currentSize];
-	return [[mode retain] autorelease];
+	return screenSizes.at(currentSize);
 }
 
 
@@ -1458,53 +1470,53 @@ enum PreferredAppMode
 
 
 #ifndef NDEBUG
-- (void) dumpRGBAToFileNamed:(NSString *)name
+- (void) cxx_dumpRGBAToFileNamed:(const std::string &)name
 					   bytes:(uint8_t *)bytes
 					   width:(NSUInteger)width
 					  height:(NSUInteger)height
 					rowBytes:(NSUInteger)rowBytes
 {
-	if (name == nil || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
+	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
 
 	// use the snapshots directory
-	NSString *dumpFile = [[NSHomeDirectory() stringByAppendingPathComponent:@SAVEDIR] stringByAppendingPathComponent:@SNAPSHOTDIR];
-	dumpFile = [dumpFile stringByAppendingPathComponent: [NSString stringWithFormat:@"%@.png", name]];
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, bytes, rowBytes);
-	SDL_SavePNG(tmpSurface, [dumpFile UTF8String]);
+	SDL_SavePNG(tmpSurface, dumpFile.c_str());
 	SDL_DestroySurface(tmpSurface);
 }
 
 
-- (void) dumpRGBToFileNamed:(NSString *)name
+- (void) cxx_dumpRGBToFileNamed:(const std::string &)name
 					   bytes:(uint8_t *)bytes
 					   width:(NSUInteger)width
 					  height:(NSUInteger)height
 					rowBytes:(NSUInteger)rowBytes
 {
-	if (name == nil || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 3)  return;
+	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 3)  return;
 
 	// use the snapshots directory
-	NSString *dumpFile = [[NSHomeDirectory() stringByAppendingPathComponent:@SAVEDIR] stringByAppendingPathComponent:@SNAPSHOTDIR];
-	dumpFile = [dumpFile stringByAppendingPathComponent: [NSString stringWithFormat:@"%@.png", name]];
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGB24, bytes, rowBytes);
-	SDL_SavePNG(tmpSurface, [dumpFile UTF8String]);
+	SDL_SavePNG(tmpSurface, dumpFile.c_str());
 	SDL_DestroySurface(tmpSurface);
 }
 
 
-- (void) dumpGrayToFileNamed:(NSString *)name
+- (void) cxx_dumpGrayToFileNamed:(const std::string &)name
 					   bytes:(uint8_t *)bytes
 					   width:(NSUInteger)width
 					  height:(NSUInteger)height
 					rowBytes:(NSUInteger)rowBytes
 {
-	if (name == nil || bytes == NULL || width == 0 || height == 0 || rowBytes < width)  return;
+	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width)  return;
 
 	// use the snapshots directory
-	NSString *dumpFile = [[NSHomeDirectory() stringByAppendingPathComponent:@SAVEDIR] stringByAppendingPathComponent:@SNAPSHOTDIR];
-	dumpFile = [dumpFile stringByAppendingPathComponent: [NSString stringWithFormat:@"%@.png", name]];
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);
 	for(int y = 0; y < height; y++)
@@ -1519,22 +1531,22 @@ enum PreferredAppMode
 			dstRow[4*x + 3] = '\xff';
 		}
 	}
-	SDL_SavePNG(tmpSurface, [dumpFile UTF8String]);
+	SDL_SavePNG(tmpSurface, dumpFile.c_str());
 	SDL_DestroySurface(tmpSurface);
 }
 
 
-- (void) dumpGrayAlphaToFileNamed:(NSString *)name
+- (void) cxx_dumpGrayAlphaToFileNamed:(const std::string &)name
 					   bytes:(uint8_t *)bytes
 					   width:(NSUInteger)width
 					  height:(NSUInteger)height
 					rowBytes:(NSUInteger)rowBytes
 {
-	if (name == nil || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 2)  return;
+	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 2)  return;
 
 	// use the snapshots directory
-	NSString *dumpFile = [[NSHomeDirectory() stringByAppendingPathComponent:@SAVEDIR] stringByAppendingPathComponent:@SNAPSHOTDIR];
-	dumpFile = [dumpFile stringByAppendingPathComponent: [NSString stringWithFormat:@"%@.png", name]];
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, bytes, rowBytes);
 	for(int y = 0; y < height; y++)
@@ -1549,19 +1561,19 @@ enum PreferredAppMode
 			dstRow[4*x + 3] = srcRow[2*x+1];
 		}
 	}
-	SDL_SavePNG(tmpSurface, [dumpFile UTF8String]);
+	SDL_SavePNG(tmpSurface, dumpFile.c_str());
 	SDL_DestroySurface(tmpSurface);
 }
 
 
-- (void) dumpRGBAToRGBFileNamed:(NSString *)rgbName
-			   andGrayFileNamed:(NSString *)grayName
+- (void) cxx_dumpRGBAToRGBFileNamed:(const std::optional<std::string> &)rgbName
+				   andGrayFileNamed:(const std::optional<std::string> &)grayName
 						  bytes:(uint8_t *)bytes
 						  width:(NSUInteger)width
 						 height:(NSUInteger)height
 					   rowBytes:(NSUInteger)rowBytes
 {
-	if ((rgbName == nil && grayName == nil) || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
+	if ((!rgbName.has_value() && !grayName.has_value()) || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
 
 	uint8_t				*rgbBytes, *rgbPx, *grayBytes, *grayPx, *srcPx;
 	NSUInteger			x, y;
@@ -1591,20 +1603,23 @@ enum PreferredAppMode
 		}
 	}
 
-	[self dumpRGBToFileNamed:rgbName
-					   bytes:rgbBytes
-					   width:width
-					  height:height
-					rowBytes:width * 3];
+	if (rgbName.has_value())
+	{
+		[self cxx_dumpRGBToFileNamed:*rgbName
+							   bytes:rgbBytes
+							   width:width
+							  height:height
+							rowBytes:width * 3];
+	}
 	free(rgbBytes);
 
-	if (!trivalAlpha)
+	if (!trivalAlpha && grayName.has_value())
 	{
-		[self dumpGrayToFileNamed:grayName
-							bytes:grayBytes
-							width:width
-						   height:height
-						 rowBytes:width];
+		[self cxx_dumpGrayToFileNamed:*grayName
+								bytes:grayBytes
+								width:width
+							   height:height
+							 rowBytes:width];
 	}
 	free(grayBytes);
 }

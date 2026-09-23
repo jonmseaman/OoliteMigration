@@ -34,18 +34,19 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
 
 
-@interface OOMaterial: NSObject
+@interface OOMaterial: OOObject
 
 // Called once at startup (by -[Universe init]).
 + (void) setUp;
 
 
-- (NSString *) name;
+- (id) name;	// an Objective-C string. Shared selector (proposed ADR-0043).
 
 // Make this the current material.
 - (void) apply;
@@ -77,7 +78,7 @@ SOFTWARE.
 #endif
 
 #ifndef NDEBUG
-- (NSSet *) allTextures;
+- (id) allTextures;	// an Objective-C set of textures. Shared selector (proposed ADR-0043).
 #endif
 
 @end

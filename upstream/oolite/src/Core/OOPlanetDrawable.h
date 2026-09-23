@@ -27,10 +27,12 @@ MA 02110-1301, USA.
 #import "OODrawable.h"
 #import "OOMaths.h"
 
+#include "oofnd/StdLib.hpp"
+
 @class OOMaterial;
 
 
-@interface OOPlanetDrawable: OODrawable <NSCopying>
+@interface OOPlanetDrawable: OODrawable <OOCopying>
 {
 @private
 	OOMaterial				*_material;
@@ -40,7 +42,7 @@ MA 02110-1301, USA.
 	unsigned				_lod;
 }
 
-+ (instancetype) planetWithTextureName:(NSString *)textureName radius:(float)radius;
++ (instancetype) planetWithTextureName:(const std::string &)textureName radius:(float)radius;
 + (instancetype) atmosphereWithRadius:(float)radius;
 
 - (id) initAsAtmosphere;
@@ -48,8 +50,9 @@ MA 02110-1301, USA.
 - (OOMaterial *) material;
 - (void) setMaterial:(OOMaterial *)material;
 
-- (NSString *) textureName;
-- (void) setTextureName:(NSString *)textureName;
+// The material's name (nullopt when it has none, as nil was). Foundation sweep, proposed ADR-0043.
+- (std::optional<std::string>) textureName;
+- (void) setTextureName:(const std::string &)textureName;
 
 // Radius, in game metres.
 - (float) radius;

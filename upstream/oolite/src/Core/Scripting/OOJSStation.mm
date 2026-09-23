@@ -29,7 +29,7 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "OOJSInterfaceDefinition.h"
 
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOEquipmentType.h"
 #import "OOShipRegistry.h"
 #import "OOConstToString.h"
@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
 #include <cstdint>
+#import "OOStringBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -1018,8 +1019,8 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 
 	OOJSInterfaceDefinition* definition = [[OOJSInterfaceDefinition alloc] init];
 	[definition setTitle:title];
-	[definition setCategory:category];
-	[definition setSummary:summary];
+	[definition setCategory:oo::StdString(category)];
+	[definition setSummary:oo::StdString(summary)];
 	[definition setCallback:callback];
 
 	// get callback 'this'
@@ -1166,14 +1167,14 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"'short_description' in dictionary");
 		return NO;
 	}
-	[result setObject:[shipyardDefinition oo_stringForKey:@"short_description"] forKey:KEY_SHORT_DESCRIPTION];
+	[result setObject:oo::PListView(shipyardDefinition).get<NSString *>(@"short_description") forKey:KEY_SHORT_DESCRIPTION];
 	if (![shipyardDefinition objectForKey:SHIPYARD_KEY_SHIPDATA_KEY]) 
 	{
 		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"'shipdata_key' in dictionary");
 		return NO;
 	}
 	// get the shipInfo and shipyardInfo for this key
-	NSString 			*shipKey = [shipyardDefinition oo_stringForKey:SHIPYARD_KEY_SHIPDATA_KEY defaultValue:nil];
+	NSString 			*shipKey = oo::PListView(shipyardDefinition).get<NSString *>(SHIPYARD_KEY_SHIPDATA_KEY, nil);
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
 	NSMutableDictionary	*shipInfo = [NSMutableDictionary dictionaryWithDictionary:[registry shipInfoForKey:shipKey]];
 	NSDictionary		*shipyardInfo = [registry shipyardInfoForKey:shipKey];
@@ -1183,7 +1184,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	// make sure the ship is a player ship
-	if ([[shipInfo oo_stringForKey:@"roles"] rangeOfString:@"player"].location == NSNotFound)
+	if ([oo::PListView(shipInfo).get<NSString *>(@"roles") rangeOfString:@"player"].location == NSNotFound)
 	{
 		OOJSReportWarningForCaller(context, @"Station", @"addShipToShipyard", @"shipdata_key not suitable for player role.");
 		return NO;
@@ -1207,12 +1208,12 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	if (![shipyardDefinition objectForKey:SHIPYARD_KEY_PRICE]) 
 	{
 		// if not provided, get the price from the registry
-		OOCreditsQuantity price = [shipyardInfo oo_unsignedIntForKey:KEY_PRICE];
+		OOCreditsQuantity price = oo::PListView(shipyardInfo).get<unsigned int>(KEY_PRICE);
 		[result setObject:[NSNumber numberWithUnsignedLongLong:price] forKey:SHIPYARD_KEY_PRICE];
 	}
 	else 
 	{
-		OOCreditsQuantity price = [shipyardDefinition oo_unsignedIntForKey:SHIPYARD_KEY_PRICE];
+		OOCreditsQuantity price = oo::PListView(shipyardDefinition).get<unsigned int>(SHIPYARD_KEY_PRICE);
 		if (price > 0)
 		{
 			[result setObject:[NSNumber numberWithUnsignedLongLong:price] forKey:SHIPYARD_KEY_PRICE];
@@ -1231,20 +1232,20 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 	} 
 	else
 	{
-		[result setObject:[NSNumber numberWithUnsignedLongLong:[shipyardDefinition oo_unsignedIntForKey:SHIPYARD_KEY_PERSONALITY]] forKey:SHIPYARD_KEY_PERSONALITY];
+		[result setObject:[NSNumber numberWithUnsignedLongLong:oo::PListView(shipyardDefinition).get<unsigned int>(SHIPYARD_KEY_PERSONALITY)] forKey:SHIPYARD_KEY_PERSONALITY];
 	}
 
-	NSArray	*extras = [shipyardDefinition oo_arrayForKey:KEY_EQUIPMENT_EXTRAS];
+	NSArray	*extras = oo::PListView(shipyardDefinition).get<NSArray *>(KEY_EQUIPMENT_EXTRAS);
 	if (!extras) 
 	{
 		// pick up defaults if extras not supplied
-		extras = [NSArray arrayWithArray:[[shipyardInfo oo_dictionaryForKey:KEY_STANDARD_EQUIPMENT] oo_arrayForKey:KEY_EQUIPMENT_EXTRAS]];
+		extras = [NSArray arrayWithArray:oo::PListView(oo::PListView(shipyardInfo).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
 	}
 	if ([extras count] > 0) {
 		// go looking for lasers and add them directly to our shipInfo
-		NSString* fwdWeaponString = [[shipyardInfo oo_dictionaryForKey:KEY_STANDARD_EQUIPMENT] oo_stringForKey:KEY_EQUIPMENT_FORWARD_WEAPON];
-		NSString* aftWeaponString = [[shipyardInfo oo_dictionaryForKey:KEY_STANDARD_EQUIPMENT] oo_stringForKey:KEY_EQUIPMENT_AFT_WEAPON];
-		OOWeaponFacingSet availableFacings = [shipyardInfo oo_unsignedIntForKey:KEY_WEAPON_FACINGS defaultValue:VALID_WEAPON_FACINGS] & VALID_WEAPON_FACINGS;
+		NSString* fwdWeaponString = oo::PListView(oo::PListView(shipyardInfo).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSString *>(KEY_EQUIPMENT_FORWARD_WEAPON);
+		NSString* aftWeaponString = oo::PListView(oo::PListView(shipyardInfo).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSString *>(KEY_EQUIPMENT_AFT_WEAPON);
+		OOWeaponFacingSet availableFacings = oo::PListView(shipyardInfo).get<unsigned int>(KEY_WEAPON_FACINGS, VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
 		OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString);
 		OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString);
@@ -1252,7 +1253,7 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		unsigned int i;
 		NSString *equipmentKey = nil;
 		for (i = 0; i < [extras count]; i++) {
-			equipmentKey = [extras oo_stringAtIndex:i];
+			equipmentKey = oo::PListView(extras).at<NSString *>(i);
 			if ([equipmentKey hasPrefix:@"EQ_WEAPON"])
 			{
 				OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(equipmentKey);
