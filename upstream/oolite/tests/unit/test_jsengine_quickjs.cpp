@@ -311,6 +311,7 @@ bool Add(Context cx, CallArgs& args)
 	args.setRval(numberValue(a + b));
 	return true;
 }
+bool Self(Context, CallArgs& args) { args.setRval(args[0]); return true; }   // returns its argument
 bool Failer(Context cx, CallArgs&) { reportError(cx, "failer says no"); return false; }
 bool Aborter(Context, CallArgs&)   { return false; }   // nothing pending: an uncatchable abort
 bool gPlainGetterSawName = false;
@@ -508,6 +509,18 @@ void exerciseFacade(Runtime rt, Context cx)
 	CHECK(getFunctionNative(cx, valueToFunction(cx, rv)) == nullptr && strIs(cx, getFunctionId(valueToFunction(cx, rv)), u"jsfun"));
 	Value argv1[1] = { int32Value(4) };
 	CHECK(callFunctionValue(cx, nullptr, rv, 1, argv1, &rv) && toInt32(rv) == 12);
+	// SpiderMonkey 1.8.5 let `new` reach any native (bead oo-1gc.13: `new Vector3D.random(n)` in
+	// expansion ship scripts): an object result is the value of `new`, a primitive result yields the
+	// object created from the callee (plain Object.prototype, since a native has no `prototype`).
+	Object ns = newObject(cx, nullptr, nullptr, nullptr);
+	Value nsVal = objectValue(ns);
+	CHECK(setProperty(cx, global, "ns", &nsVal));
+	FunctionSpec nsMethods[] = { { "add", Add, 2, 0 }, { "self", Self, 1, 0 }, { nullptr, nullptr, 0, 0 } };
+	CHECK(defineFunctions(cx, ns, nsMethods));
+	CHECK(eval(cx, nullptr, "var made = new ns.self({ v: 7 }); made.v", &rv) && isInt32(rv) && toInt32(rv) == 7);
+	CHECK(eval(cx, nullptr, "var boxed = new ns.add(1, 2); typeof boxed + (Object.getPrototypeOf(boxed) === Object.prototype)", &rv) && valIs(cx, rv, u"objecttrue"));
+	CHECK(eval(cx, nullptr, "typeof new add(1, 2)", &rv) && valIs(cx, rv, u"object"));
+	CHECK(eval(cx, nullptr, "ns.add(1, 2) === 3", &rv) && isBoolean(rv) && toBoolean(rv));   // plain calls unchanged
 
 	// -- Evaluation with a scope object: `this`, filename and line numbers in errors ------------------
 	Object scope = newObject(cx, nullptr, nullptr, nullptr);
