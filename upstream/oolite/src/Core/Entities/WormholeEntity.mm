@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOLoggingExtended.h"
 #import "OOSystemDescriptionManager.h"
+#import "OOFoundationBridge.h"
 
 #define OO_WORMHOLE_COLOR_BOOST	25.0
 #define OO_WORMHOLE_COLOR_FVEC4	{ 0.067, 0.067, 1.0, 0.25 }
@@ -124,16 +125,16 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 			NSArray * shipDictsArray = oo::PListView(dict).get<NSArray *>(@"ships");
 	 		NSDictionary *currShipDict = nil;
 			[shipsInTransit removeAllObjects];
-			NSMutableDictionary *restoreContext = [NSMutableDictionary dictionary];
+			OOShipSaveContext restoreContext;
 		
 			foreach (currShipDict, shipDictsArray)
 			{
 				NSDictionary *shipInfo = oo::PListView(currShipDict).get<NSDictionary *>(@"ship_info");
 				if (shipInfo != nil)
 				{
-					ShipEntity *ship = [ShipEntity shipRestoredFromDictionary:shipInfo
+					ShipEntity *ship = [ShipEntity shipRestoredFromDictionary:oo::PListFrom(shipInfo)
 																  useFallback:YES
-																	  context:restoreContext];
+																	  context:&restoreContext];
 					if (ship != nil)
 					{
 						[shipsInTransit addObject:[NSDictionary dictionaryWithObjectsAndKeys:
@@ -817,13 +818,13 @@ static void DrawWormholeCorona(GLfloat inner_radius, GLfloat outer_radius, int s
 	NSMutableArray * shipArray = [NSMutableArray arrayWithCapacity:[shipsInTransit count]];
 	NSEnumerator * ships = [shipsInTransit objectEnumerator];
 	NSDictionary * currShipDict = nil;
-	NSMutableDictionary *context = [NSMutableDictionary dictionary];
+	OOShipSaveContext context;
 	while ((currShipDict = [ships nextObject]) != nil)
 	{
 		id ship = [currShipDict objectForKey:@"ship"];
 		[shipArray addObject:[NSDictionary dictionaryWithObjectsAndKeys:
 							  [NSNumber numberWithDouble:oo::PListView(currShipDict).get<double>(@"time")], @"time_delta",
-							  [ship savedShipDictionaryWithContext:context], @"ship_info",
+							  oo::ObjectFromPList([ship savedShipDictionaryWithContext:&context]), @"ship_info",
 							  nil]];
 	}
 	[myDict setObject:shipArray forKey:@"ships"];
