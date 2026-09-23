@@ -10,6 +10,8 @@
 
 #import "OOTCPStreamDecoderAbstractionLayer.h"
 #import "OOCocoa.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 
 
 // Simulate literal CF/NS strings. Each literal string that is used becomes a single object. Since it uses pointers as keys, it should only be used with literals.
@@ -107,7 +109,13 @@ size_t OOALDataGetLength(OOALDataRef data)
 
 OOALAutoreleasePoolRef OOALCreateAutoreleasePool(void)
 {
-	return [[NSAutoreleasePool alloc] init];
+	return objc_autoreleasePoolPush();
+}
+
+
+void OOALDestroyAutoreleasePool(OOALAutoreleasePoolRef pool)
+{
+	objc_autoreleasePoolPop(pool);
 }
 
 

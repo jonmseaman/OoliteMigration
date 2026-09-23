@@ -199,46 +199,48 @@ NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictio
 		OOSetReallyRandomRANROTAndRndSeeds();
 	}
 	
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	NSString *result = nil, *intermediate = nil;
-	@try
+	NSString *result = nil;
+	@autoreleasepool
 	{
-		// TODO: profile caching the results. Would need to keep track of whether we've done something nondeterministic (array selection, %R etc).
-		if (options & kOOExpandKey)
+		NSString *intermediate = nil;
+		@try
 		{
-			intermediate = ExpandStringKey(&context, string, kStackAllocationLimit, kRecursionLimit);
+			// TODO: profile caching the results. Would need to keep track of whether we've done something nondeterministic (array selection, %R etc).
+			if (options & kOOExpandKey)
+			{
+				intermediate = ExpandStringKey(&context, string, kStackAllocationLimit, kRecursionLimit);
+			}
+			else
+			{
+				intermediate = Expand(&context, string, kStackAllocationLimit, kRecursionLimit);
+			}
+			if (!context.hasPercentR)
+			{
+				result = intermediate;
+			}
+			else
+			{
+				result = ExpandPercentR(&context, intermediate);
+			}
 		}
-		else
+		@finally
 		{
-			intermediate = Expand(&context, string, kStackAllocationLimit, kRecursionLimit);
+			[context.systemName release];
+			[context.overrides release];
+			[context.legacyLocals release];
+			[context.systemNameWithIan release];
+			[context.randomNameN release];
+			[context.randomNameR release];
+			[context.systemDescriptions release];
 		}
-		if (!context.hasPercentR)
+		
+		if (options & kOOExpandReseedRNG)
 		{
-			result = intermediate;
+			OORestoreRandomState(savedRandomState);
 		}
-		else
-		{
-			result = ExpandPercentR(&context, intermediate);
-		}
+		
+		result = [result copy];
 	}
-	@finally
-	{
-		[context.systemName release];
-		[context.overrides release];
-		[context.legacyLocals release];
-		[context.systemNameWithIan release];
-		[context.randomNameN release];
-		[context.randomNameR release];
-		[context.systemDescriptions release];
-	}
-	
-	if (options & kOOExpandReseedRNG)
-	{
-		OORestoreRandomState(savedRandomState);
-	}
-	
-	result = [result copy];
-	[pool release];
 	return [result autorelease];
 }
 
