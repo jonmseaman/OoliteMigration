@@ -150,6 +150,27 @@ run in parallel with them, one file per story, because the two roots coexist (me
   Deliberate: nothing in Oolite relies on catching it, and a crash is found where a nil is not.
 - Apple Silicon is unaffected: the floor dies with the runtime in Phase 4 (ADR-0009).
 
+## Follow-up beads (children of oo-3rb; all but the last block oo-qps; oo-3rb.4 comes after the rest)
+
+| Bead | Family |
+|---|---|
+| oo-3rb.2 | `NSObject` → `OOObject` reroot seam, `NSZone`/`NSCopying`; links the floor into the game |
+| oo-3rb.3 | Foundation pool objects → `@autoreleasepool` / push-pop |
+| oo-3rb.4 | the constant-string flip + `OOObjCInstallFloor()` in `main` |
+| oo-3rb.5 | `NSException` → `OOException` |
+| oo-3rb.6 / .7 | `NSThread`/`NSOperation` → `std::thread`; locks and conditions → `std::mutex` family |
+| oo-3rb.8 | `NSTimer`/`NSRunLoop` → explicit frame loop |
+| oo-3rb.9 / .10 / .11 | `NSNotification`; `NSValue`; `NSDate`/`NSTimeInterval` |
+| oo-3rb.12 | `NSCharacterSet`/`NSScanner` → `oo::str` |
+| oo-3rb.13 / .14 | `NSURL`/`NSURLConnection`/`NSTask`/`NSPipe`/`NSFileHandle`; `NSStream`/`NSHost` |
+| oo-3rb.15 | `NSInvocation`/`NSMethodSignature`/`NSProxy` |
+| oo-3rb.16 / .17 / .18 / .19 / .20 | `NSError`; `NSNull`; `NSProcessInfo`; `NSClassFromString` & co.; `NSMapTable`/`NSHashTable`/`NSSortDescriptor`/`NSFastEnumeration` |
+| oo-3rb.21 | Foundation C types header |
+| oo-3rb.22 | `oo::AutoreleaseScope` drain order vs the game's (not blocking oo-qps) |
+
+Covered elsewhere: `NSLog` (oo-qpb), `NSFileManager`/`NSBundle`/`NSData` (oo-i9q), `NSUserDefaults`
+(oo-32f), `NSPropertyListSerialization` (the PList beads), `-description`/`%@` (oo-dps, oo-qpb).
+
 ## Alternatives considered
 
 - **`OOObject` counting through `oo::RefCounted`.** Rejected: a second count beside libobjc2's
