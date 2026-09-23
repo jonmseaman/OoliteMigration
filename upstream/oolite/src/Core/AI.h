@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 
 #define AI_THINK_INTERVAL					0.125
 
@@ -42,7 +43,7 @@ MA 02110-1301, USA.
 	id					_owner;						// OOWeakReference to the ShipEntity this is the AI for
 	NSString			*ownerDesc;					// describes the object this is the AI for
 	
-	NSDictionary		*stateMachine;
+	oo::PList			stateMachine;				// the loaded, whitelisted state machine; null: none (nil)
 	NSString			*stateMachineName;
 	NSString			*currentState;
 	NSMutableSet		*pendingMessages;
