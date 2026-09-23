@@ -12,6 +12,7 @@ gnustep-base (bead oo-3rb.199).
 
 #import "OOJavaScriptEngine.h"	// declares the bridge at its end
 #import "OOFoundationBridge.h"
+#import "NSNumberOOExtensions.h"
 
 
 NSString *OOStringFromJSString(ooscript::Context context, ooscript::String string)
@@ -220,6 +221,328 @@ BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass,
 - (NSString *) oo_jsClassName
 {
 	return @"String";
+}
+
+@end
+
+
+// The JavaScript glue for Foundation objects: categories on Foundation classes, retiring with
+// gnustep-base (ADR-0043 Amendment 1 item 7; moved verbatim by bead oo-3rb.201), and their helpers.
+
+namespace {
+static ooscript::Object JSArrayFromNSArray(ooscript::Context context, NSArray *array)
+{
+	OOJS_PROFILE_ENTER
+	
+	ooscript::Object result = NULL;
+	
+	if (array == nil)  return NULL;
+	
+	@try
+	{
+		NSUInteger fullCount = [array count];
+		if (EXPECT_NOT(fullCount > INT32_MAX))
+		{
+			return NULL;
+		}
+		
+		uint32_t i, count = (int32_t)fullCount;
+		
+		result = (ooscript::newArrayObject((context), 0, NULL));
+		if (result != NULL)
+		{
+			for (i = 0; i != count; ++i)
+			{
+				ooscript::Value value = [[array objectAtIndex:i] oo_jsValueInContext:context];
+				ooscript::Value fval = (value);
+				BOOL OK = ooscript::setElement((context), (result), i, &fval);
+				
+				if (EXPECT_NOT(!OK))
+				{
+					result = NULL;
+					break;
+				}
+			}
+		}
+	}
+	@catch (id ex)
+	{
+		result = NULL;
+	}
+	
+	return (ooscript::Object)result;
+	
+	OOJS_PROFILE_EXIT
+}
+} // namespace
+
+
+namespace {
+static BOOL JSNewNSArrayValue(ooscript::Context context, NSArray *array, ooscript::Value *value)
+{
+	OOJS_PROFILE_ENTER
+	
+	ooscript::Object object = NULL;
+	BOOL					OK = YES;
+	
+	if (value == NULL)  return NO;
+	
+	// NOTE: rooted for GC reasons for the duration of the conversion, per ooscript/README.md's
+	// "Not in the façade" note on EnterLocalRootScope / LeaveLocalRootScopeWithResult.
+	ooscript::RootedValue rootedResult((context), ooscript::Value{0}, "JSNewNSArrayValue.result");
+	
+	object = JSArrayFromNSArray(context, array);
+	if (object == NULL)
+	{
+		*value = ooscript::undefinedValue();
+		OK = NO;
+	}
+	else
+	{
+		*value = ooscript::objectValue(object);
+	}
+	
+	rootedResult.set((*value));
+	return OK;
+	
+	OOJS_PROFILE_EXIT
+}
+} // namespace
+
+
+/*	Convert an NSDictionary to a JavaScript Object.
+	Only properties whose keys are either strings or non-negative NSNumbers,
+	and	whose values have a non-void JS representation, are converted.
+*/
+namespace {
+static ooscript::Object JSObjectFromNSDictionary(ooscript::Context context, NSDictionary *dictionary)
+{
+	OOJS_PROFILE_ENTER
+	
+	ooscript::Object result = NULL;
+	BOOL					OK = YES;
+	id						key = nil;
+	ooscript::Value					value;
+	int32_t					index;
+	
+	if (dictionary == nil)  return NULL;
+	
+	@try
+	{
+		result = (ooscript::newObject((context), NULL, NULL, NULL));	// create object of class Object
+		if (result != NULL)
+		{
+			foreachkey (key, dictionary)
+			{
+				if ([key isKindOfClass:[NSString class]] && [key length] != 0)
+				{
+#ifndef __GNUC__
+					value = [[dictionary objectForKey:key] oo_jsValueInContext:context];
+#else
+#if __GNUC__ > 4 || __GNUC_MINOR__ > 6
+					value = [[dictionary objectForKey:key] oo_jsValueInContext:context];
+#else
+					// GCC before 4.7 seems to have problems with this
+					// bit if the object is a weakref, causing crashes
+					// in docking code.
+					id tmp = [dictionary objectForKey:key];
+					if ([tmp respondsToSelector:@selector(weakRefUnderlyingObject)])
+					{
+						tmp = [tmp weakRefUnderlyingObject];
+					}
+					value = [tmp oo_jsValueInContext:context];
+#endif
+#endif
+					if (!ooscript::isUndefined(value))
+					{
+						OK = ooscript::setPropertyById((context), (result), (OOJSIDFromString(key)), (&value));
+						if (EXPECT_NOT(!OK))  break;
+					}
+				}
+				else if ([key isKindOfClass:[NSNumber class]])
+				{
+					index = [key intValue];
+					if (0 < index)
+					{
+						value = [[dictionary objectForKey:key] oo_jsValueInContext:context];
+						if (!ooscript::isUndefined(value))
+						{
+							OK = ooscript::setElement((context), ((ooscript::Object)result), index, (&value));
+							if (EXPECT_NOT(!OK))  break;
+						}
+					}
+				}
+				
+				if (EXPECT_NOT(!OK))  break;
+			}
+		}
+	}
+	@catch (id exception)
+	{
+		OK = NO;
+	}
+	
+	if (EXPECT_NOT(!OK))
+	{
+		result = NULL;
+	}
+	
+	return (ooscript::Object)result;
+	
+	OOJS_PROFILE_EXIT
+}
+} // namespace
+
+
+namespace {
+static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dictionary, ooscript::Value *value)
+{
+	OOJS_PROFILE_ENTER
+	
+	ooscript::Object object = NULL;
+	BOOL					OK = YES;
+	
+	if (value == NULL)  return NO;
+	
+	// NOTE: rooted for GC reasons for the duration of the conversion, per ooscript/README.md's
+	// "Not in the façade" note on EnterLocalRootScope / LeaveLocalRootScopeWithResult.
+	ooscript::RootedValue rootedResult((context), ooscript::Value{0}, "JSNewNSDictionaryValue.result");
+	
+	object = JSObjectFromNSDictionary(context, dictionary);
+	if (object == NULL)
+	{
+		*value = ooscript::undefinedValue();
+		OK = NO;
+	}
+	else
+	{
+		*value = ooscript::objectValue(object);
+	}
+	
+	rootedResult.set((*value));
+	return OK;
+	
+	OOJS_PROFILE_EXIT
+}
+} // namespace
+
+
+@implementation NSObject (OOJavaScriptConversion)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+{
+	return ooscript::undefinedValue();
+}
+
+
+- (NSString *) oo_jsClassName
+{
+	return nil;
+}
+
+
+- (NSString *) oo_jsDescription
+{
+	return [self oo_jsDescriptionWithClassName:[self oo_jsClassName]];
+}
+
+
+- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className
+{
+	OOJS_PROFILE_ENTER
+	
+	NSString				*components = nil;
+	NSString				*description = nil;
+	
+	components = [self descriptionComponents];
+	if (className == nil)  className = [[self class] description];
+	
+	if (components != nil)
+	{
+		description = [NSString stringWithFormat:@"[%@ %@]", className, components];
+	}
+	else
+	{
+		description = [NSString stringWithFormat:@"[object %@]", className];
+	}
+	
+	return description;
+	
+	OOJS_PROFILE_EXIT
+}
+
+
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal
+{
+
+}
+
+@end
+
+
+@implementation NSArray (OOJavaScriptConversion)
+
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
+{
+	ooscript::Value value = ooscript::undefinedValue();
+	JSNewNSArrayValue(context, self, &value);
+	return value;
+}
+
+@end
+
+
+@implementation NSDictionary (OOJavaScriptConversion)
+
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
+{
+	ooscript::Value value = ooscript::undefinedValue();
+	JSNewNSDictionaryValue(context, self, &value);
+	return value;
+}
+
+@end
+
+
+@implementation NSNumber (OOJavaScriptConversion)
+
+- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
+{
+	OOJS_PROFILE_ENTER
+	
+	ooscript::Value					result;
+	BOOL					isFloat = NO;
+	long long				longLongValue;
+	
+	isFloat = [self oo_isFloatingPointNumber];
+	if (!isFloat)
+	{
+		longLongValue = [self longLongValue];
+		if (longLongValue < (long long)INT32_MIN || (long long)INT32_MAX < longLongValue)
+		{
+			// values outside int32 range are returned as doubles.
+			isFloat = YES;
+		}
+	}
+	
+	if (isFloat)
+	{
+		if (!ooscript::newNumberValue((context), [self doubleValue], (&result))) result = ooscript::undefinedValue();
+	}
+	else
+	{
+		result = ooscript::int32Value((int32_t)longLongValue);
+	}
+	
+	return result;
+	
+	OOJS_PROFILE_EXIT_JSVAL
+}
+
+
+- (NSString *) oo_jsClassName
+{
+	return @"Number";
 }
 
 @end

@@ -206,50 +206,38 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 }
 
 
-@interface NSObject (OOJavaScript)
+/*	The root-class JS glue for classes rooted on OOObject (ADR-0029). The same methods on the
+	Foundation root class are declared in OOJavaScriptEngine+FoundationBridge.h until
+	gnustep-base goes.
 
-/*	-oo_jsValueInContext:
-	
+	-oo_jsValueInContext:
+
 	Return the JavaScript value representation of an object. The default
 	implementation returns ooscript::undefinedValue().
-	
+
 	SAFETY NOTE: if this message is sent to nil, the return value depends on
 	the platform and the engine's value representation. If the
 	receiver may be nil, use OOJSValueFromNativeObject() instead.
-	
-	One case where it is safe to use oo_jsValueInContext: is with objects
-	retrieved from Foundation collections, as they can never be nil.
-	
-	Requires a request on context.
-*/
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
 
-/*	-oo_jsDescription
+	Requires a request on context.
+
+	-oo_jsDescription
 	-oo_jsDescriptionWithClassName:
 	-oo_jsClassName
-	
-	See comments for -descriptionComponents in OOCocoa.h.
-*/
-- (NSString *) oo_jsDescription;
-- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className;
-- (NSString *) oo_jsClassName;
 
-/*	oo_clearJSSelf:
+	See comments for -descriptionComponents in OOCocoa.h. Strings, typed id: the selectors are
+	shared with the Foundation root class and every class that overrides them.
+
+	oo_clearJSSelf:
 	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
 	collected. The default implementation does nothing.
 */
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
-
-@end
-
-
-// NSObject (OOJavaScript) above, for classes rooted on OOObject (ADR-0029).
 @interface OOObject (OOJavaScript)
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (NSString *) oo_jsDescription;
-- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className;
-- (NSString *) oo_jsClassName;
+- (id) oo_jsDescription;	// shared selector (proposed ADR-0043)
+- (id) oo_jsDescriptionWithClassName:(id)className;	// shared selector (proposed ADR-0043)
+- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal;
 
 @end

@@ -75,4 +75,45 @@ OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString
 
 @end
 
+
+
+// The JS glue on the Foundation root class (retiring with gnustep-base, ADR-0043 Amendment 1
+// item 7; moved verbatim by bead oo-3rb.201). OOObject (OOJavaScript) in OOJavaScriptEngine.h
+// documents the methods.
+@interface NSObject (OOJavaScript)
+
+/*	-oo_jsValueInContext:
+	
+	Return the JavaScript value representation of an object. The default
+	implementation returns ooscript::undefinedValue().
+	
+	SAFETY NOTE: if this message is sent to nil, the return value depends on
+	the platform and the engine's value representation. If the
+	receiver may be nil, use OOJSValueFromNativeObject() instead.
+	
+	One case where it is safe to use oo_jsValueInContext: is with objects
+	retrieved from Foundation collections, as they can never be nil.
+	
+	Requires a request on context.
+*/
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
+
+/*	-oo_jsDescription
+	-oo_jsDescriptionWithClassName:
+	-oo_jsClassName
+	
+	See comments for -descriptionComponents in OOCocoa.h.
+*/
+- (NSString *) oo_jsDescription;
+- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className;
+- (NSString *) oo_jsClassName;
+
+/*	oo_clearJSSelf:
+	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
+	collected. The default implementation does nothing.
+*/
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
+
+@end
+
 #endif	// OOJAVASCRIPTENGINE_FOUNDATIONBRIDGE_H
