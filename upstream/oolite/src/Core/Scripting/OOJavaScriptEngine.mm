@@ -57,7 +57,7 @@ namespace {
 static inline const unichar *OOJSRUCHARS(const ooscript::Char16 *s)  { return reinterpret_cast<const unichar*>(s); }
 } // namespace
 
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "Universe.h"
 #import "OOPlanetEntity.h"
 #import "NSStringOOExtensions.h"
@@ -237,7 +237,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	// Get string for error number, for useful log message classes
 	NSDictionary *errorNames = [ResourceManager dictionaryFromFilesNamed:@"javascript-errors.plist" inFolder:@"Config" andMerge:YES];
 	NSString *errorNumberStr = [NSString stringWithFormat:@"%u", report->errorNumber];
-	NSString *errorName = [errorNames oo_stringForKey:errorNumberStr];
+	NSString *errorName = oo::PListView(errorNames).get<NSString *>(errorNumberStr);
 	if (errorName == nil)  errorName = errorNumberStr;
 	
 	// Log message class
@@ -334,7 +334,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	assert(sizeof(ooscript::Char16) == sizeof(unichar));
 	
 	// initialize the JS run time, and return result in runtime.
-	uint32_t jsRuntimeInMiB = [defaults oo_intForKey:@"jsruntime-size-mib" defaultValue:OOJS_RUNTIME_SIZE_MiB];
+	uint32_t jsRuntimeInMiB = oo::PListView(defaults).get<int>(@"jsruntime-size-mib", OOJS_RUNTIME_SIZE_MiB);
 	_runtime = ooscript::newRuntime(jsRuntimeInMiB * 1024L * 1024L);
 	
 	// if runtime creation failed, end the program here.
@@ -374,7 +374,7 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	
 	if (ooscript::gcZealSupported())
 	{
-		uint8_t gcZeal = [[NSUserDefaults standardUserDefaults]  oo_unsignedCharForKey:@"js-gc-zeal"];
+		uint8_t gcZeal = oo::PListView([NSUserDefaults standardUserDefaults]).get<unsigned char>(@"js-gc-zeal");
 		if (gcZeal > 0)
 		{
 			// Useful js-gc-zeal values are 0 (off), 1 and 2.
@@ -1531,7 +1531,61 @@ static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dict
 
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal
 {
-	
+
+}
+
+@end
+
+
+// NSObject (OOJavaScriptConversion) above, for classes rooted on OOObject (ADR-0029).
+@implementation OOObject (OOJavaScriptConversion)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
+{
+	return ooscript::undefinedValue();
+}
+
+
+- (NSString *) oo_jsClassName
+{
+	return nil;
+}
+
+
+- (NSString *) oo_jsDescription
+{
+	return [self oo_jsDescriptionWithClassName:[self oo_jsClassName]];
+}
+
+
+- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className
+{
+	OOJS_PROFILE_ENTER
+
+	NSString				*components = nil;
+	NSString				*description = nil;
+
+	components = [self descriptionComponents];
+	if (className == nil)  className = [[self class] description];
+
+	if (components != nil)
+	{
+		description = [NSString stringWithFormat:@"[%@ %@]", className, components];
+	}
+	else
+	{
+		description = [NSString stringWithFormat:@"[object %@]", className];
+	}
+
+	return description;
+
+	OOJS_PROFILE_EXIT
+}
+
+
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal
+{
+
 }
 
 @end

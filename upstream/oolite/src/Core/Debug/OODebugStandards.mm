@@ -29,7 +29,7 @@ SOFTWARE.
 
 #import "OODebugStandards.h"
 #import "OOLogging.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "GameController.h"
 
 #ifdef NDEBUG
@@ -67,8 +67,7 @@ void OOStandardsSetup()
 		return;
 	}
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-	int s = [prefs oo_intForKey:@"enforce-oxp-standards" 
-				   defaultValue:STANDARDS_ENFORCEMENT_WARN];
+	int s = oo::PListView(prefs).get<int>(@"enforce-oxp-standards", STANDARDS_ENFORCEMENT_WARN);
 	if (s < STANDARDS_ENFORCEMENT_OFF)
 	{
 		s = STANDARDS_ENFORCEMENT_OFF;

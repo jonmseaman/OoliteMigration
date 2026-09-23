@@ -85,6 +85,55 @@ SOFTWARE.
 @end
 
 
+// NSObject (OODescriptionComponents) above, for classes rooted on OOObject (ADR-0029).
+@implementation OOObject (OODescriptionComponents)
+
+- (NSString *)descriptionComponents
+{
+	return nil;
+}
+
+
+- (NSString *)description
+{
+	NSString				*components = nil;
+
+	components = [self descriptionComponents];
+	if (components != nil)
+	{
+		return [NSString stringWithFormat:@"<%@ %p>{%@}", [self class], self, components];
+	}
+	else
+	{
+		return [NSString stringWithFormat:@"<%@ %p>", [self class], self];
+	}
+}
+
+
+- (NSString *) shortDescription
+{
+	NSString				*components = nil;
+
+	components = [self shortDescriptionComponents];
+	if (components != nil)
+	{
+		return [NSString stringWithFormat:@"<%@ %p>{%@}", [self class], self, components];
+	}
+	else
+	{
+		return [NSString stringWithFormat:@"<%@ %p>", [self class], self];
+	}
+}
+
+
+- (NSString *) shortDescriptionComponents
+{
+	return nil;
+}
+
+@end
+
+
 @implementation NSEnumerator (OOForEachSupport)
 
 - (NSEnumerator *) objectEnumerator

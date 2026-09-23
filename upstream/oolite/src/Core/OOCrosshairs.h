@@ -27,12 +27,13 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 
 @class OOColor;
 
 
-@interface OOCrosshairs: NSObject
+@interface OOCrosshairs: OOObject
 {
 @private
 	NSUInteger					_count;

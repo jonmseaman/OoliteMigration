@@ -28,6 +28,7 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 
 
 @class OOAsyncQueue;
@@ -43,7 +44,7 @@ typedef enum
 } OOAsyncWorkPriority;
 
 
-@interface OOAsyncWorkManager: NSObject
+@interface OOAsyncWorkManager: OOObject
 
 + (OOAsyncWorkManager *) sharedAsyncWorkManager;
 

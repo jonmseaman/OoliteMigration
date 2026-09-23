@@ -50,6 +50,8 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "OOStringExpander.h"
 
+#include "oofnd/StdLib.hpp"
+
 
 #define ONE_SIXTEENTH				0.0625
 #define ONE_SIXTYFOURTH				0.015625
@@ -59,10 +61,6 @@ MA 02110-1301, USA.
 
 
 #define NOT_DEFINED					INFINITY
-#define WIDGET_INFO					0
-#define WIDGET_CACHE				1
-#define	WIDGET_SELECTOR				2
-#define	WIDGET_SELECTOR_NAME		3
 
 /* Convenience macros to make set-colour-or-default quicker. 'info' must be the NSDictionary and 'alpha' must be the overall alpha or these won't work */
 #define DO_SET_COLOR(t,d)		SetGLColourFromInfo(info,t,d,alpha)
@@ -79,7 +77,51 @@ struct CachedInfo
 	float width, height, alpha;
 };
 
-static NSArray *sCurrentDrawItem;
+/*	One legend, dial or MFD. Was an NSArray tuple [info, boxed CachedInfo, boxed SEL,
+	selector name] (bead oo-3rb.49); the widget lists are std::vectors of these, in the
+	same order, filled only while the HUD is initialised.
+*/
+struct OOHUDWidget
+{
+	NSDictionary		*info;				// retained
+	struct CachedInfo	cache;
+	BOOL				hasCache;			// NO only for an MFD whose info was not a dictionary (below)
+	SEL					selector;			// dials only
+	NSString			*selectorString;	// dials only; retained
+};
+
+static const OOHUDWidget *sCurrentDrawItem;
+
+
+/*	The current widget's cached geometry. An MFD entry that is not a dictionary was a tuple
+	built with arrayWithObjects: starting at its nil info, i.e. an empty array, and reading
+	its cache raised this exception (caught by Universe's render loop); keep that.
+*/
+static void GetCurrentCachedInfo(struct CachedInfo *cached)
+{
+	if (EXPECT_NOT(!sCurrentDrawItem->hasCache))
+	{
+		[NSException raise:NSRangeException format:@"Index 1 is out of range 0 (in 'objectAtIndex:')"];
+	}
+	*cached = sCurrentDrawItem->cache;
+}
+
+
+static void AddHUDWidget(std::vector<OOHUDWidget> &widgets, NSDictionary *info, const struct CachedInfo *cache, SEL selector, NSString *selectorString)
+{
+	widgets.push_back(OOHUDWidget{ [info retain], *cache, info != nil, selector, [selectorString retain] });
+}
+
+
+static void ReleaseHUDWidgets(std::vector<OOHUDWidget> &widgets)
+{
+	for (OOHUDWidget &widget : widgets)
+	{
+		[widget.info release];
+		[widget.selectorString release];
+	}
+	widgets.clear();
+}
 
 OOINLINE float useDefined(float val, float validVal) 
 {
@@ -241,9 +283,9 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	hudName = [hudFileName copy];
 	
 	// init arrays
-	dialArray = [[NSMutableArray alloc] initWithCapacity:16];   // alloc retains
-	legendArray = [[NSMutableArray alloc] initWithCapacity:16]; // alloc retains
-	mfdArray = [[NSMutableArray alloc] initWithCapacity:8]; // alloc retains
+	dialArray.reserve(16);
+	legendArray.reserve(16);
+	mfdArray.reserve(8);
 	
 	_reticleColors = nil;
 	
@@ -343,9 +385,9 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 
 - (void) dealloc
 {
-	DESTROY(legendArray);
-	DESTROY(dialArray);	
-	DESTROY(mfdArray);
+	ReleaseHUDWidgets(legendArray);
+	ReleaseHUDWidgets(dialArray);
+	ReleaseHUDWidgets(mfdArray);
 	DESTROY(hudName);
 	DESTROY(deferredHudName);
 	DESTROY(propertiesReticleTargetSensitive);
@@ -716,15 +758,15 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		
 		legendDict = [info mutableCopy];
 		[legendDict setObject:legendSprite forKey:SPRITE_KEY];
-		// add WIDGET_INFO, WIDGET_CACHE to array
-		[legendArray addObject:[NSArray arrayWithObjects:legendDict, [NSValue valueWithBytes:&cache objCType:@encode(struct CachedInfo)], nil]];																	
+		// add info and cache to the list
+		AddHUDWidget(legendArray, legendDict, &cache, NULL, nil);																	
 		[legendDict release];
 		[legendSprite release];
 	}
 	else if ([info oo_stringForKey:TEXT_KEY] != nil)
 	{
-		// add WIDGET_INFO, WIDGET_CACHE to array
-		[legendArray addObject:[NSArray arrayWithObjects:info, [NSValue valueWithBytes:&cache objCType:@encode(struct CachedInfo)], nil]];
+		// add info and cache to the list
+		AddHUDWidget(legendArray, info, &cache, NULL, nil);
 
 	}
 }
@@ -766,9 +808,8 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	// valid dial, now prefetch data
 	struct CachedInfo cache;
 	prefetchData(info, &cache);
-	// add WIDGET_INFO, WIDGET_CACHE, WIDGET_SELECTOR, WIDGET_SELECTOR_NAME to array
-	[dialArray addObject:[NSArray arrayWithObjects:info, [NSValue valueWithBytes:&cache objCType:@encode(struct CachedInfo)],
-						 [NSValue valueWithPointer:selector], selectorString, nil]];
+	// add info, cache, selector and selector name to the list
+	AddHUDWidget(dialArray, info, &cache, selector, selectorString);
 }
 
 
@@ -776,13 +817,13 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 {
 	struct CachedInfo cache;
 	prefetchData(info, &cache);
-	[mfdArray addObject:[NSArray arrayWithObjects:info, [NSValue valueWithBytes:&cache objCType:@encode(struct CachedInfo)],nil]];
+	AddHUDWidget(mfdArray, info, &cache, NULL, nil);
 }
 
 
 - (NSUInteger) mfdCount
 {
-	return [mfdArray count];
+	return mfdArray.size();
 }
 
 /*
@@ -846,11 +887,11 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	 * as an incrementing one for compatibility with previous Oolite versions.
 	 * CIM: 28/9/12 */
 	z1 = [[UNIVERSE gameView] display_z];
-	NSUInteger i, nLegends = [legendArray count];
+	NSUInteger i, nLegends = legendArray.size();
 	for (i = 0; i < nLegends; i++)
 	{
-		sCurrentDrawItem = [legendArray oo_arrayAtIndex:i];
-		[self drawLegend:[sCurrentDrawItem oo_dictionaryAtIndex:WIDGET_INFO]];
+		sCurrentDrawItem = &legendArray[i];
+		[self drawLegend:sCurrentDrawItem->info];
 	}
 }
 
@@ -862,11 +903,11 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	_compassUpdated = NO;
 	
 	// tight loop, we assume dialArray doesn't change in mid-draw.
-	NSUInteger i, nDials = [dialArray count];
+	NSUInteger i, nDials = dialArray.size();
 	for (i = 0; i < nDials; i++)
 	{
-		sCurrentDrawItem = [dialArray oo_arrayAtIndex:i];
-		[self drawHUDItem:[sCurrentDrawItem oo_dictionaryAtIndex:WIDGET_INFO]];
+		sCurrentDrawItem = &dialArray[i];
+		[self drawHUDItem:sCurrentDrawItem->info];
 	}
 	
 	if (EXPECT_NOT(!_compassUpdated && _compassActive && [self checkPlayerInSystemFlight]))	// compass gone / broken / disabled ?
@@ -881,15 +922,15 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 
 - (void) drawMFDs
 {
-	NSUInteger i, nMFDs = [mfdArray count];
+	NSUInteger i, nMFDs = mfdArray.size();
 	NSString *text = nil;
 	for (i = 0; i < nMFDs; i++)
 	{
 		text = [PLAYER multiFunctionText:i];
 		if (text != nil)
 		{
-			sCurrentDrawItem = [mfdArray oo_arrayAtIndex:i];
-			[self drawMultiFunctionDisplay:[sCurrentDrawItem oo_dictionaryAtIndex:WIDGET_INFO] withText:text asIndex:i];
+			sCurrentDrawItem = &mfdArray[i];
+			[self drawMultiFunctionDisplay:sCurrentDrawItem->info withText:text asIndex:i];
 		}
 	}
 }
@@ -1051,7 +1092,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	GLfloat						alpha = overallAlpha;
 	struct CachedInfo			cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	// if either x or y is missing, use 0 instead
 	
@@ -1114,13 +1155,13 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		return;
 	}
 
-	if (EXPECT_NOT([self hasHidden:[sCurrentDrawItem objectAtIndex:WIDGET_SELECTOR_NAME]]))
+	if (EXPECT_NOT([self hasHidden:sCurrentDrawItem->selectorString]))
 	{
 		return;
 	}
 
 	// use the selector value stored during init.
-	[self performSelector:(SEL)[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_SELECTOR] pointerValue] withObject:info];
+	[self performSelector:sCurrentDrawItem->selector withObject:info];
 	OOCheckOpenGLErrors(@"HeadUpDisplay after drawHUDItem %@", info);
 	
 	OOVerifyOpenGLState();
@@ -1180,7 +1221,7 @@ static void prefetchData(NSDictionary *info, struct CachedInfo *data)
 	{
 		struct CachedInfo	cached;
 	
-		[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+		GetCurrentCachedInfo(&cached);
 		
 		x = useDefined(cached.x, SCANNER_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 		y = useDefined(cached.y, SCANNER_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -1529,7 +1570,7 @@ static void prefetchData(NSDictionary *info, struct CachedInfo *data)
 	GLfloat				zoom_color[4] = { 1.0f, 0.1f, 0.0f, 1.0f };
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, ZOOM_INDICATOR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, ZOOM_INDICATOR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -1574,7 +1615,7 @@ static void prefetchData(NSDictionary *info, struct CachedInfo *data)
 	GLfloat				compass_color[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, COMPASS_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, COMPASS_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -1772,7 +1813,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				alpha = 0.5f * overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, AEGIS_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, AEGIS_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -1823,7 +1864,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				ds = OOClamp_0_1_f([PLAYER dialCustomFloat:[info oo_stringForKey:CUSTOM_DIAL_KEY]]);
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -1865,7 +1906,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	NSString			*text = [PLAYER dialCustomString:[info oo_stringForKey:CUSTOM_DIAL_KEY]];
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -1898,7 +1939,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -1927,7 +1968,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -1961,7 +2002,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, 0) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2009,7 +2050,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				ds = [PLAYER dialSpeed];
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, SPEED_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, SPEED_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2052,7 +2093,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, ROLL_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, ROLL_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2081,7 +2122,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, PITCH_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, PITCH_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2110,7 +2151,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	// No standard YAW definitions - using PITCH ones instead.
 	x = useDefined(cached.x, PITCH_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
@@ -2151,7 +2192,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				energy = [player dialEnergy] * n_bars;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, ENERGY_GAUGE_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, ENERGY_GAUGE_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2223,7 +2264,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				shield = [PLAYER dialForwardShield];
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, FORWARD_SHIELD_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, FORWARD_SHIELD_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2264,7 +2305,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				shield = [PLAYER dialAftShield];
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, AFT_SHIELD_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, AFT_SHIELD_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2305,7 +2346,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, FUEL_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, FUEL_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2358,7 +2399,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	struct CachedInfo	cached;
 
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, WITCHDEST_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, WITCHDEST_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2392,7 +2433,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, CABIN_TEMP_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, CABIN_TEMP_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2439,7 +2480,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, WEAPON_TEMP_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, WEAPON_TEMP_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2474,7 +2515,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, ALTITUDE_BAR_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, ALTITUDE_BAR_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2630,7 +2671,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, MISSILES_DISPLAY_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, MISSILES_DISPLAY_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2769,7 +2810,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	BOOL				blueAlert = cloakIndicatorOnStatusLight && [PLAYER isCloaked];
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, STATUS_LIGHT_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, STATUS_LIGHT_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2822,7 +2863,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	alpha *= cached.alpha;
 	
@@ -2912,7 +2953,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	GLfloat				itemColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, CLOCK_DISPLAY_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, CLOCK_DISPLAY_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2941,7 +2982,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	NSUInteger lines = [info oo_intForKey:@"n_bars" defaultValue:1];
 	NSInteger pec = (NSInteger)[PLAYER primedEquipmentCount];
 
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	NSInteger x = useDefined(cached.x, PRIMED_DISPLAY_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	NSInteger y = useDefined(cached.y, PRIMED_DISPLAY_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -2998,7 +3039,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	GLfloat				itemColor[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 
 	NSInteger x = useDefined(cached.x, ASCTARGET_DISPLAY_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	NSInteger y = useDefined(cached.y, ASCTARGET_DISPLAY_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -3046,7 +3087,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 		NSSize				siz;
 		struct CachedInfo	cached;
 	
-		[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+		GetCurrentCachedInfo(&cached);
 		
 		x = useDefined(cached.x, WEAPONSOFFLINETEXT_DISPLAY_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 		y = useDefined(cached.y, WEAPONSOFFLINETEXT_DISPLAY_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -3072,7 +3113,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	struct CachedInfo	cached;
 	GLfloat				textColor[4] = {0.0, 1.0, 0.0, 1.0};
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, FPSINFO_DISPLAY_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, FPSINFO_DISPLAY_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -3109,7 +3150,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	GLfloat				alpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, SCOOPSTATUS_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, SCOOPSTATUS_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -3209,7 +3250,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 		return; // no need to draw if no joystick fitted
 	}
 
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	x = useDefined(cached.x, STATUS_LIGHT_CENTRE_X) + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = useDefined(cached.y, STATUS_LIGHT_CENTRE_Y) + [[UNIVERSE gameView] y_offset] * cached.y0;
@@ -3254,7 +3295,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	GLfloat				alpha = overallAlpha;
 	struct CachedInfo	cached;
 	
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	
 	if (cached.x == NOT_DEFINED || cached.y == NOT_DEFINED || cached.width == NOT_DEFINED || cached.height == NOT_DEFINED)
 	{
@@ -3340,7 +3381,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	}
 	[self drawSurroundInternal:info color:mfd_color];
 
-	[(NSValue *)[sCurrentDrawItem objectAtIndex:WIDGET_CACHE] getValue:&cached];
+	GetCurrentCachedInfo(&cached);
 	x = cached.x + [[UNIVERSE gameView] x_offset] * cached.x0;
 	y = cached.y + [[UNIVERSE gameView] y_offset] * cached.y0;
 	

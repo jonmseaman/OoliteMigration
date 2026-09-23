@@ -44,7 +44,7 @@ MA 02110-1301, USA.
 @protocol OOJavaScriptEngineMonitor;
 
 
-@interface OOJavaScriptEngine: NSObject
+@interface OOJavaScriptEngine: OOObject
 {
 @private
 	ooscript::Runtime _runtime;
@@ -237,6 +237,18 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 @end
 
 
+// NSObject (OOJavaScript) above, for classes rooted on OOObject (ADR-0029).
+@interface OOObject (OOJavaScript)
+
+- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
+- (NSString *) oo_jsDescription;
+- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className;
+- (NSString *) oo_jsClassName;
+- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
+
+@end
+
+
 /*	OOJSValueFromNativeObject()
 	Return a JavaScript value representation of an object, or null if passed
 	nil.
@@ -282,7 +294,7 @@ OOJS_EXTERN_C ooscript::Object OOJSObjectFromNativeObject(ooscript::Context cont
 	All methods take a context parameter, which must either be nil or a context
 	in a request.
 */
-@interface OOJSValue: NSObject
+@interface OOJSValue: OOObject
 {
 	ooscript::Value					_val;
 }

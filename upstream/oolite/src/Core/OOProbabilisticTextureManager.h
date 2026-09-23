@@ -30,11 +30,12 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 #import "OOTexture.h"
 #import "OOMaths.h"
 
 
-@interface OOProbabilisticTextureManager: NSObject
+@interface OOProbabilisticTextureManager: OOObject
 {
 @private
 	unsigned				_count;
