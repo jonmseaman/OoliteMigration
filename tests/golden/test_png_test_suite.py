@@ -35,6 +35,9 @@ import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+# Engine sources are named by STEM: the migration renames .m -> .mm -> .cpp (oo-7j3t).
+sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests"))
+from source_paths import resolve_source  # noqa: E402
 SCENARIO = "010-png-test-suite"
 
 # The golden, frame and spec live under tests/golden/pending/ until Jon approves the
@@ -296,8 +299,7 @@ def test_the_texture_upload_regex_matches_the_engines_real_format():
     """
     import png_test_suite
 
-    source = os.path.join(REPO_ROOT, "upstream", "oolite", "src", "Core", "Materials",
-                          "OOConcreteTexture.mm")
+    source = resolve_source("Core", "Materials", "OOConcreteTexture")
     with open(source, encoding="utf-8", errors="replace") as handle:
         text = handle.read()
     assert '@"Uploaded texture %u (%ux%u pixels, %@)"' in text, (

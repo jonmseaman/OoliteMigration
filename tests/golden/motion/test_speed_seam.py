@@ -4,7 +4,8 @@ Two things are pinned here that the witness-replay tests cannot pin:
 
 1. THE SEAM IS PRESENT IN THE ENGINE SOURCE. The live evidence is a pair of committed witnesses,
    and a witness is a recording: it stays green if someone reverts the engine change, because the
-   JSON does not know the source moved. These tests read OOJSShip.m and assert the property is
+   JSON does not know the source moved. These tests read OOJSShip (by stem: .m, now .mm, later
+   .cpp; spellings are the Phase 1 ooscript façade's) and assert the property is
    declared writable AND that the setter case exists - the two halves that must agree, since
    OOJS_PROP_READWRITE_CB without a `case kShip_speed:` in ShipSetProperty falls through to
    OOJSReportBadPropertySelector and the write fails at runtime with a table that claims it works.
@@ -21,12 +22,16 @@ would report "not found" for a line that is present.
 import json
 import os
 import re
+import sys
 
 import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
-OOJSSHIP = os.path.join(REPO_ROOT, "upstream", "oolite", "src", "Core", "Scripting", "OOJSShip.mm")
+# Engine sources are named by STEM: the migration renames .m -> .mm -> .cpp (oo-7j3t).
+sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests"))
+from source_paths import resolve_source  # noqa: E402
+OOJSSHIP = resolve_source("Core", "Scripting", "OOJSShip")
 VALUE_WITNESS = os.path.join(HERE, "fixtures", "value-policy.json")
 CONTRACT = os.path.join(REPO_ROOT, "oxp-contract", "js-api-1.93.json")
 
