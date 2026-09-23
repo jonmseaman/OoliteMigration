@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOFunctionAttributes.h"
 #import "OOFullScreenController.h"
 #import "OOMouseInteractionMode.h"
@@ -49,7 +50,7 @@ MA 02110-1301, USA.
 #define OO_USE_FULLSCREEN_CONTROLLER	OOLITE_MAC_OS_X
 
 
-@interface GameController: NSObject
+@interface GameController: OOObject
 {
 @private
 #if OOLITE_MAC_OS_X
@@ -192,8 +193,8 @@ MA 02110-1301, USA.
 - (BOOL) inFullScreenMode;
 
 - (BOOL) setDisplayWidth:(unsigned int) d_width Height:(unsigned int)d_height Refresh:(unsigned int) d_refresh;
-- (NSDictionary *) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh;
-- (NSArray *) displayModes;
+- (id) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh;	// a display-mode dictionary. Shared selector (proposed ADR-0043).
+- (id) displayModes;	// an Objective-C array of display-mode dictionaries. Shared selector (proposed ADR-0043).
 - (NSUInteger) indexOfCurrentDisplayMode;
 
 - (void) pauseFullScreenModeToPerform:(SEL) selector onTarget:(id) target;

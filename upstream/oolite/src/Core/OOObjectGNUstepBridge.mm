@@ -18,17 +18,20 @@ that removes each Foundation family replaces it:
     -performSelector:...afterDelay:       again gnustep-base's own implementation (a timed performer
                                           on the current run loop, retaining receiver and argument);
                                           replaced when the run loop goes (NSTimer/NSRunLoop)
+    -className                            NSObject's own implementation (the class name as an
+                                          NSString; OOALSoundDecoder's -description); the
+                                          String seam replaces it
 
 -description is not here: in the game every NSObject's -description is OOCocoa.mm's
 NSObject (OODescriptionComponents), and OOObject (OODescriptionComponents) is its twin.
 
-Borrowing NSObject's IMPs keeps the behaviour identical: gnustep-base implements the three with
+Borrowing NSObject's IMPs keeps the behaviour identical: gnustep-base implements these with
 runtime functions on object_getClass(self) (and, for the timed perform, -retain/-release/
 -performSelector:withObject:, which OOObject has), never with NSObject's instance layout.
 
 */
 
-#import "OOObjectGNUstepBridge.h"
+#import "OOCocoa.h"	// imports OOObjectGNUstepBridge.h after Foundation
 
 
 static IMP NSObjectInstanceIMP(SEL selector)
@@ -69,6 +72,13 @@ static IMP NSObjectClassIMP(SEL selector)
 {
 	typedef void (*PerformAfterDelayIMP)(id, SEL, SEL, id, NSTimeInterval);
 	((PerformAfterDelayIMP)NSObjectInstanceIMP(_cmd))(self, _cmd, selector, argument, delay);
+}
+
+
+- (NSString *) className
+{
+	typedef NSString *(*ClassNameIMP)(id, SEL);
+	return ((ClassNameIMP)NSObjectInstanceIMP(_cmd))(self, _cmd);
 }
 
 @end
