@@ -203,6 +203,64 @@ bool OXZOrderedBefore(const oo::PList &m1, const oo::PList &m2)
 	}
 	return result < 0;
 }
+
+// [NSString stringWithFormat:DESC(...), ...]: a format read at run time (proposed ADR-0043
+// Amendment 3 item 19).
+std::string DescFormat(id format, std::initializer_list<oo::str::FormatArg> args)
+{
+	return oo::str::formatRuntime(oo::StdString(format), args);
+}
+
+// A %@ argument that may be nil.
+oo::str::FormatArg Arg(const std::optional<std::string> &text)
+{
+	return text.has_value() ? oo::str::FormatArg(*text) : oo::str::FormatArg::null();
+}
+
+// -oo_stringForKey:defaultValue: on a manifest.
+std::optional<std::string> ManifestStringOr(const oo::PList &manifest, const std::string &key, const std::optional<std::string> &fallback)
+{
+	std::optional<std::string> value = ManifestString(manifest, key);
+	return value.has_value() ? value : fallback;
+}
+
+// The columns of +[NSArray arrayWithObjects:...nil] for -setArray:forRow:, which ended at the
+// first nil.
+std::vector<std::string> Columns(std::initializer_list<std::optional<std::string>> columns)
+{
+	std::vector<std::string> result;
+	for (const std::optional<std::string> &column : columns)
+	{
+		if (!column.has_value())  break;
+		result.push_back(*column);
+	}
+	return result;
+}
+
+// The first line of a manifest's description (nullopt: no description, as the nil array gave).
+std::optional<std::string> FirstDescriptionLine(const oo::PList &manifest)
+{
+	const std::optional<std::string> description = ManifestString(manifest, oo::StdString(kOOManifestDescription));
+	if (!description.has_value())  return std::nullopt;
+	return oo::str::split(*description, "\n").front();
+}
+
+// [tags componentsJoinedByString:@", "] (nullopt: no tags array).
+std::optional<std::string> JoinedTags(const oo::PList &manifest)
+{
+	const oo::PList *tags = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestTags));
+	if (tags == nullptr)  return std::nullopt;
+	std::string result;
+	bool first = true;
+	for (const oo::PList &tag : Elements(*tags))
+	{
+		if (!first)  result += ", ";
+		first = false;
+		const std::string *string = tag.getIf<std::string>();
+		result += (string != nullptr) ? *string : oo::DescriptionOf(oo::ObjectFromPList(tag));
+	}
+	return result;
+}
 } // namespace
 
 static OOOXZManager *sSingleton = nil;
@@ -238,20 +296,20 @@ static OOOXZManager *sSingleton = nil;
 - (oo::PList) applyCurrentFilter:(const oo::PList &)list;	// an Array
 
 - (void) setCurrentDownload:(NSURLConnection *)download withLabel:(NSString *)label;
-- (void) setProgressStatus:(NSString *)newStatus;
+- (void) setProgressStatus:(const std::string &)newStatus;
 
 - (BOOL) installOXZ:(NSUInteger)item;
 - (BOOL) updateAllOXZ;
 - (BOOL) removeOXZ:(NSUInteger)item;
-- (NSArray *) installOptions;
-- (NSArray *) removeOptions;
+- (std::vector<oo::PList>) installOptions;	// the manifests on the current page
+- (std::vector<oo::PList>) removeOptions;	// empty: nothing removable (was nil)
 
-- (NSString *) extractOXZ:(NSUInteger)item;
+- (std::string) extractOXZ:(NSUInteger)item;	// the extraction log
 
 /* Delegates for URL downloader */
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
 - (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response;
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data;
+- (void)connection:(NSURLConnection *)connection didReceiveData:(id)data;	// shared selector (NSURLConnectionDataDelegate): the data object
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection;
 
 @end
@@ -296,7 +354,7 @@ static OOOXZManager *sSingleton = nil;
 		_changesMade = NO;
 		_downloadAllDependencies = NO;
 		_dependencyStack = [[NSMutableSet alloc] initWithCapacity:8];
-		[self setProgressStatus:@""];
+		[self setProgressStatus:""];
 	}
 	return self;
 }
@@ -650,10 +708,9 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (void) setProgressStatus:(NSString *)newValue
+- (void) setProgressStatus:(const std::string &)newValue
 {
-	DESTROY(_progressStatus);
-	_progressStatus = [newValue copy];
+	_progressStatus = newValue;
 }
 
 - (BOOL) updateManifests
@@ -665,7 +722,7 @@ static OOOXZManager *sSingleton = nil;
 	}
 	_downloadStatus = OXZ_DOWNLOAD_STARTED;
 	_interfaceState = OXZ_STATE_UPDATING;
-	[self setProgressStatus:@""];
+	[self setProgressStatus:""];
 
 	return [self beginDownload:request];
 }
@@ -1028,7 +1085,7 @@ static OOOXZManager *sSingleton = nil;
 					// if a required dependency is somehow uninstallable
 					// e.g. required+maximum version don't match this Oolite
 					[progress appendFormat:DESC(@"oolite-oxzmanager-progress-required-@-not-found"),oo::PListView(requirement).get<NSString *>(kOOManifestRelationDescription, oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier))];
-					[self setProgressStatus:progress];
+					[self setProgressStatus:oo::StdString(progress)];
 					OOLog(kOOOXZErrorLog,@"OXZ dependency %@ could not be found for automatic download.",needsIdentifier);
 					_downloadStatus = OXZ_DOWNLOAD_ERROR;
 					OOLog(kOOOXZErrorLog, @"%@", @"Downloaded OXZ could not be installed.");
@@ -1042,7 +1099,7 @@ static OOOXZManager *sSingleton = nil;
 				_interfaceState = OXZ_STATE_DEPENDENCIES;
 				_item = index;
 			}
-			[self setProgressStatus:progress];
+			[self setProgressStatus:oo::StdString(progress)];
 			[self gui];
 			return YES;
 		}
@@ -1050,7 +1107,7 @@ static OOOXZManager *sSingleton = nil;
 		else if ([_dependencyStack count] > 0)
 		{
 			[progress appendFormat:DESC(@"oolite-oxzmanager-progress-required-@-not-found"),oo::PListView(requirement).get<NSString *>(kOOManifestRelationDescription, oo::PListView(requirement).get<NSString *>(kOOManifestRelationIdentifier))];
-			[self setProgressStatus:progress];
+			[self setProgressStatus:oo::StdString(progress)];
 			OOLog(kOOOXZErrorLog,@"OXZ dependency %@ could not be found for automatic download.",needsIdentifier);
 			_downloadStatus = OXZ_DOWNLOAD_ERROR;
 			OOLog(kOOOXZErrorLog, @"%@", @"Downloaded OXZ could not be installed.");
@@ -1060,7 +1117,7 @@ static OOOXZManager *sSingleton = nil;
 		}
 	}
 
-	[self setProgressStatus:@""];
+	[self setProgressStatus:""];
 	_interfaceState = OXZ_STATE_TASKDONE;
 	[_dependencyStack removeAllObjects]; // just in case
 	_downloadAllDependencies = NO;
@@ -1230,10 +1287,7 @@ static OOOXZManager *sSingleton = nil;
 	{
 	case OXZ_STATE_SETFILTER:
 		[gui setTitle:DESC(@"oolite-oxzmanager-title-setfilter")];
-		{
-			id currentFilter = oo::NSStringFrom(_currentFilter);	// the GUI is chunk 4
-			[gui setText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-currentfilter-is-@"),currentFilter] forRow:OXZ_GUI_ROW_FILTERCURRENT align:GUI_ALIGN_LEFT];
-		}
+		[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-currentfilter-is-@"), {_currentFilter}) forRow:OXZ_GUI_ROW_FILTERCURRENT align:GUI_ALIGN_LEFT];
 		[gui addLongText:DESC(@"oolite-oxzmanager-filterhelp") startingAtRow:OXZ_GUI_ROW_FILTERHELP align:GUI_ALIGN_LEFT];
 
 		
@@ -1271,8 +1325,7 @@ static OOOXZManager *sSingleton = nil;
 	case OXZ_STATE_PICK_REMOVE:
 		if (_interfaceState != OXZ_STATE_MAIN)
 		{
-			id currentFilter = oo::NSStringFrom(_currentFilter);	// the GUI is chunk 4
-			[gui setText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-currentfilter-is-@-@"),OOExpand(@"[oolite_key_oxzmanager_setfilter]"),currentFilter] forRow:OXZ_GUI_ROW_LISTFILTER align:GUI_ALIGN_LEFT];
+			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-currentfilter-is-@-@"), {oo::DescriptionOf(OOExpand(@"[oolite_key_oxzmanager_setfilter]")), _currentFilter}) forRow:OXZ_GUI_ROW_LISTFILTER align:GUI_ALIGN_LEFT];
 			[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTFILTER];
 		}
 
@@ -1299,9 +1352,9 @@ static OOOXZManager *sSingleton = nil;
 		}
 		else
 		{
-			[gui addLongText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-progress-@-is-@-of-@"),_currentDownloadName,oo::NSStringOrNil([self humanSize:_downloadProgress]),oo::NSStringOrNil([self humanSize:_downloadExpected])] startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-progress-@-is-@-of-@"), {oo::DescriptionOf(_currentDownloadName), Arg([self humanSize:_downloadProgress]), Arg([self humanSize:_downloadExpected])}) startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 		}
-		[gui addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+2 align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+2 align:GUI_ALIGN_LEFT];
 
 		[gui setText:DESC(@"oolite-oxzmanager-cancel") forRow:OXZ_GUI_ROW_CANCEL align:GUI_ALIGN_CENTER];
 		[gui setKey:@"_CANCEL" forRow:OXZ_GUI_ROW_CANCEL];
@@ -1312,7 +1365,7 @@ static OOOXZManager *sSingleton = nil;
 
 		[gui setText:DESC(@"oolite-oxzmanager-dependencies-decision") forRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 
-		[gui addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+2 align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+2 align:GUI_ALIGN_LEFT];
 
 		startRow = OXZ_GUI_ROW_INSTALLED;
 		[gui setText:DESC(@"oolite-oxzmanager-dependencies-yes-all") forRow:OXZ_GUI_ROW_INSTALLED align:GUI_ALIGN_CENTER];
@@ -1334,13 +1387,13 @@ static OOOXZManager *sSingleton = nil;
 	case OXZ_STATE_TASKDONE:
 		if (_downloadStatus == OXZ_DOWNLOAD_COMPLETE)
 		{
-			[gui addLongText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-progress-done-%u-%u"),_oxzList.count(),[self managedOXZs].count()] startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-progress-done-%u-%u"), {(unsigned long long)_oxzList.count(), (unsigned long long)[self managedOXZs].count()}) startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 		}
 		else
 		{
 			[gui addLongText:OOExpandKey(@"oolite-oxzmanager-progress-error") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 		}
-		[gui addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+4 align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:_progressStatus startingAtRow:OXZ_GUI_ROW_PROGRESS+4 align:GUI_ALIGN_LEFT];
 
 		[gui setText:DESC(@"oolite-oxzmanager-acknowledge") forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
 		[gui setKey:@"_ACK" forRow:OXZ_GUI_ROW_UPDATE];
@@ -1348,14 +1401,12 @@ static OOOXZManager *sSingleton = nil;
 		break;
 	case OXZ_STATE_EXTRACT:
 		{
-			NSDictionary *manifest = oo::ObjectFromPList(ElementAt(_filteredList, _item));
-			NSString *title = oo::PListView(manifest).get<NSString *>(kOOManifestTitle);
-			NSString *version = oo::PListView(manifest).get<NSString *>(kOOManifestVersion);
-			NSString *identifier = oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier);
+			const oo::PList manifest = ElementAt(_filteredList, _item);
+			const std::optional<std::string> title = ManifestString(manifest, oo::StdString(kOOManifestTitle));
+			const std::optional<std::string> version = ManifestString(manifest, oo::StdString(kOOManifestVersion));
+			const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
 			[gui setTitle:DESC(@"oolite-oxzmanager-title-extract")];
-			[gui setText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-infopage-title-@-version-@"),
-								   title,
-								   version]
+			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-infopage-title-@-version-@"), {Arg(title), Arg(version)})
 				  forRow:0 align:GUI_ALIGN_LEFT];
 			[gui addLongText:DESC(@"oolite-oxzmanager-extract-info") startingAtRow:2 align:GUI_ALIGN_LEFT];
 #ifdef NDEBUG
@@ -1363,10 +1414,11 @@ static OOOXZManager *sSingleton = nil;
 			[gui setColor:[OOColor orangeColor] forRow:7];
 			[gui setColor:[OOColor orangeColor] forRow:8];
 #endif
-			NSString *path = oo::NSStringOrNil([self extractionBasePathForIdentifier:oo::DescriptionOf(identifier) andVersion:oo::DescriptionOf(version)]);
-			if ([[NSFileManager defaultManager] fileExistsAtPath:path])
+			// (a nil identifier or version read "(null)" in the directory name)
+			const std::optional<std::string> path = [self extractionBasePathForIdentifier:identifier.value_or("(null)") andVersion:version.value_or("(null)")];
+			if (path.has_value() && oo::fs::fileExists(oo::fs::pathFromUTF8(*path)))
 			{
-				[gui addLongText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-extract-@-already-exists"), path]
+				[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-extract-@-already-exists"), {Arg(path)})
 				  startingAtRow:10 align:GUI_ALIGN_LEFT];
 				startRow = OXZ_GUI_ROW_CANCEL;
 				[gui setText:DESC(@"oolite-oxzmanager-extract-unavailable") forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
@@ -1374,7 +1426,7 @@ static OOOXZManager *sSingleton = nil;
 			}
 			else
 			{
-				[gui addLongText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-extract-to-@"), path]
+				[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-extract-to-@"), {Arg(path)})
 				  startingAtRow:10 align:GUI_ALIGN_LEFT];
 				startRow = OXZ_GUI_ROW_PROCEED;
 				[gui setText:DESC(@"oolite-oxzmanager-extract-proceed") forRow:OXZ_GUI_ROW_PROCEED align:GUI_ALIGN_CENTER];
@@ -1387,7 +1439,7 @@ static OOOXZManager *sSingleton = nil;
 		}	
 		break;
 	case OXZ_STATE_EXTRACTDONE:
-		[gui addLongText:_progressStatus startingAtRow:1 align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:_progressStatus startingAtRow:1 align:GUI_ALIGN_LEFT];
 		[gui setText:DESC(@"oolite-oxzmanager-acknowledge") forRow:OXZ_GUI_ROW_UPDATE align:GUI_ALIGN_CENTER];
 		[gui setKey:@"_ACK" forRow:OXZ_GUI_ROW_UPDATE];
 		startRow = OXZ_GUI_ROW_UPDATE;
@@ -1611,13 +1663,13 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (void) processTextInput:(NSString *)input
+- (void) processTextInput:(const std::string &)input
 {
-	if ([self validateFilter:oo::StdString(input)])
+	if ([self validateFilter:input])
 	{
-		if ([input length] > 0)
+		if (!input.empty())
 		{
-			[self setFilter:oo::StdString(input)];
+			[self setFilter:input];
 		} // else keep previous filter
 		_interfaceState = OXZ_STATE_PICK_INSTALL;
 		[self gui];
@@ -1626,11 +1678,11 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (void) refreshTextInput:(NSString *)input
+- (void) refreshTextInput:(const std::string &)input
 {
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	[gui setText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-text-prompt-@"), input] forRow:OXZ_GUI_ROW_INPUT align:GUI_ALIGN_LEFT];
-	if ([self validateFilter:oo::StdString(input)])
+	[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-text-prompt-@"), {input}) forRow:OXZ_GUI_ROW_INPUT align:GUI_ALIGN_LEFT];
+	if ([self validateFilter:input])
 	{
 		[gui setColor:[OOColor cyanColor] forRow:OXZ_GUI_ROW_INPUT];
 	}
@@ -1685,42 +1737,42 @@ static OOOXZManager *sSingleton = nil;
 
 			_item = _offset + selection - OXZ_GUI_ROW_LISTSTART;
 
-			NSDictionary *manifest = oo::ObjectFromPList(ElementAt(_filteredList, _item));
+			const oo::PList manifest = ElementAt(_filteredList, _item);
 			_interfaceShowingOXZDetail = YES;
 
 			[gui clearAndKeepBackground:YES];
 			[gui setTitle:DESC(@"oolite-oxzmanager-title-infopage")];
 
 // title, version			
-			[gui setText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-infopage-title-@-version-@"),
-								   oo::PListView(manifest).get<NSString *>(kOOManifestTitle),
-								   oo::PListView(manifest).get<NSString *>(kOOManifestVersion)]
+			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-infopage-title-@-version-@"),
+								   {Arg(ManifestString(manifest, oo::StdString(kOOManifestTitle))),
+								   Arg(ManifestString(manifest, oo::StdString(kOOManifestVersion)))})
 				  forRow:0 align:GUI_ALIGN_LEFT];
 
 // author
-			[gui setText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-infopage-author-@"),
-								   oo::PListView(manifest).get<NSString *>(kOOManifestAuthor)]
+			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-infopage-author-@"),
+								   {Arg(ManifestString(manifest, oo::StdString(kOOManifestAuthor)))})
 				  forRow:1 align:GUI_ALIGN_LEFT];
 
 // license
-			[gui addLongText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-infopage-license-@"),
-								   oo::PListView(manifest).get<NSString *>(kOOManifestLicense)]
+			[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-infopage-license-@"),
+								   {Arg(ManifestString(manifest, oo::StdString(kOOManifestLicense)))})
 				  startingAtRow:2 align:GUI_ALIGN_LEFT];
 // tags
-			
-			[gui addLongText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-infopage-tags-@"),[oo::PListView(manifest).get<NSArray *>(kOOManifestTags) componentsJoinedByString: @", "]]
+
+			[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-infopage-tags-@"), {Arg(JoinedTags(manifest))})
 				  startingAtRow:4  align:GUI_ALIGN_LEFT];
 // description
-			[gui addLongText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-infopage-description-@"),oo::PListView(manifest).get<NSString *>(kOOManifestDescription)]
+			[gui cxx_addLongText:DescFormat(DESC(@"oolite-oxzmanager-infopage-description-@"), {Arg(ManifestString(manifest, oo::StdString(kOOManifestDescription)))})
 				  startingAtRow:7  align:GUI_ALIGN_LEFT];
 
-// infoURL		
-			NSString *infoURLString = oo::PListView(manifest).get<NSString *>(kOOManifestInformationURL);
-			[gui setText:[NSString stringWithFormat:DESC(@"oolite-oxzmanager-infopage-infourl-@"),
-								   infoURLString]
+// infoURL
+			const std::optional<std::string> infoURL = ManifestString(manifest, oo::StdString(kOOManifestInformationURL));
+			[gui cxx_setText:DescFormat(DESC(@"oolite-oxzmanager-infopage-infourl-@"),
+								   {Arg(infoURL)})
 				  forRow:25 align:GUI_ALIGN_LEFT];
 			// copy url info text to clipboard automatically once we are in the oxz info page
-			[[UNIVERSE gameView] stringToClipboard:infoURLString];	  
+			[[UNIVERSE gameView] cxx_stringToClipboard:infoURL.value_or(std::string())];	  
 				  
 // instructions
 			[gui setText:OOExpand(DESC(@"oolite-oxzmanager-infopage-return")) forRow:27 align:GUI_ALIGN_CENTER];
@@ -1759,22 +1811,22 @@ static OOOXZManager *sSingleton = nil;
 	{
 		return NO;
 	}
-	NSDictionary *manifest = oo::ObjectFromPList(ElementAt(_filteredList, item));	// the download is chunk 5
+	const oo::PList manifest = ElementAt(_filteredList, item);
 	_item = item;
 
-	if ([self installableState:ElementAt(_filteredList, item)] >= OXZ_UNINSTALLABLE_ALREADY)
+	if ([self installableState:manifest] >= OXZ_UNINSTALLABLE_ALREADY)
 	{
-		OOLog(kOOOXZDebugLog,@"Cannot install %@",manifest);
+		OOLog(kOOOXZDebugLog,@"Cannot install %@",oo::ObjectFromPList(manifest));
 		// can't be installed on this version of Oolite, or already is installed
 		return NO;
 	}
-	NSString *url = [manifest objectForKey:kOOManifestDownloadURL];
-	if (url == nil)
+	const oo::PList *url = manifest.find(oo::StdString(kOOManifestDownloadURL));
+	if (url == nullptr)
 	{
 		OOLog(kOOOXZErrorLog, @"%@", @"Manifest does not have a download URL - cannot install");
 		return NO;
 	}
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:oo::ObjectFromPList(*url)]];
 	if (_downloadStatus != OXZ_DOWNLOAD_NONE)
 	{
 		return NO;
@@ -1782,7 +1834,7 @@ static OOOXZManager *sSingleton = nil;
 	_downloadStatus = OXZ_DOWNLOAD_STARTED;
 	_interfaceState = OXZ_STATE_INSTALLING;
 	
-	[self setProgressStatus:@""];
+	[self setProgressStatus:""];
 	return [self beginDownload:request];
 }
 
@@ -1802,13 +1854,13 @@ static OOOXZManager *sSingleton = nil;
 			[_dependencyStack addObject:manifest];
 		}
 	}
-	NSDictionary *first = [_dependencyStack anyObject];
-	NSString* identifier = oo::PListView(first).get<NSString *>(kOOManifestRelationIdentifier);
+	// the dependency stack is chunk 5: its first requirement arrives through oo::PListFrom
+	const std::optional<std::string> identifier = ManifestString(oo::PListFrom([_dependencyStack anyObject]), oo::StdString(kOOManifestRelationIdentifier));
 	NSUInteger item = NSUIntegerMax;
 	for (NSUInteger i = 0; i < _oxzList.count(); i++)
 	{
 		const std::optional<std::string> availableIdentifier = ManifestString(*_oxzList.at(i), oo::StdString(kOOManifestIdentifier));
-		if (availableIdentifier.has_value() && identifier != nil && *availableIdentifier == oo::StdString(identifier))
+		if (availableIdentifier.has_value() && identifier.has_value() && *availableIdentifier == *identifier)
 		{
 			item = i;	// the first equal manifest, as -indexOfObject: found
 			break;
@@ -1818,7 +1870,7 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (NSArray *) installOptions
+- (std::vector<oo::PList>) installOptions
 {
 	NSUInteger start = _offset;
 	if (start >= _filteredList.count())
@@ -1832,7 +1884,7 @@ static OOOXZManager *sSingleton = nil;
 		end = _filteredList.count();
 	}
 	const oo::PList::Array &all = Elements(_filteredList);
-	return oo::ObjectFromPList(oo::PList(oo::PList::Array(all.begin() + start, all.begin() + end)));	// the GUI is chunk 4
+	return std::vector<oo::PList>(all.begin() + start, all.begin() + end);
 }
 
 
@@ -1840,7 +1892,7 @@ static OOOXZManager *sSingleton = nil;
 {
 	// shows the current installation options page
 	OOGUIRow startRow = OXZ_GUI_ROW_LISTPREV;
-	NSArray *options = [self installOptions];
+	const std::vector<oo::PList> options = [self installOptions];
 	NSUInteger optCount = _filteredList.count();
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUITabSettings tab_stops;
@@ -1851,16 +1903,15 @@ static OOOXZManager *sSingleton = nil;
 	[gui setTabStops:tab_stops];
 	
 
-	[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-oxzmanager-heading-category"),
-						   DESC(@"oolite-oxzmanager-heading-title"), 
-						   DESC(@"oolite-oxzmanager-heading-installed"), 
-						   DESC(@"oolite-oxzmanager-heading-downloadable"), 
-								nil] forRow:OXZ_GUI_ROW_LISTHEAD];
+	[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"oolite-oxzmanager-heading-category")),
+						   oo::OptionalString(DESC(@"oolite-oxzmanager-heading-title")),
+						   oo::OptionalString(DESC(@"oolite-oxzmanager-heading-installed")),
+						   oo::OptionalString(DESC(@"oolite-oxzmanager-heading-downloadable"))}) forRow:OXZ_GUI_ROW_LISTHEAD];
 
 	if (_offset > 0)
 	{
 		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTPREV];
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @"",@"",@" <-- ", nil] forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"gui-back")), "", "", " <-- "}) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui setKey:@"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
 	}
 	else
@@ -1875,7 +1926,7 @@ static OOOXZManager *sSingleton = nil;
 	if (_offset + 10 < optCount)
 	{
 		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTNEXT];
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @"",@"",@" --> ", nil] forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"gui-more")), "", "", " --> "}) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui setKey:@"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
 	else
@@ -1902,87 +1953,90 @@ static OOOXZManager *sSingleton = nil;
 	}
 
 	OOGUIRow row = OXZ_GUI_ROW_LISTSTART;
-	NSDictionary *manifest = nil;
 	BOOL oxzLineSelected = NO;
+	const std::optional<std::string> installPath = [self installPath];
 
-	foreach (manifest, options)
+	for (const oo::PList &manifest : options)
 	{
-		NSDictionary *installed = [ResourceManager manifestForIdentifier:oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier)];
-		NSString *localPath = [[oo::NSStringOrNil([self installPath]) stringByAppendingPathComponent:oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier)] stringByAppendingPathExtension:@"oxz"];
-		if (installed == nil)
+		const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+		oo::PList installed = [ResourceManager cxx_manifestForIdentifier:identifier.value_or(std::string())];
+		const std::string localPath = oo::str::appendingPathComponent(installPath.value_or(std::string()), identifier.value_or(std::string())) + ".oxz";
+		// OODictionaryFromFile is unmigrated: its dictionary arrives through oo::PListFrom.
+		const auto readLocalManifest = [&localPath] { return oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(localPath, "manifest.plist")))); };
+		if (!installed)
 		{
 			// check that there's not one just been downloaded
-			installed = OODictionaryFromFile([localPath stringByAppendingPathComponent:@"manifest.plist"]);
+			installed = readLocalManifest();
 		}
 		else
 		{
 			// check for a more recent download
-			if ([[NSFileManager defaultManager] fileExistsAtPath:localPath])
+			if (oo::fs::fileExists(oo::fs::pathFromUTF8(localPath)))
 			{
-				
-				installed = OODictionaryFromFile([localPath stringByAppendingPathComponent:@"manifest.plist"]);
+
+				installed = readLocalManifest();
 			}
 			else
 			{
 				// check if this was a managed OXZ which has been deleted
-				if ([oo::PListView(installed).get<NSString *>(kOOManifestFilePath) hasPrefix:oo::NSStringOrNil([self installPath])])
+				const std::optional<std::string> filePath = ManifestString(installed, oo::StdString(kOOManifestFilePath));
+				if (filePath.has_value() && installPath.has_value() && oo::str::hasPrefix(*filePath, *installPath))
 				{
-					installed = nil;
+					installed = oo::PList();
 				}
 			}
 		}
 
-		NSString *installedVersion = DESC(@"oolite-oxzmanager-version-none");
-		if (installed != nil)
+		std::optional<std::string> installedVersion = oo::OptionalString(DESC(@"oolite-oxzmanager-version-none"));
+		if (installed)
 		{
-			installedVersion = oo::PListView(installed).get<NSString *>(kOOManifestVersion, DESC(@"oolite-oxzmanager-version-none"));
+			installedVersion = ManifestStringOr(installed, oo::StdString(kOOManifestVersion), oo::OptionalString(DESC(@"oolite-oxzmanager-version-none")));
 		}
 
 		/* If the filter is in use, the available_version key will
 		 * contain the version which can be downloaded. */
-		[gui setArray:[NSArray arrayWithObjects:
-			 oo::PListView(manifest).get<NSString *>(kOOManifestCategory, DESC(@"oolite-oxzmanager-missing-field")),
-			 oo::PListView(manifest).get<NSString *>(kOOManifestTitle, DESC(@"oolite-oxzmanager-missing-field")),
+		[gui cxx_setArray:Columns({
+			 ManifestStringOr(manifest, oo::StdString(kOOManifestCategory), oo::OptionalString(DESC(@"oolite-oxzmanager-missing-field"))),
+			 ManifestStringOr(manifest, oo::StdString(kOOManifestTitle), oo::OptionalString(DESC(@"oolite-oxzmanager-missing-field"))),
 			 installedVersion,
-		 	 oo::PListView(manifest).get<NSString *>(kOOManifestAvailableVersion, oo::PListView(manifest).get<NSString *>(kOOManifestVersion, DESC(@"oolite-oxzmanager-version-none"))),
-		  nil] forRow:row];
+		 	 ManifestStringOr(manifest, oo::StdString(kOOManifestAvailableVersion), ManifestStringOr(manifest, oo::StdString(kOOManifestVersion), oo::OptionalString(DESC(@"oolite-oxzmanager-version-none"))))
+		  }) forRow:row];
 
-		[gui setKey:oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) forRow:row];
+		[gui cxx_setKey:identifier.value_or(std::string()) forRow:row];
 		/* yellow for installable, orange for dependency issues, grey and unselectable for version issues, white and unselectable for already installed (manually or otherwise) at the current version, red and unselectable for already installed manually at a different version. */
-		[gui setColor:[self colorForManifest:oo::PListFrom(manifest)] forRow:row];
+		[gui setColor:[self colorForManifest:manifest] forRow:row];
 
 		if (row == [gui selectedRow])
 		{
 			oxzLineSelected = YES;
-			
-			[gui setText:oo::NSStringOrNil([self installStatusForManifest:oo::PListFrom(manifest)]) forRow:OXZ_GUI_ROW_LISTSTATUS];
+
+			[gui cxx_setText:[self installStatusForManifest:manifest].value_or(std::string()) forRow:OXZ_GUI_ROW_LISTSTATUS];
 			[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTSTATUS];
 
-			[gui addLongText:oo::PListView([oo::PListView(manifest).get<NSString *>(kOOManifestDescription) componentsSeparatedByString:@"\n"]).at<NSString *>(0) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
-			
-			NSString *infoUrl = oo::PListView(manifest).get<NSString *>(kOOManifestInformationURL);
-			if (infoUrl != nil)
-			{
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-oxzmanager-infoline-url"),infoUrl,nil] forRow:OXZ_GUI_ROW_LISTINFO1];
-			}
-			NSUInteger size = oo::PListView(manifest).get<unsigned int>(kOOManifestFileSize, 0);
-			NSString *updatedDesc = nil;
+			[gui cxx_addLongText:FirstDescriptionLine(manifest) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 
-			NSUInteger timestamp = oo::PListView(manifest).get<NSUInteger>(kOOManifestUploadDate, 0);
+			const std::optional<std::string> infoUrl = ManifestString(manifest, oo::StdString(kOOManifestInformationURL));
+			if (infoUrl.has_value())
+			{
+				[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"oolite-oxzmanager-infoline-url")), infoUrl}) forRow:OXZ_GUI_ROW_LISTINFO1];
+			}
+			NSUInteger size = manifest.get<unsigned int>(oo::StdString(kOOManifestFileSize), 0);
+
+			NSUInteger timestamp = manifest.get<unsigned long long>(oo::StdString(kOOManifestUploadDate), 0);
 			if (timestamp > 0)
 			{
 				// list of installable OXZs
 				NSDate *updated = [NSDate dateWithTimeIntervalSince1970:timestamp];
-			
+
 				//keep only the first part of the date string description, which should be in YYYY-MM-DD format
-				updatedDesc = oo::PListView([[updated description] componentsSeparatedByString:@" "]).at<NSString *>(0);
-				
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-oxzmanager-infoline-size"),oo::NSStringOrNil([self humanSize:size]),DESC(@"oolite-oxzmanager-infoline-date"),updatedDesc,nil] forRow:OXZ_GUI_ROW_LISTINFO2];
-			} 
+				const std::string updatedDesc = oo::str::split(oo::DescriptionOf(updated), " ").front();
+
+				[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"oolite-oxzmanager-infoline-size")), [self humanSize:size], oo::OptionalString(DESC(@"oolite-oxzmanager-infoline-date")), updatedDesc}) forRow:OXZ_GUI_ROW_LISTINFO2];
+			}
 			else if (size > 0)
 			{
 				// list of installed/removable OXZs
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-oxzmanager-infoline-size"),oo::NSStringOrNil([self humanSize:size]),nil] forRow:OXZ_GUI_ROW_LISTINFO2];
+				[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"oolite-oxzmanager-infoline-size")), [self humanSize:size]}) forRow:OXZ_GUI_ROW_LISTINFO2];
 			}
 			
 
@@ -2019,16 +2073,16 @@ static OOOXZManager *sSingleton = nil;
 		OOLog(kOOOXZDebugLog, @"Unable to remove item %zu as only %zu in list", item, _filteredList.count());
 		return NO;
 	}
-	NSString *filename = oo::NSStringOrNil(ManifestString(ElementAt(_filteredList, item), oo::StdString(kOOManifestFilePath)));
-	if (filename == nil)
+	const std::optional<std::string> filename = ManifestString(ElementAt(_filteredList, item), oo::StdString(kOOManifestFilePath));
+	if (!filename.has_value())
 	{
 		OOLog(kOOOXZDebugLog, @"Unable to remove item %zu as filename not found", item);
 		return NO;
 	}
 
-	if (![[NSFileManager defaultManager] oo_removeItemAtPath:filename])
+	if (!oo::fs::removeItem(oo::fs::pathFromUTF8(*filename)))
 	{
-		OOLog(kOOOXZErrorLog, @"Unable to remove file %@", filename);
+		OOLog(kOOOXZErrorLog, @"Unable to remove file %@", oo::NSStringFrom(*filename));
 		return NO;
 	}
 	_changesMade = YES;
@@ -2039,11 +2093,11 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (NSArray *) removeOptions
+- (std::vector<oo::PList>) removeOptions
 {
 	if (_filteredList.count() == 0)
 	{
-		return nil;
+		return {};
 	}
 	NSUInteger start = _offset;
 	if (start >= _filteredList.count())
@@ -2057,7 +2111,7 @@ static OOOXZManager *sSingleton = nil;
 		end = _filteredList.count();
 	}
 	const oo::PList::Array &all = Elements(_filteredList);
-	return oo::ObjectFromPList(oo::PList(oo::PList::Array(all.begin() + start, all.begin() + end)));	// the GUI is chunk 4
+	return std::vector<oo::PList>(all.begin() + start, all.begin() + end);
 }
 
 
@@ -2065,9 +2119,9 @@ static OOOXZManager *sSingleton = nil;
 {
 	// shows the current installation options page
 	OOGUIRow startRow = OXZ_GUI_ROW_LISTPREV;
-	NSArray *options = [self removeOptions];
+	const std::vector<oo::PList> options = [self removeOptions];
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	if (options == nil)
+	if (options.empty())
 	{
 		[gui addLongText:DESC(@"oolite-oxzmanager-nothing-removable") startingAtRow:OXZ_GUI_ROW_PROGRESS align:GUI_ALIGN_LEFT];
 		return startRow;
@@ -2079,14 +2133,13 @@ static OOOXZManager *sSingleton = nil;
 	tab_stops[2] = 400;
 	[gui setTabStops:tab_stops];
 	
-	[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-oxzmanager-heading-category"),
-						   DESC(@"oolite-oxzmanager-heading-title"), 
-						   DESC(@"oolite-oxzmanager-heading-version"), 
-								nil] forRow:OXZ_GUI_ROW_LISTHEAD];
+	[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"oolite-oxzmanager-heading-category")),
+						   oo::OptionalString(DESC(@"oolite-oxzmanager-heading-title")),
+						   oo::OptionalString(DESC(@"oolite-oxzmanager-heading-version"))}) forRow:OXZ_GUI_ROW_LISTHEAD];
 	if (_offset > 0)
 	{
 		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTPREV];
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @"",@" <-- ", nil] forRow:OXZ_GUI_ROW_LISTPREV];
+		[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"gui-back")), "", " <-- "}) forRow:OXZ_GUI_ROW_LISTPREV];
 		[gui setKey:@"_BACK" forRow:OXZ_GUI_ROW_LISTPREV];
 	}
 	else
@@ -2101,7 +2154,7 @@ static OOOXZManager *sSingleton = nil;
 	if (_offset + OXZ_GUI_NUM_LISTROWS < [self managedOXZs].count())
 	{
 		[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTNEXT];
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @"",@" --> ", nil] forRow:OXZ_GUI_ROW_LISTNEXT];
+		[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"gui-more")), "", " --> "}) forRow:OXZ_GUI_ROW_LISTNEXT];
 		[gui setKey:@"_NEXT" forRow:OXZ_GUI_ROW_LISTNEXT];
 	}
 	else
@@ -2129,28 +2182,27 @@ static OOOXZManager *sSingleton = nil;
 
 
 	OOGUIRow row = OXZ_GUI_ROW_LISTSTART;
-	NSDictionary *manifest = nil;
 	BOOL oxzSelected = NO;
 
-	foreach (manifest, options)
+	for (const oo::PList &manifest : options)
 	{
 
-		[gui setArray:[NSArray arrayWithObjects:
-								   oo::PListView(manifest).get<NSString *>(kOOManifestCategory, DESC(@"oolite-oxzmanager-missing-field")),
-							   oo::PListView(manifest).get<NSString *>(kOOManifestTitle, DESC(@"oolite-oxzmanager-missing-field")),
-							   oo::PListView(manifest).get<NSString *>(kOOManifestVersion, DESC(@"oolite-oxzmanager-missing-field")),
-									nil] forRow:row];
-		NSString *identifier = oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier);
-		[gui setKey:identifier forRow:row];
-		
-		[gui setColor:[self colorForManifest:oo::PListFrom(manifest)] forRow:row];
-		
+		[gui cxx_setArray:Columns({
+								   ManifestStringOr(manifest, oo::StdString(kOOManifestCategory), oo::OptionalString(DESC(@"oolite-oxzmanager-missing-field"))),
+							   ManifestStringOr(manifest, oo::StdString(kOOManifestTitle), oo::OptionalString(DESC(@"oolite-oxzmanager-missing-field"))),
+							   ManifestStringOr(manifest, oo::StdString(kOOManifestVersion), oo::OptionalString(DESC(@"oolite-oxzmanager-missing-field")))
+									}) forRow:row];
+		const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+		[gui cxx_setKey:identifier.value_or(std::string()) forRow:row];
+
+		[gui setColor:[self colorForManifest:manifest] forRow:row];
+
 		if (row == [gui selectedRow])
 		{
-			[gui setText:oo::NSStringOrNil([self installStatusForManifest:oo::PListFrom(manifest)]) forRow:OXZ_GUI_ROW_LISTSTATUS];
+			[gui cxx_setText:[self installStatusForManifest:manifest].value_or(std::string()) forRow:OXZ_GUI_ROW_LISTSTATUS];
 			[gui setColor:[OOColor greenColor] forRow:OXZ_GUI_ROW_LISTSTATUS];
 
-			[gui addLongText:oo::PListView([oo::PListView(manifest).get<NSString *>(kOOManifestDescription) componentsSeparatedByString:@"\n"]).at<NSString *>(0) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:FirstDescriptionLine(manifest) startingAtRow:OXZ_GUI_ROW_LISTDESC align:GUI_ALIGN_LEFT];
 			
 			oxzSelected = YES;
 		}
@@ -2239,7 +2291,7 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (NSString *) extractOXZ:(NSUInteger)item
+- (std::string) extractOXZ:(NSUInteger)item
 {
 	NSFileManager *fmgr 			= [NSFileManager defaultManager];
 	NSMutableString *extractionLog	= [[NSMutableString alloc] init];
@@ -2257,7 +2309,7 @@ static OOOXZManager *sSingleton = nil;
 	{
 		OOLog(kOOOXZErrorLog,@"OXZ %@ could not be found",oxzfile);
 		[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-no-original")];
-		return [extractionLog autorelease];
+		return oo::StdString([extractionLog autorelease]);
 	}
 	const char* zipname = [oxzfile UTF8String];
 	unzFile uf = NULL;
@@ -2266,7 +2318,7 @@ static OOOXZManager *sSingleton = nil;
 	{
 		OOLog(kOOOXZErrorLog,@"Could not open .oxz at %@ as zip file",path);
 		[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-bad-original")];
-		return [extractionLog autorelease];
+		return oo::StdString([extractionLog autorelease]);
 	}	
 
 	if ([fmgr fileExistsAtPath:path])
@@ -2274,14 +2326,14 @@ static OOOXZManager *sSingleton = nil;
 		OOLog(kOOOXZErrorLog,@"Path %@ already exists",path);
 		[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-main-exists")];
 		unzClose(uf);
-		return [extractionLog autorelease];
+		return oo::StdString([extractionLog autorelease]);
 	}
 	if (![fmgr oo_createDirectoryAtPath:path attributes:nil])
 	{
 		OOLog(kOOOXZErrorLog,@"Path %@ could not be created",path);
 		[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-main-unmakeable")];
 		unzClose(uf);
-		return [extractionLog autorelease];
+		return oo::StdString([extractionLog autorelease]);
 	}
 	[extractionLog appendString:DESC(@"oolite-oxzmanager-extract-log-main-created")];
 	NSUInteger counter = 0;
@@ -2368,7 +2420,7 @@ static OOOXZManager *sSingleton = nil;
 		[extractionLog appendFormat:DESC(@"oolite-oxzmanager-extract-log-extracted-to-@"),path];
 	}
 
-	return [extractionLog autorelease];
+	return oo::StdString([extractionLog autorelease]);
 }
 
 
@@ -2392,7 +2444,7 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
+- (void)connection:(NSURLConnection *)connection didReceiveData:(id)data
 {
 	OOLog(kOOOXZDebugLog,@"Downloaded %zu bytes",[data length]);
 	[_fileWriter seekToEndOfFile];
