@@ -31,8 +31,9 @@ subdir('meson')
 subdir('oofnd')
 # Game sources include oofnd headers, which are C++20 (ADR-0011): Objective-C++ builds as gnu++20.
 oolite_dependencies += [oofnd_dep]
-# The Foundation-free Objective-C floor (ADR-0029): OOObject/OOConstantString/OOException compiled
-# into the game, WITHOUT oofnd_objc_args (the game keeps NSConstantString until the flip bead).
+# The Foundation-free ObjC floor (ADR-0029, bead oo-3rb.2): OOObject/OOConstantString are linked so
+# classes can reroot on OOObject. oofnd_objc_args and OOObjCInstallFloor() are NOT used until the
+# constant-string flip (oo-3rb.4): gnustep-base still owns @"..." and the forwarding hooks.
 oolite_dependencies += [oofnd_objc_dep]
 oolite_override_options += ['cpp_std=gnu++20']   # meson's cpp_std also governs Objective-C++
 subdir('Core')

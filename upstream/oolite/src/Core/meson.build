@@ -62,6 +62,7 @@ oolite_sources += files(
     'OOMouseInteractionMode.mm',
     'OOMusicController.mm',
     'OOOXZManager.mm',
+    'OOObjectGNUstepBridge.mm',
     'OOOpenALController.mm',
     'OOOpenGL.mm',
     'OOOpenGLExtensionManager.mm',
