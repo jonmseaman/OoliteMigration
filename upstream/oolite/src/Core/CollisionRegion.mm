@@ -33,6 +33,9 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "OODebugFlags.h"
 #include "oofnd/objc/OOException.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 static BOOL positionIsWithinRegion(HPVector position, CollisionRegion *region);
@@ -91,22 +94,24 @@ static int crid_counter = 1;
 - (void) dealloc
 {
 	free(entity_array);
-	DESTROY(subregions);
+	subregions.clear();
 	
 	[super dealloc];
 }
 
 
-- (NSString *) description
+// OOObject's -description wraps this as "<CollisionRegion 0x...>{ID: ...}", which is what this
+// class's own -description printed.
+- (id) descriptionComponents
 {
-	return [NSString stringWithFormat:@"<%@ %p>{ID: %d, %zu subregions, %u ents}", [self class], self, crid, [subregions count], n_entities];
+	return oo::NSStringFrom(oo::str::format("ID: %d, %zu subregions, %u ents", crid, subregions.size(), n_entities));
 }
 
 
 - (void) clearSubregions
 {
-	[subregions makeObjectsPerformSelector:@selector(clearSubregions)];
-	[subregions removeAllObjects];
+	for (const auto &sub : subregions)  [sub.get() clearSubregions];
+	subregions.clear();
 }
 
 
@@ -114,9 +119,9 @@ static int crid_counter = 1;
 {
 	// check if this can be fitted within any of the subregions
 	//
-	CollisionRegion *sub = nil;
-	foreach (sub, subregions)
+	for (const auto &subRef : subregions)
 	{
+		CollisionRegion *sub = subRef.get();
 		if (sphereIsWithinRegion(pos, rad, sub))
 		{
 			// if it fits, put it in!
@@ -131,10 +136,8 @@ static int crid_counter = 1;
 	}
 	// no subregion fit - move on...
 	//
-	sub = [[CollisionRegion alloc] initAtLocation:pos withRadius:rad withinRegion:self];
-	if (subregions == nil)  subregions = [[NSMutableArray alloc] initWithCapacity:32];
-	[subregions addObject:sub];
-	[sub release];
+	if (subregions.empty())  subregions.reserve(32);
+	subregions.push_back(oo::adoptObjC([[CollisionRegion alloc] initAtLocation:pos withRadius:rad withinRegion:self]));
 }
 
 
@@ -201,7 +204,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 //
 - (void) clearEntityList
 {
-	[subregions makeObjectsPerformSelector:@selector(clearEntityList)];
+	for (const auto &sub : subregions)  [sub.get() clearEntityList];
 	n_entities = 0;
 	isPlayerInRegion = NO;
 }
@@ -233,10 +236,9 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 	HPVector position = ent->position;
 	
 	// check subregions
-	CollisionRegion *sub = nil;
-	foreach (sub, subregions)
+	for (const auto &sub : subregions)
 	{
-		if (positionIsWithinBorders(position, sub) && [sub checkEntity:ent])
+		if (positionIsWithinBorders(position, sub.get()) && [sub.get() checkEntity:ent])
 		{
 			return YES;
 		}
@@ -256,7 +258,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 - (void) findCollisions
 {
 	// test for collisions in each subregion
-	[subregions makeObjectsPerformSelector:@selector(findCollisions)];
+	for (const auto &sub : subregions)  [sub.get() findCollisions];
 	
 	// reject trivial cases
 	if (n_entities < 2)  return;
@@ -630,7 +632,7 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 	}
 	
 	// test for shadows in each subregion
-	[subregions makeObjectsPerformSelector:@selector(findShadowedEntities)];
+	for (const auto &sub : subregions)  [sub.get() findShadowedEntities];
 	
 	// test each entity in this region against the others
 	for (i = 0; i < n_entities; i++)
@@ -718,21 +720,20 @@ static inline BOOL testEntityOccludedByEntity(Entity *e1, Entity *e2, OOSunEntit
 }
 
 
-- (NSString *) collisionDescription
+- (id) collisionDescription	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"p%u - c%u", checks_this_tick, checks_within_range];
+	return oo::NSStringFrom(oo::str::format("p%u - c%u", checks_this_tick, checks_within_range));
 }
 
 
-- (NSString *) debugOut
+- (std::optional<std::string>) debugOut
 {
-	NSMutableString *result = [[NSMutableString alloc] initWithFormat:@"%d:", n_entities];
-	CollisionRegion *sub = nil;
-	foreach (sub, subregions)
+	std::string result = oo::str::format("%d:", n_entities);
+	for (const auto &sub : subregions)
 	{
-		[result appendString:[sub debugOut]];
+		if (const auto subOut = [sub.get() debugOut])  result += *subOut;
 	}
-	return [result autorelease];
+	return result;
 }
 
 @end
