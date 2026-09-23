@@ -37,5 +37,6 @@ changed* from the chain.
 | [0025](0025-phase1-aarch64-box-defers-to-phase5.md) | Phase 1's "builds for aarch64-apple-darwin" box is satisfied by engine-neutrality evidence; the arm64 build itself is Phase 5's exit gate | Proposed — default in effect |
 | [0030](0030-gates-carry-jon-owned-items-forward.md) | A phase review ignores `human`-labelled (Jon-owned) beads and the epic; the gate marks each box checked or carried, so later phases never wait on Jon | Proposed — default in effect |
 | [0033](0033-frame-loop-deadlines-and-the-run-loop-pump.md) | The game tick is a steady-clock deadline advanced exactly as GNUstep advanced its timer; one frame loop fires deadlines then pumps the run loop once per pass until its last clients (debug console streams, OXZ downloads, `performSelector:afterDelay:`) leave; narrows oo-3rb.8's acceptance | Proposed — default in effect |
+| [0034](0034-oofnd-strings.md) | `oo::str`: GNUstep 1.31.1's string answers (case tables, composed sequences, path extensions, libiconv transliteration to the Windows code pages) over UTF-8 `std::string`, pinned by captured digests; adopted per call through an exact, nil-preserving `NSString` bridge; `OOStringExpander`'s engine is a follow-up conversion | Proposed — default in effect |
 
 Template: Status · Date · Context · Decision · Consequences · History.
