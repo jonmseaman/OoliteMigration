@@ -396,6 +396,7 @@ it. oo-qps cannot compile any of them.
 | Bridge | Made by | Deleted by |
 |---|---|---|
 | `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | see the bead with title "Delete OOColor+FoundationBridge" |
+| `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
