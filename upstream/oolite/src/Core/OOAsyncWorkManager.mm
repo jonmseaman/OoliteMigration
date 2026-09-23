@@ -214,7 +214,7 @@ static void InitAsyncWorkManager(void)
 }
 
 
-+ (id) allocWithZone:(NSZone *)inZone
++ (id) allocWithZone:(OOZone *)inZone
 {
 	if (sSingleton == nil)
 	{

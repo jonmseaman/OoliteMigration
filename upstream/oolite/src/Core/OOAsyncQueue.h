@@ -31,9 +31,10 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 
 
-@interface OOAsyncQueue: NSObject
+@interface OOAsyncQueue: OOObject
 {
 @private
 	NSConditionLock				*_lock;
