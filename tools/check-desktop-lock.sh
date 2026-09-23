@@ -38,6 +38,23 @@
 #                                going through tools/desktop_lock.py: that tier must keep working
 #                                with no bash (see its _lock_reclaim_stale fallback).
 #
+#   tests/golden/dump/run_dump.py  the golden STAGES' dump runner (tier-b/tier-c goldens, blessing):
+#                                one game per scenario, launched only by the golden tier, with the
+#                                same no-foreground profile its docstring argues. It is part of the
+#                                golden harness CLAUDE.md exempts, so it is exempt with it.
+#
+# MEMBERS OF AN EXEMPT HARNESS (bead oo-hub0, proposed ADR-0046). Each golden scenario driver
+# (tests/golden/combat.py, launch_dock.py, ...) is its own main program, but it launches its game
+# THROUGH golden_run.py - golden_run.reserve_port / stage_app / the private debugConfig.plist - and
+# is only ever run as one member of that harness's fan-out. Its launch is the harness's launch, so
+# it inherits the harness's exemption instead of being listed. Membership is DERIVED, never listed
+# (tools/launcher_scan.py --members-of): a spawner is a member of an exempt harness H only if it
+# lives in H's own directory tree AND its code imports H's module (an ast import, which prose in a
+# comment or docstring cannot fake). A spawner in tools/ that imports golden_run, or one in
+# tests/golden/ that does not, is still an unclassified launcher and fails check 2. A member must
+# not take the lock itself (check 3): it would serialise or deadlock the fan-out exactly as the
+# harness would.
+#
 # Surveyed and found to need nothing:
 #
 #   upstream/oolite/tests/run_test_fn.sh    launches nothing itself; it shells out to
@@ -67,13 +84,22 @@ no()   { printf '    FAIL  %s\n' "$*"; fail=1; }
 LOCKED_LAUNCHERS="
 tools/js_api_snapshot.py
 tools/check-splash-off.py
+tools/oo-qwk5-probe.py
+tests/golden/motion/motion_probe.py
+tests/golden/motion/value_probe.py
 upstream/oolite/tests/launch_snapshot.py
 upstream/oolite/tests/component/conftest.py
 upstream/oolite/tests/gui/conftest.py
 "
 EXEMPT_LAUNCHERS="
 tests/golden/golden_run.py
+tests/golden/dump/run_dump.py
 upstream/oolite/tests/component/console.py
+"
+# Exempt launchers that are HARNESSES: every spawner that is one of their members (see the header)
+# inherits the exemption. Each must also be in EXEMPT_LAUNCHERS.
+EXEMPT_HARNESSES="
+tests/golden/golden_run.py
 "
 
 # --- 1. every locked launcher references the desktop lock --------------------------------
@@ -124,10 +150,21 @@ step "2/4 no unclassified launcher"
 known="$(printf '%s %s' "$LOCKED_LAUNCHERS" "$EXEMPT_LAUNCHERS" | tr '\n' ' ')"
 spawners=$(python3 tools/launcher_scan.py tools tests upstream/oolite/tests) || fail=1
 spawners=$(printf '%s' "$spawners" | tr -d '\r')
+members=""
+for h in $EXEMPT_HARNESSES; do
+	case " $(printf '%s' "$EXEMPT_LAUNCHERS" | tr '\n' ' ') " in
+		*" $h "*) ;;
+		*) no "$h is listed as an exempt harness but is not in the exempt list" ;;
+	esac
+	got=$(python3 tools/launcher_scan.py --members-of "$h" $spawners) || fail=1
+	got=$(printf '%s' "$got" | tr -d '\r')
+	[ -n "$got" ] && ok "$(printf '%s\n' "$got" | wc -l | tr -d ' ') member(s) of $h inherit its exemption (they launch through it)"
+	members="$members $got"
+done
 for f in $spawners; do
-	case " $known " in
+	case " $known $(printf '%s' "$members" | tr '\n' ' ') " in
 		*" $f "*) ;;
-		*) no "$f spawns the game but is in neither the locked nor the exempt list" ;;
+		*) no "$f spawns the game but is in neither the locked nor the exempt list, nor a member of an exempt harness" ;;
 	esac
 done
 # The detector must still SEE the launchers we already classified. If a refactor makes a known
@@ -150,6 +187,11 @@ done
 # a lock (and deadlock the fleet) or copy the omission into a tool that does need one.
 
 step "3/4 each exemption is justified in its own file"
+for f in $members; do
+	if grep -q 'desktop_lock(' "$f"; then
+		no "$f is a member of an exempt harness but takes the desktop lock; it would serialise or deadlock the fan-out"
+	fi
+done
 for f in $EXEMPT_LAUNCHERS; do
 	[ -f "$f" ] || { no "$f is missing"; continue; }
 	if grep -q 'desktop_lock(' "$f"; then
