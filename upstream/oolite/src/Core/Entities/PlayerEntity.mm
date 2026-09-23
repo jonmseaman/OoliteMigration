@@ -7345,7 +7345,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	// set the new market seed now!
 	// reseeding the RNG should be completely unnecessary here
-//	ranrot_srand((uint32_t)[[NSDate date] timeIntervalSince1970]);	// seed randomiser by time
+//	ranrot_srand((uint32_t)oo::date::timeIntervalSince1970());	// seed randomiser by time
 	market_rnd = ranrot_rand() & 255;						// random factor for market values is reset
 }
 
