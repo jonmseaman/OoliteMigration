@@ -49,6 +49,7 @@ MA 02110-1301, USA.
 #import "OOJoystickManager.h"
 #import "OOJavaScriptEngine.h"
 #import "OOStringExpander.h"
+#import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
 
@@ -965,7 +966,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		// Make new crosshairs object
 		points = [self crosshairDefinitionForWeaponType:weapon];
 		
-		_crosshairs = [[OOCrosshairs alloc] initWithPoints:points
+		_crosshairs = [[OOCrosshairs alloc] initWithPoints:oo::PListFrom(points)
 													 scale:_crosshairScale
 													 color:_crosshairColor
 											  overallAlpha:useAlpha];
