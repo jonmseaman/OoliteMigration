@@ -199,6 +199,42 @@ NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
 	return [self cxx_dumpCargoItem:oo::OptionalString(preferred)];
 }
 
+
+// oo-3rb.237: crew, escorts, groups and escape pods
+
+- (NSEnumerator *) escortEnumerator
+{
+	return [oo::NSArrayFromObjects([self cxx_escorts]) objectEnumerator];
+}
+
+
+- (NSArray *) crew
+{
+	const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> members = [self cxx_crew];
+	return members.has_value() ? oo::NSArrayFromObjects(*members) : nil;	// nil: unpiloted (callers test it)
+}
+
+
+- (NSArray *) crewForScripting
+{
+	if (![self cxx_crew].has_value())  return nil;	// no crew (or a nil receiver): nil, as before
+	const std::vector<oo::PList> entries = [self cxx_crewForScripting];
+	return oo::ObjectFromPList(oo::PList(oo::PList::Array(entries.begin(), entries.end())));
+}
+
+
+- (void) setCrew:(NSArray *)crewArray
+{
+	if (crewArray == nil)  [self cxx_setCrew:std::nullopt];
+	else  [self cxx_setCrew:oo::ObjCRefsFrom<OOCharacter *>(crewArray)];
+}
+
+
+- (void) setSingleCrewWithRole:(NSString *)crewRole
+{
+	[self cxx_setSingleCrewWithRole:oo::StdString(crewRole)];
+}
+
 @end
 
 
