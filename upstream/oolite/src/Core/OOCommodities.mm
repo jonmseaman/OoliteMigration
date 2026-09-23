@@ -32,6 +32,67 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "PlayerEntity.h"
 #import "OOStringExpander.h"
+#import "OOFoundationBridge.h"
+
+
+namespace {
+
+// Moved from OOCommodities.h (bead oo-3rb.154): this file is their only user. (sort_order,
+// trumble_opinion, comment and short_comment are read only by OOCommodityMarket.mm, which spells
+// its own C++ keys, so their constants went rather than sit here unused.)
+// keys in trade-goods.plist
+static NSString * const kOOCommodityName			= @"name";
+static NSString * const kOOCommodityClasses			= @"classes";
+static NSString * const kOOCommodityContainer		= @"quantity_unit";
+static NSString * const kOOCommodityPeakExport		= @"peak_export";
+static NSString * const kOOCommodityPeakImport		= @"peak_import";
+static NSString * const kOOCommodityPriceAverage	= @"price_average";
+static NSString * const kOOCommodityPriceEconomic	= @"price_economic";
+static NSString * const kOOCommodityPriceRandom		= @"price_random";
+// next one cannot be set from file - named for compatibility
+static NSString * const kOOCommodityPriceCurrent	= @"price";
+static NSString * const kOOCommodityQuantityAverage	= @"quantity_average";
+static NSString * const kOOCommodityQuantityEconomic= @"quantity_economic";
+static NSString * const kOOCommodityQuantityRandom	= @"quantity_random";
+// next one cannot be set from file - named for compatibility
+static NSString * const kOOCommodityQuantityCurrent	= @"quantity";
+static NSString * const kOOCommodityLegalityExport	= @"legality_export";
+static NSString * const kOOCommodityLegalityImport	= @"legality_import";
+static NSString * const kOOCommodityCapacity		= @"capacity";
+static NSString * const kOOCommodityScript			= @"market_script";
+// next one cannot be set from file - named for compatibility
+static NSString * const kOOCommodityKey				= @"key";
+
+
+// keys in secondary market definitions
+static NSString * const kOOCommodityMarketType					= @"type";
+static NSString * const kOOCommodityMarketName					= @"name";
+static NSString * const kOOCommodityMarketPriceAdder			= @"price_adder";
+static NSString * const kOOCommodityMarketPriceMultiplier		= @"price_multiplier";
+static NSString * const kOOCommodityMarketPriceRandomiser		= @"price_randomiser";
+static NSString * const kOOCommodityMarketQuantityAdder			= @"quantity_adder";
+static NSString * const kOOCommodityMarketQuantityMultiplier	= @"quantity_multiplier";
+static NSString * const kOOCommodityMarketQuantityRandomiser	= @"quantity_randomiser";
+static NSString * const kOOCommodityMarketLegalityExport		= @"legality_export";
+static NSString * const kOOCommodityMarketLegalityImport		= @"legality_import";
+static NSString * const kOOCommodityMarketCapacity				= @"capacity";
+
+// values for "type" in the plist
+static NSString * const kOOCommodityMarketTypeValueDefault		= @"default";
+static NSString * const kOOCommodityMarketTypeValueClass		= @"class";
+static NSString * const kOOCommodityMarketTypeValueGood			= @"good";
+
+
+// -[NSDictionary oo_stringForKey:] on a commodity's info: a string, or a number's -stringValue;
+// nullopt (nil) otherwise.
+std::optional<std::string> StringFor(const oo::PList &info, const std::string &key)
+{
+	const oo::PList *value = info.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return info.get<std::string>(key);
+}
+
+} // namespace
 
 @interface OOCommodities (OOPrivate)
 
@@ -54,47 +115,47 @@ MA 02110-1301, USA.
 @implementation OOCommodities
 
 /* Older save games store some commodity information by its old index. */
-+ (OOCommodityType) legacyCommodityType:(NSUInteger)i
++ (std::optional<std::string>) cxx_legacyCommodityType:(NSUInteger)i
 {
 	switch (i)
 	{
 	case 0:
-		return @"food";
+		return "food";
 	case 1:
-		return @"textiles";
+		return "textiles";
 	case 2:
-		return @"radioactives";
+		return "radioactives";
 	case 3:
-		return @"slaves";
+		return "slaves";
 	case 4:
-		return @"liquor_wines";
+		return "liquor_wines";
 	case 5:
-		return @"luxuries";
+		return "luxuries";
 	case 6:
-		return @"narcotics";
+		return "narcotics";
 	case 7:
-		return @"computers";
+		return "computers";
 	case 8:
-		return @"machinery";
+		return "machinery";
 	case 9:
-		return @"alloys";
+		return "alloys";
 	case 10:
-		return @"firearms";
+		return "firearms";
 	case 11:
-		return @"furs";
+		return "furs";
 	case 12:
-		return @"minerals";
+		return "minerals";
 	case 13:
-		return @"gold";
+		return "gold";
 	case 14:
-		return @"platinum";
+		return "platinum";
 	case 15:
-		return @"gem_stones";
+		return "gem_stones";
 	case 16:
-		return @"alien_items";
+		return "alien_items";
 	}
 	// shouldn't happen
-	return @"food";
+	return "food";
 }
 
 
@@ -104,21 +165,11 @@ MA 02110-1301, USA.
 	self = [super init];
 	if (self == nil)  return nil;
 
-	NSDictionary *rawCommodityLists = [ResourceManager dictionaryFromFilesNamed:@"trade-goods.plist" inFolder:@"Config" mergeMode:MERGE_SMART cache:YES];
-/* // TODO: validation of inputs
-	// TODO: convert 't', 'kg', 'g' in quantity_unit to 0, 1, 2
-	// for now it needs them entering as the ints
-	NSMutableDictionary *validatedCommodityLists = [NSMutableDictionary dictionaryWithCapacity:[rawCommodityLists count]];
-	NSString *commodityName = nil;
-	foreachkey (commodityName, rawCommodityLists)
-	{
-		// validate
-	}
-
-//	_commodityLists = [[NSDictionary dictionaryWithDictionary:validatedCommodityLists] retain];
-*/
-
-	_commodityLists = [[NSDictionary dictionaryWithDictionary:rawCommodityLists] retain];
+	// ResourceManager's dictionary API is not migrated: the merged table arrives through oo::PListFrom.
+	// TODO: validation of inputs; convert 't', 'kg', 'g' in quantity_unit to 0, 1, 2 (for now it
+	// needs them entering as the ints).
+	const oo::PList rawCommodityLists = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"trade-goods.plist" inFolder:@"Config" mergeMode:MERGE_SMART cache:YES]);
+	if (const oo::PList::Dict *entries = rawCommodityLists.getIf<oo::PList::Dict>())  _commodityLists = *entries;
 
 	return self;
 }
@@ -126,9 +177,6 @@ MA 02110-1301, USA.
 
 - (void) dealloc
 {
-	DESTROY(_commodityLists);
-
-
 	[super dealloc];
 }
 
@@ -137,11 +185,11 @@ MA 02110-1301, USA.
 {
 	OOCommodityMarket *market = [[OOCommodityMarket alloc] init];
 
-	NSString *commodity = nil;
 	NSMutableDictionary *good = nil;
-	foreachkey (commodity, _commodityLists)
+	for (const auto &[key, info] : _commodityLists)	// key order (was hash order)
 	{
-		good = [NSMutableDictionary dictionaryWithDictionary:oo::PListView(_commodityLists).get<NSDictionary *>(commodity)];
+		NSString *commodity = oo::NSStringFrom(key);
+		good = [NSMutableDictionary dictionaryWithDictionary:oo::ObjectFromPList(info)];
 		[good oo_setUnsignedInteger:0 forKey:kOOCommodityPriceCurrent];
 		[good oo_setUnsignedInteger:0 forKey:kOOCommodityQuantityCurrent];
 		/* The actual capacity of the player ship is a total, not
@@ -159,11 +207,11 @@ MA 02110-1301, USA.
 {
 	OOCommodityMarket *market = [[OOCommodityMarket alloc] init];
 
-	NSString *commodity = nil;
 	NSMutableDictionary *good = nil;
-	foreachkey (commodity, _commodityLists)
+	for (const auto &[key, info] : _commodityLists)	// key order (was hash order)
 	{
-		good = [NSMutableDictionary dictionaryWithDictionary:oo::PListView(_commodityLists).get<NSDictionary *>(commodity)];
+		NSString *commodity = oo::NSStringFrom(key);
+		good = [NSMutableDictionary dictionaryWithDictionary:oo::ObjectFromPList(info)];
 		[good oo_setUnsignedInteger:0 forKey:kOOCommodityPriceCurrent];
 		[good oo_setUnsignedInteger:0 forKey:kOOCommodityQuantityCurrent];
 		[good oo_setUnsignedInteger:0 forKey:kOOCommodityCapacity];
@@ -265,17 +313,16 @@ MA 02110-1301, USA.
 }
 
 
-- (OOCommodityMarket *) generateMarketForSystemWithEconomy:(OOEconomyID)economy andScript:(NSString *)scriptName
+- (OOCommodityMarket *) cxx_generateMarketForSystemWithEconomy:(OOEconomyID)economy andScript:(const std::optional<std::string> &)scriptName
 {
-	OOScript *script = [PLAYER commodityScriptNamed:scriptName];
+	OOScript *script = [PLAYER commodityScriptNamed:oo::NSStringOrNil(scriptName)];
 
 	OOCommodityMarket *market = [[OOCommodityMarket alloc] init];
 
-	NSString *commodity = nil;
-	NSDictionary *good = nil;
-	foreachkey (commodity, _commodityLists)
+	for (const auto &[key, info] : _commodityLists)	// key order (was hash order)
 	{
-		good = oo::PListView(_commodityLists).get<NSDictionary *>(commodity);
+		NSString *commodity = oo::NSStringFrom(key);
+		NSDictionary *good = oo::ObjectFromPList(info);
 		OOCargoQuantity q = [self generateQuantityForGood:good inEconomy:economy];
 		// main system market limited to 127 units of each item
 		OOCargoQuantity cap = oo::PListView(good).get<unsigned int>(kOOCommodityCapacity, MAIN_SYSTEM_MARKET_LIMIT);
@@ -311,11 +358,10 @@ MA 02110-1301, USA.
 	OOCargoQuantity capacity = [station marketCapacity];
 	OOCommodityMarket *mainMarket = [UNIVERSE commodityMarket];
 
-	NSString *commodity = nil;
-	NSDictionary *good = nil;
-	foreachkey (commodity, _commodityLists)
+	for (const auto &[key, info] : _commodityLists)	// key order (was hash order)
 	{
-		good = oo::PListView(_commodityLists).get<NSDictionary *>(commodity);
+		NSString *commodity = oo::NSStringFrom(key);
+		NSDictionary *good = oo::ObjectFromPList(info);
 		OOCargoQuantity baseCapacity = oo::PListView(good).get<unsigned int>(kOOCommodityCapacity, MAIN_SYSTEM_MARKET_LIMIT);
 		
 		// important - ensure baseCapacity cannot be zero
@@ -363,52 +409,58 @@ MA 02110-1301, USA.
 
 - (NSUInteger) count
 {
-	return [_commodityLists count];
+	return _commodityLists.size();
 }
 
 
-- (NSArray *) goods
+- (id) goods
 {
-	return [_commodityLists allKeys];
+	// key order (was -allKeys, hash order)
+	std::vector<std::string> keys;
+	for (const auto &entry : _commodityLists)  keys.push_back(entry.first);
+	return oo::NSArrayFromStrings(keys);
 }
 
 
-- (BOOL) goodDefined:(NSString *)key
+- (BOOL) cxx_goodDefined:(const std::string &)key
 {
-	return (oo::PListView(_commodityLists).get<NSDictionary *>(key) != nil);
+	const auto entry = _commodityLists.find(key);
+	return entry != _commodityLists.end() && entry->second.isDict();
 }
 
-- (NSString *) goodNamed:(NSString *)name
+- (std::optional<std::string>) cxx_goodNamed:(const std::string &)name
 {
-	NSString *commodity = nil;
-	foreachkey (commodity, _commodityLists)
+	for (const auto &[key, info] : _commodityLists)	// key order (was hash order): the first match wins
 	{
-		NSDictionary *good = oo::PListView(_commodityLists).get<NSDictionary *>(commodity);
-		if ([OOExpand(oo::PListView(good).get<NSString *>(kOOCommodityName)) isEqualToString:name]) {
-			return commodity;
+		// OOExpand (OOStringExpander) is not migrated: the name crosses at the call.
+		const std::optional<std::string> expanded = oo::OptionalString(OOExpand(oo::NSStringOrNil(StringFor(info, oo::StdString(kOOCommodityName)))));
+		if (expanded == name) {
+			return key;
 		}
 	}
-	return nil;
+	return std::nullopt;
 }
 
 
 
-- (NSString *) getRandomCommodity
+- (id) getRandomCommodity
 {
-	NSArray *keys = [_commodityLists allKeys];
-	NSUInteger idx = Ranrot() % [keys count];
-	return oo::PListView(keys).at<NSString *>(idx);
+	// Ranrot() % count indexes the keys in key order (was -allKeys, hash order).
+	NSUInteger idx = Ranrot() % _commodityLists.size();
+	auto entry = _commodityLists.begin();
+	std::advance(entry, idx);
+	return oo::NSStringFrom(entry->first);
 }
 
 
-- (OOMassUnit) massUnitForGood:(NSString *)good
+- (OOMassUnit) massUnitForGood:(id)good
 {
-	NSDictionary *definition = oo::PListView(_commodityLists).get<NSDictionary *>(good);
-	if (definition == nil)
+	const auto entry = _commodityLists.find(oo::StdString(good));
+	if (entry == _commodityLists.end() || !entry->second.isDict())
 	{
 		return UNITS_TONS;
 	}
-	return OOMassUnitFromNumber(oo::PListView(definition).get<unsigned int>(kOOCommodityContainer));
+	return OOMassUnitFromNumber(entry->second.get<unsigned int>(oo::StdString(kOOCommodityContainer)));
 }
 
 
@@ -458,13 +510,17 @@ MA 02110-1301, USA.
 }
 
 
-- (OOCreditsQuantity) samplePriceForCommodity:(OOCommodityType)commodity inEconomy:(OOEconomyID)economy withScript:(NSString *)scriptName inSystem:(OOSystemID)system
+- (OOCreditsQuantity) cxx_samplePriceForCommodity:(const std::string &)commodityKey inEconomy:(OOEconomyID)economy withScript:(const std::optional<std::string> &)scriptNameValue inSystem:(OOSystemID)system
 {
-	NSDictionary *good = oo::PListView(_commodityLists).get<NSDictionary *>(commodity);
-	if (good == nil)
+	const auto entry = _commodityLists.find(commodityKey);
+	if (entry == _commodityLists.end() || !entry->second.isDict())
 	{
 		return 0;
 	}
+	// The pricing below is Foundation until chunk 2: key, info and script name cross here.
+	NSString *commodity = oo::NSStringFrom(commodityKey);
+	NSString *scriptName = oo::NSStringOrNil(scriptNameValue);
+	NSDictionary *good = oo::ObjectFromPList(entry->second);
 	OOCreditsQuantity p = [self generatePriceForGood:good inEconomy:economy];
 
 	good = [self createDefinitionFrom:good price:p andQuantity:0 forKey:commodity atStation:nil inSystem:system];
