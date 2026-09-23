@@ -24,6 +24,23 @@ foreach t : oofnd_tests
     test(t, exe, suite: 'oofnd', timeout: 60)
 endforeach
 
+# The PList component (value type, old-style and XML parsers, writers) is also its own suite:
+# meson test -C build/meson_<type> --suite oofnd-plist
+oofnd_plist_tests = [
+    'test_plist',
+]
+
+foreach t : oofnd_plist_tests
+    exe = executable(
+        'oofnd_' + t,
+        t + '.cpp',
+        dependencies: oofnd_dep,
+        override_options: oofnd_override_options,
+        install: false,
+    )
+    test(t, exe, suite: ['oofnd', 'oofnd-plist'], timeout: 60)
+endforeach
+
 # Objective-C++ tests of the Foundation-free floor (oofnd/objc, proposed ADR-0029). They link
 # libobjc2 and nothing from gnustep-base; tools/check-oofnd-objc.sh proves that on the import
 # table. -fuse-ld=lld comes from the native file (clang.ini): GNU ld cannot link the gnustep-2 ABI.
