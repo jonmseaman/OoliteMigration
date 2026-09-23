@@ -152,7 +152,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void * context);
 /* TODO: route calculation is really slow - find a way to safely enable this */
 #undef CACHE_ROUTE_FROM_SYSTEM_RESULTS
 
-@interface RouteElement: NSObject
+@interface RouteElement: OOObject
 {
 @private
 	OOSystemID _location, _parent;
@@ -6940,7 +6940,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	NSMutableDictionary *msgDict = [NSMutableDictionary dictionaryWithCapacity:2];
 	[msgDict setObject:text forKey:@"message"];
 	[msgDict setObject:[NSNumber numberWithDouble:count] forKey:@"duration"];
-	[self performSelector:@selector(addDelayedMessage:) withObject:msgDict afterDelay:delay];
+	OOScheduleDeferredCall(self, @selector(addDelayedMessage:), msgDict, delay);
 }
 
 

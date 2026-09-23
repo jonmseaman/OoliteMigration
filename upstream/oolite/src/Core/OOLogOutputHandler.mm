@@ -91,7 +91,7 @@ static BOOL DirectoryExistCreatingIfNecessary(NSString *path);
 #define kFlushInterval	2.0		// Lower bound on interval between explicit log file flushes.
 
 
-@interface OOAsyncLogger: NSObject
+@interface OOAsyncLogger: OOObject
 {
 @private
 	OOAsyncQueue		*messageQueue;

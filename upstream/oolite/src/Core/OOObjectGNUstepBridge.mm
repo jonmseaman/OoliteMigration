@@ -15,16 +15,12 @@ that removes each Foundation family replaces it:
     +instanceMethodSignatureForSelector:  called with an OOObject receiver; the NSInvocation
                                           follow-ups of oo-3rb.15 (OOWeakReference's proxy,
                                           OOOXZManager's filter) replace them
-    -performSelector:...afterDelay:       again gnustep-base's own implementation (a timed performer
-                                          on the current run loop, retaining receiver and argument);
-                                          replaced when the run loop goes (NSTimer/NSRunLoop)
 
 -description is not here: in the game every NSObject's -description is OOCocoa.mm's
 NSObject (OODescriptionComponents), and OOObject (OODescriptionComponents) is its twin.
 
-Borrowing NSObject's IMPs keeps the behaviour identical: gnustep-base implements the three with
-runtime functions on object_getClass(self) (and, for the timed perform, -retain/-release/
--performSelector:withObject:, which OOObject has), never with NSObject's instance layout.
+Borrowing NSObject's IMPs keeps the behaviour identical: gnustep-base implements the two with
+runtime functions on object_getClass(self), never with NSObject's instance layout.
 
 */
 
@@ -62,13 +58,6 @@ static IMP NSObjectClassIMP(SEL selector)
 {
 	typedef NSMethodSignature *(*SignatureIMP)(id, SEL, SEL);
 	return ((SignatureIMP)NSObjectInstanceIMP(_cmd))(self, _cmd, selector);
-}
-
-
-- (void) performSelector:(SEL)selector withObject:(id)argument afterDelay:(NSTimeInterval)delay
-{
-	typedef void (*PerformAfterDelayIMP)(id, SEL, SEL, id, NSTimeInterval);
-	((PerformAfterDelayIMP)NSObjectInstanceIMP(_cmd))(self, _cmd, selector, argument, delay);
 }
 
 @end
