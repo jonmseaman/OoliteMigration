@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #import "NSFileManagerOOExtensions.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 
 @class OOSound, OOMusic, OOSystemDescriptionManager;
 
@@ -73,41 +74,43 @@ typedef enum
 + (void) cxx_setUseAddOns:(const std::string &)useAddOns;
 + (void) cxx_addExternalPath:(const std::string &)fileName;
 
-// get manifest data for identifier
-+ (NSDictionary *)manifestForIdentifier:(NSString *)identifier;
-// compatibility checks
-+ (BOOL) checkVersionCompatibility:(NSDictionary *)manifest forOXP:(NSString *)title;
-+ (BOOL) manifestHasConflicts:(NSDictionary *)manifest logErrors:(BOOL)logErrors;
-+ (BOOL) manifestHasMissingDependencies:(NSDictionary *)manifest logErrors:(BOOL)logErrors;
-+ (BOOL) manifest:(NSDictionary *)manifest HasUnmetDependency:(NSDictionary *)required logErrors:(BOOL)logErrors;
-+ (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version;
+// get manifest data for identifier (a null PList when there is none)
++ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier;
+// compatibility checks (a manifest or relation is a Dict; title is nullopt where nil was passed)
++ (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title;
++ (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors;
++ (BOOL) cxx_manifestHasMissingDependencies:(const oo::PList &)manifest logErrors:(BOOL)logErrors;
++ (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors;
++ (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version;
 
 
 
-+ (void)handleEquipmentListMerging: (NSMutableArray *)arrayToProcess forLookupIndex:(unsigned)lookupIndex;
-+ (void)handleEquipmentOverrides: (NSMutableArray *)arrayToProcess;
-+ (void)handleStarNebulaListMerging: (NSMutableArray *)arrayToProcess;
+// In-out: an array of arrays (the merged files), edited in place.
++ (void)handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex;
++ (void)handleEquipmentOverrides: (oo::PList &)arrayToProcess;
++ (void)handleStarNebulaListMerging: (oo::PList &)arrayToProcess;
 
 + (std::optional<std::string>) cxx_errors;	// Errors which occurred during path scanning - essentially a list of OXPs whose requires.plist is bad. nullopt when there are none.
 
 + (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName;
 + (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;
 
-+ (BOOL) corePlist:(NSString *)fileName excludedAt:(NSString *)path;
++ (BOOL) cxx_corePlist:(const std::string &)fileName excludedAt:(const std::string &)path;
 
-+ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
-								  inFolder:(NSString *)folderName
+// A null PList when no file was found; folderName nullopt where nil was passed.
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
 								  andMerge:(BOOL) mergeFiles;
-+ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
-								  inFolder:(NSString *)folderName
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
 								 mergeMode:(OOResourceMergeMode)mergeMode
 									 cache:(BOOL)useCache;
 
-+ (NSArray *)arrayFromFilesNamed:(NSString *)fileName
-						inFolder:(NSString *)folderName
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName
+						inFolder:(const std::optional<std::string> &)folderName
 						andMerge:(BOOL) mergeFiles;
-+ (NSArray *)arrayFromFilesNamed:(NSString *)fileName
-						inFolder:(NSString *)folderName
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName
+						inFolder:(const std::optional<std::string> &)folderName
 						andMerge:(BOOL) mergeFiles
 						   cache:(BOOL)useCache;
 
@@ -123,8 +126,9 @@ typedef enum
 + (OOSound *)ooSoundNamed:(NSString *)fileName inFolder:(NSString *)folderName;
 + (OOMusic *)ooMusicNamed:(NSString *)fileName inFolder:(NSString *)folderName;
 
-+ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName;
-+ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;
+// nullopt when no file was found (was nil); folderName nullopt where nil was passed.
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache;
 
 + (NSDictionary *)loadScripts;
 

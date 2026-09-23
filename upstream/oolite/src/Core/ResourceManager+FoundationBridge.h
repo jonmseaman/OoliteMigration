@@ -58,6 +58,36 @@ MA 02110-1301, USA.
 + (NSString *)errors;			// -> +cxx_errors
 + (NSString *) diagnosticFileLocation;	// -> +cxx_diagnosticFileLocation
 
+// oo-3rb.99: OXP manifests and compatibility
++ (NSDictionary *)manifestForIdentifier:(NSString *)identifier;	// -> +cxx_manifestForIdentifier:
++ (BOOL) checkVersionCompatibility:(NSDictionary *)manifest forOXP:(NSString *)title;	// -> +cxx_checkVersionCompatibility:forOXP:
++ (BOOL) manifestHasConflicts:(NSDictionary *)manifest logErrors:(BOOL)logErrors;	// -> +cxx_manifestHasConflicts:logErrors:
++ (BOOL) manifestHasMissingDependencies:(NSDictionary *)manifest logErrors:(BOOL)logErrors;	// -> +cxx_manifestHasMissingDependencies:logErrors:
++ (BOOL) manifest:(NSDictionary *)manifest HasUnmetDependency:(NSDictionary *)required logErrors:(BOOL)logErrors;	// -> +cxx_manifest:HasUnmetDependency:logErrors:
++ (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version;	// -> +cxx_matchVersions:withVersion:
+
+// oo-3rb.101: merged plist loading
++ (BOOL) corePlist:(NSString *)fileName excludedAt:(NSString *)path;	// -> +cxx_corePlist:excludedAt:
+
++ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
+								  inFolder:(NSString *)folderName
+								  andMerge:(BOOL) mergeFiles;	// -> +cxx_dictionaryFromFilesNamed:inFolder:andMerge:
++ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
+								  inFolder:(NSString *)folderName
+								 mergeMode:(OOResourceMergeMode)mergeMode
+									 cache:(BOOL)useCache;	// -> +cxx_dictionaryFromFilesNamed:inFolder:mergeMode:cache:
+
++ (NSArray *)arrayFromFilesNamed:(NSString *)fileName
+						inFolder:(NSString *)folderName
+						andMerge:(BOOL) mergeFiles;	// -> +cxx_arrayFromFilesNamed:inFolder:andMerge:
++ (NSArray *)arrayFromFilesNamed:(NSString *)fileName
+						inFolder:(NSString *)folderName
+						andMerge:(BOOL) mergeFiles
+						   cache:(BOOL)useCache;	// -> +cxx_arrayFromFilesNamed:inFolder:andMerge:cache:
+
++ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName;	// -> +cxx_stringFromFilesNamed:inFolder:
++ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;	// -> +cxx_stringFromFilesNamed:inFolder:cache:
+
 @end
 
 #endif	// RESOURCEMANAGER_FOUNDATIONBRIDGE_H

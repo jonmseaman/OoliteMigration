@@ -52,13 +52,15 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #include "oofnd/ResourcePaths.hpp"
 
-static NSString * const kOOLogCacheUpToDate				= @"dataCache.upToDate";
-static NSString * const kOOLogCacheExplicitFlush		= @"dataCache.rebuild.explicitFlush";
-static NSString * const kOOLogCacheStalePaths			= @"dataCache.rebuild.pathsChanged";
-static NSString * const kOOLogCacheStaleDates			= @"dataCache.rebuild.datesChanged";
-static NSString * const kOOCacheSearchPathModDates		= @"search path modification dates";
-static NSString * const kOOCacheKeySearchPaths			= @"search paths";
-static NSString * const kOOCacheKeyModificationDates	= @"modification dates";
+namespace {
+
+// OOCacheManager cache and keys for the search-path modification dates (the log classes are
+// literals at their OOLog calls).
+constexpr const char *kOOCacheSearchPathModDates	= "search path modification dates";
+constexpr const char *kOOCacheKeySearchPaths		= "search paths";
+constexpr const char *kOOCacheKeyModificationDates	= "modification dates";
+
+}	// namespace
 
 
 
@@ -67,26 +69,26 @@ extern NSDictionary* ParseOOSScripts(NSString* script);
 
 @interface ResourceManager (OOPrivate)
 
-+ (void) checkOXPMessagesInPath:(NSString *)path;
-+ (void) checkPotentialPath:(NSString *)path :(NSMutableArray *)searchPaths;
-+ (BOOL) validateManifest:(NSDictionary*)manifest forOXP:(NSString *)path;
-+ (BOOL) areRequirementsFulfilled:(NSDictionary*)requirements forOXP:(NSString *)path andFile:(NSString *)file;
-+ (void) filterSearchPathsForConflicts:(NSMutableArray *)searchPaths;
-+ (BOOL) filterSearchPathsForRequirements:(NSMutableArray *)searchPaths;
-+ (void) filterSearchPathsToExcludeScenarioOnlyPaths:(NSMutableArray *)searchPaths;
-+ (void) filterSearchPathsByScenario:(NSMutableArray *)searchPaths;
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest;
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest withIdentifier:(NSString *)identifier;
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest withTag:(NSString *)tag;
++ (void) checkOXPMessagesInPath:(const std::string &)path;
++ (void) checkPotentialPath:(const std::string &)path :(std::vector<std::string> &)searchPaths;
++ (BOOL) validateManifest:(const oo::PList &)manifest forOXP:(const std::string &)path;
++ (BOOL) areRequirementsFulfilled:(const oo::PList &)requirements forOXP:(const std::optional<std::string> &)path andFile:(const std::string &)file;
++ (void) filterSearchPathsForConflicts:(std::vector<std::string> &)searchPaths;
++ (BOOL) filterSearchPathsForRequirements:(std::vector<std::string> &)searchPaths;
++ (void) filterSearchPathsToExcludeScenarioOnlyPaths:(std::vector<std::string> &)searchPaths;
++ (void) filterSearchPathsByScenario:(std::vector<std::string> &)searchPaths;
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest;
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withIdentifier:(const std::string &)identifier;
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withTag:(const std::string &)tag;
 
 + (void) addErrorWithKey:(const std::string &)descriptionKey param1:(const std::string &)param1 param2:(const std::string &)param2;
-+ (BOOL) checkCacheUpToDateForPaths:(NSArray *)searchPaths;
++ (BOOL) checkCacheUpToDateForPaths:(const std::vector<std::string> &)searchPaths;
 + (void) logPaths;
 + (void) mergeRoleCategories:(NSDictionary *)catData intoDictionary:(NSMutableDictionary *)category;
 + (void) preloadFileLists;
-+ (void) preloadFileListFromOXZ:(NSString *)path forFolders:(NSArray *)folders;
-+ (void) preloadFileListFromFolder:(NSString *)path forFolders:(NSArray *)folders;
-+ (void) preloadFilePathFor:(NSString *)fileName inFolder:(NSString *)subFolder atPath:(NSString *)path;
++ (void) preloadFileListFromOXZ:(const std::string &)path forFolders:(const std::vector<std::string> &)folders;
++ (void) preloadFileListFromFolder:(const std::string &)path forFolders:(const std::vector<std::string> &)folders;
++ (void) preloadFilePathFor:(const std::string &)fileName inFolder:(const std::string &)subFolder atPath:(const std::string &)path;
 
 @end
 
@@ -106,13 +108,168 @@ std::vector<std::string>	sUseAddOnsParts;
 std::vector<std::string>	sOXPsWithMessagesFound;
 std::vector<std::string>	sExternalPaths;
 std::vector<ResourceManagerError>	sErrors;
+std::map<std::string, oo::PList, std::less<>>	sOXPManifests;	// identifier -> manifest (+ file_path, required_by)
+std::optional<std::vector<std::string>>	sSearchPaths;	// empty and nullopt both mean "scan again" (was [sSearchPaths count] > 0)
+
+
+// A manifest string property as get<NSString *>(key) answered it: nullopt where that was nil
+// (missing, or neither a string nor a number).
+std::optional<std::string> ManifestString(const oo::PList &manifest, const std::string &key)
+{
+	const oo::PList *value = manifest.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return manifest.get<std::string>(key);
+}
+
+
+// -containsObject: of a string on the array (or set, held as an array) under key.
+bool ManifestListContains(const oo::PList &manifest, const std::string &key, std::string_view string)
+{
+	const oo::PList *list = manifest.get<oo::PList::Array>(key);
+	if (list == nullptr)  return false;
+	for (const oo::PList &element : *list->getIf<oo::PList::Array>())
+	{
+		const std::string *elementString = element.getIf<std::string>();
+		if (elementString != nullptr && *elementString == string)  return true;
+	}
+	return false;
+}
+
+
+// The strings of a required_by set (held as a sorted array of unique strings).
+std::set<std::string> ManifestRequiredBy(const oo::PList &manifest)
+{
+	std::set<std::string> result;
+	const oo::PList *list = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestRequiredBy));
+	if (list == nullptr)  return result;
+	for (const oo::PList &element : *list->getIf<oo::PList::Array>())
+	{
+		if (const std::string *elementString = element.getIf<std::string>())  result.insert(*elementString);
+	}
+	return result;
+}
+
+
+// Whether a string is in searchPaths (-containsObject:).
+bool PathListContains(const std::vector<std::string> &searchPaths, const std::string &path)
+{
+	return std::find(searchPaths.begin(), searchPaths.end(), path) != searchPaths.end();
+}
+
+
+// -removeObject: of a nil-able path: every equal element goes.
+void RemovePath(std::vector<std::string> &searchPaths, const std::optional<std::string> &path)
+{
+	if (!path.has_value())  return;
+	searchPaths.erase(std::remove(searchPaths.begin(), searchPaths.end(), *path), searchPaths.end());
+}
+
+
+// Whether +[NSString stringWithUTF8String:] would have accepted these bytes (it returns nil for
+// malformed UTF-8): they survive the round trip through UTF-16 unchanged.
+bool IsWellFormedUTF8(const std::string &bytes)
+{
+	return oo::utf16ToUtf8(oo::utf8ToUtf16(bytes)) == bytes;
+}
+
+
+// -[a isEqual:b] for two property-list values; a missing one (nil) is never equal. Strings
+// compare directly; anything else goes through Foundation's -isEqual: (numbers compare by value,
+// which PList's type-strict == does not).
+bool PListIsEqual(const oo::PList *a, const oo::PList *b)
+{
+	if (a == nullptr || b == nullptr)  return false;
+	const std::string *aString = a->getIf<std::string>(), *bString = b->getIf<std::string>();
+	if (aString != nullptr && bString != nullptr)  return *aString == *bString;
+	return [oo::ObjectFromPList(*a) isEqual:oo::ObjectFromPList(*b)];
+}
+
+
+// The value if it is an array (at<NSArray *>), else nullptr.
+const oo::PList *AsArray(const oo::PList *value)
+{
+	return (value != nullptr && value->isArray()) ? value : nullptr;
+}
+
+
+// Element index of an array value; nullptr for a missing array or an index past its end (at<id>).
+const oo::PList *ArrayElement(const oo::PList *array, std::size_t index)
+{
+	return array != nullptr ? array->at(index) : nullptr;
+}
+
+
+// -replaceObjectAtIndex:withObject: on an array value, raising as GSMutableArray did past the end.
+void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &value)
+{
+	oo::PList::Array &elements = *array.getIf<oo::PList::Array>();
+	if (index >= elements.size())
+	{
+		[NSException raise:NSRangeException format:@"Index %lu is out of range %lu (in 'replaceObjectAtIndex:withObject:')", (unsigned long)index, (unsigned long)elements.size()];
+	}
+	elements[index] = value;
+}
+
+
+// -[NSMutableDictionary(OOExtensions) mergeEntriesFromDictionary:]: a key only in other is added;
+// two unequal dictionaries merge recursively, two unequal arrays concatenate; anything else is
+// replaced by other's value.
+void MergeEntries(oo::PList::Dict &self, const oo::PList::Dict &other)
+{
+	for (const auto &[key, otherObject] : other)
+	{
+		auto existing = self.find(key);
+		if (existing == self.end())
+		{
+			self.emplace(key, otherObject);
+			continue;
+		}
+		oo::PList &thisObject = existing->second;
+		BOOL merged = NO;
+		if (thisObject.isDict() && otherObject.isDict() && !PListIsEqual(&thisObject, &otherObject))
+		{
+			oo::PList mergeObject = thisObject;
+			MergeEntries(*mergeObject.getIf<oo::PList::Dict>(), *otherObject.getIf<oo::PList::Dict>());
+			thisObject = std::move(mergeObject);
+			merged = YES;
+		}
+		else if (thisObject.isArray() && otherObject.isArray() && !PListIsEqual(&thisObject, &otherObject))
+		{
+			oo::PList::Array &elements = *thisObject.getIf<oo::PList::Array>();
+			for (const oo::PList &element : *otherObject.getIf<oo::PList::Array>())  elements.push_back(element);
+			merged = YES;
+		}
+		if (!merged)  thisObject = otherObject;
+	}
+}
+
+
+// A star or nebula texture entry's merge key: the string itself, or a dictionary's "key" (else
+// its "texture"); nullptr for anything else.
+const oo::PList *TextureListKey(const oo::PList *value)
+{
+	if (value == nullptr)  return nullptr;
+	if (value->isString())  return value;
+	if (value->isDict())
+	{
+		const oo::PList *key = value->find("key");
+		return key != nullptr ? key : value->find("texture");
+	}
+	return nullptr;
+}
+
+
+// [path lastPathComponent] of a nil-able path, as %@ printed it.
+std::optional<std::string> LastPathComponent(const std::optional<std::string> &path)
+{
+	if (!path.has_value())  return std::nullopt;
+	return oo::str::lastPathComponent(*path);
+}
 
 }	// namespace
 
-static NSMutableArray	*sSearchPaths;
 static BOOL				sFirstRun = YES;
 static BOOL				sAllMet = NO;
-static NSMutableDictionary *sOXPManifests;
 
 
 
@@ -130,11 +287,11 @@ static NSMutableDictionary *sStringCache;
 	sFirstRun = YES;
 	sUseAddOns.reset();
 	sUseAddOnsParts.clear();
-	DESTROY(sSearchPaths);
+	sSearchPaths.reset();
 	sOXPsWithMessagesFound.clear();
 	sExternalPaths.clear();
 	sErrors.clear();
-	DESTROY(sOXPManifests);
+	sOXPManifests.clear();
 }
 
 
@@ -142,8 +299,8 @@ static NSMutableDictionary *sStringCache;
 {
 	sUseAddOns.reset();
 	sUseAddOnsParts.clear();
-	DESTROY(sSearchPaths);
-	DESTROY(sOXPManifests);
+	sSearchPaths.reset();
+	sOXPManifests.clear();
 	[ResourceManager cxx_pathsWithAddOns];
 }
 
@@ -221,14 +378,14 @@ static NSMutableDictionary *sStringCache;
 
 + (std::vector<std::string>) cxx_pathsWithAddOns
 {
-	if ([sSearchPaths count] > 0)  return oo::StringsFrom(sSearchPaths);	// sSearchPaths converts in oo-3rb.100
+	if (sSearchPaths.has_value() && !sSearchPaths->empty())  return *sSearchPaths;
 
 	if (!sUseAddOns.has_value())
 	{
 		sUseAddOns = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
 		sUseAddOnsParts = oo::str::split(*sUseAddOns, ";");
 	}
-	
+
 	/* Handle special case of 'strict mode' efficiently */
 	// testing actual string
 	if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_NONE))
@@ -237,54 +394,53 @@ static NSMutableDictionary *sStringCache;
 	}
 
 	sErrors.clear();
-	
-	NSFileManager			*fmgr = [NSFileManager defaultManager];
-	NSArray					*rootPaths = nil;
-	NSMutableArray			*existingRootPaths = nil;
-	NSString				*root = nil;
-	NSDirectoryEnumerator	*dirEnum = nil;
-	NSString				*subPath = nil;
-	NSString				*path = nil;
-	BOOL					isDirectory;
-	
+
 	// Copy those root paths that actually exist to search paths.
-	rootPaths = oo::NSArrayFromStrings([self cxx_rootPaths]);
-	existingRootPaths = [NSMutableArray arrayWithCapacity:[rootPaths count]];
-	foreach (root, rootPaths)
+	const std::vector<std::string> rootPaths = [self cxx_rootPaths];
+	std::vector<std::string> existingRootPaths;
+	existingRootPaths.reserve(rootPaths.size());
+	for (const std::string &root : rootPaths)
 	{
-		if ([fmgr fileExistsAtPath:root isDirectory:&isDirectory] && isDirectory)
+		if (oo::fs::isDirectory(oo::fs::pathFromUTF8(root)))
 		{
-			[existingRootPaths addObject:root];
+			existingRootPaths.push_back(root);
 		}
 	}
-	
+
 	// validate default search paths
-	DESTROY(sSearchPaths);
-	sSearchPaths = [NSMutableArray new];
-	foreach (path, existingRootPaths)
+	sSearchPaths.emplace();
+	std::vector<std::string> &searchPaths = *sSearchPaths;
+	for (const std::string &path : existingRootPaths)
 	{
-		[self checkPotentialPath:path :sSearchPaths];
+		[self checkPotentialPath:path :searchPaths];
 	}
-	
+
 	// Iterate over root paths.
-	foreach (root, existingRootPaths)
+	for (const std::string &root : existingRootPaths)
 	{
 		// Iterate over each root path's contents.
-		if ([fmgr fileExistsAtPath:root isDirectory:&isDirectory] && isDirectory)
+		if (oo::fs::isDirectory(oo::fs::pathFromUTF8(root)))
 		{
-			for (dirEnum = [fmgr enumeratorAtPath:root]; (subPath = [dirEnum nextObject]); )
+			// NSFileManager's recursive enumerator (with -skipDescendents) has no oo::fs form yet:
+			// it lists, converted at the boundary, as it always did.
+			NSDirectoryEnumerator *dirEnum = [[NSFileManager defaultManager] enumeratorAtPath:oo::NSStringFrom(root)];
+			for (;;)
 			{
+				const std::optional<std::string> subPath = oo::OptionalString([dirEnum nextObject]);
+				if (!subPath.has_value())  break;
+
 				// Check if it's a directory.
-				path = [root stringByAppendingPathComponent:subPath];
-				if ([fmgr fileExistsAtPath:path isDirectory:&isDirectory])
+				const std::string path = oo::str::appendingPathComponent(root, *subPath);
+				const oo::fs::FileType type = oo::fs::fileType(oo::fs::pathFromUTF8(path));
+				if (type != oo::fs::FileType::none)
 				{
-					if (isDirectory)
+					if (type == oo::fs::FileType::directory)
 					{
 						// If it is, is it an OXP?.
-						if ([[[path pathExtension] lowercaseString] isEqualToString:@"oxp"])
+						if (oo::str::lowercase(oo::str::pathExtension(path)) == "oxp")
 						{
-							[self checkPotentialPath:path :sSearchPaths];
-							if ([sSearchPaths containsObject:path])  [self checkOXPMessagesInPath:path];
+							[self checkPotentialPath:path :searchPaths];
+							if (PathListContains(searchPaths, path))  [self checkOXPMessagesInPath:path];
 						}
 						else
 						{
@@ -295,22 +451,21 @@ static NSMutableDictionary *sStringCache;
 					else
 					{
 						// If not a directory, is it an OXZ?
-						if ([[[path pathExtension] lowercaseString] isEqualToString:@"oxz"])
+						if (oo::str::lowercase(oo::str::pathExtension(path)) == "oxz")
 						{
-							[self checkPotentialPath:path :sSearchPaths];
-							if ([sSearchPaths containsObject:path])  [self checkOXPMessagesInPath:path];
+							[self checkPotentialPath:path :searchPaths];
+							if (PathListContains(searchPaths, path))  [self checkOXPMessagesInPath:path];
 						}
 					}
 				}
 			}
 		}
 	}
-	
-	for (const std::string &externalPath : sExternalPaths)
+
+	for (const std::string &path : sExternalPaths)
 	{
-		path = oo::NSStringFrom(externalPath);
-		[self checkPotentialPath:path :sSearchPaths];
-		if ([sSearchPaths containsObject:path])  [self checkOXPMessagesInPath:path];
+		[self checkPotentialPath:path :searchPaths];
+		if (PathListContains(searchPaths, path))  [self checkOXPMessagesInPath:path];
 	}
 
 	/* If a scenario restriction is *not* in place, remove
@@ -318,7 +473,7 @@ static NSMutableDictionary *sStringCache;
 	// test string
 	if (sUseAddOns == oo::StdString(SCENARIO_OXP_DEFINITION_ALL))
 	{
-		[self filterSearchPathsToExcludeScenarioOnlyPaths:sSearchPaths];
+		[self filterSearchPathsToExcludeScenarioOnlyPaths:searchPaths];
 	}
 
 	/* This is a conservative filter. It probably gets rid of more
@@ -327,7 +482,7 @@ static NSMutableDictionary *sStringCache;
 	 * resolved by the user rather than Oolite. The point is to avoid
 	 * loading OXPs which we shouldn't; if doing so takes out other
 	 * OXPs which would have been safe, that's not important. */
-	[self filterSearchPathsForConflicts:sSearchPaths];
+	[self filterSearchPathsForConflicts:searchPaths];
 
 	/* This one needs to be run repeatedly to be sure. Take the chain
 	 * A depends on B depends on C. A and B are installed. A is
@@ -339,33 +494,32 @@ static NSMutableDictionary *sStringCache;
 	 * There may well be more elegant and efficient ways to do this
 	 * but this is already fast enough for most purposes.
 	 */
-	while (![self filterSearchPathsForRequirements:sSearchPaths]) {}
+	while (![self filterSearchPathsForRequirements:searchPaths]) {}
 
 	/* If a scenario restriction is in place, restrict OXPs to the
 	 * ones valid for the scenario only. */
 	// test string
 	if (sUseAddOns != oo::StdString(SCENARIO_OXP_DEFINITION_ALL))
 	{
-		[self filterSearchPathsByScenario:sSearchPaths];
+		[self filterSearchPathsByScenario:searchPaths];
 	}
 
-	[self checkCacheUpToDateForPaths:sSearchPaths];
-	
-	return oo::StringsFrom(sSearchPaths);
+	[self checkCacheUpToDateForPaths:searchPaths];
+
+	return searchPaths;
 }
 
 
 + (void) preloadFileLists
 {
-	NSString 		 *path = nil;
-	NSEnumerator *pathEnum = nil;
-
 	// folders which may contain files to be cached
-	NSArray *folders = [NSArray arrayWithObjects:@"AIs",@"Images",@"Models",@"Music",@"Scenarios",@"Scripts",@"Shaders",@"Sounds",@"Textures",nil];
+	const std::vector<std::string> folders = { "AIs", "Images", "Models", "Music", "Scenarios", "Scripts", "Shaders", "Sounds", "Textures" };
 
-	for (pathEnum = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) reverseObjectEnumerator]; (path = [pathEnum nextObject]); )
+	const std::vector<std::string> paths = [ResourceManager cxx_paths];
+	for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 	{
-		if ([path hasSuffix:@".oxz"])
+		const std::string &path = *pathIt;
+		if (oo::str::hasSuffix(path, ".oxz"))
 		{
 			[self preloadFileListFromOXZ:path forFolders:folders];
 		}
@@ -377,10 +531,10 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (void) preloadFileListFromOXZ:(NSString *)path forFolders:(NSArray *)folders
++ (void) preloadFileListFromOXZ:(const std::string &)path forFolders:(const std::vector<std::string> &)folders
 {
 	unzFile uf = NULL;
-	const char* zipname = [path UTF8String];
+	const char* zipname = path.c_str();
 	char componentName[512];
 
 	if (zipname != NULL)
@@ -389,81 +543,72 @@ static NSMutableDictionary *sStringCache;
 	}
 	if (uf == NULL)
 	{
-		OOLog(@"resourceManager.error",@"Could not open .oxz at %@ as zip file",path);
+		OOLog(@"resourceManager.error",@"Could not open .oxz at %@ as zip file",oo::NSStringFrom(path));
 		return;
 	}
 	if (unzGoToFirstFile(uf) == UNZ_OK)
 	{
-		do 
+		do
 		{
 			unzGetCurrentFileInfo64(uf, NULL,
 									componentName, 512,
 									NULL, 0,
 									NULL, 0);
-			NSString *zipEntry = [NSString stringWithUTF8String:componentName];
-			NSArray *pathBits = [zipEntry pathComponents];
-			if ([pathBits count] >= 2)
+			const std::string zipEntry = componentName;
+			// A name that is not UTF-8 was nil, and had no components.
+			const std::vector<std::string> pathBits = IsWellFormedUTF8(zipEntry) ? oo::str::pathComponents(zipEntry) : std::vector<std::string>();
+			if (pathBits.size() >= 2)
 			{
-				NSString *folder = oo::PListView(pathBits).at<NSString *>(0);
-				if ([folders containsObject:folder])
+				const std::string &folder = pathBits[0];
+				if (std::find(folders.begin(), folders.end(), folder) != folders.end())
 				{
-					NSRange bitRange;
-					bitRange.location = 1;
-					bitRange.length = [pathBits count]-1;
-					NSString *file = [NSString pathWithComponents:[pathBits subarrayWithRange:bitRange]];
-					NSString *fullPath = [[path stringByAppendingPathComponent:folder] stringByAppendingPathComponent:file];
-					
+					const std::string file = oo::str::pathWithComponents(std::vector<std::string>(pathBits.begin() + 1, pathBits.end()));
+					const std::string fullPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, folder), file);
+
 					[self preloadFilePathFor:file inFolder:folder atPath:fullPath];
 				}
 			}
 
-		} 
+		}
 		while (unzGoToNextFile(uf) == UNZ_OK);
 	}
 	unzClose(uf);
 }
 
 
-+ (void) preloadFileListFromFolder:(NSString *)path forFolders:(NSArray *)folders
++ (void) preloadFileListFromFolder:(const std::string &)path forFolders:(const std::vector<std::string> &)folders
 {
-	NSFileManager *fmgr 		= [NSFileManager defaultManager];
-	NSString *subFolder 		= nil;
-	NSString *subFolderPath 	= nil;
-	NSArray *fileList			= nil;
-	NSString *fileName			= nil;
-
 	// search each subfolder for files
-	foreach (subFolder, folders)
+	for (const std::string &subFolder : folders)
 	{
-		subFolderPath = [path stringByAppendingPathComponent:subFolder];
-		fileList = [fmgr oo_directoryContentsAtPath:subFolderPath];
-		foreach (fileName, fileList)
+		const std::string subFolderPath = oo::str::appendingPathComponent(path, subFolder);
+		const std::vector<std::string> fileList = oo::fs::directoryContents(oo::fs::pathFromUTF8(subFolderPath)).value_or(std::vector<std::string>());
+		for (const std::string &fileName : fileList)
 		{
-			[self preloadFilePathFor:fileName inFolder:subFolder atPath:[subFolderPath stringByAppendingPathComponent:fileName]];
+			[self preloadFilePathFor:fileName inFolder:subFolder atPath:oo::str::appendingPathComponent(subFolderPath, fileName)];
 		}
 	}
 }
 
 
-+ (void) preloadFilePathFor:(NSString *)fileName inFolder:(NSString *)subFolder atPath:(NSString *)path
++ (void) preloadFilePathFor:(const std::string &)fileName inFolder:(const std::string &)subFolder atPath:(const std::string &)path
 {
 	OOCacheManager	*cache = [OOCacheManager sharedCache];
-	NSString *cacheKey = [NSString stringWithFormat:@"%@/%@", subFolder, fileName];
-	NSString *result = [cache objectForKey:cacheKey inCache:@"resolved paths"];
+	const std::string cacheKey = subFolder + "/" + fileName;
 	// if nil, not found in another OXP already
-	if (result == nil)
+	if ([cache cxx_objectForKey:cacheKey inCache:"resolved paths"] == nil)
 	{
-		OOLog(@"resourceManager.foundFile.preLoad", @"Found %@/%@ at %@", subFolder, fileName, path);
-		[cache setObject:path forKey:cacheKey inCache:@"resolved paths"];
+		OOLog(@"resourceManager.foundFile.preLoad", @"Found %@/%@ at %@", oo::NSStringFrom(subFolder), oo::NSStringFrom(fileName), oo::NSStringFrom(path));
+		[cache cxx_setObject:oo::NSStringFrom(path) forKey:cacheKey inCache:"resolved paths"];	// the cache holds Foundation objects (an unmigrated callee)
 	}
 }
 
 
 + (std::vector<std::string>) cxx_paths
 {
-	if (EXPECT_NOT(sSearchPaths == nil))
+	if (EXPECT_NOT(!sSearchPaths.has_value()))
 	{
-		sSearchPaths = [oo::NSArrayFromStrings(std::vector<std::string>()) mutableCopy];	// sSearchPaths converts in oo-3rb.100
+		sSearchPaths.emplace();
 	}
 	return [self cxx_pathsWithAddOns];
 }
@@ -528,7 +673,7 @@ static NSMutableDictionary *sStringCache;
 			[cmgr setAllowCacheWrites:NO];
 		}
 		
-		[self checkCacheUpToDateForPaths:oo::NSArrayFromStrings([self cxx_paths])];	// an unmigrated callee (oo-3rb.100)
+		[self checkCacheUpToDateForPaths:[self cxx_paths]];
 		[self logPaths];
 		/* preloading the file lists at this stage helps efficiency a
 		 * lot when many OXZs are installed */
@@ -540,11 +685,10 @@ static NSMutableDictionary *sStringCache;
 
 + (void) cxx_addExternalPath:(const std::string &)path
 {
-	if (sSearchPaths == nil)  sSearchPaths = [oo::NSArrayFromStrings(std::vector<std::string>()) mutableCopy];	// sSearchPaths converts in oo-3rb.100
-	const std::vector<std::string> searchPaths = oo::StringsFrom(sSearchPaths);
-	if (std::find(searchPaths.begin(), searchPaths.end(), path) == searchPaths.end())
+	if (!sSearchPaths.has_value())  sSearchPaths.emplace();
+	if (!PathListContains(*sSearchPaths, path))
 	{
-		[sSearchPaths addObject:oo::NSStringFrom(path)];
+		sSearchPaths->push_back(path);
 		
 		sExternalPaths.push_back(path);
 	}
@@ -557,266 +701,263 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (NSDictionary *)manifestForIdentifier:(NSString *)identifier
++ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier
 {
-	return [sOXPManifests objectForKey:identifier];
+	auto it = sOXPManifests.find(identifier);
+	if (it == sOXPManifests.end())  return oo::PList();
+	return it->second;
 }
 
 
-+ (void) checkOXPMessagesInPath:(NSString *)path
++ (void) checkOXPMessagesInPath:(const std::string &)path
 {
-	NSArray *OXPMessageArray = OOArrayFromFile([path stringByAppendingPathComponent:@"OXPMessages.plist"]);
-	
-	if ([OXPMessageArray count] > 0)
+	// OOArrayFromFile (OOPListParsing) is an unmigrated callee: its array arrives through oo::PListFrom.
+	const oo::PList OXPMessageArray = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "OXPMessages.plist"))));
+
+	if (OXPMessageArray.count() > 0)
 	{
 		unsigned i;
-		for (i = 0; i < [OXPMessageArray count]; i++)
+		for (i = 0; i < OXPMessageArray.count(); i++)
 		{
-			NSString *oxpMessage = oo::PListView(OXPMessageArray).at<NSString *>(i);
-			if (oxpMessage)
+			// what the string extractor answered: a string (or a number's text); nil for anything else
+			const oo::PList *oxpMessage = OXPMessageArray.at(i);
+			if (oxpMessage != nullptr && (oxpMessage->isString() || oxpMessage->isNumber()))
 			{
-				OOLog(@"oxp.message", @"%@: %@", path, oxpMessage);
+				OOLog(@"oxp.message", @"%@: %@", oo::NSStringFrom(path), oo::NSStringFrom(OXPMessageArray.at<std::string>(i)));
 			}
 		}
-		sOXPsWithMessagesFound.push_back(oo::StdString([path lastPathComponent]));
+		sOXPsWithMessagesFound.push_back(oo::str::lastPathComponent(path));
 	}
 }
 
 
 // Given a path to an assumed OXP (or other location where files are permissible), check for a requires.plist or manifest.plist and add to search paths if acceptable.
-+ (void)checkPotentialPath:(NSString *)path :(NSMutableArray *)searchPaths
++ (void)checkPotentialPath:(const std::string &)path :(std::vector<std::string> &)searchPaths
 {
-	NSDictionary			*requirements = nil;
-	NSDictionary			*manifest = nil;
+	oo::PList				requirements;
+	oo::PList				manifest;
 	BOOL					requirementsMet = YES;
+	const std::string		extension = oo::str::lowercase(oo::str::pathExtension(path));
 
-	if (![[[path pathExtension] lowercaseString] isEqualToString:@"oxz"])
+	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
+	if (extension != "oxz")
 	{
 		// OXZ format ignores requires.plist
-		requirements = OODictionaryFromFile([path stringByAppendingPathComponent:@"requires.plist"]);
-		requirementsMet = [self areRequirementsFulfilled:requirements forOXP:path andFile:@"requires.plist"];
+		requirements = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "requires.plist"))));
+		requirementsMet = [self areRequirementsFulfilled:requirements forOXP:path andFile:"requires.plist"];
 	}
 	if (!requirementsMet)
 	{
-		NSString *version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-		OOLog(@"oxp.versionMismatch", @"OXP %@ is incompatible with version %@ of Oolite.", path, version);
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::StdString([path lastPathComponent]) param2:oo::StdString(version)];
+		id version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+		OOLog(@"oxp.versionMismatch", @"OXP %@ is incompatible with version %@ of Oolite.", oo::NSStringFrom(path), version);
+		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:oo::StdString(version)];
 		return;
 	}
-	
-	manifest = OODictionaryFromFile([path stringByAppendingPathComponent:@"manifest.plist"]);
-	if (manifest == nil)
+
+	manifest = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "manifest.plist"))));
+	if (manifest.isNull())
 	{
-		if ([[[path pathExtension] lowercaseString] isEqualToString:@"oxz"])
+		if (extension == "oxz")
 		{
-			OOLog(@"oxp.noManifest", @"OXZ %@ has no manifest.plist", path);
-			[self addErrorWithKey:"oxz-lacks-manifest" param1:oo::StdString([path lastPathComponent]) param2:""];
+			OOLog(@"oxp.noManifest", @"OXZ %@ has no manifest.plist", oo::NSStringFrom(path));
+			[self addErrorWithKey:"oxz-lacks-manifest" param1:oo::str::lastPathComponent(path) param2:""];
 			return;
 		}
 		else
 		{
-			if ([[[path pathExtension] lowercaseString] isEqualToString:@"oxp"])
+			if (extension == "oxp")
 			{
-				OOStandardsError([NSString stringWithFormat:@"OXP %@ has no manifest.plist", path]);
+				cxx_OOStandardsError(oo::str::format("OXP %s has no manifest.plist", path.c_str()));
 				if (OOEnforceStandards())
 				{
-					[self addErrorWithKey:"oxp-lacks-manifest" param1:oo::StdString([path lastPathComponent]) param2:""];
+					[self addErrorWithKey:"oxp-lacks-manifest" param1:oo::str::lastPathComponent(path) param2:""];
 					return;
 				}
 			}
 			// make up a basic manifest in relaxed mode or for base folders
-			manifest = [NSDictionary dictionaryWithObjectsAndKeys:[NSString stringWithFormat:@"__oolite.tmp.%@",path],kOOManifestIdentifier,@"1",kOOManifestVersion,@"OXP without manifest",kOOManifestTitle,@"1",kOOManifestRequiredOoliteVersion,nil];
+			oo::PList::Dict basicManifest;
+			basicManifest[oo::StdString(kOOManifestIdentifier)] = oo::PList("__oolite.tmp." + path);
+			basicManifest[oo::StdString(kOOManifestVersion)] = oo::PList("1");
+			basicManifest[oo::StdString(kOOManifestTitle)] = oo::PList("OXP without manifest");
+			basicManifest[oo::StdString(kOOManifestRequiredOoliteVersion)] = oo::PList("1");
+			manifest = oo::PList(std::move(basicManifest));
 		}
 	}
-	
+
 	requirementsMet = [self validateManifest:manifest forOXP:path];
 
 
-	if (requirementsMet) 
+	if (requirementsMet)
 	{
-		[searchPaths addObject:path];
+		searchPaths.push_back(path);
 	}
 }
 
 
-+ (BOOL) validateManifest:(NSDictionary*)manifest forOXP:(NSString *)path
++ (BOOL) validateManifest:(const oo::PList &)manifest forOXP:(const std::string &)path
 {
-	if (EXPECT_NOT(sOXPManifests == nil))
-	{
-		sOXPManifests = [[NSMutableDictionary alloc] initWithCapacity:32];
-	}
-	
 	BOOL 		OK = YES;
-	NSString 	*identifier = oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier, nil);
-	NSString 	*version = oo::PListView(manifest).get<NSString *>(kOOManifestVersion, nil);
-	NSString 	*required = oo::PListView(manifest).get<NSString *>(kOOManifestRequiredOoliteVersion, nil);
-	NSString	*title = oo::PListView(manifest).get<NSString *>(kOOManifestTitle, nil);
+	const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+	const std::optional<std::string> version = ManifestString(manifest, oo::StdString(kOOManifestVersion));
+	const std::optional<std::string> required = ManifestString(manifest, oo::StdString(kOOManifestRequiredOoliteVersion));
+	const std::optional<std::string> title = ManifestString(manifest, oo::StdString(kOOManifestTitle));
 
-	if (identifier == nil)
+	if (!identifier.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", path, kOOManifestIdentifier);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:oo::StdString(title) param2:oo::StdString(kOOManifestIdentifier)];
+		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestIdentifier);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestIdentifier)];
 		OK = NO;
 	}
-	if (version == nil)
+	if (!version.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", path, kOOManifestVersion);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:oo::StdString(title) param2:oo::StdString(kOOManifestVersion)];
+		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestVersion);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestVersion)];
 		OK = NO;
 	}
-	if (required == nil)
+	if (!required.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", path, kOOManifestRequiredOoliteVersion);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:oo::StdString(title) param2:oo::StdString(kOOManifestRequiredOoliteVersion)];
+		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestRequiredOoliteVersion);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestRequiredOoliteVersion)];
 		OK = NO;
 	}
-	if (title == nil)
+	if (!title.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", path, kOOManifestTitle);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:oo::StdString(title) param2:oo::StdString(kOOManifestTitle)];
+		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestTitle);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestTitle)];
 		OK = NO;
 	}
 	if (!OK)
 	{
 		return NO;
 	}
-	OK = [self checkVersionCompatibility:manifest forOXP:title];
+	OK = [self cxx_checkVersionCompatibility:manifest forOXP:title];
 
 	if (!OK)
 	{
-		NSString *version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-		OOLog(@"oxp.versionMismatch", @"OXP %@ is incompatible with version %@ of Oolite.", path, version);
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::StdString([path lastPathComponent]) param2:oo::StdString(version)];
+		id ooliteVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+		OOLog(@"oxp.versionMismatch", @"OXP %@ is incompatible with version %@ of Oolite.", oo::NSStringFrom(path), ooliteVersion);
+		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:oo::StdString(ooliteVersion)];
 		return NO;
 	}
 
-	NSDictionary *duplicate = [sOXPManifests objectForKey:identifier];
-	if (duplicate != nil)
+	auto duplicate = sOXPManifests.find(*identifier);
+	if (duplicate != sOXPManifests.end())
 	{
-		OOLog(@"oxp.duplicate", @"OXP %@ has the same identifier (%@) as %@ which has already been loaded.",path,identifier,oo::PListView(duplicate).get<NSString *>(kOOManifestFilePath));
-		[self addErrorWithKey:"oxp-manifest-duplicate" param1:oo::StdString(path) param2:oo::StdString(oo::PListView(duplicate).get<NSString *>(kOOManifestFilePath))];
+		const std::optional<std::string> duplicatePath = ManifestString(duplicate->second, oo::StdString(kOOManifestFilePath));
+		OOLog(@"oxp.duplicate", @"OXP %@ has the same identifier (%@) as %@ which has already been loaded.",oo::NSStringFrom(path),oo::NSStringFrom(*identifier),oo::NSStringOrNil(duplicatePath));
+		[self addErrorWithKey:"oxp-manifest-duplicate" param1:path param2:duplicatePath.value_or("")];
 		return NO;
 	}
-	NSMutableDictionary *mData = [NSMutableDictionary dictionaryWithDictionary:manifest];
-	[mData setObject:path forKey:kOOManifestFilePath];
+	oo::PList mData = manifest;
 	// add an extra key
-	[sOXPManifests setObject:mData forKey:identifier];
+	if (oo::PList::Dict *dict = mData.getIf<oo::PList::Dict>())  (*dict)[oo::StdString(kOOManifestFilePath)] = oo::PList(path);
+	sOXPManifests[*identifier] = std::move(mData);
 	return YES;
 }
 
 
-+ (BOOL) checkVersionCompatibility:(NSDictionary *)manifest forOXP:(NSString *)title
++ (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title
 {
-	NSString 	*required = oo::PListView(manifest).get<NSString *>(kOOManifestRequiredOoliteVersion, nil);
-	NSString *maxRequired = oo::PListView(manifest).get<NSString *>(kOOManifestMaximumOoliteVersion, nil);
-	// ignore empty max version string rather than treating as "version 0"
-	if (maxRequired == nil || [maxRequired length] == 0)
+	const std::optional<std::string> required = ManifestString(manifest, oo::StdString(kOOManifestRequiredOoliteVersion));
+	const std::optional<std::string> maxRequired = ManifestString(manifest, oo::StdString(kOOManifestMaximumOoliteVersion));
+	// A nil required version ended the old key/value list at once: an empty requirements dictionary.
+	oo::PList::Dict requirements;
+	if (required.has_value())
 	{
-		return [self areRequirementsFulfilled:[NSDictionary dictionaryWithObjectsAndKeys:required, @"version", nil] forOXP:title andFile:@"manifest.plist"];
+		requirements["version"] = oo::PList(*required);
+		// ignore empty max version string rather than treating as "version 0"
+		if (maxRequired.has_value() && !maxRequired->empty())  requirements["max_version"] = oo::PList(*maxRequired);
 	}
-	else
-	{
-		return [self areRequirementsFulfilled:[NSDictionary dictionaryWithObjectsAndKeys:required, @"version", maxRequired, @"max_version", nil] forOXP:title andFile:@"manifest.plist"];
-	}
+	return [self areRequirementsFulfilled:oo::PList(std::move(requirements)) forOXP:title andFile:"manifest.plist"];
 }
 
 
-+ (BOOL) areRequirementsFulfilled:(NSDictionary*)requirements forOXP:(NSString *)path andFile:(NSString *)file
++ (BOOL) areRequirementsFulfilled:(const oo::PList &)requirements forOXP:(const std::optional<std::string> &)path andFile:(const std::string &)file
 {
 	BOOL				OK = YES;
-	NSString			*requiredVersion = nil;
-	NSString			*maxVersion = nil;
 	unsigned			conditionsHandled = 0;
-	static NSArray		*ooVersionComponents = nil;
-	NSArray				*oxpVersionComponents = nil;
-	
-	if (requirements == nil)  return YES;
-	
-	if (ooVersionComponents == nil)
+	static std::optional<std::vector<unsigned>>	ooVersionComponents;
+
+	if (requirements.isNull())  return YES;
+
+	if (!ooVersionComponents.has_value())
 	{
-		ooVersionComponents = ComponentsFromVersionString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
-		[ooVersionComponents retain];
+		ooVersionComponents = oo::str::versionComponents(oo::StdString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]));
 	}
-	
+
 	// Check "version" (minimum version)
 	if (OK)
 	{
-		// Not get<NSString *>, because we need to be able to complain about non-strings.
-		requiredVersion = [requirements objectForKey:@"version"];
-		if (requiredVersion != nil)
+		// Not get<std::string>, because we need to be able to complain about non-strings.
+		const oo::PList *requiredVersion = requirements.find("version");
+		if (requiredVersion != nullptr)
 		{
 			++conditionsHandled;
-			if ([requiredVersion isKindOfClass:[NSString class]])
+			if (const std::string *requiredString = requiredVersion->getIf<std::string>())
 			{
-				oxpVersionComponents = ComponentsFromVersionString(requiredVersion);
-				if (NSOrderedAscending == CompareVersions(ooVersionComponents, oxpVersionComponents))  OK = NO;
+				if (oo::str::compareVersions(*ooVersionComponents, oo::str::versionComponents(*requiredString)) < 0)  OK = NO;
 			}
 			else
 			{
-				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", file, @"version", [requirements class], [path lastPathComponent]);
+				// %@ of [requirements class]: the class of the dictionary the old code was handed, which the bridge rebuilds
+				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", oo::NSStringFrom(file), @"version", [oo::ObjectFromPList(requirements) class], oo::NSStringOrNil(LastPathComponent(path)));
 				OK = NO;
 			}
 		}
 	}
-	
+
 	// Check "max_version" (minimum max_version)
 	if (OK)
 	{
-		// Not get<NSString *>, because we need to be able to complain about non-strings.
-		maxVersion = [requirements objectForKey:@"max_version"];
-		if (maxVersion != nil)
+		// Not get<std::string>, because we need to be able to complain about non-strings.
+		const oo::PList *maxVersion = requirements.find("max_version");
+		if (maxVersion != nullptr)
 		{
 			++conditionsHandled;
-			if ([maxVersion isKindOfClass:[NSString class]])
+			if (const std::string *maxString = maxVersion->getIf<std::string>())
 			{
-				oxpVersionComponents = ComponentsFromVersionString(maxVersion);
-				if (NSOrderedDescending == CompareVersions(ooVersionComponents, oxpVersionComponents))  OK = NO;
+				if (oo::str::compareVersions(*ooVersionComponents, oo::str::versionComponents(*maxString)) > 0)  OK = NO;
 			}
 			else
 			{
-				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", file, @"max_version", [requirements class], [path lastPathComponent]);
+				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", oo::NSStringFrom(file), @"max_version", [oo::ObjectFromPList(requirements) class], oo::NSStringOrNil(LastPathComponent(path)));
 				OK = NO;
 			}
 		}
 	}
-	
-	if (OK && conditionsHandled < [requirements count])
+
+	if (OK && conditionsHandled < requirements.count())
 	{
 		// There are unknown requirement keys - don't support. NOTE: this check was not made pre 1.69!
-		OOLog(@"requirements.unknown", @"requires.plist for OXP %@ contains unknown keys, rejecting.", [path lastPathComponent]);
+		OOLog(@"requirements.unknown", @"requires.plist for OXP %@ contains unknown keys, rejecting.", oo::NSStringOrNil(LastPathComponent(path)));
 		OK = NO;
 	}
-	
+
 	return OK;
 }
 
 
-+ (BOOL) manifestHasConflicts:(NSDictionary *)manifest logErrors:(BOOL)logErrors
++ (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors
 {
-	NSDictionary	*conflicting = nil;
-	NSDictionary	*conflictManifest = nil;
-	NSString		*conflictID = nil;
-	NSArray			*conflicts = nil;
-	
-	conflicts = oo::PListView(manifest).get<NSArray *>(kOOManifestConflictOXPs, nil);
-	// if it has a non-empty conflict_oxps list 
-	if (conflicts != nil && [conflicts count] > 0)
+	const oo::PList *conflicts = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestConflictOXPs), nullptr);
+	// if it has a non-empty conflict_oxps list
+	if (conflicts != nullptr && conflicts->count() > 0)
 	{
 		// iterate over that list
-		foreach (conflicting, conflicts)
+		for (const oo::PList &conflicting : *conflicts->getIf<oo::PList::Array>())
 		{
-			conflictID = oo::PListView(conflicting).get<NSString *>(kOOManifestRelationIdentifier);
-			conflictManifest = [sOXPManifests objectForKey:conflictID];
+			const std::optional<std::string> conflictID = ManifestString(conflicting, oo::StdString(kOOManifestRelationIdentifier));
+			auto conflictManifest = conflictID.has_value() ? sOXPManifests.find(*conflictID) : sOXPManifests.end();
 			// if the other OXP is in the list
-			if (conflictManifest != nil)
+			if (conflictManifest != sOXPManifests.end())
 			{
 				// then check versions
-				if ([self matchVersions:conflicting withVersion:oo::PListView(conflictManifest).get<NSString *>(kOOManifestVersion)])
+				if ([self cxx_matchVersions:conflicting withVersion:ManifestString(conflictManifest->second, oo::StdString(kOOManifestVersion)).value_or("")])
 				{
 					if (logErrors)
 					{
-						[self addErrorWithKey:"oxp-conflict" param1:oo::StdString(oo::PListView(manifest).get<NSString *>(kOOManifestTitle)) param2:oo::StdString(oo::PListView(conflictManifest).get<NSString *>(kOOManifestTitle))];
-						OOLog(@"oxp.conflict",@"OXP %@ conflicts with %@ and was removed from the loading list",[oo::PListView(manifest).get<NSString *>(kOOManifestFilePath) lastPathComponent],[oo::PListView(conflictManifest).get<NSString *>(kOOManifestFilePath) lastPathComponent]);
+						[self addErrorWithKey:"oxp-conflict" param1:ManifestString(manifest, oo::StdString(kOOManifestTitle)).value_or("") param2:ManifestString(conflictManifest->second, oo::StdString(kOOManifestTitle)).value_or("")];
+						OOLog(@"oxp.conflict",@"OXP %@ conflicts with %@ and was removed from the loading list",oo::NSStringOrNil(LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))),oo::NSStringOrNil(LastPathComponent(ManifestString(conflictManifest->second, oo::StdString(kOOManifestFilePath)))));
 					}
 					return YES;
 				}
@@ -827,43 +968,41 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (void) filterSearchPathsForConflicts:(NSMutableArray *)searchPaths
++ (void) filterSearchPathsForConflicts:(std::vector<std::string> &)searchPaths
 {
-	NSDictionary	*manifest = nil;
-	NSString		*identifier = nil;
-	NSArray			*identifiers = [sOXPManifests allKeys];
+	std::vector<std::string>	identifiers;	// identifier order (was hash order)
+	identifiers.reserve(sOXPManifests.size());
+	for (const auto &[identifier, manifest] : sOXPManifests)  identifiers.push_back(identifier);
 
 	// take a copy because we'll mutate the original
 	// foreach identified add-on
-	foreach (identifier, identifiers)
+	for (const std::string &identifier : identifiers)
 	{
-		manifest = [sOXPManifests objectForKey:identifier];
-		if (manifest != nil)
+		auto entry = sOXPManifests.find(identifier);
+		if (entry != sOXPManifests.end())
 		{
-			if ([self manifestHasConflicts:manifest logErrors:YES])
+			const oo::PList manifest = entry->second;
+			if ([self cxx_manifestHasConflicts:manifest logErrors:YES])
 			{
 				// then we have a conflict, so remove this path
-				[searchPaths removeObject:oo::PListView(manifest).get<NSString *>(kOOManifestFilePath)];
-				[sOXPManifests removeObjectForKey:identifier];
+				RemovePath(searchPaths, ManifestString(manifest, oo::StdString(kOOManifestFilePath)));
+				sOXPManifests.erase(identifier);
 			}
 		}
 	}
 }
 
 
-+ (BOOL) manifestHasMissingDependencies:(NSDictionary *)manifest logErrors:(BOOL)logErrors
++ (BOOL) cxx_manifestHasMissingDependencies:(const oo::PList &)manifest logErrors:(BOOL)logErrors
 {
-	NSDictionary	*required = nil;
-	NSArray			*requireds = nil;
-
-	requireds = oo::PListView(manifest).get<NSArray *>(kOOManifestRequiresOXPs, nil);
-	// if it has a non-empty required_oxps list 
-	if (requireds != nil && [requireds count] > 0)
+	const oo::PList *requireds = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestRequiresOXPs), nullptr);
+	// if it has a non-empty required_oxps list
+	if (requireds != nullptr && requireds->count() > 0)
 	{
 		// iterate over that list
-		foreach (required, requireds)
+		for (const oo::PList &required : *requireds->getIf<oo::PList::Array>())
 		{
-			if ([ResourceManager manifest:manifest HasUnmetDependency:required logErrors:logErrors])
+			if ([ResourceManager cxx_manifest:manifest HasUnmetDependency:required logErrors:logErrors])
 			{
 				return YES;
 			}
@@ -873,29 +1012,30 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) manifest:(NSDictionary *)manifest HasUnmetDependency:(NSDictionary *)required logErrors:(BOOL)logErrors
++ (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors
 {
-	NSString		*requiredID = oo::PListView(required).get<NSString *>(kOOManifestRelationIdentifier);
-	NSMutableDictionary	*requiredManifest = [sOXPManifests objectForKey:requiredID];
+	const std::optional<std::string> requiredID = ManifestString(required, oo::StdString(kOOManifestRelationIdentifier));
+	auto requiredManifest = requiredID.has_value() ? sOXPManifests.find(*requiredID) : sOXPManifests.end();
 	// if the other OXP is in the list
 	BOOL requirementsMet = NO;
-	if (requiredManifest != nil)
+	if (requiredManifest != sOXPManifests.end())
 	{
 		// then check versions
-		if ([self matchVersions:required withVersion:oo::PListView(requiredManifest).get<NSString *>(kOOManifestVersion)])
+		if ([self cxx_matchVersions:required withVersion:ManifestString(requiredManifest->second, oo::StdString(kOOManifestVersion)).value_or("")])
 		{
 			requirementsMet = YES;
 			/* Mark the requiredManifest as a dependency of the
 			 * requiring manifest */
-			NSSet *reqby = oo::PListView(requiredManifest).get<NSSet *>(kOOManifestRequiredBy, [NSSet set]);
-			NSUInteger reqbycount = [reqby count];
+			std::set<std::string> reqby = ManifestRequiredBy(requiredManifest->second);
+			const std::size_t reqbycount = reqby.size();
 			/* then add this manifest to its required set. This is
 			 * done without checking if it's already there, because
 			 * the list of nested requirements may have changed. */
-			reqby = [reqby setByAddingObject:oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier)];
+			if (std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier)))  reqby.insert(*identifier);
 			// *and* anything that requires this OXP to be installed
-			reqby = [reqby setByAddingObjectsFromSet:oo::PListView(manifest).get<NSSet *>(kOOManifestRequiredBy)];
-			if (reqbycount < [reqby count])
+			const std::set<std::string> manifestReqby = ManifestRequiredBy(manifest);
+			reqby.insert(manifestReqby.begin(), manifestReqby.end());
+			if (reqbycount < reqby.size())
 			{
 				/* Then the set has increased in size. To handle
 				 * potential cases with nested dependencies, need to
@@ -903,16 +1043,19 @@ static NSMutableDictionary *sStringCache;
 				 * stabilise. */
 				sAllMet = NO;
 			}
-			// and push back into the requiring manifest
-			[requiredManifest setObject:reqby forKey:kOOManifestRequiredBy];
+			// and push back into the requiring manifest (the set as a sorted array of unique strings)
+			oo::PList::Array reqbyList;
+			for (const std::string &identifier : reqby)  reqbyList.emplace_back(identifier);
+			if (oo::PList::Dict *dict = requiredManifest->second.getIf<oo::PList::Dict>())  (*dict)[oo::StdString(kOOManifestRequiredBy)] = oo::PList(std::move(reqbyList));
 		}
 	}
 	if (!requirementsMet)
 	{
 		if (logErrors)
 		{
-			[self addErrorWithKey:"oxp-required" param1:oo::StdString(oo::PListView(manifest).get<NSString *>(kOOManifestTitle)) param2:oo::StdString(oo::PListView(required).get<NSString *>(kOOManifestRelationDescription, oo::PListView(required).get<NSString *>(kOOManifestRelationIdentifier)))];
-			OOLog(@"oxp.requirementMissing",@"OXP %@ had unmet requirements and was removed from the loading list",[oo::PListView(manifest).get<NSString *>(kOOManifestFilePath) lastPathComponent]);
+			const std::optional<std::string> requiredDescription = ManifestString(required, oo::StdString(kOOManifestRelationDescription));
+			[self addErrorWithKey:"oxp-required" param1:ManifestString(manifest, oo::StdString(kOOManifestTitle)).value_or("") param2:requiredDescription.has_value() ? *requiredDescription : requiredID.value_or("")];
+			OOLog(@"oxp.requirementMissing",@"OXP %@ had unmet requirements and was removed from the loading list",oo::NSStringOrNil(LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))));
 		}
 		return YES;
 	}
@@ -920,26 +1063,27 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) filterSearchPathsForRequirements:(NSMutableArray *)searchPaths
++ (BOOL) filterSearchPathsForRequirements:(std::vector<std::string> &)searchPaths
 {
-	NSDictionary	*manifest = nil;
-	NSString		*identifier = nil;
-	NSArray			*identifiers = [sOXPManifests allKeys];
+	std::vector<std::string>	identifiers;	// identifier order (was hash order)
+	identifiers.reserve(sOXPManifests.size());
+	for (const auto &[identifier, manifest] : sOXPManifests)  identifiers.push_back(identifier);
 
 	sAllMet = YES;
 
 	// take a copy because we'll mutate the original
 	// foreach identified add-on
-	foreach (identifier, identifiers)
+	for (const std::string &identifier : identifiers)
 	{
-		manifest = [sOXPManifests objectForKey:identifier];
-		if (manifest != nil)
+		auto entry = sOXPManifests.find(identifier);
+		if (entry != sOXPManifests.end())
 		{
-			if ([self manifestHasMissingDependencies:manifest logErrors:YES])
+			const oo::PList manifest = entry->second;
+			if ([self cxx_manifestHasMissingDependencies:manifest logErrors:YES])
 			{
 				// then we have a missing requirement, so remove this path
-				[searchPaths removeObject:oo::PListView(manifest).get<NSString *>(kOOManifestFilePath)];
-				[sOXPManifests removeObjectForKey:identifier];
+				RemovePath(searchPaths, ManifestString(manifest, oo::StdString(kOOManifestFilePath)));
+				sOXPManifests.erase(identifier);
 				sAllMet = NO;
 			}
 		}
@@ -949,25 +1093,22 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version
++ (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version
 {
-	NSString	*minimum = oo::PListView(rangeDict).get<NSString *>(kOOManifestRelationVersion, nil);
-	NSString	*maximum = oo::PListView(rangeDict).get<NSString *>(kOOManifestRelationMaxVersion, nil);
-	NSArray		*isVersionComponents = ComponentsFromVersionString(version);
-	NSArray		*reqVersionComponents = nil;
-	if (minimum != nil)
+	const std::optional<std::string> minimum = ManifestString(rangeDict, oo::StdString(kOOManifestRelationVersion));
+	const std::optional<std::string> maximum = ManifestString(rangeDict, oo::StdString(kOOManifestRelationMaxVersion));
+	const std::vector<unsigned> isVersionComponents = oo::str::versionComponents(version);	// "" (was nil) compares as the empty version
+	if (minimum.has_value())
 	{
-		reqVersionComponents = ComponentsFromVersionString(minimum);
-		if (NSOrderedAscending == CompareVersions(isVersionComponents, reqVersionComponents))
+		if (oo::str::compareVersions(isVersionComponents, oo::str::versionComponents(*minimum)) < 0)
 		{
 			// earlier than minimum version
 			return NO;
 		}
 	}
-	if (maximum != nil)
+	if (maximum.has_value())
 	{
-		reqVersionComponents = ComponentsFromVersionString(maximum);
-		if (NSOrderedDescending == CompareVersions(isVersionComponents, reqVersionComponents))
+		if (oo::str::compareVersions(isVersionComponents, oo::str::versionComponents(*maximum)) > 0)
 		{
 			// later than maximum version
 			return NO;
@@ -978,23 +1119,24 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (void) filterSearchPathsToExcludeScenarioOnlyPaths:(NSMutableArray *)searchPaths
++ (void) filterSearchPathsToExcludeScenarioOnlyPaths:(std::vector<std::string> &)searchPaths
 {
-	NSDictionary	*manifest = nil;
-	NSString		*identifier = nil;
-	NSArray			*identifiers = [sOXPManifests allKeys];
+	std::vector<std::string>	identifiers;	// identifier order (was hash order)
+	identifiers.reserve(sOXPManifests.size());
+	for (const auto &[identifier, manifest] : sOXPManifests)  identifiers.push_back(identifier);
 
 	// take a copy because we'll mutate the original
 	// foreach identified add-on
-	foreach (identifier, identifiers)
+	for (const std::string &identifier : identifiers)
 	{
-		manifest = [sOXPManifests objectForKey:identifier];
-		if (manifest != nil)
+		auto entry = sOXPManifests.find(identifier);
+		if (entry != sOXPManifests.end())
 		{
-			if ([oo::PListView(manifest).get<NSArray *>(kOOManifestTags) containsObject:kOOManifestTagScenarioOnly])
+			const oo::PList manifest = entry->second;
+			if (ManifestListContains(manifest, oo::StdString(kOOManifestTags), oo::StdString(kOOManifestTagScenarioOnly)))
 			{
-				[searchPaths removeObject:oo::PListView(manifest).get<NSString *>(kOOManifestFilePath)];
-				[sOXPManifests removeObjectForKey:identifier];
+				RemovePath(searchPaths, ManifestString(manifest, oo::StdString(kOOManifestFilePath)));
+				sOXPManifests.erase(identifier);
 			}
 		}
 	}
@@ -1002,31 +1144,32 @@ static NSMutableDictionary *sStringCache;
 
 
 
-+ (void) filterSearchPathsByScenario:(NSMutableArray *)searchPaths
++ (void) filterSearchPathsByScenario:(std::vector<std::string> &)searchPaths
 {
-	NSDictionary	*manifest = nil;
-	NSString		*identifier = nil;
-	NSArray			*identifiers = [sOXPManifests allKeys];
+	std::vector<std::string>	identifiers;	// identifier order (was hash order)
+	identifiers.reserve(sOXPManifests.size());
+	for (const auto &[identifier, manifest] : sOXPManifests)  identifiers.push_back(identifier);
 
 	// take a copy because we'll mutate the original
 	// foreach identified add-on
-	foreach (identifier, identifiers)
+	for (const std::string &identifier : identifiers)
 	{
-		manifest = [sOXPManifests objectForKey:identifier];
-		if (manifest != nil)
+		auto entry = sOXPManifests.find(identifier);
+		if (entry != sOXPManifests.end())
 		{
+			const oo::PList manifest = entry->second;
 			if (![ResourceManager manifestAllowedByScenario:manifest])
 			{
 				// then we don't need this one
-				[searchPaths removeObject:oo::PListView(manifest).get<NSString *>(kOOManifestFilePath)];
-				[sOXPManifests removeObjectForKey:identifier];
+				RemovePath(searchPaths, ManifestString(manifest, oo::StdString(kOOManifestFilePath)));
+				sOXPManifests.erase(identifier);
 			}
 		}
 	}
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest
 {
 	/* Checks for a couple of "never happens" cases */
 #ifndef NDEBUG
@@ -1042,39 +1185,40 @@ static NSMutableDictionary *sStringCache;
 		return NO;
 	}
 #endif
-	if ([oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) isEqualToString:@"org.oolite.oolite"])
+	if (ManifestString(manifest, oo::StdString(kOOManifestIdentifier)) == "org.oolite.oolite")
 	{
 		// the core data is always allowed!
 		return YES;
 	}
 
+	const std::string byID = oo::StdString(SCENARIO_OXP_DEFINITION_BYID);
+	const std::string byTag = oo::StdString(SCENARIO_OXP_DEFINITION_BYTAG);
 	BOOL result = NO;
-	for (const std::string &uaoPart : sUseAddOnsParts)
+	for (const std::string &uaoBit : sUseAddOnsParts)
 	{
-		NSString *uaoBit = oo::NSStringFrom(uaoPart);	// manifestAllowedByScenario: converts in oo-3rb.99
-		if ([uaoBit hasPrefix:SCENARIO_OXP_DEFINITION_BYID])
+		if (oo::str::hasPrefix(uaoBit, byID))
 		{
-			result |= [ResourceManager manifestAllowedByScenario:manifest withIdentifier:[uaoBit substringFromIndex:[SCENARIO_OXP_DEFINITION_BYID length]]];
+			result |= [ResourceManager manifestAllowedByScenario:manifest withIdentifier:uaoBit.substr(byID.size())];
 		}
-		else if ([uaoBit hasPrefix:SCENARIO_OXP_DEFINITION_BYTAG])
+		else if (oo::str::hasPrefix(uaoBit, byTag))
 		{
-			result |= [ResourceManager manifestAllowedByScenario:manifest withTag:[uaoBit substringFromIndex:[SCENARIO_OXP_DEFINITION_BYTAG length]]];
+			result |= [ResourceManager manifestAllowedByScenario:manifest withTag:uaoBit.substr(byTag.size())];
 		}
 	}
 	return result;
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest withIdentifier:(NSString *)identifier
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withIdentifier:(const std::string &)identifier
 {
-	if ([oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) isEqualToString:identifier])
+	if (ManifestString(manifest, oo::StdString(kOOManifestIdentifier)) == identifier)
 	{
 		// manifest has the identifier - easy
 		return YES;
 	}
 	// manifest is also allowed if a manifest with that identifier
 	// requires it to be installed
-	if ([oo::PListView(manifest).get<NSSet *>(kOOManifestRequiredBy) containsObject:identifier])
+	if (ManifestListContains(manifest, oo::StdString(kOOManifestRequiredBy), identifier))
 	{
 		return YES;
 	}
@@ -1083,27 +1227,22 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest withTag:(NSString *)tag
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withTag:(const std::string &)tag
 {
-	if ([oo::PListView(manifest).get<NSArray *>(kOOManifestTags) containsObject:tag])
+	if (ManifestListContains(manifest, oo::StdString(kOOManifestTags), tag))
 	{
 		// manifest has the tag - easy
 		return YES;
 	}
 	// manifest is also allowed if a manifest with that tag
 	// requires it to be installed
-	NSSet *reqby = oo::PListView(manifest).get<NSSet *>(kOOManifestRequiredBy);
-	if (reqby != nil)
+	for (const std::string &identifier : ManifestRequiredBy(manifest))
 	{
-		NSString *identifier = nil;
-		foreach (identifier, reqby)
+		auto reqManifest = sOXPManifests.find(identifier);
+		// need to check for nil as this one may already have been ruled out
+		if (reqManifest != sOXPManifests.end() && ManifestListContains(reqManifest->second, oo::StdString(kOOManifestTags), tag))
 		{
-			NSDictionary *reqManifest = oo::PListView(sOXPManifests).get<NSDictionary *>(identifier, nil);
-			// need to check for nil as this one may already have been ruled out
-			if (reqManifest != nil && [oo::PListView(reqManifest).get<NSArray *>(kOOManifestTags) containsObject:tag])
-			{
-				return YES;
-			}
+			return YES;
 		}
 	}
 	// otherwise, no
@@ -1119,68 +1258,69 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL)checkCacheUpToDateForPaths:(NSArray *)searchPaths
++ (BOOL)checkCacheUpToDateForPaths:(const std::vector<std::string> &)searchPaths
 {
 	/*	Check if caches are up to date.
 		The strategy is to use a two-entry cache. One entry is an array
 		containing the search paths, the other an array of modification dates
 		(in the same order). If either fails to match the correct settings,
 		we delete both.
+		OOCacheManager holds Foundation objects (an unmigrated callee): the two
+		arrays are built for it at each call and compared with -isEqual:, as before.
 	*/
 	OOCacheManager		*cacheMgr = [OOCacheManager sharedCache];
 	NSFileManager		*fmgr = [NSFileManager defaultManager];
 	BOOL				upToDate = YES;
 	id					oldPaths = nil;
-	NSMutableArray		*modDates = nil;
-	NSString			*path = nil;
 	id					modDate = nil;
-	
+
 	if (EXPECT_NOT([[NSUserDefaults standardUserDefaults] boolForKey:@"always-flush-cache"]))
 	{
-		OOLog(kOOLogCacheExplicitFlush, @"%@", @"Cache explicitly flushed with always-flush-cache preference. Rebuilding from scratch.");
+		OOLog(@"dataCache.rebuild.explicitFlush", @"%@", @"Cache explicitly flushed with always-flush-cache preference. Rebuilding from scratch.");
 		upToDate = NO;
 	}
 	else if ([MyOpenGLView pollShiftKey])
 	{
-		OOLog(kOOLogCacheExplicitFlush, @"%@", @"Cache explicitly flushed with shift key. Rebuilding from scratch.");
+		OOLog(@"dataCache.rebuild.explicitFlush", @"%@", @"Cache explicitly flushed with shift key. Rebuilding from scratch.");
 		upToDate = NO;
 	}
-	
-	oldPaths = [cacheMgr objectForKey:kOOCacheKeySearchPaths inCache:kOOCacheSearchPathModDates];
-	if (upToDate && ![oldPaths isEqual:searchPaths])
+
+	oldPaths = [cacheMgr cxx_objectForKey:kOOCacheKeySearchPaths inCache:kOOCacheSearchPathModDates];
+	if (upToDate && ![oldPaths isEqual:oo::NSArrayFromStrings(searchPaths)])
 	{
 		// OXPs added/removed
-		if (oldPaths != nil) OOLog(kOOLogCacheStalePaths, @"%@", @"Cache is stale (search paths have changed). Rebuilding from scratch.");
+		if (oldPaths != nil) OOLog(@"dataCache.rebuild.pathsChanged", @"%@", @"Cache is stale (search paths have changed). Rebuilding from scratch.");
 		upToDate = NO;
 	}
-	
+
 	// Build modification date list. (We need this regardless of whether the search paths matched.)
-	
-	modDates = [NSMutableArray arrayWithCapacity:[searchPaths count]];
-	foreach (path, searchPaths)
+	// The dates come from NSFileManager's attributes (oo::fs has no modification date yet).
+	oo::PList::Array modDates;
+	modDates.reserve(searchPaths.size());
+	for (const std::string &path : searchPaths)
 	{
-		modDate = [[fmgr oo_fileAttributesAtPath:path traverseLink:YES] objectForKey:NSFileModificationDate];
+		modDate = [[fmgr oo_fileAttributesAtPath:oo::NSStringFrom(path) traverseLink:YES] objectForKey:NSFileModificationDate];
 		if (modDate != nil)
 		{
 			// Converts to double because I'm not sure the cache can deal with dates under GNUstep.
-			modDate = [NSNumber numberWithDouble:[modDate timeIntervalSince1970]];
-			[modDates addObject:modDate];
+			modDates.emplace_back([modDate timeIntervalSince1970]);
 		}
 	}
-		
-	if (upToDate && ![[cacheMgr objectForKey:kOOCacheKeyModificationDates inCache:kOOCacheSearchPathModDates] isEqual:modDates])
+	const oo::PList modDateList(std::move(modDates));
+
+	if (upToDate && ![[cacheMgr cxx_objectForKey:kOOCacheKeyModificationDates inCache:kOOCacheSearchPathModDates] isEqual:oo::ObjectFromPList(modDateList)])
 	{
-		OOLog(kOOLogCacheStaleDates, @"%@", @"Cache is stale (modification dates have changed). Rebuilding from scratch.");
+		OOLog(@"dataCache.rebuild.datesChanged", @"%@", @"Cache is stale (modification dates have changed). Rebuilding from scratch.");
 		upToDate = NO;
 	}
-	
+
 	if (!upToDate)
 	{
 		[cacheMgr clearAllCaches];
-		[cacheMgr setObject:searchPaths forKey:kOOCacheKeySearchPaths inCache:kOOCacheSearchPathModDates];
-		[cacheMgr setObject:modDates forKey:kOOCacheKeyModificationDates inCache:kOOCacheSearchPathModDates];
+		[cacheMgr cxx_setObject:oo::NSArrayFromStrings(searchPaths) forKey:kOOCacheKeySearchPaths inCache:kOOCacheSearchPathModDates];
+		[cacheMgr cxx_setObject:oo::ObjectFromPList(modDateList) forKey:kOOCacheKeyModificationDates inCache:kOOCacheSearchPathModDates];
 	}
-	else OOLog(kOOLogCacheUpToDate, @"%@", @"Data cache is up to date.");
+	else OOLog(@"dataCache.upToDate", @"%@", @"Data cache is up to date.");
 
 	return upToDate;
 }
@@ -1194,20 +1334,19 @@ static NSMutableDictionary *sStringCache;
  * excluded by not including the plists which reference them, and
  * everything else can be excluded by not referencing it from a plist.
  */
-+ (BOOL) corePlist:(NSString *)fileName excludedAt:(NSString *)path
++ (BOOL) cxx_corePlist:(const std::string &)fileName excludedAt:(const std::string &)path
 {
-	if (![path isEqualToString:oo::NSStringOrNil([self cxx_builtInPath])])
+	if (path != [self cxx_builtInPath])
 	{
 		// non-core paths always okay
 		return NO;
 	}
-	for (const std::string &uaoPart : sUseAddOnsParts)
+	const std::string noPList = oo::StdString(SCENARIO_OXP_DEFINITION_NOPLIST);
+	for (const std::string &uaoBit : sUseAddOnsParts)
 	{
-		NSString *uaoBit = oo::NSStringFrom(uaoPart);	// corePlist:excludedAt: converts in oo-3rb.101
-		if ([uaoBit hasPrefix:SCENARIO_OXP_DEFINITION_NOPLIST])
+		if (oo::str::hasPrefix(uaoBit, noPList))
 		{
-			NSString *plist = [uaoBit substringFromIndex:[SCENARIO_OXP_DEFINITION_NOPLIST length]];
-			if ([plist isEqualToString:fileName])
+			if (uaoBit.substr(noPList.size()) == fileName)
 			{
 				// this core plist file should not be loaded at all
 				return YES;
@@ -1219,264 +1358,245 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
-								  inFolder:(NSString *)folderName
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
 								  andMerge:(BOOL) mergeFiles
 {
-	return [ResourceManager dictionaryFromFilesNamed:fileName inFolder:folderName mergeMode:mergeFiles ? MERGE_BASIC : MERGE_NONE cache:YES];
+	return [ResourceManager cxx_dictionaryFromFilesNamed:fileName inFolder:folderName mergeMode:mergeFiles ? MERGE_BASIC : MERGE_NONE cache:YES];
 }
 
 
-+ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
-								  inFolder:(NSString *)folderName
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
 								 mergeMode:(OOResourceMergeMode)mergeMode
 									 cache:(BOOL)cache
 {
-	id				result = nil;
-	NSMutableArray	*results = nil;
-	NSString		*cacheKey = nil;
-	NSString		*mergeType = nil;
+	oo::PList		result;
+	std::string		cacheKey;
+	const char		*mergeType = nullptr;
 	OOCacheManager	*cacheMgr = [OOCacheManager sharedCache];
-	NSEnumerator	*enumerator = nil;
-	NSString		*path = nil;
-	NSString		*dictPath = nil;
-	NSDictionary	*dict = nil;
-	
-	if (fileName == nil)  return nil;
-	
+
 	switch (mergeMode)
 	{
 		case MERGE_NONE:
-			mergeType = @"none";
+			mergeType = "none";
 			break;
-		
+
 		case MERGE_BASIC:
-			mergeType = @"basic";
+			mergeType = "basic";
 			break;
-		
+
 		case MERGE_SMART:
-			mergeType = @"smart";
+			mergeType = "smart";
 			break;
 	}
-	if (mergeType == nil)
+	if (mergeType == nullptr)
 	{
-		OOLog(kOOLogParameterError, @"Unknown dictionary merge mode %u for %@. (This is an internal programming error, please report it.)", mergeMode, fileName);
-		return nil;
+		OOLog(kOOLogParameterError, @"Unknown dictionary merge mode %u for %@. (This is an internal programming error, please report it.)", mergeMode, oo::NSStringFrom(fileName));
+		return oo::PList();
 	}
-	
+
+	// OOCacheManager holds Foundation objects (an unmigrated callee): what it stores is
+	// oo::ObjectFromPList(result), and what it returns arrives through oo::PListFrom.
 	if (cache)
 	{
-	
-		if (folderName != nil)
+
+		if (folderName.has_value())
 		{
-			cacheKey = [NSString stringWithFormat:@"%@/%@ merge:%@", folderName, fileName, mergeType];
+			cacheKey = oo::str::format("%s/%s merge:%s", folderName->c_str(), fileName.c_str(), mergeType);
 		}
 		else
 		{
-			cacheKey = [NSString stringWithFormat:@"%@ merge:%@", fileName, mergeType];
+			cacheKey = oo::str::format("%s merge:%s", fileName.c_str(), mergeType);
 		}
-		result = [cacheMgr objectForKey:cacheKey inCache:@"dictionaries"];
-		if (result != nil)  return result;
+		id cached = [cacheMgr cxx_objectForKey:cacheKey inCache:"dictionaries"];
+		if (cached != nil)  return oo::PListFrom(cached);
 	}
-	
+
+	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
 	if (mergeMode == MERGE_NONE)
 	{
 		// Find "last" matching dictionary
-		for (enumerator = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) reverseObjectEnumerator]; (path = [enumerator nextObject]); )
+		const std::vector<std::string> paths = [ResourceManager cxx_paths];
+		for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 		{
-			if (folderName != nil)
+			const std::string &path = *pathIt;
+			if (folderName.has_value())
 			{
-				dictPath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-				dict = OODictionaryFromFile(dictPath);
-				if (dict != nil)  break;
+				result = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				if (!result.isNull())  break;
 			}
-			dictPath = [path stringByAppendingPathComponent:fileName];
-			dict = OODictionaryFromFile(dictPath);
-			if (dict != nil)  break;
+			result = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			if (!result.isNull())  break;
 		}
-		result = dict;
 	}
 	else
 	{
 		// Find all matching dictionaries
-		results = [NSMutableArray array];
-		for (enumerator = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) objectEnumerator]; (path = [enumerator nextObject]); )
+		std::vector<oo::PList> results;
+		for (const std::string &path : [ResourceManager cxx_paths])
 		{
-			if ([ResourceManager corePlist:fileName excludedAt:path])
+			if ([ResourceManager cxx_corePlist:fileName excludedAt:path])
 			{
 				continue;
 			}
-			dictPath = [path stringByAppendingPathComponent:fileName];
-			dict = OODictionaryFromFile(dictPath);
-			if (dict != nil)  [results addObject:dict];
-			if (folderName != nil)
+			oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			if (!dict.isNull())  results.push_back(std::move(dict));
+			if (folderName.has_value())
 			{
-				dictPath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-				dict = OODictionaryFromFile(dictPath);
-				if (dict != nil)  [results addObject:dict];
+				dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				if (!dict.isNull())  results.push_back(std::move(dict));
 			}
 		}
-		
-		if ([results count] == 0)  return nil;
-		
+
+		if (results.empty())  return oo::PList();
+
 		// Merge result
-		result = [NSMutableDictionary dictionary];
-		
-		for (enumerator = [results objectEnumerator]; (dict = [enumerator nextObject]); )
+		oo::PList::Dict merged;
+
+		for (const oo::PList &dict : results)
 		{
-			if (mergeMode == MERGE_SMART)  [result mergeEntriesFromDictionary:dict];
-			else  [result addEntriesFromDictionary:dict];
+			const oo::PList::Dict &entries = *dict.getIf<oo::PList::Dict>();
+			if (mergeMode == MERGE_SMART)  MergeEntries(merged, entries);
+			else  for (const auto &[key, value] : entries)  merged[key] = value;	// -addEntriesFromDictionary:
 		}
-		result = [[result copy] autorelease];	// Make immutable
+		result = oo::PList(std::move(merged));
 	}
-	
-	if (cache && result != nil)  [cacheMgr setObject:result forKey:cacheKey inCache:@"dictionaries"];
-	
+
+	if (cache && !result.isNull())  [cacheMgr cxx_setObject:oo::ObjectFromPList(result) forKey:cacheKey inCache:"dictionaries"];
+
 	return result;
 }
 
 
-+ (NSArray *) arrayFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName andMerge:(BOOL) mergeFiles
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL) mergeFiles
 {
-	return [self arrayFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles cache:YES];
+	return [self cxx_arrayFromFilesNamed:fileName inFolder:folderName andMerge:mergeFiles cache:YES];
 }
 
 
-+ (NSArray *) arrayFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName andMerge:(BOOL) mergeFiles cache:(BOOL)useCache
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName andMerge:(BOOL) mergeFiles cache:(BOOL)useCache
 {
-	id				result = nil;
-	NSMutableArray	*results = nil;
-	NSString		*cacheKey = nil;
+	oo::PList		result;
+	std::string		cacheKey;
 	OOCacheManager	*cache = [OOCacheManager sharedCache];
-	NSEnumerator	*enumerator = nil;
-	NSString		*path = nil;
-	NSString		*arrayPath = nil;
-	NSMutableArray	*array = nil;
-	NSArray			*arrayNonEditable = nil;
-	
-	if (fileName == nil)  return nil;
-	
+	const std::string lowercaseName = oo::str::lowercase(fileName);
+	const bool		textureList = lowercaseName == "nebulatextures.plist" || lowercaseName == "startextures.plist";
+
+	// OOCacheManager holds Foundation objects (an unmigrated callee): what it stores is
+	// oo::ObjectFromPList(result), and what it returns arrives through oo::PListFrom.
 	if (useCache)
 	{
-		cacheKey = [NSString stringWithFormat:@"%@%@ merge:%@", (folderName != nil) ? [folderName stringByAppendingString:@"/"] : (NSString *)@"", fileName, mergeFiles ? @"yes" : @"no"];
-		result = [cache objectForKey:cacheKey inCache:@"arrays"];
-		if (result != nil)  return result;
+		cacheKey = oo::str::format("%s%s merge:%s", folderName.has_value() ? (*folderName + "/").c_str() : "", fileName.c_str(), mergeFiles ? "yes" : "no");
+		id cached = [cache cxx_objectForKey:cacheKey inCache:"arrays"];
+		if (cached != nil)  return oo::PListFrom(cached);
 	}
-	
+
+	// OOArrayFromFile (OOPListParsing) is an unmigrated callee: its arrays arrive through oo::PListFrom.
 	if (!mergeFiles)
 	{
 		// Find "last" matching array
-		for (enumerator = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) reverseObjectEnumerator]; (path = [enumerator nextObject]); )
+		const std::vector<std::string> paths = [ResourceManager cxx_paths];
+		for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 		{
-			if (folderName != nil)
+			const std::string &path = *pathIt;
+			if (folderName.has_value())
 			{
-				arrayPath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-				arrayNonEditable = OOArrayFromFile(arrayPath);
-				if (arrayNonEditable != nil)  break;
+				result = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				if (!result.isNull())  break;
 			}
-			arrayPath = [path stringByAppendingPathComponent:fileName];
-			arrayNonEditable = OOArrayFromFile(arrayPath);
-			if (arrayNonEditable != nil)  break;
+			result = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			if (!result.isNull())  break;
 		}
-		result = arrayNonEditable;
 	}
 	else
 	{
-		// Find all matching arrays
-		results = [NSMutableArray array];
-		for (enumerator = [oo::NSArrayFromStrings([ResourceManager cxx_paths]) objectEnumerator]; (path = [enumerator nextObject]); )
+		// Find all matching arrays (an array of arrays, merged in place by the handlers below)
+		oo::PList results = oo::PList(oo::PList::Array());
+		oo::PList::Array &resultArrays = *results.getIf<oo::PList::Array>();
+		for (const std::string &path : [ResourceManager cxx_paths])
 		{
-			if ([ResourceManager corePlist:fileName excludedAt:path])
+			if ([ResourceManager cxx_corePlist:fileName excludedAt:path])
 			{
 				continue;
 			}
 
-			arrayPath = [path stringByAppendingPathComponent:fileName];
-			array = [[OOArrayFromFile(arrayPath) mutableCopy] autorelease];
-			if (array != nil) [results addObject:array];
-	
-			// Special handling for arrays merging. Currently, only equipment.plist, nebulatextures.plist and 
-			// startextures.plist gets their objects merged.
-			// A lookup index is required. For the equipment.plist items, this is the index corresponding to the
-			// EQ_* string, which describes the role of an equipment item and is unique.
-			// For nebula and star textures, this is the texture filename, although it can be overridden with a 
-			// "key" property
-			if ([array count] != 0 && ([[fileName lowercaseString] isEqualToString:@"nebulatextures.plist"] || 
-				[[fileName lowercaseString] isEqualToString:@"startextures.plist"]))
-				[self handleStarNebulaListMerging:results];
-
-			if ([array count] != 0 && [[array objectAtIndex:0] isKindOfClass:[NSArray class]])
+			std::vector<std::string> arrayPaths = { oo::str::appendingPathComponent(path, fileName) };
+			if (folderName.has_value())  arrayPaths.push_back(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
+			for (const std::string &arrayPath : arrayPaths)
 			{
-				if ([[fileName lowercaseString] isEqualToString:@"equipment.plist"])
-					[self handleEquipmentListMerging:results forLookupIndex:3]; // Index 3 is the role string (EQ_*).
-			}
-			if (folderName != nil)
-			{
-				arrayPath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-				array = [[OOArrayFromFile(arrayPath) mutableCopy] autorelease];
-				if (array != nil)  [results addObject:array];
+				oo::PList array = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(arrayPath)));
+				if (array.isNull())  continue;	// a nil array was not added, and counted 0 below
+				resultArrays.push_back(std::move(array));
 
-				if ([array count] != 0 && ([[fileName lowercaseString] isEqualToString:@"nebulatextures.plist"] || 
-					[[fileName lowercaseString] isEqualToString:@"startextures.plist"]))
+				// Special handling for arrays merging. Currently, only equipment.plist, nebulatextures.plist and
+				// startextures.plist gets their objects merged.
+				// A lookup index is required. For the equipment.plist items, this is the index corresponding to the
+				// EQ_* string, which describes the role of an equipment item and is unique.
+				// For nebula and star textures, this is the texture filename, although it can be overridden with a
+				// "key" property
+				// (The array just added is the last of results, which the handlers edit in place.)
+				if (resultArrays.back().count() != 0 && textureList)
 					[self handleStarNebulaListMerging:results];
 
-				if ([array count] != 0 && [[array objectAtIndex:0] isKindOfClass:[NSArray class]])
+				if (resultArrays.back().count() != 0 && resultArrays.back().at(0)->isArray())
 				{
-					if ([[fileName lowercaseString] isEqualToString:@"equipment.plist"])
+					if (lowercaseName == "equipment.plist")
 						[self handleEquipmentListMerging:results forLookupIndex:3]; // Index 3 is the role string (EQ_*).
 				}
 			}
 		}
-		
-		if ([results count] == 0)  return nil;
-		
+
+		if (resultArrays.empty())  return oo::PList();
+
 		// Merge result
-		result = [NSMutableArray array];
-		
-		for (enumerator = [results objectEnumerator]; (array = [enumerator nextObject]); )
+		result = oo::PList(oo::PList::Array());
+		oo::PList::Array &merged = *result.getIf<oo::PList::Array>();
+
+		for (const oo::PList &array : resultArrays)
 		{
-			[result addObjectsFromArray:array];
+			for (const oo::PList &element : *array.getIf<oo::PList::Array>())  merged.push_back(element);
 		}
 		// if we're doing equipment.plist, do equipment overrides now, while the array is still mutable
-		if ([[fileName lowercaseString] isEqualToString:@"equipment.plist"]) 
+		if (lowercaseName == "equipment.plist")
 		{
 			[self handleEquipmentOverrides:result];
 		}
-		result = [[result copy] autorelease];	// Make immutable
 	}
-	
-	if (useCache && result != nil)  [cache setObject:result forKey:cacheKey inCache:@"arrays"];
-	
-	return [NSArray arrayWithArray:result];
+
+	if (useCache && !result.isNull())  [cache cxx_setObject:oo::ObjectFromPList(result) forKey:cacheKey inCache:"arrays"];
+
+	return result;
 }
 
 
 // A method for handling merging of arrays. Currently used with the equipment.plist entries.
 // The arrayToProcess array is scanned for repetitions of the item at lookup index location and, if found,
 // the latest entry replaces the earliest.
-+ (void) handleEquipmentListMerging: (NSMutableArray *)arrayToProcess forLookupIndex:(unsigned)lookupIndex
++ (void) handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex
 {
 	NSUInteger i,j,k;
-	NSMutableArray *refArray = [arrayToProcess objectAtIndex:[arrayToProcess count] - 1];
-	
+	oo::PList::Array &lists = *arrayToProcess.getIf<oo::PList::Array>();
+	oo::PList &refArray = lists[lists.size() - 1];
+
 	// Any change to refArray will directly modify arrayToProcess.
-	
-	for (i = 0; i < [refArray count]; i++)
+
+	for (i = 0; i < refArray.count(); i++)
 	{
-		for (j = 0; j < [arrayToProcess count] - 1; j++)
+		for (j = 0; j < lists.size() - 1; j++)
 		{
-			NSUInteger count = [oo::PListView(arrayToProcess).at<NSArray *>(j) count];
+			NSUInteger count = lists[j].isArray() ? lists[j].count() : 0;
 			if (count == 0)  continue;
-			
+
 			for (k=0; k < count; k++)
 			{
-				id processValue = oo::PListView(oo::PListView(oo::PListView(arrayToProcess).at<NSArray *>(j)).at<NSArray *>(k)).at<id>(lookupIndex, nil);
-				id refValue = oo::PListView(oo::PListView(refArray).at<NSArray *>(i)).at<id>(lookupIndex, nil);
-				
-				if ([processValue isEqual:refValue])
+				const oo::PList *processValue = ArrayElement(AsArray(ArrayElement(&lists[j], k)), lookupIndex);
+				const oo::PList *refValue = ArrayElement(AsArray(ArrayElement(&refArray, i)), lookupIndex);
+
+				if (PListIsEqual(processValue, refValue))
 				{
-					[[arrayToProcess objectAtIndex:j] replaceObjectAtIndex:k withObject:[refArray objectAtIndex:i]];
-					[refArray removeObjectAtIndex:i];
+					ReplaceArrayElement(lists[j], k, *refArray.at(i));
+					refArray.getIf<oo::PList::Array>()->erase(refArray.getIf<oo::PList::Array>()->begin() + static_cast<std::ptrdiff_t>(i));
 				}
 			}
 		}
@@ -1489,97 +1609,73 @@ static NSMutableDictionary *sStringCache;
 // format of file is slightly different to the standard equipment.plist file, in that it is a 
 // dictionary of dictionary objects (rather than an array of arrays). this allows properties like
 // techlevel, price, name/short_description and description/long_description to be updated via the overrides file.
-+ (void) handleEquipmentOverrides: (NSMutableArray *)arrayToProcess
++ (void) handleEquipmentOverrides: (oo::PList &)arrayToProcess
 {
-	NSEnumerator			*equipKeyEnum = nil;
-	NSString				*equipKey = nil;
-	NSDictionary			*overrides = nil;
-	NSDictionary			*overridesEntry = nil;
-	int 					i;
-
-	overrides = [ResourceManager dictionaryFromFilesNamed:@"equipment-overrides.plist"
-												 inFolder:@"Config"
-												mergeMode:MERGE_SMART
-													cache:NO];
+	const oo::PList overrides = [ResourceManager cxx_dictionaryFromFilesNamed:"equipment-overrides.plist"
+															 inFolder:std::string("Config")
+															mergeMode:MERGE_SMART
+																cache:NO];
+	const oo::PList::Dict *overrideEntries = overrides.getIf<oo::PList::Dict>();
+	if (overrideEntries == nullptr)  return;
+	oo::PList::Array &entries = *arrayToProcess.getIf<oo::PList::Array>();
 
 	// cycle through all the equipment keys found in override files
-	for (equipKeyEnum = [overrides keyEnumerator]; (equipKey = [equipKeyEnum nextObject]); )
+	for (const auto &[equipKey, overridesEntry] : *overrideEntries)
 	{
-		overridesEntry = [overrides objectForKey:equipKey];
+		const oo::PList::Dict *overrideInfo = overridesEntry.getIf<oo::PList::Dict>();
 		// loop through our data array to find a match
-		for (i = 0; i < [arrayToProcess count]; i++)
+		for (std::size_t i = 0; i < entries.size(); i++)
 		{
-			NSMutableArray	*equipArray = [[[arrayToProcess objectAtIndex:i] mutableCopy] autorelease];
-			id refValue = oo::PListView(equipArray).at<id>(EQUIPMENT_KEY_INDEX, nil);
+			const oo::PList *refValue = ArrayElement(AsArray(&entries[i]), EQUIPMENT_KEY_INDEX);
 			// does the overridden equipment item exist in the equipment array? if so, get working
-			if ([equipKey isEqual:refValue])
+			const std::string *refKey = refValue != nullptr ? refValue->getIf<std::string>() : nullptr;
+			if (refKey != nullptr && *refKey == equipKey)
 			{
-				NSEnumerator 			*infoKeyEnum = nil;
-				NSString				*infoKey;
+				oo::PList equipArray = entries[i];
 				// cycle through all the properties found for this equipment key in the overrides file
-				for (infoKeyEnum = [overridesEntry keyEnumerator]; (infoKey = [infoKeyEnum nextObject]); )
+				if (overrideInfo != nullptr)  for (const auto &[infoKey, infoValue] : *overrideInfo)
 				{
 					// special cases for the array items that don't have a direct keyname
-					if ([infoKey isEqualToString:@"techlevel"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_TECH_LEVEL_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"price"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_PRICE_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"short_description"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_SHORT_DESC_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"name"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_SHORT_DESC_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"long_description"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_LONG_DESC_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else if ([infoKey isEqualToString:@"description"]) 
-						[equipArray replaceObjectAtIndex:EQUIPMENT_LONG_DESC_INDEX withObject:[overridesEntry objectForKey:infoKey]];
-					else 
+					if (infoKey == "techlevel")
+						ReplaceArrayElement(equipArray, EQUIPMENT_TECH_LEVEL_INDEX, infoValue);
+					else if (infoKey == "price")
+						ReplaceArrayElement(equipArray, EQUIPMENT_PRICE_INDEX, infoValue);
+					else if (infoKey == "short_description" || infoKey == "name")
+						ReplaceArrayElement(equipArray, EQUIPMENT_SHORT_DESC_INDEX, infoValue);
+					else if (infoKey == "long_description" || infoKey == "description")
+						ReplaceArrayElement(equipArray, EQUIPMENT_LONG_DESC_INDEX, infoValue);
+					else
 					{
-						NSMutableDictionary		*extra = nil;
 						// for everything else
-						// do we actually have an extras dictionary?
-						if (!oo::PListView(equipArray).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)) 
-						{
-							// if not, create a blank one we can add to
-							extra = [NSMutableDictionary dictionary];
-						}
-						else
-						{
-							extra = [oo::PListView(equipArray).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX) mutableCopy];
-						}
+						// do we actually have an extras dictionary? if not, start from a blank one we can add to
+						const oo::PList *existingExtra = equipArray.at(EQUIPMENT_EXTRA_INFO_INDEX);
+						oo::PList extra = (existingExtra != nullptr && existingExtra->isDict()) ? *existingExtra : oo::PList(oo::PList::Dict());
+						oo::PList::Dict &extraEntries = *extra.getIf<oo::PList::Dict>();
 						// special case for weapon_info && script_info, which are child dictionaries
-						if ([infoKey isEqualToString:@"weapon_info"] || [infoKey isEqualToString:@"script_info"])
+						if (infoKey == "weapon_info" || infoKey == "script_info")
 						{
-							NSEnumerator			*subEnum = nil;
-							NSString				*subKey;
-							NSMutableDictionary		*subInfo = nil;
-							NSDictionary			*subOverrides = nil;
-							// do we actually have a weapon_info/script_info dictionary?
-							if (!oo::PListView(extra).get<NSDictionary *>(infoKey)) 
-							{
-								// if not, create a blank dictionary we can add to
-								subInfo = [NSMutableDictionary dictionary];
-							} 
-							else 
-							{
-								subInfo = [oo::PListView(extra).get<NSDictionary *>(infoKey) mutableCopy];
-							}
-							subOverrides = oo::PListView(overridesEntry).get<NSDictionary *>(infoKey);
+							// do we actually have a weapon_info/script_info dictionary? if not, start from a blank one
+							const oo::PList *existingSubInfo = extra.get<oo::PList::Dict>(infoKey);
+							oo::PList subInfo = existingSubInfo != nullptr ? *existingSubInfo : oo::PList(oo::PList::Dict());
 							// cycle through all the sub keys found in the overrides file for this equipment key item
-							for (subEnum = [subOverrides keyEnumerator]; (subKey = [subEnum nextObject]); )
+							if (const oo::PList::Dict *subOverrides = infoValue.getIf<oo::PList::Dict>())
 							{
-								[subInfo setObject:[subOverrides objectForKey:subKey] forKey:subKey];
+								for (const auto &[subKey, subValue] : *subOverrides)
+								{
+									(*subInfo.getIf<oo::PList::Dict>())[subKey] = subValue;
+								}
 							}
-							[extra setObject:[[subInfo copy] autorelease] forKey:infoKey];
+							extraEntries[infoKey] = std::move(subInfo);
 						}
 						else
 						{
 							// for all other keys in the extras dictionary
-							[extra setObject:[overridesEntry objectForKey:infoKey] forKey:infoKey];
+							extraEntries[infoKey] = infoValue;
 						}
-						[equipArray replaceObjectAtIndex:EQUIPMENT_EXTRA_INFO_INDEX withObject:[[extra copy] autorelease]];
+						ReplaceArrayElement(equipArray, EQUIPMENT_EXTRA_INFO_INDEX, extra);
 					}
 				}
-				[arrayToProcess replaceObjectAtIndex:i withObject:equipArray];
+				entries[i] = std::move(equipArray);
 			}
 		}
 	}
@@ -1588,64 +1684,35 @@ static NSMutableDictionary *sStringCache;
 
 // A method for handling merging of arrays. Currently used with the nebulatextures.plist and startextures.plist entries.
 // uses the "texture" filename as the key value, or "key" if found
-+ (void) handleStarNebulaListMerging: (NSMutableArray *)arrayToProcess
++ (void) handleStarNebulaListMerging: (oo::PList &)arrayToProcess
 {
 	NSUInteger i,j,k;
-	NSMutableArray *refArray = [arrayToProcess objectAtIndex:[arrayToProcess count] - 1];
+	oo::PList::Array &lists = *arrayToProcess.getIf<oo::PList::Array>();
+	oo::PList &refArray = lists[lists.size() - 1];
 
-	// Any change to refArray will directly modify arrayToProcess.	
-	for (i = 0; i < [refArray count]; i++)
+	// Any change to refArray will directly modify arrayToProcess.
+	for (i = 0; i < refArray.count(); i++)
 	{
-		for (j = 0; j < [arrayToProcess count] - 1; j++)
+		for (j = 0; j < lists.size() - 1; j++)
 		{
-			NSUInteger count = [oo::PListView(arrayToProcess).at<NSArray *>(j) count];
+			NSUInteger count = lists[j].isArray() ? lists[j].count() : 0;
 			if (count == 0)  continue;
 
-			for (k = 0; k < count; k++) 
+			for (k = 0; k < count; k++)
 			{
-				id processValue = oo::PListView(oo::PListView(arrayToProcess).at<NSArray *>(j)).at<id>(k, nil);
-				id refValue = oo::PListView(refArray).at<id>(i, nil);
-				NSString *key1 = nil;
-				NSString *key2 = nil;
+				const oo::PList *processValue = ArrayElement(&lists[j], k);
+				const oo::PList *refValue = ArrayElement(&refArray, i);
 
-				if ([processValue isKindOfClass:[NSString class]]) 
-				{
-					key1 = processValue;
-				}
-				else if ([processValue isKindOfClass:[NSDictionary class]])
-				{
-					if (![processValue objectForKey:@"key"]) 
-					{
-						key1 = [processValue objectForKey:@"texture"];
-					}
-					else
-					{
-						key1 = [processValue objectForKey:@"key"];
-					}
-				}
+				const oo::PList *key1 = TextureListKey(processValue);
 				if (!key1) continue;
 
-				if ([refValue isKindOfClass:[NSString class]]) 
-				{
-					key2 = refValue;
-				}
-				else if ([refValue isKindOfClass:[NSDictionary class]])
-				{
-					if (![refValue objectForKey:@"key"])
-					{
-						key2 = [refValue objectForKey:@"texture"];
-					}
-					else
-					{
-						key2 = [refValue objectForKey:@"key"];
-					}
-				}
+				const oo::PList *key2 = TextureListKey(refValue);
 				if (!key2) continue;
 
-				if ([key1 isEqual:key2])
+				if (PListIsEqual(key1, key2))
 				{
-					[[arrayToProcess objectAtIndex:j] replaceObjectAtIndex:k withObject:[refArray objectAtIndex:i]];
-					[refArray removeObjectAtIndex:i];
+					ReplaceArrayElement(lists[j], k, *refArray.at(i));
+					refArray.getIf<oo::PList::Array>()->erase(refArray.getIf<oo::PList::Array>()->begin() + static_cast<std::ptrdiff_t>(i));
 				}
 
 			}
@@ -2021,17 +2088,21 @@ static NSString *LogClassKeyRoot(NSString *key)
 }
 
 
-+ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
-	return [self stringFromFilesNamed:fileName inFolder:folderName cache:YES];
+	return [self cxx_stringFromFilesNamed:fileName inFolder:folderName cache:YES];
 }
 
 
-+ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache
+// The twin exists from oo-3rb.101 (the loaders' header line shares "FromFilesNamed"); its body,
+// sStringCache and the path lookup convert in oo-3rb.103.
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileNameString inFolder:(const std::optional<std::string> &)folderNameString cache:(BOOL)useCache
 {
 	id				result = nil;
 	NSString		*path = nil;
 	NSString		*key = nil;
+	NSString		*fileName = oo::NSStringFrom(fileNameString);
+	NSString		*folderName = oo::NSStringOrNil(folderNameString);
 	
 	if (useCache)
 	{
@@ -2040,7 +2111,7 @@ static NSString *LogClassKeyRoot(NSString *key)
 		{
 			// return the cached object, if any
 			result = [sStringCache objectForKey:key];
-			if (result)  return result;
+			if (result)  return oo::OptionalString(result);
 		}
 	}
 	
@@ -2053,7 +2124,7 @@ static NSString *LogClassKeyRoot(NSString *key)
 		[sStringCache setObject:result forKey:key];
 	}
 	
-	return result;
+	return oo::OptionalString(result);
 }
 
 
@@ -2216,17 +2287,21 @@ static NSString *LogClassKeyRoot(NSString *key)
 
 + (void) logPaths
 {
-	NSMutableArray			*displayPaths = nil;
-	NSString				*path = nil;
-
-	// Prettify paths for logging.
-	displayPaths = [NSMutableArray arrayWithCapacity:[sSearchPaths count]];
-	foreach (path, sSearchPaths)
+	// Prettify paths for logging (-stringByStandardizingPath and -stringByAbbreviatingWithTildeInPath
+	// have no oo::str form yet: they run on the bridged string).
+	std::string displayPaths;
+	if (sSearchPaths.has_value())
 	{
-		[displayPaths addObject:[[path stringByStandardizingPath] stringByAbbreviatingWithTildeInPath]];
+		bool first = true;
+		for (const std::string &path : *sSearchPaths)
+		{
+			if (!first)  displayPaths += "\n    ";
+			first = false;
+			displayPaths += oo::StdString([[oo::NSStringFrom(path) stringByStandardizingPath] stringByAbbreviatingWithTildeInPath]);
+		}
 	}
-	
-	OOLog(@"searchPaths.dumpAll", @"Resource paths: %@\n    %@", oo::NSStringOrNil(sUseAddOns), [displayPaths componentsJoinedByString:@"\n    "]);
+
+	OOLog(@"searchPaths.dumpAll", @"Resource paths: %@\n    %@", oo::NSStringOrNil(sUseAddOns), oo::NSStringFrom(displayPaths));
 
 }
 
