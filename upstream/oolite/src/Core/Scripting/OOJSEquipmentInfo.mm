@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -258,50 +259,51 @@ OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Val
 		}
 	}
 	
-	NSString *string = OOStringFromJSValue(context, value);
-	if (string != nil)  return [OOEquipmentType equipmentTypeWithIdentifier:string];
+	std::optional<std::string> string = oo::OptionalString(OOStringFromJSValue(context, value));
+	if (string.has_value())  return [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*string)];
 	return nil;
 	
 	OOJS_PROFILE_EXIT
 }
 
 
-NSString *JSValueToEquipmentKey(ooscript::Context context, ooscript::Value value)
+std::optional<std::string> JSValueToEquipmentKey(ooscript::Context context, ooscript::Value value)
 {
-	return [JSValueToEquipmentType(context, value) identifier];
+	return oo::OptionalString([JSValueToEquipmentType(context, value) identifier]);
 }
 
 
-NSString *JSValueToEquipmentKeyRelaxed(ooscript::Context context, ooscript::Value value, BOOL *outExists)
+std::optional<std::string> JSValueToEquipmentKeyRelaxed(ooscript::Context context, ooscript::Value value, BOOL *outExists)
 {
 	OOJS_PROFILE_ENTER
 	
-	NSString *result = nil;
+	std::optional<std::string> result;
 	BOOL exists = NO;
 	id objValue = OOJSNativeObjectFromJSValue(context, value);
 	
 	if ([objValue isKindOfClass:[OOEquipmentType class]])
 	{
-		result = [objValue identifier];
+		result = oo::OptionalString([objValue identifier]);
 		exists = YES;
 	}
-	else if ([objValue isKindOfClass:[NSString class]])
+	else if (oo::IsNSString(objValue))
 	{
 		/*	To enforce deliberate backwards incompatibility, reject strings
 			ending with _DAMAGED unless someone actually named an equip that
 			way.
 		 */
 		exists = [OOEquipmentType equipmentTypeWithIdentifier:objValue] != nil;
-		if (exists || ![objValue hasSuffix:@"_DAMAGED"])
+		std::string string = oo::StdString(objValue);
+		if (exists || !oo::str::hasSuffix(string, "_DAMAGED"))
 		{
-			result = objValue;
+			result = string;
 		}
 	}
 	
 	if (outExists != NULL)  *outExists = exists;
 	return result;
 	
-	OOJS_PROFILE_EXIT
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
@@ -479,7 +481,7 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			
 		case kEquipmentInfo_scriptInfo:
 			result = [eqType scriptInfo];
-			if (result == nil)  result = [NSDictionary dictionary];	// empty rather than null
+			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
 			break;
 			
 		case kEquipmentInfo_scriptName:
@@ -489,7 +491,7 @@ static bool EquipmentInfoGetProperty(Context cx, Object obj, PropertyId propID, 
 			
 		case kEquipmentInfo_weaponInfo:
 			result = [eqType weaponInfo];
-			if (result == nil)  result = [NSDictionary dictionary];	// empty rather than null
+			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
 			break;
 			
 		default:
@@ -532,7 +534,7 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 			}
 			break;
 		case kEquipmentInfo_effectiveTechLevel:
-			OOStandardsDeprecated([NSString stringWithFormat:@"TL99 for variable tech level is deprecated for %@",[eqType identifier]]);
+			cxx_OOStandardsDeprecated(oo::str::format("TL99 for variable tech level is deprecated for %s", oo::DescriptionOf([eqType identifier]).c_str()));
 			if (!OOEnforceStandards() && [eqType techLevel] == kOOVariableTechLevel)
 			{
 				if (ooscript::isNull(*value)) 
@@ -546,7 +548,7 @@ static bool EquipmentInfoSetProperty(Context cx, Object obj, PropertyId propID, 
 				{
 					if (iValue < 0)  iValue = 0;
 					if (15 < iValue && iValue != kOOVariableTechLevel)  iValue = 15;
-					[OOPlayerForScripting() setMissionVariable:[NSString stringWithFormat:@"%u", iValue]
+					[OOPlayerForScripting() setMissionVariable:oo::NSStringFrom(oo::str::format("%u", iValue))
 														  forKey:[@"mission_TL_FOR_" stringByAppendingString:[eqType identifier]]];
 					return YES;
 				}
@@ -603,7 +605,7 @@ static bool EquipmentInfoGetAllEqipment(Context cx, Object /*obj*/, PropertyId /
 }
 
 
-- (NSString *) oo_jsClassName
+- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
 {
 	return @"EquipmentInfo";
 }
@@ -625,16 +627,16 @@ static bool EquipmentInfoStaticInfoForKey(ooscript::Context context, ooscript::C
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	NSString					*key = nil;
+	std::optional<std::string>	key;
 	
-	if (oojsArgs.count() > 0)  key = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (key == nil)
+	if (oojsArgs.count() > 0)  key = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (!key.has_value())
 	{
 		OOJSReportBadArguments(context, @"EquipmentInfo", @"infoForKey", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([OOEquipmentType equipmentTypeWithIdentifier:key]);
+	OOJS_RETURN_OBJECT([OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*key)]);
 	
 	OOJS_NATIVE_EXIT
 }

@@ -53,7 +53,7 @@ MA 02110-1301, USA.
 #import "HeadUpDisplay.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOEntityFilterPredicate.h"
-#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 
 static NSString * const kOOLogScriptAddShipsFailed			= @"script.addShips.failed";
@@ -1491,7 +1491,7 @@ static int shipsFound;
 - (void) ejectItem:(NSString *)itemKey
 {
 	if (scriptTarget == nil)  scriptTarget = self;
-	[scriptTarget ejectShipOfType:itemKey];
+	[scriptTarget ejectShipOfType:oo::OptionalString(itemKey)];
 }
 
 
@@ -2319,7 +2319,7 @@ static int shipsFound;
 
 	/*- add planet -*/
 	OOLog(kOOLogDebugAddPlanet, @"DEBUG: initPlanetFromDictionary: %@", dict);
-	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
+	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(dict) withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 	
 	Quaternion planetOrientation;
 	if (ScanQuaternionFromString([dict objectForKey:@"orientation"], &planetOrientation))
@@ -2370,7 +2370,7 @@ static int shipsFound;
 	}
 
 	OOLog(kOOLogDebugAddPlanet, @"DEBUG: initMoonFromDictionary: %@", dict);
-	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
+	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(dict) withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 	
 	Quaternion planetOrientation;
 	if (ScanQuaternionFromString([dict objectForKey:@"orientation"], &planetOrientation))
@@ -2808,7 +2808,7 @@ static int shipsFound;
 			}
 		}
 		
-		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:planetInfo withAtmosphere:YES andSeed:target_system_seed];
+		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(planetInfo) withAtmosphere:YES andSeed:target_system_seed];
 		[doppelganger miniaturize];
 		[doppelganger autorelease];
 		

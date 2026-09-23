@@ -181,7 +181,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	_allKeys = _playerKeys;
 	for (const std::string &key : _stationKeys)  AddString(_allKeys, key);
 
-	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:[ResourceManager dictionaryFromFilesNamed:@"shipdataEntrySchema.plist" inFolder:@"Schemata" andMerge:NO]];
+	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"shipdataEntrySchema.plist" inFolder:@"Schemata" andMerge:NO])];
 	[_schemaVerifier setDelegate:self];
 
 	for (const auto &[shipKey, value] : *_shipdataPList.getIf<oo::PList::Dict>())  shipList.push_back(shipKey);
@@ -347,7 +347,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 - (void)checkSchema
 {
-	[_schemaVerifier verifyPropertyList:oo::ObjectFromPList(_info) named:oo::NSStringFrom(_name)];
+	[_schemaVerifier verifyPropertyList:_info named:_name];
 }
 
 
@@ -418,7 +418,7 @@ withPropertyList:(id)rootPList
 	expectedType:(id)localSchema	// shared selector (OOPListSchemaVerifierDelegate; proposed ADR-0043)
 {
 	// FIXME: use fancy new error codes to provide useful error descriptions.
-	[self message:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", name, [error plistKeyPathDescription], [error localizedFailureReason]];
+	[self message:@"***** ERROR: verification of ship \"%@\" failed at \"%@\": %@", name, oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:oo::PListFrom([[error userInfo] objectForKey:oo::NSStringFrom(kPListKeyPathErrorKey)])]), [error localizedFailureReason]];
 	return YES;
 }
 
