@@ -33,7 +33,6 @@ SOFTWARE.
 #import "OOFunctionAttributes.h"
 #import "ResourceManager.h"
 #import "OOCollectionExtractors.h"
-#import "NSThreadOOExtensions.h"
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
 
@@ -44,14 +43,10 @@ SOFTWARE.
 
 
 #if PER_THREAD_INDENTATION
-	#if OOLITE_USE_TLS	// Define to use __thread keyword where supported
-		#define USE_INDENT_GLOBALS	1
-		#define THREAD_LOCAL		__thread
-	#else
-		#define USE_INDENT_GLOBALS	0
-		static NSString * const kIndentLevelKey = @"org.aegidian.oolite.oolog.indentLevel";
-		static NSString * const kIndentStackKey = @"org.aegidian.oolite.oolog.indentStack";
-	#endif
+	// Per-thread indentation state is C++ thread_local storage; it was the thread dictionary
+	// (bead oo-3rb.6). Each thread starts at indent 0 with an empty stack, as before.
+	#define USE_INDENT_GLOBALS	1
+	#define THREAD_LOCAL		thread_local
 #else
 	#define USE_INDENT_GLOBALS		1
 	#define THREAD_LOCAL
@@ -235,7 +230,7 @@ void OOLogOutdentIf(NSString *inMessageClass)
 
 #if USE_INDENT_GLOBALS
 
-#if OOLITE_USE_TLS
+#if PER_THREAD_INDENTATION
 	#define INDENT_LOCK()		do {} while (0)
 	#define INDENT_UNLOCK()		do {} while (0)
 #else
@@ -260,7 +255,7 @@ void OOLogPushIndent(void)
 {
 	OOLogIndentStackElement	*elem = NULL;
 	
-	elem = malloc(sizeof *elem);
+	elem = (OOLogIndentStackElement *)malloc(sizeof *elem);
 	if (elem != NULL)
 	{
 		INDENT_LOCK();
@@ -291,73 +286,6 @@ void OOLogPopIndent(void)
 		OOLogInternal(OOLOG_BAD_POP_INDENT, @"OOLogPopIndent(): state stack underflow.");
 	}
 	INDENT_UNLOCK();
-}
-
-#else	// !USE_INDENT_GLOBALS
-
-#define INDENT_LOCK()			do {} while (0)
-#define INDENT_UNLOCK()			do {} while (0)
-
-
-OOINLINE unsigned GetIndentLevel(void)
-{
-	NSMutableDictionary *threadDict = [[NSThread currentThread] threadDictionary];
-	return [[threadDict objectForKey:kIndentLevelKey] unsignedIntValue];
-}
-
-
-OOINLINE void SetIndentLevel(unsigned value)
-{
-	NSMutableDictionary *threadDict = [[NSThread currentThread] threadDictionary];
-	[threadDict setObject:[NSNumber numberWithUnsignedInt:value] forKey:kIndentLevelKey];
-}
-
-
-void OOLogPushIndent(void)
-{
-	OOLogIndentStackElement	*elem = NULL;
-	NSMutableDictionary		*threadDict = nil;
-	NSValue					*val = nil;
-	
-	elem = (OOLogIndentStackElement *)malloc(sizeof *elem);
-	if (elem != NULL)
-	{
-		threadDict = [[NSThread currentThread] threadDictionary];
-		val = [threadDict objectForKey:kIndentStackKey];
-		
-		elem->indent = [[threadDict objectForKey:kIndentLevelKey] intValue];
-		elem->link = (OOLogIndentStackElement *)[val pointerValue];
-		
-		/*
-			Clang static analyzer reports elem not released here. It is in fact
-			released in OOLogPopIndent().
-		*/
-		[threadDict setObject:[NSValue valueWithPointer:elem] forKey:kIndentStackKey];
-	}
-}
-
-
-void OOLogPopIndent(void)
-{
-	OOLogIndentStackElement	*elem = NULL;
-	NSMutableDictionary		*threadDict = nil;
-	NSValue					*val = nil;
-	
-	threadDict = [[NSThread currentThread] threadDictionary];
-	val = [threadDict objectForKey:kIndentStackKey];
-	
-	elem = (OOLogIndentStackElement *)[val pointerValue];
-	
-	if (elem != NULL)
-	{
-		[threadDict setObject:[NSNumber numberWithUnsignedInt:elem->indent] forKey:kIndentLevelKey];
-		[threadDict setObject:[NSValue valueWithPointer:elem->link] forKey:kIndentStackKey];
-		free(elem);
-	}
-	else
-	{
-		OOLogInternal(OOLOG_BAD_POP_INDENT, @"OOLogPopIndent(): state stack underflow.");
-	}
 }
 
 #endif	// USE_INDENT_GLOBALS
