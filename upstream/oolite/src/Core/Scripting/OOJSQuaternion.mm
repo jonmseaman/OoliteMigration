@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "OOConstToString.h"
 #import "OOJSEntity.h"
 #import "OOJSVector.h"
+#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -64,7 +65,7 @@ static ooscript::Object sQuaternionPrototype;
 
 
 namespace {
-static BOOL GetThisQuaternion(ooscript::Context context, ooscript::Object quaternionObj, Quaternion *outQuaternion, NSString *method)  NONNULL_FUNC;
+static BOOL GetThisQuaternion(ooscript::Context context, ooscript::Object quaternionObj, Quaternion *outQuaternion, const std::string &method)  NONNULL_FUNC;
 
 static bool QuaternionGetProperty(Context cx, Object obj, PropertyId propID, Value *value);
 static bool QuaternionSetProperty(Context cx, Object obj, PropertyId propID, bool strict, Value *value);
@@ -253,28 +254,28 @@ static QuaternionStatistics sQuaternionConversionStats;
 // :setM quatStats PS.callObjC("reportJSQuaternionStatistics")
 // :quatStats
 
-- (NSString *) reportJSQuaternionStatistics
+- (id) reportJSQuaternionStatistics	// shared selector (proposed ADR-0043): called by name from JavaScript (callObjC)
 {
 	QuaternionStatistics *stats = &sQuaternionConversionStats;
 	
 	NSUInteger sum = stats->quatCount + stats->entityCount + stats->arrayCount + stats->protoCount;
 	double convFac = 100.0 / sum;
 	
-	return [NSString stringWithFormat:
-		   @"quaternion-to-quaternion conversions: %zu (%g %%)\n"
+	return oo::NSStringFrom(oo::str::format(
+		   "quaternion-to-quaternion conversions: %zu (%g %%)\n"
 			"    entity-to-quaternion conversions: %zu (%g %%)\n"
 			"     array-to-quaternion conversions: %zu (%g %%)\n"
 			"       prototype-to-zero conversions: %zu (%g %%)\n"
 			"                    null conversions: %zu (%g %%)\n"
 			"                  failed conversions: %zu (%g %%)\n"
 			"                               total: %zu",
-			(long)stats->quatCount, stats->quatCount * convFac,
-			(long)stats->entityCount, stats->entityCount * convFac,
-			(long)stats->arrayCount, stats->arrayCount * convFac,
-			(long)stats->protoCount, stats->protoCount * convFac,
-			(long)stats->nullCount, stats->nullCount * convFac,
-			(long)stats->failCount, stats->failCount * convFac,
-			(long)sum];
+			(size_t)stats->quatCount, stats->quatCount * convFac,
+			(size_t)stats->entityCount, stats->entityCount * convFac,
+			(size_t)stats->arrayCount, stats->arrayCount * convFac,
+			(size_t)stats->protoCount, stats->protoCount * convFac,
+			(size_t)stats->nullCount, stats->nullCount * convFac,
+			(size_t)stats->failCount, stats->failCount * convFac,
+			(size_t)sum));
 }
 
 
@@ -382,12 +383,12 @@ BOOL JSObjectGetQuaternion(ooscript::Context context, ooscript::Object quaternio
 
 
 namespace {
-static BOOL GetThisQuaternion(ooscript::Context context, ooscript::Object quaternionObj, Quaternion *outQuaternion, NSString *method)
+static BOOL GetThisQuaternion(ooscript::Context context, ooscript::Object quaternionObj, Quaternion *outQuaternion, const std::string &method)
 {
 	if (EXPECT(JSObjectGetQuaternion(context, quaternionObj, outQuaternion)))  return YES;
 	
 	ooscript::Value arg = ooscript::objectValue(quaternionObj);
-	OOJSReportBadArguments(context, @"Quaternion", method, 1, &arg, @"Invalid target object", @"Quaternion");
+	OOJSReportBadArguments(context, @"Quaternion", oo::NSStringFrom(method), 1, &arg, @"Invalid target object", @"Quaternion");
 	return NO;
 }
 } // namespace
@@ -469,12 +470,12 @@ static BOOL QuaternionFromArgumentListNoErrorInternal(ooscript::Context context,
 
 
 // EMMSTRAN: remove outConsumed, since it can only be 1 except in failure (constructor is an exception, but it uses QuaternionFromArgumentListNoErrorInternal() directly).
-BOOL QuaternionFromArgumentList(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, Quaternion *outQuaternion, unsigned *outConsumed)
+BOOL QuaternionFromArgumentList(ooscript::Context context, const std::string &scriptClass, const std::string &function, unsigned argc, ooscript::Value *argv, Quaternion *outQuaternion, unsigned *outConsumed)
 {
 	if (QuaternionFromArgumentListNoErrorInternal(context, argc, argv, outQuaternion, outConsumed, NO))  return YES;
 	else
 	{
-		OOJSReportBadArguments(context, scriptClass, function, argc, argv,
+		OOJSReportBadArguments(context, oo::NSStringFrom(scriptClass), oo::NSStringFrom(function), argc, argv,
 							   @"Could not construct quaternion from parameters",
 							   @"Quaternion, Entity or four numbers");
 		return NO;
@@ -657,9 +658,9 @@ static bool QuaternionToString(ooscript::Context context, ooscript::CallArgs &oo
 	
 	Quaternion				thisq;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"toString"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "toString"))) return NO;
 	
-	OOJS_RETURN_OBJECT(QuaternionDescription(thisq));
+	OOJS_RETURN_OBJECT(oo::NSStringFrom(QuaternionDescription(thisq)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -675,10 +676,9 @@ static bool QuaternionToSource(ooscript::Context context, ooscript::CallArgs &oo
 	
 	Quaternion				thisq;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"toSource"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "toSource"))) return NO;
 	
-	NSString *str = [NSString stringWithFormat:@"Quaternion(%g, %g, %g, %g)", thisq.w, thisq.x, thisq.y, thisq.z];
-	OOJS_RETURN_OBJECT(str);
+	OOJS_RETURN_OBJECT(oo::NSStringFrom(oo::str::format("Quaternion(%g, %g, %g, %g)", thisq.w, thisq.x, thisq.y, thisq.z)));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -694,8 +694,8 @@ static bool QuaternionMultiply(ooscript::Context context, ooscript::CallArgs &oo
 	
 	Quaternion				thisq, thatq, result;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"multiply"))) return NO;
-	if (EXPECT_NOT(!QuaternionFromArgumentList(context, @"Quaternion", @"multiply", oojsArgs.count(), OOJS_ARGV, &thatq, NULL)))  return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "multiply"))) return NO;
+	if (EXPECT_NOT(!QuaternionFromArgumentList(context, "Quaternion", "multiply", oojsArgs.count(), OOJS_ARGV, &thatq, NULL)))  return NO;
 	
 	result = quaternion_multiply(thisq, thatq);
 	
@@ -716,8 +716,8 @@ static bool QuaternionDot(ooscript::Context context, ooscript::CallArgs &oojsArg
 	Quaternion				thisq, thatq;
 	OOScalar				result;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"dot"))) return NO;
-	if (EXPECT_NOT(!QuaternionFromArgumentList(context, @"Quaternion", @"dot", oojsArgs.count(), OOJS_ARGV, &thatq, NULL)))  return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "dot"))) return NO;
+	if (EXPECT_NOT(!QuaternionFromArgumentList(context, "Quaternion", "dot", oojsArgs.count(), OOJS_ARGV, &thatq, NULL)))  return NO;
 	
 	result = quaternion_dot_product(thisq, thatq);
 	
@@ -742,8 +742,8 @@ static bool QuaternionRotate(ooscript::Context context, ooscript::CallArgs &oojs
 	unsigned						argc = oojsArgs.count();
 	ooscript::Value					*argv = OOJS_ARGV;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"rotate"))) return NO;
-	if (EXPECT_NOT(!VectorFromArgumentList(context, @"Quaternion", @"rotate", argc, argv, &axis, &consumed)))  return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "rotate"))) return NO;
+	if (EXPECT_NOT(!VectorFromArgumentList(context, "Quaternion", "rotate", argc, argv, &axis, &consumed)))  return NO;
 	argv += consumed;
 	argc -= consumed;
 	if (argc > 0)
@@ -770,7 +770,7 @@ static bool QuaternionRotateX(ooscript::Context context, ooscript::CallArgs &ooj
 	Quaternion				quat;
 	double					angle;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, @"rotateX"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, "rotateX"))) return NO;
 	if (EXPECT_NOT(!OOJSArgumentListGetNumber(context, @"Quaternion", @"rotateX", oojsArgs.count(), OOJS_ARGV, &angle, NULL)))  return NO;
 	
 	quaternion_rotate_about_x(&quat, angle);
@@ -792,7 +792,7 @@ static bool QuaternionRotateY(ooscript::Context context, ooscript::CallArgs &ooj
 	Quaternion				quat;
 	double					angle;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, @"rotateY"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, "rotateY"))) return NO;
 	if (EXPECT_NOT(!OOJSArgumentListGetNumber(context, @"Quaternion", @"rotateY", oojsArgs.count(), OOJS_ARGV, &angle, NULL)))  return NO;
 	
 	quaternion_rotate_about_y(&quat, angle);
@@ -814,7 +814,7 @@ static bool QuaternionRotateZ(ooscript::Context context, ooscript::CallArgs &ooj
 	Quaternion				quat;
 	double					angle;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, @"rotateZ"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, "rotateZ"))) return NO;
 	if (EXPECT_NOT(!OOJSArgumentListGetNumber(context, @"Quaternion", @"rotateZ", oojsArgs.count(), OOJS_ARGV, &angle, NULL)))  return NO;
 	
 	quaternion_rotate_about_z(&quat, angle);
@@ -835,7 +835,7 @@ static bool QuaternionNormalize(ooscript::Context context, ooscript::CallArgs &o
 	
 	Quaternion				quat;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, @"normalize"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, "normalize"))) return NO;
 	
 	quaternion_normalize(&quat);
 	
@@ -855,7 +855,7 @@ static bool QuaternionConjugate(ooscript::Context context, ooscript::CallArgs &o
 	
 		Quaternion				quat, result;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, @"conjugate"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &quat, "conjugate"))) return NO;
 	
 	result = quaternion_conjugate(quat);
 	
@@ -876,7 +876,7 @@ static bool QuaternionVectorForward(ooscript::Context context, ooscript::CallArg
 	Quaternion				thisq;
 	Vector					result;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"vectorForward"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "vectorForward"))) return NO;
 	
 	result = vector_forward_from_quaternion(thisq);
 	
@@ -897,7 +897,7 @@ static bool QuaternionVectorUp(ooscript::Context context, ooscript::CallArgs &oo
 	Quaternion				thisq;
 	Vector					result;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"vectorUp"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "vectorUp"))) return NO;
 	
 	result = vector_up_from_quaternion(thisq);
 	
@@ -918,7 +918,7 @@ static bool QuaternionVectorRight(ooscript::Context context, ooscript::CallArgs 
 	Quaternion				thisq;
 	Vector					result;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"vectorRight"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "vectorRight"))) return NO;
 	
 	result = vector_right_from_quaternion(thisq);
 	
@@ -941,7 +941,7 @@ static bool QuaternionToArray(ooscript::Context context, ooscript::CallArgs &ooj
 	BOOL					OK = YES;
 	ooscript::Value					nVal;
 	
-	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, @"toArray"))) return NO;
+	if (EXPECT_NOT(!GetThisQuaternion(context, OOJS_THIS, &thisq, "toArray"))) return NO;
 	
 	result = (ooscript::newArrayObject(context, 0, nullptr));
 	if (result != NULL)
