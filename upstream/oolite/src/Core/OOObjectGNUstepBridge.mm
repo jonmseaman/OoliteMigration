@@ -12,11 +12,12 @@ that removes each Foundation family replaces it:
 
     +description  "ClassName"            (NSObject: the class name; %@ of [self class])
     -methodSignatureForSelector:,        NSObject's own implementations (runtime lookups only),
-    +instanceMethodSignatureForSelector:  called with an OOObject receiver; oo-3rb.15 (NSInvocation/
-                                          NSMethodSignature) replaces them
-    -performSelector:withObject:          NSObject's own implementation (a timed performer on the
-     afterDelay:                          current run loop, retaining receiver and argument);
-                                          oo-3rb.8 (NSTimer/NSRunLoop) replaces it
+    +instanceMethodSignatureForSelector:  called with an OOObject receiver; the NSInvocation
+                                          follow-ups of oo-3rb.15 (OOWeakReference's proxy,
+                                          OOOXZManager's filter) replace them
+    -performSelector:...afterDelay:       NSObject's own implementation (a timed performer on the
+                                          current run loop, retaining receiver and argument);
+                                          replaced when the run loop goes (NSTimer/NSRunLoop)
 
 -description is not here: in the game every NSObject's -description is OOCocoa.mm's
 NSObject (OODescriptionComponents), and OOObject (OODescriptionComponents) is its twin.
