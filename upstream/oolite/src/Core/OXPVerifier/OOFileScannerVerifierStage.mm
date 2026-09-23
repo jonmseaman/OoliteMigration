@@ -105,20 +105,21 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 
 - (void)run
 {
-	NSAutoreleasePool			*pool = nil;
 	
 	_usedFiles = [[NSMutableSet alloc] init];
 	_caseWarnings = [[NSMutableSet alloc] init];
 	_badPLists = [[NSMutableSet alloc] init];
 	
-	pool = [[NSAutoreleasePool alloc] init];
-	[self scanForFiles];
-	[pool release];
+	@autoreleasepool
+	{
+		[self scanForFiles];
+	}
 	
-	pool = [[NSAutoreleasePool alloc] init];
-	[self checkRootFolders];
-	[self checkKnownFiles];
-	[pool release];
+	@autoreleasepool
+	{
+		[self checkRootFolders];
+		[self checkKnownFiles];
+	}
 }
 
 
@@ -248,55 +249,54 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 	NSArray					*errorLines = nil;
 	NSString				*displayName = nil,
 							*errorKey = nil;
-	NSAutoreleasePool		*pool = nil;
 	
 	data = [self dataForFile:file inFolder:folder referencedFrom:context checkBuiltIn:checkBuiltIn];
 	if (data == nil)  return nil;
 	
-	pool = [[NSAutoreleasePool alloc] init];
-	
-	plist = [NSPropertyListSerialization propertyListFromData:data
-											 mutabilityOption:NSPropertyListImmutable
-													   format:&format
-											 errorDescription:&errorString];
-	
+	@autoreleasepool
+	{
+		plist = [NSPropertyListSerialization propertyListFromData:data
+												 mutabilityOption:NSPropertyListImmutable
+														   format:&format
+												 errorDescription:&errorString];
+		
 #if OOLITE_RELEASE_PLIST_ERROR_STRINGS
-	[errorString autorelease];
+		[errorString autorelease];
 #endif
-	
-	if (plist != nil)
-	{
-		// PList is readable; check that it's in an official Oolite format.
-		[self checkPListFormat:format file:file folder:folder];
-	}
-	else
-	{
-		/*	Couldn't parse plist; report problem.
-			This is complicated somewhat by the need to present a possibly
-			multi-line error description while maintaining our indentation.
-		*/
-		displayName = [self displayNameForFile:file andFolder:folder];
-		errorKey = [displayName lowercaseString];
-		if (![_badPLists containsObject:errorKey])
+		
+		if (plist != nil)
 		{
-			[_badPLists addObject:errorKey];
-			OOLog(@"verifyOXP.plist.parseError", @"Could not interpret property list %@.", displayName);
-			OOLogIndent();
-			errorLines = [errorString componentsSeparatedByString:@"\n"];
-			foreach (errorString, errorLines)
-			{
-				while ([errorString hasPrefix:@"\t"])
-				{
-					errorString = [@"    " stringByAppendingString:[errorString substringFromIndex:1]];
-				}
-				OOLog(@"verifyOXP.plist.parseError", @"%@", errorString);
-			}
-			OOLogOutdent();
+			// PList is readable; check that it's in an official Oolite format.
+			[self checkPListFormat:format file:file folder:folder];
 		}
+		else
+		{
+			/*	Couldn't parse plist; report problem.
+				This is complicated somewhat by the need to present a possibly
+				multi-line error description while maintaining our indentation.
+			*/
+			displayName = [self displayNameForFile:file andFolder:folder];
+			errorKey = [displayName lowercaseString];
+			if (![_badPLists containsObject:errorKey])
+			{
+				[_badPLists addObject:errorKey];
+				OOLog(@"verifyOXP.plist.parseError", @"Could not interpret property list %@.", displayName);
+				OOLogIndent();
+				errorLines = [errorString componentsSeparatedByString:@"\n"];
+				foreach (errorString, errorLines)
+				{
+					while ([errorString hasPrefix:@"\t"])
+					{
+						errorString = [@"    " stringByAppendingString:[errorString substringFromIndex:1]];
+					}
+					OOLog(@"verifyOXP.plist.parseError", @"%@", errorString);
+				}
+				OOLogOutdent();
+			}
+		}
+		
+		[plist retain];
 	}
-	
-	[plist retain];
-	[pool release];
 	
 	return [plist autorelease];
 }
