@@ -228,7 +228,7 @@ typedef enum
 	OOTimeAbsolute    aiScriptWakeTime;
 	
 	//docking instructions
-	NSDictionary			*dockingInstructions;
+	oo::PList				dockingInstructions;		// null: none (was nil); the station is an Object node (a weak reference)
 	
 	OOColor					*laser_color;
 	OOColor					*default_laser_color;
@@ -336,7 +336,7 @@ typedef enum
 	OORoleSet				*roleSet;					// Roles a ship can take, eg. trader, hunter, police, pirate, scavenger &c.
 	NSString				*primaryRole;				// "Main" role of the ship.
 
-	NSArray 				*explosionType;				// explosion.plist entries
+	oo::PList				explosionType;				// explosion.plist entries; null: absent
 	
 	// AI stuff
 	Vector					jink;						// x and y set factors for offsetting a pursuing ship's position
@@ -354,7 +354,7 @@ typedef enum
 	
 	int						patrol_counter;				// keeps track of where the ship is along a patrol route
 	
-	NSMutableDictionary		*previousCondition;			// restored after collision avoidance
+	oo::PList				previousCondition;			// restored after collision avoidance; null: none
 	
 	// derived variables
 	float					weapon_recharge_rate;		// time between shots
@@ -403,7 +403,7 @@ typedef enum
 	std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>	crew;
 	
 	// close contact / collision tracking
-	NSMutableDictionary		*closeContactsInfo;
+	std::map<std::string, std::string, std::less<>>	closeContactsInfo;	// "%d" universal ID -> "%f %f %f" relative position
 	
 	NSString				*lastRadioMessage;
 	
@@ -822,8 +822,8 @@ typedef enum
 
 // defense target handling
 - (NSUInteger) defenseTargetCount;
-- (NSArray *) allDefenseTargets;
-- (NSEnumerator *) defenseTargetEnumerator;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets;	// the live ones (zeroed references skipped)
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets;	// a snapshot in the weak set's order, up to the first zeroed reference
 - (void) validateDefenseTargets;
 - (BOOL) addDefenseTarget:(Entity *)target;
 - (BOOL) isDefenseTarget:(Entity *)target;
@@ -831,7 +831,7 @@ typedef enum
 - (void) removeAllDefenseTargets;
 
 // collision exceptions
-- (NSArray *) collisionExceptions;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions;
 - (void) addCollisionException:(ShipEntity *)ship;
 - (void) removeCollisionException:(ShipEntity *)ship;
 - (BOOL) collisionExceptedFor:(ShipEntity *)ship;
@@ -1194,7 +1194,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) landOnPlanet:(OOPlanetEntity *)planet;
 
 - (void) abortDocking;
-- (NSDictionary *) dockingInstructions;
+- (oo::PList) cxx_dockingInstructions;	// null: none
 
 - (void) broadcastThargoidDestroyed;
 
