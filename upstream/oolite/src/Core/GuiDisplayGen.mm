@@ -38,6 +38,7 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "PlayerEntityStickProfile.h"
 #import "OOSystemDescriptionManager.h"
+#include "oofnd/objc/OOException.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
@@ -1002,8 +1003,8 @@ static BOOL _refreshStarChart = NO;
 	if ((!item_keys.isNull())&&(item_keys.count() != n_items))
 	{
 		// throw exception
-		[NSException raise:@"ArrayLengthMismatchException"
-					format:@"The array sent as 'item_keys' to insertItemsFromArray::: must contain the same number of objects as the array 'items'"];
+		[OOException raise:"ArrayLengthMismatchException"
+					format:"The array sent as 'item_keys' to insertItemsFromArray::: must contain the same number of objects as the array 'items'"];
 	}
 
 	unsigned i;
