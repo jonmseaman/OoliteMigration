@@ -331,7 +331,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	{
 		OOLogERR(@"player.loadCargoPods.noContainer", @"%@", @"couldn't create a container in [PlayerEntity loadCargoPods]");
 		// throw an exception here...
-		[OOException raise:[OOLITE_EXCEPTION_FATAL UTF8String]
+		[OOException raise:OOLITE_EXCEPTION_FATAL
 								format:"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
 	}
 }
