@@ -86,6 +86,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "PlayerEntityKeyMapper.h"
 #import "OOSystemDescriptionManager.h"
+#import "OOFoundationBridge.h"
 
 
 #define PLAYER_DEFAULT_NAME				@"Jameson"
@@ -11970,7 +11971,7 @@ static NSString *last_outfitting_key=nil;
 		NSString *commanderName = [self commanderName];
 		if ([commanderName length] > 0)
 		{
-			[trumbleDigrams appendFormat:@"%@%@", commanderName, [[self mesh] modelName]];
+			[trumbleDigrams appendFormat:@"%@%@", commanderName, oo::NSStringOrNil([[self mesh] modelName])];
 		}
 		else
 		{
