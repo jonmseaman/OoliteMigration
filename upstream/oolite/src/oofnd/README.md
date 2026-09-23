@@ -402,6 +402,10 @@ else. Until then, a caller's sweep bead moves off them with:
 - **Chunk beads:** a file the orchestrator split (`sweep:foundation-chunk`) is done chunk by chunk, in order; each chunk touches only its listed selectors or body part and has its own acceptance; the parent bead's whole-file grep passes after the last chunk.
 - **A C file behind an abstraction layer** keeps its API; the layer's handles become `struct OOALObject *` (ADR-0043 item 14), defined in C++ in the layer's `.mm`.
 
+- **Floats written to disk** (savegames, caches, defaults): build them with `oo::PList::singleReal(f)`, never `oo::PList(double(f))`; the writers then print `%0.7g` as GNUstep did (ADR-0043 item 15). The saved game is written with `oo::writeXMLPList`.
+- **An `NSEnumerator` subclass** is replaced by C++ iteration in the owner's bead: range-for over the backing container, or a nested C++ iterator class behind a `cxx_` accessor; a shared `-objectEnumerator` stays `id` and returns `[oo::NSArrayFromObjects(snapshot) objectEnumerator]` (item 16).
+- **OOLog:** `OOLogging.h` keeps the `const char *` / `OO_LOG` API; the NSString API lives in `OOLogging+FoundationBridge.h` until every caller has moved (item 17). Do not touch it from a caller's bead; convert your own `OOLog` calls with "Migrating OOLog calls".
+
 ### 9. Worktrees on the fleet machine
 
 `.agents/skills/beads-worker/scripts/worktree.sh <id>` run from MSYS2 records MSYS paths (`/c/Users/...`) in `.git/worktrees/<id>/gitdir`. Git for Windows (and anything it runs, such as an automatic `git gc`) cannot find that path and **prunes the worktree's registration**, after which the checkout is no longer a repository. The durable fix, once per worktree, from MSYS2:
@@ -423,6 +427,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OOColor+FoundationBridge.h/.mm` | oo-tms0 | oo-1hvf |
 | `src/Core/Materials/OOMaterialSpecifier+FoundationBridge.h/.mm` (also where the NSDictionary category retires) | oo-hiis | oo-kvlo |
 | `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
+| `src/Core/OOCacheManager+FoundationBridge.h/.mm` | oo-19g0 | oo-5pae ("Delete OOCacheManager+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
