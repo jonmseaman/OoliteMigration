@@ -38,14 +38,14 @@ MA 02110-1301, USA.
 #define STICKPROFILE_TYPE_SPLINE	2
 #define STICKPROFILE_MAX_POWER		10.0
 
-@interface OOJoystickAxisProfile : NSObject <NSCopying>
+@interface OOJoystickAxisProfile : OOObject <OOCopying>
 {
 @private
 	double deadzone;
 }
 
 - (id) init;
-- (id) copyWithZone: (NSZone *) zone;
+- (id) copyWithZone: (OOZone *) zone;
 - (double) rawValue: (double) x;
 - (double) value: (double) x;
 - (double) deadzone;
@@ -61,7 +61,7 @@ MA 02110-1301, USA.
 }
 
 - (id) init;
-- (id) copyWithZone: (NSZone *) zone;
+- (id) copyWithZone: (OOZone *) zone;
 - (void) setPower: (double) newValue;
 - (double) power;
 - (void) setParameter: (double) newValue;
@@ -80,7 +80,7 @@ MA 02110-1301, USA.
 
 - (id) init;
 - (void) dealloc;
-- (id) copyWithZone: (NSZone *) zone;
+- (id) copyWithZone: (OOZone *) zone;
 - (int) addControl: (NSPoint) point;
 - (NSPoint) pointAtIndex: (NSInteger) index;
 - (int) countPoints;
