@@ -443,6 +443,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
 | `src/Core/ResourceManager+FoundationBridge.h/.mm` | oo-3rb.98 (chunks of oo-2wwr) | oo-0f7h ("Delete ResourceManager+FoundationBridge") |
 | `src/Core/OOLogging+FoundationBridge.h/.mm` (the NSString message-class API and kOOLog* constants; the last bridge deleted) | oo-3rb.136 (chunks of oo-lskf) | oo-zcgz ("Delete OOLogging+FoundationBridge") |
+| `src/Core/OOSystemDescriptionManager+FoundationBridge.h/.mm` | oo-3rb.107 (chunks of oo-868e) | oo-caz5 ("Delete OOSystemDescriptionManager+FoundationBridge") |
 | `src/Core/Scripting/OOScript+FoundationBridge.h/.mm` | oo-du83 | oo-eu4j ("Delete OOScript+FoundationBridge") |
 | `src/Core/OXPVerifier/OOOXPVerifier+FoundationBridge.h/.mm` | oo-hkvv | oo-3rb.168 ("Delete OOOXPVerifier+FoundationBridge") |
 | `src/Core/OOShipRegistry+FoundationBridge.h/.mm` | oo-3rb.114 (chunks of oo-92mj) | oo-b7xq ("Delete OOShipRegistry+FoundationBridge") |
