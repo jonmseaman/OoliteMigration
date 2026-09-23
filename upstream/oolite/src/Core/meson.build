@@ -50,6 +50,7 @@ oolite_sources += files(
     'OOFilteringEnumerator.mm',
     'OOGraphicsResetManager.mm',
     'OOHPVector.mm',
+    'OOHPVector+FoundationBridge.mm',
     'OOIsNumberLiteral.mm',
     'OOJoystickManager.mm',
     'OOJoystickProfile.mm',
