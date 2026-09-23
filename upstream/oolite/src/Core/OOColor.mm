@@ -26,6 +26,9 @@ MA 02110-1301, USA.
 #include "oofnd/objc/OORuntime.h"
 #import "OOPListView.h"
 #import "OOMaths.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 @implementation OOColor
@@ -133,7 +136,7 @@ MA 02110-1301, USA.
 
 + (OOColor *) colorWithDescription:(id)description saturationFactor:(float)factor
 {
-	NSDictionary			*dict = nil;
+	id						dict = nil;
 	OOColor					*result = nil;
 	
 	if (description == nil) return nil;
@@ -142,7 +145,7 @@ MA 02110-1301, USA.
 	{
 		result = [[description copy] autorelease];
 	}
-	else if ([description isKindOfClass:[NSString class]])
+	else if (oo::IsNSString(description))
 	{
 		if ([description hasSuffix:@"Color"])
 		{
@@ -153,14 +156,14 @@ MA 02110-1301, USA.
 		else
 		{
 			// Some other string
-			result = [self colorFromString:description];
+			result = [self cxx_colorFromString:oo::StdString(description)];
 		}
 	}
-	else if ([description isKindOfClass:[NSArray class]])
+	else if (oo::IsNSArray(description))
 	{
-		result = [self colorFromString:[description componentsJoinedByString:@" "]];
+		result = [self cxx_colorFromString:oo::StdString([description componentsJoinedByString:@" "])];
 	}
-	else if ([description isKindOfClass:[NSDictionary class]])
+	else if (oo::IsNSDictionary(description))
 	{
 		dict = description;	// Workaround for gnu-gcc's more agressive "multiple methods named..." warnings.
 		
@@ -212,10 +215,10 @@ MA 02110-1301, USA.
 }
 
 
-+ (OOColor *) colorFromString:(NSString*) colorFloatString
++ (OOColor *) cxx_colorFromString:(const std::string &)colorFloatString
 {
 	float			rgbaValue[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	NSScanner		*scanner = [NSScanner scannerWithString:colorFloatString];
+	NSScanner		*scanner = [NSScanner scannerWithString:oo::NSStringFrom(colorFloatString)];	// the NSScanner family (oo-3rb.12) retires this
 	float			factor = 1.0f;
 	int				i;
 	
@@ -341,9 +344,9 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"%g, %g, %g, %g", rgba[0], rgba[1], rgba[2], rgba[3]];
+	return oo::NSStringFrom(oo::str::format("%g, %g, %g, %g", rgba[0], rgba[1], rgba[2], rgba[3]));
 }
 
 
@@ -509,40 +512,35 @@ MA 02110-1301, USA.
 }
 
 
-- (NSArray *) normalizedArray
+- (std::vector<float>) cxx_normalizedArray
 {
 	float r, g, b, a;
 	[self getRed:&r green:&g blue:&b alpha:&a];
-	return [NSArray arrayWithObjects:
-		[NSNumber numberWithFloat:r],
-		[NSNumber numberWithFloat:g],
-		[NSNumber numberWithFloat:b],
-		[NSNumber numberWithFloat:a],
-		nil];
+	return { r, g, b, a };
 }
 
 
-- (NSString *) rgbaDescription
+- (std::optional<std::string>) cxx_rgbaDescription
 {
-	return OORGBAComponentsDescription([self rgbaComponents]);
+	return cxx_OORGBAComponentsDescription([self rgbaComponents]);
 }
 
 
-- (NSString *) hsbaDescription
+- (std::optional<std::string>) cxx_hsbaDescription
 {
-	return OOHSBAComponentsDescription([self hsbaComponents]);
+	return cxx_OOHSBAComponentsDescription([self hsbaComponents]);
 }
 
 @end
 
 
-NSString *OORGBAComponentsDescription(OORGBAComponents components)
+std::string cxx_OORGBAComponentsDescription(OORGBAComponents components)
 {
-	return [NSString stringWithFormat:@"{%.3g, %.3g, %.3g, %.3g}", components.r, components.g, components.b, components.a];
+	return oo::str::format("{%.3g, %.3g, %.3g, %.3g}", components.r, components.g, components.b, components.a);
 }
 
 
-NSString *OOHSBAComponentsDescription(OOHSBAComponents components)
+std::string cxx_OOHSBAComponentsDescription(OOHSBAComponents components)
 {
-	return [NSString stringWithFormat:@"{%i, %.3g, %.3g, %.3g}", (int)components.h, components.s, components.b, components.a];
+	return oo::str::format("{%i, %.3g, %.3g, %.3g}", (int)components.h, components.s, components.b, components.a);
 }
