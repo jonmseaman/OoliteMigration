@@ -200,6 +200,35 @@ byte-identical, and Oolite's own API surface matches the 1.93 contract with no d
   for "global namespace pollution" reports `Map`, `Promise`, `globalThis` and others as
   unexpected.
 
+## Tier 2 and Tier 3 corpus findings (bead oo-1gc.11)
+
+The section above covers Tier 1 only. Bead oo-1gc.11 then loaded all 813 catalogue expansions
+(Tier 3), plus the 150-expansion nightly Tier 2 subset, on the QuickJS-ng build. Each expansion was
+loaded **solo**, twice, on two QuickJS-ng builds. Per-expansion results are in
+[docs/phases/1-corpus-tier23-report.md](phases/1-corpus-tier23-report.md). No SpiderMonkey build is
+left to compare against. So a failure counts as engine-independent only when its first error line
+comes from code the engine swap did not touch: the ObjC data loaders, Oolite's own argument checks,
+or the expansion's own message. Those failures are the rows below. They would fail the same way on
+1.93 with SpiderMonkey, and nothing about them is specific to QuickJS-ng. Authors should still fix
+them.
+
+| class | what the log says | what the author changes | expansions (Tier 3 unless marked) |
+|---|---|---|---|
+| E1 | `TypeError: cannot read property '$addMarketInterface'` / `'$customCrosshairs'` / `'$addMissionScreenException'` / `'auctioneers' of undefined` | A world script is read from another expansion that is not installed. Declare it in `requires_oxps`, or guard the lookup: `if (worldScripts.x) ...`. | redspear.demand_driven_economy, redspear.alien_systems, redspear.new_lasers (Tier 2), KillerWolf.SothisTC, cim.new-cargoes |
+| E2 | `Ship.setCargoType: Invalid arguments ... Can only be used on cargo pod carriers, not cargo pods (<ship>)`, thrown in `oolite-populator.js` | A ship given a trader or pirate role is defined as a cargo pod, so the populator's `setCargoType` call is rejected. Fix the `shipdata.plist` definition. The error only shows up when the ship happens to spawn. | Shipbuilder.ArachnidMark1 (Tier 2), .ChimeraGunship (Tier 2), .SerpentClassCruiser (Tier 2), .Fireball |
+| E3 | `script.load.notFound` (`griff_spawn_wreckage.js`), `PlayerEntity.switchHudTo.failed` (`GETter_HUD.plist`) | A file named in the data does not exist in the expansion. Ship the file, or declare the expansion that provides it. | gsagostinho.TexturePack.FerDeLance, gsagostinho.TexturePack.Python, Reval.GETTER_HUD |
+| E4 | `plist.parse.failed` (`missiontext.plist` and others) | Fix the property-list syntax. `plutil -lint` finds it. | Reval.Neutralizer, redspear.demand_driven_economy |
+| E5 | `oxp.versionMismatch: ... is incompatible with version 1.93 of Oolite`, then NOTLOADED | The manifest's `maximum_oolite_version` (or `required_oolite_version`) excludes 1.93. Widen it after testing. | gsagostinho.DangerousKeyconfig, Lone_Wolf.ReduceWeaponDamage, phkb.LoadoutByCategory190 |
+| E6 | `[XenonUI]: ERROR! No Xenon UI Resource packs installed` | Nothing: the expansion correctly reports a missing companion. Tier 1 pairs it with Pack A and it passes on both engines. | z.phkb.XenonUI (Tier 2) |
+| E7 | `shipData.merge.failed` (unresolved `like_ship`), `shipData.load.error` (unresolved subentity, non-existent model), `oxp-standards.error: Likely missing a dependency` | Ship data refers to entries or models from an expansion that is not declared. Declare it in `requires_oxps`, or mark the entry `is_external_dependency`. This is the same mechanism as Norby.Carriers in Tier 1 (bead oo-1gc.7). | DrNil.YAH-SetA to SetG (7), zzz.Montana05.GalTech_chimera_gunship_Fix, zzz.Montana05.GalTech_constitution_class_heavy_cruiser_Fix, ZygoUgo.noshaders_Asteroids, ZygoUgo.shadyAsteroids, amah.noshaders_extra_stations_addon, amah.noshaders_stations_for_sfep, smivs.classicVarietyPack, LittleBear.AssassinsGuildRebooted, Reval.Elite_Trader, Reval.Elite_Trader_Meta, Frame.FuelCollector, Svengali.Snoopers (Tier 2; its JS error is oo-1gc.14) |
+
+The other 13 failures are JavaScript exceptions that may be engine differences. Each is a Phase 1
+bead: oo-1gc.13 (`not a constructor`, three rock-chunk spawn scripts), oo-1gc.14 (`could not delete
+property`, Svengali.Snoopers), oo-1gc.15 (five `ReferenceError: X is not defined`) and oo-1gc.16
+(`SyntaxError: expecting ';'` in three ship scripts, and one `not an object`). An outcome that turns
+out to be an expansion-side change becomes a row here, and a new construct gets a `####` section
+above with its lint rule.
+
 ## Newly available (opt-in, worth advertising to authors)
 
 QuickJS-ng is a modern ES2023 engine. Once the migration lands, expansion scripts may use anything
