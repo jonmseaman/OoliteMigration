@@ -19,7 +19,7 @@ migrate every Foundation usage site onto it while the classes are still Objectiv
 
 - [ ] All goldens reproduce
 - [ ] `libgnustep-base` absent from the link line; deny-list enforces it
-- [ ] `oofnd` old-style **and** XML plist parser/writer fuzzed against GNUstep with zero divergences on the corpus (contract C1)
+- [ ] `oofnd` old-style **and** XML plist parser/writer fuzzed against GNUstep with zero divergences on the corpus (contract C1) — evidence: [2-plist-fuzz-report.md](2-plist-fuzz-report.md)
 - [ ] Every `oofnd` component has its own unit-test suite green under `meson test`
 - [ ] Zero `oo_*ForKey:` call sites remain (`OOCollectionExtractors` retired)
 

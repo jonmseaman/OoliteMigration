@@ -14,3 +14,4 @@
 # proof here; tools/run-nightly-checks.sh --list shows what would run.
 
 [oo-1gc.5] tools/guardrails-selftest
+[oo-g2k] export PATH="/ucrt64/bin:$PATH" PYTHONUTF8=1; python3 tools/plist_fuzz.py corpus && python3 tools/plist_fuzz.py fuzz --seed "$(date +%Y%m%d)" --count 100000
