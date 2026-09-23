@@ -200,18 +200,18 @@ BOOL IsFailureAlreadyReportedError(NSError *error);
 							   withError:(NSError *)error
 							expectedType:(NSDictionary *)localSchema;
 
-- (BOOL)verifyPList:(id)rootPList
-			  named:(NSString *)name
-		subProperty:(id)subProperty
-  againstSchemaType:(id)subSchema
+- (BOOL)verifyPList:(const oo::PList &)rootPList
+			  named:(const std::string &)name
+		subProperty:(const oo::PList &)subProperty
+  againstSchemaType:(const oo::PList &)subSchema
 			 atPath:(BackLinkChain)keyPath
 		  tentative:(BOOL)tentative
 			  error:(NSError **)outError
 			   stop:(BOOL *)outStop;
 
-- (NSDictionary *)resolveSchemaType:(id)specifier
-							 atPath:(BackLinkChain)keyPath
-							  error:(NSError **)outError;
+- (oo::PList)resolveSchemaType:(const oo::PList &)specifier	// null: not resolved (*outError says why)
+					  atPath:(BackLinkChain)keyPath
+					   error:(NSError **)outError;
 
 @end
 
@@ -223,7 +223,7 @@ VERIFY_PROTO(OneOf);
 VERIFY_PROTO(DelegatedType);
 
 // The leaf verifiers take the value, the resolved schema type and the name as C++ values.
-#define VERIFY_LEAF_PROTO(T) static NSError *Verify_##T(OOPListSchemaVerifier *verifier, const oo::PList &value, const oo::PList &params, id rootPList, const std::string &name, BackLinkChain keyPath, BOOL tentative, BOOL *outStop)
+#define VERIFY_LEAF_PROTO(T) static NSError *Verify_##T(OOPListSchemaVerifier *verifier, const oo::PList &value, const oo::PList &params, const oo::PList &rootPList, const std::string &name, BackLinkChain keyPath, BOOL tentative, BOOL *outStop)
 namespace {
 VERIFY_LEAF_PROTO(String);
 VERIFY_LEAF_PROTO(Integer);
@@ -240,23 +240,24 @@ VERIFY_LEAF_PROTO(Quaternion);
 
 @implementation OOPListSchemaVerifier
 
-+ (id)verifierWithSchema:(NSDictionary *)schema
++ (id)verifierWithSchema:(const oo::PList &)schema
 {
 	return [[[self alloc] initWithSchema:schema] autorelease];
 }
 
 
-- (id)initWithSchema:(NSDictionary *)schema
+- (id)initWithSchema:(const oo::PList &)schema
 {
 	self = [super init];
 	if (self != nil)
 	{
-		_schema = [schema retain];
-		_definitions = [oo::PListView(_schema).get<NSDictionary *>(@"$definitions") retain];
+		_schema = schema;
+		const oo::PList *definitions = _schema.get<oo::PList::Dict>("$definitions");
+		_definitions = (definitions != nullptr) ? *definitions : oo::PList();
 		sDebugDump = [[NSUserDefaults standardUserDefaults] boolForKey:@"plist-schema-verifier-dump-structure"];
 		if (sDebugDump)  OOLogSetDisplayMessagesInClass(@"verifyOXP.verbose.plistDebugDump", YES);
-		
-		if (_schema == nil)
+
+		if (!_schema)
 		{
 			[self release];
 			self = nil;
@@ -269,9 +270,6 @@ VERIFY_LEAF_PROTO(Quaternion);
 
 - (void)dealloc
 {
-	[_schema release];
-	[_definitions release];
-	
 	[super dealloc];
 }
 
@@ -292,7 +290,7 @@ VERIFY_LEAF_PROTO(Quaternion);
 }
 
 
-- (BOOL)verifyPropertyList:(id)plist named:(NSString *)name
+- (BOOL)verifyPropertyList:(const oo::PList &)plist named:(const std::string &)name
 {
 	BOOL						OK;
 	BOOL						stop = NO;
@@ -445,10 +443,10 @@ VERIFY_LEAF_PROTO(Quaternion);
 }
 
 
-- (BOOL)verifyPList:(id)rootPList
-			  named:(NSString *)name
-		subProperty:(id)subProperty
-  againstSchemaType:(id)subSchema
+- (BOOL)verifyPList:(const oo::PList &)rootPList
+			  named:(const std::string &)name
+		subProperty:(const oo::PList &)subProperty
+  againstSchemaType:(const oo::PList &)subSchema
 			 atPath:(BackLinkChain)keyPath
 		  tentative:(BOOL)tentative
 			  error:(NSError **)outError
@@ -456,7 +454,7 @@ VERIFY_LEAF_PROTO(Quaternion);
 {
 	SchemaType				type = kTypeUnknown;
 	NSError					*error = nil;
-	NSDictionary			*resolvedSpecifier = nil;
+	oo::PList				resolvedSpecifier;
 	void					*pool = NULL;
 	
 	assert(outStop != NULL);
@@ -470,11 +468,11 @@ VERIFY_LEAF_PROTO(Quaternion);
 		DebugDumpIndent();
 		
 		resolvedSpecifier = [self resolveSchemaType:subSchema atPath:keyPath error:&error];
-		if (resolvedSpecifier != nil)  type = StringToSchemaType(oo::StdString([resolvedSpecifier objectForKey:@"type"]), &error);
-		
-		#define VERIFY_CASE(T) case kType##T: error = Verify_##T(self, subProperty, resolvedSpecifier, rootPList, name, keyPath, tentative, outStop); break;
-		// Transitional (until the containers and the entry point hold oo::PList): each leaf call converts its value, type and name once.
-		#define VERIFY_LEAF_CASE(T) case kType##T: error = Verify_##T(self, oo::PListFrom(subProperty), oo::PListFrom(resolvedSpecifier), rootPList, oo::StdString(name), keyPath, tentative, outStop); break;
+		if (resolvedSpecifier)  type = StringToSchemaType(resolvedSpecifier.get<std::string>("type"), &error);
+
+		// Transitional (until chunk 5): the still-Objective-C container verifiers get their value, type, root and name as objects.
+		#define VERIFY_CASE(T) case kType##T: error = Verify_##T(self, oo::ObjectFromPList(subProperty), oo::ObjectFromPList(resolvedSpecifier), oo::ObjectFromPList(rootPList), oo::NSStringFrom(name), keyPath, tentative, outStop); break;
+		#define VERIFY_LEAF_CASE(T) case kType##T: error = Verify_##T(self, subProperty, resolvedSpecifier, rootPList, name, keyPath, tentative, outStop); break;
 		
 		switch (type)
 		{
@@ -504,7 +502,7 @@ VERIFY_LEAF_PROTO(Quaternion);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf([exception name]).c_str(), oo::DescriptionOf([exception reason]).c_str(), oo::DescriptionOf(name).c_str(), KeyPathToString(keyPath).c_str());
+		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf([exception name]).c_str(), oo::DescriptionOf([exception reason]).c_str(), name.c_str(), KeyPathToString(keyPath).c_str());
 	}
 	
 	DebugDumpPopIndent();
@@ -513,11 +511,11 @@ VERIFY_LEAF_PROTO(Quaternion);
 	{
 		if (!tentative && !IsFailureAlreadyReportedError(error))
 		{
-			*outStop = ![self delegateVerifierWithPropertyList:rootPList
-														 named:name
-											 failedForProperty:subProperty
+			*outStop = ![self delegateVerifierWithPropertyList:oo::ObjectFromPList(rootPList)
+														 named:oo::NSStringFrom(name)
+											 failedForProperty:oo::ObjectFromPList(subProperty)
 													 withError:error
-												  expectedType:subSchema];
+												  expectedType:oo::ObjectFromPList(subSchema)];
 		}
 		else if (tentative)  *outStop = YES;
 	}
@@ -537,57 +535,60 @@ VERIFY_LEAF_PROTO(Quaternion);
 }
 
 
-- (NSDictionary *)resolveSchemaType:(id)specifier
-							 atPath:(BackLinkChain)keyPath
-							  error:(NSError **)outError
+- (oo::PList)resolveSchemaType:(const oo::PList &)specifier
+					  atPath:(BackLinkChain)keyPath
+					   error:(NSError **)outError
 {
-	id						typeVal = nil;
-	NSString				*complaint = nil;
-	
+	oo::PList				current = specifier;
+	BOOL					haveTypeValue = NO;
+
 	assert(outError != NULL);
-	
-	if (![specifier isKindOfClass:[NSString class]] && ![specifier isKindOfClass:[NSDictionary class]])  goto BAD_TYPE;
-	
-	for (;;)
+
+	if (current.isString() || current.isDict())
 	{
-		if ([specifier isKindOfClass:[NSString class]])  specifier = [NSDictionary dictionaryWithObject:specifier forKey:@"type"];
-		typeVal = [(NSDictionary *)specifier objectForKey:@"type"];
-		
-		if ([typeVal isKindOfClass:[NSString class]])
+		for (;;)
 		{
-			if ([typeVal hasPrefix:@"$"])
+			if (current.isString())  current = oo::PList(oo::PList::Dict{ { "type", current } });
+			const oo::PList *typeVal = current.find("type");
+			haveTypeValue = (typeVal != nullptr);
+
+			if (typeVal != nullptr && typeVal->isString())
 			{
-				// Macro reference; look it up in $definitions
-				specifier = [_definitions objectForKey:typeVal];
-				if (specifier == nil)
+				const std::string typeString = *typeVal->getIf<std::string>();
+				if (oo::str::hasPrefix(typeString, "$"))
 				{
-					*outError = ErrorWithProperty(kPListErrorSchemaUndefiniedMacroReference, &keyPath, kUndefinedMacroErrorKey, oo::PListFrom(typeVal), "Bad schema: reference to undefined macro \"%s\".", StringForErrorReport(oo::StdString(typeVal)).c_str());
-					return nil;
+					// Macro reference; look it up in $definitions
+					const oo::PList *definition = _definitions.find(typeString);
+					if (definition == nullptr)
+					{
+						*outError = ErrorWithProperty(kPListErrorSchemaUndefiniedMacroReference, &keyPath, kUndefinedMacroErrorKey, oo::PList(typeString), "Bad schema: reference to undefined macro \"%s\".", StringForErrorReport(typeString).c_str());
+						return oo::PList();
+					}
+					current = *definition;
 				}
+				else
+				{
+					// Non-macro string
+					return current;
+				}
+			}
+			else if (typeVal != nullptr && typeVal->isDict())
+			{
+				oo::PList next = *typeVal;
+				current = std::move(next);
 			}
 			else
 			{
-				// Non-macro string
-				return specifier;
+				break;
 			}
 		}
-		else if ([typeVal isKindOfClass:[NSDictionary class]])
-		{
-			specifier = typeVal;	
-		}
-		else
-		{
-			goto BAD_TYPE;
-		}
 	}
-	
-BAD_TYPE:
+
 	// Error: bad type
-	if (typeVal == nil)  complaint = @"no type specified";
-	else  complaint = @"not string or dictionary";
-				
-	*outError = Error(kPListErrorSchemaBadTypeSpecifier, &keyPath, "Bad schema: invalid type specifier for path %s (%s).", KeyPathToString(keyPath).c_str(), oo::DescriptionOf(complaint).c_str());
-	return nil;
+	const char *complaint = haveTypeValue ? "not string or dictionary" : "no type specified";
+
+	*outError = Error(kPListErrorSchemaBadTypeSpecifier, &keyPath, "Bad schema: invalid type specifier for path %s (%s).", KeyPathToString(keyPath).c_str(), complaint);
+	return oo::PList();
 }
 
 @end
@@ -955,7 +956,7 @@ std::string StringOrArrayForErrorReport(const oo::PList &value, const char *arra
 
 namespace {
 
-static NSError *Verify_String(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_String(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	std::string			filteredString;
 	const oo::PList		*testValue = nullptr;
@@ -1058,10 +1059,10 @@ static NSError *Verify_Array(OOPListSchemaVerifier *verifier, id value, NSDictio
 		{
 			subProperty = [value objectAtIndex:i];
 			
-			if (![verifier verifyPList:rootPList
-								 named:name
-						   subProperty:subProperty
-					 againstSchemaType:valueType
+			if (![verifier verifyPList:oo::PListFrom(rootPList)
+								 named:oo::StdString(name)
+						   subProperty:oo::PListFrom(subProperty)
+					 againstSchemaType:oo::PListFrom(valueType)
 								atPath:BackLinkIndex(&keyPath, i)
 							 tentative:tentative
 								 error:NULL
@@ -1141,10 +1142,10 @@ static NSError *Verify_Dictionary(OOPListSchemaVerifier *verifier, id value, NSD
 		
 		if (typeSpec != nil)
 		{
-			if (![verifier verifyPList:rootPList
-								 named:name
-						   subProperty:subProperty
-					 againstSchemaType:typeSpec
+			if (![verifier verifyPList:oo::PListFrom(rootPList)
+								 named:oo::StdString(name)
+						   subProperty:oo::PListFrom(subProperty)
+					 againstSchemaType:oo::PListFrom(typeSpec)
 								atPath:BackLink(&keyPath, &keyString)
 							 tentative:tentative
 								 error:NULL
@@ -1196,7 +1197,7 @@ static NSError *Verify_Dictionary(OOPListSchemaVerifier *verifier, id value, NSD
 
 namespace {
 
-static NSError *Verify_Integer(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_Integer(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	long long				numericValue;
 	long long				constraint;
@@ -1233,7 +1234,7 @@ static NSError *Verify_Integer(OOPListSchemaVerifier * /*verifier*/, const oo::P
 
 namespace {
 
-static NSError *Verify_PositiveInteger(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_PositiveInteger(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	unsigned long long		numericValue;
 	unsigned long long		constraint;
@@ -1269,7 +1270,7 @@ static NSError *Verify_PositiveInteger(OOPListSchemaVerifier * /*verifier*/, con
 
 namespace {
 
-static NSError *Verify_Float(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_Float(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	double					numericValue;
 	double					constraint;
@@ -1306,7 +1307,7 @@ static NSError *Verify_Float(OOPListSchemaVerifier * /*verifier*/, const oo::PLi
 
 namespace {
 
-static NSError *Verify_PositiveFloat(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_PositiveFloat(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	double					numericValue;
 	double					constraint;
@@ -1367,10 +1368,10 @@ static NSError *Verify_OneOf(OOPListSchemaVerifier *verifier, id value, NSDictio
 	
 	foreach (option, options)
 	{
-		if ([verifier verifyPList:rootPList
-							named:name
-					  subProperty:value
-				againstSchemaType:option
+		if ([verifier verifyPList:oo::PListFrom(rootPList)
+							named:oo::StdString(name)
+					  subProperty:oo::PListFrom(value)
+				againstSchemaType:oo::PListFrom(option)
 						   atPath:keyPath
 						tentative:YES
 							error:&error
@@ -1397,7 +1398,7 @@ static NSError *Verify_OneOf(OOPListSchemaVerifier *verifier, id value, NSDictio
 
 namespace {
 
-static NSError *Verify_Enumeration(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL *outStop)
+static NSError *Verify_Enumeration(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &params, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL *outStop)
 {
 	const oo::PList			*values = nullptr;
 	std::string				filteredString;
@@ -1434,7 +1435,7 @@ static NSError *Verify_Enumeration(OOPListSchemaVerifier * /*verifier*/, const o
 
 namespace {
 
-static NSError *Verify_Boolean(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_Boolean(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	DebugDump(@"* boolean: %@", oo::ObjectFromPList(value));
 
@@ -1448,7 +1449,7 @@ static NSError *Verify_Boolean(OOPListSchemaVerifier * /*verifier*/, const oo::P
 
 namespace {
 
-static NSError *Verify_FuzzyBoolean(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_FuzzyBoolean(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	DebugDump(@"* fuzzy boolean: %@", oo::ObjectFromPList(value));
 
@@ -1463,7 +1464,7 @@ static NSError *Verify_FuzzyBoolean(OOPListSchemaVerifier * /*verifier*/, const 
 
 namespace {
 
-static NSError *Verify_Vector(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_Vector(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	DebugDump(@"* vector: %@", oo::ObjectFromPList(value));
 
@@ -1478,7 +1479,7 @@ static NSError *Verify_Vector(OOPListSchemaVerifier * /*verifier*/, const oo::PL
 
 namespace {
 
-static NSError *Verify_Quaternion(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, id /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
+static NSError *Verify_Quaternion(OOPListSchemaVerifier * /*verifier*/, const oo::PList &value, const oo::PList &/*params*/, const oo::PList & /*rootPList*/, const std::string & /*name*/, BackLinkChain keyPath, BOOL /*tentative*/, BOOL */*outStop*/)
 {
 	DebugDump(@"* quaternion: %@", oo::ObjectFromPList(value));
 
@@ -1503,10 +1504,10 @@ static NSError *Verify_DelegatedType(OOPListSchemaVerifier *verifier, id value, 
 	baseType = [params objectForKey:@"baseType"];
 	if (baseType != nil)
 	{
-		if (![verifier verifyPList:rootPList
-							 named:name
-					   subProperty:value
-				 againstSchemaType:baseType
+		if (![verifier verifyPList:oo::PListFrom(rootPList)
+							 named:oo::StdString(name)
+					   subProperty:oo::PListFrom(value)
+				 againstSchemaType:oo::PListFrom(baseType)
 							atPath:keyPath
 						 tentative:tentative
 							 error:NULL
