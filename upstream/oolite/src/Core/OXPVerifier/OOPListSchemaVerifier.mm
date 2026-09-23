@@ -35,6 +35,8 @@ SOFTWARE.
 #import "OOCollectionExtractors.h"
 #import "OOMaths.h"
 #include <limits.h>
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 
 #define PLIST_VERIFIER_DEBUG_DUMP_ENABLED		1
@@ -343,7 +345,13 @@ VERIFY_PROTO(DelegatedType);
 							 againstType:typeKey
 								   error:&error];
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(@"plistVerifier.delegateException", @"Property list schema verifier: delegate threw exception (%@) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"%@\" at %@ in %@ -- treating as failure.", oo::NSStringFrom([exception name]), typeKey,KeyPathToString(keyPath), name);
+			result = NO;
+			error = nil;
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(@"plistVerifier.delegateException", @"Property list schema verifier: delegate threw exception (%@) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"%@\" at %@ in %@ -- treating as failure.", [exception name], typeKey,KeyPathToString(keyPath), name);
 			result = NO;
@@ -393,7 +401,12 @@ VERIFY_PROTO(DelegatedType);
 							   withError:error
 							expectedType:localSchema];
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(@"plistVerifier.delegateException", @"Property list schema verifier: delegate threw exception (%@) in -verifier:withPropertyList:named:failedForProperty:atPath:expectedType: at %@ in %@ -- stopping.", oo::NSStringFrom([exception name]), [error plistKeyPathDescription], name);
+			result = NO;
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(@"plistVerifier.delegateException", @"Property list schema verifier: delegate threw exception (%@) in -verifier:withPropertyList:named:failedForProperty:atPath:expectedType: at %@ in %@ -- stopping.", [exception name], [error plistKeyPathDescription], name);
 			result = NO;
@@ -459,7 +472,11 @@ VERIFY_PROTO(DelegatedType);
 				*outStop = YES;
 		}
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, @"Uncaught exception %@: %@ in plist verifier for \"%@\" at %@.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), name, KeyPathToString(keyPath));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, @"Uncaught exception %@: %@ in plist verifier for \"%@\" at %@.", [exception name], [exception reason], name, KeyPathToString(keyPath));
 	}
