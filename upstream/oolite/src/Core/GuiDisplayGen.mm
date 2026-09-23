@@ -70,11 +70,11 @@ std::string WordsJoinedBySpace(const std::vector<std::string> &words, std::size_
 
 - (void) drawCrossHairsWithSize:(GLfloat) size x:(GLfloat)x y:(GLfloat)y z:(GLfloat)z;
 - (void) drawStarChart:(GLfloat)x :(GLfloat)y :(GLfloat)z :(GLfloat) alpha :(BOOL) compact;
-- (void) drawSystemMarkers:(NSArray *)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
-- (void) drawSystemMarker:(NSDictionary *)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
+- (void) drawSystemMarkers:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
+- (void) drawSystemMarker:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale;
 
 - (void) drawEquipmentList:(NSArray *)eqptList z:(GLfloat)z;
-- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(NSDictionary *) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom;
+- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) route optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom;
 
 @end
 
@@ -1030,12 +1030,24 @@ static BOOL _refreshStarChart = NO;
 
 - (void) clearBackground
 {
-	[self setBackgroundTextureDescriptor:nil];
-	[self setForegroundTextureDescriptor:nil];
+	[self cxx_setBackgroundTextureDescriptor:oo::PList()];
+	[self cxx_setForegroundTextureDescriptor:oo::PList()];
 }
 
 
-static OOTexture *TextureForGUITexture(NSDictionary *descriptor, uint32_t srgbaOption)
+namespace {
+
+// The descriptor's "name" as -oo_stringForKey: read it (a string, or a number's -stringValue), or
+// nullopt (nil).
+std::optional<std::string> DescriptorName(const oo::PList &descriptor)
+{
+	const oo::PList *name = descriptor.find("name");
+	if (name == nullptr || !(name->isString() || name->isNumber()))  return std::nullopt;
+	return descriptor.get<std::string>("name");
+}
+
+
+OOTexture *TextureForGUITexture(const oo::PList &descriptor, uint32_t srgbaOption)
 {
 	/*
 		GUI textures like backgrounds, foregrounds etc. are not processed in any way after loading. However, they are
@@ -1047,11 +1059,11 @@ static OOTexture *TextureForGUITexture(NSDictionary *descriptor, uint32_t srgbaO
 		Also, remember that if no shaders are in use (as in lower detail levels), then we don't need to declare anything.
 	*/
 	if (![UNIVERSE useShaders])  srgbaOption = 0;
-	return [OOTexture textureWithName:oo::PListView(descriptor).get<NSString *>(@"name")
-							 inFolder:@"Images"
-							  options:kOOTextureDefaultOptions | kOOTextureNoShrink | srgbaOption
-						   anisotropy:kOOTextureDefaultAnisotropy
-							  lodBias:kOOTextureDefaultLODBias];
+	return [OOTexture cxx_textureWithName:DescriptorName(descriptor)
+								 inFolder:"Images"
+								  options:kOOTextureDefaultOptions | kOOTextureNoShrink | srgbaOption
+							   anisotropy:kOOTextureDefaultAnisotropy
+								  lodBias:kOOTextureDefaultLODBias];
 }
 
 
@@ -1059,7 +1071,7 @@ static OOTexture *TextureForGUITexture(NSDictionary *descriptor, uint32_t srgbaO
 	Load a texture sprite given a descriptor. The caller owns a reference to
 	the result.
 */
-static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor, uint32_t srgbaOption)
+OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uint32_t srgbaOption)
 {
 	OOTexture		*texture = nil;
 	NSSize			size;
@@ -1067,8 +1079,8 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	texture = TextureForGUITexture(descriptor, srgbaOption);
 	if (texture == nil)  return nil;
 	
-	double specifiedWidth = oo::PListView(descriptor).get<double>(@"width", -INFINITY);
-	double specifiedHeight = oo::PListView(descriptor).get<double>(@"height", -INFINITY);
+	double specifiedWidth = descriptor.get<double>("width", -INFINITY);
+	double specifiedHeight = descriptor.get<double>("height", -INFINITY);
 	BOOL haveWidth = isfinite(specifiedWidth);
 	BOOL haveHeight = isfinite(specifiedHeight);
 	
@@ -1106,12 +1118,14 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	return [[OOTextureSprite alloc] initWithTexture:texture size:size];
 }
 
+}	// namespace
+
 
 - (void) setBackgroundTextureSpecial:(OOGUIBackgroundSpecial)spec withBackground:(BOOL)withBackground
 {
 	if (withBackground) 
 	{
-		NSDictionary *bgDescriptor = nil;
+		oo::PList bgDescriptor;
 		OOGalaxyID galaxy_number = [PLAYER galaxyNumber];
 
 		switch (spec) 
@@ -1119,38 +1133,38 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		case GUI_BACKGROUND_SPECIAL_CUSTOM:
 		case GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_SHORTEST:
 		case GUI_BACKGROUND_SPECIAL_CUSTOM_ANA_QUICKEST:
-			bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"custom_chart_mission"];
-			if (bgDescriptor == nil) 
+			bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"custom_chart_mission"]);
+			if (bgDescriptor.isNull()) 
 			{
-				bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"short_range_chart_mission"];
-				if (bgDescriptor == nil) 
+				bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"short_range_chart_mission"]);
+				if (bgDescriptor.isNull()) 
 				{
-					bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"short_range_chart"];
+					bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"short_range_chart"]);
 				}
 			}
 			break;
 		case GUI_BACKGROUND_SPECIAL_SHORT:
 		case GUI_BACKGROUND_SPECIAL_SHORT_ANA_SHORTEST:
 		case GUI_BACKGROUND_SPECIAL_SHORT_ANA_QUICKEST:
-			bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"short_range_chart_mission"];
-			if (bgDescriptor == nil) 
+			bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"short_range_chart_mission"]);
+			if (bgDescriptor.isNull()) 
 			{
-				bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"short_range_chart"];
+				bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"short_range_chart"]);
 			}
 			break;
 		case GUI_BACKGROUND_SPECIAL_LONG:
 		case GUI_BACKGROUND_SPECIAL_LONG_ANA_SHORTEST:
 		case GUI_BACKGROUND_SPECIAL_LONG_ANA_QUICKEST:
-			bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:[NSString stringWithFormat:@"long_range_chart%d_mission", galaxy_number+1]];
-			if (bgDescriptor == nil) 
+			bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:oo::NSStringFrom(oo::str::format("long_range_chart%d_mission", galaxy_number+1))]);
+			if (bgDescriptor.isNull()) 
 			{
-				bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"long_range_chart_mission"];
-				if (bgDescriptor == nil) 
+				bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"long_range_chart_mission"]);
+				if (bgDescriptor.isNull()) 
 				{
-					bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:[NSString stringWithFormat:@"long_range_chart%d", galaxy_number+1]];
-					if (bgDescriptor == nil) 
+					bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:oo::NSStringFrom(oo::str::format("long_range_chart%d", galaxy_number+1))]);
+					if (bgDescriptor.isNull()) 
 					{
-						bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"long_range_chart"];
+						bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"long_range_chart"]);
 						
 					}
 				}
@@ -1159,9 +1173,9 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		case GUI_BACKGROUND_SPECIAL_NONE:
 			break;
 		}
-		if (bgDescriptor != nil)
+		if (!bgDescriptor.isNull())
 		{
-			[self setBackgroundTextureDescriptor:bgDescriptor];
+			[self cxx_setBackgroundTextureDescriptor:bgDescriptor];
 		}
 	}
 	backgroundSpecial = spec;
@@ -1169,7 +1183,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 }
 
 
-- (BOOL) setBackgroundTextureDescriptor:(NSDictionary *)descriptor
+- (BOOL) cxx_setBackgroundTextureDescriptor:(const oo::PList &)descriptor
 {
 	[backgroundSprite autorelease];
 	backgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE; // reset
@@ -1178,7 +1192,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 }
 
 
-- (BOOL) setForegroundTextureDescriptor:(NSDictionary *)descriptor
+- (BOOL) cxx_setForegroundTextureDescriptor:(const oo::PList &)descriptor
 {
 	[foregroundSprite autorelease];
 	// FIXME: for some reason passing kOOTextureSRGBA when in SDR results in double gamma correction
@@ -1188,61 +1202,61 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 }
 
 
-- (BOOL) setBackgroundTextureKey:(NSString *)key
+- (BOOL) cxx_setBackgroundTextureKey:(const std::optional<std::string> &)key
 {
-	return [self setBackgroundTextureDescriptor:[UNIVERSE screenTextureDescriptorForKey:key]];
+	return [self cxx_setBackgroundTextureDescriptor:oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:oo::NSStringOrNil(key)])];
 }
 
 
-- (BOOL) setForegroundTextureKey:(NSString *)key
+- (BOOL) cxx_setForegroundTextureKey:(const std::optional<std::string> &)key
 {
-	return [self setForegroundTextureDescriptor:[UNIVERSE screenTextureDescriptorForKey:key]];
+	return [self cxx_setForegroundTextureDescriptor:oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:oo::NSStringOrNil(key)])];
 }
 
 
-- (BOOL) preloadGUITexture:(NSDictionary *)descriptor
+- (BOOL) cxx_preloadGUITexture:(const oo::PList &)descriptor
 {
 	return TextureForGUITexture(descriptor, kOOTextureSRGBA) != nil;
 }
 
 
-- (NSDictionary *) textureDescriptorFromJSValue:(ooscript::Value)value
-									  inContext:(ooscript::Context)context
-							  callerDescription:(NSString *)callerDescription
+- (oo::PList) cxx_textureDescriptorFromJSValue:(ooscript::Value)value
+									 inContext:(ooscript::Context)context
+							 callerDescription:(const std::optional<std::string> &)callerDescription
 {
 	OOJS_PROFILE_ENTER
 	
-	NSDictionary	*result = nil;
+	oo::PList		result;
 	
 	if (ooscript::isObjectOrNull(value))
 	{
 		// Null may be used to indicate no texture.
-		if (ooscript::isNull(value))  return [NSDictionary dictionary];
+		if (ooscript::isNull(value))  return oo::PList(oo::PList::Dict{});
 		
 		ooscript::Object objValue = ooscript::toObject(value);
 		
 		if (OOJSGetClass(context, objValue) != [[OOJavaScriptEngine sharedEngine] stringClass])
 		{
-			result = OOJSDictionaryFromJSObject(context, objValue);
+			result = oo::PListFrom(OOJSDictionaryFromJSObject(context, objValue));
 		}
 	}
 	
-	if (result == nil)
+	if (result.isNull())
 	{
-		NSString *name = OOStringFromJSValue(context, value);
+		const std::optional<std::string> name = oo::OptionalString(OOStringFromJSValue(context, value));
 
-		if (name != nil)
+		if (name.has_value())
 		{
-			result = [NSDictionary dictionaryWithObject:name forKey:@"name"];
-			if ([name length] == 0)  return result;	// Explicit empty string may be used to indicate no texture.
+			result = oo::PList(oo::PList::Dict{ { "name", oo::PList(*name) } });
+			if (name->empty())  return result;	// Explicit empty string may be used to indicate no texture.
 		}
 	}
 	
 	// Start loading the texture, and return nil if it doesn't exist.
-	if (result != nil && ![self preloadGUITexture:result])
+	if (!result.isNull() && ![self cxx_preloadGUITexture:result])
 	{
-		OOJSReportWarning(context, @"%@: texture \"%@\" could not be found.", callerDescription, oo::PListView(result).get<NSString *>(@"name"));
-		result = nil;
+		OOJSReportWarning(context, @"%@: texture \"%@\" could not be found.", oo::NSStringOrNil(callerDescription), oo::NSStringOrNil(DescriptorName(result)));
+		result = oo::PList();
 	}
 	
 	return result;
@@ -1976,7 +1990,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		
 		if (routeInfo)  routeExists = YES;
 		
-		[self drawAdvancedNavArrayAtX:x+hoffset y:y+voffset z:z alpha:alpha usingRoute: (planetNumber != destNumber ? (id)routeInfo : nil) optimizedBy:advancedNavArrayMode zoom: zoom];
+		[self drawAdvancedNavArrayAtX:x+hoffset y:y+voffset z:z alpha:alpha usingRoute: oo::PListFrom(planetNumber != destNumber ? (id)routeInfo : nil) optimizedBy:advancedNavArrayMode zoom: zoom];
 
 		if (routeExists)
 		{
@@ -1994,7 +2008,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	}
 	else
 	{
-		[self drawAdvancedNavArrayAtX:x+hoffset y:y+voffset z:z alpha:alpha usingRoute:nil optimizedBy:OPTIMIZED_BY_NONE zoom: zoom];
+		[self drawAdvancedNavArrayAtX:x+hoffset y:y+voffset z:z alpha:alpha usingRoute:oo::PList() optimizedBy:OPTIMIZED_BY_NONE zoom: zoom];
 	}
 	if (!routeExists)
 	{
@@ -2079,7 +2093,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		if (markers != nil)	// is marked
 		{
 			GLfloat base_size = 0.5f * blob_size + 2.5f;
-			[self drawSystemMarkers:markers atX:x+star.x andY:y+star.y andZ:z withAlpha:alpha andScale:base_size];
+			[self drawSystemMarkers:oo::PListFrom(markers) atX:x+star.x andY:y+star.y andZ:z withAlpha:alpha andScale:base_size];
 		}
 
 		if (concealment[i] >= OO_SYSTEMCONCEALMENT_NODATA) {
@@ -2392,23 +2406,24 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 }
 
 
-- (void) drawSystemMarkers:(NSArray *)markers atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
+- (void) drawSystemMarkers:(const oo::PList &)markers atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
 {
-	NSDictionary *marker;
-	foreach (marker, markers)
+	const oo::PList::Array *markerList = markers.getIf<oo::PList::Array>();
+	if (markerList == nullptr)  return;
+	for (const oo::PList &marker : *markerList)
 	{
 		[self drawSystemMarker:marker atX:x andY:y andZ:z withAlpha:alpha andScale:scale];
 	}
 }
 
 
-- (void) drawSystemMarker:(NSDictionary *)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
+- (void) drawSystemMarker:(const oo::PList &)marker atX:(GLfloat)x andY:(GLfloat)y andZ:(GLfloat)z withAlpha:(GLfloat)alpha andScale:(GLfloat)scale
 {
-	NSString *colorDesc = oo::PListView(marker).get<NSString *>(@"markerColor", @"redColor");
-	OORGBAComponents color = [[OOColor colorWithDescription:colorDesc] rgbaComponents];
+	const std::string colorDesc = marker.get<std::string>("markerColor", "redColor");
+	OORGBAComponents color = [[OOColor colorWithDescription:oo::NSStringFrom(colorDesc)] rgbaComponents];
 	
 	OOGL(glColor4f(color.r, color.g, color.b, alpha));	// red
-	GLfloat mark_size = oo::PListView(marker).get<float>(@"markerScale", 1.0);
+	GLfloat mark_size = marker.get<float>("markerScale", 1.0);
 	if (mark_size > 2.0)
 	{
 		mark_size = 2.0;
@@ -2419,17 +2434,17 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 	}
 	mark_size *= scale;
 
-	NSString *shape = oo::PListView(marker).get<NSString *>(@"markerShape", @"MARKER_X");
+	const std::string shape = marker.get<std::string>("markerShape", "MARKER_X");
 
 	OOGLBEGIN(GL_LINES);
-	if ([shape isEqualToString:@"MARKER_X"])
+	if (shape == "MARKER_X")
 	{
 		glVertex3f(x - mark_size,	y - mark_size,	z);
 		glVertex3f(x + mark_size,	y + mark_size,	z);
 		glVertex3f(x - mark_size,	y + mark_size,	z);
 		glVertex3f(x + mark_size,	y - mark_size,	z);
 	}
-	else if ([shape isEqualToString:@"MARKER_PLUS"])
+	else if (shape == "MARKER_PLUS")
 	{
 		mark_size *= 1.4; // match volumes
 		glVertex3f(x,	y - mark_size,	z);
@@ -2437,7 +2452,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		glVertex3f(x - mark_size,	y,	z);
 		glVertex3f(x + mark_size,	y,	z);
 	}
-	else if ([shape isEqualToString:@"MARKER_SQUARE"])
+	else if (shape == "MARKER_SQUARE")
 	{
 		glVertex3f(x - mark_size,	y - mark_size,	z);
 		glVertex3f(x - mark_size,	y + mark_size,	z);
@@ -2448,7 +2463,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		glVertex3f(x + mark_size,	y - mark_size,	z);
 		glVertex3f(x - mark_size,	y - mark_size,	z);
 	}
-	else if ([shape isEqualToString:@"MARKER_DIAMOND"])
+	else if (shape == "MARKER_DIAMOND")
 	{
 		mark_size *= 1.4; // match volumes
 		glVertex3f(x,	y - mark_size,	z);
@@ -2515,7 +2530,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 
 
 // Advanced Navigation Array -- galactic chart route mapping - contributed by Nikos Barkas (another_commander).
-- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(NSDictionary *) routeInfo optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom
+- (void) drawAdvancedNavArrayAtX:(float)x y:(float)y z:(float)z alpha:(float)alpha usingRoute:(const oo::PList &) routeInfo optimizedBy:(OORouteType) optimizeBy zoom: (OOScalar) zoom
 {
 	GLfloat lr,lg,lb,la,lr2,lg2,lb2,la2;
 	double			hscale = size_in_pixels.width / (CHART_WIDTH_AT_MAX_ZOOM*zoom);
@@ -2539,8 +2554,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 
 	NSInteger concealment[256];
 	for (NSUInteger i=0;i<256;i++) {
-		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:g];
-		concealment[i] = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+		concealment[i] = oo::PListView([systemManager getPropertiesForSystem:i inGalaxy:g]).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
 	}
 
 	
@@ -2606,7 +2620,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 				}
 				else
 				{
-					thisConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:[NSString stringWithFormat:@"interstellar: %d %ld %ld", g, (long)i, (long)j]]];
+					thisConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:oo::NSStringFrom(oo::str::format("interstellar: %d %ld %ld", g, (long)i, (long)j))]];
 				
 					if (thisConnectionColor == nil)
 					{
@@ -2618,7 +2632,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 					glVertex3f(x+star.x, y+star.y, z);
 
 					// and the other colour for the other end
-					thatConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:[NSString stringWithFormat:@"interstellar: %d %ld %ld", g, (long)j, (long)i]]];
+					thatConnectionColor = [OOColor colorWithDescription:[systemManager getProperty:@"link_color" forSystemKey:oo::NSStringFrom(oo::str::format("interstellar: %d %ld %ld", g, (long)j, (long)i))]];
 				
 					if (thatConnectionColor == nil)
 					{
@@ -2639,9 +2653,13 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		return;
 	}
 
-	if (routeInfo)
+	if (!routeInfo.isNull())
 	{
-		NSUInteger i, route_hops = [oo::PListView(routeInfo).get<NSArray *>(@"route") count] - 1;
+		// "route" as -oo_arrayForKey: read it (its count: 0 when it is not an array), and as
+		// -objectForKey: gave it to the index reads (null reads as 0, as messaging nil did).
+		const oo::PList *routeArray = routeInfo.get<oo::PList::Array>("route");
+		const oo::PList route = (routeInfo.find("route") != nullptr) ? *routeInfo.find("route") : oo::PList();
+		NSUInteger i, route_hops = ((routeArray != nullptr) ? routeArray->count() : 0) - 1;
 		
 		if (optimizeBy == OPTIMIZED_BY_JUMPS)
 		{
@@ -2656,9 +2674,9 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		OOSystemID loc;
 		for (i = 0; i < route_hops; i++)
 		{
-			loc = oo::PListView([routeInfo objectForKey:@"route"]).at<int>(i);
+			loc = route.at<int>(i);
 			starabs = [systemManager getCoordinatesForSystem:loc inGalaxy:g];
-			star2abs = [systemManager getCoordinatesForSystem:oo::PListView([routeInfo objectForKey:@"route"]).at<int>(i+1) inGalaxy:g];
+			star2abs = [systemManager getCoordinatesForSystem:route.at<int>(i+1) inGalaxy:g];
 
 			star.x = (float)(starabs.x * hscale);
 			star.y = (float)(starabs.y * vscale);
@@ -2681,7 +2699,7 @@ static OOTextureSprite *NewTextureSpriteWithDescriptor(NSDictionary *descriptor,
 		// Label the destination, which was not included in the above loop.
 		if (zoom > CHART_ZOOM_SHOW_LABELS)
 		{
-			loc = oo::PListView([routeInfo objectForKey:@"route"]).at<int>(i);
+			loc = route.at<int>(i);
 			if(concealment[loc] < OO_SYSTEMCONCEALMENT_NONAME)
 			{
 				OODrawString([UNIVERSE systemNameIndex:loc], x + star2.x + 2.0, y + star2.y, z, NSMakeSize(10,10));
