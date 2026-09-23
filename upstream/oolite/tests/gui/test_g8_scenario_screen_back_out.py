@@ -106,6 +106,7 @@ import re
 import select
 import socket
 import struct
+import sys
 import tempfile
 import time
 
@@ -120,10 +121,16 @@ from conftest import (
 HERE = os.path.dirname(os.path.abspath(__file__))
 OOLITE_ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 SRC_DIR = os.path.join(OOLITE_ROOT, "src")
-PLAYER_ENTITY = os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntity.m")
+TESTS_DIR = os.path.abspath(os.path.join(HERE, ".."))
+if TESTS_DIR not in sys.path:
+    sys.path.insert(0, TESTS_DIR)
+
+# Sources are named by STEM: the migration renames .m -> .mm -> .cpp (source_paths.py, oo-7j3t).
+from source_paths import iter_source_files, resolve_source  # noqa: E402
+PLAYER_ENTITY = resolve_source("Core", "Entities", "PlayerEntity")
 PLAYER_ENTITY_H = os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntity.h")
-PLAYER_CONTROLS = os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntityControls.m")
-PLAYER_LOADSAVE = os.path.join(SRC_DIR, "Core", "Entities", "PlayerEntityLoadSave.m")
+PLAYER_CONTROLS = resolve_source("Core", "Entities", "PlayerEntityControls")
+PLAYER_LOADSAVE = resolve_source("Core", "Entities", "PlayerEntityLoadSave")
 DESCRIPTIONS = os.path.join(OOLITE_ROOT, "Resources", "Config", "descriptions.plist")
 
 # The screen the tier starts on and must come back to (PlayerEntity.m:10070).
@@ -174,9 +181,11 @@ def _method_body(source, signature):
 
 
 def _start_screen_row_zero(body):
-    match = re.search(r"int\s+row_zero\s*=\s*(\d+)\s*;", body)
+    # `int row_zero = N;` became `int row_zero; row_zero = N;` in the .m -> .mm switch (oo-x7o):
+    # C++ forbids a case label jumping past an initialisation. Either spelling carries N.
+    match = re.search(r"int\s+row_zero\s*(?:=|;\s*row_zero\s*=)\s*(\d+)\s*;", body)
     assert match, (
-        "the start-screen dispatcher no longer declares `int row_zero = N;`, so G8 cannot derive "
+        "the start-screen dispatcher no longer declares `int row_zero = N;` (or `int row_zero; row_zero = N;`), so G8 cannot derive "
         "which row opens the scenario screen and must not guess one"
     )
     return int(match.group(1))
@@ -557,11 +566,7 @@ def test_g8_scenario_screen_back_out(screen_witness, game):
 
 
 def _objc_sources():
-    sources = []
-    for root, _dirs, files in os.walk(SRC_DIR):
-        for name in files:
-            if name.endswith((".m", ".mm", ".c", ".h")):
-                sources.append(os.path.join(root, name))
+    sources = list(iter_source_files(SRC_DIR))
     assert sources, f"no Objective-C sources under {SRC_DIR}"
     return sources
 

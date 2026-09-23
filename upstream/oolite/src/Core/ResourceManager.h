@@ -31,8 +31,9 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
-@class OOSound, OOMusic, OOSystemDescriptionManager;
+@class OOSound, OOMusic, OOSystemDescriptionManager, OOScript;
 
 
 typedef enum
@@ -85,49 +86,53 @@ typedef enum
 
 
 
-+ (void)handleEquipmentListMerging: (NSMutableArray *)arrayToProcess forLookupIndex:(unsigned)lookupIndex;
-+ (void)handleEquipmentOverrides: (NSMutableArray *)arrayToProcess;
-+ (void)handleStarNebulaListMerging: (NSMutableArray *)arrayToProcess;
+// In-out: an array of arrays (the merged files), edited in place.
++ (void)handleEquipmentListMerging: (oo::PList &)arrayToProcess forLookupIndex:(unsigned)lookupIndex;
++ (void)handleEquipmentOverrides: (oo::PList &)arrayToProcess;
++ (void)handleStarNebulaListMerging: (oo::PList &)arrayToProcess;
 
 + (std::optional<std::string>) cxx_errors;	// Errors which occurred during path scanning - essentially a list of OXPs whose requires.plist is bad. nullopt when there are none.
 
 + (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName;
 + (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;
 
-+ (BOOL) corePlist:(NSString *)fileName excludedAt:(NSString *)path;
++ (BOOL) cxx_corePlist:(const std::string &)fileName excludedAt:(const std::string &)path;
 
-+ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
-								  inFolder:(NSString *)folderName
+// A null PList when no file was found; folderName nullopt where nil was passed.
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
 								  andMerge:(BOOL) mergeFiles;
-+ (NSDictionary *)dictionaryFromFilesNamed:(NSString *)fileName
-								  inFolder:(NSString *)folderName
++ (oo::PList) cxx_dictionaryFromFilesNamed:(const std::string &)fileName
+								  inFolder:(const std::optional<std::string> &)folderName
 								 mergeMode:(OOResourceMergeMode)mergeMode
 									 cache:(BOOL)useCache;
 
-+ (NSArray *)arrayFromFilesNamed:(NSString *)fileName
-						inFolder:(NSString *)folderName
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName
+						inFolder:(const std::optional<std::string> &)folderName
 						andMerge:(BOOL) mergeFiles;
-+ (NSArray *)arrayFromFilesNamed:(NSString *)fileName
-						inFolder:(NSString *)folderName
++ (oo::PList) cxx_arrayFromFilesNamed:(const std::string &)fileName
+						inFolder:(const std::optional<std::string> &)folderName
 						andMerge:(BOOL) mergeFiles
 						   cache:(BOOL)useCache;
 
 // These are deliberately not merged like normal plists for security reasons.
-+ (NSDictionary *) whitelistDictionary;
-+ (NSDictionary *) shaderBindingTypesDictionary;
++ (oo::PList) cxx_whitelistDictionary;			// a null PList when the file is missing
++ (oo::PList) cxx_shaderBindingTypesDictionary;
 
 // These have special merging rules.
-+ (NSDictionary *) logControlDictionary;
-+ (NSDictionary *) roleCategoriesDictionary;
++ (oo::PList) cxx_logControlDictionary;
++ (oo::PList) cxx_roleCategoriesDictionary;	// category -> array of its roles, each once (a set), in first-seen order
 + (OOSystemDescriptionManager *) systemDescriptionManager;
 
 + (OOSound *)ooSoundNamed:(NSString *)fileName inFolder:(NSString *)folderName;
 + (OOMusic *)ooMusicNamed:(NSString *)fileName inFolder:(NSString *)folderName;
 
-+ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName;
-+ (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;
+// nullopt when no file was found (was nil); folderName nullopt where nil was passed.
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache;
 
-+ (NSDictionary *)loadScripts;
+// World scripts by name, in the order each name was first loaded.
++ (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts;
 
 /*	+writeDiagnosticData:toFileNamed:
 	+writeDiagnosticString:toFileNamed:
@@ -142,7 +147,7 @@ typedef enum
 
 + (std::optional<std::string>) cxx_diagnosticFileLocation;
 
-+ (NSDictionary *) materialDefaults;
++ (oo::PList) cxx_materialDefaults;
 
 // Clear ResourceManager-internal caches (not those handled by OOCacheManager)
 + (void) clearCaches;
