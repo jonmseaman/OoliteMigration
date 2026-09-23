@@ -51,6 +51,7 @@ MA 02110-1301, USA.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/ResourcePaths.hpp"
+#include "oofnd/PListParsing.hpp"
 
 namespace {
 
@@ -84,7 +85,7 @@ extern NSDictionary* ParseOOSScripts(NSString* script);
 + (void) addErrorWithKey:(const std::string &)descriptionKey param1:(const std::string &)param1 param2:(const std::string &)param2;
 + (BOOL) checkCacheUpToDateForPaths:(const std::vector<std::string> &)searchPaths;
 + (void) logPaths;
-+ (void) mergeRoleCategories:(NSDictionary *)catData intoDictionary:(NSMutableDictionary *)category;
++ (void) mergeRoleCategories:(const oo::PList &)catData intoDictionary:(oo::PList &)category;
 + (void) preloadFileLists;
 + (void) preloadFileListFromOXZ:(const std::string &)path forFolders:(const std::vector<std::string> &)folders;
 + (void) preloadFileListFromFolder:(const std::string &)path forFolders:(const std::vector<std::string> &)folders;
@@ -256,6 +257,41 @@ const oo::PList *TextureListKey(const oo::PList *value)
 		return key != nullptr ? key : value->find("texture");
 	}
 	return nullptr;
+}
+
+
+// +[NSDictionary dictionaryWithContentsOfFile:]: the file's property list if it is a dictionary,
+// else (missing, unreadable, unparsable, another kind) a null PList.
+oo::PList DictionaryWithContentsOfFile(const std::string &path)
+{
+	const auto data = oo::fs::readFile(oo::fs::pathFromUTF8(path));
+	if (!data)  return oo::PList();
+	auto plist = oo::parsePropertyListData(data->stringView());
+	if (!plist || !plist->isDict())  return oo::PList();
+	return std::move(*plist);
+}
+
+
+// The text before a log message class's first ".", or the whole class.
+std::string LogClassKeyRoot(const std::string &key)
+{
+	const std::size_t dot = key.find('.');
+	if (dot != std::string::npos)
+	{
+		return key.substr(0, dot);
+	}
+	else
+	{
+		return key;
+	}
+}
+
+
+// OOScript's world-script array (OOScript is an unmigrated callee) as references; nullopt for nil.
+std::optional<std::vector<oo::ObjCRef<OOScript *>>> ScriptRefsOrNil(id scripts)
+{
+	if (scripts == nil)  return std::nullopt;
+	return oo::ObjCRefsFrom<OOScript *>(scripts);
 }
 
 
@@ -1722,157 +1758,157 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (NSDictionary *) whitelistDictionary
++ (oo::PList) cxx_whitelistDictionary
 {
-	static NSDictionary *whitelistDictionary = nil;
-	static BOOL loaded = NO;	// a missing whitelist is remembered as nil, not retried
-	
-	if (!loaded)
+	static std::optional<oo::PList> whitelistDictionary;	// a missing whitelist is remembered as null, not retried
+
+	if (!whitelistDictionary.has_value())
 	{
-		NSString *path = [[oo::NSStringOrNil([ResourceManager cxx_builtInPath]) stringByAppendingPathComponent:@"Config"] stringByAppendingPathComponent:@"whitelist.plist"];
-		whitelistDictionary = [NSDictionary dictionaryWithContentsOfFile:path];
-		loaded = YES;
-		
-		[whitelistDictionary retain];
+		whitelistDictionary = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "whitelist.plist"));
 	}
-	
-	return whitelistDictionary;
+
+	return *whitelistDictionary;
 }
 
 
-static NSString *LogClassKeyRoot(NSString *key)
-{
-	NSRange dot = [key rangeOfString:@"."];
-	if (dot.location != NSNotFound)
-	{
-		return [key substringToIndex:dot.location];
-	}
-	else
-	{
-		return key;
-	}
-}
 
 
-+ (NSDictionary *) logControlDictionary
++ (oo::PList) cxx_logControlDictionary
 {
 	// Load built-in copy of logcontrol.plist.
-	NSString *path = [[oo::NSStringOrNil([ResourceManager cxx_builtInPath]) stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"logcontrol.plist"];
-	NSMutableDictionary *logControl = [NSMutableDictionary dictionaryWithDictionary:OODictionaryFromFile(path)];
-	if (logControl == nil)  logControl = [NSMutableDictionary dictionary];
-	
+	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
+	const std::string builtInPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "logcontrol.plist");
+	oo::PList logControl = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(builtInPath)));
+	if (!logControl.isDict())  logControl = oo::PList(oo::PList::Dict());
+	oo::PList::Dict &logControlEntries = *logControl.getIf<oo::PList::Dict>();
+
 	// Build list of root log message classes that appear in the built-in list.
-	NSMutableSet *coreRoots = [NSMutableSet set];
-	NSString *key = nil;
-	foreachkey (key, logControl)
+	std::set<std::string> coreRoots;
+	for (const auto &[key, value] : logControlEntries)
 	{
-		[coreRoots addObject:LogClassKeyRoot(key)];
+		coreRoots.insert(LogClassKeyRoot(key));
 	}
-	
-	NSArray *rootPaths = oo::NSArrayFromStrings([self cxx_rootPaths]);
-	NSString *configPath = nil;
-	NSDictionary *dict = nil;
-	
-	// Look for logcontrol.plists inside OXPs (but not in root paths). These are not allowed to define keys in hierarchies used by the build-in one.
-	foreach (path, oo::NSArrayFromStrings([self cxx_paths]))
+
+	const std::vector<std::string> rootPaths = [self cxx_rootPaths];
+
+	// The logcontrol.plist in path/Config, else in path itself.
+	auto configDictionary = [](const std::string &path) -> oo::PList
 	{
-		if ([rootPaths containsObject:path])  continue;
-		
-		configPath = [[path stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"logcontrol.plist"];
-		dict = OODictionaryFromFile(configPath);
-		if (dict == nil)
+		oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "logcontrol.plist"))));
+		if (dict.isNull())
 		{
-			configPath = [path stringByAppendingPathComponent:@"logcontrol.plist"];
-			dict = OODictionaryFromFile(configPath);
+			dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "logcontrol.plist"))));
 		}
-		foreachkey (key, dict)
+		return dict;
+	};
+
+	// Look for logcontrol.plists inside OXPs (but not in root paths). These are not allowed to define keys in hierarchies used by the build-in one.
+	for (const std::string &path : [self cxx_paths])
+	{
+		if (std::find(rootPaths.begin(), rootPaths.end(), path) != rootPaths.end())  continue;
+
+		const oo::PList dict = configDictionary(path);
+		if (const oo::PList::Dict *entries = dict.getIf<oo::PList::Dict>())
 		{
-			if (![coreRoots containsObject:LogClassKeyRoot(key)])
+			for (const auto &[key, value] : *entries)
 			{
-				[logControl setObject:[dict objectForKey:key] forKey:key];
+				if (!coreRoots.contains(LogClassKeyRoot(key)))
+				{
+					logControlEntries[key] = value;
+				}
 			}
 		}
 	}
-	
+
 	// Now, look for logcontrol.plists in root paths, i.e. not within OXPs. These are allowed to override the built-in copy.
-	foreach (path, rootPaths)
+	for (const std::string &path : rootPaths)
 	{
-		configPath = [[path stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"logcontrol.plist"];
-		dict = OODictionaryFromFile(configPath);
-		if (dict == nil)
+		const oo::PList dict = configDictionary(path);
+		if (const oo::PList::Dict *entries = dict.getIf<oo::PList::Dict>())
 		{
-			configPath = [path stringByAppendingPathComponent:@"logcontrol.plist"];
-			dict = OODictionaryFromFile(configPath);
-		}
-		foreachkey (key, dict)
-		{
-			[logControl setObject:[dict objectForKey:key] forKey:key];
+			for (const auto &[key, value] : *entries)
+			{
+				logControlEntries[key] = value;
+			}
 		}
 	}
-	
+
 	// Finally, look in preferences, which can override all of the above.
-	dict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"logging-enable"];
-	if (dict != nil)  [logControl addEntriesFromDictionary:dict];
-	
+	const oo::PList preferences = oo::PListFrom([[NSUserDefaults standardUserDefaults] dictionaryForKey:@"logging-enable"]);
+	if (const oo::PList::Dict *entries = preferences.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[key, value] : *entries)  logControlEntries[key] = value;
+	}
+
 	return logControl;
 }
 
 
-+ (NSDictionary *) roleCategoriesDictionary
++ (oo::PList) cxx_roleCategoriesDictionary
 {
-	NSMutableDictionary *roleCategories = [NSMutableDictionary dictionaryWithCapacity:16];
+	oo::PList roleCategories = oo::PList(oo::PList::Dict());
 
-	NSString *path = nil;
-	NSString *configPath = nil;
-	NSDictionary *categories = nil;
-	
-	foreach (path, oo::NSArrayFromStrings([self cxx_paths]))
+	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
+	for (const std::string &path : [self cxx_paths])
 	{
-		if ([ResourceManager corePlist:@"role-categories.plist" excludedAt:path])
+		if ([ResourceManager cxx_corePlist:"role-categories.plist" excludedAt:path])
 		{
 			continue;
 		}
 
-		configPath = [[path stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"role-categories.plist"];
-		categories = OODictionaryFromFile(configPath);
-		if (categories != nil)
+		const std::string configPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "role-categories.plist");
+		const oo::PList categories = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(configPath)));
+		if (!categories.isNull())
 		{
 			[ResourceManager mergeRoleCategories:categories intoDictionary:roleCategories];
 		}
 	}
-	
-	/* If the old pirate-victim-roles files exist, merge them in */
-	NSArray *pirateVictims = [ResourceManager arrayFromFilesNamed:@"pirate-victim-roles.plist" inFolder:@"Config" andMerge:YES];
-	if (OOEnforceStandards() && [pirateVictims count] > 0)
-	{
-		OOStandardsDeprecated(@"pirate-victim-roles.plist is still being used.");
-	}
-	[ResourceManager mergeRoleCategories:[NSDictionary dictionaryWithObject:pirateVictims forKey:@"oolite-pirate-victim"] intoDictionary:roleCategories];
 
-	return [[roleCategories copy] autorelease];
+	/* If the old pirate-victim-roles files exist, merge them in */
+	const oo::PList pirateVictims = [ResourceManager cxx_arrayFromFilesNamed:"pirate-victim-roles.plist" inFolder:std::string("Config") andMerge:YES];
+	if (OOEnforceStandards() && pirateVictims.count() > 0)
+	{
+		cxx_OOStandardsDeprecated("pirate-victim-roles.plist is still being used.");
+	}
+	if (pirateVictims.isNull())
+	{
+		// +dictionaryWithObject:forKey: with a nil object raised
+		[NSException raise:NSInvalidArgumentException format:@"Tried to init dictionary with nil value"];
+	}
+	oo::PList::Dict pirateVictimCategory;
+	pirateVictimCategory.emplace("oolite-pirate-victim", pirateVictims);
+	[ResourceManager mergeRoleCategories:oo::PList(std::move(pirateVictimCategory)) intoDictionary:roleCategories];
+
+	return roleCategories;
 }
 
 
-+ (void) mergeRoleCategories:(NSDictionary *)catData intoDictionary:(NSMutableDictionary *)categories
++ (void) mergeRoleCategories:(const oo::PList &)catData intoDictionary:(oo::PList &)categories
 {
-	NSMutableSet *contents = nil;
-	NSArray *catDataEntry = nil;
-	NSString *key;
-	foreachkey (key, catData)
+	// A category is a set of roles: an array of unique values (by -isEqual:), in the order first seen.
+	const oo::PList::Dict *catDataEntries = catData.getIf<oo::PList::Dict>();
+	if (catDataEntries == nullptr)  return;
+	oo::PList::Dict &categoryEntries = *categories.getIf<oo::PList::Dict>();
+	for (const auto &[key, value] : *catDataEntries)
 	{
-		contents = [categories objectForKey:key];
-		if (contents == nil)
+		oo::PList &contents = categoryEntries.try_emplace(key, oo::PList::Array()).first->second;
+		const oo::PList *catDataEntry = catData.get<oo::PList::Array>(key);
+		OOLog(@"shipData.load.roleCategories", @"Adding %ld entries for category %@", (unsigned long)(catDataEntry != nullptr ? catDataEntry->count() : 0), oo::NSStringFrom(key));
+		if (catDataEntry == nullptr)  continue;
+		oo::PList::Array &members = *contents.getIf<oo::PList::Array>();
+		for (const oo::PList &role : *catDataEntry->getIf<oo::PList::Array>())
 		{
-			contents = [NSMutableSet setWithCapacity:16];
-			[categories setObject:contents forKey:key];
+			bool present = false;
+			for (const oo::PList &member : members)
+			{
+				if (PListIsEqual(&member, &role))
+				{
+					present = true;
+					break;
+				}
+			}
+			if (!present)  members.push_back(role);
 		}
-		catDataEntry = oo::PListView(catData).get<NSArray *>(key);
-		OOLog(@"shipData.load.roleCategories", @"Adding %ld entries for category %@", (unsigned long)[catDataEntry count], key);
-		[contents addObjectsFromArray:catDataEntry];
 	}
 }
 
@@ -1882,38 +1918,33 @@ static NSString *LogClassKeyRoot(NSString *key)
 	OOLog(@"resourceManager.planetinfo.load", @"%@", @"Initialising manager");
 	OOSystemDescriptionManager *manager = [[OOSystemDescriptionManager alloc] init];
 	
-	NSString *path = nil;
-	NSString *configPath = nil;
-	NSDictionary *categories = nil;
-	NSString *systemKey = nil;
-
-	foreach (path, oo::NSArrayFromStrings([self cxx_paths]))
+	// OODictionaryFromFile (OOPListParsing) and OOSystemDescriptionManager are unmigrated callees:
+	// the planetinfo dictionaries arrive through oo::PListFrom and leave through oo::ObjectFromPList.
+	for (const std::string &path : [self cxx_paths])
 	{
-		if ([ResourceManager corePlist:@"planetinfo.plist" excludedAt:path])
+		if ([ResourceManager cxx_corePlist:"planetinfo.plist" excludedAt:path])
 		{
 			continue;
 		}
-		configPath = [[path stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"planetinfo.plist"];
-		categories = OODictionaryFromFile(configPath);
-		if (categories != nil)
+		const std::string configPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "planetinfo.plist");
+		const oo::PList categories = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(configPath)));
+		if (const oo::PList::Dict *systems = categories.getIf<oo::PList::Dict>())
 		{
-			foreachkey (systemKey,categories)
+			for (const auto &[systemKey, values] : *systems)
 			{
-				NSDictionary *values = oo::PListView(categories).get<NSDictionary *>(systemKey, nil);
-				if (values != nil)
+				if (values.isDict())
 				{
-					if ([systemKey isEqualToString:PLANETINFO_UNIVERSAL_KEY])
+					if (systemKey == oo::StdString(PLANETINFO_UNIVERSAL_KEY))
 					{
-						[manager setUniversalProperties:values];
+						[manager setUniversalProperties:oo::ObjectFromPList(values)];
 					}
-					else if ([systemKey isEqualToString:PLANETINFO_INTERSTELLAR_KEY])
+					else if (systemKey == oo::StdString(PLANETINFO_INTERSTELLAR_KEY))
 					{
-						[manager setInterstellarProperties:values];
+						[manager setInterstellarProperties:oo::ObjectFromPList(values)];
 					}
 					else
 					{
-						[manager setProperties:values forSystemKey:systemKey];
+						[manager setProperties:oo::ObjectFromPList(values) forSystemKey:oo::NSStringFrom(systemKey)];
 					}
 				}
 			}
@@ -1927,48 +1958,49 @@ static NSString *LogClassKeyRoot(NSString *key)
 
 
 
-+ (NSDictionary *) shaderBindingTypesDictionary
++ (oo::PList) cxx_shaderBindingTypesDictionary
 {
-	static id shaderBindingTypesDictionary = nil;
-	
-	if (shaderBindingTypesDictionary == nil)
+	static std::optional<oo::PList> shaderBindingTypesDictionary;
+
+	if (!shaderBindingTypesDictionary.has_value())
 	{
-		@autoreleasepool
+		oo::PList dict = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "shader-uniform-bindings.plist"));
+		oo::PList::Dict *entries = dict.getIf<oo::PList::Dict>();
+		std::vector<std::string> keys;
+		if (entries != nullptr)
 		{
-			NSString *path = [[oo::NSStringOrNil([ResourceManager cxx_builtInPath]) stringByAppendingPathComponent:@"Config"] stringByAppendingPathComponent:@"shader-uniform-bindings.plist"];
-			NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithContentsOfFile:path];
-			NSArray *keys = [dict allKeys];
-			
-			// Resolve all $inherit keys.
-			unsigned changeCount = 0;
-			do {
-				changeCount = 0;
-				NSString *key = nil;
-				foreach (key, keys)
-				{
-					NSDictionary *value = oo::PListView(dict).get<NSDictionary *>(key);
-					NSString *inheritKey = oo::PListView(value).get<NSString *>(@"$inherit");
-					if (inheritKey != nil)
-					{
-						changeCount++;
-						NSMutableDictionary *mutableValue = [[value mutableCopy] autorelease];
-						[mutableValue removeObjectForKey:@"$inherit"];
-						NSDictionary *inherited = oo::PListView(dict).get<NSDictionary *>(inheritKey);
-						if (inherited != nil)
-						{
-							[mutableValue addEntriesFromDictionary:inherited];
-						}
-						
-						[dict setObject:[[mutableValue copy] autorelease] forKey:key];
-					}
-				}
-			} while (changeCount != 0);
-			
-			shaderBindingTypesDictionary = [dict copy];
+			keys.reserve(entries->size());
+			for (const auto &[key, value] : *entries)  keys.push_back(key);	// key order (was hash order)
 		}
+
+		// Resolve all $inherit keys.
+		unsigned changeCount = 0;
+		do {
+			changeCount = 0;
+			for (const std::string &key : keys)
+			{
+				const oo::PList *value = dict.get<oo::PList::Dict>(key);
+				const std::optional<std::string> inheritKey = value != nullptr ? ManifestString(*value, "$inherit") : std::nullopt;
+				if (inheritKey.has_value())
+				{
+					changeCount++;
+					oo::PList mutableValue = *value;
+					oo::PList::Dict &valueEntries = *mutableValue.getIf<oo::PList::Dict>();
+					valueEntries.erase("$inherit");
+					if (const oo::PList *inherited = dict.get<oo::PList::Dict>(*inheritKey))
+					{
+						for (const auto &[inheritedKey, inheritedValue] : *inherited->getIf<oo::PList::Dict>())  valueEntries[inheritedKey] = inheritedValue;
+					}
+
+					(*entries)[key] = std::move(mutableValue);
+				}
+			}
+		} while (changeCount != 0);
+
+		shaderBindingTypesDictionary = std::move(dict);
 	}
-	
-	return shaderBindingTypesDictionary;
+
+	return *shaderBindingTypesDictionary;
 }
 
 
@@ -2128,76 +2160,78 @@ static NSString *LogClassKeyRoot(NSString *key)
 }
 
 
-+ (NSDictionary *)loadScripts
++ (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts
 {
-	NSMutableDictionary			*loadedScripts = nil;
-	NSArray						*results = nil;
-	NSArray						*paths = nil;
-	NSString					*path = nil;
-	OOScript					*script = nil;
-	NSString					*name = nil;
-	
+	// name -> script, in the order each name was first loaded (a later script of the same name replaces the earlier one in place)
+	std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>	loadedScripts;
+
 	OOLog(@"script.load.world.begin", @"%@", @"Loading world scripts...");
-	
-	loadedScripts = [NSMutableDictionary dictionary];
-	paths = oo::NSArrayFromStrings([ResourceManager cxx_paths]);
-	foreach (path, paths)
+
+	for (const std::string &path : [ResourceManager cxx_paths])
 	{
 		// excluding world-scripts.plist also excludes script.js / script.plist
 		// though as those core files don't and won't exist this is not
 		// a problem.
-		if (![ResourceManager corePlist:@"world-scripts.plist" excludedAt:path])
+		if (![ResourceManager cxx_corePlist:"world-scripts.plist" excludedAt:path])
 		{
 			@autoreleasepool
 			{
 				@try
 				{
-					results = [OOScript worldScriptsAtPath:[path stringByAppendingPathComponent:@"Config"]];
-					if (results == nil) results = [OOScript worldScriptsAtPath:path];
-					if (results != nil)
+					std::optional<std::vector<oo::ObjCRef<OOScript *>>> results = ScriptRefsOrNil([OOScript worldScriptsAtPath:oo::NSStringFrom(oo::str::appendingPathComponent(path, "Config"))]);
+					if (!results.has_value()) results = ScriptRefsOrNil([OOScript worldScriptsAtPath:oo::NSStringFrom(path)]);
+					if (results.has_value())
 					{
-						foreach (script, results)
+						for (const oo::ObjCRef<OOScript *> &script : *results)
 						{
-							name = [script name];
-							if (name != nil)  [loadedScripts setObject:script forKey:name];
-							else  OOLog(@"script.load.unnamed", @"Discarding anonymous script %@", script);
+							const std::optional<std::string> name = oo::OptionalString([script.get() name]);
+							if (name.has_value())
+							{
+								auto existing = std::find_if(loadedScripts.begin(), loadedScripts.end(), [&](const auto &entry) { return entry.first == *name; });
+								if (existing != loadedScripts.end())  existing->second = script;
+								else  loadedScripts.emplace_back(*name, script);
+							}
+							else  OOLog(@"script.load.unnamed", @"Discarding anonymous script %@", script.get());
 						}
 					}
 				}
 				@catch (NSException *exception)
 				{
-					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", __PRETTY_FUNCTION__, [exception name], [exception reason], path);
+					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", "+[ResourceManager loadScripts]", [exception name], [exception reason], oo::NSStringFrom(path));
 					// Ignore exception and keep loading other scripts.
 				}
 			}
 		}
 	}
-	
+
 	if (OOLogWillDisplayMessagesInClass(@"script.load.world.listAll"))
 	{
-		NSUInteger count = [loadedScripts count];
+		std::size_t count = loadedScripts.size();
 		if (count != 0)
 		{
-			NSMutableArray		*displayNames = nil;
-			OOScript			*script = nil;
-			NSString			*displayString = nil;
-			
-			displayNames = [NSMutableArray arrayWithCapacity:count];
-			
-			foreach (script, [loadedScripts allValues])
+			std::vector<std::string> displayNames;
+			displayNames.reserve(count);
+
+			for (const auto &[name, script] : loadedScripts)
 			{
-				[displayNames addObject:[script displayName]];
+				displayNames.push_back(oo::StdString([script.get() displayName]));
 			}
-			
-			displayString = [[displayNames sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)] componentsJoinedByString:@"\n    "];
-			OOLog(@"script.load.world.listAll", @"Loaded %zu world scripts:\n    %@", count, displayString);
+
+			std::stable_sort(displayNames.begin(), displayNames.end(), [](const std::string &a, const std::string &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; });
+			std::string displayString;
+			for (std::size_t i = 0; i != displayNames.size(); ++i)
+			{
+				if (i != 0)  displayString += "\n    ";
+				displayString += displayNames[i];
+			}
+			OOLog(@"script.load.world.listAll", @"Loaded %zu world scripts:\n    %@", count, oo::NSStringFrom(displayString));
 		}
 		else
 		{
 			OOLog(@"script.load.world.listAll", @"%@", @"*** No world scripts loaded.");
 		}
 	}
-	
+
 	return loadedScripts;
 }
 
@@ -2247,9 +2281,9 @@ static NSString *LogClassKeyRoot(NSString *key)
 }
 
 
-+ (NSDictionary *) materialDefaults
++ (oo::PList) cxx_materialDefaults
 {
-	return [self dictionaryFromFilesNamed:@"material-defaults.plist" inFolder:@"Config" andMerge:YES];
+	return [self cxx_dictionaryFromFilesNamed:"material-defaults.plist" inFolder:std::string("Config") andMerge:YES];
 }
 
 
