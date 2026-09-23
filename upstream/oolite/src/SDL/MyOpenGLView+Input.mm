@@ -16,6 +16,7 @@ Oolite
 #import "ResourceManager.h"
 #import "OOCollectionExtractors.h"
 #import "NSFileManagerOOExtensions.h" // to find savedir
+#include "oofnd/Date.hpp"
 
 #define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
 
@@ -238,7 +239,7 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
  	float						mxdelta, mydelta;
 	float					mouseVirtualStickSensitivityX = viewSize.width * _mouseVirtualStickSensitivityFactor;
 	float					mouseVirtualStickSensitivityY = viewSize.height * _mouseVirtualStickSensitivityFactor;
-	NSTimeInterval			timeNow = [NSDate timeIntervalSinceReferenceDate];
+	NSTimeInterval			timeNow = oo::date::monotonicSeconds();	// same clock as MyOpenGLView.mm's -init
 	Uint16	 				key_id;
 	SDL_Scancode				scan_code;
 	float inDelta;
