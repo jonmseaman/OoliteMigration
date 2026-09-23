@@ -28,6 +28,17 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (StationEntity.h)
 
 - (NSEnumerator *) dockSubEntityEnumerator;	// -> -cxx_dockSubEntities
 
+// oo-3rb.173 (chunk 2): market, allegiance, docking clearance
+- (NSArray *) marketDefinition;	// -> -cxx_marketDefinition
+- (NSString *) marketScriptName;	// -> -cxx_marketScriptName
+- (void) setLocalMarket:(NSArray *)market;	// -> -cxx_setLocalMarket:
+- (NSDictionary *) localMarketForScripting;	// -> -cxx_localMarketForScripting
+- (void) setPrice:(OOCreditsQuantity) price forCommodity:(OOCommodityType) commodity;	// -> -cxx_setPrice:forCommodity:
+- (void) setQuantity:(OOCargoQuantity) quantity forCommodity:(OOCommodityType) commodity;	// -> -cxx_setQuantity:forCommodity:
+- (void) setAllegiance:(NSString *)newAllegiance;	// -> -cxx_setAllegiance:
+- (NSString *)allegiance;	// -> -cxx_allegiance
+- (NSString *) acceptDockingClearanceRequestFrom:(ShipEntity *)other;	// -> -cxx_acceptDockingClearanceRequestFrom:
+
 @end
 
 
