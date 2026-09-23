@@ -30,38 +30,39 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 #define AI_THINK_INTERVAL					0.125
 
 
-@class ShipEntity;
+@class ShipEntity, OOPreservedAIStateMachine;
 
 
 @interface AI: OOWeakRefObject
 {
 @private
 	id					_owner;						// OOWeakReference to the ShipEntity this is the AI for
-	NSString			*ownerDesc;					// describes the object this is the AI for
-	
+	std::optional<std::string>	ownerDesc;			// describes the object this is the AI for; nullopt until it has an owner
+
 	oo::PList			stateMachine;				// the loaded, whitelisted state machine; null: none (nil)
-	NSString			*stateMachineName;
-	NSString			*currentState;
-	NSMutableSet		*pendingMessages;
-	
-	NSMutableArray		*aiStack;
-	
+	std::string			stateMachineName;
+	std::optional<std::string>	currentState;		// nullopt: no state (nil)
+	std::set<std::string>	pendingMessages;		// in byte order (a Foundation set before)
+
+	std::vector<oo::ObjCRef<OOPreservedAIStateMachine *>>	aiStack;
+
 	OOTimeAbsolute		nextThinkTime;
 	OOTimeDelta			thinkTimeInterval;
 	
-	NSString      *jsScript;
+	std::optional<std::string>	jsScript;
 }
 
 + (AI *) currentlyRunningAI;
 + (std::optional<std::string>) cxx_currentlyRunningAIDescription;
 
-- (NSString *) name;
+- (id) name;	// shared selector (proposed ADR-0043): the state machine's name, an Objective-C string
 - (std::optional<std::string>) cxx_associatedJS;
-- (NSString *) state;
+- (id) state;	// shared selector (proposed ADR-0043): the current state, an Objective-C string or nil
 
 - (void) cxx_setStateMachine:(const std::string &)smName withJSScript:(const std::string &)script;
 - (void) cxx_setState:(const std::string &)stateName;
@@ -93,9 +94,9 @@ MA 02110-1301, USA.
 
 - (void) think;
 
-- (void) message:(NSString *) ms;
+- (void) message:(id) ms;	// shared selector (proposed ADR-0043): ms is an Objective-C string
 - (void) cxx_dropMessage:(const std::string &) ms;
-- (NSSet *) pendingMessages;
+- (id) pendingMessages;	// shared selector (proposed ADR-0043): an immutable Objective-C set of strings
 - (void) debugDumpPendingMessages;
 
 - (void) setNextThinkTime:(OOTimeAbsolute) ntt;

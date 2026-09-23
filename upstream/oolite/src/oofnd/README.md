@@ -434,6 +434,7 @@ it. oo-qps cannot compile any of them.
 | `src/SDL/MyOpenGLView+FoundationBridge.h/.mm` (chunked: oo-3rb.110 made it; the later MyOpenGLView chunks move their own selectors in) | oo-3rb.110 | oo-xrkm ("Delete MyOpenGLView+FoundationBridge") |
 | `src/Core/AI+FoundationBridge.h/.mm` | oo-3rb.84 (AI.mm chunks oo-3rb.84..87) | oo-ag2w ("Delete AI+FoundationBridge") |
 | `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
+| `src/Core/ResourceManager+FoundationBridge.h/.mm` | oo-3rb.98 (chunks of oo-2wwr) | oo-0f7h ("Delete ResourceManager+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
