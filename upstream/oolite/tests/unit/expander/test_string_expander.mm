@@ -32,6 +32,7 @@
 #import "OOStringParsing.h"
 #import "OOCollectionExtractors.h"
 #import "OOStringExpander.h"
+#include <objc/objc-arc.h>
 #include <objc/runtime.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -153,7 +154,7 @@ static id QueryIMP(id self, SEL _cmd)
 - (NSString *) keyBindingDescription2:(NSString *)binding { return [@"kb:" stringByAppendingString:binding]; }
 - (NSString *) commanderName_string { return @"Jameson"; }
 - (NSString *) commanderShip_string { return @"Cobra Mark III"; }
-- (NSString *) commanderShipDisplayName_string { return @"Cobra É"; }
+- (NSString *) commanderShipDisplayName_string { return @"Cobra \u00C9"; }
 - (NSString *) commanderRank_string { return @"Harmless"; }
 - (NSString *) commanderKillsAsString { return @"12"; }
 - (NSString *) commanderLegalStatus_string { return @"Clean"; }
@@ -259,22 +260,22 @@ struct ExpressionCorpus
 			case 2: case 3: k = pick(special); break;
 			default: k = [NSString stringWithFormat:@"%u", next() % 41];
 		}
-		if (next() % 10 == 0)  k = [pick(@[@"﻿", @"￾", @"﻿﻿"]) stringByAppendingString:k];
+		if (next() % 10 == 0)  k = [pick(@[@"\uFEFF", @"\uFFFE", @"\uFEFF\uFEFF"]) stringByAppendingString:k];
 		return k;
 	}
 	NSString *expression()
 	{
-		static NSArray *ops = [@[@"cr", @"dcr", @"icr", @"idcr", @"precision", @"multiply", @"add", @"bogus", @"", @"ćr"] retain];
-		static NSArray *params = [@[@"1", @"-3", @"0", @"2.5", @"abc", @"12", @"1e3", @"", @" 7", @"3́", @"-1", @"20", @"1e400"] retain];
+		static NSArray *ops = [@[@"cr", @"dcr", @"icr", @"idcr", @"precision", @"multiply", @"add", @"bogus", @"", @"c\u0301r"] retain];
+		static NSArray *params = [@[@"1", @"-3", @"0", @"2.5", @"abc", @"12", @"1e3", @"", @" 7", @"3\u0301", @"-1", @"20", @"1e400"] retain];
 		NSMutableString *s = [NSMutableString stringWithFormat:@"[%@", key()];
 		static const unsigned kOpCounts[] = {0, 0, 1, 1, 2, 3};
 		for (unsigned n = kOpCounts[next() % 6]; n > 0; n--)
 		{
 			[s appendFormat:@"|%@", pick(ops)];
 			if (next() % 5 < 3)  [s appendFormat:@":%@", pick(params)];
-			if (next() % 20 == 0)  [s appendString:@"́"];
+			if (next() % 20 == 0)  [s appendString:@"\u0301"];
 		}
-		if (next() % 20 == 0)  [s appendString:@"|́|cr"];
+		if (next() % 20 == 0)  [s appendString:@"|\u0301|cr"];
 		[s appendString:@"]"];
 		return s;
 	}
@@ -284,11 +285,11 @@ struct ExpressionCorpus
 		if (literals == nil)
 		{
 			unichar lone = 0xD800;
-			literals = [@[@"a", @"Hello ", @"x", @"  ", @"\n", @"\\n", @"\\", @"\x7F", @"﻿", @"￾", @"́",
-				@"é", @"é", @"|", @":", @"%", @"%%", @"%[", @"%]", @"%H", @"%I", @"%N", @"%R", @"%Ŕ",
+			literals = [@[@"a", @"Hello ", @"x", @"  ", @"\n", @"\\n", @"\\", @"\x7F", @"\uFEFF", @"\uFFFE", @"\u0301",
+				@"\u00E9", @"e\u0301", @"|", @":", @"%", @"%%", @"%[", @"%]", @"%H", @"%I", @"%N", @"%R", @"%R\u0301",
 				@"%J007", @"%J256", @"%J07", @"%G123001", @"%G123009", @"%G12300", @"%@", @"%d", @"%.", @"%q", @"[",
-				@"]", @"[]", @"[5]", @"[0]", @"[999]", @"[22]", @"9", @"0", @"Ā", [NSString stringWithCharacters:&lone length:1],
-				@"﻿﻿z"] retain];
+				@"]", @"[]", @"[5]", @"[0]", @"[999]", @"[22]", @"9", @"0", @"\u0100", [NSString stringWithCharacters:&lone length:1],
+				@"\uFEFF\uFEFFz"] retain];
 		}
 		NSMutableString *s = [NSMutableString string];
 		for (unsigned n = 1 + next() % 8; n > 0; n--)
@@ -301,7 +302,7 @@ struct ExpressionCorpus
 
 int main(int argc, char **argv)
 {
-	NSAutoreleasePool *pool = [NSAutoreleasePool new];
+	void *pool = objc_autoreleasePoolPush();
 	if (argc < 3)
 	{
 		fprintf(stderr, "usage: %s descriptions.plist whitelist.plist [--print]\n", argv[0]);
@@ -329,18 +330,18 @@ int main(int argc, char **argv)
 		{
 			for (unsigned o = 0; o < kOptionCount; o++)
 			{
-				NSAutoreleasePool *inner = [NSAutoreleasePool new];
+				void *inner = objc_autoreleasePoolPush();
 				ranrot_srand(1000 + s * 7 + o);
 				seed_for_planet_description(seed);
 				NSString *r = Expand(seed, key, (o & 1) ? @"Zaonce" : nil, kOptionSets[o] | kOOExpandKey);
 				Record([NSString stringWithFormat:@"seed %u key %@ opt %u", s, key, o], r);
-				[inner release];
+				objc_autoreleasePoolPop(inner);
 			}
 		}
-		NSAutoreleasePool *inner = [NSAutoreleasePool new];
+		void *inner = objc_autoreleasePoolPush();
 		ranrot_srand(77 + s);
 		Record(@"system description", OOGenerateSystemDescription(seed, @"Riedquat"));
-		[inner release];
+		objc_autoreleasePoolPop(inner);
 	}
 	const uint64_t keysHash = sHash;
 	const unsigned keysLines = sLines;
@@ -351,7 +352,7 @@ int main(int argc, char **argv)
 	ExpressionCorpus corpus = { 0x61, keys };
 	for (unsigned n = 0; n < 20000; n++)
 	{
-		NSAutoreleasePool *inner = [NSAutoreleasePool new];
+		void *inner = objc_autoreleasePoolPush();
 		NSString *input = corpus.string();
 		Random_Seed seed = { (uint8_t)n, (uint8_t)(n >> 8), 3, 4, 5, (uint8_t)(n * 7) };
 		for (unsigned o = 0; o < kOptionCount; o++)
@@ -361,7 +362,7 @@ int main(int argc, char **argv)
 			NSString *r = Expand(seed, input, (o & 1) ? @"Zaonce" : nil, kOptionSets[o]);
 			Record([NSString stringWithFormat:@"string %u opt %u", n, o], r);
 		}
-		[inner release];
+		objc_autoreleasePoolPop(inner);
 	}
 	const uint64_t stringsHash = sHash;
 
@@ -379,6 +380,6 @@ int main(int argc, char **argv)
 		failures++;
 	}
 	if (failures == 0)  fprintf(stderr, "test_string_expander: OK (%u + %u lines)\n", keysLines, sLines);
-	[pool release];
+	objc_autoreleasePoolPop(pool);
 	return failures == 0 ? 0 : 1;
 }
