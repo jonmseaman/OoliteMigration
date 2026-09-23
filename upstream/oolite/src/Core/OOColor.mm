@@ -80,7 +80,7 @@ MA 02110-1301, USA.
 }
 
 
-- (id) copyWithZone:(NSZone *)zone
+- (id) copyWithZone:(OOZone *)zone
 {
 	// Copy is implemented as retain since OOColor is immutable.
 	return [self retain];

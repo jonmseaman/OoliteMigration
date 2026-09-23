@@ -47,7 +47,7 @@ enum
 	OOLITE_GL_MATRIX_END
 };
 
-@interface OOOpenGLMatrixStack: NSObject
+@interface OOOpenGLMatrixStack: OOObject
 {
 @private
 	std::vector<OOMatrix>	stack;	// was an NSMutableArray of boxed values (bead oo-3rb.10)
@@ -61,7 +61,7 @@ enum
 
 @end
 
-@interface OOOpenGLMatrixManager: NSObject
+@interface OOOpenGLMatrixManager: OOObject
 {
 @private
 	OOMatrix		matrices[OOLITE_GL_MATRIX_END];

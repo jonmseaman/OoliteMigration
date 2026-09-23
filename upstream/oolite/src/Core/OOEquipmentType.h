@@ -29,13 +29,14 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
 #import "OOTypes.h"
 #import "OOScript.h"
 #import "Universe.h"
 
 
-@interface OOEquipmentType: NSObject <NSCopying>
+@interface OOEquipmentType: OOObject <OOCopying>
 {
 @private
 	OOTechLevelID			_techLevel;

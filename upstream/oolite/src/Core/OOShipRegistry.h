@@ -28,11 +28,12 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 
 @class OOProbabilitySet;
 
 
-@interface OOShipRegistry: NSObject
+@interface OOShipRegistry: OOObject
 {
 @private
 	NSDictionary			*_shipData;
