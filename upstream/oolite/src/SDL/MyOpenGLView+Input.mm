@@ -14,7 +14,7 @@ Oolite
 #import "OOSDLJoystickManager.h"
 #import "PlayerEntity.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "NSFileManagerOOExtensions.h" // to find savedir
 
 #define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
@@ -38,7 +38,7 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 	NSDictionary *kmap = [NSDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:@"keymappings_linux.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
 #endif
 	// get the stored keyboard code from preferences
-	NSString *kbd = [prefs oo_stringForKey:@"keyboard-code" defaultValue:@"default"];
+	NSString *kbd = oo::PListView(prefs).get<NSString *>(@"keyboard-code", @"default");
 	NSDictionary *subset = [kmap objectForKey:kbd];
 
 	[keyMappings_normal release];
