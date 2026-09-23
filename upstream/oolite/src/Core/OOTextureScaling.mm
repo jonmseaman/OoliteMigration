@@ -31,6 +31,9 @@ SOFTWARE.
 #import "OOLogging.h"
 #import "OOMaths.h"
 #import "OOCPUInfo.h"
+#import "OOStringBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 #define DUMP_MIP_MAPS	0
@@ -147,7 +150,7 @@ OOINLINE void SqueezeVertically(OOPixMap pixMap, OOPixMapDimension dstHeight)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", OOPixMapFormatName(pixMap.format)];
+	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(pixMap.format))];
 #else
 	abort();
 #endif
@@ -177,7 +180,7 @@ OOINLINE void StretchHorizontally(OOPixMap srcPx, OOPixMap dstPx)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", OOPixMapFormatName(srcPx.format)];
+	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(srcPx.format))];
 #else
 	abort();
 #endif
@@ -205,7 +208,7 @@ OOINLINE void SqueezeHorizontally(OOPixMap pixMap, OOPixMapDimension dstHeight)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", OOPixMapFormatName(pixMap.format)];
+	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(pixMap.format))];
 #else
 	abort();
 #endif	
@@ -235,7 +238,7 @@ static void DumpMipMap(void *data, OOPixMapDimension width, OOPixMapDimension he
 
 #if DUMP_SCALE
 #define DUMP_SCALE_PREPARE()			SInt32 dumpID = OSAtomicAdd32(1, &sPreviousDumpID), dumpCount = 0;
-#define DUMP_SCALE_DUMP(PM, stage)		do { OOPixMap *pm = &(PM); OODumpPixMap(*pm, [NSString stringWithFormat:@"scaling dump ID %u stage %u-%@ %ux%u", dumpID, dumpCount++, stage, pm->width, pm->height]); } while (0)
+#define DUMP_SCALE_DUMP(PM, stage)		do { OOPixMap *pm = &(PM); OODumpPixMap(*pm, oo::str::format("scaling dump ID %u stage %u-%s %ux%u", dumpID, dumpCount++, stage, pm->width, pm->height)); } while (0)	// stage: a C string
 #else
 #define DUMP_SCALE_PREPARE()
 #define DUMP_SCALE_DUMP(PM, stage)		do {} while (0)
@@ -256,7 +259,7 @@ OOPixMap OOScalePixMap(OOPixMap srcPx, OOPixMapDimension dstWidth, OOPixMapDimen
 	}
 	
 	DUMP_SCALE_PREPARE();
-	DUMP_SCALE_DUMP(srcPx, @"initial");
+	DUMP_SCALE_DUMP(srcPx, "initial");
 	
 	if (srcPx.height < dstHeight)
 	{
@@ -268,7 +271,7 @@ OOPixMap OOScalePixMap(OOPixMap srcPx, OOPixMapDimension dstWidth, OOPixMapDimen
 		if (EXPECT_NOT(!OOIsValidPixMap(dstPx)))  { OK = NO; goto FAIL; }
 		
 		StretchVertically(srcPx, dstPx);
-		DUMP_SCALE_DUMP(dstPx, @"stretched vertically");
+		DUMP_SCALE_DUMP(dstPx, "stretched vertically");
 		
 		sparePx = srcPx;
 		srcPx = dstPx;
@@ -278,7 +281,7 @@ OOPixMap OOScalePixMap(OOPixMap srcPx, OOPixMapDimension dstWidth, OOPixMapDimen
 		// Squeeze vertically. This can be done in-place.
 		SqueezeVertically(srcPx, dstHeight);
 		srcPx.height = dstHeight;
-		DUMP_SCALE_DUMP(srcPx, @"squeezed vertically");
+		DUMP_SCALE_DUMP(srcPx, "squeezed vertically");
 	}
 	
 	if (srcPx.width < dstWidth)
@@ -299,7 +302,7 @@ OOPixMap OOScalePixMap(OOPixMap srcPx, OOPixMapDimension dstWidth, OOPixMapDimen
 		if (EXPECT_NOT(!OOIsValidPixMap(dstPx)))  { OK = NO; goto FAIL; }
 		
 		StretchHorizontally(srcPx, dstPx);
-		DUMP_SCALE_DUMP(dstPx, @"stretched horizontally");
+		DUMP_SCALE_DUMP(dstPx, "stretched horizontally");
 	}
 	else if (dstWidth < srcPx.width)
 	{
@@ -309,7 +312,7 @@ OOPixMap OOScalePixMap(OOPixMap srcPx, OOPixMapDimension dstWidth, OOPixMapDimen
 		dstPx = srcPx;
 		dstPx.width = dstWidth;
 		dstPx.rowBytes = dstPx.width * OOPixMapBytesPerPixel(dstPx);
-		DUMP_SCALE_DUMP(dstPx, @"squeezed horizontally");
+		DUMP_SCALE_DUMP(dstPx, "squeezed horizontally");
 	}
 	else
 	{
@@ -369,7 +372,7 @@ BOOL OOGenerateMipMaps(void *textureBytes, OOPixMapDimension width, OOPixMapDime
 	}
 	
 
-	OOLog(kOOLogParameterError, @"%s(): bad pixmap format (%@) - ignoring, data will be junk.", __PRETTY_FUNCTION__, OOPixMapFormatName(format));
+	OOLog(kOOLogParameterError, @"%s(): bad pixmap format (%@) - ignoring, data will be junk.", __PRETTY_FUNCTION__, oo::NSStringFrom(OOPixMapFormatName(format)));
 	return NO;
 }
 
@@ -881,7 +884,7 @@ static void ScaleToHalf_4_x2(void *srcBytes, void *dstBytes, OOPixMapDimension s
 static void DumpMipMap(void *data, OOPixMapDimension width, OOPixMapDimension height, OOPixMapFormat format, SInt32 ID, uint32_t level)
 {
 	OOPixMap pixMap = OOMakePixMap(data, width, height, format, 0, 0);
-	OODumpPixMap(pixMap, [NSString stringWithFormat:@"mipmap dump ID %u lv%u %@ %ux%u", ID, level, OOPixMapFormatName(format), width, height]);
+	OODumpPixMap(pixMap, oo::str::format("mipmap dump ID %u lv%u %s %ux%u", ID, level, OOPixMapFormatName(format).c_str(), width, height));
 }
 #endif
 
