@@ -127,7 +127,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 */
 
 
-@interface OOTimeProfile: NSObject
+@interface OOTimeProfile: OOObject
 {
 @private
 	double						_totalTime;
@@ -154,7 +154,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 @end
 
 
-@interface OOTimeProfileEntry: NSObject
+@interface OOTimeProfileEntry: OOObject
 {
 @private
 	NSString					*_function;
