@@ -25,8 +25,12 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "NSFileManagerOOExtensions.h"
+
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 
 @class OOSound, OOMusic, OOSystemDescriptionManager;
 
@@ -52,34 +56,32 @@ typedef enum
 #define SCENARIO_OXP_DEFINITION_BYTAG  @"tag:"
 #define SCENARIO_OXP_DEFINITION_NOPLIST  @"exc:"
 
-@interface ResourceManager : NSObject
+@interface ResourceManager: OOObject
 
 + (void) reset;
 + (void) resetManifestKnowledgeForOXZManager;
 
 
-+ (NSArray *)rootPaths;			// Places add-ons are searched for, not including add-on paths.
-+ (NSArray *)userRootPaths;		// Places users are expected to place add-ons, not including built-in data or managed add-ons directory.
-+ (NSString *)builtInPath;		// Path for built-in data only.
-+ (NSArray *)pathsWithAddOns;	// Root paths + add-on paths.
-+ (NSArray *)paths;				// builtInPath or pathsWithAddOns, depending on useAddOns state.
-+ (NSArray *)maskUserNameInPathArray:(NSArray *)inputPathArray;		// potential privacy concerns
-+ (NSString *)maskUserName:(NSString *)name inPath:(NSString *)path;
-+ (NSString *)useAddOns;
-+ (NSArray *)OXPsWithMessagesFound;
-+ (void)setUseAddOns:(NSString *)useAddOns;
-+ (void)addExternalPath:(NSString *)fileName;
-+ (NSEnumerator *)pathEnumerator;
-+ (NSEnumerator *)reversePathEnumerator;
++ (std::vector<std::string>) cxx_rootPaths;			// Places add-ons are searched for, not including add-on paths.
++ (std::vector<std::string>) cxx_userRootPaths;		// Places users are expected to place add-ons, not including built-in data or managed add-ons directory.
++ (std::optional<std::string>) cxx_builtInPath;		// Path for built-in data only.
++ (std::vector<std::string>) cxx_pathsWithAddOns;	// Root paths + add-on paths.
++ (std::vector<std::string>) cxx_paths;				// builtInPath or pathsWithAddOns, depending on useAddOns state.
++ (std::vector<std::string>) cxx_maskUserNameInPathArray:(const std::vector<std::string> &)inputPathArray;		// potential privacy concerns
++ (std::optional<std::string>) cxx_maskUserName:(const std::string &)name inPath:(const std::string &)path;
++ (std::optional<std::string>) cxx_useAddOns;		// nullopt before the first scan (was nil)
++ (std::vector<std::string>) cxx_OXPsWithMessagesFound;
++ (void) cxx_setUseAddOns:(const std::string &)useAddOns;
++ (void) cxx_addExternalPath:(const std::string &)fileName;
 
-// get manifest data for identifier
-+ (NSDictionary *)manifestForIdentifier:(NSString *)identifier;
-// compatibility checks
-+ (BOOL) checkVersionCompatibility:(NSDictionary *)manifest forOXP:(NSString *)title;
-+ (BOOL) manifestHasConflicts:(NSDictionary *)manifest logErrors:(BOOL)logErrors;
-+ (BOOL) manifestHasMissingDependencies:(NSDictionary *)manifest logErrors:(BOOL)logErrors;
-+ (BOOL) manifest:(NSDictionary *)manifest HasUnmetDependency:(NSDictionary *)required logErrors:(BOOL)logErrors;
-+ (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version;
+// get manifest data for identifier (a null PList when there is none)
++ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier;
+// compatibility checks (a manifest or relation is a Dict; title is nullopt where nil was passed)
++ (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title;
++ (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors;
++ (BOOL) cxx_manifestHasMissingDependencies:(const oo::PList &)manifest logErrors:(BOOL)logErrors;
++ (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors;
++ (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version;
 
 
 
@@ -87,7 +89,7 @@ typedef enum
 + (void)handleEquipmentOverrides: (NSMutableArray *)arrayToProcess;
 + (void)handleStarNebulaListMerging: (NSMutableArray *)arrayToProcess;
 
-+ (NSString *)errors;			// Errors which occurred during path scanning - essentially a list of OXPs whose requires.plist is bad.
++ (std::optional<std::string>) cxx_errors;	// Errors which occurred during path scanning - essentially a list of OXPs whose requires.plist is bad. nullopt when there are none.
 
 + (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName;
 + (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;
@@ -138,7 +140,7 @@ typedef enum
 + (BOOL) writeDiagnosticString:(NSString *)string toFileNamed:(NSString *)name;
 + (BOOL) writeDiagnosticPList:(id)plist toFileNamed:(NSString *)name;
 
-+ (NSString *) diagnosticFileLocation;
++ (std::optional<std::string>) cxx_diagnosticFileLocation;
 
 + (NSDictionary *) materialDefaults;
 
@@ -146,3 +148,11 @@ typedef enum
 + (void) clearCaches;
 
 @end
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before its sweep (bead oo-2wwr, chunks oo-3rb.98 ff.), forwarding to the cxx_ methods
+	above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep
+	beads; the bridge goes in its own bead.
+*/
+#import "ResourceManager+FoundationBridge.h"

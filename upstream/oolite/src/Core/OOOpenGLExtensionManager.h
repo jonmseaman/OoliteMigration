@@ -32,9 +32,11 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOFunctionAttributes.h"
 #import "OOTypes.h"
+#include "oofnd/StdLib.hpp"
 
 
 #ifndef OO_SHADERS
@@ -112,16 +114,18 @@ SOFTWARE.
 #define OOOPENGLEXTMGR_LOCK_SET_ACCESS		(!OOLITE_MAC_OS_X)
 
 
-@interface OOOpenGLExtensionManager: NSObject
+@interface OOOpenGLExtensionManager: OOObject
 {
 @private
 #if OOOPENGLEXTMGR_LOCK_SET_ACCESS
-	NSLock					*lock;
+	std::mutex				lock;
 #endif
-	NSSet					*extensions;
+	// Foundation sweep (proposed ADR-0043, bead oo-fzwt): the extension names, and the vendor /
+	// renderer strings (nullopt where OpenGL answered NULL, as the strings were nil).
+	std::set<std::string>		extensions;
 	
-	NSString				*vendor;
-	NSString				*renderer;
+	std::optional<std::string>	vendor;
+	std::optional<std::string>	renderer;
 	
 	unsigned				major, minor, release;
 	
@@ -152,7 +156,7 @@ SOFTWARE.
 
 - (void) reset;
 
-- (BOOL)haveExtension:(NSString *)extension;
+- (BOOL)haveExtension:(const std::string &)extension;
 
 - (BOOL)shadersSupported;
 - (BOOL)shadersForceDisabled;
@@ -171,8 +175,8 @@ SOFTWARE.
 - (void)getVersionMajor:(unsigned *)outMajor minor:(unsigned *)outMinor release:(unsigned *)outRelease;
 - (BOOL) versionIsAtLeastMajor:(unsigned)maj minor:(unsigned)min;
 
-- (NSString *) vendorString;
-- (NSString *) rendererString;
+- (std::optional<std::string>) vendorString;
+- (std::optional<std::string>) rendererString;
 
 //	GL_POINT_SMOOTH is slow or non-functional on some GPUs.
 - (BOOL) usePointSmoothing;

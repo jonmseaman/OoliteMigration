@@ -23,15 +23,21 @@ MA 02110-1301, USA.
 */
 
 #import "AI.h"
+#import <objc/runtime.h>
+#import <objc/objc-arc.h>
 #import "ResourceManager.h"
 #import "OOStringParsing.h"
 #import "OOWeakReference.h"
 #import "OOCacheManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOPListParsing.h"
 
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
+#import "oofnd/objc/OOObject.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 enum
@@ -49,55 +55,86 @@ typedef struct
 } OOAIDeferredCallTrampolineInfo;
 
 
+/*	Carries the trampoline info through -performSelector:withObject:afterDelay:,
+	which retains it until the call fires, as it did the value box that held the
+	struct before (bead oo-3rb.48).
+*/
+@interface OOAIDeferredCallTrampolineInfoHolder: OOObject
+{
+@public
+	OOAIDeferredCallTrampolineInfo	info;
+}
+@end
+
+
+@implementation OOAIDeferredCallTrampolineInfoHolder
+@end
+
+
 static AI *sCurrentlyRunningAI = nil;
+
+
+namespace {
+
+// The state machine's "jsScript" entry as an Objective-C object, nil if it has none (what
+// -objectForKey:@"jsScript" answered).
+id JSScriptObjectOf(const oo::PList &stateMachine)
+{
+	const oo::PList *script = stateMachine.find("jsScript");
+	return script != nullptr ? oo::ObjectFromPList(*script) : nil;
+}
+
+} // namespace
 
 
 @interface AI (OOPrivate)
 
 // Wrapper for performSelector:withObject:afterDelay: to catch/fix bugs.
 - (void) performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay;
-+ (void) deferredCallTrampolineWithInfo:(NSValue *)info;
++ (void) deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info;
+// The target of -cxx_setState:afterDelay:'s deferred call: stateName is an Objective-C string.
+- (void) deferredSetState:(id)stateName;
 
 - (void) refreshOwnerDesc;
 
-// Set state machine and state without side effects.
-- (void) directSetStateMachine:(NSDictionary *)newSM name:(NSString *)name;
-- (void) directSetState:(NSString *)state;
+// Set state machine and state without side effects. A nullopt state is no state (nil).
+- (void) directSetStateMachine:(const oo::PList &)newSM name:(const std::string &)name;
+- (void) directSetState:(const std::optional<std::string> &)state;
 
-// Loading/whitelisting
-- (NSDictionary *) loadStateMachine:(NSString *)smName jsName:(NSString *)script;
-- (NSDictionary *) cleanHandlers:(NSDictionary *)handlers forState:(NSString *)stateKey stateMachine:(NSString *)smName;
-- (NSArray *) cleanActions:(NSArray *)actions forHandler:(NSString *)handlerKey state:(NSString *)stateKey stateMachine:(NSString *)smName;
+// Loading/whitelisting. A null result is no state machine (nil).
+- (oo::PList) loadStateMachine:(const std::string &)smName jsName:(const std::string &)script;
+- (oo::PList) cleanHandlers:(const oo::PList &)handlers forState:(const std::string &)stateKey stateMachine:(const std::string &)smName;
+- (oo::PList) cleanActions:(const oo::PList &)actions forHandler:(const std::string &)handlerKey state:(const std::string &)stateKey stateMachine:(const std::string &)smName;
 
 @end
 
 
 #if DEBUG_GRAPHVIZ
-extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSString *name);
+#import "AIGraphViz.h"
 #endif
 
 
-@interface OOPreservedAIStateMachine: NSObject
+@interface OOPreservedAIStateMachine: OOObject
 {
 @private
-	NSDictionary		*_stateMachine;
-	NSString			*_name;
-	NSString			*_state;
-	NSMutableSet		*_pendingMessages;
-	NSString      *_jsScript;
+	oo::PList					_stateMachine;
+	std::string					_name;
+	std::optional<std::string>	_state;
+	std::set<std::string>		_pendingMessages;
+	std::optional<std::string>	_jsScript;
 }
 
-- (id) initWithStateMachine:(NSDictionary *)stateMachine
-					   name:(NSString *)name
-					  state:(NSString *)state
-			pendingMessages:(NSSet *)pendingMessages
-									 jsScript:(NSString *)script;
+- (id) initWithStateMachine:(const oo::PList &)stateMachine
+					   name:(const std::string &)name
+					  state:(const std::optional<std::string> &)state
+			pendingMessages:(const std::set<std::string> &)pendingMessages
+									 jsScript:(const std::optional<std::string> &)script;
 
-- (NSDictionary *) stateMachine;
-- (NSString *) name;
-- (NSString *) state;
-- (NSSet *) pendingMessages;
-- (NSString *) jsScript;
+- (oo::PList) stateMachine;
+- (id) name;	// shared selector (proposed ADR-0043): an Objective-C string
+- (id) state;	// shared selector (proposed ADR-0043): an Objective-C string or nil
+- (id) pendingMessages;	// shared selector (proposed ADR-0043): an Objective-C set of strings
+- (std::optional<std::string>) jsScript;
 
 @end
 
@@ -110,15 +147,15 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 }
 
 
-+ (NSString *) currentlyRunningAIDescription
++ (std::optional<std::string>) cxx_currentlyRunningAIDescription
 {
 	if (sCurrentlyRunningAI != nil)
 	{
-		return [NSString stringWithFormat:@"%@ in state %@", [sCurrentlyRunningAI name], [sCurrentlyRunningAI state]];
+		return oo::str::format("%s in state %s", oo::DescriptionOf([sCurrentlyRunningAI name]).c_str(), oo::DescriptionOf([sCurrentlyRunningAI state]).c_str());
 	}
 	else
 	{
-		return @"<no AI running>";
+		return "<no AI running>";
 	}
 }
 
@@ -130,21 +167,21 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 		nextThinkTime = INFINITY;	// don't think for a while
 		thinkTimeInterval = AI_THINK_INTERVAL;
 		
-		stateMachineName = @"<no AI>";	// no initial brain
+		stateMachineName = "<no AI>";	// no initial brain
 	}
 	
 	return self;
 }
 
 
-- (id) initWithStateMachine:(NSString *)smName andState:(NSString *)stateName
+- (id) cxx_initWithStateMachine:(const std::optional<std::string> &)smName andState:(const std::optional<std::string> &)stateName
 {
 	if ((self = [self init]))
 	{
-		if (smName != nil)  [self setStateMachine:smName withJSScript:@"oolite-nullAI.js"];
-		if (stateName != nil)  currentState = [stateName retain];
+		if (smName.has_value())  [self cxx_setStateMachine:*smName withJSScript:"oolite-nullAI.js"];
+		if (stateName.has_value())  currentState = *stateName;
 	}
-	
+
 	return self;
 }
 
@@ -157,27 +194,20 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 	}
 	
 	DESTROY(_owner);
-	DESTROY(ownerDesc);
-	DESTROY(aiStack);
-	DESTROY(stateMachine);
-	DESTROY(stateMachineName);
-	DESTROY(currentState);
-	DESTROY(pendingMessages);
-	DESTROY(jsScript);
 	
 	[super dealloc];
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents
 {
-	return [NSString stringWithFormat:@"\"%@\" in state: \"%@\" for %@", stateMachineName, currentState, ownerDesc];
+	return oo::NSStringFrom(oo::str::format("\"%s\" in state: \"%s\" for %s", stateMachineName.c_str(), currentState.value_or("(null)").c_str(), ownerDesc.value_or("(null)").c_str()));
 }
 
 
-- (NSString *) shortDescriptionComponents
+- (id) shortDescriptionComponents
 {
-	return [NSString stringWithFormat:@"%@:%@ / %@", stateMachineName, currentState, [stateMachine objectForKey:@"jsScript"]];
+	return oo::NSStringFrom(oo::str::format("%s:%s / %s", stateMachineName.c_str(), currentState.value_or("(null)").c_str(), oo::DescriptionOf(JSScriptObjectOf(stateMachine)).c_str()));
 }
 
 
@@ -208,17 +238,17 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 	{
 		BOOL stackDump = OOLogWillDisplayMessagesInClass(@"ai.error.stackOverflow.dump");
 		
-		NSString *trailer = stackDump ? @" -- stack:" : @".";
-		OOLogERR(@"ai.error.stackOverflow", @"AI stack overflow for %@ in %@: %@%@\n", [_owner shortDescription], stateMachineName, currentState, trailer);
-		
+		const char *trailer = stackDump ? " -- stack:" : ".";
+		OOLogERR(@"ai.error.stackOverflow", @"AI stack overflow for %@ in %@: %@%@\n", [_owner shortDescription], oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(currentState), oo::NSStringFrom(trailer));
+
 		if (stackDump)
 		{
 			OOLogIndent();
-			
-			NSUInteger count = [aiStack count];
+
+			std::size_t count = aiStack.size();
 			while (count--)
 			{
-				OOPreservedAIStateMachine *preservedMachine = [aiStack objectAtIndex:count];
+				OOPreservedAIStateMachine *preservedMachine = aiStack[count].get();
 				OOLog(@"ai.error.stackOverflow.dump", @"%3zu: %@: %@", count, [preservedMachine name], [preservedMachine state]);
 			}
 			
@@ -230,14 +260,9 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 
 - (void) preserveCurrentStateMachine
 {
-	if (stateMachine == nil)  return;
+	if (stateMachine.isNull())  return;
 	
-	if (aiStack == nil)
-	{
-		aiStack = [[NSMutableArray alloc] init];
-	}
-	
-	if ([aiStack count] >= kStackLimiter)
+	if (aiStack.size() >= kStackLimiter)
 	{
 		[self reportStackOverflow];
 		
@@ -245,74 +270,72 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 					format:@"AI stack overflow for %@", _owner];
 	}
 	
-	OOPreservedAIStateMachine *preservedMachine = [[OOPreservedAIStateMachine alloc]
+	const oo::PList *script = stateMachine.find("jsScript");
+	oo::ObjCRef<OOPreservedAIStateMachine *> preservedMachine = oo::adoptObjC([[OOPreservedAIStateMachine alloc]
 												   initWithStateMachine:stateMachine
 																   name:stateMachineName
 																  state:currentState
 														pendingMessages:pendingMessages
-																									jsScript:[stateMachine objectForKey:@"jsScript"]];
+																									jsScript:(script != nullptr && script->isString()) ? std::optional<std::string>(*script->getIf<std::string>()) : std::nullopt]);
 	
 #ifndef NDEBUG
 	if ([[self owner] reportAIMessages])  OOLog(@"ai.stack.push", @"Pushing state machine for %@", self);
 #endif
 	
-	[aiStack addObject:preservedMachine];  // PUSH
-	
-	[preservedMachine release];
+	aiStack.push_back(std::move(preservedMachine));  // PUSH
 }
 
 
 - (void) restorePreviousStateMachine
 {
-	if ([aiStack count] == 0)  return;
-	
-	OOPreservedAIStateMachine *preservedMachine = [aiStack lastObject];
+	if (aiStack.empty())  return;
+
+	const oo::ObjCRef<OOPreservedAIStateMachine *> preservedMachine = aiStack.back();
 	
 #ifndef NDEBUG
 	if ([[self owner] reportAIMessages])  OOLog(@"ai.stack.pop", @"Popping previous state machine for %@", self);
 #endif
 	
-	[self directSetStateMachine:[preservedMachine stateMachine]
-						   name:[preservedMachine name]];
-	
-	[self directSetState:[preservedMachine state]];
-	
-	// restore JS script
-	[[self owner] setAIScript:[preservedMachine jsScript]];
+	[self directSetStateMachine:[preservedMachine.get() stateMachine]
+						   name:oo::StdString([preservedMachine.get() name])];
 
-	[pendingMessages release];
-	pendingMessages = [[preservedMachine pendingMessages] mutableCopy];  // restore a MUTABLE set
-	
-	[aiStack removeLastObject];  //  POP
+	[self directSetState:oo::OptionalString([preservedMachine.get() state])];
+
+	// restore JS script
+	[[self owner] setAIScript:oo::NSStringOrNil([preservedMachine.get() jsScript])];
+
+	const std::vector<std::string> preservedMessages = oo::StringsFrom([preservedMachine.get() pendingMessages]);
+	pendingMessages = std::set<std::string>(preservedMessages.begin(), preservedMessages.end());
+
+	aiStack.pop_back();  //  POP
 }
 
 
 - (BOOL) hasSuspendedStateMachines
 {
-	return [aiStack count] != 0;
+	return !aiStack.empty();
 }
 
 
-- (void) exitStateMachineWithMessage:(NSString *)message
+- (void) cxx_exitStateMachineWithMessage:(const std::optional<std::string> &)message
 {
-	if ([aiStack count] != 0)
+	if (!aiStack.empty())
 	{
 		[self restorePreviousStateMachine];
-		if (message == nil)  message = @"RESTARTED";
-		[self reactToMessage:message context:@"suspended AI restart"];
+		[self cxx_reactToMessage:message.value_or("RESTARTED") context:"suspended AI restart"];
 	}
 }
 
 
-- (void) setStateMachine:(NSString *)smName withJSScript:(NSString *)script
+- (void) cxx_setStateMachine:(const std::string &)smName withJSScript:(const std::string &)script
 {
-	NSDictionary *newSM = [self loadStateMachine:smName jsName:script];
+	const oo::PList newSM = [self loadStateMachine:smName jsName:script];
 
-	if (newSM)
+	if (!newSM.isNull())
 	{
 		[self preserveCurrentStateMachine];
 		[self directSetStateMachine:newSM name:smName];
-		[self directSetState:@"GLOBAL"];
+		[self directSetState:"GLOBAL"];
 		
 		nextThinkTime = 0.0;	// think at next tick
 
@@ -323,7 +346,7 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 			Attempted fix: new delayed dispatch with trampoline, see -[AI setStateMachine:afterDelay:].
 			 -- Ahruman, 20070706
 		*/
-		[self reactToMessage:@"ENTER" context:@"changing AI"];
+		[self cxx_reactToMessage:"ENTER" context:"changing AI"];
 		
 		// refresh name
 		[self refreshOwnerDesc];
@@ -331,9 +354,9 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 }
 
 
-- (void) setState:(NSString *) stateName
+- (void) cxx_setState:(const std::string &) stateName
 {
-	if ([stateMachine objectForKey:stateName])
+	if (stateMachine.find(stateName) != nullptr)
 	{
 		/*	CRASH in objc_msgSend, apparently on [self reactToMessage:@"EXIT"] (1.69, OS X/x86).
 			Analysis: self corrupted. We're being called by __NSFireDelayedPerform, which doesn't go
@@ -342,46 +365,50 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 			Attempted fix: new delayed dispatch with trampoline, see -[AI setState:afterDelay:].
 			 -- Ahruman, 20070706
 		*/
-		[self reactToMessage:@"EXIT" context:@"changing state"];
+		[self cxx_reactToMessage:"EXIT" context:"changing state"];
 		[self directSetState:stateName];
-		[self reactToMessage:@"ENTER" context:@"changing state"];
+		[self cxx_reactToMessage:"ENTER" context:"changing state"];
 	}
 }
 
 
-- (void) setStateMachine:(NSString *)smName afterDelay:(NSTimeInterval)delay
+/*	The deferred call's parameter is retained here and released by the trampoline (which released
+	the caller's string before: harmless for the literals callers passed, and now balanced for the
+	string made here).
+*/
+- (void) cxx_setStateMachine:(const std::string &)smName afterDelay:(NSTimeInterval)delay
 {
-	[self performDeferredCall:@selector(setStateMachine:) withObject:smName afterDelay:delay];
+	[self performDeferredCall:@selector(setStateMachine:) withObject:[oo::NSStringFrom(smName) retain] afterDelay:delay];
 }
 
 
-- (void) setState:(NSString *)stateName afterDelay:(NSTimeInterval)delay
+- (void) cxx_setState:(const std::string &)stateName afterDelay:(NSTimeInterval)delay
 {
-	[self performDeferredCall:@selector(setState:) withObject:stateName afterDelay:delay];
+	[self performDeferredCall:@selector(deferredSetState:) withObject:[oo::NSStringFrom(stateName) retain] afterDelay:delay];
 }
 
 
-- (NSString *) name
+- (id) name
 {
-	return [[stateMachineName retain] autorelease];
+	return oo::NSStringFrom(stateMachineName);
 }
 
 
-- (NSString *) associatedJS
+- (std::optional<std::string>) cxx_associatedJS
 {
-	return [stateMachine objectForKey:@"jsScript"];
+	return oo::OptionalString(JSScriptObjectOf(stateMachine));
 }
 
 
-- (NSString *) state
+- (id) state
 {
-	return [[currentState retain] autorelease];
+	return oo::NSStringOrNil(currentState);
 }
 
 
 - (NSUInteger) stackDepth
 {
-	return [aiStack count];
+	return aiStack.size();
 }
 
 
@@ -391,21 +418,19 @@ struct AIStackElement
 {
 	AIStackElement			*back;
 	ShipEntity				*owner;
-	NSString				*aiName;
-	NSString				*state;
-	NSString				*message;
-	NSString				*context;
+	std::string				aiName;		// at the time of the call (the state machine may change)
+	std::optional<std::string>	state;
+	const std::string		*message;
+	const std::string		*context;
 };
 
 static AIStackElement *sStack = NULL;
 #endif
 
 
-- (void) reactToMessage:(NSString *) message context:(NSString *)debugContext
+- (void) cxx_reactToMessage:(const std::string &) message context:(const std::optional<std::string> &)debugContextArgument
 {
-	unsigned		i;
-	NSArray			*actions = nil;
-	NSDictionary	*messagesForState = nil;
+	std::size_t		i;
 	ShipEntity		*owner = [self owner];
 	static unsigned	recursionLimiter = 0;
 	AI				*previousRunning = sCurrentlyRunningAI;
@@ -415,19 +440,19 @@ static AIStackElement *sStack = NULL;
 		Fix: make owner an OOWeakReference.
 		 -- Ahruman, 20070706
 	*/
-	if (message == nil || owner == nil || [owner universalID] == NO_TARGET)  return;
+	if (owner == nil || [owner universalID] == NO_TARGET)  return;
 
 #ifndef NDEBUG
 	// Push debug stack frame.
-	if (debugContext == nil)  debugContext = @"unspecified";
+	const std::optional<std::string> debugContext = debugContextArgument.has_value() ? debugContextArgument : std::optional<std::string>("unspecified");
 	AIStackElement stackElement =
 	{
 		.back = sStack,
 		.owner = owner,
-		.aiName = [[stateMachineName retain] autorelease],
-		.state = [[currentState retain] autorelease],
-		.message = message,
-		.context = debugContext
+		.aiName = stateMachineName,
+		.state = currentState,
+		.message = &message,
+		.context = &*debugContext
 	};
 	sStack = &stackElement;
 #endif
@@ -440,14 +465,17 @@ static AIStackElement *sStack = NULL;
 	*/
 	if (recursionLimiter > kRecursionLimiter)
 	{
-		OOLogERR(@"ai.error.recursion", @"AI dispatch: hit stack depth limit in AI %@, state %@ handling message %@ in context \"%@\", aborting.", stateMachineName, currentState, message, debugContext);
+#ifdef NDEBUG
+		const std::optional<std::string> &debugContext = debugContextArgument;
+#endif
+		OOLogERR(@"ai.error.recursion", @"AI dispatch: hit stack depth limit in AI %@, state %@ handling message %@ in context \"%@\", aborting.", oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(currentState), oo::NSStringFrom(message), oo::NSStringOrNil(debugContext));
 		
 #ifndef NDEBUG
 		AIStackElement *stack = sStack;
 		unsigned depth = 0;
 		while (stack != NULL)
 		{
-			OOLog(@"ai.error.recursion.stackTrace", @"%4u  %@ - %@:%@.%@ (%@)", depth++, [stack->owner shortDescription], stack->aiName, stack->state, stack->message, stack->context);
+			OOLog(@"ai.error.recursion.stackTrace", @"%4u  %@ - %@:%@.%@ (%@)", depth++, [stack->owner shortDescription], oo::NSStringFrom(stack->aiName), oo::NSStringOrNil(stack->state), oo::NSStringFrom(*stack->message), oo::NSStringFrom(*stack->context));
 			stack = stack->back;
 		}
 		
@@ -458,43 +486,52 @@ static AIStackElement *sStack = NULL;
 		return;
 	}
 	
-	messagesForState = [stateMachine objectForKey:currentState];
-	if (messagesForState == nil)  return;
+	const oo::PList *messagesForState = currentState.has_value() ? stateMachine.find(*currentState) : nullptr;
+	if (messagesForState == nullptr)
+	{
+#ifndef NDEBUG
+		// Unwind the frame pushed above (this exit used to leave sStack pointing at it).
+		if (sStack != NULL)  sStack = sStack->back;
+#endif
+		return;
+	}
 	
 #ifndef NDEBUG
-	if (currentState != nil && ![message isEqual:@"UPDATE"] && [owner reportAIMessages])
+	if (currentState.has_value() && message != "UPDATE" && [owner reportAIMessages])
 	{
-		OOLog(@"ai.message.receive", @"AI %@ for %@ in state '%@' receives message '%@'. Context: %@, stack depth: %u", stateMachineName, ownerDesc, currentState, message, debugContext, recursionLimiter);
+		OOLog(@"ai.message.receive", @"AI %@ for %@ in state '%@' receives message '%@'. Context: %@, stack depth: %u", oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(ownerDesc), oo::NSStringOrNil(currentState), oo::NSStringFrom(message), oo::NSStringOrNil(debugContext), recursionLimiter);
 	}
 #endif
 	
-	actions = [[[messagesForState objectForKey:message] copy] autorelease];
-	
+	// A copy: an action may replace the state machine.
+	const oo::PList *actionList = messagesForState->find(message);
+	const oo::PList actions = actionList != nullptr ? *actionList : oo::PList();
+
 	sCurrentlyRunningAI = self;
-	if ([actions count] > 0)
+	if (actions.count() > 0)
 	{
 		++recursionLimiter;
 		@try
 		{
-			for (i = 0; i < [actions count]; i++)
+			for (i = 0; i < actions.count(); i++)
 			{
-				[self takeAction:[actions objectAtIndex:i]];
+				[self cxx_takeAction:actions.at<std::string>(i)];
 			}
 		}
 		@catch (NSException *exception)
 		{
-			OOLog(kOOLogException, @"Squashing exception %@:%@ in AI handler %@:%@.%@", [exception name], [exception reason], stateMachineName, currentState, message);
+			OOLog(kOOLogException, @"Squashing exception %@:%@ in AI handler %@:%@.%@", [exception name], [exception reason], oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(currentState), oo::NSStringFrom(message));
 		}
 		
 		--recursionLimiter;
 	}
 	else
 	{
-		if (currentState != nil)
+		if (currentState.has_value())
 		{
 			if ([owner respondsToSelector:@selector(interpretAIMessage:)])
 			{
-				[owner performSelector:@selector(interpretAIMessage:) withObject:message];
+				[owner performSelector:@selector(interpretAIMessage:) withObject:oo::NSStringFrom(message)];
 			}
 		}
 	}
@@ -507,62 +544,68 @@ static AIStackElement *sStack = NULL;
 }
 
 
-- (void) takeAction:(NSString *)action
+- (void) cxx_takeAction:(const std::string &)action
 {
 	ShipEntity *owner = [self owner];
-	
+
 #ifndef NDEBUG
 	BOOL report = [owner reportAIMessages];
 	if (report)
 	{
-		OOLog(@"ai.takeAction", @"%@ to take action %@", ownerDesc, action);
+		OOLog(@"ai.takeAction", @"%@ to take action %@", oo::NSStringOrNil(ownerDesc), oo::NSStringFrom(action));
 		OOLogIndent();
 	}
 #endif
-	
-	NSArray *tokens = ScanTokensFromString(action);
-	NSUInteger tokenCount = [tokens count];
-	
+
+	const std::vector<std::string> tokens = oo::str::tokens(action);
+	const std::size_t tokenCount = tokens.size();
+
 	if (tokenCount != 0)
 	{
-		NSString *selectorStr = [tokens objectAtIndex:0];
-		
+		const std::string &selectorStr = tokens[0];
+
 		if (owner != nil)
 		{
-			NSString *dataString = nil;
-			
+			std::optional<std::string> dataString;
+
 			if (tokenCount == 2)
 			{
-				dataString = [tokens objectAtIndex:1];
+				dataString = tokens[1];
 			}
-			else if ([tokens count] > 1)
+			else if (tokenCount > 1)
 			{
-				dataString = [[tokens subarrayWithRange:NSMakeRange(1, tokenCount - 1)] componentsJoinedByString:@" "];
+				std::string joined;
+				for (std::size_t i = 1; i < tokenCount; i++)
+				{
+					if (i > 1)  joined += " ";
+					joined += tokens[i];
+				}
+				dataString = std::move(joined);
 			}
-			
-			SEL selector = NSSelectorFromString(selectorStr);
+
+			SEL selector = NSSelectorFromString(oo::NSStringFrom(selectorStr));
 			if ([owner respondsToSelector:selector])
 			{
-				if (dataString != nil)  [owner performSelector:selector withObject:dataString];
+				if (dataString.has_value())  [owner performSelector:selector withObject:oo::NSStringFrom(*dataString)];
 				else  [owner performSelector:selector];
 			}
 			else
 			{
-				OOLogERR(@"ai.takeAction.badSelector", @"in AI %@ in state %@: %@ does not respond to %@", stateMachineName, currentState, ownerDesc, selectorStr);
+				OOLogERR(@"ai.takeAction.badSelector", @"in AI %@ in state %@: %@ does not respond to %@", oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(currentState), oo::NSStringOrNil(ownerDesc), oo::NSStringFrom(selectorStr));
 			}
 		}
 		else
 		{
-			OOLog(@"ai.takeAction.orphaned", @"***** AI %@, trying to perform %@, is orphaned (no owner)", stateMachineName, selectorStr);
+			OOLog(@"ai.takeAction.orphaned", @"***** AI %@, trying to perform %@, is orphaned (no owner)", oo::NSStringFrom(stateMachineName), oo::NSStringFrom(selectorStr));
 		}
 	}
 	else
 	{
 #ifndef NDEBUG
-		if (report)  OOLog(@"ai.takeAction.noAction", @"DEBUG: - no action '%@'", action);
+		if (report)  OOLog(@"ai.takeAction.noAction", @"DEBUG: - no action '%@'", oo::NSStringFrom(action));
 #endif
 	}
-	
+
 #ifndef NDEBUG
 	if (report)
 	{
@@ -574,84 +617,74 @@ static AIStackElement *sStack = NULL;
 
 - (void) think
 {
-	NSArray			*ms_list = nil;
-	unsigned		i;
-	
-	if ([[self owner] universalID] == NO_TARGET || stateMachine == nil)  return;  // don't think until launched
-	
-	[self reactToMessage:@"UPDATE" context:@"periodic update"];
+	if ([[self owner] universalID] == NO_TARGET || stateMachine.isNull())  return;  // don't think until launched
 
-	if ([pendingMessages count] > 0)
+	[self cxx_reactToMessage:"UPDATE" context:"periodic update"];
+
+	// In byte order of the message (the set's hash order before).
+	const std::vector<std::string> ms_list(pendingMessages.begin(), pendingMessages.end());
+	pendingMessages.clear();
+
+	for (const std::string &ms : ms_list)
 	{
-		ms_list = [pendingMessages allObjects];
-		[pendingMessages removeAllObjects];
-	}
-	
-	if (ms_list != nil)
-	{
-		for (i = 0; i < [ms_list count]; i++)
-		{
-			[self reactToMessage:[ms_list objectAtIndex:i] context:@"handling deferred message"];
-		}
+		[self cxx_reactToMessage:ms context:"handling deferred message"];
 	}
 }
 
 
-- (void) message:(NSString *)ms
+- (void) message:(id)ms
 {
 	if ([[self owner] universalID] == NO_TARGET)  return;  // don't think until launched
 
-	if (EXPECT_NOT([pendingMessages count] > 32))
+	if (EXPECT_NOT(pendingMessages.size() > 32))
 	{
 		// Generate the error, but don't crash Oolite! Fixes bug #18055 - Pending message overflow for thargoids, -> crash !
-		OOLogERR(@"ai.message.failed.overflow", @"AI message \"%@\" received by '%@' AI while pending messages stack full; message discarded. Pending messages:\n%@", ms, ownerDesc, pendingMessages);
+		OOLogERR(@"ai.message.failed.overflow", @"AI message \"%@\" received by '%@' AI while pending messages stack full; message discarded. Pending messages:\n%@", ms, oo::NSStringOrNil(ownerDesc), [self pendingMessages]);
 	}
 	else
 	{
-		if (pendingMessages == nil)
-		{
-			pendingMessages = [[NSMutableSet alloc] init];
-		}
-		[pendingMessages addObject:ms];
+		pendingMessages.insert(oo::StdString(ms));
 	}
 }
 
 
-- (void) dropMessage:(NSString *)ms
+- (void) cxx_dropMessage:(const std::string &)ms
 {
-	[pendingMessages removeObject:ms];
+	pendingMessages.erase(ms);
 }
 	
 
-- (NSSet *) pendingMessages
+- (id) pendingMessages
 {
-	if (pendingMessages != nil)
-	{
-		return [[pendingMessages copy] autorelease];
-	}
-	else
-	{
-		return [NSSet set];
-	}
+	return oo::NSSetFromStrings(pendingMessages);
 }
 
 
 - (void) debugDumpPendingMessages
 {
-	NSArray				*sortedMessages = nil;
-	NSString			*displayMessages = nil;
-	
-	if ([pendingMessages count] > 0)
+	std::string			displayMessages;
+
+	if (!pendingMessages.empty())
 	{
-		sortedMessages = [[pendingMessages allObjects] sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)];
-		displayMessages = [sortedMessages componentsJoinedByString:@", "];
+		std::vector<std::string> sortedMessages(pendingMessages.begin(), pendingMessages.end());
+		std::stable_sort(sortedMessages.begin(), sortedMessages.end(), [](const std::string &a, const std::string &b)
+		{
+			return oo::str::caseInsensitiveCompare(a, b) < 0;
+		});
+		bool first = true;
+		for (const std::string &sortedMessage : sortedMessages)
+		{
+			if (!first)  displayMessages += ", ";
+			first = false;
+			displayMessages += sortedMessage;
+		}
 	}
 	else
 	{
-		displayMessages = @"none";
+		displayMessages = "none";
 	}
-	
-	OOLog(@"ai.debug.pendingMessages", @"Pending messages for AI %@: %@", [self descriptionComponents], displayMessages);
+
+	OOLog(@"ai.debug.pendingMessages", @"Pending messages for AI %@: %@", [self descriptionComponents], oo::NSStringFrom(displayMessages));
 }
 
 
@@ -663,7 +696,7 @@ static AIStackElement *sStack = NULL;
 
 - (OOTimeAbsolute) nextThinkTime
 {
-	if (!stateMachine)
+	if (stateMachine.isNull())
 		return INFINITY;
 
 	return nextThinkTime;
@@ -684,14 +717,14 @@ static AIStackElement *sStack = NULL;
 
 - (void) clearStack
 {
-	[aiStack removeAllObjects];
+	aiStack.clear();
 }
 
 
 - (void) clearAllData
 {
-	[aiStack removeAllObjects];
-	[pendingMessages removeAllObjects];
+	aiStack.clear();
+	pendingMessages.clear();
 	
 	nextThinkTime += 36000.0;	// should dealloc in under ten hours!
 }
@@ -699,8 +732,8 @@ static AIStackElement *sStack = NULL;
 
 - (void)dumpState
 {
-	OOLog(@"dumpState.ai", @"State machine name: %@", stateMachineName);
-	OOLog(@"dumpState.ai", @"Current state: %@", currentState);
+	OOLog(@"dumpState.ai", @"State machine name: %@", oo::NSStringFrom(stateMachineName));
+	OOLog(@"dumpState.ai", @"Current state: %@", oo::NSStringOrNil(currentState));
 	OOLog(@"dumpState.ai", @"Next think time: %g", nextThinkTime);
 	OOLog(@"dumpState.ai", @"Next think interval: %g", thinkTimeInterval);
 }
@@ -719,7 +752,7 @@ static AIStackElement *sStack = NULL;
 - (void)performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay
 {
 	OOAIDeferredCallTrampolineInfo	infoStruct;
-	NSValue							*info = nil;
+	OOAIDeferredCallTrampolineInfoHolder	*info = nil;
 	
 	if (selector != NULL)
 	{
@@ -727,7 +760,8 @@ static AIStackElement *sStack = NULL;
 		infoStruct.selector = selector;
 		infoStruct.parameter = object;
 		
-		info = [[NSValue alloc] initWithBytes:&infoStruct objCType:@encode(OOAIDeferredCallTrampolineInfo)];
+		info = [[OOAIDeferredCallTrampolineInfoHolder alloc] init];
+		info->info = infoStruct;
 		
 		[[AI class] performSelector:@selector(deferredCallTrampolineWithInfo:)
 						 withObject:info
@@ -737,14 +771,19 @@ static AIStackElement *sStack = NULL;
 }
 
 
-+ (void)deferredCallTrampolineWithInfo:(NSValue *)info
+- (void) deferredSetState:(id)stateName
+{
+	[self cxx_setState:oo::StdString(stateName)];
+}
+
+
++ (void)deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info
 {
 	OOAIDeferredCallTrampolineInfo	infoStruct;
 	
 	if (info != nil)
 	{
-		assert(strcmp([info objCType], @encode(OOAIDeferredCallTrampolineInfo)) == 0);
-		[info getValue:&infoStruct];
+		infoStruct = info->info;
 		
 		[infoStruct.ai performSelector:infoStruct.selector withObject:infoStruct.parameter];
 		
@@ -757,229 +796,223 @@ static AIStackElement *sStack = NULL;
 - (void)refreshOwnerDesc
 {
 	ShipEntity *owner = [self owner];
-	[ownerDesc release];
 	if ([owner isPlayer])
 	{
-		ownerDesc = @"player autopilot";
+		ownerDesc = "player autopilot";
 	}
 	else if (owner != nil)
 	{
-		ownerDesc = [[NSString alloc] initWithFormat:@"%@ %d", [owner name], [owner universalID]];
+		ownerDesc = oo::str::format("%s %d", oo::DescriptionOf([owner name]).c_str(), [owner universalID]);
 	}
 	else
 	{
-		ownerDesc = @"no owner";
+		ownerDesc = "no owner";
 	}
 }
 
 
-- (void) directSetStateMachine:(NSDictionary *)newSM name:(NSString *)name
+- (void) directSetStateMachine:(const oo::PList &)newSM name:(const std::string &)name
 {
-	if (stateMachine != newSM)
-	{
-		[stateMachine release];
-		stateMachine = [newSM copy];
-	}
-	if (stateMachineName != name)
-	{
-		[stateMachineName release];
-		stateMachineName = [name copy];
-	}
+	stateMachine = newSM;
+	stateMachineName = name;
 }
 
 
-- (void) directSetState:(NSString *)state
+- (void) directSetState:(const std::optional<std::string> &)state
 {
-	if (currentState != state)
-	{
-		[currentState release];
-		currentState = [state copy];
-	}
+	currentState = state;
 }
 
 
-- (NSDictionary *) loadStateMachine:(NSString *)smName jsName:(NSString *)script
+- (oo::PList) loadStateMachine:(const std::string &)smName jsName:(const std::string &)script
 {
-	NSDictionary			*newSM = nil;
-	NSMutableDictionary		*cleanSM = nil;
+	oo::PList				newSM;
 	OOCacheManager			*cacheMgr = [OOCacheManager sharedCache];
-	NSString				*stateKey = nil;
-	NSDictionary			*stateHandlers = nil;
-	NSAutoreleasePool		*pool = nil;
-	
-	if (![smName isEqualToString:@"nullAI.plist"])
+	void					*pool = NULL;
+
+	if (smName != "nullAI.plist")
 	{
 		// don't cache nullAI since they're different depending on associated JS AI
-		newSM = [cacheMgr objectForKey:smName inCache:@"AIs"];
-		if (newSM != nil && ![newSM isKindOfClass:[NSDictionary class]])  return nil;	// catches use of @"nil" to indicate no AI found.
+		id cached = [cacheMgr cxx_objectForKey:smName inCache:"AIs"];
+		if (cached != nil && !oo::IsNSDictionary(cached))  return oo::PList();	// catches use of @"nil" to indicate no AI found.
+		newSM = oo::PListFrom(cached);
 	}
-	
-	if (newSM == nil)
+
+	if (newSM.isNull())
 	{
-		pool = [[NSAutoreleasePool alloc] init];
-		OOLog(@"ai.load", @"Loading and sanitizing AI \"%@\"", smName);
+		pool = objc_autoreleasePoolPush();
+		OOLog(@"ai.load", @"Loading and sanitizing AI \"%@\"", oo::NSStringFrom(smName));
 		OOLogPushIndent();
 		OOLogIndentIf(@"ai.load");
-		
+
 		@try
 		{
 			// Load state machine and validate against whitelist.
-			NSString *aiPath = [ResourceManager pathForFileNamed:smName inFolder:@"AIs"];
-			if (aiPath != nil)
+			const std::optional<std::string> aiPath = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(smName) inFolder:@"AIs"]);
+			if (aiPath.has_value())
 			{
-				newSM = OODictionaryFromFile(aiPath);
+				newSM = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(*aiPath)));
 			}
-			if (newSM == nil)
+			if (newSM.isNull())
 			{
-				[cacheMgr setObject:@"nil" forKey:smName inCache:@"AIs"];
-				NSString *fromString = @"";
+				[cacheMgr cxx_setObject:@"nil" forKey:smName inCache:"AIs"];
+				std::string fromString;
 				if ([self state] != nil)
 				{
-					fromString = [NSString stringWithFormat:@" from %@:%@", [self name], [self state]];
+					fromString = oo::str::format(" from %s:%s", oo::DescriptionOf([self name]).c_str(), oo::DescriptionOf([self state]).c_str());
 				}
-				OOLog(@"ai.load.failed.unknownAI", @"Can't switch AI for %@%@ to \"%@\" - could not load file.", [[self owner] shortDescription], fromString, smName);
-				return nil;
+				OOLog(@"ai.load.failed.unknownAI", @"Can't switch AI for %@%@ to \"%@\" - could not load file.", [[self owner] shortDescription], oo::NSStringFrom(fromString), oo::NSStringFrom(smName));
+				return oo::PList();
 			}
-			
-			cleanSM = [NSMutableDictionary dictionaryWithCapacity:[newSM count]];
-			
-			foreachkey (stateKey, newSM)
+
+			oo::PList::Dict cleanSM;
+
+			// In byte order of the state name (the dictionary's hash order before).
+			const oo::PList::Dict *states = newSM.getIf<oo::PList::Dict>();
+			for (const auto &[stateKey, stateHandlers] : states != nullptr ? *states : oo::PList::Dict())
 			{
-				stateHandlers = [newSM objectForKey:stateKey];
-				if (![stateHandlers isKindOfClass:[NSDictionary class]])
+				if (!stateHandlers.isDict())
 				{
-					OOLogWARN(@"ai.invalidFormat.state", @"State \"%@\" in AI \"%@\" is not a dictionary, ignoring.", stateKey, smName);
+					OOLogWARN(@"ai.invalidFormat.state", @"State \"%@\" in AI \"%@\" is not a dictionary, ignoring.", oo::NSStringFrom(stateKey), oo::NSStringFrom(smName));
 					continue;
 				}
-				
-				stateHandlers = [self cleanHandlers:stateHandlers forState:stateKey stateMachine:smName];
-				[cleanSM setObject:stateHandlers forKey:stateKey];
-			}
-			[cleanSM setObject:script forKey:@"jsScript"];
 
-			// Make immutable.
-			newSM = [[cleanSM copy] autorelease];
-			
+				cleanSM[stateKey] = [self cleanHandlers:stateHandlers forState:stateKey stateMachine:smName];
+			}
+			cleanSM["jsScript"] = oo::PList(script);
+
+			newSM = oo::PList(std::move(cleanSM));
+
 #if DEBUG_GRAPHVIZ
 			if ([[NSUserDefaults standardUserDefaults] boolForKey:@"generate-ai-graphviz"])
 			{
-				GenerateGraphVizForAIStateMachine(newSM, smName);
+				GenerateGraphVizForAIStateMachine(oo::ObjectFromPList(newSM), oo::NSStringFrom(smName));
 			}
 #endif
-			
+
 			// Cache.
-			[cacheMgr setObject:newSM forKey:smName inCache:@"AIs"];
+			[cacheMgr cxx_setObject:oo::ObjectFromPList(newSM) forKey:smName inCache:"AIs"];
 		}
 		@finally
 		{
 			OOLogPopIndent();
 		}
-		
-		[newSM retain];
-		[pool release];
-		[newSM autorelease];
+
+		objc_autoreleasePoolPop(pool);
 	}
-	
+
 	return newSM;
 }
 
 
-- (NSDictionary *) cleanHandlers:(NSDictionary *)handlers forState:(NSString *)stateKey stateMachine:(NSString *)smName
+- (oo::PList) cleanHandlers:(const oo::PList &)handlers forState:(const std::string &)stateKey stateMachine:(const std::string &)smName
 {
-	NSString				*handlerKey = nil;
-	NSArray					*handlerActions = nil;
-	NSMutableDictionary		*result = nil;
-	
-	result = [NSMutableDictionary dictionaryWithCapacity:[handlers count]];
-	foreachkey (handlerKey, handlers)
+	oo::PList::Dict			result;
+
+	// In byte order of the handler name (the dictionary's hash order before).
+	const oo::PList::Dict *entries = handlers.getIf<oo::PList::Dict>();
+	for (const auto &[handlerKey, handlerActions] : entries != nullptr ? *entries : oo::PList::Dict())
 	{
-		handlerActions = [handlers objectForKey:handlerKey];
-		if (![handlerActions isKindOfClass:[NSArray class]])
+		if (!handlerActions.isArray())
 		{
-			OOLogWARN(@"ai.invalidFormat.handler", @"Handler \"%@\" for state \"%@\" in AI \"%@\" is not an array, ignoring.", handlerKey, stateKey, smName);
+			OOLogWARN(@"ai.invalidFormat.handler", @"Handler \"%@\" for state \"%@\" in AI \"%@\" is not an array, ignoring.", oo::NSStringFrom(handlerKey), oo::NSStringFrom(stateKey), oo::NSStringFrom(smName));
 			continue;
 		}
-		
-		handlerActions = [self cleanActions:handlerActions forHandler:handlerKey state:stateKey stateMachine:smName];
-		[result setObject:handlerActions forKey:handlerKey];
+
+		result[handlerKey] = [self cleanActions:handlerActions forHandler:handlerKey state:stateKey stateMachine:smName];
 	}
-	
-	// Return immutable copy.
-	return [[result copy] autorelease];
+
+	return oo::PList(std::move(result));
 }
 
 
-- (NSArray *) cleanActions:(NSArray *)actions forHandler:(NSString *)handlerKey state:(NSString *)stateKey stateMachine:(NSString *)smName
+- (oo::PList) cleanActions:(const oo::PList &)actions forHandler:(const std::string &)handlerKey state:(const std::string &)stateKey stateMachine:(const std::string &)smName
 {
-	NSString				*action = nil;
-	NSRange					spaceRange;
-	NSString				*selector = nil;
-	id						aliasedSelector = nil;
-	NSMutableArray			*result = nil;
-	static NSSet			*whitelist = nil;
-	static NSDictionary		*aliases = nil;
-	NSArray					*whitelistArray1 = nil;
-	NSArray					*whitelistArray2 = nil;
-	
-	if (whitelist == nil)
+	oo::PList::Array						result;
+	static std::optional<std::set<std::string>>	whitelist;
+	static oo::PList						aliases;
+
+	if (!whitelist.has_value())
 	{
-		whitelistArray1 = [[ResourceManager whitelistDictionary] oo_arrayForKey:@"ai_methods"];
-		if (whitelistArray1 == nil)  whitelistArray1 = [NSArray array];
-		whitelistArray2 = [[ResourceManager whitelistDictionary] oo_arrayForKey:@"ai_and_action_methods"];
-		if (whitelistArray2 != nil)  whitelistArray1 = [whitelistArray1 arrayByAddingObjectsFromArray:whitelistArray2];
-		
-		whitelist = [[NSSet alloc] initWithArray:whitelistArray1];
-		aliases = [[[ResourceManager whitelistDictionary] oo_dictionaryForKey:@"ai_method_aliases"] retain];
-	}
-	
-	result = [NSMutableArray arrayWithCapacity:[actions count]];
-	foreach (action, actions)
-	{
-		if (![action isKindOfClass:[NSString class]])
+		const oo::PList whitelistDictionary = oo::PListFrom([ResourceManager whitelistDictionary]);
+		whitelist.emplace();
+		for (const char *key : { "ai_methods", "ai_and_action_methods" })
 		{
-			OOLogWARN(@"ai.invalidFormat.action", @"An action in handler \"%@\" for state \"%@\" in AI \"%@\" is not a string, ignoring.", handlerKey, stateKey, smName);
+			const oo::PList *methods = whitelistDictionary.get<oo::PList::Array>(key);
+			if (methods == nullptr)  continue;
+			for (const oo::PList &method : *methods->getIf<oo::PList::Array>())
+			{
+				if (method.isString())  whitelist->insert(*method.getIf<std::string>());
+			}
+		}
+		const oo::PList *aliasDictionary = whitelistDictionary.get<oo::PList::Dict>("ai_method_aliases");
+		if (aliasDictionary != nullptr)  aliases = *aliasDictionary;
+	}
+
+	// -stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]: whitespace, not newlines.
+	NSCharacterSet *whitespace = [NSCharacterSet whitespaceCharacterSet];
+	auto isWhitespace = [whitespace](char16_t c) { return [whitespace characterIsMember:c] != NO; };
+
+	const oo::PList::Array *entries = actions.getIf<oo::PList::Array>();
+	for (const oo::PList &entry : entries != nullptr ? *entries : oo::PList::Array())
+	{
+		if (!entry.isString())
+		{
+			OOLogWARN(@"ai.invalidFormat.action", @"An action in handler \"%@\" for state \"%@\" in AI \"%@\" is not a string, ignoring.", oo::NSStringFrom(handlerKey), oo::NSStringFrom(stateKey), oo::NSStringFrom(smName));
 			continue;
 		}
-		
+
 		// Trim spaces from beginning and end.
-		action = [action stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-		
+		std::string action = oo::str::trimTrailing(oo::str::trimLeading(*entry.getIf<std::string>(), isWhitespace), isWhitespace);
+
 		// Cut off parameters.
-		spaceRange = [action rangeOfString:@" "];
-		if (spaceRange.location == NSNotFound)  selector = action;
-		else  selector = [action substringToIndex:spaceRange.location];
-		
+		const std::size_t space = action.find(' ');
+		std::string selector = space == std::string::npos ? action : action.substr(0, space);
+
 		// Look in alias table.
-		aliasedSelector = [aliases objectForKey:selector];
-		if (aliasedSelector != nil)
+		const oo::PList *aliasedSelector = aliases.find(selector);
+		if (aliasedSelector != nullptr)
 		{
-			if ([aliasedSelector isKindOfClass:[NSString class]])
+			if (aliasedSelector->isString())
 			{
 				// Change selector and action to use real method name.
-				selector = aliasedSelector;
-				if (spaceRange.location == NSNotFound)  action = aliasedSelector;
-				else action = [aliasedSelector stringByAppendingString:[action substringFromIndex:spaceRange.location]];
+				const std::string &alias = *aliasedSelector->getIf<std::string>();
+				if (space == std::string::npos)  action = alias;
+				else
+				{
+					std::string parameters = action.substr(space);
+					action = alias;
+					action += parameters;
+				}
+				selector = alias;
 			}
-			else if ([aliasedSelector isKindOfClass:[NSArray class]] && [aliasedSelector count] != 0)
+			else if (aliasedSelector->isArray() && aliasedSelector->count() != 0)
 			{
 				// Alias is complete expression, pretokenized in anticipation of a tokenized future.
-				action = [aliasedSelector componentsJoinedByString:@" "];
-				selector = [[aliasedSelector objectAtIndex:0] description];
+				std::string joined;
+				bool first = true;
+				for (const oo::PList &token : *aliasedSelector->getIf<oo::PList::Array>())
+				{
+					if (!first)  joined += " ";
+					first = false;
+					joined += oo::DescriptionOf(oo::ObjectFromPList(token));
+				}
+				action = std::move(joined);
+				selector = oo::DescriptionOf(oo::ObjectFromPList(aliasedSelector->getIf<oo::PList::Array>()->front()));
 			}
 		}
-		
+
 		// Check for selector in whitelist.
-		if (![whitelist containsObject:selector])
+		if (!whitelist->contains(selector))
 		{
-			OOLog(@"ai.unpermittedMethod", @"Handler \"%@\" for state \"%@\" in AI \"%@\" uses \"%@\", which is not a permitted AI method.", handlerKey, stateKey, smName, selector);
+			OOLog(@"ai.unpermittedMethod", @"Handler \"%@\" for state \"%@\" in AI \"%@\" uses \"%@\", which is not a permitted AI method.", oo::NSStringFrom(handlerKey), oo::NSStringFrom(stateKey), oo::NSStringFrom(smName), oo::NSStringFrom(selector));
 			continue;
 		}
-		
-		[result addObject:action];
+
+		result.push_back(oo::PList(std::move(action)));
 	}
-	
-	// Return immutable copy.
-	return [[result copy] autorelease];
+
+	return oo::PList(std::move(result));
 }
 
 @end
@@ -987,61 +1020,49 @@ static AIStackElement *sStack = NULL;
 
 @implementation OOPreservedAIStateMachine
 
-- (id) initWithStateMachine:(NSDictionary *)stateMachine
-					   name:(NSString *)name
-					  state:(NSString *)state
-			pendingMessages:(NSSet *)pendingMessages
-									 jsScript:(NSString *)script
+- (id) initWithStateMachine:(const oo::PList &)stateMachine
+					   name:(const std::string &)name
+					  state:(const std::optional<std::string> &)state
+			pendingMessages:(const std::set<std::string> &)pendingMessages
+									 jsScript:(const std::optional<std::string> &)script
 {
 	if ((self = [super init]))
 	{
-		_stateMachine = [stateMachine copy];
-		_name = [name copy];
-		_state = [state copy];
-		_pendingMessages = [pendingMessages copy];
-		_jsScript = [script copy];
+		_stateMachine = stateMachine;
+		_name = name;
+		_state = state;
+		_pendingMessages = pendingMessages;
+		_jsScript = script;
 	}
-	
+
 	return self;
 }
 
 
-- (void) dealloc
-{
-	[_stateMachine autorelease];
-	[_name autorelease];
-	[_state autorelease];
-	[_pendingMessages autorelease];
-	[_jsScript autorelease];
-	
-	[super dealloc];
-}
-
-
-- (NSDictionary *) stateMachine
+- (oo::PList) stateMachine
 {
 	return _stateMachine;
 }
 
 
-- (NSString *) name
+- (id) name
 {
-	return _name;
+	return oo::NSStringFrom(_name);
 }
 
 
-- (NSString *) state
+- (id) state
 {
-	return _state;
+	return oo::NSStringOrNil(_state);
 }
 
 
-- (NSSet *) pendingMessages
+- (id) pendingMessages
 {
-	return _pendingMessages;
+	return oo::NSSetFromStrings(_pendingMessages);
 }
 
-- (NSString *) jsScript
+- (std::optional<std::string>) jsScript
 {
 	return _jsScript;
 }

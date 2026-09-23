@@ -227,7 +227,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 			
 		case kShipGroup_name:
 			result = [group name];
-			if (result == nil)  result = [NSNull null];
+			if (result == nil)  result = [OONull null];
 			break;
 			
 		case kShipGroup_count:

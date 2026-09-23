@@ -27,7 +27,8 @@ SOFTWARE.
 
 #import "OOJSFrameCallbacks.h"
 #import "OOJSEngineTimeManagement.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
+#include "oofnd/Date.hpp"
 
 
 /*
@@ -124,7 +125,7 @@ void InitOOJSFrameCallbacks(ooscript::Context context, ooscript::Object global)
 	sNextID = 1;
 #else
 	// Set randomish initial ID to catch bad habits.
-	sNextID =  [[NSDate date] timeIntervalSinceReferenceDate];
+	sNextID =  oo::date::timeIntervalSinceReferenceDate();
 #endif
 }
 
@@ -458,7 +459,7 @@ static void RunDeferredOperations(ooscript::Context context)
 	foreach (operation, sDeferredOps)
 	{
 		NSString	*opType = [operation objectForKey:@"operation"];
-		uint32_t		trackingID = [operation oo_intForKey:@"trackingID"];
+		uint32_t		trackingID = oo::PListView(operation).get<int>(@"trackingID");
 		
 		if ([opType isEqualToString:@"add"])
 		{

@@ -28,12 +28,13 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOMaths.h"
 #import "OOWeakReference.h"
 
 
-@interface OODrawable: NSObject
+@interface OODrawable: OOObject
 
 - (void)renderOpaqueParts;
 - (void)renderTranslucentParts;
@@ -51,7 +52,7 @@ SOFTWARE.
 - (void)dumpSelfState;
 
 #ifndef NDEBUG
-- (NSSet *) allTextures;
+- (id) allTextures;	// an Objective-C set of textures. Shared selector (proposed ADR-0043).
 - (size_t) totalSize;	// Size including dynamic data, not counting textures.
 #endif
 

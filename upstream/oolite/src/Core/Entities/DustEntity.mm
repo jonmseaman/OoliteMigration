@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "DustEntity.h"
+#include "oofnd/Process.hpp"
 
 #import "OOMaths.h"
 #import "Universe.h"
@@ -39,6 +40,7 @@ MA 02110-1301, USA.
 #endif
 
 #import "PlayerEntity.h"
+#import "OOFoundationBridge.h"
 
 
 #define FAR_PLANE		(DUST_SCALE * 0.50f)
@@ -69,7 +71,7 @@ enum
 	int vi;
 	
 // this should be unnecessary
-//	ranrot_srand((uint32_t)[[NSDate date] timeIntervalSince1970]);	// seed randomiser by time
+//	ranrot_srand((uint32_t)oo::date::timeIntervalSince1970());	// seed randomiser by time
 	
 	self = [super init];
 	
@@ -94,12 +96,12 @@ enum
 	shaderMode = kShaderModeUnknown;
 #endif
 	
-	drawDust = ![[[NSProcessInfo processInfo] arguments] containsObject:@"-nodust"];
+	drawDust = !oo::process::hasArgument("-nodust");
 	
 	dust_color = [[OOColor colorWithRed:0.5 green:1.0 blue:1.0 alpha:1.0] retain];
 	[self setStatus:STATUS_ACTIVE];
 
-	hasPointSprites = [[OOOpenGLExtensionManager sharedManager] haveExtension:@"GL_ARB_point_sprite"];
+	hasPointSprites = [[OOOpenGLExtensionManager sharedManager] haveExtension:"GL_ARB_point_sprite"];
 	
 	if (hasPointSprites)
 	{
@@ -212,18 +214,18 @@ enum
 		NSDictionary *attributes = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kTangentAttributeIndex]
 															   forKey:@"aWarpiness"];
 		
-		shader = [[OOShaderProgram shaderProgramWithVertexShaderName:@"oolite-dust.vertex"
-												  fragmentShaderName:@"oolite-dust.fragment"
-															  prefix:prefix
-												   attributeBindings:attributes] retain];
+		shader = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-dust.vertex"
+												  fragmentShaderName:"oolite-dust.fragment"
+															  prefix:oo::OptionalString(prefix)
+												   attributeBindings:oo::PListFrom(attributes)] retain];
 		
 		DESTROY(uniforms);
-		OOShaderUniform *uWarp = [[OOShaderUniform alloc] initWithName:@"uWarp"
+		OOShaderUniform *uWarp = [[OOShaderUniform alloc] initWithName:"uWarp"
 														 shaderProgram:shader
 														 boundToObject:self
 															  property:@selector(warpVector)
 														convertOptions:0];
-		OOShaderUniform *uOffsetPlayerPosition = [[OOShaderUniform alloc] initWithName:@"uOffsetPlayerPosition"
+		OOShaderUniform *uOffsetPlayerPosition = [[OOShaderUniform alloc] initWithName:"uOffsetPlayerPosition"
 																   shaderProgram:shader
 																   boundToObject:self
 																		property:@selector(offsetPlayerPosition)

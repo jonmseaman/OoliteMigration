@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOConstToString.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOJSScript.h"
+#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -209,7 +210,7 @@ static FunctionSpec sSystemInfoStaticMethods[] =
 
 
 // Helper class wrapped by JS SystemInfo objects
-@interface OOSystemInfo: NSObject
+@interface OOSystemInfo: OOObject
 {
 @private
 	OOGalaxyID				_galaxy;
@@ -595,7 +596,7 @@ static bool SystemInfoGetProperty(Context cx, Object obj, PropertyId propID, Val
 		
 		if (propValue != nil)
 		{
-			if ([propValue isKindOfClass:[NSNumber class]] || OOIsNumberLiteral([propValue description], YES))
+			if ([propValue isKindOfClass:[NSNumber class]] || OOIsNumberLiteral(oo::StdString([propValue description]), YES))
 			{
 				BOOL OK = ooscript::newNumberValue(cx, [propValue doubleValue], value);
 				if (!OK)
@@ -829,58 +830,60 @@ static bool SystemInfoStaticFilteredSystems(ooscript::Context context, ooscript:
 	}
 	ooscript::Value predicate = OOJS_ARGV[1];
 	
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	NSMutableArray *result = [NSMutableArray arrayWithCapacity:256];
-	
-	// Not OOJS_BEGIN_FULL_NATIVE() - we use the engine while paused.
-	OOJSPauseTimeLimiter();
-	
-	// Iterate over systems.
-	BOOL OK = result != nil;
-	OOGalaxyID galaxy = [PLAYER currentGalaxyID];
-	OOSystemID system;
-	for (system = 0; system <= kOOMaximumSystemID; system++)
+	NSMutableArray *result = nil;
+	BOOL OK;
+	@autoreleasepool
 	{
-		// NOTE: this deliberately bypasses the cache, since iteration is inherently unfriendly to a single-item cache.
-		OOSystemInfo *info = [[[OOSystemInfo alloc] initWithGalaxy:galaxy system:system] autorelease];
-		ooscript::Value args[1] = { OOJSValueFromNativeObject(context, info) };
+		result = [NSMutableArray arrayWithCapacity:256];
 		
-		ooscript::Value rval = ooscript::undefinedValue();
-		OOJSResumeTimeLimiter();
-		OK = ooscript::callFunctionValue(context, (jsThis), (predicate), 1, (args), (&rval));
+		// Not OOJS_BEGIN_FULL_NATIVE() - we use the engine while paused.
 		OOJSPauseTimeLimiter();
 		
-		if (OK)
+		// Iterate over systems.
+		OK = result != nil;
+		OOGalaxyID galaxy = [PLAYER currentGalaxyID];
+		OOSystemID system;
+		for (system = 0; system <= kOOMaximumSystemID; system++)
 		{
-			if (ooscript::isExceptionPending(context))
+			// NOTE: this deliberately bypasses the cache, since iteration is inherently unfriendly to a single-item cache.
+			OOSystemInfo *info = [[[OOSystemInfo alloc] initWithGalaxy:galaxy system:system] autorelease];
+			ooscript::Value args[1] = { OOJSValueFromNativeObject(context, info) };
+			
+			ooscript::Value rval = ooscript::undefinedValue();
+			OOJSResumeTimeLimiter();
+			OK = ooscript::callFunctionValue(context, (jsThis), (predicate), 1, (args), (&rval));
+			OOJSPauseTimeLimiter();
+			
+			if (OK)
 			{
-				ooscript::reportPendingException(context);
-				OK = NO;
+				if (ooscript::isExceptionPending(context))
+				{
+					ooscript::reportPendingException(context);
+					OK = NO;
+				}
 			}
+			
+			if (OK)
+			{
+				bool boolVal;
+				if (ooscript::valueToBoolean(context, (rval), &boolVal) && boolVal)
+				{
+					[result addObject:info];
+				}
+			}
+			
+			if (!OK)  break;
 		}
 		
 		if (OK)
 		{
-			bool boolVal;
-			if (ooscript::valueToBoolean(context, (rval), &boolVal) && boolVal)
-			{
-				[result addObject:info];
-			}
+			OOJS_SET_RVAL([result oo_jsValueInContext:context]);
 		}
-		
-		if (!OK)  break;
+		else
+		{
+			OOJS_SET_RVAL(ooscript::undefinedValue());
+		}
 	}
-	
-	if (OK)
-	{
-		OOJS_SET_RVAL([result oo_jsValueInContext:context]);
-	}
-	else
-	{
-		OOJS_SET_RVAL(ooscript::undefinedValue());
-	}
-
-	[pool release];
 	
 	OOJSResumeTimeLimiter();
 	return OK;

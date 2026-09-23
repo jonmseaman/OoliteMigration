@@ -45,11 +45,12 @@ MA 02110-1301, USA.
 #import "OOShipRegistry.h"
 #import "OOEquipmentType.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMesh.h"
 #import "OOConstToString.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOCharacter.h"
+#import "OOFoundationBridge.h"
 
 
 static ooscript::Object sShipPrototype;
@@ -642,11 +643,25 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 
 		case kShip_roles:
-			result = [[entity roleSet] sortedRoles];
+			{
+				OORoleSet *roleSet = [entity roleSet];
+				result = roleSet != nil ? oo::NSArrayFromStrings([roleSet sortedRoles]) : nil;
+			}
 			break;
 		
 		case kShip_roleWeights:
-			result = [[entity roleSet] rolesAndProbabilities];
+			{
+				NSMutableDictionary *weights = nil;
+				if (const auto roleWeights = [[entity roleSet] rolesAndProbabilities])
+				{
+					weights = [NSMutableDictionary dictionaryWithCapacity:roleWeights->size()];
+					for (const auto &[role, weight] : *roleWeights)
+					{
+						[weights setObject:[NSNumber numberWithFloat:weight] forKey:oo::NSStringFrom(role)];
+					}
+				}
+				result = weights;
+			}
 			break;
 		
 		case kShip_primaryRole:
@@ -3330,12 +3345,12 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	NSDictionary 			*shipDict = [thisEnt shipInfoDictionary];
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:[shipDict oo_stringForKey:@"model"]
+	OOMesh *mesh = [OOMesh meshWithName:oo::PListView(shipDict).get<NSString *>(@"model")
 							   cacheKey:nil
 					 materialDictionary:materials
 					  shadersDictionary:shaders
-								 smooth:[shipDict oo_boolForKey:@"smooth" defaultValue:NO]
-						   shaderMacros:[[ResourceManager materialDefaults] oo_dictionaryForKey:@"ship-prefix-macros"]
+								 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
+						   shaderMacros:oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros")
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)

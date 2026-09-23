@@ -31,13 +31,14 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenALController.h"
 #import "OOMaths.h"
 
 @class OOSound;
 
 
-@interface OOSoundChannel: NSObject
+@interface OOSoundChannel: OOObject
 {
 	OOSoundChannel				*_next;
 	id							_delegate;

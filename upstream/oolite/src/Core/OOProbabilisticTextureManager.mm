@@ -28,13 +28,28 @@ SOFTWARE.
 #import "OOProbabilisticTextureManager.h"
 #import "ResourceManager.h"
 #import "OOTexture.h"
-#import "OOCollectionExtractors.h"
 #import "PlayerEntityScriptMethods.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
+
+
+namespace {
+
+// oo_stringForKey: a string, a number's string value, or nil (Foundation sweep, proposed ADR-0043).
+std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dict.get<std::string>(key);
+}
+
+}	// namespace
 
 
 @implementation OOProbabilisticTextureManager
 
-- (id)initWithPListName:(NSString *)plistName 
+- (id)initWithPListName:(const std::string &)plistName
 				options:(uint32_t)options
 			 anisotropy:(GLfloat)anisotropy
 				lodBias:(GLfloat)lodBias
@@ -47,34 +62,34 @@ SOFTWARE.
 }
 
 
-- (id)initWithPListName:(NSString *)plistName 
+- (id)initWithPListName:(const std::string &)plistName
 				options:(uint32_t)options
 			 anisotropy:(GLfloat)anisotropy
 				lodBias:(GLfloat)lodBias
 				   seed:(RANROTSeed)seed
 {
 	BOOL				OK = YES;
-	NSArray				*config = nil;
+	oo::PList			config;
 	NSUInteger			i, count, j;
-	id					entry = nil;
-	NSString			*name = nil;
+	const oo::PList		*entry = nullptr;
+	std::optional<std::string>	name;
 	float				probability;
 	OOTexture			*texture = nil;
 	int 				galID = -1;
-	id					object = nil;
+	const oo::PList		*object = nullptr;
 
 	self = [super init];
 	if (self == nil)  OK = NO;
 	
 	if (OK)
 	{
-		config = [ResourceManager arrayFromFilesNamed:plistName inFolder:@"Config" andMerge:YES];
-		if (config == nil)  OK = NO;
+		config = oo::PListFrom([ResourceManager arrayFromFilesNamed:oo::NSStringFrom(plistName) inFolder:@"Config" andMerge:YES]);
+		if (!config)  OK = NO;
 	}
 	
 	if (OK)
 	{
-		count = [config count];
+		count = config.count();
 		
 		_textures = (OOTexture **)malloc(sizeof *_textures * count);
 		_prob = (float *)malloc(sizeof *_prob * count);
@@ -91,35 +106,35 @@ SOFTWARE.
 		//  Go through list and load textures.
 		for (i = 0; i != count; ++i)
 		{
-			entry = [config objectAtIndex:i];
+			entry = config.at(i);
 			galID = -1;
-			if ([entry isKindOfClass:[NSDictionary class]])
+			if (entry->isDict())
 			{
-				name = [(NSDictionary *)entry oo_stringForKey:@"texture"];
-				probability = [entry oo_floatForKey:@"probability" defaultValue:1.0f];
-				object = [entry objectForKey:@"galaxy"];
-				if ([object isKindOfClass:[NSString class]])  
+				name = OptionalStringForKey(*entry, "texture");
+				probability = entry->get<float>("probability", 1.0f);
+				object = entry->find("galaxy");
+				if (object != nullptr && object->isString())
 				{
-					galID = [object intValue];
+					galID = oo::str::intValue(*object->getIf<std::string>());
 				}
-				else if (object != nil)
+				else if (object != nullptr)
 				{
-					OOLog(@"textures.load", @"***** ERROR: %@ for texture %@ is not a string.", @"galaxy", name);
+					OOLog(@"textures.load", @"***** ERROR: %@ for texture %@ is not a string.", @"galaxy", oo::NSStringOrNil(name));
 				}
 			}
-			else if ([entry isKindOfClass:[NSString class]])
+			else if (entry->isString())
 			{
-				name = entry;
+				name = *entry->getIf<std::string>();
 				probability = 1.0f;
 			}
 			else
 			{
-				name = nil;
+				name = std::nullopt;
 			}
 			
-			if (name != nil && 0.0f < probability)
+			if (name.has_value() && 0.0f < probability)
 			{
-				texture = [OOTexture textureWithName:name
+				texture = [OOTexture textureWithName:oo::NSStringFrom(*name)
 											inFolder:@"Textures"
 											 options:options
 										  anisotropy:anisotropy
@@ -178,9 +193,11 @@ SOFTWARE.
 }
 
 
-- (NSString *)description
+// OOObject's -description wraps this as "<OOProbabilisticTextureManager 0x...>{...}", the text
+// this class's own -description printed. Shared selector (proposed ADR-0043).
+- (id)descriptionComponents
 {
-	return [NSString stringWithFormat:@"<%@ %p>{%u textures, cumulative probability=%g}", [self class], self, _count, _probMax];
+	return oo::NSStringFrom(oo::str::format("%u textures, cumulative probability=%g", _count, _probMax));
 }
 
 
