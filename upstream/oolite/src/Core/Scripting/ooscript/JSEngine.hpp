@@ -355,7 +355,7 @@ void   destroyScript(Context cx, Script script);                                
 
 // The compiled-script cache's on-disk form (OOCacheManager's "compiled JavaScript scripts"
 // cache, CompiledScriptData/ScriptWithCompiledData). serializeScript/deserializeScript move
-// the JS_XDR* call sites onto the façade; the byte layout stays the backend's own (see
+// the engine's XDR call sites onto the façade; the byte layout stays the backend's own (see
 // README.md's "Not in the façade" note) -- callers only ever move the bytes, never read them.
 struct ByteBuffer
 {
@@ -553,7 +553,7 @@ void triggerAllOperationCallbacks(Runtime rt);                                  
 // What the last game files needed that the histogram-sized first cut left out. Same rule as the
 // rest of the header: each replaces one engine call and keeps its calling convention.
 
-// Value and id identity is the engine's own: jsval/jsid compared bitwise, and both backends keep
+// Value and id identity is the engine's own: values and ids compared bitwise, and both backends keep
 // one canonical bit pattern per value (int32 stays int32, one pointer per object).
 inline bool operator==(Value a, Value b)           { return a.bits == b.bits; }
 inline bool operator!=(Value a, Value b)           { return a.bits != b.bits; }
