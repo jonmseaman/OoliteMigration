@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #import "EntityOOJavaScriptExtensions.h"
 #import "OOConstToJSString.h"
 #import "OOManifestProperties.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOPListParsing.h"
 #import "OODebugStandards.h"
 
@@ -683,24 +683,24 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	NSMutableDictionary *properties = [NSMutableDictionary dictionaryWithCapacity:3];
 	/* __oolite.tmp.* is allocated for OXPs without manifests. Its
 	 * values are meaningless and shouldn't be used here */
-	if (manifest != nil && ![[manifest oo_stringForKey:kOOManifestIdentifier] hasPrefix:@"__oolite.tmp."])
+	if (manifest != nil && ![oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) hasPrefix:@"__oolite.tmp."])
 	{
 		if ([manifest objectForKey:kOOManifestVersion] != nil)
 		{
-			[properties setObject:[manifest oo_stringForKey:kOOManifestVersion] forKey:@"version"];
+			[properties setObject:oo::PListView(manifest).get<NSString *>(kOOManifestVersion) forKey:@"version"];
 		}
 		if ([manifest objectForKey:kOOManifestIdentifier] != nil)
 		{
 			// used for system info
-			[properties setObject:[manifest oo_stringForKey:kOOManifestIdentifier] forKey:kLocalManifestProperty];
+			[properties setObject:oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) forKey:kLocalManifestProperty];
 		}
 		if ([manifest objectForKey:kOOManifestAuthor] != nil)
 		{
-			[properties setObject:[manifest oo_stringForKey:kOOManifestAuthor] forKey:@"author"];
+			[properties setObject:oo::PListView(manifest).get<NSString *>(kOOManifestAuthor) forKey:@"author"];
 		}
 		if ([manifest objectForKey:kOOManifestLicense] != nil)
 		{
-			[properties setObject:[manifest oo_stringForKey:kOOManifestLicense] forKey:@"license"];
+			[properties setObject:oo::PListView(manifest).get<NSString *>(kOOManifestLicense) forKey:@"license"];
 		}
 	}
 	return properties;
