@@ -80,7 +80,7 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 #endif
 
 
-@interface OOPreservedAIStateMachine: NSObject
+@interface OOPreservedAIStateMachine: OOObject
 {
 @private
 	NSDictionary		*_stateMachine;

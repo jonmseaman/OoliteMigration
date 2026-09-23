@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
 #import "OOMaths.h"
 #import "OOTypes.h"
@@ -163,7 +164,7 @@ typedef NSInteger OOGUITabStop; // negative value = right align text
 typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 
 
-@interface GuiDisplayGen: NSObject
+@interface GuiDisplayGen: OOObject
 {
 @private
 	NSSize					size_in_pixels;
