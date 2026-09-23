@@ -1467,6 +1467,32 @@ JSValue objectProto(JSContext* ctx)
 }
 
 // A new object of `def` (or a plain object) with `proto`, or the class/Object prototype.
+// Object.prototype.toString names a SpiderMonkey host object by its class ("[object Vector3D]",
+// "[object Clock]"); scripts test for it. QuickJS-ng says "Object" unless Symbol.toStringTag says
+// otherwise, so every class prototype -- and an instance whose prototype is plain Object.prototype
+// -- carries the ClassDef's name as a non-enumerable, shape-level tag (bead oo-1gc.6).
+void tagWithClassName(JSContext* ctx, JSValueConst obj, const ClassDef* def)
+{
+	if (def == nullptr || def->name == nullptr)  return;
+	JSValue global = JS_GetGlobalObject(ctx);
+	JSValue symbolCtor = JS_GetPropertyStr(ctx, global, "Symbol");
+	JSValue tagSym = JS_GetPropertyStr(ctx, symbolCtor, "toStringTag");
+	const JSAtom atom = JS_ValueToAtom(ctx, tagSym);
+	if (atom != JS_ATOM_NULL)
+	{
+		if (JS_DefineProperty(ctx, obj, atom, JS_NewString(ctx, def->name), JS_UNDEFINED, JS_UNDEFINED,
+		                      JS_PROP_HAS_VALUE | JS_PROP_HAS_CONFIGURABLE | JS_PROP_CONFIGURABLE |
+		                      JS_PROP_HAS_ENUMERABLE | JS_PROP_HAS_WRITABLE | JS_PROP_NO_EXOTIC) < 0)
+		{
+			JS_FreeValue(ctx, JS_GetException(ctx));
+		}
+		JS_FreeAtom(ctx, atom);
+	}
+	JS_FreeValue(ctx, tagSym);
+	JS_FreeValue(ctx, symbolCtor);
+	JS_FreeValue(ctx, global);
+}
+
 JSValue newObjectRaw(JSContext* ctx, ClassDef* def, JSValueConst proto)
 {
 	if (def == nullptr)
@@ -1480,10 +1506,12 @@ JSValue newObjectRaw(JSContext* ctx, ClassDef* def, JSValueConst proto)
 		JS_FreeValue(ctx, p);
 		p = JS_DupValue(ctx, objectProto(ctx));
 	}
+	const bool plainProto = JS_VALUE_GET_PTR(p) == JS_VALUE_GET_PTR(objectProto(ctx));
 	JSValue o = JS_NewObjectProtoClass(ctx, p, bc->id);
 	JS_FreeValue(ctx, p);
 	if (JS_IsException(o))  return o;
 	JS_SetOpaque(o, new ObjRec());
+	if (plainProto)  tagWithClassName(ctx, o, def);
 	if (def->construct != nullptr)  JS_SetConstructorBit(ctx, o, true);
 	return o;
 }
@@ -2153,7 +2181,9 @@ Object newGlobalObject(Context cx, ClassDef* def)
 	JSContext* ctx = CX(cx);
 	ContextState* cs = csOf(ctx);
 	if (cs != nullptr)  cs->globalDef = def;
-	return getGlobalObject(cx);
+	Object global = getGlobalObject(cx);
+	if (global != nullptr)  tagWithClassName(ctx, OBJVAL(global), def);
+	return global;
 }
 
 void setGlobalObject(Context /*cx*/, Object /*global*/)
@@ -2199,6 +2229,7 @@ Object initClass(Context cx, Object obj, Object parentProto, ClassDef* def,
 	JSValue proto = JS_NewObjectProtoClass(ctx, parentProto != nullptr ? OBJVAL(parentProto) : cs->objectProto, bc->id);
 	if (JS_IsException(proto))  return nullptr;
 	JS_SetOpaque(proto, new ObjRec());
+	tagWithClassName(ctx, proto, def);
 	Object protoObj = takeObject(ctx, proto);   // the arena holds our reference from here on
 	JS_SetClassProto(ctx, bc->id, JS_DupValue(ctx, OBJVAL(protoObj)));
 

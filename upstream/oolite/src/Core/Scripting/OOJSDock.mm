@@ -119,8 +119,8 @@ static PropertySpec sDockProperties[] =
 	{ "allowsDocking",				kDock_allowsDocking,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "disallowedDockingCollides",				kDock_disallowedDockingCollides,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
 	{ "allowsLaunching",				kDock_allowsLaunching,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "dockingQueueLength",				kDock_dockingQueueLength,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
-	{ "launchingQueueLength",				kDock_launchingQueueLength,			PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::Shared, nullptr, nullptr },
+	{ "dockingQueueLength",				kDock_dockingQueueLength,			OOJS_PROP_READONLY_CB, nullptr, nullptr },
+	{ "launchingQueueLength",				kDock_launchingQueueLength,			OOJS_PROP_READONLY_CB, nullptr, nullptr },
 	{ 0 }
 };
 } // namespace

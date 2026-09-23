@@ -406,7 +406,7 @@ void InitOOJSSystem(ooscript::Context context, ooscript::Object global)
 	sSystemPrototype = (proto);
 
 	// Create system object as a property of the global object.
-	ooscript::defineObject((context), (global), "system", &sSystemClass, proto, PropertyFlag::ReadOnly);
+	ooscript::defineObject((context), (global), "system", &sSystemClass, proto, OOJS_PROP_READONLY);
 }
 
 
