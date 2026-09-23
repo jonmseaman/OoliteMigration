@@ -94,7 +94,7 @@ static BOOL sIsSoundOK = NO;
 }
 
 
-- (id) initWithContentsOfFile:(NSString *)path
+- (id) initWithContentsOfFile:(id)path	// shared selector (proposed ADR-0043)
 {
 	if (!sIsSoundOK)  return nil;
 	
@@ -139,7 +139,7 @@ static BOOL sIsSoundOK = NO;
 }
 
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
 	OOLogGenericSubclassResponsibility();
 	return @"";
