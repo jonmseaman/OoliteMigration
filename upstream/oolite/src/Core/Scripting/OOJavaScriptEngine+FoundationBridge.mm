@@ -57,6 +57,116 @@ NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BO
 }
 
 
+void OOJSReportError(ooscript::Context context, NSString *format, ...)
+{
+	va_list					args;
+
+	va_start(args, format);
+	OOJSReportErrorWithArguments(context, format, args);
+	va_end(args);
+}
+
+
+void OOJSReportErrorForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...)
+{
+	va_list					args;
+	NSString				*msg = nil;
+
+	@try
+	{
+		va_start(args, format);
+		msg = [[NSString alloc] initWithFormat:format arguments:args];
+		va_end(args);
+
+		cxx_OOJSReportErrorForCaller(context, oo::OptionalString(scriptClass), oo::OptionalString(function), "%s", [msg UTF8String]);
+	}
+	@catch (id exception)
+	{
+		// Squash any secondary errors during error handling.
+	}
+	[msg release];
+}
+
+
+void OOJSReportErrorWithArguments(ooscript::Context context, NSString *format, va_list args)
+{
+	NSString				*msg = nil;
+
+	NSCParameterAssert(ooscript::isInRequest((context)));
+
+	@try
+	{
+		msg = [[NSString alloc] initWithFormat:format arguments:args];
+		cxx_OOJSReportError(context, "%s", [msg UTF8String]);
+	}
+	@catch (id exception)
+	{
+		// Squash any secondary errors during error handling.
+	}
+	[msg release];
+}
+
+
+void OOJSReportWarning(ooscript::Context context, NSString *format, ...)
+{
+	va_list					args;
+
+	va_start(args, format);
+	OOJSReportWarningWithArguments(context, format, args);
+	va_end(args);
+}
+
+
+void OOJSReportWarningForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...)
+{
+	va_list					args;
+	NSString				*msg = nil;
+
+	@try
+	{
+		va_start(args, format);
+		msg = [[NSString alloc] initWithFormat:format arguments:args];
+		va_end(args);
+
+		cxx_OOJSReportWarningForCaller(context, oo::OptionalString(scriptClass), oo::OptionalString(function), "%s", [msg UTF8String]);
+	}
+	@catch (id exception)
+	{
+		// Squash any secondary errors during error handling.
+	}
+	[msg release];
+}
+
+
+void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args)
+{
+	NSString				*msg = nil;
+
+	@try
+	{
+		msg = [[NSString alloc] initWithFormat:format arguments:args];
+		cxx_OOJSReportWarning(context, "%s", [msg UTF8String]);
+	}
+	@catch (id exception)
+	{
+		// Squash any secondary errors during error handling.
+	}
+	[msg release];
+}
+
+
+void OOJSReportBadArguments(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, NSString *message, NSString *expectedArgsDescription)
+{
+	cxx_OOJSReportBadArguments(context, oo::OptionalString(scriptClass), oo::OptionalString(function), argc, argv, oo::OptionalString(message), oo::OptionalString(expectedArgsDescription));
+}
+
+
+BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed)
+{
+	return cxx_OOJSArgumentListGetNumber(context, oo::OptionalString(scriptClass), oo::OptionalString(function), argc, argv, outNumber, outConsumed);
+}
+
+
 @implementation NSString (OOJavaScriptExtensions)
 
 + (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context
