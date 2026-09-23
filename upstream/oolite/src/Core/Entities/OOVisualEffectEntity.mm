@@ -60,8 +60,8 @@ MA 02110-1301, USA.
 - (void) drawSubEntityImmediate:(bool)immediate translucent:(bool)translucent;
 
 - (void) addSubEntity:(Entity<OOSubEntity> *) subent;
-- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict;
-- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict;
+- (BOOL) setUpOneSubentity:(id) subentDict;	// shared selector (proposed ADR-0043, ShipEntity): an Objective-C dictionary or nil
+- (BOOL) setUpOneFlasher:(id) subentDict;	// shared selector (proposed ADR-0043, ShipEntity): an Objective-C dictionary
 - (BOOL) setUpOneStandardSubentity:(const oo::PList &)subentDict;
 
 @end
@@ -296,7 +296,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 	for (i = 0; subs != nullptr && i < subs->count(); i++)
 	{
 		const oo::PList *subentDict = subs->at<oo::PList::Dict>(i);	// nil for anything but a dictionary
-		[self setUpOneSubentity:subentDict != nullptr ? *subentDict : oo::PList()];
+		[self setUpOneSubentity:subentDict != nullptr ? oo::ObjectFromPList(*subentDict) : nil];
 	}
 
 	[self setNoDrawDistance];
@@ -320,12 +320,13 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (BOOL) setUpOneSubentity:(const oo::PList &) subentDict
+- (BOOL) setUpOneSubentity:(id) subentDictObject	// shared selector (proposed ADR-0043)
 {
+	const oo::PList subentDict = oo::PListFrom(subentDictObject);
 	const std::optional<std::string> type = OptionalStringForKey(subentDict, "type");
 	if (type == "flasher")
 	{
-		return [self setUpOneFlasher:subentDict];
+		return [self setUpOneFlasher:subentDictObject];
 	}
 	else
 	{
@@ -336,8 +337,9 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 }
 
 
-- (BOOL) setUpOneFlasher:(const oo::PList &) subentDict
+- (BOOL) setUpOneFlasher:(id) subentDictObject	// shared selector (proposed ADR-0043)
 {
+	const oo::PList subentDict = oo::PListFrom(subentDictObject);
 	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
 	[flasher setPosition:subentDict ? OOHPVectorFromObject(ObjectForKey(subentDict, "position"), kZeroHPVector) : kZeroHPVector];
 	[self addSubEntity:flasher];
