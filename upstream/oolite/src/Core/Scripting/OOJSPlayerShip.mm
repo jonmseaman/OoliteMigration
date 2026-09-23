@@ -49,6 +49,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
+#include "oofnd/Notification.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -513,18 +514,16 @@ ooscript::Object JSPlayerShipObject(void)
 	_jsSelf = val;
 	OOJSAddGCObjectRoot(context, &_jsSelf, "Player jsSelf");
 	
-	[[NSNotificationCenter defaultCenter] addObserver:self
-											 selector:@selector(javaScriptEngineWillReset:)
-												 name:kOOJavaScriptEngineWillResetNotification
-											   object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+														[OOJavaScriptEngine sharedEngine],
+														[self](const oo::Notification &notification) { [self javaScriptEngineWillReset:notification]; });
 }
 
 
-- (void) javaScriptEngineWillReset:(NSNotification *)notification
+- (void) javaScriptEngineWillReset:(const oo::Notification &)notification
 {
-	[[NSNotificationCenter defaultCenter] removeObserver:self
-													 name:kOOJavaScriptEngineWillResetNotification
-												   object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+															[OOJavaScriptEngine sharedEngine]);
 	
 	if (_jsSelf != NULL)
 	{

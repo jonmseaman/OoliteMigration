@@ -45,6 +45,7 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
+#include "oofnd/Notification.hpp"
 
 
 static OODebugMonitor *sSingleton = nil;
@@ -53,7 +54,7 @@ static OODebugMonitor *sSingleton = nil;
 @interface OODebugMonitor (Private) <OOJavaScriptEngineMonitor>
 
 - (void) setUpDebugConsoleScript;
-- (void) javaScriptEngineWillReset:(NSNotification *)notification;
+- (void) javaScriptEngineWillReset:(const oo::Notification &)notification;
 
 - (void)disconnectDebuggerWithMessage:(NSString *)message;
 
@@ -71,10 +72,16 @@ static OODebugMonitor *sSingleton = nil;
 @end
 
 
+/*	The monitor's private "application will terminate" notification: posted by
+	-applicationWillTerminate (GameController calls it on exit) and observed by the monitor
+	itself, on oo::NotificationCenter with no object (bead oo-3rb.40). Was an NSString of the
+	same text on the Foundation center; on Mac OS X it was AppKit's notification, which
+	oo::NotificationCenter does not receive (that build is not maintained, ADR-0009).
+*/
+static const char * const kOODebugMonitorApplicationWillTerminateNotificationName = "ApplicationWillTerminate";
+
+
 @implementation OODebugMonitor
-#if OOLITE_GNUSTEP
-	NSString					*NSApplicationWillTerminateNotification = @"ApplicationWillTerminate";
-#endif
 
 - (id)init
 {
@@ -103,20 +110,17 @@ static OODebugMonitor *sSingleton = nil;
 		
 		[self setUpDebugConsoleScript];
 		
-		[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(applicationWillTerminate:)
-													 name:NSApplicationWillTerminateNotification
-												   object:nil];
+		oo::NotificationCenter::defaultCenter().addObserver(self, kOODebugMonitorApplicationWillTerminateNotificationName,
+															nullptr,
+															[self](const oo::Notification &notification) { [self applicationWillTerminate:notification]; });
 		
-		[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(javaScriptEngineWillReset:)
-													 name:kOOJavaScriptEngineWillResetNotification
-												   object:jsEng];
+		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+															jsEng,
+															[self](const oo::Notification &notification) { [self javaScriptEngineWillReset:notification]; });
 		
-		[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(setUpDebugConsoleScript)
-													 name:kOOJavaScriptEngineDidResetNotification
-												   object:jsEng];
+		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineDidResetNotificationName,
+															jsEng,
+															[self](const oo::Notification &) { [self setUpDebugConsoleScript]; });
 	}
 	
 	return self;
@@ -711,12 +715,12 @@ typedef struct
 #if OOLITE_GNUSTEP
 - (void) applicationWillTerminate
 {
-	[[NSNotificationCenter defaultCenter] postNotificationName:NSApplicationWillTerminateNotification object:nil];
+	oo::NotificationCenter::defaultCenter().post(kOODebugMonitorApplicationWillTerminateNotificationName, nullptr);
 }
 #endif
 
 
-- (void)applicationWillTerminate:(NSNotification *)notification
+- (void)applicationWillTerminate:(const oo::Notification &)notification
 {
 	if (_configOverrides != nil)
 	{
@@ -765,7 +769,7 @@ typedef struct
 }
 
 
-- (void) javaScriptEngineWillReset:(NSNotification *)notification
+- (void) javaScriptEngineWillReset:(const oo::Notification &)notification
 {
 	DESTROY(_script);
 	_jsSelf = NULL;

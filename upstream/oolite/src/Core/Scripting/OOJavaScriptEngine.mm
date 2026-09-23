@@ -131,8 +131,6 @@ static unsigned				sErrorHandlerStackSkip = 0;
 ooscript::Context gOOJSMainThreadContext = NULL;
 
 
-NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
-NSString * const kOOJavaScriptEngineDidResetNotification = @"org.aegidian.oolite OOJavaScriptEngine did reset";
 const char * const kOOJavaScriptEngineWillResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine will reset";
 const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine did reset";
 
@@ -510,16 +508,14 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	
 	ooscript::Context context = OOJSAcquireContext();
 	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, self);
-	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineWillResetNotification object:self];
-	OOJSRelinquishContext(context);
+OOJSRelinquishContext(context);
 	
 	[self destroyMainThreadContext];
 	[self createMainThreadContext];
 	
 	context = OOJSAcquireContext();
 	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, self);
-	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineDidResetNotification object:self];
-	OOJSRelinquishContext(context);
+OOJSRelinquishContext(context);
 	
 	[self garbageCollectionOpportunity:YES];
 	return YES;
