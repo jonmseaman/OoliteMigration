@@ -5,6 +5,8 @@
 
 oofnd_tests = [
     'test_expected',
+    'test_ref',
+    'test_weakset',
 ]
 
 foreach t : oofnd_tests
