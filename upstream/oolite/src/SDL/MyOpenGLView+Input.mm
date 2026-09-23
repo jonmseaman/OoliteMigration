@@ -18,6 +18,19 @@ Oolite
 #import "NSFileManagerOOExtensions.h" // to find savedir
 #include "oofnd/Date.hpp"
 #import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
+
+
+namespace {
+
+// What -appendFormat:@"%c" appended for a character code 0..255: the Latin-1 character U+0000..U+00FF
+// (GNUstep 1.31.1, captured for 32..255 by a throwaway probe, bead oo-3rb.113), as UTF-8.
+std::string FormattedCharacter(unsigned code)
+{
+	return oo::utf16ToUtf8(std::u16string(1, static_cast<char16_t>(code & 0xFFu)));
+}
+
+} // namespace
 
 #define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
 
@@ -75,17 +88,17 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 {
 	return allowingStringInput;
 }
-- (NSString *) typedString
+- (std::optional<std::string>) cxx_typedString
 {
 	return typedString;
 }
 - (void) resetTypedString
 {
-	[typedString setString:@""];
+	typedString.clear();
 }
-- (void) setTypedString:(NSString*) value
+- (void) cxx_setTypedString:(const std::string &) value
 {
-	[typedString setString:value];
+	typedString = value;
 }
 - (void) noteMouseInteractionModeChangedFrom:(OOMouseInteractionMode)oldMode to:(OOMouseInteractionMode)newMode
 {
@@ -693,16 +706,18 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 	SDL_Keycode key=kbd_event->key;
 
 	// Del, Backspace
-	if((key == SDLK_BACKSPACE || key == SDLK_DELETE) && [typedString length] > 0)
+	// lengths in UTF-16 units, as the NSMutableString buffer counted them
+	const std::size_t typedLength = oo::utf8ToUtf16(typedString).size();
+	if((key == SDLK_BACKSPACE || key == SDLK_DELETE) && typedLength > 0)
 	{
 		// delete
-		[typedString deleteCharactersInRange:NSMakeRange([typedString length]-1, 1)];
+		oo::str::deleteUnitAt(typedString, typedLength - 1);
 	}
 
 	isAlphabetKeyDown=NO;
 
 	// TODO: a more flexible mechanism  for max. string length ?
-	if([typedString length] < 40)
+	if(oo::utf8ToUtf16(typedString).size() < 40)
 	{
 		lastKeyShifted = shift;
 		if (allowingStringInput == gvStringInputAlpha)
@@ -711,7 +726,7 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 			if(key >= SDLK_A && key <= SDLK_Z)
 			{
 				isAlphabetKeyDown=YES;
-				[typedString appendFormat:@"%c", key];
+				typedString += FormattedCharacter(key);
 				// if in inputAlpha, keep in lower case.
 			}
 		}
@@ -724,7 +739,7 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 				if ((char)key_id != '/' || allowingStringInput == gvStringInputAll)
 				{
 					isAlphabetKeyDown=YES;
-					[typedString appendFormat:@"%c", key_id];
+					typedString += FormattedCharacter(key_id);
 				}
 			}
 		}

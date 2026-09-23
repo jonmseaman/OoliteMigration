@@ -55,6 +55,31 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (GuiDisplayGen.h)
 
 - (void) setArray:(NSArray *)arr forRow:(OOGUIRow)row;	// -> -cxx_setArray:forRow:
 
+// Chunk 2 (oo-3rb.93): long text, reflow and item lists.
+- (NSString *) reflowTextForMFD:(NSString *)input;	// -> -cxx_reflowTextForMFD:
+- (OOGUIRow) addLongText:(NSString *)str
+		   startingAtRow:(OOGUIRow)row
+				   align:(OOGUIAlignment)alignment;	// -> -cxx_addLongText:startingAtRow:align:
+- (void) printLongText:(NSString *)str
+				 align:(OOGUIAlignment)alignment
+				 color:(OOColor *)text_color
+			  fadeTime:(float)text_fade
+				   key:(NSString *)text_key
+			addToArray:(NSMutableArray *)text_array;	// -> -cxx_printLongText:align:color:fadeTime:key:addToArray:
+- (void) printLineNoScroll:(NSString *)str
+					 align:(OOGUIAlignment)alignment
+					 color:(OOColor *)text_color
+				  fadeTime:(float)text_fade
+					   key:(NSString *)text_key
+				addToArray:(NSMutableArray *)text_array;	// -> -cxx_printLineNoScroll:align:color:fadeTime:key:addToArray:
+
+- (void) insertItemsFromArray:(NSArray *)items
+					 withKeys:(NSArray *)item_keys
+					  intoRow:(OOGUIRow)row
+						color:(OOColor *)text_color;	// -> -cxx_insertItemsFromArray:withKeys:intoRow:color:
+
+- (NSArray *) getLastLines;	// -> -cxx_getLastLines
+
 @end
 
 #endif	// GUIDISPLAYGEN_FOUNDATIONBRIDGE_H
