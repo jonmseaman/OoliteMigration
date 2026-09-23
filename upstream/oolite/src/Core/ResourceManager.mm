@@ -58,6 +58,23 @@ MA 02110-1301, USA.
 
 namespace {
 
+// OODictionaryFromFile / OOArrayFromFile (OOPListParsing's bridge) as property lists: the file's
+// property list when it is of that kind, a null PList otherwise (their plist.wrongType log line,
+// which named the Foundation class, is not kept).
+oo::PList PListDictionaryFromFile(const std::string &path)
+{
+	oo::PList result = cxx_OOPropertyListFromFile(path);
+	return result.isDict() ? result : oo::PList();
+}
+
+
+oo::PList PListArrayFromFile(const std::string &path)
+{
+	oo::PList result = cxx_OOPropertyListFromFile(path);
+	return result.isArray() ? result : oo::PList();
+}
+
+
 // OOCacheManager cache and keys for the search-path modification dates (the log classes are
 // literals at their OOLog calls).
 constexpr const char *kOOCacheSearchPathModDates	= "search path modification dates";
@@ -752,7 +769,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 + (void) checkOXPMessagesInPath:(const std::string &)path
 {
 	// OOArrayFromFile (OOPListParsing) is an unmigrated callee: its array arrives through oo::PListFrom.
-	const oo::PList OXPMessageArray = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "OXPMessages.plist"))));
+	const oo::PList OXPMessageArray = PListArrayFromFile(oo::str::appendingPathComponent(path, "OXPMessages.plist"));
 
 	if (OXPMessageArray.count() > 0)
 	{
@@ -783,7 +800,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	if (extension != "oxz")
 	{
 		// OXZ format ignores requires.plist
-		requirements = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "requires.plist"))));
+		requirements = PListDictionaryFromFile(oo::str::appendingPathComponent(path, "requires.plist"));
 		requirementsMet = [self areRequirementsFulfilled:requirements forOXP:path andFile:"requires.plist"];
 	}
 	if (!requirementsMet)
@@ -794,7 +811,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		return;
 	}
 
-	manifest = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "manifest.plist"))));
+	manifest = PListDictionaryFromFile(oo::str::appendingPathComponent(path, "manifest.plist"));
 	if (manifest.isNull())
 	{
 		if (extension == "oxz")
@@ -1463,10 +1480,10 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			const std::string &path = *pathIt;
 			if (folderName.has_value())
 			{
-				result = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				result = PListDictionaryFromFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
 				if (!result.isNull())  break;
 			}
-			result = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			result = PListDictionaryFromFile(oo::str::appendingPathComponent(path, fileName));
 			if (!result.isNull())  break;
 		}
 	}
@@ -1480,11 +1497,11 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			{
 				continue;
 			}
-			oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			oo::PList dict = PListDictionaryFromFile(oo::str::appendingPathComponent(path, fileName));
 			if (!dict.isNull())  results.push_back(std::move(dict));
 			if (folderName.has_value())
 			{
-				dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				dict = PListDictionaryFromFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
 				if (!dict.isNull())  results.push_back(std::move(dict));
 			}
 		}
@@ -1542,10 +1559,10 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			const std::string &path = *pathIt;
 			if (folderName.has_value())
 			{
-				result = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName))));
+				result = PListArrayFromFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
 				if (!result.isNull())  break;
 			}
-			result = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, fileName))));
+			result = PListArrayFromFile(oo::str::appendingPathComponent(path, fileName));
 			if (!result.isNull())  break;
 		}
 	}
@@ -1565,7 +1582,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			if (folderName.has_value())  arrayPaths.push_back(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, *folderName), fileName));
 			for (const std::string &arrayPath : arrayPaths)
 			{
-				oo::PList array = oo::PListFrom(OOArrayFromFile(oo::NSStringFrom(arrayPath)));
+				oo::PList array = PListArrayFromFile(arrayPath);
 				if (array.isNull())  continue;	// a nil array was not added, and counted 0 below
 				resultArrays.push_back(std::move(array));
 
@@ -1782,7 +1799,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	// Load built-in copy of logcontrol.plist.
 	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
 	const std::string builtInPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "logcontrol.plist");
-	oo::PList logControl = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(builtInPath)));
+	oo::PList logControl = PListDictionaryFromFile(builtInPath);
 	if (!logControl.isDict())  logControl = oo::PList(oo::PList::Dict());
 	oo::PList::Dict &logControlEntries = *logControl.getIf<oo::PList::Dict>();
 
@@ -1798,10 +1815,10 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	// The logcontrol.plist in path/Config, else in path itself.
 	auto configDictionary = [](const std::string &path) -> oo::PList
 	{
-		oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "logcontrol.plist"))));
+		oo::PList dict = PListDictionaryFromFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "logcontrol.plist"));
 		if (dict.isNull())
 		{
-			dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "logcontrol.plist"))));
+			dict = PListDictionaryFromFile(oo::str::appendingPathComponent(path, "logcontrol.plist"));
 		}
 		return dict;
 	};
@@ -1861,7 +1878,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		}
 
 		const std::string configPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "role-categories.plist");
-		const oo::PList categories = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(configPath)));
+		const oo::PList categories = PListDictionaryFromFile(configPath);
 		if (!categories.isNull())
 		{
 			[ResourceManager mergeRoleCategories:categories intoDictionary:roleCategories];
@@ -1931,7 +1948,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 			continue;
 		}
 		const std::string configPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "planetinfo.plist");
-		const oo::PList categories = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(configPath)));
+		const oo::PList categories = PListDictionaryFromFile(configPath);
 		if (const oo::PList::Dict *systems = categories.getIf<oo::PList::Dict>())
 		{
 			for (const auto &[systemKey, values] : *systems)
