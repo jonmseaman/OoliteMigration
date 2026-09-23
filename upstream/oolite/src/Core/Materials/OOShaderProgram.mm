@@ -39,6 +39,7 @@ SOFTWARE.
 #import "OODebugFlags.h"
 #import "Universe.h"
 #import "MyOpenGLView.h"
+#import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
 
@@ -387,7 +388,7 @@ static BOOL ValidateShaderObject(GLhandleARB object, NSString *name)
 	if (OK)
 	{
 		OOOpenGLMatrixManager *matrixManager = [[UNIVERSE gameView] getOpenGLMatrixManager];
-		standardMatrixUniformLocations = [matrixManager standardMatrixUniformLocations: program];
+		standardMatrixUniformLocations = [oo::ObjectFromPList([matrixManager standardMatrixUniformLocations: program]) retain];	// owned, as the +1 result was
 	}
 	else
 	{
