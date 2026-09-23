@@ -15,8 +15,8 @@ that removes each Foundation family replaces it:
     +instanceMethodSignatureForSelector:  called with an OOObject receiver; the NSInvocation
                                           follow-ups of oo-3rb.15 (OOWeakReference's proxy,
                                           OOOXZManager's filter) replace them
-    -performSelector:...afterDelay:       NSObject's own implementation (a timed performer on the
-                                          current run loop, retaining receiver and argument);
+    -performSelector:...afterDelay:       again gnustep-base's own implementation (a timed performer
+                                          on the current run loop, retaining receiver and argument);
                                           replaced when the run loop goes (NSTimer/NSRunLoop)
     -className                            NSObject's own implementation (the class name as an
                                           NSString; OOALSoundDecoder's -description); the
