@@ -93,7 +93,9 @@ OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
 	* Events reach the handlers only through a wait (the frame loop's, the connect wait or the
 	  send-retry waits), as stream events reached the delegate only from the run loop.
 */
-enum
+namespace {
+
+enum : uint8_t
 {
 	kStreamStatusNotOpen	= 0,
 	kStreamStatusOpening	= 1,
@@ -103,22 +105,22 @@ enum
 	kStreamStatusError		= 7
 };
 
-static const uintptr_t kNoSocket = ~(uintptr_t)0;
+const uintptr_t kNoSocket = ~(uintptr_t)0;
 
 #if OOLITE_WINDOWS
 typedef SOCKET OOSocket;
 typedef int OOSocketLength;
-static int LastSocketError(void)  { return WSAGetLastError(); }
-static bool ErrorIsWouldBlock(int error)  { return error == WSAEWOULDBLOCK; }
-static bool ErrorIsConnectInProgress(int error)  { return error == WSAEWOULDBLOCK; }
-static bool ErrorIsAbortOnSend(int error)  { return error == WSAECONNABORTED; }
-static bool ErrorIsConnectionGone(int error)  { return error == WSAECONNRESET || error == WSAECONNABORTED; }
-static void CloseSocket(OOSocket s)  { closesocket(s); }
-static bool SetNonBlocking(OOSocket s)  { u_long on = 1; return ioctlsocket(s, FIONBIO, &on) == 0; }
-enum { kSendFlags = 0 };
+int LastSocketError(void)  { return WSAGetLastError(); }
+bool ErrorIsWouldBlock(int error)  { return error == WSAEWOULDBLOCK; }
+bool ErrorIsConnectInProgress(int error)  { return error == WSAEWOULDBLOCK; }
+bool ErrorIsAbortOnSend(int error)  { return error == WSAECONNABORTED; }
+bool ErrorIsConnectionGone(int error)  { return error == WSAECONNRESET || error == WSAECONNABORTED; }
+void CloseSocket(OOSocket s)  { closesocket(s); }
+bool SetNonBlocking(OOSocket s)  { u_long on = 1; return ioctlsocket(s, FIONBIO, &on) == 0; }
+constexpr int kSendFlags = 0;
 
 // The error's system text, as GNUstep's NSError gave it (FormatMessage, trailing line break kept).
-static NSString *SocketErrorDescription(int error)
+NSString *SocketErrorDescription(int error)
 {
 	wchar_t *buffer = NULL;
 	DWORD length = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -134,20 +136,20 @@ static NSString *SocketErrorDescription(int error)
 #else
 typedef int OOSocket;
 typedef socklen_t OOSocketLength;
-static int LastSocketError(void)  { return errno; }
-static bool ErrorIsWouldBlock(int error)  { return error == EWOULDBLOCK || error == EAGAIN; }
-static bool ErrorIsConnectInProgress(int error)  { return error == EINPROGRESS; }
-static bool ErrorIsAbortOnSend(int error)  { return error == EPIPE || error == ECONNABORTED; }
-static bool ErrorIsConnectionGone(int error)  { return error == ECONNRESET || error == ECONNABORTED; }
-static void CloseSocket(OOSocket s)  { close(s); }
-static bool SetNonBlocking(OOSocket s)  { int flags = fcntl(s, F_GETFL, 0); return flags != -1 && fcntl(s, F_SETFL, flags | O_NONBLOCK) != -1; }
+int LastSocketError(void)  { return errno; }
+bool ErrorIsWouldBlock(int error)  { return error == EWOULDBLOCK || error == EAGAIN; }
+bool ErrorIsConnectInProgress(int error)  { return error == EINPROGRESS; }
+bool ErrorIsAbortOnSend(int error)  { return error == EPIPE || error == ECONNABORTED; }
+bool ErrorIsConnectionGone(int error)  { return error == ECONNRESET || error == ECONNABORTED; }
+void CloseSocket(OOSocket s)  { close(s); }
+bool SetNonBlocking(OOSocket s)  { int flags = fcntl(s, F_GETFL, 0); return flags != -1 && fcntl(s, F_SETFL, flags | O_NONBLOCK) != -1; }
 #ifdef MSG_NOSIGNAL
-enum { kSendFlags = MSG_NOSIGNAL };
+constexpr int kSendFlags = MSG_NOSIGNAL;
 #else
-enum { kSendFlags = 0 };
+constexpr int kSendFlags = 0;
 #endif
 
-static NSString *SocketErrorDescription(int error)
+NSString *SocketErrorDescription(int error)
 {
 	return [NSString stringWithUTF8String:strerror(error)];
 }
@@ -155,7 +157,9 @@ static NSString *SocketErrorDescription(int error)
 
 
 // Every client with an open socket, for the frame loop (not retained: a client removes itself when it closes).
-static std::vector<OODebugTCPConsoleClient *> sLiveClients;
+std::vector<OODebugTCPConsoleClient *> sLiveClients;
+
+}
 
 
 @interface OODebugTCPConsoleClient (OOPrivate)
