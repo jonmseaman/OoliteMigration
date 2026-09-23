@@ -23,6 +23,7 @@ rules_src = rules_js.read_text(encoding="utf-8")
 RULES = [
     "catch-if", "e4x", "quote-method", "to-source", "uneval",
     "let-block", "legacy-accessor", "expression-closure",
+    "legacy-generator",   # bead oo-1gc.16
 ]
 
 # Each rule must actually be a detector implemented in rules.js (catches a
@@ -50,4 +51,4 @@ for r, sec in by_rule.items():
     if not has_lint_ref:
         sys.exit(f"rule {r}: missing a lint-rule reference")
 
-print(f"OK: {len(by_rule)}/8 constructs each link a replacement and a lint rule")
+print(f"OK: {len(by_rule)}/{len(RULES)} constructs each link a replacement and a lint rule")

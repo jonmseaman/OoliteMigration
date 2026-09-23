@@ -21,7 +21,7 @@ flags it so you can check your own OXP before shipping.
 node tools/oxp-js-lint/lint.js scan path/to/your/Scripts
 ```
 
-runs the same eight detectors below (masking comments/strings/regexes first, so quoting a banned
+runs the same nine detectors below (masking comments/strings/regexes first, so quoting a banned
 construct in a string or a comment is not flagged). See `tools/oxp-js-lint/README.md` for the
 `corpus` mode, `eslint` integration, and known limits of the scan.
 
@@ -45,7 +45,7 @@ migration, measured against the entire catalogue, is two expansions.
 
 ## Removed — SpiderMonkey-only syntax (hard errors under QuickJS-ng)
 
-Each entry below is one of the eight detectors implemented in
+Each entry below is one of the nine detectors implemented in
 [`tools/oxp-js-lint/rules.js`](../tools/oxp-js-lint/rules.js) (`DETECTORS` object) and exercised by
 the fixtures in `tools/oxp-js-lint/fixtures/`.
 
@@ -136,11 +136,37 @@ SpiderMonkey-only, removed in Firefox 60.
 - **Lint rule:** [`expression-closure`](../tools/oxp-js-lint/rules.js) in
   `tools/oxp-js-lint/rules.js` (fixture: `tools/oxp-js-lint/fixtures/expression-closure.js`)
 
+#### `legacy-generator` — legacy (JS1.7) generators: `yield` in a plain `function`
+
+```js
+subs.each = function () { for (var i = 0; i < this.length; i++) yield this[i]; };
+for (var sub in subs.each()) { sub.script.owner = this.ship; }
+```
+
+SpiderMonkey 1.8.5 made any function whose body contains `yield` a generator (Oolite ran it at
+`JSVERSION_ECMA_5`, which is above the JS1.7 level that turns `yield` on), and `for (x in gen)`
+over one iterated the *yielded values*. Removed from Firefox in version 58; no other engine has
+either form. QuickJS-ng rejects the whole file (`SyntaxError: expecting ';'`), so the script never
+runs. Found by the Tier-2/3 corpus run (beads oo-1gc.11, oo-1gc.16) in four ship scripts:
+Thargoid.Wildships (`wildShips_tembo.js`), Thargoid.Aquatics (`aquatics_congerPods.js`) and
+zzz.Montana05.Kestrel_Falcon (`bweed-kestrelfalcon-falcon.js`, `bweed-kestrelfalcon-kestrel.js`).
+Those are the only files in the 818-expansion corpus that use it.
+
+- **Removed:** generator semantics for a function not declared `function*`, and value iteration by
+  `for...in` over a generator.
+- **Replacement:** for a list, no generator at all:
+  `this.ship.subEntities.forEach(function (sub) { ... }, this)` or
+  `for (var i = 0; i < subs.length; i++) { var sub = subs[i]; ... }`. If you do want a generator,
+  declare it `function* () { ... yield x; }` **and** iterate it with `for (var x of gen())`:
+  `for...in` over a standard generator runs zero times, silently.
+- **Lint rule:** [`legacy-generator`](../tools/oxp-js-lint/rules.js) in `tools/oxp-js-lint/rules.js`
+  (fixture: `tools/oxp-js-lint/fixtures/legacy-generator.js`)
+
 ## Not covered by the automated scan (rewrite by inspection)
 
 These two constructs are documented in the migration plan and in
 [architecture.md §5.3](architecture.md#53-what-expansion-authors-will-need-to-change-the-guide)
-but, unlike the eight above, have **no dedicated `oxp-js-lint` rule** as of this writing — file a
+but, unlike the nine above, have **no dedicated `oxp-js-lint` rule** as of this writing — file a
 bead if you want one added:
 
 | Construct | Replacement |
@@ -265,8 +291,8 @@ in the standard language up to ES2023, none of which SpiderMonkey 1.8.5 supporte
 
 | Tool | Role |
 |---|---|
-| [`tools/oxp-js-lint/`](../tools/oxp-js-lint/README.md) | ESLint config + standalone runner implementing the eight detectors above; also has a `corpus` mode over the cached OXZ catalogue |
-| `tools/oxp-js-lint/rules.js` | the eight detectors and their messages (source of truth for rule names used above) |
+| [`tools/oxp-js-lint/`](../tools/oxp-js-lint/README.md) | ESLint config + standalone runner implementing the nine detectors above; also has a `corpus` mode over the cached OXZ catalogue |
+| `tools/oxp-js-lint/rules.js` | the nine detectors and their messages (source of truth for rule names used above) |
 | `tools/oxp-js-lint/corpus-report.json` | the full per-expansion corpus scan result this guide's numbers are drawn from |
 | `tools/deny-list.txt` | the equivalent C/C++-side deny-list for the engine's own migration off the SpiderMonkey API — not for OXP authors, listed here for completeness |
 | bead oo-864 | compatibility-shim OXP polyfilling `toSource`/`quote` for expansions whose authors cannot update them |

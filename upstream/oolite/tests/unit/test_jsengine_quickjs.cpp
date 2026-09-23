@@ -710,6 +710,14 @@ void exerciseFacade(Runtime rt, Context cx)
 	// Objects reachable from the global survive a flush with no roots at all.
 	CHECK(eval(cx, nullptr, "w.size + bag.lazy", &rv) && isInt32(rv) && toInt32(rv) == 14);
 
+	// Pinned engine difference (bead oo-1gc.16, Alnivel.RoutePlanner): strict code that creates a
+	// property on a primitive -- here a reduce() callback that returns the key, so the accumulator
+	// becomes a string -- throws "not an object", as ES5 requires. SpiderMonkey 1.8.5 set it on a
+	// throwaway wrapper object and carried on. The facade cannot change this without patching the
+	// engine; EXPANSION_MIGRATION.md records it as a content defect ("Newly strict").
+	CHECK(eval(cx, nullptr, "(function () { 'use strict'; try { Object.keys({ a: 'x', b: 'y' }).reduce(function (m, k) { return m[k] = k; }, {}); return 'ok'; } catch (e) { return e.message; } })()", &rv) && valIs(cx, rv, u"not an object"));
+	CHECK(eval(cx, nullptr, "(function () { var s = 'str'; s.extra = 1; return typeof s.extra; })()", &rv) && valIs(cx, rv, u"undefined"));   // sloppy: ignored
+
 	CHECK(std::strcmp(backendName(), "quickjs-ng-0.16.2") == 0);
 	setErrorReporter(cx, nullptr);
 }
