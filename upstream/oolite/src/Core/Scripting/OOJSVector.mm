@@ -1136,7 +1136,7 @@ static bool VectorRotateBy(ooscript::Context context, ooscript::CallArgs &oojsAr
 	Quaternion					q;
 	
 	if (EXPECT_NOT(!GetThisVector(context, OOJS_THIS, &thisv, @"rotateBy"))) return NO;
-	if (EXPECT_NOT(!QuaternionFromArgumentList(context, @"Vector3D", @"rotateBy", oojsArgs.count(), OOJS_ARGV, &q, NULL)))  return NO;
+	if (EXPECT_NOT(!QuaternionFromArgumentList(context, "Vector3D", "rotateBy", oojsArgs.count(), OOJS_ARGV, &q, NULL)))  return NO;
 	
 	result = quaternion_rotate_HPvector(q, thisv);
 	

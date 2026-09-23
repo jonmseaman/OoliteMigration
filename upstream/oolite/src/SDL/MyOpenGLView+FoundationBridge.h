@@ -45,6 +45,10 @@ MA 02110-1301, USA.
 
 - (BOOL) snapShot:(NSString *)filename;					// -> -cxx_snapShot:
 
+// From MyOpenGLView+Input.h (bead oo-3rb.113):
+- (NSString *) typedString;				// -> -cxx_typedString (an autoreleased copy, no longer the live buffer)
+- (void) setTypedString:(NSString*) value;	// -> -cxx_setTypedString:
+
 // -> -cxx_dump...
 #ifndef NDEBUG
 // General image-dumping method.
