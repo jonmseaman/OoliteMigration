@@ -29,6 +29,8 @@ SOFTWARE.
 
 
 #import "OOJavaScriptEngine.h"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 
 /*	Time Limiter
@@ -127,6 +129,9 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 */
 
 
+@class OOTimeProfileEntry;
+
+
 @interface OOTimeProfile: OOObject
 {
 @private
@@ -139,7 +144,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 	
 	double						_profilerOverhead;
 	
-	NSArray						*_profileEntries;
+	std::vector<oo::ObjCRef<OOTimeProfileEntry *>>	_profileEntries;
 }
 
 - (double) totalTime;
@@ -149,7 +154,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 - (double) nonExtensionTime;
 - (double) profilerOverhead;
 
-- (NSArray *) profileEntries;	// Array of OOTimeProfileEntry
+- (std::vector<oo::ObjCRef<OOTimeProfileEntry *>>) profileEntries;	// sorted by self time, longest first
 
 @end
 
@@ -157,7 +162,7 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 @interface OOTimeProfileEntry: OOObject
 {
 @private
-	NSString					*_function;
+	std::optional<std::string>	_function;	// nullopt when created without a name
 	unsigned long				_hitCount;
 	double						_totalTimeSum;
 	double						_selfTimeSum;
@@ -168,9 +173,9 @@ void OOJSSetTimeLimiterLimit(OOTimeDelta limit);
 #endif
 }
 
-- (NSString *) description;
+- (id) description;	// shared selector (proposed ADR-0043)
 
-- (NSString *) function;
+- (id) function;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
 - (NSUInteger) hitCount;
 - (double) totalTimeSum;
 - (double) selfTimeSum;

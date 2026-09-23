@@ -45,6 +45,18 @@ MA 02110-1301, USA.
 }
 
 
+- (NSString *) typedString
+{
+	return oo::NSStringOrNil([self cxx_typedString]);
+}
+
+
+- (void) setTypedString:(NSString*) value
+{
+	[self cxx_setTypedString:oo::StdString(value)];
+}
+
+
 #ifndef NDEBUG
 - (void) dumpRGBAToFileNamed:(NSString *)name
 					   bytes:(uint8_t *)bytes
