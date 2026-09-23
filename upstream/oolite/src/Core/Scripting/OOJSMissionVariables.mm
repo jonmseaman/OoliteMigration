@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #import "OOIsNumberLiteral.h"
 
 #import "OOJSPlayer.h"
+#import "OOStringBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -179,7 +180,7 @@ static bool MissionVariablesGetProperty(Context cx, Object obj, PropertyId propI
 		
 		if ([mvar isKindOfClass:[NSString class]])	// Currently there should only be strings, but we may want to change this.
 		{
-			if (OOIsNumberLiteral(mvar, YES))
+			if (OOIsNumberLiteral(oo::StdString(mvar), YES))
 			{
 				return ooscript::newNumberValue(cx, [mvar doubleValue], value);
 			}
