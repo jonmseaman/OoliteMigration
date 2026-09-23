@@ -163,16 +163,4 @@ OOINLINE BOOL OOPlistErrorIsSchemaError(OOPListSchemaVerifierErrorCode error)
 }
 
 
-@interface NSError (OOPListSchemaVerifierConveniences)
-
-- (NSArray *)plistKeyPath;
-- (NSString *)plistKeyPathDescription;	// Result of calling +[OOPListSchemaVerifier descriptionForKeyPath:] on kPListKeyPathErrorKey.
-
-- (NSSet *)missingRequiredKeys;
-
-- (Class)expectedClass;
-- (NSString *)expectedClassName;
-
-@end
-
 #endif	// OO_OXP_VERIFIER_ENABLED
