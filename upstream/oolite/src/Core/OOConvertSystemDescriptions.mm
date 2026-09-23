@@ -33,7 +33,7 @@ SOFTWARE.
 
 #import "OOConvertSystemDescriptions.h"
 #import "OldSchoolPropertyListWriting.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "ResourceManager.h"
 
 static NSMutableDictionary *InitKeyToIndexDict(NSDictionary *dict, NSMutableSet **outUsedIndices);
@@ -111,7 +111,7 @@ void ExportSystemDescriptions(BOOL asXML)
 	NSData				*data = nil;
 	NSString			*error = nil;
 	
-	sysDescArray = [[UNIVERSE descriptions] oo_arrayForKey:@"system_description"];
+	sysDescArray = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"system_description");
 	
 	keyMap = [ResourceManager dictionaryFromFilesNamed:@"sysdesc_key_table.plist"
 											  inFolder:@"Config"
