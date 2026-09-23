@@ -57,13 +57,30 @@ static NSComparisonResult SortDemoCategoriesByName (id a, id b, void* context);
 static OOShipRegistry	*sSingleton = nil;
 
 
-static NSString * const	kShipRegistryCacheName = @"ship registry";
-static NSString * const	kShipDataCacheKey = @"ship data";
-static NSString * const	kPlayerShipsCacheKey = @"player ships";
 static NSString * const	kRoleWeightsCacheKey = @"role weights";
 static NSString * const	kDefaultDemoShip = @"coriolis-station";
-static NSString * const	kVisualEffectRegistryCacheName = @"visual effect registry";
-static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
+
+
+namespace {
+
+// OOCacheManager caches and keys.
+constexpr const char *kShipRegistryCacheName			= "ship registry";
+constexpr const char *kShipDataCacheKey				= "ship data";
+constexpr const char *kPlayerShipsCacheKey			= "player ships";
+constexpr const char *kVisualEffectRegistryCacheName	= "visual effect registry";
+constexpr const char *kVisualEffectDataCacheKey		= "visual effect data";
+
+
+// A dictionary entry as the string extractor (oo_stringForKey:) answered it: nullopt where that
+// was nil (no dictionary, no such key, or neither a string nor a number).
+std::optional<std::string> StringForKey(const oo::PList *dict, const std::string &key)
+{
+	const oo::PList *value = dict != nullptr ? dict->find(key) : nullptr;
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dict->get<std::string>(key);
+}
+
+}	// namespace
 
 
 @interface OOShipRegistry (OODataLoader)
@@ -155,18 +172,19 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 		@autoreleasepool
 		{
 			OOCacheManager			*cache = [OOCacheManager sharedCache];
-			
-			_shipData = [[cache objectForKey:kShipDataCacheKey inCache:kShipRegistryCacheName] retain];
-			_playerShips = [[cache objectForKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName] retain];
-			_effectData = [[cache objectForKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName] retain];
-			if ([_shipData count] == 0)	// Don't accept nil or empty
+
+			// OOCacheManager holds Foundation objects (an unmigrated callee): they arrive through oo::PListFrom.
+			_shipData = oo::PListFrom([cache cxx_objectForKey:kShipDataCacheKey inCache:kShipRegistryCacheName]);
+			_playerShips = oo::StringsFrom([cache cxx_objectForKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName]);
+			_effectData = oo::PListFrom([cache cxx_objectForKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName]);
+			if (_shipData.count() == 0)	// Don't accept nil or empty
 			{
 				[self loadShipData];
-				if ([_shipData count] == 0)
+				if (_shipData.count() == 0)
 				{
 					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any ship data."];
 				}
-				if ([_playerShips count] == 0)
+				if (_playerShips.empty())
 				{
 					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any player ships."];
 				}
@@ -196,39 +214,40 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 
 - (void) dealloc
 {
-	[_shipData release];
 	[_demoShips release];
-	[_playerShips release];
 	[_probabilitySets release];
-	
+
 	[super dealloc];
 }
 
 
-- (NSDictionary *) shipInfoForKey:(NSString *)key
+- (oo::PList) cxx_shipInfoForKey:(const std::string &)key
 {
-	return [_shipData objectForKey:key];
+	const oo::PList *entry = _shipData.find(key);
+	return entry != nullptr ? *entry : oo::PList();
 }
 
 
-- (void) setShipInfoForKey:(NSString *)key with:(NSDictionary *)newShipData
+- (void) cxx_setShipInfoForKey:(const std::string &)key with:(const oo::PList &)newShipData
 {
-	NSMutableDictionary *mutableDict = [NSMutableDictionary dictionaryWithDictionary:_shipData];
-	[mutableDict setObject:OODeepCopy(newShipData) forKey:key];
-	DESTROY(_shipData);
-	_shipData = [[NSDictionary dictionaryWithDictionary:mutableDict] retain];
+	// A value copy (it was a deep copy into a rebuilt dictionary).
+	if (!_shipData.isDict())  _shipData = oo::PList(oo::PList::Dict());
+	(*_shipData.getIf<oo::PList::Dict>())[key] = newShipData;
 }
 
 
-- (NSDictionary *) effectInfoForKey:(NSString *)key
+- (oo::PList) cxx_effectInfoForKey:(const std::string &)key
 {
-	return [_effectData objectForKey:key];
+	const oo::PList *entry = _effectData.find(key);
+	return entry != nullptr ? *entry : oo::PList();
 }
 
 
-- (NSDictionary *) shipyardInfoForKey:(NSString *)key
+- (oo::PList) cxx_shipyardInfoForKey:(const std::string &)key
 {
-	return [[self shipInfoForKey:key] objectForKey:@"_oo_shipyard"];
+	const oo::PList *entry = _shipData.find(key);
+	const oo::PList *shipyard = entry != nullptr ? entry->find("_oo_shipyard") : nullptr;
+	return shipyard != nullptr ? *shipyard : oo::PList();
 }
 
 
@@ -248,7 +267,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 }
 
 
-- (NSArray *) playerShipKeys
+- (std::vector<std::string>) cxx_playerShipKeys
 {
 	return _playerShips;
 }
@@ -258,9 +277,15 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 
 @implementation OOShipRegistry (OOConveniences)
 
-- (NSArray *) shipKeys
+- (std::vector<std::string>) cxx_shipKeys
 {
-	return [_shipData allKeys];
+	std::vector<std::string> keys;
+	if (const oo::PList::Dict *ships = _shipData.getIf<oo::PList::Dict>())
+	{
+		keys.reserve(ships->size());
+		for (const auto &[shipKey, shipEntry] : *ships)  keys.push_back(shipKey);
+	}
+	return keys;
 }
 
 - (NSArray *) shipRoles
@@ -297,12 +322,10 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 - (void) loadShipData
 {
 	NSMutableDictionary		*result = nil;
-	
-	[_shipData release];
-	_shipData = nil;
-	[_playerShips release];
-	_playerShips = nil;
-	
+
+	_shipData = oo::PList();
+	_playerShips.clear();
+
 	// Load shipdata.plist.
 	result = [[[ResourceManager dictionaryFromFilesNamed:@"shipdata.plist"
 												inFolder:@"Config"
@@ -350,13 +373,13 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	OOLog(@"shipData.load.progress", @"%@", @"Finished loading meshes...");
 #endif
 	
-	_shipData = OODeepCopy(result);
-	[[OOCacheManager sharedCache] setObject:_shipData forKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
-	
+	// A value (deep) copy; the cache (an unmigrated callee) gets it back as Foundation objects.
+	_shipData = oo::PListFrom(result);
+	[[OOCacheManager sharedCache] cxx_setObject:oo::ObjectFromPList(_shipData) forKey:kShipDataCacheKey inCache:kShipRegistryCacheName];
+
 	OOLog(@"shipData.load.done", @"%@", @"Ship data loaded.");
 
-	[_effectData release];
-	_effectData = nil;
+	_effectData = oo::PList();
 
 	result = [[[ResourceManager dictionaryFromFilesNamed:@"effectdata.plist"
 												inFolder:@"Config"
@@ -384,9 +407,9 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	if (![self removeUnusableEntries:result shipMode:NO])  return;
 	OOLog(@"effectData.load.progress", @"%@", @"Finished removing invalid entries...");
 	
-	_effectData = OODeepCopy(result);
-	[[OOCacheManager sharedCache] setObject:_effectData forKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
-	
+	_effectData = oo::PListFrom(result);
+	[[OOCacheManager sharedCache] cxx_setObject:oo::ObjectFromPList(_effectData) forKey:kVisualEffectDataCacheKey inCache:kVisualEffectRegistryCacheName];
+
 	OOLog(@"effectData.load.done", @"%@", @"Effect data loaded.");
 }
 
@@ -440,7 +463,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	foreach (key, initialDemoShips)
 	{
 		NSString *shipKey = oo::PListView(key).get<NSString *>(oo::NSStringFrom(kOODemoShipKey));
-		if (![key isKindOfClass:[NSDictionary class]] || [self shipInfoForKey:shipKey] == nil)
+		if (!oo::IsNSDictionary(key) || _shipData.find(oo::StdString(shipKey)) == nullptr)
 		{
 			[demoShips removeObject:key];
 		}
@@ -489,13 +512,13 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	if ([demoShips count] == 0)
 	{
 		NSString *shipKey = nil;
-		if ([self shipInfoForKey:kDefaultDemoShip] != nil) 
+		if (_shipData.find(oo::StdString(kDefaultDemoShip)) != nullptr)
 		{
 			shipKey = kDefaultDemoShip;
 		}
 		else
 		{
-			shipKey = [[_shipData allKeys] objectAtIndex:0];
+			shipKey = oo::NSStringFrom(_shipData.getIf<oo::PList::Dict>()->begin()->first);	// the first key in key order (was hash order)
 		}
 		[demoShips addObject:[NSDictionary dictionaryWithObject:shipKey forKey:oo::NSStringFrom(kOODemoShipKey)]];
 	}
@@ -519,7 +542,8 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 		}
 		NSMutableDictionary *demoEntry = [NSMutableDictionary dictionaryWithDictionary:key];
 		// add "name" object to dictionary from ship definition
-		[demoEntry setObject:oo::PListView([self shipInfoForKey:oo::PListView(demoEntry).get<NSString *>(@"ship")]).get<NSString *>(oo::NSStringFrom(kOODemoShipName)) forKey:oo::NSStringFrom(kOODemoShipName)];
+		const std::string demoShipKey = oo::StdString(oo::PListView(demoEntry).get<NSString *>(@"ship"));
+		[demoEntry setObject:oo::NSStringOrNil(StringForKey(_shipData.find(demoShipKey), kOODemoShipName)) forKey:oo::NSStringFrom(kOODemoShipName)];
 		// set "class" object to standard ship if not otherwise set
 		if (![oo::PListView(demoEntry).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), nil) isEqualToString:klass])
 		{
@@ -545,7 +569,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	NSMutableDictionary		*restoredSets = nil;
 	NSString				*role = nil;
 	
-	cachedSets = [[OOCacheManager sharedCache] objectForKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
+	cachedSets = [[OOCacheManager sharedCache] cxx_objectForKey:oo::StdString(kRoleWeightsCacheKey) inCache:kShipRegistryCacheName];
 	if (cachedSets == nil)  return;
 	
 	restoredSets = [NSMutableDictionary dictionaryWithCapacity:[cachedSets count]];
@@ -561,21 +585,19 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 - (void) buildRoleProbabilitySets
 {
 	NSMutableDictionary		*probabilitySets = nil;
-	NSString				*shipKey = nil;
-	NSDictionary			*shipEntry = nil;
-	NSString				*roles = nil;
 	NSString				*role = nil;
 	OOProbabilitySet		*pset = nil;
 	NSMutableDictionary		*cacheEntry = nil;
 	
 	probabilitySets = [NSMutableDictionary dictionary];
 	
-	// Build role sets
-	foreachkey (shipKey, _shipData)
+	// Build role sets (ships in key order; was hash order)
+	if (const oo::PList::Dict *ships = _shipData.getIf<oo::PList::Dict>())
 	{
-		shipEntry = [_shipData objectForKey:shipKey];
-		roles = oo::PListView(shipEntry).get<NSString *>(@"roles");
-		[self mergeShipRoles:roles forShipKey:shipKey intoProbabilityMap:probabilitySets];
+		for (const auto &[shipKey, shipEntry] : *ships)
+		{
+			[self mergeShipRoles:oo::NSStringOrNil(StringForKey(&shipEntry, "roles")) forShipKey:oo::NSStringFrom(shipKey) intoProbabilityMap:probabilitySets];
+		}
 	}
 	
 	// Convert role sets to immutable form, and build cache entry.
@@ -590,7 +612,7 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 	}
 	
 	_probabilitySets = [probabilitySets copy];
-	[[OOCacheManager sharedCache] setObject:cacheEntry forKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName];
+	[[OOCacheManager sharedCache] cxx_setObject:cacheEntry forKey:oo::StdString(kRoleWeightsCacheKey) inCache:kShipRegistryCacheName];
 }
 
 
@@ -880,8 +902,8 @@ static NSString * const	kVisualEffectDataCacheKey = @"visual effect data";
 		}
 	}
 	
-	_playerShips = [playerShips copy];
-	[[OOCacheManager sharedCache] setObject:_playerShips forKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName];
+	_playerShips = oo::StringsFrom(playerShips);
+	[[OOCacheManager sharedCache] cxx_setObject:oo::NSArrayFromStrings(_playerShips) forKey:kPlayerShipsCacheKey inCache:kShipRegistryCacheName];
 	
 	return YES;
 }
