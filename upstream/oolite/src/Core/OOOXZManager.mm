@@ -162,7 +162,7 @@ static OOOXZManager *sSingleton = nil;
 
 - (NSString *) extractOXZ:(NSUInteger)item;
 
-/* The download's callbacks (NSURLConnection's delegate methods until proposed ADR-0043) */
+/* The download's callbacks (NSURLConnection's delegate methods until proposed ADR-0044) */
 - (void) downloadDidFailWithError:(const std::string &)error;
 - (void) downloadDidReceiveResponse:(long long)expectedContentLength;
 - (void) downloadDidReceiveData:(const std::string &)data;
@@ -2384,7 +2384,7 @@ static OOOXZManager *sSingleton = nil;
 	 * The game tick is no longer a run-loop timer, so GameController fires
 	 * it (and the run loop's own due timers) here, as the run loop did.
 	 * Proposed ADR-0033. The download itself no longer blocks the frame
-	 * loop (it runs on its own thread, proposed ADR-0043); the call stays
+	 * loop (it runs on its own thread, proposed ADR-0044); the call stays
 	 * so a burst of queued chunks still lets the game tick between them.
 	 */
 	[[GameController sharedController] fireDueTimers];

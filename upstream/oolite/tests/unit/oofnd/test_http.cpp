@@ -1,5 +1,5 @@
 /*	test_http.cpp
-	oo::http::parseUrl and oo::http::Download (oofnd/Http.hpp, bead oo-3rb.13, proposed ADR-0043).
+	oo::http::parseUrl and oo::http::Download (oofnd/Http.hpp, bead oo-3rb.13, proposed ADR-0044).
 
 	The exchanges below are the ones a throwaway probe ran through gnustep-base 1.31.1's
 	NSURLConnection against a loopback server; the expected callbacks are what it delivered
@@ -545,7 +545,7 @@ OO_TEST(redirects_deliver_only_the_final_response)
 	OO_CHECK_EQ(a.status, 200);
 	OO_CHECK(a.body.rfind("GET /headers HTTP/1.1\r\n", 0) == 0);
 	OO_CHECK(a.body.find("Cookie") == std::string::npos);
-	// Relative: NSURLConnection never called back (proposed ADR-0043); it is followed.
+	// Relative: NSURLConnection never called back (proposed ADR-0044); it is followed.
 	expectComplete(get(server().url("/redir")), 200, 5, "hello");
 }
 

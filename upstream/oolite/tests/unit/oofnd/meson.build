@@ -36,7 +36,7 @@ foreach t : oofnd_tests
 endforeach
 
 # oofnd/Http.hpp links WinHTTP on Windows, and its test runs a loopback server on winsock
-# (bead oo-3rb.13, proposed ADR-0043). tools/check-oofnd.sh reads the same libraries from the
+# (bead oo-3rb.13, proposed ADR-0044). tools/check-oofnd.sh reads the same libraries from the
 # test's "// oofnd-link-windows:" line.
 oofnd_http_link_args = host_machine.system() == 'windows' ? ['-lwinhttp', '-lws2_32'] : []
 test('test_http',

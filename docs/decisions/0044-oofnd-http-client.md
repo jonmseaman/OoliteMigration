@@ -1,4 +1,4 @@
-# ADR-0043 — The OXZ manager's HTTP client: `oo::http::Download` on WinHTTP
+# ADR-0044 — The OXZ manager's HTTP client: `oo::http::Download` on WinHTTP
 
 **Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-3rb.13, 2026-09-23;
 ADR-0013). Jon may override.

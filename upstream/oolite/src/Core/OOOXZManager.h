@@ -102,7 +102,7 @@ typedef enum {
 
 /*	Deliver the current download's callbacks (response, data, finish, failure), in order,
 	on the main thread: GameController's frame loop calls this where it pumps the run loop,
-	which is where NSURLConnection delivered them. Proposed ADR-0043.
+	which is where NSURLConnection delivered them. Proposed ADR-0044.
 */
 - (void) processDownloadEvents;
 

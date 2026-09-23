@@ -523,7 +523,7 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 				std::chrono::duration<double> wait = sNextGameTick - std::chrono::steady_clock::now();
 				limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
 			}
-			// The OXZ download's callbacks, which the run loop delivered (proposed ADR-0043).
+			// The OXZ download's callbacks, which the run loop delivered (proposed ADR-0044).
 			[[OOOXZManager sharedManager] processDownloadEvents];
 			if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && sGameTickScheduled)
 			{
