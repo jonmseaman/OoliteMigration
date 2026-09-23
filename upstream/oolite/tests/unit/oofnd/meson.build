@@ -21,6 +21,7 @@ oofnd_tests = [
     'test_string',
     'test_encoding',
     'test_log',
+    'test_logfile',
 ]
 
 foreach t : oofnd_tests

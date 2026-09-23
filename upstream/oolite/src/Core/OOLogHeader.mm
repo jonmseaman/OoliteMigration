@@ -35,9 +35,19 @@ SOFTWARE.
 #import "OOJavaScriptEngine.h"
 #import "OOSound.h"
 #include "oofnd/Date.hpp"
+#include "oofnd/Log.hpp"
+#include "oofnd/String.hpp"
+#import "OOStringBridge.h"
+
+#include <string>
+#include <vector>
 
 
-static NSString *AdditionalLogHeaderInfo(void);
+namespace {
+
+std::string AdditionalLogHeaderInfo(void);
+
+}	// namespace
 
 NSString *OOPlatformDescription(void);
 
@@ -100,87 +110,91 @@ void OOPrintLogHeader(void)
 		#define RELEASE_VARIANT_STRING ""
 	#endif
 	
-	NSArray *featureStrings = [NSArray arrayWithObjects:
+	const std::vector<std::string> featureStrings = {
 	// User features
 	#if OOLITE_OPENAL
-		@"OpenAL",
+		"OpenAL",
 	#endif
 
 	#if OO_SHADERS
-		@"GLSL shaders",
+		"GLSL shaders",
 	#endif
 	
 	#if NEW_PLANETS
-		@"new planets",
+		"new planets",
 	#endif
 	
 	// Debug features
 	#if OO_CHECK_GL_HEAVY
-		@"heavy OpenGL error checking",
+		"heavy OpenGL error checking",
 	#endif
 	
 	#ifndef NDEBUG
-		@"JavaScript console support",
+		"JavaScript console support",
 		#if OOLITE_MAC_OS_X
 			// Under Mac OS X, Debug.oxp adds more than console support.
-			@"Debug plug-in support",
+			"Debug plug-in support",
 		#endif
 	#endif
 	
 	#if OO_OXP_VERIFIER_ENABLED
-		@"OXP verifier",
+		"OXP verifier",
 	#endif
 	
 	#if OO_LOCALIZATION_TOOLS
-		@"localization tools",
+		"localization tools",
 	#endif
 	
 	#if DEBUG_GRAPHVIZ
-		@"debug GraphViz support",
+		"debug GraphViz support",
 	#endif
 	
 	#if OOJS_PROFILE
 		#ifdef MOZ_TRACE_JSCALLS
-			@"JavaScript profiling",
+			"JavaScript profiling",
 		#else
-			@"JavaScript native callback profiling",
+			"JavaScript native callback profiling",
 		#endif
 	#endif
 	
 	#if OO_FOV_INFLIGHT_CONTROL_ENABLED
-		@"FOV in-flight control",
+		"FOV in-flight control",
 	#endif
 	
-		nil];
+	};
 	
-	// systemString: NSString with system type and possibly version.
+	// systemString: system type and possibly version.
 	#if (OOLITE_MAC_OS_X || !OOLITE_WINDOWS)
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %s", oo::process::operatingSystemVersionString().c_str()];
+		const std::string systemString = OS_TYPE_STRING " " + oo::process::operatingSystemVersionString();
 	#elif OOLITE_WINDOWS
-		NSString *systemString = [NSString stringWithFormat:@OS_TYPE_STRING " %@ %@-bit", operatingSystemFullVersion(), is64BitSystem() ? @"64":@"32"];
+		NSString *fullVersion = operatingSystemFullVersion();
+		const std::string systemString = std::string(OS_TYPE_STRING " ") + (fullVersion != nil ? oo::StdString(fullVersion) : std::string("(null)")) + " " + (is64BitSystem() ? "64" : "32") + "-bit";
 	#else
-		#define systemString @OS_TYPE_STRING
+		const std::string systemString = OS_TYPE_STRING;
 	#endif
 	
-	NSString *versionString = nil;
 	#if (defined (DEV_RELEASE))
-		versionString = @"development version " @OO_VERSION_FULL;
+		const std::string versionString = "development version " OO_VERSION_FULL;
 	#else
-		versionString = @"version " @OO_VERSION_FULL;
+		const std::string versionString = "version " OO_VERSION_FULL;
 	#endif
-	if (versionString == nil)  versionString = @"<unknown version>";
 	
-	NSMutableString *miscString = [NSMutableString stringWithFormat:@"Opening log for Oolite %@ by %@ (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ") under %@ at %@.\n", versionString, @OO_BUILDER, systemString, [NSString stringWithUTF8String:oo::date::description().c_str()]];
+	std::string miscString = "Opening log for Oolite " + versionString + " by " OO_BUILDER " (" CPU_TYPE_STRING RELEASE_VARIANT_STRING ") under " + systemString + " at " + oo::date::description() + ".\n";
 	
-	[miscString appendString:AdditionalLogHeaderInfo()];
+	miscString += AdditionalLogHeaderInfo();
 	
-	NSString *featureDesc = [featureStrings componentsJoinedByString:@", "];
-	if ([featureDesc length] == 0)  featureDesc = @"none";
-	[miscString appendFormat:@"\nBuild options: %@.\n", featureDesc];
+	std::string featureDesc;
+	for (const std::string &feature : featureStrings)
+	{
+		if (!featureDesc.empty())  featureDesc += ", ";
+		featureDesc += feature;
+	}
+	if (featureDesc.empty())  featureDesc = "none";
+	miscString += "\nBuild options: " + featureDesc + ".\n";
 	
-	[miscString appendString:@"\nNote that the contents of the log file can be adjusted by editing logcontrol.plist."];
+	miscString += "\nNote that the contents of the log file can be adjusted by editing logcontrol.plist.";
 	
-	OOLog(@"log.header", @"%@\n", miscString);
+	OO_LOG("log.header", "{}\n", miscString);
 }
 
 
@@ -205,7 +219,9 @@ static NSString *GetSysCtlString(const char *name);
 static unsigned long long GetSysCtlInt(const char *name);
 static NSString *GetCPUDescription(void);
 
-static NSString *AdditionalLogHeaderInfo(void)
+namespace {
+
+std::string AdditionalLogHeaderInfo(void)
 {
 	NSString				*sysModel = nil;
 	unsigned long long		sysPhysMem;
@@ -213,8 +229,10 @@ static NSString *AdditionalLogHeaderInfo(void)
 	sysModel = GetSysCtlString("hw.model");
 	sysPhysMem = GetSysCtlInt("hw.memsize");
 	
-	return [NSString stringWithFormat:@"Machine type: %@, %zu MiB memory, %@.", sysModel, sysPhysMem >> 20, GetCPUDescription()];
+	return [[NSString stringWithFormat:@"Machine type: %@, %zu MiB memory, %@.", sysModel, sysPhysMem >> 20, GetCPUDescription()] UTF8String];
 }
+
+}	// namespace
 
 #ifndef CPUFAMILY_INTEL_MEROM
 	#define CPUFAMILY_INTEL_MEROM		0x426f69ef
@@ -346,12 +364,16 @@ static unsigned long long GetSysCtlInt(const char *name)
 }
 
 #else
-static NSString *AdditionalLogHeaderInfo(void)
+namespace {
+
+std::string AdditionalLogHeaderInfo(void)
 {
 	unsigned cpuCount = OOCPUCount();
 	NSString *cpuDescription = OOCPUDescription();
 	OOMemoryStatus systemMemoryStatus = OOSystemMemoryStatus();
-	
-	return [NSString stringWithFormat:@"%@ %u processor%@ detected. System RAM: %llu MB (free: %llu MB).", cpuDescription, cpuCount, cpuCount != 1 ? @"s" : @"", systemMemoryStatus.ooPhysicalMemory, systemMemoryStatus.ooAvailableMemory];
+
+	return oo::str::format("%s %u processor%s detected. System RAM: %llu MB (free: %llu MB).", cpuDescription != nil ? oo::StdString(cpuDescription).c_str() : "(null)", cpuCount, cpuCount != 1 ? "s" : "", systemMemoryStatus.ooPhysicalMemory, systemMemoryStatus.ooAvailableMemory);
 }
+
+}	// namespace
 #endif

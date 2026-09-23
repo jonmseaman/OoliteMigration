@@ -63,10 +63,7 @@ namespace {
 // before it oo::log writes to stderr, which is what the output handler did before its init.
 void LogSink(std::string_view line)
 {
-	@autoreleasepool
-	{
-		OOLogOutputHandlerPrint(oo::NSStringFrom(line));
-	}
+	OOLogOutputHandlerPrintLine(line);
 }
 
 // A message class as oo::log sees it; nil prints as %@ did.
