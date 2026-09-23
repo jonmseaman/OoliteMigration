@@ -47,10 +47,14 @@ representation choices ADR-0013 did not make.
    string is cut, or uninitialised bytes are included) or loops forever (more than 32 bytes at
    indentation 0), oofnd writes the evidently intended `<0A0B0C0D 0E>` form. For every length
    where GNUstep is well-defined the output is byte-identical.
-5. **Old-style writer, non-ASCII.** GNUstep leaves a string unquoted when every character is in
+5. **Old-style writer: non-ASCII and case-equal keys.** GNUstep leaves a string unquoted when every character is in
    `+alphanumericCharacterSet` (Unicode letters, marks, digits), so `café` is written bare; neither
    GNUstep's scanner nor oofnd's can read that back (bytes >= 0x80 end an unquoted token). oofnd
    quotes any string containing a non-ASCII character. ASCII strings are identical.
+   Keys that are equal ignoring case (`aB`, `AB`) are ordered by their UTF-16 units; GNUstep's
+   order for them follows the dictionary's hash order and is not reproducible. Every other
+   quirk of the old-style writer is kept, including that it leaves out the text between two
+   escaped characters (`"a\"b\\c"` is written `"a\"\\c"`).
 6. **XML input encodings.** UTF-8, with GNUstep's fallback to ISO-8859-1 when the bytes are not
    valid UTF-8 or the declaration names ISO-8859-1/Latin-1. UTF-16/UTF-32 XML plists (which
    GNUstep would transcode) fail. The game ships none.
