@@ -11,6 +11,19 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 #import "OOFoundationBridge.h"
 
 
+@implementation HeadUpDisplay (OOFoundationBridge)
+
+// Chunk 2 (oo-3rb.210).
+
+// A nil name (from JavaScript) arrives as "".
+- (void) setHiddenSelector:(NSString *)selectorName hidden:(BOOL)hide
+{
+	[self cxx_setHiddenSelector:oo::StdString(selectorName) hidden:hide];
+}
+
+@end
+
+
 // Chunk 1 (oo-3rb.209).
 
 @implementation NSString (OOHUDBeaconIcon)

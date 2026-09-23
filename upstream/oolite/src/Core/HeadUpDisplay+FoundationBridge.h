@@ -27,6 +27,14 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (HeadUpDisplay.h)
 #define HEADUPDISPLAY_FOUNDATIONBRIDGE_H
 
 
+@interface HeadUpDisplay (OOFoundationBridge)
+
+// Chunk 2 (oo-3rb.210): hidden selectors.
+- (void) setHiddenSelector:(NSString *)selectorName hidden:(BOOL)hide;	// -> -cxx_setHiddenSelector:hidden:
+
+@end
+
+
 // Chunk 1 (oo-3rb.209): the beacon-letter category and the text engine.
 @interface NSString (OOHUDBeaconIcon) <OOHUDBeaconIcon>
 @end
