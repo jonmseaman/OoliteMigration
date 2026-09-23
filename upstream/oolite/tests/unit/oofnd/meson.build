@@ -18,6 +18,8 @@ oofnd_tests = [
     'test_thread',
     'test_defaults',
     'test_foundation_types',
+    'test_string',
+    'test_encoding',
 ]
 
 foreach t : oofnd_tests
