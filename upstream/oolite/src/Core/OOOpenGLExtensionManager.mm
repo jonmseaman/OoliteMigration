@@ -30,7 +30,6 @@ SOFTWARE.
 #import "OOLogging.h"
 #import "OOFunctionAttributes.h"
 #include <stdlib.h>
-#import "NSThreadOOExtensions.h"
 
 #import "ResourceManager.h"
 #import "OOCollectionExtractors.h"
