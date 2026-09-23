@@ -88,6 +88,14 @@ MA 02110-1301, USA.
 + (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName;	// -> +cxx_stringFromFilesNamed:inFolder:
 + (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;	// -> +cxx_stringFromFilesNamed:inFolder:cache:
 
+// oo-3rb.102: special dictionaries and scripts
++ (NSDictionary *) whitelistDictionary;				// -> +cxx_whitelistDictionary
++ (NSDictionary *) shaderBindingTypesDictionary;	// -> +cxx_shaderBindingTypesDictionary
++ (NSDictionary *) logControlDictionary;			// -> +cxx_logControlDictionary
++ (NSDictionary *) roleCategoriesDictionary;		// -> +cxx_roleCategoriesDictionary
++ (NSDictionary *)loadScripts;						// -> +cxx_loadScripts
++ (NSDictionary *) materialDefaults;				// -> +cxx_materialDefaults
+
 @end
 
 #endif	// RESOURCEMANAGER_FOUNDATIONBRIDGE_H
