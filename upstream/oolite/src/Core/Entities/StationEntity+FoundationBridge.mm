@@ -21,6 +21,64 @@ and converts the result exactly as the old method produced it (the same NSNumber
 	return [oo::NSArrayFromObjects([self cxx_dockSubEntities]) objectEnumerator];
 }
 
+
+// oo-3rb.173 (chunk 2): market, allegiance, docking clearance
+
+// A fresh immutable array per call (the old method returned the ivar); the same NSNumber types.
+- (NSArray *) marketDefinition
+{
+	return oo::ObjectFromPList([self cxx_marketDefinition]);
+}
+
+
+- (NSString *) marketScriptName
+{
+	return oo::NSStringOrNil([self cxx_marketScriptName]);
+}
+
+
+- (void) setLocalMarket:(NSArray *)market
+{
+	[self cxx_setLocalMarket:oo::PListFrom(market)];
+}
+
+
+// oo::ObjectFromPList rebuilds -dictionaryForScripting's dictionary with the same NSNumber types.
+- (NSDictionary *) localMarketForScripting
+{
+	return oo::ObjectFromPList([self cxx_localMarketForScripting]);
+}
+
+
+- (void) setPrice:(OOCreditsQuantity) price forCommodity:(OOCommodityType) commodity
+{
+	[self cxx_setPrice:price forCommodity:oo::StdString(commodity)];
+}
+
+
+- (void) setQuantity:(OOCargoQuantity) quantity forCommodity:(OOCommodityType) commodity
+{
+	[self cxx_setQuantity:quantity forCommodity:oo::StdString(commodity)];
+}
+
+
+- (void) setAllegiance:(NSString *)newAllegiance
+{
+	[self cxx_setAllegiance:oo::OptionalString(newAllegiance)];
+}
+
+
+- (NSString *)allegiance
+{
+	return oo::NSStringOrNil([self cxx_allegiance]);
+}
+
+
+- (NSString *) acceptDockingClearanceRequestFrom:(ShipEntity *)other
+{
+	return oo::NSStringOrNil([self cxx_acceptDockingClearanceRequestFrom:other]);
+}
+
 @end
 
 
