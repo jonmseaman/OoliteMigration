@@ -31,4 +31,10 @@
 
 # RunDetachedAndWait waits unbounded now (oo-3rb.68); three consecutive green oofnd runs is the
 # stability proof its bead asked for, too slow (3 x 90-220 s) for the five-minute accept budget.
-[oo-3rb.68] for i in 1 2 3; do bash tools/check-oofnd.sh || exit 1; done
+# The memo (oo-n712) must not answer a stability proof: every run here is a real one.
+[oo-3rb.68] for i in 1 2 3; do OO_CHECK_OOFND_NO_MEMO=1 bash tools/check-oofnd.sh || exit 1; done
+
+# check-oofnd.sh answers accept from a memo of its last fully green run with the same inputs
+# (oo-n712); the night always runs it for real, so a flake or toolchain drift the memo's hash
+# missed still turns the night red.
+[oo-n712] OO_CHECK_OOFND_NO_MEMO=1 bash tools/check-oofnd.sh
