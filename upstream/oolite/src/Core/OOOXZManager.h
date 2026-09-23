@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "NSFileManagerOOExtensions.h"
 #import "OOTypes.h"
@@ -57,7 +58,7 @@ typedef enum {
 } OXZInterfaceState;
 
 
-@interface OOOXZManager : NSObject
+@interface OOOXZManager: OOObject
 {
 @private
 	NSArray 			*_oxzList;

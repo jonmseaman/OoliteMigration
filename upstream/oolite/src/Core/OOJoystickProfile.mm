@@ -30,7 +30,7 @@ MA 02110-1301, USA.
 
 #define SPLINE_POINT_MIN_SPACING 0.02
 
-@interface OOJoystickSplineSegment: NSObject <NSCopying>
+@interface OOJoystickSplineSegment: OOObject <OOCopying>
 {
 @private
 	double start;
@@ -64,7 +64,7 @@ MA 02110-1301, USA.
 // Cubic spline from left point to right point, with gradients specified at end points.  returns nil if right.x - left.x <= 0.0.
 + (id) segmentWithData: (NSPoint) left right: (NSPoint) right gradientleft: (double) gradientleft gradientright: (double) gradientright;
 
-- (id) copyWithZone: (NSZone *) zone;
+- (id) copyWithZone: (OOZone *) zone;
 - (double) start;
 - (double) end;
 - (double) value: (double) t;
@@ -92,7 +92,7 @@ MA 02110-1301, USA.
 	return self;
 }
 
-- (id) copyWithZone: (NSZone *) zone
+- (id) copyWithZone: (OOZone *) zone
 {
 	OOJoystickAxisProfile *copy = [[[self class] alloc] init];
 	return copy;
@@ -137,7 +137,7 @@ MA 02110-1301, USA.
 	return self;
 }
 
-- (id) copyWithZone: (NSZone *) zone
+- (id) copyWithZone: (OOZone *) zone
 {
 	OOJoystickStandardAxisProfile *copy = [[[self class] alloc] init];
 	copy->power = power;
@@ -207,7 +207,7 @@ MA 02110-1301, USA.
 	return self;
 }
 
-- (id) copyWithZone: (NSZone *) zone
+- (id) copyWithZone: (OOZone *) zone
 {
 	OOJoystickSplineSegment *copy = [[OOJoystickSplineSegment allocWithZone: zone] init];
 	copy->start = start;
@@ -365,11 +365,11 @@ MA 02110-1301, USA.
 	return;
 }
 
-- (id) copyWithZone: (NSZone *) zone
+- (id) copyWithZone: (OOZone *) zone
 {
 	OOJoystickSplineAxisProfile *copy = [[[self class] alloc] init];
 	copy->controlPoints = controlPoints;
-	copy->segments = [segments copyWithZone: zone];
+	copy->segments = [segments copy];	// Foundation arrays: -copy is -copyWithZone: with the default zone (zones unused)
 	return copy;
 }
 

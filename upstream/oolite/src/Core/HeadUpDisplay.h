@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 
 #import "OOTypes.h"
@@ -238,7 +239,7 @@ enum
 @class Entity, PlayerEntity, OOTextureSprite;
 
 
-@interface HeadUpDisplay: NSObject
+@interface HeadUpDisplay: OOObject
 {
 @private
 	// Widgets in draw order; were NSMutableArrays of NSArray tuples (bead oo-3rb.49).
