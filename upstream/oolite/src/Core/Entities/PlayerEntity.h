@@ -1105,7 +1105,7 @@ typedef enum
 
 - (void) setGuiToSystemDataScreen;
 - (void) setGuiToSystemDataScreenRefreshBackground: (BOOL) refreshBackground;
-- (NSDictionary *) markedDestinations;
+- (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations;	// marker Dicts by system ID, each list in the order the markers were added
 - (void) setGuiToLongRangeChartScreen;
 - (void) setGuiToShortRangeChartScreen;
 - (void) setGuiToChartScreenFrom: (OOGUIScreenID) oldScreen;
@@ -1349,3 +1349,7 @@ OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;
 
 OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string) PURE_FUNC;
 NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour) CONST_FUNC;
+
+// TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
+// sweep, forwarding to the cxx_ API above. Keep this the last line.
+#import "PlayerEntity+FoundationBridge.h"
