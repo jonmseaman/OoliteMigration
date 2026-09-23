@@ -26,7 +26,7 @@ SOFTWARE.
 
 #import "OOALSound.h"
 #import "OOLogging.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMaths.h"
 #import "OOALSoundDecoder.h"
 #import "OOOpenALController.h"
@@ -52,7 +52,7 @@ static BOOL sIsSoundOK = NO;
 		if (controller != nil)
 		{
 			sIsSoundOK = YES;
-			float volume = [[NSUserDefaults standardUserDefaults] oo_floatForKey:KEY_VOLUME_CONTROL defaultValue:0.5];
+			float volume = oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(KEY_VOLUME_CONTROL, 0.5);
 			[self setMasterVolume:volume];
 		}
 	}

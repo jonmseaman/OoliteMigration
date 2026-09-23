@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "NSFileManagerOOExtensions.h"
 
@@ -52,7 +53,7 @@ typedef enum
 #define SCENARIO_OXP_DEFINITION_BYTAG  @"tag:"
 #define SCENARIO_OXP_DEFINITION_NOPLIST  @"exc:"
 
-@interface ResourceManager : NSObject
+@interface ResourceManager: OOObject
 
 + (void) reset;
 + (void) resetManifestKnowledgeForOXZManager;

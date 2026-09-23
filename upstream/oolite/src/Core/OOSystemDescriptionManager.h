@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOTypes.h"
 #import "legacy_random.h"
 
@@ -53,7 +54,7 @@ typedef enum
 // don't bother caching interstellar properties
 #define OO_SYSTEM_CACHE_LENGTH  OO_SYSTEMS_AVAILABLE
 
-@interface OOSystemDescriptionEntry : NSObject
+@interface OOSystemDescriptionEntry: OOObject
 {
 @private
 	NSMutableDictionary			*layers[OO_SYSTEM_LAYERS];
@@ -70,7 +71,7 @@ typedef enum
  * forSystemKey calculates the values - but is necessary for
  * interstellar space
  */
-@interface OOSystemDescriptionManager : NSObject
+@interface OOSystemDescriptionManager: OOObject
 {
 @private
 	NSMutableDictionary			*universalProperties;

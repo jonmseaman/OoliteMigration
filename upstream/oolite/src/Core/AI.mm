@@ -29,11 +29,12 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOWeakReference.h"
 #import "OOCacheManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOPListParsing.h"
 
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
+#import "oofnd/objc/OOObject.h"
 
 
 enum
@@ -51,6 +52,22 @@ typedef struct
 } OOAIDeferredCallTrampolineInfo;
 
 
+/*	Carries the trampoline info through -performSelector:withObject:afterDelay:,
+	which retains it until the call fires, as it did the value box that held the
+	struct before (bead oo-3rb.48).
+*/
+@interface OOAIDeferredCallTrampolineInfoHolder: OOObject
+{
+@public
+	OOAIDeferredCallTrampolineInfo	info;
+}
+@end
+
+
+@implementation OOAIDeferredCallTrampolineInfoHolder
+@end
+
+
 static AI *sCurrentlyRunningAI = nil;
 
 
@@ -58,7 +75,7 @@ static AI *sCurrentlyRunningAI = nil;
 
 // Wrapper for performSelector:withObject:afterDelay: to catch/fix bugs.
 - (void) performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay;
-+ (void) deferredCallTrampolineWithInfo:(NSValue *)info;
++ (void) deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info;
 
 - (void) refreshOwnerDesc;
 
@@ -79,7 +96,7 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 #endif
 
 
-@interface OOPreservedAIStateMachine: NSObject
+@interface OOPreservedAIStateMachine: OOObject
 {
 @private
 	NSDictionary		*_stateMachine;
@@ -721,7 +738,7 @@ static AIStackElement *sStack = NULL;
 - (void)performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay
 {
 	OOAIDeferredCallTrampolineInfo	infoStruct;
-	NSValue							*info = nil;
+	OOAIDeferredCallTrampolineInfoHolder	*info = nil;
 	
 	if (selector != NULL)
 	{
@@ -729,7 +746,8 @@ static AIStackElement *sStack = NULL;
 		infoStruct.selector = selector;
 		infoStruct.parameter = object;
 		
-		info = [[NSValue alloc] initWithBytes:&infoStruct objCType:@encode(OOAIDeferredCallTrampolineInfo)];
+		info = [[OOAIDeferredCallTrampolineInfoHolder alloc] init];
+		info->info = infoStruct;
 		
 		[[AI class] performSelector:@selector(deferredCallTrampolineWithInfo:)
 						 withObject:info
@@ -739,14 +757,13 @@ static AIStackElement *sStack = NULL;
 }
 
 
-+ (void)deferredCallTrampolineWithInfo:(NSValue *)info
++ (void)deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info
 {
 	OOAIDeferredCallTrampolineInfo	infoStruct;
 	
 	if (info != nil)
 	{
-		assert(strcmp([info objCType], @encode(OOAIDeferredCallTrampolineInfo)) == 0);
-		[info getValue:&infoStruct];
+		infoStruct = info->info;
 		
 		[infoStruct.ai performSelector:infoStruct.selector withObject:infoStruct.parameter];
 		
@@ -925,13 +942,13 @@ static AIStackElement *sStack = NULL;
 	
 	if (whitelist == nil)
 	{
-		whitelistArray1 = [[ResourceManager whitelistDictionary] oo_arrayForKey:@"ai_methods"];
+		whitelistArray1 = oo::PListView([ResourceManager whitelistDictionary]).get<NSArray *>(@"ai_methods");
 		if (whitelistArray1 == nil)  whitelistArray1 = [NSArray array];
-		whitelistArray2 = [[ResourceManager whitelistDictionary] oo_arrayForKey:@"ai_and_action_methods"];
+		whitelistArray2 = oo::PListView([ResourceManager whitelistDictionary]).get<NSArray *>(@"ai_and_action_methods");
 		if (whitelistArray2 != nil)  whitelistArray1 = [whitelistArray1 arrayByAddingObjectsFromArray:whitelistArray2];
 		
 		whitelist = [[NSSet alloc] initWithArray:whitelistArray1];
-		aliases = [[[ResourceManager whitelistDictionary] oo_dictionaryForKey:@"ai_method_aliases"] retain];
+		aliases = [oo::PListView([ResourceManager whitelistDictionary]).get<NSDictionary *>(@"ai_method_aliases") retain];
 	}
 	
 	result = [NSMutableArray arrayWithCapacity:[actions count]];

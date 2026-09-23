@@ -27,8 +27,9 @@ MA 02110-1301, USA.
 
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
-@interface OOJSFunction: NSObject
+@interface OOJSFunction: OOObject
 {
 @private
 	ooscript::Function _function;

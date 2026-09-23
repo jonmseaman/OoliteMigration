@@ -129,16 +129,20 @@ inline bool isStrictUtf8(std::string_view s) noexcept
 }
 
 // +[GSMimeDocument charsetForXml:] for single-byte data: the lower-cased value of the first
-// quoted string after an `encoding` token anywhere in the document, else "utf-8"; "" (not
-// supported by oofnd) when the byte pattern says UTF-16/32.
+// quoted string after an `encoding` token anywhere in the document (which may be ""), else
+// "utf-8"; "utf-16" or "ucs-4" (not supported by oofnd) when the byte pattern says so.
 inline std::string charsetForXml(std::string_view xml)
 {
 	const auto* ptr = reinterpret_cast<const unsigned char*>(xml.data());
 	const auto* end = ptr + xml.size();
 	if (xml.size() < 4) return "utf-8";   // nil -> GSUndefinedEncoding -> UTF-8 guess
-	if ((ptr[0] == 0xFE && ptr[1] == 0xFF) || (ptr[0] == 0xFF && ptr[1] == 0xFE)) return "";
+	if ((ptr[0] == 0xFE && ptr[1] == 0xFF) || (ptr[0] == 0xFF && ptr[1] == 0xFE)) return "utf-16";
 	if (ptr[0] == 0xEF && ptr[1] == 0xBB && ptr[2] == 0xBF) return "utf-8";
-	if (ptr[0] == 0 || ptr[1] == 0 || (ptr[2] == 0 && ptr[3] == 0)) return "";
+	if (ptr[0] == 0 || ptr[1] == 0)   // GNUstep's two- and four-byte patterns all have one of these
+	{
+		const bool four = (ptr[0] == 0 && ptr[1] == 0) || (ptr[2] == 0 && ptr[3] == 0);
+		return four ? "ucs-4" : "utf-16";
+	}
 	while (ptr + 1 <= end && isCSpace(*ptr)) ptr++;
 	if (ptr + 20 >= end || ptr[0] != '<' || ptr[1] != '?') return "utf-8";
 	ptr += 5;
@@ -198,7 +202,8 @@ inline std::string charsetForXml(std::string_view xml)
 inline std::optional<std::string> xmlDataAsUtf8(std::string_view data)
 {
 	const std::string charset = charsetForXml(data);
-	if (charset.empty() || charset.rfind("utf-16", 0) == 0 || charset.rfind("utf-32", 0) == 0 || charset == "ucs-2")
+	// An empty or unknown name is GSUndefinedEncoding, which GNUstep reads as it reads UTF-8.
+	if (charset.rfind("utf-16", 0) == 0 || charset.rfind("utf-32", 0) == 0 || charset == "ucs-2" || charset == "ucs-4")
 	{
 		return std::nullopt;
 	}
@@ -354,6 +359,7 @@ public:
 						if (p < cp_ - 1) foundCharacters(p, cp_ - 1 - p);
 					}
 					vp = cp_;
+					if (abort_) return false;   // "invalid character data"
 				}
 			}
 
@@ -419,6 +425,7 @@ public:
 			else if (c == '!')
 			{
 				processDeclaration();
+				if (abort_) return false;   // "invalid character in declaration ..."
 				vp = cp_;
 				c = cget();
 				continue;
@@ -428,7 +435,9 @@ public:
 			const long tagStart = static_cast<long>(closing ? tp + 1 : tp);
 			const long tagLen = static_cast<long>(cp_) - tagStart - 1;
 			if (tagLen < 0) return fail();   // "invalid character in tag"
-			const std::string tag(reinterpret_cast<const char*>(bytes_) + tagStart, static_cast<std::size_t>(tagLen));
+			const std::string_view rawTag(reinterpret_cast<const char*>(bytes_) + tagStart, static_cast<std::size_t>(tagLen));
+			if (!isStrictUtf8(rawTag)) return fail();   // cut at the end of the data: "invalid character in tag"
+			const std::string tag(utf8WithoutLeadingBOM(rawTag));   // NewUTF8STR() drops a leading BOM
 
 			while (isCSpace(c)) c = cget();
 			while (c != kEOF)
@@ -489,8 +498,17 @@ private:
 
 	void foundCharacters(std::size_t start, std::size_t length)
 	{
-		// Each chunk is its own NSString from UTF-8 bytes: a leading U+FEFF is dropped.
-		appendCharacters(utf8WithoutLeadingBOM(std::string_view(reinterpret_cast<const char*>(bytes_) + start, length)));
+		// Each chunk is its own NSString from UTF-8 bytes: a leading U+FEFF is dropped. The data
+		// is valid UTF-8 by now, but a chunk that runs to the end of it is one byte short (cget()
+		// does not advance at the end), so it can end inside a character: NewUTF8STR() is then
+		// nil and GNUstep fails the parse with "invalid character data".
+		const std::string_view chunk(reinterpret_cast<const char*>(bytes_) + start, length);
+		if (!isStrictUtf8(chunk))
+		{
+			abort_ = true;
+			return;
+		}
+		appendCharacters(utf8WithoutLeadingBOM(chunk));
 	}
 
 	// -_parseEntity: after '&', up to ';'. False if a '<' or the end comes first.
@@ -562,7 +580,9 @@ private:
 	}
 
 	// -_newQarg: an attribute name or value, quoted or not. Only its extent (and entity errors)
-	// matter here: GSXMLPListParser ignores attributes. nullopt for an unterminated quote.
+	// matter here: GSXMLPListParser ignores attributes. nullopt for an unterminated quote, and
+	// for text that is not UTF-8 (an unquoted one cut at the end of the data), which GNUstep also
+	// reports as "invalid character in quoted string" (so the parse fails).
 	std::optional<std::string> newQarg()
 	{
 		std::size_t ap = --cp_;
@@ -591,6 +611,11 @@ private:
 			cp_--;   // back to the terminating character (one further at kEOF, as GNUstep does)
 			len = cp_ - ap;
 		}
+		if (!isStrictUtf8(std::string_view(reinterpret_cast<const char*>(bytes_) + ap, len)))
+		{
+			abort_ = true;
+			return std::nullopt;
+		}
 		std::string out;
 		if (containsEntity)
 		{
@@ -602,7 +627,7 @@ private:
 				while (ptr < end && bytes_[ptr] != '&') ptr++;
 				if (ptr > start)
 				{
-					out.append(reinterpret_cast<const char*>(bytes_) + start, ptr - start);
+					out.append(utf8WithoutLeadingBOM(std::string_view(reinterpret_cast<const char*>(bytes_) + start, ptr - start)));
 					start = ptr;
 				}
 				else
@@ -615,7 +640,7 @@ private:
 			}
 			return out;
 		}
-		return std::string(reinterpret_cast<const char*>(bytes_) + ap, len);
+		return std::string(utf8WithoutLeadingBOM(std::string_view(reinterpret_cast<const char*>(bytes_) + ap, len)));
 	}
 
 	// -_processDeclaration: <!DOCTYPE ...>, <!ELEMENT ...>, <!ENTITY ...>, <!ATTLIST ...>.
@@ -625,17 +650,46 @@ private:
 		while (isCSpace(c)) c = cget();
 		std::size_t tp = cp_ - 1;
 		while (c != kEOF && !isCSpace(c) && c != '>') c = cget();
-		const std::string decl(reinterpret_cast<const char*>(bytes_) + tp, cp_ - tp - 1);
+		const std::string_view rawDecl(reinterpret_cast<const char*>(bytes_) + tp, cp_ - tp - 1);
+		const std::string decl(utf8WithoutLeadingBOM(rawDecl));   // NewUTF8STR() drops a leading BOM
+		// Each word is a NewUTF8STR(): one cut at the end of the data can end inside a character,
+		// and GNUstep then fails with "invalid character in declaration[ name/attr/type]".
+		const auto wordIsValid = [this](std::size_t from) {
+			return isStrictUtf8(std::string_view(reinterpret_cast<const char*>(bytes_) + from, cp_ - from - 1));
+		};
+		if (!isStrictUtf8(rawDecl))
+		{
+			abort_ = true;
+			return;
+		}
 		while (isCSpace(c)) c = cget();
+		tp = cp_ - 1;
 		while (c != kEOF && !isCSpace(c) && c != '>') c = cget();   // the name
+		if (!wordIsValid(tp))
+		{
+			abort_ = true;
+			return;
+		}
 		if (decl == "ATTLIST")
 		{
 			while (c != kEOF && c != '>')
 			{
 				while (isCSpace(c)) c = cget();
+				tp = cp_ - 1;
 				while (c != kEOF && !isCSpace(c) && c != '>') c = cget();   // attribute
+				if (!wordIsValid(tp))
+				{
+					abort_ = true;
+					return;
+				}
 				while (isCSpace(c)) c = cget();
+				tp = cp_ - 1;
 				while (c != kEOF && !isCSpace(c) && c != '>') c = cget();   // type
+				if (!wordIsValid(tp))
+				{
+					abort_ = true;
+					return;
+				}
 				while (isCSpace(c)) c = cget();
 				if (c == '#')
 				{
@@ -643,6 +697,14 @@ private:
 				}
 				else
 				{
+					// At the end of the data, -_newQarg steps back onto the last byte; unless that
+					// byte opens a quote, this loop then re-reads it forever and GNUstep never
+					// returns. oofnd fails the parse instead (ADR-0027 item 4).
+					if (c == kEOF && bytes_[cend_ - 1] != '"' && bytes_[cend_ - 1] != '\'')
+					{
+						abort_ = true;
+						return;
+					}
 					(void)newQarg();
 					c = cget();
 				}
@@ -778,8 +840,24 @@ private:
 		}
 		else if (name == "date")
 		{
-			const bool zulu = !value_.empty() && value_.back() == 'Z' && utf8ToUtf16(value_).size() == 20;
-			if (std::optional<double> d = parseCalendarDate(value_, zulu)) item = PList(PList::Date{*d});
+			// NSCalendarDate reads [description cString]: GNUstep's default C-string encoding,
+			// ISO-8859-1 in the game's build, up to the first NUL. A character beyond U+00FF
+			// raises NSCharacterConversionException out of the parser; oofnd fails the parse
+			// (ADR-0027 item 7). Found by the GNUstep differential fuzzer (bead oo-g2k).
+			const std::u16string units = utf8ToUtf16(value_);
+			std::string latin1;
+			for (char16_t u : units)
+			{
+				if (u > 0xFF)
+				{
+					abort_ = true;
+					return;
+				}
+				latin1 += static_cast<char>(u);
+			}
+			const bool zulu = !value_.empty() && value_.back() == 'Z' && units.size() == 20;
+			if (const std::size_t nul = latin1.find('\0'); nul != std::string::npos) latin1.resize(nul);
+			if (std::optional<double> d = parseCalendarDate(latin1, zulu)) item = PList(PList::Date{*d});
 		}
 		else if (name == "string")
 		{

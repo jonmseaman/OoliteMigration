@@ -241,7 +241,7 @@ OOINLINE NSComparisonResult PQCompare(id a, id b, SEL comparator)
 }
 
 
-- (id) copyWithZone:(NSZone *)zone
+- (id) copyWithZone:(OOZone *)zone
 {
 	OOPriorityQueue				*copy = nil;
 	

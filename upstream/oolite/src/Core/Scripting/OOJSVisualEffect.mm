@@ -27,7 +27,7 @@ MA 02110-1301, USA.
 #import "OOJSVector.h"
 #import "OOJavaScriptEngine.h"
 #import "OOMesh.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "ResourceManager.h"
 #import "EntityOOJavaScriptExtensions.h"
 
@@ -785,12 +785,12 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	NSDictionary 			*effectDict = [thisEnt effectInfoDictionary];
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:[effectDict oo_stringForKey:@"model"]
+	OOMesh *mesh = [OOMesh meshWithName:oo::PListView(effectDict).get<NSString *>(@"model")
 							   cacheKey:nil
 					 materialDictionary:materials
 					  shadersDictionary:shaders
-								 smooth:[effectDict oo_boolForKey:@"smooth" defaultValue:NO]
-						   shaderMacros:[[ResourceManager materialDefaults] oo_dictionaryForKey:@"ship-prefix-macros"]
+								 smooth:oo::PListView(effectDict).get<BOOL>(@"smooth", NO)
+						   shaderMacros:oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros")
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)

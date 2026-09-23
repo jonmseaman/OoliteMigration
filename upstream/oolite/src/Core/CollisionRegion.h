@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOMaths.h"
 
 
@@ -36,7 +37,7 @@ MA 02110-1301, USA.
 @class Entity, OOSunEntity;
 
 
-@interface CollisionRegion: NSObject
+@interface CollisionRegion: OOObject
 {
 @private
 	BOOL				isUniverse;			// if YES location is origin and radius is 0.0f

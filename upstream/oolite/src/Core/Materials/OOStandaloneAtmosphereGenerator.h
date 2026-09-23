@@ -64,9 +64,9 @@ typedef struct OOStandaloneAtmosphereGeneratorInfo
 }
 
 
-- (id) initWithPlanetInfo:(NSDictionary *)planetInfo;
+- (id) initWithPlanetInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed;
 
-+ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo;
-+ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(NSDictionary *)planetInfo;
++ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed;
++ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed;
 
 @end
