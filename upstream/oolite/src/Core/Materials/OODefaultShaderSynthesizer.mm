@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OODefaultShaderSynthesizer.h"
+#include "oofnd/objc/OORuntime.h"
 #import "OOMesh.h"
 #import "OOTexture.h"
 #import "OOColor.h"
@@ -736,7 +737,7 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	// Ensure that we aren’t recursing.
 	if (NSHashGet(_stagesInProgress, stage) != NULL)
 	{
-		OOLogERR(@"material.synthesis.error.recursion", @"Shader synthesis recursion for stage %@.", NSStringFromSelector(stage));
+		OOLogERR(@"material.synthesis.error.recursion", @"Shader synthesis recursion for stage %s.", OOSelectorName(stage));
 		[NSException raise:NSInternalInconsistencyException format:@"stage recursion"];
 	}
 	
