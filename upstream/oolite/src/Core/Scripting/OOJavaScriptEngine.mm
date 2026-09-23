@@ -2069,7 +2069,27 @@ NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BO
 @end
 
 
-@implementation NSNull (OOJavaScriptConversion)
+@implementation OONull
+
++ (OONull *) null
+{
+	static OONull *sNull = nil;
+	if (sNull == nil)  sNull = [[OONull alloc] init];
+	return sNull;
+}
+
+
+- (id) copyWithZone:(OOZone *)zone
+{
+	return [self retain];
+}
+
+
+- (NSString *) description
+{
+	return @"<null>";
+}
+
 
 - (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
 {
@@ -2607,7 +2627,7 @@ static id JSArrayConverter(ooscript::Context context, ooscript::Object array)
 		if (!ooscript::getElement((context), (array), i, (&value)))  value = ooscript::undefinedValue();
 		
 		object = OOJSNativeObjectFromJSValue(context, value);
-		if (object == nil)  object = [NSNull null];
+		if (object == nil)  object = [OONull null];
 		values[i] = object;
 	}
 	
