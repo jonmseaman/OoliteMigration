@@ -4,7 +4,7 @@ Bead oo-3rb.60 deliberately changed the tool's interface from three arguments to
 (<source> <baseline-copy> <tidy-output> <repo-root> <base-ref>) and keyed findings by (path, line);
 it refuses the old three-argument call. Bead oo-3rb.167 moved these tests to that contract: the
 original five cases are unchanged in what they prove, and the path-aware cases below pin the new
-behaviour (tools/tier-a-tidy-probe.sh is the end-to-end probe through tier-a.sh's tidy_gate).
+behaviour. The oo-3rb.60 tidy probe script remains the end-to-end check through tidy_gate.
 """
 import subprocess
 import sys
