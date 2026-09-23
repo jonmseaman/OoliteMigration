@@ -38,6 +38,7 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODebugStandards.h"
+#import "OOStringBridge.h"
 
 
 #define DUMP_CONVERTED_CUBE_MAPS	0
@@ -421,7 +422,7 @@ static BOOL					sHaveSetUp = NO;
 		_isCubeMap = NO;
 		
 #if DUMP_CONVERTED_CUBE_MAPS
-		OODumpPixMap(pixMap, [NSString stringWithFormat:@"converted cube map %@", [[_path lastPathComponent] stringByDeletingPathExtension]]);
+		OODumpPixMap(pixMap, oo::StdString([NSString stringWithFormat:@"converted cube map %@", [[_path lastPathComponent] stringByDeletingPathExtension]]));
 #endif
 	}
 	
