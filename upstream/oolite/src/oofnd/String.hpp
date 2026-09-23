@@ -17,6 +17,7 @@
 	        whitespaceAndNewlineCharacterSet]
 	    [s oo_hash]                                   oo::str::ooHash(s)
 	    [s utf16DataWithBOM:b]                        oo::str::utf16Data(s, b)   (an oo::Data)
+	    +stringWithContentsOfUnicodeFile: (bytes)     oo::str::decodeUnicodeFile(data)
 	    +stringWithUTF16String:                       oo::utf16ToUtf8(u16string_view(chars))  (PList.hpp)
 	    OOTabString(n)                                oo::str::tabString(n)
 	    [m appendLine:l]                              oo::str::appendLine(m, l)
@@ -277,6 +278,112 @@ inline Data utf16Data(std::string_view s, bool includeByteOrderMark)
 	if (includeByteOrderMark) u.insert(u.begin(), char16_t(0xFEFF));
 	return Data(u.data(), u.size() * sizeof(char16_t));
 }
+
+// --- decoding a text file -------------------------------------------------------------------
+
+namespace detail {
+
+// One -stringWithCharacters: pass over native-endian units: a leading U+FEFF is dropped, a
+// leading U+FFFE is dropped and every unit after it byte-swapped.
+inline void dropUtf16ByteOrderMark(std::u16string& u)
+{
+	if (u.empty()) return;
+	if (u[0] == 0xFEFF)
+	{
+		u.erase(0, 1);
+	}
+	else if (u[0] == 0xFFFE)
+	{
+		u.erase(0, 1);
+		for (char16_t& c : u) c = static_cast<char16_t>((c << 8) | (c >> 8));
+	}
+}
+
+// -initWithBytes:length:encoding:NSUTF8StringEncoding: strict UTF-8 (no overlong forms, no
+// encoded surrogates, nothing above U+10FFFF, no truncated sequence), else nothing.
+inline bool decodeStrictUtf8(const std::uint8_t* p, std::size_t n, std::u16string& out)
+{
+	out.clear();
+	out.reserve(n);
+	std::size_t i = 0;
+	const auto cont = [&](std::size_t k) { return i + k < n && (p[i + k] & 0xC0) == 0x80; };
+	while (i < n)
+	{
+		const std::uint8_t b = p[i];
+		if (b < 0x80)
+		{
+			out += static_cast<char16_t>(b);
+			i += 1;
+		}
+		else if (b >= 0xC2 && b <= 0xDF && cont(1))
+		{
+			out += static_cast<char16_t>(((b & 0x1F) << 6) | (p[i + 1] & 0x3F));
+			i += 2;
+		}
+		else if (b >= 0xE0 && b <= 0xEF && cont(1) && cont(2) && !(b == 0xE0 && p[i + 1] < 0xA0)
+				 && !(b == 0xED && p[i + 1] >= 0xA0))
+		{
+			out += static_cast<char16_t>(((b & 0x0F) << 12) | ((p[i + 1] & 0x3F) << 6) | (p[i + 2] & 0x3F));
+			i += 3;
+		}
+		else if (b >= 0xF0 && b <= 0xF4 && cont(1) && cont(2) && cont(3) && !(b == 0xF0 && p[i + 1] < 0x90)
+				 && !(b == 0xF4 && p[i + 1] > 0x8F))
+		{
+			const std::uint32_t c = ((b & 0x07u) << 18) | ((p[i + 1] & 0x3Fu) << 12) | ((p[i + 2] & 0x3Fu) << 6)
+									| (p[i + 3] & 0x3Fu);
+			out += static_cast<char16_t>(0xD800 + ((c - 0x10000) >> 10));
+			out += static_cast<char16_t>(0xDC00 + ((c - 0x10000) & 0x3FF));
+			i += 4;
+		}
+		else
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+} // namespace detail
+
+// +[NSString stringWithContentsOfUnicodeFile:] (NSStringOOExtensions) once the file's bytes are
+// read: UTF-16 if the length is even and the first two bytes are either byte-order mark (the
+// units after it are read little-endian whichever mark it was, as the category did), else UTF-8
+// after an optional UTF-8 BOM, else ISO Latin-1 of the bytes after that BOM. GNUstep's own
+// decoding is reproduced (probed on gnustep-base 1.31.1, tests/unit/oofnd/test_unicode_file.cpp):
+// the UTF-16 path applies -stringWithCharacters:'s mark handling twice, the UTF-8 path drops up
+// to two more leading U+FEFF. The category passed length + 3 instead of length - 3 after a UTF-8
+// BOM, reading past the buffer (bead oo-3rb.62, proposed ADR-0038); this is the corrected length.
+inline std::string decodeUnicodeFile(const std::uint8_t* bytes, std::size_t length)
+{
+	if (length >= 2 && length % 2 == 0)
+	{
+		const unsigned first = (unsigned(bytes[0]) << 8) | bytes[1];
+		if (first == 0xFFFE || first == 0xFEFF)
+		{
+			std::u16string u(length / 2 - 1, u'\0');
+			for (std::size_t k = 0; k < u.size(); ++k)
+			{
+				u[k] = static_cast<char16_t>(bytes[2 + 2 * k] | (bytes[3 + 2 * k] << 8));
+			}
+			detail::dropUtf16ByteOrderMark(u);
+			detail::dropUtf16ByteOrderMark(u);
+			return utf16ToUtf8(u);
+		}
+	}
+
+	const std::size_t skip = (length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) ? 3 : 0;
+	std::u16string u;
+	if (detail::decodeStrictUtf8(bytes + skip, length - skip, u))
+	{
+		for (int pass = 0; pass < 2 && !u.empty() && u[0] == 0xFEFF; ++pass) u.erase(0, 1);
+		return utf16ToUtf8(u);
+	}
+	u.clear();
+	for (std::size_t k = skip; k < length; ++k) u += static_cast<char16_t>(bytes[k]);
+	return utf16ToUtf8(u);
+}
+
+inline std::string decodeUnicodeFile(const Data& data) { return decodeUnicodeFile(data.bytes(), data.length()); }
 
 // --- building -------------------------------------------------------------------------------
 
