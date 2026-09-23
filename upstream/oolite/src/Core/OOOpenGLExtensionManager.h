@@ -35,6 +35,7 @@ SOFTWARE.
 #import "OOOpenGL.h"
 #import "OOFunctionAttributes.h"
 #import "OOTypes.h"
+#include "oofnd/StdLib.hpp"
 
 
 #ifndef OO_SHADERS
@@ -116,7 +117,7 @@ SOFTWARE.
 {
 @private
 #if OOOPENGLEXTMGR_LOCK_SET_ACCESS
-	NSLock					*lock;
+	std::mutex				lock;
 #endif
 	NSSet					*extensions;
 	

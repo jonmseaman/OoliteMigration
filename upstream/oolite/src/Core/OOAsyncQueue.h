@@ -31,12 +31,17 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#include "oofnd/StdLib.hpp"
 
 
 @interface OOAsyncQueue: NSObject
 {
 @private
-	NSConditionLock				*_lock;
+	// The Foundation condition lock as its three parts (bead oo-3rb.7): the lock, the
+	// condition value it guards (kCondition* in the .mm), and the broadcast a change makes.
+	std::mutex					_lock;
+	std::condition_variable		_conditionChanged;
+	int							_condition;
 	struct OOAsyncQueueElement	*_head,
 								*_tail,
 								*_pool;
