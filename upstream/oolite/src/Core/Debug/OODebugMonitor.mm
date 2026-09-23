@@ -38,6 +38,7 @@ SOFTWARE.
 
 #import "OOJSConsole.h"
 #import "OOJSScript.h"
+#import "OOFoundationBridge.h"
 #import "OOJSEngineTimeManagement.h"
 #import "OOJSSpecialFunctions.h"
 
@@ -757,7 +758,7 @@ struct EntityDumpState
 		jsProps["console"] = oo::PListObject(self);
 		id special = JSSpecialFunctionsObjectWrapper(context);
 		if (special != nil)  jsProps["special"] = oo::PListObject(special);
-		_script = [[OOJSScript scriptWithPath:oo::NSStringFrom(*path) properties:oo::ObjectFromPList(oo::PList(std::move(jsProps)))] retain];
+		_script = [[OOJSScript scriptWithPath:path properties:oo::PList(std::move(jsProps))] retain];
 	}
 	
 	// If no script, just make console visible globally as debugConsole.
