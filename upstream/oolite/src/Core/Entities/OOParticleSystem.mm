@@ -30,6 +30,9 @@ MA 02110-1301, USA.
 #import "OOLightParticleEntity.h"
 #import "OOMacroOpenGL.h"
 #import "MyOpenGLView.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 //	Testing toy: cause particle systems to stop after half a second.
@@ -90,9 +93,9 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"ttl: %.3fs", _duration - _timePassed];
+	return oo::NSStringFrom(oo::str::format("ttl: %.3fs", _duration - _timePassed));
 }
 
 
@@ -249,9 +252,9 @@ do { \
 }
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
-	return [NSSet setWithObject:[OOLightParticleEntity defaultParticleTexture]];
+	return oo::NSSetFromObjects(std::vector<id>{ [OOLightParticleEntity defaultParticleTexture] });
 }
 #endif
 
