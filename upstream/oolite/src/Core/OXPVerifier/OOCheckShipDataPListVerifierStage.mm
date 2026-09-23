@@ -181,7 +181,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	_allKeys = _playerKeys;
 	for (const std::string &key : _stationKeys)  AddString(_allKeys, key);
 
-	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:[ResourceManager dictionaryFromFilesNamed:@"shipdataEntrySchema.plist" inFolder:@"Schemata" andMerge:NO]];
+	_schemaVerifier = [OOPListSchemaVerifier verifierWithSchema:oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"shipdataEntrySchema.plist" inFolder:@"Schemata" andMerge:NO])];
 	[_schemaVerifier setDelegate:self];
 
 	for (const auto &[shipKey, value] : *_shipdataPList.getIf<oo::PList::Dict>())  shipList.push_back(shipKey);
@@ -347,7 +347,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 - (void)checkSchema
 {
-	[_schemaVerifier verifyPropertyList:oo::ObjectFromPList(_info) named:oo::NSStringFrom(_name)];
+	[_schemaVerifier verifyPropertyList:_info named:_name];
 }
 
 
@@ -405,7 +405,7 @@ withPropertyList:(id)rootPList
 	 againstType:(id)typeKey
 		   error:(NSError **)outError	// shared selector (OOPListSchemaVerifierDelegate; proposed ADR-0043)
 {
-	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", typeKey, oo::NSStringFrom(_name), [OOPListSchemaVerifier descriptionForKeyPath:keyPath]];
+	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", typeKey, oo::NSStringFrom(_name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:oo::PListFrom(keyPath)])];
 	return YES;
 }
 
