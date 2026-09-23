@@ -104,6 +104,7 @@ oolite_sources += files(
     'Octree.mm',
     'OldSchoolPropertyListWriting.mm',
     'ResourceManager.mm',
+    'ResourceManager+FoundationBridge.mm',
     'TextureStore.mm',
     'Universe.mm',
     'legacy_random.c',
