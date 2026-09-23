@@ -51,6 +51,7 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 
 #import "OOManifestProperties.h"
+#include "oofnd/Date.hpp"
 
 /* The URL for the manifest.plist array. */
 /* switching (temporarily maybe) to oolite.space - Nikos 20230507 */
@@ -650,7 +651,7 @@ static OOOXZManager *sSingleton = nil;
 	else
 	{
 		NSUInteger updated = manifest.get<unsigned long long>(oo::StdString(kOOManifestUploadDate));
-		NSUInteger now = (NSUInteger)[[NSDate date] timeIntervalSince1970];
+		NSUInteger now = (NSUInteger)oo::date::timeIntervalSince1970();
 		return (updated + (86400 * i) > now);
 	}
 }
@@ -2026,10 +2027,8 @@ static OOOXZManager *sSingleton = nil;
 			if (timestamp > 0)
 			{
 				// list of installable OXZs
-				NSDate *updated = [NSDate dateWithTimeIntervalSince1970:timestamp];
-
 				//keep only the first part of the date string description, which should be in YYYY-MM-DD format
-				const std::string updatedDesc = oo::str::split(oo::DescriptionOf(updated), " ").front();
+				const std::string updatedDesc = oo::str::split(oo::date::description(oo::date::dateWithTimeIntervalSince1970(timestamp)), " ").front();
 
 				[gui cxx_setArray:Columns({oo::OptionalString(DESC(@"oolite-oxzmanager-infoline-size")), [self humanSize:size], oo::OptionalString(DESC(@"oolite-oxzmanager-infoline-date")), updatedDesc}) forRow:OXZ_GUI_ROW_LISTINFO2];
 			}
