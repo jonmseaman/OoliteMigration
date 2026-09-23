@@ -413,7 +413,8 @@ inline void appendXML(std::string& out, const PList& v, unsigned level)
 			return;
 		}
 		case PList::Type::Real:
-			std::snprintf(buf, sizeof buf, "%0.16g", *v.getIf<double>());
+			if (v.isSinglePrecision())  std::snprintf(buf, sizeof buf, "%0.7g", static_cast<double>(static_cast<float>(*v.getIf<double>())));   // +numberWithFloat: (captured)
+			else  std::snprintf(buf, sizeof buf, "%0.16g", *v.getIf<double>());
 			out += "<real>";
 			out += buf;
 			out += "</real>\n";
