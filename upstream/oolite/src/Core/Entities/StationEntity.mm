@@ -48,6 +48,7 @@
 #import "OODebugFlags.h"
 #import "OODebugStandards.h"
 #import "OOWeakSet.h"
+#import "OOFoundationBridge.h"
 
 
 @interface StationEntity (OOPrivate)
@@ -56,21 +57,11 @@
 - (void) addShipToStationCount:(ShipEntity *)ship;
 
 - (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
-- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(NSString *)role;
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(id)role;	// shared selector (proposed ADR-0043): DockEntity
 
-- (NSDictionary *) holdPositionInstructionForShip:(ShipEntity *)ship;
+- (oo::PList) holdPositionInstructionForShip:(ShipEntity *)ship;
 
 @end
-
-
-#ifndef NDEBUG
-@interface StationEntity (mwDebug)
-
-- (NSArray *) dbgGetShipsOnApproach;
-- (NSArray *) dbgGetIdLocks;
-- (NSString *) dbgDumpIdLocks;
-@end
-#endif
 
 
 @implementation StationEntity
@@ -302,20 +293,25 @@
 }
 
 
-- (NSEnumerator *)dockSubEntityEnumerator
+- (std::vector<oo::ObjCRef<DockEntity *>>) cxx_dockSubEntities
 {
-	return [[self subEntities] objectEnumeratorFilteredWithSelector:@selector(isDock)];
+	std::vector<oo::ObjCRef<DockEntity *>> result;
+	for (id sub in [self subEntities])
+	{
+		if (![sub isDock])  continue;
+		result.push_back(oo::ObjCRef<DockEntity *>(sub));
+	}
+	return result;
 }
 
 
 - (void) sanityCheckShipsOnApproach
 {
 
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
 	unsigned soa = 0;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		soa += [sub pruneAndCountShipsOnApproach];
 	}
 
@@ -331,12 +327,11 @@
 // only used by player - everything else ends up in a Dock's launch queue
 - (void) launchShip:(ShipEntity *)ship
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity		*sub = nil;
 	
 	// try to find an unused dock first
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub allowsLaunching] && [sub countOfShipsInLaunchQueue] == 0) 
 		{
 			[sub launchShip:ship];
@@ -344,8 +339,9 @@
 		}
 	}
 	// otherwise any launchable dock will do
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub allowsLaunching]) 
 		{
 			[sub launchShip:ship];
@@ -354,6 +350,8 @@
 	}
 
 	// ship has no launch docks specified; just use the last one
+	// (the enumerator loop this replaced left its variable nil when it ran out, so this never fires)
+	DockEntity *sub = nil;
 	if (sub != nil)
 	{
 		[sub launchShip:ship];
@@ -366,17 +364,14 @@
 // Exposed to AI
 - (void) abortAllDockings
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity		*sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		[sub abortAllDockings];
 	}
 	
 	[_shipsOnHold makeObjectsPerformSelector:@selector(sendAIMessage:) withObject:@"DOCKING_ABORTED"];
-	NSEnumerator *holdEnum = nil;
-	ShipEntity *hold = nil;
-	for (holdEnum = [_shipsOnHold objectEnumerator]; (hold = [holdEnum nextObject]); )
+	for (ShipEntity *hold in [_shipsOnHold objectEnumerator])
 	{
 		[hold doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 	}
@@ -402,9 +397,7 @@
 
 - (void) autoDockShipsOnHold
 {
-	NSEnumerator	*onHoldEnum = [_shipsOnHold objectEnumerator];
-	ShipEntity		*ship = nil;
-	while ((ship = [onHoldEnum nextObject]))
+	for (ShipEntity *ship in [_shipsOnHold objectEnumerator])
 	{
 		[self pullInShipIfPermitted:ship];
 	}
@@ -415,10 +408,9 @@
 
 - (void) autoDockShipsOnApproach
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity		*sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		[sub autoDockShipsOnApproach];
 	}
 
@@ -432,10 +424,9 @@
 
 - (Vector) portUpVectorForShip:(ShipEntity*) ship
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity		*sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub shipIsInDockingQueue:ship])
 		{
 			return [sub portUpVectorForShipsBoundingBox:[ship totalBoundingBox]];
@@ -445,31 +436,33 @@
 }
 
 
-NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords, float speed, float range, NSString *ai_message, NSString *comms_message, BOOL match_rotation, int docking_stage)
+oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords, float speed, float range, const std::optional<std::string> &ai_message, const std::optional<std::string> &comms_message, BOOL match_rotation, int docking_stage)
 {
-	NSMutableDictionary *acc = [NSMutableDictionary dictionaryWithCapacity:8];
-	[acc oo_setHPVector:coords forKey:@"destination"];
-	[acc oo_setFloat:speed forKey:@"speed"];
-	[acc oo_setFloat:range forKey:@"range"];
-	[acc setObject:[[station weakRetain] autorelease] forKey:@"station"];
-	[acc oo_setBool:match_rotation forKey:@"match_rotation"];
-	[acc oo_setInteger:docking_stage forKey:@"docking_stage"];
+	oo::PList::Dict acc;
+	// destination as OOPropertyListFromHPVector built it (doubles); speed and range as -oo_setFloat:
+	// stored them (+numberWithDouble:); docking_stage as -oo_setInteger: (signed)
+	acc["destination"] = oo::PList(oo::PList::Dict{ { "x", oo::PList(coords.x) }, { "y", oo::PList(coords.y) }, { "z", oo::PList(coords.z) } });
+	acc["speed"] = oo::PList(static_cast<double>(speed));
+	acc["range"] = oo::PList(static_cast<double>(range));
+	acc["station"] = oo::PListObject([[station weakRetain] autorelease]);
+	acc["match_rotation"] = oo::PList(static_cast<bool>(match_rotation));
+	acc["docking_stage"] = oo::PList::signedInteger(docking_stage);
 	if (ai_message)
 	{
-		[acc setObject:ai_message forKey:@"ai_message"];
+		acc["ai_message"] = oo::PList(*ai_message);
 	}
 	if (comms_message)
 	{
-		[acc setObject:comms_message forKey:@"comms_message"];
+		acc["comms_message"] = oo::PList(*comms_message);
 	}
-	return [NSDictionary dictionaryWithDictionary:acc];
+	return oo::PList(std::move(acc));
 }
 
 
 // this method does initial traffic control, before passing the ship
 // to an appropriate dock for docking coordinates and instructions.
 // used for NPCs, and the player when they use the docking computer
-- (NSDictionary *) dockingInstructionsForShip:(ShipEntity *) ship
+- (id) dockingInstructionsForShip:(ShipEntity *) ship	// shared selector (proposed ADR-0043)
 {	
 	if (ship == nil)  return nil;
 
@@ -483,7 +476,7 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if ([ship isPlayer] && [ship legalStatus] > 50)	// note: non-player fugitives dock as normal
 	{
 		// refuse docking to the fugitive player
-		return OOMakeDockingInstructions(self, [ship position], 0, 100, @"DOCKING_REFUSED", @"[station-docking-refused-to-fugitive]", NO, -1);
+		return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "DOCKING_REFUSED", "[station-docking-refused-to-fugitive]", NO, -1));
 	}
 	
 	if	(magnitude2(velocity) > 1.0 ||
@@ -491,20 +484,19 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			 fabs(flightYaw) > 0.01)
 	{
 		// no docking while station is moving, pitching or yawing
-		return [self holdPositionInstructionForShip:ship];
+		return oo::ObjectFromPList([self holdPositionInstructionForShip:ship]);
 	}
 	PlayerEntity *player = PLAYER;
 	BOOL player_is_ahead = (![ship isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED && (self == [player getTargetDockStation]));
 
-	NSEnumerator	*subEnum = nil;
 	DockEntity		*chosenDock = nil;
-	NSString		*docking = nil;
-	DockEntity		*sub = nil;
+	std::optional<std::string>	docking;	// nullopt: no dock asked yet (was nil)
 	NSUInteger		queue = 100;
 	
 	BOOL alldockstoosmall = YES;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub shipIsInDockingQueue:ship]) 
 		{
 			// if already claimed a docking queue, use that one
@@ -518,8 +510,8 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		}
 		if (sub != player_reserved_dock || [ship isPlayer])
 		{
-			docking = [sub canAcceptShipForDocking:ship];
-			if ([docking isEqualToString:@"DOCK_CLOSED"])
+			docking = oo::OptionalString([sub canAcceptShipForDocking:ship]);
+			if (docking == "DOCK_CLOSED")
 			{
 				ooscript::Context context = OOJSAcquireContext();
 				ooscript::Value		rval = ooscript::undefinedValue();
@@ -532,23 +524,23 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				if (!OK)  tempreject = NO; // default to permreject
 				if (tempreject)
 				{
-					docking = @"TRY_AGAIN_LATER";
+					docking = "TRY_AGAIN_LATER";
 				}
 				else
 				{
-					docking = @"TOO_BIG_TO_DOCK";
+					docking = "TOO_BIG_TO_DOCK";
 				}
 
 				OOJSRelinquishContext(context);
 			}
 
-			if ([docking isEqualToString:@"DOCKING_POSSIBLE"] && [sub countOfShipsInDockingQueue] < queue) {
+			if (docking == "DOCKING_POSSIBLE" && [sub countOfShipsInDockingQueue] < queue) {
 				// try to select the dock with the fewest ships already enqueued
 				chosenDock = sub;
 				queue = [sub countOfShipsInDockingQueue];
 				alldockstoosmall = NO;
 			}
-			else if (![docking isEqualToString:@"TOO_BIG_TO_DOCK"])
+			else if (!(docking == "TOO_BIG_TO_DOCK"))
 			{
 				alldockstoosmall = NO;
 			}
@@ -560,22 +552,22 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}	
 	if (chosenDock == nil)
 	{
-		if (player_is_ahead || ([docking isEqualToString:@"TOO_BIG_TO_DOCK"] && !alldockstoosmall) || docking == nil)
+		if (player_is_ahead || (docking == "TOO_BIG_TO_DOCK" && !alldockstoosmall) || !docking)
 		{
 			// either player is manually docking and we can't allocate new docks,
 			// or the last dock was too small, and there may be an acceptable one
 			// not tested yet or returning TRY_AGAIN_LATER
-			docking = @"TRY_AGAIN_LATER";
+			docking = "TRY_AGAIN_LATER";
 		}
 		// no docks accept this ship (or the player is blocking them)
-		return OOMakeDockingInstructions(self, [ship position], 200, 100, docking, nil, NO, -1);
+		return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(self, [ship position], 200, 100, docking, std::nullopt, NO, -1));
 	}
 
 
 	// rolling is okay for some
 	if	(fabs(flightRoll) > 0.01 && [chosenDock isOffCentre])
 	{
-		return [self holdPositionInstructionForShip:ship];
+		return oo::ObjectFromPList([self holdPositionInstructionForShip:ship]);
 	}
 	
 	// we made it through holding!
@@ -588,7 +580,7 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (NSDictionary *)holdPositionInstructionForShip:(ShipEntity *)ship
+- (oo::PList)holdPositionInstructionForShip:(ShipEntity *)ship
 {
 	if (![_shipsOnHold containsObject:ship])
 	{
@@ -596,7 +588,7 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		[_shipsOnHold addObject:ship];
 	}
 	
-	return OOMakeDockingInstructions(self, [ship position], 0, 100, @"HOLD_POSITION", nil, NO, -1);
+	return cxx_OOMakeDockingInstructions(self, [ship position], 0, 100, "HOLD_POSITION", std::nullopt, NO, -1);
 }
 
 
@@ -607,10 +599,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	
 	[_shipsOnHold removeObject:ship];
 	
-	NSEnumerator	*subEnum = nil;
-	DockEntity		*sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		[sub abortDockingForShip:ship];
 	}
 	
@@ -762,12 +753,12 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		return NO;
 	}
 
-	NSEnumerator	*subEnum = nil;
 
 #ifndef NDEBUG
-	ShipEntity *subEntity = nil;
-	for (subEnum = [self shipSubEntityEnumerator]; (subEntity = [subEnum nextObject]); )
+	for (id sub in [self subEntities])
 	{
+		if (![sub isShip])  continue;
+		ShipEntity *subEntity = sub;
 		if ([subEntity isStation])
 		{
 			OOLog(@"setup.ship.badType.subentities",@"Subentity %@ (%@) of station %@ is itself a StationEntity. This is an internal error - please report it. ",subEntity,[subEntity shipDataKey],[self displayName]);
@@ -776,29 +767,30 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 #endif
 
 	// and now check for docks
-	DockEntity		*sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	if (![self cxx_dockSubEntities].empty())
 	{
 		return YES;
 	}
 
-	OOStandardsDeprecated([NSString stringWithFormat:@"No docks set up for %@",self]);
+	cxx_OOStandardsDeprecated(oo::str::format("No docks set up for %s", oo::DescriptionOf(self).c_str()));
 	OOLog(@"ship.setup.docks",@"No docks set up for %@, making virtual dock",self);
 
 	// no real docks, make a virtual one
-	NSMutableDictionary *virtualDockDict = [NSMutableDictionary dictionaryWithCapacity:10];
-	[virtualDockDict setObject:@"standard" forKey:@"type"];
-	[virtualDockDict setObject:@"oolite-dock-virtual" forKey:@"subentity_key"];
-	[virtualDockDict oo_setVector:make_vector(0,0,port_radius) forKey:@"position"];
-	[virtualDockDict oo_setQuaternion:kIdentityQuaternion forKey:@"orientation"];
-	[virtualDockDict oo_setBool:YES forKey:@"is_dock"];
-	[virtualDockDict setObject:@"the docking bay" forKey:@"dock_label"];
-	[virtualDockDict oo_setBool:YES forKey:@"allow_docking"];
-	[virtualDockDict oo_setBool:NO forKey:@"disallowed_docking_collides"];
-	[virtualDockDict oo_setBool:YES forKey:@"allow_launching"];
-	[virtualDockDict oo_setBool:YES forKey:@"_is_virtual_dock"];
+	// position and orientation as OOPropertyListFromVector / OOPropertyListFromQuaternion built them (floats)
+	Vector dockPosition = make_vector(0,0,port_radius);
+	oo::PList::Dict virtualDockDict;
+	virtualDockDict["type"] = oo::PList("standard");
+	virtualDockDict["subentity_key"] = oo::PList("oolite-dock-virtual");
+	virtualDockDict["position"] = oo::PList(oo::PList::Dict{ { "x", oo::PList::singleReal(dockPosition.x) }, { "y", oo::PList::singleReal(dockPosition.y) }, { "z", oo::PList::singleReal(dockPosition.z) } });
+	virtualDockDict["orientation"] = oo::PList(oo::PList::Dict{ { "w", oo::PList::singleReal(kIdentityQuaternion.w) }, { "x", oo::PList::singleReal(kIdentityQuaternion.x) }, { "y", oo::PList::singleReal(kIdentityQuaternion.y) }, { "z", oo::PList::singleReal(kIdentityQuaternion.z) } });
+	virtualDockDict["is_dock"] = oo::PList(true);
+	virtualDockDict["dock_label"] = oo::PList("the docking bay");
+	virtualDockDict["allow_docking"] = oo::PList(true);
+	virtualDockDict["disallowed_docking_collides"] = oo::PList(false);
+	virtualDockDict["allow_launching"] = oo::PList(true);
+	virtualDockDict["_is_virtual_dock"] = oo::PList(true);
 
-	if (![self setUpOneStandardSubentity:virtualDockDict asTurret:NO])
+	if (![self setUpOneStandardSubentity:oo::ObjectFromPList(oo::PList(std::move(virtualDockDict))) asTurret:NO])
 	{
 		return NO;
 	}
@@ -813,10 +805,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (![ship isShip])  return NO;
 	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
 
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub shipIsInDockingCorridor:ship])
 		{
 			return YES;
@@ -839,10 +830,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (!UNIVERSE)
 		return NO;
 
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub dockingCorridorIsEmpty])
 		{
 			return YES; // if any are
@@ -857,10 +847,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	if (!UNIVERSE)
 		return;
 
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		[sub clearDockingCorridor];
 	}		
 
@@ -998,10 +987,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (void) clear
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		[sub clear];
 	}
 	
@@ -1011,17 +999,7 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (BOOL) hasMultipleDocks
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	unsigned docks = 0;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
-	{
-		docks++;
-		if (docks > 1) {
-			return YES;
-		}
-	}
-	return NO;
+	return [self cxx_dockSubEntities].size() > 1;
 }
 
 
@@ -1029,10 +1007,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 // not used for NPCs
 - (BOOL) hasClearDock
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
 		{
 			if ([[sub canAcceptShipForDocking:PLAYER] isEqualToString:@"DOCKING_POSSIBLE"])
@@ -1047,10 +1024,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (BOOL) hasEligibleDock
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		// TRY_AGAIN_LATER in this context means "ships launching now"
 		if ([sub allowsDocking] && ([[sub canAcceptShipForDocking:PLAYER] isEqualToString:@"DOCKING_POSSIBLE"] || [[sub canAcceptShipForDocking:PLAYER] isEqualToString:@"TRY_AGAIN_LATER"]))
 		{
@@ -1064,10 +1040,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 // is there any dock which may launch ships?
 - (BOOL) hasLaunchDock
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub allowsLaunching])
 		{
 			return YES;
@@ -1079,10 +1054,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 // only used to pick a dock for the player
 - (DockEntity *) selectDockForDocking
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
 		{
 			return sub;
@@ -1094,8 +1068,6 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity		*sub = nil;
 	unsigned			threshold = 0;
 
 	// quickest launch if we assign ships to those bays with no incoming ships
@@ -1103,8 +1075,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	// much easier if the station has at least one launch-only dock
 	while (threshold < 16)
 	{
-		for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+		for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 		{
+			DockEntity *sub = dock.get();
 			if (sub != player_reserved_dock)
 			{
 				if ([sub countOfShipsInDockingQueue] == 0)
@@ -1130,8 +1103,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	threshold = 0;
 	while (threshold < 16)
 	{
-		for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+		for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 		{
+			DockEntity *sub = dock.get();
 			/* so this time as long as it allows launching only check
 			 * the docking queue size so long as enumerator order is
 			 * deterministic, this will assign every launch this
@@ -1155,13 +1129,12 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(NSString *)role
+- (unsigned) countOfShipsInLaunchQueueWithPrimaryRole:(id)role	// shared selector (proposed ADR-0043)
 {
 	unsigned result = 0;
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		result += [sub countOfShipsInLaunchQueueWithPrimaryRole:role];
 	}
 	return result;
@@ -1177,10 +1150,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if (![ship isShip])  return NO;
 	
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		if ([sub allowsLaunchingOf:ship])
 		{
 			return YES;
@@ -1206,10 +1178,9 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 	[self addShipToStationCount: ship];
 	
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		[sub noteDockingForShip:ship];
 	}
 	[self sanityCheckShipsOnApproach];
@@ -2184,11 +2155,10 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			}
 			result = @"DOCKING_CLEARANCE_DENIED_NO_DOCKS";
 			// but can check to see if we'll open some for later.
-			NSEnumerator	*subEnum = nil;
-			DockEntity* sub = nil;
 			BOOL openLater = NO;
-			for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+			for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 			{
+				DockEntity *sub = dock.get();
 				NSString *docking = [sub canAcceptShipForDocking:other];
 				if ([docking isEqualToString:@"DOCK_CLOSED"])
 				{
@@ -2258,11 +2228,10 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (unsigned) currentlyInDockingQueues
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
 	unsigned soa = 0;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		soa += [sub countOfShipsInDockingQueue];
 	}
 	soa += [_shipsOnHold count];
@@ -2272,11 +2241,10 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (unsigned) currentlyInLaunchingQueues
 {
-	NSEnumerator	*subEnum = nil;
-	DockEntity* sub = nil;
 	unsigned soa = 0;
-	for (subEnum = [self dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+	for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 	{
+		DockEntity *sub = dock.get();
 		soa += [sub countOfShipsInLaunchQueue];
 	}
 	return soa;
@@ -2481,10 +2449,8 @@ NSDictionary *OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		OOLog(@"dumpState.stationEntity", @"%zu Ships on hold (unsorted):", [_shipsOnHold count]);
 		
 		OOLogIndent();
-		NSEnumerator	*onHoldEnum = [_shipsOnHold objectEnumerator];
-		ShipEntity		*ship = nil;
 		unsigned		i = 1;
-		foreach (ship, onHoldEnum)
+		for (ShipEntity *ship in [_shipsOnHold objectEnumerator])
 		{
 			OOLog(@"dumpState.stationEntity", @"Nr %i: %@ at distance %g with role: %@", i++, [ship displayName], HPdistance([self position], [ship position]), [ship primaryRole]);
 		}

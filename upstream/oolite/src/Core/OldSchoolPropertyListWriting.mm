@@ -22,6 +22,7 @@
 
 #import "OldSchoolPropertyListWriting.h"
 #import "NSNumberOOExtensions.h"
+#include "oofnd/objc/OOException.h"
 
 
 static void AppendNewLineAndIndent(NSMutableString *ioString, unsigned indentDepth);
@@ -68,7 +69,7 @@ static void AppendNewLineAndIndent(NSMutableString *ioString, unsigned indentDep
 				else if ([foundString isEqual:@"\\"]) [newString appendString:@"\\\\"];
 				else
 				{
-					[NSException raise:NSInternalInconsistencyException format:@"%s: expected \" or newline, found %@", __PRETTY_FUNCTION__, foundString];
+					[OOException raise:OOInternalInconsistencyException format:"%s: expected \" or newline, found %s", __PRETTY_FUNCTION__, [foundString UTF8String]];
 				}
 				
 				// Use rest of string…

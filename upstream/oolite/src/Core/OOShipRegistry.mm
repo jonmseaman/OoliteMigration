@@ -44,6 +44,7 @@ SOFTWARE.
 #import "OOJSScript.h"
 
 #import "OODebugStandards.h"
+#include "oofnd/objc/OOException.h"
 #import "OOFoundationBridge.h"
 
 #define PRELOAD 0
@@ -112,7 +113,7 @@ std::string FirstToken(const std::vector<std::string> &tokens)
 {
 	if (tokens.empty())
 	{
-		[NSException raise:NSRangeException format:@"Index 0 is out of range 0 (in 'objectAtIndex:')"];
+		[OOException raise:OORangeException format:"Index 0 is out of range 0 (in 'objectAtIndex:')"];
 	}
 	return tokens[0];
 }
@@ -275,11 +276,11 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 				[self loadShipData];
 				if (_shipData.count() == 0)
 				{
-					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any ship data."];
+					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load any ship data."];
 				}
 				if (_playerShips.empty())
 				{
-					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load any player ships."];
+					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load any player ships."];
 				}
 			}
 			
@@ -287,7 +288,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 			[self loadDemoShips]; // testing only
 			if (_demoShips.count() == 0)
 			{
-				[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize any demo ships."];
+				[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load or synthesize any demo ships."];
 			}
 			
 			[self loadCachedRoleProbabilitySets];
@@ -296,7 +297,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 				[self buildRoleProbabilitySets];
 				if (_probabilitySets->empty())
 				{
-					[NSException raise:@"OOShipRegistryLoadFailure" format:@"Could not load or synthesize role probability sets."];
+					[OOException raise:"OOShipRegistryLoadFailure" format:"Could not load or synthesize role probability sets."];
 				}
 			}
 		}
@@ -515,11 +516,11 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 {
 	std::vector<std::string>	conditionScripts;
 
-	// ResourceManager's loader and OOCacheManager are unmigrated callees: convert at the calls.
-	const oo::PList initialDemoShips = oo::PListFrom([ResourceManager arrayFromFilesNamed:@"shiplibrary.plist"
-																				   inFolder:@"Config"
-																				   andMerge:YES
-																					  cache:NO]);
+	// OOCacheManager is an unmigrated callee: convert at the call.
+	const oo::PList initialDemoShips = [ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
+																	   inFolder:"Config"
+																	   andMerge:YES
+																		  cache:NO];
 
 	if (const oo::PList::Array *entries = initialDemoShips.getIf<oo::PList::Array>())
 	{
@@ -547,11 +548,10 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 {
 	_demoShips = oo::PList();
 
-	// ResourceManager's loader is an unmigrated callee: its array arrives through oo::PListFrom.
-	const oo::PList initialDemoShips = oo::PListFrom([ResourceManager arrayFromFilesNamed:@"shiplibrary.plist"
-																				   inFolder:@"Config"
-																				   andMerge:YES
-																					  cache:NO]);
+	const oo::PList initialDemoShips = [ResourceManager cxx_arrayFromFilesNamed:"shiplibrary.plist"
+																	   inFolder:"Config"
+																	   andMerge:YES
+																		  cache:NO];
 	const oo::PList::Array noShips;
 	const oo::PList::Array &initialEntries = initialDemoShips.isArray() ? *initialDemoShips.getIf<oo::PList::Array>() : noShips;
 	oo::PList::Array demoShips = initialEntries;
@@ -645,7 +645,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 		if (!name.has_value())
 		{
 			// -setObject:nil forKey: raised
-			[NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%s' to dictionary", kOODemoShipName];
+			[OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", kOODemoShipName];
 		}
 		demoEntryValues[kOODemoShipName] = *name;
 		// set "class" object to standard ship if not otherwise set
@@ -1042,7 +1042,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 							if (!subentityKey.has_value())
 							{
 								// -addObject:nil raised
-								[NSException raise:NSInvalidArgumentException format:@"Tried to add nil to set"];
+								[OOException raise:OOInvalidArgumentException format:"Tried to add nil to set"];
 							}
 							badSubentities.insert(*subentityKey);
 						}
