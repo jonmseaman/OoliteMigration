@@ -34,6 +34,8 @@ MA 02110-1301, USA.
 
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 
 enum
@@ -243,8 +245,8 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 	{
 		[self reportStackOverflow];
 		
-		[NSException raise:@"OoliteException"
-					format:@"AI stack overflow for %@", _owner];
+		[OOException raise:"OoliteException"
+					format:"AI stack overflow for %s", [[_owner description] UTF8String]];
 	}
 	
 	OOPreservedAIStateMachine *preservedMachine = [[OOPreservedAIStateMachine alloc]
@@ -483,7 +485,11 @@ static AIStackElement *sStack = NULL;
 				[self takeAction:[actions objectAtIndex:i]];
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(kOOLogException, @"Squashing exception %@:%@ in AI handler %@:%@.%@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), stateMachineName, currentState, message);
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(kOOLogException, @"Squashing exception %@:%@ in AI handler %@:%@.%@", [exception name], [exception reason], stateMachineName, currentState, message);
 		}

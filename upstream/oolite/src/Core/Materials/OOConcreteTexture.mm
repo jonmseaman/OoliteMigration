@@ -39,6 +39,7 @@
 
 #ifndef NDEBUG
 #import "OOTextureGenerator.h"
+#include "oofnd/objc/OOException.h"
 #endif
 
 
@@ -533,7 +534,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 #endif
 		else
 		{
-			[NSException raise:NSInternalInconsistencyException format:@"Unhandled texture target 0x%X.", texTarget];
+			[OOException raise:OOInternalInconsistencyException format:"Unhandled texture target 0x%X.", texTarget];
 		}
 		
 		_valid = YES;
