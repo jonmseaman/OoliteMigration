@@ -44,6 +44,8 @@ MA 02110-1301, USA.
 #import "OOPListScript.h"
 
 #import "OOManifestProperties.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "NSDataOOExtensions.h"
 #import "OOFoundationBridge.h"
 
@@ -204,7 +206,7 @@ void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &v
 	oo::PList::Array &elements = *array.getIf<oo::PList::Array>();
 	if (index >= elements.size())
 	{
-		[NSException raise:NSRangeException format:@"Index %lu is out of range %lu (in 'replaceObjectAtIndex:withObject:')", (unsigned long)index, (unsigned long)elements.size()];
+		[OOException raise:OORangeException format:"Index %lu is out of range %lu (in 'replaceObjectAtIndex:withObject:')", (unsigned long)index, (unsigned long)elements.size()];
 	}
 	elements[index] = value;
 }
@@ -1875,7 +1877,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	if (pirateVictims.isNull())
 	{
 		// +dictionaryWithObject:forKey: with a nil object raised
-		[NSException raise:NSInvalidArgumentException format:@"Tried to init dictionary with nil value"];
+		[OOException raise:OOInvalidArgumentException format:"Tried to init dictionary with nil value"];
 	}
 	oo::PList::Dict pirateVictimCategory;
 	pirateVictimCategory.emplace("oolite-pirate-victim", pirateVictims);
@@ -2194,7 +2196,12 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 						}
 					}
 				}
-				@catch (NSException *exception)
+				@catch (OOException *exception)
+				{
+					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", "+[ResourceManager loadScripts]", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), oo::NSStringFrom(path));
+					// Ignore exception and keep loading other scripts.
+				}
+				@catch (OOFoundationException *exception)
 				{
 					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", "+[ResourceManager loadScripts]", [exception name], [exception reason], oo::NSStringFrom(path));
 					// Ignore exception and keep loading other scripts.
