@@ -41,6 +41,9 @@ MA 02110-1301, USA.
 #import "OOFullScreenController.h"
 #import "ResourceManager.h"
 #import "OOConstToString.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/String.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #import "stb_image_write.h"
@@ -941,11 +944,10 @@ enum PreferredAppMode
 }
 
 
-- (void) stringToClipboard:(NSString *)stringToCopy
+- (void) cxx_stringToClipboard:(const std::string &)stringToCopy
 {
-	if (stringToCopy)
 	{
-		const char *clipboardText = [stringToCopy cStringUsingEncoding:NSUTF8StringEncoding];
+		const char *clipboardText = stringToCopy.c_str();
 		const size_t clipboardTextLength = strlen(clipboardText) + 1;
 		HGLOBAL clipboardMem = GlobalAlloc(GMEM_MOVEABLE, clipboardTextLength);
 		if (clipboardMem)
@@ -956,7 +958,7 @@ enum PreferredAppMode
 			EmptyClipboard();
 			if (!SetClipboardData(CF_TEXT, clipboardMem))
 			{
-				OOLog(@"stringToClipboard.failed", @"Failed to copy string %@ to clipboard", stringToCopy);
+				OOLog(@"stringToClipboard.failed", @"Failed to copy string %@ to clipboard", oo::NSStringFrom(stringToCopy));
 				// free global allocated memory if clipboard copy failed
 				// note: no need to free it if copy succeeded; the OS becomes
 				// the owner of the copied memory once SetClipboardData has
@@ -1091,7 +1093,7 @@ enum PreferredAppMode
 }
 
 
-- (void) stringToClipboard:(NSString *)stringToCopy
+- (void) cxx_stringToClipboard:(const std::string &)stringToCopy
 {
 	// TODO: implement string clipboard copy for Linux
 }
@@ -1138,51 +1140,51 @@ enum PreferredAppMode
 }
 
 
-- (BOOL) snapShot:(NSString *)filename
+- (BOOL) cxx_snapShot:(const std::optional<std::string> &)filename
 {
 	BOOL snapShotOK = YES;
 	SDL_Surface* tmpSurface;
 
 	// backup the previous directory
-	NSString* originalDirectory = [[NSFileManager defaultManager] currentDirectoryPath];
+	const auto originalDirectory = oo::fs::currentDirectory();
 	// use the snapshots directory
 	[[NSFileManager defaultManager] chdirToSnapshotPath];
 
-	BOOL				withFilename = (filename != nil);
+	BOOL				withFilename = filename.has_value();
 	static unsigned		imageNo = 0;
 	unsigned			tmpImageNo = 0;
-	NSString			*pathToPic = nil;
-	NSString			*baseName = @"oolite";
+	std::optional<std::string>	pathToPic;
+	std::string			baseName = "oolite";
 
 #if SNAPSHOTS_PNG_FORMAT
-	NSString			*extension = @".png";
+	const std::string	extension = ".png";
 #else
-	NSString			*extension = @".bmp";
+	const std::string	extension = ".bmp";
 #endif
 
 	if (withFilename)
 	{
-		baseName = filename;
-		pathToPic = [filename stringByAppendingString:extension];
+		baseName = *filename;
+		pathToPic = *filename + extension;
 	}
 	else
 	{
 		tmpImageNo = imageNo;
 	}
 
-	if (withFilename && [[NSFileManager defaultManager] fileExistsAtPath:pathToPic])
+	if (withFilename && oo::fs::fileExists(oo::fs::pathFromUTF8(*pathToPic)))
 	{
-		OOLog(@"screenshot.filenameExists", @"Snapshot \"%@%@\" already exists - adding numerical sequence.", pathToPic, extension);
-		pathToPic = nil;
+		OOLog(@"screenshot.filenameExists", @"Snapshot \"%@%@\" already exists - adding numerical sequence.", oo::NSStringFrom(*pathToPic), oo::NSStringFrom(extension));
+		pathToPic = std::nullopt;
 	}
 
-	if (pathToPic == nil)
+	if (!pathToPic.has_value())
 	{
 		do
 		{
 			tmpImageNo++;
-			pathToPic = [NSString stringWithFormat:@"%@-%03d%@", baseName, tmpImageNo, extension];
-		} while ([[NSFileManager defaultManager] fileExistsAtPath:pathToPic]);
+			pathToPic = oo::str::format("%s-%03d%s", baseName.c_str(), tmpImageNo, extension.c_str());
+		} while (oo::fs::fileExists(oo::fs::pathFromUTF8(*pathToPic)));
 	}
 
 	if (!withFilename)
@@ -1191,7 +1193,7 @@ enum PreferredAppMode
 	}
 
 	SDL_Surface *surface = SDL_GetWindowSurface(window);
-	OOLog(@"screenshot", @"Saving screen shot \"%@\" (%u x %u pixels).", pathToPic, surface->w, surface->h);
+	OOLog(@"screenshot", @"Saving screen shot \"%@\" (%u x %u pixels).", oo::NSStringFrom(*pathToPic), surface->w, surface->h);
 
 	int pitch = surface->pitch;
 	unsigned char *pixls = (unsigned char *)malloc(pitch * surface->h);
@@ -1204,58 +1206,60 @@ enum PreferredAppMode
 	{
 		glReadPixels(0, y, surface->w, 1, GL_BGRA, GL_UNSIGNED_BYTE, pixls + off);
 	}
-	
+
 	tmpSurface = SDL_CreateSurfaceFrom(surface->w, surface->h, surface->format, pixls, surface->pitch);
 #if SNAPSHOTS_PNG_FORMAT
-	if(!SDL_SavePNG(tmpSurface, [pathToPic UTF8String]))
+	if(!SDL_SavePNG(tmpSurface, pathToPic->c_str()))
 	{
-		OOLog(@"screenshotPNG", @"Failed to save %@", pathToPic);
+		OOLog(@"screenshotPNG", @"Failed to save %@", oo::NSStringFrom(*pathToPic));
 		snapShotOK = NO;
 	}
 #else
-	if (!SDL_SaveBMP(tmpSurface, [pathToPic UTF8String]))
+	if (!SDL_SaveBMP(tmpSurface, pathToPic->c_str()))
 	{
-		OOLog(@"screenshotBMP", @"Failed to save %@", pathToPic);
+		OOLog(@"screenshotBMP", @"Failed to save %@", oo::NSStringFrom(*pathToPic));
 		snapShotOK = NO;
 	}
 #endif
 	SDL_DestroySurface(tmpSurface);
 	free(pixls);
-	
+
 	// if outputting HDR signal, save also either an .exr or a Radiance .hdr snapshot
 	if ([self hdrOutput])
 	{
-		NSString *fileExtension = oo::PListView([NSUserDefaults standardUserDefaults]).get<NSString *>(@"hdr-snapshot-format", SNAPSHOTHDR_EXTENSION_DEFAULT);
-		
+		// oo_stringForKey:defaultValue: over the defaults' value (a string, or a number's -stringValue)
+		const oo::PList fileExtensionValue = oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:@"hdr-snapshot-format"]);
+		std::string fileExtension = oo::PListGet<std::string>::from(fileExtensionValue.isNull() ? nullptr : &fileExtensionValue, oo::StdString(SNAPSHOTHDR_EXTENSION_DEFAULT));
+
 		// we accept file extension with or without a leading dot; if it is without, insert it at the beginning now
-		if (![[fileExtension substringToIndex:1] isEqual:@"."])  fileExtension = [@"." stringByAppendingString:fileExtension];
-		
-		if (![fileExtension isEqual:SNAPSHOTHDR_EXTENSION_EXR] && ![fileExtension isEqual:SNAPSHOTHDR_EXTENSION_HDR])
+		if (!oo::str::hasPrefix(fileExtension, "."))  fileExtension = "." + fileExtension;
+
+		if (fileExtension != oo::StdString(SNAPSHOTHDR_EXTENSION_EXR) && fileExtension != oo::StdString(SNAPSHOTHDR_EXTENSION_HDR))
 		{
 			OOLog(@"screenshotHDR", @"Unrecognized HDR file format requested, defaulting to %@", SNAPSHOTHDR_EXTENSION_DEFAULT);
-			fileExtension = SNAPSHOTHDR_EXTENSION_DEFAULT;
+			fileExtension = oo::StdString(SNAPSHOTHDR_EXTENSION_DEFAULT);
 		}
-		
-		NSString *pathToPicHDR = [pathToPic stringByReplacingString:@".png" withString:fileExtension];
-		OOLog(@"screenshot", @"Saving screen shot \"%@\" (%u x %u pixels).", pathToPicHDR, surface->w, surface->h);
+
+		const std::string pathToPicHDR = oo::str::replaceOccurrences(*pathToPic, ".png", fileExtension);
+		OOLog(@"screenshot", @"Saving screen shot \"%@\" (%u x %u pixels).", oo::NSStringFrom(pathToPicHDR), surface->w, surface->h);
 		GLfloat *pixlsf = (GLfloat *)malloc(pitch * surface->h * sizeof(GLfloat));
 		for (y=surface->h-1, off=0; y>=0; y--, off+=pitch)
 		{
 			glReadPixels(0, y, surface->w, 1, GL_RGB, GL_FLOAT, pixlsf + off);
 		}
-		
-		if (([fileExtension isEqual:SNAPSHOTHDR_EXTENSION_EXR] && SaveEXRSnapshot([pathToPicHDR cStringUsingEncoding:NSUTF8StringEncoding], surface->w, surface->h, pixlsf) != 0) //TINYEXR_SUCCESS
-			|| ([fileExtension isEqual:SNAPSHOTHDR_EXTENSION_HDR] && !stbi_write_hdr([pathToPicHDR cStringUsingEncoding:NSUTF8StringEncoding], surface->w, surface->h, 3, pixlsf)))
+
+		if ((fileExtension == oo::StdString(SNAPSHOTHDR_EXTENSION_EXR) && SaveEXRSnapshot(pathToPicHDR.c_str(), surface->w, surface->h, pixlsf) != 0) //TINYEXR_SUCCESS
+			|| (fileExtension == oo::StdString(SNAPSHOTHDR_EXTENSION_HDR) && !stbi_write_hdr(pathToPicHDR.c_str(), surface->w, surface->h, 3, pixlsf)))
 		{
-			OOLog(@"screenshotHDR", @"Failed to save %@", pathToPicHDR);
+			OOLog(@"screenshotHDR", @"Failed to save %@", oo::NSStringFrom(pathToPicHDR));
 			snapShotOK = NO;
 		}
-		
+
 		free(pixlsf);
 	}
-	
+
 	// return to the previous directory
-	[[NSFileManager defaultManager] changeCurrentDirectoryPath:originalDirectory];
+	if (originalDirectory)  (void)oo::fs::setCurrentDirectory(*originalDirectory);
 	return snapShotOK;
 }
 
@@ -1459,53 +1463,53 @@ enum PreferredAppMode
 
 
 #ifndef NDEBUG
-- (void) dumpRGBAToFileNamed:(NSString *)name
+- (void) cxx_dumpRGBAToFileNamed:(const std::string &)name
 					   bytes:(uint8_t *)bytes
 					   width:(NSUInteger)width
 					  height:(NSUInteger)height
 					rowBytes:(NSUInteger)rowBytes
 {
-	if (name == nil || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
+	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
 
 	// use the snapshots directory
-	NSString *dumpFile = [[NSHomeDirectory() stringByAppendingPathComponent:@SAVEDIR] stringByAppendingPathComponent:@SNAPSHOTDIR];
-	dumpFile = [dumpFile stringByAppendingPathComponent: [NSString stringWithFormat:@"%@.png", name]];
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, bytes, rowBytes);
-	SDL_SavePNG(tmpSurface, [dumpFile UTF8String]);
+	SDL_SavePNG(tmpSurface, dumpFile.c_str());
 	SDL_DestroySurface(tmpSurface);
 }
 
 
-- (void) dumpRGBToFileNamed:(NSString *)name
+- (void) cxx_dumpRGBToFileNamed:(const std::string &)name
 					   bytes:(uint8_t *)bytes
 					   width:(NSUInteger)width
 					  height:(NSUInteger)height
 					rowBytes:(NSUInteger)rowBytes
 {
-	if (name == nil || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 3)  return;
+	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 3)  return;
 
 	// use the snapshots directory
-	NSString *dumpFile = [[NSHomeDirectory() stringByAppendingPathComponent:@SAVEDIR] stringByAppendingPathComponent:@SNAPSHOTDIR];
-	dumpFile = [dumpFile stringByAppendingPathComponent: [NSString stringWithFormat:@"%@.png", name]];
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGB24, bytes, rowBytes);
-	SDL_SavePNG(tmpSurface, [dumpFile UTF8String]);
+	SDL_SavePNG(tmpSurface, dumpFile.c_str());
 	SDL_DestroySurface(tmpSurface);
 }
 
 
-- (void) dumpGrayToFileNamed:(NSString *)name
+- (void) cxx_dumpGrayToFileNamed:(const std::string &)name
 					   bytes:(uint8_t *)bytes
 					   width:(NSUInteger)width
 					  height:(NSUInteger)height
 					rowBytes:(NSUInteger)rowBytes
 {
-	if (name == nil || bytes == NULL || width == 0 || height == 0 || rowBytes < width)  return;
+	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width)  return;
 
 	// use the snapshots directory
-	NSString *dumpFile = [[NSHomeDirectory() stringByAppendingPathComponent:@SAVEDIR] stringByAppendingPathComponent:@SNAPSHOTDIR];
-	dumpFile = [dumpFile stringByAppendingPathComponent: [NSString stringWithFormat:@"%@.png", name]];
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_RGBA32);
 	for(int y = 0; y < height; y++)
@@ -1520,22 +1524,22 @@ enum PreferredAppMode
 			dstRow[4*x + 3] = '\xff';
 		}
 	}
-	SDL_SavePNG(tmpSurface, [dumpFile UTF8String]);
+	SDL_SavePNG(tmpSurface, dumpFile.c_str());
 	SDL_DestroySurface(tmpSurface);
 }
 
 
-- (void) dumpGrayAlphaToFileNamed:(NSString *)name
+- (void) cxx_dumpGrayAlphaToFileNamed:(const std::string &)name
 					   bytes:(uint8_t *)bytes
 					   width:(NSUInteger)width
 					  height:(NSUInteger)height
 					rowBytes:(NSUInteger)rowBytes
 {
-	if (name == nil || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 2)  return;
+	if (bytes == NULL || width == 0 || height == 0 || rowBytes < width * 2)  return;
 
 	// use the snapshots directory
-	NSString *dumpFile = [[NSHomeDirectory() stringByAppendingPathComponent:@SAVEDIR] stringByAppendingPathComponent:@SNAPSHOTDIR];
-	dumpFile = [dumpFile stringByAppendingPathComponent: [NSString stringWithFormat:@"%@.png", name]];
+	std::string dumpFile = oo::str::appendingPathComponent(oo::str::appendingPathComponent(oo::StdString(NSHomeDirectory()), SAVEDIR), SNAPSHOTDIR);
+	dumpFile = oo::str::appendingPathComponent(dumpFile, name + ".png");
 
 	SDL_Surface* tmpSurface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA32, bytes, rowBytes);
 	for(int y = 0; y < height; y++)
@@ -1550,19 +1554,19 @@ enum PreferredAppMode
 			dstRow[4*x + 3] = srcRow[2*x+1];
 		}
 	}
-	SDL_SavePNG(tmpSurface, [dumpFile UTF8String]);
+	SDL_SavePNG(tmpSurface, dumpFile.c_str());
 	SDL_DestroySurface(tmpSurface);
 }
 
 
-- (void) dumpRGBAToRGBFileNamed:(NSString *)rgbName
-			   andGrayFileNamed:(NSString *)grayName
+- (void) cxx_dumpRGBAToRGBFileNamed:(const std::optional<std::string> &)rgbName
+				   andGrayFileNamed:(const std::optional<std::string> &)grayName
 						  bytes:(uint8_t *)bytes
 						  width:(NSUInteger)width
 						 height:(NSUInteger)height
 					   rowBytes:(NSUInteger)rowBytes
 {
-	if ((rgbName == nil && grayName == nil) || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
+	if ((!rgbName.has_value() && !grayName.has_value()) || bytes == NULL || width == 0 || height == 0 || rowBytes < width * 4)  return;
 
 	uint8_t				*rgbBytes, *rgbPx, *grayBytes, *grayPx, *srcPx;
 	NSUInteger			x, y;
@@ -1592,20 +1596,23 @@ enum PreferredAppMode
 		}
 	}
 
-	[self dumpRGBToFileNamed:rgbName
-					   bytes:rgbBytes
-					   width:width
-					  height:height
-					rowBytes:width * 3];
+	if (rgbName.has_value())
+	{
+		[self cxx_dumpRGBToFileNamed:*rgbName
+							   bytes:rgbBytes
+							   width:width
+							  height:height
+							rowBytes:width * 3];
+	}
 	free(rgbBytes);
 
-	if (!trivalAlpha)
+	if (!trivalAlpha && grayName.has_value())
 	{
-		[self dumpGrayToFileNamed:grayName
-							bytes:grayBytes
-							width:width
-						   height:height
-						 rowBytes:width];
+		[self cxx_dumpGrayToFileNamed:*grayName
+								bytes:grayBytes
+								width:width
+							   height:height
+							 rowBytes:width];
 	}
 	free(grayBytes);
 }
