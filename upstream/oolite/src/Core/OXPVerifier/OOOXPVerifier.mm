@@ -53,7 +53,7 @@ SOFTWARE.
 #import "OOOXPVerifierStageInternal.h"
 #import "OOLoggingExtended.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "GameController.h"
 #import "OOCacheManager.h"
 #import "OODebugStandards.h"
@@ -241,25 +241,25 @@ static void OpenLogFile(NSString *name);
 
 - (NSArray *)configurationArrayForKey:(NSString *)key
 {
-	return [_verifierPList oo_arrayForKey:key];
+	return oo::PListView(_verifierPList).get<NSArray *>(key);
 }
 
 
 - (NSDictionary *)configurationDictionaryForKey:(NSString *)key
 {
-	return [_verifierPList oo_dictionaryForKey:key];
+	return oo::PListView(_verifierPList).get<NSDictionary *>(key);
 }
 
 
 - (NSString *)configurationStringForKey:(NSString *)key
 {
-	return [_verifierPList oo_stringForKey:key];
+	return oo::PListView(_verifierPList).get<NSString *>(key);
 }
 
 
 - (NSSet *)configurationSetForKey:(NSString *)key
 {
-	NSArray *array = [_verifierPList oo_arrayForKey:key];
+	NSArray *array = oo::PListView(_verifierPList).get<NSArray *>(key);
 	return array != nil ? [NSSet setWithArray:array] : nil;
 }
 
@@ -336,12 +336,12 @@ static void OpenLogFile(NSString *name);
 	NSString				*messageClass = nil;
 	id						verbose = nil;
 	
-	OOLogSetShowMessageClassTemporary([_verifierPList oo_boolForKey:@"logShowMessageClassOverride" defaultValue:NO]);
+	OOLogSetShowMessageClassTemporary(oo::PListView(_verifierPList).get<BOOL>(@"logShowMessageClassOverride", NO));
 	
-	overrides = [_verifierPList oo_dictionaryForKey:@"logControlOverride"];
+	overrides = oo::PListView(_verifierPList).get<NSDictionary *>(@"logControlOverride");
 	foreachkey (messageClass, overrides)
 	{
-		OOLogSetDisplayMessagesInClass(messageClass, [overrides oo_boolForKey:messageClass defaultValue:NO]);
+		OOLogSetDisplayMessagesInClass(messageClass, oo::PListView(overrides).get<BOOL>(messageClass, NO));
 	}
 	
 	/*	Since actually editing logControlOverride is a pain, we also allow
@@ -650,23 +650,23 @@ static void OpenLogFile(NSString *name);
 	OOOXPVerifierStage			*dep = nil;
 	
 	graphVizTemplate = [self configurationDictionaryForKey:@"debugGraphvizTempate"];
-	graphViz = [NSMutableString stringWithFormat:[graphVizTemplate oo_stringForKey:@"preamble"], [NSDate date]];
+	graphViz = [NSMutableString stringWithFormat:oo::PListView(graphVizTemplate).get<NSString *>(@"preamble"), [NSDate date]];
 	
 	/*	Pass 1: enumerate over graph setting node attributes for each stage.
 		We use pointers as node names for simplicity of generation.
 	*/
-	arcTemplate = [graphVizTemplate oo_stringForKey:@"node"];
+	arcTemplate = oo::PListView(graphVizTemplate).get<NSString *>(@"node");
 	foreach (stage, [_stagesByName allValues])
 	{
 		[graphViz appendFormat:arcTemplate, stage, [stage class], [stage name]];
 	}
 	
-	[graphViz appendString:[graphVizTemplate oo_stringForKey:@"forwardPreamble"]];
+	[graphViz appendString:oo::PListView(graphVizTemplate).get<NSString *>(@"forwardPreamble")];
 	
 	/*	Pass 2: enumerate over graph setting forward arcs for each dependency.
 	*/
-	arcTemplate = [graphVizTemplate oo_stringForKey:@"forwardArc"];
-	startTemplate = [graphVizTemplate oo_stringForKey:@"startArc"];
+	arcTemplate = oo::PListView(graphVizTemplate).get<NSString *>(@"forwardArc");
+	startTemplate = oo::PListView(graphVizTemplate).get<NSString *>(@"startArc");
 	foreach (stage, [_stagesByName allValues])
 	{
 		deps = [stage resolvedDependencies];
@@ -683,12 +683,12 @@ static void OpenLogFile(NSString *name);
 		}
 	}
 	
-	[graphViz appendString:[graphVizTemplate oo_stringForKey:@"backwardPreamble"]];
+	[graphViz appendString:oo::PListView(graphVizTemplate).get<NSString *>(@"backwardPreamble")];
 	
 	/*	Pass 3: enumerate over graph setting backward arcs for each dependent.
 	*/
-	arcTemplate = [graphVizTemplate oo_stringForKey:@"backwardArc"];
-	endTemplate = [graphVizTemplate oo_stringForKey:@"endArc"];
+	arcTemplate = oo::PListView(graphVizTemplate).get<NSString *>(@"backwardArc");
+	endTemplate = oo::PListView(graphVizTemplate).get<NSString *>(@"endArc");
 	foreach (stage, [_stagesByName allValues])
 	{
 		deps = [stage resolvedDependents];
@@ -705,7 +705,7 @@ static void OpenLogFile(NSString *name);
 		}
 	}
 	
-	[graphViz appendString:[graphVizTemplate oo_stringForKey:@"postamble"]];
+	[graphViz appendString:oo::PListView(graphVizTemplate).get<NSString *>(@"postamble")];
 	
 	// Write file
 	[ResourceManager writeDiagnosticString:graphViz toFileNamed:@"OXPVerifierStageDependencies.dot"];
@@ -740,7 +740,7 @@ static void OpenLogFile(NSString *name)
 {
 	//	Open log file in appropriate application / provide feedback.
 	
-	if ([[NSUserDefaults standardUserDefaults] oo_boolForKey:@"oxp-verifier-open-log" defaultValue:YES])
+	if (oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"oxp-verifier-open-log", YES))
 	{
 #if OOLITE_MAC_OS_X
 		[[NSWorkspace sharedWorkspace] openFile:OOLogHandlerGetLogPath()];
