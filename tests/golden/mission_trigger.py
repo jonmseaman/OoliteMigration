@@ -84,6 +84,16 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "compo
 
 import frame_hash  # noqa: E402
 import golden_run  # noqa: E402
+
+# NO DESKTOP LOCK, deliberately: this is a golden-harness scenario driver, exempt from tools/gui-lock
+# on golden_run.py's terms (see its module docstring and tools/check-desktop-lock.sh). It launches
+# through golden_run's per-run isolation - a reserved port, a staged private app dir, a private
+# artifact dir - which exists so that golden runs can share one machine AT ONCE (stability sweeps,
+# tier-b/tier-c golden stages, and several fleet worktrees' acceptance lines side by side). The
+# desktop mutex is exclusive, so taking it here would serialise all of them into a queue of one.
+# The run never needs the FOREGROUND: no synthetic input, no window click, readiness over the
+# console socket, and every frame is rendered game-side from the game's own framebuffer. If this
+# scenario ever starts to need the foreground it stops being exempt and must take the lock.
 from state_dump import dump_state, ensure_launchable, start_with_retry  # noqa: E402
 
 SCENARIO = "005-mission-trigger"

@@ -28,6 +28,13 @@
 #                                per-resource. If it ever needs the foreground it stops being
 #                                exempt AND must stop running N at a time.
 #
+#   tests/golden/<scenario>.py   the golden harness's per-scenario drivers (launch_dock.py,
+#   tests/golden/dump/run_dump.py  trade_cycle.py, ... every file built on golden_run.py) and the
+#                                tier's own dump driver. They ARE the golden harness: the same
+#                                per-run isolation, the same no-foreground profile, run side by
+#                                side by tier-b/tier-c and by concurrent fleet acceptance lines. The
+#                                exemption is golden_run.py's, restated beside each one's launch.
+#
 #   component/console.py         the shared TRANSPORT, not a tier. It is spawned once per
 #                                component scenario (locked by that tier's session-scoped
 #                                desktop_lock fixture) and N times at once by the golden harness
@@ -37,6 +44,12 @@
 #   gui/conftest.py              takes the lock already, in its own desktop_lock fixture, without
 #                                going through tools/desktop_lock.py: that tier must keep working
 #                                with no bash (see its _lock_reclaim_stale fallback).
+#
+# LOCKED BUT NESTABLE. tools/oxp_load_check.py locks PER LAUNCH, at the spawn (oxp_tier_run.py
+# calls its run_one() directly). A corpus run that fans shards out in parallel instead takes ONE
+# outer hold under an explicit OO_GUI_LOCK_OWNER (tests/nightly/checks.txt, oo-1gc.11), and
+# tools/desktop_lock.py runs a launch whose inherited OO_GUI_LOCK_OWNER already holds the lock
+# inside that hold rather than queueing behind it - which would otherwise deadlock.
 #
 # Surveyed and found to need nothing:
 #
@@ -67,12 +80,38 @@ no()   { printf '    FAIL  %s\n' "$*"; fail=1; }
 LOCKED_LAUNCHERS="
 tools/js_api_snapshot.py
 tools/check-splash-off.py
+tools/oxp_load_check.py
+tools/oo-qwk5-probe.py
+tests/golden/motion/motion_probe.py
+tests/golden/motion/value_probe.py
 upstream/oolite/tests/launch_snapshot.py
 upstream/oolite/tests/component/conftest.py
 upstream/oolite/tests/gui/conftest.py
 "
 EXEMPT_LAUNCHERS="
 tests/golden/golden_run.py
+tests/golden/dump/run_dump.py
+tests/golden/ai_overflow.py
+tests/golden/cloaking_load.py
+tests/golden/combat.py
+tests/golden/constrictor_save.py
+tests/golden/equipment_services.py
+tests/golden/expansion_closure.py
+tests/golden/frame_capture.py
+tests/golden/hud_render_modes.py
+tests/golden/js_interface.py
+tests/golden/launch_dock.py
+tests/golden/material_test_suite.py
+tests/golden/mission_trigger.py
+tests/golden/nova_load.py
+tests/golden/png_test_suite.py
+tests/golden/retro_missions.py
+tests/golden/save_load.py
+tests/golden/shader_fallback.py
+tests/golden/thargoid_plans_load.py
+tests/golden/trade_cycle.py
+tests/golden/trumbles_load.py
+tests/golden/witchspace_jump.py
 upstream/oolite/tests/component/console.py
 "
 

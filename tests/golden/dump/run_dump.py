@@ -11,6 +11,12 @@ read over the console socket. (Confirmed by comparison, not assumption: world_st
 fixture takes tools/gui-lock only because console.py deliberately does not - see console.py's
 module docstring - and this script has the identical "no synthetic input, no window click"
 profile golden_run.py's docstring gives as the reason it is exempt too.)
+
+NO DESKTOP LOCK, therefore, and it is listed in tools/check-desktop-lock.sh's EXEMPT_LAUNCHERS. It
+is the golden tier's own dump driver - tools/tier-b.sh and tools/tier-c.sh run every blessed
+scenario other than 001 through it, alongside the golden_run.py-based drivers - so it follows the
+tier's rule rather than the desktop tools': the exclusive mutex would serialise golden runs that
+are allowed to share the machine, for a launch that never needs the foreground.
 """
 
 import argparse

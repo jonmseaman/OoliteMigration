@@ -173,6 +173,26 @@ def desktop_lock(tag, timeout=None, start=None, stream=None):
     # as dead. Passed to every call, so refresh re-pins the same identity.
     env = dict(os.environ, OO_GUI_LOCK_OWNER=me, OO_GUI_LOCK_OWNER_PID=str(os.getpid()))
 
+    # AN OUTER HOLD IS HONOURED, NOT RE-TAKEN. gui-lock is not re-entrant: a second `acquire`
+    # under an identity that already holds the lock just waits out its timeout. That deadlocks the
+    # pattern tests/nightly/checks.txt uses for the corpus (oo-1gc.11): ONE outer hold, taken by a
+    # shell with an explicit OO_GUI_LOCK_OWNER and heartbeated by that shell, around N corpus shards
+    # running in parallel, each of which launches the game through tools/oxp_load_check.py. An
+    # explicit OO_GUI_LOCK_OWNER is the documented way to say "this hold belongs to my caller" (see
+    # tools/gui-lock's header), so when the lock is held by exactly that identity the body runs
+    # inside the caller's hold: we neither acquire, heartbeat nor release - the caller does all
+    # three. A held lock under any OTHER identity, or a free one, falls through to a normal acquire.
+    explicit = os.environ.get("OO_GUI_LOCK_OWNER")
+    if explicit:
+        st = subprocess.run([bash, script, "status"], capture_output=True, text=True, env=env)
+        if st.returncode == 0 and st.stdout.startswith(f"held: {explicit} "):
+            path = subprocess.run(
+                [bash, script, "path"], capture_output=True, text=True, env=env
+            ).stdout.strip()
+            _say(f"[*] desktop lock: inside the outer hold of {explicit} at {path}")
+            yield path
+            return
+
     if timeout is None:
         timeout = os.environ.get("OO_GUI_LOCK_TIMEOUT", "900")
     held = subprocess.run(

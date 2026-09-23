@@ -20,9 +20,11 @@ REPO_ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests", "component"))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests", "golden", "dump"))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
 
 from console import DebugConsole, ConsoleError  # noqa: E402
 from state_dump import ensure_launchable, start_with_retry  # noqa: E402
+from desktop_lock import desktop_lock  # noqa: E402  - tools/desktop_lock.py
 from motion_probe import (  # noqa: E402
     app_dir_fingerprint, pick_port, spawn_named, stage_mesa_if_missing, write_console_config,
 )
@@ -145,4 +147,12 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # THE DESKTOP LOCK (CLAUDE.md, tools/check-desktop-lock.sh). This probe is "headless" only in
+    # that nobody clicks it: SDL_VIDEODRIVER=offscreen is not set on Windows (MSYS2's Mesa has no
+    # EGL, see console.py::_env), so the game opens a REAL window on the interactive desktop and can
+    # take the foreground out from under a running GUI test. It is one game at a time, never a
+    # fan-out, so it takes the lock like tools/js_api_snapshot.py does - around the WHOLE run, so a
+    # GUI test cannot slip in between two of its launches. Nothing is launched if it cannot be taken.
+    with desktop_lock("motionvalue", start=__file__):
+        rc = main()
+    sys.exit(rc)

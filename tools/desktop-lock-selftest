@@ -378,6 +378,44 @@ case "$out" in
 esac
 unset OO_GUI_LOCK_STALE
 
+echo "=== 9. a launch inside its caller's OUTER hold runs; a stranger's hold still queues ==="
+# The corpus pattern (tests/nightly/checks.txt, oo-1gc.11): one shell takes the desktop under an
+# explicit OO_GUI_LOCK_OWNER and runs parallel shards whose every launch goes through
+# desktop_lock(). gui-lock is not re-entrant, so without the outer-hold check each of those
+# launches queues behind its own caller and times out - a deadlock. The other half matters as
+# much: the check must not let a launcher walk in on a hold that is somebody ELSE's.
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+OO_GUI_LOCK_OWNER=outer-corpus $L acquire --timeout 5 >/dev/null
+nest() {
+	OO_GUI_LOCK_OWNER="$1" OO_GUI_LOCK_TIMEOUT=4 python3 - "$TOOLS" <<'PY' 2>&1
+import sys
+sys.path.insert(0, sys.argv[1])
+from desktop_lock import DesktopLockError, desktop_lock
+try:
+    with desktop_lock("oxpload", start=sys.argv[1]):
+        print("LAUNCHED")
+except DesktopLockError as exc:
+    print("REFUSED:", exc)
+PY
+}
+start=$(date +%s); a=$(nest outer-corpus); b=$(nest outer-corpus); end=$(date +%s)
+printf '%s\n%s\n' "$a" "$b" | sed 's/^/  /'
+case "$a$b" in
+	*REFUSED*) no "a launch inside its caller's outer hold queued behind that hold (the deadlock)" ;;
+	*LAUNCHED*LAUNCHED*) ok "two launches ran inside the caller's outer hold without queueing ($((end-start))s)" ;;
+	*) no "unexpected output from the nested launches" ;;
+esac
+$L status | grep -q '^held: outer-corpus ' && ok "the outer hold survived its inner launches (they did not release it)" \
+	|| no "an inner launch released or replaced its caller's outer hold"
+out=$(nest someone-else)
+echo "$out" | sed 's/^/  /'
+case "$out" in
+	*REFUSED*) ok "a launch under a DIFFERENT explicit owner still queued behind the hold" ;;
+	*)         no "a launcher walked in on a hold that was not its caller's" ;;
+esac
+OO_GUI_LOCK_OWNER=outer-corpus $L release >/dev/null 2>&1
+rm -rf "$OO_GUI_LOCK_DIR" "$OO_GUI_LOCK_DIR".reap
+
 echo
 if [ "$fail" -eq 0 ]; then echo "ALL DESKTOP-LAUNCHER EXCLUSION CHECKS PASSED"; else echo "SOME CHECKS FAILED"; fi
 exit $fail

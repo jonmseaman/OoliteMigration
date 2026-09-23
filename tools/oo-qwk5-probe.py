@@ -45,8 +45,11 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 _TIER = os.path.join(os.path.dirname(_HERE), "upstream", "oolite", "tests", "component")
 if _TIER not in sys.path:
     sys.path.insert(0, _TIER)
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
 
 from console import ConsoleError, DebugConsole  # noqa: E402
+from desktop_lock import desktop_lock  # noqa: E402  - tools/desktop_lock.py, beside this file
 
 SCENARIO_SAVE = "Resources/Scenarios/oolite-standard.oolite-save"
 LAUNCH_TIMEOUT_SECONDS = 60
@@ -309,4 +312,12 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    # THE DESKTOP LOCK (CLAUDE.md, tools/check-desktop-lock.sh). This probe is "headless" only in
+    # that nobody clicks it: SDL_VIDEODRIVER=offscreen is not set on Windows (MSYS2's Mesa has no
+    # EGL, see console.py::_env), so the game opens a REAL window on the interactive desktop and can
+    # take the foreground out from under a running GUI test. It is one game at a time, never a
+    # fan-out, so it takes the lock like tools/js_api_snapshot.py does - around the WHOLE run, so a
+    # GUI test cannot slip in between two of its launches. Nothing is launched if it cannot be taken.
+    with desktop_lock("qwk5", start=__file__):
+        rc = main()
+    sys.exit(rc)

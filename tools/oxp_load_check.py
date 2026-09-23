@@ -100,6 +100,14 @@ import sys
 import time
 from pathlib import Path
 
+# tools/ explicitly, not just as sys.path[0]: this module is also imported by oxp_tier_run.py and
+# by corpus.sh's inline checks.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
+
+from desktop_lock import DesktopLockError, desktop_lock  # noqa: E402  - tools/desktop_lock.py
+
 #: A Latest.log shorter than this did not get far enough for an ERROR scan to
 #: mean anything.  The committed dead-initgl fixture is 19 lines; a real load is
 #: 80+.  The bound sits between them, nearer the floor, so it rejects the known
@@ -287,6 +295,44 @@ def _launch_env(logs: Path, addons: Path | None):
     if addons is not None:
         env["OO_ADDITIONALADDONSDIRS"] = str(addons).replace("/", "\\")
     return env
+
+
+def _launch(exe: Path, app_dir: Path, logs: Path, addons: Path | None, timeout: float):
+    """Run one load to completion under the desktop lock. Returns (rc, wall_s).
+
+    THE DESKTOP LOCK (CLAUDE.md, tools/check-desktop-lock.sh). "No console socket, no synthetic
+    input" does not make this launch headless: SDL_VIDEODRIVER=offscreen is not set on Windows
+    (MSYS2's Mesa has no EGL, see console.py::_env), so every load opens a REAL window on the
+    interactive desktop and can take the foreground out from under a running GUI test. The lock is
+    taken PER LAUNCH, here at the spawn, because oxp_tier_run.py calls run_one() directly and never
+    reaches main(); holding it per launch also lets a queued GUI test in between two expansions of
+    a long corpus run instead of waiting out the whole tier.
+
+    A corpus run that fans shards out IN PARALLEL must not take the lock per shard - that would
+    serialise the shards, and the parallelism is the point. It takes ONE outer hold under an
+    explicit OO_GUI_LOCK_OWNER that its shards inherit (tests/nightly/checks.txt, oo-1gc.11), and
+    desktop_lock() runs every launch here inside that hold instead of queueing behind it.
+
+    wall_s is measured from the spawn, so time spent queueing for the desktop is not charged to
+    the expansion. Raises DesktopLockError, and launches nothing, if the desktop cannot be taken.
+    """
+    with desktop_lock("oxpload", start=__file__):
+        t0 = time.time()
+        proc = subprocess.Popen(
+            [str(exe), "--no-splash", "-load", SCENARIO_SAVE],
+            cwd=str(app_dir), env=_launch_env(logs, addons),
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        try:
+            rc = proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            try:
+                proc.wait(timeout=15)
+            except subprocess.TimeoutExpired:
+                pass
+            rc = "timeout"
+        return rc, round(time.time() - t0, 2)
 
 
 def judge(text: str, staged: str | None, log_label: str, rc=None, timeout=None,
@@ -645,22 +691,11 @@ def run_group(app_dir: Path, group: dict, work: Path, timeout: float) -> dict:
         result["detail"] = "no oolite.exe at %s" % str(exe).replace("\\", "/")
         return result
 
-    t0 = time.time()
-    proc = subprocess.Popen(
-        [str(exe), "--no-splash", "-load", SCENARIO_SAVE],
-        cwd=str(app_dir), env=_launch_env(logs, addons),
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
     try:
-        result["rc"] = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        try:
-            proc.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            pass
-        result["rc"] = "timeout"
-    result["wall_s"] = round(time.time() - t0, 2)
+        result["rc"], result["wall_s"] = _launch(exe, app_dir, logs, addons, timeout)
+    except DesktopLockError as exc:
+        result["detail"] = "the game was NOT launched: %s" % exc
+        return result
 
     if not log_path.exists():
         hint = ""
@@ -727,22 +762,11 @@ def run_one(app_dir: Path, oxp: Path, work: Path, timeout: float) -> dict:
         result["detail"] = "no oolite.exe at %s" % str(exe).replace("\\", "/")
         return result
 
-    t0 = time.time()
-    proc = subprocess.Popen(
-        [str(exe), "--no-splash", "-load", SCENARIO_SAVE],
-        cwd=str(app_dir), env=_launch_env(logs, addons),
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
     try:
-        result["rc"] = proc.wait(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        try:
-            proc.wait(timeout=15)
-        except subprocess.TimeoutExpired:
-            pass
-        result["rc"] = "timeout"
-    result["wall_s"] = round(time.time() - t0, 2)
+        result["rc"], result["wall_s"] = _launch(exe, app_dir, logs, addons, timeout)
+    except DesktopLockError as exc:
+        result["detail"] = "the game was NOT launched: %s" % exc
+        return result
 
     # ---- P1 LAUNCH -------------------------------------------------------
     if not log_path.exists():
