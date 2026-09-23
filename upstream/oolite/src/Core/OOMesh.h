@@ -41,8 +41,10 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
 
 @class OOMaterial, Octree;
+class OOMeshBuffer;	// OOMesh.mm: one refcounted buffer (an oo::Data), shared by a mesh and its mutable copies
 
 
 #define OOMESH_PROFILE	0
@@ -123,7 +125,7 @@ typedef struct
 	
 	Octree					*octree;
 	
-	NSMutableDictionary		*_retainedObjects;
+	std::map<std::string, oo::Ref<OOMeshBuffer>, std::less<>>	_retainedObjects;	// the buffers _vertices & co. point into, by key
 	
 	oo::PList				_materialDict;		// mixed configurations (proposed ADR-0043 Amendment 2); null = nil
 	oo::PList				_shadersDict;
@@ -193,7 +195,7 @@ typedef struct
 #import "OOCacheManager.h"
 @interface OOCacheManager (Octree)
 
-+ (Octree *)octreeForModel:(NSString *)inKey;
-+ (void)setOctree:(Octree *)inOctree forModel:(NSString *)inKey;
++ (Octree *)octreeForModel:(const std::string &)inKey;
++ (void)setOctree:(Octree *)inOctree forModel:(const std::string &)inKey;
 
 @end
