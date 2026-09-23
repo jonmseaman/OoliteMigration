@@ -343,7 +343,7 @@ function parseCheck(src) {
   }
 }
 
-function report(src, line, ctx, label, doParse) {
+function report(src, line, ctx, label, doParse, where) {
   const { toks, ph, facts, directives } = analyse(src);
   const out = [];
   out.push(`probe: ${label}`);
@@ -355,6 +355,11 @@ function report(src, line, ctx, label, doParse) {
   if (doParse) {
     const p = parseCheck(src);
     out.push(`v8 parse: ${p ? `${p.kind} at line ${p.line} column ${p.column}` : "ok"}`);
+  }
+  if (where) {
+    const name = [...ph.entries()].find(([, id]) => id === where);
+    const lines = name ? [...new Set(toks.filter((t) => t.t === "id" && t.v === name[0]).map((t) => t.line))] : [];
+    out.push(`${where} occurs on lines: ${lines.length ? lines.join(",") : "none"}`);
   }
   const lo = Math.max(1, line - ctx);
   const hi = line + ctx;
@@ -400,20 +405,22 @@ function loadCorpusMember(identifier, suffix) {
 function main(argv) {
   let ctx = 3;
   let doParse = false;
+  let where = null;
   const args = [];
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--context") ctx = parseInt(argv[++i], 10);
     else if (argv[i] === "--parse") doParse = true;
+    else if (argv[i] === "--where") where = argv[++i];
     else args.push(argv[i]);
   }
   if (args[0] === "file" && args.length === 3) {
     const src = fs.readFileSync(args[1], "utf8");
-    process.stdout.write(report(src, parseInt(args[2], 10), ctx, path.basename(args[1]), doParse));
+    process.stdout.write(report(src, parseInt(args[2], 10), ctx, path.basename(args[1]), doParse, where));
     return 0;
   }
   if (args[0] === "corpus" && args.length === 4) {
     const src = loadCorpusMember(args[1], args[2]);
-    process.stdout.write(report(src, parseInt(args[3], 10), ctx, `${args[1]} ${args[2]}`, doParse));
+    process.stdout.write(report(src, parseInt(args[3], 10), ctx, `${args[1]} ${args[2]}`, doParse, where));
     return 0;
   }
   process.stdout.write("usage: node probe.js corpus <identifier> <member-suffix> <line> [--context N] [--parse]\n" +
