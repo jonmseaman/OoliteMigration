@@ -39,6 +39,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
 #include <cstdint>
+#import "OOStringBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -1018,8 +1019,8 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 
 	OOJSInterfaceDefinition* definition = [[OOJSInterfaceDefinition alloc] init];
 	[definition setTitle:title];
-	[definition setCategory:category];
-	[definition setSummary:summary];
+	[definition setCategory:oo::StdString(category)];
+	[definition setSummary:oo::StdString(summary)];
 	[definition setCallback:callback];
 
 	// get callback 'this'
