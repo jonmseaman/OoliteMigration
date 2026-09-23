@@ -254,6 +254,22 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void * context);
 @end
 
 
+namespace {
+
+// The saved detailLevel preference as an OOGraphicsDetail. 0-3 are the levels themselves; any other
+// number becomes DETAIL_LEVEL_MAXIMUM, which is what -setDetailLevelDirectly: made of it: the bare
+// cast this replaces handed the enum (underlying type unsigned int on this toolchain) an
+// out-of-range value, a negative one as a large unsigned number, and the setter clamped anything
+// >= DETAIL_LEVEL_MAXIMUM to it. Clamping as an integer means the enum only ever holds one of its
+// own values (the same idiom as OOSystemLayerFromNumber, bead oo-2eby).
+OOGraphicsDetail OOGraphicsDetailFromNumber(unsigned int number)
+{
+	return (number > DETAIL_LEVEL_MAXIMUM) ? DETAIL_LEVEL_MAXIMUM : static_cast<OOGraphicsDetail>(number);
+}
+
+}
+
+
 @implementation Universe
 
 // Flags needed when JS reset fails.
@@ -724,8 +740,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// init OpenGL extension manager (must be done before any other threads might use it)
 	[OOOpenGLExtensionManager sharedManager];
-	[self setDetailLevelDirectly:(OOGraphicsDetail)oo::PListView(prefs).get<int>(@"detailLevel",
-								[[OOOpenGLExtensionManager sharedManager] defaultDetailLevel])];
+	[self setDetailLevelDirectly:OOGraphicsDetailFromNumber(static_cast<unsigned int>(oo::PListView(prefs).get<int>(@"detailLevel",
+								[[OOOpenGLExtensionManager sharedManager] defaultDetailLevel])))];
 								
 	[self initTargetFramebufferWithViewSize:[gameView backingViewSize]];
 	
