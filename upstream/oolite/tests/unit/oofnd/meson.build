@@ -13,6 +13,7 @@ oofnd_tests = [
     'test_cocoa_macros',
     'test_process',
     'test_thread',
+    'test_foundation_types',
 ]
 
 foreach t : oofnd_tests
