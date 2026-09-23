@@ -31,6 +31,12 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "GuiDisplayGen.h"
 
+#include "oofnd/PList.hpp"
+
+#include <optional>
+#include <string>
+#include <vector>
+
 typedef enum {
 	OXZ_DOWNLOAD_NONE = 0,
 	OXZ_DOWNLOAD_STARTED = 1,
@@ -61,10 +67,10 @@ typedef enum {
 @interface OOOXZManager: OOObject
 {
 @private
-	NSArray 			*_oxzList;
-	NSArray 			*_managedList;
-	NSArray				*_filteredList;
-	NSString			*_currentFilter;
+	oo::PList			_oxzList;		// Array of manifests, sorted; null until a list is loaded
+	oo::PList			_managedList;	// Array of the managed OXZs' manifests; null: to be rebuilt
+	oo::PList			_filteredList;	// Array of the manifests on show
+	std::string			_currentFilter;	// lowercase; "*" initially
 
 	OXZInterfaceState	_interfaceState;
 	BOOL				_interfaceShowingOXZDetail;
@@ -89,15 +95,15 @@ typedef enum {
 
 + (OOOXZManager *) sharedManager;
 
-- (NSString *) installPath;
-- (NSString *) extractAddOnsPath;
-- (NSArray *) additionalAddOnsPaths;
+- (std::optional<std::string>) installPath;	// oo::ResourcePaths::managedAddOnsDirectory()
+- (std::optional<std::string>) extractAddOnsPath;	// oo::ResourcePaths::extractAddOnsDirectory()
+- (std::vector<std::string>) additionalAddOnsPaths;	// oo::ResourcePaths::additionalAddOnsDirectories()
 
 - (BOOL) updateManifests;
 - (BOOL) cancelUpdate;
 
-- (NSArray *) manifests;
-- (NSArray *) managedOXZs;
+- (oo::PList) manifests;	// an Array, or null before a list is loaded
+- (oo::PList) managedOXZs;	// an Array
 
 - (void) gui;
 - (BOOL) isRestarting;
