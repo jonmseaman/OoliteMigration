@@ -349,9 +349,10 @@ std::optional<std::string> cxx_OOStringFromJSPropertyIDAndSpec(ooscript::Context
 	(or just "function" if they're anonymous). Up to four elements of arrays
 	are included, followed by total count of there are more than four.
 	If abbreviateObjects, the description "[object Object]" is replaced with
-	"{...}", which may or may not be clearer depending on context.
+	"{...}", which may or may not be clearer depending on context. Never empty of meaning:
+	the last fallback is "?".
 */
-OOJS_EXTERN_C NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);
+std::string cxx_OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);
 
 
 // Convert a ooscript::PropertyId to a UTF-8 string (nullopt if it has no string value).
@@ -361,18 +362,19 @@ std::optional<std::string> cxx_OOStringFromJSID(ooscript::PropertyId propID);
 ooscript::PropertyId cxx_OOJSIDFromString(const std::string &string);
 
 
-@interface NSString (OOJavaScriptExtensions)
+/*	The string helpers of the retired string category (OOJavaScriptExtensions) (bead oo-3rb.199).
+	Each std::optional result is nullopt where the category method returned nil.
+*/
 
-// For diagnostic messages; produces things like @"(42, true, "a string", an object description)".
-+ (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context;
+// For diagnostic messages; produces things like "(42, true, "a string", an object description)".
+// nullopt if params is NULL and count is not zero.
+std::optional<std::string> cxx_OOJSStringWithJavaScriptParameters(ooscript::Value *params, unsigned count, ooscript::Context context);
 
-// Concatenate sequence of arbitrary JS objects into string.
-+ (NSString *) concatenationOfStringsFromJavaScriptValues:(ooscript::Value *)values count:(size_t)count separator:(NSString *)separator inContext:(ooscript::Context)context;
+// Concatenate sequence of arbitrary JS objects into string (nullopt if count < 1 or values is NULL).
+std::optional<std::string> cxx_OOJSConcatenationOfStringsFromJavaScriptValues(ooscript::Value *values, size_t count, const std::string &separator, ooscript::Context context);
 
 // Add escape codes for string so that it's a valid JavaScript literal (if you put "" or '' around it).
-- (NSString *) escapedForJavaScriptLiteral;
-
-@end
+std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string);
 
 
 // OOEntityFilterPredicate wrapping a JavaScript function.

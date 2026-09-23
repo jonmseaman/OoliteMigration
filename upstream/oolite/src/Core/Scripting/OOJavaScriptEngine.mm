@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/String.hpp"
 #include <cstring>
 
 /*
@@ -1682,7 +1683,7 @@ void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, B
 	ooscript::String jsString = (ooscript::internString((context), string));
 	if (EXPECT_NOT(string == NULL))
 	{
-		[NSException raise:NSGenericException format:@"Failed to initialize JavaScript string literal cache for \"%@\".", [[NSString stringWithUTF8String:string] escapedForJavaScriptLiteral]];
+		[NSException raise:NSGenericException format:@"Failed to initialize JavaScript string literal cache for \"%s\".", cxx_OOJSEscapedForJavaScriptLiteral(string != NULL ? std::string_view(string) : std::string_view()).c_str()];
 	}
 	
 	*strCache = ooscript::stringValue(jsString);
@@ -1765,7 +1766,7 @@ std::optional<std::string> cxx_OOStringFromJSPropertyIDAndSpec(ooscript::Context
 
 
 namespace {
-static NSString *DescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects, BOOL recursing)
+static std::string DescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects, BOOL recursing)
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1774,11 +1775,16 @@ static NSString *DescribeValue(ooscript::Context context, ooscript::Value value,
 	if (OOJSValueIsFunction(context, value))
 	{
 		ooscript::String name = (ooscript::getFunctionId(ooscript::valueToFunction((context), (value))));
-		if (name != NULL)  return [NSString stringWithFormat:@"function %@", OOStringFromJSString(context, name)];
-		else  return @"function";
+		if (name != NULL)
+		{
+			// "function %@": a nil name printed "(null)".
+			std::optional<std::string> nameString = cxx_OOStringFromJSString(context, name);
+			return "function " + (nameString ? *nameString : std::string("(null)"));
+		}
+		else  return "function";
 	}
 	
-	NSString		*result = nil;
+	std::optional<std::string>	result;
 	ooscript::ClassDef				*valueClass = NULL;
 	OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	
@@ -1801,8 +1807,9 @@ static NSString *DescribeValue(ooscript::Context context, ooscript::Value value,
 		size_t length;
 		const ooscript::Char16 *chars = ooscript::getStringCharsAndLength((context), (string), &length);
 		
-		result = [NSString stringWithCharacters:OOJSRUCHARS(chars) length:MIN(length, (size_t)kMaxLength)];
-		result = [NSString stringWithFormat:@"\"%@%@\"", [result escapedForJavaScriptLiteral], (length > kMaxLength) ? @"..." : @""];
+		// Truncated to kMaxLength UTF-16 units before conversion, as the old code cut its string.
+		std::string truncated = (chars != NULL) ? oo::utf16ToUtf8(std::u16string_view(chars, MIN(length, (size_t)kMaxLength))) : std::string();
+		result = "\"" + cxx_OOJSEscapedForJavaScriptLiteral(truncated) + ((length > kMaxLength) ? "..." : "") + "\"";
 	}
 	else if (valueClass == [jsEng arrayClass])
 	{
@@ -1813,221 +1820,169 @@ static NSString *DescribeValue(ooscript::Context context, ooscript::Value value,
 		{
 			if (!recursing)
 			{
-				NSMutableString *arrayDesc = [NSMutableString stringWithString:@"["];
+				std::string arrayDesc = "[";
 				uint32_t i, effectiveCount = MIN(count, (uint32_t)4);
 				for (i = 0; i < effectiveCount; i++)
 				{
 					ooscript::Value item;
-					NSString *itemDesc = @"?";
+					std::string itemDesc = "?";
 					if (ooscript::getElement((context), (obj), i, (&item)))
 					{
 						itemDesc = DescribeValue(context, item, YES /* always abbreviate objects in arrays */, YES);
 					}
-					if (i != 0)  [arrayDesc appendString:@", "];
-					[arrayDesc appendString:itemDesc];
+					if (i != 0)  arrayDesc += ", ";
+					arrayDesc += itemDesc;
 				}
 				if (effectiveCount != count)
 				{
-					[arrayDesc appendFormat:@", ... <%u items total>]", count];
+					arrayDesc += oo::str::format(", ... <%u items total>]", count);
 				}
 				else
 				{
-					[arrayDesc appendString:@"]"];
+					arrayDesc += "]";
 				}
 				
 				result = arrayDesc;
 			}
 			else
 			{
-				result = [NSString stringWithFormat:@"[<%u items>]", count];
+				result = oo::str::format("[<%u items>]", count);
 			}
 		}
 		else
 		{
-			result = @"[...]";
+			result = "[...]";
 		}
 
 	}
 	
-	if (result == nil)
+	if (!result)
 	{
-		result = OOStringFromJSValueEvenIfNull(context, value);
+		result = cxx_OOStringFromJSValueEvenIfNull(context, value);
 		
-		if (abbreviateObjects && valueClass == [jsEng objectClass] && [result isEqualToString:@"[object Object]"])
+		if (abbreviateObjects && valueClass == [jsEng objectClass] && result && *result == "[object Object]")
 		{
-			result = @"{...}";
+			result = "{...}";
 		}
 		
-		if (result == nil)  result = @"?";
+		if (!result)  result = "?";
 	}
 	
-	return result;
+	return *result;
 	
-	OOJS_PROFILE_EXIT
+	OOJS_PROFILE_EXIT_VAL(std::string())
 }
 } // namespace
 
 
-NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects)
+std::string cxx_OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects)
 {
 	return DescribeValue(context, value, abbreviateObjects, NO);
 }
 
 
-@implementation NSString (OOJavaScriptExtensions)
-
-+ (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context
+std::optional<std::string> cxx_OOJSStringWithJavaScriptParameters(ooscript::Value *params, unsigned count, ooscript::Context context)
 {
 	OOJS_PROFILE_ENTER
 	
-	if (params == NULL && count != 0) return nil;
+	if (params == NULL && count != 0) return std::nullopt;
 	
 	unsigned					i;
-	NSMutableString			*result = [NSMutableString stringWithString:@"("];
+	std::string				result = "(";
 	
 	for (i = 0; i < count; ++i)
 	{
-		if (i != 0)  [result appendString:@", "];
-		[result appendString:OOJSDescribeValue(context, params[i], NO)];
+		if (i != 0)  result += ", ";
+		result += cxx_OOJSDescribeValue(context, params[i], NO);
 	}
 	
-	[result appendString:@")"];
+	result += ")";
 	return result;
 	
-	OOJS_PROFILE_EXIT
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
-{
-	OOJS_PROFILE_ENTER
-	
-	size_t					length = [self length];
-	unichar					*buffer = NULL;
-	ooscript::String string = NULL;
-	
-	if (length == 0)
-	{
-		ooscript::Value result = ooscript::emptyStringValue((context));
-		return result;
-	}
-	else
-	{
-		buffer = static_cast<unichar*>(malloc(length * sizeof *buffer));
-		if (buffer == NULL) return ooscript::undefinedValue();
-		
-		[self getCharacters:buffer];
-		
-		string = (ooscript::newUCStringCopyN((context), reinterpret_cast<const ooscript::Char16*>(buffer), length));
-		
-		free(buffer);
-		return ooscript::stringValue(string);
-	}
-	
-	OOJS_PROFILE_EXIT_JSVAL
-}
-
-
-+ (NSString *) concatenationOfStringsFromJavaScriptValues:(ooscript::Value *)values count:(size_t)count separator:(NSString *)separator inContext:(ooscript::Context)context
+std::optional<std::string> cxx_OOJSConcatenationOfStringsFromJavaScriptValues(ooscript::Value *values, size_t count, const std::string &separator, ooscript::Context context)
 {
 	OOJS_PROFILE_ENTER
 	
 	size_t					i;
-	NSMutableString			*result = nil;
-	NSString				*element = nil;
+	std::optional<std::string>	result;
 	
-	if (count < 1) return nil;
-	if (values == NULL) return NULL;
+	if (count < 1) return std::nullopt;
+	if (values == NULL) return std::nullopt;
 	
 	for (i = 0; i != count; ++i)
 	{
-		element = OOStringFromJSValueEvenIfNull(context, values[i]);
-		if (result == nil)  result = [[element mutableCopy] autorelease];
+		std::optional<std::string> element = cxx_OOStringFromJSValueEvenIfNull(context, values[i]);
+		if (!result)  result = element;	// a nil element left the result nil, as -mutableCopy of nil did
 		else
 		{
-			if (separator != nil)  [result appendString:separator];
-			[result appendString:element];
+			*result += separator;
+			if (element)  *result += *element;
 		}
 	}
 	
 	return result;
 	
-	OOJS_PROFILE_EXIT
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
-- (NSString *)escapedForJavaScriptLiteral
+std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 {
-	OOJS_PROFILE_ENTER
+	// Byte-wise over UTF-8: every escaped character is ASCII, so multi-byte sequences pass through
+	// unchanged, as the UTF-16 units they encode did.
+	std::string result;
+	result.reserve(string.size());
 	
-	NSMutableString			*result = nil;
-	NSUInteger				i, length;
-	unichar					c;
-	
-	length = [self length];
-	result = [NSMutableString stringWithCapacity:length];
-	
-	// Not hugely efficient.
-	@autoreleasepool
+	for (char c : string)
 	{
-		for (i = 0; i != length; ++i)
+		switch (c)
 		{
-			c = [self characterAtIndex:i];
-			switch (c)
-			{
-				case '\\':
-					[result appendString:@"\\\\"];
-					break;
-					
-				case '\b':
-					[result appendString:@"\\b"];
-					break;
-					
-				case '\f':
-					[result appendString:@"\\f"];
-					break;
-					
-				case '\n':
-					[result appendString:@"\\n"];
-					break;
-					
-				case '\r':
-					[result appendString:@"\\r"];
-					break;
-					
-				case '\t':
-					[result appendString:@"\\t"];
-					break;
-					
-				case '\v':
-					[result appendString:@"\\v"];
-					break;
-					
-				case '\'':
-					[result appendString:@"\\\'"];
-					break;
-					
-				case '\"':
-					[result appendString:@"\\\""];
-					break;
+			case '\\':
+				result += "\\\\";
+				break;
+
+			case '\b':
+				result += "\\b";
+				break;
+
+			case '\f':
+				result += "\\f";
+				break;
+
+			case '\n':
+				result += "\\n";
+				break;
+
+			case '\r':
+				result += "\\r";
+				break;
+
+			case '\t':
+				result += "\\t";
+				break;
+
+			case '\v':
+				result += "\\v";
+				break;
+
+			case '\'':
+				result += "\\\'";
+				break;
 				
-				default:
-					[result appendString:[NSString stringWithCharacters:&c length:1]];
-			}
+			case '\"':
+				result += "\\\"";
+				break;
+			
+			default:
+				result += c;
 		}
 	}
 	return result;
-	
-	OOJS_PROFILE_EXIT
 }
-
-
-- (NSString *) oo_jsClassName
-{
-	return @"String";
-}
-
-@end
 
 
 @implementation NSArray (OOJavaScriptConversion)
