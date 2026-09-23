@@ -129,6 +129,10 @@ typedef enum
 } OOOpenGLStateID;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if OO_GL_STATE_VERIFICATION
 void OOSetOpenGLState_(OOOpenGLStateID state, const char *function, unsigned line);
 void OOVerifyOpenGLState_(const char *function, unsigned line);
@@ -230,6 +234,10 @@ void GLDrawQuadStrip(OOGLVector *points, int n);
 #define OO_CHECK_GL_HEAVY 0
 #endif
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #if OO_CHECK_GL_HEAVY
 

@@ -100,9 +100,10 @@ def grep(p, pat):
     except OSError: return False
 
 def m_files():
-    return sorted(SRC.rglob("*.m"))
+    # The Objective-C sources: .m before seam 2.1 (bead oo-x7o) renamed the tree to .mm.
+    return sorted(set(SRC.rglob("*.m")) | set(SRC.rglob("*.mm")))
 
-GIANT = {"ShipEntity.m", "PlayerEntity.m", "Universe.m", "PlayerEntityControls.m", "HeadUpDisplay.m", "OOJSShip.m"}
+GIANT = {f"{n}{ext}" for n in ("ShipEntity", "PlayerEntity", "Universe", "PlayerEntityControls", "HeadUpDisplay", "OOJSShip") for ext in (".m", ".mm")}
 
 def module_of(p: Path):
     rel = p.relative_to(SRC).as_posix()
@@ -373,7 +374,7 @@ def sweep_js_retarget():
     # The selector is the acceptance gate's own predicate (bead oo-utqt): a file is a target iff it
     # has a JS_* token. Selecting by #include filed vacuous beads for clean files and none at all
     # for files that call JS_* without including jsapi.h directly. ooscript/ is the backend.
-    for p in sorted(set(m_files()) | set(SRC.rglob("*.mm"))):
+    for p in m_files():
         if "ooscript" in p.parts: continue
         if not grep(p, r'\bJS_[A-Za-z]+'): continue
         n = count_lines(p); rel = p.relative_to(ROOT).as_posix()
