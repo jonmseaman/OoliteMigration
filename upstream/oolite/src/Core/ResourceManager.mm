@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 
 #import "ResourceManager.h"
 #import "NSScannerOOExtensions.h"
-#import "NSMutableDictionaryOOExtensions.h"
 #import "NSStringOOExtensions.h"
 #import "OOSound.h"
 #import "OOCacheManager.h"
@@ -35,7 +34,6 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOLogOutputHandler.h"
 #import "NSFileManagerOOExtensions.h"
-#import "OldSchoolPropertyListWriting.h"
 #import "OOOXZManager.h"
 #import "unzip.h"
 #import "HeadUpDisplay.h"
@@ -46,11 +44,15 @@ MA 02110-1301, USA.
 #import "OOPListScript.h"
 
 #import "OOManifestProperties.h"
+#import "NSDataOOExtensions.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/String.hpp"
 #include "oofnd/ResourcePaths.hpp"
+#include "oofnd/PListParsing.hpp"
+#include "oofnd/PListWriting.hpp"
+#include "oofnd/Encoding.hpp"
 
 namespace {
 
@@ -62,9 +64,6 @@ constexpr const char *kOOCacheKeyModificationDates	= "modification dates";
 
 }	// namespace
 
-
-
-extern NSDictionary* ParseOOSScripts(NSString* script);
 
 
 @interface ResourceManager (OOPrivate)
@@ -84,7 +83,7 @@ extern NSDictionary* ParseOOSScripts(NSString* script);
 + (void) addErrorWithKey:(const std::string &)descriptionKey param1:(const std::string &)param1 param2:(const std::string &)param2;
 + (BOOL) checkCacheUpToDateForPaths:(const std::vector<std::string> &)searchPaths;
 + (void) logPaths;
-+ (void) mergeRoleCategories:(NSDictionary *)catData intoDictionary:(NSMutableDictionary *)category;
++ (void) mergeRoleCategories:(const oo::PList &)catData intoDictionary:(oo::PList &)category;
 + (void) preloadFileLists;
 + (void) preloadFileListFromOXZ:(const std::string &)path forFolders:(const std::vector<std::string> &)folders;
 + (void) preloadFileListFromFolder:(const std::string &)path forFolders:(const std::vector<std::string> &)folders;
@@ -112,8 +111,8 @@ std::map<std::string, oo::PList, std::less<>>	sOXPManifests;	// identifier -> ma
 std::optional<std::vector<std::string>>	sSearchPaths;	// empty and nullopt both mean "scan again" (was [sSearchPaths count] > 0)
 
 
-// A manifest string property as get<NSString *>(key) answered it: nullopt where that was nil
-// (missing, or neither a string nor a number).
+// A manifest string property as the string extractor (oo_stringForKey:) answered it: nullopt
+// where that was nil (missing, or neither a string nor a number).
 std::optional<std::string> ManifestString(const oo::PList &manifest, const std::string &key)
 {
 	const oo::PList *value = manifest.find(key);
@@ -165,8 +164,8 @@ void RemovePath(std::vector<std::string> &searchPaths, const std::optional<std::
 }
 
 
-// Whether +[NSString stringWithUTF8String:] would have accepted these bytes (it returns nil for
-// malformed UTF-8): they survive the round trip through UTF-16 unchanged.
+// Whether +stringWithUTF8String: would have accepted these bytes (it returns nil for malformed
+// UTF-8): they survive the round trip through UTF-16 unchanged.
 bool IsWellFormedUTF8(const std::string &bytes)
 {
 	return oo::utf16ToUtf8(oo::utf8ToUtf16(bytes)) == bytes;
@@ -185,7 +184,7 @@ bool PListIsEqual(const oo::PList *a, const oo::PList *b)
 }
 
 
-// The value if it is an array (at<NSArray *>), else nullptr.
+// The value if it is an array (the array extractor), else nullptr.
 const oo::PList *AsArray(const oo::PList *value)
 {
 	return (value != nullptr && value->isArray()) ? value : nullptr;
@@ -211,7 +210,7 @@ void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &v
 }
 
 
-// -[NSMutableDictionary(OOExtensions) mergeEntriesFromDictionary:]: a key only in other is added;
+// The dictionary category's -mergeEntriesFromDictionary: (OOExtensions): a key only in other is added;
 // two unequal dictionaries merge recursively, two unequal arrays concatenate; anything else is
 // replaced by other's value.
 void MergeEntries(oo::PList::Dict &self, const oo::PList::Dict &other)
@@ -259,6 +258,41 @@ const oo::PList *TextureListKey(const oo::PList *value)
 }
 
 
+// +dictionaryWithContentsOfFile: of the dictionary class: the file's property list if it is a dictionary,
+// else (missing, unreadable, unparsable, another kind) a null PList.
+oo::PList DictionaryWithContentsOfFile(const std::string &path)
+{
+	const auto data = oo::fs::readFile(oo::fs::pathFromUTF8(path));
+	if (!data)  return oo::PList();
+	auto plist = oo::parsePropertyListData(data->stringView());
+	if (!plist || !plist->isDict())  return oo::PList();
+	return std::move(*plist);
+}
+
+
+// The text before a log message class's first ".", or the whole class.
+std::string LogClassKeyRoot(const std::string &key)
+{
+	const std::size_t dot = key.find('.');
+	if (dot != std::string::npos)
+	{
+		return key.substr(0, dot);
+	}
+	else
+	{
+		return key;
+	}
+}
+
+
+// OOScript's world-script array (OOScript is an unmigrated callee) as references; nullopt for nil.
+std::optional<std::vector<oo::ObjCRef<OOScript *>>> ScriptRefsOrNil(id scripts)
+{
+	if (scripts == nil)  return std::nullopt;
+	return oo::ObjCRefsFrom<OOScript *>(scripts);
+}
+
+
 // [path lastPathComponent] of a nil-able path, as %@ printed it.
 std::optional<std::string> LastPathComponent(const std::optional<std::string> &path)
 {
@@ -275,8 +309,12 @@ static BOOL				sAllMet = NO;
 
 // caches allow us to load any given file once only
 //
-static NSMutableDictionary *sSoundCache;
-static NSMutableDictionary *sStringCache;
+namespace {
+
+std::map<std::string, oo::ObjCRef<id>, std::less<>>	sSoundCache;
+std::map<std::string, std::string, std::less<>>		sStringCache;
+
+}	// namespace
 
 
 
@@ -1722,157 +1760,157 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (NSDictionary *) whitelistDictionary
++ (oo::PList) cxx_whitelistDictionary
 {
-	static NSDictionary *whitelistDictionary = nil;
-	static BOOL loaded = NO;	// a missing whitelist is remembered as nil, not retried
-	
-	if (!loaded)
+	static std::optional<oo::PList> whitelistDictionary;	// a missing whitelist is remembered as null, not retried
+
+	if (!whitelistDictionary.has_value())
 	{
-		NSString *path = [[oo::NSStringOrNil([ResourceManager cxx_builtInPath]) stringByAppendingPathComponent:@"Config"] stringByAppendingPathComponent:@"whitelist.plist"];
-		whitelistDictionary = [NSDictionary dictionaryWithContentsOfFile:path];
-		loaded = YES;
-		
-		[whitelistDictionary retain];
+		whitelistDictionary = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "whitelist.plist"));
 	}
-	
-	return whitelistDictionary;
+
+	return *whitelistDictionary;
 }
 
 
-static NSString *LogClassKeyRoot(NSString *key)
-{
-	NSRange dot = [key rangeOfString:@"."];
-	if (dot.location != NSNotFound)
-	{
-		return [key substringToIndex:dot.location];
-	}
-	else
-	{
-		return key;
-	}
-}
 
 
-+ (NSDictionary *) logControlDictionary
++ (oo::PList) cxx_logControlDictionary
 {
 	// Load built-in copy of logcontrol.plist.
-	NSString *path = [[oo::NSStringOrNil([ResourceManager cxx_builtInPath]) stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"logcontrol.plist"];
-	NSMutableDictionary *logControl = [NSMutableDictionary dictionaryWithDictionary:OODictionaryFromFile(path)];
-	if (logControl == nil)  logControl = [NSMutableDictionary dictionary];
-	
+	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
+	const std::string builtInPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "logcontrol.plist");
+	oo::PList logControl = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(builtInPath)));
+	if (!logControl.isDict())  logControl = oo::PList(oo::PList::Dict());
+	oo::PList::Dict &logControlEntries = *logControl.getIf<oo::PList::Dict>();
+
 	// Build list of root log message classes that appear in the built-in list.
-	NSMutableSet *coreRoots = [NSMutableSet set];
-	NSString *key = nil;
-	foreachkey (key, logControl)
+	std::set<std::string> coreRoots;
+	for (const auto &[key, value] : logControlEntries)
 	{
-		[coreRoots addObject:LogClassKeyRoot(key)];
+		coreRoots.insert(LogClassKeyRoot(key));
 	}
-	
-	NSArray *rootPaths = oo::NSArrayFromStrings([self cxx_rootPaths]);
-	NSString *configPath = nil;
-	NSDictionary *dict = nil;
-	
-	// Look for logcontrol.plists inside OXPs (but not in root paths). These are not allowed to define keys in hierarchies used by the build-in one.
-	foreach (path, oo::NSArrayFromStrings([self cxx_paths]))
+
+	const std::vector<std::string> rootPaths = [self cxx_rootPaths];
+
+	// The logcontrol.plist in path/Config, else in path itself.
+	auto configDictionary = [](const std::string &path) -> oo::PList
 	{
-		if ([rootPaths containsObject:path])  continue;
-		
-		configPath = [[path stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"logcontrol.plist"];
-		dict = OODictionaryFromFile(configPath);
-		if (dict == nil)
+		oo::PList dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "logcontrol.plist"))));
+		if (dict.isNull())
 		{
-			configPath = [path stringByAppendingPathComponent:@"logcontrol.plist"];
-			dict = OODictionaryFromFile(configPath);
+			dict = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(oo::str::appendingPathComponent(path, "logcontrol.plist"))));
 		}
-		foreachkey (key, dict)
+		return dict;
+	};
+
+	// Look for logcontrol.plists inside OXPs (but not in root paths). These are not allowed to define keys in hierarchies used by the build-in one.
+	for (const std::string &path : [self cxx_paths])
+	{
+		if (std::find(rootPaths.begin(), rootPaths.end(), path) != rootPaths.end())  continue;
+
+		const oo::PList dict = configDictionary(path);
+		if (const oo::PList::Dict *entries = dict.getIf<oo::PList::Dict>())
 		{
-			if (![coreRoots containsObject:LogClassKeyRoot(key)])
+			for (const auto &[key, value] : *entries)
 			{
-				[logControl setObject:[dict objectForKey:key] forKey:key];
+				if (!coreRoots.contains(LogClassKeyRoot(key)))
+				{
+					logControlEntries[key] = value;
+				}
 			}
 		}
 	}
-	
+
 	// Now, look for logcontrol.plists in root paths, i.e. not within OXPs. These are allowed to override the built-in copy.
-	foreach (path, rootPaths)
+	for (const std::string &path : rootPaths)
 	{
-		configPath = [[path stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"logcontrol.plist"];
-		dict = OODictionaryFromFile(configPath);
-		if (dict == nil)
+		const oo::PList dict = configDictionary(path);
+		if (const oo::PList::Dict *entries = dict.getIf<oo::PList::Dict>())
 		{
-			configPath = [path stringByAppendingPathComponent:@"logcontrol.plist"];
-			dict = OODictionaryFromFile(configPath);
-		}
-		foreachkey (key, dict)
-		{
-			[logControl setObject:[dict objectForKey:key] forKey:key];
+			for (const auto &[key, value] : *entries)
+			{
+				logControlEntries[key] = value;
+			}
 		}
 	}
-	
+
 	// Finally, look in preferences, which can override all of the above.
-	dict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"logging-enable"];
-	if (dict != nil)  [logControl addEntriesFromDictionary:dict];
-	
+	const oo::PList preferences = oo::PListFrom([[NSUserDefaults standardUserDefaults] dictionaryForKey:@"logging-enable"]);
+	if (const oo::PList::Dict *entries = preferences.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[key, value] : *entries)  logControlEntries[key] = value;
+	}
+
 	return logControl;
 }
 
 
-+ (NSDictionary *) roleCategoriesDictionary
++ (oo::PList) cxx_roleCategoriesDictionary
 {
-	NSMutableDictionary *roleCategories = [NSMutableDictionary dictionaryWithCapacity:16];
+	oo::PList roleCategories = oo::PList(oo::PList::Dict());
 
-	NSString *path = nil;
-	NSString *configPath = nil;
-	NSDictionary *categories = nil;
-	
-	foreach (path, oo::NSArrayFromStrings([self cxx_paths]))
+	// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: its dictionaries arrive through oo::PListFrom.
+	for (const std::string &path : [self cxx_paths])
 	{
-		if ([ResourceManager corePlist:@"role-categories.plist" excludedAt:path])
+		if ([ResourceManager cxx_corePlist:"role-categories.plist" excludedAt:path])
 		{
 			continue;
 		}
 
-		configPath = [[path stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"role-categories.plist"];
-		categories = OODictionaryFromFile(configPath);
-		if (categories != nil)
+		const std::string configPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "role-categories.plist");
+		const oo::PList categories = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(configPath)));
+		if (!categories.isNull())
 		{
 			[ResourceManager mergeRoleCategories:categories intoDictionary:roleCategories];
 		}
 	}
-	
-	/* If the old pirate-victim-roles files exist, merge them in */
-	NSArray *pirateVictims = [ResourceManager arrayFromFilesNamed:@"pirate-victim-roles.plist" inFolder:@"Config" andMerge:YES];
-	if (OOEnforceStandards() && [pirateVictims count] > 0)
-	{
-		OOStandardsDeprecated(@"pirate-victim-roles.plist is still being used.");
-	}
-	[ResourceManager mergeRoleCategories:[NSDictionary dictionaryWithObject:pirateVictims forKey:@"oolite-pirate-victim"] intoDictionary:roleCategories];
 
-	return [[roleCategories copy] autorelease];
+	/* If the old pirate-victim-roles files exist, merge them in */
+	const oo::PList pirateVictims = [ResourceManager cxx_arrayFromFilesNamed:"pirate-victim-roles.plist" inFolder:std::string("Config") andMerge:YES];
+	if (OOEnforceStandards() && pirateVictims.count() > 0)
+	{
+		cxx_OOStandardsDeprecated("pirate-victim-roles.plist is still being used.");
+	}
+	if (pirateVictims.isNull())
+	{
+		// +dictionaryWithObject:forKey: with a nil object raised
+		[NSException raise:NSInvalidArgumentException format:@"Tried to init dictionary with nil value"];
+	}
+	oo::PList::Dict pirateVictimCategory;
+	pirateVictimCategory.emplace("oolite-pirate-victim", pirateVictims);
+	[ResourceManager mergeRoleCategories:oo::PList(std::move(pirateVictimCategory)) intoDictionary:roleCategories];
+
+	return roleCategories;
 }
 
 
-+ (void) mergeRoleCategories:(NSDictionary *)catData intoDictionary:(NSMutableDictionary *)categories
++ (void) mergeRoleCategories:(const oo::PList &)catData intoDictionary:(oo::PList &)categories
 {
-	NSMutableSet *contents = nil;
-	NSArray *catDataEntry = nil;
-	NSString *key;
-	foreachkey (key, catData)
+	// A category is a set of roles: an array of unique values (by -isEqual:), in the order first seen.
+	const oo::PList::Dict *catDataEntries = catData.getIf<oo::PList::Dict>();
+	if (catDataEntries == nullptr)  return;
+	oo::PList::Dict &categoryEntries = *categories.getIf<oo::PList::Dict>();
+	for (const auto &[key, value] : *catDataEntries)
 	{
-		contents = [categories objectForKey:key];
-		if (contents == nil)
+		oo::PList &contents = categoryEntries.try_emplace(key, oo::PList::Array()).first->second;
+		const oo::PList *catDataEntry = catData.get<oo::PList::Array>(key);
+		OOLog(@"shipData.load.roleCategories", @"Adding %ld entries for category %@", (unsigned long)(catDataEntry != nullptr ? catDataEntry->count() : 0), oo::NSStringFrom(key));
+		if (catDataEntry == nullptr)  continue;
+		oo::PList::Array &members = *contents.getIf<oo::PList::Array>();
+		for (const oo::PList &role : *catDataEntry->getIf<oo::PList::Array>())
 		{
-			contents = [NSMutableSet setWithCapacity:16];
-			[categories setObject:contents forKey:key];
+			bool present = false;
+			for (const oo::PList &member : members)
+			{
+				if (PListIsEqual(&member, &role))
+				{
+					present = true;
+					break;
+				}
+			}
+			if (!present)  members.push_back(role);
 		}
-		catDataEntry = oo::PListView(catData).get<NSArray *>(key);
-		OOLog(@"shipData.load.roleCategories", @"Adding %ld entries for category %@", (unsigned long)[catDataEntry count], key);
-		[contents addObjectsFromArray:catDataEntry];
 	}
 }
 
@@ -1882,38 +1920,33 @@ static NSString *LogClassKeyRoot(NSString *key)
 	OOLog(@"resourceManager.planetinfo.load", @"%@", @"Initialising manager");
 	OOSystemDescriptionManager *manager = [[OOSystemDescriptionManager alloc] init];
 	
-	NSString *path = nil;
-	NSString *configPath = nil;
-	NSDictionary *categories = nil;
-	NSString *systemKey = nil;
-
-	foreach (path, oo::NSArrayFromStrings([self cxx_paths]))
+	// OODictionaryFromFile (OOPListParsing) and OOSystemDescriptionManager are unmigrated callees:
+	// the planetinfo dictionaries arrive through oo::PListFrom and leave through oo::ObjectFromPList.
+	for (const std::string &path : [self cxx_paths])
 	{
-		if ([ResourceManager corePlist:@"planetinfo.plist" excludedAt:path])
+		if ([ResourceManager cxx_corePlist:"planetinfo.plist" excludedAt:path])
 		{
 			continue;
 		}
-		configPath = [[path stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"planetinfo.plist"];
-		categories = OODictionaryFromFile(configPath);
-		if (categories != nil)
+		const std::string configPath = oo::str::appendingPathComponent(oo::str::appendingPathComponent(path, "Config"), "planetinfo.plist");
+		const oo::PList categories = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(configPath)));
+		if (const oo::PList::Dict *systems = categories.getIf<oo::PList::Dict>())
 		{
-			foreachkey (systemKey,categories)
+			for (const auto &[systemKey, values] : *systems)
 			{
-				NSDictionary *values = oo::PListView(categories).get<NSDictionary *>(systemKey, nil);
-				if (values != nil)
+				if (values.isDict())
 				{
-					if ([systemKey isEqualToString:PLANETINFO_UNIVERSAL_KEY])
+					if (systemKey == oo::StdString(PLANETINFO_UNIVERSAL_KEY))
 					{
-						[manager setUniversalProperties:values];
+						[manager setUniversalProperties:oo::ObjectFromPList(values)];
 					}
-					else if ([systemKey isEqualToString:PLANETINFO_INTERSTELLAR_KEY])
+					else if (systemKey == oo::StdString(PLANETINFO_INTERSTELLAR_KEY))
 					{
-						[manager setInterstellarProperties:values];
+						[manager setInterstellarProperties:oo::ObjectFromPList(values)];
 					}
 					else
 					{
-						[manager setProperties:values forSystemKey:systemKey];
+						[manager setProperties:oo::ObjectFromPList(values) forSystemKey:oo::NSStringFrom(systemKey)];
 					}
 				}
 			}
@@ -1927,103 +1960,109 @@ static NSString *LogClassKeyRoot(NSString *key)
 
 
 
-+ (NSDictionary *) shaderBindingTypesDictionary
++ (oo::PList) cxx_shaderBindingTypesDictionary
 {
-	static id shaderBindingTypesDictionary = nil;
-	
-	if (shaderBindingTypesDictionary == nil)
+	static std::optional<oo::PList> shaderBindingTypesDictionary;
+
+	if (!shaderBindingTypesDictionary.has_value())
 	{
-		@autoreleasepool
+		oo::PList dict = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "shader-uniform-bindings.plist"));
+		oo::PList::Dict *entries = dict.getIf<oo::PList::Dict>();
+		std::vector<std::string> keys;
+		if (entries != nullptr)
 		{
-			NSString *path = [[oo::NSStringOrNil([ResourceManager cxx_builtInPath]) stringByAppendingPathComponent:@"Config"] stringByAppendingPathComponent:@"shader-uniform-bindings.plist"];
-			NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithContentsOfFile:path];
-			NSArray *keys = [dict allKeys];
-			
-			// Resolve all $inherit keys.
-			unsigned changeCount = 0;
-			do {
-				changeCount = 0;
-				NSString *key = nil;
-				foreach (key, keys)
-				{
-					NSDictionary *value = oo::PListView(dict).get<NSDictionary *>(key);
-					NSString *inheritKey = oo::PListView(value).get<NSString *>(@"$inherit");
-					if (inheritKey != nil)
-					{
-						changeCount++;
-						NSMutableDictionary *mutableValue = [[value mutableCopy] autorelease];
-						[mutableValue removeObjectForKey:@"$inherit"];
-						NSDictionary *inherited = oo::PListView(dict).get<NSDictionary *>(inheritKey);
-						if (inherited != nil)
-						{
-							[mutableValue addEntriesFromDictionary:inherited];
-						}
-						
-						[dict setObject:[[mutableValue copy] autorelease] forKey:key];
-					}
-				}
-			} while (changeCount != 0);
-			
-			shaderBindingTypesDictionary = [dict copy];
+			keys.reserve(entries->size());
+			for (const auto &[key, value] : *entries)  keys.push_back(key);	// key order (was hash order)
 		}
+
+		// Resolve all $inherit keys.
+		unsigned changeCount = 0;
+		do {
+			changeCount = 0;
+			for (const std::string &key : keys)
+			{
+				const oo::PList *value = dict.get<oo::PList::Dict>(key);
+				const std::optional<std::string> inheritKey = value != nullptr ? ManifestString(*value, "$inherit") : std::nullopt;
+				if (inheritKey.has_value())
+				{
+					changeCount++;
+					oo::PList mutableValue = *value;
+					oo::PList::Dict &valueEntries = *mutableValue.getIf<oo::PList::Dict>();
+					valueEntries.erase("$inherit");
+					if (const oo::PList *inherited = dict.get<oo::PList::Dict>(*inheritKey))
+					{
+						for (const auto &[inheritedKey, inheritedValue] : *inherited->getIf<oo::PList::Dict>())  valueEntries[inheritedKey] = inheritedValue;
+					}
+
+					(*entries)[key] = std::move(mutableValue);
+				}
+			}
+		} while (changeCount != 0);
+
+		shaderBindingTypesDictionary = std::move(dict);
 	}
-	
-	return shaderBindingTypesDictionary;
+
+	return *shaderBindingTypesDictionary;
 }
 
 
-+ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
-	return [self pathForFileNamed:fileName inFolder:folderName cache:YES];
+	return [self cxx_pathForFileNamed:fileName inFolder:folderName cache:YES];
 }
 
 
 /* This is extremely expensive to call with useCache:NO */
-+ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache
 {
-	NSString		*result = nil;
-	NSString		*cacheKey = nil;
+	std::optional<std::string>	result;
+	std::string		cacheKey;
 	OOCacheManager	*cache = [OOCacheManager sharedCache];
-	NSString		*path = nil;
-	NSString		*filePath = nil;
+	std::string		filePath;
 	NSFileManager	*fmgr = nil;
-	
-	if (fileName == nil)  return nil;
-	
+
+	// (The resolved-paths cache is consulted whatever useCache says: the old test was of the cache
+	// manager, which always exists.) OOCacheManager is an unmigrated callee: it holds the path as a
+	// Foundation string.
 	if (cache)
 	{
-		if (folderName != nil)  cacheKey = [NSString stringWithFormat:@"%@/%@", folderName, fileName];
+		if (folderName.has_value())  cacheKey = *folderName + "/" + fileName;
 		else  cacheKey = fileName;
-		result = [cache objectForKey:cacheKey inCache:@"resolved paths"];
-		if (result != nil)  return result;
+		result = oo::OptionalString([cache cxx_objectForKey:cacheKey inCache:"resolved paths"]);
+		if (result.has_value())  return result;
 	}
-	
+
 	// Search for file
+	// (-oo_oxzFileExistsAtPath:, the NSFileManager category that also looks inside OXZs, has no
+	// oo::fs form yet: it answers through the bridged path.)
 	fmgr = [NSFileManager defaultManager];
 	// reverse object enumerator allows OXPs to override core
-	foreach (path, [oo::NSArrayFromStrings([ResourceManager cxx_paths]) reverseObjectEnumerator])
+	const std::vector<std::string> paths = [ResourceManager cxx_paths];
+	for (auto pathIt = paths.rbegin(); pathIt != paths.rend(); ++pathIt)
 	{
-		filePath = [[path stringByAppendingPathComponent:folderName] stringByAppendingPathComponent:fileName];
-		if ([fmgr oo_oxzFileExistsAtPath:filePath])
+		const std::string &path = *pathIt;
+		// appending a nil folder left the path as it was
+		filePath = oo::str::appendingPathComponent(folderName.has_value() ? oo::str::appendingPathComponent(path, *folderName) : path, fileName);
+		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
 		{
 			result = filePath;
 			break;
 		}
-		
-		filePath = [path stringByAppendingPathComponent:fileName];
-		if ([fmgr oo_oxzFileExistsAtPath:filePath])
+
+		filePath = oo::str::appendingPathComponent(path, fileName);
+		if ([fmgr oo_oxzFileExistsAtPath:oo::NSStringFrom(filePath)])
 		{
 			result = filePath;
 			break;
 		}
 	}
-	
-	if (result != nil)
+
+	if (result.has_value())
 	{
-		OOLog(@"resourceManager.foundFile", @"Found %@/%@ at %@", folderName, fileName, filePath);
+		OOLog(@"resourceManager.foundFile", @"Found %@/%@ at %@", oo::NSStringOrNil(folderName), oo::NSStringFrom(fileName), oo::NSStringFrom(filePath));
 		if (useCache)
 		{
-			[cache setObject:result forKey:cacheKey inCache:@"resolved paths"];
+			[cache cxx_setObject:oo::NSStringFrom(*result) forKey:cacheKey inCache:"resolved paths"];
 		}
 	}
 	return result;
@@ -2032,57 +2071,52 @@ static NSString *LogClassKeyRoot(NSString *key)
 
 /* use extreme caution in calling with usePathCache:NO - this can be
  * an extremely expensive operation */
-+ (id) retrieveFileNamed:(NSString *)fileName
-				inFolder:(NSString *)folderName
-				   cache:(NSMutableDictionary **)ioCache
-					 key:(NSString *)key
++ (id) retrieveFileNamed:(const std::string &)fileName
+				inFolder:(const std::optional<std::string> &)folderName
+				   cache:(std::map<std::string, oo::ObjCRef<id>, std::less<>> *)ioCache
+					 key:(std::optional<std::string>)key
 				   class:(Class)klass
 			usePathCache:(BOOL)useCache
 {
 	id				result = nil;
-	NSString		*path = nil;
-	
+
 	if (ioCache)
 	{
-		if (key == nil)  key = [NSString stringWithFormat:@"%@:%@", folderName, fileName];
-		if (*ioCache != nil)
-		{
-			// return the cached object, if any
-			result = [*ioCache objectForKey:key];
-			if (result)  return result;
-		}
+		if (!key.has_value())  key = oo::str::format("%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str());
+		// return the cached object, if any
+		auto cached = ioCache->find(*key);
+		if (cached != ioCache->end())  return cached->second.get();
 	}
-	
-	path = [self pathForFileNamed:fileName inFolder:folderName cache:useCache];
-	if (path != nil)  result = [[[klass alloc] initWithContentsOfFile:path] autorelease];
-	
+
+	const std::optional<std::string> path = [self cxx_pathForFileNamed:fileName inFolder:folderName cache:useCache];
+	if (path.has_value())  result = [[[klass alloc] initWithContentsOfFile:oo::NSStringFrom(*path)] autorelease];
+
 	if (result != nil && ioCache != NULL)
 	{
-		if (*ioCache == nil)  *ioCache = [[NSMutableDictionary alloc] init];
-		[*ioCache setObject:result forKey:key];
+		(*ioCache)[*key] = oo::ObjCRef<id>(result);
 	}
-	
+
 	return result;
 }
 
 
-+ (OOMusic *) ooMusicNamed:(NSString *)fileName inFolder:(NSString *)folderName
++ (OOMusic *) cxx_ooMusicNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
 	return [self retrieveFileNamed:fileName
 						  inFolder:folderName
 							 cache:NULL	// Don't cache music objects; minimizing latency isn't really important.
-							   key:[NSString stringWithFormat:@"OOMusic:%@:%@", folderName, fileName]
+							   key:oo::str::format("OOMusic:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str())
 							 class:[OOMusic class]
 					  usePathCache:YES];
 }
 
 
-+ (OOSound *) ooSoundNamed:(NSString *)fileName inFolder:(NSString *)folderName
++ (OOSound *) cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName
 {
 	return [self retrieveFileNamed:fileName
 						  inFolder:folderName
 							 cache:&sSoundCache
-							   key:[NSString stringWithFormat:@"OOSound:%@:%@", folderName, fileName]
+							   key:oo::str::format("OOSound:%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str())
 							 class:[OOSound class]
 					  usePathCache:YES];
 }
@@ -2094,187 +2128,186 @@ static NSString *LogClassKeyRoot(NSString *key)
 }
 
 
-// The twin exists from oo-3rb.101 (the loaders' header line shares "FromFilesNamed"); its body,
-// sStringCache and the path lookup convert in oo-3rb.103.
-+ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileNameString inFolder:(const std::optional<std::string> &)folderNameString cache:(BOOL)useCache
++ (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache
 {
-	id				result = nil;
-	NSString		*path = nil;
-	NSString		*key = nil;
-	NSString		*fileName = oo::NSStringFrom(fileNameString);
-	NSString		*folderName = oo::NSStringOrNil(folderNameString);
-	
+	std::optional<std::string>	result;
+	std::string		key;
+
 	if (useCache)
 	{
-		key = [NSString stringWithFormat:@"%@:%@", folderName, fileName];
-		if (sStringCache != nil)
-		{
-			// return the cached object, if any
-			result = [sStringCache objectForKey:key];
-			if (result)  return oo::OptionalString(result);
-		}
+		key = oo::str::format("%s:%s", folderName.has_value() ? folderName->c_str() : "(null)", fileName.c_str());
+		// return the cached object, if any
+		auto cached = sStringCache.find(key);
+		if (cached != sStringCache.end())  return cached->second;
 	}
-	
-	path = [self pathForFileNamed:fileName inFolder:folderName cache:YES];
-	if (path != nil)  result = [NSString stringWithContentsOfUnicodeFile:path];
-	
-	if (result != nil && useCache)
+
+	const std::optional<std::string> path = [self cxx_pathForFileNamed:fileName inFolder:folderName cache:YES];
+	if (path.has_value())
 	{
-		if (sStringCache == nil)  sStringCache = [[NSMutableDictionary alloc] init];
-		[sStringCache setObject:result forKey:key];
+		// +stringWithContentsOfUnicodeFile: (NSStringOOExtensions): the file's bytes, read as it read
+		// them (through the OXZ reader), decoded as it decoded them.
+		const std::optional<oo::Data> data = OODataFromOXZFile(*path);
+		if (data.has_value())  result = oo::str::decodeUnicodeText(data->stringView());
 	}
-	
-	return oo::OptionalString(result);
+
+	if (result.has_value() && useCache)
+	{
+		sStringCache[key] = *result;
+	}
+
+	return result;
 }
 
 
-+ (NSDictionary *)loadScripts
++ (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts
 {
-	NSMutableDictionary			*loadedScripts = nil;
-	NSArray						*results = nil;
-	NSArray						*paths = nil;
-	NSString					*path = nil;
-	OOScript					*script = nil;
-	NSString					*name = nil;
-	
+	// name -> script, in the order each name was first loaded (a later script of the same name replaces the earlier one in place)
+	std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>	loadedScripts;
+
 	OOLog(@"script.load.world.begin", @"%@", @"Loading world scripts...");
-	
-	loadedScripts = [NSMutableDictionary dictionary];
-	paths = oo::NSArrayFromStrings([ResourceManager cxx_paths]);
-	foreach (path, paths)
+
+	for (const std::string &path : [ResourceManager cxx_paths])
 	{
 		// excluding world-scripts.plist also excludes script.js / script.plist
 		// though as those core files don't and won't exist this is not
 		// a problem.
-		if (![ResourceManager corePlist:@"world-scripts.plist" excludedAt:path])
+		if (![ResourceManager cxx_corePlist:"world-scripts.plist" excludedAt:path])
 		{
 			@autoreleasepool
 			{
 				@try
 				{
-					results = [OOScript worldScriptsAtPath:[path stringByAppendingPathComponent:@"Config"]];
-					if (results == nil) results = [OOScript worldScriptsAtPath:path];
-					if (results != nil)
+					std::optional<std::vector<oo::ObjCRef<OOScript *>>> results = ScriptRefsOrNil([OOScript worldScriptsAtPath:oo::NSStringFrom(oo::str::appendingPathComponent(path, "Config"))]);
+					if (!results.has_value()) results = ScriptRefsOrNil([OOScript worldScriptsAtPath:oo::NSStringFrom(path)]);
+					if (results.has_value())
 					{
-						foreach (script, results)
+						for (const oo::ObjCRef<OOScript *> &script : *results)
 						{
-							name = [script name];
-							if (name != nil)  [loadedScripts setObject:script forKey:name];
-							else  OOLog(@"script.load.unnamed", @"Discarding anonymous script %@", script);
+							const std::optional<std::string> name = oo::OptionalString([script.get() name]);
+							if (name.has_value())
+							{
+								auto existing = std::find_if(loadedScripts.begin(), loadedScripts.end(), [&](const auto &entry) { return entry.first == *name; });
+								if (existing != loadedScripts.end())  existing->second = script;
+								else  loadedScripts.emplace_back(*name, script);
+							}
+							else  OOLog(@"script.load.unnamed", @"Discarding anonymous script %@", script.get());
 						}
 					}
 				}
 				@catch (NSException *exception)
 				{
-					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", __PRETTY_FUNCTION__, [exception name], [exception reason], path);
+					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", "+[ResourceManager loadScripts]", [exception name], [exception reason], oo::NSStringFrom(path));
 					// Ignore exception and keep loading other scripts.
 				}
 			}
 		}
 	}
-	
+
 	if (OOLogWillDisplayMessagesInClass(@"script.load.world.listAll"))
 	{
-		NSUInteger count = [loadedScripts count];
+		std::size_t count = loadedScripts.size();
 		if (count != 0)
 		{
-			NSMutableArray		*displayNames = nil;
-			OOScript			*script = nil;
-			NSString			*displayString = nil;
-			
-			displayNames = [NSMutableArray arrayWithCapacity:count];
-			
-			foreach (script, [loadedScripts allValues])
+			std::vector<std::string> displayNames;
+			displayNames.reserve(count);
+
+			for (const auto &[name, script] : loadedScripts)
 			{
-				[displayNames addObject:[script displayName]];
+				displayNames.push_back(oo::StdString([script.get() displayName]));
 			}
-			
-			displayString = [[displayNames sortedArrayUsingSelector:@selector(caseInsensitiveCompare:)] componentsJoinedByString:@"\n    "];
-			OOLog(@"script.load.world.listAll", @"Loaded %zu world scripts:\n    %@", count, displayString);
+
+			std::stable_sort(displayNames.begin(), displayNames.end(), [](const std::string &a, const std::string &b) { return oo::str::caseInsensitiveCompare(a, b) < 0; });
+			std::string displayString;
+			for (std::size_t i = 0; i != displayNames.size(); ++i)
+			{
+				if (i != 0)  displayString += "\n    ";
+				displayString += displayNames[i];
+			}
+			OOLog(@"script.load.world.listAll", @"Loaded %zu world scripts:\n    %@", count, oo::NSStringFrom(displayString));
 		}
 		else
 		{
 			OOLog(@"script.load.world.listAll", @"%@", @"*** No world scripts loaded.");
 		}
 	}
-	
+
 	return loadedScripts;
 }
 
 
-+ (BOOL) writeDiagnosticData:(NSData *)data toFileNamed:(NSString *)name
++ (BOOL) cxx_writeDiagnosticData:(const oo::Data &)data toFileNamed:(const std::string &)name
 {
-	if (data == nil || name == nil)  return NO;
-	
-	NSString *directory = oo::NSStringOrNil([self cxx_diagnosticFileLocation]);
-	if (directory == nil)  return NO;
-	
-	NSArray *nameComponents = [name componentsSeparatedByString:@"/"];
-	NSUInteger count = [nameComponents count];
+	std::optional<std::string> directory = [self cxx_diagnosticFileLocation];
+	if (!directory.has_value())  return NO;
+
+	std::string fileName = name;
+	const std::vector<std::string> nameComponents = oo::str::split(name, "/");
+	std::size_t count = nameComponents.size();
 	if (count > 1)
 	{
-		name = [nameComponents lastObject];
-		
-		for (NSUInteger i = 0; i < count - 1; i++)
+		fileName = nameComponents.back();
+
+		for (std::size_t i = 0; i < count - 1; i++)
 		{
-			NSString *component = [nameComponents objectAtIndex:i];
-			if ([component hasPrefix:@"."])
+			std::string component = nameComponents[i];
+			if (oo::str::hasPrefix(component, "."))
 			{
-				component = [@"!" stringByAppendingString:[component substringFromIndex:1]];
+				component = "!" + component.substr(1);
 			}
-			directory = [directory stringByAppendingPathComponent:component];
-			[[NSFileManager defaultManager] oo_createDirectoryAtPath:directory attributes:nil];
+			// appending an empty component left the directory as it was
+			if (!component.empty())  *directory = oo::str::appendingPathComponent(*directory, component);
+			(void)oo::fs::createDirectories(oo::fs::pathFromUTF8(*directory));
 		}
 	}
-	
-	return [data writeToFile:[directory stringByAppendingPathComponent:name] atomically:YES];
+
+	return oo::fs::writeFile(oo::fs::pathFromUTF8(oo::str::appendingPathComponent(*directory, fileName)), data, oo::fs::WriteMode::atomic).has_value();
 }
 
 
-+ (BOOL) writeDiagnosticString:(NSString *)string toFileNamed:(NSString *)name
++ (BOOL) cxx_writeDiagnosticString:(const std::string &)string toFileNamed:(const std::string &)name
 {
-	return [self writeDiagnosticData:[string dataUsingEncoding:NSUTF8StringEncoding] toFileNamed:name];
+	return [self cxx_writeDiagnosticData:oo::Data::fromString(string) toFileNamed:name];
 }
 
 
-+ (BOOL) writeDiagnosticPList:(id)plist toFileNamed:(NSString *)name
++ (BOOL) cxx_writeDiagnosticPList:(id)plist toFileNamed:(const std::string &)name
 {
-	NSData *data = [plist oldSchoolPListFormatWithErrorDescription:NULL];
-	if (data == nil)  [NSPropertyListSerialization dataFromPropertyList:plist format:NSPropertyListXMLFormat_v1_0 errorDescription:NULL];
-	if (data == nil)  return NO;
-	
-	return [self writeDiagnosticData:data toFileNamed:name];
+	// The old-school writer (oo::writeOldStylePList, the port of OldSchoolPropertyListWriting). Its
+	// XML fallback's result was never used, so a plist it cannot write is not written.
+	const auto data = oo::writeOldStylePList(oo::PListFrom(plist));
+	if (!data.has_value())  return NO;
+
+	return [self cxx_writeDiagnosticData:*data toFileNamed:name];
 }
 
 
-+ (NSDictionary *) materialDefaults
++ (oo::PList) cxx_materialDefaults
 {
-	return [self dictionaryFromFilesNamed:@"material-defaults.plist" inFolder:@"Config" andMerge:YES];
+	return [self cxx_dictionaryFromFilesNamed:"material-defaults.plist" inFolder:std::string("Config") andMerge:YES];
 }
 
 
-+ (BOOL)directoryExists:(NSString *)inPath create:(BOOL)inCreate
++ (BOOL)directoryExists:(const std::string &)inPath create:(BOOL)inCreate
 {
-	BOOL				exists, directory;
-	NSFileManager		*fmgr =  [NSFileManager defaultManager];
-	
-	exists = [fmgr fileExistsAtPath:inPath isDirectory:&directory];
-	
+	const oo::fs::FileType	type = oo::fs::fileType(oo::fs::pathFromUTF8(inPath));
+	const BOOL				exists = type != oo::fs::FileType::none;
+	const BOOL				directory = type == oo::fs::FileType::directory;
+
 	if (exists && !directory)
 	{
-		OOLog(@"resourceManager.write.buildPath.failed", @"Expected %@ to be a folder, but it is a file.", inPath);
+		OOLog(@"resourceManager.write.buildPath.failed", @"Expected %@ to be a folder, but it is a file.", oo::NSStringFrom(inPath));
 		return NO;
 	}
 	if (!exists)
 	{
 		if (!inCreate) return NO;
-		if (![fmgr oo_createDirectoryAtPath:inPath attributes:nil])
+		if (!oo::fs::createDirectories(oo::fs::pathFromUTF8(inPath)))
 		{
-			OOLog(@"resourceManager.write.buildPath.failed", @"Could not create folder %@.", inPath);
+			OOLog(@"resourceManager.write.buildPath.failed", @"Could not create folder %@.", oo::NSStringFrom(inPath));
 			return NO;
 		}
 	}
-	
+
 	return YES;
 }
 
@@ -2308,10 +2341,8 @@ static NSString *LogClassKeyRoot(NSString *key)
 
 + (void) clearCaches
 {
-	[sSoundCache release];
-	sSoundCache = nil;
-	[sStringCache release];
-	sStringCache = nil;
+	sSoundCache.clear();
+	sStringCache.clear();
 }
 
 @end

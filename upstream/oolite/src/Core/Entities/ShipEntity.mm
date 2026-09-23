@@ -406,12 +406,12 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	{
 		OOMesh *mesh = nil;
 
-		mesh = [OOMesh meshWithName:modelName
-						   cacheKey:[NSString stringWithFormat:@"%@-%.3f",_shipKey,_scaleFactor]
-				 materialDictionary:oo::PListView(shipDict).get<NSDictionary *>(@"materials")
-				  shadersDictionary:oo::PListView(shipDict).get<NSDictionary *>(@"shaders")
+		mesh = [OOMesh meshWithName:oo::StdString(modelName)
+						   cacheKey:oo::OptionalString([NSString stringWithFormat:@"%@-%.3f",_shipKey,_scaleFactor])
+				 materialDictionary:oo::PListFrom(oo::PListView(shipDict).get<NSDictionary *>(@"materials"))
+				  shadersDictionary:oo::PListFrom(oo::PListView(shipDict).get<NSDictionary *>(@"shaders"))
 							 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
-					   shaderMacros:OODefaultShipShaderMacros()
+					   shaderMacros:oo::PListFrom(OODefaultShipShaderMacros())
 					   shaderBindingTarget:self
 						scaleFactor:_scaleFactor
 					 cacheWriteable:YES];
@@ -927,7 +927,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 - (BOOL) setUpOneFlasher:(NSDictionary *) subentDict
 {
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:oo::PListFrom(subentDict)];
 	[flasher setPosition:HPvector_multiply_scalar(oo::PListView(subentDict).get<HPVector>(@"position"),_scaleFactor)];
 	[flasher rescaleBy:_scaleFactor];
 	[self addSubEntity:flasher];
@@ -8899,7 +8899,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// and a visual sign of the explosion
 	// "fireball" explosion effect
 	NSDictionary *explosion = [UNIVERSE explosionSetting:@"oolite-default-ship-explosion"];
-	[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSize:range*3.0 andSettings:explosion]];
+	[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSize:range*3.0 andSettings:oo::PListFrom(explosion)]];
 
 }
 
@@ -9052,12 +9052,12 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	NSString *modelName = oo::PListView(shipDict).get<NSString *>(@"model");
 	if (modelName != nil)
 	{
-		mesh = [OOMesh meshWithName:modelName
-						   cacheKey:[NSString stringWithFormat:@"%@-%.3f",_shipKey,_scaleFactor]
-				 materialDictionary:oo::PListView(shipDict).get<NSDictionary *>(@"materials")
-				  shadersDictionary:oo::PListView(shipDict).get<NSDictionary *>(@"shaders")
+		mesh = [OOMesh meshWithName:oo::StdString(modelName)
+						   cacheKey:oo::OptionalString([NSString stringWithFormat:@"%@-%.3f",_shipKey,_scaleFactor])
+				 materialDictionary:oo::PListFrom(oo::PListView(shipDict).get<NSDictionary *>(@"materials"))
+				  shadersDictionary:oo::PListFrom(oo::PListView(shipDict).get<NSDictionary *>(@"shaders"))
 							 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
-					   shaderMacros:OODefaultShipShaderMacros()
+					   shaderMacros:oo::PListFrom(OODefaultShipShaderMacros())
 					   shaderBindingTarget:self
 						scaleFactor:factor
 					 cacheWriteable:writeToCache];
@@ -9246,7 +9246,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 					if (explosionType == nil)
 					{
 						explosion = [UNIVERSE explosionSetting:explosionKey];
-						[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:explosion]];
+						[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:oo::PListFrom(explosion)]];
 						// 3. flash
 						[UNIVERSE addEntity:[OOFlashEffectEntity explosionFlashFromEntity:self]];
 					}
@@ -9271,7 +9271,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 							else
 							{
 								explosion = [UNIVERSE explosionSetting:explosionKey];
-								[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:explosion]];
+								[UNIVERSE addEntity:[OOExplosionCloudEntity explosionCloudFromEntity:self withSettings:oo::PListFrom(explosion)]];
 							}
 						}
 					}

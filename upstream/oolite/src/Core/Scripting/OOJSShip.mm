@@ -1903,7 +1903,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_forwardWeapon:
 		case kShip_currentWeapon:
 			{
-			sValue = JSValueToEquipmentKeyRelaxed(context, *value, &exists);
+			sValue = oo::NSStringOrNil(JSValueToEquipmentKeyRelaxed(context, *value, &exists));
 			if (sValue == nil) 
 			{
 				sValue = @"EQ_WEAPON_NONE";
@@ -2639,7 +2639,7 @@ static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs 
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists);
+	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists));
 	if (EXPECT_NOT(key == nil))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"canAwardEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
@@ -2780,7 +2780,7 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKey(context, OOJS_ARGV[0]));
 	if (EXPECT_NOT(key == nil))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"removeEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
@@ -2982,7 +2982,7 @@ static bool ShipEquipmentStatus(ooscript::Context context, ooscript::CallArgs &o
 
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKey(context, OOJS_ARGV[0]));
 	if (oojsArgs.count() > 1)  ooscript::valueToBoolean(context, OOJS_ARGV[1], &asDict);
 	if (EXPECT_NOT(key == nil))
 	{
@@ -3322,7 +3322,7 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	
 	if (fromShaders)
 	{
-		materials = [[thisEnt mesh] materials];
+		materials = oo::ObjectFromPList([[thisEnt mesh] materials]);
 		params = ooscript::toObject(OOJS_ARGV[0]);
 		shaders = OOJSNativeObjectFromJSObject(context, params);
 	}
@@ -3337,7 +3337,7 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 		}
 		else
 		{
-			shaders = [[thisEnt mesh] shaders];
+			shaders = oo::ObjectFromPList([[thisEnt mesh] shaders]);
 		}
 	}
 	
@@ -3345,12 +3345,12 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	NSDictionary 			*shipDict = [thisEnt shipInfoDictionary];
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:oo::PListView(shipDict).get<NSString *>(@"model")
-							   cacheKey:nil
-					 materialDictionary:materials
-					  shadersDictionary:shaders
+	OOMesh *mesh = [OOMesh meshWithName:oo::StdString(oo::PListView(shipDict).get<NSString *>(@"model"))
+							   cacheKey:std::nullopt
+					 materialDictionary:oo::PListFrom(materials)
+					  shadersDictionary:oo::PListFrom(shaders)
 								 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
-						   shaderMacros:oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros")
+						   shaderMacros:oo::PListFrom(oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros"))
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)
@@ -3579,7 +3579,7 @@ static bool ShipGetMaterials(ooscript::Context context, ooscript::CallArgs &oojs
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	result = [[thisEnt mesh] materials];
+	result = oo::ObjectFromPList([[thisEnt mesh] materials]);
 	if (result == nil)  result = [NSDictionary dictionary];
 	OOJS_RETURN_OBJECT(result);
 	
@@ -3596,7 +3596,7 @@ static bool ShipGetShaders(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	result = [[thisEnt mesh] shaders];
+	result = oo::ObjectFromPList([[thisEnt mesh] shaders]);
 	if (result == nil)  result = [NSDictionary dictionary];
 	OOJS_RETURN_OBJECT(result);
 	

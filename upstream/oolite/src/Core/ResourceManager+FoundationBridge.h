@@ -88,6 +88,23 @@ MA 02110-1301, USA.
 + (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName;	// -> +cxx_stringFromFilesNamed:inFolder:
 + (NSString *) stringFromFilesNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;	// -> +cxx_stringFromFilesNamed:inFolder:cache:
 
+// oo-3rb.102: special dictionaries and scripts
++ (NSDictionary *) whitelistDictionary;				// -> +cxx_whitelistDictionary
++ (NSDictionary *) shaderBindingTypesDictionary;	// -> +cxx_shaderBindingTypesDictionary
++ (NSDictionary *) logControlDictionary;			// -> +cxx_logControlDictionary
++ (NSDictionary *) roleCategoriesDictionary;		// -> +cxx_roleCategoriesDictionary
++ (NSDictionary *)loadScripts;						// -> +cxx_loadScripts
++ (NSDictionary *) materialDefaults;				// -> +cxx_materialDefaults
+
+// oo-3rb.103: file lookup, sounds and music, diagnostics
++ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName;	// -> +cxx_pathForFileNamed:inFolder:
++ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;	// -> +cxx_pathForFileNamed:inFolder:cache:
++ (OOSound *)ooSoundNamed:(NSString *)fileName inFolder:(NSString *)folderName;	// -> +cxx_ooSoundNamed:inFolder:
++ (OOMusic *)ooMusicNamed:(NSString *)fileName inFolder:(NSString *)folderName;	// -> +cxx_ooMusicNamed:inFolder:
++ (BOOL) writeDiagnosticData:(NSData *)data toFileNamed:(NSString *)name;	// -> +cxx_writeDiagnosticData:toFileNamed:
++ (BOOL) writeDiagnosticString:(NSString *)string toFileNamed:(NSString *)name;	// -> +cxx_writeDiagnosticString:toFileNamed:
++ (BOOL) writeDiagnosticPList:(id)plist toFileNamed:(NSString *)name;	// -> +cxx_writeDiagnosticPList:toFileNamed:
+
 @end
 
 #endif	// RESOURCEMANAGER_FOUNDATIONBRIDGE_H
