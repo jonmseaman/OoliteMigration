@@ -1,4 +1,4 @@
-# ADR-0038 — Deferred calls (`performSelector:withObject:afterDelay:`) become a frame-loop queue with the run loop's firing order
+# ADR-0040 — Deferred calls (`performSelector:withObject:afterDelay:`) become a frame-loop queue with the run loop's firing order
 
 **Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-3rb.57, 2026-09-23;
 ADR-0013). Jon may override.
