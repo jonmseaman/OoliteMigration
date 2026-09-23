@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 #import "OOColor.h"
 #import "OOStringExpander.h"
 #import "MyOpenGLView.h"
+#import "GameController.h"
 
 #import "unzip.h"
 
@@ -2354,8 +2355,12 @@ static OOOXZManager *sSingleton = nil;
 	 * (>20Mb) OXZ files.
 	 *
 	 * CIM 6 July 2014
+	 *
+	 * The game tick is no longer a run-loop timer, so GameController fires
+	 * it (and the run loop's own due timers) here, as the run loop did.
+	 * Proposed ADR-0033.
 	 */
-	[[NSRunLoop currentRunLoop] limitDateForMode:NSDefaultRunLoopMode];
+	[[GameController sharedController] fireDueTimers];
 #endif
 }
 
