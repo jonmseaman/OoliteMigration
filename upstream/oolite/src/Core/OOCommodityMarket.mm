@@ -229,7 +229,7 @@ static NSComparisonResult goodsSorter(id a, id b, void *context);
 	{
 		return UNITS_TONS;
 	}
-	return (OOMassUnit)oo::PListView(definition).get<unsigned int>(kOOCommodityContainer);
+	return OOMassUnitFromNumber(oo::PListView(definition).get<unsigned int>(kOOCommodityContainer));
 }
 
 
