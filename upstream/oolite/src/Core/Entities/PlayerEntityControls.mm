@@ -64,6 +64,7 @@ MA 02110-1301, USA.
 
 #import "OODebugSupport.h"
 #import "OODebugMonitor.h"
+#import "OOFoundationBridge.h"
 
 #define CUSTOM_VIEW_ROTATE_SPEED	1.0
 #define CUSTOM_VIEW_ZOOM_SPEED		5.0
@@ -1262,7 +1263,7 @@ static NSTimeInterval	time_last_frame;
 					hyperspeed_engaged = NO;
 				}
 
-				NSDictionary *functionForThrustAxis = [[stickHandler axisFunctions] oo_dictionaryForKey:[[NSNumber numberWithInt:AXIS_THRUST] stringValue]];
+				NSDictionary *functionForThrustAxis = [oo::ObjectFromPList([stickHandler axisFunctions]) oo_dictionaryForKey:[[NSNumber numberWithInt:AXIS_THRUST] stringValue]];
 				if([stickHandler joystickCount] != 0 && functionForThrustAxis != nil)
 				{
 					if (flightSpeed < maxFlightSpeed * reqSpeed)
@@ -1798,7 +1799,7 @@ static NSTimeInterval	time_last_frame;
 					if (fieldOfView < MIN_FOV)  fieldOfView = MIN_FOV;
 				}
 
-				NSDictionary *functionForFovAxis = [[stickHandler axisFunctions] oo_dictionaryForKey:[[NSNumber numberWithInt:AXIS_FIELD_OF_VIEW] stringValue]];
+				NSDictionary *functionForFovAxis = [oo::ObjectFromPList([stickHandler axisFunctions]) oo_dictionaryForKey:[[NSNumber numberWithInt:AXIS_FIELD_OF_VIEW] stringValue]];
 				if ([stickHandler joystickCount] != 0 && functionForFovAxis != nil)
 				{
 					// TODO think reqFov through
