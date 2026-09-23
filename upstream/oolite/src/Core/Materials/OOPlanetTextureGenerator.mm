@@ -146,7 +146,7 @@ enum
 
 @implementation OOPlanetTextureGenerator
 
-- (id) initWithPlanetInfo:(NSDictionary *)planetInfo
+- (id) initWithPlanetInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
 {
 	OOLog(@"texture.planet.generate", @"%@", @"Initialising planetary generator");
 
@@ -161,7 +161,7 @@ enum
 		_info.seaColor = FloatRGBFromDictColor(planetInfo, @"sea_color");
 		_info.paleLandColor = FloatRGBFromDictColor(planetInfo, @"polar_land_color");
 		_info.polarSeaColor = FloatRGBFromDictColor(planetInfo, @"polar_sea_color");
-		[[planetInfo objectForKey:@"noise_map_seed"] getValue:&_info.seed];
+		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
 		if ([planetInfo objectForKey:@"cloud_alpha"])
 		{
 			OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
@@ -199,10 +199,10 @@ enum
 }
 
 
-+ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo
++ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
 {
 	OOTexture *result = nil;
-	OOPlanetTextureGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo];
+	OOPlanetTextureGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo seed:seed];
 	if (generator != nil)
 	{
 		result = [OOTexture textureWithGenerator:generator];
@@ -213,11 +213,11 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture andAtmosphere:(OOTexture **)atmosphere withInfo:(NSDictionary *)planetInfo
++ (BOOL) generatePlanetTexture:(OOTexture **)texture andAtmosphere:(OOTexture **)atmosphere withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 	
-	OOPlanetTextureGenerator *diffuseGen = [[[self alloc] initWithPlanetInfo:planetInfo] autorelease];
+	OOPlanetTextureGenerator *diffuseGen = [[[self alloc] initWithPlanetInfo:planetInfo seed:seed] autorelease];
 	if (diffuseGen == nil)  return NO;
 	
 	OOPlanetAtmosphereGenerator *atmoGen = [diffuseGen atmosphereGenerator];
@@ -232,13 +232,13 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture withInfo:(NSDictionary *)planetInfo
++ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 
 	BOOL enqueue = NO;
 	
-	OOPlanetTextureGenerator *diffuseGen = [[[self alloc] initWithPlanetInfo:planetInfo] autorelease];
+	OOPlanetTextureGenerator *diffuseGen = [[[self alloc] initWithPlanetInfo:planetInfo seed:seed] autorelease];
 	if (diffuseGen == nil)  return NO;
 	
 	if (secondaryTexture != NULL)
@@ -257,13 +257,13 @@ enum
 }
 
 
-+ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture andAtmosphere:(OOTexture **)atmosphere withInfo:(NSDictionary *)planetInfo
++ (BOOL) generatePlanetTexture:(OOTexture **)texture secondaryTexture:(OOTexture **)secondaryTexture andAtmosphere:(OOTexture **)atmosphere withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 	
 	BOOL enqueue = NO;
 
-	OOPlanetTextureGenerator *diffuseGen = [[[self alloc] initWithPlanetInfo:planetInfo] autorelease];
+	OOPlanetTextureGenerator *diffuseGen = [[[self alloc] initWithPlanetInfo:planetInfo seed:seed] autorelease];
 	if (diffuseGen == nil)  return NO;
 	
 	if (secondaryTexture != NULL)

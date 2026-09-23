@@ -212,7 +212,7 @@ static id sSharedStickHandler = nil;
 	OOJoystickAxisProfile *profile;
 	OOJoystickStandardAxisProfile *standard_profile;
 	OOJoystickSplineAxisProfile *spline_profile;
-	NSArray *controlPoints;
+	std::vector<NSPoint> controlPoints;
 	NSMutableArray *points;
 	NSPoint point;
 	NSUInteger i;
@@ -231,11 +231,11 @@ static id sSharedStickHandler = nil;
 	{
 		spline_profile = (OOJoystickSplineAxisProfile *) profile;
 		[dict setObject: @"Spline" forKey: @"Type"];
-		controlPoints = [NSArray arrayWithArray: [spline_profile controlPoints]];
-		points = [[NSMutableArray alloc] initWithCapacity: [controlPoints count]];
-		for (i = 0; i < [controlPoints count]; i++)
+		controlPoints = [spline_profile controlPoints];
+		points = [[NSMutableArray alloc] initWithCapacity: controlPoints.size()];
+		for (i = 0; i < controlPoints.size(); i++)
 		{
-			point = [[controlPoints objectAtIndex: i] pointValue];
+			point = controlPoints[i];
 			[points addObject: [NSArray arrayWithObjects:
 				[NSNumber numberWithFloat: point.x],
 				[NSNumber numberWithFloat: point.y],
