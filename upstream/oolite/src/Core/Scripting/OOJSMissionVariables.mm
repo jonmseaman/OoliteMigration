@@ -218,7 +218,7 @@ static bool MissionVariablesSetProperty(Context cx, Object obj, PropertyId propI
 		
 		NSString *objValue = OOStringFromJSValue(context, *jsvalue);
 		
-		if ([objValue isKindOfClass:[NSNull class]])  objValue = nil;
+		if ([objValue isKindOfClass:[OONull class]])  objValue = nil;
 		[player setMissionVariable:objValue forKey:key];
 	}
 	return YES;

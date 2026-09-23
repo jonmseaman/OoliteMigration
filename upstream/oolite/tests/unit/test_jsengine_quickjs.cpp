@@ -298,6 +298,8 @@ bool TempConstruct(Context, CallArgs& args) { args.setRval(objectValue(args.this
 ClassDef sTempClass = { "Temp", ClassFlag::None, nullptr, nullptr, nullptr, nullptr,
                         nullptr, nullptr, nullptr, TempConvert, nullptr, nullptr, nullptr, nullptr };
 bool CallableCall(Context, CallArgs& args) { args.setRval(int32Value(5 + static_cast<std::int32_t>(args.count()))); return true; }
+ClassDef sShipScriptClass = { "ShipScript", ClassFlag::None, nullptr, nullptr, nullptr, nullptr,
+                              nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 ClassDef sCallableClass = { "Callable", ClassFlag::None, nullptr, nullptr, nullptr, nullptr,
                             nullptr, nullptr, nullptr, nullptr, nullptr, CallableCall, nullptr, nullptr };
 
@@ -311,6 +313,7 @@ bool Add(Context cx, CallArgs& args)
 	args.setRval(numberValue(a + b));
 	return true;
 }
+bool Self(Context, CallArgs& args) { args.setRval(args[0]); return true; }   // returns its argument
 bool Failer(Context cx, CallArgs&) { reportError(cx, "failer says no"); return false; }
 bool Aborter(Context, CallArgs&)   { return false; }   // nothing pending: an uncatchable abort
 bool gPlainGetterSawName = false;
@@ -508,6 +511,18 @@ void exerciseFacade(Runtime rt, Context cx)
 	CHECK(getFunctionNative(cx, valueToFunction(cx, rv)) == nullptr && strIs(cx, getFunctionId(valueToFunction(cx, rv)), u"jsfun"));
 	Value argv1[1] = { int32Value(4) };
 	CHECK(callFunctionValue(cx, nullptr, rv, 1, argv1, &rv) && toInt32(rv) == 12);
+	// SpiderMonkey 1.8.5 let `new` reach any native (bead oo-1gc.13: `new Vector3D.random(n)` in
+	// expansion ship scripts): an object result is the value of `new`, a primitive result yields the
+	// object created from the callee (plain Object.prototype, since a native has no `prototype`).
+	Object ns = newObject(cx, nullptr, nullptr, nullptr);
+	Value nsVal = objectValue(ns);
+	CHECK(setProperty(cx, global, "ns", &nsVal));
+	FunctionSpec nsMethods[] = { { "add", Add, 2, 0 }, { "self", Self, 1, 0 }, { nullptr, nullptr, 0, 0 } };
+	CHECK(defineFunctions(cx, ns, nsMethods));
+	CHECK(eval(cx, nullptr, "var made = new ns.self({ v: 7 }); made.v", &rv) && isInt32(rv) && toInt32(rv) == 7);
+	CHECK(eval(cx, nullptr, "var boxed = new ns.add(1, 2); typeof boxed + (Object.getPrototypeOf(boxed) === Object.prototype)", &rv) && valIs(cx, rv, u"objecttrue"));
+	CHECK(eval(cx, nullptr, "typeof new add(1, 2)", &rv) && valIs(cx, rv, u"object"));
+	CHECK(eval(cx, nullptr, "ns.add(1, 2) === 3", &rv) && isBoolean(rv) && toBoolean(rv));   // plain calls unchanged
 
 	// -- Evaluation with a scope object: `this`, filename and line numbers in errors ------------------
 	Object scope = newObject(cx, nullptr, nullptr, nullptr);
@@ -525,6 +540,22 @@ void exerciseFacade(Runtime rt, Context cx)
 	gCap = Captured();
 	CHECK(!eval(cx, nullptr, "throw 42", &rv));
 	CHECK(gCap.calls == 1 && gCap.message == "uncaught exception: 42");
+
+	// -- One script file run for two objects (ship scripts): a bare name in a closure resolves through
+	// the object of the handler call, as SpiderMonkey's per-run scope chain did, not through the object
+	// the file last ran for (bead oo-1gc.15: `this.list = [...]; ... list[i]` in BUS_MegaBat_events.js).
+	Object shipA = newObject(cx, &sShipScriptClass, nullptr, nullptr);
+	RootedObject shipARoot(cx, shipA, "shipA");
+	Object shipB = newObject(cx, &sShipScriptClass, nullptr, nullptr);
+	RootedObject shipBRoot(cx, shipB, "shipB");
+	CHECK(eval(cx, shipA, "this.tag = 'A'; this.pick = function () { this.list = [this.tag]; return list[0]; };", &rv, "ship.js"));
+	CHECK(eval(cx, shipB, "this.tag = 'B'; this.pick = function () { this.list = [this.tag]; return list[0]; };", &rv, "ship.js"));
+	CHECK(callFunctionName(cx, shipA, "pick", 0, nullptr, &rv) && valIs(cx, rv, u"A"));   // B ran ship.js last
+	CHECK(callFunctionName(cx, shipB, "pick", 0, nullptr, &rv) && valIs(cx, rv, u"B"));
+	CHECK(eval(cx, shipA, "this.peek = function () { return tag; };", &rv, "ship.js"));
+	Value peekFn = undefinedValue();
+	CHECK(getProperty(cx, shipA, "peek", &peekFn));
+	CHECK(callFunctionValue(cx, nullptr, peekFn, 0, nullptr, &rv) && valIs(cx, rv, u"A")); // no marked `this`: the last run (A)
 
 	// -- Compiled scripts: compile, execute with a scope, serialize, deserialize ---------------------
 	const char16_t compiled[] = u"this.tag = 'compiled'; 6 * 7";
@@ -549,6 +580,25 @@ void exerciseFacade(Runtime rt, Context cx)
 	destroyScript(cx, copy);
 	gCap = Captured();
 	CHECK(compileUCScript(cx, nullptr, u"var = ;", 7, "bad.js", 3) == nullptr && gCap.calls == 1 && gCap.line == 3);
+
+	// -- A script object's manifest property is permanent (bead oo-1gc.14, Svengali.Snoopers) ---------
+	// OOJSScript defines oolite_manifest_identifier Permanent|Enumerate|ReadOnly (OOJS_PROP_READONLY,
+	// as under SpiderMonkey). A strict `for (var k in this) if (k !== 'name' && k !== 'version')
+	// delete this[k];` therefore throws on it, as SpiderMonkey 1.8.5's strict delete of a permanent
+	// property did; sloppy code gets false. Expansions that skip it in the same loop load fine.
+	Object scriptLike = newObject(cx, nullptr, nullptr, nullptr);
+	RootedObject scriptLikeRoot(cx, scriptLike, "scriptLike");
+	CHECK(defineProperty(cx, scriptLike, "oolite_manifest_identifier", stringValue(newStringCopyZ(cx, "oolite.oxp.test")), nullptr, nullptr,
+	                     PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly));
+	CHECK(eval(cx, scriptLike, "this.name = 'n'; this.version = 'v'; this.other = 1; this.purge = function (skipManifest) { 'use strict'; "
+	                           "try { for (var k in this) { if (k !== 'name' && k !== 'version' && !(skipManifest && k === 'oolite_manifest_identifier')) delete this[k]; } return 'ok'; } "
+	                           "catch (e) { return e.message; } };", &rv));
+	Value noSkip = falseValue();
+	CHECK(callFunctionName(cx, scriptLike, "purge", 1, &noSkip, &rv) && valIs(cx, rv, u"could not delete property"));
+	CHECK(eval(cx, scriptLike, "this.purge = function (skip) { 'use strict'; for (var k in this) { if (k !== 'name' && k !== 'version' && !(skip && k === 'oolite_manifest_identifier')) delete this[k]; } return 'ok'; };", &rv));
+	Value skip = trueValue();
+	CHECK(callFunctionName(cx, scriptLike, "purge", 1, &skip, &rv) && valIs(cx, rv, u"ok"));
+	CHECK(eval(cx, scriptLike, "(function () { return delete this.oolite_manifest_identifier; }).call(this)", &rv) && isBoolean(rv) && !toBoolean(rv));
 
 	// -- Exceptions and reporting --------------------------------------------------------------------
 	reportError(cx, "outside");
@@ -659,6 +709,14 @@ void exerciseFacade(Runtime rt, Context cx)
 	}
 	// Objects reachable from the global survive a flush with no roots at all.
 	CHECK(eval(cx, nullptr, "w.size + bag.lazy", &rv) && isInt32(rv) && toInt32(rv) == 14);
+
+	// Pinned engine difference (bead oo-1gc.16, Alnivel.RoutePlanner): strict code that creates a
+	// property on a primitive -- here a reduce() callback that returns the key, so the accumulator
+	// becomes a string -- throws "not an object", as ES5 requires. SpiderMonkey 1.8.5 set it on a
+	// throwaway wrapper object and carried on. The facade cannot change this without patching the
+	// engine; EXPANSION_MIGRATION.md records it as a content defect ("Newly strict").
+	CHECK(eval(cx, nullptr, "(function () { 'use strict'; try { Object.keys({ a: 'x', b: 'y' }).reduce(function (m, k) { return m[k] = k; }, {}); return 'ok'; } catch (e) { return e.message; } })()", &rv) && valIs(cx, rv, u"not an object"));
+	CHECK(eval(cx, nullptr, "(function () { var s = 'str'; s.extra = 1; return typeof s.extra; })()", &rv) && valIs(cx, rv, u"undefined"));   // sloppy: ignored
 
 	CHECK(std::strcmp(backendName(), "quickjs-ng-0.16.2") == 0);
 	setErrorReporter(cx, nullptr);

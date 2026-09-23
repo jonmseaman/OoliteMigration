@@ -71,7 +71,6 @@ MA 02110-1301, USA.
 	NSString				*playerFileToLoad;
 	NSMutableArray			*expansionPathsToInclude;
 	
-	NSTimer					*timer;
 	NSTimeInterval			_animationTimerInterval;
 	
 	NSDate					*_splashStart;
@@ -106,7 +105,7 @@ MA 02110-1301, USA.
 
 + (GameController *) sharedController;
 
-- (void) applicationDidFinishLaunching:(NSNotification *)notification;
+- (void) applicationDidFinishLaunching;
 - (BOOL) finishedLaunching;
 
 - (BOOL) isGamePaused;
@@ -162,10 +161,17 @@ MA 02110-1301, USA.
 - (void) startAnimationTimer;
 - (void) stopAnimationTimer;
 
+/*	Fire whatever is due now, the game tick first: what the run loop's
+	-limitDateForMode: did for the game while its tick was a run-loop timer.
+	For code that must let the game tick while it blocks the frame loop (the
+	OXZ download callback). See proposed ADR-0033.
+*/
+- (void) fireDueTimers;
+
 - (MyOpenGLView *) gameView;
 - (void) setGameView:(MyOpenGLView *)view;
 
-- (void)windowDidResize:(NSNotification *)aNotification;
+- (void)windowDidResize;
 
 - (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create;
 

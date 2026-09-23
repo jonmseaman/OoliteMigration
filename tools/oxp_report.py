@@ -247,6 +247,14 @@ def load_results(path: Path) -> list:
         return []
     if text.lstrip().startswith("["):
         return json.loads(text)
+    # One pretty-printed record per file is what oxp_tier_run.py writes into a --state dir
+    # (bead oo-1gc.11: `report --results <state>/results` died on line 1 of the first record).
+    try:
+        whole = json.loads(text)
+    except ValueError:
+        whole = None
+    if isinstance(whole, dict):
+        return [whole]
     return [json.loads(ln) for ln in text.splitlines() if ln.strip()]
 
 
