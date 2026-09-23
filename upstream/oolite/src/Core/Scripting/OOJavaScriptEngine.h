@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/StdLib.hpp"
 #import "OOJSPropID.h"
 
 #ifdef __cplusplus
@@ -319,23 +320,28 @@ OOJS_EXTERN_C ooscript::Object OOJSObjectFromNativeObject(ooscript::Context cont
 OOJS_EXTERN_C void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, BOOL *inited);
 
 
-// Convert a JSString to an NSString.
-OOJS_EXTERN_C NSString *OOStringFromJSString(ooscript::Context context, ooscript::String string);
-
-/*	Convert an arbitrary JS object to an NSString, calling ooscript::valueToString.
-	OOStringFromJSValue() returns nil if value is null or undefined,
-	OOStringFromJSValueEvenIfNull() returns "null" or "undefined".
+/*	The JS-to-string converters (proposed ADR-0043; bead oo-3rb.198). Each returns
+	std::nullopt where the Foundation form it replaces returned nil. Plain C++ (not
+	OOJS_EXTERN_C): a C-linkage function cannot return std::optional.
 */
-OOJS_EXTERN_C NSString *OOStringFromJSValue(ooscript::Context context, ooscript::Value value);
-OOJS_EXTERN_C NSString *OOStringFromJSValueEvenIfNull(ooscript::Context context, ooscript::Value value);
+
+// Convert a JSString to a UTF-8 string (nullopt for a NULL string or no characters).
+std::optional<std::string> cxx_OOStringFromJSString(ooscript::Context context, ooscript::String string);
+
+/*	Convert an arbitrary JS object to a string, calling ooscript::valueToString.
+	cxx_OOStringFromJSValue() returns nullopt if value is null or undefined,
+	cxx_OOStringFromJSValueEvenIfNull() returns "null" or "undefined".
+*/
+std::optional<std::string> cxx_OOStringFromJSValue(ooscript::Context context, ooscript::Value value);
+std::optional<std::string> cxx_OOStringFromJSValueEvenIfNull(ooscript::Context context, ooscript::Value value);
 
 
-/*	OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec)
+/*	cxx_OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec)
 	
 	Returns the name of a property given either a name or a tinyid. (Intended
 	for error reporting inside JSPropertyOps.)
 */
-OOJS_EXTERN_C NSString *OOStringFromJSPropertyIDAndSpec(ooscript::Context context, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec);
+std::optional<std::string> cxx_OOStringFromJSPropertyIDAndSpec(ooscript::Context context, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec);
 
 
 /*	Describe a value for debugging or error reporting. Strings are quoted,
@@ -343,30 +349,32 @@ OOJS_EXTERN_C NSString *OOStringFromJSPropertyIDAndSpec(ooscript::Context contex
 	(or just "function" if they're anonymous). Up to four elements of arrays
 	are included, followed by total count of there are more than four.
 	If abbreviateObjects, the description "[object Object]" is replaced with
-	"{...}", which may or may not be clearer depending on context.
+	"{...}", which may or may not be clearer depending on context. Never empty of meaning:
+	the last fallback is "?".
 */
-OOJS_EXTERN_C NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);
+std::string cxx_OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);
 
 
-// Convert a ooscript::PropertyId to an NSString.
-OOJS_EXTERN_C NSString *OOStringFromJSID(ooscript::PropertyId propID);
+// Convert a ooscript::PropertyId to a UTF-8 string (nullopt if it has no string value).
+std::optional<std::string> cxx_OOStringFromJSID(ooscript::PropertyId propID);
 
-// Convert an NSString to a ooscript::PropertyId.
-OOJS_EXTERN_C ooscript::PropertyId OOJSIDFromString(NSString *string);
+// Convert a UTF-8 string to a ooscript::PropertyId.
+ooscript::PropertyId cxx_OOJSIDFromString(const std::string &string);
 
 
-@interface NSString (OOJavaScriptExtensions)
+/*	The string helpers of the retired string category (OOJavaScriptExtensions) (bead oo-3rb.199).
+	Each std::optional result is nullopt where the category method returned nil.
+*/
 
-// For diagnostic messages; produces things like @"(42, true, "a string", an object description)".
-+ (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context;
+// For diagnostic messages; produces things like "(42, true, "a string", an object description)".
+// nullopt if params is NULL and count is not zero.
+std::optional<std::string> cxx_OOJSStringWithJavaScriptParameters(ooscript::Value *params, unsigned count, ooscript::Context context);
 
-// Concatenate sequence of arbitrary JS objects into string.
-+ (NSString *) concatenationOfStringsFromJavaScriptValues:(ooscript::Value *)values count:(size_t)count separator:(NSString *)separator inContext:(ooscript::Context)context;
+// Concatenate sequence of arbitrary JS objects into string (nullopt if count < 1 or values is NULL).
+std::optional<std::string> cxx_OOJSConcatenationOfStringsFromJavaScriptValues(ooscript::Value *values, size_t count, const std::string &separator, ooscript::Context context);
 
 // Add escape codes for string so that it's a valid JavaScript literal (if you put "" or '' around it).
-- (NSString *) escapedForJavaScriptLiteral;
-
-@end
+std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string);
 
 
 // OOEntityFilterPredicate wrapping a JavaScript function.
@@ -710,3 +718,11 @@ do { \
 #define OOJS_RETURN_HPVECTOR(value)		OOJS_RETURN_WITH_HELPER(HPVectorToJSValue, value)
 #define OOJS_RETURN_QUATERNION(value)	OOJS_RETURN_WITH_HELPER(QuaternionToJSValue, value)
 #define OOJS_RETURN_DOUBLE(value)		OOJS_RETURN_WITH_HELPER(ooscript::newNumberValue, value)
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before its sweep (beads oo-3rb.198 onwards, chunks of oo-rbqc), forwarding to the cxx_
+	functions above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
+	own sweep beads; the bridge goes in its own bead.
+*/
+#import "OOJavaScriptEngine+FoundationBridge.h"
