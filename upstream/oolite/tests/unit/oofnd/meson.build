@@ -11,6 +11,7 @@ oofnd_tests = [
     'test_filesystem',
     'test_resourcepaths',
     'test_cocoa_macros',
+    'test_notification',
     'test_date',
     'test_stdlib',
     'test_process',

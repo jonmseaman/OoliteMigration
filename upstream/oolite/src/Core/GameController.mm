@@ -255,7 +255,7 @@ static GameController *sSharedController = nil;
 }
 
 
-- (void) applicationDidFinishLaunching:(NSNotification *)notification
+- (void) applicationDidFinishLaunching
 {
 	void				*pool = NULL;
 	unsigned			i;
@@ -995,7 +995,7 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (void)windowDidResize:(NSNotification *)aNotification
+- (void)windowDidResize
 {
 	[gameView updateScreen];
 }
