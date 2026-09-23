@@ -99,6 +99,7 @@ MA 02110-1301, USA.
 
 #if OO_LOCALIZATION_TOOLS
 #import "OOConvertSystemDescriptions.h"
+#import "OOFoundationBridge.h"
 #endif
 
 enum
@@ -477,24 +478,24 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// shader for drawing a textured quad on the passthrough framebuffer and preparing it for bloom using MRT
 	if (![[OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
 	{
-		textureProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:@"oolite-texture.vertex"
-													fragmentShaderName:@"oolite-texture.fragment"
-													prefix:@"#version 330\n"
-													attributeBindings:[NSDictionary dictionary]] retain];
+		textureProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-texture.vertex"
+													fragmentShaderName:"oolite-texture.fragment"
+													prefix:"#version 330\n"
+													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
 		// shader for blurring the over-threshold brightness image generated from the previous step using Gaussian filter
-		blurProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:@"oolite-blur.vertex"
-													fragmentShaderName:@"oolite-blur.fragment"
-													prefix:@"#version 330\n"
-													attributeBindings:[NSDictionary dictionary]] retain];
+		blurProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-blur.vertex"
+													fragmentShaderName:"oolite-blur.fragment"
+													prefix:"#version 330\n"
+													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
 		// shader for applying bloom and any necessary post-proc fx, tonemapping and gamma correction
-		finalProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:@"oolite-final.vertex"
+		finalProgram = [[OOShaderProgram shaderProgramWithVertexShaderName:"oolite-final.vertex"
 #if OOLITE_WINDOWS
-													fragmentShaderName:[[UNIVERSE gameView] hdrOutput] ? @"oolite-final-hdr.fragment" : @"oolite-final.fragment"
+													fragmentShaderName:[[UNIVERSE gameView] hdrOutput] ? "oolite-final-hdr.fragment" : "oolite-final.fragment"
 #else
-													fragmentShaderName:@"oolite-final.fragment"
+													fragmentShaderName:"oolite-final.fragment"
 #endif
-													prefix:@"#version 330\n"
-													attributeBindings:[NSDictionary dictionary]] retain];
+													prefix:"#version 330\n"
+													attributeBindings:oo::PList(oo::PList::Dict{})] retain];
 	}
 	
 	OOGL(glGenVertexArrays(1, &quadTextureVAO));
