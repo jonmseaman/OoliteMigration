@@ -101,10 +101,15 @@
 #
 # Cost: the tree is walked ONCE, with a fixed-string search for every shebang-bearing
 # basename, and the per-path regexes then run over that small candidate set. Walking the whole
-# tree once per script instead took ~84s here.
+# tree once per script instead took ~84s here. The judging is then done in a FIXED number of
+# processes, not a handful per script: on the Windows fleet machine a fork costs ~200 ms under
+# load, and ~25 forks x ~130 scripts made a full run take ~280 s, most of the 300 s accept
+# budget (bead oo-3rb.169). Keep it that way: no `$(...)`, pipe or external command inside a
+# per-script loop.
 #
 # Sourcing: `CHECK_FILE_MODES_SOURCE_ONLY=1 . tools/check-file-modes.sh` defines the grammar,
-# `build_re`, `line_is_call_site` and `open_quote_lines` and returns without scanning, so a
+# `build_re`, `line_is_call_site`, `match_candidates`, `join_sites` and `open_quote_lines`
+# and returns without scanning, so a
 # probe can test the REAL regexes instead of a hand-copied paraphrase of them.
 set -u
 
@@ -173,14 +178,33 @@ PROSEWORD="$PROSEWORD"'|prints|printed|sets|gets|makes|made|becomes|became|would
 # has no negative lookahead, so "word but not a prose word" cannot be one pattern.
 TRAIL_USAGE="([[:space:]]*\$|[[:space:]]+[-<[({\"'\$0-9*#][^[:space:]]*|[[:space:]]+[A-Za-z][^[:space:]]*)"
 
-ere_escape() { printf '%s' "$1" | sed 's/[].[*^$\\+?(){}|/]/\\&/g'; }
+# COST: every builder below is pure bash and returns through a global (`_ERE`, `_FORM`, `_RE`,
+# `_REJ`) rather than a `$(...)` capture. On the Windows fleet machine one fork costs ~200 ms
+# under load, and the old sed/subshell builders spent ~15 of them per script -- that, not the
+# regex matching, was most of this guard's ~280 s runtime (bead oo-3rb.169). The printing
+# wrappers (`ere_escape`, `build_form`, `build_re`, `build_reject_re`) keep their old contract.
+
+# _ere_escape <s> -- sets _ERE to <s> with every ERE metacharacter (and `/`) backslash-escaped.
+_ere_escape() {
+	local s="$1" c i
+	_ERE=''
+	for ((i = 0; i < ${#s}; i++)); do
+		c=${s:i:1}
+		case "$c" in
+		[].[*^\$\\+?\(\)\{\}\|/]) _ERE="$_ERE\\$c" ;;
+		*) _ERE="$_ERE$c" ;;
+		esac
+	done
+}
+ere_escape() { _ere_escape "$1"; printf '%s' "$_ERE"; }
 
 # build_form <path> [allow_dispatch] -- the program-token alternation for <path>.
-build_form() {
+build_form() { _build_form "$@"; printf '%s' "$_FORM"; }
+_build_form() {
 	local path="$1" allow_dispatch="${2:-1}" base pe be form
-	base=$(printf '%s' "$path" | sed 's|.*/||')
-	pe=$(ere_escape "$path")
-	be=$(ere_escape "$base")
+	base=${path##*/}
+	_ere_escape "$path"; pe=$_ERE
+	_ere_escape "$base"; be=$_ERE
 
 	# Literal path in command position, optionally quoted and optionally ./-prefixed.
 	form="[\"']?(\\./)?$pe"
@@ -193,14 +217,14 @@ build_form() {
 	if [ "$path" != "$base" ] && [ "$allow_dispatch" = 1 ]; then
 		form="$form|[\"']?([^[:space:]\"';&|=,\`]*|\\\$\\([^)]*\\)[^[:space:]\"';&|=,\`]*)/$be"
 	fi
-	printf '%s' "$form"
+	_FORM=$form
 }
 
 # build_re <path> [allow_dispatch]  -- the exact ERE used to find candidate call sites.
-build_re() {
-	local path="$1" allow_dispatch="${2:-1}" form
-	form=$(build_form "$path" "$allow_dispatch")
-	printf '%s' "($BASE$RUNPRE($form)$TRAIL)|($CMTBASE$RUNPRE($form)$TRAIL_USAGE)"
+build_re() { _build_re "$@"; printf '%s' "$_RE"; }
+_build_re() {
+	_build_form "$1" "${2:-1}"
+	_RE="($BASE$RUNPRE($_FORM)$TRAIL)|($CMTBASE$RUNPRE($_FORM)$TRAIL_USAGE)"
 }
 
 # build_reject_re <path> [allow_dispatch] -- lines that the positive pattern matched but that
@@ -210,25 +234,71 @@ build_re() {
 #   * DATA: a quoted LITERAL path that is a list element or a mapping key. The whole line must
 #     be that quoted token plus list punctuation -- a leading `[`/`(`/`,`/`-` or a trailing
 #     `,`/`]`/`}`/`)`/`:` -- so a variable dispatch (`"$here/gc.sh"`) is never data.
-build_reject_re() {
-	local path="$1" allow_dispatch="${2:-1}" form pe prose data
-	form=$(build_form "$path" "$allow_dispatch")
-	pe=$(ere_escape "$path")
-	prose="$CMTBASE$RUNPRE($form)[[:space:]]+$PROSEWORD([^A-Za-z0-9_-]|\$)"
+build_reject_re() { _build_reject_re "$@"; printf '%s' "$_REJ"; }
+_build_reject_re() {
+	local path="$1" allow_dispatch="${2:-1}" pe prose data
+	_build_form "$path" "$allow_dispatch"
+	_ere_escape "$path"; pe=$_ERE
+	prose="$CMTBASE$RUNPRE($_FORM)[[:space:]]+$PROSEWORD([^A-Za-z0-9_-]|\$)"
 	data="^[[:space:]]*([][({,-][[:space:]]*)*[\"'](\\./)?$pe[\"'][[:space:]]*[]},:)]*[[:space:]]*\$"
 	data="$data|^[[:space:]]*[\"'](\\./)?$pe[\"'][[:space:]]*:"
-	printf '%s' "($prose)|($data)"
+	_REJ="($prose)|($data)"
+}
+
+# pattern_line <path> <allow_dispatch> -- one line of a PATTERNS table, "<path>\t<basename>\t
+# <re>\t<reject re>", the input match_candidates reads. None of the parts can hold a tab.
+pattern_line() {
+	_build_re "$1" "$2"
+	_build_reject_re "$1" "$2"
+	printf '%s\t%s\t%s\t%s\n' "$1" "${1##*/}" "$_RE" "$_REJ"
+}
+
+# match_candidates <patterns> <candidates> -- THE matcher: ONE awk process judges every
+# candidate line against every script's pattern pair. <candidates> holds "<file>:<lineno>\t
+# <text>" lines; for each (script, line) where the text names the script's basename, matches
+# its <re> and does NOT match its <reject re>, print "<path>\t<file>:<lineno>\t<text>".
+#
+# The rejection is applied PER LINE, as a boolean on the same record. It used to be a set
+# difference of two `grep -n` line-number lists taken with `comm -23` over `sort -n` output --
+# but comm needs LEXICAL order, so across a digit-count boundary (9 < 10 numerically, "10" <
+# "9" lexically) comm both KEPT rejected lines (false call sites) and could DROP real hits
+# (a blind guard), and warned on every run (bead oo-3rb.169). No line number is sorted now.
+#
+# The regexes arrive by FILE and are used as dynamic regexes, never through `awk -v`, which
+# would run escape processing over them and turn `\$` into `$`. Both are POSIX EREs; this awk
+# and the old `grep -E` agree on every probe in tools/check-file-modes-probe.sh, which now runs
+# THIS function, so the probe exercises the engine the scan uses.
+match_candidates() {
+	awk -F'\t' '
+	FILENAME == ARGV[1] { n++; path[n] = $1; base[n] = $2; re[n] = $3; rej[n] = $4; next }
+	{
+		i = index($0, "\t"); if (i == 0) next
+		meta = substr($0, 1, i - 1); text = substr($0, i + 1)
+		for (k = 1; k <= n; k++)
+			if (index(text, base[k]) && text ~ re[k] && text !~ rej[k])
+				print path[k] "\t" meta "\t" text
+	}' "$1" "$2"
+}
+
+# join_sites <open-quote keys> <matches> -- turn match_candidates output into call sites:
+# print "<path>\t<file>:<lineno>:<text>" for every match whose "<file>:<lineno>" is NOT a line
+# that begins inside an open quoted string. A keyed lookup on the whole "<file>:<lineno>"
+# string, so no line number is ever sorted or compared as a number.
+join_sites() {
+	awk -F'\t' '
+	FILENAME == ARGV[1] { open[$0] = 1; next }
+	!($2 in open) { print $1 "\t" $2 ":" substr($0, length($1) + length($2) + 3) }' "$1" "$2"
 }
 
 # line_is_call_site <path> <allow_dispatch> <line>  -- the single source of truth for the
-# grammar, used by the scan below AND by tools/check-file-modes-probe.sh, so a probe cannot
-# test a paraphrase of the rule instead of the rule. NOTE: this judges ONE line in isolation;
-# the multi-line quoted-string rule lives in open_quote_lines and is applied by the scan.
+# grammar, used by tools/check-file-modes-probe.sh. It runs the SAME build_re/build_reject_re
+# through the SAME match_candidates the scan uses, so a probe cannot test a paraphrase of the
+# rule instead of the rule. NOTE: this judges ONE line in isolation; the multi-line
+# quoted-string rule lives in open_quote_lines and is applied by the scan.
 line_is_call_site() {
 	local path="$1" allow="$2" line="$3"
-	printf '%s\n' "$line" | grep -qE "$(build_re "$path" "$allow")" || return 1
-	printf '%s\n' "$line" | grep -qE "$(build_reject_re "$path" "$allow")" && return 1
-	return 0
+	[ -n "$(match_candidates <(pattern_line "$path" "$allow") \
+	                         <(printf 'line:1\t%s\n' "$line"))" ]
 }
 
 # open_quote_lines -- read a file on stdin, print the 1-based numbers of the lines that BEGIN
@@ -243,7 +313,40 @@ line_is_call_site() {
 # unrecognised construct leaves the state closed, which keeps the old behaviour rather than
 # silently hiding a call site.
 open_quote_lines() {
-	awk '
+	awk "$OPENQ_AWK"'
+	{ feed($0, "", NR) }'
+}
+
+# open_quote_keys -- the same tracker over MANY files in one process. Reads `git grep -n`
+# output ("<file>:<lineno>:<text>", every line of each file, files contiguous) and prints
+# "<file>:<lineno>" for every line that begins inside an open double-quoted string. The state
+# is reset at each new file. Paths cannot contain `:` on the NTFS fleet machine.
+open_quote_keys() {
+	awk "$OPENQ_AWK"'
+	{
+		i = index($0, ":"); if (i == 0) next
+		f = substr($0, 1, i - 1); r = substr($0, i + 1)
+		j = index(r, ":");  if (j == 0) next
+		feed(substr(r, j + 1), f, substr(r, 1, j - 1))
+	}'
+}
+
+# The tracker itself, shared by both entry points above. feed(line, key, lineno) advances the
+# state by one line of file <key>, printing the line (as "<lineno>" for an empty key, else
+# "<key>:<lineno>") when it begins inside an open double-quoted string.
+OPENQ_AWK='
+	function feed(line, key, ln) {
+		if (key != curkey) { curkey = key; inq = 0; intq = 0; inhd = 0 }
+		if (inq) print (key == "" ? ln : key ":" ln)
+		if (inhd) { if (line ~ hdre) inhd = 0; return }
+		scan(line)
+		if (!inq && !intq && match(line, /<<-?["'"'"']?[A-Za-z_][A-Za-z0-9_]*/)) {
+			tag = substr(line, RSTART, RLENGTH)
+			sub(/^<<-?["'"'"']?/, "", tag)
+			hdre = "^[[:space:]]*" tag "[[:space:]]*$"
+			inhd = 1
+		}
+	}
 	function scan(s,   i, c, n) {
 		n = length(s)
 		for (i = 1; i <= n; i++) {
@@ -268,19 +371,8 @@ open_quote_lines() {
 			if (c == "\"") inq = 1
 		}
 	}
-	BEGIN { inq = 0; intq = 0; inhd = 0 }
-	{
-		if (inq) print NR
-		if (inhd) { if ($0 ~ hdre) inhd = 0; next }
-		scan($0)
-		if (!inq && !intq && match($0, /<<-?["'"'"']?[A-Za-z_][A-Za-z0-9_]*/)) {
-			tag = substr($0, RSTART, RLENGTH)
-			sub(/^<<-?["'"'"']?/, "", tag)
-			hdre = "^[[:space:]]*" tag "[[:space:]]*$"
-			inhd = 1
-		}
-	}'
-}
+	BEGIN { inq = 0; intq = 0; inhd = 0; curkey = "" }
+'
 
 if [ "${CHECK_FILE_MODES_SOURCE_ONLY:-0}" = 1 ]; then
 	return 0 2>/dev/null || exit 0
@@ -306,9 +398,11 @@ ACC_FILE=$(mktemp) || exit 1
 CLASS=$(mktemp) || exit 1
 PATFILE=$(mktemp) || exit 1
 CANDALL=$(mktemp) || exit 1
-CANDMETA=$(mktemp) || exit 1
-CANDTEXT=$(mktemp) || exit 1
-trap 'rm -f "$ACC_FILE" "$CLASS" "$PATFILE" "$CANDALL" "$CANDMETA" "$CANDTEXT"' EXIT
+PATTERNS=$(mktemp) || exit 1
+MATCHES=$(mktemp) || exit 1
+HITFILES=$(mktemp) || exit 1
+OPENQ=$(mktemp) || exit 1
+trap 'rm -f "$ACC_FILE" "$CLASS" "$PATFILE" "$CANDALL" "$PATTERNS" "$MATCHES" "$HITFILES" "$OPENQ"' EXIT
 
 # Bead acceptance criteria, one command per line: executed verbatim by accept.sh.
 if git cat-file -e :.beads/issues.jsonl 2>/dev/null; then
@@ -390,83 +484,53 @@ if [ -s "$PATFILE" ]; then
 		if (f == "tools/check-file-modes-probe.sh") next
 		print f ":" substr(r, 1, j - 1) "	" substr(r, j + 1)
 	}' >"$CANDALL"
-	# Split into two line-aligned files. The split is done here, by the SHELL, rather than by
-	# handing temp paths to a helper: MSYS `mktemp` yields a /tmp path that a native Windows
-	# python resolves to a different directory, so a helper opening argv paths silently wrote
-	# its output where nothing would read it and every file looked interpreted.
-	cut -f1 <"$CANDALL" >"$CANDMETA"
-	cut -f2- <"$CANDALL" >"$CANDTEXT"
 fi
 
-# Memoised open-double-quote line sets, so each candidate file is parsed at most once.
-OPENQ_DONE=" "
-OPENQ_SET=" "
-in_open_quote() {
-	local f="$1" ln="$2" nums n
-	case "$OPENQ_DONE" in
-	*" $f "*) ;;
-	*)
-		OPENQ_DONE="$OPENQ_DONE$f "
-		nums=$(git cat-file blob ":$f" 2>/dev/null | open_quote_lines)
-		for n in $nums; do OPENQ_SET="$OPENQ_SET$f:$n "; done
-		;;
-	esac
-	case "$OPENQ_SET" in
-	*" $f:$ln "*) return 0 ;;
-	esac
-	return 1
-}
-
+# --- pass 3: judge every candidate line against every script, in O(1) processes -----------
 # Basenames that are ambiguous across the tree: the variable-dispatch rule keys on the
 # basename alone, so only apply it where the basename identifies exactly one tracked file.
-dup_basenames=$(printf '%s\n' "$blobs" | cut -f2 | sed 's|.*/||' | sort | uniq -d)
+# The dispatch decision is made HERE, per script, so a suppression can be announced below.
+declare -A DUP ALLOW SITES
+while IFS= read -r b; do
+	[ -n "$b" ] && DUP[$b]=1
+done <<EOF_DUP
+$(printf '%s\n' "$blobs" | cut -f2 | sed 's|.*/||' | sort | uniq -d)
+EOF_DUP
 
-is_dup_basename() {
-	printf '%s\n' "$dup_basenames" | grep -qxF "$1"
-}
-
-# Does any tracked line, or any bead acceptance line, call PATH in command position?
-# $2 is 1 to allow the sibling/variable-dispatch form, 0 to suppress it. The suppression
-# decision is made by the CALLER, not here: this runs inside a command substitution, so any
-# variable it set would die with the subshell and the suppression would go unannounced.
-# The rejection is a second grep over the SAME candidate file rather than a per-line grep, so
-# the cost is a fixed handful of processes per script instead of two per matching line.
-bare_call_sites() {
-	local path="$1" allow="${2:-1}" re rej hits rejs keep line f ln out=''
-	[ -s "$CANDTEXT" ] || return 0
-	re=$(build_re "$path" "$allow")
-	rej=$(build_reject_re "$path" "$allow")
-
-	hits=$(grep -nE "$re" "$CANDTEXT" 2>/dev/null | cut -d: -f1)
-	[ -n "$hits" ] || return 0
-	rejs=$(grep -nE "$rej" "$CANDTEXT" 2>/dev/null | cut -d: -f1)
-	if [ -n "$rejs" ]; then
-		keep=$(comm -23 <(printf '%s\n' "$hits" | sort -n) \
-		                <(printf '%s\n' "$rejs" | sort -n))
-	else
-		keep="$hits"
+while IFS=$'\t' read -r mode path sb; do
+	[ -n "${path:-}" ] && [ "$sb" = yes ] || continue
+	base=${path##*/}
+	ALLOW[$path]=1
+	if [ "$path" != "$base" ] && [ -n "${DUP[$base]:-}" ]; then
+		ALLOW[$path]=0
 	fi
-	[ -n "$keep" ] || return 0
+	pattern_line "$path" "${ALLOW[$path]}"
+done <"$CLASS" >"$PATTERNS"
 
-	# One awk pass joins the surviving line numbers to their "<file>:<lineno>" and text.
-	while IFS= read -r line; do
-		[ -n "$line" ] || continue
-		f=${line%%:*}
-		ln=${line#*:}
-		ln=${ln%%:*}
-		in_open_quote "$f" "$ln" && continue
-		out="$out$line
-"
-	done <<EOF
-$(printf '%s\n' "$keep" | awk -v mf="$CANDMETA" -v tf="$CANDTEXT" '
-	NR == FNR { want[$1] = 1; next }
-	{ m[FNR] = $0 }
-	END {
-		while ((getline t < tf) > 0) { n++; if (n in want) print m[n] ":" t }
-	}' - "$CANDMETA")
-EOF
-	printf '%s' "$out"
-}
+if [ -s "$CANDALL" ] && [ -s "$PATTERNS" ]; then
+	match_candidates "$PATTERNS" "$CANDALL" >"$MATCHES"
+fi
+
+# Lines that begin inside an open double-quoted string are data, not commands. Every file
+# that produced a match is read ONCE, from the INDEX (`git grep --cached`, like pass 2), in one
+# process; the bead-acceptance pseudo-file is not in the index and has no quote state.
+if [ -s "$MATCHES" ]; then
+	cut -f2 "$MATCHES" | sed 's/:[0-9]*$//' | grep -vx '\.beads/acceptance' | sort -u >"$HITFILES"
+	if [ -s "$HITFILES" ]; then
+		# Pathspecs are passed literally (`:(literal)`) so a path is never read as a glob.
+		sed 's|^|:(literal)|' "$HITFILES" | tr '\n' '\0' \
+			| xargs -0 git grep --cached -n -I -e '' -- 2>/dev/null \
+			| open_quote_keys >"$OPENQ"
+	fi
+fi
+
+# One awk join; its output is read into SITES[path] by bash builtins, not per-script forks.
+while IFS=$'\t' read -r path site; do
+	[ -n "${path:-}" ] || continue
+	SITES[$path]="${SITES[$path]:-}$site"$'\n'
+done <<EOF_SITES
+$(join_sites "$OPENQ" "$MATCHES")
+EOF_SITES
 
 while IFS=$'\t' read -r mode path sb; do
 	[ -n "${path:-}" ] || continue
@@ -483,16 +547,9 @@ while IFS=$'\t' read -r mode path sb; do
 
 	[ "$sb" = yes ] || continue
 
-	# The dispatch rule keys on the basename alone, so it is only sound where the basename
-	# identifies exactly one tracked file. Decide that HERE (not inside the command
-	# substitution below, whose subshell cannot report back).
-	base=$(printf '%s' "$path" | sed 's|.*/||')
-	allow_dispatch=1
-	if [ "$path" != "$base" ] && is_dup_basename "$base"; then
-		allow_dispatch=0
-	fi
-
-	sites=$(bare_call_sites "$path" "$allow_dispatch")
+	base=${path##*/}
+	allow_dispatch=${ALLOW[$path]:-1}
+	sites=${SITES[$path]:-}
 	if [ -n "$sites" ]; then kind=bare-program; else kind=interpreted; fi
 
 	# Never let the ambiguous-basename guard hide a possible bare-program script in silence:
@@ -514,7 +571,7 @@ while IFS=$'\t' read -r mode path sb; do
 
 	if [ "$kind" = bare-program ] && [ "$mode" != 100755 ]; then
 		note "$path is invoked as a bare program but is committed $mode; run: git update-index --chmod=+x $path"
-		printf '%s\n' "$sites" | head -5 | sed 's/^/    call site: /' >&2
+		printf '%s' "$sites" | head -5 | sed 's/^/    call site: /' >&2
 		fail=1
 	fi
 done <"$CLASS"
