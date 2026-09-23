@@ -218,7 +218,7 @@ static BOOL JSDockGetShipEntity(ooscript::Context context, ooscript::Object ship
 }
 
 
-- (NSString *) oo_jsClassName
+- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
 {
 	return @"Dock";
 }

@@ -26,7 +26,11 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOMaths.h"
+
+#include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 
 #define	COLLISION_REGION_BORDER_RADIUS	32000.0f
@@ -36,7 +40,7 @@ MA 02110-1301, USA.
 @class Entity, OOSunEntity;
 
 
-@interface CollisionRegion: NSObject
+@interface CollisionRegion: OOObject
 {
 @private
 	BOOL				isUniverse;			// if YES location is origin and radius is 0.0f
@@ -49,7 +53,7 @@ MA 02110-1301, USA.
 	unsigned			checks_this_tick;
 	unsigned			checks_within_range;
 
-	NSMutableArray		*subregions;
+	std::vector<oo::ObjCRef<CollisionRegion *>>	subregions;	// Foundation sweep (proposed ADR-0043, bead oo-a87x)
 	
 	BOOL				isPlayerInRegion;
 	
@@ -75,9 +79,9 @@ MA 02110-1301, USA.
 - (void) findShadowedEntities;
 
 // Description for FPS HUD
-- (NSString *) collisionDescription;
+- (id) collisionDescription;	// an Objective-C string. Shared selector (proposed ADR-0043).
 
-- (NSString *) debugOut;
+- (std::optional<std::string>) debugOut;
 
 @end
 

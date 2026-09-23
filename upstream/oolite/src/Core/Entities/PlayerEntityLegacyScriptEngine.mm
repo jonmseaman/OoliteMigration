@@ -39,7 +39,7 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "OOConstToString.h"
 #import "OOTexture.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOLoggingExtended.h"
 #import "OOSound.h"
 #import "OOSunEntity.h"
@@ -482,12 +482,12 @@ static BOOL sRunningScript = NO;
 	double						lhsValue, rhsValue;
 	BOOL						lhsFlag, rhsFlag;
 	
-	opType = (OOOperationType)[scriptCondition oo_unsignedIntAtIndex:0];
+	opType = (OOOperationType)oo::PListView(scriptCondition).at<unsigned int>(0);
 	if (opType == OP_FALSE)  return NO;
 	
-	selectorString = [scriptCondition oo_stringAtIndex:2];
-	comparator = (OOComparisonType)[scriptCondition oo_unsignedIntAtIndex:3];
-	operandArray = [scriptCondition oo_arrayAtIndex:4];
+	selectorString = oo::PListView(scriptCondition).at<NSString *>(2);
+	comparator = (OOComparisonType)oo::PListView(scriptCondition).at<unsigned int>(3);
+	operandArray = oo::PListView(scriptCondition).at<NSArray *>(4);
 	
 	// Transform mission/local var ops into string ops.
 	if (opType == OP_MISSION_VAR)
@@ -648,7 +648,7 @@ static BOOL sRunningScript = NO;
 			the expanded string.
 		*/
 		
-		value = [component oo_stringAtIndex:1];
+		value = oo::PListView(component).at<NSString *>(1);
 		
 		if ([[component objectAtIndex:0] boolValue])
 		{
@@ -706,7 +706,7 @@ static BOOL sRunningScript = NO;
 
 - (NSString *)localVariableForKey:(NSString *)variableName andMission:(NSString *)missionKey
 {
-	return [[localVariables oo_dictionaryForKey:missionKey] objectForKey:variableName];
+	return [oo::PListView(localVariables).get<NSDictionary *>(missionKey) objectForKey:variableName];
 }
 
 
@@ -777,7 +777,7 @@ static BOOL sRunningScript = NO;
 				NSArray *element = nil;
 				foreach (element, result2)
 				{
-					if ([[element oo_stringAtIndex:0] isEqualToString:[(NSArray*)vars oo_stringAtIndex:0]])
+					if ([oo::PListView(element).at<NSString *>(0) isEqualToString:oo::PListView((NSArray*)vars).at<NSString *>(0)])
 					{
 
 						[result2 removeObject:element];
@@ -851,7 +851,7 @@ static BOOL sRunningScript = NO;
 
 - (void) setMissionDescription:(NSString *)textKey forMission:(NSString *)key
 {
-	NSString		*text = [[UNIVERSE missiontext] oo_stringForKey:textKey];
+	NSString		*text = oo::PListView([UNIVERSE missiontext]).get<NSString *>(textKey);
 	
 	if (!text)
 	{
@@ -892,7 +892,7 @@ static BOOL sRunningScript = NO;
 	NSMutableArray *expandedList = [NSMutableArray arrayWithCapacity:ct];
 	for (i=0 ; i<ct ; i++)
 	{
-		text = [list oo_stringAtIndex:i defaultValue:nil];
+		text = oo::PListView(list).at<NSString *>(i, nil);
 		if (text != nil)
 		{
 			text = OOExpand(text);
@@ -1355,8 +1355,8 @@ static int shipsFound;
 		return;
 	}
 
-	gnum = [tokens oo_intAtIndex:0];
-	pnum = [tokens oo_intAtIndex:1];
+	gnum = oo::PListView(tokens).at<int>(0);
+	pnum = oo::PListView(tokens).at<int>(1);
 	keyString = [[tokens objectAtIndex:2] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
 	valueString = [[tokens objectAtIndex:3] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
 
@@ -1380,14 +1380,14 @@ static int shipsFound;
 	}
 	
 
-	type = [tokens oo_stringAtIndex:1];
+	type = oo::PListView(tokens).at<NSString *>(1);
 	if (![[UNIVERSE commodities] goodDefined:type])
 	{
 		OOLog(kOOLogSyntaxAwardCargo, @"***** SCRIPT ERROR: in %@, CANNOT awardCargo: '%@' (%@)", CurrentScriptDesc(), amount_typeString, @"unknown type");
 		return;
 	}
 	
-	amount = [tokens oo_intAtIndex:0];
+	amount = oo::PListView(tokens).at<int>(0);
 	if (amount < 0)
 	{
 		OOLog(kOOLogSyntaxAwardCargo, @"***** SCRIPT ERROR: in %@, CANNOT awardCargo: '%@' (%@)", CurrentScriptDesc(), amount_typeString, @"negative quantity");
@@ -1928,7 +1928,7 @@ static int shipsFound;
 	lastTextKey = [textKey copy];
 	
 	// Replace literal \n in strings with line breaks and perform expansions.
-	text = [[UNIVERSE missiontext] oo_stringForKey:textKey];
+	text = oo::PListView([UNIVERSE missiontext]).get<NSString *>(textKey);
 	if (text == nil)  return;
 	text = OOExpandWithOptions(OOStringExpanderDefaultRandomSeed(), kOOExpandBackslashN, text);
 	text = [self replaceVariablesInString:text];
@@ -1962,7 +1962,7 @@ static int shipsFound;
 
 - (void) setMissionChoices:(NSString *)choicesKey	// choicesKey is a key for a dictionary of
 {													// choices/choice phrases in missiontext.plist and also..
-	NSDictionary *choicesDict = [[UNIVERSE missiontext] oo_dictionaryForKey:choicesKey];
+	NSDictionary *choicesDict = oo::PListView([UNIVERSE missiontext]).get<NSDictionary *>(choicesKey);
 	if ([choicesDict count] == 0)
 	{
 		return;
@@ -2045,8 +2045,8 @@ static int shipsFound;
 		else if ([choiceValue isKindOfClass:[NSDictionary class]])
 		{
 			NSDictionary *choiceOpts = (NSDictionary*)choiceValue;
-			choiceText = [NSString stringWithFormat:@" %@ ",[choiceOpts oo_stringForKey:@"text"]];
-			NSString *alignmentChoice = [choiceOpts oo_stringForKey:@"alignment" defaultValue:@"CENTER"];
+			choiceText = [NSString stringWithFormat:@" %@ ",oo::PListView(choiceOpts).get<NSString *>(@"text")];
+			NSString *alignmentChoice = oo::PListView(choiceOpts).get<NSString *>(@"alignment", @"CENTER");
 			if ([alignmentChoice isEqualToString:@"LEFT"])
 			{
 				alignment = GUI_ALIGN_LEFT;
@@ -2056,7 +2056,7 @@ static int shipsFound;
 				alignment = GUI_ALIGN_RIGHT;
 			}
 			id colorDesc = [choiceOpts objectForKey:@"color"];
-			if ([choiceOpts oo_boolForKey:@"unselectable"])
+			if (oo::PListView(choiceOpts).get<BOOL>(@"unselectable"))
 			{
 				selectable = NO;
 			}
@@ -2142,7 +2142,7 @@ static int shipsFound;
 	
 	for (j = 0; j < [tokens count]; j++)
 	{
-		dest = [tokens oo_intAtIndex:j];
+		dest = oo::PListView(tokens).at<int>(j);
 		if (dest < 0 || dest > 255)
 			continue;
 
@@ -2450,7 +2450,7 @@ static int shipsFound;
 
 - (void) playSound:(NSString *) soundName
 {
-	[self playLegacyScriptSound:soundName];
+	[self playLegacyScriptSound:oo::StdString(soundName)];
 }
 
 /*-----------------------------------------------------*/
@@ -2715,18 +2715,18 @@ static int shipsFound;
 		
 		if ([i_key isEqualToString:@"ship"]||[i_key isEqualToString:@"model"])
 		{
-			ship = [UNIVERSE newShipWithName:[i_info oo_stringAtIndex: 1]];
+			ship = [UNIVERSE newShipWithName:oo::PListView(i_info).at<NSString *>(1)];
 		}
 		else if ([i_key isEqualToString:@"role"])
 		{
-			ship = [UNIVERSE newShipWithRole:[i_info oo_stringAtIndex: 1]];
+			ship = [UNIVERSE newShipWithRole:oo::PListView(i_info).at<NSString *>(1)];
 		}
 		if (!ship)
 			return NO;
 
 		ScanVectorAndQuaternionFromString([[i_info subarrayWithRange:NSMakeRange(2, 7)] componentsJoinedByString:@" "], &model_p0, &model_q);
 		
-		Vector	model_offset = positionOffsetForShipInRotationToAlignment(ship, model_q, [i_info oo_stringAtIndex:9]);
+		Vector	model_offset = positionOffsetForShipInRotationToAlignment(ship, model_q, oo::PListView(i_info).at<NSString *>(9));
 		model_p0 = vector_add(model_p0, vector_subtract(off, model_offset));
 
 		OOLog(kOOLogDebugProcessSceneStringAddModel, @"::::: adding model to scene:'%@'", ship);
@@ -2886,7 +2886,7 @@ static int shipsFound;
 	NSArray *eqScript = nil;
 	foreach (eqScript, eqScripts)
 	{
-		NSString *key = [eqScript oo_stringAtIndex:0];
+		NSString *key = oo::PListView(eqScript).at<NSString *>(0);
 		if ([key isEqualToString: eq_key])  return NO;
 	}
 	
@@ -2913,7 +2913,7 @@ static int shipsFound;
 	
 	for (i = 0; i < count; i++)
 	{
-		key = [[eqScripts oo_arrayAtIndex:i] oo_stringAtIndex:0];
+		key = oo::PListView(oo::PListView(eqScripts).at<NSArray *>(i)).at<NSString *>(0);
 		if ([key isEqualToString: eq_key]) 
 		{
 			[eqScripts removeObjectAtIndex:i];
@@ -2936,7 +2936,7 @@ static int shipsFound;
 	{
 		for (i = 0; i < count; i++)
 		{
-			NSString *key = [[eqScripts oo_arrayAtIndex:i] oo_stringAtIndex:0];
+			NSString *key = oo::PListView(oo::PListView(eqScripts).at<NSArray *>(i)).at<NSString *>(0);
 			if ([key isEqualToString: eq_key]) return i;
 		}
 	}
@@ -2993,8 +2993,8 @@ static int shipsFound;
 		galacticHyperspaceFixedCoords.x = galacticHyperspaceFixedCoords.y = 0x60;
 	}
 	
-	[self setGalacticHyperspaceFixedCoordsX:[coord_vals oo_unsignedCharAtIndex:0]
-										  y:[coord_vals oo_unsignedCharAtIndex:1]];
+	[self setGalacticHyperspaceFixedCoordsX:oo::PListView(coord_vals).at<unsigned char>(0)
+										  y:oo::PListView(coord_vals).at<unsigned char>(1)];
 }
 
 @end

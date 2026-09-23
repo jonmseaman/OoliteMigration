@@ -86,3 +86,28 @@ representation choices ADR-0013 did not make.
 Written with bead oo-075 (the value type) from a reading of GNUstep base 1.31.1
 (`NSPropertyList.m`, `NSXMLParser.m`, `GSMime.m`) and Oolite's `OOPListParsing.m` /
 `OldSchoolPropertyListWriting.m`; items 2-9 are exercised by the parser and writer beads.
+
+Bead oo-g2k (2026-09-23) ran the GNUstep differential harness (`tools/plist_fuzz.py`,
+[report](../phases/2-plist-fuzz-report.md)) over every plist in the Tier-3 corpus and over
+mutants of the unit-test inputs. The decisions above are unchanged; the fuzzer found cases that
+fall under them which the text did not spell out, and the harness classifies them so:
+
+- **Item 4** also covers GNUstep *never returning* (an `<!ATTLIST` whose unquoted default runs
+  to the end of the data), GNUstep raising `NSMallocException` (a `<` or `</` as the last byte:
+  a string of length -1), and `&#;` / `&#x;` (GNUstep uses an uninitialised value). oofnd fails
+  the parse in each.
+- **Item 5** also covers dictionary keys containing characters from U+00C0 up, in both writers:
+  GNUstep's `-compare:` and `-caseInsensitiveCompare:` order them by GNUstep's own canonical
+  decomposition (`GSeq_normalize`: `õ` sorts as `o` + U+0303, so before `s`), which needs its
+  Unicode decomposition and combining-class tables; oofnd orders them by UTF-16 units. The
+  dictionary read back is the same; only the order of lines in the file differs. No corpus plist
+  is affected; a follow-up bead may port the tables if a consumer ever depends on the order.
+- **Item 6** also covers XML plists that *declare* a single-byte encoding other than
+  UTF-8/Latin-1/ASCII (`windows-1252`, `iso-8859-2`, ...): GNUstep transcodes them, oofnd reads
+  them as UTF-8 with the Latin-1 fallback. The corpus has none.
+- **Item 7**: a `%z` offset beyond 18 hours is read in the local zone by GNUstep (UTC in oofnd).
+  An XML `<date>` is parsed from `[text cString]`, GNUstep's default C-string encoding
+  (ISO-8859-1 in the game's Windows build; it depends on the locale elsewhere): oofnd reads it
+  as ISO-8859-1 up to the first NUL, and a character beyond U+00FF, for which GNUstep raises
+  `NSCharacterConversionException` out of the parser (at top level too), is an error in oofnd,
+  as `NSInvalidArgumentException` already was.

@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityLoadSave.h"
 
 #import "Universe.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOStringParsing.h"
 
@@ -321,20 +321,20 @@ MA 02110-1301, USA.
 
 - (NSDictionary *) validatedMarker:(NSDictionary *)marker
 {
-	OOSystemID dest = [marker oo_intForKey:@"system"];
+	OOSystemID dest = oo::PListView(marker).get<int>(@"system");
 // FIXME: parameters
 	if (dest < 0 || dest > kOOMaximumSystemID)
 	{
 		return nil;
 	}
-	NSString *group = [marker oo_stringForKey:@"name" defaultValue:MISSION_DEST_LEGACY];
+	NSString *group = oo::PListView(marker).get<NSString *>(@"name", MISSION_DEST_LEGACY);
 
 	return [[[NSDictionary dictionaryWithObjectsAndKeys:
 								[NSNumber numberWithInt:dest], @"system",
 								group, @"name",
-								[marker oo_stringForKey:@"markerColor" defaultValue:@"redColor"], @"markerColor",
-								[marker oo_stringForKey:@"markerShape" defaultValue:@"MARKER_X"], @"markerShape",
-							  [NSNumber numberWithFloat:[marker oo_floatForKey:@"markerScale" defaultValue:1.0]], @"markerScale",
+								oo::PListView(marker).get<NSString *>(@"markerColor", @"redColor"), @"markerColor",
+								oo::PListView(marker).get<NSString *>(@"markerShape", @"MARKER_X"), @"markerShape",
+							  [NSNumber numberWithFloat:oo::PListView(marker).get<float>(@"markerScale", 1.0)], @"markerScale",
 								nil] retain] autorelease];
 
 }

@@ -39,6 +39,7 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 
 #ifndef OO_PQ_STRONG
 #if __has_feature(objc_arc)
@@ -49,7 +50,7 @@ SOFTWARE.
 #endif
 
 
-@interface OOPriorityQueue: NSObject <NSCopying>
+@interface OOPriorityQueue: OOObject <OOCopying>
 {
 @private
 	SEL						_comparator;
