@@ -24,7 +24,7 @@ MA 02110-1301, USA.
 
 #import "OOWaypointEntity.h"
 #import "Entity.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOStringExpander.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
@@ -51,12 +51,12 @@ MA 02110-1301, USA.
 	if (EXPECT_NOT(self == nil))  return nil;
 
 	oriented = YES;
-	position = [info oo_hpvectorForKey:OOWAYPOINT_KEY_POSITION];
-	Quaternion q = [info oo_quaternionForKey:OOWAYPOINT_KEY_ORIENTATION];
+	position = oo::PListView(info).get<HPVector>(OOWAYPOINT_KEY_POSITION);
+	Quaternion q = oo::PListView(info).get<Quaternion>(OOWAYPOINT_KEY_ORIENTATION);
 	[self setOrientation:q];
-	[self setSize:[info oo_nonNegativeFloatForKey:OOWAYPOINT_KEY_SIZE defaultValue:1000.0]];
-	[self setBeaconCode:[info oo_stringForKey:OOWAYPOINT_KEY_CODE defaultValue:@"W"]];
-	[self setBeaconLabel:[info oo_stringForKey:OOWAYPOINT_KEY_LABEL defaultValue:@"Waypoint"]];
+	[self setSize:oo::PListView(info).get<oo::NonNegative<float>>(OOWAYPOINT_KEY_SIZE, 1000.0)];
+	[self setBeaconCode:oo::PListView(info).get<NSString *>(OOWAYPOINT_KEY_CODE, @"W")];
+	[self setBeaconLabel:oo::PListView(info).get<NSString *>(OOWAYPOINT_KEY_LABEL, @"Waypoint")];
 	
 	[self setStatus:STATUS_EFFECT];
 	[self setScanClass:CLASS_NO_DRAW];
@@ -262,7 +262,7 @@ MA 02110-1301, USA.
 		
 		if (length > 1)
 		{
-			NSArray *iconData = [[UNIVERSE descriptions] oo_arrayForKey:beaconCode];
+			NSArray *iconData = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(beaconCode);
 			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:beaconCode];
 		}
 		

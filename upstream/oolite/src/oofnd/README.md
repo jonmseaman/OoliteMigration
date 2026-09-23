@@ -28,6 +28,8 @@ Rules that hold for every component:
 | `src/oofnd/PListXML.hpp` | `oo::parseXMLPList` (GNUstep's GSXMLPListParser over GSSloppyXMLParser) and `oo::changeDTDIfApplicable` (OOPListParsing.m), ported quirk-for-quirk |
 | `src/oofnd/PListWriting.hpp` | `oo::writeOldStylePList` (OldSchoolPropertyListWriting.m) and `oo::writeXMLPList` (GNUstep's XML writer), byte-identical output |
 | `src/oofnd/PListParsing.hpp` | `oo::parsePropertyList`: OOPropertyListFromData's DTD change + format detection + dispatch to the two readers |
+| `src/oofnd/PListGet.hpp` | `oo::PList::get<T>(key, fallback)` / `at<T>(index, fallback)`: OOCollectionExtractors' `oo_*ForKey:` / `oo_*AtIndex:` with GNUstep's exact conversions ([ADR-0031](../../../../docs/decisions/0031-plist-get-and-the-foundation-bridge.md)); included by `PList.hpp` |
+| `src/Core/OOPListView.h` (game side) | `oo::PListView`: the same `get<T>`/`at<T>` over a Foundation collection, for sweeping `oo_*ForKey` before the containers are `PList`; see below |
 | `src/oofnd/Data.hpp` | `oo::Data`: `NSData` / `NSMutableData` as a value type ([ADR-0028](../../../../docs/decisions/0028-oofnd-filesystem-paths-data.md)) |
 | `src/oofnd/FileSystem.hpp` | `oo::fs`: `NSFileManager` + its OOExtensions category + NSData file I/O, on `std::filesystem` with GNUstep semantics |
 | `src/oofnd/ResourcePaths.hpp` | `oo::ResourcePaths`: the game's Resources/AddOns/saves/logs/caches locations, exactly as computed today on Windows and Linux |
@@ -39,6 +41,72 @@ Rules that hold for every component:
 | `tests/unit/oofnd/plist_dump.hpp` | canonical one-line dump of a `PList`, the format the PList tests' GNUstep-captured expectations are written in |
 | `tests/unit/oofnd/test_*.mm` | Objective-C++ tests of `src/oofnd/objc`, linked against libobjc2 alone; `tools/check-oofnd-objc.sh` builds them and proves the import table has no gnustep-base |
 | `tests/unit/oofnd/meson.build` | registers each test in `meson test --suite oofnd` |
+
+## Migrating oo_*ForKey
+
+The recipe for every `sweep:extractors` bead ("Retire oo_*ForKey in <file>"). Proposed
+[ADR-0031](../../../../docs/decisions/0031-plist-get-and-the-foundation-bridge.md); exemplar
+`src/Core/Entities/OOWaypointEntity.mm` (bead oo-u77) - open it and do what it does.
+
+The file keeps its Foundation collections. Each call goes through `oo::PListView`
+(`src/Core/OOPListView.h`), a zero-copy view with `oo::PList`'s `get<T>`/`at<T>` API that performs
+the same lookup and calls the same conversion function as the category method it replaces, so the
+change is behaviour-preserving by construction. Do exactly this, nothing else:
+
+1. **Import.** Replace `#import "OOCollectionExtractors.h"` with `#import "OOPListView.h"` (the view
+   imports it, so nothing is lost). If the file has no such import, add `#import "OOPListView.h"`
+   after its last `#import`.
+2. **Rewrite each call.** Receiver, key, index and fallback expressions move over **unchanged**
+   (keep `@"..."`, `#define`d keys and `NSString *` constants as they are):
+
+   | Objective-C | becomes |
+   |---|---|
+   | `[R oo_<type>ForKey:K defaultValue:D]` | `oo::PListView(R).get<T>(K, D)` |
+   | `[R oo_<type>ForKey:K]` | `oo::PListView(R).get<T>(K)` |
+   | `[R oo_<type>AtIndex:I defaultValue:D]` | `oo::PListView(R).at<T>(I, D)` |
+   | `[R oo_<type>AtIndex:I]` | `oo::PListView(R).at<T>(I)` |
+
+   where `<type>` → `T` is:
+
+   | `<type>` | `T` | | `<type>` | `T` |
+   |---|---|---|---|---|
+   | `char` | `char` | | `bool` | `BOOL` |
+   | `short` | `short` | | `fuzzyBoolean` | `oo::FuzzyBoolean` |
+   | `int` | `int` | | `float` | `float` |
+   | `long` | `long` | | `double` | `double` |
+   | `longLong` | `long long` | | `nonNegativeFloat` | `oo::NonNegative<float>` |
+   | `integer` | `NSInteger` | | `nonNegativeDouble` | `oo::NonNegative<double>` |
+   | `unsignedChar` | `unsigned char` | | `object` | `id` |
+   | `unsignedShort` | `unsigned short` | | `string` | `NSString *` |
+   | `unsignedInt` | `unsigned int` | | `array` | `NSArray *` |
+   | `unsignedLong` | `unsigned long` | | `dictionary` | `NSDictionary *` |
+   | `unsignedLongLong` | `unsigned long long` | | `mutableDictionary` | `NSMutableDictionary *` |
+   | `unsignedInteger` | `NSUInteger` | | `data` | `NSData *` |
+   | `vector` | `Vector` | | `set` | `NSSet *` |
+   | `hpvector` | `HPVector` | | `quaternion` | `Quaternion` |
+
+   A receiver that is itself a message send is fine: `[[UNIVERSE descriptions] oo_arrayForKey:k]`
+   becomes `oo::PListView([UNIVERSE descriptions]).get<NSArray *>(k)`. A nested call is rewritten
+   inside out: `[[d oo_dictionaryForKey:a] oo_stringForKey:b]` becomes
+   `oo::PListView(oo::PListView(d).get<NSDictionary *>(a)).get<NSString *>(b)`.
+   `[R oo_textureSpecifierForKey:K defaultName:N]` (OOTexture.h) becomes
+   `oo::PListView(R).get<oo::TextureSpecifier>(K, N)`.
+   Convert the file's `oo_*AtIndex` calls too: they are the same seam, no other sweep covers them,
+   and the phase exit retires OOCollectionExtractors as a whole.
+3. **Leave alone:** the inserters (`oo_setFloat:forKey:`, `oo_addInteger:` ...), `oo_objectOfClass:`
+   with a runtime `Class`, `oo_textureSpecifierAtIndex:defaultName:` (it raises past the end), the
+   `OO<Type>FromObject()` functions, and every other line of the file. Do not change types, keys or fallbacks, and do not reformat.
+4. **Check:** `! grep -nE 'oo_[a-zA-Z]+ForKey' <file>` prints nothing, then
+   `tools/tier-a.sh <file>` passes. A comment that names an `oo_*ForKey` method is reworded to
+   name the `get<T>` form. If a `T` does not compile, the call is not in the table: stop and
+   report it rather than inventing a conversion.
+
+Semantics worth knowing (all preserved, so nothing to do): a nil receiver returns zero / nil / NO
+(not the fallback), exactly as messaging nil did; an index past the end gives the fallback.
+
+Later, when the Foundation sweep turns a file's collections into `oo::PList`, `oo::PListView(x).`
+becomes `x.` and the Objective-C types map to `std::string`, `PList::Array`, `PList::Dict`,
+`oo::PList` (`oofnd/PListGet.hpp` has the C++ table and the full semantics).
 
 ## Testing
 
