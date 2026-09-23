@@ -122,7 +122,8 @@ class RealTreeTest(unittest.TestCase):
     # Independent of gs.text_declares_ns: any NS-prefixed identifier outside a comment.
     NS_IDENT = r"\bNS[A-Z][A-Za-z0-9_]*"
 
-    def test_known_offenders_pre_sweep_declarations_are_not_renames(self):
+    def test_known_offenders_are_not_renames(self):
+        """Kept name (oo-qnmv): the declarations that made these offenders are still not renames."""
         self.assertEqual({f"{s}.mm" for s in self.PRE_SWEEP_DECLARATIONS}, set(self.KNOWN))
         with tempfile.TemporaryDirectory() as d:
             for stem, decl in self.PRE_SWEEP_DECLARATIONS.items():
