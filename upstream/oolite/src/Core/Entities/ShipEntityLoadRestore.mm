@@ -34,6 +34,9 @@ MA 02110-1301, USA.
 #import "OOEquipmentType.h"
 #import "AI.h"
 #import "ShipEntityAI.h"
+#import "oofnd/objc/OOObject.h"
+
+#include "oofnd/StdLib.hpp"
 
 
 #define KEY_SHIP_KEY				@"ship_key"
@@ -65,6 +68,23 @@ MA 02110-1301, USA.
 static void StripIgnoredKeys(NSMutableDictionary *dict);
 static NSUInteger GroupIDForGroup(OOShipGroup *group, NSMutableDictionary *context);
 static OOShipGroup *GroupForGroupID(NSUInteger groupID, NSMutableDictionary *context);
+
+
+/*	The context's group -> group ID table, not retaining the groups (the context's
+	"groups" set does). Was an NSMutableDictionary keyed by
+	valueWithNonretainedObject: boxes (bead oo-3rb.47); the context dictionary holds
+	this object under the same key instead. Never iterated.
+*/
+@interface OOShipGroupIDTable: OOObject
+{
+@public
+	std::unordered_map<OOShipGroup *, unsigned>	groupIDs;
+}
+@end
+
+
+@implementation OOShipGroupIDTable
+@end
 
 
 @interface ShipEntity (LoadRestoreInternal)
@@ -317,29 +337,26 @@ static void StripIgnoredKeys(NSMutableDictionary *dict)
 
 static NSUInteger GroupIDForGroup(OOShipGroup *group, NSMutableDictionary *context)
 {
-	NSMutableDictionary *groupIDs = [context objectForKey:@"groupIDs"];
+	OOShipGroupIDTable *groupIDs = [context objectForKey:@"groupIDs"];
 	if (groupIDs == nil)
 	{
-		groupIDs = [NSMutableDictionary dictionary];
+		groupIDs = [[[OOShipGroupIDTable alloc] init] autorelease];
 		[context setObject:groupIDs forKey:@"groupIDs"];
 	}
 	
-	NSValue *key = [NSValue valueWithNonretainedObject:group];
-	NSNumber *groupIDObj = [groupIDs objectForKey:key];
+	auto found = groupIDs->groupIDs.find(group);
 	unsigned groupID;
-	if (groupIDObj == nil)
+	if (found == groupIDs->groupIDs.end())
 	{
 		// Assign a new group ID.
 		groupID = [context oo_unsignedIntForKey:@"nextGroupID"];
-		groupIDObj = [NSNumber numberWithUnsignedInt:groupID];
 		[context oo_setUnsignedInteger:groupID + 1 forKey:@"nextGroupID"];
-		[groupIDs setObject:groupIDObj forKey:key];
+		groupIDs->groupIDs[group] = groupID;
 		
 		/*	Also keep references to the groups. This isn't necessary at the
 			time of writing, but would be if we e.g. switched to pickling
 			ships in wormholes all the time (each wormhole would then need a
-			persistent context). We can't simply use the groups instead of
-			NSValues as keys, becuase dictionary keys must be copyable.
+			persistent context). The ID table does not retain its keys.
 		*/
 		NSMutableSet *groups = [context objectForKey:@"groups"];
 		if (groups == nil)
@@ -351,7 +368,7 @@ static NSUInteger GroupIDForGroup(OOShipGroup *group, NSMutableDictionary *conte
 	}
 	else
 	{
-		groupID = [groupIDObj unsignedIntValue];
+		groupID = found->second;
 	}
 
 	

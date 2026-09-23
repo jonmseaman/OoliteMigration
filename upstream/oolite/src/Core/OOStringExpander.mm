@@ -518,23 +518,39 @@ static NSString *Operator_add(NSString *string, NSString *param)
  */
 static NSString *ApplyOneOperator(NSString *string, NSString *op, NSString *param)
 {
-	static NSDictionary *operators = nil;
-	
-	if (operators == nil)
+	/*	Operator name -> function. Was an NSDictionary of boxed function
+		pointers (bead oo-3rb.47); names match exactly, as the dictionary's
+		keys did, and a nil operator matches nothing.
+	*/
+	typedef NSString *(*OperatorFn)(NSString *string, NSString *param);
+	static const struct { const char *name; OperatorFn fn; } operators[] =
 	{
-		#define OPERATOR(name) [NSValue valueWithPointer:(const void *)Operator_##name], @#name
-		operators = [[NSDictionary alloc] initWithObjectsAndKeys:
-					 OPERATOR(dcr),
-					 OPERATOR(cr),
-					 OPERATOR(icr),
-					 OPERATOR(idcr),
-					 OPERATOR(precision),
-					 OPERATOR(multiply),
-					 OPERATOR(add),
-					 nil];
+		#define OPERATOR(name) { #name, Operator_##name }
+		OPERATOR(dcr),
+		OPERATOR(cr),
+		OPERATOR(icr),
+		OPERATOR(idcr),
+		OPERATOR(precision),
+		OPERATOR(multiply),
+		OPERATOR(add),
+		#undef OPERATOR
+	};
+
+	OperatorFn operatorFn = NULL;
+	const char *opName = [op UTF8String];
+	if (opName != NULL)
+	{
+		for (size_t i = 0; i < sizeof operators / sizeof operators[0]; i++)
+		{
+			// Names are ASCII (UTF-16 length == strlen); the length check keeps an
+			// operator with an embedded NUL from matching as the dictionary never did.
+			if (strcmp(opName, operators[i].name) == 0 && [op length] == strlen(operators[i].name))
+			{
+				operatorFn = operators[i].fn;
+				break;
+			}
+		}
 	}
-	
-	NSString *(*operatorFn)(NSString *string, NSString *param) = (NSString *(*)(NSString *, NSString *))[[operators objectForKey:op] pointerValue];
 	if (operatorFn != NULL)
 	{
 		return operatorFn(string, param);
