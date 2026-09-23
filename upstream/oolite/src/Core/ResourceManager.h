@@ -31,8 +31,9 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
-@class OOSound, OOMusic, OOSystemDescriptionManager;
+@class OOSound, OOMusic, OOSystemDescriptionManager, OOScript;
 
 
 typedef enum
@@ -115,12 +116,12 @@ typedef enum
 						   cache:(BOOL)useCache;
 
 // These are deliberately not merged like normal plists for security reasons.
-+ (NSDictionary *) whitelistDictionary;
-+ (NSDictionary *) shaderBindingTypesDictionary;
++ (oo::PList) cxx_whitelistDictionary;			// a null PList when the file is missing
++ (oo::PList) cxx_shaderBindingTypesDictionary;
 
 // These have special merging rules.
-+ (NSDictionary *) logControlDictionary;
-+ (NSDictionary *) roleCategoriesDictionary;
++ (oo::PList) cxx_logControlDictionary;
++ (oo::PList) cxx_roleCategoriesDictionary;	// category -> array of its roles, each once (a set), in first-seen order
 + (OOSystemDescriptionManager *) systemDescriptionManager;
 
 + (OOSound *)ooSoundNamed:(NSString *)fileName inFolder:(NSString *)folderName;
@@ -130,7 +131,8 @@ typedef enum
 + (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
 + (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache;
 
-+ (NSDictionary *)loadScripts;
+// World scripts by name, in the order each name was first loaded.
++ (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts;
 
 /*	+writeDiagnosticData:toFileNamed:
 	+writeDiagnosticString:toFileNamed:
@@ -145,7 +147,7 @@ typedef enum
 
 + (std::optional<std::string>) cxx_diagnosticFileLocation;
 
-+ (NSDictionary *) materialDefaults;
++ (oo::PList) cxx_materialDefaults;
 
 // Clear ResourceManager-internal caches (not those handled by OOCacheManager)
 + (void) clearCaches;
