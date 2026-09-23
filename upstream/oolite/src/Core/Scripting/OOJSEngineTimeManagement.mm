@@ -30,6 +30,7 @@ SOFTWARE.
 #import "OOJSScript.h"
 #import "OOCollectionExtractors.h"
 #import "OOLoggingExtended.h"
+#include "oofnd/StdLib.hpp"
 
 #if OOLITE_LINUX
 // Workaround for clang/glibc incompatibility.
@@ -272,7 +273,15 @@ void OOJSTimeManagementInit(OOJavaScriptEngine *engine, ooscript::Runtime runtim
 static BOOL						sProfiling = NO;
 static BOOL						sTracing = NO;
 static OOJSProfileStackFrame	*sProfileStack = NULL;
-static NSMapTable				*sProfileInfo;
+// Profile key (native name or JS function, by pointer) -> entry, retained. Was a map table with
+// non-owned pointer keys and retained object values (bead oo-3rb.20).
+static std::unordered_map<const void *, OOTimeProfileEntry *>	*sProfileInfo;
+
+static OOTimeProfileEntry *ProfileEntryForKey(const void *key)
+{
+	auto found = sProfileInfo->find(key);
+	return (found != sProfileInfo->end()) ? found->second : nil;
+}
 static double					sProfilerOverhead;
 static double					sProfilerTotalNativeTime;
 static double					sProfilerTotalJavaScriptTime;
@@ -315,7 +324,8 @@ void OOJSBeginProfiling(BOOL trace)
 	assert(sProfiling == NO);
 	sProfiling = YES;
 	sTracing = trace;
-	sProfileInfo = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks, NSObjectMapValueCallBacks, 100);
+	sProfileInfo = new std::unordered_map<const void *, OOTimeProfileEntry *>;
+	sProfileInfo->reserve(100);
 	sProfilerOverhead = 0.0;
 	sProfilerTotalNativeTime = 0.0;
 	sProfilerTotalJavaScriptTime = 0.0;
@@ -355,7 +365,9 @@ OOTimeProfile *OOJSEndProfiling(void)
 	double currentTimeLimit = OOJSGetTimeLimiterLimit(); 
 	[result setExtensionTime:currentTimeLimit - sProfilerEntryTimeLimit];
 	
-	[result setProfileEntries:[NSAllMapTableValues(sProfileInfo) sortedArrayUsingSelector:@selector(compareBySelfTimeReverse:)]];
+	NSMutableArray *entries = [NSMutableArray arrayWithCapacity:sProfileInfo->size()];
+	for (const auto &keyAndEntry : *sProfileInfo)  [entries addObject:keyAndEntry.second];
+	[result setProfileEntries:[entries sortedArrayUsingSelector:@selector(compareBySelfTimeReverse:)]];
 	
 	if (sTracing)
 	{
@@ -365,7 +377,9 @@ OOTimeProfile *OOJSEndProfiling(void)
 	}
 	
 	// Clean up.
-	NSFreeMapTable(sProfileInfo);
+	for (const auto &keyAndEntry : *sProfileInfo)  [keyAndEntry.second release];
+	delete sProfileInfo;
+	sProfileInfo = NULL;
 	OODisposeHighResTime(sProfilerStartTime);
 	
 	OODisposeHighResTime(now);
@@ -479,12 +493,11 @@ static void FunctionCallback(ooscript::Function function, ooscript::Script scrip
 	if (entering > 0)
 	{
 		// Create profile entry up front so we can shove the JS function in it.
-		OOTimeProfileEntry *entry = (OOTimeProfileEntry *)NSMapGet(sProfileInfo, function);
+		OOTimeProfileEntry *entry = ProfileEntryForKey(function);
 		if (entry == nil)
 		{
 			entry = [[OOTimeProfileEntry alloc] initWithJSFunction:function context:context];
-			NSMapInsertKnownAbsent(sProfileInfo, function, entry);
-			[entry release];
+			(*sProfileInfo)[function] = entry;	// the table's reference
 		}
 		
 		if (EXPECT_NOT(sTracing))
@@ -596,12 +609,11 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 {
 	sProfileStack = frame->back;
 	
-	OOTimeProfileEntry *entry = (OOTimeProfileEntry *)NSMapGet(sProfileInfo, frame->key);
+	OOTimeProfileEntry *entry = ProfileEntryForKey(frame->key);
 	if (entry == nil)
 	{
 		entry = [[OOTimeProfileEntry alloc] initWithCName:frame->function];
-		NSMapInsertKnownAbsent(sProfileInfo, frame->key, entry);
-		[entry release];
+		(*sProfileInfo)[frame->key] = entry;	// the table's reference
 	}
 	
 	OOTimeDelta time = OOHighResTimeDeltaInSeconds(frame->startTime, now);

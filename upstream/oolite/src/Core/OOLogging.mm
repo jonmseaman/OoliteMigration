@@ -36,6 +36,7 @@ SOFTWARE.
 #import "NSThreadOOExtensions.h"
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
+#include "oofnd/StdLib.hpp"
 
 #undef NSLog		// We need to be able to call the real NSLog.
 
@@ -118,7 +119,9 @@ OOINLINE void SetIndentLevel(unsigned level);
 
 
 #ifndef OOLOG_NO_FILE_NAME
-static NSMapTable				*sFileNamesCache = NULL;
+// __FILE__ pointer (by identity) -> abbreviated name, retained and never released. Was a map
+// table with non-owned pointer keys and retained object values (bead oo-3rb.20).
+static std::unordered_map<const char *, NSString *>	*sFileNamesCache = NULL;
 #endif
 
 
@@ -595,7 +598,8 @@ void OOLoggingInit(void)
 	if (sLock == nil) exit(EXIT_FAILURE);
 	
 #ifndef OOLOG_NO_FILE_NAME
-	sFileNamesCache = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks, NSObjectMapValueCallBacks, 100);
+	sFileNamesCache = new std::unordered_map<const char *, NSString *>;
+	sFileNamesCache->reserve(100);
 #endif
 	
 	sInited = YES;	// Must be before OOLogOutputHandlerInit().
@@ -843,11 +847,12 @@ NSString *OOLogAbbreviatedFileName(const char *inName)
 	if (EXPECT_NOT(inName == NULL))  return @"unspecified file";
 	
 	[sLock lock];
-	name = (NSString *)NSMapGet(sFileNamesCache, inName);
+	auto cached = sFileNamesCache->find(inName);
+	if (EXPECT(cached != sFileNamesCache->end()))  name = cached->second;
 	if (EXPECT_NOT(name == nil))
 	{
 		name = [[NSString stringWithUTF8String:inName] lastPathComponent];
-		NSMapInsertKnownAbsent(sFileNamesCache, inName, name);
+		(*sFileNamesCache)[inName] = [name retain];
 	}
 	[sLock unlock];
 	

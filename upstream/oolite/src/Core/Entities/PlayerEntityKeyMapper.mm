@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "ResourceManager.h"
 #import "GameController.h"
 #import "OOEquipmentType.h"
+#include "oofnd/StdLib.hpp"
 
 static NSUInteger key_index;
 static long current_row;
@@ -1286,12 +1287,16 @@ static NSArray *camera_keys = nil;
 		}
 	}
 
-	NSSortDescriptor *sortDescriptor = [[NSSortDescriptor alloc] initWithKey:@"description" ascending:YES];
-	NSArray *sortDescriptors = [NSArray arrayWithObject:sortDescriptor];
-	NSMutableArray *sorted = [NSMutableArray arrayWithArray:[kbdList sortedArrayUsingDescriptors:sortDescriptors]];
+	// Sorted by "description", ascending, with -compare:, stably: what the sort descriptor did
+	// (bead oo-3rb.20).
+	std::vector<NSDictionary *> byDescription;
+	for (i = 0; i < [kbdList count]; i++)  byDescription.push_back([kbdList objectAtIndex:i]);
+	std::stable_sort(byDescription.begin(), byDescription.end(), [](NSDictionary *a, NSDictionary *b) {
+		return [[a objectForKey:@"description"] compare:[b objectForKey:@"description"]] == NSOrderedAscending;
+	});
+	NSMutableArray *sorted = [NSMutableArray arrayWithCapacity:byDescription.size() + 1];
+	for (NSDictionary *layout : byDescription)  [sorted addObject:layout];
 	[sorted insertObject:def atIndex:0];
-	
-	[sortDescriptor release];
 
 	return sorted;
 }
