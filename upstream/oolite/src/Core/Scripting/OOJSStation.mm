@@ -40,6 +40,7 @@ MA 02110-1301, USA.
 #include <cstring>
 #include <cstdint>
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -145,6 +146,42 @@ static bool StationSetMarketPrice(ooscript::Context cx, ooscript::CallArgs &oojs
 namespace {
 static bool StationSetMarketQuantity(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
+namespace {
+// -oo_stringForKey: with its nil: the string, a number's -stringValue, or nothing.
+std::optional<std::string> StringForKey(const oo::PList &dictionary, std::string_view key)
+{
+	const oo::PList *value = dictionary.get<oo::PList>(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dictionary.get<std::string>(key);
+}
+
+
+// -oo_stringAtIndex: with its nil.
+std::optional<std::string> StringAtIndex(const oo::PList &array, std::size_t index)
+{
+	const oo::PList *value = array.at<oo::PList>(index);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return array.at<std::string>(index);
+}
+
+
+// A mutable dictionary's -setObject:forKey: given a nil value raised this (GNUstep 1.31.1's text),
+// and the calling script saw it as "Native exception: <reason>". (Exceptions have their own beads.)
+void RaiseNilValueForKey(id key)
+{
+	[NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%@' to dictionary", key];
+}
+
+
+// A string value for -setObject:forKey:, which raised on nil.
+std::string ValueForKey(const std::optional<std::string> &value, id key)
+{
+	if (!value.has_value())  RaiseNilValueForKey(key);
+	return *value;
+}
+} // namespace
+
+
 namespace {
 static bool StationAddShipToShipyard(ooscript::Context cx, ooscript::CallArgs &oojsArgs);
 } // namespace
@@ -350,7 +387,7 @@ static BOOL JSStationGetShipEntity(ooscript::Context context, ooscript::Object s
 }
 
 
-- (NSString *) oo_jsClassName
+- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
 {
 	return @"Station";
 }
@@ -394,8 +431,7 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 
 		case kStation_allegiance:
 		{
-			NSString *result = [entity allegiance];
-			*value_raw = OOJSValueFromNativeObject(context, result);
+			*value_raw = OOJSValueFromNativeObject(context, [entity allegiance]);
 			return YES;
 		}
 			
@@ -451,17 +487,16 @@ static bool StationGetProperty(Context cx, Object obj, PropertyId propID, Value 
 			} 
 			else 
 			{
-				if ([entity localShipyard] == nil) [entity generateShipyard];
-				NSMutableArray *shipyard = [entity localShipyard];
-				*value_raw = OOJSValueFromNativeObject(context, shipyard);
+				if ([entity cxx_localShipyard] == nullptr) [entity generateShipyard];
+				std::vector<oo::PList> *shipyard = [entity cxx_localShipyard];
+				*value_raw = OOJSValueFromNativeObject(context, shipyard != nullptr ? oo::ObjectFromPList(oo::PList(*shipyard)) : nil);
 			}
 			return YES;
 		}
 
 		case kStation_market:
 		{
-			NSDictionary *market = [entity localMarketForScripting];
-			*value_raw = OOJSValueFromNativeObject(context, market);
+			*value_raw = OOJSValueFromNativeObject(context, [entity localMarketForScripting]);
 			return YES;
 		}
 
@@ -490,7 +525,7 @@ static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /
 	bool						bValue;
 	int32_t						iValue;
 	double					fValue;
-	NSString					*sValue = nil;
+	std::optional<std::string>	sValue;
 	
 	if (!JSStationGetStationEntity(context, thisObj, &entity)) return NO;
 	if (entity == nil)  return YES;
@@ -514,10 +549,10 @@ static bool StationSetProperty(Context cx, Object obj, PropertyId propID, bool /
 			break;
 
 		case kStation_allegiance:
-			sValue = OOStringFromJSValue(context,*value_raw);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
+			if (sValue.has_value())
 			{
-				[entity setAllegiance:sValue];
+				[entity setAllegiance:oo::NSStringOrNil(sValue)];
 				return YES;
 			}
 			break;
@@ -755,15 +790,15 @@ static bool StationLaunchShipWithRole(ooscript::Context context, ooscript::CallA
 {
 	OOJS_NATIVE_ENTER(context)
 	
-	NSString		*shipRole = nil;
+	std::optional<std::string>	shipRole;
 	StationEntity	*station = nil;
 	ShipEntity		*result = nil;
 	bool			abortAllDockings = NO;
 	
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 	
-	if (oojsArgs.count() > 0)  shipRole = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(shipRole == nil))
+	if (oojsArgs.count() > 0)  shipRole = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!shipRole.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Station", @"launchShipWithRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
@@ -772,7 +807,7 @@ static bool StationLaunchShipWithRole(ooscript::Context context, ooscript::CallA
 	if (oojsArgs.count() > 1)  ooscript::valueToBoolean((context), (OOJS_ARGV[1]), &abortAllDockings);
 
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = [station launchIndependentShip:shipRole];
+	result = [station launchIndependentShip:oo::NSStringOrNil(shipRole)];
 	if (abortAllDockings) [station abortAllDockings];
 	OOJS_END_FULL_NATIVE
 
@@ -920,11 +955,11 @@ static bool StationLaunchPolice(ooscript::Context context, ooscript::CallArgs &o
 	StationEntity *station = nil;
 	if (!JSStationGetStationEntity(context, OOJS_THIS, &station))  OOJS_RETURN_VOID; // stale reference, no-op
 	
-	NSArray *launched = nil;
+	std::vector<oo::ObjCRef<ShipEntity *>> launched;
 	OOJS_BEGIN_FULL_NATIVE(context)
-	launched = [station launchPolice];
+	launched = oo::ObjCRefsFrom<ShipEntity *>([station launchPolice]);
 	OOJS_END_FULL_NATIVE
-	OOJS_RETURN_OBJECT(launched);
+	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(launched));
 	OOJS_NATIVE_EXIT
 }
 } // namespace
@@ -942,11 +977,11 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]");
 		return NO;
 	}
-	NSString *key = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	std::optional<std::string> key = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
 
 	if (oojsArgs.count() < 2 || ooscript::isNull(OOJS_ARGV[1]))
 	{
-		[station setInterfaceDefinition:nil forKey:key];
+		[station cxx_setInterfaceDefinition:nil forKey:key.value_or("")];
 		OOJS_RETURN_VOID;
 	}
 	
@@ -956,9 +991,9 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 	ooscript::Object callbackThis = NULL;
 	ooscript::Object params = NULL;
 
-	NSString      *title = nil;
-	NSString      *summary = nil;
-	NSString      *category = nil;
+	std::optional<std::string>	title;
+	std::optional<std::string>	summary;
+	std::optional<std::string>	category;
 
 	if (!ooscript::valueToObject(context, (OOJS_ARGV[1]), OOJSFOBJP(&params)))
 	{
@@ -972,8 +1007,8 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, it must have a 'title' property.");
 		return NO;
 	}
-	title = OOStringFromJSValue(context, value);
-	if (title == nil || [title length] == 0) 
+	title = oo::OptionalString(OOStringFromJSValue(context, value));
+	if (!title.has_value() || title->empty())  
 	{
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, 'title' property must be a non-empty string.");
 		return NO;
@@ -982,13 +1017,13 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 	// get category with default
 	if (!ooscript::getProperty(context, (params), "category", (&value)) || ooscript::isUndefined(value))
 	{
-		category = [NSString stringWithString:DESC(@"interfaces-category-uncategorised")];
+		category = oo::StdString(DESC(@"interfaces-category-uncategorised"));
 	}
 	else
 	{
-		category = OOStringFromJSValue(context, value);
-		if (category == nil || [category length] == 0) {
-			category = [NSString stringWithString:DESC(@"interfaces-category-uncategorised")];
+		category = oo::OptionalString(OOStringFromJSValue(context, value));
+		if (!category.has_value() || category->empty()) {
+			category = oo::StdString(DESC(@"interfaces-category-uncategorised"));
 		}
 	}
 
@@ -998,8 +1033,8 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, it must have a 'summary' property.");
 		return NO;
 	}
-	summary = OOStringFromJSValue(context, value);
-	if (summary == nil || [summary length] == 0) 
+	summary = oo::OptionalString(OOStringFromJSValue(context, value));
+	if (!summary.has_value() || summary->empty())  
 	{
 		OOJSReportBadArguments(context, @"Station", @"setInterface", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"key [, definition]; if definition is set, 'summary' property must be a non-empty string.");
 		return NO;
@@ -1018,9 +1053,9 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 	}
 
 	OOJSInterfaceDefinition* definition = [[OOJSInterfaceDefinition alloc] init];
-	[definition setTitle:title];
-	[definition setCategory:oo::StdString(category)];
-	[definition setSummary:oo::StdString(summary)];
+	[definition setTitle:oo::NSStringOrNil(title)];
+	[definition setCategory:*category];
+	[definition setSummary:*summary];
 	[definition setCallback:callback];
 
 	// get callback 'this'
@@ -1031,7 +1066,7 @@ static bool StationSetInterface(ooscript::Context context, ooscript::CallArgs &o
 		// can do .bind(this) for callback instead
 	}
 	
-	[station setInterfaceDefinition:definition forKey:key];
+	[station cxx_setInterfaceDefinition:definition forKey:key.value_or("")];
 
 	[definition release];
 
@@ -1056,8 +1091,8 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 	
-	OOCommodityType commodity = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:commodity]))
+	std::optional<std::string> commodity = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(commodity)]))
 	{
 		OOJSReportBadArguments(context, @"Station", @"setMarketPrice", MIN(oojsArgs.count(), 2U), OOJS_ARGV, NULL, @"Unrecognised commodity type");
 		return NO;
@@ -1071,7 +1106,7 @@ static bool StationSetMarketPrice(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 
-	[station setPrice:(NSUInteger)price forCommodity:commodity];
+	[station setPrice:(NSUInteger)price forCommodity:oo::NSStringOrNil(commodity)];
 
 	if (station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_MARKET)
 	{
@@ -1149,42 +1184,45 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	// make sure the shipyard has been generated
-	if (![station localShipyard]) [station generateShipyard];
-	NSMutableArray *shipyard = [station localShipyard];
+	if (![station cxx_localShipyard]) [station generateShipyard];
+	std::vector<oo::PList> *shipyard = [station cxx_localShipyard];
 
 	if (ooscript::isNull(OOJS_ARGV[0]))  OOJS_RETURN_VOID;	// OK, do nothing for null ship.
 
-	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-	NSDictionary *shipyardDefinition = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
+	oo::PList::Dict result;
+	id shipyardDefinitionObject = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
 	// validate each element of the dictionary
-	if (!shipyardDefinition) 
+	if (!shipyardDefinitionObject)  
 	{
 		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"valid dictionary object");
 		return NO;
 	}
-	if (![shipyardDefinition objectForKey:KEY_SHORT_DESCRIPTION]) 
+	// This first test messages the converted object, as it did: a JavaScript array converts to an
+	// array, which raised on -objectForKey:.
+	if (![shipyardDefinitionObject objectForKey:KEY_SHORT_DESCRIPTION])
 	{
 		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"'short_description' in dictionary");
 		return NO;
 	}
-	[result setObject:oo::PListView(shipyardDefinition).get<NSString *>(@"short_description") forKey:KEY_SHORT_DESCRIPTION];
-	if (![shipyardDefinition objectForKey:SHIPYARD_KEY_SHIPDATA_KEY]) 
+	const oo::PList shipyardDefinition = oo::PListFrom(shipyardDefinitionObject);
+	result[oo::StdString(KEY_SHORT_DESCRIPTION)] = ValueForKey(StringForKey(shipyardDefinition, "short_description"), KEY_SHORT_DESCRIPTION);
+	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)))  
 	{
 		OOJSReportBadArguments(context, @"Station", @"addShipToShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"'shipdata_key' in dictionary");
 		return NO;
 	}
 	// get the shipInfo and shipyardInfo for this key
-	NSString 			*shipKey = oo::PListView(shipyardDefinition).get<NSString *>(SHIPYARD_KEY_SHIPDATA_KEY, nil);
+	const std::optional<std::string>	shipKey = StringForKey(shipyardDefinition, oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY));
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-	NSMutableDictionary	*shipInfo = [NSMutableDictionary dictionaryWithDictionary:[registry shipInfoForKey:shipKey]];
-	NSDictionary		*shipyardInfo = [registry shipyardInfoForKey:shipKey];
-	if (!shipInfo) 
-	{
-		OOJSReportWarningForCaller(context, @"Station", @"addShipToShipyard", @"Invalid shipdata_key provided.");
-		return NO;
-	}
-	// make sure the ship is a player ship
-	if ([oo::PListView(shipInfo).get<NSString *>(@"roles") rangeOfString:@"player"].location == NSNotFound)
+	// A copy of the registry's entry: -dictionaryWithDictionary: made an empty one for an unknown
+	// key, never nil, so an unknown key goes on to the tests below (its "Invalid shipdata_key" test
+	// could not fire and is gone).
+	oo::PList			shipInfo = oo::PListFrom([registry shipInfoForKey:oo::NSStringOrNil(shipKey)]);
+	if (!shipInfo.isDict())  shipInfo = oo::PList(oo::PList::Dict());
+	const oo::PList		shipyardInfo = oo::PListFrom([registry shipyardInfoForKey:oo::NSStringOrNil(shipKey)]);
+	// make sure the ship is a player ship (no roles string searched as a nil receiver: found at 0)
+	const std::optional<std::string> roles = StringForKey(shipInfo, "roles");
+	if (roles.has_value() && roles->find("player") == std::string::npos)
 	{
 		OOJSReportWarningForCaller(context, @"Station", @"addShipToShipyard", @"shipdata_key not suitable for player role.");
 		return NO;
@@ -1195,28 +1233,28 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		return NO;
 	}
 	// ok, feel pretty safe to include this ship now
-	[result setObject:shipKey forKey:SHIPYARD_KEY_SHIPDATA_KEY];
+	result[oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)] = *shipKey;	// non-nil: a nil key found no shipyard information above
 
 	// add an ID
 	Random_Seed ship_seed = [UNIVERSE marketSeed];
 	int superRand1 = ship_seed.a * 0x10000 + ship_seed.c * 0x100 + ship_seed.e;
 	uint32_t superRand2 = ship_seed.b * 0x10000 + ship_seed.d * 0x100 + ship_seed.f;
 	superRand2 &= Ranrot();
-	NSString *shipID = [NSString stringWithFormat:@"%06x-%06x", superRand1, superRand2];
-	[result setObject:shipID forKey:SHIPYARD_KEY_ID];
+	std::string shipID = oo::str::format("%06x-%06x", superRand1, superRand2);
+	result[oo::StdString(SHIPYARD_KEY_ID)] = shipID;
 
-	if (![shipyardDefinition objectForKey:SHIPYARD_KEY_PRICE]) 
+	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_PRICE)))
 	{
 		// if not provided, get the price from the registry
-		OOCreditsQuantity price = oo::PListView(shipyardInfo).get<unsigned int>(KEY_PRICE);
-		[result setObject:[NSNumber numberWithUnsignedLongLong:price] forKey:SHIPYARD_KEY_PRICE];
+		OOCreditsQuantity price = shipyardInfo.get<unsigned int>(oo::StdString(KEY_PRICE));
+		result[oo::StdString(SHIPYARD_KEY_PRICE)] = oo::PList::unsignedInteger(price);
 	}
-	else 
+	else
 	{
-		OOCreditsQuantity price = oo::PListView(shipyardDefinition).get<unsigned int>(SHIPYARD_KEY_PRICE);
+		OOCreditsQuantity price = shipyardDefinition.get<unsigned int>(oo::StdString(SHIPYARD_KEY_PRICE));
 		if (price > 0)
 		{
-			[result setObject:[NSNumber numberWithUnsignedLongLong:price] forKey:SHIPYARD_KEY_PRICE];
+			result[oo::StdString(SHIPYARD_KEY_PRICE)] = oo::PList::unsignedInteger(price);
 		}
 		else
 		{
@@ -1225,45 +1263,48 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 		}
 	}
 
-	if (![shipyardDefinition objectForKey:SHIPYARD_KEY_PERSONALITY]) 
+	if (!shipyardDefinition.get<oo::PList>(oo::StdString(SHIPYARD_KEY_PERSONALITY)))
 	{
-		// default to 0 if not supplied
-		[result setObject:0 forKey:SHIPYARD_KEY_PERSONALITY];
-	} 
+		// default to 0 if not supplied -- this set a nil value, which raised; the script still sees that
+		RaiseNilValueForKey(SHIPYARD_KEY_PERSONALITY);
+	}
 	else
 	{
-		[result setObject:[NSNumber numberWithUnsignedLongLong:oo::PListView(shipyardDefinition).get<unsigned int>(SHIPYARD_KEY_PERSONALITY)] forKey:SHIPYARD_KEY_PERSONALITY];
+		result[oo::StdString(SHIPYARD_KEY_PERSONALITY)] = oo::PList::unsignedInteger(shipyardDefinition.get<unsigned int>(oo::StdString(SHIPYARD_KEY_PERSONALITY)));
 	}
 
-	NSArray	*extras = oo::PListView(shipyardDefinition).get<NSArray *>(KEY_EQUIPMENT_EXTRAS);
-	if (!extras) 
+	const oo::PList *standardEquipment = shipyardInfo.get<oo::PList::Dict>(oo::StdString(KEY_STANDARD_EQUIPMENT));
+	oo::PList extras;
+	if (const oo::PList *definedExtras = shipyardDefinition.get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)))  extras = *definedExtras;
+	else
 	{
-		// pick up defaults if extras not supplied
-		extras = [NSArray arrayWithArray:oo::PListView(oo::PListView(shipyardInfo).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
+		// pick up defaults if extras not supplied (-arrayWithArray: made an empty array of a missing one)
+		const oo::PList *standardExtras = (standardEquipment != nullptr) ? standardEquipment->get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)) : nullptr;
+		extras = (standardExtras != nullptr) ? *standardExtras : oo::PList(oo::PList::Array());
 	}
-	if ([extras count] > 0) {
+	if (extras.count() > 0) {
 		// go looking for lasers and add them directly to our shipInfo
-		NSString* fwdWeaponString = oo::PListView(oo::PListView(shipyardInfo).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSString *>(KEY_EQUIPMENT_FORWARD_WEAPON);
-		NSString* aftWeaponString = oo::PListView(oo::PListView(shipyardInfo).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSString *>(KEY_EQUIPMENT_AFT_WEAPON);
-		OOWeaponFacingSet availableFacings = oo::PListView(shipyardInfo).get<unsigned int>(KEY_WEAPON_FACINGS, VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
+		std::optional<std::string> fwdWeaponString = (standardEquipment != nullptr) ? StringForKey(*standardEquipment, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON)) : std::nullopt;
+		std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? StringForKey(*standardEquipment, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
+		OOWeaponFacingSet availableFacings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
-		OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString);
-		OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString);
+		OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(fwdWeaponString));
+		OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(aftWeaponString));
 
 		unsigned int i;
-		NSString *equipmentKey = nil;
-		for (i = 0; i < [extras count]; i++) {
-			equipmentKey = oo::PListView(extras).at<NSString *>(i);
-			if ([equipmentKey hasPrefix:@"EQ_WEAPON"])
+		std::optional<std::string> equipmentKey;
+		for (i = 0; i < extras.count(); i++) {
+			equipmentKey = StringAtIndex(extras, i);
+			if (equipmentKey.has_value() && oo::str::hasPrefix(*equipmentKey, "EQ_WEAPON"))
 			{
-				OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(equipmentKey);
+				OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(equipmentKey));
 				//fit best weapon forward
 				if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
 				{
 					//again remember to divide price by 10 to get credits from tenths of credit
 					fwdWeaponString = equipmentKey;
 					fwdWeapon = new_weapon;
-					[shipInfo setObject:fwdWeaponString forKey:KEY_EQUIPMENT_FORWARD_WEAPON];
+					(*shipInfo.getIf<oo::PList::Dict>())[oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON)] = *fwdWeaponString;
 				}
 				else 
 				{
@@ -1272,18 +1313,18 @@ static bool StationAddShipToShipyard(ooscript::Context context, ooscript::CallAr
 					{
 						aftWeaponString = equipmentKey;
 						aftWeapon = new_weapon;
-						[shipInfo setObject:aftWeaponString forKey:KEY_EQUIPMENT_AFT_WEAPON];
+						(*shipInfo.getIf<oo::PList::Dict>())[oo::StdString(KEY_EQUIPMENT_AFT_WEAPON)] = *aftWeaponString;
 					}
 				}
 			}
 		}
 	}
 	// add the extras
-	[result setObject:extras forKey:KEY_EQUIPMENT_EXTRAS];
+	result[oo::StdString(KEY_EQUIPMENT_EXTRAS)] = extras;
 	// add the ship spec
-	[result setObject:shipInfo forKey:SHIPYARD_KEY_SHIP];
+	result[oo::StdString(SHIPYARD_KEY_SHIP)] = shipInfo;
 	// add it to the station's shipyard
-	[shipyard addObject:result];
+	if (shipyard != nullptr)  shipyard->push_back(oo::PList(std::move(result)));
 
 	// refresh the screen if the shipyard is currently being displayed
 	if(station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_SHIPYARD)
@@ -1312,20 +1353,20 @@ static bool StationRemoveShipFromShipyard(ooscript::Context context, ooscript::C
 		return NO;
 	}
 	// make sure the shipyard has been generated
-	if (![station localShipyard]) [station generateShipyard];
-	NSMutableArray *shipyard = [station localShipyard];
+	if (![station cxx_localShipyard]) [station generateShipyard];
+	std::vector<oo::PList> *shipyard = [station cxx_localShipyard];
 	
 	int32_t shipIndex = -1;
 	BOOL gotIndex = YES;
 	gotIndex = ooscript::valueToInt32((context), (OOJS_ARGV[0]), &shipIndex);
 
-	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > [shipyard count]) 
+	if (oojsArgs.count() != 1 || (!ooscript::isNull(OOJS_ARGV[0]) && !gotIndex) || shipIndex < 0 || (shipIndex + 1) > (shipyard != nullptr ? shipyard->size() : 0)) 
 	{
 		OOJSReportBadArguments(context, @"Station", @"removeShipFromShipyard", MIN(oojsArgs.count(), 1U), OOJS_ARGV, NULL, @"valid ship index");
 		return NO;
 	}
 
-	[shipyard removeObjectAtIndex:shipIndex];
+	shipyard->erase(shipyard->begin() + shipIndex);
 
 	// refresh the screen if the shipyard is currently being displayed
 	if(station == [PLAYER dockedStation] && [PLAYER guiScreen] == GUI_SCREEN_SHIPYARD)
