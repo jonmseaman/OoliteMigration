@@ -276,3 +276,30 @@ rule.
     that the load/save screen refreshes from `[gameView cxx_typedString]` each frame it reads it,
     done in the MyOpenGLView chunk that converts the buffer (oo-8i15), with `-typedString`'s
     NSString form kept in MyOpenGLView's bridge for the other callers until they move.
+
+## Amendment 3 — runtime format strings; error texts that name a class (2026-09-23, bead oo-hkvv)
+
+19. **A format string read at run time is formatted by `oo::str::formatRuntime`.** DESC(...)
+    entries (OOOXZManager, ResourceManager `+errors`, the chart titles), verifyOXP.plist's GraphViz
+    templates (OOOXPVerifier `-dumpDebugGraphviz`) and any other format that is data, not a
+    literal, cannot go through `oo::str::format` (its format is checked at compile time and has no
+    `%@`), and rewriting `%@` to `%s` inside data is not a conversion. `formatRuntime(fmt,
+    {args...})` (oofnd/String.hpp) takes each argument as an `oo::str::FormatArg`, which carries
+    its kind: text (an object's description, `oo::DescriptionOf(obj)`; a C string), nil, signed
+    and unsigned integers, reals (`FormatArg::single(f)` for a `+numberWithFloat:`), and
+    `FormatArg::pointer(p)`. It reproduces GNUstep 1.31.1's `-stringWithFormat:` for every
+    conversion Oolite's runtime strings use: `%@` (width and precision in UTF-16 units; a number
+    prints its NSNumber description), `%p` (`pointerDescription`, with width), `%d %i %u %x %X %o
+    %c` with `hh h l ll q z j t`, `%f %e %g` (and upper case), `%s`, `%%`, flags and widths
+    including `*`, positional `%2$@`; an unknown conversion and a trailing `%` are copied as GNUstep
+    copies them. Numbers are rendered with `std::to_chars`, never through a runtime printf format.
+    Where GNUstep reads memory that is not there (too few arguments), oofnd prints what nil / zero
+    prints: an ADR-0027 difference no correct string reaches. Pinned in
+    `tests/unit/oofnd/test_string_format_runtime.cpp` against captured GNUstep output. Exemplar:
+    `OOOXPVerifier.mm` `-dumpDebugGraphviz` (oo-hkvv).
+20. **An error text that names a Foundation class is reworded to name the concept.** Where the
+    only NS name left in a file is inside a programming-error message that no golden or player sees
+    (GuiDisplayGen's `ArrayLengthMismatchException`: "The NSArray sent as 'item_keys' ..." becomes
+    "The array sent as 'item_keys' ..."), or inside a comment, the text is reworded ("array",
+    "string", "dictionary"). Text a player, a log golden or a script can see is never reworded
+    under this item.

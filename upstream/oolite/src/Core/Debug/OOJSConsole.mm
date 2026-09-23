@@ -772,7 +772,7 @@ static bool ConsoleCallObjCMethod(ooscript::Context context, ooscript::CallArgs 
 	
 	OOJSPauseTimeLimiter();
 	result = ooscript::undefinedValue();
-	OK = OOJSCallObjCObjectMethod(context, object, [object oo_jsClassName], oojsArgs.count(), OOJS_ARGV, &result);
+	OK = OOJSCallObjCObjectMethod(context, object, oo::StdString([object oo_jsClassName]), oojsArgs.count(), OOJS_ARGV, &result);
 	OOJSResumeTimeLimiter();
 	
 	OOJS_SET_RVAL(result);
