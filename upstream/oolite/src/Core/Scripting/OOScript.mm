@@ -90,7 +90,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 			OOLog(@"script.load.javaScript", @"Trying to load JavaScript script %@", oo::NSStringFrom(filePath));
 			OOLogIndentIf(@"script.load.javaScript");
 			
-			script = [OOJSScript scriptWithPath:oo::NSStringFrom(filePath) properties:nil];
+			script = [OOJSScript scriptWithPath:filePath properties:oo::PList()];
 			if (script != nil)
 			{
 				result = std::vector<oo::ObjCRef<OOScript *>>{ oo::ObjCRef<OOScript *>(script) };
@@ -177,7 +177,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 	if (extension == "js" || extension == "es")
 	{
 		std::optional<std::vector<oo::ObjCRef<OOScript *>>>	result;
-		OOScript	*script = [OOJSScript scriptWithPath:oo::NSStringFrom(filePath) properties:nil];
+		OOScript	*script = [OOJSScript scriptWithPath:filePath properties:oo::PList()];
 		if (script != nil) result = std::vector<oo::ObjCRef<OOScript *>>{ oo::ObjCRef<OOScript *>(script) };
 		return result;
 	}
@@ -212,7 +212,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 			OOLogERR(@"script.load.notFound", @"Could not find script file %@.", oo::NSStringFrom(fileName));
 			return nil;
 		}
-		return [OOJSScript scriptWithPath:oo::NSStringFrom(*path) properties:oo::ObjectFromPList(properties)];
+		return [OOJSScript scriptWithPath:path properties:properties];
 	}
 	else if (extension == "plist")
 	{
@@ -241,7 +241,7 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 			OOLogERR(@"script.load.notFound", @"Could not find script file %@.", oo::NSStringFrom(fileName));
 			return nil;
 		}
-		return [OOJSScript scriptWithPath:oo::NSStringFrom(*path) properties:oo::ObjectFromPList(properties)];
+		return [OOJSScript scriptWithPath:path properties:properties];
 	}
 	else if (extension == "plist")
 	{
