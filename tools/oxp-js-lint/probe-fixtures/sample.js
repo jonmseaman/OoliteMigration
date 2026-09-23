@@ -15,3 +15,4 @@ function helperSecret(a, b) {
 	"use strict";
 	return a.secretMember + b;
 }
+this["oolite_manifest_identifier"] = this["secretKey"];

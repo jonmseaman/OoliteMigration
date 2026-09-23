@@ -14,7 +14,10 @@
  *     keywords, the names in oxp-contract/js-api-1.93.json, `this`), verbatim;
  *   - every other identifier as a stable placeholder ID1, ID2, ... numbered in
  *     file order, so the same name is the same placeholder everywhere;
- *   - string / template / number / regex literals as STR / TPL / NUM / RE;
+ *   - string / template / number / regex literals as STR / TPL / NUM / RE,
+ *     except a string whose whole value is itself an allowlisted name (or one
+ *     of the script-object property names Oolite defines, SCRIPT_PROPS), which
+ *     prints as STR"value" -- e.g. the key in `this["name"]`;
  *   - any other character as `?`; comments are dropped.
  * Plus boolean/count facts computed by code: whether the file (or a function)
  * starts with the "use strict" directive, and per placeholder whether it is
@@ -93,7 +96,14 @@ function contractNames() {
   return names;
 }
 
+// Properties Oolite itself puts on a script object (OOJSScript.mm), and the directive.
+const SCRIPT_PROPS = [
+  "oolite_manifest_identifier", "name", "version", "author", "description",
+  "copyright", "license", "licence", "use strict",
+];
+
 const ALLOW = new Set([...KEYWORDS, ...ES_GLOBALS, ...contractNames()]);
+const ALLOW_STR = new Set([...ALLOW, ...SCRIPT_PROPS]);
 const KEYWORD_SET = new Set(KEYWORDS);
 
 /* ------------------------------------------------------------------ */
@@ -309,7 +319,7 @@ function analyse(src) {
 function render(t, ph) {
   switch (t.t) {
     case "id": return ALLOW.has(t.v) ? t.v : ph.get(t.v);
-    case "str": return "STR";
+    case "str": return ALLOW_STR.has(t.v) ? `STR"${t.v}"` : "STR";
     case "tpl": return "TPL";
     case "num": return "NUM";
     case "re": return "RE";
