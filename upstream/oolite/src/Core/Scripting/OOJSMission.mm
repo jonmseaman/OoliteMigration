@@ -32,7 +32,7 @@ MA 02110-1301, USA.
 #import "OOJSPlayer.h"
 #import "PlayerEntityScriptMethods.h"
 #import "OOStringExpander.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMusicController.h"
 #import "GuiDisplayGen.h"
 #import "OODebugStandards.h"
@@ -376,7 +376,7 @@ static bool MissionMarkSystem(ooscript::Context context, ooscript::CallArgs &ooj
 		{
 			ooscript::clearPendingException(context); // or valueToInt32 exception crashes JS engine
 			NSDictionary *marker = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[i]));
-			OOSystemID system = [marker oo_intForKey:@"system" defaultValue:-1];
+			OOSystemID system = oo::PListView(marker).get<int>(@"system", -1);
 			if (system >= 0)
 			{
 				[player addMissionDestinationMarker:marker];
@@ -432,7 +432,7 @@ static bool MissionUnmarkSystem(ooscript::Context context, ooscript::CallArgs &o
 		{
 			ooscript::clearPendingException(context); // or valueToInt32 exception crashes JS engine
 			NSDictionary *marker = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[i]));
-			OOSystemID system = [marker oo_intForKey:@"system" defaultValue:-1];
+			OOSystemID system = oo::PListView(marker).get<int>(@"system", -1);
 			if (system >= 0)
 			{
 				if (![player removeMissionDestinationMarker:marker]) {
@@ -671,7 +671,7 @@ static bool MissionRunScreen(ooscript::Context context, ooscript::CallArgs &oojs
 		NSString *titleKey = GetParameterString(context, params, "titleKey");
 		if (titleKey != nil)
 		{
-			NSString *message = [[UNIVERSE missiontext] oo_stringForKey:titleKey];
+			NSString *message = oo::PListView([UNIVERSE missiontext]).get<NSString *>(titleKey);
 			if (message != nil)
 			{
 				[player setMissionTitle:OOExpand(message)];

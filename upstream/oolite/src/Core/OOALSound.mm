@@ -26,13 +26,14 @@ SOFTWARE.
 
 #import "OOALSound.h"
 #import "OOLogging.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOMaths.h"
 #import "OOALSoundDecoder.h"
 #import "OOOpenALController.h"
 #import "OOALBufferedSound.h"
 #import "OOALStreamedSound.h"
 #import "OOALSoundMixer.h"
+#import "OOStringBridge.h"
 
 #define KEY_VOLUME_CONTROL @"volume_control"
 
@@ -52,7 +53,7 @@ static BOOL sIsSoundOK = NO;
 		if (controller != nil)
 		{
 			sIsSoundOK = YES;
-			float volume = [[NSUserDefaults standardUserDefaults] oo_floatForKey:KEY_VOLUME_CONTROL defaultValue:0.5];
+			float volume = oo::PListView([NSUserDefaults standardUserDefaults]).get<float>(KEY_VOLUME_CONTROL, 0.5);
 			[self setMasterVolume:volume];
 		}
 	}
@@ -94,7 +95,7 @@ static BOOL sIsSoundOK = NO;
 }
 
 
-- (id) initWithContentsOfFile:(NSString *)path
+- (id) initWithContentsOfFile:(id)path	// shared selector (proposed ADR-0043)
 {
 	if (!sIsSoundOK)  return nil;
 	
@@ -119,12 +120,12 @@ static BOOL sIsSoundOK = NO;
 	if (nil != self)
 	{
 		#ifndef NDEBUG
-			OOLog(kOOLogSoundLoadingSuccess, @"Loaded sound %@", path);
+			OOLog(oo::NSStringFrom(kOOLogSoundLoadingSuccess), @"Loaded sound %@", path);
 		#endif
 	}
 	else
 	{
-		OOLog(kOOLogSoundLoadingError, @"Failed to load sound \"%@\"", path);
+		OOLog(oo::NSStringFrom(kOOLogSoundLoadingError), @"Failed to load sound \"%@\"", path);
 	}
 	
 	return self;
@@ -139,7 +140,7 @@ static BOOL sIsSoundOK = NO;
 }
 
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
 	OOLogGenericSubclassResponsibility();
 	return @"";

@@ -30,7 +30,7 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OODebugFlags.h"
 #import "NSObjectOOExtensions.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #include "oofnd/objc/OOException.h"
 
 
@@ -124,7 +124,7 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 		return nil;
 	}
 	
-	return [self initWithData:data radius:[dict oo_floatForKey:@"radius"]];
+	return [self initWithData:data radius:oo::PListView(dict).get<float>(@"radius")];
 }
 
 

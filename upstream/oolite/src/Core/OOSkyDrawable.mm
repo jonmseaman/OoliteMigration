@@ -36,9 +36,11 @@ SOFTWARE.
 #import "OOMacroOpenGL.h"
 #import "NSObjectOOExtensions.h"
 #import "OOCollectionExtractors.h"
+#import "OOFoundationBridge.h"
 
 #include "oofnd/Defaults.hpp"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/String.hpp"
 
 
 #define SKY_ELEMENT_SCALE_FACTOR		(BILLBOARD_DEPTH / 500.0f)
@@ -86,7 +88,7 @@ enum
 	GLfloat					*_colors;		// 4 entries per vertex, 16 per quad
 }
 
-+ (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count toArray:(NSMutableArray *)ioArray;
++ (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count toArray:(std::vector<oo::ObjCRef<OOSkyQuadSet *>> &)ioArray;
 
 - (id)initWithQuadsWithTexture:(OOTexture *)texture inArray:(OOSkyQuadDesc *)array count:(unsigned)totalCount;
 
@@ -185,7 +187,6 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 {
 	OO_ENTER_OPENGL();
 	
-	[_quadSets release];
 	[[OOGraphicsResetManager sharedManager] unregisterClient:self];
 	if (_displayListName != 0)  glDeleteLists(_displayListName, 1);
 	
@@ -223,7 +224,7 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 		OOGL(glEnableClientState(GL_TEXTURE_COORD_ARRAY));
 		OOGL(glEnableClientState(GL_COLOR_ARRAY));
 		
-		[_quadSets makeObjectsPerformSelector:@selector(render)];
+		for (const oo::ObjCRef<OOSkyQuadSet *> &quadSet : _quadSets)  [quadSet.get() render];
 		
 		OOGL(glDisableClientState(GL_TEXTURE_COORD_ARRAY));
 		OOGL(glDisableClientState(GL_COLOR_ARRAY));
@@ -254,17 +255,17 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 }
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
-	NSMutableSet *result = [NSMutableSet setWithCapacity:[_quadSets count]];
+	std::vector<id> result;
+	result.reserve(_quadSets.size());
 	
-	OOSkyQuadSet *quadSet = nil;
-	foreach (quadSet, _quadSets)
+	for (const oo::ObjCRef<OOSkyQuadSet *> &quadSet : _quadSets)
 	{
-		[result addObject:[quadSet texture]];
+		result.push_back([quadSet.get() texture]);
 	}
 	
-	return result;
+	return oo::NSSetFromObjects(result);
 }
 
 
@@ -272,10 +273,9 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 {
 	size_t result = [super totalSize];
 	
-	OOSkyQuadSet *quadSet = nil;
-	foreach (quadSet, _quadSets)
+	for (const oo::ObjCRef<OOSkyQuadSet *> &quadSet : _quadSets)
 	{
-		result += [quadSet totalSize];
+		result += [quadSet.get() totalSize];
 	}
 	
 	return result;
@@ -442,8 +442,6 @@ static OOColor *DebugColor(Vector orientation)
 
 - (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count
 {
-	if (_quadSets == nil)  _quadSets = [[NSMutableArray alloc] init];
-	
 	[OOSkyQuadSet addQuads:quads count:count toArray:_quadSets];
 }
 
@@ -453,7 +451,7 @@ static OOColor *DebugColor(Vector orientation)
 	if (sStarTextures == nil)
 	{
 		sStarTextures = [[OOProbabilisticTextureManager alloc]
-							initWithPListName:@"startextures.plist"
+							initWithPListName:"startextures.plist"
 									  options:kOOTextureMinFilterMipMap | kOOTextureMagFilterLinear | kOOTextureAlphaMask
 								   anisotropy:0.0f
 									  lodBias:-0.0f];
@@ -473,7 +471,7 @@ static OOColor *DebugColor(Vector orientation)
 	if (sNebulaTextures == nil)
 	{
 		sNebulaTextures = [[OOProbabilisticTextureManager alloc]
-							initWithPListName:@"nebulatextures.plist"
+							initWithPListName:"nebulatextures.plist"
 									  options:kOOTextureDefaultOptions | kOOTextureAlphaMask
 								   anisotropy:0.0f
 									  lodBias:0.0f];
@@ -511,23 +509,22 @@ static OOColor *DebugColor(Vector orientation)
 
 @implementation OOSkyQuadSet
 
-+ (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count toArray:(NSMutableArray *)ioArray
++ (void)addQuads:(OOSkyQuadDesc *)quads count:(unsigned)count toArray:(std::vector<oo::ObjCRef<OOSkyQuadSet *>> &)ioArray
 {
-	NSMutableSet			*seenTextures = nil;
+	std::vector<oo::ObjCRef<OOTexture *>>	seenTextures;	// by identity (textures do not override -isEqual:)
 	OOTexture				*texture = nil;
 	OOSkyQuadSet			*quadSet = nil;
 	unsigned				i;
 	
 	// Iterate over all quads.
-	seenTextures = [NSMutableSet set];
 	for (i = 0; i != count; ++i)
 	{
 		texture = quads[i].texture;
 		
 		// If we haven't seen this quad's texture before...
-		if (![seenTextures containsObject:texture])
+		if (std::find(seenTextures.begin(), seenTextures.end(), texture) == seenTextures.end())
 		{
-			[seenTextures addObject:texture];
+			seenTextures.emplace_back(texture);
 			
 			// ...create a quad set for this texture.
 			quadSet = [[self alloc] initWithQuadsWithTexture:texture
@@ -535,8 +532,7 @@ static OOColor *DebugColor(Vector orientation)
 													   count:count];
 			if (quadSet != nil)
 			{
-				[ioArray addObject:quadSet];
-				[quadSet release];
+				ioArray.push_back(oo::adoptObjC(quadSet));
 			}
 		}
 	}
@@ -679,9 +675,11 @@ do { \
 }
 
 
-- (NSString *)description
+// OOObject's -description wraps this as "<OOSkyQuadSet 0x...>{...}", the text this class's own
+// -description printed. Shared selector (proposed ADR-0043).
+- (id)descriptionComponents
 {
-	return [NSString stringWithFormat:@"<%@ %p>{%u quads, texture: %@}", [self class], self, _count, _texture];
+	return oo::NSStringFrom(oo::str::format("%u quads, texture: %s", _count, oo::DescriptionOf(_texture).c_str()));
 }
 
 
