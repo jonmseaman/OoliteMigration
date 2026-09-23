@@ -523,6 +523,7 @@ NSString *DisplayStringForMassUnit(OOMassUnit unit)
 		case UNITS_TONS:  return DESC(@"cargo-tons-symbol");
 		case UNITS_KILOGRAMS:  return DESC(@"cargo-kilograms-symbol");
 		case UNITS_GRAMS:  return DESC(@"cargo-grams-symbol");
+		case UNITS_UNKNOWN:  break;
 	}
 	
 	return @"??";

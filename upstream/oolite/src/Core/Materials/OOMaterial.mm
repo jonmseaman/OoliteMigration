@@ -28,6 +28,7 @@ SOFTWARE.
 #import "OOMaterial.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
+#import "OOFoundationBridge.h"
 
 
 static OOMaterial *sActiveMaterial = nil;
@@ -50,13 +51,13 @@ static OOMaterial *sActiveMaterial = nil;
 }
 
 
-- (NSString *)descriptionComponents
+- (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"\"%@\"", [self name]];
+	return oo::NSStringFrom("\"" + oo::DescriptionOf([self name]) + "\"");	// "%@" of the name, quoted
 }
 
 
-- (NSString *)name
+- (id)name	// shared selector (proposed ADR-0043)
 {
 	OOLogGenericParameterError();
 	return nil;
@@ -124,7 +125,7 @@ static OOMaterial *sActiveMaterial = nil;
 
 
 #ifndef NDEBUG
-- (NSSet *) allTextures
+- (id) allTextures	// shared selector (proposed ADR-0043)
 {
 	return nil;
 }

@@ -27,21 +27,94 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "OOJoystickManager.h"
 #import "OOTexture.h"
-#import "OOCollectionExtractors.h"
 #import "HeadUpDisplay.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/PListGet.hpp"
+#include "oofnd/String.hpp"
 
 @interface PlayerEntity (StickMapperInternal)
 
 - (void) resetStickFunctions;
-- (void) checkCustomEquipButtons:(NSDictionary *)stickFn ignore:(int)idx;
+- (void) checkCustomEquipButtons:(const oo::PList &)stickFn ignore:(int)idx;
 - (void) removeFunction:(int)selFunctionIdx;
-- (NSArray *)stickFunctionList;
+- (std::vector<oo::PList>)stickFunctionList;
 - (void)displayFunctionList:(GuiDisplayGen *)gui
 					   skip:(NSUInteger) skip;
-- (NSString *)describeStickDict:(NSDictionary *)stickDict;
-- (NSString *)hwToString:(int)hwFlags;
+- (std::optional<std::string>)describeStickDict:(const oo::PList *)stickDict;	// nullptr: nil
+- (std::string)hwToString:(int)hwFlags;
 
 @end
+
+
+namespace {
+
+// The columns of a row as +arrayWithObjects: took them: up to the first nil.
+std::vector<std::string> ColumnsUpToNil(std::initializer_list<std::optional<std::string>> columns)
+{
+	std::vector<std::string> result;
+	for (const std::optional<std::string> &column : columns)
+	{
+		if (!column.has_value())  break;
+		result.push_back(*column);
+	}
+	return result;
+}
+
+
+// get<std::string> where the Foundation code read nil: std::nullopt when the key is absent or its
+// value is neither a string nor a number.
+std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dict.get<std::string>(key);
+}
+
+
+// The object a dictionary held under key (nil when absent), for -intValue / -boolValue as before.
+id ObjectForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+}
+
+
+// The string's -length - 5 characters of a stick name, then "..." (UTF-16 units, as before).
+std::string TruncatedByFive(const std::string &name)
+{
+	std::u16string units = oo::utf8ToUtf16(name);
+	units.resize(units.size() - 5);
+	return oo::utf16ToUtf8(units) + "...";
+}
+
+
+// The -intValue of the part of a GUI key after its first ':' ("Index:3", "More:12").
+int NumberAfterColon(const std::string &key)
+{
+	const std::size_t colon = key.find(':');
+	std::string part = colon == std::string::npos ? std::string() : key.substr(colon + 1);
+	const std::size_t next = part.find(':');
+	if (next != std::string::npos)  part.resize(next);
+	return [oo::NSStringFrom(part) intValue];
+}
+
+
+// A mutable copy of a custom equipment entry, as -mutableCopy made (PlayerEntityKeyMapper edits
+// these in place).
+id MutableObjectFrom(const oo::PList &entry)
+{
+	return [[oo::ObjectFromPList(entry) mutableCopy] autorelease];
+}
+
+
+// -oo_integerForKey: of an entry that may be absent (nil: 0).
+NSInteger IntegerIn(const oo::PList *dict, std::string_view key)
+{
+	return dict != nullptr ? dict->get<NSInteger>(key) : 0;
+}
+
+}	// namespace
 
 
 @implementation PlayerEntity (StickMapper)
@@ -62,8 +135,8 @@ MA 02110-1301, USA.
 {
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
-	NSArray		*stickList = [stickHandler listSticks];
-	unsigned		stickCount = [stickList count];
+	const std::vector<std::string>	stickList = [stickHandler listSticks];
+	unsigned		stickCount = stickList.size();
 	unsigned		i;
 	
 	OOGUITabStop	tabStop[GUI_MAX_COLUMNS];
@@ -74,58 +147,55 @@ MA 02110-1301, USA.
 	
 	gui_screen = GUI_SCREEN_STICKMAPPER;
 	[gui clear];
-	[gui setTitle:[NSString stringWithFormat:@"Configure Joysticks"]];
+	[gui setTitle:@"Configure Joysticks"];
 	
 	for(i=0; i < stickCount; i++)
  	{
-		NSString *stickNameForThisRow = [NSString stringWithFormat: @"Stick %d %@", i+1, [stickList objectAtIndex: i]];
+		std::string stickNameForThisRow = oo::str::format("Stick %d %s", i+1, stickList[i].c_str());
 		// for more than 2 sticks, the stick name rows are populated by more than one name if needed
-		NSString *stickNameAdditional = nil;
-		if (stickCount > 2 && OOStringWidthInEm(stickNameForThisRow) > 18.0)
+		std::optional<std::string> stickNameAdditional;
+		if (stickCount > 2 && OOStringWidthInEm(oo::NSStringFrom(stickNameForThisRow)) > 18.0)
 		{
 			// string is too long, truncate it until its length gets below threshold
 			do {
-				stickNameForThisRow = [[stickNameForThisRow substringToIndex:[stickNameForThisRow length] - 5] 
-										stringByAppendingString:@"..."];
-			} while (OOStringWidthInEm(stickNameForThisRow) > 18.0);
+				stickNameForThisRow = TruncatedByFive(stickNameForThisRow);
+			} while (OOStringWidthInEm(oo::NSStringFrom(stickNameForThisRow)) > 18.0);
 		}
 		unsigned j = i + 2;
 		if (j < stickCount)
 		{
-			stickNameAdditional = [NSString stringWithFormat: @"Stick %d %@", j+1, [stickList objectAtIndex: j]];
-			if (OOStringWidthInEm(stickNameAdditional) > 11.0)
+			stickNameAdditional = oo::str::format("Stick %d %s", j+1, stickList[j].c_str());
+			if (OOStringWidthInEm(oo::NSStringFrom(*stickNameAdditional)) > 11.0)
 			{
 				// string is too long, truncate it until its length gets below threshold
 				do {
-				stickNameAdditional = [[stickNameAdditional substringToIndex:[stickNameAdditional length] - 5] 
-										stringByAppendingString:@"..."];
-				} while (OOStringWidthInEm(stickNameAdditional) > 11.0);
+				stickNameAdditional = TruncatedByFive(*stickNameAdditional);
+				} while (OOStringWidthInEm(oo::NSStringFrom(*stickNameAdditional)) > 11.0);
 			}
 		}
-		[gui setArray:[NSArray arrayWithObjects:
+		[gui cxx_setArray:ColumnsUpToNil({
 					   stickNameForThisRow,
-					   @"",	// skip one column
-					   stickNameAdditional,
-					   nil]
+					   std::string(),	// skip one column
+					   stickNameAdditional })
 			   forRow:i + GUI_ROW_STICKNAME];
 	}
 
-	[gui setArray: [NSArray arrayWithObjects: DESC(@"stickmapper-profile"), nil] forRow: GUI_ROW_STICKPROFILE];
-	[gui setKey: GUI_KEY_OK forRow: GUI_ROW_STICKPROFILE];
+	[gui cxx_setArray: ColumnsUpToNil({ oo::OptionalString(DESC(@"stickmapper-profile")) }) forRow: GUI_ROW_STICKPROFILE];
+	[gui cxx_setKey: oo::StdString(GUI_KEY_OK) forRow: GUI_ROW_STICKPROFILE];
 	[self displayFunctionList:gui skip:skip];
 	
-	[gui setArray:[NSArray arrayWithObject:@"Select a function and press Enter to modify or 'u' to unset."]
+	[gui cxx_setArray:std::vector<std::string>{ "Select a function and press Enter to modify or 'u' to unset." }
 		   forRow:GUI_ROW_INSTRUCT];
-		   
-	[gui setText:@"Space to return to previous screen." forRow:GUI_ROW_INSTRUCT+1 align:GUI_ALIGN_CENTER];
+
+	[gui cxx_setText:std::optional<std::string>("Space to return to previous screen.") forRow:GUI_ROW_INSTRUCT+1 align:GUI_ALIGN_CENTER];
 	
 	if (resetCurrentRow)
 	{
 		[gui setSelectedRow: GUI_ROW_STICKPROFILE];
 	}
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
-	[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay"];
-	[gui setBackgroundTextureKey:@"settings"];
+	[gui cxx_setForegroundTextureKey:std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
+	[gui cxx_setBackgroundTextureKey:std::string("settings")];
 }
 
 
@@ -141,8 +211,7 @@ MA 02110-1301, USA.
 		if([gameView isDown: 27])
 		{
 			[stickHandler clearCallback];
-			[gui setArray: [NSArray arrayWithObjects:
-							@"Function setting aborted.", nil]
+			[gui cxx_setArray: std::vector<std::string>{ "Function setting aborted." }
 				   forRow: GUI_ROW_INSTRUCT];
 			waitingForStickCallback=NO;
 		}
@@ -159,17 +228,17 @@ MA 02110-1301, USA.
 		return;
 	}
 	
-	NSString* key = [gui keyForRow: [gui selectedRow]];
-	if ([key hasPrefix:@"Index:"])
-		selFunctionIdx=[[[key componentsSeparatedByString:@":"] objectAtIndex: 1] intValue];
+	const std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
+	if (key.has_value() && oo::str::hasPrefix(*key, "Index:"))
+		selFunctionIdx=NumberAfterColon(*key);
 	else
 		selFunctionIdx=-1;
 
 	if([gameView isDown: 13])
 	{
-		if ([key hasPrefix:@"More:"])
+		if (key.has_value() && oo::str::hasPrefix(*key, "More:"))
 		{
-			int from_function = [[[key componentsSeparatedByString:@":"] objectAtIndex: 1] intValue];
+			int from_function = NumberAfterColon(*key);
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToStickMapperScreen:from_function];
@@ -180,26 +249,27 @@ MA 02110-1301, USA.
 			return;
 		}
 		
-		NSDictionary *entry=[stickFunctions objectAtIndex: selFunctionIdx];
-		int hw=[(NSNumber *)[entry objectForKey: KEY_ALLOWABLE] intValue];
+		// stickFunctions is PlayerEntity's Objective-C array of the function entries.
+		const oo::PList entry = oo::PListFrom([stickFunctions objectAtIndex: selFunctionIdx]);
+		int hw=[ObjectForKey(entry, KEY_ALLOWABLE) intValue];
 		[stickHandler setCallback: @selector(updateFunction:)
 						   object: self 
 						 hardware: hw];
 		
 		// Print instructions
-		NSString *instructions;
+		std::string instructions;
 		switch(hw)
 		{
 			case HW_AXIS:
-				instructions = @"Fully deflect the axis you want to use for this function. Esc aborts.";
+				instructions = "Fully deflect the axis you want to use for this function. Esc aborts.";
 				break;
 			case HW_BUTTON:
-				instructions = @"Press the button you want to use for this function. Esc aborts.";
+				instructions = "Press the button you want to use for this function. Esc aborts.";
 				break;
 			default:
-				instructions = @"Press the button or deflect the axis you want to use for this function.";
+				instructions = "Press the button or deflect the axis you want to use for this function.";
 		}
-		[gui setArray: [NSArray arrayWithObjects: instructions, nil] forRow: GUI_ROW_INSTRUCT];
+		[gui cxx_setArray: std::vector<std::string>{ instructions } forRow: GUI_ROW_INSTRUCT];
 		waitingForStickCallback=YES;
 	}
 	
@@ -212,8 +282,9 @@ MA 02110-1301, USA.
 
 // Callback function, called by JoystickHandler when the callback
 // is set. The dictionary contains the thing that was pressed/moved.
-- (void) updateFunction: (NSDictionary *)hwDict
+- (void) updateFunction: (id)hwDictObject	// called by name with an Objective-C dictionary
 {
+	const oo::PList hwDict = oo::PListFrom(hwDictObject);
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
 	waitingForStickCallback = NO;
 	
@@ -225,10 +296,10 @@ MA 02110-1301, USA.
 	}
 	// What moved?
 	int function;
-	NSDictionary *entry = [stickFunctions objectAtIndex:selFunctionIdx];
-	if([hwDict oo_boolForKey:STICK_ISAXIS])
+	const oo::PList entry = oo::PListFrom([stickFunctions objectAtIndex:selFunctionIdx]);
+	if(hwDict.get<bool>(oo::StdString(STICK_ISAXIS)))
 	{
-		function=[entry oo_intForKey: KEY_AXISFN];
+		function=entry.get<int>(KEY_AXISFN);
 		if (function == AXIS_THRUST)
 		{
 			[stickHandler unsetButtonFunction:BUTTON_INCTHRUST];
@@ -254,7 +325,7 @@ MA 02110-1301, USA.
 	}
 	else
 	{
-		function = [entry oo_intForKey:KEY_BUTTONFN];
+		function = entry.get<int>(KEY_BUTTONFN);
 		if (function == BUTTON_INCTHRUST || function == BUTTON_DECTHRUST)
 		{
 			[stickHandler unsetAxisFunction:AXIS_THRUST];
@@ -277,17 +348,17 @@ MA 02110-1301, USA.
 	// special case for OXP equipment buttons
 	if (function >= 10000) 
 	{
-		NSString *key = CUSTOMEQUIP_BUTTONACTIVATE;
+		std::string key = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
 		function -= 10000;
-		if (function >= 10000) 
+		if (function >= 10000)
 		{
 			function -= 10000;
-			key = CUSTOMEQUIP_BUTTONMODE;
+			key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
 		}
-		NSMutableDictionary *custEquip = [[customEquipActivation objectAtIndex:function] mutableCopy];
-		[custEquip setObject:hwDict forKey:key];
-		[customEquipActivation replaceObjectAtIndex:function withObject:custEquip];
-		[custEquip release];
+		// customEquipActivation is PlayerEntity's Objective-C array of mutable entries.
+		oo::PList custEquip = oo::PListFrom([customEquipActivation objectAtIndex:function]);
+		if (oo::PList::Dict *custEquipDict = custEquip.getIf<oo::PList::Dict>())  (*custEquipDict)[key] = hwDict;
+		[customEquipActivation replaceObjectAtIndex:function withObject:MutableObjectFrom(custEquip)];
 		[self checkCustomEquipButtons:hwDict ignore:function];
 		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
@@ -314,29 +385,34 @@ MA 02110-1301, USA.
 }
 
 
-- (void) checkCustomEquipButtons:(NSDictionary *)stickFn ignore:(int)idx
+- (void) checkCustomEquipButtons:(const oo::PList &)stickFn ignore:(int)idx
 {
+	const std::string stickNumberKey = oo::StdString(STICK_NUMBER);
+	const std::string stickAxBtKey = oo::StdString(STICK_AXBUT);
+	const std::string activateKey = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
+	const std::string modeKey = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
 	int i;
 	for (i = 0; i < [customEquipActivation count]; i++)
 	{
 		if (i != idx) {
-			NSMutableDictionary *custEquip = [[customEquipActivation objectAtIndex:i] mutableCopy];
-			NSDictionary *bf = [[customEquipActivation objectAtIndex:i] objectForKey:CUSTOMEQUIP_BUTTONACTIVATE];
-			if ([bf oo_integerForKey:STICK_NUMBER] == [stickFn oo_integerForKey:STICK_NUMBER] && 
-				[bf oo_integerForKey:STICK_AXBUT] == [stickFn oo_integerForKey:STICK_AXBUT] &&
-				[custEquip objectForKey:CUSTOMEQUIP_BUTTONACTIVATE])
+			const oo::PList original = oo::PListFrom([customEquipActivation objectAtIndex:i]);
+			oo::PList custEquip = original;
+			oo::PList::Dict *custEquipDict = custEquip.getIf<oo::PList::Dict>();
+			const oo::PList *bf = original.find(activateKey);
+			if (IntegerIn(bf, stickNumberKey) == stickFn.get<NSInteger>(stickNumberKey) &&
+				IntegerIn(bf, stickAxBtKey) == stickFn.get<NSInteger>(stickAxBtKey) &&
+				custEquip.find(activateKey) != nullptr)
 			{
-				[custEquip removeObjectForKey:CUSTOMEQUIP_BUTTONACTIVATE];
+				custEquipDict->erase(activateKey);
 			}
-			bf = [[customEquipActivation objectAtIndex:i] objectForKey:CUSTOMEQUIP_BUTTONMODE];
-			if ([bf oo_integerForKey:STICK_NUMBER] == [stickFn oo_integerForKey:STICK_NUMBER] && 
-				[bf oo_integerForKey:STICK_AXBUT] == [stickFn oo_integerForKey:STICK_AXBUT] &&
-				[custEquip objectForKey:CUSTOMEQUIP_BUTTONMODE])
+			bf = original.find(modeKey);
+			if (IntegerIn(bf, stickNumberKey) == stickFn.get<NSInteger>(stickNumberKey) &&
+				IntegerIn(bf, stickAxBtKey) == stickFn.get<NSInteger>(stickAxBtKey) &&
+				custEquip.find(modeKey) != nullptr)
 			{
-				[custEquip removeObjectForKey:CUSTOMEQUIP_BUTTONMODE];
+				custEquipDict->erase(modeKey);
 			}
-			[customEquipActivation replaceObjectAtIndex:i withObject:custEquip];
-			[custEquip release];
+			[customEquipActivation replaceObjectAtIndex:i withObject:MutableObjectFrom(custEquip)];
 		}
 	}
 }
@@ -345,9 +421,9 @@ MA 02110-1301, USA.
 - (void) removeFunction:(int)idx
 {
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
-	NSDictionary		*entry = [stickFunctions objectAtIndex:idx];
-	NSNumber			*butfunc = [entry objectForKey:KEY_BUTTONFN];
-	NSNumber			*axfunc = [entry objectForKey:KEY_AXISFN];
+	const oo::PList		entry = oo::PListFrom([stickFunctions objectAtIndex:idx]);
+	id					butfunc = ObjectForKey(entry, KEY_BUTTONFN);	// -intValue as before
+	id					axfunc = ObjectForKey(entry, KEY_AXISFN);
 	BOOL				custom = NO;
 	selFunctionIdx = idx;
 	
@@ -360,18 +436,16 @@ MA 02110-1301, USA.
 		{
 			int bf = [butfunc intValue];
 			custom = YES;
-			NSString *key = CUSTOMEQUIP_BUTTONACTIVATE;
+			std::string key = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
 			bf -= 10000;
-			if (bf >= 10000) 
+			if (bf >= 10000)
 			{
 				bf -= 10000;
-				key = CUSTOMEQUIP_BUTTONMODE;
+				key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
 			}
-			NSMutableDictionary *custEquip = [[customEquipActivation objectAtIndex:bf] mutableCopy];
-			if ([key isEqualToString:CUSTOMEQUIP_BUTTONACTIVATE] && [custEquip objectForKey:CUSTOMEQUIP_BUTTONACTIVATE]) [custEquip removeObjectForKey:key];
-			if ([key isEqualToString:CUSTOMEQUIP_BUTTONMODE] && [custEquip objectForKey:CUSTOMEQUIP_BUTTONMODE]) [custEquip removeObjectForKey:key];
-			[customEquipActivation replaceObjectAtIndex:bf withObject:custEquip];
-			[custEquip release];
+			oo::PList custEquip = oo::PListFrom([customEquipActivation objectAtIndex:bf]);
+			if (oo::PList::Dict *custEquipDict = custEquip.getIf<oo::PList::Dict>())  custEquipDict->erase(key);	// both tests reduce to "remove key if present"
+			[customEquipActivation replaceObjectAtIndex:bf withObject:MutableObjectFrom(custEquip)];
 		}
 		else 
 		{
@@ -407,16 +481,16 @@ MA 02110-1301, USA.
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
 	
 	[gui setColor:[OOColor greenColor] forRow: GUI_ROW_HEADING];
-	[gui setArray:[NSArray arrayWithObjects:
-				   @"Function", @"Assigned to", @"Type", nil]
+	[gui cxx_setArray:std::vector<std::string>{ "Function", "Assigned to", "Type" }
 		   forRow:GUI_ROW_HEADING];
-	
+
 	if(!stickFunctions)
 	{
-		stickFunctions = [[self stickFunctionList] retain];
+		// PlayerEntity keeps the entries as an Objective-C array.
+		stickFunctions = [oo::ObjectFromPList(oo::PList([self stickFunctionList])) retain];
 	}
-	NSDictionary *assignedAxes = [stickHandler axisFunctions];
-	NSDictionary *assignedButs = [stickHandler buttonFunctions];
+	const oo::PList assignedAxes = [stickHandler axisFunctions];
+	const oo::PList assignedButs = [stickHandler buttonFunctions];
 	
 	NSUInteger i, n_functions = [stickFunctions count];
 	NSInteger n_rows, start_row, previous = 0;
@@ -451,82 +525,81 @@ MA 02110-1301, USA.
 		if (skip > 0)
 		{
 			[gui setColor:[OOColor greenColor] forRow:GUI_ROW_FUNCSTART];
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ", nil] forRow:GUI_ROW_FUNCSTART];
-			[gui setKey:[NSString stringWithFormat:@"More:%zd", previous] forRow:GUI_ROW_FUNCSTART];
+			[gui cxx_setArray:ColumnsUpToNil({ oo::OptionalString(DESC(@"gui-back")), std::string(" <-- ") }) forRow:GUI_ROW_FUNCSTART];
+			[gui cxx_setKey:oo::str::format("More:%zd", previous) forRow:GUI_ROW_FUNCSTART];
 		}
 		
 		for(i=0; i < (n_functions - skip) && (int)i < n_rows; i++)
 		{
-			NSDictionary *entry = [stickFunctions objectAtIndex: i + skip];
-			if ([entry objectForKey:KEY_HEADER]) {
-				NSString *header = [entry objectForKey:KEY_HEADER];
-				[gui setArray:[NSArray arrayWithObjects:header, @"", @"", nil] forRow:i + start_row];
+			const oo::PList entry = oo::PListFrom([stickFunctions objectAtIndex: i + skip]);
+			if (entry.find(KEY_HEADER) != nullptr) {
+				const std::optional<std::string> header = OptionalStringForKey(entry, KEY_HEADER);
+				[gui cxx_setArray:ColumnsUpToNil({ header, std::string(), std::string() }) forRow:i + start_row];
 				[gui setColor:[OOColor cyanColor] forRow:i + start_row];
 			}
 			else
 			{
-				NSString *allowedThings;
-				NSString *assignment;
-				NSString *axFuncKey = [entry oo_stringForKey:KEY_AXISFN];
-				NSString *butFuncKey = [entry oo_stringForKey:KEY_BUTTONFN];
-				int allowable = [entry oo_intForKey:KEY_ALLOWABLE];
+				std::string allowedThings;
+				std::optional<std::string> assignment;
+				const std::optional<std::string> axFuncKey = OptionalStringForKey(entry, KEY_AXISFN);
+				const std::optional<std::string> butFuncKey = OptionalStringForKey(entry, KEY_BUTTONFN);
+				// -objectForKey: of a nil key found nothing
+				const oo::PList *assignedAxis = axFuncKey.has_value() ? assignedAxes.find(*axFuncKey) : nullptr;
+				const oo::PList *assignedButton = butFuncKey.has_value() ? assignedButs.find(*butFuncKey) : nullptr;
+				int allowable = entry.get<int>(KEY_ALLOWABLE);
 				switch(allowable)
 				{
 					case HW_AXIS:
-						allowedThings=@"Axis";
-						assignment=[self describeStickDict:
-									[assignedAxes objectForKey: axFuncKey]];
+						allowedThings="Axis";
+						assignment=[self describeStickDict:assignedAxis];
 						break;
 					case HW_BUTTON:
-						allowedThings=@"Button";
-						int bf; bf = [butFuncKey integerValue];
-						if (bf < 10000) 
+						allowedThings="Button";
+						int bf; bf = [oo::NSStringOrNil(butFuncKey) integerValue];
+						if (bf < 10000)
 						{
-							assignment=[self describeStickDict:
-										[assignedButs objectForKey: butFuncKey]];
-						} 
-						else 
+							assignment=[self describeStickDict:assignedButton];
+						}
+						else
 						{
-							NSString *key = CUSTOMEQUIP_BUTTONACTIVATE;
+							std::string key = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
 							bf -= 10000;
-							if (bf >= 10000) 
+							if (bf >= 10000)
 							{
 								bf -= 10000;
-								key = CUSTOMEQUIP_BUTTONMODE;
+								key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
 							}
-							assignment=[self describeStickDict:
-											[[customEquipActivation objectAtIndex:bf] objectForKey:key]];
+							const oo::PList custom = oo::PListFrom([customEquipActivation objectAtIndex:bf]);
+							assignment=[self describeStickDict:custom.find(key)];
 						}
 						break;
 					default:
-						allowedThings=@"Axis/Button";
-						
+						allowedThings="Axis/Button";
+
 						// axis has priority
-						assignment=[self describeStickDict:
-									[assignedAxes objectForKey: axFuncKey]];
-						if(!assignment)
-							assignment=[self describeStickDict:
-										[assignedButs objectForKey: butFuncKey]];
+						assignment=[self describeStickDict:assignedAxis];
+						if(!assignment.has_value())
+							assignment=[self describeStickDict:assignedButton];
 				}
 				
 				// Find out what's assigned for this function currently.
-				if (assignment == nil)
+				if (!assignment.has_value())
 				{
-					assignment = @"   -   ";
+					assignment = "   -   ";
 				}
-				
-				[gui setArray: [NSArray arrayWithObjects: 
-								[entry objectForKey: KEY_GUIDESC], assignment, allowedThings, nil]
+
+				[gui cxx_setArray: ColumnsUpToNil({
+								OptionalStringForKey(entry, KEY_GUIDESC), assignment, allowedThings })
 					forRow: i + start_row];
 				//[gui setKey: GUI_KEY_OK forRow: i + start_row];
-				[gui setKey: [NSString stringWithFormat: @"Index:%zu", i + skip] forRow: i + start_row];
+				[gui cxx_setKey: oo::str::format("Index:%zu", i + skip) forRow: i + start_row];
 			}
 		}
 		if (i < n_functions - skip)
 		{
 			[gui setColor: [OOColor greenColor] forRow: start_row + i];
-			[gui setArray: [NSArray arrayWithObjects: DESC(@"gui-more"), @" --> ", nil] forRow: start_row + i];
-			[gui setKey: [NSString stringWithFormat: @"More:%zu", n_rows + skip] forRow: start_row + i];
+			[gui cxx_setArray: ColumnsUpToNil({ oo::OptionalString(DESC(@"gui-more")), std::string(" --> ") }) forRow: start_row + i];
+			[gui cxx_setKey: oo::str::format("More:%zu", n_rows + skip) forRow: start_row + i];
 			i++;
 		}
 		
@@ -536,51 +609,52 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *) describeStickDict: (NSDictionary *)stickDict
+- (std::optional<std::string>) describeStickDict: (const oo::PList *)stickDict
 {
-	NSString *desc=nil;
-	if(stickDict)
+	std::optional<std::string> desc;
+	if(stickDict != nullptr)
 	{
-		int thingNumber=[(NSNumber *)[stickDict objectForKey: STICK_AXBUT]
+		// -intValue / -boolValue of the objects the dictionary held, as before
+		int thingNumber=[ObjectForKey(*stickDict, oo::StdString(STICK_AXBUT))
 						 intValue];
-		int stickNumber=[(NSNumber *)[stickDict objectForKey: STICK_NUMBER]
+		int stickNumber=[ObjectForKey(*stickDict, oo::StdString(STICK_NUMBER))
 						 intValue];
 		// Button or axis?
-		if([(NSNumber *)[stickDict objectForKey: STICK_ISAXIS] boolValue])
+		if([ObjectForKey(*stickDict, oo::StdString(STICK_ISAXIS)) boolValue])
 		{
-			desc=[NSString stringWithFormat: @"Stick %d axis %d",
-				  stickNumber+1, thingNumber+1];
+			desc=oo::str::format("Stick %d axis %d",
+				  stickNumber+1, thingNumber+1);
 		}
 		else if(thingNumber >= MAX_REAL_BUTTONS)
 		{
 			static const char dir[][6] = { "up", "right", "down", "left" };
-			desc=[NSString stringWithFormat: @"Stick %d hat %d %s",
+			desc=oo::str::format("Stick %d hat %d %s",
 				  stickNumber+1, (thingNumber - MAX_REAL_BUTTONS) / 4 + 1,
-				  dir[thingNumber & 3]];
+				  dir[thingNumber & 3]);
 		}
 		else
 		{
-			desc=[NSString stringWithFormat: @"Stick %d button %d",
-				  stickNumber+1, thingNumber+1];
+			desc=oo::str::format("Stick %d button %d",
+				  stickNumber+1, thingNumber+1);
 		}
 	}
 	return desc;
 }
 
 
-- (NSString *)hwToString: (int)hwFlags
+- (std::string)hwToString: (int)hwFlags
 {
-	NSString *hwString;
+	std::string hwString;
 	switch(hwFlags)
 	{
 		case HW_AXIS:
-			hwString = @"axis";
+			hwString = "axis";
 			break;
 		case HW_BUTTON:
-			hwString = @"button";
+			hwString = "button";
 			break;
 		default:
-			hwString = @"axis/button";
+			hwString = "axis/button";
 	}
 	return hwString;   
 }
@@ -588,310 +662,310 @@ MA 02110-1301, USA.
 
 // TODO: This data could be put into a plist (i18n or just modifiable by
 // the user). It is otherwise an ugly method, but it'll do for testing.
-- (NSArray *)stickFunctionList
+- (std::vector<oo::PList>)stickFunctionList
 {
-	NSMutableArray *funcList = [NSMutableArray array];
+	std::vector<oo::PList> funcList;
 
 	// propulsion	
-	[funcList addObject:[self makeStickGuiDictHeader:DESC(@"stickmapper-header-propulsion")]];
-	[funcList addObject: 
-	 [self makeStickGuiDict:DESC(@"stickmapper-roll")
+	funcList.push_back([self makeStickGuiDictHeader:oo::StdString(DESC(@"stickmapper-header-propulsion"))]);
+	funcList.push_back( 
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-roll"))
 				  allowable:HW_AXIS
 					 axisfn:AXIS_ROLL
-					  butfn:STICK_NOFUNCTION]];
-	[funcList addObject: 
-	 [self makeStickGuiDict:DESC(@"stickmapper-pitch")
+					  butfn:STICK_NOFUNCTION]);
+	funcList.push_back( 
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-pitch"))
 				  allowable:HW_AXIS
 					 axisfn:AXIS_PITCH
-					  butfn:STICK_NOFUNCTION]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-yaw")
+					  butfn:STICK_NOFUNCTION]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-yaw"))
 				  allowable:HW_AXIS
 					 axisfn:AXIS_YAW
-					  butfn:STICK_NOFUNCTION]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-increase-thrust")
+					  butfn:STICK_NOFUNCTION]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-increase-thrust"))
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_THRUST
-					  butfn:BUTTON_INCTHRUST]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-decrease-thrust")
+					  butfn:BUTTON_INCTHRUST]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-decrease-thrust"))
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_THRUST
-					  butfn:BUTTON_DECTHRUST]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-fuel-injection")
+					  butfn:BUTTON_DECTHRUST]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-fuel-injection"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_FUELINJECT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-hyperspeed")
+					  butfn:BUTTON_FUELINJECT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-hyperspeed"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_HYPERSPEED]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-hyperdrive")
+					  butfn:BUTTON_HYPERSPEED]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-hyperdrive"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_HYPERDRIVE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-gal-hyperdrive")
+					  butfn:BUTTON_HYPERDRIVE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-gal-hyperdrive"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_GALACTICDRIVE]];
+					  butfn:BUTTON_GALACTICDRIVE]);
 
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-roll/pitch-precision-toggle")
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-roll/pitch-precision-toggle"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PRECISION]];
+					  butfn:BUTTON_PRECISION]);
 
 	// navigation
-	[funcList addObject:[self makeStickGuiDictHeader:DESC(@"stickmapper-header-navigation")]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-compass-mode-next")
+	funcList.push_back([self makeStickGuiDictHeader:oo::StdString(DESC(@"stickmapper-header-navigation"))]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-compass-mode-next"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_COMPASSMODE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-compass-mode-prev")
+					  butfn:BUTTON_COMPASSMODE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-compass-mode-prev"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_COMPASSMODE_PREV]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-scanner-zoom")
+					  butfn:BUTTON_COMPASSMODE_PREV]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-scanner-zoom"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_SCANNERZOOM]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-scanner-unzoom")
+					  butfn:BUTTON_SCANNERZOOM]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-scanner-unzoom"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_SCANNERUNZOOM]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-view-forward")
+					  butfn:BUTTON_SCANNERUNZOOM]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-view-forward"))
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_VIEWY
-					  butfn:BUTTON_VIEWFORWARD]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-view-aft")
+					  butfn:BUTTON_VIEWFORWARD]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-view-aft"))
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_VIEWY
-					  butfn:BUTTON_VIEWAFT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-view-port")
+					  butfn:BUTTON_VIEWAFT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-view-port"))
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_VIEWX
-					  butfn:BUTTON_VIEWPORT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-view-starboard")
+					  butfn:BUTTON_VIEWPORT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-view-starboard"))
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_VIEWX
-					  butfn:BUTTON_VIEWSTARBOARD]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-ext-view-cycle")
+					  butfn:BUTTON_VIEWSTARBOARD]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-ext-view-cycle"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_EXTVIEWCYCLE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-toggle-ID")
+					  butfn:BUTTON_EXTVIEWCYCLE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-toggle-ID"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ID]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-docking-clearance")
+					  butfn:BUTTON_ID]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-docking-clearance"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_DOCKINGCLEARANCE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-dockcpu")
+					  butfn:BUTTON_DOCKINGCLEARANCE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-dockcpu"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_DOCKCPU]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-dockcpufast")
+					  butfn:BUTTON_DOCKCPU]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-dockcpufast"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_DOCKCPUFAST]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-docking-music")
+					  butfn:BUTTON_DOCKCPUFAST]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-docking-music"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_DOCKINGMUSIC]];
+					  butfn:BUTTON_DOCKINGMUSIC]);
 
 	// offensive
-	[funcList addObject:[self makeStickGuiDictHeader:DESC(@"stickmapper-header-offensive")]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-weapons-online-toggle")
+	funcList.push_back([self makeStickGuiDictHeader:oo::StdString(DESC(@"stickmapper-header-offensive"))]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-weapons-online-toggle"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_WEAPONSONLINETOGGLE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-primary-weapon")
+					  butfn:BUTTON_WEAPONSONLINETOGGLE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-primary-weapon"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_FIRE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-secondary-weapon")
+					  butfn:BUTTON_FIRE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-secondary-weapon"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_LAUNCHMISSILE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-arm-secondary")
+					  butfn:BUTTON_LAUNCHMISSILE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-arm-secondary"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ARMMISSILE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-disarm-secondary")
+					  butfn:BUTTON_ARMMISSILE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-disarm-secondary"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_UNARM]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-target-nearest-incoming-missile")
+					  butfn:BUTTON_UNARM]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-target-nearest-incoming-missile"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_TARGETINCOMINGMISSILE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-cycle-secondary")
+					  butfn:BUTTON_TARGETINCOMINGMISSILE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-cycle-secondary"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_CYCLEMISSILE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-next-target")
+					  butfn:BUTTON_CYCLEMISSILE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-next-target"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_NEXTTARGET]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-previous-target")
+					  butfn:BUTTON_NEXTTARGET]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-previous-target"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PREVTARGET]];
+					  butfn:BUTTON_PREVTARGET]);
 
 	// defensive
-	[funcList addObject:[self makeStickGuiDictHeader:DESC(@"stickmapper-header-defensive")]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-ECM")
+	funcList.push_back([self makeStickGuiDictHeader:oo::StdString(DESC(@"stickmapper-header-defensive"))]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-ECM"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ECM]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-jettison")
+					  butfn:BUTTON_ECM]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-jettison"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_JETTISON]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-rotate-cargo")
+					  butfn:BUTTON_JETTISON]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-rotate-cargo"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ROTATECARGO]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-escape-pod")
+					  butfn:BUTTON_ROTATECARGO]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-escape-pod"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ESCAPE]];
+					  butfn:BUTTON_ESCAPE]);
 
 	// oxp special equip
-	[funcList addObject:[self makeStickGuiDictHeader:DESC(@"stickmapper-header-special-equip")]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-mfd-select-next")
+	funcList.push_back([self makeStickGuiDictHeader:oo::StdString(DESC(@"stickmapper-header-special-equip"))]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-mfd-select-next"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MFDSELECTNEXT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-mfd-select-prev")
+					  butfn:BUTTON_MFDSELECTNEXT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-mfd-select-prev"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MFDSELECTPREV]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-mfd-cycle-next")
+					  butfn:BUTTON_MFDSELECTPREV]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-mfd-cycle-next"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MFDCYCLENEXT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-mfd-cycle-prev")
+					  butfn:BUTTON_MFDCYCLENEXT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-mfd-cycle-prev"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MFDCYCLEPREV]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-prime-equipment")
+					  butfn:BUTTON_MFDCYCLEPREV]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-prime-equipment"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PRIMEEQUIPMENT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-prime-prev-equipment")
+					  butfn:BUTTON_PRIMEEQUIPMENT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-prime-prev-equipment"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PRIMEEQUIPMENT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-activate-equipment")
+					  butfn:BUTTON_PRIMEEQUIPMENT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-activate-equipment"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ACTIVATEEQUIPMENT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-mode-equipment")
+					  butfn:BUTTON_ACTIVATEEQUIPMENT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-mode-equipment"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_MODEEQUIPMENT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-fastactivate-a")
+					  butfn:BUTTON_MODEEQUIPMENT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-fastactivate-a"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_CLOAK]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-fastactivate-b")
+					  butfn:BUTTON_CLOAK]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-fastactivate-b"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_ENERGYBOMB]];
+					  butfn:BUTTON_ENERGYBOMB]);
 
 	// misc
-	[funcList addObject:[self makeStickGuiDictHeader:DESC(@"stickmapper-header-misc")]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-snapshot")
+	funcList.push_back([self makeStickGuiDictHeader:oo::StdString(DESC(@"stickmapper-header-misc"))]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-snapshot"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_SNAPSHOT]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-pause")
+					  butfn:BUTTON_SNAPSHOT]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-pause"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_PAUSE]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-toggle-hud")
+					  butfn:BUTTON_PAUSE]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-toggle-hud"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_TOGGLEHUD]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-comms-log")
+					  butfn:BUTTON_TOGGLEHUD]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-comms-log"))
 				  allowable:HW_BUTTON
 					 axisfn:STICK_NOFUNCTION
-					  butfn:BUTTON_COMMSLOG]];
+					  butfn:BUTTON_COMMSLOG]);
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-increase-field-of-view")
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-increase-field-of-view"))
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_FIELD_OF_VIEW
-					  butfn:BUTTON_INC_FIELD_OF_VIEW]];
-	[funcList addObject:
-	 [self makeStickGuiDict:DESC(@"stickmapper-decrease-field-of-view")
+					  butfn:BUTTON_INC_FIELD_OF_VIEW]);
+	funcList.push_back(
+	 [self makeStickGuiDict:oo::StdString(DESC(@"stickmapper-decrease-field-of-view"))
 				  allowable:HW_AXIS|HW_BUTTON
 					 axisfn:AXIS_FIELD_OF_VIEW
-					  butfn:BUTTON_DEC_FIELD_OF_VIEW]];
+					  butfn:BUTTON_DEC_FIELD_OF_VIEW]);
 #endif
 	if ([customEquipActivation count] > 0) {
-		[funcList addObject:[self makeStickGuiDictHeader:DESC(@"stickmapper-header-oxp-equip")]];
+		funcList.push_back([self makeStickGuiDictHeader:oo::StdString(DESC(@"stickmapper-header-oxp-equip"))]);
 		int i;
 		for (i = 0; i < [customEquipActivation count]; i++)
 		{
-			[funcList addObject:
-			[self makeStickGuiDict:[NSString stringWithFormat: @"Activate '%@'", [[customEquipActivation objectAtIndex:i] oo_stringForKey:CUSTOMEQUIP_EQUIPNAME]]
+			funcList.push_back(
+			[self makeStickGuiDict:oo::str::format("Activate '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(oo::PListFrom([customEquipActivation objectAtIndex:i]), oo::StdString(CUSTOMEQUIP_EQUIPNAME)))).c_str())
 						allowable:HW_BUTTON
 							axisfn:STICK_NOFUNCTION
-							butfn:(i+10000)]];
-			[funcList addObject:
-			[self makeStickGuiDict:[NSString stringWithFormat: @"Mode '%@'", [[customEquipActivation objectAtIndex:i] oo_stringForKey:CUSTOMEQUIP_EQUIPNAME]]
+							butfn:(i+10000)]);
+			funcList.push_back(
+			[self makeStickGuiDict:oo::str::format("Mode '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(oo::PListFrom([customEquipActivation objectAtIndex:i]), oo::StdString(CUSTOMEQUIP_EQUIPNAME)))).c_str())
 						allowable:HW_BUTTON
 							axisfn:STICK_NOFUNCTION
-							butfn:(i+20000)]];
+							butfn:(i+20000)]);
 		}
 
 	}
@@ -900,34 +974,32 @@ MA 02110-1301, USA.
 
 
 
-- (NSDictionary *)makeStickGuiDict:(NSString *)what
+- (oo::PList)makeStickGuiDict:(const std::string &)what
 						 allowable:(int)allowable
 							axisfn:(int)axisfn
 							 butfn:(int)butfn
 {
-	NSMutableDictionary *guiDict = [NSMutableDictionary dictionary];
-	
-	if ([what length] > 50)  what = [[what substringToIndex:28] stringByAppendingString:@"..."];
-	[guiDict setObject: what  forKey: KEY_GUIDESC];
-	[guiDict setObject: [NSNumber numberWithInt: allowable]  
-				forKey: KEY_ALLOWABLE];
+	oo::PList::Dict guiDict;
+
+	// -length / -substringToIndex: count UTF-16 units
+	const std::u16string units = oo::utf8ToUtf16(what);
+	guiDict[KEY_GUIDESC] = units.size() > 50 ? oo::utf16ToUtf8(units.substr(0, 28)) + "..." : what;
+	guiDict[KEY_ALLOWABLE] = oo::PList::signedInteger(allowable);	// +numberWithInt:
 	if(axisfn >= 0)
-		[guiDict setObject: [NSNumber numberWithInt: axisfn]
-					forKey: KEY_AXISFN];
+		guiDict[KEY_AXISFN] = oo::PList::signedInteger(axisfn);
 	if(butfn >= 0)
-		[guiDict setObject: [NSNumber numberWithInt: butfn]
-					forKey: KEY_BUTTONFN];
-	return guiDict;
+		guiDict[KEY_BUTTONFN] = oo::PList::signedInteger(butfn);
+	return oo::PList(std::move(guiDict));
 }
 
-- (NSDictionary *)makeStickGuiDictHeader:(NSString *)header
+- (oo::PList)makeStickGuiDictHeader:(const std::string &)header
 {
-	NSMutableDictionary *guiDict = [NSMutableDictionary dictionary];
-	[guiDict setObject:header forKey:KEY_HEADER];
-	[guiDict setObject:@"" forKey:KEY_ALLOWABLE];
-	[guiDict setObject:@"" forKey:KEY_AXISFN];
-	[guiDict setObject:@"" forKey:KEY_BUTTONFN];
-	return guiDict;
+	oo::PList::Dict guiDict;
+	guiDict[KEY_HEADER] = header;
+	guiDict[KEY_ALLOWABLE] = "";
+	guiDict[KEY_AXISFN] = "";
+	guiDict[KEY_BUTTONFN] = "";
+	return oo::PList(std::move(guiDict));
 }
 
 @end
