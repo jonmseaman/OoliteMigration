@@ -38,7 +38,7 @@ MA 02110-1301, USA.
 #import "OOCollectionExtractors.h"
 #import "NSFileManagerOOExtensions.h"
 #import "NSDataOOExtensions.h"
-#import "NSStringOOExtensions.h"
+#import "OOStringBridge.h"
 #import "OOColor.h"
 #import "OOStringExpander.h"
 #import "MyOpenGLView.h"
@@ -503,7 +503,7 @@ static OOOXZManager *sSingleton = nil;
 	NSArray *parameters = [NSArray arrayWithObjects:kOOManifestTitle,kOOManifestDescription,kOOManifestCategory,nil];
  	
   	// trim any eventual leading whitespace from input string
-	keyword = [keyword stringByTrimmingLeadingWhitespaceAndNewlineCharacters];
+	keyword = oo::StringMap(keyword, oo::str::trimLeadingWhitespaceAndNewlines);
  	
 	foreach (parameter,parameters)
 	{
@@ -529,7 +529,7 @@ static OOOXZManager *sSingleton = nil;
 - (BOOL) applyFilterByAuthor:(NSDictionary *)manifest author:(NSString *)author
 {
 	// trim any eventual leading whitespace from input string
-	author = [author stringByTrimmingLeadingWhitespaceAndNewlineCharacters];
+	author = oo::StringMap(author, oo::str::trimLeadingWhitespaceAndNewlines);
  	
 	NSString *mAuth = [manifest oo_stringForKey:kOOManifestAuthor];
 	return ([mAuth rangeOfString:author options:NSCaseInsensitiveSearch].location != NSNotFound);
@@ -558,7 +558,7 @@ static OOOXZManager *sSingleton = nil;
 	NSArray *parameters = [manifest oo_arrayForKey:kOOManifestTags];
 
   	// trim any eventual leading whitespace from input string
-	tag = [tag stringByTrimmingLeadingWhitespaceAndNewlineCharacters];
+	tag = oo::StringMap(tag, oo::str::trimLeadingWhitespaceAndNewlines);
  	
 	foreach (parameter,parameters)
 	{
@@ -575,7 +575,7 @@ static OOOXZManager *sSingleton = nil;
 - (BOOL) applyFilterByCategory:(NSDictionary *)manifest category:(NSString *)category
 {
 	// trim any eventual leading whitespace from input string
-	category = [category stringByTrimmingLeadingWhitespaceAndNewlineCharacters];
+	category = oo::StringMap(category, oo::str::trimLeadingWhitespaceAndNewlines);
  	
 	NSString *mCategory = [manifest oo_stringForKey:kOOManifestCategory];
 	return ([mCategory rangeOfString:category options:NSCaseInsensitiveSearch].location != NSNotFound);
