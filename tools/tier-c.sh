@@ -578,8 +578,10 @@ stage_asan() {
   # stripped or mismatched binary would leave every frame unattributable and the attribution check
   # below would report "0 oolite frames" for a run full of engine defects.
   local symtest sym_addr
+  # objdump prints the address as 8 hex digits under the 0x140000000 image base (hence the "0x1"
+  # prefix) or, on the current toolchain, as the full 16-digit VA; take either as it comes.
   sym_addr="$(objdump -d "$binary" 2>/dev/null \
-              | awk '/<_i_OOOpenALController__init>:/{print "0x1"$1; exit}' | tr -d ':' || true)"
+              | awk '/<_i_OOOpenALController__init>:/{a=$1; sub(":","",a); print (length(a) <= 8 ? "0x1" a : "0x" a); exit}' || true)"
   # Fall back to the entry point when that symbol moves; what matters is that SOME engine address
   # resolves to a src/ path, not which one.
   [ -n "$sym_addr" ] || sym_addr="$(objdump -f "$binary" 2>/dev/null | awk '/start address/{print $NF}')"
