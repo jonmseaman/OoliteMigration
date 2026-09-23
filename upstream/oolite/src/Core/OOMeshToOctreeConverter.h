@@ -26,6 +26,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOMaths.h"
 
 
@@ -38,7 +39,7 @@ enum
 };
 
 
-@interface OOMeshToOctreeConverter: NSObject
+@interface OOMeshToOctreeConverter: OOObject
 {
 @private
 	struct OOMeshToOctreeConverterInternalData

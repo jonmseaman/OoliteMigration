@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 #import "OOMaths.h"
 
@@ -36,7 +37,7 @@ MA 02110-1301, USA.
 #endif
 
 
-@interface Octree: NSObject
+@interface Octree: OOObject
 {
 @private
 	GLfloat				_radius;
@@ -89,7 +90,7 @@ enum
 };
 
 
-@interface OOOctreeBuilder: NSObject
+@interface OOOctreeBuilder: OOObject
 {
 @private
 	int					*_octree;
