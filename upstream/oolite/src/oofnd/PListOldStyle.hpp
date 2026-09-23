@@ -31,6 +31,13 @@
 #ifndef OOFND_PLISTOLDSTYLE_HPP
 #define OOFND_PLISTOLDSTYLE_HPP
 
+// Suspend OOCocoa.h's `#define true 1` / `#define false 0` for this header (see oofnd/Data.hpp,
+// proposed ADR-0028); restored at the end.
+#pragma push_macro("true")
+#pragma push_macro("false")
+#undef true
+#undef false
+
 #include "oofnd/Expected.hpp"
 #include "oofnd/PList.hpp"
 
@@ -420,5 +427,8 @@ inline Expected<PList, PListError> parseOldStylePList(std::string_view bytes, PL
 }
 
 } // namespace oo
+
+#pragma pop_macro("false")
+#pragma pop_macro("true")
 
 #endif // OOFND_PLISTOLDSTYLE_HPP
