@@ -563,6 +563,25 @@ void exerciseFacade(Runtime rt, Context cx)
 	gCap = Captured();
 	CHECK(compileUCScript(cx, nullptr, u"var = ;", 7, "bad.js", 3) == nullptr && gCap.calls == 1 && gCap.line == 3);
 
+	// -- A script object's manifest property is permanent (bead oo-1gc.14, Svengali.Snoopers) ---------
+	// OOJSScript defines oolite_manifest_identifier Permanent|Enumerate|ReadOnly (OOJS_PROP_READONLY,
+	// as under SpiderMonkey). A strict `for (var k in this) if (k !== 'name' && k !== 'version')
+	// delete this[k];` therefore throws on it, as SpiderMonkey 1.8.5's strict delete of a permanent
+	// property did; sloppy code gets false. Expansions that skip it in the same loop load fine.
+	Object scriptLike = newObject(cx, nullptr, nullptr, nullptr);
+	RootedObject scriptLikeRoot(cx, scriptLike, "scriptLike");
+	CHECK(defineProperty(cx, scriptLike, "oolite_manifest_identifier", stringValue(newStringCopyZ(cx, "oolite.oxp.test")), nullptr, nullptr,
+	                     PropertyFlag::Permanent | PropertyFlag::Enumerate | PropertyFlag::ReadOnly));
+	CHECK(eval(cx, scriptLike, "this.name = 'n'; this.version = 'v'; this.other = 1; this.purge = function (skipManifest) { 'use strict'; "
+	                           "try { for (var k in this) { if (k !== 'name' && k !== 'version' && !(skipManifest && k === 'oolite_manifest_identifier')) delete this[k]; } return 'ok'; } "
+	                           "catch (e) { return e.message; } };", &rv));
+	Value noSkip = falseValue();
+	CHECK(callFunctionName(cx, scriptLike, "purge", 1, &noSkip, &rv) && valIs(cx, rv, u"could not delete property"));
+	CHECK(eval(cx, scriptLike, "this.purge = function (skip) { 'use strict'; for (var k in this) { if (k !== 'name' && k !== 'version' && !(skip && k === 'oolite_manifest_identifier')) delete this[k]; } return 'ok'; };", &rv));
+	Value skip = trueValue();
+	CHECK(callFunctionName(cx, scriptLike, "purge", 1, &skip, &rv) && valIs(cx, rv, u"ok"));
+	CHECK(eval(cx, scriptLike, "(function () { return delete this.oolite_manifest_identifier; }).call(this)", &rv) && isBoolean(rv) && !toBoolean(rv));
+
 	// -- Exceptions and reporting --------------------------------------------------------------------
 	reportError(cx, "outside");
 	CHECK(!isExceptionPending(cx));
