@@ -44,6 +44,7 @@ SOFTWARE.
 #import "OODebugMonitor.h"
 #import "OOProfilingStopwatch.h"
 #import "ResourceManager.h"
+#import "OOStringBridge.h"
 
 
 @interface Entity (OODebugInspector)
@@ -54,7 +55,7 @@ SOFTWARE.
 @end
 
 
-NSString *OOPlatformDescription(void);
+std::string OOPlatformDescription(void);	// OOLogHeader.mm
 
 
 static ooscript::Object sConsolePrototype = NULL;
@@ -336,7 +337,7 @@ static bool ConsoleGetProperty(ooscript::Context context, ooscript::Object thisO
 			break;
 			
 		case kConsole_platformDescription:
-			*value = OOJSValueFromNativeObject(context, OOPlatformDescription());
+			*value = OOJSValueFromNativeObject(context, oo::NSStringFrom(OOPlatformDescription()));
 			break;
 			
 		case kConsole_pedanticMode:
