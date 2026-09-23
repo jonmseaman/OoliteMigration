@@ -1237,7 +1237,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 		
 		if (OOJSGetClass(context, objValue) != [[OOJavaScriptEngine sharedEngine] stringClass])
 		{
-			result = oo::PListFrom(OOJSDictionaryFromJSObject(context, objValue));
+			result = cxx_OOJSDictionaryFromJSObject(context, objValue);
 		}
 	}
 	

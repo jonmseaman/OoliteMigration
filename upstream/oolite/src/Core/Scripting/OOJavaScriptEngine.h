@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 
 #include "ooscript/JSEngine.hpp"
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 #import "OOJSPropID.h"
 
 #ifdef __cplusplus
@@ -267,8 +268,8 @@ OOJS_EXTERN_C ooscript::Object OOJSObjectFromNativeObject(ooscript::Context cont
 
 /*	OONull: the placeholder for null inside native collections, which cannot
 	hold nil (was Foundation's null singleton, ADR-0029 Decision 5). A JS array
-	element that is null or undefined becomes [OONull null] in the NSArray, and
-	[OONull null] becomes JS null, so JS null round-trips as before. Game code
+	element that is null or undefined becomes [OONull null] in the native array, and
+[OONull null] becomes JS null, so JS null round-trips as before. Game code
 	uses it where a collection slot is empty (MFD settings, target memory,
 	script event arguments). It describes itself as "<null>", as its
 	predecessor did, and -copy returns itself.
@@ -432,32 +433,39 @@ OOINLINE BOOL OOJSValueIsArray(ooscript::Context context, ooscript::Value value)
 
 
 /*	OOJSDictionaryFromJSValue(context, value)
-	OOJSDictionaryFromJSObject(context, object)
-	
+	cxx_OOJSDictionaryFromJSObject(context, object)
+
 	Converts a JavaScript value to a dictionary by calling
-	OOJSNativeObjectFromJSValue() on each of its values.
-	
+	OOJSNativeObjectFromJSValue() on each of its values (a live object such as
+	an entity or OONull stays a PList::Object node).
+
 	Only enumerable own (i.e., not inherited) properties with string keys are
-	included.
-	
+	included; an object with an integer-like property gives a null PList, as
+	does a value that is not an object or cannot be enumerated.
+
 	Requires a request on context.
+
+	The converter for plain JS Objects that OOJSNativeObjectFromJSValue() uses
+	is the Foundation OOJSDictionaryFromJSObject() in the bridge
+	(OOJavaScriptEngine+FoundationBridge.h), until bead oo-vp0y.
 */
-OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSValue(ooscript::Context context, ooscript::Value value);
-OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object);
+oo::PList OOJSDictionaryFromJSValue(ooscript::Context context, ooscript::Value value);
+oo::PList cxx_OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object);
 
 
 /*	OOJSDictionaryFromStringTable(context, value)
 	
 	Treat an arbitrary JavaScript object as a dictionary mapping strings to
-	strings, and convert to a corresponding NSDictionary. The values are
-	converted to strings using ooscript::valueToString().
-	
+	strings, and convert to a corresponding dictionary. The values are
+	converted to strings using ooscript::valueToString(). A null PList if the
+	value is null or not an object, or cannot be enumerated.
+
 	Only enumerable own (i.e., not inherited) properties with string keys are
 	included.
 	
 	Requires a request on context.
 */
-OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Value value);
+oo::PList OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Value value);
 
 
 /*
