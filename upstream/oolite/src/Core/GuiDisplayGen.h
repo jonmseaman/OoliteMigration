@@ -70,93 +70,94 @@ typedef enum
 #define GUI_KEY_OK				@"OK"
 #define GUI_KEY_SKIP			@"SKIP-ROW"
 
-// globals
-static NSString * const kGuiDefaultTextColor		= @"default_text_color";
-static NSString * const kGuiScreenTitleColor		= @"screen_title_color";
-static NSString * const kGuiScreenDividerColor		= @"screen_divider_color";
-static NSString * const kGuiSelectedRowBackgroundColor	= @"selected_row_background_color";
-static NSString * const kGuiSelectedRowColor		= @"selected_row_color";
-static NSString * const kGuiTextInputCursorColor	= @"text_input_cursor_color";
+// globals: the gui-settings.plist keys (Foundation sweep chunk 3, oo-3rb.94). The NSString
+// kGui* constants callers use live in GuiDisplayGen+FoundationBridge.h until they move to these.
+inline constexpr const char *cxx_kGuiDefaultTextColor		= "default_text_color";
+inline constexpr const char *cxx_kGuiScreenTitleColor		= "screen_title_color";
+inline constexpr const char *cxx_kGuiScreenDividerColor		= "screen_divider_color";
+inline constexpr const char *cxx_kGuiSelectedRowBackgroundColor	= "selected_row_background_color";
+inline constexpr const char *cxx_kGuiSelectedRowColor		= "selected_row_color";
+inline constexpr const char *cxx_kGuiTextInputCursorColor	= "text_input_cursor_color";
 // F3
-static NSString * const kGuiEquipmentCashColor		= @"equipment_cash_color";
-static NSString * const kGuiEquipmentUnavailableColor	= @"equipment_unavailable_color";
-static NSString * const kGuiEquipmentScrollColor	= @"equipment_scroll_color";
-static NSString * const kGuiEquipmentOptionColor	= @"equipment_option_color";
-static NSString * const kGuiEquipmentRepairColor	= @"equipment_repair_color";
-static NSString * const kGuiEquipmentDescriptionColor	= @"equipment_description_color";
-static NSString * const kGuiEquipmentLaserColor		= @"equipment_laser_color";
-static NSString * const kGuiEquipmentLaserFittedColor	= @"equipment_laser_fitted_color";
-static NSString * const kGuiEquipmentTabs			= @"equipment_tabs";
+inline constexpr const char *cxx_kGuiEquipmentCashColor		= "equipment_cash_color";
+inline constexpr const char *cxx_kGuiEquipmentUnavailableColor	= "equipment_unavailable_color";
+inline constexpr const char *cxx_kGuiEquipmentScrollColor	= "equipment_scroll_color";
+inline constexpr const char *cxx_kGuiEquipmentOptionColor	= "equipment_option_color";
+inline constexpr const char *cxx_kGuiEquipmentRepairColor	= "equipment_repair_color";
+inline constexpr const char *cxx_kGuiEquipmentDescriptionColor	= "equipment_description_color";
+inline constexpr const char *cxx_kGuiEquipmentLaserColor		= "equipment_laser_color";
+inline constexpr const char *cxx_kGuiEquipmentLaserFittedColor	= "equipment_laser_fitted_color";
+inline constexpr const char *cxx_kGuiEquipmentTabs			= "equipment_tabs";
 // F3 F3
-static NSString * const kGuiShipyardHeadingColor	= @"shipyard_heading_color";
-static NSString * const kGuiShipyardScrollColor		= @"shipyard_scroll_color";
-static NSString * const kGuiShipyardEntryColor		= @"shipyard_entry_color";
-static NSString * const kGuiShipyardNoshipColor		= @"shipyard_noship_color";
-static NSString * const kGuiShipyardTradeinColor	= @"shipyard_tradein_color";
-static NSString * const kGuiShipyardDescriptionColor	= @"shipyard_description_color";
-static NSString * const kGuiShipyardTabs			= @"shipyard_tabs";
+inline constexpr const char *cxx_kGuiShipyardHeadingColor	= "shipyard_heading_color";
+inline constexpr const char *cxx_kGuiShipyardScrollColor		= "shipyard_scroll_color";
+inline constexpr const char *cxx_kGuiShipyardEntryColor		= "shipyard_entry_color";
+inline constexpr const char *cxx_kGuiShipyardNoshipColor		= "shipyard_noship_color";
+inline constexpr const char *cxx_kGuiShipyardTradeinColor	= "shipyard_tradein_color";
+inline constexpr const char *cxx_kGuiShipyardDescriptionColor	= "shipyard_description_color";
+inline constexpr const char *cxx_kGuiShipyardTabs			= "shipyard_tabs";
 // F4
-static NSString * const kGuiInterfaceHeadingColor	= @"interface_heading_color";
-static NSString * const kGuiInterfaceScrollColor	= @"interface_scroll_color";
-static NSString * const kGuiInterfaceEntryColor		= @"interface_entry_color";
-static NSString * const kGuiInterfaceDescriptionColor	= @"interface_description_color";
-static NSString * const kGuiInterfaceNoneColor		= @"interface_none_color";
-static NSString * const kGuiInterfaceTabs			= @"interface_tabs";
+inline constexpr const char *cxx_kGuiInterfaceHeadingColor	= "interface_heading_color";
+inline constexpr const char *cxx_kGuiInterfaceScrollColor	= "interface_scroll_color";
+inline constexpr const char *cxx_kGuiInterfaceEntryColor		= "interface_entry_color";
+inline constexpr const char *cxx_kGuiInterfaceDescriptionColor	= "interface_description_color";
+inline constexpr const char *cxx_kGuiInterfaceNoneColor		= "interface_none_color";
+inline constexpr const char *cxx_kGuiInterfaceTabs			= "interface_tabs";
 // F5
-static NSString * const kGuiStatusShipnameColor		= @"status_shipname_color";
-static NSString * const kGuiStatusDataColor			= @"status_data_color";
-static NSString * const kGuiStatusEquipmentHeadingColor	= @"status_equipment_heading_color";
-static NSString * const kGuiStatusEquipmentScrollColor	= @"status_equipment_scroll_color";
-static NSString * const kGuiStatusEquipmentOkColor	= @"status_equipment_ok_color";
-static NSString * const kGuiStatusEquipmentDamagedColor	= @"status_equipment_damaged_color";
-static NSString * const kGuiStatusTabs				= @"status_tabs";
-static NSString * const kGuiStatusPrioritiseDamaged	= @"status_prioritise_damaged";
+inline constexpr const char *cxx_kGuiStatusShipnameColor		= "status_shipname_color";
+inline constexpr const char *cxx_kGuiStatusDataColor			= "status_data_color";
+inline constexpr const char *cxx_kGuiStatusEquipmentHeadingColor	= "status_equipment_heading_color";
+inline constexpr const char *cxx_kGuiStatusEquipmentScrollColor	= "status_equipment_scroll_color";
+inline constexpr const char *cxx_kGuiStatusEquipmentOkColor	= "status_equipment_ok_color";
+inline constexpr const char *cxx_kGuiStatusEquipmentDamagedColor	= "status_equipment_damaged_color";
+inline constexpr const char *cxx_kGuiStatusTabs				= "status_tabs";
+inline constexpr const char *cxx_kGuiStatusPrioritiseDamaged	= "status_prioritise_damaged";
 // F5 F5
-static NSString * const kGuiManifestSubheadColor	= @"manifest_subhead_color";
-static NSString * const kGuiManifestEntryColor		= @"manifest_entry_color";
-static NSString * const kGuiManifestScrollColor		= @"manifest_scroll_color";
-static NSString * const kGuiManifestNoScrollColor	= @"manifest_no_scroll_color";
-static NSString * const kGuiManifestTabs			= @"manifest_tabs";
+inline constexpr const char *cxx_kGuiManifestSubheadColor	= "manifest_subhead_color";
+inline constexpr const char *cxx_kGuiManifestEntryColor		= "manifest_entry_color";
+inline constexpr const char *cxx_kGuiManifestScrollColor		= "manifest_scroll_color";
+inline constexpr const char *cxx_kGuiManifestNoScrollColor	= "manifest_no_scroll_color";
+inline constexpr const char *cxx_kGuiManifestTabs			= "manifest_tabs";
 // F6
-static NSString * const kGuiChartLabelScale			= @"chart_label_scale";
-static NSString * const kGuiChartCircleScale		= @"chart_circle_scale";
-static NSString * const kGuiChartLabelColor			= @"chart_label_color";
-static NSString * const kGuiChartLabelReachableColor	= @"chart_labelreachable_color";
-static NSString * const kGuiChartRangeColor			= @"chart_range_color";
-static NSString * const kGuiChartCrosshairColor		= @"chart_crosshair_color";
-static NSString * const kGuiChartCursorColor		= @"chart_cursor_color";
-static NSString * const kGuiChartInfoMarkerColor  	= @"chart_info_marker_color";
-static NSString * const kGuiChartMatchBoxColor		= @"chart_match_box_color";
-static NSString * const kGuiChartMatchLabelColor	= @"chart_match_label_color";
-static NSString * const kGuiChartConnectionColor	= @"chart_connection_color";
-static NSString * const kGuiChartCurrentJumpStartColor	= @"chart_currentjumpstart_color";
-static NSString * const kGuiChartCurrentJumpEndColor	= @"chart_currentjumpend_color";
-static NSString * const kGuiChartRouteShortColor	= @"chart_route_short_color";
-static NSString * const kGuiChartRouteQuickColor	= @"chart_route_quick_color";
-static NSString * const kGuiChartTraveltimeTabs		= @"chart_traveltime_tabs";
+inline constexpr const char *cxx_kGuiChartLabelScale			= "chart_label_scale";
+inline constexpr const char *cxx_kGuiChartCircleScale		= "chart_circle_scale";
+inline constexpr const char *cxx_kGuiChartLabelColor			= "chart_label_color";
+inline constexpr const char *cxx_kGuiChartLabelReachableColor	= "chart_labelreachable_color";
+inline constexpr const char *cxx_kGuiChartRangeColor			= "chart_range_color";
+inline constexpr const char *cxx_kGuiChartCrosshairColor		= "chart_crosshair_color";
+inline constexpr const char *cxx_kGuiChartCursorColor		= "chart_cursor_color";
+inline constexpr const char *cxx_kGuiChartInfoMarkerColor  	= "chart_info_marker_color";
+inline constexpr const char *cxx_kGuiChartMatchBoxColor		= "chart_match_box_color";
+inline constexpr const char *cxx_kGuiChartMatchLabelColor	= "chart_match_label_color";
+inline constexpr const char *cxx_kGuiChartConnectionColor	= "chart_connection_color";
+inline constexpr const char *cxx_kGuiChartCurrentJumpStartColor	= "chart_currentjumpstart_color";
+inline constexpr const char *cxx_kGuiChartCurrentJumpEndColor	= "chart_currentjumpend_color";
+inline constexpr const char *cxx_kGuiChartRouteShortColor	= "chart_route_short_color";
+inline constexpr const char *cxx_kGuiChartRouteQuickColor	= "chart_route_quick_color";
+inline constexpr const char *cxx_kGuiChartTraveltimeTabs		= "chart_traveltime_tabs";
 
-static NSString * const kGuiChartEconomyUColor		= @"chart_economy_%zu_color";
-static NSString * const kGuiChartGovernmentUColor	= @"chart_government_%zu_color";
-static NSString * const kGuiChartTechColor			= @"chart_tech_color";
+inline constexpr const char *cxx_kGuiChartEconomyUColor		= "chart_economy_%zu_color";
+inline constexpr const char *cxx_kGuiChartGovernmentUColor	= "chart_government_%zu_color";
+inline constexpr const char *cxx_kGuiChartTechColor			= "chart_tech_color";
 // F7
-static NSString * const kGuiSystemdataFactsColor		= @"systemdata_facts_color";
-static NSString * const kGuiSystemdataDescriptionColor	= @"systemdata_description_color";
-static NSString * const kGuiSystemdataTabs			= @"systemdata_tabs";
+inline constexpr const char *cxx_kGuiSystemdataFactsColor		= "systemdata_facts_color";
+inline constexpr const char *cxx_kGuiSystemdataDescriptionColor	= "systemdata_description_color";
+inline constexpr const char *cxx_kGuiSystemdataTabs			= "systemdata_tabs";
 // F8
-static NSString * const kGuiMarketHeadingColor		= @"market_heading_color";
-static NSString * const kGuiMarketCommodityColor	= @"market_commodity_color";
-static NSString * const kGuiMarketScrollColor		= @"market_scroll_color";
-static NSString * const kGuiMarketFilteredAllColor	= @"market_filtered_all_color";
-static NSString * const kGuiMarketFilterInfoColor	= @"market_filter_info_color";
-static NSString * const kGuiMarketCashColor			= @"market_cash_color";
+inline constexpr const char *cxx_kGuiMarketHeadingColor		= "market_heading_color";
+inline constexpr const char *cxx_kGuiMarketCommodityColor	= "market_commodity_color";
+inline constexpr const char *cxx_kGuiMarketScrollColor		= "market_scroll_color";
+inline constexpr const char *cxx_kGuiMarketFilteredAllColor	= "market_filtered_all_color";
+inline constexpr const char *cxx_kGuiMarketFilterInfoColor	= "market_filter_info_color";
+inline constexpr const char *cxx_kGuiMarketCashColor			= "market_cash_color";
 // F8 F8 extras
-static NSString * const kGuiMarketContractedColor	= @"market_contracted_color";
-static NSString * const kGuiMarketDescriptionColor	= @"market_description_color";
-static NSString * const kGuiMarketTabs				= @"market_tabs";
+inline constexpr const char *cxx_kGuiMarketContractedColor	= "market_contracted_color";
+inline constexpr const char *cxx_kGuiMarketDescriptionColor	= "market_description_color";
+inline constexpr const char *cxx_kGuiMarketTabs				= "market_tabs";
 // Docking report
-static NSString * const kGuiDockingReportColor		= @"docking_report_color";
-static NSString * const kGuiDockingSummaryColor		= @"docking_summary_color";
-static NSString * const kGuiDockingContinueColor	= @"docking_continue_color";
+inline constexpr const char *cxx_kGuiDockingReportColor		= "docking_report_color";
+inline constexpr const char *cxx_kGuiDockingSummaryColor		= "docking_summary_color";
+inline constexpr const char *cxx_kGuiDockingContinueColor	= "docking_continue_color";
 
 
 
@@ -205,7 +206,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 	
 	OOGUITabSettings		tabStops;
 	
-	NSDictionary			*guiUserSettings;
+	oo::PList				guiUserSettings;	// a mixed configuration: plist values and OOColors (Amendment 2)
 
 	NSRange					rowRange;
 	
@@ -258,7 +259,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (void) setDrawPosition:(Vector) vector;
 - (Vector) drawPosition;
 
-- (NSDictionary *) userSettings;
+- (oo::PList) cxx_userSettings;	// gui-settings.plist, with any colours set by -cxx_setGuiColorSettingFromKey:color:
 
 - (void) fadeOutFromTime:(OOTimeAbsolute) now_time overDuration:(OOTimeDelta) duration;
 - (void) stopFadeOuts;
@@ -273,9 +274,9 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (void) setTextColor:(OOColor*) color;
 - (OOColor *) textCommsColor;
 - (void) setTextCommsColor:(OOColor*) color;
-- (OOColor *) colorFromSetting:(NSString *)setting defaultValue:(OOColor *)def;
-- (void) setGLColorFromSetting:(NSString *)setting defaultValue:(OOColor *)def alpha:(GLfloat)alpha;
-- (void) setGuiColorSettingFromKey:(NSString *) key color:(OOColor *)col;
+- (OOColor *) cxx_colorFromSetting:(const std::optional<std::string> &)setting defaultValue:(OOColor *)def;
+- (void) cxx_setGLColorFromSetting:(const std::optional<std::string> &)setting defaultValue:(OOColor *)def alpha:(GLfloat)alpha;
+- (void) cxx_setGuiColorSettingFromKey:(const std::string &) key color:(OOColor *)col;
 
 - (void) setCharacterSize:(NSSize) character_size;
 
@@ -303,7 +304,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 - (void) setSelectableRange:(NSRange) range;
 
 - (void) setTabStops:(OOGUITabSettings)stops;
-- (void) overrideTabs:(OOGUITabSettings)stops from:(NSString *)setting length:(NSUInteger)len;
+- (void) cxx_overrideTabs:(OOGUITabSettings)stops from:(const std::string &)setting length:(NSUInteger)len;
 
 
 - (void) clear;
@@ -350,20 +351,20 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 /*
 	A background/foreground texture descriptor is a dictionary with a string
 	property keyed "name" and optional number properties keyed "width" and
-	"height".
+	"height". Chunk 4 (oo-3rb.94..95): descriptors are oo::PList (null = nil).
 */
 
-- (BOOL) setBackgroundTextureDescriptor:(NSDictionary *)descriptor;
-- (BOOL) setForegroundTextureDescriptor:(NSDictionary *)descriptor;
-- (BOOL) setBackgroundTextureKey:(NSString *)key;
-- (BOOL) setForegroundTextureKey:(NSString *)key;
+- (BOOL) cxx_setBackgroundTextureDescriptor:(const oo::PList &)descriptor;
+- (BOOL) cxx_setForegroundTextureDescriptor:(const oo::PList &)descriptor;
+- (BOOL) cxx_setBackgroundTextureKey:(const std::optional<std::string> &)key;
+- (BOOL) cxx_setForegroundTextureKey:(const std::optional<std::string> &)key;
 
-- (BOOL) preloadGUITexture:(NSDictionary *)descriptor;
+- (BOOL) cxx_preloadGUITexture:(const oo::PList &)descriptor;
 
 /*
 	Interpret a JavaScript value as a texture descriptor for
-	-[GUIDisplayGen set{Background|Foreground}TextureDescriptor:]. Also starts
-	preloading the texture.
+	-[GUIDisplayGen cxx_set{Background|Foreground}TextureDescriptor:]. Also starts
+	preloading the texture. Null: no such texture.
 	
 	callerDescription is a string describing the context in which this was
 	called, generally a method name (like "mission.runScreen()") for warning
@@ -371,7 +372,7 @@ typedef OOGUITabStop OOGUITabSettings[GUI_MAX_COLUMNS];
 	
 	Requires a request on context.
 */
-- (NSDictionary *) textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(NSString *)callerDescription;
+- (oo::PList) cxx_textureDescriptorFromJSValue:(ooscript::Value)value inContext:(ooscript::Context)context callerDescription:(const std::optional<std::string> &)callerDescription;
 
 - (void) clearBackground;
 
