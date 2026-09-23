@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import <Foundation/Foundation.h>
 #import "OOJavaScriptEngine.h"
 #import "Universe.h"
+#include "oofnd/StdLib.hpp"
 
 @class Entity;
 
@@ -67,7 +68,9 @@ OOINLINE ooscript::Object JSEntityPrototype(void)  { return gOOEntityJSPrototype
 #ifdef __cplusplus
 extern "C" {
 #endif
-BOOL EntityFromArgumentList(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed);
+extern "C++" {	// C++ parameters (proposed ADR-0043, bead oo-emib); nullopt class or function: no warning (was nil)
+BOOL EntityFromArgumentList(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, Entity **outEntity, unsigned *outConsumed);
+}
 #ifdef __cplusplus
 }
 #endif
