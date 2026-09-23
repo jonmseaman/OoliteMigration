@@ -73,7 +73,7 @@ enum
 /*	Class containing a set of quads with the same texture. This form is
 	optimized for rendering.
 */
-@interface OOSkyQuadSet: NSObject
+@interface OOSkyQuadSet: OOObject
 {
 @private
 	OOTexture				*_texture;

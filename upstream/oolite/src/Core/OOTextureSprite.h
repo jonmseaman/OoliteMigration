@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 
 @class OOTexture;
@@ -32,7 +33,7 @@ MA 02110-1301, USA.
 #define	OPEN_GL_SPRITE_MIN_HEIGHT	64.0
 
 
-@interface OOTextureSprite: NSObject
+@interface OOTextureSprite: OOObject
 {
 @private
 	OOTexture	*texture;

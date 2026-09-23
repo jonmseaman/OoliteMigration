@@ -127,7 +127,7 @@ static NSUInteger VFRGetCount(VertexFaceRef *vfr);
 static NSUInteger VFRGetFaceAtIndex(VertexFaceRef *vfr, NSUInteger index);
 
 
-@interface OOMesh (Private) <NSMutableCopying, OOGraphicsResetClient>
+@interface OOMesh (Private) <OOMutableCopying, OOGraphicsResetClient>
 
 - (id)initWithName:(NSString *)name
 		  cacheKey:(NSString *)cacheKey
@@ -357,7 +357,7 @@ static NSString *NormalModeDescription(OOMeshNormalMode mode)
 }
 
 
-- (id)copyWithZone:(NSZone *)zone
+- (id)copyWithZone:(OOZone *)zone
 {
 	if (zone == [self zone])  return [self retain];	// OK because we're immutable seen from the outside
 	else  return [self mutableCopyWithZone:zone];
@@ -938,12 +938,16 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 }
 
 
-- (id)mutableCopyWithZone:(NSZone *)zone
+- (id)mutableCopyWithZone:(OOZone *)zone
 {
 	OOMesh				*result = nil;
 	OOMeshMaterialCount	i;
 	
-	result = (OOMesh *)NSCopyObject(self, 0, zone);
+	// NSCopyObject(self, 0, zone) without Foundation (ADR-0029 reroot): a new instance of the same
+	// class with the ivars copied bitwise, as NSCopyObject does. Zones are unused, as on GNUstep.
+	Class cls = object_getClass(self);
+	result = (OOMesh *)class_createInstance(cls, 0);
+	if (result != nil)  memcpy((void *)result, (const void *)self, class_getInstanceSize(cls));
 	
 	if (result != nil)
 	{
