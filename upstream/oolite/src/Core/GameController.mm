@@ -51,6 +51,7 @@ MA 02110-1301, USA.
 #include "oofnd/Date.hpp"
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
+#import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #include <chrono>
 #include <thread>
@@ -72,7 +73,7 @@ static GameController *sSharedController = nil;
 
 @interface GameController (OOPrivate)
 
-- (void)reportUnhandledStartupException:(NSException *)exception;
+- (void)reportUnhandledStartupExceptionName:(NSString *)name reason:(NSString *)reason;
 
 - (void)doPerformGameTick;
 
@@ -96,7 +97,7 @@ static GameController *sSharedController = nil;
 	if (sSharedController != nil)
 	{
 		[self release];
-		[NSException raise:NSInternalInconsistencyException format:@"%s: expected only one GameController to exist at a time.", __PRETTY_FUNCTION__];
+		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one GameController to exist at a time.", __PRETTY_FUNCTION__];
 	}
 	
 	if ((self = [super init]))
@@ -321,9 +322,14 @@ static GameController *sSharedController = nil;
 		
 		[self endSplashScreen];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		[self reportUnhandledStartupException:exception];
+		[self reportUnhandledStartupExceptionName:oo::NSStringFrom([exception name]) reason:oo::NSStringFrom([exception reason])];
+		exit(EXIT_FAILURE);
+	}
+	@catch (OOFoundationException *exception)
+	{
+		[self reportUnhandledStartupExceptionName:[exception name] reason:[exception reason]];
 		exit(EXIT_FAILURE);
 	}
 	
@@ -430,7 +436,17 @@ static GameController *sSharedController = nil;
 	}
 	@catch (id exception) 
 	{
-		OOLog(@"exception.backtrace",@"%@",[exception callStackSymbols]);
+		if ([exception isKindOfClass:[OOException class]])
+		{
+			// -callStackSymbols is Foundation's; an OOException does not answer it (sending it raised
+			// out of this handler), so name the exception instead (proposed ADR-0037).
+			OOException *ooException = (OOException *)exception;
+			OOLog(@"exception.backtrace",@"%@ : %@",oo::NSStringFrom([ooException name]),oo::NSStringFrom([ooException reason]));
+		}
+		else
+		{
+			OOLog(@"exception.backtrace",@"%@",[exception callStackSymbols]);
+		}
 	}
 	
 	@try
@@ -485,7 +501,7 @@ TickClock::time_point NextGameTick()
 	so due performers fire in scheduling order whatever their fire dates, at
 	most two per pass; one scheduled while firing goes to the back. The
 	performer retained target and argument and released them after the call;
-	an NSException from the call was logged by NSTimer and swallowed, and the
+	an exception from the call was logged by NSTimer and swallowed, and the
 	performer was then never released (it leaked its target and argument).
 	Anything else thrown propagated.
 */
@@ -537,7 +553,13 @@ void FireOneDueDeferredCall(void)
 			{
 				[call.target performSelector:call.selector withObject:call.argument];
 			}
-			@catch (NSException *exception)
+			@catch (OOException *exception)
+			{
+				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
+				(NSLog)(@"*** NSTimer ignoring exception '%@' (reason '%@') raised during posting of timer with target %p and selector 'fire'", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), call.target);
+				return;	// target and argument stay retained, as the performer leaked them
+			}
+			@catch (OOFoundationException *exception)
 			{
 				// NSTimer's own message, through the real NSLog (parenthesised: OOLogging.h's
 				// NSLog macro is function-like), so it still reaches the log as a "gnustep" line.
@@ -1199,14 +1221,14 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (void)reportUnhandledStartupException:(NSException *)exception
+- (void)reportUnhandledStartupExceptionName:(NSString *)name reason:(NSString *)reason
 {
-	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", [exception name], [exception reason]);
+	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", name, reason);
 	
 	#if OOLITE_MAC_OS_X
 		// Display an error alert.
 		// TODO: provide better information on reporting bugs in the manual, and refer to it here.
-		NSRunCriticalAlertPanel(@"Oolite failed to start up, because an unhandled exception occurred.", @"An exception of type %@ occurred. If this problem persists, please file a bug report.", @"OK", NULL, NULL, [exception name]);
+		NSRunCriticalAlertPanel(@"Oolite failed to start up, because an unhandled exception occurred.", @"An exception of type %@ occurred. If this problem persists, please file a bug report.", @"OK", NULL, NULL, name);
 	#endif
 }
 
