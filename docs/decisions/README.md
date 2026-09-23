@@ -28,5 +28,7 @@ changed* from the chain.
 | [0022](0022-phase1-finishes-on-objcpp-with-a-debug-facade.md) | Phase 1 finishes on an all-Objective-C++ tree (seam 2.1 pulled forward); the rest of the retarget is a codemod; the façade carries a reduced-capability debug API; QuickJS-ng values live in a GC-emulating arena | Proposed — default in effect |
 | [0023](0023-built-in-mozilla-compat-polyfills.md) | The QuickJS-ng build ships the toSource/quote/uneval and Array/String-generics polyfills built in (guarded no-ops on SpiderMonkey) | Proposed — default in effect |
 | [0024](0024-js-api-gate-is-the-oolite-surface.md) | Phase 1's JS API gate compares Oolite's own API surface (tools/js_api_surface_compare.py), not the ES library of the old engine | Proposed — default in effect |
+| [0025](0025-phase1-aarch64-box-defers-to-phase5.md) | Phase 1's "builds for aarch64-apple-darwin" box is satisfied by engine-neutrality evidence; the arm64 build itself is Phase 5's exit gate | Proposed — default in effect |
+| [0030](0030-gates-carry-jon-owned-items-forward.md) | A phase review ignores `human`-labelled (Jon-owned) beads and the epic; the gate marks each box checked or carried, so later phases never wait on Jon | Proposed — default in effect |
 
 Template: Status · Date · Context · Decision · Consequences · History.
