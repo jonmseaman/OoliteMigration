@@ -29,6 +29,7 @@ endforeach
 oofnd_plist_tests = [
     'test_plist',
     'test_plist_oldstyle_strings',
+    'test_plist_oldstyle_structures',
 ]
 
 foreach t : oofnd_plist_tests
