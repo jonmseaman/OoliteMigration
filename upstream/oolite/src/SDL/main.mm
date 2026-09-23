@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #endif
 #import <Foundation/NSString.h>
 #import "GameController.h"
+#include "oofnd/Process.hpp"
 #import "OOLoggingExtended.h"
 
 #if OOLITE_WINDOWS
@@ -69,6 +70,9 @@ uint32_t gDebugFlags = 0;
  */
 int main(int argc, char *argv[])
 {
+	// Foundation's process-info -arguments, now captured here: argv as SDL_main built it (UTF-8 on Windows).
+	oo::process::setArguments(argc, argv);
+
 #ifdef GNUSTEP_BASE_LIBRARY
 	int i;
 
@@ -176,7 +180,8 @@ int main(int argc, char *argv[])
 
    			if (!strcmp("-help", argv[i]) || !strcmp("--help", argv[i]))
 			{
-				char const *processName = [[[NSProcessInfo processInfo] processName] UTF8String];
+				std::string processNameString = oo::process::processName();
+				char const *processName = processNameString.c_str();
 				char s[2048];
 				snprintf(s, sizeof(s), "Usage: %s [options]\n\n"
 							"Options can be any of the following: \n\n"

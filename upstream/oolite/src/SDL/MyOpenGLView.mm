@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 #include <SDL3/SDL_init.h>
 #import "png.h"
 #import "MyOpenGLView.h"
+#include "oofnd/Process.hpp"
 #import "MyOpenGLView+Input.h"
 
 #import "GameController.h"
@@ -344,8 +345,6 @@ enum PreferredAppMode
 	vSyncPreference = [prefs oo_boolForKey:@"v-sync" defaultValue:YES];
 	bitsPerColorComponent = [prefs oo_boolForKey:@"hdr" defaultValue:NO] ? 16 : 8;
 
-	NSArray				*arguments = nil;
-	NSEnumerator		*argEnum = nil;
 	NSString			*arg = nil;
 	BOOL				noSplashArgFound = NO;
 
@@ -354,12 +353,11 @@ enum PreferredAppMode
 	// preload the printscreen key into our translation array because SDLK_PRINTSCREEN isn't available
 	scancode2Unicode[55] = gvPrintScreenKey;
 
-	arguments = [[NSProcessInfo processInfo] arguments];
-
 	// scan for splash screen overrides: -nosplash || --nosplash , -splash || --splash
 	// scan for V-sync disabling overrides: -novsync || --novsync
-	for (argEnum = [arguments objectEnumerator]; (arg = [argEnum nextObject]); )
+	for (const std::string &argument : oo::process::arguments())
 	{
+		arg = [NSString stringWithUTF8String:argument.c_str()];
 		if ([arg isEqual:@"-nosplash"] || [arg isEqual:@"--nosplash"])
 		{
 			showSplashScreen = NO;
@@ -1339,7 +1337,7 @@ enum PreferredAppMode
 	int width=0, height=0, refresh=0;
 	unsigned i;
 
-	NSArray* cmdline_arguments = [[NSProcessInfo processInfo] arguments];
+	const std::vector<std::string> &cmdline_arguments = oo::process::arguments();
 
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
 	if ([userDefaults objectForKey:@"display_width"])
@@ -1354,10 +1352,10 @@ enum PreferredAppMode
 	// Check if -fullscreen or -windowed has been passed on the command line. If yes,
 	// set it regardless of what is set by .GNUstepDefaults. If both are found in the
 	// arguments list, the one that comes last wins.
-	for (i = 0; i < [cmdline_arguments count]; i++)
+	for (i = 0; i < cmdline_arguments.size(); i++)
 	{
-		if ([[cmdline_arguments objectAtIndex:i] isEqual:@"-fullscreen"]) fullScreen = YES;
-		if ([[cmdline_arguments objectAtIndex:i] isEqual:@"-windowed"]) fullScreen = NO;
+		if (cmdline_arguments[i] == "-fullscreen") fullScreen = YES;
+		if (cmdline_arguments[i] == "-windowed") fullScreen = NO;
 	}
 	
    	if(width && height)

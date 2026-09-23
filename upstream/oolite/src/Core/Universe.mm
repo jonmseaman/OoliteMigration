@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 
 
 #import "Universe.h"
+#include "oofnd/Process.hpp"
 #import "MyOpenGLView.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -10997,18 +10998,14 @@ static void PreloadOneSound(NSString *soundName)
 {
 	// Handle command line options to transform system_description array for easier localization
 	
-	NSArray				*arguments = nil;
-	NSString			*arg = nil;
 	BOOL				compileSysDesc = NO, exportSysDesc = NO, xml = NO;
-	
-	arguments = [[NSProcessInfo processInfo] arguments];
-	
-	foreach (arg, arguments)
+
+	for (const std::string &arg : oo::process::arguments())
 	{
-		if ([arg isEqual:@"--compile-sysdesc"])  compileSysDesc = YES;
-		else if ([arg isEqual:@"--export-sysdesc"])  exportSysDesc = YES;
-		else if ([arg isEqual:@"--xml"])  xml = YES;
-		else if ([arg isEqual:@"--openstep"])  xml = NO;
+		if (arg == "--compile-sysdesc")  compileSysDesc = YES;
+		else if (arg == "--export-sysdesc")  exportSysDesc = YES;
+		else if (arg == "--xml")  xml = YES;
+		else if (arg == "--openstep")  xml = NO;
 	}
 	
 	if (compileSysDesc)  CompileSystemDescriptions(xml);
