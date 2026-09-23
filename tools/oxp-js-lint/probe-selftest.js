@@ -37,6 +37,9 @@ for (const want of [
 ]) assert.ok(out.includes(want + "\n"), `missing line ${JSON.stringify(want)} in:\n${out}`);
 assert.ok(!out.includes("//") && !out.includes("SECRETCOMMENT"), "comment leaked");
 
+const wh = run("file", fx("sample.js"), "7", "--context", "0", "--where", "ID4");
+assert.ok(wh.includes("ID4 occurs on lines: 7,9\n") && !/secret/i.test(wh), "--where wrong:\n" + wh);
+
 const bad = run("file", fx("unparsable.js"), "2", "--context", "0", "--parse");
 assert.ok(!/secret/i.test(bad), "REDACTION FAILED on parse error:\n" + bad);
 assert.ok(/v8 parse: SyntaxError at line 2 column \d+/.test(bad), "parse failure not located:\n" + bad);
