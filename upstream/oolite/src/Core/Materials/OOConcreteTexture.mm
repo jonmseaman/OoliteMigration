@@ -39,6 +39,7 @@
 
 #ifndef NDEBUG
 #import "OOTextureGenerator.h"
+#import "OOStringBridge.h"
 #endif
 
 
@@ -444,7 +445,7 @@ static BOOL DecodeFormat(OOTextureDataFormat format, uint32_t options, GLenum *o
 			static unsigned dumpID = 0;
 			NSString *name = [NSString stringWithFormat:@"tex dump %u \"%@\"", ++dumpID,[self name]];
 			OOLog(@"texture.trace.dump", @"Dumped traced texture %@ to \'%@.png\'", self, name);
-			OODumpPixMap(pm, name);
+			OODumpPixMap(pm, oo::StdString(name));
 		}
 #endif
 		
