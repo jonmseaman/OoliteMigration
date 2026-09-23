@@ -106,4 +106,43 @@ and converts the result exactly as the old method produced it (nil for nil, immu
 	return oo::NSStringOrNil([self cxx_diagnosticFileLocation]);
 }
 
+
+// oo-3rb.99: OXP manifests and compatibility
+
++ (NSDictionary *)manifestForIdentifier:(NSString *)identifier
+{
+	// The manifest as a Foundation graph (nil when there is none); its required_by set is an array.
+	return oo::ObjectFromPList([self cxx_manifestForIdentifier:oo::StdString(identifier)]);
+}
+
+
++ (BOOL) checkVersionCompatibility:(NSDictionary *)manifest forOXP:(NSString *)title
+{
+	return [self cxx_checkVersionCompatibility:oo::PListFrom(manifest) forOXP:oo::OptionalString(title)];
+}
+
+
++ (BOOL) manifestHasConflicts:(NSDictionary *)manifest logErrors:(BOOL)logErrors
+{
+	return [self cxx_manifestHasConflicts:oo::PListFrom(manifest) logErrors:logErrors];
+}
+
+
++ (BOOL) manifestHasMissingDependencies:(NSDictionary *)manifest logErrors:(BOOL)logErrors
+{
+	return [self cxx_manifestHasMissingDependencies:oo::PListFrom(manifest) logErrors:logErrors];
+}
+
+
++ (BOOL) manifest:(NSDictionary *)manifest HasUnmetDependency:(NSDictionary *)required logErrors:(BOOL)logErrors
+{
+	return [self cxx_manifest:oo::PListFrom(manifest) HasUnmetDependency:oo::PListFrom(required) logErrors:logErrors];
+}
+
+
++ (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version
+{
+	return [self cxx_matchVersions:oo::PListFrom(rangeDict) withVersion:oo::StdString(version)];
+}
+
 @end

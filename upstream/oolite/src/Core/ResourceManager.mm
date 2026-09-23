@@ -69,15 +69,15 @@ extern NSDictionary* ParseOOSScripts(NSString* script);
 
 + (void) checkOXPMessagesInPath:(NSString *)path;
 + (void) checkPotentialPath:(NSString *)path :(NSMutableArray *)searchPaths;
-+ (BOOL) validateManifest:(NSDictionary*)manifest forOXP:(NSString *)path;
-+ (BOOL) areRequirementsFulfilled:(NSDictionary*)requirements forOXP:(NSString *)path andFile:(NSString *)file;
++ (BOOL) validateManifest:(const oo::PList &)manifest forOXP:(const std::string &)path;
++ (BOOL) areRequirementsFulfilled:(const oo::PList &)requirements forOXP:(const std::optional<std::string> &)path andFile:(const std::string &)file;
 + (void) filterSearchPathsForConflicts:(NSMutableArray *)searchPaths;
 + (BOOL) filterSearchPathsForRequirements:(NSMutableArray *)searchPaths;
 + (void) filterSearchPathsToExcludeScenarioOnlyPaths:(NSMutableArray *)searchPaths;
 + (void) filterSearchPathsByScenario:(NSMutableArray *)searchPaths;
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest;
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest withIdentifier:(NSString *)identifier;
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest withTag:(NSString *)tag;
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest;
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withIdentifier:(const std::string &)identifier;
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withTag:(const std::string &)tag;
 
 + (void) addErrorWithKey:(const std::string &)descriptionKey param1:(const std::string &)param1 param2:(const std::string &)param2;
 + (BOOL) checkCacheUpToDateForPaths:(NSArray *)searchPaths;
@@ -106,13 +106,59 @@ std::vector<std::string>	sUseAddOnsParts;
 std::vector<std::string>	sOXPsWithMessagesFound;
 std::vector<std::string>	sExternalPaths;
 std::vector<ResourceManagerError>	sErrors;
+std::map<std::string, oo::PList, std::less<>>	sOXPManifests;	// identifier -> manifest (+ file_path, required_by)
+
+
+// A manifest string property as get<NSString *>(key) answered it: nullopt where that was nil
+// (missing, or neither a string nor a number).
+std::optional<std::string> ManifestString(const oo::PList &manifest, const std::string &key)
+{
+	const oo::PList *value = manifest.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return manifest.get<std::string>(key);
+}
+
+
+// -containsObject: of a string on the array (or set, held as an array) under key.
+bool ManifestListContains(const oo::PList &manifest, const std::string &key, std::string_view string)
+{
+	const oo::PList *list = manifest.get<oo::PList::Array>(key);
+	if (list == nullptr)  return false;
+	for (const oo::PList &element : *list->getIf<oo::PList::Array>())
+	{
+		const std::string *elementString = element.getIf<std::string>();
+		if (elementString != nullptr && *elementString == string)  return true;
+	}
+	return false;
+}
+
+
+// The strings of a required_by set (held as a sorted array of unique strings).
+std::set<std::string> ManifestRequiredBy(const oo::PList &manifest)
+{
+	std::set<std::string> result;
+	const oo::PList *list = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestRequiredBy));
+	if (list == nullptr)  return result;
+	for (const oo::PList &element : *list->getIf<oo::PList::Array>())
+	{
+		if (const std::string *elementString = element.getIf<std::string>())  result.insert(*elementString);
+	}
+	return result;
+}
+
+
+// [path lastPathComponent] of a nil-able path, as %@ printed it.
+std::optional<std::string> LastPathComponent(const std::optional<std::string> &path)
+{
+	if (!path.has_value())  return std::nullopt;
+	return oo::str::lastPathComponent(*path);
+}
 
 }	// namespace
 
 static NSMutableArray	*sSearchPaths;
 static BOOL				sFirstRun = YES;
 static BOOL				sAllMet = NO;
-static NSMutableDictionary *sOXPManifests;
 
 
 
@@ -134,7 +180,7 @@ static NSMutableDictionary *sStringCache;
 	sOXPsWithMessagesFound.clear();
 	sExternalPaths.clear();
 	sErrors.clear();
-	DESTROY(sOXPManifests);
+	sOXPManifests.clear();
 }
 
 
@@ -143,7 +189,7 @@ static NSMutableDictionary *sStringCache;
 	sUseAddOns.reset();
 	sUseAddOnsParts.clear();
 	DESTROY(sSearchPaths);
-	DESTROY(sOXPManifests);
+	sOXPManifests.clear();
 	[ResourceManager cxx_pathsWithAddOns];
 }
 
@@ -557,9 +603,11 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (NSDictionary *)manifestForIdentifier:(NSString *)identifier
++ (oo::PList) cxx_manifestForIdentifier:(const std::string &)identifier
 {
-	return [sOXPManifests objectForKey:identifier];
+	auto it = sOXPManifests.find(identifier);
+	if (it == sOXPManifests.end())  return oo::PList();
+	return it->second;
 }
 
 
@@ -594,7 +642,7 @@ static NSMutableDictionary *sStringCache;
 	{
 		// OXZ format ignores requires.plist
 		requirements = OODictionaryFromFile([path stringByAppendingPathComponent:@"requires.plist"]);
-		requirementsMet = [self areRequirementsFulfilled:requirements forOXP:path andFile:@"requires.plist"];
+		requirementsMet = [self areRequirementsFulfilled:oo::PListFrom(requirements) forOXP:oo::StdString(path) andFile:"requires.plist"];
 	}
 	if (!requirementsMet)
 	{
@@ -629,7 +677,7 @@ static NSMutableDictionary *sStringCache;
 		}
 	}
 	
-	requirementsMet = [self validateManifest:manifest forOXP:path];
+	requirementsMet = [self validateManifest:oo::PListFrom(manifest) forOXP:oo::StdString(path)];
 
 
 	if (requirementsMet) 
@@ -639,184 +687,170 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) validateManifest:(NSDictionary*)manifest forOXP:(NSString *)path
++ (BOOL) validateManifest:(const oo::PList &)manifest forOXP:(const std::string &)path
 {
-	if (EXPECT_NOT(sOXPManifests == nil))
-	{
-		sOXPManifests = [[NSMutableDictionary alloc] initWithCapacity:32];
-	}
-	
 	BOOL 		OK = YES;
-	NSString 	*identifier = oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier, nil);
-	NSString 	*version = oo::PListView(manifest).get<NSString *>(kOOManifestVersion, nil);
-	NSString 	*required = oo::PListView(manifest).get<NSString *>(kOOManifestRequiredOoliteVersion, nil);
-	NSString	*title = oo::PListView(manifest).get<NSString *>(kOOManifestTitle, nil);
+	const std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier));
+	const std::optional<std::string> version = ManifestString(manifest, oo::StdString(kOOManifestVersion));
+	const std::optional<std::string> required = ManifestString(manifest, oo::StdString(kOOManifestRequiredOoliteVersion));
+	const std::optional<std::string> title = ManifestString(manifest, oo::StdString(kOOManifestTitle));
 
-	if (identifier == nil)
+	if (!identifier.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", path, kOOManifestIdentifier);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:oo::StdString(title) param2:oo::StdString(kOOManifestIdentifier)];
+		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestIdentifier);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestIdentifier)];
 		OK = NO;
 	}
-	if (version == nil)
+	if (!version.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", path, kOOManifestVersion);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:oo::StdString(title) param2:oo::StdString(kOOManifestVersion)];
+		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestVersion);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestVersion)];
 		OK = NO;
 	}
-	if (required == nil)
+	if (!required.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", path, kOOManifestRequiredOoliteVersion);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:oo::StdString(title) param2:oo::StdString(kOOManifestRequiredOoliteVersion)];
+		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestRequiredOoliteVersion);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestRequiredOoliteVersion)];
 		OK = NO;
 	}
-	if (title == nil)
+	if (!title.has_value())
 	{
-		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", path, kOOManifestTitle);
-		[self addErrorWithKey:"oxp-manifest-incomplete" param1:oo::StdString(title) param2:oo::StdString(kOOManifestTitle)];
+		OOLog(@"oxp.noManifest", @"OXZ %@ manifest.plist has no '%@' field.", oo::NSStringFrom(path), kOOManifestTitle);
+		[self addErrorWithKey:"oxp-manifest-incomplete" param1:title.value_or("") param2:oo::StdString(kOOManifestTitle)];
 		OK = NO;
 	}
 	if (!OK)
 	{
 		return NO;
 	}
-	OK = [self checkVersionCompatibility:manifest forOXP:title];
+	OK = [self cxx_checkVersionCompatibility:manifest forOXP:title];
 
 	if (!OK)
 	{
-		NSString *version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-		OOLog(@"oxp.versionMismatch", @"OXP %@ is incompatible with version %@ of Oolite.", path, version);
-		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::StdString([path lastPathComponent]) param2:oo::StdString(version)];
+		id ooliteVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+		OOLog(@"oxp.versionMismatch", @"OXP %@ is incompatible with version %@ of Oolite.", oo::NSStringFrom(path), ooliteVersion);
+		[self addErrorWithKey:"oxp-is-incompatible" param1:oo::str::lastPathComponent(path) param2:oo::StdString(ooliteVersion)];
 		return NO;
 	}
 
-	NSDictionary *duplicate = [sOXPManifests objectForKey:identifier];
-	if (duplicate != nil)
+	auto duplicate = sOXPManifests.find(*identifier);
+	if (duplicate != sOXPManifests.end())
 	{
-		OOLog(@"oxp.duplicate", @"OXP %@ has the same identifier (%@) as %@ which has already been loaded.",path,identifier,oo::PListView(duplicate).get<NSString *>(kOOManifestFilePath));
-		[self addErrorWithKey:"oxp-manifest-duplicate" param1:oo::StdString(path) param2:oo::StdString(oo::PListView(duplicate).get<NSString *>(kOOManifestFilePath))];
+		const std::optional<std::string> duplicatePath = ManifestString(duplicate->second, oo::StdString(kOOManifestFilePath));
+		OOLog(@"oxp.duplicate", @"OXP %@ has the same identifier (%@) as %@ which has already been loaded.",oo::NSStringFrom(path),oo::NSStringFrom(*identifier),oo::NSStringOrNil(duplicatePath));
+		[self addErrorWithKey:"oxp-manifest-duplicate" param1:path param2:duplicatePath.value_or("")];
 		return NO;
 	}
-	NSMutableDictionary *mData = [NSMutableDictionary dictionaryWithDictionary:manifest];
-	[mData setObject:path forKey:kOOManifestFilePath];
+	oo::PList mData = manifest;
 	// add an extra key
-	[sOXPManifests setObject:mData forKey:identifier];
+	if (oo::PList::Dict *dict = mData.getIf<oo::PList::Dict>())  (*dict)[oo::StdString(kOOManifestFilePath)] = oo::PList(path);
+	sOXPManifests[*identifier] = std::move(mData);
 	return YES;
 }
 
 
-+ (BOOL) checkVersionCompatibility:(NSDictionary *)manifest forOXP:(NSString *)title
++ (BOOL) cxx_checkVersionCompatibility:(const oo::PList &)manifest forOXP:(const std::optional<std::string> &)title
 {
-	NSString 	*required = oo::PListView(manifest).get<NSString *>(kOOManifestRequiredOoliteVersion, nil);
-	NSString *maxRequired = oo::PListView(manifest).get<NSString *>(kOOManifestMaximumOoliteVersion, nil);
-	// ignore empty max version string rather than treating as "version 0"
-	if (maxRequired == nil || [maxRequired length] == 0)
+	const std::optional<std::string> required = ManifestString(manifest, oo::StdString(kOOManifestRequiredOoliteVersion));
+	const std::optional<std::string> maxRequired = ManifestString(manifest, oo::StdString(kOOManifestMaximumOoliteVersion));
+	// A nil required version ended the old key/value list at once: an empty requirements dictionary.
+	oo::PList::Dict requirements;
+	if (required.has_value())
 	{
-		return [self areRequirementsFulfilled:[NSDictionary dictionaryWithObjectsAndKeys:required, @"version", nil] forOXP:title andFile:@"manifest.plist"];
+		requirements["version"] = oo::PList(*required);
+		// ignore empty max version string rather than treating as "version 0"
+		if (maxRequired.has_value() && !maxRequired->empty())  requirements["max_version"] = oo::PList(*maxRequired);
 	}
-	else
-	{
-		return [self areRequirementsFulfilled:[NSDictionary dictionaryWithObjectsAndKeys:required, @"version", maxRequired, @"max_version", nil] forOXP:title andFile:@"manifest.plist"];
-	}
+	return [self areRequirementsFulfilled:oo::PList(std::move(requirements)) forOXP:title andFile:"manifest.plist"];
 }
 
 
-+ (BOOL) areRequirementsFulfilled:(NSDictionary*)requirements forOXP:(NSString *)path andFile:(NSString *)file
++ (BOOL) areRequirementsFulfilled:(const oo::PList &)requirements forOXP:(const std::optional<std::string> &)path andFile:(const std::string &)file
 {
 	BOOL				OK = YES;
-	NSString			*requiredVersion = nil;
-	NSString			*maxVersion = nil;
 	unsigned			conditionsHandled = 0;
-	static NSArray		*ooVersionComponents = nil;
-	NSArray				*oxpVersionComponents = nil;
-	
-	if (requirements == nil)  return YES;
-	
-	if (ooVersionComponents == nil)
+	static std::optional<std::vector<unsigned>>	ooVersionComponents;
+
+	if (requirements.isNull())  return YES;
+
+	if (!ooVersionComponents.has_value())
 	{
-		ooVersionComponents = ComponentsFromVersionString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
-		[ooVersionComponents retain];
+		ooVersionComponents = oo::str::versionComponents(oo::StdString([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]));
 	}
-	
+
 	// Check "version" (minimum version)
 	if (OK)
 	{
-		// Not get<NSString *>, because we need to be able to complain about non-strings.
-		requiredVersion = [requirements objectForKey:@"version"];
-		if (requiredVersion != nil)
+		// Not get<std::string>, because we need to be able to complain about non-strings.
+		const oo::PList *requiredVersion = requirements.find("version");
+		if (requiredVersion != nullptr)
 		{
 			++conditionsHandled;
-			if ([requiredVersion isKindOfClass:[NSString class]])
+			if (const std::string *requiredString = requiredVersion->getIf<std::string>())
 			{
-				oxpVersionComponents = ComponentsFromVersionString(requiredVersion);
-				if (NSOrderedAscending == CompareVersions(ooVersionComponents, oxpVersionComponents))  OK = NO;
+				if (oo::str::compareVersions(*ooVersionComponents, oo::str::versionComponents(*requiredString)) < 0)  OK = NO;
 			}
 			else
 			{
-				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", file, @"version", [requirements class], [path lastPathComponent]);
+				// %@ of [requirements class]: the class of the dictionary the old code was handed, which the bridge rebuilds
+				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", oo::NSStringFrom(file), @"version", [oo::ObjectFromPList(requirements) class], oo::NSStringOrNil(LastPathComponent(path)));
 				OK = NO;
 			}
 		}
 	}
-	
+
 	// Check "max_version" (minimum max_version)
 	if (OK)
 	{
-		// Not get<NSString *>, because we need to be able to complain about non-strings.
-		maxVersion = [requirements objectForKey:@"max_version"];
-		if (maxVersion != nil)
+		// Not get<std::string>, because we need to be able to complain about non-strings.
+		const oo::PList *maxVersion = requirements.find("max_version");
+		if (maxVersion != nullptr)
 		{
 			++conditionsHandled;
-			if ([maxVersion isKindOfClass:[NSString class]])
+			if (const std::string *maxString = maxVersion->getIf<std::string>())
 			{
-				oxpVersionComponents = ComponentsFromVersionString(maxVersion);
-				if (NSOrderedDescending == CompareVersions(ooVersionComponents, oxpVersionComponents))  OK = NO;
+				if (oo::str::compareVersions(*ooVersionComponents, oo::str::versionComponents(*maxString)) > 0)  OK = NO;
 			}
 			else
 			{
-				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", file, @"max_version", [requirements class], [path lastPathComponent]);
+				OOLog(@"requirements.wrongType", @"Expected %@ entry \"%@\" to be string, but got %@ in OXP %@.", oo::NSStringFrom(file), @"max_version", [oo::ObjectFromPList(requirements) class], oo::NSStringOrNil(LastPathComponent(path)));
 				OK = NO;
 			}
 		}
 	}
-	
-	if (OK && conditionsHandled < [requirements count])
+
+	if (OK && conditionsHandled < requirements.count())
 	{
 		// There are unknown requirement keys - don't support. NOTE: this check was not made pre 1.69!
-		OOLog(@"requirements.unknown", @"requires.plist for OXP %@ contains unknown keys, rejecting.", [path lastPathComponent]);
+		OOLog(@"requirements.unknown", @"requires.plist for OXP %@ contains unknown keys, rejecting.", oo::NSStringOrNil(LastPathComponent(path)));
 		OK = NO;
 	}
-	
+
 	return OK;
 }
 
 
-+ (BOOL) manifestHasConflicts:(NSDictionary *)manifest logErrors:(BOOL)logErrors
++ (BOOL) cxx_manifestHasConflicts:(const oo::PList &)manifest logErrors:(BOOL)logErrors
 {
-	NSDictionary	*conflicting = nil;
-	NSDictionary	*conflictManifest = nil;
-	NSString		*conflictID = nil;
-	NSArray			*conflicts = nil;
-	
-	conflicts = oo::PListView(manifest).get<NSArray *>(kOOManifestConflictOXPs, nil);
-	// if it has a non-empty conflict_oxps list 
-	if (conflicts != nil && [conflicts count] > 0)
+	const oo::PList *conflicts = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestConflictOXPs), nullptr);
+	// if it has a non-empty conflict_oxps list
+	if (conflicts != nullptr && conflicts->count() > 0)
 	{
 		// iterate over that list
-		foreach (conflicting, conflicts)
+		for (const oo::PList &conflicting : *conflicts->getIf<oo::PList::Array>())
 		{
-			conflictID = oo::PListView(conflicting).get<NSString *>(kOOManifestRelationIdentifier);
-			conflictManifest = [sOXPManifests objectForKey:conflictID];
+			const std::optional<std::string> conflictID = ManifestString(conflicting, oo::StdString(kOOManifestRelationIdentifier));
+			auto conflictManifest = conflictID.has_value() ? sOXPManifests.find(*conflictID) : sOXPManifests.end();
 			// if the other OXP is in the list
-			if (conflictManifest != nil)
+			if (conflictManifest != sOXPManifests.end())
 			{
 				// then check versions
-				if ([self matchVersions:conflicting withVersion:oo::PListView(conflictManifest).get<NSString *>(kOOManifestVersion)])
+				if ([self cxx_matchVersions:conflicting withVersion:ManifestString(conflictManifest->second, oo::StdString(kOOManifestVersion)).value_or("")])
 				{
 					if (logErrors)
 					{
-						[self addErrorWithKey:"oxp-conflict" param1:oo::StdString(oo::PListView(manifest).get<NSString *>(kOOManifestTitle)) param2:oo::StdString(oo::PListView(conflictManifest).get<NSString *>(kOOManifestTitle))];
-						OOLog(@"oxp.conflict",@"OXP %@ conflicts with %@ and was removed from the loading list",[oo::PListView(manifest).get<NSString *>(kOOManifestFilePath) lastPathComponent],[oo::PListView(conflictManifest).get<NSString *>(kOOManifestFilePath) lastPathComponent]);
+						[self addErrorWithKey:"oxp-conflict" param1:ManifestString(manifest, oo::StdString(kOOManifestTitle)).value_or("") param2:ManifestString(conflictManifest->second, oo::StdString(kOOManifestTitle)).value_or("")];
+						OOLog(@"oxp.conflict",@"OXP %@ conflicts with %@ and was removed from the loading list",oo::NSStringOrNil(LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))),oo::NSStringOrNil(LastPathComponent(ManifestString(conflictManifest->second, oo::StdString(kOOManifestFilePath)))));
 					}
 					return YES;
 				}
@@ -829,41 +863,39 @@ static NSMutableDictionary *sStringCache;
 
 + (void) filterSearchPathsForConflicts:(NSMutableArray *)searchPaths
 {
-	NSDictionary	*manifest = nil;
-	NSString		*identifier = nil;
-	NSArray			*identifiers = [sOXPManifests allKeys];
+	std::vector<std::string>	identifiers;	// identifier order (was hash order)
+	identifiers.reserve(sOXPManifests.size());
+	for (const auto &[identifier, manifest] : sOXPManifests)  identifiers.push_back(identifier);
 
 	// take a copy because we'll mutate the original
 	// foreach identified add-on
-	foreach (identifier, identifiers)
+	for (const std::string &identifier : identifiers)
 	{
-		manifest = [sOXPManifests objectForKey:identifier];
-		if (manifest != nil)
+		auto entry = sOXPManifests.find(identifier);
+		if (entry != sOXPManifests.end())
 		{
-			if ([self manifestHasConflicts:manifest logErrors:YES])
+			const oo::PList manifest = entry->second;
+			if ([self cxx_manifestHasConflicts:manifest logErrors:YES])
 			{
 				// then we have a conflict, so remove this path
-				[searchPaths removeObject:oo::PListView(manifest).get<NSString *>(kOOManifestFilePath)];
-				[sOXPManifests removeObjectForKey:identifier];
+				[searchPaths removeObject:oo::NSStringOrNil(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))];
+				sOXPManifests.erase(identifier);
 			}
 		}
 	}
 }
 
 
-+ (BOOL) manifestHasMissingDependencies:(NSDictionary *)manifest logErrors:(BOOL)logErrors
++ (BOOL) cxx_manifestHasMissingDependencies:(const oo::PList &)manifest logErrors:(BOOL)logErrors
 {
-	NSDictionary	*required = nil;
-	NSArray			*requireds = nil;
-
-	requireds = oo::PListView(manifest).get<NSArray *>(kOOManifestRequiresOXPs, nil);
-	// if it has a non-empty required_oxps list 
-	if (requireds != nil && [requireds count] > 0)
+	const oo::PList *requireds = manifest.get<oo::PList::Array>(oo::StdString(kOOManifestRequiresOXPs), nullptr);
+	// if it has a non-empty required_oxps list
+	if (requireds != nullptr && requireds->count() > 0)
 	{
 		// iterate over that list
-		foreach (required, requireds)
+		for (const oo::PList &required : *requireds->getIf<oo::PList::Array>())
 		{
-			if ([ResourceManager manifest:manifest HasUnmetDependency:required logErrors:logErrors])
+			if ([ResourceManager cxx_manifest:manifest HasUnmetDependency:required logErrors:logErrors])
 			{
 				return YES;
 			}
@@ -873,29 +905,30 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) manifest:(NSDictionary *)manifest HasUnmetDependency:(NSDictionary *)required logErrors:(BOOL)logErrors
++ (BOOL) cxx_manifest:(const oo::PList &)manifest HasUnmetDependency:(const oo::PList &)required logErrors:(BOOL)logErrors
 {
-	NSString		*requiredID = oo::PListView(required).get<NSString *>(kOOManifestRelationIdentifier);
-	NSMutableDictionary	*requiredManifest = [sOXPManifests objectForKey:requiredID];
+	const std::optional<std::string> requiredID = ManifestString(required, oo::StdString(kOOManifestRelationIdentifier));
+	auto requiredManifest = requiredID.has_value() ? sOXPManifests.find(*requiredID) : sOXPManifests.end();
 	// if the other OXP is in the list
 	BOOL requirementsMet = NO;
-	if (requiredManifest != nil)
+	if (requiredManifest != sOXPManifests.end())
 	{
 		// then check versions
-		if ([self matchVersions:required withVersion:oo::PListView(requiredManifest).get<NSString *>(kOOManifestVersion)])
+		if ([self cxx_matchVersions:required withVersion:ManifestString(requiredManifest->second, oo::StdString(kOOManifestVersion)).value_or("")])
 		{
 			requirementsMet = YES;
 			/* Mark the requiredManifest as a dependency of the
 			 * requiring manifest */
-			NSSet *reqby = oo::PListView(requiredManifest).get<NSSet *>(kOOManifestRequiredBy, [NSSet set]);
-			NSUInteger reqbycount = [reqby count];
+			std::set<std::string> reqby = ManifestRequiredBy(requiredManifest->second);
+			const std::size_t reqbycount = reqby.size();
 			/* then add this manifest to its required set. This is
 			 * done without checking if it's already there, because
 			 * the list of nested requirements may have changed. */
-			reqby = [reqby setByAddingObject:oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier)];
+			if (std::optional<std::string> identifier = ManifestString(manifest, oo::StdString(kOOManifestIdentifier)))  reqby.insert(*identifier);
 			// *and* anything that requires this OXP to be installed
-			reqby = [reqby setByAddingObjectsFromSet:oo::PListView(manifest).get<NSSet *>(kOOManifestRequiredBy)];
-			if (reqbycount < [reqby count])
+			const std::set<std::string> manifestReqby = ManifestRequiredBy(manifest);
+			reqby.insert(manifestReqby.begin(), manifestReqby.end());
+			if (reqbycount < reqby.size())
 			{
 				/* Then the set has increased in size. To handle
 				 * potential cases with nested dependencies, need to
@@ -903,16 +936,19 @@ static NSMutableDictionary *sStringCache;
 				 * stabilise. */
 				sAllMet = NO;
 			}
-			// and push back into the requiring manifest
-			[requiredManifest setObject:reqby forKey:kOOManifestRequiredBy];
+			// and push back into the requiring manifest (the set as a sorted array of unique strings)
+			oo::PList::Array reqbyList;
+			for (const std::string &identifier : reqby)  reqbyList.emplace_back(identifier);
+			if (oo::PList::Dict *dict = requiredManifest->second.getIf<oo::PList::Dict>())  (*dict)[oo::StdString(kOOManifestRequiredBy)] = oo::PList(std::move(reqbyList));
 		}
 	}
 	if (!requirementsMet)
 	{
 		if (logErrors)
 		{
-			[self addErrorWithKey:"oxp-required" param1:oo::StdString(oo::PListView(manifest).get<NSString *>(kOOManifestTitle)) param2:oo::StdString(oo::PListView(required).get<NSString *>(kOOManifestRelationDescription, oo::PListView(required).get<NSString *>(kOOManifestRelationIdentifier)))];
-			OOLog(@"oxp.requirementMissing",@"OXP %@ had unmet requirements and was removed from the loading list",[oo::PListView(manifest).get<NSString *>(kOOManifestFilePath) lastPathComponent]);
+			const std::optional<std::string> requiredDescription = ManifestString(required, oo::StdString(kOOManifestRelationDescription));
+			[self addErrorWithKey:"oxp-required" param1:ManifestString(manifest, oo::StdString(kOOManifestTitle)).value_or("") param2:requiredDescription.has_value() ? *requiredDescription : requiredID.value_or("")];
+			OOLog(@"oxp.requirementMissing",@"OXP %@ had unmet requirements and was removed from the loading list",oo::NSStringOrNil(LastPathComponent(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))));
 		}
 		return YES;
 	}
@@ -922,24 +958,25 @@ static NSMutableDictionary *sStringCache;
 
 + (BOOL) filterSearchPathsForRequirements:(NSMutableArray *)searchPaths
 {
-	NSDictionary	*manifest = nil;
-	NSString		*identifier = nil;
-	NSArray			*identifiers = [sOXPManifests allKeys];
+	std::vector<std::string>	identifiers;	// identifier order (was hash order)
+	identifiers.reserve(sOXPManifests.size());
+	for (const auto &[identifier, manifest] : sOXPManifests)  identifiers.push_back(identifier);
 
 	sAllMet = YES;
 
 	// take a copy because we'll mutate the original
 	// foreach identified add-on
-	foreach (identifier, identifiers)
+	for (const std::string &identifier : identifiers)
 	{
-		manifest = [sOXPManifests objectForKey:identifier];
-		if (manifest != nil)
+		auto entry = sOXPManifests.find(identifier);
+		if (entry != sOXPManifests.end())
 		{
-			if ([self manifestHasMissingDependencies:manifest logErrors:YES])
+			const oo::PList manifest = entry->second;
+			if ([self cxx_manifestHasMissingDependencies:manifest logErrors:YES])
 			{
 				// then we have a missing requirement, so remove this path
-				[searchPaths removeObject:oo::PListView(manifest).get<NSString *>(kOOManifestFilePath)];
-				[sOXPManifests removeObjectForKey:identifier];
+				[searchPaths removeObject:oo::NSStringOrNil(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))];
+				sOXPManifests.erase(identifier);
 				sAllMet = NO;
 			}
 		}
@@ -949,25 +986,22 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version
++ (BOOL) cxx_matchVersions:(const oo::PList &)rangeDict withVersion:(const std::string &)version
 {
-	NSString	*minimum = oo::PListView(rangeDict).get<NSString *>(kOOManifestRelationVersion, nil);
-	NSString	*maximum = oo::PListView(rangeDict).get<NSString *>(kOOManifestRelationMaxVersion, nil);
-	NSArray		*isVersionComponents = ComponentsFromVersionString(version);
-	NSArray		*reqVersionComponents = nil;
-	if (minimum != nil)
+	const std::optional<std::string> minimum = ManifestString(rangeDict, oo::StdString(kOOManifestRelationVersion));
+	const std::optional<std::string> maximum = ManifestString(rangeDict, oo::StdString(kOOManifestRelationMaxVersion));
+	const std::vector<unsigned> isVersionComponents = oo::str::versionComponents(version);	// "" (was nil) compares as the empty version
+	if (minimum.has_value())
 	{
-		reqVersionComponents = ComponentsFromVersionString(minimum);
-		if (NSOrderedAscending == CompareVersions(isVersionComponents, reqVersionComponents))
+		if (oo::str::compareVersions(isVersionComponents, oo::str::versionComponents(*minimum)) < 0)
 		{
 			// earlier than minimum version
 			return NO;
 		}
 	}
-	if (maximum != nil)
+	if (maximum.has_value())
 	{
-		reqVersionComponents = ComponentsFromVersionString(maximum);
-		if (NSOrderedDescending == CompareVersions(isVersionComponents, reqVersionComponents))
+		if (oo::str::compareVersions(isVersionComponents, oo::str::versionComponents(*maximum)) > 0)
 		{
 			// later than maximum version
 			return NO;
@@ -980,21 +1014,22 @@ static NSMutableDictionary *sStringCache;
 
 + (void) filterSearchPathsToExcludeScenarioOnlyPaths:(NSMutableArray *)searchPaths
 {
-	NSDictionary	*manifest = nil;
-	NSString		*identifier = nil;
-	NSArray			*identifiers = [sOXPManifests allKeys];
+	std::vector<std::string>	identifiers;	// identifier order (was hash order)
+	identifiers.reserve(sOXPManifests.size());
+	for (const auto &[identifier, manifest] : sOXPManifests)  identifiers.push_back(identifier);
 
 	// take a copy because we'll mutate the original
 	// foreach identified add-on
-	foreach (identifier, identifiers)
+	for (const std::string &identifier : identifiers)
 	{
-		manifest = [sOXPManifests objectForKey:identifier];
-		if (manifest != nil)
+		auto entry = sOXPManifests.find(identifier);
+		if (entry != sOXPManifests.end())
 		{
-			if ([oo::PListView(manifest).get<NSArray *>(kOOManifestTags) containsObject:kOOManifestTagScenarioOnly])
+			const oo::PList manifest = entry->second;
+			if (ManifestListContains(manifest, oo::StdString(kOOManifestTags), oo::StdString(kOOManifestTagScenarioOnly)))
 			{
-				[searchPaths removeObject:oo::PListView(manifest).get<NSString *>(kOOManifestFilePath)];
-				[sOXPManifests removeObjectForKey:identifier];
+				[searchPaths removeObject:oo::NSStringOrNil(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))];
+				sOXPManifests.erase(identifier);
 			}
 		}
 	}
@@ -1004,29 +1039,30 @@ static NSMutableDictionary *sStringCache;
 
 + (void) filterSearchPathsByScenario:(NSMutableArray *)searchPaths
 {
-	NSDictionary	*manifest = nil;
-	NSString		*identifier = nil;
-	NSArray			*identifiers = [sOXPManifests allKeys];
+	std::vector<std::string>	identifiers;	// identifier order (was hash order)
+	identifiers.reserve(sOXPManifests.size());
+	for (const auto &[identifier, manifest] : sOXPManifests)  identifiers.push_back(identifier);
 
 	// take a copy because we'll mutate the original
 	// foreach identified add-on
-	foreach (identifier, identifiers)
+	for (const std::string &identifier : identifiers)
 	{
-		manifest = [sOXPManifests objectForKey:identifier];
-		if (manifest != nil)
+		auto entry = sOXPManifests.find(identifier);
+		if (entry != sOXPManifests.end())
 		{
+			const oo::PList manifest = entry->second;
 			if (![ResourceManager manifestAllowedByScenario:manifest])
 			{
 				// then we don't need this one
-				[searchPaths removeObject:oo::PListView(manifest).get<NSString *>(kOOManifestFilePath)];
-				[sOXPManifests removeObjectForKey:identifier];
+				[searchPaths removeObject:oo::NSStringOrNil(ManifestString(manifest, oo::StdString(kOOManifestFilePath)))];
+				sOXPManifests.erase(identifier);
 			}
 		}
 	}
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest
 {
 	/* Checks for a couple of "never happens" cases */
 #ifndef NDEBUG
@@ -1042,39 +1078,40 @@ static NSMutableDictionary *sStringCache;
 		return NO;
 	}
 #endif
-	if ([oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) isEqualToString:@"org.oolite.oolite"])
+	if (ManifestString(manifest, oo::StdString(kOOManifestIdentifier)) == "org.oolite.oolite")
 	{
 		// the core data is always allowed!
 		return YES;
 	}
 
+	const std::string byID = oo::StdString(SCENARIO_OXP_DEFINITION_BYID);
+	const std::string byTag = oo::StdString(SCENARIO_OXP_DEFINITION_BYTAG);
 	BOOL result = NO;
-	for (const std::string &uaoPart : sUseAddOnsParts)
+	for (const std::string &uaoBit : sUseAddOnsParts)
 	{
-		NSString *uaoBit = oo::NSStringFrom(uaoPart);	// manifestAllowedByScenario: converts in oo-3rb.99
-		if ([uaoBit hasPrefix:SCENARIO_OXP_DEFINITION_BYID])
+		if (oo::str::hasPrefix(uaoBit, byID))
 		{
-			result |= [ResourceManager manifestAllowedByScenario:manifest withIdentifier:[uaoBit substringFromIndex:[SCENARIO_OXP_DEFINITION_BYID length]]];
+			result |= [ResourceManager manifestAllowedByScenario:manifest withIdentifier:uaoBit.substr(byID.size())];
 		}
-		else if ([uaoBit hasPrefix:SCENARIO_OXP_DEFINITION_BYTAG])
+		else if (oo::str::hasPrefix(uaoBit, byTag))
 		{
-			result |= [ResourceManager manifestAllowedByScenario:manifest withTag:[uaoBit substringFromIndex:[SCENARIO_OXP_DEFINITION_BYTAG length]]];
+			result |= [ResourceManager manifestAllowedByScenario:manifest withTag:uaoBit.substr(byTag.size())];
 		}
 	}
 	return result;
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest withIdentifier:(NSString *)identifier
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withIdentifier:(const std::string &)identifier
 {
-	if ([oo::PListView(manifest).get<NSString *>(kOOManifestIdentifier) isEqualToString:identifier])
+	if (ManifestString(manifest, oo::StdString(kOOManifestIdentifier)) == identifier)
 	{
 		// manifest has the identifier - easy
 		return YES;
 	}
 	// manifest is also allowed if a manifest with that identifier
 	// requires it to be installed
-	if ([oo::PListView(manifest).get<NSSet *>(kOOManifestRequiredBy) containsObject:identifier])
+	if (ManifestListContains(manifest, oo::StdString(kOOManifestRequiredBy), identifier))
 	{
 		return YES;
 	}
@@ -1083,27 +1120,22 @@ static NSMutableDictionary *sStringCache;
 }
 
 
-+ (BOOL) manifestAllowedByScenario:(NSDictionary *)manifest withTag:(NSString *)tag
++ (BOOL) manifestAllowedByScenario:(const oo::PList &)manifest withTag:(const std::string &)tag
 {
-	if ([oo::PListView(manifest).get<NSArray *>(kOOManifestTags) containsObject:tag])
+	if (ManifestListContains(manifest, oo::StdString(kOOManifestTags), tag))
 	{
 		// manifest has the tag - easy
 		return YES;
 	}
 	// manifest is also allowed if a manifest with that tag
 	// requires it to be installed
-	NSSet *reqby = oo::PListView(manifest).get<NSSet *>(kOOManifestRequiredBy);
-	if (reqby != nil)
+	for (const std::string &identifier : ManifestRequiredBy(manifest))
 	{
-		NSString *identifier = nil;
-		foreach (identifier, reqby)
+		auto reqManifest = sOXPManifests.find(identifier);
+		// need to check for nil as this one may already have been ruled out
+		if (reqManifest != sOXPManifests.end() && ManifestListContains(reqManifest->second, oo::StdString(kOOManifestTags), tag))
 		{
-			NSDictionary *reqManifest = oo::PListView(sOXPManifests).get<NSDictionary *>(identifier, nil);
-			// need to check for nil as this one may already have been ruled out
-			if (reqManifest != nil && [oo::PListView(reqManifest).get<NSArray *>(kOOManifestTags) containsObject:tag])
-			{
-				return YES;
-			}
+			return YES;
 		}
 	}
 	// otherwise, no
