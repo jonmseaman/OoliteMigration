@@ -1567,7 +1567,7 @@ static int shipsFound;
 - (void) ejectItem:(id)itemKey	// called by name (ADR-0043 item 21)
 {
 	if (scriptTarget == nil)  scriptTarget = self;
-	[scriptTarget ejectShipOfType:itemKey];
+	[scriptTarget ejectShipOfType:oo::OptionalString(itemKey)];
 }
 
 
@@ -2353,7 +2353,7 @@ static int shipsFound;
 	/*- add planet -*/
 	// ("%@" of the dictionary: the round trip prints the same description)
 	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initPlanetFromDictionary: {}", oo::DescriptionOf(oo::ObjectFromPList(dict)));
-	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:oo::ObjectFromPList(dict) withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
+	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
 	const oo::PList *orientation = dict.find("orientation");
@@ -2409,7 +2409,7 @@ static int shipsFound;
 	/*- add planet -*/
 	// ("%@" of the dictionary: the round trip prints the same description)
 	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initMoonFromDictionary: {}", oo::DescriptionOf(oo::ObjectFromPList(dict)));
-	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:oo::ObjectFromPList(dict) withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
+	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
 	const oo::PList *orientation = dict.find("orientation");
@@ -2864,7 +2864,7 @@ static int shipsFound;
 			}
 		}
 
-		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:oo::ObjectFromPList(planetInfo) withAtmosphere:YES andSeed:target_system_seed];
+		doppelganger = [[OOPlanetEntity alloc] initFromDictionary:planetInfo withAtmosphere:YES andSeed:target_system_seed];
 		[doppelganger miniaturize];
 		[doppelganger autorelease];
 
