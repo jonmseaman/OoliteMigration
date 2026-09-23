@@ -98,7 +98,7 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 		}
 		propertiesInUse = [[NSMutableSet alloc] initWithCapacity:OO_LIKELY_PROPERTIES_PER_SYSTEM];
 		scriptedChanges = oo::PList(oo::PList::Dict());
-}
+	}
 	return self;
 }
 
@@ -113,7 +113,7 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 		DESTROY(neighbourCache[i]);
 	}
 	DESTROY(propertiesInUse);
-[super dealloc];
+	[super dealloc];
 }
 
 
@@ -281,7 +281,7 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 						 andLayer:OOSystemLayerFromNumber(static_cast<unsigned int>(oo::str::intValue(key[3])))
 						  toValue:oo::ObjectFromPList(value)
 					 fromManifest:oo::NSStringFrom(manifest)];
-// and doing this set stores it into the manager's copy
+				// and doing this set stores it into the manager's copy
 				// of scripted changes
 				// this means in theory we could import more than one
 			}
@@ -290,7 +290,7 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 		else
 		{
 			OOLog(@"systemManager.import",@"Key '%@' has unexpected format - skipping",oo::NSStringFrom(keyStr));
-}
+		}
 	}
 
 }
@@ -331,7 +331,7 @@ OOSystemLayer OOSystemLayerFromNumber(unsigned int number)
 						  toValue:oo::ObjectFromPList(oo::PList::singleReal(sr_num+600000.0f))
 					 fromManifest:oo::NSStringFrom(defaultManifest)];
 			}
-}
+		}
 	}
 
 }
