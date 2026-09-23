@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/Data.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
 @class OOSound, OOMusic, OOSystemDescriptionManager, OOScript;
@@ -93,8 +94,9 @@ typedef enum
 
 + (std::optional<std::string>) cxx_errors;	// Errors which occurred during path scanning - essentially a list of OXPs whose requires.plist is bad. nullopt when there are none.
 
-+ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName;
-+ (NSString *) pathForFileNamed:(NSString *)fileName inFolder:(NSString *)folderName cache:(BOOL)useCache;
+// nullopt when not found (was nil); folderName nullopt where nil was passed.
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
++ (std::optional<std::string>) cxx_pathForFileNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName cache:(BOOL)useCache;
 
 + (BOOL) cxx_corePlist:(const std::string &)fileName excludedAt:(const std::string &)path;
 
@@ -124,8 +126,8 @@ typedef enum
 + (oo::PList) cxx_roleCategoriesDictionary;	// category -> array of its roles, each once (a set), in first-seen order
 + (OOSystemDescriptionManager *) systemDescriptionManager;
 
-+ (OOSound *)ooSoundNamed:(NSString *)fileName inFolder:(NSString *)folderName;
-+ (OOMusic *)ooMusicNamed:(NSString *)fileName inFolder:(NSString *)folderName;
++ (OOSound *)cxx_ooSoundNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
++ (OOMusic *)cxx_ooMusicNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
 
 // nullopt when no file was found (was nil); folderName nullopt where nil was passed.
 + (std::optional<std::string>) cxx_stringFromFilesNamed:(const std::string &)fileName inFolder:(const std::optional<std::string> &)folderName;
@@ -134,16 +136,16 @@ typedef enum
 // World scripts by name, in the order each name was first loaded.
 + (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) cxx_loadScripts;
 
-/*	+writeDiagnosticData:toFileNamed:
-	+writeDiagnosticString:toFileNamed:
-	+writeDiagnosticPList:toFileNamed:
+/*	+cxx_writeDiagnosticData:toFileNamed:
+	+cxx_writeDiagnosticString:toFileNamed:
+	+cxx_writeDiagnosticPList:toFileNamed:
 	
 	Write data to the specified path within the log directory. Slashes may be
 	used as path separators in name.
  */
-+ (BOOL) writeDiagnosticData:(NSData *)data toFileNamed:(NSString *)name;
-+ (BOOL) writeDiagnosticString:(NSString *)string toFileNamed:(NSString *)name;
-+ (BOOL) writeDiagnosticPList:(id)plist toFileNamed:(NSString *)name;
++ (BOOL) cxx_writeDiagnosticData:(const oo::Data &)data toFileNamed:(const std::string &)name;
++ (BOOL) cxx_writeDiagnosticString:(const std::string &)string toFileNamed:(const std::string &)name;
++ (BOOL) cxx_writeDiagnosticPList:(id)plist toFileNamed:(const std::string &)name;	// plist: a property-list object graph
 
 + (std::optional<std::string>) cxx_diagnosticFileLocation;
 

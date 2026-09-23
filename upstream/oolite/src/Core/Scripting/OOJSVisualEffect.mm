@@ -272,7 +272,7 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 }
 
 
-- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
+- (NSString *) oo_jsClassName
 {
 	return @"VisualEffect";
 }
@@ -282,7 +282,7 @@ static BOOL JSVisualEffectGetVisualEffectEntity(ooscript::Context context, ooscr
 	return YES;
 }
 
-- (id) subEntitiesForScript	// shared selector (proposed ADR-0043)
+- (NSArray *) subEntitiesForScript
 {
 	return [[self visualEffectSubEntityEnumerator] allObjects];
 }
@@ -386,7 +386,7 @@ static bool VisualEffectGetProperty(Context cx, Object obj, PropertyId propID, V
 
 		case kVisualEffect_scriptInfo:
 			result = [entity scriptInfo];
-			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
+			if (result == nil)  result = [NSDictionary dictionary];	// empty rather than null
 			break;
 
 		default:
@@ -419,7 +419,7 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 	std::int32_t						iValue;
 	double        fValue;
 	Vector          vValue;
-	std::optional<std::string>	sValue;
+	NSString					*sValue = nil;
 
 	
 	if (!JSVisualEffectGetVisualEffectEntity(context, thisObj, &entity)) return NO;
@@ -428,8 +428,8 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 	switch (ooscript::idToInt32(propID))
 	{
 		case kVisualEffect_beaconCode:
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
-			if (!sValue.has_value() || sValue->empty()) 
+			sValue = OOStringFromJSValue(context,*value_raw);
+			if (sValue == nil || [sValue length] == 0) 
 			{
 				if ([entity isBeacon]) 
 				{
@@ -444,11 +444,11 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			{
 				if ([entity isBeacon]) 
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 				}
 				else // Universe needs to update beacon lists in this case only
 				{
-					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
+					[entity setBeaconCode:sValue];
 					[UNIVERSE setNextBeacon:entity];
 				}
 			}
@@ -456,10 +456,10 @@ static bool VisualEffectSetProperty(Context cx, Object obj, PropertyId propID, b
 			break;
 
 		case kVisualEffect_beaconLabel:
-			sValue = oo::OptionalString(OOStringFromJSValue(context,*value_raw));
-			if (sValue.has_value())
+			sValue = OOStringFromJSValue(context,*value_raw);
+			if (sValue != nil)
 			{
-				[entity setBeaconLabel:oo::NSStringFrom(*sValue)];
+				[entity setBeaconLabel:sValue];
 				return YES;
 			}
 			break;
@@ -640,8 +640,8 @@ static bool VisualEffectGetMaterials(ooscript::Context cx, ooscript::CallArgs &o
 
 	GET_THIS_EFFECT(thisEnt);
 	
-	result = [[thisEnt mesh] materials];
-	if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// an empty dictionary
+	result = oo::ObjectFromPList([[thisEnt mesh] materials]);
+	if (result == nil)  result = [NSDictionary dictionary];
 	OOJS_RETURN_OBJECT(result);
 	
 	OOJS_PROFILE_EXIT
@@ -661,8 +661,8 @@ static bool VisualEffectGetShaders(ooscript::Context cx, ooscript::CallArgs &ooj
 
 	GET_THIS_EFFECT(thisEnt);
 	
-	result = [[thisEnt mesh] shaders];
-	if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// an empty dictionary
+	result = oo::ObjectFromPList([[thisEnt mesh] shaders]);
+	if (result == nil)  result = [NSDictionary dictionary];
 	OOJS_RETURN_OBJECT(result);
 	
 	OOJS_PROFILE_EXIT
@@ -738,8 +738,8 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	OOJS_PROFILE_ENTER
 	
 	ooscript::Object params = NULL;
-	oo::PList				materials;
-	oo::PList				shaders;
+	NSDictionary			*materials;
+	NSDictionary			*shaders;
 	BOOL					withShaders = NO;
 	BOOL					success = NO;
 	
@@ -763,42 +763,35 @@ static bool VisualEffectSetMaterialsInternal(ooscript::Context context, ooscript
 	
 	if (fromShaders)
 	{
-		materials = oo::PListFrom([[thisEnt mesh] materials]);
+		materials = oo::ObjectFromPList([[thisEnt mesh] materials]);
 		params = ooscript::toObject(OOJS_ARGV[0]);
-		shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+		shaders = OOJSNativeObjectFromJSObject(context, params);
 	}
 	else
 	{
 		params = ooscript::toObject(OOJS_ARGV[0]);
-		materials = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+		materials = OOJSNativeObjectFromJSObject(context, params);
 		if (withShaders)
 		{
 			params = ooscript::toObject(OOJS_ARGV[1]);
-			shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
+			shaders = OOJSNativeObjectFromJSObject(context, params);
 		}
 		else
 		{
-			shaders = oo::PListFrom([[thisEnt mesh] shaders]);
+			shaders = oo::ObjectFromPList([[thisEnt mesh] shaders]);
 		}
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	const oo::PList		effectDict = oo::PListFrom([thisEnt effectInfoDictionary]);
-	// -oo_stringForKey: / -oo_dictionaryForKey: as the mesh call read them: nil unless a string (or a
-	// number's text) / a dictionary.
-	const oo::PList		*model = effectDict.get<oo::PList>("model");
-	std::optional<std::string>	modelName;
-	if (model != nullptr && (model->isString() || model->isNumber()))  modelName = effectDict.get<std::string>("model");
-	oo::PList			shaderMacros = oo::PListFrom([[ResourceManager materialDefaults] objectForKey:@"ship-prefix-macros"]);
-	if (!shaderMacros.isDict())  shaderMacros = oo::PList();
+	NSDictionary 			*effectDict = [thisEnt effectInfoDictionary];
 	
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:oo::NSStringOrNil(modelName)
-							   cacheKey:nil
-					 materialDictionary:oo::ObjectFromPList(materials)
-					  shadersDictionary:oo::ObjectFromPList(shaders)
-								 smooth:effectDict.get<bool>("smooth", false)
-						   shaderMacros:oo::ObjectFromPList(shaderMacros)
+	OOMesh *mesh = [OOMesh meshWithName:oo::StdString(oo::PListView(effectDict).get<NSString *>(@"model"))
+							   cacheKey:std::nullopt
+					 materialDictionary:oo::PListFrom(materials)
+					  shadersDictionary:oo::PListFrom(shaders)
+								 smooth:oo::PListView(effectDict).get<BOOL>(@"smooth", NO)
+						   shaderMacros:oo::PListFrom(oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros"))
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)

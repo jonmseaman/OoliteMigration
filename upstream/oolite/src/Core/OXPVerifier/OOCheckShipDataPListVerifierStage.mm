@@ -405,7 +405,7 @@ withPropertyList:(id)rootPList
 	 againstType:(id)typeKey
 		   error:(NSError **)outError	// shared selector (OOPListSchemaVerifierDelegate; proposed ADR-0043)
 {
-	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", typeKey, oo::NSStringFrom(_name), [OOPListSchemaVerifier descriptionForKeyPath:keyPath]];
+	[self verboseMessage:"- Skipping verification for type %@ at %@.%@.", typeKey, oo::NSStringFrom(_name), oo::NSStringOrNil([OOPListSchemaVerifier descriptionForKeyPath:oo::PListFrom(keyPath)])];
 	return YES;
 }
 
