@@ -767,7 +767,7 @@ static NSMutableDictionary *sStringCache;
 	// Check "version" (minimum version)
 	if (OK)
 	{
-		// Not oo_stringForKey:, because we need to be able to complain about non-strings.
+		// Not get<NSString *>, because we need to be able to complain about non-strings.
 		requiredVersion = [requirements objectForKey:@"version"];
 		if (requiredVersion != nil)
 		{
@@ -788,7 +788,7 @@ static NSMutableDictionary *sStringCache;
 	// Check "max_version" (minimum max_version)
 	if (OK)
 	{
-		// Not oo_stringForKey:, because we need to be able to complain about non-strings.
+		// Not get<NSString *>, because we need to be able to complain about non-strings.
 		maxVersion = [requirements objectForKey:@"max_version"];
 		if (maxVersion != nil)
 		{
