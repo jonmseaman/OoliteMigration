@@ -329,6 +329,22 @@ enum {
 @end
 
 
+/*	The same for classes rooted on the Foundation-free OOObject (proposed ADR-0029), so a class
+	rerooted from NSObject describes itself exactly as before.
+*/
+#import "oofnd/objc/OOObject.h"
+#import "OOObjectGNUstepBridge.h"
+
+@interface OOObject (OODescriptionComponents)
+
+- (NSString *) description;
+- (NSString *) descriptionComponents;
+- (NSString *) shortDescription;
+- (NSString *) shortDescriptionComponents;
+
+@end
+
+
 #if OOLITE_MAC_OS_X
 	#define OOLITE_RELEASE_PLIST_ERROR_STRINGS 1
 #else
@@ -444,7 +460,7 @@ id OOShuffledObjects(id collection);
 	instance of that class.
 	
 	For example, given:
-		@interface Foo: NSObject
+		@interface Foo: OOObject
 		+ (instancetype) fooWithProperty:(id)property;
 		@end
 		
