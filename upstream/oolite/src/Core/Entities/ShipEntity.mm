@@ -130,6 +130,41 @@ static GLfloat calcFuelChargeRate (GLfloat myMass)
 #endif
 
 
+/*	Readers for a subentity / ship configuration held as an oo::PList (the Foundation sweep,
+	proposed ADR-0043): what oo::PListView(dict).get<NSArray *> / get<NSString *> / get<HPVector> /
+	get<Quaternion> answered. A string is nil (nullopt) when the key is absent or holds neither a
+	string nor a number; vectors and quaternions go through OOCollectionExtractors' readers
+	(unmigrated), with their defaults for a missing key.
+*/
+static const oo::PList *ArrayForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return (value != nullptr && value->isArray()) ? value : nullptr;
+}
+
+
+static std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return oo::PListGet<std::string>::from(value, std::string());
+}
+
+
+static HPVector HPVectorForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return OOHPVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroHPVector);
+}
+
+
+static Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
+}
+
+
 @interface ShipEntity (Private)
 
 - (void)subEntityDied:(ShipEntity *)sub;
@@ -142,8 +177,8 @@ static GLfloat calcFuelChargeRate (GLfloat myMass)
 - (void) rescaleBy:(GLfloat)factor;
 - (void) rescaleBy:(GLfloat)factor writeToCache:(BOOL)writeToCache;
 
-- (BOOL) setUpOneSubentity:(NSDictionary *) subentDict;
-- (BOOL) setUpOneFlasher:(NSDictionary *) subentDict;
+- (BOOL) setUpOneSubentity:(id) subentDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (BOOL) setUpOneFlasher:(id) subentDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
 
 - (Entity<OOStellarBody> *) lastAegisLock;
 
@@ -452,10 +487,10 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	{
 		OOWeaponType 			weapon_type = nil;
 		BOOL hasTurrets = NO;
-		NSEnumerator	*subEnum = [self shipSubEntityEnumerator];
-		ShipEntity		*se = nil;
-		while (isWeaponNone(weapon_type) && (se = [subEnum nextObject]))
+		for (const auto &sub : [self cxx_shipSubEntities])
 		{
+			if (!isWeaponNone(weapon_type))  break;
+			ShipEntity *se = sub.get();
 			weapon_type = se->forward_weapon_type;
 			if (se->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
 			{
@@ -797,54 +832,54 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-- (NSString *) repeatString:(NSString *)str times:(NSUInteger)times
+// Was the private -repeatString:times:.
+static std::string RepeatString(std::string_view str, NSUInteger times)
 {
-	if (times == 0)  return @"";
-	
-	NSMutableString		*result = [NSMutableString stringWithCapacity:[str length] * times];
+	std::string result;
+	result.reserve(str.size() * times);
 	
 	for (NSUInteger i = 0; i < times; i++)
 	{
-	    [result appendString:str];
+	    result += str;
 	}
 	
 	return result;
 }
 
  
-- (NSString *) serializeShipSubEntities
+- (std::optional<std::string>) cxx_serializeShipSubEntities
 {	
-	NSMutableString		*result = [NSMutableString stringWithCapacity:4];
-	NSEnumerator		*subEnum = nil;
-	ShipEntity			*se = nil;
+	std::string			result;
 	NSUInteger			diff, i = 0;
 	
-	for (subEnum = [self shipSubEntityEnumerator]; (se = [subEnum nextObject]); )
+	for (const auto &sub : [self cxx_shipSubEntities])
 	{
+		ShipEntity *se = sub.get();
 		diff = [se subIdx] - i;
 		i += diff + 1;
-		[result appendString:[self repeatString:@"0" times:diff]];
-		[result appendString:@"1"];
+		result += RepeatString("0", diff);
+		result += "1";
 	}
 	// add trailing zeroes
-	[result appendString:[self repeatString:@"0" times:[self maxShipSubEntities] - i]];
+	result += RepeatString("0", [self maxShipSubEntities] - i);
 	return result;
 }
 
 
-- (void) deserializeShipSubEntitiesFrom:(NSString *)string
+- (void) cxx_deserializeShipSubEntitiesFrom:(const std::string &)string
 {
-	NSArray				*subEnts = [[self shipSubEntityEnumerator] allObjects];
-	NSInteger			i,idx, start = [subEnts count] - 1;
-	NSInteger			strMaxIdx = [string length] - 1;
+	const std::vector<oo::ObjCRef<ShipEntity *>> subEnts = [self cxx_shipSubEntities];
+	const std::u16string	units = oo::utf8ToUtf16(string);	// indexed in UTF-16 units, as -substringWithRange: was
+	NSInteger			i,idx, start = (NSInteger)subEnts.size() - 1;
+	NSInteger			strMaxIdx = (NSInteger)units.size() - 1;
 		
 	ShipEntity			*se = nil;
 	
 	for (i = start; i >= 0; i--)
 	{
-		se = (ShipEntity *)[subEnts objectAtIndex:i];
+		se = subEnts[(std::size_t)i].get();
 		idx = [se subIdx]; // should be identical to i, but better safe than sorry...
-		if (idx <= strMaxIdx && [[string substringWithRange:NSMakeRange(idx, 1)] isEqualToString:@"0"])
+		if (idx <= strMaxIdx && units[(std::size_t)idx] == u'0')
 		{
 			[se setSuppressExplosion:NO];
 			[se setEnergy:1];
@@ -859,26 +894,28 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	OOJS_PROFILE_ENTER
 	
 	unsigned int	i;
-	NSDictionary	*shipDict = [self shipInfoDictionary];
-	NSArray			*plumes = oo::PListView(shipDict).get<NSArray *>(@"exhaust");
-	
+	const oo::PList	shipDict = oo::PListFrom([self shipInfoDictionary]);
+	const oo::PList	*plumes = ArrayForKey(shipDict, "exhaust");
+
 	_profileRadius = collision_radius;
 	_maxShipSubIdx = 0;
-	
-	for (i = 0; i < [plumes count]; i++)
+
+	for (i = 0; plumes != nullptr && i < plumes->count(); i++)
 	{
-		NSArray *definition = ScanTokensFromString(oo::PListView(plumes).at<NSString *>(i));
-		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:oo::StringsFrom(definition) andScale:_scaleFactor];
+		// at<std::string>: a string, or a number's text, else "" (no tokens), as the string reader gave.
+		const std::vector<std::string> definition = oo::str::tokens(plumes->at<std::string>(i));
+		OOExhaustPlumeEntity *exhaust = [OOExhaustPlumeEntity exhaustForShip:self withDefinition:definition andScale:_scaleFactor];
 		[self addSubEntity:exhaust];
 	}
-	
-	NSArray *subs = oo::PListView(shipDict).get<NSArray *>(@"subentities");
-	
+
+	const oo::PList	*subs = ArrayForKey(shipDict, "subentities");
+
 	totalBoundingBox = boundingBox;
-	
-	for (i = 0; i < [subs count]; i++)
+
+	for (i = 0; subs != nullptr && i < subs->count(); i++)
 	{
-		[self setUpOneSubentity:oo::PListView(subs).at<NSDictionary *>(i)];
+		const oo::PList *subentDict = subs->at(i);
+		[self setUpOneSubentity:(subentDict != nullptr && subentDict->isDict()) ? oo::ObjectFromPList(*subentDict) : nil];
 	}
 	
 	no_draw_distance = _profileRadius * _profileRadius * NO_DRAW_DISTANCE_FACTOR * NO_DRAW_DISTANCE_FACTOR * 2.0;
@@ -892,10 +929,9 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 - (GLfloat) frustumRadius
 {
 	OOScalar exhaust_length = 0;
-	NSEnumerator *exEnum = nil;
-	OOExhaustPlumeEntity *exEnt = nil;
-	for (exEnum = [self exhaustEnumerator]; (exEnt = [exEnum nextObject]); )
+	for (const auto &exhaust : [self cxx_exhausts])
 	{
+		OOExhaustPlumeEntity *exEnt = exhaust.get();
 		if ([exEnt findCollisionRadius] > exhaust_length)
 		{
 			exhaust_length = [exEnt findCollisionRadius];
@@ -905,64 +941,63 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-- (BOOL) setUpOneSubentity:(NSDictionary *) subentDict
+- (BOOL) setUpOneSubentity:(id) subentDict	// shared selector (proposed ADR-0043)
 {
 	OOJS_PROFILE_ENTER
-	
-	NSString			*type = nil;
-	
-	type = oo::PListView(subentDict).get<NSString *>(@"type");
-	if ([type isEqualToString:@"flasher"])
+
+	const oo::PList		dict = oo::PListFrom(subentDict);
+	const std::optional<std::string> type = StringForKey(dict, "type");
+	if (type == "flasher")
 	{
 		return [self setUpOneFlasher:subentDict];
 	}
 	else
 	{
-		return [self setUpOneStandardSubentity:subentDict asTurret:[type isEqualToString:@"ball_turret"]];
+		return [self cxx_setUpOneStandardSubentity:dict asTurret:type == "ball_turret"];
 	}
-	
+
 	OOJS_PROFILE_EXIT
 }
 
 
-- (BOOL) setUpOneFlasher:(NSDictionary *) subentDict
+- (BOOL) setUpOneFlasher:(id) subentDict	// shared selector (proposed ADR-0043)
 {
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:oo::PListFrom(subentDict)];
-	[flasher setPosition:HPvector_multiply_scalar(oo::PListView(subentDict).get<HPVector>(@"position"),_scaleFactor)];
+	const oo::PList dict = oo::PListFrom(subentDict);
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:dict];
+	[flasher setPosition:HPvector_multiply_scalar(HPVectorForKey(dict, "position"),_scaleFactor)];
 	[flasher rescaleBy:_scaleFactor];
 	[self addSubEntity:flasher];
 	return YES;
 }
 
 
-- (BOOL) setUpOneStandardSubentity:(NSDictionary *)subentDict asTurret:(BOOL)asTurret
+- (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &)subentDict asTurret:(BOOL)asTurret
 {
 	ShipEntity			*subentity = nil;
-	NSString			*subentKey = nil;
 	HPVector				subPosition;
 	Quaternion			subOrientation;
-	
-	subentKey = oo::PListView(subentDict).get<NSString *>(@"subentity_key");
-	if (subentKey == nil) {
-		OOLog(@"setup.ship.badEntry.subentities",@"Failed to set up entity - no subentKey in %@",subentDict);
+
+	const std::optional<std::string> subentKey = StringForKey(subentDict, "subentity_key");
+	if (!subentKey.has_value()) {
+		OOLog(@"setup.ship.badEntry.subentities",@"Failed to set up entity - no subentKey in %@",oo::ObjectFromPList(subentDict));
 		return NO;
 	}
-	
-	if (!asTurret && [self isStation] && oo::PListView(subentDict).get<BOOL>(@"is_dock"))
+
+	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
 	{
-		subentity = [UNIVERSE newDockWithName:subentKey andScaleFactor:_scaleFactor];
+		subentity = [UNIVERSE newDockWithName:oo::NSStringFrom(*subentKey) andScaleFactor:_scaleFactor];
 	}
-	else 
+	else
 	{
-		subentity = [UNIVERSE newSubentityWithName:subentKey andScaleFactor:_scaleFactor];
+		subentity = [UNIVERSE newSubentityWithName:oo::NSStringFrom(*subentKey) andScaleFactor:_scaleFactor];
 	}
 	if (subentity == nil) {
-		OOLog(@"setup.ship.badEntry.subentities",@"Failed to set up entity %@",subentKey);
+		OOLog(@"setup.ship.badEntry.subentities",@"Failed to set up entity %@",oo::NSStringFrom(*subentKey));
 		return NO;
 	}
-	
-	subPosition = HPvector_multiply_scalar(oo::PListView(subentDict).get<HPVector>(@"position"),_scaleFactor);
-	subOrientation = oo::PListView(subentDict).get<Quaternion>(@"orientation");
+
+	subPosition = HPvector_multiply_scalar(HPVectorForKey(subentDict, "position"),_scaleFactor);
+	subOrientation = QuaternionForKey(subentDict, "orientation");
 	
 	[subentity setPosition:subPosition];
 	[subentity setOrientation:subOrientation];
@@ -973,9 +1008,9 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	if (asTurret)
 	{
 		[subentity setBehaviour:BEHAVIOUR_TRACK_AS_TURRET];
-		[subentity setWeaponRechargeRate:oo::PListView(subentDict).get<float>(@"fire_rate", TURRET_SHOT_FREQUENCY)];
-		[subentity setWeaponEnergy:oo::PListView(subentDict).get<float>(@"weapon_energy", TURRET_TYPICAL_ENERGY)];
-		[subentity setWeaponRange:oo::PListView(subentDict).get<float>(@"weapon_range", TURRET_SHOT_RANGE)];
+		[subentity setWeaponRechargeRate:subentDict.get<float>("fire_rate", TURRET_SHOT_FREQUENCY)];
+		[subentity setWeaponEnergy:subentDict.get<float>("weapon_energy", TURRET_TYPICAL_ENERGY)];
+		[subentity setWeaponRange:subentDict.get<float>("weapon_range", TURRET_SHOT_RANGE)];
 		[subentity setStatus: STATUS_ACTIVE];
 	}
 	else
@@ -983,7 +1018,8 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		[subentity setStatus:STATUS_INACTIVE];
 	}
 	
-	[subentity overrideScriptInfo:oo::PListView(subentDict).get<NSDictionary *>(@"script_info")];
+	const oo::PList *scriptInfoOverride = subentDict.find("script_info");
+	[subentity overrideScriptInfo:(scriptInfoOverride != nullptr && scriptInfoOverride->isDict()) ? oo::ObjectFromPList(*scriptInfoOverride) : nil];
 	
 	[self addSubEntity:subentity];
 	[subentity setSubIdx:_maxShipSubIdx];
@@ -994,20 +1030,20 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	bounding_box_add_vector(&totalBoundingBox, sebb.max);
 	bounding_box_add_vector(&totalBoundingBox, sebb.min);
 
-	if (!asTurret && [self isStation] && oo::PListView(subentDict).get<BOOL>(@"is_dock"))
+	if (!asTurret && [self isStation] && subentDict.get<bool>("is_dock"))
 	{
-		BOOL allow_docking = oo::PListView(subentDict).get<BOOL>(@"allow_docking", YES);
-		BOOL ddc = oo::PListView(subentDict).get<BOOL>(@"disallowed_docking_collides", NO);
-		BOOL allow_launching = oo::PListView(subentDict).get<BOOL>(@"allow_launching", YES);
+		BOOL allow_docking = subentDict.get<bool>("allow_docking", true);
+		BOOL ddc = subentDict.get<bool>("disallowed_docking_collides", false);
+		BOOL allow_launching = subentDict.get<bool>("allow_launching", true);
 		// do not include this key in OOShipRegistry; should never be set by shipdata
-		BOOL virtual_dock = oo::PListView(subentDict).get<BOOL>(@"_is_virtual_dock", NO);
+		BOOL virtual_dock = subentDict.get<bool>("_is_virtual_dock", false);
 		if (virtual_dock)
 		{
 			[(DockEntity *)subentity setVirtual];
 		}
 		
 		[(DockEntity *)subentity setDimensionsAndCorridor:allow_docking:ddc:allow_launching];
-		[subentity setDisplayName:oo::PListView(subentDict).get<NSString *>(@"dock_label", @"the docking bay")];
+		[subentity setDisplayName:oo::NSStringFrom(subentDict.get<std::string>("dock_label", "the docking bay"))];
 	}
 
 	[subentity release];
@@ -1156,9 +1192,9 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 - (void) clearSubEntities
 {
-	[subEntities makeObjectsPerformSelector:@selector(setOwner:) withObject:nil];	// Ensure backlinks are broken
-	[subEntities release];
-	subEntities = nil;
+	// Ensure backlinks are broken (last to first, as -makeObjectsPerformSelector:withObject: went)
+	for (auto sub = subEntities.rbegin(); sub != subEntities.rend(); ++sub)  [sub->get() setOwner:nil];
+	subEntities.clear();
 	
 	// reset size & mass!
 	collision_radius = [self findCollisionRadius];
@@ -1312,45 +1348,62 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-- (NSArray *) subEntities
+- (id) subEntities	// shared selector (proposed ADR-0043)
 {
-	return [[subEntities copy] autorelease];
+	if (subEntities.empty())  return nil;
+	return oo::NSArrayFromObjects(subEntities);
 }
 
 
 - (NSUInteger) subEntityCount
 {
-	return [subEntities count];
+	return subEntities.size();
 }
 
 
 - (BOOL) hasSubEntity:(Entity<OOSubEntity> *)sub
 {
-	return [subEntities containsObject:sub];
+	// Identity: a subentity's -isEqual: is NSObject's.
+	return std::find(subEntities.begin(), subEntities.end(), sub) != subEntities.end();
 }
 
 
-- (NSEnumerator *)subEntityEnumerator
+- (id) subEntityEnumerator	// shared selector (proposed ADR-0043)
 {
-	return [[self subEntities] objectEnumerator];
+	return [oo::NSArrayFromObjects(subEntities) objectEnumerator];
 }
 
 
-- (NSEnumerator *)shipSubEntityEnumerator
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_shipSubEntities
 {
-	return [[self subEntities] objectEnumeratorFilteredWithSelector:@selector(isShip)];
+	std::vector<oo::ObjCRef<ShipEntity *>> result;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isShip])  result.emplace_back((ShipEntity *)sub.get());
+	}
+	return result;
 }
 
 
-- (NSEnumerator *)flasherEnumerator
+- (id) flasherEnumerator	// shared selector (proposed ADR-0043)
 {
-	return [[self subEntities] objectEnumeratorFilteredWithSelector:@selector(isFlasher)];
+	std::vector<oo::ObjCRef<Entity *>> flashers;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isFlasher])  flashers.push_back(sub);
+	}
+	return [oo::NSArrayFromObjects(flashers) objectEnumerator];
 }
 
 
-- (NSEnumerator *)exhaustEnumerator
+- (std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>>) cxx_exhausts
 {
-	return [[self subEntities] objectEnumeratorFilteredWithSelector:@selector(isExhaust)];
+	std::vector<oo::ObjCRef<OOExhaustPlumeEntity *>> result;
+	for (const auto &sub : subEntities)
+	{
+		if ([sub.get() isExhaust])  result.emplace_back((OOExhaustPlumeEntity *)sub.get());
+	}
+	return result;
 }
 
 
@@ -1466,10 +1519,9 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 			hitEntity[0] = self;
 	}
 	
-	NSEnumerator	*subEnum = nil;
-	ShipEntity		*se = nil;
-	for (subEnum = [self shipSubEntityEnumerator]; (se = [subEnum nextObject]); )
+	for (const auto &sub : [self cxx_shipSubEntities])
 	{
+		ShipEntity *se = sub.get();
 		HPVector p0 = [se absolutePositionForSubentity];
 		Triangle ijk = [se absoluteIJKForSubentity];
 		u0 = HPVectorToVector(HPvector_between(p0, v0));
@@ -1526,8 +1578,9 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		}
 	}
 
-	//	Tell subentities, too
-	[subEntities makeObjectsPerformSelector:@selector(wasAddedToUniverse)];
+	//	Tell subentities, too (last to first, as -makeObjectsPerformSelector: went)
+	const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;
+	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasAddedToUniverse];
 	
 	[self resetExhaustPlumes];
 }
@@ -1535,7 +1588,9 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 - (void)wasRemovedFromUniverse
 {
-	[subEntities makeObjectsPerformSelector:@selector(wasRemovedFromUniverse)];
+	// last to first, as -makeObjectsPerformSelector: went
+	const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;
+	for (auto sub = subs.rbegin(); sub != subs.rend(); ++sub)  [sub->get() wasRemovedFromUniverse];
 }
 
 
@@ -2117,44 +2172,44 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	}
 	
 	// check prime subentities against the other's hull
-	NSArray *prime_subs = prime->subEntities;
-	if (prime_subs)
+	const std::vector<oo::ObjCRef<Entity *>> &prime_subs = prime->subEntities;
+	if (!prime_subs.empty())
 	{
-		NSUInteger i, n_subs = [prime_subs count];
+		NSUInteger i, n_subs = prime_subs.size();
 		for (i = 0; i < n_subs; i++)
 		{
-			Entity* se = [prime_subs objectAtIndex:i];
+			Entity* se = prime_subs[i].get();
 			if ([se isShip] && [se canCollide] && doOctreesCollide((ShipEntity*)se, other))
 				return other;
 		}
 	}
 
 	// check prime hull against the other's subentities
-	NSArray *other_subs = other->subEntities;
-	if (other_subs)
+	const std::vector<oo::ObjCRef<Entity *>> &other_subs = other->subEntities;
+	if (!other_subs.empty())
 	{
-		NSUInteger i, n_subs = [other_subs count];
+		NSUInteger i, n_subs = other_subs.size();
 		for (i = 0; i < n_subs; i++)
 		{
-			Entity* se = [other_subs objectAtIndex:i];
+			Entity* se = other_subs[i].get();
 			if ([se isShip] && [se canCollide] && doOctreesCollide(prime, (ShipEntity*)se))
 				return (ShipEntity*)se;
 		}
 	}
 	
 	// check prime subenties against the other's subentities
-	if ((prime_subs)&&(other_subs))
+	if ((!prime_subs.empty())&&(!other_subs.empty()))
 	{
-		NSUInteger i, n_osubs = [other_subs count];
+		NSUInteger i, n_osubs = other_subs.size();
 		for (i = 0; i < n_osubs; i++)
 		{
-			Entity* oe = [other_subs objectAtIndex:i];
+			Entity* oe = other_subs[i].get();
 			if ([oe isShip] && [oe canCollide])
 			{
-				NSUInteger j, n_psubs = [prime_subs count];
+				NSUInteger j, n_psubs = prime_subs.size();
 				for (j = 0; j <  n_psubs; j++)
 				{
-					Entity* pe = [prime_subs objectAtIndex:j];
+					Entity* pe = prime_subs[j].get();
 					if ([pe isShip] && [pe canCollide] && doOctreesCollide((ShipEntity*)pe, (ShipEntity*)oe))
 						return (ShipEntity*)oe;
 				}
@@ -2351,9 +2406,10 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if ([self subEntityCount] > 0)
 		{
 			// only copy the subent array if there are subentities
-			ShipEntity *se = nil;
-			foreach (se, [self subEntities])
+			const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+			for (const auto &sub : subs)
 			{
+				ShipEntity *se = (ShipEntity *)sub.get();
 				[se update:delta_t];
 				if ([se isShip])
 				{
@@ -2670,9 +2726,10 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			if ([self subEntityCount] > 0)
 			{
 				// only copy the subent array if there are subentities
-				ShipEntity *se = nil;
-				foreach (se, [self subEntities])
+				const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+				for (const auto &sub : subs)
 				{
+					ShipEntity *se = (ShipEntity *)sub.get();
 					[se update:delta_t];
 				}
 			}
@@ -2770,9 +2827,10 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if ([self subEntityCount] > 0)
 	{
 		// only copy the subent array if there are subentities
-		ShipEntity *se = nil;
-		foreach (se, [self subEntities])
+		const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+		for (const auto &sub : subs)
 		{
+			ShipEntity *se = (ShipEntity *)sub.get();
 			[se update:delta_t];
 			if ([se isShip])
 			{
@@ -3070,9 +3128,6 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 - (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType
 {
-	NSEnumerator				*subEntEnum = nil;
-	ShipEntity					*subEntity = nil;
-	
 	if ([[forward_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
 		[[aft_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
 		[[port_weapon_type identifier] isEqualToString:[weaponType identifier]] ||
@@ -3081,9 +3136,9 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		return YES;
 	}
 
-	for (subEntEnum = [self shipSubEntityEnumerator]; (subEntity = [subEntEnum nextObject]); )
+	for (const auto &subEntity : [self cxx_shipSubEntities])
 	{
-		if ([subEntity hasPrimaryWeapon:weaponType])  return YES;
+		if ([subEntity.get() hasPrimaryWeapon:weaponType])  return YES;
 	}
 	
 	return NO;
@@ -3264,11 +3319,10 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 				// if no forward weapon, and not carrying out a strict check, see if subentities have forward weapons, return the first one found.
 				if (isWeaponNone(weaponType) && !strict)
 				{
-					NSEnumerator	*subEntEnum = [self shipSubEntityEnumerator];
-					ShipEntity		*subEntity = nil;
-					while (isWeaponNone(weaponType) && (subEntity = [subEntEnum nextObject]))
+					for (const auto &subEntity : [self cxx_shipSubEntities])
 					{
-						weaponType = subEntity->forward_weapon_type;
+						if (!isWeaponNone(weaponType))  break;
+						weaponType = subEntity.get()->forward_weapon_type;
 					}
 				}
 				break;
@@ -4574,10 +4628,10 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (isWeaponNone(forward_weapon_real_type))
 	{
 		BOOL hasTurrets = NO;
-		NSEnumerator	*subEnum = [self shipSubEntityEnumerator];
-		ShipEntity		*se = nil;
-		while (isWeaponNone(forward_weapon_real_type) && (se = [subEnum nextObject]))
+		for (const auto &sub : [self cxx_shipSubEntities])
 		{
+			if (!isWeaponNone(forward_weapon_real_type))  break;
+			ShipEntity *se = sub.get();
 			forward_weapon_real_type = se->forward_weapon_type;
 			forward_weapon_real_temp = se->forward_weapon_temp;
 			if (se->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
@@ -6409,9 +6463,10 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		// save time by not copying the subentity array if it's empty - CIM
 		if ([self subEntityCount] > 0) 
 		{ 
-			Entity<OOSubEntity> *subEntity = nil;
-			foreach (subEntity, [self subEntities])
+			const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+			for (const auto &sub : subs)
 			{
+				Entity<OOSubEntity> *subEntity = (Entity<OOSubEntity> *)sub.get();
 				NSAssert3([subEntity owner] == self, @"Subentity ownership broke - %@ should be owned by %@ but is owned by %@.", subEntity, self, [subEntity owner]);
 				[subEntity drawSubEntityImmediate:immediate translucent:translucent];
 			}
@@ -6705,10 +6760,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	if (sub == nil)  return;
 	
-	if (subEntities == nil)  subEntities = [[NSMutableArray alloc] init];
 	sub->isSubEntity = YES;
 	// Order matters - need consistent state in setOwner:. -- Ahruman 2008-04-20
-	[subEntities addObject:sub];
+	subEntities.emplace_back(sub);
 	[sub setOwner:self];
 	
 	[self addSubentityToCollisionRadius:sub];
@@ -7025,11 +7079,9 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 - (NSUInteger) turretCount
 {
 	NSUInteger count = 0;
-	NSEnumerator *subEnum = [self shipSubEntityEnumerator];
-	ShipEntity *se = nil;
-	while ((se = [subEnum nextObject]))
+	for (const auto &se : [self cxx_shipSubEntities])
 	{
-		if ([se isTurret])
+		if ([se.get() isTurret])
 		{
 			count ++; 
 		}
@@ -9067,9 +9119,10 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	}
 
 	// rescale subentities
-	Entity<OOSubEntity>	*se = nil;
-	foreach (se, [self subEntities])
+	const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;	// a snapshot, as -subEntities copied
+	for (const auto &sub : subs)
 	{
+		Entity<OOSubEntity>	*se = (Entity<OOSubEntity> *)sub.get();
 		[se setPosition:HPvector_multiply_scalar([se position], factor)];
 		[se rescaleBy:factor writeToCache:writeToCache];
 	}
@@ -9430,9 +9483,9 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		}
 		
 		// Explode subentities.
-		ShipEntity		*se = nil;
-		foreach (se, [self shipSubEntityEnumerator])
+		for (const auto &sub : [self cxx_shipSubEntities])
 		{
+			ShipEntity *se = sub.get();
 			[se setSuppressExplosion:suppressExplosion];
 			[se becomeExplosion];
 		}
@@ -9501,14 +9554,14 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 - (void) removeExhaust:(OOExhaustPlumeEntity *)exhaust
 {
-	[subEntities removeObject:exhaust];
+	std::erase(subEntities, (Entity *)exhaust);
 	[exhaust setOwner:nil];
 }
 
 
 - (void) removeFlasher:(OOFlasherEntity *)flasher
 {
-	[subEntities removeObject:flasher];
+	std::erase(subEntities, (Entity *)flasher);
 	[flasher setOwner:nil];
 }
 
@@ -9521,7 +9574,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// TODO? Recalculating collision radius should increase collision testing efficiency,
 	// but for most ship models the difference would be marginal. -- Kaks 20110429
 	mass -= [sub mass]; // missing subents affect fuel charge rate, etc..
-	[subEntities removeObject:sub];
+	std::erase(subEntities, (Entity *)sub);
 }
 
 
@@ -9533,8 +9586,10 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	{
 		OOLogERR(@"shipEntity.bug.subEntityRetainUnderflow", @"Subentity of %@ died while still in subentity list! This is bad. Leaking subentity list to avoid crash. %@", self, @"This is an internal error, please report it.");
 		
-		// Leak subentity list.
-		subEntities = nil;
+		// Leak subentity list: one more retain each, so that emptying the list keeps them all alive,
+		// as dropping the array pointer did.
+		for (const auto &leaked : subEntities)  objc_retain(leaked.get());
+		subEntities.clear();
 	}
 }
 
@@ -9663,9 +9718,9 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 
 		[self releaseCargoPodsDebris];
 		
-		ShipEntity		*se = nil;
-		foreach (se, [self shipSubEntityEnumerator])
+		for (const auto &sub : [self cxx_shipSubEntities])
 		{
+			ShipEntity *se = sub.get();
 			[se setSuppressExplosion:suppressExplosion];
 			[se becomeExplosion];
 		}
@@ -9722,10 +9777,10 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	if (isWeaponNone(forward_weapon_type)) 
 	{ // must check subents
 		OOWeaponType forward_weapon_real_type = nil;
-		NSEnumerator	*subEnum = [self shipSubEntityEnumerator];
-		ShipEntity		*se = nil;
-		while (isWeaponNone(forward_weapon_real_type) && (se = [subEnum nextObject]))
+		for (const auto &sub : [self cxx_shipSubEntities])
 		{
+			if (!isWeaponNone(forward_weapon_real_type))  break;
+			ShipEntity *se = sub.get();
 			if (!isWeaponNone(se->forward_weapon_type))
 			{
 				forward_weapon_real_type = se->forward_weapon_type;
@@ -9794,11 +9849,9 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 
 - (void) resetExhaustPlumes
 {
-	OOExhaustPlumeEntity *exEnt = nil;
-	
-	foreach (exEnt, [self exhaustEnumerator])
+	for (const auto &exEnt : [self cxx_exhausts])
 	{
-		[exEnt resetPlume];
+		[exEnt.get() resetPlume];
 	}
 }
 
@@ -10059,7 +10112,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 		[self startTrackingCurve];
 	}
 	
-	[[self shipSubEntityEnumerator] makeObjectsPerformSelector:@selector(addTarget:) withObject:targetEntity];
+	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() addTarget:targetEntity];
 	if (![self isSubEntity])  [self doScriptEvent:OOJSID("shipTargetAcquired") withArgument:targetEntity];
 }
 
@@ -10071,7 +10124,7 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	// targetEntity == nil is currently only true for mounted player missiles. 
 	// we don't want to send lostTarget messages while the missile is mounted.
 	
-	[[self shipSubEntityEnumerator] makeObjectsPerformSelector:@selector(removeTarget:) withObject:targetEntity];
+	for (const auto &sub : [self cxx_shipSubEntities])  [sub.get() removeTarget:targetEntity];
 }
 
 
@@ -11527,10 +11580,9 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	if (direction == WEAPON_FACING_FORWARD)
 	{
 		//can we fire lasers from our subentities?
-		ShipEntity		*se = nil;
-		foreach (se, [self shipSubEntityEnumerator])
+		for (const auto &se : [self cxx_shipSubEntities])
 		{
-			if ([se fireSubentityLaserShot:range])
+			if ([se.get() fireSubentityLaserShot:range])
 			{
 				fired = YES;
 			}
@@ -11561,12 +11613,12 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 	{
 		// need to check subentities to avoid AI oddities
 		// will already have fired them by now, though
-		NSEnumerator	*subEnum = [self shipSubEntityEnumerator];
-		ShipEntity		*se = nil;
 		OOWeaponType 			weapon_type = nil;
 		BOOL hasTurrets = NO;
-		while (isWeaponNone(weapon_type) && (se = [subEnum nextObject]))
+		for (const auto &sub : [self cxx_shipSubEntities])
 		{
+			if (!isWeaponNone(weapon_type))  break;
+			ShipEntity *se = sub.get();
 			weapon_type = se->forward_weapon_type;
 			weapon_temp = se->forward_weapon_temp;
 			if (se->behaviour == BEHAVIOUR_TRACK_AS_TURRET)
@@ -13623,36 +13675,32 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 // Exposed to AI
 - (void) switchLightsOn
 {
-	OOFlasherEntity	*se = nil;
-	ShipEntity		*sub = nil;
-	
 	_lightsActive = YES;
-	
-	foreach (se, [self flasherEnumerator])
+
+	const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;
+	for (const auto &se : subs)
 	{
-		[se setActive:YES];
+		if ([se.get() isFlasher])  [(OOFlasherEntity *)se.get() setActive:YES];
 	}
-	foreach (sub, [self shipSubEntityEnumerator])
+	for (const auto &sub : [self cxx_shipSubEntities])
 	{
-		[sub switchLightsOn];
+		[sub.get() switchLightsOn];
 	}
 }
 
 // Exposed to AI
 - (void) switchLightsOff
 {
-	OOFlasherEntity	*se = nil;
-	ShipEntity		*sub = nil;
-	
 	_lightsActive = NO;
-	
-	foreach (se, [self flasherEnumerator])
+
+	const std::vector<oo::ObjCRef<Entity *>> subs = subEntities;
+	for (const auto &se : subs)
 	{
-		[se setActive:NO];
+		if ([se.get() isFlasher])  [(OOFlasherEntity *)se.get() setActive:NO];
 	}
-	foreach (sub, [self shipSubEntityEnumerator])
+	for (const auto &sub : [self cxx_shipSubEntities])
 	{
-		[sub switchLightsOff];
+		[sub.get() switchLightsOff];
 	}
 }
 
