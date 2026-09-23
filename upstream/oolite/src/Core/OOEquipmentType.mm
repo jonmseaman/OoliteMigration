@@ -423,7 +423,7 @@ static NSDictionary		*sMissilesRegistry = nil;
 }
 
 
-- (id) copyWithZone:(NSZone *)zone
+- (id) copyWithZone:(OOZone *)zone
 {
 	// OOEquipmentTypes are immutable.
 	return [self retain];
