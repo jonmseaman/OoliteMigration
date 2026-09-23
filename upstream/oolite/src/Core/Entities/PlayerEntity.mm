@@ -1065,18 +1065,22 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[result setObject:roleSystemList forKey:@"role_system_memory"];
 
 	// reputation
-	[result setObject:reputation forKey:@"reputation"];
-	
-	// initialise parcel reputations in dictionary if not set
-	int pGood = oo::PListView(reputation).get<int>(PARCEL_GOOD_KEY);
-	int pBad = oo::PListView(reputation).get<int>(PARCEL_BAD_KEY);
-	int pUnknown = oo::PListView(reputation).get<int>(PARCEL_UNKNOWN_KEY);
+	// initialise parcel reputations in dictionary if not set (the saved dictionary was the live one,
+	// so it is built after this backfill)
+	const auto reputationValue = [&](const std::string &key) {
+		const auto it = reputation.find(key);
+		return it != reputation.end() ? oo::PListGet<int>::from(&it->second, 0) : 0;	// -oo_intForKey:
+	};
+	int pGood = reputationValue(oo::StdString(PARCEL_GOOD_KEY));
+	int pBad = reputationValue(oo::StdString(PARCEL_BAD_KEY));
+	int pUnknown = reputationValue(oo::StdString(PARCEL_UNKNOWN_KEY));
 	if (pGood+pBad+pUnknown != MAX_CONTRACT_REP)
 	{
-		[reputation oo_setInteger:0 forKey:PARCEL_GOOD_KEY];
-		[reputation oo_setInteger:0 forKey:PARCEL_BAD_KEY];
-		[reputation oo_setInteger:MAX_CONTRACT_REP forKey:PARCEL_UNKNOWN_KEY];
+		reputation[oo::StdString(PARCEL_GOOD_KEY)] = oo::PList::signedInteger(0);
+		reputation[oo::StdString(PARCEL_BAD_KEY)] = oo::PList::signedInteger(0);
+		reputation[oo::StdString(PARCEL_UNKNOWN_KEY)] = oo::PList::signedInteger(MAX_CONTRACT_REP);
 	}
+	[result setObject:oo::ObjectFromPList(oo::PList(reputation)) forKey:@"reputation"];
 
 	// passengers
 	[result oo_setInteger:max_passengers forKey:@"max_passengers"];
@@ -1419,9 +1423,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 #endif
 	
 	// reputation
-	[reputation release];
-	reputation = [oo::PListView(dict).get<NSDictionary *>(@"reputation") mutableCopy];
-	if (reputation == nil)  reputation = [[NSMutableDictionary alloc] init];
+	const oo::PList savedReputation = oo::PListFrom([dict objectForKey:@"reputation"]);
+	reputation = savedReputation.isDict() ? *savedReputation.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	[self normaliseReputation];
 
 	// passengers and contracts
@@ -1856,8 +1859,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	target_memory_index = 0;
 	
-	DESTROY(dockingReport);
-	dockingReport = [[NSMutableString alloc] init];
+	dockingReport.clear();
 	[hud resetGuis:[NSDictionary dictionaryWithObjectsAndKeys:[NSDictionary dictionary], @"message_gui",
 														[NSDictionary dictionary], @"comm_log_gui", nil]];
 	
@@ -1996,17 +1998,17 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[[UNIVERSE gameView] resetTypedString];
 	found_system_id = -1;
 	
-	[reputation release];
-	reputation = [[NSMutableDictionary alloc] initWithCapacity:6];
-	[reputation oo_setInteger:0 forKey:CONTRACTS_GOOD_KEY];
-	[reputation oo_setInteger:0 forKey:CONTRACTS_BAD_KEY];
-	[reputation oo_setInteger:MAX_CONTRACT_REP forKey:CONTRACTS_UNKNOWN_KEY];
-	[reputation oo_setInteger:0 forKey:PASSAGE_GOOD_KEY];
-	[reputation oo_setInteger:0 forKey:PASSAGE_BAD_KEY];
-	[reputation oo_setInteger:MAX_CONTRACT_REP forKey:PASSAGE_UNKNOWN_KEY];
-	[reputation oo_setInteger:0 forKey:PARCEL_GOOD_KEY];
-	[reputation oo_setInteger:0 forKey:PARCEL_BAD_KEY];
-	[reputation oo_setInteger:MAX_CONTRACT_REP forKey:PARCEL_UNKNOWN_KEY];
+	reputation = oo::PList::Dict{
+		{ oo::StdString(CONTRACTS_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(CONTRACTS_BAD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(CONTRACTS_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+		{ oo::StdString(PASSAGE_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(PASSAGE_BAD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(PASSAGE_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+		{ oo::StdString(PARCEL_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(PARCEL_BAD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(PARCEL_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+	};
 	
 	DESTROY(roleWeights);
 	roleWeights = [[NSMutableArray alloc] initWithCapacity:8];
@@ -2218,8 +2220,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	scoopsActive = NO;
 	
-	[dockingReport release];
-	dockingReport = [[NSMutableString alloc] init];
+	dockingReport.clear();
 	
 	[shipAI release];
 	shipAI = [[AI alloc] initWithStateMachine:PLAYER_DOCKING_AI_NAME andState:@"GLOBAL"];
@@ -2406,7 +2407,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(lastTextKey);
 	
 	DESTROY(marketSelectedCommodity);
-	DESTROY(reputation);
 	DESTROY(roleWeights);
 	DESTROY(roleWeightFlags);
 	DESTROY(roleSystemList);
@@ -2435,7 +2435,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(_customViews);
 	DESTROY(lastShot);
 
-	DESTROY(dockingReport);
 	
 	DESTROY(_jumpCause);
 
@@ -12901,7 +12900,7 @@ static NSString *last_outfitting_key=nil;
 	OOScript		*theScript;
 
 	// Check for the presence of report messages first.
-	if (gui_screen != GUI_SCREEN_MISSION && [dockingReport length] > 0 && [self isDocked] && ![[self dockedStation] suppressArrivalReports])
+	if (gui_screen != GUI_SCREEN_MISSION && !dockingReport.empty() && [self isDocked] && ![[self dockedStation] suppressArrivalReports])
 	{
 		[self setGuiToDockingReportScreen];	// go here instead!
 		[[UNIVERSE messageGUI] clear];
