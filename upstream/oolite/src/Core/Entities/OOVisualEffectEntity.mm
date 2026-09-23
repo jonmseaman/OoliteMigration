@@ -52,6 +52,7 @@ MA 02110-1301, USA.
 #import "OOFilteringEnumerator.h"
 
 #import "MyOpenGLView.h"
+#import "OOFoundationBridge.h"
 
 @interface OOVisualEffectEntity (Private)
 
@@ -112,12 +113,12 @@ MA 02110-1301, USA.
 	NSString *modelName = oo::PListView(effectDict).get<NSString *>(@"model");
 	if (modelName != nil)
 	{
-		OOMesh *mesh = [OOMesh meshWithName:modelName
-								   cacheKey:_effectKey
-						 materialDictionary:oo::PListView(effectDict).get<NSDictionary *>(@"materials")
-						  shadersDictionary:oo::PListView(effectDict).get<NSDictionary *>(@"shaders")
+		OOMesh *mesh = [OOMesh meshWithName:oo::StdString(modelName)
+								   cacheKey:oo::OptionalString(_effectKey)
+						 materialDictionary:oo::PListFrom(oo::PListView(effectDict).get<NSDictionary *>(@"materials"))
+						  shadersDictionary:oo::PListFrom(oo::PListView(effectDict).get<NSDictionary *>(@"shaders"))
 									 smooth:oo::PListView(effectDict).get<BOOL>(@"smooth", NO)
-							   shaderMacros:OODefaultShipShaderMacros()
+							   shaderMacros:oo::PListFrom(OODefaultShipShaderMacros())
 						shaderBindingTarget:self];
 		if (mesh == nil)  return NO;
 		[self setMesh:mesh];
@@ -289,7 +290,7 @@ MA 02110-1301, USA.
 
 - (BOOL) setUpOneFlasher:(NSDictionary *) subentDict
 {
-	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:subentDict];
+	OOFlasherEntity *flasher = [OOFlasherEntity flasherWithDictionary:oo::PListFrom(subentDict)];
 	[flasher setPosition:oo::PListView(subentDict).get<HPVector>(@"position")];
 	[self addSubEntity:flasher];
 	return YES;
@@ -823,7 +824,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};
 		if (length > 1)
 		{
 			NSArray *iconData = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(beaconCode);
-			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:beaconCode];
+			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconData) outlineWidth:0.5 name:oo::StdString(beaconCode)];
 		}
 		
 		if (_beaconDrawable == nil)

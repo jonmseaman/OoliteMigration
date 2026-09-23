@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOTexture.h"
 #import "OOPListView.h"
 #import "HeadUpDisplay.h"
+#import "OOFoundationBridge.h"
 
 @interface PlayerEntity (StickMapperInternal)
 
@@ -62,7 +63,7 @@ MA 02110-1301, USA.
 {
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
-	NSArray		*stickList = [stickHandler listSticks];
+	NSArray		*stickList = oo::NSArrayFromStrings([stickHandler listSticks]);
 	unsigned		stickCount = [stickList count];
 	unsigned		i;
 	
@@ -294,7 +295,7 @@ MA 02110-1301, USA.
 	}
 	else 
 	{
-		[stickHandler setFunction:function withDict:hwDict];
+		[stickHandler setFunction:function withDict:oo::PListFrom(hwDict)];
 		[self checkCustomEquipButtons:hwDict ignore:-1];
 		[stickHandler saveStickSettings];
 	}
@@ -415,8 +416,8 @@ MA 02110-1301, USA.
 	{
 		stickFunctions = [[self stickFunctionList] retain];
 	}
-	NSDictionary *assignedAxes = [stickHandler axisFunctions];
-	NSDictionary *assignedButs = [stickHandler buttonFunctions];
+	NSDictionary *assignedAxes = oo::ObjectFromPList([stickHandler axisFunctions]);
+	NSDictionary *assignedButs = oo::ObjectFromPList([stickHandler buttonFunctions]);
 	
 	NSUInteger i, n_functions = [stickFunctions count];
 	NSInteger n_rows, start_row, previous = 0;

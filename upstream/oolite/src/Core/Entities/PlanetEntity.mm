@@ -43,6 +43,7 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OODebugFlags.h"
 #import "OOGraphicsResetManager.h"
+#include "oofnd/StdLib.hpp"
 
 
 #if !OOLITE_MAC_OS_X
@@ -55,7 +56,9 @@ MA 02110-1301, USA.
 static Vector base_vertex_array[MAX_PLANET_VERTICES];
 static int base_terrain_array[MAX_PLANET_VERTICES];
 static unsigned next_free_vertex;
-static NSMapTable *sEdgeToVertex;
+// Edge key ((va << 16) | vb) -> vertex index + 1. Was an integer-keyed map table (bead oo-3rb.20);
+// never iterated.
+static std::unordered_map<uintptr_t, uintptr_t> *sEdgeToVertex;
 
 static int n_triangles[MAX_SUBDIVIDE];
 static int triangle_start[MAX_SUBDIVIDE];
@@ -1217,7 +1220,7 @@ static const BaseFace kTexturedFaces[][3] =
 	{
 		if (sEdgeToVertex != NULL)
 		{
-			NSFreeMapTable(sEdgeToVertex);
+			delete sEdgeToVertex;
 			sEdgeToVertex = NULL;
 		}
 		lastOneWasTextured = isTextured;
@@ -1225,7 +1228,8 @@ static const BaseFace kTexturedFaces[][3] =
 	
 	if (sEdgeToVertex == NULL)
 	{
-		sEdgeToVertex = NSCreateMapTable(NSIntegerMapKeyCallBacks, NSIntegerMapValueCallBacks, 7680);	// make a new one
+		sEdgeToVertex = new std::unordered_map<uintptr_t, uintptr_t>;	// make a new one
+		sEdgeToVertex->reserve(7680);
 		next_free_vertex = 0;
 		
 		const Vector *vertices = NULL;
@@ -1322,8 +1326,9 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 		va = vb;
 		vb = temp;
 	}
-	void *key = (void *)(((uintptr_t)va << 16) | vb);
-	uintptr_t num = (uintptr_t)NSMapGet(sEdgeToVertex, key);
+	uintptr_t key = ((uintptr_t)va << 16) | vb;
+	auto found = sEdgeToVertex->find(key);
+	uintptr_t num = (found != sEdgeToVertex->end()) ? found->second : 0;
 	if (num != 0)
 	{
 		// Overall cache hit rate is just over 83 %.
@@ -1355,7 +1360,7 @@ static unsigned baseVertexIndexForEdge(GLushort va, GLushort vb, BOOL textured)
 		
 		// add new edge to the look-up
 		num = vindex + 1;
-		NSMapInsertKnownAbsent(sEdgeToVertex, key, (void *)num);
+		sEdgeToVertex->emplace(key, num);
 		return vindex;
 	}
 }

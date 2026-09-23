@@ -29,6 +29,64 @@ def norm(path, directory):
     return os.path.normcase(os.path.normpath(joined)).replace("\\", "/")
 
 
+def split_windows(command):
+    """Split a command line by the MSVC runtime's rules (CommandLineToArgvW).
+
+    This is the quoting meson uses for compile_commands.json on Windows: every
+    argument in double quotes, an embedded quote escaped as \\", backslashes
+    literal unless they precede a quote.  2n backslashes before a quote give n
+    backslashes and the quote delimits; 2n+1 give n backslashes and a literal
+    quote.  shlex(posix=False) knows none of this: it cut
+    "-DOO_VERSION_FULL=\\"0.0.0-fleet\\"" at the escaped quote (bead oo-3rb.97).
+    """
+    args = []
+    current = []
+    in_arg = False
+    in_quotes = False
+    index = 0
+    length = len(command)
+    while index < length:
+        char = command[index]
+        if char == "\\":
+            run = index
+            while run < length and command[run] == "\\":
+                run += 1
+            count = run - index
+            if run < length and command[run] == '"':
+                current.append("\\" * (count // 2))
+                if count % 2:
+                    current.append('"')
+                    run += 1
+                index = run
+            else:
+                current.append("\\" * count)
+                index = run
+            in_arg = True
+            continue
+        if char == '"':
+            in_quotes = not in_quotes
+            in_arg = True
+        elif char in " \t" and not in_quotes:
+            if in_arg:
+                args.append("".join(current))
+                current = []
+                in_arg = False
+        else:
+            current.append(char)
+            in_arg = True
+        index += 1
+    if in_arg:
+        args.append("".join(current))
+    return args
+
+
+def split_command(command):
+    """meson quotes for the host: Windows rules on a native Windows python, POSIX sh otherwise."""
+    if os.name == "nt":
+        return split_windows(command)
+    return shlex.split(command, posix=True)
+
+
 def main():
     if len(sys.argv) != 3:
         sys.stderr.write("usage: tier-a-compdb.py <compile_commands.json> <source file>\n")
@@ -50,9 +108,7 @@ def main():
         return 2
 
     # meson writes "command"; support "arguments" too, in case the generator changes.
-    argv = entry.get("arguments") or shlex.split(entry["command"], posix=False)
-    # shlex with posix=False keeps the surrounding quotes meson emits.
-    argv = [a[1:-1] if len(a) > 1 and a[0] == a[-1] == '"' else a for a in argv]
+    argv = entry.get("arguments") or split_command(entry["command"])
 
     source_in_db = entry["file"]
     output = entry.get("output", "")
