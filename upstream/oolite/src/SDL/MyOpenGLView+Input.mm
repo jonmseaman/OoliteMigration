@@ -34,9 +34,6 @@ std::string FormattedCharacter(unsigned code)
 
 #define kOOLogUnconvertedNSLog @"unclassified.MyOpenGLView"
 
-static NSString * kOOLogKeyUp				= @"input.keyMapping.keyPress.keyUp";
-static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
-
 @interface MyOpenGLView (InputPrivate)
 
 @end
@@ -48,16 +45,19 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
 	// load in our keyboard scancode mappings
 #if OOLITE_WINDOWS	
-	NSDictionary *kmap = [NSDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:@"keymappings_windows.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
+	const oo::PList kmap = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"keymappings_windows.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]);
 #else
-	NSDictionary *kmap = [NSDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:@"keymappings_linux.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
+	const oo::PList kmap = oo::PListFrom([ResourceManager dictionaryFromFilesNamed:@"keymappings_linux.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]);
 #endif
-	// get the stored keyboard code from preferences
-	NSString *kbd = oo::PListView(prefs).get<NSString *>(@"keyboard-code", @"default");
-	NSDictionary *subset = [kmap objectForKey:kbd];
+	// get the stored keyboard code from preferences (oo_stringForKey:defaultValue: over the value)
+	const oo::PList kbdValue = oo::PListFrom([prefs objectForKey:@"keyboard-code"]);
+	const std::string kbd = oo::PListGet<std::string>::from(kbdValue.isNull() ? nullptr : &kbdValue, "default");
+	const oo::PList *subset = kmap.find(kbd);
+	const oo::PList *normal = (subset != nullptr) ? subset->find("mapping_normal") : nullptr;
+	const oo::PList *shifted = (subset != nullptr) ? subset->find("mapping_shifted") : nullptr;
 
-	keyMappings_normal = oo::PListFrom([subset objectForKey:@"mapping_normal"]);
-	keyMappings_shifted = oo::PListFrom([subset objectForKey:@"mapping_shifted"]);
+	keyMappings_normal = (normal != nullptr) ? *normal : oo::PList();
+	keyMappings_shifted = (shifted != nullptr) ? *shifted : oo::PList();
 }
 - (void) autoShowMouse
 {
@@ -532,7 +532,7 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 					[self handleStringInput:kbd_event keyID:key_id];
 				}
 
-				OOLog(kOOLogKeyDown, @"Keydown scancode = %d, unicode = %i", scan_code, key_id);
+				OOLog(@"input.keyMapping.keyPress.keyDown", @"Keydown scancode = %d, unicode = %i", scan_code, key_id);
 
 				if (key_id > 0 && key_id <= [self numKeys]) 
 				{
@@ -576,8 +576,8 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 					default:
 						;
 				}
-				OOLog(kOOLogKeyUp, @"Keyup scancode = %d, unicode = %i, character = %c, shift = %d, ctrl = %d, alt = %d", scan_code, key_id, key_id, shift, ctrl, opt);
-				//OOLog(kOOLogKeyUp, @"Keyup scancode = %d, shift = %d, ctrl = %d, alt = %d", scan_code, shift, ctrl, opt);
+				OOLog(@"input.keyMapping.keyPress.keyUp", @"Keyup scancode = %d, unicode = %i, character = %c, shift = %d, ctrl = %d, alt = %d", scan_code, key_id, key_id, shift, ctrl, opt);
+				//OOLog(@"input.keyMapping.keyPress.keyUp", @"Keyup scancode = %d, shift = %d, ctrl = %d, alt = %d", scan_code, shift, ctrl, opt);
 				
 				// translate scancode to unicode equiv
 				switch (kbd_event->key) 
@@ -706,7 +706,7 @@ static NSString * kOOLogKeyDown			= @"input.keyMapping.keyPress.keyDown";
 	SDL_Keycode key=kbd_event->key;
 
 	// Del, Backspace
-	// lengths in UTF-16 units, as the NSMutableString buffer counted them
+	// lengths in UTF-16 units, as the old mutable-string buffer counted them
 	const std::size_t typedLength = oo::utf8ToUtf16(typedString).size();
 	if((key == SDLK_BACKSPACE || key == SDLK_DELETE) && typedLength > 0)
 	{
