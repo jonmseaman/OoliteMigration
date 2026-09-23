@@ -1065,27 +1065,31 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[result setObject:roleSystemList forKey:@"role_system_memory"];
 
 	// reputation
-	[result setObject:reputation forKey:@"reputation"];
-	
-	// initialise parcel reputations in dictionary if not set
-	int pGood = oo::PListView(reputation).get<int>(PARCEL_GOOD_KEY);
-	int pBad = oo::PListView(reputation).get<int>(PARCEL_BAD_KEY);
-	int pUnknown = oo::PListView(reputation).get<int>(PARCEL_UNKNOWN_KEY);
+	// initialise parcel reputations in dictionary if not set (the saved dictionary was the live one,
+	// so it is built after this backfill)
+	const auto reputationValue = [&](const std::string &key) {
+		const auto it = reputation.find(key);
+		return it != reputation.end() ? oo::PListGet<int>::from(&it->second, 0) : 0;	// -oo_intForKey:
+	};
+	int pGood = reputationValue(oo::StdString(PARCEL_GOOD_KEY));
+	int pBad = reputationValue(oo::StdString(PARCEL_BAD_KEY));
+	int pUnknown = reputationValue(oo::StdString(PARCEL_UNKNOWN_KEY));
 	if (pGood+pBad+pUnknown != MAX_CONTRACT_REP)
 	{
-		[reputation oo_setInteger:0 forKey:PARCEL_GOOD_KEY];
-		[reputation oo_setInteger:0 forKey:PARCEL_BAD_KEY];
-		[reputation oo_setInteger:MAX_CONTRACT_REP forKey:PARCEL_UNKNOWN_KEY];
+		reputation[oo::StdString(PARCEL_GOOD_KEY)] = oo::PList::signedInteger(0);
+		reputation[oo::StdString(PARCEL_BAD_KEY)] = oo::PList::signedInteger(0);
+		reputation[oo::StdString(PARCEL_UNKNOWN_KEY)] = oo::PList::signedInteger(MAX_CONTRACT_REP);
 	}
+	[result setObject:oo::ObjectFromPList(oo::PList(reputation)) forKey:@"reputation"];
 
 	// passengers
 	[result oo_setInteger:max_passengers forKey:@"max_passengers"];
-	[result setObject:passengers forKey:@"passengers"];
-	[result setObject:passenger_record forKey:@"passenger_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(passengers)) forKey:@"passengers"];
+	[result setObject:oo::ObjectFromPList(oo::PList(passenger_record)) forKey:@"passenger_record"];
 
 	// parcels
-	[result setObject:parcels forKey:@"parcels"];
-	[result setObject:parcel_record forKey:@"parcel_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(parcels)) forKey:@"parcels"];
+	[result setObject:oo::ObjectFromPList(oo::PList(parcel_record)) forKey:@"parcel_record"];
 	
 	//specialCargo
 	if (specialCargo)  [result setObject:specialCargo forKey:@"special_cargo"];
@@ -1419,22 +1423,19 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 #endif
 	
 	// reputation
-	[reputation release];
-	reputation = [oo::PListView(dict).get<NSDictionary *>(@"reputation") mutableCopy];
-	if (reputation == nil)  reputation = [[NSMutableDictionary alloc] init];
+	const oo::PList savedReputation = oo::PListFrom([dict objectForKey:@"reputation"]);
+	reputation = savedReputation.isDict() ? *savedReputation.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	[self normaliseReputation];
 
 	// passengers and contracts
-	[parcels release];
-	[parcel_record release];
-	[passengers release];
-	[passenger_record release];
 	[contracts release];
 	[contract_record release];
 	
 	max_passengers = oo::PListView(dict).get<int>(@"max_passengers", 0);
-	passengers = [oo::PListView(dict).get<NSArray *>(@"passengers") mutableCopy];
-	passenger_record = [oo::PListView(dict).get<NSDictionary *>(@"passenger_record") mutableCopy];
+	const oo::PList savedPassengers = oo::PListFrom([dict objectForKey:@"passengers"]);
+	passengers = savedPassengers.isArray() ? *savedPassengers.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
+	const oo::PList savedPassengerRecord = oo::PListFrom([dict objectForKey:@"passenger_record"]);
+	passenger_record = savedPassengerRecord.isDict() ? *savedPassengerRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 	/* Note: contracts from older savegames will have ints in the commodity.
 	 * Need to fix this up */
 	contracts = [oo::PListView(dict).get<NSArray *>(@"contracts") mutableCopy];
@@ -1465,17 +1466,15 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 
 	contract_record = [oo::PListView(dict).get<NSDictionary *>(@"contract_record") mutableCopy];
-	parcels = [oo::PListView(dict).get<NSArray *>(@"parcels") mutableCopy];
-	parcel_record = [oo::PListView(dict).get<NSDictionary *>(@"parcel_record") mutableCopy];
+	const oo::PList savedParcels = oo::PListFrom([dict objectForKey:@"parcels"]);
+	parcels = savedParcels.isArray() ? *savedParcels.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
+	const oo::PList savedParcelRecord = oo::PListFrom([dict objectForKey:@"parcel_record"]);
+	parcel_record = savedParcelRecord.isDict() ? *savedParcelRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 
 	
 	
-	if (passengers == nil)  passengers = [[NSMutableArray alloc] init];
-	if (passenger_record == nil)  passenger_record = [[NSMutableDictionary alloc] init];
 	if (contracts == nil)  contracts = [[NSMutableArray alloc] init];
 	if (contract_record == nil)  contract_record = [[NSMutableDictionary alloc] init];
-	if (parcels == nil)  parcels = [[NSMutableArray alloc] init];
-	if (parcel_record == nil)  parcel_record = [[NSMutableDictionary alloc] init];
 	
 	//specialCargo
 	[specialCargo release];
@@ -1511,13 +1510,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	max_cargo -= max_passengers * PASSENGER_BERTH_SPACE;
 	
 	// Do we have extra passengers?
-	if (passengers && ([passengers count] > max_passengers))
+	if (passengers.size() > max_passengers)
 	{
-		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.passengers", @"player ship %@ had more passengers (%zu) than passenger berths (%u). Removing extra passengers.", [self name], [passengers count], max_passengers);
-		for (NSInteger i = (NSInteger)[passengers count] - 1; i >= max_passengers; i--)
+		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.passengers", @"player ship %@ had more passengers (%zu) than passenger berths (%u). Removing extra passengers.", [self name], passengers.size(), max_passengers);
+		for (NSInteger i = (NSInteger)passengers.size() - 1; i >= max_passengers; i--)
 		{
-			[passenger_record removeObjectForKey:oo::PListView(oo::PListView(passengers).at<NSDictionary *>(i)).get<NSString *>(PASSENGER_KEY_NAME)];
-			[passengers removeObjectAtIndex:i];
+			const oo::PList *passengerName = passengers[i].find(oo::StdString(PASSENGER_KEY_NAME));
+			if (passengerName != nullptr && (passengerName->isString() || passengerName->isNumber()))  passenger_record.erase(passengers[i].get<std::string>(oo::StdString(PASSENGER_KEY_NAME)));	// -oo_stringForKey:
+			passengers.erase(passengers.begin() + i);
 		}
 	}
 	
@@ -1856,8 +1856,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	target_memory_index = 0;
 	
-	DESTROY(dockingReport);
-	dockingReport = [[NSMutableString alloc] init];
+	dockingReport.clear();
 	[hud resetGuis:[NSDictionary dictionaryWithObjectsAndKeys:[NSDictionary dictionary], @"message_gui",
 														[NSDictionary dictionary], @"comm_log_gui", nil]];
 	
@@ -1996,17 +1995,17 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[[UNIVERSE gameView] resetTypedString];
 	found_system_id = -1;
 	
-	[reputation release];
-	reputation = [[NSMutableDictionary alloc] initWithCapacity:6];
-	[reputation oo_setInteger:0 forKey:CONTRACTS_GOOD_KEY];
-	[reputation oo_setInteger:0 forKey:CONTRACTS_BAD_KEY];
-	[reputation oo_setInteger:MAX_CONTRACT_REP forKey:CONTRACTS_UNKNOWN_KEY];
-	[reputation oo_setInteger:0 forKey:PASSAGE_GOOD_KEY];
-	[reputation oo_setInteger:0 forKey:PASSAGE_BAD_KEY];
-	[reputation oo_setInteger:MAX_CONTRACT_REP forKey:PASSAGE_UNKNOWN_KEY];
-	[reputation oo_setInteger:0 forKey:PARCEL_GOOD_KEY];
-	[reputation oo_setInteger:0 forKey:PARCEL_BAD_KEY];
-	[reputation oo_setInteger:MAX_CONTRACT_REP forKey:PARCEL_UNKNOWN_KEY];
+	reputation = oo::PList::Dict{
+		{ oo::StdString(CONTRACTS_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(CONTRACTS_BAD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(CONTRACTS_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+		{ oo::StdString(PASSAGE_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(PASSAGE_BAD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(PASSAGE_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+		{ oo::StdString(PARCEL_GOOD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(PARCEL_BAD_KEY), oo::PList::signedInteger(0) },
+		{ oo::StdString(PARCEL_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
+	};
 	
 	DESTROY(roleWeights);
 	roleWeights = [[NSMutableArray alloc] initWithCapacity:8];
@@ -2042,20 +2041,16 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	flightYaw = 0.0f;
 
 	max_passengers = 0;
-	[passengers release];
-	passengers = [[NSMutableArray alloc] init];
-	[passenger_record release];
-	passenger_record = [[NSMutableDictionary alloc] init];
+	passengers.clear();
+	passenger_record.clear();
 	
 	[contracts release];
 	contracts = [[NSMutableArray alloc] init];
 	[contract_record release];
 	contract_record = [[NSMutableDictionary alloc] init];
 
-	[parcels release];
-	parcels = [[NSMutableArray alloc] init];
-	[parcel_record release];
-	parcel_record = [[NSMutableDictionary alloc] init];
+	parcels.clear();
+	parcel_record.clear();
 	
 	[missionDestinations release];
 	missionDestinations = [[NSMutableDictionary alloc] init];
@@ -2218,8 +2213,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	scoopsActive = NO;
 	
-	[dockingReport release];
-	dockingReport = [[NSMutableString alloc] init];
+	dockingReport.clear();
 	
 	[shipAI release];
 	shipAI = [[AI alloc] initWithStateMachine:PLAYER_DOCKING_AI_NAME andState:@"GLOBAL"];
@@ -2406,16 +2400,11 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(lastTextKey);
 	
 	DESTROY(marketSelectedCommodity);
-	DESTROY(reputation);
 	DESTROY(roleWeights);
 	DESTROY(roleWeightFlags);
 	DESTROY(roleSystemList);
-	DESTROY(passengers);
-	DESTROY(passenger_record);
 	DESTROY(contracts);
 	DESTROY(contract_record);
-	DESTROY(parcels);
-	DESTROY(parcel_record);
 	DESTROY(missionDestinations);
 	DESTROY(shipyard_record);
 	
@@ -2435,7 +2424,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(_customViews);
 	DESTROY(lastShot);
 
-	DESTROY(dockingReport);
 	
 	DESTROY(_jumpCause);
 
@@ -7541,23 +7529,21 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	if (contracts)
 		[contracts removeAllObjects];
 
-	if (parcels)
-		[parcels removeAllObjects];
+	parcels.clear();
 	
 	// remove any mission destinations for the old galaxy
 	if (missionDestinations)
 		[missionDestinations removeAllObjects];
 	
 	// expire passenger contracts for the old galaxy
-	if (passengers)
 	{
 		unsigned i;
-		for (i = 0; i < [passengers count]; i++)
+		for (i = 0; i < passengers.size(); i++)
 		{
 			// set the expected arrival time to now, so they storm off the ship at the first port
-			NSMutableDictionary* passenger_info = [NSMutableDictionary dictionaryWithDictionary:oo::PListView(passengers).at<NSDictionary *>(i)];
-			[passenger_info setObject:[NSNumber numberWithDouble:ship_clock] forKey:CONTRACT_KEY_ARRIVAL_TIME];
-			[passengers replaceObjectAtIndex:i withObject:passenger_info];
+			oo::PList::Dict passenger_info = passengers[i].isDict() ? *passengers[i].getIf<oo::PList::Dict>() : oo::PList::Dict();
+			passenger_info[oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)] = oo::PList(ship_clock);	// +numberWithDouble:
+			passengers[i] = oo::PList(std::move(passenger_info));
 		}
 	}
 
@@ -8456,13 +8442,13 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (NSArray *) passengerListForScripting
 {
-	return [self contractsListForScriptingFromArray:passengers forCargo:NO];
+	return [self contractsListForScriptingFromArray:oo::ObjectFromPList(oo::PList(passengers)) forCargo:NO];
 }
 
 
 - (NSArray *) parcelListForScripting
 {
-	return [self contractsListForScriptingFromArray:parcels forCargo:NO];
+	return [self contractsListForScriptingFromArray:oo::ObjectFromPList(oo::PList(parcels)) forCargo:NO];
 }
 
 
@@ -8726,15 +8712,15 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	OOSystemID sysid;
 	NSDictionary *marker;
 
-	for (i = 0; i < [passengers count]; i++)
+	for (i = 0; i < passengers.size(); i++)
 	{
-		sysid = oo::PListView(oo::PListView(passengers).at<NSDictionary *>(i)).get<unsigned char>(CONTRACT_KEY_DESTINATION);
+		sysid = passengers[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
 		marker = [self passengerContractMarker:sysid];
 		[self prepareMarkedDestination:destinations:marker];
 	}
-	for (i = 0; i < [parcels count]; i++)
+	for (i = 0; i < parcels.size(); i++)
 	{
-		sysid = oo::PListView(oo::PListView(parcels).at<NSDictionary *>(i)).get<unsigned char>(CONTRACT_KEY_DESTINATION);
+		sysid = parcels[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
 		marker = [self parcelContractMarker:sysid];
 		[self prepareMarkedDestination:destinations:marker];
 	}
@@ -11815,13 +11801,13 @@ static NSString *last_outfitting_key=nil;
 
 - (NSUInteger) parcelCount
 {
-	return [parcels count];
+	return parcels.size();
 }
 
 
 - (NSUInteger) passengerCount
 {
-	return [passengers count];
+	return passengers.size();
 }
 
 
@@ -12901,7 +12887,7 @@ static NSString *last_outfitting_key=nil;
 	OOScript		*theScript;
 
 	// Check for the presence of report messages first.
-	if (gui_screen != GUI_SCREEN_MISSION && [dockingReport length] > 0 && [self isDocked] && ![[self dockedStation] suppressArrivalReports])
+	if (gui_screen != GUI_SCREEN_MISSION && !dockingReport.empty() && [self isDocked] && ![[self dockedStation] suppressArrivalReports])
 	{
 		[self setGuiToDockingReportScreen];	// go here instead!
 		[[UNIVERSE messageGUI] clear];
