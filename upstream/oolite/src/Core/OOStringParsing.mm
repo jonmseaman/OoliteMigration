@@ -249,48 +249,49 @@ std::string cxx_StringFromRandomSeed(Random_Seed seed)
 }
 
 
-NSString *OOPadStringToEms(NSString * string, float padEms)
+std::string cxx_OOPadStringToEms(const std::string &string, float padEms)
 {
-	NSString		*result = string;
-	float numEms = padEms - OOStringWidthInEm(result);
+	// OOStringWidthInEm (HeadUpDisplay) is an unmigrated callee: convert at the calls.
+	std::string		result = string;
+	float numEms = padEms - OOStringWidthInEm(oo::NSStringFrom(result));
 	if (numEms>0)
 	{
 		numEms /= OOStringWidthInEm(@" "); // start with wide space
-		result=[[@"" stringByPaddingToLength:(NSUInteger)numEms withString: @" " startingAtIndex:0] stringByAppendingString: result];
+		result = std::string((NSUInteger)numEms, ' ') + result;
 	}
 	// most of the way there, so switch to narrow space
-	numEms = padEms - OOStringWidthInEm(result);
+	numEms = padEms - OOStringWidthInEm(oo::NSStringFrom(result));
 	if (numEms>0)
 	{
 		numEms /= OOStringWidthInEm(@"\037"); // 037 is narrow space
-		result=[[@"" stringByPaddingToLength:(NSUInteger)numEms withString: @"\037" startingAtIndex:0] stringByAppendingString: result];
+		result = std::string((NSUInteger)numEms, '\037') + result;
 	}
 	return result;
 }
 
 
-NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol)
+std::string cxx_OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
 	ooscript::Value				method;
 	ooscript::Value				rval;
-	NSString			*result = nil;
+	std::optional<std::string>	result;
 	ooscript::Value				exception;
 	BOOL				hadException;
-	
+
 	/*	Because the |cr etc. formatting operators call this, and the
 		implementation may use string expansion, we need to ensure recursion
 		can't happen.
 	*/
 	static BOOL reentrancyLock;
-	if (reentrancyLock)  return [NSString stringWithFormat:@"%0.1f", tenthsOfCredits * 0.1];
-	
+	if (reentrancyLock)  return oo::str::format("%0.1f", tenthsOfCredits * 0.1);
+
 	reentrancyLock = YES;
-	
+
 	hadException = ooscript::getPendingException((context), (&exception));
 	ooscript::clearPendingException((context));
-	
+
 	{
 		Object fakeRootFacade = NULL;
 		if (ooscript::getMethodById((context), (global), OOJSID("formatCredits"), &fakeRootFacade, (&method)))
@@ -300,103 +301,61 @@ NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includ
 			{
 				args[1] = OOJSValueFromBOOL(includeDecimal);
 				args[2] = OOJSValueFromBOOL(includeSymbol);
-				
+
 				OOJSStartTimeLimiter();
 				ooscript::callFunctionValue((context), (global), (method), 3, (args), (&rval));
 				OOJSStopTimeLimiter();
-				
-				result = OOStringFromJSValue(context, rval);
+
+				// OOStringFromJSValue is an unmigrated callee (nil for null or undefined)
+				result = oo::OptionalString(OOStringFromJSValue(context, rval));
 			}
 		}
 	}
-	
+
 	if (hadException)  ooscript::setPendingException((context), (exception));
-	
+
 	OOJSRelinquishContext(context);
-	
-	if (EXPECT_NOT(result == nil))  result = [NSString stringWithFormat:@"%li", (long)(tenthsOfCredits) / 10];
-	
+
+	if (EXPECT_NOT(!result.has_value()))  result = oo::str::format("%li", (long)(tenthsOfCredits) / 10);
+
 	reentrancyLock = NO;
-	
-	return result;
+
+	return *result;
 }
 
 
-NSArray *ComponentsFromVersionString(NSString *string)
+std::vector<unsigned> cxx_ComponentsFromVersionString(const std::string &string)
 {
-	NSArray				*stringComponents = nil;
-	NSMutableArray		*result = nil;
-	NSUInteger			i, count;
-	int					value;
-	id					component;
-	
-	stringComponents = [string componentsSeparatedByString:@" "];
-	stringComponents = [[stringComponents objectAtIndex:0] componentsSeparatedByString:@"-"];
-	stringComponents = [[stringComponents objectAtIndex:0] componentsSeparatedByString:@"."];
-	count = [stringComponents count];
-	result = [NSMutableArray arrayWithCapacity:count];
-	
-	for (i = 0; i != count; ++i)
-	{
-		component = [stringComponents objectAtIndex:i];
-		if ([component respondsToSelector:@selector(intValue)])  value = MAX([component intValue], 0);
-		else  value = 0;
-		
-		[result addObject:[NSNumber numberWithUnsignedInt:value]];
-	}
-	
-	return result;
+	return oo::str::versionComponents(string);
 }
 
 
-NSComparisonResult CompareVersions(NSArray *version1, NSArray *version2)
+NSComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2)
 {
-	NSEnumerator		*leftEnum = nil,
-						*rightEnum = nil;
-	NSNumber			*leftComponent = nil,
-						*rightComponent = nil;
-	unsigned			leftValue,
-						rightValue;
-	
-	leftEnum = [version1 objectEnumerator];
-	rightEnum = [version2 objectEnumerator];
-	
-	for (;;)
-	{
-		leftComponent = [leftEnum nextObject];
-		rightComponent = [rightEnum nextObject];
-		
-		if (leftComponent == nil && rightComponent == nil)  break;	// End of both versions
-		
-		// We'll get 0 if the component is nil, which is what we want.
-		leftValue = [leftComponent unsignedIntValue];
-		rightValue = [rightComponent unsignedIntValue];
-		
-		if (leftValue < rightValue) return NSOrderedAscending;
-		if (leftValue > rightValue) return NSOrderedDescending;
-	}
-	
-	// If there was a difference, we'd have returned already.
+	const int order = oo::str::compareVersions(version1, version2);
+	if (order < 0) return NSOrderedAscending;
+	if (order > 0) return NSOrderedDescending;
 	return NSOrderedSame;
 }
 
 
-NSString *ClockToString(double clock, BOOL adjusting)
+std::string cxx_ClockToString(double clock, BOOL adjusting)
 {
 	int				days, hrs, mins, secs;
-	NSString		*format = nil;
-	
+	std::string		format;
+
 	days = floor(clock / 86400.0);
 	secs = floor(clock - days * 86400.0);
 	hrs = floor(secs / 3600.0);
 	secs %= 3600;
 	mins = floor(secs / 60.0);
 	secs %= 60;
-	
-	if (adjusting)  format = DESC(@"clock-format-adjusting");
-	else  format = DESC(@"clock-format");
-	
-	return [NSString stringWithFormat:format, days, hrs, mins, secs];
+
+	// DESC() (Universe) is unmigrated: convert at the call. The format is read at run time.
+	if (adjusting)  format = oo::StdString(DESC(@"clock-format-adjusting"));
+	else  format = oo::StdString(DESC(@"clock-format"));
+
+	return oo::str::formatRuntime(format, {days, hrs, mins, secs});
 }
 
 
