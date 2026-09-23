@@ -26,6 +26,7 @@ const MOZILLA_ONLY_RULES = {
   "let-block": "error",
   "legacy-accessor": "error",
   "expression-closure": "error",
+  "legacy-generator": "error",
 };
 
 /** The names that are actually enabled (severity not "off"/0). */
