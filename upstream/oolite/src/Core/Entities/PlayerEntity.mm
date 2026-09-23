@@ -9775,7 +9775,7 @@ static NSString *last_outfitting_key=nil;
 
 				[gui setColor:[gui colorFromSetting:kGuiInterfaceEntryColor defaultValue:nil] forRow:row];
 				[gui setKey:interfaceKey forRow:row];
-				[gui setArray:[NSArray arrayWithObjects:[definition title],[definition category], nil] forRow:row];
+				[gui setArray:[NSArray arrayWithObjects:[definition title],oo::NSStringOrNil([definition category]), nil] forRow:row];
 
 				row++;
 			}
@@ -9852,7 +9852,7 @@ static NSString *last_outfitting_key=nil;
 		OOJSInterfaceDefinition *definition = [interfaces objectForKey:interfaceKey];
 		if (definition)
 		{
-			[gui addLongText:[definition summary] startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
+			[gui addLongText:oo::NSStringOrNil([definition summary]) startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
 		}
 	}
 
@@ -13382,7 +13382,7 @@ else _dockTarget = NO_TARGET;
 	NSMutableArray *newarray = nil;
 	NSString *key = nil;	
 	NSMutableDictionary *final = [[NSMutableDictionary alloc] init];
-	NSDictionary *keys = [definition registerKeys];
+	NSDictionary *keys = oo::ObjectFromPList([definition registerKeys]);
 	NSMutableArray *checklist = [[NSMutableArray alloc] init];
 
 	foreach (key, [keys allKeys])
@@ -13391,7 +13391,7 @@ else _dockTarget = NO_TARGET;
 		[checklist addObject:item];
 		[final setObject:item forKey:key];
 	}
-	[definition setRegisterKeys:[final copy]];
+	[definition setRegisterKeys:oo::PListFrom([final copy])];
 	[final release];
 
 	/// create the dictionary, if it doesn't already exist
@@ -13422,7 +13422,7 @@ else _dockTarget = NO_TARGET;
 			else 
 			{
 				// check whether any of those keycodes is already in use on this screen
-				NSDictionary *keydefs = [def_existing registerKeys];
+				NSDictionary *keydefs = oo::ObjectFromPList([def_existing registerKeys]);
 
 				foreach (key, [keydefs allKeys])
 				{
