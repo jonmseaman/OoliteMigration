@@ -207,4 +207,15 @@ OO_TEST(malformedUtf8ReadsAsLatin1Units)
 	OO_CHECK_EQ(oo::utf8ToUtf16(std::string("\xC0\xAF")).size(), 2u);
 }
 
+OO_TEST(errorDescriptionIsNSErrorsWording)
+{
+	const oo::PListError e{"Parse failed at line 1 (char 9) - reached end of string"};
+	OO_CHECK_EQ(e.description(),
+				"Error Domain=NSPropertyListSerialization Code=0 \"Parse failed at line 1 (char 9) - reached end of string\"");
+	OO_CHECK(e == oo::PListError{e.message});
+	OO_CHECK_EQ(static_cast<int>(oo::PListFormat::OpenStep), 1);
+	OO_CHECK_EQ(static_cast<int>(oo::PListFormat::XML), 100);
+	OO_CHECK_EQ(static_cast<int>(oo::PListFormat::GNUstep), 1000);
+}
+
 OO_TEST_MAIN()

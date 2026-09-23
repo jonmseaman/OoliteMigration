@@ -43,6 +43,9 @@
 	PList::Array, PList::Dict. The typed, converting accessor that replaces
 	OOCollectionExtractors (PList::get<T>) is a later seam; this header has no conversions
 	beyond NSNumber's own (boolValue / longLongValue / unsignedLongLongValue / doubleValue).
+
+	Also here, shared by the parsers: oo::PListFormat (NSPropertyListFormat) and oo::PListError
+	(the error string GNUstep reports, and the -[NSError description] Oolite logged).
 */
 
 #ifndef OOFND_PLIST_HPP
@@ -245,6 +248,32 @@ private:
 
 	// Order matches Type.
 	std::variant<std::monostate, bool, Integer, double, std::string, Data, Date, Array, Dict> v_;
+};
+
+// NSPropertyListFormat, with GNUstep's numeric values: what a parser found (GNUstep reports
+// GNUstep for an old-style plist that uses a <*...> or <[...]> extension).
+enum class PListFormat
+{
+	OpenStep = 1,
+	XML = 100,
+	Binary = 200,
+	GNUstep = 1000,
+	GNUstepBinary = 1001,
+};
+
+// Why a parse failed. `message` is GNUstep's own text (the error string of
+// -[NSPropertyListSerialization propertyListWithData:options:format:error:]), e.g.
+// "Parse failed at line 2 (char 17) - unexpected character (wanted '=')"; description() is the
+// -[NSError description] that OOPropertyListFromData logged. ADR-0027 item 9.
+struct PListError
+{
+	std::string message;
+
+	std::string description() const
+	{
+		return "Error Domain=NSPropertyListSerialization Code=0 \"" + message + "\"";
+	}
+	friend bool operator==(const PListError&, const PListError&) = default;
 };
 
 inline const char* typeName(PList::Type t) noexcept
