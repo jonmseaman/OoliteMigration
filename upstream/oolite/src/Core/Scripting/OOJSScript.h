@@ -26,27 +26,29 @@ MA 02110-1301, USA.
 #import "OOScript.h"
 #import "OOJavaScriptEngine.h"
 
-static NSString * const kLocalManifestProperty = @"oolite_manifest_identifier";
+// The script property that holds the identifier of the manifest the script was loaded under.
+inline constexpr char kLocalManifestProperty[] = "oolite_manifest_identifier";
 
 @interface OOJSScript: OOScript <OOWeakReferenceSupport>
 {
 @private
 	ooscript::Object _jsSelf;
 	
-	NSString			*name;
-	NSString			*description;
-	NSString			*version;
-	NSString			*filePath;
+	std::optional<std::string>	name;
+	std::optional<std::string>	description;
+	std::optional<std::string>	version;
+	std::optional<std::string>	filePath;
 	
 	OOWeakReference		*weakSelf;
 }
 
-+ (id) scriptWithPath:(NSString *)path properties:(NSDictionary *)properties;
+// path nullopt is nil (the script is then named after its address); properties may hold live objects.
++ (id) scriptWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties;
 
-- (id) initWithPath:(NSString *)path properties:(NSDictionary *)properties;
+- (id) initWithPath:(const std::optional<std::string> &)path properties:(const oo::PList &)properties;
 
 + (OOJSScript *) currentlyRunningScript;
-+ (NSArray *) scriptStack;
++ (std::vector<oo::ObjCRef<OOJSScript *>>) scriptStack;
 
 /*	External manipulation of acrtive script stack. Used, for instance, by
 	timers. Failing to balance these will crash!
@@ -71,9 +73,9 @@ static NSString * const kLocalManifestProperty = @"oolite_manifest_identifier";
 // Set a special property which cannot be modified or deleted by the script.
 - (BOOL) defineProperty:(id)value withID:(ooscript::PropertyId)propID inContext:(ooscript::Context)context;
 
-- (id) propertyNamed:(NSString *)name;
-- (BOOL) setProperty:(id)value named:(NSString *)name;
-- (BOOL) defineProperty:(id)value named:(NSString *)name;
+- (id) propertyNamed:(const std::string &)name;
+- (BOOL) setProperty:(id)value named:(const std::string &)name;
+- (BOOL) defineProperty:(id)value named:(const std::string &)name;
 
 @end
 
