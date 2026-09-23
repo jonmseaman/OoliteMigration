@@ -45,39 +45,9 @@ else
     error('Required dependency "gnustep-base" was not found in SEARCH_ROOTS.')
 endif
 
-# SpiderMonkey only when it is the selected backend (bead oo-1gc.4); QuickJS-ng is a subproject.
+# GNUstep only: the JavaScript engine is the vendored QuickJS-ng subproject (bead oo-7wx).
 gs_inc_dirs = [found_gs_inc]
 gs_libs = [gs_lib, objc_lib]
-if js_backend == 'spidermonkey'
-    # =====================================================================
-    # MOZILLA JS BLOCK (Scan & Resolve)
-    # =====================================================================
-    js_name = is_debug ? 'jsdbg_static' : 'js_static'
-    js_search_roots = [project_root / 'build/mozilla_js'] + shared_roots
-    found_js_dir = ''
-    found_js_inc = ''
-
-    foreach root : js_search_roots
-        if found_js_dir == ''
-            foreach sub_dir : ['lib', 'lib64']
-                current_dir = root / sub_dir
-                if fs.is_file(current_dir / 'lib' + js_name + '.a')
-                    found_js_dir = current_dir
-                    found_js_inc = root / 'include'
-                    break
-                endif
-            endforeach
-        endif
-    endforeach
-
-    if found_js_dir != ''
-        js_lib = cc.find_library(js_name, dirs: [found_js_dir], static: true, required: true)
-    else
-        error('Required dependency "@0@" was not found in SEARCH_ROOTS.'.format(js_name))
-    endif
-    gs_inc_dirs += [found_js_inc]
-    gs_libs += [js_lib]
-endif
 
 inc_dir = include_directories(gs_inc_dirs, is_system: true)
 oolite_dependencies += declare_dependency(

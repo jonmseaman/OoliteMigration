@@ -289,10 +289,16 @@ command -v cygpath >/dev/null 2>&1 || die "no cygpath on PATH; this is not an MS
 # plain SpiderMonkey build at build/meson_test, so choosing one never overwrites the other and the
 # differential runner can hold both at once). OO_APP_DIR still wins outright when set, exactly as
 # it does with no --backend, so a caller pointing this at an ad-hoc build is never overridden.
+#
+# Since bead oo-7wx the tree has one engine, QuickJS-ng, built into the ordinary
+# build/meson_test. A SpiderMonkey build exists only if someone builds a pre-oo-7wx tree into
+# build/meson_test_spidermonkey (or points OO_APP_DIR at one) for a historical differential run;
+# otherwise --backend=sm fails at the app-dir check below, loudly, rather than re-checking the
+# QuickJS build under the wrong name.
 if [ -n "$BACKEND_LABEL" ]; then
   case "$BACKEND_LABEL" in
-    spidermonkey) DEFAULT_APP_DIR="$OOLITE/build/meson_test/oolite.app" ;;
-    quickjs)       DEFAULT_APP_DIR="$OOLITE/build/meson_test_quickjs/oolite.app" ;;
+    spidermonkey) DEFAULT_APP_DIR="$OOLITE/build/meson_test_spidermonkey/oolite.app" ;;
+    quickjs)       DEFAULT_APP_DIR="$OOLITE/build/meson_test/oolite.app" ;;
   esac
 else
   DEFAULT_APP_DIR="$OOLITE/build/meson_test/oolite.app"

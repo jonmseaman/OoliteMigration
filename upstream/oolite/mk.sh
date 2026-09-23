@@ -155,8 +155,8 @@ show_help() {  # Script Help Menu
 
 validate_build_type() {
     local build_type="$1"
-    if [[ "$build_type" != "deployment" && "$build_type" != "test" && "$build_type" != "test_quickjs" && "$build_type" != "dev" && "$build_type" != "debug" ]]; then
-        echo "❌ Invalid build_type '$build_type'. Expected: deployment, test, test_quickjs, dev, or debug." >&2
+    if [[ "$build_type" != "deployment" && "$build_type" != "test" && "$build_type" != "dev" && "$build_type" != "debug" ]]; then
+        echo "❌ Invalid build_type '$build_type'. Expected: deployment, test, dev, or debug." >&2
         exit 1
     fi
 }
@@ -173,10 +173,6 @@ execute_target() {  # Target Execution Logic
                 meson_setup "deployment" "-Ddeployment_release=true" "-Ddebug=false" "-Dstrip_bin=true" "-Db_lto=true"
             elif [[ "$build_type" == "test" ]]; then
                 meson_setup "test" "-Ddebug=false" "-Dstrip_bin=true" "-Db_lto=true"
-            elif [[ "$build_type" == "test_quickjs" ]]; then
-                # The test flavour on the QuickJS-ng backend (Phase 1 bead oo-1gc.4): the build
-                # tools/tier-c.sh --backend=quickjs points the goldens and the corpus at.
-                meson_setup "test_quickjs" "-Ddebug=false" "-Dstrip_bin=true" "-Db_lto=true" "-Djs_backend=quickjs"
             elif [[ "$build_type" == "dev" ]]; then
                 meson_setup "dev" "-Ddev_release=true" "-Ddebug=false" "-Dstrip_bin=false"
             elif [[ "$build_type" == "debug" ]]; then

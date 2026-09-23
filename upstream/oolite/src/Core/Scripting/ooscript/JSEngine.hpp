@@ -7,8 +7,8 @@ The JavaScript engine façade (Phase 1 seam 1.1, bead oo-e7c; ADR-0002, architec
 Oolite talks to its script engine through this header and nothing else. It is sized to what the
 tree actually calls (the 2026-09-18 histogram over src/: 139 distinct JS_* functions, 3,828
 sites; the top twenty are mapped in README.md beside this file), not to what any engine
-offers. Behind it sits one backend at a time: JSEngine_spidermonkey.cpp today (the patched
-SpiderMonkey 1.8.5 the game ships), src/Core/Scripting/backend/quickjs/ later (seam 1.3).
+offers. Behind it sits one backend: JSEngine_quickjs.cpp, the vendored QuickJS-ng (the patched
+SpiderMonkey 1.8.5 backend it replaced was deleted by bead oo-7wx at Phase 1 item 5).
 Retargeting a call site onto this façade must not change behaviour; that is what the goldens
 verify, and it is why every function here keeps the calling convention of the JS_* function it
 replaces (out-parameters, bool success, same argument order) rather than restyling it.
@@ -16,7 +16,7 @@ replaces (out-parameters, bool success, same argument order) rather than restyli
 Rules of the header:
   * No engine type appears here. Handles are pointers to incomplete types the backend defines;
     Value and PropertyId are 8-byte PODs whose layout is the backend's (asserted there). That
-    is what lets a file include this header without jsapi.h.
+    is what lets a file include this header without any engine header.
   * Hooks (property getters, class hooks, natives) are declared with façade types. The backend
     adapts them; a call site never writes an engine signature.
   * Nothing is inline that would need the engine's value layout. The build is thin-LTO, so the

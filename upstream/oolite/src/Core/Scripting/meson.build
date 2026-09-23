@@ -50,8 +50,8 @@ oolite_sources += files(
     'OOScriptTimer.mm',
 )
 
-# Exactly one façade backend is compiled: the engine selected by the js_backend option.
-oolite_sources += files(js_backend == 'quickjs' ? 'ooscript/JSEngine_quickjs.cpp' : 'ooscript/JSEngine_spidermonkey.cpp')
+# The façade's backend (bead oo-7wx: QuickJS-ng is the only engine).
+oolite_sources += files('ooscript/JSEngine_quickjs.cpp')
 
 oolite_includes += include_directories('.')
 

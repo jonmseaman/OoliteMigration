@@ -1,6 +1,6 @@
 # ooscript — the JavaScript engine façade
 
-`JSEngine.hpp` is the only header Oolite code uses to talk to its script engine (Phase 1 seam 1.1, bead oo-e7c; ADR-0002, architecture §4 R1). `JSEngine_spidermonkey.cpp` is the SpiderMonkey 1.8.5 backend and the one translation unit that may include `jsapi.h`; it is listed in `tools/guardrails.sh` `SCAN_EXEMPT` for that reason and is deleted at Phase 1 item 5. `tools/check-jsengine-facade.sh` is the acceptance: header engine-neutral and clean under `-Wall -Wextra -Werror`, backend builds, unit test (`tests/unit/test_jsengine_spidermonkey.cpp`) passes against the engine the game links.
+`JSEngine.hpp` is the only header Oolite code uses to talk to its script engine (Phase 1 seam 1.1, bead oo-e7c; ADR-0002, architecture §4 R1). Since bead oo-7wx its only backend is `JSEngine_quickjs.cpp` (QuickJS-ng, linked statically); the SpiderMonkey 1.8.5 backend, the `js_backend` option, and the js/NSPR dependencies were removed. `tools/check-jsengine-facade.sh` is the acceptance for the header (engine-neutral, clean under `-Wall -Wextra -Werror`) and, absolutely, for the tree: no game source outside the backend names an engine symbol or header.
 
 This file, not the header, carries the engine names: the deny-list forbids `JS_*` tokens in code files, comments included, and a Markdown file is not scanned.
 
