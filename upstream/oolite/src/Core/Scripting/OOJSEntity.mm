@@ -112,6 +112,9 @@ static bool EntityDumpState(Context cx, CallArgs &oojsArgs);
 #endif
 
 
+JSObject		*gOOEntityJSPrototype;
+
+
 namespace {
 static ClassDef sEntityClass =
 {
