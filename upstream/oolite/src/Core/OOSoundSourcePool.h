@@ -34,10 +34,11 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#import "oofnd/objc/OOObject.h"
 #import "OOTypes.h"
 #import "OOMaths.h"
 
-@interface OOSoundSourcePool: NSObject
+@interface OOSoundSourcePool: OOObject
 {
 @private
 	struct OOSoundSourcePoolElement	*_sources;
