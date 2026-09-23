@@ -247,7 +247,7 @@ SOFTWARE.
 				break;
 				
 			case kOOShaderUniformTypeMatrix:
-				valueDesc = OOMatrixDescription(value.constMatrix);
+				valueDesc = oo::NSStringFrom(OOMatrixDescription(value.constMatrix));
 				break;
 		}
 	}
