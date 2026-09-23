@@ -123,7 +123,7 @@ MA 02110-1301, USA.
 		[self setMesh:mesh];
 	}
 
-	isImmuneToBreakPatternHide = oo::PListView(effectDict).get<BOOL>(@"is_break_pattern");
+	isImmuneToBreakPatternHide = oo::PListView(effectDict).get<bool>(@"is_break_pattern");
 	scaleX = 1.0;
 	scaleY = 1.0;
 	scaleZ = 1.0;
