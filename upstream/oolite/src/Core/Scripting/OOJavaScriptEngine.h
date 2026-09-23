@@ -137,14 +137,11 @@ OOINLINE void OOJSRelinquishContext(ooscript::Context context)
 }
 
 
-// Notifications sent when JavaScript engine is reset.
-extern NSString * const kOOJavaScriptEngineWillResetNotification;
-extern NSString * const kOOJavaScriptEngineDidResetNotification;
-
-/*	The same notifications on oo::NotificationCenter (oofnd/Notification.hpp, bead oo-3rb.9),
-	posted with the engine as the object. Until the last NSNotificationCenter observer is
-	migrated, -reset posts each notification to both centers (oo::NotificationCenter first); the
-	NSString names above go with that last observer.
+/*	Notifications sent when JavaScript engine is reset, on oo::NotificationCenter
+	(oofnd/Notification.hpp, bead oo-3rb.9), posted with the engine as the object. Until the last
+	NSNotificationCenter observer is migrated, -reset posts each notification to both centers
+	(oo::NotificationCenter first); the Objective-C string names for that center are in
+	OOJavaScriptEngine+FoundationBridge.h (bead oo-3rb.203) and go with that last observer.
 */
 extern const char * const kOOJavaScriptEngineWillResetNotificationName;
 extern const char * const kOOJavaScriptEngineDidResetNotificationName;
@@ -589,13 +586,13 @@ OOJS_EXTERN_C void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJ
 				  error:(in ooscript::ErrorReport *)errorReport
 			  stackSkip:(in unsigned)stackSkip
 		showingLocation:(in BOOL)showLocation
-			withMessage:(in NSString *)message;
+			withMessage:(in id)message;	// shared selector (proposed ADR-0043): OODebugMonitor implements it with a string
 
 // Sent for JS log messages. Note: messageClass will be nil if Log() is used rather than LogWithClass().
 - (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
 				context:(in ooscript::Context)context
-			 logMessage:(in NSString *)message
-				ofClass:(in NSString *)messageClass;
+			 logMessage:(in id)message
+				ofClass:(in id)messageClass;	// shared selector (proposed ADR-0043): OODebugMonitor implements it with strings
 
 @end
 
@@ -631,7 +628,7 @@ OOJS_EXTERN_C void OOJSResumeTimeLimiter(void);
 #ifndef NDEBUG
 OOJS_EXTERN_C void OOJSDumpStack(ooscript::Context context);
 
-OOJS_EXTERN_C NSString *OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame);
+std::optional<std::string> OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame);	// nullopt: no location
 OOJS_EXTERN_C void OOJSMarkConsoleEvalLocation(ooscript::Context context, ooscript::StackFrame stackFrame);
 #else
 #define OOJSDumpStack(cx)						do {} while (0)
