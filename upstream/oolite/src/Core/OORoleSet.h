@@ -30,9 +30,10 @@ SOFTWARE.
 */
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 
 
-@interface OORoleSet: NSObject <NSCopying>
+@interface OORoleSet: OOObject <OOCopying>
 {
 @private
 	NSString					*_roleString;
