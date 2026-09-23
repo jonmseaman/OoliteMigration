@@ -46,7 +46,7 @@ enum
 	OOLITE_GL_MATRIX_END
 };
 
-@interface OOOpenGLMatrixStack: NSObject
+@interface OOOpenGLMatrixStack: OOObject
 {
 @private
 	NSMutableArray	*stack;
@@ -60,7 +60,7 @@ enum
 
 @end
 
-@interface OOOpenGLMatrixManager: NSObject
+@interface OOOpenGLMatrixManager: OOObject
 {
 @private
 	OOMatrix		matrices[OOLITE_GL_MATRIX_END];
