@@ -43,6 +43,7 @@ MA 02110-1301, USA.
 #import "OOCollectionExtractors.h"
 #import "OODebugFlags.h"
 #import "OOGraphicsResetManager.h"
+#include "oofnd/objc/OOException.h"
 
 
 #if !OOLITE_MAC_OS_X
@@ -192,7 +193,7 @@ static const BaseFace kTexturedFaces[][3] =
 - (id) init
 {
 	[self release];
-	[NSException raise:NSInternalInconsistencyException format:@"%s, believed dead, called.", __PRETTY_FUNCTION__];
+	[OOException raise:OOInternalInconsistencyException format:"%s, believed dead, called.", __PRETTY_FUNCTION__];
 	return nil;
 }
 
