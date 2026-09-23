@@ -1042,7 +1042,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 							if (!subentityKey.has_value())
 							{
 								// -addObject:nil raised
-								[NSException raise:NSInvalidArgumentException format:@"Tried to add nil to set"];
+								[OOException raise:OOInvalidArgumentException format:"Tried to add nil to set"];
 							}
 							badSubentities.insert(*subentityKey);
 						}
