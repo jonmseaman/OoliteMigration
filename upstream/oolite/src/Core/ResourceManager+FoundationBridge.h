@@ -58,6 +58,14 @@ MA 02110-1301, USA.
 + (NSString *)errors;			// -> +cxx_errors
 + (NSString *) diagnosticFileLocation;	// -> +cxx_diagnosticFileLocation
 
+// oo-3rb.99: OXP manifests and compatibility
++ (NSDictionary *)manifestForIdentifier:(NSString *)identifier;	// -> +cxx_manifestForIdentifier:
++ (BOOL) checkVersionCompatibility:(NSDictionary *)manifest forOXP:(NSString *)title;	// -> +cxx_checkVersionCompatibility:forOXP:
++ (BOOL) manifestHasConflicts:(NSDictionary *)manifest logErrors:(BOOL)logErrors;	// -> +cxx_manifestHasConflicts:logErrors:
++ (BOOL) manifestHasMissingDependencies:(NSDictionary *)manifest logErrors:(BOOL)logErrors;	// -> +cxx_manifestHasMissingDependencies:logErrors:
++ (BOOL) manifest:(NSDictionary *)manifest HasUnmetDependency:(NSDictionary *)required logErrors:(BOOL)logErrors;	// -> +cxx_manifest:HasUnmetDependency:logErrors:
++ (BOOL) matchVersions:(NSDictionary *)rangeDict withVersion:(NSString *)version;	// -> +cxx_matchVersions:withVersion:
+
 @end
 
 #endif	// RESOURCEMANAGER_FOUNDATIONBRIDGE_H

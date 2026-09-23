@@ -38,6 +38,7 @@ MA 02110-1301, USA.
 #import "OOJavaScriptEngine.h"
 #import "PlayerEntityStickProfile.h"
 #import "OOSystemDescriptionManager.h"
+#import "OOFoundationBridge.h"
 
 OOINLINE BOOL RowInRange(OOGUIRow row, NSRange range)
 {
@@ -117,12 +118,12 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (id) initWithPixelSize:(NSSize)gui_size
-				 columns:(int)gui_cols 
-					rows:(int)gui_rows 
-			   rowHeight:(int)gui_row_height
-				rowStart:(int)gui_row_start
-				   title:(NSString*)gui_title
+- (id) cxx_initWithPixelSize:(NSSize)gui_size
+					 columns:(int)gui_cols
+						rows:(int)gui_rows
+				   rowHeight:(int)gui_row_height
+					rowStart:(int)gui_row_start
+					   title:(const std::optional<std::string> &)gui_title
 {
 	self = [super init];
 		
@@ -156,7 +157,7 @@ static BOOL _refreshStarChart = NO;
 		rowAlignment[i] = GUI_ALIGN_LEFT;
 	}
 	
-	title = [gui_title retain];
+	title = [oo::NSStringOrNil(gui_title) retain];	// the title ivar is chunk 5's (oo-3rb.96)
 	
 	textColor = [[OOColor yellowColor] retain];
 
@@ -180,12 +181,12 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) resizeWithPixelSize:(NSSize)gui_size
-					 columns:(int)gui_cols
-						rows:(int)gui_rows
-				   rowHeight:(int)gui_row_height
-					rowStart:(int)gui_row_start
-					   title:(NSString*) gui_title
+- (void) cxx_resizeWithPixelSize:(NSSize)gui_size
+						 columns:(int)gui_cols
+							rows:(int)gui_rows
+					   rowHeight:(int)gui_row_height
+						rowStart:(int)gui_row_start
+						   title:(const std::optional<std::string> &)gui_title
 {
 	[self clear];
 	//
@@ -202,13 +203,13 @@ static BOOL _refreshStarChart = NO;
 	rowRange = NSMakeRange(0,n_rows);
 	[self clear];
 	//
-	[self setTitle: gui_title];
+	[self setTitle: oo::NSStringOrNil(gui_title)];
 }
 
 
-- (void) resizeTo:(NSSize)gui_size
-  characterHeight:(int)csize
-			title:(NSString*)gui_title
+- (void) cxx_resizeTo:(NSSize)gui_size
+	  characterHeight:(int)csize
+				title:(const std::optional<std::string> &)gui_title
 {
 	[self clear];
 	//
@@ -216,7 +217,7 @@ static BOOL _refreshStarChart = NO;
 	n_columns		= gui_size.width / csize;
 	n_rows			= (int)gui_size.height / csize;
 
-	[self setTitle: gui_title];
+	[self setTitle: oo::NSStringOrNil(gui_title)];
 	
 	pixel_row_center = gui_size.width / 2;
 	pixel_row_height = csize;
@@ -464,11 +465,12 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (OOGUIRow) rowForKey:(NSString*)key
+- (OOGUIRow) cxx_rowForKey:(const std::optional<std::string> &)key
 {
+	if (!key.has_value())  return -1;	// a nil key matched nothing
 	for (unsigned i=0;i<[rowKey count];i++)
 	{
-		if ([key isEqualToString:[rowKey objectAtIndex:i]])
+		if (*key == oo::StdString([rowKey objectAtIndex:i]))
 		{
 			return (OOGUIRow)i;
 		}
@@ -477,12 +479,12 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (NSString*) keyForRow:(OOGUIRow)row
+- (std::optional<std::string>) cxx_keyForRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
-		return [rowKey objectAtIndex:row];
+		return oo::OptionalString([rowKey objectAtIndex:row]);
 	else
-		return NULL;
+		return std::nullopt;
 }
 
 
@@ -579,22 +581,22 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (NSString *) selectedRowText
+- (std::optional<std::string>) cxx_selectedRowText
 {
-	if ([[rowText objectAtIndex:selectedRow] isKindOfClass:[NSString class]])
-		return (NSString *)[rowText objectAtIndex:selectedRow];
-	if ([[rowText objectAtIndex:selectedRow] isKindOfClass:[NSArray class]])
-		return (NSString *)[[rowText objectAtIndex:selectedRow] objectAtIndex:0];
-	return NULL;
+	if (oo::IsNSString([rowText objectAtIndex:selectedRow]))
+		return oo::OptionalString([rowText objectAtIndex:selectedRow]);
+	if (oo::IsNSArray([rowText objectAtIndex:selectedRow]))
+		return oo::OptionalString([[rowText objectAtIndex:selectedRow] objectAtIndex:0]);
+	return std::nullopt;
 }
 
 
-- (NSString *) selectedRowKey
+- (std::optional<std::string>) cxx_selectedRowKey
 {
 	if ((selectedRow < 0)||((unsigned)selectedRow > [rowKey count]))
-		return nil;
+		return std::nullopt;
 	else
-		return (NSString *)[rowKey objectAtIndex:selectedRow];
+		return oo::OptionalString([rowKey objectAtIndex:selectedRow]);
 }
 
 
@@ -678,27 +680,27 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) setKey:(NSString *)str forRow:(OOGUIRow)row
+- (void) cxx_setKey:(const std::string &)str forRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
-		[rowKey replaceObjectAtIndex:row withObject:str];
+		[rowKey replaceObjectAtIndex:row withObject:oo::NSStringFrom(str)];	// the row ivars are chunk 5's (oo-3rb.96)
 }
 
 
-- (void) setText:(NSString *)str forRow:(OOGUIRow)row
+- (void) cxx_setText:(const std::string &)str forRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
 	{
-		[rowText replaceObjectAtIndex:row withObject:str];
+		[rowText replaceObjectAtIndex:row withObject:oo::NSStringFrom(str)];
 	}
 }
 
 
-- (void) setText:(NSString *)str forRow:(OOGUIRow)row align:(OOGUIAlignment)alignment
+- (void) cxx_setText:(const std::optional<std::string> &)str forRow:(OOGUIRow)row align:(OOGUIAlignment)alignment
 {
-	if (str != nil && RowInRange(row, rowRange))
+	if (str.has_value() && RowInRange(row, rowRange))
 	{
-		[rowText replaceObjectAtIndex:row withObject:str];
+		[rowText replaceObjectAtIndex:row withObject:oo::NSStringFrom(*str)];
 		rowAlignment[row] = alignment;
 	}
 }
@@ -914,10 +916,10 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (void) setArray:(NSArray *)arr forRow:(OOGUIRow)row
+- (void) cxx_setArray:(const std::vector<std::string> &)arr forRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
-		[rowText replaceObjectAtIndex:row withObject:arr];
+		[rowText replaceObjectAtIndex:row withObject:oo::NSArrayFromStrings(arr)];
 }
 
 
