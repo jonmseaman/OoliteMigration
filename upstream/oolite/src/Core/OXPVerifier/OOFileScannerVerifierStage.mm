@@ -49,7 +49,7 @@ SOFTWARE.
 
 #if OO_OXP_VERIFIER_ENABLED
 
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "ResourceManager.h"
 
 static NSString * const kFileScannerStageName	= @"Scanning files";
@@ -164,7 +164,7 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 	if (folder != nil)
 	{
 		lcDirName = [folder lowercaseString];
-		realFileName = [[_directoryListings oo_dictionaryForKey:lcDirName] objectForKey:lcName];
+		realFileName = [oo::PListView(_directoryListings).get<NSDictionary *>(lcDirName) objectForKey:lcName];
 		
 		if (realFileName != nil)
 		{
@@ -175,7 +175,7 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 	
 	if (path == nil)
 	{
-		realFileName = [[_directoryListings oo_dictionaryForKey:@""] objectForKey:lcName];
+		realFileName = [oo::PListView(_directoryListings).get<NSDictionary *>(@"") objectForKey:lcName];
 		
 		if (realFileName != nil)
 		{
@@ -457,9 +457,9 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 		*/
 		
 		lcName = [name lowercaseString];
-		realFileName = [[_directoryListings oo_dictionaryForKey:@"config"] objectForKey:lcName];
+		realFileName = [oo::PListView(_directoryListings).get<NSDictionary *>(@"config") objectForKey:lcName];
 		inConfigDir = realFileName != nil;
-		if (!inConfigDir)  realFileName = [[_directoryListings oo_dictionaryForKey:@""] objectForKey:lcName];
+		if (!inConfigDir)  realFileName = [oo::PListView(_directoryListings).get<NSDictionary *>(@"") objectForKey:lcName];
 		if (realFileName == nil)  continue;
 		
 		if (![realFileName isEqualToString:name])
@@ -496,12 +496,12 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 			*/
 			
 			lcName = [name lowercaseString];
-			realFileName = [[_directoryListings oo_dictionaryForKey:lcDirectory] objectForKey:lcName];
+			realFileName = [oo::PListView(_directoryListings).get<NSDictionary *>(lcDirectory) objectForKey:lcName];
 			inDirectory = (realFileName != nil);
 			if (!inDirectory)
 			{
 				// Allow for files in root directory of OXP
-				realFileName = [[_directoryListings oo_dictionaryForKey:@""] objectForKey:lcName];
+				realFileName = [oo::PListView(_directoryListings).get<NSDictionary *>(@"") objectForKey:lcName];
 			}
 			if (realFileName == nil)  continue;
 			
@@ -528,7 +528,7 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 	
 	for (i = 0; i != count; ++i)
 	{
-		canonical = [array oo_stringAtIndex:i];
+		canonical = oo::PListView(array).at<NSString *>(i);
 		if (canonical != nil)
 		{
 			lowercase = [canonical lowercaseString];
@@ -661,8 +661,8 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 							*extension = nil;
 	
 	dict = [[self verifier] configurationDictionaryForKey:@"readMeNames"];
-	stems = [dict oo_arrayForKey:@"stems"];
-	extensions = [dict oo_arrayForKey:@"extensions"];
+	stems = oo::PListView(dict).get<NSArray *>(@"stems");
+	extensions = oo::PListView(dict).get<NSArray *>(@"extensions");
 	stemCount = [stems count];
 	extCount = [extensions count];
 	if (stemCount * extCount == 0)  return nil;
@@ -671,12 +671,12 @@ static BOOL CheckNameConflict(NSString *lcName, NSDictionary *directoryCases, NS
 	result = [NSMutableSet setWithCapacity:stemCount * extCount];
 	for (i = 0; i != stemCount; ++i)
 	{
-		stem = [[stems oo_stringAtIndex:i] lowercaseString];
+		stem = [oo::PListView(stems).at<NSString *>(i) lowercaseString];
 		if (stem != nil)
 		{
 			for (j = 0; j != extCount; ++j)
 			{
-				extension = [[extensions oo_stringAtIndex:j] lowercaseString];
+				extension = [oo::PListView(extensions).at<NSString *>(j) lowercaseString];
 				if (extension != nil)
 				{
 					[result addObject:[stem stringByAppendingString:extension]];

@@ -285,7 +285,7 @@ baseline_path() {
 }
 
 # tidy_gate <repo-root> <base-ref> <source-file> <source-rel-path> <tidy-output>
-#   0 = every finding sits on a line whose text also appears in the file at the baseline
+#   0 = every finding sits on a line whose text also appears in THE FILE IT NAMES at the baseline
 #   (pre-existing), 1 = at least one finding is on a new or edited line, 2 = cannot evaluate.
 tidy_gate() {
   local root="$1" base="$2" file="$3" rel="$4" out="$5" base_rel base_file
@@ -295,7 +295,10 @@ tidy_gate() {
     git -C "$root" show "$base:$base_rel" >"$base_file" || { rm -f "$base_file"; return 2; }
   fi
   local rc=0
-  python "$(cygpath -m "$TIDY_BASELINE")" "$(cygpath -m "$file")" "$(cygpath -m "$base_file")" "$(cygpath -m "$out")" || rc=$?
+  # Root and base ref too: a finding in ANOTHER repo file (a header) is judged against that
+  # file's own baseline, never against the same line number of $file (bead oo-3rb.60).
+  python "$(cygpath -m "$TIDY_BASELINE")" "$(cygpath -m "$file")" "$(cygpath -m "$base_file")" "$(cygpath -m "$out")" \
+    "$(cygpath -m "$root")" "$base" || rc=$?
   rm -f "$base_file"
   return "$rc"
 }

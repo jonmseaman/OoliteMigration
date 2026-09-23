@@ -29,7 +29,7 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOWeakReference.h"
 #import "OOCacheManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOPListParsing.h"
 
 #import "ShipEntity.h"
@@ -79,7 +79,7 @@ extern void GenerateGraphVizForAIStateMachine(NSDictionary *stateMachine, NSStri
 #endif
 
 
-@interface OOPreservedAIStateMachine: NSObject
+@interface OOPreservedAIStateMachine: OOObject
 {
 @private
 	NSDictionary		*_stateMachine;
@@ -925,13 +925,13 @@ static AIStackElement *sStack = NULL;
 	
 	if (whitelist == nil)
 	{
-		whitelistArray1 = [[ResourceManager whitelistDictionary] oo_arrayForKey:@"ai_methods"];
+		whitelistArray1 = oo::PListView([ResourceManager whitelistDictionary]).get<NSArray *>(@"ai_methods");
 		if (whitelistArray1 == nil)  whitelistArray1 = [NSArray array];
-		whitelistArray2 = [[ResourceManager whitelistDictionary] oo_arrayForKey:@"ai_and_action_methods"];
+		whitelistArray2 = oo::PListView([ResourceManager whitelistDictionary]).get<NSArray *>(@"ai_and_action_methods");
 		if (whitelistArray2 != nil)  whitelistArray1 = [whitelistArray1 arrayByAddingObjectsFromArray:whitelistArray2];
 		
 		whitelist = [[NSSet alloc] initWithArray:whitelistArray1];
-		aliases = [[[ResourceManager whitelistDictionary] oo_dictionaryForKey:@"ai_method_aliases"] retain];
+		aliases = [oo::PListView([ResourceManager whitelistDictionary]).get<NSDictionary *>(@"ai_method_aliases") retain];
 	}
 	
 	result = [NSMutableArray arrayWithCapacity:[actions count]];

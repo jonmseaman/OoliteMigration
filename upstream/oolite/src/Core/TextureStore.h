@@ -33,13 +33,14 @@ MA 02110-1301, USA.
 #if !NEW_PLANETS
 
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOOpenGL.h"
 
 
 @class OOColor;
 
 
-@interface TextureStore: NSObject
+@interface TextureStore: OOObject
 
 // routines to create textures...
 + (BOOL) getPlanetTextureNameFor:(NSDictionary *)planetInfo

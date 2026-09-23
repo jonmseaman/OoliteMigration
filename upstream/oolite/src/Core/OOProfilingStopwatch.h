@@ -30,6 +30,7 @@ SOFTWARE.
 
 #ifndef OOSTOPWATCH_STANDALONE
 #import "OOCocoa.h"
+#import "oofnd/objc/OOObject.h"
 #import "OOFunctionAttributes.h"
 #import "OOTypes.h"
 #endif
@@ -117,7 +118,7 @@ OOINLINE OOHighResTimeValue OOGetHighResTime(void)
 OOTimeDelta OOHighResTimeDeltaInSeconds(OOHighResTimeValue startTime, OOHighResTimeValue endTime);
 
 
-@interface OOProfilingStopwatch: NSObject
+@interface OOProfilingStopwatch: OOObject
 {
 @private
 	OOHighResTimeValue	_start;

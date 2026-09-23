@@ -50,6 +50,7 @@ MA 02110-1301, USA.
 #import "OOConstToString.h"
 #import "OOEntityFilterPredicate.h"
 #import "OOCharacter.h"
+#import "OOFoundationBridge.h"
 
 
 static ooscript::Object sShipPrototype;
@@ -642,11 +643,25 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 
 		case kShip_roles:
-			result = [[entity roleSet] sortedRoles];
+			{
+				OORoleSet *roleSet = [entity roleSet];
+				result = roleSet != nil ? oo::NSArrayFromStrings([roleSet sortedRoles]) : nil;
+			}
 			break;
 		
 		case kShip_roleWeights:
-			result = [[entity roleSet] rolesAndProbabilities];
+			{
+				NSMutableDictionary *weights = nil;
+				if (const auto roleWeights = [[entity roleSet] rolesAndProbabilities])
+				{
+					weights = [NSMutableDictionary dictionaryWithCapacity:roleWeights->size()];
+					for (const auto &[role, weight] : *roleWeights)
+					{
+						[weights setObject:[NSNumber numberWithFloat:weight] forKey:oo::NSStringFrom(role)];
+					}
+				}
+				result = weights;
+			}
 			break;
 		
 		case kShip_primaryRole:
