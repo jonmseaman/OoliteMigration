@@ -14657,7 +14657,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	argc = (uintN)[arguments count];
 	if (argc != 0)
 	{
-		argv = (jsval *)malloc(sizeof *argv * argc);
+		argv = (decltype(argv))malloc(sizeof *argv * argc);
 		if (argv != NULL)
 		{
 			for (i = 0; i != argc; ++i)
