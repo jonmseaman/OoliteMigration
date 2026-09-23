@@ -60,6 +60,7 @@ static inline const unichar *OOJSRUCHARS(const ooscript::Char16 *s)  { return re
 } // namespace
 
 #import "OOPListView.h"
+#import "OOFoundationBridge.h"
 #import "Universe.h"
 #import "OOPlanetEntity.h"
 #import "NSStringOOExtensions.h"
@@ -1060,62 +1061,57 @@ std::optional<std::string> cxx_OOStringFromJSID(ooscript::PropertyId propID)
 
 
 namespace {
-static NSString *CallerPrefix(NSString *scriptClass, NSString *function)
+static std::string CallerPrefix(const std::optional<std::string> &scriptClass, const std::optional<std::string> &function)
 {
-	if (function == nil)  return @"";
-	if (scriptClass == nil)  return [function stringByAppendingString:@": "];
-	return  [NSString stringWithFormat:@"%@.%@: ", scriptClass, function];
+	if (!function)  return std::string();
+	if (!scriptClass)  return *function + ": ";
+	return *scriptClass + "." + *function + ": ";
 }
 } // namespace
 
 
-void OOJSReportError(ooscript::Context context, NSString *format, ...)
+void cxx_OOJSReportError(ooscript::Context context, const char *format, ...)
 {
 	va_list					args;
-	
+
 	va_start(args, format);
-	OOJSReportErrorWithArguments(context, format, args);
+	cxx_OOJSReportErrorWithArguments(context, format, args);
 	va_end(args);
 }
 
 
-void OOJSReportErrorForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...)
+void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...)
 {
 	va_list					args;
-	NSString				*msg = nil;
-	
+
 	@try
 	{
 		va_start(args, format);
-		msg = [[NSString alloc] initWithFormat:format arguments:args];
+		std::string msg = oo::str::vformat(format, args);
 		va_end(args);
-		
-		OOJSReportError(context, @"%@%@", CallerPrefix(scriptClass, function), msg);
+
+		cxx_OOJSReportError(context, "%s%s", CallerPrefix(scriptClass, function).c_str(), msg.c_str());
 	}
 	@catch (id exception)
 	{
 		// Squash any secondary errors during error handling.
 	}
-	[msg release];
 }
 
 
-void OOJSReportErrorWithArguments(ooscript::Context context, NSString *format, va_list args)
+void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *format, va_list args)
 {
-	NSString				*msg = nil;
-	
 	NSCParameterAssert(ooscript::isInRequest((context)));
-	
+
 	@try
 	{
-		msg = [[NSString alloc] initWithFormat:format arguments:args];
-		ooscript::reportError((context), [msg UTF8String]);
+		std::string msg = oo::str::vformat(format, args);
+		ooscript::reportError((context), msg.c_str());
 	}
 	@catch (id exception)
 	{
 		// Squash any secondary errors during error handling.
 	}
-	[msg release];
 }
 
 
@@ -1123,8 +1119,8 @@ void OOJSReportWrappedException(ooscript::Context context, id exception)
 {
 	if (!ooscript::isExceptionPending((context)))
 	{
-		if ([exception isKindOfClass:[NSException class]])  OOJSReportError(context, @"Native exception: %@", [exception reason]);
-		else  OOJSReportError(context, @"Unidentified native exception");
+		if ([exception isKindOfClass:[NSException class]])  cxx_OOJSReportError(context, "Native exception: %s", oo::DescriptionOf([exception reason]).c_str());
+		else  cxx_OOJSReportError(context, "Unidentified native exception");
 	}
 	// Else, let the pending exception propagate.
 }
@@ -1141,82 +1137,79 @@ void OOJSUnreachable(const char *function, const char *file, unsigned line)
 #endif
 
 
-void OOJSReportWarning(ooscript::Context context, NSString *format, ...)
+void cxx_OOJSReportWarning(ooscript::Context context, const char *format, ...)
 {
 	va_list					args;
-	
+
 	va_start(args, format);
-	OOJSReportWarningWithArguments(context, format, args);
+	cxx_OOJSReportWarningWithArguments(context, format, args);
 	va_end(args);
 }
 
 
-void OOJSReportWarningForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...)
+void cxx_OOJSReportWarningForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...)
 {
 	va_list					args;
-	NSString				*msg = nil;
-	
+
 	@try
 	{
 		va_start(args, format);
-		msg = [[NSString alloc] initWithFormat:format arguments:args];
+		std::string msg = oo::str::vformat(format, args);
 		va_end(args);
-		
-		OOJSReportWarning(context, @"%@%@", CallerPrefix(scriptClass, function), msg);
+
+		cxx_OOJSReportWarning(context, "%s%s", CallerPrefix(scriptClass, function).c_str(), msg.c_str());
 	}
 	@catch (id exception)
 	{
 		// Squash any secondary errors during error handling.
 	}
-	[msg release];
 }
 
 
-void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args)
+void cxx_OOJSReportWarningWithArguments(ooscript::Context context, const char *format, va_list args)
 {
-	NSString				*msg = nil;
-	
 	@try
 	{
-		msg = [[NSString alloc] initWithFormat:format arguments:args];
-		ooscript::reportWarning((context), [msg UTF8String]);
+		std::string msg = oo::str::vformat(format, args);
+		ooscript::reportWarning((context), msg.c_str());
 	}
 	@catch (id exception)
 	{
 		// Squash any secondary errors during error handling.
 	}
-	[msg release];
 }
 
 
 void OOJSReportBadPropertySelector(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec)
 {
-	NSString	*propName = OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec);
+	std::optional<std::string>	propName = cxx_OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec);
 	const char	*className = OOJSGetClass(context, thisObj)->name;
-	
-	OOJSReportError(context, @"Invalid property identifier %@ for instance of %s.", propName, className);
+
+	// %@ of a nil name printed "(null)".
+	cxx_OOJSReportError(context, "Invalid property identifier %s for instance of %s.", propName ? propName->c_str() : "(null)", className);
 }
 
 
 void OOJSReportBadPropertyValue(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec, ooscript::Value value)
 {
-	NSString	*propName = OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec);
+	std::optional<std::string>	propName = cxx_OOStringFromJSPropertyIDAndSpec(context, propID, propertySpec);
 	const char	*className = OOJSGetClass(context, thisObj)->name;
-	NSString	*valueDesc = OOJSDescribeValue(context, value, YES);
-	
-	OOJSReportError(context, @"Cannot set property %@ of instance of %s to invalid value %@.", propName, className, valueDesc);
+	std::string	valueDesc = cxx_OOJSDescribeValue(context, value, YES);
+
+	cxx_OOJSReportError(context, "Cannot set property %s of instance of %s to invalid value %s.", propName ? propName->c_str() : "(null)", className, valueDesc.c_str());
 }
 
 
-void OOJSReportBadArguments(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, NSString *message, NSString *expectedArgsDescription)
+void cxx_OOJSReportBadArguments(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, const std::optional<std::string> &message, const std::optional<std::string> &expectedArgsDescription)
 {
 	@try
 	{
-		if (message == nil)  message = @"Invalid arguments";
-		message = [NSString stringWithFormat:@"%@ %@", message, [NSString stringWithJavaScriptParameters:argv count:argc inContext:context]];
-		if (expectedArgsDescription != nil)  message = [NSString stringWithFormat:@"%@ -- expected %@", message, expectedArgsDescription];
-		
-		OOJSReportErrorForCaller(context, scriptClass, function, @"%@.", message);
+		std::string text = message ? *message : std::string("Invalid arguments");
+		std::optional<std::string> parameters = cxx_OOJSStringWithJavaScriptParameters(argv, argc, context);
+		text += " " + (parameters ? *parameters : std::string("(null)"));
+		if (expectedArgsDescription)  text += " -- expected " + *expectedArgsDescription;
+
+		cxx_OOJSReportErrorForCaller(context, scriptClass, function, "%s.", text.c_str());
 	}
 	@catch (id exception)
 	{
@@ -1231,7 +1224,7 @@ void OOJSSetWarningOrErrorStackSkip(unsigned skip)
 }
 
 
-BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed)
+BOOL cxx_OOJSArgumentListGetNumber(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed)
 {
 	if (OOJSArgumentListGetNumberNoError(context, argc, argv, outNumber, outConsumed))
 	{
@@ -1239,8 +1232,8 @@ BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass,
 	}
 	else
 	{
-		OOJSReportBadArguments(context, scriptClass, function, argc, argv,
-									   @"Expected number, got", NULL);
+		cxx_OOJSReportBadArguments(context, scriptClass, function, argc, argv,
+									   std::string("Expected number, got"), std::nullopt);
 		return NO;
 	}
 }
@@ -2099,9 +2092,10 @@ bool OOJSUnconstructableConstruct(ooscript::Context context, ooscript::CallArgs 
 	OOJS_NATIVE_ENTER(context)
 	
 	ooscript::Function function = ooscript::valueToFunction((context), oojsArgs.callee());
-	NSString *name = OOStringFromJSString(context, (ooscript::getFunctionId(function)));
-	
-	OOJSReportError(context, @"%@ cannot be used as a constructor.", name);
+	std::optional<std::string> name = cxx_OOStringFromJSString(context, (ooscript::getFunctionId(function)));
+
+	// %@ of a nil name printed "(null)".
+	cxx_OOJSReportError(context, "%s cannot be used as a constructor.", name ? name->c_str() : "(null)");
 	return NO;
 	
 	OOJS_NATIVE_EXIT
@@ -2324,7 +2318,8 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 	ooscript::ClassDef *actualClass = OOJSGetClass(context, object);
 	if (EXPECT_NOT(!OOJSIsSubclass(actualClass, requiredJSClass)))
 	{
-		OOJSReportError(context, @"Native method expected %s, got %@.", requiredJSClass->name, OOStringFromJSValue(context, ooscript::objectValue(object)));
+		std::optional<std::string> got = cxx_OOStringFromJSValue(context, ooscript::objectValue(object));
+		cxx_OOJSReportError(context, "Native method expected %s, got %s.", requiredJSClass->name, got ? got->c_str() : "(null)");
 		return NO;
 	}
 	NSCAssert(static_cast<std::uint32_t>(actualClass->flags) & static_cast<std::uint32_t>(ooscript::ClassFlag::HasPrivate), @"Native object accessor requires JS class with private storage.");
@@ -2336,7 +2331,7 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 	// Double-check that the underlying object is of the expected ObjC class.
 	if (EXPECT_NOT(*outObject != nil && ![*outObject isKindOfClass:requiredObjCClass]))
 	{
-		OOJSReportError(context, @"Native method expected %@ from %s and got correct JS type but incorrect native object %@", requiredObjCClass, requiredJSClass->name, *outObject);
+		cxx_OOJSReportError(context, "Native method expected %s from %s and got correct JS type but incorrect native object %s", oo::DescriptionOf(requiredObjCClass).c_str(), requiredJSClass->name, oo::DescriptionOf(*outObject).c_str());
 		return NO;
 	}
 #endif
