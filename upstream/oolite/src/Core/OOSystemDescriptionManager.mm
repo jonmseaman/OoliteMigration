@@ -26,7 +26,7 @@ MA 02110-1301, USA.
 
 #import "OOSystemDescriptionManager.h"
 #import "OOStringParsing.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOTypes.h"
 #import "PlayerEntity.h"
 #import "Universe.h"
@@ -103,7 +103,7 @@ static NSString *kOOSystemLayerProperty = @"layer";
 	// firstly, cache all coordinates
 	for (i=0;i<OO_SYSTEM_CACHE_LENGTH;i++)
 	{
-		coordinatesCache[i] = PointFromString([propertyCache[i] oo_stringForKey:@"coordinates"]);
+		coordinatesCache[i] = PointFromString(oo::PListView(propertyCache[i]).get<NSString *>(@"coordinates"));
 	}
 	// now for each system find its neighbours
 	for (i=0;i<OO_GALAXIES_AVAILABLE;i++)
@@ -158,10 +158,10 @@ static NSString *kOOSystemLayerProperty = @"layer";
 	[propertiesInUse addObjectsFromArray:[properties allKeys]];
 
 	NSArray  *tokens = ScanTokensFromString(key);
-	if ([tokens count] == 2 && [tokens oo_unsignedIntegerAtIndex:0] < OO_GALAXIES_AVAILABLE && [tokens oo_unsignedIntegerAtIndex:1] < OO_SYSTEMS_PER_GALAXY)
+	if ([tokens count] == 2 && oo::PListView(tokens).at<NSUInteger>(0) < OO_GALAXIES_AVAILABLE && oo::PListView(tokens).at<NSUInteger>(1) < OO_SYSTEMS_PER_GALAXY)
 	{
-		OOGalaxyID g = [tokens oo_unsignedIntegerAtIndex:0];
-		OOSystemID s = [tokens oo_unsignedIntegerAtIndex:1];
+		OOGalaxyID g = oo::PListView(tokens).at<NSUInteger>(0);
+		OOSystemID s = oo::PListView(tokens).at<NSUInteger>(1);
 		NSUInteger index = (g * OO_SYSTEMS_PER_GALAXY) + s;
 		if (index >= OO_SYSTEM_CACHE_LENGTH)
 		{
@@ -188,12 +188,12 @@ static NSString *kOOSystemLayerProperty = @"layer";
 	[propertiesInUse addObject:property];
 
 	NSArray  *tokens = ScanTokensFromString(key);
-	if ([tokens count] == 2 && [tokens oo_unsignedIntegerAtIndex:0] < OO_GALAXIES_AVAILABLE && [tokens oo_unsignedIntegerAtIndex:1] < OO_SYSTEMS_PER_GALAXY)
+	if ([tokens count] == 2 && oo::PListView(tokens).at<NSUInteger>(0) < OO_GALAXIES_AVAILABLE && oo::PListView(tokens).at<NSUInteger>(1) < OO_SYSTEMS_PER_GALAXY)
 	{
 		[self saveScriptedChangeToProperty:property forSystemKey:key andLayer:layer toValue:value fromManifest:manifest];
 	
-		OOGalaxyID g = [tokens oo_unsignedIntegerAtIndex:0];
-		OOSystemID s = [tokens oo_unsignedIntegerAtIndex:1];
+		OOGalaxyID g = oo::PListView(tokens).at<NSUInteger>(0);
+		OOSystemID s = oo::PListView(tokens).at<NSUInteger>(1);
 		NSUInteger index = (g * OO_SYSTEMS_PER_GALAXY) + s;
 		if (index >= OO_SYSTEM_CACHE_LENGTH)
 		{
@@ -205,7 +205,7 @@ static NSString *kOOSystemLayerProperty = @"layer";
 		}
 	}
 	// for interstellar updates, save but don't update cache
-	else if ([tokens count] == 4 && [tokens oo_unsignedIntegerAtIndex:1] < OO_GALAXIES_AVAILABLE && [tokens oo_unsignedIntegerAtIndex:2] < OO_SYSTEMS_PER_GALAXY && [tokens oo_unsignedIntegerAtIndex:3] < OO_SYSTEMS_PER_GALAXY)
+	else if ([tokens count] == 4 && oo::PListView(tokens).at<NSUInteger>(1) < OO_GALAXIES_AVAILABLE && oo::PListView(tokens).at<NSUInteger>(2) < OO_SYSTEMS_PER_GALAXY && oo::PListView(tokens).at<NSUInteger>(3) < OO_SYSTEMS_PER_GALAXY)
 	{
 		[self saveScriptedChangeToProperty:property forSystemKey:key andLayer:layer toValue:value fromManifest:manifest];
 	}
@@ -245,13 +245,13 @@ static NSString *kOOSystemLayerProperty = @"layer";
 		key = [keyStr componentsSeparatedByString:kOOScriptedChangeJoiner];
 		if ([key count] == 4)
 		{
-			manifest = [key oo_stringAtIndex:0];
+			manifest = oo::PListView(key).at<NSString *>(0);
 			if ([ResourceManager manifestForIdentifier:manifest] != nil)
 			{
 //				OOLog(@"importing",@"%@ -> %@",keyStr,[scripted objectForKey:keyStr]);
-				[self setProperty:[key oo_stringAtIndex:2]
-					 forSystemKey:[key oo_stringAtIndex:1]
-						 andLayer:(OOSystemLayer)[key oo_intAtIndex:3]
+				[self setProperty:oo::PListView(key).at<NSString *>(2)
+					 forSystemKey:oo::PListView(key).at<NSString *>(1)
+						 andLayer:(OOSystemLayer)oo::PListView(key).at<int>(3)
 						  toValue:[scripted objectForKey:keyStr]
 					 fromManifest:manifest];
 				// and doing this set stores it into the manager's copy
@@ -278,7 +278,7 @@ static NSString *kOOSystemLayerProperty = @"layer";
 	
 	foreachkey (systemKey,scripted)
 	{
-		NSDictionary *legacyChanges = [scripted oo_dictionaryForKey:systemKey];
+		NSDictionary *legacyChanges = oo::PListView(scripted).get<NSDictionary *>(systemKey);
 		if ([legacyChanges objectForKey:@"sun_gone_nova"] != nil)
 		{
 			// then this is a change to import even if we don't know
@@ -340,10 +340,10 @@ static NSString *kOOSystemLayerProperty = @"layer";
 - (NSDictionary *) getPropertiesForSystemKey:(NSString *)key
 {
 	NSArray  *tokens = ScanTokensFromString(key);
-	if ([tokens count] == 2 && [tokens oo_unsignedIntegerAtIndex:0] < OO_GALAXIES_AVAILABLE && [tokens oo_unsignedIntegerAtIndex:1] < OO_SYSTEMS_PER_GALAXY)
+	if ([tokens count] == 2 && oo::PListView(tokens).at<NSUInteger>(0) < OO_GALAXIES_AVAILABLE && oo::PListView(tokens).at<NSUInteger>(1) < OO_SYSTEMS_PER_GALAXY)
 	{
-		OOGalaxyID g = [tokens oo_unsignedIntegerAtIndex:0];
-		OOSystemID s = [tokens oo_unsignedIntegerAtIndex:1];
+		OOGalaxyID g = oo::PListView(tokens).at<NSUInteger>(0);
+		OOSystemID s = oo::PListView(tokens).at<NSUInteger>(1);
 		NSUInteger index = (g * OO_SYSTEMS_PER_GALAXY) + s;
 		if (index >= OO_SYSTEM_CACHE_LENGTH)
 		{
@@ -482,7 +482,7 @@ static NSString *kOOSystemLayerProperty = @"layer";
 
 - (void) setProperties:(NSDictionary *)properties inDescription:(OOSystemDescriptionEntry *)desc
 {
-	OOSystemLayer layer = (OOSystemLayer)[properties oo_unsignedIntForKey:kOOSystemLayerProperty defaultValue:OO_LAYER_OXP_STATIC];
+	OOSystemLayer layer = (OOSystemLayer)oo::PListView(properties).get<unsigned int>(kOOSystemLayerProperty, OO_LAYER_OXP_STATIC);
 	if (layer > OO_LAYER_OXP_PRIORITY)
 	{
 		OOLog(@"system.description.error",@"Layer %u is not a valid layer number in system information.",layer);
@@ -607,7 +607,7 @@ static NSString *kOOSystemLayerProperty = @"layer";
 			OOLog(@"system.description.error",@"'%zu' is an invalid system index for the current system. This is an internal error. Please report it.",index);
 			return kNilRandomSeed;
 		}
-		return RandomSeedFromString([propertyCache[index] oo_stringForKey:@"random_seed"]);
+		return RandomSeedFromString(oo::PListView(propertyCache[index]).get<NSString *>(@"random_seed"));
 	}
 }
 
@@ -625,7 +625,7 @@ static NSString *kOOSystemLayerProperty = @"layer";
 		OOLog(@"system.description.error",@"'%d %d' is an invalid system key. This is an internal error. Please report it.",g,s);
 		return kNilRandomSeed;
 	}
-	return RandomSeedFromString([propertyCache[index] oo_stringForKey:@"random_seed"]);
+	return RandomSeedFromString(oo::PListView(propertyCache[index]).get<NSString *>(@"random_seed"));
 }
 
 
@@ -690,7 +690,7 @@ static NSString *kOOSystemLayerProperty = @"layer";
 
 /* Mostly the rest of the game gets a system dictionary from
  * [UNIVERSE currentSystemData] or similar, which means that it uses
- * safe methods like oo_stringForKey: - a few things use a direct call
+ * safe methods like get<NSString *> - a few things use a direct call
  * to getProperty for various reasons, so need some type validation
  * here instead. */
 - (id) validateProperty:(NSString *)property withValue:(id)value
