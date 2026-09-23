@@ -31,6 +31,19 @@ class's header, its .mm and its category files count as ONE declarer. Foundation
 --check is the guard: it exits 1 if any selector has a C++ type (std::, oo::, a reference) in a
 slot where another declaration of the same selector has a different type, and prints each such
 family. It exits 0 on today's tree. Pure text analysis, no compiler; < 5 s.
+
+SELECTORS CALLED BY NAME (ADR-0043 Amendment 3, item 21)
+
+A selector the game sends by NAME has a second declaration that the compiler never sees: the
+dispatcher, which passes Objective-C objects (-performSelector:withObject:) and expects an object or
+nothing back. Such a selector is `shared` whatever the headers say, and --check fails when any of
+its declarations takes or returns a C++ type. The names come from:
+  * Resources/Config/whitelist.plist: legacy-script actions and queries, AI methods, HUD dials,
+    shader bindings (every quoted "selector:" or bare name in it);
+  * Resources/AIs/*.plist: the first word of every action string ("pauseAI: 3600" -> pauseAI:);
+  * every @selector(...) literal in src/ except inside -respondsToSelector: /
+    +instancesRespondToSelector: (targets, notification observers, timers, callbacks);
+  * tools/dynamic-selectors.txt: anything else (NSSelectorFromString on a built string).
 """
 
 import argparse
@@ -129,6 +142,68 @@ def scan(roots):
     return table
 
 
+RESOURCES = os.path.join(REPO_ROOT, "upstream", "oolite", "Resources")
+DYNAMIC_LIST = os.path.join(REPO_ROOT, "tools", "dynamic-selectors.txt")
+SELECTOR_LITERAL = re.compile(r"@selector\(\s*([A-Za-z_][\w:]*)\s*\)")
+RESPONDS = re.compile(r"(?:respondsToSelector|instancesRespondToSelector)\s*:\s*$")
+PLIST_WORD = re.compile(r'"((?:\\.|[^"\\])*)"|([A-Za-z_][\w:.]*)')
+
+
+def _read(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+def dynamic_selectors():
+    """{selector: source} for every selector the game sends by name (see the docstring)."""
+    found = {}
+
+    def add(sel, source):
+        sel = sel.strip()
+        if re.fullmatch(r"[A-Za-z_]\w*(?::(?:[A-Za-z_]\w*:)*)?", sel):
+            found.setdefault(sel, source)
+
+    # whitelist.plist: every string or bare word that is a selector-shaped token
+    text = COMMENT.sub(" ", _read(os.path.join(RESOURCES, "Config", "whitelist.plist")))
+    for quoted, bare in PLIST_WORD.findall(text):
+        add(quoted or bare, "whitelist.plist")
+    # AI state machines: the first word of each action string
+    ai_dir = os.path.join(RESOURCES, "AIs")
+    for name in sorted(os.listdir(ai_dir)) if os.path.isdir(ai_dir) else []:
+        if not name.endswith(".plist"):
+            continue
+        text = COMMENT.sub(" ", _read(os.path.join(ai_dir, name)))
+        for array in re.findall(r"\(([^()]*)\)", text):
+            for quoted, bare in PLIST_WORD.findall(array):
+                word = (quoted or bare).split()
+                if not word:
+                    continue
+                head = word[0]
+                if len(word) > 1 and not head.endswith(":"):
+                    head += ":"
+                add(head, "AI plists")
+    # @selector literals handed to a dispatcher
+    for dirpath, _dirs, files in os.walk(SRC):
+        for name in files:
+            if not name.endswith((".h", ".m", ".mm")):
+                continue
+            text = _read(os.path.join(dirpath, name))
+            for m in SELECTOR_LITERAL.finditer(text):
+                before = text[max(0, m.start() - 60):m.start()]
+                if RESPONDS.search(before):
+                    continue
+                add(m.group(1), "@selector in " + name)
+    # the explicit list
+    for line in _read(DYNAMIC_LIST).splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            add(line.lstrip("-+"), "dynamic-selectors.txt")
+    return found
+
+
 def foundation_root():
     prefix = os.environ.get("MINGW_PREFIX")
     for base in ([prefix] if prefix else []) + ["/ucrt64"]:
@@ -156,10 +231,20 @@ def main():
     if fnd:
         roots.append(fnd)
     table = scan(roots)
+    dynamic = dynamic_selectors()
 
     status = 0
     if args.check:
         bad = 0
+        for (kind, sel), decls in sorted(table.items()):
+            if kind != "-" or sel not in dynamic:
+                continue
+            typed = [d for d in decls if any(is_cxx(t) for t in (d[0],) + d[1])]
+            if typed:
+                bad += 1
+                print(f"CALLED BY NAME {kind}{sel} ({dynamic[sel]}) has a C++ type:")
+                for ret, params, c, w in typed:
+                    print(f"    {c:<32} ({ret}) {params}  {w}")
         for (kind, sel), decls in sorted(table.items()):
             slots = [(ret,) + params for ret, params, _c, _w in decls]
             width = max(len(s) for s in slots)
@@ -179,7 +264,10 @@ def main():
         own = {(k, s): c for k, s, _r, _p, c, _l in declarations(path)}
         for (kind, sel), container in sorted(own.items(), key=lambda x: x[0][1]):
             others = sorted({c for _r, _p, c, _w in table.get((kind, sel), []) if c != container})
-            if others:
+            if kind == "-" and sel in dynamic:
+                also = (" also: " + ", ".join(others[:8])) if others else ""
+                print(f"shared  {kind}{sel:<48} called by name ({dynamic[sel]}){also}")
+            elif others:
                 shown = ", ".join(others[:8]) + (f", ... ({len(others)})" if len(others) > 8 else "")
                 print(f"shared  {kind}{sel:<48} also: {shown}")
             else:
