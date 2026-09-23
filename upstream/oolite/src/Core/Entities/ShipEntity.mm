@@ -93,6 +93,7 @@ MA 02110-1301, USA.
 #import "OOJSVector.h"
 #import "OOJSEngineTimeManagement.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #define USEMASC 1
 
@@ -664,7 +665,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 	
 	[roleSet release];
-	roleSet = [[[OORoleSet roleSetWithString:[shipDict oo_stringForKey:@"roles"]] roleSetWithRemovedRole:@"player"] retain];
+	roleSet = [[[OORoleSet roleSetWithString:oo::StdString([shipDict oo_stringForKey:@"roles"])] roleSetWithRemovedRole:"player"] retain];
 	[primaryRole release];
 	primaryRole = nil;
 	
@@ -3791,11 +3792,9 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		
 		if(isRandomMissile)
 		{
-			id 				value;
-			
-			foreach (value, [[missile roleSet] roles])
+			for (const std::string &value : [[missile roleSet] roles])
 			{
-				role = (NSString *)value;
+				role = oo::NSStringFrom(value);
 				missileType = [OOEquipmentType equipmentTypeWithIdentifier:role];
 				// ensure that we have a missile or mine
 				if ([missileType isMissileOrMine]) break;
@@ -7256,8 +7255,8 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 
 - (OORoleSet *)roleSet
 {
-	if (roleSet == nil)  roleSet = [[OORoleSet alloc] initWithRoleString:primaryRole];
-	return [[roleSet roleSetWithAddedRoleIfNotSet:primaryRole probability:1.0] roleSetWithAddedRoleIfNotSet:[self shipDataKeyAutoRole] probability:1.0];
+	if (roleSet == nil)  roleSet = [[OORoleSet alloc] initWithRoleString:oo::StdString(primaryRole)];
+	return [[roleSet roleSetWithAddedRoleIfNotSet:oo::StdString(primaryRole) probability:1.0] roleSetWithAddedRoleIfNotSet:oo::StdString([self shipDataKeyAutoRole]) probability:1.0];
 }
 
 
@@ -7272,8 +7271,8 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 	if (![self hasRole:role])
 	{
 		OORoleSet *newRoles = nil;
-		if (roleSet != nil)  newRoles = [roleSet roleSetWithAddedRole:role probability:probability];
-		else  newRoles = [OORoleSet roleSetWithRole:role probability:probability];
+		if (roleSet != nil)  newRoles = [roleSet roleSetWithAddedRole:oo::StdString(role) probability:probability];
+		else  newRoles = [OORoleSet roleSetWithRole:oo::StdString(role) probability:probability];
 		if (newRoles != nil)
 		{
 			[roleSet release];
@@ -7287,7 +7286,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	if ([self hasRole:role])
 	{
-		OORoleSet *newRoles = [roleSet roleSetWithRemovedRole:role];
+		OORoleSet *newRoles = [roleSet roleSetWithRemovedRole:oo::StdString(role)];
 		if (newRoles != nil)
 		{
 			[roleSet release];
@@ -7301,7 +7300,7 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 {
 	if (primaryRole == nil)
 	{
-		primaryRole = [roleSet anyRole];
+		primaryRole = oo::NSStringOrNil([roleSet anyRole]);
 		if (primaryRole == nil)  primaryRole = @"trader";
 		[primaryRole retain];
 		OOLog(@"ship.noPrimaryRole", @"%@ had no primary role, randomly selected \"%@\".", [self name], primaryRole);
