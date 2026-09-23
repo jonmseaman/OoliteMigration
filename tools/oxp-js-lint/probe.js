@@ -123,8 +123,8 @@ const REGEX_PRECEDERS = new Set([
   "new", "do", "else", "yield", "case",
 ]);
 
-const ID_START = /[A-Za-z_$\u0080-￿]/;
-const ID_PART = /[A-Za-z0-9_$\u0080-￿]/;
+const ID_START = /[A-Za-z_$\u0080-\uffff]/;
+const ID_PART = /[A-Za-z0-9_$\u0080-\uffff]/;
 
 /** tokens: {t: kind, v: raw value, line} kinds: id, num, str, tpl, re, p, other */
 function tokenize(src) {
@@ -144,7 +144,7 @@ function tokenize(src) {
     const c = src[i];
     const d = src[i + 1];
     if (c === "\n") { line++; i++; continue; }
-    if (c === " " || c === "\t" || c === "\r" || c === "\f" || c === "\v" || c === "﻿" || c === " ") { i++; continue; }
+    if (c === " " || c === "\t" || c === "\r" || c === "\f" || c === "\v" || c === "\ufeff" || c === "\u00a0") { i++; continue; }
     if (c === "/" && d === "/") { while (i < n && src[i] !== "\n") i++; continue; }
     if (c === "/" && d === "*") {
       let j = i + 2;
@@ -394,7 +394,7 @@ function loadCorpusMember(identifier, suffix) {
   if (members.length !== 1) throw new Error(`${members.length} .js members match the suffix (need exactly 1)`);
   const bytes = readMember(buf, members[0]);
   const text = bytes.toString("utf8");
-  return text.includes("�") ? bytes.toString("latin1") : text;
+  return text.includes("\ufffd") ? bytes.toString("latin1") : text;
 }
 
 function main(argv) {
