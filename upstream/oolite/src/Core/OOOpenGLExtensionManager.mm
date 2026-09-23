@@ -831,7 +831,7 @@ NSComparisonResult CompareGPUSettingsByPriority(id a, id b, void *context)
 	// NOTE: assumes single-threaded first access.
 */
 
-+ (id)allocWithZone:(NSZone *)inZone
++ (id)allocWithZone:(OOZone *)inZone
 {
 	if (sSingleton == nil)
 	{
@@ -842,7 +842,7 @@ NSComparisonResult CompareGPUSettingsByPriority(id a, id b, void *context)
 }
 
 
-- (id)copyWithZone:(NSZone *)inZone
+- (id)copyWithZone:(OOZone *)inZone
 {
 	return self;
 }

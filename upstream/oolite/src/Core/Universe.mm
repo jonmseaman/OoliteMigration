@@ -152,7 +152,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void * context);
 /* TODO: route calculation is really slow - find a way to safely enable this */
 #undef CACHE_ROUTE_FROM_SYSTEM_RESULTS
 
-@interface RouteElement: NSObject
+@interface RouteElement: OOObject
 {
 @private
 	OOSystemID _location, _parent;

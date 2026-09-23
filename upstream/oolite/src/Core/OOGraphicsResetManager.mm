@@ -108,7 +108,7 @@ static OOGraphicsResetManager *sSingleton = nil;
 	// NOTE: assumes single-threaded first access.
 */
 
-+ (id) allocWithZone:(NSZone *)inZone
++ (id) allocWithZone:(OOZone *)inZone
 {
 	if (sSingleton == nil)
 	{
@@ -119,7 +119,7 @@ static OOGraphicsResetManager *sSingleton = nil;
 }
 
 
-- (id) copyWithZone:(NSZone *)inZone
+- (id) copyWithZone:(OOZone *)inZone
 {
 	return self;
 }
