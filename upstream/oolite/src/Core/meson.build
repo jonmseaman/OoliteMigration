@@ -28,6 +28,7 @@ oolite_sources += files(
     'OOCPUInfo.mm',
     'OOCache.mm',
     'OOCacheManager.mm',
+    'OOCacheManager+FoundationBridge.mm',
     'OOCharacter.mm',
     'OOCocoa.mm',
     'OOCollectionExtractors.mm',
