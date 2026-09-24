@@ -26,6 +26,9 @@ MA 02110-1301, USA.
 
 #import "PlayerEntity.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 
 @class OOScript;
 
@@ -61,16 +64,23 @@ typedef enum
 - (void) setScriptTarget:(ShipEntity *)ship;
 - (ShipEntity*) scriptTarget;
 
-- (void) runScriptActions:(NSArray *)sanitizedActions withContextName:(NSString *)contextName forTarget:(ShipEntity *)target;
-- (void) runUnsanitizedScriptActions:(NSArray *)unsanitizedActions allowingAIMethods:(BOOL)allowAIMethods withContextName:(NSString *)contextName forTarget:(ShipEntity *)target;
+/*	Foundation sweep (proposed ADR-0043, chunk 1 of oo-j924: bead oo-3rb.190): scripts and
+	conditions are oo::PList trees, context names std::optional (nullopt was nil). The
+	Foundation-typed forms moved to PlayerEntityLegacyScriptEngine+FoundationBridge.h
+	(transitional), forwarding to these.
+*/
+- (void) cxx_runScriptActions:(const oo::PList &)sanitizedActions withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target;
+- (void) cxx_runUnsanitizedScriptActions:(const oo::PList &)unsanitizedActions allowingAIMethods:(BOOL)allowAIMethods withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target;
 
 // Test (sanitized) legacy script conditions array.
-- (BOOL) scriptTestConditions:(NSArray *)array;
+- (BOOL) cxx_scriptTestConditions:(const oo::PList &)array;
 
-- (NSDictionary*) missionVariables;
-
-- (NSString *)missionVariableForKey:(NSString *)key;
-- (void)setMissionVariable:(NSString *)value forKey:(NSString *)key;
+/*	The mission-variable store (bead oo-3rb.191): a variable is an oo::PList (null = unset; a
+	string, an array from -setMissionInstructionsList:, or whatever JavaScript stored).
+*/
+- (oo::PList) cxx_missionVariables;	// a snapshot
+- (oo::PList) cxx_missionVariableForKey:(const std::string &)key;
+- (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key;	// null removes
 
 - (NSMutableDictionary *)localVariablesForMission:(NSString *)missionKey;
 - (NSString *)localVariableForKey:(NSString *)variableName andMission:(NSString *)missionKey;
@@ -78,55 +88,55 @@ typedef enum
 
 /*-----------------------------------------------------*/
 
-- (NSString *) mission_string;
-- (NSString *) status_string;
-- (NSString *) gui_screen_string;
-- (NSNumber *) galaxy_number;
-- (NSNumber *) planet_number;
-- (NSNumber *) score_number;
-- (NSNumber *) credits_number;
-- (NSNumber *) scriptTimer_number;
-- (NSNumber *) shipsFound_number;
+- (id) mission_string;	// called by name (ADR-0043 item 21)
+- (id) status_string;	// called by name (ADR-0043 item 21)
+- (id) gui_screen_string;	// called by name (ADR-0043 item 21)
+- (id) galaxy_number;	// called by name (ADR-0043 item 21)
+- (id) planet_number;	// called by name (ADR-0043 item 21)
+- (id) score_number;	// called by name (ADR-0043 item 21)
+- (id) credits_number;	// called by name (ADR-0043 item 21)
+- (id) scriptTimer_number;	// called by name (ADR-0043 item 21)
+- (id) shipsFound_number;	// called by name (ADR-0043 item 21)
 
-- (NSNumber *) d100_number;
-- (NSNumber *) pseudoFixedD100_number;
-- (NSNumber *) d256_number;
-- (NSNumber *) pseudoFixedD256_number;
+- (id) d100_number;	// called by name (ADR-0043 item 21)
+- (id) pseudoFixedD100_number;	// called by name (ADR-0043 item 21)
+- (id) d256_number;	// called by name (ADR-0043 item 21)
+- (id) pseudoFixedD256_number;	// called by name (ADR-0043 item 21)
 
-- (NSNumber *) clock_number;			// returns the game time in seconds
-- (NSNumber *) clock_secs_number;		// returns the game time in seconds
-- (NSNumber *) clock_mins_number;		// returns the game time in minutes
-- (NSNumber *) clock_hours_number;		// returns the game time in hours
-- (NSNumber *) clock_days_number;		// returns the game time in days
+- (id) clock_number;	// called by name (ADR-0043 item 21); returns the game time in seconds
+- (id) clock_secs_number;	// called by name (ADR-0043 item 21); returns the game time in seconds
+- (id) clock_mins_number;	// called by name (ADR-0043 item 21); returns the game time in minutes
+- (id) clock_hours_number;	// called by name (ADR-0043 item 21); returns the game time in hours
+- (id) clock_days_number;	// called by name (ADR-0043 item 21); returns the game time in days
 
-- (NSNumber *) fuelLevel_number;		// returns the fuel level in LY
+- (id) fuelLevel_number;	// called by name (ADR-0043 item 21); returns the fuel level in LY
 
-- (NSString *) dockedAtMainStation_bool;
-- (NSString *) foundEquipment_bool;
+- (id) dockedAtMainStation_bool;	// called by name (ADR-0043 item 21)
+- (id) foundEquipment_bool;	// called by name (ADR-0043 item 21)
 
-- (NSString *) sunWillGoNova_bool;		// returns whether the sun is going to go nova
-- (NSString *) sunGoneNova_bool;		// returns whether the sun has gone nova
+- (id) sunWillGoNova_bool;	// called by name (ADR-0043 item 21); returns whether the sun is going to go nova
+- (id) sunGoneNova_bool;	// called by name (ADR-0043 item 21); returns whether the sun has gone nova
 
-- (NSString *) missionChoice_string;	// returns nil or the key for the chosen option
-- (NSString *) missionKeyPress_string;
+- (id) missionChoice_string;	// called by name (ADR-0043 item 21); returns nil or the key for the chosen option
+- (id) missionKeyPress_string;	// called by name (ADR-0043 item 21)
 
-- (NSNumber *) dockedTechLevel_number;
-- (NSString *) dockedStationName_string;	// returns 'NONE' if the player isn't docked, [station name] if it is, 'UNKNOWN' otherwise
+- (id) dockedTechLevel_number;	// called by name (ADR-0043 item 21)
+- (id) dockedStationName_string;	// called by name (ADR-0043 item 21); returns 'NONE' if the player isn't docked, [station name] if it is, 'UNKNOWN' otherwise
 
-- (NSNumber *) systemGovernment_number;
-- (NSString *) systemGovernment_string;
-- (NSNumber *) systemEconomy_number;
-- (NSString *) systemEconomy_string;
-- (NSNumber *) systemTechLevel_number;
-- (NSNumber *) systemPopulation_number;
-- (NSNumber *) systemProductivity_number;
+- (id) systemGovernment_number;	// called by name (ADR-0043 item 21)
+- (id) systemGovernment_string;	// called by name (ADR-0043 item 21)
+- (id) systemEconomy_number;	// called by name (ADR-0043 item 21)
+- (id) systemEconomy_string;	// called by name (ADR-0043 item 21)
+- (id) systemTechLevel_number;	// called by name (ADR-0043 item 21)
+- (id) systemPopulation_number;	// called by name (ADR-0043 item 21)
+- (id) systemProductivity_number;	// called by name (ADR-0043 item 21)
 
-- (NSString *) commanderName_string;
-- (NSString *) commanderRank_string;
-- (NSString *) commanderShip_string;
-- (NSString *) commanderShipDisplayName_string;
-- (NSString *) commanderLegalStatus_string;
-- (NSNumber *) commanderLegalStatus_number;
+- (id) commanderName_string;	// called by name (ADR-0043 item 21)
+- (id) commanderRank_string;	// called by name (ADR-0043 item 21)
+- (id) commanderShip_string;	// called by name (ADR-0043 item 21)
+- (id) commanderShipDisplayName_string;	// called by name (ADR-0043 item 21)
+- (id) commanderLegalStatus_string;	// called by name (ADR-0043 item 21)
+- (id) commanderLegalStatus_number;	// called by name (ADR-0043 item 21)
 
 /*-----------------------------------------------------*/
 
@@ -147,7 +157,7 @@ typedef enum
 - (void) consoleMessage3s:(NSString *)valueString;
 - (void) consoleMessage6s:(NSString *)valueString;
 
-- (void) setLegalStatus:(NSString *)valueString;
+- (void) setLegalStatus:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 - (void) awardCredits:(NSString *)valueString;
 - (void) awardShipKills:(NSString *)valueString;
 - (void) awardEquipment:(NSString *)equipString;  //eg. EQ_NAVAL_ENERGY_UNIT
@@ -221,7 +231,7 @@ typedef enum
 - (void) setMissionTitle:(NSString *)value;
 
 - (void) setFuelLeak: (NSString *)value;
-- (NSNumber *)fuelLeakRate_number;
+- (id) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
 - (void) setSunNovaIn: (NSString *)time_value;
 - (void) launchFromStation;
 - (void) blowUpStation;
@@ -265,4 +275,11 @@ typedef enum
 
 @end
 
-NSString *OOComparisonTypeToString(OOComparisonType type) CONST_FUNC;
+std::string cxx_OOComparisonTypeToString(OOComparisonType type);
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before its sweep (beads oo-3rb.190 onwards, chunks of oo-j924), forwarding to the cxx_
+	methods above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
+	own sweep beads; the bridge goes in its own bead.
+*/
+#import "PlayerEntityLegacyScriptEngine+FoundationBridge.h"
