@@ -378,4 +378,24 @@ and converts the result exactly as the old method produced it.
 	return [self cxx_trySellingCommodity:oo::StdString(type) all:all];
 }
 
+
+// oo-3rb.248: missiles, pylons, damage, bounty, equipment add/remove and comms
+- (BOOL) assignToActivePylon:(NSString *)identifierKey
+{
+	return [self cxx_assignToActivePylon:oo::StdString(identifierKey)];
+}
+
+
+- (BOOL) mountMissileWithRole:(NSString *)role
+{
+	return [self cxx_mountMissileWithRole:oo::StdString(role)];
+}
+
+
+- (BOOL) endScenario:(NSString *)key
+{
+	if (key == nil)  return NO;	// -isEqualToString: on nil
+	return [self cxx_endScenario:oo::StdString(key)];
+}
+
 @end

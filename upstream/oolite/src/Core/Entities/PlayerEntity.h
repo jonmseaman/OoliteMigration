@@ -1029,7 +1029,7 @@ typedef enum
 - (void) selectNextMissile;
 - (void) tidyMissilePylons;
 - (BOOL) removeFromPylon:(NSUInteger) pylon;
-- (BOOL) assignToActivePylon:(NSString *)identifierKey;
+- (BOOL) cxx_assignToActivePylon:(const std::string &)identifierKey;
 
 - (void) clearAlertFlags;
 - (int) alertFlags;
@@ -1038,7 +1038,7 @@ typedef enum
 - (OOPlayerFleeingStatus) fleeingStatus;
 
 - (BOOL) mountMissile:(ShipEntity *)missile;
-- (BOOL) mountMissileWithRole:(NSString *)role;
+- (BOOL) cxx_mountMissileWithRole:(const std::string &)role;
 
 - (OOEnergyUnitType) installedEnergyUnitType;
 - (OOEnergyUnitType) energyUnitType;
@@ -1069,7 +1069,7 @@ typedef enum
 
 - (BOOL) takeInternalDamage;
 
-- (BOOL) endScenario:(NSString *)key;
+- (BOOL) cxx_endScenario:(const std::string &)key;
 
 - (NSMutableArray *) roleWeights;
 - (void) addRoleForAggression:(ShipEntity *)victim;
