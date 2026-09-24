@@ -27,6 +27,8 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOLogging.h"
 #import "OOPriorityQueue.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
 
@@ -245,7 +247,11 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 	{
 		if (other != nil)  otherTime = [other nextTime];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(kOOLogException, @"\n\n***** Ignoring Timer Exception: %@ : %@ *****\n\n",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(kOOLogException, @"\n\n***** Ignoring Timer Exception: %@ : %@ *****\n\n",[exception name], [exception reason]);
 	}

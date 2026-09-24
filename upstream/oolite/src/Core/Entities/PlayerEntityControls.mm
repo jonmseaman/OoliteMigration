@@ -2508,14 +2508,14 @@ static NSTimeInterval	time_last_frame;
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = [self commanderSelector];
+			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
-				
-				[self loadPlayerFromFile:commanderFile asNew:NO];
+
+				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
 			}
 			break;
 		}
@@ -5159,7 +5159,7 @@ static BOOL autopilot_pause;
 					if ([oxzmanager isAcceptingTextInput])
 					{
 						[gameView setStringInput: gvStringInputAll];
-						[oxzmanager refreshTextInput:[gameView typedString]];
+						[oxzmanager refreshTextInput:[gameView cxx_typedString].value_or(std::string())];
 					}
 					else
 					{
@@ -5192,7 +5192,7 @@ static BOOL autopilot_pause;
 						{
 							if ([oxzmanager isAcceptingTextInput])
 							{
-								[oxzmanager processTextInput:[gameView typedString]];
+								[oxzmanager processTextInput:[gameView cxx_typedString].value_or(std::string())];
 							}
 							else
 							{
@@ -5335,14 +5335,14 @@ static BOOL autopilot_pause;
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = [self commanderSelector];
+			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
-				
-				[self loadPlayerFromFile:commanderFile asNew:NO];
+
+				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
 			}
 			break;
 		}
@@ -5615,7 +5615,7 @@ static BOOL autopilot_pause;
 		for (subEnum = [ts dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
-			if([[sub canAcceptShipForDocking:self] isEqualToString:@"TOO_BIG_TO_DOCK"]) 
+			if([sub canAcceptShipForDocking:self] == "TOO_BIG_TO_DOCK")
 			{
 				message = OOExpandKey((ts == [UNIVERSE station]) ? @"autopilot-denied" : @"autopilot-target-docking-instructions-denied", stationName);
 				goto abort;

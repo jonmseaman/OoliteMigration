@@ -31,6 +31,7 @@ SOFTWARE.
 #import "OOLogging.h"
 #import "OOMaths.h"
 #import "OOCPUInfo.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 
 #include "oofnd/String.hpp"
@@ -150,7 +151,7 @@ OOINLINE void SqueezeVertically(OOPixMap pixMap, OOPixMapDimension dstHeight)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(pixMap.format))];
+	[OOException raise:OOInternalInconsistencyException format:"Unsupported pixmap format in scaler: %s", OOPixMapFormatName(pixMap.format).c_str()];
 #else
 	abort();
 #endif
@@ -180,7 +181,7 @@ OOINLINE void StretchHorizontally(OOPixMap srcPx, OOPixMap dstPx)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(srcPx.format))];
+	[OOException raise:OOInternalInconsistencyException format:"Unsupported pixmap format in scaler: %s", OOPixMapFormatName(srcPx.format).c_str()];
 #else
 	abort();
 #endif
@@ -208,7 +209,7 @@ OOINLINE void SqueezeHorizontally(OOPixMap pixMap, OOPixMapDimension dstHeight)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInternalInconsistencyException format:@"Unsupported pixmap format in scaler: %@", oo::NSStringFrom(OOPixMapFormatName(pixMap.format))];
+	[OOException raise:OOInternalInconsistencyException format:"Unsupported pixmap format in scaler: %s", OOPixMapFormatName(pixMap.format).c_str()];
 #else
 	abort();
 #endif	
