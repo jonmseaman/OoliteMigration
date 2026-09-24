@@ -892,7 +892,7 @@ static AIStackElement *sStack = NULL;
 #if DEBUG_GRAPHVIZ
 			if ([[NSUserDefaults standardUserDefaults] boolForKey:@"generate-ai-graphviz"])
 			{
-				GenerateGraphVizForAIStateMachine(oo::ObjectFromPList(newSM), oo::NSStringFrom(smName));
+				GenerateGraphVizForAIStateMachine(newSM, smName);
 			}
 #endif
 
