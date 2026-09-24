@@ -1404,7 +1404,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 
 						// cycle through all the relevant equipment.
-						NSUInteger c = [eqScripts count];
+						NSUInteger c = eqScripts.size();
 						
 						// if Ctrl is held down at the same time as the prime equipment key,
 						// cycle relevant equipment in reverse
@@ -1434,7 +1434,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						else
 						{
 							[self playNextEquipmentSelected];
-							eqKey = oo::StdString([[eqScripts objectAtIndex:primedEquipment] objectAtIndex:0]);
+							eqKey = eqScripts[primedEquipment].first;
 							const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] name]);
 							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}

@@ -252,16 +252,6 @@ oo::PList EquipmentRow(const std::optional<std::string> &text, bool available, O
 }
 
 
-// Element <index> of an array held as an oo::PList, as -at<NSString *> read it: nullopt unless a
-// string or a number (see StringForKey).
-std::optional<std::string> StringAt(const oo::PList &array, size_t index)
-{
-	const oo::PList *value = array.at(index);
-	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
-	return oo::PListGet<std::string>::from(value, std::string());
-}
-
-
 // "More:<n>[:<key>]" row keys: field <index>, or nullopt past the end.
 std::optional<std::string> RowKeyField(const std::string &key, size_t index)
 {
@@ -1214,7 +1204,7 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		[result setObject:equipment forKey:@"extra_equipment"];
 	}
-	if (primedEquipment < [eqScripts count]) [result setObject:oo::PListView(oo::PListView(eqScripts).at<NSArray *>(primedEquipment)).at<NSString *>(0) forKey:@"primed_equipment"];
+	if (primedEquipment < eqScripts.size()) [result setObject:oo::NSStringFrom(eqScripts[primedEquipment].first) forKey:@"primed_equipment"];
 	
 	[result setObject:[self fastEquipmentA] forKey:@"primed_equipment_a"];
 	[result setObject:[self fastEquipmentB] forKey:@"primed_equipment_b"];
@@ -1256,7 +1246,7 @@ static GLfloat		sBaseMass = 0.0;
 	[result setObject:oo::ObjectFromPList(oo::PList(parcel_record)) forKey:@"parcel_record"];
 	
 	//specialCargo
-	if (specialCargo)  [result setObject:specialCargo forKey:@"special_cargo"];
+	if (specialCargo)  [result setObject:oo::NSStringFrom(*specialCargo) forKey:@"special_cargo"];
 	
 	// contracts
 	[result setObject:oo::ObjectFromPList(oo::PList(contracts)) forKey:@"contracts"];
@@ -1565,7 +1555,7 @@ static GLfloat		sBaseMass = 0.0;
 		[equipment removeObjectForKey:@"EQ_ENERGY_BOMB"];
 	}
 	
-	eqScripts = [[NSMutableArray alloc] init];
+	eqScripts.clear();
 	[self addEquipmentFromCollection:equipment];
 	primedEquipment = [self eqScriptIndexForKey:oo::PListView(dict).get<NSString *>(@"primed_equipment")];	// if key not found primedEquipment is set to primed-none
 	
@@ -1638,8 +1628,9 @@ static GLfloat		sBaseMass = 0.0;
 	
 	
 	//specialCargo
-	[specialCargo release];
-	specialCargo = [oo::PListView(dict).get<NSString *>(@"special_cargo") copy];
+	// a string (or a number, as text), else none: as -oo_stringForKey: read it
+	const oo::PList savedSpecialCargo = oo::PListFrom([dict objectForKey:@"special_cargo"]);
+	specialCargo = (savedSpecialCargo.isString() || savedSpecialCargo.isNumber()) ? std::optional<std::string>(oo::PListGet<std::string>::from(&savedSpecialCargo, std::string())) : std::nullopt;
 	
 	// mission destinations
 	const oo::PList legacyDestinations = oo::PListFrom([dict objectForKey:@"missionDestinations"]);	// used only if an array
@@ -2275,8 +2266,7 @@ static GLfloat		sBaseMass = 0.0;
 	missiles				= PLAYER_STARTING_MISSILES;
 	max_missiles			= PLAYER_STARTING_MAX_MISSILES;
 	
-	[eqScripts release];
-	eqScripts = [[NSMutableArray alloc] init];
+	eqScripts.clear();
 	primedEquipment = 0;
 	[self setFastEquipmentA:@"EQ_CLOAKING_DEVICE"];
 	[self setFastEquipmentB:@"EQ_ENERGY_BOMB"]; // for compatibility purposes
@@ -2330,9 +2320,8 @@ static GLfloat		sBaseMass = 0.0;
 	
 	commLog.clear();
 	
-	[specialCargo release];
-	specialCargo = nil;
-	
+	specialCargo.reset();
+
 	// views
 	forwardViewOffset		= kZeroVector;
 	aftViewOffset			= kZeroVector;
@@ -2520,7 +2509,6 @@ static GLfloat		sBaseMass = 0.0;
 
 	
 
-	DESTROY(eqScripts);
 	DESTROY(worldScripts);
 	DESTROY(worldScriptsRequiringTickle);
 	DESTROY(commodityScripts);
@@ -2528,13 +2516,11 @@ static GLfloat		sBaseMass = 0.0;
 	
 	DESTROY(localVariables);
 	
-	DESTROY(lastTextKey);
 	
 	
 	
 	DESTROY(shipCommodityData);
 	
-	DESTROY(specialCargo);
 	
 	DESTROY(save_path);
 	DESTROY(scenarioKey);
@@ -5547,7 +5533,7 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (NSString *) specialCargo
+- (std::optional<std::string>) cxx_specialCargo
 {
 	return specialCargo;
 }
@@ -8082,11 +8068,7 @@ static GLfloat		sBaseMass = 0.0;
 	}
 	/* ends */
 
-	if (lastTextKey)
-	{
-		[lastTextKey release];
-		lastTextKey = nil;
-	}
+	lastTextKey.reset();
 	
 	[[UNIVERSE gameView] clearMouse];
 	
@@ -8262,43 +8244,44 @@ static GLfloat		sBaseMass = 0.0;
 
 - (NSUInteger) primedEquipmentCount
 {
-	return [eqScripts count];
+	return eqScripts.size();
 }
 
 
-- (NSString *) primedEquipmentName:(NSInteger)offset
+- (std::optional<std::string>) cxx_primedEquipmentName:(NSInteger)offset
 {
 	NSUInteger c = [self primedEquipmentCount];
 	NSUInteger idx = (primedEquipment+(c+1)+offset)%(c+1);
 	if (idx == c)
 	{
-		return DESC(@"equipment-primed-none-hud-label");
+		return oo::OptionalString(DESC(@"equipment-primed-none-hud-label"));
 	}
 	else
 	{
-		return [[OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(oo::PListView(eqScripts).at<NSArray *>(idx)).at<NSString *>(0)] name];
+		return oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[idx].first)] name]);
 	}
 }
 
 
-- (NSString *) currentPrimedEquipment
+- (std::string) cxx_currentPrimedEquipment
 {
-	NSString *result = @"";
-	NSUInteger c = [eqScripts count];
-	if (primedEquipment != c)
+	std::string result;	// "": primed-none
+	NSUInteger c = eqScripts.size();
+	if (primedEquipment != c && primedEquipment < c)
 	{
-		result = oo::PListView(oo::PListView(eqScripts).at<NSArray *>(primedEquipment)).at<NSString *>(0);
+		result = eqScripts[primedEquipment].first;
 	}
 	return result;
 }
 
 
-- (BOOL) setPrimedEquipment:(NSString *)eqKey showMessage:(BOOL)showMsg
+- (BOOL) cxx_setPrimedEquipment:(const std::string &)eqKey showMessage:(BOOL)showMsg
 {
-	NSUInteger c = [eqScripts count];
+	// (a nil key primed nothing and answered NO: the bridged -setPrimedEquipment:showMessage:)
+	NSUInteger c = eqScripts.size();
 	NSUInteger current = primedEquipment;
-	primedEquipment = [self eqScriptIndexForKey:eqKey];	// if key not found primedEquipment is set to primed-none
-	BOOL unprimeEq = [eqKey isEqualToString:@""];
+	primedEquipment = [self cxx_eqScriptIndexForKey:eqKey];	// if key not found primedEquipment is set to primed-none
+	BOOL unprimeEq = eqKey.empty();
 	BOOL result = YES;
 
 	if (primedEquipment == c && !unprimeEq)
@@ -8310,8 +8293,16 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		if (primedEquipment != current && showMsg == YES)
 		{
-			NSString *equipmentName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(oo::PListView(eqScripts).at<NSArray *>(primedEquipment)).at<NSString *>(0)] name];
-			[UNIVERSE addMessage:unprimeEq ? OOExpandKey(@"equipment-primed-none") : OOExpandKey(@"equipment-primed", equipmentName) forCount:2.0];
+			if (unprimeEq)
+			{
+				[UNIVERSE addMessage:OOExpandKey(@"equipment-primed-none") forCount:2.0];
+			}
+			else
+			{
+				// (a nil name raised in the expansion)
+				const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqScripts[primedEquipment].first)] name]);
+				[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
+			}
 		}
 	}
 	return result;
@@ -8320,10 +8311,10 @@ static GLfloat		sBaseMass = 0.0;
 
 - (void) activatePrimableEquipment:(NSUInteger)index withMode:(OOPrimedEquipmentMode)mode
 {
-	// index == [eqScripts count] means we don't want to activate any equipment.
-	if(index < [eqScripts count])
+	// index == eqScripts.size() means we don't want to activate any equipment.
+	if(index < eqScripts.size())
 	{
-		OOJSScript *eqScript = [oo::PListView(eqScripts).at<NSArray *>(index) objectAtIndex:1];
+		OOJSScript *eqScript = eqScripts[index].second.get();
 		ooscript::Context context = OOJSAcquireContext();
 		NSAssert1(mode <= OOPRIMEDEQUIP_MODE, @"Primable equipment mode %i out of range", (int)mode);
 		
@@ -8408,7 +8399,7 @@ static GLfloat		sBaseMass = 0.0;
 	std::vector<std::string>	manifest;
 	const oo::PList			list = oo::PListFrom([self cargoListForScripting]);
 
-	if (specialCargo) manifest.push_back(oo::StdString(specialCargo));
+	if (specialCargo) manifest.push_back(*specialCargo);
 
 	for (size_t commodityIndex = 0; commodityIndex < list.count(); commodityIndex++)
 	{
@@ -8742,8 +8733,7 @@ static GLfloat		sBaseMass = 0.0;
 	}
 	/* ends */
 	
-	[lastTextKey release];
-	lastTextKey = nil;
+	lastTextKey.reset();
 	
 	[[UNIVERSE gameView] clearMouse];
 	
@@ -10836,7 +10826,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount
 {
 	OOMassUnit			unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
-	if([self specialCargo] && unit == UNITS_TONS) return 0;	// don't do anything if we've got a special cargo...
+	if([self cxx_specialCargo].has_value() && unit == UNITS_TONS) return 0;	// don't do anything if we've got a special cargo...
 	
 	OOCargoQuantity		oldAmount = [self cxx_cargoQuantityForType:type];
 	OOCargoQuantity		available = [self availableCargoSpace];
@@ -10890,7 +10880,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (OOCargoQuantity) cargoQuantityOnBoard
 {
-	if ([self specialCargo] != nil)
+	if ([self cxx_specialCargo].has_value())
 	{
 		return [self maxAvailableCargoSpace];
 	}	
@@ -11485,7 +11475,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	OOCreditsQuantity	pricePerUnit	= [localMarket cxx_priceForGood:index];
 	OOMassUnit			unit			= [localMarket massUnitForGood:oo::NSStringFrom(index)];
 
-	if (specialCargo != nil && unit == UNITS_TONS)
+	if (specialCargo.has_value() && unit == UNITS_TONS)
 	{
 		return NO;									// can't buy tons of stuff when carrying a specialCargo
 	}
@@ -11703,10 +11693,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	NSUInteger i, j;
 	oo::PList object;
 
-	for (i = 0; i < [eqScripts count]; i++)
+	for (i = 0; i < eqScripts.size(); i++) 
 	{
-		// (eqScripts stays Foundation until chunk 13: its entry read here as an oo::PList)
-		if (StringAt(oo::PListFrom([eqScripts objectAtIndex:i]), 0) == equipmentKey)
+		if (eqScripts[i].first == equipmentKey) 
 		{
 			//check if this equipment item is already in the array
 			for (j = 0; j < customEquipActivation.size(); j++) {
@@ -13608,7 +13597,7 @@ else _dockTarget = NO_TARGET;
 */
 - (BOOL) suppressClangStuff
 {
-	return missionChoice &&
+	return missionChoice.has_value() &&
 	!commanderNameString.empty() &&
 	!cdrDetailArray.empty() &&
 	currentPage &&
@@ -13743,8 +13732,8 @@ else _dockTarget = NO_TARGET;
 	!kbdLayouts.empty() &&
 	showingLongRangeChart &&
 	_missionAllowInterrupt &&
-	_missionScreenID &&
-	_missionTitle &&
+	_missionScreenID.has_value() &&
+	_missionTitle.has_value() &&
 	_missionTextEntry;
 }
 #endif

@@ -1386,11 +1386,7 @@ for (unsigned i=0;i<amount;i++)
 	}
 	/* ends */
 	
-	if (lastTextKey)
-	{
-		[lastTextKey release];
-		lastTextKey = nil;
-	}
+	lastTextKey.reset();
 	
 	[self setShowDemoShips:NO];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
@@ -1474,11 +1470,7 @@ for (unsigned i=0;i<amount;i++)
 	}
 	/* ends */
 	
-	if (lastTextKey)
-	{
-		[lastTextKey release];
-		lastTextKey = nil;
-	}
+	lastTextKey.reset();
 	
 	[self setShowDemoShips:NO];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
