@@ -24,6 +24,7 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "oofnd/objc/OORuntime.h"
+#include "oofnd/objc/OOException.h"
 #import "HeadUpDisplay.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -158,6 +159,31 @@ id ObjectForKeyIn(const oo::PList &info, std::string_view key)
 	return (value != nullptr) ? oo::ObjectFromPList(*value) : nil;
 }
 
+
+/*	A string element of an array, nullopt where oo_stringAtIndex: gave nil (past the end, or
+	neither a string nor a number).
+*/
+std::optional<std::string> OptionalStringAt(const oo::PList &array, std::size_t index)
+{
+	const oo::PList *value = array.at(index);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return array.at<std::string>(index);
+}
+
+
+/*	-objectAtIndex: on the reticle colours. They are built as +arrayWithObjects: built them,
+	stopping at the first colour that did not parse, so the list may be short; an index past its
+	end raised, and still does, with the same text.
+*/
+OOColor *ReticleColorAt(const std::vector<oo::ObjCRef<OOColor *>> &colors, NSUInteger index)
+{
+	if (EXPECT_NOT(index >= colors.size()))
+	{
+		[OOException raise:OORangeException format:"Index %lu is out of range %lu (in 'objectAtIndex:')", (unsigned long)index, (unsigned long)colors.size()];
+	}
+	return colors[index].get();
+}
+
 }	// namespace
 
 OOINLINE float useDefined(float val, float validVal) 
@@ -177,8 +203,8 @@ static void hudDrawBarAt(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat am
 static void hudDrawSurroundAt(GLfloat x, GLfloat y, GLfloat z, NSSize siz);
 static void hudDrawStatusIconAt(int x, int y, int z, NSSize siz);
 static void hudDrawReticleOnTarget(Entity* target, PlayerEntity* player1, GLfloat z1,
-				GLfloat alpha, BOOL reticleTargetSensitive, NSMutableDictionary *propertiesReticleTargetSensitive,
-				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, NSMutableArray *reticleColors);
+				GLfloat alpha, BOOL reticleTargetSensitive, oo::PList *propertiesReticleTargetSensitive,
+				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::ObjCRef<OOColor *>> &reticleColors);
 static void hudDrawWaypoint(OOWaypointEntity *waypoint, PlayerEntity *player1, GLfloat z1, GLfloat alpha, BOOL selected, GLfloat scale);
 static void hudRotateViewpointForVirtualDepth(PlayerEntity * player1, Vector p1);
 static void drawScannerGrid(GLfloat x, GLfloat y, GLfloat z, NSSize siz, int v_dir, GLfloat thickness, GLfloat zoom, BOOL nonlinear, BOOL minimalistic);
@@ -238,7 +264,7 @@ enum
 - (void) drawPrimedEquipmentText:(const oo::PList &)info;
 - (void) drawASCTarget:(id)info;	// called by name (ADR-0043 item 21)
 - (void) drawWeaponsOfflineText:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(NSString *)text asIndex:(NSUInteger)index;
+- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(const std::string &)text asIndex:(NSUInteger)index;
 - (void) drawFPSInfoCounter:(id)info;	// called by name (ADR-0043 item 21)
 - (void) drawScoopStatus:(id)info;	// called by name (ADR-0043 item 21)
 - (void) drawStickSensitivityIndicator:(id)info;	// called by name (ADR-0043 item 21)
@@ -255,7 +281,7 @@ enum
 
 - (void) drawTrumbles:(id)info;	// called by name (ADR-0043 item 21)
 
-- (NSArray *) crosshairDefinitionForWeaponType:(OOWeaponType)weapon;
+- (oo::PList) crosshairDefinitionForWeaponType:(OOWeaponType)weapon;	// a null PList for none
 
 - (BOOL) checkPlayerInFlight;
 - (BOOL) checkPlayerInSystemFlight;
@@ -298,18 +324,18 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (id) initWithDictionary:(NSDictionary *)hudinfo
+- (id) initWithDictionary:(id)hudinfo	// shared selector (proposed ADR-0043)
 {
-	return [self initWithDictionary:hudinfo inFile:nil];
+	return [self cxx_initWithDictionary:oo::PListFrom(hudinfo) inFile:std::nullopt];
 }
 
 
-- (id) initWithDictionary:(NSDictionary *)hudinfo inFile:(NSString *)hudFileName
+- (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName
 {
 	unsigned		i;
 	BOOL			isCompassToBeDrawn = NO;
 	BOOL			areTrumblesToBeDrawn = NO;
-	const oo::PList	info = oo::PListFrom(hudinfo);	// read once
+	const oo::PList	&info = hudinfo;
 
 	self = [super init];
 	
@@ -317,16 +343,17 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	if (sFontTexture == nil)  InitTextEngine();
 	
-	deferredHudName = nil;	// if not nil, it means that we have a deferred HUD which is to be drawn at first available opportunity
-	hudName = [hudFileName copy];
+	deferredHudName.reset();	// if engaged, it means that we have a deferred HUD which is to be drawn at first available opportunity
+	hudName = hudFileName;
 	
 	// init arrays
 	dialArray.reserve(16);
 	legendArray.reserve(16);
 	mfdArray.reserve(8);
 	
-	_reticleColors = nil;
-	
+	_reticleColors.clear();
+	BOOL reticleColorsSet = NO;
+
 	// populate arrays
 	const oo::PList *dials = info.get<oo::PList::Array>(DIALS_KEY);
 	const oo::PList noEntry;	// an entry that is not a dictionary, as nil was
@@ -341,18 +368,24 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 			id targetColor = ObjectForKeyIn(dial_info, "target_rgba");
 			id targetSensitiveColor = ObjectForKeyIn(dial_info, "target_sensitive_rgba");
 			id wormholeColor = ObjectForKeyIn(dial_info, "wormhole_rgba");
-			_reticleColors = [[NSMutableArray arrayWithObjects:[OOColor colorWithDescription:(targetColor != nil) ? targetColor : @"greenColor"],
-												[OOColor colorWithDescription:(targetSensitiveColor != nil) ? targetSensitiveColor : @"redColor"],
-												[OOColor colorWithDescription:(wormholeColor != nil) ? wormholeColor : @"cyanColor"],
-												nil] retain];
+			OOColor *colors[3] = { [OOColor colorWithDescription:(targetColor != nil) ? targetColor : @"greenColor"],
+								   [OOColor colorWithDescription:(targetSensitiveColor != nil) ? targetSensitiveColor : @"redColor"],
+								   [OOColor colorWithDescription:(wormholeColor != nil) ? wormholeColor : @"cyanColor"] };
+			_reticleColors.clear();
+			for (OOColor *color : colors)
+			{
+				if (color == nil)  break;	// the list stops at the first nil, as +arrayWithObjects: did
+				_reticleColors.push_back(oo::ObjCRef<OOColor *>(color));
+			}
+			reticleColorsSet = YES;
 		}
 		[self addDial:dial_info];
 	}
 	
 	// reticle colors should be set at this point, but just be safe in case they are not
-	if (!_reticleColors)
+	if (!reticleColorsSet)
 	{
-		_reticleColors = [[NSMutableArray arrayWithObjects:[OOColor greenColor], [OOColor redColor], [OOColor cyanColor], nil] retain];
+		_reticleColors = { oo::ObjCRef<OOColor *>([OOColor greenColor]), oo::ObjCRef<OOColor *>([OOColor redColor]), oo::ObjCRef<OOColor *>([OOColor cyanColor]) };
 	}
 	
 	if (!areTrumblesToBeDrawn)	// naughty - a hud with no built-in drawTrumbles: - one must be added!
@@ -389,10 +422,9 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	overallAlpha = info.get<float>("overall_alpha", DEFAULT_OVERALL_ALPHA);
 
 	reticleTargetSensitive = info.get<bool>("reticle_target_sensitive", NO);
-	propertiesReticleTargetSensitive = [[NSMutableDictionary alloc] initWithObjectsAndKeys:
-										[NSNumber numberWithBool:YES], @"isAccurate", 
-										[NSNumber numberWithDouble:[UNIVERSE getTime]], @"timeLastAccuracyProbabilityCalculation", 
-										nil];
+	propertiesReticleTargetSensitive = oo::PList(oo::PList::Dict{
+										{ "isAccurate", oo::PList(static_cast<bool>(YES)) },
+										{ "timeLastAccuracyProbabilityCalculation", oo::PList(static_cast<double>([UNIVERSE getTime])) } });
 	
 	cloakIndicatorOnStatusLight = info.get<bool>("cloak_indicator_on_status_light", YES);
 
@@ -400,19 +432,19 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	
 	last_transmitter = NO_TARGET;
 	
-	[crosshairDefinition release];
-	
-	NSString *crossfile = [oo::PListView(hudinfo).get<NSString *>(@"crosshair_file") retain];
-	if (crossfile == nil)
+	crosshairDefinition.reset();
+
+	std::optional<std::string> crossfile = OptionalStringIn(info, "crosshair_file");
+	if (!crossfile.has_value())
 	{
-		_crosshairOverrides = [oo::PListView(hudinfo).get<NSDictionary *>(@"crosshairs") retain];
-		crosshairDefinition = nil;
+		const oo::PList *crosshairs = info.get<oo::PList::Dict>("crosshairs");
+		_crosshairOverrides = (crosshairs != nullptr) ? *crosshairs : oo::PList();
+		crosshairDefinition.reset();
 	}
 	else
 	{
-		[self setCrosshairDefinition:crossfile];
+		[self cxx_setCrosshairDefinition:*crossfile];
 	}
-	[crossfile release];
 	
 	id crosshairColor = ObjectForKeyIn(info, "crosshair_color");
 	if (crosshairColor == nil)  crosshairColor = @"greenColor";
@@ -434,13 +466,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	ReleaseHUDWidgets(legendArray);
 	ReleaseHUDWidgets(dialArray);
 	ReleaseHUDWidgets(mfdArray);
-	DESTROY(hudName);
-	DESTROY(deferredHudName);
-	DESTROY(propertiesReticleTargetSensitive);
-	DESTROY(_crosshairOverrides);
 	DESTROY(_crosshairColor);
-	DESTROY(_reticleColors);
-	DESTROY(crosshairDefinition);
 
 	[super dealloc];
 }
@@ -489,14 +515,13 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (void) resetGuis:(NSDictionary *)info
+- (void) cxx_resetGuis:(const oo::PList &)info
 {
 	// check for entries in hud.plist for message_gui and comm_log_gui
 	// then resize and reposition them accordingly.
-	
-	const oo::PList	hudInfo = oo::PListFrom(info);	// read once
+
 	GuiDisplayGen*	gui = [UNIVERSE messageGUI];
-	const oo::PList	*gui_info = hudInfo.get<oo::PList::Dict>("message_gui");	// nullptr where nil was
+	const oo::PList	*gui_info = info.get<oo::PList::Dict>("message_gui");	// nullptr where nil was
 	if (gui && gui_info != nullptr && gui_info->count() > 0)
 	{
 		/*
@@ -507,8 +532,8 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 			TODO: a more usable GUI code! - Kaks 2011.11.05
 		*/
 		
-		NSArray*	lastLines = [gui getLastLines];	// text, colour, fade time - text, colour, fade time
-		BOOL		line1 = ![oo::PListView(lastLines).at<NSString *>(0) isEqualToString:@""];
+		const oo::PList	lastLines = [gui cxx_getLastLines];	// text, colour, fade time - text, colour, fade time
+		BOOL		line1 = OptionalStringAt(lastLines, 0) != "";	// a missing line counted as not empty
 		[self resetGui:gui withInfo:*gui_info];
 
 		BOOL permanent = gui_info->get<bool>("permanent", NO);
@@ -527,15 +552,15 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		
 		if (line1)
 		{
-			[gui printLongText:oo::PListView(lastLines).at<NSString *>(0) align:GUI_ALIGN_CENTER
-						 color:[OOColor colorFromString:oo::PListView(lastLines).at<NSString *>(1)] 
-					  fadeTime:(permanent?0.0:oo::PListView(lastLines).at<float>(2)) key:nil addToArray:nil];
+			[gui cxx_printLongText:OptionalStringAt(lastLines, 0) align:GUI_ALIGN_CENTER
+						 color:[OOColor cxx_colorFromString:lastLines.at<std::string>(1)]
+					  fadeTime:(permanent?0.0:lastLines.at<float>(2)) key:std::nullopt addToArray:nullptr];
 		}
-		if ([lastLines count] > 3 && (line1 || ![oo::PListView(lastLines).at<NSString *>(3) isEqualToString:@""]))
+		if (lastLines.count() > 3 && (line1 || OptionalStringAt(lastLines, 3) != ""))
 		{
-			[gui printLongText:oo::PListView(lastLines).at<NSString *>(3) align:GUI_ALIGN_CENTER
-						 color:[OOColor colorFromString:oo::PListView(lastLines).at<NSString *>(4)] 
-					  fadeTime:(permanent?0.0:oo::PListView(lastLines).at<float>(5)) key:nil addToArray:nil];
+			[gui cxx_printLongText:OptionalStringAt(lastLines, 3) align:GUI_ALIGN_CENTER
+						 color:[OOColor cxx_colorFromString:lastLines.at<std::string>(4)]
+					  fadeTime:(permanent?0.0:lastLines.at<float>(5)) key:std::nullopt addToArray:nullptr];
 		}
 	}
 	
@@ -544,7 +569,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		// exists and it's empty. complete reset.
 		[gui setCurrentRow:8];
 		[gui setDrawPosition: make_vector(0.0, -40.0, 640.0)];
-		[gui resizeTo:NSMakeSize(480, 160) characterHeight:19 title:nil];
+		[gui cxx_resizeTo:NSMakeSize(480, 160) characterHeight:19 title:std::nullopt];
 		[gui setCharacterSize:NSMakeSize(16,20)];	// narrow characters
 		[gui setTextColor:[OOColor yellowColor]];
 		[gui setTextCommsColor:[OOColor greenColor]];
@@ -557,7 +582,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	// And now set up the comms log
 	
 	gui = [UNIVERSE commLogGUI];
-	gui_info = hudInfo.get<oo::PList::Dict>("comm_log_gui");
+	gui_info = info.get<oo::PList::Dict>("comm_log_gui");
 
 	if (gui && gui_info != nullptr && gui_info->count() > 0)
 	{
@@ -577,15 +602,15 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 			TODO: a more usable GUI code! - Kaks 2011.11.05
 		*/
 		
-		NSArray *cLog = [PLAYER commLog];
-		NSUInteger i, commCount = [cLog count];
-		
+		const std::vector<std::string> cLog = oo::StringsFrom([PLAYER commLog]);
+		NSUInteger i, commCount = cLog.size();
+
 		[self resetGui:gui withInfo:*gui_info];
 
 		for (i = 0; i < commCount; i++)
 		{
-			[gui printLongText:oo::PListView(cLog).at<NSString *>(i) align:GUI_ALIGN_LEFT color:nil
-					  fadeTime:0.0 key:nil addToArray:nil];
+			[gui cxx_printLongText:cLog[i] align:GUI_ALIGN_LEFT color:nil
+					  fadeTime:0.0 key:std::nullopt addToArray:nullptr];
 		}
 	}
 	
@@ -596,10 +621,10 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		[UNIVERSE setPermanentCommLog:NO];
 		[gui setCurrentRow:9];
 		[gui setDrawPosition: make_vector(0.0, 180.0, 640.0)];
-		[gui resizeTo:NSMakeSize(360, 120) characterHeight:12 title:nil];
+		[gui cxx_resizeTo:NSMakeSize(360, 120) characterHeight:12 title:std::nullopt];
 		[gui setBackgroundColor:[OOColor colorWithRed:0.0 green:0.05 blue:0.45 alpha:0.5]];
 		[gui setTextColor:[OOColor whiteColor]];
-		[gui printLongText:DESC(@"communications-log-string") align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:nil addToArray:nil];
+		[gui cxx_printLongText:oo::OptionalString(DESC(@"communications-log-string")) align:GUI_ALIGN_CENTER color:[OOColor yellowColor] fadeTime:0 key:std::nullopt addToArray:nullptr];
 	}
 	
 	if ([UNIVERSE permanentCommLog])
@@ -614,27 +639,26 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (NSString *) hudName
+- (std::optional<std::string>) cxx_hudName
 {
 	return hudName;
 }
 
 
-- (void) setHudName:(NSString *)newHudName
+- (void) setHudName:(const std::optional<std::string> &)newHudName
 {
-	if (newHudName != nil)
+	if (newHudName.has_value())
 	{
-		[hudName release];
-		hudName = [newHudName copy];
+		hudName = newHudName;
 	}
 }
 
 
 - (OOColor *) reticleColorForIndex:(NSUInteger)idx
 {
-	if (idx < [_reticleColors count])
+	if (idx < _reticleColors.size())
 	{
-		return [_reticleColors objectAtIndex:idx];
+		return _reticleColors[idx].get();
 	}
 	return nil;
 }
@@ -642,9 +666,9 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 
 - (BOOL) setReticleColorForIndex:(NSUInteger)idx toColor:(OOColor *)newColor
 {
-	if (newColor && idx < [_reticleColors count])
+	if (newColor && idx < _reticleColors.size())
 	{
-		[_reticleColors replaceObjectAtIndex:idx withObject:newColor];
+		_reticleColors[idx] = oo::ObjCRef<OOColor *>(newColor);
 		return YES;
 	}
 	return NO;
@@ -686,9 +710,9 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (NSMutableDictionary *) propertiesReticleTargetSensitive
+- (oo::PList *) propertiesReticleTargetSensitive
 {
-	return propertiesReticleTargetSensitive;
+	return &propertiesReticleTargetSensitive;
 }
 
 
@@ -757,14 +781,13 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (void) setDeferredHudName:(NSString *)newDeferredHudName
+- (void) cxx_setDeferredHudName:(const std::optional<std::string> &)newDeferredHudName
 {
-	[deferredHudName release];
-	deferredHudName = [newDeferredHudName copy];
+	deferredHudName = newDeferredHudName;
 }
 
 
-- (NSString *) deferredHudName
+- (std::optional<std::string>) cxx_deferredHudName
 {
 	return deferredHudName;
 }
@@ -836,24 +859,24 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	std::optional<std::string> selectorString = OptionalStringIn(info, SELECTOR_KEY);
 	if (!selectorString.has_value())
 	{
-		OOLogERR(@"hud.dial.noSelector", @"HUD dial in %@ is missing selector.", hudName);
+		OOLogERR(@"hud.dial.noSelector", @"HUD dial in %@ is missing selector.", oo::NSStringOrNil(hudName));
 		return;
 	}
 
 	if (!allowedSelectors.contains(*selectorString))
 	{
-		OOLogERR(@"hud.dial.invalidSelector", @"HUD dial in %@ uses selector \"%@\" which is not in whitelist, and will be ignored.", hudName, oo::NSStringFrom(*selectorString));
+		OOLogERR(@"hud.dial.invalidSelector", @"HUD dial in %@ uses selector \"%@\" which is not in whitelist, and will be ignored.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
 		return;
 	}
 
 	SEL selector = OOSelectorFromName(selectorString->c_str());
 
-	NSAssert2([self respondsToSelector:selector], @"HUD dial in %@ uses selector \"%@\" which is in whitelist, but not implemented.", hudName, oo::NSStringFrom(*selectorString));
+	NSAssert2([self respondsToSelector:selector], @"HUD dial in %@ uses selector \"%@\" which is in whitelist, but not implemented.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
 
 	//  handle the case above with NS_BLOCK_ASSERTIONS too.
 	if (![self respondsToSelector:selector])
 	{
-		OOLogERR(@"hud.dial.invalidSelector", @"HUD dial in %@ uses selector \"%@\"  which is in whitelist, but not implemented, and will be ignored.", hudName, oo::NSStringFrom(*selectorString));
+		OOLogERR(@"hud.dial.invalidSelector", @"HUD dial in %@ uses selector \"%@\"  which is in whitelist, but not implemented, and will be ignored.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
 		return;
 	}
 	
@@ -966,7 +989,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	{
 		// trigger the targetChanged event with whom == null
 		_compassActive = NO;
-		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:[NSArray arrayWithObjects:[OONull null], OOStringFromCompassMode([PLAYER compassMode]), nil]];
+		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::NSArrayFromObjects(std::vector<id>{ [OONull null], OOStringFromCompassMode([PLAYER compassMode]) })];
 	}
 	
 }
@@ -975,14 +998,14 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 - (void) drawMFDs
 {
 	NSUInteger i, nMFDs = mfdArray.size();
-	NSString *text = nil;
+	std::optional<std::string> text;
 	for (i = 0; i < nMFDs; i++)
 	{
-		text = [PLAYER multiFunctionText:i];
-		if (text != nil)
+		text = oo::OptionalString([PLAYER multiFunctionText:i]);
+		if (text.has_value())
 		{
 			sCurrentDrawItem = &mfdArray[i];
-			[self drawMultiFunctionDisplay:sCurrentDrawItem->info withText:text asIndex:i];
+			[self drawMultiFunctionDisplay:sCurrentDrawItem->info withText:*text asIndex:i];
 		}
 	}
 }
@@ -993,7 +1016,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	OOViewID					viewID = [UNIVERSE viewDirection];
 	OOWeaponType				weapon = [PLAYER currentWeapon];
 	BOOL						weaponsOnline = [PLAYER weaponsOnline];
-	NSArray						*points = nil;
+	oo::PList					points;
 	
 	if (viewID == VIEW_CUSTOM ||
 		overallAlpha == 0.0f ||
@@ -1017,7 +1040,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 		// Make new crosshairs object
 		points = [self crosshairDefinitionForWeaponType:weapon];
 		
-		_crosshairs = [[OOCrosshairs alloc] initWithPoints:oo::PListFrom(points)
+		_crosshairs = [[OOCrosshairs alloc] initWithPoints:points
 													 scale:_crosshairScale
 													 color:_crosshairColor
 											  overallAlpha:useAlpha];
@@ -1030,42 +1053,40 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-- (NSString *) crosshairDefinition
+- (std::optional<std::string>) cxx_crosshairDefinition
 {
 	return crosshairDefinition;
 }
 
 
-- (BOOL) setCrosshairDefinition:(NSString *)newDefinition
+- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition
 {
 	// force crosshair redraw
 	[_crosshairs release];
 	_crosshairs = nil;
 
-	[_crosshairOverrides release];
-	_crosshairOverrides = [[ResourceManager dictionaryFromFilesNamed:newDefinition
-																												 inFolder:@"Config"
-																												 andMerge:YES] retain];
-	if (_crosshairOverrides == nil || [_crosshairOverrides count] == 0)
-	{ // invalid file
-		[_crosshairOverrides release];
-		_crosshairOverrides = [[ResourceManager dictionaryFromFilesNamed:@"crosshairs.plist"
-																													 inFolder:@"Config"
-																													 andMerge:YES] retain];
-		crosshairDefinition = @"crosshairs.plist";
+	_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:newDefinition
+															   inFolder:std::string("Config")
+															   andMerge:YES];
+	if (_crosshairOverrides.count() == 0)
+	{ // invalid file (none found, or empty)
+		_crosshairOverrides = [ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
+																   inFolder:std::string("Config")
+																   andMerge:YES];
+		crosshairDefinition = "crosshairs.plist";
 		return NO;
 	}
-	crosshairDefinition = [newDefinition copy];
+	crosshairDefinition = newDefinition;
 	return YES;
 }
 
 
-- (NSArray *) crosshairDefinitionForWeaponType:(OOWeaponType)weapon
+- (oo::PList) crosshairDefinitionForWeaponType:(OOWeaponType)weapon
 {
-	NSString					*weaponName = nil;
-	NSString					*weaponName2 = nil;
-	static						NSDictionary *crosshairDefs = nil;
-	NSArray						*result = nil;
+	std::string					weaponName;
+	std::string					weaponName2;
+	static						oo::PList crosshairDefs;	// null until loaded
+	const oo::PList				*result = nullptr;
 	
 	/*	Search order:
 	 (hud.plist).crosshairs.WEAPON_NAME
@@ -1074,33 +1095,32 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	 (crosshairs.plist).OTHER
 	 */
 	
-	weaponName = OOStringFromWeaponType(weapon);
-	weaponName2 = [weaponName substringFromIndex:3]; // strip "EQ_"
-	result = oo::PListView(_crosshairOverrides).get<NSArray *>(weaponName);
-	if (result == nil) 
+	weaponName = oo::StdString(OOStringFromWeaponType(weapon));
+	weaponName2 = weaponName.substr(3); // strip "EQ_"
+	result = _crosshairOverrides.get<oo::PList::Array>(weaponName);
+	if (result == nullptr)
 	{
-		result = oo::PListView(_crosshairOverrides).get<NSArray *>(weaponName2);
+		result = _crosshairOverrides.get<oo::PList::Array>(weaponName2);
 	}
-	if (result == nil)  result = oo::PListView(_crosshairOverrides).get<NSArray *>(@"OTHER");
-	if (result == nil)
+	if (result == nullptr)  result = _crosshairOverrides.get<oo::PList::Array>("OTHER");
+	if (result == nullptr)
 	{
-		if (crosshairDefs == nil)
+		if (crosshairDefs.isNull())
 		{
-			crosshairDefs = [ResourceManager dictionaryFromFilesNamed:@"crosshairs.plist"
-															 inFolder:@"Config"
-															 andMerge:YES];
-			[crosshairDefs retain];
+			crosshairDefs = [ResourceManager cxx_dictionaryFromFilesNamed:"crosshairs.plist"
+																 inFolder:std::string("Config")
+																 andMerge:YES];
 		}
-		
-		result = oo::PListView(crosshairDefs).get<NSArray *>(weaponName);
-		if (result == nil) 
+
+		result = crosshairDefs.get<oo::PList::Array>(weaponName);
+		if (result == nullptr)
 		{
-			result = oo::PListView(crosshairDefs).get<NSArray *>(weaponName2);
+			result = crosshairDefs.get<oo::PList::Array>(weaponName2);
 		}
-		if (result == nil)  result = oo::PListView(crosshairDefs).get<NSArray *>(@"OTHER");
+		if (result == nullptr)  result = crosshairDefs.get<oo::PList::Array>("OTHER");
 	}
-	
-	return result;
+
+	return (result != nullptr) ? *result : oo::PList();
 }
 
 
@@ -1525,7 +1545,7 @@ static void prefetchData(const oo::PList &info, struct CachedInfo *data)
 					if ([scannedEntity isShip])
 					{
 						glColor4f(1.0, 1.0, 0.5, alpha);
-						OODrawString([(ShipEntity *)scannedEntity displayName], x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
+						cxx_OODrawString(oo::StdString([(ShipEntity *)scannedEntity displayName]), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
 					}
 #endif
 					glColor4fv(col);
@@ -1967,7 +1987,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				size;
 	GLfloat				alpha = overallAlpha;
-	NSString			*text = [PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))];
+	std::string			text = oo::StdString([PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))]);	// nil drew nothing, as "" does
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -1983,11 +2003,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	if (info.get<int>("align") == 1)
 	{
-		OODrawStringAligned(text, x, y, z1, size, YES);
+		cxx_OODrawStringAligned(text, x, y, z1, size, YES);
 	}
 	else
 	{
-		OODrawStringAligned(text, x, y, z1, size, NO);
+		cxx_OODrawStringAligned(text, x, y, z1, size, NO);
 	}
 
 }
@@ -2078,19 +2098,19 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
 	alpha *= cached.alpha;
 
-	NSString *textureFile = [PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))];
-	if (textureFile == nil || [textureFile length] == 0) {
+	std::optional<std::string> textureFile = oo::OptionalString([PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))]);
+	if (!textureFile.has_value() || textureFile->empty()) {
 		return;
 	}
 
-	OOTexture *texture = [OOTexture textureWithName:textureFile
-										   inFolder:@"Images"
-											options:kOOTextureDefaultOptions | kOOTextureNoShrink
-										 anisotropy:kOOTextureDefaultAnisotropy
-											lodBias:kOOTextureDefaultLODBias];
+	OOTexture *texture = [OOTexture cxx_textureWithName:textureFile
+											   inFolder:std::string("Images")
+												options:kOOTextureDefaultOptions | kOOTextureNoShrink
+											 anisotropy:kOOTextureDefaultAnisotropy
+												lodBias:kOOTextureDefaultLODBias];
 	if (texture == nil)
 	{
-		OOLogERR(kOOLogFileNotFound, @"HeadUpDisplay couldn't get an image texture name for %@", textureFile);
+		OOLogERR(kOOLogFileNotFound, @"HeadUpDisplay couldn't get an image texture name for %@", oo::NSStringFrom(*textureFile));
 		return;
 	}
 		
@@ -2304,7 +2324,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		NSSize labelSize = NSMakeSize(9.0, (bankHeight < 18.0)? bankHeight : 18.0);
 		for (i = 0; i < n_bars; i++)
 		{
-			OODrawString([NSString stringWithFormat:@"E%x", n_bars - i], labelStartX, bankY - midBank, z1, labelSize);
+			cxx_OODrawString(oo::str::format("E%x", n_bars - i), labelStartX, bankY - midBank, z1, labelSize);
 			bankY += bankHeight;
 		}
 	}
@@ -2494,19 +2514,19 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	siz.width = useDefined(cached.width, WITCHDEST_WIDTH);
 	siz.height = useDefined(cached.height, WITCHDEST_HEIGHT);
 	alpha *= cached.alpha;
-	NSString *dest = [UNIVERSE getSystemName:[PLAYER targetSystemID]];
+	std::string dest = oo::StdString([UNIVERSE getSystemName:[PLAYER targetSystemID]]);	// nil drew nothing, as "" does
 	NSInteger concealment = oo::PListView([[UNIVERSE systemManager] getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]]).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
-	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = DESC(@"status-unknown-system");
+	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = oo::StdString(DESC(@"status-unknown-system"));
 
 	SET_COLOR(green_color);
 	
 	if (info.get<int>("align") == 1)
 	{
-		OODrawStringAligned(dest, x, y, z1, siz, YES);
+		cxx_OODrawStringAligned(dest, x, y, z1, siz, YES);
 	}
 	else
 	{
-		OODrawStringAligned(dest, x, y, z1, siz, NO);
+		cxx_OODrawStringAligned(dest, x, y, z1, siz, NO);
 	}
 
 }
@@ -2648,22 +2668,33 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-static NSString * const kDefaultMissileIconKey = @"oolite-default-missile-icon";
-static NSString * const kDefaultMineIconKey = @"oolite-default-mine-icon";
+static constexpr const char *kDefaultMissileIconKey = "oolite-default-missile-icon";
+static constexpr const char *kDefaultMineIconKey = "oolite-default-mine-icon";
 static const GLfloat kOutlineWidth = 0.5f;
 
 
-static OOPolygonSprite *IconForMissileRole(NSString *role)
+/*	An icon definition from descriptions.plist: the entry if it is an array, else a null PList (as
+	oo_arrayForKey: gave nil).
+*/
+static oo::PList MissileIconDefinition(const std::string &key)
 {
-	static NSMutableDictionary	*sIcons = nil;
+	oo::PList iconDef = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(key)]);
+	return iconDef.isArray() ? iconDef : oo::PList();
+}
+
+
+static OOPolygonSprite *IconForMissileRole(const std::string &role)
+{
+	static std::map<std::string, oo::ObjCRef<OOPolygonSprite *>, std::less<>>	sIcons;
 	OOPolygonSprite				*result = nil;
-	
-	result = [sIcons objectForKey:role];
+
+	auto cached = sIcons.find(role);
+	if (cached != sIcons.end())  result = cached->second.get();
 	if (result == nil)
 	{
-		NSString *key = role;
-		NSArray *iconDef = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(key);
-		if (iconDef != nil)  result = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconDef) outlineWidth:kOutlineWidth name:oo::StdString(key)];
+		std::string key = role;
+		oo::PList iconDef = MissileIconDefinition(key);
+		if (!iconDef.isNull())  result = [[OOPolygonSprite alloc] initWithDataArray:iconDef outlineWidth:kOutlineWidth name:key];
 		if (result == nil)	// No custom icon or bad data
 		{
 			/*	Backwards compatibility note:
@@ -2673,18 +2704,16 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 				will be positive.
 				-- Ahruman 2009-10-09
 			*/
-			if ([role hasSuffix:@"_MISSILE"])  key = kDefaultMissileIconKey;
+			if (oo::str::hasSuffix(role, "_MISSILE"))  key = kDefaultMissileIconKey;
 			else  key = kDefaultMineIconKey;
-			
-			iconDef = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(key);
-			result = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconDef) outlineWidth:kOutlineWidth name:oo::StdString(key)];
+
+			iconDef = MissileIconDefinition(key);
+			result = [[OOPolygonSprite alloc] initWithDataArray:iconDef outlineWidth:kOutlineWidth name:key];
 		}
-		
+
 		if (result != nil)
 		{
-			if (sIcons == nil)  sIcons = [[NSMutableDictionary alloc] init];
-			[sIcons setObject:result forKey:role];
-			[result release];	// Balance alloc
+			sIcons[role] = oo::adoptObjC(result);	// Balance alloc
 		}
 	}
 	
@@ -2698,7 +2727,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 						  x:(int)x y:(int)y
 					  width:(GLfloat)width height:(GLfloat)height alpha:(GLfloat)alpha
 {
-	OOPolygonSprite *sprite = IconForMissileRole([missile primaryRole]);
+	OOPolygonSprite *sprite = IconForMissileRole(oo::StdString([missile primaryRole]));
 	
 	if (selected)
 	{
@@ -2824,7 +2853,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 			glVertex3i(x , y + siz.height, z1);
 		OOGLEND();
 		GLColorWithOverallAlpha(green_color, alpha);
-		OODrawString([PLAYER dialTargetName], x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
+		cxx_OODrawString(oo::StdString([PLAYER dialTargetName]), x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
 	}
 	
 }
@@ -2838,7 +2867,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	
 	if ([PLAYER primaryTarget] != nil)
 	{
-		hudDrawReticleOnTarget([PLAYER primaryTarget], PLAYER, z1, alpha, reticleTargetSensitive, propertiesReticleTargetSensitive, NO, YES, info, _reticleColors);
+		hudDrawReticleOnTarget([PLAYER primaryTarget], PLAYER, z1, alpha, reticleTargetSensitive, &propertiesReticleTargetSensitive, NO, YES, info, _reticleColors);
 		[self drawDirectionCue:info];
 	}
 	// extra feature if extra equipment installed
@@ -2858,11 +2887,10 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	{
 		// needs target memory to be working in addition to any other equipment
 		// this item may be bound to
-		NSMutableArray *targetMemory = [player targetMemory];
 		ShipEntity *primary = [player primaryTarget];
 		for (unsigned i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 		{
-			id sec_id = [targetMemory objectAtIndex:i];
+			id sec_id = [[player targetMemory] objectAtIndex:i];
 			// isProxy = weakref ; not = OONull (in this case...)
 			// can't use isKindOfClass because that throws
 			// NSInvalidArgumentException when called on a weakref
@@ -2875,7 +2903,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 				{
 					if ([secondary zeroDistance] <= SCANNER_MAX_RANGE2 && [secondary isInSpace])
 					{
-						hudDrawReticleOnTarget(secondary, PLAYER, z1, alpha, NO, nil, YES, NO, info, _reticleColors);	
+						hudDrawReticleOnTarget(secondary, PLAYER, z1, alpha, NO, nullptr, YES, NO, info, _reticleColors);	
 					}			
 				}
 			}
@@ -3022,7 +3050,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 		if (alpha > 0.0f)
 		{
 			NSUInteger cueColorIndex = [target isWormhole] ? OO_RETICLE_COLOR_WORMHOLE : OO_RETICLE_COLOR_TARGET;
-			OOColor *directionCueColor = [_reticleColors objectAtIndex:cueColorIndex];
+			OOColor *directionCueColor = ReticleColorAt(_reticleColors, cueColorIndex);
 			GLfloat	clearColorArray[4] =	{[directionCueColor redComponent],
 											[directionCueColor greenComponent],
 											[directionCueColor blueComponent],
@@ -3066,7 +3094,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	itemColor[3] *= overallAlpha;
 	
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-	OODrawString([PLAYER dial_clock], x, y, z1, siz);
+	cxx_OODrawString(oo::StdString([PLAYER dial_clock]), x, y, z1, siz);
 }
 
 
@@ -3109,8 +3137,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	if (lines == 1)
 	{
 		OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-		NSString *equipmentName = [PLAYER primedEquipmentName:0];
-		OODrawString(OOExpandKey(@"equipment-primed-hud", equipmentName), x, y, z1, size);
+		cxx_OODrawString(oo::StdString(OOExpandKey(@"equipment-primed-hud", [PLAYER primedEquipmentName:0])), x, y, z1, size);
 	}
 	else
 	{
@@ -3124,7 +3151,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 				// instead compact the display towards its centre
 				GLfloat alphaScale = 1.0/((i<0)?(1.0-i):(1.0+i));
 				OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]*alphaScale));
-				OODrawString([PLAYER primedEquipmentName:i], x, y, z1, size);
+				cxx_OODrawString(oo::StdString([PLAYER primedEquipmentName:i]), x, y, z1, size);
 			}
 			y -= size.height;
 		}	
@@ -3162,11 +3189,11 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
 	if (info.get<int>("align") == 1)
 	{
-		OODrawStringAligned([PLAYER compassTargetLabel], x, y, z1, size,YES);
+		cxx_OODrawStringAligned(oo::StdString([PLAYER compassTargetLabel]), x, y, z1, size,YES);
 	}
 	else
 	{
-		OODrawStringAligned([PLAYER compassTargetLabel], x, y, z1, size,NO);
+		cxx_OODrawStringAligned(oo::StdString([PLAYER compassTargetLabel]), x, y, z1, size,NO);
 	}
 	
 }
@@ -3207,7 +3234,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 		
 		OOGL(glColor4f(textColor[0], textColor[1], textColor[2], textColor[3]));
 		// TODO: some caching required...
-		OODrawString(DESC(@"weapons-systems-offline"), x, y, z1, siz);
+		cxx_OODrawString(oo::StdString(DESC(@"weapons-systems-offline")), x, y, z1, siz);
 	}
 }
 
@@ -3231,24 +3258,23 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	siz.height = useDefined(cached.height, FPSINFO_DISPLAY_HEIGHT);
 	
 	HPVector playerPos = [PLAYER position];
-	NSString *positionInfo = [UNIVERSE expressPosition:playerPos inCoordinateSystem:@"pwm"];
-	positionInfo = [NSString stringWithFormat:@"abs %.2f %.2f %.2f / %@", playerPos.x, playerPos.y, playerPos.z, positionInfo];
+	std::string positionInfo = oo::str::format("abs %.2f %.2f %.2f / %s", playerPos.x, playerPos.y, playerPos.z, oo::DescriptionOf([UNIVERSE expressPosition:playerPos inCoordinateSystem:@"pwm"]).c_str());
 	
 	// We would normally set a variable alpha value here, but in this case we don't.
 	// We prefer the FPS counter to be always visible - Nikos 20100405
 	GetRGBAArrayFromInfo(info, textColor);
 	OOGL(glColor4f(textColor[0], textColor[1], textColor[2], 1.0f));
-	OODrawString([PLAYER dial_fpsinfo], x, y, z1, siz);
+	cxx_OODrawString(oo::StdString([PLAYER dial_fpsinfo]), x, y, z1, siz);
 	
 #ifndef NDEBUG
 	NSSize siz08 = NSMakeSize(0.8 * siz.width, 0.8 * siz.width);
-	NSString *collDebugInfo = [NSString stringWithFormat:@"%@ - %@", [PLAYER dial_objinfo], [UNIVERSE collisionDescription]];
-	OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
-	
-	OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
-	
-	NSString *timeAccelerationFactorInfo = [NSString stringWithFormat:@"TAF: %@%.2f", DESC(@"multiplication-sign"), [UNIVERSE timeAccelerationFactor]];
-	OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, z1, siz08);
+	std::string collDebugInfo = oo::str::format("%s - %s", oo::DescriptionOf([PLAYER dial_objinfo]).c_str(), oo::DescriptionOf([UNIVERSE collisionDescription]).c_str());
+	cxx_OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
+
+	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
+
+	std::string timeAccelerationFactorInfo = oo::str::format("TAF: %s%.2f", oo::DescriptionOf(DESC(@"multiplication-sign")).c_str(), [UNIVERSE timeAccelerationFactor]);
+	cxx_OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, z1, siz08);
 #endif
 }
 
@@ -3475,7 +3501,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 }
 
 
-- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(NSString *)text asIndex:(NSUInteger)index
+- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(const std::string &)text asIndex:(NSUInteger)index
 {
 	PlayerEntity		*player1 = PLAYER;
 	struct CachedInfo	cached;
@@ -3518,28 +3544,27 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 		glVertex3f(x1+2,y0+2,z1);
 	OOGLEND();
 
-	NSString *line = nil;
-	NSArray *lines = [text componentsSeparatedByString:@"\n"];
+	const std::vector<std::string> lines = oo::str::split(text, "\n");
 	// text at full opacity
 	GLColorWithOverallAlpha(mfd_color, alpha);
 	for (i = 0; i < 10 ; i++)
 	{
-		line = oo::PListView(lines).at<NSString *>(i, nil);
-		if (line != nil)
+		if ((std::size_t)i < lines.size())
 		{
+			const std::string &line = lines[i];
 			y0 -= siz.height;
 			// all lines should be shorter than the size of the MFD
-			GLfloat textwidth = OORectFromString(line, 0.0f, 0.0f, siz).size.width;
+			GLfloat textwidth = cxx_OORectFromString(line, 0.0f, 0.0f, siz).size.width;
 			if (textwidth <= cached.width)
 			{
-				OODrawString(line, x0, y0, z1, siz);
+				cxx_OODrawString(line, x0, y0, z1, siz);
 			}
 			else
 			{
 				// compress it so it fits
 				tmpsiz.height = siz.height;
 				tmpsiz.width = siz.width * cached.width / textwidth;
-				OODrawString(line, x0, y0, z1, tmpsiz);
+				cxx_OODrawString(line, x0, y0, z1, tmpsiz);
 			}
 		}
 		else
@@ -3667,8 +3692,8 @@ static void hudDrawStatusIconAt(int x, int y, int z, NSSize siz)
 
 
 static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloat z1, 
-				GLfloat alpha, BOOL reticleTargetSensitive, NSMutableDictionary *propertiesReticleTargetSensitive,
-				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, NSMutableArray *reticleColors)
+				GLfloat alpha, BOOL reticleTargetSensitive, oo::PList *propertiesReticleTargetSensitive,
+				BOOL colourFromScannerColour, BOOL showText, const oo::PList &info, const std::vector<oo::ObjCRef<OOColor *>> &reticleColors)
 {
 	if (target == nil || player1 == nil)  
 	{
@@ -3720,7 +3745,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 	// Draw reticle cyan for Wormholes
 	if ([target isWormhole])
 	{
-		OOColor *wormholeReticleColor = [reticleColors objectAtIndex:OO_RETICLE_COLOR_WORMHOLE];
+		OOColor *wormholeReticleColor = ReticleColorAt(reticleColors, OO_RETICLE_COLOR_WORMHOLE);
 		GLfloat wormholeReticleColorArray[4] = {[wormholeReticleColor redComponent],
 												[wormholeReticleColor greenComponent],
 												[wormholeReticleColor blueComponent],
@@ -3733,7 +3758,7 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 		BOOL			isTargeted = NO;
 		GLfloat			probabilityAccuracy;
 		
-		if (propertiesReticleTargetSensitive != nil)
+		if (propertiesReticleTargetSensitive != nullptr)
 		{
 			// Only if target is within player's weapon range, we mind for reticle accuracy
 			if (range < [player1 weaponRange])
@@ -3742,17 +3767,17 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 				if (range > MAX_ACCURACY_RANGE)   
 				{
 					// Every one second re-evaluate accuracy
-					if ([UNIVERSE getTime] > oo::PListView(propertiesReticleTargetSensitive).get<double>(@"timeLastAccuracyProbabilityCalculation") + 1) 
+					if ([UNIVERSE getTime] > propertiesReticleTargetSensitive->get<double>("timeLastAccuracyProbabilityCalculation") + 1) 
 					{
 						probabilityAccuracy = 1-(range-MAX_ACCURACY_RANGE)*ACCURACY_PROBABILITY_DECREASE_FACTOR; 
 						// Make sure probability does not go below a minimum
 						probabilityAccuracy = probabilityAccuracy < MIN_PROBABILITY_ACCURACY ? MIN_PROBABILITY_ACCURACY : probabilityAccuracy;
-						[propertiesReticleTargetSensitive setObject:[NSNumber numberWithBool:((randf() < probabilityAccuracy) ? YES : NO)] forKey:@"isAccurate"];
+						(*propertiesReticleTargetSensitive->getIf<oo::PList::Dict>())["isAccurate"] = oo::PList(static_cast<bool>((randf() < probabilityAccuracy) ? YES : NO));
 			
 						// Store the time the last accuracy probability has been performed
-						[propertiesReticleTargetSensitive setObject:[NSNumber numberWithDouble:[UNIVERSE getTime]] forKey:@"timeLastAccuracyProbabilityCalculation"];
+						(*propertiesReticleTargetSensitive->getIf<oo::PList::Dict>())["timeLastAccuracyProbabilityCalculation"] = oo::PList(static_cast<double>([UNIVERSE getTime]));
 					}			
-					if (oo::PListView(propertiesReticleTargetSensitive).get<BOOL>(@"isAccurate"))
+					if (propertiesReticleTargetSensitive->get<bool>("isAccurate"))
 					{
 						// high accuracy reticle
 						isTargeted = ([UNIVERSE firstEntityTargetedByPlayerPrecisely] == target);
@@ -3802,12 +3827,12 @@ static void hudDrawReticleOnTarget(Entity *target, PlayerEntity *player1, GLfloa
 			OOColor *reticleDisplayColor = nil;
 			if (reticleTargetSensitive && isTargeted)
 			{
-				reticleDisplayColor = [reticleColors objectAtIndex:OO_RETICLE_COLOR_TARGET_SENSITIVE];
+				reticleDisplayColor = ReticleColorAt(reticleColors, OO_RETICLE_COLOR_TARGET_SENSITIVE);
 				if (!reticleDisplayColor)  reticleDisplayColor = [OOColor redColor];
 			}
 			else
 			{
-				reticleDisplayColor = [reticleColors objectAtIndex:OO_RETICLE_COLOR_TARGET];
+				reticleDisplayColor = ReticleColorAt(reticleColors, OO_RETICLE_COLOR_TARGET);
 				if (!reticleDisplayColor)  reticleDisplayColor = [OOColor greenColor];
 			}
 			GLfloat reticleDisplayColorArray[4] = {	[reticleDisplayColor redComponent],
