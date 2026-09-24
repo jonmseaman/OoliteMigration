@@ -92,14 +92,6 @@ NSString *CommodityDisplayNameForCommodityArray(NSArray *commodityDefinition);
 NSString *DisplayStringForMassUnit(OOMassUnit unit);
 NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity);
 
-NSString *OOStringFromCompassMode(OOCompassMode mode);
-OOCompassMode OOCompassModeFromString(NSString *string);
-
-NSString *OOStringFromLongRangeChartMode(OOLongRangeChartMode chartMode);
-OOLongRangeChartMode OOLongRangeChartModeFromString(NSString *string);
-
-NSString *OOStringFromLegalStatusReason(OOLegalStatusReason reason);
-
 #ifdef __cplusplus
 }
 #endif
@@ -122,6 +114,14 @@ std::string cxx_OOStringFromHDRToneMapper(OOHDRToneMapper toneMapper);
 OOHDRToneMapper cxx_OOHDRToneMapperFromString(const std::string &string);
 std::string cxx_OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper);
 OOSDRToneMapper cxx_OOSDRToneMapperFromString(const std::string &string);
+
+// The .tbl families whose types come from OOTypes.h (chunk oo-3rb.161); the others are declared
+// beside their enums in Entity.h, ShipEntity.h and PlayerEntity.h.
+std::string cxx_OOStringFromCompassMode(OOCompassMode mode);
+OOCompassMode cxx_OOCompassModeFromString(const std::string &string);
+std::string cxx_OOStringFromLongRangeChartMode(OOLongRangeChartMode chartMode);
+OOLongRangeChartMode cxx_OOLongRangeChartModeFromString(const std::string &string);
+std::string cxx_OOStringFromLegalStatusReason(OOLegalStatusReason reason);
 #endif
 
 

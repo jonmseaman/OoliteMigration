@@ -1344,6 +1344,11 @@ NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
 
 NSString *OOStringFromShipDamageType(OOShipDamageType type) CONST_FUNC;
 
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161); the Foundation forms
+// above forward to them from OOConstToString+FoundationBridge.mm.
+std::string cxx_OOStringFromBehaviour(OOBehaviour behaviour);
+std::string cxx_OOStringFromShipDamageType(OOShipDamageType type);
+
 
 /*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
 	declared before the ShipEntity.mm sweep (chunk beads oo-3rb.232-.242 of oo-3rb.73), forwarding
