@@ -17,7 +17,9 @@ others, such as -dataForKey: and -stringArrayForKey:, read -objectForKey:), sett
 -registerDefaults: and -synchronize forward to oo::Defaults, converting with oo::PListFrom /
 oo::ObjectFromPList. A key oo::Defaults does not have (GNUstep's own settings, in its language,
 GSConfigDomain and registration domains) is answered by GNUstep as before. Other NSUserDefaults
-instances are untouched.
+instances are untouched. The first change after a save schedules one -synchronize 30 s later
+(OOScheduleDeferredCall; gnustep-base's automatic-save interval, bead oo-xeve, ADR-0032
+Amendment 2).
 
 The shim goes (bead oo-iobt, "Delete NSUserDefaults+OODefaultsBridge") once no file uses
 NSUserDefaults; oo-qps (the removal of gnustep-base) cannot compile while it exists.
