@@ -51,7 +51,7 @@ OOINLINE BOOL RowInRange(OOGUIRow row, NSRange range)
 
 namespace {
 
-// -[NSArray componentsJoinedByString:@" "] of words[from...].
+// words[from...] joined by single spaces (as the old array join with @" " did).
 std::string WordsJoinedBySpace(const std::vector<std::string> &words, std::size_t from)
 {
 	std::string result;
@@ -61,6 +61,32 @@ std::string WordsJoinedBySpace(const std::vector<std::string> &words, std::size_
 		result += words[i];
 	}
 	return result;
+}
+
+// -setTitle:'s rule: an empty title is no title.
+std::optional<std::string> TitleFrom(const std::optional<std::string> &title)
+{
+	if (title.has_value() && title->empty())  return std::nullopt;
+	return title;
+}
+
+
+// A row key that makes a row unselectable (GUI_KEY_SKIP).
+bool IsSkipKey(const std::string &key)
+{
+	return key == "SKIP-ROW";
+}
+
+
+// The characters -drawGLDisplay does not highlight at either end of a column (' ' and the narrow
+// space '\037'), trimmed as -stringByTrimmingCharactersInSet: did: both are ASCII, so bytes.
+std::string TrimmedForHighlight(const std::string &text)
+{
+	const char *const kTrimmed = " \037";
+	const std::size_t first = text.find_first_not_of(kTrimmed);
+	if (first == std::string::npos)  return std::string();
+	const std::size_t last = text.find_last_not_of(kTrimmed);
+	return text.substr(first, last - first + 1);
 }
 
 }	// namespace
@@ -105,15 +131,15 @@ static BOOL _refreshStarChart = NO;
 		
 		rowRange = NSMakeRange(0,n_rows);
 		
-		rowText =   [[NSMutableArray alloc] initWithCapacity:n_rows];   // alloc retains
-		rowKey =	[[NSMutableArray alloc] initWithCapacity:n_rows];   // alloc retains
-		rowColor =	[[NSMutableArray alloc] initWithCapacity:n_rows];   // alloc retains
-		
+		rowText.reserve(n_rows);
+		rowKey.reserve(n_rows);
+		rowColor.reserve(n_rows);
+
 		for (i = 0; i < n_rows; i++)
 		{
-			[rowText addObject:@"."];
-			[rowKey addObject:[NSString stringWithFormat:@"%d",i]];
-			[rowColor addObject:[OOColor yellowColor]];
+			rowText.push_back(oo::PList("."));
+			rowKey.push_back(oo::str::format("%d", (int)i));
+			rowColor.push_back(oo::ObjCRef<OOColor *>([OOColor yellowColor]));
 			rowPosition[i].x = 0.0f;
 			rowPosition[i].y = size_in_pixels.height - (pixel_row_start + i * pixel_row_height);
 			rowAlignment[i] = GUI_ALIGN_LEFT;
@@ -124,8 +150,8 @@ static BOOL _refreshStarChart = NO;
 			tabStops[i] = stops[i];
 		}
 		
-		title = @"";
-		
+		title = std::string();	// an empty title, not none (-setTitle: would have made it none)
+
 		textColor = [[OOColor yellowColor] retain];
 		
 		drawPosition = make_vector(0.0f, 0.0f, 640.0f);
@@ -163,21 +189,21 @@ static BOOL _refreshStarChart = NO;
 	
 	rowRange = NSMakeRange(0,n_rows);
 
-	rowText =   [[NSMutableArray alloc] initWithCapacity:n_rows];   // alloc retains
-	rowKey =	[[NSMutableArray alloc] initWithCapacity:n_rows];   // alloc retains
-	rowColor =	[[NSMutableArray alloc] initWithCapacity:n_rows];   // alloc retains
-	
+	rowText.reserve(n_rows);
+	rowKey.reserve(n_rows);
+	rowColor.reserve(n_rows);
+
 	for (i = 0; i < n_rows; i++)
 	{
-		[rowText addObject:@""];
-		[rowKey addObject:@""];
-		[rowColor addObject:[OOColor greenColor]];
+		rowText.push_back(oo::PList(""));
+		rowKey.push_back(std::string());
+		rowColor.push_back(oo::ObjCRef<OOColor *>([OOColor greenColor]));
 		rowPosition[i].x = 0.0f;
 		rowPosition[i].y = size_in_pixels.height - (pixel_row_start + i * pixel_row_height);
 		rowAlignment[i] = GUI_ALIGN_LEFT;
 	}
 	
-	title = [oo::NSStringOrNil(gui_title) retain];	// the title ivar is chunk 5's (oo-3rb.96)
+	title = gui_title;	// as given (not through -setTitle:)
 	
 	textColor = [[OOColor yellowColor] retain];
 
@@ -191,10 +217,6 @@ static BOOL _refreshStarChart = NO;
 	[foregroundSprite release];
 	[backgroundColor release];
 	[textColor release];
-	[title release];
-	[rowText release];
-	[rowKey release];
-	[rowColor release];
 
 	[super dealloc];
 }
@@ -222,7 +244,7 @@ static BOOL _refreshStarChart = NO;
 	rowRange = NSMakeRange(0,n_rows);
 	[self clear];
 	//
-	[self setTitle: oo::NSStringOrNil(gui_title)];
+	title = TitleFrom(gui_title);
 }
 
 
@@ -236,27 +258,27 @@ static BOOL _refreshStarChart = NO;
 	n_columns		= gui_size.width / csize;
 	n_rows			= (int)gui_size.height / csize;
 
-	[self setTitle: oo::NSStringOrNil(gui_title)];
-	
+	title = TitleFrom(gui_title);
+
 	pixel_row_center = gui_size.width / 2;
 	pixel_row_height = csize;
 	currentRow = n_rows - 1;		// first position down the page...
 
-	if (title != nil)
+	if (title.has_value())
 		pixel_row_start = 2.75f * csize + 0.5f * (gui_size.height - n_rows * csize);
 	else
 		pixel_row_start = csize + 0.5f * (gui_size.height - n_rows * csize);
 
-	[rowText removeAllObjects];
-	[rowKey removeAllObjects];
-	[rowColor removeAllObjects];
+	rowText.clear();
+	rowKey.clear();
+	rowColor.clear();
 
 	unsigned i;
 	for (i = 0; i < n_rows; i++)
 	{
-		[rowText addObject:@""];
-		[rowKey addObject:@""];
-		[rowColor addObject:[OOColor greenColor]];
+		rowText.push_back(oo::PList(""));
+		rowKey.push_back(std::string());
+		rowColor.push_back(oo::ObjCRef<OOColor *>([OOColor greenColor]));
 		rowPosition[i].x = 0.0f;
 		rowPosition[i].y = size_in_pixels.height - (pixel_row_start + i * pixel_row_height);
 		rowAlignment[i] = GUI_ALIGN_LEFT;
@@ -302,20 +324,15 @@ static BOOL _refreshStarChart = NO;
 }
 
 
-- (NSString *)title
+- (id)title	// shared selector (proposed ADR-0043)
 {
-	return title;
+	return oo::NSStringOrNil(title);
 }
 
 
-- (void) setTitle:(NSString *)str
+- (void) setTitle:(id)str	// shared selector (proposed ADR-0043)
 {
-	if (str != title)
-	{
-		[title release];
-		if ([str length] == 0)  str = nil;
-		title = [str copy];
-	}
+	title = TitleFrom(oo::OptionalString(str));
 }
 
 
@@ -471,14 +488,14 @@ static BOOL _refreshStarChart = NO;
 - (void) setColor:(OOColor *) color forRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
-		[rowColor replaceObjectAtIndex:row withObject:color];
+		rowColor[row] = oo::ObjCRef<OOColor *>(color);
 }
 
 
 - (id) objectForRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
-		return [rowText objectAtIndex:row];
+		return oo::ObjectFromPList(rowText[row]);	// a string, or an array of column strings
 	else
 		return NULL;
 }
@@ -487,9 +504,9 @@ static BOOL _refreshStarChart = NO;
 - (OOGUIRow) cxx_rowForKey:(const std::optional<std::string> &)key
 {
 	if (!key.has_value())  return -1;	// a nil key matched nothing
-	for (unsigned i=0;i<[rowKey count];i++)
+	for (unsigned i=0;i<rowKey.size();i++)
 	{
-		if (*key == oo::StdString([rowKey objectAtIndex:i]))
+		if (*key == rowKey[i])
 		{
 			return (OOGUIRow)i;
 		}
@@ -501,7 +518,7 @@ static BOOL _refreshStarChart = NO;
 - (std::optional<std::string>) cxx_keyForRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
-		return oo::OptionalString([rowKey objectAtIndex:row]);
+		return rowKey[row];
 	else
 		return std::nullopt;
 }
@@ -524,7 +541,7 @@ static BOOL _refreshStarChart = NO;
 	}
 	if (RowInRange(row, selectableRange))
 	{
-		if (![[rowKey objectAtIndex:row] isEqual:GUI_KEY_SKIP])
+		if (!IsSkipKey(rowKey[row]))
 		{
 			selectedRow = row;
 			[self reportSelectedRow:row];
@@ -540,7 +557,7 @@ static BOOL _refreshStarChart = NO;
 	OOGUIRow row = selectedRow + direction;
 	while (RowInRange(row, selectableRange))
 	{
-		if (![[rowKey objectAtIndex:row] isEqual:GUI_KEY_SKIP])
+		if (!IsSkipKey(rowKey[row]))
 		{
 			selectedRow = row;
 			[self reportSelectedRow:row];
@@ -557,7 +574,7 @@ static BOOL _refreshStarChart = NO;
 	NSUInteger row = selectableRange.location;
 	while (RowInRange(row, selectableRange))
 	{
-		if (![[rowKey objectAtIndex:row] isEqual:GUI_KEY_SKIP])
+		if (!IsSkipKey(rowKey[row]))
 		{
 			selectedRow = row;
 			[self reportSelectedRow:row];
@@ -575,7 +592,7 @@ static BOOL _refreshStarChart = NO;
 	NSUInteger row = selectableRange.location + selectableRange.length - 1;
 	while (RowInRange(row, selectableRange))
 	{
-		if (![[rowKey objectAtIndex:row] isEqual:GUI_KEY_SKIP])
+		if (!IsSkipKey(rowKey[row]))
 		{
 			selectedRow = row;
 			[self reportSelectedRow:row];
@@ -590,7 +607,17 @@ static BOOL _refreshStarChart = NO;
 
 - (void) reportSelectedRow:(int) row
 {
-	[PLAYER doScriptEvent:OOJSID("guiSelectedRowChanged") withArguments:[NSArray arrayWithObjects:[self keyForRow:row], [NSNumber numberWithInt:row], [self selectedRowText], nil]];
+	// key, row, text - stopping at the first missing one, as +arrayWithObjects: stopped at nil.
+	oo::PList::Array arguments;
+	const std::optional<std::string> key = [self cxx_keyForRow:row];
+	if (key.has_value())
+	{
+		arguments.push_back(oo::PList(*key));
+		arguments.push_back(oo::PList(row));	// +numberWithInt: (the same JS number)
+		const std::optional<std::string> text = [self cxx_selectedRowText];
+		if (text.has_value())  arguments.push_back(oo::PList(*text));
+	}
+	[PLAYER doScriptEvent:OOJSID("guiSelectedRowChanged") withArguments:oo::ObjectFromPList(oo::PList(std::move(arguments)))];
 }
 
 
@@ -602,20 +629,25 @@ static BOOL _refreshStarChart = NO;
 
 - (std::optional<std::string>) cxx_selectedRowText
 {
-	if (oo::IsNSString([rowText objectAtIndex:selectedRow]))
-		return oo::OptionalString([rowText objectAtIndex:selectedRow]);
-	if (oo::IsNSArray([rowText objectAtIndex:selectedRow]))
-		return oo::OptionalString([[rowText objectAtIndex:selectedRow] objectAtIndex:0]);
+	const oo::PList &text = rowText[selectedRow];
+	if (const std::string *string = text.getIf<std::string>())
+		return *string;
+	if (text.isArray())
+	{
+		const oo::PList *first = text.at(0);	// the first column
+		if (first != nullptr && first->isString())  return *first->getIf<std::string>();
+	}
 	return std::nullopt;
 }
 
 
 - (std::optional<std::string>) cxx_selectedRowKey
 {
-	if ((selectedRow < 0)||((unsigned)selectedRow > [rowKey count]))
+	// (the old test let selectedRow == count through, and -objectAtIndex: then raised)
+	if ((selectedRow < 0)||((unsigned)selectedRow >= rowKey.size()))
 		return std::nullopt;
 	else
-		return oo::OptionalString([rowKey objectAtIndex:selectedRow]);
+		return rowKey[selectedRow];
 }
 
 
@@ -702,7 +734,7 @@ static BOOL _refreshStarChart = NO;
 - (void) cxx_setKey:(const std::string &)str forRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
-		[rowKey replaceObjectAtIndex:row withObject:oo::NSStringFrom(str)];	// the row ivars are chunk 5's (oo-3rb.96)
+		rowKey[row] = str;
 }
 
 
@@ -710,7 +742,7 @@ static BOOL _refreshStarChart = NO;
 {
 	if (RowInRange(row, rowRange))
 	{
-		[rowText replaceObjectAtIndex:row withObject:oo::NSStringFrom(str)];
+		rowText[row] = oo::PList(str);
 	}
 }
 
@@ -719,7 +751,7 @@ static BOOL _refreshStarChart = NO;
 {
 	if (str.has_value() && RowInRange(row, rowRange))
 	{
-		[rowText replaceObjectAtIndex:row withObject:oo::NSStringFrom(*str)];
+		rowText[row] = oo::PList(*str);
 		rowAlignment[row] = alignment;
 	}
 }
@@ -813,9 +845,9 @@ static BOOL _refreshStarChart = NO;
 	unsigned i;
 	for (i=0; i < n_rows-1; i++)
 	{
-		[rowText	replaceObjectAtIndex:i withObject:@""];
-		[rowColor	replaceObjectAtIndex:i withObject:textColor];
-		[rowKey		replaceObjectAtIndex:i withObject:@""];
+		rowText[i] = oo::PList("");
+		rowColor[i] = oo::ObjCRef<OOColor *>(textColor);
+		rowKey[i] = std::string();
 		rowAlignment[i] = GUI_ALIGN_LEFT;
 		rowFadeTime[i]	= 0.0f;
 	}
@@ -830,7 +862,7 @@ static BOOL _refreshStarChart = NO;
 	// we have at least 1 row!
 	
 	unsigned				i = n_rows-1;
-	OORGBAComponents		col = [(OOColor *)[rowColor objectAtIndex:i] rgbaComponents];
+	OORGBAComponents		col = [rowColor[i].get() rgbaComponents];
 	oo::PList::Array		result;
 
 	/*	Row r's text, colour and fade time, as -arrayWithObjects: took them: the text is what
@@ -839,7 +871,7 @@ static BOOL _refreshStarChart = NO;
 	*/
 	auto appendRow = [&](unsigned r, const OORGBAComponents &c) -> bool
 	{
-		const oo::PList text = oo::PListFrom([rowText objectAtIndex:r]);	// the row ivars are chunk 5's (oo-3rb.96)
+		const oo::PList &text = rowText[r];
 		if (!text.isString() && !text.isNumber())  return false;
 		result.emplace_back(oo::PList(oo::PList::Array{ text }).at<std::string>(0));
 		result.emplace_back(oo::str::format("%.3g %.3g %.3g %.3g", c.r, c.g, c.b, c.a));
@@ -850,7 +882,7 @@ static BOOL _refreshStarChart = NO;
 	if (i>0)
 	{
 		// we have at least 2 rows!
-		OORGBAComponents	col0 = [(OOColor *)[rowColor objectAtIndex:i-1] rgbaComponents];
+		OORGBAComponents	col0 = [rowColor[i-1].get() rgbaComponents];
 		if (appendRow(i-1, col0))  appendRow(i, col);
 	}
 	else
@@ -949,7 +981,11 @@ static BOOL _refreshStarChart = NO;
 - (void) cxx_setArray:(const std::vector<std::string> &)arr forRow:(OOGUIRow)row
 {
 	if (RowInRange(row, rowRange))
-		[rowText replaceObjectAtIndex:row withObject:oo::NSArrayFromStrings(arr)];
+	{
+		oo::PList::Array columns;
+		for (const std::string &column : arr)  columns.push_back(oo::PList(column));
+		rowText[row] = oo::PList(std::move(columns));
+	}
 }
 
 
@@ -968,18 +1004,19 @@ static BOOL _refreshStarChart = NO;
 	{
 		// throw exception
 		[OOException raise:"ArrayLengthMismatchException"
-					format:"The NSArray sent as 'item_keys' to insertItemsFromArray::: must contain the same number of objects as the NSArray 'items'"];
+					format:"The array sent as 'item_keys' to insertItemsFromArray::: must contain the same number of objects as the array 'items'"];
 	}
 
 	unsigned i;
 	for (i = n_rows; i >= row + n_items ; i--)
 	{
 		[self cxx_setKey:[self cxx_keyForRow:i - n_items].value_or("") forRow:i];
-		id	old_row_info = [self objectForRow:i - n_items];
-		if (oo::IsNSArray(old_row_info))
-			[self cxx_setArray:oo::StringsFrom(old_row_info) forRow:i];
-		if (oo::IsNSString(old_row_info))
-			[self cxx_setText:oo::StdString(old_row_info) forRow:i];
+		// the row's text or columns moved down (-objectForRow: gave nil out of range)
+		const oo::PList old_row_info = RowInRange(i - n_items, rowRange) ? rowText[i - n_items] : oo::PList();
+		if (old_row_info.isArray() && RowInRange(i, rowRange))
+			rowText[i] = old_row_info;
+		if (const std::string *text = old_row_info.getIf<std::string>())
+			[self cxx_setText:*text forRow:i];
 	}
 	for (i = 0; i < n_items; i++)
 	{
@@ -1012,17 +1049,17 @@ static BOOL _refreshStarChart = NO;
 	unsigned i;
 	for (i = 0; i + how_much < n_rows; i++)
 	{
-		[rowText	replaceObjectAtIndex:i withObject:[rowText objectAtIndex:	i + how_much]];
-		[rowColor	replaceObjectAtIndex:i withObject:[rowColor objectAtIndex:	i + how_much]];
-		[rowKey		replaceObjectAtIndex:i withObject:[rowKey objectAtIndex:	i + how_much]];
+		rowText[i] = rowText[i + how_much];
+		rowColor[i] = rowColor[i + how_much];
+		rowKey[i] = rowKey[i + how_much];
 		rowAlignment[i] = rowAlignment[i + how_much];
 		rowFadeTime[i]	= rowFadeTime[i + how_much];
 	}
 	for (; i < n_rows; i++)
 	{
-		[rowText	replaceObjectAtIndex:i withObject:@""];
-		[rowColor	replaceObjectAtIndex:i withObject:textColor];
-		[rowKey		replaceObjectAtIndex:i withObject:@""];
+		rowText[i] = oo::PList("");
+		rowColor[i] = oo::ObjCRef<OOColor *>(textColor);
+		rowKey[i] = std::string();
 		rowAlignment[i] = GUI_ALIGN_LEFT;
 		rowFadeTime[i]	= 0.0f;
 	}
@@ -1558,7 +1595,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 			rowFadeTime[i] -= (float)delta_t;
 			if (rowFadeTime[i] <= 0.0f)
 			{
-				[rowText replaceObjectAtIndex:i withObject:@""];
+				rowText[i] = oo::PList("");
 				rowFadeTime[i] = 0.0f;
 				continue;
 			}
@@ -1605,15 +1642,15 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	////
 	// drawing operations here
 	
-	if (title != nil)
+	if (title.has_value())
 	{
 		//
 		// draw the title
 		//
-		strsize = OORectFromString(title, 0.0f, 0.0f, titleCharacterSize).size;
+		strsize = OORectFromString(oo::NSStringFrom(*title), 0.0f, 0.0f, titleCharacterSize).size;
 		[self cxx_setGLColorFromSetting:cxx_kGuiScreenTitleColor defaultValue:[OOColor redColor] alpha:alpha];
 
-		OODrawString(title, x + pixel_row_center - strsize.width/2.0, y + size_in_pixels.height - pixel_title_size.height, z, titleCharacterSize);
+		OODrawString(oo::NSStringFrom(*title), x + pixel_row_center - strsize.width/2.0, y + size_in_pixels.height - pixel_title_size.height, z, titleCharacterSize);
 		
 		// draw a horizontal divider
 		//
@@ -1632,15 +1669,15 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 	OOStartDrawingStrings();
 	for (i = 0; i < n_rows; i++)
 	{
-		OOColor* row_color = (OOColor *)[rowColor objectAtIndex:i];
+		OOColor* row_color = rowColor[i].get();
 		glColor4f([row_color redComponent], [row_color greenComponent], [row_color blueComponent], row_alpha[i]);
 		
-		if ([[rowText objectAtIndex:i] isKindOfClass:[NSString class]])
+		if (const std::string *rowString = rowText[i].getIf<std::string>())
 		{
-			NSString*   text = (NSString *)[rowText objectAtIndex:i];
-			if (![text isEqual:@""])
+			const std::string &text = *rowString;
+			if (!text.empty())
 			{
-				strsize = OORectFromString(text, 0.0f, 0.0f, characterSize).size;
+				strsize = OORectFromString(oo::NSStringFrom(text), 0.0f, 0.0f, characterSize).size;
 				switch (rowAlignment[i])
 				{
 					case GUI_ALIGN_LEFT :
@@ -1655,7 +1692,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				}
 				if (i == (unsigned)selectedRow)
 				{
-					NSRect		block = OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
+					NSRect		block = OORectFromString(oo::NSStringFrom(text), x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
 					OOStopDrawingStrings();
 					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowBackgroundColor defaultValue:[OOColor redColor] alpha:alpha];
 					OOGLBEGIN(GL_QUADS);
@@ -1667,13 +1704,13 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
 					OOStartDrawingStrings();
 				}
-				OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize, NO);
-				
+				OODrawStringQuadsAligned(oo::NSStringFrom(text), x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize, NO);
+
 				// draw cursor at end of current Row
 				//
 				if ((showTextCursor)&&(i == (unsigned)currentRow))
 				{
-					NSRect	tr = OORectFromString(text, 0.0f, 0.0f, characterSize);
+					NSRect	tr = OORectFromString(oo::NSStringFrom(text), 0.0f, 0.0f, characterSize);
 					NSPoint cu = NSMakePoint(x + rowPosition[i].x + tr.size.width + 0.2f * characterSize.width, y + rowPosition[i].y);
 					tr.origin = cu;
 					tr.size.width = 0.5f * characterSize.width;
@@ -1690,41 +1727,39 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 				}
 			}
 		}
-		if ([[rowText objectAtIndex:i] isKindOfClass:[NSArray class]])
+		if (rowText[i].isArray())
 		{
-			NSArray		*array = oo::PListView(rowText).at<NSArray *>(i);
-			NSUInteger	j, max_columns = MIN([array count], n_columns);
+			const oo::PList	&array = rowText[i];
+			NSUInteger	j, max_columns = MIN(array.count(), n_columns);
 			BOOL		isLeftAligned;
-			
+
 			for (j = 0; j < max_columns; j++)
 			{
-				NSString*   text = oo::PListView(array).at<NSString *>(j);
-				if ([text length] != 0)
+				const std::string text = array.at<std::string>(j);	// -oo_stringAtIndex: ("" for none)
+				if (text.size() != 0)
 				{
 					isLeftAligned = tabStops[j] >= 0;
 					rowPosition[i].x = llabs(tabStops[j]);
-					
+
 					// we don't want to highlight leading space(s) or narrow spaces (\037s)
-					NSString	*hilitedText = [text stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@" \037"]];
-					NSRange		txtRange = [text rangeOfString:hilitedText];
+					std::string	hilitedText = TrimmedForHighlight(text);
+					// -rangeOfString: of an empty string answered NSNotFound.
+					const std::size_t	txtLocation = hilitedText.empty() ? std::string::npos : text.find(hilitedText);
 					unsigned	leadingSpaces = 0;
-					
-					if (EXPECT_NOT(txtRange.location == NSNotFound))
+
+					if (EXPECT_NOT(txtLocation == std::string::npos))
 					{
 						// This never happens!
 						hilitedText = text;
 					}
-					else if (txtRange.location > 0)
+					else if (txtLocation > 0)
 					{
-						// padded string!
-						NSRange padRange;
-						padRange.location = 0;
-						padRange.length = txtRange.location;
-						NSRect charBlock = OORectFromString([text substringWithRange:padRange], 0, 0, characterSize);
+						// padded string! (the padding is ASCII, so its bytes are its characters)
+						NSRect charBlock = OORectFromString(oo::NSStringFrom(text.substr(0, txtLocation)), 0, 0, characterSize);
 						leadingSpaces = (unsigned)charBlock.size.width;
 
 /*						// if we're displaying commodity-quantity-none, let's try and be pixel perfect!
-						NSString *qtyNone = DESC(@"commodity-quantity-none");
+						std::string qtyNone = DESC(@"commodity-quantity-none");
 						txtRange = [hilitedText rangeOfString:qtyNone];
 						
 						if (txtRange.location == 0) // bingo!
@@ -1734,13 +1769,13 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 					}
 					
 					// baseline text rect, needed for correct highlight positioning.
-					NSRect		block = OORectFromString(text, x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
-					
+					NSRect		block = OORectFromString(oo::NSStringFrom(text), x + rowPosition[i].x + 2, y + rowPosition[i].y + 2, characterSize);
+
 					if(!isLeftAligned)
 					{
 						rowPosition[i].x -= block.size.width + 3;
 					}
-					block = OORectFromString(hilitedText, x + rowPosition[i].x + 1 + leadingSpaces, y + rowPosition[i].y + 2, characterSize);
+					block = OORectFromString(oo::NSStringFrom(hilitedText), x + rowPosition[i].x + 1 + leadingSpaces, y + rowPosition[i].y + 2, characterSize);
 					block.size.width += 3;
 						
 					
@@ -1757,7 +1792,7 @@ OOTextureSprite *NewTextureSpriteWithDescriptor(const oo::PList &descriptor, uin
 						[self cxx_setGLColorFromSetting:cxx_kGuiSelectedRowColor defaultValue:[OOColor blackColor] alpha:alpha];
 						OOStartDrawingStrings();
 					}
-					OODrawStringQuadsAligned(text, x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize,NO);
+					OODrawStringQuadsAligned(oo::NSStringFrom(text), x + rowPosition[i].x, y + rowPosition[i].y, z, characterSize,NO);
 				}
 			}
 		}
