@@ -35,6 +35,7 @@ SOFTWARE.
 #if DEBUG_GRAPHVIZ
 #include "oofnd/FileSystem.hpp"
 #endif
+#include "oofnd/objc/OORuntime.h"
 
 
 /*	Capacity grows by 50% each time. kMinCapacity must be at least 2 or Bad
@@ -179,7 +180,7 @@ OOINLINE NSComparisonResult PQCompare(id a, id b, SEL comparator)
 {
 	std::string					result;
 
-	result = oo::str::format("<%s %s> (count=%zu, capacity=%zu, comparator=%s)", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str(), _count, _capacity, sel_getName(_comparator));
+	result = oo::str::format("<%s %s> (count=%zu, capacity=%zu, comparator=%s)", oo::DescriptionOf([self class]).c_str(), oo::str::pointerDescription(self).c_str(), _count, _capacity, OOSelectorName(_comparator));
 
 	if (_count != 0)
 	{

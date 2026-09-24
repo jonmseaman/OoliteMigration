@@ -36,6 +36,7 @@ SOFTWARE.
 #import "OOLogHeader.h"
 #import "OOLogOutputHandler.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #include "oofnd/Log.hpp"
 
@@ -69,26 +70,29 @@ void LogSink(std::string_view line)
 	}
 }
 
-// A logcontrol dictionary as oo::log settings, in the dictionary's enumeration order.
-std::vector<std::pair<std::string, oo::log::RawSetting>> SettingsFromDictionary(NSDictionary *dict)
+// A logcontrol dictionary as oo::log settings, in the dictionary's key order (byte order; was
+// hash order).
+std::vector<std::pair<std::string, oo::log::RawSetting>> SettingsFromDictionary(const oo::PList &dict)
 {
 	std::vector<std::pair<std::string, oo::log::RawSetting>> entries;
-	id key = nil;
-	foreachkey (key, dict)
+	const oo::PList::Dict *settings = dict.getIf<oo::PList::Dict>();
+	if (settings == nullptr)  return entries;
+	entries.reserve(settings->size());
+	for (const auto &[name, value] : *settings)
 	{
-		id value = [dict objectForKey:key];
-		std::string name = oo::StdString([key isKindOfClass:[NSString class]] ? (NSString *)key : [key description]);
-		if ([value isKindOfClass:[NSString class]])
+		if (const std::string *text = value.getIf<std::string>())
 		{
-			entries.emplace_back(std::move(name), oo::log::RawSetting::string(oo::StdString(value)));
+			entries.emplace_back(name, oo::log::RawSetting::string(*text));
 		}
-		else if ([value respondsToSelector:@selector(boolValue)])
+		else if (value.isNumber())
 		{
-			entries.emplace_back(std::move(name), oo::log::RawSetting::boolean([value boolValue]));
+			// -boolValue
+			entries.emplace_back(name, oo::log::RawSetting::boolean(value.boolValue()));
 		}
 		else
 		{
-			entries.emplace_back(std::move(name), oo::log::RawSetting::other(oo::StdString([value description])));
+			// the text %@ printed
+			entries.emplace_back(name, oo::log::RawSetting::other(oo::DescriptionOf(oo::ObjectFromPList(value))));
 		}
 	}
 	return entries;
@@ -126,13 +130,13 @@ void OOLogOutdent(void)
 
 void OOLogGenericParameterErrorForFunction(const char *inFunction)
 {
-	OOLog(kOOLogParameterError, @"***** %s: bad parameters. (This is an internal programming error, please report it.)", inFunction);
+	OO_LOG(cxx_kOOLogParameterError, "***** {}: bad parameters. (This is an internal programming error, please report it.)", inFunction != NULL ? inFunction : "(null)");
 }
 
 
 void OOLogGenericSubclassResponsibilityForFunction(const char *inFunction)
 {
-	OOLog(kOOLogSubclassResponsibility, @"***** %s is a subclass responsibility. (This is an internal programming error, please report it.)", inFunction);
+	OO_LOG(cxx_kOOLogSubclassResponsibility, "***** {} is a subclass responsibility. (This is an internal programming error, please report it.)", inFunction != NULL ? inFunction : "(null)");
 }
 
 
@@ -310,10 +314,17 @@ static void LoadExplicitSettings(void)
 		we first load the built-in logcontrol.plist only and use it while
 		loading the full settings.
 	*/
-	NSString *path = [[[ResourceManager builtInPath] stringByAppendingPathComponent:@"Config"]
-					  stringByAppendingPathComponent:@"logcontrol.plist"];
-	oo::log::logger().replaceSettings(SettingsFromDictionary(OODictionaryFromFile(path)), false);
+	// (no built-in path: no path, so no settings, as messaging nil gave)
+	const std::optional<std::string> builtInPath = [ResourceManager cxx_builtInPath];
+	oo::PList builtInSettings;
+	if (builtInPath.has_value())
+	{
+		const std::string path = oo::str::appendingPathComponent(oo::str::appendingPathComponent(*builtInPath, "Config"), "logcontrol.plist");
+		// OODictionaryFromFile (OOPListParsing) is an unmigrated callee: convert at the call.
+		builtInSettings = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(path)));
+	}
+	oo::log::logger().replaceSettings(SettingsFromDictionary(builtInSettings), false);
 
 	// Load new settings; take out _default and _override, and invalidate the cache.
-	oo::log::logger().replaceSettings(SettingsFromDictionary([ResourceManager logControlDictionary]), true);
+	oo::log::logger().replaceSettings(SettingsFromDictionary([ResourceManager cxx_logControlDictionary]), true);
 }
