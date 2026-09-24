@@ -51,6 +51,11 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityLegacyScr
 - (void) setMissionScreenID:(NSString *)msid;	// -> -cxx_setMissionScreenID:
 - (NSString *) missionScreenID;	// -> -cxx_missionScreenID
 
+// Chunk 6 (oo-3rb.195): equipment scripts.
+- (BOOL) addEqScriptForKey:(NSString *)eq_key;	// -> -cxx_addEqScriptForKey:
+- (void) removeEqScriptForKey:(NSString *)eq_key;	// -> -cxx_removeEqScriptForKey:
+- (NSUInteger) eqScriptIndexForKey:(NSString *)eq_key;	// -> -cxx_eqScriptIndexForKey:
+
 @end
 
 

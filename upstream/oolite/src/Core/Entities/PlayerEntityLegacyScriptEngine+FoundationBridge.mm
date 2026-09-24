@@ -115,6 +115,27 @@ cxx_ counterpart and converts the result exactly as the old method produced it (
 	return oo::NSStringOrNil([self cxx_missionScreenID]);
 }
 
+
+- (BOOL) addEqScriptForKey:(NSString *)eq_key
+{
+	if (eq_key == nil) return NO;
+	return [self cxx_addEqScriptForKey:oo::StdString(eq_key)];
+}
+
+
+- (void) removeEqScriptForKey:(NSString *)eq_key
+{
+	if (eq_key == nil) return;
+	[self cxx_removeEqScriptForKey:oo::StdString(eq_key)];
+}
+
+
+- (NSUInteger) eqScriptIndexForKey:(NSString *)eq_key
+{
+	if (eq_key == nil) return [eqScripts count];
+	return [self cxx_eqScriptIndexForKey:oo::StdString(eq_key)];
+}
+
 @end
 
 
