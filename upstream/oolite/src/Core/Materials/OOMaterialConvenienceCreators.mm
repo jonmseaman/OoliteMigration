@@ -35,6 +35,7 @@ SOFTWARE.
 
 #if USE_NEW_SHADER_SYNTHESIZER
 #import "OODefaultShaderSynthesizer.h"
+#import "OOFoundationBridge.h"
 #import "ResourceManager.h"
 #endif
 
@@ -213,15 +214,19 @@ static BOOL sDumpShaderSource = NO;
 										macros:(NSDictionary *)macros
 								 bindingTarget:(id<OOWeakReferenceSupport>)target
 {
-	NSString		*vertexShader = nil;
-	NSString		*fragmentShader = nil;
-	NSArray			*textureSpecs = nil;
-	NSDictionary	*uniformSpecs = nil;
+	std::string		vertexShaderSource, fragmentShaderSource;
+	oo::PList		textureSpecList, uniformSpecDict;
 	
-	if (!OOSynthesizeMaterialShader(configuration, name, cacheKey /* FIXME: entity name for error reporting */, &vertexShader, &fragmentShader, &textureSpecs, &uniformSpecs))
+	if (!OOSynthesizeMaterialShader(oo::PListFrom(configuration), oo::OptionalString(name), oo::OptionalString(cacheKey) /* FIXME: entity name for error reporting */, &vertexShaderSource, &fragmentShaderSource, &textureSpecList, &uniformSpecDict))
 	{
 		return nil;
 	}
+	// A failed synthesis leaves the texture list null (and the shaders empty) where it left all four nil.
+	BOOL			synthesized = !textureSpecList.isNull();
+	NSString		*vertexShader = synthesized ? oo::NSStringFrom(vertexShaderSource) : nil;
+	NSString		*fragmentShader = synthesized ? oo::NSStringFrom(fragmentShaderSource) : nil;
+	NSArray			*textureSpecs = oo::ObjectFromPList(textureSpecList);
+	NSDictionary	*uniformSpecs = oo::ObjectFromPList(uniformSpecDict);
 	
 	NSDictionary	*synthesizedConfig = [NSDictionary dictionaryWithObjectsAndKeys:
 										  [NSNumber numberWithBool:YES], kOOIsSynthesizedMaterialConfigurationKey,
