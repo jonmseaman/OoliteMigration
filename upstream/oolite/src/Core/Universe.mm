@@ -7137,7 +7137,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 	oo::PList::Dict msgDict;
 	if (text.has_value())  msgDict["message"] = oo::PList(*text);
 	msgDict["duration"] = oo::PList(count);
-	[self performSelector:@selector(addDelayedMessage:) withObject:oo::ObjectFromPList(oo::PList(std::move(msgDict))) afterDelay:delay];
+	OOScheduleDeferredCall(self, @selector(addDelayedMessage:), oo::ObjectFromPList(oo::PList(std::move(msgDict))), delay);
 }
 
 
