@@ -359,7 +359,7 @@ static GameController *sSharedController = nil;
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:playerFileToLoad asNew:NO];
+		[PLAYER loadPlayerFromFile:oo::StdString(playerFileToLoad) asNew:NO];
 	}
 }
 
