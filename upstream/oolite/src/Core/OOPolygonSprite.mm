@@ -231,7 +231,7 @@ typedef GLvoid (*TessFuncPtr)();
 #endif
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOPolygonSprite after rendering %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOPolygonSprite after rendering " + oo::DescriptionOf(self); });
 }
 
 

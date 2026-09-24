@@ -37,6 +37,7 @@ oolite_sources += files(
     'OOColor.mm',
     'OOColor+FoundationBridge.mm',
     'OOCommodities.mm',
+    'OOCommodities+FoundationBridge.mm',
     'OOCommodityMarket.mm',
     'OOCommodityMarket+FoundationBridge.mm',
     'OOConstToString.mm',
@@ -115,6 +116,7 @@ oolite_sources += files(
     'ResourceManager+FoundationBridge.mm',
     'TextureStore.mm',
     'Universe.mm',
+    'Universe+FoundationBridge.mm',
     'legacy_random.c',
 )
 

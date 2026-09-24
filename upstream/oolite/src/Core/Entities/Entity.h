@@ -32,6 +32,8 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "OOWeakReference.h"
 #import "OOColor.h"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 @class Universe, CollisionRegion, ShipEntity, OOVisualEffectEntity;
 
@@ -152,7 +154,7 @@ enum OOScanClass
 	BoundingBox				boundingBox;
 	GLfloat					mass;
 	
-	NSMutableArray			*collidingEntities;
+	std::vector<oo::ObjCRef<Entity *>>	collidingEntities;	// filled by CollisionRegion each frame
 	
 	OOTimeAbsolute			spawnTime;
 	
@@ -271,14 +273,14 @@ enum OOScanClass
 - (GLfloat) collisionRadius;
 - (GLfloat) frustumRadius;
 - (void) setCollisionRadius:(GLfloat)amount;
-- (NSMutableArray *)collisionArray;
+- (std::vector<oo::ObjCRef<Entity *>> *) cxx_collidingEntities;	// the live list (ADR-0043 item 22); nullptr on nil
 
 - (void) update:(OOTimeDelta)delta_t;
 
 - (void) applyVelocity:(OOTimeDelta)delta_t;
 - (BOOL) checkCloseCollisionWith:(Entity *)other;
 
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(NSString *)weaponIdentifier;
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(id)weaponIdentifier;	// shared selector (proposed ADR-0043): an Objective-C string
 
 - (void) dumpState;		// General "describe situtation verbosely in log" command.
 - (void) dumpSelfState;	// Subclasses should override this, not -dumpState, and call throught to super first.
@@ -301,10 +303,10 @@ enum OOScanClass
 - (OOColor *) fogUniform;
 
 #ifndef NDEBUG
-- (NSString *) descriptionForObjDumpBasic;
-- (NSString *) descriptionForObjDump;
+- (std::optional<std::string>) descriptionForObjDumpBasic;
+- (id) descriptionForObjDump;	// shared selector (proposed ADR-0043): an Objective-C string
 
-- (NSSet *) allTextures;
+- (id) allTextures;	// shared selector (proposed ADR-0043): an Objective-C set of textures
 #endif
 
 @end
@@ -315,10 +317,10 @@ enum OOScanClass
 @protocol OOBeaconEntity
 
 - (NSComparisonResult) compareBeaconCodeWith:(Entity <OOBeaconEntity>*) other;
-- (NSString *) beaconCode;
-- (void) setBeaconCode:(NSString *)bcode;
-- (NSString *) beaconLabel;
-- (void) setBeaconLabel:(NSString *)blabel;
+- (id) beaconCode;	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) setBeaconCode:(id)bcode;	// shared selector (proposed ADR-0043)
+- (id) beaconLabel;	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) setBeaconLabel:(id)blabel;	// shared selector (proposed ADR-0043)
 - (BOOL) isBeacon;
 - (id <OOHUDBeaconIcon>) beaconDrawable;
 - (Entity <OOBeaconEntity> *) prevBeacon;
@@ -338,28 +340,19 @@ enum
 };
 
 #ifdef __cplusplus
-extern "C" {
-#endif
-
-NSString *OOStringFromEntityStatus(OOEntityStatus status) CONST_FUNC;
-OOEntityStatus OOEntityStatusFromString(NSString *string) PURE_FUNC;
-
-NSString *OOStringFromScanClass(OOScanClass scanClass) CONST_FUNC;
-OOScanClass OOScanClassFromString(NSString *string) PURE_FUNC;
-
-#ifdef __cplusplus
-}
-#endif
-
-#ifdef __cplusplus
 #include "oofnd/StdLib.hpp"
 
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
 // (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
-// The Foundation forms above forward to them from OOConstToString+FoundationBridge.mm.
+// The Foundation forms in Entity+FoundationBridge.h forward to them from OOConstToString+FoundationBridge.mm.
 std::string cxx_OOStringFromEntityStatus(OOEntityStatus status);
 OOEntityStatus cxx_OOEntityStatusFromString(const std::string &string);
 
 std::string cxx_OOStringFromScanClass(OOScanClass scanClass);
 OOScanClass cxx_OOScanClassFromString(const std::string &string);
 #endif
+
+// TRANSITIONAL (proposed ADR-0043): the Foundation-typed OOStringFromEntityStatus /
+// OOEntityStatusFromString / OOStringFromScanClass / OOScanClassFromString (defined in
+// OOConstToString+FoundationBridge.mm) until their callers are swept. Keep this the last line.
+#import "Entity+FoundationBridge.h"
