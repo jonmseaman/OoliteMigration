@@ -62,7 +62,7 @@ SOFTWARE.
 
 
 #ifdef OO_LOG_DEBUG_PROTOCOL_PACKETS
-static void LogSendPacket(NSDictionary *packet);
+static void LogSendPacket(const oo::PList &packet);
 #else
 #define LogSendPacket(packet) do {} while (0)
 #endif
@@ -124,16 +124,17 @@ void CloseSocket(OOSocket s)  { closesocket(s); }
 bool SetNonBlocking(OOSocket s)  { u_long on = 1; return ioctlsocket(s, FIONBIO, &on) == 0; }
 constexpr int kSendFlags = 0;
 
-// The error's system text, as GNUstep's NSError gave it (FormatMessage, trailing line break kept).
-NSString *SocketErrorDescription(int error)
+// The error's system text, as GNUstep's error object gave it (FormatMessage, trailing line break
+// kept), as UTF-8; nullopt (was nil) when the system has none.
+std::optional<std::string> SocketErrorDescription(int error)
 {
 	wchar_t *buffer = NULL;
 	DWORD length = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
 								  NULL, (DWORD)error, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&buffer, 0, NULL);
-	NSString *result = nil;
+	std::optional<std::string> result;
 	if (length != 0 && buffer != NULL)
 	{
-		result = [NSString stringWithCharacters:(const unichar *)buffer length:length];
+		result = oo::utf16ToUtf8(std::u16string(reinterpret_cast<const char16_t *>(buffer), length));
 	}
 	if (buffer != NULL)  LocalFree(buffer);
 	return result;
@@ -154,9 +155,9 @@ constexpr int kSendFlags = MSG_NOSIGNAL;
 constexpr int kSendFlags = 0;
 #endif
 
-NSString *SocketErrorDescription(int error)
+std::optional<std::string> SocketErrorDescription(int error)
 {
-	return [NSString stringWithUTF8String:strerror(error)];
+	return std::string(strerror(error));
 }
 #endif
 
@@ -168,6 +169,13 @@ std::vector<OODebugTCPConsoleClient *> sLiveClients;
 
 
 namespace {
+
+// One of OODebugTCPConsoleProtocol.h's name constants (Objective-C string literals) as UTF-8.
+std::string ProtocolName(id name)
+{
+	return oo::StdString(name);
+}
+
 
 // PListView get<> of a string: the packet's value for <key> if it is a string, or a number's
 // -stringValue; nullopt (was nil) for anything else, a missing key or a packet that is no
@@ -188,16 +196,17 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 - (void) closeConnection;
 
 - (BOOL) sendBytes:(const void *)bytes count:(size_t)count;
-- (void) sendDictionary:(NSDictionary *)dictionary;
+- (void) sendDictionary:(const oo::PList &)dictionary;
 
-- (void) sendPacket:(NSString *)packetType
-	 withParameters:(NSDictionary *)parameters;
+// Packet type and parameter names are OODebugTCPConsoleProtocol.h's constants (ProtocolName()).
+- (void) sendPacket:(const std::string &)packetType
+	 withParameters:(const oo::PList &)parameters;	// a dictionary; null: the type alone
 
-- (void) sendPacket:(NSString *)packetType
-		  withValue:(id)value
-	   forParameter:(NSString *)paramKey;
+- (void) sendPacket:(const std::string &)packetType
+		  withValue:(const oo::PList &)value
+	   forParameter:(const std::string &)paramKey;	// a null value or empty key: the type alone
 
-- (BOOL) openSocketToHost:(NSString *)address port:(uint16_t)port;
+- (BOOL) openSocketToHost:(const std::string &)address port:(uint16_t)port;
 - (NSInteger) receive:(uint8_t *)buffer maxLength:(size_t)length;
 - (BOOL) isWaitingForInput;
 - (BOOL) hasPendingErrorEvent;
@@ -235,12 +244,11 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 }
 
 
-- (id) initWithAddress:(NSString *)address port:(uint16_t)port
+- (id) initWithAddress:(const std::optional<std::string> &)hostAddress port:(uint16_t)port
 {
 	BOOL					OK = NO;
-	NSDictionary			*parameters = nil;
-	
-	if (address == nil)  address = @"127.0.0.1";
+
+	const std::string address = hostAddress.value_or("127.0.0.1");
 	if (port == 0)  port = kOOTCPConsolePort;
 	
 	self = [super init];
@@ -255,7 +263,7 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 			// This was a three-second run-loop wait, but a run-loop pass whose limit has passed
 			// still returns YES, so it waited until the connection opened or failed (measured:
 			// 21 s for an address that never answers). Waiting on the socket does the same.
-			while (_hostName != nil && (_inStatus < kStreamStatusOpen || _outStatus < kStreamStatusOpen))
+			while (_hostName.has_value() && (_inStatus < kStreamStatusOpen || _outStatus < kStreamStatusOpen))
 			{
 				OODebugTCPConsoleServiceInput(-1.0);
 			}
@@ -269,13 +277,14 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 			_status = kOOTCPClientStartedConnectionStage1;
 			
 			
-			// Attempt to connect
-			parameters = [NSDictionary dictionaryWithObjectsAndKeys:
-							[NSNumber numberWithUnsignedInt:kOOTCPProtocolVersion_1_1_0], kOOTCPProtocolVersion,
-							[[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"], kOOTCPOoliteVersion,
-							nil];
-			[self sendPacket:kOOTCPPacket_RequestConnection
-			   withParameters:parameters];
+			// Attempt to connect: the protocol version, and the game's version (omitted when there is
+			// none: +dictionaryWithObjectsAndKeys: stopped at the nil).
+			oo::PList::Dict parameters;
+			parameters[ProtocolName(kOOTCPProtocolVersion)] = oo::PList(static_cast<std::int64_t>(kOOTCPProtocolVersion_1_1_0));
+			const oo::PList version = oo::PListFrom([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+			if (!version.isNull())  parameters[ProtocolName(kOOTCPOoliteVersion)] = version;
+			[self sendPacket:ProtocolName(kOOTCPPacket_RequestConnection)
+			   withParameters:oo::PList(std::move(parameters))];
 			
 			if (_status == kOOTCPClientStartedConnectionStage1)  _status = kOOTCPClientStartedConnectionStage2;
 			else  OK = NO;	// Connection failed.
@@ -283,7 +292,7 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 		
 		if (!OK)
 		{
-			OOLog(@"debugTCP.connect.failed", @"Failed to connect to debug console at address %@:%i.", address, port);
+			OOLog(@"debugTCP.connect.failed", @"Failed to connect to debug console at address %@:%i.", oo::NSStringFrom(address), port);
 			[self release];
 			self = nil;
 		}
@@ -347,46 +356,43 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 				   colorKey:(in id)colorKey
 			  emphasisRange:(in NSRange)emphasisRange	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
-	NSMutableDictionary			*parameters = nil;
-	NSArray						*range = nil;
-	
-	parameters = [NSMutableDictionary dictionaryWithCapacity:3];
-	[parameters setObject:output forKey:kOOTCPMessage];
-	[parameters setObject:colorKey ? colorKey : (NSString *)@"general" forKey:kOOTCPColorKey];
+	// The shared selector's parameters (id) convert once: the text, the colour key ("general"
+	// when there is none) and the emphasis range as two integers.
+	oo::PList::Dict parameters;
+	parameters[ProtocolName(kOOTCPMessage)] = oo::PListFrom(output);
+	parameters[ProtocolName(kOOTCPColorKey)] = (colorKey != nil) ? oo::PListFrom(colorKey) : oo::PList(std::string("general"));
 	if (emphasisRange.length != 0)
 	{
-		range = [NSArray arrayWithObjects:
-						[NSNumber numberWithUnsignedInteger:emphasisRange.location],
-						[NSNumber numberWithUnsignedInteger:emphasisRange.length],
-						nil];
-		[parameters setObject:range forKey:kOOTCPEmphasisRanges];
+		parameters[ProtocolName(kOOTCPEmphasisRanges)] = oo::PList(oo::PList::Array{
+			oo::PList(static_cast<std::int64_t>(emphasisRange.location)),
+			oo::PList(static_cast<std::int64_t>(emphasisRange.length)) });
 	}
-	
-	[self sendPacket:kOOTCPPacket_ConsoleOutput
-	   withParameters:parameters];
+
+	[self sendPacket:ProtocolName(kOOTCPPacket_ConsoleOutput)
+	   withParameters:oo::PList(std::move(parameters))];
 }
 
 
 - (oneway void)debugMonitorClearConsole:(in OODebugMonitor *)debugMonitor
 {
-	[self sendPacket:kOOTCPPacket_ClearConsole
-	   withParameters:nil];
+	[self sendPacket:ProtocolName(kOOTCPPacket_ClearConsole)
+	   withParameters:oo::PList()];
 }
 
 
 - (oneway void)debugMonitorShowConsole:(in OODebugMonitor *)debugMonitor
 {
-	[self sendPacket:kOOTCPPacket_ShowConsole
-	   withParameters:nil];
+	[self sendPacket:ProtocolName(kOOTCPPacket_ShowConsole)
+	   withParameters:oo::PList()];
 }
 
 
 - (oneway void)debugMonitor:(in OODebugMonitor *)debugMonitor
 		  noteConfiguration:(in id)configuration	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
-	[self sendPacket:kOOTCPPacket_NoteConfiguration
-			withValue:configuration
-		 forParameter:kOOTCPConfiguration];
+	[self sendPacket:ProtocolName(kOOTCPPacket_NoteConfiguration)
+			withValue:oo::PListFrom(configuration)
+		 forParameter:ProtocolName(kOOTCPConfiguration)];
 }
 
 
@@ -394,17 +400,20 @@ std::optional<std::string> PacketString(const oo::PList &packet, id key)
 noteChangedConfigrationValue:(in id)newValue
 					 forKey:(in id)key	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
+	// The shared selector's value and key (id) convert once.
 	if (newValue != nil)
 	{
-		[self sendPacket:kOOTCPPacket_NoteConfiguration
-				withValue:[NSDictionary dictionaryWithObject:newValue forKey:key]
-			 forParameter:kOOTCPConfiguration];
+		oo::PList::Dict change;
+		change[oo::StdString(key)] = oo::PListFrom(newValue);
+		[self sendPacket:ProtocolName(kOOTCPPacket_NoteConfiguration)
+				withValue:oo::PList(std::move(change))
+			 forParameter:ProtocolName(kOOTCPConfiguration)];
 	}
 	else
 	{
-		[self sendPacket:kOOTCPPacket_NoteConfiguration
-				withValue:[NSArray arrayWithObject:key]
-			 forParameter:kOOTCPRemovedConfigurationKeys];
+		[self sendPacket:ProtocolName(kOOTCPPacket_NoteConfiguration)
+				withValue:oo::PList(oo::PList::Array{ oo::PListFrom(key) })
+			 forParameter:ProtocolName(kOOTCPRemovedConfigurationKeys)];
 	}
 }
 
@@ -426,12 +435,11 @@ noteChangedConfigrationValue:(in id)newValue
 	_inError = _outError = 0;
 	_errorEventPending = NO;
 
-	[_hostName release];
-	_hostName = nil;
+	_hostName = std::nullopt;
 }
 
 
-- (BOOL) openSocketToHost:(NSString *)address port:(uint16_t)port
+- (BOOL) openSocketToHost:(const std::string &)address port:(uint16_t)port
 {
 	struct addrinfo			hints, *found = NULL;
 	struct sockaddr_in		host;
@@ -450,11 +458,11 @@ noteChangedConfigrationValue:(in id)newValue
 	memset(&hints, 0, sizeof hints);
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
-	if (getaddrinfo([address UTF8String], NULL, &hints, &found) != 0 || found == NULL)
+	if (getaddrinfo(address.c_str(), NULL, &hints, &found) != 0 || found == NULL)
 	{
 		// gnustep-base's own message for an unknown host, through the real NSLog as it was
 		// (parenthesised: OOLogging.h's NSLog macro is function-like).
-		(NSLog)(@"Host '%@' not found - perhaps the hostname is wrong or networking is not set up on your machine", address);
+		(NSLog)(@"Host '%@' not found - perhaps the hostname is wrong or networking is not set up on your machine", oo::NSStringFrom(address));
 		return NO;
 	}
 	memcpy(&host, found->ai_addr, sizeof host);
@@ -469,7 +477,7 @@ noteChangedConfigrationValue:(in id)newValue
 		return NO;
 	}
 
-	_hostName = [address copy];
+	_hostName = address;
 	_socket = (uintptr_t)s;
 	sLiveClients.push_back(self);
 	_inStatus = _outStatus = kStreamStatusOpening;
@@ -681,37 +689,34 @@ noteChangedConfigrationValue:(in id)newValue
 }
 
 
-- (void) sendDictionary:(NSDictionary *)dictionary
+- (void) sendDictionary:(const oo::PList &)dictionary
 {
-	NSData					*data = nil;
-	NSString				*errorDesc = NULL;
 	size_t					count;
 	const uint8_t			*bytes = NULL;
 	uint32_t				header;
 	bool 					sentOK = YES;
-	
-	if (dictionary == nil || !StatusIsSendable(_status))  return;
-	
-	data = [NSPropertyListSerialization dataFromPropertyList:dictionary
-													  format:NSPropertyListXMLFormat_v1_0
-											errorDescription:&errorDesc];
-	
-	if (data == nil)
+
+	if (dictionary.isNull() || !StatusIsSendable(_status))  return;
+
+	/*	GNUstep's XML property-list serialisation, byte for byte (oo::writeXMLPList, ADR-0043 item
+		15). GNUstep reported no error for anything the console is sent (an object that is not
+		property-list data is written as its description, probed); writeXMLPList fails only on a
+		null list, which is not sent. The log keeps GNUstep's fallback text.
+	*/
+	const oo::Expected<oo::Data, oo::PListError> data = oo::writeXMLPList(dictionary);
+	if (!data)
 	{
-		OOLog(@"debugTCP.conversionFailure", @"Could not convert dictionary to data for transmission to debug console: %@", errorDesc != NULL ? errorDesc : (NSString *)@"unknown error.");
-#if OOLITE_RELEASE_PLIST_ERROR_STRINGS
-		[errorDesc autorelease];
-#endif
+		OOLog(@"debugTCP.conversionFailure", @"Could not convert dictionary to data for transmission to debug console: %@", @"unknown error.");
 		return;
 	}
-	
+
 	LogSendPacket(dictionary);
-	
-	count = [data length];
+
+	count = data->length();
 	if (count == 0)  return;
 	header = htonl(count);
-	
-	bytes = (const uint8_t *)[data bytes];
+
+	bytes = data->bytes();
 	
 	/*	In testing, all bad stream errors were caused by the python console
 		rejecting headers. Made the protocol a bit more fault tolerant.
@@ -747,7 +752,7 @@ noteChangedConfigrationValue:(in id)newValue
 	
 	if (!sentOK)
 	{
-		OOLog(@"debugTCP.send.error", @"The following packet could not be sent: %@", dictionary);
+		OOLog(@"debugTCP.send.error", @"The following packet could not be sent: %@", oo::ObjectFromPList(dictionary));
 		if(![[OODebugMonitor sharedDebugMonitor] TCPIgnoresDroppedPackets])
 		{
 			[self breakConnectionWithStreamError:(_socket != kNoSocket ? _outError : 0)];
@@ -756,37 +761,30 @@ noteChangedConfigrationValue:(in id)newValue
 }
 
 
-- (void) sendPacket:(NSString *)packetType
-	 withParameters:(NSDictionary *)parameters
+- (void) sendPacket:(const std::string &)packetType
+	 withParameters:(const oo::PList &)parameters
 {
-	NSDictionary		*dict = nil;
-	
-	if (packetType == nil)  return;
-	
-	if (parameters != nil)
-	{
-		dict = [parameters dictionaryByAddingObject:packetType forKey:kOOTCPPacketType];
-	}
-	else
-	{
-		dict = [NSDictionary dictionaryWithObjectsAndKeys:packetType, kOOTCPPacketType, nil];
-	}
-	
-	[self sendDictionary:dict];
+	// A copy of the parameters with the packet type set (was -dictionaryByAddingObject:forKey:);
+	// no parameters: the type alone.
+	oo::PList::Dict dict;
+	if (const oo::PList::Dict *given = parameters.getIf<oo::PList::Dict>())  dict = *given;
+	dict[ProtocolName(kOOTCPPacketType)] = oo::PList(packetType);
+
+	[self sendDictionary:oo::PList(std::move(dict))];
 }
 
 
-- (void) sendPacket:(NSString *)packetType
-		  withValue:(id)value
-	   forParameter:(NSString *)paramKey
+- (void) sendPacket:(const std::string &)packetType
+		  withValue:(const oo::PList &)value
+	   forParameter:(const std::string &)paramKey
 {
-	if (packetType == nil)  return;
-	if (paramKey == nil)  value = nil;
-	
-	[self sendDictionary:[NSDictionary dictionaryWithObjectsAndKeys:
-		packetType, kOOTCPPacketType,
-		value, paramKey,
-		nil]];
+	// A null value or an empty key gives the type-only packet, as +dictionaryWithObjectsAndKeys:
+	// did by stopping at the nil.
+	oo::PList::Dict dict;
+	dict[ProtocolName(kOOTCPPacketType)] = oo::PList(packetType);
+	if (!value.isNull() && !paramKey.empty())  dict[paramKey] = value;
+
+	[self sendDictionary:oo::PList(std::move(dict))];
 }
 
 
@@ -846,8 +844,7 @@ noteChangedConfigrationValue:(in id)newValue
 		const std::optional<std::string> consoleIdentity = PacketString(packet, kOOTCPConsoleIdentity);
 		if (consoleIdentity.has_value())  connectedMessage += " \"" + *consoleIdentity + "\"";
 
-		// The host name ivar is the send side's (chunk 2): converted here.
-		const std::string hostName = oo::StdString(_hostName);
+		const std::string hostName = _hostName.value_or(std::string());
 		if (hostName.length() != 0 &&
 			hostName != "localhost" &&
 			hostName != "127.0.0.1" &&
@@ -942,11 +939,10 @@ noteChangedConfigrationValue:(in id)newValue
 
 - (void) handlePingPacket:(const oo::PList &)packet
 {
-	// The send side takes Objective-C values until chunk 2.
-	const oo::PList *message = packet.find(oo::StdString(kOOTCPMessage));
-	[self sendPacket:kOOTCPPacket_Pong
-			withValue:(message != nullptr) ? oo::ObjectFromPList(*message) : nil
-		 forParameter:kOOTCPMessage];
+	const oo::PList *message = packet.find(ProtocolName(kOOTCPMessage));
+	[self sendPacket:ProtocolName(kOOTCPPacket_Pong)
+			withValue:(message != nullptr) ? *message : oo::PList()
+		 forParameter:ProtocolName(kOOTCPMessage)];
 }
 
 
@@ -960,10 +956,10 @@ noteChangedConfigrationValue:(in id)newValue
 {
 	if (StatusIsSendable(_status))
 	{
-		// nullopt: a close packet without a message key, as nil gave (the send side is chunk 2's).
-		[self sendPacket:kOOTCPPacket_CloseConnection
-				withValue:oo::NSStringOrNil(message)
-			 forParameter:kOOTCPMessage];
+		// nullopt: a close packet without a message key, as nil gave.
+		[self sendPacket:ProtocolName(kOOTCPPacket_CloseConnection)
+				withValue:message.has_value() ? oo::PList(*message) : oo::PList()
+			 forParameter:ProtocolName(kOOTCPMessage)];
 	}
 	[self closeConnection];
 	
@@ -999,7 +995,7 @@ noteChangedConfigrationValue:(in id)newValue
 {
 	std::optional<std::string> errorDesc;
 
-	if (error != 0)  errorDesc = oo::OptionalString(SocketErrorDescription(error));
+	if (error != 0)  errorDesc = SocketErrorDescription(error);
 	if (!errorDesc.has_value())  errorDesc = "bad stream.";
 	[self breakConnectionWithMessage:oo::str::format(
 	   "Connection to debug console failed: '%s' (outStream status: %zu, inStream status: %zu).",
@@ -1107,14 +1103,11 @@ void LogOOTCPStreamDecoderPacket(OOALObjectRef packetHandle)
 }
 
 
-static void LogSendPacket(NSDictionary *packet)
+static void LogSendPacket(const oo::PList &packet)
 {
-	NSData					*data = nil;
-	NSString				*xml = nil;
-	
-	data = [NSPropertyListSerialization dataFromPropertyList:packet format:NSPropertyListXMLFormat_v1_0 errorDescription:NULL];
-	xml = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-	OOLog(@"debugTCP.send", @"Sent packet:\n%@", xml);
+	const oo::Expected<oo::Data, oo::PListError> data = oo::writeXMLPList(packet);
+	const std::string xml = data ? std::string(data->stringView()) : std::string();
+	OOLog(@"debugTCP.send", @"Sent packet:\n%@", oo::NSStringFrom(xml));
 }
 #endif
 
