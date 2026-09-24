@@ -136,14 +136,9 @@ OOINLINE void OOJSRelinquishContext(ooscript::Context context)
 }
 
 
-// Notifications sent when JavaScript engine is reset.
-extern NSString * const kOOJavaScriptEngineWillResetNotification;
-extern NSString * const kOOJavaScriptEngineDidResetNotification;
-
-/*	The same notifications on oo::NotificationCenter (oofnd/Notification.hpp, bead oo-3rb.9),
-	posted with the engine as the object. Until the last NSNotificationCenter observer is
-	migrated, -reset posts each notification to both centers (oo::NotificationCenter first); the
-	NSString names above go with that last observer.
+/*	Notifications sent when JavaScript engine is reset, on oo::NotificationCenter
+	(oofnd/Notification.hpp, bead oo-3rb.9), posted with the engine as the object: will-reset
+	before the context is destroyed, did-reset after it is recreated.
 */
 extern const char * const kOOJavaScriptEngineWillResetNotificationName;
 extern const char * const kOOJavaScriptEngineDidResetNotificationName;
