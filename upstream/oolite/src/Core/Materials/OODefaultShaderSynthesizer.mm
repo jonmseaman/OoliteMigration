@@ -58,7 +58,11 @@ oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::option
 
 }	// namespace
 
-static NSString *FormatFloat(double value);
+namespace {
+
+std::string FormatFloat(double value);
+
+}	// namespace
 
 
 @interface OODefaultShaderSynthesizer: OOObject
@@ -71,12 +75,12 @@ static NSString *FormatFloat(double value);
 	std::string					_vertexShader;
 	std::string					_fragmentShader;
 	std::vector<oo::PList>		_textures;			// the texture list, in insertion order
-	NSMutableDictionary			*_uniforms;
+	oo::PList::Dict				_uniforms;			// uniform name -> specification (byte order of the name)
 	
-	NSMutableString				*_attributes;
-	NSMutableString				*_varyings;
-	NSMutableString				*_vertexUniforms;
-	NSMutableString				*_fragmentUniforms;
+	std::string					_attributes;
+	std::string					_varyings;
+	std::string					_vertexUniforms;
+	std::string					_fragmentUniforms;
 	NSMutableString				*_vertexHelpers;
 	NSMutableString				*_fragmentHelpers;
 	NSMutableString				*_vertexBody;
@@ -91,7 +95,8 @@ static NSString *FormatFloat(double value);
 	// _sampledTextures: hash of integer texture IDs for which we’ve set up a sample.
 	std::unordered_set<NSUInteger>	_sampledTextures;	// was an integer hash table (bead oo-3rb.20)
 	
-	NSMutableDictionary			*_uniformBindingNames;
+	// _uniformBindingNames: binding specification -> uniform name (compared with oo::PList ==).
+	std::vector<std::pair<oo::PList, std::string>>	_uniformBindingNames;
 	
 	NSUInteger					_usesNormalMap: 1,
 								_usesDiffuseTerm: 1,
@@ -140,14 +145,14 @@ static NSString *FormatFloat(double value);
 - (void) composeFragmentShader;
 
 // Write various types of declarations.
-- (void) appendVariable:(NSString *)name ofType:(NSString *)type withPrefix:(NSString *)prefix to:(NSMutableString *)buffer;
-- (void) addAttribute:(NSString *)name ofType:(NSString *)type;
-- (void) addVarying:(NSString *)name ofType:(NSString *)type;
-- (void) addVertexUniform:(NSString *)name ofType:(NSString *)type;
-- (void) addFragmentUniform:(NSString *)name ofType:(NSString *)type;
+- (void) appendVariable:(const std::string &)name ofType:(const std::string &)type withPrefix:(const std::string &)prefix to:(std::string &)buffer;
+- (void) addAttribute:(const std::string &)name ofType:(const std::string &)type;
+- (void) addVarying:(const std::string &)name ofType:(const std::string &)type;
+- (void) addVertexUniform:(const std::string &)name ofType:(const std::string &)type;
+- (void) addFragmentUniform:(const std::string &)name ofType:(const std::string &)type;
 
 // Create or retrieve a uniform variable name for a given binding.
-- (NSString *) defineBindingUniform:(NSDictionary *)binding ofType:(NSString *)type;
+- (std::optional<std::string>) defineBindingUniform:(const oo::PList &)binding ofType:(const std::string &)type;
 
 - (std::optional<std::string>) readRGBForTextureSpec:(const oo::PList &)textureSpec mapName:(const std::string &)mapName;	// Generate a read for an RGB value, or a single channel splatted across RGB.
 - (std::optional<std::string>) readOneChannelForTextureSpec:(const oo::PList &)textureSpec mapName:(const std::string &)mapName;	// Generate a read for a single channel.
@@ -351,14 +356,14 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 
 - (oo::PList) uniformSpecifications
 {
-	return oo::PListFrom(_uniforms);
+	return oo::PList(_uniforms);
 }
 
 
 - (BOOL) run
 {
 	[self createTemporaries];
-	_uniforms = [[NSMutableDictionary alloc] init];
+	_uniforms.clear();
 	[_vertexBody appendString:@"void main(void)\n{\n"];
 	[_fragmentPreTextures appendString:@"void main(void)\n{\n"];
 	
@@ -401,15 +406,24 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 
 // MARK: - Utilities
 
-static void AppendIfNotEmpty(NSMutableString *buffer, NSString *segment, NSString *name)
+namespace {
+
+void AppendIfNotEmpty(std::string &buffer, const std::string &segment, const char *name)
 {
-	if ([segment length] > 0)
+	if (!segment.empty())
 	{
-		if ([buffer length] > 0)  [buffer appendString:@"\n\n"];
-		if ([name length] > 0)  [buffer appendFormat:@"// %@\n", name];
-		[buffer appendString:segment];
+		if (!buffer.empty())  buffer += "\n\n";
+		if (name != nullptr && name[0] != '\0')
+		{
+			buffer += "// ";
+			buffer += name;
+			buffer += "\n";
+		}
+		buffer += segment;
 	}
 }
+
+}	// namespace
 
 
 namespace {
@@ -448,66 +462,72 @@ std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *
 }	// namespace
 
 
-- (void) appendVariable:(NSString *)name ofType:(NSString *)type withPrefix:(NSString *)prefix to:(NSMutableString *)buffer
+- (void) appendVariable:(const std::string &)name ofType:(const std::string &)type withPrefix:(const std::string &)prefix to:(std::string &)buffer
 {
-	NSUInteger typeDeclLength = [prefix length] + [type length] + 1;
+	NSUInteger typeDeclLength = prefix.size() + type.size() + 1;
 	NSUInteger padding = (typeDeclLength < 20) ? (23 - typeDeclLength) / 4 : 1;
-	[buffer appendFormat:@"%@ %@%@%@;\n", prefix, type, OOTabString(padding), name];
+	buffer += prefix + " " + type + std::string(padding, '\t') + name + ";\n";
 }
 
 
-- (void) addAttribute:(NSString *)name ofType:(NSString *)type
+- (void) addAttribute:(const std::string &)name ofType:(const std::string &)type
 {
-	[self appendVariable:name ofType:type withPrefix:@"attribute" to:_attributes];
+	[self appendVariable:name ofType:type withPrefix:"attribute" to:_attributes];
 }
 
 
-- (void) addVarying:(NSString *)name ofType:(NSString *)type
+- (void) addVarying:(const std::string &)name ofType:(const std::string &)type
 {
-	[self appendVariable:name ofType:type withPrefix:@"varying" to:_varyings];
+	[self appendVariable:name ofType:type withPrefix:"varying" to:_varyings];
 }
 
 
-- (void) addVertexUniform:(NSString *)name ofType:(NSString *)type
+- (void) addVertexUniform:(const std::string &)name ofType:(const std::string &)type
 {
-	[self appendVariable:name ofType:type withPrefix:@"uniform" to:_vertexUniforms];
+	[self appendVariable:name ofType:type withPrefix:"uniform" to:_vertexUniforms];
 }
 
 
-- (void) addFragmentUniform:(NSString *)name ofType:(NSString *)type
+- (void) addFragmentUniform:(const std::string &)name ofType:(const std::string &)type
 {
-	[self appendVariable:name ofType:type withPrefix:@"uniform" to:_fragmentUniforms];
+	[self appendVariable:name ofType:type withPrefix:"uniform" to:_fragmentUniforms];
 }
 
 
-- (NSString *) defineBindingUniform:(NSDictionary *)binding ofType:(NSString *)type
+- (std::optional<std::string>) defineBindingUniform:(const oo::PList &)binding ofType:(const std::string &)type
 {
-	NSString *name = oo::PListView(binding).get<NSString *>(@"binding");
-	NSParameterAssert([name length] > 0);
+	std::string name = OptionalStringFor(binding, "binding").value_or(std::string());
+	NSParameterAssert(!name.empty());
 	
-	NSMutableDictionary *bindingSpec = [[binding mutableCopy] autorelease];
-	if (oo::PListView(bindingSpec).get<NSString *>(@"type") == nil)  [bindingSpec setObject:@"binding" forKey:@"type"];
+	oo::PList bindingSpec = binding;
+	if (!OptionalStringFor(bindingSpec, "type").has_value())
+	{
+		if (oo::PList::Dict *dict = bindingSpec.getIf<oo::PList::Dict>())  (*dict)["type"] = oo::PList("binding");
+	}
 	
 	// Use existing uniform if one is defined.
-	NSString *uniformName = [_uniformBindingNames objectForKey:bindingSpec];
-	if (uniformName != nil)  return uniformName;
+	for (const auto &[spec, uniformName] : _uniformBindingNames)
+	{
+		if (spec == bindingSpec)  return uniformName;
+	}
 	
-	// Capitalize first char of name, and prepend u.
-	unichar firstChar = toupper([name characterAtIndex:0]);
-	NSString *baseName = [NSString stringWithFormat:@"u%C%@", firstChar, [name substringFromIndex:1]];
+	// Capitalize first char of name, and prepend u. (Binding names are ASCII property names.)
+	std::string baseName = "u";
+	baseName += static_cast<char>(toupper(static_cast<unsigned char>(name[0])));
+	baseName += name.substr(1);
 	
 	// Ensure name is unique.
 	name = baseName;
 	unsigned idx = 1;
-	while ([_uniforms objectForKey:name] != nil)
+	while (_uniforms.contains(name))
 	{
-		name = [NSString stringWithFormat:@"%@%u", baseName, ++idx];
+		name = oo::str::format("%s%u", baseName.c_str(), ++idx);
 	}
 	
 	[self addFragmentUniform:name ofType:type];
 	
-	[_uniforms setObject:bindingSpec forKey:name];
-	[_uniformBindingNames setObject:name forKey:bindingSpec];
+	_uniforms[name] = bindingSpec;
+	_uniformBindingNames.emplace_back(bindingSpec, name);
 	
 	return name;
 }
@@ -521,14 +541,14 @@ std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *
 	}
 	[_vertexBody appendString:@"}"];
 	
-	NSMutableString *vertexShader = [NSMutableString string];
-	AppendIfNotEmpty(vertexShader, _attributes, @"Attributes");
-	AppendIfNotEmpty(vertexShader, _vertexUniforms, @"Uniforms");
-	AppendIfNotEmpty(vertexShader, _varyings, @"Varyings");
-	AppendIfNotEmpty(vertexShader, _vertexHelpers, @"Helper functions");
-	AppendIfNotEmpty(vertexShader, _vertexBody, nil);
+	std::string vertexShader;
+	AppendIfNotEmpty(vertexShader, _attributes, "Attributes");
+	AppendIfNotEmpty(vertexShader, _vertexUniforms, "Uniforms");
+	AppendIfNotEmpty(vertexShader, _varyings, "Varyings");
+	AppendIfNotEmpty(vertexShader, oo::StdString(_vertexHelpers), "Helper functions");
+	AppendIfNotEmpty(vertexShader, oo::StdString(_vertexBody), nullptr);
 	
-	_vertexShader = oo::StdString(vertexShader);
+	_vertexShader = vertexShader;
 }
 
 
@@ -539,21 +559,21 @@ std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *
 		[_fragmentBody deleteCharactersInRange:(NSRange){ [_fragmentBody length] - 2, 2 }];
 	}
 	
-	NSMutableString *fragmentShader = [NSMutableString string];
-	AppendIfNotEmpty(fragmentShader, _fragmentUniforms, @"Uniforms");
-	AppendIfNotEmpty(fragmentShader, _varyings, @"Varyings");
-	AppendIfNotEmpty(fragmentShader, _fragmentHelpers, @"Helper functions");
-	AppendIfNotEmpty(fragmentShader, _fragmentPreTextures, nil);
+	std::string fragmentShader;
+	AppendIfNotEmpty(fragmentShader, _fragmentUniforms, "Uniforms");
+	AppendIfNotEmpty(fragmentShader, _varyings, "Varyings");
+	AppendIfNotEmpty(fragmentShader, oo::StdString(_fragmentHelpers), "Helper functions");
+	AppendIfNotEmpty(fragmentShader, oo::StdString(_fragmentPreTextures), nullptr);
 	if ([_fragmentTextureLookups length] > 0)
 	{
-		[fragmentShader appendString:@"\t\n\t// Texture lookups\n"];
-		[fragmentShader appendString:_fragmentTextureLookups];
+		fragmentShader += "\t\n\t// Texture lookups\n";
+		fragmentShader += oo::StdString(_fragmentTextureLookups);
 	}
-	[fragmentShader appendString:@"\t\n"];
-	[fragmentShader appendString:_fragmentBody];
-	[fragmentShader appendString:@"}"];
+	fragmentShader += "\t\n";
+	fragmentShader += oo::StdString(_fragmentBody);
+	fragmentShader += "}";
 	
-	_fragmentShader = oo::StdString(fragmentShader);
+	_fragmentShader = fragmentShader;
 }
 
 
@@ -638,9 +658,9 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		_texturesByName[key] = spec;
 		_textureIDs[key] = texID;
 		oo::PList uniform(oo::PList::Dict{ { "type", oo::PList("texture") }, { "value", oo::PList::unsignedInteger(texID) } });
-		[_uniforms setObject:oo::ObjectFromPList(uniform) forKey:oo::NSStringFrom(texUniform)];
+		_uniforms[texUniform] = uniform;
 		
-		[self addFragmentUniform:oo::NSStringFrom(texUniform) ofType:@"sampler2D"];
+		[self addFragmentUniform:texUniform ofType:"sampler2D"];
 	}
 	else
 	{
@@ -755,10 +775,10 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 
 - (void) createTemporaries
 {
-	_attributes = [[NSMutableString alloc] init];
-	_varyings = [[NSMutableString alloc] init];
-	_vertexUniforms = [[NSMutableString alloc] init];
-	_fragmentUniforms = [[NSMutableString alloc] init];
+	_attributes.clear();
+	_varyings.clear();
+	_vertexUniforms.clear();
+	_fragmentUniforms.clear();
 	_vertexHelpers = [[NSMutableString alloc] init];
 	_fragmentHelpers = [[NSMutableString alloc] init];
 	_vertexBody = [[NSMutableString alloc] init];
@@ -771,7 +791,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	_textureIDs.clear();
 	_sampledTextures.clear();
 	
-	_uniformBindingNames = [[NSMutableDictionary alloc] init];
+	_uniformBindingNames.clear();
 	
 #ifndef NDEBUG
 	_stagesInProgress.clear();
@@ -781,10 +801,10 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 
 - (void) destroyTemporaries
 {
-	DESTROY(_attributes);
-	DESTROY(_varyings);
-	DESTROY(_vertexUniforms);
-	DESTROY(_fragmentUniforms);
+	_attributes.clear();
+	_varyings.clear();
+	_vertexUniforms.clear();
+	_fragmentUniforms.clear();
 	DESTROY(_vertexHelpers);
 	DESTROY(_fragmentHelpers);
 	DESTROY(_vertexBody);
@@ -796,7 +816,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	_textureIDs.clear();
 	_sampledTextures.clear();
 	
-	DESTROY(_uniformBindingNames);
+	_uniformBindingNames.clear();
 	
 #ifndef NDEBUG
 	_stagesInProgress.clear();
@@ -808,7 +828,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 
 - (void) writeTextureCoordRead
 {
-	[self addVarying:@"vTexCoords" ofType:@"vec2"];
+	[self addVarying:"vTexCoords" ofType:"vec2"];
 	[_vertexBody appendString:@"\tvTexCoords = gl_MultiTexCoord0.st;\n\t\n"];
 	
 	BOOL haveTexCoords = NO;
@@ -839,13 +859,13 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 				
 				if (parallaxScale != 1.0f)
 				{
-					[_fragmentPreTextures appendFormat:@"\tparallax *= %@;  // Parallax scale\n", FormatFloat(parallaxScale)];
+					[_fragmentPreTextures appendFormat:@"\tparallax *= %@;  // Parallax scale\n", oo::NSStringFrom(FormatFloat(parallaxScale))];
 				}
 				
 				float parallaxBias = cxx_OOMaterialParallaxBias(_configuration);
 				if (parallaxBias != 0.0)
 				{
-					[_fragmentPreTextures appendFormat:@"\tparallax += %@;  // Parallax bias\n", FormatFloat(parallaxBias)];
+					[_fragmentPreTextures appendFormat:@"\tparallax += %@;  // Parallax bias\n", oo::NSStringFrom(FormatFloat(parallaxBias))];
 				}
 				
 				[_fragmentPreTextures appendString:@"\tvec2 texCoords = vTexCoords - parallax * eyeVector.xy * vec2(1.0, -1.0);\n"];
@@ -901,7 +921,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 			format = @"\tconst vec3 diffuseColor = vec3(%@, %@, %@);\n";
 			haveDiffuseColor = YES;
 		}
-		[_fragmentBody appendFormat:format, FormatFloat(rgba[0]), FormatFloat(rgba[1]), FormatFloat(rgba[2])];
+		[_fragmentBody appendFormat:format, oo::NSStringFrom(FormatFloat(rgba[0])), oo::NSStringFrom(FormatFloat(rgba[1])), oo::NSStringFrom(FormatFloat(rgba[2]))];
 	}
 	
 	(void) haveDiffuseColor;
@@ -947,7 +967,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	REQUIRE_STAGE(writeVertexPosition);
 	REQUIRE_STAGE(writeNormalIfNeeded);
 	
-	[self addVarying:@"vLightVector" ofType:@"vec3"];
+	[self addVarying:"vLightVector" ofType:"vec3"];
 	
 	[_vertexBody appendString:
 	 @"\tvec3 lightVector = gl_LightSource[1].position.xyz;\n"
@@ -961,7 +981,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	REQUIRE_STAGE(writeVertexPosition);
 	REQUIRE_STAGE(writeVertexTangentBasis);
 	
-	[self addVarying:@"vEyeVector" ofType:@"vec3"];
+	[self addVarying:"vEyeVector" ofType:"vec3"];
 	
 	[_vertexBody appendString:@"\tvEyeVector = position.xyz * TBN;\n\t\n"];
 	[_fragmentPreTextures appendString:@"\tvec3 eyeVector = normalize(vEyeVector);\n\t\n"];
@@ -970,7 +990,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 
 - (void) writeVertexTangentBasis
 {
-	[self addAttribute:@"tangent" ofType:@"vec3"];
+	[self addAttribute:"tangent" ofType:"vec3"];
 	
 	[_vertexBody appendString:
 	 @"\t// Build tangent space basis\n"
@@ -1102,13 +1122,13 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 			format = @"\tvec3 specularColor = vec3(%@, %@, %@);  // %@\n";
 			haveSpecularColor = YES;
 		}
-		[_fragmentBody appendFormat:format, FormatFloat(rgba[0]), FormatFloat(rgba[1]), FormatFloat(rgba[2]), comment];
+		[_fragmentBody appendFormat:format, oo::NSStringFrom(FormatFloat(rgba[0])), oo::NSStringFrom(FormatFloat(rgba[1])), oo::NSStringFrom(FormatFloat(rgba[2])), comment];
 	}
 	
 	// Handle scale_factor if no constant colour.
 	if (haveSpecularColor && scaleFactor != 1.0f)
 	{
-		[_fragmentBody appendFormat:@"\tspecularColor *= %@;  // Scale factor\n", FormatFloat(scaleFactor)];
+		[_fragmentBody appendFormat:@"\tspecularColor *= %@;  // Scale factor\n", oo::NSStringFrom(FormatFloat(scaleFactor))];
 	}
 	
 	// Handle self_color.
@@ -1224,12 +1244,12 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 			
 			if (rgba[0] != 1.0f || rgba[1] != 1.0f || rgba[2] != 1.0f)
 			{
-				[_fragmentBody appendFormat:@"\tlightMapColor *= vec3(%@, %@, %@);\n", FormatFloat(rgba[0]), FormatFloat(rgba[1]), FormatFloat(rgba[2])];
+				[_fragmentBody appendFormat:@"\tlightMapColor *= vec3(%@, %@, %@);\n", oo::NSStringFrom(FormatFloat(rgba[0])), oo::NSStringFrom(FormatFloat(rgba[1])), oo::NSStringFrom(FormatFloat(rgba[2]))];
 			}
 		}
 		else
 		{
-			[_fragmentBody appendFormat:@"\tlightMapColor = vec3(%@, %@, %@);\n", FormatFloat(rgba[0]), FormatFloat(rgba[1]), FormatFloat(rgba[2])];
+			[_fragmentBody appendFormat:@"\tlightMapColor = vec3(%@, %@, %@);\n", oo::NSStringFrom(FormatFloat(rgba[0])), oo::NSStringFrom(FormatFloat(rgba[1])), oo::NSStringFrom(FormatFloat(rgba[2]))];
 		}
 		
 		const oo::PList *binding = textureSpec.get<oo::PList::Dict>(cxx_kOOTextureSpecifierBindingKey);
@@ -1257,8 +1277,8 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 			
 			if (glslType != nil)
 			{
-				NSString *uniformName = [self defineBindingUniform:oo::ObjectFromPList(*binding) ofType:bindingType];
-				[_fragmentBody appendFormat:@"\tlightMapColor *= %@%@;\n", uniformName, swizzle];
+				std::optional<std::string> uniformName = [self defineBindingUniform:*binding ofType:oo::StdString(bindingType)];
+				[_fragmentBody appendFormat:@"\tlightMapColor *= %@%@;\n", oo::NSStringOrNil(uniformName), swizzle];
 			}
 			else
 			{
@@ -1612,18 +1632,19 @@ oo::PList CanonicalizeMaterialSpecifier(const oo::PList &spec, const std::option
 	return canonical;
 }
 
-}	// namespace
 
 
-static NSString *FormatFloat(double value)
+std::string FormatFloat(double value)
 {
 	long long intValue = value;
 	if (value == intValue)
 	{
-		return [NSString stringWithFormat:@"%lli.0", intValue];
+		return oo::str::format("%lli.0", intValue);
 	}
 	else
 	{
-		return [NSString stringWithFormat:@"%g", value];
+		return oo::str::format("%g", value);
 	}
 }
+
+}	// namespace
