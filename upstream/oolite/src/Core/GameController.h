@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #import "OOMouseInteractionMode.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
 
 
 #if OOLITE_MAC_OS_X
@@ -72,7 +73,7 @@ MA 02110-1301, USA.
 
 	std::optional<std::string>	playerFileDirectory;	// nullopt: not looked up yet, or none (was nil)
 	std::optional<std::string>	playerFileToLoad;		// nullopt: none (was nil)
-	NSMutableArray			*expansionPathsToInclude;
+	std::vector<std::string>	expansionPathsToInclude;	// expansion folders opened with the application (Mac)
 	
 	NSTimeInterval			_animationTimerInterval;
 	
@@ -93,13 +94,13 @@ MA 02110-1301, USA.
 	NSRect					fsGeometry;
 	MyOpenGLView			*switchView;
 	
-	NSMutableArray			*displayModes;
+	oo::PList::Array		displayModes;			// the usable screen modes, each a mode dictionary
 	
 	unsigned int			width, height;
 	unsigned int			refresh;
 	BOOL					fullscreen;
-	NSDictionary			*originalDisplayMode;
-	NSDictionary			*fullscreenDisplayMode;
+	oo::PList				originalDisplayMode;	// a mode dictionary; null: none (was nil)
+	oo::PList				fullscreenDisplayMode;	// a mode dictionary; null: none (was nil)
 	
 	BOOL					stayInFullScreenMode;
 	BOOL					_finishedLaunching;
