@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OOJSEngineTimeManagement.h"
 #include "oofnd/Notification.hpp"
+#import "OOFoundationBridge.h"
 
 
 @implementation OOJSFunction
@@ -45,7 +46,7 @@ MA 02110-1301, USA.
 	{
 		_function = function;
 		OOJSAddGCObjectRoot(context, (ooscript::Object *)&_function, "OOJSFunction._function");
-		_name = [OOStringFromJSString(context, ooscript::getFunctionId(function)) retain];
+		_name = oo::OptionalString(OOStringFromJSString(context, ooscript::getFunctionId(function)));
 		
 		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
 															[OOJavaScriptEngine sharedEngine],
@@ -56,12 +57,12 @@ MA 02110-1301, USA.
 }
 
 
-- (id) initWithName:(NSString *)name
+- (id) initWithName:(const std::optional<std::string> &)name
 			  scope:(ooscript::Object)scope
-			   code:(NSString *)code
+			   code:(const std::optional<std::string> &)code
 	  argumentCount:(NSUInteger)argCount
 	  argumentNames:(const char **)argNames
-		   fileName:(NSString *)fileName
+		   fileName:(const std::optional<std::string> &)fileName
 		 lineNumber:(NSUInteger)lineNumber
 			context:(ooscript::Context)context
 {
@@ -78,14 +79,15 @@ MA 02110-1301, USA.
 	}
 	if (scope == NULL)  scope = [[OOJavaScriptEngine sharedEngine] globalObject];
 	
-	if (code == nil || (argCount > 0 && argNames == NULL))  OK = NO;
+	if (!code.has_value() || (argCount > 0 && argNames == NULL))  OK = NO;
 	
+	// ooscript::Char16 is a 16-bit element; the code's UTF-16 units go in as -getCharacters: gave them.
+	std::u16string units;
 	if (OK)
 	{
-		// ooscript::Char16 and unichar are both defined to be 16-bit elements.
-		assert(sizeof(ooscript::Char16) == sizeof(unichar));
+		units = oo::utf8ToUtf16(*code);
 		
-		length = [code length];
+		length = units.size();
 		buffer = (ooscript::Char16 *)malloc(sizeof(ooscript::Char16) * length);
 		if (buffer == NULL)  OK = NO;
 	}
@@ -94,9 +96,9 @@ MA 02110-1301, USA.
 	{
 		assert(argCount < UINT32_MAX);
 		
-		[code getCharacters:(unichar *)buffer];
+		std::copy(units.begin(), units.end(), buffer);
 		
-		function = ooscript::compileUCFunction(context, scope, [name UTF8String], (uint32_t)argCount, argNames, buffer, length, [fileName UTF8String], (uint32_t)lineNumber);
+		function = ooscript::compileUCFunction(context, scope, name.has_value() ? name->c_str() : NULL, (uint32_t)argCount, argNames, buffer, length, fileName.has_value() ? fileName->c_str() : NULL, (uint32_t)lineNumber);
 		if (function == NULL)  OK = NO;
 		
 		free(buffer);
@@ -135,23 +137,20 @@ MA 02110-1301, USA.
 - (void) dealloc
 {
 	[self deleteJSValue];
-	DESTROY(_name);
 	
 	[super dealloc];
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	NSString *name = [self name];
-	if (name == nil)  name = @"<anonymous>";
-	return [NSString stringWithFormat:@"%@()", name];
+	return oo::NSStringFrom(oo::str::format("%s()", _name.value_or("<anonymous>").c_str()));
 }
 
 
-- (NSString *) name
+- (id) name	// shared selector (proposed ADR-0043)
 {
-	return _name;
+	return oo::NSStringOrNil(_name);
 }
 
 
@@ -193,16 +192,16 @@ MA 02110-1301, USA.
 // Semi-raw evaluation shared by convenience methods below.
 - (BOOL) evaluateWithContext:(ooscript::Context)context
 					   scope:(id)jsThis
-				   arguments:(NSArray *)arguments
+				   arguments:(const std::vector<oo::ObjCRef<id>> &)arguments
 					  result:(ooscript::Value *)result
 {
-	NSUInteger i, argc = [arguments count];
+	NSUInteger i, argc = arguments.size();
 	assert(argc < UINT32_MAX);
 	ooscript::Value argv[argc];
 	
 	for (i = 0; i < argc; i++)
 	{
-		argv[i] = [[arguments objectAtIndex:i] oo_jsValueInContext:context];
+		argv[i] = [arguments[i].get() oo_jsValueInContext:context];
 		OOJSAddGCValueRoot(context, &argv[i], "OOJSFunction argv");
 	}
 	
@@ -226,7 +225,7 @@ MA 02110-1301, USA.
 
 - (id) evaluateWithContext:(ooscript::Context)context
 					 scope:(id)jsThis
-				 arguments:(NSArray *)arguments
+				 arguments:(const std::vector<oo::ObjCRef<id>> &)arguments
 {
 	ooscript::Value result;
 	BOOL OK = [self evaluateWithContext:context
@@ -241,7 +240,7 @@ MA 02110-1301, USA.
 
 - (BOOL) evaluatePredicateWithContext:(ooscript::Context)context
 								scope:(id)jsThis
-							arguments:(NSArray *)arguments
+							arguments:(const std::vector<oo::ObjCRef<id>> &)arguments
 {
 	ooscript::Value result;
 	BOOL OK = [self evaluateWithContext:context

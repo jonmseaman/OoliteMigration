@@ -46,6 +46,7 @@
 #import "ResourceManager.h"
 
 #include "ooscript/JSEngine.hpp"
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -581,27 +582,28 @@ using ooscript::Context;
 	// NPC ships getting stuck with a dockingAI while just outside the aegis - Nikos 20090630, as proposed by Eric
 	// On very busy systems (> 50 docking ships) docking ships can be sent to a hold position outside the range, 
 	// so also test for presence of dockingInstructions. - Eric 20091130
-	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || dockingInstructions != nil))
+	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !dockingInstructions.isNull()))
 	{
-		// remember the instructions
-		[dockingInstructions release];
-		dockingInstructions = [[station dockingInstructionsForShip:self] retain];
-		if (dockingInstructions != nil)
+		// remember the instructions (the station's weak reference is kept as an Object node)
+		dockingInstructions = oo::PListFrom([station dockingInstructionsForShip:self]);
+		if (!dockingInstructions.isNull())
 		{
 			[self recallDockingInstructions];
 			
-			message = [dockingInstructions objectForKey:@"ai_message"];
+			const oo::PList *aiMessage = dockingInstructions.find("ai_message");
+			message = aiMessage != nullptr ? oo::ObjectFromPList(*aiMessage) : nil;
 			if (message != nil)  [shipAI message:message];
-			message = [dockingInstructions objectForKey:@"comms_message"];
+			const oo::PList *commsMessage = dockingInstructions.find("comms_message");
+			message = commsMessage != nullptr ? oo::ObjectFromPList(*commsMessage) : nil;
 			if (message != nil)  [station sendExpandedMessage:message toShip:self];
 		}
 	}
 	else
 	{
-		DESTROY(dockingInstructions);
+		dockingInstructions = oo::PList();
 	}
 	
-	if (dockingInstructions == nil)
+	if (dockingInstructions.isNull())
 	{
 		[shipAI message:@"NO_STATION_FOUND"];
 	}
@@ -610,14 +612,15 @@ using ooscript::Context;
 
 - (void) recallDockingInstructions
 {
-	if (dockingInstructions != nil)
+	if (!dockingInstructions.isNull())
 	{
-		_destination = oo::PListView(dockingInstructions).get<HPVector>(@"destination");
-		desired_speed = fmin(oo::PListView(dockingInstructions).get<float>(@"speed"), maxFlightSpeed);
-		desired_range = oo::PListView(dockingInstructions).get<float>(@"range");
-		if ([dockingInstructions objectForKey:@"station"])
+		const oo::PList *destination = dockingInstructions.find("destination");
+		_destination = OOHPVectorFromObject(destination != nullptr ? oo::ObjectFromPList(*destination) : nil, kZeroHPVector);
+		desired_speed = fmin(dockingInstructions.get<float>("speed"), maxFlightSpeed);
+		desired_range = dockingInstructions.get<float>("range");
+		if (const oo::PList *stationRef = dockingInstructions.find("station"))
 		{
-			StationEntity *targetStation = [[dockingInstructions objectForKey:@"station"] weakRefUnderlyingObject];
+			StationEntity *targetStation = [oo::ObjectIn(*stationRef) weakRefUnderlyingObject];
 			if (targetStation != nil)
 			{
 				[self addTarget:targetStation];
@@ -628,7 +631,7 @@ using ooscript::Context;
 				[self removeTarget:[self primaryTarget]];
 			}
 		}
-		docking_match_rotation = oo::PListView(dockingInstructions).get<BOOL>(@"match_rotation");  // NOLINT(bugprone-signed-char-misuse): BOOL bitfield assign, pre-existing; behaviour unchanged by this retarget.
+		docking_match_rotation = dockingInstructions.get<bool>("match_rotation");
 	}
 }
 
@@ -1074,7 +1077,7 @@ using ooscript::Context;
 			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
 			return;
 		}
-		if ([cargo count] >= [self maxAvailableCargoSpace])
+		if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 		{
 			if (max_cargo)  [shipAI message:@"HOLD_FULL"];	//can't collect loot if holds are full!
 			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if holds are full!
@@ -1180,7 +1183,7 @@ using ooscript::Context;
 	{
 		[shipAI message:@"NO_CARGO_BAY"];
 	}
-	else if ([cargo count] >= [self maxAvailableCargoSpace])
+	else if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 	{
 		[shipAI message:@"HOLD_FULL"];
 	}
@@ -2401,12 +2404,12 @@ using ooscript::Context;
 		
 		// Stuff expression in a function.
 		predicateCode = [NSString stringWithFormat:@"return %@;", predicateExpression];
-		function = [[OOJSFunction alloc] initWithName:@"_oo_AIScanPredicate"
+		function = [[OOJSFunction alloc] initWithName:std::string("_oo_AIScanPredicate")
 												scope:NULL
-												 code:predicateCode
+												 code:oo::OptionalString(predicateCode)
 										argumentCount:1
 										argumentNames:argNames
-											 fileName:aiName
+											 fileName:oo::OptionalString(aiName)
 										   lineNumber:0
 											  context:context];
 		[function autorelease];
