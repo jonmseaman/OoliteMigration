@@ -58,6 +58,7 @@ SOFTWARE.
 #import "OOPListView.h"
 #import "OOTCPStreamDecoder.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/PListWriting.hpp"
 
 
 #ifdef OO_LOG_DEBUG_PROTOCOL_PACKETS
@@ -67,8 +68,9 @@ static void LogSendPacket(NSDictionary *packet);
 #endif
 
 
-static void DecoderPacket(void *cbInfo, OOALStringRef packetType, OOALDictionaryRef packet);
-static void DecoderError(void *cbInfo, OOALStringRef errorDesc);
+// The decoder's callbacks; its string and dictionary handles are OOALObjectRef.
+static void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet);
+static void DecoderError(void *cbInfo, OOALObjectRef errorDesc);
 
 
 OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
@@ -163,6 +165,22 @@ std::vector<OODebugTCPConsoleClient *> sLiveClients;
 }
 
 
+namespace {
+
+// PListView get<> of a string: the packet's value for <key> if it is a string, or a number's
+// -stringValue; nullopt (was nil) for anything else, a missing key or a packet that is no
+// dictionary. <key> is one of OODebugTCPConsoleProtocol.h's constants.
+std::optional<std::string> PacketString(const oo::PList &packet, id key)
+{
+	const std::string name = oo::StdString(key);
+	const oo::PList *value = packet.find(name);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return packet.get<std::string>(name);
+}
+
+}
+
+
 @interface OODebugTCPConsoleClient (OOPrivate)
 
 - (void) closeConnection;
@@ -188,19 +206,20 @@ std::vector<OODebugTCPConsoleClient *> sLiveClients;
 - (void) serviceSocketFor:(double)seconds;
 
 - (void) readData;
-- (void) dispatchPacket:(NSDictionary *)packet ofType:(NSString *)packetType;
+- (void) dispatchPacket:(const oo::PList &)packet ofType:(const std::string &)packetType;
 
-- (void) handleApproveConnectionPacket:(NSDictionary *)packet;
-- (void) handleRejectConnectionPacket:(NSDictionary *)packet;
-- (void) handleCloseConnectionPacket:(NSDictionary *)packet;
-- (void) handleNoteConfigurationChangePacket:(NSDictionary *)packet;
-- (void) handlePerformCommandPacket:(NSDictionary *)packet;
-- (void) handleRequestConfigurationValuePacket:(NSDictionary *)packet;
-- (void) handlePingPacket:(NSDictionary *)packet;
-- (void) handlePongPacket:(NSDictionary *)packet;
+// Packets are property-list dictionaries (anything else answers no values).
+- (void) handleApproveConnectionPacket:(const oo::PList &)packet;
+- (void) handleRejectConnectionPacket:(const oo::PList &)packet;
+- (void) handleCloseConnectionPacket:(const oo::PList &)packet;
+- (void) handleNoteConfigurationChangePacket:(const oo::PList &)packet;
+- (void) handlePerformCommandPacket:(const oo::PList &)packet;
+- (void) handleRequestConfigurationValuePacket:(const oo::PList &)packet;
+- (void) handlePingPacket:(const oo::PList &)packet;
+- (void) handlePongPacket:(const oo::PList &)packet;
 
-- (void) disconnectFromServerWithMessage:(NSString *)message;
-- (void) breakConnectionWithMessage:(NSString *)message;
+- (void) disconnectFromServerWithMessage:(const std::optional<std::string> &)message;	// nullopt: a close packet without a message
+- (void) breakConnectionWithMessage:(const std::string &)message;
 - (void) breakConnectionWithStreamError:(int)error;
 
 @end
@@ -276,7 +295,7 @@ std::vector<OODebugTCPConsoleClient *> sLiveClients;
 {
 	if (StatusIsSendable(_status))
 	{
-		[self disconnectFromServerWithMessage:@"TCP console bridge unexpectedly released while active."];
+		[self disconnectFromServerWithMessage:std::string("TCP console bridge unexpectedly released while active.")];
 	}
 	if (_monitor)
 	{
@@ -316,7 +335,7 @@ std::vector<OODebugTCPConsoleClient *> sLiveClients;
 - (void)disconnectDebugMonitor:(in OODebugMonitor *)debugMonitor
 					   message:(in id)message	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
-	[self disconnectFromServerWithMessage:message];
+	[self disconnectFromServerWithMessage:oo::OptionalString(message)];
 	_monitor = nil;
 }
 
@@ -775,23 +794,27 @@ noteChangedConfigrationValue:(in id)newValue
 	
 	uint8_t							buffer[kBufferSize];
 	NSInteger						length;
-	NSData							*data;
-	
+
 	length = [self receive:buffer maxLength:kBufferSize];
 	while (length > 0)
 	{
-		data = [NSData dataWithBytesNoCopy:buffer length:length freeWhenDone:NO];
-		OOTCPStreamDecoderReceiveBytes(_decoder, [data bytes], [data length]);
+		// The bytes go to the decoder in a data handle (OOTCPStreamDecoderAbstractionLayer), which
+		// is released once the decoder has taken them, as the no-copy data object was.
+		auto data = OOALDataCreateMutable((size_t)length);
+		OOALMutableDataAppendBytes(data, buffer, (size_t)length);
+		OOTCPStreamDecoderReceiveData(_decoder, data);
+		OOALRelease(data);
 		length = [self receive:buffer maxLength:kBufferSize];
 	}
 }
 
 
-- (void) dispatchPacket:(NSDictionary *)packet ofType:(NSString *)packetType
+- (void) dispatchPacket:(const oo::PList &)packet ofType:(const std::string &)packetType
 {
-	if (packet == nil || packetType == nil)  return;
-	
-#define PACKET_CASE(x) else if ([packetType isEqualToString:kOOTCPPacket_##x])  { [self handle##x##Packet:packet]; }
+	if (packet.isNull())  return;
+
+	// The packet type names are OODebugTCPConsoleProtocol.h's constants, read as C++ strings.
+#define PACKET_CASE(x) else if (packetType == oo::StdString(kOOTCPPacket_##x))  { [self handle##x##Packet:packet]; }
 	
 	if (0) {}
 	PACKET_CASE(ApproveConnection)
@@ -804,37 +827,34 @@ noteChangedConfigrationValue:(in id)newValue
 	PACKET_CASE(Pong)
 	else
 	{
-		OOLog(@"debugTCP.protocolError.unknownPacketType", @"Unhandled packet type %@.", packetType);
+		OOLog(@"debugTCP.protocolError.unknownPacketType", @"Unhandled packet type %@.", oo::NSStringFrom(packetType));
 	}
 }
 
 
-- (void) handleApproveConnectionPacket:(NSDictionary *)packet
+- (void) handleApproveConnectionPacket:(const oo::PList &)packet
 {
-	NSMutableString			*connectedMessage = nil;
-	NSString				*consoleIdentity = nil;
-	NSString				*hostName = nil;
-	
 	if (_status == kOOTCPClientStartedConnectionStage2)
 	{
 		_status = kOOTCPClientConnected;
-		
+
 		// Build "Connected..." message with two optional parts, console identity and host name.
-		connectedMessage = [NSMutableString stringWithString:@"Connected to debug console"];
-		
-		consoleIdentity = oo::PListView(packet).get<NSString *>(kOOTCPConsoleIdentity);
-		if (consoleIdentity != nil)  [connectedMessage appendFormat:@" \"%@\"", consoleIdentity];
-		
-		hostName = _hostName;
-		if ([hostName length] != 0 &&
-			![hostName isEqual:@"localhost"] &&
-			![hostName isEqual:@"127.0.0.1"] &&
-			![hostName isEqual:@"::1"])
+		std::string connectedMessage = "Connected to debug console";
+
+		const std::optional<std::string> consoleIdentity = PacketString(packet, kOOTCPConsoleIdentity);
+		if (consoleIdentity.has_value())  connectedMessage += " \"" + *consoleIdentity + "\"";
+
+		// The host name ivar is the send side's (chunk 2): converted here.
+		const std::string hostName = oo::StdString(_hostName);
+		if (hostName.length() != 0 &&
+			hostName != "localhost" &&
+			hostName != "127.0.0.1" &&
+			hostName != "::1")
 		{
-			[connectedMessage appendFormat:@" at %@", hostName];
+			connectedMessage += " at " + hostName;
 		}
-		
-		OOLog(@"debugTCP.connected", @"%@.", connectedMessage);
+
+		OOLog(@"debugTCP.connected", @"%@.", oo::NSStringFrom(connectedMessage));
 	}
 	else
 	{
@@ -843,10 +863,8 @@ noteChangedConfigrationValue:(in id)newValue
 }
 
 
-- (void) handleRejectConnectionPacket:(NSDictionary *)packet
+- (void) handleRejectConnectionPacket:(const oo::PList &)packet
 {
-	NSString				*message = nil;
-	
 	if (_status == kOOTCPClientStartedConnectionStage2)
 	{
 		_status = kOOTCPClientConnectionRefused;
@@ -856,102 +874,93 @@ noteChangedConfigrationValue:(in id)newValue
 		OOLog(@"debugTCP.protocolError.outOfOrder", @"Got %@ packet from debug console in wrong context.", kOOTCPPacket_RejectConnection);
 	}
 	
-	message = oo::PListView(packet).get<NSString *>(kOOTCPMessage);
-	if (message == nil)  message = @"Console refused connection.";
-	[self breakConnectionWithMessage:message];
+	[self breakConnectionWithMessage:PacketString(packet, kOOTCPMessage).value_or("Console refused connection.")];
 }
 
 
-- (void) handleCloseConnectionPacket:(NSDictionary *)packet
+- (void) handleCloseConnectionPacket:(const oo::PList &)packet
 {
-	NSString				*message = nil;
-	
 	if (!StatusIsSendable(_status))
 	{
 		OOLog(@"debugTCP.protocolError.outOfOrder", @"Got %@ packet from debug console in wrong context.", kOOTCPPacket_CloseConnection);
 	}
-	message = oo::PListView(packet).get<NSString *>(kOOTCPMessage);
-	if (message == nil)  message = @"Console closed connection.";
-	[self breakConnectionWithMessage:message];
+	[self breakConnectionWithMessage:PacketString(packet, kOOTCPMessage).value_or("Console closed connection.")];
 }
 
 
-- (void) handleNoteConfigurationChangePacket:(NSDictionary *)packet
+- (void) handleNoteConfigurationChangePacket:(const oo::PList &)packet
 {
-	NSDictionary			*configuration = nil;
-	NSArray					*removed = nil;
-	NSEnumerator			*keyEnum = nil;
-	NSString				*key = nil;
-	id						value = nil;
-	
 	if (_monitor == nil)  return;
-	
-	configuration = oo::PListView(packet).get<NSDictionary *>(kOOTCPConfiguration);
-	if (configuration != nil)
+
+	// -setConfigurationValue:forKey: is a shared selector (id): each value and key is handed on as
+	// an Objective-C object. Keys go in std::map order (was the dictionary's hash order); each
+	// forward can make the monitor send a change packet, so those go in that order too.
+	const oo::PList *configuration = packet.find(oo::StdString(kOOTCPConfiguration));
+	if (configuration != nullptr && !configuration->isDict())  configuration = nullptr;
+	if (configuration != nullptr)
 	{
-		foreachkey (key, configuration)
+		for (const auto &entry : *configuration->getIf<oo::PList::Dict>())
 		{
-			value = [configuration objectForKey:key];
-			[_monitor setConfigurationValue:value forKey:key];
+			[_monitor setConfigurationValue:oo::ObjectFromPList(entry.second) forKey:oo::NSStringFrom(entry.first)];
 		}
 	}
-	
-	removed = oo::PListView(configuration).get<NSArray *>(kOOTCPRemovedConfigurationKeys);
-	for (keyEnum = [removed objectEnumerator]; (key = [keyEnum nextObject]); )
+
+	// The removed keys are read from the configuration, as the old code read them.
+	const oo::PList *removed = (configuration != nullptr) ? configuration->find(oo::StdString(kOOTCPRemovedConfigurationKeys)) : nullptr;
+	if (removed != nullptr && removed->isArray())
 	{
-		[_monitor setConfigurationValue:nil forKey:key];
+		for (const oo::PList &key : *removed->getIf<oo::PList::Array>())
+		{
+			[_monitor setConfigurationValue:nil forKey:oo::ObjectFromPList(key)];
+		}
 	}
 }
 
 
-- (void) handlePerformCommandPacket:(NSDictionary *)packet
+- (void) handlePerformCommandPacket:(const oo::PList &)packet
 {
-	NSString				*message = nil;
-	
-	message = oo::PListView(packet).get<NSString *>(kOOTCPMessage);
-	if (message != nil)  [_monitor performJSConsoleCommand:message];
+	const std::optional<std::string> message = PacketString(packet, kOOTCPMessage);
+	if (message.has_value())  [_monitor performJSConsoleCommand:oo::NSStringFrom(*message)];	// shared selector (id)
 }
 
 
-- (void) handleRequestConfigurationValuePacket:(NSDictionary *)packet
+- (void) handleRequestConfigurationValuePacket:(const oo::PList &)packet
 {
-	NSString				*key = nil;
-	id						value = nil;
-	
-	key = oo::PListView(packet).get<NSString *>(kOOTCPConfigurationKey);
-	if (key != nil)
+	const std::optional<std::string> key = PacketString(packet, kOOTCPConfigurationKey);
+	if (key.has_value())
 	{
-		value = [_monitor configurationValueForKey:key];
+		// Shared selectors (id): the key and value stay Objective-C objects between them.
+		id value = [_monitor configurationValueForKey:oo::NSStringFrom(*key)];
 		[self debugMonitor:_monitor
  noteChangedConfigrationValue:value
-					forKey:key];
+					forKey:oo::NSStringFrom(*key)];
 	}
 }
 
 
-- (void) handlePingPacket:(NSDictionary *)packet
+- (void) handlePingPacket:(const oo::PList &)packet
 {
-	id						message = nil;
-	
-	message = [packet objectForKey:kOOTCPMessage];
+	// The send side takes Objective-C values until chunk 2.
+	const oo::PList *message = packet.find(oo::StdString(kOOTCPMessage));
 	[self sendPacket:kOOTCPPacket_Pong
-			withValue:message
+			withValue:(message != nullptr) ? oo::ObjectFromPList(*message) : nil
 		 forParameter:kOOTCPMessage];
 }
 
 
-- (void) handlePongPacket:(NSDictionary *)packet
+- (void) handlePongPacket:(const oo::PList &)packet
 {
 	// Do nothing; we don't currently send pings.
 }
 
 
-- (void) disconnectFromServerWithMessage:(NSString *)message
+- (void) disconnectFromServerWithMessage:(const std::optional<std::string> &)message
 {
 	if (StatusIsSendable(_status))
 	{
+		// nullopt: a close packet without a message key, as nil gave (the send side is chunk 2's).
 		[self sendPacket:kOOTCPPacket_CloseConnection
-				withValue:message
+				withValue:oo::NSStringOrNil(message)
 			 forParameter:kOOTCPMessage];
 	}
 	[self closeConnection];
@@ -960,15 +969,15 @@ noteChangedConfigrationValue:(in id)newValue
 }
 
 
-- (void) breakConnectionWithMessage:(NSString *)message
+- (void) breakConnectionWithMessage:(const std::string &)message
 {
 	[self closeConnection];
-	
+
 	if (_status != kOOTCPClientConnectionRefused)  _status = kOOTCPClientDisconnected;
-	
-	if ([message length] > 0)
+
+	if (message.length() > 0)
 	{
-		OOLog(@"debugTCP.disconnect", @"No connection to debug console: \"%@\"", message);
+		OOLog(@"debugTCP.disconnect", @"No connection to debug console: \"%@\"", oo::NSStringFrom(message));
 	}
 	else
 	{
@@ -977,7 +986,7 @@ noteChangedConfigrationValue:(in id)newValue
 	
 #if 0
 	// Disconnecting causes crashiness for reasons I don't understand, and isn't very important anyway.
-	[_monitor disconnectDebugger:self message:message];
+	[_monitor disconnectDebugger:self message:oo::NSStringFrom(message)];
 	_monitor = nil;
 #endif
 }
@@ -986,13 +995,13 @@ noteChangedConfigrationValue:(in id)newValue
 // error: the failing stream's error code; 0 for none (a closed stream, or one at its end).
 - (void) breakConnectionWithStreamError:(int)error
 {
-	NSString				*errorDesc = nil;
+	std::optional<std::string> errorDesc;
 
-	if (error != 0)  errorDesc = SocketErrorDescription(error);
-	if (errorDesc == nil)  errorDesc = @"bad stream.";
-	[self breakConnectionWithMessage:[NSString stringWithFormat:
-	   @"Connection to debug console failed: '%@' (outStream status: %zu, inStream status: %zu).",
-		errorDesc, (size_t)_outStatus, (size_t)_inStatus]];
+	if (error != 0)  errorDesc = oo::OptionalString(SocketErrorDescription(error));
+	if (!errorDesc.has_value())  errorDesc = "bad stream.";
+	[self breakConnectionWithMessage:oo::str::format(
+	   "Connection to debug console failed: '%s' (outStream status: %zu, inStream status: %zu).",
+		errorDesc->c_str(), (size_t)_outStatus, (size_t)_inStatus)];
 }
 
 @end
@@ -1064,29 +1073,31 @@ void OODebugTCPConsoleServiceInput(double timeout)
 }
 
 
-static void DecoderPacket(void *cbInfo, OOALStringRef packetType, OOALDictionaryRef packet)
+static void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet)
 {
 	// The decoder's handles hold property lists (OOTCPStreamDecoderAbstractionLayer, bead oo-x3xy).
-	[(OODebugTCPConsoleClient *)cbInfo dispatchPacket:oo::ObjectFromPList(OOALObjectPList(packet)) ofType:oo::ObjectFromPList(OOALObjectPList(packetType))];
+	// A type that is not a string was nil, and no packet was dispatched.
+	const std::string *type = OOALObjectPList(packetType).getIf<std::string>();
+	if (type == nullptr)  return;
+	[(OODebugTCPConsoleClient *)cbInfo dispatchPacket:OOALObjectPList(packet) ofType:*type];
 }
 
 
-static void DecoderError(void *cbInfo, OOALStringRef errorDesc)
+static void DecoderError(void *cbInfo, OOALObjectRef errorDesc)
 {
-	[(OODebugTCPConsoleClient *)cbInfo breakConnectionWithMessage:oo::ObjectFromPList(OOALObjectPList(errorDesc))];
+	// A description that is not a string was nil: no message ("Debug console not connected.").
+	const std::string *description = OOALObjectPList(errorDesc).getIf<std::string>();
+	[(OODebugTCPConsoleClient *)cbInfo breakConnectionWithMessage:(description != nullptr) ? *description : std::string()];
 }
 
 
 #ifdef OO_LOG_DEBUG_PROTOCOL_PACKETS
-void LogOOTCPStreamDecoderPacket(OOALDictionaryRef packetHandle)
+void LogOOTCPStreamDecoderPacket(OOALObjectRef packetHandle)
 {
-	NSDictionary			*packet = oo::ObjectFromPList(OOALObjectPList(packetHandle));
-	NSData					*data = nil;
-	NSString				*xml = nil;
-	
-	data = [NSPropertyListSerialization dataFromPropertyList:packet format:NSPropertyListXMLFormat_v1_0 errorDescription:NULL];
-	xml = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-	OOLog(@"debugTCP.receive", @"Received packet:\n%@", xml);
+	// GNUstep's XML property-list serialisation, byte for byte (ADR-0043 item 15).
+	const oo::Expected<oo::Data, oo::PListError> data = oo::writeXMLPList(OOALObjectPList(packetHandle));
+	const std::string xml = data ? std::string(data->stringView()) : std::string();
+	OOLog(@"debugTCP.receive", @"Received packet:\n%@", oo::NSStringFrom(xml));
 }
 
 
