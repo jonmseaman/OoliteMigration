@@ -1659,7 +1659,7 @@ static NSTimeInterval	time_last_frame;
 				
 				exceptionContext = @"dump cargo";
 				//  shoot 'd'   // Dump Cargo
-				if (([self checkKeyPress:n_key_dump_cargo] || joyButtonState[BUTTON_JETTISON]) && [cargo count] > 0)
+				if (([self checkKeyPress:n_key_dump_cargo] || joyButtonState[BUTTON_JETTISON]) && [self cxx_cargoCount] > 0)
 				{
 					[self dumpCargo];
 				}
@@ -1668,7 +1668,7 @@ static NSTimeInterval	time_last_frame;
 				//  shoot 'R'   // Rotate Cargo
 				if ([self checkKeyPress:n_key_rotate_cargo] || joyButtonState[BUTTON_ROTATECARGO])
 				{
-					if ((!rotateCargo_pressed)&&([cargo count] > 0))
+					if ((!rotateCargo_pressed)&&([self cxx_cargoCount] > 0))
 						[self rotateCargo];
 					rotateCargo_pressed = YES;
 				}
