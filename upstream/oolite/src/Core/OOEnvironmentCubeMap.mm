@@ -35,6 +35,7 @@ SOFTWARE.
 #import "Universe.h"
 #import "PlayerEntity.h"
 #import "SkyEntity.h"
+#import "OOFoundationBridge.h"
 #import "OOSunEntity.h"
 #import "OOPlanetEntity.h"
 #import "OODrawable.h"
@@ -47,7 +48,7 @@ SOFTWARE.
 
 - (void) setUp;
 
-- (void) renderOnePassWithSky:(OODrawable *)sky sun:(OOSunEntity *)sun planets:(NSArray *)planets;
+- (void) renderOnePassWithSky:(OODrawable *)sky sun:(OOSunEntity *)sun planets:(const std::vector<oo::ObjCRef<OOPlanetEntity *>> &)planets;
 
 @end
 
@@ -108,7 +109,7 @@ SOFTWARE.
 	
 	OODrawable *sky = [[UNIVERSE nearestEntityMatchingPredicate:HasClassPredicate parameter:[SkyEntity class] relativeToEntity:nil] drawable];
 	OOSunEntity *sun = [UNIVERSE sun];
-	NSArray *planets = [UNIVERSE planets];
+	const std::vector<oo::ObjCRef<OOPlanetEntity *>> planets = oo::ObjCRefsFrom<OOPlanetEntity *>([UNIVERSE planets]);
 	
 	unsigned i;
 	Vector centers[6] = { { 1, 0, 0 }, { -1, 0, 0 }, { 0, 1, 0 }, { 0, -1, 0 }, { 0, 0, 1 }, { 0, 0, -1 } };
@@ -134,7 +135,7 @@ SOFTWARE.
 }
 
 
-- (void) renderOnePassWithSky:(OODrawable *)sky sun:(OOSunEntity *)sun planets:(NSArray *)planets
+- (void) renderOnePassWithSky:(OODrawable *)sky sun:(OOSunEntity *)sun planets:(const std::vector<oo::ObjCRef<OOPlanetEntity *>> &)planets
 {
 	OO_ENTER_OPENGL();
 	
@@ -150,12 +151,11 @@ SOFTWARE.
 	OOGLResetModelView();
 	OOGLTranslateModelView(vector_flip([PLAYER position]));
 	
-	NSEnumerator	*planetEnum = nil;
-	OOPlanetEntity	*planet = nil;
-	for (planetEnum = [planets objectEnumerator]; (planet = [planetEnum nextObject]); )
+	for (const oo::ObjCRef<OOPlanetEntity *> &planetRef : planets)
 	{
+		OOPlanetEntity	*planet = planetRef.get();
 		OOGLPushModelView();
-		OOGLTranslateModelView(planet position]);
+		OOGLTranslateModelView([planet position]);	// (the Foundation code was missing the "[": this file is not built)
 #if NEW_PLANETS
 		[[planet drawable] renderOpaqueParts];
 #else
