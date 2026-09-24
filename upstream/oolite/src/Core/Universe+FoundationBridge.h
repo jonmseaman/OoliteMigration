@@ -149,6 +149,33 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (NSArray*) listBeaconsWithCode:(NSString*) code;	// -> -cxx_listBeaconsWithCode:
 - (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message;	// -> -cxx_allShipsDoScriptEvent:andReactToAIMessage:
 
+// Chunk 10 (oo-3rb.229): messages, speech, custom sounds, screen backgrounds.
+- (NSDictionary *) screenTextureDescriptorForKey:(NSString *)key;	// -> -cxx_screenTextureDescriptorForKey:
+- (void) setScreenTextureDescriptorForKey:(NSString *) key descriptor:(NSDictionary *)desc;	// -> -cxx_setScreenTextureDescriptorForKey:descriptor:
+- (void) displayMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_displayMessage:forCount:
+- (void) displayCountdownMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_displayCountdownMessage:forCount:
+- (void) addDelayedMessage:(NSString *) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay;	// -> -cxx_addDelayedMessage:forCount:afterDelay:
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_addMessage:forCount:
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay;	// -> -cxx_addMessage:forCount:forceDisplay:
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_addCommsMessage:forCount:
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly;	// -> -cxx_addCommsMessage:forCount:andShowComms:logOnly:
+- (void) startSpeakingString:(NSString *) text;	// -> -cxx_startSpeakingString:
+#if OOLITE_ESPEAK
+- (NSString *) voiceName:(unsigned int) index;	// -> -cxx_voiceName:
+- (unsigned int) voiceNumber:(NSString *) name;	// -> -cxx_voiceNumber:
+#endif
+
+@end
+
+
+// Chunk 10 (oo-3rb.229): the custom sound categories.
+@interface OOSound (OOCustomSoundsFoundationBridge)
++ (id) soundWithCustomSoundKey:(NSString *)key;	// -> +cxx_soundWithCustomSoundKey:
+@end
+
+
+@interface OOSoundSource (OOCustomSoundsFoundationBridge)
+- (void) playCustomSoundWithKey:(NSString *)key;	// -> -cxx_playCustomSoundWithKey:
 @end
 
 

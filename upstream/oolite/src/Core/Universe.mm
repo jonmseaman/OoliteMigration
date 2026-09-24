@@ -922,7 +922,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 {
 	gSharedUniverse = nil;
 	
-	[currentMessage release];
+	currentMessage.reset();
 	
 	[gui release];
 	[message_gui release];
@@ -932,11 +932,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	[commodities release];
 	
-	[customSounds release];
+	customSounds = oo::PList();
 	[globalSettings release];
 	[systemManager release];
 	[demo_ships release];
-	[screenBackgrounds release];
+	screenBackgrounds = oo::PList();
 	[gameView release];
 	allPlanets.clear();
 	allStations.clear();
@@ -957,7 +957,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[[OOCacheManager sharedCache] flush];
 	
 #if OOLITE_SPEECH_SYNTH
-	[speechArray release];
+	speechArray = oo::PList();
 #if OOLITE_MAC_OS_X
 	[speechSynthesizer release];
 #elif OOLITE_ESPEAK
@@ -5330,7 +5330,7 @@ static const OOMatrix	starboard_matrix =
 			[self drawMessage];
 			
 #if (defined (DEV_RELEASE))
-			[self drawWatermarkString:@"Development version " @OO_VERSION_FULL];
+			[self drawWatermarkString:"Development version " OO_VERSION_FULL];
 #endif
 			
 			OOLog(@"universe.profile.drawHUD", @"%@", @"End HUD drawing");
@@ -5455,13 +5455,13 @@ static const OOMatrix	starboard_matrix =
 }
 
 
-- (void) drawWatermarkString:(NSString *) watermarkString
+- (void) drawWatermarkString:(const std::string &) watermarkString
 {
-	NSSize watermarkStringSize = OORectFromString(watermarkString, 0.0f, 0.0f, NSMakeSize(10, 10)).size;
-	
+	NSSize watermarkStringSize = cxx_OORectFromString(watermarkString, 0.0f, 0.0f, NSMakeSize(10, 10)).size;
+
 	OOGL(glColor4f(0.0, 1.0, 0.0, 1.0));
 	// position the watermark string on the top right hand corner of the game window and right-align it
-	OODrawString(watermarkString, MAIN_GUI_PIXEL_WIDTH / 2 - watermarkStringSize.width + 80,
+	cxx_OODrawString(watermarkString, MAIN_GUI_PIXEL_WIDTH / 2 - watermarkStringSize.width + 80,
 						MAIN_GUI_PIXEL_HEIGHT / 2 - watermarkStringSize.height, [gameView display_z], NSMakeSize(10,10));
 }
 
@@ -6903,104 +6903,126 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (NSString *) soundNameForCustomSoundKey:(NSString *)key
+namespace {
+
+std::optional<std::string> OptionalStringAt(const oo::PList &array, std::size_t index);	// defined with the configuration readers below
+std::optional<std::string> OptionalStringIn(const oo::PList &dict, std::string_view key);
+std::string ExpandKey(const std::string &key);	// defined with the shipyard helpers below
+
+
+// -[currentMessage isEqual:text]: both present and equal (a nil receiver or argument answered NO).
+bool SameMessage(const std::optional<std::string> &current, const std::optional<std::string> &text)
 {
-	NSString				*result = nil;
-	NSMutableSet			*seen = nil;
-	id object = [customSounds objectForKey:key];
-	
-	if ([object isKindOfClass:[NSArray class]] && [object count] > 0)
+	return current.has_value() && text.has_value() && *current == *text;
+}
+
+}	// namespace
+
+
+// Resolved names are cached by key; a nil key (an array entry that is neither a string nor a
+// number) is cached as "", as the cache took a nil key.
+- (std::optional<std::string>) soundNameForCustomSoundKey:(const std::string &)soundKey
+{
+	std::optional<std::string>	key = soundKey;
+	std::optional<std::string>	result;
+	std::set<std::string>		seen;
+	const oo::PList				*object = customSounds.find(*key);
+
+	if (object != nullptr && object->isArray() && object->count() > 0)
 	{
-		key = oo::PListView(object).at<NSString *>(Ranrot() % [object count]);
+		key = OptionalStringAt(*object, Ranrot() % object->count());
 	}
 	else
 	{
-		object=nil;
+		object = nullptr;
 	}
-	
-	result = [[OOCacheManager sharedCache] objectForKey:key inCache:@"resolved custom sounds"];
-	if (result == nil)
+
+	result = oo::OptionalString([[OOCacheManager sharedCache] cxx_objectForKey:key.value_or(std::string()) inCache:"resolved custom sounds"]);
+	if (!result.has_value())
 	{
 		// Resolve sound, allowing indirection within customsounds.plist
-		seen = [NSMutableSet set];
 		result = key;
-		if (object == nil || ([result hasPrefix:@"["] && [result hasSuffix:@"]"]))
+		if (object == nullptr || (result.has_value() && oo::str::hasPrefix(*result, "[") && oo::str::hasSuffix(*result, "]")))
 		{
 			for (;;)
 			{
-				[seen addObject:result];
-				object = [customSounds objectForKey:result];
-				if( [object isKindOfClass:[NSArray class]] && [object count] > 0)
+				seen.insert(*result);
+				object = customSounds.find(*result);
+				if (object != nullptr && object->isArray() && object->count() > 0)
 				{
-					result = oo::PListView(object).at<NSString *>(Ranrot() % [object count]);
-					if ([key hasPrefix:@"["] && [key hasSuffix:@"]"]) key=result;
+					result = OptionalStringAt(*object, Ranrot() % object->count());
+					if (key.has_value() && oo::str::hasPrefix(*key, "[") && oo::str::hasSuffix(*key, "]")) key=result;
 				}
 				else
 				{
-					if ([object isKindOfClass:[NSString class]])
-						result = object;
+					if (object != nullptr && object->isString())
+						result = *object->getIf<std::string>();
 					else
-						result = nil;
+						result = std::nullopt;
 				}
-				if (result == nil || ![result hasPrefix:@"["] || ![result hasSuffix:@"]"])  break;
-				if ([seen containsObject:result])
+				if (!result.has_value() || !oo::str::hasPrefix(*result, "[") || !oo::str::hasSuffix(*result, "]"))  break;
+				if (seen.contains(*result))
 				{
-					OOLogERR(@"sound.customSounds.recursion", @"recursion in customsounds.plist for '%@' (at '%@'), no sound will be played.", key, result);
-					result = nil;
+					OOLogERR(@"sound.customSounds.recursion", @"recursion in customsounds.plist for '%@' (at '%@'), no sound will be played.", oo::NSStringOrNil(key), oo::NSStringFrom(*result));
+					result = std::nullopt;
 					break;
 				}
 			}
 		}
-		
-		if (result == nil)  result = @"__oolite-no-sound";
-		[[OOCacheManager sharedCache] setObject:result forKey:key inCache:@"resolved custom sounds"];
+
+		if (!result.has_value())  result = std::string("__oolite-no-sound");
+		[[OOCacheManager sharedCache] cxx_setObject:oo::NSStringFrom(*result) forKey:key.value_or(std::string()) inCache:"resolved custom sounds"];
 	}
-	
-	if ([result isEqualToString:@"__oolite-no-sound"])
+
+	if (*result == "__oolite-no-sound")
 	{
-		OOLog(@"sound.customSounds", @"Could not resolve sound name in customsounds.plist for '%@', no sound will be played.", key);
-		result = nil;
+		OOLog(@"sound.customSounds", @"Could not resolve sound name in customsounds.plist for '%@', no sound will be played.", oo::NSStringOrNil(key));
+		result = std::nullopt;
 	}
 	return result;
 }
 
 
-- (NSDictionary *) screenTextureDescriptorForKey:(NSString *)key
+- (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key
 {
-	id value = [screenBackgrounds objectForKey:key];
-	while ([value isKindOfClass:[NSArray class]])  value = [value objectAtIndex:Ranrot() % [value count]];
-	
-	if ([value isKindOfClass:[NSString class]])  value = [NSDictionary dictionaryWithObject:value forKey:@"name"];
-	else if (![value isKindOfClass:[NSDictionary class]])  value = nil;
-	
+	const oo::PList *entry = screenBackgrounds.find(key);
+	oo::PList value = (entry != nullptr) ? *entry : oo::PList();
+	while (value.isArray())
+	{
+		const oo::PList *chosen = value.at(Ranrot() % value.count());
+		oo::PList next = (chosen != nullptr) ? *chosen : oo::PList();
+		value = std::move(next);
+	}
+
+	if (value.isString())  value = oo::PList(oo::PList::Dict{ { "name", value } });
+	else if (!value.isDict())  value = oo::PList();
+
 	// Start loading the texture, and return nil if it doesn't exist.
-	if (![[self gui] preloadGUITexture:value])  value = nil;
-	
+	if (![[self gui] cxx_preloadGUITexture:value])  value = oo::PList();
+
 	return value;
 }
 
 
-- (void) setScreenTextureDescriptorForKey:(NSString *)key descriptor:(NSDictionary *)desc
+// Unloaded backgrounds (null) stay unloaded, as messaging nil changed nothing.
+- (void) cxx_setScreenTextureDescriptorForKey:(const std::string &)key descriptor:(const oo::PList &)desc
 {
-	NSMutableDictionary *sbCopy = [screenBackgrounds mutableCopy];
-	if (desc == nil)
+	oo::PList::Dict *backgrounds = screenBackgrounds.getIf<oo::PList::Dict>();
+	if (backgrounds == nullptr)  return;
+	if (desc.isNull())
 	{
-		[sbCopy removeObjectForKey:key];
-	} 
+		backgrounds->erase(key);
+	}
 	else
 	{
-		[sbCopy setObject:desc forKey:key];
+		(*backgrounds)[key] = desc;
 	}
-	[screenBackgrounds release];
-	screenBackgrounds = [sbCopy copy];
-	[sbCopy release];
 }
 
 
 - (void) clearPreviousMessage
 {
-	if (currentMessage)	[currentMessage release];
-	currentMessage = nil;
+	currentMessage.reset();
 }
 
 
@@ -7010,162 +7032,164 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (void) displayMessage:(NSString *) text forCount:(OOTimeDelta)count
+- (void) cxx_displayMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta)count
 {
-	if (![currentMessage isEqual:text] || universal_time >= messageRepeatTime)
+	if (!SameMessage(currentMessage, text) || universal_time >= messageRepeatTime)
 	{
-		if (currentMessage)	[currentMessage release];
-		currentMessage = [text retain];
+		currentMessage = text;
 		messageRepeatTime=universal_time + 6.0;
 		[self showGUIMessage:text withScroll:YES andColor:[message_gui textColor] overDuration:count];
 	}
 }
 
 
-- (void) displayCountdownMessage:(NSString *) text forCount:(OOTimeDelta)count
+- (void) cxx_displayCountdownMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta)count
 {
-	if (![currentMessage isEqual:text] && universal_time >= countdown_messageRepeatTime)
+	if (!SameMessage(currentMessage, text) && universal_time >= countdown_messageRepeatTime)
 	{
-		if (currentMessage)	[currentMessage release];
-		currentMessage = [text retain];
+		currentMessage = text;
 		countdown_messageRepeatTime=universal_time + count;
 		[self showGUIMessage:text withScroll:NO andColor:[message_gui textColor] overDuration:count];
 	}
 }
 
 
-- (void) addDelayedMessage:(NSString *)text forCount:(OOTimeDelta)count afterDelay:(double)delay
+// The deferred call's argument is the dictionary -addDelayedMessage: reads (a missing text leaves
+// the message out: the delayed call then shows nothing; setting a nil text raised).
+- (void) cxx_addDelayedMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count afterDelay:(double)delay
 {
-	NSMutableDictionary *msgDict = [NSMutableDictionary dictionaryWithCapacity:2];
-	[msgDict setObject:text forKey:@"message"];
-	[msgDict setObject:[NSNumber numberWithDouble:count] forKey:@"duration"];
-	[self performSelector:@selector(addDelayedMessage:) withObject:msgDict afterDelay:delay];
+	oo::PList::Dict msgDict;
+	if (text.has_value())  msgDict["message"] = oo::PList(*text);
+	msgDict["duration"] = oo::PList(count);
+	[self performSelector:@selector(addDelayedMessage:) withObject:oo::ObjectFromPList(oo::PList(std::move(msgDict))) afterDelay:delay];
 }
 
 
-- (void) addDelayedMessage:(NSDictionary *) textdict
+- (void) addDelayedMessage:(id) textdict	// called by name (ADR-0043 item 21): the deferred call above
 {
-	NSString		*msg = nil;
+	std::optional<std::string>	msg;
 	OOTimeDelta		msg_duration;
-	
-	msg = oo::PListView(textdict).get<NSString *>(@"message");
-	if (msg == nil)  return;
-	msg_duration = oo::PListView(textdict).get<oo::NonNegative<double>>(@"duration", 3.0);
-	
-	[self addMessage:msg forCount:msg_duration];
+	const oo::PList	message = oo::PListFrom(textdict);
+
+	msg = OptionalStringIn(message, "message");
+	if (!msg.has_value())  return;
+	msg_duration = message.get<oo::NonNegative<double>>("duration", 3.0);
+
+	[self cxx_addMessage:msg forCount:msg_duration];
 }
 
 
-- (void) addMessage:(NSString *)text forCount:(OOTimeDelta)count
+- (void) cxx_addMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count
 {
-	[self addMessage:text forCount:count forceDisplay:NO];
+	[self cxx_addMessage:text forCount:count forceDisplay:NO];
 }
 
 
-- (void) speakWithSubstitutions:(NSString *)text
+- (void) speakWithSubstitutions:(const std::optional<std::string> &)text
 {
 #if OOLITE_SPEECH_SYNTH
 	//speech synthesis
-	
+
 	PlayerEntity* player = PLAYER;
 	if ([player isSpeechOn] > OOSPEECHSETTINGS_OFF)
 	{
-		NSString	*systemSaid = nil;
-		NSString	*h_systemSaid = nil;
-		
-		NSString	*systemName = [self getSystemName:systemID];
-		
+		std::optional<std::string>	systemSaid;
+		std::optional<std::string>	h_systemSaid;
+
+		const std::optional<std::string>	systemName = [self cxx_getSystemName:systemID];
+
 		systemSaid = systemName;
-		
-		NSString	*h_systemName = [self getSystemName:[player targetSystemID]];
+
+		const std::optional<std::string>	h_systemName = [self cxx_getSystemName:[player targetSystemID]];
 		h_systemSaid = h_systemName;
-		
-		NSString	*spokenText = text;
-		if (speechArray != nil)
+
+		std::optional<std::string>	spokenText = text;
+		if (!speechArray.isNull())
 		{
-			NSArray			*thePair = nil;
-			
-			foreach (thePair, speechArray)
+			const oo::PList::Array *pairs = speechArray.getIf<oo::PList::Array>();
+			if (pairs != nullptr)  for (const oo::PList &thePair : *pairs)
 			{
-				NSString *original_phrase = oo::PListView(thePair).at<NSString *>(0);
-				
+				const std::optional<std::string> original_phrase = OptionalStringAt(thePair, 0);
+
 				NSUInteger replacementIndex;
 #if OOLITE_MAC_OS_X
 				replacementIndex = 1;
 #elif OOLITE_ESPEAK
-				replacementIndex = [thePair count] > 2 ? 2 : 1;
+				replacementIndex = thePair.count() > 2 ? 2 : 1;
 #endif
-				
-				NSString *replacement_phrase = oo::PListView(thePair).at<NSString *>(replacementIndex);
-				if (![replacement_phrase isEqualToString:@"_"])
+
+				const std::optional<std::string> replacement_phrase = OptionalStringAt(thePair, replacementIndex);
+				// An empty or missing phrase replaced nothing (a missing replacement or a nil text stayed nil).
+				if (replacement_phrase != "_" && spokenText.has_value() && original_phrase.has_value() && !original_phrase->empty() && replacement_phrase.has_value())
 				{
-					spokenText = [spokenText stringByReplacingOccurrencesOfString:original_phrase withString:replacement_phrase];
+					spokenText = oo::str::replaceOccurrences(*spokenText, *original_phrase, *replacement_phrase);
 				}
 			}
-			spokenText = [spokenText stringByReplacingOccurrencesOfString:systemName withString:systemSaid];
-			spokenText = [spokenText stringByReplacingOccurrencesOfString:h_systemName withString:h_systemSaid];
+			if (spokenText.has_value() && systemName.has_value() && !systemName->empty())  spokenText = oo::str::replaceOccurrences(*spokenText, *systemName, systemSaid.value_or(std::string()));
+			if (spokenText.has_value() && h_systemName.has_value() && !h_systemName->empty())  spokenText = oo::str::replaceOccurrences(*spokenText, *h_systemName, h_systemSaid.value_or(std::string()));
 		}
 		[self stopSpeaking];
-		[self startSpeakingString:spokenText];
+		if (spokenText.has_value())  [self cxx_startSpeakingString:*spokenText];	// a nil text said nothing
 	}
 #endif	// OOLITE_SPEECH_SYNTH
 }
 
 
-- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay
+- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay
 {
-	if (![currentMessage isEqual:text] || forceDisplay || universal_time >= messageRepeatTime)
+	if (!SameMessage(currentMessage, text) || forceDisplay || universal_time >= messageRepeatTime)
 	{
 		if ([PLAYER isSpeechOn] == OOSPEECHSETTINGS_ALL)
 		{
 			[self speakWithSubstitutions:text];
 		}
-		
+
 		[self showGUIMessage:text withScroll:YES andColor:[message_gui textColor] overDuration:count];
 
-		[PLAYER doScriptEvent:OOJSID("consoleMessageReceived") withArgument:text];
-				
-		[currentMessage release];
-		currentMessage = [text retain];
+		[PLAYER doScriptEvent:OOJSID("consoleMessageReceived") withArgument:oo::NSStringOrNil(text)];
+
+		currentMessage = text;
 		messageRepeatTime=universal_time + 6.0;
 	}
 }
 
 
-- (void) addCommsMessage:(NSString *)text forCount:(OOTimeDelta)count
+- (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count
 {
-	[self addCommsMessage:text forCount:count andShowComms:_autoCommLog logOnly:NO];
+	[self cxx_addCommsMessage:text forCount:count andShowComms:_autoCommLog logOnly:NO];
 }
 
 
-- (void) addCommsMessage:(NSString *)text forCount:(OOTimeDelta)count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly
+- (void) cxx_addCommsMessage:(const std::optional<std::string> &)text forCount:(OOTimeDelta)count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly
 {
 	if ([PLAYER showDemoShips]) return;
-	
-	NSString *expandedMessage = OOExpand(text);
-	
-	if (![currentMessage isEqualToString:expandedMessage] || universal_time >= messageRepeatTime)
+
+	const std::optional<std::string> expandedMessage = oo::OptionalString(OOExpand(oo::NSStringOrNil(text)));
+
+	if (!SameMessage(currentMessage, expandedMessage) || universal_time >= messageRepeatTime)
 	{
 		PlayerEntity* player = PLAYER;
-		
+
 		if (!logOnly)
 		{
 			if ([player isSpeechOn] >= OOSPEECHSETTINGS_COMMS)
 			{
 				// EMMSTRAN: should say "Incoming message from ..." when prefixed with sender name.
-				NSString *format = OOExpandKey(@"speech-synthesis-incoming-message-@");
-				[self speakWithSubstitutions:[NSString stringWithFormat:format, expandedMessage]];
+				const std::string format = ExpandKey("speech-synthesis-incoming-message-@");
+				[self speakWithSubstitutions:oo::str::formatRuntime(format, { expandedMessage.has_value() ? oo::str::FormatArg(*expandedMessage) : oo::str::FormatArg::null() })];
 			}
-			
+
 			[self showGUIMessage:expandedMessage withScroll:YES andColor:[message_gui textCommsColor] overDuration:count];
-			
-			[currentMessage release];
-			currentMessage = [expandedMessage retain];
+
+			currentMessage = expandedMessage;
 			messageRepeatTime=universal_time + 6.0;
 		}
-		
-		[comm_log_gui printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:nil addToArray:[player commLog]];
-		
+
+		// the printed lines go to the player's (unmigrated) comm log as they went before
+		std::vector<std::string> printedLines;
+		[comm_log_gui cxx_printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:std::nullopt addToArray:&printedLines];
+		for (const std::string &line : printedLines)  [[player commLog] addObject:oo::NSStringFrom(line)];
+
 		if (showComms)  [self showCommsLog:6.0];
 	}
 }
@@ -7178,15 +7202,15 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (void) showGUIMessage:(NSString *)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long
+- (void) showGUIMessage:(const std::optional<std::string> &)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long
 {
 	if (scroll)
 	{
-		[message_gui printLongText:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:nil addToArray:nil];
+		[message_gui cxx_printLongText:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
 	}
 	else
 	{
-		[message_gui printLineNoScroll:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:nil addToArray:nil];
+		[message_gui cxx_printLineNoScroll:text align:GUI_ALIGN_CENTER color:selectedColor fadeTime:how_long key:std::nullopt addToArray:nullptr];
 	}
 	[message_gui setAlpha:1.0f];
 }
@@ -10500,9 +10524,9 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 // speech routines
 #if OOLITE_MAC_OS_X
 
-- (void) startSpeakingString:(NSString *) text
+- (void) cxx_startSpeakingString:(const std::string &) text
 {
-	[speechSynthesizer startSpeakingString:[NSString stringWithFormat:@"[[volm %.3f]]%@", 0.3333333f * [OOSound masterVolume], text]];
+	[speechSynthesizer startSpeakingString:oo::NSStringFrom(oo::str::format("[[volm %.3f]]%s", 0.3333333f * [OOSound masterVolume], text.c_str()))];
 }
 
 
@@ -10526,15 +10550,11 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 #elif OOLITE_ESPEAK
 
-- (void) startSpeakingString:(NSString *) text
+- (void) cxx_startSpeakingString:(const std::string &) text
 {
-	NSData *utf8 = [text dataUsingEncoding:NSUTF8StringEncoding];
-	
-	if (utf8 != nil)	// we have a valid UTF-8 string
-	{
-		const char *stringToSay = [text UTF8String];
-		espeak_Synth(stringToSay, strlen(stringToSay) + 1 /* inc. NULL */, 0, POS_CHARACTER, 0, espeakCHARS_UTF8 | espeakPHONEMES | espeakENDPAUSE, NULL, NULL);
-	}
+	// the UTF-8 bytes of the text
+	const char *stringToSay = text.c_str();
+	espeak_Synth(stringToSay, strlen(stringToSay) + 1 /* inc. NULL */, 0, POS_CHARACTER, 0, espeakCHARS_UTF8 | espeakPHONEMES | espeakENDPAUSE, NULL, NULL);
 }
 
 
@@ -10550,22 +10570,17 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 }
 
 
-- (NSString *) voiceName:(unsigned int) index
+- (std::optional<std::string>) cxx_voiceName:(unsigned int) index
 {
 	if (index >= espeak_voice_count)
-		return @"-";
-	return [NSString stringWithCString: espeak_voices[index]->name];
+		return std::string("-");
+	return std::string(espeak_voices[index]->name);
 }
 
 
-- (unsigned int) voiceNumber:(NSString *) name
+- (unsigned int) cxx_voiceNumber:(const std::string &) name
 {
-	if (name == nil)
-		return UINT_MAX;
-	
-	const char *const label = [name UTF8String];
-	if (!label)
-		return UINT_MAX;
+	const char *const label = name.c_str();
 	
 	unsigned int index = -1;
 	while (espeak_voices[++index] && strcmp (espeak_voices[index]->name, label))
@@ -10593,7 +10608,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 - (unsigned int) setVoice:(unsigned int) index withGenderM:(BOOL) isMale
 {
 	if (index == UINT_MAX)
-		index = [self voiceNumber:DESC(@"espeak-default-voice")];
+		index = [self cxx_voiceNumber:cxx_OOLookUpDescriptionPRIV("espeak-default-voice")];
 	
 	if (index < espeak_voice_count)
 	{
@@ -10606,7 +10621,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 
 #else
 
-- (void) startSpeakingString:(NSString *) text  {}
+- (void) cxx_startSpeakingString:(const std::string &) text  {}
 
 - (void) stopSpeaking {}
 
@@ -10733,8 +10748,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	countdown_messageRepeatTime = 0.0;
 	
 #if OOLITE_SPEECH_SYNTH
-	[speechArray autorelease];
-	speechArray = [[ResourceManager arrayFromFilesNamed:@"speech_pronunciation_guide.plist" inFolder:@"Config" andMerge:YES] retain];
+	speechArray = [ResourceManager cxx_arrayFromFilesNamed:"speech_pronunciation_guide.plist" inFolder:std::string("Config") andMerge:YES];
 #endif
 	
 	[commodities autorelease];
@@ -10745,8 +10759,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	
 	characters = [ResourceManager cxx_dictionaryFromFilesNamed:"characters.plist" inFolder:std::string("Config") andMerge:YES];
 	
-	[customSounds autorelease];
-	customSounds = [[ResourceManager dictionaryFromFilesNamed:@"customsounds.plist" inFolder:@"Config" andMerge:YES] retain];
+	customSounds = [ResourceManager cxx_dictionaryFromFilesNamed:"customsounds.plist" inFolder:std::string("Config") andMerge:YES];
 	
 	[globalSettings autorelease];
 	globalSettings = [[ResourceManager dictionaryFromFilesNamed:@"global-settings.plist" inFolder:@"Config" mergeMode:MERGE_SMART cache:YES] retain];
@@ -10755,8 +10768,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	[systemManager autorelease];
 	systemManager = [[ResourceManager systemDescriptionManager] retain];
 
-	[screenBackgrounds autorelease];
-	screenBackgrounds = [[ResourceManager dictionaryFromFilesNamed:@"screenbackgrounds.plist" inFolder:@"Config" andMerge:YES] retain];
+	screenBackgrounds = [ResourceManager cxx_dictionaryFromFilesNamed:"screenbackgrounds.plist" inFolder:std::string("Config") andMerge:YES];
 
 	// role-categories.plist and pirate-victim-roles.plist
 	roleCategories = [ResourceManager cxx_roleCategoriesDictionary];
@@ -11115,41 +11127,42 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 }
 
 
-static void PreloadOneSound(NSString *soundName)
+static void PreloadOneSound(const std::string &soundName)
 {
-	if (![soundName hasPrefix:@"["] && ![soundName hasSuffix:@"]"])
+	if (!oo::str::hasPrefix(soundName, "[") && !oo::str::hasSuffix(soundName, "]"))
 	{
-		[ResourceManager ooSoundNamed:soundName inFolder:@"Sounds"];
+		[ResourceManager cxx_ooSoundNamed:soundName inFolder:std::string("Sounds")];
 	}
 }
 
 
+// ORDER-SENSITIVE (decision D): the keys in byte order (was the dictionary's hash order).
 - (void) preloadSounds
 {
 	// Preload sounds to avoid loading stutter.
-	NSString *key = nil;
-	foreachkey (key, customSounds)
+	if (const oo::PList::Dict *sounds = customSounds.getIf<oo::PList::Dict>())
 	{
-		id object = [customSounds objectForKey:key];
-		if([object isKindOfClass:[NSString class]])
+		for (const auto &[key, object] : *sounds)
 		{
-			PreloadOneSound(object);
-		}
-		else if([object isKindOfClass:[NSArray class]] && [object count] > 0)
-		{
-			NSString *soundName = nil;
-			foreach (soundName, object)
+			if (object.isString())
 			{
-				if ([soundName isKindOfClass:[NSString class]])
+				PreloadOneSound(*object.getIf<std::string>());
+			}
+			else if (object.isArray() && object.count() > 0)
+			{
+				for (const oo::PList &soundName : *object.getIf<oo::PList::Array>())
 				{
-					PreloadOneSound(soundName);
+					if (soundName.isString())
+					{
+						PreloadOneSound(*soundName.getIf<std::string>());
+					}
 				}
 			}
 		}
 	}
-	
+
 	// Afterburner sound doesn't go through customsounds.plist.
-	PreloadOneSound(@"afterburner1.ogg");
+	PreloadOneSound("afterburner1.ogg");
 }
 
 
@@ -11448,18 +11461,18 @@ static void PreloadOneSound(NSString *soundName)
 
 @implementation OOSound (OOCustomSounds)
 
-+ (id) soundWithCustomSoundKey:(NSString *)key
++ (id) cxx_soundWithCustomSoundKey:(const std::string &)key
 {
-	NSString *fileName = [UNIVERSE soundNameForCustomSoundKey:key];
-	if (fileName == nil)  return nil;
-	return [ResourceManager ooSoundNamed:fileName inFolder:@"Sounds"];
+	const std::optional<std::string> fileName = [UNIVERSE soundNameForCustomSoundKey:key];
+	if (!fileName.has_value())  return nil;
+	return [ResourceManager cxx_ooSoundNamed:*fileName inFolder:std::string("Sounds")];
 }
 
 
-- (id) initWithCustomSoundKey:(NSString *)key
+- (id) initWithCustomSoundKey:(id)key	// shared selector (proposed ADR-0043): an Objective-C string, as OOSoundSource's
 {
 	[self release];
-	return [[OOSound soundWithCustomSoundKey:key] retain];
+	return [[OOSound cxx_soundWithCustomSoundKey:oo::StdString(key)] retain];
 }
 
 @end
@@ -11467,15 +11480,15 @@ static void PreloadOneSound(NSString *soundName)
 
 @implementation OOSoundSource (OOCustomSounds)
 
-+ (id) sourceWithCustomSoundKey:(NSString *)key
++ (id) sourceWithCustomSoundKey:(const std::string &)key
 {
-	return [[[self alloc] initWithCustomSoundKey:key] autorelease];
+	return [[[self alloc] initWithCustomSoundKey:oo::NSStringFrom(key)] autorelease];
 }
 
 
-- (id) initWithCustomSoundKey:(NSString *)key
+- (id) initWithCustomSoundKey:(id)key	// shared selector (proposed ADR-0043): an Objective-C string, as OOSound's
 {
-	OOSound *theSound = [OOSound soundWithCustomSoundKey:key];
+	OOSound *theSound = [OOSound cxx_soundWithCustomSoundKey:oo::StdString(key)];
 	if (theSound != nil)
 	{
 		self = [self initWithSound:theSound];
@@ -11489,9 +11502,9 @@ static void PreloadOneSound(NSString *soundName)
 }
 
 
-- (void) playCustomSoundWithKey:(NSString *)key
+- (void) cxx_playCustomSoundWithKey:(const std::string &)key
 {
-	OOSound *theSound = [OOSound soundWithCustomSoundKey:key];
+	OOSound *theSound = [OOSound cxx_soundWithCustomSoundKey:key];
 	if (theSound != nil)  [self playSound:theSound];
 }
 
