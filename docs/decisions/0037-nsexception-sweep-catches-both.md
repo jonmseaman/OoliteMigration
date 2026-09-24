@@ -53,6 +53,10 @@ gnustep-base 1.31, `OOObject.mm` + `OOException.mm`):
    that expect it are in different chunks. Until the last chunk lands, a game-raised
    `OOException` can pass a not-yet-converted `@catch (NSException *)` in a later chunk's file;
    that is an error path only (the goldens do not reach it), and it closes when the chunks land.
+7. **An exception printed whole** (`%@` of the exception object, `OOOXPVerifierStage`) was GNUstep's
+   `-description`, `<NSException: 0x…> NAME:… REASON:…`. `OOException` has no `-description`
+   (ADR-0029 Decision 6), so the handler spells the same layout out with its own class name:
+   `<OOException: 0x…> NAME:… REASON:…`.
 
 ## Consequences
 
@@ -74,4 +78,4 @@ gnustep-base 1.31, `OOObject.mm` + `OOException.mm`):
 
 ## History
 
-- 2026-09-23 Proposed with bead oo-3rb.27.
+- 2026-09-23 Proposed with bead oo-3rb.27; Decision 7 added with bead oo-3rb.34 (chunk 5).

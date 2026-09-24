@@ -323,8 +323,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 				cxx_OOStandardsDeprecated(oo::str::format("The conditions key is deprecated for equipment %s", _name.c_str()));
 				if (!OOEnforceStandards())
 				{
-					// OOSanitizeLegacyScriptConditions is not migrated: property-list objects in and out.
-					_conditions = oo::PListFrom(OOSanitizeLegacyScriptConditions(oo::ObjectFromPList(legacyConditions), oo::NSStringFrom(oo::str::format("<equipment type \"%s\">", _name.c_str()))));
+					_conditions = OOSanitizeLegacyScriptConditions(legacyConditions, oo::str::format("<equipment type \"%s\">", _name.c_str()));
 				}
 			}
 

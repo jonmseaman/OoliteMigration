@@ -106,7 +106,7 @@ void GetCurrentCachedInfo(struct CachedInfo *cached)
 {
 	if (EXPECT_NOT(!sCurrentDrawItem->hasCache))
 	{
-		[NSException raise:NSRangeException format:@"Index 1 is out of range 0 (in 'objectAtIndex:')"];
+		[OOException raise:OORangeException format:"Index 1 is out of range 0 (in 'objectAtIndex:')"];
 	}
 	*cached = sCurrentDrawItem->cache;
 }
@@ -194,8 +194,10 @@ OOINLINE float useDefined(float val, float validVal)
 
 static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat step, GLfloat* color4v);
 
-static void SetGLColourFromInfo(const oo::PList &info, const char *key, const GLfloat defaultColor[4], GLfloat alpha);
-static void GetRGBAArrayFromInfo(const oo::PList &info, GLfloat ioColor[4]);
+namespace {
+void SetGLColourFromInfo(const oo::PList &info, const char *key, const GLfloat defaultColor[4], GLfloat alpha);
+void GetRGBAArrayFromInfo(const oo::PList &info, GLfloat ioColor[4]);
+}	// namespace
 
 static void hudDrawIndicatorAt(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat amount);
 static void hudDrawMarkerAt(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat amount);
@@ -314,7 +316,9 @@ static GLfloat drawCharacterQuad(uint8_t chr, GLfloat x, GLfloat y, GLfloat z, N
 
 static void InitTextEngine(void);
 
-static void prefetchData(const oo::PList &info, struct CachedInfo *data);
+namespace {
+void prefetchData(const oo::PList &info, struct CachedInfo *data);
+}	// namespace
 
 
 OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
@@ -1259,7 +1263,9 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 }
 
 
-static void prefetchData(const oo::PList &info, struct CachedInfo *data)
+namespace {
+
+void prefetchData(const oo::PList &info, struct CachedInfo *data)
 {
 	data->x = info.get<float>(X_KEY, NOT_DEFINED);
 	data->x0 = info.get<float>(X_ORIGIN_KEY, 0.0);
@@ -1269,6 +1275,8 @@ static void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	data->height = info.get<float>(HEIGHT_KEY, NOT_DEFINED);
 	data->alpha = info.get<oo::NonNegative<float>>(ALPHA_KEY, 1.0f);	
 }
+
+}	// namespace
 
 //---------------------------------------------------------------------//
 
@@ -2673,17 +2681,19 @@ static constexpr const char *kDefaultMineIconKey = "oolite-default-mine-icon";
 static const GLfloat kOutlineWidth = 0.5f;
 
 
+namespace {
+
 /*	An icon definition from descriptions.plist: the entry if it is an array, else a null PList (as
 	oo_arrayForKey: gave nil).
 */
-static oo::PList MissileIconDefinition(const std::string &key)
+oo::PList MissileIconDefinition(const std::string &key)
 {
 	oo::PList iconDef = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(key)]);
 	return iconDef.isArray() ? iconDef : oo::PList();
 }
 
 
-static OOPolygonSprite *IconForMissileRole(const std::string &role)
+OOPolygonSprite *IconForMissileRole(const std::string &role)
 {
 	static std::map<std::string, oo::ObjCRef<OOPolygonSprite *>, std::less<>>	sIcons;
 	OOPolygonSprite				*result = nil;
@@ -2719,6 +2729,8 @@ static OOPolygonSprite *IconForMissileRole(const std::string &role)
 	
 	return result;
 }
+
+}	// namespace
 
 
 - (void) drawIconForMissile:(ShipEntity *)missile
@@ -4068,16 +4080,20 @@ static void InitTextEngine(void)
 }
 
 
+namespace {
+
 /*	The display-encoded bytes of text. OOEncodingConverter is not migrated yet (oo-gosz): the text
 	goes to -convertString: through the bridge, and its result comes back as oo::Data (empty where
 	it was nil).
 */
-static oo::Data ConvertedString(const std::string &text)
+oo::Data ConvertedString(const std::string &text)
 {
 	const oo::PList converted = oo::PListFrom([sEncodingCoverter convertString:oo::NSStringFrom(text)]);
 	if (const oo::Data *data = converted.getIf<oo::Data>())  return *data;
 	return oo::Data();
 }
+
+}	// namespace
 
 
 void OOHUDResetTextEngine(void)
@@ -4616,7 +4632,9 @@ static void DrawSpecialOval(GLfloat x, GLfloat y, GLfloat z, NSSize siz, GLfloat
 @end
 
 
-static void SetGLColourFromInfo(const oo::PList &info, const char *key, const GLfloat defaultColor[4], GLfloat alpha)
+namespace {
+
+void SetGLColourFromInfo(const oo::PList &info, const char *key, const GLfloat defaultColor[4], GLfloat alpha)
 {
 	id			colorDesc = nil;
 	OOColor		*color = nil;
@@ -4636,7 +4654,7 @@ static void SetGLColourFromInfo(const oo::PList &info, const char *key, const GL
 }
 
 
-static void GetRGBAArrayFromInfo(const oo::PList &info, GLfloat ioColor[4])
+void GetRGBAArrayFromInfo(const oo::PList &info, GLfloat ioColor[4])
 {
 	id						colorDesc = nil;
 	OOColor					*color = nil;
@@ -4663,3 +4681,5 @@ static void GetRGBAArrayFromInfo(const oo::PList &info, GLfloat ioColor[4])
 	}
 	ioColor[3] = info.get<oo::NonNegative<float>>(ALPHA_KEY, ioColor[3]);
 }
+
+}	// namespace
