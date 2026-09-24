@@ -39,6 +39,9 @@ SOFTWARE.
 #include <map>
 #include <optional>
 #include <string>
+#include <vector>
+
+#include "oofnd/PList.hpp"
 
 
 @interface OOEquipmentType: OOObject <OOCopying>
@@ -71,31 +74,30 @@ SOFTWARE.
 	NSUInteger				_repairTime;
 	GLfloat     			_damageProbability;
 	OOCargoQuantity			_requiredCargoSpace;
-	NSSet					*_requiresEquipment;
-	NSSet					*_requiresAnyEquipment;
-	NSSet					*_incompatibleEquipment;
-	NSArray					*_conditions;
-	NSArray					*_provides;
-	NSArray					*_defaultActivateKey;
-	NSArray					*_defaultModeKey;
-	NSDictionary			*_scriptInfo;
-	NSDictionary			*_weaponInfo;
-	NSString				*_script;
-	NSString				*_condition_script;
+	// Sorted, de-duplicated equipment keys; nullopt when the key is absent (was nil).
+	std::optional<std::vector<std::string>>	_requiresEquipment;
+	std::optional<std::vector<std::string>>	_requiresAnyEquipment;
+	std::optional<std::vector<std::string>>	_incompatibleEquipment;
+	oo::PList				_conditions;		// an array; null: none (was nil)
+	std::vector<std::string>	_provides;
+	oo::PList				_defaultActivateKey;	// an array; null: none (was nil)
+	oo::PList				_defaultModeKey;		// an array; null: none (was nil)
+	oo::PList				_scriptInfo;			// a dictionary; null: none (was nil)
+	oo::PList				_weaponInfo;			// a dictionary (empty by default)
+	std::optional<std::string>	_script;
+	std::optional<std::string>	_condition_script;
 	
 	ooscript::Object _jsSelf;
 }
 
 + (void) loadEquipment;			// Load equipment data; called on loading and when changing to/from strict mode.
-+ (void) addEquipmentWithInfo:(NSArray *)itemInfo;	// Used to generate equipment from missile_role entries.
++ (void) cxx_addEquipmentWithInfo:(const oo::PList &)itemInfo;	// Used to generate equipment from missile_role entries.
 
 + (std::optional<std::string>) cxx_getMissileRegistryRoleForShip:(const std::string &)shipKey;	// nullopt: none registered
 + (void) cxx_setMissileRegistryRole:(const std::string &)role forShip:(const std::string &)shipKey;
 
-+ (NSArray *) allEquipmentTypes;
-+ (NSEnumerator *) equipmentEnumerator;
-+ (NSEnumerator *) reverseEquipmentEnumerator;
-+ (NSEnumerator *) equipmentEnumeratorOutfitting;
++ (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_allEquipmentTypes;			// a snapshot, in equipment.plist order
++ (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_allEquipmentTypesOutfitting;	// the outfitting dataset
 
 + (OOEquipmentType *) cxx_equipmentTypeWithIdentifier:(const std::string &)identifier;	// nil: none
 
@@ -130,34 +132,35 @@ SOFTWARE.
 - (BOOL) isAvailableToNPCs;
 
 - (OOCargoQuantity) requiredCargoSpace;
-- (NSSet *) requiresEquipment;		// Set of equipment identifiers; all items required
-- (NSSet *) requiresAnyEquipment;	// Set of equipment identifiers; any item required
-- (NSSet *) incompatibleEquipment;	// Set of equipment identifiers; all items prohibited
+// Equipment identifiers, sorted and de-duplicated; nullopt when not specified.
+- (std::optional<std::vector<std::string>>) cxx_requiresEquipment;		// all items required
+- (std::optional<std::vector<std::string>>) cxx_requiresAnyEquipment;	// any item required
+- (std::optional<std::vector<std::string>>) cxx_incompatibleEquipment;	// all items prohibited
 
 // FIXME: should have general mechanism to handle scripts or legacy conditions.
-- (NSArray *) conditions;
+- (oo::PList) cxx_conditions;	// an array; null: none
 
-- (NSString *) conditionScript;
+- (std::optional<std::string>) cxx_conditionScript;
 
-- (NSDictionary *) scriptInfo;
-- (NSString *) scriptName;
+- (id) scriptInfo;	// shared selector (proposed ADR-0043): a dictionary, or nil
+- (std::optional<std::string>) cxx_scriptName;
 
 - (BOOL) fastAffinityDefensive;
 - (BOOL) fastAffinityOffensive;
 
-- (NSArray *) defaultActivateKey;
-- (NSArray *) defaultModeKey;
+- (oo::PList) cxx_defaultActivateKey;	// an array; null: none
+- (oo::PList) cxx_defaultModeKey;		// an array; null: none
 
 - (NSUInteger) installTime;
 - (NSUInteger) repairTime;
 
-- (NSArray *) providesForScripting;
-- (BOOL) provides:(NSString *)key;
+- (std::vector<std::string>) cxx_providesForScripting;
+- (BOOL) cxx_provides:(const std::string &)key;
 
 // weapon properties
 - (BOOL) isTurretLaser;
 - (BOOL) isMiningLaser;
-- (NSDictionary *) weaponInfo;
+- (oo::PList) cxx_weaponInfo;	// a dictionary
 - (GLfloat) weaponRange;
 - (GLfloat) weaponEnergyUse;
 - (GLfloat) weaponDamage;
@@ -165,11 +168,11 @@ SOFTWARE.
 - (GLfloat) weaponShotTemperature;
 - (GLfloat) weaponThreatAssessment;
 - (OOColor *) weaponColor;
-- (NSString *) fxShotMissName;
-- (NSString *) fxShotHitName;
-- (NSString *) fxShieldHitName;
-- (NSString *) fxUnshieldedHitName;
-- (NSString *) fxWeaponLaunchedName;
+- (std::optional<std::string>) cxx_fxShotMissName;
+- (std::optional<std::string>) cxx_fxShotHitName;
+- (std::optional<std::string>) cxx_fxShieldHitName;
+- (std::optional<std::string>) cxx_fxUnshieldedHitName;
+- (std::optional<std::string>) cxx_fxWeaponLaunchedName;
 
 @end
 
