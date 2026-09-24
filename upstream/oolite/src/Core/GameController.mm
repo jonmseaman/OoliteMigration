@@ -316,7 +316,7 @@ static GameController *sSharedController = nil;
 		
 		[self loadPlayerIfRequired];
 		
-		[self logProgress:@""];
+		[self cxx_logProgress:""];
 		
 		// get the run loop and add the call to performGameTick:
 		[self startAnimationTimer];
@@ -361,7 +361,7 @@ static GameController *sSharedController = nil;
 {
 	if (playerFileToLoad.has_value())
 	{
-		[self logProgress:DESC(@"loading-player")];
+		[self cxx_logProgress:oo::StdString(DESC(@"loading-player"))];
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
@@ -958,17 +958,17 @@ static void RemovePreference(NSString *key)
 	#error Unknown environment!
 #endif
 
-- (void) logProgress:(NSString *)message
+- (void) cxx_logProgress:(const std::string &)message
 {
 	if (![UNIVERSE doingStartUp])  return;
-	
+
 #if OOLITE_MAC_OS_X
-	[splashProgressTextField setStringValue:message];
+	[splashProgressTextField setStringValue:oo::NSStringFrom(message)];
 	[splashProgressTextField display];
 #endif
-	if([message length] > 0)
+	if (!message.empty())
 	{
-		OOLog(@"startup.progress", @"===== [%.2f s] %@", oo::date::monotonicSeconds() - _splashStart, message);
+		OOLog(@"startup.progress", @"===== [%.2f s] %@", oo::date::monotonicSeconds() - _splashStart, oo::NSStringFrom(message));
 	}
 }
 
@@ -981,9 +981,9 @@ static void RemovePreference(NSString *key)
 }
 
 
-- (NSString *) debugMessageCurrentString
+- (std::string) cxx_debugMessageCurrentString
 {
-	return [splashProgressTextField stringValue];
+	return oo::StdString([splashProgressTextField stringValue]);
 }
 #else
 - (BOOL) debugMessageTrackingIsOn
@@ -992,43 +992,31 @@ static void RemovePreference(NSString *key)
 }
 
 
-- (NSString *) debugMessageCurrentString
+- (std::string) cxx_debugMessageCurrentString
 {
-	return @"";
+	return "";
 }
 #endif
 
-- (void) debugLogProgress:(NSString *)format, ...
+- (void) cxx_debugLogProgress:(const std::string &)message
 {
-	va_list args;
-	va_start(args, format);
-	[self debugLogProgress:format arguments:args];
-	va_end(args);
+	[self cxx_logProgress:message];
 }
 
 
-- (void) debugLogProgress:(NSString *)format arguments:(va_list)arguments
+namespace
 {
-	NSString *message = [[[NSString alloc] initWithFormat:format arguments:arguments] autorelease];
-	[self logProgress:message];
+std::vector<std::string> sMessageStack;
 }
 
-
-static NSMutableArray *sMessageStack;
-
-- (void) debugPushProgressMessage:(NSString *)format, ...
+- (void) cxx_debugPushProgressMessage:(const std::string &)message
 {
 	if ([self debugMessageTrackingIsOn])
 	{
-		if (sMessageStack == nil)  sMessageStack = [[NSMutableArray alloc] init];
-		[sMessageStack addObject:[self debugMessageCurrentString]];
-		
-		va_list args;
-		va_start(args, format);
-		[self debugLogProgress:format arguments:args];
-		va_end(args);
+		sMessageStack.push_back([self cxx_debugMessageCurrentString]);
+		[self cxx_debugLogProgress:message];
 	}
-	
+
 	OOLogIndentIf(@"startup.progress");
 }
 
@@ -1036,12 +1024,12 @@ static NSMutableArray *sMessageStack;
 - (void) debugPopProgressMessage
 {
 	OOLogOutdentIf(@"startup.progress");
-	
-	if ([sMessageStack count] > 0)
+
+	if (!sMessageStack.empty())
 	{
-		NSString *message = [sMessageStack lastObject];
-		if ([message length] > 0)  [self logProgress:message];
-		[sMessageStack removeLastObject];
+		const std::string message = sMessageStack.back();
+		if (!message.empty())  [self cxx_logProgress:message];
+		sMessageStack.pop_back();
 	}
 }
 

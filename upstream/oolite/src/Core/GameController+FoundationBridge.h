@@ -34,6 +34,14 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (GameController.h)
 - (NSString *) playerFileDirectory;								// -> -cxx_playerFileDirectory
 - (void) setPlayerFileDirectory:(NSString *)filename;			// -> -cxx_setPlayerFileDirectory:
 
+- (void) logProgress:(NSString *)message;						// -> -cxx_logProgress:
+#if OO_DEBUG
+// The %@ format forms format as they always did, then pass the message on.
+- (void) debugLogProgress:(NSString *)format, ...  OO_TAKES_FORMAT_STRING(1, 2);								// -> -cxx_debugLogProgress:
+- (void) debugLogProgress:(NSString *)format arguments:(va_list)arguments  OO_TAKES_FORMAT_STRING(1, 0);		// -> -cxx_debugLogProgress:
+- (void) debugPushProgressMessage:(NSString *)format, ...  OO_TAKES_FORMAT_STRING(1, 2);						// -> -cxx_debugPushProgressMessage:
+#endif
+
 @end
 
 #endif	// GAMECONTROLLER_FOUNDATIONBRIDGE_H
