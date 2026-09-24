@@ -440,7 +440,7 @@ typedef enum
 	int						fps_counter;
 	double					last_fps_check_time;
 	
-	NSString				*planetSearchString;
+	std::optional<std::string>	planetSearchString;	// the lower-cased typed prefix; nullopt: no search
 	
 	OOMatrix				playerRotMatrix;
 	
@@ -454,7 +454,7 @@ typedef enum
 // ...end save screen   
 
 	NSInteger				marketOffset;
-	OOCommodityType			marketSelectedCommodity;
+	std::optional<std::string>	marketSelectedCommodity;
 	OOMarketFilterMode		marketFilterMode;
 	OOMarketSorterMode		marketSorterMode;
 
@@ -541,7 +541,7 @@ typedef enum
 #endif
 
 	// keys!
-	NSDictionary   *keyconfig2_settings;
+	oo::PList::Dict	keyconfig2_settings;
 	std::map<std::string, uint16_t, std::less<>>	keyCodeLookups;	// lower-case key names -> key codes
 
 	oo::PList					n_key_roll_left;
@@ -789,9 +789,9 @@ typedef enum
 	std::vector<oo::PList>	stickFunctions;	// PlayerEntity (StickMapper)'s function list; empty until built
 	std::vector<oo::PList>	keyFunctions;	// PlayerEntity (KeyMapper)'s function list; empty until built
 	std::vector<oo::PList>	kbdLayouts;		// PlayerEntity (KeyMapper)'s keyboard layouts; empty until built
-	NSString				*keyShiftText;
-	NSString				*keyMod1Text;
-	NSString				*keyMod2Text;
+	std::string				keyShiftText;
+	std::string				keyMod1Text;
+	std::string				keyMod2Text;
 	
 	OOGalacticHyperspaceBehaviour galacticHyperspaceBehaviour;
 	NSPoint					galacticHyperspaceFixedCoords;

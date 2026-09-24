@@ -297,12 +297,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		{ "numpadenter", gvNumberPadKeyEnter },
 	};
 
-	keyShiftText = [DESC(@"oolite-keyconfig-shift") retain];
-	keyMod1Text = [DESC(@"oolite-keyconfig-mod1") retain];
+	keyShiftText = oo::StdString(DESC(@"oolite-keyconfig-shift"));
+	keyMod1Text = oo::StdString(DESC(@"oolite-keyconfig-mod1"));
 #if OOLITE_MAC_OS_X
-	keyMod2Text = [DESC(@"oolite-keyconfig-mod2-mac") retain];
+	keyMod2Text = oo::StdString(DESC(@"oolite-keyconfig-mod2-mac"));
 #else
-	keyMod2Text = [DESC(@"oolite-keyconfig-mod2-pc") retain];
+	keyMod2Text = oo::StdString(DESC(@"oolite-keyconfig-mod2-pc"));
 #endif
 
 	[self initKeyConfigSettings];
@@ -499,8 +499,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	LOAD_KEY_SETTING2(n_key_debug_off, 'n', NO, NO, 0, NO, NO);
 #endif
 
-	[keyconfig2_settings release];
-	keyconfig2_settings = [oo::ObjectFromPList(oo::PList(std::move(kdic2))) retain];
+	keyconfig2_settings = std::move(kdic2);
 }
 
 
@@ -803,8 +802,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 - (void) clearPlanetSearchString
 {
 	[[UNIVERSE gameView] resetTypedString];
-	if (planetSearchString)  [planetSearchString release];
-	planetSearchString = nil;
+	planetSearchString.reset();
 }
 
 
@@ -2084,12 +2082,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if (oo::str::length([gameView cxx_typedString].value_or("")) > 0)
 				{
-					planetSearchString = [oo::NSStringFrom(oo::str::lowercase(*[gameView cxx_typedString])) retain];
-					NSPoint search_coords = [UNIVERSE findSystemCoordinatesWithPrefix:planetSearchString];
+					planetSearchString = oo::str::lowercase(*[gameView cxx_typedString]);
+					NSPoint search_coords = [UNIVERSE findSystemCoordinatesWithPrefix:oo::NSStringFrom(*planetSearchString)];
 					if ((search_coords.x >= 0.0)&&(search_coords.y >= 0.0))
 					{
 						// always reset the found system index at the beginning of a new search
-						if ([planetSearchString length] == 1) [[UNIVERSE gui] targetNextFoundSystem:0];
+						if (oo::str::length(*planetSearchString) == 1) [[UNIVERSE gui] targetNextFoundSystem:0];
 						
 						// Always select the right one out of 2 overlapping systems.
 						[self targetNewSystem:0 whileTyping:YES];
@@ -2107,8 +2105,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						found_system_id = -1;
 						[UNIVERSE findSystemCoordinatesWithPrefix:@""];
 					}
-					if (planetSearchString) [planetSearchString release];
-					planetSearchString = nil;
+					planetSearchString.reset();
 				}
 				
 				moving |= (searchStringLength != oo::str::length([gameView cxx_typedString].value_or("")));
@@ -3159,8 +3156,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	if (gui_screen == GUI_SCREEN_MARKET)
 	{
 		[self handleGUIUpDownArrowKeys];
-		DESTROY(marketSelectedCommodity);
-		marketSelectedCommodity = [oo::NSStringOrNil([gui cxx_selectedRowKey]) retain];
+		marketSelectedCommodity = [gui cxx_selectedRowKey];
 
 		BOOL			page_up = [self checkKeyPress:n_key_gui_page_up]; 
 		BOOL			page_down = [self checkKeyPress:n_key_gui_page_down]; 
@@ -3172,7 +3168,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
 				if (goods.size() > 0)
 				{
-					const std::optional<std::string> selected = oo::OptionalString(marketSelectedCommodity);
+					const std::optional<std::string> selected = marketSelectedCommodity;
 					const auto found = selected ? std::find(goods.begin(), goods.end(), *selected) : goods.end();
 					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					NSInteger offset1 = 0;
@@ -3202,8 +3198,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						goodsIndex += (16 - (offset1 + offset2));
 						if (goodsIndex > ((NSInteger)goods.size() - 1) || goods.size() <= 17) goodsIndex = (NSInteger)goods.size() - 1;
 					}
-					DESTROY(marketSelectedCommodity);
-					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? [oo::NSStringFrom(goods[goodsIndex]) retain] : nil;
+					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? std::optional<std::string>(goods[goodsIndex]) : std::nullopt;
 					[self setGuiToMarketScreen];
 				}
 			} 
@@ -3227,7 +3222,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
 				if (goods.size() > 0)
 				{
-					const std::optional<std::string> selected = oo::OptionalString(marketSelectedCommodity);
+					const std::optional<std::string> selected = marketSelectedCommodity;
 					const auto found = selected ? std::find(goods.begin(), goods.end(), *selected) : goods.end();
 					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					if (arrow_down)
@@ -3246,8 +3241,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 						goodsIndex = 0;
 					}
-					DESTROY(marketSelectedCommodity);
-					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? [oo::NSStringFrom(goods[goodsIndex]) retain] : nil;
+					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? std::optional<std::string>(goods[goodsIndex]) : std::nullopt;
 					[self setGuiToMarketInfoScreen];
 				}
 			}
@@ -3268,7 +3262,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		{
 			if (!wait_for_key_up)
 			{
-				if (isdocked && [self tryBuyingCommodity:marketSelectedCommodity all:[gameView isShiftDown]])
+				if (isdocked && [self cxx_tryBuyingCommodity:marketSelectedCommodity.value_or(std::string()) all:[gameView isShiftDown]])
 				{
 					[self playBuyCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3304,7 +3298,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		{
 			if (!wait_for_key_up)
 			{
-				if (isdocked && [self trySellingCommodity:marketSelectedCommodity all:[gameView isShiftDown]])
+				if (isdocked && [self cxx_trySellingCommodity:marketSelectedCommodity.value_or(std::string()) all:[gameView isShiftDown]])
 				{
 					[self playSellCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3346,7 +3340,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			}
 			if (!wait_for_key_up)
 			{
-				const std::optional<std::string> item = oo::OptionalString(marketSelectedCommodity);	// Amendment 1 item 10
+				const std::optional<std::string> item = marketSelectedCommodity;	// Amendment 1 item 10
 				OOCargoQuantity yours =	[shipCommodityData cxx_quantityForGood:item.value_or("")];
 				if (item == ">>>")
 				{

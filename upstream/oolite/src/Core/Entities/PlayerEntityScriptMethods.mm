@@ -401,8 +401,8 @@ NSInteger IntegerValueOf(const oo::PList *value)
 // utilising new keyconfig2.plist data
 - (std::optional<std::string>) cxx_keyBindingDescription2:(const std::string &)binding
 {
-	// keyconfig2_settings is PlayerEntity's Objective-C dictionary of key bindings.
-	const oo::PList keyList = oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringFrom(binding)]);
+	const auto keyEntry = keyconfig2_settings.find(binding);
+	const oo::PList keyList = (keyEntry != keyconfig2_settings.end()) ? keyEntry->second : oo::PList();
 	if (keyList.isNull())
 	{
 		// no such setting
@@ -424,9 +424,9 @@ NSInteger IntegerValueOf(const oo::PList *value)
 		const std::string desc = [self cxx_keyCodeDescription:k_int].value_or("(null)");	// %@ of nil
 		// 0 = key not set
 		if (k_int != 0) {
-			if (BoolValueOf(def->find("mod2")) == YES) final += oo::DescriptionOf(keyMod2Text) + "+";
-			if (BoolValueOf(def->find("mod1")) == YES) final += oo::DescriptionOf(keyMod1Text) + "+";
-			if (BoolValueOf(def->find("shift")) == YES) final += oo::DescriptionOf(keyShiftText) + "+";
+			if (BoolValueOf(def->find("mod2")) == YES) final += keyMod2Text + "+";
+			if (BoolValueOf(def->find("mod1")) == YES) final += keyMod1Text + "+";
+			if (BoolValueOf(def->find("shift")) == YES) final += keyShiftText + "+";
 			final += desc;
 		}
 	}

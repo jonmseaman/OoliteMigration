@@ -2035,7 +2035,7 @@ static GLfloat		sBaseMass = 0.0;
 	
 	showDemoShips = NO;
 	show_info_flag = NO;
-	DESTROY(marketSelectedCommodity);
+	marketSelectedCommodity.reset();
 	
 	// Reset JavaScript.
 	[OOScriptTimer noteGameReset];
@@ -2211,7 +2211,7 @@ static GLfloat		sBaseMass = 0.0;
 	[self setMissionBackgroundSpecial:nil];
 	[self setEquipScreenBackgroundDescriptor:nil];
 	marketOffset = 0;
-	DESTROY(marketSelectedCommodity);
+	marketSelectedCommodity.reset();
 
 	script_time = 0.0;
 	script_time_check = SCRIPT_TIMER_INTERVAL;
@@ -2518,7 +2518,6 @@ static GLfloat		sBaseMass = 0.0;
 	DESTROY(compassTarget);
 	DESTROY(hud);
 
-	DESTROY(keyconfig2_settings);
 	
 
 	DESTROY(eqScripts);
@@ -2531,7 +2530,6 @@ static GLfloat		sBaseMass = 0.0;
 	
 	DESTROY(lastTextKey);
 	
-	DESTROY(marketSelectedCommodity);
 	
 	
 	DESTROY(shipCommodityData);
@@ -2552,9 +2550,6 @@ static GLfloat		sBaseMass = 0.0;
 	for (i = 0; i < PLAYER_MAX_MISSILES; i++)  DESTROY(missile_entity[i]);
 	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)  DESTROY(trumble[i]);
 	
-	DESTROY(keyShiftText);
-	DESTROY(keyMod1Text);
-	DESTROY(keyMod2Text);
 
 
 	[super dealloc];
@@ -4798,7 +4793,7 @@ static GLfloat		sBaseMass = 0.0;
 - (oo::PList) cxx_keyConfig
 {
 	//return keyconfig_settings;
-	return oo::PListFrom(keyconfig2_settings);	// (the ivar is retyped by oo-3rb.254)
+	return oo::PList(keyconfig2_settings);
 }
 
 
@@ -8887,7 +8882,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 		//[gui setText:travelTimeRow forRow:21];
 		if (gui_screen == GUI_SCREEN_LONG_RANGE_CHART)
 		{
-			const std::optional<std::string> searchString = oo::OptionalString(planetSearchString);	// (the ivar is retyped by oo-3rb.254)
+			const std::optional<std::string> searchString = planetSearchString;
 			const std::string displaySearchString = searchString.has_value() ? oo::str::capitalized(*searchString) : std::string();
 			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"long-range-chart-find-planet-@")), { displaySearchString }) forRow:GUI_ROW_PLANET_FINDER];
 			[gui setColor:[OOColor cyanColor] forRow:GUI_ROW_PLANET_FINDER];
@@ -11203,23 +11198,23 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 	}
 
-	if (marketSelectedCommodity != nil && (oo::OptionalString(marketSelectedCommodity) == "<<<" || oo::OptionalString(marketSelectedCommodity) == ">>>"))
+	if (marketSelectedCommodity.has_value() && (marketSelectedCommodity == "<<<" || marketSelectedCommodity == ">>>"))
 	{
 		// nothing?
 	}
 	else
 	{
-		if (marketSelectedCommodity == nil || IndexOfGood(goods, oo::OptionalString(marketSelectedCommodity)) == NSNotFound)
+		if (!marketSelectedCommodity.has_value() || IndexOfGood(goods, marketSelectedCommodity) == NSNotFound)
 		{
-			DESTROY(marketSelectedCommodity);
+			marketSelectedCommodity.reset();
 			if (goods.size() > 0)
 			{
-				marketSelectedCommodity = [oo::NSStringFrom(goods[0]) retain];	// (the ivar is retyped by oo-3rb.254)
+				marketSelectedCommodity = goods[0];
 			}
 		}
 		if (maxOffset > 0)
 		{
-			NSInteger goodsIndex = IndexOfGood(goods, oo::OptionalString(marketSelectedCommodity));
+			NSInteger goodsIndex = IndexOfGood(goods, marketSelectedCommodity);
 			// validate marketOffset when returning from infoscreen
 			if (goodsIndex <= marketOffset)
 			{
@@ -11272,7 +11267,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 		if (goods.size() > 0)
 		{
-			const std::optional<std::string> selectedCommodity = oo::OptionalString(marketSelectedCommodity);
+			const std::optional<std::string> selectedCommodity = marketSelectedCommodity;
 			NSInteger i = 0;
 			for (const std::string &good : goods)
 			{
@@ -11398,24 +11393,24 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 	// GUI stuff
 	{
-		if (EXPECT_NOT(marketSelectedCommodity == nil))
+		if (EXPECT_NOT(!marketSelectedCommodity.has_value()))
 		{
 			j = NSNotFound;
 		}
 		else
 		{
-			j = IndexOfGood(goods, oo::OptionalString(marketSelectedCommodity));
+			j = IndexOfGood(goods, marketSelectedCommodity);
 		}
 		if (j == NSNotFound)
 		{
-			DESTROY(marketSelectedCommodity);
+			marketSelectedCommodity.reset();
 			[self setGuiToMarketScreen];
 			return;
 		}
 
 		[gui clearAndKeepBackground:!guiChanged];
 
-		const std::string selectedCommodity = oo::StdString(marketSelectedCommodity);	// (non-nil here)
+		const std::string selectedCommodity = *marketSelectedCommodity;	// (non-nil here)
 		[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-information-@")), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) }))];
 
 		[self showMarketScreenHeaders];
@@ -11424,7 +11419,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		OOCargoQuantity contracted = [self cxx_contractedVolumeForGood:selectedCommodity];
 		if (contracted > 0)
 		{
-			OOMassUnit unit = [shipCommodityData massUnitForGood:marketSelectedCommodity];
+			OOMassUnit unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(selectedCommodity)];
 			[gui setColor:[gui colorFromSetting:kGuiMarketContractedColor defaultValue:nil] forRow:GUI_ROW_MARKET_START+1];
 			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-contracted-d-@")), { contracted, oo::DescriptionOf(DisplayStringForMassUnit(unit)) }) forRow:GUI_ROW_MARKET_START+1];
 		}
