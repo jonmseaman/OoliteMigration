@@ -2010,11 +2010,11 @@ static bool ShipSetScript(ooscript::Context context, ooscript::CallArgs &oojsArg
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*name = nil;
+	std::optional<std::string>	name;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (oojsArgs.count() > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(name == nil))
+	if (oojsArgs.count() > 0)  name = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!name.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"setScript", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (script name)");
 		return NO;
@@ -2025,7 +2025,7 @@ static bool ShipSetScript(ooscript::Context context, ooscript::CallArgs &oojsArg
 		return NO;
 	}
 	
-	[thisEnt setShipScript:name];
+	[thisEnt setShipScript:oo::NSStringFrom(*name)];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -2038,11 +2038,11 @@ static bool ShipSetAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*name = nil;
+	std::optional<std::string>	name;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (oojsArgs.count() > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(name == nil))
+	if (oojsArgs.count() > 0)  name = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!name.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"setAI", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (AI name)");
 		return NO;
@@ -2053,7 +2053,7 @@ static bool ShipSetAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		return NO;
 	}
 	
-	[thisEnt setAITo:name];
+	[thisEnt setAITo:oo::NSStringFrom(*name)];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -2066,11 +2066,11 @@ static bool ShipSwitchAI(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*name = nil;
+	std::optional<std::string>	name;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (oojsArgs.count() > 0)  name = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(name == nil))
+	if (oojsArgs.count() > 0)  name = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!name.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"switchAI", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (AI name)");
 		return NO;
@@ -2081,7 +2081,7 @@ static bool ShipSwitchAI(ooscript::Context context, ooscript::CallArgs &oojsArgs
 		return NO;
 	}
 	
-	[thisEnt switchAITo:name];
+	[thisEnt switchAITo:oo::NSStringFrom(*name)];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -2095,7 +2095,7 @@ static bool ShipExitAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	
 	ShipEntity				*thisEnt = nil;
 	AI						*thisAI = nil;
-	NSString				*message = nil;
+	std::optional<std::string>	message;	// nullopt: the AI defaults to RESTARTED
 	
 	GET_THIS_SHIP(thisEnt);
 	if (EXPECT_NOT([thisEnt isPlayer]))
@@ -2109,11 +2109,11 @@ static bool ShipExitAI(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	{
 		if (oojsArgs.count() > 0)
 		{
-			message = OOStringFromJSValue(context, OOJS_ARGV[0]);
+			message = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
 		}
 		// Else AI will default to RESTARTED.
 		
-		[thisAI exitStateMachineWithMessage:message];
+		[thisAI cxx_exitStateMachineWithMessage:message];
 	}
 	else
 	{
@@ -2131,11 +2131,11 @@ static bool ShipReactToAIMessage(ooscript::Context context, ooscript::CallArgs &
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*message = nil;
+	std::optional<std::string>	message;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (oojsArgs.count() > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(message == nil))
+	if (oojsArgs.count() > 0)  message = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!message.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"reactToAIMessage", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
@@ -2146,7 +2146,7 @@ static bool ShipReactToAIMessage(ooscript::Context context, ooscript::CallArgs &
 		return NO;
 	}
 	
-	[thisEnt reactToAIMessage:message context:@"JavaScript reactToAIMessage()"];
+	[thisEnt reactToAIMessage:oo::NSStringFrom(*message) context:@"JavaScript reactToAIMessage()"];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -2159,11 +2159,11 @@ static bool ShipSendAIMessage(ooscript::Context context, ooscript::CallArgs &ooj
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*message = nil;
+	std::optional<std::string>	message;
 	
 	GET_THIS_SHIP(thisEnt);
-	if (oojsArgs.count() > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(message == nil))
+	if (oojsArgs.count() > 0)  message = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!message.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"sendAIMessage", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string");
 		return NO;
@@ -2174,7 +2174,7 @@ static bool ShipSendAIMessage(ooscript::Context context, ooscript::CallArgs &ooj
 		return NO;
 	}
 	
-	[thisEnt sendAIMessage:message];
+	[thisEnt sendAIMessage:oo::NSStringFrom(*message)];
 	OOJS_RETURN_VOID;
 	
 	OOJS_NATIVE_EXIT
@@ -2219,18 +2219,18 @@ static bool ShipHasEquipmentProviding(ooscript::Context context, ooscript::CallA
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*equipment = nil;
+	std::optional<std::string>	equipment;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  equipment = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(equipment == nil))
+	if (oojsArgs.count() > 0)  equipment = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!equipment.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"hasEquipmentProviding", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (equipment)");
 		return NO;
 	}
 	
-	OOJS_RETURN_BOOL([thisEnt hasEquipmentItemProviding:equipment]);
+	OOJS_RETURN_BOOL([thisEnt hasEquipmentItemProviding:oo::NSStringFrom(*equipment)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2242,18 +2242,18 @@ static bool ShipHasRole(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*role = nil;
+	std::optional<std::string>	role;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(role == nil))
+	if (oojsArgs.count() > 0)  role = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!role.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"hasRole", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
 	}
 	
-	OOJS_RETURN_BOOL([thisEnt hasRole:role]);
+	OOJS_RETURN_BOOL([thisEnt hasRole:oo::NSStringFrom(*role)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2265,18 +2265,18 @@ static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArg
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*role = nil;
+	std::optional<std::string>	role;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(role == nil))
+	if (oojsArgs.count() > 0)  role = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!role.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"ejectItem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (role)");
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([thisEnt ejectShipOfRole:oo::OptionalString(role)]);
+	OOJS_RETURN_OBJECT([thisEnt ejectShipOfRole:role]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2344,18 +2344,18 @@ static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs 
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*itemKey = nil;
+	std::optional<std::string>	itemKey;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  itemKey = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(itemKey == nil))
+	if (oojsArgs.count() > 0)  itemKey = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!itemKey.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"ejectSpecificItem", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"string (ship key)");
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([thisEnt ejectShipOfType:oo::OptionalString(itemKey)]);
+	OOJS_RETURN_OBJECT([thisEnt ejectShipOfType:itemKey]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2367,7 +2367,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	OOCommodityType			pref = nil;
+	std::optional<std::string>	pref;	// nullopt: no preference
 
 	GET_THIS_SHIP(thisEnt);
 	
@@ -2379,7 +2379,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 	
 	if (oojsArgs.count() > 1)
 	{
-		pref = OOStringFromJSValue(context, OOJS_ARGV[1]);
+		pref = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[1]));
 	}
 
 	// NPCs can queue multiple items to dump
@@ -2400,7 +2400,7 @@ static bool ShipDumpCargo(ooscript::Context context, ooscript::CallArgs &oojsArg
 		}
 	}
 
-	OOJS_RETURN_OBJECT([thisEnt dumpCargoItem:pref]);
+	OOJS_RETURN_OBJECT([thisEnt dumpCargoItem:oo::NSStringOrNil(pref)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2412,26 +2412,26 @@ static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*role = nil;
+	std::optional<std::string>	role;
 	int32_t					count = 1;
 	BOOL					gotCount = YES;
-	NSArray					*result = nil;
+	std::vector<oo::ObjCRef<ShipEntity *>>	result;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  role = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  role = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
 	if (oojsArgs.count() > 1)  gotCount = ooscript::valueToInt32(context, OOJS_ARGV[1], &count);
-	if (EXPECT_NOT(role == nil || !gotCount || count < 1 || count > 64))
+	if (EXPECT_NOT(!role.has_value() || !gotCount || count < 1 || count > 64))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"spawn", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"role and optional quantity (1 to 64)");
 		return NO;
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = oo::NSArrayFromObjects([thisEnt spawnShipsWithRole:oo::StdString(role) count:count]);
+	result = [thisEnt spawnShipsWithRole:*role count:count];
 	OOJS_END_FULL_NATIVE
 
-	OOJS_RETURN_OBJECT(result);
+	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2520,7 +2520,7 @@ static bool ShipRemove(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		return NO;
 	}
 
-	[thisEnt doScriptEvent:OOJSID("shipRemoved") withArgument:[NSNumber numberWithBool:suppressDeathEvent]];
+	[thisEnt doScriptEvent:OOJSID("shipRemoved") withArgument:oo::ObjectFromPList(oo::PList(static_cast<bool>(suppressDeathEvent)))];
 
 	if (suppressDeathEvent)
 	{
@@ -2540,16 +2540,16 @@ static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::Call
 	ShipEntity				*thisEnt = nil;
 	PlayerEntity			*player = nil;
 	ShipEntity				*target = nil;
-	NSArray					*actions = nil;
+	oo::PList				actions;	// null when absent
 	
 	player = OOPlayerForScripting();
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 1)  actions = OOJSNativeObjectFromJSValue(context, OOJS_ARGV[1]);
+	if (oojsArgs.count() > 1)  actions = oo::PListFrom(OOJSNativeObjectFromJSValue(context, OOJS_ARGV[1]));
 	if (EXPECT_NOT(oojsArgs.count() != 2 ||
 				   !ooscript::isObjectOrNull(OOJS_ARGV[0]) ||
 				   !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[0]), &target) ||
-				   ![actions isKindOfClass:[NSArray class]]))
+				   !actions.isArray()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"__runLegacyScriptActions", oojsArgs.count(), OOJS_ARGV, nil, @"target and array of actions");
 		return NO;
@@ -2558,9 +2558,9 @@ static bool ShipRunLegacyScriptActions(ooscript::Context context, ooscript::Call
 	if (target != nil)	// Not stale reference
 	{
 		[player setScriptTarget:thisEnt];
-		[player runUnsanitizedScriptActions:actions
+		[player runUnsanitizedScriptActions:oo::ObjectFromPList(actions)
 						  allowingAIMethods:YES
-							withContextName:[NSString stringWithFormat:@"<ship \"%@\" legacy actions>", [thisEnt name]]
+							withContextName:oo::NSStringFrom(oo::str::format("<ship \"%s\" legacy actions>", oo::DescriptionOf([thisEnt name]).c_str()))
 								  forTarget:target];
 	}
 	
@@ -2576,13 +2576,13 @@ static bool ShipCommsMessage(ooscript::Context context, ooscript::CallArgs &oojs
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*message = nil;
+	std::optional<std::string>	message;
 	ShipEntity				*target = nil;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  message = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(message == nil || (oojsArgs.count() > 1 && (ooscript::isNull(OOJS_ARGV[1]) || !ooscript::isObjectOrNull(OOJS_ARGV[1]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[1]), &target)))))
+	if (oojsArgs.count() > 0)  message = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!message.has_value() || (oojsArgs.count() > 1 && (ooscript::isNull(OOJS_ARGV[1]) || !ooscript::isObjectOrNull(OOJS_ARGV[1]) || !JSShipGetShipEntity(context, ooscript::toObject(OOJS_ARGV[1]), &target)))))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"commsMessage", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"message and optional target");
 		return NO;
@@ -2590,11 +2590,11 @@ static bool ShipCommsMessage(ooscript::Context context, ooscript::CallArgs &oojs
 	
 	if (oojsArgs.count() < 2)
 	{
-		[thisEnt commsMessage:message withUnpilotedOverride:YES];	// generic broadcast
+		[thisEnt commsMessage:oo::NSStringFrom(*message) withUnpilotedOverride:YES];	// generic broadcast
 	}
 	else if (target != nil)  // Not stale reference
 	{
-		[thisEnt sendMessage:message toShip:target withUnpilotedOverride:YES];	// ship-to-ship narrowcast
+		[thisEnt sendMessage:oo::NSStringFrom(*message) toShip:target withUnpilotedOverride:YES];	// ship-to-ship narrowcast
 	}
 	OOJS_RETURN_VOID;
 	
@@ -2644,15 +2644,15 @@ static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs 
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity					*thisEnt = nil;
-	NSString					*key = nil;
-	NSString					*ctx = @"scripted";
+	std::optional<std::string>	key;
+	std::string					ctx = "scripted";	// a nil context fails the check below, as "" does
 	BOOL						result;
 	BOOL						exists;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists));
-	if (EXPECT_NOT(key == nil))
+	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKeyRelaxed(context, OOJS_ARGV[0], &exists);
+	if (EXPECT_NOT(!key.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"canAwardEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
 		return NO;
@@ -2662,8 +2662,8 @@ static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs 
 	{
 		if (oojsArgs.count() > 1)
 		{
-			ctx = OOStringFromJSValue(context, OOJS_ARGV[1]);
-			if (![ctx isEqualToString:@"scripted"] && ![ctx isEqualToString:@"purchase"] && ![ctx isEqualToString:@"newShip"] && ![ctx isEqualToString:@"npc"])
+			ctx = oo::StdString(OOStringFromJSValue(context, OOJS_ARGV[1]));
+			if (ctx != "scripted" && ctx != "purchase" && ctx != "newShip" && ctx != "npc")
 			{
 				OOJSReportBadArguments(context, @"Ship", @"canAwardEquipment", MIN(oojsArgs.count(), 2U), OOJS_ARGV, nil, @"context");
 				return NO;
@@ -2672,9 +2672,9 @@ static bool ShipCanAwardEquipment(ooscript::Context context, ooscript::CallArgs 
 		result = YES;
 		
 		// can't add fuel as equipment.
-		if ([key isEqualToString:@"EQ_FUEL"])  result = NO;
+		if (*key == "EQ_FUEL")  result = NO;
 		
-		if (result)  result = [thisEnt canAddEquipment:key inContext:ctx];
+		if (result)  result = [thisEnt canAddEquipment:oo::NSStringFrom(*key) inContext:oo::NSStringFrom(ctx)];
 	}
 	else
 	{
@@ -2695,7 +2695,7 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	
 	ShipEntity					*thisEnt = nil;
 	OOEquipmentType				*eqType = nil;
-	NSString					*identifier = nil;
+	std::string					identifier;
 	BOOL						OK = YES;
 	BOOL						berth;
 	BOOL            isRepair = NO;
@@ -2710,19 +2710,19 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 	}
 	
 	// Check that equipment is permitted.
-	identifier = [eqType identifier];
-	berth = [identifier isEqualToString:@"EQ_PASSENGER_BERTH"];
+	identifier = oo::StdString([eqType identifier]);
+	berth = identifier == "EQ_PASSENGER_BERTH";
 	if (berth)
 	{
 		OK = [thisEnt availableCargoSpace] >= [eqType requiredCargoSpace];
 	}
-	else if ([identifier isEqualToString:@"EQ_FUEL"])
+	else if (identifier == "EQ_FUEL")
 	{
 		OK = NO;
 	}
 	else
 	{
-		OK = [eqType canCarryMultiple] || ![thisEnt hasEquipmentItem:identifier];
+		OK = [eqType canCarryMultiple] || ![thisEnt hasEquipmentItem:oo::NSStringFrom(identifier)];
 	}
 	
 	if (OK)
@@ -2731,42 +2731,42 @@ static bool ShipAwardEquipment(ooscript::Context context, ooscript::CallArgs &oo
 		{
 			PlayerEntity *player = (PlayerEntity *)thisEnt;
 			
-			if ([identifier isEqualToString:@"EQ_MISSILE_REMOVAL"])
+			if (identifier == "EQ_MISSILE_REMOVAL")
 			{
 				[player removeMissiles];
 			}
 			else if ([eqType isMissileOrMine])
 			{
-				OK = [player mountMissileWithRole:identifier];
+				OK = [player mountMissileWithRole:oo::NSStringFrom(identifier)];
 			}
 			else if (berth)
 			{
 				OK = [player changePassengerBerths: +1];
 			}
-			else if ([identifier isEqualToString:@"EQ_PASSENGER_BERTH_REMOVAL"])
+			else if (identifier == "EQ_PASSENGER_BERTH_REMOVAL")
 			{
 				OK = [player changePassengerBerths: -1];
 			}
 			else
 			{
-				isRepair = [thisEnt hasEquipmentItem:[identifier stringByAppendingString:@"_DAMAGED"]];
-				OK = [player addEquipmentItem:identifier withValidation:YES inContext:@"scripted"];
+				isRepair = [thisEnt hasEquipmentItem:oo::NSStringFrom(identifier + "_DAMAGED")];
+				OK = [player addEquipmentItem:oo::NSStringFrom(identifier) withValidation:YES inContext:@"scripted"];
 				if (OK && isRepair) 
 				{
-					[player doScriptEvent:OOJSID("equipmentRepaired") withArgument:identifier];
+					[player doScriptEvent:OOJSID("equipmentRepaired") withArgument:oo::NSStringFrom(identifier)];
 				}
 			}
 		}
 		else
 		{
-			if ([identifier isEqualToString:@"EQ_MISSILE_REMOVAL"])
+			if (identifier == "EQ_MISSILE_REMOVAL")
 			{
 				[thisEnt removeMissiles];
 			}
 			// no passenger handling for NPCs. EQ_CARGO_BAY is dealt with inside addEquipmentItem
-			else if (!berth && ![identifier isEqualToString:@"EQ_PASSENGER_BERTH_REMOVAL"])
+			else if (!berth && identifier != "EQ_PASSENGER_BERTH_REMOVAL")
 			{
-				OK = [thisEnt addEquipmentItem:identifier withValidation:YES inContext:@"scripted"];	
+				OK = [thisEnt addEquipmentItem:oo::NSStringFrom(identifier) withValidation:YES inContext:@"scripted"];	
 			}
 			else
 			{
@@ -2787,31 +2787,31 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity					*thisEnt = nil;
-	NSString					*key = nil;
+	std::optional<std::string>	key;
 	BOOL						OK = YES;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKey(context, OOJS_ARGV[0]));
-	if (EXPECT_NOT(key == nil))
+	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
+	if (EXPECT_NOT(!key.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"removeEquipment", MIN(oojsArgs.count(), 1U), OOJS_ARGV, nil, @"equipment type");
 		return NO;
 	}
 	// berths are not in hasOneEquipmentItem
-	OK = [thisEnt hasOneEquipmentItem:key includeMissiles:YES whileLoading:NO] || ([key isEqualToString:@"EQ_PASSENGER_BERTH"] && [thisEnt passengerCapacity] > 0);
+	OK = [thisEnt hasOneEquipmentItem:oo::NSStringFrom(*key) includeMissiles:YES whileLoading:NO] || (*key == "EQ_PASSENGER_BERTH" && [thisEnt passengerCapacity] > 0);
 	if (!OK)
 	{
 		// Allow removal of damaged equipment.
-		key = [key stringByAppendingString:@"_DAMAGED"];
-		OK = [thisEnt hasOneEquipmentItem:key includeMissiles:NO whileLoading:NO];
+		key = *key + "_DAMAGED";
+		OK = [thisEnt hasOneEquipmentItem:oo::NSStringFrom(*key) includeMissiles:NO whileLoading:NO];
 	}
 	if (OK)
 	{
 		//exceptions
-		if ([key isEqualToString:@"EQ_PASSENGER_BERTH"] || [key isEqualToString:@"EQ_CARGO_BAY"])
+		if (*key == "EQ_PASSENGER_BERTH" || *key == "EQ_CARGO_BAY")
 		{
-			if ([key isEqualToString:@"EQ_PASSENGER_BERTH"])
+			if (*key == "EQ_PASSENGER_BERTH")
 			{
 				if ([thisEnt passengerCapacity] > [thisEnt passengerCount])
 				{
@@ -2825,13 +2825,13 @@ static bool ShipRemoveEquipment(ooscript::Context context, ooscript::CallArgs &o
 				// player cargo bay removal handled in script
 				if ([thisEnt isPlayer] || [thisEnt extraCargo] <= [thisEnt availableCargoSpace])
 				{
-					[thisEnt removeEquipmentItem:key];
+					[thisEnt removeEquipmentItem:oo::NSStringFrom(*key)];
 				}
 				else OK = NO;
 			}
 		}
 		else
-			[thisEnt removeEquipmentItem:key];
+			[thisEnt removeEquipmentItem:oo::NSStringFrom(*key)];
 	}
 	
 	OOJS_RETURN_BOOL(OK);
@@ -2880,9 +2880,9 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 	
 	ShipEntity				*thisEnt = nil;
 	OOEquipmentType			*eqType = nil;
-	NSString				*key = nil;
-	NSString				*damagedKey = nil;
-	NSString				*status = nil;
+	std::string				key;
+	std::string				damagedKey;
+	std::optional<std::string>	status;
 	BOOL					hasOK = NO, hasDamaged = NO;
 	
 	GET_THIS_SHIP(thisEnt);
@@ -2900,44 +2900,44 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 		return NO;
 	}
 	
-	status = OOStringFromJSValue(context, OOJS_ARGV[1]);
-	if (EXPECT_NOT(status == nil))
+	status = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[1]));
+	if (EXPECT_NOT(!status.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"setEquipmentStatus", 1, &OOJS_ARGV[1], nil, @"equipment status");
 		return NO;
 	}
 	
 	// EMMSTRAN: use interned strings.
-	if (![status isEqualToString:@"EQUIPMENT_OK"] && ![status isEqualToString:@"EQUIPMENT_DAMAGED"])
+	if (*status != "EQUIPMENT_OK" && *status != "EQUIPMENT_DAMAGED")
 	{
 		OOJSReportErrorForCaller(context, @"Ship", @"setEquipmentStatus", @"Second parameter for setEquipmentStatus must be either \"EQUIPMENT_OK\" or \"EQUIPMENT_DAMAGED\".");
 		return NO;
 	}
 	
-	key = [eqType identifier];
-	hasOK = [thisEnt hasEquipmentItem:key];
-	BOOL setOK = [status isEqualToString:@"EQUIPMENT_OK"];
-	BOOL setDamaged = [status isEqualToString:@"EQUIPMENT_DAMAGED"];
+	key = oo::StdString([eqType identifier]);
+	hasOK = [thisEnt hasEquipmentItem:oo::NSStringFrom(key)];
+	BOOL setOK = *status == "EQUIPMENT_OK";
+	BOOL setDamaged = *status == "EQUIPMENT_DAMAGED";
 	if ([eqType canBeDamaged])
 	{
-		damagedKey = [key stringByAppendingString:@"_DAMAGED"];
-		hasDamaged = [thisEnt hasEquipmentItem:damagedKey];
+		damagedKey = key + "_DAMAGED";
+		hasDamaged = [thisEnt hasEquipmentItem:oo::NSStringFrom(damagedKey)];
 		
 		if ((setOK && hasDamaged) || (setDamaged && hasOK))
 		{
 			// the implementation is identical between player and ship.
-			[thisEnt removeEquipmentItem:(setDamaged ? key : damagedKey)];
+			[thisEnt removeEquipmentItem:oo::NSStringFrom(setDamaged ? key : damagedKey)];
 			if ([thisEnt isPlayer])
 			{
 				// these player methods are different to the ship ones.
-				[(PlayerEntity*)thisEnt addEquipmentItem:(setDamaged ? damagedKey : key) withValidation:NO inContext:@"scripted"];
+				[(PlayerEntity*)thisEnt addEquipmentItem:oo::NSStringFrom(setDamaged ? damagedKey : key) withValidation:NO inContext:@"scripted"];
 				if (setDamaged)
 				{
-					[(PlayerEntity*)thisEnt doScriptEvent:OOJSID("equipmentDamaged") withArgument:key];
+					[(PlayerEntity*)thisEnt doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(key)];
 				}
 				else if (setOK)
 				{
-					[(PlayerEntity*)thisEnt doScriptEvent:OOJSID("equipmentRepaired") withArgument:key];
+					[(PlayerEntity*)thisEnt doScriptEvent:OOJSID("equipmentRepaired") withArgument:oo::NSStringFrom(key)];
 				}
 				
 				// if player's Docking Computers are set to EQUIPMENT_DAMAGED while on, stop them
@@ -2946,16 +2946,16 @@ static bool ShipSetEquipmentStatus(ooscript::Context context, ooscript::CallArgs
 			}
 			else
 			{
-				[thisEnt addEquipmentItem:(setDamaged ? damagedKey : key) withValidation:NO  inContext:@"scripted"];
-				if (hasOK) [thisEnt doScriptEvent:OOJSID("equipmentDamaged") withArgument:key];
+				[thisEnt addEquipmentItem:oo::NSStringFrom(setDamaged ? damagedKey : key) withValidation:NO  inContext:@"scripted"];
+				if (hasOK) [thisEnt doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(key)];
 			}
 		}
 	}
 	else
 	{
-		if (hasOK && ![status isEqualToString:@"EQUIPMENT_OK"])
+		if (hasOK && *status != "EQUIPMENT_OK")
 		{
-			OOJSReportWarningForCaller(context, @"Ship", @"setEquipmentStatus", @"Equipment %@ cannot be damaged.", key);
+			OOJSReportWarningForCaller(context, @"Ship", @"setEquipmentStatus", @"Equipment %@ cannot be damaged.", oo::NSStringFrom(key));
 			hasOK = NO;
 		}
 	}
@@ -2988,22 +2988,20 @@ static bool ShipEquipmentStatus(ooscript::Context context, ooscript::CallArgs &o
 	}
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*key = nil;
+	std::optional<std::string>	key;
 	bool					asDict = NO;
-	NSDictionary			*dict = nil;
 
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  key = oo::NSStringOrNil(JSValueToEquipmentKey(context, OOJS_ARGV[0]));
+	if (oojsArgs.count() > 0)  key = JSValueToEquipmentKey(context, OOJS_ARGV[0]);
 	if (oojsArgs.count() > 1)  ooscript::valueToBoolean(context, OOJS_ARGV[1], &asDict);
-	if (EXPECT_NOT(key == nil))
+	if (EXPECT_NOT(!key.has_value()))
 	{
 		if (oojsArgs.count() > 0 && ooscript::isString(OOJS_ARGV[0]))
 		{
 			if (asDict)
 			{
-				dict = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithInt:1],@"EQUIPMENT_UNKNOWN",nil];
-				OOJS_RETURN_OBJECT(dict);
+				OOJS_RETURN_OBJECT(oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "EQUIPMENT_UNKNOWN", oo::PList::signedInteger(1) } })));
 			}
 			else
 			{
@@ -3018,13 +3016,15 @@ static bool ShipEquipmentStatus(ooscript::Context context, ooscript::CallArgs &o
 
 	if (asDict)
 	{
-		dict = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:[thisEnt countEquipmentItem:key]],@"EQUIPMENT_OK",[NSNumber numberWithUnsignedInteger:[thisEnt countEquipmentItem:[key stringByAppendingString:@"_DAMAGED"]]],@"EQUIPMENT_DAMAGED",nil];
-		OOJS_RETURN_OBJECT(dict);
+		oo::PList::Dict dict;
+		dict["EQUIPMENT_OK"] = oo::PList::unsignedInteger([thisEnt countEquipmentItem:oo::NSStringFrom(*key)]);
+		dict["EQUIPMENT_DAMAGED"] = oo::PList::unsignedInteger([thisEnt countEquipmentItem:oo::NSStringFrom(*key + "_DAMAGED")]);
+		OOJS_RETURN_OBJECT(oo::ObjectFromPList(oo::PList(std::move(dict))));
 	}
 	else
 	{
-		if ([thisEnt hasEquipmentItem:key includeWeapons:YES whileLoading:NO])  OOJS_RETURN(strOK);
-		else if ([thisEnt hasEquipmentItem:[key stringByAppendingString:@"_DAMAGED"]])  OOJS_RETURN(strDamaged);
+		if ([thisEnt hasEquipmentItem:oo::NSStringFrom(*key) includeWeapons:YES whileLoading:NO])  OOJS_RETURN(strOK);
+		else if ([thisEnt hasEquipmentItem:oo::NSStringFrom(*key + "_DAMAGED")])  OOJS_RETURN(strDamaged);
 	
 		OOJS_RETURN(strUnavailable);
 	}
@@ -3041,11 +3041,10 @@ static bool ShipSelectNewMissile(ooscript::Context context, ooscript::CallArgs &
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	NSString *result = [[thisEnt selectMissile] identifier];
 	// if there's a badly defined missile, selectMissile may return nil
-	if (result == nil)  result = @"EQ_MISSILE";
+	const std::string result = oo::OptionalString([[thisEnt selectMissile] identifier]).value_or("EQ_MISSILE");
 	
-	OOJS_RETURN_OBJECT(result);
+	OOJS_RETURN_OBJECT(oo::NSStringFrom(result));
 	
 	OOJS_NATIVE_EXIT
 }
@@ -3106,21 +3105,21 @@ static bool ShipSetBounty(ooscript::Context context, ooscript::CallArgs &oojsArg
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*reason = nil;
+	std::optional<std::string>	reason;
 	int32_t					newbounty = 0;
 	BOOL					gotBounty = YES;
 	
 	GET_THIS_SHIP(thisEnt);
 	
 	if (oojsArgs.count() > 0)  gotBounty = ooscript::valueToInt32(context, OOJS_ARGV[0], &newbounty);
-	if (oojsArgs.count() > 1)  reason = OOStringFromJSValue(context, OOJS_ARGV[1]);
-	if (EXPECT_NOT(reason == nil || !gotBounty || newbounty < 0))
+	if (oojsArgs.count() > 1)  reason = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[1]));
+	if (EXPECT_NOT(!reason.has_value() || !gotBounty || newbounty < 0))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"setBounty", oojsArgs.count(), OOJS_ARGV, nil, @"new bounty and reason");
 		return NO;
 	}
 	
-	[thisEnt setBounty:(OOCreditsQuantity)newbounty withReasonAsString:reason];
+	[thisEnt setBounty:(OOCreditsQuantity)newbounty withReasonAsString:oo::NSStringFrom(*reason)];
 	
 	return YES;
 	
@@ -3134,26 +3133,26 @@ static bool ShipSetCargo(ooscript::Context context, ooscript::CallArgs &oojsArgs
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	OOCommodityType			commodity = nil;
+	std::optional<std::string>	commodity;
 	int32_t					count = 1;
 	BOOL					gotCount = YES;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  commodity = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	if (oojsArgs.count() > 0)  commodity = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
 	if (oojsArgs.count() > 1)  gotCount = ooscript::valueToInt32(context, OOJS_ARGV[1], &count);
-	if (EXPECT_NOT(commodity == nil || !gotCount || count < 1))
+	if (EXPECT_NOT(!commodity.has_value() || !gotCount || count < 1))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"setCargo", oojsArgs.count(), OOJS_ARGV, nil, @"cargo name and optional positive quantity");
 		return NO;
 	}
 	
-	if ([[UNIVERSE commodities] goodDefined:commodity])
+	if ([[UNIVERSE commodities] goodDefined:oo::NSStringFrom(*commodity)])
 	{
-		[thisEnt setCommodityForPod:commodity andAmount:count];
+		[thisEnt setCommodityForPod:oo::NSStringFrom(*commodity) andAmount:count];
 	}
 	
-	OOJS_RETURN_BOOL([[UNIVERSE commodities] goodDefined:commodity]);
+	OOJS_RETURN_BOOL([[UNIVERSE commodities] goodDefined:oo::NSStringFrom(*commodity)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -3167,7 +3166,6 @@ static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSDictionary			*crewDefinition = nil;
 	ooscript::Object params = NULL;
 
 	GET_THIS_SHIP(thisEnt);
@@ -3187,9 +3185,8 @@ static bool ShipSetCrew(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 		}
 		else
 		{
-			crewDefinition = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]));
-			OOCharacter *crew = [OOCharacter characterWithDictionary:crewDefinition];
-			[thisEnt setCrew:[NSArray arrayWithObject:crew]];
+			OOCharacter *crew = [OOCharacter characterWithDictionary:OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[0]))];
+			[thisEnt setCrew:oo::NSArrayFromObjects(std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(crew) })];
 		}
 	}
 	else
@@ -3209,39 +3206,39 @@ static bool ShipSetCargoType(ooscript::Context context, ooscript::CallArgs &oojs
 	OOJS_NATIVE_ENTER(context)
 	
 	ShipEntity				*thisEnt = nil;
-	NSString				*cargoType = nil;
+	std::optional<std::string>	cargoType;
 	
 	GET_THIS_SHIP(thisEnt);
 	
-	if (oojsArgs.count() > 0)  cargoType = OOStringFromJSValue(context, OOJS_ARGV[0]);
-	if (EXPECT_NOT(cargoType == nil))
+	if (oojsArgs.count() > 0)  cargoType = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+	if (EXPECT_NOT(!cargoType.has_value()))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"setCargoType", oojsArgs.count(), OOJS_ARGV, nil, @"cargo type name");
 		return NO;
 	}
 	if ([thisEnt cargoType] != CARGO_NOT_CARGO)
 	{
-		OOJSReportBadArguments(context, @"Ship", @"setCargoType", oojsArgs.count(), OOJS_ARGV, nil, [NSString stringWithFormat:@"Can only be used on cargo pod carriers, not cargo pods (%@)",[thisEnt shipDataKey]]);
+		OOJSReportBadArguments(context, @"Ship", @"setCargoType", oojsArgs.count(), OOJS_ARGV, nil, oo::NSStringFrom(oo::str::format("Can only be used on cargo pod carriers, not cargo pods (%s)", oo::DescriptionOf([thisEnt shipDataKey]).c_str())));
 		return NO;
 	}
 	BOOL ok = YES;
-	if ([cargoType isEqualToString:@"SCARCE_GOODS"])
+	if (*cargoType == "SCARCE_GOODS")
 	{
 		[thisEnt setCargoFlag:CARGO_FLAG_FULL_SCARCE];
 	}
-	else if ([cargoType isEqualToString:@"PLENTIFUL_GOODS"])
+	else if (*cargoType == "PLENTIFUL_GOODS")
 	{
 		[thisEnt setCargoFlag:CARGO_FLAG_FULL_PLENTIFUL];
 	}
-	else if ([cargoType isEqualToString:@"MEDICAL_GOODS"])
+	else if (*cargoType == "MEDICAL_GOODS")
 	{
 		[thisEnt setCargoFlag:CARGO_FLAG_FULL_MEDICAL];
 	}
-	else if ([cargoType isEqualToString:@"ILLEGAL_GOODS"])
+	else if (*cargoType == "ILLEGAL_GOODS")
 	{
 		[thisEnt setCargoFlag:CARGO_FLAG_FULL_CONTRABAND];
 	}
-	else if ([cargoType isEqualToString:@"PIRATE_GOODS"])
+	else if (*cargoType == "PIRATE_GOODS")
 	{
 		[thisEnt setCargoFlag:CARGO_FLAG_PIRATE];
 	}	
