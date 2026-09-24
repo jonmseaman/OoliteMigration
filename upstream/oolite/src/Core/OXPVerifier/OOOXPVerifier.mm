@@ -411,7 +411,6 @@ void OpenLogFile();
 	id						name = nil;
 	std::map<OOOXPVerifierStage *, std::vector<std::string>>	dependenciesByStage,
 															dependentsByStage;
-	id						dependents = nil;
 
 	@autoreleasepool
 	{
@@ -436,10 +435,12 @@ void OpenLogFile();
 				dependenciesByStage[stage] = std::move(*dependencies);
 			}
 
-			dependents = [stage dependents];
-			if (dependents != nil)
+			const std::optional<std::vector<std::string>> dependents = [stage dependents];
+			if (dependents.has_value())
 			{
-				dependentsByStage[stage] = oo::StringsFrom(dependents);
+				// Through the Objective-C set the stages returned before, so the names keep its
+				// enumeration order (-setUpDependents: registers them in that order).
+				dependentsByStage[stage] = oo::StringsFrom(oo::NSSetFromStrings(*dependents));
 			}
 		}
 		_waitingStages.clear();

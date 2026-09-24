@@ -111,9 +111,9 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 }
 
 
-- (id)dependents
+- (std::optional<std::vector<std::string>>)dependents
 {
-	return nil;
+	return std::nullopt;
 }
 
 

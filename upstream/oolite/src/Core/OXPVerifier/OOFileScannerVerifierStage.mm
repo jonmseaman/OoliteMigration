@@ -736,9 +736,9 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 }
 
 
-- (id)dependents	// shared selector (proposed ADR-0043)
+- (std::optional<std::vector<std::string>>)dependents
 {
-	return oo::NSSetFromStrings(std::vector<std::string>{ oo::StdString([OOListUnusedFilesStage nameForReverseDependencyForVerifier:[self verifier]]) });
+	return std::vector<std::string>{ oo::StdString([OOListUnusedFilesStage nameForReverseDependencyForVerifier:[self verifier]]) };
 }
 
 @end

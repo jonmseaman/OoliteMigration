@@ -167,12 +167,12 @@ static const char * const kStageName	= "Testing textures and images";
 
 @implementation OOTextureHandlingStage
 
-- (id)dependents	// shared selector (proposed ADR-0043)
+- (std::optional<std::vector<std::string>>)dependents
 {
-	std::vector<std::string> result = oo::StringsFrom([super dependents]);
+	std::vector<std::string> result = [super dependents].value_or(std::vector<std::string>());
 	const std::string reverse = oo::StdString([OOTextureVerifierStage nameForReverseDependencyForVerifier:[self verifier]]);
 	if (std::find(result.begin(), result.end(), reverse) == result.end())  result.push_back(reverse);
-	return oo::NSSetFromStrings(result);
+	return result;
 }
 
 @end
