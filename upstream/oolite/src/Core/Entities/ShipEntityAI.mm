@@ -48,6 +48,7 @@
 #include "ooscript/JSEngine.hpp"
 #import "OOStringBridge.h"
 #include "oofnd/Log.hpp"
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -1076,7 +1077,7 @@ using ooscript::Context;
 			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
 			return;
 		}
-		if ([cargo count] >= [self maxAvailableCargoSpace])
+		if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 		{
 			if (max_cargo)  [shipAI message:@"HOLD_FULL"];	//can't collect loot if holds are full!
 			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if holds are full!
@@ -1182,7 +1183,7 @@ using ooscript::Context;
 	{
 		[shipAI message:@"NO_CARGO_BAY"];
 	}
-	else if ([cargo count] >= [self maxAvailableCargoSpace])
+	else if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 	{
 		[shipAI message:@"HOLD_FULL"];
 	}
@@ -2403,12 +2404,12 @@ using ooscript::Context;
 		
 		// Stuff expression in a function.
 		predicateCode = [NSString stringWithFormat:@"return %@;", predicateExpression];
-		function = [[OOJSFunction alloc] initWithName:@"_oo_AIScanPredicate"
+		function = [[OOJSFunction alloc] initWithName:std::string("_oo_AIScanPredicate")
 												scope:NULL
-												 code:predicateCode
+												 code:oo::OptionalString(predicateCode)
 										argumentCount:1
 										argumentNames:argNames
-											 fileName:aiName
+											 fileName:oo::OptionalString(aiName)
 										   lineNumber:0
 											  context:context];
 		[function autorelease];

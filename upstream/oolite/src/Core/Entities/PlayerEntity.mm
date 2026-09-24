@@ -86,6 +86,8 @@ MA 02110-1301, USA.
 #import "PlayerEntityStickProfile.h"
 #import "PlayerEntityKeyMapper.h"
 #import "OOSystemDescriptionManager.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
 
@@ -330,8 +332,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	{
 		OOLogERR(@"player.loadCargoPods.noContainer", @"%@", @"couldn't create a container in [PlayerEntity loadCargoPods]");
 		// throw an exception here...
-		[NSException raise:OOLITE_EXCEPTION_FATAL
-								format:@"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
+		[OOException raise:OOLITE_EXCEPTION_FATAL
+								format:"[PlayerEntity loadCargoPods] failed to create a container for cargo with role 'cargopod'"];
 	}
 }
 
@@ -2452,8 +2454,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(keyMod1Text);
 	DESTROY(keyMod2Text);
 	DESTROY(stickFunctions);
-	DESTROY(keyFunctions);
-	DESTROY(kbdLayouts);
 
 	DESTROY(customEquipActivation);
 	DESTROY(customActivatePressed);
@@ -2608,7 +2608,12 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 									NSString * volatile updateStage = @"initialisation"; \
 									@try {
 #define STAGE_TRACKING_END			} \
-									@catch (NSException *exception) \
+									@catch (OOException *exception) \
+									{ \
+										OOLog(kOOLogException, @"***** Exception during [%@] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])); \
+										@throw exception; \
+									} \
+									@catch (OOFoundationException *exception) \
 									{ \
 										OOLog(kOOLogException, @"***** Exception during [%@] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, [exception name], [exception reason]); \
 										@throw exception; \
@@ -7364,7 +7369,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	// set the new market seed now!
 	// reseeding the RNG should be completely unnecessary here
-//	ranrot_srand((uint32_t)[[NSDate date] timeIntervalSince1970]);	// seed randomiser by time
+//	ranrot_srand((uint32_t)oo::date::timeIntervalSince1970());	// seed randomiser by time
 	market_rnd = ranrot_rand() & 255;						// random factor for market values is reset
 }
 
@@ -9524,7 +9529,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(forward_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [forwardWeaponOffset count];
+									multiplier = forwardWeaponOffset.size();
 								}
 								break;
 								
@@ -9534,7 +9539,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(aft_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [aftWeaponOffset count];
+									multiplier = aftWeaponOffset.size();
 								}
 								break;
 								
@@ -9544,7 +9549,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(port_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [portWeaponOffset count];
+									multiplier = portWeaponOffset.size();
 								}
 								break;
 								
@@ -9554,7 +9559,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(starboard_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [starboardWeaponOffset count];
+									multiplier = starboardWeaponOffset.size();
 								}
 								break;
 						}
@@ -10366,7 +10371,7 @@ static NSString *last_outfitting_key=nil;
 				forward_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [forwardWeaponOffset count];
+					multiplier = forwardWeaponOffset.size();
 				}
 				break;
 				
@@ -10375,7 +10380,7 @@ static NSString *last_outfitting_key=nil;
 				aft_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [aftWeaponOffset count];
+					multiplier = aftWeaponOffset.size();
 				}
 				break;
 				
@@ -10384,7 +10389,7 @@ static NSString *last_outfitting_key=nil;
 				port_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [portWeaponOffset count];
+					multiplier = portWeaponOffset.size();
 				}
 				break;
 				
@@ -10393,7 +10398,7 @@ static NSString *last_outfitting_key=nil;
 				starboard_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [starboardWeaponOffset count];
+					multiplier = starboardWeaponOffset.size();
 				}
 				break;
 				
@@ -10793,7 +10798,7 @@ static NSString *last_outfitting_key=nil;
 		}
 		cargoQtyOnBoard += quantity;
 	}
-	cargoQtyOnBoard += [[self cargo] count];
+	cargoQtyOnBoard += [self cxx_cargoCount];
 	
 	return cargoQtyOnBoard;
 }
@@ -13638,11 +13643,11 @@ else _dockTarget = NO_TARGET;
 	_sysInfoLight.x &&
 	selFunctionIdx &&
 	stickFunctions &&
-	keyFunctions &&
+	!keyFunctions.empty() &&
 	customEquipActivation &&
 	customActivatePressed &&
 	customModePressed &&
-	kbdLayouts &&
+	!kbdLayouts.empty() &&
 	showingLongRangeChart &&
 	_missionAllowInterrupt &&
 	_missionScreenID &&
