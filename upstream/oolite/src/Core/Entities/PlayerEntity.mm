@@ -252,6 +252,16 @@ oo::PList EquipmentRow(const std::optional<std::string> &text, bool available, O
 }
 
 
+// Element <index> of an array held as an oo::PList, as -at<NSString *> read it: nullopt unless a
+// string or a number (see StringForKey).
+std::optional<std::string> StringAt(const oo::PList &array, size_t index)
+{
+	const oo::PList *value = array.at(index);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return oo::PListGet<std::string>::from(value, std::string());
+}
+
+
 // "More:<n>[:<key>]" row keys: field <index>, or nullopt past the end.
 std::optional<std::string> RowKeyField(const std::string &key, size_t index)
 {
@@ -2545,9 +2555,6 @@ static GLfloat		sBaseMass = 0.0;
 	DESTROY(keyShiftText);
 	DESTROY(keyMod1Text);
 	DESTROY(keyMod2Text);
-	DESTROY(stickFunctions);
-
-	DESTROY(customEquipActivation);
 
 
 	[super dealloc];
@@ -11684,56 +11691,57 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 		
 		[self addEqScriptForKey:equipmentKey];
-		[self addEquipmentWithScriptToCustomKeyArray:equipmentKey];
+		[self addEquipmentWithScriptToCustomKeyArray:oo::StdString(equipmentKey)];	// (nil matched no script)
 	}
 	return OK;
 }
 
 
-- (NSMutableArray *) customEquipmentActivation
+- (std::vector<oo::PList> *) cxx_customEquipmentActivation
 {
-	return customEquipActivation;
+	return &customEquipActivation;	// the live entries (ADR-0043 item 22)
 }
 
 
-- (void) addEquipmentWithScriptToCustomKeyArray:(NSString *)equipmentKey
+- (void) addEquipmentWithScriptToCustomKeyArray:(const std::string &)equipmentKey
 {
-	NSDictionary *item;
 	NSUInteger i, j;
-	NSArray *object;
+	oo::PList object;
 
-	for (i = 0; i < [eqScripts count]; i++) 
+	for (i = 0; i < [eqScripts count]; i++)
 	{
-		if ([oo::PListView(oo::PListView(eqScripts).at<NSArray *>(i)).at<NSString *>(0) isEqualToString:equipmentKey]) 
+		// (eqScripts stays Foundation until chunk 13: its entry read here as an oo::PList)
+		if (StringAt(oo::PListFrom([eqScripts objectAtIndex:i]), 0) == equipmentKey)
 		{
 			//check if this equipment item is already in the array
-			for (j = 0; j < [customEquipActivation count]; j++) {
-				item = [customEquipActivation objectAtIndex:j];
-				if ([oo::PListView(item).get<NSString *>(CUSTOMEQUIP_EQUIPKEY) isEqualToString:equipmentKey]) return;
+			for (j = 0; j < customEquipActivation.size(); j++) {
+				if (StringForKey(customEquipActivation[j], oo::StdString(CUSTOMEQUIP_EQUIPKEY)) == equipmentKey) return;
 			}
 			// if we get here, this item is new
-			// add the basic info at this point (equipkey and name only)
-			OOEquipmentType *eq = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
-			NSMutableDictionary *customKey = [[NSMutableDictionary alloc] initWithObjectsAndKeys:equipmentKey, CUSTOMEQUIP_EQUIPKEY, [eq name], CUSTOMEQUIP_EQUIPNAME, nil];
-			
+			// add the basic info at this point (equipkey and name only; a nil name ended the list)
+			OOEquipmentType *eq = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
+			oo::PList::Dict customKey;
+			customKey[oo::StdString(CUSTOMEQUIP_EQUIPKEY)] = equipmentKey;
+			const std::optional<std::string> equipmentName = oo::OptionalString([eq name]);
+			if (equipmentName.has_value())  customKey[oo::StdString(CUSTOMEQUIP_EQUIPNAME)] = *equipmentName;
+
 			// grab any default keys from the equipment item
 			// default activate
-			object = [eq defaultActivateKey];
-			if ((object != nil && [object count] > 0))
-				[customKey setObject:object forKey:CUSTOMEQUIP_KEYACTIVATE];
+			object = oo::PListFrom([eq defaultActivateKey]);
+			if ((object.isArray() && object.count() > 0))
+				customKey[oo::StdString(CUSTOMEQUIP_KEYACTIVATE)] = object;
 			// default mode
-			object = [eq defaultModeKey];
-			if ((object != nil && [object count] > 0))
-				[customKey setObject:object forKey:CUSTOMEQUIP_KEYMODE];
+			object = oo::PListFrom([eq defaultModeKey]);
+			if ((object.isArray() && object.count() > 0))
+				customKey[oo::StdString(CUSTOMEQUIP_KEYMODE)] = object;
 
-			[customEquipActivation addObject:customKey];
-			[customKey release];
+			customEquipActivation.push_back(oo::PList(std::move(customKey)));
 			// keep the keypress arrays in sync
 			customActivatePressed.push_back(NO);
 			customModePressed.push_back(NO);			
 
 			NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-			[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
+			[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
 			return;
 		}
 	}
@@ -11744,13 +11752,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 	int i;
 	bool update = NO;
-	NSString *equipmentKey;
-	if ([customEquipActivation count] == 0) return;
-	for (i = [customEquipActivation count] - 1; i >= 0; i--) {
-		equipmentKey = oo::PListView([customEquipActivation objectAtIndex:i]).get<NSString *>(CUSTOMEQUIP_EQUIPKEY);
-		OOEquipmentType *eq = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
+	std::optional<std::string> equipmentKey;
+	if (customEquipActivation.size() == 0) return;
+	for (i = customEquipActivation.size() - 1; i >= 0; i--) {
+		equipmentKey = StringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPKEY));
+		OOEquipmentType *eq = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(equipmentKey)];
 		if (!eq) {
-			[customEquipActivation removeObjectAtIndex:i];
+			customEquipActivation.erase(customEquipActivation.begin() + i);
 			customActivatePressed.erase(customActivatePressed.begin() + i);
 			customModePressed.erase(customModePressed.begin() + i);
 			update = YES;
@@ -11758,7 +11766,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	if (update) {
 		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
+		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 }
 
@@ -13732,9 +13740,9 @@ else _dockTarget = NO_TARGET;
 	n_key_debug_off &&
 	_sysInfoLight.x &&
 	selFunctionIdx &&
-	stickFunctions &&
+	!stickFunctions.empty() &&
 	!keyFunctions.empty() &&
-	customEquipActivation &&
+	!customEquipActivation.empty() &&
 	!customActivatePressed.empty() &&
 	!customModePressed.empty() &&
 	!kbdLayouts.empty() &&

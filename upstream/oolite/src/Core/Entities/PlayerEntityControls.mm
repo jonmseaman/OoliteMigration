@@ -326,12 +326,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		if (entry.second.isArray())  entry.second = [self cxx_processKeyCode:entry.second];
 	}
 
-	// load custom equipment keys/buttons (customEquipActivation stays the live array: oo-qt0w decision B)
-	[customEquipActivation release];
-	customEquipActivation = [[defaults arrayForKey:KEYCONFIG_CUSTOMEQUIP] mutableCopy];
-	if (customEquipActivation == nil)  customEquipActivation = [oo::ObjectFromPList(oo::PList(oo::PList::Array())) mutableCopy];
-	customActivatePressed.assign([customEquipActivation count], NO);
-	customModePressed.assign([customEquipActivation count], NO);
+	// load custom equipment keys/buttons (the live entries, edited in place)
+	const oo::PList savedCustomEquip = oo::PListFrom([defaults arrayForKey:KEYCONFIG_CUSTOMEQUIP]);
+	const oo::PList::Array *customEntries = savedCustomEquip.getIf<oo::PList::Array>();
+	customEquipActivation = (customEntries != nullptr) ? *customEntries : std::vector<oo::PList>();
+	customActivatePressed.assign(customEquipActivation.size(), NO);
+	customModePressed.assign(customEquipActivation.size(), NO);
 
 	// update with overrides from defaults file (unprocessed, as before)
 	const oo::PList overrides = oo::PListFrom([defaults objectForKey:KEYCONFIG_OVERRIDES]);
@@ -1495,9 +1495,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 				exceptionContext = "custom equipment";
 				// loop through all the objects in the customEquipActivation array
-				for (std::size_t i = 0; i < [customEquipActivation count]; i++)
+				for (std::size_t i = 0; i < customEquipActivation.size(); i++)
 				{
-					const oo::PList item = oo::PListFrom([customEquipActivation objectAtIndex:i]);
+					const oo::PList &item = customEquipActivation[i];
 					const std::string equipKey = item.get<std::string>(oo::StdString(CUSTOMEQUIP_EQUIPKEY));
 					// check if the player has the equip item installed
 					if ([self cxx_hasOneEquipmentItem:equipKey includeWeapons:NO whileLoading:NO])

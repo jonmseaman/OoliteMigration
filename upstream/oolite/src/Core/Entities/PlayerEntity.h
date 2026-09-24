@@ -694,7 +694,7 @@ typedef enum
 #endif
 
 	// dict to hold custom key config for OXP equipment with activate/mode functions
-	NSMutableArray			*customEquipActivation;
+	std::vector<oo::PList>	customEquipActivation;	// Dict entries, edited in place by KeyMapper/StickMapper/Controls
 	std::vector<BOOL>		customActivatePressed;	// parallel to customEquipActivation
 	std::vector<BOOL>		customModePressed;
 
@@ -786,7 +786,7 @@ typedef enum
 
 	// For PlayerEntity (StickMapper)
 	int						selFunctionIdx;
-	NSArray					*stickFunctions; 
+	std::vector<oo::PList>	stickFunctions;	// PlayerEntity (StickMapper)'s function list; empty until built
 	std::vector<oo::PList>	keyFunctions;	// PlayerEntity (KeyMapper)'s function list; empty until built
 	std::vector<oo::PList>	kbdLayouts;		// PlayerEntity (KeyMapper)'s keyboard layouts; empty until built
 	NSString				*keyShiftText;
@@ -883,7 +883,7 @@ typedef enum
 - (NSDictionary *) commanderDataDictionary;
 - (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict;
 
-- (void) addEquipmentWithScriptToCustomKeyArray:(NSString *)equipmentKey;
+- (void) addEquipmentWithScriptToCustomKeyArray:(const std::string &)equipmentKey;
 - (void) validateCustomEquipActivationArray;
 
 - (void) doBookkeeping:(double) delta_t;
@@ -988,7 +988,7 @@ typedef enum
 - (BOOL) injectorsEngaged;
 - (BOOL) hyperspeedEngaged;
 
-- (NSMutableArray *) customEquipmentActivation;
+- (std::vector<oo::PList> *) cxx_customEquipmentActivation;	// the live entries
 
 
 - (double) clockTime;			// Note that this is not an OOTimeAbsolute
