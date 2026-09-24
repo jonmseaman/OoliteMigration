@@ -326,12 +326,12 @@ std::vector<unsigned> cxx_ComponentsFromVersionString(const std::string &string)
 }
 
 
-NSComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2)
+OOComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2)
 {
 	const int order = oo::str::compareVersions(version1, version2);
-	if (order < 0) return NSOrderedAscending;
-	if (order > 0) return NSOrderedDescending;
-	return NSOrderedSame;
+	if (order < 0) return OOOrderedAscending;
+	if (order > 0) return OOOrderedDescending;
+	return OOOrderedSame;
 }
 
 

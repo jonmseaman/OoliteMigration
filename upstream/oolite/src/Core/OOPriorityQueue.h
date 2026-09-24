@@ -6,7 +6,7 @@ A prority queue is a collection into which objects may be inserted in any
 order, but (primarily) extracted in sorted order. The order is defined by the
 comparison selector specified at creation time, which is assumed to have the
 same signature as a compare method used for array sorting:
-- (NSComparisonResult)compare:(id)other
+- (OOComparisonResult)compare:(id)other
 and must define a partial order on the objects in the priority queue. The
 behaviour when provided with an inconsistent comparison method is undefined.
 
