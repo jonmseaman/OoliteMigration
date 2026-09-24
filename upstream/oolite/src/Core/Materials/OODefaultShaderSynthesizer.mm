@@ -31,13 +31,14 @@ SOFTWARE.
 #import "OOTexture.h"
 #import "OOColor.h"
 
-#import "NSStringOOExtensions.h"
+#import "OOStringBridge.h"
 #import "OOPListView.h"
 #import "NSDictionaryOOExtensions.h"
 #import "OOMaterialSpecifier.h"
 #import "ResourceManager.h"
 #import "OOFoundationException.h"
 #include "oofnd/StdLib.hpp"
+#include "oofnd/String.hpp"
 
 /* 
  * GNUstep 1.20.1 does not support NSIntegerHashCallBacks but uses 
@@ -453,7 +454,7 @@ static NSString *GetExtractMode(NSDictionary *textureSpecifier)
 {
 	NSUInteger typeDeclLength = [prefix length] + [type length] + 1;
 	NSUInteger padding = (typeDeclLength < 20) ? (23 - typeDeclLength) / 4 : 1;
-	[buffer appendFormat:@"%@ %@%@%@;\n", prefix, type, OOTabString(padding), name];
+	[buffer appendFormat:@"%@ %@%@%@;\n", prefix, type, oo::NSStringFrom(oo::str::tabString(padding)), name];
 }
 
 

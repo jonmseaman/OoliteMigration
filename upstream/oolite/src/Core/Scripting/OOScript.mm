@@ -259,10 +259,10 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 }
 
 
-- (id)scriptDescription	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)scriptDescription
 {
 	OO_LOG_ERR(cxx_kOOLogSubclassResponsibility, "{}", "OOScript should not be used directly!");
-	return nil;
+	return std::nullopt;
 }
 
 
