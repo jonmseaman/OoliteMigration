@@ -51,6 +51,8 @@ MA 02110-1301, USA.
 #include "oofnd/String.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
+#include <set>
+
 
 static unsigned RepForRisk(unsigned risk);
 
@@ -1498,13 +1500,55 @@ for (unsigned i=0;i<amount;i++)
 
 // ---------------------------------------------------------------------- 
 
-static NSMutableDictionary *currentShipyard = nil;
-
-
-- (OOCreditsQuantity) priceForShipKey:(NSString *)key
+namespace
 {
-	NSDictionary *shipInfo = oo::PListView(currentShipyard).get<NSDictionary *>(key);
-	return oo::PListView(shipInfo).get<unsigned long long>(SHIPYARD_KEY_PRICE);
+
+// Shipyard entries by SHIPYARD_KEY_ID, rebuilt by -setGuiToShipyardScreen:.
+static oo::PList::Dict currentShipyard;
+
+
+// -objectForKey: on currentShipyard (a copy: a script event may rebuild the screen); null if none.
+oo::PList CurrentShipyardEntry(const std::optional<std::string> &key)
+{
+	if (!key)  return oo::PList();
+	const auto it = currentShipyard.find(*key);
+	return it != currentShipyard.end() ? it->second : oo::PList();
+}
+
+
+// -oo_stringAtIndex: where the old code could read nil: a string, or a number's -stringValue.
+std::optional<std::string> OptionalStringAt(const oo::PList &array, std::size_t index)
+{
+	const oo::PList *value = array.at(index);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return array.at<std::string>(index);
+}
+
+
+// OOExpandKey(key, ...) with the arguments it would have named after their variables.
+std::string ExpandKey(const char *key, oo::PList::Dict arguments)
+{
+	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(std::string(key)), oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey));
+}
+
+
+// The labels row as the GUI holds it, padded to four columns.
+std::vector<std::string> ShipyardLabelsRow(GuiDisplayGen *gui)
+{
+	std::vector<std::string> row_info = oo::StringsFrom([gui objectForRow:GUI_ROW_SHIPYARD_LABELS]);
+	while (row_info.size() < 4)
+	{
+		row_info.emplace_back();
+	}
+	return row_info;
+}
+
+}	// namespace
+
+
+- (OOCreditsQuantity) cxx_priceForShipKey:(const std::string &)key
+{
+	return CurrentShipyardEntry(key).get<unsigned long long>("price");	// SHIPYARD_KEY_PRICE
 }
 
 
@@ -1537,18 +1581,17 @@ static NSMutableDictionary *currentShipyard = nil;
 	}
 		
 	std::vector<oo::PList> *stationShipyard = [station cxx_localShipyard];
-	NSArray *shipyard = stationShipyard != nullptr ? oo::ObjectFromPList(oo::PList(*stationShipyard)) : nil;	// read only here
+	const std::vector<oo::PList> shipyard = stationShipyard != nullptr ? *stationShipyard : std::vector<oo::PList>();	// read only here
 		
-	[currentShipyard release];
-	currentShipyard = [[NSMutableDictionary alloc] initWithCapacity:[shipyard count]];
+	currentShipyard.clear();
 
-	for (i = 0; i < [shipyard count]; i++)
+	for (i = 0; i < shipyard.size(); i++)
 	{
-		[currentShipyard setObject:[shipyard objectAtIndex:i]
-							forKey:oo::PListView(oo::PListView(shipyard).at<NSDictionary *>(i)).get<NSString *>(SHIPYARD_KEY_ID)];
+		const std::optional<std::string> shipID = OptionalStringForKey(shipyard[i], "id");	// SHIPYARD_KEY_ID
+		if (shipID)  currentShipyard[*shipID] = shipyard[i];	// (a nil key raised)
 	}
 	
-	NSUInteger shipCount = [shipyard count];
+	NSUInteger shipCount = shipyard.size();
 
 	//error check
 	if (skip >= shipCount)  skip = shipCount - 1;
@@ -1557,8 +1600,7 @@ static NSMutableDictionary *currentShipyard = nil;
 	// GUI stuff
 	{
 		[gui clearAndKeepBackground:!guiChanged];
-		NSString *system = [UNIVERSE getSystemName:system_id];
-		[gui setTitle:OOExpandKey(@"shipyard-title", system)];
+		[gui setTitle:oo::NSStringFrom(ExpandKey("shipyard-title", { { "system", oo::PListFrom([UNIVERSE getSystemName:system_id]) } }))];
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -1566,7 +1608,7 @@ static NSMutableDictionary *currentShipyard = nil;
 		tab_stops[2] = 270;
 		tab_stops[3] = 370;
 		tab_stops[4] = 450;
-		[gui overrideTabs:tab_stops from:kGuiShipyardTabs length:5];
+		[gui cxx_overrideTabs:tab_stops from:cxx_kGuiShipyardTabs length:5];
 		[gui setTabStops:tab_stops];
 		
 		int rowCount = MAX_ROWS_SHIPS_FOR_SALE;
@@ -1591,33 +1633,33 @@ static NSMutableDictionary *currentShipyard = nil;
 		
 		if (shipCount > 0)
 		{
-			[gui setColor:[gui colorFromSetting:kGuiShipyardHeadingColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_SHIPYARD_LABELS];
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"shipyard-shiptype"), DESC(@"shipyard-price-label"),
-					DESC(@"shipyard-cargo-label"), DESC(@"shipyard-speed-label"), nil] forRow:GUI_ROW_SHIPYARD_LABELS];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardHeadingColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_SHIPYARD_LABELS];
+			[gui cxx_setArray:{ oo::StdString(DESC(@"shipyard-shiptype")), oo::StdString(DESC(@"shipyard-price-label")),
+					oo::StdString(DESC(@"shipyard-cargo-label")), oo::StdString(DESC(@"shipyard-speed-label")) } forRow:GUI_ROW_SHIPYARD_LABELS];
 
 			if (skip > 0)
 			{
-				[gui setColor:[gui colorFromSetting:kGuiShipyardScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_SHIPYARD_START];
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ", nil] forRow:GUI_ROW_SHIPYARD_START];
-				[gui setKey:[NSString stringWithFormat:@"More:%zd", previous] forRow:GUI_ROW_SHIPYARD_START];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_SHIPYARD_START];
+				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " } forRow:GUI_ROW_SHIPYARD_START];
+				[gui cxx_setKey:oo::str::format("More:%zd", previous) forRow:GUI_ROW_SHIPYARD_START];
 			}
 			for (i = 0; i < (shipCount - skip) && (int)i < rowCount; i++)
 			{
-				NSDictionary* ship_info = oo::PListView(shipyard).at<NSDictionary *>(i + skip);
-				OOCreditsQuantity ship_price = oo::PListView(ship_info).get<unsigned long long>(SHIPYARD_KEY_PRICE);
-				[gui setColor:[gui colorFromSetting:kGuiShipyardEntryColor defaultValue:nil] forRow:startRow + i];
-				[gui setArray:[NSArray arrayWithObjects:
-						[NSString stringWithFormat:@" %@ ",oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(SHIPYARD_KEY_SHIP)).get<NSString *>(@"display_name", oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(SHIPYARD_KEY_SHIP)).get<NSString *>(KEY_NAME))],
-						OOIntCredits(ship_price),
-						nil]
+				const oo::PList &ship_info = shipyard[i + skip];
+				OOCreditsQuantity ship_price = ship_info.get<unsigned long long>("price");	// SHIPYARD_KEY_PRICE
+				const oo::PList *ship = ship_info.get<oo::PList::Dict>("ship");	// SHIPYARD_KEY_SHIP
+				std::optional<std::string> shipName = ship != nullptr ? OptionalStringForKey(*ship, "display_name") : std::nullopt;
+				if (!shipName && ship != nullptr)  shipName = OptionalStringForKey(*ship, "name");	// KEY_NAME
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardEntryColor defaultValue:nil] forRow:startRow + i];
+				[gui cxx_setArray:{ " " + shipName.value_or("(null)") + " ", oo::StdString(OOIntCredits(ship_price)) }
 					forRow:startRow + i];
-				[gui setKey:(NSString*)[ship_info objectForKey:SHIPYARD_KEY_ID] forRow:startRow + i];
+				[gui cxx_setKey:OptionalStringForKey(ship_info, "id").value_or("") forRow:startRow + i];	// SHIPYARD_KEY_ID
 			}
 			if (i < shipCount - skip)
 			{
-				[gui setColor:[gui colorFromSetting:kGuiShipyardScrollColor defaultValue:[OOColor greenColor]] forRow:startRow + i];
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ", nil] forRow:startRow + i];
-				[gui setKey:[NSString stringWithFormat:@"More:%zu", rowCount + skip] forRow:startRow + i];
+				[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardScrollColor defaultValue:[OOColor greenColor]] forRow:startRow + i];
+				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " } forRow:startRow + i];
+				[gui cxx_setKey:oo::str::format("More:%zu", rowCount + skip) forRow:startRow + i];
 				i++;
 			}
 
@@ -1628,8 +1670,8 @@ static NSMutableDictionary *currentShipyard = nil;
 		}
 		else
 		{
-			[gui setText:DESC(@"shipyard-no-ships-available-for-purchase") forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
-			[gui setColor:[gui colorFromSetting:kGuiShipyardNoshipColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_SHIPS];
+			[gui cxx_setText:oo::OptionalString(DESC(@"shipyard-no-ships-available-for-purchase")) forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardNoshipColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_SHIPS];
 			
 			[gui setNoSelectedRow];
 		}
@@ -1660,66 +1702,65 @@ static NSMutableDictionary *currentShipyard = nil;
 	
 	if (sel_row <= 0)  return;
 	
-	NSMutableArray *row_info = [NSMutableArray arrayWithArray:(NSArray*)[gui objectForRow:GUI_ROW_SHIPYARD_LABELS]];
-	while ([row_info count] < 4)
-	{
-		[row_info addObject:@""];
-	}
+	std::vector<std::string> row_info = ShipyardLabelsRow(gui);
 	
-	NSString *key = [gui keyForRow:sel_row];
-	
-	NSDictionary *info = oo::PListView(currentShipyard).get<NSDictionary *>(key);
+	const oo::PList info = CurrentShipyardEntry([gui cxx_keyForRow:sel_row]);
 
 	// clean up the display ready for the newly-selected ship (if there is one)
-	[row_info replaceObjectAtIndex:2 withObject:@""];
-	[row_info replaceObjectAtIndex:3 withObject:@""];
+	row_info[2] = "";
+	row_info[3] = "";
 	for (i = GUI_ROW_SHIPYARD_INFO_START; i < GUI_ROW_MARKET_CASH - 1; i++)
 	{
-		[gui setText:@"" forRow:i];
-		[gui setColor:[gui colorFromSetting:kGuiShipyardDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
+		[gui cxx_setText:"" forRow:i];
+		[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
 	}
 	[UNIVERSE removeDemoShips];
 
-	if (info)
+	if (!info.isNull())
 	{
 		// the key is a particular ship - show the details
-		NSString *salesPitch = oo::PListView(info).get<NSString *>(KEY_SHORT_DESCRIPTION);
-		NSDictionary *shipDict = oo::PListView(info).get<NSDictionary *>(SHIPYARD_KEY_SHIP);
+		const std::optional<std::string> salesPitch = OptionalStringForKey(info, "short_description");	// KEY_SHORT_DESCRIPTION
+		const oo::PList *shipDictNode = info.get<oo::PList::Dict>("ship");	// SHIPYARD_KEY_SHIP
+		const oo::PList shipDict = shipDictNode != nullptr ? *shipDictNode : oo::PList();
 		
-		int cargoRating = oo::PListView(shipDict).get<int>(@"max_cargo");
+		int cargoRating = shipDict.get<int>("max_cargo");
 		int cargo_extra;
-		cargo_extra = oo::PListView(shipDict).get<int>(@"extra_cargo", 15);
-		float speedRating = 0.001 * oo::PListView(shipDict).get<int>(@"max_flight_speed");
+		cargo_extra = shipDict.get<int>("extra_cargo", 15);
+		float speedRating = 0.001 * shipDict.get<int>("max_flight_speed");
 		
-		NSArray *shipExtras = oo::PListView(info).get<NSArray *>(KEY_EQUIPMENT_EXTRAS);
-		for (i = 0; i < [shipExtras count]; i++)
+		const oo::PList *shipExtras = info.get<oo::PList::Array>("extras");	// KEY_EQUIPMENT_EXTRAS
+		for (i = 0; shipExtras != nullptr && i < shipExtras->count(); i++)
 		{
-			if ([oo::PListView(shipExtras).at<NSString *>(i) isEqualToString:@"EQ_CARGO_BAY"])
+			if (shipExtras->at<std::string>(i) == "EQ_CARGO_BAY")
 			{
 				cargoRating += cargo_extra;
 			}
-			else if ([oo::PListView(shipExtras).at<NSString *>(i) isEqualToString:@"EQ_PASSENGER_BERTH"])
+			else if (shipExtras->at<std::string>(i) == "EQ_PASSENGER_BERTH")
 			{
 				cargoRating -= PASSENGER_BERTH_SPACE;
 			}
 		}
 		
-		[row_info replaceObjectAtIndex:2 withObject:OOExpandKey(@"shipyard-cargo-value", cargoRating)];
-		[row_info replaceObjectAtIndex:3 withObject:OOExpandKey(@"shipyard-speed-value", speedRating)];
+		row_info[2] = oo::StdString(OOExpandKey(@"shipyard-cargo-value", cargoRating));
+		row_info[3] = oo::StdString(OOExpandKey(@"shipyard-speed-value", speedRating));
 		
 		// Show footer first. It'll be overwritten by the sales_pitch if that text is longer than usual.
 		[self showTradeInInformationFooter];
-		i = [gui addLongText:salesPitch startingAtRow:GUI_ROW_SHIPYARD_INFO_START align:GUI_ALIGN_LEFT];
+		i = [gui cxx_addLongText:salesPitch startingAtRow:GUI_ROW_SHIPYARD_INFO_START align:GUI_ALIGN_LEFT];
 		if (i - 1 >= GUI_ROW_MARKET_CASH - 1)
 		{
-			[gui setColor:[gui colorFromSetting:kGuiShipyardDescriptionColor defaultValue:[OOColor greenColor]] forRow:i - 1];
-			[gui setColor:[gui colorFromSetting:kGuiShipyardDescriptionColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_CASH - 1];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardDescriptionColor defaultValue:[OOColor greenColor]] forRow:i - 1];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardDescriptionColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_CASH - 1];
 		}
 		
 		// now display the ship
-		[self showShipyardModel:oo::PListView(info).get<NSString *>(SHIPYARD_KEY_SHIPDATA_KEY)
-					   shipData:shipDict
-					personality:oo::PListView(info).get<unsigned short>(SHIPYARD_KEY_PERSONALITY)];
+		const std::optional<std::string> shipKey = OptionalStringForKey(info, "shipdata_key");	// SHIPYARD_KEY_SHIPDATA_KEY
+		if (shipKey)
+		{
+			[self cxx_showShipyardModel:*shipKey
+							   shipData:shipDict
+							personality:info.get<unsigned short>("personality")];	// SHIPYARD_KEY_PERSONALITY
+		}
 	}
 	else
 	{
@@ -1728,7 +1769,7 @@ static NSMutableDictionary *currentShipyard = nil;
 		// 
 	}
 
-	[gui setArray:[NSArray arrayWithArray:row_info] forRow:GUI_ROW_SHIPYARD_LABELS];
+	[gui cxx_setArray:row_info forRow:GUI_ROW_SHIPYARD_LABELS];
 }
 
 
@@ -1737,19 +1778,19 @@ static NSMutableDictionary *currentShipyard = nil;
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	OOCreditsQuantity tradeIn = [self tradeInValue];
 	OOCreditsQuantity total = tradeIn + credits;
-	NSString *shipType = [self displayName];
+	const oo::PList shipType = oo::PListFrom([self displayName]);
 	
-	[gui setColor:[gui colorFromSetting:kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH - 1];
-	[gui setColor:[gui colorFromSetting:kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];
-	[gui setText:OOExpandKey(@"shipyard-trade-in-value", shipType, tradeIn) forRow: GUI_ROW_MARKET_CASH - 1];
-	[gui setText:OOExpandKey(@"shipyard-total-available-with-trade-in", shipType, total, credits, tradeIn) forRow: GUI_ROW_MARKET_CASH];
+	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH - 1];
+	[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardTradeinColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];
+	[gui cxx_setText:ExpandKey("shipyard-trade-in-value", { { "shipType", shipType }, { "tradeIn", oo::PList::unsignedInteger(tradeIn) } }) forRow: GUI_ROW_MARKET_CASH - 1];
+	[gui cxx_setText:ExpandKey("shipyard-total-available-with-trade-in", { { "shipType", shipType }, { "total", oo::PList::unsignedInteger(total) }, { "credits", oo::PList::unsignedInteger(credits) }, { "tradeIn", oo::PList::unsignedInteger(tradeIn) } }) forRow: GUI_ROW_MARKET_CASH];
 }
 
 
-- (void) showShipyardModel:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality
+- (void) cxx_showShipyardModel:(const std::string &)shipKey shipData:(const oo::PList &)shipData personality:(uint16_t)personality
 {
-	if (shipKey == nil || [self dockedStation] == nil)  return;
-	[self showShipModelWithKey:shipKey shipData:shipData personality:personality factorX:1.2 factorY:0.8 factorZ:6.4 inContext:@"shipyard"];
+	if ([self dockedStation] == nil)  return;
+	[self showShipModelWithKey:oo::NSStringFrom(shipKey) shipData:oo::ObjectFromPList(shipData) personality:personality factorX:1.2 factorY:0.8 factorZ:6.4 inContext:@"shipyard"];
 }
 
 
@@ -1789,11 +1830,12 @@ static NSMutableDictionary *currentShipyard = nil;
 	
 	if (selectedRow <= 0)  return NO;
 	
-	NSString *key = [gui keyForRow:selectedRow];
+	const std::optional<std::string> key = [gui cxx_keyForRow:selectedRow];
 
-	if ([key hasPrefix:@"More:"])
+	if (key && oo::str::hasPrefix(*key, "More:"))
 	{
-		NSInteger fromShip = oo::PListView([key componentsSeparatedByString:@":"]).at<NSInteger>(1);
+		const std::vector<std::string> keyParts = oo::str::split(*key, ":");
+		NSInteger fromShip = keyParts.size() > 1 ? oo::str::longLongValue(keyParts[1]) : 0;
 		if (fromShip < 0)  fromShip = 0;
 		
 		[self setGuiToShipyardScreen:fromShip];
@@ -1807,46 +1849,48 @@ static NSMutableDictionary *currentShipyard = nil;
 		}
 		// next bit or the first ship on the list gets wrongly previewed
 		// clean up the display
-		NSMutableArray *row_info = [NSMutableArray arrayWithArray:(NSArray*)[gui objectForRow:GUI_ROW_SHIPYARD_LABELS]];
-		while ([row_info count] < 4)
-		{
-			[row_info addObject:@""];
-		}
-		[row_info replaceObjectAtIndex:2 withObject:@""];
-		[row_info replaceObjectAtIndex:3 withObject:@""];
+		std::vector<std::string> row_info = ShipyardLabelsRow(gui);
+		row_info[2] = "";
+		row_info[3] = "";
 		NSUInteger		i;
 		for (i = GUI_ROW_SHIPYARD_INFO_START; i < GUI_ROW_MARKET_CASH - 1; i++)
 		{
-			[gui setText:@"" forRow:i];
-			[gui setColor:[gui colorFromSetting:kGuiShipyardDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
+			[gui cxx_setText:"" forRow:i];
+			[gui setColor:[gui cxx_colorFromSetting:cxx_kGuiShipyardDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
 		}
-		[gui setArray:[NSArray arrayWithArray:row_info] forRow:GUI_ROW_SHIPYARD_LABELS];
+		[gui cxx_setArray:row_info forRow:GUI_ROW_SHIPYARD_LABELS];
 		[UNIVERSE removeDemoShips];
 		return YES;
 	}
 
 	// first check you can afford it!
-	NSDictionary *shipInfo = oo::PListView(currentShipyard).get<NSDictionary *>(key);
-	OOCreditsQuantity price = oo::PListView(shipInfo).get<unsigned long long>(SHIPYARD_KEY_PRICE);
+	const oo::PList shipInfo = CurrentShipyardEntry(key);
+	OOCreditsQuantity price = shipInfo.get<unsigned long long>("price");	// SHIPYARD_KEY_PRICE
 	OOCreditsQuantity tradeIn = [self tradeInValue];
 
 	if (credits + tradeIn < price * 10)
 		return NO;	// you can't afford it!
 	
 	// from this point, the player is committed to buying - raise a pre-buy script event
+	const std::optional<std::string> shipDataKey = OptionalStringForKey(shipInfo, "shipdata_key");	// SHIPYARD_KEY_SHIPDATA_KEY
 	std::vector<oo::PList> *dockedShipyard = [[self dockedStation] cxx_localShipyard];
 	const NSUInteger boughtIndex = selectedRow - GUI_ROW_SHIPYARD_START;
+	oo::PList::Array buyArguments;
+	for (const oo::PList &argument : { shipDataKey ? oo::PList(*shipDataKey) : oo::PList(),
+			(dockedShipyard != nullptr && boughtIndex < dockedShipyard->size()) ? (*dockedShipyard)[boughtIndex] : oo::PList(),
+			oo::PList::unsignedInteger(price),
+			oo::PList::unsignedInteger(tradeIn / 10) })
+	{
+		if (argument.isNull())  break;	// +arrayWithObjects: stopped at the first nil
+		buyArguments.push_back(argument);
+	}
 	[self doScriptEvent:OOJSID("playerWillBuyNewShip") 
-		withArguments:[NSArray arrayWithObjects:oo::PListView(shipInfo).get<NSString *>(SHIPYARD_KEY_SHIPDATA_KEY), 
-			(dockedShipyard != nullptr && boughtIndex < dockedShipyard->size()) ? oo::ObjectFromPList((*dockedShipyard)[boughtIndex]) : nil, 
-			[NSNumber numberWithUnsignedLongLong:price], 
-			[NSNumber numberWithUnsignedLongLong:(tradeIn / 10)], nil]];
+		withArguments:oo::ObjectFromPList(oo::PList(std::move(buyArguments)))];
 
 	// sell all the commodities carried
-	NSString *good = nil;
-	foreach (good, [shipCommodityData goods])
+	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
 	{
-		[self trySellingCommodity:good all:YES];
+		[self trySellingCommodity:oo::NSStringFrom(good) all:YES];
 	}
 	// We tried to sell everything. If there are still items present in our inventory, it
 	// means that the market got saturated (quantity in station > 127 t) before we could sell
@@ -1855,40 +1899,40 @@ static NSMutableDictionary *currentShipyard = nil;
 	// pay over the mazoolah
 	credits -= 10 * price - tradeIn;
 	
-	NSDictionary *shipDict = oo::PListView(shipInfo).get<NSDictionary *>(SHIPYARD_KEY_SHIP);
-	[self newShipCommonSetup:oo::PListView(shipInfo).get<NSString *>(SHIPYARD_KEY_SHIPDATA_KEY) yardInfo:shipInfo baseInfo:shipDict];
+	const oo::PList *shipDictNode = shipInfo.get<oo::PList::Dict>("ship");	// SHIPYARD_KEY_SHIP
+	[self newShipCommonSetup:shipDataKey.value_or("") yardInfo:shipInfo baseInfo:shipDictNode != nullptr ? *shipDictNode : oo::PList()];
 
 	// this ship has a clean record
 	legalStatus = 0;
 
-	NSArray *extras = oo::PListView(shipInfo).get<NSArray *>(KEY_EQUIPMENT_EXTRAS);
-	for (NSUInteger i = 0; i < [extras count]; i++)
+	const oo::PList *extras = shipInfo.get<oo::PList::Array>("extras");	// KEY_EQUIPMENT_EXTRAS
+	for (std::size_t i = 0; extras != nullptr && i < extras->count(); i++)
 	{
-		NSString *eq_key = oo::PListView(extras).at<NSString *>(i);
-		if ([eq_key isEqualToString:@"EQ_PASSENGER_BERTH"])
+		const std::optional<std::string> eq_key = OptionalStringAt(*extras, i);
+		if (eq_key == "EQ_PASSENGER_BERTH")
 		{
 			max_passengers++;
 			max_cargo -= PASSENGER_BERTH_SPACE;
 		}
 		else
 		{
-			[self addEquipmentItem:eq_key withValidation:YES inContext:@"newShip"]; 
+			[self addEquipmentItem:oo::NSStringOrNil(eq_key) withValidation:YES inContext:@"newShip"];
 		}
 	}
 
 	// add bought ship to shipyard_record
-	[shipyard_record setObject:[self shipDataKey] forKey:[shipInfo objectForKey:SHIPYARD_KEY_ID]];
+	const std::optional<std::string> shipID = OptionalStringForKey(shipInfo, "id");	// SHIPYARD_KEY_ID
+	if (shipID)  shipyard_record[*shipID] = oo::PListFrom([self shipDataKey]);	// (a nil key raised)
 	
 	// remove the ship from the localShipyard
 	dockedShipyard = [[self dockedStation] cxx_localShipyard];
 	if (dockedShipyard != nullptr)  dockedShipyard->erase(dockedShipyard->begin() + (selectedRow - GUI_ROW_SHIPYARD_START));
 	
 	// perform the transformation
-	NSDictionary* cmdr_dict = [self commanderDataDictionary];	// gather up all the info
-	if (![self setCommanderDataFromDictionary:cmdr_dict])  return NO;
+	if (![self setCommanderDataFromDictionary:[self commanderDataDictionary]])  return NO;	// gather up all the info
 
 	[self setStatus:STATUS_DOCKED];
-	[self setEntityPersonalityInt:oo::PListView(shipInfo).get<unsigned short>(SHIPYARD_KEY_PERSONALITY)];
+	[self setEntityPersonalityInt:shipInfo.get<unsigned short>("personality")];	// SHIPYARD_KEY_PERSONALITY
 	
 	// adjust the clock forward by an hour
 	ship_clock_adjust += 3600.0;
@@ -1901,48 +1945,49 @@ static NSMutableDictionary *currentShipyard = nil;
 	return YES;
 }
 
-- (BOOL) replaceShipWithNamedShip:(NSString *)shipKey
+- (BOOL) cxx_replaceShipWithNamedShip:(const std::string &)shipKey
 {
 
-	NSDictionary *ship_info = [[OOShipRegistry sharedRegistry] shipyardInfoForKey:shipKey];
+	const oo::PList ship_info = [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:shipKey];
 	
-	NSDictionary *ship_base_dict = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
+	const oo::PList ship_base_dict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
 
-	if (ship_info == nil || ship_base_dict == nil) {
+	if (ship_info.isNull() || ship_base_dict.isNull()) {
 		return NO;
 	}
 
 	// from this point, the player is committed to replacing - raise a pre-replace script event
-	[self doScriptEvent:OOJSID("playerWillReplaceShip") withArgument:shipKey];
+	[self doScriptEvent:OOJSID("playerWillReplaceShip") withArgument:oo::NSStringFrom(shipKey)];
 
 	[self newShipCommonSetup:shipKey yardInfo:ship_info baseInfo:ship_base_dict];
 
 	// perform the transformation
-	NSDictionary* cmdr_dict = [self commanderDataDictionary];	// gather up all the info
-	if (![self setCommanderDataFromDictionary:cmdr_dict])  return NO;
+	if (![self setCommanderDataFromDictionary:[self commanderDataDictionary]])  return NO;	// gather up all the info
 
 	// refill from ship_info
-	NSArray* extras = [NSMutableArray arrayWithArray:oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
-	for (unsigned i = 0; i < [extras count]; i++)
+	const oo::PList *standardEquipment = ship_info.get<oo::PList::Dict>("standard_equipment");	// KEY_STANDARD_EQUIPMENT
+	const oo::PList *extrasNode = standardEquipment != nullptr ? standardEquipment->get<oo::PList::Array>("extras") : nullptr;	// KEY_EQUIPMENT_EXTRAS
+	const oo::PList extras = extrasNode != nullptr ? *extrasNode : oo::PList();
+	for (unsigned i = 0; i < extras.count(); i++)
 	{
-		NSString* eq_key = oo::PListView(extras).at<NSString *>(i);
-		if ([eq_key isEqualToString:@"EQ_PASSENGER_BERTH"])
+		const std::optional<std::string> eq_key = OptionalStringAt(extras, i);
+		if (eq_key == "EQ_PASSENGER_BERTH")
 		{
 			max_passengers++;
 			max_cargo -= PASSENGER_BERTH_SPACE;
 		}
 		else
 		{
-			[self addEquipmentItem:eq_key withValidation:YES inContext:@"newShip"]; 
+			[self addEquipmentItem:oo::NSStringOrNil(eq_key) withValidation:YES inContext:@"newShip"];
 		}
 	}
 
-	[self setEntityPersonalityInt:oo::PListView(ship_info).get<unsigned short>(SHIPYARD_KEY_PERSONALITY)];
+	[self setEntityPersonalityInt:ship_info.get<unsigned short>("personality")];	// SHIPYARD_KEY_PERSONALITY
 	
 	return YES;
 }
 
-- (void) newShipCommonSetup:(NSString *)shipKey yardInfo:(NSDictionary *)ship_info baseInfo:(NSDictionary *)ship_base_dict 
+- (void) newShipCommonSetup:(const std::string &)shipKey yardInfo:(const oo::PList &)ship_info baseInfo:(const oo::PList &)ship_base_dict
 {
 	// Zero out our manifest.
 	[shipCommodityData removeAllGoods];
@@ -1958,36 +2003,36 @@ static NSMutableDictionary *currentShipyard = nil;
 	
 	[self clearSubEntities];
 
-	[self setShipDataKey:shipKey];
+	[self setShipDataKey:oo::NSStringFrom(shipKey)];
 
-	NSDictionary *shipDict = ship_base_dict;
+	const oo::PList &shipDict = ship_base_dict;
 
 
 	// get a full tank for free
 	[self setFuel:[self fuelCapacity]];
 	
 	// get forward_weapon aft_weapon port_weapon starboard_weapon from ship_info
-	int base_facings = oo::PListView(shipDict).get<unsigned int>(KEY_WEAPON_FACINGS, 15);
-	int available_facings = oo::PListView(ship_info).get<unsigned int>(KEY_WEAPON_FACINGS, base_facings);
+	int base_facings = shipDict.get<unsigned int>("weapon_facings", 15);	// KEY_WEAPON_FACINGS
+	int available_facings = ship_info.get<unsigned int>("weapon_facings", base_facings);
 
 	// not retained - weapon types are references to the objects in OOEquipmentType's cache
 	if (available_facings & WEAPON_FACING_AFT)
-		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::PListView(shipDict).get<NSString *>(@"aft_weapon_type"));
+		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(OptionalStringForKey(shipDict, "aft_weapon_type")));
 	else
 		aft_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_PORT)
-		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::PListView(shipDict).get<NSString *>(@"port_weapon_type"));
+		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(OptionalStringForKey(shipDict, "port_weapon_type")));
 	else
 		port_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_STARBOARD)
-		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::PListView(shipDict).get<NSString *>(@"starboard_weapon_type"));
+		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(OptionalStringForKey(shipDict, "starboard_weapon_type")));
 	else
 		starboard_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
 
 	if (available_facings & WEAPON_FACING_FORWARD)
-		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::PListView(shipDict).get<NSString *>(@"forward_weapon_type"));
+		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(OptionalStringForKey(shipDict, "forward_weapon_type")));
 	else
 		forward_weapon_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_NONE");
 	
@@ -2001,7 +2046,7 @@ static NSMutableDictionary *currentShipyard = nil;
 	[self tidyMissilePylons];
 
 	// get missiles from ship_info
-	missiles = oo::PListView(shipDict).get<unsigned int>(@"missiles");
+	missiles = shipDict.get<unsigned int>("missiles");
 	
 	// reset max_passengers
 	max_passengers = 0;
@@ -2010,24 +2055,21 @@ static NSMutableDictionary *currentShipyard = nil;
 	
 	// keep track of portable equipment..
 
-	NSMutableSet	*portable_equipment = [NSMutableSet set];
-	NSEnumerator	*eqEnum = nil;
-	NSString		*eq_desc = nil;
-	OOEquipmentType	*item = nil;
+	std::set<std::string>	portable_equipment;
 	
-	for (eqEnum = [self equipmentEnumerator]; (eq_desc = [eqEnum nextObject]);)
+	for (const std::string &eq_desc : oo::StringsFrom([self equipmentEnumerator]))
 	{
-		item = [OOEquipmentType equipmentTypeWithIdentifier:eq_desc];
-		if ([item isPortableBetweenShips])  [portable_equipment addObject:eq_desc];
+		OOEquipmentType *item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eq_desc)];
+		if ([item isPortableBetweenShips])  portable_equipment.insert(eq_desc);
 	}
 	
 	// remove ALL
 	[self removeAllEquipment];
 	
-	// restore  portable equipment
-	for (eqEnum = [portable_equipment objectEnumerator]; (eq_desc = [eqEnum nextObject]); )
+	// restore  portable equipment (in key order; the set it replaced gave hash order)
+	for (const std::string &eq_desc : portable_equipment)
 	{
-		[self addEquipmentItem:eq_desc withValidation:NO inContext:@"portable"];
+		[self addEquipmentItem:oo::NSStringFrom(eq_desc) withValidation:NO inContext:@"portable"];
 	}
 
 
@@ -2035,7 +2077,7 @@ static NSMutableDictionary *currentShipyard = nil;
 	[self setUpSubEntities];
 
 	// clear old ship names
-	[self setShipClassName:oo::PListView(shipDict).get<NSString *>(@"name")];
+	[self setShipClassName:oo::NSStringOrNil(OptionalStringForKey(shipDict, "name"))];
 	[self setShipUniqueName:@""];
 
 	// new ship, so lose some memory of actions

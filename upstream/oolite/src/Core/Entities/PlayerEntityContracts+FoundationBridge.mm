@@ -99,4 +99,25 @@ type, nil for nil).
 	return oo::NSArrayFromStrings([self cxx_contractList]);
 }
 
+
+// oo-3rb.184 (chunk 6): shipyard (a nil key arrives as "", which no shipyard entry or ship has)
+
+- (void) showShipyardModel:(NSString *)shipKey shipData:(NSDictionary *)shipDict personality:(uint16_t)personality
+{
+	if (shipKey == nil)  return;
+	[self cxx_showShipyardModel:oo::StdString(shipKey) shipData:oo::PListFrom(shipDict) personality:personality];
+}
+
+
+- (OOCreditsQuantity) priceForShipKey:(NSString *)key
+{
+	return [self cxx_priceForShipKey:oo::StdString(key)];
+}
+
+
+- (BOOL) replaceShipWithNamedShip:(NSString *)shipName
+{
+	return [self cxx_replaceShipWithNamedShip:oo::StdString(shipName)];
+}
+
 @end
