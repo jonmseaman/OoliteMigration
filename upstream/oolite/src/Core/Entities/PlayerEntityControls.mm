@@ -5159,7 +5159,7 @@ static BOOL autopilot_pause;
 					if ([oxzmanager isAcceptingTextInput])
 					{
 						[gameView setStringInput: gvStringInputAll];
-						[oxzmanager refreshTextInput:[gameView typedString]];
+						[oxzmanager refreshTextInput:[gameView cxx_typedString].value_or(std::string())];
 					}
 					else
 					{
@@ -5192,7 +5192,7 @@ static BOOL autopilot_pause;
 						{
 							if ([oxzmanager isAcceptingTextInput])
 							{
-								[oxzmanager processTextInput:[gameView typedString]];
+								[oxzmanager processTextInput:[gameView cxx_typedString].value_or(std::string())];
 							}
 							else
 							{

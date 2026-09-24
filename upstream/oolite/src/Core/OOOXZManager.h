@@ -89,7 +89,7 @@ typedef enum {
 
 	NSUInteger			_offset;
 
-	NSString			*_progressStatus;
+	std::string			_progressStatus;	// "" when there is none
 	NSMutableSet		*_dependencyStack;
 }
 
@@ -111,8 +111,8 @@ typedef enum {
 - (BOOL) isAcceptingGUIInput;
 
 - (void) processSelection;
-- (void) processTextInput:(NSString *)input;
-- (void) refreshTextInput:(NSString *)input;
+- (void) processTextInput:(const std::string &)input;
+- (void) refreshTextInput:(const std::string &)input;
 - (void) processFilterKey;
 - (void) processShowInfoKey;
 - (void) processExtractKey;
