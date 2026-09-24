@@ -1097,8 +1097,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	if (specialCargo)  [result setObject:specialCargo forKey:@"special_cargo"];
 	
 	// contracts
-	[result setObject:contracts forKey:@"contracts"];
-	[result setObject:contract_record forKey:@"contract_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(contracts)) forKey:@"contracts"];
+	[result setObject:oo::ObjectFromPList(oo::PList(contract_record)) forKey:@"contract_record"];
 
 	[result setObject:missionDestinations forKey:@"mission_destinations"];
 
@@ -1430,8 +1430,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[self normaliseReputation];
 
 	// passengers and contracts
-	[contracts release];
-	[contract_record release];
 	
 	max_passengers = oo::PListView(dict).get<int>(@"max_passengers", 0);
 	const oo::PList savedPassengers = oo::PListFrom([dict objectForKey:@"passengers"]);
@@ -1440,34 +1438,38 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	passenger_record = savedPassengerRecord.isDict() ? *savedPassengerRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 	/* Note: contracts from older savegames will have ints in the commodity.
 	 * Need to fix this up */
-	contracts = [oo::PListView(dict).get<NSArray *>(@"contracts") mutableCopy];
-	NSMutableDictionary *contractInfo = nil;
+	const oo::PList savedContracts = oo::PListFrom([dict objectForKey:@"contracts"]);
+	contracts = savedContracts.isArray() ? *savedContracts.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
 
 	// iterate downwards; lets us remove invalid ones as we go
-	for (NSInteger i = (NSInteger)[contracts count] - 1; i >= 0; i--)
+	for (NSInteger i = (NSInteger)contracts.size() - 1; i >= 0; i--)
 	{
-		contractInfo = [[oo::PListView(contracts).at<NSDictionary *>(i) mutableCopy] autorelease];
+		oo::PList contractInfo = contracts[i].isDict() ? contracts[i] : oo::PList(oo::PList::Dict());
+		const oo::PList *cargoType = contractInfo.find(oo::StdString(CARGO_KEY_TYPE));
 		// if the trade good ID is an int
-		if ([[contractInfo objectForKey:CARGO_KEY_TYPE] isKindOfClass:[NSNumber class]])
+		if (cargoType != nullptr && cargoType->isNumber())
 		{
 			// look it up, and replace with a string
-			NSUInteger legacy_type = oo::PListView(contractInfo).get<NSUInteger>(CARGO_KEY_TYPE);
-			[contractInfo setObject:[OOCommodities legacyCommodityType:legacy_type] forKey:CARGO_KEY_TYPE];
-			[contracts replaceObjectAtIndex:i withObject:[[contractInfo copy] autorelease]];
+			NSUInteger legacy_type = contractInfo.get<NSUInteger>(oo::StdString(CARGO_KEY_TYPE));
+			(*contractInfo.getIf<oo::PList::Dict>())[oo::StdString(CARGO_KEY_TYPE)] = oo::PList(oo::StdString([OOCommodities legacyCommodityType:legacy_type]));
+			contracts[i] = std::move(contractInfo);
 		}
 		else
 		{
-			OOCommodityType new_type = oo::PListView(contractInfo).get<NSString *>(CARGO_KEY_TYPE);
+			// -oo_stringForKey: (nil when absent)
+			const oo::PList *typeValue = contractInfo.find(oo::StdString(CARGO_KEY_TYPE));
+			const std::optional<std::string> new_type = (typeValue != nullptr && typeValue->isString()) ? std::optional<std::string>(*typeValue->getIf<std::string>()) : std::nullopt;
 			// check that that the type still exists
-			if (![[UNIVERSE commodities] goodDefined:new_type])
+			if (![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(new_type)])
 			{
-				OOLog(@"setCommanderDataFromDictionary.warning.contract",@"Cargo contract to deliver %@ could not be loaded from the saved game, as the commodity is no longer defined",new_type);
-				[contracts removeObjectAtIndex:i];
+				OOLog(@"setCommanderDataFromDictionary.warning.contract",@"Cargo contract to deliver %@ could not be loaded from the saved game, as the commodity is no longer defined",oo::NSStringOrNil(new_type));
+				contracts.erase(contracts.begin() + i);
 			}
 		}
 	}
 
-	contract_record = [oo::PListView(dict).get<NSDictionary *>(@"contract_record") mutableCopy];
+	const oo::PList savedContractRecord = oo::PListFrom([dict objectForKey:@"contract_record"]);
+	contract_record = savedContractRecord.isDict() ? *savedContractRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 	const oo::PList savedParcels = oo::PListFrom([dict objectForKey:@"parcels"]);
 	parcels = savedParcels.isArray() ? *savedParcels.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
 	const oo::PList savedParcelRecord = oo::PListFrom([dict objectForKey:@"parcel_record"]);
@@ -1475,8 +1477,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 	
 	
-	if (contracts == nil)  contracts = [[NSMutableArray alloc] init];
-	if (contract_record == nil)  contract_record = [[NSMutableDictionary alloc] init];
 	
 	//specialCargo
 	[specialCargo release];
@@ -2046,10 +2046,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	passengers.clear();
 	passenger_record.clear();
 	
-	[contracts release];
-	contracts = [[NSMutableArray alloc] init];
-	[contract_record release];
-	contract_record = [[NSMutableDictionary alloc] init];
+	contracts.clear();
+	contract_record.clear();
 
 	parcels.clear();
 	parcel_record.clear();
@@ -2404,8 +2402,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(roleWeights);
 	DESTROY(roleWeightFlags);
 	DESTROY(roleSystemList);
-	DESTROY(contracts);
-	DESTROY(contract_record);
 	DESTROY(missionDestinations);
 	DESTROY(shipyard_record);
 	
@@ -7530,8 +7526,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[UNIVERSE removeAllEntitiesExceptPlayer];
 	
 	// remove any contracts and parcels for the old galaxy
-	if (contracts)
-		[contracts removeAllObjects];
+	contracts.clear();
 
 	parcels.clear();
 	
@@ -8458,7 +8453,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (NSArray *) contractListForScripting
 {
-	return [self contractsListForScriptingFromArray:contracts forCargo:YES];
+	return [self contractsListForScriptingFromArray:oo::ObjectFromPList(oo::PList(contracts)) forCargo:YES];
 }
 
 - (void) setGuiToSystemDataScreen
@@ -8728,9 +8723,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		marker = [self parcelContractMarker:sysid];
 		[self prepareMarkedDestination:destinations:marker];
 	}
-	for (i = 0; i < [contracts count]; i++)
+	for (i = 0; i < contracts.size(); i++)
 	{
-		sysid = oo::PListView(oo::PListView(contracts).at<NSDictionary *>(i)).get<unsigned char>(CONTRACT_KEY_DESTINATION);
+		sysid = contracts[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
 		marker = [self cargoContractMarker:sysid];
 		[self prepareMarkedDestination:destinations:marker];
 	}

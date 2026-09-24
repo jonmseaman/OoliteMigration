@@ -40,6 +40,14 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityContracts
 - (BOOL) addParcel:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk;	// -> -cxx_addParcel:start:destination:eta:fee:premium:risk:
 - (BOOL) removeParcel:(NSString*)Name;	// -> -cxx_removeParcel:
 
+// oo-3rb.183 (chunk 5): cargo contracts and manifest lists
+- (OOCargoQuantity) contractedVolumeForGood:(OOCommodityType) good;	// -> -cxx_contractedVolumeForGood:
+- (BOOL) awardContract:(unsigned)qty commodity:(NSString*)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium;	// -> -cxx_awardContract:commodity:start:destination:eta:fee:premium:
+- (BOOL) removeContract:(NSString*)commodity destination:(unsigned)destination;	// -> -cxx_removeContract:destination:
+- (NSArray *) passengerList;	// -> -cxx_passengerList
+- (NSArray *) parcelList;	// -> -cxx_parcelList
+- (NSArray *) contractList;	// -> -cxx_contractList
+
 @end
 
 #endif	// PLAYERENTITYCONTRACTS_FOUNDATIONBRIDGE_H

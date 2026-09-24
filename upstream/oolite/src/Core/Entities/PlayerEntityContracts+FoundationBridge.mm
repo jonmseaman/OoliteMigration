@@ -61,4 +61,42 @@ type, nil for nil).
 	return [self cxx_removeParcel:oo::StdString(Name)];
 }
 
+
+// oo-3rb.183 (chunk 5): cargo contracts and manifest lists (a nil commodity arrives as "")
+
+- (OOCargoQuantity) contractedVolumeForGood:(OOCommodityType) good
+{
+	return [self cxx_contractedVolumeForGood:oo::StdString(good)];
+}
+
+
+- (BOOL) awardContract:(unsigned)qty commodity:(NSString*)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium
+{
+	return [self cxx_awardContract:qty commodity:oo::StdString(commodity) start:start destination:destination eta:eta fee:fee premium:premium];
+}
+
+
+- (BOOL) removeContract:(NSString*)commodity destination:(unsigned)destination
+{
+	return [self cxx_removeContract:oo::StdString(commodity) destination:destination];
+}
+
+
+- (NSArray *) passengerList
+{
+	return oo::NSArrayFromStrings([self cxx_passengerList]);
+}
+
+
+- (NSArray *) parcelList
+{
+	return oo::NSArrayFromStrings([self cxx_parcelList]);
+}
+
+
+- (NSArray *) contractList
+{
+	return oo::NSArrayFromStrings([self cxx_contractList]);
+}
+
 @end
