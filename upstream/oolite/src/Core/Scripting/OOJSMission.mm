@@ -245,12 +245,12 @@ void MissionRunCallback()
 	@catch (OOException *exception)
 	{
 		// Squash any exception, allow cleanup to happen and so forth.
-		OOLog(kOOLogException, @"Ignoring exception %@:%@ during handling of mission screen completion callback.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", [exception name], [exception reason]);
 	}
 	@catch (OOFoundationException *exception)
 	{
 		// Squash any exception, allow cleanup to happen and so forth.
-		OOLog(kOOLogException, @"Ignoring exception %@:%@ during handling of mission screen completion callback.", [exception name], [exception reason]);
+		OO_LOG(cxx_kOOLogException, "Ignoring exception {}:{} during handling of mission screen completion callback.", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 	}
 	[OOJSScript popScript:cbScript];
 	

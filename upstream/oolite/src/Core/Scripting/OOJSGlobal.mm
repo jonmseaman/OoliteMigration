@@ -419,7 +419,7 @@ static bool GlobalLog(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	else
 	{
 		messageClass = oo::StdString(OOStringFromJSValueEvenIfNull(context, OOJS_ARGV[0]));
-		if (!OOLogWillDisplayMessagesInClass(oo::NSStringFrom(messageClass)))
+		if (!oo::log::willDisplay(messageClass))
 		{
 			// Do nothing (and short-circuit) if message class is filtered out.
 			OOJS_RETURN_VOID;
@@ -436,7 +436,7 @@ static bool GlobalLog(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	OOLog(oo::NSStringFrom(messageClass), @"%@", oo::NSStringOrNil(message));
+	OO_LOG(messageClass, "{}", message.value_or("(null)"));
 	
 #if OOJSENGINE_MONITOR_SUPPORT
 	[[OOJavaScriptEngine sharedEngine] sendMonitorLogMessage:message
@@ -1092,7 +1092,7 @@ static bool GlobalQuitGame(ooscript::Context context, ooscript::CallArgs &oojsAr
 	
 	OOJS_NATIVE_ENTER(context)
 
-	OOLog(@"script.debug.quit", @"%@", @"Quit requested via JavaScript global.quitGame()");
+	OO_LOG("script.debug.quit", "{}", "Quit requested via JavaScript global.quitGame()");
 
 	[UNIVERSE quitGame];
 
