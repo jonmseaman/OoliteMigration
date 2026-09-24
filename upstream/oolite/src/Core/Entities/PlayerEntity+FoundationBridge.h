@@ -91,6 +91,11 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (BOOL) tryBuyingCommodity:(OOCommodityType)type all:(BOOL)all;	// -> -cxx_tryBuyingCommodity:all:
 - (BOOL) trySellingCommodity:(OOCommodityType)type all:(BOOL)all;	// -> -cxx_trySellingCommodity:all:
 
+// oo-3rb.248: missiles, pylons, damage, bounty, equipment add/remove and comms
+- (BOOL) assignToActivePylon:(NSString *)identifierKey;	// -> -cxx_assignToActivePylon:
+- (BOOL) mountMissileWithRole:(NSString *)role;	// -> -cxx_mountMissileWithRole:
+- (BOOL) endScenario:(NSString *)key;	// -> -cxx_endScenario: (nil: NO)
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H

@@ -5876,15 +5876,17 @@ static GLfloat		sBaseMass = 0.0;
 /////////////////////////////////////////////////////////////////////
 
 
-- (void) interpretAIMessage:(NSString *)ms
+- (void) interpretAIMessage:(id)ms	// shared selector (proposed ADR-0043): an Objective-C string
 {
-	if ([ms isEqual:@"HOLD_FULL"])
+	const std::optional<std::string> message = oo::OptionalString(ms);
+
+	if ((message == "HOLD_FULL"))
 	{
 		[self playHoldFull];
 		[UNIVERSE addMessage:DESC(@"hold-full") forCount:4.5];
 	}
 
-	if ([ms isEqual:@"INCOMING_MISSILE"])
+	if ((message == "INCOMING_MISSILE"))
 	{
 		if ([self primaryAggressor] != nil)
 		{
@@ -5897,14 +5899,14 @@ static GLfloat		sBaseMass = 0.0;
 		[UNIVERSE addMessage:DESC(@"incoming-missile") forCount:4.5];
 	}
 
-	if ([ms isEqual:@"ENERGY_LOW"])
+	if ((message == "ENERGY_LOW"))
 	{
 		[UNIVERSE addMessage:DESC(@"energy-low") forCount:6.0];
 	}
 
-	if ([ms isEqual:@"ECM"] && ![self isDocked])  [self playHitByECMSound];
+	if ((message == "ECM") && ![self isDocked])  [self playHitByECMSound];
 
-	if ([ms isEqual:@"DOCKING_REFUSED"] && [self status] == STATUS_AUTOPILOT_ENGAGED)
+	if ((message == "DOCKING_REFUSED") && [self status] == STATUS_AUTOPILOT_ENGAGED)
 	{
 		[self playDockingDenied];
 		[UNIVERSE addMessage:DESC(@"autopilot-denied") forCount:4.5];
@@ -5919,17 +5921,17 @@ static GLfloat		sBaseMass = 0.0;
 	// aegis messages to advanced compass so in planet mode it behaves like the old compass
 	if (compassMode != COMPASS_MODE_BASIC)
 	{
-		if ([ms isEqual:@"AEGIS_CLOSE_TO_MAIN_PLANET"]&&(compassMode == COMPASS_MODE_PLANET))
+		if ((message == "AEGIS_CLOSE_TO_MAIN_PLANET")&&(compassMode == COMPASS_MODE_PLANET))
 		{
 			[self playAegisCloseToPlanet];
 			[self setCompassMode:COMPASS_MODE_STATION];
 		}
-		if ([ms isEqual:@"AEGIS_IN_DOCKING_RANGE"]&&(compassMode == COMPASS_MODE_PLANET))
+		if ((message == "AEGIS_IN_DOCKING_RANGE")&&(compassMode == COMPASS_MODE_PLANET))
 		{
 			[self playAegisCloseToStation];
 			[self setCompassMode:COMPASS_MODE_STATION];
 		}
-		if ([ms isEqual:@"AEGIS_NONE"]&&(compassMode == COMPASS_MODE_STATION))
+		if ((message == "AEGIS_NONE")&&(compassMode == COMPASS_MODE_STATION))
 		{
 			[self setCompassMode:COMPASS_MODE_PLANET];
 		}
@@ -5958,17 +5960,17 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (BOOL) mountMissileWithRole:(NSString *)role
+- (BOOL) cxx_mountMissileWithRole:(const std::string &)role
 {
 	if ([self missileCount] >= [self missileCapacity]) return NO;
-	return [self mountMissile:[[UNIVERSE newShipWithRole:role] autorelease]];
+	return [self mountMissile:[[UNIVERSE newShipWithRole:oo::NSStringFrom(role)] autorelease]];
 }
 
 
 - (ShipEntity *) fireMissile
 {
 	ShipEntity	*missile = missile_entity[activeMissile];	// retain count is 1
-	NSString	*identifier = [missile primaryRole];
+	const std::optional<std::string>	identifier = oo::OptionalString([missile primaryRole]);	// a copy: the missile goes below
 	ShipEntity	*firedMissile = nil;
 
 	if (missile == nil) return nil;
@@ -5987,18 +5989,18 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		firedMissile = [self launchMine:missile];
 		if (!replacingMissile) [self removeFromPylon:activeMissile];
-		if (firedMissile != nil) [self playMineLaunched:[self missileLaunchPosition] weaponIdentifier:identifier];
+		if (firedMissile != nil) [self cxx_playMineLaunched:[self missileLaunchPosition] weaponIdentifier:identifier.value_or(std::string())];
 	}
 	else
 	{
 		if (missile_status != MISSILE_STATUS_TARGET_LOCKED) return nil;
 		//  release this before creating it anew in fireMissileWithIdentifier
-		firedMissile = [self fireMissileWithIdentifier:identifier andTarget:[missile primaryTarget]];
+		firedMissile = [self cxx_fireMissileWithIdentifier:identifier andTarget:[missile primaryTarget]];
 
 		if (firedMissile != nil)
 		{
 			if (!replacingMissile) [self removeFromPylon:activeMissile];
-			[self playMissileLaunched:[self missileLaunchPosition] weaponIdentifier:identifier];
+			[self cxx_playMissileLaunched:[self missileLaunchPosition] weaponIdentifier:identifier.value_or(std::string())];
 		}
 	}
 	
@@ -6038,19 +6040,19 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (BOOL) assignToActivePylon:(NSString *)equipmentKey
+- (BOOL) cxx_assignToActivePylon:(const std::string &)equipmentKey
 {
 	if (!launchingMissile) return NO;
 	
 	OOEquipmentType			*eqType = nil;
 	
-	if ([equipmentKey hasSuffix:@"_DAMAGED"])
+	if (oo::str::hasSuffix(equipmentKey, "_DAMAGED"))
 	{
 		return NO;
 	}
 	else
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
+		eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(equipmentKey)];
 	}
 	
 	// missiles with techlevel above 99 (kOOVariableTechLevel) are never available to the player
@@ -6059,7 +6061,7 @@ static GLfloat		sBaseMass = 0.0;
 		return NO;
 	}
 
-	ShipEntity *amiss = [UNIVERSE newShipWithRole:equipmentKey];
+	ShipEntity *amiss = [UNIVERSE newShipWithRole:oo::NSStringFrom(equipmentKey)];
 	
 	if (!amiss) return NO;
 
@@ -6341,10 +6343,9 @@ static GLfloat		sBaseMass = 0.0;
 		shields = true;
 	}
 	
-	NSEnumerator	*subEnum = nil;
-	ShipEntity		*se = nil;
-	for (subEnum = [self shipSubEntityEnumerator]; (se = [subEnum nextObject]); )
+	for (const oo::ObjCRef<ShipEntity *> &seRef : [self cxx_shipSubEntities])	// the -shipSubEntityEnumerator order
 	{
+		ShipEntity		*se = seRef.get();
 		HPVector p0 = [se absolutePositionForSubentity];
 		Triangle ijk = [se absoluteIJKForSubentity];
 		u0 = HPVectorToVector(HPvector_between(p0, v0));
@@ -6368,8 +6369,9 @@ static GLfloat		sBaseMass = 0.0;
 
 
 
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(NSString *)weaponIdentifier
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(id)weaponIdentifier	// shared selector (proposed ADR-0043): an Objective-C string
 {
+	const std::string weaponId = oo::StdString(weaponIdentifier);
 	HPVector		rel_pos;
 	OOScalar		d_forward, d_right, d_up;
 	BOOL		internal_damage = NO;	// base chance
@@ -6404,7 +6406,7 @@ static GLfloat		sBaseMass = 0.0;
 	d_up = dot_product(HPVectorToVector(rel_pos), v_up);
 	Vector relative = make_vector(d_right,d_up,d_forward);
 
-	[self playShieldHit:relative weaponIdentifier:weaponIdentifier];
+	[self cxx_playShieldHit:relative weaponIdentifier:weaponId];
 
 	// firing on an innocent ship is an offence
 	if ([other isShip])
@@ -6444,7 +6446,7 @@ static GLfloat		sBaseMass = 0.0;
 	if (amount > 0.0)
 	{
 		energy -= amount;
-		[self playDirectHit:relative weaponIdentifier:weaponIdentifier];
+		[self cxx_playDirectHit:relative weaponIdentifier:weaponId];
 		if (ship_temperature < SHIP_MAX_CABIN_TEMP)
 		{
 			/* Heat increase from energy impacts will never directly cause
@@ -6744,7 +6746,7 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (OOCommodityType) dumpCargo
+- (id) dumpCargo	// shared selector (proposed ADR-0043), called by name: an Objective-C string (the commodity), or nil
 {
 	if (flightSpeed > 4.0 * maxFlightSpeed)
 	{
@@ -6752,11 +6754,11 @@ static GLfloat		sBaseMass = 0.0;
 		return nil;
 	}
 
-	OOCommodityType result = [super dumpCargo];
+	id result = [super dumpCargo];
 	if (result != nil)
 	{
-		NSString *commodity = [UNIVERSE displayNameForCommodity:result];
-		[UNIVERSE addMessage:OOExpandKey(@"commodity-ejected", commodity) forCount:3.0 forceDisplay:YES];
+		const std::string commodity = oo::StdString([UNIVERSE displayNameForCommodity:result]);	// (nil raised in the expansion)
+		[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "commodity-ejected", { { "commodity", oo::PList(commodity) } })) forCount:3.0 forceDisplay:YES];
 		[self playCargoJettisioned];
 	}
 	return result;
@@ -6769,8 +6771,10 @@ static GLfloat		sBaseMass = 0.0;
 	if (n_cargo == 0)  return;
 	
 	ShipEntity *pod = (ShipEntity *)[cargo[0].get() retain];
-	OOCommodityType current_contents = [pod commodityType];
-	OOCommodityType contents;
+	const std::optional<std::string> current_contents = [pod cxx_commodityType];
+	std::optional<std::string> contents;
+	// -isEqualToString: with a nil on either side was NO
+	const auto sameContents = [&current_contents](const std::optional<std::string> &other) { return other.has_value() && current_contents.has_value() && *other == *current_contents; };
 	NSInteger rotates = 0;
 	
 	do
@@ -6779,20 +6783,20 @@ static GLfloat		sBaseMass = 0.0;
 		cargo.emplace_back(pod);	// move it to the last position
 		[pod release];
 		pod = (ShipEntity*)[cargo[0].get() retain];
-		contents = [pod commodityType];
+		contents = [pod cxx_commodityType];
 		rotates++;
-	} while ([contents isEqualToString:current_contents]&&(rotates < n_cargo));
+	} while (sameContents(contents)&&(rotates < n_cargo));
 	[pod release];
 	
-	NSString *commodity = [UNIVERSE displayNameForCommodity:contents];
-	[UNIVERSE addMessage:OOExpandKey(@"ready-to-eject-commodity", commodity) forCount:3.0];
+	const std::string commodity = oo::StdString([UNIVERSE displayNameForCommodity:oo::NSStringOrNil(contents)]);	// (nil raised in the expansion)
+	[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "ready-to-eject-commodity", { { "commodity", oo::PList(commodity) } })) forCount:3.0];
 
 	// now scan through the remaining 1..(n_cargo - rotates) places moving similar cargo to the last place
 	// this means the cargo gets to be sorted as it is rotated through
 	for (i = 1; i < (n_cargo - rotates); i++)
 	{
 		pod = cargo[i].get();
-		if ([[pod commodityType] isEqualToString:current_contents])
+		if (sameContents([pod cxx_commodityType]))
 		{
 			[pod retain];
 			cargo.erase(cargo.begin() + i--);
@@ -6812,12 +6816,11 @@ static GLfloat		sBaseMass = 0.0;
 
 - (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason
 {
-	NSString *nReason = OOStringFromLegalStatusReason(reason);
-	[self setBounty:amount withReasonAsString:nReason];
+	[self setBounty:amount withReasonAsString:OOStringFromLegalStatusReason(reason)];
 }
 
 
-- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(NSString *)reason
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(id)reason	// shared selector (proposed ADR-0043): an Objective-C string
 {
 	ooscript::Context context = OOJSAcquireContext();
 	
@@ -6919,8 +6922,7 @@ static GLfloat		sBaseMass = 0.0;
 	
 	if (score > 9)
 	{
-		NSString *bonusMessage = OOExpandKey(@"bounty-awarded", score, credits);
-		[UNIVERSE addDelayedMessage:bonusMessage forCount:6 afterDelay:0.15];
+		[UNIVERSE addDelayedMessage:OOExpandKey(@"bounty-awarded", score, credits) forCount:6 afterDelay:0.15];
 	}
 	
 	if (killAward)
@@ -6946,11 +6948,11 @@ static GLfloat		sBaseMass = 0.0;
 	if (damage_to < cargo.size())
 	{
 		ShipEntity* pod = (ShipEntity*)cargo[damage_to].get();
-		NSString* cargo_desc = [UNIVERSE displayNameForCommodity:[pod commodityType]];
+		const std::optional<std::string> cargo_desc = oo::OptionalString([UNIVERSE displayNameForCommodity:[pod commodityType]]);
 		if (!cargo_desc)
 			return NO;
 		[UNIVERSE clearPreviousMessage];
-		[UNIVERSE addMessage:[NSString stringWithFormat:DESC(@"@-destroyed"), cargo_desc] forCount:4.5];
+		[UNIVERSE addMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"@-destroyed")), { *cargo_desc })) forCount:4.5];
 		std::erase(cargo, pod);
 		return YES;
 	}
@@ -6959,14 +6961,12 @@ static GLfloat		sBaseMass = 0.0;
 		damage_to = n_considered - (damage_to + 1);	// reverse the die-roll
 	}
 	// equipment damage
-	NSEnumerator *eqEnum = [self equipmentEnumerator];
 	OOEquipmentType	*eqType = nil;
-	NSString		*system_key;
 	unsigned damageableCounter = 0;
 	GLfloat damageableOdds = 0.0;
-	while ((system_key = [eqEnum nextObject]) != nil)
+	for (const std::string &key : [self cxx_equipmentKeys])	// the -equipmentEnumerator order
 	{
-		eqType = [OOEquipmentType equipmentTypeWithIdentifier:system_key];
+		eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(key)];
 		if ([eqType canBeDamaged])
 		{
 			damageableCounter++;
@@ -6978,40 +6978,38 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		GLfloat target = randf() * damageableOdds;
 		GLfloat accumulator = 0.0;
-		eqEnum = [self equipmentEnumerator];
-		while ((system_key = [eqEnum nextObject]) != nil)
+		std::optional<std::string>	system_key;
+		for (const std::string &key : [self cxx_equipmentKeys])
 		{
-			eqType = [OOEquipmentType equipmentTypeWithIdentifier:system_key];
+			eqType = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(key)];
 			accumulator += [eqType damageProbability];
-			if (accumulator > target) 
+			if (accumulator > target)
 			{
-				[system_key retain];
+				system_key = key;
 				break;
 			}
 		}
-		if (system_key == nil)
+		if (!system_key.has_value())
 		{
-			[system_key release];
 			return NO;
 		}
 
-		NSString		*system_name = [eqType name];
-		if (![eqType canBeDamaged] || system_name == nil)
+		const std::optional<std::string>	system_name = oo::OptionalString([eqType name]);
+		if (![eqType canBeDamaged] || !system_name.has_value())
 		{
-			[system_key release];
 			return NO;
 		}
 
 		// set the following so removeEquipment works on the right entity
 		[self setScriptTarget:self];
 		[UNIVERSE clearPreviousMessage];
-		[self removeEquipmentItem:system_key];
+		[self removeEquipmentItem:oo::NSStringFrom(*system_key)];
 
-		NSString *damagedKey = [NSString stringWithFormat:@"%@_DAMAGED", system_key];
-		[self addEquipmentItem:damagedKey withValidation: NO inContext:@"damage"];	// for possible future repair.
-		[self doScriptEvent:OOJSID("equipmentDamaged") withArgument:system_key];
-			
-		if (![self hasEquipmentItem:system_name] && [self hasEquipmentItem:damagedKey])
+		const std::string damagedKey = oo::str::format("%s_DAMAGED", system_key->c_str());
+		[self addEquipmentItem:oo::NSStringFrom(damagedKey) withValidation: NO inContext:@"damage"];	// for possible future repair.
+		[self doScriptEvent:OOJSID("equipmentDamaged") withArgument:oo::NSStringFrom(*system_key)];
+
+		if (![self hasEquipmentItem:oo::NSStringFrom(*system_name)] && [self hasEquipmentItem:oo::NSStringFrom(damagedKey)])
 		{
 			/*
 				Display "foo damaged" message only if no script has
@@ -7019,13 +7017,12 @@ static GLfloat		sBaseMass = 0.0;
 				either of those and wants a message, it can write it
 				itself.)
 			*/
-			[UNIVERSE addMessage:[NSString stringWithFormat:DESC(@"@-damaged"), system_name] forCount:4.5];
+			[UNIVERSE addMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"@-damaged")), { *system_name })) forCount:4.5];
 		}
 		
 		/* There used to be a check for docking computers here, but
 		 * that didn't cover other ways they might fail in flight, so
 		 * it has been moved to the removeEquipment method. */
-		[system_key release];
 		return YES;
 	}
 	//cosmetic damage
@@ -7106,9 +7103,9 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (BOOL) endScenario:(NSString *)key
+- (BOOL) cxx_endScenario:(const std::string &)key
 {
-	if (scenarioKey != nil && [key isEqualToString:scenarioKey])
+	if (scenarioKey != nil && key == oo::StdString(scenarioKey))
 	{
 		[self setStatus:STATUS_RESTART_GAME];
 		return YES;
@@ -11550,28 +11547,28 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (BOOL) canAddEquipment:(NSString *)equipmentKey inContext:(NSString *)context
+- (BOOL) canAddEquipment:(id)equipmentKey inContext:(id)context	// shared selector (proposed ADR-0043): Objective-C strings
 {
-	if ([equipmentKey isEqualToString:@"EQ_RENOVATION"] && !(ship_trade_in_factor < 85 || [[[self shipSubEntityEnumerator] allObjects] count] < [self maxShipSubEntities]))  return NO;
+	if (oo::OptionalString(equipmentKey) == "EQ_RENOVATION" && !(ship_trade_in_factor < 85 || [self cxx_shipSubEntities].size() < [self maxShipSubEntities]))  return NO;
 	if (![super canAddEquipment:equipmentKey inContext:context])  return NO;
-	
-	NSArray *conditions = [[OOEquipmentType equipmentTypeWithIdentifier:equipmentKey] conditions];
-	if (conditions != nil && ![self scriptTestConditions:conditions])  return NO;
+
+	OOEquipmentType *eqType = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
+	if ([eqType conditions] != nil && ![self scriptTestConditions:[eqType conditions]])  return NO;
 	
 	return YES;
 }
 
 
-- (BOOL) addEquipmentItem:(NSString *)equipmentKey inContext:(NSString *)context
+- (BOOL) addEquipmentItem:(id)equipmentKey inContext:(id)context	// shared selector (proposed ADR-0043): Objective-C strings
 {
 	return [self addEquipmentItem:equipmentKey withValidation:YES inContext:context];
 }
 
 
-- (BOOL) addEquipmentItem:(NSString *)equipmentKey withValidation:(BOOL)validateAddition inContext:(NSString *)context
+- (BOOL) addEquipmentItem:(id)equipmentKey withValidation:(BOOL)validateAddition inContext:(id)context	// shared selector (proposed ADR-0043): Objective-C strings
 {
 	// deal with trumbles..
-	if ([equipmentKey isEqualToString:@"EQ_TRUMBLE"])
+	if (oo::OptionalString(equipmentKey) == "EQ_TRUMBLE")
 	{
 		/*	Bug fix: must return here if eqKey == @"EQ_TRUMBLE", even if
 			trumbleCount >= 1. Otherwise, the player becomes immune to
@@ -11677,7 +11674,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (void) removeEquipmentItem:(NSString *)equipmentKey
+- (void) removeEquipmentItem:(id)equipmentKey	// shared selector (proposed ADR-0043): an Objective-C string
 {
 	if(![self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"] && [self compassMode] != COMPASS_MODE_BASIC)
 	{
@@ -11693,31 +11690,30 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (void) addEquipmentFromCollection:(id)equipment
 {
-	NSDictionary	*dict = nil;
-	NSEnumerator	*eqEnum = nil;
-	NSString	*eqDesc = nil;
+	oo::PList	dict;	// null unless the collection is a dictionary
+	std::vector<std::string>	eqKeys;	// the keys / elements in the collection's enumeration order
 	NSUInteger	i, count;
 
 	// Pass 1: Load the entire collection.
-	if ([equipment isKindOfClass:[NSDictionary class]])
+	if (oo::IsNSDictionary(equipment))
 	{
-		dict = equipment;
-		eqEnum = [equipment keyEnumerator];
+		dict = oo::PListFrom(equipment);
+		eqKeys = oo::StringsFrom(equipment);
 	}
-	else if ([equipment isKindOfClass:[NSArray class]] || [equipment isKindOfClass:[NSSet class]])
+	else if (oo::IsNSArray(equipment) || oo::IsNSSet(equipment))
 	{
-		eqEnum = [equipment objectEnumerator];
+		eqKeys = oo::StringsFrom(equipment);
 	}
-	else if ([equipment isKindOfClass:[NSString class]])
+	else if (oo::IsNSString(equipment))
 	{
-		eqEnum = [[NSArray arrayWithObject:equipment] objectEnumerator];
+		eqKeys = { oo::StdString(equipment) };
 	}
 	else
 	{
 		return;
 	}
-	
-	while ((eqDesc = [eqEnum nextObject]))
+
+	for (const std::string &eqDesc : eqKeys)
 	{
 		/*	Bug workaround: extra_equipment should never contain EQ_TRUMBLE,
 			which is basically a magic flag passed to awardEquipment: to infect
@@ -11732,51 +11728,40 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			games which had been "corrupted" by the bug.
 			-- Ahruman 2007-12-04
 		 */
-		if ([eqDesc isEqualToString:@"EQ_TRUMBLE"])  continue;
+		if (eqDesc == "EQ_TRUMBLE")  continue;
 		
 		// Traditional form is a dictionary of booleans; we only accept those where the value is true.
-		if (dict != nil && !oo::PListView(dict).get<BOOL>(eqDesc))  continue;
+		if (!dict.isNull() && !dict.get<bool>(eqDesc))  continue;
 		
 		// We need to add the entire collection without validation first and then remove the items that are
 		// not compliant (like items that do not satisfy the requiresEquipment criterion). This is to avoid
 		// unintentionally excluding valid equipment, just because the required equipment existed but had
 		// not been yet added to the equipment list at the time of the canAddEquipment validation check.
 		// Nikos, 20080817.
-		count = oo::PListView(dict).get<NSUInteger>(eqDesc);
+		count = dict.get<NSUInteger>(eqDesc);	// (0 for a list: nothing is added from one here, as before)
 		for (i=0;i<count;i++)
 		{
-			[self addEquipmentItem:eqDesc withValidation:NO inContext:@"loading"];
+			[self addEquipmentItem:oo::NSStringFrom(eqDesc) withValidation:NO inContext:@"loading"];
 		}
 	}
 	
 	// Pass 2: Remove items that do not satisfy validation criteria (like requires_equipment etc.).
-	if ([equipment isKindOfClass:[NSDictionary class]])
-	{
-		eqEnum = [equipment keyEnumerator];
-	}
-	else if ([equipment isKindOfClass:[NSArray class]] || [equipment isKindOfClass:[NSSet class]])
-	{
-		eqEnum = [equipment objectEnumerator];
-	}
-	else if ([equipment isKindOfClass:[NSString class]])
-	{
-		eqEnum = [[NSArray arrayWithObject:equipment] objectEnumerator];
-	}
+	// (the same collection, walked again in the same order)
 	// Now remove items that should not be in the equipment list.
-	while ((eqDesc = [eqEnum nextObject]))
+	for (const std::string &eqDesc : eqKeys)
 	{
-		if (![self equipmentValidToAdd:eqDesc whileLoading:YES inContext:@"loading"])
+		if (![self cxx_equipmentValidToAdd:eqDesc whileLoading:YES inContext:"loading"])
 		{
-			[self removeEquipmentItem:eqDesc];
+			[self removeEquipmentItem:oo::NSStringFrom(eqDesc)];
 		}
 	}
 }
 
 
-- (BOOL) hasOneEquipmentItem:(NSString *)itemKey includeMissiles:(BOOL)includeMissiles
+- (BOOL) hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles
 {
 	// Check basic equipment the normal way.
-	if ([super hasOneEquipmentItem:itemKey includeMissiles:NO whileLoading:NO])  return YES;
+	if ([super cxx_hasOneEquipmentItem:itemKey includeMissiles:NO whileLoading:NO])  return YES;
 	
 	// Custom handling for player missiles.
 	if (includeMissiles)
@@ -11784,11 +11769,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		unsigned i;
 		for (i = 0; i < max_missiles; i++)
 		{
-			if ([[self missileForPylon:i] hasPrimaryRole:itemKey])  return YES;
+			if ([[self missileForPylon:i] hasPrimaryRole:oo::NSStringFrom(itemKey)])  return YES;
 		}
 	}
 	
-	if ([itemKey isEqualToString:@"EQ_TRUMBLE"])
+	if (itemKey == "EQ_TRUMBLE")
 	{
 		return [self trumbleCount] > 0;
 	}
@@ -11813,13 +11798,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (BOOL) removeExternalStore:(OOEquipmentType *)eqType
 {
-	NSString	*identifier = [eqType identifier];
-	
 	// Look for matching missile.
 	unsigned i;
 	for (i = 0; i < max_missiles; i++)
 	{
-		if ([[self missileForPylon:i] hasPrimaryRole:identifier])
+		if ([[self missileForPylon:i] hasPrimaryRole:[eqType identifier]])
 		{
 			[self removeFromPylon:i];
 			
@@ -11837,8 +11820,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	
 	if (missile_entity[pylon] != nil)
 	{
-		NSString	*identifier = [missile_entity[pylon] primaryRole];
-		[super removeExternalStore:[OOEquipmentType equipmentTypeWithIdentifier:identifier]];
+		[super removeExternalStore:[OOEquipmentType equipmentTypeWithIdentifier:[missile_entity[pylon] primaryRole]]];
 
 		// Remove the missile (must wait until we've finished with its identifier string!)
 		[missile_entity[pylon] release];
@@ -11888,14 +11870,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (void) receiveCommsMessage:(NSString *) message_text from:(ShipEntity *) other
+- (void) receiveCommsMessage:(id) message_text from:(ShipEntity *) other	// shared selector (proposed ADR-0043): an Objective-C string
 {
 	if ([self status] == STATUS_DEAD || [self status] == STATUS_DOCKED)
 	{
 		// only when in flight
 		return;
 	}
-	[UNIVERSE addCommsMessage:[NSString stringWithFormat:@"%@:\n %@", [other displayName], message_text] forCount:4.5];
+	[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::format("%s:\n %s", oo::DescriptionOf([other displayName]).c_str(), oo::DescriptionOf(message_text).c_str())) forCount:4.5];
 	[super receiveCommsMessage:message_text from:other];
 }
 
@@ -11921,8 +11903,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	
 	// one of the fined-@-credits strings includes expansion tokens
-	NSString *fined_message = [NSString stringWithFormat:OOExpandKey(@"fined-@-credits"), OOCredits(fine)];
-	[self addMessageToReport:fined_message];
+	const std::string fined_message = oo::str::formatRuntime(oo::StdString(OOExpandKey(@"fined-@-credits")), { cxx_OOCredits(fine) });
+	[self cxx_addMessageToReport:fined_message];
 	[UNIVERSE forceWitchspaceEntries];
 	ship_clock_adjust += 24 * 3600;	// take up a day
 }
@@ -11957,8 +11939,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (double) renovationFactor
 {
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-	NSDictionary		*shipyardInfo = [registry shipyardInfoForKey:[self shipDataKey]];
-	return oo::PListView(shipyardInfo).get<double>(KEY_RENOVATION_MULTIPLIER, 1.0);
+	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+	return shipyardInfo.get<double>(oo::StdString(KEY_RENOVATION_MULTIPLIER), 1.0);
 }
 
 
