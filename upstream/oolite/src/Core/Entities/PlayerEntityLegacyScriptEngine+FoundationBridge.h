@@ -46,6 +46,11 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityLegacyScr
 - (NSString *)missionTitle;	// -> -cxx_missionTitle
 - (void) setMissionTitle:(NSString *)value;	// -> -cxx_setMissionTitle:
 
+// Chunk 5 (oo-3rb.194): mission choices and the mission screen ID.
+- (void) setMissionChoicesDictionary:(NSDictionary *)choicesDict;	// -> -cxx_setMissionChoicesDictionary:
+- (void) setMissionScreenID:(NSString *)msid;	// -> -cxx_setMissionScreenID:
+- (NSString *) missionScreenID;	// -> -cxx_missionScreenID
+
 @end
 
 
