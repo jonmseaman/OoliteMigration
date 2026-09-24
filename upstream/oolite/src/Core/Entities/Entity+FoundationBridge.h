@@ -4,8 +4,8 @@ Entity+FoundationBridge.h
 
 TRANSITIONAL (proposed ADR-0043, "Transitional bridges"; bead oo-2qdy). The Foundation-typed
 C functions Entity.h declared before its sweep, moved here verbatim (same names, types and C
-linkage). Their definitions stay in OOConstToString.mm, whose own sweep (oo-3rb.161) adds the
-cxx_ twins and turns these definitions into forwarders; callers in PlayerEntity.mm, ShipEntity.mm,
+linkage). Their definitions are the forwarders in OOConstToString+FoundationBridge.mm (oo-3rb.161)
+to the cxx_ forms declared at the end of Entity.h; callers in PlayerEntity.mm, ShipEntity.mm,
 PlayerEntityLegacyScriptEngine.mm, ShipEntityAI.mm, ShipEntityLoadRestore.mm and the scripting
 files compile unchanged and move to the cxx_ functions in their own sweep beads. When `git grep`
 finds no caller of anything declared here, the bridge bead deletes this file and the #import at

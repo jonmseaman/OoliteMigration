@@ -42,7 +42,8 @@ MA 02110-1301, USA.
 	DumpVariable, and the `debugger` statement hook -- uses the façade's "Debugging and
 	profiling" section (frameIterator / frameScript / frameScopeChain / getScopeVariables /
 	setDebuggerHandler, bead oo-1gc.3). The engine's local root scopes around
-	JSNewNSArrayValue and JSNewNSDictionaryValue are superseded by explicit roots, as
+	the array and dictionary value converters (now in OOJavaScriptEngine+FoundationBridge.mm)
+	are superseded by explicit roots, as
 	ooscript/README.md describes: ooscript::RootedValue roots the value about to be handed to
 	the caller.
 
@@ -134,8 +135,6 @@ static unsigned				sErrorHandlerStackSkip = 0;
 ooscript::Context gOOJSMainThreadContext = NULL;
 
 
-NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
-NSString * const kOOJavaScriptEngineDidResetNotification = @"org.aegidian.oolite OOJavaScriptEngine did reset";
 const char * const kOOJavaScriptEngineWillResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine will reset";
 const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine did reset";
 
@@ -513,16 +512,14 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	
 	ooscript::Context context = OOJSAcquireContext();
 	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, self);
-	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineWillResetNotification object:self];
-	OOJSRelinquishContext(context);
+OOJSRelinquishContext(context);
 	
 	[self destroyMainThreadContext];
 	[self createMainThreadContext];
 	
 	context = OOJSAcquireContext();
 	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, self);
-	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineDidResetNotification object:self];
-	OOJSRelinquishContext(context);
+OOJSRelinquishContext(context);
 	
 	[self garbageCollectionOpportunity:YES];
 	return YES;
@@ -1263,258 +1260,8 @@ BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, 
 }
 
 
-namespace {
-static ooscript::Object JSArrayFromNSArray(ooscript::Context context, NSArray *array)
-{
-	OOJS_PROFILE_ENTER
-	
-	ooscript::Object result = NULL;
-	
-	if (array == nil)  return NULL;
-	
-	@try
-	{
-		NSUInteger fullCount = [array count];
-		if (EXPECT_NOT(fullCount > INT32_MAX))
-		{
-			return NULL;
-		}
-		
-		uint32_t i, count = (int32_t)fullCount;
-		
-		result = (ooscript::newArrayObject((context), 0, NULL));
-		if (result != NULL)
-		{
-			for (i = 0; i != count; ++i)
-			{
-				ooscript::Value value = [[array objectAtIndex:i] oo_jsValueInContext:context];
-				ooscript::Value fval = (value);
-				BOOL OK = ooscript::setElement((context), (result), i, &fval);
-				
-				if (EXPECT_NOT(!OK))
-				{
-					result = NULL;
-					break;
-				}
-			}
-		}
-	}
-	@catch (id ex)
-	{
-		result = NULL;
-	}
-	
-	return (ooscript::Object)result;
-	
-	OOJS_PROFILE_EXIT
-}
-} // namespace
-
-
-namespace {
-static BOOL JSNewNSArrayValue(ooscript::Context context, NSArray *array, ooscript::Value *value)
-{
-	OOJS_PROFILE_ENTER
-	
-	ooscript::Object object = NULL;
-	BOOL					OK = YES;
-	
-	if (value == NULL)  return NO;
-	
-	// NOTE: rooted for GC reasons for the duration of the conversion, per ooscript/README.md's
-	// "Not in the façade" note on EnterLocalRootScope / LeaveLocalRootScopeWithResult.
-	ooscript::RootedValue rootedResult((context), ooscript::Value{0}, "JSNewNSArrayValue.result");
-	
-	object = JSArrayFromNSArray(context, array);
-	if (object == NULL)
-	{
-		*value = ooscript::undefinedValue();
-		OK = NO;
-	}
-	else
-	{
-		*value = ooscript::objectValue(object);
-	}
-	
-	rootedResult.set((*value));
-	return OK;
-	
-	OOJS_PROFILE_EXIT
-}
-} // namespace
-
-
-/*	Convert an NSDictionary to a JavaScript Object.
-	Only properties whose keys are either strings or non-negative NSNumbers,
-	and	whose values have a non-void JS representation, are converted.
-*/
-namespace {
-static ooscript::Object JSObjectFromNSDictionary(ooscript::Context context, NSDictionary *dictionary)
-{
-	OOJS_PROFILE_ENTER
-	
-	ooscript::Object result = NULL;
-	BOOL					OK = YES;
-	id						key = nil;
-	ooscript::Value					value;
-	int32_t					index;
-	
-	if (dictionary == nil)  return NULL;
-	
-	@try
-	{
-		result = (ooscript::newObject((context), NULL, NULL, NULL));	// create object of class Object
-		if (result != NULL)
-		{
-			foreachkey (key, dictionary)
-			{
-				if ([key isKindOfClass:[NSString class]] && [key length] != 0)
-				{
-#ifndef __GNUC__
-					value = [[dictionary objectForKey:key] oo_jsValueInContext:context];
-#else
-#if __GNUC__ > 4 || __GNUC_MINOR__ > 6
-					value = [[dictionary objectForKey:key] oo_jsValueInContext:context];
-#else
-					// GCC before 4.7 seems to have problems with this
-					// bit if the object is a weakref, causing crashes
-					// in docking code.
-					id tmp = [dictionary objectForKey:key];
-					if ([tmp respondsToSelector:@selector(weakRefUnderlyingObject)])
-					{
-						tmp = [tmp weakRefUnderlyingObject];
-					}
-					value = [tmp oo_jsValueInContext:context];
-#endif
-#endif
-					if (!ooscript::isUndefined(value))
-					{
-						OK = ooscript::setPropertyById((context), (result), (OOJSIDFromString(key)), (&value));
-						if (EXPECT_NOT(!OK))  break;
-					}
-				}
-				else if ([key isKindOfClass:[NSNumber class]])
-				{
-					index = [key intValue];
-					if (0 < index)
-					{
-						value = [[dictionary objectForKey:key] oo_jsValueInContext:context];
-						if (!ooscript::isUndefined(value))
-						{
-							OK = ooscript::setElement((context), ((ooscript::Object)result), index, (&value));
-							if (EXPECT_NOT(!OK))  break;
-						}
-					}
-				}
-				
-				if (EXPECT_NOT(!OK))  break;
-			}
-		}
-	}
-	@catch (id exception)
-	{
-		OK = NO;
-	}
-	
-	if (EXPECT_NOT(!OK))
-	{
-		result = NULL;
-	}
-	
-	return (ooscript::Object)result;
-	
-	OOJS_PROFILE_EXIT
-}
-} // namespace
-
-
-namespace {
-static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dictionary, ooscript::Value *value)
-{
-	OOJS_PROFILE_ENTER
-	
-	ooscript::Object object = NULL;
-	BOOL					OK = YES;
-	
-	if (value == NULL)  return NO;
-	
-	// NOTE: rooted for GC reasons for the duration of the conversion, per ooscript/README.md's
-	// "Not in the façade" note on EnterLocalRootScope / LeaveLocalRootScopeWithResult.
-	ooscript::RootedValue rootedResult((context), ooscript::Value{0}, "JSNewNSDictionaryValue.result");
-	
-	object = JSObjectFromNSDictionary(context, dictionary);
-	if (object == NULL)
-	{
-		*value = ooscript::undefinedValue();
-		OK = NO;
-	}
-	else
-	{
-		*value = ooscript::objectValue(object);
-	}
-	
-	rootedResult.set((*value));
-	return OK;
-	
-	OOJS_PROFILE_EXIT
-}
-} // namespace
-
-
-@implementation NSObject (OOJavaScriptConversion)
-
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
-{
-	return ooscript::undefinedValue();
-}
-
-
-- (NSString *) oo_jsClassName
-{
-	return nil;
-}
-
-
-- (NSString *) oo_jsDescription
-{
-	return [self oo_jsDescriptionWithClassName:[self oo_jsClassName]];
-}
-
-
-- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className
-{
-	OOJS_PROFILE_ENTER
-	
-	NSString				*components = nil;
-	NSString				*description = nil;
-	
-	components = [self descriptionComponents];
-	if (className == nil)  className = [[self class] description];
-	
-	if (components != nil)
-	{
-		description = [NSString stringWithFormat:@"[%@ %@]", className, components];
-	}
-	else
-	{
-		description = [NSString stringWithFormat:@"[object %@]", className];
-	}
-	
-	return description;
-	
-	OOJS_PROFILE_EXIT
-}
-
-
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal
-{
-
-}
-
-@end
-
-
-// NSObject (OOJavaScriptConversion) above, for classes rooted on OOObject (ADR-0029).
+// The root-class JS glue for classes rooted on OOObject (ADR-0029); the same methods on the
+// Foundation root class live in OOJavaScriptEngine+FoundationBridge.mm until gnustep-base goes.
 @implementation OOObject (OOJavaScriptConversion)
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
@@ -1523,38 +1270,34 @@ static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dict
 }
 
 
-- (NSString *) oo_jsClassName
+- (id) oo_jsClassName
 {
 	return nil;
 }
 
 
-- (NSString *) oo_jsDescription
+- (id) oo_jsDescription
 {
 	return [self oo_jsDescriptionWithClassName:[self oo_jsClassName]];
 }
 
 
-- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className
+- (id) oo_jsDescriptionWithClassName:(id)className
 {
 	OOJS_PROFILE_ENTER
 
-	NSString				*components = nil;
-	NSString				*description = nil;
-
-	components = [self descriptionComponents];
+	id						components = [self descriptionComponents];
 	if (className == nil)  className = [[self class] description];
 
+	// "%@" of each: oo::DescriptionOf prints the same text.
 	if (components != nil)
 	{
-		description = [NSString stringWithFormat:@"[%@ %@]", className, components];
+		return oo::NSStringFrom(oo::str::format("[%s %s]", oo::DescriptionOf(className).c_str(), oo::DescriptionOf(components).c_str()));
 	}
 	else
 	{
-		description = [NSString stringWithFormat:@"[object %@]", className];
+		return oo::NSStringFrom(oo::str::format("[object %s]", oo::DescriptionOf(className).c_str()));
 	}
-
-	return description;
 
 	OOJS_PROFILE_EXIT
 }
@@ -1978,17 +1721,6 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 }
 
 
-@implementation NSArray (OOJavaScriptConversion)
-
-- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
-{
-	ooscript::Value value = ooscript::undefinedValue();
-	JSNewNSArrayValue(context, self, &value);
-	return value;
-}
-
-@end
-
 @implementation OONativeVector (OOJavaScriptConversion)
 
 - (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
@@ -1996,62 +1728,6 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 	ooscript::Value value = ooscript::undefinedValue();
 	VectorToJSValue(context, v, &value);
 	return value;
-}
-
-@end
-
-
-@implementation NSDictionary (OOJavaScriptConversion)
-
-- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
-{
-	ooscript::Value value = ooscript::undefinedValue();
-	JSNewNSDictionaryValue(context, self, &value);
-	return value;
-}
-
-@end
-
-
-@implementation NSNumber (OOJavaScriptConversion)
-
-- (ooscript::Value)oo_jsValueInContext:(ooscript::Context)context
-{
-	OOJS_PROFILE_ENTER
-	
-	ooscript::Value					result;
-	BOOL					isFloat = NO;
-	long long				longLongValue;
-	
-	isFloat = [self oo_isFloatingPointNumber];
-	if (!isFloat)
-	{
-		longLongValue = [self longLongValue];
-		if (longLongValue < (long long)INT32_MIN || (long long)INT32_MAX < longLongValue)
-		{
-			// values outside int32 range are returned as doubles.
-			isFloat = YES;
-		}
-	}
-	
-	if (isFloat)
-	{
-		if (!ooscript::newNumberValue((context), [self doubleValue], (&result))) result = ooscript::undefinedValue();
-	}
-	else
-	{
-		result = ooscript::int32Value((int32_t)longLongValue);
-	}
-	
-	return result;
-	
-	OOJS_PROFILE_EXIT_JSVAL
-}
-
-
-- (NSString *) oo_jsClassName
-{
-	return @"Number";
 }
 
 @end
@@ -2073,9 +1749,9 @@ std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string)
 }
 
 
-- (NSString *) description
+- (id) description	// shared selector (proposed ADR-0043)
 {
-	return @"<null>";
+	return oo::NSStringFrom("<null>");
 }
 
 
@@ -2123,9 +1799,9 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 	OOJS_NATIVE_ENTER(context)
 	
 	id						object = nil;
-	NSString				*description = nil;
+	id						description = nil;	// the object's own -oo_jsDescription / -description
 	ooscript::ClassDef					*jsClass = NULL;
-	
+
 	object = OOJSNativeObjectFromJSObject(context, OOJS_THIS);
 	if (object != nil)
 	{
@@ -2137,10 +1813,10 @@ bool OOJSObjectWrapperToString(ooscript::Context context, ooscript::CallArgs &oo
 		jsClass = OOJSGetClass(context, OOJS_THIS);
 		if (jsClass != NULL)
 		{
-			description = [NSString stringWithFormat:@"[object %@]", [NSString stringWithUTF8String:jsClass->name]];
+			description = oo::NSStringFrom(oo::str::format("[object %s]", jsClass->name));
 		}
 	}
-	if (description == nil)  description = @"[object]";
+	if (description == nil)  description = oo::NSStringFrom("[object]");
 	
 	OOJS_RETURN_OBJECT(description);
 	

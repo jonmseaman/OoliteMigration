@@ -339,7 +339,20 @@ enum
 	kOOScanClassDefault			= CLASS_NOT_SET
 };
 
+#ifdef __cplusplus
+#include "oofnd/StdLib.hpp"
+
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
+// (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
+// The Foundation forms in Entity+FoundationBridge.h forward to them from OOConstToString+FoundationBridge.mm.
+std::string cxx_OOStringFromEntityStatus(OOEntityStatus status);
+OOEntityStatus cxx_OOEntityStatusFromString(const std::string &string);
+
+std::string cxx_OOStringFromScanClass(OOScanClass scanClass);
+OOScanClass cxx_OOScanClassFromString(const std::string &string);
+#endif
+
 // TRANSITIONAL (proposed ADR-0043): the Foundation-typed OOStringFromEntityStatus /
 // OOEntityStatusFromString / OOStringFromScanClass / OOScanClassFromString (defined in
-// OOConstToString.mm) until their callers are swept. Keep this the last line.
+// OOConstToString+FoundationBridge.mm) until their callers are swept. Keep this the last line.
 #import "Entity+FoundationBridge.h"
