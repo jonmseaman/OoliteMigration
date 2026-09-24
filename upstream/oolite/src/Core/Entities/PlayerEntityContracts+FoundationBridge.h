@@ -48,6 +48,11 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityContracts
 - (NSArray *) parcelList;	// -> -cxx_parcelList
 - (NSArray *) contractList;	// -> -cxx_contractList
 
+// oo-3rb.184 (chunk 6): shipyard
+- (void) showShipyardModel:(NSString *)shipKey shipData:(NSDictionary *)shipDict personality:(uint16_t)personality;	// -> -cxx_showShipyardModel:shipData:personality:
+- (OOCreditsQuantity) priceForShipKey:(NSString *)key;	// -> -cxx_priceForShipKey:
+- (BOOL) replaceShipWithNamedShip:(NSString *)shipName;	// -> -cxx_replaceShipWithNamedShip:
+
 @end
 
 #endif	// PLAYERENTITYCONTRACTS_FOUNDATIONBRIDGE_H

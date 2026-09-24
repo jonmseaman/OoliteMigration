@@ -61,6 +61,8 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/Process.hpp"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
@@ -551,7 +553,12 @@ void OpenLogFile();
 				[stageToRun noteSkipped];
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			if (stageName == nil)  stageName = [[stageToRun class] description];
+			OOLog(@"verifyOXP.exception", @"***** Exception occurred when running OXP verifier stage \"%@\": %@: %@", stageName, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		}
+		@catch (OOFoundationException *exception)
 		{
 			if (stageName == nil)  stageName = [[stageToRun class] description];
 			OOLog(@"verifyOXP.exception", @"***** Exception occurred when running OXP verifier stage \"%@\": %@: %@", stageName, [exception name], [exception reason]);
