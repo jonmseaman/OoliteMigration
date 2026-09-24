@@ -45,8 +45,12 @@ MA 02110-1301, USA.
 #import "MyOpenGLView.h"
 #import "GameController.h"
 
+#include <optional>
+#include <string>
+
 #import "unzip.h"
 #include "oofnd/FileSystem.hpp"
+#include "oofnd/Http.hpp"
 #include "oofnd/ResourcePaths.hpp"
 #include "oofnd/String.hpp"
 
@@ -259,13 +263,7 @@ std::optional<std::string> JoinedTags(const oo::PList &manifest)
 
 static OOOXZManager *sSingleton = nil;
 
-// protocol was only formalised in 10.7
-#if OOLITE_MAC_OS_X_10_7 
-
-@interface OOOXZManager (OOPrivate) <NSURLConnectionDataDelegate> 
-#else
-@interface OOOXZManager (NSURLConnectionDataDelegate) 
-#endif
+@interface OOOXZManager (OOPrivate)
 
 - (std::optional<std::string>) manifestPath;	// nullopt: no cache directory
 - (std::optional<std::string>) downloadPath;	// nullopt: no cache directory
@@ -275,7 +273,7 @@ static OOOXZManager *sSingleton = nil;
 
 - (BOOL) ensureInstallPath;
 
-- (BOOL) beginDownload:(NSMutableURLRequest *)request;
+- (BOOL) beginDownload:(const std::string &)url;
 - (BOOL) processDownloadedManifests;
 - (BOOL) processDownloadedOXZ;
 
@@ -289,7 +287,7 @@ static OOOXZManager *sSingleton = nil;
 - (void) setFilteredList:(const oo::PList &)list;
 - (oo::PList) applyCurrentFilter:(const oo::PList &)list;	// an Array
 
-- (void) setCurrentDownload:(NSURLConnection *)download withLabel:(NSString *)label;
+- (void) setCurrentDownload:(oo::http::Download *)download withLabel:(NSString *)label;
 - (void) setProgressStatus:(const std::string &)newStatus;
 
 - (BOOL) installOXZ:(NSUInteger)item;
@@ -300,11 +298,11 @@ static OOOXZManager *sSingleton = nil;
 
 - (std::string) extractOXZ:(NSUInteger)item;	// the extraction log
 
-/* Delegates for URL downloader */
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error;
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response;
-- (void)connection:(NSURLConnection *)connection didReceiveData:(id)data;	// shared selector (NSURLConnectionDataDelegate): the data object
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection;
+/* The download's callbacks (NSURLConnection's delegate methods until proposed ADR-0044) */
+- (void) downloadDidFailWithError:(const std::string &)error;
+- (void) downloadDidReceiveResponse:(long long)expectedContentLength;
+- (void) downloadDidReceiveData:(const std::string &)data;
+- (void) downloadDidFinishLoading;
 
 @end
 
@@ -690,13 +688,11 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (void) setCurrentDownload:(NSURLConnection *)download withLabel:(NSString *)label
+- (void) setCurrentDownload:(oo::http::Download *)download withLabel:(NSString *)label
 {
-	if (_currentDownload != nil)
-	{
-		[_currentDownload cancel]; // releases via delegate
-	}
-	_currentDownload = [download retain];
+	// Deleting the previous download cancels it (NSURLConnection's -cancel) and frees it.
+	delete _currentDownload;
+	_currentDownload = download;
 	DESTROY(_currentDownloadName);
 	_currentDownloadName = [label copy];
 }
@@ -709,7 +705,7 @@ static OOOXZManager *sSingleton = nil;
 
 - (BOOL) updateManifests
 {
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:oo::NSStringOrNil([self dataURL])]];
+	const std::string url = [self dataURL].value_or("");
 	if (_downloadStatus != OXZ_DOWNLOAD_NONE)
 	{
 		return NO;
@@ -718,39 +714,59 @@ static OOOXZManager *sSingleton = nil;
 	_interfaceState = OXZ_STATE_UPDATING;
 	[self setProgressStatus:""];
 
-	return [self beginDownload:request];
+	return [self beginDownload:url];
 }
 
 
-- (BOOL) beginDownload:(NSMutableURLRequest *)request
+- (BOOL) beginDownload:(const std::string &)url
 {
+	// No cookies are sent or kept, as -setHTTPShouldHandleCookies:NO had it (oofnd/Http.hpp).
 	NSString *userAgent = [NSString stringWithFormat:@"Oolite/%@", [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]];
-	[request setValue:userAgent forHTTPHeaderField:@"User-Agent"];
-	[request setHTTPShouldHandleCookies:NO];
-	NSURLConnection *download = [[NSURLConnection alloc] initWithRequest:request delegate:self];
-	if (download)
+	// A download always starts: a URL it cannot fetch arrives as a failure callback.
+	oo::http::Download *download = new oo::http::Download(url, oo::StdString(userAgent));
+	_downloadProgress = 0;
+	_downloadExpected = 0;
+	NSString *label = DESC(@"oolite-oxzmanager-download-label-list");
+	if (_interfaceState != OXZ_STATE_UPDATING)
 	{
-		_downloadProgress = 0;
-		_downloadExpected = 0;
-		NSString *label = DESC(@"oolite-oxzmanager-download-label-list");
-		if (_interfaceState != OXZ_STATE_UPDATING)
-		{
-			NSDictionary *expectedManifest = nil;
-			expectedManifest = oo::ObjectFromPList(ElementAt(_filteredList, _item));
+		NSDictionary *expectedManifest = nil;
+		expectedManifest = oo::ObjectFromPList(ElementAt(_filteredList, _item));
 
-			label = oo::PListView(expectedManifest).get<NSString *>(kOOManifestTitle, DESC(@"oolite-oxzmanager-download-label-oxz"));
-		}
-
-		[self setCurrentDownload:download withLabel:label]; // retains it
-		[download release];
-		OOLog(kOOOXZDebugLog,@"Download request received, using %@ and downloading to %@",[request URL],oo::NSStringOrNil([self downloadPath]));
-		return YES;
+		label = oo::PListView(expectedManifest).get<NSString *>(kOOManifestTitle, DESC(@"oolite-oxzmanager-download-label-oxz"));
 	}
-	else
+
+	[self setCurrentDownload:download withLabel:label]; // owns it
+	OOLog(kOOOXZDebugLog,@"Download request received, using %@ and downloading to %@",oo::NSStringFrom(url),oo::NSStringOrNil([self downloadPath]));
+	return YES;
+}
+
+
+- (void) processDownloadEvents
+{
+	// The current download is read afresh for every event: a callback may cancel it or start
+	// another, and a cancelled download answers nothing more.
+	while (_currentDownload != nullptr)
 	{
-		OOLog(kOOOXZErrorLog,@"Unable to start downloading file at %@",[request URL]);
-		_downloadStatus = OXZ_DOWNLOAD_ERROR;
-		return NO;
+		std::optional<oo::http::Event> event = _currentDownload->nextEvent();
+		if (!event.has_value())  break;
+		@autoreleasepool
+		{
+			switch (event->kind)
+			{
+				case oo::http::Event::Kind::response:
+					[self downloadDidReceiveResponse:event->expectedLength];
+					break;
+				case oo::http::Event::Kind::data:
+					[self downloadDidReceiveData:event->bytes];
+					break;
+				case oo::http::Event::Kind::finished:
+					[self downloadDidFinishLoading];
+					break;
+				case oo::http::Event::Kind::failed:
+					[self downloadDidFailWithError:event->error];
+					break;
+			}
+		}
 	}
 }
 
@@ -762,9 +778,9 @@ static OOOXZManager *sSingleton = nil;
 		return NO;
 	}
 	OOLog(kOOOXZDebugLog, @"%@", @"Trying to cancel file download");
-	if (_currentDownload != nil)
+	if (_currentDownload != nullptr)
 	{
-		[_currentDownload cancel];
+		_currentDownload->cancel();	// kept until the next download replaces it, as the connection was
 	}
 	else if (_downloadStatus == OXZ_DOWNLOAD_COMPLETE)
 	{
@@ -1820,7 +1836,8 @@ static OOOXZManager *sSingleton = nil;
 		OOLog(kOOOXZErrorLog, @"%@", @"Manifest does not have a download URL - cannot install");
 		return NO;
 	}
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:oo::ObjectFromPList(*url)]];
+	// The URL as a string; any other kind fetches nothing and fails at once (proposed ADR-0044).
+	const std::string urlString = ManifestString(manifest, oo::StdString(kOOManifestDownloadURL)).value_or("");
 	if (_downloadStatus != OXZ_DOWNLOAD_NONE)
 	{
 		return NO;
@@ -1829,7 +1846,7 @@ static OOOXZManager *sSingleton = nil;
 	_interfaceState = OXZ_STATE_INSTALLING;
 	
 	[self setProgressStatus:""];
-	return [self beginDownload:request];
+	return [self beginDownload:urlString];
 }
 
 
@@ -2418,16 +2435,20 @@ static OOOXZManager *sSingleton = nil;
 
 
 
-- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
+- (void) downloadDidReceiveResponse:(long long)expectedContentLength
 {
 	_downloadStatus = OXZ_DOWNLOAD_RECEIVING;
 	OOLog(kOOOXZDebugLog, @"%@", @"Download receiving");
-	_downloadExpected = [response expectedContentLength];
+	_downloadExpected = expectedContentLength;
 	_downloadProgress = 0;
-	DESTROY(_fileWriter);
-	[[NSFileManager defaultManager] createFileAtPath:oo::NSStringOrNil([self downloadPath]) contents:nil attributes:nil];
-	_fileWriter = [[NSFileHandle fileHandleForWritingAtPath:oo::NSStringOrNil([self downloadPath])] retain];
-	if (_fileWriter == nil)
+	if (_fileWriter != NULL)
+	{
+		fclose(_fileWriter);
+		_fileWriter = NULL;
+	}
+	const std::optional<std::string> path = [self downloadPath];
+	_fileWriter = path.has_value() ? oo::fs::createFileForWriting(oo::fs::pathFromUTF8(*path)) : NULL;
+	if (_fileWriter == NULL)
 	{
 		// file system is full or read-only or something
 		OOLog(kOOOXZErrorLog, @"%@", @"Unable to create download file");
@@ -2436,12 +2457,14 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (void)connection:(NSURLConnection *)connection didReceiveData:(id)data
+- (void) downloadDidReceiveData:(const std::string &)data
 {
-	OOLog(kOOOXZDebugLog,@"Downloaded %zu bytes",[data length]);
-	[_fileWriter seekToEndOfFile];
-	[_fileWriter writeData:data];
-	_downloadProgress += [data length];
+	OOLog(kOOOXZDebugLog,@"Downloaded %zu bytes",data.size());
+	if (_fileWriter != NULL)
+	{
+		fwrite(data.data(), 1, data.size(), _fileWriter);
+	}
+	_downloadProgress += data.size();
 	[self gui]; // update GUI
 #if OOLITE_WINDOWS
 	/* Irritating fix to issue https://github.com/OoliteProject/oolite/issues/95
@@ -2461,21 +2484,27 @@ static OOOXZManager *sSingleton = nil;
 	 *
 	 * The game tick is no longer a run-loop timer, so GameController fires
 	 * it (and the run loop's own due timers) here, as the run loop did.
-	 * Proposed ADR-0033.
+	 * Proposed ADR-0033. The download itself no longer blocks the frame
+	 * loop (it runs on its own thread, proposed ADR-0044); the call stays
+	 * so a burst of queued chunks still lets the game tick between them.
 	 */
 	[[GameController sharedController] fireDueTimers];
 #endif
 }
 
 
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection
+- (void) downloadDidFinishLoading
 {
 	_downloadStatus = OXZ_DOWNLOAD_COMPLETE;
 	OOLog(kOOOXZDebugLog, @"%@", @"Download complete");
-	[_fileWriter synchronizeFile];
-	[_fileWriter closeFile];
-	DESTROY(_fileWriter);
-	DESTROY(_currentDownload);
+	if (_fileWriter != NULL)
+	{
+		oo::fs::synchronizeFile(_fileWriter);
+		fclose(_fileWriter);
+		_fileWriter = NULL;
+	}
+	delete _currentDownload;
+	_currentDownload = nullptr;
 	if (_interfaceState == OXZ_STATE_UPDATING)
 	{
 		if (![self processDownloadedManifests])
@@ -2498,13 +2527,17 @@ static OOOXZManager *sSingleton = nil;
 }
 
 
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
+- (void) downloadDidFailWithError:(const std::string &)error
 {
 	_downloadStatus = OXZ_DOWNLOAD_ERROR;
-	OOLog(kOOOXZErrorLog,@"Error downloading file: %@",[error description]);
-	[_fileWriter closeFile];
-	DESTROY(_fileWriter);
-	DESTROY(_currentDownload);
+	OOLog(kOOOXZErrorLog,@"Error downloading file: %@",oo::NSStringFrom(error));
+	if (_fileWriter != NULL)
+	{
+		fclose(_fileWriter);
+		_fileWriter = NULL;
+	}
+	delete _currentDownload;
+	_currentDownload = nullptr;
 }
 
 
