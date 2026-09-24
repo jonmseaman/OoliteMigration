@@ -188,6 +188,19 @@ std::string RepeatString(std::string_view str, NSUInteger times)
 	return result;
 }
 
+
+/*	OOExpandKey(key, <argument>): the expansion of a description key with the one-entry argument
+	dictionary OOExpandKey's macro builds from the variable's name (OOShipLibraryDescriptions.mm's
+	pattern). A nil argument (which the macro could not have put in a dictionary) is left out.
+*/
+std::optional<std::string> ExpandKeyWithArgument(const char *key, const char *argumentName, const std::optional<std::string> &argument)
+{
+	oo::PList::Dict arguments;
+	if (argument.has_value())  arguments[argumentName] = *argument;
+	return oo::OptionalString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
+		oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey));
+}
+
 }	// namespace
 
 
@@ -213,10 +226,10 @@ std::string RepeatString(std::string_view str, NSUInteger times)
 - (void) refreshEscortPositions;
 - (HPVector) coordinatesForEscortPosition:(unsigned)idx;
 - (void) setUpMixedEscorts;
-- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(NSString *)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount;
+- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount;
 
 - (void) addSubentityToCollisionRadius:(Entity<OOSubEntity> *) subent;
-- (ShipEntity *) launchPodWithCrew:(NSArray *)podCrew;
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew;
 
 // equipment
 - (OOEquipmentType *) generateMissileEquipmentTypeFrom:(const std::string &)role;
@@ -710,15 +723,13 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	cargoString = oo::PListView(shipDict).get<NSString *>(@"cargo_type");
 	if (cargoString)
 	{
-		if (cargo != nil) [cargo autorelease];
-		cargo = [[NSMutableArray alloc] initWithCapacity:max_cargo]; // alloc retains;
-		
+		cargo.clear();
+
 		[self setUpCargoType:cargoString];
 	}
 	else if (scanClass != CLASS_CARGO)
 	{
-		if (cargo != nil) [cargo autorelease];
-		cargo = [[NSMutableArray alloc] initWithCapacity:max_cargo]; // alloc retains;
+		cargo.clear();
 		// if not CLASS_CARGO, and no cargo type set, default to CARGO_NOT_CARGO
 		cargo_type = CARGO_NOT_CARGO;
 	}
@@ -815,7 +826,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	_explicitlyUnpiloted = (unsigned char)oo::PListView(shipDict).get<oo::FuzzyBoolean>(@"unpiloted");
 	if (_explicitlyUnpiloted)
 	{
-		[self setCrew:nil];
+		[self cxx_setCrew:std::nullopt];
 	}
 	else 
 	{
@@ -824,7 +835,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		if (cdict != nil)
 		{
 			OOCharacter	*pilot = [OOCharacter characterWithDictionary:cdict];
-			[self setCrew:[NSArray arrayWithObject:pilot]];
+			[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(pilot) }];
 		}
 	}
 	
@@ -1139,7 +1150,6 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	DESTROY(_shipKey);
 	DESTROY(shipinfoDictionary);
 	DESTROY(shipAI);
-	DESTROY(cargo);
 	DESTROY(name);
 	DESTROY(shipUniqueName);
 	DESTROY(shipClassName);
@@ -1158,7 +1168,6 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	DESTROY(aiScript);
 	DESTROY(previousCondition);
 	DESTROY(dockingInstructions);
-	DESTROY(crew);
 	DESTROY(lastRadioMessage);
 	DESTROY(octree);
 	DESTROY(_defenseTargets);
@@ -1758,15 +1767,16 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		return;
 	}
 
-	if ([shipinfoDictionary objectForKey:@"escort_roles"] != nil)
+	const oo::PList		info = oo::PListFrom(shipinfoDictionary);	// until oo-3rb.241 holds it as an oo::PList
+	if (info.find("escort_roles") != nullptr)
 	{
 		[self setUpMixedEscorts];
 		return;
 	}
 
-	NSString        *defaultRole = @"escort";
-	NSString		*escortRole = nil;
-	NSString		*escortShipKey = nil;
+	std::string						defaultRole = "escort";
+	std::string						escortRole;
+	std::optional<std::string>		escortShipKey;
 	
 	if (_pendingEscortCount == 0)  return;
 	
@@ -1783,32 +1793,31 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		}
 	}
 	
-	if ([self isPolice])  defaultRole = @"wingman";
-	
-	escortRole = oo::PListView(shipinfoDictionary).get<NSString *>(@"escort_role", nil);
-	if (escortRole == nil)
-		escortRole = oo::PListView(shipinfoDictionary).get<NSString *>(@"escort-role", defaultRole);
-	if (![escortRole isEqualToString: defaultRole])
+	if ([self isPolice])  defaultRole = "wingman";
+
+	const std::optional<std::string> escortRoleSetting = StringForKey(info, "escort_role");
+	escortRole = escortRoleSetting.has_value() ? *escortRoleSetting : info.get<std::string>("escort-role", defaultRole);
+	if (escortRole != defaultRole)
 	{
-		if (![[UNIVERSE newShipWithRole:escortRole] autorelease])
+		if (![[UNIVERSE newShipWithRole:oo::NSStringFrom(escortRole)] autorelease])
 		{
 			escortRole = defaultRole;
 		}
 	}
-	
-	escortShipKey = oo::PListView(shipinfoDictionary).get<NSString *>(@"escort_ship", nil);
-	if (escortShipKey == nil)
-		escortShipKey = oo::PListView(shipinfoDictionary).get<NSString *>(@"escort-ship");
-	
-	if (escortShipKey != nil)
+
+	escortShipKey = StringForKey(info, "escort_ship");
+	if (!escortShipKey.has_value())
+		escortShipKey = StringForKey(info, "escort-ship");
+
+	if (escortShipKey.has_value())
 	{
-		if (![[UNIVERSE newShipWithName:escortShipKey] autorelease])
+		if (![[UNIVERSE newShipWithName:oo::NSStringFrom(*escortShipKey)] autorelease])
 		{
-			escortShipKey = nil;
+			escortShipKey = std::nullopt;
 		}
 		else
 		{
-			escortRole = [NSString stringWithFormat:@"[%@]",escortShipKey];
+			escortRole = oo::str::format("[%s]", escortShipKey->c_str());
 		}
 	}
 
@@ -1830,8 +1839,8 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		
 		ShipEntity *escorter = nil;
 		
-		escorter = [UNIVERSE newShipWithRole:escortRole];	// retained
-		
+		escorter = [UNIVERSE newShipWithRole:oo::NSStringFrom(escortRole)];	// retained
+
 		if (escorter == nil)  break;
 		[self setUpOneEscort:escorter inGroup:escortGroup withRole:escortRole atPosition:ex_pos andCount:currentEscortCount];
 
@@ -1847,19 +1856,18 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 - (void) setUpMixedEscorts
 {
-	NSArray *escortRoles = oo::PListView(shipinfoDictionary).get<NSArray *>(@"escort_roles", nil);
-	if (escortRoles == nil)
+	const oo::PList info = oo::PListFrom(shipinfoDictionary);	// until oo-3rb.241 holds it as an oo::PList
+	const oo::PList *escortRoles = ArrayForKey(info, "escort_roles");
+	if (escortRoles == nullptr)
 	{
-		OOLogWARN(@"eship.setUp.escortShipRoles", 
+		OOLogWARN(@"eship.setUp.escortShipRoles",
 				  @"Ship %@ has bad escort_roles definition.", self);
 		return;
 	}
-	NSDictionary				*escortDefinition = nil;
-	NSDictionary		*systeminfo = nil;
 	OOGovernmentID		government;
 
-	systeminfo = [UNIVERSE currentSystemData];
- 	government = oo::PListView(systeminfo).get<unsigned char>(KEY_GOVERNMENT);
+	const oo::PList systeminfo = oo::PListFrom([UNIVERSE currentSystemData]);
+ 	government = systeminfo.get<unsigned char>(oo::StdString(KEY_GOVERNMENT));
 
 	OOShipGroup *escortGroup = [self escortGroup];
 	if ([self group] == nil)
@@ -1874,7 +1882,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	
 	_maxEscortCount = 0;
 	int8_t i = 0;
-	foreach (escortDefinition, escortRoles)
+	for (const oo::PList &escortDefinition : *escortRoles->getIf<oo::PList::Array>())
 	{
 		if (currentEscortCount >= MAX_ESCORTS)
 		{
@@ -1882,9 +1890,9 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		}
 		// int rather than uint because, at least for min, there is a
 		// use to giving a negative value
-		int8_t min = oo::PListView(escortDefinition).get<int>(@"min", 0);
-		int8_t max = oo::PListView(escortDefinition).get<int>(@"max", 2);
-		NSString *escortRole = oo::PListView(escortDefinition).get<NSString *>(@"role", @"escort");
+		int8_t min = escortDefinition.get<int>("min", 0);
+		int8_t max = escortDefinition.get<int>("max", 2);
+		const std::string escortRole = escortDefinition.get<std::string>("role", "escort");
 		int8_t desired = max;
 		if (min < desired)
 		{
@@ -1902,10 +1910,10 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 			{
 				break;
 			}
-			if (![escortRole isEqualToString:@""])
+			if (!escortRole.empty())
 			{
 				HPVector ex_pos = [self coordinatesForEscortPosition:currentEscortCount];
-				ShipEntity *escorter = [UNIVERSE newShipWithRole:escortRole];	// retained
+				ShipEntity *escorter = [UNIVERSE newShipWithRole:oo::NSStringFrom(escortRole)];	// retained
 				if (escorter == nil)
 				{
 					break;
@@ -1922,23 +1930,21 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(NSString *)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount
+- (void) setUpOneEscort:(ShipEntity *)escorter inGroup:(OOShipGroup *)escortGroup withRole:(const std::string &)escortRole atPosition:(HPVector)ex_pos andCount:(uint8_t)currentEscortCount
 {
-	NSString		*autoAI = nil;
-	NSString		*pilotRole = nil;
-	NSDictionary	*autoAIMap = nil;
-	NSDictionary	*escortShipDict = nil;
-	AI				*escortAI = nil; 
-	NSString		*defaultRole = @"escort";
+	std::string		autoAI;
+	std::string		pilotRole;
+	AI				*escortAI = nil;
+	std::string		defaultRole = "escort";
 
 	if ([self isPolice])
 	{
-		defaultRole = @"wingman";
-		pilotRole = @"police"; // police are always insured.
+		defaultRole = "wingman";
+		pilotRole = "police"; // police are always insured.
 	}
 	else
 	{
-		pilotRole = bounty ? @"pirate" : @"hunter"; // hunters have insurancies, pirates not.
+		pilotRole = bounty ? "pirate" : "hunter"; // hunters have insurancies, pirates not.
 	}
 	
 	double dd = escorter->collision_radius;
@@ -1960,12 +1966,12 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		
 	[escorter setPosition:ex_pos];	// minimise lollipop flash
 		
-	if ([escorter crew] == nil)
+	if (![escorter cxx_crew].has_value())
 	{
-		[escorter setSingleCrewWithRole:pilotRole];
+		[escorter cxx_setSingleCrewWithRole:pilotRole];
 	}
-		
-	[escorter setPrimaryRole:defaultRole];	//for mothership
+
+	[escorter setPrimaryRole:oo::NSStringFrom(defaultRole)];	//for mothership
 	// in case this hasn't yet been set, make sure escorts get a real scan class
 	// shouldn't happen very often, but is possible
 	if (scanClass == CLASS_NOT_SET)
@@ -1977,21 +1983,22 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	if ([self bounty] == 0)  [escorter setBounty:0 withReason:kOOLegalStatusReasonSetup];	// Avoid dirty escorts for clean mothers
 		
 	// find the right autoAI.
-	escortShipDict = [escorter shipInfoDictionary];
-	autoAIMap = [ResourceManager dictionaryFromFilesNamed:@"autoAImap.plist" inFolder:@"Config" andMerge:YES];
-	autoAI = oo::PListView(autoAIMap).get<NSString *>(defaultRole);
-	if (autoAI==nil) // no 'wingman' defined in autoAImap?
+	const oo::PList autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:"Config" andMerge:YES];
+	const std::optional<std::string> mappedAI = StringForKey(autoAIMap, defaultRole);
+	if (mappedAI.has_value())  autoAI = *mappedAI;
+	else // no 'wingman' defined in autoAImap?
 	{
-		autoAI = oo::PListView(autoAIMap).get<NSString *>(@"escort", @"nullAI.plist");
+		autoAI = autoAIMap.get<std::string>("escort", "nullAI.plist");
 	}
-		
+
 	escortAI = [escorter getAI];
-		
+
 	// Let the populator decide which AI to use, unless we have a working alternative AI & we specify auto_ai = NO !
-	if ( (escortRole && oo::PListView(escortShipDict).get<oo::FuzzyBoolean>(@"auto_ai", YES))
-		 || ([[escortAI name] isEqualToString: @"nullAI.plist"] && ![autoAI isEqualToString:@"nullAI.plist"]) )
+	// (Both callers always passed a role, so the old nil test of escortRole was always true.)
+	if ( oo::PListView([escorter shipInfoDictionary]).get<oo::FuzzyBoolean>(@"auto_ai", YES)
+		 || (oo::StdString([escortAI name]) == "nullAI.plist" && autoAI != "nullAI.plist") )
 	{
-		[escorter switchAITo:autoAI];
+		[escorter switchAITo:oo::NSStringFrom(autoAI)];
 	}
 
 	[escorter setGroup:escortGroup];
@@ -2005,7 +2012,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	else
 	{
 		[UNIVERSE addEntity:escorter]; 	// STATUS_IN_FLIGHT, AI state GLOBAL
-		[escortAI setState:@"FLYING_ESCORT"];	// Begin escort flight. (If the AI doesn't define FLYING_ESCORT, this has no effect.)
+		[escortAI cxx_setState:"FLYING_ESCORT"];	// Begin escort flight. (If the AI doesn't define FLYING_ESCORT, this has no effect.)
 		[escorter doScriptEvent:OOJSID("spawnedAsEscort") withArgument:self];
 	}
 	
@@ -2330,15 +2337,16 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (ShipEntity *) launchPodWithCrew:(NSArray *)podCrew
+- (ShipEntity *) launchPodWithCrew:(const std::vector<oo::ObjCRef<OOCharacter *>> &)podCrew
 {
 	ShipEntity *pod = nil;
-	
-	pod = [UNIVERSE newShipWithRole:oo::PListView(shipinfoDictionary).get<NSString *>(@"escape_pod_role")];	// or nil
+
+	const oo::PList info = oo::PListFrom(shipinfoDictionary);	// until oo-3rb.241 holds it as an oo::PList
+	pod = [UNIVERSE newShipWithRole:oo::NSStringOrNil(StringForKey(info, "escape_pod_role"))];	// or nil
 	if (!pod)
 	{
 		//	_role not defined? it might have _model defined;
-		pod = [UNIVERSE newShipWithRole:oo::PListView(shipinfoDictionary).get<NSString *>(@"escape_pod_model", @"escape-capsule")];
+		pod = [UNIVERSE newShipWithRole:oo::NSStringFrom(info.get<std::string>("escape_pod_model", "escape-capsule"))];
 		if (!pod)
 		{
 			pod = [UNIVERSE newShipWithRole:@"escape-capsule"];
@@ -2351,7 +2359,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		[pod setOwner:self];
 		[pod setTemperature:[self randomEjectaTemperatureWithMaxFactor:0.9]];
 		[pod cxx_setCommodity:"slaves" andAmount:1];
-		[pod setCrew:podCrew];
+		[pod cxx_setCrew:podCrew];
 		[pod switchAITo:@"oolite-shuttleAI.js"];
 		[self dumpItem:pod];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
 		[pod release]; //release
@@ -2786,12 +2794,11 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			[self refreshEscortPositions];
 			if ([self hasEscorts])
 			{
-				ShipEntity	*escort = nil;
 				unsigned	i = 0;
 				// Note: works on escortArray rather than escortEnumerator because escorts may be mutated.
-				foreach (escort, [self escortArray])
+				for (const auto &escort : [self escortArray])
 				{
-					[escort setEscortDestination:[self coordinatesForEscortPosition:i++]];
+					[escort.get() setEscortDestination:[self coordinatesForEscortPosition:i++]];
 				}
 			
 				ShipEntity *leader = [[self escortGroup] leader];
@@ -7044,17 +7051,23 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (NSEnumerator *) escortEnumerator
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_escorts
 {
-	if (_escortGroup == nil)  return [[NSArray array] objectEnumerator];
-	return [[_escortGroup mutationSafeEnumerator] ooExcludingObject:self];
+	std::vector<oo::ObjCRef<ShipEntity *>> escorts;
+	if (_escortGroup == nil)  return escorts;
+	// The group's members at this moment, in its order, without self (as -ooExcludingObject: skipped it).
+	for (ShipEntity *member in [_escortGroup mutationSafeEnumerator])
+	{
+		if (member == self)  continue;
+		escorts.emplace_back(member);
+	}
+	return escorts;
 }
 
 
-- (NSArray *) escortArray
+- (std::vector<oo::ObjCRef<ShipEntity *>>) escortArray
 {
-	if (_escortGroup == nil)  return [NSArray array];
-	return [[self escortEnumerator] allObjects];
+	return [self cxx_escorts];
 }
 
 
@@ -8004,51 +8017,48 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (NSArray *) crew
+- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew
 {
 	return crew;
 }
 
 
-- (void) setCrew:(NSArray *)crewArray
+- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray
 {
 	if ([self isExplicitlyUnpiloted])
 	{
 		//unpiloted ships cannot have crew
 		// but may have crew before isExplicitlyUnpiloted set, so force *that* to clear too
-		[crew autorelease];
-		crew = nil;
+		crew = std::nullopt;
 		return;
 	}
 	//do not set to hulk here when crew is nil (or 0).  Some things like missiles have no crew.
-	[crew autorelease];
-	crew = [crewArray copy];
+	crew = crewArray;
 }
 
 
-- (void) setSingleCrewWithRole:(NSString *)crewRole
+- (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole
 {
 	if (![self isUnpiloted])
 	{
-		OOCharacter *crewMember = [OOCharacter randomCharacterWithRole:crewRole
+		OOCharacter *crewMember = [OOCharacter randomCharacterWithRole:oo::NSStringFrom(crewRole)
 												 andOriginalSystem:[self homeSystem]];
-		[self setCrew:[NSArray arrayWithObject:crewMember]];
+		[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(crewMember) }];
 	}
 }
 
 
-- (NSArray *) crewForScripting
+- (std::vector<oo::PList>) cxx_crewForScripting
 {
-	if (crew == nil)
+	std::vector<oo::PList> result;
+	if (!crew.has_value())
 	{
-		return nil;
+		return result;
 	}
-	OOCharacter *crewMember = nil;
-	NSMutableArray *result = [NSMutableArray arrayWithCapacity:4];
-	foreach (crewMember, crew)
+	result.reserve(crew->size());
+	for (const auto &crewMember : *crew)
 	{
-		NSDictionary *crewDict = [crewMember infoForScripting];
-		[result addObject:crewDict];
+		result.push_back(oo::PListFrom([crewMember.get() infoForScripting]));
 	}
 	return result;
 }
@@ -8457,16 +8467,17 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 
 /* Note: this array probably contains some template cargo pods. Do not
- * pass it to Javascript without reifying them first. */
-- (NSMutableArray*) cargo
+ * pass it to Javascript without reifying them first. The live container: callers edit it in place
+ * (ADR-0043 Amendment 3 item 22); nullptr for a nil receiver. */
+- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo
 {
-	return cargo;
+	return &cargo;
 }
 
 
 - (NSUInteger) cxx_cargoCount
 {
-	return [cargo count];
+	return cargo.size();
 }
 
 
@@ -8478,9 +8489,9 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	NSUInteger			i, commodityCount = goods.size();
 	std::vector<OOCargoQuantity> quantityInHold(commodityCount, 0);
 
-	for (i = 0; i < [cargo count]; i++)
+	for (i = 0; i < cargo.size(); i++)
 	{
-		ShipEntity *container = [cargo objectAtIndex:i];
+		ShipEntity *container = cargo[i].get();
 		const std::optional<std::string> good = [container cxx_commodityType];
 		const auto j = good.has_value() ? std::ranges::find(goods, *good) : goods.end();
 		// A pod whose commodity is not a good (or has none) indexed past the array before; it is skipped.
@@ -8508,20 +8519,19 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 - (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
 {
-	[cargo removeAllObjects];
-	for (const auto &pod : some_cargo)  [cargo addObject:pod.get()];
+	cargo = some_cargo;
 }
 
 
 - (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
 {
-	if ([cargo count] + some_cargo.size() > [self maxAvailableCargoSpace])
+	if (cargo.size() + some_cargo.size() > [self maxAvailableCargoSpace])
 	{
 		return NO;
 	}
 	else
 	{
-		for (const auto &pod : some_cargo)  [cargo addObject:pod.get()];
+		cargo.insert(cargo.end(), some_cargo.begin(), some_cargo.end());
 		return YES;
 	}
 }
@@ -8530,10 +8540,9 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 - (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount
 {
 	OOCargoQuantity found = 0;
-	ShipEntity *pod = nil;
-	foreach (pod, cargo)
+	for (const auto &pod : cargo)
 	{
-		if ([pod cxx_commodityType] == commodity)
+		if ([pod.get() cxx_commodityType] == commodity)
 		{
 			found++;
 		}
@@ -8544,14 +8553,14 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		return NO;
 	}
 	
-	NSUInteger i = [cargo count] - 1;
+	NSUInteger i = cargo.size() - 1;
 	// iterate downwards to be safe removing during iteration
 	while (amount > 0)
 	{
-		if ([[cargo objectAtIndex:i] cxx_commodityType] == commodity)
+		if ([cargo[i].get() cxx_commodityType] == commodity)
 		{
 			amount--;
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 		}
 		// check above means array index can't underflow here
 		i--;
@@ -9154,13 +9163,13 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	Quaternion q;
 	int speed_low = 200;
 
-	NSArray *jetsam = nil;  // this will contain the stuff to get thrown out
+	std::vector<oo::ObjCRef<ShipEntity *>> jetsam;  // this will contain the stuff to get thrown out
 	unsigned cargo_chance = 70;
-	jetsam = [NSArray arrayWithArray:cargo];   // what the ship is carrying
-	[cargo removeAllObjects];   // dispense with it!
+	jetsam = cargo;   // what the ship is carrying
+	cargo.clear();   // dispense with it!
 	unsigned limit = 15;
 	//  Throw out cargo
-	NSUInteger n_jetsam = [jetsam count];
+	NSUInteger n_jetsam = jetsam.size();
 					
 	for (i = 0; i < n_jetsam; i++)
 	{
@@ -9179,7 +9188,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 				}
 			}
 			limit--;
-			ShipEntity* cargoObj = [jetsam objectAtIndex:i];
+			ShipEntity* cargoObj = jetsam[i].get();
 			ShipEntity* container = [UNIVERSE reifyCargoPod:cargoObj];
 			/* TODO: this debris position/velocity setting code is
 			 * duplicated - sometimes not very cleanly - all over the
@@ -12503,7 +12512,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	ShipEntity		*result = nil;
 	ShipEntity			*mainPod = nil;
 	unsigned			n_pods, i;
-	NSMutableArray		*passengers = nil;
+	std::optional<std::vector<oo::ObjCRef<ShipEntity *>>>	passengers;	// only with more than one pod, as before
 	
 	/*
 		CHANGE: both player & NPCs can now launch escape pods in interstellar
@@ -12513,21 +12522,21 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	// check number of pods aboard -- require at least one.
 	n_pods = oo::PListView(shipinfoDictionary).get<unsigned int>(@"has_escape_pod");
 	if (n_pods > 65) n_pods = 65; // maximum of 64 passengers.
-	if (n_pods > 1) passengers = [NSMutableArray arrayWithCapacity:n_pods-1];
-	
+	if (n_pods > 1) passengers.emplace().reserve(n_pods-1);
+
 	if (crew)	// transfer crew
 	{
 		// make sure crew inherit any legalStatus
-		for (i = 0; i < [crew count]; i++)
+		for (i = 0; i < crew->size(); i++)
 		{
-			OOCharacter *ch = (OOCharacter*)[crew objectAtIndex:i];
+			OOCharacter *ch = (*crew)[i].get();
 			[ch setLegalStatus: [self legalStatus] | [ch legalStatus]];
 		}
-		mainPod = [self launchPodWithCrew:crew];
+		mainPod = [self launchPodWithCrew:*crew];
 		if (mainPod)
 		{
 			result = mainPod;
-			[self setCrew:nil];
+			[self cxx_setCrew:std::nullopt];
 			[self setHulk:YES]; // we are without crew now.
 		}
 	}
@@ -12536,11 +12545,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	for (i = 1; i < n_pods; i++)
 	{
 		ShipEntity	*passenger = nil;
-		passenger = [self launchPodWithCrew:[NSArray arrayWithObject:[OOCharacter randomCharacterWithRole:@"passenger" andOriginalSystem:gen_rnd_number()]]];
-		[passengers addObject:passenger];
+		passenger = [self launchPodWithCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>([OOCharacter randomCharacterWithRole:@"passenger" andOriginalSystem:gen_rnd_number()]) }];
+		if (passengers.has_value())  passengers->emplace_back(passenger);
 	}
-	
-	if (mainPod) [self doScriptEvent:OOJSID("shipLaunchedEscapePod") withArgument:mainPod andArgument:passengers];
+
+	if (mainPod) [self doScriptEvent:OOJSID("shipLaunchedEscapePod") withArgument:mainPod andArgument:(passengers.has_value() ? oo::NSArrayFromObjects(*passengers) : nil)];
 	
 	return result;
 }
@@ -12566,20 +12575,20 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	ShipEntity				*jetto = nil;
 	NSUInteger				 i = 0;
 	
-	if (([cargo count] > 0)&&([UNIVERSE getTime] - cargo_dump_time > 0.5))  // space them 0.5s or 10m apart
+	if ((cargo.size() > 0)&&([UNIVERSE getTime] - cargo_dump_time > 0.5))  // space them 0.5s or 10m apart
 	{
 		if (!preferred.has_value())
 		{
-			jetto = [[[cargo objectAtIndex:0] retain] autorelease];
+			jetto = [[cargo[0].get() retain] autorelease];
 		}
 		else
 		{
 			BOOL found = NO;
-			for (i=0;i<[cargo count];i++)
+			for (i=0;i<cargo.size();i++)
 			{
-				if ([[cargo objectAtIndex:i] cxx_commodityType] == preferred)
+				if ([cargo[i].get() cxx_commodityType] == preferred)
 				{
-					jetto = [[[cargo objectAtIndex:i] retain] autorelease];
+					jetto = [[cargo[i].get() retain] autorelease];
 					found = YES;
 					break;
 				}
@@ -12587,14 +12596,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			if (found == NO)
 			{
 				// dump anything
-				jetto = [[[cargo objectAtIndex:0] retain] autorelease];
+				jetto = [[cargo[0].get() retain] autorelease];
 				i = 0;
 			}
 		}
 		if (jetto != nil)
 		{
 			[self dumpItem:jetto];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 			[self broadcastAIMessage:@"CARGO_DUMPED"]; // goes only to 16 nearby ships in range, but that should be enough.
 			unsigned i;
 			// only send script event to powered entities
@@ -12625,7 +12634,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	// players get to see their old ship sailing forth, while NPCs run away more efficiently!
 	// cargo is ejected at higher speed from any ship
-	double  eject_speed = EXPECT_NOT([jetto crew] && [jetto isPlayer]) ? 20.0 : 100.0;
+	double  eject_speed = EXPECT_NOT([jetto cxx_crew].has_value() && [jetto isPlayer]) ? 20.0 : 100.0;
 	double  eject_reaction = -eject_speed * [jetto mass] / [self mass];
 	double	jcr = jetto->collision_radius;
 	
@@ -12666,7 +12675,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	velocity = vector_add(velocity, vector_multiply_scalar(v_eject, eject_reaction));
 	
 	[jetto setPosition:rpos];
-	if ([jetto crew]) // jetto has a crew, so assume it is an escape pod.
+	if ([jetto cxx_crew].has_value()) // jetto has a crew, so assume it is an escape pod.
 	{
 		// orient the pod away from the ship to avoid colliding with it.
 		jetto_orientation = quaternion_rotation_between(v_eject_normal, kBasisZVector);
@@ -12925,7 +12934,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 {
 	if (other == nil)							return NO;
 	if (![self hasCargoScoop])						return NO;
-	if ([cargo count] >= [self maxAvailableCargoSpace])	return NO;
+	if (cargo.size() >= [self maxAvailableCargoSpace])	return NO;
 	if (scanClass == CLASS_CARGO)				return NO;  // we have no power so we can't scoop
 	if ([other scanClass] != CLASS_CARGO)		return NO;
 	if ([other cargoType] == CARGO_NOT_CARGO)	return NO;
@@ -12993,7 +13002,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	OOCargoQuantity	co_amount;
 	
 	// don't even think of trying to scoop if the cargo hold is already full
-	if (max_cargo && [cargo count] >= [self maxAvailableCargoSpace])
+	if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])
 	{
 		[other setStatus:STATUS_IN_FLIGHT];
 		return;
@@ -13027,8 +13036,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 					if (isPlayer && [other showScoopMessage] && procMessages)
 					{
 						[UNIVERSE clearPreviousMessage];
-						NSString *shipName = [other displayName];
-						[UNIVERSE addMessage:OOExpandKey(@"scripted-item-scooped", shipName) forCount:4];
+						const std::optional<std::string> shipName = oo::OptionalString([other displayName]);
+						[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scripted-item-scooped", "shipName", shipName)) forCount:4];
 					}
 					[other cxx_setCommodityForPod:std::nullopt andAmount:0];
 					co_amount = 0;
@@ -13064,23 +13073,24 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		
 		if (isPlayer)
 		{
-			if ([other crew])			
+			const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> otherCrew = [other cxx_crew];
+			if (otherCrew.has_value())
 			{
 				if ([other showScoopMessage] && procMessages)
 				{
 					[UNIVERSE clearPreviousMessage];
 					unsigned i;
-					for (i = 0; i < [[other crew] count]; i++)
+					for (i = 0; i < otherCrew->size(); i++)
 					{
-						OOCharacter *rescuee = [[other crew] objectAtIndex:i];
-						NSString *characterName = [rescuee name];
+						OOCharacter *rescuee = (*otherCrew)[i].get();
+						const std::optional<std::string> characterName = oo::OptionalString([rescuee name]);
 						if ([rescuee legalStatus])
 						{
-							[UNIVERSE addMessage:OOExpandKey(@"scoop-captured-character", characterName) forCount: 4.5];
+							[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scoop-captured-character", "characterName", characterName)) forCount: 4.5];
 						}
 						else if ([rescuee insuranceCredits])
 						{
-							[UNIVERSE addMessage:OOExpandKey(@"scoop-rescued-character", characterName) forCount: 4.5];
+							[UNIVERSE addMessage:oo::NSStringOrNil(ExpandKeyWithArgument("scoop-rescued-character", "characterName", characterName)) forCount: 4.5];
 						}
 						else
 						{
@@ -13102,11 +13112,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				}
 			}
 		}
-		[cargo insertObject:other atIndex:0];	// places most recently scooped object at eject position
+		cargo.insert(cargo.begin(), oo::ObjCRef<ShipEntity *>(other));	// places most recently scooped object at eject position
 		[other setStatus:STATUS_IN_HOLD];
 		[other performTumble];
 		[shipAI message:@"CARGO_SCOOPED"];
-		if (max_cargo && [cargo count] >= [self maxAvailableCargoSpace])  [shipAI message:@"HOLD_FULL"];
+		if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])  [shipAI message:@"HOLD_FULL"];
 	}
 	if (procEvents)
 	{
@@ -13117,9 +13127,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	// then remove it from the hold, or it will be over-retained
 	if ([other status] != STATUS_IN_HOLD) 
 	{
-		if ([cargo containsObject:other])
+		if ((std::find(cargo.begin(), cargo.end(), other) != cargo.end()))
 		{
-			[cargo removeObject:other];
+			std::erase(cargo, other);
 		}
 	}
 
@@ -13186,7 +13196,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(NSString *)weaponIdentifier
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(id)weaponIdentifier	// shared selector (proposed ADR-0043): an Objective-C string
 {
 	if ([self status] == STATUS_DEAD)  return;
 	if (amount <= 0.0)  return;
@@ -13280,10 +13290,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				}
 				if ([self isPirate])
 				{
-					NSEnumerator		*groupEnum = nil;
-					ShipEntity			*otherPirate = nil;
-				
-					for (groupEnum = [group mutationSafeEnumerator]; (otherPirate = [groupEnum nextObject]); )
+					for (ShipEntity *otherPirate in [group mutationSafeEnumerator])
 					{
 						if (otherPirate != self && randf() < 0.5)	// 50% chance they'll help
 						{
@@ -13295,10 +13302,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				}
 				else if (iAmTheLaw)
 				{
-					NSEnumerator		*groupEnum = nil;
-					ShipEntity			*otherPolice = nil;
-				
-					for (groupEnum = [group mutationSafeEnumerator]; (otherPolice = [groupEnum nextObject]); )
+					for (ShipEntity *otherPolice in [group mutationSafeEnumerator])
 					{
 						if (otherPolice != self)
 						{
@@ -13405,11 +13409,10 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			if ([self hasEscorts])
 			{
 				OOShipGroup			*escortGroup = [self escortGroup];
-				NSEnumerator		*escortEnum = nil;
-				ShipEntity			*escort = nil;
 				// Note: works on escortArray rather than escortEnumerator because escorts may be mutated.
-				for (escortEnum = [[self escortArray] objectEnumerator]; (escort = [escortEnum nextObject]); )
+				for (const auto &escortRef : [self escortArray])
 				{
+					ShipEntity *escort = escortRef.get();
 					// act individually now!
 					if ([escort group] == escortGroup)  [escort setGroup:nil];
 					if ([escort owner] == self)  [escort setOwner:escort];
@@ -13568,7 +13571,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	[shipAI reactToMessage:@"WITCHSPACE OKAY" context:@"performHyperSpaceExit"];	// must be a reaction, the ship is about to disappear
 	
 	// CIM 2012.07.22 above only covers those cases where ship expected to leave
-	if ([[self escortArray] count] > 1)
+	if ([self escortArray].size() > 1)
 	{
 		// so wormhole escorts anyway if it leaves unexpectedly.
 		[self wormholeEscorts];
@@ -13896,9 +13899,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 // Exposed to AI
 - (void) deployEscorts
 {
-	ShipEntity		*escort = nil;
 	ShipEntity		*target = nil;
-	NSMutableSet	*idleEscorts = nil;
+	std::vector<oo::ObjCRef<ShipEntity *>>	idleEscorts;	// in escort order (was a mutable set: hash order)
 	unsigned		deployCount;
 	
 	if ([self primaryTarget] == nil || _escortGroup == nil)  return;
@@ -13918,12 +13920,12 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	[self setLastEscortTarget:[self primaryTarget]];
 	
 	// Find idle escorts
-	idleEscorts = [NSMutableSet set];
-	foreach (escort, [self escortEnumerator])
+	for (const auto &escortRef : [self cxx_escorts])
 	{
-		if (![[[escort getAI] name] isEqualToString:@"interceptAI.plist"] && ![escort hasNewAI])
+		ShipEntity *escort = escortRef.get();
+		if (oo::StdString([[escort getAI] name]) != "interceptAI.plist" && ![escort hasNewAI])
 		{
-			[idleEscorts addObject:escort];
+			idleEscorts.push_back(escortRef);
 		}
 		else if ([escort hasNewAI])
 		{
@@ -13932,15 +13934,16 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		}
 	}
 	
-	escortCount = [idleEscorts count];
+	escortCount = idleEscorts.size();
 	if (escortCount == 0)  return;
-	
+
 	deployCount = ranrot_rand() % escortCount + 1;
-	
+
 	// Deploy deployCount idle escorts.
 	target = [self primaryTarget];
-	foreach (escort, idleEscorts)
+	for (const auto &escortRef : idleEscorts)
 	{
+		ShipEntity *escort = escortRef.get();
 		[escort addTarget:target];
 		[escort setAITo:@"interceptAI.plist"];
 		[escort doScriptEvent:OOJSID("escortAttack") withArgument:target];
@@ -13958,12 +13961,12 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	if (![self hasEscorts])  return;
 	
 	OOShipGroup			*escortGroup = [self escortGroup];
-	ShipEntity			*escort = nil;
 	ShipEntity			*target = [self primaryTarget];
 	unsigned			i = 0;
 	// Note: works on escortArray rather than escortEnumerator because escorts may be mutated.
-	foreach (escort, [self escortArray])
+	for (const auto &escortRef : [self escortArray])
 	{
+		ShipEntity	*escort = escortRef.get();
 		float		delay = i++ * 3.0 + 1.5;		// send them off at three second intervals
 		AI			*ai = [escort getAI];
 		
@@ -13975,9 +13978,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		if (![escort hasNewAI])
 		{
 			[escort setAITo:@"dockingAI.plist"];
-			[ai setState:@"ABORT" afterDelay:delay + 0.25];
+			[ai cxx_setState:"ABORT" afterDelay:delay + 0.25];
 		}
-		[escort doScriptEvent:OOJSID("escortDock") withArgument:[NSNumber numberWithFloat:delay]];
+		[escort doScriptEvent:OOJSID("escortDock") withArgument:oo::ObjectFromPList(oo::PList::singleReal(delay))];
 	}
 	
 	// We now have no escorts.

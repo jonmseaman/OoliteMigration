@@ -34,7 +34,7 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class	OOColor, StationEntity, WormholeEntity, AI, Octree, OOMesh, OOScript,
+@class	OOColor, StationEntity, WormholeEntity, AI, Octree, OOMesh, OOScript, OOCharacter,
 	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet,
 	OOExhaustPlumeEntity, OOFlasherEntity;
 
@@ -362,7 +362,7 @@ typedef enum
 	OOTimeAbsolute			cargo_dump_time;			// time cargo was last dumped
 	OOTimeAbsolute			last_shot_time;				// time shot was last fired
 	
-	NSMutableArray			*cargo;						// cargo containers go in here
+	std::vector<oo::ObjCRef<ShipEntity *>>	cargo;	// cargo containers go in here (index 0 is the eject position); edited in place through -cxx_cargo
 	
 	std::optional<std::string>	commodity_type;			// type of commodity in a container; nullopt: not a pod (was nil)
 	OOCargoQuantity			commodity_amount;			// 1 if unit is TONNES (0), possibly more if precious metals KILOGRAMS (1)
@@ -399,8 +399,8 @@ typedef enum
 							portWeaponOffset,
 							starboardWeaponOffset;
 	
-	// crew (typically one OOCharacter - the pilot)
-	NSArray					*crew;
+	// crew (typically one OOCharacter - the pilot); nullopt: unpiloted (was nil); an empty vector is crewed
+	std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>	crew;
 	
 	// close contact / collision tracking
 	NSMutableDictionary		*closeContactsInfo;
@@ -762,8 +762,8 @@ typedef enum
 - (OOShipGroup *) stationGroup; // should probably be defined in stationEntity.m
 
 - (BOOL) hasEscorts;
-- (NSEnumerator *) escortEnumerator;
-- (NSArray *) escortArray;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_escorts;	// the escorts (the group without self), a snapshot
+- (std::vector<oo::ObjCRef<ShipEntity *>>) escortArray;	// the same snapshot
 
 - (uint8_t) escortCount;
 
@@ -871,14 +871,14 @@ typedef enum
 - (void) setDestinationSystem:(OOSystemID)s;
 
 
-- (NSArray *) crew;
-- (NSArray *) crewForScripting;
-- (void) setCrew:(NSArray *)crewArray;
+- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew;	// nullopt: unpiloted
+- (std::vector<oo::PList>) cxx_crewForScripting;	// each member's -infoForScripting
+- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray;
 /**
 	Convenience to set the crew to a single character of the given role,
 	originating in the ship's home system. Does nothing if unpiloted.
  */
-- (void) setSingleCrewWithRole:(NSString *)crewRole;
+- (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole;
 
 // Fuel and capacity in tenths of light-years.
 - (OOFuelQuantity) fuel;
@@ -921,7 +921,7 @@ typedef enum
 - (OOCargoQuantity) cargoQuantityOnBoard;
 - (OOCargoType) cargoType;
 - (id) cargoListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array of dictionaries
-- (NSMutableArray *) cargo;
+- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo;	// the live cargo pods (nullptr for a nil receiver)
 - (NSUInteger) cxx_cargoCount;	// the number of cargo pods held
 - (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo;
 - (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo;

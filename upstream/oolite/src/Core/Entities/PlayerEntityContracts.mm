@@ -122,16 +122,16 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 
 	// step through the cargo removing crew from any escape pods
 	// No enumerator because we're mutating the array -- Ahruman
-	for (i = 0; i < [cargo count]; i++)
+	for (i = 0; i < cargo.size(); i++)
 	{
-		ShipEntity	*cargoItem = [cargo objectAtIndex:i];
+		ShipEntity	*cargoItem = cargo[i].get();
 
 		if ([cargoItem crew] != nil)
 		{
 			// Has crew -> is escape pod.
 			for (OOCharacter *member in [cargoItem crew])  rescuees.push_back(oo::ObjCRef<OOCharacter *>(member));
 			[cargoItem setCrew:nil];
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 			i--;
 		}
 	}
