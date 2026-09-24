@@ -398,10 +398,10 @@ typedef enum
 
 	NSMutableArray			*eqScripts;
 	
-	NSDictionary			*_missionOverlayDescriptor;
-	NSDictionary			*_missionBackgroundDescriptor;
+	oo::PList				_missionOverlayDescriptor;	// null = none (was nil)
+	oo::PList				_missionBackgroundDescriptor;
 	OOGUIBackgroundSpecial	_missionBackgroundSpecial;
-	NSDictionary			*_equipScreenBackgroundDescriptor;
+	oo::PList				_equipScreenBackgroundDescriptor;
 	NSString				*_missionScreenID;
 	
 	BOOL					found_equipment;
@@ -699,9 +699,9 @@ typedef enum
 	std::vector<BOOL>		customModePressed;
 
 	// dict to hold extra keys for missions screen.
-	NSDictionary			*extraMissionKeys;
+	std::map<std::string, oo::PList, std::less<>>	extraMissionKeys;	// key name -> processed key definitions
 
-	NSMutableDictionary		*extraGuiScreenKeys;
+	std::map<int, std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>>>	extraGuiScreenKeys;	// by GUI screen ID
 
 	// save-file
 	NSString				*save_path;
@@ -728,7 +728,7 @@ typedef enum
 	Quaternion				customViewQuaternion;
 	OOMatrix				customViewMatrix;
 	Vector					customViewOffset, customViewForwardVector, customViewUpVector, customViewRightVector, customViewRotationCenter;
-	NSString				*customViewDescription;
+	std::optional<std::string>	customViewDescription;
 	
 	
 	// docking reports
@@ -798,7 +798,7 @@ typedef enum
 	
 	OOLongRangeChartMode	longRangeChartMode;
 
-	NSArray					*_customViews;
+	std::vector<oo::PList>	_customViews;	// the ship's custom view Dicts
 	NSUInteger				_customViewIndex;
 	
 	OODockingClearanceStatus dockingClearanceStatus;
@@ -952,7 +952,7 @@ typedef enum
 - (void) setAftShieldRechargeRate:(float)newValue;
 
 // return keyconfig.plist settings for scripting
-- (NSDictionary *) keyConfig;
+- (oo::PList) cxx_keyConfig;
 - (BOOL) isMouseControlOn;
 
 - (GLfloat) dialRoll;
@@ -1220,10 +1220,10 @@ typedef enum
 - (Vector)customViewForwardVector;
 - (Vector)customViewUpVector;
 - (Vector)customViewRightVector;
-- (NSString *)customViewDescription;
+- (std::optional<std::string>) cxx_customViewDescription;
 - (void)resetCustomView;
 - (void)setCustomViewData;
-- (void)setCustomViewDataFromDictionary:(NSDictionary*) viewDict withScaling:(BOOL)withScaling;
+- (void)cxx_setCustomViewDataFromDictionary:(const oo::PList &) viewDict withScaling:(BOOL)withScaling;	// a null viewDict (was nil) resets the matrix and offset only
 - (HPVector) viewpointPosition;
 - (HPVector) breakPatternPosition;
 - (Vector) viewpointOffset;
@@ -1233,27 +1233,27 @@ typedef enum
 - (Vector) viewpointOffsetStarboard;
 
 
-- (NSDictionary *) missionOverlayDescriptor;
-- (NSDictionary *) missionOverlayDescriptorOrDefault;
-- (void) setMissionOverlayDescriptor:(NSDictionary *)descriptor;
+- (oo::PList) cxx_missionOverlayDescriptor;
+- (oo::PList) cxx_missionOverlayDescriptorOrDefault;
+- (void) cxx_setMissionOverlayDescriptor:(const oo::PList &)descriptor;
 
-- (NSDictionary *) missionBackgroundDescriptor;
-- (NSDictionary *) missionBackgroundDescriptorOrDefault;
-- (void) setMissionBackgroundDescriptor:(NSDictionary *)descriptor;
+- (oo::PList) cxx_missionBackgroundDescriptor;
+- (oo::PList) cxx_missionBackgroundDescriptorOrDefault;
+- (void) cxx_setMissionBackgroundDescriptor:(const oo::PList &)descriptor;
 - (OOGUIBackgroundSpecial) missionBackgroundSpecial;
-- (void) setMissionBackgroundSpecial:(NSString *)special;
+- (void) cxx_setMissionBackgroundSpecial:(const std::string &)special;	// "" (was nil) = none
 - (void) setMissionExitScreen:(OOGUIScreenID)screen;
 - (OOGUIScreenID) missionExitScreen;
 - (void) clearExtraMissionKeys;
-- (void) setExtraMissionKeys:(NSDictionary *)keys;
+- (void) cxx_setExtraMissionKeys:(const oo::PList &)keys;	// a Dict of key name -> key definitions
 
-- (void) clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(NSString *)key;
+- (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key;
 - (BOOL) setExtraGuiScreenKeys:(OOGUIScreenID)gui definition:(OOJSGuiScreenKeyDefinition *)definition;
 
 
 // Nasty hack to keep background textures around while on equip screens.
-- (NSDictionary *) equipScreenBackgroundDescriptor;
-- (void) setEquipScreenBackgroundDescriptor:(NSDictionary *)descriptor;
+- (oo::PList) cxx_equipScreenBackgroundDescriptor;
+- (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor;
 
 - (BOOL) scriptsLoaded;
 - (NSArray *) worldScriptNames;

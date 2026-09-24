@@ -237,4 +237,89 @@ and converts the result exactly as the old method produced it.
 	[self cxx_setLastShot:oo::ObjCRefsFrom<OOLaserShotEntity *>(shot)];
 }
 
+
+// oo-3rb.245: custom views, screen background descriptors and script-defined keys
+- (NSDictionary *) keyConfig
+{
+	return oo::ObjectFromPList([self cxx_keyConfig]);
+}
+
+
+- (NSString *)customViewDescription
+{
+	return oo::NSStringOrNil([self cxx_customViewDescription]);
+}
+
+
+- (void)setCustomViewDataFromDictionary:(NSDictionary*) viewDict withScaling:(BOOL)withScaling
+{
+	[self cxx_setCustomViewDataFromDictionary:oo::PListFrom(viewDict) withScaling:withScaling];
+}
+
+
+- (NSDictionary *) missionOverlayDescriptor
+{
+	return oo::ObjectFromPList([self cxx_missionOverlayDescriptor]);
+}
+
+
+- (NSDictionary *) missionOverlayDescriptorOrDefault
+{
+	return oo::ObjectFromPList([self cxx_missionOverlayDescriptorOrDefault]);
+}
+
+
+- (void) setMissionOverlayDescriptor:(NSDictionary *)descriptor
+{
+	[self cxx_setMissionOverlayDescriptor:oo::PListFrom(descriptor)];
+}
+
+
+- (NSDictionary *) missionBackgroundDescriptor
+{
+	return oo::ObjectFromPList([self cxx_missionBackgroundDescriptor]);
+}
+
+
+- (NSDictionary *) missionBackgroundDescriptorOrDefault
+{
+	return oo::ObjectFromPList([self cxx_missionBackgroundDescriptorOrDefault]);
+}
+
+
+- (void) setMissionBackgroundDescriptor:(NSDictionary *)descriptor
+{
+	[self cxx_setMissionBackgroundDescriptor:oo::PListFrom(descriptor)];
+}
+
+
+- (void) setMissionBackgroundSpecial:(NSString *)special
+{
+	[self cxx_setMissionBackgroundSpecial:oo::StdString(special)];	// nil -> "" -> none, as before
+}
+
+
+- (void) setExtraMissionKeys:(NSDictionary *)keys
+{
+	[self cxx_setExtraMissionKeys:oo::PListFrom(keys)];
+}
+
+
+- (void) clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(NSString *)key
+{
+	[self cxx_clearExtraGuiScreenKeys:gui key:oo::StdString(key)];
+}
+
+
+- (NSDictionary *) equipScreenBackgroundDescriptor
+{
+	return oo::ObjectFromPList([self cxx_equipScreenBackgroundDescriptor]);
+}
+
+
+- (void) setEquipScreenBackgroundDescriptor:(NSDictionary *)descriptor
+{
+	[self cxx_setEquipScreenBackgroundDescriptor:oo::PListFrom(descriptor)];
+}
+
 @end

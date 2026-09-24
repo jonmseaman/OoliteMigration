@@ -101,6 +101,47 @@ enum
 };
 
 
+namespace
+{
+
+/*	What oo::PListView(dict).get<NSString *> / get<Vector> / get<Quaternion> answered, for a
+	configuration held as an oo::PList (the Foundation sweep, proposed ADR-0043): a string is
+	nullopt when the key is absent or holds neither a string nor a number; vectors and quaternions
+	go through OOCollectionExtractors' readers (unmigrated) with their defaults for a missing key.
+	(Same readers as ShipEntity.mm's.)
+*/
+std::optional<std::string> StringForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return oo::PListGet<std::string>::from(value, std::string());
+}
+
+
+Vector VectorForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return OOVectorFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kZeroVector);
+}
+
+
+Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return OOQuaternionFromObject(value != nullptr ? oo::ObjectFromPList(*value) : nil, kIdentityQuaternion);
+}
+
+
+// A custom_views value as the list of views (oo_arrayForKey: nil unless an array -> empty).
+std::vector<oo::PList> CustomViewsFrom(const oo::PList &value)
+{
+	const oo::PList::Array *views = value.getIf<oo::PList::Array>();
+	return (views != nullptr) ? *views : std::vector<oo::PList>();
+}
+
+}	// namespace
+
+
 static NSString * const kOOLogBuyMountedOK			= @"equip.buy.mounted";
 static NSString * const kOOLogBuyMountedFailed		= @"equip.buy.mounted.failed";
 static float const 		kDeadResetTime				= 30.0f;
@@ -1783,8 +1824,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 	
 	// custom view no.
-	if (_customViews != nil)
-		_customViewIndex = oo::PListView(dict).get<unsigned int>(@"custom_view_index") % [_customViews count];
+	if (!_customViews.empty())	// (an empty custom_views array divided by zero before)
+		_customViewIndex = oo::PListView(dict).get<unsigned int>(@"custom_view_index") % _customViews.size();
 
 
 	// docking clearance protocol
@@ -1950,7 +1991,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 #endif
 
 	// make sure extraGuiScreenKeys is clear
-	DESTROY(extraGuiScreenKeys);
+	extraGuiScreenKeys.clear();
 
 	[[GameController sharedController] logProgress:OOExpandKeyRandomized(@"loading-miscellany")];
 	
@@ -2078,8 +2119,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	voice_no = [UNIVERSE setVoice:-1 withGenderM:voice_gender_m];
 #endif
 	
-	[_customViews release];
-	_customViews = nil;
+	_customViews.clear();
 	_customViewIndex = 0;
 	
 	mouse_control_on = NO;
@@ -2335,11 +2375,10 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 	[self setDefaultCustomViews];
 	
-	NSArray *customViews = oo::PListView(shipDict).get<NSArray *>(@"custom_views");
-	if (customViews != nil)
+	const oo::PList customViews = oo::PListFrom([shipDict objectForKey:@"custom_views"]);
+	if (customViews.isArray())
 	{
-		[_customViews release];
-		_customViews = [customViews retain];
+		_customViews = CustomViewsFrom(customViews);
 		_customViewIndex = 0;
 	}
 	
@@ -2385,9 +2424,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(roleSystemList);
 	DESTROY(missionDestinations);
 	
-	DESTROY(_missionOverlayDescriptor);
-	DESTROY(_missionBackgroundDescriptor);
-	DESTROY(_equipScreenBackgroundDescriptor);
 	
 	DESTROY(shipCommodityData);
 	
@@ -2396,7 +2432,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(save_path);
 	DESTROY(scenarioKey);
 	
-	DESTROY(_customViews);
 
 	
 
@@ -2415,7 +2450,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 	DESTROY(customEquipActivation);
 
-	DESTROY(extraGuiScreenKeys);
 
 	[super dealloc];
 }
@@ -4654,10 +4688,10 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSDictionary *) keyConfig
+- (oo::PList) cxx_keyConfig
 {
 	//return keyconfig_settings;
-	return keyconfig2_settings;
+	return oo::PListFrom(keyconfig2_settings);	// (the ivar is retyped by oo-3rb.254)
 }
 
 
@@ -11863,14 +11897,14 @@ static NSString *last_outfitting_key=nil;
 
 - (void) setDefaultCustomViews
 {
-	NSArray *customViews = oo::PListView([[OOShipRegistry sharedRegistry] shipInfoForKey:PLAYER_SHIP_DESC]).get<NSArray *>(@"custom_views");
-	
-	[_customViews release];
-	_customViews = nil;
+	const oo::PList shipInfo = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:oo::StdString(PLAYER_SHIP_DESC)];
+	const oo::PList *customViews = shipInfo.find("custom_views");
+
+	_customViews.clear();
 	_customViewIndex = 0;
-	if (customViews != nil)
+	if (customViews != nullptr)
 	{
-		_customViews = [customViews retain];
+		_customViews = CustomViewsFrom(*customViews);
 	}
 }
 
@@ -12527,7 +12561,7 @@ static NSString *last_outfitting_key=nil;
 }
 
 
-- (NSString *) customViewDescription
+- (std::optional<std::string>) cxx_customViewDescription
 {
 	return customViewDescription;
 }
@@ -12535,7 +12569,8 @@ static NSString *last_outfitting_key=nil;
 
 - (void) resetCustomView
 {
-	[self setCustomViewDataFromDictionary:oo::PListView(_customViews).at<NSDictionary *>(_customViewIndex) withScaling:NO];
+	const oo::PList customView = (_customViewIndex < _customViews.size()) ? _customViews[_customViewIndex] : oo::PList();
+	[self cxx_setCustomViewDataFromDictionary:(customView.isDict() ? customView : oo::PList()) withScaling:NO];	// null unless a Dict, as oo_dictionaryAtIndex:
 }
 
 
@@ -12550,42 +12585,43 @@ static NSString *last_outfitting_key=nil;
 	customViewMatrix = OOMatrixForQuaternionRotation(q1);
 }
 
-- (void) setCustomViewDataFromDictionary:(NSDictionary *)viewDict withScaling:(BOOL)withScaling
+- (void) cxx_setCustomViewDataFromDictionary:(const oo::PList &)viewDict withScaling:(BOOL)withScaling
 {
 	customViewMatrix = kIdentityMatrix;
 	customViewOffset = kZeroVector;
-	if (viewDict == nil)  return;
-	
-	customViewQuaternion = oo::PListView(viewDict).get<Quaternion>(@"view_orientation");
+	if (viewDict.isNull())  return;
+
+	customViewQuaternion = QuaternionForKey(viewDict, "view_orientation");
 	[self setCustomViewData];
 	
 	// easier to do the multiplication at this point than at load time
 	if (withScaling)
 	{
-		customViewOffset = vector_multiply_scalar(oo::PListView(viewDict).get<Vector>(@"view_position"),_scaleFactor);
+		customViewOffset = vector_multiply_scalar(VectorForKey(viewDict, "view_position"),_scaleFactor);
 	}
 	else
 	{
 		// but don't do this when the custom view is set through JS
-		customViewOffset = oo::PListView(viewDict).get<Vector>(@"view_position");
+		customViewOffset = VectorForKey(viewDict, "view_position");
 	}
 	customViewRotationCenter = vector_subtract(customViewOffset, vector_multiply_scalar(customViewForwardVector, dot_product(customViewOffset, customViewForwardVector)));
-	customViewDescription = oo::PListView(viewDict).get<NSString *>(@"view_description");
-	
-	NSString *facing = [oo::PListView(viewDict).get<NSString *>(@"weapon_facing") lowercaseString];
-	if ([facing isEqual:@"aft"])
+	customViewDescription = StringForKey(viewDict, "view_description");
+
+	const std::optional<std::string> facing = StringForKey(viewDict, "weapon_facing");	// nil compares unequal
+	const std::string lowerFacing = facing.has_value() ? oo::str::lowercase(*facing) : std::string();
+	if (facing.has_value() && lowerFacing == "aft")
 	{
 		currentWeaponFacing = WEAPON_FACING_AFT;
 	}
-	else if ([facing isEqual:@"port"])
+	else if (facing.has_value() && lowerFacing == "port")
 	{
 		currentWeaponFacing = WEAPON_FACING_PORT;
 	}
-	else if ([facing isEqual:@"starboard"])
+	else if (facing.has_value() && lowerFacing == "starboard")
 	{
 		currentWeaponFacing = WEAPON_FACING_STARBOARD;
 	}
-	else if ([facing isEqual:@"forward"])
+	else if (facing.has_value() && lowerFacing == "forward")
 	{
 		currentWeaponFacing = WEAPON_FACING_FORWARD;
 	}
@@ -12600,66 +12636,58 @@ static NSString *last_outfitting_key=nil;
 }
 
 
-- (NSDictionary *) missionOverlayDescriptor
+- (oo::PList) cxx_missionOverlayDescriptor
 {
 	return _missionOverlayDescriptor;
 }
 
 
-- (NSDictionary *) missionOverlayDescriptorOrDefault
+- (oo::PList) cxx_missionOverlayDescriptorOrDefault
 {
-	NSDictionary *result = [self missionOverlayDescriptor];
-	if (result == nil)
+	oo::PList result = [self cxx_missionOverlayDescriptor];
+	if (result.isNull())
 	{
 		if ([[self missionTitle] length] == 0)
 		{
-			result = [UNIVERSE screenTextureDescriptorForKey:@"mission_overlay_no_title"];
+			result = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mission_overlay_no_title"]);
 		}
 		else
 		{
-			result = [UNIVERSE screenTextureDescriptorForKey:@"mission_overlay_with_title"];
+			result = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mission_overlay_with_title"]);
 		}
 	}
-	
+
 	return result;
 }
 
 
-- (void) setMissionOverlayDescriptor:(NSDictionary *)descriptor
+- (void) cxx_setMissionOverlayDescriptor:(const oo::PList &)descriptor
 {
-	if (descriptor != _missionOverlayDescriptor)
-	{
-		[_missionOverlayDescriptor autorelease];
-		_missionOverlayDescriptor = [descriptor copy];
-	}
+	_missionOverlayDescriptor = descriptor;
 }
 
 
-- (NSDictionary *) missionBackgroundDescriptor
+- (oo::PList) cxx_missionBackgroundDescriptor
 {
 	return _missionBackgroundDescriptor;
 }
 
 
-- (NSDictionary *) missionBackgroundDescriptorOrDefault
+- (oo::PList) cxx_missionBackgroundDescriptorOrDefault
 {
-	NSDictionary *result = [self missionBackgroundDescriptor];
-	if (result == nil)
+	oo::PList result = [self cxx_missionBackgroundDescriptor];
+	if (result.isNull())
 	{
-		result = [UNIVERSE screenTextureDescriptorForKey:@"mission"];
+		result = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mission"]);
 	}
-	
+
 	return result;
 }
 
 
-- (void) setMissionBackgroundDescriptor:(NSDictionary *)descriptor
+- (void) cxx_setMissionBackgroundDescriptor:(const oo::PList &)descriptor
 {
-	if (descriptor != _missionBackgroundDescriptor)
-	{
-		[_missionBackgroundDescriptor autorelease];
-		_missionBackgroundDescriptor = [descriptor copy];
-	}
+	_missionBackgroundDescriptor = descriptor;
 }
 
 
@@ -12669,16 +12697,16 @@ static NSString *last_outfitting_key=nil;
 }
 
 
-- (void) setMissionBackgroundSpecial:(NSString *)special
+- (void) cxx_setMissionBackgroundSpecial:(const std::string &)special
 {
-	if (special == nil) {
+	if (special.empty()) {	// (nil, from the bridge)
 		_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_NONE;
 	}
-	else if ([special isEqualToString:@"SHORT_RANGE_CHART"])
+	else if (special == "SHORT_RANGE_CHART")
 	{
 		_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_SHORT;
 	}
-	else if ([special isEqualToString:@"SHORT_RANGE_CHART_SHORTEST"])
+	else if (special == "SHORT_RANGE_CHART_SHORTEST")
 	{
 		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
@@ -12689,7 +12717,7 @@ static NSString *last_outfitting_key=nil;
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_SHORT;
 		}
 	}
-	else if ([special isEqualToString:@"SHORT_RANGE_CHART_QUICKEST"])
+	else if (special == "SHORT_RANGE_CHART_QUICKEST")
 	{
 		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
@@ -12700,11 +12728,11 @@ static NSString *last_outfitting_key=nil;
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_SHORT;
 		}
 	} 
-	else if ([special isEqualToString:@"CUSTOM_CHART"])
+	else if (special == "CUSTOM_CHART")
 	{
 		_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_CUSTOM;
 	}
-	else if ([special isEqualToString:@"CUSTOM_CHART_SHORTEST"])
+	else if (special == "CUSTOM_CHART_SHORTEST")
 	{
 		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
@@ -12715,7 +12743,7 @@ static NSString *last_outfitting_key=nil;
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_CUSTOM;
 		}
 	}
-	else if ([special isEqualToString:@"CUSTOM_CHART_QUICKEST"])
+	else if (special == "CUSTOM_CHART_QUICKEST")
 	{
 		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
@@ -12726,11 +12754,11 @@ static NSString *last_outfitting_key=nil;
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_CUSTOM;
 		}
 	} 
-	else if ([special isEqualToString:@"LONG_RANGE_CHART"])
+	else if (special == "LONG_RANGE_CHART")
 	{
 		_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_LONG;
 	}
-	else if ([special isEqualToString:@"LONG_RANGE_CHART_SHORTEST"])
+	else if (special == "LONG_RANGE_CHART_SHORTEST")
 	{
 		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
@@ -12741,7 +12769,7 @@ static NSString *last_outfitting_key=nil;
 			_missionBackgroundSpecial = GUI_BACKGROUND_SPECIAL_LONG;
 		}
 	}
-	else if ([special isEqualToString:@"LONG_RANGE_CHART_QUICKEST"])
+	else if (special == "LONG_RANGE_CHART_QUICKEST")
 	{
 		if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_NAVIGATIONAL_ARRAY"])
 		{
@@ -12771,19 +12799,15 @@ static NSString *last_outfitting_key=nil;
 }
 
 
-- (NSDictionary *) equipScreenBackgroundDescriptor
+- (oo::PList) cxx_equipScreenBackgroundDescriptor
 {
 	return _equipScreenBackgroundDescriptor;
 }
 
 
-- (void) setEquipScreenBackgroundDescriptor:(NSDictionary *)descriptor
+- (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor
 {
-	if (descriptor != _equipScreenBackgroundDescriptor)
-	{
-		[_equipScreenBackgroundDescriptor autorelease];
-		_equipScreenBackgroundDescriptor = [descriptor copy];
-	}
+	_equipScreenBackgroundDescriptor = descriptor;
 }
 
 
@@ -13274,39 +13298,43 @@ else _dockTarget = NO_TARGET;
 
 - (void) clearExtraMissionKeys
 {
-	[extraMissionKeys release];
-	extraMissionKeys = nil;
+	extraMissionKeys.clear();
 }
 
 
-- (void) setExtraMissionKeys:(NSDictionary *)keys
+- (void) cxx_setExtraMissionKeys:(const oo::PList &)keys
 {
-	NSString *key = nil;
-	NSMutableDictionary *final = [[NSMutableDictionary alloc] init];
-	foreach (key, [keys allKeys])
+	std::map<std::string, oo::PList, std::less<>> final;
+	if (const oo::PList::Dict *keyDict = keys.getIf<oo::PList::Dict>())
 	{
-		[final setObject:[self processKeyCode:oo::PListView(keys).get<NSArray *>(key)] forKey:key];
-	}
-	extraMissionKeys = [final copy];
-	[final release];
-}
-
-
-- (void) clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(NSString *)key
-{
-	NSMutableArray *keydefs = [extraGuiScreenKeys objectForKey:[NSString stringWithFormat:@"%d",gui]];
-	NSInteger i = [keydefs count];
-	NSDictionary *def = nil;
-	while (i--) 
-	{
-		def = [keydefs objectAtIndex:i];
-		if (def && [oo::PListView(def).get<NSString *>(@"name") isEqualToString:key]) 
+		for (const auto &[key, value] : *keyDict)
 		{
-			[keydefs removeObjectAtIndex:i];
+			final[key] = [self cxx_processKeyCode:(value.isArray() ? value : oo::PList())];	// oo_arrayForKey:
+		}
+	}
+	extraMissionKeys = std::move(final);
+}
+
+
+- (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key
+{
+	const auto screenKeys = extraGuiScreenKeys.find(gui);
+	if (screenKeys == extraGuiScreenKeys.end())  return;
+	std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>> &keydefs = screenKeys->second;
+	std::size_t i = keydefs.size();
+	while (i--)
+	{
+		OOJSGuiScreenKeyDefinition *def = keydefs[i].get();
+		// the old code read "name" from the definition object with PListView, which only reads
+		// dictionaries, so this never matched; kept as it was (oo::PListFrom(def) is an Object node)
+		const oo::PList definitionValue = oo::PListFrom(def);
+		const oo::PList *definitionName = definitionValue.find("name");
+		if (def && definitionName != nullptr && definitionName->isString() && *definitionName->getIf<std::string>() == key)
+		{
+			keydefs.erase(keydefs.begin() + static_cast<std::ptrdiff_t>(i));
 			break;
 		}
 	}
-	// do we have to put the array back, or does the reference update the source?
 }
 
 
@@ -13314,70 +13342,60 @@ else _dockTarget = NO_TARGET;
 {
 	// process all the keys in the definition
 	BOOL result = YES;
-	NSMutableArray *newarray = nil;
-	NSString *key = nil;	
-	NSMutableDictionary *final = [[NSMutableDictionary alloc] init];
-	NSDictionary *keys = oo::ObjectFromPList([definition registerKeys]);
-	NSMutableArray *checklist = [[NSMutableArray alloc] init];
+	oo::PList::Dict final;
+	const oo::PList keys = [definition registerKeys];
+	std::vector<oo::PList> checklist;
 
-	foreach (key, [keys allKeys])
+	if (const oo::PList::Dict *keyDict = keys.getIf<oo::PList::Dict>())
 	{
-		NSArray *item = [self processKeyCode:oo::PListView(keys).get<NSArray *>(key)];
-		[checklist addObject:item];
-		[final setObject:item forKey:key];
-	}
-	[definition setRegisterKeys:oo::PListFrom([final copy])];
-	[final release];
-
-	/// create the dictionary, if it doesn't already exist
-	if (!extraGuiScreenKeys) 
-	{
-		extraGuiScreenKeys = [[NSMutableDictionary alloc] init];
-	}
-
-	if (![extraGuiScreenKeys objectForKey:[NSString stringWithFormat:@"%d",gui]]) 
-	{
-		// brand new - just add
-		newarray = [[NSMutableArray alloc] init];
-	}
-	else 
-	{
-		newarray = [[extraGuiScreenKeys objectForKey:[NSString stringWithFormat:@"%d",gui]] mutableCopy];
-		NSInteger i = [newarray count];
-		NSInteger j = 0;
-		OOJSGuiScreenKeyDefinition *def_existing = nil;
-		while (i--) 
+		for (const auto &[key, value] : *keyDict)
 		{
-			def_existing = [newarray objectAtIndex:i]; 
+			oo::PList item = [self cxx_processKeyCode:(value.isArray() ? value : oo::PList())];	// oo_arrayForKey:
+			checklist.push_back(item);
+			final[key] = std::move(item);
+		}
+	}
+	[definition setRegisterKeys:oo::PList(std::move(final))];
+
+	std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>> newarray;
+	const auto existing = extraGuiScreenKeys.find(gui);
+	if (existing != extraGuiScreenKeys.end())
+	{
+		newarray = existing->second;
+		std::size_t i = newarray.size();
+		while (i--)
+		{
+			OOJSGuiScreenKeyDefinition *def_existing = newarray[i].get();
 			// if we find this name already in the array, remove it
 			if (def_existing && [[def_existing name] isEqualToString:[definition name]])
 			{
-				[newarray removeObjectAtIndex:i];
+				newarray.erase(newarray.begin() + static_cast<std::ptrdiff_t>(i));
 			}
-			else 
+			else
 			{
 				// check whether any of those keycodes is already in use on this screen
-				NSDictionary *keydefs = oo::ObjectFromPList([def_existing registerKeys]);
+				const oo::PList keydefs = [def_existing registerKeys];
+				const oo::PList::Dict *keydefsDict = keydefs.getIf<oo::PList::Dict>();
 
-				foreach (key, [keydefs allKeys])
+				for (const auto &[key, keydef] : (keydefsDict != nullptr) ? *keydefsDict : oo::PList::Dict())	// byte order (was -allKeys order): only the log order can differ
 				{
-					j = [checklist count];
-					while (j--) 
+					std::size_t j = checklist.size();
+					while (j--)
 					{
-						if ([[NSString stringWithFormat:@"%@",[keydefs objectForKey:key]] isEqualToString:[NSString stringWithFormat:@"%@",[checklist objectAtIndex:j]]]) 
+						// the "%@" texts of the two key-code arrays
+						if (oo::DescriptionOf(oo::ObjectFromPList(keydef)) == oo::DescriptionOf(oo::ObjectFromPList(checklist[j])))
 						{
 							result = NO;
-							OOLog(kOOLogException, @"***** Exception in setExtraGuiScreenKeys: %@ : %@ (%@)", @"invalid key settings", @"key already in use", key);
+							OOLog(kOOLogException, @"***** Exception in setExtraGuiScreenKeys: %@ : %@ (%@)", @"invalid key settings", @"key already in use", oo::NSStringFrom(key));
 						}
 					}
 				}
 			}
 		}
 	}
-	[newarray addObject:definition];
+	newarray.push_back(oo::ObjCRef<OOJSGuiScreenKeyDefinition *>(definition));
 	// only add the item if there were no errors
-	if (result) [extraGuiScreenKeys setObject:[newarray mutableCopy] forKey:[NSString stringWithFormat:@"%d",gui]];
-	[newarray release];
+	if (result) extraGuiScreenKeys[gui] = std::move(newarray);
 	return result;
 }
 

@@ -3082,7 +3082,8 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 
 	// check for any extra keys added by scripting
-	const std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>> keys = oo::ObjCRefsFrom<OOJSGuiScreenKeyDefinition *>([extraGuiScreenKeys objectForKey:oo::NSStringFrom(std::to_string(gui_screen))]);
+	const auto screenKeys = extraGuiScreenKeys.find(gui_screen);
+	const std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>> keys = (screenKeys != extraGuiScreenKeys.end()) ? screenKeys->second : std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>>();
 	if (!keys.empty()) {
 		std::size_t kc = keys.size();
 		OOJSGuiScreenKeyDefinition *definition = nil;
@@ -4058,16 +4059,16 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 	if ([self checkKeyPress:n_key_custom_view] || joyButtonState[BUTTON_EXTVIEWCYCLE])
 	{
-		if (!customView_pressed && [_customViews count] != 0 && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && ![gameView allowingStringInput])
+		if (!customView_pressed && !_customViews.empty() && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && ![gameView allowingStringInput])
 		{
 			if ([UNIVERSE viewDirection] == VIEW_CUSTOM)	// already in custom view mode
 			{
 				// rotate the custom views
-				_customViewIndex = (_customViewIndex + 1) % [_customViews count];
+				_customViewIndex = (_customViewIndex + 1) % _customViews.size();
 			}
 	
-			const oo::PList customView = (_customViewIndex < [_customViews count]) ? oo::PListFrom([_customViews objectAtIndex:_customViewIndex]) : oo::PList();
-			[self setCustomViewDataFromDictionary:(customView.isDict() ? oo::ObjectFromPList(customView) : nil) withScaling:YES];	// nil unless a Dict
+			const oo::PList customView = (_customViewIndex < _customViews.size()) ? _customViews[_customViewIndex] : oo::PList();
+			[self cxx_setCustomViewDataFromDictionary:(customView.isDict() ? customView : oo::PList()) withScaling:YES];	// null unless a Dict
 	
 			[self switchToThisView:VIEW_CUSTOM andProcessWeaponFacing:NO]; // weapon facing must not change, we just want an external view
 		}
@@ -5285,15 +5286,13 @@ static BOOL autopilot_pause;
 			{
 				[self handleGUIUpDownArrowKeys];
 				NSString *extraKey = @"";
-				if (extraMissionKeys)
 				{
-					NSString *key = nil;
-					foreach (key, [extraMissionKeys allKeys])
+					for (const auto &[key, keydef] : extraMissionKeys)	// byte order (was -allKeys hash order)
 					{
-						if ([self checkKeyPress:oo::PListFrom([extraMissionKeys objectForKey:key])]) {
+						if ([self checkKeyPress:keydef]) {
 							if (!extra_key_pressed)
 							{
-								extraKey = [key copy];
+								extraKey = [oo::NSStringFrom(key) copy];
 							}
 							extra_key_pressed = YES;
 						}
