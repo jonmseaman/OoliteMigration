@@ -105,6 +105,7 @@ MA 02110-1301, USA.
 #include "oofnd/FileSystem.hpp"
 #include "oofnd/PListParsing.hpp"
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
 #endif
 
 enum
@@ -9200,7 +9201,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		int secs = floor(r_time);
 		result = oo::str::format("%s %d second%s", result.c_str(), secs, (secs > 1) ? "s" : "");
 	}
-	return oo::OptionalString([oo::NSStringFrom(result) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);	// INTERIM until oo-3rb.65
+	return oo::str::trim(result, oo::str::CharacterSet::whitespace());
 }
 
 
@@ -9239,7 +9240,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		int secs = floor(r_time);
 		result = oo::str::format("%s %d %s", result.c_str(), secs, cxx_OOLookUpPluralDescriptionPRIV("contracts-second-word", secs).c_str());
 	}
-	return oo::OptionalString([oo::NSStringFrom(result) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);	// INTERIM until oo-3rb.65
+	return oo::str::trim(result, oo::str::CharacterSet::whitespace());
 }
 
 
