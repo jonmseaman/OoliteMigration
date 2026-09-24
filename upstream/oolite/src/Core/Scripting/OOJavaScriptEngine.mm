@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Log.hpp"
 #include "oofnd/Notification.hpp"
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
@@ -53,12 +54,6 @@ MA 02110-1301, USA.
 	the engine build-configuration values this file used to test with preprocessor guards, so
 	the two guarded blocks below are runtime `if`s with identical behaviour.
 */
-
-namespace {
-// NSString wants unichar (unsigned short); the façade's ooscript::Char16 is char16_t. Both are
-// 16-bit code units, but Objective-C++ does not implicitly convert between distinct pointee types.
-static inline const unichar *OOJSRUCHARS(const ooscript::Char16 *s)  { return reinterpret_cast<const unichar*>(s); }
-} // namespace
 
 #import "OOPListView.h"
 #import "OOFoundationBridge.h"
@@ -146,11 +141,12 @@ const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.o
 @interface OOJavaScriptEngine (OOMonitorSupportInternal)
 
 - (void)sendMonitorError:(ooscript::ErrorReport *)errorReport
-			 withMessage:(NSString *)message
+			 withMessage:(const std::string &)message
 			   inContext:(ooscript::Context)context;
 
-- (void)sendMonitorLogMessage:(NSString *)message
-			 withMessageClass:(NSString *)messageClass
+// nullopt is meaningful to the monitor (Log() with a null message; no class for Log()).
+- (void)sendMonitorLogMessage:(const std::optional<std::string> &)message
+			 withMessageClass:(const std::optional<std::string> &)messageClass
 					inContext:(ooscript::Context)context;
 
 @end
@@ -198,13 +194,13 @@ static void UnregisterSubclasses(void);
 namespace {
 static void ReportJSError(ooscript::Context context, const char *message, const ooscript::ErrorReport *report)
 {
-	NSString			*severity = @"error";
-	NSString			*messageText = nil;
-	NSString			*lineBuf = nil;
-	NSString			*messageClass = nil;
-	NSString			*highlight = @"*****";
-	NSString			*activeScript = nil;
-	OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
+	std::string			severity = "error";
+	std::string			messageText;
+	std::string			lineBuf;
+	std::string			messageClass;
+	std::string			highlight = "*****";
+	std::string			activeScript;
+OOJavaScriptEngine	*jsEng = [OOJavaScriptEngine sharedEngine];
 	BOOL				showLocation = [jsEng showErrorLocations];
 	
 	// Not OOJS_BEGIN_FULL_NATIVE() - we use the engine while paused.
@@ -224,54 +220,52 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	if (EXPECT_NOT(message == NULL || *message == '\0'))  message = "<unspecified error>";
 	
 	// Type of problem: error, warning or exception? (Strict flag wilfully ignored.)
-	if (report->flags & static_cast<unsigned>(ooscript::ReportFlag::Exception)) severity = @"exception";
+	if (report->flags & static_cast<unsigned>(ooscript::ReportFlag::Exception)) severity = "exception";
 	else if (report->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))
 	{
-		severity = @"warning";
-		highlight = @"-----";
+		severity = "warning";
+		highlight = "-----";
 	}
-	
+
 	// The error message itself
-	messageText = [NSString stringWithUTF8String:message];
-	
+	messageText = message;
+
 	// Get offending line, if present, and trim trailing line breaks
-	lineBuf = [NSString stringWithUTF16String:OOJSRUCHARS(report->linebuf)];
-	while ([lineBuf hasSuffix:@"\n"] || [lineBuf hasSuffix:@"\r"])  lineBuf = [lineBuf substringToIndex:[lineBuf length] - 1];
-	
+	lineBuf = oo::utf16ToUtf8(std::u16string_view(report->linebuf));
+	while (oo::str::hasSuffix(lineBuf, "\n") || oo::str::hasSuffix(lineBuf, "\r"))  lineBuf.pop_back();
+
 	// Get string for error number, for useful log message classes
-	NSDictionary *errorNames = [ResourceManager dictionaryFromFilesNamed:@"javascript-errors.plist" inFolder:@"Config" andMerge:YES];
-	NSString *errorNumberStr = [NSString stringWithFormat:@"%u", report->errorNumber];
-	NSString *errorName = oo::PListView(errorNames).get<NSString *>(errorNumberStr);
-	if (errorName == nil)  errorName = errorNumberStr;
-	
+	const oo::PList errorNames = [ResourceManager cxx_dictionaryFromFilesNamed:"javascript-errors.plist" inFolder:"Config" andMerge:YES];
+	const std::string errorNumberStr = oo::str::format("%u", report->errorNumber);
+	const std::string errorName = errorNames.get<std::string>(errorNumberStr, errorNumberStr);
+
 	// Log message class
-	messageClass = [NSString stringWithFormat:@"script.javaScript.%@.%@", severity, errorName];
-	
+	messageClass = "script.javaScript." + severity + "." + errorName;
+
 	// Skip the rest if this is a warning being ignored.
-	if ((report->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning)) == 0 || OOLogWillDisplayMessagesInClass(messageClass))
+	if ((report->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning)) == 0 || oo::log::willDisplay(messageClass))
 	{
 		// First line: problem description
 		// avoid windows DEP exceptions!
 		OOJSScript *thisScript = [[OOJSScript currentlyRunningScript] weakRetain];
-		activeScript = [[thisScript weakRefUnderlyingObject] displayName];
+		activeScript = oo::OptionalString([[thisScript weakRefUnderlyingObject] displayName]).value_or("<unidentified script>");
 		[thisScript release];
-		
-		if (activeScript == nil)  activeScript = @"<unidentified script>";
-		OOLog(messageClass, @"%@ JavaScript %@ (%@): %@", highlight, severity, activeScript, messageText);
-		
+
+		OO_LOG(messageClass, "{} JavaScript {} ({}): {}", highlight, severity, activeScript, messageText);
+
 		if (showLocation && sErrorHandlerStackSkip == 0 && report->filename != NULL)
 		{
 			// Second line: where error occured, and line if provided. (The line is only provided for compile-time errors, not run-time errors.)
-			if ([lineBuf length] != 0)
+			if (!lineBuf.empty())
 			{
-				OOLog(messageClass, @"      %s, line %d: %@", report->filename, report->lineno, lineBuf);
+				OO_LOG(messageClass, "      {}, line {}: {}", report->filename, report->lineno, lineBuf);
 			}
 			else
 			{
-				OOLog(messageClass, @"      %s, line %d.", report->filename, report->lineno);
+				OO_LOG(messageClass, "      {}, line {}.", report->filename, report->lineno);
 			}
 		}
-		
+
 #ifndef NDEBUG
 		BOOL dump;
 		if (report->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  dump = [jsEng dumpStackForWarnings];
@@ -440,9 +434,8 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	
 	// Run prefix scripts.
 	[OOJSScript jsScriptFromFileNamed:@"oolite-global-prefix.js"
-						   properties:[NSDictionary dictionaryWithObject:JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext)
-																  forKey:@"special"]];
-	
+						   properties:oo::ObjectFromPList(oo::PList(oo::PList::Dict{{"special", oo::PListObject(JSSpecialFunctionsObjectWrapper(gOOJSMainThreadContext))}}))];
+
 	ooscript::endRequest((gOOJSMainThreadContext));
 	
 	OOLog(@"script.javaScript.init.success", @"%@", @"Set up JavaScript context.");
@@ -754,23 +747,23 @@ static void DebuggerHook(ooscript::Context context, void * /*closure*/)
 @implementation OOJavaScriptEngine (OOMonitorSupportInternal)
 
 - (void) sendMonitorError:(ooscript::ErrorReport *)errorReport
-			  withMessage:(NSString *)message
+			  withMessage:(const std::string &)message
 				inContext:(ooscript::Context)theContext
 {
 	if ([_monitor respondsToSelector:@selector(jsEngine:context:error:stackSkip:showingLocation:withMessage:)])
 	{
-		[_monitor jsEngine:self context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[self showErrorLocations] withMessage:message];
+		[_monitor jsEngine:self context:theContext error:errorReport stackSkip:sErrorHandlerStackSkip showingLocation:[self showErrorLocations] withMessage:oo::NSStringFrom(message)];
 	}
 }
 
 
-- (void) sendMonitorLogMessage:(NSString *)message
-			  withMessageClass:(NSString *)messageClass
+- (void) sendMonitorLogMessage:(const std::optional<std::string> &)message
+			  withMessageClass:(const std::optional<std::string> &)messageClass
 					 inContext:(ooscript::Context)theContext
 {
 	if ([_monitor respondsToSelector:@selector(jsEngine:context:logMessage:ofClass:)])
 	{
-		[_monitor jsEngine:self context:theContext logMessage:message ofClass:messageClass];
+		[_monitor jsEngine:self context:theContext logMessage:oo::NSStringOrNil(message) ofClass:oo::NSStringOrNil(messageClass)];
 	}
 }
 
@@ -786,27 +779,34 @@ static void DumpVariable(ooscript::Context context, ooscript::Variable *prop)
 {
 	ooscript::Value nameVal = ooscript::undefinedValue();
 	ooscript::idToValue(context, prop->id, &nameVal);
-	NSString *name = OOStringFromJSValueEvenIfNull(context, nameVal);
-	NSString *value = OOJSDescribeValue(context, prop->value, YES);
-	
+	// ("%@" of a nil name printed "(null)")
+	const std::string name = cxx_OOStringFromJSValueEvenIfNull(context, nameVal).value_or("(null)");
+	const std::string value = cxx_OOJSDescribeValue(context, prop->value, YES);
+
 	enum   // NOLINT(performance-enum-size): kInterestingFlags is a bitwise complement of small flag values; forcing a narrow base type would truncate the ~ result.
 	{
 		kInterestingFlags = ~(static_cast<unsigned>(ooscript::VariableFlag::Enumerate) | static_cast<unsigned>(ooscript::VariableFlag::Permanent) | static_cast<unsigned>(ooscript::VariableFlag::Variable) | static_cast<unsigned>(ooscript::VariableFlag::Argument))
 	};
 	
-	NSString *flagStr = @"";
+	std::string flagStr;
 	if ((prop->flags & kInterestingFlags) != 0)
 	{
-		NSMutableArray *flags = [NSMutableArray array];
-		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::ReadOnly))  [flags addObject:@"read-only"];
-		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Alias))  [flags addObject:[NSString stringWithFormat:@"alias (%@)", OOJSDescribeValue(context, prop->alias, YES)]];
-		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Exception))  [flags addObject:@"exception"];
-		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Error))  [flags addObject:@"error"];
-		
-		flagStr = [NSString stringWithFormat:@" [%@]", [flags componentsJoinedByString:@", "]];
+		std::vector<std::string> flags;
+		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::ReadOnly))  flags.emplace_back("read-only");
+		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Alias))  flags.push_back("alias (" + cxx_OOJSDescribeValue(context, prop->alias, YES) + ")");
+		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Exception))  flags.emplace_back("exception");
+		if (prop->flags & static_cast<unsigned>(ooscript::VariableFlag::Error))  flags.emplace_back("error");
+
+		flagStr = " [";
+		for (std::size_t i = 0; i != flags.size(); ++i)
+		{
+			if (i != 0)  flagStr += ", ";
+			flagStr += flags[i];
+		}
+		flagStr += "]";
 	}
-	
-	OOLog(@"script.javaScript.stackTrace", @"    %@: %@%@", name, value, flagStr);
+
+	OO_LOG("script.javaScript.stackTrace", "    {}: {}{}", name, value, flagStr);
 }
 } // namespace
 
@@ -824,8 +824,8 @@ void OOJSDumpStack(ooscript::Context context)
 			while (ooscript::frameIterator(context, &frame) != NULL)
 			{
 				ooscript::Script script = ooscript::frameScript(context, frame);
-				NSString			*desc = nil;
-				ooscript::VariableList	properties = { 0, NULL, NULL };
+				std::string			desc;
+ooscript::VariableList	properties = { 0, NULL, NULL };
 				BOOL				gotProperties = NO;
 				
 				idx++;
@@ -843,52 +843,53 @@ void OOJSDumpStack(ooscript::Context context)
 				
 				if (script != NULL)
 				{
-					NSString	*location = OOJSDescribeLocation(context, frame);
-					ooscript::Object scope = ooscript::frameScopeChain(context, frame);
+					const std::optional<std::string> location = OOJSDescribeLocation(context, frame);
+ooscript::Object scope = ooscript::frameScopeChain(context, frame);
 					
 					if (scope != NULL)  gotProperties = ooscript::getScopeVariables(context, scope, &properties);
 					
-					NSString *funcDesc = nil;
+					std::string funcDesc;
 					ooscript::Function function = ooscript::frameFunction(context, frame);
 					if (function != NULL)
 					{
 						ooscript::String funcName = ooscript::getFunctionId(function);
 						if (funcName != NULL)
 						{
-							funcDesc = OOStringFromJSString(context, funcName);
+							// (a nil name: -stringByAppendingString: to nil stayed nil, "%@" printed "(null)")
+							const std::optional<std::string> name = cxx_OOStringFromJSString(context, funcName);
 							if (!ooscript::frameIsConstructor(context, frame))
 							{
-								funcDesc = [funcDesc stringByAppendingString:@"()"];
+								funcDesc = name.has_value() ? *name + "()" : std::string("(null)");
 							}
 							else
 							{
-								funcDesc = [NSString stringWithFormat:@"new %@()", funcDesc];
+								funcDesc = "new " + name.value_or("(null)") + "()";
 							}
-							
+
 						}
 						else
 						{
-							funcDesc = @"<anonymous function>";
+							funcDesc = "<anonymous function>";
 						}
 					}
 					else
 					{
-						funcDesc = @"<not a function frame>";
+						funcDesc = "<not a function frame>";
 					}
-					
-					desc = [NSString stringWithFormat:@"(%@) %@", location, funcDesc];
+
+					desc = "(" + location.value_or("(null)") + ") " + funcDesc;
 				}
 				else if (ooscript::frameIsDebugger(context, frame))
 				{
-					desc = @"<debugger frame>";
+					desc = "<debugger frame>";
 				}
 				else
 				{
-					desc = @"<Oolite native>";
+					desc = "<Oolite native>";
 				}
-				
-				OOLog(@"script.javaScript.stackTrace", @"%2u %@", idx - 1, desc);
-				
+
+				OO_LOG("script.javaScript.stackTrace", "{:2} {}", idx - 1, desc);
+
 				if (gotProperties)
 				{
 					ooscript::Value thisVal;
@@ -976,27 +977,26 @@ static void GetLocationNameAndLine(ooscript::Context context, ooscript::StackFra
 } // namespace
 
 
-NSString *OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame)
+std::optional<std::string> OOJSDescribeLocation(ooscript::Context context, ooscript::StackFrame stackFrame)
 {
 	NSCParameterAssert(context != NULL && stackFrame != NULL);
-	
+
 	const char	*fileName;
 	NSUInteger	lineNo;
 	GetLocationNameAndLine(context, stackFrame, &fileName, &lineNo);
-	if (fileName == NULL)  return nil;
-	
+	if (fileName == NULL)  return std::nullopt;
+
 	// If this stops working, we probably need to switch to strcmp().
-	if (fileName == sConsoleScriptName && lineNo >= sConsoleEvalLineNo)  return @"<console input>";
-	
-	// Objectify it.
-	NSString	*fileNameObj = [NSString stringWithUTF8String:fileName];
-	if (fileNameObj == nil)  fileNameObj = [NSString stringWithCString:fileName encoding:NSISOLatin1StringEncoding];
-	if (fileNameObj == nil)  return nil;
-	
-	NSString	*shortFileName = [fileNameObj lastPathComponent];
-	if (![[shortFileName lowercaseString] isEqualToString:@"script.js"])  fileNameObj = shortFileName;
-	
-	return [NSString stringWithFormat:@"%@:%zu", fileNameObj, lineNo];
+	if (fileName == sConsoleScriptName && lineNo >= sConsoleEvalLineNo)  return std::string("<console input>");
+
+	// Stringify it. (A name that is not UTF-8 survives the WTF-8 round trip, standing in for the
+	// Latin-1 fallback.)
+	std::string	fileNameStr = oo::utf16ToUtf8(oo::utf8ToUtf16(fileName));
+
+	std::string	shortFileName = oo::str::lastPathComponent(fileNameStr);
+	if (oo::str::lowercase(shortFileName) != "script.js")  fileNameStr = shortFileName;
+
+	return oo::str::format("%s:%zu", fileNameStr.c_str(), static_cast<std::size_t>(lineNo));
 }
 
 
