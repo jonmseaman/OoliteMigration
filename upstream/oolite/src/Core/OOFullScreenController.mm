@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 
 #import "OOFullScreenController.h"
 #import "OOLogging.h"
+#import "OOFoundationBridge.h"
 
 
 @implementation OOFullScreenController
@@ -66,16 +67,16 @@ MA 02110-1301, USA.
 }
 
 
-- (NSArray *) displayModes
+- (id) displayModes	// shared selector (proposed ADR-0043)
 {
 	OOLogGenericSubclassResponsibility();
 	return nil;
 }
 
 
-- (NSDictionary *) currentDisplayMode
+- (oo::PList) currentDisplayMode
 {
-	return [[self displayModes] objectAtIndex:[self indexOfCurrentDisplayMode]];
+	return oo::PListFrom([[self displayModes] objectAtIndex:[self indexOfCurrentDisplayMode]]);
 }
 
 
@@ -93,10 +94,10 @@ MA 02110-1301, USA.
 }
 
 
-- (NSDictionary *) findDisplayModeForWidth:(NSUInteger)width height:(NSUInteger)height refreshRate:(NSUInteger)d_refresh
+- (oo::PList) findDisplayModeForWidth:(NSUInteger)width height:(NSUInteger)height refreshRate:(NSUInteger)d_refresh
 {
 	OOLogGenericSubclassResponsibility();
-	return nil;
+	return oo::PList();
 }
 
 
