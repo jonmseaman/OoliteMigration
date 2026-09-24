@@ -40,6 +40,9 @@ SOFTWARE.
 #import "OOWeakReference.h"
 #import "OODebuggerInterface.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 @class OOJSScript;
 
 
@@ -47,18 +50,18 @@ SOFTWARE.
 
 // Note: disconnectDebugger:message: will cause a disconnectDebugMonitor:message: message to be sent to the debugger. The debugger should not send disconnectDebugger:message: in response to disconnectDebugMonitor:message:.
 - (void)disconnectDebugger:(in id<OODebuggerInterface>)debugger
-				   message:(in NSString *)message;
+				   message:(in id)message;	// shared selector (proposed ADR-0043); a string or nil
 
 
 // *** JavaScript console support.
 
 // Perform a JS command as though entered at the console, including echoing.
-- (oneway void)performJSConsoleCommand:(in NSString *)command;
+- (oneway void)performJSConsoleCommand:(in id)command;	// shared selector (proposed ADR-0043); a string
 
-- (id)configurationValueForKey:(in NSString *)key;
-- (void)setConfigurationValue:(in id)value forKey:(in NSString *)key;
+- (id)configurationValueForKey:(in id)key;	// shared selector (proposed ADR-0043); key: a string
+- (void)setConfigurationValue:(in id)value forKey:(in id)key;	// shared selector (proposed ADR-0043); key: a string
 
-- (NSString *)sourceCodeForFile:(in NSString *)filePath line:(in unsigned)line;
+- (id)sourceCodeForFile:(in id)filePath line:(in unsigned)line;	// shared selector (proposed ADR-0043); a string in and out
 
 @end
 
@@ -72,8 +75,8 @@ SOFTWARE.
 	OOJSScript							*_script;
 	ooscript::Object _jsSelf;
 	
-	NSDictionary						*_configFromOXPs;	// Settings from debugConfig.plist
-	NSMutableDictionary					*_configOverrides;	// Settings from preferences, modifiable through JS.
+	oo::PList							_configFromOXPs;	// Settings from debugConfig.plist (a Dict, never null after -init)
+	oo::PList							_configOverrides;	// Settings from preferences, modifiable through JS (a Dict; values may be Object nodes).
 	
 	// Caches
 	NSMutableDictionary					*_fgColors,
@@ -98,10 +101,10 @@ SOFTWARE.
 - (void)clearJSConsole;
 - (void)showJSConsole;
 
-- (id)configurationValueForKey:(NSString *)key class:(Class)klass defaultValue:(id)value;
-- (long long)configurationIntValueForKey:(NSString *)key defaultValue:(long long)value;
+- (id)configurationValueForKey:(const std::string &)key class:(Class)klass defaultValue:(id)value;
+- (long long)configurationIntValueForKey:(const std::string &)key defaultValue:(long long)value;
 
-- (NSArray *)configurationKeys;
+- (std::vector<std::string>)configurationKeys;	// sorted case-insensitively
 
 - (BOOL) debuggerConnected;
 
