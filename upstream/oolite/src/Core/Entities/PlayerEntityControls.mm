@@ -2082,9 +2082,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 			if ([self status] != STATUS_WITCHSPACE_COUNTDOWN)
 			{
-				if ([[gameView typedString] length] > 0)
+				if (oo::str::length([gameView cxx_typedString].value_or("")) > 0)
 				{
-					planetSearchString = [[[gameView typedString] lowercaseString] retain];
+					planetSearchString = [oo::NSStringFrom(oo::str::lowercase(*[gameView cxx_typedString])) retain];
 					NSPoint search_coords = [UNIVERSE findSystemCoordinatesWithPrefix:planetSearchString];
 					if ((search_coords.x >= 0.0)&&(search_coords.y >= 0.0))
 					{
@@ -2111,8 +2111,8 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					planetSearchString = nil;
 				}
 				
-				moving |= (searchStringLength != [[gameView typedString] length]);
-				searchStringLength = [[gameView typedString] length];
+				moving |= (searchStringLength != oo::str::length([gameView cxx_typedString].value_or("")));
+				searchStringLength = oo::str::length([gameView cxx_typedString].value_or(""));
 			}
 
 		case GUI_SCREEN_SHORT_RANGE_CHART:
@@ -2487,14 +2487,14 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
+			const std::optional<std::string> commanderFile = [self commanderSelector];
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
 
-				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
+				[self loadPlayerFromFile:*commanderFile asNew:NO];
 			}
 			break;
 		}
@@ -2681,27 +2681,27 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		case GUI_SCREEN_EQUIP_SHIP:
 			if ([self handleGUIUpDownArrowKeys])
 			{
-				NSString		*itemText = [gui selectedRowText];
+				std::optional<std::string>	itemText = [gui cxx_selectedRowText];	// nil compares unequal, as -isEqual: on nil
 				OOWeaponType		weaponType = nil;
-				
-				if ([itemText isEqual:FORWARD_FACING_STRING]) weaponType = forward_weapon_type;
-				if ([itemText isEqual:AFT_FACING_STRING]) weaponType = aft_weapon_type;
-				if ([itemText isEqual:PORT_FACING_STRING]) weaponType = port_weapon_type;
-				if ([itemText isEqual:STARBOARD_FACING_STRING]) weaponType = starboard_weapon_type;
-				
+
+				if (itemText == oo::StdString(FORWARD_FACING_STRING)) weaponType = forward_weapon_type;
+				if (itemText == oo::StdString(AFT_FACING_STRING)) weaponType = aft_weapon_type;
+				if (itemText == oo::StdString(PORT_FACING_STRING)) weaponType = port_weapon_type;
+				if (itemText == oo::StdString(STARBOARD_FACING_STRING)) weaponType = starboard_weapon_type;
+
 				if (weaponType != nil)
 				{
-					BOOL		sameAs = OOWeaponTypeFromEquipmentIdentifierSloppy([gui selectedRowKey]) == weaponType;
+					BOOL		sameAs = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil([gui cxx_selectedRowKey])) == weaponType;
 					// override showInformation _completely_ with itemText
-					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = DESC(@"no-weapon-enter-to-install");
+					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
 					else
 					{
-						NSString *weaponName = [[OOEquipmentType equipmentTypeWithIdentifier:OOEquipmentIdentifierFromWeaponType(weaponType)] name];
-						if (sameAs)  itemText = [NSString stringWithFormat:DESC(@"weapon-installed-@"), weaponName];
-						else  itemText = [NSString stringWithFormat:DESC(@"weapon-@-enter-to-replace"), weaponName];
+						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:OOEquipmentIdentifierFromWeaponType(weaponType)] name]);
+						if (sameAs)  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-installed-@")), { weaponName });
+						else  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-@-enter-to-replace")), { weaponName });
 					}
-					
-					[self showInformationForSelectedUpgradeWithFormatString:itemText];
+
+					[self showInformationForSelectedUpgradeWithFormatString:oo::NSStringOrNil(itemText)];
 				}
 				else
 					[self showInformationForSelectedUpgrade];
@@ -2711,7 +2711,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_EQUIPMENT_START] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_EQUIPMENT_START].value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
 						[gui setSelectedRow:GUI_ROW_EQUIPMENT_START];
@@ -2724,7 +2724,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1].value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
 						[gui setSelectedRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1];
@@ -2763,7 +2763,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_INTERFACES_START] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_INTERFACES_START].value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
 						[gui setSelectedRow:GUI_ROW_INTERFACES_START];
@@ -2776,7 +2776,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1].value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
 						[gui setSelectedRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1];
@@ -2882,7 +2882,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:STATUS_EQUIPMENT_FIRST_ROW] isEqual:GUI_KEY_OK])
+					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW] == oo::StdString(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:STATUS_EQUIPMENT_FIRST_ROW];
 						[self playMenuPagePrevious];
@@ -2898,7 +2898,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
 					NSUInteger maxRows = [[self hud] allowBigGui] ? STATUS_EQUIPMENT_MAX_ROWS + STATUS_EQUIPMENT_BIGGUI_EXTRA_ROWS : STATUS_EQUIPMENT_MAX_ROWS;
-					if ([[gui keyForRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows] isEqual:GUI_KEY_OK])
+					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows] == oo::StdString(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows];
 						[self playMenuPageNext];
@@ -2938,7 +2938,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:MANIFEST_SCREEN_ROW_BACK] isEqual:GUI_KEY_OK])
+					if (([gui cxx_keyForRow:MANIFEST_SCREEN_ROW_BACK] == oo::StdString(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:MANIFEST_SCREEN_ROW_BACK];
 						[self playMenuPagePrevious];
@@ -2957,7 +2957,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				}
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:nextRow] isEqual:GUI_KEY_OK])
+					if (([gui cxx_keyForRow:nextRow] == oo::StdString(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:nextRow];
 						[self playMenuPageNext];
@@ -3001,7 +3001,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_SHIPYARD_START] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START].value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
 						[gui setSelectedRow:GUI_ROW_SHIPYARD_START];
@@ -3014,7 +3014,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1].value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
 						[gui setSelectedRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1];
@@ -3030,21 +3030,21 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				if (!selectPressed)
 				{
 					// try to buy the ship!
-					NSString *key = [gui keyForRow:[gui selectedRow]];
+					const std::optional<std::string> key = [gui cxx_keyForRow:[gui selectedRow]];	// nil compares as ""
 					OOCreditsQuantity shipprice = 0;
-					if (![key hasPrefix:@"More:"])
+					if (!oo::str::hasPrefix(key.value_or(""), "More:"))
 					{
-						shipprice = [self priceForShipKey:key];
+						shipprice = [self priceForShipKey:oo::NSStringOrNil(key)];
 					}
 
 					if ([self buySelectedShip])
 					{
-						if (![key hasPrefix:@"More:"]) // don't do anything if we clicked/selected a "More:" line
+						if (!oo::str::hasPrefix(key.value_or(""), "More:")) // don't do anything if we clicked/selected a "More:" line
 						{
 							[UNIVERSE removeDemoShips];
 							[self setGuiToStatusScreen];
 							[self playBuyShip];
-							[self doScriptEvent:OOJSID("playerBoughtNewShip") withArgument:self andArgument:[NSNumber numberWithUnsignedLongLong:shipprice]]; // some equipment.oxp might want to know everything has changed.
+							[self doScriptEvent:OOJSID("playerBoughtNewShip") withArgument:self andArgument:oo::ObjectFromPList(oo::PList::unsignedInteger(shipprice))]; // some equipment.oxp might want to know everything has changed.
 						}
 					}
 					else
@@ -3060,13 +3060,13 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			}
 			if ([gameView isDown:gvMouseDoubleClick])
 			{
-				if (([gui selectedRow] == GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1) && [[gui keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1] hasPrefix:@"More:"])
+				if (([gui selectedRow] == GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1) && oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1].value_or(""), "More:"))
 				{
 					[self playMenuPageNext];
 					[gui setSelectedRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1];
 					[self buySelectedShip];
 				}
-				else if (([gui selectedRow] == GUI_ROW_SHIPYARD_START) && [[gui keyForRow:GUI_ROW_SHIPYARD_START] hasPrefix:@"More:"])
+				else if (([gui selectedRow] == GUI_ROW_SHIPYARD_START) && oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START].value_or(""), "More:"))
 				{
 					[self playMenuPagePrevious];
 					[gui setSelectedRow:GUI_ROW_SHIPYARD_START];
@@ -3082,18 +3082,18 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	}
 
 	// check for any extra keys added by scripting
-	NSArray *keys = [extraGuiScreenKeys objectForKey:[NSString stringWithFormat:@"%d", gui_screen]];
-	if (keys) {
-		NSInteger kc = [keys count];
+	const std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>> keys = oo::ObjCRefsFrom<OOJSGuiScreenKeyDefinition *>([extraGuiScreenKeys objectForKey:oo::NSStringFrom(std::to_string(gui_screen))]);
+	if (!keys.empty()) {
+		std::size_t kc = keys.size();
 		OOJSGuiScreenKeyDefinition *definition = nil;
-		NSDictionary *keydefs = nil;
-		NSString *key = nil;
 		while (kc--) {
-			definition = [keys objectAtIndex:kc];
-			keydefs = oo::ObjectFromPList([definition registerKeys]);
-			foreach (key, [keydefs allKeys])
+			definition = keys[kc].get();
+			const oo::PList keydefs = [definition registerKeys];
+			const oo::PList::Dict *keydefsDict = keydefs.getIf<oo::PList::Dict>();
+			if (keydefsDict == nullptr)  continue;
+			for (const auto &[key, keydef] : *keydefsDict)	// byte order (was -allKeys order)
 			{
-				if ([self checkKeyPress:oo::PListFrom([keydefs objectForKey:key])]) 
+				if ([self checkKeyPress:keydef]) 
 				{
 					if (!extra_gui_key_pressed) 
 					{
@@ -3101,11 +3101,11 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						if (definition)
 						{
 							[[UNIVERSE gameView] clearKeys];
-							[definition runCallback:key];
+							[definition runCallback:oo::NSStringFrom(key)];
 						}
 						else
 						{
-							OOLog(@"interface.missingCallback", @"Unable to find callback definition for %@ using key %@", [definition name], key);
+							OOLog(@"interface.missingCallback", @"Unable to find callback definition for %@ using key %@", [definition name], oo::NSStringFrom(key));
 						}
 					}
 					extra_gui_key_pressed = YES;
