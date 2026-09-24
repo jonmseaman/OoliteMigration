@@ -651,7 +651,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	noRocks = (unsigned char)oo::PListView(shipDict).get<oo::FuzzyBoolean>(@"no_boulders");
 	
 	commodity_amount = 0;
-	commodity_type = nil;
+	commodity_type = std::nullopt;
 	NSString *cargoString = oo::PListView(shipDict).get<NSString *>(@"cargo_carried");
 	if (cargoString != nil)
 	{
@@ -667,7 +667,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		{
 			cargo_flag = CARGO_FLAG_FULL_UNIFORM;
 
-			OOCommodityType	c_commodity = nil;
+			NSString		*c_commodity = nil;
 			int				c_amount = 1;
 			NSScanner		*scanner = [NSScanner scannerWithString:cargoString];
 			if ([scanner scanInt:&c_amount])
@@ -676,14 +676,14 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 				c_commodity = [[scanner string] substringFromIndex:[scanner scanLocation]];
 				if ([[UNIVERSE commodities] goodDefined:c_commodity])
 				{
-					[self setCommodityForPod:c_commodity andAmount:c_amount];
+					[self cxx_setCommodityForPod:oo::OptionalString(c_commodity) andAmount:c_amount];
 				} 
 				else
 				{
 					c_commodity = [[UNIVERSE commodities] goodNamed:c_commodity];
 					if ([[UNIVERSE commodities] goodDefined:c_commodity])
 					{
-						[self setCommodityForPod:c_commodity andAmount:c_amount];
+						[self cxx_setCommodityForPod:oo::OptionalString(c_commodity) andAmount:c_amount];
 					}
 				}					
 			}
@@ -693,14 +693,14 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 				c_commodity = oo::PListView(shipDict).get<NSString *>(@"cargo_carried");
 				if ([[UNIVERSE commodities] goodDefined:c_commodity])
 				{
-					[self setCommodityForPod:c_commodity andAmount:c_amount];
+					[self cxx_setCommodityForPod:oo::OptionalString(c_commodity) andAmount:c_amount];
 				} 
 				else
 				{
 					c_commodity = [[UNIVERSE commodities] goodNamed:c_commodity];
 					if ([[UNIVERSE commodities] goodDefined:c_commodity])
 					{
-						[self setCommodityForPod:c_commodity andAmount:c_amount];
+						[self cxx_setCommodityForPod:oo::OptionalString(c_commodity) andAmount:c_amount];
 					}
 				}
 			}
@@ -1078,35 +1078,31 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	{
 		case CARGO_SLAVES:
 			commodity_amount = 1;
-			DESTROY(commodity_type);
-			commodity_type = @"slaves";
+			commodity_type = "slaves";
 			cargo_type = CARGO_RANDOM; // not realy random, but it tells that cargo is selected.
 			break;
 			
 		case CARGO_ALLOY:
 			commodity_amount = 1;
-			DESTROY(commodity_type);
-			commodity_type = @"alloys";
+			commodity_type = "alloys";
 			cargo_type = CARGO_RANDOM;
 			break;
 			
 		case CARGO_MINERALS:
 			commodity_amount = 1;
-			DESTROY(commodity_type);
-			commodity_type = @"minerals";
+			commodity_type = "minerals";
 			cargo_type = CARGO_RANDOM;
 			break;
 			
 		case CARGO_THARGOID:
 			commodity_amount = 1;
-			DESTROY(commodity_type);
-			commodity_type = @"alien_items";
+			commodity_type = "alien_items";
 			cargo_type = CARGO_RANDOM;
 			break;
 			
 		case CARGO_SCRIPTED_ITEM:
 			commodity_amount = 1; // value > 0 is needed to be recognised as cargo by scripts;
-			DESTROY(commodity_type); // will be defined elsewhere when needed.
+			commodity_type = std::nullopt; // will be defined elsewhere when needed.
 			break;
 			
 		case CARGO_RANDOM:
@@ -1167,8 +1163,6 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	DESTROY(octree);
 	DESTROY(_defenseTargets);
 	DESTROY(_collisionExceptions);
-
-	DESTROY(commodity_type);
 
 	[self setSubEntityTakingDamage:nil];
 	[self removeAllEquipment];
@@ -2356,7 +2350,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	{
 		[pod setOwner:self];
 		[pod setTemperature:[self randomEjectaTemperatureWithMaxFactor:0.9]];
-		[pod setCommodity:@"slaves" andAmount:1];
+		[pod cxx_setCommodity:"slaves" andAmount:1];
 		[pod setCrew:podCrew];
 		[pod switchAITo:@"oolite-shuttleAI.js"];
 		[self dumpItem:pod];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
@@ -3369,21 +3363,21 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 }
 
 
-- (NSArray *) passengerListForScripting
+- (id) passengerListForScripting	// shared selector (proposed ADR-0043)
 {
-	return [NSArray array];
+	return oo::ObjectFromPList(oo::PList(oo::PList::Array{}));	// an empty array
 }
 
 
-- (NSArray *) parcelListForScripting
+- (id) parcelListForScripting	// shared selector (proposed ADR-0043)
 {
-	return [NSArray array];
+	return oo::ObjectFromPList(oo::PList(oo::PList::Array{}));	// an empty array
 }
 
 
-- (NSArray *) contractListForScripting
+- (id) contractListForScripting	// shared selector (proposed ADR-0043)
 {
-	return [NSArray array];
+	return oo::ObjectFromPList(oo::PList(oo::PList::Array{}));	// an empty array
 }
 
 
@@ -8387,41 +8381,35 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (void) setCommodity:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount
+- (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount
 {
-	if (co_type != nil)
-	{
-		/* The tmp variable is needed as scoopUp can cause the method
-		 * to be passed a reference to self.commodity_type, so DESTROY
-		 * then copying the parameter segfaults */
-		NSString *tmp = [co_type copy];
-		DESTROY(commodity_type);
-		commodity_type = tmp;
-		commodity_amount = co_amount;
-	}
+	/* scoopUp can pass a reference to self.commodity_type (the old code copied it first);
+	 * assigning a std::string from itself is safe. */
+	commodity_type = co_type;
+	commodity_amount = co_amount;
 }
 
 
-- (void) setCommodityForPod:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount
+- (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount
 {
 	// can be nil for pods
-	if (co_type == nil)
+	if (!co_type.has_value())
 	{
-		DESTROY(commodity_type);
+		commodity_type = std::nullopt;
 		commodity_amount = 0;
 		return;
 	}
 	// pod content should never be greater than 1 ton or this will give cargo counting problems elsewhere in the code.
 	// so do first a mass check for cargo added by script/plist.
-	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:co_type];
+	OOMassUnit	unit = [[UNIVERSE commodityMarket] massUnitForGood:oo::NSStringFrom(*co_type)];
 	if (unit == UNITS_TONS && co_amount > 1) co_amount = 1;
 	else if (unit == UNITS_KILOGRAMS && co_amount > 1000) co_amount = 1000;
 	else if (unit == UNITS_GRAMS && co_amount > 1000000) co_amount = 1000000;
-	[self setCommodity:co_type andAmount:co_amount];
+	[self cxx_setCommodity:*co_type andAmount:co_amount];
 }
 
 
-- (OOCommodityType) commodityType
+- (std::optional<std::string>) cxx_commodityType
 {
 	return commodity_type;
 }
@@ -8455,7 +8443,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 - (OOCargoQuantity) cargoQuantityOnBoard
 {
-	NSUInteger result = [[self cargo] count];
+	NSUInteger result = [self cxx_cargoCount];
 	NSAssert(result < UINT32_MAX, @"Cargo quantity out of bounds.");
 	return (OOCargoQuantity)result;
 }
@@ -8476,72 +8464,76 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (NSArray *) cargoListForScripting
+- (NSUInteger) cxx_cargoCount
 {
-	NSMutableArray		*list = [NSMutableArray array];
-	
-	OOCommodityType		good = nil;
-	NSArray 			*goods = [[UNIVERSE commodityMarket] goods];
-	NSUInteger			i, j, commodityCount = [goods count];
-	OOCargoQuantity		quantityInHold[commodityCount];
+	return [cargo count];
+}
 
-	for (i = 0; i < commodityCount; i++)
-	{
-		quantityInHold[i] = 0;
-	}
+
+- (id) cargoListForScripting	// shared selector (proposed ADR-0043)
+{
+	oo::PList::Array	list;
+
+	const std::vector<std::string> goods = oo::StringsFrom([[UNIVERSE commodityMarket] goods]);
+	NSUInteger			i, commodityCount = goods.size();
+	std::vector<OOCargoQuantity> quantityInHold(commodityCount, 0);
+
 	for (i = 0; i < [cargo count]; i++)
 	{
 		ShipEntity *container = [cargo objectAtIndex:i];
-		j = [goods indexOfObject:[container commodityType]];
-		quantityInHold[j] += [container commodityAmount];
+		const std::optional<std::string> good = [container cxx_commodityType];
+		const auto j = good.has_value() ? std::ranges::find(goods, *good) : goods.end();
+		// A pod whose commodity is not a good (or has none) indexed past the array before; it is skipped.
+		if (j != goods.end())  quantityInHold[(std::size_t)(j - goods.begin())] += [container commodityAmount];
 	}
-	
+
 	for (i = 0; i < commodityCount; i++)
 	{
 		if (quantityInHold[i] > 0)
 		{
-			NSMutableDictionary	*commodity = [NSMutableDictionary dictionaryWithCapacity:4];
-			good = [goods objectAtIndex:i];
+			oo::PList::Dict	commodity;
+			const std::string &good = goods[i];
 			// commodity, quantity - keep consistency between .manifest and .contracts
-			[commodity setObject:good forKey:@"commodity"];
-			[commodity setObject:[NSNumber numberWithUnsignedInt:quantityInHold[i]] forKey:@"quantity"];
-			[commodity setObject:[[UNIVERSE commodityMarket] nameForGood:good] forKey:@"displayName"]; 
-			[commodity setObject:DisplayStringForMassUnitForCommodity(good) forKey:@"unit"]; 
-			[list addObject:commodity];
+			commodity["commodity"] = good;
+			commodity["quantity"] = oo::PList(quantityInHold[i]);	// an unsigned integer
+			const std::optional<std::string> goodName = [[UNIVERSE commodityMarket] cxx_nameForGood:good];
+			if (goodName.has_value())  commodity["displayName"] = *goodName;
+			commodity["unit"] = oo::StdString(DisplayStringForMassUnitForCommodity(oo::NSStringFrom(good)));
+			list.emplace_back(std::move(commodity));
 		}
 	}
 
-	return [[list copy] autorelease];	// return an immutable copy
+	return oo::ObjectFromPList(oo::PList(std::move(list)));	// an immutable array
 }
 
-- (void) setCargo:(NSArray *) some_cargo
+- (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
 {
 	[cargo removeAllObjects];
-	[cargo addObjectsFromArray:some_cargo];
+	for (const auto &pod : some_cargo)  [cargo addObject:pod.get()];
 }
 
 
-- (BOOL) addCargo:(NSArray *) some_cargo
+- (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo
 {
-	if ([cargo count] + [some_cargo count] > [self maxAvailableCargoSpace])
+	if ([cargo count] + some_cargo.size() > [self maxAvailableCargoSpace])
 	{
 		return NO;
 	}
 	else
 	{
-		[cargo addObjectsFromArray:some_cargo];
+		for (const auto &pod : some_cargo)  [cargo addObject:pod.get()];
 		return YES;
 	}
 }
 
 
-- (BOOL) removeCargo:(OOCommodityType)commodity amount:(OOCargoQuantity) amount
+- (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount
 {
 	OOCargoQuantity found = 0;
 	ShipEntity *pod = nil;
 	foreach (pod, cargo)
 	{
-		if ([[pod commodityType] isEqualToString:commodity])
+		if ([pod cxx_commodityType] == commodity)
 		{
 			found++;
 		}
@@ -8556,7 +8548,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	// iterate downwards to be safe removing during iteration
 	while (amount > 0)
 	{
-		if ([[[cargo objectAtIndex:i] commodityType] isEqualToString:commodity])
+		if ([[cargo objectAtIndex:i] cxx_commodityType] == commodity)
 		{
 			amount--;
 			[cargo removeObjectAtIndex:i];
@@ -8587,7 +8579,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	if (cargo_flag != flag)
 	{
 		cargo_flag = flag;
-		NSArray *newCargo = nil;
+		std::vector<oo::ObjCRef<ShipEntity *>> newCargo;
 		unsigned num = 0;
 		if (likely_cargo > 0)
 		{
@@ -8614,22 +8606,25 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			switch (cargo_flag)
 			{
 			case CARGO_FLAG_FULL_UNIFORM:
-				newCargo = [UNIVERSE getContainersOfCommodity:oo::PListView(shipinfoDictionary).get<NSString *>(@"cargo_carried") :num];
+				{
+					const oo::PList info = oo::PListFrom(shipinfoDictionary);	// until oo-3rb.241 holds it as an oo::PList
+					newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfCommodity:oo::NSStringOrNil(StringForKey(info, "cargo_carried")) :num]);
+				}
 				break;
 			case CARGO_FLAG_FULL_PLENTIFUL:
-				newCargo = [UNIVERSE getContainersOfGoods:num scarce:NO legal:YES];
+				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfGoods:num scarce:NO legal:YES]);
 				break;
 			case CARGO_FLAG_FULL_SCARCE:
-				newCargo = [UNIVERSE getContainersOfGoods:num scarce:YES legal:YES];
+				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfGoods:num scarce:YES legal:YES]);
 				break;
 			case CARGO_FLAG_FULL_MEDICAL:
-				newCargo = [UNIVERSE getContainersOfCommodity:@"Narcotics" :num];
+				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfCommodity:@"Narcotics" :num]);
 				break;
 			case CARGO_FLAG_FULL_CONTRABAND:
-				newCargo = [UNIVERSE getContainersOfGoods:num scarce:YES legal:NO];
+				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfGoods:num scarce:YES legal:NO]);
 				break;
 			case CARGO_FLAG_PIRATE:
-				newCargo = [UNIVERSE getContainersOfGoods:(Ranrot() % (1+num/2)) scarce:YES legal:NO];
+				newCargo = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE getContainersOfGoods:(Ranrot() % (1+num/2)) scarce:YES legal:NO]);
 				break;
 			case CARGO_FLAG_FULL_PASSENGERS:
 				// TODO: allow passengers to survive
@@ -9405,7 +9400,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 									[rock setBounty: 0 withReason:kOOLegalStatusReasonSetup];
 									// only make the rock have minerals if something isn't already defined for the rock
 									if (oo::PListView([rock shipInfoDictionary]).get<NSString *>(@"cargo_carried") == nil)
-										[rock setCommodity:@"minerals" andAmount: 1];
+										[rock cxx_setCommodity:"minerals" andAmount: 1];
 								}
 								else
 								{
@@ -9493,7 +9488,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 					
 					[plate setTemperature:[self randomEjectaTemperature]];
 					[plate setScanClass: CLASS_CARGO];
-					[plate setCommodity:@"alloys" andAmount:1];
+					[plate cxx_setCommodity:"alloys" andAmount:1];
 					[UNIVERSE addEntity:plate];	// STATUS_IN_FLIGHT, AI state GLOBAL
 					
 					[plate release];
@@ -12552,12 +12547,12 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 // This is a documented AI method; do not change semantics. (Note: AIs don't have access to the return value.)
-- (OOCommodityType) dumpCargo
+- (id) dumpCargo	// shared selector (proposed ADR-0043), called by name
 {
-	ShipEntity *jetto = [self dumpCargoItem:nil];
+	ShipEntity *jetto = [self cxx_dumpCargoItem:std::nullopt];
 	if (jetto != nil)
 	{
-		return [jetto commodityType];
+		return oo::NSStringOrNil([jetto cxx_commodityType]);
 	}
 	else
 	{
@@ -12566,14 +12561,14 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 }
 
 
-- (ShipEntity *) dumpCargoItem:(OOCommodityType)preferred
+- (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred
 {
 	ShipEntity				*jetto = nil;
 	NSUInteger				 i = 0;
 	
 	if (([cargo count] > 0)&&([UNIVERSE getTime] - cargo_dump_time > 0.5))  // space them 0.5s or 10m apart
 	{
-		if (preferred == nil)
+		if (!preferred.has_value())
 		{
 			jetto = [[[cargo objectAtIndex:0] retain] autorelease];
 		}
@@ -12582,7 +12577,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			BOOL found = NO;
 			for (i=0;i<[cargo count];i++)
 			{
-				if ([[[cargo objectAtIndex:i] commodityType] isEqualToString:preferred])
+				if ([[cargo objectAtIndex:i] cxx_commodityType] == preferred)
 				{
 					jetto = [[[cargo objectAtIndex:i] retain] autorelease];
 					found = YES;
@@ -12994,7 +12989,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 {
 	if (other == nil)  return;
 	
-	OOCommodityType	co_type = nil;
+	std::optional<std::string>	co_type;
 	OOCargoQuantity	co_amount;
 	
 	// don't even think of trying to scoop if the cargo hold is already full
@@ -13007,7 +13002,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	switch ([other cargoType])
 	{
 		case CARGO_RANDOM:
-			co_type = [other commodityType];
+			co_type = [other cxx_commodityType];
 			co_amount = [other commodityAmount];
 			break;
 		
@@ -13021,9 +13016,9 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 					[other doScriptEvent:OOJSID("shipWasScooped") withArgument:self];
 				}
 				
-				if ([other commodityType] != nil)
+				if ([other cxx_commodityType].has_value())
 				{
-					co_type = [other commodityType];
+					co_type = [other cxx_commodityType];
 					co_amount = [other commodityAmount];
 					// don't show scoop message now, will happen later.
 				}
@@ -13035,16 +13030,16 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 						NSString *shipName = [other displayName];
 						[UNIVERSE addMessage:OOExpandKey(@"scripted-item-scooped", shipName) forCount:4];
 					}
-					[other setCommodityForPod:nil andAmount:0];
+					[other cxx_setCommodityForPod:std::nullopt andAmount:0];
 					co_amount = 0;
-					co_type = nil;
+					co_type = std::nullopt;
 				}
 			}
 			break;
-		
+
 		default :
 			co_amount = 0;
-			co_type = nil;
+			co_type = std::nullopt;
 			break;
 	}
 	
@@ -13056,15 +13051,15 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		Fix 2: catch NSNotFound here and substitute random cargo type.
 		-- Ahruman 20070714
 	*/
-	if (co_type == nil && co_amount > 0)
+	if (!co_type.has_value() && co_amount > 0)
 	{
-		co_type = [UNIVERSE getRandomCommodity];
-		co_amount = [UNIVERSE getRandomAmountOfCommodity:co_type];
+		co_type = oo::OptionalString([UNIVERSE getRandomCommodity]);
+		co_amount = [UNIVERSE getRandomAmountOfCommodity:oo::NSStringOrNil(co_type)];
 	}
-	
+
 	if (co_amount > 0)
 	{
-		[other setCommodity:co_type andAmount:co_amount];   // belt and braces setting this!
+		if (co_type.has_value())  [other cxx_setCommodity:*co_type andAmount:co_amount];   // belt and braces setting this! (nil changed nothing)
 		cargo_flag = CARGO_FLAG_CANISTERS;
 		
 		if (isPlayer)
@@ -13103,7 +13098,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				if ([other showScoopMessage] && procMessages)
 				{
 					[UNIVERSE clearPreviousMessage];
-					[UNIVERSE addMessage:[UNIVERSE describeCommodity:co_type amount:co_amount] forCount:4.5];
+					[UNIVERSE addMessage:[UNIVERSE describeCommodity:oo::NSStringOrNil(co_type) amount:co_amount] forCount:4.5];
 				}
 			}
 		}

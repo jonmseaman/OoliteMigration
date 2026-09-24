@@ -364,7 +364,7 @@ typedef enum
 	
 	NSMutableArray			*cargo;						// cargo containers go in here
 	
-	OOCommodityType			commodity_type;				// type of commodity in a container
+	std::optional<std::string>	commodity_type;			// type of commodity in a container; nullopt: not a pod (was nil)
 	OOCargoQuantity			commodity_amount;			// 1 if unit is TONNES (0), possibly more if precious metals KILOGRAMS (1)
 	// or gem stones GRAMS (2)
 	
@@ -910,9 +910,9 @@ typedef enum
 
 - (BOOL) isTemplateCargoPod;
 - (void) setUpCargoType:(NSString *)cargoString;
-- (void) setCommodity:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount;
-- (void) setCommodityForPod:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount;
-- (OOCommodityType) commodityType;
+- (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
+- (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
+- (std::optional<std::string>) cxx_commodityType;
 - (OOCargoQuantity) commodityAmount;
 
 - (OOCargoQuantity) maxAvailableCargoSpace;
@@ -920,16 +920,17 @@ typedef enum
 - (OOCargoQuantity) availableCargoSpace;
 - (OOCargoQuantity) cargoQuantityOnBoard;
 - (OOCargoType) cargoType;
-- (NSArray *) cargoListForScripting;
+- (id) cargoListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array of dictionaries
 - (NSMutableArray *) cargo;
-- (void) setCargo:(NSArray *)some_cargo;
-- (BOOL) addCargo:(NSArray *) some_cargo;
-- (BOOL) removeCargo:(OOCommodityType)commodity amount:(OOCargoQuantity) amount;
+- (NSUInteger) cxx_cargoCount;	// the number of cargo pods held
+- (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo;
+- (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo;
+- (BOOL) cxx_removeCargo:(const std::string &)commodity amount:(OOCargoQuantity) amount;
 - (BOOL) showScoopMessage;
 
-- (NSArray *) passengerListForScripting;
-- (NSArray *) parcelListForScripting;
-- (NSArray *) contractListForScripting;
+- (id) passengerListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array
+- (id) parcelListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array
+- (id) contractListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array
 - (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting;
 - (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
 - (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
@@ -1139,8 +1140,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) deactivateCloakingDevice;
 - (BOOL) launchCascadeMine;
 - (ShipEntity *) launchEscapeCapsule;
-- (OOCommodityType) dumpCargo;
-- (ShipEntity *) dumpCargoItem:(OOCommodityType)preferred;
+- (id) dumpCargo;	// shared selector (proposed ADR-0043), called by name: an Objective-C string (the commodity), or nil
+- (ShipEntity *) cxx_dumpCargoItem:(const std::optional<std::string> &)preferred;	// nullopt: the first pod
 - (OOCargoType) dumpItem: (ShipEntity*) jetto;
 
 - (void) manageCollisions;

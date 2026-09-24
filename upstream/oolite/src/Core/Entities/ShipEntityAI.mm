@@ -1075,7 +1075,7 @@ using ooscript::Context;
 			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if you have no scoop!
 			return;
 		}
-		if ([cargo count] >= [self maxAvailableCargoSpace])
+		if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 		{
 			if (max_cargo)  [shipAI message:@"HOLD_FULL"];	//can't collect loot if holds are full!
 			[shipAI message:@"NOTHING_FOUND"];		//can't collect loot if holds are full!
@@ -1181,7 +1181,7 @@ using ooscript::Context;
 	{
 		[shipAI message:@"NO_CARGO_BAY"];
 	}
-	else if ([cargo count] >= [self maxAvailableCargoSpace])
+	else if ([self cxx_cargoCount] >= [self maxAvailableCargoSpace])
 	{
 		[shipAI message:@"HOLD_FULL"];
 	}
