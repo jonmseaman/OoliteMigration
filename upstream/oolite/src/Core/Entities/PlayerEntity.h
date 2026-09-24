@@ -415,8 +415,8 @@ typedef enum
 	oo::PList::Array		parcels;			// Dicts (PlayerEntity (Contracts))
 	oo::PList::Dict			parcel_record;		// arrival time (double) by sender name
 	
-	NSMutableArray			*contracts;
-	NSMutableDictionary		*contract_record;
+	oo::PList::Array		contracts;			// cargo contract Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			contract_record;	// arrival time (double) by cargo ID
 	
 	NSMutableDictionary		*shipyard_record;
 	
@@ -1358,3 +1358,8 @@ OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string);
 
 OOGalacticHyperspaceBehaviour cxx_OOGalacticHyperspaceBehaviourFromString(const std::string &string);
 std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour);
+
+// Rating and legal-status names from descriptions.plist (chunk oo-3rb.162); nullopt: missing (was nil).
+std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills);
+std::string cxx_KillCountToRatingAndKillString(unsigned kills);
+std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);

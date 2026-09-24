@@ -83,20 +83,14 @@ declaration, in particular:
 extern "C" {
 #endif
 
-//NSString *CommodityTypeToString(OOCommodityType commodity) CONST_FUNC;	// returns the commodity identifier
-//OOCommodityType StringToCommodityType(NSString *string) PURE_FUNC;		// needs commodity identifier
-
-NSString *CommodityDisplayNameForSymbolicName(NSString *symbolicName);
-NSString *CommodityDisplayNameForCommodityArray(NSArray *commodityDefinition);
-
-NSString *DisplayStringForMassUnit(OOMassUnit unit);
-NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity);
-
 #ifdef __cplusplus
 }
 #endif
 
 #ifdef __cplusplus
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 // C++ forms (bead oo-nts1, chunk oo-3rb.160): std::string results (never nil) and const
 // std::string & parameters (the old nil arrived as "" and matched nothing: the same defaults).
 // The Foundation forms live in OOConstToString+FoundationBridge.h.
@@ -122,6 +116,12 @@ OOCompassMode cxx_OOCompassModeFromString(const std::string &string);
 std::string cxx_OOStringFromLongRangeChartMode(OOLongRangeChartMode chartMode);
 OOLongRangeChartMode cxx_OOLongRangeChartModeFromString(const std::string &string);
 std::string cxx_OOStringFromLegalStatusReason(OOLegalStatusReason reason);
+
+// Commodity display strings (chunk oo-3rb.162). A commodity is named by its identifier string.
+std::string cxx_CommodityDisplayNameForSymbolicName(const std::string &symbolicName);
+std::string cxx_CommodityDisplayNameForCommodityArray(const oo::PList &commodityDefinition);	// an array
+std::optional<std::string> cxx_DisplayStringForMassUnit(OOMassUnit unit);	// nullopt: no description (was nil)
+std::optional<std::string> cxx_DisplayStringForMassUnitForCommodity(const std::string &commodity);
 #endif
 
 
