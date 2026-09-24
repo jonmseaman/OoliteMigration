@@ -10,6 +10,7 @@ and converts the result exactly as the old method produced it.
 #import "PlayerEntity.h"	// declares the bridge category at its end
 #import "OOFoundationBridge.h"
 #import "OOJavaScriptEngine.h"	// OONull
+#import "OOVector.h"	// OONativeVector
 
 
 @implementation PlayerEntity (FoundationBridge)
@@ -132,6 +133,108 @@ and converts the result exactly as the old method produced it.
 - (NSString *) dialTargetName
 {
 	return oo::NSStringOrNil([self cxx_dialTargetName]);
+}
+
+
+// oo-3rb.244: commander identity, fast equipment, comm log, target memory, wormholes and last shot
+- (NSString *) commanderName
+{
+	return oo::NSStringOrNil([self cxx_commanderName]);
+}
+
+
+- (void) setCommanderName:(NSString *)value
+{
+	[self cxx_setCommanderName:oo::OptionalString(value)];
+}
+
+
+- (NSString *) lastsaveName
+{
+	return oo::NSStringOrNil([self cxx_lastsaveName]);
+}
+
+
+- (void) setLastsaveName:(NSString *)value
+{
+	[self cxx_setLastsaveName:oo::OptionalString(value)];
+}
+
+
+- (NSString *) jumpCause
+{
+	return oo::NSStringOrNil([self cxx_jumpCause]);
+}
+
+
+- (void) setJumpCause:(NSString *)value
+{
+	[self cxx_setJumpCause:oo::OptionalString(value)];
+}
+
+
+// An array of OONativeVector, as ShipEntity's -laserPortOffset: builds it.
+- (NSArray *) currentLaserOffset
+{
+	std::vector<oo::ObjCRef<OONativeVector *>> offsets;
+	for (Vector v : [self cxx_currentLaserOffset])  offsets.push_back(oo::adoptObjC([[OONativeVector alloc] initWithVector:v]));
+	return oo::NSArrayFromObjects(offsets);
+}
+
+
+- (NSString *) fastEquipmentA
+{
+	return oo::NSStringOrNil([self cxx_fastEquipmentA]);
+}
+
+
+- (NSString *) fastEquipmentB
+{
+	return oo::NSStringOrNil([self cxx_fastEquipmentB]);
+}
+
+
+- (void) setFastEquipmentA:(NSString *)eqKey
+{
+	[self cxx_setFastEquipmentA:oo::OptionalString(eqKey)];
+}
+
+
+- (void) setFastEquipmentB:(NSString *)eqKey
+{
+	[self cxx_setFastEquipmentB:oo::OptionalString(eqKey)];
+}
+
+
+- (NSMutableArray *) commLog
+{
+	const std::vector<std::string> *log = [self cxx_commLog];
+	if (log == nullptr)  return nil;
+	return [NSMutableArray arrayWithArray:oo::NSArrayFromStrings(*log)];
+}
+
+
+- (NSMutableArray *) targetMemory
+{
+	NSMutableArray *memory = [NSMutableArray array];
+	for (const oo::ObjCRef<OOWeakReference *> &slot : [self cxx_targetMemory])
+	{
+		if (slot)  [memory addObject:slot.get()];
+		else  [memory addObject:[OONull null]];
+	}
+	return memory;
+}
+
+
+- (NSArray *) scannedWormholes
+{
+	return oo::NSArrayFromObjects([self cxx_scannedWormholes]);
+}
+
+
+- (void) setLastShot:(NSArray *)shot
+{
+	[self cxx_setLastShot:oo::ObjCRefsFrom<OOLaserShotEntity *>(shot)];
 }
 
 @end

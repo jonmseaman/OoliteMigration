@@ -394,7 +394,7 @@ typedef enum
 	
 	NSString				*specialCargo;
 	
-	NSMutableArray			*commLog;
+	std::vector<std::string>	commLog;	// trimmed by -cxx_commLog
 
 	NSMutableArray			*eqScripts;
 	
@@ -491,8 +491,8 @@ typedef enum
 	OOMissileStatus			missile_status;
 	NSUInteger				activeMissile;
 	NSUInteger				primedEquipment;
-	NSString				*_fastEquipmentA;
-	NSString				*_fastEquipmentB;
+	std::optional<std::string>	_fastEquipmentA;	// nullopt = never set (was nil)
+	std::optional<std::string>	_fastEquipmentB;
 
 	OOCargoQuantity			current_cargo;
 	
@@ -512,11 +512,11 @@ typedef enum
 	OORouteType				ANA_mode;
 	OOTimeDelta				witchspaceCountdown;
 	
-	NSString				*_jumpCause;
+	std::optional<std::string>	_jumpCause;
 
 	// player commander data
-	NSString				*_commanderName;
-	NSString				*_lastsaveName;
+	std::optional<std::string>	_commanderName;
+	std::optional<std::string>	_lastsaveName;
 	NSPoint					galaxy_coordinates;
 	
 	OOCreditsQuantity		credits;	
@@ -721,7 +721,7 @@ typedef enum
 	
 	// target memory
 	// TODO: this should use weakrefs
-	NSMutableArray  		*target_memory;
+	std::vector<oo::ObjCRef<OOWeakReference *>>	target_memory;	// a null ref = an empty slot (was [OONull null])
 	NSUInteger				target_memory_index;
 	
 	// custom view points
@@ -803,11 +803,11 @@ typedef enum
 	
 	OODockingClearanceStatus dockingClearanceStatus;
 	
-	NSMutableArray			*scannedWormholes;
+	std::vector<oo::ObjCRef<WormholeEntity *>>	scannedWormholes;
 	WormholeEntity			*wormhole;
 
 	ShipEntity				*demoShip; // Used while docked to maintain demo ship rotation.
-	NSArray                 *lastShot; // used to correctly position laser shots on first frame of firing
+	std::vector<oo::ObjCRef<OOLaserShotEntity *>>	lastShot; // used to correctly position laser shots on first frame of firing
 	
 	StickProfileScreen		*stickProfileScreen;
 
@@ -827,10 +827,10 @@ typedef enum
 - (void) completeSetUpAndSetTarget:(BOOL)setTarget;
 - (void) startUpComplete;
 
-- (NSString *) commanderName;
-- (void) setCommanderName:(NSString *)value;
-- (NSString *) lastsaveName;
-- (void) setLastsaveName:(NSString *)value;
+- (std::optional<std::string>) cxx_commanderName;
+- (void) cxx_setCommanderName:(const std::optional<std::string> &)value;	// never nullopt
+- (std::optional<std::string>) cxx_lastsaveName;
+- (void) cxx_setLastsaveName:(const std::optional<std::string> &)value;	// never nullopt
 
 - (BOOL) isDocked;
 
@@ -861,8 +861,8 @@ typedef enum
 - (NSPoint) adjusted_chart_centre;
 - (OORouteType) ANAMode;
 
-- (NSString *) jumpCause;
-- (void) setJumpCause:(NSString *)value;
+- (std::optional<std::string>) cxx_jumpCause;
+- (void) cxx_setJumpCause:(const std::optional<std::string> &)value;	// never nullopt
 
 - (OOSystemID) systemID;
 - (void) setSystemID:(OOSystemID) sid;
@@ -1004,7 +1004,7 @@ typedef enum
 - (std::string) cxx_dial_fpsinfo;
 - (std::string) cxx_dial_objinfo;
 
-- (NSMutableArray *) commLog;
+- (std::vector<std::string> *) cxx_commLog;	// the live log, trimmed first (ADR-0043 item 22)
 
 - (Entity *) compassTarget;
 - (void) setCompassTarget:(Entity *)value;
@@ -1057,7 +1057,7 @@ typedef enum
 
 - (OOWeaponType) weaponForFacing:(OOWeaponFacing)facing;
 - (OOWeaponType) currentWeapon;
-- (NSArray *) currentLaserOffset;
+- (std::vector<Vector>) cxx_currentLaserOffset;
 
 - (void) rotateCargo;
 
@@ -1092,10 +1092,10 @@ typedef enum
 - (NSString *) currentPrimedEquipment;
 - (NSUInteger) primedEquipmentCount;
 - (void) activatePrimableEquipment:(NSUInteger)index withMode:(OOPrimedEquipmentMode)mode;
-- (NSString *) fastEquipmentA;
-- (NSString *) fastEquipmentB;
-- (void) setFastEquipmentA:(NSString *)eqKey;
-- (void) setFastEquipmentB:(NSString *)eqKey;
+- (std::optional<std::string>) cxx_fastEquipmentA;
+- (std::optional<std::string>) cxx_fastEquipmentB;
+- (void) cxx_setFastEquipmentA:(const std::optional<std::string> &)eqKey;
+- (void) cxx_setFastEquipmentB:(const std::optional<std::string> &)eqKey;
 
 - (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price;
 
@@ -1188,7 +1188,7 @@ typedef enum
 - (void) setScoopsActive;
 
 - (void) clearTargetMemory;
-- (NSMutableArray *) targetMemory;
+- (std::vector<oo::ObjCRef<OOWeakReference *>>) cxx_targetMemory;	// a copy; a null ref is an empty slot
 - (BOOL) moveTargetMemoryBy:(NSInteger)delta;
 
 - (void) printIdentLockedOnForMissile:(BOOL)missile;
@@ -1288,7 +1288,7 @@ typedef enum
 - (OODockingClearanceStatus) getDockingClearanceStatus;
 - (void) penaltyForUnauthorizedDocking;
 
-- (NSArray *) scannedWormholes;
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes;
 
 - (WormholeEntity *) wormhole;
 - (void) setWormhole:(WormholeEntity *)newWormhole;
@@ -1302,7 +1302,7 @@ typedef enum
 
 - (oo::PList::Dict *) cxx_shipyardRecord;
 
-- (void) setLastShot:(NSArray *)shot;
+- (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot;
 
 - (void) showShipModelWithKey:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(NSString *)context;
 

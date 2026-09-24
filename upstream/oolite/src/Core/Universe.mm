@@ -1242,8 +1242,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	[self setViewDirection:VIEW_FORWARD];
 	
-	[comm_log_gui printLongText:[NSString stringWithFormat:@"%@ %@", [self getSystemName:systemID], [player dial_clock_adjusted]]
-		align:GUI_ALIGN_CENTER color:[OOColor whiteColor] fadeTime:0 key:nil addToArray:[player commLog]];
+	[comm_log_gui cxx_printLongText:oo::OptionalString([NSString stringWithFormat:@"%@ %@", [self getSystemName:systemID], [player dial_clock_adjusted]])
+		align:GUI_ALIGN_CENTER color:[OOColor whiteColor] fadeTime:0 key:std::nullopt addToArray:[player cxx_commLog]];
 	
 	displayGUI = NO;
 }
@@ -7099,7 +7099,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 			messageRepeatTime=universal_time + 6.0;
 		}
 		
-		[comm_log_gui printLongText:expandedMessage align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:nil addToArray:[player commLog]];
+		[comm_log_gui cxx_printLongText:oo::OptionalString(expandedMessage) align:GUI_ALIGN_LEFT color:nil fadeTime:0.0 key:std::nullopt addToArray:[player cxx_commLog]];
 		
 		if (showComms)  [self showCommsLog:6.0];
 	}

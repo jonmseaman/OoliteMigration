@@ -1034,8 +1034,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 
 	// communications log
-	NSArray *log = [self commLog];
-	if (log != nil)  [result setObject:log forKey:@"comm_log"];
+	const std::vector<std::string> *log = [self cxx_commLog];
+	if (log != nullptr)  [result setObject:oo::NSArrayFromStrings(*log) forKey:@"comm_log"];
 	
 	[result oo_setUnsignedInteger:entity_personality forKey:@"entity_personality"];
 	
@@ -1139,13 +1139,13 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[result setObject:[self trumbleValue] forKey:@"trumbles"];
 
 	// wormhole information
-	NSMutableArray *wormholeDicts = [NSMutableArray arrayWithCapacity:[scannedWormholes count]];
-	WormholeEntity *wh = nil;
-	foreach (wh, scannedWormholes)
+	oo::PList::Array wormholeDicts;
+	wormholeDicts.reserve(scannedWormholes.size());
+	for (const oo::ObjCRef<WormholeEntity *> &wh : scannedWormholes)
 	{
-		[wormholeDicts addObject:oo::ObjectFromPList([wh getDict])];
+		wormholeDicts.push_back([wh.get() getDict]);
 	}
-	[result setObject:wormholeDicts forKey:@"wormholes"];
+	[result setObject:oo::ObjectFromPList(oo::PList(std::move(wormholeDicts))) forKey:@"wormholes"];
 
 	// docked station
 	StationEntity *dockedStation = [self dockedStation];
@@ -1668,14 +1668,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 	
 	// communications log
-	[commLog release];
-	commLog = [[NSMutableArray alloc] initWithCapacity:kCommLogTrimThreshold];
-	
-	NSArray *savedCommLog = oo::PListView(dict).get<NSArray *>(@"comm_log");
-	NSUInteger commCount = [savedCommLog count];
-	for (NSUInteger i = 0; i < commCount; i++)
+	commLog.clear();
+	commLog.reserve(kCommLogTrimThreshold);
+
+	const oo::PList savedCommLog = oo::PListFrom([dict objectForKey:@"comm_log"]);
+	const std::size_t commCount = savedCommLog.isArray() ? savedCommLog.count() : 0;	// oo_arrayForKey:
+	for (std::size_t i = 0; i < commCount; i++)
 	{
-		[UNIVERSE addCommsMessage:[savedCommLog objectAtIndex:i] forCount:0 andShowComms:NO logOnly:YES];
+		[UNIVERSE addCommsMessage:oo::ObjectFromPList(*savedCommLog.at(i)) forCount:0 andShowComms:NO logOnly:YES];
 	}
 
 	/*	entity_personality for scripts and shaders. If undefined, we fall back
@@ -1764,15 +1764,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[self deserializeShipSubEntitiesFrom:oo::PListView(dict).get<NSString *>(@"subentities_status")];
 	
 	// wormholes
-	NSArray * whArray;
-	whArray = [dict objectForKey:@"wormholes"];
-	NSDictionary * whCurrDict;
-	[scannedWormholes release];
-	scannedWormholes = [[NSMutableArray alloc] initWithCapacity:[whArray count]];
-	foreach (whCurrDict, whArray)
+	const oo::PList whArray = oo::PListFrom([dict objectForKey:@"wormholes"]);
+	scannedWormholes.clear();
+	const oo::PList::Array *whList = whArray.getIf<oo::PList::Array>();
+	if (whList != nullptr)  scannedWormholes.reserve(whList->size());
+	for (const oo::PList &whCurrDict : (whList != nullptr) ? *whList : oo::PList::Array())
 	{
-		WormholeEntity * wh = [[WormholeEntity alloc] initWithDict:oo::PListFrom(whCurrDict)];
-		[scannedWormholes addObject:wh];
+		WormholeEntity * wh = [[WormholeEntity alloc] initWithDict:whCurrDict];
+		scannedWormholes.push_back(oo::ObjCRef<WormholeEntity *>(wh));	// (the +1 from +alloc is still never released, as before)
 		/* TODO - add to Universe if the wormhole hasn't expired yet; but in this case
 		 * we need to save/load position and mass as well, which we currently 
 		 * don't
@@ -2019,7 +2018,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	aft_weapon_temp			= 0.0f;
 	port_weapon_temp		= 0.0f;
 	starboard_weapon_temp	= 0.0f;
-	lastShot = nil;
+	lastShot.clear();
 	forward_shot_time		= INITIAL_SHOT_TIME;
 	aft_shot_time			= INITIAL_SHOT_TIME;
 	port_shot_time			= INITIAL_SHOT_TIME;
@@ -2049,8 +2048,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	shipyard_record.clear();
 	
-	[target_memory release];
-	target_memory = [[NSMutableArray alloc] initWithCapacity:PLAYER_TARGET_MEMORY_SIZE];
+	target_memory.clear();
+	target_memory.reserve(PLAYER_TARGET_MEMORY_SIZE);
 	[self clearTargetMemory]; // also does first-time initialisation
 
 	[self setMissionOverlayDescriptor:nil];
@@ -2176,8 +2175,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	[self setDockedStation:[UNIVERSE station]];
 	
-	[commLog release];
-	commLog = nil;
+	commLog.clear();
 	
 	[specialCargo release];
 	specialCargo = nil;
@@ -2195,8 +2193,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[save_path autorelease];
 	save_path = nil;
 	
-	[scannedWormholes release];
-	scannedWormholes = [[NSMutableArray alloc] init];
+	scannedWormholes.clear();
 	
 	[self setUpTrumbles];
 	
@@ -2369,12 +2366,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(compassTarget);
 	DESTROY(hud);
 
-	DESTROY(commLog);
 	DESTROY(keyconfig2_settings);
-	DESTROY(target_memory);
 	
-	DESTROY(_fastEquipmentA);
-	DESTROY(_fastEquipmentB);
 
 	DESTROY(eqScripts);
 	DESTROY(worldScripts);
@@ -2396,8 +2389,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(_missionBackgroundDescriptor);
 	DESTROY(_equipScreenBackgroundDescriptor);
 	
-	DESTROY(_commanderName);
-	DESTROY(_lastsaveName);
 	DESTROY(shipCommodityData);
 	
 	DESTROY(specialCargo);
@@ -2406,14 +2397,11 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(scenarioKey);
 	
 	DESTROY(_customViews);
-	DESTROY(lastShot);
 
 	
-	DESTROY(_jumpCause);
 
 	[self destroySound];
 	
-	DESTROY(scannedWormholes);
 	DESTROY(wormhole);
 	
 	int i;
@@ -3151,14 +3139,13 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 	// and one thing which isn't a subentity. Fixes bug with
 	// mispositioned laser beams particularly noticeable on side view.
-	if (lastShot != nil)
+	if (!lastShot.empty())
 	{
-		OOLaserShotEntity *lse = nil;
-		foreach (lse, lastShot)
+		for (const oo::ObjCRef<OOLaserShotEntity *> &lse : lastShot)
 		{
-			[lse update:0.0];
+			[lse.get() update:0.0];
 		}
-		DESTROY(lastShot);
+		lastShot.clear();
 	}
 	
 	// update mousewheel status
@@ -4969,24 +4956,17 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSMutableArray *) commLog
+- (std::vector<std::string> *) cxx_commLog
 {
 	assert(kCommLogTrimSize < kCommLogTrimThreshold);
-	
-	if (commLog != nil)
+
+	const std::size_t count = commLog.size();
+	if (count >= kCommLogTrimThreshold)
 	{
-		NSUInteger count = [commLog count];
-		if (count >= kCommLogTrimThreshold)
-		{
-			[commLog removeObjectsInRange:NSMakeRange(0, count - kCommLogTrimSize)];
-		}
+		commLog.erase(commLog.begin(), commLog.begin() + static_cast<std::ptrdiff_t>(count - kCommLogTrimSize));
 	}
-	else
-	{
-		commLog = [[NSMutableArray alloc] init];
-	}
-	
-	return commLog;
+
+	return &commLog;	// (a nil receiver gives nullptr)
 }
 
 
@@ -6126,9 +6106,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSArray *) currentLaserOffset
+- (std::vector<Vector>) cxx_currentLaserOffset
 {
-	return [self laserPortOffset:currentWeaponFacing];
+	return [self cxx_laserPortOffset:currentWeaponFacing];
 }
 
 
@@ -8227,29 +8207,27 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSString *) fastEquipmentA
+- (std::optional<std::string>) cxx_fastEquipmentA
 {
 	return _fastEquipmentA;
 }
 
 
-- (NSString *) fastEquipmentB
+- (std::optional<std::string>) cxx_fastEquipmentB
 {
 	return _fastEquipmentB;
 }
 
 
-- (void) setFastEquipmentA:(NSString *)eqKey
+- (void) cxx_setFastEquipmentA:(const std::optional<std::string> &)eqKey
 {
-	[_fastEquipmentA release];
-	_fastEquipmentA = [eqKey copy];
+	_fastEquipmentA = eqKey;
 }
 
 
-- (void) setFastEquipmentB:(NSString *)eqKey
+- (void) cxx_setFastEquipmentB:(const std::optional<std::string> &)eqKey
 {
-	[_fastEquipmentB release];
-	_fastEquipmentB = [eqKey copy];
+	_fastEquipmentB = eqKey;
 }
 
 
@@ -12215,7 +12193,13 @@ static NSString *last_outfitting_key=nil;
 	else if ([self hasEquipmentItemProviding:@"EQ_TARGET_MEMORY"] && targetEntity != nil)
 	{
 		OOWeakReference *targetRef = [targetEntity weakSelf];
-		NSUInteger i = [target_memory indexOfObject:targetRef];
+		// -indexOfObject: compared the weak references (proxies) by identity
+		const auto slotFor = [self](OOWeakReference *ref) -> NSUInteger
+		{
+			const auto found = std::find_if(target_memory.begin(), target_memory.end(), [ref](const oo::ObjCRef<OOWeakReference *> &slot) { return slot.get() == ref; });
+			return (found != target_memory.end()) ? static_cast<NSUInteger>(found - target_memory.begin()) : NSNotFound;
+		};
+		NSUInteger i = slotFor(targetRef);
 		// if already in target memory, preserve that and just change the index
 		if (i != NSNotFound)
 		{
@@ -12223,18 +12207,18 @@ static NSString *last_outfitting_key=nil;
 		}		
 		else
 		{
-			i = [target_memory indexOfObject:[OONull null]];
+			i = slotFor(nil);	// an empty slot
 			// find and use a blank space in memory
 			if (i != NSNotFound)
 			{
-				[target_memory replaceObjectAtIndex:i withObject:targetRef];
+				target_memory.at(i) = oo::ObjCRef<OOWeakReference *>(targetRef);
 				target_memory_index = i;
 			}
 			else
 			{
 				// use the next memory space
 				target_memory_index = (target_memory_index + 1) % PLAYER_TARGET_MEMORY_SIZE;
-				[target_memory replaceObjectAtIndex:target_memory_index withObject:targetRef];
+				target_memory.at(target_memory_index) = oo::ObjCRef<OOWeakReference *>(targetRef);
 			}
 		}
 	}
@@ -12265,23 +12249,23 @@ static NSString *last_outfitting_key=nil;
 
 - (void) clearTargetMemory
 {
-	NSUInteger memoryCount = [target_memory count];
+	NSUInteger memoryCount = target_memory.size();
 	for (NSUInteger i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 	{
 		if (i < memoryCount)
 		{
-			[target_memory replaceObjectAtIndex:i withObject:[OONull null]];
+			target_memory[i] = nullptr;
 		}
 		else
 		{
-			[target_memory addObject:[OONull null]];
+			target_memory.emplace_back();
 		}
 	}
 	target_memory_index = 0;
 }
 
 
-- (NSMutableArray *) targetMemory
+- (std::vector<oo::ObjCRef<OOWeakReference *>>) cxx_targetMemory
 {
 	return target_memory;
 }
@@ -12296,7 +12280,7 @@ static NSString *last_outfitting_key=nil;
 		while (idx >= PLAYER_TARGET_MEMORY_SIZE) idx -= PLAYER_TARGET_MEMORY_SIZE;
 		target_memory_index = idx;
 
-		id targ_id = [target_memory objectAtIndex:target_memory_index];
+		id targ_id = target_memory.at(target_memory_index).get();	// nil for an empty slot, which is not a proxy either
 		if ([targ_id isProxy])
 		{
 			ShipEntity *potential_target = [(OOWeakReference *)targ_id weakRefUnderlyingObject];
@@ -12332,7 +12316,7 @@ static NSString *last_outfitting_key=nil;
 			}
 			else
 			{
-				[target_memory replaceObjectAtIndex:target_memory_index withObject:[OONull null]];
+				target_memory.at(target_memory_index) = nullptr;
 			}
 		}
 	}
@@ -12990,45 +12974,42 @@ else _dockTarget = NO_TARGET;
 }
 
 
-- (NSString *) jumpCause
-{ 
+- (std::optional<std::string>) cxx_jumpCause
+{
 	return _jumpCause;
 }
 
 
-- (void) setJumpCause:(NSString *)value
+- (void) cxx_setJumpCause:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value != nil);
-	[_jumpCause autorelease];
-	_jumpCause = [value copy];
+	NSParameterAssert(value.has_value());
+	_jumpCause = value;
 }
 
 
-- (NSString *) commanderName
+- (std::optional<std::string>) cxx_commanderName
 {
 	return _commanderName;
 }
 
 
-- (NSString *) lastsaveName
+- (std::optional<std::string>) cxx_lastsaveName
 {
 	return _lastsaveName;
 }
 
 
-- (void) setCommanderName:(NSString *)value
+- (void) cxx_setCommanderName:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value != nil);
-	[_commanderName autorelease];
-	_commanderName = [value copy];
+	NSParameterAssert(value.has_value());
+	_commanderName = value;
 }
 
 
-- (void) setLastsaveName:(NSString *)value
+- (void) cxx_setLastsaveName:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value != nil);
-	[_lastsaveName autorelease];
-	_lastsaveName = [value copy];
+	NSParameterAssert(value.has_value());
+	_lastsaveName = value;
 }
 
 
@@ -13147,17 +13128,15 @@ else _dockTarget = NO_TARGET;
 //
 - (void)addScannedWormhole:(WormholeEntity*)whole
 {
-	assert(scannedWormholes != nil);
 	assert(whole != nil);
-	
+
 	// Only add if we don't have it already!
-	WormholeEntity *wh = nil;
-	foreach (wh, scannedWormholes)
+	for (const oo::ObjCRef<WormholeEntity *> &wh : scannedWormholes)
 	{
-		if (wh == whole)  return;
+		if (wh.get() == whole)  return;
 	}
 	[whole setScannedAt:[self clockTimeAdjusted]];
-	[scannedWormholes addObject:whole];
+	scannedWormholes.push_back(oo::ObjCRef<WormholeEntity *>(whole));
 }
 
 // Checks through our array of wormholes for any which have expired
@@ -13165,43 +13144,41 @@ else _dockTarget = NO_TARGET;
 // Else remove it
 - (void)updateWormholes
 {
-	assert(scannedWormholes != nil);
-	
-	if ([scannedWormholes count] == 0)
+	if (scannedWormholes.empty())
 		return;
 
 	double now = [self clockTimeAdjusted];
 
-	NSMutableArray * savedWormholes = [[NSMutableArray alloc] initWithCapacity:[scannedWormholes count]];
-	WormholeEntity *wh;
+	std::vector<oo::ObjCRef<WormholeEntity *>> savedWormholes;
+	savedWormholes.reserve(scannedWormholes.size());
 
-	foreach (wh, scannedWormholes)
+	for (const oo::ObjCRef<WormholeEntity *> &whRef : scannedWormholes)
 	{
+		WormholeEntity *wh = whRef.get();
 		// TODO: Start drawing wormhole exit a few seconds before the first
 		//       ship is disgorged.
 		if ([wh arrivalTime] > now)
 		{
-			[savedWormholes addObject:wh];
+			savedWormholes.push_back(whRef);
 		}
 		else if (NSEqualPoints(galaxy_coordinates, [wh destinationCoordinates]))
 		{
 			[wh disgorgeShips];
 			if ([wh shipsInTransit].count() > 0)
 			{
-				[savedWormholes addObject:wh];
+				savedWormholes.push_back(whRef);
 			}
 		}
 		// Else wormhole has expired in another system, let it expire
 	}
 
-	[scannedWormholes release];
-	scannedWormholes = savedWormholes;
+	scannedWormholes = std::move(savedWormholes);
 }
 
 
-- (NSArray *) scannedWormholes
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes
 {
-	return [NSArray arrayWithArray:scannedWormholes];
+	return scannedWormholes;
 }
 
 
@@ -13289,9 +13266,9 @@ else _dockTarget = NO_TARGET;
 }
 
 
-- (void) setLastShot:(NSArray *)shot
+- (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot
 {
-	lastShot = [shot retain]; 
+	lastShot = shot;
 }
 
 

@@ -45,6 +45,23 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (NSString *) compassTargetLabel;	// -> -cxx_compassTargetLabel
 - (NSString *) dialTargetName;	// -> -cxx_dialTargetName
 
+// oo-3rb.244: commander identity, fast equipment, comm log, target memory, wormholes and last shot
+- (NSString *) commanderName;	// -> -cxx_commanderName
+- (void) setCommanderName:(NSString *)value;	// -> -cxx_setCommanderName:
+- (NSString *) lastsaveName;	// -> -cxx_lastsaveName
+- (void) setLastsaveName:(NSString *)value;	// -> -cxx_setLastsaveName:
+- (NSString *) jumpCause;	// -> -cxx_jumpCause
+- (void) setJumpCause:(NSString *)value;	// -> -cxx_setJumpCause:
+- (NSArray *) currentLaserOffset;	// -> -cxx_currentLaserOffset
+- (NSString *) fastEquipmentA;	// -> -cxx_fastEquipmentA
+- (NSString *) fastEquipmentB;	// -> -cxx_fastEquipmentB
+- (void) setFastEquipmentA:(NSString *)eqKey;	// -> -cxx_setFastEquipmentA:
+- (void) setFastEquipmentB:(NSString *)eqKey;	// -> -cxx_setFastEquipmentB:
+- (NSMutableArray *) commLog;	// -> -cxx_commLog (a snapshot: read-only callers)
+- (NSMutableArray *) targetMemory;	// -> -cxx_targetMemory (a snapshot, [OONull null] for empty slots)
+- (NSArray *) scannedWormholes;	// -> -cxx_scannedWormholes
+- (void) setLastShot:(NSArray *)shot;	// -> -cxx_setLastShot:
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H
