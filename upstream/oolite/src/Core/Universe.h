@@ -889,19 +889,10 @@ std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger 
 
 
 #ifdef __cplusplus
-extern "C" {
-#endif
-NSString *OODisplayStringFromGovernmentID(OOGovernmentID government);
-NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
-#ifdef __cplusplus
-}
-#endif
-
-#ifdef __cplusplus
 #include "oofnd/StdLib.hpp"
 
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.162): nullopt where the
-// Foundation forms above (which forward to them) gave nil.
+// Foundation forms (Universe+FoundationBridge.h; they forward to these) gave nil.
 std::optional<std::string> cxx_OODisplayStringFromGovernmentID(OOGovernmentID government);
 std::optional<std::string> cxx_OODisplayStringFromEconomyID(OOEconomyID economy);
 #endif

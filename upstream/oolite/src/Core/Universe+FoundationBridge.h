@@ -199,4 +199,16 @@ NSString *OOLookUpDescriptionPRIV(NSString *key);	// -> cxx_OOLookUpDescriptionP
 #endif
 NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);	// -> cxx_OOLookUpPluralDescriptionPRIV
 
+
+// Chunk 12 (oo-3rb.231): OOConstToString's display strings, declared in Universe.h before
+// (defined in OOConstToString.mm; -> cxx_OODisplayStringFromGovernmentID / EconomyID).
+#ifdef __cplusplus
+extern "C" {
+#endif
+NSString *OODisplayStringFromGovernmentID(OOGovernmentID government);
+NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
+#ifdef __cplusplus
+}
+#endif
+
 #endif	// UNIVERSE_FOUNDATIONBRIDGE_H

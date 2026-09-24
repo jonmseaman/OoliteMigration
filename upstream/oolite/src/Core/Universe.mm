@@ -1080,7 +1080,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		else
 		{
 			[self setPauseMessageVisible:YES];
-			[self addMessage:oo::NSStringFrom(ExpandKeyWith("game-paused-docked", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList())) forCount:1.0];
+			[self cxx_addMessage:ExpandKeyWith("game-paused-docked", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList()) forCount:1.0];
 		}
 	}
 	else
@@ -1092,7 +1092,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		else
 		{
 			[self setPauseMessageVisible:YES];
-			[self addMessage:oo::NSStringFrom(ExpandKeyWith("game-paused", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList())) forCount:1.0];
+			[self cxx_addMessage:ExpandKeyWith("game-paused", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList()) forCount:1.0];
 		}
 	}
 	
@@ -4682,13 +4682,13 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	{
 		result["hdr-max-brightness"] = oo::PList::singleReal([gameView hdrMaxBrightness]);
 		result["hdr-paperwhite-brightness"] = oo::PList::singleReal([gameView hdrPaperWhiteBrightness]);
-		result["hdr-tone-mapper"] = oo::PList(oo::StdString(OOStringFromHDRToneMapper([gameView hdrToneMapper])));
+		result["hdr-tone-mapper"] = oo::PList(cxx_OOStringFromHDRToneMapper([gameView hdrToneMapper]));
 	}
 #endif
 
-	result["sdr-tone-mapper"] = oo::PList(oo::StdString(OOStringFromSDRToneMapper([gameView sdrToneMapper])));
+	result["sdr-tone-mapper"] = oo::PList(cxx_OOStringFromSDRToneMapper([gameView sdrToneMapper]));
 
-	result["detailLevel"] = oo::PList(oo::StdString(OOStringFromGraphicsDetail([self detailLevel])));
+	result["detailLevel"] = oo::PList(cxx_OOStringFromGraphicsDetail([self detailLevel]));
 
 	const char *desc = "UNDEFINED";
 	switch ([[OOMusicController sharedController] mode])
@@ -6955,7 +6955,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 		viewDirection = vd;
 		if (ms.has_value() && !gamePaused)
 		{
-			[self addMessage:oo::NSStringFrom(*ms) forCount:3];
+			[self cxx_addMessage:ms forCount:3];
 		}
 		else if (gamePaused)
 		{
@@ -10572,7 +10572,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 			
 			OOLog(kOOLogException, @"***** Handling Fatal : %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]);
-			[self addMessage:oo::NSStringFrom(exception_msg) forCount:30.0];
+			[self cxx_addMessage:exception_msg forCount:30.0];
 			[[self gameController] setGamePaused:YES];
 		}
 		else
