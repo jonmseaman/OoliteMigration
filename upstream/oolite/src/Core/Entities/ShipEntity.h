@@ -462,7 +462,7 @@ typedef enum
 
 	NSString				*_shipKey;
 	
-	NSMutableArray			*_equipment;
+	std::vector<std::string>	_equipment;	// equipment keys, in order added; empty == none (was nil)
 	float					_heatInsulation;
 	
 	OOWeakReference			*_lastAegisLock;			// remember last aegis planet/sun
@@ -606,32 +606,32 @@ typedef enum
 - (OOWeaponFacingSet) weaponFacings;
 - (BOOL) hasEquipmentItem:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;	// This can take a string or an set or array of strings. If a collection, returns YES if ship has _any_ of the specified equipment. If includeWeapons is NO, missiles and primary weapons are not checked.
 - (BOOL) hasEquipmentItem:(id)equipmentKeys;			// Short for hasEquipmentItem:foo includeWeapons:NO whileLoading:NO
-- (NSUInteger) countEquipmentItem:(NSString *)eqkey;
-- (NSString *) equipmentItemProviding:(NSString *)equipmentType;
-- (BOOL) hasEquipmentItemProviding:(NSString *)equipmentType;
+- (NSUInteger) cxx_countEquipmentItem:(const std::string &)eqkey;
+- (std::optional<std::string>) cxx_equipmentItemProviding:(const std::string &)equipmentType;
+- (BOOL) cxx_hasEquipmentItemProviding:(const std::string &)equipmentType;
 - (BOOL) hasAllEquipment:(id)equipmentKeys includeWeapons:(BOOL)includeWeapons whileLoading:(BOOL)loading;		// Like hasEquipmentItem:includeWeapons:, but requires _all_ elements in collection.
 - (BOOL) hasAllEquipment:(id)equipmentKeys;				// Short for hasAllEquipment:foo includeWeapons:NO
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey;
-- (BOOL) canAddEquipment:(NSString *)equipmentKey inContext:(NSString *)context;		// Test ability to add equipment, taking equipment-specific constriants into account. 
-- (BOOL) equipmentValidToAdd:(NSString *)equipmentKey inContext:(NSString *)context;	// Actual test if equipment satisfies validation criteria.
-- (BOOL) equipmentValidToAdd:(NSString *)equipmentKey whileLoading:(BOOL)loading inContext:(NSString *)context;
-- (BOOL) addEquipmentItem:(NSString *)equipmentKey inContext:(NSString *)context;
-- (BOOL) addEquipmentItem:(NSString *)equipmentKey withValidation:(BOOL)validateAddition inContext:(NSString *)context;
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(id)eqKey;	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) canAddEquipment:(id)equipmentKey inContext:(id)context;		// shared selector (proposed ADR-0043): Objective-C strings. Test ability to add equipment, taking equipment-specific constriants into account.
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey inContext:(const std::string &)context;	// Actual test if equipment satisfies validation criteria.
+- (BOOL) cxx_equipmentValidToAdd:(const std::string &)equipmentKey whileLoading:(BOOL)loading inContext:(const std::string &)context;
+- (BOOL) addEquipmentItem:(id)equipmentKey inContext:(id)context;	// shared selector (proposed ADR-0043): Objective-C strings
+- (BOOL) addEquipmentItem:(id)equipmentKey withValidation:(BOOL)validateAddition inContext:(id)context;	// shared selector (proposed ADR-0043): Objective-C strings
 - (BOOL) hasHyperspaceMotor;
 - (float) hyperspaceSpinTime;
 - (void) setHyperspaceSpinTime:(float)newValue;
 
 
-- (NSEnumerator *) equipmentEnumerator;
+- (std::vector<std::string>) cxx_equipmentKeys;	// a snapshot, in order added
 - (NSUInteger) equipmentCount;
-- (void) removeEquipmentItem:(NSString *)equipmentKey;
+- (void) removeEquipmentItem:(id)equipmentKey;	// shared selector (proposed ADR-0043): an Objective-C string
 - (void) removeAllEquipment;
 - (OOEquipmentType *) selectMissile;
 - (OOCreditsQuantity) removeMissiles;
 
 // Internal, subject to change. Use the methods above instead.
-- (BOOL) hasOneEquipmentItem:(NSString *)itemKey includeWeapons:(BOOL)includeMissiles whileLoading:(BOOL)loading;
-- (BOOL) hasOneEquipmentItem:(NSString *)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading;
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeWeapons:(BOOL)includeMissiles whileLoading:(BOOL)loading;
+- (BOOL) cxx_hasOneEquipmentItem:(const std::string &)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading;
 - (BOOL) hasPrimaryWeapon:(OOWeaponType)weaponType;
 - (BOOL) removeExternalStore:(OOEquipmentType *)eqType;
 
@@ -930,7 +930,7 @@ typedef enum
 - (NSArray *) passengerListForScripting;
 - (NSArray *) parcelListForScripting;
 - (NSArray *) contractListForScripting;
-- (NSArray *) equipmentListForScripting;
+- (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting;
 - (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
 - (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
 - (NSArray *) missilesList;
