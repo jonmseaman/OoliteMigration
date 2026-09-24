@@ -46,8 +46,8 @@ enum
 /*
 
 To avoid pulling in unnecessary headers, some functions defined in
-OOConstToString.m are declared in the header with the appropriate type
-declaration, in particular:
+OOConstToString.mm are declared in the header with the appropriate type
+declaration, each with its C++ (cxx_) form beside it, in particular:
 
 	Entity.h:
 	OOStringFromEntityStatus()
@@ -77,15 +77,12 @@ declaration, in particular:
 	OODisplayStringFromGovernmentID()
 	OODisplayStringFromEconomyID()
 
+The Foundation-typed forms of the functions this header declares live in
+OOConstToString+FoundationBridge.h (bead oo-nts1); those of the functions above
+stay in the headers named until those headers' own sweeps. All of them are
+defined in OOConstToString+FoundationBridge.mm, forwarding to the cxx_ forms.
+
 */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef __cplusplus
-}
-#endif
 
 #ifdef __cplusplus
 #include "oofnd/StdLib.hpp"
@@ -122,15 +119,14 @@ std::string cxx_CommodityDisplayNameForSymbolicName(const std::string &symbolicN
 std::string cxx_CommodityDisplayNameForCommodityArray(const oo::PList &commodityDefinition);	// an array
 std::optional<std::string> cxx_DisplayStringForMassUnit(OOMassUnit unit);	// nullopt: no description (was nil)
 std::optional<std::string> cxx_DisplayStringForMassUnitForCommodity(const std::string &commodity);
-#endif
 
-
-// Shader settings (OOShaderSetting is OOOpenGL.h's), with C++ linkage as when OOOpenGL.h declared them.
+// Shader settings (OOShaderSetting is OOOpenGL.h's; chunk oo-3rb.163).
 // Programmer-readable shader mode strings.
-OOShaderSetting OOShaderSettingFromString(NSString *string);
-NSString *OOStringFromShaderSetting(OOShaderSetting setting);
-// Localized shader mode strings.
-NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting);
+OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string);
+std::string cxx_OOStringFromShaderSetting(OOShaderSetting setting);
+// Localized shader mode strings; nullopt: no description (was nil).
+std::optional<std::string> cxx_OODisplayStringFromShaderSetting(OOShaderSetting setting);
+#endif
 
 
 /*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed functions this

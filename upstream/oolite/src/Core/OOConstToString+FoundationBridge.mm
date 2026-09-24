@@ -292,3 +292,21 @@ NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity)
 {
 	return oo::NSStringOrNil(cxx_DisplayStringForMassUnitForCommodity(oo::StdString(commodity)));
 }
+
+
+OOShaderSetting OOShaderSettingFromString(NSString *string)
+{
+	return cxx_OOShaderSettingFromString(oo::StdString(string));
+}
+
+
+NSString *OOStringFromShaderSetting(OOShaderSetting setting)
+{
+	return oo::NSStringFrom(cxx_OOStringFromShaderSetting(setting));
+}
+
+
+NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting)
+{
+	return oo::NSStringOrNil(cxx_OODisplayStringFromShaderSetting(setting));
+}
