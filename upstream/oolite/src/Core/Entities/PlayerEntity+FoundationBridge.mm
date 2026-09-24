@@ -406,4 +406,19 @@ and converts the result exactly as the old method produced it.
 	[self cxx_showShipModelWithKey:oo::StdString(shipKey) shipData:oo::PListFrom(shipData) personality:personality factorX:factorX factorY:factorY factorZ:factorZ inContext:oo::OptionalString(context)];
 }
 
+
+// oo-3rb.250: interfaces, start and intro screens, buying equipment and weapon mounts
+- (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price
+{
+	if (eqKey == nil)  return price;	// no equipment type, so no condition script
+	return [self cxx_adjustPriceByScriptForEqKey:oo::StdString(eqKey) withCurrent:price];
+}
+
+
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context
+{
+	// canAddEquipment: read a nil key as ""; the weapon type of both is none
+	return [self cxx_setWeaponMount:facing toWeapon:oo::StdString(eqKey) inContext:oo::OptionalString(context)];
+}
+
 @end

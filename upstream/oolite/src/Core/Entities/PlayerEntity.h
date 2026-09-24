@@ -1097,7 +1097,7 @@ typedef enum
 - (void) cxx_setFastEquipmentA:(const std::optional<std::string> &)eqKey;
 - (void) cxx_setFastEquipmentB:(const std::optional<std::string> &)eqKey;
 
-- (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price;
+- (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
 
 - (NSArray *) cargoList;
 //- (NSArray *) cargoListForScripting; // now in ShipEntity
@@ -1122,8 +1122,8 @@ typedef enum
 - (void) highlightEquipShipScreenKey:(const std::string &)key;
 - (void) showInformationForSelectedUpgrade;
 - (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
-- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(NSString *)eqKey;
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context;
+- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(id)eqKey;	// shared selector (proposed ADR-0043): an Objective-C string
+- (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context;
 
 - (BOOL) changePassengerBerths:(int) addRemove;
 - (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type;

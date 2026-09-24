@@ -99,6 +99,10 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 // oo-3rb.249: flight, cargo pods, docking, witchspace, targeting, ship model, trumbles and state dump
 - (void) showShipModelWithKey:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(NSString *)context;	// -> -cxx_showShipModelWithKey:... (nil key: nothing)
 
+// oo-3rb.250: interfaces, start and intro screens, buying equipment and weapon mounts
+- (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price;	// -> -cxx_adjustPriceByScriptForEqKey:withCurrent: (nil: price)
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context;	// -> -cxx_setWeaponMount:toWeapon:inContext: (nil key: "")
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H

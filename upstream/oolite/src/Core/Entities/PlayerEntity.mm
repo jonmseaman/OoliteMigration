@@ -196,11 +196,28 @@ std::vector<oo::PList> CustomViewsFrom(const oo::PList &value)
 	return (views != nullptr) ? *views : std::vector<oo::PList>();
 }
 
+
+// The docked station's interface for <key>, or nil (objectForKey: on a nil dictionary or key).
+OOJSInterfaceDefinition *InterfaceForKey(StationEntity *station, const std::optional<std::string> &key)
+{
+	const auto *interfaces = [station cxx_localInterfaces];
+	if (interfaces == nullptr || !key.has_value())  return nil;
+	const auto it = interfaces->find(*key);
+	return (it != interfaces->end()) ? it->second.get() : nil;
+}
+
+
+// "More:<n>[:<key>]" row keys: field <index>, or nullopt past the end.
+std::optional<std::string> RowKeyField(const std::string &key, size_t index)
+{
+	const std::vector<std::string> fields = oo::str::split(key, ":");
+	if (index < fields.size())  return fields[index];
+	return std::nullopt;
+}
+
 }	// namespace
 
 
-static NSString * const kOOLogBuyMountedOK			= @"equip.buy.mounted";
-static NSString * const kOOLogBuyMountedFailed		= @"equip.buy.mounted.failed";
 static float const 		kDeadResetTime				= 30.0f;
 
 PlayerEntity		*gOOPlayer = nil;
@@ -242,7 +259,7 @@ static GLfloat		sBaseMass = 0.0;
 - (void) showMarketCashAndLoadLine;
 
 
-- (BOOL) tryBuyingItem:(NSString *)eqKey;
+- (BOOL) tryBuyingItem:(const std::string &)eqKey;
 
 // Cargo & passenger contracts
 - (NSArray*) contractsListForScriptingFromArray:(NSArray *)contractsArray forCargo:(BOOL)forCargo;
@@ -9520,7 +9537,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					price = pricePerUnit;
 				}
 				
-				price = [self adjustPriceByScriptForEqKey:oo::NSStringFrom(eqKey) withCurrent:price];
+				price = [self cxx_adjustPriceByScriptForEqKey:eqKey withCurrent:price];
 
 				price *= priceFactor;  // increased prices at some stations
 				
@@ -9755,8 +9772,17 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	
 	// build an array of available interfaces
-	NSDictionary *interfaces = [[self dockedStation] localInterfaces];
-	NSArray		*interfaceKeys = [interfaces keysSortedByValueUsingSelector:@selector(interfaceCompare:)]; // sorts by category, then title
+	const auto *interfaces = [[self dockedStation] cxx_localInterfaces];
+	std::vector<std::string> interfaceKeys;
+	if (interfaces != nullptr)
+	{
+		for (const auto &entry : *interfaces)  interfaceKeys.push_back(entry.first);
+		// sorts by category, then title. ORDER-SENSITIVE: ties now keep the map's byte order of keys
+		std::stable_sort(interfaceKeys.begin(), interfaceKeys.end(), [interfaces](const std::string &a, const std::string &b)
+		{
+			return [interfaces->find(a)->second.get() interfaceCompare:interfaces->find(b)->second.get()] == NSOrderedAscending;
+		});
+	}
 	int i;
 
 	OOGUIScreenID	oldScreen = gui_screen;
@@ -9780,7 +9806,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[gui setTabStops:tab_stops];
 		
 		unsigned n_rows = GUI_MAX_ROWS_INTERFACES;
-		NSUInteger count = [interfaceKeys count];
+		NSUInteger count = interfaceKeys.size();
 
 		if (count > 0)
 		{
@@ -9801,20 +9827,29 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					}
 				}
 				
-				[gui setKey:[NSString stringWithFormat:@"More:%d", previous] forRow:row];
+				[gui cxx_setKey:oo::str::format("More:%d", static_cast<int>(previous)) forRow:row];
 				[gui setColor:[gui colorFromSetting:kGuiInterfaceScrollColor defaultValue:[OOColor greenColor]] forRow:row];
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ", nil] forRow:row];
+				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " } forRow:row];
 				row++;
 			}
 			
 			for (i = skip; i < (NSInteger)count && (row - start_row < (OOGUIRow)n_rows); i++)
 			{
-				NSString *interfaceKey = [interfaceKeys objectAtIndex:i];
-				OOJSInterfaceDefinition *definition = [interfaces objectForKey:interfaceKey];
+				const std::string &interfaceKey = interfaceKeys[i];
+				OOJSInterfaceDefinition *definition = interfaces->find(interfaceKey)->second.get();
 
 				[gui setColor:[gui colorFromSetting:kGuiInterfaceEntryColor defaultValue:nil] forRow:row];
-				[gui setKey:interfaceKey forRow:row];
-				[gui setArray:[NSArray arrayWithObjects:[definition title],oo::NSStringOrNil([definition category]), nil] forRow:row];
+				[gui cxx_setKey:interfaceKey forRow:row];
+				// title, category: the list ends at the first nil, as arrayWithObjects: did
+				std::vector<std::string> columns;
+				id title = [definition title];
+				if (title != nil)
+				{
+					columns.push_back(oo::StdString(title));
+					const std::optional<std::string> category = [definition category];
+					if (category.has_value())  columns.push_back(*category);
+				}
+				[gui cxx_setArray:columns forRow:row];
 
 				row++;
 			}
@@ -9823,8 +9858,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			{
 				// just overwrite the last item :-)
 				[gui setColor:[gui colorFromSetting:kGuiInterfaceScrollColor defaultValue:[OOColor greenColor]] forRow:row - 1];
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ", nil] forRow:row - 1];
-				[gui setKey:[NSString stringWithFormat:@"More:%d", i - 1] forRow:row - 1];
+				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " } forRow:row - 1];
+				[gui cxx_setKey:oo::str::format("More:%d", i - 1) forRow:row - 1];
 			}
 			
 			[gui setSelectableRange:NSMakeRange(start_row,row - start_row)];
@@ -9848,16 +9883,16 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		
 		[gui setShowTextCursor:NO];
 
-		NSString *desc = [NSString stringWithFormat:DESC(@"interfaces-for-ship-@-and-station-@"), [self displayName], [[self dockedStation] displayName]];
+		const std::string desc = oo::str::formatRuntime(oo::StdString(DESC(@"interfaces-for-ship-@-and-station-@")),
+			{ oo::DescriptionOf([self displayName]), oo::DescriptionOf([[self dockedStation] displayName]) });
 		[gui setColor:[gui colorFromSetting:kGuiInterfaceHeadingColor defaultValue:nil] forRow:GUI_ROW_INTERFACES_HEADING];
-		[gui setText:desc forRow:GUI_ROW_INTERFACES_HEADING];
+		[gui cxx_setText:desc forRow:GUI_ROW_INTERFACES_HEADING];
 
 		
 		if (guiChanged)
 		{
 			[gui setForegroundTextureKey:@"docked_overlay"];
-			NSDictionary *background = [UNIVERSE screenTextureDescriptorForKey:@"interfaces"];
-			[gui setBackgroundTextureDescriptor:background];
+			[gui setBackgroundTextureDescriptor:[UNIVERSE screenTextureDescriptorForKey:@"interfaces"]];
 		}
 	}
 	/* ends */
@@ -9875,7 +9910,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (void) showInformationForSelectedInterface
 {
 	GuiDisplayGen* gui = [UNIVERSE gui];
-	NSString* interfaceKey = [gui selectedRowKey];
+	const std::optional<std::string> interfaceKey = [gui cxx_selectedRowKey];
 	
 	int i;
 	
@@ -9885,13 +9920,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		[gui setColor:[gui colorFromSetting:kGuiInterfaceDescriptionColor defaultValue:[OOColor greenColor]] forRow:i];
 	}
 	
-	if (interfaceKey && ![interfaceKey hasPrefix:@"More:"])
+	if (interfaceKey.has_value() && !oo::str::hasPrefix(*interfaceKey, "More:"))
 	{
-		NSDictionary *interfaces = [[self dockedStation] localInterfaces];
-		OOJSInterfaceDefinition *definition = [interfaces objectForKey:interfaceKey];
+		OOJSInterfaceDefinition *definition = InterfaceForKey([self dockedStation], interfaceKey);
 		if (definition)
 		{
-			[gui addLongText:oo::NSStringOrNil([definition summary]) startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
+			[gui cxx_addLongText:[definition summary] startingAtRow:GUI_ROW_INTERFACES_DETAIL align:GUI_ALIGN_LEFT];
 		}
 	}
 
@@ -9901,11 +9935,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (void) activateSelectedInterface
 {
 	GuiDisplayGen* gui = [UNIVERSE gui];
-	NSString* key = [gui selectedRowKey];
+	const std::optional<std::string> key = [gui cxx_selectedRowKey];
 
-	if ([key hasPrefix:@"More:"])
+	if (key.has_value() && oo::str::hasPrefix(*key, "More:"))
 	{
-		int 		from_item = oo::PListView([key componentsSeparatedByString:@":"]).at<int>(1);
+		int 		from_item = oo::str::intValue(RowKeyField(*key, 1).value_or(std::string()));
 		[self setGuiToInterfacesScreen:from_item];
 
 		if ([gui selectedRow] < 0)
@@ -9918,16 +9952,15 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		return;
 	}
 
-	NSDictionary *interfaces = [[self dockedStation] localInterfaces];
-	OOJSInterfaceDefinition *definition = [interfaces objectForKey:key];
+	OOJSInterfaceDefinition *definition = InterfaceForKey([self dockedStation], key);
 	if (definition)
 	{
 		[[UNIVERSE gameView] clearKeys];
-		[definition runCallback:key];
+		[definition runCallback:oo::NSStringOrNil(key)];
 	}
 	else
 	{
-		OOLog(@"interface.missingCallback", @"Unable to find callback definition for key %@", key);
+		OOLog(@"interface.missingCallback", @"Unable to find callback definition for key %@", oo::NSStringOrNil(key));
 	}
 }
 
@@ -9935,7 +9968,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (void) setupStartScreenGui
 {
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	NSString		*text = nil;
+	std::string		text;
 
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
@@ -9943,56 +9976,56 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 	[gui setTitle:@"Oolite"];
 
-	text = DESC(@"game-copyright");
-	[gui setText:text forRow:15 align:GUI_ALIGN_CENTER];
+	text = oo::StdString(DESC(@"game-copyright"));
+	[gui cxx_setText:text forRow:15 align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor whiteColor] forRow:15];
 		
-	text = DESC(@"theme-music-credit");
-	[gui setText:text forRow:17 align:GUI_ALIGN_CENTER];
+	text = oo::StdString(DESC(@"theme-music-credit"));
+	[gui cxx_setText:text forRow:17 align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor grayColor] forRow:17];
 		
 	int initialRow = 22;
 	int row = initialRow;
 
-	text = DESC(@"oolite-start-option-1");
-	[gui setText:text forRow:row align:GUI_ALIGN_CENTER];
+	text = oo::StdString(DESC(@"oolite-start-option-1"));
+	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
-	[gui setKey:[NSString stringWithFormat:@"Start:%d", row] forRow:row];
+	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = DESC(@"oolite-start-option-2");
-	[gui setText:text forRow:row align:GUI_ALIGN_CENTER];
+	text = oo::StdString(DESC(@"oolite-start-option-2"));
+	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
-	[gui setKey:[NSString stringWithFormat:@"Start:%d", row] forRow:row];
+	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = DESC(@"oolite-start-option-3");
-	[gui setText:text forRow:row align:GUI_ALIGN_CENTER];
+	text = oo::StdString(DESC(@"oolite-start-option-3"));
+	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
-	[gui setKey:[NSString stringWithFormat:@"Start:%d", row] forRow:row];
+	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = DESC(@"oolite-start-option-4");
-	[gui setText:text forRow:row align:GUI_ALIGN_CENTER];
+	text = oo::StdString(DESC(@"oolite-start-option-4"));
+	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
-	[gui setKey:[NSString stringWithFormat:@"Start:%d", row] forRow:row];
+	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = DESC(@"oolite-start-option-5");
-	[gui setText:text forRow:row align:GUI_ALIGN_CENTER];
+	text = oo::StdString(DESC(@"oolite-start-option-5"));
+	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
-	[gui setKey:[NSString stringWithFormat:@"Start:%d", row] forRow:row];
+	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 	++row;
 
-	text = DESC(@"oolite-start-option-6");
-	[gui setText:text forRow:row align:GUI_ALIGN_CENTER];
+	text = oo::StdString(DESC(@"oolite-start-option-6"));
+	[gui cxx_setText:text forRow:row align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor yellowColor] forRow:row];
-	[gui setKey:[NSString stringWithFormat:@"Start:%d", row] forRow:row];
+	[gui cxx_setKey:oo::str::format("Start:%d", row) forRow:row];
 
 
 	[gui setSelectableRange:NSMakeRange(initialRow, row - initialRow + 1)];
@@ -10008,7 +10041,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
  */
 - (void) setGuiToIntroFirstGo:(BOOL)justCobra
 {
-	NSString 		*text = nil;
+	std::string 	text;
 	GuiDisplayGen	*gui = [UNIVERSE gui];
 	OOGUIRow 		msgLine = 2;
 	
@@ -10029,33 +10062,38 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		
 		// check for error messages from Resource Manager
 		//[ResourceManager paths]; done in Universe already
-		NSString *errors = [ResourceManager errors];
-		if (errors != nil)
+		const std::optional<std::string> errors = [ResourceManager cxx_errors];
+		if (errors.has_value())
 		{
 			OOGUIRow ms_start = msgLine;
-			OOGUIRow i = msgLine = [gui addLongText:errors startingAtRow:ms_start align:GUI_ALIGN_LEFT];
+			OOGUIRow i = msgLine = [gui cxx_addLongText:errors startingAtRow:ms_start align:GUI_ALIGN_LEFT];
 			for (i-- ; i >= ms_start ; i--) [gui setColor:[OOColor redColor] forRow:i];
 			msgLine++;
 		}
 		
 		// check for messages from OXPs
-		NSArray *OXPsWithMessages = [ResourceManager OXPsWithMessagesFound];
-		if ([OXPsWithMessages count] > 0)
+		const std::vector<std::string> OXPsWithMessages = [ResourceManager cxx_OXPsWithMessagesFound];
+		if (OXPsWithMessages.size() > 0)
 		{
-			NSString *messageToDisplay = @"";
-			
+			std::optional<std::string> messageToDisplay = std::string();
+
 			// Show which OXPs were found with messages, but don't spam the screen if more than
 			// a certain number of them exist
-			if ([OXPsWithMessages count] < 5)
+			if (OXPsWithMessages.size() < 5)
 			{
-				NSString *messageSourceList = [OXPsWithMessages componentsJoinedByString:@", "];
-				messageToDisplay = OOExpandKey(@"oxp-containing-messages-list", messageSourceList);
+				std::string messageSourceList;	// joined with ", "
+				for (const std::string &source : OXPsWithMessages)
+				{
+					if (!messageSourceList.empty())  messageSourceList += ", ";
+					messageSourceList += source;
+				}
+				messageToDisplay = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oxp-containing-messages-list", { { "messageSourceList", oo::PList(messageSourceList) } });
 			} else {
-				messageToDisplay = OOExpandKey(@"oxp-containing-messages-found");
+				messageToDisplay = oo::OptionalString(OOExpandKey(@"oxp-containing-messages-found"));
 			}
-			
+
 			OOGUIRow ms_start = msgLine;
-			OOGUIRow i = msgLine = [gui addLongText:messageToDisplay startingAtRow:ms_start align:GUI_ALIGN_LEFT];
+			OOGUIRow i = msgLine = [gui cxx_addLongText:messageToDisplay startingAtRow:ms_start align:GUI_ALIGN_LEFT];
 			for (i--; i >= ms_start; i--)
 			{
 				[gui setColor:[OOColor orangeColor] forRow:i];
@@ -10071,8 +10109,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			if ((arguments[i] == "-message")&&(i < arguments.size() - 1))
 			{
 				OOGUIRow ms_start = msgLine;
-				NSString* message = [NSString stringWithUTF8String:arguments[i + 1].c_str()];
-				OOGUIRow i = msgLine = [gui addLongText:message startingAtRow:ms_start align:GUI_ALIGN_CENTER];
+				const std::string &message = arguments[i + 1];
+				OOGUIRow i = msgLine = [gui cxx_addLongText:message startingAtRow:ms_start align:GUI_ALIGN_CENTER];
 				for (i-- ; i >= ms_start; i--)
 				{
 					[gui setColor:[OOColor magentaColor] forRow:i];
@@ -10081,8 +10119,8 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			if (arguments[i] == "-showversion")
 			{
 				OOGUIRow ms_start = msgLine;
-				NSString *version = @"Version " @OO_VERSION_FULL;
-				OOGUIRow i = msgLine = [gui addLongText:version startingAtRow:ms_start align:GUI_ALIGN_CENTER];
+				const std::string version = "Version " OO_VERSION_FULL;
+				OOGUIRow i = msgLine = [gui cxx_addLongText:version startingAtRow:ms_start align:GUI_ALIGN_CENTER];
 				for (i-- ; i >= ms_start; i--)
 				{
 					[gui setColor:[OOColor magentaColor] forRow:i];
@@ -10094,11 +10132,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		[gui clear];
 
-        text = DESC(@"oolite-ship-library-title");
-		[gui setTitle:text];
+        text = oo::StdString(DESC(@"oolite-ship-library-title"));
+		[gui setTitle:oo::NSStringFrom(text)];
 
-        text = DESC(@"oolite-ship-library-exit");
-        [gui setText:text forRow:27 align:GUI_ALIGN_CENTER];
+        text = oo::StdString(DESC(@"oolite-ship-library-exit"));
+        [gui cxx_setText:text forRow:27 align:GUI_ALIGN_CENTER];
         [gui setColor:[OOColor yellowColor] forRow:27];
 	}
 	
@@ -10215,17 +10253,17 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 - (void) buySelectedItem
 {
 	GuiDisplayGen* gui = [UNIVERSE gui];
-	NSString* key = [gui selectedRowKey];
+	const std::optional<std::string> key = [gui cxx_selectedRowKey];
 
-	if ([key hasPrefix:@"More:"])
+	if (key.has_value() && oo::str::hasPrefix(*key, "More:"))
 	{
-		int 		from_item = oo::PListView([key componentsSeparatedByString:@":"]).at<int>(1);
-		NSString	*weaponKey = oo::PListView([key componentsSeparatedByString:@":"]).at<NSString *>(2);
+		int 		from_item = oo::str::intValue(RowKeyField(*key, 1).value_or(std::string()));
+		const std::optional<std::string> weaponKey = RowKeyField(*key, 2);
 
 		[self setGuiToEquipShipScreen:from_item];
-		if (weaponKey != nil)
+		if (weaponKey.has_value())
 		{
-			[self highlightEquipShipScreenKey:oo::StdString(weaponKey)];
+			[self highlightEquipShipScreenKey:*weaponKey];
 		}
 		else
 		{
@@ -10239,22 +10277,24 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		return;
 	}
 	
-	NSString		*itemText = [gui selectedRowText];
-	
+	const std::optional<std::string> itemText = [gui cxx_selectedRowText];
+
+	// isEqual: of the row text (nil matched nothing)
+	const auto itemTextIs = [&itemText](id facingString) { return itemText.has_value() && facingString != nil && *itemText == oo::StdString(facingString); };
 	// FIXME: this is nuts, should be associating lines with keys in some sensible way. --Ahruman 20080311
-	if ([itemText isEqual:FORWARD_FACING_STRING])
+	if (itemTextIs(FORWARD_FACING_STRING))
 		chosen_weapon_facing = WEAPON_FACING_FORWARD;
-	if ([itemText isEqual:AFT_FACING_STRING])
+	if (itemTextIs(AFT_FACING_STRING))
 		chosen_weapon_facing = WEAPON_FACING_AFT;
-	if ([itemText isEqual:PORT_FACING_STRING])
+	if (itemTextIs(PORT_FACING_STRING))
 		chosen_weapon_facing = WEAPON_FACING_PORT;
-	if ([itemText isEqual:STARBOARD_FACING_STRING])
+	if (itemTextIs(STARBOARD_FACING_STRING))
 		chosen_weapon_facing = WEAPON_FACING_STARBOARD;
-	
+
 	OOCreditsQuantity old_credits = credits;
-	OOEquipmentType *eqInfo = [OOEquipmentType equipmentTypeWithIdentifier:key];
+	OOEquipmentType *eqInfo = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(key)];
 	BOOL isRepair = [self hasEquipmentItem:[eqInfo damagedIdentifier]];
-	if ([self tryBuyingItem:key])
+	if ([self tryBuyingItem:key.value_or(std::string())])	// (a nil key bought nothing, as "" does)
 	{
 		if (credits == old_credits)
 		{
@@ -10266,7 +10306,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			[self playBuyCommodity];
 		}			
 			
-		if(credits != old_credits || ![key hasPrefix:@"EQ_WEAPON_"])
+		if(credits != old_credits || !(key.has_value() && oo::str::hasPrefix(*key, "EQ_WEAPON_")))
 		{
 			// adjust time before playerBoughtEquipment gets to change credits dynamically
 			// wind the clock forward by 10 minutes plus 10 minutes for every 60 credits spent
@@ -10290,13 +10330,16 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 				ship_clock_adjust += (double)adjust;
 			}
 			
-			[self doScriptEvent:OOJSID("playerBoughtEquipment") withArguments:[NSArray arrayWithObjects:key, [NSNumber numberWithLongLong:(old_credits - credits)], nil]];
+			// [key, price paid as a long long]; a nil key ended the list
+			oo::PList::Array boughtArguments;
+			if (key.has_value())  boughtArguments = { oo::PList(*key), oo::PList::signedInteger(static_cast<long long>(old_credits - credits)) };
+			[self doScriptEvent:OOJSID("playerBoughtEquipment") withArguments:oo::ObjectFromPList(oo::PList(std::move(boughtArguments)))];
 			if (gui_screen == GUI_SCREEN_EQUIP_SHIP) //if we haven't changed gui screen inside playerBoughtEquipment
 			{ 
 				// show any change due to playerBoughtEquipment
 				[self setGuiToEquipShipScreen:0];
 				// then try to go back where we were
-				[self highlightEquipShipScreenKey:oo::StdString(key)];
+				[self highlightEquipShipScreenKey:key.value_or(std::string())];
 			}
 
 			if ([UNIVERSE autoSave]) [UNIVERSE setAutoSaveNow:YES];
@@ -10309,19 +10352,19 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price
+- (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price
 {
-	NSString *condition_script = [[OOEquipmentType equipmentTypeWithIdentifier:eqKey] conditionScript];
-	if (condition_script != nil)
+	const std::optional<std::string> condition_script = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] conditionScript]);
+	if (condition_script.has_value())
 	{
-		OOJSScript *condScript = [UNIVERSE getConditionScript:condition_script];
+		OOJSScript *condScript = [UNIVERSE getConditionScript:oo::NSStringFrom(*condition_script)];
 		if (condScript != nil) // should always be non-nil, but just in case
 		{
 			ooscript::Context JScontext = OOJSAcquireContext();
 			BOOL OK;
 			ooscript::Value result;
 			int32_t newPrice;
-			ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, eqKey) , ooscript::nullValue() };
+			ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(eqKey)) , ooscript::nullValue() };
 			OK = ooscript::newNumberValue(JScontext, price, &args[1]);
 				
 			if (OK)
@@ -10347,30 +10390,30 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (BOOL) tryBuyingItem:(NSString *)eqKey
+- (BOOL) tryBuyingItem:(const std::string &)eqKey
 {
 	// note this doesn't check the availability by tech-level
-	OOEquipmentType			*eqType			= [OOEquipmentType equipmentTypeWithIdentifier:eqKey];
+	OOEquipmentType			*eqType			= [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)];
 	OOCreditsQuantity		pricePerUnit	= [eqType price];
-	NSString				*eqKeyDamaged	= [eqType damagedIdentifier];
+	const std::optional<std::string>	eqKeyDamaged	= oo::OptionalString([eqType damagedIdentifier]);
 	double					price			= pricePerUnit;
 	double					priceFactor		= 1.0;
 	OOCreditsQuantity		tradeIn			= 0;
 	BOOL	isRepair = NO;
 	
 	// repairs cost 50%
-	if ([self hasEquipmentItem:eqKeyDamaged])
+	if ([self hasEquipmentItem:oo::NSStringOrNil(eqKeyDamaged)])
 	{
 		price /= 2.0;
 		isRepair = YES;
 	}
 	
-	if ([eqKey isEqualToString:@"EQ_RENOVATION"])
+	if ((eqKey == "EQ_RENOVATION"))
 	{
 		price = [self renovationCosts];
 	}
 	
-	price = [self adjustPriceByScriptForEqKey:eqKey withCurrent:price];
+	price = [self cxx_adjustPriceByScriptForEqKey:eqKey withCurrent:price];
 
 	StationEntity *dockedStation = [self dockedStation];
 	if (dockedStation)
@@ -10389,11 +10432,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		if (chosen_weapon_facing == WEAPON_FACING_NONE)
 		{
-			[self setGuiToEquipShipScreen:0 selectingFacingFor:eqKey];	// reset
+			[self cxx_setGuiToEquipShipScreen:0 selectingFacingFor:eqKey];	// reset
 			return YES;
 		}
 		
-		OOWeaponType chosen_weapon = OOWeaponTypeFromEquipmentIdentifierStrict(eqKey);
+		OOWeaponType chosen_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierStrict(eqKey);
 		OOWeaponType current_weapon = nil;
 
 		NSUInteger multiplier = 1;
@@ -10476,7 +10519,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		
 		[self doTradeIn:tradeIn forPriceFactor:priceFactor];
 		// If equipped, remove damaged weapon after repairs. -- But there's no way we should get a damaged weapon. Ever.
-		[self removeEquipmentItem:eqKeyDamaged];
+		[self removeEquipmentItem:oo::NSStringOrNil(eqKeyDamaged)];
 		return YES;
 	}
 	
@@ -10490,12 +10533,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	//unsigned 	passenger_space = [[OOEquipmentType equipmentTypeWithIdentifier:@"EQ_PASSENGER_BERTH"] requiredCargoSpace];
 	//if (passenger_space == 0) passenger_space = PASSENGER_BERTH_SPACE;
 	
-	if ([eqKey isEqualToString:@"EQ_PASSENGER_BERTH"] && [self availableCargoSpace] < PASSENGER_BERTH_SPACE)
+	if ((eqKey == "EQ_PASSENGER_BERTH") && [self availableCargoSpace] < PASSENGER_BERTH_SPACE)
 	{
 		return NO;
 	}
 	
-	if ([eqKey isEqualToString:@"EQ_FUEL"])
+	if ((eqKey == "EQ_FUEL"))
 	{
 #if MASS_DEPENDENT_FUEL_PRICES
 		OOCreditsQuantity creditsForRefuel = ([self fuelCapacity] - [self fuel]) * pricePerUnit * [self fuelChargeRate];
@@ -10515,7 +10558,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	
 	// check energy unit replacement
-	if ([eqKey hasSuffix:@"ENERGY_UNIT"] && [self energyUnitType] != ENERGY_UNIT_NONE)
+	if (oo::str::hasSuffix(eqKey, "ENERGY_UNIT") && [self energyUnitType] != ENERGY_UNIT_NONE)
 	{
 		switch ([self energyUnitType])
 		{
@@ -10543,7 +10586,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	
 	// maintain ship
-	if ([eqKey isEqualToString:@"EQ_RENOVATION"])
+	if ((eqKey == "EQ_RENOVATION"))
 	{
 		OOTechLevelID techLevel = NSNotFound;
 		if (dockedStation != nil)  techLevel = [dockedStation equivalentTechLevel];
@@ -10559,11 +10602,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		return YES;
 	}
 	
-	if ([eqKey hasSuffix:@"MISSILE"] || [eqKey hasSuffix:@"MINE"])
+	if (oo::str::hasSuffix(eqKey, "MISSILE") || oo::str::hasSuffix(eqKey, "MINE"))
 	{
-		ShipEntity* weapon = [[UNIVERSE newShipWithRole:eqKey] autorelease];
-		if (weapon)  OOLog(kOOLogBuyMountedOK, @"Got ship for mounted weapon role %@", eqKey);
-		else  OOLog(kOOLogBuyMountedFailed, @"Could not find ship for mounted weapon role %@", eqKey);
+		ShipEntity* weapon = [[UNIVERSE newShipWithRole:oo::NSStringFrom(eqKey)] autorelease];
+		if (weapon)  OOLog(@"equip.buy.mounted", @"Got ship for mounted weapon role %@", oo::NSStringFrom(eqKey));
+		else  OOLog(@"equip.buy.mounted.failed", @"Could not find ship for mounted weapon role %@", oo::NSStringFrom(eqKey));
 		
 		BOOL mounted_okay = [self mountMissile:weapon];
 		if (mounted_okay)
@@ -10576,21 +10619,21 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		return mounted_okay;
 	}
 	
-	if ([eqKey isEqualToString:@"EQ_PASSENGER_BERTH"])
+	if ((eqKey == "EQ_PASSENGER_BERTH"))
 	{
 		[self changePassengerBerths:+1];
 		credits -= price;
 		return YES;
 	}
 	
-	if ([eqKey isEqualToString:@"EQ_PASSENGER_BERTH_REMOVAL"])
+	if ((eqKey == "EQ_PASSENGER_BERTH_REMOVAL"))
 	{
 		[self changePassengerBerths:-1];
 		credits -= price;
 		return YES;
 	}
 	
-	if ([eqKey isEqualToString:@"EQ_MISSILE_REMOVAL"])
+	if ((eqKey == "EQ_MISSILE_REMOVAL"))
 	{
 		credits -= price;
 		tradeIn += [self removeMissiles];
@@ -10598,13 +10641,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		return YES;
 	}
 	
-	if ([self canAddEquipment:eqKey inContext:@"purchase"])
+	if ([self canAddEquipment:oo::NSStringFrom(eqKey) inContext:@"purchase"])
 	{
 		credits -= price;
-		[self addEquipmentItem:eqKey withValidation:NO inContext:@"purchase"]; // no need to validate twice.
+		[self addEquipmentItem:oo::NSStringFrom(eqKey) withValidation:NO inContext:@"purchase"]; // no need to validate twice.
 		if (isRepair)
 		{
-			[self doScriptEvent:OOJSID("equipmentRepaired") withArgument:eqKey];
+			[self doScriptEvent:OOJSID("equipmentRepaired") withArgument:oo::NSStringFrom(eqKey)];
 		}
 		return YES;
 	}
@@ -10613,17 +10656,18 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(id)eqKey	// shared selector (proposed ADR-0043)
 {
-	return [self setWeaponMount:facing toWeapon:eqKey inContext:@"purchase"];
+	// canAddEquipment: read a nil key as "", as cxx_ does
+	return [self cxx_setWeaponMount:facing toWeapon:oo::StdString(eqKey) inContext:std::string("purchase")];
 }
 
 
-- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context
+- (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context
 {
 
-	NSDictionary		*shipyardInfo = [[OOShipRegistry sharedRegistry] shipyardInfoForKey:[self shipDataKey]];
-	unsigned			available_facings = oo::PListView(shipyardInfo).get<unsigned int>(KEY_WEAPON_FACINGS, [self weaponFacings]);	// use defaults  explicitly
+	const oo::PList		shipyardInfo = [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+	unsigned			available_facings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
 	
 	// facing exists?
 	if (!(available_facings & facing)) 
@@ -10632,16 +10676,16 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 	
 	// weapon allowed (or NONE)?
-	if (![eqKey isEqualToString:@"EQ_WEAPON_NONE"]) 
+	if (eqKey != "EQ_WEAPON_NONE")
 	{
-		if (![self canAddEquipment:eqKey inContext:context]) 
+		if (![self canAddEquipment:oo::NSStringFrom(eqKey) inContext:oo::NSStringOrNil(context)])  
 		{
 			return NO;
 		}
 	}
 	
 	// sets WEAPON_NONE if not recognised
-	OOWeaponType chosen_weapon = OOWeaponTypeFromEquipmentIdentifierStrict(eqKey);
+	OOWeaponType chosen_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierStrict(eqKey);
 	
 	switch (facing)
 	{
@@ -10690,10 +10734,10 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	unsigned i;
 	for (i = 0; i < missiles; i++)
 	{
-		NSString *weapon_key = [missile_list[i] identifier];
-		
-		if (weapon_key != nil)
-			tradeIn += (int)[UNIVERSE getEquipmentPriceForKey:weapon_key];
+		const std::optional<std::string> weapon_key = oo::OptionalString([missile_list[i] identifier]);
+
+		if (weapon_key.has_value())
+			tradeIn += (int)[UNIVERSE getEquipmentPriceForKey:oo::NSStringFrom(*weapon_key)];
 	}
 	
 	for (i = 0; i < max_missiles; i++)
