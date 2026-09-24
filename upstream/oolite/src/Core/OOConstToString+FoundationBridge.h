@@ -60,4 +60,12 @@ NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity);
 }
 #endif
 
+
+// Shader settings (OOShaderSetting is OOOpenGL.h's), with C++ linkage as when OOOpenGL.h declared them.
+// Programmer-readable shader mode strings.
+OOShaderSetting OOShaderSettingFromString(NSString *string);
+NSString *OOStringFromShaderSetting(OOShaderSetting setting);
+// Localized shader mode strings.
+NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting);
+
 #endif	// OOCONSTTOSTRING_FOUNDATIONBRIDGE_H
