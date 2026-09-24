@@ -136,14 +136,9 @@ OOINLINE void OOJSRelinquishContext(ooscript::Context context)
 }
 
 
-// Notifications sent when JavaScript engine is reset.
-extern NSString * const kOOJavaScriptEngineWillResetNotification;
-extern NSString * const kOOJavaScriptEngineDidResetNotification;
-
-/*	The same notifications on oo::NotificationCenter (oofnd/Notification.hpp, bead oo-3rb.9),
-	posted with the engine as the object. Until the last NSNotificationCenter observer is
-	migrated, -reset posts each notification to both centers (oo::NotificationCenter first); the
-	NSString names above go with that last observer.
+/*	Notifications sent when JavaScript engine is reset, on oo::NotificationCenter
+	(oofnd/Notification.hpp, bead oo-3rb.9), posted with the engine as the object: will-reset
+	before the context is destroyed, did-reset after it is recreated.
 */
 extern const char * const kOOJavaScriptEngineWillResetNotificationName;
 extern const char * const kOOJavaScriptEngineDidResetNotificationName;
@@ -153,18 +148,23 @@ extern const char * const kOOJavaScriptEngineDidResetNotificationName;
 	
 	Note that after reporting an error in a JavaScript callback, the caller
 	must return NO to signal an error.
+	The cxx_ forms (proposed ADR-0043 item 17's pattern; bead oo-3rb.200) take printf formats
+	(no %@: pass an object's text as %s with oo::DescriptionOf), formatted by oo::str::vformat.
+	A nullopt function means no caller prefix; a nullopt scriptClass prefixes "function: ".
+	Plain C++, not OOJS_EXTERN_C.
 */
-OOJS_EXTERN_C void OOJSReportError(ooscript::Context context, NSString *format, ...);
-OOJS_EXTERN_C void OOJSReportErrorWithArguments(ooscript::Context context, NSString *format, va_list args);
-OOJS_EXTERN_C void OOJSReportErrorForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
+void cxx_OOJSReportError(ooscript::Context context, const char *format, ...) __attribute__((format(printf, 2, 3)));
+void cxx_OOJSReportErrorWithArguments(ooscript::Context context, const char *format, va_list args) __attribute__((format(printf, 2, 0)));
+void cxx_OOJSReportErrorForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...) __attribute__((format(printf, 4, 5)));
 
-OOJS_EXTERN_C void OOJSReportWarning(ooscript::Context context, NSString *format, ...);
-OOJS_EXTERN_C void OOJSReportWarningWithArguments(ooscript::Context context, NSString *format, va_list args);
-OOJS_EXTERN_C void OOJSReportWarningForCaller(ooscript::Context context, NSString *scriptClass, NSString *function, NSString *format, ...);
+void cxx_OOJSReportWarning(ooscript::Context context, const char *format, ...) __attribute__((format(printf, 2, 3)));
+void cxx_OOJSReportWarningWithArguments(ooscript::Context context, const char *format, va_list args) __attribute__((format(printf, 2, 0)));
+void cxx_OOJSReportWarningForCaller(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, const char *format, ...) __attribute__((format(printf, 4, 5)));
 
 OOJS_EXTERN_C void OOJSReportBadPropertySelector(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec);
 OOJS_EXTERN_C void OOJSReportBadPropertyValue(ooscript::Context context, ooscript::Object thisObj, ooscript::PropertyId propID, ooscript::PropertySpec *propertySpec, ooscript::Value value);
-OOJS_EXTERN_C void OOJSReportBadArguments(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, NSString *message, NSString *expectedArgsDescription);
+// A nullopt message is "Invalid arguments"; a nullopt expectedArgsDescription adds no " -- expected ..." suffix.
+void cxx_OOJSReportBadArguments(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, const std::optional<std::string> &message, const std::optional<std::string> &expectedArgsDescription);
 
 /*	OOJSSetWarningOrErrorStackSkip()
 	
@@ -184,11 +184,11 @@ OOJS_EXTERN_C void OOJSSetWarningOrErrorStackSkip(unsigned skip);
 	On failure, it will return NO and raise an error. If the caller is a JS
 	callback, it must return NO to signal an error.
 */
-OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
+BOOL cxx_OOJSArgumentListGetNumber(ooscript::Context context, const std::optional<std::string> &scriptClass, const std::optional<std::string> &function, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
 
 /*	OOJSArgumentListGetNumberNoError()
 	
-	Like OOJSArgumentListGetNumber(), but does not report an error on failure.
+	Like cxx_OOJSArgumentListGetNumber(), but does not report an error on failure.
 */
 OOJS_EXTERN_C BOOL OOJSArgumentListGetNumberNoError(ooscript::Context context, unsigned argc, ooscript::Value *argv, double *outNumber, unsigned *outConsumed);
 
@@ -201,50 +201,38 @@ OOINLINE ooscript::Value OOJSValueFromBOOL(int b)
 }
 
 
-@interface NSObject (OOJavaScript)
+/*	The root-class JS glue for classes rooted on OOObject (ADR-0029). The same methods on the
+	Foundation root class are declared in OOJavaScriptEngine+FoundationBridge.h until
+	gnustep-base goes.
 
-/*	-oo_jsValueInContext:
-	
+	-oo_jsValueInContext:
+
 	Return the JavaScript value representation of an object. The default
 	implementation returns ooscript::undefinedValue().
-	
+
 	SAFETY NOTE: if this message is sent to nil, the return value depends on
 	the platform and the engine's value representation. If the
 	receiver may be nil, use OOJSValueFromNativeObject() instead.
-	
-	One case where it is safe to use oo_jsValueInContext: is with objects
-	retrieved from Foundation collections, as they can never be nil.
-	
-	Requires a request on context.
-*/
-- (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
 
-/*	-oo_jsDescription
+	Requires a request on context.
+
+	-oo_jsDescription
 	-oo_jsDescriptionWithClassName:
 	-oo_jsClassName
-	
-	See comments for -descriptionComponents in OOCocoa.h.
-*/
-- (NSString *) oo_jsDescription;
-- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className;
-- (NSString *) oo_jsClassName;
 
-/*	oo_clearJSSelf:
+	See comments for -descriptionComponents in OOCocoa.h. Strings, typed id: the selectors are
+	shared with the Foundation root class and every class that overrides them.
+
+	oo_clearJSSelf:
 	This is called by OOJSObjectWrapperFinalize() when a JS object wrapper is
 	collected. The default implementation does nothing.
 */
-- (void) oo_clearJSSelf:(ooscript::Object)selfVal;
-
-@end
-
-
-// NSObject (OOJavaScript) above, for classes rooted on OOObject (ADR-0029).
 @interface OOObject (OOJavaScript)
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context;
-- (NSString *) oo_jsDescription;
-- (NSString *) oo_jsDescriptionWithClassName:(NSString *)className;
-- (NSString *) oo_jsClassName;
+- (id) oo_jsDescription;	// shared selector (proposed ADR-0043)
+- (id) oo_jsDescriptionWithClassName:(id)className;	// shared selector (proposed ADR-0043)
+- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
 - (void) oo_clearJSSelf:(ooscript::Object)selfVal;
 
 @end
@@ -349,9 +337,10 @@ std::optional<std::string> cxx_OOStringFromJSPropertyIDAndSpec(ooscript::Context
 	(or just "function" if they're anonymous). Up to four elements of arrays
 	are included, followed by total count of there are more than four.
 	If abbreviateObjects, the description "[object Object]" is replaced with
-	"{...}", which may or may not be clearer depending on context.
+	"{...}", which may or may not be clearer depending on context. Never empty of meaning:
+	the last fallback is "?".
 */
-OOJS_EXTERN_C NSString *OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);
+std::string cxx_OOJSDescribeValue(ooscript::Context context, ooscript::Value value, BOOL abbreviateObjects);
 
 
 // Convert a ooscript::PropertyId to a UTF-8 string (nullopt if it has no string value).
@@ -361,18 +350,19 @@ std::optional<std::string> cxx_OOStringFromJSID(ooscript::PropertyId propID);
 ooscript::PropertyId cxx_OOJSIDFromString(const std::string &string);
 
 
-@interface NSString (OOJavaScriptExtensions)
+/*	The string helpers of the retired string category (OOJavaScriptExtensions) (bead oo-3rb.199).
+	Each std::optional result is nullopt where the category method returned nil.
+*/
 
-// For diagnostic messages; produces things like @"(42, true, "a string", an object description)".
-+ (NSString *) stringWithJavaScriptParameters:(ooscript::Value *)params count:(unsigned)count inContext:(ooscript::Context)context;
+// For diagnostic messages; produces things like "(42, true, "a string", an object description)".
+// nullopt if params is NULL and count is not zero.
+std::optional<std::string> cxx_OOJSStringWithJavaScriptParameters(ooscript::Value *params, unsigned count, ooscript::Context context);
 
-// Concatenate sequence of arbitrary JS objects into string.
-+ (NSString *) concatenationOfStringsFromJavaScriptValues:(ooscript::Value *)values count:(size_t)count separator:(NSString *)separator inContext:(ooscript::Context)context;
+// Concatenate sequence of arbitrary JS objects into string (nullopt if count < 1 or values is NULL).
+std::optional<std::string> cxx_OOJSConcatenationOfStringsFromJavaScriptValues(ooscript::Value *values, size_t count, const std::string &separator, ooscript::Context context);
 
 // Add escape codes for string so that it's a valid JavaScript literal (if you put "" or '' around it).
-- (NSString *) escapedForJavaScriptLiteral;
-
-@end
+std::string cxx_OOJSEscapedForJavaScriptLiteral(std::string_view string);
 
 
 // OOEntityFilterPredicate wrapping a JavaScript function.
