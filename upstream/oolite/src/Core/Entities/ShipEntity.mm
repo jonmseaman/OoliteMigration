@@ -2738,7 +2738,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 				{
 					energy = maxEnergy;
 					[self doScriptEvent:OOJSID("shipEnergyBecameFull")];
-					[shipAI message:@"ENERGY_FULL"];
+					[shipAI message:"ENERGY_FULL"];
 				}
 			}
 			
@@ -2795,7 +2795,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			{
 				energy = maxEnergy;
 				[self doScriptEvent:OOJSID("shipEnergyBecameFull")];
-				[shipAI message:@"ENERGY_FULL"];
+				[shipAI message:"ENERGY_FULL"];
 			}
 		}
 		
@@ -5697,7 +5697,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	success_factor = range;
 
 	if (range > desired_range || range == 0)
-		[shipAI message:@"REACHED_SAFETY"];
+		[shipAI message:"REACHED_SAFETY"];
 	else
 		desired_speed = max_available_speed;
 
@@ -5792,7 +5792,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (confidenceFactor >= max_cos && flightPitch == 0.0)
 	{
 		// desired facing achieved and movement stabilised.
-		[shipAI message:@"FACING_DESTINATION"];
+		[shipAI message:"FACING_DESTINATION"];
 		[self doScriptEvent:OOJSID("shipNowFacingDestination")];
 		frustration = 0.0;
 		if(docking_match_rotation)  // IDLE stops rotating while docking
@@ -5843,7 +5843,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	{
 		behaviour = BEHAVIOUR_IDLE;
 		aiScriptWakeTime = 1; // reconsider JSAI
-		[shipAI message:@"NO_PLANET_NEARBY"];
+		[shipAI message:"NO_PLANET_NEARBY"];
 		return;
 	}
 		  
@@ -5936,7 +5936,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (distance < desired_range) // + collision_radius)
 	{
 		// desired range achieved
-		[shipAI message:@"DESIRED_RANGE_ACHIEVED"];
+		[shipAI message:"DESIRED_RANGE_ACHIEVED"];
 		[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
 
 		if(!docking_match_rotation) // IDLE stops rotating while docking
@@ -6040,7 +6040,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (distance > desired_range)
 	{
 		// desired range achieved
-		[shipAI message:@"DESIRED_RANGE_ACHIEVED"];
+		[shipAI message:"DESIRED_RANGE_ACHIEVED"];
 		[self doScriptEvent:OOJSID("shipAchievedDesiredRange")];
 
 		behaviour = BEHAVIOUR_IDLE;
@@ -7661,17 +7661,17 @@ static BOOL IsBehaviourHostile(OOBehaviour behaviour)
 			
 			if (lastAegisLock == [UNIVERSE sun])
 			{
-				[shipAI message:@"AWAY_FROM_SUN"];
+				[shipAI message:"AWAY_FROM_SUN"];
 			}
 			else
 			{
-				[shipAI message:@"AWAY_FROM_PLANET"];
+				[shipAI message:"AWAY_FROM_PLANET"];
 			}
 		}
 
 		if (aegis_status != AEGIS_CLOSE_TO_ANY_PLANET)
 		{
-			[shipAI message:@"AEGIS_NONE"];
+			[shipAI message:"AEGIS_NONE"];
 		}
 	}
 	aegis_status = AEGIS_NONE;
@@ -7876,13 +7876,13 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		if (EXPECT_NOT(aegis_status == AEGIS_IN_DOCKING_RANGE && result != aegis_status))
 		{
 			[self doScriptEvent:OOJSID("shipExitedStationAegis") withArgument:the_station];
-			[shipAI message:@"AEGIS_LEAVING_DOCKING_RANGE"];
+			[shipAI message:"AEGIS_LEAVING_DOCKING_RANGE"];
 		}
 		
 		if (EXPECT_NOT(result == AEGIS_IN_DOCKING_RANGE && aegis_status != result))
 		{
 			[self doScriptEvent:OOJSID("shipEnteredStationAegis") withArgument:the_station];
-			[shipAI message:@"AEGIS_IN_DOCKING_RANGE"];
+			[shipAI message:"AEGIS_IN_DOCKING_RANGE"];
 			
 			if([self lastAegisLock] == nil && !sunGoneNova) // With small main planets the station aegis can come before planet aegis
 			{
@@ -7904,32 +7904,32 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			if(aegis_status != AEGIS_NONE && [self lastAegisLock] != nil)	// we were close to another stellar body
 			{
 				[self doScriptEvent:OOJSID("shipExitedPlanetaryVicinity") withArgument:[self lastAegisLock]];
-				[shipAI message:@"AWAY_FROM_PLANET"];	// fires for suns, planets and moons.
+				[shipAI message:"AWAY_FROM_PLANET"];	// fires for suns, planets and moons.
 			}
 			[self doScriptEvent:OOJSID("shipEnteredPlanetaryVicinity") withArgument:nearest];
 			[self setLastAegisLock:nearest];
 			
 			if (EXPECT_NOT([nearest isSun]))
 			{
-				[shipAI message:@"CLOSE_TO_SUN"];
+				[shipAI message:"CLOSE_TO_SUN"];
 			}
 			else
 			{
-				[shipAI message:@"CLOSE_TO_PLANET"];
+				[shipAI message:"CLOSE_TO_PLANET"];
 				
 				if (EXPECT(result == AEGIS_CLOSE_TO_MAIN_PLANET))
 				{
 					// It's been years since 1.71 - it should be safe enough to comment out the line below for 1.77/1.78 -- Kaks 20120917
 					//[shipAI message:@"AEGIS_CLOSE_TO_PLANET"];	    // fires only for main planets, kept for compatibility with pre-1.72 AI plists.
-					[shipAI message:@"AEGIS_CLOSE_TO_MAIN_PLANET"];  // fires only for main planet.
+					[shipAI message:"AEGIS_CLOSE_TO_MAIN_PLANET"];  // fires only for main planet.
 				}
 				else if (EXPECT_NOT([nearest planetType] == STELLAR_TYPE_MOON))
 				{
-					[shipAI message:@"CLOSE_TO_MOON"];
+					[shipAI message:"CLOSE_TO_MOON"];
 				}
 				else
 				{
-					[shipAI message:@"CLOSE_TO_SECONDARY_PLANET"];
+					[shipAI message:"CLOSE_TO_SECONDARY_PLANET"];
 				}
 			}
 		}
@@ -10280,7 +10280,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	// always do target lost
 	[self doScriptEvent:OOJSID("shipTargetLost") withArgument:target];
-	if (target == nil) [shipAI message:@"TARGET_LOST"];	// stale target? no major urgency.
+	if (target == nil) [shipAI message:"TARGET_LOST"];	// stale target? no major urgency.
 	else [shipAI reactToMessage:@"TARGET_LOST" context:@"flight updates"];	// execute immediately otherwise.
 }
 
@@ -10299,12 +10299,12 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	{
 		[self removeTarget:target];
 		[self doScriptEvent:OOJSID("shipTargetDestroyed") withArgument:target];
-		[shipAI message:@"TARGET_DESTROYED"];
+		[shipAI message:"TARGET_DESTROYED"];
 	}
 	if ([self isDefenseTarget:target]) 
 	{
 		[self removeDefenseTarget:target];
-		[shipAI message:@"DEFENSE_TARGET_DESTROYED"];
+		[shipAI message:"DEFENSE_TARGET_DESTROYED"];
 		[self doScriptEvent:OOJSID("defenseTargetDestroyed") withArgument:target];
 	}
 }
@@ -13110,8 +13110,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		cargo.insert(cargo.begin(), oo::ObjCRef<ShipEntity *>(other));	// places most recently scooped object at eject position
 		[other setStatus:STATUS_IN_HOLD];
 		[other performTumble];
-		[shipAI message:@"CARGO_SCOOPED"];
-		if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])  [shipAI message:@"HOLD_FULL"];
+		[shipAI message:"CARGO_SCOOPED"];
+		if (max_cargo && cargo.size() >= [self maxAvailableCargoSpace])  [shipAI message:"HOLD_FULL"];
 	}
 	if (procEvents)
 	{
@@ -13523,7 +13523,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	[self doScriptEvent:OOJSID("shipWillDockWithStation") withArgument:station];
 	[self doScriptEvent:OOJSID("shipDockedWithStation") withArgument:station];
-	[shipAI message:@"DOCKED"];
+	[shipAI message:"DOCKED"];
 	[station noteDockedShip:self];
 	[UNIVERSE removeEntity:self];
 }
@@ -13581,7 +13581,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) enterWitchspace
 {
 	[UNIVERSE addWitchspaceJumpEffectForShip:self];
-	[shipAI message:@"ENTERED_WITCHSPACE"];
+	[shipAI message:"ENTERED_WITCHSPACE"];
 	
 	if (![[UNIVERSE sun] willGoNova])
 	{
@@ -13637,7 +13637,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		return NO;
 	}
 	[self setStatus:STATUS_EXITING_WITCHSPACE];
-	[shipAI message:@"EXITED_WITCHSPACE"];
+	[shipAI message:"EXITED_WITCHSPACE"];
 	
 	[UNIVERSE addWitchspaceJumpEffectForShip:self];
 	[self setStatus:STATUS_IN_FLIGHT];
@@ -13808,7 +13808,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 			
 			[self doScriptEvent:OOJSID("shipAcceptedEscort") withArgument:other_ship];
 			[other_ship doScriptEvent:OOJSID("escortAccepted") withArgument:self];
-			[shipAI message:@"ACCEPTED_ESCORT"];
+			[shipAI message:"ACCEPTED_ESCORT"];
 			return YES;
 		}
 		else
@@ -14025,7 +14025,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	else
 	{
-		[shipAI message:@"NO_STATION_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
 	}
 }
 
@@ -14051,8 +14051,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	if (!system_station)
 	{
-		[shipAI message:@"NOTHING_FOUND"];
-		[shipAI message:@"NO_STATION_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
 		DESTROY(_primaryTarget);
 		[self setTargetStation:nil];
 		return;
@@ -14060,8 +14060,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	
 	if (!system_station->isStation)
 	{
-		[shipAI message:@"NOTHING_FOUND"];
-		[shipAI message:@"NO_STATION_FOUND"];
+		[shipAI message:"NOTHING_FOUND"];
+		[shipAI message:"NO_STATION_FOUND"];
 		DESTROY(_primaryTarget);
 		[self setTargetStation:nil];
 		return;
@@ -14241,7 +14241,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		ShipEntity* ship = scanned_ships[i];
-		[[ship getAI] message: oo::NSStringFrom(expandedMessage)];
+		[[ship getAI] message:expandedMessage];
 	}
 }
 
@@ -14763,7 +14763,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 - (void) sendAIMessage:(id)message	// shared selector (proposed ADR-0043), called by name
 {
-	[shipAI message:message];
+	[shipAI message:oo::StdString(message)];	// nil: "", as the NSString path gave
 }
 
 

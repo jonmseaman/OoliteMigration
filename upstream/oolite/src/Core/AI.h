@@ -95,7 +95,7 @@ MA 02110-1301, USA.
 
 - (void) think;
 
-- (void) message:(id) ms;	// shared selector (proposed ADR-0043): ms is an Objective-C string
+- (void) message:(const std::string &) ms;	// flipped with its family (bead oo-3rb.276)
 - (void) cxx_dropMessage:(const std::string &) ms;
 - (std::set<std::string>) pendingMessages;	// in byte order
 - (void) debugDumpPendingMessages;

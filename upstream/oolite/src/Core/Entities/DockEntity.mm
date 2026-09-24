@@ -471,7 +471,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	
 	// else, approach isn't clear - hold position..
 	//
-	[[ship getAI] message:@"HOLD_POSITION"];
+	[[ship getAI] message:"HOLD_POSITION"];
 	
 	if (next.find("hold_message_given") == nullptr)
 	{
