@@ -115,9 +115,14 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 }
 
 
-- (id) initWithDictionary:(id)dict
+- (id) initWithDictionary:(id)dict	// shared selector (Foundation declares it too)
 {
-	const oo::PList representation = oo::PListFrom(dict);
+	return [self cxx_initWithDictionary:oo::PListFrom(dict)];
+}
+
+
+- (id) cxx_initWithDictionary:(const oo::PList &)representation
+{
 	const oo::PList *octree = representation.find("octree");
 	const oo::Data *data = (octree != nullptr) ? octree->getIf<oo::Data>() : nullptr;
 	if (data == nullptr || (data->length() % sizeof (int)) != 0)
