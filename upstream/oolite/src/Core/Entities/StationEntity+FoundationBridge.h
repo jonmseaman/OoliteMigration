@@ -28,6 +28,22 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (StationEntity.h)
 
 - (NSEnumerator *) dockSubEntityEnumerator;	// -> -cxx_dockSubEntities
 
+// oo-3rb.173 (chunk 2): market, allegiance, docking clearance
+- (NSArray *) marketDefinition;	// -> -cxx_marketDefinition
+- (NSString *) marketScriptName;	// -> -cxx_marketScriptName
+- (void) setLocalMarket:(NSArray *)market;	// -> -cxx_setLocalMarket:
+- (NSDictionary *) localMarketForScripting;	// -> -cxx_localMarketForScripting
+- (void) setPrice:(OOCreditsQuantity) price forCommodity:(OOCommodityType) commodity;	// -> -cxx_setPrice:forCommodity:
+- (void) setQuantity:(OOCargoQuantity) quantity forCommodity:(OOCommodityType) commodity;	// -> -cxx_setQuantity:forCommodity:
+- (void) setAllegiance:(NSString *)newAllegiance;	// -> -cxx_setAllegiance:
+- (NSString *)allegiance;	// -> -cxx_allegiance
+- (NSString *) acceptDockingClearanceRequestFrom:(ShipEntity *)other;	// -> -cxx_acceptDockingClearanceRequestFrom:
+
+// oo-3rb.174 (chunk 3): shipyard and interfaces. -localShipyard is NOT bridged: its callers edit
+// the live array, which a snapshot would silently drop (they use -cxx_localShipyard).
+- (void) setLocalShipyard:(NSArray *)market;	// -> -cxx_setLocalShipyard:
+- (NSMutableDictionary *) localInterfaces;	// -> -cxx_localInterfaces (a fresh snapshot per call; its callers only read it)
+
 @end
 
 
