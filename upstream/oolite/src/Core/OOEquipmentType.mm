@@ -37,12 +37,42 @@ SOFTWARE.
 #import "OODebugStandards.h"
 #include "oofnd/String.hpp"
 
+#include <algorithm>
+
 static NSArray			*sEquipmentTypes = nil;
 static NSArray			*sEquipmentTypesOutfitting = nil;
 
 namespace {
 std::map<std::string, oo::ObjCRef<OOEquipmentType *>, std::less<>>	sEquipmentTypesByIdentifier;
 std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship key -> missile role
+
+// requires_equipment & co.: a string or an array of strings (sorted, de-duplicated: was an
+// NSSet); nullopt when absent, and after logging when it is anything else.
+std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra, const char *key, const std::string &identifier)
+{
+	const oo::PList *value = extra.find(key);
+	if (value == nullptr)  return std::nullopt;
+	std::vector<std::string> keys;
+	if (const std::string *text = value->getIf<std::string>())
+	{
+		keys.push_back(*text);
+	}
+	else if (const oo::PList::Array *elements = value->getIf<oo::PList::Array>())
+	{
+		for (const oo::PList &element : *elements)
+		{
+			if (const std::string *elementText = element.getIf<std::string>())  keys.push_back(*elementText);
+		}
+		std::sort(keys.begin(), keys.end());
+		keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
+	}
+	else
+	{
+		OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string or an array.", oo::NSStringFrom(key), oo::NSStringFrom(identifier));
+		return std::nullopt;
+	}
+	return keys;
+}
 }
 
  
@@ -61,14 +91,13 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 	NSMutableArray		*equipmentTypes = nil;
 	NSArray				*itemInfo = nil;
 	OOEquipmentType		*item = nil;
-	NSMutableArray *conditionScripts = nil;
+	std::vector<std::string> conditionScripts;	// first-seen order
 	
 	equipmentData = [UNIVERSE equipmentData];
 	
 	[sEquipmentTypes release];
 	sEquipmentTypes = nil;
 	equipmentTypes = [NSMutableArray arrayWithCapacity:[equipmentData count]];
-	conditionScripts = [NSMutableArray arrayWithCapacity:[equipmentData count]];
 	std::map<std::string, oo::ObjCRef<OOEquipmentType *>, std::less<>> byIdentifier;
 	
 	foreach (itemInfo, equipmentData)
@@ -79,17 +108,17 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 			[equipmentTypes addObject:item];
 			byIdentifier[*[item cxx_identifier]] = oo::ObjCRef<OOEquipmentType *>(item);
 		}
-		NSString* condition_script = [item conditionScript];
-		if (condition_script != nil)
+		const std::optional<std::string> condition_script = [item cxx_conditionScript];
+		if (condition_script.has_value())
 		{
-			if (![conditionScripts containsObject:condition_script])
+			if (std::find(conditionScripts.begin(), conditionScripts.end(), *condition_script) == conditionScripts.end())
 			{
-				[conditionScripts addObject:condition_script];
+				conditionScripts.push_back(*condition_script);
 			}
 		}
 	}
 	
-	[[OOCacheManager sharedCache] setObject:conditionScripts forKey:@"equipment conditions" inCache:@"condition scripts"];
+	[[OOCacheManager sharedCache] cxx_setObject:oo::NSArrayFromStrings(conditionScripts) forKey:"equipment conditions" inCache:"condition scripts"];
 
 	sEquipmentTypes = [equipmentTypes copy];
 	sEquipmentTypesByIdentifier = byIdentifier;
@@ -188,8 +217,6 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 {
 	BOOL				OK = YES;
 	NSDictionary		*extra = nil;
-	NSArray				*conditions = nil;
-	NSString			*condition_script = nil;
 	NSArray				*keydef = nil;
 
 	self = [super init];
@@ -279,59 +306,40 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 
 			_damageProbability = oo::PListView(extra).get<float>(@"damage_probability", (_isMissileOrMine?0.0:1.0));
 			
-			id object = [extra objectForKey:@"requires_equipment"];
-			if ([object isKindOfClass:[NSString class]])  _requiresEquipment = [[NSSet setWithObject:object] retain];
-			else if ([object isKindOfClass:[NSArray class]])  _requiresEquipment = [[NSSet setWithArray:object] retain];
-			else if (object != nil)
-			{
-				OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string or an array.", @"requires_equipment", oo::NSStringFrom(_identifier));
-			}
-			
-			object = [extra objectForKey:@"requires_any_equipment"];
-			if ([object isKindOfClass:[NSString class]])  _requiresAnyEquipment = [[NSSet setWithObject:object] retain];
-			else if ([object isKindOfClass:[NSArray class]])  _requiresAnyEquipment = [[NSSet setWithArray:object] retain];
-			else if (object != nil)
-			{
-				OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string or an array.", @"requires_any_equipment", oo::NSStringFrom(_identifier));
-			}
-			
-			object = [extra objectForKey:@"incompatible_with_equipment"];
-			if ([object isKindOfClass:[NSString class]])  _incompatibleEquipment = [[NSSet setWithObject:object] retain];
-			else if ([object isKindOfClass:[NSArray class]])  _incompatibleEquipment = [[NSSet setWithArray:object] retain];
-			else if (object != nil)
-			{
-				OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string or an array.", @"incompatible_with_equipment", oo::NSStringFrom(_identifier));
-			}
-			
-			object = [extra objectForKey:@"conditions"];
-			if ([object isKindOfClass:[NSString class]])  conditions = [NSArray arrayWithObject:object];
-			else if ([object isKindOfClass:[NSArray class]])  conditions = object;
-			else if (object != nil)
+			// One property-list copy of the extra-info dictionary (bead oo-fvnu's chunks read from it).
+			const oo::PList extraInfo = oo::PListFrom(extra);
+			id object = nil;	// the key settings below still read the Foundation dictionary (chunk 3)
+
+			_requiresEquipment = EquipmentKeysFrom(extraInfo, "requires_equipment", _identifier);
+			_requiresAnyEquipment = EquipmentKeysFrom(extraInfo, "requires_any_equipment", _identifier);
+			_incompatibleEquipment = EquipmentKeysFrom(extraInfo, "incompatible_with_equipment", _identifier);
+
+			oo::PList legacyConditions;
+			const oo::PList *value = extraInfo.find("conditions");
+			if (value != nullptr && value->isString())  legacyConditions = oo::PList(oo::PList::Array{ *value });
+			else if (value != nullptr && value->isArray())  legacyConditions = *value;
+			else if (value != nullptr)
 			{
 				OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string or an array.", @"conditions", oo::NSStringFrom(_identifier));
 			}
-			if (conditions != nil)
+			if (legacyConditions)
 			{
-				OOStandardsDeprecated([NSString stringWithFormat:@"The conditions key is deprecated for equipment %@",oo::NSStringFrom(_name)]);
+				cxx_OOStandardsDeprecated(oo::str::format("The conditions key is deprecated for equipment %s", _name.c_str()));
 				if (!OOEnforceStandards())
 				{
-					_conditions = OOSanitizeLegacyScriptConditions(conditions, [NSString stringWithFormat:@"<equipment type \"%@\">", oo::NSStringFrom(_name)]);
-					[_conditions retain];
+					// OOSanitizeLegacyScriptConditions is not migrated: property-list objects in and out.
+					_conditions = oo::PListFrom(OOSanitizeLegacyScriptConditions(oo::ObjectFromPList(legacyConditions), oo::NSStringFrom(oo::str::format("<equipment type \"%s\">", _name.c_str()))));
 				}
 			}
 
-			object = [extra objectForKey:@"condition_script"];
-			if ([object isKindOfClass:[NSString class]])
+			value = extraInfo.find("condition_script");
+			if (value != nullptr && value->isString())
 			{
-				condition_script = object;
+				_condition_script = *value->getIf<std::string>();
 			}
-			else if (object != nil)
+			else if (value != nullptr)
 			{
 				OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string.", @"condition_script", oo::NSStringFrom(_identifier));
-			}
-			if (condition_script != nil)
-			{
-				_condition_script = [condition_script retain];
 			}
 			/* Condition scripts are shared: all equipment/ships using the
 			 * same condition script use one shared instance. Equipment
@@ -409,11 +417,6 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 - (void) dealloc
 {
 	DESTROY(_displayColor);
-	DESTROY(_requiresEquipment);
-	DESTROY(_requiresAnyEquipment);
-	DESTROY(_incompatibleEquipment);
-	DESTROY(_conditions);
-	DESTROY(_condition_script);
 	DESTROY(_provides);
 	DESTROY(_weaponInfo);
 	DESTROY(_scriptInfo);
@@ -608,19 +611,19 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 }
 
 
-- (NSSet *) requiresEquipment
+- (std::optional<std::vector<std::string>>) cxx_requiresEquipment
 {
 	return _requiresEquipment;
 }
 
 
-- (NSSet *) requiresAnyEquipment
+- (std::optional<std::vector<std::string>>) cxx_requiresAnyEquipment
 {
 	return _requiresAnyEquipment;
 }
 
 
-- (NSSet *) incompatibleEquipment
+- (std::optional<std::vector<std::string>>) cxx_incompatibleEquipment
 {
 	return _incompatibleEquipment;
 }
@@ -639,13 +642,13 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 }
 
 
-- (NSArray *) conditions
+- (oo::PList) cxx_conditions
 {
 	return _conditions;
 }
 
 
-- (NSString *) conditionScript
+- (std::optional<std::string>) cxx_conditionScript
 {
 	return _condition_script;
 }
