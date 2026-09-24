@@ -68,7 +68,8 @@ SOFTWARE.
 	-dependents returns a set of names of stages that should not be run before
 	this one. Unlike -dependencies, these are considered non-critical.
 */
-- (id)dependencies;	// an Objective-C set of strings. Shared selector (proposed ADR-0043).
+- (id)dependencies;	// shared selector (Foundation declares -dependencies too): -cxx_dependencies as an Objective-C set of strings, or nil
+- (std::optional<std::vector<std::string>>)cxx_dependencies;	// nullopt: none (nil); override this (bead oo-3rb.291.3)
 - (id)dependents;	// an Objective-C set of strings. Shared selector (proposed ADR-0043).
 
 /*	This is called once by the verifier.

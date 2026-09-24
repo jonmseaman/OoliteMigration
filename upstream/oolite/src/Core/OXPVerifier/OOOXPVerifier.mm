@@ -409,8 +409,7 @@ void OpenLogFile();
 	id						name = nil;
 	std::map<OOOXPVerifierStage *, std::vector<std::string>>	dependenciesByStage,
 															dependentsByStage;
-	id						dependencies = nil,
-							dependents = nil;
+	id						dependents = nil;
 
 	@autoreleasepool
 	{
@@ -429,10 +428,10 @@ void OpenLogFile();
 			_waitingStages.erase(_waitingStages.begin());
 			stage = waiting.get();
 
-			dependencies = [stage dependencies];
-			if (dependencies != nil)
+			std::optional<std::vector<std::string>> dependencies = [stage cxx_dependencies];
+			if (dependencies.has_value())
 			{
-				dependenciesByStage[stage] = oo::StringsFrom(dependencies);
+				dependenciesByStage[stage] = std::move(*dependencies);
 			}
 
 			dependents = [stage dependents];
