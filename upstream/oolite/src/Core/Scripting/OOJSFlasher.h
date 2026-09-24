@@ -42,7 +42,7 @@ void InitOOJSFlasher(ooscript::Context context, ooscript::Object global);
 @interface OOFlasherEntity (OOJavaScriptExtensions)
 
 - (void)getJSClass:(ooscript::ClassDef **)outClass andPrototype:(ooscript::Object *)outPrototype;
-- (NSString *) oo_jsClassName;
+- (id) oo_jsClassName;	// shared selector (proposed ADR-0043)
 - (BOOL) isVisibleToScripts;
 
 @end

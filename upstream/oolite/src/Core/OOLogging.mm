@@ -69,13 +69,6 @@ void LogSink(std::string_view line)
 	}
 }
 
-// A message class as oo::log sees it; nil prints as %@ did.
-std::string ClassString(NSString *messageClass)
-{
-	if (messageClass == nil)  return "(null)";
-	return oo::StdString(messageClass);
-}
-
 // A logcontrol dictionary as oo::log settings, in the dictionary's enumeration order.
 std::vector<std::pair<std::string, oo::log::RawSetting>> SettingsFromDictionary(NSDictionary *dict)
 {
@@ -107,54 +100,6 @@ std::vector<std::pair<std::string, oo::log::RawSetting>> SettingsFromDictionary(
 static void LoadExplicitSettings(void);
 
 
-BOOL OOLogWillDisplayMessagesInClass(NSString *inMessageClass)
-{
-	// The hot path (every OOLog call): a class name fits the buffer, so a cached answer costs no
-	// allocation and no autoreleased object.
-	char buffer[128];
-	if (inMessageClass != nil && [inMessageClass getCString:buffer maxLength:sizeof buffer encoding:NSUTF8StringEncoding])
-	{
-		return oo::log::willDisplay(buffer);
-	}
-	return oo::log::willDisplay(ClassString(inMessageClass));
-}
-
-
-void OOLogSetDisplayMessagesInClass(NSString *inClass, BOOL inFlag)
-{
-	oo::log::logger().setDisplay(ClassString(inClass), inFlag);
-}
-
-
-NSString *OOLogGetParentMessageClass(NSString *inClass)
-{
-	NSRange					range;
-
-	if (inClass == nil) return nil;
-
-	range = [inClass rangeOfString:@"." options:NSCaseInsensitiveSearch | NSLiteralSearch | NSBackwardsSearch];	// Only NSBackwardsSearch is important, others are optimizations
-	if (range.location == NSNotFound) return nil;
-
-	return [inClass substringToIndex:range.location];
-}
-
-
-#if !OOLOG_SHORT_CIRCUIT
-
-void OOLogIndentIf(NSString *inMessageClass)
-{
-	if (OOLogWillDisplayMessagesInClass(inMessageClass)) OOLogIndent();
-}
-
-
-void OOLogOutdentIf(NSString *inMessageClass)
-{
-	if (OOLogWillDisplayMessagesInClass(inMessageClass)) OOLogOutdent();
-}
-
-#endif
-
-
 void OOLogPushIndent(void)
 {
 	oo::log::pushIndent();
@@ -176,51 +121,6 @@ void OOLogIndent(void)
 void OOLogOutdent(void)
 {
 	oo::log::outdent();
-}
-
-
-void OOLogWithPrefix(NSString *inMessageClass, const char *inFunction, const char *inFile, unsigned long inLine, NSString *inPrefix, NSString *inFormat, ...)
-{
-	if (!OOLogWillDisplayMessagesInClass(inMessageClass)) return;
-	va_list				args;
-	va_start(args, inFormat);
-	OOLogWithFunctionFileAndLineAndArguments(inMessageClass, inFunction, inFile, inLine, [inPrefix stringByAppendingString:inFormat], args);
-	va_end(args);
-}
-
-
-void OOLogWithFunctionFileAndLine(NSString *inMessageClass, const char *inFunction, const char *inFile, unsigned long inLine, NSString *inFormat, ...)
-{
-	va_list				args;
-
-	va_start(args, inFormat);
-	OOLogWithFunctionFileAndLineAndArguments(inMessageClass, inFunction, inFile, inLine, inFormat, args);
-	va_end(args);
-}
-
-
-void OOLogWithFunctionFileAndLineAndArguments(NSString *inMessageClass, const char *inFunction, const char *inFile, unsigned long inLine, NSString *inFormat, va_list inArguments)
-{
-	if (inFormat == nil)  return;
-
-#if !OOLOG_SHORT_CIRCUIT
-	if (!OOLogWillDisplayMessagesInClass(inMessageClass))  return;
-#endif
-
-	@autoreleasepool
-	{
-		@try
-		{
-			// Do argument substitution; oo::log applies the prefixes, time and indentation.
-			NSString *formattedMessage = [[[NSString alloc] initWithFormat:inFormat arguments:inArguments] autorelease];
-			oo::log::logger().write(ClassString(inMessageClass), inFunction, inFile, inLine, oo::StdString(formattedMessage));
-		}
-		@catch (NSException *exception)
-		{
-			oo::log::logger().internal("OOLogWithFunctionFileAndLineAndArguments",
-				oo::StdString([NSString stringWithFormat:@"***** Exception thrown during logging: %@ : %@", [exception name], [exception reason]]));
-		}
-	}
 }
 
 
@@ -365,16 +265,16 @@ void OOLogInsertMarker(void)
 	oo::log::logger().insertMarker();
 }
 
-NSString * const kOOLogSubclassResponsibility		= @"general.error.subclassResponsibility";
-NSString * const kOOLogParameterError				= @"general.error.parameterError";
-NSString * const kOOLogDeprecatedMethod				= @"general.error.deprecatedMethod";
-NSString * const kOOLogAllocationFailure			= @"general.error.allocationFailure";
-NSString * const kOOLogInconsistentState			= @"general.error.inconsistentState";
-NSString * const kOOLogException					= @"exception";
-NSString * const kOOLogFileNotFound					= @"files.notFound";
-NSString * const kOOLogFileNotLoaded				= @"files.notLoaded";
-NSString * const kOOLogOpenGLError					= @"rendering.opengl.error";
-NSString * const kOOLogUnconvertedNSLog				= @"unclassified";
+const char *const cxx_kOOLogSubclassResponsibility	= "general.error.subclassResponsibility";
+const char *const cxx_kOOLogParameterError			= "general.error.parameterError";
+const char *const cxx_kOOLogDeprecatedMethod		= "general.error.deprecatedMethod";
+const char *const cxx_kOOLogAllocationFailure		= "general.error.allocationFailure";
+const char *const cxx_kOOLogInconsistentState		= "general.error.inconsistentState";
+const char *const cxx_kOOLogException				= "exception";
+const char *const cxx_kOOLogFileNotFound			= "files.notFound";
+const char *const cxx_kOOLogFileNotLoaded			= "files.notLoaded";
+const char *const cxx_kOOLogOpenGLError				= "rendering.opengl.error";
+const char *const cxx_kOOLogUnconvertedNSLog		= "unclassified";
 
 
 /*	LoadExplicitSettings()
@@ -416,13 +316,4 @@ static void LoadExplicitSettings(void)
 
 	// Load new settings; take out _default and _override, and invalidate the cache.
 	oo::log::logger().replaceSettings(SettingsFromDictionary([ResourceManager logControlDictionary]), true);
-}
-
-
-/*	OOLogAbbreviatedFileName()
-	Map full file paths provided by __FILE__ to more mananagable file names.
-*/
-NSString *OOLogAbbreviatedFileName(const char *inName)
-{
-	return oo::NSStringFrom(oo::log::abbreviatedFileName(inName));
 }

@@ -3,6 +3,8 @@
 **Status:** Proposed — default in effect (Claude Code, frontier agent, bead oo-qpa, 2026-09-23;
 ADR-0013). Jon may override.
 **Date:** 2026-09-23
+**Point 4's drain order superseded by [ADR-0045](0045-autorelease-scope-drains-lifo.md)**
+(2026-09-23: the game's pool is libobjc2's and drains LIFO; the rest of point 4 stands).
 **Refines** [ADR-0003](0003-intrusive-refcount.md) and the sketch in
 [architecture §3.4](../architecture.md). Implemented in `upstream/oolite/src/oofnd/Ref.hpp` and
 `WeakSet.hpp`.

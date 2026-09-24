@@ -238,12 +238,11 @@ static id sSharedStickHandler = nil;
 		for (i = 0; i < controlPoints.size(); i++)
 		{
 			point = controlPoints[i];
-			// The float each coordinate was stored as. A PList real is a double, so the defaults
-			// file writes it with %.16g where the float used %.7g; it reads back as the same
-			// float (proposed ADR-0043).
+			// +numberWithFloat: as before: single-precision reals, so the defaults file prints them
+			// with %.7g (proposed ADR-0043 Amendment 2).
 			points.push_back(oo::PList(oo::PList::Array{
-				oo::PList(static_cast<float>(point.x)),
-				oo::PList(static_cast<float>(point.y)) }));
+				oo::PList::singleReal(static_cast<float>(point.x)),
+				oo::PList::singleReal(static_cast<float>(point.y)) }));
 		}
 		dict["ControlPoints"] = oo::PList(std::move(points));
 	}

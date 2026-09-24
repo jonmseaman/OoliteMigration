@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import <Foundation/Foundation.h>
 #include "ooscript/JSEngine.hpp"
 #import "OOMaths.h"
+#include "oofnd/StdLib.hpp"
 
 
 #ifdef __cplusplus
@@ -70,7 +71,9 @@ BOOL JSVectorSetHPVector(ooscript::Context context, ooscript::Object vectorObj, 
 	DEPRECATED in favour of JSObjectGetVector(), since the list-of-number form
 	is no longer used.
 */
-BOOL VectorFromArgumentList(ooscript::Context context, NSString *scriptClass, NSString *function, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed)  GCC_ATTR((nonnull (1, 5, 6)));
+extern "C++" {	// C++ parameters (proposed ADR-0043, bead oo-yhle)
+BOOL VectorFromArgumentList(ooscript::Context context, const std::string &scriptClass, const std::string &function, unsigned argc, ooscript::Value *argv, HPVector *outVector, unsigned *outConsumed)  GCC_ATTR((nonnull (1, 5, 6)));
+}
 
 /*	VectorFromArgumentListNoError()
 	

@@ -35,6 +35,9 @@ MA 02110-1301, USA.
 #import "OOJSPropID.h"
 #import "OOCommodityMarket.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource, OOSoundReferencePoint;
 @class OOJoystickManager, OOTexture, OOLaserShotEntity;
@@ -444,7 +447,7 @@ typedef enum
 	BOOL					showingLongRangeChart;
 	
 	// For OO-GUI based save screen
-	NSString				*commanderNameString;
+	std::string				commanderNameString;	// owned; the save screen refreshes it from the typed string each frame
 	NSMutableArray			*cdrDetailArray;
 	int						currentPage;
 	BOOL					pollControls;
@@ -784,8 +787,8 @@ typedef enum
 	// For PlayerEntity (StickMapper)
 	int						selFunctionIdx;
 	NSArray					*stickFunctions; 
-	NSArray					*keyFunctions;
-	NSArray					*kbdLayouts;
+	std::vector<oo::PList>	keyFunctions;	// PlayerEntity (KeyMapper)'s function list; empty until built
+	std::vector<oo::PList>	kbdLayouts;		// PlayerEntity (KeyMapper)'s keyboard layouts; empty until built
 	NSString				*keyShiftText;
 	NSString				*keyMod1Text;
 	NSString				*keyMod2Text;
