@@ -678,7 +678,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (void) loadCachedRoleProbabilitySets
 {
-	// OOCacheManager and OOProbabilitySet are unmigrated callees: convert at the calls.
+	// OOCacheManager is an unmigrated callee: convert at the call.
 	const oo::PList cachedSets = oo::PListFrom([[OOCacheManager sharedCache] cxx_objectForKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName]);
 	if (cachedSets.isNull())  return;
 
@@ -687,7 +687,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	{
 		for (const auto &[role, representation] : *sets)
 		{
-			restoredSets[role] = oo::ObjCRef<OOProbabilitySet *>([OOProbabilitySet probabilitySetWithPropertyListRepresentation:oo::ObjectFromPList(representation)]);
+			restoredSets[role] = oo::ObjCRef<OOProbabilitySet *>([OOProbabilitySet probabilitySetWithPropertyListRepresentation:representation]);
 		}
 	}
 
