@@ -47,6 +47,9 @@ MA 02110-1301, USA.
 #import "OOEnumerationShuffle.h"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/String.hpp"
 #include <chrono>
 #include <thread>
 
@@ -142,8 +145,6 @@ static GameController *sSharedController = nil;
 	[gameView release];
 	[UNIVERSE release];
 	
-	[playerFileToLoad release];
-	[playerFileDirectory release];
 	[expansionPathsToInclude release];
 	
 	[super dealloc];
@@ -273,7 +274,7 @@ static GameController *sSharedController = nil;
 
 		if ([OOOXPVerifier runVerificationIfRequested])
 		{
-			[self exitAppWithContext:@"OXP verifier run"];
+			[self cxx_exitAppWithContext:"OXP verifier run"];
 		}
 		else 
 		{
@@ -352,14 +353,15 @@ static GameController *sSharedController = nil;
 
 - (void) loadPlayerIfRequired
 {
-	if (playerFileToLoad != nil)
+	if (playerFileToLoad.has_value())
 	{
 		[self logProgress:DESC(@"loading-player")];
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:playerFileToLoad asNew:NO];
+		// PlayerEntityLoadSave is not migrated yet: converted at the call.
+		[PLAYER loadPlayerFromFile:oo::NSStringFrom(*playerFileToLoad) asNew:NO];
 	}
 }
 
@@ -948,8 +950,8 @@ static NSMutableArray *sMessageStack;
 {
 	if ([[filename pathExtension] isEqual:@"oolite-save"])
 	{
-		[self setPlayerFileToLoad:filename];
-		[self setPlayerFileDirectory:filename];
+		[self cxx_setPlayerFileToLoad:oo::StdString(filename)];
+		[self cxx_setPlayerFileDirectory:oo::OptionalString(filename)];
 		return YES;
 	}
 	if ([[filename pathExtension] isEqualToString:@"oxp"])
@@ -970,10 +972,10 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (void) exitAppWithContext:(NSString *)context
+- (void) cxx_exitAppWithContext:(const std::string &)context
 {
 	[gameView.window orderOut:nil];
-	[(OoliteApp *)NSApp setExitContext:context];
+	[(OoliteApp *)NSApp setExitContext:oo::NSStringFrom(context)];
 	[NSApp terminate:self];
 }
 
@@ -988,9 +990,9 @@ static NSMutableArray *sMessageStack;
 #elif OOLITE_SDL
 #include <SDL3/SDL_init.h>
 
-- (void) exitAppWithContext:(NSString *)context
+- (void) cxx_exitAppWithContext:(const std::string &)context
 {
-	OOLog(@"exit.context", @"Exiting: %@.", context);
+	OOLog(@"exit.context", @"Exiting: %@.", oo::NSStringFrom(context));
 #if (OOLITE_GNUSTEP && !defined(NDEBUG))
 	[[OODebugMonitor sharedDebugMonitor] applicationWillTerminate];
 #endif
@@ -1018,7 +1020,7 @@ static NSMutableArray *sMessageStack;
 
 - (void) exitAppCommandQ
 {
-	[self exitAppWithContext:@"Command-Q"];
+	[self cxx_exitAppWithContext:"Command-Q"];
 }
 
 
@@ -1028,55 +1030,49 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (NSString *) playerFileToLoad
+- (std::optional<std::string>) cxx_playerFileToLoad
 {
 	return playerFileToLoad;
 }
 
 
-- (void) setPlayerFileToLoad:(NSString *)filename
+- (void) cxx_setPlayerFileToLoad:(const std::string &)filename
 {
-	if (playerFileToLoad)
-		[playerFileToLoad autorelease];
-	playerFileToLoad = nil;
-	if ([[[filename pathExtension] lowercaseString] isEqual:@"oolite-save"])
-		playerFileToLoad = [filename copy];
+	playerFileToLoad = std::nullopt;
+	if (oo::str::lowercase(oo::str::pathExtension(filename)) == "oolite-save")
+		playerFileToLoad = filename;
 }
 
 
-- (NSString *) playerFileDirectory
+- (std::optional<std::string>) cxx_playerFileDirectory
 {
-	if (playerFileDirectory == nil)
+	if (!playerFileDirectory.has_value())
 	{
-		playerFileDirectory = [[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"];
-		if (playerFileDirectory != nil && ![[NSFileManager defaultManager] fileExistsAtPath:playerFileDirectory])
+		// The defaults stay on NSUserDefaults until its last consumer migrates (ADR-0032): this
+		// process writes save-directory through it below, so it is read through it too.
+		playerFileDirectory = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"]);
+		if (playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*playerFileDirectory)))
 		{
-			playerFileDirectory = nil;
+			playerFileDirectory = std::nullopt;
 		}
-		if (playerFileDirectory == nil)  playerFileDirectory = [[NSFileManager defaultManager] defaultCommanderPath];
-		
-		[playerFileDirectory retain];
+		// NSFileManagerOOExtensions is not migrated yet: converted at the call.
+		if (!playerFileDirectory.has_value())  playerFileDirectory = oo::OptionalString([[NSFileManager defaultManager] defaultCommanderPath]);
 	}
-	
+
 	return playerFileDirectory;
 }
 
 
-- (void) setPlayerFileDirectory:(NSString *)filename
-{	
-	if (playerFileDirectory != nil)
+- (void) cxx_setPlayerFileDirectory:(const std::optional<std::string> &)filename
+{
+	std::optional<std::string> directory = filename;
+	if (directory.has_value() && oo::str::lowercase(oo::str::pathExtension(*directory)) == "oolite-save")
 	{
-		[playerFileDirectory autorelease];
-		playerFileDirectory = nil;
+		directory = oo::str::deletingLastPathComponent(*directory);
 	}
-	
-	if ([[[filename pathExtension] lowercaseString] isEqual:@"oolite-save"])
-	{
-		filename = [filename stringByDeletingLastPathComponent];
-	}
-	
-	playerFileDirectory = [filename retain];
-	[[NSUserDefaults standardUserDefaults] setObject:filename forKey:@"save-directory"];
+
+	playerFileDirectory = directory;
+	[[NSUserDefaults standardUserDefaults] setObject:oo::NSStringOrNil(directory) forKey:@"save-directory"];
 }
 
 
