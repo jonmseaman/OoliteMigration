@@ -504,7 +504,7 @@ static BOOL sRunningScript = NO;
 				  @"***** EXCEPTION %@: %@ while handling legacy script actions for %@",
 				  oo::NSStringFrom([exception name]),
 				  oo::NSStringFrom([exception reason]),
-				  [theMissionKey hasPrefix:kActionTempPrefix] ? [target shortDescription] : theMissionKey);
+				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? [target shortDescription] : oo::NSStringOrNil(contextName));
 			// Suppress exception
 		}
 		@catch (OOFoundationException *exception)
