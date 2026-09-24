@@ -50,6 +50,12 @@ OOLongRangeChartMode OOLongRangeChartModeFromString(NSString *string);
 
 NSString *OOStringFromLegalStatusReason(OOLegalStatusReason reason);
 
+NSString *CommodityDisplayNameForSymbolicName(NSString *symbolicName);
+NSString *CommodityDisplayNameForCommodityArray(NSArray *commodityDefinition);
+
+NSString *DisplayStringForMassUnit(OOMassUnit unit);
+NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity);
+
 #ifdef __cplusplus
 }
 #endif
