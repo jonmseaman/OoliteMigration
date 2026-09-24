@@ -127,10 +127,4 @@ OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSObject(ooscript::Context context
 // Object class); -[OOJavaScriptEngine registerStandardObjectConverters] calls it.
 void OOJSRegisterFoundationObjectConverter(ooscript::ClassDef *objectClass);
 
-// Notifications sent when JavaScript engine is reset, for NSNotificationCenter observers (bead
-// oo-3rb.203). kOOJavaScriptEngineWillResetNotificationName / ...DidResetNotificationName in
-// OOJavaScriptEngine.h are the oo::NotificationCenter names.
-extern NSString * const kOOJavaScriptEngineWillResetNotification;
-extern NSString * const kOOJavaScriptEngineDidResetNotification;
-
 #endif	// OOJAVASCRIPTENGINE_FOUNDATIONBRIDGE_H
