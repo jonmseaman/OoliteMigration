@@ -47,6 +47,7 @@
 #import "NSStringOOExtensions.h"
 #import "NSNumberOOExtensions.h"
 #import "OOJavaScriptEngine.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
 
 
@@ -193,8 +194,8 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	if (!path)
 	{
 		OOLog(@"quickSave.failed.noName", @"%@", @"ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
-		[NSException raise:@"OoliteGameNotSavedException"
-					format:@"ERROR no file name returned by [[gameView gameController] playerFileToLoad]"];
+		[OOException raise:"OoliteGameNotSavedException"
+					format:"ERROR no file name returned by [[gameView gameController] playerFileToLoad]"];
 	}
 	
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
@@ -897,8 +898,8 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	else
 	{
 		OOLog(@"save.failed", @"***** SAVE ERROR: %@", errDesc);
-		[NSException raise:@"OoliteException"
-					format:@"Attempt to save game to file '%@' failed: %@", path, errDesc];
+		[OOException raise:"OoliteException"
+					format:"Attempt to save game to file '%s' failed: %s", [path UTF8String], [errDesc UTF8String]];
 	}
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 	[self setGuiToStatusScreen];
