@@ -78,7 +78,7 @@ MA 02110-1301, USA.
 - (int) contractReputation;
 - (void) increaseContractReputation:(unsigned)amount;
 - (void) decreaseContractReputation:(unsigned)amount;
-- (OOCargoQuantity) contractedVolumeForGood:(OOCommodityType) good;
+- (OOCargoQuantity) cxx_contractedVolumeForGood:(const std::string &) good;
 
 - (void) erodeReputation;
 - (void) normaliseReputation;
@@ -93,12 +93,13 @@ MA 02110-1301, USA.
 - (BOOL) cxx_removePassenger:(const std::string &)Name;	// for js scripting
 - (BOOL) cxx_addParcel:(const std::string &)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk;	// for js scripting
 - (BOOL) cxx_removeParcel:(const std::string &)Name;	// for js scripting
-- (BOOL) awardContract:(unsigned)qty commodity:(NSString*)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium;	// for js scripting.
-- (BOOL) removeContract:(NSString*)commodity destination:(unsigned)destination;	// for js scripting
+- (BOOL) cxx_awardContract:(unsigned)qty commodity:(const std::string &)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium;	// for js scripting.
+- (BOOL) cxx_removeContract:(const std::string &)commodity destination:(unsigned)destination;	// for js scripting
 
-- (NSArray *) passengerList;
-- (NSArray *) parcelList;
-- (NSArray *) contractList;
+// The manifest lines ("oolite-manifest-person-travelling" / "-item-delivery" expanded per entry).
+- (std::vector<std::string>) cxx_passengerList;
+- (std::vector<std::string>) cxx_parcelList;
+- (std::vector<std::string>) cxx_contractList;
 - (void) setGuiToManifestScreen;
 - (void) setManifestScreenRow:(id)object inColor:(OOColor*)color forRow:(OOGUIRow)row ofRows:(OOGUIRow)max_rows andOffset:(OOGUIRow)offset inMultipage:(BOOL)multi;
 
