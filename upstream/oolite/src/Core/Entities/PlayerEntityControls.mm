@@ -170,6 +170,20 @@ static BOOL				mouse_x_axis_map_to_yaw = NO;
 static NSTimeInterval	time_last_frame;
 
 
+namespace
+{
+
+// OOExpandKey(key, ...) with its arguments as a Dict: ints as PList::signedInteger, strings as
+// std::string (exemplar OOShipLibraryDescriptions.mm ExpandCategoryKey).
+std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
+{
+	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
+		oo::ObjectFromPList(oo::PList(args)), nil, nil, kOOExpandKey));
+}
+
+}	// namespace
+
+
 @interface PlayerEntity (OOControlsPrivate)
 
 - (void) pollFlightControls:(double) delta_t;
@@ -629,40 +643,40 @@ static NSTimeInterval	time_last_frame;
 - (void) pollControls:(double)delta_t
 {
 	MyOpenGLView  *gameView = [UNIVERSE gameView];
-	NSString *exceptionContext = @"setup";
+	const char *exceptionContext = "setup";
 	
 	@try
 	{
 		if (gameView)
 		{
 			// poll the gameView keyboard things
-			exceptionContext = @"pollApplicationControls";
+			exceptionContext = "pollApplicationControls";
 			[self pollApplicationControls]; // quit command-f etc.
 			switch ([self status])
 			{
 				case STATUS_WITCHSPACE_COUNTDOWN:
 				case STATUS_IN_FLIGHT:
-					exceptionContext = @"pollFlightControls";
+					exceptionContext = "pollFlightControls";
 					[self pollFlightControls:delta_t];
 					break;
 					
 				case STATUS_DEAD:
-					exceptionContext = @"pollGameOverControls";
+					exceptionContext = "pollGameOverControls";
 					[self pollGameOverControls:delta_t];
 					break;
 					
 				case STATUS_AUTOPILOT_ENGAGED:
-					exceptionContext = @"pollAutopilotControls";
+					exceptionContext = "pollAutopilotControls";
 					[self pollAutopilotControls:delta_t];
 					break;
 					
 				case STATUS_DOCKED:
-					exceptionContext = @"pollDockedControls";
+					exceptionContext = "pollDockedControls";
 					[self pollDockedControls:delta_t];
 					break;
 					
 				case STATUS_START_GAME:
-					exceptionContext = @"pollDemoControls";
+					exceptionContext = "pollDemoControls";
 					[self pollDemoControls:delta_t];
 					break;
 					
@@ -674,11 +688,11 @@ static NSTimeInterval	time_last_frame;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
+		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
 	}
 }
 
@@ -849,10 +863,11 @@ static NSTimeInterval	time_last_frame;
 		// say it!
 		[UNIVERSE clearPreviousMessage];
 		int seconds = round(witchspaceCountdown);
-		NSString *destination = [UNIVERSE getSystemName:[self nextHopTargetSystemID]];
-		[UNIVERSE displayCountdownMessage:OOExpandKey(@"witch-to-x-in-y-seconds", seconds, destination) forCount:1.0];
+		const std::string destination = oo::StdString([UNIVERSE getSystemName:[self nextHopTargetSystemID]]);
+		[UNIVERSE displayCountdownMessage:oo::NSStringFrom(ExpandKeyWithArguments("witch-to-x-in-y-seconds",
+			{ { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } })) forCount:1.0];
 		[self doScriptEvent:OOJSID("playerStartedJumpCountdown")
-					withArguments:[NSArray arrayWithObjects:@"standard", [NSNumber numberWithFloat:witchspaceCountdown], nil]];
+					withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("standard"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) }))];
 		[UNIVERSE preloadPlanetTexturesForSystem:target_system_id];
 	}
 }
@@ -886,7 +901,7 @@ static NSTimeInterval	time_last_frame;
 {
 	if (!pollControls) return;
 	
-	NSString *exceptionContext = @"setup";
+	const char *exceptionContext = "setup";
 	
 	// does fullscreen / quit / snapshot
 	MyOpenGLView  *gameView = [UNIVERSE gameView];
@@ -901,7 +916,7 @@ static NSTimeInterval	time_last_frame;
 	#if !OOLITE_MAC_OS_X || !OOLITE_64_BIT	// On 64-bit Macs, these are handled by normal menu shortcuts.
 		if ([gameController inFullScreenMode])
 		{
-			exceptionContext = @"command key controls";
+			exceptionContext = "command key controls";
 			if ([gameView isCommandFDown])
 			{
 				[gameView clearCommandF];
@@ -923,7 +938,7 @@ static NSTimeInterval	time_last_frame;
 		// handle pressing Q or [esc] in error-handling mode
 		if ([self status] == STATUS_HANDLING_ERROR)
 		{
-			exceptionContext = @"error handling mode";
+			exceptionContext = "error handling mode";
 			if ([gameView isDown:113]||[gameView isDown:81]||[gameView isDown:27])   // 'q' | 'Q' | esc
 			{
 				[gameController exitAppWithContext:@"Q or escape pressed in error handling mode"];
@@ -965,11 +980,11 @@ static NSTimeInterval	time_last_frame;
 			([gameView allowingStringInput] <= gvStringInputAlpha) && // not while entering text on the keyboard config screens
 			![[OOOXZManager sharedManager] isAcceptingTextInput])   //  '*' key but not while filtering inside OXZ Manager
 		{
-			exceptionContext = @"snapshot";
+			exceptionContext = "snapshot";
 			if (!taking_snapshot)
 			{
 				taking_snapshot = YES;
-				[gameView snapShot:nil]; // nil filename so that the program auto-names the snapshot
+				[gameView cxx_snapShot:std::nullopt]; // nil filename so that the program auto-names the snapshot
 			}
 		}
 		else
@@ -980,7 +995,7 @@ static NSTimeInterval	time_last_frame;
 		// FPS display
 		if (!onTextEntryScreen && [self checkKeyPress:n_key_show_fps])   //  'F' key
 		{
-			exceptionContext = @"toggle FPS";
+			exceptionContext = "toggle FPS";
 			if (!f_key_pressed)  [UNIVERSE setDisplayFPS:![UNIVERSE displayFPS]];
 			f_key_pressed = YES;
 		}
@@ -1015,7 +1030,7 @@ static NSTimeInterval	time_last_frame;
 		
 		if (allowMouseControl)
 		{
-			exceptionContext = @"mouse control";
+			exceptionContext = "mouse control";
 			if (!onTextEntryScreen && ([self checkKeyPress:n_key_mouse_control_roll] || [self checkKeyPress:n_key_mouse_control_yaw]))   //  'M' key
 			{
 				if (!m_key_pressed)
@@ -1078,7 +1093,7 @@ static NSTimeInterval	time_last_frame;
 		// HUD toggle
 		if (([self checkKeyPress:n_key_hud_toggle] || joyButtonState[BUTTON_TOGGLEHUD]) && [gameController isGamePaused] && !onTextEntryScreen)	// 'o' key while paused
 		{
-			exceptionContext = @"toggle HUD";
+			exceptionContext = "toggle HUD";
 			if (!hide_hud_pressed)
 			{
 				HeadUpDisplay *theHUD = [self hud];
@@ -1098,11 +1113,11 @@ static NSTimeInterval	time_last_frame;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
+		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
 	}
 }
 
@@ -1111,11 +1126,11 @@ static NSTimeInterval	time_last_frame;
 {
 	MyOpenGLView		*gameView = [UNIVERSE gameView];
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
-	NSString			*exceptionContext = @"setup";
+	const char			*exceptionContext = "setup";
 
 	@try
 	{
-		exceptionContext = @"joystick handling";
+		exceptionContext = "joystick handling";
 		const BOOL *joyButtonState = [[OOJoystickManager sharedStickHandler] getAllButtonStates];
 		
 		BOOL paused = [[UNIVERSE gameController] isGamePaused];
@@ -1123,7 +1138,7 @@ static NSTimeInterval	time_last_frame;
 		
 		if (!paused && gui_screen == GUI_SCREEN_MISSION)
 		{
-			exceptionContext = @"mission screen";
+			exceptionContext = "mission screen";
 			OOViewID view = VIEW_NONE;
 			
 			NSPoint			virtualView = NSZeroPoint;
@@ -1177,7 +1192,7 @@ static NSTimeInterval	time_last_frame;
 		}
 		else if (!paused)
 		{
-			exceptionContext = @"arrow keys";
+			exceptionContext = "arrow keys";
 			// arrow keys
 			if ([UNIVERSE displayGUI])
 				[self pollGuiArrowKeyControls:delta_t];
@@ -1189,7 +1204,7 @@ static NSTimeInterval	time_last_frame;
 			
 			if (OOMouseInteractionModeIsFlightMode([[UNIVERSE gameController] mouseInteractionMode]))
 			{
-				exceptionContext = @"afterburner";
+				exceptionContext = "afterburner";
 				if ((joyButtonState[BUTTON_FUELINJECT] || [self checkKeyPress:n_key_inject_fuel]) &&
 					[self hasFuelInjection] &&
 					!hyperspeed_engaged)
@@ -1213,7 +1228,7 @@ static NSTimeInterval	time_last_frame;
 				if ((!afterburner_engaged)&&(afterburnerSoundLooping))
 					[self stopAfterburnerSound];
 				
-				exceptionContext = @"thrust";
+				exceptionContext = "thrust";
 				// DJS: Thrust can be an axis or a button. Axis takes precidence.
 				double reqSpeed=[stickHandler getAxisState: AXIS_THRUST];
 				float mouseWheelDeltaFactor = mouse_control_on ? fabs([gameView mouseWheelDelta]) : 1.0f;
@@ -1237,8 +1252,9 @@ static NSTimeInterval	time_last_frame;
 					hyperspeed_engaged = NO;
 				}
 
-				NSDictionary *functionForThrustAxis = oo::PListView(oo::ObjectFromPList([stickHandler axisFunctions])).get<NSDictionary *>([[NSNumber numberWithInt:AXIS_THRUST] stringValue]);
-				if([stickHandler joystickCount] != 0 && functionForThrustAxis != nil)
+				const oo::PList thrustAxes = [stickHandler axisFunctions];
+				const oo::PList *functionForThrustAxis = thrustAxes.get<oo::PList::Dict>(std::to_string(AXIS_THRUST));	// nil: absent or not a Dict
+				if([stickHandler joystickCount] != 0 && functionForThrustAxis != nullptr)
 				{
 					if (flightSpeed < maxFlightSpeed * reqSpeed)
 					{
@@ -1255,7 +1271,7 @@ static NSTimeInterval	time_last_frame;
 					flightSpeed = OOClamp_0_max_f(flightSpeed, maxFlightSpeed);
 				}
 				
-				exceptionContext = @"hyperspeed";
+				exceptionContext = "hyperspeed";
 				//  hyperspeed controls
 				if ([self checkKeyPress:n_key_jumpdrive] || joyButtonState[BUTTON_HYPERSPEED])		// 'j'
 				{
@@ -1283,26 +1299,26 @@ static NSTimeInterval	time_last_frame;
 					jump_pressed = NO;
 				}
 				
-				exceptionContext = @"shoot";
+				exceptionContext = "shoot";
 				//  shoot 'a'
 				if ((([self checkNavKeyPress:n_key_fire_lasers])||((mouse_control_on)&&([gameView isDown:gvMouseLeftButton]) && ([UNIVERSE viewDirection] <= VIEW_STARBOARD || ![gameView isCapsLockOn]))||joyButtonState[BUTTON_FIRE])&&(shot_time > weapon_recharge_rate))
 				{
 					if ([self fireMainWeapon])
 					{
-						[self playLaserHit:([self shipHitByLaser] != nil) offset:oo::PListView([self currentLaserOffset]).at<Vector>(0) weaponIdentifier:[[self currentWeapon] identifier]];
+						[self cxx_playLaserHit:([self shipHitByLaser] != nil) offset:oo::PListView([self currentLaserOffset]).at<Vector>(0) weaponIdentifier:oo::StdString([[self currentWeapon] identifier])];
 					}
 				}
 				
-				exceptionContext = @"weapons online toggle";
+				exceptionContext = "weapons online toggle";
 				// weapons online / offline toggle '_'
 				if (([self checkKeyPress:n_key_weapons_online_toggle] || joyButtonState[BUTTON_WEAPONSONLINETOGGLE]))
 				{
 					if (!weaponsOnlineToggle_pressed)
 					{
-						NSString*	weaponsOnlineToggleMsg;
-						
+						std::string	weaponsOnlineToggleMsg;
+
 						[self setWeaponsOnline:![self weaponsOnline]];
-						weaponsOnlineToggleMsg = [self weaponsOnline] ? DESC(@"weapons-systems-online") : DESC(@"weapons-systems-offline");
+						weaponsOnlineToggleMsg = oo::StdString([self weaponsOnline] ? DESC(@"weapons-systems-online") : DESC(@"weapons-systems-offline"));
 						if ([self weaponsOnline])
 						{
 							[self playWeaponsOnline];
@@ -1311,14 +1327,14 @@ static NSTimeInterval	time_last_frame;
 						{
 							[self playWeaponsOffline];
 						}
-						[UNIVERSE addMessage:weaponsOnlineToggleMsg forCount:2.0];
-						[self doScriptEvent:OOJSID("weaponsSystemsToggled") withArgument:[NSNumber numberWithBool:[self weaponsOnline]]];
+						[UNIVERSE addMessage:oo::NSStringFrom(weaponsOnlineToggleMsg) forCount:2.0];
+						[self doScriptEvent:OOJSID("weaponsSystemsToggled") withArgument:oo::ObjectFromPList(oo::PList(static_cast<bool>([self weaponsOnline])))];
 						weaponsOnlineToggle_pressed = YES;
 					}
 				}
 				else  weaponsOnlineToggle_pressed = NO;
 				
-				exceptionContext = @"missile fire";
+				exceptionContext = "missile fire";
 				//  shoot 'm'   // launch missile
 				if ([self checkKeyPress:n_key_launch_missile] || joyButtonState[BUTTON_LAUNCHMISSILE])
 				{
@@ -1331,7 +1347,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  fire_missile_pressed = NO;
 				
-				exceptionContext = @"next missile";
+				exceptionContext = "next missile";
 				//  shoot 'y'   // next missile
 				if ([self checkKeyPress:n_key_next_missile] || joyButtonState[BUTTON_CYCLEMISSILE])
 				{
@@ -1344,7 +1360,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  next_missile_pressed = NO;
 				
-				exceptionContext = @"next target";
+				exceptionContext = "next target";
 				//	'+' // next target
 				if ([self checkKeyPress:n_key_next_target] || joyButtonState[BUTTON_NEXTTARGET])
 				{
@@ -1356,7 +1372,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  next_target_pressed = NO;
 				
-				exceptionContext = @"previous target";
+				exceptionContext = "previous target";
 				//	'-' // previous target
 				if ([self checkKeyPress:n_key_previous_target] || joyButtonState[BUTTON_PREVTARGET])
 				{
@@ -1368,7 +1384,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  previous_target_pressed = NO;
 				
-				exceptionContext = @"ident R";
+				exceptionContext = "ident R";
 				//  shoot 'r'   // switch on ident system
 				if ([self checkKeyPress:n_key_ident_system] || joyButtonState[BUTTON_ID])
 				{
@@ -1381,7 +1397,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  ident_pressed = NO;
 				
-				exceptionContext = @"prime equipment";
+				exceptionContext = "prime equipment";
 				// prime equipment 'N' - selects equipment to use with keypress
 				if ([self checkKeyPress:n_key_prime_next_equipment] || [self checkKeyPress:n_key_prime_previous_equipment] || joyButtonState[BUTTON_PRIMEEQUIPMENT] || joyButtonState[BUTTON_PRIMEEQUIPMENT_PREV])
 				{
@@ -1406,7 +1422,7 @@ static NSTimeInterval	time_last_frame;
 							else  primedEquipment = c;
 						}
 						
-						NSString *eqKey = @"";
+						std::string eqKey;
 
 						if (primedEquipment == c)
 						{
@@ -1420,18 +1436,18 @@ static NSTimeInterval	time_last_frame;
 						else
 						{
 							[self playNextEquipmentSelected];
-							NSString *equipmentName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(oo::PListView(eqScripts).at<NSArray *>(primedEquipment)).at<NSString *>(0)] name];
-							eqKey = oo::PListView(oo::PListView(eqScripts).at<NSArray *>(primedEquipment)).at<NSString *>(0);
-							[UNIVERSE addMessage:OOExpandKey(@"equipment-primed", equipmentName) forCount:2.0];
+							eqKey = oo::StdString([[eqScripts objectAtIndex:primedEquipment] objectAtIndex:0]);
+							const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] name]);
+							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}
-						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:eqKey];
+						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:oo::NSStringFrom(eqKey)];
 					}
 					prime_equipment_pressed = YES;
 					
 				}
 				else  prime_equipment_pressed = NO;
 				
-				exceptionContext = @"activate equipment";
+				exceptionContext = "activate equipment";
 				// activate equipment 'n' - runs the activated() function inside the equipment's script.
 				if ([self checkKeyPress:n_key_activate_equipment] || joyButtonState[BUTTON_ACTIVATEEQUIPMENT])
 				{
@@ -1443,7 +1459,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  activate_equipment_pressed = NO;
 				
-				exceptionContext = @"mode equipment";
+				exceptionContext = "mode equipment";
 				// mode equipment 'b' - runs the mode() function inside the equipment's script.
 				if ([self checkKeyPress:n_key_mode_equipment] || joyButtonState[BUTTON_MODEEQUIPMENT])
 				{
@@ -1455,7 +1471,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  mode_equipment_pressed = NO;
 
-				exceptionContext = @"fast equipment A";
+				exceptionContext = "fast equipment A";
 				if ([self checkKeyPress:n_key_fastactivate_equipment_a] || joyButtonState[BUTTON_CLOAK])
 				{
 					if (!fastactivate_a_pressed)
@@ -1466,7 +1482,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else fastactivate_a_pressed = NO;
 
-				exceptionContext = @"fast equipment B";
+				exceptionContext = "fast equipment B";
 				if ([self checkKeyPress:n_key_fastactivate_equipment_b] || joyButtonState[BUTTON_ENERGYBOMB])
 				{
 					if (!fastactivate_b_pressed)
@@ -1477,7 +1493,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else fastactivate_b_pressed = NO;
 
-				exceptionContext = @"custom equipment";
+				exceptionContext = "custom equipment";
 				// loop through all the objects in the customEquipActivation array
 				for (std::size_t i = 0; i < [customEquipActivation count]; i++)
 				{
@@ -1517,7 +1533,7 @@ static NSTimeInterval	time_last_frame;
 					}
 				}
 
-				exceptionContext = @"incoming missile T";
+				exceptionContext = "incoming missile T";
 				// target nearest incoming missile 'T' - useful for quickly giving a missile target to turrets
 				if ([self checkKeyPress:n_key_target_incoming_missile] || joyButtonState[BUTTON_TARGETINCOMINGMISSILE])
 				{
@@ -1529,7 +1545,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  target_incoming_missile_pressed = NO;
 				
-				exceptionContext = @"missile T";
+				exceptionContext = "missile T";
 				//  shoot 't'   // switch on missile targeting
 				if (([self checkKeyPress:n_key_target_missile] || joyButtonState[BUTTON_ARMMISSILE])&&(missile_entity[activeMissile]))
 				{
@@ -1542,7 +1558,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  target_missile_pressed = NO;
 				
-				exceptionContext = @"missile U";
+				exceptionContext = "missile U";
 				//  shoot 'u'   // disarm missile targeting
 				if ([self checkKeyPress:n_key_untarget_missile] || joyButtonState[BUTTON_UNARM])
 				{
@@ -1568,7 +1584,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  safety_pressed = NO;
 				
-				exceptionContext = @"ECM";
+				exceptionContext = "ECM";
 				//  shoot 'e'   // ECM
 				if (([self checkKeyPress:n_key_ecm] || joyButtonState[BUTTON_ECM]) && [self hasECM])
 				{
@@ -1583,7 +1599,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				
 			
-				exceptionContext = @"escape pod";
+				exceptionContext = "escape pod";
 				//  shoot 'escape'   // Escape pod launch - NOTE: Allowed at all times, but requires double press within a specific time interval.
 							// Double press not available in strict mode or when the "escape-pod-activation-immediate" override is in the 
 							// user defaults file.
@@ -1619,14 +1635,14 @@ static NSTimeInterval	time_last_frame;
 					}
 				}
 				
-				exceptionContext = @"dump cargo";
+				exceptionContext = "dump cargo";
 				//  shoot 'd'   // Dump Cargo
 				if (([self checkKeyPress:n_key_dump_cargo] || joyButtonState[BUTTON_JETTISON]) && [cargo count] > 0)
 				{
 					[self dumpCargo];
 				}
 				
-				exceptionContext = @"rotate cargo";
+				exceptionContext = "rotate cargo";
 				//  shoot 'R'   // Rotate Cargo
 				if ([self checkKeyPress:n_key_rotate_cargo] || joyButtonState[BUTTON_ROTATECARGO])
 				{
@@ -1637,7 +1653,7 @@ static NSTimeInterval	time_last_frame;
 				else
 					rotateCargo_pressed = NO;
 				
-				exceptionContext = @"autopilot C";
+				exceptionContext = "autopilot C";
 				// autopilot 'c'
 				if ([self checkKeyPress:n_key_autopilot] || joyButtonState[BUTTON_DOCKCPU])   // look for the 'c' key
 				{
@@ -1650,7 +1666,7 @@ static NSTimeInterval	time_last_frame;
 				else
 					autopilot_key_pressed = NO;
 				
-				exceptionContext = @"autopilot shift-C";
+				exceptionContext = "autopilot shift-C";
 				// autopilot 'C' - fast-autopilot
 				if ([self checkKeyPress:n_key_autodock] || joyButtonState[BUTTON_DOCKCPUFAST])   // look for the 'C' key
 				{
@@ -1665,7 +1681,7 @@ static NSTimeInterval	time_last_frame;
 					fast_autopilot_key_pressed = NO;
 				}
 				
-				exceptionContext = @"docking clearance request";
+				exceptionContext = "docking clearance request";
 
 				if ([self checkKeyPress:n_key_docking_clearance_request] || joyButtonState[BUTTON_DOCKINGCLEARANCE])
 				{
@@ -1681,7 +1697,7 @@ static NSTimeInterval	time_last_frame;
 					docking_clearance_request_key_pressed = NO;
 				}
 				
-				exceptionContext = @"hyperspace";
+				exceptionContext = "hyperspace";
 				// hyperspace 'h'
 				if ( ([self checkKeyPress:n_key_hyperspace] || joyButtonState[BUTTON_HYPERDRIVE]) &&
 					  [self hasHyperspaceMotor] )	// look for the 'h' key
@@ -1711,7 +1727,7 @@ static NSTimeInterval	time_last_frame;
 				else
 					hyperspace_pressed = NO;
 				
-				exceptionContext = @"galactic hyperspace";
+				exceptionContext = "galactic hyperspace";
 				// Galactic hyperspace 'g'
 				if (([self checkKeyPress:n_key_galactic_hyperspace] || joyButtonState[BUTTON_GALACTICDRIVE]) &&
 					([self hasEquipmentItemProviding:@"EQ_GAL_DRIVE"]))// look for the 'g' key
@@ -1742,11 +1758,11 @@ static NSTimeInterval	time_last_frame;
 							[self setStatus:STATUS_WITCHSPACE_COUNTDOWN];
 							[self playGalacticHyperspace];
 							// say it!
-							[UNIVERSE addMessage:[NSString stringWithFormat:DESC(@"witch-galactic-in-f-seconds"), witchspaceCountdown] forCount:1.0];
+							[UNIVERSE addMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"witch-galactic-in-f-seconds")), { witchspaceCountdown })) forCount:1.0];
 							// FIXME: how to preload target system for hyperspace jump?
 							
 							[self doScriptEvent:OOJSID("playerStartedJumpCountdown")
-								  withArguments:[NSArray arrayWithObjects:@"galactic", [NSNumber numberWithFloat:witchspaceCountdown], nil]];
+								  withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("galactic"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) }))];
 						}
 					}
 					galhyperspace_pressed = YES;
@@ -1772,8 +1788,9 @@ static NSTimeInterval	time_last_frame;
 					if (fieldOfView < MIN_FOV)  fieldOfView = MIN_FOV;
 				}
 
-				NSDictionary *functionForFovAxis = oo::PListView(oo::ObjectFromPList([stickHandler axisFunctions])).get<NSDictionary *>([[NSNumber numberWithInt:AXIS_FIELD_OF_VIEW] stringValue]);
-				if ([stickHandler joystickCount] != 0 && functionForFovAxis != nil)
+				const oo::PList fovAxes = [stickHandler axisFunctions];
+				const oo::PList *functionForFovAxis = fovAxes.get<oo::PList::Dict>(std::to_string(AXIS_FIELD_OF_VIEW));	// nil: absent or not a Dict
+				if ([stickHandler joystickCount] != 0 && functionForFovAxis != nullptr)
 				{
 					// TODO think reqFov through
 					double reqFov = [stickHandler getAxisState: AXIS_FIELD_OF_VIEW];
@@ -1792,7 +1809,7 @@ static NSTimeInterval	time_last_frame;
 #endif
 
 	#ifndef NDEBUG
-			exceptionContext = @"dump target state";
+			exceptionContext = "dump target state";
 			if ([self checkKeyPress:n_key_dump_target_state])
 			{
 				if (!dump_target_state_pressed)
@@ -1807,14 +1824,14 @@ static NSTimeInterval	time_last_frame;
 	#endif
 			
 			//  text displays
-			exceptionContext = @"pollGuiScreenControls";
+			exceptionContext = "pollGuiScreenControls";
 			[self pollGuiScreenControls];
 		}
 		else
 		{
 			// game is paused
 			// check options menu request
-			exceptionContext = @"options menu";
+			exceptionContext = "options menu";
 			if (([self checkKeyPress:n_key_gui_screen_options]) && (gui_screen != GUI_SCREEN_OPTIONS) && ![gameView allowingStringInput])
 			{
 				[gameView clearKeys];
@@ -1848,7 +1865,7 @@ static NSTimeInterval	time_last_frame;
 				[self pollGuiArrowKeyControls:time_delta];
 			}
 			
-			exceptionContext = @"debug keys";
+			exceptionContext = "debug keys";
 	#ifndef NDEBUG
 			// look for debugging keys
 			if ([self checkKeyPress:n_key_dump_entity_list] && ![gameView allowingStringInput])// look for the '0' key
@@ -1935,7 +1952,7 @@ static NSTimeInterval	time_last_frame;
 	#endif
 		}
 		
-		exceptionContext = @"pause";
+		exceptionContext = "pause";
 		// Pause game 'p'
 		if (([self checkKeyPress:n_key_pausebutton] || joyButtonState[BUTTON_PAUSE]) && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && gui_screen != GUI_SCREEN_MISSION && ![gameView allowingStringInput])// look for the 'p' key
 		{
@@ -1982,7 +1999,7 @@ static NSTimeInterval	time_last_frame;
 					currentWeaponFacing = saved_weapon_facing;
 					// make sure the light comes from the right direction after resuming from pause!
 					if (saved_gui_screen == GUI_SCREEN_SYSTEM_DATA) [UNIVERSE setMainLightPosition:_sysInfoLight];
-					[[UNIVERSE gui] setForegroundTextureKey:@"overlay"];
+					[[UNIVERSE gui] cxx_setForegroundTextureKey:"overlay"];
 					[[UNIVERSE gameController] setGamePaused:NO];
 				}
 				else
@@ -2003,11 +2020,11 @@ static NSTimeInterval	time_last_frame;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
+		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
 	}
 }
 
@@ -4829,12 +4846,12 @@ static BOOL autopilot_pause;
 	MyOpenGLView			*gameView = [UNIVERSE gameView];
 	GameController			*gameController = [UNIVERSE gameController];
 	const BOOL *joyButtonState = [[OOJoystickManager sharedStickHandler] getAllButtonStates];
-	NSString				*exceptionContext = @"setup";
+	const char				*exceptionContext = "setup";
 	
 	@try
 	{
 		// Pause game, 'p' key
-		exceptionContext = @"pause key";
+		exceptionContext = "pause key";
 		if (([self checkKeyPress:n_key_pausebutton] || joyButtonState[BUTTON_PAUSE]) && (gui_screen != GUI_SCREEN_LONG_RANGE_CHART &&
 				gui_screen != GUI_SCREEN_REPORT &&
 				gui_screen != GUI_SCREEN_SAVE && gui_screen != GUI_SCREEN_KEYBOARD_ENTRY) )
@@ -4850,7 +4867,7 @@ static BOOL autopilot_pause;
 					{
 						[UNIVERSE clearPreviousMessage];	// remove the 'paused' message.
 					}
-					[[UNIVERSE gui] setForegroundTextureKey:@"docked_overlay"];
+					[[UNIVERSE gui] cxx_setForegroundTextureKey:"docked_overlay"];
 					[gameController setGamePaused:NO];
 				}
 				else
@@ -4878,7 +4895,7 @@ static BOOL autopilot_pause;
 		
 		if(pollControls)
 		{
-			exceptionContext = @"undock";
+			exceptionContext = "undock";
 			if ([self checkKeyPress:n_key_launch_ship])
 			{
 				if (EXPECT((gui_screen != GUI_SCREEN_MISSION || _missionAllowInterrupt) && gui_screen != GUI_SCREEN_KEYBOARD_ENTRY))
@@ -4890,7 +4907,7 @@ static BOOL autopilot_pause;
 		
 		//  text displays
 		// mission screens
-		exceptionContext = @"GUI keys";
+		exceptionContext = "GUI keys";
 		if (gui_screen == GUI_SCREEN_MISSION || gui_screen == GUI_SCREEN_KEYBOARD_ENTRY)
 		{
 			[self pollDemoControls: delta_t];	// don't switch away from mission screens
@@ -4904,11 +4921,11 @@ static BOOL autopilot_pause;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
+		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
 	}
 }
 
