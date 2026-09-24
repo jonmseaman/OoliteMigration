@@ -30,6 +30,26 @@ cxx_ counterpart and converts the result exactly as the old method produced it (
 	return [self cxx_scriptTestConditions:oo::PListFrom(array)];
 }
 
+
+- (NSDictionary *) missionVariables
+{
+	return mission_variables;
+}
+
+
+- (NSString *)missionVariableForKey:(NSString *)key
+{
+	if (key == nil)  return nil;
+	return oo::ObjectFromPList([self cxx_missionVariableForKey:oo::StdString(key)]);
+}
+
+
+- (void)setMissionVariable:(NSString *)value forKey:(NSString *)key
+{
+	if (key == nil)  return;
+	[self cxx_setMissionVariable:oo::PListFrom(value) forKey:oo::StdString(key)];
+}
+
 @end
 
 
