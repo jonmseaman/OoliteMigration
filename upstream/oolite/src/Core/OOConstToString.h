@@ -34,7 +34,6 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "MyOpenGLView.h"
 
-
 enum
 {
 	// Values used for unknown strings.
@@ -43,7 +42,6 @@ enum
 	kOOEnergyUnitTypeDefault	= ENERGY_UNIT_NONE,
 	kOORouteTypeDefault			= OPTIMIZED_BY_JUMPS
 };
-
 
 /*
 
@@ -85,16 +83,8 @@ declaration, in particular:
 extern "C" {
 #endif
 
-NSString *JSTypeToString(int /* ooscript::Type */ type) CONST_FUNC;
-
-NSString *CargoTypeToString(OOCargoType cargo) CONST_FUNC;
-OOCargoType StringToCargoType(NSString *string) PURE_FUNC;
-
 //NSString *CommodityTypeToString(OOCommodityType commodity) CONST_FUNC;	// returns the commodity identifier
 //OOCommodityType StringToCommodityType(NSString *string) PURE_FUNC;		// needs commodity identifier
-
-NSString *EnergyUnitTypeToString(OOEnergyUnitType unit) CONST_FUNC;
-OOEnergyUnitType StringToEnergyUnitType(NSString *string) PURE_FUNC;
 
 NSString *CommodityDisplayNameForSymbolicName(NSString *symbolicName);
 NSString *CommodityDisplayNameForCommodityArray(NSArray *commodityDefinition);
@@ -110,22 +100,28 @@ OOLongRangeChartMode OOLongRangeChartModeFromString(NSString *string);
 
 NSString *OOStringFromLegalStatusReason(OOLegalStatusReason reason);
 
-NSString *RouteTypeToString(OORouteType routeType);
-OORouteType StringToRouteType(NSString *string);
-
-NSString *DockingClearanceStatusToString(OODockingClearanceStatus dockingClearanceStatus) PURE_FUNC;
-
-NSString *OOStringFromGraphicsDetail(OOGraphicsDetail detail);
-OOGraphicsDetail OOGraphicsDetailFromString(NSString *string);
-
-NSString *OOStringFromHDRToneMapper(OOHDRToneMapper toneMapper);
-OOHDRToneMapper OOHDRToneMapperFromString( NSString *string);
-
-NSString *OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper);
-OOSDRToneMapper OOSDRToneMapperFromString( NSString *string);
-
 #ifdef __cplusplus
 }
+#endif
+
+#ifdef __cplusplus
+// C++ forms (bead oo-nts1, chunk oo-3rb.160): std::string results (never nil) and const
+// std::string & parameters (the old nil arrived as "" and matched nothing: the same defaults).
+// The Foundation forms live in OOConstToString+FoundationBridge.h.
+std::string cxx_JSTypeToString(int /* ooscript::Type */ type);
+std::string cxx_CargoTypeToString(OOCargoType cargo);
+OOCargoType cxx_StringToCargoType(const std::string &string);
+std::string cxx_EnergyUnitTypeToString(OOEnergyUnitType unit);
+OOEnergyUnitType cxx_StringToEnergyUnitType(const std::string &string);
+std::string cxx_RouteTypeToString(OORouteType routeType);
+OORouteType cxx_StringToRouteType(const std::string &string);
+std::string cxx_DockingClearanceStatusToString(OODockingClearanceStatus dockingClearanceStatus);
+std::string cxx_OOStringFromGraphicsDetail(OOGraphicsDetail detail);
+OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string);
+std::string cxx_OOStringFromHDRToneMapper(OOHDRToneMapper toneMapper);
+OOHDRToneMapper cxx_OOHDRToneMapperFromString(const std::string &string);
+std::string cxx_OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper);
+OOSDRToneMapper cxx_OOSDRToneMapperFromString(const std::string &string);
 #endif
 
 
@@ -135,3 +131,10 @@ OOShaderSetting OOShaderSettingFromString(NSString *string);
 NSString *OOStringFromShaderSetting(OOShaderSetting setting);
 // Localized shader mode strings.
 NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting);
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed functions this
+	header declared before bead oo-nts1 (chunks oo-3rb.160..163), forwarding to the cxx_ functions,
+	so unmigrated callers compile unchanged. Callers move to the cxx_ forms in their own sweep beads.
+*/
+#import "OOConstToString+FoundationBridge.h"
