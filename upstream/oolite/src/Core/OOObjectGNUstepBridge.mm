@@ -11,11 +11,7 @@ OOObject twin next to each category. What gnustep-base's NSObject gives is here,
 that removes each Foundation family replaces it:
 
     +description  "ClassName"            (NSObject: the class name; %@ of [self class])
-    -methodSignatureForSelector:,        NSObject's own implementations (runtime lookups only),
-    +instanceMethodSignatureForSelector:  called with an OOObject receiver; the NSInvocation
-                                          follow-ups of oo-3rb.15 (OOWeakReference's proxy,
-                                          OOOXZManager's filter) replace them
-    -performSelector:...afterDelay:       again gnustep-base's own implementation (a timed performer
+-performSelector:...afterDelay:       again gnustep-base's own implementation (a timed performer
                                           on the current run loop, retaining receiver and argument);
                                           replaced when the run loop goes (NSTimer/NSRunLoop)
     -className                            NSObject's own implementation (the class name as an
@@ -40,31 +36,11 @@ static IMP NSObjectInstanceIMP(SEL selector)
 }
 
 
-static IMP NSObjectClassIMP(SEL selector)
-{
-	return method_getImplementation(class_getClassMethod([NSObject class], selector));
-}
-
-
 @implementation OOObject (OOGNUstepBridge)
 
 + (NSString *) description
 {
 	return [NSString stringWithUTF8String:class_getName(self)];
-}
-
-
-+ (NSMethodSignature *) instanceMethodSignatureForSelector:(SEL)selector
-{
-	typedef NSMethodSignature *(*SignatureIMP)(id, SEL, SEL);
-	return ((SignatureIMP)NSObjectClassIMP(_cmd))(self, _cmd, selector);
-}
-
-
-- (NSMethodSignature *) methodSignatureForSelector:(SEL)selector
-{
-	typedef NSMethodSignature *(*SignatureIMP)(id, SEL, SEL);
-	return ((SignatureIMP)NSObjectInstanceIMP(_cmd))(self, _cmd, selector);
 }
 
 

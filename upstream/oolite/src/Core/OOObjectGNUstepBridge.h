@@ -17,8 +17,6 @@ OOCocoa.h. See OOObjectGNUstepBridge.mm.
 + (NSString *) description;
 
 // NSObject's own implementations, applied to an OOObject (see OOObjectGNUstepBridge.mm).
-+ (NSMethodSignature *) instanceMethodSignatureForSelector:(SEL)selector;
-- (NSMethodSignature *) methodSignatureForSelector:(SEL)selector;
 - (void) performSelector:(SEL)selector withObject:(id)argument afterDelay:(NSTimeInterval)delay;
 - (NSString *) className;
 
