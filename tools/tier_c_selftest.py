@@ -265,19 +265,24 @@ def main() -> int:
             if s.get("readonly_properties", 0) < 1 or s.get("readwrite_properties", 0) < 1:
                 failures.append(
                     "JSAPI: the snapshot has no READONLY or no READWRITE properties; the access "
-                    "distinction is the whole reason bead oo-jou1 exists (Ship.speed is READONLY) "
-                    "and a snapshot that lost it cannot answer the question it is consulted for")
-            # The specific, load-bearing fact another bead already relies on.
+                    "distinction is what beads such as oo-jou1 consult it for (Ship.AI is READONLY, "
+                    "Ship.velocity is READWRITE) and a snapshot that lost it cannot answer that")
+            # The specific, load-bearing facts other beads rely on. (Was Ship.speed until oo-jou1
+            # made speed writable; retargeted to Ship.AI/Ship.velocity in oo-3rb.170, the same
+            # retarget Jon made for js_api_reconcile.py in oo-xa5h and oo-w9rq made for
+            # js_api_source_snapshot.py.)
             ship = doc.get("classes", {}).get("Ship", {})
             props = ship.get("properties", {}) if isinstance(ship, dict) else {}
-            if "speed" not in props:
-                failures.append(
-                    "JSAPI: Ship.speed is absent from the committed snapshot; bead oo-jou1 exists "
-                    "precisely because it is READONLY, so its absence means the scrape broke")
-            elif props["speed"].get("access") != "readonly":
-                failures.append(
-                    f"JSAPI: Ship.speed is recorded as {props['speed'].get('access')!r}, but the "
-                    f"engine declares OOJS_PROP_READONLY_CB. Bead oo-jou1 depends on this.")
+            for name, want in (("AI", "readonly"), ("velocity", "readwrite")):
+                if name not in props:
+                    failures.append(
+                        f"JSAPI: Ship.{name} is absent from the committed snapshot; the scrape of "
+                        f"OOJSShip's property table broke")
+                elif props[name].get("access") != want:
+                    failures.append(
+                        f"JSAPI: Ship.{name} is recorded as {props[name].get('access')!r}, but the "
+                        f"engine declares it {want}; the snapshot can no longer tell READONLY "
+                        f"from READWRITE")
 
     # --- 6. THE TIER'S OWN RUNTIME OUTPUT MUST AGREE WITH ITS TABLE.
     #
