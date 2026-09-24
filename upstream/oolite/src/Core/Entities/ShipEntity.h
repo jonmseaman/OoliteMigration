@@ -218,7 +218,7 @@ typedef enum
 	
 @protected
 	//set-up
-	NSDictionary			*shipinfoDictionary;
+	oo::PList				shipinfoDictionary;	// null: not set up from a dictionary
 	
 	Quaternion				subentityRotationalVelocity;
 	
@@ -328,13 +328,13 @@ typedef enum
 	
 	AI						*shipAI;					// ship's AI system
 	
-	NSString				*name;						// descriptive name
-	NSString				*shipUniqueName;			// uniqish name e.g. "Terror of Lave"
-	NSString				*shipClassName;				// e.g. "Cobra III"
-	NSString				*displayName;				// name shown on screen
-	NSString				*scan_description;			// scan class name
+	std::optional<std::string>	name;					// descriptive name; nullopt: nil
+	std::optional<std::string>	shipUniqueName;			// uniqish name e.g. "Terror of Lave"; nullopt: nil
+	std::optional<std::string>	shipClassName;			// e.g. "Cobra III"; nullopt: nil
+	std::optional<std::string>	displayName;			// name shown on screen; nullopt: nil
+	std::optional<std::string>	scan_description;		// scan class name; nullopt: nil
 	OORoleSet				*roleSet;					// Roles a ship can take, eg. trader, hunter, police, pirate, scavenger &c.
-	NSString				*primaryRole;				// "Main" role of the ship.
+	std::optional<std::string>	primaryRole;			// "Main" role of the ship; nullopt: not chosen yet
 
 	oo::PList				explosionType;				// explosion.plist entries; null: absent
 	
@@ -460,7 +460,7 @@ typedef enum
 @private
 	OOWeakReference			*_subEntityTakingDamage;	//	frangible => subEntities can be damaged individually
 
-	NSString				*_shipKey;
+	std::optional<std::string>	_shipKey;				// nullopt: nil
 	
 	std::vector<std::string>	_equipment;	// equipment keys, in order added; empty == none (was nil)
 	float					_heatInsulation;
@@ -485,8 +485,8 @@ typedef enum
 	OOWeakReference			*_shipHitByLaser;			// entity hit by the last laser shot
 	
 	// beacons
-	NSString				*_beaconCode;
-	NSString				*_beaconLabel;
+	std::optional<std::string>	_beaconCode;			// nullopt: nil (never empty)
+	std::optional<std::string>	_beaconLabel;			// nullopt: nil (never empty)
 	OOWeakReference			*_prevBeacon;
 	OOWeakReference			*_nextBeacon;
 	id <OOHUDBeaconIcon>	_beaconDrawable;
@@ -577,18 +577,18 @@ typedef enum
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (id)initWithKey:(NSString *)key definition:(NSDictionary *)dict;
-- (BOOL)setUpFromDictionary:(NSDictionary *) shipDict;
-- (BOOL)setUpShipFromDictionary:(NSDictionary *) shipDict;
+- (id)initWithKey:(id)key definition:(id)dict;	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
+- (BOOL)setUpShipFromDictionary:(id) shipDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
 - (BOOL)setUpSubEntities;
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 - (GLfloat)frustumRadius;
 
-- (NSString *) shipDataKey;
-- (NSString *) shipDataKeyAutoRole;
-- (void)setShipDataKey:(NSString *)key;
+- (std::optional<std::string>) cxx_shipDataKey;
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
 
-- (NSDictionary *)shipInfoDictionary;
+- (oo::PList) cxx_shipInfoDictionary;
 
 - (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
 - (std::vector<Vector>) cxx_aftWeaponOffset;
@@ -777,29 +777,29 @@ typedef enum
 
 - (NSUInteger) turretCount;
 
-- (NSString *) name;
-- (NSString *) shipUniqueName;
-- (NSString *) shipClassName;
-- (NSString *) displayName;
-- (NSString *) scanDescription;
-- (NSString *) scanDescriptionForScripting;
-- (void) setName:(NSString *)inName;
-- (void) setShipUniqueName:(NSString *)inName;
-- (void) setShipClassName:(NSString *)inName;
-- (void) setDisplayName:(NSString *)inName;
-- (void) setScanDescription:(NSString *)inName;
-- (NSString *) identFromShip:(ShipEntity*) otherShip; // name displayed to other ships
+- (id) name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>) cxx_shipUniqueName;
+- (std::optional<std::string>) cxx_shipClassName;
+- (id) displayName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>) cxx_scanDescription;
+- (std::optional<std::string>) cxx_scanDescriptionForScripting;
+- (void) setName:(id)inName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName;
+- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName;
+- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName;
+- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
+- (id) identFromShip:(ShipEntity*) otherShip; // shared selector (proposed ADR-0043): an Objective-C string. Name displayed to other ships
 
-- (BOOL) hasRole:(NSString *)role;
+- (BOOL) hasRole:(id)role;	// shared selector (proposed ADR-0043): an Objective-C string
 - (OORoleSet *)roleSet;
 
-- (void) addRole:(NSString *)role;
-- (void) addRole:(NSString *)role withProbability:(float)probability;
-- (void) removeRole:(NSString *)role;
+- (void) addRole:(const std::string &)role;
+- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability;
+- (void) cxx_removeRole:(const std::string &)role;
 
-- (NSString *)primaryRole;
-- (void)setPrimaryRole:(NSString *)role;
-- (BOOL)hasPrimaryRole:(NSString *)role;
+- (std::optional<std::string>) cxx_primaryRole;
+- (void)setPrimaryRole:(id)role;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (BOOL) cxx_hasPrimaryRole:(const std::string &)role;
 
 - (BOOL)isPolice;		// Scan class is CLASS_POLICE
 - (BOOL)isThargoid;		// Scan class is CLASS_THARGOID
@@ -909,7 +909,7 @@ typedef enum
 - (int) legalStatus;
 
 - (BOOL) isTemplateCargoPod;
-- (void) setUpCargoType:(NSString *)cargoString;
+- (void) setUpCargoType:(const std::string &)cargoString;
 - (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
 - (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
 - (std::optional<std::string>) cxx_commodityType;
@@ -1309,7 +1309,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
-NSDictionary *OODefaultShipShaderMacros(void);
+oo::PList OODefaultShipShaderMacros(void);
 
 GLfloat getWeaponRangeFromType(OOWeaponType weapon_type);
 
