@@ -244,7 +244,7 @@ enum
 @interface HeadUpDisplay: OOObject
 {
 @private
-	// Widgets in draw order; were NSMutableArrays of NSArray tuples (bead oo-3rb.49).
+	// Widgets in draw order; were mutable arrays of array tuples (bead oo-3rb.49).
 	std::vector<OOHUDWidget>	legendArray;
 	std::vector<OOHUDWidget>	dialArray;
 	std::vector<OOHUDWidget>	mfdArray;
