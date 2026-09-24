@@ -658,6 +658,8 @@ bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline
 				wake = NextGameTick();
 				haveWake = true;
 			}
+			// The OXZ download's callbacks, which the run loop delivered (proposed ADR-0044).
+			[[OOOXZManager sharedManager] processDownloadEvents];
 			
 #ifndef NDEBUG
 			if (OODebugTCPConsoleIsWaitingForInput())
@@ -931,21 +933,7 @@ static void RemovePreference(const std::string &key)
 
 #elif OOLITE_SDL
 
-- (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create
-{
-	NSURL *url = [NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:DESC(@"snapshots-directory-name")]];
-
-	if (create)
-	{
-		const std::string path = oo::StdString([url path]);
-		if (!oo::fs::fileExists(oo::fs::pathFromUTF8(path)))
-		{
-			// NSFileManagerOOExtensions is not migrated yet: converted at the call.
-			[[NSFileManager defaultManager] oo_createDirectoryAtPath:oo::NSStringFrom(path) attributes:nil];
-		}
-	}
-	return url;
-}
+// -snapshotsURLCreatingIfNeeded: is Mac-only: nothing on SDL called it (bead oo-3rb.13).
 
 #else
 	#error Unknown environment!

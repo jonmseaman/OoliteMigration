@@ -43,6 +43,23 @@ foreach t : oofnd_tests
     test(t, exe, suite: 'oofnd', timeout: 60)
 endforeach
 
+# oofnd/Http.hpp links WinHTTP on Windows, and its test runs a loopback server on winsock
+# (bead oo-3rb.13, proposed ADR-0044). tools/check-oofnd.sh reads the same libraries from the
+# test's "// oofnd-link-windows:" line.
+oofnd_http_link_args = host_machine.system() == 'windows' ? ['-lwinhttp', '-lws2_32'] : []
+test('test_http',
+    executable(
+        'oofnd_test_http',
+        'test_http.cpp',
+        dependencies: oofnd_dep,
+        link_args: oofnd_http_link_args,
+        override_options: oofnd_override_options,
+        install: false,
+    ),
+    suite: 'oofnd',
+    timeout: 60,
+)
+
 # The PList component (value type, old-style and XML parsers, writers) is also its own suite:
 # meson test -C build/meson_<type> --suite oofnd-plist
 oofnd_plist_tests = [

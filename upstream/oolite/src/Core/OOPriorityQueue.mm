@@ -634,16 +634,11 @@ std::string EscapedString(const std::string &string)
 }
 
 
-- (void) writeGraphVizToURL:(NSURL *)url
-{
-	const std::string graphViz = oo::StdString([self generateGraphViz]);
-	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(oo::StdString([url path])), oo::Data(graphViz.data(), graphViz.size()));	// atomically, as before
-}
-
-
 - (void) writeGraphVizToPath:(id)path	// shared selector (proposed ADR-0043): an Objective-C string
 {
-	[self writeGraphVizToURL:[NSURL fileURLWithPath:path]];
+	// -writeToURL:[NSURL fileURLWithPath:path] atomically:YES (bead oo-3rb.13).
+	const std::string graphViz = oo::StdString([self generateGraphViz]);
+	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(oo::StdString(path)), oo::Data(graphViz.data(), graphViz.size()), oo::fs::WriteMode::atomic);
 }
 
 @end
