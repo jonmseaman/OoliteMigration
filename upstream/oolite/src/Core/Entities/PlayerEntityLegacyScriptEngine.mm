@@ -386,25 +386,23 @@ OOINLINE OOEntityStatus RecursiveRemapStatus(OOEntityStatus status)
 static BOOL sRunningScript = NO;
 
 
-// Return the world scripts that care about -checkScript, by name (a Dict of Object nodes).
-- (oo::PList) worldScriptsRequiringTickle
+// Return the world scripts that care about -checkScript, by name, in the world scripts' (load) order.
+- (std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>>) worldScriptsRequiringTickle
 {
-	// The cache ivar is PlayerEntity.h's (a dictionary of the scripts); it is kept that way.
-	if (worldScriptsRequiringTickle != nil)  return oo::PListFrom(worldScriptsRequiringTickle);
+	// The cache ivar is PlayerEntity.h's; it is built once per script load.
+	if (worldScriptsRequiringTickle.has_value())  return *worldScriptsRequiringTickle;
 
-	oo::PList::Dict tickleScripts;
-	for (const std::string &scriptName : oo::StringsFrom([worldScripts allKeys]))
+	std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>> tickleScripts;
+	for (const auto &entry : worldScripts)
 	{
-		OOScript *candidateScript = [worldScripts objectForKey:oo::NSStringFrom(scriptName)];
-		if ([candidateScript requiresTickle])
+		if ([entry.second.get() requiresTickle])
 		{
-			tickleScripts[scriptName] = oo::PListObject(candidateScript);
+			tickleScripts.push_back(entry);
 		}
 	}
 
-	oo::PList result(std::move(tickleScripts));
-	worldScriptsRequiringTickle = [oo::ObjectFromPList(result) retain];
-	return result;
+	worldScriptsRequiringTickle = tickleScripts;
+	return tickleScripts;
 }
 
 
@@ -413,8 +411,8 @@ static BOOL sRunningScript = NO;
 	BOOL						wasRunningScript = sRunningScript;
 	OOEntityStatus				status, restoreStatus;
 	
-	const oo::PList tickleScripts = [self worldScriptsRequiringTickle];
-	if (tickleScripts.count() == 0)
+	const std::vector<std::pair<std::string, oo::ObjCRef<OOScript *>>> tickleScripts = [self worldScriptsRequiringTickle];
+	if (tickleScripts.empty())
 	{
 		// Quick exit if we only have JS scripts.
 		return;
@@ -453,11 +451,11 @@ static BOOL sRunningScript = NO;
 		}
 		sRunningScript = YES;
 		
-		// After all that, actually running the scripts is trivial. (Order: script name, byte
-		// order; it was the hash order of -allValues.)
-		for (const auto &[scriptName, script] : *tickleScripts.getIf<oo::PList::Dict>())
+		// After all that, actually running the scripts is trivial. ORDER-SENSITIVE (decision D):
+		// load order (was script-name byte order, and before that the hash order of -allValues).
+		for (const auto &entry : tickleScripts)
 		{
-			[(OOScript *)oo::ObjectIn(script) runWithTarget:self];
+			[entry.second.get() runWithTarget:self];
 		}
 	}
 	@catch (OOException *exception)
@@ -771,32 +769,37 @@ static BOOL sRunningScript = NO;
 
 - (oo::PList) cxx_missionVariables
 {
-	return oo::PListFrom(mission_variables);	// a snapshot
+	return mission_variables;	// a snapshot
 }
 
 
 - (oo::PList) cxx_missionVariableForKey:(const std::string &)key
 {
-	return oo::PListFrom([mission_variables objectForKey:oo::NSStringFrom(key)]);
+	const oo::PList *value = mission_variables.find(key);
+	return (value != nullptr) ? *value : oo::PList();
 }
 
 
+// Before set-up (no store yet) nothing is stored, as messaging the nil dictionary did.
 - (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key
 {
-	if (!value.isNull())  [mission_variables setObject:oo::ObjectFromPList(value) forKey:oo::NSStringFrom(key)];
-	else [mission_variables removeObjectForKey:oo::NSStringFrom(key)];
+	oo::PList::Dict *store = mission_variables.getIf<oo::PList::Dict>();
+	if (store == nullptr)  return;
+	if (!value.isNull())  (*store)[key] = value;
+	else store->erase(key);
 }
 
 
 /*	A mission's local variables, as a snapshot Dict (null for no mission). The per-mission tables in
-	the localVariables ivar (PlayerEntity.h's) are immutable dictionaries replaced on write; nothing
-	else reads or saves them, so the old create-an-empty-table-on-read side effect is not kept.
+	the localVariables ivar (PlayerEntity.h's) are replaced on write; nothing else reads or saves
+	them, so the old create-an-empty-table-on-read side effect is not kept.
 */
 - (oo::PList) localVariablesForMission:(const std::optional<std::string> &)missionKey
 {
 	if (!missionKey.has_value())  return oo::PList();
 
-	oo::PList result = oo::PListFrom([localVariables objectForKey:oo::NSStringFrom(*missionKey)]);
+	const auto found = localVariables.find(*missionKey);
+	oo::PList result = (found != localVariables.end()) ? found->second : oo::PList();
 	if (!result.isDict())  result = oo::PList(oo::PList::Dict{});
 	return result;
 }
@@ -826,7 +829,7 @@ static BOOL sRunningScript = NO;
 		{
 			table->erase(variableName);
 		}
-		[localVariables setObject:oo::ObjectFromPList(locals) forKey:oo::NSStringFrom(*missionKey)];
+		localVariables[*missionKey] = std::move(locals);
 	}
 }
 
@@ -856,8 +859,8 @@ static BOOL sRunningScript = NO;
 
 	/* For proper display, array entries need to all be after string
 	 * entries, so sort them now */
-	// (world scripts in -allKeys order, which is the -keyEnumerator order the loop used)
-	for (const std::string &scriptName : oo::StringsFrom([worldScripts allKeys]))
+	// ORDER-SENSITIVE (decision D): world scripts in load order (was -allKeys order)
+	for (const std::string &scriptName : [self cxx_worldScriptNames])
 	{
 		const oo::PList vars = [self cxx_missionVariableForKey:scriptName];
 
