@@ -212,7 +212,7 @@ std::string cxx_RouteTypeToString(OORouteType routeType)
 
 namespace
 {
-// PListView at<NSString *>'s rule (OOCollectionExtractors' StringForObject): the element if it is a
+// PListView's string rule (OOCollectionExtractors' StringForObject): the element if it is a
 // string, or a number's -stringValue; nullopt (was nil) for anything else or a missing element.
 std::optional<std::string> DescriptionStringAt(const oo::PList &strings, std::size_t index)
 {
@@ -471,41 +471,42 @@ std::optional<std::string> cxx_OODisplayStringFromAlertCondition(OOAlertConditio
 }
 
 
-NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting)
+std::optional<std::string> cxx_OODisplayStringFromShaderSetting(OOShaderSetting setting)
 {
+	// DESC() is Universe's description lookup (not migrated yet), converted at the call.
 	switch (setting)
 	{
-		case SHADERS_NOT_SUPPORTED:	return DESC(@"shaderfx-not-available");
-		case SHADERS_OFF:			return DESC(@"shaderfx-off");
-		case SHADERS_SIMPLE:		return DESC(@"shaderfx-simple");
-		case SHADERS_FULL:			return DESC(@"shaderfx-full");
+		case SHADERS_NOT_SUPPORTED:	return oo::OptionalString(DESC(@"shaderfx-not-available"));
+		case SHADERS_OFF:			return oo::OptionalString(DESC(@"shaderfx-off"));
+		case SHADERS_SIMPLE:		return oo::OptionalString(DESC(@"shaderfx-simple"));
+		case SHADERS_FULL:			return oo::OptionalString(DESC(@"shaderfx-full"));
 	}
-	
-	return @"??";
+
+	return "??";
 }
 
 
-NSString *OOStringFromShaderSetting(OOShaderSetting setting)
+std::string cxx_OOStringFromShaderSetting(OOShaderSetting setting)
 {
 	switch (setting)
 	{
-		case SHADERS_OFF: return @"SHADERS_OFF";
-		case SHADERS_SIMPLE: return @"SHADERS_SIMPLE";
-		case SHADERS_FULL: return @"SHADERS_FULL";
-		case SHADERS_NOT_SUPPORTED: return @"SHADERS_NOT_SUPPORTED";
+		CASE(SHADERS_OFF);
+		CASE(SHADERS_SIMPLE);
+		CASE(SHADERS_FULL);
+		CASE(SHADERS_NOT_SUPPORTED);
 	}
-	
-	return @"UNDEFINED";
+
+	return "UNDEFINED";
 }
 
 
-OOShaderSetting OOShaderSettingFromString(NSString *string)
+OOShaderSetting cxx_OOShaderSettingFromString(const std::string &string)
 {
-	if ([string isEqualToString:@"SHADERS_OFF"]) return SHADERS_OFF;
-	if ([string isEqualToString:@"SHADERS_SIMPLE"]) return SHADERS_SIMPLE;
-	if ([string isEqualToString:@"SHADERS_FULL"]) return SHADERS_FULL;
-	if ([string isEqualToString:@"SHADERS_NOT_SUPPORTED"]) return SHADERS_NOT_SUPPORTED;
-	
+	REVERSE_CASE(SHADERS_OFF);
+	REVERSE_CASE(SHADERS_SIMPLE);
+	REVERSE_CASE(SHADERS_FULL);
+	REVERSE_CASE(SHADERS_NOT_SUPPORTED);
+
 	return (OOShaderSetting)kOOShaderSettingDefault;
 }
 
