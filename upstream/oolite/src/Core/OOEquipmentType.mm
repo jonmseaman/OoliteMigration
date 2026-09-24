@@ -315,7 +315,7 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 				OOStandardsDeprecated([NSString stringWithFormat:@"The conditions key is deprecated for equipment %@",oo::NSStringFrom(_name)]);
 				if (!OOEnforceStandards())
 				{
-					_conditions = OOSanitizeLegacyScriptConditions(conditions, [NSString stringWithFormat:@"<equipment type \"%@\">", oo::NSStringFrom(_name)]);
+					_conditions = oo::ObjectFromPList(OOSanitizeLegacyScriptConditions(oo::PListFrom(conditions), oo::OptionalString([NSString stringWithFormat:@"<equipment type \"%@\">", oo::NSStringFrom(_name)])));
 					[_conditions retain];
 				}
 			}
