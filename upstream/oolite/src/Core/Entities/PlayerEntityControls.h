@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 - (void) beginWitchspaceCountdown:(int)spin_time;
 - (void) beginWitchspaceCountdown;
 - (void) cancelWitchspaceCountdown;
-- (NSArray*) processKeyCode:(NSArray*)key_def;
+- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def;	// an Array of key-definition Dicts, each fully expanded
 - (BOOL) checkNavKeyPress:(NSArray*)key_def;
 - (BOOL) checkKeyPress:(NSArray*)key_def;
 - (BOOL) checkKeyPress:(NSArray*)key_def fKey_only:(BOOL)fKey_only;
@@ -50,3 +50,7 @@ MA 02110-1301, USA.
 - (int) getFirstKeyCode:(NSArray*)key_def;
 
 @end
+
+// TRANSITIONAL (proposed ADR-0043): PlayerEntity (Controls)'s Foundation-typed API as it was
+// before its sweep, forwarding to the cxx_ API above. Keep this the last line.
+#import "PlayerEntityControls+FoundationBridge.h"
