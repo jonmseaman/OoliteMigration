@@ -2247,7 +2247,7 @@ static const char * const kOOCacheOctrees = "octrees";
 {
 	if (inOctree != nil)
 	{
-		[[self sharedCache] cxx_setObject:[inOctree dictionaryRepresentation] forKey:inKey inCache:kOOCacheOctrees];
+		[[self sharedCache] cxx_setObject:oo::ObjectFromPList([inOctree cxx_dictionaryRepresentation]) forKey:inKey inCache:kOOCacheOctrees];
 	}
 }
 
