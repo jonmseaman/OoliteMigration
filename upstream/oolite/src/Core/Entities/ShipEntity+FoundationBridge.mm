@@ -160,6 +160,147 @@ NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
 	return [self cxx_fireMissileWithIdentifier:oo::OptionalString(identifier) andTarget:target];
 }
 
+
+// oo-3rb.235: cargo API and commodities
+
+- (void) setCommodity:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount
+{
+	if (co_type != nil)  [self cxx_setCommodity:oo::StdString(co_type) andAmount:co_amount];	// nil: no change, as before
+}
+
+
+- (void) setCommodityForPod:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount
+{
+	[self cxx_setCommodityForPod:oo::OptionalString(co_type) andAmount:co_amount];
+}
+
+
+- (OOCommodityType) commodityType
+{
+	return oo::NSStringOrNil([self cxx_commodityType]);
+}
+
+
+- (BOOL) addCargo:(NSArray *) some_cargo
+{
+	return [self cxx_addCargo:oo::ObjCRefsFrom<ShipEntity *>(some_cargo)];
+}
+
+
+- (BOOL) removeCargo:(OOCommodityType)commodity amount:(OOCargoQuantity) amount
+{
+	// nil matched no pod (-isEqualToString:nil); "" matches none either (a commodity key is never empty).
+	return [self cxx_removeCargo:oo::StdString(commodity) amount:amount];
+}
+
+
+- (ShipEntity *) dumpCargoItem:(OOCommodityType)preferred
+{
+	return [self cxx_dumpCargoItem:oo::OptionalString(preferred)];
+}
+
+
+// oo-3rb.237: crew, escorts, groups and escape pods
+
+- (NSEnumerator *) escortEnumerator
+{
+	return [oo::NSArrayFromObjects([self cxx_escorts]) objectEnumerator];
+}
+
+
+- (NSArray *) crew
+{
+	const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> members = [self cxx_crew];
+	return members.has_value() ? oo::NSArrayFromObjects(*members) : nil;	// nil: unpiloted (callers test it)
+}
+
+
+- (NSArray *) crewForScripting
+{
+	if (![self cxx_crew].has_value())  return nil;	// no crew (or a nil receiver): nil, as before
+	const std::vector<oo::PList> entries = [self cxx_crewForScripting];
+	return oo::ObjectFromPList(oo::PList(oo::PList::Array(entries.begin(), entries.end())));
+}
+
+
+- (void) setCrew:(NSArray *)crewArray
+{
+	if (crewArray == nil)  [self cxx_setCrew:std::nullopt];
+	else  [self cxx_setCrew:oo::ObjCRefsFrom<OOCharacter *>(crewArray)];
+}
+
+
+- (void) setSingleCrewWithRole:(NSString *)crewRole
+{
+	[self cxx_setSingleCrewWithRole:oo::StdString(crewRole)];
+}
+
+
+// oo-3rb.238: combat, collisions, defense targets, explosions, docking instructions
+
+- (NSEnumerator *) defenseTargetEnumerator
+{
+	return [oo::NSArrayFromObjects([self cxx_defenseTargets]) objectEnumerator];
+}
+
+
+- (NSArray *) collisionExceptions
+{
+	return oo::NSArrayFromObjects([self cxx_collisionExceptions]);
+}
+
+
+- (NSDictionary *) dockingInstructions
+{
+	return oo::ObjectFromPList([self cxx_dockingInstructions]);	// nil for none
+}
+
+
+// oo-3rb.239: messages, comms and AI dispatch
+
+- (void) sendExpandedMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship
+{
+	if (message_text == nil)  return;	// nothing to send (the old method expanded nil to nothing)
+	[self cxx_sendExpandedMessage:oo::StdString(message_text) toShip:other_ship];
+}
+
+
+- (void) sendMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride
+{
+	if (message_text == nil)  return;	// as the old method returned at once for nil
+	[self cxx_sendMessage:oo::StdString(message_text) toShip:other_ship withUnpilotedOverride:unpilotedOverride];
+}
+
+
+- (void) commsMessage:(NSString *)valueString withUnpilotedOverride:(BOOL)unpilotedOverride
+{
+	[self cxx_commsMessage:oo::StdString(valueString) withUnpilotedOverride:unpilotedOverride];
+}
+
+
+- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(NSArray *)arguments
+{
+	[self cxx_doScriptEvent:message withArguments:oo::ObjCRefsFrom<id>(arguments)];
+}
+
+
+- (void) reactToAIMessage:(NSString *)message context:(NSString *)debugContext
+{
+	[self cxx_reactToAIMessage:oo::StdString(message) context:oo::OptionalString(debugContext)];
+}
+
+
+- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage
+{
+	[self cxx_doScriptEvent:scriptEvent andReactToAIMessage:oo::StdString(aiMessage)];
+}
+
+
+- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage
+{
+	[self cxx_doScriptEvent:scriptEvent withArgument:argument andReactToAIMessage:oo::StdString(aiMessage)];
+}
+
 @end
 
 
