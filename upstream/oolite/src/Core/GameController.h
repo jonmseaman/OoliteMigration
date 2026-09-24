@@ -155,11 +155,12 @@ MA 02110-1301, USA.
 - (void) loadPlayerIfRequired;
 
 - (void) beginSplashScreen;
-- (void) logProgress:(NSString *)message;
+- (void) cxx_logProgress:(const std::string &)message;
 #if OO_DEBUG
-- (void) debugLogProgress:(NSString *)format, ...  OO_TAKES_FORMAT_STRING(1, 2);
-- (void) debugLogProgress:(NSString *)format arguments:(va_list)arguments  OO_TAKES_FORMAT_STRING(1, 0);
-- (void) debugPushProgressMessage:(NSString *)format, ...  OO_TAKES_FORMAT_STRING(1, 2);
+// These take the formatted message; the %@ format forms (GameController+FoundationBridge.h, and
+// OO_DEBUG_PROGRESS / OO_DEBUG_PUSH_PROGRESS below) format it as they always did.
+- (void) cxx_debugLogProgress:(const std::string &)message;
+- (void) cxx_debugPushProgressMessage:(const std::string &)message;
 - (void) debugPopProgressMessage;
 #endif
 - (void) endSplashScreen;

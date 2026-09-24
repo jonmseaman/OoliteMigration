@@ -44,4 +44,38 @@ and converts at the boundary (oo::StdString in: a nil file name arrives as "", w
 	[self cxx_setPlayerFileDirectory:oo::OptionalString(filename)];
 }
 
+
+- (void) logProgress:(NSString *)message
+{
+	[self cxx_logProgress:oo::StdString(message)];
+}
+
+
+#if OO_DEBUG
+- (void) debugLogProgress:(NSString *)format, ...
+{
+	va_list args;
+	va_start(args, format);
+	[self debugLogProgress:format arguments:args];
+	va_end(args);
+}
+
+
+- (void) debugLogProgress:(NSString *)format arguments:(va_list)arguments
+{
+	NSString *message = [[[NSString alloc] initWithFormat:format arguments:arguments] autorelease];
+	[self cxx_debugLogProgress:oo::StdString(message)];
+}
+
+
+- (void) debugPushProgressMessage:(NSString *)format, ...
+{
+	va_list args;
+	va_start(args, format);
+	NSString *message = [[[NSString alloc] initWithFormat:format arguments:args] autorelease];
+	va_end(args);
+	[self cxx_debugPushProgressMessage:oo::StdString(message)];
+}
+#endif
+
 @end
