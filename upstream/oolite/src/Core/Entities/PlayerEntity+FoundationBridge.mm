@@ -322,4 +322,23 @@ and converts the result exactly as the old method produced it.
 	[self cxx_setEquipScreenBackgroundDescriptor:oo::PListFrom(descriptor)];
 }
 
+
+// oo-3rb.246: system data, chart, game options, load/save and equip-ship screens
+- (void) setGuiToEquipShipScreen:(int)skip selectingFacingFor:(NSString *)eqKeyForSelectFacing
+{
+	[self cxx_setGuiToEquipShipScreen:skip selectingFacingFor:oo::OptionalString(eqKeyForSelectFacing)];
+}
+
+
+- (void) showInformationForSelectedUpgradeWithFormatString:(NSString *)extraString
+{
+	[self cxx_showInformationForSelectedUpgradeWithFormatString:oo::OptionalString(extraString)];
+}
+
+
+- (NSString *)screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate
+{
+	return oo::NSStringOrNil([self cxx_screenModeStringForWidth:inWidth height:inHeight refreshRate:inRate]);
+}
+
 @end
