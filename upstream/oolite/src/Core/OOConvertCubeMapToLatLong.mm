@@ -29,6 +29,7 @@ SOFTWARE.
 
 #import "OOConvertCubeMapToLatLong.h"
 #import "OOTextureScaling.h"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define kPiF			(3.14159265358979323846264338327950288f)
@@ -41,7 +42,7 @@ OOPixMap OOConvertCubeMapToLatLong(OOPixMap sourcePixMap, OOPixMapDimension heig
 		return kOONullPixMap;
 	}
 	
-	NSCParameterAssert(height > 0);
+	OOCParameterAssert(height > 0);
 	
 	height *= 2;
 	OOPixMapDimension width = height * 2;

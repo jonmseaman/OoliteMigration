@@ -53,6 +53,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define ONE_SIXTEENTH				0.0625
@@ -875,7 +876,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 
 	SEL selector = OOSelectorFromName(selectorString->c_str());
 
-	NSAssert2([self respondsToSelector:selector], @"HUD dial in %@ uses selector \"%@\" which is in whitelist, but not implemented.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
+	OOAssert([self respondsToSelector:selector], "HUD dial in %s uses selector \"%s\" which is in whitelist, but not implemented.", hudName.value_or("(null)").c_str(), selectorString->c_str());
 
 	//  handle the case above with NS_BLOCK_ASSERTIONS too.
 	if (![self respondsToSelector:selector])

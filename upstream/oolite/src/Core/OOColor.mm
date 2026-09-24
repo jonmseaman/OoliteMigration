@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 
 #include "oofnd/String.hpp"
 #include "oofnd/Scanner.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 @implementation OOColor
@@ -372,7 +373,7 @@ MA 02110-1301, USA.
 
 - (void) getRed:(float *)red green:(float *)green blue:(float *)blue alpha:(float *)alpha
 {
-	NSParameterAssert(red != NULL && green != NULL && blue != NULL && alpha != NULL);
+	OOParameterAssert(red != NULL && green != NULL && blue != NULL && alpha != NULL);
 	
 	*red = rgba[0];
 	*green = rgba[1];
@@ -442,7 +443,7 @@ MA 02110-1301, USA.
 
 - (void) getHue:(float *)hue saturation:(float *)saturation brightness:(float *)brightness alpha:(float *)alpha
 {
-	NSParameterAssert(hue != NULL && saturation != NULL && brightness != NULL && alpha != NULL);
+	OOParameterAssert(hue != NULL && saturation != NULL && brightness != NULL && alpha != NULL);
 	
 	*alpha = rgba[3];
 	

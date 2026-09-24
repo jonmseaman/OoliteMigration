@@ -52,6 +52,7 @@ SOFTWARE.
 #if USE_PTHREAD_ONCE
 #include <pthread.h>
 #endif
+#include "oofnd/objc/OOAssert.h"
 
 
 static OOAsyncWorkManager *sSingleton = nil;
@@ -185,7 +186,7 @@ std::mutex sInitLock;
 
 static void InitAsyncWorkManager(void)
 {
-	NSCAssert(sSingleton == nil, @"Async Work Manager singleton not nil in one-time init");
+	OOCAssert(sSingleton == nil, "Async Work Manager singleton not nil in one-time init");
 	
 	if ([OOOperationQueueAsyncWorkManager canBeUsed])
 	{
@@ -213,13 +214,13 @@ static void InitAsyncWorkManager(void)
 #if USE_PTHREAD_ONCE
 	static pthread_once_t once = PTHREAD_ONCE_INIT;
 	pthread_once(&once, InitAsyncWorkManager);
-	NSAssert(sSingleton != nil, @"Async Work Manager init failed");
+	OOAssert(sSingleton != nil, "Async Work Manager init failed");
 #else
 	sInitLock.lock();
 	if (sSingleton == nil)
 	{
 		InitAsyncWorkManager();
-		NSAssert(sSingleton != nil, @"Async Work Manager init failed");
+		OOAssert(sSingleton != nil, "Async Work Manager init failed");
 	}
 	sInitLock.unlock();
 #endif
@@ -327,8 +328,8 @@ static void InitAsyncWorkManager(void)
 	if (task == nil)  return;
 	
 #if OO_DEBUG
-	NSParameterAssert([(id)task respondsToSelector:@selector(completeAsyncTask)]);
-	NSAssert1(oo::thread::isMainThread(), @"%s can only be called from the main thread.", __PRETTY_FUNCTION__);
+	OOParameterAssert([(id)task respondsToSelector:@selector(completeAsyncTask)]);
+	OOAssert(oo::thread::isMainThread(), "%s can only be called from the main thread.", __PRETTY_FUNCTION__);
 #endif
 	
 	_pendingOpsLock.lock();
