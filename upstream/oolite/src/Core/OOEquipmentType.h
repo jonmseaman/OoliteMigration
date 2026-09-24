@@ -34,6 +34,11 @@ SOFTWARE.
 #import "OOTypes.h"
 #import "OOScript.h"
 #import "Universe.h"
+#include "oofnd/objc/OOObjCRef.h"
+
+#include <map>
+#include <optional>
+#include <string>
 
 
 @interface OOEquipmentType: OOObject <OOCopying>
@@ -41,9 +46,9 @@ SOFTWARE.
 @private
 	OOTechLevelID			_techLevel;
 	OOCreditsQuantity		_price;
-	NSString				*_name;
-	NSString				*_identifier;
-	NSString				*_description;
+	std::string				_name;			// never empty-for-nil: -initWithInfo: fails without all three
+	std::string				_identifier;
+	std::string				_description;
 	unsigned				_isAvailableToAll: 1,
 							_requiresEmptyPylon: 1,
 							_requiresMountedPylon: 1,
@@ -84,20 +89,20 @@ SOFTWARE.
 + (void) loadEquipment;			// Load equipment data; called on loading and when changing to/from strict mode.
 + (void) addEquipmentWithInfo:(NSArray *)itemInfo;	// Used to generate equipment from missile_role entries.
 
-+ (NSString *) getMissileRegistryRoleForShip:(NSString *)shipKey;
-+ (void) setMissileRegistryRole:(NSString *)roles forShip:(NSString *)shipKey;
++ (std::optional<std::string>) cxx_getMissileRegistryRoleForShip:(const std::string &)shipKey;	// nullopt: none registered
++ (void) cxx_setMissileRegistryRole:(const std::string &)role forShip:(const std::string &)shipKey;
 
 + (NSArray *) allEquipmentTypes;
 + (NSEnumerator *) equipmentEnumerator;
 + (NSEnumerator *) reverseEquipmentEnumerator;
 + (NSEnumerator *) equipmentEnumeratorOutfitting;
 
-+ (OOEquipmentType *) equipmentTypeWithIdentifier:(NSString *)identifier;
++ (OOEquipmentType *) cxx_equipmentTypeWithIdentifier:(const std::string &)identifier;	// nil: none
 
-- (NSString *) identifier;
-- (NSString *) damagedIdentifier;
-- (NSString *) name;			// localized
-- (NSString *) descriptiveText;	// localized
+- (std::optional<std::string>) cxx_identifier;
+- (std::optional<std::string>) cxx_damagedIdentifier;
+- (id) name;			// localized; shared selector (proposed ADR-0043): a string
+- (std::optional<std::string>) cxx_descriptiveText;	// localized
 - (OOTechLevelID) techLevel;
 - (OOCreditsQuantity) price;	// Tenths of credits
 
@@ -174,3 +179,10 @@ SOFTWARE.
 - (OOTechLevelID) effectiveTechLevel;
 
 @end
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before bead oo-fvnu (chunks oo-3rb.156..159), forwarding to the cxx_ methods above, so
+	unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads.
+*/
+#import "OOEquipmentType+FoundationBridge.h"
