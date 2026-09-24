@@ -220,13 +220,13 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (void) unloadAllCargoPodsForType:(OOCommodityType)type toManifest:(OOCommodityMarket *) manifest
 {
-	NSInteger i, cargoCount = [cargo count];
+	NSInteger i, cargoCount = cargo.size();
 	if (cargoCount == 0)  return;
 	
 	// step through the cargo pods adding in the quantities	
 	for (i =  cargoCount - 1; i >= 0 ; i--)
 	{
-		ShipEntity *cargoItem = [cargo objectAtIndex:i];
+		ShipEntity *cargoItem = cargo[i].get();
 		NSString * commodityType = [cargoItem commodityType];
 		if (commodityType == nil || [commodityType isEqualToString:type])
 		{
@@ -240,7 +240,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 				OOLog(@"player.badCargoPod", @"Cargo pod %@ has bad commodity type, rejecting.", cargoItem);
 				continue;
 			}
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 		}
 	}
 }
@@ -248,7 +248,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (void) unloadCargoPodsForType:(OOCommodityType)type amount:(OOCargoQuantity)quantity
 {
-	NSInteger			i, n_cargo = [cargo count];
+	NSInteger			i, n_cargo = cargo.size();
 	if (n_cargo == 0)  return;
 	
 	ShipEntity			*cargoItem = nil;
@@ -259,7 +259,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	// step through the cargo pods removing pods or quantities	
 	for (i =  n_cargo - 1; (i >= 0 && cargoToGo > 0) ; i--)
 	{
-		cargoItem = [cargo objectAtIndex:i];
+		cargoItem = cargo[i].get();
 		co_type = [cargoItem commodityType];
 		if (co_type == nil || [co_type isEqualToString:type])
 		{
@@ -268,7 +268,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 				amount =  [cargoItem commodityAmount];
 				if (amount <= cargoToGo)
 				{
-					[cargo removeObjectAtIndex:i];
+					cargo.erase(cargo.begin() + i);
 					cargoToGo -= amount;
 				}
 				else
@@ -306,9 +306,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		[self unloadAllCargoPodsForType:good toManifest:shipCommodityData];
 	}
 #ifndef NDEBUG
-	if ([cargo count] > 0)
+	if (cargo.size() > 0)
 	{
-		OOLog(@"player.unloadCargo",@"Cargo remains in pods after unloading - %@",cargo);
+		OOLog(@"player.unloadCargo",@"Cargo remains in pods after unloading - %@",oo::NSArrayFromObjects(cargo));
 	}
 #endif
 
@@ -325,7 +325,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		[container setScanClass: CLASS_CARGO];
 		[container setStatus:STATUS_IN_HOLD];
 		[container setCommodity:type andAmount:amount];
-		[cargo addObject:container];
+		cargo.emplace_back(container);
 		[container release];
 	}
 	else
@@ -426,7 +426,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 			while (quantity > 0)
 			{
 				int smaller_quantity = 1 + ((quantity - 1) % amount_per_container);
-				if ([cargo count] < [self maxAvailableCargoSpace])
+				if (cargo.size() < [self maxAvailableCargoSpace])
 				{
 					ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
 					if (container)
@@ -435,7 +435,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 						[container setStatus:STATUS_IN_HOLD];
 						[container setScanClass: CLASS_CARGO];
 						[container setCommodity:type andAmount:smaller_quantity];
-						[cargo addObject:container];
+						cargo.emplace_back(container);
 						[container release];
 					}
 				}
@@ -456,7 +456,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 			// put each ton in a separate container
 			while (quantity)
 			{
-				if ([cargo count] < [self maxAvailableCargoSpace])
+				if (cargo.size() < [self maxAvailableCargoSpace])
 				{
 					ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
 					if (container)
@@ -465,7 +465,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 						[container setScanClass: CLASS_CARGO];
 						[container setStatus:STATUS_IN_HOLD];
 						[container setCommodity:type andAmount:1];
-						[cargo addObject:container];
+						cargo.emplace_back(container);
 						[container release];
 					}
 				}
@@ -2280,8 +2280,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	if (![super setUpFromDictionary:shipDict]) return NO;
 	
-	DESTROY(cargo);
-	cargo = [[NSMutableArray alloc] initWithCapacity:max_cargo];
+	cargo.clear();
 
 	// Player-only settings.
 	//
@@ -2435,8 +2434,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(keyMod1Text);
 	DESTROY(keyMod2Text);
 	DESTROY(stickFunctions);
-	DESTROY(keyFunctions);
-	DESTROY(kbdLayouts);
 
 	DESTROY(customEquipActivation);
 	DESTROY(customActivatePressed);
@@ -4955,7 +4952,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (OOFuelScoopStatus) dialFuelScoopStatus
 {
 	// need to account for the different ways of calculating cargo on board when docked/in-flight
-	OOCargoQuantity cargoOnBoard = [self status] == STATUS_DOCKED ? current_cargo : (OOCargoQuantity)[cargo count];
+	OOCargoQuantity cargoOnBoard = [self status] == STATUS_DOCKED ? current_cargo : (OOCargoQuantity)cargo.size();
 	if ([self hasScoop])
 	{
 		if (scoopsActive)
@@ -6678,7 +6675,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	if (trumbleCount != 0)  trumbleCount = 1;
 	
 	// remove cargo
-	[cargo removeAllObjects];
+	cargo.clear();
 	
 	energy = 25;
 	[UNIVERSE addMessage:DESC(@"escape-sequence") forCount:4.5];
@@ -6718,20 +6715,20 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (void) rotateCargo
 {
-	NSInteger i, n_cargo = [cargo count];
+	NSInteger i, n_cargo = cargo.size();
 	if (n_cargo == 0)  return;
 	
-	ShipEntity *pod = (ShipEntity *)[[cargo objectAtIndex:0] retain];
+	ShipEntity *pod = (ShipEntity *)[cargo[0].get() retain];
 	OOCommodityType current_contents = [pod commodityType];
 	OOCommodityType contents;
 	NSInteger rotates = 0;
 	
 	do
 	{
-		[cargo removeObjectAtIndex:0];	// take it from the eject position
-		[cargo addObject:pod];	// move it to the last position
+		cargo.erase(cargo.begin());	// take it from the eject position
+		cargo.emplace_back(pod);	// move it to the last position
 		[pod release];
-		pod = (ShipEntity*)[[cargo objectAtIndex:0] retain];
+		pod = (ShipEntity*)[cargo[0].get() retain];
 		contents = [pod commodityType];
 		rotates++;
 	} while ([contents isEqualToString:current_contents]&&(rotates < n_cargo));
@@ -6744,12 +6741,12 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	// this means the cargo gets to be sorted as it is rotated through
 	for (i = 1; i < (n_cargo - rotates); i++)
 	{
-		pod = [cargo objectAtIndex:i];
+		pod = cargo[i].get();
 		if ([[pod commodityType] isEqualToString:current_contents])
 		{
 			[pod retain];
-			[cargo removeObjectAtIndex:i--];
-			[cargo addObject:pod];
+			cargo.erase(cargo.begin() + i--);
+			cargo.emplace_back(pod);
 			[pod release];
 			rotates++;
 		}
@@ -6896,15 +6893,15 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	unsigned damage_to = n_considered ? (ranrot_rand() % n_considered) : 0;	// n_considered can be 0 for small ships.
 	BOOL     result = NO;
 	// cargo damage
-	if (damage_to < [cargo count])
+	if (damage_to < cargo.size())
 	{
-		ShipEntity* pod = (ShipEntity*)[cargo objectAtIndex:damage_to];
+		ShipEntity* pod = (ShipEntity*)cargo[damage_to].get();
 		NSString* cargo_desc = [UNIVERSE displayNameForCommodity:[pod commodityType]];
 		if (!cargo_desc)
 			return NO;
 		[UNIVERSE clearPreviousMessage];
 		[UNIVERSE addMessage:[NSString stringWithFormat:DESC(@"@-destroyed"), cargo_desc] forCount:4.5];
-		[cargo removeObject:pod];
+		std::erase(cargo, pod);
 		return YES;
 	}
 	else
@@ -8352,9 +8349,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		quantityInHold[i] = [shipCommodityData quantityForGood:oo::PListView(goods).at<NSString *>(i)];
 		containersInHold[i] = 0;
 	}
-	for (i = 0; i < [cargo count]; i++)
+	for (i = 0; i < cargo.size(); i++)
 	{
-		ShipEntity *container = [cargo objectAtIndex:i];
+		ShipEntity *container = cargo[i].get();
 		j = [goods indexOfObject:[container commodityType]];
 		quantityInHold[j] += [container commodityAmount];
 		++containersInHold[j];
@@ -9509,7 +9506,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(forward_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [forwardWeaponOffset count];
+									multiplier = forwardWeaponOffset.size();
 								}
 								break;
 								
@@ -9519,7 +9516,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(aft_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [aftWeaponOffset count];
+									multiplier = aftWeaponOffset.size();
 								}
 								break;
 								
@@ -9529,7 +9526,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(port_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [portWeaponOffset count];
+									multiplier = portWeaponOffset.size();
 								}
 								break;
 								
@@ -9539,7 +9536,7 @@ static NSString *last_outfitting_key=nil;
 								weaponMounted = !isWeaponNone(starboard_weapon_type);
 								if (_multiplyWeapons)
 								{
-									multiplier = [starboardWeaponOffset count];
+									multiplier = starboardWeaponOffset.size();
 								}
 								break;
 						}
@@ -10351,7 +10348,7 @@ static NSString *last_outfitting_key=nil;
 				forward_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [forwardWeaponOffset count];
+					multiplier = forwardWeaponOffset.size();
 				}
 				break;
 				
@@ -10360,7 +10357,7 @@ static NSString *last_outfitting_key=nil;
 				aft_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [aftWeaponOffset count];
+					multiplier = aftWeaponOffset.size();
 				}
 				break;
 				
@@ -10369,7 +10366,7 @@ static NSString *last_outfitting_key=nil;
 				port_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [portWeaponOffset count];
+					multiplier = portWeaponOffset.size();
 				}
 				break;
 				
@@ -10378,7 +10375,7 @@ static NSString *last_outfitting_key=nil;
 				starboard_weapon_type = chosen_weapon;
 				if (_multiplyWeapons)
 				{
-					multiplier = [starboardWeaponOffset count];
+					multiplier = starboardWeaponOffset.size();
 				}
 				break;
 				
@@ -10673,9 +10670,9 @@ static NSString *last_outfitting_key=nil;
 		OOCommodityType co_type;
 		ShipEntity		*cargoItem = nil;
 		
-		for (i = [cargo count] - 1; i >= 0 ; i--)
+		for (i = cargo.size() - 1; i >= 0 ; i--)
 		{
-			cargoItem = [cargo objectAtIndex:i];
+			cargoItem = cargo[i].get();
 			co_type = [cargoItem commodityType];
 			if ([co_type isEqualToString:type])
 			{
@@ -10778,7 +10775,7 @@ static NSString *last_outfitting_key=nil;
 		}
 		cargoQtyOnBoard += quantity;
 	}
-	cargoQtyOnBoard += [[self cargo] count];
+	cargoQtyOnBoard += [self cxx_cargoCount];
 	
 	return cargoQtyOnBoard;
 }
@@ -11035,9 +11032,9 @@ static NSString *last_outfitting_key=nil;
 	{
 		quantityInHold[i] = [shipCommodityData quantityForGood:oo::PListView(goods).at<NSString *>(i)];
 	}
-	for (NSUInteger i = 0; i < [cargo count]; i++)
+	for (NSUInteger i = 0; i < cargo.size(); i++)
 	{
-		ShipEntity *container = [cargo objectAtIndex:i];
+		ShipEntity *container = cargo[i].get();
 		NSUInteger goodsIndex = [goods indexOfObject:[container commodityType]];
 		// can happen with filters
 		if (goodsIndex != NSNotFound)
@@ -11231,9 +11228,9 @@ static NSString *last_outfitting_key=nil;
 	{
 		quantityInHold[i] = [shipCommodityData quantityForGood:oo::PListView(goods).at<NSString *>(i)];
 	}
-	for (i = 0; i < [cargo count]; i++)
+	for (i = 0; i < cargo.size(); i++)
 	{
-		ShipEntity *container = [cargo objectAtIndex:i];
+		ShipEntity *container = cargo[i].get();
 		j = [goods indexOfObject:[container commodityType]];
 		quantityInHold[j] += [container commodityAmount];
 	}
@@ -13623,11 +13620,11 @@ else _dockTarget = NO_TARGET;
 	_sysInfoLight.x &&
 	selFunctionIdx &&
 	stickFunctions &&
-	keyFunctions &&
+	!keyFunctions.empty() &&
 	customEquipActivation &&
 	customActivatePressed &&
 	customModePressed &&
-	kbdLayouts &&
+	!kbdLayouts.empty() &&
 	showingLongRangeChart &&
 	_missionAllowInterrupt &&
 	_missionScreenID &&

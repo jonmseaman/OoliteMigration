@@ -282,7 +282,9 @@ nothing else in the caller. A caller whose own bead has landed already holds C++
 directly.
 
 A header reached inside `extern "C"` (the `OOMaths.h` family) wraps its C++ declarations in
-`extern "C++" { ... }`, as `OOVector.h` does.
+`extern "C++" { ... }`, as `OOVector.h` does; the same goes for an `#include` of a C++ header (an
+oofnd `.hpp`, `oofnd/StdLib.hpp`) from such a header: `#ifdef __cplusplus` / `extern "C++" {
+#include "..." }` / `#endif`, the idiom `OOCocoa.h` and `OOLogging.h` use.
 
 ### 3. Shared selectors
 
@@ -443,8 +445,10 @@ it. oo-qps cannot compile any of them.
 | `src/Core/GuiDisplayGen+FoundationBridge.h/.mm` (chunked: oo-3rb.92 made it; chunks oo-3rb.93-.96 move their own selectors in) | oo-3rb.92 (chunks of oo-ol63) | oo-q01b ("Delete GuiDisplayGen+FoundationBridge") |
 | `src/SDL/MyOpenGLView+FoundationBridge.h/.mm` (chunked: oo-3rb.110 made it; the later MyOpenGLView chunks move their own selectors in) | oo-3rb.110 | oo-xrkm ("Delete MyOpenGLView+FoundationBridge") |
 | `src/Core/AI+FoundationBridge.h/.mm` | oo-3rb.84 (AI.mm chunks oo-3rb.84..87) | oo-ag2w ("Delete AI+FoundationBridge") |
+| `src/Core/OOConstToString+FoundationBridge.h/.mm` (chunked: oo-3rb.160 made it; chunks oo-3rb.161-.163 move their own functions in; some old prototypes stay in Entity.h / ShipEntity.h / PlayerEntity.h / Universe.h) | oo-3rb.160 (chunks of oo-nts1) | oo-jx3u ("Delete OOConstToString+FoundationBridge") |
 | `src/Core/OXPVerifier/OOFileScannerVerifierStage+FoundationBridge.h/.mm` | oo-56tr | oo-cjel ("Delete OOFileScannerVerifierStage+FoundationBridge") |
 | `src/Core/ResourceManager+FoundationBridge.h/.mm` | oo-3rb.98 (chunks of oo-2wwr) | oo-0f7h ("Delete ResourceManager+FoundationBridge") |
+| `src/Core/OOLogging+FoundationBridge.h/.mm` (the NSString message-class API and kOOLog* constants; the last bridge deleted) | oo-3rb.136 (chunks of oo-lskf) | oo-zcgz ("Delete OOLogging+FoundationBridge") |
 | `src/Core/OOOpenGL+FoundationBridge.h/.mm` | oo-3rb.143 (chunks of oo-zpz4) | oo-hxi3 ("Delete OOOpenGL+FoundationBridge") |
 | `src/Core/OOSystemDescriptionManager+FoundationBridge.h/.mm` | oo-3rb.107 (chunks of oo-868e) | oo-caz5 ("Delete OOSystemDescriptionManager+FoundationBridge") |
 | `src/Core/Scripting/OOScript+FoundationBridge.h/.mm` | oo-du83 | oo-eu4j ("Delete OOScript+FoundationBridge") |
