@@ -66,7 +66,7 @@ void LogSink(std::string_view line)
 {
 	@autoreleasepool
 	{
-		OOLogOutputHandlerPrint(oo::NSStringFrom(line));
+		cxx_OOLogOutputHandlerPrint(line);
 	}
 }
 

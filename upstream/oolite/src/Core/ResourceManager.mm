@@ -2320,7 +2320,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 + (std::optional<std::string>) cxx_diagnosticFileLocation
 {
-	return oo::OptionalString(OOLogHandlerGetLogBasePath());	// an unmigrated callee (OOLogOutputHandler)
+	return cxx_OOLogHandlerGetLogBasePath();
 }
 
 
