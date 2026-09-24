@@ -45,7 +45,6 @@
 #import "OOShipRegistry.h"
 #import "OOTexture.h"
 #import "NSStringOOExtensions.h"
-#import "NSNumberOOExtensions.h"
 #import "OOJavaScriptEngine.h"
 #include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
@@ -82,6 +81,15 @@ std::optional<std::string> OptionalStringValue(id object)
 {
 	const oo::PList value = oo::PListFrom(object);
 	return OptionalStringValue(&value);
+}
+
+// [[key componentsSeparatedByString:@":"] oo_intAtIndex:1]: element 1's -intValue, 0 when there is
+// none (or no key).
+int SecondFieldIntValue(const std::optional<std::string> &key)
+{
+	if (!key)  return 0;
+	const std::vector<std::string> fields = oo::str::split(*key, ":");
+	return fields.size() > 1 ? oo::str::intValue(fields[1]) : 0;
 }
 
 #if OO_USE_CUSTOM_LOAD_SAVE
@@ -274,7 +282,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 - (void) setGuiToScenarioScreen:(int)page
 {
-	NSArray *scenarios = [UNIVERSE scenarios];
+	const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
 	[UNIVERSE removeDemoShips];
 	// GUI stuff
 	{
@@ -292,38 +300,37 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		[gui setTabStops:tab_stops];
 
 		unsigned n_rows = GUI_MAX_ROWS_SCENARIOS;
-		NSUInteger i, count = [scenarios count];
+		NSUInteger i, count = scenarios.count();
 
-		NSDictionary *scenario = nil;
-
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-scenario-exit"), @" <----- ", nil] forRow:start_row - 2];
+		[gui cxx_setArray:{ oo::StdString(DESC(@"oolite-scenario-exit")), " <----- " } forRow:start_row - 2];
 		[gui setColor:[OOColor redColor] forRow:start_row - 2];
 		[gui setKey:@"exit" forRow:start_row - 2];
 		
 
 		if (page > 0)
 		{
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ", nil] forRow:start_row - 1];
+			[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " } forRow:start_row - 1];
 			[gui setColor:[OOColor greenColor] forRow:start_row - 1];
-			[gui setKey:[NSString stringWithFormat:@"__page:%i",page-1] forRow:start_row - 1];
+			[gui cxx_setKey:oo::str::format("__page:%i",page-1) forRow:start_row - 1];
 		}
 
 		[self setShowDemoShips:NO];
 
 		for (i = (NSUInteger)page*n_rows ; i < count && row < start_row + n_rows ; i++)
 		{
-			scenario = [[UNIVERSE scenarios] objectAtIndex:i];
-			NSString *scenarioName = [NSString stringWithFormat:@" %@ ",oo::PListView(scenario).get<NSString *>(@"name")];
-			[gui setText:OOExpand(scenarioName) forRow:row];
-			[gui setKey:[NSString stringWithFormat:@"Scenario:%zu", i] forRow:row];
+			const oo::PList *scenario = scenarios.at(i);
+			const std::optional<std::string> scenarioTitle = scenario != nullptr ? OptionalStringValue(scenario->find("name")) : std::nullopt;
+			const std::string scenarioName = " " + scenarioTitle.value_or("(null)") + " ";	// @" %@ "
+			[gui setText:OOExpand(oo::NSStringFrom(scenarioName)) forRow:row];
+			[gui cxx_setKey:oo::str::format("Scenario:%zu", i) forRow:row];
 			++row;
 		}
 
 		if ((NSUInteger)(page+1) * n_rows < count)
 		{
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ", nil] forRow:row];
+			[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " } forRow:row];
 			[gui setColor:[OOColor greenColor] forRow:row];
-			[gui setKey:[NSString stringWithFormat:@"__page:%i",page+1] forRow:row];
+			[gui cxx_setKey:oo::str::format("__page:%i",page+1) forRow:row];
 			++row;
 		}
 		
@@ -343,22 +350,23 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
 
-- (void) addScenarioModel:(NSString *)shipKey
+- (void) addScenarioModel:(const std::string &)shipKey
 {
-	[self showShipModelWithKey:shipKey shipData:nil personality:0 factorX:1.2 factorY:0.8 factorZ:6.4 inContext:@"scenario"];
+	[self showShipModelWithKey:oo::NSStringFrom(shipKey) shipData:nil personality:0 factorX:1.2 factorY:0.8 factorZ:6.4 inContext:@"scenario"];
 }
 
 
 - (void) showScenarioDetails
 {
 	GuiDisplayGen* gui = [UNIVERSE gui];
-	NSString* key = [gui selectedRowKey];
+	const std::optional<std::string> key = [gui cxx_selectedRowKey];
 	[UNIVERSE removeDemoShips];
 
-	if ([key hasPrefix:@"Scenario"])
+	if (key && oo::str::hasPrefix(*key, "Scenario"))
 	{
-		int item = oo::PListView([key componentsSeparatedByString:@":"]).at<int>(1);
-		NSDictionary *scenario = [[UNIVERSE scenarios] objectAtIndex:item];
+		int item = SecondFieldIntValue(key);
+		const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
+		const oo::PList *scenario = scenarios.at(item);
 		[self setShowDemoShips:NO];
 		for (NSUInteger i=GUI_ROW_SCENARIOS_DETAIL;i<=27;i++)
 		{
@@ -366,11 +374,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		}
 		if (scenario)
 		{
-			[gui addLongText:OOExpand(oo::PListView(scenario).get<NSString *>(@"description")) startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
-			NSString *shipKey = oo::PListView(scenario).get<NSString *>(@"model");
-			if (shipKey != nil)
+			[gui cxx_addLongText:oo::OptionalString(OOExpand(oo::NSStringOrNil(OptionalStringValue(scenario->find("description"))))) startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
+			const std::optional<std::string> shipKey = OptionalStringValue(scenario->find("model"));
+			if (shipKey)
 			{
-				[self addScenarioModel:shipKey];
+				[self addScenarioModel:*shipKey];
 				[self setShowDemoShips:YES];
 			}
 		}
@@ -382,41 +390,42 @@ unsigned char FirstUnitLowByte(const std::string &string)
 - (BOOL) startScenario
 {
 	GuiDisplayGen* gui = [UNIVERSE gui];
-	NSString* key = [gui selectedRowKey];
+	const std::optional<std::string> key = [gui cxx_selectedRowKey];
 
-	if ([key isEqualToString:@"exit"])
+	if (key == "exit")
 	{
 		// intended to return to main menu
 		return NO; 
 	}
-	if ([key hasPrefix:@"__page"])
+	if (key && oo::str::hasPrefix(*key, "__page"))
 	{
-		int page = oo::PListView([key componentsSeparatedByString:@":"]).at<int>(1);
+		int page = SecondFieldIntValue(key);
 		[self setGuiToScenarioScreen:page];
 		return YES;
 	}
-	int selection = oo::PListView([key componentsSeparatedByString:@":"]).at<int>(1);
+	int selection = SecondFieldIntValue(key);
 
-	NSDictionary *scenario = [[UNIVERSE scenarios] objectAtIndex:selection];
-	NSString *file = oo::PListView(scenario).get<NSString *>(@"file", nil);
-	if (file == nil) 
+	const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
+	const oo::PList *scenario = scenarios.at(selection);
+	const std::optional<std::string> file = scenario != nullptr ? OptionalStringValue(scenario->find("file")) : std::nullopt;
+	if (!file)
 	{
 		OOLog(@"scenario.init.error", @"%@", @"No file entry found for scenario");
 		return NO;
 	}
-	NSString *path = [ResourceManager pathForFileNamed:file inFolder:@"Scenarios"];
-	if (path == nil)
+	const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:*file inFolder:"Scenarios"];
+	if (!path)
 	{
-		OOLog(@"scenario.init.error", @"Game file not found for scenario %@",file);
+		OOLog(@"scenario.init.error", @"Game file not found for scenario %@",oo::NSStringFrom(*file));
 		return NO;
 	}
-	BOOL result = [self loadPlayerFromFile:path asNew:YES];
+	BOOL result = [self loadPlayerFromFile:*path asNew:YES];
 	if (!result)
 	{
 		return NO;
 	}
 	[scenarioKey release];
-	scenarioKey = [oo::PListView(scenario).get<NSString *>(@"scenario", nil) retain];
+	scenarioKey = [oo::NSStringOrNil(OptionalStringValue(scenario->find("scenario"))) retain];
 
 	// don't drop the save game directory in
 	return YES;
@@ -427,7 +436,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 
 #if OO_USE_CUSTOM_LOAD_SAVE
 
-- (NSString *)commanderSelector
+- (std::optional<std::string>)commanderSelector
 {
 	MyOpenGLView	*gameView = [UNIVERSE gameView];
 	GuiDisplayGen	*gui = [UNIVERSE gui];
@@ -482,7 +491,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 				if ([self status] == STATUS_START_GAME)
 				{
 					[self setGuiToIntroFirstGo:YES];
-					return nil;
+					return std::nullopt;
 				}
 				break;
 			case BACKROW:
@@ -500,7 +509,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 				if (idx < 0 || (std::size_t)idx >= cdrDetailArray.size())  break;	// (-objectAtIndex: raised)
 				const oo::PList cdr = cdrDetailArray[idx];
 				if (cdr.get<bool>("isSavedGame"))
-					return oo::NSStringOrNil(OptionalStringValue(cdr.find("saved_game_path")));
+					return OptionalStringValue(cdr.find("saved_game_path"));
 				else
 				{
 					if ([gameView isCommandModifierKeyDown]||[gameView isDown:gvMouseDoubleClick])
@@ -522,7 +531,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		[self setGuiToStatusScreen];
 	}
-	return nil;
+	return std::nullopt;
 }
 
 
@@ -664,7 +673,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 #endif
 
 
-- (BOOL) loadPlayerFromFile:(NSString *)fileToOpen asNew:(BOOL)asNew
+- (BOOL) loadPlayerFromFile:(const std::string &)fileToOpen asNew:(BOOL)asNew
 {
 	/*	TODO: it would probably be better to load by creating a new
 		PlayerEntity, verifying that's OK, then replacing the global player.
@@ -676,22 +685,22 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	*/
 	
 	BOOL			loadedOK = YES;
-	NSDictionary	*fileDic = nil;
-	NSString		*fail_reason = nil;
+	oo::PList		fileDic;
+	std::optional<std::string>	fail_reason;
 	
-	if (fileToOpen == nil)
+	if (fileToOpen.empty())	// (was a nil test: every caller passes a non-nil path)
 	{
-		fail_reason = DESC(@"loadfailed-no-file-specified");
+		fail_reason = oo::OptionalString(DESC(@"loadfailed-no-file-specified"));
 		loadedOK = NO;
 	}
 	
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Reading file");
-		fileDic = OODictionaryFromFile(fileToOpen);
-		if (fileDic == nil)
+		fileDic = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(fileToOpen)));
+		if (!fileDic.isDict())
 		{
-			fail_reason = DESC(@"loadfailed-could-not-load-file");
+			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-load-file"));
 			loadedOK = NO;
 		}
 	}
@@ -699,24 +708,29 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Restricting scenario");
-		NSString *scenarioRestrict = oo::PListView(fileDic).get<NSString *>(@"scenario_restriction", nil);
-		if (scenarioRestrict == nil)
+		std::string scenarioRestrict;
+		const std::optional<std::string> savedRestrict = OptionalStringValue(fileDic.find("scenario_restriction"));
+		if (savedRestrict)
+		{
+			scenarioRestrict = *savedRestrict;
+		}
+		else
 		{
 			// older save game - use the 'strict' key instead
-			BOOL strict = oo::PListView(fileDic).get<BOOL>(@"strict", NO);
+			BOOL strict = fileDic.get<bool>("strict", NO);
 			if (strict)
 			{
-				scenarioRestrict = SCENARIO_OXP_DEFINITION_NONE;
+				scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_NONE);
 			}
 			else
 			{
-				scenarioRestrict = SCENARIO_OXP_DEFINITION_ALL;
+				scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
 			}
 		}
 
-		if (![UNIVERSE setUseAddOns:scenarioRestrict fromSaveGame:YES forceReinit:YES]) 
+		if (![UNIVERSE setUseAddOns:oo::NSStringFrom(scenarioRestrict) fromSaveGame:YES forceReinit:YES])
 		{
-			fail_reason = DESC(@"loadfailed-saved-game-failed-to-load");
+			fail_reason = oo::OptionalString(DESC(@"loadfailed-saved-game-failed-to-load"));
 			loadedOK = NO;
 		} 
 	}
@@ -726,17 +740,16 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	{
 		OOLog(@"load.progress", @"%@", @"Creating player ship");
 		// Check that player ship exists
-		NSString		*shipKey = nil;
-		NSDictionary	*shipDict = nil;
+		const std::optional<std::string>	shipKey = OptionalStringValue(fileDic.find("ship_desc"));
+		oo::PList							shipDict;
 		
-		shipKey = oo::PListView(fileDic).get<NSString *>(@"ship_desc");
-		shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
+		if (shipKey)  shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipKey];
 		
-		if (shipDict == nil)
+		if (shipDict.isNull())
 		{
 			loadedOK = NO;
-			if (shipKey != nil)  fail_reason = [NSString stringWithFormat:DESC(@"loadfailed-could-not-find-ship-type-@-please-reinstall-the-appropriate-OXP"), shipKey];
-			else  fail_reason = DESC(@"loadfailed-invalid-saved-game-no-ship-specified");
+			if (shipKey)  fail_reason = oo::str::formatRuntime(oo::StdString(DESC(@"loadfailed-could-not-find-ship-type-@-please-reinstall-the-appropriate-OXP")), { *shipKey });
+			else  fail_reason = oo::OptionalString(DESC(@"loadfailed-invalid-saved-game-no-ship-specified"));
 		}
 	}
 	
@@ -745,7 +758,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		OOLog(@"load.progress", @"%@", @"Initialising player entity");
 		if (![self setUpAndConfirmOK:YES saveGame:YES])
 		{
-			fail_reason = DESC(@"loadfailed-could-not-reset-javascript");
+			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-reset-javascript"));
 			loadedOK = NO;
 		}
 	}
@@ -753,11 +766,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Loading commander data");
-		if (![self setCommanderDataFromDictionary:fileDic])
+		if (![self setCommanderDataFromDictionary:oo::ObjectFromPList(fileDic)])
 		{
 			// this could still be a reset js issue, if switching from strict / unrestricted
 			// TODO: use "could not reset js message" if that's the case.
-			fail_reason = DESC(@"loadfailed-could-not-set-up-player-ship");
+			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-set-up-player-ship"));
 			loadedOK = NO;
 		}
 	}
@@ -768,20 +781,20 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		if (!asNew)
 		{
 			[save_path autorelease];
-			save_path = [fileToOpen retain];
+			save_path = [oo::NSStringFrom(fileToOpen) retain];
 		
-			[[[UNIVERSE gameView] gameController] setPlayerFileToLoad:fileToOpen];
-			[[[UNIVERSE gameView] gameController] setPlayerFileDirectory:fileToOpen];
+			[[[UNIVERSE gameView] gameController] setPlayerFileToLoad:oo::NSStringFrom(fileToOpen)];
+			[[[UNIVERSE gameView] gameController] setPlayerFileDirectory:oo::NSStringFrom(fileToOpen)];
 		}
 	}
 	else
 	{
-		OOLog(@"load.failed", @"***** Failed to load saved game \"%@\": %@", [fileToOpen lastPathComponent], fail_reason ? fail_reason : (NSString *)@"unknown error");
+		OOLog(@"load.failed", @"***** Failed to load saved game \"%@\": %@", oo::NSStringFrom(oo::str::lastPathComponent(fileToOpen)), oo::NSStringFrom(fail_reason.value_or("unknown error")));
 		[[UNIVERSE gameController] setPlayerFileToLoad:nil];
 		[UNIVERSE handleGameOver];
 		[UNIVERSE clearPreviousMessage];
 		[UNIVERSE addMessage:DESC(@"loadfailed-saved-game-failed-to-load") forCount: 9.0];
-		if (fail_reason != nil)  [UNIVERSE addMessage: fail_reason forCount: 9.0];
+		if (fail_reason)  [UNIVERSE addMessage: oo::NSStringFrom(*fail_reason) forCount: 9.0];
 		return NO;
 	}
 	
@@ -813,15 +826,15 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	flightYaw = 0.0;
 	flightSpeed = 0.0;
 	
-	[self setEntityPersonalityInt:PersonalityForCommanderDict(oo::PListFrom(fileDic))];
+	[self setEntityPersonalityInt:PersonalityForCommanderDict(fileDic)];
 	
 	OOLog(@"load.progress", @"%@", @"Loading system market");
 	// dockedStation is always the main station at this point;
 	// "localMarket" save key always refers to the main station (system) market
-	NSArray *market = oo::PListView(fileDic).get<NSArray *>(@"localMarket");
-	if (market != nil) 
+	const oo::PList *market = fileDic.get<oo::PList::Array>("localMarket");
+	if (market != nullptr)
 	{
-		[dockedStation setLocalMarket:market];
+		[dockedStation setLocalMarket:oo::ObjectFromPList(*market)];
 	}
 	else
 	{
@@ -832,11 +845,11 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	OOLog(@"load.progress", @"%@", @"Setting scenario key");
 	// set scenario key if the scenario allows saving and has one
-	NSString *scenario = oo::PListView(fileDic).get<NSString *>(@"scenario_key", nil);
+	const std::optional<std::string> scenario = OptionalStringValue(fileDic.find("scenario_key"));
 	DESTROY(scenarioKey);
-	if (scenario != nil)
+	if (scenario)
 	{
-		scenarioKey = [scenario retain];
+		scenarioKey = [oo::NSStringFrom(*scenario) retain];
 	}
 
 	OOLog(@"load.progress", @"%@", @"Starting JS engine");
@@ -852,16 +865,18 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	// read saved position vector and primary role, check for an
 	// appropriate station at those coordinates, if found, switch
 	// docked station to that one.
-	HPVector dockedPos = oo::PListView(fileDic).get<HPVector>(@"docked_station_position");
-	NSString *dockedRole = oo::PListView(fileDic).get<NSString *>(@"docked_station_role", @"");
-	StationEntity *saveStation = [UNIVERSE stationWithRole:dockedRole andPosition:dockedPos];
+	const oo::PList *dockedPosNode = fileDic.find("docked_station_position");
+	HPVector dockedPos = OOHPVectorFromObject(dockedPosNode != nullptr ? oo::ObjectFromPList(*dockedPosNode) : nil, kZeroHPVector);
+	const std::string dockedRole = OptionalStringValue(fileDic.find("docked_station_role")).value_or("");
+	StationEntity *saveStation = [UNIVERSE stationWithRole:oo::NSStringFrom(dockedRole) andPosition:dockedPos];
 	if (saveStation != nil && [saveStation allowsSaving])
 	{
 		[self setDockedStation:saveStation];
 		position = [saveStation position];
 	}
 	// and initialise markets for the secondary stations
-	[UNIVERSE loadStationMarkets:oo::PListView(fileDic).get<NSArray *>(@"station_markets")];
+	const oo::PList *stationMarkets = fileDic.get<oo::PList::Array>("station_markets");
+	[UNIVERSE loadStationMarkets:stationMarkets != nullptr ? oo::ObjectFromPList(*stationMarkets) : nil];
 
 	OOLog(@"load.progress", @"%@", @"Completing JS startup");
 	[self startUpComplete];
@@ -901,7 +916,7 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		NSURL *url = oPanel.URL;
 		if (url.isFileURL)
 		{
-			return [self loadPlayerFromFile:url.path asNew:NO];
+			return [self loadPlayerFromFile:oo::StdString(url.path) asNew:NO];
 		}
 	}
 	
@@ -1499,7 +1514,7 @@ OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits)
 
 OOCreditsQuantity OODeciCreditsFromObject(id object)
 {
-	if ([object isKindOfClass:[NSNumber class]] && [object oo_isFloatingPointNumber])
+	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// -oo_isFloatingPointNumber: objCType f or d
 	{
 		return OODeciCreditsFromDouble([object doubleValue]);
 	}
