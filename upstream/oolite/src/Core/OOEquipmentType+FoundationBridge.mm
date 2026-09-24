@@ -13,6 +13,36 @@ counterpart and converts arguments and results at the boundary (nil for nil).
 
 @implementation OOEquipmentType (OOFoundationBridge)
 
++ (void) addEquipmentWithInfo:(NSArray *)itemInfo
+{
+	[self cxx_addEquipmentWithInfo:oo::PListFrom(itemInfo)];
+}
+
+
++ (NSArray *) allEquipmentTypes
+{
+	return oo::NSArrayFromObjects([self cxx_allEquipmentTypes]);
+}
+
+
++ (NSEnumerator *) equipmentEnumerator
+{
+	return [oo::NSArrayFromObjects([self cxx_allEquipmentTypes]) objectEnumerator];
+}
+
+
++ (NSEnumerator *) reverseEquipmentEnumerator
+{
+	return [oo::NSArrayFromObjects([self cxx_allEquipmentTypes]) reverseObjectEnumerator];
+}
+
+
++ (NSEnumerator *) equipmentEnumeratorOutfitting
+{
+	return [oo::NSArrayFromObjects([self cxx_allEquipmentTypesOutfitting]) objectEnumerator];
+}
+
+
 + (NSString *) getMissileRegistryRoleForShip:(NSString *)shipKey
 {
 	if (shipKey == nil)  return nil;

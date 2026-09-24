@@ -27,8 +27,8 @@ SOFTWARE.
 
 #import "OOEquipmentType.h"
 #import "Universe.h"
-#import "OOPListView.h"
 #import "OOLegacyScriptWhitelist.h"
+#import "OOCollectionExtractors.h"	// OOUIntegerFromObject, for the unmigrated -missionVariableForKey:
 #import "OOCacheManager.h"
 #import "OODebugStandards.h"
 #import "PlayerEntityControls.h"
@@ -39,22 +39,39 @@ SOFTWARE.
 
 #include <algorithm>
 
-static NSArray			*sEquipmentTypes = nil;
-static NSArray			*sEquipmentTypesOutfitting = nil;
-
 namespace {
+std::vector<oo::ObjCRef<OOEquipmentType *>>							sEquipmentTypes;
+std::vector<oo::ObjCRef<OOEquipmentType *>>							sEquipmentTypesOutfitting;
 std::map<std::string, oo::ObjCRef<OOEquipmentType *>, std::less<>>	sEquipmentTypesByIdentifier;
 std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship key -> missile role
 
-// requires_equipment & co.: a string or an array of strings (sorted, de-duplicated: was an
-// NSSet); nullopt when absent, and after logging when it is anything else.
-// -[NSDictionary oo_stringForKey:defaultValue:]: a string, or a number's -stringValue, else the
+// requires_equipment & co.: a string or an array of strings (sorted, de-duplicated: was a
+// set); nullopt when absent, and after logging when it is anything else.
+// oo_stringForKey:defaultValue: on a dictionary: a string, or a number's -stringValue, else the
 // fallback.
 std::optional<std::string> StringFor(const oo::PList &info, std::string_view key, const std::optional<std::string> &fallback = std::nullopt)
 {
 	const oo::PList *value = info.find(key);
 	if (value == nullptr || !(value->isString() || value->isNumber()))  return fallback;
 	return info.get<std::string>(key);
+}
+
+
+// oo_stringAtIndex: on an array: a string, or a number's -stringValue; nullopt (nil) otherwise.
+std::optional<std::string> StringAt(const oo::PList &array, std::size_t index)
+{
+	const oo::PList *value = array.at(index);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return array.at<std::string>(index);
+}
+
+
+// -[UNIVERSE equipmentData] & co. are not migrated: each item arrives through oo::PListFrom.
+std::vector<oo::PList> EquipmentItems(id equipmentData)
+{
+	std::vector<oo::PList> items;
+	for (id itemInfo in equipmentData)  items.push_back(oo::PListFrom(itemInfo));
+	return items;
 }
 
 
@@ -88,7 +105,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
  
 @interface OOEquipmentType (Private)
 
-- (id) initWithInfo:(NSArray *)info;
+- (id) initWithInfo:(const oo::PList &)info;	// an equipment.plist entry (an array)
 
 @end
 
@@ -97,25 +114,16 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
  
 + (void) loadEquipment
 {
-	NSArray				*equipmentData = nil;
-	NSMutableArray		*equipmentTypes = nil;
-	NSArray				*itemInfo = nil;
-	OOEquipmentType		*item = nil;
+	std::vector<oo::ObjCRef<OOEquipmentType *>> equipmentTypes;
 	std::vector<std::string> conditionScripts;	// first-seen order
-	
-	equipmentData = [UNIVERSE equipmentData];
-	
-	[sEquipmentTypes release];
-	sEquipmentTypes = nil;
-	equipmentTypes = [NSMutableArray arrayWithCapacity:[equipmentData count]];
 	std::map<std::string, oo::ObjCRef<OOEquipmentType *>, std::less<>> byIdentifier;
-	
-	foreach (itemInfo, equipmentData)
+
+	for (const oo::PList &itemInfo : EquipmentItems([UNIVERSE equipmentData]))
 	{
-		item = [[[OOEquipmentType alloc] initWithInfo:itemInfo] autorelease];
+		OOEquipmentType *item = [[[OOEquipmentType alloc] initWithInfo:itemInfo] autorelease];
 		if (item != nil)
 		{
-			[equipmentTypes addObject:item];
+			equipmentTypes.emplace_back(item);
 			byIdentifier[*[item cxx_identifier]] = oo::ObjCRef<OOEquipmentType *>(item);
 		}
 		const std::optional<std::string> condition_script = [item cxx_conditionScript];
@@ -127,48 +135,34 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 			}
 		}
 	}
-	
+
 	[[OOCacheManager sharedCache] cxx_setObject:oo::NSArrayFromStrings(conditionScripts) forKey:"equipment conditions" inCache:"condition scripts"];
 
-	sEquipmentTypes = [equipmentTypes copy];
+	sEquipmentTypes = equipmentTypes;
 	sEquipmentTypesByIdentifier = byIdentifier;
 
 	// same for the outfitting dataset
-	equipmentData = [UNIVERSE equipmentDataOutfitting];
-
-	[sEquipmentTypesOutfitting release];
-	sEquipmentTypesOutfitting = nil;
-
-	equipmentTypes = [NSMutableArray arrayWithCapacity:[equipmentData count]];
-	foreach (itemInfo, equipmentData)
+	equipmentTypes.clear();
+	for (const oo::PList &itemInfo : EquipmentItems([UNIVERSE equipmentDataOutfitting]))
 	{
-		item = [[[OOEquipmentType alloc] initWithInfo:itemInfo] autorelease];
+		OOEquipmentType *item = [[[OOEquipmentType alloc] initWithInfo:itemInfo] autorelease];
 		if (item != nil)
 		{
-			[equipmentTypes addObject:item];
+			equipmentTypes.emplace_back(item);
 		}
 	}
-	sEquipmentTypesOutfitting = [equipmentTypes copy];
+	sEquipmentTypesOutfitting = equipmentTypes;
 
 }
 
 
-+ (void) addEquipmentWithInfo:(NSArray *)itemInfo
++ (void) cxx_addEquipmentWithInfo:(const oo::PList &)itemInfo
 {
-	NSMutableArray		*equipmentTypes = [NSMutableArray arrayWithArray:sEquipmentTypes];
-	NSMutableArray		*equipmentTypesOutfitting = [NSMutableArray arrayWithArray:sEquipmentTypesOutfitting];
 	OOEquipmentType		*item = [[[OOEquipmentType alloc] initWithInfo:itemInfo] autorelease];
 	if (item != nil)
 	{
-		[equipmentTypes addObject:item];
-		[equipmentTypesOutfitting addObject:item];
-		
-		[sEquipmentTypes release];
-		sEquipmentTypes = nil;
-		[sEquipmentTypesOutfitting release];
-		sEquipmentTypesOutfitting = nil;
-		sEquipmentTypes = [equipmentTypes copy];
-		sEquipmentTypesOutfitting = [equipmentTypesOutfitting copy];
+		sEquipmentTypes.emplace_back(item);
+		sEquipmentTypesOutfitting.emplace_back(item);
 		sEquipmentTypesByIdentifier[*[item cxx_identifier]] = oo::ObjCRef<OOEquipmentType *>(item);
 	}
 }
@@ -192,27 +186,15 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-+ (NSArray *) allEquipmentTypes
++ (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_allEquipmentTypes
 {
 	return sEquipmentTypes;
 }
 
 
-+ (NSEnumerator *) equipmentEnumerator
++ (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_allEquipmentTypesOutfitting
 {
-	return [sEquipmentTypes objectEnumerator];
-}
-
-
-+ (NSEnumerator *) reverseEquipmentEnumerator
-{
-	return [sEquipmentTypes reverseObjectEnumerator];
-}
-
-
-+ (NSEnumerator *) equipmentEnumeratorOutfitting
-{
-	return [sEquipmentTypesOutfitting objectEnumerator];
+	return sEquipmentTypesOutfitting;
 }
 
 
@@ -223,35 +205,34 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-- (id) initWithInfo:(NSArray *)info
+- (id) initWithInfo:(const oo::PList &)info
 {
 	BOOL				OK = YES;
-	NSDictionary		*extra = nil;
 
 	self = [super init];
 	if (self == nil)  OK = NO;
 	
-	if (OK && [info count] <= EQUIPMENT_LONG_DESC_INDEX)  OK = NO;
+	if (OK && info.count() <= EQUIPMENT_LONG_DESC_INDEX)  OK = NO;
 	
 	if (OK)
 	{
 		// Read required attributes
-		_techLevel = oo::PListView(info).at<unsigned int>(EQUIPMENT_TECH_LEVEL_INDEX);
-		_price = oo::PListView(info).at<unsigned int>(EQUIPMENT_PRICE_INDEX);
-		id name = oo::PListView(info).at<NSString *>(EQUIPMENT_SHORT_DESC_INDEX);
-		id identifier = oo::PListView(info).at<NSString *>(EQUIPMENT_KEY_INDEX);
-		id description = oo::PListView(info).at<NSString *>(EQUIPMENT_LONG_DESC_INDEX);
+		_techLevel = info.at<unsigned int>(EQUIPMENT_TECH_LEVEL_INDEX);
+		_price = info.at<unsigned int>(EQUIPMENT_PRICE_INDEX);
+		const std::optional<std::string> name = StringAt(info, EQUIPMENT_SHORT_DESC_INDEX);
+		const std::optional<std::string> identifier = StringAt(info, EQUIPMENT_KEY_INDEX);
+		const std::optional<std::string> description = StringAt(info, EQUIPMENT_LONG_DESC_INDEX);
 
-		if (name == nil || identifier == nil || description == nil)
+		if (!name.has_value() || !identifier.has_value() || !description.has_value())
 		{
-			OOLog(@"equipment.load", @"***** ERROR: Invalid equipment.plist entry - missing name, identifier or description (\"%@\", %@, \"%@\")", name, identifier, description);
+			OOLog(@"equipment.load", @"***** ERROR: Invalid equipment.plist entry - missing name, identifier or description (\"%@\", %@, \"%@\")", oo::NSStringOrNil(name), oo::NSStringOrNil(identifier), oo::NSStringOrNil(description));
 			OK = NO;
 		}
 		else
 		{
-			_name = oo::StdString(name);
-			_identifier = oo::StdString(identifier);
-			_description = oo::StdString(description);
+			_name = *name;
+			_identifier = *identifier;
+			_description = *description;
 		}
 	}
 	
@@ -278,36 +259,35 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 		_hideValues = NO;
 	}
 	
-	if (OK && [info count] > EQUIPMENT_EXTRA_INFO_INDEX)
+	if (OK && info.count() > EQUIPMENT_EXTRA_INFO_INDEX)
 	{
 		// Read extra info dictionary
-		extra = oo::PListView(info).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX);
-		if (extra != nil)
+		const oo::PList *extra = info.at<oo::PList::Dict>(EQUIPMENT_EXTRA_INFO_INDEX);
+		if (extra != nullptr)
 		{
-			// One property-list copy of the extra-info dictionary (bead oo-fvnu's chunks read from it).
-			const oo::PList extraInfo = oo::PListFrom(extra);
+			const oo::PList &extraInfo = *extra;
 
-			_isAvailableToAll = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_all", _isAvailableToAll);
-			_isAvailableToPlayer = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_player", _isAvailableToPlayer);
-			_isAvailableToNPCs = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_NPCs", _isAvailableToNPCs);
+			_isAvailableToAll = (unsigned char)extraInfo.get<bool>("available_to_all", _isAvailableToAll);
+			_isAvailableToPlayer = (unsigned char)extraInfo.get<bool>("available_to_player", _isAvailableToPlayer);
+			_isAvailableToNPCs = (unsigned char)extraInfo.get<bool>("available_to_NPCs", _isAvailableToNPCs);
 			
-			_isMissileOrMine = (unsigned char)oo::PListView(extra).get<BOOL>(@"is_external_store", _isMissileOrMine);
-			_requiresEmptyPylon = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_empty_pylon", _requiresEmptyPylon);
-			_requiresMountedPylon = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_mounted_pylon", _requiresMountedPylon);
-			_requiresClean = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_clean", _requiresClean);
-			_requiresNotClean = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_not_clean", _requiresNotClean);
-			_portableBetweenShips = (unsigned char)oo::PListView(extra).get<BOOL>(@"portable_between_ships", _portableBetweenShips);
-			_requiresFreePassengerBerth = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_free_passenger_berth", _requiresFreePassengerBerth);
-			_requiresFullFuel = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_full_fuel", _requiresFullFuel);
-			_requiresNonFullFuel = (unsigned char)oo::PListView(extra).get<BOOL>(@"requires_non_full_fuel", _requiresNonFullFuel);
-			_isVisible = (unsigned char)oo::PListView(extra).get<BOOL>(@"visible", _isVisible);
-			_canCarryMultiple = (unsigned char)oo::PListView(extra).get<BOOL>(@"can_carry_multiple", NO);
-			_hideValues = (unsigned char)oo::PListView(extra).get<BOOL>(@"hide_values", NO);
+			_isMissileOrMine = (unsigned char)extraInfo.get<bool>("is_external_store", _isMissileOrMine);
+			_requiresEmptyPylon = (unsigned char)extraInfo.get<bool>("requires_empty_pylon", _requiresEmptyPylon);
+			_requiresMountedPylon = (unsigned char)extraInfo.get<bool>("requires_mounted_pylon", _requiresMountedPylon);
+			_requiresClean = (unsigned char)extraInfo.get<bool>("requires_clean", _requiresClean);
+			_requiresNotClean = (unsigned char)extraInfo.get<bool>("requires_not_clean", _requiresNotClean);
+			_portableBetweenShips = (unsigned char)extraInfo.get<bool>("portable_between_ships", _portableBetweenShips);
+			_requiresFreePassengerBerth = (unsigned char)extraInfo.get<bool>("requires_free_passenger_berth", _requiresFreePassengerBerth);
+			_requiresFullFuel = (unsigned char)extraInfo.get<bool>("requires_full_fuel", _requiresFullFuel);
+			_requiresNonFullFuel = (unsigned char)extraInfo.get<bool>("requires_non_full_fuel", _requiresNonFullFuel);
+			_isVisible = (unsigned char)extraInfo.get<bool>("visible", _isVisible);
+			_canCarryMultiple = (unsigned char)extraInfo.get<bool>("can_carry_multiple", false);
+			_hideValues = (unsigned char)extraInfo.get<bool>("hide_values", false);
 
-			_requiredCargoSpace = oo::PListView(extra).get<unsigned int>(@"requires_cargo_space", _requiredCargoSpace);
+			_requiredCargoSpace = extraInfo.get<unsigned int>("requires_cargo_space", _requiredCargoSpace);
 
-			_installTime = oo::PListView(extra).get<unsigned int>(@"installation_time", 0);
-			_repairTime = oo::PListView(extra).get<unsigned int>(@"repair_time", 0);
+			_installTime = extraInfo.get<unsigned int>("installation_time", 0);
+			_repairTime = extraInfo.get<unsigned int>("repair_time", 0);
 			if (const oo::PList *provides = extraInfo.get<oo::PList::Array>("provides"))
 			{
 				for (const oo::PList &element : *provides->getIf<oo::PList::Array>())
@@ -316,13 +296,14 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 				}
 			}
 
-			id dispColor = oo::PListView(extra).get<id>(@"display_color", nil);
-			_displayColor = [[OOColor colorWithDescription:dispColor] retain];
+			// +colorWithDescription: is not migrated: the node crosses as the object it was.
+			const oo::PList *dispColor = extraInfo.find("display_color");
+			_displayColor = [[OOColor colorWithDescription:(dispColor != nullptr) ? oo::ObjectFromPList(*dispColor) : nil] retain];
 
 			const oo::PList *weaponInfo = extraInfo.get<oo::PList::Dict>("weapon_info");
 			_weaponInfo = (weaponInfo != nullptr) ? *weaponInfo : oo::PList(oo::PList::Dict{});
 
-			_damageProbability = oo::PListView(extra).get<float>(@"damage_probability", (_isMissileOrMine?0.0:1.0));
+			_damageProbability = extraInfo.get<float>("damage_probability", (_isMissileOrMine?0.0:1.0));
 			
 
 			_requiresEquipment = EquipmentKeysFrom(extraInfo, "requires_equipment", _identifier);
@@ -367,8 +348,8 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 			if (_script.has_value() && ![OOScript jsScriptFromFileNamed:oo::NSStringFrom(*_script) properties:nil])  _script.reset();
 			if (_script.has_value())
 			{
-				_fastAffinityA = !!oo::PListView(extra).get<BOOL>(@"fast_affinity_defensive");
-				_fastAffinityB = !!oo::PListView(extra).get<BOOL>(@"fast_affinity_offensive");
+				_fastAffinityA = !!extraInfo.get<bool>("fast_affinity_defensive");
+				_fastAffinityB = !!extraInfo.get<bool>("fast_affinity_offensive");
 
 				// look for default activate and mode key settings
 				// note: the customEquipmentActivation array is only populated when starting a game
