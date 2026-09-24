@@ -432,7 +432,7 @@ typedef enum
 #endif
 	
 	uint16_t				entity_personality;			// Per-entity random number. Exposed to shaders and scripts.
-	NSDictionary			*scriptInfo;				// script_info dictionary from shipdata.plist, exposed to scripts.
+	oo::PList				scriptInfo;				// script_info dictionary from shipdata.plist, exposed to scripts; null: none
 	
 	std::vector<oo::ObjCRef<Entity *>>	subEntities;	// empty == none (was nil)
 	OOEquipmentType			*missile_list[SHIPENTITY_MAX_MISSILES];
@@ -506,7 +506,7 @@ typedef enum
 - (AI *) getAI;
 - (BOOL) hasAutoAI;
 - (BOOL) hasNewAI;
-- (void) setShipScript:(NSString *)script_name;
+- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name;
 - (void) removeScript;
 - (OOScript *) shipScript;
 - (OOScript *) shipAIScript;
@@ -1240,8 +1240,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 - (OOJSScript *) script;
-- (NSDictionary *) scriptInfo;
-- (void) overrideScriptInfo:(NSDictionary *)override;	// Add items from override (if not nil) to scriptInfo, replacing in case of duplicates. Used for subentities.
+- (id) scriptInfo;	// shared selector (proposed ADR-0043): an Objective-C dictionary (empty when there is none)
+- (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
 - (BOOL) scriptedMisjump;
 - (void) setScriptedMisjump:(BOOL)newValue;
@@ -1313,25 +1313,6 @@ oo::PList OODefaultShipShaderMacros(void);
 
 GLfloat getWeaponRangeFromType(OOWeaponType weapon_type);
 
-// Defined in OOConstToString.m
-NSString *OOStringFromBehaviour(OOBehaviour behaviour) CONST_FUNC;
-
-// Weapon strings prefixed with EQ_, used in shipyard.plist.
-NSString *OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon) CONST_FUNC;
-#ifdef __cplusplus
-extern "C" {
-#endif
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierSloppy(NSString *string) PURE_FUNC;	// Uses suffix match for backwards compatibility.
-#ifdef __cplusplus
-}
-#endif
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierStrict(NSString *string) PURE_FUNC;
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string);
-
-
-NSString *OOStringFromWeaponType(OOWeaponType weapon) CONST_FUNC;
-OOWeaponType OOWeaponTypeFromString(NSString *string) PURE_FUNC;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -1340,12 +1321,8 @@ BOOL isWeaponNone(OOWeaponType weapon);
 }
 #endif
 
-NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
-
-NSString *OOStringFromShipDamageType(OOShipDamageType type) CONST_FUNC;
-
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161); the Foundation forms
-// above forward to them from OOConstToString+FoundationBridge.mm.
+// in ShipEntity+FoundationBridge.h forward to them from OOConstToString+FoundationBridge.mm.
 std::string cxx_OOStringFromBehaviour(OOBehaviour behaviour);
 std::string cxx_OOStringFromShipDamageType(OOShipDamageType type);
 

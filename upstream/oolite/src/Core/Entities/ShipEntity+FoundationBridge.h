@@ -85,6 +85,9 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (BOOL)setUpFromDictionary:(NSDictionary *) shipDict;	// -> -cxx_setUpFromDictionary:
 - (NSDictionary *)shipInfoDictionary;	// -> -cxx_shipInfoDictionary
 
+// oo-3rb.242: script
+- (void) setShipScript:(NSString *)script_name;	// -> -cxx_setShipScript:
+
 // oo-3rb.240: identity: names, roles, ship key, descriptions
 - (NSString *) shipDataKey;	// -> -cxx_shipDataKey
 - (NSString *) shipDataKeyAutoRole;	// -> -cxx_shipDataKeyAutoRole
@@ -107,5 +110,32 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 
 // oo-3rb.234
 Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, NSString* align);	// -> cxx_positionOffsetForShipInRotationToAlignment
+
+
+// oo-3rb.242: the OOConstToString functions ShipEntity.h declared, moved here verbatim with their
+// linkage (bead oo-nts1's rule); defined in OOConstToString+FoundationBridge.mm, forwarding to the
+// cxx_ forms that ShipEntity.h still declares.
+// Defined in OOConstToString.m
+NSString *OOStringFromBehaviour(OOBehaviour behaviour) CONST_FUNC;
+
+// Weapon strings prefixed with EQ_, used in shipyard.plist.
+NSString *OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon) CONST_FUNC;
+#ifdef __cplusplus
+extern "C" {
+#endif
+OOWeaponType OOWeaponTypeFromEquipmentIdentifierSloppy(NSString *string) PURE_FUNC;	// Uses suffix match for backwards compatibility.
+#ifdef __cplusplus
+}
+#endif
+OOWeaponType OOWeaponTypeFromEquipmentIdentifierStrict(NSString *string) PURE_FUNC;
+OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string);
+
+
+NSString *OOStringFromWeaponType(OOWeaponType weapon) CONST_FUNC;
+OOWeaponType OOWeaponTypeFromString(NSString *string) PURE_FUNC;
+
+NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
+
+NSString *OOStringFromShipDamageType(OOShipDamageType type) CONST_FUNC;
 
 #endif	// SHIPENTITY_FOUNDATIONBRIDGE_H

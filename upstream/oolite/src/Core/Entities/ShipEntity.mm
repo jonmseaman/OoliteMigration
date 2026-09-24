@@ -98,9 +98,7 @@ MA 02110-1301, USA.
 #define USEMASC 1
 
 
-static NSString * const kOOLogSyntaxAddShips			= @"script.debug.syntax.addShips";
 #ifndef NDEBUG
-static NSString * const kOOLogEntityBehaviourChanged	= @"entity.behaviour.changed";
 #endif
 
 #if MASS_DEPENDENT_FUEL_PRICES
@@ -133,7 +131,7 @@ static GLfloat calcFuelChargeRate (GLfloat myMass)
 namespace {
 
 /*	Readers for a subentity / ship configuration held as an oo::PList (the Foundation sweep,
-	proposed ADR-0043): what oo::PListView(dict).get<NSArray *> / get<NSString *> / get<HPVector> /
+	proposed ADR-0043): what oo::PListView(dict)'s array / string / get<HPVector> /
 	get<Quaternion> answered. A string is nil (nullopt) when the key is absent or holds neither a
 	string nor a number; vectors and quaternions go through OOCollectionExtractors' readers
 	(unmigrated), with their defaults for a missing key.
@@ -251,11 +249,18 @@ id ObjectForKey(const oo::PList &dict, std::string_view key)
 }
 
 
-// An array value handed on to code that still takes Objective-C objects: the array, or nil.
-id ArrayObjectForKey(const oo::PList &dict, std::string_view key)
+// The strings in an array value, as a set of names (a string set's -containsObject: of a string
+// never matched anything else); empty when the value is absent or not an array.
+std::set<std::string> NamesInArrayForKey(const oo::PList &dict, std::string_view key)
 {
+	std::set<std::string> names;
 	const oo::PList *value = ArrayForKey(dict, key);
-	return value != nullptr ? oo::ObjectFromPList(*value) : nil;
+	if (value == nullptr)  return names;
+	for (const oo::PList &entry : *value->getIf<oo::PList::Array>())
+	{
+		if (const std::string *name = entry.getIf<std::string>())  names.insert(*name);
+	}
+	return names;
 }
 
 }	// namespace
@@ -633,7 +638,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	[self setSunGlareFilter:shipDict.get<float>("sun_glare_filter", 0.97f)];
 	
 	// Get scriptInfo dictionary, containing arbitrary stuff scripts might be interested in.
-	scriptInfo = [oo::ObjectFromPList(DictionaryForKey(shipDict, "script_info")) retain];	// nil when absent
+	scriptInfo = DictionaryForKey(shipDict, "script_info");	// null when absent
 
 	const oo::PList *explosion = ArrayForKey(shipDict, "explosion_type");
 	explosionType = explosion != nullptr ? *explosion : oo::PList();	// null when absent
@@ -896,7 +901,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		}
 	}
 	
-	[self setShipScript:oo::NSStringOrNil(StringForKey(shipDict, "script"))];
+	[self cxx_setShipScript:StringForKey(shipDict, "script")];
 
 	home_system = [UNIVERSE currentSystemID];
 	destination_system = [UNIVERSE currentSystemID];
@@ -1099,7 +1104,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	}
 	
 	const oo::PList *scriptInfoOverride = subentDict.find("script_info");
-	[subentity overrideScriptInfo:(scriptInfoOverride != nullptr && scriptInfoOverride->isDict()) ? oo::ObjectFromPList(*scriptInfoOverride) : nil];
+	[subentity overrideScriptInfo:(scriptInfoOverride != nullptr && scriptInfoOverride->isDict()) ? *scriptInfoOverride : oo::PList()];
 	
 	[self addSubEntity:subentity];
 	[subentity setSubIdx:_maxShipSubIdx];
@@ -2573,7 +2578,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	// DEBUGGING
 	if (reportAIMessages && (debugLastBehaviour != behaviour))
 	{
-		OOLog(kOOLogEntityBehaviourChanged, @"%@ behaviour is now %@", self, OOStringFromBehaviour(behaviour));
+		OOLog(@"entity.behaviour.changed", @"%@ behaviour is now %@", self, oo::NSStringFrom(cxx_OOStringFromBehaviour(behaviour)));
 		debugLastBehaviour = behaviour;
 	}
 #endif
@@ -3140,7 +3145,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (includeWeapons)
 	{
 		// Check for primary weapon
-		OOWeaponType weaponType = OOWeaponTypeFromEquipmentIdentifierStrict(oo::NSStringFrom(itemKey));
+		OOWeaponType weaponType = cxx_OOWeaponTypeFromEquipmentIdentifierStrict(itemKey);
 		if (!isWeaponNone(weaponType))
 		{
 			if ([self hasPrimaryWeapon:weaponType])  return YES;
@@ -3611,7 +3616,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	// sets WEAPON_NONE if not recognised
 	if (weapon_facings & facing) 
 	{
-		OOWeaponType chosen_weapon = OOWeaponTypeFromEquipmentIdentifierStrict(eqKey);
+		OOWeaponType chosen_weapon = cxx_OOWeaponTypeFromEquipmentIdentifierStrict(oo::StdString(eqKey));	// nil as "", as the Foundation form sent it
 		switch (facing)
 		{
 			case WEAPON_FACING_FORWARD:
@@ -4703,7 +4708,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		}
 		if (isWeaponNone(forward_weapon_real_type) && hasTurrets)
 		{ // safety for ships only equipped with turrets
-			forward_weapon_real_type = OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_PULSE_LASER");
+			forward_weapon_real_type = cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_PULSE_LASER");
 			forward_weapon_real_temp = COMBAT_AI_WEAPON_TEMP_USABLE * 0.9;
 		}
 	}
@@ -8137,61 +8142,60 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 }
 
 
-- (void) setShipScript:(NSString *)script_name
+- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name
 {
-	NSMutableDictionary		*properties = nil;
-	NSArray					*actions = nil;
-	
-	properties = [NSMutableDictionary dictionary];
-	[properties setObject:self forKey:@"ship"];
-	
+	oo::PList::Dict			properties;
+	const oo::PList			*actions = nullptr;
+
+	properties["ship"] = oo::PListObject(self);
+
 	[script autorelease];
-	script = [OOScript jsScriptFromFileNamed:script_name properties:properties];
-	
+	script = [OOScript cxx_jsScriptFromFileNamed:script_name.value_or(std::string()) properties:oo::PList(properties)];	// nil as "", as the Foundation form sent it
+
 	if (script == nil)
 	{
-		actions = ArrayObjectForKey(shipinfoDictionary, "launch_actions");
+		actions = ArrayForKey(shipinfoDictionary, "launch_actions");
 		if (actions)
 		{
-			OOStandardsDeprecated([NSString stringWithFormat:@"The launch_actions ship key is deprecated on %@.",[self displayName]]);
-			if (!OOEnforceStandards()) 
+			cxx_OOStandardsDeprecated(oo::str::format("The launch_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			if (!OOEnforceStandards())
 			{
-				[properties setObject:actions forKey:@"legacy_launchActions"];	
+				properties["legacy_launchActions"] = *actions;
 			}
 		}
 
-		actions = ArrayObjectForKey(shipinfoDictionary, "script_actions");
+		actions = ArrayForKey(shipinfoDictionary, "script_actions");
 		if (actions)
 		{
-			OOStandardsDeprecated([NSString stringWithFormat:@"The script_actions ship key is deprecated on %@.",[self displayName]]);
-			if (!OOEnforceStandards()) 
+			cxx_OOStandardsDeprecated(oo::str::format("The script_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			if (!OOEnforceStandards())
 			{
-				[properties setObject:actions forKey:@"legacy_scriptActions"];	
+				properties["legacy_scriptActions"] = *actions;
 			}
 		}
 
-		actions = ArrayObjectForKey(shipinfoDictionary, "death_actions");
+		actions = ArrayForKey(shipinfoDictionary, "death_actions");
 		if (actions)
 		{
-			OOStandardsDeprecated([NSString stringWithFormat:@"The death_actions ship key is deprecated on %@.",[self displayName]]);
-			if (!OOEnforceStandards()) 
+			cxx_OOStandardsDeprecated(oo::str::format("The death_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			if (!OOEnforceStandards())
 			{
-				[properties setObject:actions forKey:@"legacy_deathActions"];	
+				properties["legacy_deathActions"] = *actions;
 			}
 		}
 
-		actions = ArrayObjectForKey(shipinfoDictionary, "setup_actions");
+		actions = ArrayForKey(shipinfoDictionary, "setup_actions");
 		if (actions)
 		{
-			OOStandardsDeprecated([NSString stringWithFormat:@"The setup_actions ship key is deprecated on %@.",[self displayName]]);
-			if (!OOEnforceStandards()) 
+			cxx_OOStandardsDeprecated(oo::str::format("The setup_actions ship key is deprecated on %s.", oo::DescriptionOf([self displayName]).c_str()));
+			if (!OOEnforceStandards())
 			{
-				[properties setObject:actions forKey:@"legacy_setupActions"];	
+				properties["legacy_setupActions"] = *actions;
 			}
 		}
-		
-		script = [OOScript jsScriptFromFileNamed:@"oolite-default-ship-script.js"
-									  properties:properties];
+
+		script = [OOScript cxx_jsScriptFromFileNamed:"oolite-default-ship-script.js"
+										  properties:oo::PList(std::move(properties))];
 	}
 	[script retain];
 }
@@ -14405,7 +14409,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 	if (tokens.size() != 2)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"***** Could not spawn: \"%@\" (must be two tokens, role and number)",roles_number);
+		OOLog(@"script.debug.syntax.addShips", @"***** Could not spawn: \"%@\" (must be two tokens, role and number)",roles_number);
 		return;
 	}
 
@@ -14570,9 +14574,9 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 #ifndef NDEBUG
 - (void)dumpSelfState
 {
-	NSMutableArray		*flags = nil;
-	NSString			*flagsString = nil;
-	
+	std::vector<std::string>	flags;
+	std::string				flagsString;
+
 	[super dumpSelfState];
 	
 	OOLog(@"dumpState.shipEntity", @"Type: %@", [self shipDataKey]);
@@ -14582,7 +14586,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	OOLog(@"dumpState.shipEntity", @"Primary role: %@", oo::NSStringOrNil(primaryRole));
 	OOLog(@"dumpState.shipEntity", @"Script: %@", script);
 	OOLog(@"dumpState.shipEntity", @"Subentity count: %zu", [self subEntityCount]);
-	OOLog(@"dumpState.shipEntity", @"Behaviour: %@", OOStringFromBehaviour(behaviour));
+	OOLog(@"dumpState.shipEntity", @"Behaviour: %@", oo::NSStringFrom(cxx_OOStringFromBehaviour(behaviour)));
 	id target = [self primaryTarget];
 	if (target == nil)  target = @"<none>";
 	OOLog(@"dumpState.shipEntity", @"Target: %@", target);
@@ -14622,8 +14626,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	OOLog(@"dumpState.shipEntity", @"Hull temperature: %g", ship_temperature);
 	OOLog(@"dumpState.shipEntity", @"Heat insulation: %g", [self heatInsulation]);
 	
-	flags = [NSMutableArray array];
-	#define ADD_FLAG_IF_SET(x)		if (x) { [flags addObject:@#x]; }
+	#define ADD_FLAG_IF_SET(x)		if (x) { flags.push_back(#x); }
 	ADD_FLAG_IF_SET(military_jammer_active);
 	ADD_FLAG_IF_SET(docking_match_rotation);
 	ADD_FLAG_IF_SET(pitching_over);
@@ -14637,8 +14640,13 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	ADD_FLAG_IF_SET(cloaking_device_active);
 	ADD_FLAG_IF_SET(canFragment);
 	ADD_FLAG_IF_SET([self proximityAlert] != nil);
-	flagsString = [flags count] ? [flags componentsJoinedByString:@", "] : (NSString *)@"none";
-	OOLog(@"dumpState.shipEntity", @"Flags: %@", flagsString);
+	for (const std::string &flag : flags)
+	{
+		if (!flagsString.empty())  flagsString += ", ";
+		flagsString += flag;
+	}
+	if (flags.empty())  flagsString = "none";
+	OOLog(@"dumpState.shipEntity", @"Flags: %@", oo::NSStringFrom(flagsString));
 }
 #endif
 
@@ -14649,21 +14657,21 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (NSDictionary *)scriptInfo
+- (id)scriptInfo	// shared selector (proposed ADR-0043)
 {
-	return (scriptInfo != nil) ? scriptInfo : (NSDictionary *)[NSDictionary dictionary];
+	return oo::ObjectFromPList(scriptInfo.isNull() ? oo::PList(oo::PList::Dict{}) : scriptInfo);	// empty rather than nil
 }
 
 
-- (void) overrideScriptInfo:(NSDictionary *)override
+- (void) overrideScriptInfo:(const oo::PList &)override
 {
-	if (scriptInfo == nil)  scriptInfo = [override retain];
-	else if (override != nil)
+	if (scriptInfo.isNull())  scriptInfo = override;
+	else if (!override.isNull())
 	{
-		NSMutableDictionary *newInfo = [NSMutableDictionary dictionaryWithDictionary:scriptInfo];
-		[newInfo addEntriesFromDictionary:override];
-		[scriptInfo release];
-		scriptInfo = [newInfo copy];
+		// both are dictionaries: a copy with the override's entries added, replacing duplicates
+		oo::PList::Dict newInfo = *scriptInfo.getIf<oo::PList::Dict>();
+		for (const auto &[key, value] : *override.getIf<oo::PList::Dict>())  newInfo[key] = value;
+		scriptInfo = oo::PList(std::move(newInfo));
 	}
 }
 
@@ -14908,15 +14916,14 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 
 #ifndef NDEBUG
-- (NSString *) descriptionForObjDump
+- (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
 {
-	NSString *desc = [super descriptionForObjDump];
-	desc = [NSString stringWithFormat:@"%@ mass %g", desc, [self mass]];
+	std::string desc = oo::str::format("%s mass %g", oo::DescriptionOf([super descriptionForObjDump]).c_str(), [self mass]);
 	if (![self isPlayer])
 	{
-		desc = [NSString stringWithFormat:@"%@ AI: %@", desc, [[self getAI] shortDescriptionComponents]];
+		desc = oo::str::format("%s AI: %s", desc.c_str(), oo::DescriptionOf([[self getAI] shortDescriptionComponents]).c_str());
 	}
-	return desc;
+	return oo::NSStringFrom(desc);
 }
 #endif
 
@@ -14981,36 +14988,27 @@ oo::PList OODefaultShipShaderMacros(void)
 // is this the right place for this function now? - CIM
 BOOL OOUniformBindingPermitted(const std::string &propertyName, id bindingTarget)
 {
-	static NSSet			*entityWhitelist = nil;
-	static NSSet			*shipWhitelist = nil;
-	static NSSet			*playerShipWhitelist = nil;
-	static NSSet			*visualEffectWhitelist = nil;
-	
-	if (entityWhitelist == nil)
-	{
-		NSDictionary *wlDict = [ResourceManager whitelistDictionary];
-		entityWhitelist = [[NSSet alloc] initWithArray:oo::PListView(wlDict).get<NSArray *>(@"shader_entity_binding_methods")];
-		shipWhitelist = [[NSSet alloc] initWithArray:oo::PListView(wlDict).get<NSArray *>(@"shader_ship_binding_methods")];
-		playerShipWhitelist = [[NSSet alloc] initWithArray:oo::PListView(wlDict).get<NSArray *>(@"shader_player_ship_binding_methods")];
-		visualEffectWhitelist = [[NSSet alloc] initWithArray:oo::PListView(wlDict).get<NSArray *>(@"shader_visual_effect_binding_methods")];
-	}
+	// the whitelists, read once (membership only)
+	static const oo::PList					wlDict = [ResourceManager cxx_whitelistDictionary];
+	static const std::set<std::string>		entityWhitelist = NamesInArrayForKey(wlDict, "shader_entity_binding_methods");
+	static const std::set<std::string>		shipWhitelist = NamesInArrayForKey(wlDict, "shader_ship_binding_methods");
+	static const std::set<std::string>		playerShipWhitelist = NamesInArrayForKey(wlDict, "shader_player_ship_binding_methods");
+	static const std::set<std::string>		visualEffectWhitelist = NamesInArrayForKey(wlDict, "shader_visual_effect_binding_methods");
 
-	id property = oo::NSStringFrom(propertyName);	// the whitelists hold the names as strings
-	
 	if ([bindingTarget isKindOfClass:[Entity class]])
 	{
-		if ([entityWhitelist containsObject:property])  return YES;
+		if (entityWhitelist.contains(propertyName))  return YES;
 		if ([bindingTarget isShip])
 		{
-			if ([shipWhitelist containsObject:property])  return YES;
+			if (shipWhitelist.contains(propertyName))  return YES;
 		}
 		if ([bindingTarget isPlayerLikeShip])
 		{
-			if ([playerShipWhitelist containsObject:property])  return YES;
+			if (playerShipWhitelist.contains(propertyName))  return YES;
 		}
 		if ([bindingTarget isVisualEffect])
 		{
-			if ([visualEffectWhitelist containsObject:property])  return YES;
+			if (visualEffectWhitelist.contains(propertyName))  return YES;
 		}
 	}
 	
