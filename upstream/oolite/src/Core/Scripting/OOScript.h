@@ -61,7 +61,7 @@ MA 02110-1301, USA.
 + (id)cxx_jsAIScriptFromFileNamed:(const std::string &)fileName properties:(const oo::PList &)properties;
 
 - (id)name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
-- (id)scriptDescription;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>)scriptDescription;	// nullopt: none
 - (id)version;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
 - (id)displayName;	// shared selector (proposed ADR-0043): "name version" if version is defined, otherwise just "name".
 
