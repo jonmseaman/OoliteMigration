@@ -1143,7 +1143,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	WormholeEntity *wh = nil;
 	foreach (wh, scannedWormholes)
 	{
-		[wormholeDicts addObject:[wh getDict]];
+		[wormholeDicts addObject:oo::ObjectFromPList([wh getDict])];
 	}
 	[result setObject:wormholeDicts forKey:@"wormholes"];
 
@@ -1771,7 +1771,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	scannedWormholes = [[NSMutableArray alloc] initWithCapacity:[whArray count]];
 	foreach (whCurrDict, whArray)
 	{
-		WormholeEntity * wh = [[WormholeEntity alloc] initWithDict:whCurrDict];
+		WormholeEntity * wh = [[WormholeEntity alloc] initWithDict:oo::PListFrom(whCurrDict)];
 		[scannedWormholes addObject:wh];
 		/* TODO - add to Universe if the wormhole hasn't expired yet; but in this case
 		 * we need to save/load position and mass as well, which we currently 
@@ -7800,7 +7800,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	// To avoid this problem, a small wormhole displacement is added.
 	if (wormhole)	// will be nil for galactic jump
 	{
-		if ([[wormhole shipsInTransit] count] > 0)
+		if ([wormhole shipsInTransit].count() > 0)
 		{
 			// player is not allone in his wormhole, synchronise player and wormhole position.
 			double	wh_arrival_time = ([PLAYER clockTimeAdjusted] - [wormhole arrivalTime]);
@@ -13189,7 +13189,7 @@ else _dockTarget = NO_TARGET;
 		else if (NSEqualPoints(galaxy_coordinates, [wh destinationCoordinates]))
 		{
 			[wh disgorgeShips];
-			if ([[wh shipsInTransit] count] > 0)
+			if ([wh shipsInTransit].count() > 0)
 			{
 				[savedWormholes addObject:wh];
 			}
