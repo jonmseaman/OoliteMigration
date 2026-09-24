@@ -2232,10 +2232,9 @@ static const char * const kOOCacheOctrees = "octrees";
 	Octree				*result = nil;
 	OOCacheManager		*cache = [self sharedCache];
 
-	// Octree is not migrated: its cached dictionary goes straight from the cache to it.
 	if ([cache cxx_objectForKey:inKey inCache:kOOCacheOctrees] != nil)
 	{
-		result = [[Octree alloc] initWithDictionary:[cache cxx_objectForKey:inKey inCache:kOOCacheOctrees]];
+		result = [[Octree alloc] cxx_initWithDictionary:oo::PListFrom([cache cxx_objectForKey:inKey inCache:kOOCacheOctrees])];
 		[result autorelease];
 	}
 
