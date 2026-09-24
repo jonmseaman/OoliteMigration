@@ -10898,6 +10898,7 @@ static void PreloadOneSound(NSString *soundName)
 	keyMap = [ResourceManager dictionaryFromFilesNamed:@"sysdesc_key_table.plist"
 											  inFolder:@"Config"
 											  andMerge:NO];
+	const oo::PList keyMapPList = oo::PListFrom(keyMap);	// (OOStringifySystemDescriptionLine reads it as an oo::PList)
 	
 	graphViz = [NSMutableString stringWithString:
 				@"// System description grammar:\n\n"
@@ -10912,7 +10913,7 @@ static void PreloadOneSound(NSString *soundName)
 	
 	// Add system-description-string as special node (it's the one thing that ties [14] to everything else).
 	descLine = DESC(@"system-description-string");
-	label = OOStringifySystemDescriptionLine(descLine, keyMap, NO);
+	label = oo::NSStringFrom(OOStringifySystemDescriptionLine(oo::StdString(descLine), keyMapPList, NO));
 	[graphViz appendFormat:@"\tsystem_description_string [label=\"%@\" shape=ellipse]\n", EscapedGraphVizString(label)];
 	[self addNumericRefsInString:descLine
 					  toGraphViz:graphViz
@@ -10934,7 +10935,7 @@ static void PreloadOneSound(NSString *soundName)
 	subCount = [curses count];
 	for (j = 0; j < subCount; ++j)
 	{
-		label = OOStringifySystemDescriptionLine(oo::PListView(curses).at<NSString *>(j), keyMap, NO);
+		label = oo::NSStringFrom(OOStringifySystemDescriptionLine(oo::StdString(oo::PListView(curses).at<NSString *>(j)), keyMapPList, NO));
 		[graphViz appendFormat:@"\t\tthargoid_curse_%zu [label=\"%@\"]\n", j, EscapedGraphVizString(label)];
 	}
 	[graphViz appendString:@"\t}\n"];
@@ -10962,7 +10963,7 @@ static void PreloadOneSound(NSString *soundName)
 		subCount = [thisDesc count];
 		for (j = 0; j < subCount; ++j)
 		{
-			label = OOStringifySystemDescriptionLine(oo::PListView(thisDesc).at<NSString *>(j), keyMap, NO);
+			label = oo::NSStringFrom(OOStringifySystemDescriptionLine(oo::StdString(oo::PListView(thisDesc).at<NSString *>(j)), keyMapPList, NO));
 			[graphViz appendFormat:@"\t\tn%zu_%zu [label=\"\\\"%@\\\"\"]\n", i, j, EscapedGraphVizString(label)];
 		}
 		
