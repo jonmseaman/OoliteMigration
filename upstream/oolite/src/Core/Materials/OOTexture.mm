@@ -645,7 +645,7 @@ oo::PList cxx_OOTextureSpecFromObject(const oo::PList &object, const std::option
 	}
 	if (!value.isDict())  return oo::PList();
 
-	// If we're here, it's a dictionary. (A "name" the old -oo_stringForKey: read: a string or a number.)
+	// If we're here, it's a dictionary. (A "name" as the old string extractor read it: a string or a number.)
 	const oo::PList *name = value.find("name");
 	if (!defaultName.has_value() || (name != nullptr && (name->isString() || name->isNumber())))  return value;
 	
@@ -696,7 +696,7 @@ BOOL cxx_OOInterpretTextureSpecifier(const oo::PList &specifier, std::string *ou
 	}
 	else if (specifier.isDict())
 	{
-		// -oo_stringForKey: gave nil unless the value was a string or a number.
+		// The old string extractor gave nil unless the value was a string or a number.
 		const oo::PList *nameValue = specifier.find(cxx_kOOTextureSpecifierNameKey);
 		if (nameValue == nullptr || !(nameValue->isString() || nameValue->isNumber()))
 		{

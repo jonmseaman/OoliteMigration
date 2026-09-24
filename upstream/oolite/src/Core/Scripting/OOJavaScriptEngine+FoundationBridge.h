@@ -116,4 +116,15 @@ OOJS_EXTERN_C BOOL OOJSArgumentListGetNumber(ooscript::Context context, NSString
 
 @end
 
+// The converter for plain JS Objects (bead oo-3rb.202: moved verbatim, orchestrator decision on
+// the chunk's STOP). It builds the NSDictionary that OOJSNativeObjectFromJSValue() hands to code
+// that still expects Foundation objects, keeping an integer-like property id as an NSNumber key.
+// cxx_OOJSDictionaryFromJSObject in OOJavaScriptEngine.h is the oo::PList form; the C++ converter
+// and the integer-key question are bead oo-vp0y's.
+OOJS_EXTERN_C NSDictionary *OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object);
+
+// Registers OOJSDictionaryFromJSObject as the converter for objectClass (the engine's plain
+// Object class); -[OOJavaScriptEngine registerStandardObjectConverters] calls it.
+void OOJSRegisterFoundationObjectConverter(ooscript::ClassDef *objectClass);
+
 #endif	// OOJAVASCRIPTENGINE_FOUNDATIONBRIDGE_H
