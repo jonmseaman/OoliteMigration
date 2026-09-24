@@ -93,19 +93,21 @@ OOINLINE NSUInteger PQParent(NSUInteger n)
 }
 
 
-typedef NSComparisonResult (*CompareIMP)(id self, SEL _cmd, id other);
+typedef OOComparisonResult (*CompareIMP)(id receiver, SEL selector, id other);
 
 
-OOINLINE NSComparisonResult PQCompare(id a, id b, SEL comparator)
+namespace {
+OOINLINE OOComparisonResult PQCompare(id a, id b, SEL comparator)
 {
 	CompareIMP				compare = NULL;
-	NSComparisonResult		result;
+	OOComparisonResult		result;
 	
 	// This is equivalent to [a performSelector:comparator withObject:b], except the resulting value isn't an object.
 	compare = (CompareIMP)[a methodForSelector:comparator];
 	result = compare(a, comparator, b);
 	return result;
 }
+} // namespace
 
 
 // Private priority queue methods.
