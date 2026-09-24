@@ -474,6 +474,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
 | `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
 | `src/Core/Entities/PlayerEntityScriptMethods+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptMethodsFoundationBridge)`) | oo-8mxr | oo-tj5w ("Delete PlayerEntityScriptMethods+FoundationBridge") |
+| `src/Core/Entities/PlayerEntity+FoundationBridge.h/.mm` (category `PlayerEntity (FoundationBridge)`; PlayerEntity.mm chunks of oo-3rb.75 move their own selectors in) | oo-3rb.164 | oo-c8xj ("Delete PlayerEntity+FoundationBridge") |
 | `src/Core/OOCacheManager+FoundationBridge.h/.mm` | oo-19g0 | oo-5pae ("Delete OOCacheManager+FoundationBridge") |
 | `src/Core/GuiDisplayGen+FoundationBridge.h/.mm` (chunked: oo-3rb.92 made it; chunks oo-3rb.93-.96 move their own selectors in) | oo-3rb.92 (chunks of oo-ol63) | oo-q01b ("Delete GuiDisplayGen+FoundationBridge") |
 | `src/SDL/MyOpenGLView+FoundationBridge.h/.mm` (chunked: oo-3rb.110 made it; the later MyOpenGLView chunks move their own selectors in) | oo-3rb.110 | oo-xrkm ("Delete MyOpenGLView+FoundationBridge") |
@@ -495,6 +496,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/HeadUpDisplay+FoundationBridge.h/.mm` (chunked: oo-3rb.209 made it; chunks oo-3rb.210-.213 move their own selectors in; also carries the `NSString (OOHUDBeaconIcon)` category) | oo-3rb.209 (chunks of oo-3rb.81) | oo-f9rf ("Delete HeadUpDisplay+FoundationBridge") |
 | `src/Core/Entities/StationEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.172 made it; chunks oo-3rb.173-.175 move their own selectors in) | oo-3rb.172 (chunks of oo-e7ab) | oo-nrkz ("Delete StationEntity+FoundationBridge") |
 | `src/Core/Scripting/OOJavaScriptEngine+FoundationBridge.h/.mm` (chunked: oo-3rb.198 made it; chunks oo-3rb.199-.203 move their own groups in, and the retiring JS-glue categories on Foundation classes, deleted just before oo-qps) | oo-3rb.198 (chunks of oo-rbqc) | oo-vp0y ("Delete OOJavaScriptEngine+FoundationBridge") |
+| `src/Core/Entities/PlayerEntityLegacyScriptEngine+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptingFoundationBridge)`; chunked: oo-3rb.190 made it; chunks oo-3rb.191-.197 move their own selectors in) | oo-3rb.190 (chunks of oo-j924) | oo-53in ("Delete PlayerEntityLegacyScriptEngine+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
