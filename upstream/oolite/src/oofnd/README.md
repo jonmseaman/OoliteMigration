@@ -441,6 +441,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
 | `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
 | `src/Core/Entities/PlayerEntityScriptMethods+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptMethodsFoundationBridge)`) | oo-8mxr | oo-tj5w ("Delete PlayerEntityScriptMethods+FoundationBridge") |
+| `src/Core/Entities/PlayerEntity+FoundationBridge.h/.mm` (category `PlayerEntity (FoundationBridge)`; PlayerEntity.mm chunks of oo-3rb.75 move their own selectors in) | oo-3rb.164 | oo-c8xj ("Delete PlayerEntity+FoundationBridge") |
 | `src/Core/OOCacheManager+FoundationBridge.h/.mm` | oo-19g0 | oo-5pae ("Delete OOCacheManager+FoundationBridge") |
 | `src/Core/GuiDisplayGen+FoundationBridge.h/.mm` (chunked: oo-3rb.92 made it; chunks oo-3rb.93-.96 move their own selectors in) | oo-3rb.92 (chunks of oo-ol63) | oo-q01b ("Delete GuiDisplayGen+FoundationBridge") |
 | `src/SDL/MyOpenGLView+FoundationBridge.h/.mm` (chunked: oo-3rb.110 made it; the later MyOpenGLView chunks move their own selectors in) | oo-3rb.110 | oo-xrkm ("Delete MyOpenGLView+FoundationBridge") |
