@@ -341,4 +341,41 @@ and converts the result exactly as the old method produced it.
 	return oo::NSStringOrNil([self cxx_screenModeStringForWidth:inWidth height:inHeight refreshRate:inRate]);
 }
 
+
+// oo-3rb.247: market screens, commodity trading and cargo quantities (a nil good is "")
+- (OOCargoQuantity) cargoQuantityForType:(OOCommodityType)type
+{
+	return [self cxx_cargoQuantityForType:oo::StdString(type)];
+}
+
+
+- (OOCargoQuantity) setCargoQuantityForType:(OOCommodityType)type amount:(OOCargoQuantity)amount
+{
+	return [self cxx_setCargoQuantityForType:oo::StdString(type) amount:amount];
+}
+
+
+- (NSArray *) applyMarketFilter:(NSArray *)goods onMarket:(OOCommodityMarket *)market
+{
+	return oo::NSArrayFromStrings([self cxx_applyMarketFilter:oo::StringsFrom(goods) onMarket:market]);
+}
+
+
+- (NSArray *) applyMarketSorter:(NSArray *)goods onMarket:(OOCommodityMarket *)market
+{
+	return oo::NSArrayFromStrings([self cxx_applyMarketSorter:oo::StringsFrom(goods) onMarket:market]);
+}
+
+
+- (BOOL) tryBuyingCommodity:(OOCommodityType)type all:(BOOL)all
+{
+	return [self cxx_tryBuyingCommodity:oo::StdString(type) all:all];
+}
+
+
+- (BOOL) trySellingCommodity:(OOCommodityType)type all:(BOOL)all
+{
+	return [self cxx_trySellingCommodity:oo::StdString(type) all:all];
+}
+
 @end

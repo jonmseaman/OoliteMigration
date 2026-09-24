@@ -149,6 +149,46 @@ oo::str::FormatArg TextArg(const std::optional<std::string> &text)
 }
 
 
+// -indexOfObject: on the goods list: NSNotFound when absent, or for nil.
+NSUInteger IndexOfGood(const std::vector<std::string> &goods, const std::optional<std::string> &good)
+{
+	if (!good.has_value())  return NSNotFound;
+	const auto found = std::find(goods.begin(), goods.end(), *good);
+	return (found != goods.end()) ? static_cast<NSUInteger>(found - goods.begin()) : NSNotFound;
+}
+
+
+// The market sorters, as orderings (< 0, 0, > 0 for NSOrderedAscending, Same, Descending) over
+// commodity keys; used with std::stable_sort, as -sortedArrayUsingFunction:context: is a stable
+// sort in GNUstep (probed on gnustep-base: ties keep their order).
+int marketSorterByName(const std::string &a, const std::string &b, OOCommodityMarket *market)
+{
+	// (-compare: on a nil name: goods always have names)
+	return oo::str::compare([market cxx_nameForGood:a].value_or(std::string()), [market cxx_nameForGood:b].value_or(std::string()));
+}
+
+
+int marketSorterByPrice(const std::string &a, const std::string &b, OOCommodityMarket *market)
+{
+	int result = (int)[market cxx_priceForGood:a] - (int)[market cxx_priceForGood:b];
+	return (result < 0) ? -1 : ((result > 0) ? 1 : 0);
+}
+
+
+int marketSorterByQuantity(const std::string &a, const std::string &b, OOCommodityMarket *market)
+{
+	int result = (int)[market cxx_quantityForGood:a] - (int)[market cxx_quantityForGood:b];
+	return (result < 0) ? -1 : ((result > 0) ? 1 : 0);
+}
+
+
+int marketSorterByMassUnit(const std::string &a, const std::string &b, OOCommodityMarket *market)
+{
+	int result = (int)[market massUnitForGood:oo::NSStringFrom(a)] - (int)[market massUnitForGood:oo::NSStringFrom(b)];
+	return (result < 0) ? -1 : ((result > 0) ? 1 : 0);
+}
+
+
 // A custom_views value as the list of views (oo_arrayForKey: nil unless an array -> empty).
 std::vector<oo::PList> CustomViewsFrom(const oo::PList &value)
 {
@@ -166,10 +206,6 @@ static float const 		kDeadResetTime				= 30.0f;
 PlayerEntity		*gOOPlayer = nil;
 static GLfloat		sBaseMass = 0.0;
 
-NSComparisonResult marketSorterByName(id a, id b, void *market);
-NSComparisonResult marketSorterByPrice(id a, id b, void *market);
-NSComparisonResult marketSorterByQuantity(id a, id b, void *market);
-NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 
 @interface PlayerEntity (OOPrivate)
@@ -202,7 +238,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 // Shopping
 - (void) showMarketScreenHeaders;
-- (void) showMarketScreenDataLine:(OOGUIRow)row forGood:(OOCommodityType)good inMarket:(OOCommodityMarket *)localMarket holdQuantity:(OOCargoQuantity)quantity;
+- (void) showMarketScreenDataLine:(OOGUIRow)row forGood:(const std::string &)good inMarket:(OOCommodityMarket *)localMarket holdQuantity:(OOCargoQuantity)quantity;
 - (void) showMarketCashAndLoadLine;
 
 
@@ -10687,21 +10723,19 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (OOCargoQuantity) cargoQuantityForType:(OOCommodityType)type
+- (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type
 {
-	OOCargoQuantity 	amount = [shipCommodityData quantityForGood:type];
-	
+	OOCargoQuantity 	amount = [shipCommodityData cxx_quantityForGood:type];
+
 	if  ([self status] != STATUS_DOCKED)
 	{
 		NSInteger		i;
-		OOCommodityType co_type;
 		ShipEntity		*cargoItem = nil;
-		
+
 		for (i = [cargo count] - 1; i >= 0 ; i--)
 		{
 			cargoItem = [cargo objectAtIndex:i];
-			co_type = [cargoItem commodityType];
-			if ([co_type isEqualToString:type])
+			if ([cargoItem cxx_commodityType] == type)	// (a nil commodity type never matched)
 			{
 				amount += [cargoItem commodityAmount];
 			}
@@ -10712,12 +10746,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (OOCargoQuantity) setCargoQuantityForType:(OOCommodityType)type amount:(OOCargoQuantity)amount
+- (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount
 {
-	OOMassUnit			unit = [shipCommodityData massUnitForGood:type];
+	OOMassUnit			unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
 	if([self specialCargo] && unit == UNITS_TONS) return 0;	// don't do anything if we've got a special cargo...
 	
-	OOCargoQuantity		oldAmount = [self cargoQuantityForType:type];
+	OOCargoQuantity		oldAmount = [self cxx_cargoQuantityForType:type];
 	OOCargoQuantity		available = [self availableCargoSpace];
 	BOOL				inPods = ([self status] != STATUS_DOCKED);
 	
@@ -10744,20 +10778,20 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		if (amount > oldAmount) // increase
 		{
-			[self loadCargoPodsForType:type amount:(amount - oldAmount)];
+			[self loadCargoPodsForType:oo::NSStringFrom(type) amount:(amount - oldAmount)];
 		}
 		else
 		{
-			[self unloadCargoPodsForType:type amount:(oldAmount - amount)];
+			[self unloadCargoPodsForType:oo::NSStringFrom(type) amount:(oldAmount - amount)];
 		}
 	}
 	else
 	{
-		[shipCommodityData setQuantity:amount forGood:type];
+		[shipCommodityData cxx_setQuantity:amount forGood:type];
 	}
 
 	[self calculateCurrentCargo];
-	return [shipCommodityData quantityForGood:type];
+	return [shipCommodityData cxx_quantityForGood:type];
 }
 
 
@@ -10782,13 +10816,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		Optimised this method, to compensate for increased usage - Kaks 20091002
 	*/
 	OOCargoQuantity		cargoQtyOnBoard = 0;
-	NSString			*good = nil;
 
-	foreach (good, [shipCommodityData goods])
+	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
 	{
-		OOCargoQuantity quantity = [shipCommodityData quantityForGood:good];
-		
-		OOMassUnit commodityUnits = [shipCommodityData massUnitForGood:good];
+		OOCargoQuantity quantity = [shipCommodityData cxx_quantityForGood:good];
+
+		OOMassUnit commodityUnits = [shipCommodityData massUnitForGood:oo::NSStringFrom(good)];
 		
 		if (commodityUnits != UNITS_TONS)
 		{
@@ -10837,72 +10870,79 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (NSArray *) applyMarketFilter:(NSArray *)goods onMarket:(OOCommodityMarket *)market
+- (std::vector<std::string>) cxx_applyMarketFilter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market
 {
 	if (marketFilterMode == MARKET_FILTER_MODE_OFF)
 	{
 		return goods;
 	}
-	NSMutableArray	*filteredGoods = [NSMutableArray arrayWithCapacity:[goods count]];
-	OOCommodityType	good = nil;
-	foreach (good, goods)
+	std::vector<std::string>	filteredGoods;
+	filteredGoods.reserve(goods.size());
+	for (const std::string &good : goods)
 	{
 		switch (marketFilterMode)
 		{
 		case MARKET_FILTER_MODE_OFF:
 			// never reached, but keeps compiler happy
-			[filteredGoods addObject:good];
+			filteredGoods.push_back(good);
 			break;
 		case MARKET_FILTER_MODE_TRADE:
-			if ([market quantityForGood:good] > 0 || [self cargoQuantityForType:good] > 0)
+			if ([market cxx_quantityForGood:good] > 0 || [self cxx_cargoQuantityForType:good] > 0)
 			{
-				[filteredGoods addObject:good];
+				filteredGoods.push_back(good);
 			}
 			break;
 		case MARKET_FILTER_MODE_HOLD:
-			if ([self cargoQuantityForType:good] > 0)
+			if ([self cxx_cargoQuantityForType:good] > 0)
 			{
-				[filteredGoods addObject:good];
+				filteredGoods.push_back(good);
 			}
 			break;
 		case MARKET_FILTER_MODE_STOCK:
-			if ([market quantityForGood:good] > 0)
+			if ([market cxx_quantityForGood:good] > 0)
 			{
-				[filteredGoods addObject:good];
+				filteredGoods.push_back(good);
 			}
 			break;
 		case MARKET_FILTER_MODE_LEGAL:
-			if ([market exportLegalityForGood:good] == 0 && [market importLegalityForGood:good] == 0)
+			if ([market cxx_exportLegalityForGood:good] == 0 && [market cxx_importLegalityForGood:good] == 0)
 			{
-				[filteredGoods addObject:good];
+				filteredGoods.push_back(good);
 			}
 			break;
 		case MARKET_FILTER_MODE_RESTRICTED:
-			if ([market exportLegalityForGood:good] > 0 || [market importLegalityForGood:good] > 0)
+			if ([market cxx_exportLegalityForGood:good] > 0 || [market cxx_importLegalityForGood:good] > 0)
 			{
-				[filteredGoods addObject:good];
+				filteredGoods.push_back(good);
 			}
 			break;
 		}
 	}
-	return [[filteredGoods copy] autorelease];
+	return filteredGoods;
 }
 
 
-- (NSArray *) applyMarketSorter:(NSArray *)goods onMarket:(OOCommodityMarket *)market
+- (std::vector<std::string>) cxx_applyMarketSorter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market
 {
+	// -sortedArrayUsingFunction:context: was a stable sort (probed), so std::stable_sort gives the same order
+	const auto sortedBy = [&goods](int (*sorter)(const std::string &, const std::string &, OOCommodityMarket *), OOCommodityMarket *context)
+	{
+		std::vector<std::string> sorted = goods;
+		std::stable_sort(sorted.begin(), sorted.end(), [sorter, context](const std::string &a, const std::string &b) { return sorter(a, b, context) < 0; });
+		return sorted;
+	};
 	switch (marketSorterMode)
 	{
 	case MARKET_SORTER_MODE_ALPHA:
-		return [goods sortedArrayUsingFunction:marketSorterByName context:market];
+		return sortedBy(marketSorterByName, market);
 	case MARKET_SORTER_MODE_PRICE:
-		return [goods sortedArrayUsingFunction:marketSorterByPrice context:market];
+		return sortedBy(marketSorterByPrice, market);
 	case MARKET_SORTER_MODE_STOCK:
-		return [goods sortedArrayUsingFunction:marketSorterByQuantity context:market];
+		return sortedBy(marketSorterByQuantity, market);
 	case MARKET_SORTER_MODE_HOLD:
-		return [goods sortedArrayUsingFunction:marketSorterByQuantity context:shipCommodityData];
+		return sortedBy(marketSorterByQuantity, shipCommodityData);
 	case MARKET_SORTER_MODE_UNIT:
-		return [goods sortedArrayUsingFunction:marketSorterByMassUnit context:market];	
+		return sortedBy(marketSorterByMassUnit, market);
 	case MARKET_SORTER_MODE_OFF:
 		// keep default sort order
 		break;
@@ -10925,72 +10965,73 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	[gui setTabStops:tab_stops];
 	
 	[gui setColor:[gui colorFromSetting:kGuiMarketHeadingColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_KEY];
-	[gui setArray:[NSArray arrayWithObjects: DESC(@"commodity-column-title"), OOPadStringToEms(DESC(@"price-column-title"),3.5),
-						   OOPadStringToEms(DESC(@"for-sale-column-title"),3.75), OOPadStringToEms(DESC(@"in-hold-column-title"),5.75), DESC(@"oolite-legality-column-title"), DESC(@"oolite-extras-column-title"), nil] forRow:GUI_ROW_MARKET_KEY];
-	[gui setArray:[NSArray arrayWithObjects: DESC(@"commodity-column-title"), DESC(@"oolite-extras-column-title"), OOPadStringToEms(DESC(@"price-column-title"),3.5),
-						   OOPadStringToEms(DESC(@"for-sale-column-title"),3.75), OOPadStringToEms(DESC(@"in-hold-column-title"),5.75), DESC(@"oolite-legality-column-title"), nil] forRow:GUI_ROW_MARKET_KEY];
+	[gui cxx_setArray:{ oo::StdString(DESC(@"commodity-column-title")), cxx_OOPadStringToEms(oo::StdString(DESC(@"price-column-title")),3.5),
+						   cxx_OOPadStringToEms(oo::StdString(DESC(@"for-sale-column-title")),3.75), cxx_OOPadStringToEms(oo::StdString(DESC(@"in-hold-column-title")),5.75), oo::StdString(DESC(@"oolite-legality-column-title")), oo::StdString(DESC(@"oolite-extras-column-title")) } forRow:GUI_ROW_MARKET_KEY];
+	[gui cxx_setArray:{ oo::StdString(DESC(@"commodity-column-title")), oo::StdString(DESC(@"oolite-extras-column-title")), cxx_OOPadStringToEms(oo::StdString(DESC(@"price-column-title")),3.5),
+						   cxx_OOPadStringToEms(oo::StdString(DESC(@"for-sale-column-title")),3.75), cxx_OOPadStringToEms(oo::StdString(DESC(@"in-hold-column-title")),5.75), oo::StdString(DESC(@"oolite-legality-column-title")) } forRow:GUI_ROW_MARKET_KEY];
 
 }
 
 
-- (void) showMarketScreenDataLine:(OOGUIRow)row forGood:(OOCommodityType)good inMarket:(OOCommodityMarket *)localMarket holdQuantity:(OOCargoQuantity)quantity
+- (void) showMarketScreenDataLine:(OOGUIRow)row forGood:(const std::string &)good inMarket:(OOCommodityMarket *)localMarket holdQuantity:(OOCargoQuantity)quantity
 {
 	GuiDisplayGen		*gui = [UNIVERSE gui];
-	NSString* desc = [NSString stringWithFormat:@" %@ ", [shipCommodityData nameForGood:good]];
-	OOCargoQuantity available_units = [localMarket quantityForGood:good];
+	const std::string desc = oo::str::format(" %s ", [shipCommodityData cxx_nameForGood:good].value_or("(null)").c_str());	// %@ of nil
+	OOCargoQuantity available_units = [localMarket cxx_quantityForGood:good];
 	OOCargoQuantity units_in_hold = quantity;
-	OOCreditsQuantity pricePerUnit = [localMarket priceForGood:good];
-	OOMassUnit unit = [shipCommodityData massUnitForGood:good];
-			
-	NSString *available = OOPadStringToEms(((available_units > 0) ? (NSString *)[NSString stringWithFormat:@"%d",available_units] : DESC(@"commodity-quantity-none")), 2.5);
+	OOCreditsQuantity pricePerUnit = [localMarket cxx_priceForGood:good];
+	OOMassUnit unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(good)];
+
+	const std::string available = cxx_OOPadStringToEms(((available_units > 0) ? oo::str::format("%d",available_units) : oo::StdString(DESC(@"commodity-quantity-none"))), 2.5);
 
 	NSUInteger priceDecimal = pricePerUnit % 10;
-	NSString *price = [NSString stringWithFormat:@" %@.%zu ",OOPadStringToEms([NSString stringWithFormat:@"%zu",(pricePerUnit/10)],2.5),priceDecimal];
-			
-	// this works with up to 9999 tons of gemstones. Any more than that, they deserve the formatting they get! :)
-			
-	NSString *owned = OOPadStringToEms((units_in_hold > 0) ? (NSString *)[NSString stringWithFormat:@"%d",units_in_hold] : DESC(@"commodity-quantity-none"), 4.5);
-	NSString *units = DisplayStringForMassUnit(unit);
-	NSString *units_available = [NSString stringWithFormat:@" %@ %@ ",available, units];
-	NSString *units_owned = [NSString stringWithFormat:@" %@ %@ ",owned, units];
+	const std::string price = oo::str::format(" %s.%zu ",cxx_OOPadStringToEms(oo::str::format("%zu",(pricePerUnit/10)),2.5).c_str(),priceDecimal);
 
-	NSUInteger import_legality = [localMarket importLegalityForGood:good];
-	NSUInteger export_legality = [localMarket exportLegalityForGood:good];
-	NSString *legaldesc = nil;
+	// this works with up to 9999 tons of gemstones. Any more than that, they deserve the formatting they get! :)
+
+	const std::string owned = cxx_OOPadStringToEms((units_in_hold > 0) ? oo::str::format("%d",units_in_hold) : oo::StdString(DESC(@"commodity-quantity-none")), 4.5);
+	const std::string units = oo::DescriptionOf(DisplayStringForMassUnit(unit));
+	const std::string units_available = oo::str::format(" %s %s ",available.c_str(), units.c_str());
+	const std::string units_owned = oo::str::format(" %s %s ",owned.c_str(), units.c_str());
+
+	NSUInteger import_legality = [localMarket cxx_importLegalityForGood:good];
+	NSUInteger export_legality = [localMarket cxx_exportLegalityForGood:good];
+	std::string legaldesc;
 	if (import_legality == 0)
 	{
 		if (export_legality == 0)
 		{
-			legaldesc = DESC(@"oolite-legality-clear");
+			legaldesc = oo::StdString(DESC(@"oolite-legality-clear"));
 		}
 		else
 		{
-			legaldesc = DESC(@"oolite-legality-import");
+			legaldesc = oo::StdString(DESC(@"oolite-legality-import"));
 		}
 	} 
 	else
 	{
 		if (export_legality == 0)
 		{
-			legaldesc = DESC(@"oolite-legality-export");
+			legaldesc = oo::StdString(DESC(@"oolite-legality-export"));
 		}
 		else
 		{
-			legaldesc = DESC(@"oolite-legality-neither");
+			legaldesc = oo::StdString(DESC(@"oolite-legality-neither"));
 		}
 	}
-	legaldesc = [NSString stringWithFormat:@" %@ ",legaldesc];
-			
-	NSString *extradesc = [shipCommodityData shortCommentForGood:good];
+	legaldesc = oo::str::format(" %s ",legaldesc.c_str());
 
-	[gui setKey:good forRow:row];
+	const std::optional<std::string> extradesc = [shipCommodityData cxx_shortCommentForGood:good];
+
+	[gui cxx_setKey:good forRow:row];
 	[gui setColor:[gui colorFromSetting:kGuiMarketCommodityColor defaultValue:nil] forRow:row];
-	[gui setArray:[NSArray arrayWithObjects: desc, extradesc, price, units_available, units_owned, legaldesc,  nil] forRow:row++];
+	if (extradesc.has_value())  [gui cxx_setArray:{ desc, *extradesc, price, units_available, units_owned, legaldesc } forRow:row++];
+	else  [gui cxx_setArray:{ desc } forRow:row++];	// a nil comment ended the -arrayWithObjects: list
 
 }
 
 
-- (NSString *)marketScreenTitle
+- (std::optional<std::string>) marketScreenTitle
 {
 	StationEntity *dockedStation = [self dockedStation];
 
@@ -11003,25 +11044,25 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 	}
 
-	NSString *system = nil;
-	if ([UNIVERSE sun] != nil)  system = [UNIVERSE getSystemName:system_id];
+	std::string system;	// (used only when there is a sun)
+	if ([UNIVERSE sun] != nil)  system = oo::StdString([UNIVERSE getSystemName:system_id]);
 	
 	if (dockedStation == nil || dockedStation == [UNIVERSE station])
 	{
 		if ([UNIVERSE sun] != nil)
 		{
-			return OOExpandKey(@"system-commodity-market", system);
+			return ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "system-commodity-market", { { "system", oo::PList(system) } });
 		}
 		else
 		{
 			// Witchspace
-			return OOExpandKey(@"commodity-market");
+			return oo::OptionalString(OOExpandKey(@"commodity-market"));
 		}
 	}
 	else
 	{
-		NSString *station = [dockedStation displayName];
-		return OOExpandKey(@"station-commodity-market", station);
+		const std::string station = oo::StdString([dockedStation displayName]);
+		return ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "station-commodity-market", { { "station", oo::PList(station) } });
 	}
 }
 
@@ -11045,11 +11086,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 
 	// following changed to work whether docked or not
-	NSArray *goods = [self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
+	const std::vector<std::string> goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:oo::StringsFrom([localMarket goods]) onMarket:localMarket] onMarket:localMarket];
 	NSInteger maxOffset = 0;
-	if ([goods count] > (GUI_ROW_MARKET_END-GUI_ROW_MARKET_START))
+	if (goods.size() > (GUI_ROW_MARKET_END-GUI_ROW_MARKET_START))
 	{
-		maxOffset = [goods count]-(GUI_ROW_MARKET_END-GUI_ROW_MARKET_START);
+		maxOffset = goods.size()-(GUI_ROW_MARKET_END-GUI_ROW_MARKET_START);
 	}
 
 	NSUInteger			commodityCount = [shipCommodityData count];
@@ -11057,12 +11098,12 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		
 	for (NSUInteger i = 0; i < commodityCount; i++)
 	{
-		quantityInHold[i] = [shipCommodityData quantityForGood:oo::PListView(goods).at<NSString *>(i)];
+		quantityInHold[i] = (i < goods.size()) ? [shipCommodityData cxx_quantityForGood:goods[i]] : 0;	// (a nil good had none)
 	}
 	for (NSUInteger i = 0; i < [cargo count]; i++)
 	{
 		ShipEntity *container = [cargo objectAtIndex:i];
-		NSUInteger goodsIndex = [goods indexOfObject:[container commodityType]];
+		NSUInteger goodsIndex = IndexOfGood(goods, [container cxx_commodityType]);
 		// can happen with filters
 		if (goodsIndex != NSNotFound)
 		{
@@ -11070,23 +11111,23 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 	}
 
-	if (marketSelectedCommodity != nil && ([marketSelectedCommodity isEqualToString:@"<<<"] || [marketSelectedCommodity isEqualToString:@">>>"]))
+	if (marketSelectedCommodity != nil && (oo::OptionalString(marketSelectedCommodity) == "<<<" || oo::OptionalString(marketSelectedCommodity) == ">>>"))
 	{
 		// nothing?
 	}
 	else
 	{
-		if (marketSelectedCommodity == nil || [goods indexOfObject:marketSelectedCommodity] == NSNotFound)
+		if (marketSelectedCommodity == nil || IndexOfGood(goods, oo::OptionalString(marketSelectedCommodity)) == NSNotFound)
 		{
 			DESTROY(marketSelectedCommodity);
-			if ([goods count] > 0)
+			if (goods.size() > 0)
 			{
-				marketSelectedCommodity = [oo::PListView(goods).at<NSString *>(0) retain];
+				marketSelectedCommodity = [oo::NSStringFrom(goods[0]) retain];	// (the ivar is retyped by oo-3rb.254)
 			}
 		}
 		if (maxOffset > 0)
 		{
-			NSInteger goodsIndex = [goods indexOfObject:marketSelectedCommodity];
+			NSInteger goodsIndex = IndexOfGood(goods, oo::OptionalString(marketSelectedCommodity));
 			// validate marketOffset when returning from infoscreen
 			if (goodsIndex <= marketOffset)
 			{
@@ -11124,7 +11165,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			dockedStation = [self primaryTarget];
 		}
 
-		[gui setTitle:[self marketScreenTitle]];
+		[gui setTitle:oo::NSStringOrNil([self marketScreenTitle])];
 		
 		[self showMarketScreenHeaders];
 
@@ -11137,11 +11178,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 			marketOffset = maxOffset;
 		}
 
-		if ([goods count] > 0)
+		if (goods.size() > 0)
 		{
-			OOCommodityType good = nil;
+			const std::optional<std::string> selectedCommodity = oo::OptionalString(marketSelectedCommodity);
 			NSInteger i = 0;
-			foreach (good, goods)
+			for (const std::string &good : goods)
 			{
 				if (i < marketOffset)
 				{
@@ -11149,7 +11190,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 					continue;
 				}
 				[self showMarketScreenDataLine:row forGood:good inMarket:localMarket holdQuantity:quantityInHold[i++]];
-				if ([good isEqualToString:marketSelectedCommodity])
+				if (good == selectedCommodity)
 				{
 					active_row = row;
 				}
@@ -11163,30 +11204,30 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 			if (marketOffset < maxOffset)
 			{
-				if ([marketSelectedCommodity isEqualToString:@">>>"])
+				if (selectedCommodity == ">>>")
 				{
 					active_row = GUI_ROW_MARKET_LAST;
 				}
-				[gui setKey:@">>>" forRow:GUI_ROW_MARKET_LAST];
+				[gui cxx_setKey:">>>" forRow:GUI_ROW_MARKET_LAST];
 				[gui setColor:[gui colorFromSetting:kGuiMarketScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_LAST];
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @"", @"", @"", @" --> ", nil] forRow:GUI_ROW_MARKET_LAST];
+				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), "", "", "", " --> " } forRow:GUI_ROW_MARKET_LAST];
 			}
 			if (marketOffset > 0)
 			{
-				if ([marketSelectedCommodity isEqualToString:@"<<<"])
+				if (selectedCommodity == "<<<")
 				{
 					active_row = GUI_ROW_MARKET_START;
 				}
-				[gui setKey:@"<<<" forRow:GUI_ROW_MARKET_START];
+				[gui cxx_setKey:"<<<" forRow:GUI_ROW_MARKET_START];
 				[gui setColor:[gui colorFromSetting:kGuiMarketScrollColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_START];
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @"", @"", @"", @" <-- ", nil] forRow:GUI_ROW_MARKET_START];
+				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), "", "", "", " <-- " } forRow:GUI_ROW_MARKET_START];
 			}
 		}
 		else
 		{
 			// filter is excluding everything
 			[gui setColor:[gui colorFromSetting:kGuiMarketFilteredAllColor defaultValue:[OOColor yellowColor]] forRow:GUI_ROW_MARKET_START];
-			[gui setText:DESC(@"oolite-market-filtered-all") forRow:GUI_ROW_MARKET_START];
+			[gui cxx_setText:oo::StdString(DESC(@"oolite-market-filtered-all")) forRow:GUI_ROW_MARKET_START];
 			active_row = -1;
 		}
 
@@ -11196,11 +11237,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 		// filter sort info
 		{
-			NSString *filterMode = OOExpandKey(OOExpand(@"oolite-market-filter-[marketFilterMode]", marketFilterMode));
-			NSString *filterText = OOExpandKey(@"oolite-market-filter-line", filterMode);
-			NSString *sortMode = OOExpandKey(OOExpand(@"oolite-market-sorter-[marketSorterMode]", marketSorterMode));
-			NSString *sorterText = OOExpandKey(@"oolite-market-sorter-line", sortMode);
-			[gui setArray:[NSArray arrayWithObjects:filterText, @"", sorterText, nil] forRow:GUI_ROW_MARKET_END];
+			const std::string filterMode = oo::StdString(OOExpandKey(OOExpand(@"oolite-market-filter-[marketFilterMode]", marketFilterMode)));
+			const std::string filterText = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oolite-market-filter-line", { { "filterMode", oo::PList(filterMode) } });
+			const std::string sortMode = oo::StdString(OOExpandKey(OOExpand(@"oolite-market-sorter-[marketSorterMode]", marketSorterMode)));
+			const std::string sorterText = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "oolite-market-sorter-line", { { "sortMode", oo::PList(sortMode) } });
+			[gui cxx_setArray:{ filterText, "", sorterText } forRow:GUI_ROW_MARKET_END];
 		}
 		[gui setColor:[gui colorFromSetting:kGuiMarketFilterInfoColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_MARKET_END];
 
@@ -11246,19 +11287,19 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	}
 
 	// following changed to work whether docked or not
-	NSArray 			*goods = [self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
+	const std::vector<std::string>	goods = [self cxx_applyMarketSorter:[self cxx_applyMarketFilter:oo::StringsFrom([localMarket goods]) onMarket:localMarket] onMarket:localMarket];
 
 	NSUInteger			i, j, commodityCount = [shipCommodityData count];
 	OOCargoQuantity		quantityInHold[commodityCount];
 		
 	for (i = 0; i < commodityCount; i++)
 	{
-		quantityInHold[i] = [shipCommodityData quantityForGood:oo::PListView(goods).at<NSString *>(i)];
+		quantityInHold[i] = (i < goods.size()) ? [shipCommodityData cxx_quantityForGood:goods[i]] : 0;	// (a nil good had none)
 	}
 	for (i = 0; i < [cargo count]; i++)
 	{
 		ShipEntity *container = [cargo objectAtIndex:i];
-		j = [goods indexOfObject:[container commodityType]];
+		j = IndexOfGood(goods, [container cxx_commodityType]);
 		quantityInHold[j] += [container commodityAmount];
 	}
 
@@ -11271,7 +11312,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		}
 		else
 		{
-			j = [goods indexOfObject:marketSelectedCommodity];
+			j = IndexOfGood(goods, oo::OptionalString(marketSelectedCommodity));
 		}
 		if (j == NSNotFound)
 		{
@@ -11282,28 +11323,29 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 		[gui clearAndKeepBackground:!guiChanged];
 
-		[gui setTitle:[NSString stringWithFormat:DESC(@"oolite-commodity-information-@"), [shipCommodityData nameForGood:marketSelectedCommodity]]];
+		const std::string selectedCommodity = oo::StdString(marketSelectedCommodity);	// (non-nil here)
+		[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-information-@")), { TextArg([shipCommodityData cxx_nameForGood:selectedCommodity]) }))];
 
 		[self showMarketScreenHeaders];
-		[self showMarketScreenDataLine:GUI_ROW_MARKET_START forGood:marketSelectedCommodity inMarket:localMarket holdQuantity:quantityInHold[j]];
+		[self showMarketScreenDataLine:GUI_ROW_MARKET_START forGood:selectedCommodity inMarket:localMarket holdQuantity:quantityInHold[j]];
 
-		OOCargoQuantity contracted = [self contractedVolumeForGood:marketSelectedCommodity];
+		OOCargoQuantity contracted = [self cxx_contractedVolumeForGood:selectedCommodity];
 		if (contracted > 0)
 		{
 			OOMassUnit unit = [shipCommodityData massUnitForGood:marketSelectedCommodity];
 			[gui setColor:[gui colorFromSetting:kGuiMarketContractedColor defaultValue:nil] forRow:GUI_ROW_MARKET_START+1];
-			[gui setText:[NSString stringWithFormat:DESC(@"oolite-commodity-contracted-d-@"), contracted, DisplayStringForMassUnit(unit)] forRow:GUI_ROW_MARKET_START+1];
+			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"oolite-commodity-contracted-d-@")), { contracted, oo::DescriptionOf(DisplayStringForMassUnit(unit)) }) forRow:GUI_ROW_MARKET_START+1];
 		}
 
-		NSString *info = [shipCommodityData commentForGood:marketSelectedCommodity];
+		const std::optional<std::string> info = [shipCommodityData cxx_commentForGood:selectedCommodity];
 		OOGUIRow i = 0;
-		if (info == nil || [info length] == 0)
+		if (!info.has_value() || info->empty())
 		{
 			i = [gui addLongText:DESC(@"oolite-commodity-no-comment") startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
 		}
 		else
 		{
-			i = [gui addLongText:info startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
+			i = [gui cxx_addLongText:info startingAtRow:GUI_ROW_MARKET_START+2 align:GUI_ALIGN_LEFT];
 		}
 		for (i-- ; i > GUI_ROW_MARKET_START+2 ; --i)
 		{
@@ -11332,7 +11374,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	GuiDisplayGen *gui = [UNIVERSE gui];
 	OOCargoQuantity currentCargo = current_cargo;
 	OOCargoQuantity cargoCapacity = [self maxAvailableCargoSpace];
-	[gui setText:OOExpandKey(@"market-cash-and-load", credits, currentCargo, cargoCapacity) forRow:GUI_ROW_MARKET_CASH];
+	[gui cxx_setText:oo::StdString(OOExpandKey(@"market-cash-and-load", credits, currentCargo, cargoCapacity)) forRow:GUI_ROW_MARKET_CASH];
 	[gui setColor:[gui colorFromSetting:kGuiMarketCashColor defaultValue:[OOColor yellowColor]] forRow:GUI_ROW_MARKET_CASH];
 }
 
@@ -11342,9 +11384,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (BOOL) tryBuyingCommodity:(OOCommodityType)index all:(BOOL)all
+- (BOOL) cxx_tryBuyingCommodity:(const std::string &)index all:(BOOL)all
 {
-	if ([index isEqualToString:@"<<<"] || [index isEqualToString:@">>>"])
+	if (index == "<<<" || index == ">>>")
 	{
 		++marketOffset;
 		return NO;
@@ -11353,24 +11395,24 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (![self isDocked])  return NO; // can't buy if not docked.
 	
 	OOCommodityMarket	*localMarket = [self localMarket];
-	OOCreditsQuantity	pricePerUnit	= [localMarket priceForGood:index];
-	OOMassUnit			unit			= [localMarket massUnitForGood:index];
+	OOCreditsQuantity	pricePerUnit	= [localMarket cxx_priceForGood:index];
+	OOMassUnit			unit			= [localMarket massUnitForGood:oo::NSStringFrom(index)];
 
 	if (specialCargo != nil && unit == UNITS_TONS)
 	{
 		return NO;									// can't buy tons of stuff when carrying a specialCargo
 	}
-	int manifest_quantity = [shipCommodityData quantityForGood:index];
-	int market_quantity = [localMarket quantityForGood:index];
+	int manifest_quantity = [shipCommodityData cxx_quantityForGood:index];
+	int market_quantity = [localMarket cxx_quantityForGood:index];
 	
 	int purchase = 1;
 	if (all)
 	{
 		// if cargo contracts, put a break point on the contract volume
-		int contracted = [self contractedVolumeForGood:index];
+		int contracted = [self cxx_contractedVolumeForGood:index];
 		if (manifest_quantity >= contracted)
 		{
-			purchase = [localMarket capacityForGood:index];
+			purchase = [localMarket cxx_capacityForGood:index];
 		}
 		else
 		{
@@ -11420,16 +11462,16 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		return NO;									// stop if that results in nothing to be bought
 	}
 	
-	[localMarket removeQuantity:purchase forGood:index];
-	[shipCommodityData addQuantity:purchase forGood:index];
+	[localMarket cxx_removeQuantity:purchase forGood:index];
+	[shipCommodityData cxx_addQuantity:purchase forGood:index];
 	credits -= pricePerUnit * purchase;
 
 	[self calculateCurrentCargo];
 	
 	if ([UNIVERSE autoSave])  [UNIVERSE setAutoSaveNow:YES];
 	
-	[self doScriptEvent:OOJSID("playerBoughtCargo") withArguments:[NSArray arrayWithObjects:index, [NSNumber numberWithInt:purchase], [NSNumber numberWithUnsignedLongLong:pricePerUnit], nil]];
-	if ([localMarket exportLegalityForGood:index] > 0)
+	[self doScriptEvent:OOJSID("playerBoughtCargo") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) }))];	// the same number kinds (signed, unsigned long long)
+	if ([localMarket cxx_exportLegalityForGood:index] > 0)
 	{
 		[roleWeightFlags setObject:[NSNumber numberWithInt:1] forKey:@"bought-illegal"];
 	}
@@ -11442,9 +11484,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (BOOL) trySellingCommodity:(OOCommodityType)index all:(BOOL)all
+- (BOOL) cxx_trySellingCommodity:(const std::string &)index all:(BOOL)all
 {
-	if ([index isEqualToString:@"<<<"] || [index isEqualToString:@">>>"])
+	if (index == "<<<" || index == ">>>")
 	{
 		--marketOffset;
 		return NO;
@@ -11453,19 +11495,19 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (![self isDocked])  return NO; // can't sell if not docked.
 	
 	OOCommodityMarket *localMarket = [self localMarket];
-	int available_units = [shipCommodityData quantityForGood:index];
-	OOCreditsQuantity pricePerUnit = [localMarket priceForGood:index];
+	int available_units = [shipCommodityData cxx_quantityForGood:index];
+	OOCreditsQuantity pricePerUnit = [localMarket cxx_priceForGood:index];
 	
 	if (available_units == 0)  return NO;
 
-	int market_quantity = [localMarket quantityForGood:index];
+	int market_quantity = [localMarket cxx_quantityForGood:index];
 
-	int capacity = [localMarket capacityForGood:index];
+	int capacity = [localMarket cxx_capacityForGood:index];
 	int sell = 1;
 	if (all)
 	{
 		// if cargo contracts, put a break point on the contract volume
-		int contracted = [self contractedVolumeForGood:index];
+		int contracted = [self cxx_contractedVolumeForGood:index];
 		if (available_units <= contracted)
 		{
 			sell = capacity;
@@ -11483,15 +11525,15 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if (sell <= 0)
 		return NO;								// stop if that results in nothing to be sold
 	
-	[localMarket addQuantity:sell forGood:index];
-	[shipCommodityData removeQuantity:sell forGood:index];
+	[localMarket cxx_addQuantity:sell forGood:index];
+	[shipCommodityData cxx_removeQuantity:sell forGood:index];
 	credits += pricePerUnit * sell;
 
 	[self calculateCurrentCargo];
 	
 	if ([UNIVERSE autoSave]) [UNIVERSE setAutoSaveNow:YES];
 	
-	[self doScriptEvent:OOJSID("playerSoldCargo") withArguments:[NSArray arrayWithObjects:index, [NSNumber numberWithInt:sell], [NSNumber numberWithUnsignedLongLong: pricePerUnit], nil]];
+	[self doScriptEvent:OOJSID("playerSoldCargo") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(sell), oo::PList::unsignedInteger(pricePerUnit) }))];	// the same number kinds (signed, unsigned long long)
 	
 	return YES;
 }
@@ -13646,65 +13688,3 @@ else _dockTarget = NO_TARGET;
 @end
 
 
-NSComparisonResult marketSorterByName(id a, id b, void *context)
-{
-	OOCommodityMarket *market = (OOCommodityMarket *)context;
-	return [[market nameForGood:(OOCommodityType)a] compare:[market nameForGood:(OOCommodityType)b]];
-}
-
-
-NSComparisonResult marketSorterByPrice(id a, id b, void *context)
-{
-	OOCommodityMarket *market = (OOCommodityMarket *)context;
-	int result = (int)[market priceForGood:(OOCommodityType)a] - (int)[market priceForGood:(OOCommodityType)b];
-	if (result < 0)
-	{
-		return NSOrderedAscending;
-	}
-	else if (result > 0)
-	{
-		return NSOrderedDescending;
-	}
-	else
-	{
-		return NSOrderedSame;
-	}
-}
-
-
-NSComparisonResult marketSorterByQuantity(id a, id b, void *context)
-{
-	OOCommodityMarket *market = (OOCommodityMarket *)context;
-	int result = (int)[market quantityForGood:(OOCommodityType)a] - (int)[market quantityForGood:(OOCommodityType)b];
-	if (result < 0)
-	{
-		return NSOrderedAscending;
-	}
-	else if (result > 0)
-	{
-		return NSOrderedDescending;
-	}
-	else
-	{
-		return NSOrderedSame;
-	}
-}
-
-
-NSComparisonResult marketSorterByMassUnit(id a, id b, void *context)
-{
-	OOCommodityMarket *market = (OOCommodityMarket *)context;
-	int result = (int)[market massUnitForGood:(OOCommodityType)a] - (int)[market massUnitForGood:(OOCommodityType)b];
-	if (result < 0)
-	{
-		return NSOrderedAscending;
-	}
-	else if (result > 0)
-	{
-		return NSOrderedDescending;
-	}
-	else
-	{
-		return NSOrderedSame;
-	}
-}

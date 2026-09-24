@@ -1126,13 +1126,13 @@ typedef enum
 - (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context;
 
 - (BOOL) changePassengerBerths:(int) addRemove;
-- (OOCargoQuantity) cargoQuantityForType:(OOCommodityType)type;
-- (OOCargoQuantity) setCargoQuantityForType:(OOCommodityType)type amount:(OOCargoQuantity)amount;
+- (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type;
+- (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount;
 - (void) calculateCurrentCargo;
 - (void) setGuiToMarketScreen;
 - (void) setGuiToMarketInfoScreen;
-- (NSArray *) applyMarketFilter:(NSArray *)goods onMarket:(OOCommodityMarket *)market;
-- (NSArray *) applyMarketSorter:(NSArray *)goods onMarket:(OOCommodityMarket *)market;
+- (std::vector<std::string>) cxx_applyMarketFilter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market;
+- (std::vector<std::string>) cxx_applyMarketSorter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market;
 - (OOCommodityMarket *) localMarket;
 
 
@@ -1149,8 +1149,8 @@ typedef enum
 
 - (void) buySelectedItem;
 
-- (BOOL) tryBuyingCommodity:(OOCommodityType)type all:(BOOL)all;
-- (BOOL) trySellingCommodity:(OOCommodityType)type all:(BOOL)all;
+- (BOOL) cxx_tryBuyingCommodity:(const std::string &)type all:(BOOL)all;	// "<<<" / ">>>" page the market
+- (BOOL) cxx_trySellingCommodity:(const std::string &)type all:(BOOL)all;
 
 - (OOSpeechSettings) isSpeechOn;
 
