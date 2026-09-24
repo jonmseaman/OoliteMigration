@@ -9,6 +9,9 @@ This code is hereby placed in the public domain.
 
 #import "OOWeakReference.h"
 #import "OOCocoa.h"	// OOObject's -description and the GNUstep bridge (-methodSignatureForSelector:)
+#import "OOStringBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 @interface OOWeakReferenceTemplates: OOObject
@@ -43,10 +46,10 @@ This code is hereby placed in the public domain.
 }
 
 
-- (NSString *)description
+- (id)description
 {
 	if (_object != nil)  return [_object description];
-	else  return [NSString stringWithFormat:@"<Dead %@ %p>", [self class], self];
+	else  return oo::NSStringFrom(oo::str::format("<Dead %s %s>", oo::StdString([[self class] description]).c_str(), oo::str::pointerDescription(self).c_str()));
 }
 
 
