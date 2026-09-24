@@ -108,6 +108,8 @@ static inline const unichar *OOJSRUCHARS(const ooscript::Char16 *s)  { return re
 
 #import "OOProfilingStopwatch.h"
 #import "OOLoggingExtended.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 #include <stdlib.h>
 
@@ -135,8 +137,6 @@ static unsigned				sErrorHandlerStackSkip = 0;
 ooscript::Context gOOJSMainThreadContext = NULL;
 
 
-NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
-NSString * const kOOJavaScriptEngineDidResetNotification = @"org.aegidian.oolite OOJavaScriptEngine did reset";
 const char * const kOOJavaScriptEngineWillResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine will reset";
 const char * const kOOJavaScriptEngineDidResetNotificationName = "org.aegidian.oolite OOJavaScriptEngine did reset";
 
@@ -514,16 +514,14 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 	
 	ooscript::Context context = OOJSAcquireContext();
 	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineWillResetNotificationName, self);
-	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineWillResetNotification object:self];
-	OOJSRelinquishContext(context);
+OOJSRelinquishContext(context);
 	
 	[self destroyMainThreadContext];
 	[self createMainThreadContext];
 	
 	context = OOJSAcquireContext();
 	oo::NotificationCenter::defaultCenter().post(kOOJavaScriptEngineDidResetNotificationName, self);
-	[[NSNotificationCenter defaultCenter] postNotificationName:kOOJavaScriptEngineDidResetNotification object:self];
-	OOJSRelinquishContext(context);
+OOJSRelinquishContext(context);
 	
 	[self garbageCollectionOpportunity:YES];
 	return YES;
@@ -685,8 +683,8 @@ static void ReportJSError(ooscript::Context context, const char *message, const 
 
 - (void) registerStandardObjectConverters
 {
-	OOJSRegisterObjectConverter([self objectClass], (OOJSClassConverterCallback)OOJSDictionaryFromJSObject);
-	OOJSRegisterObjectConverter([self stringClass], JSStringConverter);
+	OOJSRegisterFoundationObjectConverter([self objectClass]);	// the Foundation converter, in the bridge (bead oo-3rb.202)
+OOJSRegisterObjectConverter([self stringClass], JSStringConverter);
 	OOJSRegisterObjectConverter([self arrayClass], JSArrayConverter);
 	OOJSRegisterObjectConverter([self numberClass], JSNumberConverter);
 	OOJSRegisterObjectConverter([self booleanClass], JSBooleanConverter);
@@ -933,7 +931,11 @@ void OOJSDumpStack(ooscript::Context context)
 				}
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(kOOLogException, @"Exception during JavaScript stack trace: %@:%@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(kOOLogException, @"Exception during JavaScript stack trace: %@:%@", [exception name], [exception reason]);
 		}
@@ -1014,13 +1016,13 @@ void OOJSInitJSIDCachePRIVATE(const char *name, ooscript::PropertyId *idCache)
 	ooscript::String string = (ooscript::internString((context), name));
 	if (EXPECT_NOT(string == NULL))
 	{
-		[NSException raise:NSGenericException format:@"Failed to initialize JS ID cache for \"%s\".", name];
+		[OOException raise:OOGenericException format:"Failed to initialize JS ID cache for \"%s\".", name];
 	}
 	
 	// The string is interned, so the engine's value-to-id conversion returns its atom id unchanged.
 	if (EXPECT_NOT(!ooscript::valueToId(context, ooscript::stringValue(string), idCache)))
 	{
-		[NSException raise:NSGenericException format:@"Failed to initialize JS ID cache for \"%s\".", name];
+		[OOException raise:OOGenericException format:"Failed to initialize JS ID cache for \"%s\".", name];
 	}
 	
 	OOJSRelinquishContext(context);
@@ -1120,7 +1122,8 @@ void OOJSReportWrappedException(ooscript::Context context, id exception)
 {
 	if (!ooscript::isExceptionPending((context)))
 	{
-		if ([exception isKindOfClass:[NSException class]])  cxx_OOJSReportError(context, "Native exception: %s", oo::DescriptionOf([exception reason]).c_str());
+		if ([exception isKindOfClass:[OOException class]])  cxx_OOJSReportError(context, "Native exception: %s", [(OOException *)exception reason]);
+		else if ([exception isKindOfClass:[OOFoundationException class]])  cxx_OOJSReportError(context, "Native exception: %s", oo::DescriptionOf([(OOFoundationException *)exception reason]).c_str());
 		else  cxx_OOJSReportError(context, "Unidentified native exception");
 	}
 	// Else, let the pending exception propagate.
@@ -1423,7 +1426,7 @@ void OOJSStrLiteralCachePRIVATE(const char *string, ooscript::Value *strCache, B
 	ooscript::String jsString = (ooscript::internString((context), string));
 	if (EXPECT_NOT(string == NULL))
 	{
-		[NSException raise:NSGenericException format:@"Failed to initialize JavaScript string literal cache for \"%s\".", cxx_OOJSEscapedForJavaScriptLiteral(string != NULL ? std::string_view(string) : std::string_view()).c_str()];
+		[OOException raise:OOGenericException format:"Failed to initialize JavaScript string literal cache for \"%s\".", cxx_OOJSEscapedForJavaScriptLiteral(string != NULL ? std::string_view(string) : std::string_view()).c_str()];
 	}
 	
 	*strCache = ooscript::stringValue(jsString);
@@ -2022,141 +2025,134 @@ BOOL OOJSObjectGetterImplPRIVATE(ooscript::Context context, ooscript::Object obj
 }
 
 
-NSDictionary *OOJSDictionaryFromJSValue(ooscript::Context context, ooscript::Value value)
+oo::PList OOJSDictionaryFromJSValue(ooscript::Context context, ooscript::Value value)
 {
 	OOJS_PROFILE_ENTER
-	
+
 	ooscript::Object object = nullptr;
 	if (EXPECT_NOT(!ooscript::valueToObject((context), (value), &object) || object == nullptr))
 	{
-		return nil;
+		return oo::PList();
 	}
-	return OOJSDictionaryFromJSObject(context, (object));
-	
-	OOJS_PROFILE_EXIT
+	return cxx_OOJSDictionaryFromJSObject(context, (object));
+
+	OOJS_PROFILE_EXIT_VAL(oo::PList())
 }
 
 
-NSDictionary *OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object)
+oo::PList cxx_OOJSDictionaryFromJSObject(ooscript::Context context, ooscript::Object object)
 {
 	OOJS_PROFILE_ENTER
-	
+
 	ooscript::IdArray			*ids = NULL;
 	std::size_t					i;
-	NSMutableDictionary			*result = nil;
+	oo::PList::Dict				result;
+	bool						hasIntegerKey = false;
 	ooscript::Value						value = ooscript::undefinedValue();
-	id							objKey = nil;
-	id							objValue = nil;
-	
+
 	ids = ooscript::enumerate((context), (object));
 	if (EXPECT_NOT(ids == NULL))
 	{
-		return nil;
+		return oo::PList();
 	}
-	
-	result = [NSMutableDictionary dictionaryWithCapacity:ids->length];
+
 	for (i = 0; i != ids->length; ++i)
 	{
 		ooscript::PropertyId thisID = (ids->ids[i]);
-		
+		std::optional<std::string>	key;
+		bool						isIntegerKey = false;
+
 		if (ooscript::isStringId(thisID))
 		{
-			objKey = OOStringFromJSString(context, ooscript::idToString(thisID));
+			key = cxx_OOStringFromJSString(context, ooscript::idToString(thisID));
 		}
 		else if (ooscript::isInt32Id(thisID))
 		{
-			/* this causes problems with native functions which expect string keys
-			 * e.g. in mission.runScreen with the 'choices' parameter
-			 * should this instead be making the objKey a string?
-			 * is there anything that relies on the current behaviour?
-			 * - CIM 15/2/13 */
-			objKey = [NSNumber numberWithInt:ooscript::idToInt32(thisID)];
+			/*	The Foundation form (OOJSDictionaryFromJSObject, in the bridge) keeps
+				an int32 property id as a number key; oo::PListFrom() made a dictionary
+				with a number key a null PList, so such an entry makes the whole result
+				null here. (CIM 15/2/13 asked whether the key should be a string.)
+			*/
+			isIntegerKey = true;
 		}
-		else
-		{
-			objKey = nil;
-		}
-		
+
+		const bool hasKey = key.has_value() || isIntegerKey;
 		value = ooscript::undefinedValue();
-		if (objKey != nil && !ooscript::lookupPropertyById((context), (object), (thisID), (&value)))  value = ooscript::undefinedValue();
-		
-		if (objKey != nil && !ooscript::isUndefined(value))
+		if (hasKey && !ooscript::lookupPropertyById((context), (object), (thisID), (&value)))  value = ooscript::undefinedValue();
+
+		if (hasKey && !ooscript::isUndefined(value))
 		{
-			objValue = OOJSNativeObjectFromJSValue(context, value);
+			id objValue = OOJSNativeObjectFromJSValue(context, value);
 			if (objValue != nil)
 			{
-				[result setObject:objValue forKey:objKey];
+				if (isIntegerKey)  hasIntegerKey = true;
+				else  result.insert_or_assign(*key, oo::PListFrom(objValue));
 			}
 		}
 	}
-	
+
 	ooscript::destroyIdArray((context), ids);
-	return result;
-	
-	OOJS_PROFILE_EXIT
+	if (hasIntegerKey)  return oo::PList();
+	return oo::PList(std::move(result));
+
+	OOJS_PROFILE_EXIT_VAL(oo::PList())
 }
 
 
-NSDictionary *OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Value tableValue)
+oo::PList OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Value tableValue)
 {
 	OOJS_PROFILE_ENTER
-	
+
 	ooscript::Object				tableObject = nullptr;
 	ooscript::IdArray			*ids;
 	std::size_t					i;
-	NSMutableDictionary			*result = nil;
+	oo::PList::Dict				result;
 	ooscript::Value						value = ooscript::undefinedValue();
-	id							objKey = nil;
-	id							objValue = nil;
-	
+
 	if (EXPECT_NOT(ooscript::isNull(tableValue) || !ooscript::valueToObject((context), (tableValue), &tableObject)))
 	{
-		return nil;
+		return oo::PList();
 	}
-	
+
 	ids = ooscript::enumerate((context), tableObject);
 	if (EXPECT_NOT(ids == NULL))
 	{
-		return nil;
+		return oo::PList();
 	}
-	
-	result = [NSMutableDictionary dictionaryWithCapacity:ids->length];
+
 	for (i = 0; i != ids->length; ++i)
 	{
 		ooscript::PropertyId thisID = (ids->ids[i]);
-		
+		std::optional<std::string>	key;
+
 		if (ooscript::isStringId(thisID))
 		{
-			objKey = OOStringFromJSString(context, ooscript::idToString(thisID));
+			key = cxx_OOStringFromJSString(context, ooscript::idToString(thisID));
 		}
-		else
-		{
-			objKey = nil;
-		}
-		
+
 		value = ooscript::undefinedValue();
-		if (objKey != nil && !ooscript::lookupPropertyById((context), tableObject, (thisID), (&value)))  value = ooscript::undefinedValue();
-		
-		if (objKey != nil && !ooscript::isUndefined(value))
+		if (key && !ooscript::lookupPropertyById((context), tableObject, (thisID), (&value)))  value = ooscript::undefinedValue();
+
+		if (key && !ooscript::isUndefined(value))
 		{
-			objValue = OOStringFromJSValueEvenIfNull(context, value);
-			
-			if (objValue != nil)
+			std::optional<std::string> string = cxx_OOStringFromJSValueEvenIfNull(context, value);
+
+			if (string)
 			{
-				[result setObject:objValue forKey:objKey];
+				result.insert_or_assign(*key, oo::PList(std::move(*string)));
 			}
 		}
 	}
-	
+
 	ooscript::destroyIdArray((context), ids);
-	return result;
-	
-	OOJS_PROFILE_EXIT
+	return oo::PList(std::move(result));
+
+	OOJS_PROFILE_EXIT_VAL(oo::PList())
 }
 
 
 namespace {
-static NSMutableDictionary *sObjectConverters;
+static std::unordered_map<const ooscript::ClassDef *, OOJSClassConverterCallback> *sObjectConverters;
 } // namespace
 
 
@@ -2168,21 +2164,22 @@ id OOJSNativeObjectFromJSValue(ooscript::Context context, ooscript::Value value)
 	
 	if (ooscript::isInt32(value))
 	{
-		return [NSNumber numberWithInt:ooscript::toInt32(value)];
+		// +numberWithLongLong: where this was +numberWithInt: (same value; bead oo-3rb.202).
+		return oo::ObjectFromPList(oo::PList::signedInteger(ooscript::toInt32(value)));
 	}
 	if (ooscript::isDouble(value))
 	{
-		return [NSNumber numberWithDouble:ooscript::toDouble(value)];
+		return oo::ObjectFromPList(oo::PList(ooscript::toDouble(value)));
 	}
 	if (ooscript::isBoolean(value))
 	{
-		return [NSNumber numberWithBool:ooscript::toBoolean(value)];
+		return oo::ObjectFromPList(oo::PList(static_cast<bool>(ooscript::toBoolean(value))));
 	}
 	if (ooscript::isString(value))
 	{
-		return OOStringFromJSValue(context, value);
+		return oo::NSStringOrNil(cxx_OOStringFromJSValue(context, value));
 	}
-	if (ooscript::isObjectOrNull(value))
+if (ooscript::isObjectOrNull(value))
 	{
 		return OOJSNativeObjectFromJSObject(context, ooscript::toObject(value));
 	}
@@ -2196,23 +2193,23 @@ id OOJSNativeObjectFromJSObject(ooscript::Context context, ooscript::Object tabl
 {
 	OOJS_PROFILE_ENTER
 	
-	NSValue					*wrappedClass = nil;
-	NSValue					*wrappedConverter = nil;
 	OOJSClassConverterCallback converter = NULL;
 	ooscript::ClassDef					*tableClass = NULL;
-	
+
 	if (tableObject == NULL)  return nil;
-	
+
 	tableClass = OOJSGetClass(context, tableObject);
-	wrappedClass = [NSValue valueWithPointer:tableClass];
-	if (wrappedClass != nil)  wrappedConverter = [sObjectConverters objectForKey:wrappedClass];
-	if (wrappedConverter != nil)
+	if (sObjectConverters != NULL)
 	{
-		converter = reinterpret_cast<OOJSClassConverterCallback>([wrappedConverter pointerValue]);
+		auto found = sObjectConverters->find(tableClass);
+		if (found != sObjectConverters->end())  converter = found->second;
+	}
+	if (converter != NULL)
+	{
 		return converter(context, tableObject);
 	}
 	return nil;
-	
+
 	OOJS_PROFILE_EXIT
 }
 
@@ -2248,21 +2245,16 @@ id OOJSBasicPrivateObjectConverter(ooscript::Context context, ooscript::Object o
 
 void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJSClassConverterCallback converter)
 {
-	NSValue					*wrappedClass = nil;
-	NSValue					*wrappedConverter = nil;
-	
 	if (theClass == NULL)  return;
-	if (sObjectConverters == nil)  sObjectConverters = [[NSMutableDictionary alloc] init];
-	
-	wrappedClass = [NSValue valueWithPointer:theClass];
+	if (sObjectConverters == NULL)  sObjectConverters = new std::unordered_map<const ooscript::ClassDef *, OOJSClassConverterCallback>;
+
 	if (converter != NULL)
 	{
-		wrappedConverter = [NSValue valueWithPointer:reinterpret_cast<const void*>(converter)];
-		[sObjectConverters setObject:wrappedConverter forKey:wrappedClass];
+		(*sObjectConverters)[theClass] = converter;
 	}
 	else
 	{
-		[sObjectConverters removeObjectForKey:wrappedClass];
+		sObjectConverters->erase(theClass);
 	}
 }
 
@@ -2270,7 +2262,8 @@ void OOJSRegisterObjectConverter(ooscript::ClassDef *theClass, OOJSClassConverte
 namespace {
 static void UnregisterObjectConverters(void)
 {
-	DESTROY(sObjectConverters);
+	delete sObjectConverters;
+	sObjectConverters = NULL;
 }
 } // namespace
 
@@ -2279,33 +2272,26 @@ namespace {
 static id JSArrayConverter(ooscript::Context context, ooscript::Object array)
 {
 	uint32_t						i, count;
-	id							*values = NULL;
+	std::vector<id>				values;
 	ooscript::Value						value = ooscript::undefinedValue();
 	id							object = nil;
-	NSArray						*result = nil;
-	
-	// Convert a JS array to an NSArray by calling OOJSNativeObjectFromJSValue() on all its elements.
+
+	// Convert a JS array to a native array by calling OOJSNativeObjectFromJSValue() on all its elements.
 	if (!ooscript::isArrayObject((context), (array))) return nil;
 	if (!ooscript::getArrayLength((context), (array), &count)) return nil;
-	
-	if (count == 0)  return [NSArray array];
-	
-	values = static_cast<id*>(calloc(count, sizeof *values));
-	if (values == NULL)  return nil;
-	
+
+	values.reserve(count);
 	for (i = 0; i != count; ++i)
 	{
 		value = ooscript::undefinedValue();
 		if (!ooscript::getElement((context), (array), i, (&value)))  value = ooscript::undefinedValue();
-		
+
 		object = OOJSNativeObjectFromJSValue(context, value);
 		if (object == nil)  object = [OONull null];
-		values[i] = object;
+		values.push_back(object);
 	}
-	
-	result = [NSArray arrayWithObjects:values count:count];
-	free(values);
-	return result;
+
+	return oo::NSArrayFromObjects(values);
 }
 } // namespace
 
@@ -2313,7 +2299,7 @@ static id JSArrayConverter(ooscript::Context context, ooscript::Object array)
 namespace {
 static id JSStringConverter(ooscript::Context context, ooscript::Object object)
 {
-	return OOStringFromJSValue(context, ooscript::objectValue(object));
+	return oo::NSStringOrNil(cxx_OOStringFromJSValue(context, ooscript::objectValue(object)));
 }
 } // namespace
 
@@ -2324,7 +2310,7 @@ static id JSNumberConverter(ooscript::Context context, ooscript::Object object)
 	double value;
 	if (ooscript::valueToNumber((context), (ooscript::objectValue(object)), &value))
 	{
-		return [NSNumber numberWithDouble:value];
+		return oo::ObjectFromPList(oo::PList(value));
 	}
 	return nil;
 }
@@ -2342,8 +2328,8 @@ static id JSBooleanConverter(ooscript::Context context, ooscript::Object object)
 	double value;
 	if (ooscript::valueToNumber((context), (ooscript::objectValue(object)), &value))
 	{
-		return [NSNumber numberWithBool:(value != 0)];
-	}
+		return oo::ObjectFromPList(oo::PList(value != 0));
+}
 	return nil;
 }
 } // namespace
