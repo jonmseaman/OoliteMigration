@@ -2325,7 +2325,7 @@ static int shipsFound;
 		return;
 	int			ent_count =		UNIVERSE->n_entities;
 	Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity*		my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	int i;
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = [uni_entities[i] retain];		//	retained

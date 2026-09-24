@@ -701,7 +701,7 @@ using ooscript::Context;
 		// locate nearest wormhole
 		int				ent_count =		UNIVERSE->n_entities;
 		Entity**		uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-		WormholeEntity*	wormholes[ent_count];
+		std::vector<WormholeEntity *>	wormholes(ent_count);
 		int i;
 		int wh_count = 0;
 		for (i = 0; i < ent_count; i++)
@@ -1067,7 +1067,7 @@ using ooscript::Context;
 	
 	//-- Locates one of the merchantman in range.
 	[self checkScannerIgnoringUnpowered];
-	ShipEntity*		ids_found[n_scanned_ships];
+	std::vector<ShipEntity *>	ids_found(n_scanned_ships);
 	
 	n_found = 0;
 	DESTROY(_foundTarget);
@@ -2518,7 +2518,7 @@ using ooscript::Context;
 	/*- selects the nearest station it can find -*/
 	int				ent_count = UNIVERSE->n_entities;
 	Entity			**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	StationEntity	*station = nil, *my_station = nil;
 	double			maxRange2 = desired_range * desired_range;
 	int				i;

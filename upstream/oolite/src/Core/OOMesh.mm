@@ -1750,7 +1750,7 @@ static float FaceArea(GLuint *vertIndices, Vector *vertices)
 	NSParameterAssert(faceRefs != NULL);
 	
 	NSUInteger	i,j;
-	float		triangle_area[faceCount];
+	std::vector<float>	triangle_area(faceCount);
 	
 	NSAssert1(_normals != NULL && _tangents != NULL, @"Normal/tangent buffers not allocated in %s", __PRETTY_FUNCTION__);
 	
@@ -1822,7 +1822,7 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 		-- Ahruman 2010-05-22
 	*/
 	NSUInteger	i,j;
-	float	triangle_area[faceCount];
+	std::vector<float>	triangle_area(faceCount);
 	for (i = 0 ; i < faceCount; i++)
 	{
 		triangle_area[i] = FaceAreaCorrect(_faces[i].vertex, _vertices);
@@ -1892,8 +1892,8 @@ static float FaceAreaCorrect(GLuint *vertIndices, Vector *vertices)
 	// if smoothed, find any vertices that are between faces of different
 	// smoothing groups and mark them as being on an edge and therefore NOT
 	// smooth shaded
-	BOOL is_edge_vertex[vertexCount];
-	GLfloat smoothGroup[vertexCount];
+	std::vector<BOOL>	is_edge_vertex(vertexCount);
+	std::vector<GLfloat>	smoothGroup(vertexCount);
 	for (vi = 0; vi < vertexCount; vi++)
 	{
 		is_edge_vertex[vi] = NO;

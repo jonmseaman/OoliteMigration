@@ -1347,7 +1347,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	// use a non-mutable copy so this can't be changed under us.
 	int				ent_count		= UNIVERSE->n_entities;
 	Entity			**uni_entities	= UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	Entity			*scannedEntity = nil;
 	
 	for (i = 0; i < ent_count; i++)

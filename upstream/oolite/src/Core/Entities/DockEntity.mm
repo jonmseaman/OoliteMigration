@@ -1048,7 +1048,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	BOOL			isEmpty = YES;
 	int				ent_count =		UNIVERSE->n_entities;
 	Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	int i;
 	int ship_count = 0;
 	
@@ -1108,7 +1108,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	BOOL			isClear = YES;
 	int				ent_count =			UNIVERSE->n_entities;
 	Entity			**uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	int i;
 	int ship_count = 0;
 	
