@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 #import "PlayerEntityScriptMethods.h"
 #import "PlayerEntity.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #include <optional>
 #include <string>
@@ -98,8 +99,8 @@ typedef struct
 {
 	Random_Seed			seed;
 	OOMaybeUnits		systemName;
-	NSDictionary		*overrides;
-	NSDictionary		*legacyLocals;
+	oo::PList			overrides;			// a dictionary of mixed values; null: none (was nil)
+	oo::PList			legacyLocals;		// a dictionary of mixed values; null: none (was nil)
 	bool				isJavaScript;
 	bool				convertBackslashN;
 	bool				hasPercentR;		// Set to indicate we need an ExpandPercentR() pass.
@@ -109,7 +110,7 @@ typedef struct
 	OOMaybeUnits		systemNameWithIan;	// Cache for %I
 	OOMaybeUnits		randomNameN;		// Cache for %N
 	OOMaybeUnits		randomNameR;		// Cache for %R
-	NSArray				*systemDescriptions;// Cache for system_description, used for numbered keys.
+	oo::PList			systemDescriptions;	// Cache for system_description (an array), used for numbered keys; null: not loaded.
 	NSUInteger			sysDescCount;		// Count of systemDescriptions, valid after GetSystemDescriptions() called.
 } OOStringExpansionContext;
 
@@ -122,7 +123,7 @@ OOMaybeUnits GetSystemName(OOStringExpansionContext *context);		// %H
 OOMaybeUnits GetSystemNameIan(OOStringExpansionContext *context);	// %I
 OOMaybeUnits GetRandomNameN(OOStringExpansionContext *context);		// %N
 OOMaybeUnits GetRandomNameR(OOStringExpansionContext *context);		// %R
-NSArray *GetSystemDescriptions(OOStringExpansionContext *context);
+const oo::PList &GetSystemDescriptions(OOStringExpansionContext *context);
 
 void AppendCharacters(OOMaybeUnits *result, const char16_t *characters, NSUInteger start, NSUInteger end);
 
@@ -136,7 +137,7 @@ OOUnits Expand(OOStringExpansionContext *context, const OOUnits &string, NSUInte
 OOMaybeUnits ExpandKey(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength, NSUInteger sizeLimit, NSUInteger recursionLimit);
 OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *characters, NSUInteger keyStart, NSUInteger keyLength, NSUInteger sizeLimit, NSUInteger recursionLimit);
 OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &key, NSUInteger sizeLimit, NSUInteger recursionLimit);
-OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, NSString *key);
+OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const std::string &key);
 OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key);
 OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, const OOUnits &key);
 /*	Key -> selector tables, keyed by the key's UTF-8 (NSString equality). Were map tables with
@@ -155,7 +156,8 @@ SEL LookUpSelector(const OOSelectorTable *table, NSString *key)
 const OOSelectorTable *SpecialSubstitutionSelectors(void);
 OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit);
 OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext *context, const OOUnits &key, NSString *keyString);
-OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, NSString *key);
+OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, const std::string &key);
+OOUnits ValueText(const oo::PList &value);
 OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NSString *key);
 SEL LookUpLegacySelector(NSString *key);
 
@@ -202,16 +204,14 @@ void SyntaxIssue(OOStringExpansionContext *context, const char *function, const 
 // MARK: -
 // MARK: Public functions
 
-NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictionary *overrides, NSDictionary *legacyLocals, NSString *systemName, OOExpandOptions options)
+std::optional<std::string> cxx_OOExpandDescriptionString(Random_Seed seed, const std::string &string, const oo::PList &overrides, const oo::PList &legacyLocals, const std::optional<std::string> &systemName, OOExpandOptions options)
 {
-	if (string == nil)  return nil;
-	
 	OOStringExpansionContext context =
 	{
 		.seed = seed,
-		.systemName = UnitsFromNSString(systemName),
-		.overrides = [overrides retain],
-		.legacyLocals = [legacyLocals retain],
+		.systemName = systemName.has_value() ? OOMaybeUnits(oo::utf8ToUtf16(*systemName)) : std::nullopt,
+		.overrides = overrides,
+		.legacyLocals = legacyLocals,
 		.isJavaScript = (bool)(options & kOOExpandForJavaScript),
 		.convertBackslashN = (bool)(options & kOOExpandBackslashN),
 		.useGoodRNG = (bool)(options & kOOExpandGoodRNG)
@@ -229,50 +229,40 @@ NSString *OOExpandDescriptionString(Random_Seed seed, NSString *string, NSDictio
 		OOSetReallyRandomRANROTAndRndSeeds();
 	}
 
-	NSString *result = nil;
+	std::optional<std::string> result;
 	@autoreleasepool
 	{
+		// TODO: profile caching the results. Would need to keep track of whether we've done something nondeterministic (array selection, %R etc).
+		// (The context's values are C++ now: nothing is left to release if an exception unwinds.)
 		OOMaybeUnits intermediate;
-		@try
+		const OOUnits units = oo::utf8ToUtf16(string);
+		if (options & kOOExpandKey)
 		{
-			// TODO: profile caching the results. Would need to keep track of whether we've done something nondeterministic (array selection, %R etc).
-			const OOUnits units = *UnitsFromNSString(string);
-			if (options & kOOExpandKey)
-			{
-				intermediate = ExpandStringKey(&context, units, kStackAllocationLimit, kRecursionLimit);
-			}
-			else
-			{
-				intermediate = Expand(&context, units, kStackAllocationLimit, kRecursionLimit);
-			}
-			if (context.hasPercentR)
-			{
-				intermediate = ExpandPercentR(&context, intermediate);
-			}
-			if (intermediate.has_value())  result = NSStringFromUnits(*intermediate);
+			intermediate = ExpandStringKey(&context, units, kStackAllocationLimit, kRecursionLimit);
 		}
-		@finally
+		else
 		{
-			[context.overrides release];
-			[context.legacyLocals release];
-			[context.systemDescriptions release];
+			intermediate = Expand(&context, units, kStackAllocationLimit, kRecursionLimit);
 		}
+		if (context.hasPercentR)
+		{
+			intermediate = ExpandPercentR(&context, intermediate);
+		}
+		if (intermediate.has_value())  result = oo::utf16ToUtf8(*intermediate);
 
 		if (options & kOOExpandReseedRNG)
 		{
 			OORestoreRandomState(savedRandomState);
 		}
-
-		result = [result copy];
 	}
-	return [result autorelease];
+	return result;
 }
 
 
-NSString *OOGenerateSystemDescription(Random_Seed seed, NSString *name)
+std::optional<std::string> cxx_OOGenerateSystemDescription(Random_Seed seed, const std::optional<std::string> &name)
 {
 	seed_RNG_only_for_planet_description(seed);
-	return OOExpandDescriptionString(seed, @"system-description-string", nil, nil, name, kOOExpandKey);
+	return cxx_OOExpandDescriptionString(seed, "system-description-string", oo::PList(), oo::PList(), name, kOOExpandKey);
 }
 
 
@@ -636,11 +626,12 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 		keyValue = keyValue * 10 + characters[idx] - '0';
 	}
 
-	// Retrieve selected system_description entry.
-	NSArray *sysDescs = GetSystemDescriptions(context);
-	NSArray *entry = oo::PListView(sysDescs).at<NSArray *>(keyValue);
+	// Retrieve selected system_description entry (an array, as PListView at<NSArray *> required).
+	const oo::PList &sysDescs = GetSystemDescriptions(context);
+	const oo::PList *entry = sysDescs.at(keyValue);
+	if (entry != nullptr && !entry->isArray())  entry = nullptr;
 
-	if (EXPECT_NOT(entry == nil))
+	if (EXPECT_NOT(entry == nullptr))
 	{
 		if (keyValue >= context->sysDescCount)
 		{
@@ -655,7 +646,7 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 	}
 	
 	// Select a random sub-entry.
-	NSUInteger selection, count = [entry count];
+	NSUInteger selection, count = entry->count();
 	NSUInteger rnd = OO_EXPANDER_RANDOM;
 	if (count == 5 && !context->useGoodRNG)
 	{
@@ -673,7 +664,10 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 	}
 	
 	// Look up and recursively expand string.
-	OOMaybeUnits string = UnitsFromNSString(oo::PListView(entry).at<NSString *>(selection));
+	// PListView at<NSString *>: a string, or a number's -stringValue; anything else is nil.
+	OOMaybeUnits string;
+	const oo::PList *choice = entry->at(selection);
+	if (choice != nullptr && (choice->isString() || choice->isNumber()))  string = oo::utf8ToUtf16(entry->at<std::string>(selection));
 	NSCParameterAssert(string.has_value());
 	if (!string.has_value())  return std::nullopt;
 	return Expand(context, *string, sizeLimit, recursionLimit);
@@ -693,7 +687,7 @@ OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &k
 	NSString *keyString = NSStringFromUnits(key);
 
 	// Overrides have top priority.
-	OOMaybeUnits result = ExpandStringKeyOverride(context, keyString);
+	OOMaybeUnits result = ExpandStringKeyOverride(context, oo::StdString(keyString));
 
 	// Specials override descriptions.plist.
 	if (!result.has_value())  result = ExpandStringKeySpecial(context, keyString);
@@ -709,7 +703,7 @@ OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &k
 	if (!result.has_value())  result = ExpandStringKeyMissionVariable(context, key, keyString);
 
 	// Try legacy local variables.
-	if (!result.has_value())  result = ExpandStringKeyLegacyLocalVariable(context, keyString);
+	if (!result.has_value())  result = ExpandStringKeyLegacyLocalVariable(context, oo::StdString(keyString));
 
 	// Try legacy script methods. (Upstream calls it for its side effects and discards the result.)
 	if (!result.has_value())  ExpandLegacyScriptSelectorKey(context, keyString);
@@ -732,20 +726,20 @@ OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &k
 	
 	The main difference between overrides and legacy locals is priority.
 */
-OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const std::string &key)
 {
-	NSCParameterAssert(context != NULL && key != nil);
-	
-	id value = [context->overrides objectForKey:key];
-	if (value != nil)
+	NSCParameterAssert(context != NULL);
+
+	const oo::PList *value = context->overrides.find(key);
+	if (value != nullptr)
 	{
 #if WARNINGS
-		if (![value isKindOfClass:[NSString class]] && ![value isKindOfClass:[NSNumber class]])
+		if (!value->isString() && !value->isNumber())
 		{
-			SyntaxWarning(context, @"strings.expand.warning.invalidOverride", @"String expansion override value %@ for [%@] is not a string or number.", [value shortDescription], key);
+			SyntaxWarning(context, @"strings.expand.warning.invalidOverride", @"String expansion override value %@ for [%@] is not a string or number.", [oo::ObjectFromPList(*value) shortDescription], oo::NSStringFrom(key));
 		}
 #endif
-		return UnitsFromNSString([value description]);
+		return ValueText(*value);
 	}
 
 	return std::nullopt;
@@ -885,9 +879,23 @@ OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* contex
 	
 	The main difference between overrides and legacy locals is priority.
 */
-OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, const std::string &key)
 {
-	return UnitsFromNSString([[context->legacyLocals objectForKey:key] description]);
+	const oo::PList *value = context->legacyLocals.find(key);
+	if (value == nullptr)  return std::nullopt;
+	return ValueText(*value);
+}
+
+
+/*	A mixed value's -description, as the lookups above inserted it: a string is itself, a number
+	its -stringValue (oo::plist_get::numberStringValue), anything else the Objective-C object's
+	-description.
+*/
+OOUnits ValueText(const oo::PList &value)
+{
+	if (const std::string *text = value.getIf<std::string>())  return oo::utf8ToUtf16(*text);
+	if (value.isNumber())  return oo::utf8ToUtf16(oo::plist_get::numberStringValue(value));
+	return oo::utf8ToUtf16(oo::DescriptionOf(oo::ObjectFromPList(value)));
 }
 
 
@@ -1257,7 +1265,8 @@ OOMaybeUnits GetSystemNameIan(OOStringExpansionContext *context)
 
 	if (!context->systemNameWithIan.has_value())
 	{
-		context->systemNameWithIan = UnitsFromNSString(OOExpandWithOptions(context->seed, kOOExpandDisallowPercentI | kOOExpandGoodRNG | kOOExpandKey, @"planetname-possessive"));
+		const std::optional<std::string> name = cxx_OOExpandDescriptionString(context->seed, "planetname-possessive", oo::PList(), oo::PList(), std::nullopt, kOOExpandDisallowPercentI | kOOExpandGoodRNG | kOOExpandKey);
+		if (name.has_value())  context->systemNameWithIan = oo::utf8ToUtf16(*name);
 	}
 
 	return context->systemNameWithIan;
@@ -1290,14 +1299,17 @@ OOMaybeUnits GetRandomNameR(OOStringExpansionContext *context)
 }
 
 
-NSArray *GetSystemDescriptions(OOStringExpansionContext *context)
+const oo::PList &GetSystemDescriptions(OOStringExpansionContext *context)
 {
 	NSCParameterAssert(context != NULL);
 
-	if (context->systemDescriptions == nil)
+	if (context->systemDescriptions.isNull())
 	{
-		context->systemDescriptions = [oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"system_description") retain];
-		context->sysDescCount = [context->systemDescriptions count];
+		// Universe is not migrated yet: only this one value of -descriptions is converted, once
+		// per context (PListView get<NSArray *>: an array, else none).
+		const oo::PList value = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"system_description"]);
+		if (value.isArray())  context->systemDescriptions = value;
+		context->sysDescCount = context->systemDescriptions.count();
 	}
 
 	return context->systemDescriptions;
