@@ -433,7 +433,7 @@ static void TimerFinalize(Context cx, Object obj)
 	{
 		if ([timer isScheduled])
 		{
-			OOLogWARN(@"script.javaScript.unrootedTimer", @"Timer %@ is being garbage-collected while still running. You must keep a reference to all running timers, or they will stop unpredictably!", timer);
+			OO_LOG_WARN("script.javaScript.unrootedTimer", "Timer {} is being garbage-collected while still running. You must keep a reference to all running timers, or they will stop unpredictably!", oo::DescriptionOf(timer));
 		}
 		[timer release];
 		ooscript::setPrivate(cx, obj, NULL);
