@@ -28,6 +28,23 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 // oo-3rb.164: marked destinations
 - (NSDictionary *) markedDestinations;	// -> -cxx_markedDestinations
 
+// oo-3rb.243: HUD switching, custom dials and multi-function displays
+- (BOOL) switchHudTo:(NSString *)hudFileName;	// -> -cxx_switchHudTo: (nil: NO)
+- (float) dialCustomFloat:(NSString *)dialKey;	// -> -cxx_dialCustomFloat:
+- (NSString *) dialCustomString:(NSString *)dialKey;	// -> -cxx_dialCustomString:
+- (OOColor *) dialCustomColor:(NSString *)dialKey;	// -> -cxx_dialCustomColor:
+- (void) setDialCustom:(id)value forKey:(NSString *)key;	// -> -cxx_setDialCustom:forKey:
+- (NSArray *) multiFunctionDisplayList;	// -> -cxx_multiFunctionDisplayList (a snapshot, [OONull null] for inactive)
+- (NSString *) multiFunctionText:(NSUInteger) index;	// -> -cxx_multiFunctionText:
+- (void) setMultiFunctionText:(NSString *)text forKey:(NSString *)key;	// -> -cxx_setMultiFunctionText:forKey:
+- (BOOL) setMultiFunctionDisplay:(NSUInteger) index toKey:(NSString *)key;	// -> -cxx_setMultiFunctionDisplay:toKey:
+- (NSString *) dial_clock;	// -> -cxx_dial_clock
+- (NSString *) dial_clock_adjusted;	// -> -cxx_dial_clock_adjusted
+- (NSString *) dial_fpsinfo;	// -> -cxx_dial_fpsinfo
+- (NSString *) dial_objinfo;	// -> -cxx_dial_objinfo
+- (NSString *) compassTargetLabel;	// -> -cxx_compassTargetLabel
+- (NSString *) dialTargetName;	// -> -cxx_dialTargetName
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H

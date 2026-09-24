@@ -1199,14 +1199,11 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 {
 	// multi-function displays
 	// must be reset before ship setup
-	[multiFunctionDisplayText release];
-	multiFunctionDisplayText = [[NSMutableDictionary alloc] init];
+	multiFunctionDisplayText.clear();
 
-	[multiFunctionDisplaySettings release];
-	multiFunctionDisplaySettings = [[NSMutableArray alloc] init];
+	multiFunctionDisplaySettings.clear();
 
-	[customDialSettings release];
-	customDialSettings = [[NSMutableDictionary alloc] init];
+	customDialSettings.clear();
 
 	[[UNIVERSE gameView] resetTypedString];
 
@@ -1971,16 +1968,13 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[UNIVERSE setAutoCommLog:YES];
 	[UNIVERSE setPermanentCommLog:NO];
 	
-	[multiFunctionDisplayText release];
-	multiFunctionDisplayText = [[NSMutableDictionary alloc] init];
+	multiFunctionDisplayText.clear();
 
-	[multiFunctionDisplaySettings release];
-	multiFunctionDisplaySettings = [[NSMutableArray alloc] init];
+	multiFunctionDisplaySettings.clear();
 
-	[customDialSettings release];
-	customDialSettings = [[NSMutableDictionary alloc] init];
+	customDialSettings.clear();
 
-	[self switchHudTo:@"hud.plist"];	
+	[self cxx_switchHudTo:"hud.plist"];
 	scanner_zoom_rate = 0.0f;
 	longRangeChartMode = OOLRC_MODE_SUNCOLOR;
 
@@ -2375,9 +2369,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 {
 	DESTROY(compassTarget);
 	DESTROY(hud);
-	DESTROY(multiFunctionDisplayText);
-	DESTROY(multiFunctionDisplaySettings);
-	DESTROY(customDialSettings);
 
 	DESTROY(commLog);
 	DESTROY(keyconfig2_settings);
@@ -4497,35 +4488,33 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (void) resetHud
 {
 	// set up defauld HUD for the ship
-	NSDictionary *shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:[self shipDataKey]];
-	NSString *hud_desc = oo::PListView(shipDict).get<NSString *>(@"hud", @"hud.plist");
-	if (![self switchHudTo:hud_desc])  [self switchHudTo:@"hud.plist"];	// ensure we have a HUD to fall back to
+	const oo::PList shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:oo::StdString([self shipDataKey])];
+	const std::string hud_desc = shipDict.get<std::string>("hud", "hud.plist");
+	if (![self cxx_switchHudTo:hud_desc])  [self cxx_switchHudTo:"hud.plist"];	// ensure we have a HUD to fall back to
 }
 
 
-- (BOOL) switchHudTo:(NSString *)hudFileName
+- (BOOL) cxx_switchHudTo:(const std::string &)hudFileName
 {
-	NSDictionary 	*hudDict = nil;
 	BOOL 			wasHidden = NO;
 	BOOL 			wasCompassActive = YES;
 	double			scannerZoom = 1.0;
 	NSUInteger		lastMFD = 0;
 	NSUInteger		i;
 
-	if (!hudFileName)  return NO;
-	
+	// (a nil name returns NO in the bridged -switchHudTo:)
 	// is the HUD in the process of being rendered? If yes, set it to defer state and abort the switching now
 	if (hud != nil && [hud isUpdating])
 	{
-		[hud setDeferredHudName:hudFileName];
+		[hud cxx_setDeferredHudName:hudFileName];
 		return NO;
 	}
 	
-	hudDict = [ResourceManager dictionaryFromFilesNamed:hudFileName inFolder:@"Config" andMerge:YES];
+	const oo::PList hudDict = [ResourceManager cxx_dictionaryFromFilesNamed:hudFileName inFolder:std::string("Config") andMerge:YES];
 	// hud defined, but buggy?
-	if (hudDict == nil)
+	if (hudDict.isNull())
 	{
-		OOLog(@"PlayerEntity.switchHudTo.failed", @"HUD dictionary file %@ to switch to not found or invalid.", hudFileName);
+		OOLog(@"PlayerEntity.switchHudTo.failed", @"HUD dictionary file %@ to switch to not found or invalid.", oo::NSStringFrom(hudFileName));
 		return NO;
 	}
 	
@@ -4539,28 +4528,28 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 	
 	// buggy oxp could override hud.plist with a non-dictionary.
-	if (hudDict != nil)
+	if (!hudDict.isNull())
 	{
 		[hud setHidden:YES];	// hide the hud while rebuilding it.
 		DESTROY(hud);
-		hud = [[HeadUpDisplay alloc] initWithDictionary:hudDict inFile:hudFileName];
-		[hud resetGuis:hudDict];
+		hud = [[HeadUpDisplay alloc] cxx_initWithDictionary:hudDict inFile:hudFileName];
+		[hud cxx_resetGuis:hudDict];
 		// reset zoom & hidden to what they were before the swich
 		[hud setScannerZoom:scannerZoom];
 		[hud setCompassActive:wasCompassActive];
 		[hud setHidden:wasHidden];
 		activeMFD = 0;
-		NSArray *savedMFDs = [NSArray arrayWithArray:multiFunctionDisplaySettings];
-		[multiFunctionDisplaySettings removeAllObjects];
+		const std::vector<std::optional<std::string>> savedMFDs = multiFunctionDisplaySettings;
+		multiFunctionDisplaySettings.clear();
 		for (i = 0; i < [hud mfdCount] ; i++)
 		{
-			if ([savedMFDs count] > i)
+			if (savedMFDs.size() > i)
 			{
-				[multiFunctionDisplaySettings addObject:[savedMFDs objectAtIndex:i]];
+				multiFunctionDisplaySettings.push_back(savedMFDs[i]);
 			}
 			else
 			{
-				[multiFunctionDisplaySettings addObject:[OONull null]];
+				multiFunctionDisplaySettings.push_back(std::nullopt);
 			}
 		}
 		if (lastMFD < [hud mfdCount]) activeMFD = lastMFD;
@@ -4570,27 +4559,30 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (float) dialCustomFloat:(NSString *)dialKey
+- (float) cxx_dialCustomFloat:(const std::string &)dialKey
 {
-	return oo::PListView(customDialSettings).get<float>(dialKey, 0.0);
+	const auto found = customDialSettings.find(dialKey);
+	return oo::PListGet<float>::from(found != customDialSettings.end() ? &found->second : nullptr, 0.0f);
 }
 
 
-- (NSString *) dialCustomString:(NSString *)dialKey
+- (std::string) cxx_dialCustomString:(const std::string &)dialKey
 {
-	return oo::PListView(customDialSettings).get<NSString *>(dialKey, @"");
+	const auto found = customDialSettings.find(dialKey);
+	return oo::PListGet<std::string>::from(found != customDialSettings.end() ? &found->second : nullptr, "");
 }
 
 
-- (OOColor *) dialCustomColor:(NSString *)dialKey
+- (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey
 {
-	return [OOColor colorWithDescription:[customDialSettings objectForKey:dialKey]];
+	const auto found = customDialSettings.find(dialKey);
+	return [OOColor colorWithDescription:(found != customDialSettings.end() ? oo::ObjectFromPList(found->second) : nil)];
 }
 
 
-- (void) setDialCustom:(id)value forKey:(NSString *)dialKey
+- (void) cxx_setDialCustom:(id)value forKey:(const std::string &)dialKey
 {
-	[customDialSettings setObject:value forKey:dialKey];
+	customDialSettings[dialKey] = oo::PListFrom(value);	// non-plist values (colours...) are kept as Object nodes; nil is a null entry (it raised before)
 }
 
 
@@ -4880,30 +4872,30 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	escape_pod_rescue_time = seconds;
 }
 
-- (NSString *) dial_clock
+- (std::string) cxx_dial_clock
 {
-	return ClockToString(ship_clock, ship_clock_adjust > 0);
+	return cxx_ClockToString(ship_clock, ship_clock_adjust > 0);
 }
 
 
-- (NSString *) dial_clock_adjusted
+- (std::string) cxx_dial_clock_adjusted
 {
-	return ClockToString(ship_clock + ship_clock_adjust, NO);
+	return cxx_ClockToString(ship_clock + ship_clock_adjust, NO);
 }
 
 
-- (NSString *) dial_fpsinfo
+- (std::string) cxx_dial_fpsinfo
 {
-	unsigned fpsVal = fps_counter;	
-	return [NSString stringWithFormat:@"FPS: %3d", fpsVal];
+	unsigned fpsVal = fps_counter;
+	return oo::str::format("FPS: %3d", fpsVal);
 }
 
 
-- (NSString *) dial_objinfo
+- (std::string) cxx_dial_objinfo
 {
-	NSString *result = [NSString stringWithFormat:@"Entities: %3zu", [UNIVERSE entityCount]];
+	std::string result = oo::str::format("Entities: %3zu", [UNIVERSE entityCount]);
 #ifndef NDEBUG
-	result = [NSString stringWithFormat:@"%@ (%d, %zu KiB, avg %zu bytes)", result, gLiveEntityCount, gTotalEntityMemory >> 10, gTotalEntityMemory / gLiveEntityCount];
+	result = oo::str::format("%s (%d, %zu KiB, avg %zu bytes)", result.c_str(), gLiveEntityCount, gTotalEntityMemory >> 10, gTotalEntityMemory / gLiveEntityCount);
 #endif
 	
 	return result;
@@ -5239,33 +5231,33 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSString *) compassTargetLabel
+- (std::optional<std::string>) cxx_compassTargetLabel
 {
 	switch (compassMode)
 	{
 	case COMPASS_MODE_INACTIVE:
-		return @"";
+		return "";
 	case COMPASS_MODE_BASIC:
-		return @"";
+		return "";
 	case COMPASS_MODE_BEACONS:
 	{
 		Entity *target = [self compassTarget];
 		if (target)
 		{
-			return [(Entity <OOBeaconEntity> *)target beaconLabel];
+			return oo::OptionalString([(Entity <OOBeaconEntity> *)target beaconLabel]);
 		}
-		return @"";
+		return "";
 	}
 	case COMPASS_MODE_PLANET:
-		return [[UNIVERSE planet] name];
+		return oo::OptionalString([[UNIVERSE planet] name]);
 	case COMPASS_MODE_SUN:
-		return [[UNIVERSE sun] name];
+		return oo::OptionalString([[UNIVERSE sun] name]);
 	case COMPASS_MODE_STATION:
-		return [[UNIVERSE station] displayName];
+		return oo::OptionalString([[UNIVERSE station] displayName]);
 	case COMPASS_MODE_TARGET:
-		return DESC(@"oolite-beacon-label-target");
+		return oo::StdString(DESC(@"oolite-beacon-label-target"));
 	}
-	return @"";
+	return "";
 }
 
 
@@ -5448,86 +5440,76 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSString *) dialTargetName
+- (std::optional<std::string>) cxx_dialTargetName
 {
 	Entity		*target_entity = [self primaryTarget];
-	NSString	*result = nil;
-	
+	std::optional<std::string>	result;
+
 	if (target_entity == nil)
 	{
-		result = DESC(@"no-target-string");
+		result = oo::StdString(DESC(@"no-target-string"));
 	}
-	
+
 	if ([target_entity respondsToSelector:@selector(identFromShip:)])
 	{
-		result = [(ShipEntity*)target_entity identFromShip:self];
+		result = oo::OptionalString([(ShipEntity*)target_entity identFromShip:self]);
 	}
-	
-	if (result == nil)  result = DESC(@"unknown-target");
+
+	if (!result.has_value())  result = oo::StdString(DESC(@"unknown-target"));
 	
 	return result;
 }
 
 
-- (NSArray *) multiFunctionDisplayList
+- (std::vector<std::optional<std::string>>) cxx_multiFunctionDisplayList
 {
 	return multiFunctionDisplaySettings;
 }
 
 
-- (NSString *) multiFunctionText:(NSUInteger)i
+- (std::optional<std::string>) cxx_multiFunctionText:(NSUInteger)i
 {
-	NSString *key = oo::PListView(multiFunctionDisplaySettings).at<NSString *>(i, nil);
-	if (key == nil)
+	if (i >= multiFunctionDisplaySettings.size() || !multiFunctionDisplaySettings[i].has_value())
 	{
-		return nil;
+		return std::nullopt;
 	}
-	NSString *text = oo::PListView(multiFunctionDisplayText).get<NSString *>(key, nil);
-	return text;
+	const auto text = multiFunctionDisplayText.find(*multiFunctionDisplaySettings[i]);
+	if (text == multiFunctionDisplayText.end())  return std::nullopt;
+	return text->second;
 }
 
 
-- (void) setMultiFunctionText:(NSString *)text forKey:(NSString *)key
+- (void) cxx_setMultiFunctionText:(const std::optional<std::string> &)text forKey:(const std::optional<std::string> &)key
 {
-	if (text != nil)
+	if (text.has_value())
 	{
-		[multiFunctionDisplayText setObject:text forKey:key];
+		if (key.has_value())  multiFunctionDisplayText[*key] = *text;	// (a nil key raised before)
 	}
-	else if (key != nil)
+	else if (key.has_value())
 	{
-		[multiFunctionDisplayText removeObjectForKey:key];
+		multiFunctionDisplayText.erase(*key);
 		// and blank any MFDs currently using it
-		NSUInteger index;
-		while ((index = [multiFunctionDisplaySettings indexOfObject:key]) != NSNotFound)
-		{
-			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:[OONull null]];
-		}
+		std::replace(multiFunctionDisplaySettings.begin(), multiFunctionDisplaySettings.end(), key, std::optional<std::string>());
 	}
 }
 
 
-- (BOOL) setMultiFunctionDisplay:(NSUInteger)index toKey:(NSString *)key
+- (BOOL) cxx_setMultiFunctionDisplay:(NSUInteger)index toKey:(const std::optional<std::string> &)key
 {
 	if (index >= [hud mfdCount])
 	{
 		// is first inactive display
-		index = [multiFunctionDisplaySettings indexOfObject:[OONull null]];
-		if (index == NSNotFound)
+		const auto inactive = std::find(multiFunctionDisplaySettings.begin(), multiFunctionDisplaySettings.end(), std::nullopt);
+		if (inactive == multiFunctionDisplaySettings.end())
 		{
 			return NO;
 		}
+		index = static_cast<NSUInteger>(inactive - multiFunctionDisplaySettings.begin());
 	}
 
 	if (index < [hud mfdCount])
 	{
-		if (key == nil)
-		{
-			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:[OONull null]];
-		}
-		else
-		{
-			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:key];
-		}
+		multiFunctionDisplaySettings.at(index) = key;	// nullopt = inactive
 		return YES;
 	}
 	else
@@ -5540,35 +5522,37 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (void) cycleNextMultiFunctionDisplay:(NSUInteger) index
 {
 	if ([[self hud] mfdCount] == 0) return;
-	NSArray *keys = [multiFunctionDisplayText allKeys];
-	NSString *key = nil;
-	if ([keys count] == 0)
+	std::vector<std::string> keys;	// byte order (was -allKeys hash order)
+	for (const auto &entry : multiFunctionDisplayText)  keys.push_back(entry.first);
+	std::optional<std::string> key;
+	if (keys.empty())
 	{
-		[self setMultiFunctionDisplay:index toKey:nil];
+		[self cxx_setMultiFunctionDisplay:index toKey:std::nullopt];
 		return;
 	}
-	id current = [multiFunctionDisplaySettings objectAtIndex:index];
-	if (current == [OONull null])
+	const std::optional<std::string> current = multiFunctionDisplaySettings.at(index);
+	if (!current.has_value())
 	{
-		key = [keys objectAtIndex:0];
-		[self setMultiFunctionDisplay:index toKey:key];
+		key = keys[0];
+		[self cxx_setMultiFunctionDisplay:index toKey:key];
 	}
 	else
 	{
-		NSUInteger cIndex = [keys indexOfObject:current];
-		if (cIndex == NSNotFound || cIndex + 1 >= [keys count])
+		const auto currentKey = std::find(keys.begin(), keys.end(), *current);
+		const NSUInteger cIndex = (currentKey != keys.end()) ? static_cast<NSUInteger>(currentKey - keys.begin()) : NSNotFound;
+		if (cIndex == NSNotFound || cIndex + 1 >= keys.size())
 		{
-			key = nil;
-			[self setMultiFunctionDisplay:index toKey:nil];
+			key = std::nullopt;
+			[self cxx_setMultiFunctionDisplay:index toKey:std::nullopt];
 		}
 		else 
 		{
-			key = [keys objectAtIndex:(cIndex+1)];
-			[self setMultiFunctionDisplay:index toKey:key];
+			key = keys[cIndex+1];
+			[self cxx_setMultiFunctionDisplay:index toKey:key];
 		}
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value keyVal = OOJSValueFromNativeObject(context,key);
+	ooscript::Value keyVal = OOJSValueFromNativeObject(context,oo::NSStringOrNil(key));
 	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
@@ -5577,35 +5561,37 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (void) cyclePreviousMultiFunctionDisplay:(NSUInteger) index
 {
 	if ([[self hud] mfdCount] == 0) return;
-	NSArray *keys = [multiFunctionDisplayText allKeys];
-	NSString *key = nil;
-	if ([keys count] == 0)
+	std::vector<std::string> keys;	// byte order (was -allKeys hash order)
+	for (const auto &entry : multiFunctionDisplayText)  keys.push_back(entry.first);
+	std::optional<std::string> key;
+	if (keys.empty())
 	{
-		[self setMultiFunctionDisplay:index toKey:nil];
+		[self cxx_setMultiFunctionDisplay:index toKey:std::nullopt];
 		return;
 	}
-	id current = [multiFunctionDisplaySettings objectAtIndex:index];
-	if (current == [OONull null])
+	const std::optional<std::string> current = multiFunctionDisplaySettings.at(index);
+	if (!current.has_value())
 	{
-		key = [keys objectAtIndex:([keys count]-1)];
-		[self setMultiFunctionDisplay:index toKey:key];
+		key = keys[keys.size()-1];
+		[self cxx_setMultiFunctionDisplay:index toKey:key];
 	}
 	else
 	{
-		NSUInteger cIndex = [keys indexOfObject:current];
+		const auto currentKey = std::find(keys.begin(), keys.end(), *current);
+		const NSUInteger cIndex = (currentKey != keys.end()) ? static_cast<NSUInteger>(currentKey - keys.begin()) : NSNotFound;
 		if (cIndex == NSNotFound || cIndex == 0)
 		{
-			key = nil;
-			[self setMultiFunctionDisplay:index toKey:nil];
+			key = std::nullopt;
+			[self cxx_setMultiFunctionDisplay:index toKey:std::nullopt];
 		}
 		else 
 		{
-			key = [keys objectAtIndex:(cIndex-1)];
-			[self setMultiFunctionDisplay:index toKey:key];
+			key = keys[cIndex-1];
+			[self cxx_setMultiFunctionDisplay:index toKey:key];
 		}
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value keyVal = OOJSValueFromNativeObject(context,key);
+	ooscript::Value keyVal = OOJSValueFromNativeObject(context,oo::NSStringOrNil(key));
 	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
