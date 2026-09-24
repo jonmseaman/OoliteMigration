@@ -31,6 +31,8 @@ MA 02110-1301, USA.
 #import "OOFullScreenController.h"
 #import "OOMouseInteractionMode.h"
 
+#include "oofnd/StdLib.hpp"
+
 
 #if OOLITE_MAC_OS_X
 #import <Quartz/Quartz.h>	// For PDFKit.
@@ -68,8 +70,8 @@ MA 02110-1301, USA.
 	
 	int						my_mouse_x, my_mouse_y;
 
-	NSString				*playerFileDirectory;
-	NSString				*playerFileToLoad;
+	std::optional<std::string>	playerFileDirectory;	// nullopt: not looked up yet, or none (was nil)
+	std::optional<std::string>	playerFileToLoad;		// nullopt: none (was nil)
 	NSMutableArray			*expansionPathsToInclude;
 	
 	NSTimeInterval			_animationTimerInterval;
@@ -138,14 +140,17 @@ MA 02110-1301, USA.
 - (void) recenterVirtualJoystick;
 #endif
 
-- (void) exitAppWithContext:(NSString *)context;
+- (void) cxx_exitAppWithContext:(const std::string &)context;
 - (void) exitAppCommandQ;
 
-- (NSString *) playerFileToLoad;
-- (void) setPlayerFileToLoad:(NSString *)filename;
+// nullopt: no saved game to load (was nil).
+- (std::optional<std::string>) cxx_playerFileToLoad;
+- (void) cxx_setPlayerFileToLoad:(const std::string &)filename;	// kept only for a .oolite-save path
 
-- (NSString *) playerFileDirectory;
-- (void) setPlayerFileDirectory:(NSString *)filename;
+// nullopt: no save directory (was nil). A nullopt argument clears it and the save-directory
+// default, and the next -cxx_playerFileDirectory looks it up again (as nil did; "" does not).
+- (std::optional<std::string>) cxx_playerFileDirectory;
+- (void) cxx_setPlayerFileDirectory:(const std::optional<std::string> &)filename;
 
 - (void) loadPlayerIfRequired;
 
@@ -228,3 +233,11 @@ void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval
 #define OO_DEBUG_PUSH_PROGRESS(...)	do {} while (0)
 #define OO_DEBUG_POP_PROGRESS()		do {} while (0)
 #endif
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before bead oo-m6ej (chunks oo-3rb.88..91), forwarding to the cxx_ methods above, so
+	unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads;
+	the bridge goes in its own bead.
+*/
+#import "GameController+FoundationBridge.h"
