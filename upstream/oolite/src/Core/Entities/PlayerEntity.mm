@@ -154,7 +154,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (NSArray*) contractsListForScriptingFromArray:(NSArray *)contractsArray forCargo:(BOOL)forCargo;
 
 
-- (void) prepareMarkedDestination:(NSMutableDictionary *)markers :(NSDictionary *)marker;
 
 - (void) witchStart;
 - (void) witchJumpTo:(OOSystemID)sTo misjump:(BOOL)misjump;
@@ -8684,57 +8683,50 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (void) prepareMarkedDestination:(NSMutableDictionary *)markers :(NSDictionary *)marker
+namespace
 {
-	NSNumber *key = [NSNumber numberWithInt:oo::PListView(marker).get<int>(@"system")];
-	NSMutableArray *list = [markers objectForKey:key];
-	if (list == nil)
-	{
-		list = [NSMutableArray arrayWithObject:marker];
-	}
-	else
-	{
-		[list addObject:marker];
-	}
-	[markers setObject:list forKey:key];
+
+// -prepareMarkedDestination:: appended the marker to the list for its "system" (the old
+// +numberWithInt: key), creating the list on first use.
+void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo::PList marker)
+{
+	const int system = marker.get<int>("system");
+	markers[system].push_back(std::move(marker));
 }
 
+}	// namespace
 
-- (NSDictionary *) markedDestinations
+
+- (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations	// passengers, parcels, contracts, then mission destinations
 {
 	// get a list of systems marked as contract destinations
-	NSMutableDictionary	*destinations = [NSMutableDictionary dictionaryWithCapacity:256];
+	std::map<int, std::vector<oo::PList>>	destinations;
 	unsigned		i;
 	OOSystemID sysid;
-	NSDictionary *marker;
 
 	for (i = 0; i < passengers.size(); i++)
 	{
 		sysid = passengers[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
-		marker = [self passengerContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, [self cxx_passengerContractMarker:sysid]);
 	}
 	for (i = 0; i < parcels.size(); i++)
 	{
 		sysid = parcels[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
-		marker = [self parcelContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, [self cxx_parcelContractMarker:sysid]);
 	}
 	for (i = 0; i < contracts.size(); i++)
 	{
 		sysid = contracts[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
-		marker = [self cargoContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, [self cxx_cargoContractMarker:sysid]);
 	}
 
-	NSString					*key = nil;
-
-	foreachkey (key, missionDestinations)
+	// in the dictionary's own key order, as foreachkey walked it; a marker is plist data (any
+	// live object in it an Object node)
+	for (id key in missionDestinations)
 	{
-		marker = [missionDestinations objectForKey:key];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, oo::PListFrom([missionDestinations objectForKey:key]));
 	}
-	
+
 	return destinations;
 }
 
