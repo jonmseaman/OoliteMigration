@@ -439,13 +439,13 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	
 	weapon_facings = shipDict.get<int>("weapon_facings", VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 	if (weapon_facings & WEAPON_FACING_FORWARD)
-		forward_weapon_type = OOWeaponTypeFromString(oo::NSStringFrom(shipDict.get<std::string>("forward_weapon_type", "EQ_WEAPON_NONE")));
+		forward_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("forward_weapon_type", "EQ_WEAPON_NONE"));
 	if (weapon_facings & WEAPON_FACING_AFT)
-		aft_weapon_type = OOWeaponTypeFromString(oo::NSStringFrom(shipDict.get<std::string>("aft_weapon_type", "EQ_WEAPON_NONE")));
+		aft_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("aft_weapon_type", "EQ_WEAPON_NONE"));
 	if (weapon_facings & WEAPON_FACING_PORT)
-		port_weapon_type = OOWeaponTypeFromString(oo::NSStringFrom(shipDict.get<std::string>("port_weapon_type", "EQ_WEAPON_NONE")));
+		port_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("port_weapon_type", "EQ_WEAPON_NONE"));
 	if (weapon_facings & WEAPON_FACING_STARBOARD)
-		starboard_weapon_type = OOWeaponTypeFromString(oo::NSStringFrom(shipDict.get<std::string>("starboard_weapon_type", "EQ_WEAPON_NONE")));
+		starboard_weapon_type = cxx_OOWeaponTypeFromString(shipDict.get<std::string>("starboard_weapon_type", "EQ_WEAPON_NONE"));
 
 	cloaking_device_active = NO;
 	military_jammer_active = NO;
@@ -667,12 +667,12 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 	// scan class settings. 'scanClass' is in common usage, but we could also have a more standard 'scan_class' key with higher precedence. Kaks 20090810 
 	// let's see if scan_class is set... 
-	scanClass = OOScanClassFromString(oo::NSStringFrom(shipDict.get<std::string>("scan_class", "CLASS_NOT_SET")));
+	scanClass = cxx_OOScanClassFromString(shipDict.get<std::string>("scan_class", "CLASS_NOT_SET"));
 	
 	// if not, try 'scanClass'. NOTE: non-standard capitalization is documented and entrenched.
 	if (scanClass == CLASS_NOT_SET)
 	{
-		scanClass = OOScanClassFromString(oo::NSStringFrom(shipDict.get<std::string>("scanClass", "CLASS_NOT_SET")));
+		scanClass = cxx_OOScanClassFromString(shipDict.get<std::string>("scanClass", "CLASS_NOT_SET"));
 	}
 
 	scan_description = StringForKey(shipDict, "scan_description");
@@ -1140,7 +1140,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 - (void) setUpCargoType:(const std::string &) cargoString
 {
-	cargo_type = StringToCargoType(oo::NSStringFrom(cargoString));
+	cargo_type = cxx_StringToCargoType(cargoString);
 	
 	switch (cargo_type)
 	{
