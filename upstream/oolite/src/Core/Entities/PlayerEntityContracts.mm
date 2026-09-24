@@ -47,6 +47,9 @@ MA 02110-1301, USA.
 #import "OOTexture.h"
 #import "OOJavaScriptEngine.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/PList.hpp"
+#include "oofnd/String.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 
 static unsigned RepForRisk(unsigned risk);
@@ -61,37 +64,36 @@ static unsigned RepForRisk(unsigned risk);
 
 @implementation PlayerEntity (Contracts)
 
-- (NSString *) processEscapePods // removes pods from cargo bay and treats categories of characters carried
+- (std::optional<std::string>) cxx_processEscapePods // removes pods from cargo bay and treats categories of characters carried
 {
 	unsigned		i;
 	BOOL added_entry = NO; // to prevent empty lines for slaves and the rare empty report.
-	NSMutableString	*result = [NSMutableString string];
-	NSMutableArray	*rescuees = [NSMutableArray array];
+	std::string		result;
+	std::vector<oo::ObjCRef<OOCharacter *>>	rescuees;
 	OOGovernmentID	government = [[[UNIVERSE currentSystemData] objectForKey:KEY_GOVERNMENT] intValue];
 	if ([UNIVERSE inInterstellarSpace])  government = 1;	// equivalent to Feudal. I'm assuming any station in interstellar space is military. -- Ahruman 2008-05-29
-	
+
 	// step through the cargo removing crew from any escape pods
 	// No enumerator because we're mutating the array -- Ahruman
 	for (i = 0; i < [cargo count]; i++)
 	{
 		ShipEntity	*cargoItem = [cargo objectAtIndex:i];
-		NSArray		*podCrew = [cargoItem crew];
-		
-		if (podCrew != nil)
+
+		if ([cargoItem crew] != nil)
 		{
 			// Has crew -> is escape pod.
-			[rescuees addObjectsFromArray:podCrew];
+			for (OOCharacter *member in [cargoItem crew])  rescuees.push_back(oo::ObjCRef<OOCharacter *>(member));
 			[cargoItem setCrew:nil];
 			[cargo removeObjectAtIndex:i];
 			i--;
 		}
 	}
-	
+
 	// step through the rescuees awarding insurance or bounty or adding to slaves
-	for (i = 0; i < [rescuees count]; i++)
+	for (i = 0; i < rescuees.size(); i++)
 	{
-		OOCharacter *rescuee = [rescuees objectAtIndex:i];
-		
+		OOCharacter *rescuee = rescuees[i].get();
+
 		if ([rescuee script])
 		{
 			[rescuee doScriptEvent:OOJSID("unloadCharacter")];
@@ -100,7 +102,7 @@ static unsigned RepForRisk(unsigned risk);
 		{
 			[self runUnsanitizedScriptActions:[rescuee legacyScript]
 							allowingAIMethods:YES
-							  withContextName:[NSString stringWithFormat:@"<character \"%@\" script>", [rescuee name]]
+							  withContextName:oo::NSStringFrom(oo::str::format("<character \"%s\" script>", oo::DescriptionOf([rescuee name]).c_str()))
 									forTarget:nil];
 		}
 		else if ([rescuee insuranceCredits] && [rescuee legalStatus])
@@ -110,19 +112,19 @@ static unsigned RepForRisk(unsigned risk);
 			if (government > (Ranrot() & 7) || reward >= insurance)
 			{
 				// claim bounty for capture, ignore insurance
-				[result appendFormat:DESC(@"capture-reward-for-@@-@-credits-@-alt"),
-				 [rescuee name], [rescuee shortDescription], OOStringFromDeciCredits(reward, YES, NO),
-				 OOStringFromDeciCredits(insurance, YES, NO)];
-				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:[NSArray arrayWithObjects:[NSNumber numberWithUnsignedInteger:reward],@"bounty",[rescuee infoForScripting],nil]];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"capture-reward-for-@@-@-credits-@-alt")),
+				 { oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)),
+				 oo::DescriptionOf(OOStringFromDeciCredits(insurance, YES, NO)) });
+				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), oo::PListObject([rescuee infoForScripting]) }))];
 			}
 			else
 			{
 				// claim insurance reward with reduction of bounty
-				[result appendFormat:DESC(@"rescue-reward-for-@@-@-credits-@-alt"),
-				 [rescuee name], [rescuee shortDescription], OOStringFromDeciCredits(insurance - reward, YES, NO),
-				 OOStringFromDeciCredits(reward, YES, NO)];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"rescue-reward-for-@@-@-credits-@-alt")),
+				 { oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(insurance - reward, YES, NO)),
+				 oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)) });
 				reward = insurance - reward;
-				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:[NSArray arrayWithObjects:[NSNumber numberWithUnsignedInteger:reward],@"insurance",[rescuee infoForScripting],nil]];
+				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), oo::PListObject([rescuee infoForScripting]) }))];
 			}
 			credits += reward;
 			added_entry = YES;
@@ -130,50 +132,50 @@ static unsigned RepForRisk(unsigned risk);
 		else if ([rescuee insuranceCredits])
 		{
 			// claim insurance reward
-			[result appendFormat:DESC(@"rescue-reward-for-@@-@-credits"),
-				[rescuee name], [rescuee shortDescription], OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO)];
+			result += oo::str::formatRuntime(oo::StdString(DESC(@"rescue-reward-for-@@-@-credits")),
+				{ oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO)) });
 			credits += 10 * [rescuee insuranceCredits];
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:[NSArray arrayWithObjects:[NSNumber numberWithUnsignedInteger:(10 * [rescuee insuranceCredits])],@"insurance",[rescuee infoForScripting],nil]];
-				
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * [rescuee insuranceCredits])), oo::PList("insurance"), oo::PListObject([rescuee infoForScripting]) }))];
+
 			added_entry = YES;
 		}
 		else if ([rescuee legalStatus])
 		{
 			// claim bounty for capture
 			float reward = (5.0 + government) * [rescuee legalStatus];
-			[result appendFormat:DESC(@"capture-reward-for-@@-@-credits"),
-				[rescuee name], [rescuee shortDescription], OOStringFromDeciCredits(reward, YES, NO)];
+			result += oo::str::formatRuntime(oo::StdString(DESC(@"capture-reward-for-@@-@-credits")),
+				{ oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)) });
 			credits += reward;
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:[NSArray arrayWithObjects:[NSNumber numberWithUnsignedInteger:reward],@"bounty",[rescuee infoForScripting],nil]];
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), oo::PListObject([rescuee infoForScripting]) }))];
 			added_entry = YES;
 		}
 		else
 		{
 			// sell as slave - increase no. of slaves in manifest
-			[shipCommodityData addQuantity:1 forGood:@"slaves"];
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:[NSArray arrayWithObjects:[NSNumber numberWithUnsignedInteger:0],@"slave",[rescuee infoForScripting],nil]];
+			[shipCommodityData cxx_addQuantity:1 forGood:"slaves"];
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(0), oo::PList("slave"), oo::PListObject([rescuee infoForScripting]) }))];
 
 		}
-		if ((i < [rescuees count] - 1) && added_entry)
-			[result appendString:@"\n"];
+		if ((i < rescuees.size() - 1) && added_entry)
+			result += "\n";
 		added_entry = NO;
 	}
-	
+
 	[self calculateCurrentCargo];
-	
-	return result;
+
+	return result;	// never nil (the old method returned an empty string when nothing was reported)
 }
 
 
-- (NSString *) checkPassengerContracts	// returns messages from any passengers whose status have changed
+- (std::optional<std::string>) cxx_checkPassengerContracts	// returns messages from any passengers whose status have changed
 {
 	if ([self dockedStation] != [UNIVERSE station])	// only drop off passengers or fulfil contracts at main station
-		return nil;
+		return std::nullopt;
 	
 	// check escape pods...
 	// TODO
 	
-	NSMutableString		*result = [NSMutableString string];
+	std::string			result;	// each report line ends in "\n" (-appendFormatLine:)
 	unsigned			i;
 	
 	// check passenger contracts
@@ -201,7 +203,7 @@ static unsigned RepForRisk(unsigned risk);
 				}
 				credits += 10 * fee;
 				
-				[result appendFormatLine:DESC(@"passenger-delivered-okay-@-@-@"), passenger_name, OOIntCredits(fee), passenger_dest_name];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-delivered-okay-@-@-@")), { oo::DescriptionOf(passenger_name), oo::DescriptionOf(OOIntCredits(fee)), oo::DescriptionOf(passenger_dest_name) }) + "\n";
 				if (oo::PListView(passenger_info).get<unsigned int>(CONTRACT_KEY_RISK, 0) > 0)
 				{
 					[self addRoleToPlayer:@"trader-courier+"];
@@ -219,7 +221,7 @@ static unsigned RepForRisk(unsigned risk);
 					fee /= 2;
 				credits += 10 * fee;
 				
-				[result appendFormatLine:DESC(@"passenger-delivered-late-@-@-@"), passenger_name, OOIntCredits(fee), passenger_dest_name];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-delivered-late-@-@-@")), { oo::DescriptionOf(passenger_name), oo::DescriptionOf(OOIntCredits(fee)), oo::DescriptionOf(passenger_dest_name) }) + "\n";
 				if (oo::PListView(passenger_info).get<unsigned int>(CONTRACT_KEY_RISK, 0) > 0)
 				{
 					[self addRoleToPlayer:@"trader-courier+"];
@@ -235,7 +237,7 @@ static unsigned RepForRisk(unsigned risk);
 			if (dest_eta < 0)
 			{
 				// we've run out of time!
-				[result appendFormatLine:DESC(@"passenger-failed-@"), passenger_name];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"passenger-failed-@")), { oo::DescriptionOf(passenger_name) }) + "\n";
 				
 				[self decreasePassengerReputation:RepForRisk(oo::PListView(passenger_info).get<unsigned int>(CONTRACT_KEY_RISK, 0))];
 				[passengers removeObjectAtIndex:i--];
@@ -269,7 +271,7 @@ static unsigned RepForRisk(unsigned risk);
 				}
 				credits += 10 * fee;
 				
-				[result appendFormatLine:DESC(@"parcel-delivered-okay-@-@"), parcel_name, OOIntCredits(fee)];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-okay-@-@")), { oo::DescriptionOf(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
 				
 				[self increaseParcelReputation:RepForRisk(oo::PListView(parcel_info).get<unsigned int>(CONTRACT_KEY_RISK, 0))];
 
@@ -289,7 +291,7 @@ static unsigned RepForRisk(unsigned risk);
 					fee /= 2;
 				credits += 10 * fee;
 				
-				[result appendFormatLine:DESC(@"parcel-delivered-late-@-@"), parcel_name, OOIntCredits(fee)];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-late-@-@")), { oo::DescriptionOf(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
 				if (oo::PListView(parcel_info).get<unsigned int>(CONTRACT_KEY_RISK, 0) > 0)
 				{
 					[self addRoleToPlayer:@"trader-courier+"];
@@ -303,7 +305,7 @@ static unsigned RepForRisk(unsigned risk);
 			if (dest_eta < 0)
 			{
 				// we've run out of time!
-				[result appendFormatLine:DESC(@"parcel-failed-@"), parcel_name];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-failed-@")), { oo::DescriptionOf(parcel_name) }) + "\n";
 				
 				[self decreaseParcelReputation:RepForRisk(oo::PListView(parcel_info).get<unsigned int>(CONTRACT_KEY_RISK, 0))];
 				[parcels removeObjectAtIndex:i--];
@@ -359,7 +361,7 @@ static unsigned RepForRisk(unsigned risk);
 					}
 					
 					credits += fee;
-					[result appendFormatLine:DESC(@"cargo-delivered-okay-@-@"), contract_cargo_desc, OOCredits(fee)];
+					result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-okay-@-@")), { oo::DescriptionOf(contract_cargo_desc), oo::DescriptionOf(OOCredits(fee)) }) + "\n";
 					
 					[contracts removeObjectAtIndex:i--];
 					// repute++
@@ -394,7 +396,7 @@ static unsigned RepForRisk(unsigned risk);
 							[self addRoleToPlayer:@"trader"];
 						}
 
-						[result appendFormatLine:DESC(@"cargo-delivered-short-@-@-d"), contract_cargo_desc, OOCredits(payment), shortfall];
+						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-short-@-@-d")), { oo::DescriptionOf(contract_cargo_desc), oo::DescriptionOf(OOCredits(payment)), shortfall }) + "\n";
 						
 						[contracts removeObjectAtIndex:i--];
 						// repute unchanged
@@ -403,7 +405,7 @@ static unsigned RepForRisk(unsigned risk);
 					}
 					else
 					{
-						[result appendFormatLine:DESC(@"cargo-refused-short-%@"), contract_cargo_desc];
+						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-refused-short-%@")), { oo::DescriptionOf(contract_cargo_desc) }) + "\n";
 						// The player has still time to buy the missing goods elsewhere and fulfil the contract.
 					}
 				}
@@ -411,7 +413,7 @@ static unsigned RepForRisk(unsigned risk);
 			else
 			{
 				// but we're late!
-				[result appendFormatLine:DESC(@"cargo-delivered-late-@"), contract_cargo_desc];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-late-@")), { oo::DescriptionOf(contract_cargo_desc) }) + "\n";
 
 				[contracts removeObjectAtIndex:i--];
 				// repute--
@@ -424,7 +426,7 @@ static unsigned RepForRisk(unsigned risk);
 			if (dest_eta < 0)
 			{
 				// we've run out of time!
-				[result appendFormatLine:DESC(@"cargo-failed-@"), contract_cargo_desc];
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-failed-@")), { oo::DescriptionOf(contract_cargo_desc) }) + "\n";
 				
 				[contracts removeObjectAtIndex:i--];
 				// repute--
@@ -481,16 +483,16 @@ static unsigned RepForRisk(unsigned risk);
 	}
 
 	
-	if ([result length] == 0)
+	if (result.empty())
 	{
-		result = nil;
+		return std::nullopt;	// nil: nothing to report
 	}
 	else
 	{
 		// Should have a trailing \n
-		[result deleteCharacterAtIndex:[result length] - 1];
+		result.pop_back();
 	}
-	
+
 	return result;
 }
 
@@ -511,14 +513,15 @@ static unsigned RepForRisk(unsigned risk);
 }
 
 
-- (void) addMessageToReport:(NSString*) report
+- (void) cxx_addMessageToReport:(const std::string &) report
 {
-	if ([report length] != 0)
+	if (!report.empty())
 	{
+		// dockingReport is chunk 2's
 		if ([dockingReport length] == 0)
-			[dockingReport appendString:report];
+			[dockingReport appendString:oo::NSStringFrom(report)];
 		else
-			[dockingReport appendFormat:@"\n\n%@", report];
+			[dockingReport appendString:oo::NSStringFrom("\n\n" + report)];	// @"\n\n%@"
 	}
 }
 
