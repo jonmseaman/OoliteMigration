@@ -82,9 +82,14 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 }
 
 
-- (id)scriptDescription	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)scriptDescription
 {
-	return ObjectForKey(_metadata, kMDKeyDescription);
+	// The metadata's "description" string. Nothing sends -scriptDescription (bead oo-3rb.266
+	// measured), so a non-string value, which the id-typed selector returned as the object, is
+	// nullopt here.
+	const oo::PList *value = _metadata.get<oo::PList>(kMDKeyDescription);
+	if (value == nullptr || !value->isString())  return std::nullopt;
+	return *value->getIf<std::string>();
 }
 
 
@@ -136,12 +141,12 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 	metadata = dictionary.get<oo::PList::Dict>(kKeyMetadata);	// nil unless a dictionary
 
 	// Order-sensitive: the scripts come out in key order (they came out in hash order).
-	for (const auto &[key, scriptArray] : *dictionary.getIf<oo::PList::Dict>())
+	for (const auto &[key, unsanitized] : *dictionary.getIf<oo::PList::Dict>())
 	{
 		// (every key is a string: a dictionary with another key read as no dictionary)
-		if (scriptArray.isArray() && key != kKeyMetadata)
+		if (unsanitized.isArray() && key != kKeyMetadata)
 		{
-			const oo::PList sanitized = oo::PListFrom(OOSanitizeLegacyScript(oo::ObjectFromPList(scriptArray), oo::NSStringFrom(key), NO));
+			const oo::PList sanitized = OOSanitizeLegacyScript(unsanitized, key, NO);
 			if (sanitized)
 			{
 				script = [[self alloc] initWithName:key scriptArray:sanitized metadata:metadata];

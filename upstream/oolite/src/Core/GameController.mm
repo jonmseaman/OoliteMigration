@@ -45,8 +45,17 @@ MA 02110-1301, USA.
 #import "OOOXZManager.h"
 #import "OOOpenGLMatrixManager.h"
 #import "OOEnumerationShuffle.h"
+#ifndef NDEBUG
+#import "OODebugTCPConsoleClient.h"
+#endif
+#include "oofnd/Date.hpp"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/Thread.hpp"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/String.hpp"
 #include <chrono>
 #include <thread>
 
@@ -67,7 +76,7 @@ static GameController *sSharedController = nil;
 
 @interface GameController (OOPrivate)
 
-- (void)reportUnhandledStartupExceptionName:(NSString *)name reason:(NSString *)reason;
+- (void)cxx_reportUnhandledStartupExceptionName:(const std::string &)name reason:(const std::optional<std::string> &)reason;	// reason nullopt: none (was nil)
 
 - (void)doPerformGameTick;
 
@@ -97,7 +106,7 @@ static GameController *sSharedController = nil;
 	if ((self = [super init]))
 	{
 		_finishedLaunching = NO;
-		last_timeInterval = [NSDate timeIntervalSinceReferenceDate];
+		last_timeInterval = oo::date::monotonicSeconds();	// the frame clock: intervals only (-doPerformGameTick)
 		delta_t = 0.01; // one hundredth of a second 
 		_animationTimerInterval = oo::PListView([NSUserDefaults standardUserDefaults]).get<double>(@"animation_timer_interval", MINIMUM_ANIMATION_TICK);
 		
@@ -114,7 +123,7 @@ static GameController *sSharedController = nil;
 		}
 		else
 		{
-			ranrot_srand((uint32_t)[[NSDate date] timeIntervalSince1970]);   // reset randomiser with current time
+			ranrot_srand((uint32_t)oo::date::timeIntervalSince1970());   // reset randomiser with current time
 		}
 		
 #if OO_DEBUG
@@ -126,7 +135,7 @@ static GameController *sSharedController = nil;
 		(void)OOEnumerationShuffleEnabled();
 #endif
 		
-		_splashStart = [[NSDate alloc] init];
+		_splashStart = oo::date::monotonicSeconds();
 	}
 	
 	return self;
@@ -141,10 +150,6 @@ static GameController *sSharedController = nil;
 	
 	[gameView release];
 	[UNIVERSE release];
-	
-	[playerFileToLoad release];
-	[playerFileDirectory release];
-	[expansionPathsToInclude release];
 	
 	[super dealloc];
 }
@@ -260,7 +265,6 @@ static GameController *sSharedController = nil;
 - (void) applicationDidFinishLaunching
 {
 	void				*pool = NULL;
-	unsigned			i;
 	
 	pool = objc_autoreleasePoolPush();
 	
@@ -273,7 +277,7 @@ static GameController *sSharedController = nil;
 
 		if ([OOOXPVerifier runVerificationIfRequested])
 		{
-			[self exitAppWithContext:@"OXP verifier run"];
+			[self cxx_exitAppWithContext:"OXP verifier run"];
 		}
 		else 
 		{
@@ -292,12 +296,9 @@ static GameController *sSharedController = nil;
 		[self setUpDisplayModes];
 		
 		// moved to before the Universe is created
-		if (expansionPathsToInclude)
+		for (const std::string &expansionPath : expansionPathsToInclude)
 		{
-			for (i = 0; i < [expansionPathsToInclude count]; i++)
-			{
-				[ResourceManager addExternalPath: (NSString*)[expansionPathsToInclude objectAtIndex: i]];
-			}
+			[ResourceManager cxx_addExternalPath:expansionPath];
 		}
 		
 		// initialise OXZ manager
@@ -309,7 +310,7 @@ static GameController *sSharedController = nil;
 		
 		[self loadPlayerIfRequired];
 		
-		[self logProgress:@""];
+		[self cxx_logProgress:""];
 		
 		// get the run loop and add the call to performGameTick:
 		[self startAnimationTimer];
@@ -318,16 +319,16 @@ static GameController *sSharedController = nil;
 	}
 	@catch (OOException *exception)
 	{
-		[self reportUnhandledStartupExceptionName:oo::NSStringFrom([exception name]) reason:oo::NSStringFrom([exception reason])];
+		[self cxx_reportUnhandledStartupExceptionName:std::string([exception name]) reason:std::string([exception reason])];
 		exit(EXIT_FAILURE);
 	}
 	@catch (OOFoundationException *exception)
 	{
-		[self reportUnhandledStartupExceptionName:[exception name] reason:[exception reason]];
+		[self cxx_reportUnhandledStartupExceptionName:oo::StdString([exception name]) reason:oo::OptionalString([exception reason])];
 		exit(EXIT_FAILURE);
 	}
 	
-	OOLog(@"startup.complete", @"========== Loading complete in %.2f seconds. ==========", -[_splashStart timeIntervalSinceNow]);
+	OOLog(@"startup.complete", @"========== Loading complete in %.2f seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
 	[self setFullScreenMode:[[NSUserDefaults standardUserDefaults] boolForKey:@"fullscreen"]];
@@ -352,14 +353,14 @@ static GameController *sSharedController = nil;
 
 - (void) loadPlayerIfRequired
 {
-	if (playerFileToLoad != nil)
+	if (playerFileToLoad.has_value())
 	{
-		[self logProgress:DESC(@"loading-player")];
+		[self cxx_logProgress:oo::StdString(DESC(@"loading-player"))];
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:playerFileToLoad asNew:NO];
+		[PLAYER loadPlayerFromFile:*playerFileToLoad asNew:NO];
 	}
 }
 
@@ -411,7 +412,7 @@ static GameController *sSharedController = nil;
 			delta_t = 0.0;  // no movement!
 		else
 		{
-			delta_t = [NSDate timeIntervalSinceReferenceDate] - last_timeInterval;
+			delta_t = oo::date::monotonicSeconds() - last_timeInterval;
 			last_timeInterval += delta_t;
 			if (delta_t > MINIMUM_GAME_TICK)
 				delta_t = MINIMUM_GAME_TICK;		// peg the maximum pause (at 0.5->1.0 seconds) to protect against when the machine sleeps	
@@ -466,9 +467,10 @@ static GameController *sSharedController = nil;
 	  deadline, as a new timer did.
 	
 	Each pass of the loop fires what is due (the tick first, then the log
-	flush), then runs the run loop once, up to the next deadline, for what still
-	lives on it (performSelector:afterDelay:, the debug console's streams, OXZ
-	downloads) until their own beads take it off.
+	flush, then up to two deferred calls), then runs the run loop once, up to
+	the next deadline, for what still lives on it (OXZ downloads) until its own
+	bead takes it off; while the debug console's socket is open, the wait is on
+	that socket instead (bead oo-3rb.14).
 */
 namespace {
 // Held as steady_clock tick counts, as OOLogOutputHandler's flush deadline is: a static
@@ -482,6 +484,107 @@ TickClock::time_point NextGameTick()
 {
 	return TickClock::time_point(TickClock::duration(sNextGameTick));
 }
+}
+
+
+/*	Deferred calls (bead oo-3rb.57, proposed ADR-0040): Foundation's timed
+	performers, which were one-shot timers on the main run loop. Measured
+	against gnustep-base 1.31: a performer's fire date is now + delay (a delay
+	<= 0 is 0.0001 s, the timer clamp); each run-loop pass fires the first due
+	timer in the order the timers were added, twice (-runMode:beforeDate: asks
+	-limitDateForMode:'s timer step once itself and once more before it waits),
+	so due performers fire in scheduling order whatever their fire dates, at
+	most two per pass; one scheduled while firing goes to the back. The
+	performer retained target and argument and released them after the call;
+	an exception from the call was logged by NSTimer and swallowed, and the
+	performer was then never released (it leaked its target and argument).
+	Anything else thrown propagated.
+*/
+namespace {
+
+struct OODeferredCall
+{
+	std::chrono::steady_clock::time_point	deadline;
+	id										target;
+	SEL										selector;
+	id										argument;
+};
+
+std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
+
+}
+
+
+void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay)
+{
+	if (!oo::thread::isMainThread())  return;
+	
+	if (delay <= 0.0)  delay = 0.0001;	// as the Foundation timer did
+	OODeferredCall call =
+	{
+		std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(delay)),
+		[target retain],
+		selector,
+		[argument retain]
+	};
+	sDeferredCalls.push_back(call);
+}
+
+
+namespace {
+
+// One step of the run loop's timer firing: the first due call in scheduling order.
+void FireOneDueDeferredCall(void)
+{
+	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	for (std::vector<OODeferredCall>::iterator it = sDeferredCalls.begin(); it != sDeferredCalls.end(); ++it)
+	{
+		if (it->deadline <= now)
+		{
+			OODeferredCall call = *it;
+			sDeferredCalls.erase(it);
+			
+			@try
+			{
+				[call.target performSelector:call.selector withObject:call.argument];
+			}
+			@catch (OOException *exception)
+			{
+				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
+				(NSLog)(@"*** NSTimer ignoring exception '%@' (reason '%@') raised during posting of timer with target %p and selector 'fire'", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), call.target);
+				return;	// target and argument stay retained, as the performer leaked them
+			}
+			@catch (OOFoundationException *exception)
+			{
+				// NSTimer's own message, through the real NSLog (parenthesised: OOLogging.h's
+				// NSLog macro is function-like), so it still reaches the log as a "gnustep" line.
+				(NSLog)(@"*** NSTimer ignoring exception '%@' (reason '%@') raised during posting of timer with target %p and selector 'fire'", [exception name], [exception reason], call.target);
+				return;	// target and argument stay retained, as the performer leaked them
+			}
+			
+			[call.target release];
+			[call.argument release];
+			return;
+		}
+	}
+}
+
+
+// The earliest pending deferred call, if any: part of the run loop's wait limit.
+bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline)
+{
+	bool found = false;
+	for (const OODeferredCall &call : sDeferredCalls)
+	{
+		if (!found || call.deadline < *outDeadline)
+		{
+			*outDeadline = call.deadline;
+			found = true;
+		}
+	}
+	return found;
+}
+
 }
 
 
@@ -530,6 +633,7 @@ TickClock::time_point NextGameTick()
 - (void) fireDueTimers
 {
 	[self fireDueDeadlines];
+	FireOneDueDeferredCall();
 	[[NSRunLoop currentRunLoop] limitDateForMode:NSDefaultRunLoopMode];
 }
 
@@ -543,17 +647,49 @@ TickClock::time_point NextGameTick()
 		@autoreleasepool
 		{
 			[self fireDueDeadlines];
+			FireOneDueDeferredCall();
+			FireOneDueDeferredCall();
 			
-			NSDate *limit = [NSDate distantFuture];
-			if (sGameTickScheduled)
+			// Wait for input until the tick or the next deferred call, whichever is first.
+			std::chrono::steady_clock::time_point wake;
+			bool haveWake = NextDeferredCallDeadline(&wake);
+			if (sGameTickScheduled && (!haveWake || NextGameTick() < wake))
 			{
-				std::chrono::duration<double> wait = NextGameTick() - TickClock::now();
-				limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
+				wake = NextGameTick();
+				haveWake = true;
 			}
-			if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && sGameTickScheduled)
+			
+#ifndef NDEBUG
+			if (OODebugTCPConsoleIsWaitingForInput())
 			{
-				// Nothing on the run loop to wait for: wait for the tick here.
-				std::this_thread::sleep_until(NextGameTick());
+				/*	The debug console's socket is no longer on the run loop (bead oo-3rb.14,
+					proposed ADR-0041): run the run loop without waiting (its timers and ready
+					input), then wait on the socket as the run loop waited on the console's
+					streams, handling what arrives before the next deadline.
+				*/
+				[runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]];
+				double timeout = -1.0;
+				if (haveWake)
+				{
+					timeout = std::chrono::duration<double>(wake - std::chrono::steady_clock::now()).count();
+					if (timeout < 0.0)  timeout = 0.0;
+				}
+				OODebugTCPConsoleServiceInput(timeout);
+			}
+			else
+#endif
+			{
+				NSDate *limit = [NSDate distantFuture];
+				if (haveWake)
+				{
+					std::chrono::duration<double> wait = wake - std::chrono::steady_clock::now();
+					limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
+				}
+				if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && haveWake)
+				{
+					// Nothing on the run loop to wait for: wait here.
+					std::this_thread::sleep_until(wake);
+				}
 			}
 		}
 	}
@@ -583,87 +719,86 @@ TickClock::time_point NextGameTick()
 
 
 // Helpers to allow -snapshotsURLCreatingIfNeeded: code to be identical here and in dock tile plug-in.
-static id GetPreference(NSString *key, Class expectedClass)
+// The preferences stay on NSUserDefaults here (the dock tile plug-in reads the same domain).
+static id GetPreference(const std::string &key)
 {
-	id result = [[NSUserDefaults standardUserDefaults] objectForKey:key];
-	if (expectedClass != Nil && ![result isKindOfClass:expectedClass])  result = nil;
-	
-	return result;
+	return [[NSUserDefaults standardUserDefaults] objectForKey:oo::NSStringFrom(key)];
 }
 
 
-static void SetPreference(NSString *key, id value)
+static void SetPreference(const std::string &key, id value)
 {
-	[[NSUserDefaults standardUserDefaults] setObject:value forKey:key];
+	[[NSUserDefaults standardUserDefaults] setObject:value forKey:oo::NSStringFrom(key)];
 }
 
 
-static void RemovePreference(NSString *key)
+static void RemovePreference(const std::string &key)
 {
-	[[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
+	[[NSUserDefaults standardUserDefaults] removeObjectForKey:oo::NSStringFrom(key)];
 }
 
 
-#define kSnapshotsDirRefKey		@"snapshots-directory-reference"
-#define kSnapshotsDirNameKey	@"snapshots-directory-name"
+#define kSnapshotsDirRefKey		"snapshots-directory-reference"
+#define kSnapshotsDirNameKey	"snapshots-directory-name"
 
 - (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create
 {
 	BOOL			stale = NO;
-	NSDictionary	*snapshotDirDict = GetPreference(kSnapshotsDirRefKey, [NSDictionary class]);
+	// A JAPersistentFileReference dictionary (not migrated): passed between its functions as is.
+	id				snapshotDirDict = GetPreference(kSnapshotsDirRefKey);
 	NSURL			*url = nil;
-	NSString		*name = DESC(@"snapshots-directory-name-mac");
-	
+	const std::string	name = oo::StdString(DESC(@"snapshots-directory-name-mac"));
+
+	if (!oo::IsNSDictionary(snapshotDirDict))  snapshotDirDict = nil;
 	if (snapshotDirDict != nil)
 	{
 		url = JAURLFromPersistentFileReference(snapshotDirDict, kJAPersistentFileReferenceWithoutUI | kJAPersistentFileReferenceWithoutMounting, &stale);
 		if (url != nil)
 		{
-			NSString *existingName = [[url path] lastPathComponent];
-			if ([existingName compare:name options:NSCaseInsensitiveSearch] != 0)
+			const std::string existingName = oo::str::lastPathComponent(oo::StdString([url path]));
+			if (oo::str::caseInsensitiveCompare(existingName, name) != 0)
 			{
 				// Check name from previous access, because we might have changed localizations.
-				NSString *originalOldName = GetPreference(kSnapshotsDirNameKey, [NSString class]);
-				if (originalOldName == nil || [existingName compare:originalOldName options:NSCaseInsensitiveSearch] != 0)
+				id originalOldName = GetPreference(kSnapshotsDirNameKey);
+				if (!oo::IsNSString(originalOldName) || oo::str::caseInsensitiveCompare(existingName, oo::StdString(originalOldName)) != 0)
 				{
 					url = nil;
 				}
 			}
-			
+
 			// did we put the old directory in the trash?
 			Boolean inTrash = false;
 			const UInt8 *utfPath = (const UInt8 *)[[url path] UTF8String];
-			
+
 			OSStatus err = DetermineIfPathIsEnclosedByFolder(kOnAppropriateDisk, kTrashFolderType, utfPath, false, &inTrash);
 			// if so, create a new directory.
 			if (err == noErr && inTrash == true) url = nil;
 		}
 	}
-	
+
 	if (url == nil)
 	{
-		NSString *path = nil;
-		NSArray *searchPaths = NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES);
-		if ([searchPaths count] > 0)
+		std::optional<std::string> path;
+		const std::vector<std::string> searchPaths = oo::StringsFrom(NSSearchPathForDirectoriesInDomains(NSDesktopDirectory, NSUserDomainMask, YES));
+		if (!searchPaths.empty())
 		{
-			path = [[searchPaths objectAtIndex:0] stringByAppendingPathComponent:name];
+			path = oo::str::appendingPathComponent(searchPaths[0], name);
 		}
-		url = [NSURL fileURLWithPath:path];
-		
+		url = [NSURL fileURLWithPath:oo::NSStringOrNil(path)];
+
 		if (url != nil)
 		{
 			stale = YES;
 			if (create)
 			{
-				NSFileManager *fmgr = [NSFileManager defaultManager];
-				if (![fmgr fileExistsAtPath:path])
+				if (!oo::fs::fileExists(oo::fs::pathFromUTF8(*path)))
 				{
-					[fmgr oo_createDirectoryAtPath:path attributes:nil];
+					[[NSFileManager defaultManager] oo_createDirectoryAtPath:oo::NSStringFrom(*path) attributes:nil];
 				}
 			}
 		}
 	}
-	
+
 	if (stale)
 	{
 		snapshotDirDict = JAPersistentFileReferenceFromURL(url);
@@ -677,7 +812,7 @@ static void RemovePreference(NSString *key)
 			RemovePreference(kSnapshotsDirRefKey);
 		}
 	}
-	
+
 	return url;
 }
 
@@ -690,58 +825,58 @@ static void RemovePreference(NSString *key)
 
 - (IBAction) showAddOnsAction:sender
 {
-	NSArray *paths = ResourceManager.userRootPaths;
-	
+	const std::vector<std::string> paths = [ResourceManager cxx_userRootPaths];
+
 	// Look for an AddOns directory that actually contains some AddOns.
-	for (NSString *path in paths) {
-		if ([self addOnsExistAtPath:path]) {
-			[self openPath:path];
+	for (const std::string &path : paths) {
+		if ([self cxx_addOnsExistAtPath:path]) {
+			[self cxx_openPath:path];
 			return;
 		}
 	}
-	
+
 	// If that failed, look for an AddOns directory that actually exists.
-	for (NSString *path in paths) {
-		if ([self isDirectoryAtPath:path]) {
-			[self openPath:path];
+	for (const std::string &path : paths) {
+		if ([self cxx_isDirectoryAtPath:path]) {
+			[self cxx_openPath:path];
 			return;
 		}
 	}
-	
+
 	// None found, create the default path.
-	[NSFileManager.defaultManager createDirectoryAtPath:[paths objectAtIndex:0]
+	[NSFileManager.defaultManager createDirectoryAtPath:oo::NSStringFrom(paths.front())
 							withIntermediateDirectories:YES
 											 attributes:nil
 												  error:NULL];
-	[self openPath:[paths objectAtIndex:0]];
+	[self cxx_openPath:paths.front()];
 }
 
 
-- (BOOL) isDirectoryAtPath:(NSString *)path
+- (BOOL) cxx_isDirectoryAtPath:(const std::string &)path
 {
-	BOOL isDirectory;
-	return [NSFileManager.defaultManager fileExistsAtPath:path isDirectory:&isDirectory] && isDirectory;
+	return oo::fs::isDirectory(oo::fs::pathFromUTF8(path));
 }
 
 
-- (BOOL) addOnsExistAtPath:(NSString *)path
+- (BOOL) cxx_addOnsExistAtPath:(const std::string &)path
 {
-	if (![self isDirectoryAtPath:path])  return NO;
-	
+	if (![self cxx_isDirectoryAtPath:path])  return NO;
+
 	NSWorkspace *workspace = NSWorkspace.sharedWorkspace;
-	for (NSString *subPath in [NSFileManager.defaultManager enumeratorAtPath:path]) {
-		subPath = [path stringByAppendingPathComponent:subPath];
-		NSString *type = [workspace typeOfFile:subPath error:NULL];
-		if ([workspace type:type conformsToType:@"org.aegidian.oolite.expansion"])  return YES;
+	// The directory enumerator yields each relative sub-path, as an Objective-C string.
+	for (id subPath in [NSFileManager.defaultManager enumeratorAtPath:oo::NSStringFrom(path)]) {
+		const std::string fullPath = oo::str::appendingPathComponent(path, oo::StdString(subPath));
+		const std::optional<std::string> type = oo::OptionalString([workspace typeOfFile:oo::NSStringFrom(fullPath) error:NULL]);
+		if ([workspace type:oo::NSStringOrNil(type) conformsToType:@"org.aegidian.oolite.expansion"])  return YES;
 	}
-	
+
 	return NO;
 }
 
 
-- (void) openPath:(NSString *)path
+- (void) cxx_openPath:(const std::string &)path
 {
-	[NSWorkspace.sharedWorkspace openURL:[NSURL fileURLWithPath:path]];
+	[NSWorkspace.sharedWorkspace openURL:[NSURL fileURLWithPath:oo::NSStringFrom(path)]];
 }
 
 
@@ -799,14 +934,14 @@ static void RemovePreference(NSString *key)
 - (NSURL *) snapshotsURLCreatingIfNeeded:(BOOL)create
 {
 	NSURL *url = [NSURL fileURLWithPath:[NSHomeDirectory() stringByAppendingPathComponent:DESC(@"snapshots-directory-name")]];
-	
+
 	if (create)
 	{
-		NSString *path = [url path];
-		NSFileManager *fmgr = [NSFileManager defaultManager];
-		if (![fmgr fileExistsAtPath:path])
+		const std::string path = oo::StdString([url path]);
+		if (!oo::fs::fileExists(oo::fs::pathFromUTF8(path)))
 		{
-			[fmgr oo_createDirectoryAtPath:path attributes:nil];
+			// NSFileManagerOOExtensions is not migrated yet: converted at the call.
+			[[NSFileManager defaultManager] oo_createDirectoryAtPath:oo::NSStringFrom(path) attributes:nil];
 		}
 	}
 	return url;
@@ -816,17 +951,17 @@ static void RemovePreference(NSString *key)
 	#error Unknown environment!
 #endif
 
-- (void) logProgress:(NSString *)message
+- (void) cxx_logProgress:(const std::string &)message
 {
 	if (![UNIVERSE doingStartUp])  return;
-	
+
 #if OOLITE_MAC_OS_X
-	[splashProgressTextField setStringValue:message];
+	[splashProgressTextField setStringValue:oo::NSStringFrom(message)];
 	[splashProgressTextField display];
 #endif
-	if([message length] > 0)
+	if (!message.empty())
 	{
-		OOLog(@"startup.progress", @"===== [%.2f s] %@", -[_splashStart timeIntervalSinceNow], message);
+		OOLog(@"startup.progress", @"===== [%.2f s] %@", oo::date::monotonicSeconds() - _splashStart, oo::NSStringFrom(message));
 	}
 }
 
@@ -839,9 +974,9 @@ static void RemovePreference(NSString *key)
 }
 
 
-- (NSString *) debugMessageCurrentString
+- (std::string) cxx_debugMessageCurrentString
 {
-	return [splashProgressTextField stringValue];
+	return oo::StdString([splashProgressTextField stringValue]);
 }
 #else
 - (BOOL) debugMessageTrackingIsOn
@@ -850,43 +985,31 @@ static void RemovePreference(NSString *key)
 }
 
 
-- (NSString *) debugMessageCurrentString
+- (std::string) cxx_debugMessageCurrentString
 {
-	return @"";
+	return "";
 }
 #endif
 
-- (void) debugLogProgress:(NSString *)format, ...
+- (void) cxx_debugLogProgress:(const std::string &)message
 {
-	va_list args;
-	va_start(args, format);
-	[self debugLogProgress:format arguments:args];
-	va_end(args);
+	[self cxx_logProgress:message];
 }
 
 
-- (void) debugLogProgress:(NSString *)format arguments:(va_list)arguments
+namespace
 {
-	NSString *message = [[[NSString alloc] initWithFormat:format arguments:arguments] autorelease];
-	[self logProgress:message];
+std::vector<std::string> sMessageStack;
 }
 
-
-static NSMutableArray *sMessageStack;
-
-- (void) debugPushProgressMessage:(NSString *)format, ...
+- (void) cxx_debugPushProgressMessage:(const std::string &)message
 {
 	if ([self debugMessageTrackingIsOn])
 	{
-		if (sMessageStack == nil)  sMessageStack = [[NSMutableArray alloc] init];
-		[sMessageStack addObject:[self debugMessageCurrentString]];
-		
-		va_list args;
-		va_start(args, format);
-		[self debugLogProgress:format arguments:args];
-		va_end(args);
+		sMessageStack.push_back([self cxx_debugMessageCurrentString]);
+		[self cxx_debugLogProgress:message];
 	}
-	
+
 	OOLogIndentIf(@"startup.progress");
 }
 
@@ -894,12 +1017,12 @@ static NSMutableArray *sMessageStack;
 - (void) debugPopProgressMessage
 {
 	OOLogOutdentIf(@"startup.progress");
-	
-	if ([sMessageStack count] > 0)
+
+	if (!sMessageStack.empty())
 	{
-		NSString *message = [sMessageStack lastObject];
-		if ([message length] > 0)  [self logProgress:message];
-		[sMessageStack removeLastObject];
+		const std::string message = sMessageStack.back();
+		if (!message.empty())  [self cxx_logProgress:message];
+		sMessageStack.pop_back();
 	}
 }
 
@@ -929,13 +1052,11 @@ static NSMutableArray *sMessageStack;
 // NIB methods
 - (void)awakeFromNib
 {
-	NSString				*path = nil;
-	
 	// Set contents of Help window
-	path = [[NSBundle mainBundle] pathForResource:@"OoliteReadMe" ofType:@"pdf"];
-	if (path != nil)
+	const std::optional<std::string> path = oo::OptionalString([[NSBundle mainBundle] pathForResource:@"OoliteReadMe" ofType:@"pdf"]);
+	if (path.has_value())
 	{
-		PDFDocument *document = [[PDFDocument alloc] initWithURL:[NSURL fileURLWithPath:path]];
+		PDFDocument *document = [[PDFDocument alloc] initWithURL:[NSURL fileURLWithPath:oo::NSStringFrom(*path)]];
 		[helpView setDocument:document];
 		[document release];
 	}
@@ -944,25 +1065,21 @@ static NSMutableArray *sMessageStack;
 
 
 // delegate methods
-- (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename
+- (BOOL)application:(NSApplication *)theApplication openFile:(id)filename	// NSApplicationDelegate's selector, shared with AppKit (proposed ADR-0043): an Objective-C string
 {
-	if ([[filename pathExtension] isEqual:@"oolite-save"])
+	const std::string path = oo::StdString(filename);
+	const std::string extension = oo::str::pathExtension(path);
+	if (extension == "oolite-save")
 	{
-		[self setPlayerFileToLoad:filename];
-		[self setPlayerFileDirectory:filename];
+		[self cxx_setPlayerFileToLoad:path];
+		[self cxx_setPlayerFileDirectory:oo::OptionalString(filename)];
 		return YES;
 	}
-	if ([[filename pathExtension] isEqualToString:@"oxp"])
+	if (extension == "oxp")
 	{
-		BOOL dir_test;
-		[[NSFileManager defaultManager] fileExistsAtPath:filename isDirectory:&dir_test];
-		if (dir_test)
+		if (oo::fs::isDirectory(oo::fs::pathFromUTF8(path)))
 		{
-			if (expansionPathsToInclude == nil)
-			{
-				expansionPathsToInclude = [[NSMutableArray alloc] init];
-			}
-			[expansionPathsToInclude addObject:filename];
+			expansionPathsToInclude.push_back(path);
 			return YES;
 		}
 	}
@@ -970,10 +1087,10 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (void) exitAppWithContext:(NSString *)context
+- (void) cxx_exitAppWithContext:(const std::string &)context
 {
 	[gameView.window orderOut:nil];
-	[(OoliteApp *)NSApp setExitContext:context];
+	[(OoliteApp *)NSApp setExitContext:oo::NSStringFrom(context)];
 	[NSApp terminate:self];
 }
 
@@ -988,9 +1105,9 @@ static NSMutableArray *sMessageStack;
 #elif OOLITE_SDL
 #include <SDL3/SDL_init.h>
 
-- (void) exitAppWithContext:(NSString *)context
+- (void) cxx_exitAppWithContext:(const std::string &)context
 {
-	OOLog(@"exit.context", @"Exiting: %@.", context);
+	OOLog(@"exit.context", @"Exiting: %@.", oo::NSStringFrom(context));
 #if (OOLITE_GNUSTEP && !defined(NDEBUG))
 	[[OODebugMonitor sharedDebugMonitor] applicationWillTerminate];
 #endif
@@ -1018,7 +1135,7 @@ static NSMutableArray *sMessageStack;
 
 - (void) exitAppCommandQ
 {
-	[self exitAppWithContext:@"Command-Q"];
+	[self cxx_exitAppWithContext:"Command-Q"];
 }
 
 
@@ -1028,66 +1145,61 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (NSString *) playerFileToLoad
+- (std::optional<std::string>) cxx_playerFileToLoad
 {
 	return playerFileToLoad;
 }
 
 
-- (void) setPlayerFileToLoad:(NSString *)filename
+- (void) cxx_setPlayerFileToLoad:(const std::string &)filename
 {
-	if (playerFileToLoad)
-		[playerFileToLoad autorelease];
-	playerFileToLoad = nil;
-	if ([[[filename pathExtension] lowercaseString] isEqual:@"oolite-save"])
-		playerFileToLoad = [filename copy];
+	playerFileToLoad = std::nullopt;
+	if (oo::str::lowercase(oo::str::pathExtension(filename)) == "oolite-save")
+		playerFileToLoad = filename;
 }
 
 
-- (NSString *) playerFileDirectory
+- (std::optional<std::string>) cxx_playerFileDirectory
 {
-	if (playerFileDirectory == nil)
+	if (!playerFileDirectory.has_value())
 	{
-		playerFileDirectory = [[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"];
-		if (playerFileDirectory != nil && ![[NSFileManager defaultManager] fileExistsAtPath:playerFileDirectory])
+		// The defaults stay on NSUserDefaults until its last consumer migrates (ADR-0032): this
+		// process writes save-directory through it below, so it is read through it too.
+		playerFileDirectory = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"]);
+		if (playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*playerFileDirectory)))
 		{
-			playerFileDirectory = nil;
+			playerFileDirectory = std::nullopt;
 		}
-		if (playerFileDirectory == nil)  playerFileDirectory = [[NSFileManager defaultManager] defaultCommanderPath];
-		
-		[playerFileDirectory retain];
+		// NSFileManagerOOExtensions is not migrated yet: converted at the call.
+		if (!playerFileDirectory.has_value())  playerFileDirectory = oo::OptionalString([[NSFileManager defaultManager] defaultCommanderPath]);
 	}
-	
+
 	return playerFileDirectory;
 }
 
 
-- (void) setPlayerFileDirectory:(NSString *)filename
-{	
-	if (playerFileDirectory != nil)
+- (void) cxx_setPlayerFileDirectory:(const std::optional<std::string> &)filename
+{
+	std::optional<std::string> directory = filename;
+	if (directory.has_value() && oo::str::lowercase(oo::str::pathExtension(*directory)) == "oolite-save")
 	{
-		[playerFileDirectory autorelease];
-		playerFileDirectory = nil;
+		directory = oo::str::deletingLastPathComponent(*directory);
 	}
-	
-	if ([[[filename pathExtension] lowercaseString] isEqual:@"oolite-save"])
-	{
-		filename = [filename stringByDeletingLastPathComponent];
-	}
-	
-	playerFileDirectory = [filename retain];
-	[[NSUserDefaults standardUserDefaults] setObject:filename forKey:@"save-directory"];
+
+	playerFileDirectory = directory;
+	[[NSUserDefaults standardUserDefaults] setObject:oo::NSStringOrNil(directory) forKey:@"save-directory"];
 }
 
 
-- (void)reportUnhandledStartupExceptionName:(NSString *)name reason:(NSString *)reason
+- (void)cxx_reportUnhandledStartupExceptionName:(const std::string &)name reason:(const std::optional<std::string> &)reason
 {
-	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", name, reason);
-	
+	// %@ of a nil reason printed "(null)", as NSStringOrNil's nil still does.
+	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", oo::NSStringFrom(name), oo::NSStringOrNil(reason));
+
 	#if OOLITE_MAC_OS_X
 		// Display an error alert.
 		// TODO: provide better information on reporting bugs in the manual, and refer to it here.
-		NSRunCriticalAlertPanel(@"Oolite failed to start up, because an unhandled exception occurred.", @"An exception of type %@ occurred. If this problem persists, please file a bug report.", @"OK", NULL, NULL, name);
+		NSRunCriticalAlertPanel(@"Oolite failed to start up, because an unhandled exception occurred.", @"An exception of type %@ occurred. If this problem persists, please file a bug report.", @"OK", NULL, NULL, oo::NSStringFrom(name));
 	#endif
 }
 

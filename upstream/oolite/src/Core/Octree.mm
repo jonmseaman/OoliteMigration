@@ -30,7 +30,8 @@ MA 02110-1301, USA.
 #import "OOMacroOpenGL.h"
 #import "OODebugFlags.h"
 #import "NSObjectOOExtensions.h"
-#import "OOPListView.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/objc/OOException.h"
 
 
 #ifndef NDEBUG
@@ -81,25 +82,26 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 {
 	// -init makes no sense, since octrees are immutable.
 	[self release];
-	[NSException raise:NSInternalInconsistencyException format:@"Call of invalid initializer %s", __FUNCTION__];
+	[OOException raise:OOInternalInconsistencyException format:"Call of invalid initializer %s", __FUNCTION__];
 	return nil;
 }
 
 
 // Designated initializer.
-- (id) initWithData:(NSData *)data
+- (id) initWithData:(const oo::Data &)data
 			 radius:(GLfloat)radius
 {
 	if ((self = [super init]))
 	{
-		_data = [data copy];
+		_data = data;
 		_radius = radius;
-		
-		NSUInteger nodeCount = [_data length] / sizeof *_octree;
+
+		NSUInteger nodeCount = _data.length() / sizeof *_octree;
 		NSParameterAssert(nodeCount < UINT32_MAX);
 		_nodeCount = (uint32_t)nodeCount;
-		
-		_octree = (const int *)[_data bytes];
+
+		// (no bytes read as NULL, as they did for empty Foundation data)
+		_octree = (_data.length() != 0) ? (const int *)_data.bytes() : NULL;
 		
 		_collisionOctree = (unsigned char *)calloc(1, _nodeCount);
 		if (_octree == NULL || _collisionOctree == NULL)
@@ -113,23 +115,25 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 }
 
 
-- (id) initWithDictionary:(NSDictionary *)dict
+- (id) initWithDictionary:(id)dict
 {
-	NSData *data = [dict objectForKey:@"octree"];
-	if (![data isKindOfClass:[NSData class]] || ([data length] % sizeof (int)) != 0)
+	const oo::PList representation = oo::PListFrom(dict);
+	const oo::PList *octree = representation.find("octree");
+	const oo::Data *data = (octree != nullptr) ? octree->getIf<oo::Data>() : nullptr;
+	if (data == nullptr || (data->length() % sizeof (int)) != 0)
 	{
 		// Invalid representation.
 		[self release];
 		return nil;
 	}
-	
-	return [self initWithData:data radius:oo::PListView(dict).get<float>(@"radius")];
+
+	return [self initWithData:*data radius:representation.get<float>("radius")];
 }
 
 
 - (void) dealloc
 {
-	DESTROY(_data);
+	_data = oo::Data();
 	free(_collisionOctree);
 	
 	[super dealloc];
@@ -162,7 +166,7 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 
 - (Octree *) octreeScaledBy:(GLfloat)factor
 {
-	// Since octree data is immutable, we can share.
+	// (the octree data is copied; it was shared, being immutable)
 	return [[[Octree alloc] initWithData:_data radius:_radius * factor] autorelease];
 }
 
@@ -664,12 +668,13 @@ static BOOL isHitByOctree(Octree_details axialDetails,
 }
 
 
-- (NSDictionary *) dictionaryRepresentation
+- (oo::PList) cxx_dictionaryRepresentation
 {
-	return [NSDictionary dictionaryWithObjectsAndKeys:
-		_data, @"octree",
-		[NSNumber numberWithFloat:_radius],	@"radius",
-		nil];
+	// (the radius is a single real: it comes back as +numberWithFloat:, so the cache text is unchanged)
+	oo::PList::Dict result;
+	result.emplace("octree", oo::PList(_data));
+	result.emplace("radius", oo::PList::singleReal(_radius));
+	return oo::PList(std::move(result));
 }
 
 
@@ -769,7 +774,8 @@ static Vector randomFullNodeFrom(Octree_details details, Vector offset)
 #ifndef NDEBUG
 - (size_t) totalSize
 {
-	return [self oo_objectSize] + _nodeCount * [_data oo_objectSize] + [_data length] + _nodeCount * sizeof *_collisionOctree;
+	// (the data object is now a member: its size is sizeof _data where it was the Foundation object's)
+	return [self oo_objectSize] + _nodeCount * sizeof _data + _data.length() + _nodeCount * sizeof *_collisionOctree;
 }
 #endif
 
@@ -861,12 +867,11 @@ OOINLINE void InsertNode(OOOctreeBuilder *self, int value)
 	int *resized = (int *)realloc(_octree, dataSize);
 	if (resized == NULL)  resized = _octree;
 	
-	/*	Hand over the bytes to the data object, which will be used directly by
-		the Octree.
+	/*	Copy the bytes into the data object, which will be used directly by
+		the Octree, and free them (the Foundation data object took them over).
 	*/
-	NSData *data = [NSData dataWithBytesNoCopy:resized
-										length:dataSize
-								  freeWhenDone:YES];
+	oo::Data data(resized, dataSize);
+	free(resized);
 	
 	_octree = NULL;
 	_nodeCount = 0;
@@ -951,7 +956,7 @@ static void SetNode_slow(OOOctreeBuilder *self, uint32_t index, int value)
 	int *newBuffer = (int *)realloc(self->_octree, newCapacity * sizeof *newBuffer);
 	if (EXPECT_NOT(newBuffer == NULL))
 	{
-		[NSException raise:NSMallocException format:@"Failed to allocate memory for octree."];
+		[OOException raise:OOMallocException format:"Failed to allocate memory for octree."];
 	}
 	
 	self->_octree = newBuffer;
