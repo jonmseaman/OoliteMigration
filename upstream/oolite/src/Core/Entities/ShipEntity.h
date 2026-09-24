@@ -328,13 +328,13 @@ typedef enum
 	
 	AI						*shipAI;					// ship's AI system
 	
-	NSString				*name;						// descriptive name
-	NSString				*shipUniqueName;			// uniqish name e.g. "Terror of Lave"
-	NSString				*shipClassName;				// e.g. "Cobra III"
-	NSString				*displayName;				// name shown on screen
-	NSString				*scan_description;			// scan class name
+	std::optional<std::string>	name;					// descriptive name; nullopt: nil
+	std::optional<std::string>	shipUniqueName;			// uniqish name e.g. "Terror of Lave"; nullopt: nil
+	std::optional<std::string>	shipClassName;			// e.g. "Cobra III"; nullopt: nil
+	std::optional<std::string>	displayName;			// name shown on screen; nullopt: nil
+	std::optional<std::string>	scan_description;		// scan class name; nullopt: nil
 	OORoleSet				*roleSet;					// Roles a ship can take, eg. trader, hunter, police, pirate, scavenger &c.
-	NSString				*primaryRole;				// "Main" role of the ship.
+	std::optional<std::string>	primaryRole;			// "Main" role of the ship; nullopt: not chosen yet
 
 	oo::PList				explosionType;				// explosion.plist entries; null: absent
 	
@@ -405,7 +405,7 @@ typedef enum
 	// close contact / collision tracking
 	std::map<std::string, std::string, std::less<>>	closeContactsInfo;	// "%d" universal ID -> "%f %f %f" relative position
 	
-	NSString				*lastRadioMessage;
+	std::optional<std::string>	lastRadioMessage;	// nullopt: none yet
 	
 	// scooping...
 	Vector					tractor_position;
@@ -460,7 +460,7 @@ typedef enum
 @private
 	OOWeakReference			*_subEntityTakingDamage;	//	frangible => subEntities can be damaged individually
 
-	NSString				*_shipKey;
+	std::optional<std::string>	_shipKey;				// nullopt: nil
 	
 	std::vector<std::string>	_equipment;	// equipment keys, in order added; empty == none (was nil)
 	float					_heatInsulation;
@@ -485,8 +485,8 @@ typedef enum
 	OOWeakReference			*_shipHitByLaser;			// entity hit by the last laser shot
 	
 	// beacons
-	NSString				*_beaconCode;
-	NSString				*_beaconLabel;
+	std::optional<std::string>	_beaconCode;			// nullopt: nil (never empty)
+	std::optional<std::string>	_beaconLabel;			// nullopt: nil (never empty)
 	OOWeakReference			*_prevBeacon;
 	OOWeakReference			*_nextBeacon;
 	id <OOHUDBeaconIcon>	_beaconDrawable;
@@ -501,7 +501,7 @@ typedef enum
 }
 
 // ship brains
-- (void) setStateMachine:(NSString *)ai_desc;
+- (void) setStateMachine:(id)ai_desc;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
 - (void) setAI:(AI *)ai;
 - (AI *) getAI;
 - (BOOL) hasAutoAI;
@@ -515,7 +515,7 @@ typedef enum
 - (double) frustration;
 - (void) setLaunchDelay:(double)delay;
 
-- (void) interpretAIMessage:(NSString *)message;
+- (void) interpretAIMessage:(id)message;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
 
 - (GLfloat)accuracy;
 - (void)setAccuracy:(GLfloat) new_accuracy;
@@ -584,9 +584,9 @@ typedef enum
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 - (GLfloat)frustumRadius;
 
-- (NSString *) shipDataKey;
-- (NSString *) shipDataKeyAutoRole;
-- (void)setShipDataKey:(NSString *)key;
+- (std::optional<std::string>) cxx_shipDataKey;
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
 
 - (NSDictionary *)shipInfoDictionary;
 
@@ -777,29 +777,29 @@ typedef enum
 
 - (NSUInteger) turretCount;
 
-- (NSString *) name;
-- (NSString *) shipUniqueName;
-- (NSString *) shipClassName;
-- (NSString *) displayName;
-- (NSString *) scanDescription;
-- (NSString *) scanDescriptionForScripting;
-- (void) setName:(NSString *)inName;
-- (void) setShipUniqueName:(NSString *)inName;
-- (void) setShipClassName:(NSString *)inName;
-- (void) setDisplayName:(NSString *)inName;
-- (void) setScanDescription:(NSString *)inName;
-- (NSString *) identFromShip:(ShipEntity*) otherShip; // name displayed to other ships
+- (id) name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>) cxx_shipUniqueName;
+- (std::optional<std::string>) cxx_shipClassName;
+- (id) displayName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>) cxx_scanDescription;
+- (std::optional<std::string>) cxx_scanDescriptionForScripting;
+- (void) setName:(id)inName;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName;
+- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName;
+- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName;
+- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName;
+- (id) identFromShip:(ShipEntity*) otherShip; // shared selector (proposed ADR-0043): an Objective-C string. Name displayed to other ships
 
-- (BOOL) hasRole:(NSString *)role;
+- (BOOL) hasRole:(id)role;	// shared selector (proposed ADR-0043): an Objective-C string
 - (OORoleSet *)roleSet;
 
-- (void) addRole:(NSString *)role;
-- (void) addRole:(NSString *)role withProbability:(float)probability;
-- (void) removeRole:(NSString *)role;
+- (void) addRole:(const std::string &)role;
+- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability;
+- (void) cxx_removeRole:(const std::string &)role;
 
-- (NSString *)primaryRole;
-- (void)setPrimaryRole:(NSString *)role;
-- (BOOL)hasPrimaryRole:(NSString *)role;
+- (std::optional<std::string>) cxx_primaryRole;
+- (void)setPrimaryRole:(id)role;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (BOOL) cxx_hasPrimaryRole:(const std::string &)role;
 
 - (BOOL)isPolice;		// Scan class is CLASS_POLICE
 - (BOOL)isThargoid;		// Scan class is CLASS_THARGOID
@@ -903,7 +903,7 @@ typedef enum
  */
 - (void) setBounty:(OOCreditsQuantity)amount;
 - (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason;
-- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(NSString *)reason;
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(id)reason;	// shared selector (proposed ADR-0043): an Objective-C string
 - (OOCreditsQuantity) bounty;
 
 - (int) legalStatus;
@@ -1205,20 +1205,20 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) setSunGlareFilter:(GLfloat)newValue;
 
 // Unpiloted ships cannot broadcast messages, unless the unpilotedOverride is set to YES.
-- (void) sendExpandedMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship;
-- (void) sendMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;
-- (void) broadcastAIMessage:(NSString *) ai_message;
-- (void) broadcastMessage:(NSString *) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
+- (void) cxx_sendExpandedMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship;
+- (void) cxx_sendMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;
+- (void) broadcastAIMessage:(const std::string &) ai_message;
+- (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
 - (void) setCommsMessageColor;
-- (void) receiveCommsMessage:(NSString *) message_text from:(ShipEntity *) other;
-- (void) commsMessage:(NSString *)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
+- (void) receiveCommsMessage:(id) message_text from:(ShipEntity *) other;	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
 
 - (BOOL) markedForFines;
 - (BOOL) markForFines;
 
 - (BOOL) isMining;
 
-- (void) spawn:(NSString *)roles_number;
+- (void) spawn:(id)roles_number;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
 
 - (int) checkShipsInVicinityForWitchJumpExit;
 
@@ -1263,7 +1263,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) doScriptEvent:(ooscript::PropertyId)message;
 - (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument;
 - (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument1 andArgument:(id)argument2;
-- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(NSArray *)arguments;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withArguments:(const std::vector<oo::ObjCRef<id>> &)arguments;
 - (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 - (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 
@@ -1282,10 +1282,10 @@ unsigned argc = sizeof argv / sizeof *argv; \
 [ship doScriptEvent:OOJSID(event) withArguments:argv count:argc]; \
 } while (0)
 
-- (void) reactToAIMessage:(NSString *)message context:(NSString *)debugContext;	// Immediate message
-- (void) sendAIMessage:(NSString *)message;		// Queued message
-- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage;
-- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage;
+- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext;	// Immediate message
+- (void) sendAIMessage:(id)message;		// Queued message. Shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage;
 
 @end
 
