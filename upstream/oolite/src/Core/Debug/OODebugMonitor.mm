@@ -531,7 +531,7 @@ struct EntityDumpState
 	}
 	if ([entity isWormhole])
 	{
-		for (id shipInfo in [entity shipsInTransit])
+		for (id shipInfo in oo::ObjectFromPList([entity shipsInTransit]))
 		{
 			ShipEntity *ship = [shipInfo objectForKey:@"ship"];
 			[self dumpEntity:ship withState:state parentVisible:NO];
