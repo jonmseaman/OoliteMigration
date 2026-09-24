@@ -463,6 +463,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/HeadUpDisplay+FoundationBridge.h/.mm` (chunked: oo-3rb.209 made it; chunks oo-3rb.210-.213 move their own selectors in; also carries the `NSString (OOHUDBeaconIcon)` category) | oo-3rb.209 (chunks of oo-3rb.81) | oo-f9rf ("Delete HeadUpDisplay+FoundationBridge") |
 | `src/Core/Entities/StationEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.172 made it; chunks oo-3rb.173-.175 move their own selectors in) | oo-3rb.172 (chunks of oo-e7ab) | oo-nrkz ("Delete StationEntity+FoundationBridge") |
 | `src/Core/Scripting/OOJavaScriptEngine+FoundationBridge.h/.mm` (chunked: oo-3rb.198 made it; chunks oo-3rb.199-.203 move their own groups in, and the retiring JS-glue categories on Foundation classes, deleted just before oo-qps) | oo-3rb.198 (chunks of oo-rbqc) | oo-vp0y ("Delete OOJavaScriptEngine+FoundationBridge") |
+| `src/Core/Entities/PlayerEntityLegacyScriptEngine+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptingFoundationBridge)`; chunked: oo-3rb.190 made it; chunks oo-3rb.191-.197 move their own selectors in) | oo-3rb.190 (chunks of oo-j924) | oo-53in ("Delete PlayerEntityLegacyScriptEngine+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
