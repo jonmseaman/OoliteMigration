@@ -390,6 +390,28 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return [self cxx_getConditionScript:oo::StdString(scriptname)];
 }
 
+
+// Chunk 6 (oo-3rb.225).
+
+- (NSDictionary *) getPopulatorSettings
+{
+	return oo::ObjectFromPList([self cxx_getPopulatorSettings]);
+}
+
+
+// A nil setting removes (a null PList); the populator definition object in a block is kept as an
+// Object node and handed back as itself.
+- (void) setPopulatorSetting:(NSString *)key to:(NSDictionary *)setting
+{
+	[self cxx_setPopulatorSetting:oo::StdString(key) to:oo::PListFrom(setting)];
+}
+
+
+- (HPVector) locationByCode:(NSString *)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
+{
+	return [self cxx_locationByCode:oo::StdString(code) withSun:sun andPlanet:planet];
+}
+
 @end
 
 

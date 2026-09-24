@@ -123,8 +123,8 @@ enum
 // currently twice scanner radius
 #define LANE_WIDTH			51200.0
 
-static NSString * const kOOLogUniversePopulateError			= @"universe.populate.error";
-static NSString * const kOOLogUniversePopulateWitchspace	= @"universe.populate.witchspace";
+static const char * const kOOLogUniversePopulateError			= "universe.populate.error";
+static const char * const kOOLogUniversePopulateWitchspace	= "universe.populate.witchspace";
 static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.verify.error";
 static NSString * const kOOLogEntityVerificationRebuild		= @"entity.linkedList.verify.rebuild";
 
@@ -900,8 +900,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[demo_ships release];
 	[screenBackgrounds release];
 	[gameView release];
-	[populatorSettings release];
-	[system_repopulator release];
 	[allPlanets release];
 	[allStations release];
 	
@@ -1240,8 +1238,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	[self setViewDirection:VIEW_FORWARD];
 	
-	[comm_log_gui printLongText:[NSString stringWithFormat:@"%@ %@", [self getSystemName:systemID], [player dial_clock_adjusted]]
-		align:GUI_ALIGN_CENTER color:[OOColor whiteColor] fadeTime:0 key:nil addToArray:[player commLog]];
+	// the printed lines go to the player's (unmigrated) comm log as they went before
+	std::vector<std::string> printedLines;
+	[comm_log_gui cxx_printLongText:oo::str::format("%s %s", TextOrNull([self cxx_getSystemName:systemID]).c_str(), oo::DescriptionOf([player dial_clock_adjusted]).c_str())
+		align:GUI_ALIGN_CENTER color:[OOColor whiteColor] fadeTime:0 key:std::nullopt addToArray:&printedLines];
+	for (const std::string &line : printedLines)  [[player commLog] addObject:oo::NSStringFrom(line)];
 	
 	displayGUI = NO;
 }
@@ -1296,9 +1297,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	PlayerEntity*		player = PLAYER;
 	Quaternion			randomQ;
 	
-	NSString*		override_key = oo::NSStringOrNil([self keyForInterstellarOverridesForSystems:s1 :s2 inGalaxy:galaxyID]);
+	const std::string	override_key = *[self keyForInterstellarOverridesForSystems:s1 :s2 inGalaxy:galaxyID];
 
-	NSDictionary *systeminfo = [systemManager getPropertiesForSystemKey:override_key];
+	const oo::PList systeminfo = [systemManager cxx_getPropertiesForSystemKey:override_key];
 	
 	[universeRegion clearSubregions];
 	
@@ -1307,7 +1308,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	/*- the sky backdrop -*/
 	OOColor *col1 = [OOColor colorWithRed:0.0 green:1.0 blue:0.5 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	quaternion_set_random(&randomQ);
 	[thing setOrientation:randomQ];
@@ -1320,29 +1321,29 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[self addEntity:thing];
 	[thing release];
 	
-	ambientLightLevel = oo::PListView(systeminfo).get<float>(@"ambient_level", 1.0);
+	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
 	[self setLighting];	// also sets initial lights positions.
-	
-	OOLog(kOOLogUniversePopulateWitchspace, @"%@", @"Populating witchspace ...");
-	OOLogIndentIf(kOOLogUniversePopulateWitchspace);
-	
+
+	OOLog(oo::NSStringFrom(kOOLogUniversePopulateWitchspace), @"%@", @"Populating witchspace ...");
+	OOLogIndentIf(oo::NSStringFrom(kOOLogUniversePopulateWitchspace));
+
 	[self clearSystemPopulator];
-	NSString *populator = oo::PListView(systeminfo).get<NSString *>(@"populator", @"interstellarSpaceWillPopulate");
-	[system_repopulator release];
-	system_repopulator = [oo::PListView(systeminfo).get<NSString *>(@"repopulator", @"interstellarSpaceWillRepopulate") retain];
+	const std::string populator = systeminfo.get<std::string>("populator", "interstellarSpaceWillPopulate");
+	system_repopulator = systeminfo.get<std::string>("repopulator", "interstellarSpaceWillRepopulate");
 	ooscript::Context context = OOJSAcquireContext();
-	[PLAYER doWorldScriptEvent:OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+	[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
 	[self populateSystemFromDictionariesWithSun:nil andPlanet:nil];
 
 	// systeminfo might have a 'script_actions' resource we want to activate now...
-	NSArray *script_actions = oo::PListView(systeminfo).get<NSArray *>(@"script_actions");
-	if (script_actions != nil)
+	const oo::PList *script_actions = systeminfo.get<oo::PList::Array>("script_actions");
+	if (script_actions != nullptr)
 	{
-		OOStandardsDeprecated([NSString stringWithFormat:@"The script_actions system info key is deprecated for %@.",override_key]);
-		if (!OOEnforceStandards()) 
+		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",override_key.c_str()));
+		if (!OOEnforceStandards())
 		{
-			[player runUnsanitizedScriptActions:script_actions
+			// the legacy script engine is not migrated yet: it gets the array it read before
+			[player runUnsanitizedScriptActions:oo::ObjectFromPList(*script_actions)
 							  allowingAIMethods:NO
 								withContextName:@"<witchspace script_actions>"
 									  forTarget:nil];
@@ -1351,7 +1352,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	next_repopulation = randf() * SYSTEM_REPOPULATION_INTERVAL;
 
-	OOLogOutdentIf(kOOLogUniversePopulateWitchspace);
+	OOLogOutdentIf(oo::NSStringFrom(kOOLogUniversePopulateWitchspace));
 }
 
 
@@ -1361,12 +1362,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
 	seed_for_planet_description(systemSeed);
 
-	NSMutableDictionary *planetDict = [NSMutableDictionary dictionaryWithDictionary:[systemManager getPropertiesForCurrentSystem]];
-	[planetDict oo_setBool:YES forKey:@"mainForLocalSystem"];
-	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(planetDict) withAtmosphere:oo::PListView(planetDict).get<BOOL>(@"has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
-	
-	double planet_zpos = oo::PListView(planetDict).get<float>(@"planet_distance", 500000);
-	planet_zpos *= oo::PListView(planetDict).get<float>(@"planet_distance_multiplier", 1.0);
+	// a copy of the system data, marked as the main planet (a bool, as -oo_setBool:forKey: stored it)
+	oo::PList planetDict = [systemManager cxx_getPropertiesForCurrentSystem];
+	if (!planetDict.isDict())  planetDict = oo::PList(oo::PList::Dict{});
+	(*planetDict.getIf<oo::PList::Dict>())["mainForLocalSystem"] = oo::PList(true);
+	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:planetDict withAtmosphere:planetDict.get<bool>("has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
+
+	double planet_zpos = planetDict.get<float>("planet_distance", 500000);
+	planet_zpos *= planetDict.get<float>("planet_distance_multiplier", 1.0);
 	
 #ifdef OO_DUMP_PLANETINFO
 	OOLog(@"planetinfo.record",@"planet zpos = %f",planet_zpos);
@@ -1406,9 +1409,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	Vector				vf;
 	id			dict_object;
 
-	NSDictionary		*systeminfo = [systemManager getPropertiesForCurrentSystem];
-	unsigned			techlevel = oo::PListView(systeminfo).get<unsigned int>(KEY_TECHLEVEL);
-	NSString			*stationDesc = nil, *defaultStationDesc = nil;
+	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
+	unsigned			techlevel = systeminfo.get<unsigned int>(oo::StdString(KEY_TECHLEVEL));
+	std::optional<std::string>	stationDesc, defaultStationDesc;	// the default is never set: nullopt, as nil
 	OOColor				*bgcolor;
 	OOColor				*pale_bgcolor;
 	BOOL				sunGoneNova;
@@ -1417,8 +1420,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	[[GameController sharedController] logProgress:DESC(@"populating-space")];
 	
-	sunGoneNova = oo::PListView(systeminfo).get<BOOL>(@"sun_gone_nova", NO);
-	
+	sunGoneNova = systeminfo.get<bool>("sun_gone_nova", NO);
+
 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - clearSubRegions, sky, dust");
 	[universeRegion clearSubregions];
 	
@@ -1433,9 +1436,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOLog(@"planetinfo.record",@"seed = %d %d %d %d",system_seed.c,system_seed.d,system_seed.e,system_seed.f);
 	OOLog(@"planetinfo.record",@"coordinates = %d %d",system_seed.d,system_seed.b);
 
-#define SPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = \"%@\";",oo::PListView(systeminfo).get<NSString *>(@"" #PROP));
-#define IPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %d;",oo::PListView(systeminfo).get<int>(@#PROP));
-#define FPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %f;",oo::PListView(systeminfo).get<float>(@"" #PROP));
+#define SPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = \"%@\";",oo::NSStringOrNil(OptionalStringIn(systeminfo, "" #PROP)));
+#define IPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %d;",systeminfo.get<int>(#PROP));
+#define FPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %f;",systeminfo.get<float>("" #PROP));
 	IPROP(government);
 	IPROP(economy);
 	IPROP(techlevel);
@@ -1459,7 +1462,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOColor *col1 = [OOColor colorWithHue:h1 saturation:randf() brightness:0.5 + randf()/2.0 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithHue:h2 saturation:0.5 + randf()/2.0 brightness:0.5 + randf()/2.0 alpha:1.0];
 	
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	[self addEntity:thing];
 //	bgcolor = [(SkyEntity *)thing skyColor];
@@ -1470,11 +1473,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		h1 += 0.33;
 	}
 	
-	ambientLightLevel = oo::PListView(systeminfo).get<float>(@"ambient_level", 1.0);
-	
+	ambientLightLevel = systeminfo.get<float>("ambient_level", 1.0);
+
 	// pick a main sequence colour
 
-	dict_object=[systeminfo objectForKey:@"sun_color"];
+	dict_object=ObjectForKeyIn(systeminfo, "sun_color");
 	if (dict_object!=nil) 
 	{
 		bgcolor = [OOColor colorWithDescription:dict_object];
@@ -1518,19 +1521,19 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	double		safeDistance;
 	HPVector		sunPos;
 	
-	sunDistanceModifier = oo::PListView(systeminfo).get<oo::NonNegative<double>>(@"sun_distance_modifier", 0.0);
+	sunDistanceModifier = systeminfo.get<oo::NonNegative<double>>("sun_distance_modifier", 0.0);
 	if (sunDistanceModifier < 6.0) // <6 isn't valid
 	{
-		sun_distance = oo::PListView(systeminfo).get<oo::NonNegative<double>>(@"sun_distance", (planet_radius*20));
+		sun_distance = systeminfo.get<oo::NonNegative<double>>("sun_distance", (planet_radius*20));
 		// note, old property was _modifier, new property is _multiplier
-		sun_distance *= oo::PListView(systeminfo).get<oo::NonNegative<double>>(@"sun_distance_multiplier", 1);
+		sun_distance *= systeminfo.get<oo::NonNegative<double>>("sun_distance_multiplier", 1);
 	} 
 	else
 	{
 		sun_distance = planet_radius * sunDistanceModifier;
 	}
 
-	sun_radius = oo::PListView(systeminfo).get<oo::NonNegative<double>>(@"sun_radius", 2.5 * planet_radius);
+	sun_radius = systeminfo.get<oo::NonNegative<double>>("sun_radius", 2.5 * planet_radius);
 	// clamp the sun radius
 	if ((sun_radius < 1000.0) || (sun_radius > sun_distance / 2  && !sunGoneNova))
 	{
@@ -1544,7 +1547,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// here we need to check if the sun collides with (or is too close to) the witchpoint
 	// otherwise at (for example) Maregais in Galaxy 1 we go BANG!
-	HPVector sun_dir = oo::PListView(systeminfo).get<HPVector>(@"sun_vector");
+	HPVector sun_dir = HPVectorIn(systeminfo, "sun_vector", kZeroHPVector);
 	sun_distance /= 2.0;
 	do
 	{
@@ -1567,39 +1570,38 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 
 	
-	NSMutableDictionary *sun_dict = [NSMutableDictionary dictionaryWithCapacity:5];
-	[sun_dict setObject:[NSNumber numberWithDouble:sun_radius] forKey:@"sun_radius"];
-	dict_object=[systeminfo objectForKey: @"corona_shimmer"];
-	if (dict_object!=nil) [sun_dict setObject:dict_object forKey:@"corona_shimmer"];
-	dict_object=[systeminfo objectForKey: @"corona_hues"];
-	if (dict_object!=nil)
+	// the sun's settings: the values as they were in the system info, else the defaults (floats,
+	// as +numberWithFloat: stored them: item 15); the radius a double
+	oo::PList::Dict sunSettings;
+	sunSettings["sun_radius"] = oo::PList(sun_radius);
+	if (const oo::PList *value = systeminfo.find("corona_shimmer"))  sunSettings["corona_shimmer"] = *value;
+	if (const oo::PList *value = systeminfo.find("corona_hues"))
 	{
-		[sun_dict setObject:dict_object forKey:@"corona_hues"];
+		sunSettings["corona_hues"] = *value;
 	}
 	else
 	{
-		[sun_dict setObject:[NSNumber numberWithFloat:defaultSunHues] forKey:@"corona_hues"];
+		sunSettings["corona_hues"] = oo::PList::singleReal(defaultSunHues);
 	}
-	dict_object=[systeminfo objectForKey: @"corona_flare"];
-	if (dict_object!=nil) 
+	if (const oo::PList *value = systeminfo.find("corona_flare"))
 	{
-		[sun_dict setObject:dict_object forKey:@"corona_flare"];
+		sunSettings["corona_flare"] = *value;
 	}
 	else
 	{
-		[sun_dict setObject:[NSNumber numberWithFloat:defaultSunFlare] forKey:@"corona_flare"];
+		sunSettings["corona_flare"] = oo::PList::singleReal(defaultSunFlare);
 	}
-	dict_object=[systeminfo objectForKey:KEY_SUNNAME];
-	if (dict_object!=nil) 
+	if (const oo::PList *value = systeminfo.find(oo::StdString(KEY_SUNNAME)))
 	{
-		[sun_dict setObject:dict_object forKey:KEY_SUNNAME];
+		sunSettings[oo::StdString(KEY_SUNNAME)] = *value;
 	}
+	const oo::PList sun_dict(std::move(sunSettings));
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"corona_flare = %f",oo::PListView(sun_dict).get<float>(@"corona_flare"));
-	OOLog(@"planetinfo.record",@"corona_hues = %f",oo::PListView(sun_dict).get<float>(@"corona_hues"));
+	OOLog(@"planetinfo.record",@"corona_flare = %f",sun_dict.get<float>("corona_flare"));
+	OOLog(@"planetinfo.record",@"corona_hues = %f",sun_dict.get<float>("corona_hues"));
 	OOLog(@"planetinfo.record",@"sun_color = %@",[bgcolor descriptionComponents]);
 #endif
-	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:oo::PListFrom(sun_dict)];	// alloc retains!
+	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:sun_dict];	// alloc retains!
 	
 	[a_sun setStatus:STATUS_ACTIVE];
 	[a_sun setPosition:sunPos]; // sets also light origin
@@ -1621,7 +1623,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	/*- space station -*/
 	stationPos = [a_planet position];
 
-	vf = oo::PListView(systeminfo).get<Vector>(@"station_vector");
+	vf = VectorIn(systeminfo, "station_vector", kZeroVector);
 #ifdef OO_DUMP_PLANETINFO
 	OOLog(@"planetinfo.record",@"station_vector = %.3f %.3f %.3f",vf.x,vf.y,vf.z);
 #endif
@@ -1629,12 +1631,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 
 	//// possibly systeminfo has an override for the station
-	stationDesc = oo::PListView(systeminfo).get<NSString *>(@"station", @"coriolis");
+	stationDesc = systeminfo.get<std::string>("station", "coriolis");
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"station = %@",stationDesc);
+	OOLog(@"planetinfo.record",@"station = %@",oo::NSStringOrNil(stationDesc));
 #endif
-	
-	a_station = (StationEntity *)[self newShipWithRole:stationDesc];			// retain count = 1
+
+	// a missing role (the unset default) gives no ship, as a nil role did
+	a_station = stationDesc.has_value() ? (StationEntity *)[self cxx_newShipWithRole:*stationDesc] : nil;			// retain count = 1
 	
 	/*	Sanity check: ensure that only stations are generated here. This is an
 		attempt to fix exceptions of the form:
@@ -1651,29 +1654,29 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if (a_station == nil)
 		{
 			// Should have had a more specific error already, just specify context
-			OOLog(@"universe.setup.badStation", @"Failed to set up a ship for role \"%@\" as system station, trying again with \"%@\".", stationDesc, defaultStationDesc);
+			OOLog(@"universe.setup.badStation", @"Failed to set up a ship for role \"%@\" as system station, trying again with \"%@\".", oo::NSStringOrNil(stationDesc), oo::NSStringOrNil(defaultStationDesc));
 		}
 		else
 		{
-			OOLog(@"universe.setup.badStation", @"***** ERROR: Attempt to use non-station ship of type \"%@\" for role \"%@\" as system station, trying again with \"%@\".", [a_station name], stationDesc, defaultStationDesc);
+			OOLog(@"universe.setup.badStation", @"***** ERROR: Attempt to use non-station ship of type \"%@\" for role \"%@\" as system station, trying again with \"%@\".", [a_station name], oo::NSStringOrNil(stationDesc), oo::NSStringOrNil(defaultStationDesc));
 		}
 		[a_station release];
 		stationDesc = defaultStationDesc;
-		a_station = (StationEntity *)[self newShipWithRole:stationDesc];		 // retain count = 1
+		a_station = stationDesc.has_value() ? (StationEntity *)[self cxx_newShipWithRole:*stationDesc] : nil;		 // retain count = 1
 		
 		if (![a_station isStation] || ![a_station validForAddToUniverse])
 		{
 			if (a_station == nil)
 			{
-				OOLog(@"universe.setup.badStation", @"On retry, failed to set up a ship for role \"%@\" as system station. Trying to fall back to built-in Coriolis station.", stationDesc);
+				OOLog(@"universe.setup.badStation", @"On retry, failed to set up a ship for role \"%@\" as system station. Trying to fall back to built-in Coriolis station.", oo::NSStringOrNil(stationDesc));
 			}
 			else
 			{
-				OOLog(@"universe.setup.badStation", @"***** ERROR: On retry, rolled non-station ship of type \"%@\" for role \"%@\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", [a_station name], stationDesc);
+				OOLog(@"universe.setup.badStation", @"***** ERROR: On retry, rolled non-station ship of type \"%@\" for role \"%@\". Non-station ships should not have this role! Trying to fall back to built-in Coriolis station.", [a_station name], oo::NSStringOrNil(stationDesc));
 			}
 			[a_station release];
-			
-			a_station = (StationEntity *)[self newShipWithName:@"coriolis-station"];
+
+			a_station = (StationEntity *)[self cxx_newShipWithName:"coriolis-station"];
 			if (![a_station isStation] || ![a_station validForAddToUniverse])
 			{
 				OOLog(@"universe.setup.badStation", @"%@", @"Could not create built-in Coriolis station! Generating a stationless system.");
@@ -1715,9 +1718,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (void) populateNormalSpace
 {	
-	NSDictionary		*systeminfo = [systemManager getPropertiesForCurrentSystem];
+	const oo::PList		systeminfo = [systemManager cxx_getPropertiesForCurrentSystem];
 
-	BOOL sunGoneNova = oo::PListView(systeminfo).get<BOOL>(@"sun_gone_nova");
+	BOOL sunGoneNova = systeminfo.get<bool>("sun_gone_nova");
 	// check for nova
 	if (sunGoneNova)
 	{
@@ -1747,12 +1750,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	if ([PLAYER status] != STATUS_START_GAME)
 	{
-		NSString *populator = oo::PListView(systeminfo).get<NSString *>(@"populator", (sunGoneNova)?@"novaSystemWillPopulate":@"systemWillPopulate");
-		[system_repopulator release];
-		system_repopulator = [oo::PListView(systeminfo).get<NSString *>(@"repopulator", (sunGoneNova)?@"novaSystemWillRepopulate":@"systemWillRepopulate") retain];
+		const std::string populator = systeminfo.get<std::string>("populator", (sunGoneNova)?"novaSystemWillPopulate":"systemWillPopulate");
+		system_repopulator = systeminfo.get<std::string>("repopulator", (sunGoneNova)?"novaSystemWillRepopulate":"systemWillRepopulate");
 
 		ooscript::Context context = OOJSAcquireContext();
-		[PLAYER doWorldScriptEvent:OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+		[PLAYER doWorldScriptEvent:cxx_OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 		OOJSRelinquishContext(context);
 		[self populateSystemFromDictionariesWithSun:cachedSun andPlanet:cachedPlanet];
 	}
@@ -1760,14 +1762,15 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OO_DEBUG_POP_PROGRESS();
 
 	// systeminfo might have a 'script_actions' resource we want to activate now...
-	NSArray *script_actions = oo::PListView(systeminfo).get<NSArray *>(@"script_actions");
-	if (script_actions != nil)
+	const oo::PList *script_actions = systeminfo.get<oo::PList::Array>("script_actions");
+	if (script_actions != nullptr)
 	{
-		OOStandardsDeprecated([NSString stringWithFormat:@"The script_actions system info key is deprecated for %@.",[self getSystemName:systemID]]);
-		if (!OOEnforceStandards()) 
+		cxx_OOStandardsDeprecated(oo::str::format("The script_actions system info key is deprecated for %s.",TextOrNull([self cxx_getSystemName:systemID]).c_str()));
+		if (!OOEnforceStandards())
 		{
 			OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - legacy script_actions");
-			[PLAYER runUnsanitizedScriptActions:script_actions
+			// the legacy script engine is not migrated yet: it gets the array it read before
+			[PLAYER runUnsanitizedScriptActions:oo::ObjectFromPList(*script_actions)
 							  allowingAIMethods:NO
 								withContextName:@"<system script_actions>"
 									  forTarget:nil];
@@ -1781,26 +1784,27 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (void) clearSystemPopulator
 {
-	[populatorSettings release];
-	populatorSettings = [[NSMutableDictionary alloc] initWithCapacity:128];
+	populatorSettings = oo::PList(oo::PList::Dict{});
 }
 
 
-- (NSDictionary *) getPopulatorSettings
+- (oo::PList) cxx_getPopulatorSettings
 {
 	return populatorSettings;
 }
 
 
-- (void) setPopulatorSetting:(NSString *)key to:(NSDictionary *)setting
+- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting
 {
-	if (setting == nil)
+	if (!populatorSettings.isDict())  populatorSettings = oo::PList(oo::PList::Dict{});
+	oo::PList::Dict &settings = *populatorSettings.getIf<oo::PList::Dict>();
+	if (setting.isNull())
 	{
-		[populatorSettings removeObjectForKey:key];
-	} 
+		settings.erase(key);
+	}
 	else
 	{
-		[populatorSettings setObject:setting forKey:key];
+		settings[key] = setting;
 	}
 }
 
@@ -1814,33 +1818,38 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
 {
 	Random_Seed systemSeed = [systemManager getRandomSeedForCurrentSystem];
-	NSArray *blocks = [populatorSettings allValues];
-	NSArray *sortedBlocks = [blocks sortedArrayUsingFunction:populatorPrioritySort context:nil];
-	NSDictionary *populator = nil;
+	// A copy of the blocks (the callbacks may change the settings), in key byte order (was the
+	// dictionary's hash order), then stably sorted by priority: order-sensitive, the goldens decide.
+	std::vector<oo::PList> sortedBlocks;
+	if (const oo::PList::Dict *blocks = populatorSettings.getIf<oo::PList::Dict>())
+	{
+		for (const auto &[key, block] : *blocks)  sortedBlocks.push_back(block);
+	}
+	std::stable_sort(sortedBlocks.begin(), sortedBlocks.end(), populatorPrioritySort);
 	HPVector location = kZeroHPVector;
 	uint32_t i, locationSeed, groupCount, rndvalue;
 	RANROTSeed rndcache = RANROTGetFullSeed();
 	RANROTSeed rndlocal = RANROTGetFullSeed();
-	NSString *locationCode = nil;
+	std::string locationCode;
 	OOJSPopulatorDefinition *pdef = nil;
-	foreach (populator, sortedBlocks)
+	for (const oo::PList &populator : sortedBlocks)
 	{
-		deterministic_population = oo::PListView(populator).get<BOOL>(@"deterministic", NO);
+		deterministic_population = populator.get<bool>("deterministic", NO);
 		if (EXPECT_NOT(sun == nil || planet == nil))
 		{
 			// needs to be a non-nova system, and not interstellar space
 			deterministic_population = NO;
 		}
 
-		locationSeed = oo::PListView(populator).get<unsigned int>(@"locationSeed", 0);
-		groupCount = oo::PListView(populator).get<unsigned int>(@"groupCount", 1);
-		
+		locationSeed = populator.get<unsigned int>("locationSeed", 0);
+		groupCount = populator.get<unsigned int>("groupCount", 1);
+
 		for (i = 0; i < groupCount; i++)
 		{
-			locationCode = oo::PListView(populator).get<NSString *>(@"location", @"COORDINATES");
-			if ([locationCode isEqualToString:@"COORDINATES"])
+			locationCode = populator.get<std::string>("location", "COORDINATES");
+			if (locationCode == "COORDINATES")
 			{
-				location = oo::PListView(populator).get<HPVector>(@"coordinates", kZeroHPVector);
+				location = HPVectorIn(populator, "coordinates", kZeroHPVector);
 			}
 			else
 			{
@@ -1865,11 +1874,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 				if (sun == nil || planet == nil)
 				{
 					// all interstellar space and nova locations equal to WITCHPOINT
-					location = [self locationByCode:@"WITCHPOINT" withSun:nil andPlanet:nil];
+					location = [self cxx_locationByCode:"WITCHPOINT" withSun:nil andPlanet:nil];
 				}
 				else
 				{
-					location = [self locationByCode:locationCode withSun:sun andPlanet:planet];
+					location = [self cxx_locationByCode:locationCode withSun:sun andPlanet:planet];
 				}
 				if(locationSeed != 0)
 				{
@@ -1878,7 +1887,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 				}			
 			}
 			// location now contains a Vector coordinate, one way or another
-			pdef = [populator objectForKey:@"callbackObj"];
+			pdef = ObjectForKeyIn(populator, "callbackObj");	// an Object node: the populator definition itself
 			[pdef runCallback:location];
 		}
 	}
@@ -1901,17 +1910,17 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
  * Can be called with nil sun or planet, but if so the calling function
  * must make sure the location code is WITCHPOINT.
  */
-- (HPVector) locationByCode:(NSString *)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
+- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet
 {
 	HPVector result = kZeroHPVector;
-	if ([code isEqualToString:@"WITCHPOINT"] || sun == nil || planet == nil || [sun goneNova])
+	if (code == "WITCHPOINT" || sun == nil || planet == nil || [sun goneNova])
 	{
 		result = OOHPVectorRandomSpatial(SCANNER_MAX_RANGE);
 	}
 	// past this point, can assume non-nil sun, planet
 	else
 	{ 
-		if ([code isEqualToString:@"LANE_WPS"])
+		if (code == "LANE_WPS")
 		{	
 			// pick position on one of the lanes, weighted by lane length
 			double l1 = HPmagnitude([planet position]);
@@ -1921,30 +1930,30 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			float choice = randf();
 			if (choice < l1/total)
 			{
-				return [self locationByCode:@"LANE_WP" withSun:sun andPlanet:planet];
+				return [self cxx_locationByCode:"LANE_WP" withSun:sun andPlanet:planet];
 			}
 			else if (choice < (l1+l2)/total)
 			{
-				return [self locationByCode:@"LANE_PS" withSun:sun andPlanet:planet];
+				return [self cxx_locationByCode:"LANE_PS" withSun:sun andPlanet:planet];
 			}
 			else
 			{
-				return [self locationByCode:@"LANE_WS" withSun:sun andPlanet:planet];
+				return [self cxx_locationByCode:"LANE_WS" withSun:sun andPlanet:planet];
 			}
 		}
-		else if ([code isEqualToString:@"LANE_WP"])
+		else if (code == "LANE_WP")
 		{
 			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,[planet position],[planet radius]*3,LANE_WIDTH);
 		}
-		else if ([code isEqualToString:@"LANE_WS"])
+		else if (code == "LANE_WS")
 		{
 			result = OORandomPositionInCylinder(kZeroHPVector,SCANNER_MAX_RANGE,[sun position],[sun radius]*3,LANE_WIDTH);
 		}
-		else if ([code isEqualToString:@"LANE_PS"])
+		else if (code == "LANE_PS")
 		{
 			result = OORandomPositionInCylinder([planet position],[planet radius]*3,[sun position],[sun radius]*3,LANE_WIDTH);
 		}
-		else if ([code isEqualToString:@"STATION_AEGIS"])
+		else if (code == "STATION_AEGIS")
 		{
 			do 
 			{
@@ -1952,31 +1961,31 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			} while(HPdistance2(result,[planet position])<[planet radius]*[planet radius]*1.5);
 			// loop to make sure not generated too close to the planet's surface
 		}
-		else if ([code isEqualToString:@"PLANET_ORBIT_LOW"])
+		else if (code == "PLANET_ORBIT_LOW")
 		{
 			result = OORandomPositionInShell([planet position],[planet radius]*1.1,[planet radius]*2.0);
 		}
-		else if ([code isEqualToString:@"PLANET_ORBIT"])
+		else if (code == "PLANET_ORBIT")
 		{
 			result = OORandomPositionInShell([planet position],[planet radius]*2.0,[planet radius]*4.0);
 		}
-		else if ([code isEqualToString:@"PLANET_ORBIT_HIGH"])
+		else if (code == "PLANET_ORBIT_HIGH")
 		{
 			result = OORandomPositionInShell([planet position],[planet radius]*4.0,[planet radius]*8.0);
 		}
-		else if ([code isEqualToString:@"STAR_ORBIT_LOW"])
+		else if (code == "STAR_ORBIT_LOW")
 		{
 			result = OORandomPositionInShell([sun position],[sun radius]*1.1,[sun radius]*2.0);
 		}
-		else if ([code isEqualToString:@"STAR_ORBIT"])
+		else if (code == "STAR_ORBIT")
 		{
 			result = OORandomPositionInShell([sun position],[sun radius]*2.0,[sun radius]*4.0);
 		}
-		else if ([code isEqualToString:@"STAR_ORBIT_HIGH"])
+		else if (code == "STAR_ORBIT_HIGH")
 		{
 			result = OORandomPositionInShell([sun position],[sun radius]*4.0,[sun radius]*8.0);
 		}
-		else if ([code isEqualToString:@"TRIANGLE"])
+		else if (code == "TRIANGLE")
 		{
 			do {
 				// pick random point in triangle by algorithm at
@@ -1994,7 +2003,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			// make sure at least 3 radii from vertices
 			while(HPdistance2(result,[sun position]) < [sun radius]*[sun radius]*9.0 || HPdistance2(result,[planet position]) < [planet radius]*[planet radius]*9.0 || HPmagnitude2(result) < SCANNER_MAX_RANGE2 * 9.0);
 		}
-		else if ([code isEqualToString:@"INNER_SYSTEM"])
+		else if (code == "INNER_SYSTEM")
 		{
 			do {
 				result = OORandomPositionInShell([sun position],[sun radius]*3.0,HPdistance([sun position],[planet position]));
@@ -2003,23 +2012,23 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 				// projection to plane could bring back too close to sun
 			} while (HPdistance2(result,[sun position]) < [sun radius]*[sun radius]*9.0);
 		}
-		else if ([code isEqualToString:@"INNER_SYSTEM_OFFPLANE"])
+		else if (code == "INNER_SYSTEM_OFFPLANE")
 		{
 			result = OORandomPositionInShell([sun position],[sun radius]*3.0,HPdistance([sun position],[planet position]));
 		}
-		else if ([code isEqualToString:@"OUTER_SYSTEM"])
+		else if (code == "OUTER_SYSTEM")
 		{
 			result = OORandomPositionInShell([sun position],HPdistance([sun position],[planet position]),HPdistance([sun position],[planet position])*10.0); // no more than 10 AU out
 			result = OOProjectHPVectorToPlane(result,kZeroHPVector,HPcross_product([sun position],[planet position]));
 			result = HPvector_add(result,OOHPVectorRandomSpatial(0.01*HPdistance(result,[sun position]))); // within 1% of plane
 		}
-		else if ([code isEqualToString:@"OUTER_SYSTEM_OFFPLANE"])
+		else if (code == "OUTER_SYSTEM_OFFPLANE")
 		{
 			result = OORandomPositionInShell([sun position],HPdistance([sun position],[planet position]),HPdistance([sun position],[planet position])*10.0); // no more than 10 AU out
 		}
 		else
 		{
-			OOLog(kOOLogUniversePopulateError,@"Named populator region %@ is not implemented, falling back to WITCHPOINT",code); 
+			OOLog(oo::NSStringFrom(kOOLogUniversePopulateError),@"Named populator region %@ is not implemented, falling back to WITCHPOINT",oo::NSStringFrom(code)); 
 			result = OOHPVectorRandomSpatial(SCANNER_MAX_RANGE);
 		}
 	}
@@ -7140,7 +7149,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 		return; // no need to be adding ships as this is not a "real" game
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	[PLAYER doWorldScriptEvent:OOJSIDFromString(system_repopulator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
+	[PLAYER doWorldScriptEvent:(system_repopulator.has_value() ? cxx_OOJSIDFromString(*system_repopulator) : ooscript::voidId()) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
 	next_repopulation = SYSTEM_REPOPULATION_INTERVAL;
 }
@@ -8095,6 +8104,48 @@ std::optional<std::string> OptionalStringIn(const oo::PList &dict, std::string_v
 	const oo::PList *value = dict.find(key);
 	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
 	return dict.get<std::string>(key);
+}
+
+
+/*	The object -objectForKey: gave for a configuration value (nil when absent), for callees that
+	still take Objective-C objects (+[OOColor colorWithDescription:]).
+*/
+id ObjectForKeyIn(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	return (value != nullptr) ? oo::ObjectFromPList(*value) : nil;
+}
+
+
+// get<Vector> / get<HPVector>: OOVectorFromObject / OOHPVectorFromObject (not migrated yet) of the
+// value; the zero vector for a null configuration (messaging nil).
+Vector VectorIn(const oo::PList &dict, std::string_view key, Vector fallback)
+{
+	if (dict.isNull())  return kZeroVector;
+	return OOVectorFromObject(ObjectForKeyIn(dict, key), fallback);
+}
+
+
+HPVector HPVectorIn(const oo::PList &dict, std::string_view key, HPVector fallback)
+{
+	if (dict.isNull())  return kZeroHPVector;
+	return OOHPVectorFromObject(ObjectForKeyIn(dict, key), fallback);
+}
+
+
+// What %@ printed for a string that may be nil.
+std::string TextOrNull(const std::optional<std::string> &text)
+{
+	return text.has_value() ? *text : std::string("(null)");
+}
+
+
+// The populator blocks' order: ascending priority (100 when absent).
+bool populatorPrioritySort(const oo::PList &one, const oo::PList &two)
+{
+	int pri_one = one.get<int>("priority", 100);
+	int pri_two = two.get<int>("priority", 100);
+	return pri_one < pri_two;
 }
 
 
@@ -11254,18 +11305,6 @@ static void PreloadOneSound(NSString *soundName)
 }
 
 @end
-
-NSComparisonResult populatorPrioritySort(id a, id b, void *context)
-{
-	NSDictionary *one = (NSDictionary *)a;
-	NSDictionary *two = (NSDictionary *)b;
-	int pri_one = oo::PListView(one).get<int>(@"priority", 100);
-	int pri_two = oo::PListView(two).get<int>(@"priority", 100);
-	if (pri_one < pri_two) return NSOrderedAscending;
-	if (pri_one > pri_two) return NSOrderedDescending;
-	return NSOrderedSame;
-}
-
 
 NSComparisonResult equipmentSort(id a, id b, void *context)
 {

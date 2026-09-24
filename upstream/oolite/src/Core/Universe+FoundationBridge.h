@@ -93,6 +93,11 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (BOOL) role:(NSString *)role isInCategory:(NSString *)category;	// -> -cxx_role:isInCategory:
 - (OOJSScript *) getConditionScript:(NSString *)scriptname;	// -> -cxx_getConditionScript:
 
+// Chunk 6 (oo-3rb.225): system population.
+- (NSDictionary *) getPopulatorSettings;	// -> -cxx_getPopulatorSettings (a fresh immutable snapshot per call; the old one was live, and callers only read it)
+- (void) setPopulatorSetting:(NSString *)key to:(NSDictionary *)setting;	// -> -cxx_setPopulatorSetting:to:
+- (HPVector) locationByCode:(NSString *)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;	// -> -cxx_locationByCode:withSun:andPlanet:
+
 @end
 
 

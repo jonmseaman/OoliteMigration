@@ -311,9 +311,9 @@ enum
 	
 	float					ambientLightLevel;
 	
-	NSMutableDictionary		*populatorSettings;
+	oo::PList				populatorSettings;	// key -> populator block (a mixed configuration: each block's callbackObj is an Object node)
 	OOTimeDelta		next_repopulation;
-	NSString		*system_repopulator;
+	std::optional<std::string>	system_repopulator;
 	BOOL			deterministic_population;
 
 	std::optional<std::vector<OOSystemID>>	closeSystems;	// the current system's neighbours; nullopt until cached
@@ -435,9 +435,9 @@ enum
 - (void) clearSystemPopulator;
 - (BOOL) deterministicPopulation;
 - (void) populateSystemFromDictionariesWithSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
-- (NSDictionary *) getPopulatorSettings;
-- (void) setPopulatorSetting:(NSString *)key to:(NSDictionary *)setting;
-- (HPVector) locationByCode:(NSString *)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
+- (oo::PList) cxx_getPopulatorSettings;	// a copy
+- (void) cxx_setPopulatorSetting:(const std::string &)key to:(const oo::PList &)setting;	// a null setting removes
+- (HPVector) cxx_locationByCode:(const std::string &)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;
 - (void) setAmbientLightLevel:(float)newValue;
 - (float) ambientLightLevel;
 - (void) setLighting;
@@ -865,7 +865,6 @@ OOINLINE Universe *OOGetUniverse(void)
 #define DESC_PLURAL(key,count)	(OOLookUpPluralDescriptionPRIV(key "", count))
 
 // Not for direct use.
-NSComparisonResult populatorPrioritySort(id a, id b, void *context);
 NSComparisonResult equipmentSort(id a, id b, void *context);
 NSComparisonResult equipmentSortOutfitting(id a, id b, void *context);
 // The lookups behind DESC() / DESC_PLURAL(): the description, or the key itself when there is none.
