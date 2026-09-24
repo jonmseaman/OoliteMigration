@@ -113,7 +113,6 @@ oolite_sources += files(
     'OOWeakSet.mm',
     'OOXMLExtensions.mm',
     'Octree.mm',
-    'OldSchoolPropertyListWriting.mm',
     'ResourceManager.mm',
     'ResourceManager+FoundationBridge.mm',
     'TextureStore.mm',
