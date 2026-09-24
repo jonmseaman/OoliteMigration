@@ -8469,7 +8469,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		}
 		else if (key == "texture")
 		{
-			[[self planet] setUpPlanetFromTexture:object];
+			[[self planet] setUpPlanetFromTexture:oo::OptionalString((NSString *)object)];	// as the selector converted it
 		}
 		else if (key == "texture_hsb_color")
 		{
