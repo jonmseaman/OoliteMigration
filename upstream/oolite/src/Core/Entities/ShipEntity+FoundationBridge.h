@@ -67,6 +67,20 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (void) setCrew:(NSArray *)crewArray;	// -> -cxx_setCrew:
 - (void) setSingleCrewWithRole:(NSString *)crewRole;	// -> -cxx_setSingleCrewWithRole:
 
+// oo-3rb.238: combat, collisions, defense targets, explosions, docking instructions
+- (NSEnumerator *) defenseTargetEnumerator;	// -> -cxx_defenseTargets
+- (NSArray *) collisionExceptions;	// -> -cxx_collisionExceptions
+- (NSDictionary *) dockingInstructions;	// -> -cxx_dockingInstructions
+
+// oo-3rb.239: messages, comms and AI dispatch
+- (void) sendExpandedMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship;	// -> -cxx_sendExpandedMessage:toShip:
+- (void) sendMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;	// -> -cxx_sendMessage:toShip:withUnpilotedOverride:
+- (void) commsMessage:(NSString *)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;	// -> -cxx_commsMessage:withUnpilotedOverride:
+- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(NSArray *)arguments;	// -> -cxx_doScriptEvent:withArguments:
+- (void) reactToAIMessage:(NSString *)message context:(NSString *)debugContext;	// -> -cxx_reactToAIMessage:context:
+- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage;	// -> -cxx_doScriptEvent:andReactToAIMessage:
+- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage;	// -> -cxx_doScriptEvent:withArgument:andReactToAIMessage:
+
 @end
 
 

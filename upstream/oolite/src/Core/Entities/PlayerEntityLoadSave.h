@@ -69,7 +69,7 @@ MA 02110-1301, USA.
 - (void) autosavePlayer;
 
 - (void) setGuiToScenarioScreen:(int)page;
-- (void) addScenarioModel:(NSString *)shipKey;
+- (void) addScenarioModel:(const std::string &)shipKey;
 - (void) showScenarioDetails;
 - (BOOL) startScenario;
 
@@ -77,20 +77,20 @@ MA 02110-1301, USA.
 #if OO_USE_CUSTOM_LOAD_SAVE
 
 // Interface for PlayerEntityControls
-- (NSString *) commanderSelector;
+- (std::optional<std::string>) commanderSelector;	// the saved game chosen, nullopt when none
 - (void) saveCommanderInputHandler;
 - (void) overwriteCommanderInputHandler;
 
 #endif
 
-- (BOOL) loadPlayerFromFile:(NSString *)fileToOpen asNew:(BOOL)asNew;
+- (BOOL) loadPlayerFromFile:(const std::string &)fileToOpen asNew:(BOOL)asNew;
 
 @end
 
 
 OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits);
 
-/*	Object is either a floating-point NSNumber or something that can be duck-
+/*	Object is either a floating-point number object or something that can be duck-
 	typed to an integer using OOUnsignedLongLongFromObject().
 */
 OOCreditsQuantity OODeciCreditsFromObject(id object);

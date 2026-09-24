@@ -42,8 +42,14 @@ SOFTWARE.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
-@class OOJSScript;
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
+
+@class OOJSScript, OOColor;
 
 
 @protocol OODebugMonitorInterface
@@ -79,9 +85,9 @@ SOFTWARE.
 	oo::PList							_configOverrides;	// Settings from preferences, modifiable through JS (a Dict; values may be Object nodes).
 	
 	// Caches
-	NSMutableDictionary					*_fgColors,
-										*_bgColors,
-										*_sourceFiles;
+	std::map<std::string, oo::ObjCRef<OOColor *>, std::less<>>		_fgColors,
+																	_bgColors;
+	std::map<std::string, std::vector<std::string>, std::less<>>	_sourceFiles;	// lines of each source file shown so far
 	// TCP options
 	BOOL								_TCPIgnoresDroppedPackets;
 	BOOL								_usingPlugInController;
@@ -92,11 +98,11 @@ SOFTWARE.
 
 	// *** JavaScript console support.
 - (void)appendJSConsoleLine:(id)string
-				   colorKey:(NSString *)colorKey
+				   colorKey:(const std::optional<std::string> &)colorKey
 			  emphasisRange:(NSRange)emphasisRange;
 
 - (void)appendJSConsoleLine:(id)string
-				   colorKey:(NSString *)colorKey;
+				   colorKey:(const std::optional<std::string> &)colorKey;
 
 - (void)clearJSConsole;
 - (void)showJSConsole;
