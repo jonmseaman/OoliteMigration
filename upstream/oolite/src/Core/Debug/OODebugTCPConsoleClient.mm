@@ -69,8 +69,10 @@ static void LogSendPacket(NSDictionary *packet);
 
 
 // The decoder's callbacks; its string and dictionary handles are OOALObjectRef.
-static void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet);
-static void DecoderError(void *cbInfo, OOALObjectRef errorDesc);
+namespace {
+void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet);
+void DecoderError(void *cbInfo, OOALObjectRef errorDesc);
+}
 
 
 OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
@@ -1073,7 +1075,9 @@ void OODebugTCPConsoleServiceInput(double timeout)
 }
 
 
-static void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet)
+namespace {
+
+void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef packet)
 {
 	// The decoder's handles hold property lists (OOTCPStreamDecoderAbstractionLayer, bead oo-x3xy).
 	// A type that is not a string was nil, and no packet was dispatched.
@@ -1083,11 +1087,13 @@ static void DecoderPacket(void *cbInfo, OOALObjectRef packetType, OOALObjectRef 
 }
 
 
-static void DecoderError(void *cbInfo, OOALObjectRef errorDesc)
+void DecoderError(void *cbInfo, OOALObjectRef errorDesc)
 {
 	// A description that is not a string was nil: no message ("Debug console not connected.").
 	const std::string *description = OOALObjectPList(errorDesc).getIf<std::string>();
 	[(OODebugTCPConsoleClient *)cbInfo breakConnectionWithMessage:(description != nullptr) ? *description : std::string()];
+}
+
 }
 
 
