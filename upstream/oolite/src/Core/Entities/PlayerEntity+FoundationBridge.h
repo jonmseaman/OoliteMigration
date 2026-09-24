@@ -111,6 +111,10 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker;	// -> -cxx_removeMissionDestinationMarker:
 - (NSMutableDictionary*) getMissionDestinations;	// -> -cxx_getMissionDestinations (a snapshot)
 
+// oo-3rb.252: status screen and manifest lists
+- (NSArray *) equipmentList;	// -> -cxx_equipmentList
+- (NSArray *) cargoList;	// -> -cxx_cargoList
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H

@@ -1086,7 +1086,7 @@ typedef enum
 - (void) docked;
 
 - (void) setGuiToStatusScreen;
-- (NSArray *) equipmentList;	// Each entry is an array with a string followed by a boolean indicating availability (NO = damaged), then a color (or nil for default color).
+- (std::vector<oo::PList>) cxx_equipmentList;	// Each entry is an Array: a string, a bool for availability (false = damaged), then a colour Object (absent for the default colour).
 - (BOOL) setPrimedEquipment:(NSString *)eqKey showMessage:(BOOL)showMsg;
 - (NSString *) primedEquipmentName:(NSInteger)offset;
 - (NSString *) currentPrimedEquipment;
@@ -1099,7 +1099,7 @@ typedef enum
 
 - (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
 
-- (NSArray *) cargoList;
+- (std::vector<std::string>) cxx_cargoList;
 //- (NSArray *) cargoListForScripting; // now in ShipEntity
 - (unsigned) legalStatusOfCargoList;
 

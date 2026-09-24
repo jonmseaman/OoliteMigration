@@ -458,4 +458,17 @@ and converts the result exactly as the old method produced it.
 	return [[oo::ObjectFromPList([self cxx_getMissionDestinations]) mutableCopy] autorelease];
 }
 
+
+// oo-3rb.252: status screen and manifest lists
+- (NSArray *) equipmentList
+{
+	return oo::ObjectFromPList(oo::PList([self cxx_equipmentList]));	// colours come back as the OOColor objects
+}
+
+
+- (NSArray *) cargoList
+{
+	return oo::NSArrayFromStrings([self cxx_cargoList]);
+}
+
 @end
