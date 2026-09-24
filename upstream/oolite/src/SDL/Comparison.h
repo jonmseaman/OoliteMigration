@@ -45,7 +45,7 @@
 #if !defined(__COMPARISON_OL_GUARD)
 #define __COMPARISON_OL_GUARD
 
-#include <Foundation/NSObject.h>
+#import "OOCocoa.h"
 
 /**
  * @category NSObject(OLComparisonMethods) Comparison.h Objectivelib/Comparison.h
