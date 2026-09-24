@@ -357,9 +357,8 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		std::optional<std::string> errStr = oo::OptionalString([UNIVERSE descriptionForKey:oo::NSStringFrom(error.key)]);
 		if (errStr.has_value())
 		{
-			// The descriptions.plist format's %@ conversions take strings: %s with the same text.
-			const std::string format = oo::str::replaceOccurrences(*errStr, "%@", "%s", oo::str::Search::literal);
-			result.push_back(oo::str::format(format.c_str(), error.param1.c_str(), error.param2.c_str()));
+			// The descriptions.plist entry is the format (data, not a literal): ADR-0043 item 19.
+			result.push_back(oo::str::formatRuntime(*errStr, {error.param1, error.param2}));
 		}
 	}
 	
