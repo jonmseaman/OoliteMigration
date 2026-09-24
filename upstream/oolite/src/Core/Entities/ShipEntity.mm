@@ -42,7 +42,6 @@ MA 02110-1301, USA.
 #import "OOFilteringEnumerator.h"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
-#import "OOExcludeObjectEnumerator.h"
 #import "OOWeakSet.h"
 #import "GameController.h"
 #import "MyOpenGLView.h"
