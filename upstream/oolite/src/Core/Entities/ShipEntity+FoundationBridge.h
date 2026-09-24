@@ -67,6 +67,11 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (void) setCrew:(NSArray *)crewArray;	// -> -cxx_setCrew:
 - (void) setSingleCrewWithRole:(NSString *)crewRole;	// -> -cxx_setSingleCrewWithRole:
 
+// oo-3rb.238: combat, collisions, defense targets, explosions, docking instructions
+- (NSEnumerator *) defenseTargetEnumerator;	// -> -cxx_defenseTargets
+- (NSArray *) collisionExceptions;	// -> -cxx_collisionExceptions
+- (NSDictionary *) dockingInstructions;	// -> -cxx_dockingInstructions
+
 @end
 
 

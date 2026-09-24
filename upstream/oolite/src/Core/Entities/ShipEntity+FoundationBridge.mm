@@ -235,6 +235,26 @@ NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
 	[self cxx_setSingleCrewWithRole:oo::StdString(crewRole)];
 }
 
+
+// oo-3rb.238: combat, collisions, defense targets, explosions, docking instructions
+
+- (NSEnumerator *) defenseTargetEnumerator
+{
+	return [oo::NSArrayFromObjects([self cxx_defenseTargets]) objectEnumerator];
+}
+
+
+- (NSArray *) collisionExceptions
+{
+	return oo::NSArrayFromObjects([self cxx_collisionExceptions]);
+}
+
+
+- (NSDictionary *) dockingInstructions
+{
+	return oo::ObjectFromPList([self cxx_dockingInstructions]);	// nil for none
+}
+
 @end
 
 
