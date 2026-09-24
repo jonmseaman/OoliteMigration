@@ -587,11 +587,11 @@ static void PlayTrumbleSqueal(void);
 		// consult menu...
 		ShipEntity *selectedCargopod = nil;
 		float mostYummy = 0.0;
-		NSMutableArray *cargopods = [player cargo];	// the cargo pods
-		NSUInteger i, n_pods = [cargopods count];
+		std::vector<oo::ObjCRef<ShipEntity *>> *cargopods = [player cxx_cargo];	// the cargo pods (live: eaten ones are removed)
+		NSUInteger i, n_pods = cargopods != nullptr ? cargopods->size() : 0;
 		for (i = 0 ; i < n_pods; i++)
 		{
-			ShipEntity *cargopod = [cargopods objectAtIndex:i];
+			ShipEntity *cargopod = (*cargopods)[i].get();
 			OOCommodityType cargo_type = [cargopod commodityType];
 			float yumminess = (1.0 + randf()) * [[UNIVERSE commodityMarket] trumbleOpinionForGood:cargo_type];
 			if (yumminess > mostYummy)
@@ -617,7 +617,7 @@ static void PlayTrumbleSqueal(void);
 								[UNIVERSE displayNameForCommodity:[selectedCargopod commodityType]]];
 				
 				[UNIVERSE addMessage: ms forCount: 4.5];
-				[cargopods removeObject:selectedCargopod];
+				if (cargopods != nullptr)  std::erase(*cargopods, selectedCargopod);
 				trumbleAppetiteAccumulator -= 10.0;
 				
 				// consider breeding - must be full grown and happy

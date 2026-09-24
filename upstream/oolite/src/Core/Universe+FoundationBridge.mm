@@ -623,10 +623,110 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 }
 
 
+// Chunk 10 (oo-3rb.229). A nil text is std::nullopt (see Universe.h); a nil key finds nothing.
+
+- (NSDictionary *) screenTextureDescriptorForKey:(NSString *)key
+{
+	return oo::ObjectFromPList([self cxx_screenTextureDescriptorForKey:oo::StdString(key)]);
+}
+
+
+- (void) setScreenTextureDescriptorForKey:(NSString *) key descriptor:(NSDictionary *)desc
+{
+	[self cxx_setScreenTextureDescriptorForKey:oo::StdString(key) descriptor:(desc != nil) ? oo::PListFrom(desc) : oo::PList()];
+}
+
+
+- (void) displayMessage:(NSString *) text forCount:(OOTimeDelta) count
+{
+	[self cxx_displayMessage:oo::OptionalString(text) forCount:count];
+}
+
+
+- (void) displayCountdownMessage:(NSString *) text forCount:(OOTimeDelta) count
+{
+	[self cxx_displayCountdownMessage:oo::OptionalString(text) forCount:count];
+}
+
+
+- (void) addDelayedMessage:(NSString *) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay
+{
+	[self cxx_addDelayedMessage:oo::OptionalString(text) forCount:count afterDelay:delay];
+}
+
+
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count
+{
+	[self cxx_addMessage:oo::OptionalString(text) forCount:count];
+}
+
+
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay
+{
+	[self cxx_addMessage:oo::OptionalString(text) forCount:count forceDisplay:forceDisplay];
+}
+
+
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count
+{
+	[self cxx_addCommsMessage:oo::OptionalString(text) forCount:count];
+}
+
+
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly
+{
+	[self cxx_addCommsMessage:oo::OptionalString(text) forCount:count andShowComms:showComms logOnly:logOnly];
+}
+
+
+// A nil text said nothing (espeak: no UTF-8 data).
+- (void) startSpeakingString:(NSString *) text
+{
+	if (text != nil)  [self cxx_startSpeakingString:oo::StdString(text)];
+}
+
+
+#if OOLITE_ESPEAK
+- (NSString *) voiceName:(unsigned int) index
+{
+	return oo::NSStringOrNil([self cxx_voiceName:index]);
+}
+
+
+- (unsigned int) voiceNumber:(NSString *) name
+{
+	if (name == nil)
+		return UINT_MAX;
+	return [self cxx_voiceNumber:oo::StdString(name)];
+}
+#endif
+
+
 // Chunk 11 (oo-3rb.230). A nil role asked for the role "" (no ship), after clearing the display, as before.
 - (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning
 {
 	return [self cxx_makeDemoShipWithRole:oo::StdString(role) spinning:spinning];
+}
+
+@end
+
+
+// Chunk 10 (oo-3rb.229): the custom sound categories. A nil key found no sound.
+@implementation OOSound (OOCustomSoundsFoundationBridge)
+
++ (id) soundWithCustomSoundKey:(NSString *)key
+{
+	return [self cxx_soundWithCustomSoundKey:oo::StdString(key)];
+}
+
+@end
+
+
+@implementation OOSoundSource (OOCustomSoundsFoundationBridge)
+
+- (void) playCustomSoundWithKey:(NSString *)key
+{
+	[self cxx_playCustomSoundWithKey:oo::StdString(key)];
 }
 
 @end
