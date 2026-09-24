@@ -27,6 +27,8 @@ MA 02110-1301, USA.
 #import "Universe.h"
 #import "OOLogging.h"
 #import "OOPriorityQueue.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
 
@@ -205,10 +207,10 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 + (void) noteGameReset
 {
 	// Intermediate array is required so we don't get stuck in an endless loop over reinserted timers. Note that -sortedObjects also clears the queue!
-	const std::vector<oo::ObjCRef<OOScriptTimer *>> timers = oo::ObjCRefsFrom<OOScriptTimer *>([sTimers sortedObjects]);
+	const std::vector<oo::ObjCRef<id>> timers = (sTimers != nil) ? [sTimers sortedObjects] : std::vector<oo::ObjCRef<id>>();	// (no C++ value from a message to nil)
 	for (const auto &timer : timers)
 	{
-		timer.get()->_isScheduled = NO;
+		static_cast<OOScriptTimer *>(timer.get())->_isScheduled = NO;
 	}
 }
 
@@ -245,7 +247,11 @@ static std::vector<oo::ObjCRef<OOScriptTimer *>>	*sDeferredTimers;
 	{
 		if (other != nil)  otherTime = [other nextTime];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(kOOLogException, @"\n\n***** Ignoring Timer Exception: %@ : %@ *****\n\n",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(kOOLogException, @"\n\n***** Ignoring Timer Exception: %@ : %@ *****\n\n",[exception name], [exception reason]);
 	}
