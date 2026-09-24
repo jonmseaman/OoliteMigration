@@ -53,6 +53,7 @@ MA 02110-1301, USA.
 #import "HeadUpDisplay.h"
 #import "OOSystemDescriptionManager.h"
 #import "OOEntityFilterPredicate.h"
+#import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
@@ -430,7 +431,11 @@ static BOOL sRunningScript = NO;
 			[(OOScript *)oo::ObjectIn(script) runWithTarget:self];
 		}
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(kOOLogException, @"***** Exception running world scripts: %@ : %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(kOOLogException, @"***** Exception running world scripts: %@ : %@", [exception name], [exception reason]);
 	}
@@ -455,7 +460,16 @@ static BOOL sRunningScript = NO;
 		{
 			PerformScriptActions(actions, target);
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(@"script.error.exception",
+				  @"***** EXCEPTION %@: %@ while handling legacy script actions for %@",
+				  oo::NSStringFrom([exception name]),
+				  oo::NSStringFrom([exception reason]),
+				  [theMissionKey hasPrefix:kActionTempPrefix] ? [target shortDescription] : theMissionKey);
+			// Suppress exception
+		}
+		@catch (OOFoundationException *exception)
 		{
 			// (a nil context printed "(null)")
 			OOLog(@"script.error.exception",
@@ -487,7 +501,15 @@ static BOOL sRunningScript = NO;
 	{
 		result = TestScriptConditions(array);
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"script.error.exception",
+			  @"***** EXCEPTION %@: %@ while testing legacy script conditions.",
+			  oo::NSStringFrom([exception name]),
+			  oo::NSStringFrom([exception reason]));
+		// Suppress exception
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"script.error.exception",
 			  @"***** EXCEPTION %@: %@ while testing legacy script conditions.",
@@ -1478,13 +1500,13 @@ static int shipsFound;
 	if (forceRemoval && [self status] != STATUS_DOCKED)
 	{
 		NSInteger i;
-		for (i = [cargo count] - 1; i >= 0; i--)
+		for (i = cargo.size() - 1; i >= 0; i--)
 		{
-			ShipEntity* canister = [cargo objectAtIndex:i];
+			ShipEntity* canister = cargo[i].get();
 			if (!canister)  break;
 			// Since we are forcing cargo removal, we don't really care about the unit of measurement. Any
 			// commodity at more than 1000kg or 1000000gr will be inside cargopods, so remove those too.
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 		}
 	}
 	
