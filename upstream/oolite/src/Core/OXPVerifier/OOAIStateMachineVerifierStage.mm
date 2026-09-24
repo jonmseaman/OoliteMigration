@@ -126,9 +126,9 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 }
 
 
-+ (id) nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
++ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
 {
-	return oo::NSStringFrom(kStageName);
+	return kStageName;
 }
 
 

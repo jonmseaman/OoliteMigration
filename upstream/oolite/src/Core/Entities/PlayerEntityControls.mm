@@ -170,6 +170,20 @@ static BOOL				mouse_x_axis_map_to_yaw = NO;
 static NSTimeInterval	time_last_frame;
 
 
+namespace
+{
+
+// OOExpandKey(key, ...) with its arguments as a Dict: ints as PList::signedInteger, strings as
+// std::string (exemplar OOShipLibraryDescriptions.mm ExpandCategoryKey).
+std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
+{
+	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
+		oo::ObjectFromPList(oo::PList(args)), nil, nil, kOOExpandKey));
+}
+
+}	// namespace
+
+
 @interface PlayerEntity (OOControlsPrivate)
 
 - (void) pollFlightControls:(double) delta_t;
@@ -209,79 +223,79 @@ static NSTimeInterval	time_last_frame;
 
 - (void) initControls
 {
-	[keyCodeLookups release];
-	// all entries in this dict must be in lowercase
-	keyCodeLookups = [[NSDictionary alloc] initWithObjectsAndKeys:
-		[NSNumber numberWithUnsignedShort:gvArrowKeyLeft], @"arrowleft", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyLeft], @"leftarrow", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyLeft], @"left", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyRight], @"arrowright", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyRight], @"rightarrow", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyRight], @"right", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyUp], @"arrowup", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyUp], @"uparrow", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyUp], @"up", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyDown], @"arrowdown", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyDown], @"downarrow", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyDown], @"down", 
-		[NSNumber numberWithUnsignedShort:gvPageUpKey], @"pageup", 
-		[NSNumber numberWithUnsignedShort:gvPageDownKey], @"pagedown", 
-		[NSNumber numberWithUnsignedShort:13], @"enter", 
-		[NSNumber numberWithUnsignedShort:13], @"return", 
-		[NSNumber numberWithUnsignedShort:27], @"escape", 
-		[NSNumber numberWithUnsignedShort:27], @"esc", 
-		[NSNumber numberWithUnsignedShort:9], @"tab", 
-		[NSNumber numberWithUnsignedShort:32], @"space", 
-		[NSNumber numberWithUnsignedShort:32], @"spc", 
-		[NSNumber numberWithUnsignedShort:gvHomeKey], @"home", 
-		[NSNumber numberWithUnsignedShort:gvEndKey], @"end", 
-		[NSNumber numberWithUnsignedShort:gvDeleteKey], @"delete", 
-		[NSNumber numberWithUnsignedShort:gvDeleteKey], @"del", 
-		[NSNumber numberWithUnsignedShort:gvBackspaceKey], @"backspace", 
-		[NSNumber numberWithUnsignedShort:gvBackspaceKey], @"backspc", 
-		[NSNumber numberWithUnsignedShort:gvBackspaceKey], @"bkspace", 
-		[NSNumber numberWithUnsignedShort:gvBackspaceKey], @"bkspc", 
-		[NSNumber numberWithUnsignedShort:gvInsertKey], @"insert", 
-		[NSNumber numberWithUnsignedShort:gvInsertKey], @"ins", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey1], @"f1", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey2], @"f2", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey3], @"f3", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey4], @"f4", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey5], @"f5", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey6], @"f6", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey7], @"f7", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey8], @"f8", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey9], @"f9", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey10], @"f10", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey11], @"f11", 
-		[NSNumber numberWithUnsignedShort:gvPauseKey], @"pause",
-		[NSNumber numberWithUnsignedShort:gvPrintScreenKey], @"printscreen",
-		[NSNumber numberWithUnsignedShort:gvPrintScreenKey], @"prtscrn",
-		[NSNumber numberWithUnsignedShort:gvPrintScreenKey], @"prntscrn",
-		[NSNumber numberWithUnsignedShort:gvPrintScreenKey], @"prtscn",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey0], @"numpad0", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey1], @"numpad1", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey2], @"numpad2", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey3], @"numpad3", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey4], @"numpad4", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey5], @"numpad5", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey6], @"numpad6", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey7], @"numpad7", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey8], @"numpad8", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey9], @"numpad9", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyDivide], @"numpad/",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyDivide], @"numpaddivide",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyMultiply], @"numpad*",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyMultiply], @"numpadmultiply",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyMinus], @"numpad-",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyMinus], @"numpadminus",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyPlus], @"numpad+",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyPlus], @"numpadplus",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyPeriod], @"numpad.",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyPeriod], @"numpadperiod",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyEquals], @"numpad=",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyEquals], @"numpadequals",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyEnter], @"numpadenter", nil];
+	// all entries in this map must be in lowercase
+	keyCodeLookups = {
+		{ "arrowleft", gvArrowKeyLeft },
+		{ "leftarrow", gvArrowKeyLeft },
+		{ "left", gvArrowKeyLeft },
+		{ "arrowright", gvArrowKeyRight },
+		{ "rightarrow", gvArrowKeyRight },
+		{ "right", gvArrowKeyRight },
+		{ "arrowup", gvArrowKeyUp },
+		{ "uparrow", gvArrowKeyUp },
+		{ "up", gvArrowKeyUp },
+		{ "arrowdown", gvArrowKeyDown },
+		{ "downarrow", gvArrowKeyDown },
+		{ "down", gvArrowKeyDown },
+		{ "pageup", gvPageUpKey },
+		{ "pagedown", gvPageDownKey },
+		{ "enter", 13 },
+		{ "return", 13 },
+		{ "escape", 27 },
+		{ "esc", 27 },
+		{ "tab", 9 },
+		{ "space", 32 },
+		{ "spc", 32 },
+		{ "home", gvHomeKey },
+		{ "end", gvEndKey },
+		{ "delete", gvDeleteKey },
+		{ "del", gvDeleteKey },
+		{ "backspace", gvBackspaceKey },
+		{ "backspc", gvBackspaceKey },
+		{ "bkspace", gvBackspaceKey },
+		{ "bkspc", gvBackspaceKey },
+		{ "insert", gvInsertKey },
+		{ "ins", gvInsertKey },
+		{ "f1", gvFunctionKey1 },
+		{ "f2", gvFunctionKey2 },
+		{ "f3", gvFunctionKey3 },
+		{ "f4", gvFunctionKey4 },
+		{ "f5", gvFunctionKey5 },
+		{ "f6", gvFunctionKey6 },
+		{ "f7", gvFunctionKey7 },
+		{ "f8", gvFunctionKey8 },
+		{ "f9", gvFunctionKey9 },
+		{ "f10", gvFunctionKey10 },
+		{ "f11", gvFunctionKey11 },
+		{ "pause", gvPauseKey },
+		{ "printscreen", gvPrintScreenKey },
+		{ "prtscrn", gvPrintScreenKey },
+		{ "prntscrn", gvPrintScreenKey },
+		{ "prtscn", gvPrintScreenKey },
+		{ "numpad0", gvNumberPadKey0 },
+		{ "numpad1", gvNumberPadKey1 },
+		{ "numpad2", gvNumberPadKey2 },
+		{ "numpad3", gvNumberPadKey3 },
+		{ "numpad4", gvNumberPadKey4 },
+		{ "numpad5", gvNumberPadKey5 },
+		{ "numpad6", gvNumberPadKey6 },
+		{ "numpad7", gvNumberPadKey7 },
+		{ "numpad8", gvNumberPadKey8 },
+		{ "numpad9", gvNumberPadKey9 },
+		{ "numpad/", gvNumberPadKeyDivide },
+		{ "numpaddivide", gvNumberPadKeyDivide },
+		{ "numpad*", gvNumberPadKeyMultiply },
+		{ "numpadmultiply", gvNumberPadKeyMultiply },
+		{ "numpad-", gvNumberPadKeyMinus },
+		{ "numpadminus", gvNumberPadKeyMinus },
+		{ "numpad+", gvNumberPadKeyPlus },
+		{ "numpadplus", gvNumberPadKeyPlus },
+		{ "numpad.", gvNumberPadKeyPeriod },
+		{ "numpadperiod", gvNumberPadKeyPeriod },
+		{ "numpad=", gvNumberPadKeyEquals },
+		{ "numpadequals", gvNumberPadKeyEquals },
+		{ "numpadenter", gvNumberPadKeyEnter },
+	};
 
 	keyShiftText = [DESC(@"oolite-keyconfig-shift") retain];
 	keyMod1Text = [DESC(@"oolite-keyconfig-mod1") retain];
@@ -299,79 +313,45 @@ static NSTimeInterval	time_last_frame;
 
 - (void) initKeyConfigSettings
 {
-	NSMutableDictionary	*kdicmaster = [NSMutableDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:@"keyconfig2.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
+	const oo::PList kdicmaster = [ResourceManager cxx_dictionaryFromFilesNamed:"keyconfig2.plist" inFolder:"Config" mergeMode:MERGE_BASIC cache:NO];
 	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	NSString *kbd = oo::PListView(defaults).get<NSString *>(@"keyboard-code", @"default");
-	NSMutableDictionary *kdic2 = [NSMutableDictionary dictionaryWithDictionary:[kdicmaster objectForKey:kbd]];
+	// the stored keyboard code (oo_stringForKey:defaultValue: over the value)
+	const oo::PList kbdValue = oo::PListFrom([defaults objectForKey:@"keyboard-code"]);
+	const std::string kbd = oo::PListGet<std::string>::from(kbdValue.isNull() ? nullptr : &kbdValue, "default");
+	const oo::PList *kbdDefs = kdicmaster.get<oo::PList::Dict>(kbd);
+	oo::PList::Dict kdic2 = (kbdDefs != nullptr) ? *kbdDefs->getIf<oo::PList::Dict>() : oo::PList::Dict();
 
-	unsigned		i;
-	NSArray			*keys = nil;
-	id				key = nil;
-	NSArray  		*def_list = nil;
-
-	keys = [kdic2 allKeys];
-	for (i = 0; i < [keys count]; i++)
+	for (auto &entry : kdic2)
 	{
-		key = [keys objectAtIndex:i];
-		if ([[kdic2 objectForKey:key] isKindOfClass:[NSArray class]])
-		{
-			def_list = (NSArray*)[kdic2 objectForKey: key];
-			[kdic2 setObject:[self processKeyCode:def_list] forKey:key];
-		}
+		if (entry.second.isArray())  entry.second = [self cxx_processKeyCode:entry.second];
 	}
 
-	// load custom equipment keys/buttons
+	// load custom equipment keys/buttons (customEquipActivation stays the live array: oo-qt0w decision B)
 	[customEquipActivation release];
-	if ([defaults objectForKey:KEYCONFIG_CUSTOMEQUIP]) 
+	customEquipActivation = [[defaults arrayForKey:KEYCONFIG_CUSTOMEQUIP] mutableCopy];
+	if (customEquipActivation == nil)  customEquipActivation = [oo::ObjectFromPList(oo::PList(oo::PList::Array())) mutableCopy];
+	customActivatePressed.assign([customEquipActivation count], NO);
+	customModePressed.assign([customEquipActivation count], NO);
+
+	// update with overrides from defaults file (unprocessed, as before)
+	const oo::PList overrides = oo::PListFrom([defaults objectForKey:KEYCONFIG_OVERRIDES]);
+	if (const oo::PList::Dict *dict = overrides.getIf<oo::PList::Dict>())
 	{
-		NSArray *temp = [defaults arrayForKey:KEYCONFIG_CUSTOMEQUIP];
-		customEquipActivation = [[NSMutableArray arrayWithArray:temp] retain];
-	}
-	else 
-	{
-		customEquipActivation = [[NSMutableArray alloc] init];
-	}
-	[customActivatePressed release];
-	[customModePressed release];
-	customActivatePressed = [[NSMutableArray alloc] init];
-	customModePressed = [[NSMutableArray alloc] init];
-	for (i = 0; i < [customEquipActivation count]; i++)
-	{
-		[customActivatePressed addObject:[NSNumber numberWithBool:NO]];
-		[customModePressed addObject:[NSNumber numberWithBool:NO]];
+		for (const auto &entry : *dict)  kdic2[entry.first] = entry.second;
 	}
 
-	NSMutableArray *keyDef = nil;
-	NSString *lookup = nil;
-	NSArray *curr = nil;
-	NSDictionary *key1 = nil;
-	NSDictionary *key2 = nil;
-
-	// update with overrides from defaults file
-	NSDictionary *dict = [defaults objectForKey:KEYCONFIG_OVERRIDES];
-
-	keys = [dict allKeys];
-	for (i = 0; i < [keys count]; i++)
+	// the key setting for ivar n_key_<x> is kdic2's entry "key_<x>", or a null PList (nil) when there is none
+	const auto keySetting = [&kdic2](std::string_view ivarName) -> oo::PList
 	{
-		key = [keys objectAtIndex:i];
-		[kdic2 setObject:[dict objectForKey:key] forKey:key];
-	}
+		const auto found = kdic2.find(ivarName.substr(2));
+		return (found != kdic2.end()) ? found->second : oo::PList();
+	};
 
 // by default none of the standard key functions require more than 2 entries, so our macro will limit itself to 2
 // also, none of the standard key functions utilise "Alt" (mod2), so we're defaulting that setting
+// (the default key definitions were never stored - the array they were added to was nil - so they are not built)
 #define LOAD_KEY_SETTING2(name, default_1, shift_1, mod1_1, default_2, shift_2, mod1_2) \
-	lookup = [@#name substringFromIndex:2]; \
-	curr = (NSArray*)[[kdic2 objectForKey:lookup] copy]; \
-	key1 = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithUnsignedShort:default_1], @"key", [NSNumber numberWithBool:shift_1], @"shift", [NSNumber numberWithBool:mod1_1], @"mod1", [NSNumber numberWithBool:NO], @"mod2", nil]; \
-	[keyDef addObject:key1]; \
-	if (default_2 > 0) \
-	{ \
-		key2 = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithUnsignedShort:default_2], @"key", [NSNumber numberWithBool:shift_2], @"shift", [NSNumber numberWithBool:mod1_2], @"mod1", [NSNumber numberWithBool:NO], @"mod2", nil]; \
-		[keyDef addObject:key2]; \
-	} \
-	name = curr?:keyDef; \
-	[kdic2 setObject:curr?:keyDef forKey:lookup]; \
-	[keyDef release];
+	name = keySetting(#name)
 
 	LOAD_KEY_SETTING2(n_key_roll_left, gvArrowKeyLeft, NO, NO, 0, NO, NO);
 	LOAD_KEY_SETTING2(n_key_roll_right,	gvArrowKeyRight, NO, NO, 0, NO, NO);
@@ -520,186 +500,183 @@ static NSTimeInterval	time_last_frame;
 #endif
 
 	[keyconfig2_settings release];
-	keyconfig2_settings = [[NSDictionary alloc] initWithDictionary:kdic2 copyItems:YES];
+	keyconfig2_settings = [oo::ObjectFromPList(oo::PList(std::move(kdic2))) retain];
 }
 
 
-- (NSArray*) processKeyCode:(NSArray*)key_def
+- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def
 {
-	int i;
-	id				key = nil, value = nil;
-	int				iValue;
-	unsigned char	keychar;
-	NSString		*keystring = nil;
-	NSDictionary	*def = nil;
-	NSMutableArray	*newList = [[NSMutableArray alloc] init];
+	oo::PList::Array newList;
 
-	for (i = 0; i < [key_def count]; i++) 
+	for (std::size_t i = 0; i < key_def.count(); i++)
 	{
-		def = [key_def objectAtIndex:i];
-		if ([def count] == 0) continue; // skip this if the definition is empty
-		value = [def objectForKey:@"key"];
-		iValue = [value intValue];
+		const oo::PList &def = *key_def.at(i);
+		if (def.count() == 0) continue; // skip this if the definition is empty
+		const oo::PList *value = def.find("key");
+		// -intValue: a string's leading integer, a number truncated, nil 0
+		int iValue = 0;
+		if (value != nullptr && value->isString())  iValue = oo::str::intValue(*value->getIf<std::string>());
+		else if (value != nullptr)  iValue = static_cast<int>(value->int64Value());
 
 		// we're going to fully expand all the shift/mod1/mod2 properties for all the key setting with defaults
 		// to avoid the need to check for the presence of a property during game loops
-		NSMutableDictionary *defNew = [[NSMutableDictionary alloc] init];
-		if ([def objectForKey:@"shift"]) [defNew setObject:[def objectForKey:@"shift"] forKey:@"shift"]; else [defNew setObject:[NSNumber numberWithBool:NO] forKey:@"shift"];
-		if ([def objectForKey:@"mod1"]) [defNew setObject:[def objectForKey:@"mod1"] forKey:@"mod1"]; else [defNew setObject:[NSNumber numberWithBool:NO] forKey:@"mod1"];
-		if ([def objectForKey:@"mod2"]) [defNew setObject:[def objectForKey:@"mod2"] forKey:@"mod2"]; else [defNew setObject:[NSNumber numberWithBool:NO] forKey:@"mod2"];
+		oo::PList::Dict defNew;
+		for (const char *modifier : { "shift", "mod1", "mod2" })
+		{
+			const oo::PList *setting = def.find(modifier);
+			defNew[modifier] = setting != nullptr ? *setting : oo::PList(false);
+		}
 
 		//	for '0' '1' '2' '3' '4' '5' '6' '7' '8' '9' - we want to interpret those as strings - not numbers
 		//	alphabetical characters and symbols will return an intValue of 0.
 		
-		if ([value isKindOfClass:[NSString class]] && (iValue < 10))
+		if (value != nullptr && value->isString() && (iValue < 10))
 		{
-			keystring = value;
+			const std::string &keystring = *value->getIf<std::string>();
+			const std::size_t length = oo::str::length(keystring);	// UTF-16 units, as -length
 
 			// check for a named lookup
-			if ([keystring length] != 0)
+			if (length != 0)
 			{
-				int checkVal;
-				checkVal = [[keyCodeLookups objectForKey:[keystring lowercaseString]] intValue];
+				const auto lookup = keyCodeLookups.find(oo::str::lowercase(keystring));
+				int checkVal = lookup != keyCodeLookups.end() ? lookup->second : 0;
 				if (checkVal > 0) {
 					iValue = checkVal;
 
-					[defNew setObject:[NSNumber numberWithUnsignedShort:iValue] forKey:@"key"];
-					[newList addObject:defNew];
-					[defNew release];
+					defNew["key"] = oo::PList::unsignedInteger(iValue);	// was +numberWithUnsignedShort:
+					newList.push_back(oo::PList(std::move(defNew)));
 					continue;
 				}
 			}
 
-			if ([keystring length] == 1 || (iValue == 0 && [keystring length] != 0))
+			unsigned char	keychar;
+			if (length == 1 || (iValue == 0 && length != 0))
 			{
-				keychar = [keystring characterAtIndex:0] & 0x00ff; // uses lower byte of unichar
+				keychar = oo::utf8ToUtf16(keystring)[0] & 0x00ff; // uses lower byte of unichar
 			}
 			else if (iValue <= 0xFF) keychar = iValue;
 			else {
-				OOLogWARN(@"testing", @"continue hit for key %@.", key);
-				[defNew setObject:[def objectForKey:@"key"] forKey:@"key"];
-				[newList addObject:defNew];
-				[defNew release];
+				OOLogWARN(@"testing", @"continue hit for key %@.", nil);
+				defNew["key"] = *value;
+				newList.push_back(oo::PList(std::move(defNew)));
 				continue;
 			}
 		
-			[defNew setObject:[NSNumber numberWithUnsignedShort:keychar] forKey:@"key"];
-			[newList addObject:defNew];
-			[defNew release];
+			defNew["key"] = oo::PList::unsignedInteger(keychar);	// was +numberWithUnsignedShort:
+			newList.push_back(oo::PList(std::move(defNew)));
 		} 
 		else 
 		{
-			[defNew setObject:[def objectForKey:@"key"] forKey:@"key"];
-			[newList addObject:defNew];
-			[defNew release];
+			if (value != nullptr)  defNew["key"] = *value;	// (a missing key raised in -setObject:forKey:)
+			newList.push_back(oo::PList(std::move(defNew)));
 		}
 	}
 
-	return newList;
+	return oo::PList(std::move(newList));
 }
 
 
 // special case for navigation keys - these keys cannot use mod keys, so they can't be impacted by multiple keypresses
-- (BOOL) checkNavKeyPress:(NSArray*)key_def
+- (BOOL) checkNavKeyPress:(const oo::PList &)key_def
 {
 	MyOpenGLView  *gameView = [UNIVERSE gameView];
-	int i;
-	for (i = 0; i < [key_def count]; i++) 
+	for (std::size_t i = 0; i < key_def.count(); i++)
 	{
-		NSDictionary *def = [key_def objectAtIndex:i];
-		if ([gameView isDown:[[def objectForKey:@"key"] intValue]]) return YES;
+		const oo::PList *def = key_def.at(i);
+		if (def == nullptr)  continue;	// not an array of definitions
+		if ([gameView isDown:def->get<int>("key")]) return YES;
 	}
 	return NO;
 }
 
 
-- (BOOL) checkKeyPress:(NSArray*)key_def
+- (BOOL) checkKeyPress:(const oo::PList &)key_def
 {
 	return [self checkKeyPress:key_def fKey_only:NO ignore_ctrl:NO];
 }
 
 
-- (BOOL) checkKeyPress:(NSArray*)key_def fKey_only:(BOOL)fKey_only
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only
 {
 	return [self checkKeyPress:key_def fKey_only:fKey_only ignore_ctrl:NO];
 }
 
 
-- (BOOL) checkKeyPress:(NSArray*)key_def ignore_ctrl:(BOOL)ignore_ctrl
+- (BOOL) checkKeyPress:(const oo::PList &)key_def ignore_ctrl:(BOOL)ignore_ctrl
 {
 	return [self checkKeyPress:key_def fKey_only:NO ignore_ctrl:ignore_ctrl];
 }
 
 
-- (BOOL) checkKeyPress:(NSArray*)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl
 {
 	MyOpenGLView  *gameView = [UNIVERSE gameView];
-	int i;
-	for (i = 0; i < [key_def count]; i++) 
+	for (std::size_t i = 0; i < key_def.count(); i++)
 	{
-		NSDictionary *def = [key_def objectAtIndex:i];
-		int keycode = [[def objectForKey:@"key"] intValue];
+		const oo::PList *def = key_def.at(i);
+		if (def == nullptr)  continue;	// not an array of definitions
+		int keycode = def->get<int>("key");
 		// skip normal keys if the fKey_only flag is set
-		// note: if the player has remapped the gui screen keys to not include function keys, they will not be able to 
+		// note: if the player has remapped the gui screen keys to not include function keys, they will not be able to
 		// switch screens directly (they would need to finish the task - ie press enter, or use the escape key to cancel the function)
-		// note: the logic below now means that the state of the modifiers must match the requirements for the key binding, including 
+		// note: the logic below now means that the state of the modifiers must match the requirements for the key binding, including
 		// when all settings are off. This means, if the player presses two functions at once, one that requires a modifier and
 		// one that doesn't, the one that doesn't will not be triggered.
 		if (fKey_only == YES && (keycode < gvFunctionKey1 || keycode > gvFunctionKey11)) continue;
-		if ([gameView isDown:keycode] 
-			&& ([[def objectForKey:@"shift"] boolValue] == [gameView isShiftDown])
-			&& (ignore_ctrl || ([[def objectForKey:@"mod1"] boolValue] == [gameView isCtrlDown]))
-			&& ([[def objectForKey:@"mod2"] boolValue] == [gameView isOptDown])
+		if ([gameView isDown:keycode]
+			&& (def->get<bool>("shift") == static_cast<bool>([gameView isShiftDown]))
+			&& (ignore_ctrl || (def->get<bool>("mod1") == static_cast<bool>([gameView isCtrlDown])))
+			&& (def->get<bool>("mod2") == static_cast<bool>([gameView isOptDown]))
 		) return YES;
 	}
 	return NO;
 }
 
 
-- (int) getFirstKeyCode:(NSArray*)key_def
+- (int) getFirstKeyCode:(const oo::PList &)key_def
 {
-	NSDictionary *def = [key_def objectAtIndex:0];
-	return [[def objectForKey:@"key"] intValue];
+	const oo::PList *def = key_def.at(0);
+	return (def != nullptr) ? def->get<int>("key") : 0;
 }
 
 
 - (void) pollControls:(double)delta_t
 {
 	MyOpenGLView  *gameView = [UNIVERSE gameView];
-	NSString *exceptionContext = @"setup";
+	const char *exceptionContext = "setup";
 	
 	@try
 	{
 		if (gameView)
 		{
 			// poll the gameView keyboard things
-			exceptionContext = @"pollApplicationControls";
+			exceptionContext = "pollApplicationControls";
 			[self pollApplicationControls]; // quit command-f etc.
 			switch ([self status])
 			{
 				case STATUS_WITCHSPACE_COUNTDOWN:
 				case STATUS_IN_FLIGHT:
-					exceptionContext = @"pollFlightControls";
+					exceptionContext = "pollFlightControls";
 					[self pollFlightControls:delta_t];
 					break;
 					
 				case STATUS_DEAD:
-					exceptionContext = @"pollGameOverControls";
+					exceptionContext = "pollGameOverControls";
 					[self pollGameOverControls:delta_t];
 					break;
 					
 				case STATUS_AUTOPILOT_ENGAGED:
-					exceptionContext = @"pollAutopilotControls";
+					exceptionContext = "pollAutopilotControls";
 					[self pollAutopilotControls:delta_t];
 					break;
 					
 				case STATUS_DOCKED:
-					exceptionContext = @"pollDockedControls";
+					exceptionContext = "pollDockedControls";
 					[self pollDockedControls:delta_t];
 					break;
 					
 				case STATUS_START_GAME:
-					exceptionContext = @"pollDemoControls";
+					exceptionContext = "pollDemoControls";
 					[self pollDemoControls:delta_t];
 					break;
 					
@@ -711,11 +688,11 @@ static NSTimeInterval	time_last_frame;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
+		OOLog(kOOLogException, @"***** Exception checking controls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
 	}
 }
 
@@ -886,10 +863,11 @@ static NSTimeInterval	time_last_frame;
 		// say it!
 		[UNIVERSE clearPreviousMessage];
 		int seconds = round(witchspaceCountdown);
-		NSString *destination = [UNIVERSE getSystemName:[self nextHopTargetSystemID]];
-		[UNIVERSE displayCountdownMessage:OOExpandKey(@"witch-to-x-in-y-seconds", seconds, destination) forCount:1.0];
+		const std::string destination = oo::StdString([UNIVERSE getSystemName:[self nextHopTargetSystemID]]);
+		[UNIVERSE displayCountdownMessage:oo::NSStringFrom(ExpandKeyWithArguments("witch-to-x-in-y-seconds",
+			{ { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } })) forCount:1.0];
 		[self doScriptEvent:OOJSID("playerStartedJumpCountdown")
-					withArguments:[NSArray arrayWithObjects:@"standard", [NSNumber numberWithFloat:witchspaceCountdown], nil]];
+					withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("standard"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) }))];
 		[UNIVERSE preloadPlanetTexturesForSystem:target_system_id];
 	}
 }
@@ -923,7 +901,7 @@ static NSTimeInterval	time_last_frame;
 {
 	if (!pollControls) return;
 	
-	NSString *exceptionContext = @"setup";
+	const char *exceptionContext = "setup";
 	
 	// does fullscreen / quit / snapshot
 	MyOpenGLView  *gameView = [UNIVERSE gameView];
@@ -938,7 +916,7 @@ static NSTimeInterval	time_last_frame;
 	#if !OOLITE_MAC_OS_X || !OOLITE_64_BIT	// On 64-bit Macs, these are handled by normal menu shortcuts.
 		if ([gameController inFullScreenMode])
 		{
-			exceptionContext = @"command key controls";
+			exceptionContext = "command key controls";
 			if ([gameView isCommandFDown])
 			{
 				[gameView clearCommandF];
@@ -960,7 +938,7 @@ static NSTimeInterval	time_last_frame;
 		// handle pressing Q or [esc] in error-handling mode
 		if ([self status] == STATUS_HANDLING_ERROR)
 		{
-			exceptionContext = @"error handling mode";
+			exceptionContext = "error handling mode";
 			if ([gameView isDown:113]||[gameView isDown:81]||[gameView isDown:27])   // 'q' | 'Q' | esc
 			{
 				[gameController exitAppWithContext:@"Q or escape pressed in error handling mode"];
@@ -1002,11 +980,11 @@ static NSTimeInterval	time_last_frame;
 			([gameView allowingStringInput] <= gvStringInputAlpha) && // not while entering text on the keyboard config screens
 			![[OOOXZManager sharedManager] isAcceptingTextInput])   //  '*' key but not while filtering inside OXZ Manager
 		{
-			exceptionContext = @"snapshot";
+			exceptionContext = "snapshot";
 			if (!taking_snapshot)
 			{
 				taking_snapshot = YES;
-				[gameView snapShot:nil]; // nil filename so that the program auto-names the snapshot
+				[gameView cxx_snapShot:std::nullopt]; // nil filename so that the program auto-names the snapshot
 			}
 		}
 		else
@@ -1017,7 +995,7 @@ static NSTimeInterval	time_last_frame;
 		// FPS display
 		if (!onTextEntryScreen && [self checkKeyPress:n_key_show_fps])   //  'F' key
 		{
-			exceptionContext = @"toggle FPS";
+			exceptionContext = "toggle FPS";
 			if (!f_key_pressed)  [UNIVERSE setDisplayFPS:![UNIVERSE displayFPS]];
 			f_key_pressed = YES;
 		}
@@ -1052,7 +1030,7 @@ static NSTimeInterval	time_last_frame;
 		
 		if (allowMouseControl)
 		{
-			exceptionContext = @"mouse control";
+			exceptionContext = "mouse control";
 			if (!onTextEntryScreen && ([self checkKeyPress:n_key_mouse_control_roll] || [self checkKeyPress:n_key_mouse_control_yaw]))   //  'M' key
 			{
 				if (!m_key_pressed)
@@ -1115,7 +1093,7 @@ static NSTimeInterval	time_last_frame;
 		// HUD toggle
 		if (([self checkKeyPress:n_key_hud_toggle] || joyButtonState[BUTTON_TOGGLEHUD]) && [gameController isGamePaused] && !onTextEntryScreen)	// 'o' key while paused
 		{
-			exceptionContext = @"toggle HUD";
+			exceptionContext = "toggle HUD";
 			if (!hide_hud_pressed)
 			{
 				HeadUpDisplay *theHUD = [self hud];
@@ -1135,11 +1113,11 @@ static NSTimeInterval	time_last_frame;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
+		OOLog(kOOLogException, @"***** Exception in pollApplicationControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
 	}
 }
 
@@ -1148,11 +1126,11 @@ static NSTimeInterval	time_last_frame;
 {
 	MyOpenGLView		*gameView = [UNIVERSE gameView];
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
-	NSString			*exceptionContext = @"setup";
+	const char			*exceptionContext = "setup";
 
 	@try
 	{
-		exceptionContext = @"joystick handling";
+		exceptionContext = "joystick handling";
 		const BOOL *joyButtonState = [[OOJoystickManager sharedStickHandler] getAllButtonStates];
 		
 		BOOL paused = [[UNIVERSE gameController] isGamePaused];
@@ -1160,7 +1138,7 @@ static NSTimeInterval	time_last_frame;
 		
 		if (!paused && gui_screen == GUI_SCREEN_MISSION)
 		{
-			exceptionContext = @"mission screen";
+			exceptionContext = "mission screen";
 			OOViewID view = VIEW_NONE;
 			
 			NSPoint			virtualView = NSZeroPoint;
@@ -1214,7 +1192,7 @@ static NSTimeInterval	time_last_frame;
 		}
 		else if (!paused)
 		{
-			exceptionContext = @"arrow keys";
+			exceptionContext = "arrow keys";
 			// arrow keys
 			if ([UNIVERSE displayGUI])
 				[self pollGuiArrowKeyControls:delta_t];
@@ -1226,7 +1204,7 @@ static NSTimeInterval	time_last_frame;
 			
 			if (OOMouseInteractionModeIsFlightMode([[UNIVERSE gameController] mouseInteractionMode]))
 			{
-				exceptionContext = @"afterburner";
+				exceptionContext = "afterburner";
 				if ((joyButtonState[BUTTON_FUELINJECT] || [self checkKeyPress:n_key_inject_fuel]) &&
 					[self hasFuelInjection] &&
 					!hyperspeed_engaged)
@@ -1250,7 +1228,7 @@ static NSTimeInterval	time_last_frame;
 				if ((!afterburner_engaged)&&(afterburnerSoundLooping))
 					[self stopAfterburnerSound];
 				
-				exceptionContext = @"thrust";
+				exceptionContext = "thrust";
 				// DJS: Thrust can be an axis or a button. Axis takes precidence.
 				double reqSpeed=[stickHandler getAxisState: AXIS_THRUST];
 				float mouseWheelDeltaFactor = mouse_control_on ? fabs([gameView mouseWheelDelta]) : 1.0f;
@@ -1274,8 +1252,9 @@ static NSTimeInterval	time_last_frame;
 					hyperspeed_engaged = NO;
 				}
 
-				NSDictionary *functionForThrustAxis = oo::PListView(oo::ObjectFromPList([stickHandler axisFunctions])).get<NSDictionary *>([[NSNumber numberWithInt:AXIS_THRUST] stringValue]);
-				if([stickHandler joystickCount] != 0 && functionForThrustAxis != nil)
+				const oo::PList thrustAxes = [stickHandler axisFunctions];
+				const oo::PList *functionForThrustAxis = thrustAxes.get<oo::PList::Dict>(std::to_string(AXIS_THRUST));	// nil: absent or not a Dict
+				if([stickHandler joystickCount] != 0 && functionForThrustAxis != nullptr)
 				{
 					if (flightSpeed < maxFlightSpeed * reqSpeed)
 					{
@@ -1292,7 +1271,7 @@ static NSTimeInterval	time_last_frame;
 					flightSpeed = OOClamp_0_max_f(flightSpeed, maxFlightSpeed);
 				}
 				
-				exceptionContext = @"hyperspeed";
+				exceptionContext = "hyperspeed";
 				//  hyperspeed controls
 				if ([self checkKeyPress:n_key_jumpdrive] || joyButtonState[BUTTON_HYPERSPEED])		// 'j'
 				{
@@ -1320,26 +1299,26 @@ static NSTimeInterval	time_last_frame;
 					jump_pressed = NO;
 				}
 				
-				exceptionContext = @"shoot";
+				exceptionContext = "shoot";
 				//  shoot 'a'
 				if ((([self checkNavKeyPress:n_key_fire_lasers])||((mouse_control_on)&&([gameView isDown:gvMouseLeftButton]) && ([UNIVERSE viewDirection] <= VIEW_STARBOARD || ![gameView isCapsLockOn]))||joyButtonState[BUTTON_FIRE])&&(shot_time > weapon_recharge_rate))
 				{
 					if ([self fireMainWeapon])
 					{
-						[self playLaserHit:([self shipHitByLaser] != nil) offset:oo::PListView([self currentLaserOffset]).at<Vector>(0) weaponIdentifier:[[self currentWeapon] identifier]];
+						[self cxx_playLaserHit:([self shipHitByLaser] != nil) offset:oo::PListView([self currentLaserOffset]).at<Vector>(0) weaponIdentifier:oo::StdString([[self currentWeapon] identifier])];
 					}
 				}
 				
-				exceptionContext = @"weapons online toggle";
+				exceptionContext = "weapons online toggle";
 				// weapons online / offline toggle '_'
 				if (([self checkKeyPress:n_key_weapons_online_toggle] || joyButtonState[BUTTON_WEAPONSONLINETOGGLE]))
 				{
 					if (!weaponsOnlineToggle_pressed)
 					{
-						NSString*	weaponsOnlineToggleMsg;
-						
+						std::string	weaponsOnlineToggleMsg;
+
 						[self setWeaponsOnline:![self weaponsOnline]];
-						weaponsOnlineToggleMsg = [self weaponsOnline] ? DESC(@"weapons-systems-online") : DESC(@"weapons-systems-offline");
+						weaponsOnlineToggleMsg = oo::StdString([self weaponsOnline] ? DESC(@"weapons-systems-online") : DESC(@"weapons-systems-offline"));
 						if ([self weaponsOnline])
 						{
 							[self playWeaponsOnline];
@@ -1348,14 +1327,14 @@ static NSTimeInterval	time_last_frame;
 						{
 							[self playWeaponsOffline];
 						}
-						[UNIVERSE addMessage:weaponsOnlineToggleMsg forCount:2.0];
-						[self doScriptEvent:OOJSID("weaponsSystemsToggled") withArgument:[NSNumber numberWithBool:[self weaponsOnline]]];
+						[UNIVERSE addMessage:oo::NSStringFrom(weaponsOnlineToggleMsg) forCount:2.0];
+						[self doScriptEvent:OOJSID("weaponsSystemsToggled") withArgument:oo::ObjectFromPList(oo::PList(static_cast<bool>([self weaponsOnline])))];
 						weaponsOnlineToggle_pressed = YES;
 					}
 				}
 				else  weaponsOnlineToggle_pressed = NO;
 				
-				exceptionContext = @"missile fire";
+				exceptionContext = "missile fire";
 				//  shoot 'm'   // launch missile
 				if ([self checkKeyPress:n_key_launch_missile] || joyButtonState[BUTTON_LAUNCHMISSILE])
 				{
@@ -1368,7 +1347,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  fire_missile_pressed = NO;
 				
-				exceptionContext = @"next missile";
+				exceptionContext = "next missile";
 				//  shoot 'y'   // next missile
 				if ([self checkKeyPress:n_key_next_missile] || joyButtonState[BUTTON_CYCLEMISSILE])
 				{
@@ -1381,7 +1360,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  next_missile_pressed = NO;
 				
-				exceptionContext = @"next target";
+				exceptionContext = "next target";
 				//	'+' // next target
 				if ([self checkKeyPress:n_key_next_target] || joyButtonState[BUTTON_NEXTTARGET])
 				{
@@ -1393,7 +1372,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  next_target_pressed = NO;
 				
-				exceptionContext = @"previous target";
+				exceptionContext = "previous target";
 				//	'-' // previous target
 				if ([self checkKeyPress:n_key_previous_target] || joyButtonState[BUTTON_PREVTARGET])
 				{
@@ -1405,7 +1384,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  previous_target_pressed = NO;
 				
-				exceptionContext = @"ident R";
+				exceptionContext = "ident R";
 				//  shoot 'r'   // switch on ident system
 				if ([self checkKeyPress:n_key_ident_system] || joyButtonState[BUTTON_ID])
 				{
@@ -1418,7 +1397,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  ident_pressed = NO;
 				
-				exceptionContext = @"prime equipment";
+				exceptionContext = "prime equipment";
 				// prime equipment 'N' - selects equipment to use with keypress
 				if ([self checkKeyPress:n_key_prime_next_equipment] || [self checkKeyPress:n_key_prime_previous_equipment] || joyButtonState[BUTTON_PRIMEEQUIPMENT] || joyButtonState[BUTTON_PRIMEEQUIPMENT_PREV])
 				{
@@ -1443,7 +1422,7 @@ static NSTimeInterval	time_last_frame;
 							else  primedEquipment = c;
 						}
 						
-						NSString *eqKey = @"";
+						std::string eqKey;
 
 						if (primedEquipment == c)
 						{
@@ -1457,18 +1436,18 @@ static NSTimeInterval	time_last_frame;
 						else
 						{
 							[self playNextEquipmentSelected];
-							NSString *equipmentName = [[OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(oo::PListView(eqScripts).at<NSArray *>(primedEquipment)).at<NSString *>(0)] name];
-							eqKey = oo::PListView(oo::PListView(eqScripts).at<NSArray *>(primedEquipment)).at<NSString *>(0);
-							[UNIVERSE addMessage:OOExpandKey(@"equipment-primed", equipmentName) forCount:2.0];
+							eqKey = oo::StdString([[eqScripts objectAtIndex:primedEquipment] objectAtIndex:0]);
+							const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] name]);
+							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}
-						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:eqKey];
+						[self doScriptEvent:OOJSID("playerChangedPrimedEquipment") withArgument:oo::NSStringFrom(eqKey)];
 					}
 					prime_equipment_pressed = YES;
 					
 				}
 				else  prime_equipment_pressed = NO;
 				
-				exceptionContext = @"activate equipment";
+				exceptionContext = "activate equipment";
 				// activate equipment 'n' - runs the activated() function inside the equipment's script.
 				if ([self checkKeyPress:n_key_activate_equipment] || joyButtonState[BUTTON_ACTIVATEEQUIPMENT])
 				{
@@ -1480,7 +1459,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  activate_equipment_pressed = NO;
 				
-				exceptionContext = @"mode equipment";
+				exceptionContext = "mode equipment";
 				// mode equipment 'b' - runs the mode() function inside the equipment's script.
 				if ([self checkKeyPress:n_key_mode_equipment] || joyButtonState[BUTTON_MODEEQUIPMENT])
 				{
@@ -1492,7 +1471,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  mode_equipment_pressed = NO;
 
-				exceptionContext = @"fast equipment A";
+				exceptionContext = "fast equipment A";
 				if ([self checkKeyPress:n_key_fastactivate_equipment_a] || joyButtonState[BUTTON_CLOAK])
 				{
 					if (!fastactivate_a_pressed)
@@ -1503,7 +1482,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else fastactivate_a_pressed = NO;
 
-				exceptionContext = @"fast equipment B";
+				exceptionContext = "fast equipment B";
 				if ([self checkKeyPress:n_key_fastactivate_equipment_b] || joyButtonState[BUTTON_ENERGYBOMB])
 				{
 					if (!fastactivate_b_pressed)
@@ -1514,48 +1493,47 @@ static NSTimeInterval	time_last_frame;
 				}
 				else fastactivate_b_pressed = NO;
 
-				exceptionContext = @"custom equipment";
+				exceptionContext = "custom equipment";
 				// loop through all the objects in the customEquipActivation array
-				NSDictionary *item;
-				NSUInteger i;
-				for (i = 0; i < [customEquipActivation count]; i++)
+				for (std::size_t i = 0; i < [customEquipActivation count]; i++)
 				{
-					item = [customEquipActivation objectAtIndex:i];
+					const oo::PList item = oo::PListFrom([customEquipActivation objectAtIndex:i]);
+					const std::string equipKey = item.get<std::string>(oo::StdString(CUSTOMEQUIP_EQUIPKEY));
 					// check if the player has the equip item installed
-					if ([self hasOneEquipmentItem:oo::PListView(item).get<NSString *>(CUSTOMEQUIP_EQUIPKEY) includeWeapons:NO whileLoading:NO])
+					if ([self cxx_hasOneEquipmentItem:equipKey includeWeapons:NO whileLoading:NO])
 					{
-						NSArray *key_act = oo::PListView(item).get<NSArray *>(CUSTOMEQUIP_KEYACTIVATE);
-						NSArray *key_mod = oo::PListView(item).get<NSArray *>(CUSTOMEQUIP_KEYMODE);
-						NSDictionary *but_act = oo::PListView(item).get<NSDictionary *>(CUSTOMEQUIP_BUTTONACTIVATE);
-						NSDictionary *but_mod = oo::PListView(item).get<NSDictionary *>(CUSTOMEQUIP_BUTTONMODE);
-						// if so, 
+						const oo::PList *key_act = item.get<oo::PList::Array>(oo::StdString(CUSTOMEQUIP_KEYACTIVATE));
+						const oo::PList *key_mod = item.get<oo::PList::Array>(oo::StdString(CUSTOMEQUIP_KEYMODE));
+						const oo::PList *but_act = item.get<oo::PList::Dict>(oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE));
+						const oo::PList *but_mod = item.get<oo::PList::Dict>(oo::StdString(CUSTOMEQUIP_BUTTONMODE));
+						// if so,
 						// check to see if the key or button was pressed for activate
-						if ((key_act && [self checkKeyPress:key_act]) || (but_act && [[OOJoystickManager sharedStickHandler] isButtonDown:oo::PListView(but_act).get<int>(STICK_AXBUT) stick:oo::PListView(but_act).get<int>(STICK_NUMBER)]))
+						if ((key_act != nullptr && [self checkKeyPress:*key_act]) || (but_act != nullptr && [[OOJoystickManager sharedStickHandler] isButtonDown:but_act->get<int>(oo::StdString(STICK_AXBUT)) stick:but_act->get<int>(oo::StdString(STICK_NUMBER))]))
 						{
-							if (![[customActivatePressed objectAtIndex:i] boolValue])
+							if (!customActivatePressed[i])
 							{
 								// initate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::PListView(item).get<NSString *>(CUSTOMEQUIP_EQUIPKEY)] withMode:OOPRIMEDEQUIP_ACTIVATED];
+								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_ACTIVATED];
 							}
-							[customActivatePressed replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:YES]];
+							customActivatePressed[i] = YES;
 						}
-						else [customActivatePressed replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:NO]];
+						else customActivatePressed[i] = NO;
 
 						// check to see if the key or button was pressed for mode
-						if ((key_mod && [self checkKeyPress:key_mod]) || (but_mod && [[OOJoystickManager sharedStickHandler] isButtonDown:oo::PListView(but_mod).get<int>(STICK_AXBUT) stick:oo::PListView(but_mod).get<int>(STICK_NUMBER)]))
+						if ((key_mod != nullptr && [self checkKeyPress:*key_mod]) || (but_mod != nullptr && [[OOJoystickManager sharedStickHandler] isButtonDown:but_mod->get<int>(oo::StdString(STICK_AXBUT)) stick:but_mod->get<int>(oo::StdString(STICK_NUMBER))]))
 						{
-							if (![[customModePressed objectAtIndex:i] boolValue])
+							if (!customModePressed[i])
 							{
 								// initiate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::PListView(item).get<NSString *>(CUSTOMEQUIP_EQUIPKEY)] withMode:OOPRIMEDEQUIP_MODE];
+								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_MODE];
 							}
-							[customModePressed replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:YES]];
+							customModePressed[i] = YES;
 						}
-						else [customModePressed replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:NO]];
+						else customModePressed[i] = NO;
 					}
 				}
 
-				exceptionContext = @"incoming missile T";
+				exceptionContext = "incoming missile T";
 				// target nearest incoming missile 'T' - useful for quickly giving a missile target to turrets
 				if ([self checkKeyPress:n_key_target_incoming_missile] || joyButtonState[BUTTON_TARGETINCOMINGMISSILE])
 				{
@@ -1567,7 +1545,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  target_incoming_missile_pressed = NO;
 				
-				exceptionContext = @"missile T";
+				exceptionContext = "missile T";
 				//  shoot 't'   // switch on missile targeting
 				if (([self checkKeyPress:n_key_target_missile] || joyButtonState[BUTTON_ARMMISSILE])&&(missile_entity[activeMissile]))
 				{
@@ -1580,7 +1558,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  target_missile_pressed = NO;
 				
-				exceptionContext = @"missile U";
+				exceptionContext = "missile U";
 				//  shoot 'u'   // disarm missile targeting
 				if ([self checkKeyPress:n_key_untarget_missile] || joyButtonState[BUTTON_UNARM])
 				{
@@ -1606,7 +1584,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				else  safety_pressed = NO;
 				
-				exceptionContext = @"ECM";
+				exceptionContext = "ECM";
 				//  shoot 'e'   // ECM
 				if (([self checkKeyPress:n_key_ecm] || joyButtonState[BUTTON_ECM]) && [self hasECM])
 				{
@@ -1621,7 +1599,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				
 			
-				exceptionContext = @"escape pod";
+				exceptionContext = "escape pod";
 				//  shoot 'escape'   // Escape pod launch - NOTE: Allowed at all times, but requires double press within a specific time interval.
 							// Double press not available in strict mode or when the "escape-pod-activation-immediate" override is in the 
 							// user defaults file.
@@ -1657,14 +1635,14 @@ static NSTimeInterval	time_last_frame;
 					}
 				}
 				
-				exceptionContext = @"dump cargo";
+				exceptionContext = "dump cargo";
 				//  shoot 'd'   // Dump Cargo
 				if (([self checkKeyPress:n_key_dump_cargo] || joyButtonState[BUTTON_JETTISON]) && [self cxx_cargoCount] > 0)
 				{
 					[self dumpCargo];
 				}
 				
-				exceptionContext = @"rotate cargo";
+				exceptionContext = "rotate cargo";
 				//  shoot 'R'   // Rotate Cargo
 				if ([self checkKeyPress:n_key_rotate_cargo] || joyButtonState[BUTTON_ROTATECARGO])
 				{
@@ -1675,7 +1653,7 @@ static NSTimeInterval	time_last_frame;
 				else
 					rotateCargo_pressed = NO;
 				
-				exceptionContext = @"autopilot C";
+				exceptionContext = "autopilot C";
 				// autopilot 'c'
 				if ([self checkKeyPress:n_key_autopilot] || joyButtonState[BUTTON_DOCKCPU])   // look for the 'c' key
 				{
@@ -1688,7 +1666,7 @@ static NSTimeInterval	time_last_frame;
 				else
 					autopilot_key_pressed = NO;
 				
-				exceptionContext = @"autopilot shift-C";
+				exceptionContext = "autopilot shift-C";
 				// autopilot 'C' - fast-autopilot
 				if ([self checkKeyPress:n_key_autodock] || joyButtonState[BUTTON_DOCKCPUFAST])   // look for the 'C' key
 				{
@@ -1703,7 +1681,7 @@ static NSTimeInterval	time_last_frame;
 					fast_autopilot_key_pressed = NO;
 				}
 				
-				exceptionContext = @"docking clearance request";
+				exceptionContext = "docking clearance request";
 
 				if ([self checkKeyPress:n_key_docking_clearance_request] || joyButtonState[BUTTON_DOCKINGCLEARANCE])
 				{
@@ -1719,7 +1697,7 @@ static NSTimeInterval	time_last_frame;
 					docking_clearance_request_key_pressed = NO;
 				}
 				
-				exceptionContext = @"hyperspace";
+				exceptionContext = "hyperspace";
 				// hyperspace 'h'
 				if ( ([self checkKeyPress:n_key_hyperspace] || joyButtonState[BUTTON_HYPERDRIVE]) &&
 					  [self hasHyperspaceMotor] )	// look for the 'h' key
@@ -1749,7 +1727,7 @@ static NSTimeInterval	time_last_frame;
 				else
 					hyperspace_pressed = NO;
 				
-				exceptionContext = @"galactic hyperspace";
+				exceptionContext = "galactic hyperspace";
 				// Galactic hyperspace 'g'
 				if (([self checkKeyPress:n_key_galactic_hyperspace] || joyButtonState[BUTTON_GALACTICDRIVE]) &&
 					([self hasEquipmentItemProviding:@"EQ_GAL_DRIVE"]))// look for the 'g' key
@@ -1780,11 +1758,11 @@ static NSTimeInterval	time_last_frame;
 							[self setStatus:STATUS_WITCHSPACE_COUNTDOWN];
 							[self playGalacticHyperspace];
 							// say it!
-							[UNIVERSE addMessage:[NSString stringWithFormat:DESC(@"witch-galactic-in-f-seconds"), witchspaceCountdown] forCount:1.0];
+							[UNIVERSE addMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"witch-galactic-in-f-seconds")), { witchspaceCountdown })) forCount:1.0];
 							// FIXME: how to preload target system for hyperspace jump?
 							
 							[self doScriptEvent:OOJSID("playerStartedJumpCountdown")
-								  withArguments:[NSArray arrayWithObjects:@"galactic", [NSNumber numberWithFloat:witchspaceCountdown], nil]];
+								  withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("galactic"), oo::PList::singleReal(static_cast<float>(witchspaceCountdown)) }))];
 						}
 					}
 					galhyperspace_pressed = YES;
@@ -1810,8 +1788,9 @@ static NSTimeInterval	time_last_frame;
 					if (fieldOfView < MIN_FOV)  fieldOfView = MIN_FOV;
 				}
 
-				NSDictionary *functionForFovAxis = oo::PListView(oo::ObjectFromPList([stickHandler axisFunctions])).get<NSDictionary *>([[NSNumber numberWithInt:AXIS_FIELD_OF_VIEW] stringValue]);
-				if ([stickHandler joystickCount] != 0 && functionForFovAxis != nil)
+				const oo::PList fovAxes = [stickHandler axisFunctions];
+				const oo::PList *functionForFovAxis = fovAxes.get<oo::PList::Dict>(std::to_string(AXIS_FIELD_OF_VIEW));	// nil: absent or not a Dict
+				if ([stickHandler joystickCount] != 0 && functionForFovAxis != nullptr)
 				{
 					// TODO think reqFov through
 					double reqFov = [stickHandler getAxisState: AXIS_FIELD_OF_VIEW];
@@ -1830,7 +1809,7 @@ static NSTimeInterval	time_last_frame;
 #endif
 
 	#ifndef NDEBUG
-			exceptionContext = @"dump target state";
+			exceptionContext = "dump target state";
 			if ([self checkKeyPress:n_key_dump_target_state])
 			{
 				if (!dump_target_state_pressed)
@@ -1845,14 +1824,14 @@ static NSTimeInterval	time_last_frame;
 	#endif
 			
 			//  text displays
-			exceptionContext = @"pollGuiScreenControls";
+			exceptionContext = "pollGuiScreenControls";
 			[self pollGuiScreenControls];
 		}
 		else
 		{
 			// game is paused
 			// check options menu request
-			exceptionContext = @"options menu";
+			exceptionContext = "options menu";
 			if (([self checkKeyPress:n_key_gui_screen_options]) && (gui_screen != GUI_SCREEN_OPTIONS) && ![gameView allowingStringInput])
 			{
 				[gameView clearKeys];
@@ -1886,7 +1865,7 @@ static NSTimeInterval	time_last_frame;
 				[self pollGuiArrowKeyControls:time_delta];
 			}
 			
-			exceptionContext = @"debug keys";
+			exceptionContext = "debug keys";
 	#ifndef NDEBUG
 			// look for debugging keys
 			if ([self checkKeyPress:n_key_dump_entity_list] && ![gameView allowingStringInput])// look for the '0' key
@@ -1973,7 +1952,7 @@ static NSTimeInterval	time_last_frame;
 	#endif
 		}
 		
-		exceptionContext = @"pause";
+		exceptionContext = "pause";
 		// Pause game 'p'
 		if (([self checkKeyPress:n_key_pausebutton] || joyButtonState[BUTTON_PAUSE]) && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && gui_screen != GUI_SCREEN_MISSION && ![gameView allowingStringInput])// look for the 'p' key
 		{
@@ -2020,7 +1999,7 @@ static NSTimeInterval	time_last_frame;
 					currentWeaponFacing = saved_weapon_facing;
 					// make sure the light comes from the right direction after resuming from pause!
 					if (saved_gui_screen == GUI_SCREEN_SYSTEM_DATA) [UNIVERSE setMainLightPosition:_sysInfoLight];
-					[[UNIVERSE gui] setForegroundTextureKey:@"overlay"];
+					[[UNIVERSE gui] cxx_setForegroundTextureKey:"overlay"];
 					[[UNIVERSE gameController] setGamePaused:NO];
 				}
 				else
@@ -2041,11 +2020,11 @@ static NSTimeInterval	time_last_frame;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
+		OOLog(kOOLogException, @"***** Exception in pollFlightControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
 	}
 }
 
@@ -2103,9 +2082,9 @@ static NSTimeInterval	time_last_frame;
 
 			if ([self status] != STATUS_WITCHSPACE_COUNTDOWN)
 			{
-				if ([[gameView typedString] length] > 0)
+				if (oo::str::length([gameView cxx_typedString].value_or("")) > 0)
 				{
-					planetSearchString = [[[gameView typedString] lowercaseString] retain];
+					planetSearchString = [oo::NSStringFrom(oo::str::lowercase(*[gameView cxx_typedString])) retain];
 					NSPoint search_coords = [UNIVERSE findSystemCoordinatesWithPrefix:planetSearchString];
 					if ((search_coords.x >= 0.0)&&(search_coords.y >= 0.0))
 					{
@@ -2132,8 +2111,8 @@ static NSTimeInterval	time_last_frame;
 					planetSearchString = nil;
 				}
 				
-				moving |= (searchStringLength != [[gameView typedString] length]);
-				searchStringLength = [[gameView typedString] length];
+				moving |= (searchStringLength != oo::str::length([gameView cxx_typedString].value_or("")));
+				searchStringLength = oo::str::length([gameView cxx_typedString].value_or(""));
 			}
 
 		case GUI_SCREEN_SHORT_RANGE_CHART:
@@ -2508,14 +2487,14 @@ static NSTimeInterval	time_last_frame;
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
+			const std::optional<std::string> commanderFile = [self commanderSelector];
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
 
-				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
+				[self loadPlayerFromFile:*commanderFile asNew:NO];
 			}
 			break;
 		}
@@ -2702,27 +2681,27 @@ static NSTimeInterval	time_last_frame;
 		case GUI_SCREEN_EQUIP_SHIP:
 			if ([self handleGUIUpDownArrowKeys])
 			{
-				NSString		*itemText = [gui selectedRowText];
+				std::optional<std::string>	itemText = [gui cxx_selectedRowText];	// nil compares unequal, as -isEqual: on nil
 				OOWeaponType		weaponType = nil;
-				
-				if ([itemText isEqual:FORWARD_FACING_STRING]) weaponType = forward_weapon_type;
-				if ([itemText isEqual:AFT_FACING_STRING]) weaponType = aft_weapon_type;
-				if ([itemText isEqual:PORT_FACING_STRING]) weaponType = port_weapon_type;
-				if ([itemText isEqual:STARBOARD_FACING_STRING]) weaponType = starboard_weapon_type;
-				
+
+				if (itemText == oo::StdString(FORWARD_FACING_STRING)) weaponType = forward_weapon_type;
+				if (itemText == oo::StdString(AFT_FACING_STRING)) weaponType = aft_weapon_type;
+				if (itemText == oo::StdString(PORT_FACING_STRING)) weaponType = port_weapon_type;
+				if (itemText == oo::StdString(STARBOARD_FACING_STRING)) weaponType = starboard_weapon_type;
+
 				if (weaponType != nil)
 				{
-					BOOL		sameAs = OOWeaponTypeFromEquipmentIdentifierSloppy([gui selectedRowKey]) == weaponType;
+					BOOL		sameAs = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil([gui cxx_selectedRowKey])) == weaponType;
 					// override showInformation _completely_ with itemText
-					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = DESC(@"no-weapon-enter-to-install");
+					if ([[weaponType identifier] isEqualToString:@"EQ_WEAPON_NONE"])  itemText = oo::StdString(DESC(@"no-weapon-enter-to-install"));
 					else
 					{
-						NSString *weaponName = [[OOEquipmentType equipmentTypeWithIdentifier:OOEquipmentIdentifierFromWeaponType(weaponType)] name];
-						if (sameAs)  itemText = [NSString stringWithFormat:DESC(@"weapon-installed-@"), weaponName];
-						else  itemText = [NSString stringWithFormat:DESC(@"weapon-@-enter-to-replace"), weaponName];
+						const std::string weaponName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:OOEquipmentIdentifierFromWeaponType(weaponType)] name]);
+						if (sameAs)  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-installed-@")), { weaponName });
+						else  itemText = oo::str::formatRuntime(oo::StdString(DESC(@"weapon-@-enter-to-replace")), { weaponName });
 					}
-					
-					[self showInformationForSelectedUpgradeWithFormatString:itemText];
+
+					[self showInformationForSelectedUpgradeWithFormatString:oo::NSStringOrNil(itemText)];
 				}
 				else
 					[self showInformationForSelectedUpgrade];
@@ -2732,7 +2711,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_EQUIPMENT_START] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_EQUIPMENT_START].value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
 						[gui setSelectedRow:GUI_ROW_EQUIPMENT_START];
@@ -2745,7 +2724,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1].value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
 						[gui setSelectedRow:GUI_ROW_EQUIPMENT_START + GUI_MAX_ROWS_EQUIPMENT - 1];
@@ -2784,7 +2763,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_INTERFACES_START] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_INTERFACES_START].value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
 						[gui setSelectedRow:GUI_ROW_INTERFACES_START];
@@ -2797,7 +2776,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1].value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
 						[gui setSelectedRow:GUI_ROW_INTERFACES_START + GUI_MAX_ROWS_INTERFACES - 1];
@@ -2903,7 +2882,7 @@ static NSTimeInterval	time_last_frame;
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:STATUS_EQUIPMENT_FIRST_ROW] isEqual:GUI_KEY_OK])
+					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW] == oo::StdString(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:STATUS_EQUIPMENT_FIRST_ROW];
 						[self playMenuPagePrevious];
@@ -2919,7 +2898,7 @@ static NSTimeInterval	time_last_frame;
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
 					NSUInteger maxRows = [[self hud] allowBigGui] ? STATUS_EQUIPMENT_MAX_ROWS + STATUS_EQUIPMENT_BIGGUI_EXTRA_ROWS : STATUS_EQUIPMENT_MAX_ROWS;
-					if ([[gui keyForRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows] isEqual:GUI_KEY_OK])
+					if (([gui cxx_keyForRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows] == oo::StdString(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:STATUS_EQUIPMENT_FIRST_ROW + maxRows];
 						[self playMenuPageNext];
@@ -2959,7 +2938,7 @@ static NSTimeInterval	time_last_frame;
 
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:MANIFEST_SCREEN_ROW_BACK] isEqual:GUI_KEY_OK])
+					if (([gui cxx_keyForRow:MANIFEST_SCREEN_ROW_BACK] == oo::StdString(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:MANIFEST_SCREEN_ROW_BACK];
 						[self playMenuPagePrevious];
@@ -2978,7 +2957,7 @@ static NSTimeInterval	time_last_frame;
 				}
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:nextRow] isEqual:GUI_KEY_OK])
+					if (([gui cxx_keyForRow:nextRow] == oo::StdString(GUI_KEY_OK)))
 					{
 						[gui setSelectedRow:nextRow];
 						[self playMenuPageNext];
@@ -3022,7 +3001,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_SHIPYARD_START] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START].value_or(""), "More:"))
 					{
 						[self playMenuPagePrevious];
 						[gui setSelectedRow:GUI_ROW_SHIPYARD_START];
@@ -3035,7 +3014,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if ((!leftRightKeyPressed)||(script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 				{
-					if ([[gui keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1] hasPrefix:@"More:"])
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1].value_or(""), "More:"))
 					{
 						[self playMenuPageNext];
 						[gui setSelectedRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1];
@@ -3051,21 +3030,21 @@ static NSTimeInterval	time_last_frame;
 				if (!selectPressed)
 				{
 					// try to buy the ship!
-					NSString *key = [gui keyForRow:[gui selectedRow]];
+					const std::optional<std::string> key = [gui cxx_keyForRow:[gui selectedRow]];	// nil compares as ""
 					OOCreditsQuantity shipprice = 0;
-					if (![key hasPrefix:@"More:"])
+					if (!oo::str::hasPrefix(key.value_or(""), "More:"))
 					{
-						shipprice = [self priceForShipKey:key];
+						shipprice = [self priceForShipKey:oo::NSStringOrNil(key)];
 					}
 
 					if ([self buySelectedShip])
 					{
-						if (![key hasPrefix:@"More:"]) // don't do anything if we clicked/selected a "More:" line
+						if (!oo::str::hasPrefix(key.value_or(""), "More:")) // don't do anything if we clicked/selected a "More:" line
 						{
 							[UNIVERSE removeDemoShips];
 							[self setGuiToStatusScreen];
 							[self playBuyShip];
-							[self doScriptEvent:OOJSID("playerBoughtNewShip") withArgument:self andArgument:[NSNumber numberWithUnsignedLongLong:shipprice]]; // some equipment.oxp might want to know everything has changed.
+							[self doScriptEvent:OOJSID("playerBoughtNewShip") withArgument:self andArgument:oo::ObjectFromPList(oo::PList::unsignedInteger(shipprice))]; // some equipment.oxp might want to know everything has changed.
 						}
 					}
 					else
@@ -3081,13 +3060,13 @@ static NSTimeInterval	time_last_frame;
 			}
 			if ([gameView isDown:gvMouseDoubleClick])
 			{
-				if (([gui selectedRow] == GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1) && [[gui keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1] hasPrefix:@"More:"])
+				if (([gui selectedRow] == GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1) && oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1].value_or(""), "More:"))
 				{
 					[self playMenuPageNext];
 					[gui setSelectedRow:GUI_ROW_SHIPYARD_START + MAX_ROWS_SHIPS_FOR_SALE - 1];
 					[self buySelectedShip];
 				}
-				else if (([gui selectedRow] == GUI_ROW_SHIPYARD_START) && [[gui keyForRow:GUI_ROW_SHIPYARD_START] hasPrefix:@"More:"])
+				else if (([gui selectedRow] == GUI_ROW_SHIPYARD_START) && oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SHIPYARD_START].value_or(""), "More:"))
 				{
 					[self playMenuPagePrevious];
 					[gui setSelectedRow:GUI_ROW_SHIPYARD_START];
@@ -3103,18 +3082,19 @@ static NSTimeInterval	time_last_frame;
 	}
 
 	// check for any extra keys added by scripting
-	NSArray *keys = [extraGuiScreenKeys objectForKey:[NSString stringWithFormat:@"%d", gui_screen]];
-	if (keys) {
-		NSInteger kc = [keys count];
+	const auto screenKeys = extraGuiScreenKeys.find(gui_screen);
+	const std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>> keys = (screenKeys != extraGuiScreenKeys.end()) ? screenKeys->second : std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>>();
+	if (!keys.empty()) {
+		std::size_t kc = keys.size();
 		OOJSGuiScreenKeyDefinition *definition = nil;
-		NSDictionary *keydefs = nil;
-		NSString *key = nil;
 		while (kc--) {
-			definition = [keys objectAtIndex:kc];
-			keydefs = oo::ObjectFromPList([definition registerKeys]);
-			foreach (key, [keydefs allKeys])
+			definition = keys[kc].get();
+			const oo::PList keydefs = [definition registerKeys];
+			const oo::PList::Dict *keydefsDict = keydefs.getIf<oo::PList::Dict>();
+			if (keydefsDict == nullptr)  continue;
+			for (const auto &[key, keydef] : *keydefsDict)	// byte order (was -allKeys order)
 			{
-				if ([self checkKeyPress:[keydefs objectForKey:key]]) 
+				if ([self checkKeyPress:keydef]) 
 				{
 					if (!extra_gui_key_pressed) 
 					{
@@ -3122,11 +3102,11 @@ static NSTimeInterval	time_last_frame;
 						if (definition)
 						{
 							[[UNIVERSE gameView] clearKeys];
-							[definition runCallback:key];
+							[definition runCallback:oo::NSStringFrom(key)];
 						}
 						else
 						{
-							OOLog(@"interface.missingCallback", @"Unable to find callback definition for %@ using key %@", [definition name], key);
+							OOLog(@"interface.missingCallback", @"Unable to find callback definition for %@ using key %@", [definition name], oo::NSStringFrom(key));
 						}
 					}
 					extra_gui_key_pressed = YES;
@@ -3180,7 +3160,7 @@ static NSTimeInterval	time_last_frame;
 	{
 		[self handleGUIUpDownArrowKeys];
 		DESTROY(marketSelectedCommodity);
-		marketSelectedCommodity = [[gui selectedRowKey] retain];
+		marketSelectedCommodity = [oo::NSStringOrNil([gui cxx_selectedRowKey]) retain];
 
 		BOOL			page_up = [self checkKeyPress:n_key_gui_page_up]; 
 		BOOL			page_down = [self checkKeyPress:n_key_gui_page_down]; 
@@ -3189,14 +3169,16 @@ static NSTimeInterval	time_last_frame;
 			if ((!pageUpDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				OOCommodityMarket	*localMarket = [self localMarket];
-				NSArray 			*goods = [self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
-				if ([goods count] > 0)
+				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
+				if (goods.size() > 0)
 				{
-					NSInteger goodsIndex = [goods indexOfObject:marketSelectedCommodity];
+					const std::optional<std::string> selected = oo::OptionalString(marketSelectedCommodity);
+					const auto found = selected ? std::find(goods.begin(), goods.end(), *selected) : goods.end();
+					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					NSInteger offset1 = 0;
 					NSInteger offset2 = 0;
-					if ([[gui keyForRow:GUI_ROW_MARKET_START] isEqualToString:@"<<<"] == true) offset1 += 1;
-					if ([[gui keyForRow:GUI_ROW_MARKET_LAST] isEqualToString:@">>>"] == true) offset2 += 1;
+					if ([gui cxx_keyForRow:GUI_ROW_MARKET_START] == "<<<") offset1 += 1;
+					if ([gui cxx_keyForRow:GUI_ROW_MARKET_LAST] == ">>>") offset2 += 1;
 					if (page_up)
 					{
 						[self playMenuPagePrevious];
@@ -3206,22 +3188,22 @@ static NSTimeInterval	time_last_frame;
 							offset1 = 0;
 							offset2 = 0;
 						}
-						if (offset1 == 1 && offset2 == 0 && goodsIndex < (NSInteger)[goods count] - 1 && goodsIndex - 15 > 0) offset2 = 1;
+						if (offset1 == 1 && offset2 == 0 && goodsIndex < (NSInteger)goods.size() - 1 && goodsIndex - 15 > 0) offset2 = 1;
 						goodsIndex -= (16 - (offset1 + offset2));
 						if (goodsIndex < 0) goodsIndex = 0;
-						if ([goods count] <= 17) goodsIndex = 0;
+						if (goods.size() <= 17) goodsIndex = 0;
 					}
 					if (page_down) 
 					{
 						[self playMenuPageNext];
 						// some edge cases
 						if (offset1 == 0 && offset2 == 1 && goodsIndex > 1) offset1 = 1;
-						if (offset2 == 1 && goodsIndex + 15 == (NSInteger)[goods count] - 1) offset2 = 0;
+						if (offset2 == 1 && goodsIndex + 15 == (NSInteger)goods.size() - 1) offset2 = 0;
 						goodsIndex += (16 - (offset1 + offset2));
-						if (goodsIndex > ((NSInteger)[goods count] - 1) || [goods count] <= 17) goodsIndex = (NSInteger)[goods count] - 1;
+						if (goodsIndex > ((NSInteger)goods.size() - 1) || goods.size() <= 17) goodsIndex = (NSInteger)goods.size() - 1;
 					}
 					DESTROY(marketSelectedCommodity);
-					marketSelectedCommodity = [oo::PListView(goods).at<NSString *>(goodsIndex) retain];
+					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? [oo::NSStringFrom(goods[goodsIndex]) retain] : nil;
 					[self setGuiToMarketScreen];
 				}
 			} 
@@ -3242,10 +3224,12 @@ static NSTimeInterval	time_last_frame;
 			if ((!upDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				OOCommodityMarket	*localMarket = [self localMarket];
-				NSArray 			*goods = [self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
-				if ([goods count] > 0)
+				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
+				if (goods.size() > 0)
 				{
-					NSInteger goodsIndex = [goods indexOfObject:marketSelectedCommodity];
+					const std::optional<std::string> selected = oo::OptionalString(marketSelectedCommodity);
+					const auto found = selected ? std::find(goods.begin(), goods.end(), *selected) : goods.end();
+					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					if (arrow_down)
 					{
 						++goodsIndex;
@@ -3256,14 +3240,14 @@ static NSTimeInterval	time_last_frame;
 					}
 					if (goodsIndex < 0)
 					{
-						goodsIndex = [goods count]-1;
+						goodsIndex = (NSInteger)goods.size()-1;
 					}
-					else if (goodsIndex >= (NSInteger)[goods count])
+					else if (goodsIndex >= (NSInteger)goods.size())
 					{
 						goodsIndex = 0;
 					}
 					DESTROY(marketSelectedCommodity);
-					marketSelectedCommodity = [oo::PListView(goods).at<NSString *>(goodsIndex) retain];
+					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? [oo::NSStringFrom(goods[goodsIndex]) retain] : nil;
 					[self setGuiToMarketInfoScreen];
 				}
 			}
@@ -3298,12 +3282,12 @@ static NSTimeInterval	time_last_frame;
 				}
 				else
 				{
-					if ([[gui selectedRowKey] isEqualToString:@">>>"])
+					if (([gui cxx_selectedRowKey] == ">>>"))
 					{
 						[self playMenuNavigationDown];
 						[self setGuiToMarketScreen];
 					}
-					else if ([[gui selectedRowKey] isEqualToString:@"<<<"])
+					else if (([gui cxx_selectedRowKey] == "<<<"))
 					{
 						[self playMenuNavigationUp];
 						[self setGuiToMarketScreen];
@@ -3334,12 +3318,12 @@ static NSTimeInterval	time_last_frame;
 				}
 				else
 				{
-					if ([[gui selectedRowKey] isEqualToString:@">>>"])
+					if (([gui cxx_selectedRowKey] == ">>>"))
 					{
 						[self playMenuNavigationDown];
 						[self setGuiToMarketScreen];
 					}
-					else if ([[gui selectedRowKey] isEqualToString:@"<<<"])
+					else if (([gui cxx_selectedRowKey] == "<<<"))
 					{
 						[self playMenuNavigationUp];
 						[self setGuiToMarketScreen];
@@ -3362,19 +3346,19 @@ static NSTimeInterval	time_last_frame;
 			}
 			if (!wait_for_key_up)
 			{
-				OOCommodityType item = marketSelectedCommodity;
-				OOCargoQuantity yours =	[shipCommodityData quantityForGood:item];
-				if ([item isEqualToString:@">>>"])
+				const std::optional<std::string> item = oo::OptionalString(marketSelectedCommodity);	// Amendment 1 item 10
+				OOCargoQuantity yours =	[shipCommodityData cxx_quantityForGood:item.value_or("")];
+				if (item == ">>>")
 				{
-					[self tryBuyingCommodity:item all:YES];
+					[self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES];
 					[self setGuiToMarketScreen];
 				}
-				else if ([item isEqualToString:@"<<<"])
+				else if (item == "<<<")
 				{
-					[self trySellingCommodity:item all:YES];
+					[self trySellingCommodity:oo::NSStringOrNil(item) all:YES];
 					[self setGuiToMarketScreen];
 				}
-				else if (isdocked && [gameView isShiftDown] && [self tryBuyingCommodity:item all:YES])	// buy as much as possible (with Shift)
+				else if (isdocked && [gameView isShiftDown] && [self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES])	// buy as much as possible (with Shift)
 				{
 					[self playBuyCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3386,7 +3370,7 @@ static NSTimeInterval	time_last_frame;
 						[self setGuiToMarketInfoScreen];
 					}
 				}
-				else if (isdocked && (yours > 0) && [self trySellingCommodity:item all:YES])	// sell all you can
+				else if (isdocked && (yours > 0) && [self trySellingCommodity:oo::NSStringOrNil(item) all:YES])	// sell all you can
 				{
 					[self playSellCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3398,7 +3382,7 @@ static NSTimeInterval	time_last_frame;
 						[self setGuiToMarketInfoScreen];
 					}
 				}
-				else if (isdocked && [self tryBuyingCommodity:item all:YES])			// buy as much as possible
+				else if (isdocked && [self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES])			// buy as much as possible
 				{
 					[self playBuyCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3461,8 +3445,20 @@ static NSTimeInterval	time_last_frame;
 			if (!hdrMaxBrightnessControlPressed)
 			{
 				int			direction = ([self checkKeyPress:n_key_gui_arrow_right]) ? 1 : -1;
-				NSArray		*brightnesses = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"hdr_maxBrightness_array");
-				int			brightnessIdx = [brightnesses indexOfObject:[NSString stringWithFormat:@"%d", (int)[gameView hdrMaxBrightness]]];
+				const oo::PList	brightnessesValue = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"hdr_maxBrightness_array"]);
+				const oo::PList	brightnesses = brightnessesValue.isArray() ? brightnessesValue : oo::PList();
+				// -indexOfObject: with the %d string: only string elements ever matched; not found was NSNotFound narrowed to int
+				const std::string	currentBrightness = std::to_string((int)[gameView hdrMaxBrightness]);
+				int			brightnessIdx = static_cast<int>(NSNotFound);
+				for (std::size_t i = 0; i < brightnesses.count(); i++)
+				{
+					const oo::PList *element = brightnesses.at(i);
+					if (element->isString() && *element->getIf<std::string>() == currentBrightness)
+					{
+						brightnessIdx = static_cast<int>(i);
+						break;
+					}
+				}
 				
 				if (brightnessIdx == NSNotFound)
 				{
@@ -3471,13 +3467,13 @@ static NSTimeInterval	time_last_frame;
 				}
 				
 				brightnessIdx += direction;
-				int count = [brightnesses count];
+				int count = static_cast<int>(brightnesses.count());
 				if (brightnessIdx < 0)
 					brightnessIdx = count - 1;
 				if (brightnessIdx >= count)
 					brightnessIdx = 0;
 				
-				int brightnessValue = oo::PListView(brightnesses).at<int>(brightnessIdx);
+				int brightnessValue = brightnesses.at<int>(static_cast<std::size_t>(brightnessIdx));
 				
 				// warp if the value we got is out of expected limits; can be the case if user has
 				// manually modified the hdr_maxBrightness_array in descriptions.plist
@@ -3485,9 +3481,9 @@ static NSTimeInterval	time_last_frame;
 				if (brightnessValue > MAX_HDR_MAXBRIGHTNESS)  brightnessValue = direction == 1 ? MIN_HDR_MAXBRIGHTNESS : MAX_HDR_MAXBRIGHTNESS;
     				
 				[gameView setHDRMaxBrightness:(float)brightnessValue];
-				NSString *maxBrightnessString = OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue);
+				const std::string maxBrightnessString = oo::StdString(OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue));
 																				
-				[gui setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
 				
 				hdrMaxBrightnessControlPressed = YES;
 			}
@@ -3506,7 +3502,7 @@ static NSTimeInterval	time_last_frame;
 		GameController	*controller = [UNIVERSE gameController];
 		int				direction = ([self checkKeyPress:n_key_gui_arrow_right]) ? 1 : -1;
 		NSInteger		displayModeIndex = [controller indexOfCurrentDisplayMode];
-		NSArray			*modes = [controller displayModes];
+		const oo::PList	modes = oo::PListFrom([controller displayModes]);
 		
 		if (displayModeIndex == (NSInteger)NSNotFound)
 		{
@@ -3515,22 +3511,23 @@ static NSTimeInterval	time_last_frame;
 		}
 		
 		displayModeIndex = displayModeIndex + direction;
-		int count = [modes count];
+		int count = static_cast<int>(modes.count());
 		if (displayModeIndex < 0)
 			displayModeIndex = count - 1;
 		if (displayModeIndex >= count)
 			displayModeIndex = 0;
 		
-		NSDictionary	*mode = [modes objectAtIndex:displayModeIndex];
-		int modeWidth = oo::PListView(mode).get<int>(kOODisplayWidth);
-		int modeHeight = oo::PListView(mode).get<int>(kOODisplayHeight);
-		int modeRefresh = oo::PListView(mode).get<int>(kOODisplayRefreshRate);
+		const oo::PList	*modeEntry = modes.at(static_cast<std::size_t>(displayModeIndex));
+		const oo::PList	mode = (modeEntry != nullptr) ? *modeEntry : oo::PList();
+		int modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
+		int modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
+		int modeRefresh = mode.get<int>(oo::StdString(kOODisplayRefreshRate));
 		[controller setDisplayWidth:modeWidth Height:modeHeight Refresh:modeRefresh];
 
-		NSString *displayModeString = [self screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh];
+		const std::string displayModeString = oo::StdString([self screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh]);
 		
 		[self playChangedOption];
-		[gui setText:displayModeString	forRow:GUI_ROW(GAME,DISPLAY)  align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:displayModeString	forRow:GUI_ROW(GAME,DISPLAY)  align:GUI_ALIGN_CENTER];
 		switching_resolution = YES;
 		
 #if OOLITE_SDL
@@ -3566,25 +3563,25 @@ static NSTimeInterval	time_last_frame;
 			}
 			if (speech_settings_pressed)
 			{
-				NSString *message = nil;
+				std::optional<std::string> message;	// nullopt = no change (was nil)
 				switch (isSpeechOn)
 				{
 				case OOSPEECHSETTINGS_OFF:
-					message = DESC(@"gameoptions-spoken-messages-no");
+					message = oo::StdString(DESC(@"gameoptions-spoken-messages-no"));
 					break;
 				case OOSPEECHSETTINGS_COMMS:
-					message = DESC(@"gameoptions-spoken-messages-comms");
+					message = oo::StdString(DESC(@"gameoptions-spoken-messages-comms"));
 					break;
 				case OOSPEECHSETTINGS_ALL:
-					message = DESC(@"gameoptions-spoken-messages-yes");
+					message = oo::StdString(DESC(@"gameoptions-spoken-messages-yes"));
 					break;
 				}
-				[gui setText:message forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
 
 				if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 				{
 					[UNIVERSE stopSpeaking];
-					[UNIVERSE startSpeakingString:message];
+					[UNIVERSE startSpeakingString:oo::NSStringOrNil(message)];
 				}
 			}
 		}
@@ -3606,9 +3603,9 @@ static NSTimeInterval	time_last_frame;
 				else
 					voice_no = [UNIVERSE prevVoice: voice_no];
 				[UNIVERSE setVoice: voice_no withGenderM:voice_gender_m];
-				NSString *voiceName = [UNIVERSE voiceName:voice_no];
-				NSString *message = OOExpandKey(@"gameoptions-voice-name", voiceName);
-				[gui setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
+				const std::string voiceName = oo::StdString([UNIVERSE voiceName:voice_no]);
+				const std::string message = ExpandKeyWithArguments("gameoptions-voice-name", { { "voiceName", oo::PList(voiceName) } });
+				[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
 				if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 				{
 					[UNIVERSE stopSpeaking];
@@ -3634,8 +3631,8 @@ static NSTimeInterval	time_last_frame;
 				{
 					voice_gender_m = m;
 					[UNIVERSE setVoice:voice_no withGenderM:voice_gender_m];
-					NSString *message = [NSString stringWithFormat:@"%@", DESC(voice_gender_m ? @"gameoptions-voice-M" : @"gameoptions-voice-F")];
-					[gui setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
+					const std::string message = oo::StdString(DESC(voice_gender_m ? @"gameoptions-voice-M" : @"gameoptions-voice-F"));
+					[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
 					if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 					{
 						[UNIVERSE stopSpeaking];
@@ -3667,9 +3664,9 @@ static NSTimeInterval	time_last_frame;
 			if ((int)[musicController mode] != initialMode)
 			{
 				[self playChangedOption];
-				NSString *musicMode = [UNIVERSE descriptionForArrayKey:@"music-mode" index:[[OOMusicController sharedController] mode]];
-				NSString *message = OOExpandKey(@"gameoptions-music-mode", musicMode);
-				[gui setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
+				const std::string musicMode = oo::StdString([UNIVERSE descriptionForArrayKey:@"music-mode" index:[[OOMusicController sharedController] mode]]);
+				const std::string message = ExpandKeyWithArguments("gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
+				[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
 			}
 		}
 		musicModeKeyPressed = YES;
@@ -3685,12 +3682,12 @@ static NSTimeInterval	time_last_frame;
 		{
 			// if just enabled, we want to autosave immediately
 			[UNIVERSE setAutoSaveNow:YES];
-			[gui setText:DESC(@"gameoptions-autosave-yes")	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-autosave-yes"))	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
 		}
 		else
 		{
 			[UNIVERSE setAutoSaveNow:NO];
-			[gui setText:DESC(@"gameoptions-autosave-no")	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-autosave-no"))	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
 		}
 	}
 
@@ -3714,17 +3711,17 @@ static NSTimeInterval	time_last_frame;
 #endif
 			if (vol > 0)
 			{
-				NSString* soundVolumeWordDesc = DESC(@"gameoptions-sound-volume");
-				NSString* v1_string = @"|||||||||||||||||||||||||";
-				NSString* v0_string = @".........................";
-				v1_string = [v1_string substringToIndex:vol];
-				v0_string = [v0_string substringToIndex:20 - vol];
-				[gui setText:[NSString stringWithFormat:@"%@%@%@ ", soundVolumeWordDesc, v1_string, v0_string]
+				const std::string soundVolumeWordDesc = oo::StdString(DESC(@"gameoptions-sound-volume"));
+				std::string v1_string = "|||||||||||||||||||||||||";
+				std::string v0_string = ".........................";
+				v1_string = v1_string.substr(0, static_cast<std::size_t>(vol));
+				v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - vol));
+				[gui cxx_setText:oo::str::format("%s%s%s ", soundVolumeWordDesc.c_str(), v1_string.c_str(), v0_string.c_str())
 					  forRow:GUI_ROW(GAME,VOLUME)
 					   align:GUI_ALIGN_CENTER];
 			}
 			else
-				[gui setText:DESC(@"gameoptions-sound-volume-mute")	forRow:GUI_ROW(GAME,VOLUME)  align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-sound-volume-mute"))	forRow:GUI_ROW(GAME,VOLUME)  align:GUI_ALIGN_CENTER];
 			timeLastKeyPress = script_time;
 		}
 		volumeControlPressed = YES;
@@ -3748,12 +3745,13 @@ static NSTimeInterval	time_last_frame;
 			[gameView setFov:fov fromFraction:NO];
 			fieldOfView = [gameView fov:YES];
 			int fovTicks = (int)((fov - MIN_FOV_DEG) / fovStep);
-			NSString* fovWordDesc = DESC(@"gameoptions-fov-value");
-			NSString* v1_string = @"|||||||||||||||||||||||||";
-			NSString* v0_string = @".........................";
-			v1_string = [v1_string substringToIndex:fovTicks];
-			v0_string = [v0_string substringToIndex:20 - fovTicks];
-			[gui setText:[NSString stringWithFormat:@"%@%@%@ (%d%c) ", fovWordDesc, v1_string, v0_string, (int)fov, 176 /*176 is the degrees symbol ASCII code*/]	forRow:GUI_ROW(GAME,FOV)  align:GUI_ALIGN_CENTER];
+			const std::string fovWordDesc = oo::StdString(DESC(@"gameoptions-fov-value"));
+			std::string v1_string = "|||||||||||||||||||||||||";
+			std::string v0_string = ".........................";
+			v1_string = v1_string.substr(0, static_cast<std::size_t>(fovTicks));
+			v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - fovTicks));
+			// %c 176 gave U+00B0 (probed on GNUstep base with this toolchain); written as its UTF-8 bytes
+			[gui cxx_setText:oo::str::format("%s%s%s (%d%s) ", fovWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/)	forRow:GUI_ROW(GAME,FOV)  align:GUI_ALIGN_CENTER];
 			[[NSUserDefaults standardUserDefaults] setFloat:[gameView fov:NO] forKey:@"fov-value"];
 			timeLastKeyPress = script_time;
 		}
@@ -3778,9 +3776,10 @@ static NSTimeInterval	time_last_frame;
 				[UNIVERSE setCurrentPostFX:[UNIVERSE prevColorblindMode:colorblindMode]];
 			}
 			colorblindMode = [UNIVERSE colorblindMode]; // get the updated value
-			NSString *colorblindModeDesc = oo::PListView(oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"colorblind_mode")).at<NSString *>([UNIVERSE useShaders] ? colorblindMode : 0);
-			NSString *colorblindModeMsg = OOExpandKey(@"gameoptions-colorblind-mode", colorblindModeDesc);
-			[gui setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
+			const oo::PList colorblindModes = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"colorblind_mode"]);
+			const std::string colorblindModeDesc = colorblindModes.isArray() ? colorblindModes.at<std::string>(static_cast<std::size_t>([UNIVERSE useShaders] ? colorblindMode : 0)) : std::string();
+			const std::string colorblindModeMsg = ExpandKeyWithArguments("gameoptions-colorblind-mode", { { "colorblindModeDesc", oo::PList(colorblindModeDesc) } });
+			[gui cxx_setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
 		}
 		colorblindModeControlPressed = YES;
 	}
@@ -3796,9 +3795,9 @@ static NSTimeInterval	time_last_frame;
 				[self playChangedOption];
 			[UNIVERSE setWireframeGraphics:[self checkKeyPress:n_key_gui_arrow_right]];
 			if ([UNIVERSE wireframeGraphics])
-				[gui setText:DESC(@"gameoptions-wireframe-graphics-yes")  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-wireframe-graphics-yes"))  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
 			else
-				[gui setText:DESC(@"gameoptions-wireframe-graphics-no")  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-wireframe-graphics-no"))  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
 		}
 	}
 #if OOLITE_WINDOWS
@@ -3817,12 +3816,12 @@ static NSTimeInterval	time_last_frame;
 				if (paperWhite < MIN_HDR_PAPERWHITE) paperWhite = MIN_HDR_PAPERWHITE;
 				[gameView setHDRPaperWhiteBrightness:paperWhite];
 				int paperWhiteNorm = (int)((paperWhite - MIN_HDR_PAPERWHITE) * 20 / (MAX_HDR_PAPERWHITE - MIN_HDR_PAPERWHITE));
-				NSString* paperWhiteWordDesc = DESC(@"gameoptions-hdr-paperwhite");
-				NSString* v1_string = @"|||||||||||||||||||||||||";
-				NSString* v0_string = @".........................";
-				v1_string = [v1_string substringToIndex:paperWhiteNorm];
-				v0_string = [v0_string substringToIndex:20 - paperWhiteNorm];
-				[gui setText:[NSString stringWithFormat:@"%@%@%@ (%d) ", paperWhiteWordDesc, v1_string, v0_string, (int)paperWhite]	forRow:GUI_ROW(GAME,HDRPAPERWHITE)  align:GUI_ALIGN_CENTER];
+				const std::string paperWhiteWordDesc = oo::StdString(DESC(@"gameoptions-hdr-paperwhite"));
+				std::string v1_string = "|||||||||||||||||||||||||";
+				std::string v0_string = ".........................";
+				v1_string = v1_string.substr(0, static_cast<std::size_t>(paperWhiteNorm));
+				v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - paperWhiteNorm));
+				[gui cxx_setText:oo::str::format("%s%s%s (%d) ", paperWhiteWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)paperWhite)	forRow:GUI_ROW(GAME,HDRPAPERWHITE)  align:GUI_ALIGN_CENTER];
 			}
 			hdrPaperWhiteControlPressed = YES;
 		}
@@ -3844,9 +3843,9 @@ static NSTimeInterval	time_last_frame;
 			}
 		}
 		if ([UNIVERSE doProcedurallyTexturedPlanets])
-			[gui setText:DESC(@"gameoptions-procedurally-textured-planets-yes")  forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-procedurally-textured-planets-yes"))  forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)  align:GUI_ALIGN_CENTER];
 		else
-			[gui setText:DESC(@"gameoptions-procedurally-textured-planets-no")  forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-procedurally-textured-planets-no"))  forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)  align:GUI_ALIGN_CENTER];
 	}
 #endif
 	
@@ -3882,9 +3881,9 @@ static NSTimeInterval	time_last_frame;
 			[UNIVERSE setDetailLevel:detailLevel];
 			detailLevel = [UNIVERSE detailLevel];
 
-			NSString *shaderEffectsOptionsString = OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel);
-			[gui setText:OOExpandKey(shaderEffectsOptionsString) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			const std::string shaderEffectsOptionsString = oo::StdString(OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel));
+			[gui cxx_setText:ExpandKeyWithArguments(shaderEffectsOptionsString.c_str(), {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
 
 			timeLastKeyPress = script_time;
 			
@@ -3912,9 +3911,9 @@ static NSTimeInterval	time_last_frame;
 			[self playChangedOption];
 		[UNIVERSE setDockingClearanceProtocolActive:[self checkKeyPress:n_key_gui_arrow_right]];
 		if ([UNIVERSE dockingClearanceProtocolActive])
-			[gui setText:DESC(@"gameoptions-docking-clearance-yes")  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-docking-clearance-yes"))  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
 		else
-			[gui setText:DESC(@"gameoptions-docking-clearance-no")  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-docking-clearance-no"))  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
 	}
 	
 	if ((guiSelectedRow == GUI_ROW(GAME,BACK)) && selectKeyPress)
@@ -3934,20 +3933,20 @@ static NSTimeInterval	time_last_frame;
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		NSString *key = [gui keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui keyForRow:GUI_ROW_KC_FUNCEND];
+			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCEND];
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui keyForRow:GUI_ROW_KC_FUNCSTART];
+			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCSTART];
 		}
 		int from_function = 0;
-		NSArray *keyComponents = [key componentsSeparatedByString:@":"];
-		if ([keyComponents count] > 1)
+		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
+		if (keyComponents.size() > 1)
 		{
-			from_function = oo::PListView(keyComponents).at<int>(1);
+			from_function = oo::str::intValue(keyComponents[1]);
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToKeyMapperScreen:from_function resetCurrentRow: YES];
@@ -3973,20 +3972,20 @@ static NSTimeInterval	time_last_frame;
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		NSString *key = [gui keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui keyForRow:GUI_ROW_KC_FUNCEND];
+			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCEND];
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui keyForRow:GUI_ROW_KC_FUNCSTART];
+			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCSTART];
 		}
 		int from_function = 0;
-		NSArray *keyComponents = [key componentsSeparatedByString:@":"];
-		if ([keyComponents count] > 1)
+		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
+		if (keyComponents.size() > 1)
 		{
-			from_function = oo::PListView(keyComponents).at<int>(1);
+			from_function = oo::str::intValue(keyComponents[1]);
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToKeyboardLayoutScreen:from_function resetCurrentRow:YES];
@@ -4012,20 +4011,20 @@ static NSTimeInterval	time_last_frame;
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		NSString *key = [gui keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui keyForRow:GUI_ROW_FUNCEND];
+			key = [gui cxx_keyForRow:GUI_ROW_FUNCEND];
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui keyForRow:GUI_ROW_FUNCSTART];
+			key = [gui cxx_keyForRow:GUI_ROW_FUNCSTART];
 		}
 		int from_function = 0;
-		NSArray *keyComponents = [key componentsSeparatedByString:@":"];
-		if ([keyComponents count] > 1)
+		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
+		if (keyComponents.size() > 1)
 		{
-			from_function = oo::PListView(keyComponents).at<int>(1);
+			from_function = oo::str::intValue(keyComponents[1]);
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToStickMapperScreen:from_function resetCurrentRow: YES];
@@ -4060,15 +4059,16 @@ static NSTimeInterval	time_last_frame;
 
 	if ([self checkKeyPress:n_key_custom_view] || joyButtonState[BUTTON_EXTVIEWCYCLE])
 	{
-		if (!customView_pressed && [_customViews count] != 0 && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && ![gameView allowingStringInput])
+		if (!customView_pressed && !_customViews.empty() && gui_screen != GUI_SCREEN_LONG_RANGE_CHART && ![gameView allowingStringInput])
 		{
 			if ([UNIVERSE viewDirection] == VIEW_CUSTOM)	// already in custom view mode
 			{
 				// rotate the custom views
-				_customViewIndex = (_customViewIndex + 1) % [_customViews count];
+				_customViewIndex = (_customViewIndex + 1) % _customViews.size();
 			}
 	
-			[self setCustomViewDataFromDictionary:oo::PListView(_customViews).at<NSDictionary *>(_customViewIndex) withScaling:YES];
+			const oo::PList customView = (_customViewIndex < _customViews.size()) ? _customViews[_customViewIndex] : oo::PList();
+			[self cxx_setCustomViewDataFromDictionary:(customView.isDict() ? customView : oo::PList()) withScaling:YES];	// null unless a Dict
 	
 			[self switchToThisView:VIEW_CUSTOM andProcessWeaponFacing:NO]; // weapon facing must not change, we just want an external view
 		}
@@ -4867,12 +4867,12 @@ static BOOL autopilot_pause;
 	MyOpenGLView			*gameView = [UNIVERSE gameView];
 	GameController			*gameController = [UNIVERSE gameController];
 	const BOOL *joyButtonState = [[OOJoystickManager sharedStickHandler] getAllButtonStates];
-	NSString				*exceptionContext = @"setup";
+	const char				*exceptionContext = "setup";
 	
 	@try
 	{
 		// Pause game, 'p' key
-		exceptionContext = @"pause key";
+		exceptionContext = "pause key";
 		if (([self checkKeyPress:n_key_pausebutton] || joyButtonState[BUTTON_PAUSE]) && (gui_screen != GUI_SCREEN_LONG_RANGE_CHART &&
 				gui_screen != GUI_SCREEN_REPORT &&
 				gui_screen != GUI_SCREEN_SAVE && gui_screen != GUI_SCREEN_KEYBOARD_ENTRY) )
@@ -4888,7 +4888,7 @@ static BOOL autopilot_pause;
 					{
 						[UNIVERSE clearPreviousMessage];	// remove the 'paused' message.
 					}
-					[[UNIVERSE gui] setForegroundTextureKey:@"docked_overlay"];
+					[[UNIVERSE gui] cxx_setForegroundTextureKey:"docked_overlay"];
 					[gameController setGamePaused:NO];
 				}
 				else
@@ -4916,7 +4916,7 @@ static BOOL autopilot_pause;
 		
 		if(pollControls)
 		{
-			exceptionContext = @"undock";
+			exceptionContext = "undock";
 			if ([self checkKeyPress:n_key_launch_ship])
 			{
 				if (EXPECT((gui_screen != GUI_SCREEN_MISSION || _missionAllowInterrupt) && gui_screen != GUI_SCREEN_KEYBOARD_ENTRY))
@@ -4928,7 +4928,7 @@ static BOOL autopilot_pause;
 		
 		//  text displays
 		// mission screens
-		exceptionContext = @"GUI keys";
+		exceptionContext = "GUI keys";
 		if (gui_screen == GUI_SCREEN_MISSION || gui_screen == GUI_SCREEN_KEYBOARD_ENTRY)
 		{
 			[self pollDemoControls: delta_t];	// don't switch away from mission screens
@@ -4942,11 +4942,11 @@ static BOOL autopilot_pause;
 	}
 	@catch (OOException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", exceptionContext, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 	}
 	@catch (OOFoundationException *exception)
 	{
-		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", exceptionContext, [exception name], [exception reason]);
+		OOLog(kOOLogException, @"***** Exception in pollDockedControls [%@]: %@ : %@", oo::NSStringFrom(exceptionContext), [exception name], [exception reason]);
 	}
 }
 
@@ -5286,15 +5286,13 @@ static BOOL autopilot_pause;
 			{
 				[self handleGUIUpDownArrowKeys];
 				NSString *extraKey = @"";
-				if (extraMissionKeys)
 				{
-					NSString *key = nil;
-					foreach (key, [extraMissionKeys allKeys])
+					for (const auto &[key, keydef] : extraMissionKeys)	// byte order (was -allKeys hash order)
 					{
-						if ([self checkKeyPress:oo::PListView(extraMissionKeys).get<NSArray *>(key)]) {
+						if ([self checkKeyPress:keydef]) {
 							if (!extra_key_pressed)
 							{
-								extraKey = [key copy];
+								extraKey = [oo::NSStringFrom(key) copy];
 							}
 							extra_key_pressed = YES;
 						}

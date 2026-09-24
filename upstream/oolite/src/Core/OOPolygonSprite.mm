@@ -450,8 +450,8 @@ void SubmitVertices(GLUtesselator *tesselator, TessPolygonData *polygonData, con
 std::vector<OOPolygonContour> DataArrayToPoints(TessPolygonData *data, const oo::PList &dataArray)
 {
 	/*	This converts an icon definition in the form of an array of array of
-		numbers to internal data in the form of an array of arrays of NSValues
-		containing NSPoint data. In addition to repacking the data, it performs
+		numbers to internal data in the form of a list of contours (lists of
+		NSPoints). In addition to repacking the data, it performs
 		the following data processing:
 		  * Sequences of duplicate vertices are removed (including across the
 		    beginning and end, in case of manually closed contours).

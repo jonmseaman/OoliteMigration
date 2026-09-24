@@ -293,7 +293,7 @@ enum
 	OOSystemID				systemID;
 	OOSystemID				targetSystemID;
 	
-	NSString				*system_names[256];		// hold pregenerated universe info
+	std::optional<std::string>	system_names[256];	// hold pregenerated universe info (nullopt where the name was nil)
 	BOOL					system_found[256];		// holds matches for input strings
 	
 	int						breakPatternCounter;
@@ -687,26 +687,27 @@ enum
 - (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index;	// Indexed item from array; nullopt for none
 - (BOOL) descriptionBooleanForKey:(const std::string &)key;	// Boolean from descriptions.plist, for configuration.
 
-- (NSString *) keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;
-- (NSString *) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g;
-- (NSDictionary *) generateSystemData:(OOSystemID) s;
-- (NSDictionary *) generateSystemData:(OOSystemID) s useCache:(BOOL) useCache;
-- (NSDictionary *) currentSystemData;	// Same as generateSystemData:systemSeed unless in interstellar space.
+- (std::optional<std::string>) cxx_keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;
+- (std::optional<std::string>) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g;
+- (oo::PList) cxx_generateSystemData:(OOSystemID) s;
+- (oo::PList) cxx_generateSystemData:(OOSystemID) s useCache:(BOOL) useCache;
+- (oo::PList) cxx_currentSystemData;	// Same as generateSystemData:systemSeed unless in interstellar space.
 
 - (BOOL) inInterstellarSpace;
 
-- (void) setSystemDataKey:(NSString*) key value:(NSObject*) object fromManifest:(NSString *)manifest;
-- (void) setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(NSString *)key value:(id)object fromManifest:(NSString *)manifest forLayer:(OOSystemLayer)layer;
-- (id) systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(NSString *)key;
-- (NSArray *) systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;
-- (NSString *) getSystemName:(OOSystemID) sys;
-- (NSString *) getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum;
+// value: a script value (an Objective-C object, nil to remove); manifest nullopt where nil was passed.
+- (void) cxx_setSystemDataKey:(const std::string &) key value:(id) object fromManifest:(const std::optional<std::string> &)manifest;
+- (void) cxx_setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key value:(id)object fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer;
+- (id) cxx_systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key;	// a script value
+- (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;	// byte order of the key
+- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys;
+- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum;
 - (OOGovernmentID) getSystemGovernment:(OOSystemID) sys;
-- (NSString *) getSystemInhabitants:(OOSystemID) sys;
-- (NSString *) getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural;
+- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys;
+- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural;
 
 - (NSPoint) coordinatesForSystem:(OOSystemID)s;
-- (OOSystemID) findSystemFromName:(NSString *) sysName;
+- (OOSystemID) cxx_findSystemFromName:(const std::string &) sysName;
 
 /**
  * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
@@ -721,7 +722,7 @@ enum
 - (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix;
 - (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix exactMatch:(BOOL) exactMatch;
 - (BOOL*) systemsFound;
-- (NSString*) systemNameIndex:(OOSystemID) index;
+- (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID) index;
 - (NSDictionary *) routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;
 - (NSArray *) neighboursToSystem:(OOSystemID) system_number;
 

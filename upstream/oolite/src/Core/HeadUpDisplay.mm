@@ -4067,9 +4067,7 @@ static void InitTextEngine(void)
 	sF6KernGovt = fontSpec.get<float>("f6KernGovernment", 1.0);
 	sF6KernTL = fontSpec.get<float>("f6KernTechLevel", 2.0);
 
-	// OOEncodingConverter is not migrated yet (oo-gosz): it gets the font specification as the
-	// dictionary it read before.
-	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:oo::ObjectFromPList(fontSpec)];
+	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:fontSpec];
 	widths = fontSpec.find("widths");	// used only if it is an array, as before
 	count = (widths != nullptr && widths->isArray()) ? widths->count() : 0;
 	if (count > 256)  count = 256;
@@ -4082,15 +4080,13 @@ static void InitTextEngine(void)
 
 namespace {
 
-/*	The display-encoded bytes of text. OOEncodingConverter is not migrated yet (oo-gosz): the text
-	goes to -convertString: through the bridge, and its result comes back as oo::Data (empty where
-	it was nil).
+/*	The display-encoded bytes of text (empty where the conversion failed, or before the font is
+	loaded: a message to nil).
 */
 oo::Data ConvertedString(const std::string &text)
 {
-	const oo::PList converted = oo::PListFrom([sEncodingCoverter convertString:oo::NSStringFrom(text)]);
-	if (const oo::Data *data = converted.getIf<oo::Data>())  return *data;
-	return oo::Data();
+	if (sEncodingCoverter == nil)  return oo::Data();
+	return [sEncodingCoverter convertString:text];
 }
 
 }	// namespace

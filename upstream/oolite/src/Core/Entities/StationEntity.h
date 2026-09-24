@@ -166,7 +166,7 @@ typedef enum
 
 - (Vector) portUpVectorForShip:(ShipEntity *)ship;
 
-- (id) dockingInstructionsForShip:(ShipEntity *)ship;	// shared selector (proposed ADR-0043)
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship;	// null: none (bead oo-3rb.262)
 
 - (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
 

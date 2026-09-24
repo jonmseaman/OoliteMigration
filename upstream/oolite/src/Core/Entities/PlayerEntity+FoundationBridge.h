@@ -28,6 +28,74 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 // oo-3rb.164: marked destinations
 - (NSDictionary *) markedDestinations;	// -> -cxx_markedDestinations
 
+// oo-3rb.243: HUD switching, custom dials and multi-function displays
+- (BOOL) switchHudTo:(NSString *)hudFileName;	// -> -cxx_switchHudTo: (nil: NO)
+- (float) dialCustomFloat:(NSString *)dialKey;	// -> -cxx_dialCustomFloat:
+- (NSString *) dialCustomString:(NSString *)dialKey;	// -> -cxx_dialCustomString:
+- (OOColor *) dialCustomColor:(NSString *)dialKey;	// -> -cxx_dialCustomColor:
+- (void) setDialCustom:(id)value forKey:(NSString *)key;	// -> -cxx_setDialCustom:forKey:
+- (NSArray *) multiFunctionDisplayList;	// -> -cxx_multiFunctionDisplayList (a snapshot, [OONull null] for inactive)
+- (NSString *) multiFunctionText:(NSUInteger) index;	// -> -cxx_multiFunctionText:
+- (void) setMultiFunctionText:(NSString *)text forKey:(NSString *)key;	// -> -cxx_setMultiFunctionText:forKey:
+- (BOOL) setMultiFunctionDisplay:(NSUInteger) index toKey:(NSString *)key;	// -> -cxx_setMultiFunctionDisplay:toKey:
+- (NSString *) dial_clock;	// -> -cxx_dial_clock
+- (NSString *) dial_clock_adjusted;	// -> -cxx_dial_clock_adjusted
+- (NSString *) dial_fpsinfo;	// -> -cxx_dial_fpsinfo
+- (NSString *) dial_objinfo;	// -> -cxx_dial_objinfo
+- (NSString *) compassTargetLabel;	// -> -cxx_compassTargetLabel
+- (NSString *) dialTargetName;	// -> -cxx_dialTargetName
+
+// oo-3rb.244: commander identity, fast equipment, comm log, target memory, wormholes and last shot
+- (NSString *) commanderName;	// -> -cxx_commanderName
+- (void) setCommanderName:(NSString *)value;	// -> -cxx_setCommanderName:
+- (NSString *) lastsaveName;	// -> -cxx_lastsaveName
+- (void) setLastsaveName:(NSString *)value;	// -> -cxx_setLastsaveName:
+- (NSString *) jumpCause;	// -> -cxx_jumpCause
+- (void) setJumpCause:(NSString *)value;	// -> -cxx_setJumpCause:
+- (NSArray *) currentLaserOffset;	// -> -cxx_currentLaserOffset
+- (NSString *) fastEquipmentA;	// -> -cxx_fastEquipmentA
+- (NSString *) fastEquipmentB;	// -> -cxx_fastEquipmentB
+- (void) setFastEquipmentA:(NSString *)eqKey;	// -> -cxx_setFastEquipmentA:
+- (void) setFastEquipmentB:(NSString *)eqKey;	// -> -cxx_setFastEquipmentB:
+- (NSMutableArray *) commLog;	// -> -cxx_commLog (a snapshot: read-only callers)
+- (NSMutableArray *) targetMemory;	// -> -cxx_targetMemory (a snapshot, [OONull null] for empty slots)
+- (NSArray *) scannedWormholes;	// -> -cxx_scannedWormholes
+- (void) setLastShot:(NSArray *)shot;	// -> -cxx_setLastShot:
+
+// oo-3rb.245: custom views, screen background descriptors and script-defined keys
+- (NSDictionary *) keyConfig;	// -> -cxx_keyConfig
+- (NSString *)customViewDescription;	// -> -cxx_customViewDescription
+- (void)setCustomViewDataFromDictionary:(NSDictionary*) viewDict withScaling:(BOOL)withScaling;	// -> -cxx_setCustomViewDataFromDictionary:withScaling:
+- (NSDictionary *) missionOverlayDescriptor;	// -> -cxx_missionOverlayDescriptor
+- (NSDictionary *) missionOverlayDescriptorOrDefault;	// -> -cxx_missionOverlayDescriptorOrDefault
+- (void) setMissionOverlayDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setMissionOverlayDescriptor:
+- (NSDictionary *) missionBackgroundDescriptor;	// -> -cxx_missionBackgroundDescriptor
+- (NSDictionary *) missionBackgroundDescriptorOrDefault;	// -> -cxx_missionBackgroundDescriptorOrDefault
+- (void) setMissionBackgroundDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setMissionBackgroundDescriptor:
+- (void) setMissionBackgroundSpecial:(NSString *)special;	// -> -cxx_setMissionBackgroundSpecial:
+- (void) setExtraMissionKeys:(NSDictionary *)keys;	// -> -cxx_setExtraMissionKeys:
+- (void) clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(NSString *)key;	// -> -cxx_clearExtraGuiScreenKeys:key:
+- (NSDictionary *) equipScreenBackgroundDescriptor;	// -> -cxx_equipScreenBackgroundDescriptor
+- (void) setEquipScreenBackgroundDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setEquipScreenBackgroundDescriptor:
+
+// oo-3rb.246: system data, chart, game options, load/save and equip-ship screens
+- (void) setGuiToEquipShipScreen:(int)skip selectingFacingFor:(NSString *)eqKeyForSelectFacing;	// -> -cxx_setGuiToEquipShipScreen:selectingFacingFor:
+- (void) showInformationForSelectedUpgradeWithFormatString:(NSString *)extraString;	// -> -cxx_showInformationForSelectedUpgradeWithFormatString:
+- (NSString *)screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;	// -> -cxx_screenModeStringForWidth:height:refreshRate:
+
+// oo-3rb.247: market screens, commodity trading and cargo quantities
+- (OOCargoQuantity) cargoQuantityForType:(OOCommodityType)type;	// -> -cxx_cargoQuantityForType:
+- (OOCargoQuantity) setCargoQuantityForType:(OOCommodityType)type amount:(OOCargoQuantity)amount;	// -> -cxx_setCargoQuantityForType:amount:
+- (NSArray *) applyMarketFilter:(NSArray *)goods onMarket:(OOCommodityMarket *)market;	// -> -cxx_applyMarketFilter:onMarket:
+- (NSArray *) applyMarketSorter:(NSArray *)goods onMarket:(OOCommodityMarket *)market;	// -> -cxx_applyMarketSorter:onMarket:
+- (BOOL) tryBuyingCommodity:(OOCommodityType)type all:(BOOL)all;	// -> -cxx_tryBuyingCommodity:all:
+- (BOOL) trySellingCommodity:(OOCommodityType)type all:(BOOL)all;	// -> -cxx_trySellingCommodity:all:
+
+// oo-3rb.248: missiles, pylons, damage, bounty, equipment add/remove and comms
+- (BOOL) assignToActivePylon:(NSString *)identifierKey;	// -> -cxx_assignToActivePylon:
+- (BOOL) mountMissileWithRole:(NSString *)role;	// -> -cxx_mountMissileWithRole:
+- (BOOL) endScenario:(NSString *)key;	// -> -cxx_endScenario: (nil: NO)
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H

@@ -455,9 +455,9 @@ static BOOL sRunningScript = NO;
 		
 		// After all that, actually running the scripts is trivial. (Order: script name, byte
 		// order; it was the hash order of -allValues.)
-		for (const auto &[scriptName, script] : *tickleScripts.getIf<oo::PList::Dict>())
+		for (const auto &[scriptName, tickleScript] : *tickleScripts.getIf<oo::PList::Dict>())
 		{
-			[(OOScript *)oo::ObjectIn(script) runWithTarget:self];
+			[(OOScript *)oo::ObjectIn(tickleScript) runWithTarget:self];
 		}
 	}
 	@catch (OOException *exception)
@@ -2238,10 +2238,10 @@ static int shipsFound;
 // Not declared in the header; called by name (setMissionImage: is whitelisted) (ADR-0043 item 21).
 - (void) setMissionImage:(id)value
 {
-	const std::string name = oo::StdString(value);
-	if (!IsNoneValue(name))
+	const std::string imageName = oo::StdString(value);
+	if (!IsNoneValue(imageName))
  	{
-		[self setMissionOverlayDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
+		[self setMissionOverlayDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(imageName) } }))];
 	}
 	else
 	{
@@ -2254,10 +2254,10 @@ static int shipsFound;
 // called by name (ADR-0043 item 21)
 - (void) setMissionBackground:(id)value
 {
-	const std::string name = oo::StdString(value);
-	if (!IsNoneValue(name))
+	const std::string backgroundName = oo::StdString(value);
+	if (!IsNoneValue(backgroundName))
  	{
-		[self setMissionBackgroundDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
+		[self setMissionBackgroundDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(backgroundName) } }))];
 	}
 	else
 	{
@@ -2379,20 +2379,20 @@ static int shipsFound;
 	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
-	const oo::PList *orientation = dict.find("orientation");
-	if (ScanQuaternionFromString(orientation != nullptr ? oo::ObjectFromPList(*orientation) : nil, &planetOrientation))
+	const oo::PList *orientationValue = dict.find("orientation");
+	if (ScanQuaternionFromString(orientationValue != nullptr ? oo::ObjectFromPList(*orientationValue) : nil, &planetOrientation))
 	{
 		[planet setOrientation:planetOrientation];
 	}
 
-	const oo::PList *position = dict.find("position");
-	if (position == nullptr)
+	const oo::PList *positionValue = dict.find("position");
+	if (positionValue == nullptr)
 	{
 		OO_LOG("script.error.addPlanet.noPosition", "***** ERROR: you must specify a position for scripted planet '{}' before it can be created", oo::DescriptionOf(planetKey));
 		return nil;
 	}
 
-	const std::string positionString = ConditionString(*position).value_or(std::string());
+	const std::string positionString = ConditionString(*positionValue).value_or(std::string());
 	if(oo::str::hasPrefix(positionString, "abs ") && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
 	{
 		OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.","position","planet",oo::DescriptionOf(planetKey));
@@ -2435,20 +2435,20 @@ static int shipsFound;
 	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
-	const oo::PList *orientation = dict.find("orientation");
-	if (ScanQuaternionFromString(orientation != nullptr ? oo::ObjectFromPList(*orientation) : nil, &planetOrientation))
+	const oo::PList *orientationValue = dict.find("orientation");
+	if (ScanQuaternionFromString(orientationValue != nullptr ? oo::ObjectFromPList(*orientationValue) : nil, &planetOrientation))
 	{
 		[planet setOrientation:planetOrientation];
 	}
 
-	const oo::PList *position = dict.find("position");
-	if (position == nullptr)
+	const oo::PList *positionValue = dict.find("position");
+	if (positionValue == nullptr)
 	{
 		OO_LOG("script.error.addPlanet.noPosition", "***** ERROR: you must specify a position for scripted moon '{}' before it can be created", oo::DescriptionOf(moonKey));
 		return nil;
 	}
 
-	const std::string positionString = ConditionString(*position).value_or(std::string());
+	const std::string positionString = ConditionString(*positionValue).value_or(std::string());
 	if(oo::str::hasPrefix(positionString, "abs ") && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
 	{
 		OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.","position","moon",oo::DescriptionOf(moonKey));

@@ -37,6 +37,22 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (NSString *)descriptionForKey:(NSString *)key;	// -> -cxx_descriptionForKey:
 - (NSString *)descriptionForArrayKey:(NSString *)key index:(unsigned)index;	// -> -cxx_descriptionForArrayKey:index:
 
+// Chunk 2 (oo-3rb.221): system data, system names and override keys.
+- (NSString *) keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;	// -> -cxx_keyForPlanetOverridesForSystem:inGalaxy:
+- (NSDictionary *) generateSystemData:(OOSystemID) s;	// -> -cxx_generateSystemData:
+- (NSDictionary *) generateSystemData:(OOSystemID) s useCache:(BOOL) useCache;	// -> -cxx_generateSystemData:useCache:
+- (NSDictionary *) currentSystemData;	// -> -cxx_currentSystemData
+- (void) setSystemDataKey:(NSString*) key value:(NSObject*) object fromManifest:(NSString *)manifest;	// -> -cxx_setSystemDataKey:value:fromManifest:
+- (void) setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(NSString *)key value:(id)object fromManifest:(NSString *)manifest forLayer:(OOSystemLayer)layer;	// -> -cxx_setSystemDataForGalaxy:...
+- (id) systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(NSString *)key;	// -> -cxx_systemDataForGalaxy:planet:key:
+- (NSArray *) systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;	// -> -cxx_systemDataKeysForGalaxy:planet:
+- (NSString *) getSystemName:(OOSystemID) sys;	// -> -cxx_getSystemName:
+- (NSString *) getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum;	// -> -cxx_getSystemName:forGalaxy:
+- (NSString *) getSystemInhabitants:(OOSystemID) sys;	// -> -cxx_getSystemInhabitants:
+- (NSString *) getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural;	// -> -cxx_getSystemInhabitants:plural:
+- (OOSystemID) findSystemFromName:(NSString *) sysName;	// -> -cxx_findSystemFromName:
+- (NSString*) systemNameIndex:(OOSystemID) index;	// -> -cxx_systemNameIndex:
+
 @end
 
 

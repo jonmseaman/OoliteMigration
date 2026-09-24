@@ -228,7 +228,7 @@ void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &v
 }
 
 
-// The dictionary category's -mergeEntriesFromDictionary: (OOExtensions): a key only in other is added;
+// What the retired dictionary category -mergeEntriesFromDictionary: (OOExtensions) did: a key only in other is added;
 // two unequal dictionaries merge recursively, two unequal arrays concatenate; anything else is
 // replaced by other's value.
 void MergeEntries(oo::PList::Dict &self, const oo::PList::Dict &other)
@@ -2294,7 +2294,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 + (BOOL) cxx_writeDiagnosticPList:(id)plist toFileNamed:(const std::string &)name
 {
-	// The old-school writer (oo::writeOldStylePList, the port of OldSchoolPropertyListWriting). Its
+	// The old-school writer (oo::writeOldStylePList, the port of the retired Objective-C old-school plist writer). Its
 	// XML fallback's result was never used, so a plist it cannot write is not written.
 	const auto data = oo::writeOldStylePList(oo::PListFrom(plist));
 	if (!data.has_value())  return NO;

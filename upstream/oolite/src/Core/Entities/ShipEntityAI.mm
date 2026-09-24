@@ -47,6 +47,8 @@
 #import "GameController.h"
 
 #include "ooscript/JSEngine.hpp"
+#import "OOStringBridge.h"
+#include "oofnd/Log.hpp"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 
@@ -617,7 +619,7 @@ using ooscript::Context;
 	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !dockingInstructions.isNull()))
 	{
 		// remember the instructions (the station's weak reference is kept as an Object node)
-		dockingInstructions = oo::PListFrom([station dockingInstructionsForShip:self]);
+		dockingInstructions = [station dockingInstructionsForShip:self];
 		if (!dockingInstructions.isNull())
 		{
 			[self recallDockingInstructions];
@@ -1536,7 +1538,7 @@ using ooscript::Context;
 			return;
 	}
 	
-	NSLog(@"Aegis status for %@ has taken on invalid value %i. This is an internal error, please report it.", self, aegis_status);
+	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::StdString([self description]), (int)aegis_status);
 	aegis_status = AEGIS_NONE;
 	[shipAI message:@"AEGIS_NONE"];
 }

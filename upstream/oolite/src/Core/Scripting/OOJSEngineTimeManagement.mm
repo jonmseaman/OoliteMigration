@@ -895,9 +895,15 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 }
 
 
-- (id) function	// shared selector (proposed ADR-0043)
+- (id) function	// shared selector (Foundation declares -function too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(_function);
+	return oo::NSStringOrNil([self cxx_function]);
+}
+
+
+- (std::optional<std::string>) cxx_function
+{
+	return _function;
 }
 
 

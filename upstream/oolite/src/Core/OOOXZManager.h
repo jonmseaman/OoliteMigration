@@ -33,9 +33,12 @@ MA 02110-1301, USA.
 
 #include "oofnd/PList.hpp"
 
+#include <cstdio>
 #include <optional>
 #include <string>
 #include <vector>
+
+namespace oo::http { class Download; }
 
 typedef enum {
 	OXZ_DOWNLOAD_NONE = 0,
@@ -76,13 +79,13 @@ typedef enum {
 	BOOL				_interfaceShowingOXZDetail;
 	BOOL				_changesMade;
 
-	NSURLConnection		*_currentDownload;
+	oo::http::Download	*_currentDownload;	// oofnd/Http.hpp; owned
 	NSString			*_currentDownloadName;
 
 	OXZDownloadStatus	_downloadStatus;
 	NSUInteger			_downloadProgress;
 	NSUInteger			_downloadExpected;
-	NSFileHandle		*_fileWriter;
+	FILE				*_fileWriter;
 	NSUInteger			_item;
 
 	BOOL				_downloadAllDependencies;
@@ -101,6 +104,12 @@ typedef enum {
 
 - (BOOL) updateManifests;
 - (BOOL) cancelUpdate;
+
+/*	Deliver the current download's callbacks (response, data, finish, failure), in order,
+	on the main thread: GameController's frame loop calls this where it pumps the run loop,
+	which is where NSURLConnection delivered them. Proposed ADR-0044.
+*/
+- (void) processDownloadEvents;
 
 - (oo::PList) manifests;	// an Array, or null before a list is loaded
 - (oo::PList) managedOXZs;	// an Array
