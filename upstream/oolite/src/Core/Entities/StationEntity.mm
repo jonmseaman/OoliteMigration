@@ -2337,7 +2337,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	{		
 		if (oo::IsNSArray(determinant))
 		{
-			return [PLAYER scriptTestConditions:OOSanitizeLegacyScriptConditions(determinant, nil)];
+			return [PLAYER scriptTestConditions:oo::ObjectFromPList(OOSanitizeLegacyScriptConditions(oo::PListFrom(determinant), std::nullopt))];
 		}
 		else
 		{
@@ -2369,12 +2369,13 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 
 	std::vector<oo::PList> *shipyard = [self cxx_localShipyard];
+	const oo::PList::Dict *shipyardRecord = [PLAYER cxx_shipyardRecord];
 		
 	// remove ships that the player has already bought
 	for (i = 0; i < shipyard->size(); i++)
 	{
 		const std::optional<std::string> shipID = OptionalStringValue((*shipyard)[i].find("id"));	// SHIPYARD_KEY_ID
-		if ([[PLAYER shipyardRecord] objectForKey:oo::NSStringOrNil(shipID)])
+		if (shipID && shipyardRecord != nullptr && shipyardRecord->contains(*shipID))
 		{
 			shipyard->erase(shipyard->begin() + i--);
 		}
