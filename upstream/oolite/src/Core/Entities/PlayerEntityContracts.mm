@@ -1083,16 +1083,16 @@ for (unsigned i=0;i<amount;i++)
 
 	current_cargo = [self cargoQuantityOnBoard];
 
-	// roleWeightFlags is still a Foundation ivar (oo-3rb.75): its entry converted at the call, a signed integer as +numberWithInt:
+	// roleWeightFlags entries are signed integers, as +numberWithInt: was
 	if ([shipCommodityData cxx_exportLegalityForGood:type] > 0)
 	{
 		[self addRoleToPlayer:@"trader-smuggler"];
-		[roleWeightFlags setObject:oo::ObjectFromPList(oo::PList::signedInteger(1)) forKey:@"bought-illegal"];
+		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));
 	}
 	else
 	{
 		[self addRoleToPlayer:@"trader"];
-		[roleWeightFlags setObject:oo::ObjectFromPList(oo::PList::signedInteger(1)) forKey:@"bought-legal"];
+		roleWeightFlags.insert_or_assign("bought-legal", oo::PList::signedInteger(1));
 	}
 
 	contracts.push_back(cargo_info);
