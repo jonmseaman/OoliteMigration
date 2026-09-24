@@ -160,6 +160,45 @@ NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
 	return [self cxx_fireMissileWithIdentifier:oo::OptionalString(identifier) andTarget:target];
 }
 
+
+// oo-3rb.235: cargo API and commodities
+
+- (void) setCommodity:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount
+{
+	if (co_type != nil)  [self cxx_setCommodity:oo::StdString(co_type) andAmount:co_amount];	// nil: no change, as before
+}
+
+
+- (void) setCommodityForPod:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount
+{
+	[self cxx_setCommodityForPod:oo::OptionalString(co_type) andAmount:co_amount];
+}
+
+
+- (OOCommodityType) commodityType
+{
+	return oo::NSStringOrNil([self cxx_commodityType]);
+}
+
+
+- (BOOL) addCargo:(NSArray *) some_cargo
+{
+	return [self cxx_addCargo:oo::ObjCRefsFrom<ShipEntity *>(some_cargo)];
+}
+
+
+- (BOOL) removeCargo:(OOCommodityType)commodity amount:(OOCargoQuantity) amount
+{
+	// nil matched no pod (-isEqualToString:nil); "" matches none either (a commodity key is never empty).
+	return [self cxx_removeCargo:oo::StdString(commodity) amount:amount];
+}
+
+
+- (ShipEntity *) dumpCargoItem:(OOCommodityType)preferred
+{
+	return [self cxx_dumpCargoItem:oo::OptionalString(preferred)];
+}
+
 @end
 
 
