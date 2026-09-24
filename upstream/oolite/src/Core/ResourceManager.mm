@@ -228,7 +228,7 @@ void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &v
 }
 
 
-// The dictionary category's -mergeEntriesFromDictionary: (OOExtensions): a key only in other is added;
+// What the retired dictionary category -mergeEntriesFromDictionary: (OOExtensions) did: a key only in other is added;
 // two unequal dictionaries merge recursively, two unequal arrays concatenate; anything else is
 // replaced by other's value.
 void MergeEntries(oo::PList::Dict &self, const oo::PList::Dict &other)
