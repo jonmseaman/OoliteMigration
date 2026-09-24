@@ -26,6 +26,12 @@ Copyright (C) 2008-2013 Jens Ayton and contributors (OOEquipmentType.h)
 
 @interface OOEquipmentType (OOFoundationBridge)
 
++ (void) addEquipmentWithInfo:(NSArray *)itemInfo;	// -> +cxx_addEquipmentWithInfo:
++ (NSArray *) allEquipmentTypes;					// -> +cxx_allEquipmentTypes
++ (NSEnumerator *) equipmentEnumerator;				// no twin: range-for over +cxx_allEquipmentTypes
++ (NSEnumerator *) reverseEquipmentEnumerator;		// no twin: reverse range-for over +cxx_allEquipmentTypes
++ (NSEnumerator *) equipmentEnumeratorOutfitting;	// no twin: range-for over +cxx_allEquipmentTypesOutfitting
+
 + (NSString *) getMissileRegistryRoleForShip:(NSString *)shipKey;				// -> +cxx_getMissileRegistryRoleForShip:
 + (void) setMissileRegistryRole:(NSString *)roles forShip:(NSString *)shipKey;	// -> +cxx_setMissileRegistryRole:forShip:
 

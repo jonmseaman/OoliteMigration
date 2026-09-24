@@ -91,15 +91,13 @@ SOFTWARE.
 }
 
 + (void) loadEquipment;			// Load equipment data; called on loading and when changing to/from strict mode.
-+ (void) addEquipmentWithInfo:(NSArray *)itemInfo;	// Used to generate equipment from missile_role entries.
++ (void) cxx_addEquipmentWithInfo:(const oo::PList &)itemInfo;	// Used to generate equipment from missile_role entries.
 
 + (std::optional<std::string>) cxx_getMissileRegistryRoleForShip:(const std::string &)shipKey;	// nullopt: none registered
 + (void) cxx_setMissileRegistryRole:(const std::string &)role forShip:(const std::string &)shipKey;
 
-+ (NSArray *) allEquipmentTypes;
-+ (NSEnumerator *) equipmentEnumerator;
-+ (NSEnumerator *) reverseEquipmentEnumerator;
-+ (NSEnumerator *) equipmentEnumeratorOutfitting;
++ (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_allEquipmentTypes;			// a snapshot, in equipment.plist order
++ (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_allEquipmentTypesOutfitting;	// the outfitting dataset
 
 + (OOEquipmentType *) cxx_equipmentTypeWithIdentifier:(const std::string &)identifier;	// nil: none
 
