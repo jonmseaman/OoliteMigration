@@ -90,10 +90,11 @@ MA 02110-1301, USA.
 	const float attenuation = 1.0f;
 #endif
 	
-	NSUInteger i, count = [collidingEntities count];
+	const std::vector<oo::ObjCRef<Entity *>> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
+	NSUInteger i, count = colliding.size();
 	for (i = 0; i < count; i++)
 	{
-		Entity *e = (Entity *)[collidingEntities objectAtIndex:i];
+		Entity *e = colliding[i].get();
 		if ([e rootShipEntity] != [self owner])
 		{
 			// we're going to force the weapon id to be a phantom equipment key so there is something for 

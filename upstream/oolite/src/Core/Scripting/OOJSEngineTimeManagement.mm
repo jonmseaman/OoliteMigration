@@ -831,7 +831,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 			ooscript::StackFrame frame = NULL;
 			if (ooscript::frameIterator(context, &frame) != NULL)
 			{
-				location = oo::OptionalString(OOJSDescribeLocation(context, frame));
+				location = OOJSDescribeLocation(context, frame);
 			}
 		}
 		
