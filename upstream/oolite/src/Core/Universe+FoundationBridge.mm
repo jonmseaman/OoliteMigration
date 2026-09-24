@@ -412,6 +412,77 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return [self cxx_locationByCode:oo::StdString(code) withSun:sun andPlanet:planet];
 }
 
+
+// Chunk 7 (oo-3rb.226). A nil commodity or key found nothing, as the old methods did.
+
+- (OOCargoQuantity) maxCargoForShip:(NSString *) desc
+{
+	return [self cxx_maxCargoForShip:oo::StdString(desc)];
+}
+
+
+- (OOCreditsQuantity) getEquipmentPriceForKey:(NSString *) eq_key
+{
+	if (eq_key == nil)  return 0;
+	return [self cxx_getEquipmentPriceForKey:oo::StdString(eq_key)];
+}
+
+
+- (NSArray *) getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal
+{
+	return oo::NSArrayFromObjects([self cxx_getContainersOfGoods:how_many scarce:scarce legal:legal]);
+}
+
+
+- (NSArray *) getContainersOfCommodity:(OOCommodityType) commodity_name :(OOCargoQuantity) how_many
+{
+	return oo::NSArrayFromObjects([self cxx_getContainersOfCommodity:oo::StdString(commodity_name) :how_many]);
+}
+
+
+- (OOCargoQuantity) getRandomAmountOfCommodity:(OOCommodityType) co_type
+{
+	if (co_type == nil)  return 0;
+	return [self cxx_getRandomAmountOfCommodity:oo::StdString(co_type)];
+}
+
+
+- (NSString *) displayNameForCommodity:(OOCommodityType)co_type
+{
+	return oo::NSStringOrNil([self cxx_displayNameForCommodity:oo::StdString(co_type)]);
+}
+
+
+- (NSString *) describeCommodity:(OOCommodityType)co_type amount:(OOCargoQuantity) co_amount
+{
+	return oo::NSStringOrNil([self cxx_describeCommodity:oo::StdString(co_type) amount:co_amount]);
+}
+
+
+- (NSArray *) equipmentData
+{
+	return oo::ObjectFromPList([self cxx_equipmentData]);
+}
+
+
+- (NSArray *) equipmentDataOutfitting
+{
+	return oo::ObjectFromPList([self cxx_equipmentDataOutfitting]);
+}
+
+
+- (void) loadStationMarkets:(NSArray *)marketData
+{
+	[self cxx_loadStationMarkets:oo::PListFrom(marketData)];
+}
+
+
+// An array of dictionaries, as the old method built it (not mutable: the savegame writer only reads it).
+- (NSArray *) getStationMarkets
+{
+	return oo::ObjectFromPList([self cxx_getStationMarkets]);
+}
+
 @end
 
 

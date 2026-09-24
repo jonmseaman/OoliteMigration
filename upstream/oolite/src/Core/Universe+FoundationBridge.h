@@ -98,6 +98,19 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (void) setPopulatorSetting:(NSString *)key to:(NSDictionary *)setting;	// -> -cxx_setPopulatorSetting:to:
 - (HPVector) locationByCode:(NSString *)code withSun:(OOSunEntity *)sun andPlanet:(OOPlanetEntity *)planet;	// -> -cxx_locationByCode:withSun:andPlanet:
 
+// Chunk 7 (oo-3rb.226): commodities, cargo pods, equipment data, station markets.
+- (OOCargoQuantity) maxCargoForShip:(NSString *) desc;	// -> -cxx_maxCargoForShip:
+- (OOCreditsQuantity) getEquipmentPriceForKey:(NSString *) eq_key;	// -> -cxx_getEquipmentPriceForKey:
+- (NSArray *) getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;	// -> -cxx_getContainersOfGoods:scarce:legal:
+- (NSArray *) getContainersOfCommodity:(OOCommodityType) commodity_name :(OOCargoQuantity) how_many;	// -> -cxx_getContainersOfCommodity::
+- (OOCargoQuantity) getRandomAmountOfCommodity:(OOCommodityType) co_type;	// -> -cxx_getRandomAmountOfCommodity:
+- (NSString *) displayNameForCommodity:(OOCommodityType)co_type;	// -> -cxx_displayNameForCommodity:
+- (NSString *) describeCommodity:(OOCommodityType)co_type amount:(OOCargoQuantity) co_amount;	// -> -cxx_describeCommodity:amount:
+- (NSArray *) equipmentData;	// -> -cxx_equipmentData (a fresh immutable copy per call; OOEquipmentType reads it at load)
+- (NSArray *) equipmentDataOutfitting;	// -> -cxx_equipmentDataOutfitting
+- (void) loadStationMarkets:(NSArray *)marketData;	// -> -cxx_loadStationMarkets:
+- (NSArray *) getStationMarkets;	// -> -cxx_getStationMarkets
+
 @end
 
 

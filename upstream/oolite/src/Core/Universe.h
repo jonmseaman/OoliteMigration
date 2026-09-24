@@ -282,15 +282,15 @@ enum
 	NSDictionary			*globalSettings;		// miscellaneous global game settings
 	OOSystemDescriptionManager	*systemManager; // planetinfo data manager
 	oo::PList				missiontext;			// holds descriptive text for missions, loaded at initialisation
-	NSArray					*equipmentData;			// holds data on available equipment, loaded at initialisation
-	NSArray					*equipmentDataOutfitting;
+	oo::PList				equipmentData;			// holds data on available equipment, loaded at initialisation (an array)
+	oo::PList				equipmentDataOutfitting;
 //	NSSet					*pirateVictimRoles;		// Roles listed in pirateVictimRoles.plist.
 	oo::PList				roleCategories;			// Categories for roles from role-categories.plist, extending the old pirate-victim-roles.plist (category -> array of roles)
 	oo::PList				autoAIMap;				// Default AIs for roles from autoAImap.plist.
 	NSDictionary			*screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
 	oo::PList				explosionSettings;		// explosion settings from explosions.plist
 
-	NSDictionary      *cargoPods; // template cargo pods
+	std::map<std::string, oo::ObjCRef<ShipEntity *>, std::less<>>	cargoPods; // template cargo pods, by commodity key
 
 	OOGalaxyID				galaxyID;
 	OOSystemID				systemID;
@@ -531,24 +531,24 @@ enum
 
 - (std::optional<std::string>) defaultAIForRole:(const std::string &)role;		// autoAImap.plist lookup
 
-- (OOCargoQuantity) maxCargoForShip:(NSString *) desc;
+- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc;
 
-- (OOCreditsQuantity) getEquipmentPriceForKey:(NSString *) eq_key;
+- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &) eq_key;
 
 - (OOCommodities *) commodities;
 
 - (ShipEntity *) reifyCargoPod:(ShipEntity *)cargoObj;
 - (ShipEntity *) cargoPodFromTemplate:(ShipEntity *)cargoObj;
-- (NSArray *) getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
-- (NSArray *) getContainersOfCommodity:(OOCommodityType) commodity_name :(OOCargoQuantity) how_many;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &) commodity_name :(OOCargoQuantity) how_many;
 - (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod;
 
-- (NSString *) getRandomCommodity;
-- (OOCargoQuantity) getRandomAmountOfCommodity:(OOCommodityType) co_type;
+- (id) getRandomCommodity;	// shared selector (proposed ADR-0043): an Objective-C string (a commodity key)
+- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &) co_type;
 
-- (NSDictionary *) commodityDataForType:(OOCommodityType)type;
-- (NSString *) displayNameForCommodity:(OOCommodityType)co_type;
-- (NSString *) describeCommodity:(OOCommodityType)co_type amount:(OOCargoQuantity) co_amount;
+- (oo::PList) commodityDataForType:(const std::string &)type;	// null: no such good
+- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type;
+- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity) co_amount;
 
 - (void) setGameView:(MyOpenGLView *)view;
 - (MyOpenGLView *) gameView;
@@ -735,16 +735,16 @@ enum
 
 - (NSDictionary *) globalSettings;
 
-- (NSArray *) equipmentData;
-- (NSArray *) equipmentDataOutfitting;
+- (oo::PList) cxx_equipmentData;
+- (oo::PList) cxx_equipmentDataOutfitting;
 - (OOCommodityMarket *) commodityMarket;
 - (Random_Seed) marketSeed;
 
 - (std::optional<std::string>) timeDescription:(OOTimeDelta) interval;
 - (std::optional<std::string>) cxx_shortTimeDescription:(OOTimeDelta) interval;
 
-- (void) loadStationMarkets:(NSArray *)marketData;
-- (NSArray *) getStationMarkets;
+- (void) cxx_loadStationMarkets:(const oo::PList &)marketData;	// null: nothing to load
+- (oo::PList) cxx_getStationMarkets;	// [{market, position}, ...] as saved in the savegame
 
 - (NSArray *) shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;
 
@@ -865,8 +865,6 @@ OOINLINE Universe *OOGetUniverse(void)
 #define DESC_PLURAL(key,count)	(OOLookUpPluralDescriptionPRIV(key "", count))
 
 // Not for direct use.
-NSComparisonResult equipmentSort(id a, id b, void *context);
-NSComparisonResult equipmentSortOutfitting(id a, id b, void *context);
 // The lookups behind DESC() / DESC_PLURAL(): the description, or the key itself when there is none.
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key);
 std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count);

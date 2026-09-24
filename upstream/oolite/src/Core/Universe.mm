@@ -895,8 +895,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[customSounds release];
 	[globalSettings release];
 	[systemManager release];
-	[equipmentData release];
-	[equipmentDataOutfitting release];
 	[demo_ships release];
 	[screenBackgrounds release];
 	[gameView release];
@@ -906,7 +904,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[activeWormholes release];				
 	[characterPool release];
 	[universeRegion release];
-	[cargoPods release];
 
 	DESTROY(_firstBeacon);
 	DESTROY(_lastBeacon);
@@ -4256,24 +4253,26 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (OOCargoQuantity) maxCargoForShip:(NSString *) desc
+- (OOCargoQuantity) cxx_maxCargoForShip:(const std::string &) desc
 {
-	return oo::PListView([[OOShipRegistry sharedRegistry] shipInfoForKey:desc]).get<unsigned int>(@"max_cargo", 0);
+	return [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:desc].get<unsigned int>("max_cargo", 0);
 }
 
 /*
  * Price for an item expressed in 10ths of credits (divide by 10 to get credits)
  */
-- (OOCreditsQuantity) getEquipmentPriceForKey:(NSString *)eq_key
+- (OOCreditsQuantity) cxx_getEquipmentPriceForKey:(const std::string &)eq_key
 {
-	NSArray *itemData;
-	foreach (itemData, equipmentData)
+	if (const oo::PList::Array *items = equipmentData.getIf<oo::PList::Array>())
 	{
-		NSString *itemType = oo::PListView(itemData).at<NSString *>(EQUIPMENT_KEY_INDEX);
-		
-		if ([itemType isEqual:eq_key])
+		for (const oo::PList &itemData : *items)
 		{
-			return oo::PListView(itemData).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+			std::optional<std::string> itemType = OptionalStringAt(itemData, EQUIPMENT_KEY_INDEX);
+
+			if (itemType.has_value() && *itemType == eq_key)
+			{
+				return itemData.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+			}
 		}
 	}
 	return 0;
@@ -4304,38 +4303,38 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 {
 	ShipEntity *container = nil;
 	// this is a template container, so we need to make a real one
-	OOCommodityType co_type = [cargoObj commodityType];
-	OOCargoQuantity co_amount = [UNIVERSE getRandomAmountOfCommodity:co_type];
+	const std::optional<std::string> co_type = oo::OptionalString([cargoObj commodityType]);
+	OOCargoQuantity co_amount = co_type.has_value() ? [UNIVERSE cxx_getRandomAmountOfCommodity:*co_type] : 0;
 	if (randf() < 0.5) // stops OXP monopolising pods for commodities
 	{
-		container = [UNIVERSE newShipWithRole:co_type]; // newShipWithRole returns retained object
+		container = co_type.has_value() ? [UNIVERSE cxx_newShipWithRole:*co_type] : nil; // newShipWithRole returns retained object
 	}
 	if (container == nil)
 	{
-		container = [UNIVERSE newShipWithRole:@"cargopod"]; 
+		container = [UNIVERSE cxx_newShipWithRole:"cargopod"];
 	}
-	[container setCommodity:co_type andAmount:co_amount];
+	[container setCommodity:oo::NSStringOrNil(co_type) andAmount:co_amount];
 	return [container autorelease];
 }
 
 
-- (NSArray *) getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfGoods:(OOCargoQuantity)how_many scarce:(BOOL)scarce legal:(BOOL)legal
 {
 	/*	build list of goods allocating 0..100 for each based on how much of
 		each quantity there is. Use a ratio of n x 100/64 for plentiful goods;
 		reverse the probabilities for scarce goods.
 	*/
-	NSMutableArray  *accumulator = [NSMutableArray arrayWithCapacity:how_many];
+	std::vector<oo::ObjCRef<ShipEntity *>>	accumulator;
+	accumulator.reserve(how_many);
 	NSUInteger		i=0, commodityCount = [commodityMarket count];
 	OOCargoQuantity quantities[commodityCount];
 	OOCargoQuantity total_quantity = 0;
 
-	NSArray			*goodsKeys = [commodityMarket goods];
-	NSString		*goodsKey = nil;
+	const std::vector<std::string>	goodsKeys = oo::StringsFrom([commodityMarket goods]);	// -goods is shared: an array of the keys
 
-	foreach (goodsKey, goodsKeys)
+	for (const std::string &goodsKey : goodsKeys)
 	{
-		OOCargoQuantity q = [commodityMarket quantityForGood:goodsKey];
+		OOCargoQuantity q = [commodityMarket cxx_quantityForGood:goodsKey];
 		if (scarce)
 		{
 			if (q < 64)  q = 64 - q;
@@ -4343,7 +4342,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		// legal YES restricts (almost) only to legal goods
 		// legal NO allows illegal goods, but not necessarily a full hold
-		if (legal && [commodityMarket exportLegalityForGood:goodsKey] > 0)
+		if (legal && [commodityMarket cxx_exportLegalityForGood:goodsKey] > 0)
 		{
 			q &= 1; // keep a very small chance, sometimes
 		}
@@ -4370,76 +4369,81 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			co_type--;
 		}
 
-		ShipEntity *container = [cargoPods objectForKey:oo::PListView(goodsKeys).at<NSString *>(co_type)];
-		
+		const std::optional<std::string> goodsKey = (co_type < goodsKeys.size()) ? std::optional<std::string>(goodsKeys[co_type]) : std::nullopt;
+		ShipEntity *container = nil;
+		if (goodsKey.has_value())
+		{
+			const auto pod = cargoPods.find(*goodsKey);
+			if (pod != cargoPods.end())  container = pod->second.get();
+		}
+
 		if (container != nil)
 		{
-			[accumulator addObject:container];
+			accumulator.push_back(oo::ObjCRef<ShipEntity *>(container));
 		}
 		else
 		{
-			OOLog(@"universe.createContainer.failed", @"***** ERROR: failed to find a container to fill with %@ (%zu).", oo::PListView(goodsKeys).at<NSString *>(co_type), co_type);
+			OOLog(@"universe.createContainer.failed", @"***** ERROR: failed to find a container to fill with %@ (%zu).", oo::NSStringOrNil(goodsKey), co_type);
 
 		}
 	}
-	return [NSArray arrayWithArray:accumulator];	
+	return accumulator;
 }
 
 
-- (NSArray *) getContainersOfCommodity:(OOCommodityType)commodity_name :(OOCargoQuantity)how_much
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_getContainersOfCommodity:(const std::string &)commodity_name :(OOCargoQuantity)how_much
 {
-	NSMutableArray	*accumulator = [NSMutableArray arrayWithCapacity:how_much];
-	if (![commodities goodDefined:commodity_name])  
+	std::vector<oo::ObjCRef<ShipEntity *>>	accumulator;
+	accumulator.reserve(how_much);
+	if (![commodities goodDefined:oo::NSStringFrom(commodity_name)])	// OOCommodities is not migrated yet
 	{
-		return [NSArray array]; // empty array
+		return accumulator; // empty array
 	}
-	
-	ShipEntity *container = [cargoPods objectForKey:commodity_name];
+
+	ShipEntity *container = nil;
+	const auto pod = cargoPods.find(commodity_name);
+	if (pod != cargoPods.end())  container = pod->second.get();
 	while (how_much > 0)
 	{
 		if (container)
 		{
-			[accumulator addObject:container];
+			accumulator.push_back(oo::ObjCRef<ShipEntity *>(container));
 		}
 		else
 		{
-			OOLog(@"universe.createContainer.failed", @"***** ERROR: failed to find a container to fill with %@", commodity_name);
+			OOLog(@"universe.createContainer.failed", @"***** ERROR: failed to find a container to fill with %@", oo::NSStringFrom(commodity_name));
 		}
 
 		how_much--;
 	}
-	return [NSArray arrayWithArray:accumulator];	
+	return accumulator;
 }
 
 
 - (void) fillCargopodWithRandomCargo:(ShipEntity *)cargopod
 {
 	if (cargopod == nil || ![cargopod hasRole:@"cargopod"] || [cargopod cargoType] == CARGO_SCRIPTED_ITEM)  return;
-	
+
 	if ([cargopod commodityType] == nil || ![cargopod commodityAmount])
 	{
-		NSString *aCommodity = [self getRandomCommodity];
-		OOCargoQuantity aQuantity = [self getRandomAmountOfCommodity:aCommodity];
-		[cargopod setCommodity:aCommodity andAmount:aQuantity];		
+		const std::optional<std::string> aCommodity = oo::OptionalString([self getRandomCommodity]);
+		OOCargoQuantity aQuantity = aCommodity.has_value() ? [self cxx_getRandomAmountOfCommodity:*aCommodity] : 0;
+		[cargopod setCommodity:oo::NSStringOrNil(aCommodity) andAmount:aQuantity];
 	}
 }
 
 
-- (NSString *) getRandomCommodity
+- (id) getRandomCommodity	// shared selector (proposed ADR-0043)
 {
 	return [commodities getRandomCommodity];
 }
 
 
-- (OOCargoQuantity) getRandomAmountOfCommodity:(OOCommodityType)co_type
+- (OOCargoQuantity) cxx_getRandomAmountOfCommodity:(const std::string &)co_type
 {
 	OOMassUnit		units;
-	
-	if (co_type == nil)  {
-		return 0;
-	}
-	
-	units = [commodities massUnitForGood:co_type];
+
+	units = [commodities massUnitForGood:oo::NSStringFrom(co_type)];	// OOCommodities is not migrated yet
 	switch (units)
 	{
 		case 0 :	// TONNES
@@ -4451,45 +4455,46 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		case UNITS_UNKNOWN :	// not a unit (ADR-0036): warned about below, as any other value was
 			break;
 	}
-	OOLog(@"universe.commodityAmount.warning",@"Commodity %@ has an unrecognised mass unit, assuming tonnes",co_type);
+	OOLog(@"universe.commodityAmount.warning",@"Commodity %@ has an unrecognised mass unit, assuming tonnes",oo::NSStringFrom(co_type));
 	return 1;
 }
 
 
-- (NSDictionary *)commodityDataForType:(OOCommodityType)type
+- (oo::PList) commodityDataForType:(const std::string &)type
 {
-	return [commodityMarket definitionForGood:type];
+	return [commodityMarket cxx_definitionForGood:type];
 }
 
 
-- (NSString *) displayNameForCommodity:(OOCommodityType)co_type
+- (std::optional<std::string>) cxx_displayNameForCommodity:(const std::string &)co_type
 {
-	return [commodityMarket nameForGood:co_type];
+	return [commodityMarket cxx_nameForGood:co_type];
 }
 
 
-- (NSString *) describeCommodity:(OOCommodityType)co_type amount:(OOCargoQuantity)co_amount
+- (std::optional<std::string>) cxx_describeCommodity:(const std::string &)co_type amount:(OOCargoQuantity)co_amount
 {
 	int				units;
-	NSString		*unitDesc = nil, *typeDesc = nil;
-	NSDictionary	*commodity = [self commodityDataForType:co_type];
-	
-	if (commodity == nil) return @"";
-	
-	units = [commodityMarket massUnitForGood:co_type];
+	std::string		unitDesc;
+	std::optional<std::string>	typeDesc;
+	const oo::PList	commodity = [self commodityDataForType:co_type];
+
+	if (commodity.isNull()) return std::string();
+
+	units = [commodityMarket massUnitForGood:oo::NSStringFrom(co_type)];	// shared: an Objective-C string
 	if (co_amount == 1)
 	{
 		switch (units)
 		{
 			case UNITS_KILOGRAMS :	// KILOGRAM
-				unitDesc = DESC(@"cargo-kilogram");
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-kilogram");
 				break;
 			case UNITS_GRAMS :	// GRAM
-				unitDesc = DESC(@"cargo-gram");
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-gram");
 				break;
 			case UNITS_TONS :	// TONNE
 			default :
-				unitDesc = DESC(@"cargo-ton");
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-ton");
 				break;
 		}
 	}
@@ -4498,21 +4503,21 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		switch (units)
 		{
 			case UNITS_KILOGRAMS :	// KILOGRAMS
-				unitDesc = DESC(@"cargo-kilograms");
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-kilograms");
 				break;
 			case UNITS_GRAMS :	// GRAMS
-				unitDesc = DESC(@"cargo-grams");
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-grams");
 				break;
 			case UNITS_TONS :	// TONNES
 			default :
-				unitDesc = DESC(@"cargo-tons");
+				unitDesc = cxx_OOLookUpDescriptionPRIV("cargo-tons");
 				break;
 		}
 	}
-	
-	typeDesc = [commodityMarket nameForGood:co_type];
-	
-	return [NSString stringWithFormat:@"%d %@ %@",co_amount, unitDesc, typeDesc];
+
+	typeDesc = [commodityMarket cxx_nameForGood:co_type];
+
+	return oo::str::format("%d %s %s",co_amount, unitDesc.c_str(), TextOrNull(typeDesc).c_str());
 }
 
 ////////////////////////////////////////////////////
@@ -8140,6 +8145,64 @@ std::string TextOrNull(const std::optional<std::string> &text)
 }
 
 
+// An equipment entry's extra-info dictionary: the dictionary, or nullptr where the old read gave nil.
+const oo::PList *EquipmentExtraInfo(const oo::PList &item)
+{
+	return item.at<oo::PList::Dict>(EQUIPMENT_EXTRA_INFO_INDEX);
+}
+
+
+// -[nil oo_unsignedLongLongForKey:defaultValue:] was 0, not the fallback.
+unsigned long long ExtraInfoValue(const oo::PList *extra, std::string_view key, unsigned long long fallback)
+{
+	return (extra != nullptr) ? extra->get<unsigned long long>(key, fallback) : 0;
+}
+
+
+// equipment.plist order: explicit sort_order, then tech level, then price (ties keep file order).
+bool equipmentSort(const oo::PList &one, const oo::PList &two)
+{
+	unsigned long long comp1 = ExtraInfoValue(EquipmentExtraInfo(one), "sort_order", 1000);
+	unsigned long long comp2 = ExtraInfoValue(EquipmentExtraInfo(two), "sort_order", 1000);
+	if (comp1 != comp2)  return comp1 < comp2;
+
+	comp1 = one.at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+	comp2 = two.at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+	if (comp1 != comp2)  return comp1 < comp2;
+
+	comp1 = one.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+	comp2 = two.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+	return comp1 < comp2;
+}
+
+
+// As equipmentSort, but purchase_sort_order (falling back to sort_order) first.
+bool equipmentSortOutfitting(const oo::PList &one, const oo::PList &two)
+{
+	const oo::PList *extra1 = EquipmentExtraInfo(one);
+	const oo::PList *extra2 = EquipmentExtraInfo(two);
+	unsigned long long comp1 = ExtraInfoValue(extra1, "purchase_sort_order", ExtraInfoValue(extra1, "sort_order", 1000));
+	unsigned long long comp2 = ExtraInfoValue(extra2, "purchase_sort_order", ExtraInfoValue(extra2, "sort_order", 1000));
+	if (comp1 != comp2)  return comp1 < comp2;
+
+	comp1 = one.at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+	comp2 = two.at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+	if (comp1 != comp2)  return comp1 < comp2;
+
+	comp1 = one.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+	comp2 = two.at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+	return comp1 < comp2;
+}
+
+
+// A string field of equipment entry j (nullopt where the old nested read gave nil).
+std::optional<std::string> EquipmentItemString(const oo::PList &equipment, std::size_t j, std::size_t index)
+{
+	const oo::PList *item = equipment.at<oo::PList::Array>(j);
+	return (item != nullptr) ? OptionalStringAt(*item, index) : std::nullopt;
+}
+
+
 // The populator blocks' order: ascending priority (100 when absent).
 bool populatorPrioritySort(const oo::PList &one, const oo::PList &two)
 {
@@ -9094,13 +9157,13 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (NSArray *) equipmentData
+- (oo::PList) cxx_equipmentData
 {
 	return equipmentData;
 }
 
 
-- (NSArray *) equipmentDataOutfitting
+- (oo::PList) cxx_equipmentDataOutfitting
 {
 	return equipmentDataOutfitting;
 }
@@ -9211,21 +9274,19 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (void) loadStationMarkets:(NSArray *)marketData
+- (void) cxx_loadStationMarkets:(const oo::PList &)marketData
 {
-	if (marketData == nil)
+	if (marketData.isNull())
 	{
 		return;
 	}
 
-	NSArray *stations = [self stations];
-	StationEntity *station = nil;
-	NSDictionary *savedMarket = nil;
-
-	foreach (savedMarket, marketData)
+	const oo::PList::Array *savedMarkets = marketData.getIf<oo::PList::Array>();
+	if (savedMarkets == nullptr)  return;
+	for (const oo::PList &savedMarket : *savedMarkets)
 	{
-		HPVector pos = oo::PListView(savedMarket).get<HPVector>(@"position");
-		foreach (station, stations)
+		HPVector pos = HPVectorIn(savedMarket, "position", kZeroHPVector);
+		for (StationEntity *station in [self stations])	// the station list (a snapshot per call; chunk 9 migrates it)
 		{
 			// must be deterministic and secondary
 			if ([station allowsSaving] && station != [UNIVERSE station])
@@ -9233,7 +9294,8 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 				// allow a km of drift just in case
 				if (HPdistance2(pos,[station position]) < 1000000)
 				{
-					[station setLocalMarket:oo::PListView(savedMarket).get<NSArray *>(@"market")];
+					const oo::PList *market = savedMarket.get<oo::PList::Array>("market");
+					[station cxx_setLocalMarket:(market != nullptr) ? *market : oo::PList()];
 					break;
 				}
 			}
@@ -9243,17 +9305,15 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (NSArray *) getStationMarkets
+// Saved in the savegame: the market rows as OOCommodityMarket saves them, the position as the
+// doubles ArrayFromHPVector stored.
+- (oo::PList) cxx_getStationMarkets
 {
-	NSMutableArray *markets = [[NSMutableArray alloc] init];
-	NSArray *stations = [self stations];
-
-	StationEntity *station = nil;
-	NSMutableDictionary *savedMarket = nil;
+	oo::PList::Array markets;
 
 	OOCommodityMarket *stationMarket = nil;
 
-	foreach (station, stations)
+	for (StationEntity *station in [self stations])	// the station list (a snapshot; chunk 9 migrates it)
 	{
 		// must be deterministic and secondary
 		if ([station allowsSaving] && station != [UNIVERSE station])
@@ -9261,15 +9321,15 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 			stationMarket = [station localMarket];
 			if (stationMarket != nil)
 			{
-				savedMarket = [NSMutableDictionary dictionaryWithCapacity:2];
-				[savedMarket setObject:[stationMarket saveStationAmounts] forKey:@"market"];
-				[savedMarket setObject:ArrayFromHPVector([station position]) forKey:@"position"];
-				[markets addObject:savedMarket];
+				const HPVector position = [station position];
+				markets.push_back(oo::PList(oo::PList::Dict{
+					{ "market", [stationMarket cxx_saveStationAmounts] },
+					{ "position", oo::PList(oo::PList::Array{ oo::PList((double)position.x), oo::PList((double)position.y), oo::PList((double)position.z) }) } }));
 			}
 		}
 	}
 
-	return [markets autorelease];
+	return oo::PList(std::move(markets));
 }
 
 
@@ -9917,11 +9977,11 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 		{
 			NSString* item_key = oo::PListView(mut_extras).at<NSString *>(i);
 			NSString* item_desc = nil;
-			for (j = 0; ((j < [equipmentData count])&&(!item_desc)) ; j++)
+			for (j = 0; ((j < equipmentData.count())&&(!item_desc)) ; j++)
 			{
-				NSString *eq_type = oo::PListView(oo::PListView(equipmentData).at<NSArray *>(j)).at<NSString *>(EQUIPMENT_KEY_INDEX);
+				NSString *eq_type = oo::NSStringOrNil(EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX));
 				if ([eq_type isEqual:item_key])
-					item_desc = oo::PListView(oo::PListView(equipmentData).at<NSArray *>(j)).at<NSString *>(EQUIPMENT_SHORT_DESC_INDEX);
+					item_desc = oo::NSStringOrNil(EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX));
 			}
 			if (item_desc)
 			{
@@ -9950,11 +10010,11 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 		{
 			NSString* item_key = oo::PListView(options).at<NSString *>(i);
 			NSString* item_desc = nil;
-			for (j = 0; ((j < [equipmentData count])&&(!item_desc)) ; j++)
+			for (j = 0; ((j < equipmentData.count())&&(!item_desc)) ; j++)
 			{
-				NSString *eq_type = oo::PListView(oo::PListView(equipmentData).at<NSArray *>(j)).at<NSString *>(EQUIPMENT_KEY_INDEX);
+				NSString *eq_type = oo::NSStringOrNil(EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX));
 				if ([eq_type isEqual:item_key])
-					item_desc = oo::PListView(oo::PListView(equipmentData).at<NSArray *>(j)).at<NSString *>(EQUIPMENT_SHORT_DESC_INDEX);
+					item_desc = oo::NSStringOrNil(EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX));
 			}
 			if (item_desc)
 			{
@@ -10571,11 +10631,15 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	
 	autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:std::string("Config") andMerge:YES];
 	
-	[equipmentData autorelease];
-	[equipmentDataOutfitting autorelease];
-	NSArray *equipmentTemp = [ResourceManager arrayFromFilesNamed:@"equipment.plist" inFolder:@"Config" andMerge:YES];
-	equipmentData = [[equipmentTemp sortedArrayUsingFunction:equipmentSort context:NULL] retain];
-	equipmentDataOutfitting = [[equipmentTemp sortedArrayUsingFunction:equipmentSortOutfitting context:NULL] retain];
+	// ORDER-SENSITIVE: std::stable_sort, so entries that compare equal keep their file order.
+	const oo::PList equipmentTemp = [ResourceManager cxx_arrayFromFilesNamed:"equipment.plist" inFolder:std::string("Config") andMerge:YES];
+	oo::PList::Array sortedEquipment;
+	if (const oo::PList::Array *items = equipmentTemp.getIf<oo::PList::Array>())  sortedEquipment = *items;
+	oo::PList::Array sortedOutfitting = sortedEquipment;
+	std::stable_sort(sortedEquipment.begin(), sortedEquipment.end(), equipmentSort);
+	std::stable_sort(sortedOutfitting.begin(), sortedOutfitting.end(), equipmentSortOutfitting);
+	equipmentData = oo::PList(std::move(sortedEquipment));
+	equipmentDataOutfitting = oo::PList(std::move(sortedOutfitting));
 	
 	[OOEquipmentType loadEquipment];
 
@@ -10586,19 +10650,15 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 
 - (void) setUpCargoPods
 {
-	NSMutableDictionary *tmp = [[NSMutableDictionary alloc] initWithCapacity:[commodities count]];
-	OOCommodityType type = nil;
-	foreach (type, [commodities goods])
+	std::map<std::string, oo::ObjCRef<ShipEntity *>, std::less<>> tmp;
+	for (const std::string &type : oo::StringsFrom([commodities goods]))	// OOCommodities is not migrated yet
 	{
-		ShipEntity *container = [self newShipWithRole:@"oolite-template-cargopod"];
+		ShipEntity *container = [self cxx_newShipWithRole:"oolite-template-cargopod"];
 		[container setScanClass:CLASS_CARGO];
-		[container setCommodity:type andAmount:1];
-		[tmp setObject:container forKey:type];
-		[container release];
+		[container setCommodity:oo::NSStringFrom(type) andAmount:1];
+		if (container != nil)  tmp[type] = oo::adoptObjC(container);	// a nil container was an exception before
 	}
-	[cargoPods release];
-	cargoPods = [[NSDictionary alloc] initWithDictionary:tmp];
-	[tmp release];
+	cargoPods = std::move(tmp);
 }
 
 - (void) verifyEntitySessionIDs
@@ -11305,58 +11365,6 @@ static void PreloadOneSound(NSString *soundName)
 }
 
 @end
-
-NSComparisonResult equipmentSort(id a, id b, void *context)
-{
-	NSArray *one = (NSArray *)a;
-	NSArray *two = (NSArray *)b;
-
-	/* Sort by explicit sort_order, then tech level, then price */
-
-	OOCreditsQuantity comp1 = oo::PListView(oo::PListView(one).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"sort_order", 1000);
-	OOCreditsQuantity comp2 = oo::PListView(oo::PListView(two).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"sort_order", 1000);
-	if (comp1 < comp2) return NSOrderedAscending;
-	if (comp1 > comp2) return NSOrderedDescending;
-
-	comp1 = oo::PListView(one).at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
-	comp2 = oo::PListView(two).at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
-	if (comp1 < comp2) return NSOrderedAscending;
-	if (comp1 > comp2) return NSOrderedDescending;
-
-	comp1 = oo::PListView(one).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
-	comp2 = oo::PListView(two).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
-	if (comp1 < comp2) return NSOrderedAscending;
-	if (comp1 > comp2) return NSOrderedDescending;
-
-	return NSOrderedSame;
-}
-
-
-NSComparisonResult equipmentSortOutfitting(id a, id b, void *context)
-{
-	NSArray *one = (NSArray *)a;
-	NSArray *two = (NSArray *)b;
-
-	/* Sort by explicit sort_order, then tech level, then price */
-
-	OOCreditsQuantity comp1 = oo::PListView(oo::PListView(one).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"purchase_sort_order", oo::PListView(oo::PListView(one).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"sort_order", 1000));
-	OOCreditsQuantity comp2 = oo::PListView(oo::PListView(two).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"purchase_sort_order", oo::PListView(oo::PListView(two).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"sort_order", 1000));
-	if (comp1 < comp2) return NSOrderedAscending;
-	if (comp1 > comp2) return NSOrderedDescending;
-
-	comp1 = oo::PListView(one).at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
-	comp2 = oo::PListView(two).at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
-	if (comp1 < comp2) return NSOrderedAscending;
-	if (comp1 > comp2) return NSOrderedDescending;
-
-	comp1 = oo::PListView(one).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
-	comp2 = oo::PListView(two).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
-	if (comp1 < comp2) return NSOrderedAscending;
-	if (comp1 > comp2) return NSOrderedDescending;
-
-	return NSOrderedSame;
-}
-
 
 std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 {
