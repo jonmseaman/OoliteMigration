@@ -52,6 +52,14 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (BOOL) fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(NSString *)weaponIdentifier;	// -> -cxx_fireLaserShotInDirection:weaponIdentifier:
 - (ShipEntity *) fireMissileWithIdentifier:(NSString *) identifier andTarget:(Entity *) target;	// -> -cxx_fireMissileWithIdentifier:andTarget:
 
+// oo-3rb.235: cargo API and commodities
+- (void) setCommodity:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount;	// -> -cxx_setCommodity:andAmount:
+- (void) setCommodityForPod:(OOCommodityType)co_type andAmount:(OOCargoQuantity)co_amount;	// -> -cxx_setCommodityForPod:andAmount:
+- (OOCommodityType) commodityType;	// -> -cxx_commodityType
+- (BOOL) addCargo:(NSArray *) some_cargo;	// -> -cxx_addCargo:
+- (BOOL) removeCargo:(OOCommodityType)commodity amount:(OOCargoQuantity) amount;	// -> -cxx_removeCargo:amount:
+- (ShipEntity *) dumpCargoItem:(OOCommodityType)preferred;	// -> -cxx_dumpCargoItem:
+
 @end
 
 
