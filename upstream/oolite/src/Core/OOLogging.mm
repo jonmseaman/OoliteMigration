@@ -64,10 +64,7 @@ namespace {
 // before it oo::log writes to stderr, which is what the output handler did before its init.
 void LogSink(std::string_view line)
 {
-	@autoreleasepool
-	{
-		OOLogOutputHandlerPrint(oo::NSStringFrom(line));
-	}
+	OOLogOutputHandlerPrintLine(line);
 }
 
 // A logcontrol dictionary as oo::log settings, in the dictionary's key order (byte order; was
