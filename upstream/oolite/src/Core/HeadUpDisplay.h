@@ -34,6 +34,8 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 struct OOHUDWidget;	// HeadUpDisplay.mm
 
@@ -254,15 +256,15 @@ enum
 	GLfloat				z1;
 	GLfloat				lineWidth;
 	
-	NSString			*hudName;
-	NSString			*deferredHudName;	// Usually it will be nil. If not nil, then it means that we have a deferred HUD waiting to be drawn This may happen
+	std::optional<std::string>	hudName;
+	std::optional<std::string>	deferredHudName;	// Usually it will be nullopt. If engaged, then it means that we have a deferred HUD waiting to be drawn This may happen
 											// for example when a script handler attempts to switch HUD while it is being rendered. - Nikos 20110628
 	BOOL				hudUpdating;
 	
 	GLfloat				overallAlpha;
 	
 	BOOL				reticleTargetSensitive;   // TO DO: Move this into the propertiesReticleTargetSensitive structure (Getafix - 2010/08/21)
-	NSMutableDictionary *propertiesReticleTargetSensitive;
+	oo::PList			propertiesReticleTargetSensitive;	// isAccurate (bool), timeLastAccuracyProbabilityCalculation (double)
 	
 	BOOL				cloakIndicatorOnStatusLight;
 	
@@ -279,14 +281,14 @@ enum
 	OOWeaponType		_lastWeaponType;
 	GLfloat				_lastOverallAlpha;
 	BOOL				_lastWeaponsOnline;
-	NSDictionary		*_crosshairOverrides;
+	oo::PList			_crosshairOverrides;	// null for none
 	OOColor				*_crosshairColor;
 	GLfloat				_crosshairScale;
 	GLfloat				_crosshairWidth;
-	NSString			*crosshairDefinition;
+	std::optional<std::string>	crosshairDefinition;
 	BOOL				_compassActive;
 	
-	NSMutableArray		*_reticleColors;
+	std::vector<oo::ObjCRef<OOColor *>>	_reticleColors;
 	
 	// essentially scanner without gridlines
 	BOOL			minimalistic_scanner;
@@ -297,13 +299,13 @@ enum
 
 }
 
-- (id) initWithDictionary:(NSDictionary *)hudinfo;
-- (id) initWithDictionary:(NSDictionary *)hudinfo inFile:(NSString *)hudFileName;
+- (id) initWithDictionary:(id)hudinfo;	// shared selector (proposed ADR-0043)
+- (id) cxx_initWithDictionary:(const oo::PList &)hudinfo inFile:(const std::optional<std::string> &)hudFileName OO_RETURNS_RETAINED;
 
-- (void) resetGuis:(NSDictionary *)info;
+- (void) cxx_resetGuis:(const oo::PList &)info;
 
-- (NSString *) hudName;
-- (void) setHudName:(NSString *)newHudName;
+- (std::optional<std::string>) cxx_hudName;
+- (void) setHudName:(const std::optional<std::string> &)newHudName;	// nullopt is ignored, as nil was
 
 - (GLfloat) scannerZoom;
 - (void) setScannerZoom:(GLfloat)value;
@@ -313,7 +315,7 @@ enum
 
 - (BOOL) reticleTargetSensitive;
 - (void) setReticleTargetSensitive:(BOOL)newReticleTargetSensitiveValue;
-- (NSMutableDictionary *) propertiesReticleTargetSensitive;
+- (oo::PList *) propertiesReticleTargetSensitive;	// the live dictionary; nullptr for a nil receiver
 
 - (BOOL) isHidden;
 - (void) setHidden:(BOOL)newValue;
@@ -328,10 +330,10 @@ enum
 - (void) setCompassActive:(BOOL)newValue;
 
 - (BOOL) isUpdating;
-- (void) setDeferredHudName:(NSString *)newDeferredHudName;
-- (NSString *) deferredHudName;
-- (NSString *) crosshairDefinition;
-- (BOOL) setCrosshairDefinition:(NSString *)newDefinition;
+- (void) cxx_setDeferredHudName:(const std::optional<std::string> &)newDeferredHudName;
+- (std::optional<std::string>) cxx_deferredHudName;
+- (std::optional<std::string>) cxx_crosshairDefinition;
+- (BOOL) cxx_setCrosshairDefinition:(const std::string &)newDefinition;
 
 // Each takes one hud.plist entry; a null PList where the entry was not a dictionary.
 - (void) addLegend:(const oo::PList &)info;
