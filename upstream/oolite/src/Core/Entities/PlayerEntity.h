@@ -541,7 +541,7 @@ typedef enum
 
 	// keys!
 	NSDictionary   *keyconfig2_settings;
-	NSDictionary   *keyCodeLookups;
+	std::map<std::string, uint16_t, std::less<>>	keyCodeLookups;	// lower-case key names -> key codes
 
 	NSArray					*n_key_roll_left;
 	NSArray					*n_key_roll_right;
