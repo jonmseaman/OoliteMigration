@@ -626,7 +626,7 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 		keyValue = keyValue * 10 + characters[idx] - '0';
 	}
 
-	// Retrieve selected system_description entry (an array, as PListView at<NSArray *> required).
+	// Retrieve selected system_description entry (it must be an array, as PListView required).
 	const oo::PList &sysDescs = GetSystemDescriptions(context);
 	const oo::PList *entry = sysDescs.at(keyValue);
 	if (entry != nullptr && !entry->isArray())  entry = nullptr;
@@ -664,7 +664,7 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 	}
 	
 	// Look up and recursively expand string.
-	// PListView at<NSString *>: a string, or a number's -stringValue; anything else is nil.
+	// PListView's string rule: a string, or a number's -stringValue; anything else is none.
 	OOMaybeUnits string;
 	const oo::PList *choice = entry->at(selection);
 	if (choice != nullptr && (choice->isString() || choice->isNumber()))  string = oo::utf8ToUtf16(entry->at<std::string>(selection));
@@ -1306,7 +1306,7 @@ const oo::PList &GetSystemDescriptions(OOStringExpansionContext *context)
 	if (context->systemDescriptions.isNull())
 	{
 		// Universe is not migrated yet: only this one value of -descriptions is converted, once
-		// per context (PListView get<NSArray *>: an array, else none).
+		// per context (PListView's rule: an array, else none).
 		const oo::PList value = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"system_description"]);
 		if (value.isArray())  context->systemDescriptions = value;
 		context->sysDescCount = context->systemDescriptions.count();
