@@ -27,6 +27,9 @@ MA 02110-1301, USA.
 */
 
 #import "Entity.h"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 
 #define WORMHOLE_EXPIRES_TIMEINTERVAL	900.0
 #define WORMHOLE_SHRINK_RATE			4000.0
@@ -44,6 +47,16 @@ typedef enum
 	WH_SCANINFO_SHIP,
 } WORMHOLE_SCANINFO;
 
+
+// A ship in transit (the old entry dictionary's "ship", "time" and "shipBeacon").
+struct OOWormholeTransit
+{
+	oo::ObjCRef<ShipEntity *>	ship;
+	double						time;		// arrival relative to the wormhole's arrival_time
+	std::optional<std::string>	beacon;		// the ship's beacon code when it entered, if any
+};
+
+
 @interface WormholeEntity: Entity
 {
 @private
@@ -59,7 +72,7 @@ typedef enum
 	NSPoint			originCoords;      // May not equal our origin system if the wormhole opens from Interstellar Space
 	NSPoint			destinationCoords; // May not equal the destination system if the wormhole misjumps
 
-	NSMutableArray	*shipsInTransit;
+	std::vector<OOWormholeTransit>	shipsInTransit;
 	
 	double			witch_mass;
 	double			shrink_factor;	// used during nova mission
@@ -73,7 +86,7 @@ typedef enum
   BOOL      containsPlayer;
 }
 
-- (WormholeEntity*) initWithDict:(NSDictionary*)dict;
+- (WormholeEntity*) initWithDict:(const oo::PList &)dict;
 - (WormholeEntity*) initWormholeTo:(OOSystemID) s fromShip:(ShipEntity *) ship;
 
 - (BOOL) suckInShip:(ShipEntity *) ship;
@@ -105,10 +118,10 @@ typedef enum
 - (WORMHOLE_SCANINFO) scanInfo; // Stage of scanning
 - (void)setScanInfo:(WORMHOLE_SCANINFO) scanInfo;
 
-- (NSArray*) shipsInTransit;
+- (oo::PList) shipsInTransit;	// Dicts: "ship" (an Object node), "time", "shipBeacon" when set
 
-- (NSString *) identFromShip:(ShipEntity*) ship;
+- (id) identFromShip:(ShipEntity*) ship;	// shared selector (proposed ADR-0043): an Objective-C string
 
-- (NSDictionary *)getDict;
+- (oo::PList) getDict;
 
 @end
