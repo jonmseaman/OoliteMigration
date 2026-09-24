@@ -32,6 +32,27 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityContracts
 - (NSString *) checkPassengerContracts;	// -> -cxx_checkPassengerContracts
 - (void) addMessageToReport:(NSString*) report;	// -> -cxx_addMessageToReport:
 
+// oo-3rb.181 (chunk 3): passengers
+- (BOOL) addPassenger:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee advance:(double)advance risk:(unsigned)risk;	// -> -cxx_addPassenger:start:destination:eta:fee:advance:risk:
+- (BOOL) removePassenger:(NSString*)Name;	// -> -cxx_removePassenger:
+
+// oo-3rb.182 (chunk 4): parcels
+- (BOOL) addParcel:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk;	// -> -cxx_addParcel:start:destination:eta:fee:premium:risk:
+- (BOOL) removeParcel:(NSString*)Name;	// -> -cxx_removeParcel:
+
+// oo-3rb.183 (chunk 5): cargo contracts and manifest lists
+- (OOCargoQuantity) contractedVolumeForGood:(OOCommodityType) good;	// -> -cxx_contractedVolumeForGood:
+- (BOOL) awardContract:(unsigned)qty commodity:(NSString*)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium;	// -> -cxx_awardContract:commodity:start:destination:eta:fee:premium:
+- (BOOL) removeContract:(NSString*)commodity destination:(unsigned)destination;	// -> -cxx_removeContract:destination:
+- (NSArray *) passengerList;	// -> -cxx_passengerList
+- (NSArray *) parcelList;	// -> -cxx_parcelList
+- (NSArray *) contractList;	// -> -cxx_contractList
+
+// oo-3rb.184 (chunk 6): shipyard
+- (void) showShipyardModel:(NSString *)shipKey shipData:(NSDictionary *)shipDict personality:(uint16_t)personality;	// -> -cxx_showShipyardModel:shipData:personality:
+- (OOCreditsQuantity) priceForShipKey:(NSString *)key;	// -> -cxx_priceForShipKey:
+- (BOOL) replaceShipWithNamedShip:(NSString *)shipName;	// -> -cxx_replaceShipWithNamedShip:
+
 @end
 
 #endif	// PLAYERENTITYCONTRACTS_FOUNDATIONBRIDGE_H

@@ -1,0 +1,67 @@
+/*
+
+PlayerEntity+FoundationBridge.h
+
+TRANSITIONAL (proposed ADR-0043, "Transitional bridges"; bead oo-3rb.164, a chunk of oo-3rb.75).
+PlayerEntity's Foundation-typed API as it was before its sweep, with the same selector names and
+types, forwarding to the cxx_ API in PlayerEntity.h. It exists so that the callers (GuiDisplayGen
+for -markedDestinations) compile unchanged; each caller moves to the cxx_ API in its own sweep
+bead. When `git grep` finds no caller of anything declared here, the bridge bead deletes this
+file, PlayerEntity+FoundationBridge.mm, its line in Core/Entities/meson.build and the #import at
+the end of PlayerEntity.h. Never add to it outside the PlayerEntity chunks; never call it from
+migrated code. oo-qps (the removal of gnustep-base) cannot compile while it exists.
+
+Registry: src/oofnd/README.md, "Transitional bridges".
+
+Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
+
+*/
+
+// Imported only from the end of PlayerEntity.h (which declares everything used here); never
+// import it directly, and never import PlayerEntity.h from it (a cycle).
+#ifndef PLAYERENTITY_FOUNDATIONBRIDGE_H
+#define PLAYERENTITY_FOUNDATIONBRIDGE_H
+
+
+@interface PlayerEntity (FoundationBridge)
+
+// oo-3rb.164: marked destinations
+- (NSDictionary *) markedDestinations;	// -> -cxx_markedDestinations
+
+// oo-3rb.243: HUD switching, custom dials and multi-function displays
+- (BOOL) switchHudTo:(NSString *)hudFileName;	// -> -cxx_switchHudTo: (nil: NO)
+- (float) dialCustomFloat:(NSString *)dialKey;	// -> -cxx_dialCustomFloat:
+- (NSString *) dialCustomString:(NSString *)dialKey;	// -> -cxx_dialCustomString:
+- (OOColor *) dialCustomColor:(NSString *)dialKey;	// -> -cxx_dialCustomColor:
+- (void) setDialCustom:(id)value forKey:(NSString *)key;	// -> -cxx_setDialCustom:forKey:
+- (NSArray *) multiFunctionDisplayList;	// -> -cxx_multiFunctionDisplayList (a snapshot, [OONull null] for inactive)
+- (NSString *) multiFunctionText:(NSUInteger) index;	// -> -cxx_multiFunctionText:
+- (void) setMultiFunctionText:(NSString *)text forKey:(NSString *)key;	// -> -cxx_setMultiFunctionText:forKey:
+- (BOOL) setMultiFunctionDisplay:(NSUInteger) index toKey:(NSString *)key;	// -> -cxx_setMultiFunctionDisplay:toKey:
+- (NSString *) dial_clock;	// -> -cxx_dial_clock
+- (NSString *) dial_clock_adjusted;	// -> -cxx_dial_clock_adjusted
+- (NSString *) dial_fpsinfo;	// -> -cxx_dial_fpsinfo
+- (NSString *) dial_objinfo;	// -> -cxx_dial_objinfo
+- (NSString *) compassTargetLabel;	// -> -cxx_compassTargetLabel
+- (NSString *) dialTargetName;	// -> -cxx_dialTargetName
+
+// oo-3rb.244: commander identity, fast equipment, comm log, target memory, wormholes and last shot
+- (NSString *) commanderName;	// -> -cxx_commanderName
+- (void) setCommanderName:(NSString *)value;	// -> -cxx_setCommanderName:
+- (NSString *) lastsaveName;	// -> -cxx_lastsaveName
+- (void) setLastsaveName:(NSString *)value;	// -> -cxx_setLastsaveName:
+- (NSString *) jumpCause;	// -> -cxx_jumpCause
+- (void) setJumpCause:(NSString *)value;	// -> -cxx_setJumpCause:
+- (NSArray *) currentLaserOffset;	// -> -cxx_currentLaserOffset
+- (NSString *) fastEquipmentA;	// -> -cxx_fastEquipmentA
+- (NSString *) fastEquipmentB;	// -> -cxx_fastEquipmentB
+- (void) setFastEquipmentA:(NSString *)eqKey;	// -> -cxx_setFastEquipmentA:
+- (void) setFastEquipmentB:(NSString *)eqKey;	// -> -cxx_setFastEquipmentB:
+- (NSMutableArray *) commLog;	// -> -cxx_commLog (a snapshot: read-only callers)
+- (NSMutableArray *) targetMemory;	// -> -cxx_targetMemory (a snapshot, [OONull null] for empty slots)
+- (NSArray *) scannedWormholes;	// -> -cxx_scannedWormholes
+- (void) setLastShot:(NSArray *)shot;	// -> -cxx_setLastShot:
+
+@end
+
+#endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H

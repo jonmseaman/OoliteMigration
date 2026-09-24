@@ -154,7 +154,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (NSArray*) contractsListForScriptingFromArray:(NSArray *)contractsArray forCargo:(BOOL)forCargo;
 
 
-- (void) prepareMarkedDestination:(NSMutableDictionary *)markers :(NSDictionary *)marker;
 
 - (void) witchStart;
 - (void) witchJumpTo:(OOSystemID)sTo misjump:(BOOL)misjump;
@@ -1035,8 +1034,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 
 	// communications log
-	NSArray *log = [self commLog];
-	if (log != nil)  [result setObject:log forKey:@"comm_log"];
+	const std::vector<std::string> *log = [self cxx_commLog];
+	if (log != nullptr)  [result setObject:oo::NSArrayFromStrings(*log) forKey:@"comm_log"];
 	
 	[result oo_setUnsignedInteger:entity_personality forKey:@"entity_personality"];
 	
@@ -1086,24 +1085,24 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 	// passengers
 	[result oo_setInteger:max_passengers forKey:@"max_passengers"];
-	[result setObject:passengers forKey:@"passengers"];
-	[result setObject:passenger_record forKey:@"passenger_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(passengers)) forKey:@"passengers"];
+	[result setObject:oo::ObjectFromPList(oo::PList(passenger_record)) forKey:@"passenger_record"];
 
 	// parcels
-	[result setObject:parcels forKey:@"parcels"];
-	[result setObject:parcel_record forKey:@"parcel_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(parcels)) forKey:@"parcels"];
+	[result setObject:oo::ObjectFromPList(oo::PList(parcel_record)) forKey:@"parcel_record"];
 	
 	//specialCargo
 	if (specialCargo)  [result setObject:specialCargo forKey:@"special_cargo"];
 	
 	// contracts
-	[result setObject:contracts forKey:@"contracts"];
-	[result setObject:contract_record forKey:@"contract_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(contracts)) forKey:@"contracts"];
+	[result setObject:oo::ObjectFromPList(oo::PList(contract_record)) forKey:@"contract_record"];
 
 	[result setObject:missionDestinations forKey:@"mission_destinations"];
 
 	//shipyard
-	[result setObject:shipyard_record forKey:@"shipyard_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(shipyard_record)) forKey:@"shipyard_record"];
 
 	//ship's clock
 	[result setObject:[NSNumber numberWithDouble:ship_clock] forKey:@"ship_clock"];
@@ -1140,13 +1139,13 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[result setObject:[self trumbleValue] forKey:@"trumbles"];
 
 	// wormhole information
-	NSMutableArray *wormholeDicts = [NSMutableArray arrayWithCapacity:[scannedWormholes count]];
-	WormholeEntity *wh = nil;
-	foreach (wh, scannedWormholes)
+	oo::PList::Array wormholeDicts;
+	wormholeDicts.reserve(scannedWormholes.size());
+	for (const oo::ObjCRef<WormholeEntity *> &wh : scannedWormholes)
 	{
-		[wormholeDicts addObject:[wh getDict]];
+		wormholeDicts.push_back([wh.get() getDict]);
 	}
-	[result setObject:wormholeDicts forKey:@"wormholes"];
+	[result setObject:oo::ObjectFromPList(oo::PList(std::move(wormholeDicts))) forKey:@"wormholes"];
 
 	// docked station
 	StationEntity *dockedStation = [self dockedStation];
@@ -1200,14 +1199,11 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 {
 	// multi-function displays
 	// must be reset before ship setup
-	[multiFunctionDisplayText release];
-	multiFunctionDisplayText = [[NSMutableDictionary alloc] init];
+	multiFunctionDisplayText.clear();
 
-	[multiFunctionDisplaySettings release];
-	multiFunctionDisplaySettings = [[NSMutableArray alloc] init];
+	multiFunctionDisplaySettings.clear();
 
-	[customDialSettings release];
-	customDialSettings = [[NSMutableDictionary alloc] init];
+	customDialSettings.clear();
 
 	[[UNIVERSE gameView] resetTypedString];
 
@@ -1430,57 +1426,53 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[self normaliseReputation];
 
 	// passengers and contracts
-	[parcels release];
-	[parcel_record release];
-	[passengers release];
-	[passenger_record release];
-	[contracts release];
-	[contract_record release];
 	
 	max_passengers = oo::PListView(dict).get<int>(@"max_passengers", 0);
-	passengers = [oo::PListView(dict).get<NSArray *>(@"passengers") mutableCopy];
-	passenger_record = [oo::PListView(dict).get<NSDictionary *>(@"passenger_record") mutableCopy];
+	const oo::PList savedPassengers = oo::PListFrom([dict objectForKey:@"passengers"]);
+	passengers = savedPassengers.isArray() ? *savedPassengers.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
+	const oo::PList savedPassengerRecord = oo::PListFrom([dict objectForKey:@"passenger_record"]);
+	passenger_record = savedPassengerRecord.isDict() ? *savedPassengerRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 	/* Note: contracts from older savegames will have ints in the commodity.
 	 * Need to fix this up */
-	contracts = [oo::PListView(dict).get<NSArray *>(@"contracts") mutableCopy];
-	NSMutableDictionary *contractInfo = nil;
+	const oo::PList savedContracts = oo::PListFrom([dict objectForKey:@"contracts"]);
+	contracts = savedContracts.isArray() ? *savedContracts.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
 
 	// iterate downwards; lets us remove invalid ones as we go
-	for (NSInteger i = (NSInteger)[contracts count] - 1; i >= 0; i--)
+	for (NSInteger i = (NSInteger)contracts.size() - 1; i >= 0; i--)
 	{
-		contractInfo = [[oo::PListView(contracts).at<NSDictionary *>(i) mutableCopy] autorelease];
+		oo::PList contractInfo = contracts[i].isDict() ? contracts[i] : oo::PList(oo::PList::Dict());
+		const oo::PList *cargoType = contractInfo.find(oo::StdString(CARGO_KEY_TYPE));
 		// if the trade good ID is an int
-		if ([[contractInfo objectForKey:CARGO_KEY_TYPE] isKindOfClass:[NSNumber class]])
+		if (cargoType != nullptr && cargoType->isNumber())
 		{
 			// look it up, and replace with a string
-			NSUInteger legacy_type = oo::PListView(contractInfo).get<NSUInteger>(CARGO_KEY_TYPE);
-			[contractInfo setObject:[OOCommodities legacyCommodityType:legacy_type] forKey:CARGO_KEY_TYPE];
-			[contracts replaceObjectAtIndex:i withObject:[[contractInfo copy] autorelease]];
+			NSUInteger legacy_type = contractInfo.get<NSUInteger>(oo::StdString(CARGO_KEY_TYPE));
+			(*contractInfo.getIf<oo::PList::Dict>())[oo::StdString(CARGO_KEY_TYPE)] = oo::PList(oo::StdString([OOCommodities legacyCommodityType:legacy_type]));
+			contracts[i] = std::move(contractInfo);
 		}
 		else
 		{
-			OOCommodityType new_type = oo::PListView(contractInfo).get<NSString *>(CARGO_KEY_TYPE);
+			// -oo_stringForKey: (nil when absent)
+			const oo::PList *typeValue = contractInfo.find(oo::StdString(CARGO_KEY_TYPE));
+			const std::optional<std::string> new_type = (typeValue != nullptr && typeValue->isString()) ? std::optional<std::string>(*typeValue->getIf<std::string>()) : std::nullopt;
 			// check that that the type still exists
-			if (![[UNIVERSE commodities] goodDefined:new_type])
+			if (![[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(new_type)])
 			{
-				OOLog(@"setCommanderDataFromDictionary.warning.contract",@"Cargo contract to deliver %@ could not be loaded from the saved game, as the commodity is no longer defined",new_type);
-				[contracts removeObjectAtIndex:i];
+				OOLog(@"setCommanderDataFromDictionary.warning.contract",@"Cargo contract to deliver %@ could not be loaded from the saved game, as the commodity is no longer defined",oo::NSStringOrNil(new_type));
+				contracts.erase(contracts.begin() + i);
 			}
 		}
 	}
 
-	contract_record = [oo::PListView(dict).get<NSDictionary *>(@"contract_record") mutableCopy];
-	parcels = [oo::PListView(dict).get<NSArray *>(@"parcels") mutableCopy];
-	parcel_record = [oo::PListView(dict).get<NSDictionary *>(@"parcel_record") mutableCopy];
+	const oo::PList savedContractRecord = oo::PListFrom([dict objectForKey:@"contract_record"]);
+	contract_record = savedContractRecord.isDict() ? *savedContractRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
+	const oo::PList savedParcels = oo::PListFrom([dict objectForKey:@"parcels"]);
+	parcels = savedParcels.isArray() ? *savedParcels.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
+	const oo::PList savedParcelRecord = oo::PListFrom([dict objectForKey:@"parcel_record"]);
+	parcel_record = savedParcelRecord.isDict() ? *savedParcelRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 
 	
 	
-	if (passengers == nil)  passengers = [[NSMutableArray alloc] init];
-	if (passenger_record == nil)  passenger_record = [[NSMutableDictionary alloc] init];
-	if (contracts == nil)  contracts = [[NSMutableArray alloc] init];
-	if (contract_record == nil)  contract_record = [[NSMutableDictionary alloc] init];
-	if (parcels == nil)  parcels = [[NSMutableArray alloc] init];
-	if (parcel_record == nil)  parcel_record = [[NSMutableDictionary alloc] init];
 	
 	//specialCargo
 	[specialCargo release];
@@ -1493,9 +1485,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[self initialiseMissionDestinations:newDestinations andLegacy:legacyDestinations];
 	
 	// shipyard
-	DESTROY(shipyard_record);
-	shipyard_record = [oo::PListView(dict).get<NSDictionary *>(@"shipyard_record") mutableCopy];
-	if (shipyard_record == nil)  shipyard_record = [[NSMutableDictionary alloc] init];
+	const oo::PList savedShipyardRecord = oo::PListFrom([dict objectForKey:@"shipyard_record"]);
+	shipyard_record = savedShipyardRecord.isDict() ? *savedShipyardRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	
 	// Normalize cargo capacity
 	unsigned	original_hold_size = [UNIVERSE maxCargoForShip:[self shipDataKey]];
@@ -1516,13 +1507,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	max_cargo -= max_passengers * PASSENGER_BERTH_SPACE;
 	
 	// Do we have extra passengers?
-	if (passengers && ([passengers count] > max_passengers))
+	if (passengers.size() > max_passengers)
 	{
-		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.passengers", @"player ship %@ had more passengers (%zu) than passenger berths (%u). Removing extra passengers.", [self name], [passengers count], max_passengers);
-		for (NSInteger i = (NSInteger)[passengers count] - 1; i >= max_passengers; i--)
+		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.passengers", @"player ship %@ had more passengers (%zu) than passenger berths (%u). Removing extra passengers.", [self name], passengers.size(), max_passengers);
+		for (NSInteger i = (NSInteger)passengers.size() - 1; i >= max_passengers; i--)
 		{
-			[passenger_record removeObjectForKey:oo::PListView(oo::PListView(passengers).at<NSDictionary *>(i)).get<NSString *>(PASSENGER_KEY_NAME)];
-			[passengers removeObjectAtIndex:i];
+			const oo::PList *passengerName = passengers[i].find(oo::StdString(PASSENGER_KEY_NAME));
+			if (passengerName != nullptr && (passengerName->isString() || passengerName->isNumber()))  passenger_record.erase(passengers[i].get<std::string>(oo::StdString(PASSENGER_KEY_NAME)));	// -oo_stringForKey:
+			passengers.erase(passengers.begin() + i);
 		}
 	}
 	
@@ -1676,14 +1668,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 	
 	// communications log
-	[commLog release];
-	commLog = [[NSMutableArray alloc] initWithCapacity:kCommLogTrimThreshold];
-	
-	NSArray *savedCommLog = oo::PListView(dict).get<NSArray *>(@"comm_log");
-	NSUInteger commCount = [savedCommLog count];
-	for (NSUInteger i = 0; i < commCount; i++)
+	commLog.clear();
+	commLog.reserve(kCommLogTrimThreshold);
+
+	const oo::PList savedCommLog = oo::PListFrom([dict objectForKey:@"comm_log"]);
+	const std::size_t commCount = savedCommLog.isArray() ? savedCommLog.count() : 0;	// oo_arrayForKey:
+	for (std::size_t i = 0; i < commCount; i++)
 	{
-		[UNIVERSE addCommsMessage:[savedCommLog objectAtIndex:i] forCount:0 andShowComms:NO logOnly:YES];
+		[UNIVERSE addCommsMessage:oo::ObjectFromPList(*savedCommLog.at(i)) forCount:0 andShowComms:NO logOnly:YES];
 	}
 
 	/*	entity_personality for scripts and shaders. If undefined, we fall back
@@ -1772,15 +1764,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[self deserializeShipSubEntitiesFrom:oo::PListView(dict).get<NSString *>(@"subentities_status")];
 	
 	// wormholes
-	NSArray * whArray;
-	whArray = [dict objectForKey:@"wormholes"];
-	NSDictionary * whCurrDict;
-	[scannedWormholes release];
-	scannedWormholes = [[NSMutableArray alloc] initWithCapacity:[whArray count]];
-	foreach (whCurrDict, whArray)
+	const oo::PList whArray = oo::PListFrom([dict objectForKey:@"wormholes"]);
+	scannedWormholes.clear();
+	const oo::PList::Array *whList = whArray.getIf<oo::PList::Array>();
+	if (whList != nullptr)  scannedWormholes.reserve(whList->size());
+	for (const oo::PList &whCurrDict : (whList != nullptr) ? *whList : oo::PList::Array())
 	{
 		WormholeEntity * wh = [[WormholeEntity alloc] initWithDict:whCurrDict];
-		[scannedWormholes addObject:wh];
+		scannedWormholes.push_back(oo::ObjCRef<WormholeEntity *>(wh));	// (the +1 from +alloc is still never released, as before)
 		/* TODO - add to Universe if the wormhole hasn't expired yet; but in this case
 		 * we need to save/load position and mass as well, which we currently 
 		 * don't
@@ -1976,16 +1967,13 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[UNIVERSE setAutoCommLog:YES];
 	[UNIVERSE setPermanentCommLog:NO];
 	
-	[multiFunctionDisplayText release];
-	multiFunctionDisplayText = [[NSMutableDictionary alloc] init];
+	multiFunctionDisplayText.clear();
 
-	[multiFunctionDisplaySettings release];
-	multiFunctionDisplaySettings = [[NSMutableArray alloc] init];
+	multiFunctionDisplaySettings.clear();
 
-	[customDialSettings release];
-	customDialSettings = [[NSMutableDictionary alloc] init];
+	customDialSettings.clear();
 
-	[self switchHudTo:@"hud.plist"];	
+	[self cxx_switchHudTo:"hud.plist"];
 	scanner_zoom_rate = 0.0f;
 	longRangeChartMode = OOLRC_MODE_SUNCOLOR;
 
@@ -2030,7 +2018,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	aft_weapon_temp			= 0.0f;
 	port_weapon_temp		= 0.0f;
 	starboard_weapon_temp	= 0.0f;
-	lastShot = nil;
+	lastShot.clear();
 	forward_shot_time		= INITIAL_SHOT_TIME;
 	aft_shot_time			= INITIAL_SHOT_TIME;
 	port_shot_time			= INITIAL_SHOT_TIME;
@@ -2046,29 +2034,22 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	flightYaw = 0.0f;
 
 	max_passengers = 0;
-	[passengers release];
-	passengers = [[NSMutableArray alloc] init];
-	[passenger_record release];
-	passenger_record = [[NSMutableDictionary alloc] init];
+	passengers.clear();
+	passenger_record.clear();
 	
-	[contracts release];
-	contracts = [[NSMutableArray alloc] init];
-	[contract_record release];
-	contract_record = [[NSMutableDictionary alloc] init];
+	contracts.clear();
+	contract_record.clear();
 
-	[parcels release];
-	parcels = [[NSMutableArray alloc] init];
-	[parcel_record release];
-	parcel_record = [[NSMutableDictionary alloc] init];
+	parcels.clear();
+	parcel_record.clear();
 	
 	[missionDestinations release];
 	missionDestinations = [[NSMutableDictionary alloc] init];
 	
-	[shipyard_record release];
-	shipyard_record = [[NSMutableDictionary alloc] init];
+	shipyard_record.clear();
 	
-	[target_memory release];
-	target_memory = [[NSMutableArray alloc] initWithCapacity:PLAYER_TARGET_MEMORY_SIZE];
+	target_memory.clear();
+	target_memory.reserve(PLAYER_TARGET_MEMORY_SIZE);
 	[self clearTargetMemory]; // also does first-time initialisation
 
 	[self setMissionOverlayDescriptor:nil];
@@ -2194,8 +2175,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	
 	[self setDockedStation:[UNIVERSE station]];
 	
-	[commLog release];
-	commLog = nil;
+	commLog.clear();
 	
 	[specialCargo release];
 	specialCargo = nil;
@@ -2213,8 +2193,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[save_path autorelease];
 	save_path = nil;
 	
-	[scannedWormholes release];
-	scannedWormholes = [[NSMutableArray alloc] init];
+	scannedWormholes.clear();
 	
 	[self setUpTrumbles];
 	
@@ -2387,16 +2366,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 {
 	DESTROY(compassTarget);
 	DESTROY(hud);
-	DESTROY(multiFunctionDisplayText);
-	DESTROY(multiFunctionDisplaySettings);
-	DESTROY(customDialSettings);
 
-	DESTROY(commLog);
 	DESTROY(keyconfig2_settings);
-	DESTROY(target_memory);
 	
-	DESTROY(_fastEquipmentA);
-	DESTROY(_fastEquipmentB);
 
 	DESTROY(eqScripts);
 	DESTROY(worldScripts);
@@ -2412,21 +2384,12 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(roleWeights);
 	DESTROY(roleWeightFlags);
 	DESTROY(roleSystemList);
-	DESTROY(passengers);
-	DESTROY(passenger_record);
-	DESTROY(contracts);
-	DESTROY(contract_record);
-	DESTROY(parcels);
-	DESTROY(parcel_record);
 	DESTROY(missionDestinations);
-	DESTROY(shipyard_record);
 	
 	DESTROY(_missionOverlayDescriptor);
 	DESTROY(_missionBackgroundDescriptor);
 	DESTROY(_equipScreenBackgroundDescriptor);
 	
-	DESTROY(_commanderName);
-	DESTROY(_lastsaveName);
 	DESTROY(shipCommodityData);
 	
 	DESTROY(specialCargo);
@@ -2435,14 +2398,11 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(scenarioKey);
 	
 	DESTROY(_customViews);
-	DESTROY(lastShot);
 
 	
-	DESTROY(_jumpCause);
 
 	[self destroySound];
 	
-	DESTROY(scannedWormholes);
 	DESTROY(wormhole);
 	
 	int i;
@@ -3182,14 +3142,13 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 	// and one thing which isn't a subentity. Fixes bug with
 	// mispositioned laser beams particularly noticeable on side view.
-	if (lastShot != nil)
+	if (!lastShot.empty())
 	{
-		OOLaserShotEntity *lse = nil;
-		foreach (lse, lastShot)
+		for (const oo::ObjCRef<OOLaserShotEntity *> &lse : lastShot)
 		{
-			[lse update:0.0];
+			[lse.get() update:0.0];
 		}
-		DESTROY(lastShot);
+		lastShot.clear();
 	}
 	
 	// update mousewheel status
@@ -4516,35 +4475,33 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (void) resetHud
 {
 	// set up defauld HUD for the ship
-	NSDictionary *shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:[self shipDataKey]];
-	NSString *hud_desc = oo::PListView(shipDict).get<NSString *>(@"hud", @"hud.plist");
-	if (![self switchHudTo:hud_desc])  [self switchHudTo:@"hud.plist"];	// ensure we have a HUD to fall back to
+	const oo::PList shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:oo::StdString([self shipDataKey])];
+	const std::string hud_desc = shipDict.get<std::string>("hud", "hud.plist");
+	if (![self cxx_switchHudTo:hud_desc])  [self cxx_switchHudTo:"hud.plist"];	// ensure we have a HUD to fall back to
 }
 
 
-- (BOOL) switchHudTo:(NSString *)hudFileName
+- (BOOL) cxx_switchHudTo:(const std::string &)hudFileName
 {
-	NSDictionary 	*hudDict = nil;
 	BOOL 			wasHidden = NO;
 	BOOL 			wasCompassActive = YES;
 	double			scannerZoom = 1.0;
 	NSUInteger		lastMFD = 0;
 	NSUInteger		i;
 
-	if (!hudFileName)  return NO;
-	
+	// (a nil name returns NO in the bridged -switchHudTo:)
 	// is the HUD in the process of being rendered? If yes, set it to defer state and abort the switching now
 	if (hud != nil && [hud isUpdating])
 	{
-		[hud setDeferredHudName:hudFileName];
+		[hud cxx_setDeferredHudName:hudFileName];
 		return NO;
 	}
 	
-	hudDict = [ResourceManager dictionaryFromFilesNamed:hudFileName inFolder:@"Config" andMerge:YES];
+	const oo::PList hudDict = [ResourceManager cxx_dictionaryFromFilesNamed:hudFileName inFolder:std::string("Config") andMerge:YES];
 	// hud defined, but buggy?
-	if (hudDict == nil)
+	if (hudDict.isNull())
 	{
-		OOLog(@"PlayerEntity.switchHudTo.failed", @"HUD dictionary file %@ to switch to not found or invalid.", hudFileName);
+		OOLog(@"PlayerEntity.switchHudTo.failed", @"HUD dictionary file %@ to switch to not found or invalid.", oo::NSStringFrom(hudFileName));
 		return NO;
 	}
 	
@@ -4558,28 +4515,28 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	}
 	
 	// buggy oxp could override hud.plist with a non-dictionary.
-	if (hudDict != nil)
+	if (!hudDict.isNull())
 	{
 		[hud setHidden:YES];	// hide the hud while rebuilding it.
 		DESTROY(hud);
-		hud = [[HeadUpDisplay alloc] initWithDictionary:hudDict inFile:hudFileName];
-		[hud resetGuis:hudDict];
+		hud = [[HeadUpDisplay alloc] cxx_initWithDictionary:hudDict inFile:hudFileName];
+		[hud cxx_resetGuis:hudDict];
 		// reset zoom & hidden to what they were before the swich
 		[hud setScannerZoom:scannerZoom];
 		[hud setCompassActive:wasCompassActive];
 		[hud setHidden:wasHidden];
 		activeMFD = 0;
-		NSArray *savedMFDs = [NSArray arrayWithArray:multiFunctionDisplaySettings];
-		[multiFunctionDisplaySettings removeAllObjects];
+		const std::vector<std::optional<std::string>> savedMFDs = multiFunctionDisplaySettings;
+		multiFunctionDisplaySettings.clear();
 		for (i = 0; i < [hud mfdCount] ; i++)
 		{
-			if ([savedMFDs count] > i)
+			if (savedMFDs.size() > i)
 			{
-				[multiFunctionDisplaySettings addObject:[savedMFDs objectAtIndex:i]];
+				multiFunctionDisplaySettings.push_back(savedMFDs[i]);
 			}
 			else
 			{
-				[multiFunctionDisplaySettings addObject:[OONull null]];
+				multiFunctionDisplaySettings.push_back(std::nullopt);
 			}
 		}
 		if (lastMFD < [hud mfdCount]) activeMFD = lastMFD;
@@ -4589,27 +4546,30 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (float) dialCustomFloat:(NSString *)dialKey
+- (float) cxx_dialCustomFloat:(const std::string &)dialKey
 {
-	return oo::PListView(customDialSettings).get<float>(dialKey, 0.0);
+	const auto found = customDialSettings.find(dialKey);
+	return oo::PListGet<float>::from(found != customDialSettings.end() ? &found->second : nullptr, 0.0f);
 }
 
 
-- (NSString *) dialCustomString:(NSString *)dialKey
+- (std::string) cxx_dialCustomString:(const std::string &)dialKey
 {
-	return oo::PListView(customDialSettings).get<NSString *>(dialKey, @"");
+	const auto found = customDialSettings.find(dialKey);
+	return oo::PListGet<std::string>::from(found != customDialSettings.end() ? &found->second : nullptr, "");
 }
 
 
-- (OOColor *) dialCustomColor:(NSString *)dialKey
+- (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey
 {
-	return [OOColor colorWithDescription:[customDialSettings objectForKey:dialKey]];
+	const auto found = customDialSettings.find(dialKey);
+	return [OOColor colorWithDescription:(found != customDialSettings.end() ? oo::ObjectFromPList(found->second) : nil)];
 }
 
 
-- (void) setDialCustom:(id)value forKey:(NSString *)dialKey
+- (void) cxx_setDialCustom:(id)value forKey:(const std::string &)dialKey
 {
-	[customDialSettings setObject:value forKey:dialKey];
+	customDialSettings[dialKey] = oo::PListFrom(value);	// non-plist values (colours...) are kept as Object nodes; nil is a null entry (it raised before)
 }
 
 
@@ -4899,30 +4859,30 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	escape_pod_rescue_time = seconds;
 }
 
-- (NSString *) dial_clock
+- (std::string) cxx_dial_clock
 {
-	return ClockToString(ship_clock, ship_clock_adjust > 0);
+	return cxx_ClockToString(ship_clock, ship_clock_adjust > 0);
 }
 
 
-- (NSString *) dial_clock_adjusted
+- (std::string) cxx_dial_clock_adjusted
 {
-	return ClockToString(ship_clock + ship_clock_adjust, NO);
+	return cxx_ClockToString(ship_clock + ship_clock_adjust, NO);
 }
 
 
-- (NSString *) dial_fpsinfo
+- (std::string) cxx_dial_fpsinfo
 {
-	unsigned fpsVal = fps_counter;	
-	return [NSString stringWithFormat:@"FPS: %3d", fpsVal];
+	unsigned fpsVal = fps_counter;
+	return oo::str::format("FPS: %3d", fpsVal);
 }
 
 
-- (NSString *) dial_objinfo
+- (std::string) cxx_dial_objinfo
 {
-	NSString *result = [NSString stringWithFormat:@"Entities: %3zu", [UNIVERSE entityCount]];
+	std::string result = oo::str::format("Entities: %3zu", [UNIVERSE entityCount]);
 #ifndef NDEBUG
-	result = [NSString stringWithFormat:@"%@ (%d, %zu KiB, avg %zu bytes)", result, gLiveEntityCount, gTotalEntityMemory >> 10, gTotalEntityMemory / gLiveEntityCount];
+	result = oo::str::format("%s (%d, %zu KiB, avg %zu bytes)", result.c_str(), gLiveEntityCount, gTotalEntityMemory >> 10, gTotalEntityMemory / gLiveEntityCount);
 #endif
 	
 	return result;
@@ -4999,24 +4959,17 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSMutableArray *) commLog
+- (std::vector<std::string> *) cxx_commLog
 {
 	assert(kCommLogTrimSize < kCommLogTrimThreshold);
-	
-	if (commLog != nil)
+
+	const std::size_t count = commLog.size();
+	if (count >= kCommLogTrimThreshold)
 	{
-		NSUInteger count = [commLog count];
-		if (count >= kCommLogTrimThreshold)
-		{
-			[commLog removeObjectsInRange:NSMakeRange(0, count - kCommLogTrimSize)];
-		}
+		commLog.erase(commLog.begin(), commLog.begin() + static_cast<std::ptrdiff_t>(count - kCommLogTrimSize));
 	}
-	else
-	{
-		commLog = [[NSMutableArray alloc] init];
-	}
-	
-	return commLog;
+
+	return &commLog;	// (a nil receiver gives nullptr)
 }
 
 
@@ -5258,33 +5211,33 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSString *) compassTargetLabel
+- (std::optional<std::string>) cxx_compassTargetLabel
 {
 	switch (compassMode)
 	{
 	case COMPASS_MODE_INACTIVE:
-		return @"";
+		return "";
 	case COMPASS_MODE_BASIC:
-		return @"";
+		return "";
 	case COMPASS_MODE_BEACONS:
 	{
 		Entity *target = [self compassTarget];
 		if (target)
 		{
-			return [(Entity <OOBeaconEntity> *)target beaconLabel];
+			return oo::OptionalString([(Entity <OOBeaconEntity> *)target beaconLabel]);
 		}
-		return @"";
+		return "";
 	}
 	case COMPASS_MODE_PLANET:
-		return [[UNIVERSE planet] name];
+		return oo::OptionalString([[UNIVERSE planet] name]);
 	case COMPASS_MODE_SUN:
-		return [[UNIVERSE sun] name];
+		return oo::OptionalString([[UNIVERSE sun] name]);
 	case COMPASS_MODE_STATION:
-		return [[UNIVERSE station] displayName];
+		return oo::OptionalString([[UNIVERSE station] displayName]);
 	case COMPASS_MODE_TARGET:
-		return DESC(@"oolite-beacon-label-target");
+		return oo::StdString(DESC(@"oolite-beacon-label-target"));
 	}
-	return @"";
+	return "";
 }
 
 
@@ -5467,86 +5420,76 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSString *) dialTargetName
+- (std::optional<std::string>) cxx_dialTargetName
 {
 	Entity		*target_entity = [self primaryTarget];
-	NSString	*result = nil;
-	
+	std::optional<std::string>	result;
+
 	if (target_entity == nil)
 	{
-		result = DESC(@"no-target-string");
+		result = oo::StdString(DESC(@"no-target-string"));
 	}
-	
+
 	if ([target_entity respondsToSelector:@selector(identFromShip:)])
 	{
-		result = [(ShipEntity*)target_entity identFromShip:self];
+		result = oo::OptionalString([(ShipEntity*)target_entity identFromShip:self]);
 	}
-	
-	if (result == nil)  result = DESC(@"unknown-target");
+
+	if (!result.has_value())  result = oo::StdString(DESC(@"unknown-target"));
 	
 	return result;
 }
 
 
-- (NSArray *) multiFunctionDisplayList
+- (std::vector<std::optional<std::string>>) cxx_multiFunctionDisplayList
 {
 	return multiFunctionDisplaySettings;
 }
 
 
-- (NSString *) multiFunctionText:(NSUInteger)i
+- (std::optional<std::string>) cxx_multiFunctionText:(NSUInteger)i
 {
-	NSString *key = oo::PListView(multiFunctionDisplaySettings).at<NSString *>(i, nil);
-	if (key == nil)
+	if (i >= multiFunctionDisplaySettings.size() || !multiFunctionDisplaySettings[i].has_value())
 	{
-		return nil;
+		return std::nullopt;
 	}
-	NSString *text = oo::PListView(multiFunctionDisplayText).get<NSString *>(key, nil);
-	return text;
+	const auto text = multiFunctionDisplayText.find(*multiFunctionDisplaySettings[i]);
+	if (text == multiFunctionDisplayText.end())  return std::nullopt;
+	return text->second;
 }
 
 
-- (void) setMultiFunctionText:(NSString *)text forKey:(NSString *)key
+- (void) cxx_setMultiFunctionText:(const std::optional<std::string> &)text forKey:(const std::optional<std::string> &)key
 {
-	if (text != nil)
+	if (text.has_value())
 	{
-		[multiFunctionDisplayText setObject:text forKey:key];
+		if (key.has_value())  multiFunctionDisplayText[*key] = *text;	// (a nil key raised before)
 	}
-	else if (key != nil)
+	else if (key.has_value())
 	{
-		[multiFunctionDisplayText removeObjectForKey:key];
+		multiFunctionDisplayText.erase(*key);
 		// and blank any MFDs currently using it
-		NSUInteger index;
-		while ((index = [multiFunctionDisplaySettings indexOfObject:key]) != NSNotFound)
-		{
-			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:[OONull null]];
-		}
+		std::replace(multiFunctionDisplaySettings.begin(), multiFunctionDisplaySettings.end(), key, std::optional<std::string>());
 	}
 }
 
 
-- (BOOL) setMultiFunctionDisplay:(NSUInteger)index toKey:(NSString *)key
+- (BOOL) cxx_setMultiFunctionDisplay:(NSUInteger)index toKey:(const std::optional<std::string> &)key
 {
 	if (index >= [hud mfdCount])
 	{
 		// is first inactive display
-		index = [multiFunctionDisplaySettings indexOfObject:[OONull null]];
-		if (index == NSNotFound)
+		const auto inactive = std::find(multiFunctionDisplaySettings.begin(), multiFunctionDisplaySettings.end(), std::nullopt);
+		if (inactive == multiFunctionDisplaySettings.end())
 		{
 			return NO;
 		}
+		index = static_cast<NSUInteger>(inactive - multiFunctionDisplaySettings.begin());
 	}
 
 	if (index < [hud mfdCount])
 	{
-		if (key == nil)
-		{
-			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:[OONull null]];
-		}
-		else
-		{
-			[multiFunctionDisplaySettings replaceObjectAtIndex:index withObject:key];
-		}
+		multiFunctionDisplaySettings.at(index) = key;	// nullopt = inactive
 		return YES;
 	}
 	else
@@ -5559,35 +5502,37 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (void) cycleNextMultiFunctionDisplay:(NSUInteger) index
 {
 	if ([[self hud] mfdCount] == 0) return;
-	NSArray *keys = [multiFunctionDisplayText allKeys];
-	NSString *key = nil;
-	if ([keys count] == 0)
+	std::vector<std::string> keys;	// byte order (was -allKeys hash order)
+	for (const auto &entry : multiFunctionDisplayText)  keys.push_back(entry.first);
+	std::optional<std::string> key;
+	if (keys.empty())
 	{
-		[self setMultiFunctionDisplay:index toKey:nil];
+		[self cxx_setMultiFunctionDisplay:index toKey:std::nullopt];
 		return;
 	}
-	id current = [multiFunctionDisplaySettings objectAtIndex:index];
-	if (current == [OONull null])
+	const std::optional<std::string> current = multiFunctionDisplaySettings.at(index);
+	if (!current.has_value())
 	{
-		key = [keys objectAtIndex:0];
-		[self setMultiFunctionDisplay:index toKey:key];
+		key = keys[0];
+		[self cxx_setMultiFunctionDisplay:index toKey:key];
 	}
 	else
 	{
-		NSUInteger cIndex = [keys indexOfObject:current];
-		if (cIndex == NSNotFound || cIndex + 1 >= [keys count])
+		const auto currentKey = std::find(keys.begin(), keys.end(), *current);
+		const NSUInteger cIndex = (currentKey != keys.end()) ? static_cast<NSUInteger>(currentKey - keys.begin()) : NSNotFound;
+		if (cIndex == NSNotFound || cIndex + 1 >= keys.size())
 		{
-			key = nil;
-			[self setMultiFunctionDisplay:index toKey:nil];
+			key = std::nullopt;
+			[self cxx_setMultiFunctionDisplay:index toKey:std::nullopt];
 		}
 		else 
 		{
-			key = [keys objectAtIndex:(cIndex+1)];
-			[self setMultiFunctionDisplay:index toKey:key];
+			key = keys[cIndex+1];
+			[self cxx_setMultiFunctionDisplay:index toKey:key];
 		}
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value keyVal = OOJSValueFromNativeObject(context,key);
+	ooscript::Value keyVal = OOJSValueFromNativeObject(context,oo::NSStringOrNil(key));
 	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
@@ -5596,35 +5541,37 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (void) cyclePreviousMultiFunctionDisplay:(NSUInteger) index
 {
 	if ([[self hud] mfdCount] == 0) return;
-	NSArray *keys = [multiFunctionDisplayText allKeys];
-	NSString *key = nil;
-	if ([keys count] == 0)
+	std::vector<std::string> keys;	// byte order (was -allKeys hash order)
+	for (const auto &entry : multiFunctionDisplayText)  keys.push_back(entry.first);
+	std::optional<std::string> key;
+	if (keys.empty())
 	{
-		[self setMultiFunctionDisplay:index toKey:nil];
+		[self cxx_setMultiFunctionDisplay:index toKey:std::nullopt];
 		return;
 	}
-	id current = [multiFunctionDisplaySettings objectAtIndex:index];
-	if (current == [OONull null])
+	const std::optional<std::string> current = multiFunctionDisplaySettings.at(index);
+	if (!current.has_value())
 	{
-		key = [keys objectAtIndex:([keys count]-1)];
-		[self setMultiFunctionDisplay:index toKey:key];
+		key = keys[keys.size()-1];
+		[self cxx_setMultiFunctionDisplay:index toKey:key];
 	}
 	else
 	{
-		NSUInteger cIndex = [keys indexOfObject:current];
+		const auto currentKey = std::find(keys.begin(), keys.end(), *current);
+		const NSUInteger cIndex = (currentKey != keys.end()) ? static_cast<NSUInteger>(currentKey - keys.begin()) : NSNotFound;
 		if (cIndex == NSNotFound || cIndex == 0)
 		{
-			key = nil;
-			[self setMultiFunctionDisplay:index toKey:nil];
+			key = std::nullopt;
+			[self cxx_setMultiFunctionDisplay:index toKey:std::nullopt];
 		}
 		else 
 		{
-			key = [keys objectAtIndex:(cIndex-1)];
-			[self setMultiFunctionDisplay:index toKey:key];
+			key = keys[cIndex-1];
+			[self cxx_setMultiFunctionDisplay:index toKey:key];
 		}
 	}
 	ooscript::Context context = OOJSAcquireContext();
-	ooscript::Value keyVal = OOJSValueFromNativeObject(context,key);
+	ooscript::Value keyVal = OOJSValueFromNativeObject(context,oo::NSStringOrNil(key));
 	ShipScriptEvent(context, self, "mfdKeyChanged", ooscript::int32Value(activeMFD), keyVal);
 	OOJSRelinquishContext(context);
 }
@@ -6162,9 +6109,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSArray *) currentLaserOffset
+- (std::vector<Vector>) cxx_currentLaserOffset
 {
-	return [self laserPortOffset:currentWeaponFacing];
+	return [self cxx_laserPortOffset:currentWeaponFacing];
 }
 
 
@@ -7542,26 +7489,23 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[UNIVERSE removeAllEntitiesExceptPlayer];
 	
 	// remove any contracts and parcels for the old galaxy
-	if (contracts)
-		[contracts removeAllObjects];
+	contracts.clear();
 
-	if (parcels)
-		[parcels removeAllObjects];
+	parcels.clear();
 	
 	// remove any mission destinations for the old galaxy
 	if (missionDestinations)
 		[missionDestinations removeAllObjects];
 	
 	// expire passenger contracts for the old galaxy
-	if (passengers)
 	{
 		unsigned i;
-		for (i = 0; i < [passengers count]; i++)
+		for (i = 0; i < passengers.size(); i++)
 		{
 			// set the expected arrival time to now, so they storm off the ship at the first port
-			NSMutableDictionary* passenger_info = [NSMutableDictionary dictionaryWithDictionary:oo::PListView(passengers).at<NSDictionary *>(i)];
-			[passenger_info setObject:[NSNumber numberWithDouble:ship_clock] forKey:CONTRACT_KEY_ARRIVAL_TIME];
-			[passengers replaceObjectAtIndex:i withObject:passenger_info];
+			oo::PList::Dict passenger_info = passengers[i].isDict() ? *passengers[i].getIf<oo::PList::Dict>() : oo::PList::Dict();
+			passenger_info[oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)] = oo::PList(ship_clock);	// +numberWithDouble:
+			passengers[i] = oo::PList(std::move(passenger_info));
 		}
 	}
 
@@ -7836,7 +7780,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	// To avoid this problem, a small wormhole displacement is added.
 	if (wormhole)	// will be nil for galactic jump
 	{
-		if ([[wormhole shipsInTransit] count] > 0)
+		if ([wormhole shipsInTransit].count() > 0)
 		{
 			// player is not allone in his wormhole, synchronise player and wormhole position.
 			double	wh_arrival_time = ([PLAYER clockTimeAdjusted] - [wormhole arrivalTime]);
@@ -8266,29 +8210,27 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (NSString *) fastEquipmentA
+- (std::optional<std::string>) cxx_fastEquipmentA
 {
 	return _fastEquipmentA;
 }
 
 
-- (NSString *) fastEquipmentB
+- (std::optional<std::string>) cxx_fastEquipmentB
 {
 	return _fastEquipmentB;
 }
 
 
-- (void) setFastEquipmentA:(NSString *)eqKey
+- (void) cxx_setFastEquipmentA:(const std::optional<std::string> &)eqKey
 {
-	[_fastEquipmentA release];
-	_fastEquipmentA = [eqKey copy];
+	_fastEquipmentA = eqKey;
 }
 
 
-- (void) setFastEquipmentB:(NSString *)eqKey
+- (void) cxx_setFastEquipmentB:(const std::optional<std::string> &)eqKey
 {
-	[_fastEquipmentB release];
-	_fastEquipmentB = [eqKey copy];
+	_fastEquipmentB = eqKey;
 }
 
 
@@ -8460,19 +8402,19 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (NSArray *) passengerListForScripting
 {
-	return [self contractsListForScriptingFromArray:passengers forCargo:NO];
+	return [self contractsListForScriptingFromArray:oo::ObjectFromPList(oo::PList(passengers)) forCargo:NO];
 }
 
 
 - (NSArray *) parcelListForScripting
 {
-	return [self contractsListForScriptingFromArray:parcels forCargo:NO];
+	return [self contractsListForScriptingFromArray:oo::ObjectFromPList(oo::PList(parcels)) forCargo:NO];
 }
 
 
 - (NSArray *) contractListForScripting
 {
-	return [self contractsListForScriptingFromArray:contracts forCargo:YES];
+	return [self contractsListForScriptingFromArray:oo::ObjectFromPList(oo::PList(contracts)) forCargo:YES];
 }
 
 - (void) setGuiToSystemDataScreen
@@ -8706,57 +8648,50 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (void) prepareMarkedDestination:(NSMutableDictionary *)markers :(NSDictionary *)marker
+namespace
 {
-	NSNumber *key = [NSNumber numberWithInt:oo::PListView(marker).get<int>(@"system")];
-	NSMutableArray *list = [markers objectForKey:key];
-	if (list == nil)
-	{
-		list = [NSMutableArray arrayWithObject:marker];
-	}
-	else
-	{
-		[list addObject:marker];
-	}
-	[markers setObject:list forKey:key];
+
+// -prepareMarkedDestination:: appended the marker to the list for its "system" (the old
+// +numberWithInt: key), creating the list on first use.
+void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo::PList marker)
+{
+	const int system = marker.get<int>("system");
+	markers[system].push_back(std::move(marker));
 }
 
+}	// namespace
 
-- (NSDictionary *) markedDestinations
+
+- (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations	// passengers, parcels, contracts, then mission destinations
 {
 	// get a list of systems marked as contract destinations
-	NSMutableDictionary	*destinations = [NSMutableDictionary dictionaryWithCapacity:256];
+	std::map<int, std::vector<oo::PList>>	destinations;
 	unsigned		i;
 	OOSystemID sysid;
-	NSDictionary *marker;
 
-	for (i = 0; i < [passengers count]; i++)
+	for (i = 0; i < passengers.size(); i++)
 	{
-		sysid = oo::PListView(oo::PListView(passengers).at<NSDictionary *>(i)).get<unsigned char>(CONTRACT_KEY_DESTINATION);
-		marker = [self passengerContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		sysid = passengers[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		PrepareMarkedDestination(destinations, [self cxx_passengerContractMarker:sysid]);
 	}
-	for (i = 0; i < [parcels count]; i++)
+	for (i = 0; i < parcels.size(); i++)
 	{
-		sysid = oo::PListView(oo::PListView(parcels).at<NSDictionary *>(i)).get<unsigned char>(CONTRACT_KEY_DESTINATION);
-		marker = [self parcelContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		sysid = parcels[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		PrepareMarkedDestination(destinations, [self cxx_parcelContractMarker:sysid]);
 	}
-	for (i = 0; i < [contracts count]; i++)
+	for (i = 0; i < contracts.size(); i++)
 	{
-		sysid = oo::PListView(oo::PListView(contracts).at<NSDictionary *>(i)).get<unsigned char>(CONTRACT_KEY_DESTINATION);
-		marker = [self cargoContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		sysid = contracts[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		PrepareMarkedDestination(destinations, [self cxx_cargoContractMarker:sysid]);
 	}
 
-	NSString					*key = nil;
-
-	foreachkey (key, missionDestinations)
+	// in the dictionary's own key order, as foreachkey walked it; a marker is plist data (any
+	// live object in it an Object node)
+	for (id key in missionDestinations)
 	{
-		marker = [missionDestinations objectForKey:key];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, oo::PListFrom([missionDestinations objectForKey:key]));
 	}
-	
+
 	return destinations;
 }
 
@@ -11819,13 +11754,13 @@ static NSString *last_outfitting_key=nil;
 
 - (NSUInteger) parcelCount
 {
-	return [parcels count];
+	return parcels.size();
 }
 
 
 - (NSUInteger) passengerCount
 {
-	return [passengers count];
+	return passengers.size();
 }
 
 
@@ -12261,7 +12196,13 @@ static NSString *last_outfitting_key=nil;
 	else if ([self hasEquipmentItemProviding:@"EQ_TARGET_MEMORY"] && targetEntity != nil)
 	{
 		OOWeakReference *targetRef = [targetEntity weakSelf];
-		NSUInteger i = [target_memory indexOfObject:targetRef];
+		// -indexOfObject: compared the weak references (proxies) by identity
+		const auto slotFor = [self](OOWeakReference *ref) -> NSUInteger
+		{
+			const auto found = std::find_if(target_memory.begin(), target_memory.end(), [ref](const oo::ObjCRef<OOWeakReference *> &slot) { return slot.get() == ref; });
+			return (found != target_memory.end()) ? static_cast<NSUInteger>(found - target_memory.begin()) : NSNotFound;
+		};
+		NSUInteger i = slotFor(targetRef);
 		// if already in target memory, preserve that and just change the index
 		if (i != NSNotFound)
 		{
@@ -12269,18 +12210,18 @@ static NSString *last_outfitting_key=nil;
 		}		
 		else
 		{
-			i = [target_memory indexOfObject:[OONull null]];
+			i = slotFor(nil);	// an empty slot
 			// find and use a blank space in memory
 			if (i != NSNotFound)
 			{
-				[target_memory replaceObjectAtIndex:i withObject:targetRef];
+				target_memory.at(i) = oo::ObjCRef<OOWeakReference *>(targetRef);
 				target_memory_index = i;
 			}
 			else
 			{
 				// use the next memory space
 				target_memory_index = (target_memory_index + 1) % PLAYER_TARGET_MEMORY_SIZE;
-				[target_memory replaceObjectAtIndex:target_memory_index withObject:targetRef];
+				target_memory.at(target_memory_index) = oo::ObjCRef<OOWeakReference *>(targetRef);
 			}
 		}
 	}
@@ -12311,23 +12252,23 @@ static NSString *last_outfitting_key=nil;
 
 - (void) clearTargetMemory
 {
-	NSUInteger memoryCount = [target_memory count];
+	NSUInteger memoryCount = target_memory.size();
 	for (NSUInteger i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 	{
 		if (i < memoryCount)
 		{
-			[target_memory replaceObjectAtIndex:i withObject:[OONull null]];
+			target_memory[i] = nullptr;
 		}
 		else
 		{
-			[target_memory addObject:[OONull null]];
+			target_memory.emplace_back();
 		}
 	}
 	target_memory_index = 0;
 }
 
 
-- (NSMutableArray *) targetMemory
+- (std::vector<oo::ObjCRef<OOWeakReference *>>) cxx_targetMemory
 {
 	return target_memory;
 }
@@ -12342,7 +12283,7 @@ static NSString *last_outfitting_key=nil;
 		while (idx >= PLAYER_TARGET_MEMORY_SIZE) idx -= PLAYER_TARGET_MEMORY_SIZE;
 		target_memory_index = idx;
 
-		id targ_id = [target_memory objectAtIndex:target_memory_index];
+		id targ_id = target_memory.at(target_memory_index).get();	// nil for an empty slot, which is not a proxy either
 		if ([targ_id isProxy])
 		{
 			ShipEntity *potential_target = [(OOWeakReference *)targ_id weakRefUnderlyingObject];
@@ -12378,7 +12319,7 @@ static NSString *last_outfitting_key=nil;
 			}
 			else
 			{
-				[target_memory replaceObjectAtIndex:target_memory_index withObject:[OONull null]];
+				target_memory.at(target_memory_index) = nullptr;
 			}
 		}
 	}
@@ -13036,45 +12977,42 @@ else _dockTarget = NO_TARGET;
 }
 
 
-- (NSString *) jumpCause
-{ 
+- (std::optional<std::string>) cxx_jumpCause
+{
 	return _jumpCause;
 }
 
 
-- (void) setJumpCause:(NSString *)value
+- (void) cxx_setJumpCause:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value != nil);
-	[_jumpCause autorelease];
-	_jumpCause = [value copy];
+	NSParameterAssert(value.has_value());
+	_jumpCause = value;
 }
 
 
-- (NSString *) commanderName
+- (std::optional<std::string>) cxx_commanderName
 {
 	return _commanderName;
 }
 
 
-- (NSString *) lastsaveName
+- (std::optional<std::string>) cxx_lastsaveName
 {
 	return _lastsaveName;
 }
 
 
-- (void) setCommanderName:(NSString *)value
+- (void) cxx_setCommanderName:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value != nil);
-	[_commanderName autorelease];
-	_commanderName = [value copy];
+	NSParameterAssert(value.has_value());
+	_commanderName = value;
 }
 
 
-- (void) setLastsaveName:(NSString *)value
+- (void) cxx_setLastsaveName:(const std::optional<std::string> &)value
 {
-	NSParameterAssert(value != nil);
-	[_lastsaveName autorelease];
-	_lastsaveName = [value copy];
+	NSParameterAssert(value.has_value());
+	_lastsaveName = value;
 }
 
 
@@ -13193,17 +13131,15 @@ else _dockTarget = NO_TARGET;
 //
 - (void)addScannedWormhole:(WormholeEntity*)whole
 {
-	assert(scannedWormholes != nil);
 	assert(whole != nil);
-	
+
 	// Only add if we don't have it already!
-	WormholeEntity *wh = nil;
-	foreach (wh, scannedWormholes)
+	for (const oo::ObjCRef<WormholeEntity *> &wh : scannedWormholes)
 	{
-		if (wh == whole)  return;
+		if (wh.get() == whole)  return;
 	}
 	[whole setScannedAt:[self clockTimeAdjusted]];
-	[scannedWormholes addObject:whole];
+	scannedWormholes.push_back(oo::ObjCRef<WormholeEntity *>(whole));
 }
 
 // Checks through our array of wormholes for any which have expired
@@ -13211,43 +13147,41 @@ else _dockTarget = NO_TARGET;
 // Else remove it
 - (void)updateWormholes
 {
-	assert(scannedWormholes != nil);
-	
-	if ([scannedWormholes count] == 0)
+	if (scannedWormholes.empty())
 		return;
 
 	double now = [self clockTimeAdjusted];
 
-	NSMutableArray * savedWormholes = [[NSMutableArray alloc] initWithCapacity:[scannedWormholes count]];
-	WormholeEntity *wh;
+	std::vector<oo::ObjCRef<WormholeEntity *>> savedWormholes;
+	savedWormholes.reserve(scannedWormholes.size());
 
-	foreach (wh, scannedWormholes)
+	for (const oo::ObjCRef<WormholeEntity *> &whRef : scannedWormholes)
 	{
+		WormholeEntity *wh = whRef.get();
 		// TODO: Start drawing wormhole exit a few seconds before the first
 		//       ship is disgorged.
 		if ([wh arrivalTime] > now)
 		{
-			[savedWormholes addObject:wh];
+			savedWormholes.push_back(whRef);
 		}
 		else if (NSEqualPoints(galaxy_coordinates, [wh destinationCoordinates]))
 		{
 			[wh disgorgeShips];
-			if ([[wh shipsInTransit] count] > 0)
+			if ([wh shipsInTransit].count() > 0)
 			{
-				[savedWormholes addObject:wh];
+				savedWormholes.push_back(whRef);
 			}
 		}
 		// Else wormhole has expired in another system, let it expire
 	}
 
-	[scannedWormholes release];
-	scannedWormholes = savedWormholes;
+	scannedWormholes = std::move(savedWormholes);
 }
 
 
-- (NSArray *) scannedWormholes
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes
 {
-	return [NSArray arrayWithArray:scannedWormholes];
+	return scannedWormholes;
 }
 
 
@@ -13329,15 +13263,15 @@ else _dockTarget = NO_TARGET;
 }
 
 
-- (NSMutableDictionary*) shipyardRecord
+- (oo::PList::Dict *) cxx_shipyardRecord
 {
-	return shipyard_record;
+	return &shipyard_record;
 }
 
 
-- (void) setLastShot:(NSArray *)shot
+- (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot
 {
-	lastShot = [shot retain]; 
+	lastShot = shot;
 }
 
 

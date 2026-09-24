@@ -394,7 +394,7 @@ typedef enum
 	
 	NSString				*specialCargo;
 	
-	NSMutableArray			*commLog;
+	std::vector<std::string>	commLog;	// trimmed by -cxx_commLog
 
 	NSMutableArray			*eqScripts;
 	
@@ -409,16 +409,16 @@ typedef enum
 	oo::PList::Dict			reputation;			// signed integers by key (PlayerEntity (Contracts))
 	
 	unsigned				max_passengers;
-	NSMutableArray			*passengers;
-	NSMutableDictionary		*passenger_record;
+	oo::PList::Array		passengers;			// Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			passenger_record;	// arrival time (double) by passenger name
 
-	NSMutableArray			*parcels;
-	NSMutableDictionary		*parcel_record;
+	oo::PList::Array		parcels;			// Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			parcel_record;		// arrival time (double) by sender name
 	
-	NSMutableArray			*contracts;
-	NSMutableDictionary		*contract_record;
+	oo::PList::Array		contracts;			// cargo contract Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			contract_record;	// arrival time (double) by cargo ID
 	
-	NSMutableDictionary		*shipyard_record;
+	oo::PList::Dict			shipyard_record;	// shipdata key by shipyard ID of each ship bought
 	
 	NSMutableDictionary		*missionDestinations;
 	NSMutableArray			*roleWeights;
@@ -466,10 +466,10 @@ typedef enum
 	StationEntity			*targetDockStation; 
 	
 	HeadUpDisplay			*hud;
-	NSMutableDictionary		*multiFunctionDisplayText;
-	NSMutableArray			*multiFunctionDisplaySettings;
+	std::map<std::string, std::string, std::less<>>	multiFunctionDisplayText;	// MFD key -> text
+	std::vector<std::optional<std::string>>	multiFunctionDisplaySettings;	// one key per MFD; nullopt = inactive (was [OONull null])
 	NSUInteger				activeMFD;
-	NSMutableDictionary		*customDialSettings;
+	oo::PList::Dict			customDialSettings;	// a mixed configuration (proposed ADR-0043 item 11): whatever scripts set
 
 	GLfloat					roll_delta, pitch_delta, yaw_delta;
 	GLfloat					launchRoll;
@@ -491,8 +491,8 @@ typedef enum
 	OOMissileStatus			missile_status;
 	NSUInteger				activeMissile;
 	NSUInteger				primedEquipment;
-	NSString				*_fastEquipmentA;
-	NSString				*_fastEquipmentB;
+	std::optional<std::string>	_fastEquipmentA;	// nullopt = never set (was nil)
+	std::optional<std::string>	_fastEquipmentB;
 
 	OOCargoQuantity			current_cargo;
 	
@@ -512,11 +512,11 @@ typedef enum
 	OORouteType				ANA_mode;
 	OOTimeDelta				witchspaceCountdown;
 	
-	NSString				*_jumpCause;
+	std::optional<std::string>	_jumpCause;
 
 	// player commander data
-	NSString				*_commanderName;
-	NSString				*_lastsaveName;
+	std::optional<std::string>	_commanderName;
+	std::optional<std::string>	_lastsaveName;
 	NSPoint					galaxy_coordinates;
 	
 	OOCreditsQuantity		credits;	
@@ -721,7 +721,7 @@ typedef enum
 	
 	// target memory
 	// TODO: this should use weakrefs
-	NSMutableArray  		*target_memory;
+	std::vector<oo::ObjCRef<OOWeakReference *>>	target_memory;	// a null ref = an empty slot (was [OONull null])
 	NSUInteger				target_memory_index;
 	
 	// custom view points
@@ -803,11 +803,11 @@ typedef enum
 	
 	OODockingClearanceStatus dockingClearanceStatus;
 	
-	NSMutableArray			*scannedWormholes;
+	std::vector<oo::ObjCRef<WormholeEntity *>>	scannedWormholes;
 	WormholeEntity			*wormhole;
 
 	ShipEntity				*demoShip; // Used while docked to maintain demo ship rotation.
-	NSArray                 *lastShot; // used to correctly position laser shots on first frame of firing
+	std::vector<oo::ObjCRef<OOLaserShotEntity *>>	lastShot; // used to correctly position laser shots on first frame of firing
 	
 	StickProfileScreen		*stickProfileScreen;
 
@@ -827,10 +827,10 @@ typedef enum
 - (void) completeSetUpAndSetTarget:(BOOL)setTarget;
 - (void) startUpComplete;
 
-- (NSString *) commanderName;
-- (void) setCommanderName:(NSString *)value;
-- (NSString *) lastsaveName;
-- (void) setLastsaveName:(NSString *)value;
+- (std::optional<std::string>) cxx_commanderName;
+- (void) cxx_setCommanderName:(const std::optional<std::string> &)value;	// never nullopt
+- (std::optional<std::string>) cxx_lastsaveName;
+- (void) cxx_setLastsaveName:(const std::optional<std::string> &)value;	// never nullopt
 
 - (BOOL) isDocked;
 
@@ -861,8 +861,8 @@ typedef enum
 - (NSPoint) adjusted_chart_centre;
 - (OORouteType) ANAMode;
 
-- (NSString *) jumpCause;
-- (void) setJumpCause:(NSString *)value;
+- (std::optional<std::string>) cxx_jumpCause;
+- (void) cxx_setJumpCause:(const std::optional<std::string> &)value;	// never nullopt
 
 - (OOSystemID) systemID;
 - (void) setSystemID:(OOSystemID) sid;
@@ -914,19 +914,19 @@ typedef enum
 - (StationEntity *) getTargetDockStation;
 
 - (HeadUpDisplay *) hud;
-- (BOOL) switchHudTo:(NSString *)hudFileName;
+- (BOOL) cxx_switchHudTo:(const std::string &)hudFileName;
 - (void) resetHud;
 
-- (float) dialCustomFloat:(NSString *)dialKey;
-- (NSString *) dialCustomString:(NSString *)dialKey;
-- (OOColor *) dialCustomColor:(NSString *)dialKey;
-- (void) setDialCustom:(id)value forKey:(NSString *)key;
+- (float) cxx_dialCustomFloat:(const std::string &)dialKey;
+- (std::string) cxx_dialCustomString:(const std::string &)dialKey;
+- (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey;
+- (void) cxx_setDialCustom:(id)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given
 
 
-- (NSArray *) multiFunctionDisplayList;
-- (NSString *) multiFunctionText:(NSUInteger) index;
-- (void) setMultiFunctionText:(NSString *)text forKey:(NSString *)key;
-- (BOOL) setMultiFunctionDisplay:(NSUInteger) index toKey:(NSString *)key;
+- (std::vector<std::optional<std::string>>) cxx_multiFunctionDisplayList;	// nullopt = inactive MFD
+- (std::optional<std::string>) cxx_multiFunctionText:(NSUInteger) index;
+- (void) cxx_setMultiFunctionText:(const std::optional<std::string> &)text forKey:(const std::optional<std::string> &)key;
+- (BOOL) cxx_setMultiFunctionDisplay:(NSUInteger) index toKey:(const std::optional<std::string> &)key;
 - (void) cycleNextMultiFunctionDisplay:(NSUInteger) index;
 - (void) cyclePreviousMultiFunctionDisplay:(NSUInteger) index;
 - (void) selectNextMultiFunctionDisplay;
@@ -999,18 +999,18 @@ typedef enum
 - (double) escapePodRescueTime;
 - (void) setEscapePodRescueTime:(double) seconds;
 
-- (NSString *) dial_clock;
-- (NSString *) dial_clock_adjusted;
-- (NSString *) dial_fpsinfo;
-- (NSString *) dial_objinfo;
+- (std::string) cxx_dial_clock;
+- (std::string) cxx_dial_clock_adjusted;
+- (std::string) cxx_dial_fpsinfo;
+- (std::string) cxx_dial_objinfo;
 
-- (NSMutableArray *) commLog;
+- (std::vector<std::string> *) cxx_commLog;	// the live log, trimmed first (ADR-0043 item 22)
 
 - (Entity *) compassTarget;
 - (void) setCompassTarget:(Entity *)value;
 - (void) validateCompassTarget;
 
-- (NSString *) compassTargetLabel;
+- (std::optional<std::string>) cxx_compassTargetLabel;
 
 - (OOCompassMode) compassMode;
 - (void) setCompassMode:(OOCompassMode)value;
@@ -1023,7 +1023,7 @@ typedef enum
 - (BOOL) dialIdentEngaged;
 - (void) setDialIdentEngaged:(BOOL)newValue;
 - (NSString *) specialCargo;
-- (NSString *) dialTargetName;
+- (std::optional<std::string>) cxx_dialTargetName;
 - (ShipEntity *) missileForPylon:(NSUInteger)value;
 - (void) safeAllMissiles;
 - (void) selectNextMissile;
@@ -1057,7 +1057,7 @@ typedef enum
 
 - (OOWeaponType) weaponForFacing:(OOWeaponFacing)facing;
 - (OOWeaponType) currentWeapon;
-- (NSArray *) currentLaserOffset;
+- (std::vector<Vector>) cxx_currentLaserOffset;
 
 - (void) rotateCargo;
 
@@ -1092,10 +1092,10 @@ typedef enum
 - (NSString *) currentPrimedEquipment;
 - (NSUInteger) primedEquipmentCount;
 - (void) activatePrimableEquipment:(NSUInteger)index withMode:(OOPrimedEquipmentMode)mode;
-- (NSString *) fastEquipmentA;
-- (NSString *) fastEquipmentB;
-- (void) setFastEquipmentA:(NSString *)eqKey;
-- (void) setFastEquipmentB:(NSString *)eqKey;
+- (std::optional<std::string>) cxx_fastEquipmentA;
+- (std::optional<std::string>) cxx_fastEquipmentB;
+- (void) cxx_setFastEquipmentA:(const std::optional<std::string> &)eqKey;
+- (void) cxx_setFastEquipmentB:(const std::optional<std::string> &)eqKey;
 
 - (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price;
 
@@ -1105,7 +1105,7 @@ typedef enum
 
 - (void) setGuiToSystemDataScreen;
 - (void) setGuiToSystemDataScreenRefreshBackground: (BOOL) refreshBackground;
-- (NSDictionary *) markedDestinations;
+- (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations;	// marker Dicts by system ID, each list in the order the markers were added
 - (void) setGuiToLongRangeChartScreen;
 - (void) setGuiToShortRangeChartScreen;
 - (void) setGuiToChartScreenFrom: (OOGUIScreenID) oldScreen;
@@ -1188,7 +1188,7 @@ typedef enum
 - (void) setScoopsActive;
 
 - (void) clearTargetMemory;
-- (NSMutableArray *) targetMemory;
+- (std::vector<oo::ObjCRef<OOWeakReference *>>) cxx_targetMemory;	// a copy; a null ref is an empty slot
 - (BOOL) moveTargetMemoryBy:(NSInteger)delta;
 
 - (void) printIdentLockedOnForMissile:(BOOL)missile;
@@ -1288,7 +1288,7 @@ typedef enum
 - (OODockingClearanceStatus) getDockingClearanceStatus;
 - (void) penaltyForUnauthorizedDocking;
 
-- (NSArray *) scannedWormholes;
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes;
 
 - (WormholeEntity *) wormhole;
 - (void) setWormhole:(WormholeEntity *)newWormhole;
@@ -1300,9 +1300,9 @@ typedef enum
 - (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker;
 - (NSMutableDictionary*) getMissionDestinations;
 
-- (NSMutableDictionary*) shipyardRecord;
+- (oo::PList::Dict *) cxx_shipyardRecord;
 
-- (void) setLastShot:(NSArray *)shot;
+- (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot;
 
 - (void) showShipModelWithKey:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(NSString *)context;
 
@@ -1349,3 +1349,7 @@ OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;
 
 OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string) PURE_FUNC;
 NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour) CONST_FUNC;
+
+// TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
+// sweep, forwarding to the cxx_ API above. Keep this the last line.
+#import "PlayerEntity+FoundationBridge.h"
