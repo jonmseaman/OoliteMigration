@@ -83,6 +83,14 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (void) showInformationForSelectedUpgradeWithFormatString:(NSString *)extraString;	// -> -cxx_showInformationForSelectedUpgradeWithFormatString:
 - (NSString *)screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;	// -> -cxx_screenModeStringForWidth:height:refreshRate:
 
+// oo-3rb.247: market screens, commodity trading and cargo quantities
+- (OOCargoQuantity) cargoQuantityForType:(OOCommodityType)type;	// -> -cxx_cargoQuantityForType:
+- (OOCargoQuantity) setCargoQuantityForType:(OOCommodityType)type amount:(OOCargoQuantity)amount;	// -> -cxx_setCargoQuantityForType:amount:
+- (NSArray *) applyMarketFilter:(NSArray *)goods onMarket:(OOCommodityMarket *)market;	// -> -cxx_applyMarketFilter:onMarket:
+- (NSArray *) applyMarketSorter:(NSArray *)goods onMarket:(OOCommodityMarket *)market;	// -> -cxx_applyMarketSorter:onMarket:
+- (BOOL) tryBuyingCommodity:(OOCommodityType)type all:(BOOL)all;	// -> -cxx_tryBuyingCommodity:all:
+- (BOOL) trySellingCommodity:(OOCommodityType)type all:(BOOL)all;	// -> -cxx_trySellingCommodity:all:
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H
