@@ -29,8 +29,11 @@ MA );-);, USA.
 #import "PlayerEntity.h"
 #import "OOEquipmentType.h"
 
-#define CASE(foo) case foo: return @#foo;
-#define REVERSE_CASE(foo) if ([string isEqualToString:@#foo]) return foo;
+#import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
+
+#define CASE(foo) case foo: return #foo;
+#define REVERSE_CASE(foo) if (string == #foo) return foo;
 
 
 #define ENTRY(label, value) case label: return @#label;
@@ -197,7 +200,7 @@ OOLongRangeChartMode OOLongRangeChartModeFromString(NSString *string)
 #undef GALACTIC_HYPERSPACE_ENTRY
 
 
-NSString *RouteTypeToString(OORouteType routeType)
+std::string cxx_RouteTypeToString(OORouteType routeType)
 {
 	switch (routeType)
 	{
@@ -206,7 +209,7 @@ NSString *RouteTypeToString(OORouteType routeType)
 		CASE(OPTIMIZED_BY_TIME);
 	}
 	
-	return @"** ROUTE TYPE UNKNOWN **";
+	return "** ROUTE TYPE UNKNOWN **";
 }
 
 
@@ -242,22 +245,22 @@ NSString *OODisplayStringFromEconomyID(OOEconomyID economy)
 }
 
 
-NSString *JSTypeToString(int /* ooscript::Type */ type)
+std::string cxx_JSTypeToString(int /* ooscript::Type */ type)
 {
 	// The strings are the engine's own type-constant names, as this function has always returned.
 	switch ((ooscript::Type)type)
 	{
-		case ooscript::Type::Void: return @"JSTYPE_VOID";
-		case ooscript::Type::Object: return @"JSTYPE_OBJECT";
-		case ooscript::Type::Function: return @"JSTYPE_FUNCTION";
-		case ooscript::Type::String: return @"JSTYPE_STRING";
-		case ooscript::Type::Number: return @"JSTYPE_NUMBER";
-		case ooscript::Type::Boolean: return @"JSTYPE_BOOLEAN";
-		case ooscript::Type::Null: return @"JSTYPE_NULL";
-		case ooscript::Type::XML: return @"JSTYPE_XML";
+		case ooscript::Type::Void: return "JSTYPE_VOID";
+		case ooscript::Type::Object: return "JSTYPE_OBJECT";
+		case ooscript::Type::Function: return "JSTYPE_FUNCTION";
+		case ooscript::Type::String: return "JSTYPE_STRING";
+		case ooscript::Type::Number: return "JSTYPE_NUMBER";
+		case ooscript::Type::Boolean: return "JSTYPE_BOOLEAN";
+		case ooscript::Type::Null: return "JSTYPE_NULL";
+		case ooscript::Type::XML: return "JSTYPE_XML";
 	}
-	if (type == (int)ooscript::Type::XML + 1)  return @"JSTYPE_LIMIT";
-	return [NSString stringWithFormat:@"unknown (%u)", type];
+	if (type == (int)ooscript::Type::XML + 1)  return "JSTYPE_LIMIT";
+	return oo::str::format("unknown (%u)", type);
 }
 
 
@@ -335,7 +338,7 @@ OOWeaponType OOWeaponTypeFromEquipmentIdentifierStrict(NSString *string)
 }
 
 
-NSString *CargoTypeToString(OOCargoType cargo)
+std::string cxx_CargoTypeToString(OOCargoType cargo)
 {
 	switch (cargo)
 	{
@@ -348,11 +351,11 @@ NSString *CargoTypeToString(OOCargoType cargo)
 		CASE(CARGO_SCRIPTED_ITEM);
 		CASE(CARGO_CHARACTER);
 	}
-	return @"Unknown cargo";
+	return "Unknown cargo";
 }
 
 
-OOCargoType StringToCargoType(NSString *string)
+OOCargoType cxx_StringToCargoType(const std::string &string)
 {
 	REVERSE_CASE(CARGO_NOT_CARGO);
 	REVERSE_CASE(CARGO_SLAVES);
@@ -364,13 +367,13 @@ OOCargoType StringToCargoType(NSString *string)
 	REVERSE_CASE(CARGO_CHARACTER);
 	
 	// Backwards compatibility.
-	if ([string isEqual:@"CARGO_CARRIED"]) return CARGO_RANDOM;
+	if (string == "CARGO_CARRIED") return CARGO_RANDOM;
 	
 	return (OOCargoType)kOOCargoTypeDefault;
 }
 
 
-NSString *EnergyUnitTypeToString(OOEnergyUnitType unit)
+std::string cxx_EnergyUnitTypeToString(OOEnergyUnitType unit)
 {
 	switch (unit)
 	{
@@ -385,11 +388,11 @@ NSString *EnergyUnitTypeToString(OOEnergyUnitType unit)
 			break;
 	}
 	
-	return @"Unsupported energy unit";
+	return "Unsupported energy unit";
 }
 
 
-OOEnergyUnitType StringToEnergyUnitType(NSString *string)
+OOEnergyUnitType cxx_StringToEnergyUnitType(const std::string &string)
 {
 	REVERSE_CASE(ENERGY_UNIT_NONE);
 	REVERSE_CASE(ENERGY_UNIT_NORMAL);
@@ -482,10 +485,10 @@ NSString *OOStringFromShaderSetting(OOShaderSetting setting)
 {
 	switch (setting)
 	{
-		CASE(SHADERS_OFF);
-		CASE(SHADERS_SIMPLE);
-		CASE(SHADERS_FULL);
-		CASE(SHADERS_NOT_SUPPORTED);
+		case SHADERS_OFF: return @"SHADERS_OFF";
+		case SHADERS_SIMPLE: return @"SHADERS_SIMPLE";
+		case SHADERS_FULL: return @"SHADERS_FULL";
+		case SHADERS_NOT_SUPPORTED: return @"SHADERS_NOT_SUPPORTED";
 	}
 	
 	return @"UNDEFINED";
@@ -494,10 +497,10 @@ NSString *OOStringFromShaderSetting(OOShaderSetting setting)
 
 OOShaderSetting OOShaderSettingFromString(NSString *string)
 {
-	REVERSE_CASE(SHADERS_OFF);
-	REVERSE_CASE(SHADERS_SIMPLE);
-	REVERSE_CASE(SHADERS_FULL);
-	REVERSE_CASE(SHADERS_NOT_SUPPORTED);
+	if ([string isEqualToString:@"SHADERS_OFF"]) return SHADERS_OFF;
+	if ([string isEqualToString:@"SHADERS_SIMPLE"]) return SHADERS_SIMPLE;
+	if ([string isEqualToString:@"SHADERS_FULL"]) return SHADERS_FULL;
+	if ([string isEqualToString:@"SHADERS_NOT_SUPPORTED"]) return SHADERS_NOT_SUPPORTED;
 	
 	return (OOShaderSetting)kOOShaderSettingDefault;
 }
@@ -536,7 +539,7 @@ NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity)
 }
 
 
-OORouteType StringToRouteType(NSString *string)
+OORouteType cxx_StringToRouteType(const std::string &string)
 {
 	REVERSE_CASE(OPTIMIZED_BY_NONE);
 	REVERSE_CASE(OPTIMIZED_BY_JUMPS);
@@ -546,7 +549,7 @@ OORouteType StringToRouteType(NSString *string)
 }
 
 
-NSString *DockingClearanceStatusToString(OODockingClearanceStatus dockingClearanceStatus)
+std::string cxx_DockingClearanceStatusToString(OODockingClearanceStatus dockingClearanceStatus)
 {
 	switch (dockingClearanceStatus)
 	{
@@ -557,11 +560,11 @@ NSString *DockingClearanceStatusToString(OODockingClearanceStatus dockingClearan
 		CASE(DOCKING_CLEARANCE_STATUS_TIMING_OUT);
 	}
 	
-	return @"DOCKING_CLEARANCE_STATUS_UNKNOWN";
+	return "DOCKING_CLEARANCE_STATUS_UNKNOWN";
 }
 
 
-NSString *OOStringFromGraphicsDetail(OOGraphicsDetail detail)
+std::string cxx_OOStringFromGraphicsDetail(OOGraphicsDetail detail)
 {
 	switch (detail)
 	{
@@ -571,11 +574,11 @@ NSString *OOStringFromGraphicsDetail(OOGraphicsDetail detail)
 		CASE(DETAIL_LEVEL_EXTRAS);
 	}
 	
-	return @"DETAIL_LEVEL_UNKNOWN";
+	return "DETAIL_LEVEL_UNKNOWN";
 }
 
 
-OOGraphicsDetail OOGraphicsDetailFromString(NSString *string)
+OOGraphicsDetail cxx_OOGraphicsDetailFromString(const std::string &string)
 {
 	REVERSE_CASE(DETAIL_LEVEL_MINIMUM);
 	REVERSE_CASE(DETAIL_LEVEL_NORMAL);
@@ -586,7 +589,7 @@ OOGraphicsDetail OOGraphicsDetailFromString(NSString *string)
 }
 
 
-NSString *OOStringFromHDRToneMapper(OOHDRToneMapper toneMapper)
+std::string cxx_OOStringFromHDRToneMapper(OOHDRToneMapper toneMapper)
 {
 	switch (toneMapper)
 	{
@@ -597,11 +600,11 @@ NSString *OOStringFromHDRToneMapper(OOHDRToneMapper toneMapper)
 		CASE(OOHDR_TONEMAPPER_REINHARD);
 	}
 	
-	return @"OOHDR_TONEMAPPER_UNDEFINED";
+	return "OOHDR_TONEMAPPER_UNDEFINED";
 }
 
 
-OOHDRToneMapper OOHDRToneMapperFromString( NSString *string)
+OOHDRToneMapper cxx_OOHDRToneMapperFromString(const std::string &string)
 {
 	REVERSE_CASE(OOHDR_TONEMAPPER_NONE);
 	REVERSE_CASE(OOHDR_TONEMAPPER_ACES_APPROX);
@@ -613,7 +616,7 @@ OOHDRToneMapper OOHDRToneMapperFromString( NSString *string)
 }
 
 
-NSString *OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper)
+std::string cxx_OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper)
 {
 	switch (toneMapper)
 	{
@@ -626,11 +629,11 @@ NSString *OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper)
 		CASE(OOSDR_TONEMAPPER_REINHARD);
 	}
 	
-	return @"OOSDR_TONEMAPPER_UNDEFINED";
+	return "OOSDR_TONEMAPPER_UNDEFINED";
 }
 
 
-OOSDRToneMapper OOSDRToneMapperFromString( NSString *string)
+OOSDRToneMapper cxx_OOSDRToneMapperFromString(const std::string &string)
 {
 	REVERSE_CASE(OOSDR_TONEMAPPER_NONE);
 	REVERSE_CASE(OOSDR_TONEMAPPER_ACES);

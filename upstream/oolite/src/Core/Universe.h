@@ -234,7 +234,7 @@ enum
 
 	GLfloat					skyClearColor[4];
 	
-	NSString				*currentMessage;
+	std::optional<std::string>	currentMessage;
 	OOTimeAbsolute			messageRepeatTime;
 	OOTimeAbsolute			countdown_messageRepeatTime; 	// Getafix(4/Aug/2010) - Quickfix countdown messages colliding with weapon overheat messages.
 									//                       For proper handling of message dispatching, code refactoring is needed.
@@ -276,7 +276,7 @@ enum
 
 	oo::PList				_descriptions;			// holds descriptive text for lots of stuff, loaded at initialisation (a dict; null until loaded)
 	unsigned				_descriptionsGeneration;	// changes whenever _descriptions is assigned (the bridged -descriptions caches per generation)
-	NSDictionary			*customSounds;			// holds descriptive audio for lots of stuff, loaded at initialisation
+	oo::PList				customSounds;			// holds descriptive audio for lots of stuff, loaded at initialisation
 	oo::PList				characters;				// holds descriptons of characters
 	oo::PList				_scenarios;				// game start scenarios (an array)
 	oo::PList				globalSettings;			// miscellaneous global game settings
@@ -287,7 +287,7 @@ enum
 //	std::set<std::string>	pirateVictimRoles;		// Roles listed in pirateVictimRoles.plist.
 	oo::PList				roleCategories;			// Categories for roles from role-categories.plist, extending the old pirate-victim-roles.plist (category -> array of roles)
 	oo::PList				autoAIMap;				// Default AIs for roles from autoAImap.plist.
-	NSDictionary			*screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
+	oo::PList				screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
 	oo::PList				explosionSettings;		// explosion settings from explosions.plist
 
 	std::map<std::string, oo::ObjCRef<ShipEntity *>, std::less<>>	cargoPods; // template cargo pods, by commodity key
@@ -348,7 +348,7 @@ enum
 	const espeak_VOICE		**espeak_voices;
 	unsigned int			espeak_voice_count;
 #endif
-	NSArray					*speechArray;
+	oo::PList				speechArray;	// [original, replacement(, espeak replacement)] pairs
 #endif
 	
 #if NEW_PLANETS
@@ -564,7 +564,7 @@ enum
 
 - (void) drawMessage;
 
-- (void) drawWatermarkString:(NSString *)watermarkString;
+- (void) drawWatermarkString:(const std::string &)watermarkString;
 
 // Used to draw subentities. Should be getting this from camera.
 - (OOMatrix) viewMatrix;
@@ -639,22 +639,23 @@ enum
 - (void) setViewDirection:(OOViewID)vd;
 - (void) enterGUIViewModeWithMouseInteraction:(BOOL)mouseInteraction;	// Use instead of setViewDirection:VIEW_GUI_DISPLAY
 
-- (NSString *) soundNameForCustomSoundKey:(NSString *)key;
-- (NSDictionary *) screenTextureDescriptorForKey:(NSString *)key;
-- (void) setScreenTextureDescriptorForKey:(NSString *) key descriptor:(NSDictionary *)desc;
+- (std::optional<std::string>) soundNameForCustomSoundKey:(const std::string &)key;	// nullopt: no sound
+- (oo::PList) cxx_screenTextureDescriptorForKey:(const std::string &)key;	// null: none
+- (void) cxx_setScreenTextureDescriptorForKey:(const std::string &) key descriptor:(const oo::PList &)desc;	// a null descriptor removes
 
+// Message texts: nullopt where a nil text was passed (nothing is printed; it still counts as the message shown).
 - (void) clearPreviousMessage;
 - (void) setMessageGuiBackgroundColor:(OOColor *) some_color;
-- (void) displayMessage:(NSString *) text forCount:(OOTimeDelta) count;
-- (void) displayCountdownMessage:(NSString *) text forCount:(OOTimeDelta) count;
-- (void) addDelayedMessage:(NSString *) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay;
-- (void) addDelayedMessage:(NSDictionary *) textdict;
-- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count;
-- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay;
-- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count;
-- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly;
+- (void) cxx_displayMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) cxx_displayCountdownMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) cxx_addDelayedMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay;
+- (void) addDelayedMessage:(id) textdict;	// called by name (ADR-0043 item 21): the deferred call's dictionary
+- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) cxx_addMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay;
+- (void) cxx_addCommsMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count;
+- (void) cxx_addCommsMessage:(const std::optional<std::string> &) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly;
 - (void) showCommsLog:(OOTimeDelta) how_long;
-- (void) showGUIMessage:(NSString *)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long;
+- (void) showGUIMessage:(const std::optional<std::string> &)text withScroll:(BOOL)scroll andColor:(OOColor *)selectedColor overDuration:(OOTimeDelta)how_long;
 
 - (void) update:(OOTimeDelta)delta_t;
 
@@ -797,15 +798,15 @@ enum
 
 // speech routines
 //
-- (void) startSpeakingString:(NSString *) text;
+- (void) cxx_startSpeakingString:(const std::string &) text;
 //
 - (void) stopSpeaking;
 //
 - (BOOL) isSpeaking;
 //
 #if OOLITE_ESPEAK
-- (NSString *) voiceName:(unsigned int) index;
-- (unsigned int) voiceNumber:(NSString *) name;
+- (std::optional<std::string>) cxx_voiceName:(unsigned int) index;
+- (unsigned int) cxx_voiceNumber:(const std::string &) name;
 - (unsigned int) nextVoice:(unsigned int) index;
 - (unsigned int) prevVoice:(unsigned int) index;
 - (unsigned int) setVoice:(unsigned int) index withGenderM:(BOOL) isMale;
@@ -871,18 +872,18 @@ std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger 
 
 @interface OOSound (OOCustomSounds)
 
-+ (id) soundWithCustomSoundKey:(NSString *)key;
-- (id) initWithCustomSoundKey:(NSString *)key;
++ (id) cxx_soundWithCustomSoundKey:(const std::string &)key;
+- (id) initWithCustomSoundKey:(id)key;	// shared selector (proposed ADR-0043): an Objective-C string, as OOSoundSource's
 
 @end
 
 
 @interface OOSoundSource (OOCustomSounds)
 
-+ (id) sourceWithCustomSoundKey:(NSString *)key;
-- (id) initWithCustomSoundKey:(NSString *)key;
++ (id) sourceWithCustomSoundKey:(const std::string &)key;
+- (id) initWithCustomSoundKey:(id)key;	// shared selector (proposed ADR-0043): an Objective-C string, as OOSound's
 
-- (void) playCustomSoundWithKey:(NSString *)key;
+- (void) cxx_playCustomSoundWithKey:(const std::string &)key;
 
 @end
 
