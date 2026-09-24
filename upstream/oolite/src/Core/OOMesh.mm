@@ -60,6 +60,7 @@ MA 02110-1301, USA.
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
 
 // If set, collision octree depth varies depending on the size of the mesh.
 #define ADAPTIVE_OCTREE_DEPTH		1
@@ -1171,7 +1172,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 {
 	OOJS_PROFILE_ENTER
 	
-	NSScanner			*scanner;
+	std::optional<oo::str::Scanner>	scanner;	// made from the preprocessed text below
 	BOOL				failFlag = NO;
 	NSString			*failString = @"***** ";
 	unsigned			i, j;
@@ -1195,19 +1196,11 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 	{
 		OOLog(@"mesh.load.uncached", @"Mesh \"%@\" is not in cache, loading.", cacheKey);
 		
-		NSCharacterSet	*whitespaceCharSet = [NSCharacterSet whitespaceCharacterSet];
-		NSCharacterSet	*whitespaceAndNewlineCharSet = [NSCharacterSet whitespaceAndNewlineCharacterSet];
-#if OOLITE_MAC_OS_X
-		NSCharacterSet	*newlineCharSet = [NSCharacterSet newlineCharacterSet];
-#else
-		static NSCharacterSet *newlineCharSet = nil;
-		if (newlineCharSet == nil)
-		{
-			NSMutableCharacterSet *temp = [[whitespaceAndNewlineCharSet mutableCopy] autorelease];
-			[temp formIntersectionWithCharacterSet:[whitespaceCharSet invertedSet]];
-			newlineCharSet = [temp copy];
-		}
-#endif
+		const oo::str::CharacterSet	whitespaceCharSet = oo::str::CharacterSet::whitespace();
+		const oo::str::CharacterSet	whitespaceAndNewlineCharSet = oo::str::CharacterSet::whitespaceAndNewline();
+		// The newline set. The non-Mac build made it as whitespace-and-newline minus whitespace,
+		// which is the same set (U+000A-U+000D and U+0085: Scanner.hpp's tables).
+		const oo::str::CharacterSet	newlineCharSet = oo::str::CharacterSet::newline();
 		
 		texFileName2Idx = [NSMutableDictionary dictionary];
 		
@@ -1244,22 +1237,20 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			}
 			
 			data = [lines componentsJoinedByString:@"\n"];
-			scanner = [NSScanner scannerWithString:data];
-			
-			[scanner retain];
+			scanner.emplace(oo::StdString(data));
+
 			objc_autoreleasePoolPop(pool);
-			[scanner autorelease];
 		}
 		
 		PROFILE(@"finished preprocessing");
 
 		// get number of vertices
 		//
-		[scanner setScanLocation:0];	//reset
-		if ([scanner scanString:@"NVERTS" intoString:NULL])
+		scanner->setScanLocation(0);	//reset
+		if (scanner->scanString("NVERTS"))
 		{
 			int n_v;
-			if ([scanner scanInt:&n_v])
+			if (scanner->scanInt(&n_v))
 				vertexCount = n_v;
 			else
 			{
@@ -1280,10 +1271,10 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		}
 		
 		// get number of faces
-		if ([scanner scanString:@"NFACES" intoString:NULL])
+		if (scanner->scanString("NFACES"))
 		{
 			int n_f;
-			if ([scanner scanInt:&n_f])
+			if (scanner->scanInt(&n_f))
 			{
 				faceCount = n_f;
 			}
@@ -1310,16 +1301,16 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		}
 		
 		// get vertex data
-		if ([scanner scanString:@"VERTEX" intoString:NULL])
+		if (scanner->scanString("VERTEX"))
 		{
 			for (j = 0; j < vertexCount; j++)
 			{
 				float x, y, z;
 				if (!failFlag)
 				{
-					if (![scanner scanFloat:&x])  failFlag = YES;
-					if (![scanner scanFloat:&y])  failFlag = YES;
-					if (![scanner scanFloat:&z])  failFlag = YES;
+					if (!scanner->scanFloat(&x))  failFlag = YES;
+					if (!scanner->scanFloat(&y))  failFlag = YES;
+					if (!scanner->scanFloat(&z))  failFlag = YES;
 					if (!failFlag)
 					{
 						_vertices[j] = make_vector(x*scale, y*scale, z*scale);
@@ -1338,7 +1329,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		}
 
 		// get face data
-		if ([scanner scanString:@"FACES" intoString:NULL])
+		if (scanner->scanString("FACES"))
 		{
 			for (j = 0; j < faceCount; j++)
 			{
@@ -1348,9 +1339,9 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 				if (!failFlag)
 				{
 					// colors
-					if (![scanner scanInt:&r])  failFlag = YES;
-					if (![scanner scanInt:&g])  failFlag = YES;
-					if (![scanner scanInt:&b])  failFlag = YES;
+					if (!scanner->scanInt(&r))  failFlag = YES;
+					if (!scanner->scanInt(&g))  failFlag = YES;
+					if (!scanner->scanInt(&b))  failFlag = YES;
 					if (!failFlag)
 					{
 						_faces[j].smoothGroup = r;
@@ -1361,9 +1352,9 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					}
 					
 					// normal
-					if (![scanner scanFloat:&nx])  failFlag = YES;
-					if (![scanner scanFloat:&ny])  failFlag = YES;
-					if (![scanner scanFloat:&nz])  failFlag = YES;
+					if (!scanner->scanFloat(&nx))  failFlag = YES;
+					if (!scanner->scanFloat(&ny))  failFlag = YES;
+					if (!scanner->scanFloat(&nz))  failFlag = YES;
 					if (!failFlag)
 					{
 						_faces[j].normal = vector_normal(make_vector(nx, ny, nz));
@@ -1374,7 +1365,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					}
 					
 					// vertices
-					if ([scanner scanInt:&n_v])
+					if (scanner->scanInt(&n_v))
 					{
 						if (n_v < 3)
 						{
@@ -1398,7 +1389,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 						int vi;
 						for (i = 0; (int)i < n_v; i++)
 						{
-							if ([scanner scanInt:&vi])
+							if (scanner->scanInt(&vi))
 							{
 								_faces[j].vertex[i] = vi;
 								if (faceRefs != NULL)  VFRAddFace(&faceRefs[vi], j);
@@ -1420,7 +1411,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		}
 
 		// Get textures data.
-		if ([scanner scanString:@"TEXTURES" intoString:NULL])
+		if (scanner->scanString("TEXTURES"))
 		{
 			for (j = 0; j < faceCount; j++)
 			{
@@ -1431,14 +1422,16 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 				{
 					// materialKey
 					//
-					[scanner scanCharactersFromSet:whitespaceAndNewlineCharSet intoString:NULL];
-					if (![scanner scanUpToCharactersFromSet:whitespaceCharSet intoString:&materialKey])
+					scanner->scanCharactersFromSet(whitespaceAndNewlineCharSet);
+					std::string scannedKey;
+					if (!scanner->scanUpToCharactersFromSet(whitespaceCharSet, &scannedKey))
 					{
 						failFlag = YES;
 						failString = [NSString stringWithFormat:@"%@Failed to read texture filename for face[%d] in TEXTURES\n", failString, j];
 					}
 					else
 					{
+						materialKey = oo::NSStringFrom(scannedKey);
 						NSNumber *index = [texFileName2Idx objectForKey:materialKey];
 						if (index != nil)
 						{
@@ -1463,8 +1456,8 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					//
 				   if (!failFlag)
 					{
-						if (![scanner scanFloat:&max_x])  failFlag = YES;
-						if (![scanner scanFloat:&max_y])  failFlag = YES;
+						if (!scanner->scanFloat(&max_x))  failFlag = YES;
+						if (!scanner->scanFloat(&max_y))  failFlag = YES;
 						if (failFlag)
 							failString = [NSString stringWithFormat:@"%@Failed to read texture size for max_x and max_y in face[%d] in TEXTURES\n", failString, j];
 					}
@@ -1475,8 +1468,8 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 					{
 						for (i = 0; i < 3; i++)
 						{
-							if (![scanner scanFloat:&s])  failFlag = YES;
-							if (![scanner scanFloat:&t])  failFlag = YES;
+							if (!scanner->scanFloat(&s))  failFlag = YES;
+							if (!scanner->scanFloat(&t))  failFlag = YES;
 							if (!failFlag)
 							{
 								_faces[j].s[i] = s / max_x;
@@ -1502,10 +1495,10 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			}
 		}
 		
-		if ([scanner scanString:@"NAMES" intoString:NULL])
+		if (scanner->scanString("NAMES"))
 		{
 			unsigned int count;
-			if (![scanner scanInt:(int *)&count])
+			if (!scanner->scanInt((int *)&count))
 			{	
 				failFlag = YES;
 				failString = [failString stringByAppendingString:@"Expected count after NAMES\n"];
@@ -1515,14 +1508,16 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 				for (j = 0; j < count; j++)
 				{
 					NSString *name = nil;
-					[scanner scanCharactersFromSet:whitespaceAndNewlineCharSet intoString:NULL];
-					if (![scanner scanUpToCharactersFromSet:newlineCharSet intoString:&name])
+					scanner->scanCharactersFromSet(whitespaceAndNewlineCharSet);
+					std::string scannedName;
+					if (!scanner->scanUpToCharactersFromSet(newlineCharSet, &scannedName))
 					{
 						failFlag = YES;
 						failString = [failString stringByAppendingString:@"Expected file name\n"];
 					}
 					else
 					{
+						name = oo::NSStringFrom(scannedName);
 						[self renameTexturesFrom:oo::str::format("%u", j) to:oo::StdString(name)];
 					}
 				}
@@ -1532,7 +1527,7 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 		BOOL explicitTangents = NO;
 		
 		// Get explicit normals.
-		if ([scanner scanString:@"NORMALS" intoString:NULL])
+		if (scanner->scanString("NORMALS"))
 		{
 			_normalMode = kNormalModeExplicit;
 			if (![self allocateNormalBuffersWithCount:vertexCount])
@@ -1546,9 +1541,9 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 				float x, y, z;
 				if (!failFlag)
 				{
-					if (![scanner scanFloat:&x])  failFlag = YES;
-					if (![scanner scanFloat:&y])  failFlag = YES;
-					if (![scanner scanFloat:&z])  failFlag = YES;
+					if (!scanner->scanFloat(&x))  failFlag = YES;
+					if (!scanner->scanFloat(&y))  failFlag = YES;
+					if (!scanner->scanFloat(&z))  failFlag = YES;
 					if (!failFlag)
 					{
 						_normals[j] = vector_normal(make_vector(x, y, z));
@@ -1561,16 +1556,16 @@ shaderBindingTarget:(id<OOWeakReferenceSupport>)target
 			}
 			
 			// Get explicit tangents (only together with vertices).
-			if ([scanner scanString:@"TANGENTS" intoString:NULL])
+			if (scanner->scanString("TANGENTS"))
 			{
 				for (j = 0; j < vertexCount; j++)
 				{
 					float x, y, z;
 					if (!failFlag)
 					{
-						if (![scanner scanFloat:&x])  failFlag = YES;
-						if (![scanner scanFloat:&y])  failFlag = YES;
-						if (![scanner scanFloat:&z])  failFlag = YES;
+						if (!scanner->scanFloat(&x))  failFlag = YES;
+						if (!scanner->scanFloat(&y))  failFlag = YES;
+						if (!scanner->scanFloat(&z))  failFlag = YES;
 						if (!failFlag)
 						{
 							_tangents[j] = vector_normal(make_vector(x, y, z));

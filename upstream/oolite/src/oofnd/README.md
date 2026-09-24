@@ -179,6 +179,8 @@ per call (`OOStringBridge.h`).
    | `[NSCharacterSet characterSetWithCharactersInString:@"ab"]` / `[set invertedSet]` | `oo::str::CharacterSet::fromCharacters("ab")` / `set.inverted()` |
    | `x = [s stringByTrimmingCharactersInSet:set]` | `x = oo::StringMap(s, [&](std::string_view v) { return oo::str::trim(v, set); })` |
    | `[s rangeOfCharacterFromSet:set].location == NSNotFound` | `oo::str::findFirstOf(oo::StdString(s), set) == std::string_view::npos` |
+   | `[s rangeOfCharacterFromSet:set options:NSLiteralSearch range:r].location` (r to the end) | `oo::str::findFirstOf(oo::StdString(s), set, r.location)` |
+   | `[set longCharacterIsMember:[s characterAtIndex:i]]` | `set.contains([s characterAtIndex:i])` |
 
    An `intoString:` target is assigned only when the scan succeeds, as before. A `static
    NSCharacterSet *` cache becomes a local `const oo::str::CharacterSet` (construction is cheap).

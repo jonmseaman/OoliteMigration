@@ -23,6 +23,8 @@
 #import "OldSchoolPropertyListWriting.h"
 #import "NSNumberOOExtensions.h"
 #include "oofnd/objc/OOException.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 
 
 static void AppendNewLineAndIndent(NSMutableString *ioString, unsigned indentDepth);
@@ -32,25 +34,27 @@ static void AppendNewLineAndIndent(NSMutableString *ioString, unsigned indentDep
 
 - (NSString *)oldSchoolPListFormatWithIndentation:(unsigned)inIndentation errorDescription:(NSString **)outErrorDescription
 {
-	NSCharacterSet		*charSet;
 	NSRange				foundRange, searchRange;
 	NSString			*foundString;
 	NSMutableString		*newString;
 	NSUInteger			length;
 	
 	length = [self length];
+	const std::string string = oo::StdString(self);
+	// -longCharacterIsMember: of a UTF-16 unit is -characterIsMember: (pinned over the BMP).
 	if (0 != length
-		&& [self rangeOfCharacterFromSet:[[NSCharacterSet alphanumericCharacterSet] invertedSet]].location == NSNotFound
-		&& ![[NSCharacterSet decimalDigitCharacterSet] longCharacterIsMember:[self characterAtIndex:0]])
+		&& oo::str::findFirstOf(string, oo::str::CharacterSet::alphanumeric().inverted()) == std::string_view::npos
+		&& !oo::str::CharacterSet::decimalDigit().contains([self characterAtIndex:0]))
 	{
 		// This is an alphanumeric string whose first character is not a digit
 		return [[self copy] autorelease];
 	}
 	else
 	{
-		charSet = [NSCharacterSet characterSetWithCharactersInString:@"\"\r\n\\"];
-		foundRange = [self rangeOfCharacterFromSet:charSet options:NSLiteralSearch];
-		if (NSNotFound == foundRange.location)
+		const oo::str::CharacterSet charSet = oo::str::CharacterSet::fromCharacters("\"\r\n\\");
+		// Each member is one UTF-16 unit, so a found range is one unit long.
+		foundRange = NSMakeRange(oo::str::findFirstOf(string, charSet), 1);
+		if (std::string_view::npos == foundRange.location)
 		{
 			newString = (NSMutableString *)self;
 		}
@@ -77,8 +81,8 @@ static void AppendNewLineAndIndent(NSMutableString *ioString, unsigned indentDep
 				searchRange.length = length - searchRange.location;
 				
 				// …to search for next char needing escaping
-				foundRange = [self rangeOfCharacterFromSet:charSet options:NSLiteralSearch range:searchRange];
-				if (NSNotFound == foundRange.location)
+				foundRange = NSMakeRange(oo::str::findFirstOf(string, charSet, searchRange.location), 1);
+				if (std::string_view::npos == foundRange.location)
 				{
 					[newString appendString:[self substringWithRange:searchRange]];
 					break;
