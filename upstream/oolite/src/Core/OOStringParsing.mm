@@ -24,7 +24,6 @@ MA 02110-1301, USA.
 
 #import "OOStringParsing.h"
 #import "OOLogging.h"
-#import "NSScannerOOExtensions.h"
 #import "legacy_random.h"
 #import "Universe.h"
 #import "PlayerEntity.h"
@@ -40,6 +39,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Scanner.hpp"
 
 /*
 	OOStringFromDeciCredits below is retargeted onto the ooscript façade (JSEngine.hpp), the
@@ -63,15 +63,14 @@ BOOL cxx_ScanVectorFromString(const std::optional<std::string> &xyzString, Vecto
 	GLfloat					xyz[] = {0.0, 0.0, 0.0};
 	int						i = 0;
 	const char				*error = nullptr;
-	NSScanner				*scanner = nil;
 
 	assert(outVector != NULL);
 	if (!xyzString.has_value()) return NO;
 
-	if (!error) scanner = [NSScanner scannerWithString:oo::NSStringFrom(*xyzString)];	// the NSScanner family (oo-3rb.12) retires this
-	while (![scanner isAtEnd] && i < 3 && !error)
+	oo::str::Scanner		scanner(*xyzString);
+	while (!scanner.isAtEnd() && i < 3 && !error)
 	{
-		if (![scanner scanFloat:&xyz[i++]])  error = "could not scan a float value.";
+		if (!scanner.scanFloat(&xyz[i++]))  error = "could not scan a float value.";
 	}
 
 	if (!error && i < 3)  error = "found less than three float values.";
@@ -106,15 +105,14 @@ BOOL cxx_ScanQuaternionFromString(const std::optional<std::string> &wxyzString, 
 	GLfloat					wxyz[] = {1.0, 0.0, 0.0, 0.0};
 	int						i = 0;
 	const char				*error = nullptr;
-	NSScanner				*scanner = nil;
 
 	assert(outQuaternion != NULL);
 	if (!wxyzString.has_value()) return NO;
 
-	if (!error) scanner = [NSScanner scannerWithString:oo::NSStringFrom(*wxyzString)];	// the NSScanner family (oo-3rb.12) retires this
-	while (![scanner isAtEnd] && i < 4 && !error)
+	oo::str::Scanner		scanner(*wxyzString);
+	while (!scanner.isAtEnd() && i < 4 && !error)
 	{
-		if (![scanner scanFloat:&wxyz[i++]])  error = "could not scan a float value.";
+		if (!scanner.scanFloat(&wxyz[i++]))  error = "could not scan a float value.";
 	}
 
 	if (!error && i < 4)  error = "found less than four float values.";
@@ -141,15 +139,14 @@ BOOL cxx_ScanVectorAndQuaternionFromString(const std::optional<std::string> &xyz
 	GLfloat					xyzwxyz[] = { 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
 	int						i = 0;
 	const char				*error = nullptr;
-	NSScanner				*scanner = nil;
 
 	assert(outVector != NULL && outQuaternion != NULL);
 	if (!xyzwxyzString.has_value()) return NO;
 
-	if (!error) scanner = [NSScanner scannerWithString:oo::NSStringFrom(*xyzwxyzString)];	// the NSScanner family (oo-3rb.12) retires this
-	while (![scanner isAtEnd] && i < 7 && !error)
+	oo::str::Scanner		scanner(*xyzwxyzString);
+	while (!scanner.isAtEnd() && i < 7 && !error)
 	{
-		if (![scanner scanFloat:&xyzwxyz[i++]])  error = "Could not scan a float value.";
+		if (!scanner.scanFloat(&xyzwxyz[i++]))  error = "Could not scan a float value.";
 	}
 
 	if (!error && i < 7)  error = "Found less than seven float values.";
@@ -214,12 +211,11 @@ Random_Seed cxx_RandomSeedFromString(const std::optional<std::string> &abcdefStr
 	int						abcdef[] = { 0, 0, 0, 0, 0, 0};
 	int						i = 0;
 	const char				*error = nullptr;
-	// the NSScanner family (oo-3rb.12) retires this; a nil string scans as it did
-	NSScanner				*scanner = [NSScanner scannerWithString:oo::NSStringOrNil(abcdefString)];
+	oo::str::Scanner		scanner(abcdefString.value_or(""));	// a nil string scans as an empty one (proposed ADR-0039)
 
-	while (![scanner isAtEnd] && i < 6 && !error)
+	while (!scanner.isAtEnd() && i < 6 && !error)
 	{
-		if (![scanner scanInt:&abcdef[i++]])  error = "could not scan a int value.";
+		if (!scanner.scanInt(&abcdef[i++]))  error = "could not scan a int value.";
 	}
 
 	if (!error && i < 6)  error = "found less than six int values.";
