@@ -21,6 +21,51 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	[self cxx_setHiddenSelector:oo::StdString(selectorName) hidden:hide];
 }
 
+
+// Chunk 3 (oo-3rb.211).
+
+- (id) initWithDictionary:(NSDictionary *)hudinfo inFile:(NSString *)hudFileName
+{
+	return [self cxx_initWithDictionary:oo::PListFrom(hudinfo) inFile:oo::OptionalString(hudFileName)];
+}
+
+
+- (void) resetGuis:(NSDictionary *)info
+{
+	[self cxx_resetGuis:oo::PListFrom(info)];
+}
+
+
+- (NSString *) hudName
+{
+	return oo::NSStringOrNil([self cxx_hudName]);
+}
+
+
+- (void) setDeferredHudName:(NSString *)newDeferredHudName
+{
+	[self cxx_setDeferredHudName:oo::OptionalString(newDeferredHudName)];
+}
+
+
+- (NSString *) deferredHudName
+{
+	return oo::NSStringOrNil([self cxx_deferredHudName]);
+}
+
+
+- (NSString *) crosshairDefinition
+{
+	return oo::NSStringOrNil([self cxx_crosshairDefinition]);
+}
+
+
+// A nil name found no file, as "" does: the default crosshairs, NO.
+- (BOOL) setCrosshairDefinition:(NSString *)newDefinition
+{
+	return [self cxx_setCrosshairDefinition:oo::StdString(newDefinition)];
+}
+
 @end
 
 

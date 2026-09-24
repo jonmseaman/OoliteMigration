@@ -91,7 +91,7 @@ MA 02110-1301, USA.
 
    - (std::optional<std::string>)validateKey:(const std::string &)key checkKeys:(const oo::PList &)check_keys;	// the conflicting function; nullopt: none
 
-   - (NSDictionary *)makeKeyGuiDict:(NSString *)what keyDef:(NSString *)keyDef;
-   - (NSDictionary *)makeKeyGuiDictHeader:(NSString *)header;
+   - (oo::PList)makeKeyGuiDict:(const std::string &)what keyDef:(const std::string &)keyDef;	// a keyFunctions entry
+   - (oo::PList)makeKeyGuiDictHeader:(const std::string &)header;
 
 @end
