@@ -113,10 +113,9 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 - (std::optional<std::vector<std::string>>)dependents
 {
 	std::vector<std::string> result = [super dependents].value_or(std::vector<std::string>());
-	for (id reverse : { [OOModelVerifierStage nameForReverseDependencyForVerifier:[self verifier]],
-						[OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]] })
+	for (const std::string &name : { [OOModelVerifierStage nameForReverseDependencyForVerifier:[self verifier]],
+									 [OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]] })
 	{
-		const std::string name = oo::StdString(reverse);
 		if (std::find(result.begin(), result.end(), name) == result.end())  result.push_back(name);
 	}
 	return result;
@@ -151,7 +150,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	if (_shipdataPList.isNull())  return;
 
 	// Get AI verifier stage (may be nil).
-	_aiVerifierStage = [[self verifier] stageWithName:[OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]]];
+	_aiVerifierStage = [[self verifier] cxx_stageWithName:[OOAIStateMachineVerifierStage nameForReverseDependencyForVerifier:[self verifier]]];
 	
 	ooliteShipData = oo::StringsFrom([ResourceManager dictionaryFromFilesNamed:@"shipdata.plist"
 																	  inFolder:@"Config"

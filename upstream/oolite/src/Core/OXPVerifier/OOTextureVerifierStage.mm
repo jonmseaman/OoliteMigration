@@ -44,9 +44,9 @@ static const char * const kStageName	= "Testing textures and images";
 
 @implementation OOTextureVerifierStage
 
-+ (id)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
++ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
 {
-	return oo::NSStringFrom(kStageName);
+	return kStageName;
 }
 
 
@@ -170,7 +170,7 @@ static const char * const kStageName	= "Testing textures and images";
 - (std::optional<std::vector<std::string>>)dependents
 {
 	std::vector<std::string> result = [super dependents].value_or(std::vector<std::string>());
-	const std::string reverse = oo::StdString([OOTextureVerifierStage nameForReverseDependencyForVerifier:[self verifier]]);
+	const std::string reverse = [OOTextureVerifierStage nameForReverseDependencyForVerifier:[self verifier]];
 	if (std::find(result.begin(), result.end(), reverse) == result.end())  result.push_back(reverse);
 	return result;
 }
