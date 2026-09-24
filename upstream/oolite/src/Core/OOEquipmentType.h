@@ -79,12 +79,12 @@ SOFTWARE.
 	std::optional<std::vector<std::string>>	_requiresAnyEquipment;
 	std::optional<std::vector<std::string>>	_incompatibleEquipment;
 	oo::PList				_conditions;		// an array; null: none (was nil)
-	NSArray					*_provides;
-	NSArray					*_defaultActivateKey;
-	NSArray					*_defaultModeKey;
-	NSDictionary			*_scriptInfo;
-	NSDictionary			*_weaponInfo;
-	NSString				*_script;
+	std::vector<std::string>	_provides;
+	oo::PList				_defaultActivateKey;	// an array; null: none (was nil)
+	oo::PList				_defaultModeKey;		// an array; null: none (was nil)
+	oo::PList				_scriptInfo;			// a dictionary; null: none (was nil)
+	oo::PList				_weaponInfo;			// a dictionary (empty by default)
+	std::optional<std::string>	_script;
 	std::optional<std::string>	_condition_script;
 	
 	ooscript::Object _jsSelf;
@@ -144,25 +144,25 @@ SOFTWARE.
 
 - (std::optional<std::string>) cxx_conditionScript;
 
-- (NSDictionary *) scriptInfo;
-- (NSString *) scriptName;
+- (id) scriptInfo;	// shared selector (proposed ADR-0043): a dictionary, or nil
+- (std::optional<std::string>) cxx_scriptName;
 
 - (BOOL) fastAffinityDefensive;
 - (BOOL) fastAffinityOffensive;
 
-- (NSArray *) defaultActivateKey;
-- (NSArray *) defaultModeKey;
+- (oo::PList) cxx_defaultActivateKey;	// an array; null: none
+- (oo::PList) cxx_defaultModeKey;		// an array; null: none
 
 - (NSUInteger) installTime;
 - (NSUInteger) repairTime;
 
-- (NSArray *) providesForScripting;
-- (BOOL) provides:(NSString *)key;
+- (std::vector<std::string>) cxx_providesForScripting;
+- (BOOL) cxx_provides:(const std::string &)key;
 
 // weapon properties
 - (BOOL) isTurretLaser;
 - (BOOL) isMiningLaser;
-- (NSDictionary *) weaponInfo;
+- (oo::PList) cxx_weaponInfo;	// a dictionary
 - (GLfloat) weaponRange;
 - (GLfloat) weaponEnergyUse;
 - (GLfloat) weaponDamage;
@@ -170,11 +170,11 @@ SOFTWARE.
 - (GLfloat) weaponShotTemperature;
 - (GLfloat) weaponThreatAssessment;
 - (OOColor *) weaponColor;
-- (NSString *) fxShotMissName;
-- (NSString *) fxShotHitName;
-- (NSString *) fxShieldHitName;
-- (NSString *) fxUnshieldedHitName;
-- (NSString *) fxWeaponLaunchedName;
+- (std::optional<std::string>) cxx_fxShotMissName;
+- (std::optional<std::string>) cxx_fxShotHitName;
+- (std::optional<std::string>) cxx_fxShieldHitName;
+- (std::optional<std::string>) cxx_fxUnshieldedHitName;
+- (std::optional<std::string>) cxx_fxWeaponLaunchedName;
 
 @end
 

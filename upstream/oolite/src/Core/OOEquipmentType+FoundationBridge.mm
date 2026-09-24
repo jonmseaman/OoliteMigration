@@ -86,4 +86,71 @@ counterpart and converts arguments and results at the boundary (nil for nil).
 	return oo::NSStringOrNil([self cxx_conditionScript]);
 }
 
+
+- (NSString *) scriptName
+{
+	return oo::NSStringOrNil([self cxx_scriptName]);
+}
+
+
+- (NSArray *) defaultActivateKey
+{
+	return oo::ObjectFromPList([self cxx_defaultActivateKey]);
+}
+
+
+- (NSArray *) defaultModeKey
+{
+	return oo::ObjectFromPList([self cxx_defaultModeKey]);
+}
+
+
+- (NSArray *) providesForScripting
+{
+	return oo::NSArrayFromStrings([self cxx_providesForScripting]);
+}
+
+
+- (BOOL) provides:(NSString *)key
+{
+	if (key == nil)  return NO;
+	return [self cxx_provides:oo::StdString(key)];
+}
+
+
+- (NSDictionary *) weaponInfo
+{
+	return oo::ObjectFromPList([self cxx_weaponInfo]);
+}
+
+
+- (NSString *) fxShotMissName
+{
+	return oo::NSStringOrNil([self cxx_fxShotMissName]);
+}
+
+
+- (NSString *) fxShotHitName
+{
+	return oo::NSStringOrNil([self cxx_fxShotHitName]);
+}
+
+
+- (NSString *) fxShieldHitName
+{
+	return oo::NSStringOrNil([self cxx_fxShieldHitName]);
+}
+
+
+- (NSString *) fxUnshieldedHitName
+{
+	return oo::NSStringOrNil([self cxx_fxUnshieldedHitName]);
+}
+
+
+- (NSString *) fxWeaponLaunchedName
+{
+	return oo::NSStringOrNil([self cxx_fxWeaponLaunchedName]);
+}
+
 @end
