@@ -34,7 +34,7 @@
 #include "oofnd/PList.hpp"
 #include "oofnd/objc/OOObjCRef.h"
 
-@class	OOColor, StationEntity, WormholeEntity, AI, Octree, OOMesh, OOScript,
+@class	OOColor, StationEntity, WormholeEntity, AI, Octree, OOMesh, OOScript, OOCharacter,
 	OOJSScript, OORoleSet, OOShipGroup, OOEquipmentType, OOWeakSet,
 	OOExhaustPlumeEntity, OOFlasherEntity;
 
@@ -228,7 +228,7 @@ typedef enum
 	OOTimeAbsolute    aiScriptWakeTime;
 	
 	//docking instructions
-	NSDictionary			*dockingInstructions;
+	oo::PList				dockingInstructions;		// null: none (was nil); the station is an Object node (a weak reference)
 	
 	OOColor					*laser_color;
 	OOColor					*default_laser_color;
@@ -336,7 +336,7 @@ typedef enum
 	OORoleSet				*roleSet;					// Roles a ship can take, eg. trader, hunter, police, pirate, scavenger &c.
 	NSString				*primaryRole;				// "Main" role of the ship.
 
-	NSArray 				*explosionType;				// explosion.plist entries
+	oo::PList				explosionType;				// explosion.plist entries; null: absent
 	
 	// AI stuff
 	Vector					jink;						// x and y set factors for offsetting a pursuing ship's position
@@ -354,7 +354,7 @@ typedef enum
 	
 	int						patrol_counter;				// keeps track of where the ship is along a patrol route
 	
-	NSMutableDictionary		*previousCondition;			// restored after collision avoidance
+	oo::PList				previousCondition;			// restored after collision avoidance; null: none
 	
 	// derived variables
 	float					weapon_recharge_rate;		// time between shots
@@ -362,7 +362,7 @@ typedef enum
 	OOTimeAbsolute			cargo_dump_time;			// time cargo was last dumped
 	OOTimeAbsolute			last_shot_time;				// time shot was last fired
 	
-	NSMutableArray			*cargo;						// cargo containers go in here
+	std::vector<oo::ObjCRef<ShipEntity *>>	cargo;	// cargo containers go in here (index 0 is the eject position); edited in place through -cxx_cargo
 	
 	std::optional<std::string>	commodity_type;			// type of commodity in a container; nullopt: not a pod (was nil)
 	OOCargoQuantity			commodity_amount;			// 1 if unit is TONNES (0), possibly more if precious metals KILOGRAMS (1)
@@ -399,13 +399,13 @@ typedef enum
 							portWeaponOffset,
 							starboardWeaponOffset;
 	
-	// crew (typically one OOCharacter - the pilot)
-	NSArray					*crew;
+	// crew (typically one OOCharacter - the pilot); nullopt: unpiloted (was nil); an empty vector is crewed
+	std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>	crew;
 	
 	// close contact / collision tracking
-	NSMutableDictionary		*closeContactsInfo;
+	std::map<std::string, std::string, std::less<>>	closeContactsInfo;	// "%d" universal ID -> "%f %f %f" relative position
 	
-	NSString				*lastRadioMessage;
+	std::optional<std::string>	lastRadioMessage;	// nullopt: none yet
 	
 	// scooping...
 	Vector					tractor_position;
@@ -501,7 +501,7 @@ typedef enum
 }
 
 // ship brains
-- (void) setStateMachine:(NSString *)ai_desc;
+- (void) setStateMachine:(id)ai_desc;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
 - (void) setAI:(AI *)ai;
 - (AI *) getAI;
 - (BOOL) hasAutoAI;
@@ -515,7 +515,7 @@ typedef enum
 - (double) frustration;
 - (void) setLaunchDelay:(double)delay;
 
-- (void) interpretAIMessage:(NSString *)message;
+- (void) interpretAIMessage:(id)message;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
 
 - (GLfloat)accuracy;
 - (void)setAccuracy:(GLfloat) new_accuracy;
@@ -762,8 +762,8 @@ typedef enum
 - (OOShipGroup *) stationGroup; // should probably be defined in stationEntity.m
 
 - (BOOL) hasEscorts;
-- (NSEnumerator *) escortEnumerator;
-- (NSArray *) escortArray;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_escorts;	// the escorts (the group without self), a snapshot
+- (std::vector<oo::ObjCRef<ShipEntity *>>) escortArray;	// the same snapshot
 
 - (uint8_t) escortCount;
 
@@ -822,8 +822,8 @@ typedef enum
 
 // defense target handling
 - (NSUInteger) defenseTargetCount;
-- (NSArray *) allDefenseTargets;
-- (NSEnumerator *) defenseTargetEnumerator;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) allDefenseTargets;	// the live ones (zeroed references skipped)
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_defenseTargets;	// a snapshot in the weak set's order, up to the first zeroed reference
 - (void) validateDefenseTargets;
 - (BOOL) addDefenseTarget:(Entity *)target;
 - (BOOL) isDefenseTarget:(Entity *)target;
@@ -831,7 +831,7 @@ typedef enum
 - (void) removeAllDefenseTargets;
 
 // collision exceptions
-- (NSArray *) collisionExceptions;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_collisionExceptions;
 - (void) addCollisionException:(ShipEntity *)ship;
 - (void) removeCollisionException:(ShipEntity *)ship;
 - (BOOL) collisionExceptedFor:(ShipEntity *)ship;
@@ -871,14 +871,14 @@ typedef enum
 - (void) setDestinationSystem:(OOSystemID)s;
 
 
-- (NSArray *) crew;
-- (NSArray *) crewForScripting;
-- (void) setCrew:(NSArray *)crewArray;
+- (std::optional<std::vector<oo::ObjCRef<OOCharacter *>>>) cxx_crew;	// nullopt: unpiloted
+- (std::vector<oo::PList>) cxx_crewForScripting;	// each member's -infoForScripting
+- (void) cxx_setCrew:(const std::optional<std::vector<oo::ObjCRef<OOCharacter *>>> &)crewArray;
 /**
 	Convenience to set the crew to a single character of the given role,
 	originating in the ship's home system. Does nothing if unpiloted.
  */
-- (void) setSingleCrewWithRole:(NSString *)crewRole;
+- (void) cxx_setSingleCrewWithRole:(const std::string &)crewRole;
 
 // Fuel and capacity in tenths of light-years.
 - (OOFuelQuantity) fuel;
@@ -903,7 +903,7 @@ typedef enum
  */
 - (void) setBounty:(OOCreditsQuantity)amount;
 - (void) setBounty:(OOCreditsQuantity)amount withReason:(OOLegalStatusReason)reason;
-- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(NSString *)reason;
+- (void) setBounty:(OOCreditsQuantity)amount withReasonAsString:(id)reason;	// shared selector (proposed ADR-0043): an Objective-C string
 - (OOCreditsQuantity) bounty;
 
 - (int) legalStatus;
@@ -921,7 +921,7 @@ typedef enum
 - (OOCargoQuantity) cargoQuantityOnBoard;
 - (OOCargoType) cargoType;
 - (id) cargoListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array of dictionaries
-- (NSMutableArray *) cargo;
+- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo;	// the live cargo pods (nullptr for a nil receiver)
 - (NSUInteger) cxx_cargoCount;	// the number of cargo pods held
 - (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo;
 - (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo;
@@ -1194,7 +1194,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) landOnPlanet:(OOPlanetEntity *)planet;
 
 - (void) abortDocking;
-- (NSDictionary *) dockingInstructions;
+- (oo::PList) cxx_dockingInstructions;	// null: none
 
 - (void) broadcastThargoidDestroyed;
 
@@ -1205,20 +1205,20 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) setSunGlareFilter:(GLfloat)newValue;
 
 // Unpiloted ships cannot broadcast messages, unless the unpilotedOverride is set to YES.
-- (void) sendExpandedMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship;
-- (void) sendMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;
-- (void) broadcastAIMessage:(NSString *) ai_message;
-- (void) broadcastMessage:(NSString *) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
+- (void) cxx_sendExpandedMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship;
+- (void) cxx_sendMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride;
+- (void) broadcastAIMessage:(const std::string &) ai_message;
+- (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride;
 - (void) setCommsMessageColor;
-- (void) receiveCommsMessage:(NSString *) message_text from:(ShipEntity *) other;
-- (void) commsMessage:(NSString *)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
+- (void) receiveCommsMessage:(id) message_text from:(ShipEntity *) other;	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride;
 
 - (BOOL) markedForFines;
 - (BOOL) markForFines;
 
 - (BOOL) isMining;
 
-- (void) spawn:(NSString *)roles_number;
+- (void) spawn:(id)roles_number;	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
 
 - (int) checkShipsInVicinityForWitchJumpExit;
 
@@ -1263,7 +1263,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 - (void) doScriptEvent:(ooscript::PropertyId)message;
 - (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument;
 - (void) doScriptEvent:(ooscript::PropertyId)message withArgument:(id)argument1 andArgument:(id)argument2;
-- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(NSArray *)arguments;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withArguments:(const std::vector<oo::ObjCRef<id>> &)arguments;
 - (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 - (void) doScriptEvent:(ooscript::PropertyId)message inContext:(ooscript::Context)context withArguments:(ooscript::Value *)argv count:(unsigned)argc;
 
@@ -1282,10 +1282,10 @@ unsigned argc = sizeof argv / sizeof *argv; \
 [ship doScriptEvent:OOJSID(event) withArguments:argv count:argc]; \
 } while (0)
 
-- (void) reactToAIMessage:(NSString *)message context:(NSString *)debugContext;	// Immediate message
-- (void) sendAIMessage:(NSString *)message;		// Queued message
-- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage;
-- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage;
+- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext;	// Immediate message
+- (void) sendAIMessage:(id)message;		// Queued message. Shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage;
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage;
 
 @end
 
