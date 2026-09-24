@@ -60,6 +60,13 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (BOOL) removeCargo:(OOCommodityType)commodity amount:(OOCargoQuantity) amount;	// -> -cxx_removeCargo:amount:
 - (ShipEntity *) dumpCargoItem:(OOCommodityType)preferred;	// -> -cxx_dumpCargoItem:
 
+// oo-3rb.237: crew, escorts, groups and escape pods
+- (NSEnumerator *) escortEnumerator;	// -> -cxx_escorts
+- (NSArray *) crew;	// -> -cxx_crew
+- (NSArray *) crewForScripting;	// -> -cxx_crewForScripting
+- (void) setCrew:(NSArray *)crewArray;	// -> -cxx_setCrew:
+- (void) setSingleCrewWithRole:(NSString *)crewRole;	// -> -cxx_setSingleCrewWithRole:
+
 @end
 
 
