@@ -1637,7 +1637,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				
 				exceptionContext = "dump cargo";
 				//  shoot 'd'   // Dump Cargo
-				if (([self checkKeyPress:n_key_dump_cargo] || joyButtonState[BUTTON_JETTISON]) && [cargo count] > 0)
+				if (([self checkKeyPress:n_key_dump_cargo] || joyButtonState[BUTTON_JETTISON]) && [self cxx_cargoCount] > 0)
 				{
 					[self dumpCargo];
 				}
@@ -1646,7 +1646,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				//  shoot 'R'   // Rotate Cargo
 				if ([self checkKeyPress:n_key_rotate_cargo] || joyButtonState[BUTTON_ROTATECARGO])
 				{
-					if ((!rotateCargo_pressed)&&([cargo count] > 0))
+					if ((!rotateCargo_pressed)&&([self cxx_cargoCount] > 0))
 						[self rotateCargo];
 					rotateCargo_pressed = YES;
 				}
@@ -2487,14 +2487,14 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = [self commanderSelector];
+			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
-				
-				[self loadPlayerFromFile:commanderFile asNew:NO];
+
+				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
 			}
 			break;
 		}
@@ -2856,7 +2856,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if (!spacePressed)
 				{
-					BOOL reportEnded = ([dockingReport length] == 0);
+					BOOL reportEnded = dockingReport.empty();
 					[self playDismissedReportScreen];
 					if(reportEnded)
 					{
@@ -5314,14 +5314,14 @@ static BOOL autopilot_pause;
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = [self commanderSelector];
+			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
-				
-				[self loadPlayerFromFile:commanderFile asNew:NO];
+
+				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
 			}
 			break;
 		}
