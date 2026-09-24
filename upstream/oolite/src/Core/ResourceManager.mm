@@ -2278,7 +2278,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 
 + (BOOL) cxx_writeDiagnosticPList:(id)plist toFileNamed:(const std::string &)name
 {
-	// The old-school writer (oo::writeOldStylePList, the port of OldSchoolPropertyListWriting). Its
+	// The old-school writer (oo::writeOldStylePList, the port of the retired Objective-C old-school plist writer). Its
 	// XML fallback's result was never used, so a plist it cannot write is not written.
 	const auto data = oo::writeOldStylePList(oo::PListFrom(plist));
 	if (!data.has_value())  return NO;
