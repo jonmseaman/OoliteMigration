@@ -88,9 +88,10 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 }
 
 
-- (id)version	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)cxx_version
 {
-	return ObjectForKey(_metadata, kMDKeyVersion);
+	// As -displayName read the id-typed -version: the metadata value through oo::OptionalString.
+	return oo::OptionalString(ObjectForKey(_metadata, kMDKeyVersion));
 }
 
 
