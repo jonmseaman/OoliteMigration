@@ -135,12 +135,12 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 	metadata = dictionary.get<oo::PList::Dict>(kKeyMetadata);	// nil unless a dictionary
 
 	// Order-sensitive: the scripts come out in key order (they came out in hash order).
-	for (const auto &[key, scriptArray] : *dictionary.getIf<oo::PList::Dict>())
+	for (const auto &[key, unsanitized] : *dictionary.getIf<oo::PList::Dict>())
 	{
 		// (every key is a string: a dictionary with another key read as no dictionary)
-		if (scriptArray.isArray() && key != kKeyMetadata)
+		if (unsanitized.isArray() && key != kKeyMetadata)
 		{
-			const oo::PList sanitized = oo::PListFrom(OOSanitizeLegacyScript(oo::ObjectFromPList(scriptArray), oo::NSStringFrom(key), NO));
+			const oo::PList sanitized = OOSanitizeLegacyScript(unsanitized, key, NO);
 			if (sanitized)
 			{
 				script = [[self alloc] initWithName:key scriptArray:sanitized metadata:metadata];
