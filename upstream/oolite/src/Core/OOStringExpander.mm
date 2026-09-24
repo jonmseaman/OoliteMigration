@@ -44,19 +44,17 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 
-/*	The expansion engine works on UTF-16 code units, as it did on NSString's characters, held in
-	std::u16string; an empty optional stands for nil (bead oo-3rb.61, proposed ADR-0034 decision
-	4). Only the lookups (overrides, specials, descriptions.plist, key bindings, mission and
-	legacy local variables, legacy script selectors, system names) and the log and JavaScript
-	reports still speak NSString, converted exactly at that boundary.
+/*	The expansion engine works on UTF-16 code units, as it did on the Objective-C string's
+	characters, held in std::u16string; an empty optional stands for nil (bead oo-3rb.61, proposed
+	ADR-0034 decision 4). Text enters and leaves as UTF-8 (WTF-8, lossless: oo::utf8ToUtf16 /
+	oo::utf16ToUtf8). The unmigrated callees (Universe, PlayerEntity, ResourceManager) and the log
+	and JavaScript reports are converted at the call (bead oo-3il6).
 */
 typedef std::u16string OOUnits;
 typedef std::optional<std::u16string> OOMaybeUnits;
 
 namespace {
 
-OOMaybeUnits UnitsFromNSString(NSString *string);
-NSString *NSStringFromUnits(const OOUnits &units);
 OOUnits UnitsWithCharacters(const char16_t *characters, NSUInteger length);
 NSUInteger FindUnits(const OOUnits &string, std::u16string_view target, NSUInteger from);
 bool HasPrefix(const OOUnits &string, std::u16string_view prefix);
@@ -193,13 +191,17 @@ OOMaybeUnits ApplyOneOperator(const OOMaybeUnits &string, const OOUnits &op, con
 	
 	Errors that are not syntax or invalid keys are reported with OOLogERR().
 */
-void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, NSString *logMessageClass, NSString *prefix, NSString *format, ...)  OO_TAKES_FORMAT_STRING(7, 8);
+void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, const char *logMessageClass, const char *prefix, const char *format, ...)  __attribute__((format(printf, 7, 8)));
+void ReportJavaScriptWarning(ooscript::Context jsc, id format, ...);
 }	// namespace
 
-#define SyntaxError(CONTEXT, CLASS, FORMAT, ...) SyntaxIssue(CONTEXT, OOLOG_FUNCTION_NAME, OOLOG_FILE_NAME, __LINE__, CLASS, OOLOG_WARNING_PREFIX, FORMAT, ## __VA_ARGS__)
+// OOLOG_WARNING_PREFIX's text, as a C string.
+#define kSyntaxIssuePrefix "----- WARNING: "
+
+#define SyntaxError(CONTEXT, CLASS, FORMAT, ...) SyntaxIssue(CONTEXT, OOLOG_FUNCTION_NAME, OOLOG_FILE_NAME, __LINE__, CLASS, kSyntaxIssuePrefix, FORMAT, ## __VA_ARGS__)
 
 #if WARNINGS
-#define SyntaxWarning(CONTEXT, CLASS, FORMAT, ...) SyntaxIssue(CONTEXT, OOLOG_FUNCTION_NAME, OOLOG_FILE_NAME, __LINE__, CLASS, OOLOG_WARNING_PREFIX, FORMAT, ## __VA_ARGS__)
+#define SyntaxWarning(CONTEXT, CLASS, FORMAT, ...) SyntaxIssue(CONTEXT, OOLOG_FUNCTION_NAME, OOLOG_FILE_NAME, __LINE__, CLASS, kSyntaxIssuePrefix, FORMAT, ## __VA_ARGS__)
 #else
 #define SyntaxWarning(...) do {} while (0)
 #endif
@@ -339,7 +341,7 @@ OOUnits Expand(OOStringExpansionContext *context, const OOUnits &string, NSUInte
 		}
 		else if (thisChar == ']')
 		{
-			SyntaxWarning(context, @"strings.expand.warning.unbalancedClosingBracket", @"%@", @"Unbalanced ] in string.");
+			SyntaxWarning(context, "strings.expand.warning.unbalancedClosingBracket", "%s", "Unbalanced ] in string.");
 		}
 		else if (thisChar == '\\' && context->convertBackslashN)
 		{
@@ -434,7 +436,7 @@ OOMaybeUnits ExpandKey(OOStringExpansionContext *context, const char16_t *charac
 	// Fail if no balancing bracket.
 	if (EXPECT_NOT(balanceCount != 0))
 	{
-		SyntaxWarning(context, @"strings.expand.warning.unbalancedOpeningBracket", @"%@", @"Unbalanced [ in string.");
+		SyntaxWarning(context, "strings.expand.warning.unbalancedOpeningBracket", "%s", "Unbalanced [ in string.");
 		return std::nullopt;
 	}
 	
@@ -445,7 +447,7 @@ OOMaybeUnits ExpandKey(OOStringExpansionContext *context, const char16_t *charac
 	
 	if (EXPECT_NOT(keyLength == 0))
 	{
-		SyntaxWarning(context, @"strings.expand.warning.emptyKey", @"%@", @"Invalid expansion code [] string. (To avoid this message, use %%[%%].)");
+		SyntaxWarning(context, "strings.expand.warning.emptyKey", "%s", "Invalid expansion code [] string. (To avoid this message, use %%[%%].)");
 		return std::nullopt;
 	}
 
@@ -530,25 +532,25 @@ OOMaybeUnits UnitsFromUTF8(const std::string &string)
 
 OOMaybeUnits Operator_cr(const OOMaybeUnits &string, const OOMaybeUnits & /* param */)
 {
-	return UnitsFromNSString(OOCredits(DoubleValue(string) * 10));
+	return oo::utf8ToUtf16(cxx_OOCredits(DoubleValue(string) * 10));
 }
 
 
 OOMaybeUnits Operator_dcr(const OOMaybeUnits &string, const OOMaybeUnits & /* param */)
 {
-	return UnitsFromNSString(OOCredits(LongLongValue(string)));
+	return oo::utf8ToUtf16(cxx_OOCredits(LongLongValue(string)));
 }
 
 
 OOMaybeUnits Operator_icr(const OOMaybeUnits &string, const OOMaybeUnits & /* param */)
 {
-	return UnitsFromNSString(OOIntCredits(LongLongValue(string)));
+	return oo::utf8ToUtf16(cxx_OOIntCredits(LongLongValue(string)));
 }
 
 
 OOMaybeUnits Operator_idcr(const OOMaybeUnits &string, const OOMaybeUnits & /* param */)
 {
-	return UnitsFromNSString(OOIntCredits(round(DoubleValue(string) / 10.0)));
+	return oo::utf8ToUtf16(cxx_OOIntCredits(round(DoubleValue(string) / 10.0)));
 }
 
 
@@ -603,7 +605,7 @@ OOMaybeUnits ApplyOneOperator(const OOMaybeUnits &string, const OOUnits &op, con
 		if (op == entry.name)  return entry.function(string, param);
 	}
 
-	OOLogERR(@"strings.expand.invalidOperator", @"Unknown string expansion operator %@", NSStringFromUnits(op));
+	OOLogERR(@"strings.expand.invalidOperator", @"Unknown string expansion operator %@", oo::NSStringFrom(oo::utf16ToUtf8(op)));
 	return string;
 }
 
@@ -625,7 +627,7 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 	NSUInteger keyValue = 0, idx;
 	for (idx = keyStart; idx < (keyStart + keyLength); idx++)
 	{
-		NSCAssert2(isdigit(characters[idx]), @"%s called with non-numeric key [%@].", __FUNCTION__, NSStringFromUnits(UnitsWithCharacters(characters + keyStart, keyLength)));
+		NSCAssert2(isdigit(characters[idx]), @"%s called with non-numeric key [%@].", __FUNCTION__, oo::NSStringFrom(oo::utf16ToUtf8(UnitsWithCharacters(characters + keyStart, keyLength))));
 
 		keyValue = keyValue * 10 + characters[idx] - '0';
 	}
@@ -639,7 +641,7 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 	{
 		if (keyValue >= context->sysDescCount)
 		{
-			SyntaxWarning(context, @"strings.expand.warning.outOfRangeKey", @"Out-of-range system description expansion key [%@] in string.", NSStringFromUnits(UnitsWithCharacters(characters + keyStart, keyLength)));
+			SyntaxWarning(context, "strings.expand.warning.outOfRangeKey", "Out-of-range system description expansion key [%s] in string.", oo::utf16ToUtf8(UnitsWithCharacters(characters + keyStart, keyLength)).c_str());
 		}
 		else
 		{
@@ -740,7 +742,7 @@ OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const st
 #if WARNINGS
 		if (!value->isString() && !value->isNumber())
 		{
-			SyntaxWarning(context, @"strings.expand.warning.invalidOverride", @"String expansion override value %@ for [%@] is not a string or number.", [oo::ObjectFromPList(*value) shortDescription], oo::NSStringFrom(key));
+			SyntaxWarning(context, "strings.expand.warning.invalidOverride", "String expansion override value %s for [%s] is not a string or number.", oo::StdString([oo::ObjectFromPList(*value) shortDescription]).c_str(), key.c_str());
 		}
 #endif
 		return ValueText(*value);
@@ -1025,11 +1027,11 @@ void ReportWarningForUnknownKey(OOStringExpansionContext *context, const OOUnits
 {
 	if (HasSuffix(keyUnits, u"_string") || HasSuffix(keyUnits, u"_number") || HasSuffix(keyUnits, u"_bool"))
 	{
-		SyntaxError(context, @"strings.expand.invalidSelector", @"Unpermitted legacy script method [%@] in string.", oo::NSStringFrom(key));
+		SyntaxError(context, "strings.expand.invalidSelector", "Unpermitted legacy script method [%s] in string.", key.c_str());
 	}
 	else
 	{
-		SyntaxWarning(context, @"strings.expand.warning.unknownExpansion", @"Unknown expansion key [%@] in string.", oo::NSStringFrom(key));
+		SyntaxWarning(context, "strings.expand.warning.unknownExpansion", "Unknown expansion key [%s] in string.", key.c_str());
 	}
 }
 #endif
@@ -1050,8 +1052,8 @@ void ReportWarningForUnknownKey(OOStringExpansionContext *context, const OOUnits
 		%]
 	
 	In addition, the codes %@, %d and %. are ignored, because they're used
-	with -[NSString stringWithFormat:] on strings that have already been
-	expanded.
+	with the Objective-C string formatter (%@ / %d) on strings that have
+	already been expanded.
 	
 	Any other code results in a warning.
 */
@@ -1096,7 +1098,7 @@ OOMaybeUnits ExpandPercentEscape(OOStringExpansionContext *context, const char16
 		case ']':
 			return OOUnits(u"]");
 			
-			/*	These are NSString formatting specifiers that occur in
+			/*	These are Objective-C string formatting specifiers that occur in
 				descriptions.plist. The '.' is for floating-point (g and f)
 				specifiers that have field widths specified. No unadorned
 				%f or %g is found in vanilla Oolite descriptions.plist.
@@ -1115,7 +1117,21 @@ OOMaybeUnits ExpandPercentEscape(OOStringExpansionContext *context, const char16
 			
 		default:
 			// Yay, percent signs!
-			SyntaxWarning(context, @"strings.expand.warning.unknownPercentEscape", @"Unknown escape code in string: %%%lc. (To encode a %% sign without this warning, use %%%% - but prefer \"percent\" in prose writing.)", selector);
+			/*	The Objective-C formatter's %lc of a unichar kept only its low byte: the high byte of
+				the character it produced was undefined (probed on gnustep-base 1.31.1: U+0041 gave
+				U+DB41, U+0301 gave U+D301 or U+DB01 from run to run; tests/unit/expander masks all
+				but the low byte). The low byte is printed, as the character U+00xx (%c for ASCII,
+				so that U+0000 survives; UTF-8 through %s above it).
+			*/
+			const unsigned char lowByte = static_cast<unsigned char>(selector & 0xFF);
+			if (lowByte < 0x80)
+			{
+				SyntaxWarning(context, "strings.expand.warning.unknownPercentEscape", "Unknown escape code in string: %%%c. (To encode a %% sign without this warning, use %%%% - but prefer \"percent\" in prose writing.)", lowByte);
+			}
+			else
+			{
+				SyntaxWarning(context, "strings.expand.warning.unknownPercentEscape", "Unknown escape code in string: %%%s. (To encode a %% sign without this warning, use %%%% - but prefer \"percent\" in prose writing.)", oo::utf16ToUtf8(OOUnits(1, lowByte)).c_str());
+			}
 			
 			return std::nullopt;
 	}
@@ -1186,11 +1202,11 @@ OOMaybeUnits ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, 
 	// A valid %G escape is always eight characters including the six digits.
 	*replaceLength = 8;
 	
-	#define kInvalidGEscapeMessage @"String escape code %G must be followed by six integers."
+	#define kInvalidGEscapeMessage "String escape code %G must be followed by six integers."
 	if (EXPECT_NOT(size - idx < 8))
 	{
 		// Too close to end of string to actually have six characters, let alone six digits.
-		SyntaxError(context, @"strings.expand.invalidJEscape", @"%@", kInvalidGEscapeMessage);
+		SyntaxError(context, "strings.expand.invalidJEscape", "%s", kInvalidGEscapeMessage);
 		return std::nullopt;
 	}
 	
@@ -1203,25 +1219,26 @@ OOMaybeUnits ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, 
 	
 	if (!(isdigit(hundreds) && isdigit(tens) && isdigit(units) && isdigit(galHundreds) && isdigit(galTens) && isdigit(galUnits)))
 	{
-		SyntaxError(context, @"strings.expand.invalidJEscape", @"%@", kInvalidGEscapeMessage);
+		SyntaxError(context, "strings.expand.invalidJEscape", "%s", kInvalidGEscapeMessage);
 		return std::nullopt;
 	}
 	
 	OOSystemID sysID = (hundreds - '0') * 100 + (tens - '0') * 10 + (units - '0');
 	if (sysID > kOOMaximumSystemID)
 	{
-		SyntaxError(context, @"strings.expand.invalidJEscape.range", @"String escape code %%G%3u for system is out of range (must be less than %u).", sysID, kOOMaximumSystemID + 1);
+		SyntaxError(context, "strings.expand.invalidJEscape.range", "String escape code %%G%3u for system is out of range (must be less than %u).", sysID, kOOMaximumSystemID + 1);
 		return std::nullopt;
 	}
 	
 	OOGalaxyID galID = (galHundreds - '0') * 100 + (galTens - '0') * 10 + (galUnits - '0');
 	if (galID > kOOMaximumGalaxyID)
 	{
-		SyntaxError(context, @"strings.expand.invalidJEscape.range", @"String escape code %%G%3u for galaxy is out of range (must be less than %u).", galID, kOOMaximumGalaxyID + 1);
+		SyntaxError(context, "strings.expand.invalidJEscape.range", "String escape code %%G%3u for galaxy is out of range (must be less than %u).", galID, kOOMaximumGalaxyID + 1);
 		return std::nullopt;
 	}
 	
-	return UnitsFromNSString([UNIVERSE getSystemName:sysID forGalaxy:galID]);
+	// Universe is not migrated yet: converted at the call.
+	return UnitsFromOptional(oo::OptionalString([UNIVERSE getSystemName:sysID forGalaxy:galID]));
 }
 
 
@@ -1238,11 +1255,11 @@ OOMaybeUnits ExpandSystemNameEscape(OOStringExpansionContext *context, const cha
 	// A valid %J escape is always five characters including the three digits.
 	*replaceLength = 5;
 	
-	#define kInvalidJEscapeMessage @"String escape code %J must be followed by three integers."
+	#define kInvalidJEscapeMessage "String escape code %J must be followed by three integers."
 	if (EXPECT_NOT(size - idx < 5))
 	{
 		// Too close to end of string to actually have three characters, let alone three digits.
-		SyntaxError(context, @"strings.expand.invalidJEscape", @"%@", kInvalidJEscapeMessage);
+		SyntaxError(context, "strings.expand.invalidJEscape", "%s", kInvalidJEscapeMessage);
 		return std::nullopt;
 	}
 	
@@ -1252,18 +1269,18 @@ OOMaybeUnits ExpandSystemNameEscape(OOStringExpansionContext *context, const cha
 	
 	if (!(isdigit(hundreds) && isdigit(tens) && isdigit(units)))
 	{
-		SyntaxError(context, @"strings.expand.invalidJEscape", @"%@", kInvalidJEscapeMessage);
+		SyntaxError(context, "strings.expand.invalidJEscape", "%s", kInvalidJEscapeMessage);
 		return std::nullopt;
 	}
 	
 	OOSystemID sysID = (hundreds - '0') * 100 + (tens - '0') * 10 + (units - '0');
 	if (sysID > kOOMaximumSystemID)
 	{
-		SyntaxError(context, @"strings.expand.invalidJEscape.range", @"String escape code %%J%3u is out of range (must be less than %u).", sysID, kOOMaximumSystemID + 1);
+		SyntaxError(context, "strings.expand.invalidJEscape.range", "String escape code %%J%3u is out of range (must be less than %u).", sysID, kOOMaximumSystemID + 1);
 		return std::nullopt;
 	}
 	
-	return UnitsFromNSString([UNIVERSE getSystemName:sysID]);
+	return UnitsFromOptional(oo::OptionalString([UNIVERSE getSystemName:sysID]));
 }
 
 
@@ -1280,7 +1297,7 @@ void AppendCharacters(OOMaybeUnits *result, const char16_t *characters, NSUInteg
 	if (start == end)  return;
 
 	// The segment goes through -initWithCharacters:length:'s byte-order-mark handling, as the
-	// temporary NSString it used to be built as did.
+	// temporary Objective-C string it used to be built as did.
 	**result += UnitsWithCharacters(characters + start, end - start);
 }
 
@@ -1289,7 +1306,7 @@ OOMaybeUnits GetSystemName(OOStringExpansionContext *context)
 {
 	NSCParameterAssert(context != NULL);
 	if (!context->systemName.has_value()) {
-		context->systemName = UnitsFromNSString([UNIVERSE getSystemName:[PLAYER systemID]]);
+		context->systemName = UnitsFromOptional(oo::OptionalString([UNIVERSE getSystemName:[PLAYER systemID]]));
 	}
 
 	return context->systemName;
@@ -1356,12 +1373,13 @@ const oo::PList &GetSystemDescriptions(OOStringExpansionContext *context)
 /*	The digram at <location> of descriptions.plist's "digrams" string ([digrams
 	substringWithRange:NSMakeRange(location, 2)], which raises past the end).
 */
-OOUnits Digram(NSString *digrams, const OOUnits &units, NSUInteger location)
+OOUnits Digram(const std::optional<std::string> &digrams, const OOUnits &units, NSUInteger location)
 {
 	if (location + 2 > units.size())
 	{
-		// Raises NSRangeException, as it did; answers nil (nothing appended) for a nil <digrams>.
-		[digrams substringWithRange:NSMakeRange(location, 2)];
+		// Raises NSRangeException, as it did (by messaging the string itself); answers nothing
+		// (nothing appended) for no <digrams>.
+		[oo::NSStringOrNil(digrams) substringWithRange:NSMakeRange(location, 2)];
 		return OOUnits();
 	}
 	return units.substr(location, 2);
@@ -1384,8 +1402,8 @@ OOUnits OldRandomDigrams(void)
 	/* The only point of using %R is for world generation, so there's
 	 * no point in checking the context */
 	unsigned len = gen_rnd_number() & 3;
-	NSString *digrams = [[UNIVERSE descriptions] objectForKey:@"digrams"];
-	const OOUnits digramUnits = UnitsFromNSString(digrams).value_or(OOUnits());
+	const std::optional<std::string> digrams = oo::OptionalString([[UNIVERSE descriptions] objectForKey:@"digrams"]);
+	const OOUnits digramUnits = UnitsFromOptional(digrams).value_or(OOUnits());
 	OOUnits name;
 
 	for (unsigned i = 0; i <=len; i++)
@@ -1404,8 +1422,8 @@ OOUnits NewRandomDigrams(OOStringExpansionContext *context)
 {
 	unsigned length = (OO_EXPANDER_RANDOM % 4) + 1;
 	if ((OO_EXPANDER_RANDOM % 5) < ((length == 1) ? 3 : 1))  ++length;	// Make two-letter names rarer and 10-letter names happen sometimes
-	NSString *digrams = [[UNIVERSE descriptions] objectForKey:@"digrams"];
-	const OOUnits digramUnits = UnitsFromNSString(digrams).value_or(OOUnits());
+	const std::optional<std::string> digrams = oo::OptionalString([[UNIVERSE descriptions] objectForKey:@"digrams"]);
+	const OOUnits digramUnits = UnitsFromOptional(digrams).value_or(OOUnits());
 	NSUInteger count = digramUnits.size() / 2;
 	OOUnits name;
 
@@ -1419,30 +1437,10 @@ OOUnits NewRandomDigrams(OOStringExpansionContext *context)
 
 
 // MARK: -
-// MARK: NSString <-> UTF-16 units
+// MARK: UTF-16 units
 
 
-// NSString -> its UTF-16 units, exactly; nil -> nullopt.
-OOMaybeUnits UnitsFromNSString(NSString *string)
-{
-	if (string == nil)  return std::nullopt;
-	const NSUInteger length = [string length];
-	OOUnits units(length, u'\0');
-	if (length != 0)  [string getCharacters:reinterpret_cast<unichar *>(units.data()) range:NSMakeRange(0, length)];
-	return units;
-}
-
-
-// UTF-16 units -> NSString, unit for unit (an explicit byte order keeps a leading U+FEFF).
-NSString *NSStringFromUnits(const OOUnits &units)
-{
-	return [[[NSString alloc] initWithBytes:units.data()
-									 length:units.size() * sizeof(char16_t)
-								   encoding:NSUTF16LittleEndianStringEncoding] autorelease];
-}
-
-
-/*	+[NSString stringWithCharacters:length:] / -initWithCharacters:length:, which is how the
+/*	+stringWithCharacters:length: / -initWithCharacters:length:, which is how the
 	engine used to cut keys, operators and literal segments out of a string: GNUstep drops a
 	leading U+FEFF, or drops a leading U+FFFE and byte-swaps the rest, and does so twice
 	(probed on gnustep-base 1.31.1).
@@ -1504,14 +1502,17 @@ bool HasSuffix(const OOUnits &string, std::u16string_view suffix)
 }
 
 
-void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, NSString *logMessageClass, NSString *prefix, NSString *format, ...)
+void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, const char *logMessageClass, const char *prefix, const char *format, ...)
 {
 	NSCParameterAssert(context != NULL);
-	
+
 	va_list args;
 	va_start(args, format);
-	
-	if (OOLogWillDisplayMessagesInClass(logMessageClass))
+	const std::string message = oo::str::vformat(format, args);
+	va_end(args);
+
+	// OOLogging and the JavaScript engine are not migrated here: the formatted text is handed on.
+	if (OOLogWillDisplayMessagesInClass(oo::NSStringFrom(logMessageClass)))
 	{
 		if (context->isJavaScript)
 		{
@@ -1520,16 +1521,23 @@ void SyntaxIssue(OOStringExpansionContext *context, const char *function, const 
 				expander didn't.
 			*/
 			ooscript::Context jsc = OOJSAcquireContext();
-			OOJSReportWarningWithArguments(jsc, format, args);
+			ReportJavaScriptWarning(jsc, @"%@", oo::NSStringFrom(message));
 			OOJSRelinquishContext(jsc);
 		}
 		else
 		{
-			format = [prefix stringByAppendingString:format];
-			OOLogWithFunctionFileAndLineAndArguments(logMessageClass, function, fileName, line, format, args);
+			OOLogWithFunctionFileAndLine(oo::NSStringFrom(logMessageClass), function, fileName, line, @"%@", oo::NSStringFrom(std::string(prefix) + message));
 		}
 	}
-	
+}
+
+
+// OOJSReportWarningWithArguments with a %@ format and its argument (the engine's va_list entry).
+void ReportJavaScriptWarning(ooscript::Context jsc, id format, ...)
+{
+	va_list args;
+	va_start(args, format);
+	OOJSReportWarningWithArguments(jsc, format, args);
 	va_end(args);
 }
 
