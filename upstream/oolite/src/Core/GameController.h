@@ -76,7 +76,7 @@ MA 02110-1301, USA.
 	
 	NSTimeInterval			_animationTimerInterval;
 	
-	NSDate					*_splashStart;
+	NSTimeInterval			_splashStart;	// oo::date::monotonicSeconds() at start-up
 	
 	SEL						pauseSelector;
 	NSObject				*pauseTarget;
@@ -167,10 +167,11 @@ MA 02110-1301, USA.
 - (void) startAnimationTimer;
 - (void) stopAnimationTimer;
 
-/*	Fire whatever is due now, the game tick first: what the run loop's
-	-limitDateForMode: did for the game while its tick was a run-loop timer.
-	For code that must let the game tick while it blocks the frame loop (the
-	OXZ download callback). See proposed ADR-0033.
+/*	Fire whatever is due now, the game tick first, then one deferred call:
+	what the run loop's -limitDateForMode: did for the game while its tick and
+	deferred calls were run-loop timers. For code that must let the game tick
+	while it blocks the frame loop (the OXZ download callback). See proposed
+	ADR-0033 and ADR-0040.
 */
 - (void) fireDueTimers;
 
@@ -209,6 +210,18 @@ MA 02110-1301, USA.
 - (void) setUpDisplayModes;
 
 @end
+
+
+/*	OOScheduleDeferredCall(target, selector, argument, delay): what Foundation's
+	performer-after-delay did (bead oo-3rb.57, proposed ADR-0040). [target
+	performSelector:selector withObject:argument] runs on the first frame-loop
+	pass at least delay seconds from now (a delay <= 0 is 0.0001 s), after that
+	pass's tick; target and argument are retained until then. Due calls fire in
+	the order they were scheduled, at most two per pass, as the run loop fired
+	its timers. Main thread only: a call scheduled on another thread never fires,
+	as a performer on that thread's never-run run loop did not.
+*/
+void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay);
 
 
 #if OO_DEBUG
