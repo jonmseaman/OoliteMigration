@@ -31,6 +31,8 @@ MA 02110-1301, USA.
 #import "OOTypes.h"
 #import "GuiDisplayGen.h"
 
+#include "oofnd/PList.hpp"
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -65,9 +67,9 @@ typedef enum {
 @interface OOOXZManager: OOObject
 {
 @private
-	NSArray 			*_oxzList;
-	NSArray 			*_managedList;
-	NSArray				*_filteredList;
+	oo::PList			_oxzList;		// Array of manifests, sorted; null until a list is loaded
+	oo::PList			_managedList;	// Array of the managed OXZs' manifests; null: to be rebuilt
+	oo::PList			_filteredList;	// Array of the manifests on show
 	std::string			_currentFilter;	// lowercase; "*" initially
 
 	OXZInterfaceState	_interfaceState;
@@ -100,8 +102,8 @@ typedef enum {
 - (BOOL) updateManifests;
 - (BOOL) cancelUpdate;
 
-- (NSArray *) manifests;
-- (NSArray *) managedOXZs;
+- (oo::PList) manifests;	// an Array, or null before a list is loaded
+- (oo::PList) managedOXZs;	// an Array
 
 - (void) gui;
 - (BOOL) isRestarting;
