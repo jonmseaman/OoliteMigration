@@ -929,7 +929,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	espeak_Cancel();
 #endif
 #endif
-	[conditionScripts release];
 
 	[self deleteOpenGLObjects];
 	
@@ -2135,7 +2134,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (ShipEntity *) addShipWithRole:(NSString *)desc launchPos:(HPVector)launchPos rfactor:(GLfloat)rfactor
+- (ShipEntity *) addShipWithRole:(const std::string &)desc launchPos:(HPVector)launchPos rfactor:(GLfloat)rfactor
 {
 	if (rfactor != 0.0)
 	{
@@ -2145,20 +2144,20 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		launchPos.z += 2 * rfactor * (randf() - 0.5);
 	}
 	
-	ShipEntity  *ship = [self newShipWithRole:desc];   // retain count = 1
-	
+	ShipEntity  *ship = [self cxx_newShipWithRole:desc];   // retain count = 1
+
 	if (ship)
 	{
 		[ship setPosition:launchPos];	// minimise 'lollipop flash'
-		
+
 		// Deal with scripted cargopods and ensure they are filled with something.
 		if ([ship hasRole:@"cargopod"])  [self fillCargopodWithRandomCargo:ship];
-		
+
 		// Ensure piloted ships have pilots.
 		if (![ship crew] && ![ship isUnpiloted])
-			[ship setCrew:[NSArray arrayWithObject:
-						   [OOCharacter randomCharacterWithRole:desc
-											  andOriginalSystem:Ranrot() & 255]]];
+			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
+						   [OOCharacter randomCharacterWithRole:oo::NSStringFrom(desc)
+											  andOriginalSystem:Ranrot() & 255] })];
 		
 		if ([ship scanClass] == CLASS_NOT_SET)
 		{
@@ -2172,7 +2171,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (void) addShipWithRole:(NSString *) desc nearRouteOneAt:(double) route_fraction
+- (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction
 {
 	// adds a ship within scanner range of a point on route 1
 	
@@ -2188,7 +2187,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (HPVector) coordinatesForPosition:(HPVector) pos withCoordinateSystem:(NSString *) system returningScalar:(GLfloat*) my_scalar
+- (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar
 {
 	/*	the point is described using a system selected by a string
 		consisting of a three letter code.
@@ -2225,12 +2224,12 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		
 	*/
 	
-	NSString* l_sys = [system lowercaseString];
-	if ([l_sys length] != 3)
+	const std::string l_sys = oo::str::lowercase(system);
+	if (oo::str::length(l_sys) != 3)	// UTF-16 units, as -length counted
 		return kZeroHPVector;
 	OOPlanetEntity* the_planet = [self planet];
 	OOSunEntity* the_sun = [self sun];
-	if (the_planet == nil || the_sun == nil || [l_sys isEqualToString:@"abs"])
+	if (the_planet == nil || the_sun == nil || l_sys == "abs")
 	{
 		if (my_scalar)  *my_scalar = 1.0;
 		return pos;
@@ -2238,8 +2237,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
 	HPVector  p_pos = the_planet->position;
 	HPVector  s_pos = the_sun->position;
-	
-	const char* c_sys = [l_sys UTF8String];
+
+	const char* c_sys = l_sys.c_str();
 	HPVector p0, p1, p2;
 	
 	switch (c_sys[0])
@@ -2324,29 +2323,29 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (NSString *) expressPosition:(HPVector) pos inCoordinateSystem:(NSString *) system
+- (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system
 {
-	HPVector result = [self legacyPositionFrom:pos asCoordinateSystem:system];
-	return [NSString stringWithFormat:@"%@ %.2f %.2f %.2f", system, result.x, result.y, result.z];
+	HPVector result = [self cxx_legacyPositionFrom:pos asCoordinateSystem:system];
+	return oo::str::format("%s %.2f %.2f %.2f", system.c_str(), result.x, result.y, result.z);
 }
 
 
-- (HPVector) legacyPositionFrom:(HPVector) pos asCoordinateSystem:(NSString *) system
+- (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system
 {
-	NSString* l_sys = [system lowercaseString];
-	if ([l_sys length] != 3)
+	const std::string l_sys = oo::str::lowercase(system);
+	if (oo::str::length(l_sys) != 3)	// UTF-16 units, as -length counted
 		return kZeroHPVector;
 	OOPlanetEntity* the_planet = [self planet];
 	OOSunEntity* the_sun = [self sun];
-	if (the_planet == nil || the_sun == nil || [l_sys isEqualToString:@"abs"])
+	if (the_planet == nil || the_sun == nil || l_sys == "abs")
 	{
 		return pos;
 	}
 	HPVector  w_pos = [self getWitchspaceExitPosition];	// don't reset PRNG
 	HPVector  p_pos = the_planet->position;
 	HPVector  s_pos = the_sun->position;
-	
-	const char* c_sys = [l_sys UTF8String];
+
+	const char* c_sys = l_sys.c_str();
 	HPVector p0, p1, p2;
 	
 	switch (c_sys[0])
@@ -2432,24 +2431,28 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (HPVector) coordinatesFromCoordinateSystemString:(NSString *) system_x_y_z
+- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &) system_x_y_z
 {
-	NSArray* tokens = ScanTokensFromString(system_x_y_z);
-	if ([tokens count] != 4)
+	const std::vector<std::string> tokens = oo::str::tokens(system_x_y_z);
+	if (tokens.size() != 4)
 	{
 		// Not necessarily an error.
 		return make_HPvector(0,0,0);
 	}
+	// each number read as at<float> read the token string before
+	oo::PList::Array tokenList;
+	for (const std::string &token : tokens)  tokenList.push_back(oo::PList(token));
+	const oo::PList tokenPList(std::move(tokenList));
 	GLfloat dummy;
-	return [self coordinatesForPosition:make_HPvector(oo::PListView(tokens).at<float>(1), oo::PListView(tokens).at<float>(2), oo::PListView(tokens).at<float>(3)) withCoordinateSystem:oo::PListView(tokens).at<NSString *>(0) returningScalar:&dummy];
+	return [self cxx_coordinatesForPosition:make_HPvector(tokenPList.at<float>(1), tokenPList.at<float>(2), tokenPList.at<float>(3)) withCoordinateSystem:tokens[0] returningScalar:&dummy];
 }
 
 
-- (BOOL) addShipWithRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system
+- (BOOL) cxx_addShipWithRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system
 {
 	// initial position
 	GLfloat scalar = 1.0;
-	HPVector launchPos = [self coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
+	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
 	//	randomise
 	GLfloat rfactor = scalar;
 	if (rfactor > SCANNER_MAX_RANGE)
@@ -2461,11 +2464,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (BOOL) addShips:(int) howMany withRole:(NSString *) desc atPosition:(HPVector) pos withCoordinateSystem:(NSString *) system
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc atPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system
 {
 	// initial bounding box
 	GLfloat scalar = 1.0;
-	HPVector launchPos = [self coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
+	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
 	GLfloat distance_from_center = 0.0;
 	HPVector v_from_center, ship_pos;
 	HPVector ship_positions[howMany];
@@ -2541,11 +2544,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system
 {
 	// initial bounding box
 	GLfloat scalar = 1.0;
-	HPVector launchPos = [self coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
+	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
 	GLfloat rfactor = scalar;
 	if (rfactor > SCANNER_MAX_RANGE)
 		rfactor = SCANNER_MAX_RANGE;
@@ -2555,15 +2558,15 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	bounding_box_reset_to_vector(&launch_bbox, make_vector(launchPos.x - rfactor, launchPos.y - rfactor, launchPos.z - rfactor));
 	bounding_box_add_xyz(&launch_bbox, launchPos.x + rfactor, launchPos.y + rfactor, launchPos.z + rfactor);
 	
-	return [self addShips: howMany withRole: desc intoBoundingBox: launch_bbox];
+	return [self cxx_addShips: howMany withRole: desc intoBoundingBox: launch_bbox];
 }
 
 
-- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system withinRadius:(GLfloat) radius
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system withinRadius:(GLfloat) radius
 {
 	// initial bounding box
 	GLfloat scalar = 1.0;
-	HPVector launchPos = [self coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
+	HPVector launchPos = [self cxx_coordinatesForPosition:pos withCoordinateSystem:system returningScalar:&scalar];
 	GLfloat rfactor = radius;
 	if (rfactor < 1000)
 		rfactor = 1000;
@@ -2571,11 +2574,11 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	bounding_box_reset_to_vector(&launch_bbox, make_vector(launchPos.x - rfactor, launchPos.y - rfactor, launchPos.z - rfactor));
 	bounding_box_add_xyz(&launch_bbox, launchPos.x + rfactor, launchPos.y + rfactor, launchPos.z + rfactor);
 	
-	return [self addShips: howMany withRole: desc intoBoundingBox: launch_bbox];
+	return [self cxx_addShips: howMany withRole: desc intoBoundingBox: launch_bbox];
 }
 
 
-- (BOOL) addShips:(int) howMany withRole:(NSString *) desc intoBoundingBox:(BoundingBox) bbox
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc intoBoundingBox:(BoundingBox) bbox
 {
 	if (howMany < 1)
 		return YES;
@@ -2609,7 +2612,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			}
 		}
 		// place half the ships into each bounding box
-		return ([self addShips: h0 withRole: desc intoBoundingBox: bbox0] && [self addShips: h1 withRole: desc intoBoundingBox: bbox1]);
+		return ([self cxx_addShips: h0 withRole: desc intoBoundingBox: bbox0] && [self cxx_addShips: h1 withRole: desc intoBoundingBox: bbox1]);
 	}
 	
 	//	randomise within the bounding box (biased towards the center of the box)
@@ -2622,58 +2625,61 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (BOOL) spawnShip:(NSString *) shipdesc
+- (BOOL) spawnShip:(id) shipdescObject	// shared selector (proposed ADR-0043)
 {
+	const std::string shipdesc = oo::StdString(shipdescObject);
+
 	// no need to do any more than log - enforcing modes wouldn't even have
 	// loaded the legacy script
-	OOStandardsDeprecated([NSString stringWithFormat:@"'spawn' via legacy script is deprecated as a way of adding ships for %@",shipdesc]);
+	cxx_OOStandardsDeprecated(oo::str::format("'spawn' via legacy script is deprecated as a way of adding ships for %s", oo::DescriptionOf(shipdescObject).c_str()));
 
 	ShipEntity		*ship;
-	NSDictionary	*shipdict = nil;
-	
-	shipdict = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipdesc];
-	if (shipdict == nil)  return NO;
-	
-	ship = [self newShipWithName:shipdesc];	// retain count is 1
-	
+	oo::PList		shipdict;
+
+	shipdict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipdesc];
+	if (shipdict.isNull())  return NO;
+
+	ship = [self cxx_newShipWithName:shipdesc];	// retain count is 1
+
 	if (ship == nil)  return NO;
-	
+
 	// set any spawning characteristics
-	NSDictionary	*spawndict = oo::PListView(shipdict).get<NSDictionary *>(@"spawn");
+	const oo::PList	*spawnEntry = shipdict.get<oo::PList::Dict>("spawn");
+	const oo::PList	spawndict = (spawnEntry != nullptr) ? *spawnEntry : oo::PList();
 	HPVector			pos, rpos, spos;
-	NSString		*positionString = nil;
-	
+	std::optional<std::string>	positionString;
+
 	// position
-	positionString = oo::PListView(spawndict).get<NSString *>(@"position");
-	if (positionString != nil)
+	positionString = OptionalStringIn(spawndict, "position");
+	if (positionString.has_value())
 	{
-		if([positionString hasPrefix:@"abs "] && ([self planet] != nil || [self sun] !=nil))
+		if(oo::str::hasPrefix(*positionString, "abs ") && ([self planet] != nil || [self sun] !=nil))
 		{
-			OOLogWARN(@"script.deprecated", @"setting %@ for %@ '%@' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.",@"position",@"entity",shipdesc);
+			OOLogWARN(@"script.deprecated", @"setting %@ for %@ '%@' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.",@"position",@"entity",shipdescObject);
 		}
-		
-		pos = [self coordinatesFromCoordinateSystemString:positionString];
+
+		pos = [self cxx_coordinatesFromCoordinateSystemString:*positionString];
 	}
 	else
 	{
 		// without position defined, the ship will be added on top of the witchpoint buoy.
 		pos = OOHPVectorRandomRadial(SCANNER_MAX_RANGE);
-		OOLogERR(@"universe.spawnShip.error", @"***** ERROR: failed to find a spawn position for ship %@.", shipdesc);
+		OOLogERR(@"universe.spawnShip.error", @"***** ERROR: failed to find a spawn position for ship %@.", shipdescObject);
 	}
 	[ship setPosition:pos];
-	
+
 	// facing_position
-	positionString = oo::PListView(spawndict).get<NSString *>(@"facing_position");
-	if (positionString != nil)
+	positionString = OptionalStringIn(spawndict, "facing_position");
+	if (positionString.has_value())
 	{
-		if([positionString hasPrefix:@"abs "] && ([self planet] != nil || [self sun] !=nil))
+		if(oo::str::hasPrefix(*positionString, "abs ") && ([self planet] != nil || [self sun] !=nil))
 		{
-			OOLogWARN(@"script.deprecated", @"setting %@ for %@ '%@' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.",@"facing_position",@"entity",shipdesc);
+			OOLogWARN(@"script.deprecated", @"setting %@ for %@ '%@' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.",@"facing_position",@"entity",shipdescObject);
 		}
-		
+
 		spos = [ship position];
 		Quaternion q1;
-		rpos = [self coordinatesFromCoordinateSystemString:positionString];
+		rpos = [self cxx_coordinatesFromCoordinateSystemString:*positionString];
 		rpos = HPvector_subtract(rpos, spos); // position relative to ship
 		
 		if (!HPvector_equal(rpos, kZeroHPVector))
@@ -2702,17 +2708,17 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (void) witchspaceShipWithPrimaryRole:(NSString *)role
+- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role
 {
 	// adds a ship exiting witchspace (corollary of when ships leave the system)
 	ShipEntity			*ship = nil;
-	NSDictionary		*systeminfo = nil;
+	oo::PList			systeminfo;
 	OOGovernmentID		government;
-	
-	systeminfo = [self currentSystemData];
- 	government = oo::PListView(systeminfo).get<unsigned char>(KEY_GOVERNMENT);
-	
-	ship = [self newShipWithRole:role];   // retain count = 1
+
+	systeminfo = [self cxx_currentSystemData];
+ 	government = systeminfo.get<unsigned char>(oo::StdString(KEY_GOVERNMENT));
+
+	ship = [self cxx_newShipWithRole:role];   // retain count = 1
 	
 	// Deal with scripted cargopods and ensure they are filled with something.
 	if (ship && [ship hasRole:@"cargopod"])
@@ -2724,7 +2730,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		if (([ship scanClass] == CLASS_NO_DRAW)||([ship scanClass] == CLASS_NOT_SET))
 			[ship setScanClass: CLASS_NEUTRAL];
-		if ([role isEqual:@"trader"])
+		if (role == "trader")
 		{
 			[ship setCargoFlag: CARGO_FLAG_FULL_SCARCE];
 			if ([ship hasRole:@"sunskim-trader"] && randf() < 0.25) // select 1/4 of the traders suitable for sunskimming.
@@ -2743,15 +2749,15 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 				[ship setPendingEscortCount:(nx > 0) ? nx : 0];
 			}
 		}
-		if ([role isEqual:@"pirate"])
+		if (role == "pirate")
 		{
 			[ship setCargoFlag: CARGO_FLAG_PIRATE];
 			[ship setBounty: (Ranrot() & 7) + (Ranrot() & 7) + ((randf() < 0.05)? 63 : 23) withReason:kOOLegalStatusReasonSetup];	// they already have a price on their heads
 		}
 		if ([ship crew] == nil && ![ship isUnpiloted])
-			[ship setCrew:[NSArray arrayWithObject:
-				[OOCharacter randomCharacterWithRole:role
-				andOriginalSystem: Ranrot() & 255]]];
+			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
+				[OOCharacter randomCharacterWithRole:oo::NSStringFrom(role)
+				andOriginalSystem: Ranrot() & 255] })];
 		// The following is set inside leaveWitchspace: AI state GLOBAL, STATUS_EXITING_WITCHSPACE, ai message: EXITED_WITCHSPACE, then STATUS_IN_FLIGHT
 		[ship leaveWitchspace];
 		[ship release];
@@ -2760,7 +2766,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 
 // adds a ship within the collision radius of the other entity
-- (ShipEntity *) spawnShipWithRole:(NSString *) desc near:(Entity *) entity
+- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity
 {
 	if (entity == nil)  return nil;
 	
@@ -2779,13 +2785,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (OOVisualEffectEntity *) addVisualEffectAt:(HPVector)pos withKey:(NSString *)key
+- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key
 {
 	OOJS_PROFILE_ENTER
-	
+
 	// minimise the time between creating ship & assigning position.
-	
-	OOVisualEffectEntity  		*vis = [self newVisualEffectWithName:key]; // is retained
+
+	OOVisualEffectEntity  		*vis = [self cxx_newVisualEffectWithName:key]; // is retained
 	BOOL				success = NO;
 	if (vis != nil)
 	{
@@ -2802,15 +2808,15 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (ShipEntity *) addShipAt:(HPVector)pos withRole:(NSString *)role withinRadius:(GLfloat)radius
+- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius
 {
 	OOJS_PROFILE_ENTER
-	
+
 	// minimise the time between creating ship & assigning position.
 	if (radius == NSNotFound)
 	{
 		GLfloat scalar = 1.0;
-		[self coordinatesForPosition:pos withCoordinateSystem:@"abs" returningScalar:&scalar];
+		[self cxx_coordinatesForPosition:pos withCoordinateSystem:"abs" returningScalar:&scalar];
 		//	randomise
 		GLfloat rfactor = scalar;
 		if (rfactor > SCANNER_MAX_RANGE)
@@ -2826,7 +2832,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		pos = HPvector_add(pos, OOHPVectorRandomSpatial(radius));
 	}
 	
-	ShipEntity  		*ship = [self newShipWithRole:role]; // is retained
+	ShipEntity  		*ship = [self cxx_newShipWithRole:role]; // is retained
 	BOOL				success = NO;
 	
 	if (ship != nil)
@@ -2842,14 +2848,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		
 		if ([ship crew] == nil && ![ship isUnpiloted])
 		{
-			[ship setCrew:[NSArray arrayWithObject:
-				[OOCharacter randomCharacterWithRole:role
-				andOriginalSystem:Ranrot() & 255]]];
+			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
+				[OOCharacter randomCharacterWithRole:oo::NSStringFrom(role)
+				andOriginalSystem:Ranrot() & 255] })];
 		}
 		
 		[ship setOrientation:OORandomQuaternion()];
 		
-		BOOL trader = [role isEqualToString:@"trader"];
+		BOOL trader = role == "trader";
 		if (trader)
 		{
 			// half of traders created anywhere will now have cargo. 
@@ -2861,7 +2867,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			uint8_t pendingEscortCount = [ship pendingEscortCount];
 			if (pendingEscortCount > 0)
 			{
-				OOGovernmentID government = oo::PListView([self currentSystemData]).get<unsigned char>(KEY_GOVERNMENT);
+				OOGovernmentID government = [self cxx_currentSystemData].get<unsigned char>(oo::StdString(KEY_GOVERNMENT));
 				if ((Ranrot() % 7) < government)	// remove escorts if we feel safe
 				{
 					int nx = pendingEscortCount - 2 * (1 + (Ranrot() & 3));	// remove 2,4,6, or 8 escorts
@@ -2890,7 +2896,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 					[ship switchAITo:@"oolite-traderAI.js"];
 				}
 			}
-			else if ([role isEqual:@"pirate"])
+			else if (role == "pirate")
 			{
 				[ship setBounty:(Ranrot() & 7) + (Ranrot() & 7) + ((randf() < 0.05)? 63 : 23) withReason:kOOLegalStatusReasonSetup];	// they already have a price on their heads
 			}
@@ -2909,19 +2915,20 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (NSArray *) addShipsAt:(HPVector)pos withRole:(NSString *)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup
 {
 	OOJS_PROFILE_ENTER
-	
-	NSMutableArray		*ships = [NSMutableArray arrayWithCapacity:count];
+
+	std::vector<oo::ObjCRef<ShipEntity *>>	ships;
+	ships.reserve(count);
 	ShipEntity			*ship = nil;
 	OOShipGroup			*group = nil;
-	
+
 	if (isGroup)
 	{
-		group = [OOShipGroup groupWithName:[NSString stringWithFormat:@"%@ group", role]];
+		group = [OOShipGroup groupWithName:oo::NSStringFrom(oo::str::format("%s group", role.c_str()))];
 	}
-	
+
 	while (count--)
 	{
 		ship = [self addShipAt:pos withRole:role withinRadius:radius];
@@ -2929,57 +2936,56 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		{
 			// TODO: avoid collisions!!!
 			if (isGroup) [ship setGroup:group];
-			[ships addObject:ship];
+			ships.push_back(oo::ObjCRef<ShipEntity *>(ship));
 		}
 	}
-	
-	if ([ships count] == 0) return nil;
-	
-	return [[ships copy] autorelease];
-	
-	OOJS_PROFILE_EXIT
+
+	return ships;	// empty where nil was returned
+
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<ShipEntity *>>())
 }
 
 
-- (NSArray *) addShipsToRoute:(NSString *)route withRole:(NSString *)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup
 {
-	NSMutableArray			*ships = [NSMutableArray arrayWithCapacity:count];
+	std::vector<oo::ObjCRef<ShipEntity *>>	ships;
+	ships.reserve(count);
 	ShipEntity				*ship = nil;
 	Entity<OOStellarBody>	*entity = nil;
 	HPVector					pos = kZeroHPVector, direction = kZeroHPVector, point0 = kZeroHPVector, point1 = kZeroHPVector;
 	double					radius = 0;
 	
-	if ([route isEqualToString:@"pw"] || [route isEqualToString:@"sw"] || [route isEqualToString:@"ps"])
+	if (route == "pw" || route == "sw" || route == "ps")
 	{
-		routeFraction = 1.0f - routeFraction; 
+		routeFraction = 1.0f - routeFraction;
 	}
-	
+
 	// which route is it?
-	if ([route isEqualTo:@"wp"] || [route isEqualTo:@"pw"])
+	if (route == "wp" || route == "pw")
 	{
 		point0 = [self getWitchspaceExitPosition];
 		entity = [self planet];
-		if (entity == nil)  return nil;
+		if (entity == nil)  return {};
 		point1 = [entity position];
 		radius = [entity radius];
 	}
-	else if ([route isEqualTo:@"ws"] || [route isEqualTo:@"sw"])
+	else if (route == "ws" || route == "sw")
 	{
 		point0 = [self getWitchspaceExitPosition];
 		entity = [self sun];
-		if (entity == nil)  return nil;
+		if (entity == nil)  return {};
 		point1 = [entity position];
 		radius = [entity radius];
 	}
-	else if ([route isEqualTo:@"sp"] || [route isEqualTo:@"ps"])
+	else if (route == "sp" || route == "ps")
 	{
 		entity = [self sun];
-		if (entity == nil)  return nil;
+		if (entity == nil)  return {};
 		point0 = [entity position];
 		double radius0 = [entity radius];
-		
+
 		entity = [self planet];
-		if (entity == nil)  return nil;
+		if (entity == nil)  return {};
 		point1 = [entity position];
 		radius = [entity radius];
 		
@@ -2987,14 +2993,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		direction = HPvector_normal(HPvector_subtract(point0, point1));
 		point0 = HPvector_subtract(point0, HPvector_multiply_scalar(direction, radius0 + SCANNER_MAX_RANGE * 1.1f));
 	}
-	else if ([route isEqualTo:@"st"])
+	else if (route == "st")
 	{
 		point0 = [self getWitchspaceExitPosition];
-		if ([self station] == nil)  return nil;
+		if ([self station] == nil)  return {};
 		point1 = [[self station] position];
 		radius = [[self station] collisionRadius];
 	}
-	else return nil;	// no route specifier? We shouldn't be here!
+	else return {};	// no route specifier? We shouldn't be here!
 	
 	// shorten the route by scanner range & radius, otherwise ships could be created inside the route destination.
 	direction = HPvector_normal(HPvector_subtract(point1, point0));
@@ -3003,38 +3009,40 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	pos = [self fractionalPositionFrom:point0 to:point1 withFraction:routeFraction];
 	if(isGroup)
 	{	
-		return [self addShipsAt:pos withRole:role quantity:count withinRadius:(SCANNER_MAX_RANGE / 10.0f) asGroup:YES];
+		return [self cxx_addShipsAt:pos withRole:role quantity:count withinRadius:(SCANNER_MAX_RANGE / 10.0f) asGroup:YES];
 	}
 	else
 	{
 		while (count--)
 		{
 			ship = [self addShipAt:pos withRole:role withinRadius:0]; // no radius because pos is already randomised with SCANNER_MAX_RANGE.
-			if (ship != nil) [ships addObject:ship];
+			if (ship != nil) ships.push_back(oo::ObjCRef<ShipEntity *>(ship));
 			if (count > 0) pos = [self fractionalPositionFrom:point0 to:point1 withFraction:routeFraction];
 		}
-		
-		if ([ships count] == 0) return nil;
 	}
-	
-	return [[ships copy] autorelease];
+
+	return ships;	// empty where nil was returned
 }
 
 
-- (BOOL) roleIsPirateVictim:(NSString *)role
+- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role
 {
-	return [self role:role isInCategory:@"oolite-pirate-victim"];
+	return [self cxx_role:role isInCategory:"oolite-pirate-victim"];
 }
 
 
-- (BOOL) role:(NSString *)role isInCategory:(NSString *)category
+- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category
 {
-	NSSet *categoryInfo = [roleCategories objectForKey:category];
-	if (categoryInfo == nil)
+	const oo::PList *categoryInfo = roleCategories.get<oo::PList::Array>(category);	// the category's roles, each once
+	if (categoryInfo == nullptr)
 	{
 		return NO;
 	}
-	return [categoryInfo containsObject:role];
+	for (const oo::PList &member : *categoryInfo->getIf<oo::PList::Array>())
+	{
+		if (const std::string *memberRole = member.getIf<std::string>(); memberRole != nullptr && *memberRole == role)  return YES;
+	}
+	return NO;
 }
 
 
@@ -3928,7 +3936,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	condition_script = OptionalStringIn(shipInfo, "condition_script");
 	if (condition_script.has_value())
 	{
-		OOJSScript *condScript = [self getConditionScript:oo::NSStringFrom(*condition_script)];
+		OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
 		if (condScript != nil) // should always be non-nil, but just in case
 		{
 			ooscript::Context context = OOJSAcquireContext();
@@ -10508,8 +10516,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	screenBackgrounds = [[ResourceManager dictionaryFromFilesNamed:@"screenbackgrounds.plist" inFolder:@"Config" andMerge:YES] retain];
 
 	// role-categories.plist and pirate-victim-roles.plist
-	[roleCategories autorelease];
-	roleCategories = [[ResourceManager roleCategoriesDictionary] retain];
+	roleCategories = [ResourceManager cxx_roleCategoriesDictionary];
 	
 	autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:std::string("Config") andMerge:YES];
 	
@@ -11162,37 +11169,36 @@ static void PreloadOneSound(NSString *soundName)
 
 - (void) loadConditionScripts
 {
-	[conditionScripts autorelease];
-	conditionScripts = [[NSMutableDictionary alloc] init];
-	// get list of names from cache manager 
-	[self addConditionScripts:[[[OOCacheManager sharedCache] objectForKey:@"equipment conditions" inCache:@"condition scripts"] objectEnumerator]];
-	
-	[self addConditionScripts:[[[OOCacheManager sharedCache] objectForKey:@"ship conditions" inCache:@"condition scripts"] objectEnumerator]];
+	conditionScripts.clear();
+	// get list of names from cache manager (the cache is not migrated yet: its arrays of names arrive as strings)
+	[self addConditionScripts:oo::StringsFrom([[OOCacheManager sharedCache] cxx_objectForKey:"equipment conditions" inCache:"condition scripts"])];
 
-	[self addConditionScripts:[[[OOCacheManager sharedCache] objectForKey:@"demoship conditions" inCache:@"condition scripts"] objectEnumerator]];
+	[self addConditionScripts:oo::StringsFrom([[OOCacheManager sharedCache] cxx_objectForKey:"ship conditions" inCache:"condition scripts"])];
+
+	[self addConditionScripts:oo::StringsFrom([[OOCacheManager sharedCache] cxx_objectForKey:"demoship conditions" inCache:"condition scripts"])];
 }
 
 
-- (void) addConditionScripts:(NSEnumerator *)scripts
+- (void) addConditionScripts:(const std::vector<std::string> &)scripts
 {
-	NSString *scriptname = nil;
-	while ((scriptname = [scripts nextObject]))
+	for (const std::string &scriptname : scripts)
 	{
-		if ([conditionScripts objectForKey:scriptname] == nil)
+		if (!conditionScripts.contains(scriptname))
 		{
-			OOJSScript *script = [OOScript jsScriptFromFileNamed:scriptname properties:nil];
+			OOJSScript *script = [OOScript cxx_jsScriptFromFileNamed:scriptname properties:oo::PList()];
 			if (script != nil)
 			{
-				[conditionScripts setObject:script forKey:scriptname];
+				conditionScripts[scriptname] = oo::ObjCRef<OOJSScript *>(script);
 			}
 		}
 	}
 }
 
 
-- (OOJSScript*) getConditionScript:(NSString *)scriptname
+- (OOJSScript*) cxx_getConditionScript:(const std::string &)scriptname
 {
-	return [conditionScripts objectForKey:scriptname];
+	const auto found = conditionScripts.find(scriptname);
+	return (found != conditionScripts.end()) ? found->second.get() : nil;
 }
 
 @end

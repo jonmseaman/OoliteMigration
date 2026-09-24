@@ -270,6 +270,126 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return [self cxx_addWreckageFrom:ship withRole:oo::StdString(wreckRole) at:rpos scale:scale lifetime:lifetime];
 }
 
+
+// Chunk 5 (oo-3rb.224). A nil role or coordinate-system code found no ship / no system, as an
+// empty one does (an empty code has the wrong length, as a nil one had).
+
+- (void) addShipWithRole:(NSString *) desc nearRouteOneAt:(double) route_fraction
+{
+	[self cxx_addShipWithRole:oo::StdString(desc) nearRouteOneAt:route_fraction];
+}
+
+
+- (HPVector) coordinatesForPosition:(HPVector) pos withCoordinateSystem:(NSString *) system returningScalar:(GLfloat*) my_scalar
+{
+	return [self cxx_coordinatesForPosition:pos withCoordinateSystem:oo::StdString(system) returningScalar:my_scalar];
+}
+
+
+// A nil code printed "(null)" before the (zero) coordinates.
+- (NSString *) expressPosition:(HPVector) pos inCoordinateSystem:(NSString *) system
+{
+	if (system == nil)  return oo::NSStringFrom(oo::str::format("(null) %.2f %.2f %.2f", 0.0, 0.0, 0.0));
+	return oo::NSStringOrNil([self cxx_expressPosition:pos inCoordinateSystem:oo::StdString(system)]);
+}
+
+
+- (HPVector) legacyPositionFrom:(HPVector) pos asCoordinateSystem:(NSString *) system
+{
+	return [self cxx_legacyPositionFrom:pos asCoordinateSystem:oo::StdString(system)];
+}
+
+
+- (HPVector) coordinatesFromCoordinateSystemString:(NSString *) system_x_y_z
+{
+	return [self cxx_coordinatesFromCoordinateSystemString:oo::StdString(system_x_y_z)];
+}
+
+
+- (BOOL) addShipWithRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system
+{
+	return [self cxx_addShipWithRole:oo::StdString(desc) nearPosition:pos withCoordinateSystem:oo::StdString(system)];
+}
+
+
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc atPosition:(HPVector) pos withCoordinateSystem:(NSString *) system
+{
+	return [self cxx_addShips:howMany withRole:oo::StdString(desc) atPosition:pos withCoordinateSystem:oo::StdString(system)];
+}
+
+
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system
+{
+	return [self cxx_addShips:howMany withRole:oo::StdString(desc) nearPosition:pos withCoordinateSystem:oo::StdString(system)];
+}
+
+
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system withinRadius:(GLfloat) radius
+{
+	return [self cxx_addShips:howMany withRole:oo::StdString(desc) nearPosition:pos withCoordinateSystem:oo::StdString(system) withinRadius:radius];
+}
+
+
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc intoBoundingBox:(BoundingBox) bbox
+{
+	return [self cxx_addShips:howMany withRole:oo::StdString(desc) intoBoundingBox:bbox];
+}
+
+
+- (void) witchspaceShipWithPrimaryRole:(NSString *)role
+{
+	[self cxx_witchspaceShipWithPrimaryRole:oo::StdString(role)];
+}
+
+
+- (ShipEntity *) spawnShipWithRole:(NSString *) desc near:(Entity *) entity
+{
+	return [self cxx_spawnShipWithRole:oo::StdString(desc) near:entity];
+}
+
+
+- (OOVisualEffectEntity *) addVisualEffectAt:(HPVector)pos withKey:(NSString *)key
+{
+	return [self cxx_addVisualEffectAt:pos withKey:oo::StdString(key)];
+}
+
+
+// nil where no ship was added, as before; an immutable array.
+- (NSArray *) addShipsAt:(HPVector)pos withRole:(NSString *)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup
+{
+	const std::vector<oo::ObjCRef<ShipEntity *>> ships = [self cxx_addShipsAt:pos withRole:oo::StdString(role) quantity:count withinRadius:radius asGroup:isGroup];
+	return ships.empty() ? nil : oo::NSArrayFromObjects(ships);
+}
+
+
+- (NSArray *) addShipsToRoute:(NSString *)route withRole:(NSString *)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup
+{
+	const std::vector<oo::ObjCRef<ShipEntity *>> ships = [self cxx_addShipsToRoute:oo::StdString(route) withRole:oo::StdString(role) quantity:count routeFraction:routeFraction asGroup:isGroup];
+	return ships.empty() ? nil : oo::NSArrayFromObjects(ships);
+}
+
+
+- (BOOL) roleIsPirateVictim:(NSString *)role
+{
+	if (role == nil)  return NO;
+	return [self cxx_roleIsPirateVictim:oo::StdString(role)];
+}
+
+
+// A nil role or category matched nothing, as before.
+- (BOOL) role:(NSString *)role isInCategory:(NSString *)category
+{
+	if (role == nil || category == nil)  return NO;
+	return [self cxx_role:oo::StdString(role) isInCategory:oo::StdString(category)];
+}
+
+
+- (OOJSScript *) getConditionScript:(NSString *)scriptname
+{
+	if (scriptname == nil)  return nil;
+	return [self cxx_getConditionScript:oo::StdString(scriptname)];
+}
+
 @end
 
 

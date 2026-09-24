@@ -73,6 +73,26 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (Class) shipClassForShipDictionary:(NSDictionary *)dict;	// -> -cxx_shipClassForShipDictionary:
 - (ShipEntity *) addWreckageFrom:(ShipEntity *)ship withRole:(NSString *)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime;	// -> -cxx_addWreckageFrom:withRole:at:scale:lifetime:
 
+// Chunk 5 (oo-3rb.224): adding and spawning ships, coordinate systems, roles, condition scripts.
+- (void) addShipWithRole:(NSString *) desc nearRouteOneAt:(double) route_fraction;	// -> -cxx_addShipWithRole:nearRouteOneAt:
+- (HPVector) coordinatesForPosition:(HPVector) pos withCoordinateSystem:(NSString *) system returningScalar:(GLfloat*) my_scalar;	// -> -cxx_coordinatesForPosition:...
+- (NSString *) expressPosition:(HPVector) pos inCoordinateSystem:(NSString *) system;	// -> -cxx_expressPosition:inCoordinateSystem:
+- (HPVector) legacyPositionFrom:(HPVector) pos asCoordinateSystem:(NSString *) system;	// -> -cxx_legacyPositionFrom:asCoordinateSystem:
+- (HPVector) coordinatesFromCoordinateSystemString:(NSString *) system_x_y_z;	// -> -cxx_coordinatesFromCoordinateSystemString:
+- (BOOL) addShipWithRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;	// -> -cxx_addShipWithRole:nearPosition:withCoordinateSystem:
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc atPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;	// -> -cxx_addShips:...
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;	// -> -cxx_addShips:...
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system withinRadius:(GLfloat) radius;	// -> -cxx_addShips:...
+- (BOOL) addShips:(int) howMany withRole:(NSString *) desc intoBoundingBox:(BoundingBox) bbox;	// -> -cxx_addShips:withRole:intoBoundingBox:
+- (void) witchspaceShipWithPrimaryRole:(NSString *)role;	// -> -cxx_witchspaceShipWithPrimaryRole:
+- (ShipEntity *) spawnShipWithRole:(NSString *) desc near:(Entity *) entity;	// -> -cxx_spawnShipWithRole:near:
+- (OOVisualEffectEntity *) addVisualEffectAt:(HPVector)pos withKey:(NSString *)key;	// -> -cxx_addVisualEffectAt:withKey:
+- (NSArray *) addShipsAt:(HPVector)pos withRole:(NSString *)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;	// -> -cxx_addShipsAt:...
+- (NSArray *) addShipsToRoute:(NSString *)route withRole:(NSString *)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;	// -> -cxx_addShipsToRoute:...
+- (BOOL) roleIsPirateVictim:(NSString *)role;	// -> -cxx_roleIsPirateVictim:
+- (BOOL) role:(NSString *)role isInCategory:(NSString *)category;	// -> -cxx_role:isInCategory:
+- (OOJSScript *) getConditionScript:(NSString *)scriptname;	// -> -cxx_getConditionScript:
+
 @end
 
 

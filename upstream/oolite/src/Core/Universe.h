@@ -285,7 +285,7 @@ enum
 	NSArray					*equipmentData;			// holds data on available equipment, loaded at initialisation
 	NSArray					*equipmentDataOutfitting;
 //	NSSet					*pirateVictimRoles;		// Roles listed in pirateVictimRoles.plist.
-	NSDictionary			*roleCategories;		// Categories for roles from role-categories.plist, extending the old pirate-victim-roles.plist
+	oo::PList				roleCategories;			// Categories for roles from role-categories.plist, extending the old pirate-victim-roles.plist (category -> array of roles)
 	oo::PList				autoAIMap;				// Default AIs for roles from autoAImap.plist.
 	NSDictionary			*screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
 	oo::PList				explosionSettings;		// explosion settings from explosions.plist
@@ -358,7 +358,7 @@ enum
 	
 	GLfloat					frustum[6][4];
 	
-	NSMutableDictionary		*conditionScripts;
+	std::map<std::string, oo::ObjCRef<OOJSScript *>, std::less<>>	conditionScripts;
 	
 	BOOL					_pauseMessage;
 	BOOL					_autoCommLog;
@@ -446,27 +446,28 @@ enum
 - (OOPlanetEntity *) setUpPlanet;
 
 - (void) makeSunSkimmer:(ShipEntity *) ship andSetAI:(BOOL)setAI;
-- (void) addShipWithRole:(NSString *) desc nearRouteOneAt:(double) route_fraction;
-- (HPVector) coordinatesForPosition:(HPVector) pos withCoordinateSystem:(NSString *) system returningScalar:(GLfloat*) my_scalar;
-- (NSString *) expressPosition:(HPVector) pos inCoordinateSystem:(NSString *) system;
-- (HPVector) legacyPositionFrom:(HPVector) pos asCoordinateSystem:(NSString *) system;
-- (HPVector) coordinatesFromCoordinateSystemString:(NSString *) system_x_y_z;
-- (BOOL) addShipWithRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;
-- (BOOL) addShips:(int) howMany withRole:(NSString *) desc atPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;
-- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system;
-- (BOOL) addShips:(int) howMany withRole:(NSString *) desc nearPosition:(HPVector) pos withCoordinateSystem:(NSString *) system withinRadius:(GLfloat) radius;
-- (BOOL) addShips:(int) howMany withRole:(NSString *) desc intoBoundingBox:(BoundingBox) bbox;
-- (BOOL) spawnShip:(NSString *) shipdesc;
-- (void) witchspaceShipWithPrimaryRole:(NSString *)role;
-- (ShipEntity *) spawnShipWithRole:(NSString *) desc near:(Entity *) entity;
+- (void) cxx_addShipWithRole:(const std::string &) desc nearRouteOneAt:(double) route_fraction;
+- (HPVector) cxx_coordinatesForPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system returningScalar:(GLfloat*) my_scalar;
+- (std::optional<std::string>) cxx_expressPosition:(HPVector) pos inCoordinateSystem:(const std::string &) system;
+- (HPVector) cxx_legacyPositionFrom:(HPVector) pos asCoordinateSystem:(const std::string &) system;
+- (HPVector) cxx_coordinatesFromCoordinateSystemString:(const std::string &) system_x_y_z;
+- (BOOL) cxx_addShipWithRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc atPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc nearPosition:(HPVector) pos withCoordinateSystem:(const std::string &) system withinRadius:(GLfloat) radius;
+- (BOOL) cxx_addShips:(int) howMany withRole:(const std::string &) desc intoBoundingBox:(BoundingBox) bbox;
+- (BOOL) spawnShip:(id) shipdesc;	// shared selector (proposed ADR-0043): an Objective-C string
+- (void) cxx_witchspaceShipWithPrimaryRole:(const std::string &)role;
+- (ShipEntity *) cxx_spawnShipWithRole:(const std::string &) desc near:(Entity *) entity;
 
-- (OOVisualEffectEntity *) addVisualEffectAt:(HPVector)pos withKey:(NSString *)key;
-- (ShipEntity *) addShipAt:(HPVector)pos withRole:(NSString *)role withinRadius:(GLfloat)radius;
-- (NSArray *) addShipsAt:(HPVector)pos withRole:(NSString *)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
-- (NSArray *) addShipsToRoute:(NSString *)route withRole:(NSString *)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;
+- (OOVisualEffectEntity *) cxx_addVisualEffectAt:(HPVector)pos withKey:(const std::string &)key;
+- (ShipEntity *) addShipAt:(HPVector)pos withRole:(const std::string &)role withinRadius:(GLfloat)radius;
+// Empty where the old methods returned nil (no ship added).
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsAt:(HPVector)pos withRole:(const std::string &)role quantity:(unsigned)count withinRadius:(GLfloat)radius asGroup:(BOOL)isGroup;
+- (std::vector<oo::ObjCRef<ShipEntity *>>) cxx_addShipsToRoute:(const std::string &)route withRole:(const std::string &)role quantity:(unsigned)count routeFraction:(double)routeFraction asGroup:(BOOL)isGroup;
 
-- (BOOL) roleIsPirateVictim:(NSString *)role;
-- (BOOL) role:(NSString *)role isInCategory:(NSString *)category;
+- (BOOL) cxx_roleIsPirateVictim:(const std::string &)role;
+- (BOOL) cxx_role:(const std::string &)role isInCategory:(const std::string &)category;
 
 - (void) forceWitchspaceEntries;
 - (void) addWitchspaceJumpEffectForShip:(ShipEntity *)ship;
@@ -838,8 +839,8 @@ enum
 - (void) setBlockJSPlayerShipProps:(BOOL)value;
 
 - (void) loadConditionScripts;
-- (void) addConditionScripts:(NSEnumerator *)scripts;
-- (OOJSScript *) getConditionScript:(NSString *)scriptname;
+- (void) addConditionScripts:(const std::vector<std::string> &)scripts;
+- (OOJSScript *) cxx_getConditionScript:(const std::string &)scriptname;
 
 @end
 
