@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OOJavaScriptEngine.h"
 #import "OOJSEngineTimeManagement.h"
+#include "oofnd/Notification.hpp"
 
 #import "OOLogging.h"
 #import "OOConstToString.h"
@@ -340,10 +341,9 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 	
 	if (self != nil)
 	{
-		[[NSNotificationCenter defaultCenter] addObserver:self
-												   selector:@selector(javaScriptEngineWillReset:)
-													   name:kOOJavaScriptEngineWillResetNotification
-													 object:[OOJavaScriptEngine sharedEngine]];
+		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+															[OOJavaScriptEngine sharedEngine],
+															[self](const oo::Notification &notification) { [self javaScriptEngineWillReset:notification]; });
 	}
 	
 	return self;
@@ -352,9 +352,8 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 
 - (void) dealloc
 {
-	[[NSNotificationCenter defaultCenter] removeObserver:self
-													   name:kOOJavaScriptEngineWillResetNotification
-													 object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+															[OOJavaScriptEngine sharedEngine]);
 	
 	if (_jsSelf != NULL)
 	{
@@ -385,7 +384,7 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (void) javaScriptEngineWillReset:(NSNotification *)notification
+- (void) javaScriptEngineWillReset:(const oo::Notification &)notification
 {
 	// All scripts become invalid when the JS engine resets.
 	if (_jsSelf != NULL)
@@ -436,9 +435,9 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (id) scriptDescription	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) scriptDescription
 {
-	return oo::NSStringOrNil(description);
+	return description;
 }
 
 

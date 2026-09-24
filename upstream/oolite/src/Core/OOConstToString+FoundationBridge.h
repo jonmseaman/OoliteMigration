@@ -42,8 +42,30 @@ OOHDRToneMapper OOHDRToneMapperFromString( NSString *string);
 NSString *OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper);
 OOSDRToneMapper OOSDRToneMapperFromString( NSString *string);
 
+NSString *OOStringFromCompassMode(OOCompassMode mode);
+OOCompassMode OOCompassModeFromString(NSString *string);
+
+NSString *OOStringFromLongRangeChartMode(OOLongRangeChartMode chartMode);
+OOLongRangeChartMode OOLongRangeChartModeFromString(NSString *string);
+
+NSString *OOStringFromLegalStatusReason(OOLegalStatusReason reason);
+
+NSString *CommodityDisplayNameForSymbolicName(NSString *symbolicName);
+NSString *CommodityDisplayNameForCommodityArray(NSArray *commodityDefinition);
+
+NSString *DisplayStringForMassUnit(OOMassUnit unit);
+NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity);
+
 #ifdef __cplusplus
 }
 #endif
+
+
+// Shader settings (OOShaderSetting is OOOpenGL.h's), with C++ linkage as when OOOpenGL.h declared them.
+// Programmer-readable shader mode strings.
+OOShaderSetting OOShaderSettingFromString(NSString *string);
+NSString *OOStringFromShaderSetting(OOShaderSetting setting);
+// Localized shader mode strings.
+NSString *OODisplayStringFromShaderSetting(OOShaderSetting setting);
 
 #endif	// OOCONSTTOSTRING_FOUNDATIONBRIDGE_H

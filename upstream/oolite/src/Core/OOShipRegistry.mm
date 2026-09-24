@@ -678,7 +678,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 
 - (void) loadCachedRoleProbabilitySets
 {
-	// OOCacheManager and OOProbabilitySet are unmigrated callees: convert at the calls.
+	// OOCacheManager is an unmigrated callee: convert at the call.
 	const oo::PList cachedSets = oo::PListFrom([[OOCacheManager sharedCache] cxx_objectForKey:kRoleWeightsCacheKey inCache:kShipRegistryCacheName]);
 	if (cachedSets.isNull())  return;
 
@@ -687,7 +687,7 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 	{
 		for (const auto &[role, representation] : *sets)
 		{
-			restoredSets[role] = oo::ObjCRef<OOProbabilitySet *>([OOProbabilitySet probabilitySetWithPropertyListRepresentation:oo::ObjectFromPList(representation)]);
+			restoredSets[role] = oo::ObjCRef<OOProbabilitySet *>([OOProbabilitySet probabilitySetWithPropertyListRepresentation:representation]);
 		}
 	}
 
@@ -1149,10 +1149,10 @@ void DumpStringAddrs(const oo::PList &dict, const std::string &context);
 			conditionScripts.push_back(*script);
 		}
 	};
-	// OOSanitizeLegacyScriptConditions is an unmigrated callee: convert at the call (nil comes back null).
-	auto sanitize = [](const oo::PList &conditions, const std::string &context)
+	// OOSanitizeLegacyScriptConditions takes and returns oo::PList (bead oo-3rb.205; nil is null).
+	auto sanitize = [](const oo::PList &unsanitized, const std::string &context)
 	{
-		return oo::PListFrom(OOSanitizeLegacyScriptConditions(oo::ObjectFromPList(conditions), oo::NSStringFrom(context)));
+		return OOSanitizeLegacyScriptConditions(unsanitized, context);
 	};
 	auto valueOrNull = [](const oo::PList *value) { return value != nullptr ? *value : oo::PList(); };
 

@@ -12,7 +12,7 @@ This does two things:
    different to the macro in OOLogging.h, which acts at compile time; the
    filter catches logging in included frameworks.
 
-OOLogOutputHandlerPrint() is thread-safe. Other functions are not.
+OOLogOutputHandlerPrintLine() is thread-safe. Other functions are not.
 
 
 Copyright (C) 2007-2013 Jens Ayton and contributors
@@ -38,11 +38,13 @@ SOFTWARE.
 */
 
 #import <Foundation/Foundation.h>
+#include <string_view>
 
 
 void OOLogOutputHandlerInit(void);
 void OOLogOutputHandlerClose(void);
-void OOLogOutputHandlerPrint(NSString *string);
+// One finished log line (UTF-8, no newline) to Latest.log and, if enabled, stderr/stdout.
+void OOLogOutputHandlerPrintLine(std::string_view line);
 
 // Queue the pending log-file flush if its deadline has passed. Called from the frame loop (proposed ADR-0033).
 void OOLogOutputHandlerFlushIfDue(void);

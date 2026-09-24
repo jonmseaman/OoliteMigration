@@ -78,7 +78,7 @@ MA 02110-1301, USA.
 - (int) contractReputation;
 - (void) increaseContractReputation:(unsigned)amount;
 - (void) decreaseContractReputation:(unsigned)amount;
-- (OOCargoQuantity) contractedVolumeForGood:(OOCommodityType) good;
+- (OOCargoQuantity) cxx_contractedVolumeForGood:(const std::string &) good;
 
 - (void) erodeReputation;
 - (void) normaliseReputation;
@@ -93,12 +93,13 @@ MA 02110-1301, USA.
 - (BOOL) cxx_removePassenger:(const std::string &)Name;	// for js scripting
 - (BOOL) cxx_addParcel:(const std::string &)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk;	// for js scripting
 - (BOOL) cxx_removeParcel:(const std::string &)Name;	// for js scripting
-- (BOOL) awardContract:(unsigned)qty commodity:(NSString*)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium;	// for js scripting.
-- (BOOL) removeContract:(NSString*)commodity destination:(unsigned)destination;	// for js scripting
+- (BOOL) cxx_awardContract:(unsigned)qty commodity:(const std::string &)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium;	// for js scripting.
+- (BOOL) cxx_removeContract:(const std::string &)commodity destination:(unsigned)destination;	// for js scripting
 
-- (NSArray *) passengerList;
-- (NSArray *) parcelList;
-- (NSArray *) contractList;
+// The manifest lines ("oolite-manifest-person-travelling" / "-item-delivery" expanded per entry).
+- (std::vector<std::string>) cxx_passengerList;
+- (std::vector<std::string>) cxx_parcelList;
+- (std::vector<std::string>) cxx_contractList;
 - (void) setGuiToManifestScreen;
 - (void) setManifestScreenRow:(id)object inColor:(OOColor*)color forRow:(OOGUIRow)row ofRows:(OOGUIRow)max_rows andOffset:(OOGUIRow)offset inMultipage:(BOOL)multi;
 
@@ -109,15 +110,15 @@ MA 02110-1301, USA.
 
 - (void) setGuiToShipyardScreen:(NSUInteger)skip;
 
-- (void) showShipyardModel:(NSString *)shipKey shipData:(NSDictionary *)shipDict personality:(uint16_t)personality;
+- (void) cxx_showShipyardModel:(const std::string &)shipKey shipData:(const oo::PList &)shipDict personality:(uint16_t)personality;
 - (void) showShipyardInfoForSelection;
 - (NSInteger) missingSubEntitiesAdjustment;
 - (void) showTradeInInformationFooter;
 
-- (OOCreditsQuantity) priceForShipKey:(NSString *)key;
+- (OOCreditsQuantity) cxx_priceForShipKey:(const std::string &)key;
 - (BOOL) buySelectedShip;
-- (BOOL) replaceShipWithNamedShip:(NSString *)shipName;
-- (void) newShipCommonSetup:(NSString *)shipKey yardInfo:(NSDictionary *)ship_info baseInfo:(NSDictionary *)ship_base_dict; 
+- (BOOL) cxx_replaceShipWithNamedShip:(const std::string &)shipName;
+- (void) newShipCommonSetup:(const std::string &)shipKey yardInfo:(const oo::PList &)ship_info baseInfo:(const oo::PList &)ship_base_dict;
 
 @end
 
