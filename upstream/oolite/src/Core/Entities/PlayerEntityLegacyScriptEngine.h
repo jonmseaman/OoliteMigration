@@ -178,14 +178,14 @@ typedef enum
 
 - (void) awardFuel:(id)valueString;	// called by name (ADR-0043 item 21); add to fuel up to 7.0 LY
 
-- (void) messageShipAIs:(NSString *)roles_message;
+- (void) messageShipAIs:(id)roles_message;	// called by name (ADR-0043 item 21)
 - (void) ejectItem:(id)item_key;	// called by name (ADR-0043 item 21)
-- (void) addShips:(NSString *)roles_number;
-- (void) addSystemShips:(NSString *)roles_number_position;
-- (void) addShipsAt:(NSString *)roles_number_system_x_y_z;
-- (void) addShipsAtPrecisely:(NSString *)roles_number_system_x_y_z;
-- (void) addShipsWithinRadius:(NSString *)roles_number_system_x_y_z_r;
-- (void) spawnShip:(NSString *)ship_key;
+- (void) addShips:(id)roles_number;	// called by name (ADR-0043 item 21)
+- (void) addSystemShips:(id)roles_number_position;	// called by name (ADR-0043 item 21)
+- (void) addShipsAt:(id)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
+- (void) addShipsAtPrecisely:(id)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
+- (void) addShipsWithinRadius:(id)roles_number_system_x_y_z_r;	// called by name (ADR-0043 item 21)
+- (void) spawnShip:(id)ship_key;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 - (void) set:(id)missionvariable_value;	// called by name (ADR-0043 item 21)
 - (void) reset:(id)missionvariable;	// called by name (ADR-0043 item 21)
 /*
@@ -210,7 +210,7 @@ typedef enum
 - (void) add:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
 - (void) subtract:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
 
-- (void) checkForShips: (NSString *)roleString;
+- (void) checkForShips:(id)roleString;	// called by name (ADR-0043 item 21)
 - (void) resetScriptTimer;
 - (void) addMissionText:(id)textKey;	// called by name (ADR-0043 item 21)
 - (void) addLiteralMissionText:(id)text;	// called by name (ADR-0043 item 21)
@@ -239,8 +239,8 @@ typedef enum
 - (void) blowUpStation;
 - (void) sendAllShipsAway;
 
-- (OOPlanetEntity *) addPlanet: (NSString *)planetKey;
-- (OOPlanetEntity *) addMoon: (NSString *)moonKey;
+- (OOPlanetEntity *) addPlanet:(id)planetKey;	// called by name (ADR-0043 item 21)
+- (OOPlanetEntity *) addMoon:(id)moonKey;	// called by name (ADR-0043 item 21)
 
 - (void) debugOn;
 - (void) debugOff;

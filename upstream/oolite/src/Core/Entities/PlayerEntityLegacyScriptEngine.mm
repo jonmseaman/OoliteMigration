@@ -65,14 +65,14 @@ MA 02110-1301, USA.
 #include "oofnd/PListWriting.hpp"
 
 
-static NSString * const kOOLogScriptAddShipsFailed			= @"script.addShips.failed";
+static const char *const kOOLogScriptAddShipsFailed			= "script.addShips.failed";
 static const char *const kOOLogScriptMissionDescNoText		= "script.missionDescription.noMissionText";
 static const char *const kOOLogScriptMissionDescNoKey		= "script.missionDescription.noMissionKey";
 
 static NSString * const kOOLogDebugOnMetaClass				= @"$scriptDebugOn";
 static NSString * const kOOLogDebugMessage					= @"script.debug.message";
 static NSString * const kOOLogDebugOnOff					= @"script.debug.onOff";
-static NSString * const kOOLogDebugAddPlanet				= @"script.debug.addPlanet";
+static const char *const kOOLogDebugAddPlanet				= "script.debug.addPlanet";
 static const char *const kOOLogDebugReplaceVariablesInString	= "script.debug.replaceVariablesInString";
 static NSString * const kOOLogDebugProcessSceneStringAddScene = @"script.debug.processSceneString.addScene";
 static NSString * const kOOLogDebugProcessSceneStringAddModel = @"script.debug.processSceneString.addModel";
@@ -80,19 +80,19 @@ static NSString * const kOOLogDebugProcessSceneStringAddMiniPlanet = @"script.de
 
 static const char *const kOOLogNoteRemoveAllCargo			= "script.debug.note.removeAllCargo";
 static const char *const kOOLogNoteUseSpecialCargo			= "script.debug.note.useSpecialCargo";
-static NSString * const kOOLogNoteAddShips					= @"script.debug.note.addShips";
+static const char *const kOOLogNoteAddShips					= "script.debug.note.addShips";
 static const char *const kOOLogNoteSet						= "script.debug.note.set";
 static const char *const kOOLogNoteShowShipModel				= "script.debug.note.showShipModel";
 static const char *const kOOLogNoteFuelLeak					= "script.debug.note.setFuelLeak";
-static NSString * const kOOLogNoteAddPlanet					= @"script.debug.note.addPlanet";
+static const char *const kOOLogNoteAddPlanet					= "script.debug.note.addPlanet";
 static NSString * const kOOLogNoteProcessSceneString		= @"script.debug.note.processSceneString";
 
 static const char *const kOOLogSyntaxSetPlanetInfo			= "script.debug.syntax.setPlanetInfo";
 static const char *const kOOLogSyntaxAwardCargo				= "script.debug.syntax.awardCargo";
 static const char *const kOOLogSyntaxAwardEquipment			= "script.debug.syntax.awardEquipment";
 static const char *const kOOLogSyntaxRemoveEquipment			= "script.debug.syntax.removeEquipment";
-static NSString * const kOOLogSyntaxMessageShipAIs			= @"script.debug.syntax.messageShipAIs";
-static NSString * const kOOLogSyntaxAddShips				= @"script.debug.syntax.addShips";
+static const char *const kOOLogSyntaxMessageShipAIs			= "script.debug.syntax.messageShipAIs";
+static const char *const kOOLogSyntaxAddShips				= "script.debug.syntax.addShips";
 static const char *const kOOLogSyntaxSet						= "script.debug.syntax.set";
 static const char *const kOOLogSyntaxReset					= "script.debug.syntax.reset";
 static const char *const kOOLogSyntaxIncrement				= "script.debug.syntax.increment";
@@ -1572,30 +1572,26 @@ static int shipsFound;
 }
 
 
-- (void) messageShipAIs:(NSString *)roles_message
+- (void) messageShipAIs:(id)roles_message	// called by name (ADR-0043 item 21)
 {
-	NSMutableArray*	tokens = ScanTokensFromString(roles_message);
-	NSString*   roleString = nil;
-	NSString*	messageString = nil;
+	const std::string			argument = oo::StdString(roles_message);
+	const std::vector<std::string>	tokens = oo::str::tokens(argument);
 
-	if ([tokens count] < 2)
+	if (tokens.size() < 2)
 	{
-		OOLog(kOOLogSyntaxMessageShipAIs, @"***** SCRIPT ERROR: in %@, CANNOT messageShipAIs: '%@' (bad parameter count)", CurrentScriptDesc(), roles_message);
+		OO_LOG(kOOLogSyntaxMessageShipAIs, "***** SCRIPT ERROR: in {}, CANNOT messageShipAIs: '{}' (bad parameter count)", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	roleString = [tokens objectAtIndex:0];
-	[tokens removeObjectAtIndex:0];
-	messageString = [tokens componentsJoinedByString:@" "];
+	const std::string &roleString = tokens[0];
+	const std::string messageString = JoinedFrom(tokens, 1);
 
-	NSArray *targets = [UNIVERSE findShipsMatchingPredicate:HasPrimaryRolePredicate
-												  parameter:roleString
-													inRange:-1
-												   ofEntity:nil];
-
-	ShipEntity *target;
-	foreach(target, targets) {
-		[[target getAI] reactToMessage:messageString context:@"messageShipAIs:"];
+	for (const auto &target : oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE findShipsMatchingPredicate:HasPrimaryRolePredicate
+																		  parameter:oo::NSStringFrom(roleString)
+																			inRange:-1
+																		   ofEntity:nil]))
+	{
+		[[target.get() getAI] cxx_reactToMessage:messageString context:std::string("messageShipAIs:")];
 	}
 }
 
@@ -1607,194 +1603,169 @@ static int shipsFound;
 }
 
 
-- (void) addShips:(NSString *)roles_number
+- (void) addShips:(id)roles_number	// called by name (ADR-0043 item 21)
 {
-	NSMutableArray*	tokens = ScanTokensFromString(roles_number);
-	NSString*   roleString = nil;
-	NSString*	numberString = nil;
-	
-	if ([tokens count] != 2)
+	const std::string			argument = oo::StdString(roles_number);
+	const std::vector<std::string>	tokens = oo::str::tokens(argument);
+
+	if (tokens.size() != 2)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"***** SCRIPT ERROR: in %@, CANNOT addShips: '%@' (expected <role> <count>)", CurrentScriptDesc(), roles_number);
+		OO_LOG(kOOLogSyntaxAddShips, "***** SCRIPT ERROR: in {}, CANNOT addShips: '{}' (expected <role> <count>)", CurrentScriptDescription(), argument);
 		return;
 	}
-	
-	roleString = [tokens objectAtIndex:0];
-	numberString = [tokens objectAtIndex:1];
-	
-	int number = [numberString intValue];
+
+	const std::string &roleString = tokens[0];
+
+	int number = oo::str::intValue(tokens[1]);
 	if (number < 0)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"***** SCRIPT ERROR: in %@, can't add %i ships -- that's less than zero, y'know..", CurrentScriptDesc(), number);
+		OO_LOG(kOOLogSyntaxAddShips, "***** SCRIPT ERROR: in {}, can't add {} ships -- that's less than zero, y'know..", CurrentScriptDescription(), number);
 		return;
 	}
-	
-	OOLog(kOOLogNoteAddShips, @"DEBUG: Going to add %d ships with role '%@'", number, roleString);
-	
+
+	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ships with role '{}'", number, roleString);
+
 	while (number--)
-		[UNIVERSE witchspaceShipWithPrimaryRole:roleString];
+		[UNIVERSE witchspaceShipWithPrimaryRole:oo::NSStringFrom(roleString)];
 }
 
 
-- (void) addSystemShips:(NSString *)roles_number_position
+- (void) addSystemShips:(id)roles_number_position	// called by name (ADR-0043 item 21)
 {
-	NSMutableArray*	tokens = ScanTokensFromString(roles_number_position);
-	NSString*   roleString = nil;
-	NSString*	numberString = nil;
-	NSString*	positionString = nil;
+	const std::string			argument = oo::StdString(roles_number_position);
+	const std::vector<std::string>	tokens = oo::str::tokens(argument);
 
-	if ([tokens count] != 3)
+	if (tokens.size() != 3)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"***** SCRIPT ERROR: in %@, CANNOT addSystemShips: '%@' (expected <role> <count> <position>)", CurrentScriptDesc(), roles_number_position);
+		OO_LOG(kOOLogSyntaxAddShips, "***** SCRIPT ERROR: in {}, CANNOT addSystemShips: '{}' (expected <role> <count> <position>)", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	roleString = [tokens objectAtIndex:0];
-	numberString = [tokens objectAtIndex:1];
-	positionString = [tokens objectAtIndex:2];
+	const std::string &roleString = tokens[0];
 
-	int number = [numberString intValue];
-	double posn = [positionString doubleValue];
+	int number = oo::str::intValue(tokens[1]);
+	double posn = oo::str::doubleValue(tokens[2]);
 	if (number < 0)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"***** SCRIPT ERROR: in %@, can't add %i ships -- that's less than zero, y'know..", CurrentScriptDesc(), number);
+		OO_LOG(kOOLogSyntaxAddShips, "***** SCRIPT ERROR: in {}, can't add {} ships -- that's less than zero, y'know..", CurrentScriptDescription(), number);
 		return;
 	}
 
-	OOLog(kOOLogNoteAddShips, @"DEBUG: Going to add %d ships with role '%@' at a point %.3f along route1", number, roleString, posn);
+	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ships with role '{}' at a point {:.3f} along route1", number, roleString, posn);
 
 	while (number--)
-		[UNIVERSE addShipWithRole:roleString nearRouteOneAt:posn];
+		[UNIVERSE addShipWithRole:oo::NSStringFrom(roleString) nearRouteOneAt:posn];
 }
 
 
-- (void) addShipsAt:(NSString *)roles_number_system_x_y_z
+- (void) addShipsAt:(id)roles_number_system_x_y_z	// called by name (ADR-0043 item 21)
 {
-	NSMutableArray*	tokens = ScanTokensFromString(roles_number_system_x_y_z);
+	const std::string			argument = oo::StdString(roles_number_system_x_y_z);
+	const std::vector<std::string>	tokens = oo::str::tokens(argument);
 
-	NSString*   roleString = nil;
-	NSString*	numberString = nil;
-	NSString*	systemString = nil;
-	NSString*	xString = nil;
-	NSString*	yString = nil;
-	NSString*	zString = nil;
-
-	if ([tokens count] != 6)
+	if (tokens.size() != 6)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"***** SCRIPT ERROR: in %@, CANNOT addShipsAt: '%@' (expected <role> <count> <coordinate-system> <x> <y> <z>)", CurrentScriptDesc(), roles_number_system_x_y_z);
+		OO_LOG(kOOLogSyntaxAddShips, "***** SCRIPT ERROR: in {}, CANNOT addShipsAt: '{}' (expected <role> <count> <coordinate-system> <x> <y> <z>)", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	roleString = [tokens objectAtIndex:0];
-	numberString = [tokens objectAtIndex:1];
-	systemString = [tokens objectAtIndex:2];
-	xString = [tokens objectAtIndex:3];
-	yString = [tokens objectAtIndex:4];
-	zString = [tokens objectAtIndex:5];
+	const std::string &roleString = tokens[0];
+	const std::string &systemString = tokens[2];
 
-	HPVector posn = make_HPvector([xString doubleValue], [yString doubleValue], [zString doubleValue]);
+	HPVector posn = make_HPvector(oo::str::doubleValue(tokens[3]), oo::str::doubleValue(tokens[4]), oo::str::doubleValue(tokens[5]));
 
-	int number = [numberString intValue];
+	int number = oo::str::intValue(tokens[1]);
 	if (number < 1)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"----- WARNING in %@  Tried to add %i ships -- no ship added.", CurrentScriptDesc(), number);
+		OO_LOG(kOOLogSyntaxAddShips, "----- WARNING in {}  Tried to add {} ships -- no ship added.", CurrentScriptDescription(), number);
 		return;
 	}
 
-	OOLog(kOOLogNoteAddShips, @"DEBUG: Going to add %d ship(s) with role '%@' at point (%.3f, %.3f, %.3f) using system %@", number, roleString, posn.x, posn.y, posn.z, systemString);
+	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' at point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, posn.x, posn.y, posn.z, systemString);
 
-	if (![UNIVERSE addShips: number withRole:roleString nearPosition: posn withCoordinateSystem: systemString])
+	if (![UNIVERSE addShips: number withRole:oo::NSStringFrom(roleString) nearPosition: posn withCoordinateSystem: oo::NSStringFrom(systemString)])
 	{
-		OOLog(kOOLogScriptAddShipsFailed, @"***** SCRIPT ERROR: in %@, %@ could not add %u ships with role \"%@\"", CurrentScriptDesc(), @"addShipsAt:", number, roleString);
+		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, {} could not add {} ships with role \"{}\"", CurrentScriptDescription(), "addShipsAt:", (unsigned)number, roleString);
 	}
 }
 
 
-- (void) addShipsAtPrecisely:(NSString *)roles_number_system_x_y_z
+- (void) addShipsAtPrecisely:(id)roles_number_system_x_y_z	// called by name (ADR-0043 item 21)
 {
-	NSMutableArray*	tokens = ScanTokensFromString(roles_number_system_x_y_z);
+	const std::string			argument = oo::StdString(roles_number_system_x_y_z);
+	const std::vector<std::string>	tokens = oo::str::tokens(argument);
 
-	NSString*   roleString = nil;
-	NSString*	numberString = nil;
-	NSString*	systemString = nil;
-	NSString*	xString = nil;
-	NSString*	yString = nil;
-	NSString*	zString = nil;
-
-	if ([tokens count] != 6)
+	if (tokens.size() != 6)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"***** SCRIPT ERROR: in %@,* CANNOT addShipsAtPrecisely: '%@' (expected <role> <count> <coordinate-system> <x> <y> <z>)", CurrentScriptDesc(), roles_number_system_x_y_z);
+		OO_LOG(kOOLogSyntaxAddShips, "***** SCRIPT ERROR: in {},* CANNOT addShipsAtPrecisely: '{}' (expected <role> <count> <coordinate-system> <x> <y> <z>)", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	roleString = [tokens objectAtIndex:0];
-	numberString = [tokens objectAtIndex:1];
-	systemString = [tokens objectAtIndex:2];
-	xString = [tokens objectAtIndex:3];
-	yString = [tokens objectAtIndex:4];
-	zString = [tokens objectAtIndex:5];
+	const std::string &roleString = tokens[0];
+	const std::string &systemString = tokens[2];
 
-	HPVector posn = make_HPvector([xString doubleValue], [yString doubleValue], [zString doubleValue]);
+	HPVector posn = make_HPvector(oo::str::doubleValue(tokens[3]), oo::str::doubleValue(tokens[4]), oo::str::doubleValue(tokens[5]));
 
-	int number = [numberString intValue];
+	int number = oo::str::intValue(tokens[1]);
 	if (number < 1)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"----- WARNING: in %@, Can't add %i ships -- no ship added.", CurrentScriptDesc(), number);
+		OO_LOG(kOOLogSyntaxAddShips, "----- WARNING: in {}, Can't add {} ships -- no ship added.", CurrentScriptDescription(), number);
 		return;
 	}
 
-	OOLog(kOOLogNoteAddShips, @"DEBUG: Going to add %d ship(s) with role '%@' precisely at point (%.3f, %.3f, %.3f) using system %@", number, roleString, posn.x, posn.y, posn.z, systemString);
+	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' precisely at point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, posn.x, posn.y, posn.z, systemString);
 
-	if (![UNIVERSE addShips: number withRole:roleString atPosition: posn withCoordinateSystem: systemString])
+	if (![UNIVERSE addShips: number withRole:oo::NSStringFrom(roleString) atPosition: posn withCoordinateSystem: oo::NSStringFrom(systemString)])
 	{
-		OOLog(kOOLogScriptAddShipsFailed, @"***** SCRIPT ERROR: in %@, %@ could not add %u ships with role '%@'", CurrentScriptDesc(), @"addShipsAtPrecisely:", number, roleString);
+		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, {} could not add {} ships with role '{}'", CurrentScriptDescription(), "addShipsAtPrecisely:", (unsigned)number, roleString);
 	}
 }
 
 
-- (void) addShipsWithinRadius:(NSString *)roles_number_system_x_y_z_r
+- (void) addShipsWithinRadius:(id)roles_number_system_x_y_z_r	// called by name (ADR-0043 item 21)
 {
-	NSMutableArray*	tokens = ScanTokensFromString(roles_number_system_x_y_z_r);
+	const std::string			argument = oo::StdString(roles_number_system_x_y_z_r);
+	const std::vector<std::string>	tokens = oo::str::tokens(argument);
 
-	if ([tokens count] != 7)
+	if (tokens.size() != 7)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"***** SCRIPT ERROR: in %@, CANNOT 'addShipsWithinRadius: %@' (expected <role> <count> <coordinate-system> <x> <y> <z> <radius>))", CurrentScriptDesc(), roles_number_system_x_y_z_r);
+		OO_LOG(kOOLogSyntaxAddShips, "***** SCRIPT ERROR: in {}, CANNOT 'addShipsWithinRadius: {}' (expected <role> <count> <coordinate-system> <x> <y> <z> <radius>))", CurrentScriptDescription(), argument);
 		return;
 	}
 
-	NSString* roleString = [tokens objectAtIndex:0];
-	int number = [[tokens objectAtIndex:1] intValue];
-	NSString* systemString = [tokens objectAtIndex:2];
-	double x = [[tokens objectAtIndex:3] doubleValue];
-	double y = [[tokens objectAtIndex:4] doubleValue];
-	double z = [[tokens objectAtIndex:5] doubleValue];
-	GLfloat r = [[tokens objectAtIndex:6] floatValue];
+	const std::string &roleString = tokens[0];
+	int number = oo::str::intValue(tokens[1]);
+	const std::string &systemString = tokens[2];
+	double x = oo::str::doubleValue(tokens[3]);
+	double y = oo::str::doubleValue(tokens[4]);
+	double z = oo::str::doubleValue(tokens[5]);
+	GLfloat r = (float)oo::str::doubleValue(tokens[6]);
 	HPVector posn = make_HPvector(x, y, z);
 
 	if (number < 1)
 	{
-		OOLog(kOOLogSyntaxAddShips, @"----- WARNING: in %@, can't add %i ships -- no ship added.", CurrentScriptDesc(), number);
+		OO_LOG(kOOLogSyntaxAddShips, "----- WARNING: in {}, can't add {} ships -- no ship added.", CurrentScriptDescription(), number);
 		return;
 	}
 
-	OOLog(kOOLogNoteAddShips, @"DEBUG: Going to add %d ship(s) with role '%@' within %.2f radius about point (%.3f, %.3f, %.3f) using system %@", number, roleString, r, x, y, z, systemString);
+	OO_LOG(kOOLogNoteAddShips, "DEBUG: Going to add {} ship(s) with role '{}' within {:.2f} radius about point ({:.3f}, {:.3f}, {:.3f}) using system {}", number, roleString, (double)r, x, y, z, systemString);
 
-	if (![UNIVERSE addShips:number withRole: roleString nearPosition: posn withCoordinateSystem: systemString withinRadius: r])
+	if (![UNIVERSE addShips:number withRole: oo::NSStringFrom(roleString) nearPosition: posn withCoordinateSystem: oo::NSStringFrom(systemString) withinRadius: r])
 	{
-		OOLog(kOOLogScriptAddShipsFailed, @"***** SCRIPT ERROR :in %@, %@ could not add %u ships with role \"%@\"", CurrentScriptDesc(), @"addShipsWithinRadius:", number, roleString);
+		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR :in {}, {} could not add {} ships with role \"{}\"", CurrentScriptDescription(), "addShipsWithinRadius:", (unsigned)number, roleString);
 	}
 }
 
 
-- (void) spawnShip:(NSString *)ship_key
+- (void) spawnShip:(id)ship_key	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 {
 	if ([UNIVERSE spawnShip:ship_key])
 	{
-		OOLog(kOOLogNoteAddShips, @"DEBUG: Spawned ship with shipdata key '%@'.", ship_key);
+		OO_LOG(kOOLogNoteAddShips, "DEBUG: Spawned ship with shipdata key '{}'.", oo::DescriptionOf(ship_key));
 	}
 	else
 	{
-		OOLog(kOOLogScriptAddShipsFailed, @"***** SCRIPT ERROR: in %@, could not spawn ship with shipdata key '%@'.", CurrentScriptDesc(), ship_key);
+		OO_LOG(kOOLogScriptAddShipsFailed, "***** SCRIPT ERROR: in {}, could not spawn ship with shipdata key '{}'.", CurrentScriptDescription(), oo::DescriptionOf(ship_key));
 	}
 }
 
@@ -1997,7 +1968,7 @@ static int shipsFound;
 }
 
 
-- (void) checkForShips:(NSString *)roleString
+- (void) checkForShips:(id)roleString	// called by name (ADR-0043 item 21)
 {
 	shipsFound = [UNIVERSE countShipsWithPrimaryRole:roleString];
 }
@@ -2397,103 +2368,113 @@ static int shipsFound;
 }
 
 
-- (OOPlanetEntity *) addPlanet: (NSString *)planetKey
+- (OOPlanetEntity *) addPlanet:(id)planetKey	// called by name (ADR-0043 item 21)
 {
-	OOLog(kOOLogNoteAddPlanet, @"addPlanet: %@", planetKey);
+	OO_LOG(kOOLogNoteAddPlanet, "addPlanet: {}", oo::DescriptionOf(planetKey));
 
 	if (!UNIVERSE)
 		return nil;
-	NSDictionary* dict = [[UNIVERSE systemManager] getPropertiesForSystemKey:planetKey];
-	if (!dict)
+	// The system properties, once, as an oo::PList (null when there are none).
+	const oo::PList dict = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystemKey:planetKey]);
+	if (dict.isNull())
 	{
-		OOLog(@"script.error.addPlanet.keyNotFound", @"***** ERROR: could not find an entry in planetinfo.plist for '%@'", planetKey);
+		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", oo::DescriptionOf(planetKey));
 		return nil;
 	}
 
 	/*- add planet -*/
-	OOLog(kOOLogDebugAddPlanet, @"DEBUG: initPlanetFromDictionary: %@", dict);
-	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(dict) withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
-	
+	// ("%@" of the dictionary: the round trip prints the same description)
+	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initPlanetFromDictionary: {}", oo::DescriptionOf(oo::ObjectFromPList(dict)));
+	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
+
 	Quaternion planetOrientation;
-	if (ScanQuaternionFromString([dict objectForKey:@"orientation"], &planetOrientation))
+	const oo::PList *orientation = dict.find("orientation");
+	if (ScanQuaternionFromString(orientation != nullptr ? oo::ObjectFromPList(*orientation) : nil, &planetOrientation))
 	{
 		[planet setOrientation:planetOrientation];
 	}
 
-	if (![dict objectForKey:@"position"])
+	const oo::PList *position = dict.find("position");
+	if (position == nullptr)
 	{
-		OOLog(@"script.error.addPlanet.noPosition", @"***** ERROR: you must specify a position for scripted planet '%@' before it can be created", planetKey);
+		OO_LOG("script.error.addPlanet.noPosition", "***** ERROR: you must specify a position for scripted planet '{}' before it can be created", oo::DescriptionOf(planetKey));
 		return nil;
 	}
-	
-	NSString *positionString = [dict objectForKey:@"position"];
-	if([positionString hasPrefix:@"abs "] && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
+
+	const std::string positionString = ConditionString(*position).value_or(std::string());
+	if(oo::str::hasPrefix(positionString, "abs ") && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
 	{
-		OOLogWARN(@"script.deprecated", @"setting %@ for %@ '%@' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.",@"position",@"planet",planetKey);
+		OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.","position","planet",oo::DescriptionOf(planetKey));
 	}
-	
-	HPVector posn = [UNIVERSE coordinatesFromCoordinateSystemString:positionString];
+
+	HPVector posn = [UNIVERSE coordinatesFromCoordinateSystemString:oo::NSStringFrom(positionString)];
 	if (posn.x || posn.y || posn.z)
 	{
-		OOLog(kOOLogDebugAddPlanet, @"planet position (%.2f %.2f %.2f) derived from %@", posn.x, posn.y, posn.z, positionString);
+		OO_LOG(kOOLogDebugAddPlanet, "planet position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
 	}
 	else
 	{
-		ScanHPVectorFromString(positionString, &posn);
-		OOLog(kOOLogDebugAddPlanet, @"planet position (%.2f %.2f %.2f) derived from %@", posn.x, posn.y, posn.z, positionString);
+		ScanHPVectorFromString(oo::NSStringFrom(positionString), &posn);
+		OO_LOG(kOOLogDebugAddPlanet, "planet position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
 	}
 	[planet setPosition: posn];
-	
+
 	[UNIVERSE addEntity:planet];
 	return planet;
 }
 
 
-- (OOPlanetEntity *) addMoon: (NSString *)moonKey
+- (OOPlanetEntity *) addMoon:(id)moonKey	// called by name (ADR-0043 item 21)
 {
-	OOLog(kOOLogNoteAddPlanet, @"DEBUG: addMoon '%@'", moonKey);
+	OO_LOG(kOOLogNoteAddPlanet, "DEBUG: addMoon '{}'", oo::DescriptionOf(moonKey));
 
 	if (!UNIVERSE)
 		return nil;
-	NSDictionary* dict = [[UNIVERSE systemManager] getPropertiesForSystemKey:moonKey];
-	if (!dict)
+	// The system properties, once, as an oo::PList (null when there are none).
+	const oo::PList dict = oo::PListFrom([[UNIVERSE systemManager] getPropertiesForSystemKey:moonKey]);
+	if (dict.isNull())
 	{
-		OOLog(@"script.error.addPlanet.keyNotFound", @"***** ERROR: could not find an entry in planetinfo.plist for '%@'", moonKey);
+		OO_LOG("script.error.addPlanet.keyNotFound", "***** ERROR: could not find an entry in planetinfo.plist for '{}'", oo::DescriptionOf(moonKey));
 		return nil;
 	}
 
-	OOLog(kOOLogDebugAddPlanet, @"DEBUG: initMoonFromDictionary: %@", dict);
-	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(dict) withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
-	
+	/*- add planet -*/
+	// ("%@" of the dictionary: the round trip prints the same description)
+	OO_LOG(kOOLogDebugAddPlanet, "DEBUG: initMoonFromDictionary: {}", oo::DescriptionOf(oo::ObjectFromPList(dict)));
+	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
+
 	Quaternion planetOrientation;
-	if (ScanQuaternionFromString([dict objectForKey:@"orientation"], &planetOrientation))
+	const oo::PList *orientation = dict.find("orientation");
+	if (ScanQuaternionFromString(orientation != nullptr ? oo::ObjectFromPList(*orientation) : nil, &planetOrientation))
 	{
 		[planet setOrientation:planetOrientation];
 	}
 
-	if (![dict objectForKey:@"position"])
+	const oo::PList *position = dict.find("position");
+	if (position == nullptr)
 	{
-		OOLog(@"script.error.addPlanet.noPosition", @"***** ERROR: you must specify a position for scripted moon '%@' before it can be created", moonKey);
+		OO_LOG("script.error.addPlanet.noPosition", "***** ERROR: you must specify a position for scripted moon '{}' before it can be created", oo::DescriptionOf(moonKey));
 		return nil;
 	}
-	
-	NSString *positionString = [dict objectForKey:@"position"];
-	if([positionString hasPrefix:@"abs "] && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
+
+	const std::string positionString = ConditionString(*position).value_or(std::string());
+	if(oo::str::hasPrefix(positionString, "abs ") && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
 	{
-		OOLogWARN(@"script.deprecated", @"setting %@ for %@ '%@' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.",@"position",@"moon",moonKey);
+		OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.","position","moon",oo::DescriptionOf(moonKey));
 	}
-	HPVector posn = [UNIVERSE coordinatesFromCoordinateSystemString:positionString];
+
+	HPVector posn = [UNIVERSE coordinatesFromCoordinateSystemString:oo::NSStringFrom(positionString)];
 	if (posn.x || posn.y || posn.z)
 	{
-		OOLog(kOOLogDebugAddPlanet, @"moon position (%.2f %.2f %.2f) derived from %@", posn.x, posn.y, posn.z, positionString);
+		OO_LOG(kOOLogDebugAddPlanet, "moon position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
 	}
 	else
 	{
-		ScanHPVectorFromString(positionString, &posn);
-		OOLog(kOOLogDebugAddPlanet, @"moon position (%.2f %.2f %.2f) derived from %@", posn.x, posn.y, posn.z, positionString);
+		ScanHPVectorFromString(oo::NSStringFrom(positionString), &posn);
+		OO_LOG(kOOLogDebugAddPlanet, "moon position ({:.2f} {:.2f} {:.2f}) derived from {}", posn.x, posn.y, posn.z, positionString);
 	}
 	[planet setPosition: posn];
-	
+
 	[UNIVERSE addEntity:planet];
 	return planet;
 }
