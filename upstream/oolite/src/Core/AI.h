@@ -62,7 +62,8 @@ MA 02110-1301, USA.
 
 - (id) name;	// shared selector (proposed ADR-0043): the state machine's name, an Objective-C string
 - (std::optional<std::string>) cxx_associatedJS;
-- (id) state;	// shared selector (proposed ADR-0043): the current state, an Objective-C string or nil
+- (id) state;	// shared selector (Foundation declares -state too): -cxx_state as an Objective-C string or nil
+- (std::optional<std::string>) cxx_state;	// the current state; nullopt: none (bead oo-3rb.291.2)
 
 - (void) cxx_setStateMachine:(const std::string &)smName withJSScript:(const std::string &)script;
 - (void) cxx_setState:(const std::string &)stateName;
