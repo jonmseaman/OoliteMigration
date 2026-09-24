@@ -1104,7 +1104,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 	{
 		[OOPlanetTextureGenerator generatePlanetTexture:&diffuseMap
 									   secondaryTexture:(detailLevel >= DETAIL_LEVEL_SHADERS) ? &normalMap : NULL
-											   withInfo:oo::ObjectFromPList(_materialParameters)
+											   withInfo:_materialParameters
 												   seed:_noiseMapSeed];
 
 		if (shadersOn)
@@ -1121,7 +1121,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		/* Generate a standalone atmosphere texture */
 		OOTexture *atmosphere = nil;
 		[OOStandaloneAtmosphereGenerator generateAtmosphereTexture:&atmosphere
-														withInfo:oo::ObjectFromPList(_materialParameters)
+														withInfo:_materialParameters
 															seed:_noiseMapSeed];
 		
 		OOLog(@"texture.planet.generate",@"Planet %@ has atmosphere %@",self,atmosphere);
