@@ -690,9 +690,9 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 }
 
 
-- (id)dependencies	// shared selector (proposed ADR-0043)
+- (std::optional<std::vector<std::string>>)cxx_dependencies
 {
-	return oo::NSSetFromStrings(std::vector<std::string>{ kFileScannerStageName });
+	return std::vector<std::string>{ kFileScannerStageName };
 }
 
 
@@ -730,15 +730,15 @@ BOOL CheckNameConflict(const std::string &lcName, const std::map<std::string, st
 
 @implementation OOFileHandlingVerifierStage
 
-- (id)dependencies	// shared selector (proposed ADR-0043)
+- (std::optional<std::vector<std::string>>)cxx_dependencies
 {
-	return oo::NSSetFromStrings(std::vector<std::string>{ *[OOFileScannerVerifierStage nameForDependencyForVerifier:[self verifier]] });
+	return std::vector<std::string>{ *[OOFileScannerVerifierStage nameForDependencyForVerifier:[self verifier]] };
 }
 
 
-- (id)dependents	// shared selector (proposed ADR-0043)
+- (std::optional<std::vector<std::string>>)dependents
 {
-	return oo::NSSetFromStrings(std::vector<std::string>{ oo::StdString([OOListUnusedFilesStage nameForReverseDependencyForVerifier:[self verifier]]) });
+	return std::vector<std::string>{ oo::StdString([OOListUnusedFilesStage nameForReverseDependencyForVerifier:[self verifier]]) };
 }
 
 @end
