@@ -57,6 +57,7 @@ SOFTWARE.
 
 #import "OOPListView.h"
 #import "OOTCPStreamDecoder.h"
+#import "OOFoundationBridge.h"
 
 
 #ifdef OO_LOG_DEBUG_PROTOCOL_PACKETS
@@ -780,7 +781,7 @@ noteChangedConfigrationValue:(in id)newValue
 	while (length > 0)
 	{
 		data = [NSData dataWithBytesNoCopy:buffer length:length freeWhenDone:NO];
-		OOTCPStreamDecoderReceiveData(_decoder, data);
+		OOTCPStreamDecoderReceiveBytes(_decoder, [data bytes], [data length]);
 		length = [self receive:buffer maxLength:kBufferSize];
 	}
 }
@@ -1065,19 +1066,21 @@ void OODebugTCPConsoleServiceInput(double timeout)
 
 static void DecoderPacket(void *cbInfo, OOALStringRef packetType, OOALDictionaryRef packet)
 {
-	[(OODebugTCPConsoleClient *)cbInfo dispatchPacket:packet ofType:packetType];
+	// The decoder's handles hold property lists (OOTCPStreamDecoderAbstractionLayer, bead oo-x3xy).
+	[(OODebugTCPConsoleClient *)cbInfo dispatchPacket:oo::ObjectFromPList(OOALObjectPList(packet)) ofType:oo::ObjectFromPList(OOALObjectPList(packetType))];
 }
 
 
 static void DecoderError(void *cbInfo, OOALStringRef errorDesc)
 {
-	[(OODebugTCPConsoleClient *)cbInfo breakConnectionWithMessage:errorDesc];
+	[(OODebugTCPConsoleClient *)cbInfo breakConnectionWithMessage:oo::ObjectFromPList(OOALObjectPList(errorDesc))];
 }
 
 
 #ifdef OO_LOG_DEBUG_PROTOCOL_PACKETS
-void LogOOTCPStreamDecoderPacket(NSDictionary *packet)
+void LogOOTCPStreamDecoderPacket(OOALDictionaryRef packetHandle)
 {
+	NSDictionary			*packet = oo::ObjectFromPList(OOALObjectPList(packetHandle));
 	NSData					*data = nil;
 	NSString				*xml = nil;
 	
