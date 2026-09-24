@@ -102,7 +102,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 @interface PlayerEntity (ContractsPrivate)
 
 - (OOCreditsQuantity) tradeInValue;
-- (NSArray*) contractsListFromArray:(NSArray *) contracts_array forCargo:(BOOL) forCargo forParcels:(BOOL)forParcels;
+- (std::vector<std::string>) cxx_contractsListFromEntries:(const oo::PList::Array &) contracts_array forCargo:(BOOL) forCargo forParcels:(BOOL)forParcels;
 
 @end
 
@@ -360,23 +360,23 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 
 	
 	// check cargo contracts
-	for (i = 0; i < [contracts count]; i++)
+	for (i = 0; i < contracts.size(); i++)
 	{
-		NSDictionary* contract_info = [oo::PListView(contracts).at<NSDictionary *>(i) retain];
-		NSString* contract_cargo_desc = oo::PListView(contract_info).get<NSString *>(CARGO_KEY_DESCRIPTION);
-		int dest = oo::PListView(contract_info).get<int>(CONTRACT_KEY_DESTINATION);
-		int dest_eta = oo::PListView(contract_info).get<double>(CONTRACT_KEY_ARRIVAL_TIME) - ship_clock;
+		const oo::PList contract_info = contracts[i];	// a copy: the entry may be removed below (it was retained)
+		const std::optional<std::string> contract_cargo_desc = OptionalStringForKey(contract_info, oo::StdString(CARGO_KEY_DESCRIPTION));
+		int dest = contract_info.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		int dest_eta = contract_info.get<double>(oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)) - ship_clock;
 		
 		if (system_id == dest)
 		{
 			// no longer needed
 			// int premium = 10 * oo::PListView(contract_info).get<float>(CONTRACT_KEY_PREMIUM);
-			int fee = 10 * oo::PListView(contract_info).get<float>(CONTRACT_KEY_FEE);
-			
-			OOCommodityType contract_cargo_type = oo::PListView(contract_info).get<NSString *>(CARGO_KEY_TYPE);
-			int contract_amount = oo::PListView(contract_info).get<int>(CARGO_KEY_AMOUNT);
-			
-			int quantity_on_hand =  [shipCommodityData quantityForGood:contract_cargo_type];
+			int fee = 10 * contract_info.get<float>(oo::StdString(CONTRACT_KEY_FEE));
+
+			const std::string contract_cargo_type = contract_info.get<std::string>(oo::StdString(CARGO_KEY_TYPE));	// a missing type was nil, which the market read as ""
+			int contract_amount = contract_info.get<int>(oo::StdString(CARGO_KEY_AMOUNT));
+
+			int quantity_on_hand =  [shipCommodityData cxx_quantityForGood:contract_cargo_type];
 
 			// we've arrived in system!
 			if (dest_eta > 0)
@@ -387,14 +387,14 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 					// with the goods too!
 					
 					// remove the goods...
-					[shipCommodityData removeQuantity:contract_amount forGood:contract_cargo_type];
+					[shipCommodityData cxx_removeQuantity:contract_amount forGood:contract_cargo_type];
 
 					// pay the premium and fee
 					// credits += fee + premium;
 					// not any more: all contracts initially awarded by JS, so fee
 					// is now all that needs to be paid - CIM
 
-					if ([shipCommodityData exportLegalityForGood:contract_cargo_type] > 0)
+					if ([shipCommodityData cxx_exportLegalityForGood:contract_cargo_type] > 0)
 					{
 						[self addRoleToPlayer:@"trader-smuggler"];
 					}
@@ -404,13 +404,13 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 					}
 					
 					credits += fee;
-					result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-okay-@-@")), { oo::DescriptionOf(contract_cargo_desc), oo::DescriptionOf(OOCredits(fee)) }) + "\n";
+					result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-okay-@-@")), { TextArg(contract_cargo_desc), oo::DescriptionOf(OOCredits(fee)) }) + "\n";
 					
-					[contracts removeObjectAtIndex:i--];
+					contracts.erase(contracts.begin() + i--);
 					// repute++
 					// +10 as cargo contracts don't have risk modifiers
 					[self increaseContractReputation:10];
-					[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:[NSArray arrayWithObjects:@"cargo",@"success",[NSNumber numberWithUnsignedInteger:fee],contract_info,nil]];
+					[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("cargo"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(fee)), contract_info }))];
 
 				}
 				else
@@ -423,14 +423,14 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 					if (percent_delivered >= acceptable_ratio)
 					{
 						// remove the goods...
-						[shipCommodityData setQuantity:0 forGood:contract_cargo_type];
+						[shipCommodityData cxx_setQuantity:0 forGood:contract_cargo_type];
 
 						// pay the fee
 						int shortfall = 100 - percent_delivered;
 						int payment = percent_delivered * (fee) / 100.0;
 						credits += payment;
 						
-						if ([shipCommodityData exportLegalityForGood:contract_cargo_type] > 0)
+						if ([shipCommodityData cxx_exportLegalityForGood:contract_cargo_type] > 0)
 						{
 							[self addRoleToPlayer:@"trader-smuggler"];
 						}
@@ -439,16 +439,16 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 							[self addRoleToPlayer:@"trader"];
 						}
 
-						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-short-@-@-d")), { oo::DescriptionOf(contract_cargo_desc), oo::DescriptionOf(OOCredits(payment)), shortfall }) + "\n";
+						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-short-@-@-d")), { TextArg(contract_cargo_desc), oo::DescriptionOf(OOCredits(payment)), shortfall }) + "\n";
 						
-						[contracts removeObjectAtIndex:i--];
+						contracts.erase(contracts.begin() + i--);
 						// repute unchanged
-						[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:[NSArray arrayWithObjects:@"cargo",@"short",[NSNumber numberWithUnsignedInteger:payment],contract_info,nil]];
+						[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("cargo"), oo::PList("short"), oo::PList::unsignedInteger(static_cast<NSUInteger>(payment)), contract_info }))];
 
 					}
 					else
 					{
-						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-refused-short-%@")), { oo::DescriptionOf(contract_cargo_desc) }) + "\n";
+						result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-refused-short-%@")), { TextArg(contract_cargo_desc) }) + "\n";
 						// The player has still time to buy the missing goods elsewhere and fulfil the contract.
 					}
 				}
@@ -456,12 +456,12 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			else
 			{
 				// but we're late!
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-late-@")), { oo::DescriptionOf(contract_cargo_desc) }) + "\n";
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-delivered-late-@")), { TextArg(contract_cargo_desc) }) + "\n";
 
-				[contracts removeObjectAtIndex:i--];
+				contracts.erase(contracts.begin() + i--);
 				// repute--
 				[self decreaseContractReputation:10];
-				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:[NSArray arrayWithObjects:@"cargo",@"late",[NSNumber numberWithUnsignedInteger:0],contract_info,nil]];
+				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("cargo"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), contract_info }))];
 			}
 		}
 		else
@@ -469,15 +469,14 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			if (dest_eta < 0)
 			{
 				// we've run out of time!
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-failed-@")), { oo::DescriptionOf(contract_cargo_desc) }) + "\n";
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"cargo-failed-@")), { TextArg(contract_cargo_desc) }) + "\n";
 				
-				[contracts removeObjectAtIndex:i--];
+				contracts.erase(contracts.begin() + i--);
 				// repute--
 				[self decreaseContractReputation:10];
-				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:[NSArray arrayWithObjects:@"cargo",@"failed",[NSNumber numberWithUnsignedInteger:0],contract_info,nil]];
+				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("cargo"), oo::PList("failed"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), contract_info }))];
 			}
 		}
-		[contract_info release];
 	}
 	
 	// check passenger_record for expired contracts (only deletes: the key order does not matter)
@@ -504,14 +503,15 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		}
 	}
 	
-	// check contract_record for expired contracts
-	NSArray* ids = [contract_record allKeys];
-	for (i = 0; i < [ids count]; i++)
+	// check contract_record for expired contracts (only deletes: the key order does not matter)
+	std::vector<std::string> ids;
+	for (const auto &record : contract_record)  ids.push_back(record.first);
+	for (i = 0; i < ids.size(); i++)
 	{
-		double dest_eta = [(NSNumber*)[contract_record objectForKey:[ids objectAtIndex:i]] doubleValue] - ship_clock;
+		double dest_eta = DoubleForKey(contract_record, ids[i]) - ship_clock;	// -doubleValue
 		if (dest_eta < 0)
 		{
-			[contract_record removeObjectForKey:[ids objectAtIndex:i]];
+			contract_record.erase(ids[i]);
 		}
 	}
 
@@ -542,16 +542,15 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 }
 
 
-- (OOCargoQuantity) contractedVolumeForGood:(OOCommodityType) good
+- (OOCargoQuantity) cxx_contractedVolumeForGood:(const std::string &) good
 {
 	OOCargoQuantity total = 0;
-	for (unsigned i = 0; i < [contracts count]; i++)
+	for (unsigned i = 0; i < contracts.size(); i++)
 	{
-		NSDictionary* contract_info = oo::PListView(contracts).at<NSDictionary *>(i);
-		OOCommodityType contract_cargo_type = oo::PListView(contract_info).get<NSString *>(CARGO_KEY_TYPE);
-		if ([good isEqualToString:contract_cargo_type])
+		const oo::PList &contract_info = contracts[i];
+		if (OptionalStringForKey(contract_info, oo::StdString(CARGO_KEY_TYPE)) == good)
 		{
-			total += oo::PListView(contract_info).get<NSUInteger>(CARGO_KEY_AMOUNT);
+			total += contract_info.get<NSUInteger>(oo::StdString(CARGO_KEY_AMOUNT));
 		}
 	}
 	return total;
@@ -1035,140 +1034,150 @@ for (unsigned i=0;i<amount;i++)
 }
 
 
-- (BOOL) awardContract:(unsigned)qty commodity:(OOCommodityType)type start:(unsigned)start
+- (BOOL) cxx_awardContract:(unsigned)qty commodity:(const std::string &)type start:(unsigned)start
 					 destination:(unsigned)Destination eta:(double)eta fee:(double)fee premium:(double)premium
 {
 
 	unsigned		sr1 = Ranrot()&0x111111;
 	int				sr2 = Ranrot()&0x111111;
 
-	NSString		*cargo_ID =[NSString stringWithFormat:@"%06x-%06x", sr1, sr2];
-	
-	if (![[UNIVERSE commodities] goodDefined:type])  return NO;
+	std::string		cargo_ID = oo::str::format("%06x-%06x", sr1, sr2);
+
+	if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)])  return NO;
 	if (qty < 1)  return NO;
-	
+
 	// avoid duplicate cargo_IDs
-	while ([contract_record objectForKey:cargo_ID] != nil)
+	while (contract_record.find(cargo_ID) != contract_record.end())
 	{
 		sr2++;
-		cargo_ID =[NSString stringWithFormat:@"%06x-%06x", sr1, sr2];
+		cargo_ID = oo::str::format("%06x-%06x", sr1, sr2);
 	}
 
-	NSDictionary* cargo_info = [NSDictionary dictionaryWithObjectsAndKeys:
-		cargo_ID,										CARGO_KEY_ID,
-		type,											CARGO_KEY_TYPE,
-		[NSNumber numberWithInt:qty],					CARGO_KEY_AMOUNT,
-		[UNIVERSE describeCommodity:type amount:qty],	CARGO_KEY_DESCRIPTION,
-		[NSNumber numberWithInt:start],					CONTRACT_KEY_START,
-		[NSNumber numberWithInt:Destination],			CONTRACT_KEY_DESTINATION,
-		[NSNumber numberWithDouble:[PLAYER clockTime]],	CONTRACT_KEY_DEPARTURE_TIME,
-		[NSNumber numberWithDouble:eta],				CONTRACT_KEY_ARRIVAL_TIME,
-		[NSNumber numberWithDouble:fee],				CONTRACT_KEY_FEE,
-		[NSNumber numberWithDouble:premium],						CONTRACT_KEY_PREMIUM,
-		NULL];
-	
+	// the NSNumber kinds the old dictionary held: +numberWithInt:, +numberWithDouble:
+	const oo::PList cargo_info(oo::PList::Dict{
+		{ oo::StdString(CARGO_KEY_ID),						oo::PList(cargo_ID) },
+		{ oo::StdString(CARGO_KEY_TYPE),					oo::PList(type) },
+		{ oo::StdString(CARGO_KEY_AMOUNT),					oo::PList::signedInteger(static_cast<int>(qty)) },
+		{ oo::StdString(CARGO_KEY_DESCRIPTION),				oo::PList(oo::StdString([UNIVERSE describeCommodity:oo::NSStringFrom(type) amount:qty])) },
+		{ oo::StdString(CONTRACT_KEY_START),				oo::PList::signedInteger(static_cast<int>(start)) },
+		{ oo::StdString(CONTRACT_KEY_DESTINATION),			oo::PList::signedInteger(static_cast<int>(Destination)) },
+		{ oo::StdString(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList([PLAYER clockTime]) },
+		{ oo::StdString(CONTRACT_KEY_ARRIVAL_TIME),			oo::PList(eta) },
+		{ oo::StdString(CONTRACT_KEY_FEE),					oo::PList(fee) },
+		{ oo::StdString(CONTRACT_KEY_PREMIUM),				oo::PList(premium) },
+	});
+
 	// check available space
-	
+
 	OOCargoQuantity		cargoSpaceRequired = qty;
-	OOMassUnit			contractCargoUnits	= [shipCommodityData massUnitForGood:type];
-	
+	OOMassUnit			contractCargoUnits	= [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];	// shared selector (OOCommodities): an Objective-C string
+
 	if (contractCargoUnits == UNITS_KILOGRAMS)  cargoSpaceRequired /= 1000;
 	if (contractCargoUnits == UNITS_GRAMS)  cargoSpaceRequired /= 1000000;
-	
+
 	if (cargoSpaceRequired > [self availableCargoSpace]) return NO;
 
-	[shipCommodityData addQuantity:qty forGood:type];
+	[shipCommodityData cxx_addQuantity:qty forGood:type];
 
 	current_cargo = [self cargoQuantityOnBoard];
 
-	if ([shipCommodityData exportLegalityForGood:type] > 0)
+	// roleWeightFlags is still a Foundation ivar (oo-3rb.75): its entry converted at the call, a signed integer as +numberWithInt:
+	if ([shipCommodityData cxx_exportLegalityForGood:type] > 0)
 	{
 		[self addRoleToPlayer:@"trader-smuggler"];
-		[roleWeightFlags setObject:[NSNumber numberWithInt:1] forKey:@"bought-illegal"];
+		[roleWeightFlags setObject:oo::ObjectFromPList(oo::PList::signedInteger(1)) forKey:@"bought-illegal"];
 	}
 	else
 	{
 		[self addRoleToPlayer:@"trader"];
-		[roleWeightFlags setObject:[NSNumber numberWithInt:1] forKey:@"bought-legal"];
+		[roleWeightFlags setObject:oo::ObjectFromPList(oo::PList::signedInteger(1)) forKey:@"bought-legal"];
 	}
 
-	[contracts addObject:cargo_info];
-	[contract_record setObject:[NSNumber numberWithDouble:eta] forKey:cargo_ID];
+	contracts.push_back(cargo_info);
+	contract_record[cargo_ID] = oo::PList(eta);	// +numberWithDouble:
 
-	[self doScriptEvent:OOJSID("playerEnteredContract") withArguments:[NSArray arrayWithObjects:@"cargo",cargo_info,nil]];
+	[self doScriptEvent:OOJSID("playerEnteredContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("cargo"), cargo_info }))];
 
 	return YES;
 }
 
 
-- (BOOL) removeContract:(OOCommodityType)type destination:(unsigned)dest	// removes the first match found, returns NO if none found
+- (BOOL) cxx_removeContract:(const std::string &)type destination:(unsigned)dest	// removes the first match found, returns NO if none found
 {
-	if ([contracts count] == 0 || dest > 255)  return NO;
+	if (contracts.empty() || dest > 255)  return NO;
 
-	if (![[UNIVERSE commodities] goodDefined:type])  return NO;
-	
+	if (![[UNIVERSE commodities] goodDefined:oo::NSStringFrom(type)])  return NO;
+
 	unsigned			i;
-	
-	for (i = 0; i < [contracts count]; i++)
+
+	for (i = 0; i < contracts.size(); i++)
 	{
-		NSDictionary		*contractInfo = oo::PListView(contracts).at<NSDictionary *>(i);
-		unsigned 			cargoDest = oo::PListView(contractInfo).get<int>(CONTRACT_KEY_DESTINATION);
-		OOCommodityType		cargoType = oo::PListView(contractInfo).get<NSString *>(CARGO_KEY_TYPE);
-		
-		if ([cargoType isEqualToString:type] && cargoDest == dest)
+		const oo::PList		&contractInfo = contracts[i];
+		unsigned 			cargoDest = contractInfo.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		const std::optional<std::string> cargoType = OptionalStringForKey(contractInfo, oo::StdString(CARGO_KEY_TYPE));
+
+		if (cargoType == type && cargoDest == dest)
 		{
-			[contract_record removeObjectForKey:oo::PListView(contractInfo).get<NSString *>(CARGO_KEY_ID)];
-			[contracts removeObjectAtIndex:i];
+			const std::optional<std::string> cargoID = OptionalStringForKey(contractInfo, oo::StdString(CARGO_KEY_ID));
+			if (cargoID)  contract_record.erase(*cargoID);
+			contracts.erase(contracts.begin() + i);
 			return YES;
 		}
 	}
-	
+
 	return NO;
 }
 
 
 
 
-- (NSArray*) passengerList
+- (std::vector<std::string>) cxx_passengerList
 {
-	return [self contractsListFromArray:oo::ObjectFromPList(oo::PList(passengers)) forCargo:NO forParcels:NO];	// the helper is chunk 5's
+	return [self cxx_contractsListFromEntries:passengers forCargo:NO forParcels:NO];
 }
 
 
-- (NSArray*) parcelList
+- (std::vector<std::string>) cxx_parcelList
 {
-	return [self contractsListFromArray:oo::ObjectFromPList(oo::PList(parcels)) forCargo:NO forParcels:YES];	// the helper is chunk 5's
+	return [self cxx_contractsListFromEntries:parcels forCargo:NO forParcels:YES];
 }
 
 
-- (NSArray*) contractList
+- (std::vector<std::string>) cxx_contractList
 {
-	return [self contractsListFromArray:contracts forCargo:YES forParcels:NO];
+	return [self cxx_contractsListFromEntries:contracts forCargo:YES forParcels:NO];
 }
 
 
-- (NSArray*) contractsListFromArray:(NSArray *) contracts_array forCargo:(BOOL) forCargo forParcels:(BOOL)forParcels
+- (std::vector<std::string>) cxx_contractsListFromEntries:(const oo::PList::Array &) contracts_array forCargo:(BOOL) forCargo forParcels:(BOOL)forParcels
 {
 	// check  contracts
-	NSMutableArray	*result = [NSMutableArray arrayWithCapacity:5];
-	NSString		*formatString = (forCargo||forParcels) ? @"oolite-manifest-item-delivery" : @"oolite-manifest-person-travelling";
+	std::vector<std::string> result;
+	const char		*formatString = (forCargo||forParcels) ? "oolite-manifest-item-delivery" : "oolite-manifest-person-travelling";
 	unsigned i;
-	for (i = 0; i < [contracts_array count]; i++)
+	for (i = 0; i < contracts_array.size(); i++)
 	{
-		NSDictionary* contract_info = (NSDictionary *)[contracts_array objectAtIndex:i];
-		NSString* label = oo::PListView(contract_info).get<NSString *>(forCargo ? CARGO_KEY_DESCRIPTION : PASSENGER_KEY_NAME);
+		const oo::PList &contract_info = contracts_array[i];
+		const std::optional<std::string> label = OptionalStringForKey(contract_info, forCargo ? oo::StdString(CARGO_KEY_DESCRIPTION) : oo::StdString(PASSENGER_KEY_NAME));
 		// the system name can change via script. The following PASSENGER_KEYs are identical to the corresponding CONTRACT_KEYs
-		NSString* destination = [UNIVERSE getSystemName: oo::PListView(contract_info).get<int>(CONTRACT_KEY_DESTINATION)];
-		int dest_eta = oo::PListView(contract_info).get<double>(CONTRACT_KEY_ARRIVAL_TIME) - ship_clock;
-		NSString *deadline = [UNIVERSE shortTimeDescription:dest_eta];
+		const std::optional<std::string> destination = oo::OptionalString([UNIVERSE getSystemName: contract_info.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION))]);
+		int dest_eta = contract_info.get<double>(oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)) - ship_clock;
+		const std::optional<std::string> deadline = oo::OptionalString([UNIVERSE shortTimeDescription:dest_eta]);
 
-		OOCreditsQuantity fee = oo::PListView(contract_info).get<int>(CONTRACT_KEY_FEE);
-		NSString *feeDesc = OOIntCredits(fee);
+		OOCreditsQuantity fee = contract_info.get<int>(oo::StdString(CONTRACT_KEY_FEE));
+		const std::optional<std::string> feeDesc = oo::OptionalString(OOIntCredits(fee));
 
-		[result addObject:OOExpandKey(formatString, label, destination, deadline, feeDesc)];
+		// OOExpandKey(formatString, label, destination, deadline, feeDesc), spelled out: the macro names
+		// each argument after its expression, so the dictionary of named values is built here.
+		oo::PList::Dict arguments;
+		if (label)  arguments["label"] = oo::PList(*label);
+		if (destination)  arguments["destination"] = oo::PList(*destination);
+		if (deadline)  arguments["deadline"] = oo::PList(*deadline);
+		if (feeDesc)  arguments["feeDesc"] = oo::PList(*feeDesc);
+		result.push_back(oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(std::string(formatString)), oo::ObjectFromPList(oo::PList(std::move(arguments))), nil, nil, kOOExpandKey)));
 
 	}
-	
+
 	return result;
 }
 

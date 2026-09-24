@@ -29,6 +29,8 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOPListView.h"
 #import "OOJSScript.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 
 
 @interface OOCharacter (Private)
@@ -155,7 +157,7 @@ MA 02110-1301, USA.
 		speciesString = [speciesString lowercaseString];
 	}
 	
-	return [speciesString stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	return oo::StringMap(speciesString, [&](std::string_view v) { return oo::str::trim(v, oo::str::CharacterSet::whitespace()); });
 }
 
 
