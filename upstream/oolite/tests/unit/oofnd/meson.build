@@ -23,6 +23,7 @@ oofnd_tests = [
     'test_string_sweep',
     'test_string_format_runtime',
     'test_encoding',
+    'test_scanner',
     'test_unicode_file',
     'test_unicode_file_decode',
     'test_log',
