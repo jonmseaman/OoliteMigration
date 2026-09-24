@@ -28,6 +28,7 @@ oofnd_tests = [
     'test_unicode_file',
     'test_unicode_file_decode',
     'test_log',
+    'test_logfile',
     'test_tcp_stream_format',
 ]
 
