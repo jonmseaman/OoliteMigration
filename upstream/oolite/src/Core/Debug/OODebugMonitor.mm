@@ -51,6 +51,8 @@ SOFTWARE.
 #import "NSDataOOExtensions.h"
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #include "oofnd/Notification.hpp"
 
 
@@ -188,7 +190,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 					OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an error occurred: %@", newDebugger, error);
 				}
 			}
-			@catch (NSException *exception)
+			@catch (OOException *exception)
+			{
+				OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an exception occurred: %@ -- %@", newDebugger, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			}
+			@catch (OOFoundationException *exception)
 			{
 				OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an exception occurred: %@ -- %@", newDebugger, [exception name], [exception reason]);
 			}
@@ -223,7 +229,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 					   colorKey:oo::NSStringOrNil(colorKey)
 				  emphasisRange:emphasisRange];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send JavaScript console text to debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send JavaScript console text to debugger: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -247,7 +257,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	{
 		[_debugger debugMonitorClearConsole:self];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to clear JavaScript console: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to clear JavaScript console: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -262,7 +276,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
 	{
 		[_debugger debugMonitorShowConsole:self];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to show JavaScript console: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to show JavaScript console: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -345,7 +363,11 @@ static const char * const kOODebugMonitorApplicationWillTerminateNotificationNam
    noteChangedConfigrationValue:value
 						 forKey:key];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send configuration update to debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send configuration update to debugger: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -789,7 +811,11 @@ struct EntityDumpState
 	{
 		[_debugger disconnectDebugMonitor:self message:oo::NSStringOrNil(message)];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to disconnect debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to disconnect debugger: %@ -- %@", [exception name], [exception reason]);
 	}

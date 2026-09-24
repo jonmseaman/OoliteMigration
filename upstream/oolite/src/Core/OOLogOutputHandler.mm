@@ -39,6 +39,7 @@ SOFTWARE.
 #include "oofnd/StdLib.hpp"
 #include "oofnd/Thread.hpp"
 #import "NSFileManagerOOExtensions.h"
+#import "OOFoundationException.h"
 #include <SDL3/SDL_stdinc.h>
 #include <atomic>
 #include <chrono>
@@ -531,7 +532,8 @@ enum
 				objc_autoreleasePoolPop(pool);
 			}
 		}
-		@catch (NSException *exception) {}
+		@catch (OOException *exception) {}
+		@catch (OOFoundationException *exception) {}
 		objc_autoreleasePoolPop(pool);
 		
 		// Clean up; after this, ivars are out of bounds.
