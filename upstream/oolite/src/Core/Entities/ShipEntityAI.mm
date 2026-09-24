@@ -619,7 +619,7 @@ using ooscript::Context;
 	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !dockingInstructions.isNull()))
 	{
 		// remember the instructions (the station's weak reference is kept as an Object node)
-		dockingInstructions = oo::PListFrom([station dockingInstructionsForShip:self]);
+		dockingInstructions = [station dockingInstructionsForShip:self];
 		if (!dockingInstructions.isNull())
 		{
 			[self recallDockingInstructions];

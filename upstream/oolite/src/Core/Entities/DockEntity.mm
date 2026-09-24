@@ -70,10 +70,10 @@ std::string DescriptionForLog(const oo::PList &plist)
 }
 
 
-// OOMakeDockingInstructions() with no comms message, as the dictionary -dockingInstructionsForShip: returns.
-id DockingInstructions(StationEntity *station, HPVector coords, float speed, float range, const char *ai_message, BOOL match_rotation, int docking_stage)
+// OOMakeDockingInstructions() with no comms message, as -dockingInstructionsForShip: returns it.
+oo::PList DockingInstructions(StationEntity *station, HPVector coords, float speed, float range, const char *ai_message, BOOL match_rotation, int docking_stage)
 {
-	return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(station, coords, speed, range, std::string(ai_message), std::nullopt, match_rotation, docking_stage));
+	return cxx_OOMakeDockingInstructions(station, coords, speed, range, std::string(ai_message), std::nullopt, match_rotation, docking_stage);
 }
 
 
@@ -319,9 +319,9 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (id) dockingInstructionsForShip:(ShipEntity *)ship	// shared selector (proposed ADR-0043)
-{	
-	if (ship == nil)  return nil;
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship
+{
+	if (ship == nil)  return oo::PList();
 	
 	OOUniversalID	ship_id = [ship universalID];
 	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
@@ -422,7 +422,7 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 	// get the NEXT coordinates (a copy: the messages below may run code that changes the queue)
 	if (coordinatesStack.size() < 2 || !coordinatesStack[1].isDict())
 	{
-		return nil;
+		return oo::PList();
 	}
 	const oo::PList next = coordinatesStack[1];
 	
@@ -978,12 +978,12 @@ std::optional<std::string> OptionalStringValue(const oo::PList *value)
 }
 
 
-- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(id)role	// shared selector (proposed ADR-0043)
+- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role
 {
 	NSUInteger count = 0;
 	for (const oo::ObjCRef<ShipEntity *> &ship : launchQueue)
 	{
-		if ([ship.get() hasPrimaryRole:role])  count++;
+		if ([ship.get() hasPrimaryRole:oo::NSStringFrom(role)])  count++;
 	}
 	return count;
 }
