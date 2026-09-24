@@ -299,7 +299,7 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 		e1 = entities_to_test[i];
 		if (e1->hasCollided)
 		{
-			[[e1 collisionArray] removeAllObjects];
+			if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e1 cxx_collidingEntities])  colliding->clear();
 			e1->hasCollided = NO;
 		}
 		if (e1->isShip)
@@ -411,21 +411,21 @@ static BOOL positionIsWithinBorders(HPVector position, CollisionRegion *region)
 							// now we have no need to check the e2-e1 collision
 							if (e1->collider)
 							{
-								[[e1 collisionArray] addObject:e1->collider];
+								if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e1 cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<Entity *>(e1->collider));
 							}
 							else
 							{
-								[[e1 collisionArray] addObject:e2];
+								if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e1 cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<Entity *>(e2));
 							}
 							e1->hasCollided = YES;
 						
 							if (e2->collider)
 							{
-								[[e2 collisionArray] addObject:e2->collider];
+								if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e2 cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<Entity *>(e2->collider));
 							}
 							else
 							{
-								[[e2 collisionArray] addObject:e1];
+								if (std::vector<oo::ObjCRef<Entity *>> *colliding = [e2 cxx_collidingEntities])  colliding->push_back(oo::ObjCRef<Entity *>(e1));
 							}
 							e2->hasCollided = YES;
 						}
