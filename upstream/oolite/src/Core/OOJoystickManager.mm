@@ -332,7 +332,7 @@ static id sSharedStickHandler = nil;
 	std::vector<std::string> stickList;
 	for (i = 0; i < stickCount; i++)
 	{
-		stickList.push_back(oo::StdString([self nameOfJoystick:i]));
+		stickList.push_back([self nameOfJoystick:i].value_or(std::string()));	// a nameless stick lists as "", as before
 	}
 	return stickList;
 }
@@ -752,9 +752,9 @@ static id sSharedStickHandler = nil;
 
 // These get overidden by subclasses
 
-- (id) nameOfJoystick:(NSUInteger)stickNumber	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) nameOfJoystick:(NSUInteger)stickNumber
 {
-	return @"Dummy joystick";
+	return std::string("Dummy joystick");
 }
 
 - (int16_t) getAxisWithStick:(NSUInteger)stickNum axis:(NSUInteger)axisNum
