@@ -8406,7 +8406,7 @@ static void VerifyDesc(NSString *key, id desc)
 		}
 		else if ([key isEqualToString:@"texture"])
 		{
-			[[self planet] setUpPlanetFromTexture:(NSString *)object];
+			[[self planet] setUpPlanetFromTexture:oo::OptionalString((NSString *)object)];	// as the selector converted it
 		}
 		else if ([key isEqualToString:@"texture_hsb_color"])
 		{
