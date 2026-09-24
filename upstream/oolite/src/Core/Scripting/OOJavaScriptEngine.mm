@@ -32,6 +32,7 @@ MA 02110-1301, USA.
 #include "oofnd/PList.hpp"
 #include "oofnd/String.hpp"
 #include <cstring>
+#include "oofnd/StdLib.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -2152,6 +2153,10 @@ oo::PList OOJSDictionaryFromStringTable(ooscript::Context context, ooscript::Val
 
 
 namespace {
+/*	JS class -> converter. Was an NSMutableDictionary of boxed class and function pointers
+	(bead oo-3rb.50); allocated on first registration and deleted by
+	UnregisterObjectConverters(), as the dictionary was released there.
+*/
 static std::unordered_map<const ooscript::ClassDef *, OOJSClassConverterCallback> *sObjectConverters;
 } // namespace
 
