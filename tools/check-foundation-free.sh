@@ -136,7 +136,7 @@ link_check() {
 		local d
 		while IFS= read -r d; do
 			all="$all $d"
-			if printf '%s' "$d" | grep -qi 'gnustep-base'; then bad="$bad $(basename "$f")->$d"; fi
+			if printf '%s' "$d" | grep -qi 'gnustep[-]base'; then bad="$bad $(basename "$f")->$d"; fi
 			[ -f "$dir/$d" ] && queue+=("$dir/$d")
 		done <<<"$imports"
 	done
