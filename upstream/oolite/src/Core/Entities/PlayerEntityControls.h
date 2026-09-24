@@ -42,12 +42,12 @@ MA 02110-1301, USA.
 - (void) beginWitchspaceCountdown;
 - (void) cancelWitchspaceCountdown;
 - (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def;	// an Array of key-definition Dicts, each fully expanded
-- (BOOL) checkNavKeyPress:(NSArray*)key_def;
-- (BOOL) checkKeyPress:(NSArray*)key_def;
-- (BOOL) checkKeyPress:(NSArray*)key_def fKey_only:(BOOL)fKey_only;
-- (BOOL) checkKeyPress:(NSArray*)key_def ignore_ctrl:(BOOL)ignore_ctrl;
-- (BOOL) checkKeyPress:(NSArray*)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl;
-- (int) getFirstKeyCode:(NSArray*)key_def;
+- (BOOL) checkNavKeyPress:(const oo::PList &)key_def;
+- (BOOL) checkKeyPress:(const oo::PList &)key_def;
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only;
+- (BOOL) checkKeyPress:(const oo::PList &)key_def ignore_ctrl:(BOOL)ignore_ctrl;
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl;
+- (int) getFirstKeyCode:(const oo::PList &)key_def;
 
 @end
 
