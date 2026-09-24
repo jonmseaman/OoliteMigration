@@ -13,30 +13,34 @@
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
 
+#include "oofnd/StdLib.hpp"
+
 
 // Simulate literal CF/NS strings. Each literal string that is used becomes a single object. Since it uses pointers as keys, it should only be used with literals.
 // Called from OOTCPStreamDecoder.c through OOALSTR(), so it keeps C linkage now that this file is Objective-C++ (bead oo-x7o).
 extern "C" OOALStringRef OOALGetConstantString(const char *string);
 OOALStringRef OOALGetConstantString(const char *string)
 {
-	static NSMutableDictionary		*sStrings = nil;
-	NSValue							*key = nil;
+	/*	C string pointer -> string, retained. Was an NSMutableDictionary keyed by boxed
+		pointers (bead oo-3rb.47); allocated on first use and never freed, as it was.
+	*/
+	static std::unordered_map<const char *, NSString *>	*sStrings = NULL;
 	NSString						*value = nil;
-	
-	if (sStrings == nil)
+
+	if (sStrings == NULL)
 	{
-		sStrings = [[NSMutableDictionary alloc] init];
+		sStrings = new std::unordered_map<const char *, NSString *>;
 	}
-	
-	key = [NSValue valueWithPointer:string];
-	value = [sStrings objectForKey:key];
+
+	auto it = sStrings->find(string);
+	if (it != sStrings->end())  value = it->second;
 	if (value == nil)
 	{
 		// Note: non-ASCII strings are not permitted, but we don't bother to detect them.
 		value = [NSString stringWithUTF8String:string];
-		if (value != nil)  [sStrings setObject:value forKey:key];
+		if (value != nil)  (*sStrings)[string] = [value retain];
 	}
-	
+
 	return value;
 }
 
