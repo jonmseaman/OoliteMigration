@@ -23,7 +23,6 @@ MA );-);, USA.
 */
 
 #import "OOConstToString.h"
-#import "OOPListView.h"
 
 #import "Universe.h"
 #import "PlayerEntity.h"
@@ -36,102 +35,102 @@ MA );-);, USA.
 #define REVERSE_CASE(foo) if (string == #foo) return foo;
 
 
-#define ENTRY(label, value) case label: return @#label;
-#define GALACTIC_HYPERSPACE_ENTRY(label, value) case GALACTIC_HYPERSPACE_##label: return @#label;
-#define DIFF_STRING_ENTRY(label, string) case label: return @string;
+#define ENTRY(label, value) case label: return #label;
+#define GALACTIC_HYPERSPACE_ENTRY(label, value) case GALACTIC_HYPERSPACE_##label: return #label;
+#define DIFF_STRING_ENTRY(label, string) case label: return string;
 
-NSString *OOStringFromEntityStatus(OOEntityStatus value)
+std::string cxx_OOStringFromEntityStatus(OOEntityStatus value)
 {
 	switch (value)
 	{
 		#include "OOEntityStatus.tbl"
 	}
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
-NSString *OOStringFromBehaviour(OOBehaviour value)
+std::string cxx_OOStringFromBehaviour(OOBehaviour value)
 {
 	switch (value)
 	{
 		#include "OOBehaviour.tbl"
 	}
 	
-	return @"** BEHAVIOUR UNKNOWN **";
+	return "** BEHAVIOUR UNKNOWN **";
 }
 
 
-NSString *OOStringFromCompassMode(OOCompassMode value)
+std::string cxx_OOStringFromCompassMode(OOCompassMode value)
 {
 	switch (value)
 	{
 		#include "OOCompassMode.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
-NSString *OOStringFromLongRangeChartMode(OOLongRangeChartMode value)
+std::string cxx_OOStringFromLongRangeChartMode(OOLongRangeChartMode value)
 {
 	switch (value)
 	{
 		#include "OOLongRangeChartMode.tbl"
 	}
 
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
-NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour value)
+std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour value)
 {
 	switch (value)
 	{
 		#include "OOGalacticHyperspaceBehaviour.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
-NSString *OOStringFromGUIScreenID(OOGUIScreenID value)
+std::string cxx_OOStringFromGUIScreenID(OOGUIScreenID value)
 {
 	switch (value)
 	{
 		#include "OOGUIScreenID.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
-NSString *OOStringFromScanClass(OOScanClass value)
+std::string cxx_OOStringFromScanClass(OOScanClass value)
 {
 	switch (value)
 	{
 		#include "OOScanClass.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
-NSString *OOStringFromShipDamageType(OOShipDamageType value)
+std::string cxx_OOStringFromShipDamageType(OOShipDamageType value)
 {
 	switch (value)
 	{
 		#include "OOShipDamageType.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
-NSString *OOStringFromLegalStatusReason(OOLegalStatusReason value)
+std::string cxx_OOStringFromLegalStatusReason(OOLegalStatusReason value)
 {
 	switch (value)
 	{
 		#include "OOLegalStatusReason.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
@@ -139,10 +138,10 @@ NSString *OOStringFromLegalStatusReason(OOLegalStatusReason value)
 #undef GALACTIC_HYPERSPACE_ENTRY
 
 
-#define ENTRY(label, value) if ([string isEqualToString:@#label])  return label;
-#define GALACTIC_HYPERSPACE_ENTRY(label, value)	if ([string isEqualToString:@#label])  return GALACTIC_HYPERSPACE_##label;
+#define ENTRY(label, value) if (string == #label)  return label;
+#define GALACTIC_HYPERSPACE_ENTRY(label, value)	if (string == #label)  return GALACTIC_HYPERSPACE_##label;
 
-OOEntityStatus OOEntityStatusFromString(NSString *string)
+OOEntityStatus cxx_OOEntityStatusFromString(const std::string &string)
 {
 	#include "OOEntityStatus.tbl"
 	
@@ -150,7 +149,7 @@ OOEntityStatus OOEntityStatusFromString(NSString *string)
 }
 
 
-OOCompassMode OOCompassModeFromString(NSString *string)
+OOCompassMode cxx_OOCompassModeFromString(const std::string &string)
 {
 	#include "OOCompassMode.tbl"
 	
@@ -158,23 +157,21 @@ OOCompassMode OOCompassModeFromString(NSString *string)
 }
 
 
-OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string)
+OOGalacticHyperspaceBehaviour cxx_OOGalacticHyperspaceBehaviourFromString(const std::string &string)
 {
 	#include "OOGalacticHyperspaceBehaviour.tbl"
 	
 	// Transparently (but inefficiently) support american spelling. FIXME: remove in EMMSTRAN.
-	if ([string hasPrefix:@"BEHAVIOR_"])
+	if (oo::str::hasPrefix(string, "BEHAVIOR_"))
 	{
-		string = [string substringFromIndex:[@"BEHAVIOR_" length]];
-		string = [@"BEHAVIOUR_" stringByAppendingString:string];
-		return OOGalacticHyperspaceBehaviourFromString(string);
+		return cxx_OOGalacticHyperspaceBehaviourFromString("BEHAVIOUR_" + string.substr(9));
 	}
 	
 	return (OOGalacticHyperspaceBehaviour)kOOGalacticHyperspaceBehaviourDefault;
 }
 
 
-OOGUIScreenID OOGUIScreenIDFromString(NSString *string)
+OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string)
 {
 	#include "OOGUIScreenID.tbl"
 	
@@ -182,14 +179,14 @@ OOGUIScreenID OOGUIScreenIDFromString(NSString *string)
 }
 
 
-OOScanClass OOScanClassFromString(NSString *string)
+OOScanClass cxx_OOScanClassFromString(const std::string &string)
 {
 	#include "OOScanClass.tbl"
 	
 	return (OOScanClass)kOOScanClassDefault;
 }
 
-OOLongRangeChartMode OOLongRangeChartModeFromString(NSString *string)
+OOLongRangeChartMode cxx_OOLongRangeChartModeFromString(const std::string &string)
 {
 	#include "OOLongRangeChartMode.tbl"
 	
@@ -213,35 +210,41 @@ std::string cxx_RouteTypeToString(OORouteType routeType)
 }
 
 
-NSString *OODisplayStringFromGovernmentID(OOGovernmentID government)
+namespace
 {
-	NSArray		*strings = nil;
-	NSString	*value = nil;
-	
-	strings = [[UNIVERSE descriptions] objectForKey:@"government"]; 
-	if ([strings isKindOfClass:[NSArray class]] && government < [strings count])
-	{
-		value = [strings objectAtIndex:government];
-		if ([value isKindOfClass:[NSString class]]) return value;
-	}
-	
-	return nil;
+// PListView at<NSString *>'s rule (OOCollectionExtractors' StringForObject): the element if it is a
+// string, or a number's -stringValue; nullopt (was nil) for anything else or a missing element.
+std::optional<std::string> DescriptionStringAt(const oo::PList &strings, std::size_t index)
+{
+	const oo::PList *value = strings.at(index);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return strings.at<std::string>(index);
+}
 }
 
 
-NSString *OODisplayStringFromEconomyID(OOEconomyID economy)
+std::optional<std::string> cxx_OODisplayStringFromGovernmentID(OOGovernmentID government)
 {
-	NSArray		*strings = nil;
-	NSString	*value = nil;
-	
-	strings = [[UNIVERSE descriptions] objectForKey:@"economy"]; 
-	if ([strings isKindOfClass:[NSArray class]] && economy < [strings count])
+	// Universe is not migrated yet: only the one sub-array of -descriptions, converted at the call.
+	const oo::PList strings = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"government"]);
+	if (strings.isArray() && government < strings.count())
 	{
-		value = [strings objectAtIndex:economy];
-		if ([value isKindOfClass:[NSString class]]) return value;
+		if (const std::string *value = strings.at(government)->getIf<std::string>())  return *value;
 	}
-	
-	return nil;
+
+	return std::nullopt;
+}
+
+
+std::optional<std::string> cxx_OODisplayStringFromEconomyID(OOEconomyID economy)
+{
+	const oo::PList strings = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"economy"]);
+	if (strings.isArray() && economy < strings.count())
+	{
+		if (const std::string *value = strings.at(economy)->getIf<std::string>())  return *value;
+	}
+
+	return std::nullopt;
 }
 
 
@@ -264,36 +267,37 @@ std::string cxx_JSTypeToString(int /* ooscript::Type */ type)
 }
 
 
-NSString *OOStringFromWeaponType(OOWeaponType weapon)
+std::optional<std::string> cxx_OOStringFromWeaponType(OOWeaponType weapon)
 {
 	if (weapon == nil) {
-		return @"EQ_WEAPON_NONE";
+		return "EQ_WEAPON_NONE";
 	} else {
-		return [weapon identifier];
+		// OOEquipmentType is not migrated yet: its -identifier, converted at the call.
+		return oo::OptionalString([weapon identifier]);
 	}
 }
 
 
-OOWeaponType OOWeaponTypeFromString(NSString *string)
+OOWeaponType cxx_OOWeaponTypeFromString(const std::string &string)
 {
-	return OOWeaponTypeFromEquipmentIdentifierSloppy(string);
+	return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(string);
 }
 
 
-NSString *OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon)
+std::optional<std::string> cxx_OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon)
 {
-	return [weapon identifier];
+	return oo::OptionalString([weapon identifier]);
 }
 
 
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierSloppy(NSString *string)
+OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(const std::string &string)
 {
-	OOWeaponType w = [OOEquipmentType equipmentTypeWithIdentifier:string];
+	OOWeaponType w = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(string)];
 	if (w == nil)
 	{
-		if (![string hasPrefix:@"EQ_"])
+		if (!oo::str::hasPrefix(string, "EQ_"))
 		{
-			w = [OOEquipmentType equipmentTypeWithIdentifier:[NSString stringWithFormat:@"EQ_%@",string]];
+			w = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom("EQ_" + string)];
 			if (w != nil)
 			{
 				return w;
@@ -307,34 +311,34 @@ OOWeaponType OOWeaponTypeFromEquipmentIdentifierSloppy(NSString *string)
 
 /* Previous save games will have weapon types stored as ints to the
  * various weapon types */
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string)
+OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierLegacy(const std::string &string)
 {
-	if ([string intValue] > 0)
+	if (oo::str::intValue(string) > 0)
 	{
-		switch ([string intValue])
+		switch (oo::str::intValue(string))
 		{
 		case 2:
-			return OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_PULSE_LASER");
+			return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_PULSE_LASER");
 		case 3:
-			return OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_BEAM_LASER");
+			return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_BEAM_LASER");
 		case 4:
-			return OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_MINING_LASER");
+			return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_MINING_LASER");
 		case 5:
-			return OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_MILITARY_LASER");
+			return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_MILITARY_LASER");
 		case 10:
-			return OOWeaponTypeFromEquipmentIdentifierSloppy(@"EQ_WEAPON_THARGOID_LASER");
+			return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy("EQ_WEAPON_THARGOID_LASER");
 		default:
-			return OOWeaponTypeFromEquipmentIdentifierSloppy(string);
+			return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(string);
 		}
 	}
-	return OOWeaponTypeFromEquipmentIdentifierSloppy(string);
+	return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(string);
 }
 
 
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierStrict(NSString *string)
+OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierStrict(const std::string &string)
 {
 	// there is no difference between the two any more
-	return OOWeaponTypeFromEquipmentIdentifierSloppy(string);
+	return cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(string);
 }
 
 
@@ -404,11 +408,10 @@ OOEnergyUnitType cxx_StringToEnergyUnitType(const std::string &string)
 }
 
 
-NSString *OODisplayRatingStringFromKillCount(unsigned kills)
+std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills)
 {
 	enum { kRatingCount = 9 };
-	
-	NSArray				*ratingNames = nil;
+
 	const unsigned		killThresholds[kRatingCount - 1] =
 						{
 							0x0008,
@@ -421,49 +424,50 @@ NSString *OODisplayRatingStringFromKillCount(unsigned kills)
 							0x1900
 						};
 	unsigned			i;
-	
-	ratingNames = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"rating");
+
+	const oo::PList ratingNames = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"rating"]);
 	for (i = 0; i < kRatingCount - 1; ++i)
 	{
-		if (kills < killThresholds[i])  return oo::PListView(ratingNames).at<NSString *>(i);
+		if (kills < killThresholds[i])  return DescriptionStringAt(ratingNames, i);
 	}
-	
-	return oo::PListView(ratingNames).at<NSString *>(kRatingCount - 1);
+
+	return DescriptionStringAt(ratingNames, kRatingCount - 1);
 }
 
 
-NSString *KillCountToRatingAndKillString(unsigned kills)
+std::string cxx_KillCountToRatingAndKillString(unsigned kills)
 {
-	return [NSString stringWithFormat:@"%@   (%u)", OODisplayRatingStringFromKillCount(kills), kills];
+	// %@ of a nil rating printed "(null)".
+	const std::optional<std::string> rating = cxx_OODisplayRatingStringFromKillCount(kills);
+	return oo::str::format("%s   (%u)", rating.has_value() ? rating->c_str() : "(null)", kills);
 }
 
 
-NSString *OODisplayStringFromLegalStatus(int legalStatus)
+std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus)
 {
 	enum { kStatusCount = 3 };
-	
-	NSArray				*statusNames = nil;
+
 	const int			statusThresholds[kStatusCount - 1] =
 						{
 							1,
 							51
 						};
 	unsigned			i;
-	
-	statusNames = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"legal_status");
+
+	const oo::PList statusNames = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"legal_status"]);
 	for (i = 0; i != kStatusCount - 1; ++i)
 	{
-		if (legalStatus < statusThresholds[i])  return oo::PListView(statusNames).at<NSString *>(i);
+		if (legalStatus < statusThresholds[i])  return DescriptionStringAt(statusNames, i);
 	}
-	
-	return oo::PListView(statusNames).at<NSString *>(kStatusCount - 1);
+
+	return DescriptionStringAt(statusNames, kStatusCount - 1);
 }
 
 
-NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition)
+std::optional<std::string> cxx_OODisplayStringFromAlertCondition(OOAlertCondition alertCondition)
 {
-	NSArray *conditionNames = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"condition");
-	return oo::PListView(conditionNames).at<NSString *>(alertCondition);
+	const oo::PList conditionNames = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"condition"]);
+	return DescriptionStringAt(conditionNames, alertCondition);
 }
 
 
@@ -506,36 +510,39 @@ OOShaderSetting OOShaderSettingFromString(NSString *string)
 }
 
 
-NSString *CommodityDisplayNameForSymbolicName(NSString *symbolicName)
+std::string cxx_CommodityDisplayNameForSymbolicName(const std::string &symbolicName)
 {
-	NSString *ret = [UNIVERSE descriptionForKey:[@"commodity-name " stringByAppendingString:[symbolicName lowercaseString]]];
-	return ret ? ret : symbolicName;
+	// Universe is not migrated yet: -descriptionForKey:, converted at the call.
+	const std::optional<std::string> ret = oo::OptionalString([UNIVERSE descriptionForKey:oo::NSStringFrom("commodity-name " + oo::str::lowercase(symbolicName))]);
+	return ret.has_value() ? *ret : symbolicName;
 }
 
 
-NSString *CommodityDisplayNameForCommodityArray(NSArray *commodityDefinition)
+std::string cxx_CommodityDisplayNameForCommodityArray(const oo::PList &commodityDefinition)
 {
-	return CommodityDisplayNameForSymbolicName(oo::PListView(commodityDefinition).at<NSString *>(MARKET_NAME));
+	return cxx_CommodityDisplayNameForSymbolicName(commodityDefinition.at<std::string>(MARKET_NAME));
 }
 
 
-NSString *DisplayStringForMassUnit(OOMassUnit unit)
+std::optional<std::string> cxx_DisplayStringForMassUnit(OOMassUnit unit)
 {
+	// DESC() is Universe's description lookup (not migrated yet), converted at the call.
 	switch (unit)
 	{
-		case UNITS_TONS:  return DESC(@"cargo-tons-symbol");
-		case UNITS_KILOGRAMS:  return DESC(@"cargo-kilograms-symbol");
-		case UNITS_GRAMS:  return DESC(@"cargo-grams-symbol");
+		case UNITS_TONS:  return oo::OptionalString(DESC(@"cargo-tons-symbol"));
+		case UNITS_KILOGRAMS:  return oo::OptionalString(DESC(@"cargo-kilograms-symbol"));
+		case UNITS_GRAMS:  return oo::OptionalString(DESC(@"cargo-grams-symbol"));
 		case UNITS_UNKNOWN:  break;
 	}
-	
-	return @"??";
+
+	return "??";
 }
 
 
-NSString *DisplayStringForMassUnitForCommodity(OOCommodityType commodity)
+std::optional<std::string> cxx_DisplayStringForMassUnitForCommodity(const std::string &commodity)
 {
-	return DisplayStringForMassUnit([[UNIVERSE commodityMarket] massUnitForGood:commodity]);
+	// -massUnitForGood: is a shared selector (id): the good is given as an Objective-C string.
+	return cxx_DisplayStringForMassUnit([[UNIVERSE commodityMarket] massUnitForGood:oo::NSStringFrom(commodity)]);
 }
 
 
