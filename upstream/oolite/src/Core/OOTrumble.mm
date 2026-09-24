@@ -30,6 +30,8 @@ MA 02110-1301, USA.
 #import "OOSound.h"
 #import "OOStringParsing.h"
 #import "OOMaths.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
 #import "MyOpenGLView.h"
 
 
@@ -58,12 +60,12 @@ static void PlayTrumbleSqueal(void);
 {
 	self = [super init];
 	
-	[self setupForPlayer: p1 digram: @"a1"];
+	[self setupForPlayer: p1 digram: "a1"];
 	
 	return self;
 }
 
-- (id) initForPlayer:(PlayerEntity*) p1 digram:(NSString*) digramString
+- (id) initForPlayer:(PlayerEntity*) p1 digram:(const std::string &) digramString
 {
 	self = [super init];
 	
@@ -72,12 +74,13 @@ static void PlayTrumbleSqueal(void);
 	return self;
 }
 
-- (void) setupForPlayer:(PlayerEntity*) p1 digram:(NSString*) digramString
+- (void) setupForPlayer:(PlayerEntity*) p1 digram:(const std::string &) digramString
 {
-	// set digram
+	// set digram (UTF-16 units, as -characterAtIndex: read them; a missing string read as 0s)
 	//
-	digram[0] = [digramString characterAtIndex:0];
-	digram[1] = [digramString characterAtIndex:1];
+	const std::u16string digramUnits = oo::utf8ToUtf16(digramString);
+	digram[0] = (digramUnits.size() > 0) ? digramUnits[0] : 0;
+	digram[1] = (digramUnits.size() > 1) ? digramUnits[1] : 0;
 	
 	// set player
 	//
@@ -228,7 +231,7 @@ static void PlayTrumbleSqueal(void);
 		newdigram[0] = parentdigram[0] ^ mutation1;
 		newdigram[1] = parentdigram[1] ^ mutation2;
 		//
-		[self setupForPlayer: player digram: [NSString stringWithCharacters:newdigram length:2]];
+		[self setupForPlayer: player digram: oo::utf16ToUtf8(std::u16string(newdigram, newdigram + 2))];
 		//
 		size = [parentTrumble size] * 0.4;
 		if (size < 0.5)
@@ -587,11 +590,10 @@ static void PlayTrumbleSqueal(void);
 		// consult menu...
 		ShipEntity *selectedCargopod = nil;
 		float mostYummy = 0.0;
-		NSMutableArray *cargopods = [player cargo];	// the cargo pods
-		NSUInteger i, n_pods = [cargopods count];
-		for (i = 0 ; i < n_pods; i++)
+		id cargopods = [player cargo];	// the cargo pods: the player's own array (ShipEntity is an unmigrated callee)
+		for (const oo::ObjCRef<ShipEntity *> &cargopodRef : oo::ObjCRefsFrom<ShipEntity *>(cargopods))
 		{
-			ShipEntity *cargopod = [cargopods objectAtIndex:i];
+			ShipEntity *cargopod = cargopodRef.get();
 			OOCommodityType cargo_type = [cargopod commodityType];
 			float yumminess = (1.0 + randf()) * [[UNIVERSE commodityMarket] trumbleOpinionForGood:cargo_type];
 			if (yumminess > mostYummy)
@@ -613,10 +615,10 @@ static void PlayTrumbleSqueal(void);
 			if (trumbleAppetiteAccumulator > 10.0)
 			{
 				// eaten all of this cargo!
-				NSString* ms = [NSString stringWithFormat:DESC(@"trumbles-eat-@"),
-								[UNIVERSE displayNameForCommodity:[selectedCargopod commodityType]]];
-				
-				[UNIVERSE addMessage: ms forCount: 4.5];
+				const std::string ms = oo::str::formatRuntime(oo::StdString(DESC(@"trumbles-eat-@")),
+								{ oo::DescriptionOf([UNIVERSE displayNameForCommodity:[selectedCargopod commodityType]]) });
+
+				[UNIVERSE addMessage: oo::NSStringFrom(ms) forCount: 4.5];
 				[cargopods removeObject:selectedCargopod];
 				trumbleAppetiteAccumulator -= 10.0;
 				
@@ -939,33 +941,33 @@ static void PlayTrumbleSqueal(void);
 	}
 }
 
-- (NSDictionary*) dictionary
+- (oo::PList) dictionary
 {
-	return [NSDictionary dictionaryWithObjectsAndKeys:
-		[NSString stringWithCharacters:digram length:2],	@"digram",
-		[NSNumber numberWithFloat:hunger],					@"hunger",
-		[NSNumber numberWithFloat:discomfort],				@"discomfort",
-		[NSNumber numberWithFloat:size],					@"size",
-		[NSNumber numberWithFloat:growth_rate],				@"growth_rate",
-		[NSNumber numberWithFloat:rotation],				@"rotation",
-		[NSNumber numberWithFloat:rotational_velocity],		@"rotational_velocity",
-		StringFromPoint(position),							@"position",
-		StringFromPoint(movement),							@"movement",
-		nil];
+	// (the floats are single reals: they come back as +numberWithFloat:, so the save text is unchanged)
+	oo::PList::Dict result;
+	result.emplace("digram",				oo::PList(oo::utf16ToUtf8(std::u16string(digram, digram + 2))));
+	result.emplace("hunger",				oo::PList::singleReal(hunger));
+	result.emplace("discomfort",			oo::PList::singleReal(discomfort));
+	result.emplace("size",					oo::PList::singleReal(size));
+	result.emplace("growth_rate",			oo::PList::singleReal(growth_rate));
+	result.emplace("rotation",				oo::PList::singleReal(rotation));
+	result.emplace("rotational_velocity",	oo::PList::singleReal(rotational_velocity));
+	result.emplace("position",				oo::PList(cxx_StringFromPoint(position)));
+	result.emplace("movement",				oo::PList(cxx_StringFromPoint(movement)));
+	return oo::PList(std::move(result));
 }
 
-- (void) setFromDictionary:(NSDictionary*) dict
+- (void) setFromDictionary:(const oo::PList &) dict
 {
-	NSString* digramString = (NSString*)[dict objectForKey:@"digram"];
-	[self setupForPlayer: player digram: digramString];
-	hunger =		[[dict objectForKey: @"hunger"]			floatValue];
-	discomfort =	[[dict objectForKey: @"discomfort"]		floatValue];
-	size =			[[dict objectForKey: @"size"]			floatValue];
-	growth_rate =	[[dict objectForKey: @"growth_rate"]	floatValue];
-	rotation =		[[dict objectForKey: @"rotation"]		floatValue];
-	rotational_velocity =	[[dict objectForKey: @"rotational_velocity"]	floatValue];
-	position =	PointFromString([dict objectForKey: @"position"]);
-	movement =	PointFromString([dict objectForKey: @"movement"]);
+	[self setupForPlayer: player digram: dict.get<std::string>("digram")];
+	hunger =		dict.get<float>("hunger");
+	discomfort =	dict.get<float>("discomfort");
+	size =			dict.get<float>("size");
+	growth_rate =	dict.get<float>("growth_rate");
+	rotation =		dict.get<float>("rotation");
+	rotational_velocity =	dict.get<float>("rotational_velocity");
+	position =	cxx_PointFromString(dict.get<std::string>("position"));
+	movement =	cxx_PointFromString(dict.get<std::string>("movement"));
 }
 
 @end
