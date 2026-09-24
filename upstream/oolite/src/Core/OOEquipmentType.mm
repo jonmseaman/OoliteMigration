@@ -48,6 +48,16 @@ std::map<std::string, std::string, std::less<>>						sMissilesRegistry;	// ship 
 
 // requires_equipment & co.: a string or an array of strings (sorted, de-duplicated: was an
 // NSSet); nullopt when absent, and after logging when it is anything else.
+// -[NSDictionary oo_stringForKey:defaultValue:]: a string, or a number's -stringValue, else the
+// fallback.
+std::optional<std::string> StringFor(const oo::PList &info, std::string_view key, const std::optional<std::string> &fallback = std::nullopt)
+{
+	const oo::PList *value = info.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return fallback;
+	return info.get<std::string>(key);
+}
+
+
 std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra, const char *key, const std::string &identifier)
 {
 	const oo::PList *value = extra.find(key);
@@ -217,7 +227,6 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 {
 	BOOL				OK = YES;
 	NSDictionary		*extra = nil;
-	NSArray				*keydef = nil;
 
 	self = [super init];
 	if (self == nil)  OK = NO;
@@ -275,7 +284,9 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 		extra = oo::PListView(info).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX);
 		if (extra != nil)
 		{
-			
+			// One property-list copy of the extra-info dictionary (bead oo-fvnu's chunks read from it).
+			const oo::PList extraInfo = oo::PListFrom(extra);
+
 			_isAvailableToAll = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_all", _isAvailableToAll);
 			_isAvailableToPlayer = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_player", _isAvailableToPlayer);
 			_isAvailableToNPCs = (unsigned char)oo::PListView(extra).get<BOOL>(@"available_to_NPCs", _isAvailableToNPCs);
@@ -297,18 +308,22 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 
 			_installTime = oo::PListView(extra).get<unsigned int>(@"installation_time", 0);
 			_repairTime = oo::PListView(extra).get<unsigned int>(@"repair_time", 0);
-			_provides = [oo::PListView(extra).get<NSArray *>(@"provides", [NSArray array]) retain];
+			if (const oo::PList *provides = extraInfo.get<oo::PList::Array>("provides"))
+			{
+				for (const oo::PList &element : *provides->getIf<oo::PList::Array>())
+				{
+					if (const std::string *text = element.getIf<std::string>())  _provides.push_back(*text);
+				}
+			}
 
 			id dispColor = oo::PListView(extra).get<id>(@"display_color", nil);
 			_displayColor = [[OOColor colorWithDescription:dispColor] retain];
 
-			_weaponInfo = [oo::PListView(extra).get<NSDictionary *>(@"weapon_info", [NSDictionary dictionary]) retain];
+			const oo::PList *weaponInfo = extraInfo.get<oo::PList::Dict>("weapon_info");
+			_weaponInfo = (weaponInfo != nullptr) ? *weaponInfo : oo::PList(oo::PList::Dict{});
 
 			_damageProbability = oo::PListView(extra).get<float>(@"damage_probability", (_isMissileOrMine?0.0:1.0));
 			
-			// One property-list copy of the extra-info dictionary (bead oo-fvnu's chunks read from it).
-			const oo::PList extraInfo = oo::PListFrom(extra);
-			id object = nil;	// the key settings below still read the Foundation dictionary (chunk 3)
 
 			_requiresEquipment = EquipmentKeysFrom(extraInfo, "requires_equipment", _identifier);
 			_requiresAnyEquipment = EquipmentKeysFrom(extraInfo, "requires_any_equipment", _identifier);
@@ -346,13 +361,12 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 			 * scripts and ship scripts are not shared and get one instance
 			 * per item. */
 			
-			_scriptInfo = oo::PListView(extra).get<NSDictionary *>(@"script_info");
-			[_scriptInfo retain];
-			
-			_script = oo::PListView(extra).get<NSString *>(@"script");
-			if (_script != nil && ![OOScript jsScriptFromFileNamed:_script properties:nil])  _script = nil;
-			[_script retain];
-			if (_script != nil)
+			if (const oo::PList *scriptInfo = extraInfo.get<oo::PList::Dict>("script_info"))  _scriptInfo = *scriptInfo;
+
+			_script = StringFor(extraInfo, "script");
+			// +jsScriptFromFileNamed:properties: is not migrated: the name crosses at the call.
+			if (_script.has_value() && ![OOScript jsScriptFromFileNamed:oo::NSStringFrom(*_script) properties:nil])  _script.reset();
+			if (_script.has_value())
 			{
 				_fastAffinityA = !!oo::PListView(extra).get<BOOL>(@"fast_affinity_defensive");
 				_fastAffinityB = !!oo::PListView(extra).get<BOOL>(@"fast_affinity_offensive");
@@ -360,46 +374,36 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 				// look for default activate and mode key settings
 				// note: the customEquipmentActivation array is only populated when starting a game
 				// so the application of any default key settings on equipment will only happen then
-				NSString *checking;
-
-				object = [extra objectForKey:@"default_activate_key"];
-				if ([object isKindOfClass:[NSArray class]]) keydef = object;
-				else if (object != nil)
+				for (const bool activate : { true, false })
 				{
-					OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not an array.", @"default_activate_key", oo::NSStringFrom(_identifier));
-					object = nil;
-				}
+					const char *keyName = activate ? "default_activate_key" : "default_mode_key";
+					oo::PList &defaultKey = activate ? _defaultActivateKey : _defaultModeKey;
 
-				if (object != nil) 
-				{
-					// do processing for key
-					_defaultActivateKey = [PLAYER processKeyCode:keydef];
-					checking = oo::NSStringOrNil([PLAYER validateKey:"activate_" + _identifier checkKeys:oo::PListFrom(_defaultActivateKey)]);
-					
-					if (checking != nil) {
-						OOLog(@"equipment.load", @"***** Error: %@ for equipment item %@ is already in use for %@. Default not applied", @"default_activate_key", oo::NSStringFrom(_identifier), checking);
-						_defaultActivateKey = nil;
-					} 
-				}
+					const oo::PList *keydef = extraInfo.find(keyName);
+					if (keydef != nullptr && !keydef->isArray())
+					{
+						OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not an array.", oo::NSStringFrom(keyName), oo::NSStringFrom(_identifier));
+						keydef = nullptr;
+					}
 
-				object = [extra objectForKey:@"default_mode_key"];
-				if ([object isKindOfClass:[NSArray class]]) keydef = object;
-				else if (object != nil)
-				{
-					OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not an array.", @"default_mode_key", oo::NSStringFrom(_identifier));
-					object = nil;
-				}
+					if (keydef != nullptr)
+					{
+						// do processing for key (-processKeyCode: is not migrated: converted once at the call)
+						defaultKey = oo::PListFrom([PLAYER processKeyCode:oo::ObjectFromPList(*keydef)]);
+						const std::optional<std::string> checking = [PLAYER validateKey:(activate ? "activate_" : "mode_") + _identifier checkKeys:defaultKey];
 
-				if (object != nil) 
-				{
-					// do processing for key
-					_defaultModeKey = [PLAYER processKeyCode:keydef];
-					checking = oo::NSStringOrNil([PLAYER validateKey:"mode_" + _identifier checkKeys:oo::PListFrom(_defaultModeKey)]);
-					
-					if (checking != nil) {
-						OOLog(@"equipment.load", @"***** Error: %@ for equipment item %@ is already in use for %@. Default not applied.", @"default_mode_key", oo::NSStringFrom(_identifier), checking);
-						_defaultModeKey = nil;
-					} 
+						if (checking.has_value()) {
+							if (activate)
+							{
+								OOLog(@"equipment.load", @"***** Error: %@ for equipment item %@ is already in use for %@. Default not applied", oo::NSStringFrom(keyName), oo::NSStringFrom(_identifier), oo::NSStringFrom(*checking));
+							}
+							else
+							{
+								OOLog(@"equipment.load", @"***** Error: %@ for equipment item %@ is already in use for %@. Default not applied.", oo::NSStringFrom(keyName), oo::NSStringFrom(_identifier), oo::NSStringFrom(*checking));
+							}
+							defaultKey = oo::PList();
+						}
+					}
 				}
 			}
 		}
@@ -417,12 +421,6 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 - (void) dealloc
 {
 	DESTROY(_displayColor);
-	DESTROY(_provides);
-	DESTROY(_weaponInfo);
-	DESTROY(_scriptInfo);
-	DESTROY(_script);
-	DESTROY(_defaultActivateKey);
-	DESTROY(_defaultModeKey);
 	
 	[super dealloc];
 }
@@ -654,13 +652,13 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-- (NSDictionary *) scriptInfo
+- (id) scriptInfo	// shared selector (proposed ADR-0043)
 {
-	return _scriptInfo;
+	return oo::ObjectFromPList(_scriptInfo);
 }
 
 
-- (NSString *) scriptName
+- (std::optional<std::string>) cxx_scriptName
 {
 	return _script;
 }
@@ -678,13 +676,13 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-- (NSArray *) defaultActivateKey
+- (oo::PList) cxx_defaultActivateKey
 {
 	return _defaultActivateKey;
 }
 
 
-- (NSArray *) defaultModeKey
+- (oo::PList) cxx_defaultModeKey
 {
 	return _defaultModeKey;
 }
@@ -709,32 +707,32 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 }
 
 
-- (NSArray *) providesForScripting
+- (std::vector<std::string>) cxx_providesForScripting
 {
-	return [[_provides copy] autorelease];
+	return _provides;
 }
 
 
-- (BOOL) provides:(NSString *)key
+- (BOOL) cxx_provides:(const std::string &)key
 {
-	return [_provides containsObject:key];
+	return std::find(_provides.begin(), _provides.end(), key) != _provides.end();
 }
 
 
 // weapon properties follow
 - (BOOL) isTurretLaser
 {
-	return oo::PListView(_weaponInfo).get<BOOL>(@"is_turret_laser", NO);
+	return _weaponInfo.get<bool>("is_turret_laser", false);
 }
 
 
 - (BOOL) isMiningLaser
 {
-	return oo::PListView(_weaponInfo).get<BOOL>(@"is_mining_laser", NO);
+	return _weaponInfo.get<bool>("is_mining_laser", false);
 }
 
 
-- (NSDictionary *) weaponInfo
+- (oo::PList) cxx_weaponInfo
 {
 	return _weaponInfo;
 }
@@ -742,73 +740,75 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 
 - (GLfloat) weaponRange
 {
-	return oo::PListView(_weaponInfo).get<float>(@"range", 12500.0);
+	return _weaponInfo.get<float>("range", 12500.0);
 }
 
 
 - (GLfloat) weaponEnergyUse
 {
-	return oo::PListView(_weaponInfo).get<float>(@"energy", 0.8);
+	return _weaponInfo.get<float>("energy", 0.8);
 }
 
 
 - (GLfloat) weaponDamage
 {
-	return oo::PListView(_weaponInfo).get<float>(@"damage", 15.0);
+	return _weaponInfo.get<float>("damage", 15.0);
 }
 
 
 - (GLfloat) weaponRechargeRate
 {
-	return oo::PListView(_weaponInfo).get<float>(@"recharge_rate", 0.5);
+	return _weaponInfo.get<float>("recharge_rate", 0.5);
 }
 
 
 - (GLfloat) weaponShotTemperature
 {
-	return oo::PListView(_weaponInfo).get<float>(@"shot_temperature", 7.0);
+	return _weaponInfo.get<float>("shot_temperature", 7.0);
 }
 
 
 - (GLfloat) weaponThreatAssessment
 {
-	return oo::PListView(_weaponInfo).get<float>(@"threat_assessment", 1.0);
+	return _weaponInfo.get<float>("threat_assessment", 1.0);
 }
 
 
 - (OOColor *) weaponColor
 {
-	return [OOColor brightColorWithDescription:[_weaponInfo objectForKey:@"color"]];
+	// +brightColorWithDescription: is not migrated: the "color" node crosses as the object it was.
+	const oo::PList *color = _weaponInfo.find("color");
+	return [OOColor brightColorWithDescription:(color != nullptr) ? oo::ObjectFromPList(*color) : nil];
 }
 
 
-- (NSString *) fxShotMissName
+- (std::optional<std::string>) cxx_fxShotMissName
 {
-	return oo::PListView(_weaponInfo).get<NSString *>(@"fx_shot_miss_name", @"[player-laser-miss]");
+	return StringFor(_weaponInfo, "fx_shot_miss_name", "[player-laser-miss]");
 }
 
 
-- (NSString *) fxShotHitName
+- (std::optional<std::string>) cxx_fxShotHitName
 {
-	return oo::PListView(_weaponInfo).get<NSString *>(@"fx_shot_hit_name", @"[player-laser-hit]");
+	return StringFor(_weaponInfo, "fx_shot_hit_name", "[player-laser-hit]");
 }
 
 
-- (NSString *) fxShieldHitName
+- (std::optional<std::string>) cxx_fxShieldHitName
 {
-	return oo::PListView(_weaponInfo).get<NSString *>(@"fx_hitplayer_shielded_name", @"[player-hit-by-weapon]");
+	return StringFor(_weaponInfo, "fx_hitplayer_shielded_name", "[player-hit-by-weapon]");
 }
 
 
-- (NSString *) fxUnshieldedHitName
+- (std::optional<std::string>) cxx_fxUnshieldedHitName
 {
-	return oo::PListView(_weaponInfo).get<NSString *>(@"fx_hitplayer_unshielded_name", @"[player-direct-hit]");
+	return StringFor(_weaponInfo, "fx_hitplayer_unshielded_name", "[player-direct-hit]");
 }
 
 
-- (NSString *) fxWeaponLaunchedName
+- (std::optional<std::string>) cxx_fxWeaponLaunchedName
 {
-	return oo::PListView(_weaponInfo).get<NSString *>(@"fx_weapon_launch_name", (oo::str::hasSuffix(_identifier, "_MINE") ? @"[mine-launched]" : @"[missile-launched]"));
+	return StringFor(_weaponInfo, "fx_weapon_launch_name", (oo::str::hasSuffix(_identifier, "_MINE") ? "[mine-launched]" : "[missile-launched]"));
 }
 
 

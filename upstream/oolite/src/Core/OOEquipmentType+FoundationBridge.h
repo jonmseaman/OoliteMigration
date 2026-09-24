@@ -42,6 +42,19 @@ Copyright (C) 2008-2013 Jens Ayton and contributors (OOEquipmentType.h)
 - (NSArray *) conditions;			// -> -cxx_conditions
 - (NSString *) conditionScript;		// -> -cxx_conditionScript
 
+- (NSString *) scriptName;			// -> -cxx_scriptName
+- (NSArray *) defaultActivateKey;	// -> -cxx_defaultActivateKey
+- (NSArray *) defaultModeKey;		// -> -cxx_defaultModeKey
+- (NSArray *) providesForScripting;	// -> -cxx_providesForScripting
+- (BOOL) provides:(NSString *)key;	// -> -cxx_provides:
+
+- (NSDictionary *) weaponInfo;		// -> -cxx_weaponInfo
+- (NSString *) fxShotMissName;		// -> -cxx_fxShotMissName
+- (NSString *) fxShotHitName;		// -> -cxx_fxShotHitName
+- (NSString *) fxShieldHitName;		// -> -cxx_fxShieldHitName
+- (NSString *) fxUnshieldedHitName;	// -> -cxx_fxUnshieldedHitName
+- (NSString *) fxWeaponLaunchedName;	// -> -cxx_fxWeaponLaunchedName
+
 @end
 
 #endif	// OOEQUIPMENTTYPE_FOUNDATIONBRIDGE_H
