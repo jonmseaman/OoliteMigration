@@ -125,6 +125,7 @@ if host_os != 'darwin'
     oolite_sources += files(
         'NSBundle+Override.mm',
         'NSUserDefaults+Override.mm',
+        'NSUserDefaults+OODefaultsBridge.mm',
     )
 endif
 
