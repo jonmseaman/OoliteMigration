@@ -360,9 +360,9 @@ stage_tier_b() {
     || fail tier-b "tier-b exited 0 but printed no 'tier-b: GREEN' line; it did not complete its stages"
   # ... and it must have actually entered its stages. Their names appear in its step() output.
   local seen
-  seen="$(grep -cE '^==> \[(build|tests|parity|goldens|component|smoke|corpus)\]' "$log" || true)"
-  [ "${seen:-0}" -ge 6 ] \
-    || fail tier-b "tier-b announced only ${seen:-0} of its 7 stages; it exited 0 without running its gate"
+  seen="$(grep -cE '^==> \[(build|tests|parity|game-unit|goldens|component|smoke|corpus)\]' "$log" || true)"
+  [ "${seen:-0}" -ge 7 ] \
+    || fail tier-b "tier-b announced only ${seen:-0} of its 8 stages; it exited 0 without running its gate"
   detail "$(grep -m1 '^tier-b: GREEN' "$log")"
   detail "stage tier-b ok: $seen stage(s) announced, $(( SECONDS - t0 ))s"
 }
