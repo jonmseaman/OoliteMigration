@@ -362,7 +362,7 @@ typedef enum
 	OOTimeAbsolute			cargo_dump_time;			// time cargo was last dumped
 	OOTimeAbsolute			last_shot_time;				// time shot was last fired
 	
-	NSMutableArray			*cargo;						// cargo containers go in here
+	std::vector<oo::ObjCRef<ShipEntity *>>	cargo;	// cargo containers go in here (index 0 is the eject position); edited in place through -cxx_cargo
 	
 	std::optional<std::string>	commodity_type;			// type of commodity in a container; nullopt: not a pod (was nil)
 	OOCargoQuantity			commodity_amount;			// 1 if unit is TONNES (0), possibly more if precious metals KILOGRAMS (1)
@@ -921,7 +921,7 @@ typedef enum
 - (OOCargoQuantity) cargoQuantityOnBoard;
 - (OOCargoType) cargoType;
 - (id) cargoListForScripting;	// shared selector (proposed ADR-0043): an Objective-C array of dictionaries
-- (NSMutableArray *) cargo;
+- (std::vector<oo::ObjCRef<ShipEntity *>> *) cxx_cargo;	// the live cargo pods (nullptr for a nil receiver)
 - (NSUInteger) cxx_cargoCount;	// the number of cargo pods held
 - (void) setCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &)some_cargo;
 - (BOOL) cxx_addCargo:(const std::vector<oo::ObjCRef<ShipEntity *>> &) some_cargo;
