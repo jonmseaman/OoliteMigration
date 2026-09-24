@@ -283,7 +283,7 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (void) setName:(NSString *)inName
+- (void) setName:(id)inName	// shared selector (proposed ADR-0043): an Objective-C string
 {
 	// Block super method; player ship can't be renamed.
 }
@@ -311,7 +311,7 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (void) unloadAllCargoPodsForType:(OOCommodityType)type toManifest:(OOCommodityMarket *) manifest
+- (void) unloadAllCargoPodsForType:(const std::string &)type toManifest:(OOCommodityMarket *) manifest
 {
 	NSInteger i, cargoCount = cargo.size();
 	if (cargoCount == 0)  return;
@@ -320,13 +320,13 @@ static GLfloat		sBaseMass = 0.0;
 	for (i =  cargoCount - 1; i >= 0 ; i--)
 	{
 		ShipEntity *cargoItem = cargo[i].get();
-		NSString * commodityType = [cargoItem commodityType];
-		if (commodityType == nil || [commodityType isEqualToString:type])
+		const std::optional<std::string> commodityType = [cargoItem cxx_commodityType];
+		if (!commodityType.has_value() || *commodityType == type)
 		{
-			if ([commodityType isEqualToString:type])
+			if (commodityType.has_value())
 			{
 				// transfer
-				[manifest addQuantity:[cargoItem commodityAmount] forGood:type];
+				[manifest cxx_addQuantity:[cargoItem commodityAmount] forGood:type];
 			}
 			else	// undefined
 			{
@@ -339,13 +339,13 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (void) unloadCargoPodsForType:(OOCommodityType)type amount:(OOCargoQuantity)quantity
+- (void) unloadCargoPodsForType:(const std::string &)type amount:(OOCargoQuantity)quantity
 {
 	NSInteger			i, n_cargo = cargo.size();
 	if (n_cargo == 0)  return;
 	
 	ShipEntity			*cargoItem = nil;
-	OOCommodityType		co_type;
+	std::optional<std::string>	co_type;
 	OOCargoQuantity		amount;
 	OOCargoQuantity		cargoToGo = quantity;
 
@@ -353,10 +353,10 @@ static GLfloat		sBaseMass = 0.0;
 	for (i =  n_cargo - 1; (i >= 0 && cargoToGo > 0) ; i--)
 	{
 		cargoItem = cargo[i].get();
-		co_type = [cargoItem commodityType];
-		if (co_type == nil || [co_type isEqualToString:type])
+		co_type = [cargoItem cxx_commodityType];
+		if (!co_type.has_value() || *co_type == type)
 		{
-			if ([co_type isEqualToString:type])
+			if (co_type.has_value())
 			{
 				amount =  [cargoItem commodityAmount];
 				if (amount <= cargoToGo)
@@ -367,7 +367,7 @@ static GLfloat		sBaseMass = 0.0;
 				else
 				{
 					// we only need to remove a part of the cargo to meet our target
-					[cargoItem setCommodity:co_type andAmount:(amount - cargoToGo)];
+					[cargoItem cxx_setCommodity:*co_type andAmount:(amount - cargoToGo)];
 					cargoToGo = 0;
 					
 				}
@@ -383,7 +383,7 @@ static GLfloat		sBaseMass = 0.0;
 	// now check if we are ready. When not, proceed with quantities in the manifest.
 	if (cargoToGo > 0)
 	{
-		[shipCommodityData removeQuantity:cargoToGo forGood:type];
+		[shipCommodityData cxx_removeQuantity:cargoToGo forGood:type];
 	}
 }
 
@@ -393,8 +393,7 @@ static GLfloat		sBaseMass = 0.0;
 	NSAssert([self isDocked], @"Cannot unload cargo pods unless docked.");
 	
 	/* loads commodities from the cargo pods onto the ship's manifest */
-	NSString *good = nil;
-	foreach (good, [shipCommodityData goods])
+	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
 	{
 		[self unloadAllCargoPodsForType:good toManifest:shipCommodityData];
 	}
@@ -410,14 +409,14 @@ static GLfloat		sBaseMass = 0.0;
 
 
 // TODO: better feedback on the log as to why failing to create player cargo pods causes a CTD?
-- (void) createCargoPodWithType:(OOCommodityType)type andAmount:(OOCargoQuantity)amount
+- (void) createCargoPodWithType:(const std::string &)type andAmount:(OOCargoQuantity)amount
 {
 	ShipEntity *container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
 	if (container)
 	{
 		[container setScanClass: CLASS_CARGO];
 		[container setStatus:STATUS_IN_HOLD];
-		[container setCommodity:type andAmount:amount];
+		[container cxx_setCommodity:type andAmount:amount];
 		cargo.emplace_back(container);
 		[container release];
 	}
@@ -431,13 +430,13 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (void) loadCargoPodsForType:(OOCommodityType)type fromManifest:(OOCommodityMarket *) manifest
+- (void) loadCargoPodsForType:(const std::string &)type fromManifest:(OOCommodityMarket *) manifest
 {
 	// load commodities from the ships manifest into individual cargo pods
 	unsigned j;
 	
-	OOCargoQuantity	quantity = [manifest quantityForGood:type];
-	OOMassUnit		units =	[manifest massUnitForGood:type];
+	OOCargoQuantity	quantity = [manifest cxx_quantityForGood:type];
+	OOMassUnit		units =	[manifest massUnitForGood:oo::NSStringFrom(type)];
 	
 	if (quantity > 0)
 	{
@@ -448,7 +447,7 @@ static GLfloat		sBaseMass = 0.0;
 			{
 				[self createCargoPodWithType:type andAmount:1];		// or CTD if unsuccesful (!)
 			}
-			[manifest setQuantity:0 forGood:type];
+			[manifest cxx_setQuantity:0 forGood:type];
 		}
 		else
 		{
@@ -500,16 +499,16 @@ static GLfloat		sBaseMass = 0.0;
 					quantity -= amountToLoadInCargopod;
 				}
 				// adjust manifest for this commodity
-				[manifest setQuantity:tmpQuantity forGood:type];
+				[manifest cxx_setQuantity:tmpQuantity forGood:type];
 			}
 		}
 	}
 }
 
 
-- (void) loadCargoPodsForType:(OOCommodityType)type amount:(OOCargoQuantity)quantity
+- (void) loadCargoPodsForType:(const std::string &)type amount:(OOCargoQuantity)quantity
 {
-	OOMassUnit unit = [shipCommodityData massUnitForGood:type];
+	OOMassUnit unit = [shipCommodityData massUnitForGood:oo::NSStringFrom(type)];
 	
 	while (quantity)
 	{
@@ -527,7 +526,7 @@ static GLfloat		sBaseMass = 0.0;
 						// the cargopod ship is just being set up. If ejected,  will call UNIVERSE addEntity
 						[container setStatus:STATUS_IN_HOLD];
 						[container setScanClass: CLASS_CARGO];
-						[container setCommodity:type andAmount:smaller_quantity];
+						[container cxx_setCommodity:type andAmount:smaller_quantity];
 						cargo.emplace_back(container);
 						[container release];
 					}
@@ -535,11 +534,11 @@ static GLfloat		sBaseMass = 0.0;
 				else
 				{
 					// try to squeeze any surplus, up to half a ton, in the manifest.
-					int amount = [shipCommodityData quantityForGood:type] + smaller_quantity;
+					int amount = [shipCommodityData cxx_quantityForGood:type] + smaller_quantity;
 					if (amount > MAX_GRAMS_IN_SAFE && unit == UNITS_GRAMS) amount = MAX_GRAMS_IN_SAFE;
 					else if (amount > MAX_KILOGRAMS_IN_SAFE && unit == UNITS_KILOGRAMS) amount = MAX_KILOGRAMS_IN_SAFE;
 
-					[shipCommodityData setQuantity:amount forGood:type];
+					[shipCommodityData cxx_setQuantity:amount forGood:type];
 				}
 				quantity -= smaller_quantity;
 			}
@@ -557,7 +556,7 @@ static GLfloat		sBaseMass = 0.0;
 						// the cargopod ship is just being set up. If ejected, will call UNIVERSE addEntity
 						[container setScanClass: CLASS_CARGO];
 						[container setStatus:STATUS_IN_HOLD];
-						[container setCommodity:type andAmount:1];
+						[container cxx_setCommodity:type andAmount:1];
 						cargo.emplace_back(container);
 						[container release];
 					}
@@ -572,8 +571,7 @@ static GLfloat		sBaseMass = 0.0;
 - (void) loadCargoPods
 {
 	/* loads commodities from the ships manifest into individual cargo pods */
-	NSString *good = nil;
-	foreach (good, [shipCommodityData goods])
+	for (const std::string &good : oo::StringsFrom([shipCommodityData goods]))
 	{
 		[self loadCargoPodsForType:good fromManifest:shipCommodityData];
 	}
@@ -836,14 +834,14 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		return system_id; // no need to calculate
 	}
-	NSDictionary *routeInfo = nil;
-	routeInfo = [UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode];
+	const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]);
 	// no route to destination
-	if (routeInfo == nil)
+	if (routeInfo.isNull())
 	{
 		return target_system_id;
 	}
-	return oo::PListView(oo::PListView(routeInfo).get<NSArray *>(@"route")).at<int>(1);
+	const oo::PList *route = routeInfo.get<oo::PList::Array>("route");
+	return (route != nullptr) ? route->at<int>(1) : 0;
 }
 
 
@@ -895,27 +893,26 @@ static GLfloat		sBaseMass = 0.0;
 		[self setInfoSystemID: target_system_id moveChart: YES];
 		return;
 	}
-	NSArray *route = [oo::PListView([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]).get<NSArray *>(@"route") retain];
+	const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]);
+	const oo::PList *route = routeInfo.get<oo::PList::Array>("route");
 	NSUInteger i;
-	if (route == nil)
+	if (route == nullptr)
 	{
 		[self setInfoSystemID: target_system_id moveChart: YES];
 		return;
 	}
-	for (i = 0; i < [route count]; i++)
+	for (i = 0; i < route->count(); i++)
 	{
-		if ([[route objectAtIndex: i] intValue] == info_system_id)
+		if (route->at<int>(i) == info_system_id)
 		{
-			if (i + 1 < [route count])
+			if (i + 1 < route->count())
 			{
-				[self setInfoSystemID:[[route objectAtIndex:i + 1] unsignedIntValue] moveChart: YES];
-				[route release];
+				[self setInfoSystemID:route->at<unsigned int>(i + 1) moveChart: YES];
 				return;
 			}
 			break;
 		}
 	}
-	[route release];
 	[self setInfoSystemID: target_system_id moveChart: YES];
 	return;
 }
@@ -928,27 +925,26 @@ static GLfloat		sBaseMass = 0.0;
 		[self setInfoSystemID: system_id moveChart: YES];
 		return;
 	}
-	NSArray *route = [oo::PListView([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]).get<NSArray *>(@"route") retain];
+	const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]);
+	const oo::PList *route = routeInfo.get<oo::PList::Array>("route");
 	NSUInteger i;
-	if (route == nil)
+	if (route == nullptr)
 	{
 		[self setInfoSystemID: system_id moveChart: YES];
 		return;
 	}
-	for (i = 0; i < [route count]; i++)
+	for (i = 0; i < route->count(); i++)
 	{
-		if ([[route objectAtIndex: i] intValue] == info_system_id)
+		if (route->at<int>(i) == info_system_id)
 		{
 			if (i > 0)
 			{
-				[self setInfoSystemID: [[route objectAtIndex: i - 1] unsignedIntValue] moveChart: YES];
-				[route release];
+				[self setInfoSystemID: route->at<unsigned int>(i - 1) moveChart: YES];
 				return;
 			}
 			break;
 		}
 	}
-	[route release];
 	[self setInfoSystemID: system_id moveChart: YES];
 	return;
 }
@@ -970,15 +966,16 @@ static GLfloat		sBaseMass = 0.0;
 
 - (BOOL) infoSystemOnRoute
 {
-	NSArray *route = oo::PListView([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]).get<NSArray *>(@"route");
+	const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem:system_id toSystem:target_system_id optimizedBy:ANA_mode]);
+	const oo::PList *route = routeInfo.get<oo::PList::Array>("route");
 	NSUInteger i;
-	if (route == nil)
+	if (route == nullptr)
 	{
 		return NO;
 	}
-	for (i = 0; i < [route count]; i++)
+	for (i = 0; i < route->count(); i++)
 	{
-		if ([[route objectAtIndex: i] intValue] == info_system_id)
+		if (route->at<int>(i) == info_system_id)
 		{
 			return YES;
 		}
@@ -2648,17 +2645,17 @@ static GLfloat		sBaseMass = 0.0;
 
 #ifndef NDEBUG
 #define STAGE_TRACKING_BEGIN	{ \
-									NSString * volatile updateStage = @"initialisation"; \
+									const char * volatile updateStage = "initialisation"; \
 									@try {
 #define STAGE_TRACKING_END			} \
 									@catch (OOException *exception) \
 									{ \
-										OOLog(kOOLogException, @"***** Exception during [%@] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])); \
+										OOLog(kOOLogException, @"***** Exception during [%s] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])); \
 										@throw exception; \
 									} \
 									@catch (OOFoundationException *exception) \
 									{ \
-										OOLog(kOOLogException, @"***** Exception during [%@] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, [exception name], [exception reason]); \
+										OOLog(kOOLogException, @"***** Exception during [%s] in %s : %@ : %@ *****", updateStage, __PRETTY_FUNCTION__, [exception name], [exception reason]); \
 										@throw exception; \
 									} \
 								}
@@ -2674,30 +2671,30 @@ static GLfloat		sBaseMass = 0.0;
 {
 	STAGE_TRACKING_BEGIN
 	
-	UPDATE_STAGE(@"updateMovementFlags");
+	UPDATE_STAGE("updateMovementFlags");
 	[self updateMovementFlags];
-	UPDATE_STAGE(@"updateAlertCondition");
+	UPDATE_STAGE("updateAlertCondition");
 	[self updateAlertCondition];
-	UPDATE_STAGE(@"updateFuelScoops:");
+	UPDATE_STAGE("updateFuelScoops:");
 	[self updateFuelScoops:delta_t];
 	
-	UPDATE_STAGE(@"updateClocks:");
+	UPDATE_STAGE("updateClocks:");
 	[self updateClocks:delta_t];
 	
 	// scripting
-	UPDATE_STAGE(@"updateTimers");
+	UPDATE_STAGE("updateTimers");
 	[OOScriptTimer updateTimers];
-	UPDATE_STAGE(@"checkScriptsIfAppropriate");
+	UPDATE_STAGE("checkScriptsIfAppropriate");
 	[self checkScriptsIfAppropriate];
 	
 	// deal with collisions
-	UPDATE_STAGE(@"manageCollisions");
+	UPDATE_STAGE("manageCollisions");
 	[self manageCollisions];
 	
-	UPDATE_STAGE(@"pollControls:");
+	UPDATE_STAGE("pollControls:");
 	[self pollControls:delta_t];
 	
-	UPDATE_STAGE(@"updateTrumbles:");
+	UPDATE_STAGE("updateTrumbles:");
 	[self updateTrumbles:delta_t];
 	
 	OOEntityStatus status = [self status];
@@ -2719,18 +2716,18 @@ static GLfloat		sBaseMass = 0.0;
 				   gui_screen != GUI_SCREEN_KEYBOARD_LAYOUT))
 	{
 		// and if not, do a restart of the GUI
-		UPDATE_STAGE(@"setGuiToIntroFirstGo:");
+		UPDATE_STAGE("setGuiToIntroFirstGo:");
 		[self setGuiToIntroFirstGo:YES];	//set up demo mode
 	}
 	
 	if (status == STATUS_AUTOPILOT_ENGAGED || status == STATUS_ESCAPE_SEQUENCE)
 	{
-		UPDATE_STAGE(@"performAutopilotUpdates:");
+		UPDATE_STAGE("performAutopilotUpdates:");
 		[self performAutopilotUpdates:delta_t];
 	}
 	else  if (![self isDocked])
 	{
-		UPDATE_STAGE(@"performInFlightUpdates:");
+		UPDATE_STAGE("performInFlightUpdates:");
 		[self performInFlightUpdates:delta_t];
 	}
 	
@@ -2739,36 +2736,36 @@ static GLfloat		sBaseMass = 0.0;
 	*/
 	if (status == STATUS_IN_FLIGHT)
 	{
-		UPDATE_STAGE(@"doBookkeeping:");
+		UPDATE_STAGE("doBookkeeping:");
 		[self doBookkeeping:delta_t];
 	}
 	if (status == STATUS_WITCHSPACE_COUNTDOWN)
 	{
-		UPDATE_STAGE(@"performWitchspaceCountdownUpdates:");
+		UPDATE_STAGE("performWitchspaceCountdownUpdates:");
 		[self performWitchspaceCountdownUpdates:delta_t];
 	}
 	if (status == STATUS_EXITING_WITCHSPACE)
 	{
-		UPDATE_STAGE(@"performWitchspaceExitUpdates:");
+		UPDATE_STAGE("performWitchspaceExitUpdates:");
 		[self performWitchspaceExitUpdates:delta_t];
 	}
 	if (status == STATUS_LAUNCHING)
 	{
-		UPDATE_STAGE(@"performLaunchingUpdates:");
+		UPDATE_STAGE("performLaunchingUpdates:");
 		[self performLaunchingUpdates:delta_t];
 	}
 	if (status == STATUS_DOCKING)
 	{
-		UPDATE_STAGE(@"performDockingUpdates:");
+		UPDATE_STAGE("performDockingUpdates:");
 		[self performDockingUpdates:delta_t];
 	}
 	if (status == STATUS_DEAD)
 	{
-		UPDATE_STAGE(@"performDeadUpdates:");
+		UPDATE_STAGE("performDeadUpdates:");
 		[self performDeadUpdates:delta_t];
 	}
 	
-	UPDATE_STAGE(@"updateWormholes");
+	UPDATE_STAGE("updateWormholes");
 	[self updateWormholes];
 	
 	STAGE_TRACKING_END
@@ -2793,7 +2790,7 @@ static GLfloat		sBaseMass = 0.0;
 		air_friction = 0;
 	}
 
-	UPDATE_STAGE(@"updating weapon temperatures and shot times");
+	UPDATE_STAGE("updating weapon temperatures and shot times");
 	// cool all weapons.
 	float coolAmount = WEAPON_COOLING_FACTOR * delta_t;
 	forward_weapon_temp = fdim(forward_weapon_temp, coolAmount);
@@ -2834,7 +2831,7 @@ static GLfloat		sBaseMass = 0.0;
 	// cloaking device
 	if ([self hasCloakingDevice] && cloaking_device_active)
 	{
-		UPDATE_STAGE(@"updating cloaking device");
+		UPDATE_STAGE("updating cloaking device");
 		
 		energy -= (float)delta_t * CLOAKING_DEVICE_ENERGY_RATE;
 		if (energy < CLOAKING_DEVICE_MIN_ENERGY)
@@ -2844,7 +2841,7 @@ static GLfloat		sBaseMass = 0.0;
 	// military_jammer
 	if ([self hasMilitaryJammer])
 	{
-		UPDATE_STAGE(@"updating military jammer");
+		UPDATE_STAGE("updating military jammer");
 		
 		if (military_jammer_active)
 		{
@@ -2862,7 +2859,7 @@ static GLfloat		sBaseMass = 0.0;
 	// ecm
 	if (ecm_in_operation)
 	{
-		UPDATE_STAGE(@"updating ECM");
+		UPDATE_STAGE("updating ECM");
 		
 		if (energy > 0.0)
 			energy -= (float)(ECM_ENERGY_DRAIN_FACTOR * delta_t);		// drain energy because of the ECM
@@ -2907,7 +2904,7 @@ static GLfloat		sBaseMass = 0.0;
 	   2. If energy banks are below threshold, recharge with generated energy
 	   3. Charge shields with any surplus energy
 	*/
-	UPDATE_STAGE(@"updating energy and shield charges");
+	UPDATE_STAGE("updating energy and shield charges");
 	
 	// 1. (Over)charge energy banks (will get normalised later)
 	energy += [self energyRechargeRate] * delta_t;
@@ -2962,7 +2959,7 @@ static GLfloat		sBaseMass = 0.0;
 	
 	if (sun)
 	{
-		UPDATE_STAGE(@"updating sun effects");
+		UPDATE_STAGE("updating sun effects");
 		
 		// set the ambient temperature here
 		double  sun_zd = sun->zero_distance;	// square of distance
@@ -2996,7 +2993,7 @@ static GLfloat		sBaseMass = 0.0;
 	OOEntityStatus status = [self status];
 	if ((status != STATUS_ESCAPE_SEQUENCE) && (status != STATUS_ENTERING_WITCHSPACE))
 	{
-		UPDATE_STAGE(@"updating cabin temperature");
+		UPDATE_STAGE("updating cabin temperature");
 		
 		// work on the cabin temperature
 		float heatInsulation = [self heatInsulation]; // Optimisation, suggested by EricW
@@ -3018,7 +3015,7 @@ static GLfloat		sBaseMass = 0.0;
 	
 	if ((status == STATUS_ESCAPE_SEQUENCE)&&(shot_time > ESCAPE_SEQUENCE_TIME))
 	{
-		UPDATE_STAGE(@"resetting after escape");
+		UPDATE_STAGE("resetting after escape");
 		ShipEntity	*doppelganger = (ShipEntity*)[self foundTarget];
 		// reset legal status again! Could have changed if a previously launched missile hit a clean NPC while in the escape pod.
 		[self setBounty:0 withReason:kOOLegalStatusReasonEscapePod];
@@ -3085,7 +3082,7 @@ static GLfloat		sBaseMass = 0.0;
 	travelling_at_hyperspeed = (flightSpeed > maxFlightSpeed);
 	if (hyperspeed_engaged)
 	{
-		UPDATE_STAGE(@"updating hyperspeed");
+		UPDATE_STAGE("updating hyperspeed");
 		
 		// increase speed up to maximum hyperspeed
 		if (flightSpeed < maxFlightSpeed * HYPERSPEED_FACTOR)
@@ -3109,7 +3106,7 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		if (afterburner_engaged)
 		{
-			UPDATE_STAGE(@"updating afterburner");
+			UPDATE_STAGE("updating afterburner");
 			
 			float abFactor = [self afterburnerFactor];
 			float maxInjectionSpeed = maxFlightSpeed * abFactor;
@@ -3135,7 +3132,7 @@ static GLfloat		sBaseMass = 0.0;
 		}
 		else
 		{
-			UPDATE_STAGE(@"slowing from hyperspeed");
+			UPDATE_STAGE("slowing from hyperspeed");
 			
 			// slow back down...
 			if (travelling_at_hyperspeed)
@@ -3161,7 +3158,7 @@ static GLfloat		sBaseMass = 0.0;
 	// fuel leakage
 	if ((fuel_leak_rate > 0.0)&&(fuel > 0))
 	{
-		UPDATE_STAGE(@"updating fuel leakage");
+		UPDATE_STAGE("updating fuel leakage");
 		
 		fuel_accumulator -= (float)(fuel_leak_rate * delta_t);
 		while ((fuel_accumulator < 0)&&(fuel > 0))
@@ -3174,7 +3171,7 @@ static GLfloat		sBaseMass = 0.0;
 	}
 	
 	// smart_zoom
-	UPDATE_STAGE(@"updating scanner zoom");
+	UPDATE_STAGE("updating scanner zoom");
 	if (scanner_zoom_rate)
 	{
 		double z = [hud scannerZoom];
@@ -3211,7 +3208,7 @@ static GLfloat		sBaseMass = 0.0;
 	[self validateCompassTarget];
 	
 	// update subentities
-	UPDATE_STAGE(@"updating subentities");
+	UPDATE_STAGE("updating subentities");
 	totalBoundingBox = boundingBox; //	reset totalBoundingBox
 	ShipEntity *se = nil;
 	foreach (se, [self subEntities])
@@ -3236,7 +3233,7 @@ static GLfloat		sBaseMass = 0.0;
 	}
 	
 	// update mousewheel status
-	UPDATE_STAGE(@"updating mousewheel delta");
+	UPDATE_STAGE("updating mousewheel delta");
 	MyOpenGLView *gView = [UNIVERSE gameView];
 	float mouseWheelDelta = [gView mouseWheelDelta];
 	if (mouseWheelDelta > 0.0f)
@@ -3568,7 +3565,7 @@ static GLfloat		sBaseMass = 0.0;
 	while (prev_day < now_day)
 	{
 		prev_day++;
-		[self doScriptEvent:OOJSID("dayChanged") withArgument:[NSNumber numberWithUnsignedInt:prev_day]];
+		[self doScriptEvent:OOJSID("dayChanged") withArgument:oo::ObjectFromPList(oo::PList::unsignedInteger(prev_day))];
 		// not impossible that at ultra-low frame rates two of these will
 		// happen in a single update.
 	}
@@ -3677,11 +3674,11 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		[self disengageAutopilot];
 	}
-	NSString *stationDockingClearanceStatus = [stationForDocking acceptDockingClearanceRequestFrom:self];
-	if (stationDockingClearanceStatus != nil)
+	const std::optional<std::string> stationDockingClearanceStatus = [stationForDocking cxx_acceptDockingClearanceRequestFrom:self];
+	if (stationDockingClearanceStatus.has_value())
 	{
-		[self doScriptEvent:OOJSID("playerRequestedDockingClearance") withArgument:stationDockingClearanceStatus];
-		if ([stationDockingClearanceStatus isEqualToString:@"DOCKING_CLEARANCE_GRANTED"]) 
+		[self doScriptEvent:OOJSID("playerRequestedDockingClearance") withArgument:oo::NSStringFrom(*stationDockingClearanceStatus)];
+		if (*stationDockingClearanceStatus == "DOCKING_CLEARANCE_GRANTED") 
 		{
 			[self doScriptEvent:OOJSID("playerDockingClearanceGranted")];
 		}
@@ -3708,8 +3705,8 @@ static GLfloat		sBaseMass = 0.0;
 	}
 	if (dockingClearanceStatus == DOCKING_CLEARANCE_STATUS_GRANTED || dockingClearanceStatus == DOCKING_CLEARANCE_STATUS_REQUESTED)
 	{
-		NSString *stationDockingClearanceStatus = [stationForDocking acceptDockingClearanceRequestFrom:self];
-		if (stationDockingClearanceStatus != nil && [stationDockingClearanceStatus isEqualToString:@"DOCKING_CLEARANCE_CANCELLED"])
+		const std::optional<std::string> stationDockingClearanceStatus = [stationForDocking cxx_acceptDockingClearanceRequestFrom:self];
+		if (stationDockingClearanceStatus == "DOCKING_CLEARANCE_CANCELLED")
 		{
 			[self doScriptEvent:OOJSID("playerDockingClearanceCancelled")];
 		} 
@@ -3818,7 +3815,7 @@ static GLfloat		sBaseMass = 0.0;
 	
 	// do flight routines
 	//// velocity stuff
-	UPDATE_STAGE(@"applying newtonian drift");
+	UPDATE_STAGE("applying newtonian drift");
 	assert(VELOCITY_CLEANUP_FULL > VELOCITY_CLEANUP_MIN);
 	
 	[self applyVelocity:delta_t];
@@ -3841,7 +3838,7 @@ static GLfloat		sBaseMass = 0.0;
 	GLfloat velmag2 = velmag - (float)delta_t * thrust * thrust_factor;
 	if (velmag > 0)
 	{
-		UPDATE_STAGE(@"applying power braking");
+		UPDATE_STAGE("applying power braking");
 		
 		if (velmag > VELOCITY_CLEANUP_MIN)
 		{
@@ -3856,17 +3853,17 @@ static GLfloat		sBaseMass = 0.0;
 		
 	}
 	
-	UPDATE_STAGE(@"updating joystick");
+	UPDATE_STAGE("updating joystick");
 	[self applyRoll:(float)delta_t*flightRoll andClimb:(float)delta_t*flightPitch];
 	if (flightYaw != 0.0)
 	{
 		[self applyYaw:(float)delta_t*flightYaw];
 	}
 	
-	UPDATE_STAGE(@"applying para-newtonian thrust");
+	UPDATE_STAGE("applying para-newtonian thrust");
 	[self moveForward:delta_t*flightSpeed];
 	
-	UPDATE_STAGE(@"updating targeting");
+	UPDATE_STAGE("updating targeting");
 	[self updateTargeting];
 	
 	STAGE_TRACKING_END
@@ -3877,10 +3874,10 @@ static GLfloat		sBaseMass = 0.0;
 {
 	STAGE_TRACKING_BEGIN
 	
-	UPDATE_STAGE(@"doing bookkeeping");
+	UPDATE_STAGE("doing bookkeeping");
 	[self doBookkeeping:delta_t];
 	
-	UPDATE_STAGE(@"updating countdown timer");
+	UPDATE_STAGE("updating countdown timer");
 	witchspaceCountdown = fdim(witchspaceCountdown, delta_t);
 	
 	// damaged gal drive? abort!
@@ -3903,13 +3900,14 @@ static GLfloat		sBaseMass = 0.0;
 	}
 	else
 	{
-		NSString *destination = [UNIVERSE getSystemName:[self nextHopTargetSystemID]];
-		[UNIVERSE displayCountdownMessage:OOExpandKey(@"witch-to-x-in-y-seconds", seconds, destination) forCount:1.0];
+		const std::string destination = oo::StdString([UNIVERSE getSystemName:[self nextHopTargetSystemID]]);	// (nil raised in the expansion)
+		[UNIVERSE displayCountdownMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "witch-to-x-in-y-seconds",
+			{ { "seconds", oo::PList::signedInteger(seconds) }, { "destination", oo::PList(destination) } })) forCount:1.0];
 	}
 	
 	if (witchspaceCountdown == 0.0)
 	{
-		UPDATE_STAGE(@"preloading planet textures");
+		UPDATE_STAGE("preloading planet textures");
 		if (!galactic_witchjump)
 		{
 			/*	Note: planet texture preloading is done twice for hyperspace jumps:
@@ -3927,7 +3925,7 @@ static GLfloat		sBaseMass = 0.0;
 			// FIXME: preload target system for galactic jump?
 		}
 
-		UPDATE_STAGE(@"JUMP!");
+		UPDATE_STAGE("JUMP!");
 		if (galactic_witchjump)  [self enterGalacticWitchspace];
 		else  [self enterWitchspace];
 		galactic_witchjump = NO;
@@ -3950,7 +3948,7 @@ static GLfloat		sBaseMass = 0.0;
 		// announce arrival
 		if ([UNIVERSE planet])
 		{
-			[UNIVERSE addMessage:[NSString stringWithFormat:@" %@. ",[UNIVERSE getSystemName:system_id]] forCount:3.0];
+			[UNIVERSE addMessage:oo::NSStringFrom(oo::str::format(" %s. ", oo::DescriptionOf([UNIVERSE getSystemName:system_id]).c_str())) forCount:3.0];
 			// and reset the compass
 			if ([self hasEquipmentItemProviding:@"EQ_ADVANCED_COMPASS"])
 				compassMode = COMPASS_MODE_PLANET;
@@ -4106,13 +4104,13 @@ static GLfloat		sBaseMass = 0.0;
 
 - (void) showGameOver
 {
-	[hud resetGuis:[NSDictionary dictionaryWithObject:[NSDictionary dictionary] forKey:@"message_gui"]];
-	NSString *scoreMS = [NSString stringWithFormat:OOExpandKey(@"gameoverscreen-score-@"),
-							KillCountToRatingAndKillString(ship_kills)];
+	[hud cxx_resetGuis:oo::PList(oo::PList::Dict{ { "message_gui", oo::PList(oo::PList::Dict()) } })];
+	const std::string scoreMS = oo::str::formatRuntime(oo::StdString(OOExpandKey(@"gameoverscreen-score-@")),
+							{ oo::DescriptionOf(KillCountToRatingAndKillString(ship_kills)) });
 	
 	[UNIVERSE displayMessage:OOExpandKey(@"gameoverscreen-game-over") forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
-	[UNIVERSE displayMessage:scoreMS forCount:kDeadResetTime];
+	[UNIVERSE displayMessage:oo::NSStringFrom(scoreMS) forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:@"" forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:OOExpandKey(@"gameoverscreen-press-space") forCount:kDeadResetTime];
 	[UNIVERSE displayMessage:@" " forCount:kDeadResetTime];
@@ -4121,11 +4119,11 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (void) showShipModelWithKey:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(NSString *)context
+- (void) cxx_showShipModelWithKey:(const std::string &)shipKey shipData:(const oo::PList &)shipDataIn personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(const std::optional<std::string> &)context
 {
-	if (shipKey == nil)  return;
-	if (shipData == nil)  shipData = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
-	if (shipData == nil)  return;
+	// (a nil key returns in the bridged -showShipModelWithKey:...)
+	const oo::PList shipData = shipDataIn.isNull() ? [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey] : shipDataIn;
+	if (shipData.isNull())  return;
 	
 	Quaternion		q2 = { (GLfloat)M_SQRT1_2, (GLfloat)M_SQRT1_2, (GLfloat)0.0f, (GLfloat)0.0f };
 	// MKW - retrieve last demo ships' orientation and release it
@@ -4135,12 +4133,12 @@ static GLfloat		sBaseMass = 0.0;
 		[demoShip release];
 	}
 	
-	ShipEntity *ship = [[ProxyPlayerEntity alloc] initWithKey:shipKey definition:shipData];
+	ShipEntity *ship = [[ProxyPlayerEntity alloc] initWithKey:oo::NSStringFrom(shipKey) definition:oo::ObjectFromPList(shipData)];
 	if (personality != ENTITY_PERSONALITY_INVALID)  [ship setEntityPersonalityInt:personality];
 	
 	[ship wasAddedToUniverse];
 	
-	if (context)  OOLog(@"script.debug.note.showShipModel", @"::::: showShipModel:'%@' in context: %@.", [ship name], context);
+	if (context.has_value())  OOLog(@"script.debug.note.showShipModel", @"::::: showShipModel:'%@' in context: %@.", [ship name], oo::NSStringFrom(*context));
 	
 	GLfloat cr = [ship collisionRadius];
 	[ship setOrientation: q2];
@@ -4150,9 +4148,9 @@ static GLfloat		sBaseMass = 0.0;
 	[ship setDemoStartTime: [UNIVERSE getTime]];
 	if([ship pendingEscortCount] > 0) [ship setPendingEscortCount:0];
 	[ship setAITo: @"nullAI.plist"];
-	id subEntStatus = [shipData objectForKey:@"subentities_status"];
+	const oo::PList *subEntStatus = shipData.find("subentities_status");
 	// show missing subentities if there's a subentities_status key
-	if (subEntStatus != nil) [ship deserializeShipSubEntitiesFrom:(NSString *)subEntStatus];
+	if (subEntStatus != nullptr) [ship cxx_deserializeShipSubEntitiesFrom:oo::PListGet<std::string>::from(subEntStatus, std::string())];
 	[UNIVERSE addEntity: ship];
 	// MKW - save demo ship for its rotation
 	demoShip = [ship retain];
@@ -4174,7 +4172,7 @@ static GLfloat		sBaseMass = 0.0;
 	STAGE_TRACKING_BEGIN
 	
 	// check for lost ident target and ensure the ident system is actually scanning
-	UPDATE_STAGE(@"checking ident target");
+	UPDATE_STAGE("checking ident target");
 	if (ident_engaged && [self primaryTarget] != nil)
 	{
 		if (![self isValidTarget:[self primaryTarget]])
@@ -4195,7 +4193,7 @@ static GLfloat		sBaseMass = 0.0;
 	}
 
 	// check each unlaunched missile's target still exists and is in-range
-	UPDATE_STAGE(@"checking missile targets");
+	UPDATE_STAGE("checking missile targets");
 	if (missile_status != MISSILE_STATUS_SAFE)
 	{
 		unsigned i;
@@ -4221,7 +4219,7 @@ static GLfloat		sBaseMass = 0.0;
 
 	// if we don't have a primary target, and we're scanning, then check for a new
 	// target to lock on to
-	UPDATE_STAGE(@"looking for new target");
+	UPDATE_STAGE("looking for new target");
 	if ([self primaryTarget] == nil && 
 			(ident_engaged || missile_status != MISSILE_STATUS_SAFE) &&
 			([self status] == STATUS_IN_FLIGHT || [self status] == STATUS_WITCHSPACE_COUNTDOWN))
@@ -4235,7 +4233,7 @@ static GLfloat		sBaseMass = 0.0;
 	
 	// If our primary target is a wormhole, check to see if we have additional
 	// information
-	UPDATE_STAGE(@"checking for additional wormhole information");
+	UPDATE_STAGE("checking for additional wormhole information");
 	if ([[self primaryTarget] isWormhole])
 	{
 		WormholeEntity *wh = [self primaryTarget];
@@ -4256,24 +4254,24 @@ static GLfloat		sBaseMass = 0.0;
 				if ([self clockTimeAdjusted] > [wh scanTime] + 2)
 				{
 					[wh setScanInfo:WH_SCANINFO_COLLAPSE_TIME];
-					//[UNIVERSE addCommsMessage:[NSString stringWithFormat:DESC(@"wormhole-collapse-time-computed"),
-					//						   [UNIVERSE getSystemName:[wh destination]]] forCount:5.0];
+					//[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-collapse-time-computed")),
+					//						   { oo::StdString([UNIVERSE getSystemName:[wh destination]]) })) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_COLLAPSE_TIME:
 				if([self clockTimeAdjusted] > [wh scanTime] + 4)
 				{
 					[wh setScanInfo:WH_SCANINFO_ARRIVAL_TIME];
-					[UNIVERSE addCommsMessage:[NSString stringWithFormat:DESC(@"wormhole-arrival-time-computed-@"),
-											   ClockToString([wh estimatedArrivalTime], NO)] forCount:5.0];
+					[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-arrival-time-computed-@")),
+											   { cxx_ClockToString([wh estimatedArrivalTime], NO) })) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_ARRIVAL_TIME:
 				if ([self clockTimeAdjusted] > [wh scanTime] + 7)
 				{
 					[wh setScanInfo:WH_SCANINFO_DESTINATION];
-					[UNIVERSE addCommsMessage:[NSString stringWithFormat:DESC(@"wormhole-destination-computed-@"),
-											   [UNIVERSE getSystemName:[wh destination]]] forCount:5.0];
+					[UNIVERSE addCommsMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"wormhole-destination-computed-@")),
+											   { oo::DescriptionOf([UNIVERSE getSystemName:[wh destination]]) })) forCount:5.0];
 				}
 				break;
 			case WH_SCANINFO_DESTINATION:
@@ -5289,7 +5287,7 @@ static GLfloat		sBaseMass = 0.0;
 		if (EXPECT_NOT(new_target != [self compassTarget]))
 		{
 			[self setCompassTarget:new_target];
-			[self doScriptEvent:OOJSID("compassTargetChanged") withArguments:[NSArray arrayWithObjects:new_target, OOStringFromCompassMode([self compassMode]), nil]];
+			[self doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PListObject(new_target), oo::PListFrom(OOStringFromCompassMode([self compassMode])) }))];
 		}
 	}
 }
@@ -7191,8 +7189,8 @@ static GLfloat		sBaseMass = 0.0;
 		[dockedStation initialiseLocalMarket];
 	}
 
-	NSString *escapepodReport = [self processEscapePods];
-	[self addMessageToReport:escapepodReport];
+	const std::optional<std::string> escapepodReport = [self cxx_processEscapePods];
+	[self cxx_addMessageToReport:escapepodReport.value_or(std::string())];
 	
 	[self unloadCargoPods];	// fill up the on-ship commodities before...
 
@@ -7209,8 +7207,8 @@ static GLfloat		sBaseMass = 0.0;
 	}
 
 	// check contracts
-	NSString *passengerAndCargoReport = [self checkPassengerContracts]; // Is also processing cargo and parcel contracts.
-	[self addMessageToReport:passengerAndCargoReport];
+	const std::optional<std::string> passengerAndCargoReport = [self cxx_checkPassengerContracts]; // Is also processing cargo and parcel contracts.
+	if (passengerAndCargoReport.has_value())  [self cxx_addMessageToReport:*passengerAndCargoReport];	// (the bridged form took nil as nothing)
 		
 	[UNIVERSE setDisplayText:YES];
 	
@@ -7421,13 +7419,13 @@ static GLfloat		sBaseMass = 0.0;
 	if ([self status] == STATUS_WITCHSPACE_COUNTDOWN)
 	{
 		// check nearby masses
-		//UPDATE_STAGE(@"checking for mass blockage");
+		//UPDATE_STAGE("checking for mass blockage");
 		ShipEntity* blocker = [UNIVERSE entityForUniversalID:[self checkShipsInVicinityForWitchJumpExit]];
 		if (blocker)
 		{
 			[UNIVERSE clearPreviousMessage];
-			NSString *blockerName = [blocker name];
-			[UNIVERSE addMessage:OOExpandKey(@"witch-blocked", blockerName) forCount:4.5];
+			const std::string blockerName = oo::StdString([blocker name]);	// (nil raised in the expansion)
+			[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "witch-blocked", { { "blockerName", oo::PList(blockerName) } })) forCount:4.5];
 			[self playWitchjumpBlocked];
 			[self setStatus:STATUS_IN_FLIGHT];
 			ShipScriptEventNoCx(self, "playerJumpFailed", OOJSSTR("blocked"));
@@ -7558,9 +7556,9 @@ static GLfloat		sBaseMass = 0.0;
 
 	[self setStatus:STATUS_ENTERING_WITCHSPACE];
 	ooscript::Context context = OOJSAcquireContext();
-	[self setJumpCause:@"galactic jump"];
+	[self cxx_setJumpCause:std::string("galactic jump")];
 	[self setPreviousSystemID:[self currentSystemID]];
-	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [[self jumpCause] UTF8String])), ooscript::int32Value(destGalaxy));
+	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [self cxx_jumpCause].value_or(std::string()).c_str())), ooscript::int32Value(destGalaxy));
 	OOJSRelinquishContext(context);
 
 	[self noteCompassLostTarget];
@@ -7711,7 +7709,7 @@ static GLfloat		sBaseMass = 0.0;
 		}
 		else
 		{
-			[self setFuelLeak:[NSString stringWithFormat:@"%f", (randf() + randf()) * 5.0]];
+			[self setFuelLeak:oo::NSStringFrom(oo::str::format("%f", (randf() + randf()) * 5.0))];
 		}
 	}
 #endif	
@@ -7728,9 +7726,9 @@ static GLfloat		sBaseMass = 0.0;
 	
 	[self setStatus:STATUS_ENTERING_WITCHSPACE];
 	ooscript::Context context = OOJSAcquireContext();
-	[self setJumpCause:@"standard jump"];
+	[self cxx_setJumpCause:std::string("standard jump")];
 	[self setPreviousSystemID:[self currentSystemID]];
-	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [[self jumpCause] UTF8String])), ooscript::int32Value(jumpTarget));
+	ShipScriptEvent(context, self, "shipWillEnterWitchspace", ooscript::stringValue(ooscript::internString(context, [self cxx_jumpCause].value_or(std::string()).c_str())), ooscript::int32Value(jumpTarget));
 	OOJSRelinquishContext(context);
 
 	[self updateSystemMemory];
@@ -7929,7 +7927,7 @@ static GLfloat		sBaseMass = 0.0;
 	
 	if (galactic_witchjump)
 	{
-		[self doScriptEvent:OOJSID("playerEnteredNewGalaxy") withArgument:[NSNumber numberWithUnsignedInt:galaxy_number]];
+		[self doScriptEvent:OOJSID("playerEnteredNewGalaxy") withArgument:oo::ObjectFromPList(oo::PList::unsignedInteger(galaxy_number))];
 	}
 	
 	[self doScriptEvent:OOJSID("shipWillExitWitchspace") withArgument:[self jumpCause]];
@@ -10774,11 +10772,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	{
 		if (amount > oldAmount) // increase
 		{
-			[self loadCargoPodsForType:oo::NSStringFrom(type) amount:(amount - oldAmount)];
+			[self loadCargoPodsForType:type amount:(amount - oldAmount)];
 		}
 		else
 		{
-			[self unloadCargoPodsForType:oo::NSStringFrom(type) amount:(oldAmount - amount)];
+			[self unloadCargoPodsForType:type amount:(oldAmount - amount)];
 		}
 	}
 	else
@@ -11994,31 +11992,31 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (void) setUpTrumbles
 {
-	NSMutableString *trumbleDigrams = [NSMutableString stringWithCapacity:256];
+	std::u16string trumbleDigrams;	// UTF-16 units, as the old mutable string held them
 	unichar	xchar = (unichar)0;
 	unichar digramchars[2];
 
-	while ([trumbleDigrams length] < PLAYER_MAX_TRUMBLES + 2)
+	while (trumbleDigrams.size() < PLAYER_MAX_TRUMBLES + 2)
 	{
-		NSString *commanderName = [self commanderName];
-		if ([commanderName length] > 0)
+		const std::optional<std::string> commanderName = [self cxx_commanderName];
+		if (commanderName.has_value() && !commanderName->empty())
 		{
-			[trumbleDigrams appendFormat:@"%@%@", commanderName, oo::NSStringOrNil([[self mesh] modelName])];
+			trumbleDigrams += oo::utf8ToUtf16(*commanderName + [[self mesh] modelName].value_or("(null)"));	// "%@%@"
 		}
 		else
 		{
-			[trumbleDigrams appendString:@"Some Random Text!"];
+			trumbleDigrams += u"Some Random Text!";
 		}
 	}
 	int i;
 	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
 	{
-		digramchars[0] = ([trumbleDigrams characterAtIndex:i] & 0x007f) | 0x0020;
-		digramchars[1] = (([trumbleDigrams characterAtIndex:i + 1] ^ xchar) & 0x007f) | 0x0020;
+		digramchars[0] = (trumbleDigrams[i] & 0x007f) | 0x0020;
+		digramchars[1] = ((trumbleDigrams[i + 1] ^ xchar) & 0x007f) | 0x0020;
 		xchar = digramchars[0];
-		NSString *digramstring = [NSString stringWithCharacters:digramchars length:2];
+		const std::string digramstring = { static_cast<char>(digramchars[0]), static_cast<char>(digramchars[1]) };	// both ASCII
 		[trumble[i] release];
-		trumble[i] = [[OOTrumble alloc] initForPlayer:self digram:digramstring];
+		trumble[i] = [[OOTrumble alloc] initForPlayer:self digram:oo::NSStringFrom(digramstring)];
 	}
 	
 	trumbleCount = 0;
@@ -12078,25 +12076,27 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 
 - (id)trumbleValue
 {
-	NSString	*namekey = [NSString stringWithFormat:@"%@-humbletrash", [self commanderName]];
+	const std::string	namekey = oo::str::format("%s-humbletrash", [self cxx_commanderName].value_or("(null)").c_str());
 	int			trumbleHash;
 	
 	clear_checksum();
-	[self mungChecksumWithNSString:[self commanderName]];
+	[self mungChecksumWithString:[self cxx_commanderName]];
 	munge_checksum(credits);
 	munge_checksum(ship_kills);
 	trumbleHash = munge_checksum(trumbleCount);
 	
-	[[NSUserDefaults standardUserDefaults] setInteger:trumbleHash forKey:namekey];
+	[[NSUserDefaults standardUserDefaults] setInteger:trumbleHash forKey:oo::NSStringFrom(namekey)];
 	
 	int i;
-	NSMutableArray *trumbleArray = [NSMutableArray arrayWithCapacity:PLAYER_MAX_TRUMBLES];
+	oo::PList::Array trumbleArray;
+	trumbleArray.reserve(PLAYER_MAX_TRUMBLES);
 	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
 	{
-		[trumbleArray addObject:[trumble[i] dictionary]];
+		trumbleArray.push_back(oo::PListFrom([trumble[i] dictionary]));
 	}
-	
-	return [NSArray arrayWithObjects:[NSNumber numberWithUnsignedInteger:trumbleCount], [NSNumber numberWithInt:trumbleHash], trumbleArray, nil];
+
+	// [count (unsigned), hash (signed), trumbles]: the same number kinds as before
+	return oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(trumbleCount), oo::PList::signedInteger(trumbleHash), oo::PList(std::move(trumbleArray)) }));
 }
 
 
@@ -12106,30 +12106,30 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	int trumbleHash;
 	int putativeHash = 0;
 	int putativeNTrumbles = 0;
-	NSArray *putativeTrumbleArray = nil;
+	oo::PList putativeTrumbleArray;	// null unless an array
 	int i;
-	NSString *namekey = [NSString stringWithFormat:@"%@-humbletrash", [self commanderName]];
+	const std::string namekey = oo::str::format("%s-humbletrash", [self cxx_commanderName].value_or("(null)").c_str());
 	
 	[self setUpTrumbles];
 	
 	if (trumbleValue)
 	{
 		BOOL possible_cheat = NO;
-		if (![trumbleValue isKindOfClass:[NSArray class]])
+		if (!oo::IsNSArray(trumbleValue))
 			info_failed = YES;
 		else
 		{
-			NSArray* values = (NSArray*) trumbleValue;
-			if ([values count] >= 1)
-				putativeNTrumbles = oo::PListView(values).at<int>(0);
-			if ([values count] >= 2)
-				putativeHash = oo::PListView(values).at<int>(1);
-			if ([values count] >= 3)
-				putativeTrumbleArray = oo::PListView(values).at<NSArray *>(2);
+			const oo::PList values = oo::PListFrom(trumbleValue);
+			if (values.count() >= 1)
+				putativeNTrumbles = values.at<int>(0);
+			if (values.count() >= 2)
+				putativeHash = values.at<int>(1);
+			if (values.count() >= 3 && values.at(2)->isArray())
+				putativeTrumbleArray = *values.at(2);
 		}
 		// calculate a hash for the putative values
 		clear_checksum();
-		[self mungChecksumWithNSString:[self commanderName]];
+		[self mungChecksumWithString:[self cxx_commanderName]];
 		munge_checksum(credits);
 		munge_checksum(ship_kills);
 		trumbleHash = munge_checksum(putativeNTrumbles);
@@ -12147,7 +12147,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		{
 			// try to determine trumbleCount from the key in the saved game
 			clear_checksum();
-			[self mungChecksumWithNSString:[self commanderName]];
+			[self mungChecksumWithString:[self cxx_commanderName]];
 			munge_checksum(credits);
 			munge_checksum(ship_kills);
 			trumbleHash = munge_checksum(i);
@@ -12169,14 +12169,14 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		info_failed = YES;
 	}
 	
-	if (info_failed && [[NSUserDefaults standardUserDefaults] objectForKey:namekey])
+	if (info_failed && [[NSUserDefaults standardUserDefaults] objectForKey:oo::NSStringFrom(namekey)])
 	{
 		// try to determine trumbleCount from the key in user defaults
-		putativeHash = (int)[[NSUserDefaults standardUserDefaults] integerForKey:namekey];
+		putativeHash = (int)[[NSUserDefaults standardUserDefaults] integerForKey:oo::NSStringFrom(namekey)];
 		for (i = 1; (info_failed)&&(i < PLAYER_MAX_TRUMBLES); i++)
 		{
 			clear_checksum();
-			[self mungChecksumWithNSString:[self commanderName]];
+			[self mungChecksumWithString:[self cxx_commanderName]];
 			munge_checksum(credits);
 			munge_checksum(ship_kills);
 			trumbleHash = munge_checksum(i);
@@ -12193,19 +12193,19 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	// at this stage we've done the best we can to stop cheaters
 	trumbleCount = putativeNTrumbles;
 
-	if ((putativeTrumbleArray != nil) && ([putativeTrumbleArray count] == PLAYER_MAX_TRUMBLES))
+	if ((!putativeTrumbleArray.isNull()) && (putativeTrumbleArray.count() == PLAYER_MAX_TRUMBLES))
 	{
 		for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
-			[trumble[i] setFromDictionary:oo::PListView(putativeTrumbleArray).at<NSDictionary *>(i)];
+			[trumble[i] setFromDictionary:(putativeTrumbleArray.at(i)->isDict() ? oo::ObjectFromPList(*putativeTrumbleArray.at(i)) : nil)];	// nil unless a dictionary
 	}
 	
 	clear_checksum();
-	[self mungChecksumWithNSString:[self commanderName]];
+	[self mungChecksumWithString:[self cxx_commanderName]];
 	munge_checksum(credits);
 	munge_checksum(ship_kills);
 	trumbleHash = munge_checksum(trumbleCount);
 	
-	[[NSUserDefaults standardUserDefaults]  setInteger:trumbleHash forKey:namekey];
+	[[NSUserDefaults standardUserDefaults]  setInteger:trumbleHash forKey:oo::NSStringFrom(namekey)];
 }
 
 
@@ -12221,14 +12221,13 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 }
 
 
-- (void) mungChecksumWithNSString:(NSString *)str
+- (void) mungChecksumWithString:(const std::optional<std::string> &)str
 {
-	if (str == nil)  return;
-	
-	NSUInteger i, length = [str length];
-	for (i = 0; i < length; i++)
+	if (!str.has_value())  return;
+
+	for (char16_t unit : oo::utf8ToUtf16(*str))	// the UTF-16 units, as -characterAtIndex: gave them
 	{
-		munge_checksum([str characterAtIndex:i]);
+		munge_checksum(unit);
 	}
 }
 
@@ -12426,9 +12425,9 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 {
 	if ([self primaryTarget] == nil) return;
 	
-	NSString *fmt = missile ? @"missile-locked-onto-target" : @"ident-locked-onto-target";
-	NSString *target = [[self primaryTarget] identFromShip:self];
-	[UNIVERSE addMessage:OOExpandKey(fmt, target) forCount:4.5];
+	const std::string fmt = missile ? "missile-locked-onto-target" : "ident-locked-onto-target";
+	const std::string target = oo::StdString([[self primaryTarget] identFromShip:self]);	// (nil raised in the expansion)
+	[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), fmt, { { "target", oo::PList(target) } })) forCount:4.5];
 }
 
 
@@ -13205,7 +13204,7 @@ else _dockTarget = NO_TARGET;
 		
 	amountToPay = MIN(maximumFine, calculatedFine);
 	credits -= amountToPay;
-	[self addMessageToReport:[NSString stringWithFormat:DESC(@"station-docking-clearance-fined-@-cr"), OOCredits(amountToPay)]];
+	[self cxx_addMessageToReport:oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-fined-@-cr")), { cxx_OOCredits(amountToPay) })];
 }
 
 
@@ -13465,8 +13464,8 @@ else _dockTarget = NO_TARGET;
 #ifndef NDEBUG
 - (void)dumpSelfState
 {
-	NSMutableArray		*flags = nil;
-	NSString			*flagsString = nil;
+	std::vector<std::string>	flags;
+	std::string			flagsString;
 	
 	[super dumpSelfState];
 	
@@ -13481,8 +13480,7 @@ else _dockTarget = NO_TARGET;
 	OOLog(@"dumpState.playerEntity", @"Fuel leak rate: %g", fuel_leak_rate);
 	OOLog(@"dumpState.playerEntity", @"Trumble count: %zu", trumbleCount);
 	
-	flags = [NSMutableArray array];
-	#define ADD_FLAG_IF_SET(x)		if (x) { [flags addObject:@#x]; }
+	#define ADD_FLAG_IF_SET(x)		if (x) { flags.push_back(#x); }
 	ADD_FLAG_IF_SET(found_equipment);
 	ADD_FLAG_IF_SET(pollControls);
 	ADD_FLAG_IF_SET(suppressTargetLost);
@@ -13511,8 +13509,9 @@ else _dockTarget = NO_TARGET;
 	ADD_FLAG_IF_SET(keyboardPitchOverride);  // ...and pitch override separately - (fix for BUG #17490)
 	ADD_FLAG_IF_SET(keyboardYawOverride);
 	ADD_FLAG_IF_SET(waitingForStickCallback);
-	flagsString = [flags count] ? [flags componentsJoinedByString:@", "] : (NSString *)@"none";
-	OOLog(@"dumpState.playerEntity", @"Flags: %@", flagsString);
+	for (const std::string &flag : flags)  flagsString += (flagsString.empty() ? "" : ", ") + flag;
+	if (flags.empty())  flagsString = "none";
+	OOLog(@"dumpState.playerEntity", @"Flags: %@", oo::NSStringFrom(flagsString));
 }
 
 

@@ -398,4 +398,12 @@ and converts the result exactly as the old method produced it.
 	return [self cxx_endScenario:oo::StdString(key)];
 }
 
+
+// oo-3rb.249: flight, cargo pods, docking, witchspace, targeting, ship model, trumbles and state dump
+- (void) showShipModelWithKey:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(NSString *)context
+{
+	if (shipKey == nil)  return;
+	[self cxx_showShipModelWithKey:oo::StdString(shipKey) shipData:oo::PListFrom(shipData) personality:personality factorX:factorX factorY:factorY factorZ:factorZ inContext:oo::OptionalString(context)];
+}
+
 @end

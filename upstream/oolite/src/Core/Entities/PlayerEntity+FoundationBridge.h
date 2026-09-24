@@ -96,6 +96,9 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (BOOL) mountMissileWithRole:(NSString *)role;	// -> -cxx_mountMissileWithRole:
 - (BOOL) endScenario:(NSString *)key;	// -> -cxx_endScenario: (nil: NO)
 
+// oo-3rb.249: flight, cargo pods, docking, witchspace, targeting, ship model, trumbles and state dump
+- (void) showShipModelWithKey:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(NSString *)context;	// -> -cxx_showShipModelWithKey:... (nil key: nothing)
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H
