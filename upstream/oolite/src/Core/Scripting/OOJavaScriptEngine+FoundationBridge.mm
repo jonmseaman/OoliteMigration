@@ -15,6 +15,10 @@ gnustep-base (bead oo-3rb.199).
 #import "NSNumberOOExtensions.h"
 
 
+NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
+NSString * const kOOJavaScriptEngineDidResetNotification = @"org.aegidian.oolite OOJavaScriptEngine did reset";
+
+
 NSString *OOStringFromJSString(ooscript::Context context, ooscript::String string)
 {
 	return oo::NSStringOrNil(cxx_OOStringFromJSString(context, string));
