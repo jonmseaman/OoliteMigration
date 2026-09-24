@@ -49,10 +49,15 @@ expectations in `tests/unit/oofnd/test_defaults.cpp`.
    `Defaults` (`writeOpenStepPList` + `synchronize`; `applicationDomainName` over the same
    Info-gnustep.plist lookup). They stay compiled while any `NSUserDefaults` or `-[NSBundle
    infoDictionary]` caller remains, and are deleted with the last one.
-5. **Coexistence during the migration.** `oo::Defaults::standard()` is a separate reader of the
-   same file, loaded on first use. A migrated consumer must therefore only *read* keys the game
-   never writes at run time (the exemplar's `sky-*` keys are user-edited only), until the writers
-   of a key migrate together. Setting a key through both stores in one run is not supported.
+5. **Coexistence during the migration: one store** (amended by bead oo-mwo0, 2026-09-24; see
+   Amendment 1). The game's `+[NSUserDefaults standardUserDefaults]` is backed by
+   `oo::Defaults::standard()` (`Core/NSUserDefaults+OODefaultsBridge`), so there is one in-memory
+   store and one writer of the file. A value set through either API is read back through the
+   other, and a file can move off `NSUserDefaults` on its own, readers and writers alike.
+   *(Originally: `oo::Defaults::standard()` was a separate reader of the same file, loaded on
+   first use; a migrated consumer could only read keys the game never writes at run time, until
+   the writers of a key migrated together, and setting a key through both stores in one run was
+   not supported.)*
 6. **Not reproduced**, all outside what the game reads: GNUstep's `.lck` lock directory (the
    game is one process); `GSPrimaryDomain`, `GSConfigDomain` and language domains; key order for
    non-ASCII keys (GNUstep's `-compare:` folds canonical decompositions, oofnd sorts by UTF-16
@@ -71,3 +76,49 @@ expectations in `tests/unit/oofnd/test_defaults.cpp`.
   keys they write, or `standard()` must become the only store first.
 - `PList::get<T>` (the `oo_*ForKey:defaultValue:` extractors) is a separate seam; `Defaults` offers
   only `NSUserDefaults`' own getters.
+
+## Amendment 1 — one store (bead oo-mwo0, 2026-09-24)
+
+**Status:** Proposed — default in effect (Claude Code, fleet sweep worker; ADR-0013). Jon may
+override.
+
+GameController's `save-directory` (oo-3rb.91) showed the cost of point 5 as first written: a key
+the game writes could not be migrated file by file, because `oo::Defaults` and `NSUserDefaults`
+held separate copies and whichever synchronized last would drop the other's change. 43 files
+(about 145 call sites) still use `NSUserDefaults`.
+
+**Decision.** A transitional shim, `upstream/oolite/src/Core/NSUserDefaults+OODefaultsBridge.h/.mm`
+(the ADR-0043 Amendment 1 bridge pattern), makes `oo::Defaults::standard()` the only store:
+
+- `+standardUserDefaults` is exchanged, at `+load` and with runtime calls only, for a wrapper that
+  lets GNUstep build its standard object as always and then retargets that one object
+  (`object_setClass`) to `OODefaultsBackedUserDefaults`, a subclass without instance variables.
+  No other `NSUserDefaults` instance changes.
+- Its `-objectForKey:` and typed getters (`-stringForKey:`, `-arrayForKey:`, `-dictionaryForKey:`,
+  `-boolForKey:`, `-integerForKey:`, `-floatForKey:`, `-doubleForKey:`) answer from `oo::Defaults`
+  with its coercions (point 3); GNUstep's other getters read `-objectForKey:`. Its setters,
+  `-removeObjectForKey:`, `-registerDefaults:` and `-synchronize` forward to `oo::Defaults`
+  (`oo::PListFrom` / `oo::ObjectFromPList`; a float `NSNumber` is kept single precision so it is
+  written `%.7g`). Each change posts `NSUserDefaultsDidChangeNotification` as GNUstep did.
+- A key `oo::Defaults` has no value for is one of GNUstep's own settings, which live in the domains
+  point 6 does not reproduce (language domains, `GSConfigDomain`, GNUstep's registration domain):
+  GNUstep's volatile domains answer it, so GNUstep's internal settings read as before.
+- Only `oo::Defaults::synchronize()` writes the file. GNUstep's own store is never changed, so
+  `NSUserDefaults+Override`'s writer is no longer reached; it stays compiled until point 4 retires
+  it.
+- `-dictionaryRepresentation`, `-persistentDomainForName:` and the other domain methods remain
+  GNUstep's (the game uses none of them).
+
+**Proof.** `upstream/oolite/tests/unit/game/test_defaults_bridge.mm` (meson suite `game-unit`,
+`bash tools/check-game-unit.sh`), linked like the game: the standard object is retargeted; values
+set through `NSUserDefaults` (string, bool, integer, float, double, array, dictionary) read back
+through `oo::Defaults` and the reverse; a removal through either is seen by both; registered
+defaults are shared; one `-synchronize` writes the one file with the changes made through both
+APIs, and a second synchronize through either writes nothing.
+
+**Consequences.** Per-file `NSUserDefaults` sweeps are safe, readers and writers alike. The shim,
+`NSUserDefaults+Override` and the `game-unit` test go in bead oo-iobt once no file uses
+`NSUserDefaults`; oo-qps cannot compile while they exist. Behavioural difference, none on disk:
+GNUstep scheduled its own background synchronize after a change; `oo::Defaults` writes only on an
+explicit `-synchronize` (point 3), which the game makes on exit and after display changes.
+
