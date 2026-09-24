@@ -32,8 +32,9 @@ SOFTWARE.
 #if OO_LOCALIZATION_TOOLS
 
 #import "OOConvertSystemDescriptions.h"
-#import "OldSchoolPropertyListWriting.h"
 #import "OOPListView.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/PListWriting.hpp"
 #import "ResourceManager.h"
 
 static NSMutableDictionary *InitKeyToIndexDict(NSDictionary *dict, NSMutableSet **outUsedIndices);
@@ -83,7 +84,10 @@ void CompileSystemDescriptions(BOOL asXML)
 	}
 	else
 	{
-		data = [sysDescDict oldSchoolPListFormatWithErrorDescription:&error];
+		// (oo::writeOldStylePList is the port of the retired old-school writer categories)
+		const oo::Expected<oo::Data, oo::PListError> written = oo::writeOldStylePList(oo::PListFrom(sysDescDict));
+		if (written.has_value())  data = oo::ObjectFromPList(oo::PList(*written));
+		else  error = oo::NSStringFrom(written.error().message);
 	}
 	
 	if (data == nil)
@@ -133,7 +137,10 @@ void ExportSystemDescriptions(BOOL asXML)
 	}
 	else
 	{
-		data = [sysDescDict oldSchoolPListFormatWithErrorDescription:&error];
+		// (oo::writeOldStylePList is the port of the retired old-school writer categories)
+		const oo::Expected<oo::Data, oo::PListError> written = oo::writeOldStylePList(oo::PListFrom(sysDescDict));
+		if (written.has_value())  data = oo::ObjectFromPList(oo::PList(*written));
+		else  error = oo::NSStringFrom(written.error().message);
 	}
 	
 	if (data == nil)
