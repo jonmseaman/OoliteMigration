@@ -70,7 +70,7 @@ static NSString *FormatFloat(double value);
 	
 	std::string					_vertexShader;
 	std::string					_fragmentShader;
-	NSMutableArray				*_textures;
+	std::vector<oo::PList>		_textures;			// the texture list, in insertion order
 	NSMutableDictionary			*_uniforms;
 	
 	NSMutableString				*_attributes;
@@ -85,9 +85,9 @@ static NSString *FormatFloat(double value);
 	NSMutableString				*_fragmentBody;
 	
 	// _texturesByName: dictionary mapping texture file names to texture specifications.
-	NSMutableDictionary			*_texturesByName;
+	std::map<std::string, oo::PList>	_texturesByName;
 	// _textureIDs: dictionary mapping texture file names to numerical IDs used to name variables.
-	NSMutableDictionary			*_textureIDs;
+	std::map<std::string, NSUInteger>	_textureIDs;
 	// _sampledTextures: hash of integer texture IDs for which we’ve set up a sample.
 	std::unordered_set<NSUInteger>	_sampledTextures;	// was an integer hash table (bead oo-3rb.20)
 	
@@ -149,13 +149,13 @@ static NSString *FormatFloat(double value);
 // Create or retrieve a uniform variable name for a given binding.
 - (NSString *) defineBindingUniform:(NSDictionary *)binding ofType:(NSString *)type;
 
-- (NSString *) readRGBForTextureSpec:(NSDictionary *)textureSpec mapName:(NSString *)mapName;	// Generate a read for an RGB value, or a single channel splatted across RGB.
-- (NSString *) readOneChannelForTextureSpec:(NSDictionary *)textureSpec mapName:(NSString *)mapName;	// Generate a read for a single channel.
+- (std::optional<std::string>) readRGBForTextureSpec:(const oo::PList &)textureSpec mapName:(const std::string &)mapName;	// Generate a read for an RGB value, or a single channel splatted across RGB.
+- (std::optional<std::string>) readOneChannelForTextureSpec:(const oo::PList &)textureSpec mapName:(const std::string &)mapName;	// Generate a read for a single channel.
 
 // Details of texture setup; generally use -read*ForTextureSpec:mapName: instead.
-- (NSUInteger) textureIDForSpec:(NSDictionary *)textureSpec;
-- (void) setUpOneTexture:(NSDictionary *)textureSpec;
-- (void) getSampleName:(NSString **)outSampleName andSwizzleOp:(NSString **)outSwizzleOp forTextureSpec:(NSDictionary *)textureSpec;
+- (NSUInteger) textureIDForSpec:(const oo::PList &)textureSpec;
+- (void) setUpOneTexture:(const oo::PList &)textureSpec;
+- (void) getSampleName:(std::string *)outSampleName andSwizzleOp:(std::string *)outSwizzleOp forTextureSpec:(const oo::PList &)textureSpec;	// swizzle "" = none
 
 
 /*	Stages. These should only be called through the REQUIRE_STAGE macro to
@@ -266,7 +266,11 @@ static NSString *FormatFloat(double value);
 @end
 
 
-static NSString *GetExtractMode(NSDictionary *textureSpecifier);
+namespace {
+
+std::optional<std::string> GetExtractMode(const oo::PList &textureSpecifier);
+
+}	// namespace
 
 
 BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optional<std::string> &materialKey, const std::optional<std::string> &entityName, std::string *outVertexShader, std::string *outFragmentShader, oo::PList *outTextureSpecs, oo::PList *outUniformSpecs)
@@ -322,7 +326,6 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 - (void) dealloc
 {
 	[self destroyTemporaries];
-	DESTROY(_textures);
 	
     [super dealloc];
 }
@@ -342,7 +345,7 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 
 - (oo::PList) textureSpecifications
 {
-	return oo::PListFrom(_textures);
+	return oo::PList(oo::PList::Array(_textures));
 }
 
 
@@ -409,31 +412,40 @@ static void AppendIfNotEmpty(NSMutableString *buffer, NSString *segment, NSStrin
 }
 
 
-static NSString *GetExtractMode(NSDictionary *textureSpecifier)
-{
-	NSString *result = nil;
+namespace {
 	
-	NSString *rawMode = oo::PListView(textureSpecifier).get<NSString *>(kOOTextureSpecifierSwizzleKey);
-	if (rawMode != nil)
-	{
-		NSUInteger length = [rawMode length];
-		if (1 <= length && length <= 4)
-		{
-			static NSCharacterSet *nonRGBACharset = nil;
-			if (nonRGBACharset == nil)
-			{
-				nonRGBACharset = [[[NSCharacterSet characterSetWithCharactersInString:@"rgba"] invertedSet] retain];
-			}
+/*	The extract_channel of a texture specifier if it is one to four of r, g, b and a, else nil.
+	(A number never qualifies, so only a string value is read; all-ASCII, so its UTF-8 length is its
+	length in characters.)
+*/
+std::optional<std::string> GetExtractMode(const oo::PList &textureSpecifier)
+{
+	std::optional<std::string> result;
 			
-			if ([rawMode rangeOfCharacterFromSet:nonRGBACharset].location == NSNotFound)
-			{
-				result = rawMode;
-			}
+	const oo::PList *value = textureSpecifier.find(cxx_kOOTextureSpecifierSwizzleKey);
+	const std::string *rawMode = (value != nullptr) ? value->getIf<std::string>() : nullptr;
+	if (rawMode != nullptr)
+	{
+		std::size_t length = rawMode->size();
+		if (1 <= length && length <= 4 && rawMode->find_first_not_of("rgba") == std::string::npos)
+		{
+			result = *rawMode;
 		}
 	}
 	
 	return result;
 }
+
+
+// The string-typed read of the value for key that oo::PListView did: a string, or a number as a string; anything else nil.
+std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *key)
+{
+	const oo::PList *value = spec.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return spec.get<std::string>(key);
+}
+
+}	// namespace
 
 
 - (void) appendVariable:(NSString *)name ofType:(NSString *)type withPrefix:(NSString *)prefix to:(NSMutableString *)buffer
@@ -551,7 +563,9 @@ static NSString *GetExtractMode(NSDictionary *textureSpecifier)
 	
 	FIXME: efficiency and stuff.
 */
-static NSString *KeyFromTextureParameters(NSString *name, OOTextureFlags options, float anisotropy, float lodBias)
+namespace {
+
+std::string KeyFromTextureParameters(const std::string &name, OOTextureFlags options, float anisotropy, float lodBias)
 {
 #ifndef NDEBUG
 	options = OOApplyTextureOptionDefaults(options);
@@ -560,15 +574,15 @@ static NSString *KeyFromTextureParameters(NSString *name, OOTextureFlags options
 	// Extraction modes are ignored in synthesized shaders, since we use swizzling instead.
 	options &= ~kOOTextureExtractChannelMask;
 	
-	return [NSString stringWithFormat:@"%@:%X:%g:%g", name, options, anisotropy, lodBias];
+	return oo::str::format("%s:%X:%g:%g", name.c_str(), options, anisotropy, lodBias);
 }
 
-static NSString *KeyFromTextureSpec(NSDictionary *spec)
+std::string KeyFromTextureSpec(const oo::PList &spec)
 {
-	NSString *texName = nil;
+	std::string texName;
 	OOTextureFlags texOptions;
 	float anisotropy, lodBias;
-	if (!OOInterpretTextureSpecifier(spec, &texName, &texOptions, &anisotropy, &lodBias, YES))
+	if (!cxx_OOInterpretTextureSpecifier(spec, &texName, &texOptions, &anisotropy, &lodBias, YES))
 	{
 		// OOInterpretTextureSpecifier() will have logged something.
 		[OOException raise:OOGenericException format:"Invalid texture specifier"];
@@ -577,21 +591,24 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	return KeyFromTextureParameters(texName, texOptions, anisotropy, lodBias);
 }
 
+}	// namespace
 
-- (NSUInteger) assignIDForTexture:(NSDictionary *)spec
+
+- (NSUInteger) assignIDForTexture:(const oo::PList &)textureSpec
 {
-	NSParameterAssert(spec != nil);
+	NSParameterAssert(!textureSpec.isNull());
 	
 	// extract_channel doesn't affect uniqueness, and we don't want OOTexture to do actual extraction.
-	if ([spec objectForKey:kOOTextureSpecifierSwizzleKey] != nil)
+	oo::PList spec = textureSpec;
+	if (oo::PList::Dict *dict = spec.getIf<oo::PList::Dict>())
 	{
-		spec = [spec dictionaryByRemovingObjectForKey:kOOTextureSpecifierSwizzleKey];
+		dict->erase(cxx_kOOTextureSpecifierSwizzleKey);
 	}
 	
-	NSString *texName = nil;
+	std::string texName;
 	OOTextureFlags texOptions;
 	float anisotropy, lodBias;
-	if (!OOInterpretTextureSpecifier(spec, &texName, &texOptions, &anisotropy, &lodBias, YES))
+	if (!cxx_OOInterpretTextureSpecifier(spec, &texName, &texOptions, &anisotropy, &lodBias, YES))
 	{
 		// OOInterpretTextureSpecifier() will have logged something.
 		[OOException raise:OOGenericException format:"Invalid texture specifier"];
@@ -604,14 +621,12 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 		[OOException raise:OOGenericException format:"Invalid material"];
 	}
 	
-	NSString *key = KeyFromTextureParameters(texName, texOptions, anisotropy, lodBias);
+	std::string key = KeyFromTextureParameters(texName, texOptions, anisotropy, lodBias);
 	NSUInteger texID;
-	NSObject *existing = [_texturesByName objectForKey:key];
-	if (existing == nil)
+	if (_texturesByName.find(key) == _texturesByName.end())
 	{
-		texID = [_texturesByName count];
-		NSNumber	*texIDObj = [NSNumber numberWithUnsignedInteger:texID];
-		NSString	*texUniform = [NSString stringWithFormat:@"uTexture%zu", texID];
+		texID = _texturesByName.size();
+		std::string	texUniform = oo::str::format("uTexture%zu", texID);
 		
 #ifndef NDEBUG
 		BOOL useInternalFormat = NO;
@@ -619,100 +634,103 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 		BOOL useInternalFormat = YES;
 #endif
 		
-		[_textures addObject:OOMakeTextureSpecifier(texName, texOptions, anisotropy, lodBias, useInternalFormat)];
-		[_texturesByName setObject:spec forKey:key];
-		[_textureIDs setObject:texIDObj forKey:key];
-		[_uniforms setObject:[NSDictionary dictionaryWithObjectsAndKeys:@"texture", @"type", texIDObj, @"value", nil]
-					  forKey:texUniform];
+		_textures.push_back(cxx_OOMakeTextureSpecifier(texName, texOptions, anisotropy, lodBias, useInternalFormat));
+		_texturesByName[key] = spec;
+		_textureIDs[key] = texID;
+		oo::PList uniform(oo::PList::Dict{ { "type", oo::PList("texture") }, { "value", oo::PList::unsignedInteger(texID) } });
+		[_uniforms setObject:oo::ObjectFromPList(uniform) forKey:oo::NSStringFrom(texUniform)];
 		
-		[self addFragmentUniform:texUniform ofType:@"sampler2D"];
+		[self addFragmentUniform:oo::NSStringFrom(texUniform) ofType:@"sampler2D"];
 	}
 	else
 	{
-		texID = oo::PListView(_textureIDs).get<NSUInteger>(texName);
+		// Upstream looks the ID up by texName, not by key, so it finds none and answers 0 (kept).
+		auto found = _textureIDs.find(texName);
+		texID = (found != _textureIDs.end()) ? found->second : 0;
 	}
 	
 	return texID;
 }
 
 
-- (NSUInteger) textureIDForSpec:(NSDictionary *)textureSpec
+- (NSUInteger) textureIDForSpec:(const oo::PList &)textureSpec
 {
-	return oo::PListView(_textureIDs).get<NSUInteger>(KeyFromTextureSpec(textureSpec));
+	auto found = _textureIDs.find(KeyFromTextureSpec(textureSpec));
+	return (found != _textureIDs.end()) ? found->second : 0;
 }
 
 
-- (void) setUpOneTexture:(NSDictionary *)textureSpec
+- (void) setUpOneTexture:(const oo::PList &)textureSpec
 {
-	if (textureSpec == nil)  return;
+	if (textureSpec.isNull())  return;
 	
 	REQUIRE_STAGE(writeTextureCoordRead);
 	
 	NSUInteger texID = [self assignIDForTexture:textureSpec];
 	if (_sampledTextures.insert(texID).second)
 	{
-		[_fragmentTextureLookups appendFormat:@"\tvec4 tex%zuSample = texture2D(uTexture%zu, texCoords);  // %@\n", texID, texID, oo::PListView(textureSpec).get<NSString *>(kOOTextureSpecifierNameKey)];
+		[_fragmentTextureLookups appendFormat:@"\tvec4 tex%zuSample = texture2D(uTexture%zu, texCoords);  // %@\n", texID, texID, oo::NSStringOrNil(OptionalStringFor(textureSpec, cxx_kOOTextureSpecifierNameKey))];
 	}
 }
 
 
-- (void) getSampleName:(NSString **)outSampleName andSwizzleOp:(NSString **)outSwizzleOp forTextureSpec:(NSDictionary *)textureSpec
+- (void) getSampleName:(std::string *)outSampleName andSwizzleOp:(std::string *)outSwizzleOp forTextureSpec:(const oo::PList &)textureSpec
 {
-	NSParameterAssert(outSampleName != NULL && outSwizzleOp != NULL && textureSpec != nil);
+	NSParameterAssert(outSampleName != NULL && outSwizzleOp != NULL && !textureSpec.isNull());
 	
 	[self setUpOneTexture:textureSpec];
 	NSUInteger	texID = [self textureIDForSpec:textureSpec];
 	
-	*outSampleName = [NSString stringWithFormat:@"tex%zuSample", texID];
-	*outSwizzleOp = GetExtractMode(textureSpec);
+	*outSampleName = oo::str::format("tex%zuSample", texID);
+	*outSwizzleOp = GetExtractMode(textureSpec).value_or(std::string());
 }
 
 
-- (NSString *) readRGBForTextureSpec:(NSDictionary *)textureSpec mapName:(NSString *)mapName
+- (std::optional<std::string>) readRGBForTextureSpec:(const oo::PList &)textureSpec mapName:(const std::string &)mapName
 {
-	NSString *sample, *swizzle;
+	std::string sample, swizzle;
 	[self getSampleName:&sample andSwizzleOp:&swizzle forTextureSpec:textureSpec];
 	
-	if (swizzle == nil)
+	if (swizzle.empty())
 	{
-		return [sample stringByAppendingString:@".rgb"];
+		return sample + ".rgb";
 	}
 	
-	NSUInteger channelCount = [swizzle length];
+	NSUInteger channelCount = swizzle.size();
 	
 	if (channelCount == 1)
 	{
-		return [NSString stringWithFormat:@"%@.%@%@%@", sample, swizzle, swizzle, swizzle];
+		return sample + "." + swizzle + swizzle + swizzle;
 	}
 	else if (channelCount == 3)
 	{
-		return [NSString stringWithFormat:@"%@.%@", sample, swizzle];
+		return sample + "." + swizzle;
 	}
 	
-	OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", mapName, oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), channelCount, @"1 or 3");
-	return nil;
+	OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", oo::NSStringFrom(mapName), oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), channelCount, @"1 or 3");
+	return std::nullopt;
 }
 
 
-- (NSString *) readOneChannelForTextureSpec:(NSDictionary *)textureSpec mapName:(NSString *)mapName
+- (std::optional<std::string>) readOneChannelForTextureSpec:(const oo::PList &)textureSpec mapName:(const std::string &)mapName
 {
-	NSString *sample, *swizzle;
+	std::string sample, swizzle;
 	[self getSampleName:&sample andSwizzleOp:&swizzle forTextureSpec:textureSpec];
 	
-	if (swizzle == nil)
+	if (swizzle.empty())
 	{
-		return [sample stringByAppendingString:@".r"];
+		return sample + ".r";
 	}
 	
-	NSUInteger channelCount = [swizzle length];
+	NSUInteger channelCount = swizzle.size();
 	
 	if (channelCount == 1)
 	{
-		return [NSString stringWithFormat:@"%@.%@", sample, swizzle];
+		return sample + "." + swizzle;
 	}
 	
-	OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", mapName, oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), channelCount, @"1");
-	return nil;
+	OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", oo::NSStringFrom(mapName), oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), channelCount, @"1");
+	return std::nullopt;
 }
 
 
@@ -748,9 +766,9 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	_fragmentTextureLookups = [[NSMutableString alloc] init];
 	_fragmentBody = [[NSMutableString alloc] init];
 	
-	_textures = [[NSMutableArray alloc] init];
-	_texturesByName = [[NSMutableDictionary alloc] init];
-	_textureIDs = [[NSMutableDictionary alloc] init];
+	_textures.clear();
+	_texturesByName.clear();
+	_textureIDs.clear();
 	_sampledTextures.clear();
 	
 	_uniformBindingNames = [[NSMutableDictionary alloc] init];
@@ -774,8 +792,8 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	DESTROY(_fragmentTextureLookups);
 	DESTROY(_fragmentBody);
 	
-	DESTROY(_texturesByName);
-	DESTROY(_textureIDs);
+	_texturesByName.clear();
+	_textureIDs.clear();
 	_sampledTextures.clear();
 	
 	DESTROY(_uniformBindingNames);
@@ -806,8 +824,8 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 				texture loading mechanism has to occur after determining
 				texture coordinates (duh).
 			*/
-			NSString *swizzle = GetExtractMode(oo::ObjectFromPList(parallaxMap)) ?: (NSString *)@"a";
-			NSUInteger channelCount = [swizzle length];
+			std::string swizzle = GetExtractMode(parallaxMap).value_or("a");
+			NSUInteger channelCount = swizzle.size();
 			if (channelCount == 1)
 			{
 				haveTexCoords = YES;
@@ -816,8 +834,8 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 				
 				[_fragmentPreTextures appendString:@"\t// Parallax mapping\n"];
 				
-				NSUInteger texID = [self assignIDForTexture:oo::ObjectFromPList(parallaxMap)];
-				[_fragmentPreTextures appendFormat:@"\tfloat parallax = texture2D(uTexture%zu, vTexCoords).%@;\n", texID, swizzle];
+				NSUInteger texID = [self assignIDForTexture:parallaxMap];
+				[_fragmentPreTextures appendFormat:@"\tfloat parallax = texture2D(uTexture%zu, vTexCoords).%@;\n", texID, oo::NSStringFrom(swizzle)];
 				
 				if (parallaxScale != 1.0f)
 				{
@@ -857,14 +875,14 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	BOOL haveDiffuseColor = NO;
 	if (!diffuseMap.isNull())
 	{
-		NSString *readInstr = [self readRGBForTextureSpec:oo::ObjectFromPList(diffuseMap) mapName:@"diffuse"];
-		if (EXPECT_NOT(readInstr == nil))
+		std::optional<std::string> readInstr = [self readRGBForTextureSpec:diffuseMap mapName:"diffuse"];
+		if (EXPECT_NOT(!readInstr.has_value()))
 		{
 			[_fragmentBody appendString:@"\t// INVALID EXTRACTION KEY\n\t\n"];
 		}
 		else
 		{
-			[_fragmentBody appendFormat:@"\tvec3 diffuseColor = %@;\n", readInstr];
+			[_fragmentBody appendFormat:@"\tvec3 diffuseColor = %@;\n", oo::NSStringFrom(*readInstr)];
 			 haveDiffuseColor = YES;
 		}
 	}
@@ -976,18 +994,18 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	}
 	if (!normalMap.isNull())
 	{
-		NSString *sample, *swizzle;
-		[self getSampleName:&sample andSwizzleOp:&swizzle forTextureSpec:oo::ObjectFromPList(normalMap)];
-		if (swizzle == nil)  swizzle = @"rgb";
-		if ([swizzle length] == 3)
+		std::string sample, swizzle;
+		[self getSampleName:&sample andSwizzleOp:&swizzle forTextureSpec:normalMap];
+		if (swizzle.empty())  swizzle = "rgb";
+		if (swizzle.size() == 3)
 		{
-			[_fragmentBody appendFormat:@"\tvec3 normal = normalize(%@.%@ - 0.5);\n\t\n", sample, swizzle];
+			[_fragmentBody appendFormat:@"\tvec3 normal = normalize(%@.%@ - 0.5);\n\t\n", oo::NSStringFrom(sample), oo::NSStringFrom(swizzle)];
 			_usesNormalMap = YES;
 			return;
 		}
 		else
 		{
-			OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", @"normal", oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), [swizzle length], @"3");
+			OOLogWARN(@"material.synthesis.warning.extractionMismatch", @"The %@ map for material \"%@\" of \"%@\" specifies %zu channels to extract, but only %@ may be used.", @"normal", oo::NSStringOrNil([self materialKey]), oo::NSStringOrNil([self entityName]), swizzle.size(), @"3");
 		}
 	}
 	_constZNormal = YES;
@@ -1047,14 +1065,14 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	BOOL haveSpecularColor = NO;
 	if (!specularColorMap.isNull())
 	{
-		NSString *readInstr = [self readRGBForTextureSpec:oo::ObjectFromPList(specularColorMap) mapName:@"specular colour"];
-		if (EXPECT_NOT(readInstr == nil))
+		std::optional<std::string> readInstr = [self readRGBForTextureSpec:specularColorMap mapName:"specular colour"];
+		if (EXPECT_NOT(!readInstr.has_value()))
 		{
 			[_fragmentBody appendString:@"\t// INVALID EXTRACTION KEY\n\t\n"];
 			return;
 		}
 		
-		[_fragmentBody appendFormat:@"\tvec3 specularColor = %@;\n", readInstr];
+		[_fragmentBody appendFormat:@"\tvec3 specularColor = %@;\n", oo::NSStringFrom(*readInstr)];
 		haveSpecularColor = YES;
 	}
 	
@@ -1103,14 +1121,14 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	BOOL haveSpecularExponent = NO;
 	if (!specularExponentMap.isNull())
 	{
-		NSString *readInstr = [self readOneChannelForTextureSpec:oo::ObjectFromPList(specularExponentMap) mapName:@"specular exponent"];
-		if (EXPECT_NOT(readInstr == nil))
+		std::optional<std::string> readInstr = [self readOneChannelForTextureSpec:specularExponentMap mapName:"specular exponent"];
+		if (EXPECT_NOT(!readInstr.has_value()))
 		{
 			[_fragmentBody appendString:@"\t// INVALID EXTRACTION KEY\n\t\n"];
 			return;
 		}
 		
-		[_fragmentBody appendFormat:@"\tfloat specularExponent = %@ * %.1f;\n", readInstr, specularExponent];
+		[_fragmentBody appendFormat:@"\tfloat specularExponent = %@ * %.1f;\n", oo::NSStringFrom(*readInstr), specularExponent];
 		haveSpecularExponent = YES;
 	}
 	if (!haveSpecularExponent)
@@ -1195,14 +1213,14 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 		
 		if (!textureSpec.isNull())
 		{
-			NSString *readInstr = [self readRGBForTextureSpec:oo::ObjectFromPList(textureSpec) mapName:@"light"];
-			if (EXPECT_NOT(readInstr == nil))
+			std::optional<std::string> readInstr = [self readRGBForTextureSpec:textureSpec mapName:"light"];
+			if (EXPECT_NOT(!readInstr.has_value()))
 			{
 				[_fragmentBody appendString:@"\t// INVALID EXTRACTION KEY\n\n"];
 				continue;
 			}
 			
-			[_fragmentBody appendFormat:@"\tlightMapColor = %@;\n", readInstr];
+			[_fragmentBody appendFormat:@"\tlightMapColor = %@;\n", oo::NSStringFrom(*readInstr)];
 			
 			if (rgba[0] != 1.0f || rgba[1] != 1.0f || rgba[2] != 1.0f)
 			{
