@@ -544,159 +544,159 @@ typedef enum
 	NSDictionary   *keyconfig2_settings;
 	std::map<std::string, uint16_t, std::less<>>	keyCodeLookups;	// lower-case key names -> key codes
 
-	NSArray					*n_key_roll_left;
-	NSArray					*n_key_roll_right;
-	NSArray					*n_key_pitch_forward;
-	NSArray					*n_key_pitch_back;
-	NSArray					*n_key_yaw_left;
-	NSArray					*n_key_yaw_right;
+	oo::PList					n_key_roll_left;
+	oo::PList					n_key_roll_right;
+	oo::PList					n_key_pitch_forward;
+	oo::PList					n_key_pitch_back;
+	oo::PList					n_key_yaw_left;
+	oo::PList					n_key_yaw_right;
 
-	NSArray					*n_key_view_forward; 		// && undock
-	NSArray					*n_key_view_aft;			// && options menu
-	NSArray					*n_key_view_port;			// && equipment screen
-	NSArray					*n_key_view_starboard;		// && interfaces screen
+	oo::PList					n_key_view_forward; 		// && undock
+	oo::PList					n_key_view_aft;			// && options menu
+	oo::PList					n_key_view_port;			// && equipment screen
+	oo::PList					n_key_view_starboard;		// && interfaces screen
 
-	NSArray					*n_key_launch_ship;
-	NSArray					*n_key_gui_screen_options;
-	NSArray					*n_key_gui_screen_equipship;
-	NSArray					*n_key_gui_screen_interfaces;
-	NSArray					*n_key_gui_screen_status;
-	NSArray					*n_key_gui_chart_screens;
-	NSArray					*n_key_gui_system_data;
-	NSArray					*n_key_gui_market;
+	oo::PList					n_key_launch_ship;
+	oo::PList					n_key_gui_screen_options;
+	oo::PList					n_key_gui_screen_equipship;
+	oo::PList					n_key_gui_screen_interfaces;
+	oo::PList					n_key_gui_screen_status;
+	oo::PList					n_key_gui_chart_screens;
+	oo::PList					n_key_gui_system_data;
+	oo::PList					n_key_gui_market;
 
-	NSArray					*n_key_gui_arrow_left;
-	NSArray					*n_key_gui_arrow_right;
-	NSArray					*n_key_gui_arrow_up;
-	NSArray					*n_key_gui_arrow_down;
-	NSArray					*n_key_gui_page_up;
-	NSArray					*n_key_gui_page_down;
-	NSArray					*n_key_gui_select;
+	oo::PList					n_key_gui_arrow_left;
+	oo::PList					n_key_gui_arrow_right;
+	oo::PList					n_key_gui_arrow_up;
+	oo::PList					n_key_gui_arrow_down;
+	oo::PList					n_key_gui_page_up;
+	oo::PList					n_key_gui_page_down;
+	oo::PList					n_key_gui_select;
 	
-	NSArray					*n_key_increase_speed;
-	NSArray					*n_key_decrease_speed;
-	NSArray					*n_key_inject_fuel;
+	oo::PList					n_key_increase_speed;
+	oo::PList					n_key_decrease_speed;
+	oo::PList					n_key_inject_fuel;
 	
-	NSArray					*n_key_fire_lasers;
-	NSArray					*n_key_launch_missile;
-	NSArray					*n_key_next_missile;
-	NSArray					*n_key_ecm;
+	oo::PList					n_key_fire_lasers;
+	oo::PList					n_key_launch_missile;
+	oo::PList					n_key_next_missile;
+	oo::PList					n_key_ecm;
 	
-	NSArray					*n_key_prime_next_equipment;
-	NSArray					*n_key_prime_previous_equipment;
-	NSArray					*n_key_activate_equipment;
-	NSArray					*n_key_mode_equipment;
-	NSArray					*n_key_fastactivate_equipment_a;
-	NSArray					*n_key_fastactivate_equipment_b;
+	oo::PList					n_key_prime_next_equipment;
+	oo::PList					n_key_prime_previous_equipment;
+	oo::PList					n_key_activate_equipment;
+	oo::PList					n_key_mode_equipment;
+	oo::PList					n_key_fastactivate_equipment_a;
+	oo::PList					n_key_fastactivate_equipment_b;
 	
-	NSArray					*n_key_target_missile;
-	NSArray					*n_key_untarget_missile;
-	NSArray					*n_key_target_incoming_missile;
-	NSArray					*n_key_ident_system;
+	oo::PList					n_key_target_missile;
+	oo::PList					n_key_untarget_missile;
+	oo::PList					n_key_target_incoming_missile;
+	oo::PList					n_key_ident_system;
 	
-	NSArray					*n_key_scanner_zoom;
-	NSArray					*n_key_scanner_unzoom;
+	oo::PList					n_key_scanner_zoom;
+	oo::PList					n_key_scanner_unzoom;
 	
-	NSArray					*n_key_launch_escapepod;
+	oo::PList					n_key_launch_escapepod;
 	
-	NSArray					*n_key_galactic_hyperspace;
-	NSArray					*n_key_hyperspace;
-	NSArray					*n_key_jumpdrive;
+	oo::PList					n_key_galactic_hyperspace;
+	oo::PList					n_key_hyperspace;
+	oo::PList					n_key_jumpdrive;
 	
-	NSArray					*n_key_dump_cargo;
-	NSArray					*n_key_rotate_cargo;
+	oo::PList					n_key_dump_cargo;
+	oo::PList					n_key_rotate_cargo;
 	
-	NSArray					*n_key_autopilot;
-	NSArray					*n_key_autodock;
+	oo::PList					n_key_autopilot;
+	oo::PList					n_key_autodock;
 	
-	NSArray					*n_key_snapshot;
-	NSArray					*n_key_docking_music;
+	oo::PList					n_key_snapshot;
+	oo::PList					n_key_docking_music;
 	
-	NSArray					*n_key_advanced_nav_array_next;
-	NSArray					*n_key_advanced_nav_array_previous;
-	NSArray					*n_key_info_next_system;
-	NSArray					*n_key_info_previous_system;
-	NSArray					*n_key_map_home;
-	NSArray					*n_key_map_end;
-	NSArray					*n_key_map_next_system;
-	NSArray					*n_key_map_previous_system;
-	NSArray					*n_key_map_info;
-	NSArray					*n_key_map_zoom_in;
-	NSArray					*n_key_map_zoom_out;
+	oo::PList					n_key_advanced_nav_array_next;
+	oo::PList					n_key_advanced_nav_array_previous;
+	oo::PList					n_key_info_next_system;
+	oo::PList					n_key_info_previous_system;
+	oo::PList					n_key_map_home;
+	oo::PList					n_key_map_end;
+	oo::PList					n_key_map_next_system;
+	oo::PList					n_key_map_previous_system;
+	oo::PList					n_key_map_info;
+	oo::PList					n_key_map_zoom_in;
+	oo::PList					n_key_map_zoom_out;
 
-	NSArray					*n_key_system_home;
-	NSArray					*n_key_system_end;
-	NSArray					*n_key_system_next_system;
-	NSArray					*n_key_system_previous_system;
+	oo::PList					n_key_system_home;
+	oo::PList					n_key_system_end;
+	oo::PList					n_key_system_next_system;
+	oo::PList					n_key_system_previous_system;
 
-	NSArray					*n_key_pausebutton;
-	NSArray					*n_key_show_fps;
-	NSArray					*n_key_bloom_toggle;
-	NSArray					*n_key_mouse_control_roll;
-	NSArray					*n_key_mouse_control_yaw;
-	NSArray					*n_key_hud_toggle;
+	oo::PList					n_key_pausebutton;
+	oo::PList					n_key_show_fps;
+	oo::PList					n_key_bloom_toggle;
+	oo::PList					n_key_mouse_control_roll;
+	oo::PList					n_key_mouse_control_yaw;
+	oo::PList					n_key_hud_toggle;
 	
-	NSArray					*n_key_comms_log;
-	NSArray					*n_key_prev_compass_mode;
-	NSArray					*n_key_next_compass_mode;
+	oo::PList					n_key_comms_log;
+	oo::PList					n_key_prev_compass_mode;
+	oo::PList					n_key_next_compass_mode;
 	
-	NSArray					*n_key_chart_highlight;
-	NSArray					*n_key_market_filter_cycle;
-	NSArray					*n_key_market_sorter_cycle;
-	NSArray					*n_key_market_buy_one;
-	NSArray					*n_key_market_sell_one;
-	NSArray					*n_key_market_buy_max;
-	NSArray					*n_key_market_sell_max;
+	oo::PList					n_key_chart_highlight;
+	oo::PList					n_key_market_filter_cycle;
+	oo::PList					n_key_market_sorter_cycle;
+	oo::PList					n_key_market_buy_one;
+	oo::PList					n_key_market_sell_one;
+	oo::PList					n_key_market_buy_max;
+	oo::PList					n_key_market_sell_max;
 
-	NSArray					*n_key_next_target;
-	NSArray					*n_key_previous_target;
+	oo::PList					n_key_next_target;
+	oo::PList					n_key_previous_target;
 	
-	NSArray					*n_key_custom_view;
-	NSArray					*n_key_custom_view_zoom_out;
-	NSArray					*n_key_custom_view_zoom_in;
-	NSArray					*n_key_custom_view_roll_left;
-	NSArray					*n_key_custom_view_pan_left;
-	NSArray					*n_key_custom_view_roll_right;
-	NSArray					*n_key_custom_view_pan_right;
-	NSArray					*n_key_custom_view_rotate_up;
-	NSArray					*n_key_custom_view_pan_up;
-	NSArray					*n_key_custom_view_rotate_down;
-	NSArray					*n_key_custom_view_pan_down;
-	NSArray					*n_key_custom_view_rotate_left;
-	NSArray					*n_key_custom_view_rotate_right;
+	oo::PList					n_key_custom_view;
+	oo::PList					n_key_custom_view_zoom_out;
+	oo::PList					n_key_custom_view_zoom_in;
+	oo::PList					n_key_custom_view_roll_left;
+	oo::PList					n_key_custom_view_pan_left;
+	oo::PList					n_key_custom_view_roll_right;
+	oo::PList					n_key_custom_view_pan_right;
+	oo::PList					n_key_custom_view_rotate_up;
+	oo::PList					n_key_custom_view_pan_up;
+	oo::PList					n_key_custom_view_rotate_down;
+	oo::PList					n_key_custom_view_pan_down;
+	oo::PList					n_key_custom_view_rotate_left;
+	oo::PList					n_key_custom_view_rotate_right;
 	
-	NSArray					*n_key_docking_clearance_request;
-	NSArray					*n_key_weapons_online_toggle;
+	oo::PList					n_key_docking_clearance_request;
+	oo::PList					n_key_weapons_online_toggle;
 
-	NSArray					*n_key_cycle_next_mfd;
-	NSArray					*n_key_cycle_previous_mfd;
-	NSArray					*n_key_switch_next_mfd;
-	NSArray					*n_key_switch_previous_mfd;
+	oo::PList					n_key_cycle_next_mfd;
+	oo::PList					n_key_cycle_previous_mfd;
+	oo::PList					n_key_switch_next_mfd;
+	oo::PList					n_key_switch_previous_mfd;
 
-	NSArray					*n_key_oxzmanager_setfilter;
-	NSArray					*n_key_oxzmanager_showinfo;
-	NSArray					*n_key_oxzmanager_extract;
+	oo::PList					n_key_oxzmanager_setfilter;
+	oo::PList					n_key_oxzmanager_showinfo;
+	oo::PList					n_key_oxzmanager_extract;
 	
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
-	NSArray					*n_key_inc_field_of_view;
-	NSArray					*n_key_dec_field_of_view;
+	oo::PList					n_key_inc_field_of_view;
+	oo::PList					n_key_dec_field_of_view;
 #endif
 	
 #ifndef NDEBUG
-	NSArray					*n_key_dump_target_state;
-	NSArray					*n_key_dump_entity_list;
-	NSArray					*n_key_debug_full;
-	NSArray					*n_key_debug_collision;
-	NSArray					*n_key_debug_console_connect;
-	NSArray					*n_key_debug_bounding_boxes;
-	NSArray					*n_key_debug_shaders;
-	NSArray					*n_key_debug_off;
+	oo::PList					n_key_dump_target_state;
+	oo::PList					n_key_dump_entity_list;
+	oo::PList					n_key_debug_full;
+	oo::PList					n_key_debug_collision;
+	oo::PList					n_key_debug_console_connect;
+	oo::PList					n_key_debug_bounding_boxes;
+	oo::PList					n_key_debug_shaders;
+	oo::PList					n_key_debug_off;
 #endif
 
 	// dict to hold custom key config for OXP equipment with activate/mode functions
 	NSMutableArray			*customEquipActivation;
-	NSMutableArray			*customActivatePressed;
-	NSMutableArray			*customModePressed;
+	std::vector<BOOL>		customActivatePressed;	// parallel to customEquipActivation
+	std::vector<BOOL>		customModePressed;
 
 	// dict to hold extra keys for missions screen.
 	NSDictionary			*extraMissionKeys;

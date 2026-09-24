@@ -299,79 +299,45 @@ static NSTimeInterval	time_last_frame;
 
 - (void) initKeyConfigSettings
 {
-	NSMutableDictionary	*kdicmaster = [NSMutableDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:@"keyconfig2.plist" inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
+	const oo::PList kdicmaster = [ResourceManager cxx_dictionaryFromFilesNamed:"keyconfig2.plist" inFolder:"Config" mergeMode:MERGE_BASIC cache:NO];
 	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	NSString *kbd = oo::PListView(defaults).get<NSString *>(@"keyboard-code", @"default");
-	NSMutableDictionary *kdic2 = [NSMutableDictionary dictionaryWithDictionary:[kdicmaster objectForKey:kbd]];
+	// the stored keyboard code (oo_stringForKey:defaultValue: over the value)
+	const oo::PList kbdValue = oo::PListFrom([defaults objectForKey:@"keyboard-code"]);
+	const std::string kbd = oo::PListGet<std::string>::from(kbdValue.isNull() ? nullptr : &kbdValue, "default");
+	const oo::PList *kbdDefs = kdicmaster.get<oo::PList::Dict>(kbd);
+	oo::PList::Dict kdic2 = (kbdDefs != nullptr) ? *kbdDefs->getIf<oo::PList::Dict>() : oo::PList::Dict();
 
-	unsigned		i;
-	NSArray			*keys = nil;
-	id				key = nil;
-	NSArray  		*def_list = nil;
-
-	keys = [kdic2 allKeys];
-	for (i = 0; i < [keys count]; i++)
+	for (auto &entry : kdic2)
 	{
-		key = [keys objectAtIndex:i];
-		if ([[kdic2 objectForKey:key] isKindOfClass:[NSArray class]])
-		{
-			def_list = (NSArray*)[kdic2 objectForKey: key];
-			[kdic2 setObject:[self processKeyCode:def_list] forKey:key];
-		}
+		if (entry.second.isArray())  entry.second = [self cxx_processKeyCode:entry.second];
 	}
 
-	// load custom equipment keys/buttons
+	// load custom equipment keys/buttons (customEquipActivation stays the live array: oo-qt0w decision B)
 	[customEquipActivation release];
-	if ([defaults objectForKey:KEYCONFIG_CUSTOMEQUIP]) 
+	customEquipActivation = [[defaults arrayForKey:KEYCONFIG_CUSTOMEQUIP] mutableCopy];
+	if (customEquipActivation == nil)  customEquipActivation = [oo::ObjectFromPList(oo::PList(oo::PList::Array())) mutableCopy];
+	customActivatePressed.assign([customEquipActivation count], NO);
+	customModePressed.assign([customEquipActivation count], NO);
+
+	// update with overrides from defaults file (unprocessed, as before)
+	const oo::PList overrides = oo::PListFrom([defaults objectForKey:KEYCONFIG_OVERRIDES]);
+	if (const oo::PList::Dict *dict = overrides.getIf<oo::PList::Dict>())
 	{
-		NSArray *temp = [defaults arrayForKey:KEYCONFIG_CUSTOMEQUIP];
-		customEquipActivation = [[NSMutableArray arrayWithArray:temp] retain];
-	}
-	else 
-	{
-		customEquipActivation = [[NSMutableArray alloc] init];
-	}
-	[customActivatePressed release];
-	[customModePressed release];
-	customActivatePressed = [[NSMutableArray alloc] init];
-	customModePressed = [[NSMutableArray alloc] init];
-	for (i = 0; i < [customEquipActivation count]; i++)
-	{
-		[customActivatePressed addObject:[NSNumber numberWithBool:NO]];
-		[customModePressed addObject:[NSNumber numberWithBool:NO]];
+		for (const auto &entry : *dict)  kdic2[entry.first] = entry.second;
 	}
 
-	NSMutableArray *keyDef = nil;
-	NSString *lookup = nil;
-	NSArray *curr = nil;
-	NSDictionary *key1 = nil;
-	NSDictionary *key2 = nil;
-
-	// update with overrides from defaults file
-	NSDictionary *dict = [defaults objectForKey:KEYCONFIG_OVERRIDES];
-
-	keys = [dict allKeys];
-	for (i = 0; i < [keys count]; i++)
+	// the key setting for ivar n_key_<x> is kdic2's entry "key_<x>", or a null PList (nil) when there is none
+	const auto keySetting = [&kdic2](std::string_view ivarName) -> oo::PList
 	{
-		key = [keys objectAtIndex:i];
-		[kdic2 setObject:[dict objectForKey:key] forKey:key];
-	}
+		const auto found = kdic2.find(ivarName.substr(2));
+		return (found != kdic2.end()) ? found->second : oo::PList();
+	};
 
 // by default none of the standard key functions require more than 2 entries, so our macro will limit itself to 2
 // also, none of the standard key functions utilise "Alt" (mod2), so we're defaulting that setting
+// (the default key definitions were never stored - the array they were added to was nil - so they are not built)
 #define LOAD_KEY_SETTING2(name, default_1, shift_1, mod1_1, default_2, shift_2, mod1_2) \
-	lookup = [@#name substringFromIndex:2]; \
-	curr = (NSArray*)[[kdic2 objectForKey:lookup] copy]; \
-	key1 = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithUnsignedShort:default_1], @"key", [NSNumber numberWithBool:shift_1], @"shift", [NSNumber numberWithBool:mod1_1], @"mod1", [NSNumber numberWithBool:NO], @"mod2", nil]; \
-	[keyDef addObject:key1]; \
-	if (default_2 > 0) \
-	{ \
-		key2 = [[NSDictionary alloc] initWithObjectsAndKeys:[NSNumber numberWithUnsignedShort:default_2], @"key", [NSNumber numberWithBool:shift_2], @"shift", [NSNumber numberWithBool:mod1_2], @"mod1", [NSNumber numberWithBool:NO], @"mod2", nil]; \
-		[keyDef addObject:key2]; \
-	} \
-	name = curr?:keyDef; \
-	[kdic2 setObject:curr?:keyDef forKey:lookup]; \
-	[keyDef release];
+	name = keySetting(#name)
 
 	LOAD_KEY_SETTING2(n_key_roll_left, gvArrowKeyLeft, NO, NO, 0, NO, NO);
 	LOAD_KEY_SETTING2(n_key_roll_right,	gvArrowKeyRight, NO, NO, 0, NO, NO);
@@ -520,7 +486,7 @@ static NSTimeInterval	time_last_frame;
 #endif
 
 	[keyconfig2_settings release];
-	keyconfig2_settings = [[NSDictionary alloc] initWithDictionary:kdic2 copyItems:YES];
+	keyconfig2_settings = [oo::ObjectFromPList(oo::PList(std::move(kdic2))) retain];
 }
 
 
@@ -597,66 +563,66 @@ static NSTimeInterval	time_last_frame;
 
 
 // special case for navigation keys - these keys cannot use mod keys, so they can't be impacted by multiple keypresses
-- (BOOL) checkNavKeyPress:(NSArray*)key_def
+- (BOOL) checkNavKeyPress:(const oo::PList &)key_def
 {
 	MyOpenGLView  *gameView = [UNIVERSE gameView];
-	int i;
-	for (i = 0; i < [key_def count]; i++) 
+	for (std::size_t i = 0; i < key_def.count(); i++)
 	{
-		NSDictionary *def = [key_def objectAtIndex:i];
-		if ([gameView isDown:[[def objectForKey:@"key"] intValue]]) return YES;
+		const oo::PList *def = key_def.at(i);
+		if (def == nullptr)  continue;	// not an array of definitions
+		if ([gameView isDown:def->get<int>("key")]) return YES;
 	}
 	return NO;
 }
 
 
-- (BOOL) checkKeyPress:(NSArray*)key_def
+- (BOOL) checkKeyPress:(const oo::PList &)key_def
 {
 	return [self checkKeyPress:key_def fKey_only:NO ignore_ctrl:NO];
 }
 
 
-- (BOOL) checkKeyPress:(NSArray*)key_def fKey_only:(BOOL)fKey_only
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only
 {
 	return [self checkKeyPress:key_def fKey_only:fKey_only ignore_ctrl:NO];
 }
 
 
-- (BOOL) checkKeyPress:(NSArray*)key_def ignore_ctrl:(BOOL)ignore_ctrl
+- (BOOL) checkKeyPress:(const oo::PList &)key_def ignore_ctrl:(BOOL)ignore_ctrl
 {
 	return [self checkKeyPress:key_def fKey_only:NO ignore_ctrl:ignore_ctrl];
 }
 
 
-- (BOOL) checkKeyPress:(NSArray*)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl
+- (BOOL) checkKeyPress:(const oo::PList &)key_def fKey_only:(BOOL)fKey_only ignore_ctrl:(BOOL)ignore_ctrl
 {
 	MyOpenGLView  *gameView = [UNIVERSE gameView];
-	int i;
-	for (i = 0; i < [key_def count]; i++) 
+	for (std::size_t i = 0; i < key_def.count(); i++)
 	{
-		NSDictionary *def = [key_def objectAtIndex:i];
-		int keycode = [[def objectForKey:@"key"] intValue];
+		const oo::PList *def = key_def.at(i);
+		if (def == nullptr)  continue;	// not an array of definitions
+		int keycode = def->get<int>("key");
 		// skip normal keys if the fKey_only flag is set
-		// note: if the player has remapped the gui screen keys to not include function keys, they will not be able to 
+		// note: if the player has remapped the gui screen keys to not include function keys, they will not be able to
 		// switch screens directly (they would need to finish the task - ie press enter, or use the escape key to cancel the function)
-		// note: the logic below now means that the state of the modifiers must match the requirements for the key binding, including 
+		// note: the logic below now means that the state of the modifiers must match the requirements for the key binding, including
 		// when all settings are off. This means, if the player presses two functions at once, one that requires a modifier and
 		// one that doesn't, the one that doesn't will not be triggered.
 		if (fKey_only == YES && (keycode < gvFunctionKey1 || keycode > gvFunctionKey11)) continue;
-		if ([gameView isDown:keycode] 
-			&& ([[def objectForKey:@"shift"] boolValue] == [gameView isShiftDown])
-			&& (ignore_ctrl || ([[def objectForKey:@"mod1"] boolValue] == [gameView isCtrlDown]))
-			&& ([[def objectForKey:@"mod2"] boolValue] == [gameView isOptDown])
+		if ([gameView isDown:keycode]
+			&& (def->get<bool>("shift") == static_cast<bool>([gameView isShiftDown]))
+			&& (ignore_ctrl || (def->get<bool>("mod1") == static_cast<bool>([gameView isCtrlDown])))
+			&& (def->get<bool>("mod2") == static_cast<bool>([gameView isOptDown]))
 		) return YES;
 	}
 	return NO;
 }
 
 
-- (int) getFirstKeyCode:(NSArray*)key_def
+- (int) getFirstKeyCode:(const oo::PList &)key_def
 {
-	NSDictionary *def = [key_def objectAtIndex:0];
-	return [[def objectForKey:@"key"] intValue];
+	const oo::PList *def = key_def.at(0);
+	return (def != nullptr) ? def->get<int>("key") : 0;
 }
 
 
@@ -1513,42 +1479,41 @@ static NSTimeInterval	time_last_frame;
 
 				exceptionContext = @"custom equipment";
 				// loop through all the objects in the customEquipActivation array
-				NSDictionary *item;
-				NSUInteger i;
-				for (i = 0; i < [customEquipActivation count]; i++)
+				for (std::size_t i = 0; i < [customEquipActivation count]; i++)
 				{
-					item = [customEquipActivation objectAtIndex:i];
+					const oo::PList item = oo::PListFrom([customEquipActivation objectAtIndex:i]);
+					const std::string equipKey = item.get<std::string>(oo::StdString(CUSTOMEQUIP_EQUIPKEY));
 					// check if the player has the equip item installed
-					if ([self hasOneEquipmentItem:oo::PListView(item).get<NSString *>(CUSTOMEQUIP_EQUIPKEY) includeWeapons:NO whileLoading:NO])
+					if ([self cxx_hasOneEquipmentItem:equipKey includeWeapons:NO whileLoading:NO])
 					{
-						NSArray *key_act = oo::PListView(item).get<NSArray *>(CUSTOMEQUIP_KEYACTIVATE);
-						NSArray *key_mod = oo::PListView(item).get<NSArray *>(CUSTOMEQUIP_KEYMODE);
-						NSDictionary *but_act = oo::PListView(item).get<NSDictionary *>(CUSTOMEQUIP_BUTTONACTIVATE);
-						NSDictionary *but_mod = oo::PListView(item).get<NSDictionary *>(CUSTOMEQUIP_BUTTONMODE);
-						// if so, 
+						const oo::PList *key_act = item.get<oo::PList::Array>(oo::StdString(CUSTOMEQUIP_KEYACTIVATE));
+						const oo::PList *key_mod = item.get<oo::PList::Array>(oo::StdString(CUSTOMEQUIP_KEYMODE));
+						const oo::PList *but_act = item.get<oo::PList::Dict>(oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE));
+						const oo::PList *but_mod = item.get<oo::PList::Dict>(oo::StdString(CUSTOMEQUIP_BUTTONMODE));
+						// if so,
 						// check to see if the key or button was pressed for activate
-						if ((key_act && [self checkKeyPress:key_act]) || (but_act && [[OOJoystickManager sharedStickHandler] isButtonDown:oo::PListView(but_act).get<int>(STICK_AXBUT) stick:oo::PListView(but_act).get<int>(STICK_NUMBER)]))
+						if ((key_act != nullptr && [self checkKeyPress:*key_act]) || (but_act != nullptr && [[OOJoystickManager sharedStickHandler] isButtonDown:but_act->get<int>(oo::StdString(STICK_AXBUT)) stick:but_act->get<int>(oo::StdString(STICK_NUMBER))]))
 						{
-							if (![[customActivatePressed objectAtIndex:i] boolValue])
+							if (!customActivatePressed[i])
 							{
 								// initate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::PListView(item).get<NSString *>(CUSTOMEQUIP_EQUIPKEY)] withMode:OOPRIMEDEQUIP_ACTIVATED];
+								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_ACTIVATED];
 							}
-							[customActivatePressed replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:YES]];
+							customActivatePressed[i] = YES;
 						}
-						else [customActivatePressed replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:NO]];
+						else customActivatePressed[i] = NO;
 
 						// check to see if the key or button was pressed for mode
-						if ((key_mod && [self checkKeyPress:key_mod]) || (but_mod && [[OOJoystickManager sharedStickHandler] isButtonDown:oo::PListView(but_mod).get<int>(STICK_AXBUT) stick:oo::PListView(but_mod).get<int>(STICK_NUMBER)]))
+						if ((key_mod != nullptr && [self checkKeyPress:*key_mod]) || (but_mod != nullptr && [[OOJoystickManager sharedStickHandler] isButtonDown:but_mod->get<int>(oo::StdString(STICK_AXBUT)) stick:but_mod->get<int>(oo::StdString(STICK_NUMBER))]))
 						{
-							if (![[customModePressed objectAtIndex:i] boolValue])
+							if (!customModePressed[i])
 							{
 								// initiate the activate JS code
-								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::PListView(item).get<NSString *>(CUSTOMEQUIP_EQUIPKEY)] withMode:OOPRIMEDEQUIP_MODE];
+								[self activatePrimableEquipment:[self eqScriptIndexForKey:oo::NSStringFrom(equipKey)] withMode:OOPRIMEDEQUIP_MODE];
 							}
-							[customModePressed replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:YES]];
+							customModePressed[i] = YES;
 						}
-						else [customModePressed replaceObjectAtIndex:i withObject:[NSNumber numberWithBool:NO]];
+						else customModePressed[i] = NO;
 					}
 				}
 
@@ -3111,7 +3076,7 @@ static NSTimeInterval	time_last_frame;
 			keydefs = oo::ObjectFromPList([definition registerKeys]);
 			foreach (key, [keydefs allKeys])
 			{
-				if ([self checkKeyPress:[keydefs objectForKey:key]]) 
+				if ([self checkKeyPress:oo::PListFrom([keydefs objectForKey:key])]) 
 				{
 					if (!extra_gui_key_pressed) 
 					{
@@ -5288,7 +5253,7 @@ static BOOL autopilot_pause;
 					NSString *key = nil;
 					foreach (key, [extraMissionKeys allKeys])
 					{
-						if ([self checkKeyPress:oo::PListView(extraMissionKeys).get<NSArray *>(key)]) {
+						if ([self checkKeyPress:oo::PListFrom([extraMissionKeys objectForKey:key])]) {
 							if (!extra_key_pressed)
 							{
 								extraKey = [key copy];

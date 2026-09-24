@@ -2435,8 +2435,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(stickFunctions);
 
 	DESTROY(customEquipActivation);
-	DESTROY(customActivatePressed);
-	DESTROY(customModePressed);
 
 	DESTROY(extraGuiScreenKeys);
 
@@ -11567,8 +11565,8 @@ static NSString *last_outfitting_key=nil;
 			[customEquipActivation addObject:customKey];
 			[customKey release];
 			// keep the keypress arrays in sync
-			[customActivatePressed addObject:[NSNumber numberWithBool:NO]];
-			[customModePressed addObject:[NSNumber numberWithBool:NO]];			
+			customActivatePressed.push_back(NO);
+			customModePressed.push_back(NO);			
 
 			NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 			[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
@@ -11589,8 +11587,8 @@ static NSString *last_outfitting_key=nil;
 		OOEquipmentType *eq = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
 		if (!eq) {
 			[customEquipActivation removeObjectAtIndex:i];
-			[customActivatePressed removeObjectAtIndex:i];
-			[customModePressed removeObjectAtIndex:i];
+			customActivatePressed.erase(customActivatePressed.begin() + i);
+			customModePressed.erase(customModePressed.begin() + i);
 			update = YES;
 		}
 	}
@@ -13614,8 +13612,8 @@ else _dockTarget = NO_TARGET;
 	stickFunctions &&
 	!keyFunctions.empty() &&
 	customEquipActivation &&
-	customActivatePressed &&
-	customModePressed &&
+	!customActivatePressed.empty() &&
+	!customModePressed.empty() &&
 	!kbdLayouts.empty() &&
 	showingLongRangeChart &&
 	_missionAllowInterrupt &&
