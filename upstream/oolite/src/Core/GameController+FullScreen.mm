@@ -147,13 +147,13 @@ MA 02110-1301, USA.
 }
 
 
-- (NSDictionary *) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh
+- (id) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh	// shared selector (proposed ADR-0043)
 {
 	return [_fullScreenController findDisplayModeForWidth:d_width height:d_height refreshRate:d_refresh];
 }
 
 
-- (NSArray *) displayModes
+- (id) displayModes	// shared selector (proposed ADR-0043)
 {
 	return [_fullScreenController displayModes];
 }
