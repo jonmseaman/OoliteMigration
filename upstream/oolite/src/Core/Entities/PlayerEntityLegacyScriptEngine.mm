@@ -1467,13 +1467,13 @@ static int shipsFound;
 	if (forceRemoval && [self status] != STATUS_DOCKED)
 	{
 		NSInteger i;
-		for (i = [cargo count] - 1; i >= 0; i--)
+		for (i = cargo.size() - 1; i >= 0; i--)
 		{
-			ShipEntity* canister = [cargo objectAtIndex:i];
+			ShipEntity* canister = cargo[i].get();
 			if (!canister)  break;
 			// Since we are forcing cargo removal, we don't really care about the unit of measurement. Any
 			// commodity at more than 1000kg or 1000000gr will be inside cargopods, so remove those too.
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 		}
 	}
 	
