@@ -20,7 +20,7 @@ Proposed ADR-0043 item 21 keeps a selector that more than one class or protocol 
 | oo-3rb.265 | OOProbabilitySet property-list selectors | `-initWithPropertyListRepresentation:` `-propertyListRepresentation` | 3 | oo-gkib |
 | oo-3rb.266 | OOScript -scriptDescription | `-scriptDescription` | 4 | members swept |
 | oo-3rb.267 | -displayName (OOScript, ShipEntity) | `-displayName` | 8 | oo-3rb.242 |
-| oo-3rb.268 | -runCallback: (JS GUI key, interface and populator definitions) | `-runCallback:` | 6 | members swept |
+| oo-3rb.268 | -runCallback: (JS GUI key, interface and populator definitions) | `-runCallback:` | 6 | exempt (below) |
 | oo-3rb.269 | planet texture generator and planet entity selectors | `+planetTextureWithInfo:seed:` `-initWithPlanetInfo:seed:` `-setUpPlanetFromTexture:` `-textureFileName` | 9 (split) | members swept |
 | oo-3rb.270 | texture and generator -cacheKey | `-cacheKey` | 11 (split) | oo-7xnb, oo-japz |
 | oo-3rb.271 | debug-only -allTextures | `-allTextures` | 17 (split) | oo-2qdy, oo-3kai, oo-3rb.106, oo-3rb.130, oo-5d4v |
@@ -50,6 +50,8 @@ Proposed ADR-0043 item 21 keeps a selector that more than one class or protocol 
 A bead marked *(split)* is over the 8-file story rule; its description says how to split it at pickup. Families that Foundation also declares (`-name`, `-title`, `-version`, ...) cannot give the selector itself C++ types while gnustep-base is linked, because an `id` receiver may be a Foundation object: those beads add `cxx_` twins per member, move the callers whose receiver has the member's static type, and leave the `id` selector to retire with oo-qps.
 
 ## Not planned as flips
+
+- -runCallback: stays `id` (oo-3rb.268, orchestrator decision): the family is heterogeneous. The JS GUI-key and interface definitions take a string key, but OOJSPopulatorDefinition takes an HPVector location, so no single C++ type fits the family and a flip of the string members alone is a collision for tools/check-selector-types.py --check. `id` is not a Foundation type, so oo-qps is unaffected; Phase 3 converts the classes. Renaming the populator selector was rejected (a new interface).
 
 - **Called by name (stay id while dispatched by name: legacy-script/AI dispatcher, ADR-0043 item 21)**: `-commsMessage:`, `-commsMessageByUnpiloted:`, `-interpretAIMessage:`, `-playSound:`, `-setLegalStatus:`, `-setMissionMusic:`, `-spawnShip:`
 - **Root-class description selectors (with the %@/description retirement, oo-qpb follow-up)**: `-description`, `-descriptionComponents`, `-shortDescription`, `-shortDescriptionComponents`
