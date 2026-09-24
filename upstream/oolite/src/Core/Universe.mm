@@ -125,8 +125,8 @@ enum
 
 static const char * const kOOLogUniversePopulateError			= "universe.populate.error";
 static const char * const kOOLogUniversePopulateWitchspace	= "universe.populate.witchspace";
-static NSString * const kOOLogEntityVerificationError		= @"entity.linkedList.verify.error";
-static NSString * const kOOLogEntityVerificationRebuild		= @"entity.linkedList.verify.rebuild";
+static const char * const kOOLogEntityVerificationError		= "entity.linkedList.verify.error";
+static const char * const kOOLogEntityVerificationRebuild		= "entity.linkedList.verify.rebuild";
 
 
 
@@ -267,6 +267,49 @@ namespace {
 OOGraphicsDetail OOGraphicsDetailFromNumber(unsigned int number)
 {
 	return (number > DETAIL_LEVEL_MAXIMUM) ? DETAIL_LEVEL_MAXIMUM : static_cast<OOGraphicsDetail>(number);
+}
+
+
+// -addObject: on a set of objects (identity, as Entity keeps NSObject's -isEqual:): once each, in
+// the order added.
+template <class T, class U>
+void AddIfAbsent(std::vector<oo::ObjCRef<T>> &objects, U object)
+{
+	if (std::find(objects.begin(), objects.end(), object) == objects.end())  objects.emplace_back(object);
+}
+
+
+// An autoreleased list: each element goes to the autorelease pool, which releases it when it
+// drains (the list itself released them then). The list is left empty.
+template <class T>
+void AutoreleaseAll(std::vector<oo::ObjCRef<T>> &objects)
+{
+	for (oo::ObjCRef<T> &object : objects)  [object.leakRef() autorelease];
+	objects.clear();
+}
+
+
+// -removeObjectAtIndex:0 on the wormhole list: an empty list raised a range exception.
+void RemoveFirstWormhole(std::vector<oo::ObjCRef<WormholeEntity *>> &wormholes)
+{
+	if (wormholes.empty())
+	{
+		[OOException raise:OORangeException format:"Index 0 is out of range 0 (in 'removeObjectAtIndex:')"];
+	}
+	wormholes.erase(wormholes.begin());
+}
+
+
+/*	[beaconCode rangeOfString:code options:NSCaseInsensitiveSearch].location != NSNotFound: the
+	units compared lowercased (oo::str::lowercase maps unit for unit, so a byte search of the two
+	lowercased strings finds the same places); an empty code is never found; a nil beacon code
+	answered a zeroed range from messaging nil, location 0, which counted as found.
+*/
+bool BeaconCodeMatches(const std::optional<std::string> &beaconCode, const std::string &code)
+{
+	if (!beaconCode.has_value())  return true;
+	if (code.empty())  return false;
+	return oo::str::lowercase(*beaconCode).find(oo::str::lowercase(code)) != std::string::npos;
 }
 
 }
@@ -734,8 +777,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[self setGameView:inGameView];
 	gSharedUniverse = self;
 	
-	allPlanets = [[NSMutableArray alloc] init];
-	allStations = [[NSMutableSet alloc] init];
+	allPlanets.clear();
+	allStations.clear();
 	
 	OOCPUInfoInit();
 	[OOJoystickManager sharedStickHandler];
@@ -811,7 +854,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	[OOShipRegistry sharedRegistry];
 	
-	entities = [[NSMutableArray arrayWithCapacity:MAX_NUMBER_OF_ENTITIES] retain];
+	entities.reserve(MAX_NUMBER_OF_ENTITIES);
 	
 	[[GameController sharedController] logProgress:OOExpandKeyRandomized(@"loading-miscellany")];
 	
@@ -821,7 +864,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	missiontext = [ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
 
-	waypoints = [[NSMutableDictionary alloc] init];
+	waypoints.clear();
 	
 	[self setUpSettings];
 	
@@ -846,7 +889,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[self setUpInitialUniverse];
 	
 	universeRegion = [[CollisionRegion alloc] initAsUniverse];
-	entitiesDeadThisUpdate = [[NSMutableSet alloc] init];
+	entitiesDeadThisUpdate.clear();
 	framesDoneThisUpdate = 0;
 	drawCounter = 0;
 	
@@ -885,8 +928,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[message_gui release];
 	[comm_log_gui release];
 	
-	[entities release];
-	
+	entities.clear();
+
 	[commodities release];
 	
 	[customSounds release];
@@ -895,22 +938,22 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[demo_ships release];
 	[screenBackgrounds release];
 	[gameView release];
-	[allPlanets release];
-	[allStations release];
-	
-	[activeWormholes release];				
+	allPlanets.clear();
+	allStations.clear();
+
+	activeWormholes.clear();
 	[characterPool release];
 	[universeRegion release];
 
 	DESTROY(_firstBeacon);
 	DESTROY(_lastBeacon);
-	DESTROY(waypoints);
+	waypoints.clear();
 	
 	unsigned i;
 	for (i = 0; i < 256; i++)  system_names[i].reset();
 	
-	[entitiesDeadThisUpdate release];
-	
+	entitiesDeadThisUpdate.clear();
+
 	[[OOCacheManager sharedCache] flush];
 	
 #if OOLITE_SPEECH_SYNTH
@@ -981,7 +1024,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (NSUInteger) entityCount
 {
-	return [entities count];
+	return entities.size();
 }
 
 
@@ -993,7 +1036,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if (!OOLogWillDisplayMessagesInClass(@"universe.objectDump"))  return;
 	
-	OOLog(@"universe.objectDump", @"DEBUG: Entity Dump - [entities count] = %zu,\tn_entities = %u", [entities count], n_entities);
+	OOLog(@"universe.objectDump", @"DEBUG: Entity Dump - [entities count] = %zu,\tn_entities = %u", entities.size(), n_entities);
 	
 	OOLogIndent();
 	for (i = 0; i < show_count; i++)
@@ -1002,16 +1045,16 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	OOLogOutdent();
 	
-	if ([entities count] != n_entities)
+	if (entities.size() != n_entities)
 	{
-		OOLog(@"universe.objectDump", @"entities = %@", [entities description]);
+		OOLog(@"universe.objectDump", @"entities = %@", [oo::NSArrayFromObjects(entities) description]);
 	}
 }
 
 
-- (NSArray *) entityList
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList
 {
-	return [NSArray arrayWithArray:entities];
+	return entities;
 }
 #endif
 
@@ -1140,9 +1183,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			closeSystems.reset();
 			[self setSystemTo: sys];
 			int index = 0;
-			while ([entities count] > 2)
+			while (entities.size() > 2)
 			{
-				Entity *ent = [entities objectAtIndex:index];
+				Entity *ent = entities[index].get();
 				if ((ent != player)&&(ent != dockedStation))
 				{
 					if (ent->isStation)  // clear out queues
@@ -1210,7 +1253,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	//
 	// check the player is still around!
 	//
-	if ([entities count] == 0)
+	if (entities.empty())
 	{
 		/*- the player ship -*/
 		player = [[PlayerEntity alloc] init];	// alloc retains!
@@ -1249,7 +1292,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	//
 	// check the player is still around!
 	//
-	if ([entities count] == 0)
+	if (entities.empty())
 	{
 		/*- the player ship -*/
 		player = [[PlayerEntity alloc] init];	// alloc retains!
@@ -1371,13 +1414,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[a_planet setPosition:(HPVector){ 0, 0, planet_zpos }];
 	[a_planet setEnergy:1000000.0];
 	
-	if ([allPlanets count]>0)	// F7 sets [UNIVERSE planet], which can lead to some trouble! TODO: track down where exactly that happens!
+	if (allPlanets.size()>0)	// F7 sets [UNIVERSE planet], which can lead to some trouble! TODO: track down where exactly that happens!
 	{
-		OOPlanetEntity *tmp=[allPlanets objectAtIndex:0];
+		OOPlanetEntity *tmp=allPlanets[0].get();
 		[self addEntity:a_planet];
-		[allPlanets removeObject:a_planet];
+		std::erase(allPlanets, a_planet);
 		cachedPlanet=a_planet;
-		[allPlanets replaceObjectAtIndex:0 withObject:a_planet];
+		allPlanets[0] = oo::ObjCRef<OOPlanetEntity *>(a_planet);
 		[self removeEntity:(Entity *)tmp];
 	}
 	else
@@ -3202,8 +3245,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	 * clearance requirements seems unlikely to work entirely
 	 * correctly. To be fixed. */
 						   
-	foreach (station, allStations)
+	for (const oo::ObjCRef<StationEntity *> &entry : allStations)
 	{
+		station = entry.get();
 		NSString	*stationKey = [registry randomShipKeyForRole:[station primaryRole]];
 		if (![[[registry shipInfoForKey:stationKey] allKeys] containsObject:@"requires_docking_clearance"])
 		{
@@ -3673,22 +3717,23 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (StationEntity *) stationWithRole:(NSString *)role andPosition:(HPVector)position
+- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position
 {
-	if ([role isEqualToString:@""])
+	if (role.empty())
 	{
 		return nil;
 	}
 
 	float range = 1000000; // allow a little variation in position
 
-	NSArray *stations = [self stations];
+	const std::vector<oo::ObjCRef<StationEntity *>> stations = [self cxx_stations];
 	StationEntity *station = nil;
-	foreach (station, stations)
+	for (const oo::ObjCRef<StationEntity *> &entry : stations)
 	{
+		station = entry.get();
 		if (HPdistance2(position,[station position]) < range)
 		{
-			if ([[station primaryRole] isEqualToString:role])
+			if (oo::StdString([station primaryRole]) == role)	// the unmigrated ShipEntity's role string
 			{
 				return station;
 			}
@@ -3708,9 +3753,9 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (OOPlanetEntity *) planet
 {
-	if (cachedPlanet == nil && [allPlanets count] > 0)
+	if (cachedPlanet == nil && allPlanets.size() > 0)
 	{
-		cachedPlanet = [allPlanets objectAtIndex:0];
+		cachedPlanet = allPlanets[0].get();
 	}
 	return cachedPlanet;
 }
@@ -3726,19 +3771,19 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (NSArray *) planets
+- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets
 {
 	return allPlanets;
 }
 
 
-- (NSArray *) stations
+- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations
 {
-	return [allStations allObjects];
+	return allStations;
 }
 
 
-- (NSArray *) wormholes
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes
 {
 	return activeWormholes;
 }
@@ -3860,33 +3905,34 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (NSDictionary *) currentWaypoints
+- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints
 {
 	return waypoints;
 }
 
 
-- (void) defineWaypoint:(NSDictionary *)definition forKey:(NSString *)key
+- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key
 {
 	OOWaypointEntity *waypoint = nil;
 	BOOL preserveCompass = NO;
-	waypoint = [waypoints objectForKey:key];
+	const auto existing = waypoints.find(key);
+	if (existing != waypoints.end())  waypoint = existing->second.get();
 	if (waypoint != nil)
 	{
-		if ([PLAYER compassTarget] == waypoint) 
+		if ([PLAYER compassTarget] == waypoint)
 		{
 			preserveCompass = YES;
 		}
 		[self removeEntity:waypoint];
-		[waypoints removeObjectForKey:key];
+		waypoints.erase(key);
 	}
-	if (definition != nil)
+	if (!definition.isNull())
 	{
-		waypoint = [OOWaypointEntity waypointWithDictionary:oo::PListFrom(definition)];
+		waypoint = [OOWaypointEntity waypointWithDictionary:definition];
 		if (waypoint != nil)
 		{
 			[self addEntity:waypoint];
-			[waypoints setObject:waypoint forKey:key];
+			waypoints[key] = oo::ObjCRef<OOWaypointEntity *>(waypoint);
 			if (preserveCompass)
 			{
 				[PLAYER setCompassTarget:waypoint];
@@ -5471,7 +5517,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(kOOLogEntityVerificationError, @"Broken x_next %@ list (%d) ***", uni->x_list_start, n);
+			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken x_next %@ list (%d) ***", uni->x_list_start, n);
 			result = NO;
 		}
 		
@@ -5480,10 +5526,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->x_previous;
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(kOOLogEntityVerificationError, @"Broken x_previous %@ list (%d) ***", uni->x_list_start, n);
+			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken x_previous %@ list (%d) ***", uni->x_list_start, n);
 			if (result)
 			{
-				OOExtraLog(kOOLogEntityVerificationRebuild, @"%@", @"REBUILDING x_previous list from x_next list");
+				OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationRebuild), @"%@", @"REBUILDING x_previous list from x_next list");
 				checkEnt = uni->x_list_start;
 				checkEnt->x_previous = nil;
 				while (checkEnt->x_next)
@@ -5504,7 +5550,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(kOOLogEntityVerificationError, @"Broken *** broken y_next %@ list (%d) ***", uni->y_list_start, n);
+			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken *** broken y_next %@ list (%d) ***", uni->y_list_start, n);
 			result = NO;
 		}
 		
@@ -5513,10 +5559,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->y_previous;
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(kOOLogEntityVerificationError, @"Broken y_previous %@ list (%d) ***", uni->y_list_start, n);
+			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken y_previous %@ list (%d) ***", uni->y_list_start, n);
 			if (result)
 			{
-				OOExtraLog(kOOLogEntityVerificationRebuild, @"%@", @"REBUILDING y_previous list from y_next list");
+				OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationRebuild), @"%@", @"REBUILDING y_previous list from y_next list");
 				checkEnt = uni->y_list_start;
 				checkEnt->y_previous = nil;
 				while (checkEnt->y_next)
@@ -5537,7 +5583,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(kOOLogEntityVerificationError, @"Broken z_next %@ list (%d) ***", uni->z_list_start, n);
+			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken z_next %@ list (%d) ***", uni->z_list_start, n);
 			result = NO;
 		}
 		
@@ -5546,10 +5592,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		while ((n--)&&(checkEnt))	checkEnt = checkEnt->z_previous;
 		if ((checkEnt)||(n > 0))
 		{
-			OOExtraLog(kOOLogEntityVerificationError, @"Broken z_previous %@ list (%d) ***", uni->z_list_start, n);
+			OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationError), @"Broken z_previous %@ list (%d) ***", uni->z_list_start, n);
 			if (result)
 			{
-				OOExtraLog(kOOLogEntityVerificationRebuild, @"%@", @"REBUILDING z_previous list from z_next list");
+				OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationRebuild), @"%@", @"REBUILDING z_previous list from z_next list");
 				checkEnt = uni->z_list_start;
 				NSCAssert(checkEnt != nil, @"Expected z-list to be non-empty.");	// Previously an implicit assumption. -- Ahruman 2011-01-25
 				checkEnt->z_previous = nil;
@@ -5565,15 +5611,16 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	
 	if (!result)
 	{
-		OOExtraLog(kOOLogEntityVerificationRebuild, @"%@", @"Rebuilding all linked lists from scratch");
-		NSArray *allEntities = uni->entities;
+		OOExtraLog(oo::NSStringFrom(kOOLogEntityVerificationRebuild), @"%@", @"Rebuilding all linked lists from scratch");
+		const std::vector<oo::ObjCRef<Entity *>> allEntities = uni->entities;	// a snapshot, as the enumeration was
 		uni->x_list_start = nil;
 		uni->y_list_start = nil;
 		uni->z_list_start = nil;
-		
+
 		Entity *ent = nil;
-		foreach (ent, allEntities)
+		for (const oo::ObjCRef<Entity *> &entry : allEntities)
 		{
+			ent = entry.get();
 			ent->x_next = nil;
 			ent->x_previous = nil;
 			ent->y_next = nil;
@@ -5599,7 +5646,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		if (![entity validForAddToUniverse])  return NO;
 		
 		// don't add things twice!
-		if ([entities containsObject:entity])
+		if (std::find(entities.begin(), entities.end(), entity) != entities.end())
 			return YES;
 		
 		if (n_entities >= UNIVERSE_MAX_ENTITIES - 1)
@@ -5698,7 +5745,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		entity->shadingEntityID = NO_TARGET;
 		
 		// add it to the universe
-		[entities addObject:entity];
+		entities.emplace_back(entity);
 		[entity wasAddedToUniverse];
 		
 		// maintain sorted list (and for the scanner relative position)
@@ -5730,11 +5777,11 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		
 		if ([entity isWormhole])
 		{
-			[activeWormholes addObject:entity];
+			activeWormholes.emplace_back((WormholeEntity *)entity);
 		}
 		else if ([entity isPlanet])
 		{
-			[allPlanets addObject:entity];
+			allPlanets.emplace_back((OOPlanetEntity *)entity);
 		}
 		else if ([entity isShip])
 		{
@@ -5742,7 +5789,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			[[se getAI] setState:@"GLOBAL"];
 			if ([entity isStation])
 			{
-				[allStations addObject:entity];
+				AddIfAbsent(allStations, (StationEntity *)entity);
 			}
 		}
 		
@@ -5760,10 +5807,10 @@ static BOOL MaintainLinkedLists(Universe *uni)
 			update (or the next update if none is in progress), because
 			there may be things pointing to it but not retaining it.
 		*/
-		[entitiesDeadThisUpdate addObject:entity];
+		AddIfAbsent(entitiesDeadThisUpdate, entity);
 		if ([entity isStation])
 		{
-			[allStations removeObject:entity];
+			std::erase(allStations, entity);
 			if ([PLAYER getTargetDockStation] == entity)
 			{
 				[PLAYER setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
@@ -5791,7 +5838,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	no_update = YES;			// no drawing while we do this!
 	
 #ifndef NDEBUG
-	Entity* p0 = [entities objectAtIndex:0];
+	Entity* p0 = entities[0].get();
 	if (!(p0->isPlayer))
 	{
 		OOLog(kOOLogInconsistentState, @"%@", @"***** First entity is not the player in Universe.removeAllEntitiesExceptPlayer - exiting.");
@@ -5800,11 +5847,11 @@ static BOOL MaintainLinkedLists(Universe *uni)
 #endif
 	
 	// preserve wormholes
-	NSMutableArray *savedWormholes = [activeWormholes mutableCopy];
-	
-	while ([entities count] > 1)
+	std::vector<oo::ObjCRef<WormholeEntity *>> savedWormholes = activeWormholes;
+
+	while (entities.size() > 1)
 	{
-		Entity* ent = [entities objectAtIndex:1];
+		Entity* ent = entities[1].get();
 		if (ent->isStation)  // clear out queues
 			[(StationEntity *)ent clear];
 		if (EXPECT(![ent isVisualEffect]))
@@ -5818,8 +5865,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 		}
 	}
 	
-	[activeWormholes release];
-	activeWormholes = savedWormholes;	// will be cleared out by populateSpaceFromActiveWormholes
+	activeWormholes = std::move(savedWormholes);	// will be cleared out by populateSpaceFromActiveWormholes
 	
 	// maintain sorted list
 	n_entities = 1;
@@ -5830,7 +5876,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	closeSystems.reset();
 	
 	[self resetBeacons];
-	[waypoints removeAllObjects];
+	waypoints.clear();
 	
 	no_update = updating;	// restore drawing
 }
@@ -6417,53 +6463,55 @@ static BOOL MaintainLinkedLists(Universe *uni)
 }
 
 
-- (NSArray *) entitiesWithinRange:(double)range ofEntity:(Entity *)entity
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity
 {
-	if (entity == nil)  return nil;
-	
-	return [self findShipsMatchingPredicate:YESPredicate
+	if (entity == nil)  return {};
+
+	return [self cxx_findShipsMatchingPredicate:YESPredicate
 								  parameter:NULL
 									inRange:range
 								   ofEntity:entity];
 }
 
 
-- (unsigned) countShipsWithRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity
+// The role predicates read an Objective-C string (-hasRole: / -hasPrimaryRole: are the unmigrated ShipEntity's).
+- (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
 {
 	return [self countShipsMatchingPredicate:HasRolePredicate
-							   parameter:role
+							   parameter:oo::NSStringFrom(role)
 								 inRange:range
 								ofEntity:entity];
 }
 
 
-- (unsigned) countShipsWithRole:(NSString *)role
+- (unsigned) cxx_countShipsWithRole:(const std::string &)role
 {
-	return [self countShipsWithRole:role inRange:-1 ofEntity:nil];
+	return [self cxx_countShipsWithRole:role inRange:-1 ofEntity:nil];
 }
 
 
-- (unsigned) countShipsWithPrimaryRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity
 {
 	return [self countShipsMatchingPredicate:HasPrimaryRolePredicate
-							   parameter:role
+							   parameter:oo::NSStringFrom(role)
 								 inRange:range
 								ofEntity:entity];
 }
 
 
+// HasScanClassPredicate reads the scan class as a number object's -intValue.
 - (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity
 {
 	return [self countShipsMatchingPredicate:HasScanClassPredicate
-							   parameter:[NSNumber numberWithInt:scanClass]
+							   parameter:oo::ObjectFromPList(oo::PList(std::int64_t(scanClass)))
 								 inRange:range
 								ofEntity:entity];
 }
 
 
-- (unsigned) countShipsWithPrimaryRole:(NSString *)role
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role
 {
-	return [self countShipsWithPrimaryRole:role inRange:-1 ofEntity:nil];
+	return [self cxx_countShipsWithPrimaryRole:role inRange:-1 ofEntity:nil];
 }
 
 
@@ -6541,22 +6589,22 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 
 // NOTE: OOJSSystem relies on this returning entities in distance-from-player order.
 // This can be easily changed by removing the [reference isPlayer] conditions in FindJSVisibleEntities().
-- (NSMutableArray *) findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
 								  parameter:(void *)parameter
 									inRange:(double)range
 								   ofEntity:(Entity *)e1
 {
 	OOJS_PROFILE_ENTER
-	
+
 	unsigned		i;
 	HPVector			p1;
-	NSMutableArray	*result = nil;
-	
+	std::vector<oo::ObjCRef<Entity *>>	result;
+
 	OOJSPauseTimeLimiter();
-	
+
 	if (predicate == NULL)  predicate = YESPredicate;
-	
-	result = [NSMutableArray arrayWithCapacity:n_entities];
+
+	result.reserve(n_entities);
 	
 	if (e1 != nil)  p1 = [e1 position];
 	else  p1 = kZeroHPVector;
@@ -6569,15 +6617,15 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 			EntityInRange(p1, e2, range) &&
 			predicate(e2, parameter))
 		{
-			[result addObject:e2];
+			result.emplace_back(e2);
 		}
 	}
-	
+
 	OOJSResumeTimeLimiter();
-	
+
 	return result;
-	
-	OOJS_PROFILE_EXIT
+
+	OOJS_PROFILE_EXIT_VAL(std::vector<oo::ObjCRef<Entity *>>())
 }
 
 
@@ -6603,7 +6651,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (NSMutableArray *) findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate
 									  parameter:(void *)parameter
 										inRange:(double)range
 									   ofEntity:(Entity *)entity
@@ -6615,15 +6663,15 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 			IsShipPredicate, NULL,
 			predicate, parameter
 		};
-		
-		return [self findEntitiesMatchingPredicate:ANDPredicate
+
+		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
 										 parameter:&param
 										   inRange:range
 										  ofEntity:entity];
 	}
 	else
 	{
-		return [self findEntitiesMatchingPredicate:IsShipPredicate
+		return [self cxx_findEntitiesMatchingPredicate:IsShipPredicate
 										 parameter:NULL
 										   inRange:range
 										  ofEntity:entity];
@@ -6631,7 +6679,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (NSMutableArray *) findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
 									  parameter:(void *)parameter
 										inRange:(double)range
 									   ofEntity:(Entity *)entity
@@ -6643,15 +6691,15 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 			IsVisualEffectPredicate, NULL,
 			predicate, parameter
 		};
-		
-		return [self findEntitiesMatchingPredicate:ANDPredicate
+
+		return [self cxx_findEntitiesMatchingPredicate:ANDPredicate
 										 parameter:&param
 										   inRange:range
 										  ofEntity:entity];
 	}
 	else
 	{
-		return [self findEntitiesMatchingPredicate:IsVisualEffectPredicate
+		return [self cxx_findEntitiesMatchingPredicate:IsVisualEffectPredicate
 										 parameter:NULL
 										   inRange:range
 										  ofEntity:entity];
@@ -7281,7 +7329,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 			}
 			
 			update_stage = @"update:entity";
-			NSMutableSet *zombies = nil;
+			std::vector<oo::ObjCRef<Entity *>> zombies;	// each once, in the order found
 			OOLog(@"universe.profile.update", @"%@", update_stage);
 			for (i = 0; i < ent_count; i++)
 			{
@@ -7291,10 +7339,9 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 				update_stage = @"update:entity [%@]";
 #endif
 				// Game Over code depends on regular delta_t updates to the dead player entity. Ignore the player entity, even when dead.
-				if (EXPECT_NOT([thing status] == STATUS_DEAD && ![entitiesDeadThisUpdate containsObject:thing] && ![thing isPlayer]))
+				if (EXPECT_NOT([thing status] == STATUS_DEAD && std::find(entitiesDeadThisUpdate.begin(), entitiesDeadThisUpdate.end(), thing) == entitiesDeadThisUpdate.end() && ![thing isPlayer]))
 				{
-					if (zombies == nil)  zombies = [NSMutableSet set];
-					[zombies addObject:thing];
+					AddIfAbsent(zombies, thing);
 					continue;
 				}
 				
@@ -7344,12 +7391,13 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 		update_stage_param = nil;
 #endif
 			
-			if (zombies != nil)
+			if (!zombies.empty())
 			{
 				update_stage = @"shootin' zombies";
 				Entity *zombie = nil;
-				foreach (zombie, zombies)
+				for (const oo::ObjCRef<Entity *> &entry : zombies)
 				{
+					zombie = entry.get();
 					OOLogERR(@"universe.zombie", @"Found dead entity %@ in active entity list, removing. This is an internal error, please report it.", zombie);
 					[self removeEntity:zombie];
 				}
@@ -7450,9 +7498,9 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 		if ([PLAYER status] == STATUS_DEAD)  [PLAYER update:delta_t];
 	}
 	
-	[entitiesDeadThisUpdate autorelease];
-	entitiesDeadThisUpdate = nil;
-	entitiesDeadThisUpdate = [[NSMutableSet alloc] initWithCapacity:n_entities];
+	// The dead stay alive until the autorelease pool drains, as the autoreleased set kept them.
+	AutoreleaseAll(entitiesDeadThisUpdate);
+	entitiesDeadThisUpdate.reserve(n_entities);
 	
 #if NEW_PLANETS
 	[self prunePreloadingPlanetMaterials];
@@ -9283,8 +9331,9 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	for (const oo::PList &savedMarket : *savedMarkets)
 	{
 		HPVector pos = HPVectorIn(savedMarket, "position", kZeroHPVector);
-		for (StationEntity *station in [self stations])	// the station list (a snapshot per call; chunk 9 migrates it)
+		for (const oo::ObjCRef<StationEntity *> &entry : [self cxx_stations])	// a snapshot
 		{
+			StationEntity *station = entry.get();
 			// must be deterministic and secondary
 			if ([station allowsSaving] && station != [UNIVERSE station])
 			{
@@ -9310,8 +9359,9 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 
 	OOCommodityMarket *stationMarket = nil;
 
-	for (StationEntity *station in [self stations])	// the station list (a snapshot; chunk 9 migrates it)
+	for (const oo::ObjCRef<StationEntity *> &entry : [self cxx_stations])	// a snapshot
 	{
+		StationEntity *station = entry.get();
 		// must be deterministic and secondary
 		if ([station allowsSaving] && station != [UNIVERSE station])
 		{
@@ -10216,26 +10266,31 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 }
 
 
-- (NSArray *) listBeaconsWithCode:(NSString *)code
+- (std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>) cxx_listBeaconsWithCode:(const std::string &)code
 {
-	NSMutableArray	*result = [NSMutableArray array];
+	std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>	result;
 	Entity <OOBeaconEntity>		*beacon = [self firstBeacon];
-	
+
 	while (beacon != nil)
 	{
-		NSString *beaconCode = [beacon beaconCode];
-		if ([beaconCode rangeOfString:code options: NSCaseInsensitiveSearch].location != NSNotFound)
+		const std::optional<std::string> beaconCode = oo::OptionalString([beacon beaconCode]);
+		if (BeaconCodeMatches(beaconCode, code))
 		{
-			[result addObject:beacon];
+			result.emplace_back(beacon);
 		}
 		beacon = [beacon nextBeacon];
 	}
-	
-	return [result sortedArrayUsingSelector:@selector(compareBeaconCodeWith:)];
+
+	// ORDER-SENSITIVE (decision D): beacons whose codes compare the same keep their list order.
+	std::stable_sort(result.begin(), result.end(), [](const oo::ObjCRef<Entity <OOBeaconEntity> *> &a, const oo::ObjCRef<Entity <OOBeaconEntity> *> &b)
+	{
+		return [a.get() compareBeaconCodeWith:b.get()] == NSOrderedAscending;
+	});
+	return result;
 }
 
 
-- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message
+- (void) cxx_allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(const std::optional<std::string> &)message
 {
 	int i;
 	int ent_count = n_entities;
@@ -10253,7 +10308,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	{
 		ShipEntity* se = my_ships[i];
 		[se doScriptEvent:event];
-		if (message != nil)  [[se getAI] reactToMessage:message context:@"global message"];
+		if (message.has_value())  [[se getAI] reactToMessage:oo::NSStringFrom(*message) context:@"global message"];
 		[se release]; //	released
 	}
 }
@@ -10741,7 +10796,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 - (void) verifyEntitySessionIDs
 {
 #ifndef NDEBUG
-	NSMutableArray *badEntities = nil;
+	std::vector<oo::ObjCRef<Entity *>> badEntities;
 	Entity *entity = nil;
 	
 	unsigned i;
@@ -10751,14 +10806,13 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		if ([entity sessionID] != _sessionID)
 		{
 			OOLogERR(@"universe.sessionIDs.verify.failed", @"Invalid entity %@ (came from session %zu, current session is %zu).", [entity shortDescription], [entity sessionID], _sessionID);
-			if (badEntities == nil)  badEntities = [NSMutableArray array];
-			[badEntities addObject:entity];
+			badEntities.emplace_back(entity);
 		}
 	}
-	
-	foreach (entity, badEntities)
+
+	for (const oo::ObjCRef<Entity *> &entry : badEntities)
 	{
-		[self removeEntity:entity];
+		[self removeEntity:entry.get()];
 	}
 #endif
 }
@@ -10886,8 +10940,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	PlayerEntity* player = PLAYER;
 	
 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Wormhole and character reset");
-	if (activeWormholes) [activeWormholes autorelease];
-	activeWormholes = [[NSMutableArray arrayWithCapacity:16] retain];
+	AutoreleaseAll(activeWormholes);	// the old list was autoreleased
+	activeWormholes.reserve(16);
 	if (characterPool) [characterPool autorelease];
 	characterPool = [[NSMutableArray arrayWithCapacity:256] retain];
 	OO_DEBUG_POP_PROGRESS();
@@ -11020,7 +11074,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	}
 	
 	// remove from the definitive list
-	if ([entities containsObject:entity])
+	if (std::find(entities.begin(), entities.end(), entity) != entities.end())
 	{
 		// FIXME: better approach needed for core break patterns - CIM
 		if ([entity isBreakPattern] && ![entity isVisualEffect])
@@ -11046,14 +11100,14 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 		
 		if ([entity isWormhole])
 		{
-			[activeWormholes removeObject:entity];
+			std::erase(activeWormholes, entity);
 		}
 		else if ([entity isPlanet])
 		{
-			[allPlanets removeObject:entity];
+			std::erase(allPlanets, entity);
 		}
-		
-		[entities removeObject:entity];
+
+		std::erase(entities, entity);
 		return YES;
 	}
 	
@@ -11101,13 +11155,13 @@ static void PreloadOneSound(NSString *soundName)
 
 - (void) populateSpaceFromActiveWormholes
 {
-	while ([activeWormholes count])
+	while (!activeWormholes.empty())
 	{
 		@autoreleasepool
 		{
 			@try
 			{
-				WormholeEntity* whole = [activeWormholes objectAtIndex:0];		
+				WormholeEntity* whole = activeWormholes[0].get();
 				// If the wormhole has been scanned by the player then the
 				// PlayerEntity will take care of it
 				if (![whole isScanned] &&
@@ -11116,7 +11170,7 @@ static void PreloadOneSound(NSString *soundName)
 					// this is a wormhole to this system
 					[whole disgorgeShips];
 				}
-				[activeWormholes removeObjectAtIndex:0];	// empty it out
+				RemoveFirstWormhole(activeWormholes);	// empty it out
 			}
 			@catch (OOException *exception)
 			{

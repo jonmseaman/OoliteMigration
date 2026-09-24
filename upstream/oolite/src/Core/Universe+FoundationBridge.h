@@ -115,6 +115,40 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (NSArray *) shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// -> -cxx_shipsForSaleForSystem:withTL:atTime:
 - (OOCreditsQuantity) tradeInValueForCommanderDictionary:(NSDictionary*) cmdr_dict;	// -> -cxx_tradeInValueForCommanderDictionary:
 
+// Chunk 9 (oo-3rb.228): entity lists, stations, planets, wormholes, waypoints, predicate searches.
+// The lists are snapshots (the old -planets / -wormholes / -currentWaypoints were the live
+// collections; their callers only read them).
+#ifndef NDEBUG
+- (NSArray *) entityList;	// -> -cxx_entityList
+#endif
+- (NSArray *) planets;	// Note: does not include sun.	// -> -cxx_planets
+- (NSArray *) stations; // includes main station	// -> -cxx_stations
+- (NSArray *) wormholes; 	// -> -cxx_wormholes
+- (StationEntity *) stationWithRole:(NSString *)role andPosition:(HPVector)position;	// -> -cxx_stationWithRole:andPosition:
+- (NSDictionary *) currentWaypoints;	// -> -cxx_currentWaypoints
+- (void) defineWaypoint:(NSDictionary *)definition forKey:(NSString *)key;	// -> -cxx_defineWaypoint:forKey:
+- (NSArray *) entitiesWithinRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_entitiesWithinRange:ofEntity:
+- (unsigned) countShipsWithRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_countShipsWithRole:inRange:ofEntity:
+- (unsigned) countShipsWithRole:(NSString *)role;	// -> -cxx_countShipsWithRole:
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_countShipsWithPrimaryRole:inRange:ofEntity:
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role;	// -> -cxx_countShipsWithPrimaryRole:
+// -> -cxx_findEntitiesMatchingPredicate:... / -cxx_findShipsMatchingPredicate:... /
+// -cxx_findVisualEffectsMatchingPredicate:... (each call a fresh mutable array, as before)
+- (NSMutableArray *) findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+										 parameter:(void *)parameter
+										   inRange:(double)range
+										  ofEntity:(Entity *)entity;
+- (NSMutableArray *) findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity;
+- (NSMutableArray *) findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity;
+- (NSArray*) listBeaconsWithCode:(NSString*) code;	// -> -cxx_listBeaconsWithCode:
+- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message;	// -> -cxx_allShipsDoScriptEvent:andReactToAIMessage:
+
 @end
 
 

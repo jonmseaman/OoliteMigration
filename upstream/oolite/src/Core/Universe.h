@@ -226,11 +226,11 @@ enum
 	int						next_universal_id;
 	Entity					*entity_for_uid[MAX_ENTITY_UID];
 
-	NSMutableArray			*entities;
+	std::vector<oo::ObjCRef<Entity *>>	entities;
 	
 	OOWeakReference			*_firstBeacon,
 							*_lastBeacon;
-	NSMutableDictionary		*waypoints;
+	std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>	waypoints;	// by key
 
 	GLfloat					skyClearColor[4];
 	
@@ -306,8 +306,8 @@ enum
 	StationEntity			*cachedStation;
 	OOPlanetEntity			*cachedPlanet;
 	OOSunEntity				*cachedSun;
-	NSMutableArray			*allPlanets;
-	NSMutableSet			*allStations;
+	std::vector<oo::ObjCRef<OOPlanetEntity *>>	allPlanets;
+	std::vector<oo::ObjCRef<StationEntity *>>	allStations;	// each once, in the order added
 	
 	float					ambientLightLevel;
 	
@@ -328,7 +328,7 @@ enum
 
 	BOOL					ECMVisualFXEnabled;
 	
-	NSMutableArray			*activeWormholes;
+	std::vector<oo::ObjCRef<WormholeEntity *>>	activeWormholes;
 	
 	NSMutableArray			*characterPool;
 	
@@ -337,7 +337,7 @@ enum
 	// check and maintain linked lists occasionally
 	BOOL					doLinkedListMaintenanceThisUpdate;
 	
-	NSMutableSet			*entitiesDeadThisUpdate;
+	std::vector<oo::ObjCRef<Entity *>>	entitiesDeadThisUpdate;	// each once, in the order removed
 	int						framesDoneThisUpdate;
 	NSUInteger				drawCounter;
 	
@@ -418,7 +418,7 @@ enum
 - (NSUInteger) entityCount;
 #ifndef NDEBUG
 - (void) debugDumpEntities;
-- (NSArray *) entityList;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entityList;
 #endif
 
 - (void) pauseGame;
@@ -491,10 +491,10 @@ enum
 - (StationEntity *) station;
 - (OOPlanetEntity *) planet;
 - (OOSunEntity *) sun;
-- (NSArray *) planets;	// Note: does not include sun.
-- (NSArray *) stations; // includes main station
-- (NSArray *) wormholes; 
-- (StationEntity *) stationWithRole:(NSString *)role andPosition:(HPVector)position;
+- (std::vector<oo::ObjCRef<OOPlanetEntity *>>) cxx_planets;	// Note: does not include sun.
+- (std::vector<oo::ObjCRef<StationEntity *>>) cxx_stations; // includes main station; in the order added
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_wormholes;
+- (StationEntity *) cxx_stationWithRole:(const std::string &)role andPosition:(HPVector)position;
 
 // Turn main station into just another station, for blowUpStation.
 - (void) unMagicMainStation;
@@ -507,8 +507,8 @@ enum
 - (void) setNextBeacon:(Entity <OOBeaconEntity> *) beaconShip;
 - (void) clearBeacon:(Entity <OOBeaconEntity> *) beaconShip;
 
-- (NSDictionary *) currentWaypoints;
-- (void) defineWaypoint:(NSDictionary *)definition forKey:(NSString *)key;
+- (std::map<std::string, oo::ObjCRef<OOWaypointEntity *>, std::less<>>) cxx_currentWaypoints;
+- (void) cxx_defineWaypoint:(const oo::PList &)definition forKey:(const std::string &)key;	// a null definition removes
 
 - (GLfloat *) skyClearColor;
 // Note: the alpha value is also air resistance!
@@ -589,11 +589,11 @@ enum
 - (Entity *) firstEntityTargetedByPlayer;
 - (Entity *) firstEntityTargetedByPlayerPrecisely;
 
-- (NSArray *) entitiesWithinRange:(double)range ofEntity:(Entity *)entity;
-- (unsigned) countShipsWithRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity;
-- (unsigned) countShipsWithRole:(NSString *)role;
-- (unsigned) countShipsWithPrimaryRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity;
-- (unsigned) countShipsWithPrimaryRole:(NSString *)role;
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_entitiesWithinRange:(double)range ofEntity:(Entity *)entity;
+- (unsigned) cxx_countShipsWithRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity;
+- (unsigned) cxx_countShipsWithRole:(const std::string &)role;
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role inRange:(double)range ofEntity:(Entity *)entity;
+- (unsigned) cxx_countShipsWithPrimaryRole:(const std::string &)role;
 - (unsigned) countShipsWithScanClass:(OOScanClass)scanClass inRange:(double)range ofEntity:(Entity *)entity;
 
 
@@ -606,17 +606,17 @@ enum
 							   parameter:(void *)parameter
 								 inRange:(double)range
 								ofEntity:(Entity *)entity;
-- (NSMutableArray *) findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
 										 parameter:(void *)parameter
 										   inRange:(double)range
 										  ofEntity:(Entity *)entity;
 - (id) findOneEntityMatchingPredicate:(EntityFilterPredicate)predicate
 							parameter:(void *)parameter;
-- (NSMutableArray *) findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findShipsMatchingPredicate:(EntityFilterPredicate)predicate
 									  parameter:(void *)parameter
 										inRange:(double)range
 									   ofEntity:(Entity *)entity;
-- (NSMutableArray *) findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+- (std::vector<oo::ObjCRef<Entity *>>) cxx_findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
 									  parameter:(void *)parameter
 										inRange:(double)range
 									   ofEntity:(Entity *)entity;
@@ -759,9 +759,9 @@ enum
 - (HPVector) getSunSkimStartPositionForShip:(ShipEntity*) ship;
 - (HPVector) getSunSkimEndPositionForShip:(ShipEntity*) ship;
 
-- (NSArray*) listBeaconsWithCode:(NSString*) code;
+- (std::vector<oo::ObjCRef<Entity <OOBeaconEntity> *>>) cxx_listBeaconsWithCode:(const std::string &) code;	// sorted by beacon code
 
-- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message;
+- (void) cxx_allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(const std::optional<std::string> &)message;	// nullopt: no AI message
 
 ///////////////////////////////////////
 

@@ -498,6 +498,130 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return [self cxx_tradeInValueForCommanderDictionary:oo::PListFrom(cmdr_dict)];
 }
 
+
+// Chunk 9 (oo-3rb.228). A nil role counted nothing and a nil role found no station, as before.
+
+#ifndef NDEBUG
+- (NSArray *) entityList
+{
+	return oo::NSArrayFromObjects([self cxx_entityList]);
+}
+#endif
+
+
+- (NSArray *) planets
+{
+	return oo::NSArrayFromObjects([self cxx_planets]);
+}
+
+
+- (NSArray *) stations
+{
+	return oo::NSArrayFromObjects([self cxx_stations]);
+}
+
+
+- (NSArray *) wormholes
+{
+	return oo::NSArrayFromObjects([self cxx_wormholes]);
+}
+
+
+- (StationEntity *) stationWithRole:(NSString *)role andPosition:(HPVector)position
+{
+	if (role == nil)  return nil;
+	return [self cxx_stationWithRole:oo::StdString(role) andPosition:position];
+}
+
+
+- (NSDictionary *) currentWaypoints
+{
+	NSMutableDictionary *result = [NSMutableDictionary dictionary];
+	for (const auto &[key, waypoint] : [self cxx_currentWaypoints])
+	{
+		if (waypoint.get() != nil)  [result setObject:waypoint.get() forKey:oo::NSStringFrom(key)];
+	}
+	return [[result copy] autorelease];
+}
+
+
+- (void) defineWaypoint:(NSDictionary *)definition forKey:(NSString *)key
+{
+	[self cxx_defineWaypoint:(definition != nil) ? oo::PListFrom(definition) : oo::PList() forKey:oo::StdString(key)];
+}
+
+
+- (NSArray *) entitiesWithinRange:(double)range ofEntity:(Entity *)entity
+{
+	if (entity == nil)  return nil;
+	return oo::NSArrayFromObjects([self cxx_entitiesWithinRange:range ofEntity:entity]);
+}
+
+
+- (unsigned) countShipsWithRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity
+{
+	if (role == nil)  return 0;
+	return [self cxx_countShipsWithRole:oo::StdString(role) inRange:range ofEntity:entity];
+}
+
+
+- (unsigned) countShipsWithRole:(NSString *)role
+{
+	return [self countShipsWithRole:role inRange:-1 ofEntity:nil];
+}
+
+
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity
+{
+	if (role == nil)  return 0;
+	return [self cxx_countShipsWithPrimaryRole:oo::StdString(role) inRange:range ofEntity:entity];
+}
+
+
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role
+{
+	return [self countShipsWithPrimaryRole:role inRange:-1 ofEntity:nil];
+}
+
+
+- (NSMutableArray *) findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+										 parameter:(void *)parameter
+										   inRange:(double)range
+										  ofEntity:(Entity *)entity
+{
+	return [[oo::NSArrayFromObjects([self cxx_findEntitiesMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity]) mutableCopy] autorelease];
+}
+
+
+- (NSMutableArray *) findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity
+{
+	return [[oo::NSArrayFromObjects([self cxx_findShipsMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity]) mutableCopy] autorelease];
+}
+
+
+- (NSMutableArray *) findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity
+{
+	return [[oo::NSArrayFromObjects([self cxx_findVisualEffectsMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity]) mutableCopy] autorelease];
+}
+
+
+- (NSArray*) listBeaconsWithCode:(NSString*) code
+{
+	return oo::NSArrayFromObjects([self cxx_listBeaconsWithCode:oo::StdString(code)]);
+}
+
+
+- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message
+{
+	[self cxx_allShipsDoScriptEvent:event andReactToAIMessage:oo::OptionalString(message)];
+}
+
 @end
 
 
