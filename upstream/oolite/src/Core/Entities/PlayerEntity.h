@@ -1112,16 +1112,16 @@ typedef enum
 - (void) setGuiToLoadSaveScreen;
 - (void) setGuiToGameOptionsScreen;
 - (OOWeaponFacingSet) availableFacings;
-- (void) setGuiToEquipShipScreen:(int)skip selectingFacingFor:(NSString *)eqKeyForSelectFacing;
+- (void) cxx_setGuiToEquipShipScreen:(int)skip selectingFacingFor:(const std::optional<std::string> &)eqKeyForSelectFacing;	// nullopt: the normal list
 - (void) setGuiToEquipShipScreen:(int)skip;
 
 - (void) setGuiToInterfacesScreen:(int)skip;
 - (void) showInformationForSelectedInterface;
 - (void) activateSelectedInterface;
 
-- (void) highlightEquipShipScreenKey:(NSString *)key;
+- (void) highlightEquipShipScreenKey:(const std::string &)key;
 - (void) showInformationForSelectedUpgrade;
-- (void) showInformationForSelectedUpgradeWithFormatString:(NSString *)extraString;
+- (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
 - (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(NSString *)eqKey;
 - (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context;
 
@@ -1181,7 +1181,7 @@ typedef enum
 
 - (void) mungChecksumWithNSString:(NSString *)str;
 
-- (NSString *)screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;
+- (std::optional<std::string>) cxx_screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;
 
 - (void) suppressTargetLost;
 

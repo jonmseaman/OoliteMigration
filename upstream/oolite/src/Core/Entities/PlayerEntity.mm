@@ -132,6 +132,23 @@ Quaternion QuaternionForKey(const oo::PList &dict, std::string_view key)
 }
 
 
+// OOExpandKeyWithSeed(seed, key, ...) with its arguments as a Dict (ints as PList::signedInteger,
+// NSUIntegers as PList::unsignedInteger, strings as std::string); no arguments passes nil, as the
+// macro did. Exemplar: OOShipLibraryDescriptions.mm ExpandCategoryKey.
+std::string ExpandKeyWithSeed(Random_Seed seed, const std::string &key, const oo::PList::Dict &args)
+{
+	return oo::StdString(OOExpandDescriptionString(seed, oo::NSStringFrom(key),
+		args.empty() ? nil : oo::ObjectFromPList(oo::PList(args)), nil, nil, kOOExpandKey));
+}
+
+
+// A %@ argument for oo::str::formatRuntime: the text, or "(null)" for nil.
+oo::str::FormatArg TextArg(const std::optional<std::string> &text)
+{
+	return text.has_value() ? oo::str::FormatArg(*text) : oo::str::FormatArg::null();
+}
+
+
 // A custom_views value as the list of views (oo_arrayForKey: nil unless an array -> empty).
 std::vector<oo::PList> CustomViewsFrom(const oo::PList &value)
 {
@@ -8456,14 +8473,11 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (void) setGuiToSystemDataScreenRefreshBackground: (BOOL) refreshBackground
 {
-	NSDictionary	*infoSystemData;
-	NSString		*infoSystemName;
-	
-	infoSystemData = [[UNIVERSE generateSystemData:info_system_id] retain];  // retained
-	NSInteger concealment = oo::PListView(infoSystemData).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
-	infoSystemName = oo::PListView(infoSystemData).get<NSString *>(KEY_NAME);
-	
-	BOOL			sunGoneNova = (oo::PListView(infoSystemData).get<BOOL>(@"sun_gone_nova"));
+	const oo::PList	infoSystemData = oo::PListFrom([UNIVERSE generateSystemData:info_system_id]);
+	NSInteger concealment = infoSystemData.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
+	const std::string infoSystemName = StringForKey(infoSystemData, oo::StdString(KEY_NAME)).value_or(std::string());	// (a nil name raised in the expansions below)
+
+	BOOL			sunGoneNova = (infoSystemData.get<bool>("sun_gone_nova"));
 	OOGUIScreenID	oldScreen = gui_screen;
 	
 	GuiDisplayGen	*gui = [UNIVERSE gui];
@@ -8484,20 +8498,20 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		[gui overrideTabs:tab_stops from:kGuiSystemdataTabs length:3];
 		[gui setTabStops:tab_stops];
 		
-		NSUInteger techLevel = oo::PListView(infoSystemData).get<int>(KEY_TECHLEVEL) + 1;
-		int population = oo::PListView(infoSystemData).get<int>(KEY_POPULATION);
-		int productivity = oo::PListView(infoSystemData).get<int>(KEY_PRODUCTIVITY);
-		int radius = oo::PListView(infoSystemData).get<int>(KEY_RADIUS);
-		
-		NSString	*government_desc =	oo::PListView(infoSystemData).get<NSString *>(KEY_GOVERNMENT_DESC,
-															 OODisplayStringFromGovernmentID(oo::PListView(infoSystemData).get<int>(KEY_GOVERNMENT)));
-		NSString	*economy_desc =		oo::PListView(infoSystemData).get<NSString *>(KEY_ECONOMY_DESC,
-															 OODisplayStringFromEconomyID(oo::PListView(infoSystemData).get<int>(KEY_ECONOMY)));
-		NSString	*inhabitants =		oo::PListView(infoSystemData).get<NSString *>(KEY_INHABITANTS);
-		NSString	*system_desc =		oo::PListView(infoSystemData).get<NSString *>(KEY_DESCRIPTION);
+		NSUInteger techLevel = infoSystemData.get<int>(oo::StdString(KEY_TECHLEVEL)) + 1;
+		int population = infoSystemData.get<int>(oo::StdString(KEY_POPULATION));
+		int productivity = infoSystemData.get<int>(oo::StdString(KEY_PRODUCTIVITY));
+		int radius = infoSystemData.get<int>(oo::StdString(KEY_RADIUS));
 
-		NSString    *populationDesc =   oo::PListView(infoSystemData).get<NSString *>(KEY_POPULATION_DESC,
-															 OOExpandKeyWithSeed(kNilRandomSeed, @"sysdata-pop-value", population));
+		std::string	government_desc =	StringForKey(infoSystemData, oo::StdString(KEY_GOVERNMENT_DESC))
+											.value_or(oo::StdString(OODisplayStringFromGovernmentID(infoSystemData.get<int>(oo::StdString(KEY_GOVERNMENT)))));
+		std::string	economy_desc =		StringForKey(infoSystemData, oo::StdString(KEY_ECONOMY_DESC))
+											.value_or(oo::StdString(OODisplayStringFromEconomyID(infoSystemData.get<int>(oo::StdString(KEY_ECONOMY)))));
+		std::string	inhabitants =		StringForKey(infoSystemData, oo::StdString(KEY_INHABITANTS)).value_or(std::string());	// (nil raised in the expansion)
+		std::optional<std::string>	system_desc = StringForKey(infoSystemData, oo::StdString(KEY_DESCRIPTION));
+
+		std::string	populationDesc =	StringForKey(infoSystemData, oo::StdString(KEY_POPULATION_DESC))
+											.value_or(oo::StdString(OOExpandKeyWithSeed(kNilRandomSeed, @"sysdata-pop-value", population)));
 
 		if (sunGoneNova)
 		{
@@ -8506,14 +8520,11 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 			radius = 0;
 			techLevel = 0;
 
-			government_desc = OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-government");
-			economy_desc = OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-economy");
-			inhabitants = OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-inhabitants");
-			{
-				NSString *system = infoSystemName;
-				system_desc = OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-description", system);
-			}
-			populationDesc = OOExpandKeyWithSeed(infoSystemRandomSeed, @"sysdata-pop-value", population);
+			government_desc = oo::StdString(OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-government"));
+			economy_desc = oo::StdString(OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-economy"));
+			inhabitants = oo::StdString(OOExpandKeyWithSeed(infoSystemRandomSeed, @"nova-system-inhabitants"));
+			system_desc = ExpandKeyWithSeed(infoSystemRandomSeed, "nova-system-description", { { "system", oo::PList(infoSystemName) } });
+			populationDesc = oo::StdString(OOExpandKeyWithSeed(infoSystemRandomSeed, @"sysdata-pop-value", population));
 		}
 
 		
@@ -8522,8 +8533,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 		if (concealment < OO_SYSTEMCONCEALMENT_NONAME)
 		{
-			NSString *system = infoSystemName;
-			[gui setTitle:OOExpandKeyWithSeed(infoSystemRandomSeed, @"sysdata-data-on-system", system)];
+			[gui setTitle:oo::NSStringFrom(ExpandKeyWithSeed(infoSystemRandomSeed, "sysdata-data-on-system", { { "system", oo::PList(infoSystemName) } }))];
 		}
 		else
 		{
@@ -8547,81 +8557,79 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 			{
 				distance = 0.1;
 			}
-			NSString *distanceInfo = [NSString stringWithFormat: @"%.1f ly", distance];
+			std::string distanceInfo = oo::str::format("%.1f ly", distance);
 			if (ANA_mode != OPTIMIZED_BY_NONE)
 			{
-				NSDictionary *routeInfo = nil;
-				routeInfo = [UNIVERSE routeFromSystem: system_id toSystem: info_system_id optimizedBy: ANA_mode];
-				if (routeInfo != nil)
+				const oo::PList routeInfo = oo::PListFrom([UNIVERSE routeFromSystem: system_id toSystem: info_system_id optimizedBy: ANA_mode]);
+				if (!routeInfo.isNull())
 				{
-					double routeDistance = [[routeInfo objectForKey: @"distance"] doubleValue];
-					double routeTime = [[routeInfo objectForKey: @"time"] doubleValue];
-					int routeJumps = [[routeInfo objectForKey: @"jumps"] intValue];
+					double routeDistance = routeInfo.get<double>("distance");
+					double routeTime = routeInfo.get<double>("time");
+					int routeJumps = routeInfo.get<int>("jumps");
 					if(routeDistance == 0.0 && info_system_id != system_id) {
 						routeDistance = 0.1;
 						routeTime = 0.01;
 						routeJumps = 0;
 					}
-					distanceInfo = [NSString stringWithFormat: @"%.1f ly / %.1f %@ / %d %@",
+					distanceInfo = oo::str::format("%.1f ly / %.1f %s / %d %s",
 							routeDistance,
 							routeTime,
 							// don't rely on DESC_PLURAL for routeTime since it is of type double
-							routeTime > 1.05 || routeTime < 0.95 ? DESC(@"sysdata-route-hours%1") : DESC(@"sysdata-route-hours%0"),
+							oo::DescriptionOf(routeTime > 1.05 || routeTime < 0.95 ? DESC(@"sysdata-route-hours%1") : DESC(@"sysdata-route-hours%0")).c_str(),
 							routeJumps,
-							DESC_PLURAL(@"sysdata-route-jumps", routeJumps)];
+							oo::DescriptionOf(DESC_PLURAL(@"sysdata-route-jumps", routeJumps)).c_str());
 				}
 			}
 
 			OOGUIRow i;
 
 			for (i = 1; i <= 16; i++) {
-				NSString *ln = [NSString stringWithFormat:@"sysdata-line-%ld", (long)i];
-				NSString *line = OOExpandKeyWithSeed(infoSystemRandomSeed, ln, economy_desc, government_desc, techLevel, populationDesc, inhabitants, productivity, radius, distanceInfo);
-				if (![line isEqualToString:@""])
+				const std::string ln = oo::str::format("sysdata-line-%ld", (long)i);
+				const std::string line = ExpandKeyWithSeed(infoSystemRandomSeed, ln, {
+					{ "economy_desc", oo::PList(economy_desc) },
+					{ "government_desc", oo::PList(government_desc) },
+					{ "techLevel", oo::PList::unsignedInteger(techLevel) },
+					{ "populationDesc", oo::PList(populationDesc) },
+					{ "inhabitants", oo::PList(inhabitants) },
+					{ "productivity", oo::PList::signedInteger(productivity) },
+					{ "radius", oo::PList::signedInteger(radius) },
+					{ "distanceInfo", oo::PList(distanceInfo) } });
+				if (!line.empty())
 				{
-					NSArray *lines = [line componentsSeparatedByString:@"\t"];
-					if ([lines count] == 1) 
+					const std::vector<std::string> lines = oo::str::split(line, "\t");
+					if (lines.size() == 1)
 					{
-						[gui setArray:[NSArray arrayWithObjects:[lines objectAtIndex:0],
-									nil]
-							forRow:i];
-					} 
-					if ([lines count] == 2) 
-					{
-						[gui setArray:[NSArray arrayWithObjects:[lines objectAtIndex:0],
-										[lines objectAtIndex:1],
-									nil]
+						[gui cxx_setArray:{ lines[0] }
 							forRow:i];
 					}
-					if ([lines count] == 3) 
+					if (lines.size() == 2)
 					{
-						if ([[lines objectAtIndex:2] isEqualToString:@""]) 
+						[gui cxx_setArray:{ lines[0], lines[1] }
+							forRow:i];
+					}
+					if (lines.size() == 3)
+					{
+						if (lines[2].empty())
 						{
-							[gui setArray:[NSArray arrayWithObjects:[lines objectAtIndex:0],
-											[lines objectAtIndex:1],
-										nil]
+							[gui cxx_setArray:{ lines[0], lines[1] }
 								forRow:i];
-						} 
+						}
 						else
 						{
-							[gui setArray:[NSArray arrayWithObjects:[lines objectAtIndex:0],
-											[lines objectAtIndex:1],
-											[lines objectAtIndex:2],
-										nil]
+							[gui cxx_setArray:{ lines[0], lines[1], lines[2] }
 								forRow:i];
 						}
 					}
 				}
-				else 
+				else
 				{
-					[gui setArray:[NSArray arrayWithObjects:@"",
-								nil]
+					[gui cxx_setArray:std::vector<std::string>{ std::string() }
 						forRow:i];
 				}
 			}
 
 
-			i = [gui addLongText:system_desc startingAtRow:17 align:GUI_ALIGN_LEFT];
+			i = [gui cxx_addLongText:system_desc startingAtRow:17 align:GUI_ALIGN_LEFT];
 			missionTextRow = i;
 			for (i-- ; i > 16 ; --i)
 			{
@@ -8642,8 +8650,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	lastTextKey = nil;
 	
 	[[UNIVERSE gameView] clearMouse];
-	
-	[infoSystemData release];
 	
 	[self setShowDemoShips:NO];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
@@ -8771,7 +8777,7 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 		//[gui setText:targetSystemName forRow:19];
 		// distance-f & est-travel-time-f are identical between short & long range charts in standard Oolite, however can be alterered separately via OXPs
 		//[gui setText:OOExpandKey(@"short-range-chart-distance", distance) forRow:20];
-		//NSString *travelTimeRow = @"";
+		//std::string travelTimeRow;
 		//if ([self hasHyperspaceMotor] && distance > 0.0 && distance * 10.0 <= fuel)
 		//{
 		//	double time = estimatedTravelTime;
@@ -8780,8 +8786,9 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 		//[gui setText:travelTimeRow forRow:21];
 		if (gui_screen == GUI_SCREEN_LONG_RANGE_CHART)
 		{
-			NSString *displaySearchString = planetSearchString ? [planetSearchString capitalizedString] : (NSString *)@"";
-			[gui setText:[NSString stringWithFormat:DESC(@"long-range-chart-find-planet-@"), displaySearchString] forRow:GUI_ROW_PLANET_FINDER];
+			const std::optional<std::string> searchString = oo::OptionalString(planetSearchString);	// (the ivar is retyped by oo-3rb.254)
+			const std::string displaySearchString = searchString.has_value() ? oo::str::capitalized(*searchString) : std::string();
+			[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"long-range-chart-find-planet-@")), { displaySearchString }) forRow:GUI_ROW_PLANET_FINDER];
 			[gui setColor:[OOColor cyanColor] forRow:GUI_ROW_PLANET_FINDER];
 			[gui setShowTextCursor:YES];
 			[gui setCurrentRow:GUI_ROW_PLANET_FINDER];
@@ -8810,12 +8817,17 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 }
 
 
-static NSString *SliderString(NSInteger amountIn20ths)
+namespace
 {
-	NSString *filledSlider = [@"|||||||||||||||||||||||||" substringToIndex:amountIn20ths];
-	NSString *emptySlider =  [@"........................." substringToIndex:20 - amountIn20ths];
-	return [NSString stringWithFormat:@"%@%@", filledSlider, emptySlider];
+
+std::string SliderString(NSInteger amountIn20ths)
+{
+	std::string filledSlider = std::string("|||||||||||||||||||||||||").substr(0, static_cast<std::size_t>(amountIn20ths));
+	std::string emptySlider =  std::string(".........................").substr(0, static_cast<std::size_t>(20 - amountIn20ths));
+	return filledSlider + emptySlider;
 }
+
+}	// namespace
 
 
 - (void) setGuiToGameOptionsScreen
@@ -8833,7 +8845,7 @@ static NSString *SliderString(NSInteger amountIn20ths)
 		do {													\
 			if ((condition))									\
 			{												\
-				[gui setKey:GUI_KEY_OK forRow:(row)];			\
+				[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:(row)];			\
 			}												\
 			else												\
 			{												\
@@ -8847,7 +8859,7 @@ static NSString *SliderString(NSInteger amountIn20ths)
 		int first_sel_row = GUI_FIRST_ROW(GAME)-4; // repositioned menu
 
 		[gui clear];
-		[gui setTitle:[NSString stringWithFormat:DESC(@"status-commander-@"), [self commanderName]]]; // Same title as status screen.
+		[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"status-commander-@")), { TextArg([self cxx_commanderName]) }))]; // Same title as status screen.
 		
 #if OO_RESOLUTION_OPTION
 		GameController	*controller = [UNIVERSE gameController];
@@ -8859,17 +8871,17 @@ static NSString *SliderString(NSInteger amountIn20ths)
 			displayModeIndex = 0;
 		}
 		
-		NSArray			*modeList = [controller displayModes];
-		NSDictionary	*mode = nil;
-		if ([modeList count])
+		const oo::PList	modeList = oo::PListFrom([controller displayModes]);
+		const oo::PList	*mode = nullptr;
+		if (modeList.count())
 		{
-			mode = [modeList objectAtIndex:displayModeIndex];
+			mode = modeList.at(displayModeIndex);
 		}
-		if (mode == nil)  return;	// Got a better idea?
-		
-		unsigned modeWidth = oo::PListView(mode).get<unsigned int>(kOODisplayWidth);
-		unsigned modeHeight = oo::PListView(mode).get<unsigned int>(kOODisplayHeight);
-		float modeRefresh = oo::PListView(mode).get<float>(kOODisplayRefreshRate);
+		if (mode == nullptr)  return;	// Got a better idea?
+
+		unsigned modeWidth = mode->get<unsigned int>(oo::StdString(kOODisplayWidth));
+		unsigned modeHeight = mode->get<unsigned int>(oo::StdString(kOODisplayHeight));
+		float modeRefresh = mode->get<float>(oo::StdString(kOODisplayRefreshRate));
 
 		BOOL runningOnPrimaryDisplayDevice = [gameView isRunningOnPrimaryDisplayDevice];
 #if OOLITE_WINDOWS
@@ -8879,12 +8891,12 @@ static NSString *SliderString(NSInteger amountIn20ths)
 		}
 #endif
 		
-		NSString *displayModeString = [self screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh];
-		
-		[gui setText:displayModeString forRow:GUI_ROW(GAME,DISPLAY) align:GUI_ALIGN_CENTER];
+		const std::optional<std::string> displayModeString = [self cxx_screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh];
+
+		[gui cxx_setText:displayModeString forRow:GUI_ROW(GAME,DISPLAY) align:GUI_ALIGN_CENTER];
 		if (runningOnPrimaryDisplayDevice)
 		{
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,DISPLAY)];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAY)];
 		}
 		else
 		{
@@ -8896,8 +8908,20 @@ static NSString *SliderString(NSInteger amountIn20ths)
 #if OOLITE_WINDOWS
 		if ([gameView hdrOutput])
 		{
-			NSArray		*brightnesses = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"hdr_maxBrightness_array");
-			int			brightnessIdx = [brightnesses indexOfObject:[NSString stringWithFormat:@"%d", (int)[gameView hdrMaxBrightness]]];
+			const oo::PList	brightnessesValue = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"hdr_maxBrightness_array"]);
+			const oo::PList	brightnesses = brightnessesValue.isArray() ? brightnessesValue : oo::PList();
+			// -indexOfObject: with the %d string: only string elements ever matched; not found was NSNotFound narrowed to int
+			const std::string	currentBrightness = std::to_string((int)[gameView hdrMaxBrightness]);
+			int			brightnessIdx = static_cast<int>(NSNotFound);
+			for (std::size_t i = 0; i < brightnesses.count(); i++)
+			{
+				const oo::PList *element = brightnesses.at(i);
+				if (element->isString() && *element->getIf<std::string>() == currentBrightness)
+				{
+					brightnessIdx = static_cast<int>(i);
+					break;
+				}
+			}
 			
 			if (brightnessIdx == NSNotFound)
 			{
@@ -8905,36 +8929,36 @@ static NSString *SliderString(NSInteger amountIn20ths)
 				brightnessIdx = 0;
 			}
 				
-			int brightnessValue = oo::PListView(brightnesses).at<int>(brightnessIdx);
-			NSString *maxBrightnessString = OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue);
-																				
-			[gui setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)];
+			int brightnessValue = brightnesses.at<int>(static_cast<std::size_t>(brightnessIdx));
+			const std::string maxBrightnessString = oo::StdString(OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue));
+
+			[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)];
 		}
 #endif
 
 
 		if ([UNIVERSE autoSave])
-			[gui setText:DESC(@"gameoptions-autosave-yes") forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-autosave-yes")) forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
 		else
-			[gui setText:DESC(@"gameoptions-autosave-no") forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
-		[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,AUTOSAVE)];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-autosave-no")) forRow:GUI_ROW(GAME,AUTOSAVE) align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,AUTOSAVE)];
 	
 		// volume control
 		if ([OOSound respondsToSelector:@selector(masterVolume)] && [OOSound isSoundOK])
 		{
 			double volume = 100.0 * [OOSound masterVolume];
 			int vol = (volume / 5.0 + 0.5); // avoid rounding errors
-			NSString* soundVolumeWordDesc = DESC(@"gameoptions-sound-volume");
+			const std::string soundVolumeWordDesc = oo::StdString(DESC(@"gameoptions-sound-volume"));
 			if (vol > 0)
-				[gui setText:[NSString stringWithFormat:@"%@%@ ", soundVolumeWordDesc, SliderString(vol)] forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::str::format("%s%s ", soundVolumeWordDesc.c_str(), SliderString(vol).c_str()) forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
 			else
-				[gui setText:DESC(@"gameoptions-sound-volume-mute") forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,VOLUME)];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-sound-volume-mute")) forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,VOLUME)];
 		}
 		else
 		{
-			[gui setText:DESC(@"gameoptions-volume-external-only") forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-volume-external-only")) forRow:GUI_ROW(GAME,VOLUME) align:GUI_ALIGN_CENTER];
 			[gui setColor:[OOColor grayColor] forRow:GUI_ROW(GAME,VOLUME)];
 		}
 		
@@ -8942,18 +8966,20 @@ static NSString *SliderString(NSInteger amountIn20ths)
 		// field of view control
 		float fov = [gameView fov:NO];
 		int fovTicks = (int)((fov - MIN_FOV_DEG) * 20 / (MAX_FOV_DEG - MIN_FOV_DEG));
-		NSString* fovWordDesc = DESC(@"gameoptions-fov-value");
-		[gui setText:[NSString stringWithFormat:@"%@%@ (%d%c) ", fovWordDesc, SliderString(fovTicks), (int)fov, 176 /*176 is the degrees symbol Unicode code point*/] forRow:GUI_ROW(GAME,FOV) align:GUI_ALIGN_CENTER];
-		[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,FOV)];
+		const std::string fovWordDesc = oo::DescriptionOf(DESC(@"gameoptions-fov-value"));
+		// %c 176 gave U+00B0 (probed on GNUstep base, oo-3rb.218); written as its UTF-8 bytes
+		[gui cxx_setText:oo::str::format("%s%s (%d%s) ", fovWordDesc.c_str(), SliderString(fovTicks).c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/) forRow:GUI_ROW(GAME,FOV) align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,FOV)];
 		
 		// color blind mode
 		int colorblindMode = [UNIVERSE colorblindMode];
-		NSString *colorblindModeDesc = oo::PListView(oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"colorblind_mode")).at<NSString *>([UNIVERSE useShaders] ? colorblindMode : 0);
-		NSString *colorblindModeMsg = OOExpandKey(@"gameoptions-colorblind-mode", colorblindModeDesc);
-		[gui setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
+		const oo::PList colorblindModes = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"colorblind_mode"]);
+		const std::string colorblindModeDesc = colorblindModes.isArray() ? colorblindModes.at<std::string>(static_cast<std::size_t>([UNIVERSE useShaders] ? colorblindMode : 0)) : std::string();	// (nil raised in the expansion)
+		const std::string colorblindModeMsg = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-colorblind-mode", { { "colorblindModeDesc", oo::PList(colorblindModeDesc) } });
+		[gui cxx_setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
 		if ([UNIVERSE useShaders])
 		{
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,COLORBLINDMODE)];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,COLORBLINDMODE)];
 		}
 		else
 		{
@@ -8965,26 +8991,26 @@ static NSString *SliderString(NSInteger amountIn20ths)
 		switch (isSpeechOn)
 		{
 		case OOSPEECHSETTINGS_OFF:
-			[gui setText:DESC(@"gameoptions-spoken-messages-no") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-spoken-messages-no")) forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
 			break;
 		case OOSPEECHSETTINGS_COMMS:
-			[gui setText:DESC(@"gameoptions-spoken-messages-comms") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-spoken-messages-comms")) forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
 			break;
 		case OOSPEECHSETTINGS_ALL:
-			[gui setText:DESC(@"gameoptions-spoken-messages-yes") forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-spoken-messages-yes")) forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
 			break;
 		}
 		OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH));
 		
 #if OOLITE_ESPEAK
 		{
-			NSString *voiceName = [UNIVERSE voiceName:voice_no];
-			NSString *message = OOExpandKey(@"gameoptions-voice-name", voiceName);
-			[gui setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
+			const std::string voiceName = oo::StdString([UNIVERSE voiceName:voice_no]);
+			std::string message = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-voice-name", { { "voiceName", oo::PList(voiceName) } });
+			[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
 			OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH_LANGUAGE));
 
-			message = [NSString stringWithFormat:@"%@", DESC(voice_gender_m ? @"gameoptions-voice-M" : @"gameoptions-voice-F")];
-			[gui setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
+			message = oo::DescriptionOf(DESC(voice_gender_m ? @"gameoptions-voice-M" : @"gameoptions-voice-F"));
+			[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
 			OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,SPEECH_GENDER));
 		}
 #endif
@@ -8993,60 +9019,60 @@ static NSString *SliderString(NSInteger amountIn20ths)
 		// window/fullscreen
 		if([gameView inFullScreenMode])
 		{
-			[gui setText:DESC(@"gameoptions-play-in-window") forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-play-in-window")) forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
 		}
 		else
 		{
-			[gui setText:DESC(@"gameoptions-play-in-fullscreen") forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-play-in-fullscreen")) forRow:GUI_ROW(GAME,DISPLAYSTYLE) align:GUI_ALIGN_CENTER];
 		}
-		[gui setKey: GUI_KEY_OK forRow: GUI_ROW(GAME,DISPLAYSTYLE)];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,DISPLAYSTYLE)];
 #endif
 		
-		[gui setText:DESC(@"gameoptions-joystick-configuration") forRow: GUI_ROW(GAME,STICKMAPPER) align: GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::StdString(DESC(@"gameoptions-joystick-configuration")) forRow: GUI_ROW(GAME,STICKMAPPER) align: GUI_ALIGN_CENTER];
 		OO_SETACCESSCONDITIONFORROW([[OOJoystickManager sharedStickHandler] joystickCount], GUI_ROW(GAME,STICKMAPPER));
 
-		[gui setText:DESC(@"gameoptions-keyboard-configuration") forRow: GUI_ROW(GAME,KEYMAPPER) align: GUI_ALIGN_CENTER];
-		[gui setKey: GUI_KEY_OK forRow: GUI_ROW(GAME,KEYMAPPER)];
+		[gui cxx_setText:oo::StdString(DESC(@"gameoptions-keyboard-configuration")) forRow: GUI_ROW(GAME,KEYMAPPER) align: GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,KEYMAPPER)];
 
 		
-		NSString *musicMode = [UNIVERSE descriptionForArrayKey:@"music-mode" index:[[OOMusicController sharedController] mode]];
-		NSString *message = OOExpandKey(@"gameoptions-music-mode", musicMode);
-		[gui setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
-		[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,MUSIC)];
+		const std::string musicMode = oo::StdString([UNIVERSE descriptionForArrayKey:@"music-mode" index:[[OOMusicController sharedController] mode]]);
+		const std::string message = ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
+		[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,MUSIC)];
 
 		if (![gameView hdrOutput])
 		{
 			if ([UNIVERSE wireframeGraphics])
-				[gui setText:DESC(@"gameoptions-wireframe-graphics-yes") forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-wireframe-graphics-yes")) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
 			else
-				[gui setText:DESC(@"gameoptions-wireframe-graphics-no") forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-wireframe-graphics-no")) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS) align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)];
 		}
 #if OOLITE_WINDOWS
 		else
 		{
 			float paperWhite = [gameView hdrPaperWhiteBrightness];
 			int paperWhiteTicks = (int)((paperWhite - MIN_HDR_PAPERWHITE) * 20 / (MAX_HDR_PAPERWHITE - MIN_HDR_PAPERWHITE));
-			NSString* paperWhiteWordDesc = DESC(@"gameoptions-hdr-paperwhite");
-			[gui setText:[NSString stringWithFormat:@"%@%@ (%d) ", paperWhiteWordDesc, SliderString(paperWhiteTicks), (int)paperWhite] forRow:GUI_ROW(GAME,HDRPAPERWHITE) align:GUI_ALIGN_CENTER];
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,HDRPAPERWHITE)];
+			const std::string paperWhiteWordDesc = oo::DescriptionOf(DESC(@"gameoptions-hdr-paperwhite"));
+			[gui cxx_setText:oo::str::format("%s%s (%d) ", paperWhiteWordDesc.c_str(), SliderString(paperWhiteTicks).c_str(), (int)paperWhite) forRow:GUI_ROW(GAME,HDRPAPERWHITE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,HDRPAPERWHITE)];
 		}
 #endif
 		
 #if !NEW_PLANETS
 		if ([UNIVERSE doProcedurallyTexturedPlanets])
-			[gui setText:DESC(@"gameoptions-procedurally-textured-planets-yes") forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-procedurally-textured-planets-yes")) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
 		else
-			[gui setText:DESC(@"gameoptions-procedurally-textured-planets-no") forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
-		[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-procedurally-textured-planets-no")) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS) align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)];
 #endif
 
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
-		NSString *shaderEffectsOptionsString = OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel);
-		[gui setText:OOExpandKey(shaderEffectsOptionsString) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
+		const std::string shaderEffectsOptionsString = oo::StdString(OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel));
+		[gui cxx_setText:ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), shaderEffectsOptionsString, {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
 		if (![[OOOpenGLExtensionManager sharedManager] shadersForceDisabled])
 		{
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
 		}
 		else
 		{
@@ -9057,17 +9083,17 @@ static NSString *SliderString(NSInteger amountIn20ths)
 		
 		if ([UNIVERSE dockingClearanceProtocolActive])
 		{
-			[gui setText:DESC(@"gameoptions-docking-clearance-yes") forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-docking-clearance-yes")) forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
 		}
 		else
 		{
-			[gui setText:DESC(@"gameoptions-docking-clearance-no") forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-docking-clearance-no")) forRow:GUI_ROW(GAME,DOCKINGCLEARANCE) align:GUI_ALIGN_CENTER];
 		}
 		OO_SETACCESSCONDITIONFORROW(!startingGame, GUI_ROW(GAME,DOCKINGCLEARANCE));
 		
 		// Back menu option
-		[gui setText:DESC(@"gui-back") forRow:GUI_ROW(GAME,BACK) align:GUI_ALIGN_CENTER];
-		[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,BACK)];
+		[gui cxx_setText:oo::StdString(DESC(@"gui-back")) forRow:GUI_ROW(GAME,BACK) align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,BACK)];
 
 		[gui setSelectableRange:NSMakeRange(first_sel_row, GUI_ROW_GAMEOPTIONS_END_OF_LIST)];
 		[gui setSelectedRow: first_sel_row];
@@ -9112,20 +9138,20 @@ static NSString *SliderString(NSInteger amountIn20ths)
 			first_sel_row = GUI_ROW(,QUICKSAVE);
 
 		[gui clear];
-		[gui setTitle:[NSString stringWithFormat:DESC(@"status-commander-@"), [self commanderName]]]; //Same title as status screen.
+		[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"status-commander-@")), { TextArg([self cxx_commanderName]) }))]; //Same title as status screen.
 		
-		[gui setText:DESC(@"options-quick-save") forRow:GUI_ROW(,QUICKSAVE) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::StdString(DESC(@"options-quick-save")) forRow:GUI_ROW(,QUICKSAVE) align:GUI_ALIGN_CENTER];
 		if (canQuickSave)
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(,QUICKSAVE)];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,QUICKSAVE)];
 		else
 			[gui setColor:[OOColor grayColor] forRow:GUI_ROW(,QUICKSAVE)];
 
-		[gui setText:DESC(@"options-save-commander") forRow:GUI_ROW(,SAVE) align:GUI_ALIGN_CENTER];
-		[gui setText:DESC(@"options-load-commander") forRow:GUI_ROW(,LOAD) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::StdString(DESC(@"options-save-commander")) forRow:GUI_ROW(,SAVE) align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:oo::StdString(DESC(@"options-load-commander")) forRow:GUI_ROW(,LOAD) align:GUI_ALIGN_CENTER];
 		if (canLoadOrSave)
 		{
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(,SAVE)];
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(,LOAD)];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,SAVE)];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,LOAD)];
 		}
 		else
 		{
@@ -9133,19 +9159,19 @@ static NSString *SliderString(NSInteger amountIn20ths)
 			[gui setColor:[OOColor grayColor] forRow:GUI_ROW(,LOAD)];
 		}
 
-		[gui setText:DESC(@"options-return-to-menu") forRow:GUI_ROW(,BEGIN_NEW) align:GUI_ALIGN_CENTER];
-		[gui setKey:GUI_KEY_OK forRow:GUI_ROW(,BEGIN_NEW)];
+		[gui cxx_setText:oo::StdString(DESC(@"options-return-to-menu")) forRow:GUI_ROW(,BEGIN_NEW) align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,BEGIN_NEW)];
 
-		[gui setText:DESC(@"options-game-options") forRow:GUI_ROW(,GAMEOPTIONS) align:GUI_ALIGN_CENTER];
-		[gui setKey:GUI_KEY_OK forRow:GUI_ROW(,GAMEOPTIONS)];
+		[gui cxx_setText:oo::StdString(DESC(@"options-game-options")) forRow:GUI_ROW(,GAMEOPTIONS) align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,GAMEOPTIONS)];
 		
 #if OOLITE_SDL
 		// GNUstep needs a quit option at present (no Cmd-Q) but
 		// doesn't need speech.
 		
 		// quit menu option
-		[gui setText:DESC(@"options-exit-game") forRow:GUI_ROW(,QUIT) align:GUI_ALIGN_CENTER];
-		[gui setKey:GUI_KEY_OK forRow:GUI_ROW(,QUIT)];
+		[gui cxx_setText:oo::StdString(DESC(@"options-exit-game")) forRow:GUI_ROW(,QUIT) align:GUI_ALIGN_CENTER];
+		[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(,QUIT)];
 #endif
 		
 		[gui setSelectableRange:NSMakeRange(first_sel_row, GUI_ROW_OPTIONS_END_OF_LIST)];
@@ -9177,27 +9203,31 @@ static NSString *SliderString(NSInteger amountIn20ths)
 	if (gamePaused)
 	{
 		[[UNIVERSE messageGUI] clear]; 
-		NSString *pauseKey = [PLAYER keyBindingDescription2:@"key_pausebutton"];
-		[UNIVERSE addMessage:OOExpandKey(@"game-paused-docked", pauseKey) forCount:1.0 forceDisplay:YES];
+		const std::optional<std::string> pauseKey = [PLAYER cxx_keyBindingDescription2:"key_pausebutton"];
+		[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithSeed(OOStringExpanderDefaultRandomSeed(), "game-paused-docked", { { "pauseKey", oo::PList(pauseKey.value_or(std::string())) } })) forCount:1.0 forceDisplay:YES];	// (nil raised in the expansion)
 	}
 	
 	[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 }
 
 
-static NSString *last_outfitting_key=nil;
+namespace
+{
+
+std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
+
+}	// namespace
 
 
-- (void) highlightEquipShipScreenKey:(NSString *)key
+- (void) highlightEquipShipScreenKey:(const std::string &)highlightKey
 {
 	int 			i=0;
 	OOGUIRow		row;
-	NSString 		*otherKey = @"";
+	std::optional<std::string>	otherKey = std::string();
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	[last_outfitting_key release];
-	last_outfitting_key = [key copy];
+	last_outfitting_key = highlightKey;
 	[self setGuiToEquipShipScreen:-1];
-	key = last_outfitting_key;
+	const std::optional<std::string> key = last_outfitting_key;
 	// TODO: redo the equipShipScreen in a way that isn't broken. this whole method 'works'
 	// based on the way setGuiToEquipShipScreen  'worked' on 20090913 - Kaks 
 	
@@ -9210,22 +9240,23 @@ static NSString *last_outfitting_key=nil;
 		[self setGuiToEquipShipScreen:i];
 		for (row = GUI_ROW_EQUIPMENT_START;row<=GUI_MAX_ROWS_EQUIPMENT+2;row++)
 		{
-			otherKey = [gui keyForRow:row];
+			otherKey = [gui cxx_keyForRow:row];
 			if (!otherKey)
 			{
 				[self setGuiToEquipShipScreen:0];
 				return;
 			}
-			if ([otherKey isEqualToString:key])
+			if (otherKey == key)
 			{
 				[gui setSelectedRow:row];
 				[self showInformationForSelectedUpgrade];
 				return;
 			}
 		}
-		if ([otherKey hasPrefix:@"More:"])
+		if (oo::str::hasPrefix(*otherKey, "More:"))
 		{
-			i = oo::PListView([otherKey componentsSeparatedByString:@":"]).at<int>(1);
+			const std::vector<std::string> components = oo::str::split(*otherKey, ":");
+			i = (components.size() > 1) ? oo::str::intValue(components[1]) : 0;
 		}
 		else
 		{
@@ -9239,20 +9270,20 @@ static NSString *last_outfitting_key=nil;
 - (OOWeaponFacingSet) availableFacings
 {
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-	NSDictionary		*shipyardInfo = [registry shipyardInfoForKey:[self shipDataKey]];
-	unsigned			available_facings = oo::PListView(shipyardInfo).get<unsigned int>(KEY_WEAPON_FACINGS, [self weaponFacings]);	// use defaults  explicitly
+	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+	unsigned			available_facings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
 	
 	return available_facings & VALID_WEAPON_FACINGS;
 }
 
 
-- (void) setGuiToEquipShipScreen:(int)skipParam selectingFacingFor:(NSString *)eqKeyForSelectFacing
+- (void) cxx_setGuiToEquipShipScreen:(int)skipParam selectingFacingFor:(const std::optional<std::string> &)eqKeyForSelectFacing
 {
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 	
 	missiles = [self countMissiles];
 	OOEntityStatus searchStatus; // use STATUS_TEST, STATUS_DEAD & STATUS_ACTIVE
-	NSString *showKey = nil;
+	std::optional<std::string> showKey;
 	unsigned skip;
 
 	if (skipParam < 0)
@@ -9282,40 +9313,48 @@ static NSString *last_outfitting_key=nil;
 	}
 
 	// build an array of all equipment - and take away that which has been bought (or is not permitted)
-	NSMutableArray		*equipmentAllowed = [NSMutableArray array];
-	
-	// find options that agree with this ship
+	std::vector<std::string>	equipmentAllowed;
+
+	// find options that agree with this ship (a set of keys: only the string elements could ever match)
 	OOShipRegistry		*registry = [OOShipRegistry sharedRegistry];
-	NSDictionary		*shipyardInfo = [registry shipyardInfoForKey:[self shipDataKey]];
-	NSMutableSet		*options = [NSMutableSet setWithArray:oo::PListView(shipyardInfo).get<NSArray *>(KEY_OPTIONAL_EQUIPMENT)];
-	
+	const oo::PList		shipyardInfo = [registry cxx_shipyardInfoForKey:oo::StdString([self shipDataKey])];
+	std::set<std::string>	options;
+	const auto addOptions = [&options](const oo::PList *list)
+	{
+		for (std::size_t n = 0; list != nullptr && n < list->count(); n++)
+		{
+			const oo::PList *item = list->at(n);
+			if (item->isString())  options.insert(*item->getIf<std::string>());
+		}
+	};
+	addOptions(shipyardInfo.get<oo::PList::Array>(oo::StdString(KEY_OPTIONAL_EQUIPMENT)));
+
 	// add standard items too!
-	[options addObjectsFromArray:oo::PListView(oo::PListView(shipyardInfo).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
-	
+	const oo::PList		*standardEquipment = shipyardInfo.get<oo::PList::Dict>(oo::StdString(KEY_STANDARD_EQUIPMENT));
+	addOptions(standardEquipment != nullptr ? standardEquipment->get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)) : nullptr);
+
 	unsigned			i = 0;
-	NSEnumerator		*eqEnum = nil;
-	OOEquipmentType		*eqType = nil;
-	unsigned			available_facings = oo::PListView(shipyardInfo).get<unsigned int>(KEY_WEAPON_FACINGS, [self weaponFacings]);	// use defaults  explicitly
+	unsigned			available_facings = shipyardInfo.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), [self weaponFacings]);	// use defaults  explicitly
 
 	
-	if (eqKeyForSelectFacing != nil) // Weapons purchase subscreen.
+	if (eqKeyForSelectFacing.has_value()) // Weapons purchase subscreen.
 	{
 		skip = 1;	// show the back button
 		// The 3 lines below are needed by the present GUI. TODO:create a sane GUI. Kaks - 20090915 & 201005
-		[equipmentAllowed addObject:eqKeyForSelectFacing];
-		[equipmentAllowed addObject:eqKeyForSelectFacing];
-		[equipmentAllowed addObject:eqKeyForSelectFacing];
+		equipmentAllowed.push_back(*eqKeyForSelectFacing);
+		equipmentAllowed.push_back(*eqKeyForSelectFacing);
+		equipmentAllowed.push_back(*eqKeyForSelectFacing);
 	}
-	else for (eqEnum = [OOEquipmentType equipmentEnumeratorOutfitting]; (eqType = [eqEnum nextObject]); i++)
+	else for (OOEquipmentType *eqType in [OOEquipmentType equipmentEnumeratorOutfitting])	// (i counts at the end of the body)
 	{
-		NSString			*eqKey = [eqType identifier];
+		const std::string	eqKey = oo::StdString([eqType identifier]);
 		OOTechLevelID		minTechLevel = [eqType effectiveTechLevel];
 		
 		// set initial availability to NO
 		BOOL isOK = NO;
 		
 		// check special availability
-		if ([eqType isAvailableToAll])  [options addObject:eqKey];
+		if ([eqType isAvailableToAll])  options.insert(eqKey);
 		
 		// if you have a damaged system you can get it repaired at a tech level one less than that required to buy it
 		if (minTechLevel != 0 && [self hasEquipmentItem:[eqType damagedIdentifier]])  minTechLevel--;
@@ -9335,18 +9374,18 @@ static NSString *last_outfitting_key=nil;
 		}
 		
 		// check initial availability against options AND standard extras
-		if ([options containsObject:eqKey])
+		if (options.contains(eqKey))
 		{
 			isOK = YES;
-			[options removeObject:eqKey];
+			options.erase(eqKey);
 		}
 
 		if (isOK)
 		{
 			if (techlevel < minTechLevel) isOK = NO;
-			if (![self canAddEquipment:eqKey inContext:@"purchase"]) isOK = NO;
+			if (![self canAddEquipment:oo::NSStringFrom(eqKey) inContext:@"purchase"]) isOK = NO;
 			if (available_facings == 0 && [eqType isPrimaryWeapon]) isOK = NO;
-			if (isOK)  [equipmentAllowed addObject:eqKey];
+			if (isOK)  equipmentAllowed.push_back(eqKey);
 		}
 		
 		if (searchStatus == STATUS_DEAD && isOK)
@@ -9357,14 +9396,14 @@ static NSString *last_outfitting_key=nil;
 		if (searchStatus == STATUS_TEST)
 		{
 			if (isOK) showKey = eqKey;
-			if ([eqKey isEqualToString:last_outfitting_key]) 
+			if (eqKey == last_outfitting_key)
 				searchStatus = isOK ? STATUS_ACTIVE : STATUS_DEAD;
 		}
+		i++;
 	}
-	if (searchStatus != STATUS_TEST && showKey != nil)
+	if (searchStatus != STATUS_TEST && showKey.has_value())
 	{
-		[last_outfitting_key release];
-		last_outfitting_key = [showKey copy];
+		last_outfitting_key = showKey;
 	}
 	
 	// GUI stuff
@@ -9383,7 +9422,7 @@ static NSString *last_outfitting_key=nil;
 		[gui setTitle:DESC(@"equip-title")];
 		
 		[gui setColor:[gui colorFromSetting:kGuiEquipmentCashColor defaultValue:nil] forRow: GUI_ROW_EQUIPMENT_CASH];
-		[gui setText:OOExpandKey(@"equip-cash-value", credits) forRow:GUI_ROW_EQUIPMENT_CASH];
+		[gui cxx_setText:oo::StdString(OOExpandKey(@"equip-cash-value", credits)) forRow:GUI_ROW_EQUIPMENT_CASH];
 		
 		OOGUITabSettings tab_stops;
 		tab_stops[0] = 0;
@@ -9393,7 +9432,7 @@ static NSString *last_outfitting_key=nil;
 		[gui setTabStops:tab_stops];
 		
 		unsigned n_rows = GUI_MAX_ROWS_EQUIPMENT;
-		NSUInteger count = [equipmentAllowed count];
+		NSUInteger count = equipmentAllowed.size();
 
 		if (count > 0)
 		{
@@ -9410,39 +9449,38 @@ static NSString *last_outfitting_key=nil;
 						previous = 0;				// if only one previous item, just show it
 				}
 
-				if (eqKeyForSelectFacing != nil)
+				if (eqKeyForSelectFacing.has_value())
 				{
 					previous = 0;
 					// keep weapon selected if we go back.
-					[gui setKey:[NSString stringWithFormat:@"More:%d:%@", previous, eqKeyForSelectFacing] forRow:row];
+					[gui cxx_setKey:oo::str::format("More:%d:%s", previous, eqKeyForSelectFacing->c_str()) forRow:row];
 				}
 				else
 				{
-					[gui setKey:[NSString stringWithFormat:@"More:%d", previous] forRow:row];
+					[gui cxx_setKey:oo::str::format("More:%d", previous) forRow:row];
 				}
 				[gui setColor:[gui colorFromSetting:kGuiEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:row];
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @"", @" <-- ", nil] forRow:row];
+				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), "", " <-- " } forRow:row];
 				row++;
 			}
 			
 			for (i = skip; i < count && (row - start_row < (OOGUIRow)n_rows); i++)
 			{
-				NSString			*eqKey = oo::PListView(equipmentAllowed).at<NSString *>(i);
-				OOEquipmentType		*eqInfo = [OOEquipmentType equipmentTypeWithIdentifier:eqKey];
+				const std::string	&eqKey = equipmentAllowed[i];
+				OOEquipmentType		*eqInfo = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)];
 				OOCreditsQuantity	pricePerUnit = [eqInfo price];
-				NSString			*desc = [NSString stringWithFormat:@" %@ ", [eqInfo name]];
-				NSString			*eq_key_damaged	= [eqInfo damagedIdentifier];
+				std::string			desc = oo::str::format(" %s ", oo::DescriptionOf([eqInfo name]).c_str());
 				double				price;
 
 				OOColor				*dispCol = [eqInfo displayColor];
 				if (dispCol == nil) dispCol = [gui colorFromSetting:kGuiEquipmentOptionColor defaultValue:nil];
 				[gui setColor:dispCol forRow:row]; 
 
-				if ([eqKey isEqual:@"EQ_FUEL"])
+				if (eqKey == "EQ_FUEL")
 				{
 					price = (PLAYER_MAX_FUEL - fuel) * pricePerUnit * [self fuelChargeRate];
 				}
-				else if ([eqKey isEqualToString:@"EQ_RENOVATION"])
+				else if (eqKey == "EQ_RENOVATION")
 				{
 					price = [self renovationCosts];
 					[gui setColor:[gui colorFromSetting:kGuiEquipmentRepairColor defaultValue:[OOColor orangeColor]] forRow:row];
@@ -9452,7 +9490,7 @@ static NSString *last_outfitting_key=nil;
 					price = pricePerUnit;
 				}
 				
-				price = [self adjustPriceByScriptForEqKey:eqKey withCurrent:price];
+				price = [self adjustPriceByScriptForEqKey:oo::NSStringFrom(eqKey) withCurrent:price];
 
 				price *= priceFactor;  // increased prices at some stations
 				
@@ -9462,9 +9500,9 @@ static NSString *last_outfitting_key=nil;
 					installTime = 600 + price;
 				}
 				// is this item damaged?
-				if ([self hasEquipmentItem:eq_key_damaged])
+				if ([self hasEquipmentItem:[eqInfo damagedIdentifier]])
 				{
-					desc = [NSString stringWithFormat:DESC(@"equip-repair-@"), desc];
+					desc = oo::str::formatRuntime(oo::StdString(DESC(@"equip-repair-@")), { desc });
 					price /= 2.0;
 					installTime = [eqInfo repairTime];
 					if (installTime == 0)
@@ -9475,10 +9513,10 @@ static NSString *last_outfitting_key=nil;
 
 				}
 				
-				NSString *timeString = [UNIVERSE shortTimeDescription:installTime];
-				NSString *priceString = [NSString stringWithFormat:@" %@ ", OOCredits(price)];
+				const std::string timeString = oo::DescriptionOf([UNIVERSE shortTimeDescription:installTime]);
+				std::string priceString = oo::str::format(" %s ", cxx_OOCredits(price).c_str());
 
-				if ([eqKeyForSelectFacing isEqualToString:eqKey])
+				if (eqKeyForSelectFacing == eqKey)
 				{
 					// Weapons purchase subscreen.
 					while (facing_count < 5)
@@ -9491,7 +9529,7 @@ static NSString *last_outfitting_key=nil;
 								
 							case 1:
 								displayRow = available_facings & WEAPON_FACING_FORWARD;
-								desc = FORWARD_FACING_STRING;
+								desc = oo::StdString(FORWARD_FACING_STRING);
 								weaponMounted = !isWeaponNone(forward_weapon_type);
 								if (_multiplyWeapons)
 								{
@@ -9501,7 +9539,7 @@ static NSString *last_outfitting_key=nil;
 								
 							case 2:
 								displayRow = available_facings & WEAPON_FACING_AFT;
-								desc = AFT_FACING_STRING;
+								desc = oo::StdString(AFT_FACING_STRING);
 								weaponMounted = !isWeaponNone(aft_weapon_type);
 								if (_multiplyWeapons)
 								{
@@ -9511,7 +9549,7 @@ static NSString *last_outfitting_key=nil;
 								
 							case 3:
 								displayRow = available_facings & WEAPON_FACING_PORT;
-								desc = PORT_FACING_STRING;
+								desc = oo::StdString(PORT_FACING_STRING);
 								weaponMounted = !isWeaponNone(port_weapon_type);
 								if (_multiplyWeapons)
 								{
@@ -9521,7 +9559,7 @@ static NSString *last_outfitting_key=nil;
 								
 							case 4:
 								displayRow = available_facings & WEAPON_FACING_STARBOARD;
-								desc = STARBOARD_FACING_STRING;
+								desc = oo::StdString(STARBOARD_FACING_STRING);
 								weaponMounted = !isWeaponNone(starboard_weapon_type);
 								if (_multiplyWeapons)
 								{
@@ -9541,10 +9579,10 @@ static NSString *last_outfitting_key=nil;
 						if (displayRow)	// Always true for the first pass. The first pass is used to display the name of the weapon being purchased.
 						{
 
-							priceString = [NSString stringWithFormat:@" %@ ", OOCredits(price*multiplier)];
+							priceString = oo::str::format(" %s ", cxx_OOCredits(price*multiplier).c_str());
 
-							[gui setKey:eqKey forRow:row];
-							[gui setArray:[NSArray arrayWithObjects:desc, (facing_count > 0 ? priceString : (NSString *)@""), timeString, nil] forRow:row];
+							[gui cxx_setKey:eqKey forRow:row];
+							[gui cxx_setArray:{ desc, (facing_count > 0 ? priceString : std::string()), timeString } forRow:row];
 							row++;
 						}
 						facing_count++;
@@ -9553,16 +9591,16 @@ static NSString *last_outfitting_key=nil;
 				else
 				{
 					// Normal equipment list.
-					[gui setKey:eqKey forRow:row];
+					[gui cxx_setKey:eqKey forRow:row];
 					// check if the hidevalues property has been set
 					if (![eqInfo hideValues])
 					{
-						[gui setArray:[NSArray arrayWithObjects:desc, priceString, timeString, nil] forRow:row];
+						[gui cxx_setArray:{ desc, priceString, timeString } forRow:row];
 					}
 					else
 					{
 						// if so, only output the description
-						[gui setArray:[NSArray arrayWithObjects:desc, nil] forRow:row];
+						[gui cxx_setArray:{ desc } forRow:row];
 					}
 					row++;
 				}
@@ -9572,8 +9610,8 @@ static NSString *last_outfitting_key=nil;
 			{
 				// just overwrite the last item :-)
 				[gui setColor:[gui colorFromSetting:kGuiEquipmentScrollColor defaultValue:[OOColor greenColor]] forRow:row-1];
-				[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @"", @" --> ", nil] forRow:row - 1];
-				[gui setKey:[NSString stringWithFormat:@"More:%d", i - 1] forRow:row - 1];
+				[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), "", " --> " } forRow:row - 1];
+				[gui cxx_setKey:oo::str::format("More:%d", i - 1) forRow:row - 1];
 			}
 			
 			[gui setSelectableRange:NSMakeRange(start_row,row - start_row)];
@@ -9581,10 +9619,10 @@ static NSString *last_outfitting_key=nil;
 			if ([gui selectedRow] != start_row)
 				[gui setSelectedRow:start_row];
 
-			if (eqKeyForSelectFacing != nil)
+			if (eqKeyForSelectFacing.has_value())
 			{
 				[gui setSelectedRow:start_row + 1];
-				[self showInformationForSelectedUpgradeWithFormatString:DESC(@"@-select-where-to-install")];
+				[self cxx_showInformationForSelectedUpgradeWithFormatString:oo::StdString(DESC(@"@-select-where-to-install"))];
 			}
 			else
 			{
@@ -9593,7 +9631,7 @@ static NSString *last_outfitting_key=nil;
 		}
 		else
 		{
-			[gui setText:DESC(@"equip-no-equipment-available-for-purchase") forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"equip-no-equipment-available-for-purchase")) forRow:GUI_ROW_NO_SHIPS align:GUI_ALIGN_CENTER];
 			[gui setColor:[gui colorFromSetting:kGuiEquipmentUnavailableColor defaultValue:[OOColor greenColor]] forRow:GUI_ROW_NO_SHIPS];
 			
 			[gui setSelectableRange:NSMakeRange(0,0)];
@@ -9607,18 +9645,18 @@ static NSString *last_outfitting_key=nil;
 		if (guiChanged)
 		{
 			[gui setForegroundTextureKey:@"docked_overlay"];
-			NSDictionary *background = [UNIVERSE screenTextureDescriptorForKey:@"equip_ship"];
-			[self setEquipScreenBackgroundDescriptor:background];
-			[gui setBackgroundTextureDescriptor:background];
+			const oo::PList background = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"equip_ship"]);
+			[self cxx_setEquipScreenBackgroundDescriptor:background];
+			[gui cxx_setBackgroundTextureDescriptor:background];
 		}
-		else if (eqKeyForSelectFacing != nil) // weapon purchase
+		else if (eqKeyForSelectFacing.has_value()) // weapon purchase
 		{
-			NSDictionary *bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"mount_weapon"];
-			if (bgDescriptor != nil)  [gui setBackgroundTextureDescriptor:bgDescriptor];
+			const oo::PList bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"mount_weapon"]);
+			if (!bgDescriptor.isNull())  [gui cxx_setBackgroundTextureDescriptor:bgDescriptor];
 		}
 		else // Returning from a weapon purchase. (Also called, redundantly, when paging)
 		{
-			[gui setBackgroundTextureDescriptor:[self equipScreenBackgroundDescriptor]];
+			[gui cxx_setBackgroundTextureDescriptor:[self cxx_equipScreenBackgroundDescriptor]];
 		}
 	}
 	/* ends */
@@ -9632,47 +9670,47 @@ static NSString *last_outfitting_key=nil;
 
 - (void) setGuiToEquipShipScreen:(int)skip
 {
-	[self setGuiToEquipShipScreen:skip selectingFacingFor:nil];
+	[self cxx_setGuiToEquipShipScreen:skip selectingFacingFor:std::nullopt];
 }
 
 
 - (void) showInformationForSelectedUpgrade
 {
-	[self showInformationForSelectedUpgradeWithFormatString:nil];
+	[self cxx_showInformationForSelectedUpgradeWithFormatString:std::nullopt];
 }
 
 	
-- (void) showInformationForSelectedUpgradeWithFormatString:(NSString *)formatString
+- (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)formatString
 {
 	GuiDisplayGen* gui = [UNIVERSE gui];
-	NSString* eqKey = [gui selectedRowKey];
+	const std::optional<std::string> eqKey = [gui cxx_selectedRowKey];
 	int i;
 
 	OOColor *descColor = [gui colorFromSetting:kGuiEquipmentDescriptionColor defaultValue:[OOColor greenColor]];
 	for (i = GUI_ROW_EQUIPMENT_DETAIL; i < GUI_MAX_ROWS; i++)
 	{
-		[gui setText:@"" forRow:i];
+		[gui cxx_setText:std::string() forRow:i];
 		[gui setColor:descColor forRow:i];
 	}
 	if (eqKey)
 	{
-		if (![eqKey hasPrefix:@"More:"])
+		if (!oo::str::hasPrefix(*eqKey, "More:"))
 		{
-			NSString* desc = [[OOEquipmentType equipmentTypeWithIdentifier:eqKey] descriptiveText];
-			NSString* eq_key_damaged = [NSString stringWithFormat:@"%@_DAMAGED", eqKey];
-			int weight = [[OOEquipmentType equipmentTypeWithIdentifier:eqKey] requiredCargoSpace];
-			if ([self hasEquipmentItem:eq_key_damaged])
+			std::optional<std::string> desc = oo::OptionalString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*eqKey)] descriptiveText]);
+			const std::string eq_key_damaged = *eqKey + "_DAMAGED";
+			int weight = [[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*eqKey)] requiredCargoSpace];
+			if ([self hasEquipmentItem:oo::NSStringFrom(eq_key_damaged)])
 			{
-				desc = [NSString stringWithFormat:DESC(@"upgradeinfo-@-price-is-for-repairing"), desc];
+				desc = oo::str::formatRuntime(oo::StdString(DESC(@"upgradeinfo-@-price-is-for-repairing")), { TextArg(desc) });
 			}
 			else
 			{
-				if([eqKey hasSuffix:@"ENERGY_UNIT"] && ([self hasEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"] || [self hasEquipmentItem:@"EQ_ENERGY_UNIT"] || [self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"]))
-					desc = [NSString stringWithFormat:DESC(@"@-will-replace-other-energy"), desc];
-				if (weight > 0) desc = [NSString stringWithFormat:DESC(@"upgradeinfo-@-weight-d-of-equipment"), desc, weight];
+				if(oo::str::hasSuffix(*eqKey, "ENERGY_UNIT") && ([self hasEquipmentItem:@"EQ_ENERGY_UNIT_DAMAGED"] || [self hasEquipmentItem:@"EQ_ENERGY_UNIT"] || [self hasEquipmentItem:@"EQ_NAVAL_ENERGY_UNIT_DAMAGED"]))
+					desc = oo::str::formatRuntime(oo::StdString(DESC(@"@-will-replace-other-energy")), { TextArg(desc) });
+				if (weight > 0) desc = oo::str::formatRuntime(oo::StdString(DESC(@"upgradeinfo-@-weight-d-of-equipment")), { TextArg(desc), weight });
 			}
-			if (formatString) desc = [NSString stringWithFormat:formatString, desc];
-			[gui addLongText:desc startingAtRow:GUI_ROW_EQUIPMENT_DETAIL align:GUI_ALIGN_LEFT];
+			if (formatString.has_value()) desc = oo::str::formatRuntime(*formatString, { TextArg(desc) });
+			[gui cxx_addLongText:desc startingAtRow:GUI_ROW_EQUIPMENT_DETAIL align:GUI_ALIGN_LEFT];
 		}
 	}
 }
@@ -10157,7 +10195,7 @@ static NSString *last_outfitting_key=nil;
 		[self setGuiToEquipShipScreen:from_item];
 		if (weaponKey != nil)
 		{
-			[self highlightEquipShipScreenKey:weaponKey];
+			[self highlightEquipShipScreenKey:oo::StdString(weaponKey)];
 		}
 		else
 		{
@@ -10228,7 +10266,7 @@ static NSString *last_outfitting_key=nil;
 				// show any change due to playerBoughtEquipment
 				[self setGuiToEquipShipScreen:0];
 				// then try to go back where we were
-				[self highlightEquipShipScreenKey:key];
+				[self highlightEquipShipScreenKey:oo::StdString(key)];
 			}
 
 			if ([UNIVERSE autoSave]) [UNIVERSE setAutoSaveNow:YES];
@@ -12172,15 +12210,15 @@ static NSString *last_outfitting_key=nil;
 }
 
 
-- (NSString *) screenModeStringForWidth:(unsigned)width height:(unsigned)height refreshRate:(float)refreshRate
+- (std::optional<std::string>) cxx_screenModeStringForWidth:(unsigned)width height:(unsigned)height refreshRate:(float)refreshRate
 {
 	if (0.0f != refreshRate)
 	{
-		return OOExpandKey(@"gameoptions-fullscreen-with-refresh-rate", width, height, refreshRate);
+		return oo::OptionalString(OOExpandKey(@"gameoptions-fullscreen-with-refresh-rate", width, height, refreshRate));
 	}
 	else
 	{
-		return OOExpandKey(@"gameoptions-fullscreen", width, height);
+		return oo::OptionalString(OOExpandKey(@"gameoptions-fullscreen", width, height));
 	}
 }
 

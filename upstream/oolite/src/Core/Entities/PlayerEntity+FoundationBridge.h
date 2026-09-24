@@ -78,6 +78,11 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (NSDictionary *) equipScreenBackgroundDescriptor;	// -> -cxx_equipScreenBackgroundDescriptor
 - (void) setEquipScreenBackgroundDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setEquipScreenBackgroundDescriptor:
 
+// oo-3rb.246: system data, chart, game options, load/save and equip-ship screens
+- (void) setGuiToEquipShipScreen:(int)skip selectingFacingFor:(NSString *)eqKeyForSelectFacing;	// -> -cxx_setGuiToEquipShipScreen:selectingFacingFor:
+- (void) showInformationForSelectedUpgradeWithFormatString:(NSString *)extraString;	// -> -cxx_showInformationForSelectedUpgradeWithFormatString:
+- (NSString *)screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;	// -> -cxx_screenModeStringForWidth:height:refreshRate:
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H
