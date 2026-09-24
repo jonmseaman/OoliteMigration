@@ -1596,7 +1596,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		return nil;
 	}
 	
-	const std::optional<std::string> defense_ship_key = OptionalStringValue([shipinfoDictionary objectForKey:@"defense_ship"]);	// -oo_stringForKey:
+	const std::optional<std::string> defense_ship_key = OptionalStringValue(shipinfoDictionary.find("defense_ship"));	// -oo_stringForKey:
 	if (defense_ship_key)
 	{
 		defense_ship = [UNIVERSE newShipWithName:oo::NSStringFrom(*defense_ship_key)];
@@ -1607,7 +1607,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	bool shipdataSuppliedRole = false;
 	if (!defense_ship)
 	{
-		const std::optional<std::string> defense_ship_role = OptionalStringValue([shipinfoDictionary objectForKey:@"defense_ship_role"]);
+		const std::optional<std::string> defense_ship_role = OptionalStringValue(shipinfoDictionary.find("defense_ship_role"));
 		shipdataSuppliedRole = defense_ship_role.has_value();
 		defense_ship = [UNIVERSE newShipWithRole:oo::NSStringFrom(defense_ship_role.value_or(default_defense_ship_role))];
 	}
@@ -2307,8 +2307,10 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 - (BOOL) isRotatingStation
 {
-	if (oo::PListView(shipinfoDictionary).get<BOOL>(@"rotating", NO))  return YES;
-	return [[shipinfoDictionary objectForKey:@"roles"] rangeOfString:@"rotating-station"].location != NSNotFound;	// legacy
+	if (shipinfoDictionary.get<bool>("rotating", false))  return YES;
+	// legacy. Sent to the roles object as before (nil when absent, whose zeroed range is not NSNotFound).
+	const oo::PList *roles = shipinfoDictionary.find("roles");
+	return [(roles != nullptr ? oo::ObjectFromPList(*roles) : nil) rangeOfString:@"rotating-station"].location != NSNotFound;
 }
 
 
@@ -2319,7 +2321,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	//				work properly with the various overrides.  The primary role will get
 	//				used if either there is no market override, or the market wasn't
 	//				defined.
-	return OptionalStringValue([shipinfoDictionary objectForKey:@"market"]);
+	return OptionalStringValue(shipinfoDictionary.find("market"));
 }
 
 
@@ -2327,10 +2329,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	if ([UNIVERSE station] == self)
 		return YES;
-	id	determinant = [shipinfoDictionary objectForKey:@"has_shipyard"];
+	const oo::PList	*determinantValue = shipinfoDictionary.find("has_shipyard");
 
-	if (!determinant)
-		determinant = [shipinfoDictionary objectForKey:@"hasShipyard"];
+	if (determinantValue == nullptr)
+		determinantValue = shipinfoDictionary.find("hasShipyard");
+	id	determinant = determinantValue != nullptr ? oo::ObjectFromPList(*determinantValue) : nil;
 		
 	// NOTE: non-standard capitalization is documented and entrenched.
 	if (determinant)

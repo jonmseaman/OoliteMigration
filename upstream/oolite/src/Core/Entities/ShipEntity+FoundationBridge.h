@@ -81,6 +81,10 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage;	// -> -cxx_doScriptEvent:andReactToAIMessage:
 - (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage;	// -> -cxx_doScriptEvent:withArgument:andReactToAIMessage:
 
+// oo-3rb.241: setup
+- (BOOL)setUpFromDictionary:(NSDictionary *) shipDict;	// -> -cxx_setUpFromDictionary:
+- (NSDictionary *)shipInfoDictionary;	// -> -cxx_shipInfoDictionary
+
 // oo-3rb.240: identity: names, roles, ship key, descriptions
 - (NSString *) shipDataKey;	// -> -cxx_shipDataKey
 - (NSString *) shipDataKeyAutoRole;	// -> -cxx_shipDataKeyAutoRole

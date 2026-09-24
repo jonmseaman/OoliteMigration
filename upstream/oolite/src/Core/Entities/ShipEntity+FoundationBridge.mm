@@ -398,6 +398,21 @@ NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
 	return [self cxx_hasPrimaryRole:oo::StdString(role)];
 }
 
+
+
+// oo-3rb.241: setup
+
+- (BOOL)setUpFromDictionary:(NSDictionary *) shipDict
+{
+	return [self cxx_setUpFromDictionary:oo::PListFrom(shipDict)];
+}
+
+
+- (NSDictionary *)shipInfoDictionary
+{
+	return oo::ObjectFromPList([self cxx_shipInfoDictionary]);	// nil when not set up
+}
+
 @end
 
 

@@ -218,7 +218,7 @@ typedef enum
 	
 @protected
 	//set-up
-	NSDictionary			*shipinfoDictionary;
+	oo::PList				shipinfoDictionary;	// null: not set up from a dictionary
 	
 	Quaternion				subentityRotationalVelocity;
 	
@@ -577,9 +577,9 @@ typedef enum
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (id)initWithKey:(NSString *)key definition:(NSDictionary *)dict;
-- (BOOL)setUpFromDictionary:(NSDictionary *) shipDict;
-- (BOOL)setUpShipFromDictionary:(NSDictionary *) shipDict;
+- (id)initWithKey:(id)key definition:(id)dict;	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
+- (BOOL)setUpShipFromDictionary:(id) shipDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
 - (BOOL)setUpSubEntities;
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 - (GLfloat)frustumRadius;
@@ -588,7 +588,7 @@ typedef enum
 - (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
 - (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
 
-- (NSDictionary *)shipInfoDictionary;
+- (oo::PList) cxx_shipInfoDictionary;
 
 - (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
 - (std::vector<Vector>) cxx_aftWeaponOffset;
@@ -909,7 +909,7 @@ typedef enum
 - (int) legalStatus;
 
 - (BOOL) isTemplateCargoPod;
-- (void) setUpCargoType:(NSString *)cargoString;
+- (void) setUpCargoType:(const std::string &)cargoString;
 - (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
 - (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
 - (std::optional<std::string>) cxx_commodityType;
@@ -1309,7 +1309,7 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
-NSDictionary *OODefaultShipShaderMacros(void);
+oo::PList OODefaultShipShaderMacros(void);
 
 GLfloat getWeaponRangeFromType(OOWeaponType weapon_type);
 
