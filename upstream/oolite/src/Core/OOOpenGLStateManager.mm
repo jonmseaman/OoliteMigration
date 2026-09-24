@@ -540,7 +540,7 @@ static void VerifyOpenGLStateInternal(const char *caller, const char *nominalCal
 			#define TEST_ITEM(NAME_, DISP_) \
 				if (currentState.NAME_ != expectedState->NAME_) \
 				{ \
-					OOLog(oo::NSStringFrom(kOOLogOpenGLVerifyDump), @"GL_%@ should be %@ but is %@.", @#NAME_, DISP_(expectedState->NAME_), DISP_(currentState.NAME_)); \
+					OOLog(oo::NSStringFrom(kOOLogOpenGLVerifyDump), @"GL_%@ should be %@ but is %@.", @#NAME_, oo::NSStringFrom(DISP_(expectedState->NAME_)), oo::NSStringFrom(DISP_(currentState.NAME_))); \
 				}
 			
 			#define ITEM_STATEFLAG(NAME)		if (expectedState->NAME != kStateMaybe) { TEST_ITEM(NAME, OOGLFlagToString) }
@@ -552,7 +552,7 @@ static void VerifyOpenGLStateInternal(const char *caller, const char *nominalCal
 			
 			if (currentState.BLEND_SRC != expectedState->BLEND_SRC || currentState.BLEND_DST != expectedState->BLEND_DST)
 			{
-				OOLog(oo::NSStringFrom(kOOLogOpenGLVerifyDump), @"GL blend mode should be %@, %@ but is %@, %@.", OOGLEnumToString(expectedState->BLEND_SRC), OOGLEnumToString(expectedState->BLEND_DST), OOGLEnumToString(currentState.BLEND_SRC), OOGLEnumToString(currentState.BLEND_DST));
+				OOLog(oo::NSStringFrom(kOOLogOpenGLVerifyDump), @"GL blend mode should be %@, %@ but is %@, %@.", oo::NSStringFrom(OOGLEnumToString(expectedState->BLEND_SRC)), oo::NSStringFrom(OOGLEnumToString(expectedState->BLEND_DST)), oo::NSStringFrom(OOGLEnumToString(currentState.BLEND_SRC)), oo::NSStringFrom(OOGLEnumToString(currentState.BLEND_DST)));
 			}
 			
 			#undef ITEM_STATEFLAG
