@@ -73,7 +73,7 @@ MA 02110-1301, USA.
 
 	std::optional<std::string>	playerFileDirectory;	// nullopt: not looked up yet, or none (was nil)
 	std::optional<std::string>	playerFileToLoad;		// nullopt: none (was nil)
-	NSMutableArray			*expansionPathsToInclude;
+	std::vector<std::string>	expansionPathsToInclude;	// expansion folders opened with the application (Mac)
 	
 	NSTimeInterval			_animationTimerInterval;
 	
