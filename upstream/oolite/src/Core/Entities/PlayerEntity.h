@@ -406,7 +406,7 @@ typedef enum
 	
 	BOOL					found_equipment;
 	
-	NSMutableDictionary		*reputation;
+	oo::PList::Dict			reputation;			// signed integers by key (PlayerEntity (Contracts))
 	
 	unsigned				max_passengers;
 	NSMutableArray			*passengers;
@@ -732,7 +732,7 @@ typedef enum
 	
 	
 	// docking reports
-	NSMutableString			*dockingReport;
+	std::string				dockingReport;
 	
 	// Woo, flags.
 	unsigned				suppressTargetLost: 1,		// smart target lst reports

@@ -2877,7 +2877,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if (!spacePressed)
 				{
-					BOOL reportEnded = ([dockingReport length] == 0);
+					BOOL reportEnded = dockingReport.empty();
 					[self playDismissedReportScreen];
 					if(reportEnded)
 					{
