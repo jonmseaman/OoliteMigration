@@ -530,7 +530,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		}
 		if (sub != player_reserved_dock || [ship isPlayer])
 		{
-			docking = oo::OptionalString([sub canAcceptShipForDocking:ship]);
+			docking = [sub canAcceptShipForDocking:ship];
 			if (docking == "DOCK_CLOSED")
 			{
 				ooscript::Context context = OOJSAcquireContext();
@@ -1026,7 +1026,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		DockEntity *sub = dock.get();
 		if ([sub allowsDocking] && [sub countOfShipsInLaunchQueue] == 0 && [sub countOfShipsInDockingQueue] == 0)
 		{
-			if ([[sub canAcceptShipForDocking:PLAYER] isEqualToString:@"DOCKING_POSSIBLE"])
+			if ([sub canAcceptShipForDocking:PLAYER] == "DOCKING_POSSIBLE")
 			{
 				return YES;
 			}
@@ -1042,7 +1042,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	{
 		DockEntity *sub = dock.get();
 		// TRY_AGAIN_LATER in this context means "ships launching now"
-		if ([sub allowsDocking] && ([[sub canAcceptShipForDocking:PLAYER] isEqualToString:@"DOCKING_POSSIBLE"] || [[sub canAcceptShipForDocking:PLAYER] isEqualToString:@"TRY_AGAIN_LATER"]))
+		if ([sub allowsDocking] && ([sub canAcceptShipForDocking:PLAYER] == "DOCKING_POSSIBLE" || [sub canAcceptShipForDocking:PLAYER] == "TRY_AGAIN_LATER"))
 		{
 			return YES;
 		}
@@ -2172,7 +2172,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 			{
 				DockEntity *sub = dock.get();
-				std::string docking = oo::StdString([sub canAcceptShipForDocking:other]);
+				std::string docking = [sub canAcceptShipForDocking:other].value_or("");
 				if (docking == "DOCK_CLOSED")
 				{
 					ooscript::Context context = OOJSAcquireContext();
