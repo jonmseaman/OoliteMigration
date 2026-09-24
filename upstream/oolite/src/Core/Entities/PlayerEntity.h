@@ -448,7 +448,7 @@ typedef enum
 	
 	// For OO-GUI based save screen
 	std::string				commanderNameString;	// owned; the save screen refreshes it from the typed string each frame
-	NSMutableArray			*cdrDetailArray;
+	std::vector<oo::PList>	cdrDetailArray;			// the load/save screen's entries (PlayerEntity (LoadSave))
 	int						currentPage;
 	BOOL					pollControls;
 // ...end save screen   
@@ -1349,6 +1349,20 @@ OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;
 
 OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string) PURE_FUNC;
 NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour) CONST_FUNC;
+
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
+// (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
+// The Foundation forms above forward to them from OOConstToString+FoundationBridge.mm.
+std::string cxx_OOStringFromGUIScreenID(OOGUIScreenID screen);
+OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string);
+
+OOGalacticHyperspaceBehaviour cxx_OOGalacticHyperspaceBehaviourFromString(const std::string &string);
+std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour);
+
+// Rating and legal-status names from descriptions.plist (chunk oo-3rb.162); nullopt: missing (was nil).
+std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills);
+std::string cxx_KillCountToRatingAndKillString(unsigned kills);
+std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
 
 // TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
 // sweep, forwarding to the cxx_ API above. Keep this the last line.

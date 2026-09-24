@@ -68,7 +68,7 @@ typedef enum {
 	NSArray 			*_oxzList;
 	NSArray 			*_managedList;
 	NSArray				*_filteredList;
-	NSString			*_currentFilter;
+	std::string			_currentFilter;	// lowercase; "*" initially
 
 	OXZInterfaceState	_interfaceState;
 	BOOL				_interfaceShowingOXZDetail;

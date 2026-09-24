@@ -31,6 +31,7 @@ oolite_sources += files(
     'PlayerEntityControls.mm',
     'PlayerEntityKeyMapper.mm',
     'PlayerEntityLegacyScriptEngine.mm',
+    'PlayerEntityLegacyScriptEngine+FoundationBridge.mm',
     'PlayerEntityLoadSave.mm',
     'PlayerEntityScriptMethods.mm',
     'PlayerEntityScriptMethods+FoundationBridge.mm',
