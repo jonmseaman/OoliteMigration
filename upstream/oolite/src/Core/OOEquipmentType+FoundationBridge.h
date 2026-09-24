@@ -26,6 +26,12 @@ Copyright (C) 2008-2013 Jens Ayton and contributors (OOEquipmentType.h)
 
 @interface OOEquipmentType (OOFoundationBridge)
 
++ (void) addEquipmentWithInfo:(NSArray *)itemInfo;	// -> +cxx_addEquipmentWithInfo:
++ (NSArray *) allEquipmentTypes;					// -> +cxx_allEquipmentTypes
++ (NSEnumerator *) equipmentEnumerator;				// no twin: range-for over +cxx_allEquipmentTypes
++ (NSEnumerator *) reverseEquipmentEnumerator;		// no twin: reverse range-for over +cxx_allEquipmentTypes
++ (NSEnumerator *) equipmentEnumeratorOutfitting;	// no twin: range-for over +cxx_allEquipmentTypesOutfitting
+
 + (NSString *) getMissileRegistryRoleForShip:(NSString *)shipKey;				// -> +cxx_getMissileRegistryRoleForShip:
 + (void) setMissileRegistryRole:(NSString *)roles forShip:(NSString *)shipKey;	// -> +cxx_setMissileRegistryRole:forShip:
 
@@ -34,6 +40,26 @@ Copyright (C) 2008-2013 Jens Ayton and contributors (OOEquipmentType.h)
 - (NSString *) identifier;			// -> -cxx_identifier
 - (NSString *) damagedIdentifier;	// -> -cxx_damagedIdentifier
 - (NSString *) descriptiveText;		// -> -cxx_descriptiveText
+
+- (NSSet *) requiresEquipment;		// Set of equipment identifiers; all items required		-> -cxx_requiresEquipment
+- (NSSet *) requiresAnyEquipment;	// Set of equipment identifiers; any item required		-> -cxx_requiresAnyEquipment
+- (NSSet *) incompatibleEquipment;	// Set of equipment identifiers; all items prohibited	-> -cxx_incompatibleEquipment
+
+- (NSArray *) conditions;			// -> -cxx_conditions
+- (NSString *) conditionScript;		// -> -cxx_conditionScript
+
+- (NSString *) scriptName;			// -> -cxx_scriptName
+- (NSArray *) defaultActivateKey;	// -> -cxx_defaultActivateKey
+- (NSArray *) defaultModeKey;		// -> -cxx_defaultModeKey
+- (NSArray *) providesForScripting;	// -> -cxx_providesForScripting
+- (BOOL) provides:(NSString *)key;	// -> -cxx_provides:
+
+- (NSDictionary *) weaponInfo;		// -> -cxx_weaponInfo
+- (NSString *) fxShotMissName;		// -> -cxx_fxShotMissName
+- (NSString *) fxShotHitName;		// -> -cxx_fxShotHitName
+- (NSString *) fxShieldHitName;		// -> -cxx_fxShieldHitName
+- (NSString *) fxUnshieldedHitName;	// -> -cxx_fxUnshieldedHitName
+- (NSString *) fxWeaponLaunchedName;	// -> -cxx_fxWeaponLaunchedName
 
 @end
 
