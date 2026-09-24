@@ -57,8 +57,8 @@ OOPixMap OOConvertCubeMapToLatLong(OOPixMap sourcePixMap, OOPixMapDimension heig
 	uint8_t *srcBytes = (uint8_t *)sourcePixMap.pixels;
 	
 	// Build tables of sin/cos of longitude.
-	float sinTable[width];
-	float cosTable[width];
+	std::vector<float>	sinTable(width);
+	std::vector<float>	cosTable(width);
 	for (x = 0; x < width; x++)
 	{
 		float lon = ((float)x * rheight) * kPiF;
