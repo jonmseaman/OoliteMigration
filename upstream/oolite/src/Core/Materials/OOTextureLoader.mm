@@ -38,6 +38,7 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOOpenGLExtensionManager.h"
 #import "OODebugStandards.h"
+#import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
@@ -333,7 +334,15 @@ static BOOL					sHaveSetUp = NO;
 		
 		OOLog(@"texture.load.asyncLoad.done", @"%@", @"Loading complete.");
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"texture.load.asyncLoad.exception", @"***** Exception loading texture %@: %@ (%@).", oo::NSStringFrom(_path), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		
+		// Be sure to signal load failure.
+		free(_data);
+		_data = NULL;
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"texture.load.asyncLoad.exception", @"***** Exception loading texture %@: %@ (%@).", oo::NSStringFrom(_path), [exception name], [exception reason]);
 		
