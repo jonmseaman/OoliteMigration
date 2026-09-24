@@ -32,6 +32,7 @@ SOFTWARE.
 #include "oofnd/Thread.hpp"
 #include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOObjCRef.h"
+#import "OOFoundationBridge.h"
 
 // OOCocoa.h defines true/false as macros; the standard headers want the keywords (oofnd/Data.hpp).
 #pragma push_macro("true")
@@ -198,11 +199,11 @@ static void InitAsyncWorkManager(void)
 	
 	if (sSingleton == nil)
 	{
-		OOLog(@"asyncWorkManager.setUpDispatcher.failed", @"%@", @"***** FATAL ERROR: could not set up async work manager!");
+		OO_LOG("asyncWorkManager.setUpDispatcher.failed", "{}", "***** FATAL ERROR: could not set up async work manager!");
 		exit(EXIT_FAILURE);
 	}
 	
-	OOLog(@"asyncWorkManager.dispatchMethod", @"Selected async work manager: %@", [sSingleton class]);
+	OO_LOG("asyncWorkManager.dispatchMethod", "Selected async work manager: {}", oo::DescriptionOf([sSingleton class]));
 }
 
 
