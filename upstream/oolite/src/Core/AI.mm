@@ -34,6 +34,7 @@ MA 02110-1301, USA.
 
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
+#import "GameController.h"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "oofnd/objc/OOObject.h"
@@ -57,7 +58,7 @@ typedef struct
 } OOAIDeferredCallTrampolineInfo;
 
 
-/*	Carries the trampoline info through -performSelector:withObject:afterDelay:,
+/*	Carries the trampoline info through OOScheduleDeferredCall(),
 	which retains it until the call fires, as it did the value box that held the
 	struct before (bead oo-3rb.48).
 */
@@ -91,7 +92,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 
 @interface AI (OOPrivate)
 
-// Wrapper for performSelector:withObject:afterDelay: to catch/fix bugs.
+// Wrapper for a deferred call (OOScheduleDeferredCall) to catch/fix bugs.
 - (void) performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay;
 + (void) deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info;
 // The target of -cxx_setState:afterDelay:'s deferred call: stateName is an Objective-C string.
@@ -769,9 +770,7 @@ static AIStackElement *sStack = NULL;
 		info = [[OOAIDeferredCallTrampolineInfoHolder alloc] init];
 		info->info = infoStruct;
 		
-		[[AI class] performSelector:@selector(deferredCallTrampolineWithInfo:)
-						 withObject:info
-						 afterDelay:delay];
+		OOScheduleDeferredCall([AI class], @selector(deferredCallTrampolineWithInfo:), info, delay);
 		[info release];
 	}
 }

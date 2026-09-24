@@ -44,6 +44,7 @@
 #import "OOConstToJSString.h"
 #import "OOPListView.h"
 #import "ResourceManager.h"
+#import "GameController.h"
 
 #include "ooscript/JSEngine.hpp"
 #import "OOFoundationBridge.h"
@@ -1694,7 +1695,7 @@ using ooscript::Context;
 	[self dumpCargo];
 	for (i = 1; i < cargo_to_go; i++)
 	{
-		[self performSelector:@selector(dumpCargo) withObject:nil afterDelay:0.75 * i];	// drop 3 canisters per 2 seconds
+		OOScheduleDeferredCall(self, @selector(dumpCargo), nil, 0.75 * i);	// drop 3 canisters per 2 seconds
 	}
 }
 
