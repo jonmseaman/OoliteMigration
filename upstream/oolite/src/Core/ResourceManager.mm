@@ -43,6 +43,8 @@ MA 02110-1301, USA.
 #import "OOPListScript.h"
 
 #import "OOManifestProperties.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "NSDataOOExtensions.h"
 #import "OOFoundationBridge.h"
 
@@ -203,7 +205,7 @@ void ReplaceArrayElement(oo::PList &array, std::size_t index, const oo::PList &v
 	oo::PList::Array &elements = *array.getIf<oo::PList::Array>();
 	if (index >= elements.size())
 	{
-		[NSException raise:NSRangeException format:@"Index %lu is out of range %lu (in 'replaceObjectAtIndex:withObject:')", (unsigned long)index, (unsigned long)elements.size()];
+		[OOException raise:OORangeException format:"Index %lu is out of range %lu (in 'replaceObjectAtIndex:withObject:')", (unsigned long)index, (unsigned long)elements.size()];
 	}
 	elements[index] = value;
 }
@@ -354,9 +356,8 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 		std::optional<std::string> errStr = oo::OptionalString([UNIVERSE descriptionForKey:oo::NSStringFrom(error.key)]);
 		if (errStr.has_value())
 		{
-			// The descriptions.plist format's %@ conversions take strings: %s with the same text.
-			const std::string format = oo::str::replaceOccurrences(*errStr, "%@", "%s", oo::str::Search::literal);
-			result.push_back(oo::str::format(format.c_str(), error.param1.c_str(), error.param2.c_str()));
+			// The descriptions.plist entry is the format (data, not a literal): ADR-0043 item 19.
+			result.push_back(oo::str::formatRuntime(*errStr, {error.param1, error.param2}));
 		}
 	}
 	
@@ -1874,7 +1875,7 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 	if (pirateVictims.isNull())
 	{
 		// +dictionaryWithObject:forKey: with a nil object raised
-		[NSException raise:NSInvalidArgumentException format:@"Tried to init dictionary with nil value"];
+		[OOException raise:OOInvalidArgumentException format:"Tried to init dictionary with nil value"];
 	}
 	oo::PList::Dict pirateVictimCategory;
 	pirateVictimCategory.emplace("oolite-pirate-victim", pirateVictims);
@@ -2193,7 +2194,12 @@ std::map<std::string, std::string, std::less<>>		sStringCache;
 						}
 					}
 				}
-				@catch (NSException *exception)
+				@catch (OOException *exception)
+				{
+					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", "+[ResourceManager loadScripts]", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), oo::NSStringFrom(path));
+					// Ignore exception and keep loading other scripts.
+				}
+				@catch (OOFoundationException *exception)
 				{
 					OOLog(@"script.load.exception", @"***** %s encountered exception %@ (%@) while trying to load script from %@ -- ignoring this location.", "+[ResourceManager loadScripts]", [exception name], [exception reason], oo::NSStringFrom(path));
 					// Ignore exception and keep loading other scripts.
