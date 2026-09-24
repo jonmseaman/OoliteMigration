@@ -470,6 +470,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/Materials/OOTexture+FoundationBridge.h/.mm` (also the NSString `kOOTextureSpecifier*Key` constants) | oo-japz | oo-x3ni ("Delete OOTexture+FoundationBridge") |
 | `src/Core/Materials/OOTextureLoader+FoundationBridge.h/.mm` | oo-wzti | oo-x1s2 ("Delete OOTextureLoader+FoundationBridge") |
 | `src/Core/OOHPVector+FoundationBridge.h/.mm` | oo-dlox | oo-75iu ("Delete OOHPVector+FoundationBridge") |
+| `src/Core/Entities/Entity+FoundationBridge.h` (header only: Entity.h's Foundation-typed C prototypes, defined in OOConstToString.mm) | oo-2qdy | oo-a8xp ("Delete Entity+FoundationBridge") |
 | `src/Core/OOCommodityMarket+FoundationBridge.h/.mm` | oo-rvit | oo-ctac ("Delete OOCommodityMarket+FoundationBridge") |
 | `src/Core/Entities/PlayerEntityScriptMethods+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptMethodsFoundationBridge)`) | oo-8mxr | oo-tj5w ("Delete PlayerEntityScriptMethods+FoundationBridge") |
 | `src/Core/Entities/PlayerEntity+FoundationBridge.h/.mm` (category `PlayerEntity (FoundationBridge)`; PlayerEntity.mm chunks of oo-3rb.75 move their own selectors in) | oo-3rb.164 | oo-c8xj ("Delete PlayerEntity+FoundationBridge") |

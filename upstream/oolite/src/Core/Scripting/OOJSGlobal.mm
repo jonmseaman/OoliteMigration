@@ -470,7 +470,7 @@ static bool GlobalExpandDescription(ooscript::Context context, ooscript::CallArg
 	}
 	if (oojsArgs.count() > 1)
 	{
-		overrides = oo::PListFrom(OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]));
+		overrides = OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]);
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
@@ -528,7 +528,7 @@ static bool GlobalExpandMissionText(ooscript::Context context, ooscript::CallArg
 	}
 	if (oojsArgs.count() > 1)
 	{
-		overrides = oo::PListFrom(OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]));
+		overrides = OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]);
 	}
 	
 	string = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*string)]);

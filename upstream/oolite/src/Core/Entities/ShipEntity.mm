@@ -2245,7 +2245,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (BOOL) checkCloseCollisionWith:(Entity *)other
 {
 	if (other == nil)  return NO;
-	if ([collidingEntities containsObject:other])  return NO;	// we know about this already!
+	if (std::find_if(collidingEntities.begin(), collidingEntities.end(), [other](const oo::ObjCRef<Entity *> &e) { return e.get() == other; }) != collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
 	
 	ShipEntity *otherShip = nil;
 	if ([other isShip])  otherShip = (ShipEntity *)other;
@@ -12713,11 +12713,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	Entity*		ent;
 	ShipEntity* other_ship;
 	
-	while ([collidingEntities count] > 0)
+	while (!collidingEntities.empty())
 	{
 		// EMMSTRAN: investigate if doing this backwards would be more efficient. (Not entirely obvious, the array is kinda funky.) -- Ahruman 2011-02-12
-		ent = [[[collidingEntities objectAtIndex:0] retain] autorelease];
-		[collidingEntities removeObjectAtIndex:0];
+		ent = [[collidingEntities.front().get() retain] autorelease];
+		collidingEntities.erase(collidingEntities.begin());
 		if (ent)
 		{
 			if ([ent isShip])
@@ -12886,8 +12886,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	
 	// remove self from other's collision list
-	[[other collisionArray] removeObject:self];
-	
+	if (std::vector<oo::ObjCRef<Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<Entity *> &e) { return e.get() == self; });	// -removeObject:
+
 	[self cxx_doScriptEvent:OOJSID("shipCollided") withArgument:other andReactToAIMessage:"COLLISION"];
 	[other cxx_doScriptEvent:OOJSID("shipCollided") withArgument:self andReactToAIMessage:"COLLISION"];
 	
@@ -13128,7 +13128,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		}
 	}
 
-	[[other collisionArray] removeObject:self];			// so it can't be scooped twice!
+	if (std::vector<oo::ObjCRef<Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<Entity *> &e) { return e.get() == self; });	// -removeObject:, so it can't be scooped twice!
 	// make sure other ships trying to scoop it lose it
 	// probably already happened, but some may have acquired it
 	// after the scooping started, and they might get stuck in a scooping

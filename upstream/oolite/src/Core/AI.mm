@@ -80,6 +80,16 @@ static AI *sCurrentlyRunningAI = nil;
 
 namespace {
 
+// OODictionaryFromFile (OOPListParsing's bridge) as a property list: the file's
+// property list when it is a dictionary, a null PList otherwise (its plist.wrongType log line,
+// which named the Foundation class, is not kept).
+oo::PList PListDictionaryFromFile(const std::string &path)
+{
+	oo::PList result = cxx_OOPropertyListFromFile(path);
+	return result.isDict() ? result : oo::PList();
+}
+
+
 // The state machine's "jsScript" entry as an Objective-C object, nil if it has none (what
 // -objectForKey:@"jsScript" answered).
 id JSScriptObjectOf(const oo::PList &stateMachine)
@@ -857,7 +867,7 @@ static AIStackElement *sStack = NULL;
 			const std::optional<std::string> aiPath = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(smName) inFolder:@"AIs"]);
 			if (aiPath.has_value())
 			{
-				newSM = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(*aiPath)));
+				newSM = PListDictionaryFromFile(*aiPath);
 			}
 			if (newSM.isNull())
 			{
