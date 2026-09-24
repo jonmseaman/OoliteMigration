@@ -36,102 +36,102 @@ MA );-);, USA.
 #define REVERSE_CASE(foo) if (string == #foo) return foo;
 
 
-#define ENTRY(label, value) case label: return @#label;
-#define GALACTIC_HYPERSPACE_ENTRY(label, value) case GALACTIC_HYPERSPACE_##label: return @#label;
-#define DIFF_STRING_ENTRY(label, string) case label: return @string;
+#define ENTRY(label, value) case label: return #label;
+#define GALACTIC_HYPERSPACE_ENTRY(label, value) case GALACTIC_HYPERSPACE_##label: return #label;
+#define DIFF_STRING_ENTRY(label, string) case label: return string;
 
-NSString *OOStringFromEntityStatus(OOEntityStatus value)
+std::string cxx_OOStringFromEntityStatus(OOEntityStatus value)
 {
 	switch (value)
 	{
 		#include "OOEntityStatus.tbl"
 	}
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
-NSString *OOStringFromBehaviour(OOBehaviour value)
+std::string cxx_OOStringFromBehaviour(OOBehaviour value)
 {
 	switch (value)
 	{
 		#include "OOBehaviour.tbl"
 	}
 	
-	return @"** BEHAVIOUR UNKNOWN **";
+	return "** BEHAVIOUR UNKNOWN **";
 }
 
 
-NSString *OOStringFromCompassMode(OOCompassMode value)
+std::string cxx_OOStringFromCompassMode(OOCompassMode value)
 {
 	switch (value)
 	{
 		#include "OOCompassMode.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
-NSString *OOStringFromLongRangeChartMode(OOLongRangeChartMode value)
+std::string cxx_OOStringFromLongRangeChartMode(OOLongRangeChartMode value)
 {
 	switch (value)
 	{
 		#include "OOLongRangeChartMode.tbl"
 	}
 
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
-NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour value)
+std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour value)
 {
 	switch (value)
 	{
 		#include "OOGalacticHyperspaceBehaviour.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
-NSString *OOStringFromGUIScreenID(OOGUIScreenID value)
+std::string cxx_OOStringFromGUIScreenID(OOGUIScreenID value)
 {
 	switch (value)
 	{
 		#include "OOGUIScreenID.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
-NSString *OOStringFromScanClass(OOScanClass value)
+std::string cxx_OOStringFromScanClass(OOScanClass value)
 {
 	switch (value)
 	{
 		#include "OOScanClass.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
-NSString *OOStringFromShipDamageType(OOShipDamageType value)
+std::string cxx_OOStringFromShipDamageType(OOShipDamageType value)
 {
 	switch (value)
 	{
 		#include "OOShipDamageType.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
-NSString *OOStringFromLegalStatusReason(OOLegalStatusReason value)
+std::string cxx_OOStringFromLegalStatusReason(OOLegalStatusReason value)
 {
 	switch (value)
 	{
 		#include "OOLegalStatusReason.tbl"
 	}
 	
-	return @"UNDEFINED";
+	return "UNDEFINED";
 }
 
 
@@ -139,10 +139,10 @@ NSString *OOStringFromLegalStatusReason(OOLegalStatusReason value)
 #undef GALACTIC_HYPERSPACE_ENTRY
 
 
-#define ENTRY(label, value) if ([string isEqualToString:@#label])  return label;
-#define GALACTIC_HYPERSPACE_ENTRY(label, value)	if ([string isEqualToString:@#label])  return GALACTIC_HYPERSPACE_##label;
+#define ENTRY(label, value) if (string == #label)  return label;
+#define GALACTIC_HYPERSPACE_ENTRY(label, value)	if (string == #label)  return GALACTIC_HYPERSPACE_##label;
 
-OOEntityStatus OOEntityStatusFromString(NSString *string)
+OOEntityStatus cxx_OOEntityStatusFromString(const std::string &string)
 {
 	#include "OOEntityStatus.tbl"
 	
@@ -150,7 +150,7 @@ OOEntityStatus OOEntityStatusFromString(NSString *string)
 }
 
 
-OOCompassMode OOCompassModeFromString(NSString *string)
+OOCompassMode cxx_OOCompassModeFromString(const std::string &string)
 {
 	#include "OOCompassMode.tbl"
 	
@@ -158,23 +158,21 @@ OOCompassMode OOCompassModeFromString(NSString *string)
 }
 
 
-OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string)
+OOGalacticHyperspaceBehaviour cxx_OOGalacticHyperspaceBehaviourFromString(const std::string &string)
 {
 	#include "OOGalacticHyperspaceBehaviour.tbl"
 	
 	// Transparently (but inefficiently) support american spelling. FIXME: remove in EMMSTRAN.
-	if ([string hasPrefix:@"BEHAVIOR_"])
+	if (oo::str::hasPrefix(string, "BEHAVIOR_"))
 	{
-		string = [string substringFromIndex:[@"BEHAVIOR_" length]];
-		string = [@"BEHAVIOUR_" stringByAppendingString:string];
-		return OOGalacticHyperspaceBehaviourFromString(string);
+		return cxx_OOGalacticHyperspaceBehaviourFromString("BEHAVIOUR_" + string.substr(9));
 	}
 	
 	return (OOGalacticHyperspaceBehaviour)kOOGalacticHyperspaceBehaviourDefault;
 }
 
 
-OOGUIScreenID OOGUIScreenIDFromString(NSString *string)
+OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string)
 {
 	#include "OOGUIScreenID.tbl"
 	
@@ -182,14 +180,14 @@ OOGUIScreenID OOGUIScreenIDFromString(NSString *string)
 }
 
 
-OOScanClass OOScanClassFromString(NSString *string)
+OOScanClass cxx_OOScanClassFromString(const std::string &string)
 {
 	#include "OOScanClass.tbl"
 	
 	return (OOScanClass)kOOScanClassDefault;
 }
 
-OOLongRangeChartMode OOLongRangeChartModeFromString(NSString *string)
+OOLongRangeChartMode cxx_OOLongRangeChartModeFromString(const std::string &string)
 {
 	#include "OOLongRangeChartMode.tbl"
 	
