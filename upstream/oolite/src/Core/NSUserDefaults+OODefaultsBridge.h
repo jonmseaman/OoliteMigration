@@ -31,8 +31,7 @@ GPL v2 or later; see NSUserDefaults+Override.h.
 #ifndef NSUSERDEFAULTS_OODEFAULTSBRIDGE_H
 #define NSUSERDEFAULTS_OODEFAULTSBRIDGE_H
 
-#import <Foundation/Foundation.h>
-
+// Declares only C++ functions: no Foundation import needed here (the .mm has it).
 namespace oo { class Defaults; }
 
 
