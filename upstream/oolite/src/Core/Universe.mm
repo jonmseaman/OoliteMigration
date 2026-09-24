@@ -2159,7 +2159,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		// Ensure piloted ships have pilots.
 		if (![ship crew] && ![ship isUnpiloted])
 			[ship setCrew:[NSArray arrayWithObject:
-						   [OOCharacter randomCharacterWithRole:desc
+						   [OOCharacter randomCharacterWithRole:oo::StdString(desc)
 											  andOriginalSystem:Ranrot() & 255]]];
 		
 		if ([ship scanClass] == CLASS_NOT_SET)
@@ -2752,7 +2752,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		if ([ship crew] == nil && ![ship isUnpiloted])
 			[ship setCrew:[NSArray arrayWithObject:
-				[OOCharacter randomCharacterWithRole:role
+				[OOCharacter randomCharacterWithRole:oo::StdString(role)
 				andOriginalSystem: Ranrot() & 255]]];
 		// The following is set inside leaveWitchspace: AI state GLOBAL, STATUS_EXITING_WITCHSPACE, ai message: EXITED_WITCHSPACE, then STATUS_IN_FLIGHT
 		[ship leaveWitchspace];
@@ -2845,7 +2845,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if ([ship crew] == nil && ![ship isUnpiloted])
 		{
 			[ship setCrew:[NSArray arrayWithObject:
-				[OOCharacter randomCharacterWithRole:role
+				[OOCharacter randomCharacterWithRole:oo::StdString(role)
 				andOriginalSystem:Ranrot() & 255]]];
 		}
 		

@@ -29,12 +29,28 @@ MA 02110-1301, USA.
 #import "OOStringParsing.h"
 #import "OOPListView.h"
 #import "OOJSScript.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/String.hpp"
+
+
+namespace {
+
+// get<std::string> where the Foundation code read nil: std::nullopt when the key is absent or its
+// value is neither a string nor a number.
+std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::string_view key)
+{
+	const oo::PList *value = dict.find(key);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return dict.get<std::string>(key);
+}
+
+}	// namespace
 
 
 @interface OOCharacter (Private)
 
 - (id) initWithGenSeed:(Random_Seed)characterSeed andOriginalSystem:(OOSystemID)systemSeed;
-- (void) setCharacterFromDictionary:(NSDictionary *)dict;
+- (void) setCharacterFromDictionary:(const oo::PList &)dict;
 
 - (void)setOriginSystem:(OOSystemID)value;
 - (Random_Seed)genSeed;
@@ -44,13 +60,14 @@ MA 02110-1301, USA.
 
 @implementation OOCharacter
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents
 {
-	return [NSString stringWithFormat:@"%@, %@. bounty: %i insurance: %zu", [self name], [self shortDescription], [self legalStatus], [self insuranceCredits]];
+	// ("(null)" is what "%@" printed for a missing name or description)
+	return oo::NSStringFrom(oo::str::format("%s, %s. bounty: %i insurance: %zu", _name.value_or("(null)").c_str(), _shortDescription.value_or("(null)").c_str(), [self legalStatus], [self insuranceCredits]));
 }
 
 
-- (NSString *) oo_jsClassName
+- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
 {
 	return @"Character";
 }
@@ -58,9 +75,9 @@ MA 02110-1301, USA.
 
 - (void) dealloc
 {
-	[_name release];
-	[_shortDescription release];
-	[_scriptActions release];
+	_name.reset();
+	_shortDescription.reset();
+	_scriptActions = oo::PList();
 	DESTROY(_script);
 	
 	[super dealloc];
@@ -81,7 +98,7 @@ MA 02110-1301, USA.
 }
 
 
-- (id) initWithRole:(NSString *)role andOriginalSystem:(OOSystemID)system
+- (id) initWithRole:(const std::string &)role andOriginalSystem:(OOSystemID)system
 {
 	Random_Seed seed;
 	make_pseudo_random_seed(&seed);
@@ -94,13 +111,13 @@ MA 02110-1301, USA.
 	return self;
 }
 
-+ (OOCharacter *) characterWithRole:(NSString *)role andOriginalSystem:(OOSystemID)system
++ (OOCharacter *) characterWithRole:(const std::string &)role andOriginalSystem:(OOSystemID)system
 {
 	return [[[self alloc] initWithRole:role andOriginalSystem:system] autorelease];
 }
 
 
-+ (OOCharacter *) randomCharacterWithRole:(NSString *)role andOriginalSystem:(OOSystemID)system
++ (OOCharacter *) randomCharacterWithRole:(const std::string &)role andOriginalSystem:(OOSystemID)system
 {
 	Random_Seed seed;
 	
@@ -118,20 +135,23 @@ MA 02110-1301, USA.
 }
 
 
-+ (OOCharacter *) characterWithDictionary:(NSDictionary *)dict
++ (OOCharacter *) characterWithDictionary:(id)dict
 {
 	OOCharacter	*character = [[[OOCharacter alloc] init] autorelease];
-	[character setCharacterFromDictionary:dict];
+	// (read as an oo::PList, which carries any non-plist values exactly: proposed ADR-0043 Amendment 2)
+	[character setCharacterFromDictionary:oo::PListFrom(dict)];
 	
 	return character;
 }
 
 
-- (NSString *) planetOfOrigin
+- (std::optional<std::string>) planetOfOrigin
 {
 	// determine the planet of origin
-	NSDictionary *originInfo = [UNIVERSE generateSystemData:[self planetIDOfOrigin]];
-	return [originInfo objectForKey:KEY_NAME];
+	const oo::PList originInfo = oo::PListFrom([UNIVERSE generateSystemData:[self planetIDOfOrigin]]);
+	const oo::PList *name = originInfo.find(oo::StdString(KEY_NAME));
+	if (name == nullptr || !name->isString())  return std::nullopt;	// (the value was returned as it stood; it is a string)
+	return *name->getIf<std::string>();
 }
 
 
@@ -142,20 +162,23 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *) species
+- (std::optional<std::string>) species
 {
 	// determine the character's species
 	int species = [self genSeed].f & 0x03;	// 0-1 native to home system, 2 human colonial, 3 other
-	NSString* speciesString = nil;
-	if (species == 3)  speciesString = [UNIVERSE getSystemInhabitants:[self genSeed].e plural:NO];
-	else  speciesString = [UNIVERSE getSystemInhabitants:[self planetIDOfOrigin] plural:NO];
-	
+	std::optional<std::string> speciesString;
+	if (species == 3)  speciesString = oo::OptionalString([UNIVERSE getSystemInhabitants:[self genSeed].e plural:NO]);
+	else  speciesString = oo::OptionalString([UNIVERSE getSystemInhabitants:[self planetIDOfOrigin] plural:NO]);
+
+	if (!speciesString.has_value())  return std::nullopt;
+
 	if (!oo::PListView([UNIVERSE descriptions]).get<BOOL>(@"lowercase_ignore"))
 	{
-		speciesString = [speciesString lowercaseString];
+		speciesString = oo::str::lowercase(*speciesString);
 	}
-	
-	return [speciesString stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+
+	// (whitespace without newlines has no oofnd character class yet: trimmed by the Foundation string)
+	return oo::StdString([oo::NSStringFrom(*speciesString) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);
 }
 
 
@@ -169,31 +192,35 @@ MA 02110-1301, USA.
 	seed_for_planet_description(genSeed);
 
 	// determine the planet of origin
-	NSDictionary *originInfo = [UNIVERSE generateSystemData:[self planetIDOfOrigin]];
-	NSString *planet = oo::PListView(originInfo).get<NSString *>(KEY_NAME);
-	OOGovernmentID government = oo::PListView(originInfo).get<int>(KEY_GOVERNMENT); // 0 .. 7 (0 anarchic .. 7 most stable)
+	const oo::PList originInfo = oo::PListFrom([UNIVERSE generateSystemData:[self planetIDOfOrigin]]);
+	const std::optional<std::string> planet = OptionalStringForKey(originInfo, oo::StdString(KEY_NAME));
+	OOGovernmentID government = originInfo.get<int>(oo::StdString(KEY_GOVERNMENT)); // 0 .. 7 (0 anarchic .. 7 most stable)
 	int criminalTendency = government ^ 0x07;
 
 	// determine the character's species
-	NSString *species = [self species];
-	
-	// determine the character's name
+	const std::optional<std::string> species = [self species];
+
+	// determine the character's name (each half expanded in turn, as the format's arguments were)
 	seed_RNG_only_for_planet_description(genSeed);
-	NSString *genName = nil;
-	if ([species hasPrefix:@"human"])
+	std::string genName;
+	if (species.has_value() && oo::str::hasPrefix(*species, "human"))
 	{
-		genName = [NSString stringWithFormat:@"%@ %@", OOExpandWithSeed(genSeed, @"%R"), OOExpandKeyWithSeed(genSeed, @"nom")];
+		const std::string givenName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
+		const std::string familyName = oo::DescriptionOf(OOExpandKeyWithSeed(genSeed, @"nom"));
+		genName = givenName + " " + familyName;
 	} else {
 		/*	NOTE: we can't use "%R %R" because that will produce the same string
 			twice. TODO: is there a reason not to use %N and kOOExpandGoodRNG
 			here? Is there some context where we rely on being able to get the
 			same name for a given genSeed?
 		 */
-		genName = [NSString stringWithFormat:@"%@ %@", OOExpandWithSeed(genSeed, @"%R"), OOExpandWithSeed(genSeed, @"%R")];
+		const std::string givenName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
+		const std::string familyName = oo::DescriptionOf(OOExpandWithSeed(genSeed, @"%R"));
+		genName = givenName + " " + familyName;
 	}
-	[self setName:genName];
-	
-	[self setShortDescription:OOExpandKeyWithSeed(genSeed, @"character-generic-description", species, planet)];
+	_name = genName;
+
+	_shortDescription = oo::OptionalString(OOExpandKeyWithSeed(genSeed, @"character-generic-description", oo::NSStringOrNil(species), oo::NSStringOrNil(planet)));
 	
 	// determine _legalStatus for a completely random character
 	[self setLegalStatus:0];	// clean
@@ -234,12 +261,12 @@ MA 02110-1301, USA.
 }
 
 
-- (BOOL) castInRole:(NSString *)role
+- (BOOL) castInRole:(const std::string &)roleName
 {
 	BOOL specialSetUpDone = NO;
-	
-	role = [role lowercaseString];
-	if ([role hasPrefix:@"pirate"])
+
+	const std::string role = oo::str::lowercase(roleName);
+	if (oo::str::hasPrefix(role, "pirate"))
 	{
 		// determine _legalStatus for a completely random character
 		Random_Seed genSeed = [self genSeed];
@@ -248,7 +275,7 @@ MA 02110-1301, USA.
 		
 		specialSetUpDone = YES;
 	}
-	else if ([role hasPrefix:@"trader"])
+	else if (oo::str::hasPrefix(role, "trader"))
 	{
 		[self setLegalStatus:0];	// clean
 
@@ -269,7 +296,7 @@ MA 02110-1301, USA.
 		}
 		specialSetUpDone = YES;
 	}
-	else if ([role hasPrefix:@"hunter"])
+	else if (oo::str::hasPrefix(role, "hunter"))
 	{
 		[self setLegalStatus:0];	// clean
 		int insuranceIndex = gen_rnd_number() & 0x03;
@@ -277,19 +304,19 @@ MA 02110-1301, USA.
 			[self setInsuranceCredits:500];
 		specialSetUpDone = YES;
 	}
-	else if ([role hasPrefix:@"police"])
+	else if (oo::str::hasPrefix(role, "police"))
 	{
 		[self setLegalStatus:0];	// clean
 		[self setInsuranceCredits:125];
 		specialSetUpDone = YES;
 	}
-	else if ([role isEqual:@"miner"])
+	else if (role == "miner")
 	{
 		[self setLegalStatus:0];	// clean
 		[self setInsuranceCredits:25];
 		specialSetUpDone = YES;
 	}
-	else if ([role isEqual:@"passenger"])
+	else if (role == "passenger")
 	{
 		[self setLegalStatus:0];	// clean
 		int insuranceIndex = gen_rnd_number() & 0x03;
@@ -309,13 +336,13 @@ MA 02110-1301, USA.
 		}
 		specialSetUpDone = YES;
 	}
-	else if ([role isEqual:@"slave"])
+	else if (role == "slave")
 	{
 		[self setLegalStatus:0];	// clean
 		[self setInsuranceCredits:0];
 		specialSetUpDone = YES;
 	}
-	else if ([role isEqual:@"thargoid"])
+	else if (role == "thargoid")
 	{
 		[self setLegalStatus:100];
 		[self setInsuranceCredits:0];
@@ -330,15 +357,15 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *)name
+- (id)name
 {
-	return _name;
+	return oo::NSStringOrNil(_name);
 }
 
 
-- (NSString *)shortDescription
+- (id)shortDescription
 {
-	return _shortDescription;
+	return oo::NSStringOrNil(_shortDescription);
 }
 
 
@@ -360,36 +387,46 @@ MA 02110-1301, USA.
 }
 
 
-- (NSArray *)legacyScript
+- (oo::PList)legacyScript
 {
 	return _scriptActions;
 }
 
 
-- (NSDictionary *) infoForScripting
+- (oo::PList) infoForScripting
 {
-	return [NSDictionary dictionaryWithObjectsAndKeys:
-		  [self name], @"name",
-		  [self shortDescription], @"description",
-		  [self species], @"species",
-		  [NSNumber numberWithInt:[self legalStatus]], @"legalStatus",
-	      [NSNumber numberWithUnsignedLongLong:[self insuranceCredits]], @"insuranceCredits",
-		  [NSNumber numberWithInt:[self planetIDOfOrigin]], @"homeSystem",
-		  nil];
+	// Every value is worked out first, as the list's arguments were; the list ended at the first
+	// nil (a missing name, description or species).
+	const std::optional<std::string> species = [self species];
+	oo::PList::Dict result;
+	if (_name.has_value())
+	{
+		result.emplace("name", oo::PList(*_name));
+		if (_shortDescription.has_value())
+		{
+			result.emplace("description", oo::PList(*_shortDescription));
+			if (species.has_value())
+			{
+				result.emplace("species", oo::PList(*species));
+				result.emplace("legalStatus", oo::PList::signedInteger([self legalStatus]));
+				result.emplace("insuranceCredits", oo::PList::unsignedInteger([self insuranceCredits]));
+				result.emplace("homeSystem", oo::PList::signedInteger([self planetIDOfOrigin]));
+			}
+		}
+	}
+	return oo::PList(std::move(result));
 }
 
 
-- (void)setName:(NSString *)value
+- (void)setName:(id)value
 {
-	[_name autorelease];
-	_name = [value copy];
+	_name = oo::OptionalString(value);
 }
 
 
-- (void)setShortDescription:(NSString *)value
+- (void)setShortDescription:(id)value
 {
-	[_shortDescription autorelease];
-	_shortDescription = [value copy];
+	_shortDescription = oo::OptionalString(value);
 }
 
 
@@ -417,10 +454,9 @@ MA 02110-1301, USA.
 }
 
 
-- (void)setLegacyScript:(NSArray *)some_actions
+- (void)setLegacyScript:(const oo::PList &)some_actions
 {
-	[_scriptActions autorelease];
-	_scriptActions = [some_actions copy];
+	_scriptActions = some_actions;
 }
 
 
@@ -430,11 +466,11 @@ MA 02110-1301, USA.
 }
 
 
-- (void) setCharacterScript:(NSString *)scriptName
+- (void) setCharacterScript:(const std::string &)scriptName
 {
 	[_script autorelease];
-	_script = [OOScript jsScriptFromFileNamed:scriptName
-								   properties:[NSDictionary dictionaryWithObject:self forKey:@"character"]];
+	_script = [OOScript cxx_jsScriptFromFileNamed:scriptName
+									   properties:oo::PList(oo::PList::Dict{ { "character", oo::PListObject(self) } })];
 	[_script retain];
 }
 
@@ -447,24 +483,28 @@ MA 02110-1301, USA.
 }
 
 
-- (void) setCharacterFromDictionary:(NSDictionary *)dict
+- (void) setCharacterFromDictionary:(const oo::PList &)dict
 {
-	id					origin = nil;
+	const oo::PList		*origin = nullptr;
 	Random_Seed			seed;
-	
-	origin = [dict objectForKey:@"origin"];
-	if ([origin isKindOfClass:[NSNumber class]] ||
-		([origin respondsToSelector:@selector(intValue)] && ([origin intValue] != 0 || [origin isEqual:@"0"])))
+
+	origin = dict.find("origin");
+	// (a string, a number, or another object that answers -intValue: an Object node)
+	const std::string	*originName = (origin != nullptr) ? origin->getIf<std::string>() : nullptr;
+	id					originObject = (origin != nullptr) ? oo::ObjectIn(*origin) : nil;
+	const int			originValue = (originObject != nil) ? ([originObject respondsToSelector:@selector(intValue)] ? [originObject intValue] : 0) : dict.get<int>("origin");
+	if ((origin != nullptr && origin->isNumber()) ||
+		(((originName != nullptr) || [originObject respondsToSelector:@selector(intValue)]) && (originValue != 0 || (originName != nullptr && *originName == "0"))))
 	{
 		// Number or numerical string
-		[self setOriginSystem:[origin intValue]];
+		[self setOriginSystem:originValue];
 	}
-	else if ([origin isKindOfClass:[NSString class]])
+	else if (originName != nullptr)
 	{
-		OOSystemID sys = [UNIVERSE findSystemFromName:origin];
+		OOSystemID sys = [UNIVERSE findSystemFromName:oo::NSStringFrom(*originName)];
 		if (sys < 0)
 		{
-			OOLogERR(@"character.load.unknownSystem", @"could not find a system named '%@' in this galaxy.", origin);
+			OOLogERR(@"character.load.unknownSystem", @"could not find a system named '%@' in this galaxy.", oo::NSStringFrom(*originName));
 			[self setOriginSystem:(ranrot_rand() & 0xff)];
 		}
 		else
@@ -478,9 +518,9 @@ MA 02110-1301, USA.
 		[self setOriginSystem:(ranrot_rand() & 0xff)];
 	}
 
-	if ([dict objectForKey:@"random_seed"])
+	if (dict.find("random_seed") != nullptr)
 	{
-		seed = RandomSeedFromString(oo::PListView(dict).get<NSString *>(@"random_seed"));  // returns kNilRandomSeed on failure
+		seed = cxx_RandomSeedFromString(OptionalStringForKey(dict, "random_seed"));  // returns kNilRandomSeed on failure
 	}
 	else
 	{
@@ -494,14 +534,14 @@ MA 02110-1301, USA.
 	[self setGenSeed:seed];
 	[self basicSetUp];
 	
-	if (oo::PListView(dict).get<NSString *>(@"role"))  [self castInRole:oo::PListView(dict).get<NSString *>(@"role")];
-	if (oo::PListView(dict).get<NSString *>(@"name"))  [self setName:oo::PListView(dict).get<NSString *>(@"name")];
-	if (oo::PListView(dict).get<NSString *>(@"short_description"))  [self setShortDescription:oo::PListView(dict).get<NSString *>(@"short_description")];
-	if ([dict objectForKey:@"legal_status"])  [self setLegalStatus:oo::PListView(dict).get<int>(@"legal_status")];
-	if ([dict objectForKey:@"bounty"])  [self setLegalStatus:oo::PListView(dict).get<int>(@"bounty")];
-	if ([dict objectForKey:@"insurance"])  [self setInsuranceCredits:oo::PListView(dict).get<unsigned long long>(@"insurance")];
-	if (oo::PListView(dict).get<NSString *>(@"script")) [self setCharacterScript:oo::PListView(dict).get<NSString *>(@"script")];
-	if (oo::PListView(dict).get<NSArray *>(@"script_actions"))  [self setLegacyScript:oo::PListView(dict).get<NSArray *>(@"script_actions")];
+	if (const std::optional<std::string> role = OptionalStringForKey(dict, "role"))  [self castInRole:*role];
+	if (const std::optional<std::string> name = OptionalStringForKey(dict, "name"))  _name = name;
+	if (const std::optional<std::string> shortDescription = OptionalStringForKey(dict, "short_description"))  _shortDescription = shortDescription;
+	if (dict.find("legal_status") != nullptr)  [self setLegalStatus:dict.get<int>("legal_status")];
+	if (dict.find("bounty") != nullptr)  [self setLegalStatus:dict.get<int>("bounty")];
+	if (dict.find("insurance") != nullptr)  [self setInsuranceCredits:dict.get<unsigned long long>("insurance")];
+	if (const std::optional<std::string> script = OptionalStringForKey(dict, "script")) [self setCharacterScript:*script];
+	if (const oo::PList *scriptActions = dict.get<oo::PList::Array>("script_actions"))  [self setLegacyScript:*scriptActions];
 	
 }
 
