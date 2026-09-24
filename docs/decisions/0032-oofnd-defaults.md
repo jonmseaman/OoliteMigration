@@ -118,7 +118,31 @@ APIs, and a second synchronize through either writes nothing.
 
 **Consequences.** Per-file `NSUserDefaults` sweeps are safe, readers and writers alike. The shim,
 `NSUserDefaults+Override` and the `game-unit` test go in bead oo-iobt once no file uses
-`NSUserDefaults`; oo-qps cannot compile while they exist. Behavioural difference, none on disk:
-GNUstep scheduled its own background synchronize after a change; `oo::Defaults` writes only on an
-explicit `-synchronize` (point 3), which the game makes on exit and after display changes.
+`NSUserDefaults`; oo-qps cannot compile while they exist. No behavioural difference: GNUstep's
+automatic save is kept (this sentence corrected by bead oo-xeve; see Amendment 2).
+
+## Amendment 2 — the automatic save (bead oo-xeve, 2026-09-24)
+
+**Status:** Proposed — default in effect (Claude Code, fleet sweep worker; ADR-0013). Jon may
+override.
+
+**Measured** (gnustep-base 1.31.1, throwaway probes): the standard defaults object runs a
+repeating **30-second** timer, started when the object is made, that sends `-synchronize` whether
+or not anything changed (a change made 13.1 s after creation was written at 30.1 s; with
+`-setObject:forKey:` overridden so GNUstep's own store never changed, `-synchronize` still arrived
+at 30.0 s and 60.0 s). The message is dispatched, so since Amendment 1 it already reaches the
+shim's `-synchronize` and `oo::Defaults` writes pending changes: Amendment 1's statement that the
+background save no longer happened was wrong. The timer lives on the run loop, which the frame
+loop pumps only until oo-3rb.58 removes the pump.
+
+**Decision.** The shim schedules the save itself so it survives the pump's removal: the first
+change after a save schedules one `-synchronize` 30 s later through `OOScheduleDeferredCall`
+(ADR-0040, main thread only); later changes add none until it has run. Any change is therefore
+written at most 30 s after it was made, as with GNUstep's timer; the write happens only if
+something changed (point 3). While the pump remains, GNUstep's own timer also still calls
+`-synchronize`, which writes nothing when nothing is pending.
+
+**Proof.** `test_defaults_bridge.mm`'s `firstChangeSchedulesOneDeferredSave`, with the deferred-call
+queue recorded by the test: one call, 30 s, scheduled by the first change; running it writes the
+pending changes once; the next change schedules the next save.
 

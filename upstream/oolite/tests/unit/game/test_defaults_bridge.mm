@@ -21,8 +21,25 @@
 #include <filesystem>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace {
+
+// The deferred-call queue (ADR-0040's OOScheduleDeferredCall lives in GameController.mm, which
+// this test does not link): calls are recorded, and a test runs them as the frame loop would once
+// their delay has passed.
+struct DeferredCall
+{
+	id				target;
+	SEL				selector;
+	id				argument;
+	NSTimeInterval	delay;
+};
+std::vector<DeferredCall> &deferredCalls()
+{
+	static std::vector<DeferredCall> calls;
+	return calls;
+}
 
 namespace fs = oo::fs;
 using oo::PList;
@@ -56,6 +73,12 @@ NSUserDefaults *userDefaults()
 }
 
 } // namespace
+
+
+void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay)
+{
+	deferredCalls().push_back(DeferredCall{ target, selector, argument, delay });
+}
 
 
 OO_TEST(standardUserDefaultsIsBridged)
@@ -183,6 +206,48 @@ OO_TEST(synchronizeWritesOnceThroughDefaults)
 		OO_CHECK([ud synchronize]);
 		OO_CHECK(d.synchronize());
 		OO_CHECK(!contents(file).has_value());
+	}
+}
+
+
+// gnustep-base's automatic save (bead oo-xeve): the first change after a save schedules one
+// -synchronize 30 s later (gnustep-base 1.31.1's timer interval, probed); later changes add none;
+// running it writes the pending changes once and lets the next change schedule again.
+OO_TEST(firstChangeSchedulesOneDeferredSave)
+{
+	@autoreleasepool
+	{
+		NSUserDefaults *ud = userDefaults();
+		oo::Defaults &d = store();
+		const fs::Path file = d.domainPath(d.domainName());
+		
+		// The earlier tests' first change scheduled it; none of their later changes added another.
+		OO_CHECK_EQ(deferredCalls().size(), 1u);
+		OO_CHECK(deferredCalls().size() == 1 && deferredCalls()[0].delay == 30.0);
+		OO_CHECK(deferredCalls().size() == 1 && deferredCalls()[0].target == ud);
+		
+		[ud setObject:@"saved later" forKey:@"deferred-key"];
+		OO_CHECK_EQ(deferredCalls().size(), 1u);
+		(void)fs::removeItem(file);
+		OO_CHECK(!contents(file).has_value());
+		
+		// The interval passes: the frame loop runs the call.
+		const DeferredCall call = deferredCalls()[0];
+		deferredCalls().clear();
+		[call.target performSelector:call.selector withObject:call.argument];
+		const std::optional<std::string> written = contents(file);
+		OO_CHECK(written.has_value() && written->find("\"deferred-key\" = \"saved later\";") != std::string::npos);
+		OO_CHECK(deferredCalls().empty());
+		
+		// Written once: nothing is pending, so a synchronize writes nothing more.
+		OO_CHECK(fs::removeItem(file));
+		OO_CHECK([ud synchronize]);
+		OO_CHECK(!contents(file).has_value());
+		
+		// The next change schedules the next save.
+		[ud setBool:YES forKey:@"deferred-key-2"];
+		OO_CHECK_EQ(deferredCalls().size(), 1u);
+		OO_CHECK(deferredCalls().size() == 1 && deferredCalls()[0].delay == 30.0);
 	}
 }
 

@@ -17,7 +17,9 @@ GPL v2 or later; see NSUserDefaults+Override.h.
 #import <objc/runtime.h>
 
 #import "OOFoundationBridge.h"
+#import "GameController.h"		// OOScheduleDeferredCall (ADR-0040)
 #include "oofnd/Defaults.hpp"
+#include "oofnd/Thread.hpp"
 
 #include <atomic>
 
@@ -26,6 +28,19 @@ namespace
 {
 std::atomic<oo::Defaults *> sStore{nullptr};		// nullptr: oo::Defaults::standard()
 std::atomic<bool> sInstalled{false};
+
+/*	gnustep-base's automatic save: its standard defaults object runs a repeating 30-second timer,
+	started when the object is made, that sends -synchronize whether or not anything changed
+	(probed on gnustep-base 1.31.1, bead oo-xeve: a change 13.1 s after creation was written at
+	30.1 s; with -setObject:forKey: overridden so GNUstep's own store never changed, -synchronize
+	still arrived at 30.0 s and 60.0 s). That timer lives on the run loop, which the frame loop
+	pumps until oo-3rb.58 removes the pump; this deferred call keeps the save when it goes. The
+	first change after a save schedules one -synchronize kOODefaultsAutoSaveInterval seconds later
+	(a change is written at most that long after it was made, as with GNUstep's timer; the file is
+	written only if something changed, ADR-0032 point 3).
+*/
+constexpr NSTimeInterval kOODefaultsAutoSaveInterval = 30.0;
+bool sAutoSaveScheduled = false;		// main thread only, as the deferred calls are
 
 oo::Defaults &Store()
 {
@@ -87,6 +102,20 @@ bool OODefaultsBridgeIsInstalled(void)
 - (void) oo_didChange
 {
 	[[NSNotificationCenter defaultCenter] postNotificationName:NSUserDefaultsDidChangeNotification object:self];
+	
+	// Deferred calls run on the main thread only (a call scheduled elsewhere would never fire).
+	if (!sAutoSaveScheduled && oo::thread::isMainThread())
+	{
+		sAutoSaveScheduled = true;
+		OOScheduleDeferredCall(self, @selector(oo_autoSave), nil, kOODefaultsAutoSaveInterval);
+	}
+}
+
+
+- (void) oo_autoSave
+{
+	sAutoSaveScheduled = false;
+	[self synchronize];
 }
 
 
