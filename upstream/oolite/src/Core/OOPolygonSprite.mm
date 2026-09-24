@@ -50,6 +50,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOException.h"
 
 
 #ifndef APIENTRY
@@ -865,7 +866,7 @@ void SVGDumpAppendBaseContour(TessPolygonData *data, const OOPolygonContour &poi
 	}
 	
 	// Close and add a circle at the first vertex. (SVG has support for end markers, but this isn’t reliable across implementations.)
-	if (points.empty())  [NSException raise:NSRangeException format:@"SVGDumpAppendBaseContour: empty contour"];	// -objectAtIndex:0 raised here
+	if (points.empty())  [OOException raise:OORangeException format:"SVGDumpAppendBaseContour: empty contour"];	// -objectAtIndex:0 raised here
 	NSPoint p = points[0];
 	*data->debugSVG += oo::str::format("z\"/>\n\t\t\t<circle cx=\"%f\" cy=\"%f\" r=\"0.1\" fill=\"#BBB\" stroke=\"none\"/>\n\t\t</g>\n", p.x, -p.y);
 }

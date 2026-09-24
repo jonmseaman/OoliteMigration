@@ -143,7 +143,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 					while (amount > 0)
 					{
 						int smaller_quantity = 1 + ((amount - 1) % amount_per_container);
-						if ([cargo count] < [self maxAvailableCargoSpace])
+						if (cargo.size() < [self maxAvailableCargoSpace])
 						{
 							ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
 							if (container)
@@ -153,7 +153,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 								[container setScanClass: CLASS_CARGO];
 								[container setStatus:STATUS_IN_HOLD];
 								[container setCommodity:oo::NSStringFrom(type) andAmount:smaller_quantity];
-								[cargo addObject:container];
+								cargo.emplace_back(container);
 								[container release];
 							}
 						}
@@ -167,7 +167,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 				// put each ton in a separate container
 				while (amount)
 				{
-					if ([cargo count] < [self maxAvailableCargoSpace])
+					if (cargo.size() < [self maxAvailableCargoSpace])
 					{
 						ShipEntity* container = [UNIVERSE newShipWithRole:@"1t-cargopod"];
 						if (container)
@@ -177,7 +177,7 @@ NSInteger IntegerValueOf(const oo::PList *value)
 							[container setScanClass: CLASS_CARGO];
 							[container setStatus:STATUS_IN_HOLD];
 							[container setCommodity:oo::NSStringFrom(type) andAmount:1];
-							[cargo addObject:container];
+							cargo.emplace_back(container);
 							[container release];
 						}
 					}

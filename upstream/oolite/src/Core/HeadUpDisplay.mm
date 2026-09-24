@@ -106,7 +106,7 @@ void GetCurrentCachedInfo(struct CachedInfo *cached)
 {
 	if (EXPECT_NOT(!sCurrentDrawItem->hasCache))
 	{
-		[NSException raise:NSRangeException format:@"Index 1 is out of range 0 (in 'objectAtIndex:')"];
+		[OOException raise:OORangeException format:"Index 1 is out of range 0 (in 'objectAtIndex:')"];
 	}
 	*cached = sCurrentDrawItem->cache;
 }
