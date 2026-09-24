@@ -1164,10 +1164,9 @@ unsigned char FirstUnitLowByte(const std::string &string)
 		return;
 	}
 
-	// sortCommanders: -localizedCompare: of saved_game_path. oofnd has no localized collation, so
-	// the comparison itself still goes through Foundation until it has one (oo-qps).
+	// sortCommanders: saved_game_path in the locale collation (oo::str::localizedCompare, ICU, as GNUstep sorted it).
 	std::stable_sort(cdrDetailArray.begin(), cdrDetailArray.end(), [](const oo::PList &cdr1, const oo::PList &cdr2) {
-		return [oo::NSStringFrom(cdr1.get<std::string>("saved_game_path")) localizedCompare:oo::NSStringFrom(cdr2.get<std::string>("saved_game_path"))] == NSOrderedAscending;
+		return oo::str::localizedCompare(cdr1.get<std::string>("saved_game_path"), cdr2.get<std::string>("saved_game_path")) < 0;
 	});
 	
 	// Do we need to highlight a name?
