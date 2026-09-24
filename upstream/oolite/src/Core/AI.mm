@@ -135,7 +135,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 - (oo::PList) stateMachine;
 - (id) name;	// shared selector (proposed ADR-0043): an Objective-C string
 - (id) state;	// shared selector (proposed ADR-0043): an Objective-C string or nil
-- (id) pendingMessages;	// shared selector (proposed ADR-0043): an Objective-C set of strings
+- (std::set<std::string>) pendingMessages;
 - (std::optional<std::string>) jsScript;
 
 @end
@@ -306,8 +306,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 	// restore JS script
 	[[self owner] setAIScript:oo::NSStringOrNil([preservedMachine.get() jsScript])];
 
-	const std::vector<std::string> preservedMessages = oo::StringsFrom([preservedMachine.get() pendingMessages]);
-	pendingMessages = std::set<std::string>(preservedMessages.begin(), preservedMessages.end());
+	pendingMessages = [preservedMachine.get() pendingMessages];
 
 	aiStack.pop_back();  //  POP
 }
@@ -645,7 +644,7 @@ static AIStackElement *sStack = NULL;
 	if (EXPECT_NOT(pendingMessages.size() > 32))
 	{
 		// Generate the error, but don't crash Oolite! Fixes bug #18055 - Pending message overflow for thargoids, -> crash !
-		OOLogERR(@"ai.message.failed.overflow", @"AI message \"%@\" received by '%@' AI while pending messages stack full; message discarded. Pending messages:\n%@", ms, oo::NSStringOrNil(ownerDesc), [self pendingMessages]);
+		OOLogERR(@"ai.message.failed.overflow", @"AI message \"%@\" received by '%@' AI while pending messages stack full; message discarded. Pending messages:\n%@", ms, oo::NSStringOrNil(ownerDesc), oo::NSSetFromStrings([self pendingMessages]));
 	}
 	else
 	{
@@ -660,9 +659,9 @@ static AIStackElement *sStack = NULL;
 }
 	
 
-- (id) pendingMessages
+- (std::set<std::string>) pendingMessages
 {
-	return oo::NSSetFromStrings(pendingMessages);
+	return pendingMessages;
 }
 
 
@@ -1063,9 +1062,9 @@ static AIStackElement *sStack = NULL;
 }
 
 
-- (id) pendingMessages
+- (std::set<std::string>) pendingMessages
 {
-	return oo::NSSetFromStrings(_pendingMessages);
+	return _pendingMessages;
 }
 
 - (std::optional<std::string>) jsScript
