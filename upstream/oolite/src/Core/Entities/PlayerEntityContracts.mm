@@ -54,6 +54,26 @@ MA 02110-1301, USA.
 
 static unsigned RepForRisk(unsigned risk);
 
+
+namespace
+{
+
+// -oo_intForKey: on the reputation dictionary.
+int ReputationValue(const oo::PList::Dict &reputation, const std::string &key)
+{
+	const auto it = reputation.find(key);
+	return it != reputation.end() ? oo::PListGet<int>::from(&it->second, 0) : 0;
+}
+
+
+// -oo_setInteger:forKey: / +numberWithInt: (both a signed integer).
+void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int value)
+{
+	reputation[key] = oo::PList::signedInteger(value);
+}
+
+}	// namespace
+
 @interface PlayerEntity (ContractsPrivate)
 
 - (OOCreditsQuantity) tradeInValue;
@@ -517,26 +537,25 @@ static unsigned RepForRisk(unsigned risk);
 {
 	if (!report.empty())
 	{
-		// dockingReport is chunk 2's
-		if ([dockingReport length] == 0)
-			[dockingReport appendString:oo::NSStringFrom(report)];
+		if (dockingReport.empty())
+			dockingReport += report;
 		else
-			[dockingReport appendString:oo::NSStringFrom("\n\n" + report)];	// @"\n\n%@"
+			dockingReport += "\n\n" + report;	// @"\n\n%@"
 	}
 }
 
 
-- (NSDictionary*) reputation
+- (oo::PList) reputation
 {
-	return reputation;
+	return oo::PList(reputation);
 }
 
 
 - (int) passengerReputation
 {
-	int good = oo::PListView(reputation).get<int>(PASSAGE_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(PASSAGE_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(PASSAGE_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY));
 
 	if (unknown > 0)
 		unknown = MAX_CONTRACT_REP - (((2*unknown)+(market_rnd % unknown))/3);
@@ -549,9 +568,9 @@ static unsigned RepForRisk(unsigned risk);
 
 - (void) increasePassengerReputation:(unsigned)amount
 {
-	int good = oo::PListView(reputation).get<int>(PASSAGE_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(PASSAGE_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(PASSAGE_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY));
 	
 	for (unsigned i=0;i<amount;i++)
 	{
@@ -571,17 +590,17 @@ static unsigned RepForRisk(unsigned risk);
 			good++;
 	}
 	}
-	[reputation oo_setInteger:good		forKey:PASSAGE_GOOD_KEY];
-	[reputation oo_setInteger:bad		forKey:PASSAGE_BAD_KEY];
-	[reputation oo_setInteger:unknown	forKey:PASSAGE_UNKNOWN_KEY];
+	SetReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY), good);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY), bad);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY), unknown);
 }
 
 
 - (void) decreasePassengerReputation:(unsigned)amount
 {
-	int good = oo::PListView(reputation).get<int>(PASSAGE_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(PASSAGE_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(PASSAGE_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY));
 	
 for (unsigned i=0;i<amount;i++)
 	{
@@ -601,17 +620,17 @@ for (unsigned i=0;i<amount;i++)
 			bad++;
 	}
 	}
-	[reputation oo_setInteger:good		forKey:PASSAGE_GOOD_KEY];
-	[reputation oo_setInteger:bad		forKey:PASSAGE_BAD_KEY];
-	[reputation oo_setInteger:unknown	forKey:PASSAGE_UNKNOWN_KEY];
+	SetReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY), good);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY), bad);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY), unknown);
 }
 
 
 - (int) parcelReputation
 {
-	int good = oo::PListView(reputation).get<int>(PARCEL_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(PARCEL_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(PARCEL_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY));
 	
 	if (unknown > 0)
 		unknown = MAX_CONTRACT_REP - (((2*unknown)+(market_rnd % unknown))/3);
@@ -624,9 +643,9 @@ for (unsigned i=0;i<amount;i++)
 
 - (void) increaseParcelReputation:(unsigned)amount
 {
-	int good = oo::PListView(reputation).get<int>(PARCEL_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(PARCEL_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(PARCEL_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY));
 
 		for (unsigned i=0;i<amount;i++)
 	{
@@ -646,17 +665,17 @@ for (unsigned i=0;i<amount;i++)
 			good++;
 	}
 	}
-	[reputation oo_setInteger:good		forKey:PARCEL_GOOD_KEY];
-	[reputation oo_setInteger:bad		forKey:PARCEL_BAD_KEY];
-	[reputation oo_setInteger:unknown	forKey:PARCEL_UNKNOWN_KEY];
+	SetReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY), good);
+	SetReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY), bad);
+	SetReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY), unknown);
 }
 
 
 - (void) decreaseParcelReputation:(unsigned)amount
 {
-	int good = oo::PListView(reputation).get<int>(PARCEL_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(PARCEL_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(PARCEL_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY));
 	
 	for (unsigned i=0;i<amount;i++)
 	{
@@ -676,17 +695,17 @@ for (unsigned i=0;i<amount;i++)
 			bad++;
 	}
 	}
-	[reputation oo_setInteger:good		forKey:PARCEL_GOOD_KEY];
-	[reputation oo_setInteger:bad		forKey:PARCEL_BAD_KEY];
-	[reputation oo_setInteger:unknown	forKey:PARCEL_UNKNOWN_KEY];
+	SetReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY), good);
+	SetReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY), bad);
+	SetReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY), unknown);
 }
 
 
 - (int) contractReputation
 {
-	int good = oo::PListView(reputation).get<int>(CONTRACTS_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(CONTRACTS_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(CONTRACTS_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY));
 	
 	if (unknown > 0)
 		unknown = MAX_CONTRACT_REP - (((2*unknown)+(market_rnd % unknown))/3);
@@ -699,9 +718,9 @@ for (unsigned i=0;i<amount;i++)
 
 - (void) increaseContractReputation:(unsigned)amount
 {
-	int good = oo::PListView(reputation).get<int>(CONTRACTS_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(CONTRACTS_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(CONTRACTS_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY));
 	
 	for (unsigned i=0;i<amount;i++)
 	{
@@ -721,17 +740,17 @@ for (unsigned i=0;i<amount;i++)
 			good++;
 	}
 	}
-	[reputation oo_setInteger:good		forKey:CONTRACTS_GOOD_KEY];
-	[reputation oo_setInteger:bad		forKey:CONTRACTS_BAD_KEY];
-	[reputation oo_setInteger:unknown	forKey:CONTRACTS_UNKNOWN_KEY];
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY), good);
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY), bad);
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY), unknown);
 }
 
 
 - (void) decreaseContractReputation:(unsigned)amount
 {
-	int good = oo::PListView(reputation).get<int>(CONTRACTS_GOOD_KEY);
-	int bad = oo::PListView(reputation).get<int>(CONTRACTS_BAD_KEY);
-	int unknown = oo::PListView(reputation).get<int>(CONTRACTS_UNKNOWN_KEY);
+	int good = ReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY));
+	int bad = ReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY));
+	int unknown = ReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY));
 	
 	for (unsigned i=0;i<amount;i++)
 	{
@@ -751,23 +770,23 @@ for (unsigned i=0;i<amount;i++)
 			bad++;
 	}
 	}
-	[reputation oo_setInteger:good		forKey:CONTRACTS_GOOD_KEY];
-	[reputation oo_setInteger:bad		forKey:CONTRACTS_BAD_KEY];
-	[reputation oo_setInteger:unknown	forKey:CONTRACTS_UNKNOWN_KEY];
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY), good);
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY), bad);
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY), unknown);
 }
 
 
 - (void) erodeReputation
 {
-	int c_good = oo::PListView(reputation).get<int>(CONTRACTS_GOOD_KEY);
-	int c_bad = oo::PListView(reputation).get<int>(CONTRACTS_BAD_KEY);
-	int c_unknown = oo::PListView(reputation).get<int>(CONTRACTS_UNKNOWN_KEY);
-	int p_good = oo::PListView(reputation).get<int>(PASSAGE_GOOD_KEY);
-	int p_bad = oo::PListView(reputation).get<int>(PASSAGE_BAD_KEY);
-	int p_unknown = oo::PListView(reputation).get<int>(PASSAGE_UNKNOWN_KEY);
-	int pl_good = oo::PListView(reputation).get<int>(PARCEL_GOOD_KEY);
-	int pl_bad = oo::PListView(reputation).get<int>(PARCEL_BAD_KEY);
-	int pl_unknown = oo::PListView(reputation).get<int>(PARCEL_UNKNOWN_KEY);
+	int c_good = ReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY));
+	int c_bad = ReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY));
+	int c_unknown = ReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY));
+	int p_good = ReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY));
+	int p_bad = ReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY));
+	int p_unknown = ReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY));
+	int pl_good = ReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY));
+	int pl_bad = ReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY));
+	int pl_unknown = ReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY));
 	
 	if (c_unknown < MAX_CONTRACT_REP)
 	{
@@ -805,15 +824,15 @@ for (unsigned i=0;i<amount;i++)
 		pl_unknown++;
 	}
 	
-	[reputation setObject:[NSNumber numberWithInt:c_good]		forKey:CONTRACTS_GOOD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:c_bad]		forKey:CONTRACTS_BAD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:c_unknown]	forKey:CONTRACTS_UNKNOWN_KEY];
-	[reputation setObject:[NSNumber numberWithInt:p_good]		forKey:PASSAGE_GOOD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:p_bad]		forKey:PASSAGE_BAD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:p_unknown]	forKey:PASSAGE_UNKNOWN_KEY];
-	[reputation setObject:[NSNumber numberWithInt:pl_good]		forKey:PARCEL_GOOD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:pl_bad]		forKey:PARCEL_BAD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:pl_unknown]	forKey:PARCEL_UNKNOWN_KEY];
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY), c_good);
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY), c_bad);
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY), c_unknown);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY), p_good);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY), p_bad);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY), p_unknown);
+	SetReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY), pl_good);
+	SetReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY), pl_bad);
+	SetReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY), pl_unknown);
 	
 }
 
@@ -821,15 +840,15 @@ for (unsigned i=0;i<amount;i++)
 /* Update reputation levels in case of change in MAX_CONTRACT_REP */
 - (void) normaliseReputation
 {
-	int c_good = oo::PListView(reputation).get<int>(CONTRACTS_GOOD_KEY);
-	int c_bad = oo::PListView(reputation).get<int>(CONTRACTS_BAD_KEY);
-	int c_unknown = oo::PListView(reputation).get<int>(CONTRACTS_UNKNOWN_KEY);
-	int p_good = oo::PListView(reputation).get<int>(PASSAGE_GOOD_KEY);
-	int p_bad = oo::PListView(reputation).get<int>(PASSAGE_BAD_KEY);
-	int p_unknown = oo::PListView(reputation).get<int>(PASSAGE_UNKNOWN_KEY);
-	int pl_good = oo::PListView(reputation).get<int>(PARCEL_GOOD_KEY);
-	int pl_bad = oo::PListView(reputation).get<int>(PARCEL_BAD_KEY);
-	int pl_unknown = oo::PListView(reputation).get<int>(PARCEL_UNKNOWN_KEY);
+	int c_good = ReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY));
+	int c_bad = ReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY));
+	int c_unknown = ReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY));
+	int p_good = ReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY));
+	int p_bad = ReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY));
+	int p_unknown = ReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY));
+	int pl_good = ReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY));
+	int pl_bad = ReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY));
+	int pl_unknown = ReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY));
 
 	int c = c_good + c_bad + c_unknown;
 	if (c == 0)
@@ -867,15 +886,15 @@ for (unsigned i=0;i<amount;i++)
 		pl_unknown = MAX_CONTRACT_REP - pl_good - pl_bad;
 	}
 
-	[reputation setObject:[NSNumber numberWithInt:c_good]		forKey:CONTRACTS_GOOD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:c_bad]		forKey:CONTRACTS_BAD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:c_unknown]	forKey:CONTRACTS_UNKNOWN_KEY];
-	[reputation setObject:[NSNumber numberWithInt:p_good]		forKey:PASSAGE_GOOD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:p_bad]		forKey:PASSAGE_BAD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:p_unknown]	forKey:PASSAGE_UNKNOWN_KEY];
-	[reputation setObject:[NSNumber numberWithInt:pl_good]		forKey:PARCEL_GOOD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:pl_bad]		forKey:PARCEL_BAD_KEY];
-	[reputation setObject:[NSNumber numberWithInt:pl_unknown]	forKey:PARCEL_UNKNOWN_KEY];
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_GOOD_KEY), c_good);
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_BAD_KEY), c_bad);
+	SetReputationValue(reputation, oo::StdString(CONTRACTS_UNKNOWN_KEY), c_unknown);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_GOOD_KEY), p_good);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_BAD_KEY), p_bad);
+	SetReputationValue(reputation, oo::StdString(PASSAGE_UNKNOWN_KEY), p_unknown);
+	SetReputationValue(reputation, oo::StdString(PARCEL_GOOD_KEY), pl_good);
+	SetReputationValue(reputation, oo::StdString(PARCEL_BAD_KEY), pl_bad);
+	SetReputationValue(reputation, oo::StdString(PARCEL_UNKNOWN_KEY), pl_unknown);
 	
 }
 
@@ -1379,7 +1398,7 @@ for (unsigned i=0;i<amount;i++)
 	
 	OOGUIRow		i, text_row = 1;
 	
-	[dockingReport setString:[dockingReport stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]];
+	dockingReport = oo::str::trimWhitespaceAndNewlines(dockingReport);
 	
 	// GUI stuff
 	{
@@ -1387,36 +1406,36 @@ for (unsigned i=0;i<amount;i++)
 		[gui setTitle:OOExpandKey(@"arrival-report-title")];
 		
 		for (i=1;i<=18;i++) {
-			[gui setColor:[gui colorFromSetting:kGuiDockingReportColor defaultValue:nil] forRow:21];
+			[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingReportColor) defaultValue:nil] forRow:21];
 		}
 		
 		// dockingReport might be a multi-line message
 		
-		while (([dockingReport length] > 0)&&(text_row < 18))
+		while ((!dockingReport.empty())&&(text_row < 18))
 		{
-			if ([dockingReport rangeOfString:@"\n"].location != NSNotFound)
+			if (dockingReport.find('\n') != std::string::npos)
 			{
-				while (([dockingReport rangeOfString:@"\n"].location != NSNotFound)&&(text_row < 18))
+				while ((dockingReport.find('\n') != std::string::npos)&&(text_row < 18))
 				{
-					NSUInteger line_break = [dockingReport rangeOfString:@"\n"].location;
-					NSString* line = [dockingReport substringToIndex:line_break];
-					[dockingReport deleteCharactersInRange: NSMakeRange( 0, line_break + 1)];
-					text_row = [gui addLongText:line startingAtRow:text_row align:GUI_ALIGN_LEFT];
+					const std::size_t line_break = dockingReport.find('\n');
+					const std::string line = dockingReport.substr(0, line_break);
+					dockingReport.erase(0, line_break + 1);
+					text_row = [gui cxx_addLongText:line startingAtRow:text_row align:GUI_ALIGN_LEFT];
 				}
-				[dockingReport setString:[dockingReport stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]];
+				dockingReport = oo::str::trimWhitespaceAndNewlines(dockingReport);
 			}
 			else
 			{
-				text_row = [gui addLongText:[NSString stringWithString:dockingReport] startingAtRow:text_row align:GUI_ALIGN_LEFT];
-				[dockingReport setString:@""];
+				text_row = [gui cxx_addLongText:dockingReport startingAtRow:text_row align:GUI_ALIGN_LEFT];
+				dockingReport.clear();
 			}
 		}
-		
-		[gui setText:[NSString stringWithFormat:DESC_PLURAL(@"contracts-cash-@-load-d-of-d-passengers-d-of-d-berths", max_passengers), OOCredits(credits), current_cargo, [self maxAvailableCargoSpace], [passengers count], max_passengers]  forRow: GUI_ROW_MARKET_CASH];
-		[gui setColor:[gui colorFromSetting:kGuiDockingSummaryColor defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];		
 
-		[gui setText:DESC(@"press-space-commander") forRow:21 align:GUI_ALIGN_CENTER];
-		[gui setColor:[gui colorFromSetting:kGuiDockingContinueColor defaultValue:nil] forRow:21];
+		[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC_PLURAL(@"contracts-cash-@-load-d-of-d-passengers-d-of-d-berths", max_passengers)), { oo::DescriptionOf(OOCredits(credits)), current_cargo, [self maxAvailableCargoSpace], [passengers count], max_passengers })  forRow: GUI_ROW_MARKET_CASH];
+		[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingSummaryColor) defaultValue:nil] forRow:GUI_ROW_MARKET_CASH];
+
+		[gui cxx_setText:oo::OptionalString(DESC(@"press-space-commander")) forRow:21 align:GUI_ALIGN_CENTER];
+		[gui setColor:[gui cxx_colorFromSetting:std::string(cxx_kGuiDockingContinueColor) defaultValue:nil] forRow:21];
 		[gui setShowTextCursor:NO];
 	}
 	/* ends */
@@ -1432,12 +1451,12 @@ for (unsigned i=0;i<amount;i++)
 	
 	if (guiChanged)
 	{
-		[gui setForegroundTextureKey:@"docked_overlay"];	// has to be docked!
-		
-		NSDictionary *bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"report"];
-		if (bgDescriptor == nil) bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"status_docked"];
-		if (bgDescriptor == nil) bgDescriptor = [UNIVERSE screenTextureDescriptorForKey:@"status"];
-		[gui setBackgroundTextureDescriptor:bgDescriptor];
+		[gui cxx_setForegroundTextureKey:std::string("docked_overlay")];	// has to be docked!
+
+		oo::PList bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"report"]);
+		if (bgDescriptor.isNull()) bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"status_docked"]);
+		if (bgDescriptor.isNull()) bgDescriptor = oo::PListFrom([UNIVERSE screenTextureDescriptorForKey:@"status"]);
+		[gui cxx_setBackgroundTextureDescriptor:bgDescriptor];
 		[self noteGUIDidChangeFrom:oldScreen to:gui_screen];
 	}
 }

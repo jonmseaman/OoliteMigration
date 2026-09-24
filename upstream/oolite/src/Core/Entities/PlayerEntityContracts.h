@@ -65,7 +65,7 @@ MA 02110-1301, USA.
 - (std::optional<std::string>) cxx_processEscapePods;		// removes pods from cargo bay and treats categories of characters carried (never nullopt)
 - (std::optional<std::string>) cxx_checkPassengerContracts;	// returns messages from any passengers whose status have changed (nullopt: none)
 
-- (NSDictionary *) reputation;
+- (oo::PList) reputation;	// a Dict of signed integers; null on nil
 
 - (int) passengerReputation;
 - (void) increasePassengerReputation:(unsigned)amount;
