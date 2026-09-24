@@ -2337,7 +2337,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	{		
 		if (oo::IsNSArray(determinant))
 		{
-			return [PLAYER scriptTestConditions:OOSanitizeLegacyScriptConditions(determinant, nil)];
+			return [PLAYER scriptTestConditions:oo::ObjectFromPList(OOSanitizeLegacyScriptConditions(oo::PListFrom(determinant), std::nullopt))];
 		}
 		else
 		{

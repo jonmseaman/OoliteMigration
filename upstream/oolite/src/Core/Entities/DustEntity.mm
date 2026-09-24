@@ -449,7 +449,7 @@ enum
 - (id) descriptionForObjDump	// shared selector (proposed ADR-0043)
 {
 	// Don't include range and visibility flag as they're irrelevant.
-	return [self descriptionForObjDumpBasic];
+	return oo::NSStringOrNil([self descriptionForObjDumpBasic]);
 }
 #endif
 
