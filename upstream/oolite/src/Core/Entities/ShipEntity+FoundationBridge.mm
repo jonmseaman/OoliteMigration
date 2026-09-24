@@ -255,6 +255,52 @@ NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
 	return oo::ObjectFromPList([self cxx_dockingInstructions]);	// nil for none
 }
 
+
+// oo-3rb.239: messages, comms and AI dispatch
+
+- (void) sendExpandedMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship
+{
+	if (message_text == nil)  return;	// nothing to send (the old method expanded nil to nothing)
+	[self cxx_sendExpandedMessage:oo::StdString(message_text) toShip:other_ship];
+}
+
+
+- (void) sendMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride
+{
+	if (message_text == nil)  return;	// as the old method returned at once for nil
+	[self cxx_sendMessage:oo::StdString(message_text) toShip:other_ship withUnpilotedOverride:unpilotedOverride];
+}
+
+
+- (void) commsMessage:(NSString *)valueString withUnpilotedOverride:(BOOL)unpilotedOverride
+{
+	[self cxx_commsMessage:oo::StdString(valueString) withUnpilotedOverride:unpilotedOverride];
+}
+
+
+- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(NSArray *)arguments
+{
+	[self cxx_doScriptEvent:message withArguments:oo::ObjCRefsFrom<id>(arguments)];
+}
+
+
+- (void) reactToAIMessage:(NSString *)message context:(NSString *)debugContext
+{
+	[self cxx_reactToAIMessage:oo::StdString(message) context:oo::OptionalString(debugContext)];
+}
+
+
+- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage
+{
+	[self cxx_doScriptEvent:scriptEvent andReactToAIMessage:oo::StdString(aiMessage)];
+}
+
+
+- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage
+{
+	[self cxx_doScriptEvent:scriptEvent withArgument:argument andReactToAIMessage:oo::StdString(aiMessage)];
+}
+
 @end
 
 

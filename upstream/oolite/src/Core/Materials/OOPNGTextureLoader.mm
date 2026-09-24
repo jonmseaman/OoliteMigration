@@ -31,6 +31,7 @@ SOFTWARE.
 #import "OOCPUInfo.h"
 #import "NSDataOOExtensions.h"
 #import "OOStringBridge.h"
+#include "oofnd/String.hpp"
 
 //void png_error(png_structp, png_const_charp) NO_RETURN_FUNC;
 
@@ -53,20 +54,19 @@ static void PNGRead(png_structp png, png_bytep bytes, png_size_t size);
 - (void)loadTexture
 {
 	// Get data from file
-	fileData = [[NSData oo_dataWithOXZFile:oo::NSStringFrom(_path)] retain];
-	if (fileData == nil)  return;
-	length = [fileData length];
+	fileData = OODataFromOXZFile(_path);
+	if (!fileData.has_value())  return;
+	length = fileData->length();
 	
 	[self doLoadTexture];
 	
-	[fileData release];
-	fileData = nil;
+	fileData.reset();
 }
 
 
 - (void)dealloc
 {
-	[fileData release];
+	fileData.reset();
 	if (png != NULL)
 	{
 		png_destroy_read_struct(&png, &pngInfo, &pngEndInfo);
@@ -193,14 +193,16 @@ FAIL:
 	// Check that we're within the file's bounds
 	if (EXPECT_NOT(length - offset < count))
 	{
-		NSString *message = [NSString stringWithFormat:@"attempt to read beyond end of file (%@), file may be truncated.", oo::NSStringFrom(_path)];
-		png_error(png, [message UTF8String]);	// Will not return
+		// (static: png_error() longjmps out of this frame, so nothing here may need destroying)
+		static thread_local std::string message;
+		message = oo::str::format("attempt to read beyond end of file (%s), file may be truncated.", _path.c_str());
+		png_error(png, message.c_str());	// Will not return
 	}
 	
 	assert(bytes != NULL);
 	
 	// Copy bytes
-	memcpy(bytes, (const char *)[fileData bytes] + offset, count);
+	memcpy(bytes, (const char *)fileData->bytes() + offset, count);
 	offset += count;
 }
 
