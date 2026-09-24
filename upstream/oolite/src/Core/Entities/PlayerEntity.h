@@ -787,8 +787,8 @@ typedef enum
 	// For PlayerEntity (StickMapper)
 	int						selFunctionIdx;
 	NSArray					*stickFunctions; 
-	NSArray					*keyFunctions;
-	NSArray					*kbdLayouts;
+	std::vector<oo::PList>	keyFunctions;	// PlayerEntity (KeyMapper)'s function list; empty until built
+	std::vector<oo::PList>	kbdLayouts;		// PlayerEntity (KeyMapper)'s keyboard layouts; empty until built
 	NSString				*keyShiftText;
 	NSString				*keyMod1Text;
 	NSString				*keyMod2Text;
@@ -1349,3 +1349,17 @@ OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;
 
 OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string) PURE_FUNC;
 NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour) CONST_FUNC;
+
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
+// (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
+// The Foundation forms above forward to them from OOConstToString+FoundationBridge.mm.
+std::string cxx_OOStringFromGUIScreenID(OOGUIScreenID screen);
+OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string);
+
+OOGalacticHyperspaceBehaviour cxx_OOGalacticHyperspaceBehaviourFromString(const std::string &string);
+std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour);
+
+// Rating and legal-status names from descriptions.plist (chunk oo-3rb.162); nullopt: missing (was nil).
+std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills);
+std::string cxx_KillCountToRatingAndKillString(unsigned kills);
+std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
