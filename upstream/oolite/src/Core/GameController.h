@@ -74,7 +74,7 @@ MA 02110-1301, USA.
 	
 	NSTimeInterval			_animationTimerInterval;
 	
-	NSDate					*_splashStart;
+	NSTimeInterval			_splashStart;	// oo::date::monotonicSeconds() at start-up
 	
 	SEL						pauseSelector;
 	NSObject				*pauseTarget;
