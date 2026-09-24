@@ -34,6 +34,7 @@ SOFTWARE.
 #import "OOALStreamedSound.h"
 #import "OOALSoundMixer.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #define KEY_VOLUME_CONTROL @"volume_control"
 
@@ -95,7 +96,13 @@ static BOOL sIsSoundOK = NO;
 }
 
 
-- (id) initWithContentsOfFile:(id)path	// shared selector (proposed ADR-0043)
+- (id) initWithContentsOfFile:(id)path	// shared selector (Foundation declares it too)
+{
+	return [self cxx_initWithContentsOfFile:oo::OptionalString(path)];
+}
+
+
+- (id) cxx_initWithContentsOfFile:(const std::optional<std::string> &)path
 {
 	if (!sIsSoundOK)  return nil;
 	
@@ -104,7 +111,7 @@ static BOOL sIsSoundOK = NO;
 
 	OOALSoundDecoder		*decoder;
 
-	decoder = [[OOALSoundDecoder alloc] initWithPath:path];
+	decoder = [[OOALSoundDecoder alloc] cxx_initWithPath:path];
 	if (nil == decoder) return nil;
 	
 	if ([decoder sizeAsBuffer] <= kMaxBufferedSoundSize)
@@ -120,12 +127,12 @@ static BOOL sIsSoundOK = NO;
 	if (nil != self)
 	{
 		#ifndef NDEBUG
-			OOLog(oo::NSStringFrom(kOOLogSoundLoadingSuccess), @"Loaded sound %@", path);
+			OOLog(oo::NSStringFrom(kOOLogSoundLoadingSuccess), @"Loaded sound %@", oo::NSStringOrNil(path));
 		#endif
 	}
 	else
 	{
-		OOLog(oo::NSStringFrom(kOOLogSoundLoadingError), @"Failed to load sound \"%@\"", path);
+		OOLog(oo::NSStringFrom(kOOLogSoundLoadingError), @"Failed to load sound \"%@\"", oo::NSStringOrNil(path));
 	}
 	
 	return self;
