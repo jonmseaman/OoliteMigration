@@ -50,6 +50,36 @@ cxx_ counterpart and converts the result exactly as the old method produced it (
 	[self cxx_setMissionVariable:oo::PListFrom(value) forKey:oo::StdString(key)];
 }
 
+
+- (NSArray *) missionsList
+{
+	return oo::ObjectFromPList([self cxx_missionsList]);
+}
+
+
+- (void) setMissionInstructions:(NSString *)text forMission:(NSString *)key
+{
+	[self cxx_setMissionInstructions:oo::StdString(text) forMission:oo::OptionalString(key)];
+}
+
+
+- (void) setMissionInstructionsList:(NSArray *)list forMission:(NSString *)key
+{
+	[self cxx_setMissionInstructionsList:oo::PListFrom(list) forMission:oo::OptionalString(key)];
+}
+
+
+- (NSString *)missionTitle
+{
+	return oo::NSStringOrNil([self cxx_missionTitle]);
+}
+
+
+- (void) setMissionTitle:(NSString *)value
+{
+	[self cxx_setMissionTitle:oo::OptionalString(value)];
+}
+
 @end
 
 

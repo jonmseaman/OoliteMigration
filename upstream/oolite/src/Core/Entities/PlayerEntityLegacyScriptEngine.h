@@ -141,14 +141,15 @@ typedef enum
 
 /*-----------------------------------------------------*/
 
-- (NSArray *) missionsList;
+// The F5 manifest (bead oo-3rb.193): strings first, then arrays of a header and its entries.
+- (oo::PList) cxx_missionsList;
 
-- (void) setMissionDescription:(NSString *)textKey;
+- (void) setMissionDescription:(id)textKey;	// called by name (ADR-0043 item 21)
 - (void) clearMissionDescription;
-- (void) setMissionInstructions:(NSString *)text forMission:(NSString *)key;
-- (void) setMissionInstructionsList:(NSArray *)list forMission:(NSString *)key;
-- (void) setMissionDescription:(NSString *)textKey forMission:(NSString *)key;
-- (void) clearMissionDescriptionForMission:(NSString *)key;
+- (void) cxx_setMissionInstructions:(const std::string &)text forMission:(const std::optional<std::string> &)key;	// nullopt key: logged, ignored
+- (void) cxx_setMissionInstructionsList:(const oo::PList &)list forMission:(const std::optional<std::string> &)key;
+- (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key;
+- (void) clearMissionDescriptionForMission:(id)key;	// called by name (ADR-0043 item 21)
 
 - (void) commsMessage:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 - (void) commsMessageByUnpiloted:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
@@ -211,8 +212,8 @@ typedef enum
 
 - (void) checkForShips: (NSString *)roleString;
 - (void) resetScriptTimer;
-- (void) addMissionText: (NSString *)textKey;
-- (void) addLiteralMissionText: (NSString *)text;
+- (void) addMissionText:(id)textKey;	// called by name (ADR-0043 item 21)
+- (void) addLiteralMissionText:(id)text;	// called by name (ADR-0043 item 21)
 
 - (void) setMissionChoiceByTextEntry:(BOOL)enable;
 - (void) setMissionChoices:(NSString *)choicesKey;	// choicesKey is a key for a dictionary of
@@ -228,8 +229,8 @@ typedef enum
 - (void) showShipModel:(NSString *)shipKey;
 - (void) setMissionMusic:(NSString *)value;
 
-- (NSString *)missionTitle;
-- (void) setMissionTitle:(NSString *)value;
+- (std::optional<std::string>) cxx_missionTitle;
+- (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
 
 - (void) setFuelLeak: (NSString *)value;
 - (id) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
