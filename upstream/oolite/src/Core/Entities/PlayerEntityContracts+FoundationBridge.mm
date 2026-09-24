@@ -47,4 +47,18 @@ type, nil for nil).
 	return [self cxx_removePassenger:oo::StdString(Name)];
 }
 
+
+// oo-3rb.182 (chunk 4): parcels (a nil name arrives as "": OOJSPlayerShip validates it first)
+
+- (BOOL) addParcel:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk
+{
+	return [self cxx_addParcel:oo::StdString(Name) start:start destination:destination eta:eta fee:fee premium:premium risk:risk];
+}
+
+
+- (BOOL) removeParcel:(NSString*)Name
+{
+	return [self cxx_removeParcel:oo::StdString(Name)];
+}
+
 @end
