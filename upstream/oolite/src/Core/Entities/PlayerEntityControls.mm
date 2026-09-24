@@ -3159,7 +3159,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	{
 		[self handleGUIUpDownArrowKeys];
 		DESTROY(marketSelectedCommodity);
-		marketSelectedCommodity = [[gui selectedRowKey] retain];
+		marketSelectedCommodity = [oo::NSStringOrNil([gui cxx_selectedRowKey]) retain];
 
 		BOOL			page_up = [self checkKeyPress:n_key_gui_page_up]; 
 		BOOL			page_down = [self checkKeyPress:n_key_gui_page_down]; 
@@ -3168,14 +3168,16 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			if ((!pageUpDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				OOCommodityMarket	*localMarket = [self localMarket];
-				NSArray 			*goods = [self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
-				if ([goods count] > 0)
+				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
+				if (goods.size() > 0)
 				{
-					NSInteger goodsIndex = [goods indexOfObject:marketSelectedCommodity];
+					const std::optional<std::string> selected = oo::OptionalString(marketSelectedCommodity);
+					const auto found = selected ? std::find(goods.begin(), goods.end(), *selected) : goods.end();
+					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					NSInteger offset1 = 0;
 					NSInteger offset2 = 0;
-					if ([[gui keyForRow:GUI_ROW_MARKET_START] isEqualToString:@"<<<"] == true) offset1 += 1;
-					if ([[gui keyForRow:GUI_ROW_MARKET_LAST] isEqualToString:@">>>"] == true) offset2 += 1;
+					if ([gui cxx_keyForRow:GUI_ROW_MARKET_START] == "<<<") offset1 += 1;
+					if ([gui cxx_keyForRow:GUI_ROW_MARKET_LAST] == ">>>") offset2 += 1;
 					if (page_up)
 					{
 						[self playMenuPagePrevious];
@@ -3185,22 +3187,22 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 							offset1 = 0;
 							offset2 = 0;
 						}
-						if (offset1 == 1 && offset2 == 0 && goodsIndex < (NSInteger)[goods count] - 1 && goodsIndex - 15 > 0) offset2 = 1;
+						if (offset1 == 1 && offset2 == 0 && goodsIndex < (NSInteger)goods.size() - 1 && goodsIndex - 15 > 0) offset2 = 1;
 						goodsIndex -= (16 - (offset1 + offset2));
 						if (goodsIndex < 0) goodsIndex = 0;
-						if ([goods count] <= 17) goodsIndex = 0;
+						if (goods.size() <= 17) goodsIndex = 0;
 					}
 					if (page_down) 
 					{
 						[self playMenuPageNext];
 						// some edge cases
 						if (offset1 == 0 && offset2 == 1 && goodsIndex > 1) offset1 = 1;
-						if (offset2 == 1 && goodsIndex + 15 == (NSInteger)[goods count] - 1) offset2 = 0;
+						if (offset2 == 1 && goodsIndex + 15 == (NSInteger)goods.size() - 1) offset2 = 0;
 						goodsIndex += (16 - (offset1 + offset2));
-						if (goodsIndex > ((NSInteger)[goods count] - 1) || [goods count] <= 17) goodsIndex = (NSInteger)[goods count] - 1;
+						if (goodsIndex > ((NSInteger)goods.size() - 1) || goods.size() <= 17) goodsIndex = (NSInteger)goods.size() - 1;
 					}
 					DESTROY(marketSelectedCommodity);
-					marketSelectedCommodity = [oo::PListView(goods).at<NSString *>(goodsIndex) retain];
+					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? [oo::NSStringFrom(goods[goodsIndex]) retain] : nil;
 					[self setGuiToMarketScreen];
 				}
 			} 
@@ -3221,10 +3223,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			if ((!upDownKeyPressed) || (script_time > timeLastKeyPress + KEY_REPEAT_INTERVAL))
 			{
 				OOCommodityMarket	*localMarket = [self localMarket];
-				NSArray 			*goods = [self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket];
-				if ([goods count] > 0)
+				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
+				if (goods.size() > 0)
 				{
-					NSInteger goodsIndex = [goods indexOfObject:marketSelectedCommodity];
+					const std::optional<std::string> selected = oo::OptionalString(marketSelectedCommodity);
+					const auto found = selected ? std::find(goods.begin(), goods.end(), *selected) : goods.end();
+					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					if (arrow_down)
 					{
 						++goodsIndex;
@@ -3235,14 +3239,14 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					}
 					if (goodsIndex < 0)
 					{
-						goodsIndex = [goods count]-1;
+						goodsIndex = (NSInteger)goods.size()-1;
 					}
-					else if (goodsIndex >= (NSInteger)[goods count])
+					else if (goodsIndex >= (NSInteger)goods.size())
 					{
 						goodsIndex = 0;
 					}
 					DESTROY(marketSelectedCommodity);
-					marketSelectedCommodity = [oo::PListView(goods).at<NSString *>(goodsIndex) retain];
+					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? [oo::NSStringFrom(goods[goodsIndex]) retain] : nil;
 					[self setGuiToMarketInfoScreen];
 				}
 			}
@@ -3277,12 +3281,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				}
 				else
 				{
-					if ([[gui selectedRowKey] isEqualToString:@">>>"])
+					if (([gui cxx_selectedRowKey] == ">>>"))
 					{
 						[self playMenuNavigationDown];
 						[self setGuiToMarketScreen];
 					}
-					else if ([[gui selectedRowKey] isEqualToString:@"<<<"])
+					else if (([gui cxx_selectedRowKey] == "<<<"))
 					{
 						[self playMenuNavigationUp];
 						[self setGuiToMarketScreen];
@@ -3313,12 +3317,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				}
 				else
 				{
-					if ([[gui selectedRowKey] isEqualToString:@">>>"])
+					if (([gui cxx_selectedRowKey] == ">>>"))
 					{
 						[self playMenuNavigationDown];
 						[self setGuiToMarketScreen];
 					}
-					else if ([[gui selectedRowKey] isEqualToString:@"<<<"])
+					else if (([gui cxx_selectedRowKey] == "<<<"))
 					{
 						[self playMenuNavigationUp];
 						[self setGuiToMarketScreen];
@@ -3341,19 +3345,19 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			}
 			if (!wait_for_key_up)
 			{
-				OOCommodityType item = marketSelectedCommodity;
-				OOCargoQuantity yours =	[shipCommodityData quantityForGood:item];
-				if ([item isEqualToString:@">>>"])
+				const std::optional<std::string> item = oo::OptionalString(marketSelectedCommodity);	// Amendment 1 item 10
+				OOCargoQuantity yours =	[shipCommodityData cxx_quantityForGood:item.value_or("")];
+				if (item == ">>>")
 				{
-					[self tryBuyingCommodity:item all:YES];
+					[self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES];
 					[self setGuiToMarketScreen];
 				}
-				else if ([item isEqualToString:@"<<<"])
+				else if (item == "<<<")
 				{
-					[self trySellingCommodity:item all:YES];
+					[self trySellingCommodity:oo::NSStringOrNil(item) all:YES];
 					[self setGuiToMarketScreen];
 				}
-				else if (isdocked && [gameView isShiftDown] && [self tryBuyingCommodity:item all:YES])	// buy as much as possible (with Shift)
+				else if (isdocked && [gameView isShiftDown] && [self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES])	// buy as much as possible (with Shift)
 				{
 					[self playBuyCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3365,7 +3369,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						[self setGuiToMarketInfoScreen];
 					}
 				}
-				else if (isdocked && (yours > 0) && [self trySellingCommodity:item all:YES])	// sell all you can
+				else if (isdocked && (yours > 0) && [self trySellingCommodity:oo::NSStringOrNil(item) all:YES])	// sell all you can
 				{
 					[self playSellCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3377,7 +3381,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						[self setGuiToMarketInfoScreen];
 					}
 				}
-				else if (isdocked && [self tryBuyingCommodity:item all:YES])			// buy as much as possible
+				else if (isdocked && [self tryBuyingCommodity:oo::NSStringOrNil(item) all:YES])			// buy as much as possible
 				{
 					[self playBuyCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3440,8 +3444,20 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			if (!hdrMaxBrightnessControlPressed)
 			{
 				int			direction = ([self checkKeyPress:n_key_gui_arrow_right]) ? 1 : -1;
-				NSArray		*brightnesses = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"hdr_maxBrightness_array");
-				int			brightnessIdx = [brightnesses indexOfObject:[NSString stringWithFormat:@"%d", (int)[gameView hdrMaxBrightness]]];
+				const oo::PList	brightnessesValue = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"hdr_maxBrightness_array"]);
+				const oo::PList	brightnesses = brightnessesValue.isArray() ? brightnessesValue : oo::PList();
+				// -indexOfObject: with the %d string: only string elements ever matched; not found was NSNotFound narrowed to int
+				const std::string	currentBrightness = std::to_string((int)[gameView hdrMaxBrightness]);
+				int			brightnessIdx = static_cast<int>(NSNotFound);
+				for (std::size_t i = 0; i < brightnesses.count(); i++)
+				{
+					const oo::PList *element = brightnesses.at(i);
+					if (element->isString() && *element->getIf<std::string>() == currentBrightness)
+					{
+						brightnessIdx = static_cast<int>(i);
+						break;
+					}
+				}
 				
 				if (brightnessIdx == NSNotFound)
 				{
@@ -3450,13 +3466,13 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				}
 				
 				brightnessIdx += direction;
-				int count = [brightnesses count];
+				int count = static_cast<int>(brightnesses.count());
 				if (brightnessIdx < 0)
 					brightnessIdx = count - 1;
 				if (brightnessIdx >= count)
 					brightnessIdx = 0;
 				
-				int brightnessValue = oo::PListView(brightnesses).at<int>(brightnessIdx);
+				int brightnessValue = brightnesses.at<int>(static_cast<std::size_t>(brightnessIdx));
 				
 				// warp if the value we got is out of expected limits; can be the case if user has
 				// manually modified the hdr_maxBrightness_array in descriptions.plist
@@ -3464,9 +3480,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				if (brightnessValue > MAX_HDR_MAXBRIGHTNESS)  brightnessValue = direction == 1 ? MIN_HDR_MAXBRIGHTNESS : MAX_HDR_MAXBRIGHTNESS;
     				
 				[gameView setHDRMaxBrightness:(float)brightnessValue];
-				NSString *maxBrightnessString = OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue);
+				const std::string maxBrightnessString = oo::StdString(OOExpandKey(@"gameoptions-hdr-maxbrightness", brightnessValue));
 																				
-				[gui setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:maxBrightnessString forRow:GUI_ROW(GAME,HDRMAXBRIGHTNESS)  align:GUI_ALIGN_CENTER];
 				
 				hdrMaxBrightnessControlPressed = YES;
 			}
@@ -3485,7 +3501,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		GameController	*controller = [UNIVERSE gameController];
 		int				direction = ([self checkKeyPress:n_key_gui_arrow_right]) ? 1 : -1;
 		NSInteger		displayModeIndex = [controller indexOfCurrentDisplayMode];
-		NSArray			*modes = [controller displayModes];
+		const oo::PList	modes = oo::PListFrom([controller displayModes]);
 		
 		if (displayModeIndex == (NSInteger)NSNotFound)
 		{
@@ -3494,22 +3510,23 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		}
 		
 		displayModeIndex = displayModeIndex + direction;
-		int count = [modes count];
+		int count = static_cast<int>(modes.count());
 		if (displayModeIndex < 0)
 			displayModeIndex = count - 1;
 		if (displayModeIndex >= count)
 			displayModeIndex = 0;
 		
-		NSDictionary	*mode = [modes objectAtIndex:displayModeIndex];
-		int modeWidth = oo::PListView(mode).get<int>(kOODisplayWidth);
-		int modeHeight = oo::PListView(mode).get<int>(kOODisplayHeight);
-		int modeRefresh = oo::PListView(mode).get<int>(kOODisplayRefreshRate);
+		const oo::PList	*modeEntry = modes.at(static_cast<std::size_t>(displayModeIndex));
+		const oo::PList	mode = (modeEntry != nullptr) ? *modeEntry : oo::PList();
+		int modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
+		int modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
+		int modeRefresh = mode.get<int>(oo::StdString(kOODisplayRefreshRate));
 		[controller setDisplayWidth:modeWidth Height:modeHeight Refresh:modeRefresh];
 
-		NSString *displayModeString = [self screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh];
+		const std::string displayModeString = oo::StdString([self screenModeStringForWidth:modeWidth height:modeHeight refreshRate:modeRefresh]);
 		
 		[self playChangedOption];
-		[gui setText:displayModeString	forRow:GUI_ROW(GAME,DISPLAY)  align:GUI_ALIGN_CENTER];
+		[gui cxx_setText:displayModeString	forRow:GUI_ROW(GAME,DISPLAY)  align:GUI_ALIGN_CENTER];
 		switching_resolution = YES;
 		
 #if OOLITE_SDL
@@ -3545,25 +3562,25 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			}
 			if (speech_settings_pressed)
 			{
-				NSString *message = nil;
+				std::optional<std::string> message;	// nullopt = no change (was nil)
 				switch (isSpeechOn)
 				{
 				case OOSPEECHSETTINGS_OFF:
-					message = DESC(@"gameoptions-spoken-messages-no");
+					message = oo::StdString(DESC(@"gameoptions-spoken-messages-no"));
 					break;
 				case OOSPEECHSETTINGS_COMMS:
-					message = DESC(@"gameoptions-spoken-messages-comms");
+					message = oo::StdString(DESC(@"gameoptions-spoken-messages-comms"));
 					break;
 				case OOSPEECHSETTINGS_ALL:
-					message = DESC(@"gameoptions-spoken-messages-yes");
+					message = oo::StdString(DESC(@"gameoptions-spoken-messages-yes"));
 					break;
 				}
-				[gui setText:message forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH) align:GUI_ALIGN_CENTER];
 
 				if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 				{
 					[UNIVERSE stopSpeaking];
-					[UNIVERSE startSpeakingString:message];
+					[UNIVERSE startSpeakingString:oo::NSStringOrNil(message)];
 				}
 			}
 		}
@@ -3585,9 +3602,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				else
 					voice_no = [UNIVERSE prevVoice: voice_no];
 				[UNIVERSE setVoice: voice_no withGenderM:voice_gender_m];
-				NSString *voiceName = [UNIVERSE voiceName:voice_no];
-				NSString *message = OOExpandKey(@"gameoptions-voice-name", voiceName);
-				[gui setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
+				const std::string voiceName = oo::StdString([UNIVERSE voiceName:voice_no]);
+				const std::string message = ExpandKeyWithArguments("gameoptions-voice-name", { { "voiceName", oo::PList(voiceName) } });
+				[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_LANGUAGE) align:GUI_ALIGN_CENTER];
 				if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 				{
 					[UNIVERSE stopSpeaking];
@@ -3613,8 +3630,8 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				{
 					voice_gender_m = m;
 					[UNIVERSE setVoice:voice_no withGenderM:voice_gender_m];
-					NSString *message = [NSString stringWithFormat:@"%@", DESC(voice_gender_m ? @"gameoptions-voice-M" : @"gameoptions-voice-F")];
-					[gui setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
+					const std::string message = oo::StdString(DESC(voice_gender_m ? @"gameoptions-voice-M" : @"gameoptions-voice-F"));
+					[gui cxx_setText:message forRow:GUI_ROW(GAME,SPEECH_GENDER) align:GUI_ALIGN_CENTER];
 					if (isSpeechOn == OOSPEECHSETTINGS_ALL)
 					{
 						[UNIVERSE stopSpeaking];
@@ -3646,9 +3663,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			if ((int)[musicController mode] != initialMode)
 			{
 				[self playChangedOption];
-				NSString *musicMode = [UNIVERSE descriptionForArrayKey:@"music-mode" index:[[OOMusicController sharedController] mode]];
-				NSString *message = OOExpandKey(@"gameoptions-music-mode", musicMode);
-				[gui setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
+				const std::string musicMode = oo::StdString([UNIVERSE descriptionForArrayKey:@"music-mode" index:[[OOMusicController sharedController] mode]]);
+				const std::string message = ExpandKeyWithArguments("gameoptions-music-mode", { { "musicMode", oo::PList(musicMode) } });
+				[gui cxx_setText:message forRow:GUI_ROW(GAME,MUSIC) align:GUI_ALIGN_CENTER];
 			}
 		}
 		musicModeKeyPressed = YES;
@@ -3664,12 +3681,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		{
 			// if just enabled, we want to autosave immediately
 			[UNIVERSE setAutoSaveNow:YES];
-			[gui setText:DESC(@"gameoptions-autosave-yes")	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-autosave-yes"))	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
 		}
 		else
 		{
 			[UNIVERSE setAutoSaveNow:NO];
-			[gui setText:DESC(@"gameoptions-autosave-no")	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-autosave-no"))	forRow:GUI_ROW(GAME,AUTOSAVE)  align:GUI_ALIGN_CENTER];
 		}
 	}
 
@@ -3693,17 +3710,17 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 #endif
 			if (vol > 0)
 			{
-				NSString* soundVolumeWordDesc = DESC(@"gameoptions-sound-volume");
-				NSString* v1_string = @"|||||||||||||||||||||||||";
-				NSString* v0_string = @".........................";
-				v1_string = [v1_string substringToIndex:vol];
-				v0_string = [v0_string substringToIndex:20 - vol];
-				[gui setText:[NSString stringWithFormat:@"%@%@%@ ", soundVolumeWordDesc, v1_string, v0_string]
+				const std::string soundVolumeWordDesc = oo::StdString(DESC(@"gameoptions-sound-volume"));
+				std::string v1_string = "|||||||||||||||||||||||||";
+				std::string v0_string = ".........................";
+				v1_string = v1_string.substr(0, static_cast<std::size_t>(vol));
+				v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - vol));
+				[gui cxx_setText:oo::str::format("%s%s%s ", soundVolumeWordDesc.c_str(), v1_string.c_str(), v0_string.c_str())
 					  forRow:GUI_ROW(GAME,VOLUME)
 					   align:GUI_ALIGN_CENTER];
 			}
 			else
-				[gui setText:DESC(@"gameoptions-sound-volume-mute")	forRow:GUI_ROW(GAME,VOLUME)  align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-sound-volume-mute"))	forRow:GUI_ROW(GAME,VOLUME)  align:GUI_ALIGN_CENTER];
 			timeLastKeyPress = script_time;
 		}
 		volumeControlPressed = YES;
@@ -3727,12 +3744,13 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			[gameView setFov:fov fromFraction:NO];
 			fieldOfView = [gameView fov:YES];
 			int fovTicks = (int)((fov - MIN_FOV_DEG) / fovStep);
-			NSString* fovWordDesc = DESC(@"gameoptions-fov-value");
-			NSString* v1_string = @"|||||||||||||||||||||||||";
-			NSString* v0_string = @".........................";
-			v1_string = [v1_string substringToIndex:fovTicks];
-			v0_string = [v0_string substringToIndex:20 - fovTicks];
-			[gui setText:[NSString stringWithFormat:@"%@%@%@ (%d%c) ", fovWordDesc, v1_string, v0_string, (int)fov, 176 /*176 is the degrees symbol ASCII code*/]	forRow:GUI_ROW(GAME,FOV)  align:GUI_ALIGN_CENTER];
+			const std::string fovWordDesc = oo::StdString(DESC(@"gameoptions-fov-value"));
+			std::string v1_string = "|||||||||||||||||||||||||";
+			std::string v0_string = ".........................";
+			v1_string = v1_string.substr(0, static_cast<std::size_t>(fovTicks));
+			v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - fovTicks));
+			// %c 176 gave U+00B0 (probed on GNUstep base with this toolchain); written as its UTF-8 bytes
+			[gui cxx_setText:oo::str::format("%s%s%s (%d%s) ", fovWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)fov, "\xC2\xB0" /*the degrees symbol*/)	forRow:GUI_ROW(GAME,FOV)  align:GUI_ALIGN_CENTER];
 			[[NSUserDefaults standardUserDefaults] setFloat:[gameView fov:NO] forKey:@"fov-value"];
 			timeLastKeyPress = script_time;
 		}
@@ -3757,9 +3775,10 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				[UNIVERSE setCurrentPostFX:[UNIVERSE prevColorblindMode:colorblindMode]];
 			}
 			colorblindMode = [UNIVERSE colorblindMode]; // get the updated value
-			NSString *colorblindModeDesc = oo::PListView(oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"colorblind_mode")).at<NSString *>([UNIVERSE useShaders] ? colorblindMode : 0);
-			NSString *colorblindModeMsg = OOExpandKey(@"gameoptions-colorblind-mode", colorblindModeDesc);
-			[gui setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
+			const oo::PList colorblindModes = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"colorblind_mode"]);
+			const std::string colorblindModeDesc = colorblindModes.isArray() ? colorblindModes.at<std::string>(static_cast<std::size_t>([UNIVERSE useShaders] ? colorblindMode : 0)) : std::string();
+			const std::string colorblindModeMsg = ExpandKeyWithArguments("gameoptions-colorblind-mode", { { "colorblindModeDesc", oo::PList(colorblindModeDesc) } });
+			[gui cxx_setText:colorblindModeMsg forRow:GUI_ROW(GAME,COLORBLINDMODE) align:GUI_ALIGN_CENTER];
 		}
 		colorblindModeControlPressed = YES;
 	}
@@ -3775,9 +3794,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				[self playChangedOption];
 			[UNIVERSE setWireframeGraphics:[self checkKeyPress:n_key_gui_arrow_right]];
 			if ([UNIVERSE wireframeGraphics])
-				[gui setText:DESC(@"gameoptions-wireframe-graphics-yes")  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-wireframe-graphics-yes"))  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
 			else
-				[gui setText:DESC(@"gameoptions-wireframe-graphics-no")  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
+				[gui cxx_setText:oo::StdString(DESC(@"gameoptions-wireframe-graphics-no"))  forRow:GUI_ROW(GAME,WIREFRAMEGRAPHICS)  align:GUI_ALIGN_CENTER];
 		}
 	}
 #if OOLITE_WINDOWS
@@ -3796,12 +3815,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				if (paperWhite < MIN_HDR_PAPERWHITE) paperWhite = MIN_HDR_PAPERWHITE;
 				[gameView setHDRPaperWhiteBrightness:paperWhite];
 				int paperWhiteNorm = (int)((paperWhite - MIN_HDR_PAPERWHITE) * 20 / (MAX_HDR_PAPERWHITE - MIN_HDR_PAPERWHITE));
-				NSString* paperWhiteWordDesc = DESC(@"gameoptions-hdr-paperwhite");
-				NSString* v1_string = @"|||||||||||||||||||||||||";
-				NSString* v0_string = @".........................";
-				v1_string = [v1_string substringToIndex:paperWhiteNorm];
-				v0_string = [v0_string substringToIndex:20 - paperWhiteNorm];
-				[gui setText:[NSString stringWithFormat:@"%@%@%@ (%d) ", paperWhiteWordDesc, v1_string, v0_string, (int)paperWhite]	forRow:GUI_ROW(GAME,HDRPAPERWHITE)  align:GUI_ALIGN_CENTER];
+				const std::string paperWhiteWordDesc = oo::StdString(DESC(@"gameoptions-hdr-paperwhite"));
+				std::string v1_string = "|||||||||||||||||||||||||";
+				std::string v0_string = ".........................";
+				v1_string = v1_string.substr(0, static_cast<std::size_t>(paperWhiteNorm));
+				v0_string = v0_string.substr(0, static_cast<std::size_t>(20 - paperWhiteNorm));
+				[gui cxx_setText:oo::str::format("%s%s%s (%d) ", paperWhiteWordDesc.c_str(), v1_string.c_str(), v0_string.c_str(), (int)paperWhite)	forRow:GUI_ROW(GAME,HDRPAPERWHITE)  align:GUI_ALIGN_CENTER];
 			}
 			hdrPaperWhiteControlPressed = YES;
 		}
@@ -3823,9 +3842,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			}
 		}
 		if ([UNIVERSE doProcedurallyTexturedPlanets])
-			[gui setText:DESC(@"gameoptions-procedurally-textured-planets-yes")  forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-procedurally-textured-planets-yes"))  forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)  align:GUI_ALIGN_CENTER];
 		else
-			[gui setText:DESC(@"gameoptions-procedurally-textured-planets-no")  forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-procedurally-textured-planets-no"))  forRow:GUI_ROW(GAME,PROCEDURALLYTEXTUREDPLANETS)  align:GUI_ALIGN_CENTER];
 	}
 #endif
 	
@@ -3861,9 +3880,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			[UNIVERSE setDetailLevel:detailLevel];
 			detailLevel = [UNIVERSE detailLevel];
 
-			NSString *shaderEffectsOptionsString = OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel);
-			[gui setText:OOExpandKey(shaderEffectsOptionsString) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
-			[gui setKey:GUI_KEY_OK forRow:GUI_ROW(GAME,SHADEREFFECTS)];
+			const std::string shaderEffectsOptionsString = oo::StdString(OOExpand(@"gameoptions-detaillevel-[detailLevel]", detailLevel));
+			[gui cxx_setText:ExpandKeyWithArguments(shaderEffectsOptionsString.c_str(), {}) forRow:GUI_ROW(GAME,SHADEREFFECTS) align:GUI_ALIGN_CENTER];
+			[gui cxx_setKey:oo::StdString(GUI_KEY_OK) forRow:GUI_ROW(GAME,SHADEREFFECTS)];
 
 			timeLastKeyPress = script_time;
 			
@@ -3891,9 +3910,9 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			[self playChangedOption];
 		[UNIVERSE setDockingClearanceProtocolActive:[self checkKeyPress:n_key_gui_arrow_right]];
 		if ([UNIVERSE dockingClearanceProtocolActive])
-			[gui setText:DESC(@"gameoptions-docking-clearance-yes")  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-docking-clearance-yes"))  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
 		else
-			[gui setText:DESC(@"gameoptions-docking-clearance-no")  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
+			[gui cxx_setText:oo::StdString(DESC(@"gameoptions-docking-clearance-no"))  forRow:GUI_ROW(GAME,DOCKINGCLEARANCE)  align:GUI_ALIGN_CENTER];
 	}
 	
 	if ((guiSelectedRow == GUI_ROW(GAME,BACK)) && selectKeyPress)
@@ -3913,20 +3932,20 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		NSString *key = [gui keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui keyForRow:GUI_ROW_KC_FUNCEND];
+			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCEND];
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui keyForRow:GUI_ROW_KC_FUNCSTART];
+			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCSTART];
 		}
 		int from_function = 0;
-		NSArray *keyComponents = [key componentsSeparatedByString:@":"];
-		if ([keyComponents count] > 1)
+		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
+		if (keyComponents.size() > 1)
 		{
-			from_function = oo::PListView(keyComponents).at<int>(1);
+			from_function = oo::str::intValue(keyComponents[1]);
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToKeyMapperScreen:from_function resetCurrentRow: YES];
@@ -3952,20 +3971,20 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		NSString *key = [gui keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui keyForRow:GUI_ROW_KC_FUNCEND];
+			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCEND];
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui keyForRow:GUI_ROW_KC_FUNCSTART];
+			key = [gui cxx_keyForRow:GUI_ROW_KC_FUNCSTART];
 		}
 		int from_function = 0;
-		NSArray *keyComponents = [key componentsSeparatedByString:@":"];
-		if ([keyComponents count] > 1)
+		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
+		if (keyComponents.size() > 1)
 		{
-			from_function = oo::PListView(keyComponents).at<int>(1);
+			from_function = oo::str::intValue(keyComponents[1]);
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToKeyboardLayoutScreen:from_function resetCurrentRow:YES];
@@ -3991,20 +4010,20 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	leftRightKeyPressed = [self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up] || [self checkKeyPress:n_key_gui_page_down];
 	if (leftRightKeyPressed)
 	{
-		NSString *key = [gui keyForRow: [gui selectedRow]];
+		std::optional<std::string> key = [gui cxx_keyForRow: [gui selectedRow]];
 		if ([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down])
 		{
-			key = [gui keyForRow:GUI_ROW_FUNCEND];
+			key = [gui cxx_keyForRow:GUI_ROW_FUNCEND];
 		}
 		if ([self checkKeyPress:n_key_gui_arrow_left] || [self checkKeyPress:n_key_gui_page_up])
 		{
-			key = [gui keyForRow:GUI_ROW_FUNCSTART];
+			key = [gui cxx_keyForRow:GUI_ROW_FUNCSTART];
 		}
 		int from_function = 0;
-		NSArray *keyComponents = [key componentsSeparatedByString:@":"];
-		if ([keyComponents count] > 1)
+		const std::vector<std::string> keyComponents = key ? oo::str::split(*key, ":") : std::vector<std::string>();	// a nil key has no components
+		if (keyComponents.size() > 1)
 		{
-			from_function = oo::PListView(keyComponents).at<int>(1);
+			from_function = oo::str::intValue(keyComponents[1]);
 			if (from_function < 0)  from_function = 0;
 			
 			[self setGuiToStickMapperScreen:from_function resetCurrentRow: YES];
@@ -4047,7 +4066,8 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				_customViewIndex = (_customViewIndex + 1) % [_customViews count];
 			}
 	
-			[self setCustomViewDataFromDictionary:oo::PListView(_customViews).at<NSDictionary *>(_customViewIndex) withScaling:YES];
+			const oo::PList customView = (_customViewIndex < [_customViews count]) ? oo::PListFrom([_customViews objectAtIndex:_customViewIndex]) : oo::PList();
+			[self setCustomViewDataFromDictionary:(customView.isDict() ? oo::ObjectFromPList(customView) : nil) withScaling:YES];	// nil unless a Dict
 	
 			[self switchToThisView:VIEW_CUSTOM andProcessWeaponFacing:NO]; // weapon facing must not change, we just want an external view
 		}
