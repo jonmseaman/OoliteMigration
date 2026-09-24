@@ -102,6 +102,9 @@ MA 02110-1301, USA.
 #if OO_LOCALIZATION_TOOLS
 #import "OOConvertSystemDescriptions.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/PListParsing.hpp"
+#include "oofnd/String.hpp"
 #endif
 
 enum
@@ -214,7 +217,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void * context);
 
 - (void) populateSpaceFromActiveWormholes;
 
-- (NSString *)chooseStringForKey:(NSString *)key inDictionary:(NSDictionary *)dictionary;
+- (std::optional<std::string>) chooseStringForKey:(const std::string &)key inDictionary:(const oo::PList &)dictionary;
 
 #if OO_LOCALIZATION_TOOLS
 #if DEBUG_GRAPHVIZ
@@ -819,8 +822,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	gui = [[GuiDisplayGen alloc] init]; // alloc retains
 	comm_log_gui = [[GuiDisplayGen alloc] init]; // alloc retains
 	
-	missiontext = [[ResourceManager dictionaryFromFilesNamed:@"missiontext.plist" inFolder:@"Config" andMerge:YES] retain];
-	
+	missiontext = [ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
+
 	waypoints = [[NSMutableDictionary alloc] init];
 	
 	[self setUpSettings];
@@ -889,12 +892,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	[commodities release];
 	
-	[_descriptions release];
-	[characters release];
 	[customSounds release];
 	[globalSettings release];
 	[systemManager release];
-	[missiontext release];
 	[equipmentData release];
 	[equipmentDataOutfitting release];
 	[demo_ships release];
@@ -905,7 +905,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[system_repopulator release];
 	[allPlanets release];
 	[allStations release];
-	[explosionSettings release];
 	
 	[activeWormholes release];				
 	[characterPool release];
@@ -8056,65 +8055,104 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (NSDictionary *) descriptions
+namespace {
+
+// Makes each assignment of a Universe's _descriptions distinguishable (see -cxx_descriptionsGeneration).
+unsigned sDescriptionsGeneration = 0;
+
+
+// +dictionaryWithContentsOfFile: of the dictionary class: the file's property list if it is a
+// dictionary, else (missing, unreadable, unparsable, another kind) a null PList. As ResourceManager.mm.
+oo::PList DictionaryWithContentsOfFile(const std::string &path)
 {
-	if (_descriptions == nil)
-	{
-		// Load internal descriptions.plist for use in early init, OXP verifier etc.
-		// It will be replaced by merged version later if running the game normally.
-		_descriptions = [NSDictionary dictionaryWithContentsOfFile:[[[ResourceManager builtInPath]
-																	 stringByAppendingPathComponent:@"Config"]
-																	stringByAppendingPathComponent:@"descriptions.plist"]];
-		
-		[self verifyDescriptions];
-	}
-	return _descriptions;
+	const auto data = oo::fs::readFile(oo::fs::pathFromUTF8(path));
+	if (!data)  return oo::PList();
+	auto plist = oo::parsePropertyListData(data->stringView());
+	if (!plist || !plist->isDict())  return oo::PList();
+	return std::move(*plist);
 }
 
 
-static void VerifyDesc(NSString *key, id desc);
-
-
-static void VerifyDescString(NSString *key, NSString *desc)
+/*	A string element of an array, nullopt where oo_stringAtIndex: gave nil (past the end, or
+	neither a string nor a number; a number reads as its -stringValue).
+*/
+std::optional<std::string> OptionalStringAt(const oo::PList &array, std::size_t index)
 {
-	if ([desc rangeOfString:@"%n"].location != NSNotFound)
+	const oo::PList *value = array.at(index);
+	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
+	return array.at<std::string>(index);
+}
+
+}	// namespace
+
+
+- (const oo::PList *) cxx_descriptions
+{
+	if (_descriptions.isNull())
 	{
-		OOLog(@"descriptions.verify.percentN", @"***** FATAL: descriptions.plist entry \"%@\" contains the dangerous control sequence %%n.", key);
+		// Load internal descriptions.plist for use in early init, OXP verifier etc.
+		// It will be replaced by merged version later if running the game normally.
+		_descriptions = DictionaryWithContentsOfFile(oo::str::appendingPathComponent(oo::str::appendingPathComponent(*[ResourceManager cxx_builtInPath], "Config"), "descriptions.plist"));
+		_descriptionsGeneration = ++sDescriptionsGeneration;
+
+		[self verifyDescriptions];
+	}
+	return &_descriptions;
+}
+
+
+- (unsigned) cxx_descriptionsGeneration
+{
+	return _descriptionsGeneration;
+}
+
+
+namespace {
+
+void VerifyDesc(const std::string &key, const oo::PList &desc);
+
+
+void VerifyDescString(const std::string &key, const std::string &desc)
+{
+	if (desc.find("%n") != std::string::npos)
+	{
+		OOLog(@"descriptions.verify.percentN", @"***** FATAL: descriptions.plist entry \"%@\" contains the dangerous control sequence %%n.", oo::NSStringFrom(key));
 		exit(EXIT_FAILURE);
 	}
 }
 
 
-static void VerifyDescArray(NSString *key, NSArray *desc)
+void VerifyDescArray(const std::string &key, const oo::PList &desc)
 {
-	id subDesc = nil;
-	foreach (subDesc, desc)
+	for (const oo::PList &subDesc : *desc.getIf<oo::PList::Array>())
 	{
 		VerifyDesc(key, subDesc);
 	}
 }
 
 
-static void VerifyDesc(NSString *key, id desc)
+void VerifyDesc(const std::string &key, const oo::PList &desc)
 {
-	if ([desc isKindOfClass:[NSString class]])
+	if (desc.isString())
 	{
-		VerifyDescString(key, desc);
+		VerifyDescString(key, *desc.getIf<std::string>());
 	}
-	else if ([desc isKindOfClass:[NSArray class]])
+	else if (desc.isArray())
 	{
 		VerifyDescArray(key, desc);
 	}
-	else if ([desc isKindOfClass:[NSNumber class]])
+	else if (desc.isNumber())
 	{
 		// No verification needed.
 	}
 	else
 	{
-		OOLogERR(@"descriptions.verify.badType", @"***** FATAL: descriptions.plist entry for \"%@\" is neither a string nor an array.", key);
+		OOLogERR(@"descriptions.verify.badType", @"***** FATAL: descriptions.plist entry for \"%@\" is neither a string nor an array.", oo::NSStringFrom(key));
 		exit(EXIT_FAILURE);
 	}
 }
+
+}	// namespace
 
 
 - (void) verifyDescriptions
@@ -8129,34 +8167,38 @@ static void VerifyDesc(NSString *key, id desc)
 		-- Ahruman 2011-05-05
 	*/
 	
-	NSString *key = nil;
-	if (_descriptions == nil)
+	if (_descriptions.isNull())
 	{
 		OOLog(@"descriptions.verify", @"%@", @"***** FATAL: Tried to verify descriptions, but descriptions was nil - unable to load any descriptions.plist file.");
 		exit(EXIT_FAILURE);
 	}
-	foreachkey (key, _descriptions)
+	// Byte order of the key (was hash order): it decides only which bad entry is reported first.
+	if (const oo::PList::Dict *entries = _descriptions.getIf<oo::PList::Dict>())
 	{
-		VerifyDesc(key, [_descriptions objectForKey:key]);
+		for (const auto &[key, value] : *entries)
+		{
+			VerifyDesc(key, value);
+		}
 	}
 }
 
 
 - (void) loadDescriptions
 {
-	[_descriptions autorelease];
-	_descriptions = [[ResourceManager dictionaryFromFilesNamed:@"descriptions.plist" inFolder:@"Config" andMerge:YES] retain];
+	_descriptions = [ResourceManager cxx_dictionaryFromFilesNamed:"descriptions.plist" inFolder:std::string("Config") andMerge:YES];
+	_descriptionsGeneration = ++sDescriptionsGeneration;
 	[self verifyDescriptions];
 }
 
 
-- (NSDictionary *) explosionSetting:(NSString *)explosion
+- (oo::PList) cxx_explosionSetting:(const std::string &)explosion
 {
-	return oo::PListView(explosionSettings).get<NSDictionary *>(explosion, nil);
+	const oo::PList *setting = explosionSettings.get<oo::PList::Dict>(explosion);
+	return (setting != nullptr) ? *setting : oo::PList();
 }
 
 
-- (NSArray *) scenarios
+- (oo::PList) cxx_scenarios
 {
 	return _scenarios;
 }
@@ -8164,40 +8206,39 @@ static void VerifyDesc(NSString *key, id desc)
 
 - (void) loadScenarios
 {
-	[_scenarios autorelease];
-	_scenarios = [[ResourceManager arrayFromFilesNamed:@"scenarios.plist" inFolder:@"Config" andMerge:YES] retain];
+	_scenarios = [ResourceManager cxx_arrayFromFilesNamed:"scenarios.plist" inFolder:std::string("Config") andMerge:YES];
 }
 
 
-- (NSDictionary *) characters
+- (oo::PList) cxx_characters
 {
 	return characters;
 }
 
 
-- (NSDictionary *) missiontext
+- (oo::PList) cxx_missiontext
 {
 	return missiontext;
 }
 
 
-- (NSString *)descriptionForKey:(NSString *)key
+- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key
 {
-	return [self chooseStringForKey:key inDictionary:[self descriptions]];
+	return [self chooseStringForKey:key inDictionary:*[self cxx_descriptions]];
 }
 
 
-- (NSString *)descriptionForArrayKey:(NSString *)key index:(unsigned)index
+- (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index
 {
-	NSArray *array = oo::PListView([self descriptions]).get<NSArray *>(key);
-	if ([array count] <= index)  return nil;	// Catches nil array
-	return [array objectAtIndex:index];
+	const oo::PList *array = [self cxx_descriptions]->get<oo::PList::Array>(key);
+	if (array == nullptr || array->count() <= index)  return std::nullopt;	// Catches a missing array
+	return OptionalStringAt(*array, index);
 }
 
 
-- (BOOL) descriptionBooleanForKey:(NSString *)key
+- (BOOL) descriptionBooleanForKey:(const std::string &)key
 {
-	return oo::PListView([self descriptions]).get<BOOL>(key);
+	return [self cxx_descriptions]->get<bool>(key);
 }
 
 
@@ -10415,8 +10456,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	
 	[self loadDescriptions];
 	
-	[characters autorelease];
-	characters = [[ResourceManager dictionaryFromFilesNamed:@"characters.plist" inFolder:@"Config" andMerge:YES] retain];
+	characters = [ResourceManager cxx_dictionaryFromFilesNamed:"characters.plist" inFolder:std::string("Config") andMerge:YES];
 	
 	[customSounds autorelease];
 	customSounds = [[ResourceManager dictionaryFromFilesNamed:@"customsounds.plist" inFolder:@"Config" andMerge:YES] retain];
@@ -10446,8 +10486,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	
 	[OOEquipmentType loadEquipment];
 
-	[explosionSettings autorelease];
-	explosionSettings = [[ResourceManager dictionaryFromFilesNamed:@"explosions.plist" inFolder:@"Config" andMerge:YES] retain];
+	explosionSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"explosions.plist" inFolder:std::string("Config") andMerge:YES];
 
 }
 
@@ -10531,8 +10570,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	[self loadDescriptions];
 	[self loadScenarios];
 	
-	[missiontext autorelease];
-	missiontext = [[ResourceManager dictionaryFromFilesNamed:@"missiontext.plist" inFolder:@"Config" andMerge:YES] retain];
+	missiontext = [ResourceManager cxx_dictionaryFromFilesNamed:"missiontext.plist" inFolder:std::string("Config") andMerge:YES];
 	
 	
 	if(showDemo)
@@ -10863,12 +10901,13 @@ static void PreloadOneSound(NSString *soundName)
 }
 
 
-- (NSString *)chooseStringForKey:(NSString *)key inDictionary:(NSDictionary *)dictionary
+- (std::optional<std::string>) chooseStringForKey:(const std::string &)key inDictionary:(const oo::PList &)dictionary
 {
-	id object = [dictionary objectForKey:key];
-	if ([object isKindOfClass:[NSString class]])  return object;
-	else if ([object isKindOfClass:[NSArray class]] && [object count] > 0)  return oo::PListView(object).at<NSString *>(Ranrot() % [object count]);
-	return nil;
+	const oo::PList *object = dictionary.find(key);
+	if (object == nullptr)  return std::nullopt;
+	if (object->isString())  return *object->getIf<std::string>();
+	else if (object->isArray() && object->count() > 0)  return OptionalStringAt(*object, Ranrot() % object->count());
+	return std::nullopt;
 }
 
 
@@ -11239,48 +11278,49 @@ NSComparisonResult equipmentSortOutfitting(id a, id b, void *context)
 }
 
 
-NSString *OOLookUpDescriptionPRIV(NSString *key)
+std::string cxx_OOLookUpDescriptionPRIV(const std::string &key)
 {
-	NSString *result = [UNIVERSE descriptionForKey:key];
-	if (result == nil)  result = key;
-	return result;
+	std::optional<std::string> result = [UNIVERSE cxx_descriptionForKey:key];
+	if (!result.has_value())  result = key;
+	return *result;
 }
 
 
 // There's a hint of gettext about this...
-NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count)
+std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count)
 {
-	NSArray *conditions = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"plural-rules");
-	
+	const oo::PList *descriptions = [UNIVERSE cxx_descriptions];
+	const oo::PList *conditions = (descriptions != nullptr) ? descriptions->get<oo::PList::Array>("plural-rules") : nullptr;
+
 	// are we using an older descriptions.plist (1.72.x) ?
-	NSString *tmp = [UNIVERSE descriptionForKey:key];
-	if (tmp != nil)
+	std::optional<std::string> tmp = [UNIVERSE cxx_descriptionForKey:key];
+	if (tmp.has_value())
 	{
-		static NSMutableSet *warned = nil;
-		
-		if (![warned containsObject:tmp])
+		static std::set<std::string> warned;
+
+		if (!warned.contains(*tmp))
 		{
-			OOLogWARN(@"localization.plurals", @"'%@' found in descriptions.plist, should be '%@%%0'. Localization data needs updating.",key,key);
-			if (warned == nil)  warned = [[NSMutableSet alloc] init];
-			[warned addObject:tmp];
+			OOLogWARN(@"localization.plurals", @"'%@' found in descriptions.plist, should be '%@%%0'. Localization data needs updating.",oo::NSStringFrom(key),oo::NSStringFrom(key));
+			warned.insert(*tmp);
 		}
 	}
-	
-	if (conditions == nil)
+
+	if (conditions == nullptr)
 	{
-		if (tmp == nil) // this should mean that descriptions.plist is from 1.73 or above.
-			return OOLookUpDescriptionPRIV([NSString stringWithFormat:@"%@%%%d", key, count != 1]);
+		if (!tmp.has_value()) // this should mean that descriptions.plist is from 1.73 or above.
+			return cxx_OOLookUpDescriptionPRIV(oo::str::format("%s%%%d", key.c_str(), (int)(count != 1)));
 		// still using an older descriptions.plist
-		return tmp;
+		return *tmp;
 	}
 	int unsigned i;
 	long int index;
-	
-	for (index = i = 0; i < [conditions count]; ++index, ++i)
+
+	for (index = i = 0; i < conditions->count(); ++index, ++i)
 	{
-		const char *cond = [oo::PListView(conditions).at<NSString *>(i) UTF8String];
-		if (!cond)
+		const std::optional<std::string> condition = OptionalStringAt(*conditions, i);
+		if (!condition.has_value())
 			break;
+		const char *cond = condition->c_str();
 		
 		long int input = count;
 		BOOL flag = NO; // we XOR test results with this
@@ -11343,5 +11383,5 @@ NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count)
 	}
 	
 passed:
-	return OOLookUpDescriptionPRIV([NSString stringWithFormat:@"%@%%%ld", key, index]);
+	return cxx_OOLookUpDescriptionPRIV(oo::str::format("%s%%%ld", key.c_str(), index));
 }

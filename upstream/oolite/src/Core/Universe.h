@@ -40,6 +40,9 @@ MA 02110-1301, USA.
 #import "OOCommodities.h"
 #import "OOSystemDescriptionManager.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 #if OOLITE_ESPEAK
 #include <espeak-ng/speak_lib.h>
 #endif
@@ -268,20 +271,21 @@ enum
 	OOCommodityMarket		*commodityMarket;
 
 
-	NSDictionary			*_descriptions;			// holds descriptive text for lots of stuff, loaded at initialisation
+	oo::PList				_descriptions;			// holds descriptive text for lots of stuff, loaded at initialisation (a dict; null until loaded)
+	unsigned				_descriptionsGeneration;	// changes whenever _descriptions is assigned (the bridged -descriptions caches per generation)
 	NSDictionary			*customSounds;			// holds descriptive audio for lots of stuff, loaded at initialisation
-	NSDictionary			*characters;			// holds descriptons of characters
-	NSArray					*_scenarios;			// game start scenarios
+	oo::PList				characters;				// holds descriptons of characters
+	oo::PList				_scenarios;				// game start scenarios (an array)
 	NSDictionary			*globalSettings;		// miscellaneous global game settings
 	OOSystemDescriptionManager	*systemManager; // planetinfo data manager
-	NSDictionary			*missiontext;			// holds descriptive text for missions, loaded at initialisation
+	oo::PList				missiontext;			// holds descriptive text for missions, loaded at initialisation
 	NSArray					*equipmentData;			// holds data on available equipment, loaded at initialisation
 	NSArray					*equipmentDataOutfitting;
 //	NSSet					*pirateVictimRoles;		// Roles listed in pirateVictimRoles.plist.
 	NSDictionary			*roleCategories;		// Categories for roles from role-categories.plist, extending the old pirate-victim-roles.plist
 	NSDictionary			*autoAIMap;				// Default AIs for roles from autoAImap.plist.
 	NSDictionary			*screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
-	NSDictionary			*explosionSettings;		// explosion settings from explosions.plist
+	oo::PList				explosionSettings;		// explosion settings from explosions.plist
 
 	NSDictionary      *cargoPods; // template cargo pods
 
@@ -668,17 +672,20 @@ enum
 
 - (OOSystemID) currentSystemID;
 
-- (NSDictionary *) descriptions;
-- (NSDictionary *) characters;
-- (NSDictionary *) missiontext;
-- (NSArray *) scenarios;
-- (NSDictionary *) explosionSetting:(NSString *)explosion;
+// The live descriptions dictionary (the built-in descriptions.plist until the merged one is loaded);
+// nullptr only for a nil receiver. The generation changes whenever it is replaced.
+- (const oo::PList *) cxx_descriptions;
+- (unsigned) cxx_descriptionsGeneration;
+- (oo::PList) cxx_characters;
+- (oo::PList) cxx_missiontext;
+- (oo::PList) cxx_scenarios;
+- (oo::PList) cxx_explosionSetting:(const std::string &)explosion;	// a null PList for none
 
 - (OOSystemDescriptionManager *) systemManager;
 
-- (NSString *)descriptionForKey:(NSString *)key;	// String, or random item from array
-- (NSString *)descriptionForArrayKey:(NSString *)key index:(unsigned)index;	// Indexed item from array
-- (BOOL) descriptionBooleanForKey:(NSString *)key;	// Boolean from descriptions.plist, for configuration.
+- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key;	// String, or random item from array; nullopt for none
+- (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index;	// Indexed item from array; nullopt for none
+- (BOOL) descriptionBooleanForKey:(const std::string &)key;	// Boolean from descriptions.plist, for configuration.
 
 - (NSString *) keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;
 - (NSString *) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g;
@@ -856,14 +863,9 @@ OOINLINE Universe *OOGetUniverse(void)
 NSComparisonResult populatorPrioritySort(id a, id b, void *context);
 NSComparisonResult equipmentSort(id a, id b, void *context);
 NSComparisonResult equipmentSortOutfitting(id a, id b, void *context);
-#ifdef __cplusplus
-extern "C" {
-#endif
-NSString *OOLookUpDescriptionPRIV(NSString *key);
-#ifdef __cplusplus
-}
-#endif
-NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);
+// The lookups behind DESC() / DESC_PLURAL(): the description, or the key itself when there is none.
+std::string cxx_OOLookUpDescriptionPRIV(const std::string &key);
+std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count);
 
 @interface OOSound (OOCustomSounds)
 
@@ -891,3 +893,11 @@ NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
 #ifdef __cplusplus
 }
 #endif
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before bead oo-3rb.220 (the Universe sweep oo-3rb.79, chunk 1), forwarding to the
+	cxx_ API above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
+	own sweep beads; the bridge goes in its own bead.
+*/
+#import "Universe+FoundationBridge.h"
