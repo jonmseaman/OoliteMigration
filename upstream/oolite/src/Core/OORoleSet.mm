@@ -314,7 +314,7 @@ std::map<std::string, float> OOParseRolesFromString(std::string_view string)
 		const std::size_t open = token.find('(');
 		if (open != std::string::npos)
 		{
-			// -[NSScanner scanUpToString:@"("] (which leaves role alone when "(" comes first),
+			// The old scanner's -scanUpToString:@"(" (which leaves role alone when "(" comes first),
 			// scanString:@"(", then scanFloat: (-scanDouble:, narrowed). Ignore rest of string.
 			if (open != 0)  role = token.substr(0, open);
 			double scanned = 0.0;

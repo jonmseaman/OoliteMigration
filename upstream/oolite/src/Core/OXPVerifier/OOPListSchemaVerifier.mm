@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OOPListSchemaVerifier.h"
+#include "oofnd/objc/OORuntime.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
 
@@ -37,6 +38,8 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include <limits.h>
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 
 #define PLIST_VERIFIER_DEBUG_DUMP_ENABLED		1
@@ -375,7 +378,13 @@ VERIFY_PROTO(DelegatedType);
 							 againstType:oo::ObjectFromPList(typeKey)
 								   error:&error];
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(@"plistVerifier.delegateException", @"Property list schema verifier: delegate threw exception (%@) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"%@\" at %@ in %@ -- treating as failure.", oo::NSStringFrom([exception name]), oo::ObjectFromPList(typeKey), oo::NSStringFrom(KeyPathToString(keyPath)), oo::NSStringFrom(name));
+			result = NO;
+			error = nil;
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(@"plistVerifier.delegateException", @"Property list schema verifier: delegate threw exception (%@) in -verifier:withPropertyList:named:testProperty:atPath:againstType: for type \"%@\" at %@ in %@ -- treating as failure.", [exception name], oo::ObjectFromPList(typeKey), oo::NSStringFrom(KeyPathToString(keyPath)), oo::NSStringFrom(name));
 			result = NO;
@@ -426,7 +435,12 @@ VERIFY_PROTO(DelegatedType);
 							   withError:error
 							expectedType:oo::ObjectFromPList(localSchema)];
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(@"plistVerifier.delegateException", @"Property list schema verifier: delegate threw exception (%@) in -verifier:withPropertyList:named:failedForProperty:atPath:expectedType: at %@ in %@ -- stopping.", oo::NSStringFrom([exception name]), oo::NSStringOrNil(KeyPathDescriptionOfError(error)), oo::NSStringFrom(name));
+			result = NO;
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(@"plistVerifier.delegateException", @"Property list schema verifier: delegate threw exception (%@) in -verifier:withPropertyList:named:failedForProperty:atPath:expectedType: at %@ in %@ -- stopping.", [exception name], oo::NSStringOrNil(KeyPathDescriptionOfError(error)), oo::NSStringFrom(name));
 			result = NO;
@@ -492,7 +506,11 @@ VERIFY_PROTO(DelegatedType);
 				*outStop = YES;
 		}
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf(oo::NSStringFrom([exception name])).c_str(), oo::DescriptionOf(oo::NSStringFrom([exception reason])).c_str(), name.c_str(), KeyPathToString(keyPath).c_str());
+	}
+	@catch (OOFoundationException *exception)
 	{
 		error = Error(kPListErrorInternal, (BackLinkChain *)&keyPath, "Uncaught exception %s: %s in plist verifier for \"%s\" at %s.", oo::DescriptionOf([exception name]).c_str(), oo::DescriptionOf([exception reason]).c_str(), name.c_str(), KeyPathToString(keyPath).c_str());
 	}
@@ -654,7 +672,7 @@ std::u16string SubstringToIndex(const std::u16string &units, unsigned long long 
 {
 	if (index > units.size())
 	{
-		[NSException raise:NSRangeException format:@"in substringWithRange:, range { 0, %llu } extends beyond size (%llu)", index, (unsigned long long)units.size()];
+		[OOException raise:OORangeException format:"in substringWithRange:, range { 0, %llu } extends beyond size (%llu)", index, (unsigned long long)units.size()];
 	}
 	return units.substr(0, index);
 }
