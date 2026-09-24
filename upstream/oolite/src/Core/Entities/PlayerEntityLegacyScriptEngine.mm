@@ -56,6 +56,7 @@ MA 02110-1301, USA.
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/Scanner.hpp"
 
 
 static NSString * const kOOLogScriptAddShipsFailed			= @"script.addShips.failed";
@@ -479,7 +480,6 @@ static BOOL sRunningScript = NO;
 	NSArray						*rhsComponents = nil;
 	NSString					*rhsItem = nil;
 	NSUInteger					i, count;
-	NSCharacterSet				*whitespace = nil;
 	double						lhsValue, rhsValue;
 	BOOL						lhsFlag, rhsFlag;
 	
@@ -538,12 +538,12 @@ static BOOL sRunningScript = NO;
 					rhsComponents = [expandedRHS componentsSeparatedByString:@","];
 					count = [rhsComponents count];
 					
-					whitespace = [NSCharacterSet whitespaceCharacterSet];
-					lhsString = [lhsString stringByTrimmingCharactersInSet:whitespace];
+					const oo::str::CharacterSet whitespace = oo::str::CharacterSet::whitespace();
+					lhsString = oo::StringMap(lhsString, [&](std::string_view v) { return oo::str::trim(v, whitespace); });
 					
 					for (i = 0; i < count; i++)
 					{
-						rhsItem = [[rhsComponents objectAtIndex:i] stringByTrimmingCharactersInSet:whitespace];
+						rhsItem = oo::StringMap([rhsComponents objectAtIndex:i], [&](std::string_view v) { return oo::str::trim(v, whitespace); });
 						if ([lhsString isEqualToString:rhsItem])
 						{
 							return YES;
@@ -1332,8 +1332,8 @@ static int shipsFound;
 		return;
 	}
 	
-	keyString = [[tokens objectAtIndex:0] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-	valueString = [[tokens objectAtIndex:1] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	keyString = oo::StringMap([tokens objectAtIndex:0], [&](std::string_view v) { return oo::str::trim(v, oo::str::CharacterSet::whitespace()); });
+	valueString = oo::StringMap([tokens objectAtIndex:1], [&](std::string_view v) { return oo::str::trim(v, oo::str::CharacterSet::whitespace()); });
 	
 	/* Legacy script planetinfo settings are now non-persistent over save/load
 	 * Virtually nothing uses them any more, and expecting them to have a
@@ -1358,8 +1358,8 @@ static int shipsFound;
 
 	gnum = oo::PListView(tokens).at<int>(0);
 	pnum = oo::PListView(tokens).at<int>(1);
-	keyString = [[tokens objectAtIndex:2] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
-	valueString = [[tokens objectAtIndex:3] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	keyString = oo::StringMap([tokens objectAtIndex:2], [&](std::string_view v) { return oo::str::trim(v, oo::str::CharacterSet::whitespace()); });
+	valueString = oo::StringMap([tokens objectAtIndex:3], [&](std::string_view v) { return oo::str::trim(v, oo::str::CharacterSet::whitespace()); });
 
 	[UNIVERSE setSystemDataForGalaxy:gnum planet:pnum key:keyString value:valueString fromManifest:@"" forLayer:OO_LAYER_OXP_DYNAMIC];
 }
@@ -1438,13 +1438,13 @@ static int shipsFound;
 	if (forceRemoval && [self status] != STATUS_DOCKED)
 	{
 		NSInteger i;
-		for (i = [cargo count] - 1; i >= 0; i--)
+		for (i = cargo.size() - 1; i >= 0; i--)
 		{
-			ShipEntity* canister = [cargo objectAtIndex:i];
+			ShipEntity* canister = cargo[i].get();
 			if (!canister)  break;
 			// Since we are forcing cargo removal, we don't really care about the unit of measurement. Any
 			// commodity at more than 1000kg or 1000000gr will be inside cargopods, so remove those too.
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 		}
 	}
 	
@@ -1751,7 +1751,7 @@ static int shipsFound;
 
 - (void) reset:(NSString *)missionvariable
 {
-	NSString*   missionVariableString = [missionvariable stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	NSString*   missionVariableString = oo::StringMap(missionvariable, [&](std::string_view v) { return oo::str::trim(v, oo::str::CharacterSet::whitespace()); });
 	BOOL hasMissionPrefix, hasLocalPrefix;
 
 	hasMissionPrefix = [missionVariableString hasPrefix:@"mission_"];

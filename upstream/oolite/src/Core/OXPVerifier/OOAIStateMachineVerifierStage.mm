@@ -33,6 +33,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
 
 static const char * const kStageName	= "Validating AIs";
 
@@ -196,7 +197,7 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 				}
 
 				// Trim spaces from beginning and end (the whitespace character set, not newlines).
-				const std::string action = oo::StdString([oo::NSStringFrom(*untrimmed) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);
+				const std::string action = oo::str::trim(*untrimmed, oo::str::CharacterSet::whitespace());
 
 				// Cut off parameters.
 				const std::string selector = action.substr(0, action.find(' '));

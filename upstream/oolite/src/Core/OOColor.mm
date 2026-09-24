@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
 
 
 @implementation OOColor
@@ -218,13 +219,13 @@ MA 02110-1301, USA.
 + (OOColor *) cxx_colorFromString:(const std::string &)colorFloatString
 {
 	float			rgbaValue[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
-	NSScanner		*scanner = [NSScanner scannerWithString:oo::NSStringFrom(colorFloatString)];	// the NSScanner family (oo-3rb.12) retires this
+	oo::str::Scanner	scanner(colorFloatString);
 	float			factor = 1.0f;
 	int				i;
 	
 	for (i = 0; i != 4; ++i)
 	{
-		if (![scanner scanFloat:&rgbaValue[i]])
+		if (!scanner.scanFloat(&rgbaValue[i]))
 		{
 			// Less than three floats or non-float, can't parse -> quit
 			if (i < 3) return nil;
