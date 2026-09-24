@@ -966,7 +966,13 @@ unsigned char FirstUnitLowByte(const std::string &string)
 	
 	dict = [self commanderDataDictionary];
 	if (dict == nil)  errDesc = @"could not construct commander data dictionary.";
-	else  didSave = [dict writeOOXMLToFile:path atomically:YES errorDescription:&errDesc];
+	else
+	{
+		// The save dictionary as a property list (its float values stay single reals, written as before).
+		std::string error;
+		didSave = OOWriteXMLPListToFile(oo::PListFrom(dict), oo::StdString(path), &error);
+		if (!didSave)  errDesc = oo::NSStringFrom(error);
+	}
 	if (didSave)
 	{
 		[UNIVERSE clearPreviousMessage];	// allow this to be given time and again
