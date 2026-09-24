@@ -79,4 +79,99 @@ NSString *StringFromRandomSeed(Random_Seed seed);	// -> cxx_StringFromRandomSeed
 
 @end
 
+
+// oo-3rb.125: credits, em padding, versions, clock
+// (-> cxx_OOStringFromDeciCredits, cxx_OOStringFromIntCredits, cxx_OOCredits, cxx_OOIntCredits,
+// cxx_OOPadStringToEms, cxx_ComponentsFromVersionString, cxx_CompareVersions, cxx_ClockToString)
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol);
+
+#ifdef __cplusplus
+}
+#endif
+
+OOINLINE NSString *OOStringFromIntCredits(OOCreditsQuantity integerCredits, BOOL includeSymbol)
+{
+	return OOStringFromDeciCredits(integerCredits * 10, NO, includeSymbol);
+}
+
+OOINLINE NSString *OOCredits(OOCreditsQuantity tenthsOfCredits)
+{
+	return OOStringFromDeciCredits(tenthsOfCredits, YES, YES);
+}
+OOINLINE NSString *OOIntCredits(OOCreditsQuantity integerCredits)
+{
+	return OOStringFromIntCredits(integerCredits, YES);
+}
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+NSString *OOPadStringToEms(NSString * string, float numEms);
+
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Given a string of the form 1.2.3.4 (with arbitrarily many components), return an array of unsigned ints.
+NSArray *ComponentsFromVersionString(NSString *string);
+
+/*	Compare two arrays of unsigned int NSNumbers, as returned by
+	ComponentsFromVersionString().
+	
+	Components are ordered from most to least significant, and a missing
+	component is treated as 0. Thus "1.7" < "1.60", and "1.2.3.0" == "1.2.3".
+*/
+NSComparisonResult CompareVersions(NSArray *version1, NSArray *version2);
+
+#ifdef __cplusplus
+}
+#endif
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+NSString *ClockToString(double clock, BOOL adjusting);
+
+#ifdef __cplusplus
+}
+#endif
+
+
+// oo-3rb.126: GraphViz helpers (-> cxx_EscapedGraphVizString, cxx_GraphVizTokenString)
+#if DEBUG_GRAPHVIZ
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+NSString *EscapedGraphVizString(NSString *string);
+
+/*	GraphVizTokenString()
+	Generate a C-style identifier. Sequences of invalid characters and
+	underscores are replaced with single underscores. If uniqueSet is not nil,
+	uniqueness is achieved by appending numbers if necessary.
+	
+	This can be used for any C-based langauge, but note that it excludes the
+	case-insensitive GraphViz keywords node, edge, graph, digraph, subgraph
+	and strict.
+*/
+NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
 #endif	// OOSTRINGPARSING_FOUNDATIONBRIDGE_H

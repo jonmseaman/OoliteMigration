@@ -53,93 +53,53 @@ Random_Seed cxx_RandomSeedFromString(const std::optional<std::string> &abcdefStr
 std::string cxx_StringFromRandomSeed(Random_Seed seed);
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+std::string cxx_OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol);
 
-NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol);
-
-#ifdef __cplusplus
-}
-#endif
-
-OOINLINE NSString *OOStringFromIntCredits(OOCreditsQuantity integerCredits, BOOL includeSymbol)
+OOINLINE std::string cxx_OOStringFromIntCredits(OOCreditsQuantity integerCredits, BOOL includeSymbol)
 {
-	return OOStringFromDeciCredits(integerCredits * 10, NO, includeSymbol);
+	return cxx_OOStringFromDeciCredits(integerCredits * 10, NO, includeSymbol);
 }
 
-OOINLINE NSString *OOCredits(OOCreditsQuantity tenthsOfCredits)
+OOINLINE std::string cxx_OOCredits(OOCreditsQuantity tenthsOfCredits)
 {
-	return OOStringFromDeciCredits(tenthsOfCredits, YES, YES);
+	return cxx_OOStringFromDeciCredits(tenthsOfCredits, YES, YES);
 }
-OOINLINE NSString *OOIntCredits(OOCreditsQuantity integerCredits)
+OOINLINE std::string cxx_OOIntCredits(OOCreditsQuantity integerCredits)
 {
-	return OOStringFromIntCredits(integerCredits, YES);
+	return cxx_OOStringFromIntCredits(integerCredits, YES);
 }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+std::string cxx_OOPadStringToEms(const std::string &string, float numEms);
 
-NSString *OOPadStringToEms(NSString * string, float numEms);
+// Given a string of the form 1.2.3.4 (with arbitrarily many components), return a list of unsigned ints.
+std::vector<unsigned> cxx_ComponentsFromVersionString(const std::string &string);
 
-#ifdef __cplusplus
-}
-#endif
+/*	Compare two lists of unsigned ints, as returned by
+	cxx_ComponentsFromVersionString().
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-// Given a string of the form 1.2.3.4 (with arbitrarily many components), return an array of unsigned ints.
-NSArray *ComponentsFromVersionString(NSString *string);
-
-/*	Compare two arrays of unsigned int NSNumbers, as returned by
-	ComponentsFromVersionString().
-	
 	Components are ordered from most to least significant, and a missing
 	component is treated as 0. Thus "1.7" < "1.60", and "1.2.3.0" == "1.2.3".
 */
-NSComparisonResult CompareVersions(NSArray *version1, NSArray *version2);
+NSComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2);
 
-#ifdef __cplusplus
-}
-#endif
-
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-NSString *ClockToString(double clock, BOOL adjusting);
-
-#ifdef __cplusplus
-}
-#endif
+std::string cxx_ClockToString(double clock, BOOL adjusting);
 
 
 #if DEBUG_GRAPHVIZ
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+std::string cxx_EscapedGraphVizString(const std::string &string);
 
-NSString *EscapedGraphVizString(NSString *string);
-
-/*	GraphVizTokenString()
+/*	cxx_GraphVizTokenString()
 	Generate a C-style identifier. Sequences of invalid characters and
-	underscores are replaced with single underscores. If uniqueSet is not nil,
-	uniqueness is achieved by appending numbers if necessary.
+	underscores are replaced with single underscores. If uniqueSet is not nullptr,
+	uniqueness is achieved by appending numbers if necessary, and the result is
+	added to it.
 	
 	This can be used for any C-based langauge, but note that it excludes the
 	case-insensitive GraphViz keywords node, edge, graph, digraph, subgraph
 	and strict.
 */
-NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet);
-
-#ifdef __cplusplus
-}
-#endif
+std::string cxx_GraphVizTokenString(const std::string &string, std::set<std::string> *uniqueSet);
 
 #endif
 

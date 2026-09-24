@@ -249,48 +249,49 @@ std::string cxx_StringFromRandomSeed(Random_Seed seed)
 }
 
 
-NSString *OOPadStringToEms(NSString * string, float padEms)
+std::string cxx_OOPadStringToEms(const std::string &string, float padEms)
 {
-	NSString		*result = string;
-	float numEms = padEms - OOStringWidthInEm(result);
+	// OOStringWidthInEm (HeadUpDisplay) is an unmigrated callee: convert at the calls.
+	std::string		result = string;
+	float numEms = padEms - OOStringWidthInEm(oo::NSStringFrom(result));
 	if (numEms>0)
 	{
 		numEms /= OOStringWidthInEm(@" "); // start with wide space
-		result=[[@"" stringByPaddingToLength:(NSUInteger)numEms withString: @" " startingAtIndex:0] stringByAppendingString: result];
+		result = std::string((NSUInteger)numEms, ' ') + result;
 	}
 	// most of the way there, so switch to narrow space
-	numEms = padEms - OOStringWidthInEm(result);
+	numEms = padEms - OOStringWidthInEm(oo::NSStringFrom(result));
 	if (numEms>0)
 	{
 		numEms /= OOStringWidthInEm(@"\037"); // 037 is narrow space
-		result=[[@"" stringByPaddingToLength:(NSUInteger)numEms withString: @"\037" startingAtIndex:0] stringByAppendingString: result];
+		result = std::string((NSUInteger)numEms, '\037') + result;
 	}
 	return result;
 }
 
 
-NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol)
+std::string cxx_OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includeDecimal, BOOL includeSymbol)
 {
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Object global = [[OOJavaScriptEngine sharedEngine] globalObject];
 	ooscript::Value				method;
 	ooscript::Value				rval;
-	NSString			*result = nil;
+	std::optional<std::string>	result;
 	ooscript::Value				exception;
 	BOOL				hadException;
-	
+
 	/*	Because the |cr etc. formatting operators call this, and the
 		implementation may use string expansion, we need to ensure recursion
 		can't happen.
 	*/
 	static BOOL reentrancyLock;
-	if (reentrancyLock)  return [NSString stringWithFormat:@"%0.1f", tenthsOfCredits * 0.1];
-	
+	if (reentrancyLock)  return oo::str::format("%0.1f", tenthsOfCredits * 0.1);
+
 	reentrancyLock = YES;
-	
+
 	hadException = ooscript::getPendingException((context), (&exception));
 	ooscript::clearPendingException((context));
-	
+
 	{
 		Object fakeRootFacade = NULL;
 		if (ooscript::getMethodById((context), (global), OOJSID("formatCredits"), &fakeRootFacade, (&method)))
@@ -300,227 +301,173 @@ NSString *OOStringFromDeciCredits(OOCreditsQuantity tenthsOfCredits, BOOL includ
 			{
 				args[1] = OOJSValueFromBOOL(includeDecimal);
 				args[2] = OOJSValueFromBOOL(includeSymbol);
-				
+
 				OOJSStartTimeLimiter();
 				ooscript::callFunctionValue((context), (global), (method), 3, (args), (&rval));
 				OOJSStopTimeLimiter();
-				
-				result = OOStringFromJSValue(context, rval);
+
+				// OOStringFromJSValue is an unmigrated callee (nil for null or undefined)
+				result = oo::OptionalString(OOStringFromJSValue(context, rval));
 			}
 		}
 	}
-	
+
 	if (hadException)  ooscript::setPendingException((context), (exception));
-	
+
 	OOJSRelinquishContext(context);
-	
-	if (EXPECT_NOT(result == nil))  result = [NSString stringWithFormat:@"%li", (long)(tenthsOfCredits) / 10];
-	
+
+	if (EXPECT_NOT(!result.has_value()))  result = oo::str::format("%li", (long)(tenthsOfCredits) / 10);
+
 	reentrancyLock = NO;
-	
-	return result;
+
+	return *result;
 }
 
 
-NSArray *ComponentsFromVersionString(NSString *string)
+std::vector<unsigned> cxx_ComponentsFromVersionString(const std::string &string)
 {
-	NSArray				*stringComponents = nil;
-	NSMutableArray		*result = nil;
-	NSUInteger			i, count;
-	int					value;
-	id					component;
-	
-	stringComponents = [string componentsSeparatedByString:@" "];
-	stringComponents = [[stringComponents objectAtIndex:0] componentsSeparatedByString:@"-"];
-	stringComponents = [[stringComponents objectAtIndex:0] componentsSeparatedByString:@"."];
-	count = [stringComponents count];
-	result = [NSMutableArray arrayWithCapacity:count];
-	
-	for (i = 0; i != count; ++i)
-	{
-		component = [stringComponents objectAtIndex:i];
-		if ([component respondsToSelector:@selector(intValue)])  value = MAX([component intValue], 0);
-		else  value = 0;
-		
-		[result addObject:[NSNumber numberWithUnsignedInt:value]];
-	}
-	
-	return result;
+	return oo::str::versionComponents(string);
 }
 
 
-NSComparisonResult CompareVersions(NSArray *version1, NSArray *version2)
+NSComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2)
 {
-	NSEnumerator		*leftEnum = nil,
-						*rightEnum = nil;
-	NSNumber			*leftComponent = nil,
-						*rightComponent = nil;
-	unsigned			leftValue,
-						rightValue;
-	
-	leftEnum = [version1 objectEnumerator];
-	rightEnum = [version2 objectEnumerator];
-	
-	for (;;)
-	{
-		leftComponent = [leftEnum nextObject];
-		rightComponent = [rightEnum nextObject];
-		
-		if (leftComponent == nil && rightComponent == nil)  break;	// End of both versions
-		
-		// We'll get 0 if the component is nil, which is what we want.
-		leftValue = [leftComponent unsignedIntValue];
-		rightValue = [rightComponent unsignedIntValue];
-		
-		if (leftValue < rightValue) return NSOrderedAscending;
-		if (leftValue > rightValue) return NSOrderedDescending;
-	}
-	
-	// If there was a difference, we'd have returned already.
+	const int order = oo::str::compareVersions(version1, version2);
+	if (order < 0) return NSOrderedAscending;
+	if (order > 0) return NSOrderedDescending;
 	return NSOrderedSame;
 }
 
 
-NSString *ClockToString(double clock, BOOL adjusting)
+std::string cxx_ClockToString(double clock, BOOL adjusting)
 {
 	int				days, hrs, mins, secs;
-	NSString		*format = nil;
-	
+	std::string		format;
+
 	days = floor(clock / 86400.0);
 	secs = floor(clock - days * 86400.0);
 	hrs = floor(secs / 3600.0);
 	secs %= 3600;
 	mins = floor(secs / 60.0);
 	secs %= 60;
-	
-	if (adjusting)  format = DESC(@"clock-format-adjusting");
-	else  format = DESC(@"clock-format");
-	
-	return [NSString stringWithFormat:format, days, hrs, mins, secs];
+
+	// DESC() (Universe) is unmigrated: convert at the call. The format is read at run time.
+	if (adjusting)  format = oo::StdString(DESC(@"clock-format-adjusting"));
+	else  format = oo::StdString(DESC(@"clock-format"));
+
+	return oo::str::formatRuntime(format, {days, hrs, mins, secs});
 }
 
 
 #if DEBUG_GRAPHVIZ
 
-NSString *EscapedGraphVizString(NSString *string)
+std::string cxx_EscapedGraphVizString(const std::string &string)
 {
-	NSString * const srcStrings[] =
+	const char * const srcStrings[] =
 	{
 		//Note: backslash must be first.
-		@"\\", @"\"", @"\'", @"\r", @"\n", @"\t", nil
+		"\\", "\"", "\'", "\r", "\n", "\t", nullptr
 	};
-	NSString * const subStrings[] =
+	const char * const subStrings[] =
 	{
 		//Note: must be same order.
-		@"\\\\", @"\\\"", @"\\\'", @"\\r", @"\\n", @"\\t", nil
+		"\\\\", "\\\"", "\\\'", "\\r", "\\n", "\\t", nullptr
 	};
-	
-	NSString * const *		src = srcStrings;
-	NSString * const *		sub = subStrings;
-	NSMutableString			*mutableString = nil;
-	NSString				*result = nil;
-	
-	mutableString = [string mutableCopy];
-	while (*src != nil)
+
+	const char * const *	src = srcStrings;
+	const char * const *	sub = subStrings;
+	std::string				result = string;
+
+	while (*src != nullptr)
 	{
-		[mutableString replaceOccurrencesOfString:*src++
-									 withString:*sub++
-										options:0
-										  range:(NSRange){ 0, [mutableString length] }];
+		// -replaceOccurrencesOfString:withString:options:0 range:(the whole string)
+		result = oo::str::replaceOccurrences(result, *src++, *sub++);
 	}
-	
-	if ([mutableString length] == [string length])
-	{
-		result = string;
-	}
-	else
-	{
-		result = [[mutableString copy] autorelease];
-	}
-	[mutableString release];
+
 	return result;
 }
 
 
 namespace {
-static BOOL NameIsTaken(NSString *name, NSSet *uniqueSet);
+
+// The GraphViz keywords, matched case-insensitively (-lowercaseString).
+constexpr std::string_view kGraphVizKeywords[] = { "node", "edge", "graph", "digraph", "subgraph", "strict" };
+
+BOOL NameIsTaken(const std::string &name, const std::set<std::string> *uniqueSet)
+{
+	if (uniqueSet != nullptr && uniqueSet->contains(name))  return YES;
+
+	const std::string lowercaseName = oo::str::lowercase(name);
+	for (std::string_view keyword : kGraphVizKeywords)
+	{
+		if (lowercaseName == keyword)  return YES;
+	}
+	return NO;
+}
+
 } // namespace
 
-NSString *GraphVizTokenString(NSString *string, NSMutableSet *uniqueSet)
+std::string cxx_GraphVizTokenString(const std::string &string, std::set<std::string> *uniqueSet)
 {
-	NSString *token = nil;
-	@autoreleasepool
+	std::string token;
+	BOOL lastWasUnderscore = NO;
+	// UTF-16 units, as -characterAtIndex: read them
+	const std::u16string units = oo::utf8ToUtf16(string);
+	std::size_t i, length = units.size();
+	std::u16string result;
+	result.reserve(length);
+
+	if (length > 0)
 	{
-		BOOL lastWasUnderscore = NO;
-		NSUInteger i, length = [string length], ri = 0;
-		unichar result[length];
-	
-		if (length > 0)
+		// Special case for first char - can't be digit.
+		char16_t c = units[0];
+		if (!isalpha(c))
 		{
-			// Special case for first char - can't be digit.
-			unichar c = [string characterAtIndex:0];
-			if (!isalpha(c))
+			c = '_';
+			lastWasUnderscore = YES;
+		}
+		result.push_back(c);
+
+		for (i = 1; i < length; i++)
+		{
+			c = units[i];
+			if (!isalnum(c))
 			{
+				if (lastWasUnderscore)  continue;
 				c = '_';
 				lastWasUnderscore = YES;
 			}
-			result[ri++] = c;
-		
-			for (i = 1; i < length; i++)
+			else
 			{
-				c = [string characterAtIndex:i];
-				if (!isalnum(c))
-				{
-					if (lastWasUnderscore)  continue;
-					c = '_';
-					lastWasUnderscore = YES;
-				}
-				else
-				{
-					lastWasUnderscore = NO;
-				}
-			
-				result[ri++] = c;
+				lastWasUnderscore = NO;
 			}
-		
-			token = [NSString stringWithCharacters:result length:ri];
+
+			result.push_back(c);
 		}
-		else
-		{
-			token = @"_";
-		}
-	
-		if (NameIsTaken(token, uniqueSet))
-		{
-			if (!lastWasUnderscore)  token = [token stringByAppendingString:@"_"];
-			NSString *uniqueToken = nil;
-			unsigned uniqueID = 2;
-		
-			for (;;)
-			{
-				uniqueToken = [NSString stringWithFormat:@"%@%u", token, uniqueID];
-				if (!NameIsTaken(uniqueToken, uniqueSet))  break;
-			}
-			token = uniqueToken;
-		}
-		[uniqueSet addObject:token];
-	
-		[token retain];
+
+		token = oo::utf16ToUtf8(result);
 	}
-	return [token autorelease];
-}
+	else
+	{
+		token = "_";
+	}
 
+	if (NameIsTaken(token, uniqueSet))
+	{
+		if (!lastWasUnderscore)  token += "_";
+		std::string uniqueToken;
+		unsigned uniqueID = 2;
 
-namespace {
-static BOOL NameIsTaken(NSString *name, NSSet *uniqueSet)
-{
-	if ([uniqueSet containsObject:name])  return YES;
-	
-	static NSSet *keywords = nil;
-	if (keywords == nil)  keywords = [[NSSet alloc] initWithObjects:@"node", @"edge", @"graph", @"digraph", @"subgraph", @"strict", nil];
-	
-	return [keywords containsObject:[name lowercaseString]];
+		for (;;)
+		{
+			uniqueToken = oo::str::format("%s%u", token.c_str(), uniqueID);
+			if (!NameIsTaken(uniqueToken, uniqueSet))  break;
+		}
+		token = uniqueToken;
+	}
+	if (uniqueSet != nullptr)  uniqueSet->insert(token);
+
+	return token;
 }
-} // namespace
 
 #endif //DEBUG_GRAPHVIZ
