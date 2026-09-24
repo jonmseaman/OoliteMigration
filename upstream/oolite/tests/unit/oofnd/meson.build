@@ -26,6 +26,7 @@ oofnd_tests = [
     'test_unicode_file',
     'test_unicode_file_decode',
     'test_log',
+    'test_tcp_stream_format',
 ]
 
 foreach t : oofnd_tests
