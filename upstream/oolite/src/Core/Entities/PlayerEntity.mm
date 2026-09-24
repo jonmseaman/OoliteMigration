@@ -2454,7 +2454,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(keyMod1Text);
 	DESTROY(keyMod2Text);
 	DESTROY(stickFunctions);
-	DESTROY(keyFunctions);
 	DESTROY(kbdLayouts);
 
 	DESTROY(customEquipActivation);
@@ -13645,7 +13644,7 @@ else _dockTarget = NO_TARGET;
 	_sysInfoLight.x &&
 	selFunctionIdx &&
 	stickFunctions &&
-	keyFunctions &&
+	!keyFunctions.empty() &&
 	customEquipActivation &&
 	customActivatePressed &&
 	customModePressed &&
