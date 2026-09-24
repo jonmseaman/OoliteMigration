@@ -43,6 +43,7 @@ MA 02110-1301, USA.
 #import "OOPListParsing.h"
 #import "OODebugStandards.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/objc/OOException.h"
 #import "NSDataOOExtensions.h"
 #include "oofnd/Encoding.hpp"
 
@@ -760,7 +761,7 @@ static void AddStackToArrayReversed(std::vector<oo::ObjCRef<OOJSScript *>> &arra
 	{
 		AddStackToArrayReversed(array, stack->back);
 		// -addObject: raised on the nil a script-less push leaves (GNUstep 1.31.1's text).
-		if (stack->current == nil)  [NSException raise:NSInvalidArgumentException format:@"Tried to add nil to array"];
+		if (stack->current == nil)  [OOException raise:OOInvalidArgumentException format:"Tried to add nil to array"];
 		array.emplace_back(stack->current);
 	}
 }
@@ -897,7 +898,7 @@ static std::optional<std::string> StringForKey(const oo::PList &dictionary, cons
 // A string value for -setObject:forKey:, which raised on nil (GNUstep 1.31.1's text).
 static std::string ValueForKey(const std::optional<std::string> &value, id key)
 {
-	if (!value.has_value())  [NSException raise:NSInvalidArgumentException format:@"Tried to add nil value for key '%@' to dictionary", key];
+	if (!value.has_value())  [OOException raise:OOInvalidArgumentException format:"Tried to add nil value for key '%s' to dictionary", oo::DescriptionOf(key).c_str()];
 	return *value;
 }
 } // namespace
