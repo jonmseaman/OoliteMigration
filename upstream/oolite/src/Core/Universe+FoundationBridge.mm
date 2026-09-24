@@ -483,6 +483,21 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return oo::ObjectFromPList([self cxx_getStationMarkets]);
 }
 
+
+// Chunk 8 (oo-3rb.227).
+
+// The offers as the old method returned them: an array of dictionaries (their callers only read them).
+- (NSArray *) shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time
+{
+	return oo::ObjectFromPList([self cxx_shipsForSaleForSystem:s withTL:specialTL atTime:current_time]);
+}
+
+
+- (OOCreditsQuantity) tradeInValueForCommanderDictionary:(NSDictionary*) cmdr_dict
+{
+	return [self cxx_tradeInValueForCommanderDictionary:oo::PListFrom(cmdr_dict)];
+}
+
 @end
 
 

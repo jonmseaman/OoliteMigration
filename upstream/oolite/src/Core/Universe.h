@@ -746,12 +746,12 @@ enum
 - (void) cxx_loadStationMarkets:(const oo::PList &)marketData;	// null: nothing to load
 - (oo::PList) cxx_getStationMarkets;	// [{market, position}, ...] as saved in the savegame
 
-- (NSArray *) shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;
+- (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// an array of offer dictionaries, by name and price
 
 /* Calculate base cost, before depreciation */
-- (OOCreditsQuantity) tradeInValueForCommanderDictionary:(NSDictionary*) cmdr_dict;
+- (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &) cmdr_dict;
 
-- (NSString*) brochureDescriptionWithDictionary:(NSDictionary*) dict standardEquipment:(NSArray*) extras optionalEquipment:(NSArray*) options;
+- (std::optional<std::string>) brochureDescriptionWithDictionary:(const oo::PList &) dict standardEquipment:(const std::vector<std::string> &) extras optionalEquipment:(const std::vector<std::string> &) options;
 
 - (HPVector) getWitchspaceExitPosition;
 - (Quaternion) getWitchspaceExitRotation;

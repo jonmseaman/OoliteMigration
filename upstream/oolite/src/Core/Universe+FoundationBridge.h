@@ -111,6 +111,10 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (void) loadStationMarkets:(NSArray *)marketData;	// -> -cxx_loadStationMarkets:
 - (NSArray *) getStationMarkets;	// -> -cxx_getStationMarkets
 
+// Chunk 8 (oo-3rb.227): shipyard offers, trade-in value.
+- (NSArray *) shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// -> -cxx_shipsForSaleForSystem:withTL:atTime:
+- (OOCreditsQuantity) tradeInValueForCommanderDictionary:(NSDictionary*) cmdr_dict;	// -> -cxx_tradeInValueForCommanderDictionary:
+
 @end
 
 

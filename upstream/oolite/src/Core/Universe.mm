@@ -152,9 +152,6 @@ Entity *gOOJSPlayerIfStale = nil;
 static BOOL MaintainLinkedLists(Universe* uni);
 OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 
-static OOComparisonResult compareName(id dict1, id dict2, void * context);
-static OOComparisonResult comparePrice(id dict1, id dict2, void * context);
-
 /* TODO: route calculation is really slow - find a way to safely enable this */
 #undef CACHE_ROUTE_FROM_SYSTEM_RESULTS
 
@@ -9333,63 +9330,145 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (NSArray *) shipsForSaleForSystem:(OOSystemID)s withTL:(OOTechLevelID)specialTL atTime:(OOTimeAbsolute)current_time
+namespace {
+
+/*	-removeObjectAtIndex: on the shipyard's candidate keys: an index past the end raised
+	NSRangeException (the conditions test below can remove the same slot twice).
+*/
+void RemoveKeyAt(std::vector<std::string> &keys, unsigned index)
+{
+	if (index >= keys.size())
+	{
+		[OOException raise:OORangeException format:"Index %lu is out of range %lu (in 'removeObjectAtIndex:')", (unsigned long)index, (unsigned long)keys.size()];
+	}
+	keys.erase(keys.begin() + index);
+}
+
+
+// -containsObject: on an equipment list: -isEqual: of two strings.
+bool ContainsKey(const oo::PList::Array &list, const std::string &key)
+{
+	return std::find(list.begin(), list.end(), oo::PList(key)) != list.end();
+}
+
+
+// -removeObject: on the optional equipment: every equal entry goes; nil removed nothing.
+void RemoveOption(std::vector<std::optional<std::string>> &options, const std::optional<std::string> &key)
+{
+	if (key.has_value())  std::erase(options, key);
+}
+
+
+// -setObject:forKey: on the offered ship's dictionary.
+void SetInDict(oo::PList &dict, std::string_view key, const std::string &value)
+{
+	if (oo::PList::Dict *entries = dict.getIf<oo::PList::Dict>())  (*entries)[std::string(key)] = oo::PList(value);
+}
+
+
+/*	OOExpandKey(key, <name>): OOExpand's macro hands the expander a one-entry argument dictionary
+	keyed by the variable's name; a number keeps the NSNumber type OO_CAST_PARAMETER boxed it as.
+*/
+std::string ExpandKeyWith(const std::string &key, const char *name, const oo::PList &value)
+{
+	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key),
+		oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { name, value } })), nil, nil, kOOExpandKey));
+}
+
+
+// OOExpandKey(key) with no arguments: no argument dictionary.
+std::string ExpandKey(const std::string &key)
+{
+	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(key), nil, nil, nil, kOOExpandKey));
+}
+
+
+// -[NSNumber compare:] of the two offers' prices (unsigned long long).
+int comparePrice(const oo::PList &offer1, const oo::PList &offer2)
+{
+	const unsigned long long price1 = offer1.get<unsigned long long>(oo::StdString(SHIPYARD_KEY_PRICE));
+	const unsigned long long price2 = offer2.get<unsigned long long>(oo::StdString(SHIPYARD_KEY_PRICE));
+	return (price1 < price2) ? -1 : (price1 > price2) ? 1 : 0;
+}
+
+
+/*	The offered ships' lowercased names as -compare: ordered them, then the price. A missing name
+	compares the same (messaging nil); ship definitions always carry one.
+*/
+int compareName(const oo::PList &offer1, const oo::PList &offer2)
+{
+	const oo::PList *ship1 = offer1.get<oo::PList::Dict>(oo::StdString(SHIPYARD_KEY_SHIP));
+	const oo::PList *ship2 = offer2.get<oo::PList::Dict>(oo::StdString(SHIPYARD_KEY_SHIP));
+	const std::optional<std::string> name1 = (ship1 != nullptr) ? OptionalStringIn(*ship1, oo::StdString(KEY_NAME)) : std::nullopt;
+	const std::optional<std::string> name2 = (ship2 != nullptr) ? OptionalStringIn(*ship2, oo::StdString(KEY_NAME)) : std::nullopt;
+
+	const int result = (name1.has_value() && name2.has_value()) ? oo::str::compare(oo::str::lowercase(*name1), oo::str::lowercase(*name2)) : 0;
+	if (result != 0)
+		return result;
+	else
+		return comparePrice(offer1, offer2);
+}
+
+}	// namespace
+
+
+- (oo::PList) cxx_shipsForSaleForSystem:(OOSystemID)s withTL:(OOTechLevelID)specialTL atTime:(OOTimeAbsolute)current_time
 {
 	RANROTSeed saved_seed = RANROTGetFullSeed();
 	Random_Seed ship_seed = [self marketSeed];
-	
-	NSMutableDictionary		*resultDictionary = [NSMutableDictionary dictionary];
-	
+
+	std::map<std::string, oo::PList>	resultDictionary;	// by ship ID
+
 	float					tech_price_boost = (ship_seed.a + ship_seed.b) / 256.0;
 	unsigned				i;
 	PlayerEntity			*player = PLAYER;
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
 	RANROTSeed				personalitySeed = RanrotSeedFromRandomSeed(ship_seed);
-	
+
 	for (i = 0; i < 256; i++)
 	{
 		long long reference_time = 0x1000000 * floor(current_time / 0x1000000);
-		
+
 		long long c_time = ship_seed.a * 0x10000 + ship_seed.b * 0x100 + ship_seed.c;
 		double ship_sold_time = reference_time + c_time;
-		
+
 		if (ship_sold_time < 0)
 			ship_sold_time += 0x1000000;	// wraparound
-		
+
 		double days_until_sale = (ship_sold_time - current_time) / 86400.0;
-		
-		NSMutableArray	*keysForShips = [NSMutableArray arrayWithArray:[registry playerShipKeys]];
+
+		std::vector<std::string>	keysForShips = [registry cxx_playerShipKeys];
 		unsigned		si;
-		for (si = 0; si < [keysForShips count]; si++)
+		for (si = 0; si < keysForShips.size(); si++)
 		{
 			//eliminate any ships that fail a 'conditions test'
-			NSString		*key = oo::PListView(keysForShips).at<NSString *>(si);
-			NSDictionary	*dict = [registry shipyardInfoForKey:key];
-			NSArray			*conditions = oo::PListView(dict).get<NSArray *>(@"conditions");
-			
-			if (![player scriptTestConditions:conditions])
+			const std::string	key = keysForShips[si];
+			const oo::PList		dict = [registry cxx_shipyardInfoForKey:key];
+			const oo::PList		*conditions = dict.get<oo::PList::Array>("conditions");
+
+			if (![player scriptTestConditions:(conditions != nullptr) ? oo::ObjectFromPList(*conditions) : nil])
 			{
-				[keysForShips removeObjectAtIndex:si--];
+				RemoveKeyAt(keysForShips, si--);
 			}
-			NSString *condition_script = oo::PListView(dict).get<NSString *>(@"condition_script");
-			if (condition_script != nil)
+			std::optional<std::string> condition_script = OptionalStringIn(dict, "condition_script");
+			if (condition_script.has_value())
 			{
-				OOJSScript *condScript = [self getConditionScript:condition_script];
+				OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
 				if (condScript != nil) // should always be non-nil, but just in case
 				{
 					ooscript::Context context = OOJSAcquireContext();
 					BOOL OK;
 					bool allow_purchase;
 					ooscript::Value result;
-					ooscript::Value args[] = { OOJSValueFromNativeObject(context, key) };
-			
+					ooscript::Value args[] = { OOJSValueFromNativeObject(context, oo::NSStringFrom(key)) };
+
 					OK = [condScript callMethod:OOJSID("allowOfferShip")
 												inContext:context
 										withArguments:args count:sizeof args / sizeof *args
 													 result:&result];
 
 					if (OK) OK = ooscript::valueToBoolean(context, result, &allow_purchase);
-			
+
 					OOJSRelinquishContext(context);
 
 					if (OK && !allow_purchase)
@@ -9397,16 +9476,16 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 						/* if the script exists, the function exists, the function
 						 * returns a bool, and that bool is false, block
 						 * purchase. Otherwise allow it as default */
-						[keysForShips removeObjectAtIndex:si--];
+						RemoveKeyAt(keysForShips, si--);
 					}
 				}
 			}
 
 		}
-		
-		NSDictionary	*systemInfo = [self generateSystemData:s];
+
+		const oo::PList	systemInfo = [self cxx_generateSystemData:s];
 		OOTechLevelID	techlevel;
-		if (specialTL != NSNotFound)  
+		if (specialTL != NSNotFound)
 		{
 			//if we are passed a tech level use that
 			techlevel = specialTL;
@@ -9414,80 +9493,88 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		else
 		{
 			//otherwise use default for system
-			techlevel = oo::PListView(systemInfo).get<unsigned int>(KEY_TECHLEVEL);
+			techlevel = systemInfo.get<unsigned int>(oo::StdString(KEY_TECHLEVEL));
 		}
-		unsigned		ship_index = (ship_seed.d * 0x100 + ship_seed.e) % [keysForShips count];
-		NSString		*ship_key = oo::PListView(keysForShips).at<NSString *>(ship_index);
-		NSDictionary	*ship_info = [registry shipyardInfoForKey:ship_key];
-		OOTechLevelID	ship_techlevel = oo::PListView(ship_info).get<int>(KEY_TECHLEVEL);
-		
-		double chance = 1.0 - pow(1.0 - oo::PListView(ship_info).get<double>(KEY_CHANCE), MAX((OOTechLevelID)1, techlevel - ship_techlevel));
-		
+		unsigned		ship_index = (ship_seed.d * 0x100 + ship_seed.e) % keysForShips.size();
+		const std::string	ship_key = keysForShips[ship_index];
+		const oo::PList	ship_info = [registry cxx_shipyardInfoForKey:ship_key];
+		OOTechLevelID	ship_techlevel = ship_info.get<int>(oo::StdString(KEY_TECHLEVEL));
+
+		double chance = 1.0 - pow(1.0 - ship_info.get<double>(oo::StdString(KEY_CHANCE)), MAX((OOTechLevelID)1, techlevel - ship_techlevel));
+
 		// seed random number generator
 		int superRand1 = ship_seed.a * 0x10000 + ship_seed.c * 0x100 + ship_seed.e;
 		uint32_t superRand2 = ship_seed.b * 0x10000 + ship_seed.d * 0x100 + ship_seed.f;
 		ranrot_srand(superRand2);
-		
-		NSDictionary* shipBaseDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:ship_key];
-		
-		if ((days_until_sale > 0.0) && (days_until_sale < 30.0) && (ship_techlevel <= techlevel) && (randf() < chance) && (shipBaseDict != nil))
-		{			
-			NSMutableDictionary* shipDict = [NSMutableDictionary dictionaryWithDictionary:shipBaseDict];
-			NSMutableString* shortShipDescription = [NSMutableString stringWithCapacity:256];
-			NSString *shipName = oo::PListView(shipDict).get<NSString *>(@"display_name", oo::PListView(shipDict).get<NSString *>(KEY_NAME));
-			OOCreditsQuantity price = oo::PListView(ship_info).get<unsigned int>(KEY_PRICE);
-			OOCreditsQuantity base_price = price;
-			NSMutableArray* extras = [NSMutableArray arrayWithArray:oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
-			NSString* fwdWeaponString = oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSString *>(KEY_EQUIPMENT_FORWARD_WEAPON);
-			NSString* aftWeaponString = oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSString *>(KEY_EQUIPMENT_AFT_WEAPON);
-			
-			NSMutableArray* options = [NSMutableArray arrayWithArray:oo::PListView(ship_info).get<NSArray *>(KEY_OPTIONAL_EQUIPMENT)];
-			OOCargoQuantity maxCargo = oo::PListView(shipDict).get<unsigned int>(@"max_cargo");
-			
-			// more info for potential purchasers - how to reveal this I'm not yet sure...
-			//NSString* brochure_desc = [self brochureDescriptionWithDictionary: ship_dict standardEquipment: extras optionalEquipment: options];
-			//NSLog(@"%@ Brochure description : \"%@\"", [ship_dict objectForKey:KEY_NAME], brochure_desc);
-			
-			[shortShipDescription appendFormat:@"%@:", shipName];
-			
-			OOWeaponFacingSet availableFacings = oo::PListView(ship_info).get<unsigned int>(KEY_WEAPON_FACINGS, VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
-			OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString);
-			OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString);
+		const oo::PList shipBaseDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:ship_key];
+
+		if ((days_until_sale > 0.0) && (days_until_sale < 30.0) && (ship_techlevel <= techlevel) && (randf() < chance) && !shipBaseDict.isNull())
+		{
+			oo::PList shipDict = shipBaseDict;
+			std::string shortShipDescription;
+			std::optional<std::string> shipName = OptionalStringIn(shipDict, "display_name");
+			if (!shipName.has_value())  shipName = OptionalStringIn(shipDict, oo::StdString(KEY_NAME));
+			OOCreditsQuantity price = ship_info.get<unsigned int>(oo::StdString(KEY_PRICE));
+			OOCreditsQuantity base_price = price;
+			const oo::PList *standardEquipment = ship_info.get<oo::PList::Dict>(oo::StdString(KEY_STANDARD_EQUIPMENT));
+			const oo::PList *standardExtras = (standardEquipment != nullptr) ? standardEquipment->get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)) : nullptr;
+			oo::PList::Array extras = (standardExtras != nullptr) ? *standardExtras->getIf<oo::PList::Array>() : oo::PList::Array();
+			std::optional<std::string> fwdWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON)) : std::nullopt;
+			std::optional<std::string> aftWeaponString = (standardEquipment != nullptr) ? OptionalStringIn(*standardEquipment, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON)) : std::nullopt;
+
+			const oo::PList *optionalEquipment = ship_info.get<oo::PList::Array>(oo::StdString(KEY_OPTIONAL_EQUIPMENT));
+			std::vector<std::optional<std::string>> options;
+			if (optionalEquipment != nullptr)
+			{
+				for (std::size_t k = 0; k < optionalEquipment->count(); k++)  options.push_back(OptionalStringAt(*optionalEquipment, k));
+			}
+			OOCargoQuantity maxCargo = shipDict.get<unsigned int>("max_cargo");
+
+			// more info for potential purchasers - how to reveal this I'm not yet sure...
+			//std::optional<std::string> brochure_desc = [self brochureDescriptionWithDictionary:shipDict standardEquipment:extras optionalEquipment:options];
+			//OOLog(@"shipyard.brochure", @"%@ Brochure description : \"%@\"", ship name, brochure_desc);
+
+			shortShipDescription += TextOrNull(shipName) + ":";
+
+			OOWeaponFacingSet availableFacings = ship_info.get<unsigned int>(oo::StdString(KEY_WEAPON_FACINGS), VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
+
+			OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(fwdWeaponString));
+			OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringOrNil(aftWeaponString));
 			//port and starboard weapons are not modified in the shipyard
 			// apply fwd and aft weapons to the ship
-			if (fwdWeapon && fwdWeaponString) [shipDict setObject:fwdWeaponString forKey:KEY_EQUIPMENT_FORWARD_WEAPON];
-			if (aftWeapon && aftWeaponString) [shipDict setObject:aftWeaponString forKey:KEY_EQUIPMENT_AFT_WEAPON];
-			
+			if (fwdWeapon && fwdWeaponString) SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
+			if (aftWeapon && aftWeaponString) SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
+
 			int passengerBerthCount = 0;
 			BOOL customised = NO;
 			BOOL weaponCustomized = NO;
-			
-			NSString *fwdWeaponDesc = nil;
-			
-			NSString *shortExtrasKey = @"shipyard-first-extra";
-			
+
+			std::optional<std::string> fwdWeaponDesc;
+
+			std::string shortExtrasKey = "shipyard-first-extra";
+
 			// for testing condition scripts
-			ShipEntity *testship = [[ProxyPlayerEntity alloc] initWithKey:ship_key definition:shipDict];
+			ShipEntity *testship = [[ProxyPlayerEntity alloc] initWithKey:oo::NSStringFrom(ship_key) definition:oo::ObjectFromPList(shipDict)];
 			// customise the ship (if chance = 1, then ship will get all possible add ons)
-			while ((randf() < chance) && ([options count]))
+			while ((randf() < chance) && (options.size()))
 			{
 				chance *= chance;	//decrease the chance of a further customisation (unless it is 1, which might be a bug)
-				int				optionIndex = Ranrot() % [options count];
-				NSString		*equipmentKey = oo::PListView(options).at<NSString *>(optionIndex);
-				OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
-				
+				int				optionIndex = Ranrot() % options.size();
+				const std::optional<std::string>	equipmentKey = options[optionIndex];
+				OOEquipmentType	*item = equipmentKey.has_value() ? [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(*equipmentKey)] : nil;
+
 				if (item != nil)
 				{
 					OOTechLevelID		eqTechLevel = [item techLevel];
 					OOCreditsQuantity	eqPrice = [item price] / 10;	// all amounts are x/10 due to being represented in tenths of credits.
-					NSString			*eqShortDesc = [item name];
-					
+					std::optional<std::string>	eqShortDesc = oo::OptionalString([item name]);
+
 					if ([item techLevel] > techlevel)
 					{
 						// Cap maximum tech level.
 						eqTechLevel = MIN(eqTechLevel, 15U);
-						
+
 						// Higher tech items are rarer!
 						if (randf() * (eqTechLevel - techlevel) < 1.0)
 						{
@@ -9497,53 +9584,50 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 						else
 							break;	// Bar this upgrade.
 					}
-					
-					if ([item incompatibleEquipment] != nil && extras != nil)
+
+					if ([item incompatibleEquipment] != nil)
 					{
-						id							key = nil;
 						BOOL						incompatible = NO;
-						
-						foreach (key, [item incompatibleEquipment])
+						const std::vector<std::string>	incompatibleKeys = oo::StringsFrom([item incompatibleEquipment]);
+
+						for (const std::string &key : incompatibleKeys)
 						{
-							if ([extras containsObject:key])
+							if (ContainsKey(extras, key))
 							{
-								[options removeObject:equipmentKey];
+								RemoveOption(options, equipmentKey);
 								incompatible = YES;
 								break;
 							}
 						}
 						if (incompatible) break;
-						
+
 						// make sure the incompatible equipment is not choosen later on.
-						foreach (key, [item incompatibleEquipment])
+						for (const std::string &key : incompatibleKeys)
 						{
-							if ([options containsObject:key])
-							{
-								[options removeObject:key]; 
-							}
+							RemoveOption(options, key);
 						}
 					}
-					
+
 					/* Check condition scripts */
-					NSString *condition_script = [item conditionScript];
-					if (condition_script != nil)
+					std::optional<std::string> condition_script = oo::OptionalString([item conditionScript]);
+					if (condition_script.has_value())
 					{
-						OOJSScript *condScript = [self getConditionScript:condition_script];
+						OOJSScript *condScript = [self cxx_getConditionScript:*condition_script];
 						if (condScript != nil) // should always be non-nil, but just in case
 						{
 							ooscript::Context JScontext = OOJSAcquireContext();
 							BOOL OK;
 							bool allow_addition;
 							ooscript::Value result;
-							ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, equipmentKey) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromNativeObject(JScontext, @"newShip")};
-				
+							ooscript::Value args[] = { OOJSValueFromNativeObject(JScontext, oo::NSStringFrom(*equipmentKey)) , OOJSValueFromNativeObject(JScontext, testship) , OOJSValueFromNativeObject(JScontext, @"newShip")};
+
 							OK = [condScript callMethod:OOJSID("allowAwardEquipment")
 																inContext:JScontext
 														withArguments:args count:sizeof args / sizeof *args
 																	 result:&result];
 
 							if (OK) OK = ooscript::valueToBoolean(JScontext, result, &allow_addition);
-				
+
 							OOJSRelinquishContext(JScontext);
 
 							if (OK && !allow_addition)
@@ -9557,483 +9641,476 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 					}
 
 
-					if ([item requiresEquipment] != nil && extras != nil)
+					if ([item requiresEquipment] != nil)
 					{
-						id							key = nil;
 						BOOL						missing = NO;
-						
-						foreach (key, [item requiresEquipment])
+
+						for (const std::string &key : oo::StringsFrom([item requiresEquipment]))
 						{
-							if (![extras containsObject:key])
+							if (!ContainsKey(extras, key))
 							{
 								missing = YES;
 							}
 						}
 						if (missing) break;
 					}
-					
-					if ([item requiresAnyEquipment] != nil && extras != nil)
+
+					if ([item requiresAnyEquipment] != nil)
 					{
-						id							key = nil;
 						BOOL						missing = YES;
-						
-						foreach (key, [item requiresAnyEquipment])
+
+						for (const std::string &key : oo::StringsFrom([item requiresAnyEquipment]))
 						{
-							if ([extras containsObject:key])
+							if (ContainsKey(extras, key))
 							{
 								missing = NO;
 							}
 						}
 						if (missing) break;
 					}
-					
+
 					// Special case, NEU has to be compatible with EEU inside equipment.plist
 					// but we can only have either one or the other on board.
-					if ([equipmentKey isEqualTo:@"EQ_NAVAL_ENERGY_UNIT"])
+					if (*equipmentKey == "EQ_NAVAL_ENERGY_UNIT")
 					{
-						if ([extras containsObject:@"EQ_ENERGY_UNIT"])
+						if (ContainsKey(extras, "EQ_ENERGY_UNIT"))
 						{
-							[options removeObject:equipmentKey];
+							RemoveOption(options, equipmentKey);
 							break;
 						}
 					}
-					
-					if ([equipmentKey hasPrefix:@"EQ_WEAPON"])
+
+					if (oo::str::hasPrefix(*equipmentKey, "EQ_WEAPON"))
 					{
-						OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(equipmentKey);
+						OOWeaponType new_weapon = OOWeaponTypeFromEquipmentIdentifierSloppy(oo::NSStringFrom(*equipmentKey));
 						//fit best weapon forward
 						if (availableFacings & WEAPON_FACING_FORWARD && [new_weapon weaponThreatAssessment] > [fwdWeapon weaponThreatAssessment])
 						{
 							//again remember to divide price by 10 to get credits from tenths of credit
-							price -= [self getEquipmentPriceForKey:fwdWeaponString] * 90 / 1000;	// 90% credits
+							price -= (fwdWeaponString ? [self cxx_getEquipmentPriceForKey:*fwdWeaponString] : 0) * 90 / 1000;	// 90% credits
 							price += eqPrice;
 							fwdWeaponString = equipmentKey;
 							fwdWeapon = new_weapon;
-							[shipDict setObject:fwdWeaponString forKey:KEY_EQUIPMENT_FORWARD_WEAPON];
+							SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON), *fwdWeaponString);
 							weaponCustomized = YES;
 							fwdWeaponDesc = eqShortDesc;
 						}
-						else 
+						else
 						{
 							//if less good than current forward, try fitting is to rear
 							if (availableFacings & WEAPON_FACING_AFT && (isWeaponNone(aftWeapon) || [new_weapon weaponThreatAssessment] > [aftWeapon weaponThreatAssessment]))
 							{
-								price -= [self getEquipmentPriceForKey:aftWeaponString] * 90 / 1000;	// 90% credits
+								price -= (aftWeaponString ? [self cxx_getEquipmentPriceForKey:*aftWeaponString] : 0) * 90 / 1000;	// 90% credits
 								price += eqPrice;
 								aftWeaponString = equipmentKey;
 								aftWeapon = new_weapon;
-								[shipDict setObject:aftWeaponString forKey:KEY_EQUIPMENT_AFT_WEAPON];
+								SetInDict(shipDict, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON), *aftWeaponString);
 							}
-							else 
+							else
 							{
-								[options removeObject:equipmentKey]; //dont try again
-							}				
+								RemoveOption(options, equipmentKey); //dont try again
+							}
 						}
-					
+
 					}
 					else
 					{
-						if ([equipmentKey isEqualToString:@"EQ_PASSENGER_BERTH"])
+						if (*equipmentKey == "EQ_PASSENGER_BERTH")
 						{
 							if ((maxCargo >= PASSENGER_BERTH_SPACE) && (randf() < chance))
 							{
 								maxCargo -= PASSENGER_BERTH_SPACE;
 								price += eqPrice;
-								[extras addObject:equipmentKey];
+								extras.push_back(oo::PList(*equipmentKey));
 								passengerBerthCount++;
 								customised = YES;
 							}
 							else
 							{
 								// remove the option if there's no space left
-								[options removeObject:equipmentKey];
+								RemoveOption(options, equipmentKey);
 							}
 						}
 						else
 						{
 							price += eqPrice;
-							[extras addObject:equipmentKey];
+							extras.push_back(oo::PList(*equipmentKey));
 							if ([item isVisible])
 							{
-								NSString *item = eqShortDesc;
-								[shortShipDescription appendString:OOExpandKey(shortExtrasKey, item)];
-								shortExtrasKey = @"shipyard-additional-extra";
+								shortShipDescription += ExpandKeyWith(shortExtrasKey, "item", eqShortDesc ? oo::PList(*eqShortDesc) : oo::PList());
+								shortExtrasKey = "shipyard-additional-extra";
 							}
 							customised = YES;
-							[options removeObject:equipmentKey]; //dont add twice
+							RemoveOption(options, equipmentKey); //dont add twice
 						}
 					}
 				}
 				else
 				{
-					[options removeObject:equipmentKey];
+					RemoveOption(options, equipmentKey);
 				}
 			} // end adding optional equipment
 			[testship release];
 			// i18n: Some languages require that no conversion to lower case string takes place.
-			BOOL lowercaseIgnore = oo::PListView([self descriptions]).get<BOOL>(@"lowercase_ignore");
-			
+			BOOL lowercaseIgnore = [self cxx_descriptions]->get<bool>("lowercase_ignore");
+
 			if (passengerBerthCount)
 			{
-				NSString* npb = (passengerBerthCount > 1)? [NSString stringWithFormat:@"%d ", passengerBerthCount] : (id)@"";
-				NSString* ppb = DESC_PLURAL(@"passenger-berth", passengerBerthCount);
-				NSString* extraPassengerBerthsDescription = [NSString stringWithFormat:DESC(@"extra-@-@-(passenger-berths)"), npb, ppb];
-				NSString *item = extraPassengerBerthsDescription;
-				[shortShipDescription appendString:OOExpandKey(shortExtrasKey, item)];
-				shortExtrasKey = @"shipyard-additional-extra";
+				std::string npb = (passengerBerthCount > 1)? oo::str::format("%d ", passengerBerthCount) : std::string();
+				std::string ppb = cxx_OOLookUpPluralDescriptionPRIV("passenger-berth", passengerBerthCount);
+				std::string extraPassengerBerthsDescription = oo::str::formatRuntime(cxx_OOLookUpDescriptionPRIV("extra-@-@-(passenger-berths)"), { npb, ppb });
+				shortShipDescription += ExpandKeyWith(shortExtrasKey, "item", oo::PList(extraPassengerBerthsDescription));
+				shortExtrasKey = "shipyard-additional-extra";
 			}
-			
+
 			if (!customised)
 			{
-				[shortShipDescription appendString:OOExpandKey(@"shipyard-standard-customer-model")];
+				shortShipDescription += ExpandKey("shipyard-standard-customer-model");
 			}
-			
+
 			if (weaponCustomized)
 			{
-				NSString *weapon = (lowercaseIgnore ? fwdWeaponDesc : [fwdWeaponDesc lowercaseString]);
-				[shortShipDescription appendString:OOExpandKey(@"shipyard-forward-weapon-upgraded", weapon)];
+				std::optional<std::string> weapon = fwdWeaponDesc;
+				if (!lowercaseIgnore && weapon.has_value())  weapon = oo::str::lowercase(*weapon);
+				shortShipDescription += ExpandKeyWith("shipyard-forward-weapon-upgraded", "weapon", weapon ? oo::PList(*weapon) : oo::PList());
 			}
 			if (price > base_price)
 			{
 				price = base_price + cunningFee(price - base_price, 0.05);
 			}
-			
-			[shortShipDescription appendString:OOExpandKey(@"shipyard-price", price)];
-			
-			NSString *shipID = [NSString stringWithFormat:@"%06x-%06x", superRand1, superRand2];
-			
+
+			shortShipDescription += ExpandKeyWith("shipyard-price", "price", oo::PList(price));
+
+			std::string shipID = oo::str::format("%06x-%06x", superRand1, superRand2);
+
 			uint16_t personality = RanrotWithSeed(&personalitySeed) & ENTITY_PERSONALITY_MAX;
-			
-			NSDictionary *ship_info_dictionary = [NSDictionary dictionaryWithObjectsAndKeys:
-				shipID,								SHIPYARD_KEY_ID,
-				ship_key,							SHIPYARD_KEY_SHIPDATA_KEY,
-				shipDict,							SHIPYARD_KEY_SHIP,
-				shortShipDescription,				KEY_SHORT_DESCRIPTION,
-				[NSNumber numberWithUnsignedLongLong:price], SHIPYARD_KEY_PRICE,
-				extras,								KEY_EQUIPMENT_EXTRAS,
-				[NSNumber numberWithUnsignedShort:personality], SHIPYARD_KEY_PERSONALITY,								  
-				NULL];
-			
-			[resultDictionary setObject:ship_info_dictionary forKey:shipID];	// should order them fairly randomly
+
+			oo::PList::Dict ship_info_dictionary;
+			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_ID)] = oo::PList(shipID);
+			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_SHIPDATA_KEY)] = oo::PList(ship_key);
+			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_SHIP)] = shipDict;
+			ship_info_dictionary[oo::StdString(KEY_SHORT_DESCRIPTION)] = oo::PList(shortShipDescription);
+			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_PRICE)] = oo::PList(price);
+			ship_info_dictionary[oo::StdString(KEY_EQUIPMENT_EXTRAS)] = oo::PList(extras);
+			ship_info_dictionary[oo::StdString(SHIPYARD_KEY_PERSONALITY)] = oo::PList(personality);
+
+			resultDictionary[shipID] = oo::PList(std::move(ship_info_dictionary));	// should order them fairly randomly
 		}
-		
+
 		// next contract
 		rotate_seed(&ship_seed);
 		rotate_seed(&ship_seed);
 		rotate_seed(&ship_seed);
 		rotate_seed(&ship_seed);
 	}
-	
-	NSMutableArray *resultArray = [[[resultDictionary allValues] mutableCopy] autorelease];
-	[resultArray sortUsingFunction:compareName context:NULL];
-	
+
+	oo::PList::Array resultArray;
+	for (auto &entry : resultDictionary)  resultArray.push_back(std::move(entry.second));
+	std::stable_sort(resultArray.begin(), resultArray.end(), [](const oo::PList &a, const oo::PList &b) { return compareName(a, b) < 0; });
+
 	// remove identically priced ships of the same name
 	i = 1;
-	
-	while (i < [resultArray count])
+
+	while (i < resultArray.size())
 	{
-		if (compareName([resultArray objectAtIndex:i - 1], [resultArray objectAtIndex:i], nil) == NSOrderedSame )
+		if (compareName(resultArray[i - 1], resultArray[i]) == 0)
 		{
-			[resultArray removeObjectAtIndex: i];
+			resultArray.erase(resultArray.begin() + i);
 		}
 		else
 		{
 			i++;
 		}
 	}
-	
+
 	RANROTSetFullSeed(saved_seed);
 
-	return [NSArray arrayWithArray:resultArray];
+	return oo::PList(std::move(resultArray));
 }
 
 
-static OOComparisonResult compareName(id dict1, id dict2, void *context)
-{
-	NSDictionary	*ship1 = oo::PListView((NSDictionary *)dict1).get<NSDictionary *>(SHIPYARD_KEY_SHIP);
-	NSDictionary	*ship2 = oo::PListView((NSDictionary *)dict2).get<NSDictionary *>(SHIPYARD_KEY_SHIP);
-	NSString		*name1 = oo::PListView(ship1).get<NSString *>(KEY_NAME);
-	NSString		*name2 = oo::PListView(ship2).get<NSString *>(KEY_NAME);
-	
-	NSComparisonResult result = [[name1 lowercaseString] compare:[name2 lowercaseString]];
-	if (result != NSOrderedSame)
-		return result;
-	else
-		return comparePrice(dict1, dict2, context);
-}
-
-
-static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
-{
-	NSNumber		*price1 = [(NSDictionary *)dict1 objectForKey:SHIPYARD_KEY_PRICE];
-	NSNumber		*price2 = [(NSDictionary *)dict2 objectForKey:SHIPYARD_KEY_PRICE];
-	
-	return [price1 compare:price2];
-}
-
-
-- (OOCreditsQuantity) tradeInValueForCommanderDictionary:(NSDictionary *)dict
+- (OOCreditsQuantity) cxx_tradeInValueForCommanderDictionary:(const oo::PList &)dict
 {
 	// get basic information about the craft
 	OOCreditsQuantity	base_price = 0ULL;
-	NSString			*ship_desc = oo::PListView(dict).get<NSString *>(@"ship_desc");
-	NSDictionary		*shipyard_info = [[OOShipRegistry sharedRegistry] shipyardInfoForKey:ship_desc];
+	std::optional<std::string>	ship_desc = OptionalStringIn(dict, "ship_desc");
+	const oo::PList		shipyard_info = ship_desc.has_value() ? [[OOShipRegistry sharedRegistry] cxx_shipyardInfoForKey:*ship_desc] : oo::PList();
 	// This checks a rare, but possible case. If the ship for which we are trying to calculate a trade in value
 	// does not have a shipyard dictionary entry, report it and set its base price to 0 -- Nikos 20090613.
-	if (shipyard_info == nil)
+	if (shipyard_info.isNull())
 	{
 		OOLogERR(@"universe.tradeInValueForCommanderDictionary.valueCalculationError",
-			@"Shipyard dictionary entry for ship %@ required for trade in value calculation, but does not exist. Setting ship value to 0.", ship_desc);
+			@"Shipyard dictionary entry for ship %@ required for trade in value calculation, but does not exist. Setting ship value to 0.", oo::NSStringOrNil(ship_desc));
 	}
 	else
 	{
-		base_price = oo::PListView(shipyard_info).get<unsigned long long>(SHIPYARD_KEY_PRICE, 0ULL);
+		base_price = shipyard_info.get<unsigned long long>(oo::StdString(SHIPYARD_KEY_PRICE), 0ULL);
 	}
-	
+
 	if(base_price == 0ULL) return base_price;
-	
+
+	// A missing key was priced as nothing ([UNIVERSE getEquipmentPriceForKey:nil]).
+	auto priceOf = [](const std::optional<std::string> &key) -> OOCreditsQuantity
+	{
+		return key.has_value() ? [UNIVERSE cxx_getEquipmentPriceForKey:*key] : 0;
+	};
+
 	OOCreditsQuantity	scrap_value = 351; // translates to 250 cr.
-	
-	OOWeaponType		ship_fwd_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(dict).get<NSString *>(@"forward_weapon")];
-	OOWeaponType		ship_aft_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(dict).get<NSString *>(@"aft_weapon")];
-	OOWeaponType		ship_port_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(dict).get<NSString *>(@"port_weapon")];
-	OOWeaponType		ship_starboard_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(dict).get<NSString *>(@"starboard_weapon")];
-	unsigned			ship_missiles = oo::PListView(dict).get<unsigned int>(@"missiles");
-	unsigned			ship_max_passengers = oo::PListView(dict).get<unsigned int>(@"max_passengers");
-	NSMutableArray		*ship_extra_equipment = [NSMutableArray arrayWithArray:[oo::PListView(dict).get<NSDictionary *>(@"extra_equipment") allKeys]];
-	
-	NSDictionary		*basic_info = oo::PListView(shipyard_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT);
-	unsigned			base_missiles = oo::PListView(basic_info).get<unsigned int>(KEY_EQUIPMENT_MISSILES);
-	OOCreditsQuantity	base_missiles_value = base_missiles * [UNIVERSE getEquipmentPriceForKey:@"EQ_MISSILE"] / 10;
-	NSString			*base_weapon_key = oo::PListView(basic_info).get<NSString *>(KEY_EQUIPMENT_FORWARD_WEAPON);
-	OOCreditsQuantity	base_weapons_value = [UNIVERSE getEquipmentPriceForKey:base_weapon_key] / 10;
-	NSMutableArray		*base_extra_equipment = [NSMutableArray arrayWithArray:oo::PListView(basic_info).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
-	NSString			*weapon_key = nil;
-	
+
+	OOWeaponType		ship_fwd_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringIn(dict, "forward_weapon"))];
+	OOWeaponType		ship_aft_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringIn(dict, "aft_weapon"))];
+	OOWeaponType		ship_port_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringIn(dict, "port_weapon"))];
+	OOWeaponType		ship_starboard_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringIn(dict, "starboard_weapon"))];
+	unsigned			ship_missiles = dict.get<unsigned int>("missiles");
+	unsigned			ship_max_passengers = dict.get<unsigned int>("max_passengers");
+	std::vector<std::string>	ship_extra_equipment;
+	if (const oo::PList *extraEquipment = dict.get<oo::PList::Dict>("extra_equipment"))
+	{
+		for (const auto &entry : *extraEquipment->getIf<oo::PList::Dict>())  ship_extra_equipment.push_back(entry.first);
+	}
+
+	const oo::PList		*basicInfoEntry = shipyard_info.get<oo::PList::Dict>(oo::StdString(KEY_STANDARD_EQUIPMENT));
+	const oo::PList		basic_info = (basicInfoEntry != nullptr) ? *basicInfoEntry : oo::PList();
+	unsigned			base_missiles = basic_info.get<unsigned int>(oo::StdString(KEY_EQUIPMENT_MISSILES));
+	OOCreditsQuantity	base_missiles_value = base_missiles * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_MISSILE"] / 10;
+	std::optional<std::string>	base_weapon_key = OptionalStringIn(basic_info, oo::StdString(KEY_EQUIPMENT_FORWARD_WEAPON));
+	OOCreditsQuantity	base_weapons_value = priceOf(base_weapon_key) / 10;
+	std::vector<std::optional<std::string>>	base_extra_equipment;
+	if (const oo::PList *baseExtras = basic_info.get<oo::PList::Array>(oo::StdString(KEY_EQUIPMENT_EXTRAS)))
+	{
+		for (std::size_t k = 0; k < baseExtras->count(); k++)  base_extra_equipment.push_back(OptionalStringAt(*baseExtras, k));
+	}
+	std::string			weapon_key;
+
 	// was aft_weapon defined as standard equipment ?
-	base_weapon_key = oo::PListView(basic_info).get<NSString *>(KEY_EQUIPMENT_AFT_WEAPON, nil);
-	if (base_weapon_key != nil)
-		base_weapons_value += [UNIVERSE getEquipmentPriceForKey:base_weapon_key] / 10;
-	
+	base_weapon_key = OptionalStringIn(basic_info, oo::StdString(KEY_EQUIPMENT_AFT_WEAPON));
+	if (base_weapon_key.has_value())
+		base_weapons_value += priceOf(base_weapon_key) / 10;
+
 	OOCreditsQuantity	ship_main_weapons_value = 0;
 	OOCreditsQuantity	ship_other_weapons_value = 0;
 	OOCreditsQuantity	ship_missiles_value = 0;
 
 	// calculate the actual value for the missiles present on board.
-	NSArray *missileRoles = oo::PListView(dict).get<NSArray *>(@"missile_roles");
-	if (missileRoles != nil)
+	const oo::PList *missileRoles = dict.get<oo::PList::Array>("missile_roles");
+	if (missileRoles != nullptr)
 	{
 		unsigned i;
 		for (i = 0; i < ship_missiles; i++)
 		{
-			NSString *missile_desc = oo::PListView(missileRoles).at<NSString *>(i);
-			if (missile_desc != nil && ![missile_desc isEqualToString:@"NONE"])
+			std::optional<std::string> missile_desc = OptionalStringAt(*missileRoles, i);
+			if (missile_desc.has_value() && *missile_desc != "NONE")
 			{
-				ship_missiles_value += [UNIVERSE getEquipmentPriceForKey:missile_desc] / 10;
+				ship_missiles_value += [UNIVERSE cxx_getEquipmentPriceForKey:*missile_desc] / 10;
 			}
 		}
 	}
 	else
-		ship_missiles_value = ship_missiles * [UNIVERSE getEquipmentPriceForKey:@"EQ_MISSILE"] / 10;
-	
+		ship_missiles_value = ship_missiles * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_MISSILE"] / 10;
+
 	// needs to be a signed value, we can then subtract from the base price, if less than standard equipment.
-	long long extra_equipment_value = ship_max_passengers * [UNIVERSE getEquipmentPriceForKey:@"EQ_PASSENGER_BERTH"]/10;
-	
+	long long extra_equipment_value = ship_max_passengers * [UNIVERSE cxx_getEquipmentPriceForKey:"EQ_PASSENGER_BERTH"]/10;
+
 	// add on missile values
 	extra_equipment_value += ship_missiles_value - base_missiles_value;
-	
+
 	// work out weapon values
 	if (ship_fwd_weapon)
 	{
-		weapon_key = OOEquipmentIdentifierFromWeaponType(ship_fwd_weapon);
-		ship_main_weapons_value = [UNIVERSE getEquipmentPriceForKey:weapon_key] / 10;
+		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_fwd_weapon));
+		ship_main_weapons_value = [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
 	if (ship_aft_weapon)
 	{
-		weapon_key = OOEquipmentIdentifierFromWeaponType(ship_aft_weapon);
-		if (base_weapon_key != nil) // aft weapon was defined as a base weapon
+		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_aft_weapon));
+		if (base_weapon_key.has_value()) // aft weapon was defined as a base weapon
 		{
-			ship_main_weapons_value += [UNIVERSE getEquipmentPriceForKey:weapon_key] / 10;	//take weapon downgrades into account
+			ship_main_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;	//take weapon downgrades into account
 		}
 		else
 		{
-			ship_other_weapons_value += [UNIVERSE getEquipmentPriceForKey:weapon_key] / 10;
+			ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 		}
 	}
 	if (ship_port_weapon)
 	{
-		weapon_key = OOEquipmentIdentifierFromWeaponType(ship_port_weapon);
-		ship_other_weapons_value += [UNIVERSE getEquipmentPriceForKey:weapon_key] / 10;
+		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_port_weapon));
+		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
 	if (ship_starboard_weapon)
 	{
-		weapon_key = OOEquipmentIdentifierFromWeaponType(ship_starboard_weapon);
-		ship_other_weapons_value += [UNIVERSE getEquipmentPriceForKey:weapon_key] / 10;
+		weapon_key = oo::StdString(OOEquipmentIdentifierFromWeaponType(ship_starboard_weapon));
+		ship_other_weapons_value += [UNIVERSE cxx_getEquipmentPriceForKey:weapon_key] / 10;
 	}
-	
+
 	// add on extra weapons, take away the value of the base weapons
 	extra_equipment_value += ship_other_weapons_value;
 	extra_equipment_value += ship_main_weapons_value - base_weapons_value;
-	
+
 	NSInteger i;
-	NSString *eq_key = nil;
-	
+	std::optional<std::string> eq_key;
+
 	// shipyard.plist settings might have duplicate keys.
 	// cull possible duplicates from inside base equipment
-	for (i = [base_extra_equipment count]-1; i > 0;i--)
+	// (the search range 0..i-2, as NSMakeRange(0, i-1) gave it, never looks at the entry just before)
+	for (i = (NSInteger)base_extra_equipment.size()-1; i > 0;i--)
 	{
-		eq_key = oo::PListView(base_extra_equipment).at<NSString *>(i);
-		if ([base_extra_equipment indexOfObject:eq_key inRange:NSMakeRange(0, i-1)] != NSNotFound)
-								[base_extra_equipment removeObjectAtIndex:i];
+		eq_key = base_extra_equipment[i];
+		const auto searchEnd = base_extra_equipment.begin() + (i - 1);
+		if (eq_key.has_value() && std::find(base_extra_equipment.begin(), searchEnd, eq_key) != searchEnd)
+								base_extra_equipment.erase(base_extra_equipment.begin() + i);
 	}
-	
-	// do we at least have the same equipment as a standard ship? 
-	for (i = [base_extra_equipment count]-1; i >= 0; i--)
+
+	// do we at least have the same equipment as a standard ship?
+	for (i = (NSInteger)base_extra_equipment.size()-1; i >= 0; i--)
 	{
-		eq_key = oo::PListView(base_extra_equipment).at<NSString *>(i);
-		if ([ship_extra_equipment containsObject:eq_key])
-				[ship_extra_equipment removeObject:eq_key];
+		eq_key = base_extra_equipment[i];
+		if (eq_key.has_value() && std::find(ship_extra_equipment.begin(), ship_extra_equipment.end(), *eq_key) != ship_extra_equipment.end())
+				std::erase(ship_extra_equipment, *eq_key);
 		else // if the ship has less equipment than standard, deduct the missing equipent's price
-				extra_equipment_value -= ([UNIVERSE getEquipmentPriceForKey:eq_key] / 10);
+				extra_equipment_value -= (priceOf(eq_key) / 10);
 	}
-	
+
 	// remove portable equipment from the totals
 	OOEquipmentType	*item = nil;
-	
-	for (i = [ship_extra_equipment count]-1; i >= 0; i--)
+
+	for (i = (NSInteger)ship_extra_equipment.size()-1; i >= 0; i--)
 	{
-		eq_key = oo::PListView(ship_extra_equipment).at<NSString *>(i);
-		item = [OOEquipmentType equipmentTypeWithIdentifier:eq_key];
-		if ([item isPortableBetweenShips]) [ship_extra_equipment removeObjectAtIndex:i];
+		item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(ship_extra_equipment[i])];
+		if ([item isPortableBetweenShips]) ship_extra_equipment.erase(ship_extra_equipment.begin() + i);
 	}
-	
+
 	// add up what we've got left.
-	for (i = [ship_extra_equipment count]-1; i >= 0; i--)
-		extra_equipment_value += ([UNIVERSE getEquipmentPriceForKey:oo::PListView(ship_extra_equipment).at<NSString *>(i)] / 10);		
-	
+	for (i = (NSInteger)ship_extra_equipment.size()-1; i >= 0; i--)
+		extra_equipment_value += ([UNIVERSE cxx_getEquipmentPriceForKey:ship_extra_equipment[i]] / 10);
+
 	// 10% discount for second hand value, steeper reduction if worse than standard.
 	extra_equipment_value *= extra_equipment_value < 0 ? 1.4 : 0.9;
-	
+
 	// we'll return at least the scrap value
 	// TODO: calculate scrap value based on the size of the ship.
 	if ((long long)scrap_value > (long long)base_price + extra_equipment_value) return scrap_value;
-	
+
 	return base_price + extra_equipment_value;
 }
 
 
-- (NSString *) brochureDescriptionWithDictionary:(NSDictionary *)dict standardEquipment:(NSArray *)extras optionalEquipment:(NSArray *)options
+- (std::optional<std::string>) brochureDescriptionWithDictionary:(const oo::PList &)dict standardEquipment:(const std::vector<std::string> &)extras optionalEquipment:(const std::vector<std::string> &)options
 {
-	NSMutableArray	*mut_extras = [NSMutableArray arrayWithArray:extras];
-	NSString		*allOptions = [options componentsJoinedByString:@" "];
-	
-	NSMutableString	*desc = [NSMutableString stringWithFormat:@"The %@.", oo::PListView(dict).get<NSString *>(KEY_NAME)];
-	
+	std::vector<std::string>	mut_extras = extras;
+	std::string		allOptions;
+	for (std::size_t k = 0; k < options.size(); k++)
+	{
+		if (k > 0)  allOptions += " ";
+		allOptions += options[k];
+	}
+
+	std::string		desc = "The " + TextOrNull(OptionalStringIn(dict, oo::StdString(KEY_NAME))) + ".";
+
 	// cargo capacity and expansion
-	OOCargoQuantity	max_cargo = oo::PListView(dict).get<unsigned int>(@"max_cargo");
+	OOCargoQuantity	max_cargo = dict.get<unsigned int>("max_cargo");
 	if (max_cargo)
 	{
-		OOCargoQuantity	extra_cargo = oo::PListView(dict).get<unsigned int>(@"extra_cargo", 15);
-		[desc appendFormat:@" Cargo capacity %dt", max_cargo];
-		BOOL canExpand = ([allOptions rangeOfString:@"EQ_CARGO_BAY"].location != NSNotFound);
+		OOCargoQuantity	extra_cargo = dict.get<unsigned int>("extra_cargo", 15);
+		desc += oo::str::format(" Cargo capacity %dt", max_cargo);
+		BOOL canExpand = (allOptions.find("EQ_CARGO_BAY") != std::string::npos);
 		if (canExpand)
-			[desc appendFormat:@" (expandable to %dt at most starports)", max_cargo + extra_cargo];
-		[desc appendString:@"."];
+			desc += oo::str::format(" (expandable to %dt at most starports)", max_cargo + extra_cargo);
+		desc += ".";
 	}
-	
+
 	// speed
-	float top_speed = oo::PListView(dict).get<int>(@"max_flight_speed");
-	[desc appendFormat:@" Top speed %.3fLS.", 0.001 * top_speed];
-	
+	float top_speed = dict.get<int>("max_flight_speed");
+	desc += oo::str::format(" Top speed %.3fLS.", 0.001 * top_speed);
+
 	// passenger berths
-	if ([mut_extras count])
+	if (mut_extras.size())
 	{
 		unsigned n_berths = 0;
 		unsigned i;
-		for (i = 0; i < [mut_extras count]; i++)
+		for (i = 0; i < mut_extras.size(); i++)
 		{
-			NSString* item_key = oo::PListView(mut_extras).at<NSString *>(i);
-			if ([item_key isEqual:@"EQ_PASSENGER_BERTH"])
+			if (mut_extras[i] == "EQ_PASSENGER_BERTH")
 			{
 				n_berths++;
-				[mut_extras removeObjectAtIndex:i--];
+				mut_extras.erase(mut_extras.begin() + i--);
 			}
 		}
 		if (n_berths)
 		{
 			if (n_berths == 1)
-				[desc appendString:@" Includes luxury accomodation for a single passenger."];
+				desc += " Includes luxury accomodation for a single passenger.";
 			else
-				[desc appendFormat:@" Includes luxury accomodation for %d passengers.", n_berths];
+				desc += oo::str::format(" Includes luxury accomodation for %d passengers.", n_berths);
 		}
 	}
-	
+
 	// standard fittings
-	if ([mut_extras count])
+	if (mut_extras.size())
 	{
-		[desc appendString:@"\nComes with"];
+		desc += "\nComes with";
 		unsigned i, j;
-		for (i = 0; i < [mut_extras count]; i++)
+		for (i = 0; i < mut_extras.size(); i++)
 		{
-			NSString* item_key = oo::PListView(mut_extras).at<NSString *>(i);
-			NSString* item_desc = nil;
+			const std::string &item_key = mut_extras[i];
+			std::optional<std::string> item_desc;
 			for (j = 0; ((j < equipmentData.count())&&(!item_desc)) ; j++)
 			{
-				NSString *eq_type = oo::NSStringOrNil(EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX));
-				if ([eq_type isEqual:item_key])
-					item_desc = oo::NSStringOrNil(EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX));
+				std::optional<std::string> eq_type = EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX);
+				if (eq_type == item_key)
+					item_desc = EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
 			}
 			if (item_desc)
 			{
-				switch ([mut_extras count] - i)
+				switch (mut_extras.size() - i)
 				{
 					case 1:
-						[desc appendFormat:@" %@ fitted as standard.", item_desc];
+						desc += " " + *item_desc + " fitted as standard.";
 						break;
 					case 2:
-						[desc appendFormat:@" %@ and", item_desc];
+						desc += " " + *item_desc + " and";
 						break;
 					default:
-						[desc appendFormat:@" %@,", item_desc];
+						desc += " " + *item_desc + ",";
 						break;
 				}
 			}
 		}
 	}
-	
+
 	// optional fittings
-	if ([options count])
+	if (options.size())
 	{
-		[desc appendString:@"\nCan additionally be outfitted with"];
+		desc += "\nCan additionally be outfitted with";
 		unsigned i, j;
-		for (i = 0; i < [options count]; i++)
+		for (i = 0; i < options.size(); i++)
 		{
-			NSString* item_key = oo::PListView(options).at<NSString *>(i);
-			NSString* item_desc = nil;
+			const std::string &item_key = options[i];
+			std::optional<std::string> item_desc;
 			for (j = 0; ((j < equipmentData.count())&&(!item_desc)) ; j++)
 			{
-				NSString *eq_type = oo::NSStringOrNil(EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX));
-				if ([eq_type isEqual:item_key])
-					item_desc = oo::NSStringOrNil(EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX));
+				std::optional<std::string> eq_type = EquipmentItemString(equipmentData, j, EQUIPMENT_KEY_INDEX);
+				if (eq_type == item_key)
+					item_desc = EquipmentItemString(equipmentData, j, EQUIPMENT_SHORT_DESC_INDEX);
 			}
 			if (item_desc)
 			{
-				switch ([options count] - i)
+				switch (options.size() - i)
 				{
 					case 1:
-						[desc appendFormat:@" %@ at suitably equipped starports.", item_desc];
+						desc += " " + *item_desc + " at suitably equipped starports.";
 						break;
 					case 2:
-						[desc appendFormat:@" %@ and/or", item_desc];
+						desc += " " + *item_desc + " and/or";
 						break;
 					default:
-						[desc appendFormat:@" %@,", item_desc];
+						desc += " " + *item_desc + ",";
 						break;
 				}
 			}
 		}
 	}
-	
+
 	return desc;
 }
 
