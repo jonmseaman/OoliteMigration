@@ -36,6 +36,10 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityContracts
 - (BOOL) addPassenger:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee advance:(double)advance risk:(unsigned)risk;	// -> -cxx_addPassenger:start:destination:eta:fee:advance:risk:
 - (BOOL) removePassenger:(NSString*)Name;	// -> -cxx_removePassenger:
 
+// oo-3rb.182 (chunk 4): parcels
+- (BOOL) addParcel:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk;	// -> -cxx_addParcel:start:destination:eta:fee:premium:risk:
+- (BOOL) removeParcel:(NSString*)Name;	// -> -cxx_removeParcel:
+
 @end
 
 #endif	// PLAYERENTITYCONTRACTS_FOUNDATIONBRIDGE_H

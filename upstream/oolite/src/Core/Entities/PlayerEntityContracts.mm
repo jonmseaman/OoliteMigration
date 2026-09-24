@@ -292,12 +292,12 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 	}
 
 	// check parcel contracts
-	for (i = 0; i < [parcels count]; i++)
+	for (i = 0; i < parcels.size(); i++)
 	{
-		NSDictionary* parcel_info = [oo::PListView(parcels).at<NSDictionary *>(i) retain];
-		NSString* parcel_name = oo::PListView(parcel_info).get<NSString *>(PASSENGER_KEY_NAME);
-		int dest = oo::PListView(parcel_info).get<int>(CONTRACT_KEY_DESTINATION);
-		int dest_eta = oo::PListView(parcel_info).get<double>(CONTRACT_KEY_ARRIVAL_TIME) - ship_clock;
+		const oo::PList parcel_info = parcels[i];	// a copy: the entry may be removed below (it was retained)
+		const std::optional<std::string> parcel_name = OptionalStringForKey(parcel_info, oo::StdString(PASSENGER_KEY_NAME));
+		int dest = parcel_info.get<int>(oo::StdString(CONTRACT_KEY_DESTINATION));
+		int dest_eta = parcel_info.get<double>(oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)) - ship_clock;
 		
 		if (system_id == dest)
 		{
@@ -305,7 +305,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			if (dest_eta > 0)
 			{
 				// and in good time
-				long long fee = oo::PListView(parcel_info).get<long long>(CONTRACT_KEY_FEE);
+				long long fee = parcel_info.get<long long>(oo::StdString(CONTRACT_KEY_FEE));
 				while ((randf() < 0.75)&&(dest_eta > 86400))	// delivered with more than a day to spare and a decent customer?
 				{
 					// lower tips than passengers
@@ -315,33 +315,33 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				}
 				credits += 10 * fee;
 				
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-okay-@-@")), { oo::DescriptionOf(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-okay-@-@")), { TextArg(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
 				
-				[self increaseParcelReputation:RepForRisk(oo::PListView(parcel_info).get<unsigned int>(CONTRACT_KEY_RISK, 0))];
+				[self increaseParcelReputation:RepForRisk(parcel_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0))];
 
-				[parcels removeObjectAtIndex:i--];
-				if (oo::PListView(parcel_info).get<unsigned int>(CONTRACT_KEY_RISK, 0) > 0)
+				parcels.erase(parcels.begin() + i--);
+				if (parcel_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
 					[self addRoleToPlayer:@"trader-courier+"];
 				}
-				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:[NSArray arrayWithObjects:@"parcel",@"success",[NSNumber numberWithUnsignedInteger:10*fee],parcel_info,nil]];
+				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("parcel"), oo::PList("success"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), parcel_info }))];
 
 			}
 			else
 			{
 				// but we're late!
-				long long fee = oo::PListView(parcel_info).get<long long>(CONTRACT_KEY_FEE) / 2;	// halve fare
+				long long fee = parcel_info.get<long long>(oo::StdString(CONTRACT_KEY_FEE)) / 2;	// halve fare
 				while (randf() < 0.5)	// maybe halve fare a few times!
 					fee /= 2;
 				credits += 10 * fee;
 				
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-late-@-@")), { oo::DescriptionOf(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
-				if (oo::PListView(parcel_info).get<unsigned int>(CONTRACT_KEY_RISK, 0) > 0)
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-delivered-late-@-@")), { TextArg(parcel_name), oo::DescriptionOf(OOIntCredits(fee)) }) + "\n";
+				if (parcel_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0) > 0)
 				{
 					[self addRoleToPlayer:@"trader-courier+"];
 				}
-				[parcels removeObjectAtIndex:i--];
-				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:[NSArray arrayWithObjects:@"parcel",@"late",[NSNumber numberWithUnsignedInteger:10*fee],parcel_info,nil]];
+				parcels.erase(parcels.begin() + i--);
+				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("parcel"), oo::PList("late"), oo::PList::unsignedInteger(static_cast<NSUInteger>(10*fee)), parcel_info }))];
 			}
 		}
 		else
@@ -349,14 +349,13 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			if (dest_eta < 0)
 			{
 				// we've run out of time!
-				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-failed-@")), { oo::DescriptionOf(parcel_name) }) + "\n";
+				result += oo::str::formatRuntime(oo::StdString(DESC(@"parcel-failed-@")), { TextArg(parcel_name) }) + "\n";
 				
-				[self decreaseParcelReputation:RepForRisk(oo::PListView(parcel_info).get<unsigned int>(CONTRACT_KEY_RISK, 0))];
-				[parcels removeObjectAtIndex:i--];
-				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:[NSArray arrayWithObjects:@"parcel",@"failed",[NSNumber numberWithUnsignedInteger:0],parcel_info,nil]];
+				[self decreaseParcelReputation:RepForRisk(parcel_info.get<unsigned int>(oo::StdString(CONTRACT_KEY_RISK), 0))];
+				parcels.erase(parcels.begin() + i--);
+				[self doScriptEvent:OOJSID("playerCompletedContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("parcel"), oo::PList("failed"), oo::PList::unsignedInteger(static_cast<NSUInteger>(0)), parcel_info }))];
 			}
 		}
-		[parcel_info release];
 	}
 
 	
@@ -516,14 +515,15 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		}
 	}
 
-	// check parcel_record for expired deliveries
-	ids = [parcel_record allKeys];
-	for (i = 0; i < [ids count]; i++)
+	// check parcel_record for expired deliveries (only deletes: the key order does not matter)
+	std::vector<std::string> parcel_ids;
+	for (const auto &record : parcel_record)  parcel_ids.push_back(record.first);
+	for (i = 0; i < parcel_ids.size(); i++)
 	{
-		double dest_eta = [(NSNumber*)[parcel_record objectForKey:[ids objectAtIndex:i]] doubleValue] - ship_clock;
+		double dest_eta = DoubleForKey(parcel_record, parcel_ids[i]) - ship_clock;	// -doubleValue
 		if (dest_eta < 0)
 		{
-			[parcel_record removeObjectForKey:[ids objectAtIndex:i]];
+			parcel_record.erase(parcel_ids[i]);
 		}
 	}
 
@@ -978,19 +978,20 @@ for (unsigned i=0;i<amount;i++)
 }
 
 
-- (BOOL) addParcel:(NSString*)Name start:(unsigned)start destination:(unsigned)Destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk
+- (BOOL) cxx_addParcel:(const std::string &)Name start:(unsigned)start destination:(unsigned)Destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk
 {
-	NSDictionary* parcel_info = [NSDictionary dictionaryWithObjectsAndKeys:
-		Name,											PASSENGER_KEY_NAME,
-		[NSNumber numberWithInt:start],					CONTRACT_KEY_START,
-		[NSNumber numberWithInt:Destination],			CONTRACT_KEY_DESTINATION,
-		[NSNumber numberWithDouble:[PLAYER clockTime]],	CONTRACT_KEY_DEPARTURE_TIME,
-		[NSNumber numberWithDouble:eta],				CONTRACT_KEY_ARRIVAL_TIME,
-		[NSNumber numberWithDouble:fee],				CONTRACT_KEY_FEE,
-		[NSNumber numberWithDouble:premium],			CONTRACT_KEY_PREMIUM,
-		[NSNumber numberWithUnsignedInt:risk],			CONTRACT_KEY_RISK,
-		NULL];
-	
+	// the NSNumber kinds the old dictionary held: +numberWithInt:, +numberWithDouble:, +numberWithUnsignedInt:
+	const oo::PList parcel_info(oo::PList::Dict{
+		{ oo::StdString(PASSENGER_KEY_NAME),								oo::PList(Name) },
+		{ oo::StdString(CONTRACT_KEY_START),				oo::PList::signedInteger(static_cast<int>(start)) },
+		{ oo::StdString(CONTRACT_KEY_DESTINATION),			oo::PList::signedInteger(static_cast<int>(Destination)) },
+		{ oo::StdString(CONTRACT_KEY_DEPARTURE_TIME),		oo::PList([PLAYER clockTime]) },
+		{ oo::StdString(CONTRACT_KEY_ARRIVAL_TIME),			oo::PList(eta) },
+		{ oo::StdString(CONTRACT_KEY_FEE),					oo::PList(fee) },
+		{ oo::StdString(CONTRACT_KEY_PREMIUM),				oo::PList(premium) },
+		{ oo::StdString(CONTRACT_KEY_RISK),					oo::PList::unsignedInteger(risk) },
+	});
+
 	// extra checks, just in case.
 	// FIXME: do we absolutely need this check? can we live
 	// with parcels of senders who happen to have the same
@@ -1001,35 +1002,35 @@ for (unsigned i=0;i<amount;i++)
 	{
 		[self addRoleToPlayer:@"trader-courier+"];
 	}
-		
-	[parcels addObject:parcel_info];
-	[parcel_record setObject:[NSNumber numberWithDouble:eta] forKey:Name];
 
-	[self doScriptEvent:OOJSID("playerEnteredContract") withArguments:[NSArray arrayWithObjects:@"parcel",parcel_info,nil]];
+	parcels.push_back(parcel_info);
+	parcel_record[Name] = oo::PList(eta);	// +numberWithDouble:
+
+	[self doScriptEvent:OOJSID("playerEnteredContract") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList("parcel"), parcel_info }))];
 
 	return YES;
 }
 
 
-- (BOOL) removeParcel:(NSString*)Name	// removes the first parcel that answers to Name, returns NO if none found
-{	
+- (BOOL) cxx_removeParcel:(const std::string &)Name	// removes the first parcel that answers to Name, returns NO if none found
+{
 	// extra check, just in case.
-	if ([parcels count] == 0) return NO;
-	
+	if (parcels.empty()) return NO;
+
 	unsigned			i;
-	
-	for (i = 0; i < [parcels count]; i++)
+
+	for (i = 0; i < parcels.size(); i++)
 	{
-		NSString		*this_name = oo::PListView(oo::PListView(parcels).at<NSDictionary *>(i)).get<NSString *>(PASSENGER_KEY_NAME);
-		
-		if ([Name isEqualToString:this_name])
+		const std::optional<std::string> this_name = OptionalStringForKey(parcels[i], oo::StdString(PASSENGER_KEY_NAME));
+
+		if (this_name == Name)
 		{
-			[parcels removeObjectAtIndex:i];
-			[parcel_record removeObjectForKey:Name];
+			parcels.erase(parcels.begin() + i);
+			parcel_record.erase(Name);
 			return YES;
 		}
 	}
-	
+
 	return NO;
 }
 
@@ -1136,7 +1137,7 @@ for (unsigned i=0;i<amount;i++)
 
 - (NSArray*) parcelList
 {
-	return [self contractsListFromArray:parcels forCargo:NO forParcels:YES];
+	return [self contractsListFromArray:oo::ObjectFromPList(oo::PList(parcels)) forCargo:NO forParcels:YES];	// the helper is chunk 5's
 }
 
 
