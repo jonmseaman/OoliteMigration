@@ -350,3 +350,16 @@ OOScanClass OOScanClassFromString(NSString *string) PURE_FUNC;
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef __cplusplus
+#include "oofnd/StdLib.hpp"
+
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
+// (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
+// The Foundation forms above forward to them from OOConstToString+FoundationBridge.mm.
+std::string cxx_OOStringFromEntityStatus(OOEntityStatus status);
+OOEntityStatus cxx_OOEntityStatusFromString(const std::string &string);
+
+std::string cxx_OOStringFromScanClass(OOScanClass scanClass);
+OOScanClass cxx_OOScanClassFromString(const std::string &string);
+#endif

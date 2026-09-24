@@ -201,7 +201,7 @@ OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
 
 
 - (BOOL)connectDebugMonitor:(in OODebugMonitor *)debugMonitor
-			   errorMessage:(out NSString **)message
+			   errorMessage:(out id *)message	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
 	if (_status == kOOTCPClientConnectionRefused)
 	{
@@ -221,7 +221,7 @@ OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
 
 
 - (void)disconnectDebugMonitor:(in OODebugMonitor *)debugMonitor
-					   message:(in NSString *)message
+					   message:(in id)message	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
 	[self disconnectFromServerWithMessage:message];
 	_monitor = nil;
@@ -229,9 +229,9 @@ OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
 
 
 - (oneway void)debugMonitor:(in OODebugMonitor *)debugMonitor
-			jsConsoleOutput:(in NSString *)output
-				   colorKey:(in NSString *)colorKey
-			  emphasisRange:(in NSRange)emphasisRange
+			jsConsoleOutput:(in id)output
+				   colorKey:(in id)colorKey
+			  emphasisRange:(in NSRange)emphasisRange	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
 	NSMutableDictionary			*parameters = nil;
 	NSArray						*range = nil;
@@ -268,7 +268,7 @@ OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
 
 
 - (oneway void)debugMonitor:(in OODebugMonitor *)debugMonitor
-		  noteConfiguration:(in NSDictionary *)configuration
+		  noteConfiguration:(in id)configuration	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
 	[self sendPacket:kOOTCPPacket_NoteConfiguration
 			withValue:configuration
@@ -278,7 +278,7 @@ OOINLINE BOOL StatusIsSendable(OOTCPClientConnectionStatus status)
 
 - (oneway void)debugMonitor:(in OODebugMonitor *)debugMonitor
 noteChangedConfigrationValue:(in id)newValue
-					 forKey:(in NSString *)key
+					 forKey:(in id)key	// shared selector (OODebuggerInterface; proposed ADR-0043)
 {
 	if (newValue != nil)
 	{
