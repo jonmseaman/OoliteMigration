@@ -207,6 +207,24 @@ OOJSInterfaceDefinition *InterfaceForKey(StationEntity *station, const std::opti
 }
 
 
+// A roleWeightFlags count (-oo_intForKey: with default 0).
+int RoleFlagCount(const oo::PList::Dict &flags, const std::string &role)
+{
+	const auto it = flags.find(role);
+	return (it != flags.end()) ? oo::PListGet<int>::from(&it->second, 0) : 0;
+}
+
+
+// The recently visited systems as saved: an array of signed integers (+numberWithInt:).
+oo::PList SystemListPList(const std::vector<OOSystemID> &systems)
+{
+	oo::PList::Array result;
+	result.reserve(systems.size());
+	for (OOSystemID system : systems)  result.push_back(oo::PList::signedInteger(system));
+	return oo::PList(std::move(result));
+}
+
+
 // "More:<n>[:<key>]" row keys: field <index>, or nullopt past the end.
 std::optional<std::string> RowKeyField(const std::string &key, size_t index)
 {
@@ -1165,13 +1183,13 @@ static GLfloat		sBaseMass = 0.0;
 	[result setObject:[self fastEquipmentB] forKey:@"primed_equipment_b"];
 
 	// roles
-	[result setObject:roleWeights forKey:@"role_weights"];
+	[result setObject:oo::NSArrayFromStrings(roleWeights) forKey:@"role_weights"];
 
 	// role information
-	[result setObject:roleWeightFlags forKey:@"role_weight_flags"];
+	[result setObject:oo::ObjectFromPList(oo::PList(roleWeightFlags)) forKey:@"role_weight_flags"];
 
 	// role information
-	[result setObject:roleSystemList forKey:@"role_system_memory"];
+	[result setObject:oo::ObjectFromPList(SystemListPList(roleSystemList)) forKey:@"role_system_memory"];
 
 	// reputation
 	// initialise parcel reputations in dictionary if not set (the saved dictionary was the live one,
@@ -1207,7 +1225,7 @@ static GLfloat		sBaseMass = 0.0;
 	[result setObject:oo::ObjectFromPList(oo::PList(contracts)) forKey:@"contracts"];
 	[result setObject:oo::ObjectFromPList(oo::PList(contract_record)) forKey:@"contract_record"];
 
-	[result setObject:missionDestinations forKey:@"mission_destinations"];
+	[result setObject:oo::ObjectFromPList(oo::PList(missionDestinations)) forKey:@"mission_destinations"];
 
 	//shipyard
 	[result setObject:oo::ObjectFromPList(oo::PList(shipyard_record)) forKey:@"shipyard_record"];
@@ -1587,9 +1605,9 @@ static GLfloat		sBaseMass = 0.0;
 	specialCargo = [oo::PListView(dict).get<NSString *>(@"special_cargo") copy];
 	
 	// mission destinations
-	NSArray *legacyDestinations = oo::PListView(dict).get<NSArray *>(@"missionDestinations");
+	const oo::PList legacyDestinations = oo::PListFrom([dict objectForKey:@"missionDestinations"]);	// used only if an array
 
-	NSDictionary *newDestinations = oo::PListView(dict).get<NSDictionary *>(@"mission_destinations");
+	const oo::PList newDestinations = oo::PListFrom([dict objectForKey:@"mission_destinations"]);	// used only if a dictionary
 	[self initialiseMissionDestinations:newDestinations andLegacy:legacyDestinations];
 	
 	// shipyard
@@ -1722,35 +1740,34 @@ static GLfloat		sBaseMass = 0.0;
 	escape_pod_rescue_time = oo::PListView(dict).get<double>(@"escape_pod_rescue_time", 0.0);
 	
 	// role weights
-	[roleWeights release];
-	roleWeights = [oo::PListView(dict).get<NSArray *>(@"role_weights") mutableCopy];
+	const oo::PList savedRoles = oo::PListFrom([dict objectForKey:@"role_weights"]);
 	NSUInteger rc = [self maxPlayerRoles];
-	if (roleWeights == nil)
+	roleWeights.clear();
+	if (!savedRoles.isArray())
 	{
-		roleWeights = [[NSMutableArray alloc] initWithCapacity:rc];
-		while (rc-- > 0)
-		{
-			[roleWeights addObject:@"player-unknown"];
-		}
+		roleWeights.assign(rc, "player-unknown");
 	}
 	else
 	{
-		if ([roleWeights count] > rc)
+		for (size_t roleIndex = 0; roleIndex < savedRoles.count(); roleIndex++)
 		{
-			[roleWeights removeObjectsInRange:(NSRange) {rc,[roleWeights count]-rc}];
+			// the roles are strings: anything else is dropped
+			if (const std::string *role = savedRoles.at(roleIndex)->getIf<std::string>())  roleWeights.push_back(*role);
+		}
+		if (roleWeights.size() > rc)
+		{
+			roleWeights.resize(rc);
 		}
 	}
 
-	roleWeightFlags = [oo::PListView(dict).get<NSDictionary *>(@"role_weight_flags") mutableCopy];
-	if (roleWeightFlags == nil)
-	{
-		roleWeightFlags = [[NSMutableDictionary alloc] init];
-	}
+	const oo::PList savedFlags = oo::PListFrom([dict objectForKey:@"role_weight_flags"]);
+	roleWeightFlags = savedFlags.isDict() ? *savedFlags.getIf<oo::PList::Dict>() : oo::PList::Dict();
 
-	roleSystemList = [oo::PListView(dict).get<NSArray *>(@"role_system_memory") mutableCopy];
-	if (roleSystemList == nil)
+	const oo::PList savedSystems = oo::PListFrom([dict objectForKey:@"role_system_memory"]);
+	roleSystemList.clear();
+	for (size_t systemIndex = 0; savedSystems.isArray() && systemIndex < savedSystems.count(); systemIndex++)
 	{
-		roleSystemList = [[NSMutableArray alloc] initWithCapacity:32];
+		roleSystemList.push_back(savedSystems.at<int>(systemIndex));	// -intValue
 	}
 
 
@@ -2108,17 +2125,10 @@ static GLfloat		sBaseMass = 0.0;
 		{ oo::StdString(PARCEL_UNKNOWN_KEY), oo::PList::signedInteger(MAX_CONTRACT_REP) },
 	};
 	
-	DESTROY(roleWeights);
-	roleWeights = [[NSMutableArray alloc] initWithCapacity:8];
-	for (i = 0 ; i < 8 ; i++)
-	{
-		[roleWeights addObject:@"player-unknown"];
-	}
-	DESTROY(roleWeightFlags);
-	roleWeightFlags = [[NSMutableDictionary alloc] init];
+	roleWeights.assign(8, "player-unknown");
+	roleWeightFlags.clear();
 
-	DESTROY(roleSystemList);
-	roleSystemList = [[NSMutableArray alloc] initWithCapacity:32];
+	roleSystemList.clear();
 
 	energy					= 256;
 	weapon_temp				= 0.0f;
@@ -2151,9 +2161,8 @@ static GLfloat		sBaseMass = 0.0;
 	parcels.clear();
 	parcel_record.clear();
 	
-	[missionDestinations release];
-	missionDestinations = [[NSMutableDictionary alloc] init];
-	
+	missionDestinations.clear();
+
 	shipyard_record.clear();
 	
 	target_memory.clear();
@@ -2486,10 +2495,6 @@ static GLfloat		sBaseMass = 0.0;
 	DESTROY(lastTextKey);
 	
 	DESTROY(marketSelectedCommodity);
-	DESTROY(roleWeights);
-	DESTROY(roleWeightFlags);
-	DESTROY(roleSystemList);
-	DESTROY(missionDestinations);
 	
 	
 	DESTROY(shipCommodityData);
@@ -5072,7 +5077,7 @@ static GLfloat		sBaseMass = 0.0;
 }
 
 
-- (NSMutableArray *) roleWeights
+- (std::vector<std::string>) cxx_roleWeights
 {
 	return roleWeights;
 }
@@ -5084,98 +5089,98 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		return;
 	}
-	NSString *role = nil;
-	if ([[victim primaryRole] isEqualToString:@"escape-capsule"])
+	std::optional<std::string> role;
+	if (oo::OptionalString([victim primaryRole]) == "escape-capsule")
 	{
-		role = @"assassin-player";
+		role = "assassin-player";
 	}
 	else if ([victim bounty] > 0)
 	{
-		role = @"hunter";
+		role = "hunter";
 	}
 	else if ([victim isPirateVictim])
 	{
-		role = @"pirate";
+		role = "pirate";
 	}
 	else if ([UNIVERSE role:[self primaryRole] isInCategory:@"oolite-hunter"] || [victim scanClass] == CLASS_POLICE)
 	{
-		role = @"pirate-interceptor";
+		role = "pirate-interceptor";
 	}
-	if (role == nil)
+	if (!role.has_value())
 	{
 		return;
 	}
-	NSUInteger times = oo::PListView(roleWeightFlags).get<int>(role, 0);
+	NSUInteger times = RoleFlagCount(roleWeightFlags, *role);
 	times++;
-	[roleWeightFlags setObject:[NSNumber numberWithUnsignedInteger:times] forKey:role];
+	roleWeightFlags.insert_or_assign(*role, oo::PList::signedInteger(static_cast<std::int64_t>(times)));
 	if ((times & (times-1)) == 0) // is power of 2
 	{
-		[self addRoleToPlayer:role];
+		[self cxx_addRoleToPlayer:*role];
 	}
 }
 
 
 - (void) addRoleForMining
 {
-	NSString *role = @"miner";
-	NSUInteger times = oo::PListView(roleWeightFlags).get<int>(role, 0);
+	const std::string role = "miner";
+	NSUInteger times = RoleFlagCount(roleWeightFlags, role);
 	times++;
-	[roleWeightFlags setObject:[NSNumber numberWithUnsignedInteger:times] forKey:role];
+	roleWeightFlags.insert_or_assign(role, oo::PList::signedInteger(static_cast<std::int64_t>(times)));
 	if ((times & (times-1)) == 0) // is power of 2
 	{
-		[self addRoleToPlayer:role];
+		[self cxx_addRoleToPlayer:role];
 	}
 }
 
 
-- (void) addRoleToPlayer:(NSString *)role
+- (void) cxx_addRoleToPlayer:(const std::string &)role
 {
 	NSUInteger slot = Ranrot() & ([self maxPlayerRoles]-1);
-	[self addRoleToPlayer:role inSlot:slot];
+	[self cxx_addRoleToPlayer:role inSlot:slot];
 }
 
 
-- (void) addRoleToPlayer:(NSString *)role inSlot:(NSUInteger)slot
+- (void) cxx_addRoleToPlayer:(const std::string &)role inSlot:(NSUInteger)slot
 {
 	if (slot >= [self maxPlayerRoles])
 	{
 		slot = [self maxPlayerRoles]-1;
 	}
-	if (slot >= [roleWeights count])
+	if (slot >= roleWeights.size())
 	{
-		[roleWeights addObject:role];
+		roleWeights.push_back(role);
 	}
 	else
 	{
-		[roleWeights replaceObjectAtIndex:slot withObject:role];
+		roleWeights[slot] = role;
 	}
 }
 
 
 - (void) clearRoleFromPlayer:(BOOL)includingLongRange
 {
-	NSUInteger slot = Ranrot() % [roleWeights count];
+	NSUInteger slot = Ranrot() % roleWeights.size();
 	if (!includingLongRange)
 	{
-		NSString *role = [roleWeights objectAtIndex:slot];
+		const std::string &role = roleWeights[slot];
 		// long range roles cleared at 1/2 normal rate
-		if ([role hasSuffix:@"+"] && randf() > 0.5)
+		if (oo::str::hasSuffix(role, "+") && randf() > 0.5)
 		{
 			return;
 		}
 	}
-	[roleWeights replaceObjectAtIndex:slot withObject:@"player-unknown"];
+	roleWeights[slot] = "player-unknown";
 }
 
 
 - (void) clearRolesFromPlayer:(float)chance
 {
-	NSUInteger i, count=[roleWeights count];
+	NSUInteger i, count=roleWeights.size();
 	for (i = 0; i < count; i++)
 	{
 		if (randf() < chance)
 		{
-			[roleWeights replaceObjectAtIndex:i withObject:@"player-unknown"];
+			roleWeights[i] = "player-unknown";
 		}
 	}
 }
@@ -5218,11 +5223,11 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		memory = 8;
 	}
-	if ([roleSystemList count] >= memory)
+	if (roleSystemList.size() >= memory)
 	{
-		[roleSystemList removeObjectAtIndex:0];
+		roleSystemList.erase(roleSystemList.begin());
 	}
-	[roleSystemList addObject:[NSNumber numberWithInt:sys]];
+	roleSystemList.push_back(sys);
 }
 
 
@@ -7219,7 +7224,7 @@ static GLfloat		sBaseMass = 0.0;
 		[self markAsOffender:[dockedStation legalStatusOfManifest:shipCommodityData export:NO] withReason:kOOLegalStatusReasonIllegalImports];
 		if ([self bounty] > oldbounty)
 		{
-			[self addRoleToPlayer:@"trader-smuggler"];
+			[self cxx_addRoleToPlayer:"trader-smuggler"];
 		}
 	}
 
@@ -7295,7 +7300,7 @@ static GLfloat		sBaseMass = 0.0;
 		[self markAsOffender:[station legalStatusOfManifest:shipCommodityData export:YES] withReason:kOOLegalStatusReasonIllegalExports];
 		if ([self bounty] > oldbounty)
 		{
-			[self addRoleToPlayer:@"trader-smuggler"];
+			[self cxx_addRoleToPlayer:"trader-smuggler"];
 		}
 	}
 	OOGUIScreenID	oldScreen = gui_screen;
@@ -7590,8 +7595,7 @@ static GLfloat		sBaseMass = 0.0;
 	parcels.clear();
 	
 	// remove any mission destinations for the old galaxy
-	if (missionDestinations)
-		[missionDestinations removeAllObjects];
+	missionDestinations.clear();
 	
 	// expire passenger contracts for the old galaxy
 	{
@@ -7618,8 +7622,8 @@ static GLfloat		sBaseMass = 0.0;
 	{
 		[self clearRolesFromPlayer:0.9];
 	}	
-	[roleWeightFlags removeAllObjects];
-	[roleSystemList removeAllObjects];
+	roleWeightFlags.clear();
+	roleSystemList.clear();
 	
 	// may be more than one item providing this
 	[self removeEquipmentItem:[self equipmentItemProviding:@"EQ_GAL_DRIVE"]];
@@ -7752,35 +7756,35 @@ static GLfloat		sBaseMass = 0.0;
 	NSUInteger legality = [self legalStatusOfCargoList];
 	OOCargoQuantity maxSpace = [self maxAvailableCargoSpace];
 	OOCargoQuantity availSpace = [self availableCargoSpace];
-	if ([roleWeightFlags objectForKey:@"bought-legal"])
+	if (roleWeightFlags.contains("bought-legal"))
 	{
 		if (maxSpace != availSpace)
 		{
-			[self addRoleToPlayer:@"trader"];
+			[self cxx_addRoleToPlayer:"trader"];
 			if (maxSpace - availSpace > 20 || availSpace == 0)
 			{
 				if (legality == 0)
 				{
-					[self addRoleToPlayer:@"trader"];
+					[self cxx_addRoleToPlayer:"trader"];
 				}
 			}
 		}
 	}
-	if ([roleWeightFlags objectForKey:@"bought-illegal"])
+	if (roleWeightFlags.contains("bought-illegal"))
 	{
 		if (maxSpace != availSpace && legality > 0)
 		{
-			[self addRoleToPlayer:@"trader-smuggler"];
+			[self cxx_addRoleToPlayer:"trader-smuggler"];
 			if (maxSpace - availSpace > 20 || availSpace == 0)
 			{
 				if (legality >= 20 || legality >= maxSpace)
 				{
-					[self addRoleToPlayer:@"trader-smuggler"];
+					[self cxx_addRoleToPlayer:"trader-smuggler"];
 				}
 			}
 		}
 	}
-	[roleWeightFlags removeAllObjects];
+	roleWeightFlags.clear();
 
 	[self noteCompassLostTarget];
 	if ([self scriptedMisjump]) 
@@ -7935,7 +7939,7 @@ static GLfloat		sBaseMass = 0.0;
 	[self playExitWitchspace];
 	if ([self currentSystemID] >= 0)
 	{
-		if (![roleSystemList containsObject:[NSNumber numberWithInt:[self currentSystemID]]])
+		if (std::find(roleSystemList.begin(), roleSystemList.end(), [self currentSystemID]) == roleSystemList.end())
 		{
 			// going somewhere new?
 			[self clearRoleFromPlayer:NO];
@@ -8770,11 +8774,11 @@ void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo
 		PrepareMarkedDestination(destinations, [self cxx_cargoContractMarker:sysid]);
 	}
 
-	// in the dictionary's own key order, as foreachkey walked it; a marker is plist data (any
-	// live object in it an Object node)
-	for (id key in missionDestinations)
+	// ORDER-SENSITIVE: markers within a system now come in the map's byte order of keys (the
+	// dictionary's own key order before); a marker is plist data
+	for (const auto &entry : missionDestinations)
 	{
-		PrepareMarkedDestination(destinations, oo::PListFrom([missionDestinations objectForKey:key]));
+		PrepareMarkedDestination(destinations, entry.second);
 	}
 
 	return destinations;
@@ -11511,11 +11515,11 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	[self doScriptEvent:OOJSID("playerBoughtCargo") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList(index), oo::PList::signedInteger(purchase), oo::PList::unsignedInteger(pricePerUnit) }))];	// the same number kinds (signed, unsigned long long)
 	if ([localMarket cxx_exportLegalityForGood:index] > 0)
 	{
-		[roleWeightFlags setObject:[NSNumber numberWithInt:1] forKey:@"bought-illegal"];
+		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));	// +numberWithInt:
 	}
 	else
 	{
-		[roleWeightFlags setObject:[NSNumber numberWithInt:1] forKey:@"bought-legal"];
+		roleWeightFlags.insert_or_assign("bought-legal", oo::PList::signedInteger(1));	// +numberWithInt:
 	}
 	
 	return YES;
@@ -13311,81 +13315,71 @@ else _dockTarget = NO_TARGET;
 }
 
 
-- (void) initialiseMissionDestinations:(NSDictionary *)destinations andLegacy:(NSArray *)legacy
+- (void) initialiseMissionDestinations:(const oo::PList &)destinations andLegacy:(const oo::PList &)legacy
 {
-	NSString					*key = nil;
-	id							value = nil;
+	missionDestinations.clear();
 
-	/* same need to make inner objects mutable as in localPlanetInfoOverrides */
-
-	[missionDestinations release];
-	missionDestinations = [[NSMutableDictionary alloc] init];
-
-	foreachkey (key, destinations)
+	// the dictionary entries that are themselves dictionaries
+	if (const oo::PList::Dict *entries = destinations.getIf<oo::PList::Dict>())
 	{
-		value = [destinations objectForKey:key];
-		if (value != nil)
+		for (const auto &[key, value] : *entries)
 		{
-			if ([value isKindOfClass:[NSDictionary class]])
+			if (value.isDict())
 			{
-				value = [value mutableCopy];
-				[missionDestinations setObject:value forKey:key];
-				[value release];
+				missionDestinations.insert_or_assign(key, value);
 			}
 		}
 	}
-	
-	if (legacy != nil)
+
+	if (legacy.isArray())
 	{
 		OOSystemID dest;
-		NSNumber *legacyMarker;
-		foreach (legacyMarker, legacy)
+		for (size_t legacyMarker = 0; legacyMarker < legacy.count(); legacyMarker++)
 		{
-			dest = [legacyMarker intValue];
-			[self addMissionDestinationMarker:[self defaultMarker:dest]];
+			dest = legacy.at<int>(legacyMarker);	// -intValue
+			[self cxx_addMissionDestinationMarker:[self cxx_defaultMarker:dest]];
 		}
 	}
 
 }
 
 
-- (NSString *)markerKey:(NSDictionary *)marker
+- (std::optional<std::string>)markerKey:(const oo::PList &)marker
 {
-	return [NSString stringWithFormat:@"%d-%@",oo::PListView(marker).get<int>(@"system"), oo::PListView(marker).get<NSString *>(@"name")];
+	// "%d-%@": a missing (or non-string) name reads "(null)"
+	const oo::PList *markerName = marker.find("name");
+	const std::string *nameText = (markerName != nullptr) ? markerName->getIf<std::string>() : nullptr;
+	return oo::str::format("%d-%s", marker.get<int>("system", 0), (nameText != nullptr) ? nameText->c_str() : "(null)");
 }
 
 
-- (void) addMissionDestinationMarker:(NSDictionary *)marker
+- (void) cxx_addMissionDestinationMarker:(const oo::PList &)marker
 {
-	NSDictionary *validated = [self validatedMarker:marker];
-	if (validated == nil) 
+	const oo::PList validated = [self cxx_validatedMarker:marker];
+	if (validated.isNull())
 	{
 		return;
 	}
-	
-	[missionDestinations setObject:validated forKey:[self markerKey:validated]];
+
+	missionDestinations.insert_or_assign(*[self markerKey:validated], validated);
 }
 
 
-- (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker
+- (BOOL) cxx_removeMissionDestinationMarker:(const oo::PList &)marker
 {
-	NSDictionary *validated = [self validatedMarker:marker];
-	if (validated == nil) 
+	const oo::PList validated = [self cxx_validatedMarker:marker];
+	if (validated.isNull())
 	{
 		return NO;
 	}
-	BOOL result = NO;
-	if ([missionDestinations objectForKey:[self markerKey:validated]] != nil) {
-		result = YES;
-	}
-	[missionDestinations removeObjectForKey:[self markerKey:validated]];
-	return result;
+	// YES if there was one to remove
+	return missionDestinations.erase(*[self markerKey:validated]) > 0 ? YES : NO;
 }
 
 
-- (NSMutableDictionary*) getMissionDestinations
+- (oo::PList) cxx_getMissionDestinations
 {
-	return missionDestinations;
+	return oo::PList(missionDestinations);	// a snapshot
 }
 
 

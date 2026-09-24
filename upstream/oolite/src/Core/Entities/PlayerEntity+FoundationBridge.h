@@ -103,6 +103,14 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price;	// -> -cxx_adjustPriceByScriptForEqKey:withCurrent: (nil: price)
 - (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context;	// -> -cxx_setWeaponMount:toWeapon:inContext: (nil key: "")
 
+// oo-3rb.251: roles, system memory and mission destinations
+- (NSMutableArray *) roleWeights;	// -> -cxx_roleWeights (a snapshot)
+- (void) addRoleToPlayer:(NSString *)role;	// -> -cxx_addRoleToPlayer:
+- (void) addRoleToPlayer:(NSString *)role inSlot:(NSUInteger)slot;	// -> -cxx_addRoleToPlayer:inSlot:
+- (void) addMissionDestinationMarker:(NSDictionary *)marker;	// -> -cxx_addMissionDestinationMarker:
+- (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker;	// -> -cxx_removeMissionDestinationMarker:
+- (NSMutableDictionary*) getMissionDestinations;	// -> -cxx_getMissionDestinations (a snapshot)
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H

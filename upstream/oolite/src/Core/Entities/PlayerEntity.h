@@ -420,11 +420,11 @@ typedef enum
 	
 	oo::PList::Dict			shipyard_record;	// shipdata key by shipyard ID of each ship bought
 	
-	NSMutableDictionary		*missionDestinations;
-	NSMutableArray			*roleWeights;
-	// temporary flags for role actions taking multiple steps, cleared on jump
-	NSMutableDictionary		*roleWeightFlags;
-	NSMutableArray			*roleSystemList; // list of recently visited sysids
+	std::map<std::string, oo::PList, std::less<>>	missionDestinations;	// validated marker Dicts by -markerKey:
+	std::vector<std::string>	roleWeights;
+	// temporary flags for role actions taking multiple steps, cleared on jump (signed integers)
+	oo::PList::Dict			roleWeightFlags;
+	std::vector<OOSystemID>	roleSystemList; // list of recently visited sysids
 	
 	double					script_time;
 	double					script_time_check;
@@ -1071,11 +1071,11 @@ typedef enum
 
 - (BOOL) cxx_endScenario:(const std::string &)key;
 
-- (NSMutableArray *) roleWeights;
+- (std::vector<std::string>) cxx_roleWeights;	// a copy
 - (void) addRoleForAggression:(ShipEntity *)victim;
 - (void) addRoleForMining;
-- (void) addRoleToPlayer:(NSString *)role;
-- (void) addRoleToPlayer:(NSString *)role inSlot:(NSUInteger)slot;
+- (void) cxx_addRoleToPlayer:(const std::string &)role;
+- (void) cxx_addRoleToPlayer:(const std::string &)role inSlot:(NSUInteger)slot;
 - (void) clearRoleFromPlayer:(BOOL)includingLongRange;
 - (void) clearRolesFromPlayer:(float)chance;
 - (NSUInteger) maxPlayerRoles;
@@ -1294,11 +1294,11 @@ typedef enum
 - (void) setWormhole:(WormholeEntity *)newWormhole;
 - (void) addScannedWormhole:(WormholeEntity*)wormhole;
 
-- (void) initialiseMissionDestinations:(NSDictionary *)destinations andLegacy:(NSArray *)legacy;
-- (NSString *)markerKey:(NSDictionary*)marker;
-- (void) addMissionDestinationMarker:(NSDictionary *)marker;
-- (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker;
-- (NSMutableDictionary*) getMissionDestinations;
+- (void) initialiseMissionDestinations:(const oo::PList &)destinations andLegacy:(const oo::PList &)legacy;	// used only if a Dict / an Array
+- (std::optional<std::string>)markerKey:(const oo::PList &)marker;
+- (void) cxx_addMissionDestinationMarker:(const oo::PList &)marker;
+- (BOOL) cxx_removeMissionDestinationMarker:(const oo::PList &)marker;
+- (oo::PList) cxx_getMissionDestinations;	// a snapshot Dict
 
 - (oo::PList::Dict *) cxx_shipyardRecord;
 

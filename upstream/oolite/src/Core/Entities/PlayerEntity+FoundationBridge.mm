@@ -421,4 +421,41 @@ and converts the result exactly as the old method produced it.
 	return [self cxx_setWeaponMount:facing toWeapon:oo::StdString(eqKey) inContext:oo::OptionalString(context)];
 }
 
+
+// oo-3rb.251: roles, system memory and mission destinations
+- (NSMutableArray *) roleWeights
+{
+	return [[oo::NSArrayFromStrings([self cxx_roleWeights]) mutableCopy] autorelease];
+}
+
+
+- (void) addRoleToPlayer:(NSString *)role
+{
+	[self cxx_addRoleToPlayer:oo::StdString(role)];
+}
+
+
+- (void) addRoleToPlayer:(NSString *)role inSlot:(NSUInteger)slot
+{
+	[self cxx_addRoleToPlayer:oo::StdString(role) inSlot:slot];
+}
+
+
+- (void) addMissionDestinationMarker:(NSDictionary *)marker
+{
+	[self cxx_addMissionDestinationMarker:oo::PListFrom(marker)];	// nil: null, which -cxx_validatedMarker: reads as nil did
+}
+
+
+- (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker
+{
+	return [self cxx_removeMissionDestinationMarker:oo::PListFrom(marker)];
+}
+
+
+- (NSMutableDictionary*) getMissionDestinations
+{
+	return [[oo::ObjectFromPList([self cxx_getMissionDestinations]) mutableCopy] autorelease];
+}
+
 @end
