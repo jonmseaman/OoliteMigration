@@ -244,11 +244,11 @@ typedef enum
 
 - (void) debugOn;
 - (void) debugOff;
-- (void) debugMessage:(NSString *)args;
+- (void) debugMessage:(id)args;	// called by name (ADR-0043 item 21)
 
 - (std::optional<std::string>) replaceVariablesInString:(const std::string &)args;
 
-- (void) playSound:(NSString *) soundName;
+- (void) playSound:(id)soundName;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 
 // Equipment scripts (bead oo-3rb.195): no equipment has an empty key.
 - (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key;
@@ -271,10 +271,11 @@ typedef enum
 - (void) setGuiToMissionScreenWithCallback:(BOOL) callback;
 - (void) doMissionCallback;
 - (void) endMissionScreenAndNoteOpportunity;
-- (void) setBackgroundFromDescriptionsKey:(NSString*) d_key;
-- (void) addScene:(NSArray *) items atOffset:(Vector) off;
-- (BOOL) processSceneDictionary:(NSDictionary *) couplet atOffset:(Vector) off;
-- (BOOL) processSceneString:(NSString*) item atOffset:(Vector) off;
+- (void) cxx_setBackgroundFromDescriptionsKey:(const std::string &)d_key;
+// Scenes (bead oo-3rb.197): a scene is an array of strings, arrays and couplet dictionaries.
+- (void) addScene:(const oo::PList &)items atOffset:(Vector)off;
+- (BOOL) processSceneDictionary:(const oo::PList &)couplet atOffset:(Vector)off;
+- (BOOL) processSceneString:(const std::string &)item atOffset:(Vector)off;
 
 @end
 
