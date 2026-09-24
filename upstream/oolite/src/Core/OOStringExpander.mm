@@ -36,7 +36,9 @@ MA 02110-1301, USA.
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
+#include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 
@@ -138,35 +140,37 @@ OOMaybeUnits ExpandKey(OOStringExpansionContext *context, const char16_t *charac
 OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *characters, NSUInteger keyStart, NSUInteger keyLength, NSUInteger sizeLimit, NSUInteger recursionLimit);
 OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &key, NSUInteger sizeLimit, NSUInteger recursionLimit);
 OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const std::string &key);
-OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key);
+OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, const std::string &key);
 OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, const OOUnits &key);
-/*	Key -> selector tables, keyed by the key's UTF-8 (NSString equality). Were map tables with
+/*	Key -> selector tables, keyed by the key's UTF-8 (string equality). Were map tables with
 	object keys and non-owned selector values (bead oo-3rb.20); never iterated.
 */
-typedef std::unordered_map<std::string, SEL> OOSelectorTable;
+typedef std::map<std::string, SEL, std::less<>> OOSelectorTable;
 
-SEL LookUpSelector(const OOSelectorTable *table, NSString *key)
+SEL LookUpSelector(const OOSelectorTable *table, const std::string &key)
 {
-	const char *utf8 = [key UTF8String];
-	if (table == NULL || utf8 == NULL)  return NULL;
-	auto found = table->find(utf8);
+	if (table == NULL)  return NULL;
+	auto found = table->find(key);
 	return (found != table->end()) ? found->second : NULL;
 }
 
+// A lookup's text, entering the UTF-16 engine (nullopt stays nullopt).
+OOMaybeUnits UnitsFromOptional(const std::optional<std::string> &string);
+
 const OOSelectorTable *SpecialSubstitutionSelectors(void);
-OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit);
-OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext *context, const OOUnits &key, NSString *keyString);
+OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, const std::string &key, NSUInteger sizeLimit, NSUInteger recursionLimit);
+OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext *context, const OOUnits &key, const std::string &keyString);
 OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *context, const std::string &key);
 OOUnits ValueText(const oo::PList &value);
-OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NSString *key);
-SEL LookUpLegacySelector(NSString *key);
+OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, const std::string &key);
+SEL LookUpLegacySelector(const std::string &key);
 
 OOMaybeUnits ExpandPercentEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
 OOMaybeUnits ExpandSystemNameForGalaxyEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
 OOMaybeUnits ExpandSystemNameEscape(OOStringExpansionContext *context, const char16_t *characters, NSUInteger size, NSUInteger idx, NSUInteger *replaceLength);
 OOMaybeUnits ExpandPercentR(OOStringExpansionContext *context, const OOMaybeUnits &input);
 #if WARNINGS
-void ReportWarningForUnknownKey(OOStringExpansionContext *context, const OOUnits &key, NSString *keyString);
+void ReportWarningForUnknownKey(OOStringExpansionContext *context, const OOUnits &key, const std::string &keyString);
 #endif
 
 OOMaybeUnits ApplyOperators(OOMaybeUnits string, const OOUnits &operatorsString);
@@ -683,11 +687,11 @@ OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &k
 {
 	NSCParameterAssert(context != NULL);
 
-	// The lookups are keyed by NSString.
-	NSString *keyString = NSStringFromUnits(key);
+	// The lookups are keyed by the key's UTF-8 (WTF-8: lossless, as the string object the engine built).
+	const std::string keyString = oo::utf16ToUtf8(key);
 
 	// Overrides have top priority.
-	OOMaybeUnits result = ExpandStringKeyOverride(context, oo::StdString(keyString));
+	OOMaybeUnits result = ExpandStringKeyOverride(context, keyString);
 
 	// Specials override descriptions.plist.
 	if (!result.has_value())  result = ExpandStringKeySpecial(context, keyString);
@@ -703,7 +707,7 @@ OOMaybeUnits ExpandStringKey(OOStringExpansionContext *context, const OOUnits &k
 	if (!result.has_value())  result = ExpandStringKeyMissionVariable(context, key, keyString);
 
 	// Try legacy local variables.
-	if (!result.has_value())  result = ExpandStringKeyLegacyLocalVariable(context, oo::StdString(keyString));
+	if (!result.has_value())  result = ExpandStringKeyLegacyLocalVariable(context, keyString);
 
 	// Try legacy script methods. (Upstream calls it for its side effects and discards the result.)
 	if (!result.has_value())  ExpandLegacyScriptSelectorKey(context, keyString);
@@ -752,20 +756,21 @@ OOMaybeUnits ExpandStringKeyOverride(OOStringExpansionContext *context, const st
 	call PlayerEntity methods but aren't legacy script methods. Also unlike
 	legacy script methods, all these methods return strings.
 */
-OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandStringKeySpecial(OOStringExpansionContext *context, const std::string &key)
 {
-	NSCParameterAssert(context != NULL && key != nil);
-	
+	NSCParameterAssert(context != NULL);
+
 	SEL selector = LookUpSelector(SpecialSubstitutionSelectors(), key);
 	if (selector != NULL)
 	{
-		NSCAssert2([PLAYER respondsToSelector:selector], @"Special string expansion selector %s for [%@] is not implemented.", OOSelectorName(selector), key);
-		
-		NSString *result = [PLAYER performSelector:selector];
+		NSCAssert2([PLAYER respondsToSelector:selector], @"Special string expansion selector %s for [%@] is not implemented.", OOSelectorName(selector), oo::NSStringFrom(key));
+
+		// PlayerEntity is not migrated yet: its string result converts here.
+		id result = [PLAYER performSelector:selector];
 		if (result != nil)
 		{
-			NSCAssert2([result isKindOfClass:[NSString class]], @"Special string expansion [%@] expanded to %@, but expected a string.", key, [result shortDescription]);
-			return UnitsFromNSString(result);
+			NSCAssert2(oo::IsNSString(result), @"Special string expansion [%@] expanded to %@, but expected a string.", oo::NSStringFrom(key), [result shortDescription]);
+			return UnitsFromOptional(oo::OptionalString(result));
 		}
 	}
 
@@ -782,8 +787,9 @@ OOMaybeUnits ExpandStringKeyKeyboardBinding(OOStringExpansionContext *context, c
 	NSCParameterAssert(context != NULL);
 	if (HasPrefix(key, u"oolite_key_"))
 	{
-		NSString *binding = NSStringFromUnits(key.substr(7));
-		return UnitsFromNSString([PLAYER keyBindingDescription2:binding]);
+		// PlayerEntity is not migrated yet: converted at the call.
+		const std::string binding = oo::utf16ToUtf8(key.substr(7));
+		return UnitsFromOptional(oo::OptionalString([PLAYER keyBindingDescription2:oo::NSStringFrom(binding)]));
 	}
 	return std::nullopt;
 }
@@ -799,25 +805,24 @@ const OOSelectorTable *SpecialSubstitutionSelectors(void)
 	static OOSelectorTable *specials = NULL;
 	if (specials != NULL)  return specials;
 	
-	struct { NSString *key; SEL selector; } selectors[] =
+	struct { const char *key; SEL selector; } selectors[] =
 	{
-		{ @"commander_name", @selector(commanderName_string) },
-		{ @"commander_shipname", @selector(commanderShip_string) },
-		{ @"commander_shipdisplayname", @selector(commanderShipDisplayName_string) },
-		{ @"commander_rank", @selector(commanderRank_string) },
-		{ @"commander_kills", @selector(commanderKillsAsString) },
-		{ @"commander_legal_status", @selector(commanderLegalStatus_string) },
-		{ @"commander_bounty", @selector(commanderBountyAsString) },
-		{ @"credits_number", @selector(creditsFormattedForSubstitution) },
-		{ @"_oo_legacy_credits_number", @selector(creditsFormattedForLegacySubstitution) }
+		{ "commander_name", @selector(commanderName_string) },
+		{ "commander_shipname", @selector(commanderShip_string) },
+		{ "commander_shipdisplayname", @selector(commanderShipDisplayName_string) },
+		{ "commander_rank", @selector(commanderRank_string) },
+		{ "commander_kills", @selector(commanderKillsAsString) },
+		{ "commander_legal_status", @selector(commanderLegalStatus_string) },
+		{ "commander_bounty", @selector(commanderBountyAsString) },
+		{ "credits_number", @selector(creditsFormattedForSubstitution) },
+		{ "_oo_legacy_credits_number", @selector(creditsFormattedForLegacySubstitution) }
 	};
 	unsigned i, count = sizeof selectors / sizeof *selectors;
-	
+
 	specials = new OOSelectorTable;
-	specials->reserve(count);
 	for (i = 0; i < count; i++)
 	{
-		specials->emplace([selectors[i].key UTF8String], selectors[i].selector);
+		specials->emplace(selectors[i].key, selectors[i].selector);
 	}
 	
 	return specials;
@@ -832,26 +837,32 @@ const OOSelectorTable *SpecialSubstitutionSelectors(void)
 	
 	Matched strings are expanded recursively by calling Expand().
 */
-OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, NSString *key, NSUInteger sizeLimit, NSUInteger recursionLimit)
+OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, const std::string &key, NSUInteger sizeLimit, NSUInteger recursionLimit)
 {
-	id value = [[UNIVERSE descriptions] objectForKey:key];
-	if (value != nil)
+	// Universe is not migrated yet: only this key's value of -descriptions is converted. The
+	// object itself is kept for the error log, whose text names its class.
+	id object = [[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(key)];
+	oo::PList value = oo::PListFrom(object);
+	if (!value.isNull())
 	{
-		if ([value isKindOfClass:[NSArray class]] && [value count] > 0)
+		if (value.isArray() && value.count() > 0)
 		{
-			NSUInteger rnd = OO_EXPANDER_RANDOM % [value count];
-			value = oo::PListView(value).at<id>(rnd);
+			NSUInteger rnd = OO_EXPANDER_RANDOM % value.count();
+			const oo::PList chosen = *value.at(rnd);
+			value = chosen;
+			object = [object objectAtIndex:rnd];
 		}
-		
-		if (![value isKindOfClass:[NSString class]])
+
+		const std::string *text = value.getIf<std::string>();
+		if (text == nullptr)
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
-			OOLogERR(@"strings.expand.invalidData", @"String expansion value %@ for [%@] from descriptions.plist is not a string or number.", [value shortDescription], key);
+			OOLogERR(@"strings.expand.invalidData", @"String expansion value %@ for [%@] from descriptions.plist is not a string or number.", [object shortDescription], oo::NSStringFrom(key));
 			return std::nullopt;
 		}
 
 		// Expand recursively.
-		return Expand(context, *UnitsFromNSString(value), sizeLimit, recursionLimit);
+		return Expand(context, oo::utf8ToUtf16(*text), sizeLimit, recursionLimit);
 	}
 
 	return std::nullopt;
@@ -862,11 +873,12 @@ OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, 
 
 	Attempt to expand a key by matching it to a mission variable.
 */
-OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* context */, const OOUnits &key, NSString *keyString)
+OOMaybeUnits ExpandStringKeyMissionVariable(OOStringExpansionContext * /* context */, const OOUnits &key, const std::string &keyString)
 {
 	if (HasPrefix(key, u"mission_"))
 	{
-		return UnitsFromNSString([PLAYER missionVariableForKey:keyString]);
+		// PlayerEntity is not migrated yet: converted at the call.
+		return UnitsFromOptional(oo::OptionalString([PLAYER missionVariableForKey:oo::NSStringFrom(keyString)]));
 	}
 
 	return std::nullopt;
@@ -884,6 +896,13 @@ OOMaybeUnits ExpandStringKeyLegacyLocalVariable(OOStringExpansionContext *contex
 	const oo::PList *value = context->legacyLocals.find(key);
 	if (value == nullptr)  return std::nullopt;
 	return ValueText(*value);
+}
+
+
+OOMaybeUnits UnitsFromOptional(const std::optional<std::string> &string)
+{
+	if (!string.has_value())  return std::nullopt;
+	return oo::utf8ToUtf16(*string);
 }
 
 
@@ -905,15 +924,16 @@ OOUnits ValueText(const oo::PList &value)
 	invoking it. Only whitelisted methods are permitted, and aliases are
 	respected.
 */
-OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NSString *key)
+OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, const std::string &key)
 {
-	NSCParameterAssert(context != NULL && key != nil);
+	NSCParameterAssert(context != NULL);
 
 	SEL selector = LookUpLegacySelector(key);
 
 	if (selector != NULL)
 	{
-		return UnitsFromNSString([[PLAYER performSelector:selector] description]);
+		// PlayerEntity is not migrated yet: the result's -description converts here.
+		return UnitsFromOptional(oo::OptionalString([[PLAYER performSelector:selector] description]));
 	}
 	else
 	{
@@ -927,52 +947,69 @@ OOMaybeUnits ExpandLegacyScriptSelectorKey(OOStringExpansionContext *context, NS
 	If <key> is a whitelisted legacy script query method, or aliases to one,
 	return the corresponding selector.
 */
-SEL LookUpLegacySelector(NSString *key)
+SEL LookUpLegacySelector(const std::string &key)
 {
 	SEL selector = NULL;
 	static OOSelectorTable *selectorCache = NULL;
 
 	// Try cache lookup.
 	selector = LookUpSelector(selectorCache, key);
-	
+
 	if (selector == NULL)
 	{
-		static NSDictionary *aliases = nil;
-		static NSSet *whitelist = nil;
-		if (whitelist == nil)
+		// whitelist.plist's query methods (its string entries) and aliases (a string, or a
+		// number's -stringValue, as PListView's string rule gave), built once. ResourceManager is
+		// not migrated here: its dictionary converts once, with oo::PListFrom.
+		static std::map<std::string, std::string, std::less<>> *aliases = nullptr;
+		static std::set<std::string, std::less<>> *whitelist = nullptr;
+		if (whitelist == nullptr)
 		{
-			NSDictionary *whitelistDict = [ResourceManager whitelistDictionary];
-			whitelist = [[NSSet alloc] initWithArray:oo::PListView(whitelistDict).get<NSArray *>(@"query_methods")];
-			aliases = [oo::PListView(whitelistDict).get<NSDictionary *>(@"query_method_aliases") copy];
+			const oo::PList whitelistDict = oo::PListFrom([ResourceManager whitelistDictionary]);
+			whitelist = new std::set<std::string, std::less<>>;
+			aliases = new std::map<std::string, std::string, std::less<>>;
+			const oo::PList *methods = whitelistDict.find("query_methods");
+			if (methods != nullptr && methods->isArray())
+			{
+				for (const oo::PList &method : *methods->getIf<oo::PList::Array>())
+				{
+					if (const std::string *name = method.getIf<std::string>())  whitelist->insert(*name);
+				}
+			}
+			const oo::PList *aliasDict = whitelistDict.find("query_method_aliases");
+			if (aliasDict != nullptr && aliasDict->isDict())
+			{
+				for (const auto &alias : *aliasDict->getIf<oo::PList::Dict>())
+				{
+					if (alias.second.isString() || alias.second.isNumber())  aliases->emplace(alias.first, aliasDict->get<std::string>(alias.first));
+				}
+			}
 		}
-		
-		NSString *selectorName = oo::PListView(aliases).get<NSString *>(key);
-		if (selectorName == nil)  selectorName = key;
-		
-		if ([whitelist containsObject:selectorName])
+
+		auto alias = aliases->find(key);
+		const std::string &selectorName = (alias != aliases->end()) ? alias->second : key;
+
+		if (whitelist->count(selectorName) != 0)
 		{
-			selector = OOSelectorFromName([selectorName UTF8String]);
-			
+			selector = OOSelectorFromName(selectorName.c_str());
+
 			/*	This is an assertion, not a warning, because whitelist.plist is
 				part of the game and cannot be overriden by OXPs. If there is an
 				invalid selector in the whitelist, it's a game bug.
 			*/
-			NSCAssert1([PLAYER respondsToSelector:selector], @"Player does not respond to whitelisted query selector %@.", key);
+			NSCAssert1([PLAYER respondsToSelector:selector], @"Player does not respond to whitelisted query selector %@.", oo::NSStringFrom(key));
 		}
-		
+
 		if (selector != NULL)
 		{
 			// Add it to cache.
 			if (selectorCache == NULL)
 			{
 				selectorCache = new OOSelectorTable;
-				selectorCache->reserve([whitelist count]);
 			}
-			const char *utf8 = [key UTF8String];
-			if (utf8 != NULL)  selectorCache->emplace(utf8, selector);
+			selectorCache->emplace(key, selector);
 		}
 	}
-	
+
 	return selector;
 }
 
@@ -984,15 +1021,15 @@ SEL LookUpLegacySelector(NSString *key)
 	above. If the key looks like a legacy script query method, assume it is
 	and report a bad selector. Otherwise, report it as an unknown key.
 */
-void ReportWarningForUnknownKey(OOStringExpansionContext *context, const OOUnits &keyUnits, NSString *key)
+void ReportWarningForUnknownKey(OOStringExpansionContext *context, const OOUnits &keyUnits, const std::string &key)
 {
 	if (HasSuffix(keyUnits, u"_string") || HasSuffix(keyUnits, u"_number") || HasSuffix(keyUnits, u"_bool"))
 	{
-		SyntaxError(context, @"strings.expand.invalidSelector", @"Unpermitted legacy script method [%@] in string.", key);
+		SyntaxError(context, @"strings.expand.invalidSelector", @"Unpermitted legacy script method [%@] in string.", oo::NSStringFrom(key));
 	}
 	else
 	{
-		SyntaxWarning(context, @"strings.expand.warning.unknownExpansion", @"Unknown expansion key [%@] in string.", key);
+		SyntaxWarning(context, @"strings.expand.warning.unknownExpansion", @"Unknown expansion key [%@] in string.", oo::NSStringFrom(key));
 	}
 }
 #endif
