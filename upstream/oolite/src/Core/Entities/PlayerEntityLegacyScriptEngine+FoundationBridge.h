@@ -39,6 +39,18 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntityLegacyScr
 - (NSString *)missionVariableForKey:(NSString *)key;	// -> -cxx_missionVariableForKey:
 - (void)setMissionVariable:(NSString *)value forKey:(NSString *)key;	// -> -cxx_setMissionVariable:forKey:
 
+// Chunk 4 (oo-3rb.193): mission instructions, the manifest list and the mission title.
+- (NSArray *) missionsList;	// -> -cxx_missionsList
+- (void) setMissionInstructions:(NSString *)text forMission:(NSString *)key;	// -> -cxx_setMissionInstructions:forMission:
+- (void) setMissionInstructionsList:(NSArray *)list forMission:(NSString *)key;	// -> -cxx_setMissionInstructionsList:forMission:
+- (NSString *)missionTitle;	// -> -cxx_missionTitle
+- (void) setMissionTitle:(NSString *)value;	// -> -cxx_setMissionTitle:
+
+// Chunk 5 (oo-3rb.194): mission choices and the mission screen ID.
+- (void) setMissionChoicesDictionary:(NSDictionary *)choicesDict;	// -> -cxx_setMissionChoicesDictionary:
+- (void) setMissionScreenID:(NSString *)msid;	// -> -cxx_setMissionScreenID:
+- (NSString *) missionScreenID;	// -> -cxx_missionScreenID
+
 @end
 
 

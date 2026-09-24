@@ -82,9 +82,10 @@ typedef enum
 - (oo::PList) cxx_missionVariableForKey:(const std::string &)key;
 - (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key;	// null removes
 
-- (NSMutableDictionary *)localVariablesForMission:(NSString *)missionKey;
-- (NSString *)localVariableForKey:(NSString *)variableName andMission:(NSString *)missionKey;
-- (void)setLocalVariable:(NSString *)value forKey:(NSString *)variableName andMission:(NSString *)missionKey;
+// A mission's local variables (bead oo-3rb.192): a snapshot Dict, null for no mission.
+- (oo::PList) localVariablesForMission:(const std::optional<std::string> &)missionKey;
+- (std::optional<std::string>) localVariableForKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey;
+- (void) setLocalVariable:(const std::optional<std::string> &)value forKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey;	// nullopt removes
 
 /*-----------------------------------------------------*/
 
@@ -140,22 +141,23 @@ typedef enum
 
 /*-----------------------------------------------------*/
 
-- (NSArray *) missionsList;
+// The F5 manifest (bead oo-3rb.193): strings first, then arrays of a header and its entries.
+- (oo::PList) cxx_missionsList;
 
-- (void) setMissionDescription:(NSString *)textKey;
+- (void) setMissionDescription:(id)textKey;	// called by name (ADR-0043 item 21)
 - (void) clearMissionDescription;
-- (void) setMissionInstructions:(NSString *)text forMission:(NSString *)key;
-- (void) setMissionInstructionsList:(NSArray *)list forMission:(NSString *)key;
-- (void) setMissionDescription:(NSString *)textKey forMission:(NSString *)key;
-- (void) clearMissionDescriptionForMission:(NSString *)key;
+- (void) cxx_setMissionInstructions:(const std::string &)text forMission:(const std::optional<std::string> &)key;	// nullopt key: logged, ignored
+- (void) cxx_setMissionInstructionsList:(const oo::PList &)list forMission:(const std::optional<std::string> &)key;
+- (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key;
+- (void) clearMissionDescriptionForMission:(id)key;	// called by name (ADR-0043 item 21)
 
-- (void) commsMessage:(NSString *)valueString;
-- (void) commsMessageByUnpiloted:(NSString *)valueString;  // Enabled 02-May-2008 - Nikos. Same as commsMessage, but
+- (void) commsMessage:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) commsMessageByUnpiloted:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
 							   // can be used by scripts to have unpiloted ships sending
 							   // commsMessages, if we want to.
 
-- (void) consoleMessage3s:(NSString *)valueString;
-- (void) consoleMessage6s:(NSString *)valueString;
+- (void) consoleMessage3s:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) consoleMessage6s:(id)valueString;	// called by name (ADR-0043 item 21)
 
 - (void) setLegalStatus:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 - (void) awardCredits:(NSString *)valueString;
@@ -184,8 +186,8 @@ typedef enum
 - (void) addShipsAtPrecisely:(NSString *)roles_number_system_x_y_z;
 - (void) addShipsWithinRadius:(NSString *)roles_number_system_x_y_z_r;
 - (void) spawnShip:(NSString *)ship_key;
-- (void) set:(NSString *)missionvariable_value;
-- (void) reset:(NSString *)missionvariable;
+- (void) set:(id)missionvariable_value;	// called by name (ADR-0043 item 21)
+- (void) reset:(id)missionvariable;	// called by name (ADR-0043 item 21)
 /*
 	set:missionvariable_value
 	add:missionvariable_value
@@ -202,33 +204,33 @@ typedef enum
 		subtract: mission_my_mission_clock d100_number
 */
 
-- (void) increment:(NSString *)missionVariableString;
-- (void) decrement:(NSString *)missionVariableString;
+- (void) increment:(id)missionVariableString;	// called by name (ADR-0043 item 21)
+- (void) decrement:(id)missionVariableString;	// called by name (ADR-0043 item 21)
 
-- (void) add:(NSString *)missionVariableString_value;
-- (void) subtract:(NSString *)missionVariableString_value;
+- (void) add:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
+- (void) subtract:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
 
 - (void) checkForShips: (NSString *)roleString;
 - (void) resetScriptTimer;
-- (void) addMissionText: (NSString *)textKey;
-- (void) addLiteralMissionText: (NSString *)text;
+- (void) addMissionText:(id)textKey;	// called by name (ADR-0043 item 21)
+- (void) addLiteralMissionText:(id)text;	// called by name (ADR-0043 item 21)
 
 - (void) setMissionChoiceByTextEntry:(BOOL)enable;
-- (void) setMissionChoices:(NSString *)choicesKey;	// choicesKey is a key for a dictionary of
+- (void) setMissionChoices:(id)choicesKey;	// called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of
 													// choices/choice phrases in missiontext.plist and also..
-- (void) setMissionChoicesDictionary:(NSDictionary *)choicesDict;
+- (void) cxx_setMissionChoicesDictionary:(const oo::PList &)choicesDict;	// keys are strings (bead oo-3rb.194)
 - (void) resetMissionChoice;						// resets MissionChoice to nil
 
 - (void) clearMissionScreen;
 
-- (void) addMissionDestination:(NSString *)destinations;	// mark a system on the star charts
-- (void) removeMissionDestination:(NSString *)destinations; // stop a system being marked on star charts
+- (void) addMissionDestination:(id)destinations;	// called by name (ADR-0043 item 21); mark a system on the star charts
+- (void) removeMissionDestination:(id)destinations;	// called by name (ADR-0043 item 21); stop a system being marked on star charts
 
-- (void) showShipModel:(NSString *)shipKey;
-- (void) setMissionMusic:(NSString *)value;
+- (void) showShipModel:(id)shipKey;	// called by name (ADR-0043 item 21)
+- (void) setMissionMusic:(id)value;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 
-- (NSString *)missionTitle;
-- (void) setMissionTitle:(NSString *)value;
+- (std::optional<std::string>) cxx_missionTitle;
+- (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
 
 - (void) setFuelLeak: (NSString *)value;
 - (id) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
@@ -244,7 +246,7 @@ typedef enum
 - (void) debugOff;
 - (void) debugMessage:(NSString *)args;
 
-- (NSString*) replaceVariablesInString:(NSString*) args;
+- (std::optional<std::string>) replaceVariablesInString:(const std::string &)args;
 
 - (void) playSound:(NSString *) soundName;
 
@@ -261,8 +263,8 @@ typedef enum
 /*-----------------------------------------------------*/
 
 - (void) clearMissionScreenID;
-- (void) setMissionScreenID:(NSString *)msid;
-- (NSString *) missionScreenID;
+- (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid;
+- (std::optional<std::string>) cxx_missionScreenID;
 - (void) setGuiToMissionScreen;
 - (void) refreshMissionScreenTextEntry;
 - (void) setGuiToMissionScreenWithCallback:(BOOL) callback;
