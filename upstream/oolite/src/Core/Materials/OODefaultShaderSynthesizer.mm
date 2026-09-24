@@ -36,6 +36,7 @@ SOFTWARE.
 #import "NSDictionaryOOExtensions.h"
 #import "OOMaterialSpecifier.h"
 #import "ResourceManager.h"
+#import "OOFoundationException.h"
 #include "oofnd/StdLib.hpp"
 
 /* 
@@ -378,7 +379,12 @@ BOOL OOSynthesizeMaterialShader(NSDictionary *configuration, NSString *materialK
 		[self composeVertexShader];
 		[self composeFragmentShader];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		// Error should have been reported already.
+		return NO;
+	}
+	@catch (OOFoundationException *exception)
 	{
 		// Error should have been reported already.
 		return NO;
@@ -586,7 +592,7 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	if (!OOInterpretTextureSpecifier(spec, &texName, &texOptions, &anisotropy, &lodBias, YES))
 	{
 		// OOInterpretTextureSpecifier() will have logged something.
-		[NSException raise:NSGenericException format:@"Invalid texture specifier"];
+		[OOException raise:OOGenericException format:"Invalid texture specifier"];
 	}
 	
 	return KeyFromTextureParameters(texName, texOptions, anisotropy, lodBias);
@@ -609,14 +615,14 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	if (!OOInterpretTextureSpecifier(spec, &texName, &texOptions, &anisotropy, &lodBias, YES))
 	{
 		// OOInterpretTextureSpecifier() will have logged something.
-		[NSException raise:NSGenericException format:@"Invalid texture specifier"];
+		[OOException raise:OOGenericException format:"Invalid texture specifier"];
 	}
 	
 	if (texOptions & kOOTextureAllowCubeMap)
 	{
 		// cube_map = true; fail regardless of whether actual texture qualifies.
 		OOLogERR(@"material.synthesis.error.cubeMap", @"The material \"%@\" of \"%@\" specifies a cube map texture, but doesn't have custom shaders. Cube map textures are not supported with the default shaders.", [self materialKey], [self entityName]);
-		[NSException raise:NSGenericException format:@"Invalid material"];
+		[OOException raise:OOGenericException format:"Invalid material"];
 	}
 	
 	NSString *key = KeyFromTextureParameters(texName, texOptions, anisotropy, lodBias);
@@ -738,7 +744,7 @@ static NSString *KeyFromTextureSpec(NSDictionary *spec)
 	if (_stagesInProgress.count(stage) != 0)
 	{
 		OOLogERR(@"material.synthesis.error.recursion", @"Shader synthesis recursion for stage %s.", OOSelectorName(stage));
-		[NSException raise:NSInternalInconsistencyException format:@"stage recursion"];
+		[OOException raise:OOInternalInconsistencyException format:"stage recursion"];
 	}
 	
 	_stagesInProgress.insert(stage);
