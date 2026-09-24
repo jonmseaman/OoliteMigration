@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 
 #import "Universe.h"
 #include "oofnd/Process.hpp"
+#include "oofnd/Date.hpp"
 #import "MyOpenGLView.h"
 #import "GameController.h"
 #import "ResourceManager.h"
@@ -36,7 +37,7 @@ MA 02110-1301, USA.
 #import "OOCacheManager.h"
 #import "OOStringExpander.h"
 #import "OOStringParsing.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
 #import "OOOpenGLExtensionManager.h"
@@ -94,6 +95,7 @@ MA 02110-1301, USA.
 #import "OOJSPopulatorDefinition.h"
 #import "OOOpenGL.h"
 #import "OOShaderProgram.h"
+#import "OOFoundationException.h"
 #import "OOStringBridge.h"
 
 
@@ -252,6 +254,22 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void * context);
 - (void) setLibraryTextForDemoShip;
 
 @end
+
+
+namespace {
+
+// The saved detailLevel preference as an OOGraphicsDetail. 0-3 are the levels themselves; any other
+// number becomes DETAIL_LEVEL_MAXIMUM, which is what -setDetailLevelDirectly: made of it: the bare
+// cast this replaces handed the enum (underlying type unsigned int on this toolchain) an
+// out-of-range value, a negative one as a large unsigned number, and the setter clamped anything
+// >= DETAIL_LEVEL_MAXIMUM to it. Clamping as an integer means the enum only ever holds one of its
+// own values (the same idiom as OOSystemLayerFromNumber, bead oo-2eby).
+OOGraphicsDetail OOGraphicsDetailFromNumber(unsigned int number)
+{
+	return (number > DETAIL_LEVEL_MAXIMUM) ? DETAIL_LEVEL_MAXIMUM : static_cast<OOGraphicsDetail>(number);
+}
+
+}
 
 
 @implementation Universe
@@ -695,7 +713,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	if (gSharedUniverse != nil)
 	{
 		[self release];
-		[NSException raise:NSInternalInconsistencyException format:@"%s: expected only one Universe to exist at a time.", __PRETTY_FUNCTION__];
+		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one Universe to exist at a time.", __PRETTY_FUNCTION__];
 	}
 	
 	OO_DEBUG_PROGRESS(@"%@", @"Universe initWithGameView:");
@@ -705,7 +723,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	_doingStartUp = YES;
 
-	OOInitReallyRandom([NSDate timeIntervalSinceReferenceDate] * 1e9);
+	OOInitReallyRandom(oo::date::timeIntervalSinceReferenceDate() * 1e9);
 	
 	NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
 	
@@ -724,8 +742,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// init OpenGL extension manager (must be done before any other threads might use it)
 	[OOOpenGLExtensionManager sharedManager];
-	[self setDetailLevelDirectly:(OOGraphicsDetail)[prefs oo_intForKey:@"detailLevel"
-								defaultValue:[[OOOpenGLExtensionManager sharedManager] defaultDetailLevel]]];
+	[self setDetailLevelDirectly:OOGraphicsDetailFromNumber(static_cast<unsigned int>(oo::PListView(prefs).get<int>(@"detailLevel",
+								[[OOOpenGLExtensionManager sharedManager] defaultDetailLevel])))];
 								
 	[self initTargetFramebufferWithViewSize:[gameView backingViewSize]];
 	
@@ -735,7 +753,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[OOCacheManager sharedCache];
 	
 #if OOLITE_SPEECH_SYNTH
-	OOLog(@"speech.synthesis", @"Spoken messages are %@.", ([prefs oo_boolForKey:@"speech_on" defaultValue:NO] ? @"on" :@"off"));
+	OOLog(@"speech.synthesis", @"Spoken messages are %@.", (oo::PListView(prefs).get<BOOL>(@"speech_on", NO) ? @"on" :@"off"));
 #endif
 	
 	// init the Resource Manager
@@ -748,15 +766,15 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	// load starting saves
 	[self loadScenarios];
 
-	autoSave = [prefs oo_boolForKey:@"autosave" defaultValue:NO];
-	wireframeGraphics = [prefs oo_boolForKey:@"wireframe-graphics" defaultValue:NO];
-	doProcedurallyTexturedPlanets = [prefs oo_boolForKey:@"procedurally-textured-planets" defaultValue:YES];
-	[inGameView setMsaa:[prefs oo_boolForKey:@"anti-aliasing" defaultValue:NO]];
+	autoSave = oo::PListView(prefs).get<BOOL>(@"autosave", NO);
+	wireframeGraphics = oo::PListView(prefs).get<BOOL>(@"wireframe-graphics", NO);
+	doProcedurallyTexturedPlanets = oo::PListView(prefs).get<BOOL>(@"procedurally-textured-planets", YES);
+	[inGameView setMsaa:oo::PListView(prefs).get<BOOL>(@"anti-aliasing", NO)];
 	OOLog(@"MSAA.setup", @"Multisample anti-aliasing %@requested.", [inGameView msaa] ? @"" : @"not ");
-	[inGameView setFov:OOClamp_0_max_f([prefs oo_floatForKey:@"fov-value" defaultValue:57.2f], MAX_FOV_DEG) fromFraction:NO];
+	[inGameView setFov:OOClamp_0_max_f(oo::PListView(prefs).get<float>(@"fov-value", 57.2f), MAX_FOV_DEG) fromFraction:NO];
 	if ([inGameView fov:NO] < MIN_FOV_DEG)  [inGameView setFov:MIN_FOV_DEG fromFraction:NO];
 
- 	[self setECMVisualFXEnabled:[prefs oo_boolForKey:@"ecm-visual-fx" defaultValue:YES]];
+ 	[self setECMVisualFXEnabled:oo::PListView(prefs).get<BOOL>(@"ecm-visual-fx", YES)];
   	
 	// Set up speech synthesizer.
 #if OOLITE_SPEECH_SYNTH
@@ -1292,7 +1310,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	/*- the sky backdrop -*/
 	OOColor *col1 = [OOColor colorWithRed:0.0 green:1.0 blue:0.5 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:1.0];
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	quaternion_set_random(&randomQ);
 	[thing setOrientation:randomQ];
@@ -1305,23 +1323,23 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[self addEntity:thing];
 	[thing release];
 	
-	ambientLightLevel = [systeminfo oo_floatForKey:@"ambient_level" defaultValue:1.0];
+	ambientLightLevel = oo::PListView(systeminfo).get<float>(@"ambient_level", 1.0);
 	[self setLighting];	// also sets initial lights positions.
 	
 	OOLog(kOOLogUniversePopulateWitchspace, @"%@", @"Populating witchspace ...");
 	OOLogIndentIf(kOOLogUniversePopulateWitchspace);
 	
 	[self clearSystemPopulator];
-	NSString *populator = [systeminfo oo_stringForKey:@"populator" defaultValue:@"interstellarSpaceWillPopulate"];
+	NSString *populator = oo::PListView(systeminfo).get<NSString *>(@"populator", @"interstellarSpaceWillPopulate");
 	[system_repopulator release];
-	system_repopulator = [[systeminfo oo_stringForKey:@"repopulator" defaultValue:@"interstellarSpaceWillRepopulate"] retain];
+	system_repopulator = [oo::PListView(systeminfo).get<NSString *>(@"repopulator", @"interstellarSpaceWillRepopulate") retain];
 	ooscript::Context context = OOJSAcquireContext();
 	[PLAYER doWorldScriptEvent:OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
 	OOJSRelinquishContext(context);
 	[self populateSystemFromDictionariesWithSun:nil andPlanet:nil];
 
 	// systeminfo might have a 'script_actions' resource we want to activate now...
-	NSArray *script_actions = [systeminfo oo_arrayForKey:@"script_actions"];
+	NSArray *script_actions = oo::PListView(systeminfo).get<NSArray *>(@"script_actions");
 	if (script_actions != nil)
 	{
 		OOStandardsDeprecated([NSString stringWithFormat:@"The script_actions system info key is deprecated for %@.",override_key]);
@@ -1348,10 +1366,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	NSMutableDictionary *planetDict = [NSMutableDictionary dictionaryWithDictionary:[systemManager getPropertiesForCurrentSystem]];
 	[planetDict oo_setBool:YES forKey:@"mainForLocalSystem"];
-	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(planetDict) withAtmosphere:[planetDict oo_boolForKey:@"has_atmosphere" defaultValue:YES] andSeed:systemSeed forSystem:systemID];
+	OOPlanetEntity *a_planet = [[OOPlanetEntity alloc] initFromDictionary:oo::PListFrom(planetDict) withAtmosphere:oo::PListView(planetDict).get<BOOL>(@"has_atmosphere", YES) andSeed:systemSeed forSystem:systemID];
 	
-	double planet_zpos = [planetDict oo_floatForKey:@"planet_distance" defaultValue:500000];
-	planet_zpos *= [planetDict oo_floatForKey:@"planet_distance_multiplier" defaultValue:1.0];
+	double planet_zpos = oo::PListView(planetDict).get<float>(@"planet_distance", 500000);
+	planet_zpos *= oo::PListView(planetDict).get<float>(@"planet_distance_multiplier", 1.0);
 	
 #ifdef OO_DUMP_PLANETINFO
 	OOLog(@"planetinfo.record",@"planet zpos = %f",planet_zpos);
@@ -1392,7 +1410,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	id			dict_object;
 
 	NSDictionary		*systeminfo = [systemManager getPropertiesForCurrentSystem];
-	unsigned			techlevel = [systeminfo oo_unsignedIntForKey:KEY_TECHLEVEL];
+	unsigned			techlevel = oo::PListView(systeminfo).get<unsigned int>(KEY_TECHLEVEL);
 	NSString			*stationDesc = nil, *defaultStationDesc = nil;
 	OOColor				*bgcolor;
 	OOColor				*pale_bgcolor;
@@ -1402,7 +1420,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	[[GameController sharedController] logProgress:DESC(@"populating-space")];
 	
-	sunGoneNova = [systeminfo oo_boolForKey:@"sun_gone_nova" defaultValue:NO];
+	sunGoneNova = oo::PListView(systeminfo).get<BOOL>(@"sun_gone_nova", NO);
 	
 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"setUpSpace - clearSubRegions, sky, dust");
 	[universeRegion clearSubregions];
@@ -1418,9 +1436,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOLog(@"planetinfo.record",@"seed = %d %d %d %d",system_seed.c,system_seed.d,system_seed.e,system_seed.f);
 	OOLog(@"planetinfo.record",@"coordinates = %d %d",system_seed.d,system_seed.b);
 
-#define SPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = \"%@\";",[systeminfo oo_stringForKey:@"" #PROP]);
-#define IPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %d;",[systeminfo oo_intForKey:@#PROP]);
-#define FPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %f;",[systeminfo oo_floatForKey:@"" #PROP]);
+#define SPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = \"%@\";",oo::PListView(systeminfo).get<NSString *>(@"" #PROP));
+#define IPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %d;",oo::PListView(systeminfo).get<int>(@#PROP));
+#define FPROP(PROP)	OOLog(@"planetinfo.record",@#PROP " = %f;",oo::PListView(systeminfo).get<float>(@"" #PROP));
 	IPROP(government);
 	IPROP(economy);
 	IPROP(techlevel);
@@ -1444,7 +1462,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOColor *col1 = [OOColor colorWithHue:h1 saturation:randf() brightness:0.5 + randf()/2.0 alpha:1.0];
 	OOColor *col2 = [OOColor colorWithHue:h2 saturation:0.5 + randf()/2.0 brightness:0.5 + randf()/2.0 alpha:1.0];
 	
-	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: systeminfo];	// alloc retains!
+	thing = [[SkyEntity alloc] initWithColors:col1:col2 andSystemInfo: oo::PListFrom(systeminfo)];	// alloc retains!
 	[thing setScanClass: CLASS_NO_DRAW];
 	[self addEntity:thing];
 //	bgcolor = [(SkyEntity *)thing skyColor];
@@ -1455,7 +1473,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		h1 += 0.33;
 	}
 	
-	ambientLightLevel = [systeminfo oo_floatForKey:@"ambient_level" defaultValue:1.0];
+	ambientLightLevel = oo::PListView(systeminfo).get<float>(@"ambient_level", 1.0);
 	
 	// pick a main sequence colour
 
@@ -1503,19 +1521,19 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	double		safeDistance;
 	HPVector		sunPos;
 	
-	sunDistanceModifier = [systeminfo oo_nonNegativeDoubleForKey:@"sun_distance_modifier" defaultValue:0.0];
+	sunDistanceModifier = oo::PListView(systeminfo).get<oo::NonNegative<double>>(@"sun_distance_modifier", 0.0);
 	if (sunDistanceModifier < 6.0) // <6 isn't valid
 	{
-		sun_distance = [systeminfo oo_nonNegativeDoubleForKey:@"sun_distance" defaultValue:(planet_radius*20)];
+		sun_distance = oo::PListView(systeminfo).get<oo::NonNegative<double>>(@"sun_distance", (planet_radius*20));
 		// note, old property was _modifier, new property is _multiplier
-		sun_distance *= [systeminfo oo_nonNegativeDoubleForKey:@"sun_distance_multiplier" defaultValue:1];
+		sun_distance *= oo::PListView(systeminfo).get<oo::NonNegative<double>>(@"sun_distance_multiplier", 1);
 	} 
 	else
 	{
 		sun_distance = planet_radius * sunDistanceModifier;
 	}
 
-	sun_radius = [systeminfo oo_nonNegativeDoubleForKey:@"sun_radius" defaultValue:2.5 * planet_radius];
+	sun_radius = oo::PListView(systeminfo).get<oo::NonNegative<double>>(@"sun_radius", 2.5 * planet_radius);
 	// clamp the sun radius
 	if ((sun_radius < 1000.0) || (sun_radius > sun_distance / 2  && !sunGoneNova))
 	{
@@ -1529,7 +1547,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// here we need to check if the sun collides with (or is too close to) the witchpoint
 	// otherwise at (for example) Maregais in Galaxy 1 we go BANG!
-	HPVector sun_dir = [systeminfo oo_hpvectorForKey:@"sun_vector"];
+	HPVector sun_dir = oo::PListView(systeminfo).get<HPVector>(@"sun_vector");
 	sun_distance /= 2.0;
 	do
 	{
@@ -1580,8 +1598,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[sun_dict setObject:dict_object forKey:KEY_SUNNAME];
 	}
 #ifdef OO_DUMP_PLANETINFO
-	OOLog(@"planetinfo.record",@"corona_flare = %f",[sun_dict oo_floatForKey:@"corona_flare"]);
-	OOLog(@"planetinfo.record",@"corona_hues = %f",[sun_dict oo_floatForKey:@"corona_hues"]);
+	OOLog(@"planetinfo.record",@"corona_flare = %f",oo::PListView(sun_dict).get<float>(@"corona_flare"));
+	OOLog(@"planetinfo.record",@"corona_hues = %f",oo::PListView(sun_dict).get<float>(@"corona_hues"));
 	OOLog(@"planetinfo.record",@"sun_color = %@",[bgcolor descriptionComponents]);
 #endif
 	a_sun = [[OOSunEntity alloc] initSunWithColor:bgcolor andDictionary:oo::PListFrom(sun_dict)];	// alloc retains!
@@ -1606,7 +1624,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	/*- space station -*/
 	stationPos = [a_planet position];
 
-	vf = [systeminfo oo_vectorForKey:@"station_vector"];
+	vf = oo::PListView(systeminfo).get<Vector>(@"station_vector");
 #ifdef OO_DUMP_PLANETINFO
 	OOLog(@"planetinfo.record",@"station_vector = %.3f %.3f %.3f",vf.x,vf.y,vf.z);
 #endif
@@ -1614,7 +1632,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 
 	//// possibly systeminfo has an override for the station
-	stationDesc = [systeminfo oo_stringForKey:@"station" defaultValue:@"coriolis"];
+	stationDesc = oo::PListView(systeminfo).get<NSString *>(@"station", @"coriolis");
 #ifdef OO_DUMP_PLANETINFO
 	OOLog(@"planetinfo.record",@"station = %@",stationDesc);
 #endif
@@ -1702,7 +1720,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 {	
 	NSDictionary		*systeminfo = [systemManager getPropertiesForCurrentSystem];
 
-	BOOL sunGoneNova = [systeminfo oo_boolForKey:@"sun_gone_nova"];
+	BOOL sunGoneNova = oo::PListView(systeminfo).get<BOOL>(@"sun_gone_nova");
 	// check for nova
 	if (sunGoneNova)
 	{
@@ -1732,9 +1750,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	if ([PLAYER status] != STATUS_START_GAME)
 	{
-		NSString *populator = [systeminfo oo_stringForKey:@"populator" defaultValue:(sunGoneNova)?@"novaSystemWillPopulate":@"systemWillPopulate"];
+		NSString *populator = oo::PListView(systeminfo).get<NSString *>(@"populator", (sunGoneNova)?@"novaSystemWillPopulate":@"systemWillPopulate");
 		[system_repopulator release];
-		system_repopulator = [[systeminfo oo_stringForKey:@"repopulator" defaultValue:(sunGoneNova)?@"novaSystemWillRepopulate":@"systemWillRepopulate"] retain];
+		system_repopulator = [oo::PListView(systeminfo).get<NSString *>(@"repopulator", (sunGoneNova)?@"novaSystemWillRepopulate":@"systemWillRepopulate") retain];
 
 		ooscript::Context context = OOJSAcquireContext();
 		[PLAYER doWorldScriptEvent:OOJSIDFromString(populator) inContext:context withArguments:NULL count:0 timeLimit:kOOJSLongTimeLimit];
@@ -1745,7 +1763,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OO_DEBUG_POP_PROGRESS();
 
 	// systeminfo might have a 'script_actions' resource we want to activate now...
-	NSArray *script_actions = [systeminfo oo_arrayForKey:@"script_actions"];
+	NSArray *script_actions = oo::PListView(systeminfo).get<NSArray *>(@"script_actions");
 	if (script_actions != nil)
 	{
 		OOStandardsDeprecated([NSString stringWithFormat:@"The script_actions system info key is deprecated for %@.",[self getSystemName:systemID]]);
@@ -1810,22 +1828,22 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOJSPopulatorDefinition *pdef = nil;
 	foreach (populator, sortedBlocks)
 	{
-		deterministic_population = [populator oo_boolForKey:@"deterministic" defaultValue:NO];
+		deterministic_population = oo::PListView(populator).get<BOOL>(@"deterministic", NO);
 		if (EXPECT_NOT(sun == nil || planet == nil))
 		{
 			// needs to be a non-nova system, and not interstellar space
 			deterministic_population = NO;
 		}
 
-		locationSeed = [populator oo_unsignedIntForKey:@"locationSeed" defaultValue:0];
-		groupCount = [populator oo_unsignedIntForKey:@"groupCount" defaultValue:1];
+		locationSeed = oo::PListView(populator).get<unsigned int>(@"locationSeed", 0);
+		groupCount = oo::PListView(populator).get<unsigned int>(@"groupCount", 1);
 		
 		for (i = 0; i < groupCount; i++)
 		{
-			locationCode = [populator oo_stringForKey:@"location" defaultValue:@"COORDINATES"];
+			locationCode = oo::PListView(populator).get<NSString *>(@"location", @"COORDINATES");
 			if ([locationCode isEqualToString:@"COORDINATES"])
 			{
-				location = [populator oo_hpvectorForKey:@"coordinates" defaultValue:kZeroHPVector];
+				location = oo::PListView(populator).get<HPVector>(@"coordinates", kZeroHPVector);
 			}
 			else
 			{
@@ -2425,7 +2443,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		return make_HPvector(0,0,0);
 	}
 	GLfloat dummy;
-	return [self coordinatesForPosition:make_HPvector([tokens oo_floatAtIndex:1], [tokens oo_floatAtIndex:2], [tokens oo_floatAtIndex:3]) withCoordinateSystem:[tokens oo_stringAtIndex:0] returningScalar:&dummy];
+	return [self coordinatesForPosition:make_HPvector(oo::PListView(tokens).at<float>(1), oo::PListView(tokens).at<float>(2), oo::PListView(tokens).at<float>(3)) withCoordinateSystem:oo::PListView(tokens).at<NSString *>(0) returningScalar:&dummy];
 }
 
 
@@ -2623,12 +2641,12 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	if (ship == nil)  return NO;
 	
 	// set any spawning characteristics
-	NSDictionary	*spawndict = [shipdict oo_dictionaryForKey:@"spawn"];
+	NSDictionary	*spawndict = oo::PListView(shipdict).get<NSDictionary *>(@"spawn");
 	HPVector			pos, rpos, spos;
 	NSString		*positionString = nil;
 	
 	// position
-	positionString = [spawndict oo_stringForKey:@"position"];
+	positionString = oo::PListView(spawndict).get<NSString *>(@"position");
 	if (positionString != nil)
 	{
 		if([positionString hasPrefix:@"abs "] && ([self planet] != nil || [self sun] !=nil))
@@ -2647,7 +2665,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[ship setPosition:pos];
 	
 	// facing_position
-	positionString = [spawndict oo_stringForKey:@"facing_position"];
+	positionString = oo::PListView(spawndict).get<NSString *>(@"facing_position");
 	if (positionString != nil)
 	{
 		if([positionString hasPrefix:@"abs "] && ([self planet] != nil || [self sun] !=nil))
@@ -2694,7 +2712,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOGovernmentID		government;
 	
 	systeminfo = [self currentSystemData];
- 	government = [systeminfo oo_unsignedCharForKey:KEY_GOVERNMENT];
+ 	government = oo::PListView(systeminfo).get<unsigned char>(KEY_GOVERNMENT);
 	
 	ship = [self newShipWithRole:role];   // retain count = 1
 	
@@ -2845,7 +2863,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			uint8_t pendingEscortCount = [ship pendingEscortCount];
 			if (pendingEscortCount > 0)
 			{
-				OOGovernmentID government = [[self currentSystemData] oo_unsignedCharForKey:KEY_GOVERNMENT];
+				OOGovernmentID government = oo::PListView([self currentSystemData]).get<unsigned char>(KEY_GOVERNMENT);
 				if ((Ranrot() % 7) < government)	// remove escorts if we feel safe
 				{
 					int nx = pendingEscortCount - 2 * (1 + (Ranrot() & 3));	// remove 2,4,6, or 8 escorts
@@ -3112,9 +3130,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	if (forDocking)
 	{
 		NSDictionary *info = [[PLAYER dockedStation] shipInfoDictionary];
-		sides = [info oo_unsignedIntForKey:@"tunnel_corners" defaultValue:4];
-		startAngle = [info oo_floatForKey:@"tunnel_start_angle" defaultValue:45.0f];
-		aspectRatio = [info oo_floatForKey:@"tunnel_aspect_ratio" defaultValue:2.67f];
+		sides = oo::PListView(info).get<unsigned int>(@"tunnel_corners", 4);
+		startAngle = oo::PListView(info).get<float>(@"tunnel_start_angle", 45.0f);
+		aspectRatio = oo::PListView(info).get<float>(@"tunnel_aspect_ratio", 2.67f);
 	}
 	
 	for (i = 1; i < 11; i++)
@@ -3239,13 +3257,13 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		NSArray *subList = nil;
 		foreach (subList, demo_ships)
 		{
-			if ([[[subList oo_dictionaryAtIndex:0] oo_stringForKey:oo::NSStringFrom(kOODemoShipClass)] isEqualToString:@"ship"])
+			if ([oo::PListView(oo::PListView(subList).at<NSDictionary *>(0)).get<NSString *>(oo::NSStringFrom(kOODemoShipClass)) isEqualToString:@"ship"])
 			{
 				demo_ship_index = [demo_ships indexOfObject:subList];
 				NSDictionary *shipEntry = nil;
 				foreach (shipEntry, subList)
 				{
-					if ([[shipEntry oo_stringForKey:oo::NSStringFrom(kOODemoShipKey)] isEqualToString:@"cobra3-trader"])
+					if ([oo::PListView(shipEntry).get<NSString *>(oo::NSStringFrom(kOODemoShipKey)) isEqualToString:@"cobra3-trader"])
 					{
 						demo_ship_subindex = [subList indexOfObject:shipEntry];
 						break;
@@ -3256,7 +3274,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 
 
-		if (!demo_ship)	ship = [self newShipWithName:[[[demo_ships oo_arrayAtIndex:demo_ship_index] oo_dictionaryAtIndex:demo_ship_subindex] oo_stringForKey:oo::NSStringFrom(kOODemoShipKey)] usePlayerProxy:NO];
+		if (!demo_ship)	ship = [self newShipWithName:oo::PListView(oo::PListView(oo::PListView(demo_ships).at<NSArray *>(demo_ship_index)).at<NSDictionary *>(demo_ship_subindex)).get<NSString *>(oo::NSStringFrom(kOODemoShipKey)) usePlayerProxy:NO];
 		// stop consistency problems on the ship library screen
 		[ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
 		[ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
@@ -3305,7 +3323,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 - (NSDictionary *)demoShipData
 {
-	return [[demo_ships oo_arrayAtIndex:demo_ship_index] oo_dictionaryAtIndex:demo_ship_subindex];
+	return oo::PListView(oo::PListView(demo_ships).at<NSArray *>(demo_ship_index)).at<NSDictionary *>(demo_ship_subindex);
 }
 
 
@@ -3336,14 +3354,14 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	
 	/* Row 1: ScanClass, Name, Summary */
-	override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipClass) defaultValue:@"ship"];
+	override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), @"ship");
 	field1 = oo::NSStringFrom(OOShipLibraryCategorySingular(oo::StdString(override)));
 
 
 	field2 = [demo_ship shipClassName];
 
 
-	override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipSummary) defaultValue:nil];
+	override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipSummary), nil);
 	if (override != nil)
 	{
 		field3 = OOExpand(override);
@@ -3356,7 +3374,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[gui setColor:[OOColor greenColor] forRow:1];
 
 	// ship_data defaults to true for "ship" class, false for everything else
-	if (![librarySettings oo_boolForKey:oo::NSStringFrom(kOODemoShipShipData) defaultValue:[[librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipClass) defaultValue:@"ship"] isEqualToString:@"ship"]])
+	if (!oo::PListView(librarySettings).get<BOOL>(oo::NSStringFrom(kOODemoShipShipData), [oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), @"ship") isEqualToString:@"ship"]))
 	{
 		descRow = 3;
 	}
@@ -3364,7 +3382,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		/* Row 2: Speed, Turn Rate, Cargo */
 
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipSpeed) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipSpeed), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3382,7 +3400,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		
 
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipTurnRate) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipTurnRate), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3400,7 +3418,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 
 
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipCargo) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipCargo), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3421,7 +3439,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:3];
 
 		/* Row 3: recharge rate, energy banks, witchspace */
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipGenerator) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipGenerator), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3439,7 +3457,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 
 
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipShields) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipShields), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3457,7 +3475,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 
 
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipWitchspace) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipWitchspace), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3479,7 +3497,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 
 		/* Row 4: weapons, turrets, size */
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipWeapons) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipWeapons), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3496,7 +3514,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			field1 = oo::NSStringFrom(OOShipLibraryWeapons(demo_ship));
 		}
 
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipTurrets) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipTurrets), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3513,7 +3531,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 			field2 = oo::NSStringFrom(OOShipLibraryTurrets(demo_ship));
 		}
 
-		override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipSize) defaultValue:nil];
+		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipSize), nil);
 		if (override != nil)
 		{
 			if ([override length] == 0)
@@ -3533,7 +3551,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:5];
 	}
 
-	override = [librarySettings oo_stringForKey:oo::NSStringFrom(kOODemoShipDescription) defaultValue:nil];
+	override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipDescription), nil);
 	if (override != nil)
 	{
 		[gui addLongText:OOExpand(override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
@@ -3541,9 +3559,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 	
 	// line 19: ship categories
-	field1 = [NSString stringWithFormat:@"<-- %@",oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString([[[demo_ships objectAtIndex:((demo_ship_index+[demo_ships count]-1)%[demo_ships count])] objectAtIndex:0] oo_stringForKey:oo::NSStringFrom(kOODemoShipClass)])))];
-	field2 = oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString([[[demo_ships objectAtIndex:demo_ship_index] objectAtIndex:0] oo_stringForKey:oo::NSStringFrom(kOODemoShipClass)])));
-	field3 = [NSString stringWithFormat:@"%@ -->",oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString([[[demo_ships objectAtIndex:((demo_ship_index+1)%[demo_ships count])] objectAtIndex:0] oo_stringForKey:oo::NSStringFrom(kOODemoShipClass)])))];
+	field1 = [NSString stringWithFormat:@"<-- %@",oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView([[demo_ships objectAtIndex:((demo_ship_index+[demo_ships count]-1)%[demo_ships count])] objectAtIndex:0]).get<NSString *>(oo::NSStringFrom(kOODemoShipClass)))))];
+	field2 = oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView([[demo_ships objectAtIndex:demo_ship_index] objectAtIndex:0]).get<NSString *>(oo::NSStringFrom(kOODemoShipClass)))));
+	field3 = [NSString stringWithFormat:@"%@ -->",oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView([[demo_ships objectAtIndex:((demo_ship_index+1)%[demo_ships count])] objectAtIndex:0]).get<NSString *>(oo::NSStringFrom(kOODemoShipClass)))))];
 	
 	[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:19];
 	[gui setColor:[OOColor greenColor] forRow:19];
@@ -3561,7 +3579,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	field3 = @"";
 	for (i = start ; i <= end ; i++)
 	{
-		field2 = [[subList objectAtIndex:i] oo_stringForKey:oo::NSStringFrom(kOODemoShipName)];
+		field2 = oo::PListView([subList objectAtIndex:i]).get<NSString *>(oo::NSStringFrom(kOODemoShipName));
 		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:row];
 		if (i == demo_ship_subindex)
 		{
@@ -3855,7 +3873,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 	if (definition != nil)
 	{
-		waypoint = [OOWaypointEntity waypointWithDictionary:definition];
+		waypoint = [OOWaypointEntity waypointWithDictionary:oo::PListFrom(definition)];
 		if (waypoint != nil)
 		{
 			[self addEntity:waypoint];
@@ -3909,7 +3927,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	NSString  *condition_script = nil;
 	shipInfo = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
 
-	condition_script = [shipInfo oo_stringForKey:@"condition_script"];
+	condition_script = oo::PListView(shipInfo).get<NSString *>(@"condition_script");
 	if (condition_script != nil)
 	{
 		OOJSScript *condScript = [self getConditionScript:condition_script];
@@ -3940,7 +3958,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 	}
 
-	conditions = [shipInfo oo_arrayForKey:@"conditions"];
+	conditions = oo::PListView(shipInfo).get<NSArray *>(@"conditions");
 	if (conditions == nil)  return YES;
 	
 	// Check conditions
@@ -4017,7 +4035,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			[ship setPrimaryRole:role];
 			
 			shipInfo = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
-			if ([shipInfo oo_fuzzyBooleanForKey:@"auto_ai" defaultValue:YES])
+			if (oo::PListView(shipInfo).get<oo::FuzzyBoolean>(@"auto_ai", YES))
 			{
 				// Set AI based on role
 				autoAI = [self defaultAIForRole:role];
@@ -4060,11 +4078,11 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	{
 		effect = [[OOVisualEffectEntity alloc] initWithKey:effectKey definition:effectDict];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		if ([[exception name] isEqual:OOLITE_EXCEPTION_DATA_NOT_FOUND])
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newVisualEffectWithName: %@ ] *****", [exception reason], effectKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newVisualEffectWithName: %@ ] *****", oo::NSStringFrom([exception reason]), effectKey);
 		}
 		else  @throw exception;
 	}
@@ -4126,11 +4144,11 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		ship = [[shipClass alloc] initWithKey:shipKey definition:shipDict];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		if ([[exception name] isEqual:OOLITE_EXCEPTION_DATA_NOT_FOUND])
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newShipWithName: %@ ] *****", [exception reason], shipKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newShipWithName: %@ ] *****", oo::NSStringFrom([exception reason]), shipKey);
 		}
 		else  @throw exception;
 	}
@@ -4166,11 +4184,11 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		dock = [[DockEntity alloc] initWithKey:shipDataKey definition:shipDict];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		if ([[exception name] isEqual:OOLITE_EXCEPTION_DATA_NOT_FOUND])
+		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newDockWithName: %@ ] *****", [exception reason], shipDataKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newDockWithName: %@ ] *****", oo::NSStringFrom([exception reason]), shipDataKey);
 		}
 		else  @throw exception;
 	}
@@ -4198,7 +4216,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	if (dict == nil)  return Nil;
 	
 	BOOL		isStation = NO;
-	NSString	*shipRoles = [dict oo_stringForKey:@"roles"];
+	NSString	*shipRoles = oo::PListView(dict).get<NSString *>(@"roles");
 	
 	if (shipRoles != nil)
 	{
@@ -4207,8 +4225,8 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 	
 	// Note priority here: is_carrier overrides isCarrier which overrides roles.
-	isStation = [dict oo_boolForKey:@"isCarrier" defaultValue:isStation];
-	isStation = [dict oo_boolForKey:@"is_carrier" defaultValue:isStation];
+	isStation = oo::PListView(dict).get<BOOL>(@"isCarrier", isStation);
+	isStation = oo::PListView(dict).get<BOOL>(@"is_carrier", isStation);
 	
 
 	return isStation ? [StationEntity class] : [ShipEntity class];
@@ -4219,13 +4237,13 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 
 - (NSString *)defaultAIForRole:(NSString *)role
 {
-	return [autoAIMap oo_stringForKey:role];
+	return oo::PListView(autoAIMap).get<NSString *>(role);
 }
 
 
 - (OOCargoQuantity) maxCargoForShip:(NSString *) desc
 {
-	return [[[OOShipRegistry sharedRegistry] shipInfoForKey:desc] oo_unsignedIntForKey:@"max_cargo" defaultValue:0];
+	return oo::PListView([[OOShipRegistry sharedRegistry] shipInfoForKey:desc]).get<unsigned int>(@"max_cargo", 0);
 }
 
 /*
@@ -4236,11 +4254,11 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	NSArray *itemData;
 	foreach (itemData, equipmentData)
 	{
-		NSString *itemType = [itemData oo_stringAtIndex:EQUIPMENT_KEY_INDEX];
+		NSString *itemType = oo::PListView(itemData).at<NSString *>(EQUIPMENT_KEY_INDEX);
 		
 		if ([itemType isEqual:eq_key])
 		{
-			return [itemData oo_unsignedLongLongAtIndex:EQUIPMENT_PRICE_INDEX];
+			return oo::PListView(itemData).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
 		}
 	}
 	return 0;
@@ -4337,7 +4355,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 			co_type--;
 		}
 
-		ShipEntity *container = [cargoPods objectForKey:[goodsKeys oo_stringAtIndex:co_type]];
+		ShipEntity *container = [cargoPods objectForKey:oo::PListView(goodsKeys).at<NSString *>(co_type)];
 		
 		if (container != nil)
 		{
@@ -4345,7 +4363,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 		else
 		{
-			OOLog(@"universe.createContainer.failed", @"***** ERROR: failed to find a container to fill with %@ (%zu).", [goodsKeys oo_stringAtIndex:co_type], co_type);
+			OOLog(@"universe.createContainer.failed", @"***** ERROR: failed to find a container to fill with %@ (%zu).", oo::PListView(goodsKeys).at<NSString *>(co_type), co_type);
 
 		}
 	}
@@ -5266,13 +5284,27 @@ static const OOMatrix	starboard_matrix =
 				framesDoneThisUpdate++;
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			no_update = NO;	// make sure we don't get stuck in all subsequent frames.
+			
+			if (strncmp([exception name], "Oolite", 6) == 0)
+			{
+				[self handleOoliteException:exception];
+			}
+			else
+			{
+				OOLog(kOOLogException, @"***** Exception: %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				@throw exception;
+			}
+		}
+		@catch (OOFoundationException *exception)
 		{
 			no_update = NO;	// make sure we don't get stuck in all subsequent frames.
 			
 			if ([[exception name] hasPrefix:@"Oolite"])
 			{
-				[self handleOoliteException:exception];
+				[self handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];
 			}
 			else
 			{
@@ -5604,7 +5636,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 						}
 						else
 						{
-							stationRoll = [[self currentSystemData] oo_doubleForKey:@"station_roll" defaultValue:STANDARD_STATION_ROLL];
+							stationRoll = oo::PListView([self currentSystemData]).get<double>(@"station_roll", STANDARD_STATION_ROLL);
 						}
 						
 						[se setRoll: stationRoll];
@@ -6341,28 +6373,28 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	{
 		case VIEW_FORWARD:
 			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = [[player forwardWeaponOffset] oo_vectorAtIndex:0];
+			laserPortOffset = oo::PListView([player forwardWeaponOffset]).at<Vector>(0);
 			break;
 			
 		case VIEW_AFT:
 			targetFacing = WEAPON_FACING_AFT;
-			laserPortOffset = [[player aftWeaponOffset] oo_vectorAtIndex:0];
+			laserPortOffset = oo::PListView([player aftWeaponOffset]).at<Vector>(0);
 			break;
 			
 		case VIEW_PORT:
 			targetFacing = WEAPON_FACING_PORT;
-			laserPortOffset = [[player portWeaponOffset] oo_vectorAtIndex:0];
+			laserPortOffset = oo::PListView([player portWeaponOffset]).at<Vector>(0);
 			break;
 			
 		case VIEW_STARBOARD:
 			targetFacing = WEAPON_FACING_STARBOARD;
-			laserPortOffset = [[player starboardWeaponOffset] oo_vectorAtIndex:0];
+			laserPortOffset = oo::PListView([player starboardWeaponOffset]).at<Vector>(0);
 			break;
 			
 		default:
 			// Match behaviour of -firstEntityTargetedByPlayer.
 			targetFacing = WEAPON_FACING_FORWARD;
-			laserPortOffset = [[player forwardWeaponOffset] oo_vectorAtIndex:0];
+			laserPortOffset = oo::PListView([player forwardWeaponOffset]).at<Vector>(0);
 	}
 	
 	return [self firstShipHitByLaserFromShip:PLAYER inDirection:targetFacing offset:laserPortOffset gettingRangeFound:NULL];
@@ -6815,7 +6847,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	
 	if ([object isKindOfClass:[NSArray class]] && [object count] > 0)
 	{
-		key = [object oo_stringAtIndex:Ranrot() % [object count]];
+		key = oo::PListView(object).at<NSString *>(Ranrot() % [object count]);
 	}
 	else
 	{
@@ -6836,7 +6868,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 				object = [customSounds objectForKey:result];
 				if( [object isKindOfClass:[NSArray class]] && [object count] > 0)
 				{
-					result = [object oo_stringAtIndex:Ranrot() % [object count]];
+					result = oo::PListView(object).at<NSString *>(Ranrot() % [object count]);
 					if ([key hasPrefix:@"["] && [key hasSuffix:@"]"]) key=result;
 				}
 				else
@@ -6952,9 +6984,9 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	NSString		*msg = nil;
 	OOTimeDelta		msg_duration;
 	
-	msg = [textdict oo_stringForKey:@"message"];
+	msg = oo::PListView(textdict).get<NSString *>(@"message");
 	if (msg == nil)  return;
-	msg_duration = [textdict oo_nonNegativeDoubleForKey:@"duration" defaultValue:3.0];
+	msg_duration = oo::PListView(textdict).get<oo::NonNegative<double>>(@"duration", 3.0);
 	
 	[self addMessage:msg forCount:msg_duration];
 }
@@ -6991,7 +7023,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 			
 			foreach (thePair, speechArray)
 			{
-				NSString *original_phrase = [thePair oo_stringAtIndex:0];
+				NSString *original_phrase = oo::PListView(thePair).at<NSString *>(0);
 				
 				NSUInteger replacementIndex;
 #if OOLITE_MAC_OS_X
@@ -7000,7 +7032,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 				replacementIndex = [thePair count] > 2 ? 2 : 1;
 #endif
 				
-				NSString *replacement_phrase = [thePair oo_stringAtIndex:replacementIndex];
+				NSString *replacement_phrase = oo::PListView(thePair).at<NSString *>(replacementIndex);
 				if (![replacement_phrase isEqualToString:@"_"])
 				{
 					spokenText = [spokenText stringByReplacingOccurrencesOfString:original_phrase withString:replacement_phrase];
@@ -7186,7 +7218,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 								NSDictionary	*shipDict = nil; */
 								
 								demo_ship_subindex = (demo_ship_subindex + 1) % [[demo_ships objectAtIndex:demo_ship_index] count];
-								demo_ship = [self newShipWithName:[[self demoShipData] oo_stringForKey:oo::NSStringFrom(kOODemoShipKey)] usePlayerProxy:NO];
+								demo_ship = [self newShipWithName:oo::PListView([self demoShipData]).get<NSString *>(oo::NSStringFrom(kOODemoShipKey)) usePlayerProxy:NO];
 								
 								if (demo_ship != nil)
 								{
@@ -7330,11 +7362,26 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 				doLinkedListMaintenanceThisUpdate = NO;
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			if (strncmp([exception name], "Oolite", 6) == 0)
+			{
+				[self handleOoliteException:exception];
+			}
+			else
+			{
+#ifndef NDEBUG
+				if (update_stage_param != nil)  update_stage = [NSString stringWithFormat:update_stage, update_stage_param];
+#endif
+				OOLog(kOOLogException, @"***** Exception during [%@] in [Universe update:] : %@ : %@ *****", update_stage, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				@throw exception;
+			}
+		}
+		@catch (OOFoundationException *exception)
 		{
 			if ([[exception name] hasPrefix:@"Oolite"])
 			{
-				[self handleOoliteException:exception];
+				[self handleOoliteException:[OOException exceptionWithName:[[exception name] UTF8String] reason:[[exception reason] UTF8String]]];
 			}
 			else
 			{
@@ -7995,8 +8042,8 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	targetSystemID = s;
 	
 	systemData = [self generateSystemData:targetSystemID];
-	economy = [systemData  oo_unsignedCharForKey:KEY_ECONOMY];
-	scriptName = [systemData  oo_stringForKey:@"market_script" defaultValue:nil];
+	economy = oo::PListView(systemData).get<unsigned char>(KEY_ECONOMY);
+	scriptName = oo::PListView(systemData).get<NSString *>(@"market_script", nil);
 	
 	DESTROY(commodityMarket);
 	commodityMarket = [[commodities generateMarketForSystemWithEconomy:economy andScript:scriptName] retain];
@@ -8105,7 +8152,7 @@ static void VerifyDesc(NSString *key, id desc)
 
 - (NSDictionary *) explosionSetting:(NSString *)explosion
 {
-	return [explosionSettings oo_dictionaryForKey:explosion defaultValue:nil];
+	return oo::PListView(explosionSettings).get<NSDictionary *>(explosion, nil);
 }
 
 
@@ -8142,7 +8189,7 @@ static void VerifyDesc(NSString *key, id desc)
 
 - (NSString *)descriptionForArrayKey:(NSString *)key index:(unsigned)index
 {
-	NSArray *array = [[self descriptions] oo_arrayForKey:key];
+	NSArray *array = oo::PListView([self descriptions]).get<NSArray *>(key);
 	if ([array count] <= index)  return nil;	// Catches nil array
 	return [array objectAtIndex:index];
 }
@@ -8150,7 +8197,7 @@ static void VerifyDesc(NSString *key, id desc)
 
 - (BOOL) descriptionBooleanForKey:(NSString *)key
 {
-	return [[self descriptions] oo_boolForKey:key];
+	return oo::PListView([self descriptions]).get<BOOL>(key);
 }
 
 
@@ -8336,7 +8383,7 @@ static void VerifyDesc(NSString *key, id desc)
 			
 			if (the_sky != nil)
 			{
-				[the_sky changeProperty:key withDictionary:sysInfo];
+				[the_sky changeProperty:oo::StdString(key) withDictionary:oo::PListFrom(sysInfo)];
 				
 				if ([key isEqualToString:@"sun_color"])
 				{
@@ -8375,7 +8422,7 @@ static void VerifyDesc(NSString *key, id desc)
 		}
 		else if ([key isEqualToString:@"air_color_mix_ratio"])
 		{
-			[[self planet] setAirColorMixRatio:[sysInfo oo_floatForKey:key]];
+			[[self planet] setAirColorMixRatio:oo::PListView(sysInfo).get<float>(key)];
 		}
 	}
 	
@@ -8496,7 +8543,7 @@ static void VerifyDesc(NSString *key, id desc)
 			[result addObject: [NSDictionary dictionaryWithObjectsAndKeys:
 								[NSNumber numberWithDouble:dist], @"distance",
 								[NSNumber numberWithInt:i], @"sysID",
-								[[self generateSystemData:i] oo_stringForKey:@"sun_gone_nova" defaultValue:@"0"], @"nova",
+								oo::PListView([self generateSystemData:i]).get<NSString *>(@"sun_gone_nova", @"0"), @"nova",
 								nil]];
 		}
 	}
@@ -8614,7 +8661,7 @@ static void VerifyDesc(NSString *key, id desc)
 	{
 		if (!hidden) {
 			NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:g];
-			NSInteger concealment = [systemInfo oo_intForKey:@"concealment" defaultValue:OO_SYSTEMCONCEALMENT_NONE];
+			NSInteger concealment = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
 			if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
 				// system is not known
 				continue;
@@ -8667,7 +8714,7 @@ static void VerifyDesc(NSString *key, id desc)
 		{
 			/* Only used in player-based search routines */
 			NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxyID];
-			NSInteger concealment = [systemInfo oo_intForKey:@"concealment" defaultValue:OO_SYSTEMCONCEALMENT_NONE];
+			NSInteger concealment = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
 			if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) {
 				// system is not known
 				continue;
@@ -8734,7 +8781,7 @@ static void VerifyDesc(NSString *key, id desc)
 	for (i = 0; i < 256; i++)
 	{
 		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxyID];
-		NSInteger concealment = [systemInfo oo_intForKey:@"concealment" defaultValue:OO_SYSTEMCONCEALMENT_NONE];
+		NSInteger concealment = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
 		if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
 			// system is not known
 			neighbours[i] = [NSArray array];
@@ -8763,7 +8810,7 @@ static void VerifyDesc(NSString *key, id desc)
 			for (j = 0; j < [ns count]; j++)
 			{
 				RouteElement *ce = cheapest[[elemI location]];
-				OOSystemID n = [ns oo_intAtIndex:j];
+				OOSystemID n = oo::PListView(ns).at<int>(j);
 				if (concealed[n])
 				{
 					continue;
@@ -9041,7 +9088,7 @@ static void VerifyDesc(NSString *key, id desc)
 
 	foreach (savedMarket, marketData)
 	{
-		HPVector pos = [savedMarket oo_hpvectorForKey:@"position"];
+		HPVector pos = oo::PListView(savedMarket).get<HPVector>(@"position");
 		foreach (station, stations)
 		{
 			// must be deterministic and secondary
@@ -9050,7 +9097,7 @@ static void VerifyDesc(NSString *key, id desc)
 				// allow a km of drift just in case
 				if (HPdistance2(pos,[station position]) < 1000000)
 				{
-					[station setLocalMarket:[savedMarket oo_arrayForKey:@"market"]];
+					[station setLocalMarket:oo::PListView(savedMarket).get<NSArray *>(@"market")];
 					break;
 				}
 			}
@@ -9120,15 +9167,15 @@ static void VerifyDesc(NSString *key, id desc)
 		for (si = 0; si < [keysForShips count]; si++)
 		{
 			//eliminate any ships that fail a 'conditions test'
-			NSString		*key = [keysForShips oo_stringAtIndex:si];
+			NSString		*key = oo::PListView(keysForShips).at<NSString *>(si);
 			NSDictionary	*dict = [registry shipyardInfoForKey:key];
-			NSArray			*conditions = [dict oo_arrayForKey:@"conditions"];
+			NSArray			*conditions = oo::PListView(dict).get<NSArray *>(@"conditions");
 			
 			if (![player scriptTestConditions:conditions])
 			{
 				[keysForShips removeObjectAtIndex:si--];
 			}
-			NSString *condition_script = [dict oo_stringForKey:@"condition_script"];
+			NSString *condition_script = oo::PListView(dict).get<NSString *>(@"condition_script");
 			if (condition_script != nil)
 			{
 				OOJSScript *condScript = [self getConditionScript:condition_script];
@@ -9171,14 +9218,14 @@ static void VerifyDesc(NSString *key, id desc)
 		else
 		{
 			//otherwise use default for system
-			techlevel = [systemInfo oo_unsignedIntForKey:KEY_TECHLEVEL];
+			techlevel = oo::PListView(systemInfo).get<unsigned int>(KEY_TECHLEVEL);
 		}
 		unsigned		ship_index = (ship_seed.d * 0x100 + ship_seed.e) % [keysForShips count];
-		NSString		*ship_key = [keysForShips oo_stringAtIndex:ship_index];
+		NSString		*ship_key = oo::PListView(keysForShips).at<NSString *>(ship_index);
 		NSDictionary	*ship_info = [registry shipyardInfoForKey:ship_key];
-		OOTechLevelID	ship_techlevel = [ship_info oo_intForKey:KEY_TECHLEVEL];
+		OOTechLevelID	ship_techlevel = oo::PListView(ship_info).get<int>(KEY_TECHLEVEL);
 		
-		double chance = 1.0 - pow(1.0 - [ship_info oo_doubleForKey:KEY_CHANCE], MAX((OOTechLevelID)1, techlevel - ship_techlevel));
+		double chance = 1.0 - pow(1.0 - oo::PListView(ship_info).get<double>(KEY_CHANCE), MAX((OOTechLevelID)1, techlevel - ship_techlevel));
 		
 		// seed random number generator
 		int superRand1 = ship_seed.a * 0x10000 + ship_seed.c * 0x100 + ship_seed.e;
@@ -9191,15 +9238,15 @@ static void VerifyDesc(NSString *key, id desc)
 		{			
 			NSMutableDictionary* shipDict = [NSMutableDictionary dictionaryWithDictionary:shipBaseDict];
 			NSMutableString* shortShipDescription = [NSMutableString stringWithCapacity:256];
-			NSString *shipName = [shipDict oo_stringForKey:@"display_name" defaultValue:[shipDict oo_stringForKey:KEY_NAME]];
-			OOCreditsQuantity price = [ship_info oo_unsignedIntForKey:KEY_PRICE];
+			NSString *shipName = oo::PListView(shipDict).get<NSString *>(@"display_name", oo::PListView(shipDict).get<NSString *>(KEY_NAME));
+			OOCreditsQuantity price = oo::PListView(ship_info).get<unsigned int>(KEY_PRICE);
 			OOCreditsQuantity base_price = price;
-			NSMutableArray* extras = [NSMutableArray arrayWithArray:[[ship_info oo_dictionaryForKey:KEY_STANDARD_EQUIPMENT] oo_arrayForKey:KEY_EQUIPMENT_EXTRAS]];
-			NSString* fwdWeaponString = [[ship_info oo_dictionaryForKey:KEY_STANDARD_EQUIPMENT] oo_stringForKey:KEY_EQUIPMENT_FORWARD_WEAPON];
-			NSString* aftWeaponString = [[ship_info oo_dictionaryForKey:KEY_STANDARD_EQUIPMENT] oo_stringForKey:KEY_EQUIPMENT_AFT_WEAPON];
+			NSMutableArray* extras = [NSMutableArray arrayWithArray:oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
+			NSString* fwdWeaponString = oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSString *>(KEY_EQUIPMENT_FORWARD_WEAPON);
+			NSString* aftWeaponString = oo::PListView(oo::PListView(ship_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT)).get<NSString *>(KEY_EQUIPMENT_AFT_WEAPON);
 			
-			NSMutableArray* options = [NSMutableArray arrayWithArray:[ship_info oo_arrayForKey:KEY_OPTIONAL_EQUIPMENT]];
-			OOCargoQuantity maxCargo = [shipDict oo_unsignedIntForKey:@"max_cargo"];
+			NSMutableArray* options = [NSMutableArray arrayWithArray:oo::PListView(ship_info).get<NSArray *>(KEY_OPTIONAL_EQUIPMENT)];
+			OOCargoQuantity maxCargo = oo::PListView(shipDict).get<unsigned int>(@"max_cargo");
 			
 			// more info for potential purchasers - how to reveal this I'm not yet sure...
 			//NSString* brochure_desc = [self brochureDescriptionWithDictionary: ship_dict standardEquipment: extras optionalEquipment: options];
@@ -9207,7 +9254,7 @@ static void VerifyDesc(NSString *key, id desc)
 			
 			[shortShipDescription appendFormat:@"%@:", shipName];
 			
-			OOWeaponFacingSet availableFacings = [ship_info oo_unsignedIntForKey:KEY_WEAPON_FACINGS defaultValue:VALID_WEAPON_FACINGS] & VALID_WEAPON_FACINGS;
+			OOWeaponFacingSet availableFacings = oo::PListView(ship_info).get<unsigned int>(KEY_WEAPON_FACINGS, VALID_WEAPON_FACINGS) & VALID_WEAPON_FACINGS;
 
 			OOWeaponType fwdWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(fwdWeaponString);
 			OOWeaponType aftWeapon = OOWeaponTypeFromEquipmentIdentifierSloppy(aftWeaponString);
@@ -9231,7 +9278,7 @@ static void VerifyDesc(NSString *key, id desc)
 			{
 				chance *= chance;	//decrease the chance of a further customisation (unless it is 1, which might be a bug)
 				int				optionIndex = Ranrot() % [options count];
-				NSString		*equipmentKey = [options oo_stringAtIndex:optionIndex];
+				NSString		*equipmentKey = oo::PListView(options).at<NSString *>(optionIndex);
 				OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:equipmentKey];
 				
 				if (item != nil)
@@ -9428,7 +9475,7 @@ static void VerifyDesc(NSString *key, id desc)
 			} // end adding optional equipment
 			[testship release];
 			// i18n: Some languages require that no conversion to lower case string takes place.
-			BOOL lowercaseIgnore = [[self descriptions] oo_boolForKey:@"lowercase_ignore"];
+			BOOL lowercaseIgnore = oo::PListView([self descriptions]).get<BOOL>(@"lowercase_ignore");
 			
 			if (passengerBerthCount)
 			{
@@ -9507,10 +9554,10 @@ static void VerifyDesc(NSString *key, id desc)
 
 static OOComparisonResult compareName(id dict1, id dict2, void *context)
 {
-	NSDictionary	*ship1 = [(NSDictionary *)dict1 oo_dictionaryForKey:SHIPYARD_KEY_SHIP];
-	NSDictionary	*ship2 = [(NSDictionary *)dict2 oo_dictionaryForKey:SHIPYARD_KEY_SHIP];
-	NSString		*name1 = [ship1 oo_stringForKey:KEY_NAME];
-	NSString		*name2 = [ship2 oo_stringForKey:KEY_NAME];
+	NSDictionary	*ship1 = oo::PListView((NSDictionary *)dict1).get<NSDictionary *>(SHIPYARD_KEY_SHIP);
+	NSDictionary	*ship2 = oo::PListView((NSDictionary *)dict2).get<NSDictionary *>(SHIPYARD_KEY_SHIP);
+	NSString		*name1 = oo::PListView(ship1).get<NSString *>(KEY_NAME);
+	NSString		*name2 = oo::PListView(ship2).get<NSString *>(KEY_NAME);
 	
 	NSComparisonResult result = [[name1 lowercaseString] compare:[name2 lowercaseString]];
 	if (result != NSOrderedSame)
@@ -9533,7 +9580,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 {
 	// get basic information about the craft
 	OOCreditsQuantity	base_price = 0ULL;
-	NSString			*ship_desc = [dict oo_stringForKey:@"ship_desc"];
+	NSString			*ship_desc = oo::PListView(dict).get<NSString *>(@"ship_desc");
 	NSDictionary		*shipyard_info = [[OOShipRegistry sharedRegistry] shipyardInfoForKey:ship_desc];
 	// This checks a rare, but possible case. If the ship for which we are trying to calculate a trade in value
 	// does not have a shipyard dictionary entry, report it and set its base price to 0 -- Nikos 20090613.
@@ -9544,31 +9591,31 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	}
 	else
 	{
-		base_price = [shipyard_info oo_unsignedLongLongForKey:SHIPYARD_KEY_PRICE defaultValue:0ULL];
+		base_price = oo::PListView(shipyard_info).get<unsigned long long>(SHIPYARD_KEY_PRICE, 0ULL);
 	}
 	
 	if(base_price == 0ULL) return base_price;
 	
 	OOCreditsQuantity	scrap_value = 351; // translates to 250 cr.
 	
-	OOWeaponType		ship_fwd_weapon = [OOEquipmentType equipmentTypeWithIdentifier:[dict oo_stringForKey:@"forward_weapon"]];
-	OOWeaponType		ship_aft_weapon = [OOEquipmentType equipmentTypeWithIdentifier:[dict oo_stringForKey:@"aft_weapon"]];
-	OOWeaponType		ship_port_weapon = [OOEquipmentType equipmentTypeWithIdentifier:[dict oo_stringForKey:@"port_weapon"]];
-	OOWeaponType		ship_starboard_weapon = [OOEquipmentType equipmentTypeWithIdentifier:[dict oo_stringForKey:@"starboard_weapon"]];
-	unsigned			ship_missiles = [dict oo_unsignedIntForKey:@"missiles"];
-	unsigned			ship_max_passengers = [dict oo_unsignedIntForKey:@"max_passengers"];
-	NSMutableArray		*ship_extra_equipment = [NSMutableArray arrayWithArray:[[dict oo_dictionaryForKey:@"extra_equipment"] allKeys]];
+	OOWeaponType		ship_fwd_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(dict).get<NSString *>(@"forward_weapon")];
+	OOWeaponType		ship_aft_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(dict).get<NSString *>(@"aft_weapon")];
+	OOWeaponType		ship_port_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(dict).get<NSString *>(@"port_weapon")];
+	OOWeaponType		ship_starboard_weapon = [OOEquipmentType equipmentTypeWithIdentifier:oo::PListView(dict).get<NSString *>(@"starboard_weapon")];
+	unsigned			ship_missiles = oo::PListView(dict).get<unsigned int>(@"missiles");
+	unsigned			ship_max_passengers = oo::PListView(dict).get<unsigned int>(@"max_passengers");
+	NSMutableArray		*ship_extra_equipment = [NSMutableArray arrayWithArray:[oo::PListView(dict).get<NSDictionary *>(@"extra_equipment") allKeys]];
 	
-	NSDictionary		*basic_info = [shipyard_info oo_dictionaryForKey:KEY_STANDARD_EQUIPMENT];
-	unsigned			base_missiles = [basic_info oo_unsignedIntForKey:KEY_EQUIPMENT_MISSILES];
+	NSDictionary		*basic_info = oo::PListView(shipyard_info).get<NSDictionary *>(KEY_STANDARD_EQUIPMENT);
+	unsigned			base_missiles = oo::PListView(basic_info).get<unsigned int>(KEY_EQUIPMENT_MISSILES);
 	OOCreditsQuantity	base_missiles_value = base_missiles * [UNIVERSE getEquipmentPriceForKey:@"EQ_MISSILE"] / 10;
-	NSString			*base_weapon_key = [basic_info oo_stringForKey:KEY_EQUIPMENT_FORWARD_WEAPON];
+	NSString			*base_weapon_key = oo::PListView(basic_info).get<NSString *>(KEY_EQUIPMENT_FORWARD_WEAPON);
 	OOCreditsQuantity	base_weapons_value = [UNIVERSE getEquipmentPriceForKey:base_weapon_key] / 10;
-	NSMutableArray		*base_extra_equipment = [NSMutableArray arrayWithArray:[basic_info oo_arrayForKey:KEY_EQUIPMENT_EXTRAS]];
+	NSMutableArray		*base_extra_equipment = [NSMutableArray arrayWithArray:oo::PListView(basic_info).get<NSArray *>(KEY_EQUIPMENT_EXTRAS)];
 	NSString			*weapon_key = nil;
 	
 	// was aft_weapon defined as standard equipment ?
-	base_weapon_key = [basic_info oo_stringForKey:KEY_EQUIPMENT_AFT_WEAPON defaultValue:nil];
+	base_weapon_key = oo::PListView(basic_info).get<NSString *>(KEY_EQUIPMENT_AFT_WEAPON, nil);
 	if (base_weapon_key != nil)
 		base_weapons_value += [UNIVERSE getEquipmentPriceForKey:base_weapon_key] / 10;
 	
@@ -9577,13 +9624,13 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	OOCreditsQuantity	ship_missiles_value = 0;
 
 	// calculate the actual value for the missiles present on board.
-	NSArray *missileRoles = [dict oo_arrayForKey:@"missile_roles"];
+	NSArray *missileRoles = oo::PListView(dict).get<NSArray *>(@"missile_roles");
 	if (missileRoles != nil)
 	{
 		unsigned i;
 		for (i = 0; i < ship_missiles; i++)
 		{
-			NSString *missile_desc = [missileRoles oo_stringAtIndex:i];
+			NSString *missile_desc = oo::PListView(missileRoles).at<NSString *>(i);
 			if (missile_desc != nil && ![missile_desc isEqualToString:@"NONE"])
 			{
 				ship_missiles_value += [UNIVERSE getEquipmentPriceForKey:missile_desc] / 10;
@@ -9639,7 +9686,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	// cull possible duplicates from inside base equipment
 	for (i = [base_extra_equipment count]-1; i > 0;i--)
 	{
-		eq_key = [base_extra_equipment oo_stringAtIndex:i];
+		eq_key = oo::PListView(base_extra_equipment).at<NSString *>(i);
 		if ([base_extra_equipment indexOfObject:eq_key inRange:NSMakeRange(0, i-1)] != NSNotFound)
 								[base_extra_equipment removeObjectAtIndex:i];
 	}
@@ -9647,7 +9694,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	// do we at least have the same equipment as a standard ship? 
 	for (i = [base_extra_equipment count]-1; i >= 0; i--)
 	{
-		eq_key = [base_extra_equipment oo_stringAtIndex:i];
+		eq_key = oo::PListView(base_extra_equipment).at<NSString *>(i);
 		if ([ship_extra_equipment containsObject:eq_key])
 				[ship_extra_equipment removeObject:eq_key];
 		else // if the ship has less equipment than standard, deduct the missing equipent's price
@@ -9659,14 +9706,14 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	
 	for (i = [ship_extra_equipment count]-1; i >= 0; i--)
 	{
-		eq_key = [ship_extra_equipment oo_stringAtIndex:i];
+		eq_key = oo::PListView(ship_extra_equipment).at<NSString *>(i);
 		item = [OOEquipmentType equipmentTypeWithIdentifier:eq_key];
 		if ([item isPortableBetweenShips]) [ship_extra_equipment removeObjectAtIndex:i];
 	}
 	
 	// add up what we've got left.
 	for (i = [ship_extra_equipment count]-1; i >= 0; i--)
-		extra_equipment_value += ([UNIVERSE getEquipmentPriceForKey:[ship_extra_equipment oo_stringAtIndex:i]] / 10);		
+		extra_equipment_value += ([UNIVERSE getEquipmentPriceForKey:oo::PListView(ship_extra_equipment).at<NSString *>(i)] / 10);		
 	
 	// 10% discount for second hand value, steeper reduction if worse than standard.
 	extra_equipment_value *= extra_equipment_value < 0 ? 1.4 : 0.9;
@@ -9684,13 +9731,13 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	NSMutableArray	*mut_extras = [NSMutableArray arrayWithArray:extras];
 	NSString		*allOptions = [options componentsJoinedByString:@" "];
 	
-	NSMutableString	*desc = [NSMutableString stringWithFormat:@"The %@.", [dict oo_stringForKey: KEY_NAME]];
+	NSMutableString	*desc = [NSMutableString stringWithFormat:@"The %@.", oo::PListView(dict).get<NSString *>(KEY_NAME)];
 	
 	// cargo capacity and expansion
-	OOCargoQuantity	max_cargo = [dict oo_unsignedIntForKey:@"max_cargo"];
+	OOCargoQuantity	max_cargo = oo::PListView(dict).get<unsigned int>(@"max_cargo");
 	if (max_cargo)
 	{
-		OOCargoQuantity	extra_cargo = [dict oo_unsignedIntForKey:@"extra_cargo" defaultValue:15];
+		OOCargoQuantity	extra_cargo = oo::PListView(dict).get<unsigned int>(@"extra_cargo", 15);
 		[desc appendFormat:@" Cargo capacity %dt", max_cargo];
 		BOOL canExpand = ([allOptions rangeOfString:@"EQ_CARGO_BAY"].location != NSNotFound);
 		if (canExpand)
@@ -9699,7 +9746,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	}
 	
 	// speed
-	float top_speed = [dict oo_intForKey:@"max_flight_speed"];
+	float top_speed = oo::PListView(dict).get<int>(@"max_flight_speed");
 	[desc appendFormat:@" Top speed %.3fLS.", 0.001 * top_speed];
 	
 	// passenger berths
@@ -9709,7 +9756,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 		unsigned i;
 		for (i = 0; i < [mut_extras count]; i++)
 		{
-			NSString* item_key = [mut_extras oo_stringAtIndex:i];
+			NSString* item_key = oo::PListView(mut_extras).at<NSString *>(i);
 			if ([item_key isEqual:@"EQ_PASSENGER_BERTH"])
 			{
 				n_berths++;
@@ -9732,13 +9779,13 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 		unsigned i, j;
 		for (i = 0; i < [mut_extras count]; i++)
 		{
-			NSString* item_key = [mut_extras oo_stringAtIndex:i];
+			NSString* item_key = oo::PListView(mut_extras).at<NSString *>(i);
 			NSString* item_desc = nil;
 			for (j = 0; ((j < [equipmentData count])&&(!item_desc)) ; j++)
 			{
-				NSString *eq_type = [[equipmentData oo_arrayAtIndex:j] oo_stringAtIndex:EQUIPMENT_KEY_INDEX];
+				NSString *eq_type = oo::PListView(oo::PListView(equipmentData).at<NSArray *>(j)).at<NSString *>(EQUIPMENT_KEY_INDEX);
 				if ([eq_type isEqual:item_key])
-					item_desc = [[equipmentData oo_arrayAtIndex:j] oo_stringAtIndex:EQUIPMENT_SHORT_DESC_INDEX];
+					item_desc = oo::PListView(oo::PListView(equipmentData).at<NSArray *>(j)).at<NSString *>(EQUIPMENT_SHORT_DESC_INDEX);
 			}
 			if (item_desc)
 			{
@@ -9765,13 +9812,13 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 		unsigned i, j;
 		for (i = 0; i < [options count]; i++)
 		{
-			NSString* item_key = [options oo_stringAtIndex:i];
+			NSString* item_key = oo::PListView(options).at<NSString *>(i);
 			NSString* item_desc = nil;
 			for (j = 0; ((j < [equipmentData count])&&(!item_desc)) ; j++)
 			{
-				NSString *eq_type = [[equipmentData oo_arrayAtIndex:j] oo_stringAtIndex:EQUIPMENT_KEY_INDEX];
+				NSString *eq_type = oo::PListView(oo::PListView(equipmentData).at<NSArray *>(j)).at<NSString *>(EQUIPMENT_KEY_INDEX);
 				if ([eq_type isEqual:item_key])
-					item_desc = [[equipmentData oo_arrayAtIndex:j] oo_stringAtIndex:EQUIPMENT_SHORT_DESC_INDEX];
+					item_desc = oo::PListView(oo::PListView(equipmentData).at<NSArray *>(j)).at<NSString *>(EQUIPMENT_SHORT_DESC_INDEX);
 			}
 			if (item_desc)
 			{
@@ -10088,23 +10135,23 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 }
 
 
-- (void) handleOoliteException:(NSException *)exception
+- (void) handleOoliteException:(OOException *)exception
 {
 	if (exception != nil)
 	{
-		if ([[exception name] isEqual:OOLITE_EXCEPTION_FATAL])
+		if (strcmp([exception name], OOLITE_EXCEPTION_FATAL) == 0)
 		{
 			PlayerEntity *player = PLAYER;
 			[player setStatus:STATUS_HANDLING_ERROR];
 			
-			OOLog(kOOLogException, @"***** Handling Fatal : %@ : %@ *****",[exception name], [exception reason]);
-			NSString* exception_msg = [NSString stringWithFormat:@"Exception : %@ : %@ Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]];
+			OOLog(kOOLogException, @"***** Handling Fatal : %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			NSString* exception_msg = [NSString stringWithFormat:@"Exception : %@ : %@ Please take a screenshot and/or press esc or Q to quit.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])];
 			[self addMessage:exception_msg forCount:30.0];
 			[[self gameController] setGamePaused:YES];
 		}
 		else
 		{
-			OOLog(kOOLogException, @"***** Handling Non-fatal : %@ : %@ *****",[exception name], [exception reason]);
+			OOLog(kOOLogException, @"***** Handling Non-fatal : %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 		}
 	}
 }
@@ -10591,7 +10638,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	[self setUpSpace];
 	
 	[self setDockingClearanceProtocolActive:
-			  [[self currentSystemData]	oo_boolForKey:@"stations_require_docking_clearance" defaultValue:YES]];
+			  oo::PListView([self currentSystemData]).get<BOOL>(@"stations_require_docking_clearance", YES)];
 
 	[self enterGUIViewModeWithMouseInteraction:NO];
 	[player setPosition:[[self station] position]];
@@ -10803,7 +10850,11 @@ static void PreloadOneSound(NSString *soundName)
 				}
 				[activeWormholes removeObjectAtIndex:0];	// empty it out
 			}
-			@catch (NSException *exception)
+			@catch (OOException *exception)
+			{
+				OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			}
+			@catch (OOFoundationException *exception)
 			{
 				OOLog(kOOLogException, @"Squashing exception during wormhole unpickling (%@: %@).", [exception name], [exception reason]);
 			}
@@ -10816,7 +10867,7 @@ static void PreloadOneSound(NSString *soundName)
 {
 	id object = [dictionary objectForKey:key];
 	if ([object isKindOfClass:[NSString class]])  return object;
-	else if ([object isKindOfClass:[NSArray class]] && [object count] > 0)  return [object oo_stringAtIndex:Ranrot() % [object count]];
+	else if ([object isKindOfClass:[NSArray class]] && [object count] > 0)  return oo::PListView(object).at<NSString *>(Ranrot() % [object count]);
 	return nil;
 }
 
@@ -10856,7 +10907,7 @@ static void PreloadOneSound(NSString *soundName)
 				"\tedge [arrowhead=dot]\n"
 				"\tnode [shape=none height=0.2 width=3 fontname=Helvetica]\n\t\n"];
 	
-	systemDescriptions = [[self descriptions] oo_arrayForKey:@"system_description"];
+	systemDescriptions = oo::PListView([self descriptions]).get<NSArray *>(@"system_description");
 	count = [systemDescriptions count];
 	
 	// Add system-description-string as special node (it's the one thing that ties [14] to everything else).
@@ -10879,17 +10930,17 @@ static void PreloadOneSound(NSString *soundName)
 	
 	// Toss in the Thargoid curses, too
 	[graphViz appendString:@"\tsubgraph cluster_thargoid_curses\n\t{\n\t\tlabel = \"Thargoid curses\"\n"];
-	curses = [[self descriptions] oo_arrayForKey:@"thargoid_curses"];
+	curses = oo::PListView([self descriptions]).get<NSArray *>(@"thargoid_curses");
 	subCount = [curses count];
 	for (j = 0; j < subCount; ++j)
 	{
-		label = OOStringifySystemDescriptionLine([curses oo_stringAtIndex:j], keyMap, NO);
+		label = OOStringifySystemDescriptionLine(oo::PListView(curses).at<NSString *>(j), keyMap, NO);
 		[graphViz appendFormat:@"\t\tthargoid_curse_%zu [label=\"%@\"]\n", j, EscapedGraphVizString(label)];
 	}
 	[graphViz appendString:@"\t}\n"];
 	for (j = 0; j < subCount; ++j)
 	{
-		[self addNumericRefsInString:[curses oo_stringAtIndex:j]
+		[self addNumericRefsInString:oo::PListView(curses).at<NSString *>(j)
 						  toGraphViz:graphViz
 							fromNode:[NSString stringWithFormat:@"thargoid_curse_%zu", j]
 						   nodeCount:count];
@@ -10907,11 +10958,11 @@ static void PreloadOneSound(NSString *soundName)
 		
 		[graphViz appendFormat:@"\tsubgraph cluster_%zu\n\t{\n\t\tlabel=\"%@\"\n", i, EscapedGraphVizString(label)];
 		
-		thisDesc = [systemDescriptions oo_arrayAtIndex:i];
+		thisDesc = oo::PListView(systemDescriptions).at<NSArray *>(i);
 		subCount = [thisDesc count];
 		for (j = 0; j < subCount; ++j)
 		{
-			label = OOStringifySystemDescriptionLine([thisDesc oo_stringAtIndex:j], keyMap, NO);
+			label = OOStringifySystemDescriptionLine(oo::PListView(thisDesc).at<NSString *>(j), keyMap, NO);
 			[graphViz appendFormat:@"\t\tn%zu_%zu [label=\"\\\"%@\\\"\"]\n", i, j, EscapedGraphVizString(label)];
 		}
 		
@@ -10922,11 +10973,11 @@ static void PreloadOneSound(NSString *soundName)
 	// Define the edges
 	for (i = 0; i != count; ++i)
 	{
-		thisDesc = [systemDescriptions oo_arrayAtIndex:i];
+		thisDesc = oo::PListView(systemDescriptions).at<NSArray *>(i);
 		subCount = [thisDesc count];
 		for (j = 0; j != subCount; ++j)
 		{
-			descLine = [thisDesc oo_stringAtIndex:j];
+			descLine = oo::PListView(thisDesc).at<NSString *>(j);
 			[self addNumericRefsInString:descLine
 							  toGraphViz:graphViz
 								fromNode:[NSString stringWithFormat:@"n%zu_%zu", i, j]
@@ -11128,8 +11179,8 @@ NSComparisonResult populatorPrioritySort(id a, id b, void *context)
 {
 	NSDictionary *one = (NSDictionary *)a;
 	NSDictionary *two = (NSDictionary *)b;
-	int pri_one = [one oo_intForKey:@"priority" defaultValue:100];
-	int pri_two = [two oo_intForKey:@"priority" defaultValue:100];
+	int pri_one = oo::PListView(one).get<int>(@"priority", 100);
+	int pri_two = oo::PListView(two).get<int>(@"priority", 100);
 	if (pri_one < pri_two) return NSOrderedAscending;
 	if (pri_one > pri_two) return NSOrderedDescending;
 	return NSOrderedSame;
@@ -11143,18 +11194,18 @@ NSComparisonResult equipmentSort(id a, id b, void *context)
 
 	/* Sort by explicit sort_order, then tech level, then price */
 
-	OOCreditsQuantity comp1 = [[one oo_dictionaryAtIndex:EQUIPMENT_EXTRA_INFO_INDEX] oo_unsignedLongLongForKey:@"sort_order" defaultValue:1000];
-	OOCreditsQuantity comp2 = [[two oo_dictionaryAtIndex:EQUIPMENT_EXTRA_INFO_INDEX] oo_unsignedLongLongForKey:@"sort_order" defaultValue:1000];
+	OOCreditsQuantity comp1 = oo::PListView(oo::PListView(one).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"sort_order", 1000);
+	OOCreditsQuantity comp2 = oo::PListView(oo::PListView(two).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"sort_order", 1000);
 	if (comp1 < comp2) return NSOrderedAscending;
 	if (comp1 > comp2) return NSOrderedDescending;
 
-	comp1 = [one oo_unsignedLongLongAtIndex:EQUIPMENT_TECH_LEVEL_INDEX];
-	comp2 = [two oo_unsignedLongLongAtIndex:EQUIPMENT_TECH_LEVEL_INDEX];
+	comp1 = oo::PListView(one).at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+	comp2 = oo::PListView(two).at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
 	if (comp1 < comp2) return NSOrderedAscending;
 	if (comp1 > comp2) return NSOrderedDescending;
 
-	comp1 = [one oo_unsignedLongLongAtIndex:EQUIPMENT_PRICE_INDEX];
-	comp2 = [two oo_unsignedLongLongAtIndex:EQUIPMENT_PRICE_INDEX];
+	comp1 = oo::PListView(one).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+	comp2 = oo::PListView(two).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
 	if (comp1 < comp2) return NSOrderedAscending;
 	if (comp1 > comp2) return NSOrderedDescending;
 
@@ -11169,18 +11220,18 @@ NSComparisonResult equipmentSortOutfitting(id a, id b, void *context)
 
 	/* Sort by explicit sort_order, then tech level, then price */
 
-	OOCreditsQuantity comp1 = [[one oo_dictionaryAtIndex:EQUIPMENT_EXTRA_INFO_INDEX] oo_unsignedLongLongForKey:@"purchase_sort_order" defaultValue:[[one oo_dictionaryAtIndex:EQUIPMENT_EXTRA_INFO_INDEX] oo_unsignedLongLongForKey:@"sort_order" defaultValue:1000]];
-	OOCreditsQuantity comp2 = [[two oo_dictionaryAtIndex:EQUIPMENT_EXTRA_INFO_INDEX] oo_unsignedLongLongForKey:@"purchase_sort_order" defaultValue:[[two oo_dictionaryAtIndex:EQUIPMENT_EXTRA_INFO_INDEX] oo_unsignedLongLongForKey:@"sort_order" defaultValue:1000]];
+	OOCreditsQuantity comp1 = oo::PListView(oo::PListView(one).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"purchase_sort_order", oo::PListView(oo::PListView(one).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"sort_order", 1000));
+	OOCreditsQuantity comp2 = oo::PListView(oo::PListView(two).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"purchase_sort_order", oo::PListView(oo::PListView(two).at<NSDictionary *>(EQUIPMENT_EXTRA_INFO_INDEX)).get<unsigned long long>(@"sort_order", 1000));
 	if (comp1 < comp2) return NSOrderedAscending;
 	if (comp1 > comp2) return NSOrderedDescending;
 
-	comp1 = [one oo_unsignedLongLongAtIndex:EQUIPMENT_TECH_LEVEL_INDEX];
-	comp2 = [two oo_unsignedLongLongAtIndex:EQUIPMENT_TECH_LEVEL_INDEX];
+	comp1 = oo::PListView(one).at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
+	comp2 = oo::PListView(two).at<unsigned long long>(EQUIPMENT_TECH_LEVEL_INDEX);
 	if (comp1 < comp2) return NSOrderedAscending;
 	if (comp1 > comp2) return NSOrderedDescending;
 
-	comp1 = [one oo_unsignedLongLongAtIndex:EQUIPMENT_PRICE_INDEX];
-	comp2 = [two oo_unsignedLongLongAtIndex:EQUIPMENT_PRICE_INDEX];
+	comp1 = oo::PListView(one).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
+	comp2 = oo::PListView(two).at<unsigned long long>(EQUIPMENT_PRICE_INDEX);
 	if (comp1 < comp2) return NSOrderedAscending;
 	if (comp1 > comp2) return NSOrderedDescending;
 
@@ -11199,7 +11250,7 @@ NSString *OOLookUpDescriptionPRIV(NSString *key)
 // There's a hint of gettext about this...
 NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count)
 {
-	NSArray *conditions = [[UNIVERSE descriptions] oo_arrayForKey:@"plural-rules"];
+	NSArray *conditions = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"plural-rules");
 	
 	// are we using an older descriptions.plist (1.72.x) ?
 	NSString *tmp = [UNIVERSE descriptionForKey:key];
@@ -11227,7 +11278,7 @@ NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count)
 	
 	for (index = i = 0; i < [conditions count]; ++index, ++i)
 	{
-		const char *cond = [[conditions oo_stringAtIndex:i] UTF8String];
+		const char *cond = [oo::PListView(conditions).at<NSString *>(i) UTF8String];
 		if (!cond)
 			break;
 		

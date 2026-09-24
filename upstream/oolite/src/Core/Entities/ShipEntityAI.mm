@@ -46,6 +46,7 @@
 #import "ResourceManager.h"
 
 #include "ooscript/JSEngine.hpp"
+#import "OOFoundationBridge.h"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -2401,12 +2402,12 @@ using ooscript::Context;
 		
 		// Stuff expression in a function.
 		predicateCode = [NSString stringWithFormat:@"return %@;", predicateExpression];
-		function = [[OOJSFunction alloc] initWithName:@"_oo_AIScanPredicate"
+		function = [[OOJSFunction alloc] initWithName:std::string("_oo_AIScanPredicate")
 												scope:NULL
-												 code:predicateCode
+												 code:oo::OptionalString(predicateCode)
 										argumentCount:1
 										argumentNames:argNames
-											 fileName:aiName
+											 fileName:oo::OptionalString(aiName)
 										   lineNumber:0
 											  context:context];
 		[function autorelease];

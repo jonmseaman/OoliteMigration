@@ -26,6 +26,7 @@ oolite_sources += files(
     'PlanetEntity.mm',
     'PlayerEntity.mm',
     'PlayerEntityContracts.mm',
+    'PlayerEntityContracts+FoundationBridge.mm',
     'PlayerEntityControls.mm',
     'PlayerEntityKeyMapper.mm',
     'PlayerEntityLegacyScriptEngine.mm',
@@ -44,6 +45,7 @@ oolite_sources += files(
     'ShipEntityScriptMethods.mm',
     'SkyEntity.mm',
     'StationEntity.mm',
+    'StationEntity+FoundationBridge.mm',
     'WormholeEntity.mm',
 )
 

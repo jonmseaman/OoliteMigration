@@ -608,6 +608,20 @@ ooscript::Object JSShipPrototype(void)
 }
 
 
+namespace {
+
+// A colour's components as its -normalizedArray gave them to JavaScript: floats, null for no colour.
+oo::PList NormalizedColorComponents(OOColor *color)
+{
+	if (color == nil)  return oo::PList();
+	oo::PList::Array components;
+	for (float component : [color cxx_normalizedArray])  components.push_back(oo::PList::singleReal(component));
+	return oo::PList(std::move(components));
+}
+
+}	// namespace
+
+
 static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObject, ooscript::PropertyId propID, ooscript::Value *value)
 {
 	if (!ooscript::isInt32Id(propID))  return YES;
@@ -651,16 +665,16 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		
 		case kShip_roleWeights:
 			{
-				NSMutableDictionary *weights = nil;
+				// Floats, as numberWithFloat: made them; nil when there is no role set.
 				if (const auto roleWeights = [[entity roleSet] rolesAndProbabilities])
 				{
-					weights = [NSMutableDictionary dictionaryWithCapacity:roleWeights->size()];
+					oo::PList::Dict weights;
 					for (const auto &[role, weight] : *roleWeights)
 					{
-						[weights setObject:[NSNumber numberWithFloat:weight] forKey:oo::NSStringFrom(role)];
+						weights[role] = oo::PList::singleReal(weight);
 					}
+					result = oo::ObjectFromPList(oo::PList(std::move(weights)));
 				}
-				result = weights;
 			}
 			break;
 		
@@ -738,13 +752,15 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_defenseTargets:
 		{
 			[entity validateDefenseTargets];
-			result = [NSMutableArray arrayWithCapacity:[entity defenseTargetCount]];
-			NSEnumerator *defTargets = [entity defenseTargetEnumerator];
-			Entity *target = nil;
-			while ((target = [[defTargets nextObject] weakRefUnderlyingObject]))
+			std::vector<oo::ObjCRef<Entity *>> targets;
+			targets.reserve([entity defenseTargetCount]);
+			for (Entity *candidate in [entity defenseTargetEnumerator])
 			{
-				[result addObject:target];
+				Entity *target = [candidate weakRefUnderlyingObject];
+				if (target == nil)  break;	// the old loop stopped at the first zeroed reference
+				targets.emplace_back(target);
 			}
+			result = oo::NSArrayFromObjects(targets);
 			break;
 		}		
 
@@ -1045,7 +1061,7 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			
 		case kShip_scriptInfo:
 			result = [entity scriptInfo];
-			if (result == nil)  result = [NSDictionary dictionary];	// empty rather than null
+			if (result == nil)  result = oo::ObjectFromPList(oo::PList(oo::PList::Dict{}));	// empty rather than null
 			break;
 			
 		case kShip_sunGlareFilter:
@@ -1133,23 +1149,23 @@ static bool ShipGetProperty(ooscript::Context context, ooscript::Object thisObje
 			break;
 
 		case kShip_scannerDisplayColor1:
-			result = [[entity scannerDisplayColor1] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity scannerDisplayColor1]));
 			break;
-			
+
 		case kShip_scannerDisplayColor2:
-			result = [[entity scannerDisplayColor2] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity scannerDisplayColor2]));
 			break;
 
 		case kShip_scannerHostileDisplayColor1:
-			result = [[entity scannerDisplayColorHostile1] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity scannerDisplayColorHostile1]));
 			break;
-			
+
 		case kShip_scannerHostileDisplayColor2:
-			result = [[entity scannerDisplayColorHostile2] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity scannerDisplayColorHostile2]));
 			break;
-			
+
 		case kShip_exhaustEmissiveColor:
-			result = [[entity exhaustEmissiveColor] normalizedArray];
+			result = oo::ObjectFromPList(NormalizedColorComponents([entity exhaustEmissiveColor]));
 			break;
 			
 		case kShip_maxThrust:
@@ -1223,7 +1239,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 	
 	ShipEntity					*entity = nil;
 	ShipEntity					*target = nil;
-	NSString					*sValue = nil;
+	std::optional<std::string>	sValue;
 	double					fValue;
 	int32_t						iValue;
 	bool						bValue;
@@ -1244,10 +1260,10 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_name:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			sValue = OOStringFromJSValue(context,*value);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
+			if (sValue.has_value())
 			{
-				[entity setName:sValue];
+				[entity setName:oo::NSStringFrom(*sValue)];
 				return YES;
 			}
 			break;
@@ -1255,46 +1271,46 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_displayName:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			sValue = OOStringFromJSValue(context,*value);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
+			if (sValue.has_value())
 			{
-				[entity setDisplayName:sValue];
+				[entity setDisplayName:oo::NSStringFrom(*sValue)];
 				return YES;
 			}
 			break;
 
 		case kShip_shipUniqueName:
-			sValue = OOStringFromJSValue(context,*value);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
+			if (sValue.has_value())
 			{
-				[entity setShipUniqueName:sValue];
+				[entity setShipUniqueName:oo::NSStringFrom(*sValue)];
 				return YES;
 			}
 			break;
 
 		case kShip_shipClassName:
-			sValue = OOStringFromJSValue(context,*value);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
+			if (sValue.has_value())
 			{
-				[entity setShipClassName:sValue];
+				[entity setShipClassName:oo::NSStringFrom(*sValue)];
 				return YES;
 			}
 			break;
 
 
 		case kShip_scanDescription:
-			sValue = OOStringFromJSValue(context,*value);
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
 			// can set to nil
-			[entity setScanDescription:sValue];
+			[entity setScanDescription:oo::NSStringOrNil(sValue)];
 			return YES;
 		
 		case kShip_primaryRole:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			sValue = OOStringFromJSValue(context,*value);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
+			if (sValue.has_value())
 			{
-				[entity setPrimaryRole:sValue];
+				[entity setPrimaryRole:oo::NSStringFrom(*sValue)];
 				return YES;
 			}
 			break;
@@ -1302,10 +1318,10 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_AIState:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			sValue = OOStringFromJSValue(context,*value);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
+			if (sValue.has_value())
 			{
-				[[entity getAI] setState:sValue];
+				[[entity getAI] cxx_setState:*sValue];
 				return YES;
 			}
 			break;
@@ -1313,8 +1329,8 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_beaconCode:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
 			
-			sValue = OOStringFromJSValue(context,*value);
-			if ([sValue length] == 0) 
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
+			if (!sValue.has_value() || sValue->empty())	// nil and "" alike, as -length gave 0 for both
 			{
 				if ([entity isBeacon]) 
 				{
@@ -1327,13 +1343,13 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			}
 			else 
 			{
-				if ([entity isBeacon]) 
+				if ([entity isBeacon])
 				{
-					[entity setBeaconCode:sValue];
+					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
 				}
 				else // Universe needs to update beacon lists in this case only
 				{
-					[entity setBeaconCode:sValue];
+					[entity setBeaconCode:oo::NSStringFrom(*sValue)];
 					[UNIVERSE setNextBeacon:entity];
 				}
 			}
@@ -1342,10 +1358,10 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 
 		case kShip_beaconLabel:
 			if (EXPECT_NOT([entity isPlayer]))  goto playerReadOnly;
-			sValue = OOStringFromJSValue(context,*value);
-			if (sValue != nil)
+			sValue = oo::OptionalString(OOStringFromJSValue(context,*value));
+			if (sValue.has_value())
 			{
-				[entity setBeaconLabel:sValue];
+				[entity setBeaconLabel:oo::NSStringFrom(*sValue)];
 				return YES;
 			}
 			break;
@@ -1903,11 +1919,7 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 		case kShip_forwardWeapon:
 		case kShip_currentWeapon:
 			{
-			sValue = oo::NSStringOrNil(JSValueToEquipmentKeyRelaxed(context, *value, &exists));
-			if (sValue == nil) 
-			{
-				sValue = @"EQ_WEAPON_NONE";
-			}
+			const std::string weaponKey = JSValueToEquipmentKeyRelaxed(context, *value, &exists).value_or("EQ_WEAPON_NONE");
 			OOWeaponFacing facing = WEAPON_FACING_FORWARD;
 			switch (ooscript::idToInt32(propID))
 			{
@@ -1930,11 +1942,11 @@ static bool ShipSetProperty(ooscript::Context context, ooscript::Object thisObje
 			if ([entity isPlayer])
 			{
 				PlayerEntity *pent = (PlayerEntity*)entity;
-				[pent setWeaponMount:facing toWeapon:sValue inContext:@"scripted"];
+				[pent setWeaponMount:facing toWeapon:oo::NSStringFrom(weaponKey) inContext:@"scripted"];
 			}
-			else 
+			else
 			{
-				[entity setWeaponMount:facing toWeapon:sValue];
+				[entity setWeaponMount:facing toWeapon:oo::NSStringFrom(weaponKey)];
 			}
 			return YES;
 			}
@@ -2264,7 +2276,7 @@ static bool ShipEjectItem(ooscript::Context context, ooscript::CallArgs &oojsArg
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([thisEnt ejectShipOfRole:role]);
+	OOJS_RETURN_OBJECT([thisEnt ejectShipOfRole:oo::OptionalString(role)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2343,7 +2355,7 @@ static bool ShipEjectSpecificItem(ooscript::Context context, ooscript::CallArgs 
 		return NO;
 	}
 	
-	OOJS_RETURN_OBJECT([thisEnt ejectShipOfType:itemKey]);
+	OOJS_RETURN_OBJECT([thisEnt ejectShipOfType:oo::OptionalString(itemKey)]);
 	
 	OOJS_NATIVE_EXIT
 }
@@ -2416,7 +2428,7 @@ static bool ShipSpawn(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	result = [thisEnt spawnShipsWithRole:role count:count];
+	result = oo::NSArrayFromObjects([thisEnt spawnShipsWithRole:oo::StdString(role) count:count]);
 	OOJS_END_FULL_NATIVE
 
 	OOJS_RETURN_OBJECT(result);
