@@ -30,6 +30,7 @@ SOFTWARE.
 #import "OOCPUInfo.h"
 #import "OOCollectionExtractors.h"
 #include "oofnd/Thread.hpp"
+#include "oofnd/objc/OOException.h"
 #include "oofnd/objc/OOObjCRef.h"
 
 // OOCocoa.h defines true/false as macros; the standard headers want the keywords (oofnd/Data.hpp).
@@ -277,7 +278,7 @@ static void InitAsyncWorkManager(void)
 - (void) waitForTaskToComplete:(id<OOAsyncWorkTask>)task
 {
 	OOLogGenericSubclassResponsibility();
-	[NSException raise:NSInternalInconsistencyException format:@"%s called.", __PRETTY_FUNCTION__];
+	[OOException raise:OOInternalInconsistencyException format:"%s called.", __PRETTY_FUNCTION__];
 }
 
 @end

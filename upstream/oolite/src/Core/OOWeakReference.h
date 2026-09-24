@@ -107,7 +107,7 @@ This code is hereby placed in the public domain.
 @end
 
 
-@interface OOWeakReference: NSProxy
+@interface OOWeakReference: OOObject	// forwards with -forwardingTargetForSelector: (bead oo-3rb.54)
 {
 	id<OOWeakReferenceSupport>	_object;
 }

@@ -590,10 +590,11 @@ static void PlayTrumbleSqueal(void);
 		// consult menu...
 		ShipEntity *selectedCargopod = nil;
 		float mostYummy = 0.0;
-		id cargopods = [player cargo];	// the cargo pods: the player's own array (ShipEntity is an unmigrated callee)
-		for (const oo::ObjCRef<ShipEntity *> &cargopodRef : oo::ObjCRefsFrom<ShipEntity *>(cargopods))
+		std::vector<oo::ObjCRef<ShipEntity *>> *cargopods = [player cxx_cargo];	// the cargo pods (live: eaten ones are removed)
+		NSUInteger i, n_pods = cargopods != nullptr ? cargopods->size() : 0;
+		for (i = 0 ; i < n_pods; i++)
 		{
-			ShipEntity *cargopod = cargopodRef.get();
+			ShipEntity *cargopod = (*cargopods)[i].get();
 			OOCommodityType cargo_type = [cargopod commodityType];
 			float yumminess = (1.0 + randf()) * [[UNIVERSE commodityMarket] trumbleOpinionForGood:cargo_type];
 			if (yumminess > mostYummy)
@@ -619,7 +620,7 @@ static void PlayTrumbleSqueal(void);
 								{ oo::DescriptionOf([UNIVERSE displayNameForCommodity:[selectedCargopod commodityType]]) });
 
 				[UNIVERSE addMessage: oo::NSStringFrom(ms) forCount: 4.5];
-				[cargopods removeObject:selectedCargopod];
+				if (cargopods != nullptr)  std::erase(*cargopods, selectedCargopod);
 				trumbleAppetiteAccumulator -= 10.0;
 				
 				// consider breeding - must be full grown and happy
