@@ -264,7 +264,7 @@ enum
 - (void) drawPrimedEquipmentText:(const oo::PList &)info;
 - (void) drawASCTarget:(id)info;	// called by name (ADR-0043 item 21)
 - (void) drawWeaponsOfflineText:(id)info;	// called by name (ADR-0043 item 21)
-- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(NSString *)text asIndex:(NSUInteger)index;
+- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(const std::string &)text asIndex:(NSUInteger)index;
 - (void) drawFPSInfoCounter:(id)info;	// called by name (ADR-0043 item 21)
 - (void) drawScoopStatus:(id)info;	// called by name (ADR-0043 item 21)
 - (void) drawStickSensitivityIndicator:(id)info;	// called by name (ADR-0043 item 21)
@@ -989,7 +989,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 	{
 		// trigger the targetChanged event with whom == null
 		_compassActive = NO;
-		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:[NSArray arrayWithObjects:[OONull null], OOStringFromCompassMode([PLAYER compassMode]), nil]];
+		[PLAYER doScriptEvent:OOJSID("compassTargetChanged") withArguments:oo::NSArrayFromObjects(std::vector<id>{ [OONull null], OOStringFromCompassMode([PLAYER compassMode]) })];
 	}
 	
 }
@@ -998,14 +998,14 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 - (void) drawMFDs
 {
 	NSUInteger i, nMFDs = mfdArray.size();
-	NSString *text = nil;
+	std::optional<std::string> text;
 	for (i = 0; i < nMFDs; i++)
 	{
-		text = [PLAYER multiFunctionText:i];
-		if (text != nil)
+		text = oo::OptionalString([PLAYER multiFunctionText:i]);
+		if (text.has_value())
 		{
 			sCurrentDrawItem = &mfdArray[i];
-			[self drawMultiFunctionDisplay:sCurrentDrawItem->info withText:text asIndex:i];
+			[self drawMultiFunctionDisplay:sCurrentDrawItem->info withText:*text asIndex:i];
 		}
 	}
 }
@@ -1545,7 +1545,7 @@ static void prefetchData(const oo::PList &info, struct CachedInfo *data)
 					if ([scannedEntity isShip])
 					{
 						glColor4f(1.0, 1.0, 0.5, alpha);
-						OODrawString([(ShipEntity *)scannedEntity displayName], x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
+						cxx_OODrawString(oo::StdString([(ShipEntity *)scannedEntity displayName]), x1 + 2, y2 + 2, z1, NSMakeSize(8, 8));
 					}
 #endif
 					glColor4fv(col);
@@ -1987,7 +1987,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	int					x, y;
 	NSSize				size;
 	GLfloat				alpha = overallAlpha;
-	NSString			*text = [PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))];
+	std::string			text = oo::StdString([PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))]);	// nil drew nothing, as "" does
 	struct CachedInfo	cached;
 	
 	GetCurrentCachedInfo(&cached);
@@ -2003,11 +2003,11 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 
 	if (info.get<int>("align") == 1)
 	{
-		OODrawStringAligned(text, x, y, z1, size, YES);
+		cxx_OODrawStringAligned(text, x, y, z1, size, YES);
 	}
 	else
 	{
-		OODrawStringAligned(text, x, y, z1, size, NO);
+		cxx_OODrawStringAligned(text, x, y, z1, size, NO);
 	}
 
 }
@@ -2098,19 +2098,19 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	y = useDefined(cached.y, 0) + [[UNIVERSE gameView] y_offset] * cached.y0;
 	alpha *= cached.alpha;
 
-	NSString *textureFile = [PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))];
-	if (textureFile == nil || [textureFile length] == 0) {
+	std::optional<std::string> textureFile = oo::OptionalString([PLAYER dialCustomString:oo::NSStringOrNil(OptionalStringIn(info, CUSTOM_DIAL_KEY))]);
+	if (!textureFile.has_value() || textureFile->empty()) {
 		return;
 	}
 
-	OOTexture *texture = [OOTexture textureWithName:textureFile
-										   inFolder:@"Images"
-											options:kOOTextureDefaultOptions | kOOTextureNoShrink
-										 anisotropy:kOOTextureDefaultAnisotropy
-											lodBias:kOOTextureDefaultLODBias];
+	OOTexture *texture = [OOTexture cxx_textureWithName:textureFile
+											   inFolder:std::string("Images")
+												options:kOOTextureDefaultOptions | kOOTextureNoShrink
+											 anisotropy:kOOTextureDefaultAnisotropy
+												lodBias:kOOTextureDefaultLODBias];
 	if (texture == nil)
 	{
-		OOLogERR(kOOLogFileNotFound, @"HeadUpDisplay couldn't get an image texture name for %@", textureFile);
+		OOLogERR(kOOLogFileNotFound, @"HeadUpDisplay couldn't get an image texture name for %@", oo::NSStringFrom(*textureFile));
 		return;
 	}
 		
@@ -2324,7 +2324,7 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 		NSSize labelSize = NSMakeSize(9.0, (bankHeight < 18.0)? bankHeight : 18.0);
 		for (i = 0; i < n_bars; i++)
 		{
-			OODrawString([NSString stringWithFormat:@"E%x", n_bars - i], labelStartX, bankY - midBank, z1, labelSize);
+			cxx_OODrawString(oo::str::format("E%x", n_bars - i), labelStartX, bankY - midBank, z1, labelSize);
 			bankY += bankHeight;
 		}
 	}
@@ -2514,19 +2514,19 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 	siz.width = useDefined(cached.width, WITCHDEST_WIDTH);
 	siz.height = useDefined(cached.height, WITCHDEST_HEIGHT);
 	alpha *= cached.alpha;
-	NSString *dest = [UNIVERSE getSystemName:[PLAYER targetSystemID]];
+	std::string dest = oo::StdString([UNIVERSE getSystemName:[PLAYER targetSystemID]]);	// nil drew nothing, as "" does
 	NSInteger concealment = oo::PListView([[UNIVERSE systemManager] getPropertiesForSystem:[PLAYER targetSystemID] inGalaxy:[PLAYER galaxyNumber]]).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
-	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = DESC(@"status-unknown-system");
+	if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) dest = oo::StdString(DESC(@"status-unknown-system"));
 
 	SET_COLOR(green_color);
 	
 	if (info.get<int>("align") == 1)
 	{
-		OODrawStringAligned(dest, x, y, z1, siz, YES);
+		cxx_OODrawStringAligned(dest, x, y, z1, siz, YES);
 	}
 	else
 	{
-		OODrawStringAligned(dest, x, y, z1, siz, NO);
+		cxx_OODrawStringAligned(dest, x, y, z1, siz, NO);
 	}
 
 }
@@ -2668,22 +2668,33 @@ OOINLINE void SetCompassBlipColor(GLfloat relativeZ, GLfloat alpha)
 }
 
 
-static NSString * const kDefaultMissileIconKey = @"oolite-default-missile-icon";
-static NSString * const kDefaultMineIconKey = @"oolite-default-mine-icon";
+static constexpr const char *kDefaultMissileIconKey = "oolite-default-missile-icon";
+static constexpr const char *kDefaultMineIconKey = "oolite-default-mine-icon";
 static const GLfloat kOutlineWidth = 0.5f;
 
 
-static OOPolygonSprite *IconForMissileRole(NSString *role)
+/*	An icon definition from descriptions.plist: the entry if it is an array, else a null PList (as
+	oo_arrayForKey: gave nil).
+*/
+static oo::PList MissileIconDefinition(const std::string &key)
 {
-	static NSMutableDictionary	*sIcons = nil;
+	oo::PList iconDef = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(key)]);
+	return iconDef.isArray() ? iconDef : oo::PList();
+}
+
+
+static OOPolygonSprite *IconForMissileRole(const std::string &role)
+{
+	static std::map<std::string, oo::ObjCRef<OOPolygonSprite *>, std::less<>>	sIcons;
 	OOPolygonSprite				*result = nil;
-	
-	result = [sIcons objectForKey:role];
+
+	auto cached = sIcons.find(role);
+	if (cached != sIcons.end())  result = cached->second.get();
 	if (result == nil)
 	{
-		NSString *key = role;
-		NSArray *iconDef = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(key);
-		if (iconDef != nil)  result = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconDef) outlineWidth:kOutlineWidth name:oo::StdString(key)];
+		std::string key = role;
+		oo::PList iconDef = MissileIconDefinition(key);
+		if (!iconDef.isNull())  result = [[OOPolygonSprite alloc] initWithDataArray:iconDef outlineWidth:kOutlineWidth name:key];
 		if (result == nil)	// No custom icon or bad data
 		{
 			/*	Backwards compatibility note:
@@ -2693,18 +2704,16 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 				will be positive.
 				-- Ahruman 2009-10-09
 			*/
-			if ([role hasSuffix:@"_MISSILE"])  key = kDefaultMissileIconKey;
+			if (oo::str::hasSuffix(role, "_MISSILE"))  key = kDefaultMissileIconKey;
 			else  key = kDefaultMineIconKey;
-			
-			iconDef = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(key);
-			result = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconDef) outlineWidth:kOutlineWidth name:oo::StdString(key)];
+
+			iconDef = MissileIconDefinition(key);
+			result = [[OOPolygonSprite alloc] initWithDataArray:iconDef outlineWidth:kOutlineWidth name:key];
 		}
-		
+
 		if (result != nil)
 		{
-			if (sIcons == nil)  sIcons = [[NSMutableDictionary alloc] init];
-			[sIcons setObject:result forKey:role];
-			[result release];	// Balance alloc
+			sIcons[role] = oo::adoptObjC(result);	// Balance alloc
 		}
 	}
 	
@@ -2718,7 +2727,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 						  x:(int)x y:(int)y
 					  width:(GLfloat)width height:(GLfloat)height alpha:(GLfloat)alpha
 {
-	OOPolygonSprite *sprite = IconForMissileRole([missile primaryRole]);
+	OOPolygonSprite *sprite = IconForMissileRole(oo::StdString([missile primaryRole]));
 	
 	if (selected)
 	{
@@ -2844,7 +2853,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 			glVertex3i(x , y + siz.height, z1);
 		OOGLEND();
 		GLColorWithOverallAlpha(green_color, alpha);
-		OODrawString([PLAYER dialTargetName], x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
+		cxx_OODrawString(oo::StdString([PLAYER dialTargetName]), x + sp, y - 1, z1, NSMakeSize(siz.width, siz.height));
 	}
 	
 }
@@ -2878,11 +2887,10 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	{
 		// needs target memory to be working in addition to any other equipment
 		// this item may be bound to
-		NSMutableArray *targetMemory = [player targetMemory];
 		ShipEntity *primary = [player primaryTarget];
 		for (unsigned i = 0; i < PLAYER_TARGET_MEMORY_SIZE; i++)
 		{
-			id sec_id = [targetMemory objectAtIndex:i];
+			id sec_id = [[player targetMemory] objectAtIndex:i];
 			// isProxy = weakref ; not = OONull (in this case...)
 			// can't use isKindOfClass because that throws
 			// NSInvalidArgumentException when called on a weakref
@@ -3086,7 +3094,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	itemColor[3] *= overallAlpha;
 	
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-	OODrawString([PLAYER dial_clock], x, y, z1, siz);
+	cxx_OODrawString(oo::StdString([PLAYER dial_clock]), x, y, z1, siz);
 }
 
 
@@ -3129,8 +3137,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	if (lines == 1)
 	{
 		OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
-		NSString *equipmentName = [PLAYER primedEquipmentName:0];
-		OODrawString(OOExpandKey(@"equipment-primed-hud", equipmentName), x, y, z1, size);
+		cxx_OODrawString(oo::StdString(OOExpandKey(@"equipment-primed-hud", [PLAYER primedEquipmentName:0])), x, y, z1, size);
 	}
 	else
 	{
@@ -3144,7 +3151,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 				// instead compact the display towards its centre
 				GLfloat alphaScale = 1.0/((i<0)?(1.0-i):(1.0+i));
 				OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]*alphaScale));
-				OODrawString([PLAYER primedEquipmentName:i], x, y, z1, size);
+				cxx_OODrawString(oo::StdString([PLAYER primedEquipmentName:i]), x, y, z1, size);
 			}
 			y -= size.height;
 		}	
@@ -3182,11 +3189,11 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	OOGL(glColor4f(itemColor[0], itemColor[1], itemColor[2], itemColor[3]));
 	if (info.get<int>("align") == 1)
 	{
-		OODrawStringAligned([PLAYER compassTargetLabel], x, y, z1, size,YES);
+		cxx_OODrawStringAligned(oo::StdString([PLAYER compassTargetLabel]), x, y, z1, size,YES);
 	}
 	else
 	{
-		OODrawStringAligned([PLAYER compassTargetLabel], x, y, z1, size,NO);
+		cxx_OODrawStringAligned(oo::StdString([PLAYER compassTargetLabel]), x, y, z1, size,NO);
 	}
 	
 }
@@ -3227,7 +3234,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 		
 		OOGL(glColor4f(textColor[0], textColor[1], textColor[2], textColor[3]));
 		// TODO: some caching required...
-		OODrawString(DESC(@"weapons-systems-offline"), x, y, z1, siz);
+		cxx_OODrawString(oo::StdString(DESC(@"weapons-systems-offline")), x, y, z1, siz);
 	}
 }
 
@@ -3251,24 +3258,23 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 	siz.height = useDefined(cached.height, FPSINFO_DISPLAY_HEIGHT);
 	
 	HPVector playerPos = [PLAYER position];
-	NSString *positionInfo = [UNIVERSE expressPosition:playerPos inCoordinateSystem:@"pwm"];
-	positionInfo = [NSString stringWithFormat:@"abs %.2f %.2f %.2f / %@", playerPos.x, playerPos.y, playerPos.z, positionInfo];
+	std::string positionInfo = oo::str::format("abs %.2f %.2f %.2f / %s", playerPos.x, playerPos.y, playerPos.z, oo::DescriptionOf([UNIVERSE expressPosition:playerPos inCoordinateSystem:@"pwm"]).c_str());
 	
 	// We would normally set a variable alpha value here, but in this case we don't.
 	// We prefer the FPS counter to be always visible - Nikos 20100405
 	GetRGBAArrayFromInfo(info, textColor);
 	OOGL(glColor4f(textColor[0], textColor[1], textColor[2], 1.0f));
-	OODrawString([PLAYER dial_fpsinfo], x, y, z1, siz);
+	cxx_OODrawString(oo::StdString([PLAYER dial_fpsinfo]), x, y, z1, siz);
 	
 #ifndef NDEBUG
 	NSSize siz08 = NSMakeSize(0.8 * siz.width, 0.8 * siz.width);
-	NSString *collDebugInfo = [NSString stringWithFormat:@"%@ - %@", [PLAYER dial_objinfo], [UNIVERSE collisionDescription]];
-	OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
-	
-	OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
-	
-	NSString *timeAccelerationFactorInfo = [NSString stringWithFormat:@"TAF: %@%.2f", DESC(@"multiplication-sign"), [UNIVERSE timeAccelerationFactor]];
-	OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, z1, siz08);
+	std::string collDebugInfo = oo::str::format("%s - %s", oo::DescriptionOf([PLAYER dial_objinfo]).c_str(), oo::DescriptionOf([UNIVERSE collisionDescription]).c_str());
+	cxx_OODrawString(collDebugInfo, x, y - siz.height, z1, siz);
+
+	cxx_OODrawString(positionInfo, x, y - 1.8 * siz.height, z1, siz08);
+
+	std::string timeAccelerationFactorInfo = oo::str::format("TAF: %s%.2f", oo::DescriptionOf(DESC(@"multiplication-sign")).c_str(), [UNIVERSE timeAccelerationFactor]);
+	cxx_OODrawString(timeAccelerationFactorInfo, x, y - 3.2 * siz08.height, z1, siz08);
 #endif
 }
 
@@ -3495,7 +3501,7 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 }
 
 
-- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(NSString *)text asIndex:(NSUInteger)index
+- (void) drawMultiFunctionDisplay:(const oo::PList &)info withText:(const std::string &)text asIndex:(NSUInteger)index
 {
 	PlayerEntity		*player1 = PLAYER;
 	struct CachedInfo	cached;
@@ -3538,28 +3544,27 @@ static OOPolygonSprite *IconForMissileRole(NSString *role)
 		glVertex3f(x1+2,y0+2,z1);
 	OOGLEND();
 
-	NSString *line = nil;
-	NSArray *lines = [text componentsSeparatedByString:@"\n"];
+	const std::vector<std::string> lines = oo::str::split(text, "\n");
 	// text at full opacity
 	GLColorWithOverallAlpha(mfd_color, alpha);
 	for (i = 0; i < 10 ; i++)
 	{
-		line = oo::PListView(lines).at<NSString *>(i, nil);
-		if (line != nil)
+		if ((std::size_t)i < lines.size())
 		{
+			const std::string &line = lines[i];
 			y0 -= siz.height;
 			// all lines should be shorter than the size of the MFD
-			GLfloat textwidth = OORectFromString(line, 0.0f, 0.0f, siz).size.width;
+			GLfloat textwidth = cxx_OORectFromString(line, 0.0f, 0.0f, siz).size.width;
 			if (textwidth <= cached.width)
 			{
-				OODrawString(line, x0, y0, z1, siz);
+				cxx_OODrawString(line, x0, y0, z1, siz);
 			}
 			else
 			{
 				// compress it so it fits
 				tmpsiz.height = siz.height;
 				tmpsiz.width = siz.width * cached.width / textwidth;
-				OODrawString(line, x0, y0, z1, tmpsiz);
+				cxx_OODrawString(line, x0, y0, z1, tmpsiz);
 			}
 		}
 		else
