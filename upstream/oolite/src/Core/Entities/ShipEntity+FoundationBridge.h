@@ -43,6 +43,19 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (BOOL) hasOneEquipmentItem:(NSString *)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading;	// -> -cxx_hasOneEquipmentItem:includeMissiles:whileLoading:
 - (NSArray *) equipmentListForScripting;	// -> -cxx_equipmentListForScripting
 
+// oo-3rb.234: missiles and weapon mounts
+- (NSArray *) aftWeaponOffset;	// -> -cxx_aftWeaponOffset
+- (NSArray *) forwardWeaponOffset;	// -> -cxx_forwardWeaponOffset
+- (NSArray *) portWeaponOffset;	// -> -cxx_portWeaponOffset
+- (NSArray *) starboardWeaponOffset;	// -> -cxx_starboardWeaponOffset
+- (NSArray *) laserPortOffset:(OOWeaponFacing)direction;	// -> -cxx_laserPortOffset:
+- (BOOL) fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(NSString *)weaponIdentifier;	// -> -cxx_fireLaserShotInDirection:weaponIdentifier:
+- (ShipEntity *) fireMissileWithIdentifier:(NSString *) identifier andTarget:(Entity *) target;	// -> -cxx_fireMissileWithIdentifier:andTarget:
+
 @end
+
+
+// oo-3rb.234
+Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, NSString* align);	// -> cxx_positionOffsetForShipInRotationToAlignment
 
 #endif	// SHIPENTITY_FOUNDATIONBRIDGE_H
