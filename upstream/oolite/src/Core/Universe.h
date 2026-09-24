@@ -264,7 +264,7 @@ enum
 	int						demo_stage;
 	NSUInteger				demo_ship_index;
 	NSUInteger				demo_ship_subindex;
-	NSArray					*demo_ships;
+	oo::PList				demo_ships;	// arrays (one per class) of demo ship dictionaries
 	
 	GLfloat					main_light_position[4];
 	
@@ -577,7 +577,7 @@ enum
 - (void) removeAllEntitiesExceptPlayer;
 - (void) removeDemoShips;
 
-- (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning;
+- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning;
 
 - (BOOL) isVectorClearFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;
 - (Entity*) hazardOnRouteFromEntity:(Entity *) e1 toDistance:(double)dist fromPoint:(HPVector) p2;

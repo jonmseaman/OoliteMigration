@@ -622,6 +622,13 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	[self cxx_allShipsDoScriptEvent:event andReactToAIMessage:oo::OptionalString(message)];
 }
 
+
+// Chunk 11 (oo-3rb.230). A nil role asked for the role "" (no ship), after clearing the display, as before.
+- (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning
+{
+	return [self cxx_makeDemoShipWithRole:oo::StdString(role) spinning:spinning];
+}
+
 @end
 
 

@@ -149,6 +149,9 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (NSArray*) listBeaconsWithCode:(NSString*) code;	// -> -cxx_listBeaconsWithCode:
 - (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message;	// -> -cxx_allShipsDoScriptEvent:andReactToAIMessage:
 
+// Chunk 11 (oo-3rb.230): demo ships.
+- (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning;	// -> -cxx_makeDemoShipWithRole:spinning:
+
 @end
 
 

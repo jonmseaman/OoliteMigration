@@ -250,7 +250,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 
 - (void) setDetailLevelDirectly:(OOGraphicsDetail)value;
 
-- (NSDictionary *)demoShipData;
+- (oo::PList) demoShipData;	// null where there is no such entry
 - (void) setLibraryTextForDemoShip;
 
 @end
@@ -935,7 +935,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[customSounds release];
 	[globalSettings release];
 	[systemManager release];
-	[demo_ships release];
+	demo_ships = oo::PList();
 	[screenBackgrounds release];
 	[gameView release];
 	allPlanets.clear();
@@ -3272,17 +3272,86 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
+namespace {
+
+std::optional<std::string> OptionalStringIn(const oo::PList &dict, std::string_view key);	// defined with the other configuration readers below
+
+
+// The demo ship entry at <index>, <subindex> of the demo list: null where the old at<NSArray *> /
+// at<NSDictionary *> chain gave nil.
+oo::PList DemoShipEntry(const oo::PList &demoShips, NSUInteger index, NSUInteger subindex)
+{
+	const oo::PList *subList = demoShips.at(index);
+	const oo::PList *entry = (subList != nullptr && subList->isArray()) ? subList->at(subindex) : nullptr;
+	return (entry != nullptr && entry->isDict()) ? *entry : oo::PList();
+}
+
+
+// -count of the demo class at <index> (0 where it was nil).
+NSUInteger DemoClassCount(const oo::PList &demoShips, NSUInteger index)
+{
+	const oo::PList *subList = demoShips.at(index);
+	return (subList != nullptr) ? subList->count() : 0;
+}
+
+
+// The class of the first ship of the demo class at <index>; "" where it was nil (oo::StdString(nil)).
+std::string DemoClassAt(const oo::PList &demoShips, NSUInteger index)
+{
+	return OptionalStringIn(DemoShipEntry(demoShips, index, 0), kOODemoShipClass).value_or(std::string());
+}
+
+
+// A string setting of the library entry, <fallback> where absent; a null entry answered nil.
+std::optional<std::string> LibrarySetting(const oo::PList &settings, std::string_view key, const char *fallback)
+{
+	if (settings.isNull())  return std::nullopt;
+	const std::optional<std::string> value = OptionalStringIn(settings, key);
+	if (value.has_value() || fallback == nullptr)  return value;
+	return std::string(fallback);
+}
+
+
+// OOExpand(text), the unmigrated expander.
+std::optional<std::string> ExpandText(const std::string &text)
+{
+	return oo::OptionalString(OOExpand(oo::NSStringFrom(text)));
+}
+
+
+// [NSString stringWithFormat:DESC(descKey), OOExpand(override)]: a nil expansion printed "(null)".
+std::string CustomLibraryText(const char *descKey, const std::string &override)
+{
+	const std::optional<std::string> expanded = ExpandText(override);
+	return oo::str::formatRuntime(cxx_OOLookUpDescriptionPRIV(descKey), { expanded.has_value() ? oo::str::FormatArg(*expanded) : oo::str::FormatArg::null() });
+}
+
+
+// +arrayWithObjects:field1, field2, field3, nil: the fields up to the first nil.
+std::vector<std::string> FieldsUpToNil(std::initializer_list<std::optional<std::string>> fields)
+{
+	std::vector<std::string> result;
+	for (const std::optional<std::string> &field : fields)
+	{
+		if (!field.has_value())  break;
+		result.push_back(*field);
+	}
+	return result;
+}
+
+}	// namespace
+
+
 - (void) setupIntroFirstGo:(BOOL)justCobra
 {
 	PlayerEntity	*player = PLAYER;
 	ShipEntity		*ship = nil;
 	Quaternion		q2 = { 0.0f, 0.0f, 1.0f, 0.0f }; // w,x,y,z
-	
+
 	// in status demo draw ships and display text
 	if (!justCobra)
 	{
-		DESTROY(demo_ships);
-		demo_ships = [[[OOShipRegistry sharedRegistry] demoShipKeys] retain];
+		demo_ships = [[OOShipRegistry sharedRegistry] cxx_demoShipKeys];
 		// always, even if it's the cobra, because it's repositioned
 		[self removeDemoShips];
 	}
@@ -3292,7 +3361,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	[player setShowDemoShips: YES];
 	displayGUI = YES;
-	
+
 	if (justCobra)
 	{
 		/*- cobra - intro1 -*/
@@ -3307,32 +3376,36 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 
 		/* Try to set the initial list position to Cobra III if
 		 * available, and at least the Ships category. */
-		NSArray *subList = nil;
-		foreach (subList, demo_ships)
+		const oo::PList::Array *demoClasses = demo_ships.getIf<oo::PList::Array>();
+		if (demoClasses != nullptr)
 		{
-			if ([oo::PListView(oo::PListView(subList).at<NSDictionary *>(0)).get<NSString *>(oo::NSStringFrom(kOODemoShipClass)) isEqualToString:@"ship"])
+			for (NSUInteger k = 0; k < demoClasses->size(); k++)
 			{
-				demo_ship_index = [demo_ships indexOfObject:subList];
-				NSDictionary *shipEntry = nil;
-				foreach (shipEntry, subList)
+				const oo::PList &subList = (*demoClasses)[k];
+				if (OptionalStringIn(DemoShipEntry(demo_ships, k, 0), kOODemoShipClass) == "ship")
 				{
-					if ([oo::PListView(shipEntry).get<NSString *>(oo::NSStringFrom(kOODemoShipKey)) isEqualToString:@"cobra3-trader"])
+					demo_ship_index = std::find(demoClasses->begin(), demoClasses->end(), subList) - demoClasses->begin();	// -indexOfObject:
+					const oo::PList::Array *shipEntries = subList.getIf<oo::PList::Array>();	// an array: its first entry was found above
+					for (const oo::PList &shipEntry : *shipEntries)
 					{
-						demo_ship_subindex = [subList indexOfObject:shipEntry];
-						break;
+						if (OptionalStringIn(shipEntry, kOODemoShipKey) == "cobra3-trader")
+						{
+							demo_ship_subindex = std::find(shipEntries->begin(), shipEntries->end(), shipEntry) - shipEntries->begin();	// -indexOfObject:
+							break;
+						}
 					}
+					break;
 				}
-				break;
 			}
 		}
 
 
-		if (!demo_ship)	ship = [self newShipWithName:oo::PListView(oo::PListView(oo::PListView(demo_ships).at<NSArray *>(demo_ship_index)).at<NSDictionary *>(demo_ship_subindex)).get<NSString *>(oo::NSStringFrom(kOODemoShipKey)) usePlayerProxy:NO];
+		if (!demo_ship)	ship = [self cxx_newShipWithName:OptionalStringIn(DemoShipEntry(demo_ships, demo_ship_index, demo_ship_subindex), kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];
 		// stop consistency problems on the ship library screen
 		[ship removeEquipmentItem:@"EQ_SHIELD_BOOSTER"];
 		[ship removeEquipmentItem:@"EQ_SHIELD_ENHANCER"];
 	}
-	
+
 	if (ship)
 	{
 		[ship setOrientation:q2];
@@ -3355,16 +3428,16 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		// now override status
 		[ship setStatus:STATUS_COCKPIT_DISPLAY];
 		demo_ship = ship;
-		
+
 		[ship release];
 	}
-	
+
 	if (!justCobra)
 	{
 //		[gui setText:[demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
 		[self setLibraryTextForDemoShip];
 	}
-	
+
 	[self enterGUIViewModeWithMouseInteraction:NO];
 	if (!justCobra)
 	{
@@ -3374,9 +3447,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (NSDictionary *)demoShipData
+- (oo::PList) demoShipData
 {
-	return oo::PListView(oo::PListView(demo_ships).at<NSArray *>(demo_ship_index)).at<NSDictionary *>(demo_ship_subindex);
+	return DemoShipEntry(demo_ships, demo_ship_index, demo_ship_subindex);
 }
 
 
@@ -3391,43 +3464,43 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 /*	[gui setText:[demo_ship displayName] forRow:19 align:GUI_ALIGN_CENTER];
 	[gui setColor:[OOColor whiteColor] forRow:19]; */
 
-	NSDictionary *librarySettings = [self demoShipData];
-	
+	const oo::PList librarySettings = [self demoShipData];
+
 	OOGUIRow descRow = 7;
 
-	NSString *field1 = nil;
-	NSString *field2 = nil;
-	NSString *field3 = nil;
-	NSString *override = nil;
+	std::optional<std::string> field1;
+	std::optional<std::string> field2;
+	std::optional<std::string> field3;
+	std::optional<std::string> override;
 
 	// clear rows
 	for (NSUInteger i=1;i<=26;i++)
 	{
 		[gui setText:@"" forRow:i];
 	}
-	
+
 	/* Row 1: ScanClass, Name, Summary */
-	override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), @"ship");
-	field1 = oo::NSStringFrom(OOShipLibraryCategorySingular(oo::StdString(override)));
+	override = LibrarySetting(librarySettings, kOODemoShipClass, "ship");
+	field1 = OOShipLibraryCategorySingular(override.value_or(std::string()));
 
 
-	field2 = [demo_ship shipClassName];
+	field2 = oo::OptionalString([demo_ship shipClassName]);
 
 
-	override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipSummary), nil);
-	if (override != nil)
+	override = LibrarySetting(librarySettings, kOODemoShipSummary, nullptr);
+	if (override.has_value())
 	{
-		field3 = OOExpand(override);
+		field3 = ExpandText(*override);
 	}
 	else
 	{
-		field3 = @"";
+		field3 = std::string();
 	}
-	[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:1];
+	[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:1];
 	[gui setColor:[OOColor greenColor] forRow:1];
 
 	// ship_data defaults to true for "ship" class, false for everything else
-	if (!oo::PListView(librarySettings).get<BOOL>(oo::NSStringFrom(kOODemoShipShipData), [oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipClass), @"ship") isEqualToString:@"ship"]))
+	if (!librarySettings.get<bool>(kOODemoShipShipData, LibrarySetting(librarySettings, kOODemoShipClass, "ship") == "ship"))
 	{
 		descRow = 3;
 	}
@@ -3435,205 +3508,207 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	{
 		/* Row 2: Speed, Turn Rate, Cargo */
 
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipSpeed), nil);
-		if (override != nil)
+		override = LibrarySetting(librarySettings, kOODemoShipSpeed, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field1 = @"";
+				field1 = std::string();
 			}
 			else
 			{
-				field1 = [NSString stringWithFormat:DESC(@"oolite-ship-library-speed-custom"),OOExpand(override)];
+				field1 = CustomLibraryText("oolite-ship-library-speed-custom", *override);
 			}
 		}
 		else
 		{
-			field1 = oo::NSStringFrom(OOShipLibrarySpeed(demo_ship));
+			field1 = OOShipLibrarySpeed(demo_ship);
 		}
-		
 
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipTurnRate), nil);
-		if (override != nil)
+
+		override = LibrarySetting(librarySettings, kOODemoShipTurnRate, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field2 = @"";
+				field2 = std::string();
 			}
 			else
 			{
-				field2 = [NSString stringWithFormat:DESC(@"oolite-ship-library-turn-custom"),OOExpand(override)];
+				field2 = CustomLibraryText("oolite-ship-library-turn-custom", *override);
 			}
 		}
 		else
 		{
-			field2 = oo::NSStringFrom(OOShipLibraryTurnRate(demo_ship));
+			field2 = OOShipLibraryTurnRate(demo_ship);
 		}
 
 
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipCargo), nil);
-		if (override != nil)
+		override = LibrarySetting(librarySettings, kOODemoShipCargo, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field3 = @"";
+				field3 = std::string();
 			}
 			else
 			{
-				field3 = [NSString stringWithFormat:DESC(@"oolite-ship-library-cargo-custom"),OOExpand(override)];
+				field3 = CustomLibraryText("oolite-ship-library-cargo-custom", *override);
 			}
 		}
 		else
 		{
-			field3 = oo::NSStringFrom(OOShipLibraryCargo(demo_ship));
+			field3 = OOShipLibraryCargo(demo_ship);
 		}
-	
 
-		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:3];
+
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:3];
 
 		/* Row 3: recharge rate, energy banks, witchspace */
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipGenerator), nil);
-		if (override != nil)
+		override = LibrarySetting(librarySettings, kOODemoShipGenerator, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field1 = @"";
+				field1 = std::string();
 			}
 			else
 			{
-				field1 = [NSString stringWithFormat:DESC(@"oolite-ship-library-generator-custom"),OOExpand(override)];
+				field1 = CustomLibraryText("oolite-ship-library-generator-custom", *override);
 			}
 		}
 		else
 		{
-			field1 = oo::NSStringFrom(OOShipLibraryGenerator(demo_ship));
+			field1 = OOShipLibraryGenerator(demo_ship);
 		}
 
 
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipShields), nil);
-		if (override != nil)
+		override = LibrarySetting(librarySettings, kOODemoShipShields, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field2 = @"";
+				field2 = std::string();
 			}
 			else
 			{
-				field2 = [NSString stringWithFormat:DESC(@"oolite-ship-library-shields-custom"),OOExpand(override)];
+				field2 = CustomLibraryText("oolite-ship-library-shields-custom", *override);
 			}
 		}
 		else
 		{
-			field2 = oo::NSStringFrom(OOShipLibraryShields(demo_ship));
+			field2 = OOShipLibraryShields(demo_ship);
 		}
 
 
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipWitchspace), nil);
-		if (override != nil)
+		override = LibrarySetting(librarySettings, kOODemoShipWitchspace, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field3 = @"";
+				field3 = std::string();
 			}
 			else
 			{
-				field3 = [NSString stringWithFormat:DESC(@"oolite-ship-library-witchspace-custom"),OOExpand(override)];
+				field3 = CustomLibraryText("oolite-ship-library-witchspace-custom", *override);
 			}
 		}
 		else
 		{
-			field3 = oo::NSStringFrom(OOShipLibraryWitchspace(demo_ship));
+			field3 = OOShipLibraryWitchspace(demo_ship);
 		}
 
 
-		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:4];
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:4];
 
 
 		/* Row 4: weapons, turrets, size */
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipWeapons), nil);
-		if (override != nil)
+		override = LibrarySetting(librarySettings, kOODemoShipWeapons, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field1 = @"";
+				field1 = std::string();
 			}
 			else
 			{
-				field1 = [NSString stringWithFormat:DESC(@"oolite-ship-library-weapons-custom"),OOExpand(override)];
+				field1 = CustomLibraryText("oolite-ship-library-weapons-custom", *override);
 			}
 		}
 		else
 		{
-			field1 = oo::NSStringFrom(OOShipLibraryWeapons(demo_ship));
+			field1 = OOShipLibraryWeapons(demo_ship);
 		}
 
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipTurrets), nil);
-		if (override != nil)
+		override = LibrarySetting(librarySettings, kOODemoShipTurrets, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field2 = @"";
+				field2 = std::string();
 			}
 			else
 			{
-				field2 = [NSString stringWithFormat:DESC(@"oolite-ship-library-turrets-custom"),OOExpand(override)];
+				field2 = CustomLibraryText("oolite-ship-library-turrets-custom", *override);
 			}
 		}
 		else
 		{
-			field2 = oo::NSStringFrom(OOShipLibraryTurrets(demo_ship));
+			field2 = OOShipLibraryTurrets(demo_ship);
 		}
 
-		override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipSize), nil);
-		if (override != nil)
+		override = LibrarySetting(librarySettings, kOODemoShipSize, nullptr);
+		if (override.has_value())
 		{
-			if ([override length] == 0)
+			if (override->empty())
 			{
-				field3 = @"";
+				field3 = std::string();
 			}
 			else
 			{
-				field3 = [NSString stringWithFormat:DESC(@"oolite-ship-library-size-custom"),OOExpand(override)];
+				field3 = CustomLibraryText("oolite-ship-library-size-custom", *override);
 			}
 		}
 		else
 		{
-			field3 = oo::NSStringFrom(OOShipLibrarySize(demo_ship));
+			field3 = OOShipLibrarySize(demo_ship);
 		}
 
-		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:5];
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:5];
 	}
 
-	override = oo::PListView(librarySettings).get<NSString *>(oo::NSStringFrom(kOODemoShipDescription), nil);
-	if (override != nil)
+	override = LibrarySetting(librarySettings, kOODemoShipDescription, nullptr);
+	if (override.has_value())
 	{
-		[gui addLongText:OOExpand(override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
+		[gui cxx_addLongText:ExpandText(*override) startingAtRow:descRow align:GUI_ALIGN_LEFT];
 	}
 
-	
+
 	// line 19: ship categories
-	field1 = [NSString stringWithFormat:@"<-- %@",oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView([[demo_ships objectAtIndex:((demo_ship_index+[demo_ships count]-1)%[demo_ships count])] objectAtIndex:0]).get<NSString *>(oo::NSStringFrom(kOODemoShipClass)))))];
-	field2 = oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView([[demo_ships objectAtIndex:demo_ship_index] objectAtIndex:0]).get<NSString *>(oo::NSStringFrom(kOODemoShipClass)))));
-	field3 = [NSString stringWithFormat:@"%@ -->",oo::NSStringFrom(OOShipLibraryCategoryPlural(oo::StdString(oo::PListView([[demo_ships objectAtIndex:((demo_ship_index+1)%[demo_ships count])] objectAtIndex:0]).get<NSString *>(oo::NSStringFrom(kOODemoShipClass)))))];
-	
-	[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:19];
+	field1 = oo::str::format("<-- %s",OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, (demo_ship_index+demo_ships.count()-1)%demo_ships.count())).c_str());
+	field2 = OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, demo_ship_index));
+	field3 = oo::str::format("%s -->",OOShipLibraryCategoryPlural(DemoClassAt(demo_ships, (demo_ship_index+1)%demo_ships.count())).c_str());
+
+	[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:19];
 	[gui setColor:[OOColor greenColor] forRow:19];
 
 	// lines 21-25: ship names
-	NSArray *subList = [demo_ships objectAtIndex:demo_ship_index];
+	const oo::PList *subListEntry = demo_ships.at(demo_ship_index);
+	const oo::PList subList = (subListEntry != nullptr) ? *subListEntry : oo::PList();
 	NSUInteger i,start = demo_ship_subindex - (demo_ship_subindex%5);
 	NSUInteger end = start + 4;
-	if (end >= [subList count])
+	if (end >= subList.count())
 	{
-		end = [subList count] - 1;
+		end = subList.count() - 1;
 	}
 	OOGUIRow row = 21;
-	field1 = @"";
-	field3 = @"";
+	field1 = std::string();
+	field3 = std::string();
 	for (i = start ; i <= end ; i++)
 	{
-		field2 = oo::PListView([subList objectAtIndex:i]).get<NSString *>(oo::NSStringFrom(kOODemoShipName));
-		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:row];
+		const oo::PList *shipEntry = subList.at(i);
+		field2 = (shipEntry != nullptr) ? OptionalStringIn(*shipEntry, kOODemoShipName) : std::nullopt;
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:row];
 		if (i == demo_ship_subindex)
 		{
 			[gui setColor:[OOColor yellowColor] forRow:row];
@@ -3645,15 +3720,15 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		row++;
 	}
 
-	field2 = @"...";
+	field2 = "...";
 	if (start > 0)
 	{
-		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:20];
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:20];
 		[gui setColor:[OOColor whiteColor] forRow:20];
 	}
-	if (end < [subList count]-1)
+	if (end < subList.count()-1)
 	{
-		[gui setArray:[NSArray arrayWithObjects:field1,field2,field3,nil] forRow:26];
+		[gui cxx_setArray:FieldsUpToNil({field1,field2,field3}) forRow:26];
 		[gui setColor:[OOColor whiteColor] forRow:26];
 	}
 
@@ -3663,7 +3738,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (void) selectIntro2Previous
 {
 	demo_stage = DEMO_SHOW_THING;
-	NSUInteger subcount = [[demo_ships objectAtIndex:demo_ship_index] count];
+	NSUInteger subcount = DemoClassCount(demo_ships, demo_ship_index);
 	demo_ship_subindex = (demo_ship_subindex + subcount - 2) % subcount;
 	demo_stage_time  = universal_time - 1.0;	// force change
 }
@@ -3672,8 +3747,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (void) selectIntro2PreviousCategory
 {
 	demo_stage = DEMO_SHOW_THING;
-	demo_ship_index = (demo_ship_index + [demo_ships count] - 1) % [demo_ships count];
-	demo_ship_subindex = [[demo_ships objectAtIndex:demo_ship_index] count] - 1;
+	demo_ship_index = (demo_ship_index + demo_ships.count() - 1) % demo_ships.count();
+	demo_ship_subindex = DemoClassCount(demo_ships, demo_ship_index) - 1;
 	demo_stage_time  = universal_time - 1.0;	// force change
 }
 
@@ -3681,8 +3756,8 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 - (void) selectIntro2NextCategory
 {
 	demo_stage = DEMO_SHOW_THING;
- 	demo_ship_index = (demo_ship_index + 1) % [demo_ships count];
-	demo_ship_subindex = [[demo_ships objectAtIndex:demo_ship_index] count] - 1;
+ 	demo_ship_index = (demo_ship_index + 1) % demo_ships.count();
+	demo_ship_subindex = DemoClassCount(demo_ships, demo_ship_index) - 1;
 	demo_stage_time  = universal_time - 1.0;	// force change
 }
 
@@ -5902,7 +5977,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 }
 
 
-- (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning
+- (ShipEntity *) cxx_makeDemoShipWithRole:(const std::string &)role spinning:(BOOL)spinning
 {
 	if ([PLAYER dockedStation] == nil)  return nil;
 	
@@ -5911,7 +5986,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	[PLAYER setShowDemoShips: YES];
 	Quaternion q2 = { (GLfloat)M_SQRT1_2, (GLfloat)M_SQRT1_2, (GLfloat)0.0, (GLfloat)0.0 };
 	
-	ShipEntity *ship = [self newShipWithRole:role];   // retain count = 1
+	ShipEntity *ship = [self cxx_newShipWithRole:role];   // retain count = 1
 	if (ship)
 	{
 		double cr = [ship collisionRadius];
@@ -7277,12 +7352,8 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 								[self removeEntity:demo_ship];
 								demo_ship = nil;
 								
-/*								NSString		*shipDesc = nil;
-								NSString		*shipName = nil;
-								NSDictionary	*shipDict = nil; */
-								
-								demo_ship_subindex = (demo_ship_subindex + 1) % [[demo_ships objectAtIndex:demo_ship_index] count];
-								demo_ship = [self newShipWithName:oo::PListView([self demoShipData]).get<NSString *>(oo::NSStringFrom(kOODemoShipKey)) usePlayerProxy:NO];
+								demo_ship_subindex = (demo_ship_subindex + 1) % DemoClassCount(demo_ships, demo_ship_index);
+								demo_ship = [self cxx_newShipWithName:OptionalStringIn([self demoShipData], kOODemoShipKey).value_or(std::string()) usePlayerProxy:NO];	// a missing key asked for "", as nil did
 								
 								if (demo_ship != nil)
 								{
@@ -10859,8 +10930,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	
 	if(showDemo)
 	{
-		[demo_ships release];
-		demo_ships = [[[OOShipRegistry sharedRegistry] demoShipKeys] retain];
+		demo_ships = [[OOShipRegistry sharedRegistry] cxx_demoShipKeys];
 		demo_ship_index = 0;
 		demo_ship_subindex = 0;
 	}
