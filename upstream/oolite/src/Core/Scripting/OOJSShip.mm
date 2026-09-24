@@ -3306,8 +3306,8 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	OOJS_PROFILE_ENTER
 	
 	ooscript::Object params = NULL;
-	NSDictionary			*materials;
-	NSDictionary			*shaders;
+	oo::PList				materials;
+	oo::PList				shaders;
 	BOOL					withShaders = NO;
 	BOOL					success = NO;
 	
@@ -3331,35 +3331,38 @@ static bool ShipSetMaterialsInternal(ooscript::Context context, ooscript::CallAr
 	
 	if (fromShaders)
 	{
-		materials = oo::ObjectFromPList([[thisEnt mesh] materials]);
+		materials = [[thisEnt mesh] materials];
 		params = ooscript::toObject(OOJS_ARGV[0]);
-		shaders = OOJSNativeObjectFromJSObject(context, params);
+		shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
 	}
 	else
 	{
 		params = ooscript::toObject(OOJS_ARGV[0]);
-		materials = OOJSNativeObjectFromJSObject(context, params);
+		materials = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
 		if (withShaders)
 		{
 			params = ooscript::toObject(OOJS_ARGV[1]);
-			shaders = OOJSNativeObjectFromJSObject(context, params);
+			shaders = oo::PListFrom(OOJSNativeObjectFromJSObject(context, params));
 		}
 		else
 		{
-			shaders = oo::ObjectFromPList([[thisEnt mesh] shaders]);
+			shaders = [[thisEnt mesh] shaders];
 		}
 	}
-	
+
 	OOJS_BEGIN_FULL_NATIVE(context)
-	NSDictionary 			*shipDict = [thisEnt shipInfoDictionary];
-	
+	const oo::PList			shipDict = oo::PListFrom([thisEnt shipInfoDictionary]);
+	// "ship-prefix-macros": a dictionary, else null (as the dictionary reader gave nil).
+	const oo::PList			materialDefaults = [ResourceManager cxx_materialDefaults];
+	const oo::PList			*prefixMacros = materialDefaults.find("ship-prefix-macros");
+
 	// First we test to see if we can create the mesh.
-	OOMesh *mesh = [OOMesh meshWithName:oo::StdString(oo::PListView(shipDict).get<NSString *>(@"model"))
+	OOMesh *mesh = [OOMesh meshWithName:shipDict.get<std::string>("model")
 							   cacheKey:std::nullopt
-					 materialDictionary:oo::PListFrom(materials)
-					  shadersDictionary:oo::PListFrom(shaders)
-								 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
-						   shaderMacros:oo::PListFrom(oo::PListView([ResourceManager materialDefaults]).get<NSDictionary *>(@"ship-prefix-macros"))
+					 materialDictionary:materials
+					  shadersDictionary:shaders
+								 smooth:shipDict.get<bool>("smooth", false)
+						   shaderMacros:(prefixMacros != nullptr && prefixMacros->isDict()) ? *prefixMacros : oo::PList()
 					shaderBindingTarget:thisEnt];
 	
 	if (mesh != nil)
@@ -3584,13 +3587,12 @@ static bool ShipGetMaterials(ooscript::Context context, ooscript::CallArgs &oojs
 	OOJS_PROFILE_ENTER
 	
 	ShipEntity		*thisEnt = nil;
-	NSObject			*result = nil;
-	
+
 	GET_THIS_SHIP(thisEnt);
-	
-	result = oo::ObjectFromPList([[thisEnt mesh] materials]);
-	if (result == nil)  result = [NSDictionary dictionary];
-	OOJS_RETURN_OBJECT(result);
+
+	oo::PList result = [[thisEnt mesh] materials];
+	if (result.isNull())  result = oo::PList(oo::PList::Dict{});	// empty rather than null
+	OOJS_RETURN_OBJECT(oo::ObjectFromPList(result));
 	
 	OOJS_PROFILE_EXIT
 }
@@ -3601,13 +3603,12 @@ static bool ShipGetShaders(ooscript::Context context, ooscript::CallArgs &oojsAr
 	OOJS_PROFILE_ENTER
 	
 	ShipEntity		*thisEnt = nil;
-	NSObject		*result = nil;
-	
+
 	GET_THIS_SHIP(thisEnt);
-	
-	result = oo::ObjectFromPList([[thisEnt mesh] shaders]);
-	if (result == nil)  result = [NSDictionary dictionary];
-	OOJS_RETURN_OBJECT(result);
+
+	oo::PList result = [[thisEnt mesh] shaders];
+	if (result.isNull())  result = oo::PList(oo::PList::Dict{});	// empty rather than null
+	OOJS_RETURN_OBJECT(oo::ObjectFromPList(result));
 	
 	OOJS_PROFILE_EXIT
 }
@@ -4006,15 +4007,7 @@ static bool ShipRequestDockingInstructions(ooscript::Context context, ooscript::
 	GET_THIS_SHIP(thisEnt);
 	[thisEnt requestDockingCoordinates];
 	
-	NSDictionary *dockingInstructions = [thisEnt dockingInstructions];
-	if (dockingInstructions != nil)
-	{
-		OOJS_RETURN_OBJECT(dockingInstructions);
-	}
-	else
-	{
-		OOJS_RETURN_NULL;
-	}
+	OOJS_RETURN_OBJECT([thisEnt dockingInstructions]);	// nil maps to null
 	
 	OOJS_PROFILE_EXIT
 }
@@ -4028,15 +4021,7 @@ static bool ShipRecallDockingInstructions(ooscript::Context context, ooscript::C
 	GET_THIS_SHIP(thisEnt);
 	[thisEnt recallDockingInstructions];
 	
-	NSDictionary *dockingInstructions = [thisEnt dockingInstructions];
-	if (dockingInstructions != nil)
-	{
-		OOJS_RETURN_OBJECT(dockingInstructions);
-	}
-	else
-	{
-		OOJS_RETURN_NULL;
-	}
+	OOJS_RETURN_OBJECT([thisEnt dockingInstructions]);	// nil maps to null
 	
 	OOJS_PROFILE_EXIT
 }
@@ -4112,12 +4097,8 @@ static bool ShipCheckScanner(ooscript::Context context, ooscript::CallArgs &oojs
 	}
 	ShipEntity **scannedShips = [thisEnt scannedShips];
 	unsigned num = [thisEnt numberOfScannedShips];
-	NSMutableArray *scanResult = [NSMutableArray array];
-	for (unsigned i = 0; i < num ; i++)
-	{
-		[scanResult addObject:scannedShips[i]];
-	}
-	OOJS_RETURN_OBJECT(scanResult);
+	const std::vector<ShipEntity *> scanResult(scannedShips, scannedShips + num);
+	OOJS_RETURN_OBJECT(oo::NSArrayFromObjects(scanResult));
 
 	OOJS_PROFILE_EXIT
 }
@@ -4128,7 +4109,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 	OOJS_PROFILE_ENTER
 	
 	ShipEntity *thisEnt = nil;
-	NSString *commodity = @"";
+	std::optional<std::string> commodity;
 	int32_t adjustment = 0;
 
 	GET_THIS_SHIP(thisEnt);
@@ -4139,7 +4120,7 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 		return NO;
 	}
 
-	commodity = OOStringFromJSValue(context, OOJS_ARGV[0]);
+	commodity = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
 	if (!ooscript::valueToInt32(context, OOJS_ARGV[1], &adjustment))
 	{
 		OOJSReportBadArguments(context, @"Ship", @"adjustCargo", oojsArgs.count(), OOJS_ARGV, nil, @"commodity, amount");
@@ -4156,13 +4137,12 @@ static bool ShipAdjustCargo(ooscript::Context context, ooscript::CallArgs &oojsA
 
 	if (adjustment > 0)
 	{
-		NSArray *cargo = [UNIVERSE getContainersOfCommodity:commodity :adjustment]; // non-reified templates
-		ok = [thisEnt addCargo:cargo];
+		ok = [thisEnt addCargo:[UNIVERSE getContainersOfCommodity:oo::NSStringOrNil(commodity) :adjustment]]; // non-reified templates
 	}
 	else if (adjustment < 0)
 	{
 		OOCargoQuantity r = (OOCargoQuantity)(-adjustment);
-		ok = [thisEnt removeCargo:commodity amount:r];
+		ok = [thisEnt removeCargo:oo::NSStringOrNil(commodity) amount:r];
 	}
 
 
@@ -4371,8 +4351,7 @@ static bool ShipStaticKeys(ooscript::Context context, ooscript::CallArgs &oojsAr
 	OOJS_NATIVE_ENTER(context);
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
 
-	NSArray *keys = [registry shipKeys];
-	OOJS_RETURN_OBJECT(keys);		
+	OOJS_RETURN_OBJECT(oo::NSArrayFromStrings([registry cxx_shipKeys]));
 
 	OOJS_NATIVE_EXIT
 }
@@ -4384,9 +4363,10 @@ static bool ShipStaticKeysForRole(ooscript::Context context, ooscript::CallArgs 
 
 	if (oojsArgs.count() > 0)
 	{
-		NSString *role = OOStringFromJSValue(context, OOJS_ARGV[0]);
-		NSArray *keys = [registry shipKeysWithRole:role];
-		OOJS_RETURN_OBJECT(keys);		
+		const std::string role = oo::StdString(OOStringFromJSValue(context, OOJS_ARGV[0]));	// nil as "", as the registry bridge sent it
+		// null where there is no probability set for the role, as before
+		if ([registry cxx_probabilitySetForRole:role] == nil)  OOJS_RETURN_NULL;
+		OOJS_RETURN_OBJECT(oo::NSArrayFromStrings([registry cxx_shipKeysWithRole:role]));
 	}
 	else
 	{
@@ -4404,10 +4384,10 @@ static bool ShipStaticRoleIsInCategory(ooscript::Context context, ooscript::Call
 
 	if (oojsArgs.count() > 1)
 	{
-		NSString *role = OOStringFromJSValue(context, OOJS_ARGV[0]);
-		NSString *category = OOStringFromJSValue(context, OOJS_ARGV[1]);
+		const std::optional<std::string> role = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+		const std::optional<std::string> category = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[1]));
 
-		OOJS_RETURN_BOOL([UNIVERSE role:role isInCategory:category]);		
+		OOJS_RETURN_BOOL([UNIVERSE role:oo::NSStringOrNil(role) isInCategory:oo::NSStringOrNil(category)]);
 	}
 	else
 	{
@@ -4424,8 +4404,7 @@ static bool ShipStaticRoles(ooscript::Context context, ooscript::CallArgs &oojsA
 	OOJS_NATIVE_ENTER(context);
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
 
-	NSArray *keys = [registry shipRoles];
-	OOJS_RETURN_OBJECT(keys);		
+	OOJS_RETURN_OBJECT(oo::NSArrayFromStrings([registry cxx_shipRoles]));
 
 	OOJS_NATIVE_EXIT
 }
@@ -4438,9 +4417,9 @@ static bool ShipStaticShipDataForKey(ooscript::Context context, ooscript::CallAr
 
 	if (oojsArgs.count() > 0)
 	{
-		NSString *key = OOStringFromJSValue(context, OOJS_ARGV[0]);
-		NSDictionary *keys = [registry shipInfoForKey:key];
-		OOJS_RETURN_OBJECT(keys);		
+		const std::optional<std::string> key = oo::OptionalString(OOStringFromJSValue(context, OOJS_ARGV[0]));
+		if (!key.has_value())  OOJS_RETURN_NULL;	// a nil key found nothing
+		OOJS_RETURN_OBJECT(oo::ObjectFromPList([registry cxx_shipInfoForKey:*key]));
 	}
 	else
 	{
@@ -4458,9 +4437,7 @@ static bool ShipStaticSetShipDataForKey(ooscript::Context context, ooscript::Cal
 
 	if (oojsArgs.count() >= 2)
 	{
-		NSString *key = OOStringFromJSValue(context, OOJS_ARGV[0]);
-		NSDictionary *newShipData = OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[1]));
-		[registry setShipInfoForKey:key with:newShipData];
+		[registry cxx_setShipInfoForKey:oo::StdString(OOStringFromJSValue(context, OOJS_ARGV[0])) with:oo::PListFrom(OOJSNativeObjectFromJSObject(context, ooscript::toObject(OOJS_ARGV[1])))];
 		OOJS_RETURN_BOOL(YES);
 	}
 	else
