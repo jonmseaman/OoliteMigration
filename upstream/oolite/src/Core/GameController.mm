@@ -47,6 +47,9 @@ MA 02110-1301, USA.
 #import "OOEnumerationShuffle.h"
 #import "OOFoundationException.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/String.hpp"
 #include <chrono>
 #include <thread>
 
@@ -142,8 +145,6 @@ static GameController *sSharedController = nil;
 	[gameView release];
 	[UNIVERSE release];
 	
-	[playerFileToLoad release];
-	[playerFileDirectory release];
 	[expansionPathsToInclude release];
 	
 	[super dealloc];
@@ -273,7 +274,7 @@ static GameController *sSharedController = nil;
 
 		if ([OOOXPVerifier runVerificationIfRequested])
 		{
-			[self exitAppWithContext:@"OXP verifier run"];
+			[self cxx_exitAppWithContext:"OXP verifier run"];
 		}
 		else 
 		{
@@ -309,7 +310,7 @@ static GameController *sSharedController = nil;
 		
 		[self loadPlayerIfRequired];
 		
-		[self logProgress:@""];
+		[self cxx_logProgress:""];
 		
 		// get the run loop and add the call to performGameTick:
 		[self startAnimationTimer];
@@ -352,14 +353,15 @@ static GameController *sSharedController = nil;
 
 - (void) loadPlayerIfRequired
 {
-	if (playerFileToLoad != nil)
+	if (playerFileToLoad.has_value())
 	{
-		[self logProgress:DESC(@"loading-player")];
+		[self cxx_logProgress:oo::StdString(DESC(@"loading-player"))];
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:playerFileToLoad asNew:NO];
+		// PlayerEntityLoadSave is not migrated yet: converted at the call.
+		[PLAYER loadPlayerFromFile:oo::NSStringFrom(*playerFileToLoad) asNew:NO];
 	}
 }
 
@@ -816,17 +818,17 @@ static void RemovePreference(NSString *key)
 	#error Unknown environment!
 #endif
 
-- (void) logProgress:(NSString *)message
+- (void) cxx_logProgress:(const std::string &)message
 {
 	if (![UNIVERSE doingStartUp])  return;
-	
+
 #if OOLITE_MAC_OS_X
-	[splashProgressTextField setStringValue:message];
+	[splashProgressTextField setStringValue:oo::NSStringFrom(message)];
 	[splashProgressTextField display];
 #endif
-	if([message length] > 0)
+	if (!message.empty())
 	{
-		OOLog(@"startup.progress", @"===== [%.2f s] %@", -[_splashStart timeIntervalSinceNow], message);
+		OOLog(@"startup.progress", @"===== [%.2f s] %@", -[_splashStart timeIntervalSinceNow], oo::NSStringFrom(message));
 	}
 }
 
@@ -839,9 +841,9 @@ static void RemovePreference(NSString *key)
 }
 
 
-- (NSString *) debugMessageCurrentString
+- (std::string) cxx_debugMessageCurrentString
 {
-	return [splashProgressTextField stringValue];
+	return oo::StdString([splashProgressTextField stringValue]);
 }
 #else
 - (BOOL) debugMessageTrackingIsOn
@@ -850,43 +852,31 @@ static void RemovePreference(NSString *key)
 }
 
 
-- (NSString *) debugMessageCurrentString
+- (std::string) cxx_debugMessageCurrentString
 {
-	return @"";
+	return "";
 }
 #endif
 
-- (void) debugLogProgress:(NSString *)format, ...
+- (void) cxx_debugLogProgress:(const std::string &)message
 {
-	va_list args;
-	va_start(args, format);
-	[self debugLogProgress:format arguments:args];
-	va_end(args);
+	[self cxx_logProgress:message];
 }
 
 
-- (void) debugLogProgress:(NSString *)format arguments:(va_list)arguments
+namespace
 {
-	NSString *message = [[[NSString alloc] initWithFormat:format arguments:arguments] autorelease];
-	[self logProgress:message];
+std::vector<std::string> sMessageStack;
 }
 
-
-static NSMutableArray *sMessageStack;
-
-- (void) debugPushProgressMessage:(NSString *)format, ...
+- (void) cxx_debugPushProgressMessage:(const std::string &)message
 {
 	if ([self debugMessageTrackingIsOn])
 	{
-		if (sMessageStack == nil)  sMessageStack = [[NSMutableArray alloc] init];
-		[sMessageStack addObject:[self debugMessageCurrentString]];
-		
-		va_list args;
-		va_start(args, format);
-		[self debugLogProgress:format arguments:args];
-		va_end(args);
+		sMessageStack.push_back([self cxx_debugMessageCurrentString]);
+		[self cxx_debugLogProgress:message];
 	}
-	
+
 	OOLogIndentIf(@"startup.progress");
 }
 
@@ -894,12 +884,12 @@ static NSMutableArray *sMessageStack;
 - (void) debugPopProgressMessage
 {
 	OOLogOutdentIf(@"startup.progress");
-	
-	if ([sMessageStack count] > 0)
+
+	if (!sMessageStack.empty())
 	{
-		NSString *message = [sMessageStack lastObject];
-		if ([message length] > 0)  [self logProgress:message];
-		[sMessageStack removeLastObject];
+		const std::string message = sMessageStack.back();
+		if (!message.empty())  [self cxx_logProgress:message];
+		sMessageStack.pop_back();
 	}
 }
 
@@ -948,8 +938,8 @@ static NSMutableArray *sMessageStack;
 {
 	if ([[filename pathExtension] isEqual:@"oolite-save"])
 	{
-		[self setPlayerFileToLoad:filename];
-		[self setPlayerFileDirectory:filename];
+		[self cxx_setPlayerFileToLoad:oo::StdString(filename)];
+		[self cxx_setPlayerFileDirectory:oo::OptionalString(filename)];
 		return YES;
 	}
 	if ([[filename pathExtension] isEqualToString:@"oxp"])
@@ -970,10 +960,10 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (void) exitAppWithContext:(NSString *)context
+- (void) cxx_exitAppWithContext:(const std::string &)context
 {
 	[gameView.window orderOut:nil];
-	[(OoliteApp *)NSApp setExitContext:context];
+	[(OoliteApp *)NSApp setExitContext:oo::NSStringFrom(context)];
 	[NSApp terminate:self];
 }
 
@@ -988,9 +978,9 @@ static NSMutableArray *sMessageStack;
 #elif OOLITE_SDL
 #include <SDL3/SDL_init.h>
 
-- (void) exitAppWithContext:(NSString *)context
+- (void) cxx_exitAppWithContext:(const std::string &)context
 {
-	OOLog(@"exit.context", @"Exiting: %@.", context);
+	OOLog(@"exit.context", @"Exiting: %@.", oo::NSStringFrom(context));
 #if (OOLITE_GNUSTEP && !defined(NDEBUG))
 	[[OODebugMonitor sharedDebugMonitor] applicationWillTerminate];
 #endif
@@ -1018,7 +1008,7 @@ static NSMutableArray *sMessageStack;
 
 - (void) exitAppCommandQ
 {
-	[self exitAppWithContext:@"Command-Q"];
+	[self cxx_exitAppWithContext:"Command-Q"];
 }
 
 
@@ -1028,55 +1018,49 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (NSString *) playerFileToLoad
+- (std::optional<std::string>) cxx_playerFileToLoad
 {
 	return playerFileToLoad;
 }
 
 
-- (void) setPlayerFileToLoad:(NSString *)filename
+- (void) cxx_setPlayerFileToLoad:(const std::string &)filename
 {
-	if (playerFileToLoad)
-		[playerFileToLoad autorelease];
-	playerFileToLoad = nil;
-	if ([[[filename pathExtension] lowercaseString] isEqual:@"oolite-save"])
-		playerFileToLoad = [filename copy];
+	playerFileToLoad = std::nullopt;
+	if (oo::str::lowercase(oo::str::pathExtension(filename)) == "oolite-save")
+		playerFileToLoad = filename;
 }
 
 
-- (NSString *) playerFileDirectory
+- (std::optional<std::string>) cxx_playerFileDirectory
 {
-	if (playerFileDirectory == nil)
+	if (!playerFileDirectory.has_value())
 	{
-		playerFileDirectory = [[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"];
-		if (playerFileDirectory != nil && ![[NSFileManager defaultManager] fileExistsAtPath:playerFileDirectory])
+		// The defaults stay on NSUserDefaults until its last consumer migrates (ADR-0032): this
+		// process writes save-directory through it below, so it is read through it too.
+		playerFileDirectory = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"]);
+		if (playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*playerFileDirectory)))
 		{
-			playerFileDirectory = nil;
+			playerFileDirectory = std::nullopt;
 		}
-		if (playerFileDirectory == nil)  playerFileDirectory = [[NSFileManager defaultManager] defaultCommanderPath];
-		
-		[playerFileDirectory retain];
+		// NSFileManagerOOExtensions is not migrated yet: converted at the call.
+		if (!playerFileDirectory.has_value())  playerFileDirectory = oo::OptionalString([[NSFileManager defaultManager] defaultCommanderPath]);
 	}
-	
+
 	return playerFileDirectory;
 }
 
 
-- (void) setPlayerFileDirectory:(NSString *)filename
-{	
-	if (playerFileDirectory != nil)
+- (void) cxx_setPlayerFileDirectory:(const std::optional<std::string> &)filename
+{
+	std::optional<std::string> directory = filename;
+	if (directory.has_value() && oo::str::lowercase(oo::str::pathExtension(*directory)) == "oolite-save")
 	{
-		[playerFileDirectory autorelease];
-		playerFileDirectory = nil;
+		directory = oo::str::deletingLastPathComponent(*directory);
 	}
-	
-	if ([[[filename pathExtension] lowercaseString] isEqual:@"oolite-save"])
-	{
-		filename = [filename stringByDeletingLastPathComponent];
-	}
-	
-	playerFileDirectory = [filename retain];
-	[[NSUserDefaults standardUserDefaults] setObject:filename forKey:@"save-directory"];
+
+	playerFileDirectory = directory;
+	[[NSUserDefaults standardUserDefaults] setObject:oo::NSStringOrNil(directory) forKey:@"save-directory"];
 }
 
 
