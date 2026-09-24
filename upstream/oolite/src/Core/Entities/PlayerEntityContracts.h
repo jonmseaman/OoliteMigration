@@ -62,8 +62,8 @@ MA 02110-1301, USA.
 
 @interface PlayerEntity (Contracts)
 
-- (NSString *) processEscapePods;		// removes pods from cargo bay and treats categories of characters carried
-- (NSString *) checkPassengerContracts;	// returns messages from any passengers whose status have changed
+- (std::optional<std::string>) cxx_processEscapePods;		// removes pods from cargo bay and treats categories of characters carried (never nullopt)
+- (std::optional<std::string>) cxx_checkPassengerContracts;	// returns messages from any passengers whose status have changed (nullopt: none)
 
 - (NSDictionary *) reputation;
 
@@ -83,7 +83,7 @@ MA 02110-1301, USA.
 - (void) erodeReputation;
 - (void) normaliseReputation;
 
-- (void) addMessageToReport:(NSString*) report;
+- (void) cxx_addMessageToReport:(const std::string &) report;
 
 // - (void) setGuiToContractsScreen;
 //- (BOOL) pickFromGuiContractsScreen;
@@ -120,3 +120,11 @@ MA 02110-1301, USA.
 - (void) newShipCommonSetup:(NSString *)shipKey yardInfo:(NSDictionary *)ship_info baseInfo:(NSDictionary *)ship_base_dict; 
 
 @end
+
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before bead oo-3rb.179 (chunks of oo-ldqo), forwarding to the cxx_ methods above, so
+	unmigrated callers compile unchanged. Callers move to the cxx_ API in their own sweep beads; the
+	bridge goes in its own bead.
+*/
+#import "PlayerEntityContracts+FoundationBridge.h"
