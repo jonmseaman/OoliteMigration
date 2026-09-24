@@ -28,93 +28,123 @@ MA 02110-1301, USA.
 #import "StationEntity.h"
 #import "ResourceManager.h"
 #import "legacy_random.h"
-#import "OOPListView.h"
 #import "OOJSScript.h"
 #import "PlayerEntity.h"
 #import "OOStringExpander.h"
 #import "OOFoundationBridge.h"
+#include "oofnd/PListGet.hpp"
+
+#include <string_view>
 
 
 namespace {
 
-// Moved from OOCommodities.h (bead oo-3rb.154): this file is their only user. (sort_order,
-// trumble_opinion, comment and short_comment are read only by OOCommodityMarket.mm, which spells
-// its own C++ keys, so their constants went rather than sit here unused.)
-// keys in trade-goods.plist
-static NSString * const kOOCommodityName			= @"name";
-static NSString * const kOOCommodityClasses			= @"classes";
-static NSString * const kOOCommodityContainer		= @"quantity_unit";
-static NSString * const kOOCommodityPeakExport		= @"peak_export";
-static NSString * const kOOCommodityPeakImport		= @"peak_import";
-static NSString * const kOOCommodityPriceAverage	= @"price_average";
-static NSString * const kOOCommodityPriceEconomic	= @"price_economic";
-static NSString * const kOOCommodityPriceRandom		= @"price_random";
+// keys in trade-goods.plist (moved from OOCommodities.h by bead oo-3rb.154; sort_order,
+// trumble_opinion, comment and short_comment are read only by OOCommodityMarket.mm)
+constexpr std::string_view kOOCommodityName			= "name";
+constexpr std::string_view kOOCommodityClasses			= "classes";
+constexpr std::string_view kOOCommodityContainer		= "quantity_unit";
+constexpr std::string_view kOOCommodityPeakExport		= "peak_export";
+constexpr std::string_view kOOCommodityPeakImport		= "peak_import";
+constexpr std::string_view kOOCommodityPriceAverage	= "price_average";
+constexpr std::string_view kOOCommodityPriceEconomic	= "price_economic";
+constexpr std::string_view kOOCommodityPriceRandom		= "price_random";
 // next one cannot be set from file - named for compatibility
-static NSString * const kOOCommodityPriceCurrent	= @"price";
-static NSString * const kOOCommodityQuantityAverage	= @"quantity_average";
-static NSString * const kOOCommodityQuantityEconomic= @"quantity_economic";
-static NSString * const kOOCommodityQuantityRandom	= @"quantity_random";
+constexpr std::string_view kOOCommodityPriceCurrent	= "price";
+constexpr std::string_view kOOCommodityQuantityAverage	= "quantity_average";
+constexpr std::string_view kOOCommodityQuantityEconomic= "quantity_economic";
+constexpr std::string_view kOOCommodityQuantityRandom	= "quantity_random";
 // next one cannot be set from file - named for compatibility
-static NSString * const kOOCommodityQuantityCurrent	= @"quantity";
-static NSString * const kOOCommodityLegalityExport	= @"legality_export";
-static NSString * const kOOCommodityLegalityImport	= @"legality_import";
-static NSString * const kOOCommodityCapacity		= @"capacity";
-static NSString * const kOOCommodityScript			= @"market_script";
+constexpr std::string_view kOOCommodityQuantityCurrent	= "quantity";
+constexpr std::string_view kOOCommodityLegalityExport	= "legality_export";
+constexpr std::string_view kOOCommodityLegalityImport	= "legality_import";
+constexpr std::string_view kOOCommodityCapacity		= "capacity";
+constexpr std::string_view kOOCommodityScript			= "market_script";
 // next one cannot be set from file - named for compatibility
-static NSString * const kOOCommodityKey				= @"key";
+constexpr std::string_view kOOCommodityKey				= "key";
 
 
 // keys in secondary market definitions
-static NSString * const kOOCommodityMarketType					= @"type";
-static NSString * const kOOCommodityMarketName					= @"name";
-static NSString * const kOOCommodityMarketPriceAdder			= @"price_adder";
-static NSString * const kOOCommodityMarketPriceMultiplier		= @"price_multiplier";
-static NSString * const kOOCommodityMarketPriceRandomiser		= @"price_randomiser";
-static NSString * const kOOCommodityMarketQuantityAdder			= @"quantity_adder";
-static NSString * const kOOCommodityMarketQuantityMultiplier	= @"quantity_multiplier";
-static NSString * const kOOCommodityMarketQuantityRandomiser	= @"quantity_randomiser";
-static NSString * const kOOCommodityMarketLegalityExport		= @"legality_export";
-static NSString * const kOOCommodityMarketLegalityImport		= @"legality_import";
-static NSString * const kOOCommodityMarketCapacity				= @"capacity";
+constexpr std::string_view kOOCommodityMarketType					= "type";
+constexpr std::string_view kOOCommodityMarketName					= "name";
+constexpr std::string_view kOOCommodityMarketPriceAdder			= "price_adder";
+constexpr std::string_view kOOCommodityMarketPriceMultiplier		= "price_multiplier";
+constexpr std::string_view kOOCommodityMarketPriceRandomiser		= "price_randomiser";
+constexpr std::string_view kOOCommodityMarketQuantityAdder			= "quantity_adder";
+constexpr std::string_view kOOCommodityMarketQuantityMultiplier	= "quantity_multiplier";
+constexpr std::string_view kOOCommodityMarketQuantityRandomiser	= "quantity_randomiser";
+constexpr std::string_view kOOCommodityMarketLegalityExport		= "legality_export";
+constexpr std::string_view kOOCommodityMarketLegalityImport		= "legality_import";
+constexpr std::string_view kOOCommodityMarketCapacity				= "capacity";
 
 // values for "type" in the plist
-static NSString * const kOOCommodityMarketTypeValueDefault		= @"default";
-static NSString * const kOOCommodityMarketTypeValueClass		= @"class";
-static NSString * const kOOCommodityMarketTypeValueGood			= @"good";
+constexpr std::string_view kOOCommodityMarketTypeValueDefault		= "default";
+constexpr std::string_view kOOCommodityMarketTypeValueClass		= "class";
+constexpr std::string_view kOOCommodityMarketTypeValueGood			= "good";
 
 
-// -[NSDictionary oo_stringForKey:] on a commodity's info: a string, or a number's -stringValue;
+// oo_stringForKey: on a commodity's info: a string, or a number's -stringValue;
 // nullopt (nil) otherwise.
-std::optional<std::string> StringFor(const oo::PList &info, const std::string &key)
+std::optional<std::string> StringFor(const oo::PList &info, std::string_view key)
 {
 	const oo::PList *value = info.find(key);
 	if (value == nullptr || !(value->isString() || value->isNumber()))  return std::nullopt;
 	return info.get<std::string>(key);
 }
 
+// -setObject:forKey: on a copy of an info dictionary (a Dict node; the per-good infos are).
+void Set(oo::PList &info, std::string_view key, oo::PList value)
+{
+	if (oo::PList::Dict *entries = info.getIf<oo::PList::Dict>())  (*entries)[std::string(key)] = std::move(value);
+}
+
+// -oo_setUnsignedInteger:forKey: / -oo_setInteger:forKey: (+numberWithUnsignedInteger: /
+// +numberWithInteger:, which oo::PListFrom reads as an unsigned / signed integer).
+void SetUnsigned(oo::PList &info, std::string_view key, unsigned long long value)
+{
+	Set(info, key, oo::PList::unsignedInteger(value));
+}
+
+void SetSigned(oo::PList &info, std::string_view key, long long value)
+{
+	Set(info, key, oo::PList::signedInteger(value));
+}
+
+// [array containsObject:string] over a PList array (an equal string node).
+bool ContainsString(const oo::PList &array, const std::string &string)
+{
+	const oo::PList::Array *elements = array.getIf<oo::PList::Array>();
+	if (elements == nullptr)  return false;
+	for (const oo::PList &element : *elements)
+	{
+		const std::string *text = element.getIf<std::string>();
+		if (text != nullptr && *text == string)  return true;
+	}
+	return false;
+}
+
 } // namespace
 
 @interface OOCommodities (OOPrivate)
 
-- (NSDictionary *) modifyGood:(NSDictionary *)good withScript:(OOScript *)script atStation:(StationEntity *)station inSystem:(OOSystemID)system localMode:(BOOL)local;
-- (NSDictionary *) createDefinitionFrom:(NSDictionary *) good price:(OOCreditsQuantity)p andQuantity:(OOCargoQuantity)q forKey:(OOCommodityType)key atStation:(StationEntity *)station inSystem:(OOSystemID)system;
+- (oo::PList) modifyGood:(const oo::PList &)good withScript:(OOScript *)script atStation:(StationEntity *)station inSystem:(OOSystemID)system localMode:(BOOL)local;
+- (oo::PList) createDefinitionFrom:(const oo::PList &) good price:(OOCreditsQuantity)p andQuantity:(OOCargoQuantity)q forKey:(const std::string &)key atStation:(StationEntity *)station inSystem:(OOSystemID)system;
 
 
-- (OOCargoQuantity) generateQuantityForGood:(NSDictionary *)good inEconomy:(OOEconomyID)economy;
-- (OOCreditsQuantity) generatePriceForGood:(NSDictionary *)good inEconomy:(OOEconomyID)economy;
+- (OOCargoQuantity) generateQuantityForGood:(const oo::PList &)good inEconomy:(OOEconomyID)economy;
+- (OOCreditsQuantity) generatePriceForGood:(const oo::PList &)good inEconomy:(OOEconomyID)economy;
 
-- (float) economicBiasForGood:(NSDictionary *)good inEconomy:(OOEconomyID)economy;
-- (NSDictionary *) firstModifierForGood:(OOCommodityType)good inClasses:(NSArray *)classes fromList:(NSArray *)definitions;
-- (OOCreditsQuantity) adjustPrice:(OOCreditsQuantity)price byRule:(NSDictionary *)rule;
-- (OOCargoQuantity) adjustQuantity:(OOCargoQuantity)quantity byRule:(NSDictionary *)rule;
-- (NSDictionary *) updateInfoFor:(NSDictionary *)good byRule:(NSDictionary *)rule maxCapacity:(OOCargoQuantity)maxCapacity;
+- (float) economicBiasForGood:(const oo::PList &)good inEconomy:(OOEconomyID)economy;
+- (oo::PList) firstModifierForGood:(const std::string &)good inClasses:(const oo::PList &)classes fromList:(const oo::PList &)definitions;
+- (OOCreditsQuantity) adjustPrice:(OOCreditsQuantity)price byRule:(const oo::PList &)rule;
+- (OOCargoQuantity) adjustQuantity:(OOCargoQuantity)quantity byRule:(const oo::PList &)rule;
+- (oo::PList) updateInfoFor:(const oo::PList &)good byRule:(const oo::PList &)rule maxCapacity:(OOCargoQuantity)maxCapacity;
 
 @end
 
 
 @implementation OOCommodities
 
-/* Older save games store some commodity information by its old index. */
 + (std::optional<std::string>) cxx_legacyCommodityType:(NSUInteger)i
 {
 	switch (i)
@@ -158,8 +188,6 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 	return "food";
 }
 
-
-
 - (id) init
 {
 	self = [super init];
@@ -185,19 +213,17 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 {
 	OOCommodityMarket *market = [[OOCommodityMarket alloc] init];
 
-	NSMutableDictionary *good = nil;
-	for (const auto &[key, info] : _commodityLists)	// key order (was hash order)
+	for (const auto &[commodity, info] : _commodityLists)	// key order (bead oo-3rb.154)
 	{
-		NSString *commodity = oo::NSStringFrom(key);
-		good = [NSMutableDictionary dictionaryWithDictionary:oo::ObjectFromPList(info)];
-		[good oo_setUnsignedInteger:0 forKey:kOOCommodityPriceCurrent];
-		[good oo_setUnsignedInteger:0 forKey:kOOCommodityQuantityCurrent];
+		oo::PList good = info.isDict() ? info : oo::PList(oo::PList::Dict{});	// +dictionaryWithDictionary: of the entry
+		SetUnsigned(good, kOOCommodityPriceCurrent, 0);
+		SetUnsigned(good, kOOCommodityQuantityCurrent, 0);
 		/* The actual capacity of the player ship is a total, not
 		 * per-good, so is managed separately through PlayerEntity */
-		[good oo_setUnsignedInteger:UINT32_MAX forKey:kOOCommodityCapacity];
-		[good setObject:commodity forKey:kOOCommodityKey];
-		
-		[market setGood:commodity withInfo:good];
+		SetUnsigned(good, kOOCommodityCapacity, UINT32_MAX);
+		Set(good, kOOCommodityKey, oo::PList(commodity));
+
+		[market cxx_setGood:commodity withInfo:good];
 	}
 	return [market autorelease];
 }
@@ -207,46 +233,45 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 {
 	OOCommodityMarket *market = [[OOCommodityMarket alloc] init];
 
-	NSMutableDictionary *good = nil;
-	for (const auto &[key, info] : _commodityLists)	// key order (was hash order)
+	for (const auto &[commodity, info] : _commodityLists)	// key order (bead oo-3rb.154)
 	{
-		NSString *commodity = oo::NSStringFrom(key);
-		good = [NSMutableDictionary dictionaryWithDictionary:oo::ObjectFromPList(info)];
-		[good oo_setUnsignedInteger:0 forKey:kOOCommodityPriceCurrent];
-		[good oo_setUnsignedInteger:0 forKey:kOOCommodityQuantityCurrent];
-		[good oo_setUnsignedInteger:0 forKey:kOOCommodityCapacity];
-		[good setObject:commodity forKey:kOOCommodityKey];
-		
-		[market setGood:commodity withInfo:good];
+		oo::PList good = info.isDict() ? info : oo::PList(oo::PList::Dict{});	// +dictionaryWithDictionary: of the entry
+		SetUnsigned(good, kOOCommodityPriceCurrent, 0);
+		SetUnsigned(good, kOOCommodityQuantityCurrent, 0);
+		SetUnsigned(good, kOOCommodityCapacity, 0);
+		Set(good, kOOCommodityKey, oo::PList(commodity));
+
+		[market cxx_setGood:commodity withInfo:good];
 	}
 	return [market autorelease];
 }
 
 
-- (NSDictionary *) createDefinitionFrom:(NSDictionary *) good price:(OOCreditsQuantity)p andQuantity:(OOCargoQuantity)q forKey:(OOCommodityType)key atStation:(StationEntity *)station inSystem:(OOSystemID)system
+- (oo::PList) createDefinitionFrom:(const oo::PList &) good price:(OOCreditsQuantity)p andQuantity:(OOCargoQuantity)q forKey:(const std::string &)key atStation:(StationEntity *)station inSystem:(OOSystemID)system
 {
-	NSMutableDictionary *definition = [NSMutableDictionary dictionaryWithDictionary:good];
-	[definition oo_setUnsignedInteger:p forKey:kOOCommodityPriceCurrent];
-	[definition oo_setUnsignedInteger:q forKey:kOOCommodityQuantityCurrent];
-	if (station == nil && [definition objectForKey:kOOCommodityCapacity] == nil)
+	oo::PList definition = good;
+	SetUnsigned(definition, kOOCommodityPriceCurrent, p);
+	SetUnsigned(definition, kOOCommodityQuantityCurrent, q);
+	if (station == nil && definition.find(kOOCommodityCapacity) == nullptr)
 	{
-		[definition oo_setInteger:MAIN_SYSTEM_MARKET_LIMIT forKey:kOOCommodityCapacity];
+		SetSigned(definition, kOOCommodityCapacity, MAIN_SYSTEM_MARKET_LIMIT);
 	}
 
-	[definition setObject:key forKey:kOOCommodityKey];
+	Set(definition, kOOCommodityKey, oo::PList(key));
 	if (station != nil && ![station marketMonitored])
 	{
 		// clear legal status indicators if the market is not monitored
-		[definition oo_setUnsignedInteger:0 forKey:kOOCommodityLegalityExport];		
-		[definition oo_setUnsignedInteger:0 forKey:kOOCommodityLegalityImport];
+		SetUnsigned(definition, kOOCommodityLegalityExport, 0);
+		SetUnsigned(definition, kOOCommodityLegalityImport, 0);
 	}
 
-	NSString *goodScriptName = oo::PListView(definition).get<NSString *>(kOOCommodityScript);
-	if (goodScriptName == nil)
+	const std::optional<std::string> goodScriptName = StringFor(definition, kOOCommodityScript);
+	if (!goodScriptName.has_value())
 	{
 		return definition;
 	}
-	OOScript *goodScript = [PLAYER commodityScriptNamed:goodScriptName];
+	// -[PlayerEntity commodityScriptNamed:] is not migrated: the name crosses at the call.
+	OOScript *goodScript = [PLAYER commodityScriptNamed:oo::NSStringFrom(*goodScriptName)];
 	if (goodScript == nil)
 	{
 		return definition;
@@ -255,22 +280,23 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 }
 
 
-- (NSDictionary *) modifyGood:(NSDictionary *)good withScript:(OOScript *)script atStation:(StationEntity *)station inSystem:(OOSystemID)system localMode:(BOOL)localMode
+- (oo::PList) modifyGood:(const oo::PList &)good withScript:(OOScript *)script atStation:(StationEntity *)station inSystem:(OOSystemID)system localMode:(BOOL)localMode
 {
-	NSDictionary 		*result = nil;
 	ooscript::Context context = OOJSAcquireContext();
 	ooscript::Value				rval;
-	ooscript::Value				args[] = { 
-		OOJSValueFromNativeObject(context, good),
+	// The JS boundary takes and gives property-list objects: the info crosses as one, and an
+	// accepted result comes back through oo::PListFrom (an exact round trip, Amendment 2 item 11).
+	ooscript::Value				args[] = {
+		OOJSValueFromNativeObject(context, oo::ObjectFromPList(good)),
 		OOJSValueFromNativeObject(context, station),
-		ooscript::int32Value(system) 
+		ooscript::int32Value(system)
 	};
 	BOOL				OK = YES;
-	NSString			*errorType = nil;
+	const char			*errorType = nullptr;
 
 	if (localMode)
 	{
-		errorType = @"local";
+		errorType = "local";
 		OK = [script callMethod:OOJSID("updateLocalCommodityDefinition")
 					  inContext:context
 				  withArguments:args
@@ -279,7 +305,7 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 	}
 	else
 	{
-		errorType = @"general";
+		errorType = "general";
 		OK = [script callMethod:OOJSID("updateGeneralCommodityDefinition")
 					  inContext:context
 				  withArguments:args
@@ -289,27 +315,27 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 
 	if (!OK)
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - unable to call updateLocalCommodityDefinition",errorType,oo::PListView(good).get<NSString *>(kOOCommodityName));
+		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - unable to call updateLocalCommodityDefinition",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityName)));
 		OOJSRelinquishContext(context);
 		return good;
 	}
 
 	if (!ooscript::isObjectOrNull(rval))
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",errorType,oo::PListView(good).get<NSString *>(kOOCommodityKey));
+		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityKey)));
 		OOJSRelinquishContext(context);
 		return good;
 	}
 
-	result = OOJSNativeObjectFromJSObject(context, ooscript::toObject(rval));
+	id result = OOJSNativeObjectFromJSObject(context, ooscript::toObject(rval));
 	OOJSRelinquishContext(context);
-	if (![result isKindOfClass:[NSDictionary class]])
+	if (!oo::IsNSDictionary(result))
 	{
-		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",errorType,oo::PListView(good).get<NSString *>(kOOCommodityKey));
+		OOLog(@"script.commodityScript.error",@"Could not update %@ commodity definition for %@ - return value invalid",oo::NSStringFrom(errorType),oo::NSStringOrNil(StringFor(good, kOOCommodityKey)));
 		return good;
 	}
-	
-	return result;
+
+	return oo::PListFrom(result);
 }
 
 
@@ -319,13 +345,12 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 
 	OOCommodityMarket *market = [[OOCommodityMarket alloc] init];
 
-	for (const auto &[key, info] : _commodityLists)	// key order (was hash order)
+	for (const auto &[commodity, info] : _commodityLists)	// key order (bead oo-3rb.154)
 	{
-		NSString *commodity = oo::NSStringFrom(key);
-		NSDictionary *good = oo::ObjectFromPList(info);
+		oo::PList good = info;
 		OOCargoQuantity q = [self generateQuantityForGood:good inEconomy:economy];
 		// main system market limited to 127 units of each item
-		OOCargoQuantity cap = oo::PListView(good).get<unsigned int>(kOOCommodityCapacity, MAIN_SYSTEM_MARKET_LIMIT);
+		OOCargoQuantity cap = good.get<unsigned int>(kOOCommodityCapacity, MAIN_SYSTEM_MARKET_LIMIT);
 		if (q > cap)
 		{
 			q = cap;
@@ -337,7 +362,7 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 		{
 			good = [self modifyGood:good withScript:script atStation:nil inSystem:[UNIVERSE currentSystemID] localMode:YES];
 		}
-		[market setGood:commodity withInfo:good];
+		[market cxx_setGood:commodity withInfo:good];
 	}
 	return [market autorelease];
 }
@@ -345,39 +370,38 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 
 - (OOCommodityMarket *) generateMarketForStation:(StationEntity *)station
 {
-	NSArray *marketDefinition = [station marketDefinition];
-	NSString *marketScriptName = [station marketScriptName];
-	OOScript *marketScript = [PLAYER commodityScriptNamed:marketScriptName];
-	if (marketDefinition == nil && marketScript == nil)
+	const oo::PList marketDefinition = [station cxx_marketDefinition];
+	OOScript *marketScript = [PLAYER commodityScriptNamed:oo::NSStringOrNil([station cxx_marketScriptName])];
+	if (!marketDefinition && marketScript == nil)
 	{
 		OOCommodityMarket *market = [self generateBlankMarket];
 		return market;
 	}
-	
+
 	OOCommodityMarket *market = [[OOCommodityMarket alloc] init];
 	OOCargoQuantity capacity = [station marketCapacity];
 	OOCommodityMarket *mainMarket = [UNIVERSE commodityMarket];
 
-	for (const auto &[key, info] : _commodityLists)	// key order (was hash order)
+	for (const auto &[commodity, info] : _commodityLists)	// key order (bead oo-3rb.154)
 	{
-		NSString *commodity = oo::NSStringFrom(key);
-		NSDictionary *good = oo::ObjectFromPList(info);
-		OOCargoQuantity baseCapacity = oo::PListView(good).get<unsigned int>(kOOCommodityCapacity, MAIN_SYSTEM_MARKET_LIMIT);
-		
+		oo::PList good = info;
+		OOCargoQuantity baseCapacity = good.get<unsigned int>(kOOCommodityCapacity, MAIN_SYSTEM_MARKET_LIMIT);
+
 		// important - ensure baseCapacity cannot be zero
 		if (!baseCapacity)  baseCapacity = MAIN_SYSTEM_MARKET_LIMIT;
 
-		OOCargoQuantity q = [mainMarket quantityForGood:commodity];
-		OOCreditsQuantity p = [mainMarket priceForGood:commodity];
-		
+		OOCargoQuantity q = [mainMarket cxx_quantityForGood:commodity];
+		OOCreditsQuantity p = [mainMarket cxx_priceForGood:commodity];
+
 		if (marketScript == nil)
 		{
-			NSDictionary *modifier = [self firstModifierForGood:commodity inClasses:oo::PListView(good).get<NSArray *>(kOOCommodityClasses) fromList:marketDefinition];
+			const oo::PList *classes = good.get<oo::PList::Array>(kOOCommodityClasses);
+			const oo::PList modifier = [self firstModifierForGood:commodity inClasses:(classes != nullptr) ? *classes : oo::PList() fromList:marketDefinition];
 			good = [self updateInfoFor:good byRule:modifier maxCapacity:capacity];
 			p = [self adjustPrice:p byRule:modifier];
-		
+
 			// first, scale to this station's capacity for this good
-			OOCargoQuantity localCapacity = oo::PListView(good).get<unsigned int>(kOOCommodityCapacity);
+			OOCargoQuantity localCapacity = good.get<unsigned int>(kOOCommodityCapacity);
 			if (localCapacity > capacity)
 			{
 				localCapacity = capacity;
@@ -401,7 +425,7 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 			good = [self modifyGood:good withScript:marketScript atStation:station inSystem:[UNIVERSE currentSystemID] localMode:YES];
 		}
 
-		[market setGood:commodity withInfo:good];
+		[market cxx_setGood:commodity withInfo:good];
 	}
 	return [market autorelease];
 }
@@ -433,7 +457,7 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 	for (const auto &[key, info] : _commodityLists)	// key order (was hash order): the first match wins
 	{
 		// OOExpand (OOStringExpander) is not migrated: the name crosses at the call.
-		const std::optional<std::string> expanded = oo::OptionalString(OOExpand(oo::NSStringOrNil(StringFor(info, oo::StdString(kOOCommodityName)))));
+		const std::optional<std::string> expanded = oo::OptionalString(OOExpand(oo::NSStringOrNil(StringFor(info, kOOCommodityName))));
 		if (expanded == name) {
 			return key;
 		}
@@ -460,22 +484,22 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 	{
 		return UNITS_TONS;
 	}
-	return OOMassUnitFromNumber(entry->second.get<unsigned int>(oo::StdString(kOOCommodityContainer)));
+	return OOMassUnitFromNumber(entry->second.get<unsigned int>(kOOCommodityContainer));
 }
 
 
 
 
-- (OOCargoQuantity) generateQuantityForGood:(NSDictionary *)good inEconomy:(OOEconomyID)economy
+- (OOCargoQuantity) generateQuantityForGood:(const oo::PList &)good inEconomy:(OOEconomyID)economy
 {
 	float bias = [self economicBiasForGood:good inEconomy:economy];
 
-	float base = oo::PListView(good).get<float>(kOOCommodityQuantityAverage);
-	float econ = base * oo::PListView(good).get<float>(kOOCommodityQuantityEconomic) * bias;
+	float base = good.get<float>(kOOCommodityQuantityAverage);
+	float econ = base * good.get<float>(kOOCommodityQuantityEconomic) * bias;
 	// Two draws, in the order clang evaluated the operands of the former (randf() - randf()).
 	float firstDraw = randf();
 	float secondDraw = randf();
-	float random = base * oo::PListView(good).get<float>(kOOCommodityQuantityRandom) * (firstDraw - secondDraw);
+	float random = base * good.get<float>(kOOCommodityQuantityRandom) * (firstDraw - secondDraw);
 	base += econ + random;
 	if (base < 0.0)
 	{
@@ -488,16 +512,16 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 }
 
 
-- (OOCreditsQuantity) generatePriceForGood:(NSDictionary *)good inEconomy:(OOEconomyID)economy
+- (OOCreditsQuantity) generatePriceForGood:(const oo::PList &)good inEconomy:(OOEconomyID)economy
 {
 	float bias = [self economicBiasForGood:good inEconomy:economy];
 
-	float base = oo::PListView(good).get<float>(kOOCommodityPriceAverage);
-	float econ = base * oo::PListView(good).get<float>(kOOCommodityPriceEconomic) * -bias;
+	float base = good.get<float>(kOOCommodityPriceAverage);
+	float econ = base * good.get<float>(kOOCommodityPriceEconomic) * -bias;
 	// Two draws, in the order clang evaluated the operands of the former (randf() - randf()).
 	float firstDraw = randf();
 	float secondDraw = randf();
-	float random = base * oo::PListView(good).get<float>(kOOCommodityPriceRandom) * (firstDraw - secondDraw);
+	float random = base * good.get<float>(kOOCommodityPriceRandom) * (firstDraw - secondDraw);
 	base += econ + random;
 	if (base < 0.0)
 	{
@@ -510,38 +534,35 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 }
 
 
-- (OOCreditsQuantity) cxx_samplePriceForCommodity:(const std::string &)commodityKey inEconomy:(OOEconomyID)economy withScript:(const std::optional<std::string> &)scriptNameValue inSystem:(OOSystemID)system
+- (OOCreditsQuantity) cxx_samplePriceForCommodity:(const std::string &)commodity inEconomy:(OOEconomyID)economy withScript:(const std::optional<std::string> &)scriptName inSystem:(OOSystemID)system
 {
-	const auto entry = _commodityLists.find(commodityKey);
+	const auto entry = _commodityLists.find(commodity);
 	if (entry == _commodityLists.end() || !entry->second.isDict())
 	{
 		return 0;
 	}
-	// The pricing below is Foundation until chunk 2: key, info and script name cross here.
-	NSString *commodity = oo::NSStringFrom(commodityKey);
-	NSString *scriptName = oo::NSStringOrNil(scriptNameValue);
-	NSDictionary *good = oo::ObjectFromPList(entry->second);
+	oo::PList good = entry->second;
 	OOCreditsQuantity p = [self generatePriceForGood:good inEconomy:economy];
 
 	good = [self createDefinitionFrom:good price:p andQuantity:0 forKey:commodity atStation:nil inSystem:system];
-	if (scriptName != nil)
+	if (scriptName.has_value())
 	{
-		OOScript *script = [PLAYER commodityScriptNamed:scriptName];
+		OOScript *script = [PLAYER commodityScriptNamed:oo::NSStringFrom(*scriptName)];
 		if (script != nil)
 		{
 			good = [self modifyGood:good withScript:script atStation:nil inSystem:system localMode:YES];
 		}
 	}
-	return oo::PListView(good).get<NSUInteger>(kOOCommodityPriceCurrent);
+	return good.get<unsigned long long>(kOOCommodityPriceCurrent);
 }
 
 
 // positive = exporter; negative = importer; range -1.0 .. +1.0
-- (float) economicBiasForGood:(NSDictionary *)good inEconomy:(OOEconomyID)economy
+- (float) economicBiasForGood:(const oo::PList &)good inEconomy:(OOEconomyID)economy
 {
-	OOEconomyID exporter = oo::PListView(good).get<int>(kOOCommodityPeakExport);
-	OOEconomyID importer = oo::PListView(good).get<int>(kOOCommodityPeakImport);
-	
+	OOEconomyID exporter = good.get<int>(kOOCommodityPeakExport);
+	OOEconomyID importer = good.get<int>(kOOCommodityPeakImport);
+
 	// *2 and /2 to work in ints at this stage
 	int exDiff = abs(economy-exporter)*2;
 	int imDiff = abs(economy-importer)*2;
@@ -565,43 +586,43 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 }
 
 
-- (NSDictionary *) firstModifierForGood:(OOCommodityType)good inClasses:(NSArray *)classes fromList:(NSArray *)definitions
+- (oo::PList) firstModifierForGood:(const std::string &)good inClasses:(const oo::PList &)classes fromList:(const oo::PList &)definitions
 {
 	NSUInteger i;
-	for (i = 0; i < [definitions count]; i++)
+	for (i = 0; i < definitions.count(); i++)
 	{
-		NSDictionary *definition = oo::PListView(definitions).at<NSDictionary *>(i);
-		if (definition != nil)
+		const oo::PList *definition = definitions.at(i);
+		if (definition != nullptr && definition->isDict())
 		{
-			NSString *applicationType = oo::PListView(definition).get<NSString *>(kOOCommodityMarketType, kOOCommodityMarketTypeValueDefault);
-			NSString *applicationName = oo::PListView(definition).get<NSString *>(kOOCommodityMarketName, @"");
+			const std::string applicationType = StringFor(*definition, kOOCommodityMarketType).value_or(std::string(kOOCommodityMarketTypeValueDefault));
+			const std::string applicationName = StringFor(*definition, kOOCommodityMarketName).value_or(std::string());
 
 			if (
-				[applicationType isEqualToString:kOOCommodityMarketTypeValueDefault]
-				|| ([applicationType isEqualToString:kOOCommodityMarketTypeValueGood] && [applicationName isEqualToString:good])
-				|| ([applicationType isEqualToString:kOOCommodityMarketTypeValueClass] && [classes containsObject:applicationName])
+				applicationType == kOOCommodityMarketTypeValueDefault
+				|| (applicationType == kOOCommodityMarketTypeValueGood && applicationName == good)
+				|| (applicationType == kOOCommodityMarketTypeValueClass && ContainsString(classes, applicationName))
 				)
 			{
-				return definition;
+				return *definition;
 			}
 		}
 	}
 	// return a blank dictionary - default values will do the rest
-	return [NSDictionary dictionary];
+	return oo::PList(oo::PList::Dict{});
 }
 
 
-- (OOCreditsQuantity) adjustPrice:(OOCreditsQuantity)price byRule:(NSDictionary *)rule
+- (OOCreditsQuantity) adjustPrice:(OOCreditsQuantity)price byRule:(const oo::PList &)rule
 {
 	float p = (float)price; // work in floats to avoid rounding problems
-	float pa = oo::PListView(rule).get<float>(kOOCommodityMarketPriceAdder, 0.0);
-	float pm = oo::PListView(rule).get<float>(kOOCommodityMarketPriceMultiplier, 1.0);
+	float pa = rule.get<float>(kOOCommodityMarketPriceAdder, 0.0);
+	float pm = rule.get<float>(kOOCommodityMarketPriceMultiplier, 1.0);
 	if (pm <= 0.0 && pa <= 0.0)
 	{
 		// setting a price multiplier of 0 forces the price to zero
 		return 0;
 	}
-	float pr = oo::PListView(rule).get<float>(kOOCommodityMarketPriceRandomiser, 0.0);
+	float pr = rule.get<float>(kOOCommodityMarketPriceRandomiser, 0.0);
 	p += pa;
 	p = (p * pm) + (p * pr * (randf()-randf()));
 	if (p < 1.0)
@@ -614,17 +635,17 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 }
 
 
-- (OOCargoQuantity) adjustQuantity:(OOCargoQuantity)quantity byRule:(NSDictionary *)rule
+- (OOCargoQuantity) adjustQuantity:(OOCargoQuantity)quantity byRule:(const oo::PList &)rule
 {
 	float q = (float)quantity; // work in floats to avoid rounding problems
-	float qa = oo::PListView(rule).get<float>(kOOCommodityMarketQuantityAdder, 0.0);
-	float qm = oo::PListView(rule).get<float>(kOOCommodityMarketQuantityMultiplier, 1.0);
+	float qa = rule.get<float>(kOOCommodityMarketQuantityAdder, 0.0);
+	float qm = rule.get<float>(kOOCommodityMarketQuantityMultiplier, 1.0);
 	if (qm <= 0.0 && qa <= 0.0)
 	{
 		// setting a price multiplier of 0 forces the price to zero
 		return 0;
 	}
-	float qr = oo::PListView(rule).get<float>(kOOCommodityMarketQuantityRandomiser, 0.0);
+	float qr = rule.get<float>(kOOCommodityMarketQuantityRandomiser, 0.0);
 	q += qa;
 	q = (q * qm) + (q * qr * (randf()-randf()));
 	if (q < 0.0)
@@ -638,33 +659,33 @@ std::optional<std::string> StringFor(const oo::PList &info, const std::string &k
 }
 
 
-- (NSDictionary *) updateInfoFor:(NSDictionary *)good byRule:(NSDictionary *)rule maxCapacity:(OOCargoQuantity)maxCapacity
+- (oo::PList) updateInfoFor:(const oo::PList &)good byRule:(const oo::PList &)rule maxCapacity:(OOCargoQuantity)maxCapacity
 {
-	NSMutableDictionary *tmp = [NSMutableDictionary dictionaryWithDictionary:good];
-	NSInteger import = oo::PListView(rule).get<NSInteger>(kOOCommodityMarketLegalityImport, -1);
+	oo::PList tmp = good;
+	long long import = rule.get<long long>(kOOCommodityMarketLegalityImport, -1);
 	if (import >= 0)
 	{
-		[tmp oo_setInteger:import forKey:kOOCommodityLegalityImport];
+		SetSigned(tmp, kOOCommodityLegalityImport, import);
 	}
 
-	NSInteger exportValue = oo::PListView(rule).get<NSInteger>(kOOCommodityMarketLegalityExport, -1);
+	long long exportValue = rule.get<long long>(kOOCommodityMarketLegalityExport, -1);
 	if (exportValue >= 0)
 	{
-		[tmp oo_setInteger:import forKey:kOOCommodityLegalityExport];
+		SetSigned(tmp, kOOCommodityLegalityExport, import);	// (sic: upstream writes the import value here)
 	}
 
-	NSInteger capacity = oo::PListView(rule).get<NSInteger>(kOOCommodityMarketCapacity, -1);
-	if (capacity >= 0 && capacity <= (NSInteger)maxCapacity)
+	long long capacity = rule.get<long long>(kOOCommodityMarketCapacity, -1);
+	if (capacity >= 0 && capacity <= (long long)maxCapacity)
 	{
-		[tmp oo_setInteger:capacity forKey:kOOCommodityCapacity];
+		SetSigned(tmp, kOOCommodityCapacity, capacity);
 	}
 	else
 	{
 		// set to the station max capacity
-		[tmp oo_setInteger:maxCapacity forKey:kOOCommodityCapacity];
+		SetSigned(tmp, kOOCommodityCapacity, maxCapacity);
 	}
 
-	return [[tmp copy] autorelease];
+	return tmp;
 }
 
 
