@@ -8026,7 +8026,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 {
 	if (![self isUnpiloted])
 	{
-		OOCharacter *crewMember = [OOCharacter randomCharacterWithRole:oo::NSStringFrom(crewRole)
+		OOCharacter *crewMember = [OOCharacter randomCharacterWithRole:crewRole
 												 andOriginalSystem:[self homeSystem]];
 		[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(crewMember) }];
 	}
@@ -8043,7 +8043,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	result.reserve(crew->size());
 	for (const auto &crewMember : *crew)
 	{
-		result.push_back(oo::PListFrom([crewMember.get() infoForScripting]));
+		result.push_back([crewMember.get() infoForScripting]);
 	}
 	return result;
 }
@@ -12524,7 +12524,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	for (i = 1; i < n_pods; i++)
 	{
 		ShipEntity	*passenger = nil;
-		passenger = [self launchPodWithCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>([OOCharacter randomCharacterWithRole:@"passenger" andOriginalSystem:gen_rnd_number()]) }];
+		passenger = [self launchPodWithCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>([OOCharacter randomCharacterWithRole:"passenger" andOriginalSystem:gen_rnd_number()]) }];
 		if (passengers.has_value())  passengers->emplace_back(passenger);
 	}
 
