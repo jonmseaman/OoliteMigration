@@ -12,6 +12,9 @@ This code is hereby placed in the public domain.
 #import "OODeepCopy.h"
 #import "NSObjectOOExtensions.h"
 #import "OOJavaScriptEngine.h"	// OOObject (OOJavaScript)
+#import "OOStringBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 /*	OOWeakReference was a gnustep-base proxy-root subclass that forwarded every message as an invocation
@@ -28,7 +31,7 @@ This code is hereby placed in the public domain.
 	That proxy root implemented only a few methods itself and forwarded the rest; OOObject and its
 	categories implement more, so the ones the proxy forwarded are forwarded here explicitly
 	(isKindOfClass: and friends, the description components, the JavaScript conversions, the
-	deep copy, the GNUstep bridge's -className and delayed perform, the object size). -hash is
+	deep copy, the GNUstep bridge's -className, the object size). -hash is
 	the proxy root's value (the address shifted right by 3, measured against gnustep-base 1.31.1), so
 	a set of weak references (OOWeakSet) keeps its iteration order.
 */
@@ -61,10 +64,10 @@ return [result autorelease];
 }
 
 
-- (NSString *)description
+- (id)description
 {
 	if (_object != nil)  return [_object description];
-	else  return [NSString stringWithFormat:@"<Dead %@ %p>", [self class], self];
+	else  return oo::NSStringFrom(oo::str::format("<Dead %s %s>", oo::StdString([[self class] description]).c_str(), oo::str::pointerDescription(self).c_str()));
 }
 
 
@@ -172,12 +175,6 @@ return [result autorelease];
 - (NSString *) className
 {
 	return [(id)_object className];
-}
-
-
-- (void) performSelector:(SEL)selector withObject:(id)argument afterDelay:(NSTimeInterval)delay
-{
-	[(id)_object performSelector:selector withObject:argument afterDelay:delay];
 }
 
 
