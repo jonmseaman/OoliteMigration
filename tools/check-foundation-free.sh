@@ -16,7 +16,8 @@
 #   ns        every NS[A-Z]... identifier not on the OOFoundationTypes.h allow-list below
 #   import    a Foundation header import or include
 #   bridge    an X+FoundationBridge / X+OODefaultsBridge file, or an include of one
-#   oolog     a call of the NSString OOLog API (OOLog, OOLogERR/WARN, OODebugLog, ...) or a kOOLog* constant
+#   oolog     a call of the NSString OOLog API (OOLog, OOLogERR/WARN, OODebugLog, ...); a kOOLog*
+#             constant is not one by itself (a const char * class is OO_LOG's own form)
 # and exempts the boundary headers oo-qps's own children delete (BOUNDARY below) and, everywhere,
 # the transitional helper spellings (oo::NS*, NSStringFrom). --stage source drops every exemption
 # and adds:
@@ -92,7 +93,7 @@ scan() {
 		if (stage == "source" && line ~ /#[ \t]*(import|include)[ \t]*"(OOStringBridge|OOFoundationBridge|OOPListView|OOFoundationException|OOObjectGNUstepBridge|OOEnumerationShuffle)\.h"/) hit("boundary", "include")
 		if (stage == "source" && line ~ /OOFoundationException|oo::PListView|(^|[^A-Za-z0-9_])StdString\(/) hit("boundary", "helper")
 		s = line
-		while (match(s, /(^|[^A-Za-z0-9_])OOLog(ERR|WARN|WithArguments|IndentIf|OutdentIf)?[ \t]*\(|(^|[^A-Za-z0-9_])OO(Debug|Extra)Log[ \t]*\(|(^|[^A-Za-z0-9_])kOOLog[A-Za-z]+/)) {
+		while (match(s, /(^|[^A-Za-z0-9_])OOLog(ERR|WARN|WithArguments|IndentIf|OutdentIf)?[ \t]*\(|(^|[^A-Za-z0-9_])OO(Debug|Extra)Log[ \t]*\(/)) {
 			t = substr(s, RSTART, RLENGTH); gsub(/^[^A-Za-z]|[ \t(]+$/, "", t); hit("oolog", t); s = substr(s, RSTART + RLENGTH) }
 		s = line
 		while (match(s, /(oo::)?NS[A-Z][A-Za-z0-9_]*/)) {
@@ -158,7 +159,8 @@ selftest() {
 	local imp="#im""port <Found""ation/Found""ation.h>" gs="gnustep""-base"
 	mk() { mkdir -p "$t/$1/Core"; printf '%s\n' "${@:2}" > "$t/$1/Core/X.mm"; }
 	mk clean '#import "OOCocoa.h"' 'static NSInteger a; NSRange r = NSMakeRange(0, 1); NSPoint p;' \
-		'// an NSString in a comment is not a use' 'id s = @"literal"; OO_LOG("x", "{}", 1); cxx_NSStringy();'
+		'// an NSString in a comment is not a use' 'id s = @"literal"; OO_LOG("x", "{}", 1); cxx_NSStringy();' \
+		'static const char *const kOOLogThing = "thing"; OO_LOG(kOOLogThing, "{}", 2);'
 	expect 0 "allow-list names, comments, literals and OO_LOG pass" scan "$t/clean" sweeps
 	mk ns 'NSString *s = nil;'
 	expect 1 "an NSString use fails" scan "$t/ns" sweeps
@@ -169,7 +171,7 @@ selftest() {
 	mk oolog 'OOLog(@"a", @"b %@", x);'
 	expect 1 "an OOLog call fails" scan "$t/oolog" sweeps
 	mk ext 'OOExtraLog(kOOLogFileNotFound, @"b");'
-	expect 1 "an OOExtraLog / kOOLog constant fails" scan "$t/ext" sweeps
+	expect 1 "an OOExtraLog call fails" scan "$t/ext" sweeps
 	mk br '#import "X+FoundationBridge.h"'
 	expect 1 "a bridge include fails" scan "$t/br" sweeps
 	mkdir -p "$t/brf/Core"; printf 'int x;\n' > "$t/brf/Core/X+FoundationBridge.mm"
