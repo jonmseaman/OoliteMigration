@@ -19,6 +19,7 @@
 #include "oofnd/String.hpp"
 
 #include "oofnd/StdLib.hpp"
+#include "OOTCPStreamDecoderFormat.hpp"
 
 
 struct OOALObject
@@ -59,48 +60,6 @@ std::string DescriptionOf(OOALObjectRef object)
 	return oo::DescriptionOf(oo::ObjectFromPList(object->value));
 }
 
-
-// -initWithFormat:arguments: for the conversions OOTCPStreamDecoder.c uses: %u, %zu, %@ (a
-// handle) and %%. Anything else is copied as it stands.
-std::string FormatWithArguments(const std::string &format, va_list args)
-{
-	std::string out;
-	for (std::size_t i = 0; i < format.size(); ++i)
-	{
-		const char c = format[i];
-		if (c != '%' || i + 1 == format.size())
-		{
-			out += c;
-			continue;
-		}
-		const char next = format[i + 1];
-		if (next == '%')
-		{
-			out += '%';
-			++i;
-		}
-		else if (next == 'u')
-		{
-			out += std::to_string(va_arg(args, unsigned));
-			++i;
-		}
-		else if (next == 'z' && i + 2 < format.size() && format[i + 2] == 'u')
-		{
-			out += std::to_string(va_arg(args, size_t));
-			i += 2;
-		}
-		else if (next == '@')
-		{
-			out += DescriptionOf(va_arg(args, OOALObjectRef));
-			++i;
-		}
-		else
-		{
-			out += c;
-		}
-	}
-	return out;
-}
 
 }	// namespace
 
@@ -154,7 +113,7 @@ bool OOALIsString(OOALObjectRef object)
 
 OOALStringRef OOALStringCreateWithFormatAndArguments(OOALStringRef format, va_list args)
 {
-	return NewObject(oo::PList(FormatWithArguments(DescriptionOf(format), args)));
+	return NewObject(oo::PList(OOTCPStreamDecoderFormat::FormatWithArguments<OOALObjectRef>(DescriptionOf(format), args, DescriptionOf)));
 }
 
 
