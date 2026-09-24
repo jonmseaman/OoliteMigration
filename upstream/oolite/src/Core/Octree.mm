@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OODebugFlags.h"
 #import "NSObjectOOExtensions.h"
 #import "OOPListView.h"
+#include "oofnd/objc/OOException.h"
 
 
 #ifndef NDEBUG
@@ -81,7 +82,7 @@ static BOOL	isHitByOctree(Octree_details axialDetails, Octree_details otherDetai
 {
 	// -init makes no sense, since octrees are immutable.
 	[self release];
-	[NSException raise:NSInternalInconsistencyException format:@"Call of invalid initializer %s", __FUNCTION__];
+	[OOException raise:OOInternalInconsistencyException format:"Call of invalid initializer %s", __FUNCTION__];
 	return nil;
 }
 
@@ -951,7 +952,7 @@ static void SetNode_slow(OOOctreeBuilder *self, uint32_t index, int value)
 	int *newBuffer = (int *)realloc(self->_octree, newCapacity * sizeof *newBuffer);
 	if (EXPECT_NOT(newBuffer == NULL))
 	{
-		[NSException raise:NSMallocException format:@"Failed to allocate memory for octree."];
+		[OOException raise:OOMallocException format:"Failed to allocate memory for octree."];
 	}
 	
 	self->_octree = newBuffer;
