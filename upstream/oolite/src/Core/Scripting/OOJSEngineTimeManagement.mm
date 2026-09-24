@@ -309,7 +309,7 @@ static OOHighResTimeValue		sProfilerStartTime;
 - (void) setExtensionTime:(double)value;
 - (void) setProfileEntries:(const std::vector<oo::ObjCRef<OOTimeProfileEntry *>> &)value;
 
-- (id) propertyListRepresentation;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (oo::PList) propertyListRepresentation;
 
 @end
 
@@ -323,7 +323,7 @@ static OOHighResTimeValue		sProfilerStartTime;
 
 - (void) addSampleWithTotalTime:(OOTimeDelta)totalTime selfTime:(OOTimeDelta)selfTime;
 
-- (id) propertyListRepresentation;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (oo::PList) propertyListRepresentation;
 
 @end
 
@@ -766,11 +766,11 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
-	return OOJSValueFromNativeObject(context, [self propertyListRepresentation]);
+	return OOJSValueFromNativeObject(context, oo::ObjectFromPList([self propertyListRepresentation]));
 }
 
 
-- (id) propertyListRepresentation	// shared selector (proposed ADR-0043)
+- (oo::PList) propertyListRepresentation
 {
 	// "profiles" holds the entry objects themselves, as it always did (the converted forms the old
 	// code built were never used; converting each entry to JavaScript calls this method on it).
@@ -786,7 +786,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 	result.emplace("extensionTime", oo::PList([self extensionTime]));
 	result.emplace("nonExtensionTime", oo::PList([self nonExtensionTime]));
 	result.emplace("profilerOverhead", oo::PList([self profilerOverhead]));
-	return oo::ObjectFromPList(oo::PList(std::move(result)));
+	return oo::PList(std::move(result));
 }
 
 @end
@@ -989,11 +989,11 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 
 - (ooscript::Value) oo_jsValueInContext:(ooscript::Context)context
 {
-	return OOJSValueFromNativeObject(context, [self propertyListRepresentation]);
+	return OOJSValueFromNativeObject(context, oo::ObjectFromPList([self propertyListRepresentation]));
 }
 
 
-- (id) propertyListRepresentation	// shared selector (proposed ADR-0043)
+- (oo::PList) propertyListRepresentation
 {
 	oo::PList::Dict result;
 	// A nameless entry gave an empty dictionary: its nil name ended the object/key list.
@@ -1009,7 +1009,7 @@ static void UpdateProfileForFrame(OOHighResTimeValue now, OOJSProfileStackFrame 
 		result.emplace("selfTimeMax", oo::PList([self selfTimeMax]));
 		result.emplace("isJavaScriptFrame", oo::PList(static_cast<bool>([self isJavaScriptFrame])));
 	}
-	return oo::ObjectFromPList(oo::PList(std::move(result)));
+	return oo::PList(std::move(result));
 }
 
 @end
