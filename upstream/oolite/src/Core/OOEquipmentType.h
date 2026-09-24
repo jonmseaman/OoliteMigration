@@ -39,6 +39,9 @@ SOFTWARE.
 #include <map>
 #include <optional>
 #include <string>
+#include <vector>
+
+#include "oofnd/PList.hpp"
 
 
 @interface OOEquipmentType: OOObject <OOCopying>
@@ -71,17 +74,18 @@ SOFTWARE.
 	NSUInteger				_repairTime;
 	GLfloat     			_damageProbability;
 	OOCargoQuantity			_requiredCargoSpace;
-	NSSet					*_requiresEquipment;
-	NSSet					*_requiresAnyEquipment;
-	NSSet					*_incompatibleEquipment;
-	NSArray					*_conditions;
+	// Sorted, de-duplicated equipment keys; nullopt when the key is absent (was nil).
+	std::optional<std::vector<std::string>>	_requiresEquipment;
+	std::optional<std::vector<std::string>>	_requiresAnyEquipment;
+	std::optional<std::vector<std::string>>	_incompatibleEquipment;
+	oo::PList				_conditions;		// an array; null: none (was nil)
 	NSArray					*_provides;
 	NSArray					*_defaultActivateKey;
 	NSArray					*_defaultModeKey;
 	NSDictionary			*_scriptInfo;
 	NSDictionary			*_weaponInfo;
 	NSString				*_script;
-	NSString				*_condition_script;
+	std::optional<std::string>	_condition_script;
 	
 	ooscript::Object _jsSelf;
 }
@@ -130,14 +134,15 @@ SOFTWARE.
 - (BOOL) isAvailableToNPCs;
 
 - (OOCargoQuantity) requiredCargoSpace;
-- (NSSet *) requiresEquipment;		// Set of equipment identifiers; all items required
-- (NSSet *) requiresAnyEquipment;	// Set of equipment identifiers; any item required
-- (NSSet *) incompatibleEquipment;	// Set of equipment identifiers; all items prohibited
+// Equipment identifiers, sorted and de-duplicated; nullopt when not specified.
+- (std::optional<std::vector<std::string>>) cxx_requiresEquipment;		// all items required
+- (std::optional<std::vector<std::string>>) cxx_requiresAnyEquipment;	// any item required
+- (std::optional<std::vector<std::string>>) cxx_incompatibleEquipment;	// all items prohibited
 
 // FIXME: should have general mechanism to handle scripts or legacy conditions.
-- (NSArray *) conditions;
+- (oo::PList) cxx_conditions;	// an array; null: none
 
-- (NSString *) conditionScript;
+- (std::optional<std::string>) cxx_conditionScript;
 
 - (NSDictionary *) scriptInfo;
 - (NSString *) scriptName;

@@ -53,4 +53,37 @@ counterpart and converts arguments and results at the boundary (nil for nil).
 	return oo::NSStringOrNil([self cxx_descriptiveText]);
 }
 
+
+- (NSSet *) requiresEquipment
+{
+	const std::optional<std::vector<std::string>> keys = [self cxx_requiresEquipment];
+	return keys.has_value() ? oo::NSSetFromStrings(*keys) : nil;
+}
+
+
+- (NSSet *) requiresAnyEquipment
+{
+	const std::optional<std::vector<std::string>> keys = [self cxx_requiresAnyEquipment];
+	return keys.has_value() ? oo::NSSetFromStrings(*keys) : nil;
+}
+
+
+- (NSSet *) incompatibleEquipment
+{
+	const std::optional<std::vector<std::string>> keys = [self cxx_incompatibleEquipment];
+	return keys.has_value() ? oo::NSSetFromStrings(*keys) : nil;
+}
+
+
+- (NSArray *) conditions
+{
+	return oo::ObjectFromPList([self cxx_conditions]);
+}
+
+
+- (NSString *) conditionScript
+{
+	return oo::NSStringOrNil([self cxx_conditionScript]);
+}
+
 @end

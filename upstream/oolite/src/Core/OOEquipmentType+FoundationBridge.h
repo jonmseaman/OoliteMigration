@@ -35,6 +35,13 @@ Copyright (C) 2008-2013 Jens Ayton and contributors (OOEquipmentType.h)
 - (NSString *) damagedIdentifier;	// -> -cxx_damagedIdentifier
 - (NSString *) descriptiveText;		// -> -cxx_descriptiveText
 
+- (NSSet *) requiresEquipment;		// Set of equipment identifiers; all items required		-> -cxx_requiresEquipment
+- (NSSet *) requiresAnyEquipment;	// Set of equipment identifiers; any item required		-> -cxx_requiresAnyEquipment
+- (NSSet *) incompatibleEquipment;	// Set of equipment identifiers; all items prohibited	-> -cxx_incompatibleEquipment
+
+- (NSArray *) conditions;			// -> -cxx_conditions
+- (NSString *) conditionScript;		// -> -cxx_conditionScript
+
 @end
 
 #endif	// OOEQUIPMENTTYPE_FOUNDATIONBRIDGE_H
