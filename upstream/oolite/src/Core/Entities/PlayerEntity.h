@@ -409,8 +409,8 @@ typedef enum
 	oo::PList::Dict			reputation;			// signed integers by key (PlayerEntity (Contracts))
 	
 	unsigned				max_passengers;
-	NSMutableArray			*passengers;
-	NSMutableDictionary		*passenger_record;
+	oo::PList::Array		passengers;			// Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			passenger_record;	// arrival time (double) by passenger name
 
 	NSMutableArray			*parcels;
 	NSMutableDictionary		*parcel_record;

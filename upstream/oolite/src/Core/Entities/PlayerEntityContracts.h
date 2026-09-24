@@ -89,8 +89,8 @@ MA 02110-1301, USA.
 //- (BOOL) pickFromGuiContractsScreen;
 //- (void) highlightSystemFromGuiContractsScreen;
 
-- (BOOL) addPassenger:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee advance:(double)advance risk:(unsigned)risk;	// for js scripting
-- (BOOL) removePassenger:(NSString*)Name;	// for js scripting
+- (BOOL) cxx_addPassenger:(const std::string &)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee advance:(double)advance risk:(unsigned)risk;	// for js scripting
+- (BOOL) cxx_removePassenger:(const std::string &)Name;	// for js scripting
 - (BOOL) addParcel:(NSString*)Name start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium risk:(unsigned)risk;	// for js scripting
 - (BOOL) removeParcel:(NSString*)Name;	// for js scripting
 - (BOOL) awardContract:(unsigned)qty commodity:(NSString*)commodity start:(unsigned)start destination:(unsigned)destination eta:(double)eta fee:(double)fee premium:(double)premium;	// for js scripting.
