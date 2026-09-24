@@ -181,25 +181,18 @@ oo::PList ElementAt(const oo::PList &list, NSUInteger index)
 	return (element != nullptr) ? *element : oo::PList();
 }
 
-// -[NSString localizedCompare:]: GNUstep collates with ICU in the current locale (captured on
-// GNUstep 1.31.1, en_US: "_x" < "1.10" < "a" < "A" < "Alpha" < "b", "e" < "E" < "\u00e9"). oofnd has
-// no collation yet, so GNUstep still does this one comparison, on the two strings.
-int LocalizedCompare(const std::string &a, const std::string &b)
-{
-	return (int)[oo::NSStringFrom(a) localizedCompare:oo::NSStringFrom(b)];
-}
-
 /* Sort by category, then title, then version - and that should be unique (was the C function
-   oxzSort, an NSComparisonResult sort function). The version orders descending. */
+   oxzSort, an NSComparisonResult sort function). The version orders descending. Each key collates
+   as the old -localizedCompare did: oo::str::localizedCompare, ICU in the default locale. */
 bool OXZOrderedBefore(const oo::PList &m1, const oo::PList &m2)
 {
-	int result = LocalizedCompare(ManifestString(m1, oo::StdString(kOOManifestCategory)).value_or("zz"), ManifestString(m2, oo::StdString(kOOManifestCategory)).value_or("zz"));
+	int result = oo::str::localizedCompare(ManifestString(m1, oo::StdString(kOOManifestCategory)).value_or("zz"), ManifestString(m2, oo::StdString(kOOManifestCategory)).value_or("zz"));
 	if (result == 0)
 	{
-		result = LocalizedCompare(ManifestString(m1, oo::StdString(kOOManifestTitle)).value_or("zz"), ManifestString(m2, oo::StdString(kOOManifestTitle)).value_or("zz"));
+		result = oo::str::localizedCompare(ManifestString(m1, oo::StdString(kOOManifestTitle)).value_or("zz"), ManifestString(m2, oo::StdString(kOOManifestTitle)).value_or("zz"));
 		if (result == 0)
 		{
-			result = LocalizedCompare(ManifestString(m2, oo::StdString(kOOManifestVersion)).value_or("0"), ManifestString(m1, oo::StdString(kOOManifestVersion)).value_or("0"));
+			result = oo::str::localizedCompare(ManifestString(m2, oo::StdString(kOOManifestVersion)).value_or("0"), ManifestString(m1, oo::StdString(kOOManifestVersion)).value_or("0"));
 		}
 	}
 	return result < 0;

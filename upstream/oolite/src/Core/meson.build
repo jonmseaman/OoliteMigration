@@ -52,6 +52,7 @@ oolite_sources += files(
     'OOEntityFilterPredicate.mm',
     'OOEnumerationShuffle.mm',
     'OOEquipmentType.mm',
+    'OOEquipmentType+FoundationBridge.mm',
     'OOExcludeObjectEnumerator.mm',
     'OOFilteringEnumerator.mm',
     'OOGraphicsResetManager.mm',

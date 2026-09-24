@@ -20,6 +20,7 @@ oofnd_tests = [
     'test_foundation_types',
     'test_string',
     'test_string_compare',
+    'test_localized_compare',
     'test_string_sweep',
     'test_string_format_runtime',
     'test_encoding',
@@ -27,6 +28,7 @@ oofnd_tests = [
     'test_unicode_file',
     'test_unicode_file_decode',
     'test_log',
+    'test_tcp_stream_format',
 ]
 
 foreach t : oofnd_tests
