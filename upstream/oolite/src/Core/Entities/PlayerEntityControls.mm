@@ -5606,7 +5606,7 @@ static BOOL autopilot_pause;
 		for (const auto &sub : [ts cxx_dockSubEntities])
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
-			if(oo::StdString([sub.get() canAcceptShipForDocking:self]) == "TOO_BIG_TO_DOCK") 
+			if([sub.get() canAcceptShipForDocking:self] == "TOO_BIG_TO_DOCK")
 			{
 				message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 				goto abort;
