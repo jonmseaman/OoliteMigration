@@ -81,17 +81,15 @@ typedef enum
 	
 	OOUniversalID			planet;
 
-	NSString				*allegiance;
+	std::optional<std::string>	allegiance;			// nullopt: none (was nil)
 	
 	OOCommodityMarket		*localMarket;
 	OOCargoQuantity			marketCapacity;
-	NSArray					*marketDefinition;
-	NSString				*marketScriptName;
-//	NSMutableArray			*localPassengers;
-//	NSMutableArray			*localContracts;
-	NSMutableArray			*localShipyard;
+	oo::PList				marketDefinition;			// an array; null: none (was nil)
+	std::optional<std::string>	marketScriptName;		// nullopt: none (was nil)
+	std::optional<std::vector<oo::PList>>	localShipyard;	// nullopt: not generated yet (was nil)
 	
-	NSMutableDictionary *localInterfaces;
+	std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>>	localInterfaces;
 
 	unsigned				docked_shuttles;
 	double					last_shuttle_launch_time;
@@ -117,28 +115,26 @@ typedef enum
 
 
 - (OOCargoQuantity) marketCapacity;
-- (NSArray *) marketDefinition;
-- (NSString *) marketScriptName;
+- (oo::PList) cxx_marketDefinition;	// null: none
+- (std::optional<std::string>) cxx_marketScriptName;
 - (BOOL) marketMonitored;
 - (BOOL) marketBroadcast;
 - (OOCreditsQuantity) legalStatusOfManifest:(OOCommodityMarket *)manifest export:(BOOL)isExport;
 
 - (OOCommodityMarket *) localMarket;
-- (void) setLocalMarket:(NSArray *)market;
-- (NSDictionary *) localMarketForScripting;
-- (void) setPrice:(OOCreditsQuantity) price forCommodity:(OOCommodityType) commodity;
-- (void) setQuantity:(OOCargoQuantity) quantity forCommodity:(OOCommodityType) commodity;
+- (void) cxx_setLocalMarket:(const oo::PList &)market;	// [[key, quantity, price], ...] (OOCommodityMarket -cxx_loadStationAmounts:)
+- (oo::PList) cxx_localMarketForScripting;
+- (void) cxx_setPrice:(OOCreditsQuantity) price forCommodity:(const std::string &) commodity;
+- (void) cxx_setQuantity:(OOCargoQuantity) quantity forCommodity:(const std::string &) commodity;
 
-/*- (NSMutableArray *) localPassengers;
-- (void) setLocalPassengers:(NSArray *)market;
-- (NSMutableArray *) localContracts;
-- (void) setLocalContracts:(NSArray *)market; */
-- (NSMutableArray *) localShipyard;
-- (void) setLocalShipyard:(NSArray *)market;
+// The live shipyard, which callers edit in place (proposed ADR-0043 item 22): nullptr on a nil
+// receiver or before -generateShipyard.
+- (std::vector<oo::PList> *) cxx_localShipyard;
+- (void) cxx_setLocalShipyard:(const std::vector<oo::PList> &)shipyard;
 - (void) generateShipyard;
 - (void) generateShipyard:(OOTechLevelID)stationTechLevel;
-- (NSMutableDictionary *) localInterfaces;
-- (void) setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(NSString *)key;
+- (std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>> *) cxx_localInterfaces;	// the live map; nullptr on nil
+- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key;	// nil removes
 
 - (OOCommodityMarket *) initialiseLocalMarket;
 
@@ -157,8 +153,8 @@ typedef enum
 
 - (OOPlanetEntity *) planet;
 
-- (void) setAllegiance:(NSString *)newAllegiance;
-- (NSString *)allegiance;
+- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance;
+- (std::optional<std::string>) cxx_allegiance;	// nullopt: none
 
 - (unsigned) countOfDockedContractors;
 - (unsigned) countOfDockedPolice;
@@ -225,7 +221,7 @@ typedef enum
 
 - (void) acceptPatrolReportFrom:(ShipEntity *)patrol_ship;
 
-- (NSString *) acceptDockingClearanceRequestFrom:(ShipEntity *)other;
+- (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other;
 - (BOOL) requiresDockingClearance;
 - (void) setRequiresDockingClearance:(BOOL)newValue;
 
@@ -238,7 +234,7 @@ typedef enum
 - (BOOL) allowsSaving;
 // no setting this after station creation
 
-- (NSString *) marketOverrideName;
+- (std::optional<std::string>) marketOverrideName;	// nullopt: no "market" key
 - (BOOL) isRotatingStation;
 - (BOOL) hasShipyard;
 

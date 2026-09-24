@@ -51,6 +51,29 @@
 #import "OOFoundationBridge.h"
 
 
+// -oo_stringForKey:'s value without the Foundation type (proposed ADR-0043): a string as is, a
+// number's -stringValue, anything else (or nothing) nullopt, as it gave nil.
+namespace
+{
+
+std::optional<std::string> OptionalStringValue(const oo::PList *value)
+{
+	if (value == nullptr)  return std::nullopt;
+	if (const std::string *string = value->getIf<std::string>())  return *string;
+	if (value->isNumber())  return oo::plist_get::numberStringValue(*value);
+	return std::nullopt;
+}
+
+
+std::optional<std::string> OptionalStringValue(id object)
+{
+	const oo::PList value = oo::PListFrom(object);
+	return OptionalStringValue(&value);
+}
+
+}	// namespace
+
+
 @interface StationEntity (OOPrivate)
 
 - (void) pullInShipIfPermitted:(ShipEntity *)ship;
@@ -126,13 +149,13 @@
 }
 
 
-- (NSArray *) marketDefinition
+- (oo::PList) cxx_marketDefinition
 {
 	return marketDefinition;
 }
 
 
-- (NSString *) marketScriptName
+- (std::optional<std::string>) cxx_marketScriptName
 {
 	return marketScriptName;
 }
@@ -162,18 +185,17 @@
 {
 	OOCreditsQuantity penalty, status = 0;
 	OOCommodityMarket *market = [self localMarket];
-	OOCommodityType good = nil;
-	foreach (good, [market goods])
+	for (const std::string &good : oo::StringsFrom([market goods]))
 	{
 		if (isExport)
 		{
-			penalty = [market exportLegalityForGood:good];
+			penalty = [market cxx_exportLegalityForGood:good];
 		}
 		else
 		{
-			penalty = [market importLegalityForGood:good];
+			penalty = [market cxx_importLegalityForGood:good];
 		}
-		status += penalty * [manifest quantityForGood:good];
+		status += penalty * [manifest cxx_quantityForGood:good];
 	}
 	return status;
 }
@@ -195,59 +217,57 @@
 }
 
 
-- (void) setLocalMarket:(NSArray *) some_market
+- (void) cxx_setLocalMarket:(const oo::PList &) some_market
 {
-	[[self localMarket] loadStationAmounts:some_market];
+	[[self localMarket] cxx_loadStationAmounts:some_market];
 }
 
 
-- (NSDictionary *) localMarketForScripting
+- (oo::PList) cxx_localMarketForScripting
 {
-	return [[self localMarket] dictionaryForScripting];
+	return oo::PListFrom([[self localMarket] dictionaryForScripting]);
 }
 
 
-- (void) setPrice:(OOCreditsQuantity)price forCommodity:(OOCommodityType)commodity
+- (void) cxx_setPrice:(OOCreditsQuantity)price forCommodity:(const std::string &)commodity
 {
-	[[self localMarket] setPrice:price forGood:commodity];
+	[[self localMarket] cxx_setPrice:price forGood:commodity];
 }
 
 
-- (void) setQuantity:(OOCargoQuantity)quantity forCommodity:(OOCommodityType)commodity
+- (void) cxx_setQuantity:(OOCargoQuantity)quantity forCommodity:(const std::string &)commodity
 {
-	[[self localMarket] setQuantity:quantity forGood:commodity];
+	[[self localMarket] cxx_setQuantity:quantity forGood:commodity];
 }
 
 
-- (NSMutableArray *) localShipyard
+- (std::vector<oo::PList> *) cxx_localShipyard
 {
-	return localShipyard;
+	return localShipyard ? &*localShipyard : nullptr;
 }
 
 
-- (void) setLocalShipyard:(NSArray *) some_market
+- (void) cxx_setLocalShipyard:(const std::vector<oo::PList> &) some_market
 {
-	if (localShipyard)
-		[localShipyard release];
-	localShipyard = [[NSMutableArray alloc] initWithArray:some_market];
+	localShipyard = some_market;
 }
 
 
-- (NSMutableDictionary *) localInterfaces
+- (std::map<std::string, oo::ObjCRef<OOJSInterfaceDefinition *>, std::less<>> *) cxx_localInterfaces
 {
-	return localInterfaces;
+	return &localInterfaces;
 }
 
 
-- (void) setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(NSString *)key
+- (void) cxx_setInterfaceDefinition:(OOJSInterfaceDefinition *)definition forKey:(const std::string &)key
 {
 	if (definition == nil)
 	{
-		[localInterfaces removeObjectForKey:key];
+		localInterfaces.erase(key);
 	}
 	else
 	{
-		[localInterfaces setObject:definition forKey:key];
+		localInterfaces[key] = oo::ObjCRef<OOJSInterfaceDefinition *>(definition);
 	}
 }
 
@@ -626,7 +646,6 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		isStation = YES;
 		_shipsOnHold = [[OOWeakSet alloc] init];
 		hasBreakPattern = YES;
-		localInterfaces = [[NSMutableDictionary alloc] init];
 	}
 	return self;
 	
@@ -637,14 +656,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 - (void) dealloc
 {
 	DESTROY(_shipsOnHold);
-	DESTROY(marketDefinition);
-	DESTROY(marketScriptName);
 	DESTROY(localMarket);
-	DESTROY(allegiance);
 //	DESTROY(localPassengers);
 //	DESTROY(localContracts);
-	DESTROY(localShipyard);
-	DESTROY(localInterfaces);
 
 	[super dealloc];
 }
@@ -689,11 +703,12 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	hasNPCTraffic = (unsigned char)oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_npc_traffic", (maxFlightSpeed == 0)); // carriers default to NO
 	hasPatrolShips = oo::PListView(dict).get<oo::FuzzyBoolean>(@"has_patrol_ships", NO);
 	suppress_arrival_reports = (unsigned char)oo::PListView(dict).get<BOOL>(@"suppress_arrival_reports", NO);
-	[self setAllegiance:oo::PListView(dict).get<NSString *>(@"allegiance")];
+	[self cxx_setAllegiance:OptionalStringValue([dict objectForKey:@"allegiance"])];
 
 	marketCapacity = oo::PListView(dict).get<unsigned int>(@"market_capacity", MAIN_SYSTEM_MARKET_LIMIT);
-	marketDefinition = [oo::PListView(dict).get<NSArray *>(@"market_definition", nil) retain];
-	marketScriptName = [oo::PListView(dict).get<NSString *>(@"market_script", nil) retain];
+	oo::PList marketDefinitionValue = oo::PListFrom([dict objectForKey:@"market_definition"]);
+	marketDefinition = marketDefinitionValue.isArray() ? std::move(marketDefinitionValue) : oo::PList();	// oo_arrayForKey:
+	marketScriptName = OptionalStringValue([dict objectForKey:@"market_script"]);
 	marketMonitored = (unsigned char)oo::PListView(dict).get<BOOL>(@"market_monitored", NO);
 	marketBroadcast = (unsigned char)oo::PListView(dict).get<BOOL>(@"market_broadcast", YES);
 
@@ -1333,16 +1348,15 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (NSString *) allegiance
+- (std::optional<std::string>) cxx_allegiance
 {
 	return allegiance;
 }
 
 
-- (void) setAllegiance:(NSString *)newAllegiance
+- (void) cxx_setAllegiance:(const std::optional<std::string> &)newAllegiance
 {
-	[allegiance release];
-	allegiance = [newAllegiance copy];
+	allegiance = newAllegiance;
 }
 
 
@@ -2012,9 +2026,9 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 // used by player - "other" should always be a reference to the player
 // there are some checks in the function from possibly when this wasn't true?
-- (NSString *) acceptDockingClearanceRequestFrom:(ShipEntity *)other
+- (std::optional<std::string>) cxx_acceptDockingClearanceRequestFrom:(ShipEntity *)other
 {
-	NSString	*result = nil;
+	std::optional<std::string>	result;	// nullopt: no answer yet (was nil)
 	double		timeNow = [UNIVERSE getTime];
 	PlayerEntity	*player = PLAYER;
 	
@@ -2045,12 +2059,12 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
 
 		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
-		result = @"DOCKING_CLEARANCE_NOT_REQUIRED";
+		result = "DOCKING_CLEARANCE_NOT_REQUIRED";
 	}
 
 	// Docking clearance already granted for this station - check for
 	// time-out or cancellation (but only for the Player).
-	if( result == nil && [other isPlayer] && self == [player getTargetDockStation])
+	if( !result && [other isPlayer] && self == [player getTargetDockStation])
 	{
 		switch( [player getDockingClearanceStatus] )
 		{
@@ -2058,12 +2072,11 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				if (!no_docking_while_launching)
 				{
 					last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
-					[self sendExpandedMessage:[NSString stringWithFormat:
-						DESC(@"station-docking-clearance-extended-until-@"),
-							ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)]
+					[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-extended-until-@")),
+							{ oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
 						toShip:other];
 					[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_GRANTED];
-					result = @"DOCKING_CLEARANCE_EXTENDED";
+					result = "DOCKING_CLEARANCE_EXTENDED";
 					break;
 				}
 				// else, continue with canceling.
@@ -2072,7 +2085,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 				last_launch_time = timeNow;
 				[self sendExpandedMessage:@"[station-docking-clearance-cancelled]" toShip:other];
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-				result = @"DOCKING_CLEARANCE_CANCELLED";
+				result = "DOCKING_CLEARANCE_CANCELLED";
 				player_reserved_dock = nil;
 				if ([self currentlyInDockingQueues] == 0)
 				{
@@ -2088,7 +2101,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 	// First we must set the status to REQUESTED to avoid problems when 
 	// switching docking targets - even if we later set it back to NONE.
-	if (result == nil && [other isPlayer] && self != [player getTargetDockStation])
+	if (!result && [other isPlayer] && self != [player getTargetDockStation])
 	{
 		player_reserved_dock = nil; // and clear any previously reserved dock
 		[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_REQUESTED];
@@ -2097,20 +2110,20 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	// Deny docking for fugitives at the main station
 	// TODO: Should this be another key in shipdata.plist and/or should this
 	//  apply to all stations?
-	if (result == nil && self == [UNIVERSE station] && [other bounty] > 50)	// do not grant docking clearance to fugitives
+	if (!result && self == [UNIVERSE station] && [other bounty] > 50)	// do not grant docking clearance to fugitives
 	{
 		[self sendExpandedMessage:@"[station-docking-clearance-H-clearance-refused]" toShip:other];
 		if ([other isPlayer])
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-		result = @"DOCKING_CLEARANCE_DENIED_SHIP_FUGITIVE";
+		result = "DOCKING_CLEARANCE_DENIED_SHIP_FUGITIVE";
 	}
 	
-	if (result == nil && [other hasHostileTarget]) // do not grant docking clearance to hostile ships.
+	if (!result && [other hasHostileTarget]) // do not grant docking clearance to hostile ships.
 	{
 		[self sendExpandedMessage:@"[station-docking-clearance-denied]" toShip:other];
 		if ([other isPlayer])
 			[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
-		result = @"DOCKING_CLEARANCE_DENIED_SHIP_HOSTILE";
+		result = "DOCKING_CLEARANCE_DENIED_SHIP_HOSTILE";
 	}
 
 	if (![self hasEligibleDock]) // make sure at least one dock could plausibly accept the player
@@ -2121,31 +2134,29 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 		}
 		[self sendExpandedMessage:@"[station-docking-clearance-denied-no-docks]" toShip:other];
 
-		result = @"DOCKING_CLEARANCE_DENIED_NO_DOCKS";
+		result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
 	}
 	else if (![self hasClearDock]) // skip check if at least one dock clear
 	{
 		// Put ship in queue if we've got incoming or outgoing traffic or
 		// if the player is waiting for manual clearance and we are not
 		// the player
-		if (result == nil && (([self currentlyInDockingQueues] && last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
+		if (!result && (([self currentlyInDockingQueues] && last_launch_time < timeNow) || (![other isPlayer] && [player getDockingClearanceStatus] == DOCKING_CLEARANCE_STATUS_REQUESTED)))
 		{
-			[self sendExpandedMessage:[NSString stringWithFormat:
-																						DESC(@"station-docking-clearance-acknowledged-d-ships-approaching"),
-																					[self currentlyInDockingQueues]+1] toShip:other];
+			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-acknowledged-d-ships-approaching")),
+																					{ [self currentlyInDockingQueues]+1 })) toShip:other];
 			// No need to set status to REQUESTED as we've already done that earlier.
-			result = @"DOCKING_CLEARANCE_DENIED_TRAFFIC_INBOUND";
+			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_INBOUND";
 		}
 
-		if (result == nil && [self currentlyInLaunchingQueues])
+		if (!result && [self currentlyInLaunchingQueues])
 		{
-			[self sendExpandedMessage:[NSString stringWithFormat:
-																						DESC(@"station-docking-clearance-acknowledged-d-ships-departing"),
-																					[self currentlyInLaunchingQueues]+1] toShip:other];
+			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-acknowledged-d-ships-departing")),
+																					{ [self currentlyInLaunchingQueues]+1 })) toShip:other];
 			// No need to set status to REQUESTED as we've already done that earlier.
-			result = @"DOCKING_CLEARANCE_DENIED_TRAFFIC_OUTBOUND";
+			result = "DOCKING_CLEARANCE_DENIED_TRAFFIC_OUTBOUND";
 		}
-		if (result == nil)
+		if (!result)
 		{
 			// if this happens, the station has no docks which allow
 			// docking, so deny clearance
@@ -2153,14 +2164,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 			{
 				[player setDockingClearanceStatus:DOCKING_CLEARANCE_STATUS_NONE];
 			}
-			result = @"DOCKING_CLEARANCE_DENIED_NO_DOCKS";
+			result = "DOCKING_CLEARANCE_DENIED_NO_DOCKS";
 			// but can check to see if we'll open some for later.
 			BOOL openLater = NO;
 			for (const oo::ObjCRef<DockEntity *> &dock : [self cxx_dockSubEntities])
 			{
 				DockEntity *sub = dock.get();
-				NSString *docking = [sub canAcceptShipForDocking:other];
-				if ([docking isEqualToString:@"DOCK_CLOSED"])
+				std::string docking = oo::StdString([sub canAcceptShipForDocking:other]);
+				if (docking == "DOCK_CLOSED")
 				{
 					ooscript::Context context = OOJSAcquireContext();
 					ooscript::Value		rval = ooscript::undefinedValue();
@@ -2193,7 +2204,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	}
 
 	// Ship has passed all checks - grant docking!
-	if (result == nil)
+	if (!result)
 	{
 		last_launch_time = timeNow + DOCKING_CLEARANCE_WINDOW;
 		if ([other isPlayer]) 
@@ -2204,21 +2215,19 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 
 		if ([self hasMultipleDocks] && [other isPlayer])
 		{
-			[self sendExpandedMessage:[NSString stringWithFormat:
-				DESC(@"station-docking-clearance-granted-in-@-until-@"),
-					[player_reserved_dock displayName],
-					ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)]
+			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-in-@-until-@")),
+					{ oo::DescriptionOf([player_reserved_dock displayName]),
+					  oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
 				toShip:other];
 		}
 		else
 		{
-			[self sendExpandedMessage:[NSString stringWithFormat:
-				DESC(@"station-docking-clearance-granted-until-@"),
-					ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)]
+			[self sendExpandedMessage:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"station-docking-clearance-granted-until-@")),
+					{ oo::DescriptionOf(ClockToString([player clockTime] + DOCKING_CLEARANCE_WINDOW, NO)) }))
 				toShip:other];
 		}
 
-		result = @"DOCKING_CLEARANCE_GRANTED";
+		result = "DOCKING_CLEARANCE_GRANTED";
 		[shipAI reactToMessage:@"DOCKING_REQUESTED" context:nil];	// react to the request	
 		[self doScriptEvent:OOJSID("stationAcceptedDockingRequest") withArgument:other];
 	}
@@ -2301,14 +2310,14 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 }
 
 
-- (NSString *) marketOverrideName
+- (std::optional<std::string>) marketOverrideName
 {
 	// 2010.06.14 - Micha - we can't default to the primary role as otherwise the logic
 	//				generating the market in [Universe commodityDataForEconomy:] doesn't
 	//				work properly with the various overrides.  The primary role will get
 	//				used if either there is no market override, or the market wasn't
 	//				defined.
-	return oo::PListView(shipinfoDictionary).get<NSString *>(@"market");
+	return OptionalStringValue([shipinfoDictionary objectForKey:@"market"]);
 }
 
 
@@ -2324,7 +2333,7 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 	// NOTE: non-standard capitalization is documented and entrenched.
 	if (determinant)
 	{		
-		if ([determinant isKindOfClass:[NSArray class]])
+		if (oo::IsNSArray(determinant))
 		{
 			return [PLAYER scriptTestConditions:OOSanitizeLegacyScriptConditions(determinant, nil)];
 		}
@@ -2350,20 +2359,22 @@ oo::PList cxx_OOMakeDockingInstructions(StationEntity *station, HPVector coords,
 {
 	unsigned		i;
 
-	if ([self localShipyard] == nil)
+	if ([self cxx_localShipyard] == nullptr)
 	{
-		[self setLocalShipyard:[UNIVERSE shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:[PLAYER clockTime]]];
+		const oo::PList forSale = oo::PListFrom([UNIVERSE shipsForSaleForSystem:[UNIVERSE currentSystemID] withTL:stationTechLevel atTime:[PLAYER clockTime]]);
+		const oo::PList::Array *entries = forSale.getIf<oo::PList::Array>();
+		[self cxx_setLocalShipyard:entries != nullptr ? *entries : oo::PList::Array()];	// nil gave an empty shipyard
 	}
 
-	NSMutableArray *shipyard = [self localShipyard];
+	std::vector<oo::PList> *shipyard = [self cxx_localShipyard];
 		
 	// remove ships that the player has already bought
-	for (i = 0; i < [shipyard count]; i++)
+	for (i = 0; i < shipyard->size(); i++)
 	{
-		NSString *shipID = oo::PListView(oo::PListView(shipyard).at<NSDictionary *>(i)).get<NSString *>(SHIPYARD_KEY_ID);
-		if ([[PLAYER shipyardRecord] objectForKey:shipID])
+		const std::optional<std::string> shipID = OptionalStringValue((*shipyard)[i].find("id"));	// SHIPYARD_KEY_ID
+		if ([[PLAYER shipyardRecord] objectForKey:oo::NSStringOrNil(shipID)])
 		{
-			[shipyard removeObjectAtIndex:i--];
+			shipyard->erase(shipyard->begin() + i--);
 		}
 	}
 }
