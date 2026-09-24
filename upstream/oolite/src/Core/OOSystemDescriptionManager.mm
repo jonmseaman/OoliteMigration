@@ -140,8 +140,8 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 	// firstly, cache all coordinates
 	for (i=0;i<OO_SYSTEM_CACHE_LENGTH;i++)
 	{
-		// PointFromString (OOStringParsing) is an unmigrated callee: convert at the call.
-		coordinatesCache[i] = PointFromString(oo::NSStringOrNil(StringForKey(propertyCache[i], "coordinates")));
+		// (nil and "" both have no tokens: the zero point)
+		coordinatesCache[i] = cxx_PointFromString(StringForKey(propertyCache[i], "coordinates").value_or(""));
 	}
 	// now for each system find its neighbours
 	for (i=0;i<OO_GALAXIES_AVAILABLE;i++)
@@ -659,8 +659,8 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 			OOLog(@"system.description.error",@"'%zu' is an invalid system index for the current system. This is an internal error. Please report it.",index);
 			return kNilRandomSeed;
 		}
-		// RandomSeedFromString (OOStringParsing) is an unmigrated callee: convert at the call.
-		return RandomSeedFromString(oo::NSStringOrNil(StringForKey(propertyCache[index], "random_seed")));
+		// (nullopt reads as nil did)
+		return cxx_RandomSeedFromString(StringForKey(propertyCache[index], "random_seed"));
 	}
 }
 
@@ -678,7 +678,7 @@ std::optional<std::string> StringForKey(const oo::PList &dict, const char *key)
 		OOLog(@"system.description.error",@"'%d %d' is an invalid system key. This is an internal error. Please report it.",g,s);
 		return kNilRandomSeed;
 	}
-	return RandomSeedFromString(oo::NSStringOrNil(StringForKey(propertyCache[index], "random_seed")));
+	return cxx_RandomSeedFromString(StringForKey(propertyCache[index], "random_seed"));
 }
 
 

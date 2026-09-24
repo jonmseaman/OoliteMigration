@@ -51,12 +51,6 @@ void OOLogOutputHandlerRemoveNSLogHook(void)
 }
 
 
-void OOLogOutputHandlerPrint(NSString *string)
-{
-	cxx_OOLogOutputHandlerPrint(oo::StdString(string));
-}
-
-
 NSString *OOLogHandlerGetLogPath(void)
 {
 	return oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath());

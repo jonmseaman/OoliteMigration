@@ -29,6 +29,8 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "OOMaths.h"
 
+#include "oofnd/PList.hpp"
+
 #define	OCTREE_MIN_HALF_WIDTH	1.0
 
 
@@ -47,7 +49,7 @@ MA 02110-1301, USA.
 	
 	unsigned char		*_collisionOctree;
 	
-	NSData				*_data;
+	oo::Data			_data;
 }
 
 /*
@@ -56,7 +58,7 @@ MA 02110-1301, USA.
 	Deserialize an octree from cache representation.
 	(To make a new octree, build it with OOOctreeBuilder.)
 */
-- (id) initWithDictionary:(NSDictionary *)dictionary;
+- (id) initWithDictionary:(id)dictionary;	// shared selector: an Objective-C dictionary
 
 - (Octree *) octreeScaledBy:(GLfloat)factor;
 
@@ -70,7 +72,7 @@ MA 02110-1301, USA.
 - (BOOL) isHitByOctree:(Octree *)other withOrigin:(Vector)origin andIJK:(Triangle)ijk;
 - (BOOL) isHitByOctree:(Octree *)other withOrigin:(Vector)origin andIJK:(Triangle)ijk andScales:(GLfloat)s1 :(GLfloat)s2;
 
-- (NSDictionary *) dictionaryRepresentation;
+- (oo::PList) cxx_dictionaryRepresentation;	// the cache representation: a dictionary (-dictionaryRepresentation is a Foundation selector)
 
 - (GLfloat) volume;
 

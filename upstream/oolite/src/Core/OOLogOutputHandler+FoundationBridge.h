@@ -33,8 +33,6 @@ Copyright (C) 2007-2013 Jens Ayton (OOLogOutputHandler.h)
 void OOLogOutputHandlerInstallNSLogHook(void);
 void OOLogOutputHandlerRemoveNSLogHook(void);
 
-void OOLogOutputHandlerPrint(NSString *string);	// -> cxx_OOLogOutputHandlerPrint()
-
 // This will attempt to ensure the containing directory exists. If it fails, it will return nil.
 NSString *OOLogHandlerGetLogPath(void);	// -> cxx_OOLogHandlerGetLogPath()
 NSString *OOLogHandlerGetLogBasePath(void);	// -> cxx_OOLogHandlerGetLogBasePath()

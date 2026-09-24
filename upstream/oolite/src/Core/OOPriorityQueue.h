@@ -41,6 +41,9 @@ SOFTWARE.
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOObjCRef.h"
+
 #ifndef OO_PQ_STRONG
 #if __has_feature(objc_arc)
 #define OO_PQ_STRONG __strong
@@ -73,9 +76,9 @@ SOFTWARE.
 - (id) peekAtNextObject;				// Returns next object without removing it.
 - (void) removeNextObject;
 
-- (void) addObjects:(id)collection;		// collection must respond to -nextObject, or implement -objectEnumerator to return something that implements -nextObject -- such as an NSEnumerator.
+- (void) addObjects:(id)collection;		// collection must respond to -nextObject, or implement -objectEnumerator to return something that implements -nextObject -- such as an Objective-C enumerator.
 
-- (NSArray *) sortedObjects;			// Returns the objects in -nextObject order and empties the heap. To get the objects without emptying the heap, copy the priority queue first.
-- (NSEnumerator *) objectEnumerator;	// Enumerator which pulls objects off the heap until it's empty. Note however that the queue itself behaves like an enumerator, as -nextObject has similar semantics (except that the enumerator's -nextObject can never start returning objects after it returns nil).
+- (std::vector<oo::ObjCRef<id>>) sortedObjects;// Returns the objects in -nextObject order and empties the heap. To get the objects without emptying the heap, copy the priority queue first.
+- (id) objectEnumerator;	// shared selector: an enumerator over the objects in -nextObject order. Like -sortedObjects it empties the heap, now all at once rather than as it is enumerated. Note howeverthat the queue itself behaves like an enumerator, as -nextObject has similar semantics (except that the enumerator's -nextObject can never start returning objects after it returns nil).
 
 @end

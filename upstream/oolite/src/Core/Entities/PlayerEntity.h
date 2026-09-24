@@ -415,10 +415,10 @@ typedef enum
 	oo::PList::Array		parcels;			// Dicts (PlayerEntity (Contracts))
 	oo::PList::Dict			parcel_record;		// arrival time (double) by sender name
 	
-	NSMutableArray			*contracts;
-	NSMutableDictionary		*contract_record;
+	oo::PList::Array		contracts;			// cargo contract Dicts (PlayerEntity (Contracts))
+	oo::PList::Dict			contract_record;	// arrival time (double) by cargo ID
 	
-	NSMutableDictionary		*shipyard_record;
+	oo::PList::Dict			shipyard_record;	// shipdata key by shipyard ID of each ship bought
 	
 	NSMutableDictionary		*missionDestinations;
 	NSMutableArray			*roleWeights;
@@ -448,7 +448,7 @@ typedef enum
 	
 	// For OO-GUI based save screen
 	std::string				commanderNameString;	// owned; the save screen refreshes it from the typed string each frame
-	NSMutableArray			*cdrDetailArray;
+	std::vector<oo::PList>	cdrDetailArray;			// the load/save screen's entries (PlayerEntity (LoadSave))
 	int						currentPage;
 	BOOL					pollControls;
 // ...end save screen   
@@ -542,7 +542,7 @@ typedef enum
 
 	// keys!
 	NSDictionary   *keyconfig2_settings;
-	NSDictionary   *keyCodeLookups;
+	std::map<std::string, uint16_t, std::less<>>	keyCodeLookups;	// lower-case key names -> key codes
 
 	NSArray					*n_key_roll_left;
 	NSArray					*n_key_roll_right;
@@ -1105,7 +1105,7 @@ typedef enum
 
 - (void) setGuiToSystemDataScreen;
 - (void) setGuiToSystemDataScreenRefreshBackground: (BOOL) refreshBackground;
-- (NSDictionary *) markedDestinations;
+- (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations;	// marker Dicts by system ID, each list in the order the markers were added
 - (void) setGuiToLongRangeChartScreen;
 - (void) setGuiToShortRangeChartScreen;
 - (void) setGuiToChartScreenFrom: (OOGUIScreenID) oldScreen;
@@ -1300,7 +1300,7 @@ typedef enum
 - (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker;
 - (NSMutableDictionary*) getMissionDestinations;
 
-- (NSMutableDictionary*) shipyardRecord;
+- (oo::PList::Dict *) cxx_shipyardRecord;
 
 - (void) setLastShot:(NSArray *)shot;
 
@@ -1349,3 +1349,21 @@ OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;
 
 OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string) PURE_FUNC;
 NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour) CONST_FUNC;
+
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
+// (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
+// The Foundation forms above forward to them from OOConstToString+FoundationBridge.mm.
+std::string cxx_OOStringFromGUIScreenID(OOGUIScreenID screen);
+OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string);
+
+OOGalacticHyperspaceBehaviour cxx_OOGalacticHyperspaceBehaviourFromString(const std::string &string);
+std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour);
+
+// Rating and legal-status names from descriptions.plist (chunk oo-3rb.162); nullopt: missing (was nil).
+std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills);
+std::string cxx_KillCountToRatingAndKillString(unsigned kills);
+std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
+
+// TRANSITIONAL (proposed ADR-0043): PlayerEntity's Foundation-typed API as it was before its
+// sweep, forwarding to the cxx_ API above. Keep this the last line.
+#import "PlayerEntity+FoundationBridge.h"

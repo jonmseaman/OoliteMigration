@@ -219,7 +219,7 @@ static BOOL IsLegacyNormalMode(OOMeshNormalMode mode)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInvalidArgumentException format:@"Unexpected normal mode in %s", __PRETTY_FUNCTION__];
+	[OOException raise:OOInvalidArgumentException format:"Unexpected normal mode in %s", __PRETTY_FUNCTION__];
 #endif
 	return NO;	
 }
@@ -240,7 +240,7 @@ static BOOL IsPerVertexNormalMode(OOMeshNormalMode mode)
 	}
 	
 #ifndef NDEBUG
-	[NSException raise:NSInvalidArgumentException format:@"Unexpected normal mode in %s", __PRETTY_FUNCTION__];
+	[OOException raise:OOInvalidArgumentException format:"Unexpected normal mode in %s", __PRETTY_FUNCTION__];
 #endif
 	return NO;
 }
@@ -2247,7 +2247,7 @@ static const char * const kOOCacheOctrees = "octrees";
 {
 	if (inOctree != nil)
 	{
-		[[self sharedCache] cxx_setObject:[inOctree dictionaryRepresentation] forKey:inKey inCache:kOOCacheOctrees];
+		[[self sharedCache] cxx_setObject:oo::ObjectFromPList([inOctree cxx_dictionaryRepresentation]) forKey:inKey inCache:kOOCacheOctrees];
 	}
 }
 

@@ -47,8 +47,13 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 #include "oofnd/PListGet.hpp"
+#include "oofnd/Encoding.hpp"
+#import "NSDataOOExtensions.h"
 #import "OOConcreteTexture.h"
 #import "OODrawable.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
+#include "oofnd/Notification.hpp"
 
 
 static OODebugMonitor *sSingleton = nil;
@@ -57,7 +62,7 @@ static OODebugMonitor *sSingleton = nil;
 @interface OODebugMonitor (Private) <OOJavaScriptEngineMonitor>
 
 - (void) setUpDebugConsoleScript;
-- (void) javaScriptEngineWillReset:(NSNotification *)notification;
+- (void) javaScriptEngineWillReset:(const oo::Notification &)notification;
 
 - (void)disconnectDebuggerWithMessage:(const std::optional<std::string> &)message;	// nullopt: no message (the TCP client sends a bare close)
 
@@ -70,17 +75,21 @@ static OODebugMonitor *sSingleton = nil;
 - (oo::PList)normalizeConfigDictionary:(const oo::PList &)dictionary;	// always a Dict (empty for null)
 - (oo::PList)normalizeConfigValue:(const oo::PList &)value forKey:(const std::string &)key;	// null: dropped
 
-- (NSArray *)loadSourceFile:(NSString *)filePath;
+- (std::optional<std::vector<std::string>>)loadSourceFile:(const std::string &)filePath;	// nullopt: can't be read
 
 @end
 
 
+/*	The monitor's private "application will terminate" notification: posted by
+	-applicationWillTerminate (GameController calls it on exit) and observed by the monitor
+	itself, on oo::NotificationCenter with no object (bead oo-3rb.40). Was an NSString of the
+	same text on the Foundation center; on Mac OS X it was AppKit's notification, which
+	oo::NotificationCenter does not receive (that build is not maintained, ADR-0009).
+*/
+static const char * const kOODebugMonitorApplicationWillTerminateNotificationName = "ApplicationWillTerminate";
+
+
 @implementation OODebugMonitor
-#if OOLITE_GNUSTEP
-namespace {
-	id							NSApplicationWillTerminateNotification = @"ApplicationWillTerminate";	// file-private (no other file names it)
-} // namespace
-#endif
 
 - (id)init
 {
@@ -105,20 +114,17 @@ namespace {
 		
 		[self setUpDebugConsoleScript];
 		
-		[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(applicationWillTerminate:)
-													 name:NSApplicationWillTerminateNotification
-												   object:nil];
+		oo::NotificationCenter::defaultCenter().addObserver(self, kOODebugMonitorApplicationWillTerminateNotificationName,
+															nullptr,
+															[self](const oo::Notification &notification) { [self applicationWillTerminate:notification]; });
 		
-		[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(javaScriptEngineWillReset:)
-													 name:kOOJavaScriptEngineWillResetNotification
-												   object:jsEng];
+		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+															jsEng,
+															[self](const oo::Notification &notification) { [self javaScriptEngineWillReset:notification]; });
 		
-		[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(setUpDebugConsoleScript)
-													 name:kOOJavaScriptEngineDidResetNotification
-												   object:jsEng];
+		oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineDidResetNotificationName,
+															jsEng,
+															[self](const oo::Notification &) { [self setUpDebugConsoleScript]; });
 	}
 	
 	return self;
@@ -130,9 +136,6 @@ namespace {
 	[self disconnectDebuggerWithMessage:"Debug controller object destroyed while debugging in progress."];
 
 	
-	[_fgColors release];
-	[_bgColors release];
-	[_sourceFiles release];
 	
 	if (_jsSelf != NULL)
 	{
@@ -187,7 +190,11 @@ namespace {
 					OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an error occurred: %@", newDebugger, error);
 				}
 			}
-			@catch (NSException *exception)
+			@catch (OOException *exception)
+			{
+				OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an exception occurred: %@ -- %@", newDebugger, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+			}
+			@catch (OOFoundationException *exception)
 			{
 				OOLog(@"debugMonitor.setDebugger.failed", @"Could not connect to debugger %@, because an exception occurred: %@ -- %@", newDebugger, [exception name], [exception reason]);
 			}
@@ -210,7 +217,7 @@ namespace {
 
 
 - (void)appendJSConsoleLine:(id)string
-				   colorKey:(NSString *)colorKey
+				   colorKey:(const std::optional<std::string> &)colorKey
 			  emphasisRange:(NSRange)emphasisRange
 {
 	if (string == nil)  return;
@@ -219,10 +226,14 @@ namespace {
 	{
 		[_debugger debugMonitor:self
 				jsConsoleOutput:string
-					   colorKey:colorKey
+					   colorKey:oo::NSStringOrNil(colorKey)
 				  emphasisRange:emphasisRange];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send JavaScript console text to debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send JavaScript console text to debugger: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -231,7 +242,7 @@ namespace {
 
 
 - (void)appendJSConsoleLine:(id)string
-				   colorKey:(NSString *)colorKey
+				   colorKey:(const std::optional<std::string> &)colorKey
 {
 	[self appendJSConsoleLine:string
 					 colorKey:colorKey
@@ -246,7 +257,11 @@ namespace {
 	{
 		[_debugger debugMonitorClearConsole:self];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to clear JavaScript console: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to clear JavaScript console: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -261,7 +276,11 @@ namespace {
 	{
 		[_debugger debugMonitorShowConsole:self];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to show JavaScript console: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to show JavaScript console: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -344,7 +363,11 @@ namespace {
    noteChangedConfigrationValue:value
 						 forKey:key];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send configuration update to debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to send configuration update to debugger: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -378,7 +401,7 @@ namespace {
 - (void) writeMemStat:(const std::string &)line
 {
 	OOLog(@"debug.memStats", @"%@", oo::NSStringFrom(line));
-	[self appendJSConsoleLine:oo::NSStringFrom(line) colorKey:@"command-result"];
+	[self appendJSConsoleLine:oo::NSStringFrom(line) colorKey:"command-result"];
 }
 
 
@@ -508,7 +531,7 @@ struct EntityDumpState
 	}
 	if ([entity isWormhole])
 	{
-		for (id shipInfo in [entity shipsInTransit])
+		for (id shipInfo in oo::ObjectFromPList([entity shipsInTransit]))
 		{
 			ShipEntity *ship = [shipInfo objectForKey:@"ship"];
 			[self dumpEntity:ship withState:state parentVisible:NO];
@@ -681,22 +704,21 @@ struct EntityDumpState
 
 - (id)sourceCodeForFile:(in id)filePath line:(in unsigned)line	// shared selector (proposed ADR-0043)
 {
-	id							linesForFile = nil;
-	
-	linesForFile = [_sourceFiles objectForKey:filePath];
-	
-	if (linesForFile == nil)
+	const std::string			path = oo::StdString(filePath);
+	auto						cached = _sourceFiles.find(path);
+
+	if (cached == _sourceFiles.end())
 	{
-		linesForFile = [self loadSourceFile:filePath];
-		if (linesForFile == nil)  linesForFile = [NSArray arrayWithObject:[NSString stringWithFormat:@"<Can't load file %@>", filePath]];
-		
-		if (_sourceFiles == nil)  _sourceFiles = [[NSMutableDictionary alloc] init];
-		[_sourceFiles setObject:linesForFile forKey:filePath];
+		std::optional<std::vector<std::string>> lines = [self loadSourceFile:path];
+		if (!lines.has_value())  lines = std::vector<std::string>{ oo::str::format("<Can't load file %s>", oo::DescriptionOf(filePath).c_str()) };
+
+		cached = _sourceFiles.emplace(path, std::move(*lines)).first;
 	}
-	
-	if ([linesForFile count] < line || line == 0)  return @"<line out of range!>";
-	
-	return [linesForFile objectAtIndex:line - 1];
+
+	const std::vector<std::string> &linesForFile = cached->second;
+	if (linesForFile.size() < line || line == 0)  return oo::NSStringFrom("<line out of range!>");
+
+	return oo::NSStringFrom(linesForFile[line - 1]);
 }
 
 
@@ -719,12 +741,12 @@ struct EntityDumpState
 #if OOLITE_GNUSTEP
 - (void) applicationWillTerminate
 {
-	[[NSNotificationCenter defaultCenter] postNotificationName:NSApplicationWillTerminateNotification object:nil];
+	oo::NotificationCenter::defaultCenter().post(kOODebugMonitorApplicationWillTerminateNotificationName, nullptr);
 }
 #endif
 
 
-- (void)applicationWillTerminate:(NSNotification *)notification
+- (void)applicationWillTerminate:(const oo::Notification &)notification
 {
 	if (_configOverrides)
 	{
@@ -774,7 +796,7 @@ struct EntityDumpState
 }
 
 
-- (void) javaScriptEngineWillReset:(NSNotification *)notification
+- (void) javaScriptEngineWillReset:(const oo::Notification &)notification
 {
 	DESTROY(_script);
 	_jsSelf = NULL;
@@ -789,7 +811,11 @@ struct EntityDumpState
 	{
 		[_debugger disconnectDebugMonitor:self message:oo::NSStringOrNil(message)];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to disconnect debugger: %@ -- %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"debugMonitor.debuggerConnection.exception", @"Exception while attempting to disconnect debugger: %@ -- %@", [exception name], [exception reason]);
 	}
@@ -814,21 +840,17 @@ struct EntityDumpState
 }
 
 
-- (NSArray *)loadSourceFile:(NSString *)filePath
+- (std::optional<std::vector<std::string>>)loadSourceFile:(const std::string &)filePath
 {
-	NSString					*contents = nil;
-	NSArray						*lines = nil;
-	
-	if (filePath == nil)  return nil;
-	
-	contents = [NSString stringWithContentsOfUnicodeFile:filePath];
-	if (contents == nil)  return nil;
-	
+	// The Unicode-file reading of the file's bytes (read from inside an OXZ too, as before).
+	const std::optional<oo::Data> data = OODataFromOXZFile(filePath);
+	if (!data.has_value())  return std::nullopt;
+	const std::string contents = oo::str::decodeUnicodeText(data->stringView());
+
 	/*	Extract lines from file.
 FIXME: this works with CRLF and LF, but not CR.
 		*/
-	lines = [contents componentsSeparatedByString:@"\n"];
-	return lines;
+	return oo::str::split(contents, "\n");
 }
 
 
@@ -882,82 +904,81 @@ FIXME: this works with CRLF and LF, but not CR.
 				  error:(in ooscript::ErrorReport *)errorReport
 			  stackSkip:(in unsigned)stackSkip
 		showingLocation:(in BOOL)showLocation
-			withMessage:(in NSString *)message
+			withMessage:(in id)message
 {
-	NSString					*colorKey = nil;
-	NSString					*prefix = nil;
-	NSString					*filePath = nil;
-	NSString					*sourceLine = nil;
-	NSString					*scriptLine = nil;
-	NSMutableString				*formattedMessage = nil;
+	std::string					colorKey;
+	std::string					prefix;
+	std::string					filePath;
+	std::optional<std::string>	scriptLine;
+	std::string					formattedMessage;
 	NSRange						emphasisRange;
-	NSString					*showKey = nil;
-	
+	const char					*showKey = nullptr;
+
 	if (_debugger == nil)  return;
-	
+
 	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))
 	{
-		colorKey = @"warning";
-		prefix = @"Warning";
+		colorKey = "warning";
+		prefix = "Warning";
 	}
 	else if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Exception))
 	{
-		colorKey = @"exception";
-		prefix = @"Exception";
+		colorKey = "exception";
+		prefix = "Exception";
 	}
 	else
 	{
-		colorKey = @"error";
-		prefix = @"Error";
+		colorKey = "error";
+		prefix = "Error";
 	}
-	
+
 	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Strict))
 	{
-		prefix = [prefix stringByAppendingString:@" (strict mode)"];
+		prefix += " (strict mode)";
 	}
-	
-	// Prefix and subsequent colon should be bold:
-	emphasisRange = NSMakeRange(0, [prefix length] + 1);
-	
-	formattedMessage = [NSMutableString stringWithFormat:@"%@: %@", prefix, message];
-	
+
+	// Prefix and subsequent colon should be bold (the prefixes are ASCII, so bytes are UTF-16 units):
+	emphasisRange = NSMakeRange(0, prefix.size() + 1);
+
+	formattedMessage = oo::str::format("%s: %s", prefix.c_str(), oo::DescriptionOf(message).c_str());
+
 	// Note that the "active script" isn't necessarily the one causing the
 	// error, since one script can call another's methods.
-	
+
 	// avoid windows DEP exceptions!
 	OOJSScript *thisScript = [[OOJSScript currentlyRunningScript] weakRetain];
-	scriptLine = [[thisScript weakRefUnderlyingObject] displayName];
+	scriptLine = oo::OptionalString([[thisScript weakRefUnderlyingObject] displayName]);
 	[thisScript release];
-	
-	if (scriptLine != nil)
+
+	if (scriptLine.has_value())
 	{
-		[formattedMessage appendFormat:@"\n    Active script: %@", scriptLine];
+		formattedMessage += "\n    Active script: " + *scriptLine;
 	}
-	
+
 	if (showLocation && stackSkip == 0)
 	{
 		// Append file name and line
-		if (errorReport->filename != NULL)  filePath = [NSString stringWithUTF8String:errorReport->filename];
-		if ([filePath length] != 0)
+		if (errorReport->filename != NULL)  filePath = errorReport->filename;
+		if (!filePath.empty())
 		{
-			[formattedMessage appendFormat:@"\n    %@, line %u", [filePath lastPathComponent], errorReport->lineno];
-			
-			// Append source code
-			sourceLine = [self sourceCodeForFile:filePath line:errorReport->lineno];
-			if (sourceLine != nil)
+			formattedMessage += oo::str::format("\n    %s, line %u", oo::str::lastPathComponent(filePath).c_str(), errorReport->lineno);
+
+			// Append source code (-sourceCodeForFile:line: is a shared selector: a string in and out)
+			const std::optional<std::string> sourceLine = oo::OptionalString([self sourceCodeForFile:oo::NSStringFrom(filePath) line:errorReport->lineno]);
+			if (sourceLine.has_value())
 			{
-				[formattedMessage appendFormat:@":\n    %@", sourceLine];
+				formattedMessage += ":\n    " + *sourceLine;
 			}
 		}
 	}
-	
-	[self appendJSConsoleLine:formattedMessage
+
+	[self appendJSConsoleLine:oo::NSStringFrom(formattedMessage)
 					 colorKey:colorKey
 				emphasisRange:emphasisRange];
-	
-	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  showKey = @"show-console-on-warning";
-	else  showKey = @"show-console-on-error";	// if not a warning, it's a proper error.
-	if (OOBooleanFromObject([self configurationValueForKey:showKey], NO))
+
+	if (errorReport->flags & static_cast<unsigned>(ooscript::ReportFlag::Warning))  showKey = "show-console-on-warning";
+	else  showKey = "show-console-on-error";	// if not a warning, it's a proper error.
+	if (OOBooleanFromObject([self configurationValueForKey:oo::NSStringFrom(showKey)], NO))
 	{
 		[self showJSConsole];
 	}
@@ -966,11 +987,11 @@ FIXME: this works with CRLF and LF, but not CR.
 
 - (oneway void)jsEngine:(in byref OOJavaScriptEngine *)engine
 				context:(in ooscript::Context)context
-			 logMessage:(in NSString *)message
-				ofClass:(in NSString *)messageClass
+			 logMessage:(in id)message
+				ofClass:(in id)messageClass
 {
-	[self appendJSConsoleLine:message colorKey:@"log"];
-	if (OOBooleanFromObject([self configurationValueForKey:@"show-console-on-log"], NO))
+	[self appendJSConsoleLine:message colorKey:"log"];
+	if (OOBooleanFromObject([self configurationValueForKey:oo::NSStringFrom("show-console-on-log")], NO))
 	{
 		[self showJSConsole];
 	}

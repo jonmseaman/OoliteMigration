@@ -28,7 +28,7 @@ MA 02110-1301, USA.
 #import "OOStringExpander.h"
 #import "Universe.h"
 #import "OOJavaScriptEngine.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOStringParsing.h"
 #import "ResourceManager.h"
 #import "PlayerEntityScriptMethods.h"
@@ -638,7 +638,7 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 
 	// Retrieve selected system_description entry.
 	NSArray *sysDescs = GetSystemDescriptions(context);
-	NSArray *entry = [sysDescs oo_arrayAtIndex:keyValue];
+	NSArray *entry = oo::PListView(sysDescs).at<NSArray *>(keyValue);
 
 	if (EXPECT_NOT(entry == nil))
 	{
@@ -673,7 +673,7 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 	}
 	
 	// Look up and recursively expand string.
-	OOMaybeUnits string = UnitsFromNSString([entry oo_stringAtIndex:selection]);
+	OOMaybeUnits string = UnitsFromNSString(oo::PListView(entry).at<NSString *>(selection));
 	NSCParameterAssert(string.has_value());
 	if (!string.has_value())  return std::nullopt;
 	return Expand(context, *string, sizeLimit, recursionLimit);
@@ -846,7 +846,7 @@ OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, 
 		if ([value isKindOfClass:[NSArray class]] && [value count] > 0)
 		{
 			NSUInteger rnd = OO_EXPANDER_RANDOM % [value count];
-			value = [value oo_objectAtIndex:rnd];
+			value = oo::PListView(value).at<id>(rnd);
 		}
 		
 		if (![value isKindOfClass:[NSString class]])
@@ -934,11 +934,11 @@ SEL LookUpLegacySelector(NSString *key)
 		if (whitelist == nil)
 		{
 			NSDictionary *whitelistDict = [ResourceManager whitelistDictionary];
-			whitelist = [[NSSet alloc] initWithArray:[whitelistDict oo_arrayForKey:@"query_methods"]];
-			aliases = [[whitelistDict oo_dictionaryForKey:@"query_method_aliases"] copy];
+			whitelist = [[NSSet alloc] initWithArray:oo::PListView(whitelistDict).get<NSArray *>(@"query_methods")];
+			aliases = [oo::PListView(whitelistDict).get<NSDictionary *>(@"query_method_aliases") copy];
 		}
 		
-		NSString *selectorName = [aliases oo_stringForKey:key];
+		NSString *selectorName = oo::PListView(aliases).get<NSString *>(key);
 		if (selectorName == nil)  selectorName = key;
 		
 		if ([whitelist containsObject:selectorName])
@@ -1296,7 +1296,7 @@ NSArray *GetSystemDescriptions(OOStringExpansionContext *context)
 
 	if (context->systemDescriptions == nil)
 	{
-		context->systemDescriptions = [[[UNIVERSE descriptions] oo_arrayForKey:@"system_description"] retain];
+		context->systemDescriptions = [oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"system_description") retain];
 		context->sysDescCount = [context->systemDescriptions count];
 	}
 
