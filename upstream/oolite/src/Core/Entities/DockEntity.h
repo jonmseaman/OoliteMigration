@@ -31,8 +31,8 @@ MA 02110-1301, USA.
 @interface DockEntity: ShipEntity
 {
 @private
-	NSMutableDictionary		*shipsOnApproach;
-	NSMutableArray			*launchQueue;
+	std::map<unsigned short, std::vector<oo::PList>>	shipsOnApproach;	// coordinate stacks (Dicts) by ship ID (the old +numberWithUnsignedShort: key)
+	std::vector<oo::ObjCRef<ShipEntity *>>	launchQueue;
 	double					last_launch_time;
 //	double					approach_spacing; // not needed now holding pattern changed
 	
@@ -96,8 +96,8 @@ MA 02110-1301, USA.
  * <p>TODO: Where is the detection that the ship has docked?</p>
  * <p>TODO: What are the magic number's units? Is it km (kilometers)?</p>
  */
-- (NSDictionary *) dockingInstructionsForShip:(ShipEntity *)ship;
-- (NSString *) canAcceptShipForDocking:(ShipEntity *)ship;
+- (id) dockingInstructionsForShip:(ShipEntity *)ship;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (std::optional<std::string>) canAcceptShipForDocking:(ShipEntity *)ship;
 - (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
 - (BOOL) shipIsInDockingQueue:(ShipEntity *)ship;
 - (void) abortDockingForShip:(ShipEntity *)ship;
@@ -112,7 +112,7 @@ MA 02110-1301, USA.
 - (BOOL) allowsLaunching;
 - (void) setAllowsLaunching:(BOOL)allow;
 - (NSUInteger) countOfShipsInLaunchQueue;
-- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(NSString *)role;
+- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(id)role;	// shared selector (proposed ADR-0043): an Objective-C string
 - (BOOL) allowsLaunchingOf:(ShipEntity *)ship;
 - (void) launchShip:(ShipEntity *)ship;
 - (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
