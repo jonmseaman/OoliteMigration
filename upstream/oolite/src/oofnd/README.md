@@ -495,6 +495,7 @@ it. oo-qps cannot compile any of them.
 | `src/Core/Universe+FoundationBridge.h/.mm` (chunked: oo-3rb.220 made it; chunks oo-3rb.221-.231 move their own selectors in; also the `OOLookUp*DescriptionPRIV` functions behind DESC()) | oo-3rb.220 (chunks of oo-3rb.79) | oo-mr9c ("Delete Universe+FoundationBridge") |
 | `src/Core/Entities/StationEntity+FoundationBridge.h/.mm` (chunked: oo-3rb.172 made it; chunks oo-3rb.173-.175 move their own selectors in) | oo-3rb.172 (chunks of oo-e7ab) | oo-nrkz ("Delete StationEntity+FoundationBridge") |
 | `src/Core/Scripting/OOJavaScriptEngine+FoundationBridge.h/.mm` (chunked: oo-3rb.198 made it; chunks oo-3rb.199-.203 move their own groups in, and the retiring JS-glue categories on Foundation classes, deleted just before oo-qps) | oo-3rb.198 (chunks of oo-rbqc) | oo-vp0y ("Delete OOJavaScriptEngine+FoundationBridge") |
+| `src/Core/Entities/PlayerEntityLegacyScriptEngine+FoundationBridge.h/.mm` (category `PlayerEntity (ScriptingFoundationBridge)`; chunked: oo-3rb.190 made it; chunks oo-3rb.191-.197 move their own selectors in) | oo-3rb.190 (chunks of oo-j924) | oo-53in ("Delete PlayerEntityLegacyScriptEngine+FoundationBridge") |
 
 ### Stop and report (do not stretch)
 
