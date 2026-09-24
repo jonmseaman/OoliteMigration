@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "PlayerEntityLegacyScriptEngine.h"
+#include "oofnd/objc/OORuntime.h"
 #import "PlayerEntityScriptMethods.h"
 #import "PlayerEntitySound.h"
 #import "PlayerEntityContracts.h"
@@ -314,7 +315,7 @@ void PerformActionStatment(const oo::PList &statement, Entity *target)
 	selectorString = statement.at<std::string>(1);
 	if (statement.count() > 2)  argumentString = statement.at<std::string>(2);
 
-	selector = NSSelectorFromString(oo::NSStringFrom(selectorString));
+	selector = OOSelectorFromName(selectorString.c_str());
 
 	if (target == nil || ![target respondsToSelector:selector])
 	{
@@ -611,7 +612,7 @@ static BOOL sRunningScript = NO;
 	}
 	else
 	{
-		selector = NSSelectorFromString(oo::NSStringFrom(selectorString));
+		selector = OOSelectorFromName(selectorString.c_str());
 	}
 
 	expandedRHS = [self expandScriptRightHandSide:operandArray].value_or(std::string());
@@ -755,7 +756,7 @@ static BOOL sRunningScript = NO;
 			if (ElementAt(component, 0).boolValue())
 			{
 				// (nil prints "(null)", for backwards compatibility)
-				value = oo::DescriptionOf([self performSelector:NSSelectorFromString(oo::NSStringFrom(value))]);
+				value = oo::DescriptionOf([self performSelector:OOSelectorFromName(value.c_str())]);
 			}
 
 			if (!first)  result += " ";
@@ -921,7 +922,7 @@ static BOOL sRunningScript = NO;
 		}
 		else if (oo::str::hasSuffix(valueString, "_number") || oo::str::hasSuffix(valueString, "_bool") || oo::str::hasSuffix(valueString, "_string"))
 		{
-			SEL valueselector = NSSelectorFromString(oo::NSStringFrom(valueString));
+			SEL valueselector = OOSelectorFromName(valueString.c_str());
 			if ([self respondsToSelector:valueselector])
 			{
 				// called by name; "%@" of the result, as +stringWithFormat: printed it

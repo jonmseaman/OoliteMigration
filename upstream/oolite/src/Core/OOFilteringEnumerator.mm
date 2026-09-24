@@ -27,6 +27,7 @@ SOFTWARE.
 */
 
 #import "OOFilteringEnumerator.h"
+#include "oofnd/objc/OORuntime.h"
 
 
 typedef BOOL (*BoolReturnMsgSend)(id, SEL);
@@ -87,9 +88,17 @@ typedef BOOL (*BoolReturnWithParamMsgSend)(id, SEL, id);
 }
 
 
+// The selector's name as an NSString, nil for a NULL selector, as Foundation's wrapper gave it.
+static NSString *SelectorNameString(SEL selector)
+{
+	const char *name = OOSelectorName(selector);
+	return name != NULL ? [NSString stringWithUTF8String:name] : nil;
+}
+
+
 - (NSString *) descriptionComponents
 {
-	NSString *subDesc = NSStringFromSelector(_selector);
+	NSString *subDesc = SelectorNameString(_selector);
 	if (_takesArgument)
 	{
 		subDesc = [subDesc stringByAppendingString:[_argument shortDescription]];
@@ -101,7 +110,7 @@ typedef BOOL (*BoolReturnWithParamMsgSend)(id, SEL, id);
 
 - (NSString *) shortDescriptionComponents
 {
-	return NSStringFromSelector(_selector);
+	return SelectorNameString(_selector);
 }
 
 
