@@ -152,6 +152,13 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 // Chunk 11 (oo-3rb.230): demo ships.
 - (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning;	// -> -cxx_makeDemoShipWithRole:spinning:
 
+// Chunk 12 (oo-3rb.231): add-ons, settings.
+- (NSString *) useAddOns;	// -> -cxx_useAddOns
+- (BOOL) setUseAddOns:(NSString *)newUse fromSaveGame: (BOOL)saveGame;	// -> -cxx_setUseAddOns:fromSaveGame:
+- (BOOL) setUseAddOns:(NSString *) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;	// -> -cxx_setUseAddOns:fromSaveGame:forceReinit:
+- (NSDictionary *) gameSettings;	// -> -cxx_gameSettings
+- (NSDictionary *) globalSettings;	// -> -cxx_globalSettings (a fresh immutable copy per call; its callers only read it)
+
 @end
 
 
