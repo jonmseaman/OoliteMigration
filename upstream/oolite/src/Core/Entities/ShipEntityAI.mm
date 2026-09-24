@@ -47,6 +47,8 @@
 
 #include "ooscript/JSEngine.hpp"
 #import "OOFoundationBridge.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 
 /*
 	Retargeted onto the ooscript façade (JSEngine.hpp) the way OOJSVector.mm does it (bead
@@ -890,12 +892,12 @@ using ooscript::Context;
 {
 	NSArray				*messages = nil;
 	NSString			*message = nil;
-	NSCharacterSet		*whiteSpace = [NSCharacterSet whitespaceCharacterSet];
+	const oo::str::CharacterSet	whiteSpace = oo::str::CharacterSet::whitespace();
 	
 	messages = [messageString componentsSeparatedByString:@","];
 	foreach (message, messages)
 	{
-		[shipAI dropMessage:[message stringByTrimmingCharactersInSet:whiteSpace]];
+		[shipAI dropMessage:oo::StringMap(message, [&](std::string_view v) { return oo::str::trim(v, whiteSpace); })];
 	}
 }
 
