@@ -44,14 +44,56 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OODebugGLDrawing.h"
 #import "OODebugFlags.h"
-#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/PListWriting.hpp"
+
+
+namespace
+{
+
+// [shipsOnApproach allKeys]: a snapshot, since the loops over it change the map.
+std::vector<unsigned short> ShipIDsIn(const std::map<unsigned short, std::vector<oo::PList>> &queue)
+{
+	std::vector<unsigned short> shipIDs;
+	shipIDs.reserve(queue.size());
+	for (const auto &[shipID, coordinatesStack] : queue)  shipIDs.push_back(shipID);
+	return shipIDs;
+}
+
+
+// %@ of the approach queue or a coordinates stack in the error logs (ADR-0043 item 23): the
+// old-style plist text, ship IDs as decimal keys; GNUstep's exact -description is not kept.
+std::string DescriptionForLog(const oo::PList &plist)
+{
+	const auto data = oo::writeOldStylePList(plist);
+	return data.has_value() ? std::string(data->stringView()) : std::string("(unwritable)");
+}
+
+
+// OOMakeDockingInstructions() with no comms message, as the dictionary -dockingInstructionsForShip: returns.
+id DockingInstructions(StationEntity *station, HPVector coords, float speed, float range, const char *ai_message, BOOL match_rotation, int docking_stage)
+{
+	return oo::ObjectFromPList(cxx_OOMakeDockingInstructions(station, coords, speed, range, std::string(ai_message), std::nullopt, match_rotation, docking_stage));
+}
+
+
+// -oo_stringForKey:'s value: a string, a number's -stringValue, anything else nullopt.
+std::optional<std::string> OptionalStringValue(const oo::PList *value)
+{
+	if (value == nullptr)  return std::nullopt;
+	if (const std::string *string = value->getIf<std::string>())  return *string;
+	if (value->isNumber())  return oo::plist_get::numberStringValue(*value);
+	return std::nullopt;
+}
+
+}	// namespace
 
 
 @interface DockEntity (OOPrivate)
 
 - (void) clearIdLocks:(ShipEntity *)ship;
 - (void) clearAllIdLocks;
-- (void) autoDockShipsInQueue:(NSMutableDictionary *)queue;
+- (void) autoDockShipsInQueue:(std::map<unsigned short, std::vector<oo::PList>> &)queue;
 - (void) addShipToShipsOnApproach:(ShipEntity *)ship;
 - (void) pullInShipIfPermitted:(ShipEntity *)ship;
 
@@ -63,17 +105,16 @@ MA 02110-1301, USA.
 - (NSUInteger) pruneAndCountShipsOnApproach
 {
 	// Remove dead entities.
-	// Enumerate over allKeys explicitly because we mutate the dictionary.
-	NSNumber *idObj = nil;
-	foreach (idObj, [shipsOnApproach allKeys])
+	// Enumerate over a snapshot of the keys because we mutate the map.
+	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
 	{
-		ShipEntity *ship = [UNIVERSE entityForUniversalID:[idObj unsignedIntValue]];
+		ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
 		/* Remove ships from the approach queue if they are dead, or
 		 * are more than 25.6km from the dock.
 		 */
 		if (ship == nil || HPmagnitude2(HPvector_subtract([ship position],[self absolutePositionForSubentity])) > SCANNER_MAX_RANGE2)
 		{
-			[shipsOnApproach removeObjectForKey:idObj];
+			shipsOnApproach.erase(idObj);
 			if (ship != nil) {
 				// notify ship if it's alive
 				[ship sendAIMessage:@"DOCKING_ABORTED"];
@@ -82,7 +123,7 @@ MA 02110-1301, USA.
 		}
 	}
 	
-	if ([shipsOnApproach count] == 0)
+	if (shipsOnApproach.empty())
 	{
 		if (last_launch_time < [UNIVERSE getTime])
 		{
@@ -90,7 +131,7 @@ MA 02110-1301, USA.
 		}
 	}
 	
-	return [shipsOnApproach count];
+	return shipsOnApproach.size();
 }
 
 
@@ -100,17 +141,16 @@ MA 02110-1301, USA.
 	
 	no_docking_while_launching = YES;
 	
-	NSNumber *idObj = nil;
-	foreach (idObj, [shipsOnApproach allKeys])
+	for (unsigned short idObj : ShipIDsIn(shipsOnApproach))
 	{
-		ShipEntity *ship = [UNIVERSE entityForUniversalID:[idObj unsignedIntValue]];
+		ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
 		if ([ship isShip])
 		{
 			[ship sendAIMessage:@"DOCKING_ABORTED"];
 			[ship doScriptEvent:OOJSID("stationWithdrewDockingClearance")];
 		}
 	}
-	[shipsOnApproach removeAllObjects];
+	shipsOnApproach.clear();
 	
 	PlayerEntity *player = PLAYER;
 	StationEntity *station = (StationEntity*)[self parentEntity];
@@ -144,23 +184,22 @@ MA 02110-1301, USA.
 - (void) abortAllLaunches
 {
 	no_docking_while_launching = NO;
-	[launchQueue removeAllObjects];
+	launchQueue.clear();
 }
 
 
-- (void) autoDockShipsInQueue:(NSMutableDictionary *)queue
+- (void) autoDockShipsInQueue:(std::map<unsigned short, std::vector<oo::PList>> &)queue
 {	
-	NSNumber *idObj = nil;
-	foreach (idObj, [queue allKeys])
+	for (unsigned short idObj : ShipIDsIn(queue))
 	{
-		ShipEntity *ship = [UNIVERSE entityForUniversalID:[idObj unsignedIntValue]];
+		ShipEntity *ship = [UNIVERSE entityForUniversalID:idObj];
 		if ([ship isShip])
 		{
 			[self pullInShipIfPermitted:ship];
 		}
 	}
 	
-	[queue removeAllObjects];
+	queue.clear();
 }
 
 
@@ -220,18 +259,18 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString*) canAcceptShipForDocking:(ShipEntity *) ship
+- (std::optional<std::string>) canAcceptShipForDocking:(ShipEntity *) ship
 {
 	// First test permanent rejection reasons
 	if (!allow_docking)
 	{
-		return @"DOCK_CLOSED"; // could be temp or perm reject
+		return "DOCK_CLOSED"; // could be temp or perm reject
 	}
 	BoundingBox bb = [ship totalBoundingBox];
 	if ((port_dimensions.x < (bb.max.x - bb.min.x) || port_dimensions.y < (bb.max.y - bb.min.y)) && 
 		(port_dimensions.y < (bb.max.x - bb.min.x) || port_dimensions.x < (bb.max.y - bb.min.y)))
 	{
-		return @"TOO_BIG_TO_DOCK";
+		return "TOO_BIG_TO_DOCK";
 	}
 
 	// callback to allow more complex filtering on accept/reject
@@ -247,21 +286,21 @@ MA 02110-1301, USA.
 
 	if (!accept)
 	{
-		return @"TOO_BIG_TO_DOCK";
+		return "TOO_BIG_TO_DOCK";
 	}
 
 	// Second test temporary rejection reasons
 	if (no_docking_while_launching)
 	{
-		return @"TRY_AGAIN_LATER";
+		return "TRY_AGAIN_LATER";
 	}
 	// if there are pending launches, temporarily don't accept docking requests
-	if (allow_launching && [launchQueue count])
+	if (allow_launching && !launchQueue.empty())
 	{
-		return @"TRY_AGAIN_LATER";
+		return "TRY_AGAIN_LATER";
 	}
 	
-	return @"DOCKING_POSSIBLE";
+	return "DOCKING_POSSIBLE";
 }
 
 
@@ -280,12 +319,12 @@ MA 02110-1301, USA.
 }
 
 
-- (NSDictionary *) dockingInstructionsForShip:(ShipEntity *)ship
+- (id) dockingInstructionsForShip:(ShipEntity *)ship	// shared selector (proposed ADR-0043)
 {	
 	if (ship == nil)  return nil;
 	
 	OOUniversalID	ship_id = [ship universalID];
-	NSNumber		*shipID = [NSNumber numberWithUnsignedShort:ship_id];
+	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
 	StationEntity	*station = (StationEntity *)[self parentEntity];
 
 	HPVector launchVector = HPvector_forward_from_quaternion(quaternion_multiply(orientation, [station orientation]));
@@ -297,7 +336,7 @@ MA 02110-1301, USA.
 	
 	// check if this is a new ship on approach
 	//
-	if (![shipsOnApproach objectForKey:shipID])
+	if (!shipsOnApproach.contains(shipID))
 	{
 		HPVector	delta = HPvector_subtract([ship position], [self absolutePositionForSubentity]);
 		float	ship_distance = HPmagnitude(delta);
@@ -305,60 +344,62 @@ MA 02110-1301, USA.
 		if (ship_distance > SCANNER_MAX_RANGE)
 		{
 			// too far away - don't claim a docking slot by not putting on approachlist for now.
-			return OOMakeDockingInstructions(station, [self absolutePositionForSubentity], [ship maxFlightSpeed], 10000, @"APPROACH", nil, NO, -1);
+			return DockingInstructions(station, [self absolutePositionForSubentity], [ship maxFlightSpeed], 10000, "APPROACH", NO, -1);
 		}
 
 		[self addShipToShipsOnApproach: ship];
 		
 		if (ship_distance < 1000.0 + [station collisionRadius] + ship->collision_radius)	// too close - back off
-			return OOMakeDockingInstructions(station, [self absolutePositionForSubentity], [ship maxFlightSpeed], 5000, @"BACK_OFF", nil, NO, -1);
+			return DockingInstructions(station, [self absolutePositionForSubentity], [ship maxFlightSpeed], 5000, "BACK_OFF", NO, -1);
 		
 		float dot = HPdot_product(launchVector, delta);
 		if (dot < 0) // approaching from the wrong side of the station - construct a vector to the side of the station.
 		{
 			HPVector approachVector = HPcross_product(HPvector_normal(delta), launchVector);
 			approachVector = HPcross_product(launchVector, approachVector); // vector, 90 degr rotated from launchVector towards target.
-			return OOMakeDockingInstructions(station, OOHPVectorTowards([self absolutePositionForSubentity], approachVector, [station collisionRadius] + 5000) , [ship maxFlightSpeed], 1000, @"APPROACH", nil, NO, -1);
+			return DockingInstructions(station, OOHPVectorTowards([self absolutePositionForSubentity], approachVector, [station collisionRadius] + 5000) , [ship maxFlightSpeed], 1000, "APPROACH", NO, -1);
 		}
 		
 		if (ship_distance > 12500.0)
 		{
 			// long way off - approach more closely
-			return OOMakeDockingInstructions(station, [self absolutePositionForSubentity], [ship maxFlightSpeed], 10000, @"APPROACH", nil, NO, -1);
+			return DockingInstructions(station, [self absolutePositionForSubentity], [ship maxFlightSpeed], 10000, "APPROACH", NO, -1);
 		}
 	}
 	
-	if (![shipsOnApproach objectForKey:shipID])
+	if (!shipsOnApproach.contains(shipID))
 	{
 		// some error has occurred - log it, and send the try-again message
-		OOLogERR(@"station.issueDockingInstructions.failed", @"couldn't addShipToShipsOnApproach:%@ in %@, retrying later -- shipsOnApproach:\n%@", ship, self, shipsOnApproach);
+		oo::PList::Dict queue;
+		for (const auto &[queuedID, queuedStack] : shipsOnApproach)  queue[oo::str::format("%u", (unsigned)queuedID)] = oo::PList(oo::PList::Array(queuedStack));
+		OOLogERR(@"station.issueDockingInstructions.failed", @"couldn't addShipToShipsOnApproach:%@ in %@, retrying later -- shipsOnApproach:\n%@", ship, self, oo::NSStringFrom(DescriptionForLog(oo::PList(std::move(queue)))));
 		
-		return OOMakeDockingInstructions(station, [ship position], 200, 100, @"TRY_AGAIN_LATER", nil, NO, -1);
+		return DockingInstructions(station, [ship position], 200, 100, "TRY_AGAIN_LATER", NO, -1);
 	}
 
 
 	//	shipsOnApproach now has an entry for the ship.
 	//
-	NSMutableArray* coordinatesStack = [shipsOnApproach objectForKey:shipID];
+	std::vector<oo::PList> &coordinatesStack = shipsOnApproach[shipID];
 
-	if ([coordinatesStack count] == 0)
+	if (coordinatesStack.empty())
 	{
-		OOLogERR(@"station.issueDockingInstructions.failed", @" -- coordinatesStack = %@", coordinatesStack);
+		OOLogERR(@"station.issueDockingInstructions.failed", @" -- coordinatesStack = %@", oo::NSStringFrom(DescriptionForLog(oo::PList(oo::PList::Array(coordinatesStack)))));
 		
-		return OOMakeDockingInstructions(station, [ship position], 0, 100, @"HOLD_POSITION", nil, NO, -1);
+		return DockingInstructions(station, [ship position], 0, 100, "HOLD_POSITION", NO, -1);
 	}
 	
 	// get the docking information from the instructions	
-	NSMutableDictionary *nextCoords = (NSMutableDictionary *)[coordinatesStack objectAtIndex:0];
-	int docking_stage = oo::PListView(nextCoords).get<int>(@"docking_stage");
-	float speedAdvised = oo::PListView(nextCoords).get<float>(@"speed");
-	float rangeAdvised = oo::PListView(nextCoords).get<float>(@"range");
+	const oo::PList &nextCoords = coordinatesStack[0];
+	int docking_stage = nextCoords.get<int>("docking_stage");
+	float speedAdvised = nextCoords.get<float>("speed");
+	float rangeAdvised = nextCoords.get<float>("range");
 	
 	// calculate world coordinates from relative coordinates
 	HPVector rel_coords;
-	rel_coords.x = oo::PListView(nextCoords).get<double>(@"rx");
-	rel_coords.y = oo::PListView(nextCoords).get<double>(@"ry");
-	rel_coords.z = oo::PListView(nextCoords).get<double>(@"rz");
+	rel_coords.x = nextCoords.get<double>("rx");
+	rel_coords.y = nextCoords.get<double>("ry");
+	rel_coords.z = nextCoords.get<double>("rz");
 	HPVector coords = [self absolutePositionForSubentity];
 	coords.x += rel_coords.x * vi.x + rel_coords.y * vj.x + rel_coords.z * vk.x;
 	coords.y += rel_coords.x * vi.y + rel_coords.y * vj.y + rel_coords.z * vk.y;
@@ -373,33 +414,33 @@ MA 02110-1301, USA.
 		if ((docking_stage == 1) &&(HPmagnitude2(delta) < 1000000.0))	// 1km*1km
 			speedAdvised *= 0.5;	// half speed
 		
-		return OOMakeDockingInstructions(station, coords, speedAdvised, rangeAdvised, @"APPROACH_COORDINATES", nil, NO, docking_stage);
+		return DockingInstructions(station, coords, speedAdvised, rangeAdvised, "APPROACH_COORDINATES", NO, docking_stage);
 	}
 	
 	// else, reached the current coordinates okay..
 
-	// get the NEXT coordinates
-	nextCoords = (NSMutableDictionary *)oo::PListView(coordinatesStack).at<NSDictionary *>(1);
-	if (nextCoords == nil)
+	// get the NEXT coordinates (a copy: the messages below may run code that changes the queue)
+	if (coordinatesStack.size() < 2 || !coordinatesStack[1].isDict())
 	{
 		return nil;
 	}
+	const oo::PList next = coordinatesStack[1];
 	
-	docking_stage = oo::PListView(nextCoords).get<int>(@"docking_stage");
-	speedAdvised = oo::PListView(nextCoords).get<float>(@"speed");
-	rangeAdvised = oo::PListView(nextCoords).get<float>(@"range");
-	BOOL match_rotation = oo::PListView(nextCoords).get<BOOL>(@"match_rotation");
-	NSString *comms_message = oo::PListView(nextCoords).get<NSString *>(@"comms_message");
+	docking_stage = next.get<int>("docking_stage");
+	speedAdvised = next.get<float>("speed");
+	rangeAdvised = next.get<float>("range");
+	BOOL match_rotation = next.get<bool>("match_rotation");
+	const std::optional<std::string> comms_message = OptionalStringValue(next.find("comms_message"));
 	
 	if (comms_message)
 	{
-		[station sendExpandedMessage:comms_message toShip:ship];
+		[station sendExpandedMessage:oo::NSStringFrom(*comms_message) toShip:ship];
 	}
 			
 	// calculate world coordinates from relative coordinates
-	rel_coords.x = oo::PListView(nextCoords).get<double>(@"rx");
-	rel_coords.y = oo::PListView(nextCoords).get<double>(@"ry");
-	rel_coords.z = oo::PListView(nextCoords).get<double>(@"rz");
+	rel_coords.x = next.get<double>("rx");
+	rel_coords.y = next.get<double>("ry");
+	rel_coords.z = next.get<double>("rz");
 	coords = [self absolutePositionForSubentity];
 	coords.x += rel_coords.x * vi.x + rel_coords.y * vj.x + rel_coords.z * vk.x;
 	coords.y += rel_coords.x * vi.y + rel_coords.y * vj.y + rel_coords.z * vk.y;
@@ -422,24 +463,29 @@ MA 02110-1301, USA.
 		}
 		
 		//remove the previous stage from the stack
-		[coordinatesStack removeObjectAtIndex:0];
+		auto stack = shipsOnApproach.find(shipID);
+		if (stack != shipsOnApproach.end() && !stack->second.empty())  stack->second.erase(stack->second.begin());
 		
-		return OOMakeDockingInstructions(station, coords, speedAdvised, rangeAdvised, @"APPROACH_COORDINATES", nil, match_rotation, docking_stage);
+		return DockingInstructions(station, coords, speedAdvised, rangeAdvised, "APPROACH_COORDINATES", match_rotation, docking_stage);
 	}
 	
 	// else, approach isn't clear - hold position..
 	//
 	[[ship getAI] message:@"HOLD_POSITION"];
 	
-	if (![nextCoords objectForKey:@"hold_message_given"])
+	if (next.find("hold_message_given") == nullptr)
 	{
 		// COMM-CHATTER
 		[UNIVERSE clearPreviousMessage];
 		[self sendExpandedMessage: @"[station-hold-position]" toShip: ship];
-		[nextCoords setObject:@"YES" forKey:@"hold_message_given"];
+		auto stack = shipsOnApproach.find(shipID);
+		if (stack != shipsOnApproach.end() && stack->second.size() > 1)
+		{
+			if (oo::PList::Dict *held = stack->second[1].getIf<oo::PList::Dict>())  (*held)["hold_message_given"] = oo::PList("YES");
+		}
 	}
 
-	return OOMakeDockingInstructions(station, ship->position, 0, 100, @"HOLD_POSITION", nil, NO, -1);
+	return DockingInstructions(station, ship->position, 0, 100, "HOLD_POSITION", NO, -1);
 }
 
 
@@ -458,7 +504,7 @@ MA 02110-1301, USA.
 	int			corridor_count = 9;
 	int			corridor_final_approach = 3;
 	
-	NSNumber		*shipID = [NSNumber numberWithUnsignedShort:[ship universalID]];
+	const unsigned short	shipID = (unsigned short)[ship universalID];	// +numberWithUnsignedShort:
 	StationEntity	*station = (StationEntity *)[self parentEntity];
 	
 	HPVector launchVector = HPvector_forward_from_quaternion(quaternion_multiply(orientation, [station orientation]));
@@ -491,13 +537,14 @@ MA 02110-1301, USA.
 	}
 	
 	//
-	NSMutableArray *coordinatesStack = [NSMutableArray arrayWithCapacity: MAX_DOCKING_STAGES];
+	std::vector<oo::PList> coordinatesStack;
+	coordinatesStack.reserve(MAX_DOCKING_STAGES);
 	float port_depth = port_dimensions.z;	// 250m deep standard port.
 	
 	int i;
 	for (i = corridor_count - 1; i >= 0; i--)
 	{
-		NSMutableDictionary *nextCoords = [NSMutableDictionary dictionaryWithCapacity:3];
+		oo::PList::Dict nextCoords;
 		int offset = corridor_offset[i];
 		float corridor_length = port_depth * corridor_distance[i];
 		
@@ -535,34 +582,35 @@ MA 02110-1301, USA.
 		// add the lenght inside the station to the corridor, except for the final position, inside the dock.
 		if (corridor_distance[i] > 0)  corridor_length += port_corridor;
 		
-		[nextCoords oo_setInteger:corridor_count - i	forKey:@"docking_stage"];
-		[nextCoords oo_setFloat:rx						forKey:@"rx"];
-		[nextCoords oo_setFloat:ry						forKey:@"ry"];
-		[nextCoords oo_setFloat:rz						forKey:@"rz"];
-		[nextCoords oo_setFloat:corridor_speed[i]		forKey:@"speed"];
-		[nextCoords oo_setFloat:corridor_range[i]		forKey:@"range"];
+		// -oo_setInteger: stored a signed integer, -oo_setFloat: a double
+		nextCoords["docking_stage"]	= oo::PList::signedInteger(corridor_count - i);
+		nextCoords["rx"]			= oo::PList(static_cast<double>(rx));
+		nextCoords["ry"]			= oo::PList(static_cast<double>(ry));
+		nextCoords["rz"]			= oo::PList(static_cast<double>(rz));
+		nextCoords["speed"]			= oo::PList(static_cast<double>(corridor_speed[i]));
+		nextCoords["range"]			= oo::PList(static_cast<double>(corridor_range[i]));
 		
 		if (corridor_rotate[i])
 		{
-			[nextCoords setObject:@"YES" forKey:@"match_rotation"];
+			nextCoords["match_rotation"] = oo::PList("YES");
 		}
 		
 		if (i == corridor_final_approach)
 		{
 			if (station == [UNIVERSE station])
 			{
-				[nextCoords setObject:@"[station-begin-final-aproach]" forKey:@"comms_message"];
+				nextCoords["comms_message"] = oo::PList("[station-begin-final-aproach]");
 			}
 			else
 			{
-				[nextCoords setObject:@"[docking-begin-final-aproach]" forKey:@"comms_message"];
+				nextCoords["comms_message"] = oo::PList("[docking-begin-final-aproach]");
 			}
 		}
 		
-		[coordinatesStack addObject:nextCoords];
+		coordinatesStack.push_back(oo::PList(std::move(nextCoords)));
 	}
 	
-	[shipsOnApproach setObject:coordinatesStack forKey:shipID];
+	shipsOnApproach[shipID] = std::move(coordinatesStack);
 	
 	
 	// COMM-CHATTER
@@ -590,12 +638,9 @@ MA 02110-1301, USA.
 - (void) abortDockingForShip:(ShipEntity *)ship
 {
 	OOUniversalID	ship_id = [ship universalID];
-	NSNumber		*shipID = [NSNumber numberWithUnsignedShort:ship_id];
+	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
 	
-	if ([shipsOnApproach objectForKey:shipID])
-	{
-		[shipsOnApproach removeObjectForKey:shipID];
-	}
+	shipsOnApproach.erase(shipID);
 	
 	if ([ship isPlayer])
 	{
@@ -643,9 +688,9 @@ MA 02110-1301, USA.
 	if ([ship isPlayer] && [ship status] == STATUS_DEAD)  return NO;
 	
 	OOUniversalID	ship_id = [ship universalID];
-	NSNumber		*shipID = [NSNumber numberWithUnsignedShort:ship_id];
+	const unsigned short	shipID = (unsigned short)ship_id;	// +numberWithUnsignedShort:
 	
-	if ([shipsOnApproach objectForKey:shipID])
+	if (shipsOnApproach.contains(shipID))
 	{
 		return YES;
 	}
@@ -660,13 +705,13 @@ MA 02110-1301, USA.
 
 - (NSUInteger) countOfShipsInDockingQueue
 {
-	return [shipsOnApproach count];
+	return shipsOnApproach.size();
 }
 
 
 - (NSUInteger) countOfShipsInLaunchQueue
 {
-	return [launchQueue count];
+	return launchQueue.size();
 }
 
 
@@ -869,19 +914,14 @@ MA 02110-1301, USA.
 	
 	if (ship == nil)  return;
 	
-	if (launchQueue == nil)
-	{
-		launchQueue = [[NSMutableArray alloc] init]; // retained
-	}
-	
 	[ship setStatus:STATUS_DOCKED];
 	if (priority)
 	{
-		[launchQueue insertObject:ship atIndex:0];
+		launchQueue.insert(launchQueue.begin(), oo::ObjCRef<ShipEntity *>(ship));
 	}
 	else
 	{
-		[launchQueue addObject:ship];
+		launchQueue.push_back(oo::ObjCRef<ShipEntity *>(ship));
 	}
 }
 
@@ -938,13 +978,12 @@ MA 02110-1301, USA.
 }
 
 
-- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(NSString *)role
+- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(id)role	// shared selector (proposed ADR-0043)
 {
 	NSUInteger count = 0;
-	ShipEntity *ship = nil;
-	foreach (ship, launchQueue)
+	for (const oo::ObjCRef<ShipEntity *> &ship : launchQueue)
 	{
-		if ([ship hasPrimaryRole:role])  count++;
+		if ([ship.get() hasPrimaryRole:role])  count++;
 	}
 	return count;
 }
@@ -982,8 +1021,8 @@ MA 02110-1301, USA.
 
 - (void) clear
 {
-	[launchQueue removeAllObjects];
-	[shipsOnApproach removeAllObjects];
+	launchQueue.clear();
+	shipsOnApproach.clear();
 }
 
 
@@ -1175,15 +1214,13 @@ MA 02110-1301, USA.
 }
 
 
-- (id)initWithKey:(NSString *)key definition:(NSDictionary *)dict
+- (id)initWithKey:(id)key definition:(id)dict	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
 {
 	OOJS_PROFILE_ENTER
 	
 	self = [super initWithKey:key definition:dict];
 	if (self != nil)
 	{
-		shipsOnApproach = [[NSMutableDictionary alloc] init];
-		launchQueue = [[NSMutableArray alloc] init];
 		allow_docking = YES;
 		disallowed_docking_collides = NO;
 		allow_launching = YES;
@@ -1198,8 +1235,6 @@ MA 02110-1301, USA.
 
 - (void) dealloc
 {
-	DESTROY(shipsOnApproach);
-	DESTROY(launchQueue);
 	[self clearIdLocks:nil];
 	
 	[super dealloc];
@@ -1229,7 +1264,7 @@ MA 02110-1301, USA.
 }
 
 
-- (BOOL) setUpShipFromDictionary:(NSDictionary *) dict
+- (BOOL) setUpShipFromDictionary:(id) dict	// shared selector (proposed ADR-0043): an Objective-C dictionary
 {
 	OOJS_PROFILE_ENTER
 	
@@ -1248,17 +1283,17 @@ MA 02110-1301, USA.
 {
 	[super update:delta_t];
 	
-	if (([launchQueue count] > 0)&&([shipsOnApproach count] == 0)&&[self dockingCorridorIsEmpty])
+	if ((!launchQueue.empty())&&(shipsOnApproach.empty())&&[self dockingCorridorIsEmpty])
 	{
-		ShipEntity *se=(ShipEntity *)[launchQueue objectAtIndex:0];
+		const oo::ObjCRef<ShipEntity *> se = launchQueue.front();
 		// check to make sure ship has not been destroyed in queue by script
-		if ([se status] == STATUS_DOCKED)
+		if ([se.get() status] == STATUS_DOCKED)
 		{
-			[self launchShip:se];
+			[self launchShip:se.get()];
 		}
-		[launchQueue removeObjectAtIndex:0];
+		if (!launchQueue.empty())  launchQueue.erase(launchQueue.begin());	// (-removeObjectAtIndex:0 of an emptied queue raised)
 	}
-	if (([launchQueue count] == 0) && no_docking_while_launching)
+	if ((launchQueue.empty()) && no_docking_while_launching)
 	{
 		no_docking_while_launching = NO;	// launching complete
 	}
@@ -1277,7 +1312,7 @@ MA 02110-1301, USA.
 }
 
 
-- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(NSString *)weaponIdentifier
+- (void) takeEnergyDamage:(double)amount from:(Entity *)ent becauseOf:(Entity *)other weaponIdentifier:(id)weaponIdentifier	// shared selector (proposed ADR-0043)
 {
 	if (virtual_dock) // can't be damaged
 	{
