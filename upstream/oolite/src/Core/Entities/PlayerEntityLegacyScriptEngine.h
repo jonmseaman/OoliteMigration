@@ -26,6 +26,9 @@ MA 02110-1301, USA.
 
 #import "PlayerEntity.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 
 @class OOScript;
 
@@ -61,11 +64,16 @@ typedef enum
 - (void) setScriptTarget:(ShipEntity *)ship;
 - (ShipEntity*) scriptTarget;
 
-- (void) runScriptActions:(NSArray *)sanitizedActions withContextName:(NSString *)contextName forTarget:(ShipEntity *)target;
-- (void) runUnsanitizedScriptActions:(NSArray *)unsanitizedActions allowingAIMethods:(BOOL)allowAIMethods withContextName:(NSString *)contextName forTarget:(ShipEntity *)target;
+/*	Foundation sweep (proposed ADR-0043, chunk 1 of oo-j924: bead oo-3rb.190): scripts and
+	conditions are oo::PList trees, context names std::optional (nullopt was nil). The
+	Foundation-typed forms moved to PlayerEntityLegacyScriptEngine+FoundationBridge.h
+	(transitional), forwarding to these.
+*/
+- (void) cxx_runScriptActions:(const oo::PList &)sanitizedActions withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target;
+- (void) cxx_runUnsanitizedScriptActions:(const oo::PList &)unsanitizedActions allowingAIMethods:(BOOL)allowAIMethods withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target;
 
 // Test (sanitized) legacy script conditions array.
-- (BOOL) scriptTestConditions:(NSArray *)array;
+- (BOOL) cxx_scriptTestConditions:(const oo::PList &)array;
 
 - (NSDictionary*) missionVariables;
 
@@ -265,4 +273,11 @@ typedef enum
 
 @end
 
-NSString *OOComparisonTypeToString(OOComparisonType type) CONST_FUNC;
+std::string cxx_OOComparisonTypeToString(OOComparisonType type);
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before its sweep (beads oo-3rb.190 onwards, chunks of oo-j924), forwarding to the cxx_
+	methods above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
+	own sweep beads; the bridge goes in its own bead.
+*/
+#import "PlayerEntityLegacyScriptEngine+FoundationBridge.h"
