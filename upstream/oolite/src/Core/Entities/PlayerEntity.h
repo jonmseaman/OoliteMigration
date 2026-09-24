@@ -1349,3 +1349,12 @@ OOGUIScreenID OOGUIScreenIDFromString(NSString *string) PURE_FUNC;
 
 OOGalacticHyperspaceBehaviour OOGalacticHyperspaceBehaviourFromString(NSString *string) PURE_FUNC;
 NSString *OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour) CONST_FUNC;
+
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161): std::string results
+// (never nil), const std::string & parameters (nil arrived as "" and matched nothing: the defaults).
+// The Foundation forms above forward to them from OOConstToString+FoundationBridge.mm.
+std::string cxx_OOStringFromGUIScreenID(OOGUIScreenID screen);
+OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string);
+
+OOGalacticHyperspaceBehaviour cxx_OOGalacticHyperspaceBehaviourFromString(const std::string &string);
+std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour);

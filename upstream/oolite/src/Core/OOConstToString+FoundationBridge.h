@@ -42,6 +42,14 @@ OOHDRToneMapper OOHDRToneMapperFromString( NSString *string);
 NSString *OOStringFromSDRToneMapper(OOSDRToneMapper toneMapper);
 OOSDRToneMapper OOSDRToneMapperFromString( NSString *string);
 
+NSString *OOStringFromCompassMode(OOCompassMode mode);
+OOCompassMode OOCompassModeFromString(NSString *string);
+
+NSString *OOStringFromLongRangeChartMode(OOLongRangeChartMode chartMode);
+OOLongRangeChartMode OOLongRangeChartModeFromString(NSString *string);
+
+NSString *OOStringFromLegalStatusReason(OOLegalStatusReason reason);
+
 #ifdef __cplusplus
 }
 #endif
