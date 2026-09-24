@@ -322,7 +322,7 @@ typedef enum
 	
 	unsigned				missiles;					// number of on-board missiles
 	unsigned				max_missiles;				// number of missile pylons
-	NSString				*_missileRole;
+	std::optional<std::string>	_missileRole;	// nullopt: no missile_role (the generic fallback)
 	OOTimeDelta				missile_load_time;			// minimum time interval between missile launches
 	OOTimeAbsolute			missile_launch_time;		// time of last missile launch
 	
@@ -394,10 +394,10 @@ typedef enum
 
 	BOOL					_multiplyWeapons; // multiply instead of splitting weapons
 	//position of gun ports
-	NSArray					*forwardWeaponOffset,
-							*aftWeaponOffset,
-							*portWeaponOffset,
-							*starboardWeaponOffset;
+	std::vector<Vector>		forwardWeaponOffset,
+							aftWeaponOffset,
+							portWeaponOffset,
+							starboardWeaponOffset;
 	
 	// crew (typically one OOCharacter - the pilot)
 	NSArray					*crew;
@@ -590,11 +590,11 @@ typedef enum
 
 - (NSDictionary *)shipInfoDictionary;
 
-- (NSArray *) getWeaponOffsetFrom:(NSDictionary *)dict withKey:(NSString *)key inMode:(NSString *)mode;
-- (NSArray *) aftWeaponOffset;
-- (NSArray *) forwardWeaponOffset;
-- (NSArray *) portWeaponOffset;
-- (NSArray *) starboardWeaponOffset;
+- (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
+- (std::vector<Vector>) cxx_aftWeaponOffset;
+- (std::vector<Vector>) cxx_forwardWeaponOffset;
+- (std::vector<Vector>) cxx_portWeaponOffset;
+- (std::vector<Vector>) cxx_starboardWeaponOffset;
 - (BOOL) hasAutoWeapons;
 
 - (BOOL) isFrangible;
@@ -933,7 +933,7 @@ typedef enum
 - (std::vector<oo::ObjCRef<OOEquipmentType *>>) cxx_equipmentListForScripting;
 - (OOWeaponType) weaponTypeIDForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
 - (OOEquipmentType *) weaponTypeForFacing:(OOWeaponFacing)facing strict:(BOOL)strict;
-- (NSArray *) missilesList;
+- (id) missilesList;	// shared selector (proposed ADR-0043): an Objective-C array of OOEquipmentType
 
 - (OOCargoFlag) cargoFlag;
 - (void) setCargoFlag:(OOCargoFlag)flag;
@@ -996,8 +996,8 @@ typedef enum
 - (void) setIsWreckage:(BOOL)isw;
 - (BOOL) showDamage;
 
-- (Vector) positionOffsetForAlignment:(NSString*) align;
-Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, NSString* align);
+- (Vector) positionOffsetForAlignment:(const std::string &) align;
+Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, const std::string &align);
 
 - (void) collectBountyFor:(ShipEntity *)other;
 
@@ -1120,14 +1120,14 @@ Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q
 - (BOOL) fireDirectLaserShot:(double)range;
 - (BOOL) fireDirectLaserDefensiveShot;
 - (BOOL) fireDirectLaserShotAt:(Entity *)my_target;
-- (NSArray *) laserPortOffset:(OOWeaponFacing)direction;
-- (BOOL) fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(NSString *)weaponIdentifier;
+- (std::vector<Vector>) cxx_laserPortOffset:(OOWeaponFacing)direction;
+- (BOOL) cxx_fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(const std::string &)weaponIdentifier;
 - (void) adjustMissedShots:(int)delta;
 - (int) missedShots;
 - (void) considerFiringMissile:(double)delta_t;
 - (Vector) missileLaunchPosition;
 - (ShipEntity *) fireMissile;
-- (ShipEntity *) fireMissileWithIdentifier:(NSString *) identifier andTarget:(Entity *) target;
+- (ShipEntity *) cxx_fireMissileWithIdentifier:(const std::optional<std::string> &) identifier andTarget:(Entity *) target;	// nullopt: a random missile from the list
 - (BOOL) isMissileFlagSet;
 - (void) setIsMissileFlag:(BOOL)newValue;
 - (OOTimeDelta) missileLoadTime;

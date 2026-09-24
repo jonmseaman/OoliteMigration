@@ -9,7 +9,22 @@ converts arguments and results at the boundary, as the old method produced them 
 
 #import "ShipEntity.h"	// declares the bridge category at its end
 #import "OOExhaustPlumeEntity.h"
+#import "OOVector.h"
 #import "OOFoundationBridge.h"
+
+
+namespace {
+
+// The weapon offsets as the old accessors held them: an array of OONativeVector.
+NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
+{
+	std::vector<oo::ObjCRef<OONativeVector *>> result;
+	result.reserve(vectors.size());
+	for (Vector v : vectors)  result.push_back(oo::adoptObjC([[OONativeVector alloc] initWithVector:v]));
+	return oo::NSArrayFromObjects(result);
+}
+
+}	// namespace
 
 
 @implementation ShipEntity (OOFoundationBridge)
@@ -101,4 +116,55 @@ converts arguments and results at the boundary, as the old method produced them 
 	return oo::NSArrayFromObjects([self cxx_equipmentListForScripting]);
 }
 
+
+// oo-3rb.234: missiles and weapon mounts
+
+- (NSArray *) aftWeaponOffset
+{
+	return NativeVectorArray([self cxx_aftWeaponOffset]);
+}
+
+
+- (NSArray *) forwardWeaponOffset
+{
+	return NativeVectorArray([self cxx_forwardWeaponOffset]);
+}
+
+
+- (NSArray *) portWeaponOffset
+{
+	return NativeVectorArray([self cxx_portWeaponOffset]);
+}
+
+
+- (NSArray *) starboardWeaponOffset
+{
+	return NativeVectorArray([self cxx_starboardWeaponOffset]);
+}
+
+
+- (NSArray *) laserPortOffset:(OOWeaponFacing)direction
+{
+	return NativeVectorArray([self cxx_laserPortOffset:direction]);
+}
+
+
+- (BOOL) fireLaserShotInDirection:(OOWeaponFacing)direction weaponIdentifier:(NSString *)weaponIdentifier
+{
+	return [self cxx_fireLaserShotInDirection:direction weaponIdentifier:oo::StdString(weaponIdentifier)];
+}
+
+
+- (ShipEntity *) fireMissileWithIdentifier:(NSString *) identifier andTarget:(Entity *) target
+{
+	return [self cxx_fireMissileWithIdentifier:oo::OptionalString(identifier) andTarget:target];
+}
+
 @end
+
+
+Vector positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaternion q, NSString* align)
+{
+	// nil printed "(null)---" through %@, whose first three units select nothing, as "" does.
+	return cxx_positionOffsetForShipInRotationToAlignment(ship, q, oo::StdString(align));
+}
