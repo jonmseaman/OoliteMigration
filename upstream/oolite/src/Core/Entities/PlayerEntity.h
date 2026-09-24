@@ -788,7 +788,7 @@ typedef enum
 	int						selFunctionIdx;
 	NSArray					*stickFunctions; 
 	std::vector<oo::PList>	keyFunctions;	// PlayerEntity (KeyMapper)'s function list; empty until built
-	NSArray					*kbdLayouts;
+	std::vector<oo::PList>	kbdLayouts;		// PlayerEntity (KeyMapper)'s keyboard layouts; empty until built
 	NSString				*keyShiftText;
 	NSString				*keyMod1Text;
 	NSString				*keyMod2Text;

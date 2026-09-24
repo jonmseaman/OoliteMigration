@@ -2454,7 +2454,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(keyMod1Text);
 	DESTROY(keyMod2Text);
 	DESTROY(stickFunctions);
-	DESTROY(kbdLayouts);
 
 	DESTROY(customEquipActivation);
 
@@ -13646,7 +13645,7 @@ else _dockTarget = NO_TARGET;
 	customEquipActivation &&
 	!customActivatePressed.empty() &&
 	!customModePressed.empty() &&
-	kbdLayouts &&
+	!kbdLayouts.empty() &&
 	showingLongRangeChart &&
 	_missionAllowInterrupt &&
 	_missionScreenID &&

@@ -140,6 +140,32 @@ const oo::PList &ElementAt(const oo::PList &array, std::size_t index)
 }
 
 
+// A copy of the KeyConfigOverrides default (+dictionaryWithDictionary: of nil was empty).
+oo::PList::Dict KeyConfigOverrides(void)
+{
+	const oo::PList overrides = oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:KEYCONFIG_OVERRIDES]);
+	const oo::PList::Dict *dict = overrides.getIf<oo::PList::Dict>();
+	return dict != nullptr ? *dict : oo::PList::Dict();
+}
+
+
+// The keymappings plist for this platform.
+std::string KeyMappingsFileName(void)
+{
+	std::string map;
+#if OOLITE_WINDOWS
+	map = "keymappings_windows.plist";
+#endif
+#if OOLITE_LINUX
+	map = "keymappings_linux.plist";
+#endif
+#if OOLITE_MAC_OS_X
+	map = "keymappings_mac.plist";
+#endif
+	return map;
+}
+
+
 // -isEqualToString:@"" on a value that may be absent.
 bool IsEmptyString(const oo::PList *value)
 {
@@ -155,7 +181,7 @@ bool IsEmptyString(const oo::PList *value)
 - (void)updateKeyDefinition:(const std::string &)keystring index:(NSUInteger)index;
 - (void)updateShiftKeyDefinition:(const std::string &)key index:(NSUInteger)index;
 - (void)displayKeyFunctionList:(GuiDisplayGen *)gui skip:(NSUInteger)skip;
-- (NSString *)keyboardDescription:(NSString *)kbd;
+- (std::optional<std::string>)keyboardDescription:(const std::string &)kbd;
 - (void)displayKeyboardLayoutList:(GuiDisplayGen *)gui skip:(NSUInteger)skip;
 - (BOOL)entryIsIndexCustomEquip:(NSUInteger)idx;
 - (BOOL)entryIsDictCustomEquip:(const oo::PList &)dict;
@@ -168,11 +194,11 @@ bool IsEmptyString(const oo::PList *value)
 - (NSUInteger)getCustomEquipIndex:(const std::string &)key_def;
 - (BOOL)entryIsEqualToDefault:(const std::string &)key;
 - (BOOL)compareKeyEntries:(const oo::PList &)first second:(const oo::PList &)second;
-- (void)saveKeySetting:(NSString *)key;
-- (void)unsetKeySetting:(NSString *)key;
-- (void)deleteKeySetting:(NSString *)key;
+- (void)saveKeySetting:(const std::string &)key;
+- (void)unsetKeySetting:(const std::string &)key;
+- (void)deleteKeySetting:(const std::string &)key;
 - (void)deleteAllKeySettings;
-- (NSDictionary *)loadKeySettings;
+- (oo::PList)loadKeySettings;
 - (void) reloadPage;
 
 @end
@@ -241,7 +267,7 @@ bool IsEmptyString(const oo::PList *value)
 	[gui setTitle:oo::NSStringFrom(std::string("Configure Keyboard"))];
 
 	// show keyboard layout
-	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-keyboard")), oo::OptionalString([self keyboardDescription:oo::NSStringFrom(kbd)]) }) forRow:GUI_ROW_KC_SELECTKBD];	// -keyboardDescription: is chunk 4's
+	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-keyboard")), [self keyboardDescription:kbd] }) forRow:GUI_ROW_KC_SELECTKBD];
 	[gui cxx_setKey:oo::str::format("kbd:%s", kbd.c_str()) forRow:GUI_ROW_KC_SELECTKBD];
 	[gui setColor:[OOColor yellowColor] forRow:GUI_ROW_KC_SELECTKBD];
 
@@ -341,7 +367,7 @@ bool IsEmptyString(const oo::PList *value)
 		if (oo::str::hasPrefix(key, "More:")) return;
 
 		current_row = [gui selectedRow];
-		[self unsetKeySetting:oo::NSStringOrNil(OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), oo::StdString(KEY_KC_DEFINITION)))];
+		[self unsetKeySetting:OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), oo::StdString(KEY_KC_DEFINITION)).value_or("")];
 		[self reloadPage];
 	}
 
@@ -356,7 +382,7 @@ bool IsEmptyString(const oo::PList *value)
 			current_row = [gui selectedRow];
 			
 			const std::optional<std::string> delkey = OptionalStringForKey(KeyFunctionAt(keyFunctions, selFunctionIdx), oo::StdString(KEY_KC_DEFINITION));
-			[self deleteKeySetting:oo::NSStringOrNil(delkey)];
+			[self deleteKeySetting:delkey.value_or("")];
 			// special case - when default activate/mode key set in custom equipment
 			if ([self entryIsCustomEquip:delkey.value_or("")])
 			{
@@ -667,7 +693,7 @@ bool IsEmptyString(const oo::PList *value)
 
 	if (selectKeyPress && [gui selectedRow] == GUI_ROW_KC_SAVE)
 	{
-		[self saveKeySetting:oo::NSStringOrNil(OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_DEFINITION)))];
+		[self saveKeySetting:OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_DEFINITION)).value_or("")];
 		[self reloadPage];
 	}
 
@@ -901,7 +927,7 @@ bool IsEmptyString(const oo::PList *value)
 	[gui cxx_setArray:{ "Function", "Assigned to", "Overrides" }
 		   forRow:GUI_ROW_KC_HEADING];
 
-	const oo::PList overrides = oo::PListFrom([self loadKeySettings]);	// -loadKeySettings is chunk 4's
+	const oo::PList overrides = [self loadKeySettings];
 
 	if(keyFunctions.empty())	// the list is never empty once built
 	{
@@ -1249,16 +1275,16 @@ bool IsEmptyString(const oo::PList *value)
 	[[UNIVERSE gameController] setMouseInteractionModeForUIWithMouseInteraction:YES];
 
 	[gui clear];
-	[gui setTitle:[NSString stringWithFormat:@"Select Keyboard Layout"]];
+	[gui setTitle:oo::NSStringFrom(std::string("Select Keyboard Layout"))];
 
 	[self displayKeyboardLayoutList:gui skip:skip];
 
-	[gui setArray:[NSArray arrayWithObject:DESC(@"oolite-keyconfig-keyboard-info")] forRow:GUI_ROW_KC_INSTRUCT];
+	[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"oolite-keyconfig-keyboard-info")) }) forRow:GUI_ROW_KC_INSTRUCT];
 
 	[gui setSelectedRow:kbd_row];
 
-	[gui setForegroundTextureKey:[self status] == STATUS_DOCKED ? @"docked_overlay" : @"paused_overlay"];
-	[gui setBackgroundTextureKey:@"keyboardsettings"];
+	[gui cxx_setForegroundTextureKey:std::string([self status] == STATUS_DOCKED ? "docked_overlay" : "paused_overlay")];
+	[gui cxx_setBackgroundTextureKey:std::string("keyboardsettings")];
 
 	[gameView clearMouse];
 	[gameView clearKeys];
@@ -1274,12 +1300,12 @@ bool IsEmptyString(const oo::PList *value)
 	BOOL selectKeyPress = ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick]);
 	if ([gameView isDown:gvMouseDoubleClick])  [gameView clearMouse];
 
-	NSString *key = [gui keyForRow: [gui selectedRow]];
+	const std::string key = [gui cxx_keyForRow: [gui selectedRow]].value_or("");	// a nil key has no prefix
 	if (selectKeyPress)
 	{
-		if ([key hasPrefix:@"More:"])
+		if (oo::str::hasPrefix(key, "More:"))
 		{
-			int from_function = [[[key componentsSeparatedByString:@":"] objectAtIndex:1] intValue];
+			int from_function = SecondFieldIntValue(key);
 			if (from_function < 0)  from_function = 0;
 
 			current_row = GUI_ROW_KC_FUNCSTART;
@@ -1290,10 +1316,10 @@ bool IsEmptyString(const oo::PList *value)
 		}
 
 		// update the keyboard code
-		NSUInteger idx =[[[key componentsSeparatedByString:@":"] objectAtIndex:1] intValue];
-		NSString *kbd = [[kbdLayouts objectAtIndex:idx] objectForKey:@"key"];
+		NSUInteger idx =SecondFieldIntValue(key);
+		const std::optional<std::string> kbd = idx < kbdLayouts.size() ? OptionalStringForKey(kbdLayouts[idx], "key") : std::nullopt;
 		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		[defaults setObject:kbd forKey:@"keyboard-code"];
+		[defaults setObject:oo::NSStringOrNil(kbd) forKey:@"keyboard-code"];	// NSUserDefaults stays (ADR-0032 item 5)
 		[self initKeyConfigSettings];
 		[self initCheckingDictionary];
 
@@ -1308,71 +1334,53 @@ bool IsEmptyString(const oo::PList *value)
 }
 
 
-- (NSString *)keyboardDescription:(NSString *)kbd
+- (std::optional<std::string>)keyboardDescription:(const std::string &)kbd
 {
-	NSString *map = @"";
-#if OOLITE_WINDOWS	
-	map = @"keymappings_windows.plist";
-#endif
-#if OOLITE_LINUX
-	map = @"keymappings_linux.plist";
-#endif
-#if OOLITE_MAC_OS_X
-	map = @"keymappings_mac.plist";
-#endif
-	NSDictionary *kmap = [NSDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:map inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
-	NSDictionary *sect = [kmap objectForKey:kbd];
-	return [sect objectForKey:@"description"];
+	const oo::PList kmap = [ResourceManager cxx_dictionaryFromFilesNamed:KeyMappingsFileName() inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
+	const oo::PList *sect = kmap.find(kbd);
+	return sect != nullptr ? OptionalStringForKey(*sect, "description") : std::nullopt;
 }
 
 
-- (NSArray *)keyboardLayoutList
+- (std::vector<oo::PList>)keyboardLayoutList
 {
-	NSString *map = @"";
-#if OOLITE_WINDOWS	
-	map = @"keymappings_windows.plist";
-#endif
-#if OOLITE_LINUX
-	map = @"keymappings_linux.plist";
-#endif
-#if OOLITE_MAC_OS_X
-	map = @"keymappings_mac.plist";
-#endif
-	NSDictionary *kmap = [NSDictionary dictionaryWithDictionary:[ResourceManager dictionaryFromFilesNamed:map inFolder:@"Config" mergeMode:MERGE_BASIC cache:NO]];
-	NSMutableArray *kbdList = [NSMutableArray array];
-	NSArray *keys = [kmap allKeys];
-	NSUInteger i;
-	NSDictionary *def = nil;
+	const oo::PList kmap = [ResourceManager cxx_dictionaryFromFilesNamed:KeyMappingsFileName() inFolder:std::optional<std::string>("Config") mergeMode:MERGE_BASIC cache:NO];
+	std::vector<oo::PList> kbdList;
+	oo::PList def;
 
-	for (i = 0; i < [keys count]; i++)
+	if (const oo::PList::Dict *layouts = kmap.getIf<oo::PList::Dict>())
 	{
-		if (![[keys objectAtIndex:i] isEqualToString:@"default"])
+		for (const auto &layoutEntry : *layouts)
 		{
-			[kbdList addObject:[[NSDictionary alloc] initWithObjectsAndKeys:[keys objectAtIndex:i], @"key", 
-				[self keyboardDescription:[keys objectAtIndex:i]], @"description", 
-				//([[keys objectAtIndex:i] isEqualToString:kbd] ? @"Current" : @""), @"selected",
-				nil]];
-		}
-		else 
-		{
-			// key the "default" item separate, so we can add it at the top of the list, rather than getting it sorted
-			def = [[NSDictionary alloc] initWithObjectsAndKeys:[keys objectAtIndex:i], @"key", 
-				[self keyboardDescription:[keys objectAtIndex:i]], @"description", 
-				//([[keys objectAtIndex:i] isEqualToString:kbd] ? @"Current" : @""), @"selected",
-				nil];
+			const std::string &key = layoutEntry.first;
+			// +initWithObjectsAndKeys: stopped at a nil description
+			oo::PList::Dict layout;
+			layout["key"] = oo::PList(key);
+			const std::optional<std::string> description = [self keyboardDescription:key];
+			if (description)  layout["description"] = oo::PList(*description);
+			if (key != "default")
+			{
+				kbdList.push_back(oo::PList(std::move(layout)));
+			}
+			else
+			{
+				// key the "default" item separate, so we can add it at the top of the list, rather than getting it sorted
+				def = oo::PList(std::move(layout));
+			}
 		}
 	}
 
 	// Sorted by "description", ascending, with -compare:, stably: what the sort descriptor did
-	// (bead oo-3rb.20).
-	std::vector<NSDictionary *> byDescription;
-	for (i = 0; i < [kbdList count]; i++)  byDescription.push_back([kbdList objectAtIndex:i]);
-	std::stable_sort(byDescription.begin(), byDescription.end(), [](NSDictionary *a, NSDictionary *b) {
-		return [[a objectForKey:@"description"] compare:[b objectForKey:@"description"]] == NSOrderedAscending;
+	// (bead oo-3rb.20). A missing description never sorted ascending (-compare: to or from nil).
+	std::stable_sort(kbdList.begin(), kbdList.end(), [](const oo::PList &a, const oo::PList &b) {
+		const std::optional<std::string> descriptionA = OptionalStringForKey(a, "description");
+		const std::optional<std::string> descriptionB = OptionalStringForKey(b, "description");
+		return descriptionA && descriptionB && oo::str::compare(*descriptionA, *descriptionB) < 0;
 	});
-	NSMutableArray *sorted = [NSMutableArray arrayWithCapacity:byDescription.size() + 1];
-	for (NSDictionary *layout : byDescription)  [sorted addObject:layout];
-	[sorted insertObject:def atIndex:0];
+	std::vector<oo::PList> sorted;
+	sorted.reserve(kbdList.size() + 1);
+	sorted.push_back(def);
+	sorted.insert(sorted.end(), kbdList.begin(), kbdList.end());
 
 	return sorted;
 }
@@ -1381,11 +1389,11 @@ bool IsEmptyString(const oo::PList *value)
 - (void) displayKeyboardLayoutList:(GuiDisplayGen *)gui skip:(NSUInteger)skip
 {
 	[gui setColor:[OOColor greenColor] forRow:GUI_ROW_KC_HEADING];
-	[gui setArray:[NSArray arrayWithObjects:@"Keyboard layout", nil] forRow:GUI_ROW_KC_HEADING];
+	[gui cxx_setArray:{ "Keyboard layout" } forRow:GUI_ROW_KC_HEADING];
 
-	if (!kbdLayouts) kbdLayouts = [[self keyboardLayoutList] retain];
+	if (kbdLayouts.empty()) kbdLayouts = [self keyboardLayoutList];	// never empty once built ("default" first)
 
-	NSUInteger i, n_functions = [kbdLayouts count];
+	NSUInteger i, n_functions = kbdLayouts.size();
 	NSInteger n_rows, start_row, previous = 0;
 
 	if (skip >= n_functions)
@@ -1418,27 +1426,26 @@ bool IsEmptyString(const oo::PList *value)
 		if (skip > 0)
 		{
 			[gui setColor:[OOColor greenColor] forRow:GUI_ROW_KC_FUNCSTART];
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ", nil] forRow:GUI_ROW_KC_FUNCSTART];
-			[gui setKey:[NSString stringWithFormat:@"More:%zd", previous] forRow:GUI_ROW_KC_FUNCSTART];
+			[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"gui-back")), " <-- " }) forRow:GUI_ROW_KC_FUNCSTART];
+			[gui cxx_setKey:oo::str::format("More:%zd", previous) forRow:GUI_ROW_KC_FUNCSTART];
 		}
 		
-		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		NSString *kbd = oo::PListView(defaults).get<NSString *>(@"keyboard-code", @"default");
+		const std::string kbd = KeyboardCode();
 
 		for(i = 0; i < (n_functions - skip) && (int)i < n_rows; i++)
 		{
-			NSDictionary *entry = [kbdLayouts objectAtIndex:i + skip];
-			NSString *desc = [entry objectForKey:@"description"];
-			NSString *selected = @"";
-			if ([[entry objectForKey:@"key"] isEqualToString:kbd]) selected = @"Current";
-			[gui setArray:[NSArray arrayWithObjects:desc, selected, nil] forRow:i + start_row];
-			[gui setKey:[NSString stringWithFormat:@"Index:%zu", i + skip] forRow:i + start_row];
+			const oo::PList &entry = kbdLayouts[i + skip];
+			const std::optional<std::string> desc = OptionalStringForKey(entry, "description");
+			std::string selected;
+			if (OptionalStringForKey(entry, "key") == kbd) selected = "Current";
+			[gui cxx_setArray:Columns({ desc, selected }) forRow:i + start_row];
+			[gui cxx_setKey:oo::str::format("Index:%zu", i + skip) forRow:i + start_row];
 		}
 		if (i < n_functions - skip)
 		{
 			[gui setColor:[OOColor greenColor] forRow:start_row + i];
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ", nil] forRow:start_row + i];
-			[gui setKey:[NSString stringWithFormat:@"More:%zu", n_rows + skip] forRow:start_row + i];
+			[gui cxx_setArray:Columns({ oo::OptionalString(DESC(@"gui-more")), " --> " }) forRow:start_row + i];
+			[gui cxx_setKey:oo::str::format("More:%zu", n_rows + skip) forRow:start_row + i];
 			i++;
 		}
 		
@@ -1676,7 +1683,7 @@ bool IsEmptyString(const oo::PList *value)
 
 
 // saves the currently store key_list to the defaults file and updates the global definition
-- (void) saveKeySetting:(NSString*)key
+- (void) saveKeySetting:(const std::string &)key
 {
 	// check for a blank entry
 	oo::PList::Array *keys = key_list.getIf<oo::PList::Array>();
@@ -1704,12 +1711,12 @@ bool IsEmptyString(const oo::PList *value)
 		}
 	}
 
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];	// stays (ADR-0032 item 5)
 
-	if (![self entryIsCustomEquip:oo::StdString(key)])
+	if (![self entryIsCustomEquip:key])
 	{
 		// if we've got the same settings as the default, revert to the default
-		if ([self entryIsEqualToDefault:oo::StdString(key)])
+		if ([self entryIsEqualToDefault:key])
 		{
 			[self deleteKeySetting:key];
 			// reload settings
@@ -1717,17 +1724,17 @@ bool IsEmptyString(const oo::PList *value)
 			[self reloadPage];
 			return;
 		}
-		NSMutableDictionary *keyconf = [NSMutableDictionary dictionaryWithDictionary:[defaults objectForKey:KEYCONFIG_OVERRIDES]];
-		[keyconf setObject:oo::ObjectFromPList(key_list) forKey:key];
-		[defaults setObject:keyconf forKey:KEYCONFIG_OVERRIDES];
+		oo::PList::Dict keyconf = KeyConfigOverrides();
+		keyconf[key] = key_list;
+		[defaults setObject:oo::ObjectFromPList(oo::PList(std::move(keyconf))) forKey:KEYCONFIG_OVERRIDES];
 	}
-	else 
+	else
 	{
-		NSUInteger idx = [self getCustomEquipIndex:oo::StdString(key)];
-		NSString *custkey = oo::NSStringOrNil([self getCustomEquipKeyDefType:oo::StdString(key)]);
-		NSMutableDictionary *custEquip = [[customEquipActivation objectAtIndex:idx] mutableCopy];
-		[custEquip setObject:oo::ObjectFromPList(key_list) forKey:custkey];
-		[customEquipActivation replaceObjectAtIndex:idx withObject:custEquip];
+		NSUInteger idx = [self getCustomEquipIndex:key];
+		oo::PList custEquip = oo::PListFrom([customEquipActivation objectAtIndex:idx]);
+		if (oo::PList::Dict *fields = custEquip.getIf<oo::PList::Dict>())  (*fields)[[self getCustomEquipKeyDefType:key].value_or("")] = key_list;
+		// elements stay mutable: other code edits them in place
+		[customEquipActivation replaceObjectAtIndex:idx withObject:[[oo::ObjectFromPList(custEquip) mutableCopy] autorelease]];
 		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 	// reload settings
@@ -1736,25 +1743,23 @@ bool IsEmptyString(const oo::PList *value)
 }
 
 // unsets the key setting in the overrides, and updates the global definition
-- (void) unsetKeySetting:(NSString*)key
+- (void) unsetKeySetting:(const std::string &)key
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	if (![self entryIsCustomEquip:oo::StdString(key)])
+	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];	// stays (ADR-0032 item 5)
+	if (![self entryIsCustomEquip:key])
 	{
-		NSMutableDictionary *keyconf = [NSMutableDictionary dictionaryWithDictionary:[defaults objectForKey:KEYCONFIG_OVERRIDES]];
-		NSMutableArray *empty = [[NSMutableArray alloc] init];
-		[keyconf setObject:empty forKey:key];
-		[defaults setObject:keyconf forKey:KEYCONFIG_OVERRIDES];
-		[empty release];
+		oo::PList::Dict keyconf = KeyConfigOverrides();
+		keyconf[key] = oo::PList(oo::PList::Array());	// an empty override
+		[defaults setObject:oo::ObjectFromPList(oo::PList(std::move(keyconf))) forKey:KEYCONFIG_OVERRIDES];
 	}
-	else 
+	else
 	{
-		NSString *custkey = oo::NSStringOrNil([self getCustomEquipKeyDefType:oo::StdString(key)]);
-		NSMutableDictionary *custEquip = [[customEquipActivation objectAtIndex:[self getCustomEquipIndex:oo::StdString(key)]] mutableCopy];
-		[custEquip removeObjectForKey:custkey];
-		[customEquipActivation replaceObjectAtIndex:[self getCustomEquipIndex:oo::StdString(key)] withObject:custEquip];
+		NSUInteger idx = [self getCustomEquipIndex:key];
+		oo::PList custEquip = oo::PListFrom([customEquipActivation objectAtIndex:idx]);
+		if (oo::PList::Dict *fields = custEquip.getIf<oo::PList::Dict>())  fields->erase([self getCustomEquipKeyDefType:key].value_or(""));
+		// elements stay mutable: other code edits them in place
+		[customEquipActivation replaceObjectAtIndex:idx withObject:[[oo::ObjectFromPList(custEquip) mutableCopy] autorelease]];
 		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
-		[custEquip release];
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1762,19 +1767,19 @@ bool IsEmptyString(const oo::PList *value)
 
 
 // removes the key setting from the overrides, and updates the global definition
-- (void) deleteKeySetting:(NSString*)key
+- (void) deleteKeySetting:(const std::string &)key
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	if (![self entryIsCustomEquip:oo::StdString(key)])
+	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];	// stays (ADR-0032 item 5)
+	if (![self entryIsCustomEquip:key])
 	{
-		NSMutableDictionary *keyconf = [NSMutableDictionary dictionaryWithDictionary:[defaults objectForKey:KEYCONFIG_OVERRIDES]];
-		[keyconf removeObjectForKey:key];
-		[defaults setObject:keyconf forKey:KEYCONFIG_OVERRIDES];
+		oo::PList::Dict keyconf = KeyConfigOverrides();
+		keyconf.erase(key);
+		[defaults setObject:oo::ObjectFromPList(oo::PList(std::move(keyconf))) forKey:KEYCONFIG_OVERRIDES];
 	}
-	else 
+	else
 	{
-		NSString *custkey = oo::NSStringOrNil([self getCustomEquipKeyDefType:oo::StdString(key)]);
-		[[customEquipActivation objectAtIndex:[self getCustomEquipIndex:oo::StdString(key)]] removeObjectForKey:custkey];
+		// the live (mutable) customEquipActivation element is edited in place, as before
+		[[customEquipActivation objectAtIndex:[self getCustomEquipIndex:key]] removeObjectForKey:oo::NSStringOrNil([self getCustomEquipKeyDefType:key])];
 		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 	// reload settings
@@ -1792,8 +1797,8 @@ bool IsEmptyString(const oo::PList *value)
 		NSUInteger i;
 		for (i = 0; i < [customEquipActivation count]; i++)
 		{
-			NSString *eq = oo::PListView([customEquipActivation objectAtIndex:i]).get<NSString *>(CUSTOMEQUIP_EQUIPKEY);
-			OOEquipmentType *item = [OOEquipmentType equipmentTypeWithIdentifier:eq];
+			const std::optional<std::string> eq = OptionalStringForKey(oo::PListFrom([customEquipActivation objectAtIndex:i]), oo::StdString(CUSTOMEQUIP_EQUIPKEY));
+			OOEquipmentType *item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(eq)];
 			if ([item defaultActivateKey]) 
 				[[customEquipActivation objectAtIndex:i] setObject:[item defaultActivateKey] forKey:CUSTOMEQUIP_KEYACTIVATE];
 			else
@@ -1812,10 +1817,9 @@ bool IsEmptyString(const oo::PList *value)
 
 
 // returns all key settings from the overrides
-- (NSDictionary *) loadKeySettings
+- (oo::PList) loadKeySettings
 {
-	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-	return [defaults objectForKey:KEYCONFIG_OVERRIDES];
+	return oo::PListFrom([[NSUserDefaults standardUserDefaults] objectForKey:KEYCONFIG_OVERRIDES]);
 }
 
 
