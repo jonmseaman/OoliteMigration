@@ -210,6 +210,13 @@ int IntValueOfKey(std::string_view key)
 	return value;
 }
 
+
+// OOExpand(text): the text expanded with no arguments.
+std::string ExpandedText(const std::string &text)
+{
+	return oo::StdString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(text), nil, nil, nil, kOOExpandNoOptions));
+}
+
 }	// namespace
 
 
@@ -245,7 +252,7 @@ int IntValueOfKey(std::string_view key)
 
 - (void) setShipHitByLaser:(ShipEntity *)ship;
 
-- (void) noteFrustration:(NSString *)context;
+- (void) noteFrustration:(const std::string &)context;
 
 - (BOOL) cloakPassive;
 
@@ -1175,7 +1182,6 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	DESTROY(scanner_display_color_hostile2);
 	DESTROY(script);
 	DESTROY(aiScript);
-	DESTROY(lastRadioMessage);
 	DESTROY(octree);
 	DESTROY(_defenseTargets);
 	DESTROY(_collisionExceptions);
@@ -2264,7 +2270,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			// send AI a message about the touch
 			OOWeakReference	*temp = _primaryTarget;
 			_primaryTarget = [otherShip weakRetain];
-			[self doScriptEvent:OOJSID("shipCloseContact") withArgument:otherShip andReactToAIMessage:@"CLOSE CONTACT"];
+			[self cxx_doScriptEvent:OOJSID("shipCloseContact") withArgument:otherShip andReactToAIMessage:"CLOSE CONTACT"];
 			_primaryTarget = temp;
 		}
 	}
@@ -2489,33 +2495,33 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 						Vector  pos1 = make_vector(dot_product(dpos, v_right), dot_product(dpos, v_up), dot_product(dpos, v_forward));
 						Vector	pos0 = {0, 0, 0};
 						const auto contact = closeContactsInfo.find(other_key);
-						ScanVectorFromString(contact != closeContactsInfo.end() ? oo::NSStringFrom(contact->second) : nil, &pos0);
+						cxx_ScanVectorFromString(contact != closeContactsInfo.end() ? std::optional<std::string>(contact->second) : std::nullopt, &pos0);
 						// send AI messages about the contact
 						OOWeakReference *temp = _primaryTarget;
 						_primaryTarget = [other weakRetain];
 						if ((pos0.x < 0.0)&&(pos1.x > 0.0))
 						{
-							[self doScriptEvent:OOJSID("shipTraversePositiveX") withArgument:other andReactToAIMessage:@"POSITIVE X TRAVERSE"];
+							[self cxx_doScriptEvent:OOJSID("shipTraversePositiveX") withArgument:other andReactToAIMessage:"POSITIVE X TRAVERSE"];
 						}
 						if ((pos0.x > 0.0)&&(pos1.x < 0.0))
 						{
-							[self doScriptEvent:OOJSID("shipTraverseNegativeX") withArgument:other andReactToAIMessage:@"NEGATIVE X TRAVERSE"];
+							[self cxx_doScriptEvent:OOJSID("shipTraverseNegativeX") withArgument:other andReactToAIMessage:"NEGATIVE X TRAVERSE"];
 						}
 						if ((pos0.y < 0.0)&&(pos1.y > 0.0))
 						{
-							[self doScriptEvent:OOJSID("shipTraversePositiveY") withArgument:other andReactToAIMessage:@"POSITIVE Y TRAVERSE"];
+							[self cxx_doScriptEvent:OOJSID("shipTraversePositiveY") withArgument:other andReactToAIMessage:"POSITIVE Y TRAVERSE"];
 						}
 						if ((pos0.y > 0.0)&&(pos1.y < 0.0))
 						{
-							[self doScriptEvent:OOJSID("shipTraverseNegativeY") withArgument:other andReactToAIMessage:@"NEGATIVE Y TRAVERSE"];
+							[self cxx_doScriptEvent:OOJSID("shipTraverseNegativeY") withArgument:other andReactToAIMessage:"NEGATIVE Y TRAVERSE"];
 						}
 						if ((pos0.z < 0.0)&&(pos1.z > 0.0))
 						{
-							[self doScriptEvent:OOJSID("shipTraversePositiveZ") withArgument:other andReactToAIMessage:@"POSITIVE Z TRAVERSE"];
+							[self cxx_doScriptEvent:OOJSID("shipTraversePositiveZ") withArgument:other andReactToAIMessage:"POSITIVE Z TRAVERSE"];
 						}
 						if ((pos0.z > 0.0)&&(pos1.z < 0.0))
 						{
-							[self doScriptEvent:OOJSID("shipTraverseNegativeZ") withArgument:other andReactToAIMessage:@"NEGATIVE Z TRAVERSE"];
+							[self cxx_doScriptEvent:OOJSID("shipTraverseNegativeZ") withArgument:other andReactToAIMessage:"NEGATIVE Z TRAVERSE"];
 						}
 						_primaryTarget = temp;
 						closeContactsInfo.erase(other_key);
@@ -3020,10 +3026,10 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 
 
 // called when behaviour is unable to improve position
-- (void)noteFrustration:(NSString *)context
+- (void)noteFrustration:(const std::string &)context
 {
-	[shipAI reactToMessage:@"FRUSTRATED" context:context];
-	[self doScriptEvent:OOJSID("shipAIFrustrated") withArgument:context];
+	[shipAI cxx_reactToMessage:"FRUSTRATED" context:context];
+	[self doScriptEvent:OOJSID("shipAIFrustrated") withArgument:oo::NSStringFrom(context)];
 }
 
 
@@ -3082,7 +3088,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		source = from;
 	}	
 	
-	[self doScriptEvent:OOJSID("shipBeingAttacked") withArgument:source andReactToAIMessage:@"ATTACKED"];
+	[self cxx_doScriptEvent:OOJSID("shipBeingAttacked") withArgument:source andReactToAIMessage:"ATTACKED"];
 	if ([source isShip]) [(ShipEntity *)source doScriptEvent:OOJSID("shipAttackedOther") withArgument:self];
 }
 
@@ -4429,7 +4435,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			frustration += delta_t * 0.9;
 			if (frustration > 10.0)	// 10s of frustration
 			{
-				[self noteFrustration:@"BEHAVIOUR_INTERCEPT_TARGET"];
+				[self noteFrustration:"BEHAVIOUR_INTERCEPT_TARGET"];
 				frustration -= 5.0;	//repeat after another five seconds' frustration
 			}
 		}
@@ -4999,7 +5005,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		if (frustration > 3.0)	// 3s of frustration
 		{
 			
-			[self noteFrustration:@"BEHAVIOUR_ATTACK_BROADSIDE"];
+			[self noteFrustration:"BEHAVIOUR_ATTACK_BROADSIDE"];
 			[self setEvasiveJink:1000.0];
 			behaviour = BEHAVIOUR_ATTACK_FLY_FROM_TARGET;
 			frustration = 0.0;
@@ -5165,7 +5171,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			frustration += delta_t;
 			if (frustration > 3.0)	// 3s of frustration
 			{
-				[self noteFrustration:@"BEHAVIOUR_ATTACK_SNIPER"];
+				[self noteFrustration:"BEHAVIOUR_ATTACK_SNIPER"];
 				[self setEvasiveJink:1000.0];
 				behaviour = BEHAVIOUR_ATTACK_TARGET;
 				frustration = 0.0;
@@ -5497,7 +5503,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		frustration += delta_t;
 		if (frustration > 3.0)	// 3s of frustration
 		{
-			[self noteFrustration:@"BEHAVIOUR_ATTACK_FLY_TO_TARGET"];
+			[self noteFrustration:"BEHAVIOUR_ATTACK_FLY_TO_TARGET"];
 			[self setEvasiveJink:1000.0];
 			behaviour = BEHAVIOUR_ATTACK_TARGET;
 			frustration = 0.0;
@@ -5705,7 +5711,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		frustration += delta_t;
 		if (frustration > 15.0)	// 15s of frustration
 		{
-			[self noteFrustration:@"BEHAVIOUR_FLEE_TARGET"];
+			[self noteFrustration:"BEHAVIOUR_FLEE_TARGET"];
 			frustration = 0.0;
 		}
 	}
@@ -5802,7 +5808,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (frustration > 15.0 / max_flight_pitch)	// allow more time for slow ships.
 	{
 		frustration = 0.0;
-		[self noteFrustration:@"BEHAVIOUR_FACE_DESTINATION"];
+		[self noteFrustration:"BEHAVIOUR_FACE_DESTINATION"];
 		if(flightPitch == old_pitch) flightPitch = 0.5 * max_flight_pitch; // hack to get out of frustration.
 	}	
 	
@@ -5905,7 +5911,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 		frustration += delta_t;
 		if (frustration > 15.0)
 		{
-			if (!leadShip) [self noteFrustration:@"BEHAVIOUR_FORMATION_FORM_UP"]; // escorts never reach their destination when following leader.
+			if (!leadShip) [self noteFrustration:"BEHAVIOUR_FORMATION_FORM_UP"]; // escorts never reach their destination when following leader.
 			else if (distance > 0.5 * scannerRange && !pitching_over) 
 			{
 				pitching_over = YES; // Force the ship in a 180 degree turn. Do it here to allow escorts to break out formation for some seconds.
@@ -6013,7 +6019,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			frustration += delta_t;
 			if ((frustration > slowdownTime * 10.0 && slowdownTime > 0)||(frustration > 15.0))	// 10x slowdownTime or 15s of frustration
 			{
-				[self noteFrustration:@"BEHAVIOUR_FLY_TO_DESTINATION"];
+				[self noteFrustration:"BEHAVIOUR_FLY_TO_DESTINATION"];
 				frustration -= slowdownTime * 5.0;	//repeat after another five units of frustration
 			}
 		}
@@ -6170,10 +6176,10 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 	if (dist2 < desired_range * desired_range)
 	{
 		// desired range achieved
-		[self doScriptEvent:OOJSID("shipReachedNavPoint") andReactToAIMessage:@"NAVPOINT_REACHED"];
+		[self cxx_doScriptEvent:OOJSID("shipReachedNavPoint") andReactToAIMessage:"NAVPOINT_REACHED"];
 		if (navpoint_plus_index == 0)
 		{
-			[self doScriptEvent:OOJSID("shipReachedEndPoint") andReactToAIMessage:@"ENDPOINT_REACHED"];
+			[self cxx_doScriptEvent:OOJSID("shipReachedEndPoint") andReactToAIMessage:"ENDPOINT_REACHED"];
 			behaviour = BEHAVIOUR_IDLE;
 		}
 		next_navpoint_index = navpoint_plus_index;	// loop as required
@@ -6209,7 +6215,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 			frustration += delta_t;
 			if (frustration > 15.0)	// 15s of frustration
 			{
-				[self noteFrustration:@"BEHAVIOUR_FLY_THRU_NAVPOINTS"];
+				[self noteFrustration:"BEHAVIOUR_FLY_THRU_NAVPOINTS"];
 				frustration -= 15.0;	//repeat after another 15s of frustration
 			}
 		}
@@ -8059,7 +8065,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 
 
 
-- (void) setStateMachine:(NSString *)smName
+- (void) setStateMachine:(id)smName	// shared selector (proposed ADR-0043), called by name
 {
 	[self setAITo:smName];
 }
@@ -8331,12 +8337,11 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 		{
 			return; // police never have bounties
 		}
-		NSString* nReason = OOStringFromLegalStatusReason(reason);
-		[self setBounty:amount withReasonAsString:nReason];
+		[self setBounty:amount withReasonAsString:OOStringFromLegalStatusReason(reason)];
 	}
 }
 
-- (void) setBounty:(OOCreditsQuantity) amount withReasonAsString:(NSString*)reason
+- (void) setBounty:(OOCreditsQuantity) amount withReasonAsString:(id)reason	// shared selector (proposed ADR-0043)
 {
 	if ([self isSubEntity]) 
 	{
@@ -9558,7 +9563,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 			{
 				ShipEntity *se = (ShipEntity *)e2;
 				[se setFoundTarget:self];
-				[se reactToAIMessage:@"CASCADE_WEAPON_DETECTED" context:@"nearby Q-mine"];
+				[se cxx_reactToAIMessage:"CASCADE_WEAPON_DETECTED" context:"nearby Q-mine"];
 				[se doScriptEvent:OOJSID("cascadeWeaponDetected") withArgument:self];
 			}
 		}
@@ -11860,7 +11865,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 				}
 				[victim setPrimaryAggressor:parent];
 				[victim setFoundTarget:parent];
-				[victim reactToAIMessage:@"ATTACKER_MISSED" context:@"attacker narrowly misses"];
+				[victim cxx_reactToAIMessage:"ATTACKER_MISSED" context:"attacker narrowly misses"];
 				[victim doScriptEvent:OOJSID("shipBeingAttackedUnsuccessfully") withArgument:parent];
 
 			}
@@ -12103,7 +12108,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 						}
 						[victim setPrimaryAggressor:self];
 						[victim setFoundTarget:self];
-						[victim reactToAIMessage:@"ATTACKER_MISSED" context:@"attacker narrowly misses"];
+						[victim cxx_reactToAIMessage:"ATTACKER_MISSED" context:"attacker narrowly misses"];
 						[victim doScriptEvent:OOJSID("shipBeingAttackedUnsuccessfully") withArgument:self];
 					}
 				}
@@ -12359,7 +12364,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		[self doScriptEvent:OOJSID("shipFiredMissile") withArgument:missile andArgument:target_ship];
 		[target_ship setPrimaryAggressor:self];
 		[target_ship doScriptEvent:OOJSID("shipAttackedWithMissile") withArgument:missile andArgument:self];
-		[target_ship reactToAIMessage:@"INCOMING_MISSILE" context:@"someone's shooting at me!"];
+		[target_ship cxx_reactToAIMessage:"INCOMING_MISSILE" context:"someone's shooting at me!"];
 		if (cloaking_device_active && cloakPassive)
 		{
 			// parity between player &NPCs, only deactivate cloak for missiles
@@ -12593,7 +12598,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		{
 			[self dumpItem:jetto];	// CLASS_CARGO, STATUS_IN_FLIGHT, AI state GLOBAL
 			cargo.erase(cargo.begin() + i);
-			[self broadcastAIMessage:@"CARGO_DUMPED"]; // goes only to 16 nearby ships in range, but that should be enough.
+			[self broadcastAIMessage:"CARGO_DUMPED"]; // goes only to 16 nearby ships in range, but that should be enough.
 			unsigned i;
 			// only send script event to powered entities
 			[self checkScannerIgnoringUnpowered];
@@ -12882,8 +12887,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	// remove self from other's collision list
 	[[other collisionArray] removeObject:self];
 	
-	[self doScriptEvent:OOJSID("shipCollided") withArgument:other andReactToAIMessage:@"COLLISION"];
-	[other doScriptEvent:OOJSID("shipCollided") withArgument:self andReactToAIMessage:@"COLLISION"];
+	[self cxx_doScriptEvent:OOJSID("shipCollided") withArgument:other andReactToAIMessage:"COLLISION"];
+	[other cxx_doScriptEvent:OOJSID("shipCollided") withArgument:self andReactToAIMessage:"COLLISION"];
 	
 	return YES;
 }
@@ -13227,7 +13232,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	{
 		if ([hunter isCloaked])
 		{
-			[self doScriptEvent:OOJSID("shipBeingAttackedByCloaked") andReactToAIMessage:@"ATTACKED_BY_CLOAKED"];
+			[self cxx_doScriptEvent:OOJSID("shipBeingAttackedByCloaked") andReactToAIMessage:"ATTACKED_BY_CLOAKED"];
 			
 			// lose it!
 			other = nil;
@@ -13351,7 +13356,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		// warn if I'm low on energy
 		if (energy < maxEnergy * 0.25)
 		{
-			[self doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:@"ENERGY_LOW"];
+			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
 		}
 		if ((energy < maxEnergy *0.125 || (energy < 64 && energy < amount*2)) && [self hasEscapePod] && (ranrot_rand() & 3) == 0)  // 25% chance he gets to an escape pod
 		{
@@ -13470,7 +13475,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		// warn if I'm low on energy
 		if (energy < maxEnergy * 0.25)
 		{
-			[self doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:@"ENERGY_LOW"];
+			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
 		}
 	}
 }
@@ -13504,7 +13509,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		// warn if I'm low on energy
 		if (energy < maxEnergy * 0.25)
 		{
-			[self doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:@"ENERGY_LOW"];
+			[self cxx_doScriptEvent:OOJSID("shipEnergyIsLow") andReactToAIMessage:"ENERGY_LOW"];
 		}
 	}
 }
@@ -14073,7 +14078,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	{
 		[planet welcomeShuttle:self];
 	}
-	[self doScriptEvent:OOJSID("shipLandedOnPlanet") withArgument:planet andReactToAIMessage:@"LANDED_ON_PLANET"];
+	[self cxx_doScriptEvent:OOJSID("shipLandedOnPlanet") withArgument:planet andReactToAIMessage:"LANDED_ON_PLANET"];
 	
 #ifndef NDEBUG
 	if ([self reportAIMessages])
@@ -14149,54 +14154,51 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 			(scanClass == CLASS_MILITARY)||
 			(scanClass == CLASS_PLAYER))	// only for active ships...
 	{
-		NSArray			*authorities = nil;
-		ShipEntity		*auth = nil;
-		
-		authorities = [UNIVERSE findShipsMatchingPredicate:AuthorityPredicate
+		const std::vector<oo::ObjCRef<ShipEntity *>> authorities = oo::ObjCRefsFrom<ShipEntity *>([UNIVERSE findShipsMatchingPredicate:AuthorityPredicate
 												 parameter:self
 												   inRange:-1
-												  ofEntity:nil];
-		foreach (auth, authorities)
+												  ofEntity:nil]);
+		for (const auto &authority : authorities)
 		{
+			ShipEntity *auth = authority.get();
 			[auth setFoundTarget:aggressor_ship];
 			[auth doScriptEvent:OOJSID("offenceCommittedNearby") withArgument:aggressor_ship andArgument:self];
-			[auth reactToAIMessage:@"OFFENCE_COMMITTED" context:@"combat update"];
+			[auth cxx_reactToAIMessage:"OFFENCE_COMMITTED" context:"combat update"];
 		}
 	}
 }
 
 
-- (void) sendMessage:(NSString *) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride
+- (void) cxx_sendMessage:(const std::string &) message_text toShip:(ShipEntity*) other_ship withUnpilotedOverride:(BOOL)unpilotedOverride
 {
-	if (!other_ship || !message_text) return;
+	if (!other_ship) return;
 	if (!crew && !unpilotedOverride) return;
-	
+
 	double d2 = HPdistance2(position, [other_ship position]);
 	if (d2 > scannerRange * scannerRange)
 		return;					// out of comms range
 
-	NSString *expandedMessage = OOExpand(message_text); // consistent with broadcast message.
+	const std::string expandedMessage = ExpandedText(message_text); // consistent with broadcast message.
 
 	if (other_ship->isPlayer)
 	{
 		[self setCommsMessageColor];
-		[(PlayerEntity *)other_ship receiveCommsMessage:expandedMessage from:self];
+		[(PlayerEntity *)other_ship receiveCommsMessage:oo::NSStringFrom(expandedMessage) from:self];
 		messageTime = 6.0;
 		[UNIVERSE resetCommsLogColor];
 	}
 	else
-		[other_ship receiveCommsMessage:expandedMessage from:self];
+		[other_ship receiveCommsMessage:oo::NSStringFrom(expandedMessage) from:self];
 }
 
 
-- (void) sendExpandedMessage:(NSString *)message_text toShip:(ShipEntity *)other_ship
+- (void) cxx_sendExpandedMessage:(const std::string &)message_text toShip:(ShipEntity *)other_ship
 {
 	if (!other_ship || !crew)
 		return;	// nobody to receive or send the signal
-	if ((lastRadioMessage) && (messageTime > 0.0) && [message_text isEqual:lastRadioMessage])
+	if ((lastRadioMessage) && (messageTime > 0.0) && message_text == *lastRadioMessage)
 		return;	// don't send the same message too often
-	[lastRadioMessage autorelease];
-	lastRadioMessage = [message_text retain];
+	lastRadioMessage = message_text;
 
 	double d2 = HPdistance2(position, [other_ship position]);
 	if (d2 > scannerRange * scannerRange)
@@ -14214,33 +14216,38 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	very_random_seed.f = rand() & 255;
 	seed_RNG_only_for_planet_description(very_random_seed);
 	
-	NSDictionary *specials = [NSDictionary dictionaryWithObjectsAndKeys:
-							  [self displayName], @"[self:name]",
-							  [other_ship identFromShip: self], @"[target:name]",
-							  nil];
-	NSString *expandedMessage = OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), message_text, specials, nil, nil, kOOExpandNoOptions);
-	
-	[self sendMessage:expandedMessage toShip:other_ship withUnpilotedOverride:NO];
+	// The specials dictionary as +dictionaryWithObjectsAndKeys: built it: it ended at the first nil.
+	oo::PList::Dict specials;
+	const std::optional<std::string> selfName = oo::OptionalString([self displayName]);
+	if (selfName.has_value())
+	{
+		specials["[self:name]"] = *selfName;
+		const std::optional<std::string> targetName = oo::OptionalString([other_ship identFromShip: self]);
+		if (targetName.has_value())  specials["[target:name]"] = *targetName;
+	}
+	const std::optional<std::string> expandedMessage = oo::OptionalString(OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(message_text), oo::ObjectFromPList(oo::PList(std::move(specials))), nil, nil, kOOExpandNoOptions));
+
+	if (expandedMessage.has_value())  [self cxx_sendMessage:*expandedMessage toShip:other_ship withUnpilotedOverride:NO];	// nil was not sent
 }
 
 
-- (void) broadcastAIMessage:(NSString *) ai_message
+- (void) broadcastAIMessage:(const std::string &) ai_message
 {
-	NSString *expandedMessage = OOExpand(ai_message);
+	const std::string expandedMessage = ExpandedText(ai_message);
 
 	[self checkScanner];
 	unsigned i;
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		ShipEntity* ship = scanned_ships[i];
-		[[ship getAI] message: expandedMessage];
+		[[ship getAI] message: oo::NSStringFrom(expandedMessage)];
 	}
 }
 
 
-- (void) broadcastMessage:(NSString *) message_text withUnpilotedOverride:(BOOL) unpilotedOverride
+- (void) broadcastMessage:(const std::string &) message_text withUnpilotedOverride:(BOOL) unpilotedOverride
 {
-	NSString *expandedMessage = OOExpand(message_text); // consistent with broadcast message.
+	const std::string expandedMessage = ExpandedText(message_text); // consistent with broadcast message.
 
 
 	if (!crew && !unpilotedOverride)
@@ -14251,7 +14258,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	for (i = 0; i < n_scanned_ships ; i++)
 	{
 		ShipEntity* ship = scanned_ships[i];
-		if (![ship isPlayer]) [ship receiveCommsMessage:expandedMessage from:self];
+		if (![ship isPlayer]) [ship receiveCommsMessage:oo::NSStringFrom(expandedMessage) from:self];
 	}
 	
 	PlayerEntity *player = PLAYER; // make sure that the player always receives a message when in range
@@ -14260,7 +14267,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	if (HPdistance2(position, [player position]) < SCANNER_MAX_RANGE2)
 	{
 		[self setCommsMessageColor];
-		[player receiveCommsMessage:expandedMessage from:self];
+		[player receiveCommsMessage:oo::NSStringFrom(expandedMessage) from:self];
 		messageTime = 6.0;
 		[UNIVERSE resetCommsLogColor];
 	}
@@ -14278,14 +14285,14 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) receiveCommsMessage:(NSString *) message_text from:(ShipEntity *) other
+- (void) receiveCommsMessage:(id) message_text from:(ShipEntity *) other	// shared selector (proposed ADR-0043)
 {
 	// Too complex for AI scripts to handle, JS event only.
 	[self doScriptEvent:OOJSID("commsMessageReceived") withArgument:message_text andArgument:other];
 }
 
 
-- (void) commsMessage:(NSString *)valueString withUnpilotedOverride:(BOOL)unpilotedOverride
+- (void) cxx_commsMessage:(const std::string &)valueString withUnpilotedOverride:(BOOL)unpilotedOverride
 {
 	Random_Seed very_random_seed;
 	very_random_seed.a = rand() & 255;
@@ -14321,16 +14328,18 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) interpretAIMessage:(NSString *)ms
+- (void) interpretAIMessage:(id)messageObject	// shared selector (proposed ADR-0043), called by name
 {
-	if ([ms hasPrefix:AIMS_AGGRESSOR_SWITCHED_TARGET])
+	const std::string ms = oo::StdString(messageObject);
+	if (oo::str::hasPrefix(ms, oo::StdString(AIMS_AGGRESSOR_SWITCHED_TARGET)))
 	{
 		// if I'm under attack send a thank-you message to the rescuer
 		//
-		NSArray* tokens = ScanTokensFromString(ms);
-		int switcher_id = [(NSString*)[tokens objectAtIndex:1] intValue]; // Attacker that switched targets.
+		const std::vector<std::string> tokens = oo::str::tokens(ms);
+		if (tokens.size() < 3)  return;	// (-objectAtIndex: raised on a short message; never sent)
+		int switcher_id = oo::str::intValue(tokens[1]); // Attacker that switched targets.
 		Entity* switcher = [UNIVERSE entityForUniversalID:switcher_id];
-		int rescuer_id = [(NSString*)[tokens objectAtIndex:2] intValue]; // New primary target of attacker. 
+		int rescuer_id = oo::str::intValue(tokens[2]); // New primary target of attacker.
 		Entity* rescuer = [UNIVERSE entityForUniversalID:rescuer_id];
 		if ((switcher == [self primaryAggressor])&&(switcher == [self primaryTarget])&&(switcher)&&(rescuer)&&(rescuer->isShip)&&([self thankedShip] != rescuer)&&(scanClass != CLASS_THARGOID))
 		{
@@ -14338,12 +14347,12 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 //			ShipEntity* switchingShip = (ShipEntity*)switcher;
 			if (scanClass == CLASS_POLICE)
 			{
-				[self sendExpandedMessage:@"[police-thanks-for-assist]" toShip:rescueShip];
+				[self cxx_sendExpandedMessage:"[police-thanks-for-assist]" toShip:rescueShip];
 				[rescueShip setBounty:[rescueShip bounty] * 0.80 withReason:kOOLegalStatusReasonAssistingPolice];	// lower bounty by 20%
 			}
 			else
 			{
-				[self sendExpandedMessage:@"[thanks-for-assist]" toShip:rescueShip];
+				[self cxx_sendExpandedMessage:"[thanks-for-assist]" toShip:rescueShip];
 			}
 			[self setThankedShip:rescuer];
 		}
@@ -14359,25 +14368,23 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 
 
 // Exposed to AI and legacy scripts.
-- (void) spawn:(NSString *)roles_number
+- (void) spawn:(id)roles_number	// shared selector (proposed ADR-0043), called by name
 {
-	NSArray		*tokens = ScanTokensFromString(roles_number);
-	NSString	*roleString = nil;
-	NSString	*numberString = nil;
+	const std::vector<std::string> tokens = oo::str::tokens(oo::StdString(roles_number));
 	NSUInteger	number;
-	
-	if ([tokens count] != 2)
+
+	if (tokens.size() != 2)
 	{
 		OOLog(kOOLogSyntaxAddShips, @"***** Could not spawn: \"%@\" (must be two tokens, role and number)",roles_number);
 		return;
 	}
-	
-	roleString = oo::PListView(tokens).at<NSString *>(0);
-	numberString = oo::PListView(tokens).at<NSString *>(1);
-	
-	number = [numberString intValue];
-	
-	[self spawnShipsWithRole:oo::StdString(roleString) count:number];
+
+	const std::string &roleString = tokens[0];
+	const std::string &numberString = tokens[1];
+
+	number = oo::str::intValue(numberString);
+
+	[self spawnShipsWithRole:roleString count:number];
 }
 
 
@@ -14517,7 +14524,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		[pilot setReportAIMessages:YES];
 		[pilot addTarget:self];
 		[pilot setAITo:@"pilotAI.plist"];
-		[self reactToAIMessage:@"FOUND_PILOT" context:@"flight update"];
+		[self cxx_reactToAIMessage:"FOUND_PILOT" context:"flight update"];
 	}
 }
 
@@ -14525,7 +14532,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 - (void) pilotArrived
 {
 	[self setHulk:NO];
-	[self reactToAIMessage:@"PILOT_ARRIVED" context:@"flight update"];
+	[self cxx_reactToAIMessage:"PILOT_ARRIVED" context:"flight update"];
 }
 #endif
 
@@ -14693,14 +14700,14 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) doScriptEvent:(ooscript::PropertyId)message withArguments:(NSArray *)arguments
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)message withArguments:(const std::vector<oo::ObjCRef<id>> &)arguments
 {
 	ooscript::Context context = OOJSAcquireContext();
 	unsigned					i, argc;
 	ooscript::Value					*argv = NULL;
-	
+
 	// Convert arguments to JS values and make them temporarily un-garbage-collectable.
-	argc = (unsigned)[arguments count];
+	argc = (unsigned)arguments.size();
 	if (argc != 0)
 	{
 		argv = (decltype(argv))malloc(sizeof *argv * argc);
@@ -14708,7 +14715,7 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 		{
 			for (i = 0; i != argc; ++i)
 			{
-				argv[i] = [[arguments objectAtIndex:i] oo_jsValueInContext:context];
+				argv[i] = [arguments[i].get() oo_jsValueInContext:context];
 				OOJSAddGCValueRoot(context, &argv[i], "event parameter");
 			}
 		}
@@ -14747,29 +14754,29 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 }
 
 
-- (void) reactToAIMessage:(NSString *)message context:(NSString *)debugContext
+- (void) cxx_reactToAIMessage:(const std::string &)message context:(const std::optional<std::string> &)debugContext
 {
-	[shipAI reactToMessage:message context:debugContext];
+	[shipAI cxx_reactToMessage:message context:debugContext];
 }
 
 
-- (void) sendAIMessage:(NSString *)message
+- (void) sendAIMessage:(id)message	// shared selector (proposed ADR-0043), called by name
 {
-	[shipAI message:message];	
+	[shipAI message:message];
 }
 
 
-- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(const std::string &)aiMessage
 {
 	[self doScriptEvent:scriptEvent];
-	[self reactToAIMessage:aiMessage context:nil];
+	[self cxx_reactToAIMessage:aiMessage context:std::nullopt];
 }
 
 
-- (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage
+- (void) cxx_doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(const std::string &)aiMessage
 {
 	[self doScriptEvent:scriptEvent withArgument:argument];
-	[self reactToAIMessage:aiMessage context:nil];
+	[self cxx_reactToAIMessage:aiMessage context:std::nullopt];
 }
 
 
