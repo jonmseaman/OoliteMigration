@@ -82,9 +82,14 @@ id ObjectForKey(const oo::PList &dictionary, const char *key)
 }
 
 
-- (id)scriptDescription	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)scriptDescription
 {
-	return ObjectForKey(_metadata, kMDKeyDescription);
+	// The metadata's "description" string. Nothing sends -scriptDescription (bead oo-3rb.266
+	// measured), so a non-string value, which the id-typed selector returned as the object, is
+	// nullopt here.
+	const oo::PList *value = _metadata.get<oo::PList>(kMDKeyDescription);
+	if (value == nullptr || !value->isString())  return std::nullopt;
+	return *value->getIf<std::string>();
 }
 
 
