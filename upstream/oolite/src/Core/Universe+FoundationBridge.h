@@ -53,6 +53,13 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (OOSystemID) findSystemFromName:(NSString *) sysName;	// -> -cxx_findSystemFromName:
 - (NSString*) systemNameIndex:(OOSystemID) index;	// -> -cxx_systemNameIndex:
 
+// Chunk 3 (oo-3rb.222): routes, chart searches and travel-time text.
+- (NSMutableArray *) nearbyDestinationsWithinRange:(double) range;	// -> -cxx_nearbyDestinationsWithinRange:
+- (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix;	// -> -cxx_findSystemCoordinatesWithPrefix:
+- (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix exactMatch:(BOOL) exactMatch;	// -> -cxx_findSystemCoordinatesWithPrefix:exactMatch:
+- (NSDictionary *) routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;	// -> -cxx_routeFromSystem:toSystem:optimizedBy:
+- (NSString *) shortTimeDescription:(OOTimeDelta) interval;	// -> -cxx_shortTimeDescription:
+
 @end
 
 

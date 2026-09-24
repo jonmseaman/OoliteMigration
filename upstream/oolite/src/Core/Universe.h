@@ -42,6 +42,9 @@ MA 02110-1301, USA.
 
 #include "oofnd/StdLib.hpp"
 #include "oofnd/PList.hpp"
+#include "oofnd/objc/OOObjCRef.h"
+
+@class OOMaterial;
 
 #if OOLITE_ESPEAK
 #include <espeak-ng/speak_lib.h>
@@ -313,7 +316,7 @@ enum
 	NSString		*system_repopulator;
 	BOOL			deterministic_population;
 
-	NSArray					*closeSystems;
+	std::optional<std::vector<OOSystemID>>	closeSystems;	// the current system's neighbours; nullopt until cached
 	
 	NSString				*useAddOns;
 	
@@ -349,7 +352,7 @@ enum
 #endif
 	
 #if NEW_PLANETS
-	NSMutableArray			*_preloadingPlanetMaterials;
+	std::vector<oo::ObjCRef<OOMaterial *>>	_preloadingPlanetMaterials;
 #endif
 	BOOL					doProcedurallyTexturedPlanets;
 	
@@ -712,19 +715,19 @@ enum
 /**
  * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
  */
-- (NSMutableArray *) nearbyDestinationsWithinRange:(double) range;
+- (oo::PList) cxx_nearbyDestinationsWithinRange:(double) range;	// an array of {distance, sysID, nova}
 
 - (OOSystemID) findNeighbouringSystemToCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 - (OOSystemID) findConnectedSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 // old alias for findSystemNumberAtCoords
 - (OOSystemID) findSystemAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal;
 - (OOSystemID) findSystemNumberAtCoords:(NSPoint) coords withGalaxy:(OOGalaxyID) gal includingHidden:(BOOL)hidden;
-- (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix;
-- (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix exactMatch:(BOOL) exactMatch;
+- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix;
+- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix exactMatch:(BOOL) exactMatch;
 - (BOOL*) systemsFound;
 - (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID) index;
-- (NSDictionary *) routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;
-- (NSArray *) neighboursToSystem:(OOSystemID) system_number;
+- (oo::PList) cxx_routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;	// {route, distance, time, jumps}; null for no route
+- (std::vector<OOSystemID>) neighboursToSystem:(OOSystemID) system_number;
 
 - (void) preloadPlanetTexturesForSystem:(OOSystemID)system;
 - (void) preloadSounds;
@@ -736,8 +739,8 @@ enum
 - (OOCommodityMarket *) commodityMarket;
 - (Random_Seed) marketSeed;
 
-- (NSString *) timeDescription:(OOTimeDelta) interval;
-- (NSString *) shortTimeDescription:(OOTimeDelta) interval;
+- (std::optional<std::string>) timeDescription:(OOTimeDelta) interval;
+- (std::optional<std::string>) cxx_shortTimeDescription:(OOTimeDelta) interval;
 
 - (void) loadStationMarkets:(NSArray *)marketData;
 - (NSArray *) getStationMarkets;

@@ -162,6 +162,45 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return oo::NSStringOrNil([self cxx_systemNameIndex:index]);
 }
 
+
+// Chunk 3 (oo-3rb.222).
+
+// A fresh mutable array per call, as the old method built one.
+- (NSMutableArray *) nearbyDestinationsWithinRange:(double) range
+{
+	return [[oo::ObjectFromPList([self cxx_nearbyDestinationsWithinRange:range]) mutableCopy] autorelease];
+}
+
+
+- (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix
+{
+	return [self findSystemCoordinatesWithPrefix:p_fix exactMatch:NO];
+}
+
+
+// A nil prefix matched no system (while every flag was still cleared); "" would match them all.
+- (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix exactMatch:(BOOL) exactMatch
+{
+	if (p_fix == nil)
+	{
+		for (int i = 0; i < 256; i++)  system_found[i] = NO;
+		return NSMakePoint(-1.0,-1.0);
+	}
+	return [self cxx_findSystemCoordinatesWithPrefix:oo::StdString(p_fix) exactMatch:exactMatch];
+}
+
+
+- (NSDictionary *) routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy
+{
+	return oo::ObjectFromPList([self cxx_routeFromSystem:start toSystem:goal optimizedBy:optimizeBy]);
+}
+
+
+- (NSString *) shortTimeDescription:(OOTimeDelta) interval
+{
+	return oo::NSStringOrNil([self cxx_shortTimeDescription:interval]);
+}
+
 @end
 
 

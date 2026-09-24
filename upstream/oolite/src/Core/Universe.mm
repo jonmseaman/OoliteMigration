@@ -1147,7 +1147,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if (dockedStation && !interstel)
 		{	// jump to the nearest system
 			[player setSystemID:sys];
-			closeSystems = nil;
+			closeSystems.reset();
 			[self setSystemTo: sys];
 			int index = 0;
 			while ([entities count] > 2)
@@ -1702,7 +1702,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	cachedSun = a_sun;
 	cachedPlanet = a_planet;
 	cachedStation = a_station;
-	closeSystems = nil;
+	closeSystems.reset();
 	OO_DEBUG_POP_PROGRESS();
 	
 	
@@ -5809,8 +5809,7 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	cachedSun = nil;
 	cachedPlanet = nil;
 	cachedStation = nil;
-	[closeSystems release];
-	closeSystems = nil;
+	closeSystems.reset();
 	
 	[self resetBeacons];
 	[waypoints removeAllObjects];
@@ -8595,9 +8594,9 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (NSMutableArray *) nearbyDestinationsWithinRange:(double)range
+- (oo::PList) cxx_nearbyDestinationsWithinRange:(double)range
 {
-	NSMutableArray *result = [NSMutableArray arrayWithCapacity:16];
+	oo::PList::Array result;
 	
 	range = OOClamp_0_max_d(range, MAX_JUMP_RANGE); // limit to systems within 7LY
 	NSPoint here = [PLAYER galaxy_coordinates];
@@ -8608,15 +8607,15 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		double dist = distanceBetweenPlanetPositions(here.x, here.y, there.x, there.y);
 		if (dist <= range && (i != systemID || [self inInterstellarSpace])) // if we are in interstellar space, it's OK to include the system we (mis)jumped from
 		{
-			[result addObject: [NSDictionary dictionaryWithObjectsAndKeys:
-								[NSNumber numberWithDouble:dist], @"distance",
-								[NSNumber numberWithInt:i], @"sysID",
-								oo::PListView([self generateSystemData:i]).get<NSString *>(@"sun_gone_nova", @"0"), @"nova",
-								nil]];
+			// the number kinds it held: a double, a signed integer
+			result.push_back(oo::PList(oo::PList::Dict{
+								{ "distance", oo::PList(dist) },
+								{ "sysID", oo::PList::signedInteger(i) },
+								{ "nova", oo::PList([self cxx_generateSystemData:i].get<std::string>("sun_gone_nova", "0")) } }));
 		}
 	}
-	
-	return result;
+
+	return oo::PList(std::move(result));
 }
 
 
@@ -8728,8 +8727,8 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	for (i = 0; i < 256; i++)
 	{
 		if (!hidden) {
-			NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:g];
-			NSInteger concealment = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+			const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:g];
+			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 			if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
 				// system is not known
 				continue;
@@ -8762,27 +8761,28 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix
+- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix
 {
-	return [self findSystemCoordinatesWithPrefix:p_fix exactMatch:NO];
+	return [self cxx_findSystemCoordinatesWithPrefix:p_fix exactMatch:NO];
 }
 
 
-- (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix exactMatch:(BOOL) exactMatch
+- (NSPoint) cxx_findSystemCoordinatesWithPrefix:(const std::string &) p_fix exactMatch:(BOOL) exactMatch
 {
-	NSString 	*system_name = nil;
+	std::string	system_name;
 	NSPoint 	system_coords = NSMakePoint(-1.0,-1.0);
 	int i;
 	int result = -1;
 	for (i = 0; i < 256; i++)
 	{
 		system_found[i] = NO;
-		system_name = [oo::NSStringOrNil(system_names[i]) lowercaseString];
-		if ((exactMatch && [system_name isEqualToString:p_fix]) || (!exactMatch && [system_name hasPrefix:p_fix]))
+		if (!system_names[i].has_value())  continue;	// a missing name matched nothing
+		system_name = oo::str::lowercase(*system_names[i]);
+		if ((exactMatch && system_name == p_fix) || (!exactMatch && oo::str::hasPrefix(system_name, p_fix)))
 		{
 			/* Only used in player-based search routines */
-			NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxyID];
-			NSInteger concealment = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+			const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxyID];
+			NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 			if (concealment >= OO_SYSTEMCONCEALMENT_NONAME) {
 				// system is not known
 				continue;
@@ -8812,7 +8812,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (NSDictionary *) routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy
+- (oo::PList) cxx_routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy
 {
 	/*
 	 time_cost = distance * distance
@@ -8825,34 +8825,34 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	 */
 	
 	// no interstellar space for start and/or goal please
-	if (start == -1 || goal == -1)  return nil;
-	
+	if (start == -1 || goal == -1)  return oo::PList();
+
 #ifdef CACHE_ROUTE_FROM_SYSTEM_RESULTS
-	
-	static NSDictionary *c_route = nil;
+
+	static oo::PList c_route;
 	static OOSystemID c_start, c_goal;
 	static OORouteType c_optimizeBy;
-	
-	if (c_route != nil && c_start == start && c_goal == goal && c_optimizeBy == optimizeBy)
+
+	if (!c_route.isNull() && c_start == start && c_goal == goal && c_optimizeBy == optimizeBy)
 	{
 		return c_route;
 	}
-	
+
 #endif
-	
+
 	unsigned i, j;
-	
-	if (start > 255 || goal > 255) return nil;
-	
-	NSArray *neighbours[256];
+
+	if (start > 255 || goal > 255) return oo::PList();
+
+	std::vector<OOSystemID> neighbours[256];
 	BOOL concealed[256];
 	for (i = 0; i < 256; i++)
 	{
-		NSDictionary *systemInfo = [systemManager getPropertiesForSystem:i inGalaxy:galaxyID];
-		NSInteger concealment = oo::PListView(systemInfo).get<int>(@"concealment", OO_SYSTEMCONCEALMENT_NONE);
+		const oo::PList systemInfo = [systemManager cxx_getPropertiesForSystem:i inGalaxy:galaxyID];
+		NSInteger concealment = systemInfo.get<int>("concealment", OO_SYSTEMCONCEALMENT_NONE);
 		if (concealment >= OO_SYSTEMCONCEALMENT_NOTHING) {
 			// system is not known
-			neighbours[i] = [NSArray array];
+			neighbours[i].clear();
 			concealed[i] = YES;
 		}
 		else
@@ -8866,19 +8866,21 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 	
 	double maxCost = optimizeBy == OPTIMIZED_BY_TIME ? 256 * (7 * 7) : 256 * (7 * 256 + 7);
 	
-	NSMutableArray *curr = [NSMutableArray arrayWithCapacity:256];
-	[curr addObject:cheapest[start] = [RouteElement elementWithLocation:start parent:-1 cost:0 distance:0 time:0 jumps: 0]];
-	
-	NSMutableArray *next = [NSMutableArray arrayWithCapacity:256];
-	while ([curr count] != 0)
+	std::vector<oo::ObjCRef<RouteElement *>> curr;
+	curr.reserve(256);
+	curr.push_back(oo::ObjCRef<RouteElement *>(cheapest[start] = [RouteElement elementWithLocation:start parent:-1 cost:0 distance:0 time:0 jumps: 0]));
+
+	std::vector<oo::ObjCRef<RouteElement *>> next;
+	next.reserve(256);
+	while (curr.size() != 0)
 	{
-		for (i = 0; i < [curr count]; i++) {
-			RouteElement *elemI = [curr objectAtIndex:i];
-			NSArray *ns = neighbours[[elemI location]];
-			for (j = 0; j < [ns count]; j++)
+		for (i = 0; i < curr.size(); i++) {
+			RouteElement *elemI = curr[i].get();
+			const std::vector<OOSystemID> &ns = neighbours[[elemI location]];
+			for (j = 0; j < ns.size(); j++)
 			{
 				RouteElement *ce = cheapest[[elemI location]];
-				OOSystemID n = oo::PListView(ns).at<int>(j);
+				OOSystemID n = ns[j];
 				if (concealed[n])
 				{
 					continue;
@@ -8899,61 +8901,58 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 				if (cost < maxCost && (cheapest[n] == nil || [cheapest[n] cost] > cost)) {
 					RouteElement *e = [RouteElement elementWithLocation:n parent:c cost:cost distance:distance time:time jumps:jumps];
 					cheapest[n] = e;
-					[next addObject:e];
+					next.push_back(oo::ObjCRef<RouteElement *>(e));
 					
 					if (n == goal && cost < maxCost)
 						maxCost = cost;
 				}
 			}
 		}
-		[curr setArray:next];
-		[next removeAllObjects];
+		curr = next;
+		next.clear();
 	}
-	
-	
-	if (!cheapest[goal]) return nil;
-	
-	NSMutableArray *route = [NSMutableArray arrayWithCapacity:256];
+
+
+	if (!cheapest[goal]) return oo::PList();
+
+	oo::PList::Array route;	// system IDs as signed integers, as +numberWithInt: made them
 	RouteElement *e = cheapest[goal];
 	for (;;)
 	{
-		[route insertObject:[NSNumber numberWithInt:[e location]] atIndex:0];
+		route.insert(route.begin(), oo::PList::signedInteger([e location]));
 		if ([e parent] == -1) break;
 		e = cheapest[[e parent]];
 	}
-	
+
 #ifdef CACHE_ROUTE_FROM_SYSTEM_RESULTS
 	c_start = start;
 	c_goal = goal;
 	c_optimizeBy = optimizeBy;
-	[c_route release];
-	c_route = [[NSDictionary alloc] initWithObjectsAndKeys: route, @"route", [NSNumber numberWithDouble:[cheapest[goal] distance]], @"distance", nil];
-	
+	c_route = oo::PList(oo::PList::Dict{ { "route", oo::PList(std::move(route)) }, { "distance", oo::PList((double)[cheapest[goal] distance]) } });
+
 	return c_route;
 #else
-	return [NSDictionary dictionaryWithObjectsAndKeys:
-			route, @"route",
-			[NSNumber numberWithDouble:[cheapest[goal] distance]], @"distance",
-			[NSNumber numberWithDouble:[cheapest[goal] time]], @"time",
-			[NSNumber numberWithInt:[cheapest[goal] jumps]], @"jumps",
-			nil];
+	return oo::PList(oo::PList::Dict{
+			{ "route", oo::PList(std::move(route)) },
+			{ "distance", oo::PList((double)[cheapest[goal] distance]) },
+			{ "time", oo::PList((double)[cheapest[goal] time]) },
+			{ "jumps", oo::PList::signedInteger([cheapest[goal] jumps]) } });
 #endif
 }
 
 
-- (NSArray *) neighboursToSystem: (OOSystemID) s
+- (std::vector<OOSystemID>) neighboursToSystem: (OOSystemID) s
 {
-	if (s == systemID && closeSystems != nil) 
+	if (s == systemID && closeSystems.has_value())
 	{
-		return closeSystems;
+		return *closeSystems;
 	}
-	NSArray *neighbours = [systemManager getNeighbourIDsForSystem:s inGalaxy:galaxyID];
+	std::vector<OOSystemID> neighbours = [systemManager cxx_getNeighbourIDsForSystem:s inGalaxy:galaxyID];
 
 	if (s == systemID)
 	{
-		[closeSystems release];
-		closeSystems = [neighbours copy];
-		return closeSystems;
+		closeSystems = neighbours;
+		return *closeSystems;
 	}
 	return neighbours;
 }
@@ -8993,9 +8992,8 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 #if 0
 	[self prunePreloadingPlanetMaterials];
 	
-	if ([_preloadingPlanetMaterials count] < 3)
+	if (_preloadingPlanetMaterials.size() < 3)
 	{
-		if (_preloadingPlanetMaterials == nil)  _preloadingPlanetMaterials = [[NSMutableArray alloc] initWithCapacity:4];
 		
 		OOPlanetEntity *planet = [[OOPlanetEntity alloc] initAsMainPlanetForSystem:s];
 		OOMaterial *surface = [planet material];
@@ -9005,12 +9003,12 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 			// if it's already loaded, no need to continue
 			if (![surface isFinishedLoading])
 			{
-				[_preloadingPlanetMaterials addObject:surface];
+				_preloadingPlanetMaterials.push_back(oo::ObjCRef<OOMaterial *>(surface));
 		
 				// In some instances (retextured planets atm), the main planet might not have an atmosphere defined.
 				// Trying to add nil to _preloadingPlanetMaterials will prematurely terminate the calling function.(!) --Kaks 20100107
 				OOMaterial *atmo = [planet atmosphereMaterial];
-				if (atmo != nil)  [_preloadingPlanetMaterials addObject:atmo];
+				if (atmo != nil)  _preloadingPlanetMaterials.push_back(oo::ObjCRef<OOMaterial *>(atmo));
 			}
 		}
 		
@@ -9044,74 +9042,74 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (NSString *) timeDescription:(double) interval
+- (std::optional<std::string>) timeDescription:(double) interval
 {
 	double r_time = interval;
-	NSString* result = @"";
-	
+	std::string result;
+
 	if (r_time > 86400)
 	{
 		int days = floor(r_time / 86400);
 		r_time -= 86400 * days;
-		result = [NSString stringWithFormat:@"%@ %d day%@", result, days, (days > 1) ? @"s" : @""];
+		result = oo::str::format("%s %d day%s", result.c_str(), days, (days > 1) ? "s" : "");
 	}
 	if (r_time > 3600)
 	{
 		int hours = floor(r_time / 3600);
 		r_time -= 3600 * hours;
-		result = [NSString stringWithFormat:@"%@ %d hour%@", result, hours, (hours > 1) ? @"s" : @""];
+		result = oo::str::format("%s %d hour%s", result.c_str(), hours, (hours > 1) ? "s" : "");
 	}
 	if (r_time > 60)
 	{
 		int mins = floor(r_time / 60);
 		r_time -= 60 * mins;
-		result = [NSString stringWithFormat:@"%@ %d minute%@", result, mins, (mins > 1) ? @"s" : @""];
+		result = oo::str::format("%s %d minute%s", result.c_str(), mins, (mins > 1) ? "s" : "");
 	}
 	if (r_time > 0)
 	{
 		int secs = floor(r_time);
-		result = [NSString stringWithFormat:@"%@ %d second%@", result, secs, (secs > 1) ? @"s" : @""];
+		result = oo::str::format("%s %d second%s", result.c_str(), secs, (secs > 1) ? "s" : "");
 	}
-	return [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	return oo::OptionalString([oo::NSStringFrom(result) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);	// INTERIM until oo-3rb.65
 }
 
 
-- (NSString *) shortTimeDescription:(double) interval
+- (std::optional<std::string>) cxx_shortTimeDescription:(double) interval
 {
 	double r_time = interval;
-	NSString* result = @"";
+	std::string result;
 	int parts = 0;
-	
+
 	if (interval <= 0.0)
-		return DESC(@"contracts-no-time");
-	
+		return cxx_OOLookUpDescriptionPRIV("contracts-no-time");
+
 	if (r_time > 86400)
 	{
 		int days = floor(r_time / 86400);
 		r_time -= 86400 * days;
-		result = [NSString stringWithFormat:@"%@ %d %@", result, days, DESC_PLURAL(@"contracts-day-word", days)];
+		result = oo::str::format("%s %d %s", result.c_str(), days, cxx_OOLookUpPluralDescriptionPRIV("contracts-day-word", days).c_str());
 		parts++;
 	}
 	if (r_time > 3600)
 	{
 		int hours = floor(r_time / 3600);
 		r_time -= 3600 * hours;
-		result = [NSString stringWithFormat:@"%@ %d %@", result, hours, DESC_PLURAL(@"contracts-hour-word", hours)];
+		result = oo::str::format("%s %d %s", result.c_str(), hours, cxx_OOLookUpPluralDescriptionPRIV("contracts-hour-word", hours).c_str());
 		parts++;
 	}
 	if (parts < 2 && r_time > 60)
 	{
 		int mins = floor(r_time / 60);
 		r_time -= 60 * mins;
-		result = [NSString stringWithFormat:@"%@ %d %@", result, mins, DESC_PLURAL(@"contracts-minute-word", mins)];
+		result = oo::str::format("%s %d %s", result.c_str(), mins, cxx_OOLookUpPluralDescriptionPRIV("contracts-minute-word", mins).c_str());
 		parts++;
 	}
 	if (parts < 2 && r_time > 0)
 	{
 		int secs = floor(r_time);
-		result = [NSString stringWithFormat:@"%@ %d %@", result, secs, DESC_PLURAL(@"contracts-second-word", secs)];
+		result = oo::str::format("%s %d %s", result.c_str(), secs, cxx_OOLookUpPluralDescriptionPRIV("contracts-second-word", secs).c_str());
 	}
-	return [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	return oo::OptionalString([oo::NSStringFrom(result) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);	// INTERIM until oo-3rb.65
 }
 
 
@@ -11139,12 +11137,12 @@ static void PreloadOneSound(NSString *soundName)
 {
 	[[OOAsyncWorkManager sharedAsyncWorkManager] completePendingTasks];
 	
-	NSUInteger i = [_preloadingPlanetMaterials count];
+	NSUInteger i = _preloadingPlanetMaterials.size();
 	while (i--)
 	{
-		if ([[_preloadingPlanetMaterials objectAtIndex:i] isFinishedLoading])
+		if ([_preloadingPlanetMaterials[i].get() isFinishedLoading])
 		{
-			[_preloadingPlanetMaterials removeObjectAtIndex:i];
+			_preloadingPlanetMaterials.erase(_preloadingPlanetMaterials.begin() + i);
 		}
 	}
 }
