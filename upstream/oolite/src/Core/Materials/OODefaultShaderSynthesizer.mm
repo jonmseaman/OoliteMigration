@@ -32,7 +32,6 @@ SOFTWARE.
 #import "OOColor.h"
 
 #import "NSStringOOExtensions.h"
-#import "OOPListView.h"
 #import "NSDictionaryOOExtensions.h"
 #import "OOMaterialSpecifier.h"
 #import "ResourceManager.h"
@@ -81,12 +80,12 @@ std::string FormatFloat(double value);
 	std::string					_varyings;
 	std::string					_vertexUniforms;
 	std::string					_fragmentUniforms;
-	NSMutableString				*_vertexHelpers;
-	NSMutableString				*_fragmentHelpers;
-	NSMutableString				*_vertexBody;
-	NSMutableString				*_fragmentPreTextures;
-	NSMutableString				*_fragmentTextureLookups;
-	NSMutableString				*_fragmentBody;
+	std::string					_vertexHelpers;
+	std::string					_fragmentHelpers;
+	std::string					_vertexBody;
+	std::string					_fragmentPreTextures;
+	std::string					_fragmentTextureLookups;
+	std::string					_fragmentBody;
 	
 	// _texturesByName: dictionary mapping texture file names to texture specifications.
 	std::map<std::string, oo::PList>	_texturesByName;
@@ -364,8 +363,8 @@ BOOL OOSynthesizeMaterialShader(const oo::PList &configuration, const std::optio
 {
 	[self createTemporaries];
 	_uniforms.clear();
-	[_vertexBody appendString:@"void main(void)\n{\n"];
-	[_fragmentPreTextures appendString:@"void main(void)\n{\n"];
+	_vertexBody += "void main(void)\n{\n";
+	_fragmentPreTextures += "void main(void)\n{\n";
 	
 	@try
 	{
@@ -535,18 +534,18 @@ std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *
 
 - (void) composeVertexShader
 {
-	while ([_vertexBody hasSuffix:@"\t\n"])
+	while (_vertexBody.ends_with("\t\n"))
 	{
-		[_vertexBody deleteCharactersInRange:(NSRange){ [_vertexBody length] - 2, 2 }];
+		_vertexBody.erase(_vertexBody.size() - 2);
 	}
-	[_vertexBody appendString:@"}"];
+	_vertexBody += "}";
 	
 	std::string vertexShader;
 	AppendIfNotEmpty(vertexShader, _attributes, "Attributes");
 	AppendIfNotEmpty(vertexShader, _vertexUniforms, "Uniforms");
 	AppendIfNotEmpty(vertexShader, _varyings, "Varyings");
-	AppendIfNotEmpty(vertexShader, oo::StdString(_vertexHelpers), "Helper functions");
-	AppendIfNotEmpty(vertexShader, oo::StdString(_vertexBody), nullptr);
+	AppendIfNotEmpty(vertexShader, _vertexHelpers, "Helper functions");
+	AppendIfNotEmpty(vertexShader, _vertexBody, nullptr);
 	
 	_vertexShader = vertexShader;
 }
@@ -554,23 +553,23 @@ std::optional<std::string> OptionalStringFor(const oo::PList &spec, const char *
 
 - (void) composeFragmentShader
 {
-	while ([_fragmentBody hasSuffix:@"\t\n"])
+	while (_fragmentBody.ends_with("\t\n"))
 	{
-		[_fragmentBody deleteCharactersInRange:(NSRange){ [_fragmentBody length] - 2, 2 }];
+		_fragmentBody.erase(_fragmentBody.size() - 2);
 	}
 	
 	std::string fragmentShader;
 	AppendIfNotEmpty(fragmentShader, _fragmentUniforms, "Uniforms");
 	AppendIfNotEmpty(fragmentShader, _varyings, "Varyings");
-	AppendIfNotEmpty(fragmentShader, oo::StdString(_fragmentHelpers), "Helper functions");
-	AppendIfNotEmpty(fragmentShader, oo::StdString(_fragmentPreTextures), nullptr);
-	if ([_fragmentTextureLookups length] > 0)
+	AppendIfNotEmpty(fragmentShader, _fragmentHelpers, "Helper functions");
+	AppendIfNotEmpty(fragmentShader, _fragmentPreTextures, nullptr);
+	if (!_fragmentTextureLookups.empty())
 	{
 		fragmentShader += "\t\n\t// Texture lookups\n";
-		fragmentShader += oo::StdString(_fragmentTextureLookups);
+		fragmentShader += _fragmentTextureLookups;
 	}
 	fragmentShader += "\t\n";
-	fragmentShader += oo::StdString(_fragmentBody);
+	fragmentShader += _fragmentBody;
 	fragmentShader += "}";
 	
 	_fragmentShader = fragmentShader;
@@ -689,7 +688,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	NSUInteger texID = [self assignIDForTexture:textureSpec];
 	if (_sampledTextures.insert(texID).second)
 	{
-		[_fragmentTextureLookups appendFormat:@"\tvec4 tex%zuSample = texture2D(uTexture%zu, texCoords);  // %@\n", texID, texID, oo::NSStringOrNil(OptionalStringFor(textureSpec, cxx_kOOTextureSpecifierNameKey))];
+		_fragmentTextureLookups += oo::str::format("\tvec4 tex%zuSample = texture2D(uTexture%zu, texCoords);  // %s\n", texID, texID, OptionalStringFor(textureSpec, cxx_kOOTextureSpecifierNameKey).value_or("(null)").c_str());
 	}
 }
 
@@ -779,12 +778,12 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	_varyings.clear();
 	_vertexUniforms.clear();
 	_fragmentUniforms.clear();
-	_vertexHelpers = [[NSMutableString alloc] init];
-	_fragmentHelpers = [[NSMutableString alloc] init];
-	_vertexBody = [[NSMutableString alloc] init];
-	_fragmentPreTextures = [[NSMutableString alloc] init];
-	_fragmentTextureLookups = [[NSMutableString alloc] init];
-	_fragmentBody = [[NSMutableString alloc] init];
+	_vertexHelpers.clear();
+	_fragmentHelpers.clear();
+	_vertexBody.clear();
+	_fragmentPreTextures.clear();
+	_fragmentTextureLookups.clear();
+	_fragmentBody.clear();
 	
 	_textures.clear();
 	_texturesByName.clear();
@@ -805,12 +804,12 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	_varyings.clear();
 	_vertexUniforms.clear();
 	_fragmentUniforms.clear();
-	DESTROY(_vertexHelpers);
-	DESTROY(_fragmentHelpers);
-	DESTROY(_vertexBody);
-	DESTROY(_fragmentPreTextures);
-	DESTROY(_fragmentTextureLookups);
-	DESTROY(_fragmentBody);
+	_vertexHelpers.clear();
+	_fragmentHelpers.clear();
+	_vertexBody.clear();
+	_fragmentPreTextures.clear();
+	_fragmentTextureLookups.clear();
+	_fragmentBody.clear();
 	
 	_texturesByName.clear();
 	_textureIDs.clear();
@@ -829,7 +828,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 - (void) writeTextureCoordRead
 {
 	[self addVarying:"vTexCoords" ofType:"vec2"];
-	[_vertexBody appendString:@"\tvTexCoords = gl_MultiTexCoord0.st;\n\t\n"];
+	_vertexBody += "\tvTexCoords = gl_MultiTexCoord0.st;\n\t\n";
 	
 	BOOL haveTexCoords = NO;
 	oo::PList parallaxMap = cxx_OOMaterialParallaxMapSpecifier(_configuration);
@@ -852,23 +851,23 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 				
 				REQUIRE_STAGE(writeEyeVector);
 				
-				[_fragmentPreTextures appendString:@"\t// Parallax mapping\n"];
+				_fragmentPreTextures += "\t// Parallax mapping\n";
 				
 				NSUInteger texID = [self assignIDForTexture:parallaxMap];
-				[_fragmentPreTextures appendFormat:@"\tfloat parallax = texture2D(uTexture%zu, vTexCoords).%@;\n", texID, oo::NSStringFrom(swizzle)];
+				_fragmentPreTextures += oo::str::format("\tfloat parallax = texture2D(uTexture%zu, vTexCoords).%s;\n", texID, swizzle.c_str());
 				
 				if (parallaxScale != 1.0f)
 				{
-					[_fragmentPreTextures appendFormat:@"\tparallax *= %@;  // Parallax scale\n", oo::NSStringFrom(FormatFloat(parallaxScale))];
+					_fragmentPreTextures += oo::str::format("\tparallax *= %s;  // Parallax scale\n", FormatFloat(parallaxScale).c_str());
 				}
 				
 				float parallaxBias = cxx_OOMaterialParallaxBias(_configuration);
 				if (parallaxBias != 0.0)
 				{
-					[_fragmentPreTextures appendFormat:@"\tparallax += %@;  // Parallax bias\n", oo::NSStringFrom(FormatFloat(parallaxBias))];
+					_fragmentPreTextures += oo::str::format("\tparallax += %s;  // Parallax bias\n", FormatFloat(parallaxBias).c_str());
 				}
 				
-				[_fragmentPreTextures appendString:@"\tvec2 texCoords = vTexCoords - parallax * eyeVector.xy * vec2(1.0, -1.0);\n"];
+				_fragmentPreTextures += "\tvec2 texCoords = vTexCoords - parallax * eyeVector.xy * vec2(1.0, -1.0);\n";
 			}
 			else
 			{
@@ -879,7 +878,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	
 	if (!haveTexCoords)
 	{
-		[_fragmentPreTextures appendString:@"\tvec2 texCoords = vTexCoords;\n"];
+		_fragmentPreTextures += "\tvec2 texCoords = vTexCoords;\n";
 	}
 }
 
@@ -898,11 +897,11 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		std::optional<std::string> readInstr = [self readRGBForTextureSpec:diffuseMap mapName:"diffuse"];
 		if (EXPECT_NOT(!readInstr.has_value()))
 		{
-			[_fragmentBody appendString:@"\t// INVALID EXTRACTION KEY\n\t\n"];
+			_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
 		}
 		else
 		{
-			[_fragmentBody appendFormat:@"\tvec3 diffuseColor = %@;\n", oo::NSStringFrom(*readInstr)];
+			_fragmentBody += oo::str::format("\tvec3 diffuseColor = %s;\n", readInstr->c_str());
 			 haveDiffuseColor = YES;
 		}
 	}
@@ -911,21 +910,19 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	{
 		float rgba[4];
 		[diffuseColor getRed:&rgba[0] green:&rgba[1] blue:&rgba[2] alpha:&rgba[3]];
-		NSString *format = nil;
 		if (haveDiffuseColor)
 		{
-			format = @"\tdiffuseColor *= vec3(%@, %@, %@);\n";
+			_fragmentBody += oo::str::format("\tdiffuseColor *= vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
 		}
 		else
 		{
-			format = @"\tconst vec3 diffuseColor = vec3(%@, %@, %@);\n";
+			_fragmentBody += oo::str::format("\tconst vec3 diffuseColor = vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
 			haveDiffuseColor = YES;
 		}
-		[_fragmentBody appendFormat:format, oo::NSStringFrom(FormatFloat(rgba[0])), oo::NSStringFrom(FormatFloat(rgba[1])), oo::NSStringFrom(FormatFloat(rgba[2]))];
 	}
 	
 	(void) haveDiffuseColor;
-	[_fragmentBody appendString:@"\t\n"];
+	_fragmentBody += "\t\n";
 }
 
 
@@ -935,7 +932,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	
 	if (!_usesDiffuseTerm)
 	{
-		[_fragmentBody appendString:@"\tconst vec3 diffuseColor = vec3(0.0);  // Diffuse colour is black.\n\t\n"];
+		_fragmentBody += "\tconst vec3 diffuseColor = vec3(0.0);  // Diffuse colour is black.\n\t\n";
 	}
 }
 
@@ -951,12 +948,12 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	REQUIRE_STAGE(writeLightVector);
 	
 	// FIXME: currently uncoloured diffuse and ambient lighting.
-	NSString *normalDotLight = _constZNormal ? @"lightVector.z" : @"dot(normal, lightVector)";
+	const char *normalDotLight = _constZNormal ? "lightVector.z" : "dot(normal, lightVector)";
 	
-	[_fragmentBody appendFormat:
-	@"\t// Diffuse (Lambertian) and ambient lighting\n"
-	 "\tvec3 diffuseLight = (gl_LightSource[1].diffuse * max(0.0, %@) + gl_LightModel.ambient).rgb;\n\t\n",
-	 normalDotLight];
+	_fragmentBody += oo::str::format(
+	"\t// Diffuse (Lambertian) and ambient lighting\n"
+	 "\tvec3 diffuseLight = (gl_LightSource[1].diffuse * max(0.0, %s) + gl_LightModel.ambient).rgb;\n\t\n",
+	 normalDotLight);
 	
 	_haveDiffuseLight = YES;
 }
@@ -969,10 +966,10 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	
 	[self addVarying:"vLightVector" ofType:"vec3"];
 	
-	[_vertexBody appendString:
-	 @"\tvec3 lightVector = gl_LightSource[1].position.xyz;\n"
-	  "\tvLightVector = lightVector * TBN;\n\t\n"];
-	[_fragmentBody appendFormat:@"\tvec3 lightVector = normalize(vLightVector);\n\t\n"];
+	_vertexBody +=
+	 "\tvec3 lightVector = gl_LightSource[1].position.xyz;\n"
+	  "\tvLightVector = lightVector * TBN;\n\t\n";
+	_fragmentBody += "\tvec3 lightVector = normalize(vLightVector);\n\t\n";
 }
 
 
@@ -983,8 +980,8 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	
 	[self addVarying:"vEyeVector" ofType:"vec3"];
 	
-	[_vertexBody appendString:@"\tvEyeVector = position.xyz * TBN;\n\t\n"];
-	[_fragmentPreTextures appendString:@"\tvec3 eyeVector = normalize(vEyeVector);\n\t\n"];
+	_vertexBody += "\tvEyeVector = position.xyz * TBN;\n\t\n";
+	_fragmentPreTextures += "\tvec3 eyeVector = normalize(vEyeVector);\n\t\n";
 }
 
 
@@ -992,12 +989,12 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 {
 	[self addAttribute:"tangent" ofType:"vec3"];
 	
-	[_vertexBody appendString:
-	 @"\t// Build tangent space basis\n"
+	_vertexBody +=
+	 "\t// Build tangent space basis\n"
 	  "\tvec3 n = gl_NormalMatrix * gl_Normal;\n"
 	  "\tvec3 t = gl_NormalMatrix * tangent;\n"
 	  "\tvec3 b = cross(n, t);\n"
-	  "\tmat3 TBN = mat3(t, b, n);\n\t\n"];
+	  "\tmat3 TBN = mat3(t, b, n);\n\t\n";
 }
 
 
@@ -1019,7 +1016,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		if (swizzle.empty())  swizzle = "rgb";
 		if (swizzle.size() == 3)
 		{
-			[_fragmentBody appendFormat:@"\tvec3 normal = normalize(%@.%@ - 0.5);\n\t\n", oo::NSStringFrom(sample), oo::NSStringFrom(swizzle)];
+			_fragmentBody += oo::str::format("\tvec3 normal = normalize(%s.%s - 0.5);\n\t\n", sample.c_str(), swizzle.c_str());
 			_usesNormalMap = YES;
 			return;
 		}
@@ -1038,7 +1035,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	
 	if (_constZNormal)
 	{
-		[_fragmentBody appendString:@"\tconst vec3 normal = vec3(0.0, 0.0, 1.0);\n\t\n"];
+		_fragmentBody += "\tconst vec3 normal = vec3(0.0, 0.0, 1.0);\n\t\n";
 	}
 }
 
@@ -1080,7 +1077,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		REQUIRE_STAGE(writeDiffuseColorTerm);
 	}
 	
-	[_fragmentBody appendString:@"\t// Specular (Blinn-Phong) lighting\n"];
+	_fragmentBody += "\t// Specular (Blinn-Phong) lighting\n";
 	
 	BOOL haveSpecularColor = NO;
 	if (!specularColorMap.isNull())
@@ -1088,11 +1085,11 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		std::optional<std::string> readInstr = [self readRGBForTextureSpec:specularColorMap mapName:"specular colour"];
 		if (EXPECT_NOT(!readInstr.has_value()))
 		{
-			[_fragmentBody appendString:@"\t// INVALID EXTRACTION KEY\n\t\n"];
+			_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
 			return;
 		}
 		
-		[_fragmentBody appendFormat:@"\tvec3 specularColor = %@;\n", oo::NSStringFrom(*readInstr)];
+		_fragmentBody += oo::str::format("\tvec3 specularColor = %s;\n", readInstr->c_str());
 		haveSpecularColor = YES;
 	}
 	
@@ -1101,7 +1098,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		float rgba[4];
 		[specularColor getRed:&rgba[0] green:&rgba[1] blue:&rgba[2] alpha:&rgba[3]];
 		
-		NSString *comment = (scaleFactor == 1.0f) ? @"Constant colour" : @"Constant colour and scale factor";
+		const char *comment = (scaleFactor == 1.0f) ? "Constant colour" : "Constant colour and scale factor";
 		
 		// Handle scale factor, colour, and colour alpha scaling as one multiply.
 		scaleFactor *= rgba[3];
@@ -1112,29 +1109,27 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		// Avoid reapplying scaleFactor below.
 		scaleFactor = 1.0;
 		
-		NSString *format = nil;
 		if (haveSpecularColor)
 		{
-			format = @"\tspecularColor *= vec3(%@, %@, %@);  // %@\n";
+			_fragmentBody += oo::str::format("\tspecularColor *= vec3(%s, %s, %s);  // %s\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str(), comment);
 		}
 		else
 		{
-			format = @"\tvec3 specularColor = vec3(%@, %@, %@);  // %@\n";
+			_fragmentBody += oo::str::format("\tvec3 specularColor = vec3(%s, %s, %s);  // %s\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str(), comment);
 			haveSpecularColor = YES;
 		}
-		[_fragmentBody appendFormat:format, oo::NSStringFrom(FormatFloat(rgba[0])), oo::NSStringFrom(FormatFloat(rgba[1])), oo::NSStringFrom(FormatFloat(rgba[2])), comment];
 	}
 	
 	// Handle scale_factor if no constant colour.
 	if (haveSpecularColor && scaleFactor != 1.0f)
 	{
-		[_fragmentBody appendFormat:@"\tspecularColor *= %@;  // Scale factor\n", oo::NSStringFrom(FormatFloat(scaleFactor))];
+		_fragmentBody += oo::str::format("\tspecularColor *= %s;  // Scale factor\n", FormatFloat(scaleFactor).c_str());
 	}
 	
 	// Handle self_color.
 	if (modulateWithDiffuse)
 	{
-		[_fragmentBody appendString:@"\tspecularColor *= diffuseColor;  // Self-colouring\n"];
+		_fragmentBody += "\tspecularColor *= diffuseColor;  // Self-colouring\n";
 	}
 	
 	// Specular exponent.
@@ -1144,34 +1139,34 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		std::optional<std::string> readInstr = [self readOneChannelForTextureSpec:specularExponentMap mapName:"specular exponent"];
 		if (EXPECT_NOT(!readInstr.has_value()))
 		{
-			[_fragmentBody appendString:@"\t// INVALID EXTRACTION KEY\n\t\n"];
+			_fragmentBody += "\t// INVALID EXTRACTION KEY\n\t\n";
 			return;
 		}
 		
-		[_fragmentBody appendFormat:@"\tfloat specularExponent = %@ * %.1f;\n", oo::NSStringFrom(*readInstr), specularExponent];
+		_fragmentBody += oo::str::format("\tfloat specularExponent = %s * %.1f;\n", readInstr->c_str(), specularExponent);
 		haveSpecularExponent = YES;
 	}
 	if (!haveSpecularExponent)
 	{
-		[_fragmentBody appendFormat:@"\tconst float specularExponent = %.1f;\n", specularExponent];
+		_fragmentBody += oo::str::format("\tconst float specularExponent = %.1f;\n", specularExponent);
 	}
 	
 	if (_usesNormalMap)
 	{
-		[_fragmentBody appendFormat:@"\tvec3 reflection = reflect(lightVector, normal);\n"];
+		_fragmentBody += "\tvec3 reflection = reflect(lightVector, normal);\n";
 	}
 	else
 	{
 		/*	reflect(I, N) is defined as I - 2 * dot(N, I) * N
 			If N is (0,0,1), this becomes (I.x,I.y,-I.z).
 		*/
-		[_fragmentBody appendFormat:@"\tvec3 reflection = vec3(lightVector.x, lightVector.y, -lightVector.z);  // Equivalent to reflect(lightVector, normal) since normal is known to be (0, 0, 1) in tangent space.\n"];
+		_fragmentBody += "\tvec3 reflection = vec3(lightVector.x, lightVector.y, -lightVector.z);  // Equivalent to reflect(lightVector, normal) since normal is known to be (0, 0, 1) in tangent space.\n";
 	}
 	
-	[_fragmentBody appendFormat:
-	@"\tfloat specIntensity = dot(reflection, eyeVector);\n"
+	_fragmentBody +=
+	"\tfloat specIntensity = dot(reflection, eyeVector);\n"
 	 "\tspecIntensity = pow(max(0.0, specIntensity), specularExponent);\n"
-	 "\ttotalColor += specIntensity * specularColor * gl_LightSource[1].specular.rgb;\n\t\n"];
+	 "\ttotalColor += specIntensity * specularColor * gl_LightSource[1].specular.rgb;\n\t\n";
 }
 
 
@@ -1195,7 +1190,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		}
 	}
 	
-	[_fragmentBody appendString:@"\tvec3 lightMapColor;\n"];
+	_fragmentBody += "\tvec3 lightMapColor;\n";
 	
 	const oo::PList notADictionary;	// a light map entry that is not a dictionary reads as nil
 	for (idx = 0; idx < count; idx++)
@@ -1209,7 +1204,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		
 		if (EXPECT_NOT(color == nullptr && textureSpec.isNull()))
 		{
-			[_fragmentBody appendString:@"\t// Light map with neither colour nor texture has no effect.\n\t\n"];
+			_fragmentBody += "\t// Light map with neither colour nor texture has no effect.\n\t\n";
 			continue;
 		}
 		
@@ -1227,7 +1222,7 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 		if (EXPECT_NOT((rgba[0] == 0.0f && rgba[1] == 0.0f && rgba[2] == 0.0f) ||
 					   (!_usesDiffuseTerm && isIllumination)))
 		{
-			[_fragmentBody appendString:@"\t// Light map tinted black has no effect.\n\t\n"];
+			_fragmentBody += "\t// Light map tinted black has no effect.\n\t\n";
 			continue;
 		}
 		
@@ -1236,71 +1231,72 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 			std::optional<std::string> readInstr = [self readRGBForTextureSpec:textureSpec mapName:"light"];
 			if (EXPECT_NOT(!readInstr.has_value()))
 			{
-				[_fragmentBody appendString:@"\t// INVALID EXTRACTION KEY\n\n"];
+				_fragmentBody += "\t// INVALID EXTRACTION KEY\n\n";
 				continue;
 			}
 			
-			[_fragmentBody appendFormat:@"\tlightMapColor = %@;\n", oo::NSStringFrom(*readInstr)];
+			_fragmentBody += oo::str::format("\tlightMapColor = %s;\n", readInstr->c_str());
 			
 			if (rgba[0] != 1.0f || rgba[1] != 1.0f || rgba[2] != 1.0f)
 			{
-				[_fragmentBody appendFormat:@"\tlightMapColor *= vec3(%@, %@, %@);\n", oo::NSStringFrom(FormatFloat(rgba[0])), oo::NSStringFrom(FormatFloat(rgba[1])), oo::NSStringFrom(FormatFloat(rgba[2]))];
+				_fragmentBody += oo::str::format("\tlightMapColor *= vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
 			}
 		}
 		else
 		{
-			[_fragmentBody appendFormat:@"\tlightMapColor = vec3(%@, %@, %@);\n", oo::NSStringFrom(FormatFloat(rgba[0])), oo::NSStringFrom(FormatFloat(rgba[1])), oo::NSStringFrom(FormatFloat(rgba[2]))];
+			_fragmentBody += oo::str::format("\tlightMapColor = vec3(%s, %s, %s);\n", FormatFloat(rgba[0]).c_str(), FormatFloat(rgba[1]).c_str(), FormatFloat(rgba[2]).c_str());
 		}
 		
 		const oo::PList *binding = textureSpec.get<oo::PList::Dict>(cxx_kOOTextureSpecifierBindingKey);
 		if (binding != nullptr)
 		{
-			NSString *bindingName = oo::NSStringFrom(binding->get<std::string>("binding"));
-			NSDictionary *typeDict = oo::PListView([ResourceManager shaderBindingTypesDictionary]).get<NSDictionary *>(@"player");	// FIXME: select appropriate binding subset.
-			NSString *bindingType = oo::PListView(typeDict).get<NSString *>(bindingName);
-			NSString *glslType = nil;
-			NSString *swizzle = @"";
+			std::string bindingName = binding->get<std::string>("binding");
+			oo::PList bindingTypes = [ResourceManager cxx_shaderBindingTypesDictionary];
+			const oo::PList *typeDict = bindingTypes.get<oo::PList::Dict>("player");	// FIXME: select appropriate binding subset.
+			std::optional<std::string> bindingType = (typeDict != nullptr) ? OptionalStringFor(*typeDict, bindingName.c_str()) : std::nullopt;
+			const char *glslType = nullptr;
+			const char *swizzle = "";
 			
-			if ([bindingType isEqualToString:@"float"])
+			if (bindingType == "float")
 			{
-				glslType = @"float";
+				glslType = "float";
 			}
-			else if ([bindingType isEqualToString:@"vector"])
+			else if (bindingType == "vector")
 			{
-				glslType = @"vec3";
+				glslType = "vec3";
 			}
-			else if ([bindingType isEqualToString:@"color"])
+			else if (bindingType == "color")
 			{
-				glslType = @"vec4";
-				swizzle = @".rgb";
+				glslType = "vec4";
+				swizzle = ".rgb";
 			}
 			
-			if (glslType != nil)
+			if (glslType != nullptr)
 			{
-				std::optional<std::string> uniformName = [self defineBindingUniform:*binding ofType:oo::StdString(bindingType)];
-				[_fragmentBody appendFormat:@"\tlightMapColor *= %@%@;\n", oo::NSStringOrNil(uniformName), swizzle];
+				std::optional<std::string> uniformName = [self defineBindingUniform:*binding ofType:bindingType.value_or(std::string())];
+				_fragmentBody += oo::str::format("\tlightMapColor *= %s%s;\n", uniformName.value_or(std::string()).c_str(), swizzle);
 			}
 			else
 			{
-				if (bindingType == nil)
+				if (!bindingType.has_value())
 				{
-					OOLogERR(@"material.binding.error.unknown", @"Cannot bind light map to unknown attribute \"%@\".", bindingName);
+					OOLogERR(@"material.binding.error.unknown", @"Cannot bind light map to unknown attribute \"%@\".", oo::NSStringFrom(bindingName));
 				}
 				else
 				{
-					OOLogERR(@"material.binding.error.badType", @"Cannot bind light map to attribute \"%@\" of type %@.", bindingName, bindingType);
+					OOLogERR(@"material.binding.error.badType", @"Cannot bind light map to attribute \"%@\" of type %@.", oo::NSStringFrom(bindingName), oo::NSStringFrom(*bindingType));
 				}
-				[_fragmentBody appendString:@"\tlightMapColor = vec3(0.0);  // Bad binding, see log.\n"];
+				_fragmentBody += "\tlightMapColor = vec3(0.0);  // Bad binding, see log.\n";
 			}
 		}
 		
 		if (!isIllumination)
 		{
-			[_fragmentBody appendString:@"\ttotalColor += lightMapColor;\n\t\n"];
+			_fragmentBody += "\ttotalColor += lightMapColor;\n\t\n";
 		}
 		else
 		{
-			[_fragmentBody appendString:@"\tdiffuseLight += lightMapColor;\n\t\n"];
+			_fragmentBody += "\tdiffuseLight += lightMapColor;\n\t\n";
 		}
 	}
 }
@@ -1308,15 +1304,15 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 
 - (void) writeVertexPosition
 {
-	[_vertexBody appendString:
-	@"\tvec4 position = gl_ModelViewMatrix * gl_Vertex;\n"
-	 "\tgl_Position = gl_ProjectionMatrix * position;\n\t\n"];
+	_vertexBody +=
+	"\tvec4 position = gl_ModelViewMatrix * gl_Vertex;\n"
+	 "\tgl_Position = gl_ProjectionMatrix * position;\n\t\n";
 }
 
 
 - (void) writeTotalColor
 {
-	[_fragmentPreTextures appendString:@"\tvec3 totalColor = vec3(0.0);\n\t\n"];
+	_fragmentPreTextures += "\tvec3 totalColor = vec3(0.0);\n\t\n";
 }
 
 
@@ -1329,17 +1325,17 @@ std::string KeyFromTextureSpec(const oo::PList &spec)
 	
 	if (_haveDiffuseLight)
 	{
-		[_fragmentBody appendString:@"\ttotalColor += diffuseColor * diffuseLight;\n"];
+		_fragmentBody += "\ttotalColor += diffuseColor * diffuseLight;\n";
 	}
 	
-	[_fragmentBody appendString:@"\tgl_FragColor = vec4(totalColor, 1.0);\n\t\n"];
+	_fragmentBody += "\tgl_FragColor = vec4(totalColor, 1.0);\n\t\n";
 }
 
 @end
 
 namespace {
 
-// A texture specifier naming just a file: [NSDictionary dictionaryWithObject:name forKey:kOOTextureSpecifierNameKey].
+// A texture specifier naming just a file: a dictionary with the one key kOOTextureSpecifierNameKey.
 oo::PList NameSpecifier(const std::string &name)
 {
 	return oo::PList(oo::PList::Dict{ { cxx_kOOTextureSpecifierNameKey, oo::PList(name) } });
