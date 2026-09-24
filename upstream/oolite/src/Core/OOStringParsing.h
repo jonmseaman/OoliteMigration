@@ -24,7 +24,7 @@ MA 02110-1301, USA.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "OOMaths.h"
 #import "OOTypes.h"
 #import "legacy_random.h"
