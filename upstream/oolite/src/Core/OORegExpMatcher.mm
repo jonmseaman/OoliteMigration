@@ -83,12 +83,12 @@ static OORegExpMatcher *sActiveInstance;
 		[OOJavaScriptEngine sharedEngine];	// Summon the beast from the Pit.
 		
 		ooscript::Context context = OOJSAcquireContext();
-		_tester = [[OOJSFunction alloc] initWithName:@"matchesRegExp"
+		_tester = [[OOJSFunction alloc] initWithName:std::string("matchesRegExp")
 											   scope:NULL
-												code:oo::NSStringFrom(code)
+												code:std::string(code)
 									   argumentCount:2
 									   argumentNames:argumentNames
-											fileName:[@__FILE__ lastPathComponent]
+											fileName:oo::str::lastPathComponent(__FILE__)
 										  lineNumber:codeLine
 											 context:context];
 		
@@ -150,7 +150,7 @@ static OORegExpMatcher *sActiveInstance;
 	
 	BOOL result = [_tester evaluatePredicateWithContext:context
 												  scope:nil
-											  arguments:oo::NSArrayFromObjects(std::vector<id>{ oo::NSStringFrom(string), _cachedRegExpObject })];
+											  arguments:oo::ObjCRefsFrom<id>(oo::NSArrayFromObjects(std::vector<id>{ oo::NSStringFrom(string), _cachedRegExpObject }))];
 	
 	OOJSRelinquishContext(context);
 	

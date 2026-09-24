@@ -31,7 +31,7 @@ MA 02110-1301, USA.
 #import "OOFileScannerVerifierStage.h"
 #import "OOStringParsing.h"
 #import "ResourceManager.h"
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOStringParsing.h"
 #import "OOPListSchemaVerifier.h"
 #import "OOAIStateMachineVerifierStage.h"
@@ -59,7 +59,7 @@ bool ContainsString(const std::vector<std::string> &set, const std::string &stri
 }
 
 
-// oo_setForKey: the strings of an array value as a set (sorted vector); empty where it was nil.
+// The extractors' set-for-key read: the strings of an array value as a set (sorted vector); empty where it was nil.
 std::vector<std::string> StringSetForKey(const oo::PList &dictionary, std::string_view key)
 {
 	std::vector<std::string> result;
@@ -74,7 +74,7 @@ std::vector<std::string> StringSetForKey(const oo::PList &dictionary, std::strin
 }
 
 
-// oo_stringForKey: a string, or a number's string value; nullopt where it answered nil.
+// The extractors' string-for-key read: a string, or a number's string value; nullopt where it answered nil.
 std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std::string_view key)
 {
 	const oo::PList *value = dictionary.get<oo::PList>(key);
