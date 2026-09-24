@@ -95,9 +95,9 @@ using ooscript::FunctionSpec;
 
 @interface OOJavaScriptEngine (OOMonitorSupportInternal)
 
-// Implemented in OOJavaScriptEngine.mm, whose bead decides its types: Objective-C strings until then.
-- (void)sendMonitorLogMessage:(id)message
-			 withMessageClass:(id)messageClass
+// Implemented in OOJavaScriptEngine.mm (types from bead oo-3rb.203).
+- (void)sendMonitorLogMessage:(const std::optional<std::string> &)message
+			 withMessageClass:(const std::optional<std::string> &)messageClass
 					inContext:(ooscript::Context)context;
 
 @end
@@ -439,9 +439,9 @@ static bool GlobalLog(ooscript::Context context, ooscript::CallArgs &oojsArgs)
 	OOLog(oo::NSStringFrom(messageClass), @"%@", oo::NSStringOrNil(message));
 	
 #if OOJSENGINE_MONITOR_SUPPORT
-	[[OOJavaScriptEngine sharedEngine] sendMonitorLogMessage:oo::NSStringOrNil(message)
-											withMessageClass:nil
-												   inContext:context];
+	[[OOJavaScriptEngine sharedEngine] sendMonitorLogMessage:message
+											withMessageClass:std::nullopt
+inContext:context];
 #endif
 	OOJS_END_FULL_NATIVE
 	
@@ -470,7 +470,7 @@ static bool GlobalExpandDescription(ooscript::Context context, ooscript::CallArg
 	}
 	if (oojsArgs.count() > 1)
 	{
-		overrides = oo::PListFrom(OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]));
+		overrides = OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]);
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
@@ -500,7 +500,7 @@ static bool GlobalKeyBindingDescription(ooscript::Context context, ooscript::Cal
 	}
 	
 	OOJS_BEGIN_FULL_NATIVE(context)
-	string = oo::OptionalString([player keyBindingDescription2:oo::NSStringFrom(*string)]);
+	string = [player cxx_keyBindingDescription2:*string];
 	OOJS_END_FULL_NATIVE
 	
 	OOJS_RETURN_OBJECT(oo::NSStringOrNil(string));
@@ -528,7 +528,7 @@ static bool GlobalExpandMissionText(ooscript::Context context, ooscript::CallArg
 	}
 	if (oojsArgs.count() > 1)
 	{
-		overrides = oo::PListFrom(OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]));
+		overrides = OOJSDictionaryFromStringTable(context, OOJS_ARGV[1]);
 	}
 	
 	string = StringFromObject([[UNIVERSE missiontext] objectForKey:oo::NSStringFrom(*string)]);

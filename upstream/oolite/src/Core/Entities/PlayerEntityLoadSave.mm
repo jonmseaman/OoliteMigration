@@ -45,9 +45,13 @@
 #import "OOShipRegistry.h"
 #import "OOTexture.h"
 #import "NSStringOOExtensions.h"
-#import "NSNumberOOExtensions.h"
 #import "OOJavaScriptEngine.h"
+#include "oofnd/objc/OOException.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/FileSystem.hpp"
+
+#include <algorithm>
 
 
 // Name of modifier key used to issue commands. See also -isCommandModifierKeyDown.
@@ -56,7 +60,78 @@
 #endif
 
 
-static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
+namespace
+{
+
+uint16_t PersonalityForCommanderDict(const oo::PList &dict);
+
+
+// -oo_stringForKey:'s value without the Foundation type: a string as is, a number's
+// -stringValue, anything else (or nothing) nullopt, as it gave nil.
+std::optional<std::string> OptionalStringValue(const oo::PList *value)
+{
+	if (value == nullptr)  return std::nullopt;
+	if (const std::string *string = value->getIf<std::string>())  return *string;
+	if (value->isNumber())  return oo::plist_get::numberStringValue(*value);
+	return std::nullopt;
+}
+
+
+std::optional<std::string> OptionalStringValue(id object)
+{
+	const oo::PList value = oo::PListFrom(object);
+	return OptionalStringValue(&value);
+}
+
+// [[key componentsSeparatedByString:@":"] oo_intAtIndex:1]: element 1's -intValue, 0 when there is
+// none (or no key).
+int SecondFieldIntValue(const std::optional<std::string> &key)
+{
+	if (!key)  return 0;
+	const std::vector<std::string> fields = oo::str::split(*key, ":");
+	return fields.size() > 1 ? oo::str::intValue(fields[1]) : 0;
+}
+
+#if OO_USE_CUSTOM_LOAD_SAVE
+
+// %@ of a string that may be nil, in a runtime format.
+oo::str::FormatArg TextArg(const std::optional<std::string> &string)
+{
+	return string ? oo::str::FormatArg(*string) : oo::str::FormatArg::null();
+}
+
+
+// A saved game's name on the load/save screens: -oo_stringForKey:@"player_save_name"
+// defaultValue:[cdr oo_stringForKey:@"player_name"].
+std::optional<std::string> CommanderSaveName(const oo::PList &cdr)
+{
+	std::optional<std::string> name = OptionalStringValue(cdr.find("player_save_name"));
+	if (!name)  name = OptionalStringValue(cdr.find("player_name"));
+	return name;
+}
+
+
+// -stringByAppendingPathExtension:@"oolite-save": trailing separators ('/' and, as GNUstep on
+// Windows, '\\') are dropped first.
+std::string SaveFileName(const std::string &name)
+{
+	std::string result = name;
+	while (!result.empty() && (result.back() == '/' || result.back() == '\\'))  result.pop_back();
+	return result + ".oolite-save";
+}
+
+
+// -characterAtIndex:0 & 0x00ff: the low byte of the first UTF-16 unit (-characterAtIndex: raised
+// on an empty string; 0 here).
+unsigned char FirstUnitLowByte(const std::string &string)
+{
+	const std::u16string units = oo::utf8ToUtf16(string);
+	return units.empty() ? 0 : static_cast<unsigned char>(units[0] & 0x00ff);
+}
+
+#endif
+
+}	// namespace
 
 
 #if OO_USE_CUSTOM_LOAD_SAVE
@@ -82,13 +157,13 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 #if OO_USE_CUSTOM_LOAD_SAVE
 
 - (void) setGuiToLoadCommanderScreen;
-- (void) setGuiToSaveCommanderScreen: (NSString *)cdrName;
-- (void) setGuiToOverwriteScreen: (NSString *)cdrName;
-- (void) lsCommanders: (GuiDisplayGen *)gui directory: (NSString*)directory pageNumber: (int)page highlightName: (NSString *)highlightName;
+- (void) setGuiToSaveCommanderScreen: (const std::string &)cdrName;
+- (void) setGuiToOverwriteScreen: (const std::string &)cdrName;
+- (void) lsCommanders: (GuiDisplayGen *)gui directory: (const std::string &)directory pageNumber: (int)page highlightName: (const std::optional<std::string> &)highlightName;
 - (void) showCommanderShip: (int)cdrArrayIndex;
-- (int) findIndexOfCommander: (NSString *)cdrName;
+- (int) findIndexOfCommander: (const std::string &)cdrName;
 - (void) nativeSavePlayer: (NSString *)cdrName;
-- (BOOL) existingNativeSave: (NSString *)cdrName;
+- (BOOL) existingNativeSave: (const std::string &)cdrName;
 
 #endif
 
@@ -131,7 +206,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	// OS X: use system open/save dialogs in windowed mode, custom interface in full-screen.
 	if ([[UNIVERSE gameController] inFullScreenMode])
 	{
-		[self setGuiToSaveCommanderScreen:self.lastsaveName];
+		[self setGuiToSaveCommanderScreen:oo::StdString(self.lastsaveName)];
 	}
 	else
 	{
@@ -139,7 +214,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	}
 #else
 	// Other platforms: use custom interface all the time.
-	[self setGuiToSaveCommanderScreen:[self lastsaveName]];
+	[self setGuiToSaveCommanderScreen:oo::StdString([self lastsaveName])];
 #endif
 }
 
@@ -193,8 +268,8 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	if (!path)
 	{
 		OOLog(@"quickSave.failed.noName", @"%@", @"ERROR no file name returned by [[gameView gameController] playerFileToLoad]");
-		[NSException raise:@"OoliteGameNotSavedException"
-					format:@"ERROR no file name returned by [[gameView gameController] playerFileToLoad]"];
+		[OOException raise:"OoliteGameNotSavedException"
+					format:"ERROR no file name returned by [[gameView gameController] playerFileToLoad]"];
 	}
 	
 	ShipScriptEventNoCx(self, "playerWillSaveGame", OOJSSTR("QUICK_SAVE"));
@@ -207,7 +282,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 
 - (void) setGuiToScenarioScreen:(int)page
 {
-	NSArray *scenarios = [UNIVERSE scenarios];
+	const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
 	[UNIVERSE removeDemoShips];
 	// GUI stuff
 	{
@@ -225,38 +300,37 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		[gui setTabStops:tab_stops];
 
 		unsigned n_rows = GUI_MAX_ROWS_SCENARIOS;
-		NSUInteger i, count = [scenarios count];
+		NSUInteger i, count = scenarios.count();
 
-		NSDictionary *scenario = nil;
-
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-scenario-exit"), @" <----- ", nil] forRow:start_row - 2];
+		[gui cxx_setArray:{ oo::StdString(DESC(@"oolite-scenario-exit")), " <----- " } forRow:start_row - 2];
 		[gui setColor:[OOColor redColor] forRow:start_row - 2];
 		[gui setKey:@"exit" forRow:start_row - 2];
 		
 
 		if (page > 0)
 		{
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ", nil] forRow:start_row - 1];
+			[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " } forRow:start_row - 1];
 			[gui setColor:[OOColor greenColor] forRow:start_row - 1];
-			[gui setKey:[NSString stringWithFormat:@"__page:%i",page-1] forRow:start_row - 1];
+			[gui cxx_setKey:oo::str::format("__page:%i",page-1) forRow:start_row - 1];
 		}
 
 		[self setShowDemoShips:NO];
 
 		for (i = (NSUInteger)page*n_rows ; i < count && row < start_row + n_rows ; i++)
 		{
-			scenario = [[UNIVERSE scenarios] objectAtIndex:i];
-			NSString *scenarioName = [NSString stringWithFormat:@" %@ ",oo::PListView(scenario).get<NSString *>(@"name")];
-			[gui setText:OOExpand(scenarioName) forRow:row];
-			[gui setKey:[NSString stringWithFormat:@"Scenario:%zu", i] forRow:row];
+			const oo::PList *scenario = scenarios.at(i);
+			const std::optional<std::string> scenarioTitle = scenario != nullptr ? OptionalStringValue(scenario->find("name")) : std::nullopt;
+			const std::string scenarioName = " " + scenarioTitle.value_or("(null)") + " ";	// @" %@ "
+			[gui setText:OOExpand(oo::NSStringFrom(scenarioName)) forRow:row];
+			[gui cxx_setKey:oo::str::format("Scenario:%zu", i) forRow:row];
 			++row;
 		}
 
 		if ((NSUInteger)(page+1) * n_rows < count)
 		{
-			[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ", nil] forRow:row];
+			[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " } forRow:row];
 			[gui setColor:[OOColor greenColor] forRow:row];
-			[gui setKey:[NSString stringWithFormat:@"__page:%i",page+1] forRow:row];
+			[gui cxx_setKey:oo::str::format("__page:%i",page+1) forRow:row];
 			++row;
 		}
 		
@@ -276,22 +350,23 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:YES];
 }
 
-- (void) addScenarioModel:(NSString *)shipKey
+- (void) addScenarioModel:(const std::string &)shipKey
 {
-	[self showShipModelWithKey:shipKey shipData:nil personality:0 factorX:1.2 factorY:0.8 factorZ:6.4 inContext:@"scenario"];
+	[self showShipModelWithKey:oo::NSStringFrom(shipKey) shipData:nil personality:0 factorX:1.2 factorY:0.8 factorZ:6.4 inContext:@"scenario"];
 }
 
 
 - (void) showScenarioDetails
 {
 	GuiDisplayGen* gui = [UNIVERSE gui];
-	NSString* key = [gui selectedRowKey];
+	const std::optional<std::string> key = [gui cxx_selectedRowKey];
 	[UNIVERSE removeDemoShips];
 
-	if ([key hasPrefix:@"Scenario"])
+	if (key && oo::str::hasPrefix(*key, "Scenario"))
 	{
-		int item = oo::PListView([key componentsSeparatedByString:@":"]).at<int>(1);
-		NSDictionary *scenario = [[UNIVERSE scenarios] objectAtIndex:item];
+		int item = SecondFieldIntValue(key);
+		const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
+		const oo::PList *scenario = scenarios.at(item);
 		[self setShowDemoShips:NO];
 		for (NSUInteger i=GUI_ROW_SCENARIOS_DETAIL;i<=27;i++)
 		{
@@ -299,11 +374,11 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		}
 		if (scenario)
 		{
-			[gui addLongText:OOExpand(oo::PListView(scenario).get<NSString *>(@"description")) startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
-			NSString *shipKey = oo::PListView(scenario).get<NSString *>(@"model");
-			if (shipKey != nil)
+			[gui cxx_addLongText:oo::OptionalString(OOExpand(oo::NSStringOrNil(OptionalStringValue(scenario->find("description"))))) startingAtRow:GUI_ROW_SCENARIOS_DETAIL align:GUI_ALIGN_LEFT];
+			const std::optional<std::string> shipKey = OptionalStringValue(scenario->find("model"));
+			if (shipKey)
 			{
-				[self addScenarioModel:shipKey];
+				[self addScenarioModel:*shipKey];
 				[self setShowDemoShips:YES];
 			}
 		}
@@ -315,41 +390,42 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 - (BOOL) startScenario
 {
 	GuiDisplayGen* gui = [UNIVERSE gui];
-	NSString* key = [gui selectedRowKey];
+	const std::optional<std::string> key = [gui cxx_selectedRowKey];
 
-	if ([key isEqualToString:@"exit"])
+	if (key == "exit")
 	{
 		// intended to return to main menu
 		return NO; 
 	}
-	if ([key hasPrefix:@"__page"])
+	if (key && oo::str::hasPrefix(*key, "__page"))
 	{
-		int page = oo::PListView([key componentsSeparatedByString:@":"]).at<int>(1);
+		int page = SecondFieldIntValue(key);
 		[self setGuiToScenarioScreen:page];
 		return YES;
 	}
-	int selection = oo::PListView([key componentsSeparatedByString:@":"]).at<int>(1);
+	int selection = SecondFieldIntValue(key);
 
-	NSDictionary *scenario = [[UNIVERSE scenarios] objectAtIndex:selection];
-	NSString *file = oo::PListView(scenario).get<NSString *>(@"file", nil);
-	if (file == nil) 
+	const oo::PList scenarios = oo::PListFrom([UNIVERSE scenarios]);
+	const oo::PList *scenario = scenarios.at(selection);
+	const std::optional<std::string> file = scenario != nullptr ? OptionalStringValue(scenario->find("file")) : std::nullopt;
+	if (!file)
 	{
 		OOLog(@"scenario.init.error", @"%@", @"No file entry found for scenario");
 		return NO;
 	}
-	NSString *path = [ResourceManager pathForFileNamed:file inFolder:@"Scenarios"];
-	if (path == nil)
+	const std::optional<std::string> path = [ResourceManager cxx_pathForFileNamed:*file inFolder:"Scenarios"];
+	if (!path)
 	{
-		OOLog(@"scenario.init.error", @"Game file not found for scenario %@",file);
+		OOLog(@"scenario.init.error", @"Game file not found for scenario %@",oo::NSStringFrom(*file));
 		return NO;
 	}
-	BOOL result = [self loadPlayerFromFile:path asNew:YES];
+	BOOL result = [self loadPlayerFromFile:*path asNew:YES];
 	if (!result)
 	{
 		return NO;
 	}
 	[scenarioKey release];
-	scenarioKey = [oo::PListView(scenario).get<NSString *>(@"scenario", nil) retain];
+	scenarioKey = [oo::NSStringOrNil(OptionalStringValue(scenario->find("scenario"))) retain];
 
 	// don't drop the save game directory in
 	return YES;
@@ -360,11 +436,11 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 
 #if OO_USE_CUSTOM_LOAD_SAVE
 
-- (NSString *)commanderSelector
+- (std::optional<std::string>)commanderSelector
 {
 	MyOpenGLView	*gameView = [UNIVERSE gameView];
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	NSString		*dir = [[UNIVERSE gameController] playerFileDirectory];
+	std::string		dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
 	
 	int idx;
 	if([self handleGUIUpDownArrowKeys])
@@ -394,14 +470,14 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	{
 		currentPage--;
 		[self playMenuPagePrevious];
-		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: nil];
+		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 		[gameView suppressKeysUntilKeyUp];
 	}
 	if (([self checkKeyPress:n_key_gui_arrow_right] || [self checkKeyPress:n_key_gui_page_down]) && [[gui keyForRow:MOREROW] isEqual: GUI_KEY_OK])
 	{
 		currentPage++;
 		[self playMenuPageNext];
-		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: nil];
+		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 		[gameView suppressKeysUntilKeyUp];
 	}
 	
@@ -409,43 +485,45 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	// ignore Ctrl for the moment - we check for it explicitly later
 	if ([self checkKeyPress:n_key_gui_select ignore_ctrl:YES]||[gameView isDown:gvMouseDoubleClick])
 	{
-		NSDictionary *cdr;
 		switch ([gui selectedRow])
 		{
 			case EXITROW:
 				if ([self status] == STATUS_START_GAME)
 				{
 					[self setGuiToIntroFirstGo:YES];
-					return nil;
+					return std::nullopt;
 				}
 				break;
 			case BACKROW:
 				currentPage--;
-				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: nil];
+				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 				[gameView suppressKeysUntilKeyUp];
 				break;
 			case MOREROW:
 				currentPage++;
-				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: nil];
+				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 				[gameView suppressKeysUntilKeyUp];
 				break;
 			default:
-				cdr=[cdrDetailArray objectAtIndex: idx];
-				if (oo::PListView(cdr).get<BOOL>(@"isSavedGame"))
-					return oo::PListView(cdr).get<NSString *>(@"saved_game_path");
+			{
+				if (idx < 0 || (std::size_t)idx >= cdrDetailArray.size())  break;	// (-objectAtIndex: raised)
+				const oo::PList cdr = cdrDetailArray[idx];
+				if (cdr.get<bool>("isSavedGame"))
+					return OptionalStringValue(cdr.find("saved_game_path"));
 				else
 				{
 					if ([gameView isCommandModifierKeyDown]||[gameView isDown:gvMouseDoubleClick])
 					{
 						// change directory to the selected path
-						NSString* newDir = oo::PListView(cdr).get<NSString *>(@"saved_game_path");
-						[[UNIVERSE gameController] setPlayerFileDirectory: newDir];
+						const std::string newDir = cdr.get<std::string>("saved_game_path");
+						[[UNIVERSE gameController] setPlayerFileDirectory: oo::NSStringFrom(newDir)];
 						dir = newDir;
 						currentPage = 0;
-						[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: nil];
+						[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 						[gameView suppressKeysUntilKeyUp];
 					}
 				}
+			}
 		}
 	}
 	
@@ -453,7 +531,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	{
 		[self setGuiToStatusScreen];
 	}
-	return nil;
+	return std::nullopt;
 }
 
 
@@ -461,7 +539,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 {
 	MyOpenGLView	*gameView = [UNIVERSE gameView];
 	GuiDisplayGen	*gui = [UNIVERSE gui];
-	NSString		*dir = [[UNIVERSE gameController] playerFileDirectory];
+	std::string		dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
 	
 	if ([self handleGUIUpDownArrowKeys])
 	{
@@ -470,10 +548,10 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		if (guiSelectedRow != MOREROW && guiSelectedRow != BACKROW)
 		{
 			[self showCommanderShip: idx];
-			if (oo::PListView((NSDictionary *)[cdrDetailArray objectAtIndex:idx]).get<BOOL>(@"isSavedGame"))	// don't show things that aren't saved games
-				commanderNameString = oo::StdString(oo::PListView(oo::PListView(cdrDetailArray).at<NSDictionary *>(idx)).get<NSString *>(@"player_save_name", oo::PListView(oo::PListView(cdrDetailArray).at<NSDictionary *>(idx)).get<NSString *>(@"player_name")));
+			if (idx >= 0 && (std::size_t)idx < cdrDetailArray.size() && cdrDetailArray[idx].get<bool>("isSavedGame"))	// don't show things that aren't saved games
+				commanderNameString = CommanderSaveName(cdrDetailArray[idx]).value_or("");
 			else
-				commanderNameString = oo::StdString([gameView typedString]);
+				commanderNameString = [gameView cxx_typedString].value_or("");
 		}
 		else
 		{
@@ -485,13 +563,13 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	}
 	else
 	{
-		commanderNameString = oo::StdString([gameView typedString]);
+		commanderNameString = [gameView cxx_typedString].value_or("");
 	}
 	
-	[gameView setTypedString: oo::NSStringFrom(commanderNameString)];
+	[gameView cxx_setTypedString: commanderNameString];
 	
-	[gui setText:
-		[NSString stringWithFormat:DESC(@"savescreen-commander-name-@"), oo::NSStringFrom(commanderNameString)]
+	[gui cxx_setText:
+		oo::str::formatRuntime(oo::StdString(DESC(@"savescreen-commander-name-@")), { commanderNameString })
 		  forRow: INPUTROW];
 	[gui setColor:[OOColor cyanColor] forRow:INPUTROW];
 	
@@ -500,7 +578,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 					&& [[gui keyForRow:BACKROW] isEqual: GUI_KEY_OK])
 	{
 		currentPage--;
-		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: nil];
+		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 		[gameView suppressKeysUntilKeyUp];
 	}
 	//
@@ -508,7 +586,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 					&& [[gui keyForRow:MOREROW] isEqual: GUI_KEY_OK])
 	{
 		currentPage++;
-		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: nil];
+		[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 		[gameView suppressKeysUntilKeyUp];
 	}
 	
@@ -519,26 +597,26 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		{
 			int guiSelectedRow=[gui selectedRow];
 			int	idx = (guiSelectedRow - STARTROW) + (currentPage * NUMROWS);
-			NSDictionary* cdr = [cdrDetailArray objectAtIndex:idx];
+			const oo::PList cdr = (idx >= 0 && (std::size_t)idx < cdrDetailArray.size()) ? cdrDetailArray[idx] : oo::PList();	// (-objectAtIndex: raised)
 			
-			if (!oo::PListView(cdr).get<BOOL>(@"isSavedGame"))	// don't open saved games
+			if (!cdr.isNull() && !cdr.get<bool>("isSavedGame"))	// don't open saved games
 			{
 				// change directory to the selected path
-				NSString* newDir = oo::PListView(cdr).get<NSString *>(@"saved_game_path");
-				[[UNIVERSE gameController] setPlayerFileDirectory: newDir];
+				const std::string newDir = cdr.get<std::string>("saved_game_path");
+				[[UNIVERSE gameController] setPlayerFileDirectory: oo::NSStringFrom(newDir)];
 				dir = newDir;
 				currentPage = 0;
-				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: nil];
+				[self lsCommanders: gui	directory: dir	pageNumber: currentPage  highlightName: std::nullopt];
 				[gameView suppressKeysUntilKeyUp];
 			}
 		}
 		else
 		{
 			pollControls = YES;
-			if ([self existingNativeSave: oo::NSStringFrom(commanderNameString)])
+			if ([self existingNativeSave: commanderNameString])
 			{
 				[gameView suppressKeysUntilKeyUp];
-				[self setGuiToOverwriteScreen: oo::NSStringFrom(commanderNameString)];
+				[self setGuiToOverwriteScreen: commanderNameString];
 			}
 			else
 			{
@@ -567,12 +645,12 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	[self handleGUIUpDownArrowKeys];
 	
 	// Translation issue: we can't confidently use raw Y and N ascii as shortcuts. It's better to use the load-previous-commander keys.
-	id valueYes = [oo::PListView([UNIVERSE descriptions]).get<NSString *>(@"load-previous-commander-yes", @"y") lowercaseString];
-	id valueNo = [oo::PListView([UNIVERSE descriptions]).get<NSString *>(@"load-previous-commander-no", @"n") lowercaseString];
+	const std::string valueYes = oo::str::lowercase(OptionalStringValue([[UNIVERSE descriptions] objectForKey:@"load-previous-commander-yes"]).value_or("y"));
+	const std::string valueNo = oo::str::lowercase(OptionalStringValue([[UNIVERSE descriptions] objectForKey:@"load-previous-commander-no"]).value_or("n"));
 	unsigned char cYes, cNo;
 	
-	cYes = [valueYes characterAtIndex: 0] & 0x00ff;	// Use lower byte of unichar.
-	cNo = [valueNo characterAtIndex: 0] & 0x00ff;	// Use lower byte of unichar.
+	cYes = FirstUnitLowByte(valueYes);	// Use lower byte of unichar.
+	cNo = FirstUnitLowByte(valueNo);	// Use lower byte of unichar.
 	
 	if (([self checkKeyPress:n_key_gui_select] && ([gui selectedRow] == SAVE_OVERWRITE_YES_ROW))||[gameView isDown:cYes]||[gameView isDown:cYes - 32])
 	{
@@ -588,14 +666,14 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		// esc or NO was pressed - get out of here
 		pollControls=YES;
 		[self playSaveOverwriteNo];
-		[self setGuiToSaveCommanderScreen:@""];
+		[self setGuiToSaveCommanderScreen:""];
 	}
 }
 
 #endif
 
 
-- (BOOL) loadPlayerFromFile:(NSString *)fileToOpen asNew:(BOOL)asNew
+- (BOOL) loadPlayerFromFile:(const std::string &)fileToOpen asNew:(BOOL)asNew
 {
 	/*	TODO: it would probably be better to load by creating a new
 		PlayerEntity, verifying that's OK, then replacing the global player.
@@ -607,22 +685,22 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	*/
 	
 	BOOL			loadedOK = YES;
-	NSDictionary	*fileDic = nil;
-	NSString		*fail_reason = nil;
+	oo::PList		fileDic;
+	std::optional<std::string>	fail_reason;
 	
-	if (fileToOpen == nil)
+	if (fileToOpen.empty())	// (was a nil test: every caller passes a non-nil path)
 	{
-		fail_reason = DESC(@"loadfailed-no-file-specified");
+		fail_reason = oo::OptionalString(DESC(@"loadfailed-no-file-specified"));
 		loadedOK = NO;
 	}
 	
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Reading file");
-		fileDic = OODictionaryFromFile(fileToOpen);
-		if (fileDic == nil)
+		fileDic = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(fileToOpen)));
+		if (!fileDic.isDict())
 		{
-			fail_reason = DESC(@"loadfailed-could-not-load-file");
+			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-load-file"));
 			loadedOK = NO;
 		}
 	}
@@ -630,24 +708,29 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Restricting scenario");
-		NSString *scenarioRestrict = oo::PListView(fileDic).get<NSString *>(@"scenario_restriction", nil);
-		if (scenarioRestrict == nil)
+		std::string scenarioRestrict;
+		const std::optional<std::string> savedRestrict = OptionalStringValue(fileDic.find("scenario_restriction"));
+		if (savedRestrict)
+		{
+			scenarioRestrict = *savedRestrict;
+		}
+		else
 		{
 			// older save game - use the 'strict' key instead
-			BOOL strict = oo::PListView(fileDic).get<BOOL>(@"strict", NO);
+			BOOL strict = fileDic.get<bool>("strict", NO);
 			if (strict)
 			{
-				scenarioRestrict = SCENARIO_OXP_DEFINITION_NONE;
+				scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_NONE);
 			}
 			else
 			{
-				scenarioRestrict = SCENARIO_OXP_DEFINITION_ALL;
+				scenarioRestrict = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
 			}
 		}
 
-		if (![UNIVERSE setUseAddOns:scenarioRestrict fromSaveGame:YES forceReinit:YES]) 
+		if (![UNIVERSE setUseAddOns:oo::NSStringFrom(scenarioRestrict) fromSaveGame:YES forceReinit:YES])
 		{
-			fail_reason = DESC(@"loadfailed-saved-game-failed-to-load");
+			fail_reason = oo::OptionalString(DESC(@"loadfailed-saved-game-failed-to-load"));
 			loadedOK = NO;
 		} 
 	}
@@ -657,17 +740,16 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	{
 		OOLog(@"load.progress", @"%@", @"Creating player ship");
 		// Check that player ship exists
-		NSString		*shipKey = nil;
-		NSDictionary	*shipDict = nil;
+		const std::optional<std::string>	shipKey = OptionalStringValue(fileDic.find("ship_desc"));
+		oo::PList							shipDict;
 		
-		shipKey = oo::PListView(fileDic).get<NSString *>(@"ship_desc");
-		shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
+		if (shipKey)  shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipKey];
 		
-		if (shipDict == nil)
+		if (shipDict.isNull())
 		{
 			loadedOK = NO;
-			if (shipKey != nil)  fail_reason = [NSString stringWithFormat:DESC(@"loadfailed-could-not-find-ship-type-@-please-reinstall-the-appropriate-OXP"), shipKey];
-			else  fail_reason = DESC(@"loadfailed-invalid-saved-game-no-ship-specified");
+			if (shipKey)  fail_reason = oo::str::formatRuntime(oo::StdString(DESC(@"loadfailed-could-not-find-ship-type-@-please-reinstall-the-appropriate-OXP")), { *shipKey });
+			else  fail_reason = oo::OptionalString(DESC(@"loadfailed-invalid-saved-game-no-ship-specified"));
 		}
 	}
 	
@@ -676,7 +758,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		OOLog(@"load.progress", @"%@", @"Initialising player entity");
 		if (![self setUpAndConfirmOK:YES saveGame:YES])
 		{
-			fail_reason = DESC(@"loadfailed-could-not-reset-javascript");
+			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-reset-javascript"));
 			loadedOK = NO;
 		}
 	}
@@ -684,11 +766,11 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	if (loadedOK)
 	{
 		OOLog(@"load.progress", @"%@", @"Loading commander data");
-		if (![self setCommanderDataFromDictionary:fileDic])
+		if (![self setCommanderDataFromDictionary:oo::ObjectFromPList(fileDic)])
 		{
 			// this could still be a reset js issue, if switching from strict / unrestricted
 			// TODO: use "could not reset js message" if that's the case.
-			fail_reason = DESC(@"loadfailed-could-not-set-up-player-ship");
+			fail_reason = oo::OptionalString(DESC(@"loadfailed-could-not-set-up-player-ship"));
 			loadedOK = NO;
 		}
 	}
@@ -699,20 +781,20 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		if (!asNew)
 		{
 			[save_path autorelease];
-			save_path = [fileToOpen retain];
+			save_path = [oo::NSStringFrom(fileToOpen) retain];
 		
-			[[[UNIVERSE gameView] gameController] setPlayerFileToLoad:fileToOpen];
-			[[[UNIVERSE gameView] gameController] setPlayerFileDirectory:fileToOpen];
+			[[[UNIVERSE gameView] gameController] setPlayerFileToLoad:oo::NSStringFrom(fileToOpen)];
+			[[[UNIVERSE gameView] gameController] setPlayerFileDirectory:oo::NSStringFrom(fileToOpen)];
 		}
 	}
 	else
 	{
-		OOLog(@"load.failed", @"***** Failed to load saved game \"%@\": %@", [fileToOpen lastPathComponent], fail_reason ? fail_reason : (NSString *)@"unknown error");
+		OOLog(@"load.failed", @"***** Failed to load saved game \"%@\": %@", oo::NSStringFrom(oo::str::lastPathComponent(fileToOpen)), oo::NSStringFrom(fail_reason.value_or("unknown error")));
 		[[UNIVERSE gameController] setPlayerFileToLoad:nil];
 		[UNIVERSE handleGameOver];
 		[UNIVERSE clearPreviousMessage];
 		[UNIVERSE addMessage:DESC(@"loadfailed-saved-game-failed-to-load") forCount: 9.0];
-		if (fail_reason != nil)  [UNIVERSE addMessage: fail_reason forCount: 9.0];
+		if (fail_reason)  [UNIVERSE addMessage: oo::NSStringFrom(*fail_reason) forCount: 9.0];
 		return NO;
 	}
 	
@@ -749,10 +831,10 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	OOLog(@"load.progress", @"%@", @"Loading system market");
 	// dockedStation is always the main station at this point;
 	// "localMarket" save key always refers to the main station (system) market
-	NSArray *market = oo::PListView(fileDic).get<NSArray *>(@"localMarket");
-	if (market != nil) 
+	const oo::PList *market = fileDic.get<oo::PList::Array>("localMarket");
+	if (market != nullptr)
 	{
-		[dockedStation setLocalMarket:market];
+		[dockedStation setLocalMarket:oo::ObjectFromPList(*market)];
 	}
 	else
 	{
@@ -763,11 +845,11 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	
 	OOLog(@"load.progress", @"%@", @"Setting scenario key");
 	// set scenario key if the scenario allows saving and has one
-	NSString *scenario = oo::PListView(fileDic).get<NSString *>(@"scenario_key", nil);
+	const std::optional<std::string> scenario = OptionalStringValue(fileDic.find("scenario_key"));
 	DESTROY(scenarioKey);
-	if (scenario != nil)
+	if (scenario)
 	{
-		scenarioKey = [scenario retain];
+		scenarioKey = [oo::NSStringFrom(*scenario) retain];
 	}
 
 	OOLog(@"load.progress", @"%@", @"Starting JS engine");
@@ -783,16 +865,18 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	// read saved position vector and primary role, check for an
 	// appropriate station at those coordinates, if found, switch
 	// docked station to that one.
-	HPVector dockedPos = oo::PListView(fileDic).get<HPVector>(@"docked_station_position");
-	NSString *dockedRole = oo::PListView(fileDic).get<NSString *>(@"docked_station_role", @"");
-	StationEntity *saveStation = [UNIVERSE stationWithRole:dockedRole andPosition:dockedPos];
+	const oo::PList *dockedPosNode = fileDic.find("docked_station_position");
+	HPVector dockedPos = OOHPVectorFromObject(dockedPosNode != nullptr ? oo::ObjectFromPList(*dockedPosNode) : nil, kZeroHPVector);
+	const std::string dockedRole = OptionalStringValue(fileDic.find("docked_station_role")).value_or("");
+	StationEntity *saveStation = [UNIVERSE stationWithRole:oo::NSStringFrom(dockedRole) andPosition:dockedPos];
 	if (saveStation != nil && [saveStation allowsSaving])
 	{
 		[self setDockedStation:saveStation];
 		position = [saveStation position];
 	}
 	// and initialise markets for the secondary stations
-	[UNIVERSE loadStationMarkets:oo::PListView(fileDic).get<NSArray *>(@"station_markets")];
+	const oo::PList *stationMarkets = fileDic.get<oo::PList::Array>("station_markets");
+	[UNIVERSE loadStationMarkets:stationMarkets != nullptr ? oo::ObjectFromPList(*stationMarkets) : nil];
 
 	OOLog(@"load.progress", @"%@", @"Completing JS startup");
 	[self startUpComplete];
@@ -832,7 +916,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 		NSURL *url = oPanel.URL;
 		if (url.isFileURL)
 		{
-			return [self loadPlayerFromFile:url.path asNew:NO];
+			return [self loadPlayerFromFile:oo::StdString(url.path) asNew:NO];
 		}
 	}
 	
@@ -882,7 +966,13 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	
 	dict = [self commanderDataDictionary];
 	if (dict == nil)  errDesc = @"could not construct commander data dictionary.";
-	else  didSave = [dict writeOOXMLToFile:path atomically:YES errorDescription:&errDesc];
+	else
+	{
+		// The save dictionary as a property list (its float values stay single reals, written as before).
+		std::string error;
+		didSave = OOWriteXMLPListToFile(oo::PListFrom(dict), oo::StdString(path), &error);
+		if (!didSave)  errDesc = oo::NSStringFrom(error);
+	}
 	if (didSave)
 	{
 		[UNIVERSE clearPreviousMessage];	// allow this to be given time and again
@@ -897,8 +987,8 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	else
 	{
 		OOLog(@"save.failed", @"***** SAVE ERROR: %@", errDesc);
-		[NSException raise:@"OoliteException"
-					format:@"Attempt to save game to file '%@' failed: %@", path, errDesc];
+		[OOException raise:"OoliteException"
+					format:"Attempt to save game to file '%s' failed: %s", [path UTF8String], [errDesc UTF8String]];
 	}
 	[[UNIVERSE gameView] suppressKeysUntilKeyUp];
 	[self setGuiToStatusScreen];
@@ -923,7 +1013,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 - (void) setGuiToLoadCommanderScreen
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
-	NSString*	dir = [[UNIVERSE gameController] playerFileDirectory];
+	const std::string dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
 	
 	gui_screen = GUI_SCREEN_LOAD;
 	
@@ -931,7 +1021,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	[gui setTitle:DESC(@"loadscreen-title")];
 	
 	currentPage = 0;
-	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:nil];
+	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
 	
 	[gui setForegroundTextureKey:@"docked_overlay"];
 	[gui setBackgroundTextureKey:@"load_save"];
@@ -943,11 +1033,11 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 }
 
 
-- (void) setGuiToSaveCommanderScreen:(NSString *)cdrName
+- (void) setGuiToSaveCommanderScreen:(const std::string &)cdrName
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
 	MyOpenGLView *gameView = [UNIVERSE gameView];
-	NSString *dir = [[UNIVERSE gameController] playerFileDirectory];
+	const std::string dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
 	
 	pollControls = NO;
 	gui_screen = GUI_SCREEN_SAVE;
@@ -956,7 +1046,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	[gui setTitle:DESC(@"savescreen-title")];
 	
 	currentPage = 0;
-	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:nil];
+	[self lsCommanders:gui directory:dir pageNumber: currentPage highlightName:std::nullopt];
 	
 	[gui setText:DESC(@"savescreen-commander-name") forRow: INPUTROW];
 	[gui setColor:[OOColor cyanColor] forRow:INPUTROW];
@@ -966,7 +1056,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	[gui setForegroundTextureKey:@"docked_overlay"];
 	[gui setBackgroundTextureKey:@"load_save"];
 	
-	[gameView setTypedString:cdrName];
+	[gameView cxx_setTypedString:cdrName];
 	[gameView suppressKeysUntilKeyUp];
 	
 	[self setShowDemoShips:YES];
@@ -974,7 +1064,7 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 }
 
 
-- (void) setGuiToOverwriteScreen:(NSString *)cdrName
+- (void) setGuiToOverwriteScreen:(const std::string &)cdrName
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
 	MyOpenGLView*	gameView = [UNIVERSE gameView];
@@ -985,9 +1075,9 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	gui_screen = GUI_SCREEN_SAVE_OVERWRITE;
 	
 	[gui clear];
-	[gui setTitle:[NSString stringWithFormat:DESC(@"overwrite-save-commander-@"), cdrName]];
+	[gui setTitle:oo::NSStringFrom(oo::str::formatRuntime(oo::StdString(DESC(@"overwrite-save-commander-@")), { cdrName }))];
 	
-	[gui setText:[NSString stringWithFormat:DESC(@"overwritescreen-commander-@-already-exists-overwrite-query"), cdrName]
+	[gui cxx_setText:oo::str::formatRuntime(oo::StdString(DESC(@"overwritescreen-commander-@-already-exists-overwrite-query")), { cdrName })
 								forRow:SAVE_OVERWRITE_WARN_ROW align: GUI_ALIGN_CENTER];
 	
 	[gui setText:DESC(@"overwritescreen-yes") forRow: SAVE_OVERWRITE_YES_ROW align: GUI_ALIGN_CENTER];
@@ -1009,83 +1099,90 @@ static uint16_t PersonalityForCommanderDict(NSDictionary *dict);
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];	// FIXME: should be YES, but was NO before introducing new mouse mode stuff. If set to YES, choices can be selected but not activated.
 }
 
-static NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
-{
-	(void)context;
-	return [[cdr1 objectForKey:@"saved_game_path"] localizedCompare:[cdr2 objectForKey:@"saved_game_path"]];
-}
-
 - (void) lsCommanders: (GuiDisplayGen *)gui
-			directory: (NSString*) directory
+			directory: (const std::string &) directory
 		   pageNumber: (int)page
-		highlightName: (NSString *)highlightName
+		highlightName: (const std::optional<std::string> &)highlightName
 {
-	NSFileManager *cdrFileManager=[NSFileManager defaultManager];
 	int rangeStart=STARTROW;
 	unsigned lastIndex;
 	unsigned i;
 	int row=STARTROW;
 	
-	// cdrArray defined in PlayerEntity.h
-	NSArray *cdrArray=[cdrFileManager commanderContentsOfPath: directory];
+	// The retiring NSFileManager (OOExtensions) commander listing, in place: the directory's entries
+	// as full paths. Its per-entry filter tested `!exists && isDirectory`, which never holds, so it
+	// only built the paths.
+	std::vector<std::string> cdrArray;
+	const oo::fs::Path directoryPath = oo::fs::pathFromUTF8(directory);
+	if (oo::fs::fileType(directoryPath) == oo::fs::FileType::directory)
+	{
+		const auto names = oo::fs::directoryContents(directoryPath);
+		if (names)
+		{
+			for (const std::string &entry : *names)  cdrArray.push_back(oo::str::appendingPathComponent(directory, entry));
+		}
+	}
+	else
+	{
+		OOLogERR(@"savedGame.read.fail.fileNotFound", @"File at path '%@' could not be found.", oo::NSStringFrom(directory));
+	}
 	
 	// get commander details so a brief rundown of the commander's details may
 	// be displayed.
-	if (!cdrDetailArray)
-		cdrDetailArray=[[NSMutableArray alloc] init];	// alloc retains this so the retain further on in the code was unnecessary
-	else
-		[cdrDetailArray removeAllObjects];
+	cdrDetailArray.clear();
 	
-	[cdrDetailArray addObject:[NSMutableDictionary dictionaryWithObjectsAndKeys:
-		@"YES", @"isParentFolder",
-		[directory stringByDeletingLastPathComponent], @"saved_game_path", nil]];
+	cdrDetailArray.push_back(oo::PList(oo::PList::Dict{
+		{ "isParentFolder", oo::PList("YES") },
+		{ "saved_game_path", oo::PList(oo::str::deletingLastPathComponent(directory)) } }));
 	
-	for(i = 0; i < [cdrArray count]; i++)
+	for (const std::string &path : cdrArray)
 	{
-		NSString*	path = [cdrArray objectAtIndex:i];
-		BOOL		exists, isDirectory = NO;
+		const oo::fs::FileType type = oo::fs::fileType(oo::fs::pathFromUTF8(path));
 		
-		exists = [cdrFileManager fileExistsAtPath:path isDirectory:&isDirectory];
-		
-		if (exists)
+		if (type != oo::fs::FileType::none)
 		{
-			if (!isDirectory && [[[path pathExtension] lowercaseString] isEqualToString:@"oolite-save"])
+			if (type != oo::fs::FileType::directory && oo::str::lowercase(oo::str::pathExtension(path)) == "oolite-save")
 			{
-				NSDictionary *cdr = OODictionaryFromFile(path);
-				if(cdr)
+				oo::PList cdr = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(path)));
+				if (oo::PList::Dict *cdr1 = cdr.getIf<oo::PList::Dict>())
 				{
 					// okay use the same dictionary but add a 'saved_game_path' attribute
-					NSMutableDictionary* cdr1 = [NSMutableDictionary dictionaryWithDictionary:cdr];
-					[cdr1 setObject: @"YES" forKey:@"isSavedGame"];
-					[cdr1 setObject: path forKey:@"saved_game_path"];
-					[cdrDetailArray addObject: cdr1];
+					(*cdr1)["isSavedGame"] = oo::PList("YES");
+					(*cdr1)["saved_game_path"] = oo::PList(path);
+					cdrDetailArray.push_back(std::move(cdr));
 				}
 			}
-			if (isDirectory && ![[path lastPathComponent] hasPrefix:@"."])
+			if (type == oo::fs::FileType::directory && !oo::str::hasPrefix(oo::str::lastPathComponent(path), "."))
 			{
-				[cdrDetailArray addObject: [NSDictionary dictionaryWithObjectsAndKeys: @"YES", @"isFolder", path, @"saved_game_path", nil]];
+				cdrDetailArray.push_back(oo::PList(oo::PList::Dict{
+					{ "isFolder", oo::PList("YES") },
+					{ "saved_game_path", oo::PList(path) } }));
 			}
 		}
 	}
 	
-	if(![cdrDetailArray count])
+	if(cdrDetailArray.empty())
 	{
 		// Empty directory; tell the user and exit immediately.
 		[gui setText:DESC(@"loadsavescreen-no-commanders-found") forRow:STARTROW align:GUI_ALIGN_CENTER];
 		return;
 	}
 
-	[cdrDetailArray sortUsingFunction:sortCommanders context:NULL];
+	// sortCommanders: -localizedCompare: of saved_game_path. oofnd has no localized collation, so
+	// the comparison itself still goes through Foundation until it has one (oo-qps).
+	std::stable_sort(cdrDetailArray.begin(), cdrDetailArray.end(), [](const oo::PList &cdr1, const oo::PList &cdr2) {
+		return [oo::NSStringFrom(cdr1.get<std::string>("saved_game_path")) localizedCompare:oo::NSStringFrom(cdr2.get<std::string>("saved_game_path"))] == NSOrderedAscending;
+	});
 	
 	// Do we need to highlight a name?
 	int highlightRowOnPage=STARTROW;
 	int highlightIdx=0;
 	if(highlightName)
 	{
-		highlightIdx=[self findIndexOfCommander: highlightName];
+		highlightIdx=[self findIndexOfCommander: *highlightName];
 		if(highlightIdx < 0)
 		{
-			OOLog(@"save.list.commanders.commanderNotFound", @"Commander %@ doesn't exist, very bad", highlightName);
+			OOLog(@"save.list.commanders.commanderNotFound", @"Commander %@ doesn't exist, very bad", oo::NSStringFrom(*highlightName));
 			highlightIdx=0;
 		}
 		
@@ -1114,13 +1211,13 @@ static NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
 	}
 
 	[gui setColor: [OOColor greenColor] forRow: LABELROW];
-	[gui setArray: [NSArray arrayWithObjects: DESC(@"loadsavescreen-commander-name"), DESC(@"loadsavescreen-rating"), nil]
+	[gui cxx_setArray: { oo::StdString(DESC(@"loadsavescreen-commander-name")), oo::StdString(DESC(@"loadsavescreen-rating")) }
 		   forRow:LABELROW];
 
 	if (page)
 	{
 		[gui setColor:[OOColor greenColor] forRow:STARTROW-1];
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-back"), @" <-- ", nil]
+		[gui cxx_setArray:{ oo::StdString(DESC(@"gui-back")), " <-- " }
 			   forRow:STARTROW-1];
 		[gui setKey:GUI_KEY_OK forRow:STARTROW-1];
 		rangeStart=STARTROW-1;
@@ -1128,40 +1225,41 @@ static NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
 
 	if ([self status] == STATUS_START_GAME)
 	{
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"oolite-loadsave-exit"), @" <----- ", nil] forRow:EXITROW];
+		[gui cxx_setArray:{ oo::StdString(DESC(@"oolite-loadsave-exit")), " <----- " } forRow:EXITROW];
 		[gui setColor:[OOColor redColor] forRow:EXITROW];
 		[gui setKey:GUI_KEY_OK forRow:EXITROW];
 		rangeStart = EXITROW;
 	}
 
 	
-	if (firstIndex + NUMROWS >= [cdrDetailArray count])
+	if (firstIndex + NUMROWS >= cdrDetailArray.size())
 	{
-		lastIndex=[cdrDetailArray count];
+		lastIndex=cdrDetailArray.size();
 		[gui setSelectableRange: NSMakeRange(rangeStart, rangeStart + NUMROWS + 2)];
 	}
 	else
 	{
 		lastIndex=(page * NUMROWS) + NUMROWS;
 		[gui setColor:[OOColor greenColor] forRow:ENDROW];
-		[gui setArray:[NSArray arrayWithObjects:DESC(@"gui-more"), @" --> ", nil]
+		[gui cxx_setArray:{ oo::StdString(DESC(@"gui-more")), " --> " }
 			   forRow:ENDROW];
 		[gui setKey:GUI_KEY_OK forRow:ENDROW];
 		[gui setSelectableRange: NSMakeRange(rangeStart, MOREROW)];
 	}
 	
+	const std::optional<std::string> lastsaveName = oo::OptionalString([self lastsaveName]);
 	for (i=firstIndex; i < lastIndex; i++)
 	{
-		NSDictionary *cdr=[cdrDetailArray objectAtIndex: i];
-		if (oo::PListView(cdr).get<BOOL>(@"isSavedGame"))
+		const oo::PList &cdr = cdrDetailArray[i];
+		if (cdr.get<bool>("isSavedGame"))
 		{
-			NSString *ratingDesc = OODisplayRatingStringFromKillCount(oo::PListView(cdr).get<unsigned int>(@"ship_kills"));
-			[gui setArray:[NSArray arrayWithObjects:
-				[NSString stringWithFormat:@" %@ ",oo::PListView(cdr).get<NSString *>(@"player_save_name", oo::PListView(cdr).get<NSString *>(@"player_name"))],
-				[NSString stringWithFormat:@" %@ ",ratingDesc],
-				nil]
+			const std::string ratingDesc = oo::DescriptionOf(OODisplayRatingStringFromKillCount(cdr.get<unsigned int>("ship_kills")));
+			const std::optional<std::string> saveName = CommanderSaveName(cdr);
+			[gui cxx_setArray:{
+				" " + saveName.value_or("(null)") + " ",	// @" %@ "
+				" " + ratingDesc + " " }
 				   forRow:row];
-			if ([[self lastsaveName] isEqualToString:oo::PListView(cdr).get<NSString *>(@"player_save_name", oo::PListView(cdr).get<NSString *>(@"player_name"))])
+			if (lastsaveName && saveName && *lastsaveName == *saveName)
 			{
 				highlightRowOnPage = row;
 			}
@@ -1169,23 +1267,21 @@ static NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
 			[gui setKey:GUI_KEY_OK forRow:row];
 			row++;
 		}
-		if (oo::PListView(cdr).get<BOOL>(@"isParentFolder"))
+		if (cdr.get<bool>("isParentFolder"))
 		{
-			[gui setArray:[NSArray arrayWithObjects:
-				[NSString stringWithFormat:@" (..) %@ ", [oo::PListView(cdr).get<NSString *>(@"saved_game_path") lastPathComponent]],
-				@"",
-				nil]
+			[gui cxx_setArray:{
+				" (..) " + oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) + " ",
+				"" }
 				   forRow:row];
 			[gui setColor: [OOColor orangeColor] forRow: row];
 			[gui setKey:GUI_KEY_OK forRow:row];
 			row++;
 		}
-		if (oo::PListView(cdr).get<BOOL>(@"isFolder"))
+		if (cdr.get<bool>("isFolder"))
 		{
-			[gui setArray:[NSArray arrayWithObjects:
-				[NSString stringWithFormat:@" >> %@ ", [oo::PListView(cdr).get<NSString *>(@"saved_game_path") lastPathComponent]],
-				@"",
-				nil]
+			[gui cxx_setArray:{
+				" >> " + oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) + " ",
+				"" }
 				   forRow:row];
 			[gui setColor: [OOColor orangeColor] forRow: row];
 			[gui setKey:GUI_KEY_OK forRow:row];
@@ -1200,12 +1296,12 @@ static NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
 
 
 // check for an existing saved game...
-- (BOOL) existingNativeSave: (NSString *)cdrName
+- (BOOL) existingNativeSave: (const std::string &)cdrName
 {
-	NSString*	dir = [[UNIVERSE gameController] playerFileDirectory];
+	const std::string dir = oo::StdString([[UNIVERSE gameController] playerFileDirectory]);
 	
-	NSString *savePath=[dir stringByAppendingPathComponent:[cdrName stringByAppendingPathExtension:@"oolite-save"]];
-	return [[NSFileManager defaultManager] fileExistsAtPath:savePath];
+	const std::string savePath = oo::str::appendingPathComponent(dir, SaveFileName(cdrName));
+	return oo::fs::fileExists(oo::fs::pathFromUTF8(savePath));
 }
 
 
@@ -1214,135 +1310,130 @@ static NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
 {
 	GuiDisplayGen *gui=[UNIVERSE gui];
 	[UNIVERSE removeDemoShips];
-	NSDictionary *cdr=[cdrDetailArray objectAtIndex: cdrArrayIndex];
+	if (cdrArrayIndex < 0 || (std::size_t)cdrArrayIndex >= cdrDetailArray.size())  return;	// (-objectAtIndex: raised)
+	const oo::PList cdr = cdrDetailArray[cdrArrayIndex];
 	
 	[gui setText:@"" forRow:CDRDESCROW align:GUI_ALIGN_LEFT];
 	[gui setText:@"" forRow:CDRDESCROW + 1 align:GUI_ALIGN_LEFT];
 	[gui setText:@"" forRow:CDRDESCROW + 2 align:GUI_ALIGN_LEFT];
 	
-	if (oo::PListView(cdr).get<BOOL>(@"isFolder"))
+	if (cdr.get<bool>("isFolder"))
 	{
-		NSString *folderDesc=[NSString stringWithFormat: DESC(@"loadsavescreen-hold-@-and-press-return-to-open-folder-@"), @COMMAND_MODIFIER_KEY, [oo::PListView(cdr).get<NSString *>(@"saved_game_path") lastPathComponent]];
+		const std::string folderDesc = oo::str::formatRuntime(oo::StdString(DESC(@"loadsavescreen-hold-@-and-press-return-to-open-folder-@")), { COMMAND_MODIFIER_KEY, oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) });
 		[gui setColor: [OOColor orangeColor] forRow: CDRDESCROW];
-		[gui addLongText: folderDesc startingAtRow: CDRDESCROW align: GUI_ALIGN_LEFT];
+		[gui cxx_addLongText: folderDesc startingAtRow: CDRDESCROW align: GUI_ALIGN_LEFT];
 		return;
 	}
 	
-	if (oo::PListView(cdr).get<BOOL>(@"isParentFolder"))
+	if (cdr.get<bool>("isParentFolder"))
 	{
-		NSString *folderDesc=[NSString stringWithFormat: DESC(@"loadsavescreen-hold-@-and-press-return-to-open-parent-folder-@"), @COMMAND_MODIFIER_KEY, [oo::PListView(cdr).get<NSString *>(@"saved_game_path") lastPathComponent]];
+		const std::string folderDesc = oo::str::formatRuntime(oo::StdString(DESC(@"loadsavescreen-hold-@-and-press-return-to-open-parent-folder-@")), { COMMAND_MODIFIER_KEY, oo::str::lastPathComponent(cdr.get<std::string>("saved_game_path")) });
 		[gui setColor: [OOColor orangeColor] forRow: CDRDESCROW];
-		[gui addLongText: folderDesc startingAtRow: CDRDESCROW align: GUI_ALIGN_LEFT];
+		[gui cxx_addLongText: folderDesc startingAtRow: CDRDESCROW align: GUI_ALIGN_LEFT];
 		return;
 	}
-	[gui setColor:[gui colorFromSetting:nil defaultValue:nil] forRow: CDRDESCROW];
+	[gui setColor:[gui cxx_colorFromSetting:std::nullopt defaultValue:nil] forRow: CDRDESCROW];
 
-	if (!oo::PListView(cdr).get<BOOL>(@"isSavedGame"))  return;	// don't show things that aren't saved games
+	if (!cdr.get<bool>("isSavedGame"))  return;	// don't show things that aren't saved games
 	
 	if ([self dockedStation] == nil)  [self setDockedAtMainStation];
 	
 	// Display the commander's ship.
-	NSString			*shipDesc = oo::PListView(cdr).get<NSString *>(@"ship_desc");
-	NSString			*shipName = nil;
-	NSDictionary		*shipDict = nil;
-	NSString			*rating = nil;
-	uint16_t			personality = PersonalityForCommanderDict(cdr);
+	const std::optional<std::string>	shipDesc = OptionalStringValue(cdr.find("ship_desc"));
+	std::optional<std::string>			shipName;
+	oo::PList							shipDict;
+	std::string							rating;
+	uint16_t							personality = PersonalityForCommanderDict(cdr);
 	
-	shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipDesc];
-	if(shipDict != nil)
+	if (shipDesc)  shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipDesc];
+	if(!shipDict.isNull())
 	{
-		NSMutableDictionary * dict = [[NSMutableDictionary alloc] initWithCapacity:[shipDict count] + 1];
-		[dict setDictionary:shipDict];
-		id subEntStatus = [cdr objectForKey:@"subentities_status"];
+		oo::PList dict = shipDict;
+		const oo::PList *subEntStatus = cdr.find("subentities_status");
 		// don't add it to the dictionary if there's no subentities_status key
-		if (subEntStatus != nil) [dict setObject:subEntStatus forKey:@"subentities_status"];
-		[self showShipyardModel:shipDesc shipData:dict personality:personality];
-		[dict release];
-		shipName = oo::PListView(shipDict).get<NSString *>(@"display_name");
-		if (shipName == nil) shipName = oo::PListView(shipDict).get<NSString *>(KEY_NAME);
+		if (subEntStatus != nullptr && dict.isDict())  (*dict.getIf<oo::PList::Dict>())["subentities_status"] = *subEntStatus;
+		[self showShipyardModel:oo::NSStringFrom(*shipDesc) shipData:oo::ObjectFromPList(dict) personality:personality];
+		shipName = OptionalStringValue(shipDict.find("display_name"));
+		if (!shipName) shipName = OptionalStringValue(shipDict.find("name"));	// KEY_NAME
 	}
 	else
 	{
 		[self showShipyardModel:@"oolite-unknown-ship" shipData:nil personality:personality];
-		shipName = oo::PListView(cdr).get<NSString *>(@"ship_name", @"unknown");
+		shipName = OptionalStringValue(cdr.find("ship_name")).value_or("unknown");
 		if (![[UNIVERSE useAddOns] isEqualToString:SCENARIO_OXP_DEFINITION_ALL])
 		{
-			shipName = [shipName stringByAppendingString:@" - OXPs disabled or not installed"];
+			*shipName += " - OXPs disabled or not installed";
 		}
 		else
 		{
-			shipName = [shipName stringByAppendingString:@" - OXP not installed"];
+			*shipName += " - OXP not installed";
 		}
 	}
 	
 	// Make a short description of the commander
-	NSString *legalDesc = OODisplayStringFromLegalStatus(oo::PListView(cdr).get<int>(@"legal_status"));
+	const std::string legalDesc = oo::DescriptionOf(OODisplayStringFromLegalStatus(cdr.get<int>("legal_status")));
 	
-	rating = KillCountToRatingAndKillString(oo::PListView(cdr).get<unsigned int>(@"ship_kills"));
-	OOCreditsQuantity money = OODeciCreditsFromObject([cdr objectForKey:@"credits"]);
+	rating = oo::DescriptionOf(KillCountToRatingAndKillString(cdr.get<unsigned int>("ship_kills")));
+	const oo::PList *creditsNode = cdr.find("credits");
+	OOCreditsQuantity money = OODeciCreditsFromObject(creditsNode != nullptr ? oo::ObjectFromPList(*creditsNode) : nil);
 	
 	// Nikos - Add some more information in the load game screen (current location, galaxy number and timestamp).
 	//-------------------------------------------------------------------------------------------------------------------------
 	
 	int			galNumber;
-	NSString		*timeStamp  = nil;
-	NSString 		*locationName = oo::PListView(cdr).get<NSString *>(@"current_system_name");
-
+	std::string	timeStamp;
 	// If there is no key containing the name of the current system in
 	// the savefile, calculating what it should have been is going to
 	// be tricky now that system generation isn't seed based - but
 	// this implies a save game well over 5 years old.
-	if (locationName == nil)
-	{	
-		// Leaving the location blank in this case is probably okay
-		locationName = @"";
-	}
-	
-	galNumber = oo::PListView(cdr).get<int>(@"galaxy_number") + 1;	// Galaxy numbering starts at 0.
+	// Leaving the location blank in this case is probably okay
+	const std::string	locationName = OptionalStringValue(cdr.find("current_system_name")).value_or("");
 
-	NSString *locationGov = @"";
-	NSString *locationEco = @"";
-	NSString *locationTL = [cdr objectForKey:@"current_system_techlevel"] ? [NSString stringWithFormat:@"%u", oo::PListView(cdr).get<unsigned int>(@"current_system_techlevel") + 1] : nil;
-	if (locationTL)
-	{
-		locationGov = [NSString stringWithFormat:@"%c", oo::PListView(cdr).get<unsigned char>(@"current_system_government")];
-		locationEco = [NSString stringWithFormat:@" %c", (7 - oo::PListView(cdr).get<unsigned char>(@"current_system_economy")) + 16];
+	galNumber = cdr.get<int>("galaxy_number") + 1;	// Galaxy numbering starts at 0.
+
+	// %c of a government / economy value 0..23 gives that one UTF-16 unit, U+0000 included (pinned
+	// against gnustep-base's -stringWithFormat:, bead oo-3rb.176); oo::str::format keeps the NUL byte.
+	std::string locationGov;
+	std::string locationEco;
+	std::string locationTL;
+	if (cdr.find("current_system_techlevel") != nullptr)
+	{	
+		locationTL = oo::str::format("%u", cdr.get<unsigned int>("current_system_techlevel") + 1);
+		locationGov = oo::str::format("%c", cdr.get<unsigned char>("current_system_government"));
+		locationEco = oo::str::format(" %c", (7 - cdr.get<unsigned char>("current_system_economy")) + 16);
 	}
-	else  locationTL = @"";
 	
-	timeStamp = ClockToString(oo::PListView(cdr).get<double>(@"ship_clock", PLAYER_SHIP_CLOCK_START), NO);
-	
-	//-------------------------------------------------------------------------------------------------------------------------
-	
-	NSString		*cdrDesc = nil;
-	
-	cdrDesc = [NSString stringWithFormat:DESC(@"loadsavescreen-commander-@-rated-@-has-@-legal-status-@-ship-@-location-@-g-@-eco-@-gov-@-tl-@-timestamp-@"),
-		oo::PListView(cdr).get<NSString *>(@"player_name"),
-		rating,
-		OOCredits(money),
-		legalDesc,
-		shipName,
-		locationName,
-		galNumber,
-		locationEco,
-		locationGov,
-		locationTL,
-		timeStamp];
+	timeStamp = cxx_ClockToString(cdr.get<double>("ship_clock", PLAYER_SHIP_CLOCK_START), NO);
 	
 	//-------------------------------------------------------------------------------------------------------------------------
 	
-	[gui addLongText:cdrDesc startingAtRow:CDRDESCROW align:GUI_ALIGN_LEFT];
+	const std::string cdrDesc = oo::str::formatRuntime(oo::StdString(DESC(@"loadsavescreen-commander-@-rated-@-has-@-legal-status-@-ship-@-location-@-g-@-eco-@-gov-@-tl-@-timestamp-@")),
+		{ TextArg(OptionalStringValue(cdr.find("player_name"))),
+		  rating,
+		  cxx_OOCredits(money),
+		  legalDesc,
+		  TextArg(shipName),
+		  locationName,
+		  galNumber,
+		  locationEco,
+		  locationGov,
+		  locationTL,
+		  timeStamp });
+	
+	//-------------------------------------------------------------------------------------------------------------------------
+	
+	[gui cxx_addLongText:cdrDesc startingAtRow:CDRDESCROW align:GUI_ALIGN_LEFT];
 	
 }
 
 
-- (int) findIndexOfCommander: (NSString *)cdrName
+- (int) findIndexOfCommander: (const std::string &)cdrName
 {
 	unsigned i;
-	for (i=0; i < [cdrDetailArray count]; i++)
+	for (i=0; i < cdrDetailArray.size(); i++)
 	{
-		NSString *currentName = oo::PListView(oo::PListView(cdrDetailArray).at<NSDictionary *>(i)).get<NSString *>(@"player_save_name", oo::PListView(oo::PListView(cdrDetailArray).at<NSDictionary *>(i)).get<NSString *>(@"player_name"));
-		if([cdrName compare: currentName] == NSOrderedSame)
+		const std::optional<std::string> currentName = CommanderSaveName(cdrDetailArray[i]);
+		if(currentName && cdrName == *currentName)	// -compare: == NSOrderedSame
 		{
 			return i;
 		}
@@ -1371,18 +1462,26 @@ static NSComparisonResult sortCommanders(id cdr1, id cdr2, void *context)
 #endif
 
 
-static uint16_t PersonalityForCommanderDict(NSDictionary *dict)
+namespace
 {
-	uint16_t personality = oo::PListView(dict).get<unsigned short>(@"entity_personality", ENTITY_PERSONALITY_INVALID);
+
+uint16_t PersonalityForCommanderDict(const oo::PList &dict)
+{
+	uint16_t personality = dict.get<unsigned short>("entity_personality", ENTITY_PERSONALITY_INVALID);
 	
 	if (personality == ENTITY_PERSONALITY_INVALID)
 	{
 		// For pre-1.74 saved games, generate a default personality based on some hashes.
-		personality = [oo::PListView(dict).get<NSString *>(@"ship_desc") oo_hash] * [oo::PListView(dict).get<NSString *>(@"player_name") oo_hash];
+		// (-oo_hash of a missing string was a message to nil: 0.)
+		const std::optional<std::string> shipDesc = OptionalStringValue(dict.find("ship_desc"));
+		const std::optional<std::string> playerName = OptionalStringValue(dict.find("player_name"));
+		personality = (shipDesc ? oo::str::ooHash(*shipDesc) : 0) * (playerName ? oo::str::ooHash(*playerName) : 0);
 	}
 	
 	return personality & ENTITY_PERSONALITY_MAX;
 }
+
+}	// namespace
 
 
 OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits)
@@ -1421,7 +1520,7 @@ OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits)
 
 OOCreditsQuantity OODeciCreditsFromObject(id object)
 {
-	if ([object isKindOfClass:[NSNumber class]] && [object oo_isFloatingPointNumber])
+	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// -oo_isFloatingPointNumber: objCType f or d
 	{
 		return OODeciCreditsFromDouble([object doubleValue]);
 	}

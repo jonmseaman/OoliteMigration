@@ -31,7 +31,7 @@ MA 02110-1301, USA.
 #import "OOOpenGL.h"
 #import "PlayerEntityLoadSave.h"
 #include <stdlib.h>
-#import "OOCollectionExtractors.h"
+#import "OOPListView.h"
 #import "OOOXPVerifier.h"
 #import "OOLoggingExtended.h"
 #import "NSFileManagerOOExtensions.h"
@@ -45,7 +45,17 @@ MA 02110-1301, USA.
 #import "OOOXZManager.h"
 #import "OOOpenGLMatrixManager.h"
 #import "OOEnumerationShuffle.h"
+#ifndef NDEBUG
+#import "OODebugTCPConsoleClient.h"
+#endif
+#include "oofnd/Date.hpp"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/Thread.hpp"
+#import "OOFoundationException.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+#include "oofnd/FileSystem.hpp"
+#include "oofnd/String.hpp"
 #include <chrono>
 #include <thread>
 
@@ -66,7 +76,7 @@ static GameController *sSharedController = nil;
 
 @interface GameController (OOPrivate)
 
-- (void)reportUnhandledStartupException:(NSException *)exception;
+- (void)reportUnhandledStartupExceptionName:(NSString *)name reason:(NSString *)reason;
 
 - (void)doPerformGameTick;
 
@@ -90,15 +100,15 @@ static GameController *sSharedController = nil;
 	if (sSharedController != nil)
 	{
 		[self release];
-		[NSException raise:NSInternalInconsistencyException format:@"%s: expected only one GameController to exist at a time.", __PRETTY_FUNCTION__];
+		[OOException raise:OOInternalInconsistencyException format:"%s: expected only one GameController to exist at a time.", __PRETTY_FUNCTION__];
 	}
 	
 	if ((self = [super init]))
 	{
 		_finishedLaunching = NO;
-		last_timeInterval = [NSDate timeIntervalSinceReferenceDate];
+		last_timeInterval = oo::date::monotonicSeconds();	// the frame clock: intervals only (-doPerformGameTick)
 		delta_t = 0.01; // one hundredth of a second 
-		_animationTimerInterval = [[NSUserDefaults standardUserDefaults] oo_doubleForKey:@"animation_timer_interval" defaultValue:MINIMUM_ANIMATION_TICK];
+		_animationTimerInterval = oo::PListView([NSUserDefaults standardUserDefaults]).get<double>(@"animation_timer_interval", MINIMUM_ANIMATION_TICK);
 		
 		// rather than seeding this with the date repeatedly, seed it
 		// once here at startup
@@ -113,7 +123,7 @@ static GameController *sSharedController = nil;
 		}
 		else
 		{
-			ranrot_srand((uint32_t)[[NSDate date] timeIntervalSince1970]);   // reset randomiser with current time
+			ranrot_srand((uint32_t)oo::date::timeIntervalSince1970());   // reset randomiser with current time
 		}
 		
 #if OO_DEBUG
@@ -125,7 +135,7 @@ static GameController *sSharedController = nil;
 		(void)OOEnumerationShuffleEnabled();
 #endif
 		
-		_splashStart = [[NSDate alloc] init];
+		_splashStart = oo::date::monotonicSeconds();
 	}
 	
 	return self;
@@ -141,8 +151,6 @@ static GameController *sSharedController = nil;
 	[gameView release];
 	[UNIVERSE release];
 	
-	[playerFileToLoad release];
-	[playerFileDirectory release];
 	[expansionPathsToInclude release];
 	
 	[super dealloc];
@@ -178,7 +186,7 @@ static GameController *sSharedController = nil;
 - (void) setEcoQoS: (BOOL)efficiencyModeRequested
 {
 #if OOLITE_WINDOWS
-	if ([[NSUserDefaults standardUserDefaults] oo_boolForKey:@"ecoqos" defaultValue:YES])
+	if (oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"ecoqos", YES))
 	{
 		BOOL setEfficiencyMode = !!efficiencyModeRequested; // yes or no, not 42
 		HANDLE currentProcess = GetCurrentProcess();
@@ -272,7 +280,7 @@ static GameController *sSharedController = nil;
 
 		if ([OOOXPVerifier runVerificationIfRequested])
 		{
-			[self exitAppWithContext:@"OXP verifier run"];
+			[self cxx_exitAppWithContext:"OXP verifier run"];
 		}
 		else 
 		{
@@ -308,20 +316,25 @@ static GameController *sSharedController = nil;
 		
 		[self loadPlayerIfRequired];
 		
-		[self logProgress:@""];
+		[self cxx_logProgress:""];
 		
 		// get the run loop and add the call to performGameTick:
 		[self startAnimationTimer];
 		
 		[self endSplashScreen];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		[self reportUnhandledStartupException:exception];
+		[self reportUnhandledStartupExceptionName:oo::NSStringFrom([exception name]) reason:oo::NSStringFrom([exception reason])];
+		exit(EXIT_FAILURE);
+	}
+	@catch (OOFoundationException *exception)
+	{
+		[self reportUnhandledStartupExceptionName:[exception name] reason:[exception reason]];
 		exit(EXIT_FAILURE);
 	}
 	
-	OOLog(@"startup.complete", @"========== Loading complete in %.2f seconds. ==========", -[_splashStart timeIntervalSinceNow]);
+	OOLog(@"startup.complete", @"========== Loading complete in %.2f seconds. ==========", oo::date::monotonicSeconds() - _splashStart);
 	
 #if OO_USE_FULLSCREEN_CONTROLLER
 	[self setFullScreenMode:[[NSUserDefaults standardUserDefaults] boolForKey:@"fullscreen"]];
@@ -346,14 +359,14 @@ static GameController *sSharedController = nil;
 
 - (void) loadPlayerIfRequired
 {
-	if (playerFileToLoad != nil)
+	if (playerFileToLoad.has_value())
 	{
-		[self logProgress:DESC(@"loading-player")];
+		[self cxx_logProgress:oo::StdString(DESC(@"loading-player"))];
 		// fix problem with non-shader lighting when starting skips
 		// the splash screen
 		[UNIVERSE useGUILightSource:YES];
 		[UNIVERSE useGUILightSource:NO];
-		[PLAYER loadPlayerFromFile:playerFileToLoad asNew:NO];
+		[PLAYER loadPlayerFromFile:*playerFileToLoad asNew:NO];
 	}
 }
 
@@ -405,7 +418,7 @@ static GameController *sSharedController = nil;
 			delta_t = 0.0;  // no movement!
 		else
 		{
-			delta_t = [NSDate timeIntervalSinceReferenceDate] - last_timeInterval;
+			delta_t = oo::date::monotonicSeconds() - last_timeInterval;
 			last_timeInterval += delta_t;
 			if (delta_t > MINIMUM_GAME_TICK)
 				delta_t = MINIMUM_GAME_TICK;		// peg the maximum pause (at 0.5->1.0 seconds) to protect against when the machine sleeps	
@@ -424,7 +437,17 @@ static GameController *sSharedController = nil;
 	}
 	@catch (id exception) 
 	{
-		OOLog(@"exception.backtrace",@"%@",[exception callStackSymbols]);
+		if ([exception isKindOfClass:[OOException class]])
+		{
+			// -callStackSymbols is Foundation's; an OOException does not answer it (sending it raised
+			// out of this handler), so name the exception instead (proposed ADR-0037).
+			OOException *ooException = (OOException *)exception;
+			OOLog(@"exception.backtrace",@"%@ : %@",oo::NSStringFrom([ooException name]),oo::NSStringFrom([ooException reason]));
+		}
+		else
+		{
+			OOLog(@"exception.backtrace",@"%@",[exception callStackSymbols]);
+		}
 	}
 	
 	@try
@@ -450,13 +473,125 @@ static GameController *sSharedController = nil;
 	  deadline, as a new timer did.
 	
 	Each pass of the loop fires what is due (the tick first, then the log
-	flush), then runs the run loop once, up to the next deadline, for what still
-	lives on it (performSelector:afterDelay:, the debug console's streams, OXZ
-	downloads) until their own beads take it off.
+	flush, then up to two deferred calls), then runs the run loop once, up to
+	the next deadline, for what still lives on it (OXZ downloads) until its own
+	bead takes it off; while the debug console's socket is open, the wait is on
+	that socket instead (bead oo-3rb.14).
 */
-static bool									sGameTickScheduled = false;
-static std::chrono::steady_clock::time_point	sNextGameTick;
-static std::chrono::steady_clock::duration	sGameTickInterval;
+namespace {
+// Held as steady_clock tick counts, as OOLogOutputHandler's flush deadline is: a static
+// time_point or duration has a constructor that may throw (bugprone-throwing-static-initialization).
+using TickClock = std::chrono::steady_clock;
+bool				sGameTickScheduled = false;
+TickClock::rep		sNextGameTick = 0;		// ticks since the clock's epoch
+TickClock::rep		sGameTickInterval = 0;	// ticks
+
+TickClock::time_point NextGameTick()
+{
+	return TickClock::time_point(TickClock::duration(sNextGameTick));
+}
+}
+
+
+/*	Deferred calls (bead oo-3rb.57, proposed ADR-0040): Foundation's timed
+	performers, which were one-shot timers on the main run loop. Measured
+	against gnustep-base 1.31: a performer's fire date is now + delay (a delay
+	<= 0 is 0.0001 s, the timer clamp); each run-loop pass fires the first due
+	timer in the order the timers were added, twice (-runMode:beforeDate: asks
+	-limitDateForMode:'s timer step once itself and once more before it waits),
+	so due performers fire in scheduling order whatever their fire dates, at
+	most two per pass; one scheduled while firing goes to the back. The
+	performer retained target and argument and released them after the call;
+	an exception from the call was logged by NSTimer and swallowed, and the
+	performer was then never released (it leaked its target and argument).
+	Anything else thrown propagated.
+*/
+namespace {
+
+struct OODeferredCall
+{
+	std::chrono::steady_clock::time_point	deadline;
+	id										target;
+	SEL										selector;
+	id										argument;
+};
+
+std::vector<OODeferredCall>					sDeferredCalls;	// in scheduling order
+
+}
+
+
+void OOScheduleDeferredCall(id target, SEL selector, id argument, NSTimeInterval delay)
+{
+	if (!oo::thread::isMainThread())  return;
+	
+	if (delay <= 0.0)  delay = 0.0001;	// as the Foundation timer did
+	OODeferredCall call =
+	{
+		std::chrono::steady_clock::now() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(delay)),
+		[target retain],
+		selector,
+		[argument retain]
+	};
+	sDeferredCalls.push_back(call);
+}
+
+
+namespace {
+
+// One step of the run loop's timer firing: the first due call in scheduling order.
+void FireOneDueDeferredCall(void)
+{
+	const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	for (std::vector<OODeferredCall>::iterator it = sDeferredCalls.begin(); it != sDeferredCalls.end(); ++it)
+	{
+		if (it->deadline <= now)
+		{
+			OODeferredCall call = *it;
+			sDeferredCalls.erase(it);
+			
+			@try
+			{
+				[call.target performSelector:call.selector withObject:call.argument];
+			}
+			@catch (OOException *exception)
+			{
+				// The game's own exceptions (ADR-0037): the same line, name and reason bridged.
+				(NSLog)(@"*** NSTimer ignoring exception '%@' (reason '%@') raised during posting of timer with target %p and selector 'fire'", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), call.target);
+				return;	// target and argument stay retained, as the performer leaked them
+			}
+			@catch (OOFoundationException *exception)
+			{
+				// NSTimer's own message, through the real NSLog (parenthesised: OOLogging.h's
+				// NSLog macro is function-like), so it still reaches the log as a "gnustep" line.
+				(NSLog)(@"*** NSTimer ignoring exception '%@' (reason '%@') raised during posting of timer with target %p and selector 'fire'", [exception name], [exception reason], call.target);
+				return;	// target and argument stay retained, as the performer leaked them
+			}
+			
+			[call.target release];
+			[call.argument release];
+			return;
+		}
+	}
+}
+
+
+// The earliest pending deferred call, if any: part of the run loop's wait limit.
+bool NextDeferredCallDeadline(std::chrono::steady_clock::time_point *outDeadline)
+{
+	bool found = false;
+	for (const OODeferredCall &call : sDeferredCalls)
+	{
+		if (!found || call.deadline < *outDeadline)
+		{
+			*outDeadline = call.deadline;
+			found = true;
+		}
+	}
+	return found;
+}
+
+}
 
 
 - (void) startAnimationTimer
@@ -466,8 +601,8 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 		NSTimeInterval ti = _animationTimerInterval; // default one two-hundredth of a second (should be a fair bit faster than expected frame rate ~60Hz to avoid problems with phase differences)
 		if (ti <= 0.0)  ti = 0.0001;	// as the Foundation timer did
 		
-		sGameTickInterval = std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(ti));
-		sNextGameTick = std::chrono::steady_clock::now() + sGameTickInterval;
+		sGameTickInterval = std::chrono::duration_cast<TickClock::duration>(std::chrono::duration<double>(ti)).count();
+		sNextGameTick = TickClock::now().time_since_epoch().count() + sGameTickInterval;
 		sGameTickScheduled = true;
 	}
 }
@@ -483,10 +618,10 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 {
 	if (!sGameTickScheduled)  return;
 	
-	std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+	const TickClock::rep now = TickClock::now().time_since_epoch().count();
 	if (now < sNextGameTick)  return;
 	
-	std::chrono::steady_clock::time_point next = sNextGameTick + sGameTickInterval;
+	TickClock::rep next = sNextGameTick + sGameTickInterval;
 	while (next <= now)  next += sGameTickInterval;
 	sNextGameTick = next;
 	
@@ -504,6 +639,7 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 - (void) fireDueTimers
 {
 	[self fireDueDeadlines];
+	FireOneDueDeferredCall();
 	[[NSRunLoop currentRunLoop] limitDateForMode:NSDefaultRunLoopMode];
 }
 
@@ -517,19 +653,51 @@ static std::chrono::steady_clock::duration	sGameTickInterval;
 		@autoreleasepool
 		{
 			[self fireDueDeadlines];
+			FireOneDueDeferredCall();
+			FireOneDueDeferredCall();
 			
-			NSDate *limit = [NSDate distantFuture];
-			if (sGameTickScheduled)
+			// Wait for input until the tick or the next deferred call, whichever is first.
+			std::chrono::steady_clock::time_point wake;
+			bool haveWake = NextDeferredCallDeadline(&wake);
+			if (sGameTickScheduled && (!haveWake || NextGameTick() < wake))
 			{
-				std::chrono::duration<double> wait = sNextGameTick - std::chrono::steady_clock::now();
-				limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
+				wake = NextGameTick();
+				haveWake = true;
 			}
 			// The OXZ download's callbacks, which the run loop delivered (proposed ADR-0044).
 			[[OOOXZManager sharedManager] processDownloadEvents];
-			if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && sGameTickScheduled)
+			
+#ifndef NDEBUG
+			if (OODebugTCPConsoleIsWaitingForInput())
 			{
-				// Nothing on the run loop to wait for: wait for the tick here.
-				std::this_thread::sleep_until(sNextGameTick);
+				/*	The debug console's socket is no longer on the run loop (bead oo-3rb.14,
+					proposed ADR-0041): run the run loop without waiting (its timers and ready
+					input), then wait on the socket as the run loop waited on the console's
+					streams, handling what arrives before the next deadline.
+				*/
+				[runLoop runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantPast]];
+				double timeout = -1.0;
+				if (haveWake)
+				{
+					timeout = std::chrono::duration<double>(wake - std::chrono::steady_clock::now()).count();
+					if (timeout < 0.0)  timeout = 0.0;
+				}
+				OODebugTCPConsoleServiceInput(timeout);
+			}
+			else
+#endif
+			{
+				NSDate *limit = [NSDate distantFuture];
+				if (haveWake)
+				{
+					std::chrono::duration<double> wait = wake - std::chrono::steady_clock::now();
+					limit = [NSDate dateWithTimeIntervalSinceNow:wait.count()];
+				}
+				if (![runLoop runMode:NSDefaultRunLoopMode beforeDate:limit] && haveWake)
+				{
+					// Nothing on the run loop to wait for: wait here.
+					std::this_thread::sleep_until(wake);
+				}
 			}
 		}
 	}
@@ -778,17 +946,17 @@ static void RemovePreference(NSString *key)
 	#error Unknown environment!
 #endif
 
-- (void) logProgress:(NSString *)message
+- (void) cxx_logProgress:(const std::string &)message
 {
 	if (![UNIVERSE doingStartUp])  return;
-	
+
 #if OOLITE_MAC_OS_X
-	[splashProgressTextField setStringValue:message];
+	[splashProgressTextField setStringValue:oo::NSStringFrom(message)];
 	[splashProgressTextField display];
 #endif
-	if([message length] > 0)
+	if (!message.empty())
 	{
-		OOLog(@"startup.progress", @"===== [%.2f s] %@", -[_splashStart timeIntervalSinceNow], message);
+		OOLog(@"startup.progress", @"===== [%.2f s] %@", oo::date::monotonicSeconds() - _splashStart, oo::NSStringFrom(message));
 	}
 }
 
@@ -801,9 +969,9 @@ static void RemovePreference(NSString *key)
 }
 
 
-- (NSString *) debugMessageCurrentString
+- (std::string) cxx_debugMessageCurrentString
 {
-	return [splashProgressTextField stringValue];
+	return oo::StdString([splashProgressTextField stringValue]);
 }
 #else
 - (BOOL) debugMessageTrackingIsOn
@@ -812,43 +980,31 @@ static void RemovePreference(NSString *key)
 }
 
 
-- (NSString *) debugMessageCurrentString
+- (std::string) cxx_debugMessageCurrentString
 {
-	return @"";
+	return "";
 }
 #endif
 
-- (void) debugLogProgress:(NSString *)format, ...
+- (void) cxx_debugLogProgress:(const std::string &)message
 {
-	va_list args;
-	va_start(args, format);
-	[self debugLogProgress:format arguments:args];
-	va_end(args);
+	[self cxx_logProgress:message];
 }
 
 
-- (void) debugLogProgress:(NSString *)format arguments:(va_list)arguments
+namespace
 {
-	NSString *message = [[[NSString alloc] initWithFormat:format arguments:arguments] autorelease];
-	[self logProgress:message];
+std::vector<std::string> sMessageStack;
 }
 
-
-static NSMutableArray *sMessageStack;
-
-- (void) debugPushProgressMessage:(NSString *)format, ...
+- (void) cxx_debugPushProgressMessage:(const std::string &)message
 {
 	if ([self debugMessageTrackingIsOn])
 	{
-		if (sMessageStack == nil)  sMessageStack = [[NSMutableArray alloc] init];
-		[sMessageStack addObject:[self debugMessageCurrentString]];
-		
-		va_list args;
-		va_start(args, format);
-		[self debugLogProgress:format arguments:args];
-		va_end(args);
+		sMessageStack.push_back([self cxx_debugMessageCurrentString]);
+		[self cxx_debugLogProgress:message];
 	}
-	
+
 	OOLogIndentIf(@"startup.progress");
 }
 
@@ -856,12 +1012,12 @@ static NSMutableArray *sMessageStack;
 - (void) debugPopProgressMessage
 {
 	OOLogOutdentIf(@"startup.progress");
-	
-	if ([sMessageStack count] > 0)
+
+	if (!sMessageStack.empty())
 	{
-		NSString *message = [sMessageStack lastObject];
-		if ([message length] > 0)  [self logProgress:message];
-		[sMessageStack removeLastObject];
+		const std::string message = sMessageStack.back();
+		if (!message.empty())  [self cxx_logProgress:message];
+		sMessageStack.pop_back();
 	}
 }
 
@@ -910,8 +1066,8 @@ static NSMutableArray *sMessageStack;
 {
 	if ([[filename pathExtension] isEqual:@"oolite-save"])
 	{
-		[self setPlayerFileToLoad:filename];
-		[self setPlayerFileDirectory:filename];
+		[self cxx_setPlayerFileToLoad:oo::StdString(filename)];
+		[self cxx_setPlayerFileDirectory:oo::OptionalString(filename)];
 		return YES;
 	}
 	if ([[filename pathExtension] isEqualToString:@"oxp"])
@@ -932,10 +1088,10 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (void) exitAppWithContext:(NSString *)context
+- (void) cxx_exitAppWithContext:(const std::string &)context
 {
 	[gameView.window orderOut:nil];
-	[(OoliteApp *)NSApp setExitContext:context];
+	[(OoliteApp *)NSApp setExitContext:oo::NSStringFrom(context)];
 	[NSApp terminate:self];
 }
 
@@ -950,9 +1106,9 @@ static NSMutableArray *sMessageStack;
 #elif OOLITE_SDL
 #include <SDL3/SDL_init.h>
 
-- (void) exitAppWithContext:(NSString *)context
+- (void) cxx_exitAppWithContext:(const std::string &)context
 {
-	OOLog(@"exit.context", @"Exiting: %@.", context);
+	OOLog(@"exit.context", @"Exiting: %@.", oo::NSStringFrom(context));
 #if (OOLITE_GNUSTEP && !defined(NDEBUG))
 	[[OODebugMonitor sharedDebugMonitor] applicationWillTerminate];
 #endif
@@ -980,7 +1136,7 @@ static NSMutableArray *sMessageStack;
 
 - (void) exitAppCommandQ
 {
-	[self exitAppWithContext:@"Command-Q"];
+	[self cxx_exitAppWithContext:"Command-Q"];
 }
 
 
@@ -990,66 +1146,60 @@ static NSMutableArray *sMessageStack;
 }
 
 
-- (NSString *) playerFileToLoad
+- (std::optional<std::string>) cxx_playerFileToLoad
 {
 	return playerFileToLoad;
 }
 
 
-- (void) setPlayerFileToLoad:(NSString *)filename
+- (void) cxx_setPlayerFileToLoad:(const std::string &)filename
 {
-	if (playerFileToLoad)
-		[playerFileToLoad autorelease];
-	playerFileToLoad = nil;
-	if ([[[filename pathExtension] lowercaseString] isEqual:@"oolite-save"])
-		playerFileToLoad = [filename copy];
+	playerFileToLoad = std::nullopt;
+	if (oo::str::lowercase(oo::str::pathExtension(filename)) == "oolite-save")
+		playerFileToLoad = filename;
 }
 
 
-- (NSString *) playerFileDirectory
+- (std::optional<std::string>) cxx_playerFileDirectory
 {
-	if (playerFileDirectory == nil)
+	if (!playerFileDirectory.has_value())
 	{
-		playerFileDirectory = [[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"];
-		if (playerFileDirectory != nil && ![[NSFileManager defaultManager] fileExistsAtPath:playerFileDirectory])
+		// The defaults stay on NSUserDefaults until its last consumer migrates (ADR-0032): this
+		// process writes save-directory through it below, so it is read through it too.
+		playerFileDirectory = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:@"save-directory"]);
+		if (playerFileDirectory.has_value() && !oo::fs::fileExists(oo::fs::pathFromUTF8(*playerFileDirectory)))
 		{
-			playerFileDirectory = nil;
+			playerFileDirectory = std::nullopt;
 		}
-		if (playerFileDirectory == nil)  playerFileDirectory = [[NSFileManager defaultManager] defaultCommanderPath];
-		
-		[playerFileDirectory retain];
+		// NSFileManagerOOExtensions is not migrated yet: converted at the call.
+		if (!playerFileDirectory.has_value())  playerFileDirectory = oo::OptionalString([[NSFileManager defaultManager] defaultCommanderPath]);
 	}
-	
+
 	return playerFileDirectory;
 }
 
 
-- (void) setPlayerFileDirectory:(NSString *)filename
-{	
-	if (playerFileDirectory != nil)
+- (void) cxx_setPlayerFileDirectory:(const std::optional<std::string> &)filename
+{
+	std::optional<std::string> directory = filename;
+	if (directory.has_value() && oo::str::lowercase(oo::str::pathExtension(*directory)) == "oolite-save")
 	{
-		[playerFileDirectory autorelease];
-		playerFileDirectory = nil;
+		directory = oo::str::deletingLastPathComponent(*directory);
 	}
-	
-	if ([[[filename pathExtension] lowercaseString] isEqual:@"oolite-save"])
-	{
-		filename = [filename stringByDeletingLastPathComponent];
-	}
-	
-	playerFileDirectory = [filename retain];
-	[[NSUserDefaults standardUserDefaults] setObject:filename forKey:@"save-directory"];
+
+	playerFileDirectory = directory;
+	[[NSUserDefaults standardUserDefaults] setObject:oo::NSStringOrNil(directory) forKey:@"save-directory"];
 }
 
 
-- (void)reportUnhandledStartupException:(NSException *)exception
+- (void)reportUnhandledStartupExceptionName:(NSString *)name reason:(NSString *)reason
 {
-	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", [exception name], [exception reason]);
+	OOLog(@"startup.exception", @"***** Unhandled exception during startup: %@ (%@).", name, reason);
 	
 	#if OOLITE_MAC_OS_X
 		// Display an error alert.
 		// TODO: provide better information on reporting bugs in the manual, and refer to it here.
-		NSRunCriticalAlertPanel(@"Oolite failed to start up, because an unhandled exception occurred.", @"An exception of type %@ occurred. If this problem persists, please file a bug report.", @"OK", NULL, NULL, [exception name]);
+		NSRunCriticalAlertPanel(@"Oolite failed to start up, because an unhandled exception occurred.", @"An exception of type %@ occurred. If this problem persists, please file a bug report.", @"OK", NULL, NULL, name);
 	#endif
 }
 
@@ -1086,8 +1236,8 @@ static void SetUpSparkle(void)
 #define DEFAULT_TEST_RELEASE	1
 #endif
 	
-	BOOL useTestReleases = [[NSUserDefaults standardUserDefaults] oo_boolForKey:@"use-test-release-updates"
-																   defaultValue:DEFAULT_TEST_RELEASE];
+	BOOL useTestReleases = oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"use-test-release-updates",
+																   DEFAULT_TEST_RELEASE);
 	
 	SUUpdater *updater = [SUUpdater sharedUpdater];
 	[updater setFeedURL:[NSURL URLWithString:useTestReleases ? TEST_RELEASE_FEED_URL : DEPLOYMENT_FEED_URL]];

@@ -50,6 +50,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/objc/OOException.h"
 
 
 #ifndef APIENTRY
@@ -230,7 +231,7 @@ typedef GLvoid (*TessFuncPtr)();
 #endif
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOPolygonSprite after rendering %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOPolygonSprite after rendering " + oo::DescriptionOf(self); });
 }
 
 
@@ -449,8 +450,8 @@ void SubmitVertices(GLUtesselator *tesselator, TessPolygonData *polygonData, con
 std::vector<OOPolygonContour> DataArrayToPoints(TessPolygonData *data, const oo::PList &dataArray)
 {
 	/*	This converts an icon definition in the form of an array of array of
-		numbers to internal data in the form of an array of arrays of NSValues
-		containing NSPoint data. In addition to repacking the data, it performs
+		numbers to internal data in the form of a list of contours (lists of
+		NSPoints). In addition to repacking the data, it performs
 		the following data processing:
 		  * Sequences of duplicate vertices are removed (including across the
 		    beginning and end, in case of manually closed contours).
@@ -865,7 +866,7 @@ void SVGDumpAppendBaseContour(TessPolygonData *data, const OOPolygonContour &poi
 	}
 	
 	// Close and add a circle at the first vertex. (SVG has support for end markers, but this isn’t reliable across implementations.)
-	if (points.empty())  [NSException raise:NSRangeException format:@"SVGDumpAppendBaseContour: empty contour"];	// -objectAtIndex:0 raised here
+	if (points.empty())  [OOException raise:OORangeException format:"SVGDumpAppendBaseContour: empty contour"];	// -objectAtIndex:0 raised here
 	NSPoint p = points[0];
 	*data->debugSVG += oo::str::format("z\"/>\n\t\t\t<circle cx=\"%f\" cy=\"%f\" r=\"0.1\" fill=\"#BBB\" stroke=\"none\"/>\n\t\t</g>\n", p.x, -p.y);
 }

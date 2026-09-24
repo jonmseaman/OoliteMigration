@@ -39,6 +39,7 @@ SOFTWARE.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/Defaults.hpp"
+#include "oofnd/objc/OOException.h"
 #include "oofnd/String.hpp"
 
 
@@ -238,7 +239,7 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 	// Resetting fog is draw loop's responsibility.
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOSkyDrawable after rendering");
+	cxx_OOCheckOpenGLErrors("OOSkyDrawable after rendering");
 }
 
 
@@ -456,7 +457,7 @@ static OOColor *DebugColor(Vector orientation)
 									  lodBias:-0.0f];
 		if (sStarTextures == nil)
 		{
-			[NSException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:@"No star textures could be loaded."];
+			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No star textures could be loaded."];
 		}
 	}
 	
@@ -476,7 +477,7 @@ static OOColor *DebugColor(Vector orientation)
 									  lodBias:0.0f];
 		if (sNebulaTextures == nil)
 		{
-			[NSException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:@"No nebula textures could be loaded."];
+			[OOException raise:OOLITE_EXCEPTION_DATA_NOT_FOUND format:"No nebula textures could be loaded."];
 		}
 	}
 	

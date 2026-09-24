@@ -40,6 +40,9 @@ MA 02110-1301, USA.
 #import "OOCommodities.h"
 #import "OOSystemDescriptionManager.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 #if OOLITE_ESPEAK
 #include <espeak-ng/speak_lib.h>
 #endif
@@ -47,7 +50,8 @@ MA 02110-1301, USA.
 @class	GameController, CollisionRegion, MyOpenGLView, GuiDisplayGen,
 	Entity, ShipEntity, StationEntity, OOPlanetEntity, OOSunEntity,
 	OOVisualEffectEntity, PlayerEntity, OORoleSet, WormholeEntity, 
-	DockEntity, OOJSScript, OOWaypointEntity, OOSystemDescriptionManager;
+	DockEntity, OOJSScript, OOWaypointEntity, OOSystemDescriptionManager,
+	OOException;
 
 
 typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
@@ -157,9 +161,9 @@ enum
 #define PLANETINFO_UNIVERSAL_KEY			@"universal"
 #define PLANETINFO_INTERSTELLAR_KEY			@"interstellar space"
 
-#define OOLITE_EXCEPTION_LOOPING			@"OoliteLoopingException"
-#define OOLITE_EXCEPTION_DATA_NOT_FOUND		@"OoliteDataNotFoundException"
-#define OOLITE_EXCEPTION_FATAL				@"OoliteFatalException"
+#define OOLITE_EXCEPTION_LOOPING			"OoliteLoopingException"
+#define OOLITE_EXCEPTION_DATA_NOT_FOUND		"OoliteDataNotFoundException"
+#define OOLITE_EXCEPTION_FATAL				"OoliteFatalException"
 
 // the distance the sky backdrop is from the camera
 // though it appears at infinity
@@ -267,20 +271,21 @@ enum
 	OOCommodityMarket		*commodityMarket;
 
 
-	NSDictionary			*_descriptions;			// holds descriptive text for lots of stuff, loaded at initialisation
+	oo::PList				_descriptions;			// holds descriptive text for lots of stuff, loaded at initialisation (a dict; null until loaded)
+	unsigned				_descriptionsGeneration;	// changes whenever _descriptions is assigned (the bridged -descriptions caches per generation)
 	NSDictionary			*customSounds;			// holds descriptive audio for lots of stuff, loaded at initialisation
-	NSDictionary			*characters;			// holds descriptons of characters
-	NSArray					*_scenarios;			// game start scenarios
+	oo::PList				characters;				// holds descriptons of characters
+	oo::PList				_scenarios;				// game start scenarios (an array)
 	NSDictionary			*globalSettings;		// miscellaneous global game settings
 	OOSystemDescriptionManager	*systemManager; // planetinfo data manager
-	NSDictionary			*missiontext;			// holds descriptive text for missions, loaded at initialisation
+	oo::PList				missiontext;			// holds descriptive text for missions, loaded at initialisation
 	NSArray					*equipmentData;			// holds data on available equipment, loaded at initialisation
 	NSArray					*equipmentDataOutfitting;
 //	NSSet					*pirateVictimRoles;		// Roles listed in pirateVictimRoles.plist.
 	NSDictionary			*roleCategories;		// Categories for roles from role-categories.plist, extending the old pirate-victim-roles.plist
 	NSDictionary			*autoAIMap;				// Default AIs for roles from autoAImap.plist.
 	NSDictionary			*screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
-	NSDictionary			*explosionSettings;		// explosion settings from explosions.plist
+	oo::PList				explosionSettings;		// explosion settings from explosions.plist
 
 	NSDictionary      *cargoPods; // template cargo pods
 
@@ -288,7 +293,7 @@ enum
 	OOSystemID				systemID;
 	OOSystemID				targetSystemID;
 	
-	NSString				*system_names[256];		// hold pregenerated universe info
+	std::optional<std::string>	system_names[256];	// hold pregenerated universe info (nullopt where the name was nil)
 	BOOL					system_found[256];		// holds matches for input strings
 	
 	int						breakPatternCounter;
@@ -667,38 +672,42 @@ enum
 
 - (OOSystemID) currentSystemID;
 
-- (NSDictionary *) descriptions;
-- (NSDictionary *) characters;
-- (NSDictionary *) missiontext;
-- (NSArray *) scenarios;
-- (NSDictionary *) explosionSetting:(NSString *)explosion;
+// The live descriptions dictionary (the built-in descriptions.plist until the merged one is loaded);
+// nullptr only for a nil receiver. The generation changes whenever it is replaced.
+- (const oo::PList *) cxx_descriptions;
+- (unsigned) cxx_descriptionsGeneration;
+- (oo::PList) cxx_characters;
+- (oo::PList) cxx_missiontext;
+- (oo::PList) cxx_scenarios;
+- (oo::PList) cxx_explosionSetting:(const std::string &)explosion;	// a null PList for none
 
 - (OOSystemDescriptionManager *) systemManager;
 
-- (NSString *)descriptionForKey:(NSString *)key;	// String, or random item from array
-- (NSString *)descriptionForArrayKey:(NSString *)key index:(unsigned)index;	// Indexed item from array
-- (BOOL) descriptionBooleanForKey:(NSString *)key;	// Boolean from descriptions.plist, for configuration.
+- (std::optional<std::string>) cxx_descriptionForKey:(const std::string &)key;	// String, or random item from array; nullopt for none
+- (std::optional<std::string>) cxx_descriptionForArrayKey:(const std::string &)key index:(unsigned)index;	// Indexed item from array; nullopt for none
+- (BOOL) descriptionBooleanForKey:(const std::string &)key;	// Boolean from descriptions.plist, for configuration.
 
-- (NSString *) keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;
-- (NSString *) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g;
-- (NSDictionary *) generateSystemData:(OOSystemID) s;
-- (NSDictionary *) generateSystemData:(OOSystemID) s useCache:(BOOL) useCache;
-- (NSDictionary *) currentSystemData;	// Same as generateSystemData:systemSeed unless in interstellar space.
+- (std::optional<std::string>) cxx_keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g;
+- (std::optional<std::string>) keyForInterstellarOverridesForSystems:(OOSystemID) s1 :(OOSystemID) s2 inGalaxy:(OOGalaxyID) g;
+- (oo::PList) cxx_generateSystemData:(OOSystemID) s;
+- (oo::PList) cxx_generateSystemData:(OOSystemID) s useCache:(BOOL) useCache;
+- (oo::PList) cxx_currentSystemData;	// Same as generateSystemData:systemSeed unless in interstellar space.
 
 - (BOOL) inInterstellarSpace;
 
-- (void) setSystemDataKey:(NSString*) key value:(NSObject*) object fromManifest:(NSString *)manifest;
-- (void) setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(NSString *)key value:(id)object fromManifest:(NSString *)manifest forLayer:(OOSystemLayer)layer;
-- (id) systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(NSString *)key;
-- (NSArray *) systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;
-- (NSString *) getSystemName:(OOSystemID) sys;
-- (NSString *) getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum;
+// value: a script value (an Objective-C object, nil to remove); manifest nullopt where nil was passed.
+- (void) cxx_setSystemDataKey:(const std::string &) key value:(id) object fromManifest:(const std::optional<std::string> &)manifest;
+- (void) cxx_setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key value:(id)object fromManifest:(const std::optional<std::string> &)manifest forLayer:(OOSystemLayer)layer;
+- (id) cxx_systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(const std::string &)key;	// a script value
+- (std::vector<std::string>) cxx_systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum;	// byte order of the key
+- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys;
+- (std::optional<std::string>) cxx_getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum;
 - (OOGovernmentID) getSystemGovernment:(OOSystemID) sys;
-- (NSString *) getSystemInhabitants:(OOSystemID) sys;
-- (NSString *) getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural;
+- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys;
+- (std::optional<std::string>) cxx_getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural;
 
 - (NSPoint) coordinatesForSystem:(OOSystemID)s;
-- (OOSystemID) findSystemFromName:(NSString *) sysName;
+- (OOSystemID) cxx_findSystemFromName:(const std::string &) sysName;
 
 /**
  * Finds systems within range.  If range is greater than 7.0LY then only look within 7.0LY.
@@ -713,7 +722,7 @@ enum
 - (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix;
 - (NSPoint) findSystemCoordinatesWithPrefix:(NSString *) p_fix exactMatch:(BOOL) exactMatch;
 - (BOOL*) systemsFound;
-- (NSString*) systemNameIndex:(OOSystemID) index;
+- (std::optional<std::string>) cxx_systemNameIndex:(OOSystemID) index;
 - (NSDictionary *) routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;
 - (NSArray *) neighboursToSystem:(OOSystemID) system_number;
 
@@ -777,7 +786,7 @@ enum
 - (OOGraphicsDetail) detailLevel;
 - (BOOL) useShaders;
 
-- (void) handleOoliteException:(NSException *)ooliteException;
+- (void) handleOoliteException:(OOException *)ooliteException;
 
 - (GLfloat)airResistanceFactor;
 - (void) setAirResistanceFactor:(GLfloat)newFactor;
@@ -855,14 +864,9 @@ OOINLINE Universe *OOGetUniverse(void)
 NSComparisonResult populatorPrioritySort(id a, id b, void *context);
 NSComparisonResult equipmentSort(id a, id b, void *context);
 NSComparisonResult equipmentSortOutfitting(id a, id b, void *context);
-#ifdef __cplusplus
-extern "C" {
-#endif
-NSString *OOLookUpDescriptionPRIV(NSString *key);
-#ifdef __cplusplus
-}
-#endif
-NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);
+// The lookups behind DESC() / DESC_PLURAL(): the description, or the key itself when there is none.
+std::string cxx_OOLookUpDescriptionPRIV(const std::string &key);
+std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger count);
 
 @interface OOSound (OOCustomSounds)
 
@@ -890,3 +894,19 @@ NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef __cplusplus
+#include "oofnd/StdLib.hpp"
+
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.162): nullopt where the
+// Foundation forms above (which forward to them) gave nil.
+std::optional<std::string> cxx_OODisplayStringFromGovernmentID(OOGovernmentID government);
+std::optional<std::string> cxx_OODisplayStringFromEconomyID(OOEconomyID economy);
+#endif
+
+/*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
+	declared before bead oo-3rb.220 (the Universe sweep oo-3rb.79, chunk 1), forwarding to the
+	cxx_ API above, so unmigrated callers compile unchanged. Callers move to the cxx_ API in their
+	own sweep beads; the bridge goes in its own bead.
+*/
+#import "Universe+FoundationBridge.h"

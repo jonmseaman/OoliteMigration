@@ -31,6 +31,35 @@ class's header, its .mm and its category files count as ONE declarer. Foundation
 --check is the guard: it exits 1 if any selector has a C++ type (std::, oo::, a reference) in a
 slot where another declaration of the same selector has a different type, and prints each such
 family. It exits 0 on today's tree. Pure text analysis, no compiler; < 5 s.
+
+SELECTORS CALLED BY NAME (ADR-0043 Amendment 3, item 21)
+
+A selector the game sends by NAME has a second declaration that the compiler never sees: the
+dispatcher, which passes Objective-C objects (-performSelector:withObject:) and expects an object or
+nothing back. Such a selector is `shared` whatever the headers say, and --check fails when any of
+its declarations takes or returns a C++ type. The names come from:
+  * Resources/Config/whitelist.plist: legacy-script actions and queries, AI methods, HUD dials,
+    shader bindings (every quoted "selector:" or bare name in it);
+  * Resources/AIs/*.plist: the first word of every action string ("pauseAI: 3600" -> pauseAI:);
+  * every @selector(...) literal in src/ except inside -respondsToSelector: /
+    +instancesRespondToSelector: (targets, notification observers, timers, callbacks);
+  * tools/dynamic-selectors.txt: anything else (NSSelectorFromString on a built string).
+
+SELECTORS DISPATCHED THROUGH A TYPED IMP (bead oo-bzjh)
+
+An @selector literal is not always handed to a by-name dispatcher: code may fetch the IMP
+(-methodForSelector:) and call it through a function-pointer type whose parameters ARE the
+method's C++ types (OOOXZManager's manifest filters, bead oo-3rb.53). Such a selector is listed
+in tools/typed-imp-selectors.txt with the file:line of the cast call, and is then exempt from
+the called-by-name rule, but only while the tool can verify, mechanically, that
+  * the selector's only by-name source is @selector literals (not whitelist.plist, the AI plists
+    or dynamic-selectors.txt);
+  * every declaration of it has the same types, and every file with an @selector literal of it
+    declares `typedef RET (*T)(id, SEL, PARAMS...)` with exactly those types (normalised) and
+    calls through `((T)`;
+  * the listed file:line exists and calls through one of those typedefs.
+An entry that fails any of these is an error (TYPED-IMP ... not verified), and the selector is
+treated as called by name as before. --root DIR runs against another tree (the probe's).
 """
 
 import argparse
@@ -129,6 +158,168 @@ def scan(roots):
     return table
 
 
+RESOURCES = os.path.join(REPO_ROOT, "upstream", "oolite", "Resources")
+DYNAMIC_LIST = os.path.join(REPO_ROOT, "tools", "dynamic-selectors.txt")
+TYPED_IMP_LIST = os.path.join(REPO_ROOT, "tools", "typed-imp-selectors.txt")
+
+
+def set_root(root):
+    """Point every path at another tree (tools/check-selector-types-probe.sh)."""
+    global REPO_ROOT, SRC, RESOURCES, DYNAMIC_LIST, TYPED_IMP_LIST
+    REPO_ROOT = os.path.abspath(root)
+    SRC = os.path.join(REPO_ROOT, "upstream", "oolite", "src")
+    RESOURCES = os.path.join(REPO_ROOT, "upstream", "oolite", "Resources")
+    DYNAMIC_LIST = os.path.join(REPO_ROOT, "tools", "dynamic-selectors.txt")
+    TYPED_IMP_LIST = os.path.join(REPO_ROOT, "tools", "typed-imp-selectors.txt")
+SELECTOR_LITERAL = re.compile(r"@selector\(\s*([A-Za-z_][\w:]*)\s*\)")
+RESPONDS = re.compile(r"(?:respondsToSelector|instancesRespondToSelector)\s*:\s*$")
+PLIST_WORD = re.compile(r'"((?:\\.|[^"\\])*)"|([A-Za-z_][\w:.]*)')
+
+
+def _read(path):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+SOURCES = {}   # selector -> every by-name source found (dynamic_selectors() fills it)
+LITERAL_FILES = {}   # selector -> files holding an @selector literal of it
+
+
+def dynamic_selectors():
+    """{selector: source} for every selector the game sends by name (see the docstring)."""
+    found = {}
+    SOURCES.clear()
+    LITERAL_FILES.clear()
+
+    def add(sel, source):
+        sel = sel.strip()
+        if re.fullmatch(r"[A-Za-z_]\w*(?::(?:[A-Za-z_]\w*:)*)?", sel):
+            found.setdefault(sel, source)
+            SOURCES.setdefault(sel, []).append(source)
+
+    # whitelist.plist: every string or bare word that is a selector-shaped token
+    text = COMMENT.sub(" ", _read(os.path.join(RESOURCES, "Config", "whitelist.plist")))
+    for quoted, bare in PLIST_WORD.findall(text):
+        add(quoted or bare, "whitelist.plist")
+    # AI state machines: the first word of each action string
+    ai_dir = os.path.join(RESOURCES, "AIs")
+    for name in sorted(os.listdir(ai_dir)) if os.path.isdir(ai_dir) else []:
+        if not name.endswith(".plist"):
+            continue
+        text = COMMENT.sub(" ", _read(os.path.join(ai_dir, name)))
+        for array in re.findall(r"\(([^()]*)\)", text):
+            for quoted, bare in PLIST_WORD.findall(array):
+                word = (quoted or bare).split()
+                if not word:
+                    continue
+                head = word[0]
+                if len(word) > 1 and not head.endswith(":"):
+                    head += ":"
+                add(head, "AI plists")
+    # @selector literals handed to a dispatcher
+    for dirpath, _dirs, files in os.walk(SRC):
+        for name in files:
+            if not name.endswith((".h", ".m", ".mm")):
+                continue
+            text = _read(os.path.join(dirpath, name))
+            for m in SELECTOR_LITERAL.finditer(text):
+                before = text[max(0, m.start() - 60):m.start()]
+                if RESPONDS.search(before):
+                    continue
+                add(m.group(1), "@selector in " + name)
+                LITERAL_FILES.setdefault(m.group(1).strip(), set()).add(os.path.join(dirpath, name))
+    # the explicit list
+    for line in _read(DYNAMIC_LIST).splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            add(line.lstrip("-+"), "dynamic-selectors.txt")
+    return found
+
+
+TYPEDEF = re.compile(r"typedef\s+([^;()]*?)\(\s*\*\s*(\w+)\s*\)\s*\(([^;]*)\)\s*;")
+
+
+def split_params(text):
+    """Top-level comma split of a parameter list."""
+    out, depth, cur = [], 0, ""
+    for ch in text:
+        if ch in "(<":
+            depth += 1
+        elif ch in ")>":
+            depth -= 1
+        if ch == "," and depth == 0:
+            out.append(cur)
+            cur = ""
+        else:
+            cur += ch
+    if cur.strip():
+        out.append(cur)
+    return [norm(p) for p in out]
+
+
+def typed_imp_exemptions(table):
+    """({selector: entry} verified, [error lines]) from tools/typed-imp-selectors.txt."""
+    ok, errors = {}, []
+    for n, raw in enumerate(_read(TYPED_IMP_LIST).splitlines(), 1):
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        parts = line.split()
+        if len(parts) != 2 or ":" not in parts[1]:
+            errors.append(f"TYPED-IMP typed-imp-selectors.txt:{n}: want '<selector> <file>:<line>', got {raw.strip()!r}")
+            continue
+        sel = parts[0].lstrip("-")
+        where, _, lineno = parts[1].rpartition(":")
+
+        def fail(why):
+            errors.append(f"TYPED-IMP -{sel} not verified: {why} (typed-imp-selectors.txt:{n})")
+
+        others = [s for s in SOURCES.get(sel, []) if not s.startswith("@selector in ")]
+        if others:
+            fail("also sent by name from " + ", ".join(sorted(set(others))))
+            continue
+        decls = table.get(("-", sel), [])
+        sigs = {(norm(r), tuple(norm(p) for p in ps)) for r, ps, _c, _w in decls}
+        if len(sigs) != 1:
+            fail(f"{len(sigs)} distinct declared signatures (need exactly one)")
+            continue
+        ret, params = next(iter(sigs))
+        want = ["id", "SEL"] + list(params)
+        good_typedefs = set()
+        files = LITERAL_FILES.get(sel, set())
+        if not files:
+            fail("no @selector literal of it")
+            continue
+        bad = False
+        for path in sorted(files):
+            text = strip(_read(path))
+            names = {m.group(2) for m in TYPEDEF.finditer(text)
+                     if norm(m.group(1)) == ret and split_params(m.group(3)) == want
+                     and re.search(r"\(\(\s*" + re.escape(m.group(2)) + r"\s*\)", text)}
+            if not names:
+                fail(f"{os.path.relpath(path, REPO_ROOT)} has no `typedef {ret} (*T)({', '.join(want)})` called through ((T)")
+                bad = True
+                break
+            good_typedefs |= names
+        if bad:
+            continue
+        full = os.path.join(REPO_ROOT, where)
+        lines = _read(full).splitlines()
+        try:
+            cast_line = lines[int(lineno) - 1]
+        except (ValueError, IndexError):
+            fail(f"{where}:{lineno} does not exist")
+            continue
+        if not any(re.search(r"\(\(\s*" + re.escape(t) + r"\s*\)", cast_line) for t in good_typedefs):
+            fail(f"{where}:{lineno} does not call through {' / '.join(sorted(good_typedefs))}")
+            continue
+        ok[sel] = f"{where}:{lineno}"
+    return ok, errors
+
+
 def foundation_root():
     prefix = os.environ.get("MINGW_PREFIX")
     for base in ([prefix] if prefix else []) + ["/ucrt64"]:
@@ -147,19 +338,35 @@ def main():
     ap.add_argument("files", nargs="*", help="files whose selectors to classify")
     ap.add_argument("--check", action="store_true", help="tree-wide C++-type collision check")
     ap.add_argument("--no-foundation", action="store_true", help="ignore gnustep-base's headers")
+    ap.add_argument("--root", help="run against another tree (the probe)")
     args = ap.parse_args()
     if not args.files and not args.check:
         ap.error("give FILE... or --check")
+    if args.root:
+        set_root(args.root)
 
     roots = [SRC]
     fnd = None if args.no_foundation else foundation_root()
     if fnd:
         roots.append(fnd)
     table = scan(roots)
+    dynamic = dynamic_selectors()
+    typed_ok, typed_errors = typed_imp_exemptions(table)
+    for sel in typed_ok:
+        dynamic.pop(sel, None)
 
     status = 0
     if args.check:
         bad = 0
+        for (kind, sel), decls in sorted(table.items()):
+            if kind != "-" or sel not in dynamic:
+                continue
+            typed = [d for d in decls if any(is_cxx(t) for t in (d[0],) + d[1])]
+            if typed:
+                bad += 1
+                print(f"CALLED BY NAME {kind}{sel} ({dynamic[sel]}) has a C++ type:")
+                for ret, params, c, w in typed:
+                    print(f"    {c:<32} ({ret}) {params}  {w}")
         for (kind, sel), decls in sorted(table.items()):
             slots = [(ret,) + params for ret, params, _c, _w in decls]
             width = max(len(s) for s in slots)
@@ -171,15 +378,23 @@ def main():
                     for ret, params, c, w in decls:
                         print(f"    {c:<32} ({ret}) {params}  {w}")
                     break
-        print(f"check-selector-types: {bad} selector famil{'y' if bad == 1 else 'ies'} with disagreeing C++ types")
-        status = 1 if bad else 0
+        for line in typed_errors:
+            print(line)
+        for sel, where in sorted(typed_ok.items()):
+            print(f"typed IMP -{sel}: exempt from called-by-name (verified cast at {where})")
+        print(f"check-selector-types: {bad} selector famil{'y' if bad == 1 else 'ies'} with disagreeing C++ types"
+              + (f", {len(typed_errors)} unverified typed-IMP entr{'y' if len(typed_errors) == 1 else 'ies'}" if typed_errors else ""))
+        status = 1 if bad or typed_errors else 0
 
     for f in args.files:
         path = os.path.abspath(f)
         own = {(k, s): c for k, s, _r, _p, c, _l in declarations(path)}
         for (kind, sel), container in sorted(own.items(), key=lambda x: x[0][1]):
             others = sorted({c for _r, _p, c, _w in table.get((kind, sel), []) if c != container})
-            if others:
+            if kind == "-" and sel in dynamic:
+                also = (" also: " + ", ".join(others[:8])) if others else ""
+                print(f"shared  {kind}{sel:<48} called by name ({dynamic[sel]}){also}")
+            elif others:
                 shown = ", ".join(others[:8]) + (f", ... ({len(others)})" if len(others) > 8 else "")
                 print(f"shared  {kind}{sel:<48} also: {shown}")
             else:

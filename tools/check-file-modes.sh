@@ -95,7 +95,9 @@
 # checkout, so `timeout 30 tools/tier-a.sh <file>` in a bead is a real bare-program call site on
 # a Linux runner. .beads/issues.jsonl is a single-line-per-issue JSONL database whose prose
 # fields would otherwise swamp the search, so this extracts just the acceptance_criteria field
-# of every issue and scans that, rather than excluding the directory wholesale.
+# of every issue and scans that, rather than excluding the directory wholesale. The lines come
+# from `bd list --json` when bd is on PATH (the JSONL export is untracked, so the index rarely
+# has it), else from the index blob of .beads/issues.jsonl (read_acceptance; bead oo-1ysj).
 #
 # upstream/ is a third-party subtree and is excluded: its modes come from upstream.
 #
@@ -374,6 +376,54 @@ OPENQ_AWK='
 	BEGIN { inq = 0; intq = 0; inhd = 0; curkey = "" }
 '
 
+# Bead acceptance criteria as "id<TAB>command" lines, from JSON on stdin: bd's `list --json`
+# array, or the issues.jsonl export (one object per line). Blank lines are dropped.
+acceptance_lines() {
+	python3 -c '
+import json, sys
+sys.stdout.reconfigure(newline=chr(10))   # LF on Windows too: the lines are grepped and compared
+text = sys.stdin.read()
+try:
+    data = json.loads(text)
+    records = data if isinstance(data, list) else [data]
+except ValueError:
+    records = []
+    for raw in text.splitlines():
+        raw = raw.strip()
+        if not raw:
+            continue
+        try:
+            records.append(json.loads(raw))
+        except ValueError:
+            continue
+for rec in records:
+    if not isinstance(rec, dict):
+        continue
+    acc = rec.get("acceptance_criteria") or ""
+    for line in acc.splitlines():
+        if line.strip():
+            print("%s\t%s" % (rec.get("id", "?"), line))
+'
+}
+
+# read_acceptance <outfile>: where the acceptance lines come from (bead oo-1ysj). .beads/issues.jsonl
+# is untracked, so the index usually has no copy: read the live bead database through bd when it
+# is on PATH ($BD overrides the command, for the probe), else the index blob of
+# .beads/issues.jsonl, else nothing. Sets ACC_SOURCE to the source used ("" for none).
+read_acceptance() {
+	local bd="${BD:-bd}"
+	ACC_SOURCE=""
+	if command -v "$bd" >/dev/null 2>&1 \
+	   && "$bd" list --all --json --limit 0 2>/dev/null | acceptance_lines >"$1" 2>/dev/null && [ -s "$1" ]; then
+		ACC_SOURCE="bd list"
+	elif git cat-file -e :.beads/issues.jsonl 2>/dev/null \
+	   && git cat-file blob :.beads/issues.jsonl 2>/dev/null | acceptance_lines >"$1" 2>/dev/null && [ -s "$1" ]; then
+		ACC_SOURCE="index .beads/issues.jsonl"
+	else
+		: >"$1"
+	fi
+}
+
 if [ "${CHECK_FILE_MODES_SOURCE_ONLY:-0}" = 1 ]; then
 	return 0 2>/dev/null || exit 0
 fi
@@ -405,24 +455,8 @@ OPENQ=$(mktemp) || exit 1
 trap 'rm -f "$ACC_FILE" "$CLASS" "$PATFILE" "$CANDALL" "$PATTERNS" "$MATCHES" "$HITFILES" "$OPENQ"' EXIT
 
 # Bead acceptance criteria, one command per line: executed verbatim by accept.sh.
-if git cat-file -e :.beads/issues.jsonl 2>/dev/null; then
-	git cat-file blob :.beads/issues.jsonl 2>/dev/null | python3 -c '
-import json, sys
-for raw in sys.stdin:
-    raw = raw.strip()
-    if not raw:
-        continue
-    try:
-        rec = json.loads(raw)
-    except ValueError:
-        continue
-    acc = rec.get("acceptance_criteria") or ""
-    for line in acc.splitlines():
-        if line.strip():
-            print("%s\t%s" % (rec.get("id", "?"), line))
-' >"$ACC_FILE" 2>/dev/null || : >"$ACC_FILE"
-fi
-[ -s "$ACC_FILE" ] || note "note: no bead acceptance lines extracted; acceptance call sites not scanned"
+read_acceptance "$ACC_FILE"
+[ -s "$ACC_FILE" ] || note "note: no bead acceptance lines extracted (no bd on PATH, no .beads/issues.jsonl in the index); acceptance call sites not scanned"
 
 # --- pass 1: mode + shebang for every tracked blob -----------------------------------------
 # ONE `git cat-file --batch` for the whole tree rather than one process per file: on Windows

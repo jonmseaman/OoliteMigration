@@ -26,13 +26,11 @@ MA 02110-1301, USA.
 #ifdef GNUSTEP_BASE_LIBRARY
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
-#if (GNUSTEP_BASE_MAJOR_VERSION == 1 && (GNUSTEP_BASE_MINOR_VERSION == 24 && GNUSTEP_BASE_SUBMINOR_VERSION >= 9) || (GNUSTEP_BASE_MINOR_VERSION > 24)) || (GNUSTEP_BASE_MAJOR_VERSION > 1)
-#import <Foundation/NSDate.h>
-#endif
 #import "GameController.h"
 #include "oofnd/Process.hpp"
 #include "oofnd/String.hpp"
 #import "OOLoggingExtended.h"
+#import "OOFoundationException.h"
 #import "OOStringBridge.h"
 
 #if OOLITE_WINDOWS
@@ -77,10 +75,6 @@ int main(int argc, char *argv[])
 
 #ifdef GNUSTEP_BASE_LIBRARY
 	int i;
-
-#if (GNUSTEP_BASE_MAJOR_VERSION == 1 && (GNUSTEP_BASE_MINOR_VERSION == 24 && GNUSTEP_BASE_SUBMINOR_VERSION >= 9) || (GNUSTEP_BASE_MINOR_VERSION > 24)) || (GNUSTEP_BASE_MAJOR_VERSION > 1)
-	[NSDate class]; // See github issue #202
-#endif
 
 #if OOLITE_WINDOWS
 
@@ -236,7 +230,12 @@ int main(int argc, char *argv[])
 		// GNUstep port.
 		[controller applicationDidFinishLaunching];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		OOLogERR(kOOLogException, @"Root exception handler hit - terminating. This is an internal error, please report it. Exception name: %@, reason: %@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+		return EXIT_FAILURE;
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLogERR(kOOLogException, @"Root exception handler hit - terminating. This is an internal error, please report it. Exception name: %@, reason: %@", [exception name], [exception reason]);
 		return EXIT_FAILURE;
