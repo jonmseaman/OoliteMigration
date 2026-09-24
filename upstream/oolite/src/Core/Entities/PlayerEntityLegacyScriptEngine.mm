@@ -57,6 +57,11 @@ MA 02110-1301, USA.
 #import "OOStringBridge.h"
 #import "OOFoundationBridge.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+#include "oofnd/String.hpp"
+#include "oofnd/PListWriting.hpp"
+
 
 static NSString * const kOOLogScriptAddShipsFailed			= @"script.addShips.failed";
 static NSString * const kOOLogScriptMissionDescNoText		= @"script.missionDescription.noMissionText";
@@ -97,20 +102,25 @@ static NSString * const kOOLogRemoveAllCargoNotDocked		= @"script.error.removeAl
 
 
 #define	ACTIONS_TEMP_PREFIX									"__oolite_actions_temp"
-static NSString * const kActionTempPrefix					= @ ACTIONS_TEMP_PREFIX;
+namespace {
+constexpr const char *kActionTempPrefix			= ACTIONS_TEMP_PREFIX;
+} // namespace
 
 
-static NSString		*sMissionStringValue = nil;
-static NSString		*sCurrentMissionKey = nil;
+namespace {
+std::optional<std::string>	sMissionStringValue;	// the variable a mission/local condition reads (nullopt: unset)
+} // namespace
+namespace {
+std::optional<std::string>	sCurrentMissionKey;	// nullopt: no current mission (was nil)
+} // namespace
 static ShipEntity	*scriptTarget = nil;
 
 
 @interface PlayerEntity (ScriptingPrivate)
 
-- (BOOL) scriptTestCondition:(NSArray *)scriptCondition;
-- (NSString *) expandScriptRightHandSide:(NSArray *)rhsComponents;
+- (BOOL) scriptTestCondition:(const oo::PList &)scriptCondition;
+- (std::optional<std::string>) expandScriptRightHandSide:(const oo::PList &)rhsComponents;
 
-- (void) scriptActions:(NSArray *)actions forTarget:(ShipEntity *)target missionKey:(NSString *)missionKey;
 - (NSString *) expandMessage:(NSString *)valueString;
 
 @end
@@ -119,34 +129,93 @@ static ShipEntity	*scriptTarget = nil;
 @implementation PlayerEntity (Scripting)
 
 
-static NSString *CurrentScriptNameOr(NSString *alternative)
+namespace {
+std::string CurrentScriptNameOr(const std::string &alternative)
 {
-	if (sCurrentMissionKey != nil && ![sCurrentMissionKey hasPrefix:kActionTempPrefix])
+	if (sCurrentMissionKey.has_value() && !oo::str::hasPrefix(*sCurrentMissionKey, kActionTempPrefix))
 	{
-		return [NSString stringWithFormat:@"\"%@\"", sCurrentMissionKey];
+		return "\"" + *sCurrentMissionKey + "\"";
 	}
 	return alternative;
 }
 
 
-OOINLINE NSString *CurrentScriptDesc(void)
+std::string CurrentScriptDescription(void)
 {
-	return CurrentScriptNameOr(@"<anonymous actions>");
+	return CurrentScriptNameOr("<anonymous actions>");
 }
 
 
-static void PerformScriptActions(NSArray *actions, Entity *target);
-static void PerformConditionalStatment(NSArray *actions, Entity *target);
-static void PerformActionStatment(NSArray *statement, Entity *target);
-static BOOL TestScriptConditions(NSArray *conditions);
-
-
-static void PerformScriptActions(NSArray *actions, Entity *target)
+/*	TRANSITIONAL (bead oo-3rb.190): the unconverted OOLog calls of the later chunks of oo-j924 take
+	the description as an object for %@. Chunk 8 (oo-3rb.197) deletes this wrapper.
+*/
+OOINLINE id CurrentScriptDesc(void)
 {
-	NSArray *statement = nil;
-	foreach (statement, actions)
+	return oo::NSStringFrom(CurrentScriptDescription());
+}
+
+
+// A sanitized statement's element (a null PList for a missing one; sanitized trees always have them).
+const oo::PList &ElementAt(const oo::PList &array, std::size_t index)
+{
+	static const oo::PList sNull;
+	const oo::PList *element = array.at(index);
+	return element != nullptr ? *element : sNull;
+}
+
+
+/*	-[NSCharacterSet whitespaceCharacterSet]: GNUstep's whitespace-and-newline set (the scanner's,
+	oo::str::isWhitespaceOrNewline) without its newlines (U+000A-U+000D, U+0085, U+2028, U+2029).
+	The later chunks of oo-j924 reuse it.
+*/
+bool IsWhitespaceNotNewline(char16_t c)
+{
+	return c == 0x09 || c == 0x20 || c == 0xA0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200B)
+		   || c == 0x202F || c == 0x205F || c == 0x3000;
+}
+
+
+std::string TrimWhitespace(std::string_view s)
+{
+	return oo::str::trimTrailing(oo::str::trimLeading(s, IsWhitespaceNotNewline), IsWhitespaceNotNewline);
+}
+
+
+/*	A query result or variable as the string the condition compares: a string as itself, nil as
+	nullopt. Anything else (a variable holding an array, say) compares as its description; the old
+	code sent it -isEqualToString: and raised.
+*/
+std::optional<std::string> ConditionString(id value)
+{
+	if (value == nil)  return std::nullopt;
+	if (oo::IsNSString(value))  return oo::OptionalString(value);
+	return oo::DescriptionOf(value);
+}
+
+
+std::optional<std::string> ConditionString(const oo::PList &value)
+{
+	if (value.isNull())  return std::nullopt;
+	if (const std::string *string = value.getIf<std::string>())  return *string;
+	return oo::DescriptionOf(oo::ObjectFromPList(value));
+}
+
+
+void PerformScriptActions(const oo::PList &actions, Entity *target);
+void PerformConditionalStatment(const oo::PList &actions, Entity *target);
+void PerformActionStatment(const oo::PList &statement, Entity *target);
+BOOL TestScriptConditions(const oo::PList &conditions);
+} // namespace
+
+
+namespace {
+void PerformScriptActions(const oo::PList &actions, Entity *target)
+{
+	const oo::PList::Array *statements = actions.getIf<oo::PList::Array>();
+	if (statements == nullptr)  return;
+	for (const oo::PList &statement : *statements)
 	{
-		if ([[statement objectAtIndex:0] boolValue])
+		if (ElementAt(statement, 0).boolValue())
 		{
 			PerformConditionalStatment(statement, target);
 		}
@@ -158,7 +227,7 @@ static void PerformScriptActions(NSArray *actions, Entity *target)
 }
 
 
-static void PerformConditionalStatment(NSArray *statement, Entity *target)
+void PerformConditionalStatment(const oo::PList &statement, Entity *target)
 {
 	/*	A sanitized conditional statement takes the form of an array:
 		(true, conditions, trueActions, falseActions)
@@ -167,25 +236,20 @@ static void PerformConditionalStatment(NSArray *statement, Entity *target)
 		evaluate to true or false, respectively.
 	*/
 	
-	NSArray				*conditions = nil;
-	NSArray				*actions = nil;
-	
-	conditions = [statement objectAtIndex:1];
-	
+	const oo::PList		&conditions = ElementAt(statement, 1);
+
 	if (TestScriptConditions(conditions))
 	{
-		actions = [statement objectAtIndex:2];
+		PerformScriptActions(ElementAt(statement, 2), target);
 	}
 	else
 	{
-		actions = [statement objectAtIndex:3];
+		PerformScriptActions(ElementAt(statement, 3), target);
 	}
-	
-	PerformScriptActions(actions, target);
 }
 
 
-static void PerformActionStatment(NSArray *statement, Entity *target)
+void PerformActionStatment(const oo::PList &statement, Entity *target)
 {
 	/*	A sanitized action statement takes the form of an array:
 		(false, selector [, argument])
@@ -200,30 +264,26 @@ static void PerformActionStatment(NSArray *statement, Entity *target)
 		selector.
 	*/
 	
-	NSString				*selectorString = nil;
-	NSString				*argumentString = nil;
-	NSString				*expandedString = nil;
-	SEL						selector = NULL;
-	NSMutableDictionary		*locals = nil;
-	PlayerEntity			*player = PLAYER;
-	
-	selectorString = [statement objectAtIndex:1];
-	if ([statement count] > 2)  argumentString = [statement objectAtIndex:2];
-	
-	selector = NSSelectorFromString(selectorString);
-	
+	std::string					selectorString;
+	std::optional<std::string>	argumentString;
+	SEL							selector = NULL;
+	PlayerEntity				*player = PLAYER;
+
+	selectorString = statement.at<std::string>(1);
+	if (statement.count() > 2)  argumentString = statement.at<std::string>(2);
+
+	selector = NSSelectorFromString(oo::NSStringFrom(selectorString));
+
 	if (target == nil || ![target respondsToSelector:selector])
 	{
 		target = player;
 	}
-	
-	if (argumentString != nil)
+
+	if (argumentString.has_value())
 	{
-		// Method with argument; substitute [description] expressions.
-		locals = [player localVariablesForMission:sCurrentMissionKey];
-		expandedString = OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), argumentString, nil, locals, nil, kOOExpandNoOptions);
-		
-		[target performSelector:selector withObject:expandedString];
+		// Method with argument; substitute [description] expressions. The action is called by
+		// name, so its argument stays a string object (ADR-0043 item 21).
+		[target performSelector:selector withObject:OOExpandDescriptionString(OOStringExpanderDefaultRandomSeed(), oo::NSStringFrom(*argumentString), nil, [player localVariablesForMission:oo::NSStringOrNil(sCurrentMissionKey)], nil, kOOExpandNoOptions)];
 	}
 	else
 	{
@@ -233,19 +293,21 @@ static void PerformActionStatment(NSArray *statement, Entity *target)
 }
 
 
-static BOOL TestScriptConditions(NSArray *conditions)
+BOOL TestScriptConditions(const oo::PList &conditions)
 {
-	NSEnumerator			*condEnum = nil;
-	NSArray					*condition = nil;
 	PlayerEntity			*player = PLAYER;
-	
-	for (condEnum = [conditions objectEnumerator]; (condition = [condEnum nextObject]); )
+
+	if (const oo::PList::Array *conditionArray = conditions.getIf<oo::PList::Array>())
 	{
-		if (![player scriptTestCondition:condition])  return NO;
+		for (const oo::PList &condition : *conditionArray)
+		{
+			if (![player scriptTestCondition:condition])  return NO;
+		}
 	}
-	
+
 	return YES;
 }
+} // namespace
 
 
 - (void) setScriptTarget:(ShipEntity *)ship
@@ -281,24 +343,25 @@ OOINLINE OOEntityStatus RecursiveRemapStatus(OOEntityStatus status)
 static BOOL sRunningScript = NO;
 
 
-// Return the world scripts that care about -checkScript.
-- (NSDictionary *) worldScriptsRequiringTickle
+// Return the world scripts that care about -checkScript, by name (a Dict of Object nodes).
+- (oo::PList) worldScriptsRequiringTickle
 {
-	if (worldScriptsRequiringTickle != nil)  return worldScriptsRequiringTickle;
-	
-	NSMutableDictionary *tickleScripts = [NSMutableDictionary dictionaryWithCapacity:[worldScripts count]];
-	NSString *scriptName;
-	foreachkey (scriptName, worldScripts)
+	// The cache ivar is PlayerEntity.h's (a dictionary of the scripts); it is kept that way.
+	if (worldScriptsRequiringTickle != nil)  return oo::PListFrom(worldScriptsRequiringTickle);
+
+	oo::PList::Dict tickleScripts;
+	for (const std::string &scriptName : oo::StringsFrom([worldScripts allKeys]))
 	{
-		OOScript *candidateScript = [worldScripts objectForKey:scriptName];
+		OOScript *candidateScript = [worldScripts objectForKey:oo::NSStringFrom(scriptName)];
 		if ([candidateScript requiresTickle])
 		{
-			[tickleScripts setObject:candidateScript forKey:scriptName];
+			tickleScripts[scriptName] = oo::PListObject(candidateScript);
 		}
 	}
-	
-	worldScriptsRequiringTickle = [tickleScripts copy];
-	return worldScriptsRequiringTickle;
+
+	oo::PList result(std::move(tickleScripts));
+	worldScriptsRequiringTickle = [oo::ObjectFromPList(result) retain];
+	return result;
 }
 
 
@@ -307,8 +370,8 @@ static BOOL sRunningScript = NO;
 	BOOL						wasRunningScript = sRunningScript;
 	OOEntityStatus				status, restoreStatus;
 	
-	NSDictionary *tickleScripts = [self worldScriptsRequiringTickle];
-	if ([tickleScripts count] == 0)
+	const oo::PList tickleScripts = [self worldScriptsRequiringTickle];
+	if (tickleScripts.count() == 0)
 	{
 		// Quick exit if we only have JS scripts.
 		return;
@@ -347,8 +410,12 @@ static BOOL sRunningScript = NO;
 		}
 		sRunningScript = YES;
 		
-		// After all that, actually running the scripts is trivial.
-		[[tickleScripts allValues] makeObjectsPerformSelector:@selector(runWithTarget:) withObject:self];
+		// After all that, actually running the scripts is trivial. (Order: script name, byte
+		// order; it was the hash order of -allValues.)
+		for (const auto &[scriptName, script] : *tickleScripts.getIf<oo::PList::Dict>())
+		{
+			[(OOScript *)oo::ObjectIn(script) runWithTarget:self];
+		}
 	}
 	@catch (OOException *exception)
 	{
@@ -365,17 +432,16 @@ static BOOL sRunningScript = NO;
 }
 
 
-- (void)runScriptActions:(NSArray *)actions withContextName:(NSString *)contextName forTarget:(ShipEntity *)target
+- (void) cxx_runScriptActions:(const oo::PList &)actions withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target
 {
-	NSString				*oldMissionKey = nil;
-	NSString * volatile		theMissionKey = contextName;	// Work-around for silly exception macros
-	
+	std::optional<std::string>	oldMissionKey;
+
 	@autoreleasepool
 	{
 		// FIXME: does this actually make sense in the context of non-missions?
 		oldMissionKey = sCurrentMissionKey;
-		sCurrentMissionKey = theMissionKey;
-		
+		sCurrentMissionKey = contextName;
+
 		@try
 		{
 			PerformScriptActions(actions, target);
@@ -386,33 +452,34 @@ static BOOL sRunningScript = NO;
 				  @"***** EXCEPTION %@: %@ while handling legacy script actions for %@",
 				  oo::NSStringFrom([exception name]),
 				  oo::NSStringFrom([exception reason]),
-				  [theMissionKey hasPrefix:kActionTempPrefix] ? [target shortDescription] : theMissionKey);
+				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? [target shortDescription] : oo::NSStringOrNil(contextName));
 			// Suppress exception
 		}
 		@catch (OOFoundationException *exception)
 		{
+			// (a nil context printed "(null)")
 			OOLog(@"script.error.exception",
 				  @"***** EXCEPTION %@: %@ while handling legacy script actions for %@",
 				  [exception name],
 				  [exception reason],
-				  [theMissionKey hasPrefix:kActionTempPrefix] ? [target shortDescription] : theMissionKey);
+				  (contextName.has_value() && oo::str::hasPrefix(*contextName, kActionTempPrefix)) ? [target shortDescription] : oo::NSStringOrNil(contextName));
 			// Suppress exception
 		}
-		
+
 		sCurrentMissionKey = oldMissionKey;
 	}
 }
 
 
-- (void) runUnsanitizedScriptActions:(NSArray *)actions allowingAIMethods:(BOOL)allowAIMethods withContextName:(NSString *)contextName forTarget:(ShipEntity *)target
+- (void) cxx_runUnsanitizedScriptActions:(const oo::PList &)actions allowingAIMethods:(BOOL)allowAIMethods withContextName:(const std::optional<std::string> &)contextName forTarget:(ShipEntity *)target
 {
-	[self runScriptActions:OOSanitizeLegacyScript(actions, contextName, allowAIMethods)
-		   withContextName:contextName
-				 forTarget:target];
+	[self cxx_runScriptActions:OOSanitizeLegacyScript(actions, contextName, allowAIMethods)
+			   withContextName:contextName
+					 forTarget:target];
 }
 
 
-- (BOOL) scriptTestConditions:(NSArray *)array
+- (BOOL) cxx_scriptTestConditions:(const oo::PList &)array
 {
 	BOOL				result = NO;
 	
@@ -441,14 +508,14 @@ static BOOL sRunningScript = NO;
 }
 
 
-- (BOOL) scriptTestCondition:(NSArray *)scriptCondition
+- (BOOL) scriptTestCondition:(const oo::PList &)scriptCondition
 {
 	/*	Test a script condition sanitized by OOLegacyScriptWhitelist.
 		
 		A sanitized condition is an array of the form:
 			(opType, rawString, selector, comparisonType, operandArray).
 		
-		opType and comparisonType are NSNumbers containing OOOperationType and
+		opType and comparisonType are numbers containing OOOperationType and
 		OOComparisonType enumerators, respectively.
 		
 		rawString is the original textual representation of the condition for
@@ -468,83 +535,75 @@ static BOOL sRunningScript = NO;
 		have been generated by OOSanitizeLegacyScriptConditions() and doesn't
 		perform extensive validity checks.
 	*/
-	
+
 	OOOperationType				opType;
-	NSString					*selectorString = nil;
+	std::string					selectorString;
 	SEL							selector = NULL;
 	OOComparisonType			comparator;
-	NSArray						*operandArray = nil;
-	NSString					*lhsString = nil;
-	NSString					*expandedRHS = nil;
-	NSArray						*rhsComponents = nil;
-	NSString					*rhsItem = nil;
-	NSUInteger					i, count;
-	NSCharacterSet				*whitespace = nil;
+	std::optional<std::string>	lhsString;
+	std::string					expandedRHS;
 	double						lhsValue, rhsValue;
 	BOOL						lhsFlag, rhsFlag;
-	
-	opType = (OOOperationType)oo::PListView(scriptCondition).at<unsigned int>(0);
+
+	opType = (OOOperationType)scriptCondition.at<unsigned int>(0);
 	if (opType == OP_FALSE)  return NO;
-	
-	selectorString = oo::PListView(scriptCondition).at<NSString *>(2);
-	comparator = (OOComparisonType)oo::PListView(scriptCondition).at<unsigned int>(3);
-	operandArray = oo::PListView(scriptCondition).at<NSArray *>(4);
-	
+
+	selectorString = scriptCondition.at<std::string>(2);
+	comparator = (OOComparisonType)scriptCondition.at<unsigned int>(3);
+	const oo::PList &operandArray = ElementAt(scriptCondition, 4);
+
 	// Transform mission/local var ops into string ops.
 	if (opType == OP_MISSION_VAR)
 	{
-		sMissionStringValue = [mission_variables objectForKey:selectorString];
+		sMissionStringValue = ConditionString([self cxx_missionVariableForKey:selectorString]);
 		selector = @selector(mission_string);
 		opType = OP_STRING;
 	}
 	else if (opType == OP_LOCAL_VAR)
 	{
-		sMissionStringValue = [[self localVariablesForMission:sCurrentMissionKey] objectForKey:selectorString];
+		sMissionStringValue = ConditionString([[self localVariablesForMission:oo::NSStringOrNil(sCurrentMissionKey)] objectForKey:oo::NSStringFrom(selectorString)]);
 		selector = @selector(mission_string);
 		opType = OP_STRING;
 	}
 	else
 	{
-		selector = NSSelectorFromString(selectorString);
+		selector = NSSelectorFromString(oo::NSStringFrom(selectorString));
 	}
-	
-	expandedRHS = [self expandScriptRightHandSide:operandArray];
-	
+
+	expandedRHS = [self expandScriptRightHandSide:operandArray].value_or(std::string());
+
 	if (opType == OP_STRING)
 	{
-		lhsString = [self performSelector:selector];
-		
-	#define DOUBLEVAL(x) ((x != nil) ? [x doubleValue] : 0.0)
-		
+		// The query is called by name and answers an object (ADR-0043 item 21).
+		lhsString = ConditionString([self performSelector:selector]);
+
+	#define DOUBLEVAL(x) ((x).has_value() ? oo::str::doubleValue(*(x)) : 0.0)
+
 		switch (comparator)
 		{
 			case COMPARISON_UNDEFINED:
-				return lhsString == nil;
-				
+				return !lhsString.has_value();
+
 			case COMPARISON_EQUAL:
-				return [lhsString isEqualToString:expandedRHS];
-				
+				return lhsString.has_value() && *lhsString == expandedRHS;
+
 			case COMPARISON_NOTEQUAL:
-				return ![lhsString isEqualToString:expandedRHS];
-				
+				return !(lhsString.has_value() && *lhsString == expandedRHS);
+
 			case COMPARISON_LESSTHAN:
-				return DOUBLEVAL(lhsString) < DOUBLEVAL(expandedRHS);
-				
+				return DOUBLEVAL(lhsString) < oo::str::doubleValue(expandedRHS);
+
 			case COMPARISON_GREATERTHAN:
-				return DOUBLEVAL(lhsString) > DOUBLEVAL(expandedRHS);
-				
+				return DOUBLEVAL(lhsString) > oo::str::doubleValue(expandedRHS);
+
 			case COMPARISON_ONEOF:
 				{
-					rhsComponents = [expandedRHS componentsSeparatedByString:@","];
-					count = [rhsComponents count];
-					
-					whitespace = [NSCharacterSet whitespaceCharacterSet];
-					lhsString = [lhsString stringByTrimmingCharactersInSet:whitespace];
-					
-					for (i = 0; i < count; i++)
+					if (!lhsString.has_value())  return NO;	// nil matched nothing
+					const std::string trimmedLHS = TrimWhitespace(*lhsString);
+
+					for (const std::string &rhsItem : oo::str::split(expandedRHS, ","))
 					{
-						rhsItem = [[rhsComponents objectAtIndex:i] stringByTrimmingCharactersInSet:whitespace];
-						if ([lhsString isEqualToString:rhsItem])
+						if (trimmedLHS == TrimWhitespace(rhsItem))
 						{
 							return YES;
 						}
@@ -556,135 +615,131 @@ static BOOL sRunningScript = NO;
 	else if (opType == OP_NUMBER)
 	{
 		lhsValue = [[self performSelector:selector] doubleValue];
-		
+
 		if (comparator == COMPARISON_ONEOF)
 		{
-			rhsComponents = [expandedRHS componentsSeparatedByString:@","];
-			count = [rhsComponents count];
-			
-			for (i = 0; i < count; i++)
+			for (const std::string &rhsItem : oo::str::split(expandedRHS, ","))
 			{
-				rhsItem = [rhsComponents objectAtIndex:i];
-				rhsValue = [rhsItem doubleValue];
-				
+				rhsValue = oo::str::doubleValue(rhsItem);
+
 				if (lhsValue == rhsValue)
 				{
 					return YES;
 				}
 			}
-			
+
 			return NO;
 		}
 		else
 		{
-			rhsValue = [expandedRHS doubleValue];
-			
+			rhsValue = oo::str::doubleValue(expandedRHS);
+
 			switch (comparator)
 			{
 				case COMPARISON_EQUAL:
 					return lhsValue == rhsValue;
-					
+
 				case COMPARISON_NOTEQUAL:
 					return lhsValue != rhsValue;
-					
+
 				case COMPARISON_LESSTHAN:
 					return lhsValue < rhsValue;
-					
+
 				case COMPARISON_GREATERTHAN:
 					return lhsValue > rhsValue;
-					
+
 				case COMPARISON_UNDEFINED:
 				case COMPARISON_ONEOF:
 					// "Can't happen" - undefined should have been caught by the sanitizer, oneof is handled above.
-					OOLog(@"script.error.unexpectedOperator", @"***** SCRIPT ERROR: in %@, operator %@ is not valid for numbers, evaluating to false.", CurrentScriptDesc(), OOComparisonTypeToString(comparator));
+					OOLog(@"script.error.unexpectedOperator", @"***** SCRIPT ERROR: in %@, operator %@ is not valid for numbers, evaluating to false.", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(cxx_OOComparisonTypeToString(comparator)));
 					return NO;
 			}
 		}
 	}
 	else if (opType == OP_BOOL)
 	{
-		lhsFlag = [[self performSelector:selector] isEqualToString:@"YES"];
-		rhsFlag = [expandedRHS isEqualToString:@"YES"];
-		
+		lhsFlag = ConditionString([self performSelector:selector]) == std::optional<std::string>("YES");
+		rhsFlag = expandedRHS == "YES";
+
 		switch (comparator)
 		{
 			case COMPARISON_EQUAL:
 				return lhsFlag == rhsFlag;
-				
+
 			case COMPARISON_NOTEQUAL:
 				return lhsFlag != rhsFlag;
-				
+
 			case COMPARISON_LESSTHAN:
 			case COMPARISON_GREATERTHAN:
 			case COMPARISON_UNDEFINED:
 			case COMPARISON_ONEOF:
 				// "Can't happen" - should have been caught by the sanitizer.
-				OOLog(@"script.error.unexpectedOperator", @"***** SCRIPT ERROR: in %@, operator %@ is not valid for booleans, evaluating to false.", CurrentScriptDesc(), OOComparisonTypeToString(comparator));
+				OOLog(@"script.error.unexpectedOperator", @"***** SCRIPT ERROR: in %@, operator %@ is not valid for booleans, evaluating to false.", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(cxx_OOComparisonTypeToString(comparator)));
 				return NO;
 		}
 	}
-	
-	// What are we doing here?
-	OOLog(@"script.error.fallthrough", @"***** SCRIPT ERROR: in %@, unhandled condition '%@' (%@). %@", CurrentScriptDesc(), [scriptCondition objectAtIndex:1], scriptCondition, @"This is an internal error, please report it.");
+
+	// What are we doing here? (The condition prints as an old-style plist: decision C.)
+	const auto conditionText = oo::writeOldStylePList(scriptCondition);
+	std::string conditionDescription = conditionText.has_value() ? std::string(conditionText->stringView()) : std::string();
+	if (!conditionDescription.empty() && conditionDescription.back() == '\n')  conditionDescription.pop_back();
+	OOLog(@"script.error.fallthrough", @"***** SCRIPT ERROR: in %@, unhandled condition '%@' (%@). %@", oo::NSStringFrom(CurrentScriptDescription()), oo::NSStringFrom(scriptCondition.at<std::string>(1)), oo::NSStringFrom(conditionDescription), @"This is an internal error, please report it.");
 	return NO;
 }
 
 
-- (NSString *) expandScriptRightHandSide:(NSArray *)rhsComponents
+- (std::optional<std::string>) expandScriptRightHandSide:(const oo::PList &)rhsComponents
 {
-	NSMutableArray			*result = nil;
-	NSArray					*component = nil;
-	NSString				*value = nil;
-	
-	result = [NSMutableArray arrayWithCapacity:[rhsComponents count]];
-	
-	foreach (component, rhsComponents)
+	std::string				result;
+	bool					first = true;
+
+	if (const oo::PList::Array *components = rhsComponents.getIf<oo::PList::Array>())
 	{
-		/*	Each component is a two-element array. The second element is a
-			string. The first element is a boolean indicating whether the
-			string is a selector (true) or a literal (false).
-			
-			All valid selectors return a string or an NSNumber; in either
-			case, -description gives us a useful value to substitute into
-			the expanded string.
-		*/
-		
-		value = oo::PListView(component).at<NSString *>(1);
-		
-		if ([[component objectAtIndex:0] boolValue])
+		for (const oo::PList &component : *components)
 		{
-			value = [[self performSelector:NSSelectorFromString(value)] description];
-			if (value == nil)  value = @"(null)";	// for backwards compatibility
+			/*	Each component is a two-element array. The second element is a
+				string. The first element is a boolean indicating whether the
+				string is a selector (true) or a literal (false).
+
+				All valid selectors return a string or a number; in either
+				case, -description gives us a useful value to substitute into
+				the expanded string.
+			*/
+
+			std::string value = component.at<std::string>(1);
+
+			if (ElementAt(component, 0).boolValue())
+			{
+				// (nil prints "(null)", for backwards compatibility)
+				value = oo::DescriptionOf([self performSelector:NSSelectorFromString(oo::NSStringFrom(value))]);
+			}
+
+			if (!first)  result += " ";
+			result += value;
+			first = false;
 		}
-		
-		[result addObject:value];
 	}
-	
-	return [result componentsJoinedByString:@" "];
-}
 
-
-- (NSDictionary *) missionVariables
-{
-	return mission_variables;
-}
-
-
-- (NSString *)missionVariableForKey:(NSString *)key
-{
-	NSString *result = nil;
-	if (key != nil)  result = [mission_variables objectForKey:key];
 	return result;
 }
 
 
-- (void)setMissionVariable:(NSString *)value forKey:(NSString *)key
+- (oo::PList) cxx_missionVariables
 {
-	if (key != nil)
-	{
-		if (value != nil)  [mission_variables setObject:value forKey:key];
-		else [mission_variables removeObjectForKey:key];
-	}
+	return oo::PListFrom(mission_variables);	// a snapshot
+}
+
+
+- (oo::PList) cxx_missionVariableForKey:(const std::string &)key
+{
+	return oo::PListFrom([mission_variables objectForKey:oo::NSStringFrom(key)]);
+}
+
+
+- (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key
+{
+	if (!value.isNull())  [mission_variables setObject:oo::ObjectFromPList(value) forKey:oo::NSStringFrom(key)];
+	else [mission_variables removeObjectForKey:oo::NSStringFrom(key)];
 }
 
 
@@ -803,7 +858,7 @@ static BOOL sRunningScript = NO;
 
 - (NSString*) replaceVariablesInString:(NSString*) args
 {
-	NSMutableDictionary	*locals = [self localVariablesForMission:sCurrentMissionKey];
+	NSMutableDictionary	*locals = [self localVariablesForMission:oo::NSStringOrNil(sCurrentMissionKey)];
 	NSMutableString		*resultString = [NSMutableString stringWithString: args];
 	NSString			*valueString;
 	unsigned			i;
@@ -846,7 +901,7 @@ static BOOL sRunningScript = NO;
 
 - (void) setMissionDescription:(NSString *)textKey
 {
-	[self setMissionDescription:textKey forMission:sCurrentMissionKey];
+	[self setMissionDescription:textKey forMission:oo::NSStringOrNil(sCurrentMissionKey)];
 }
 
 
@@ -908,7 +963,7 @@ static BOOL sRunningScript = NO;
 
 - (void) clearMissionDescription
 {
-	[self clearMissionDescriptionForMission:sCurrentMissionKey];
+	[self clearMissionDescriptionForMission:oo::NSStringOrNil(sCurrentMissionKey)];
 }
 
 
@@ -926,273 +981,259 @@ static BOOL sRunningScript = NO;
 }
 
 
-- (NSString *) mission_string
+- (id) mission_string	// called by name (ADR-0043 item 21)
 {
-	return sMissionStringValue;
+	return oo::NSStringOrNil(sMissionStringValue);
 }
 
 
-- (NSString *) status_string
+- (id) status_string	// called by name (ADR-0043 item 21)
 {
 	return OOStringFromEntityStatus([self status]);
 }
 
 
-- (NSString *) gui_screen_string
+- (id) gui_screen_string	// called by name (ADR-0043 item 21)
 {
 	return OOStringFromGUIScreenID(gui_screen);
 }
 
 
-- (NSNumber *) galaxy_number
+- (id) galaxy_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithInt:[self currentGalaxyID]];
+	return oo::ObjectFromPList(oo::PList::signedInteger([self currentGalaxyID]));
 }
 
 
-- (NSNumber *) planet_number
+- (id) planet_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithInt:[self currentSystemID]];
+	return oo::ObjectFromPList(oo::PList::signedInteger([self currentSystemID]));
 }
 
 
-- (NSNumber *) score_number
+- (id) score_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithUnsignedInt:[self score]];
+	return oo::ObjectFromPList(oo::PList::unsignedInteger([self score]));
 }
 
 
-- (NSNumber *) credits_number
+- (id) credits_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithDouble:[self creditBalance]];
+	return oo::ObjectFromPList(oo::PList((double)([self creditBalance])));
 }
 
 
-- (NSNumber *) scriptTimer_number
+- (id) scriptTimer_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithDouble:[self scriptTimer]];
+	return oo::ObjectFromPList(oo::PList((double)([self scriptTimer])));
 }
 
 
 static int shipsFound;
-- (NSNumber *) shipsFound_number
+- (id) shipsFound_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithInt:shipsFound];
+	return oo::ObjectFromPList(oo::PList::signedInteger(shipsFound));
 }
 
 
-- (NSNumber *) commanderLegalStatus_number
+- (id) commanderLegalStatus_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithInt:[self legalStatus]];
+	return oo::ObjectFromPList(oo::PList::signedInteger([self legalStatus]));
 }
 
 
-- (void) setLegalStatus:(NSString *)valueString
+- (void) setLegalStatus:(id)valueString	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 {
-	legalStatus = [valueString intValue];
+	legalStatus = oo::str::intValue(oo::StdString(valueString));	// nil was 0, as "" is
 }
 
 
-- (NSString *) commanderLegalStatus_string
+- (id) commanderLegalStatus_string	// called by name (ADR-0043 item 21)
 {
 	return OODisplayStringFromLegalStatus(legalStatus);
 }
 
 
-- (NSNumber *) d100_number
+- (id) d100_number	// called by name (ADR-0043 item 21)
 {
 	int d100 = ranrot_rand() % 100;
-	return [NSNumber numberWithInt:d100];
+	return oo::ObjectFromPList(oo::PList::signedInteger(d100));
 }
 
 
-- (NSNumber *) pseudoFixedD100_number
+- (id) pseudoFixedD100_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithInt:[self systemPseudoRandom100]];
+	return oo::ObjectFromPList(oo::PList::signedInteger([self systemPseudoRandom100]));
 }
 
 
-- (NSNumber *) d256_number
+- (id) d256_number	// called by name (ADR-0043 item 21)
 {
 	int d256 = ranrot_rand() % 256;
-	return [NSNumber numberWithInt:d256];
+	return oo::ObjectFromPList(oo::PList::signedInteger(d256));
 }
 
 
-- (NSNumber *) pseudoFixedD256_number
+- (id) pseudoFixedD256_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithInt:[self systemPseudoRandom256]];
+	return oo::ObjectFromPList(oo::PList::signedInteger([self systemPseudoRandom256]));
 }
 
 
-- (NSNumber *) clock_number				// returns the game time in seconds
+- (id) clock_number	// called by name (ADR-0043 item 21); returns the game time in seconds
 {
-	return [NSNumber numberWithDouble:ship_clock];
+	return oo::ObjectFromPList(oo::PList((double)(ship_clock)));
 }
 
 
-- (NSNumber *) clock_secs_number		// returns the game time in seconds
+- (id) clock_secs_number	// called by name (ADR-0043 item 21); returns the game time in seconds
 {
-	return [NSNumber numberWithUnsignedLongLong:ship_clock];
+	return oo::ObjectFromPList(oo::PList::unsignedInteger((unsigned long long)(ship_clock)));
 }
 
 
-- (NSNumber *) clock_mins_number		// returns the game time in minutes
+- (id) clock_mins_number	// called by name (ADR-0043 item 21); returns the game time in minutes
 {
-	return [NSNumber numberWithUnsignedLongLong:ship_clock / 60.0];
+	return oo::ObjectFromPList(oo::PList::unsignedInteger((unsigned long long)(ship_clock / 60.0)));
 }
 
 
-- (NSNumber *) clock_hours_number		// returns the game time in hours
+- (id) clock_hours_number	// called by name (ADR-0043 item 21); returns the game time in hours
 {
-	return [NSNumber numberWithUnsignedLongLong:ship_clock / 3600.0];
+	return oo::ObjectFromPList(oo::PList::unsignedInteger((unsigned long long)(ship_clock / 3600.0)));
 }
 
 
-- (NSNumber *) clock_days_number		// returns the game time in days
+- (id) clock_days_number	// called by name (ADR-0043 item 21); returns the game time in days
 {
-	return [NSNumber numberWithUnsignedLongLong:ship_clock / 86400.0];
+	return oo::ObjectFromPList(oo::PList::unsignedInteger((unsigned long long)(ship_clock / 86400.0)));
 }
 
 
-- (NSNumber *) fuelLevel_number			// returns the fuel level in LY
+- (id) fuelLevel_number	// called by name (ADR-0043 item 21); returns the fuel level in LY
 {
-	return [NSNumber numberWithFloat:floor(0.1 * fuel)];
+	return oo::ObjectFromPList(oo::PList::singleReal((float)(floor(0.1 * fuel))));
 }
 
 
-- (NSString *) dockedAtMainStation_bool
+- (id) dockedAtMainStation_bool	// called by name (ADR-0043 item 21)
 {
 	if ([self dockedAtMainStation])  return @"YES";
 	else  return @"NO";
 }
 
 
-- (NSString *) foundEquipment_bool
+- (id) foundEquipment_bool	// called by name (ADR-0043 item 21)
 {
 	return (found_equipment)? @"YES" : @"NO";
 }
 
 
-- (NSString *) sunWillGoNova_bool		// returns whether the sun is going to go nova
+- (id) sunWillGoNova_bool	// called by name (ADR-0043 item 21); returns whether the sun is going to go nova
 {
 	return ([[UNIVERSE sun] willGoNova])? @"YES" : @"NO";
 }
 
 
-- (NSString *) sunGoneNova_bool		// returns whether the sun has gone nova
+- (id) sunGoneNova_bool	// called by name (ADR-0043 item 21); returns whether the sun has gone nova
 {
 	return ([[UNIVERSE sun] goneNova])? @"YES" : @"NO";
 }
 
 
-- (NSString *) missionChoice_string		// returns nil or the key for the chosen option
+- (id) missionChoice_string	// called by name (ADR-0043 item 21); returns nil or the key for the chosen option
 {
 	return missionChoice;
 }
 
 
-- (NSString *) missionKeyPress_string
+- (id) missionKeyPress_string	// called by name (ADR-0043 item 21)
 {
 	return missionKeyPress;
 }
 
 
-- (NSNumber *) dockedTechLevel_number
+- (id) dockedTechLevel_number	// called by name (ADR-0043 item 21)
 {
 	StationEntity *dockedStation = [self dockedStation];
 	if (!dockedStation) 
 	{
 		return [self systemTechLevel_number];
 	}
-	return [NSNumber numberWithUnsignedInteger:[dockedStation equivalentTechLevel]];
+	return oo::ObjectFromPList(oo::PList::unsignedInteger([dockedStation equivalentTechLevel]));
 }
 
-- (NSString *) dockedStationName_string	// returns 'NONE' if the player isn't docked, [station name] if it is, 'UNKNOWN' otherwise (?)
+- (id) dockedStationName_string	// called by name (ADR-0043 item 21); returns 'NONE' if the player isn't docked, [station name] if it is, 'UNKNOWN' otherwise (?)
 {
-	NSString			*result = nil;
 	if ([self status] != STATUS_DOCKED)  return @"NONE";
-	
-	result = [self dockedStationName];
-	if (result == nil)  result = @"UNKNOWN";
-	return result;
+
+	return oo::NSStringFrom(oo::OptionalString([self dockedStationName]).value_or("UNKNOWN"));
 }
 
 
-- (NSString *) systemGovernment_string
+- (id) systemGovernment_string	// called by name (ADR-0043 item 21)
 {
 	int government = [[self systemGovernment_number] intValue]; // 0 .. 7 (0 anarchic .. 7 most stable)
-	NSString *result = OODisplayStringFromGovernmentID(government);
-	if (result == nil) result = @"UNKNOWN";
-	
-	return result;
+	return oo::NSStringFrom(oo::OptionalString(OODisplayStringFromGovernmentID(government)).value_or("UNKNOWN"));
 }
 
 
-- (NSNumber *) systemGovernment_number
+- (id) systemGovernment_number	// called by name (ADR-0043 item 21)
 {
-	NSDictionary *systeminfo = [UNIVERSE currentSystemData];
-	return [systeminfo objectForKey:KEY_GOVERNMENT];
+	return [[UNIVERSE currentSystemData] objectForKey:KEY_GOVERNMENT];
 }
 
 
-- (NSString *) systemEconomy_string
+- (id) systemEconomy_string	// called by name (ADR-0043 item 21)
 {
 	int economy = [[self systemEconomy_number] intValue]; // 0 .. 7 (0 rich industrial .. 7 poor agricultural)
-	NSString *result = OODisplayStringFromEconomyID(economy);
-	if (result == nil) result = @"UNKNOWN";
-	
-	return result;
+	return oo::NSStringFrom(oo::OptionalString(OODisplayStringFromEconomyID(economy)).value_or("UNKNOWN"));
 }
 
 
-- (NSNumber *) systemEconomy_number
+- (id) systemEconomy_number	// called by name (ADR-0043 item 21)
 {
-	NSDictionary *systeminfo = [UNIVERSE currentSystemData];
-	return [systeminfo objectForKey:KEY_ECONOMY];
+	return [[UNIVERSE currentSystemData] objectForKey:KEY_ECONOMY];
 }
 
 
-- (NSNumber *) systemTechLevel_number
+- (id) systemTechLevel_number	// called by name (ADR-0043 item 21)
 {
-	NSDictionary *systeminfo = [UNIVERSE currentSystemData];
-	return [systeminfo objectForKey:KEY_TECHLEVEL];
+	return [[UNIVERSE currentSystemData] objectForKey:KEY_TECHLEVEL];
 }
 
 
-- (NSNumber *) systemPopulation_number
+- (id) systemPopulation_number	// called by name (ADR-0043 item 21)
 {
-	NSDictionary *systeminfo = [UNIVERSE currentSystemData];
-	return [systeminfo objectForKey:KEY_POPULATION];
+	return [[UNIVERSE currentSystemData] objectForKey:KEY_POPULATION];
 }
 
 
-- (NSNumber *) systemProductivity_number
+- (id) systemProductivity_number	// called by name (ADR-0043 item 21)
 {
-	NSDictionary *systeminfo = [UNIVERSE currentSystemData];
-	return [systeminfo objectForKey:KEY_PRODUCTIVITY];
+	return [[UNIVERSE currentSystemData] objectForKey:KEY_PRODUCTIVITY];
 }
 
 
-- (NSString *) commanderName_string
+- (id) commanderName_string	// called by name (ADR-0043 item 21)
 {
 	return [self commanderName];
 }
 
 
-- (NSString *) commanderRank_string
+- (id) commanderRank_string	// called by name (ADR-0043 item 21)
 {
 	return OODisplayRatingStringFromKillCount([self score]);
 }
 
 
-- (NSString *) commanderShip_string
+- (id) commanderShip_string	// called by name (ADR-0043 item 21)
 {
 	return [self name];
 }
 
 
-- (NSString *) commanderShipDisplayName_string
+- (id) commanderShipDisplayName_string	// called by name (ADR-0043 item 21)
 {
 	return [self displayName];
 }
@@ -1438,13 +1479,13 @@ static int shipsFound;
 	if (forceRemoval && [self status] != STATUS_DOCKED)
 	{
 		NSInteger i;
-		for (i = [cargo count] - 1; i >= 0; i--)
+		for (i = cargo.size() - 1; i >= 0; i--)
 		{
-			ShipEntity* canister = [cargo objectAtIndex:i];
+			ShipEntity* canister = cargo[i].get();
 			if (!canister)  break;
 			// Since we are forcing cargo removal, we don't really care about the unit of measurement. Any
 			// commodity at more than 1000kg or 1000000gr will be inside cargopods, so remove those too.
-			[cargo removeObjectAtIndex:i];
+			cargo.erase(cargo.begin() + i);
 		}
 	}
 	
@@ -1744,7 +1785,7 @@ static int shipsFound;
 	}
 	else
 	{
-		[self setLocalVariable:valueString forKey:missionVariableString andMission:sCurrentMissionKey];
+		[self setLocalVariable:valueString forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
 	}
 }
 
@@ -1763,7 +1804,7 @@ static int shipsFound;
 	}
 	else if (hasLocalPrefix)
 	{
-		[self setLocalVariable:nil forKey:missionVariableString andMission:sCurrentMissionKey];
+		[self setLocalVariable:nil forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
 	}
 	else
 	{
@@ -1788,9 +1829,9 @@ static int shipsFound;
 	}
 	else if (hasLocalPrefix)
 	{
-		value = [[self localVariableForKey:missionVariableString andMission:sCurrentMissionKey] intValue];
+		value = [[self localVariableForKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)] intValue];
 		value++;
-		[self setLocalVariable:[NSString stringWithFormat:@"%d", value] forKey:missionVariableString andMission:sCurrentMissionKey];
+		[self setLocalVariable:[NSString stringWithFormat:@"%d", value] forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
 	}
 	else
 	{
@@ -1815,9 +1856,9 @@ static int shipsFound;
 	}
 	else if (hasLocalPrefix)
 	{
-		value = [[self localVariableForKey:missionVariableString andMission:sCurrentMissionKey] intValue];
+		value = [[self localVariableForKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)] intValue];
 		value--;
-		[self setLocalVariable:[NSString stringWithFormat:@"%d", value] forKey:missionVariableString andMission:sCurrentMissionKey];
+		[self setLocalVariable:[NSString stringWithFormat:@"%d", value] forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
 	}
 	else
 	{
@@ -1855,9 +1896,9 @@ static int shipsFound;
 	}
 	else if (hasLocalPrefix)
 	{
-		value = [[self localVariableForKey:missionVariableString andMission:sCurrentMissionKey] doubleValue];
+		value = [[self localVariableForKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)] doubleValue];
 		value += [valueString doubleValue];
-		[self setLocalVariable:[NSString stringWithFormat:@"%f", value] forKey:missionVariableString andMission:sCurrentMissionKey];
+		[self setLocalVariable:[NSString stringWithFormat:@"%f", value] forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
 	}
 	else
 	{
@@ -1895,9 +1936,9 @@ static int shipsFound;
 	}
 	else if (hasLocalPrefix)
 	{
-		value = [[self localVariableForKey:missionVariableString andMission:sCurrentMissionKey] doubleValue];
+		value = [[self localVariableForKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)] doubleValue];
 		value -= [valueString doubleValue];
-		[self setLocalVariable:[NSString stringWithFormat:@"%f", value] forKey:missionVariableString andMission:sCurrentMissionKey];
+		[self setLocalVariable:[NSString stringWithFormat:@"%f", value] forKey:missionVariableString andMission:oo::NSStringOrNil(sCurrentMissionKey)];
 	}
 	else
 	{
@@ -2252,9 +2293,9 @@ static int shipsFound;
 }
 
 
-- (NSNumber *) fuelLeakRate_number
+- (id) fuelLeakRate_number	// called by name (ADR-0043 item 21)
 {
-	return [NSNumber numberWithFloat:[self fuelLeakRate]];
+	return oo::ObjectFromPList(oo::PList::singleReal((float)([self fuelLeakRate])));
 }
 
 
@@ -2652,7 +2693,7 @@ static int shipsFound;
 	}
 
 	// check conditions..
-	success = TestScriptConditions(OOSanitizeLegacyScriptConditions(conditions, @"<scene dictionary conditions>"));
+	success = TestScriptConditions(OOSanitizeLegacyScriptConditions(oo::PListFrom(conditions), "<scene dictionary conditions>"));
 
 	// perform successful actions...
 	if ((success) && (actions) && [actions count])
@@ -3001,16 +3042,16 @@ static int shipsFound;
 @end
 
 
-NSString *OOComparisonTypeToString(OOComparisonType type)
+std::string cxx_OOComparisonTypeToString(OOComparisonType type)
 {
 	switch (type)
 	{
-		case COMPARISON_EQUAL:			return @"equal";
-		case COMPARISON_NOTEQUAL:		return @"notequal";
-		case COMPARISON_LESSTHAN:		return @"lessthan";
-		case COMPARISON_GREATERTHAN:	return @"greaterthan";
-		case COMPARISON_ONEOF:			return @"oneof";
-		case COMPARISON_UNDEFINED:		return @"undefined";
+		case COMPARISON_EQUAL:			return "equal";
+		case COMPARISON_NOTEQUAL:		return "notequal";
+		case COMPARISON_LESSTHAN:		return "lessthan";
+		case COMPARISON_GREATERTHAN:	return "greaterthan";
+		case COMPARISON_ONEOF:			return "oneof";
+		case COMPARISON_UNDEFINED:		return "undefined";
 	}
-	return @"<error: invalid comparison type>";
+	return "<error: invalid comparison type>";
 }

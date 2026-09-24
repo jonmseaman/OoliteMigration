@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 #import "OOSoundSourcePool.h"
 #import "OOMaths.h"
 #import "OOEquipmentType.h"
+#import "GameController.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
@@ -473,9 +474,7 @@ std::string WeaponSoundKey(const OOWeaponSoundMap &sounds, const std::string &we
 		[sAfterburnerSources[which] play];
 		which = !which;
 		
-		[self performSelector:@selector(updateAfterburnerSound)
-				   withObject:NULL
-				   afterDelay:1.25];	// and swap sounds in 1.25s time
+		OOScheduleDeferredCall(self, @selector(updateAfterburnerSound), nil, 1.25);	// and swap sounds in 1.25s time
 	}
 }
 

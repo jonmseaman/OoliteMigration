@@ -895,6 +895,14 @@ NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
 }
 #endif
 
+#ifdef __cplusplus
+#include "oofnd/StdLib.hpp"
+
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.162): nullopt where the
+// Foundation forms above (which forward to them) gave nil.
+std::optional<std::string> cxx_OODisplayStringFromGovernmentID(OOGovernmentID government);
+std::optional<std::string> cxx_OODisplayStringFromEconomyID(OOEconomyID economy);
+#endif
 
 /*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
 	declared before bead oo-3rb.220 (the Universe sweep oo-3rb.79, chunk 1), forwarding to the
