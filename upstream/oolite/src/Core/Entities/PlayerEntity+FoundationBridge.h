@@ -62,6 +62,22 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (NSArray *) scannedWormholes;	// -> -cxx_scannedWormholes
 - (void) setLastShot:(NSArray *)shot;	// -> -cxx_setLastShot:
 
+// oo-3rb.245: custom views, screen background descriptors and script-defined keys
+- (NSDictionary *) keyConfig;	// -> -cxx_keyConfig
+- (NSString *)customViewDescription;	// -> -cxx_customViewDescription
+- (void)setCustomViewDataFromDictionary:(NSDictionary*) viewDict withScaling:(BOOL)withScaling;	// -> -cxx_setCustomViewDataFromDictionary:withScaling:
+- (NSDictionary *) missionOverlayDescriptor;	// -> -cxx_missionOverlayDescriptor
+- (NSDictionary *) missionOverlayDescriptorOrDefault;	// -> -cxx_missionOverlayDescriptorOrDefault
+- (void) setMissionOverlayDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setMissionOverlayDescriptor:
+- (NSDictionary *) missionBackgroundDescriptor;	// -> -cxx_missionBackgroundDescriptor
+- (NSDictionary *) missionBackgroundDescriptorOrDefault;	// -> -cxx_missionBackgroundDescriptorOrDefault
+- (void) setMissionBackgroundDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setMissionBackgroundDescriptor:
+- (void) setMissionBackgroundSpecial:(NSString *)special;	// -> -cxx_setMissionBackgroundSpecial:
+- (void) setExtraMissionKeys:(NSDictionary *)keys;	// -> -cxx_setExtraMissionKeys:
+- (void) clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(NSString *)key;	// -> -cxx_clearExtraGuiScreenKeys:key:
+- (NSDictionary *) equipScreenBackgroundDescriptor;	// -> -cxx_equipScreenBackgroundDescriptor
+- (void) setEquipScreenBackgroundDescriptor:(NSDictionary *)descriptor;	// -> -cxx_setEquipScreenBackgroundDescriptor:
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H
