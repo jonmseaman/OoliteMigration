@@ -209,79 +209,79 @@ static NSTimeInterval	time_last_frame;
 
 - (void) initControls
 {
-	[keyCodeLookups release];
-	// all entries in this dict must be in lowercase
-	keyCodeLookups = [[NSDictionary alloc] initWithObjectsAndKeys:
-		[NSNumber numberWithUnsignedShort:gvArrowKeyLeft], @"arrowleft", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyLeft], @"leftarrow", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyLeft], @"left", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyRight], @"arrowright", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyRight], @"rightarrow", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyRight], @"right", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyUp], @"arrowup", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyUp], @"uparrow", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyUp], @"up", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyDown], @"arrowdown", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyDown], @"downarrow", 
-		[NSNumber numberWithUnsignedShort:gvArrowKeyDown], @"down", 
-		[NSNumber numberWithUnsignedShort:gvPageUpKey], @"pageup", 
-		[NSNumber numberWithUnsignedShort:gvPageDownKey], @"pagedown", 
-		[NSNumber numberWithUnsignedShort:13], @"enter", 
-		[NSNumber numberWithUnsignedShort:13], @"return", 
-		[NSNumber numberWithUnsignedShort:27], @"escape", 
-		[NSNumber numberWithUnsignedShort:27], @"esc", 
-		[NSNumber numberWithUnsignedShort:9], @"tab", 
-		[NSNumber numberWithUnsignedShort:32], @"space", 
-		[NSNumber numberWithUnsignedShort:32], @"spc", 
-		[NSNumber numberWithUnsignedShort:gvHomeKey], @"home", 
-		[NSNumber numberWithUnsignedShort:gvEndKey], @"end", 
-		[NSNumber numberWithUnsignedShort:gvDeleteKey], @"delete", 
-		[NSNumber numberWithUnsignedShort:gvDeleteKey], @"del", 
-		[NSNumber numberWithUnsignedShort:gvBackspaceKey], @"backspace", 
-		[NSNumber numberWithUnsignedShort:gvBackspaceKey], @"backspc", 
-		[NSNumber numberWithUnsignedShort:gvBackspaceKey], @"bkspace", 
-		[NSNumber numberWithUnsignedShort:gvBackspaceKey], @"bkspc", 
-		[NSNumber numberWithUnsignedShort:gvInsertKey], @"insert", 
-		[NSNumber numberWithUnsignedShort:gvInsertKey], @"ins", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey1], @"f1", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey2], @"f2", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey3], @"f3", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey4], @"f4", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey5], @"f5", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey6], @"f6", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey7], @"f7", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey8], @"f8", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey9], @"f9", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey10], @"f10", 
-		[NSNumber numberWithUnsignedShort:gvFunctionKey11], @"f11", 
-		[NSNumber numberWithUnsignedShort:gvPauseKey], @"pause",
-		[NSNumber numberWithUnsignedShort:gvPrintScreenKey], @"printscreen",
-		[NSNumber numberWithUnsignedShort:gvPrintScreenKey], @"prtscrn",
-		[NSNumber numberWithUnsignedShort:gvPrintScreenKey], @"prntscrn",
-		[NSNumber numberWithUnsignedShort:gvPrintScreenKey], @"prtscn",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey0], @"numpad0", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey1], @"numpad1", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey2], @"numpad2", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey3], @"numpad3", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey4], @"numpad4", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey5], @"numpad5", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey6], @"numpad6", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey7], @"numpad7", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey8], @"numpad8", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKey9], @"numpad9", 
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyDivide], @"numpad/",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyDivide], @"numpaddivide",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyMultiply], @"numpad*",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyMultiply], @"numpadmultiply",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyMinus], @"numpad-",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyMinus], @"numpadminus",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyPlus], @"numpad+",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyPlus], @"numpadplus",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyPeriod], @"numpad.",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyPeriod], @"numpadperiod",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyEquals], @"numpad=",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyEquals], @"numpadequals",
-		[NSNumber numberWithUnsignedShort:gvNumberPadKeyEnter], @"numpadenter", nil];
+	// all entries in this map must be in lowercase
+	keyCodeLookups = {
+		{ "arrowleft", gvArrowKeyLeft },
+		{ "leftarrow", gvArrowKeyLeft },
+		{ "left", gvArrowKeyLeft },
+		{ "arrowright", gvArrowKeyRight },
+		{ "rightarrow", gvArrowKeyRight },
+		{ "right", gvArrowKeyRight },
+		{ "arrowup", gvArrowKeyUp },
+		{ "uparrow", gvArrowKeyUp },
+		{ "up", gvArrowKeyUp },
+		{ "arrowdown", gvArrowKeyDown },
+		{ "downarrow", gvArrowKeyDown },
+		{ "down", gvArrowKeyDown },
+		{ "pageup", gvPageUpKey },
+		{ "pagedown", gvPageDownKey },
+		{ "enter", 13 },
+		{ "return", 13 },
+		{ "escape", 27 },
+		{ "esc", 27 },
+		{ "tab", 9 },
+		{ "space", 32 },
+		{ "spc", 32 },
+		{ "home", gvHomeKey },
+		{ "end", gvEndKey },
+		{ "delete", gvDeleteKey },
+		{ "del", gvDeleteKey },
+		{ "backspace", gvBackspaceKey },
+		{ "backspc", gvBackspaceKey },
+		{ "bkspace", gvBackspaceKey },
+		{ "bkspc", gvBackspaceKey },
+		{ "insert", gvInsertKey },
+		{ "ins", gvInsertKey },
+		{ "f1", gvFunctionKey1 },
+		{ "f2", gvFunctionKey2 },
+		{ "f3", gvFunctionKey3 },
+		{ "f4", gvFunctionKey4 },
+		{ "f5", gvFunctionKey5 },
+		{ "f6", gvFunctionKey6 },
+		{ "f7", gvFunctionKey7 },
+		{ "f8", gvFunctionKey8 },
+		{ "f9", gvFunctionKey9 },
+		{ "f10", gvFunctionKey10 },
+		{ "f11", gvFunctionKey11 },
+		{ "pause", gvPauseKey },
+		{ "printscreen", gvPrintScreenKey },
+		{ "prtscrn", gvPrintScreenKey },
+		{ "prntscrn", gvPrintScreenKey },
+		{ "prtscn", gvPrintScreenKey },
+		{ "numpad0", gvNumberPadKey0 },
+		{ "numpad1", gvNumberPadKey1 },
+		{ "numpad2", gvNumberPadKey2 },
+		{ "numpad3", gvNumberPadKey3 },
+		{ "numpad4", gvNumberPadKey4 },
+		{ "numpad5", gvNumberPadKey5 },
+		{ "numpad6", gvNumberPadKey6 },
+		{ "numpad7", gvNumberPadKey7 },
+		{ "numpad8", gvNumberPadKey8 },
+		{ "numpad9", gvNumberPadKey9 },
+		{ "numpad/", gvNumberPadKeyDivide },
+		{ "numpaddivide", gvNumberPadKeyDivide },
+		{ "numpad*", gvNumberPadKeyMultiply },
+		{ "numpadmultiply", gvNumberPadKeyMultiply },
+		{ "numpad-", gvNumberPadKeyMinus },
+		{ "numpadminus", gvNumberPadKeyMinus },
+		{ "numpad+", gvNumberPadKeyPlus },
+		{ "numpadplus", gvNumberPadKeyPlus },
+		{ "numpad.", gvNumberPadKeyPeriod },
+		{ "numpadperiod", gvNumberPadKeyPeriod },
+		{ "numpad=", gvNumberPadKeyEquals },
+		{ "numpadequals", gvNumberPadKeyEquals },
+		{ "numpadenter", gvNumberPadKeyEnter },
+	};
 
 	keyShiftText = [DESC(@"oolite-keyconfig-shift") retain];
 	keyMod1Text = [DESC(@"oolite-keyconfig-mod1") retain];
@@ -524,78 +524,75 @@ static NSTimeInterval	time_last_frame;
 }
 
 
-- (NSArray*) processKeyCode:(NSArray*)key_def
+- (oo::PList) cxx_processKeyCode:(const oo::PList &)key_def
 {
-	int i;
-	id				key = nil, value = nil;
-	int				iValue;
-	unsigned char	keychar;
-	NSString		*keystring = nil;
-	NSDictionary	*def = nil;
-	NSMutableArray	*newList = [[NSMutableArray alloc] init];
+	oo::PList::Array newList;
 
-	for (i = 0; i < [key_def count]; i++) 
+	for (std::size_t i = 0; i < key_def.count(); i++)
 	{
-		def = [key_def objectAtIndex:i];
-		if ([def count] == 0) continue; // skip this if the definition is empty
-		value = [def objectForKey:@"key"];
-		iValue = [value intValue];
+		const oo::PList &def = *key_def.at(i);
+		if (def.count() == 0) continue; // skip this if the definition is empty
+		const oo::PList *value = def.find("key");
+		// -intValue: a string's leading integer, a number truncated, nil 0
+		int iValue = 0;
+		if (value != nullptr && value->isString())  iValue = oo::str::intValue(*value->getIf<std::string>());
+		else if (value != nullptr)  iValue = static_cast<int>(value->int64Value());
 
 		// we're going to fully expand all the shift/mod1/mod2 properties for all the key setting with defaults
 		// to avoid the need to check for the presence of a property during game loops
-		NSMutableDictionary *defNew = [[NSMutableDictionary alloc] init];
-		if ([def objectForKey:@"shift"]) [defNew setObject:[def objectForKey:@"shift"] forKey:@"shift"]; else [defNew setObject:[NSNumber numberWithBool:NO] forKey:@"shift"];
-		if ([def objectForKey:@"mod1"]) [defNew setObject:[def objectForKey:@"mod1"] forKey:@"mod1"]; else [defNew setObject:[NSNumber numberWithBool:NO] forKey:@"mod1"];
-		if ([def objectForKey:@"mod2"]) [defNew setObject:[def objectForKey:@"mod2"] forKey:@"mod2"]; else [defNew setObject:[NSNumber numberWithBool:NO] forKey:@"mod2"];
+		oo::PList::Dict defNew;
+		for (const char *modifier : { "shift", "mod1", "mod2" })
+		{
+			const oo::PList *setting = def.find(modifier);
+			defNew[modifier] = setting != nullptr ? *setting : oo::PList(false);
+		}
 
 		//	for '0' '1' '2' '3' '4' '5' '6' '7' '8' '9' - we want to interpret those as strings - not numbers
 		//	alphabetical characters and symbols will return an intValue of 0.
 		
-		if ([value isKindOfClass:[NSString class]] && (iValue < 10))
+		if (value != nullptr && value->isString() && (iValue < 10))
 		{
-			keystring = value;
+			const std::string &keystring = *value->getIf<std::string>();
+			const std::size_t length = oo::str::length(keystring);	// UTF-16 units, as -length
 
 			// check for a named lookup
-			if ([keystring length] != 0)
+			if (length != 0)
 			{
-				int checkVal;
-				checkVal = [[keyCodeLookups objectForKey:[keystring lowercaseString]] intValue];
+				const auto lookup = keyCodeLookups.find(oo::str::lowercase(keystring));
+				int checkVal = lookup != keyCodeLookups.end() ? lookup->second : 0;
 				if (checkVal > 0) {
 					iValue = checkVal;
 
-					[defNew setObject:[NSNumber numberWithUnsignedShort:iValue] forKey:@"key"];
-					[newList addObject:defNew];
-					[defNew release];
+					defNew["key"] = oo::PList::unsignedInteger(iValue);	// was +numberWithUnsignedShort:
+					newList.push_back(oo::PList(std::move(defNew)));
 					continue;
 				}
 			}
 
-			if ([keystring length] == 1 || (iValue == 0 && [keystring length] != 0))
+			unsigned char	keychar;
+			if (length == 1 || (iValue == 0 && length != 0))
 			{
-				keychar = [keystring characterAtIndex:0] & 0x00ff; // uses lower byte of unichar
+				keychar = oo::utf8ToUtf16(keystring)[0] & 0x00ff; // uses lower byte of unichar
 			}
 			else if (iValue <= 0xFF) keychar = iValue;
 			else {
-				OOLogWARN(@"testing", @"continue hit for key %@.", key);
-				[defNew setObject:[def objectForKey:@"key"] forKey:@"key"];
-				[newList addObject:defNew];
-				[defNew release];
+				OOLogWARN(@"testing", @"continue hit for key %@.", nil);
+				defNew["key"] = *value;
+				newList.push_back(oo::PList(std::move(defNew)));
 				continue;
 			}
 		
-			[defNew setObject:[NSNumber numberWithUnsignedShort:keychar] forKey:@"key"];
-			[newList addObject:defNew];
-			[defNew release];
+			defNew["key"] = oo::PList::unsignedInteger(keychar);	// was +numberWithUnsignedShort:
+			newList.push_back(oo::PList(std::move(defNew)));
 		} 
 		else 
 		{
-			[defNew setObject:[def objectForKey:@"key"] forKey:@"key"];
-			[newList addObject:defNew];
-			[defNew release];
+			if (value != nullptr)  defNew["key"] = *value;	// (a missing key raised in -setObject:forKey:)
+			newList.push_back(oo::PList(std::move(defNew)));
 		}
 	}
 
-	return newList;
+	return oo::PList(std::move(newList));
 }
 
 
@@ -1659,7 +1656,7 @@ static NSTimeInterval	time_last_frame;
 				
 				exceptionContext = @"dump cargo";
 				//  shoot 'd'   // Dump Cargo
-				if (([self checkKeyPress:n_key_dump_cargo] || joyButtonState[BUTTON_JETTISON]) && [cargo count] > 0)
+				if (([self checkKeyPress:n_key_dump_cargo] || joyButtonState[BUTTON_JETTISON]) && [self cxx_cargoCount] > 0)
 				{
 					[self dumpCargo];
 				}
@@ -1668,7 +1665,7 @@ static NSTimeInterval	time_last_frame;
 				//  shoot 'R'   // Rotate Cargo
 				if ([self checkKeyPress:n_key_rotate_cargo] || joyButtonState[BUTTON_ROTATECARGO])
 				{
-					if ((!rotateCargo_pressed)&&([cargo count] > 0))
+					if ((!rotateCargo_pressed)&&([self cxx_cargoCount] > 0))
 						[self rotateCargo];
 					rotateCargo_pressed = YES;
 				}
@@ -2508,14 +2505,14 @@ static NSTimeInterval	time_last_frame;
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = [self commanderSelector];
+			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
-				
-				[self loadPlayerFromFile:commanderFile asNew:NO];
+
+				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
 			}
 			break;
 		}
@@ -2877,7 +2874,7 @@ static NSTimeInterval	time_last_frame;
 			{
 				if (!spacePressed)
 				{
-					BOOL reportEnded = ([dockingReport length] == 0);
+					BOOL reportEnded = dockingReport.empty();
 					[self playDismissedReportScreen];
 					if(reportEnded)
 					{
@@ -5159,7 +5156,7 @@ static BOOL autopilot_pause;
 					if ([oxzmanager isAcceptingTextInput])
 					{
 						[gameView setStringInput: gvStringInputAll];
-						[oxzmanager refreshTextInput:[gameView typedString]];
+						[oxzmanager refreshTextInput:[gameView cxx_typedString].value_or(std::string())];
 					}
 					else
 					{
@@ -5192,7 +5189,7 @@ static BOOL autopilot_pause;
 						{
 							if ([oxzmanager isAcceptingTextInput])
 							{
-								[oxzmanager processTextInput:[gameView typedString]];
+								[oxzmanager processTextInput:[gameView cxx_typedString].value_or(std::string())];
 							}
 							else
 							{
@@ -5335,14 +5332,14 @@ static BOOL autopilot_pause;
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = [self commanderSelector];
+			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
-				
-				[self loadPlayerFromFile:commanderFile asNew:NO];
+
+				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
 			}
 			break;
 		}
@@ -5615,7 +5612,7 @@ static BOOL autopilot_pause;
 		for (subEnum = [ts dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
-			if([[sub canAcceptShipForDocking:self] isEqualToString:@"TOO_BIG_TO_DOCK"]) 
+			if([sub canAcceptShipForDocking:self] == "TOO_BIG_TO_DOCK")
 			{
 				message = OOExpandKey((ts == [UNIVERSE station]) ? @"autopilot-denied" : @"autopilot-target-docking-instructions-denied", stationName);
 				goto abort;
