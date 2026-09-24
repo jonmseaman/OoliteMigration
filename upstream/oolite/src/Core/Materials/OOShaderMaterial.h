@@ -31,6 +31,7 @@ SOFTWARE.
 #import "OOWeakReference.h"
 #import "OOMaths.h"
 #include "oofnd/objc/OOObjCRef.h"
+#include "oofnd/PList.hpp"
 
 #include <map>
 #include <optional>
@@ -147,7 +148,7 @@ typedef uint16_t OOUniformConvertOptions;
 - (void) setUniform:(const std::string &)uniformName intValue:(int)value;
 - (void) setUniform:(const std::string &)uniformName floatValue:(float)value;
 - (void) setUniform:(const std::string &)uniformName vectorValue:(GLfloat[4])value;
-- (void) setUniform:(const std::string &)uniformName vectorObjectValue:(id)value;	// Array of four numbers, or something that can be OOVectorFromObject()ed.
+- (void) setUniform:(const std::string &)uniformName vectorObjectValue:(const oo::PList &)value;	// Array of four numbers, or something that can be OOVectorFromObject()ed.
 - (void) setUniform:(const std::string &)uniformName quaternionValue:(Quaternion)value asMatrix:(BOOL)asMatrix;
 
 /*	Add constant uniforms. Same format as uniforms dictionary of configuration
@@ -158,7 +159,7 @@ typedef uint16_t OOUniformConvertOptions;
 	any random bindings:
 		- (uint32_t) randomSeedForShaders;
 */
--(void) addUniformsFromDictionary:(NSDictionary *)uniformDefs withBindingTarget:(id<OOWeakReferenceSupport>)target;
+-(void) addUniformsFromDictionary:(const oo::PList &)uniformDefs withBindingTarget:(id<OOWeakReferenceSupport>)target;
 
 @end
 

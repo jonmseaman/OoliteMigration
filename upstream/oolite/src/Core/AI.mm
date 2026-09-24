@@ -34,6 +34,9 @@ MA 02110-1301, USA.
 
 #import "ShipEntity.h"
 #import "ShipEntityAI.h"
+#import "GameController.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOFoundationBridge.h"
 
@@ -55,7 +58,7 @@ typedef struct
 } OOAIDeferredCallTrampolineInfo;
 
 
-/*	Carries the trampoline info through -performSelector:withObject:afterDelay:,
+/*	Carries the trampoline info through OOScheduleDeferredCall(),
 	which retains it until the call fires, as it did the value box that held the
 	struct before (bead oo-3rb.48).
 */
@@ -89,7 +92,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 
 @interface AI (OOPrivate)
 
-// Wrapper for performSelector:withObject:afterDelay: to catch/fix bugs.
+// Wrapper for a deferred call (OOScheduleDeferredCall) to catch/fix bugs.
 - (void) performDeferredCall:(SEL)selector withObject:(id)object afterDelay:(NSTimeInterval)delay;
 + (void) deferredCallTrampolineWithInfo:(OOAIDeferredCallTrampolineInfoHolder *)info;
 // The target of -cxx_setState:afterDelay:'s deferred call: stateName is an Objective-C string.
@@ -266,8 +269,8 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 	{
 		[self reportStackOverflow];
 		
-		[NSException raise:@"OoliteException"
-					format:@"AI stack overflow for %@", _owner];
+		[OOException raise:"OoliteException"
+					format:"AI stack overflow for %s", [[_owner description] UTF8String]];
 	}
 	
 	const oo::PList *script = stateMachine.find("jsScript");
@@ -518,7 +521,11 @@ static AIStackElement *sStack = NULL;
 				[self cxx_takeAction:actions.at<std::string>(i)];
 			}
 		}
-		@catch (NSException *exception)
+		@catch (OOException *exception)
+		{
+			OOLog(kOOLogException, @"Squashing exception %@:%@ in AI handler %@:%@.%@", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]), oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(currentState), oo::NSStringFrom(message));
+		}
+		@catch (OOFoundationException *exception)
 		{
 			OOLog(kOOLogException, @"Squashing exception %@:%@ in AI handler %@:%@.%@", [exception name], [exception reason], oo::NSStringFrom(stateMachineName), oo::NSStringOrNil(currentState), oo::NSStringFrom(message));
 		}
@@ -763,9 +770,7 @@ static AIStackElement *sStack = NULL;
 		info = [[OOAIDeferredCallTrampolineInfoHolder alloc] init];
 		info->info = infoStruct;
 		
-		[[AI class] performSelector:@selector(deferredCallTrampolineWithInfo:)
-						 withObject:info
-						 afterDelay:delay];
+		OOScheduleDeferredCall([AI class], @selector(deferredCallTrampolineWithInfo:), info, delay);
 		[info release];
 	}
 }
