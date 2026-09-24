@@ -1358,3 +1358,8 @@ OOGUIScreenID cxx_OOGUIScreenIDFromString(const std::string &string);
 
 OOGalacticHyperspaceBehaviour cxx_OOGalacticHyperspaceBehaviourFromString(const std::string &string);
 std::string cxx_OOStringFromGalacticHyperspaceBehaviour(OOGalacticHyperspaceBehaviour behaviour);
+
+// Rating and legal-status names from descriptions.plist (chunk oo-3rb.162); nullopt: missing (was nil).
+std::optional<std::string> cxx_OODisplayRatingStringFromKillCount(unsigned kills);
+std::string cxx_KillCountToRatingAndKillString(unsigned kills);
+std::optional<std::string> cxx_OODisplayStringFromLegalStatus(int legalStatus);
