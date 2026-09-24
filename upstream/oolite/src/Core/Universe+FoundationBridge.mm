@@ -73,6 +73,95 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return oo::NSStringOrNil([self cxx_descriptionForArrayKey:oo::StdString(key) index:index]);
 }
 
+
+// Chunk 2 (oo-3rb.221). Dictionaries are fresh immutable copies per call (the old ones came from
+// the system description manager, which also built them per call).
+
+- (NSString *) keyForPlanetOverridesForSystem:(OOSystemID) s inGalaxy:(OOGalaxyID) g
+{
+	return oo::NSStringOrNil([self cxx_keyForPlanetOverridesForSystem:s inGalaxy:g]);
+}
+
+
+- (NSDictionary *) generateSystemData:(OOSystemID) s
+{
+	return oo::ObjectFromPList([self cxx_generateSystemData:s]);
+}
+
+
+- (NSDictionary *) generateSystemData:(OOSystemID) s useCache:(BOOL) useCache
+{
+	return oo::ObjectFromPList([self cxx_generateSystemData:s useCache:useCache]);
+}
+
+
+- (NSDictionary *) currentSystemData
+{
+	return oo::ObjectFromPList([self cxx_currentSystemData]);
+}
+
+
+// A nil key compared equal to nothing, as "" does; a nil manifest stays nullopt.
+- (void) setSystemDataKey:(NSString*) key value:(NSObject*) object fromManifest:(NSString *)manifest
+{
+	[self cxx_setSystemDataKey:oo::StdString(key) value:object fromManifest:oo::OptionalString(manifest)];
+}
+
+
+- (void) setSystemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(NSString *)key value:(id)object fromManifest:(NSString *)manifest forLayer:(OOSystemLayer)layer
+{
+	[self cxx_setSystemDataForGalaxy:gnum planet:pnum key:oo::StdString(key) value:object fromManifest:oo::OptionalString(manifest) forLayer:layer];
+}
+
+
+- (id) systemDataForGalaxy:(OOGalaxyID) gnum planet:(OOSystemID) pnum key:(NSString *)key
+{
+	return [self cxx_systemDataForGalaxy:gnum planet:pnum key:oo::StdString(key)];
+}
+
+
+- (NSArray *) systemDataKeysForGalaxy:(OOGalaxyID)gnum planet:(OOSystemID)pnum
+{
+	return oo::NSArrayFromStrings([self cxx_systemDataKeysForGalaxy:gnum planet:pnum]);
+}
+
+
+- (NSString *) getSystemName:(OOSystemID) sys
+{
+	return oo::NSStringOrNil([self cxx_getSystemName:sys]);
+}
+
+
+- (NSString *) getSystemName:(OOSystemID) sys forGalaxy:(OOGalaxyID) gnum
+{
+	return oo::NSStringOrNil([self cxx_getSystemName:sys forGalaxy:gnum]);
+}
+
+
+- (NSString *) getSystemInhabitants:(OOSystemID) sys
+{
+	return oo::NSStringOrNil([self cxx_getSystemInhabitants:sys]);
+}
+
+
+- (NSString *) getSystemInhabitants:(OOSystemID) sys plural:(BOOL)plural
+{
+	return oo::NSStringOrNil([self cxx_getSystemInhabitants:sys plural:plural]);
+}
+
+
+- (OOSystemID) findSystemFromName:(NSString *) sysName
+{
+	if (sysName == nil) return -1;	// no match found!
+	return [self cxx_findSystemFromName:oo::StdString(sysName)];
+}
+
+
+- (NSString*) systemNameIndex:(OOSystemID) index
+{
+	return oo::NSStringOrNil([self cxx_systemNameIndex:index]);
+}
+
 @end
 
 
