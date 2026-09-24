@@ -13486,7 +13486,7 @@ else _dockTarget = NO_TARGET;
 {
 	return missionChoice &&
 	!commanderNameString.empty() &&
-	cdrDetailArray &&
+	!cdrDetailArray.empty() &&
 	currentPage &&
 	n_key_roll_left &&
 	n_key_roll_right &&
