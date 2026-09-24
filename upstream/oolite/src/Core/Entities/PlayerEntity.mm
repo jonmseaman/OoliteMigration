@@ -1086,8 +1086,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 	// passengers
 	[result oo_setInteger:max_passengers forKey:@"max_passengers"];
-	[result setObject:passengers forKey:@"passengers"];
-	[result setObject:passenger_record forKey:@"passenger_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(passengers)) forKey:@"passengers"];
+	[result setObject:oo::ObjectFromPList(oo::PList(passenger_record)) forKey:@"passenger_record"];
 
 	// parcels
 	[result setObject:parcels forKey:@"parcels"];
@@ -1432,14 +1432,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	// passengers and contracts
 	[parcels release];
 	[parcel_record release];
-	[passengers release];
-	[passenger_record release];
 	[contracts release];
 	[contract_record release];
 	
 	max_passengers = oo::PListView(dict).get<int>(@"max_passengers", 0);
-	passengers = [oo::PListView(dict).get<NSArray *>(@"passengers") mutableCopy];
-	passenger_record = [oo::PListView(dict).get<NSDictionary *>(@"passenger_record") mutableCopy];
+	const oo::PList savedPassengers = oo::PListFrom([dict objectForKey:@"passengers"]);
+	passengers = savedPassengers.isArray() ? *savedPassengers.getIf<oo::PList::Array>() : oo::PList::Array();	// -oo_arrayForKey:, empty if none
+	const oo::PList savedPassengerRecord = oo::PListFrom([dict objectForKey:@"passenger_record"]);
+	passenger_record = savedPassengerRecord.isDict() ? *savedPassengerRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();
 	/* Note: contracts from older savegames will have ints in the commodity.
 	 * Need to fix this up */
 	contracts = [oo::PListView(dict).get<NSArray *>(@"contracts") mutableCopy];
@@ -1475,8 +1475,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 	
 	
-	if (passengers == nil)  passengers = [[NSMutableArray alloc] init];
-	if (passenger_record == nil)  passenger_record = [[NSMutableDictionary alloc] init];
 	if (contracts == nil)  contracts = [[NSMutableArray alloc] init];
 	if (contract_record == nil)  contract_record = [[NSMutableDictionary alloc] init];
 	if (parcels == nil)  parcels = [[NSMutableArray alloc] init];
@@ -1516,13 +1514,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	max_cargo -= max_passengers * PASSENGER_BERTH_SPACE;
 	
 	// Do we have extra passengers?
-	if (passengers && ([passengers count] > max_passengers))
+	if (passengers.size() > max_passengers)
 	{
-		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.passengers", @"player ship %@ had more passengers (%zu) than passenger berths (%u). Removing extra passengers.", [self name], [passengers count], max_passengers);
-		for (NSInteger i = (NSInteger)[passengers count] - 1; i >= max_passengers; i--)
+		OOLogWARN(@"setCommanderDataFromDictionary.inconsistency.passengers", @"player ship %@ had more passengers (%zu) than passenger berths (%u). Removing extra passengers.", [self name], passengers.size(), max_passengers);
+		for (NSInteger i = (NSInteger)passengers.size() - 1; i >= max_passengers; i--)
 		{
-			[passenger_record removeObjectForKey:oo::PListView(oo::PListView(passengers).at<NSDictionary *>(i)).get<NSString *>(PASSENGER_KEY_NAME)];
-			[passengers removeObjectAtIndex:i];
+			const oo::PList *passengerName = passengers[i].find(oo::StdString(PASSENGER_KEY_NAME));
+			if (passengerName != nullptr && (passengerName->isString() || passengerName->isNumber()))  passenger_record.erase(passengers[i].get<std::string>(oo::StdString(PASSENGER_KEY_NAME)));	// -oo_stringForKey:
+			passengers.erase(passengers.begin() + i);
 		}
 	}
 	
@@ -2046,10 +2045,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	flightYaw = 0.0f;
 
 	max_passengers = 0;
-	[passengers release];
-	passengers = [[NSMutableArray alloc] init];
-	[passenger_record release];
-	passenger_record = [[NSMutableDictionary alloc] init];
+	passengers.clear();
+	passenger_record.clear();
 	
 	[contracts release];
 	contracts = [[NSMutableArray alloc] init];
@@ -2412,8 +2409,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(roleWeights);
 	DESTROY(roleWeightFlags);
 	DESTROY(roleSystemList);
-	DESTROY(passengers);
-	DESTROY(passenger_record);
 	DESTROY(contracts);
 	DESTROY(contract_record);
 	DESTROY(parcels);
@@ -7553,15 +7548,14 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 		[missionDestinations removeAllObjects];
 	
 	// expire passenger contracts for the old galaxy
-	if (passengers)
 	{
 		unsigned i;
-		for (i = 0; i < [passengers count]; i++)
+		for (i = 0; i < passengers.size(); i++)
 		{
 			// set the expected arrival time to now, so they storm off the ship at the first port
-			NSMutableDictionary* passenger_info = [NSMutableDictionary dictionaryWithDictionary:oo::PListView(passengers).at<NSDictionary *>(i)];
-			[passenger_info setObject:[NSNumber numberWithDouble:ship_clock] forKey:CONTRACT_KEY_ARRIVAL_TIME];
-			[passengers replaceObjectAtIndex:i withObject:passenger_info];
+			oo::PList::Dict passenger_info = passengers[i].isDict() ? *passengers[i].getIf<oo::PList::Dict>() : oo::PList::Dict();
+			passenger_info[oo::StdString(CONTRACT_KEY_ARRIVAL_TIME)] = oo::PList(ship_clock);	// +numberWithDouble:
+			passengers[i] = oo::PList(std::move(passenger_info));
 		}
 	}
 
@@ -8460,7 +8454,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 
 - (NSArray *) passengerListForScripting
 {
-	return [self contractsListForScriptingFromArray:passengers forCargo:NO];
+	return [self contractsListForScriptingFromArray:oo::ObjectFromPList(oo::PList(passengers)) forCargo:NO];
 }
 
 
@@ -8730,9 +8724,9 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	OOSystemID sysid;
 	NSDictionary *marker;
 
-	for (i = 0; i < [passengers count]; i++)
+	for (i = 0; i < passengers.size(); i++)
 	{
-		sysid = oo::PListView(oo::PListView(passengers).at<NSDictionary *>(i)).get<unsigned char>(CONTRACT_KEY_DESTINATION);
+		sysid = passengers[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
 		marker = [self passengerContractMarker:sysid];
 		[self prepareMarkedDestination:destinations:marker];
 	}
@@ -11825,7 +11819,7 @@ static NSString *last_outfitting_key=nil;
 
 - (NSUInteger) passengerCount
 {
-	return [passengers count];
+	return passengers.size();
 }
 
 
