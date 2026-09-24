@@ -11960,7 +11960,7 @@ static NSString *last_outfitting_key=nil;
 		xchar = digramchars[0];
 		NSString *digramstring = [NSString stringWithCharacters:digramchars length:2];
 		[trumble[i] release];
-		trumble[i] = [[OOTrumble alloc] initForPlayer:self digram:digramstring];
+		trumble[i] = [[OOTrumble alloc] initForPlayer:self digram:oo::StdString(digramstring)];
 	}
 	
 	trumbleCount = 0;
@@ -12035,7 +12035,7 @@ static NSString *last_outfitting_key=nil;
 	NSMutableArray *trumbleArray = [NSMutableArray arrayWithCapacity:PLAYER_MAX_TRUMBLES];
 	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
 	{
-		[trumbleArray addObject:[trumble[i] dictionary]];
+		[trumbleArray addObject:oo::ObjectFromPList([trumble[i] dictionary])];
 	}
 	
 	return [NSArray arrayWithObjects:[NSNumber numberWithUnsignedInteger:trumbleCount], [NSNumber numberWithInt:trumbleHash], trumbleArray, nil];
@@ -12138,7 +12138,7 @@ static NSString *last_outfitting_key=nil;
 	if ((putativeTrumbleArray != nil) && ([putativeTrumbleArray count] == PLAYER_MAX_TRUMBLES))
 	{
 		for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
-			[trumble[i] setFromDictionary:oo::PListView(putativeTrumbleArray).at<NSDictionary *>(i)];
+			[trumble[i] setFromDictionary:oo::PListFrom(oo::PListView(putativeTrumbleArray).at<NSDictionary *>(i))];
 	}
 	
 	clear_checksum();
