@@ -154,7 +154,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 - (NSArray*) contractsListForScriptingFromArray:(NSArray *)contractsArray forCargo:(BOOL)forCargo;
 
 
-- (void) prepareMarkedDestination:(NSMutableDictionary *)markers :(NSDictionary *)marker;
 
 - (void) witchStart;
 - (void) witchJumpTo:(OOSystemID)sTo misjump:(BOOL)misjump;
@@ -1103,7 +1102,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[result setObject:missionDestinations forKey:@"mission_destinations"];
 
 	//shipyard
-	[result setObject:shipyard_record forKey:@"shipyard_record"];
+	[result setObject:oo::ObjectFromPList(oo::PList(shipyard_record)) forKey:@"shipyard_record"];
 
 	//ship's clock
 	[result setObject:[NSNumber numberWithDouble:ship_clock] forKey:@"ship_clock"];
@@ -1489,9 +1488,8 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[self initialiseMissionDestinations:newDestinations andLegacy:legacyDestinations];
 	
 	// shipyard
-	DESTROY(shipyard_record);
-	shipyard_record = [oo::PListView(dict).get<NSDictionary *>(@"shipyard_record") mutableCopy];
-	if (shipyard_record == nil)  shipyard_record = [[NSMutableDictionary alloc] init];
+	const oo::PList savedShipyardRecord = oo::PListFrom([dict objectForKey:@"shipyard_record"]);
+	shipyard_record = savedShipyardRecord.isDict() ? *savedShipyardRecord.getIf<oo::PList::Dict>() : oo::PList::Dict();	// -oo_dictionaryForKey:, empty if none
 	
 	// Normalize cargo capacity
 	unsigned	original_hold_size = [UNIVERSE maxCargoForShip:[self shipDataKey]];
@@ -2055,8 +2053,7 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	[missionDestinations release];
 	missionDestinations = [[NSMutableDictionary alloc] init];
 	
-	[shipyard_record release];
-	shipyard_record = [[NSMutableDictionary alloc] init];
+	shipyard_record.clear();
 	
 	[target_memory release];
 	target_memory = [[NSMutableArray alloc] initWithCapacity:PLAYER_TARGET_MEMORY_SIZE];
@@ -2403,7 +2400,6 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 	DESTROY(roleWeightFlags);
 	DESTROY(roleSystemList);
 	DESTROY(missionDestinations);
-	DESTROY(shipyard_record);
 	
 	DESTROY(_missionOverlayDescriptor);
 	DESTROY(_missionBackgroundDescriptor);
@@ -8687,57 +8683,50 @@ NSComparisonResult marketSorterByMassUnit(id a, id b, void *market);
 }
 
 
-- (void) prepareMarkedDestination:(NSMutableDictionary *)markers :(NSDictionary *)marker
+namespace
 {
-	NSNumber *key = [NSNumber numberWithInt:oo::PListView(marker).get<int>(@"system")];
-	NSMutableArray *list = [markers objectForKey:key];
-	if (list == nil)
-	{
-		list = [NSMutableArray arrayWithObject:marker];
-	}
-	else
-	{
-		[list addObject:marker];
-	}
-	[markers setObject:list forKey:key];
+
+// -prepareMarkedDestination:: appended the marker to the list for its "system" (the old
+// +numberWithInt: key), creating the list on first use.
+void PrepareMarkedDestination(std::map<int, std::vector<oo::PList>> &markers, oo::PList marker)
+{
+	const int system = marker.get<int>("system");
+	markers[system].push_back(std::move(marker));
 }
 
+}	// namespace
 
-- (NSDictionary *) markedDestinations
+
+- (std::optional<std::map<int, std::vector<oo::PList>>>) cxx_markedDestinations	// passengers, parcels, contracts, then mission destinations
 {
 	// get a list of systems marked as contract destinations
-	NSMutableDictionary	*destinations = [NSMutableDictionary dictionaryWithCapacity:256];
+	std::map<int, std::vector<oo::PList>>	destinations;
 	unsigned		i;
 	OOSystemID sysid;
-	NSDictionary *marker;
 
 	for (i = 0; i < passengers.size(); i++)
 	{
 		sysid = passengers[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
-		marker = [self passengerContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, [self cxx_passengerContractMarker:sysid]);
 	}
 	for (i = 0; i < parcels.size(); i++)
 	{
 		sysid = parcels[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
-		marker = [self parcelContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, [self cxx_parcelContractMarker:sysid]);
 	}
 	for (i = 0; i < contracts.size(); i++)
 	{
 		sysid = contracts[i].get<unsigned char>(oo::StdString(CONTRACT_KEY_DESTINATION));
-		marker = [self cargoContractMarker:sysid];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, [self cxx_cargoContractMarker:sysid]);
 	}
 
-	NSString					*key = nil;
-
-	foreachkey (key, missionDestinations)
+	// in the dictionary's own key order, as foreachkey walked it; a marker is plist data (any
+	// live object in it an Object node)
+	for (id key in missionDestinations)
 	{
-		marker = [missionDestinations objectForKey:key];
-		[self prepareMarkedDestination:destinations:marker];
+		PrepareMarkedDestination(destinations, oo::PListFrom([missionDestinations objectForKey:key]));
 	}
-	
+
 	return destinations;
 }
 
@@ -13310,9 +13299,9 @@ else _dockTarget = NO_TARGET;
 }
 
 
-- (NSMutableDictionary*) shipyardRecord
+- (oo::PList::Dict *) cxx_shipyardRecord
 {
-	return shipyard_record;
+	return &shipyard_record;
 }
 
 
