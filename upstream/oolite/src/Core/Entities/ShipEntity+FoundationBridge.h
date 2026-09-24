@@ -32,6 +32,17 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (void) deserializeShipSubEntitiesFrom:(NSString *)string;	// -> -cxx_deserializeShipSubEntitiesFrom:
 - (BOOL) setUpOneStandardSubentity:(NSDictionary *) subentDict asTurret:(BOOL)asTurret;	// -> -cxx_setUpOneStandardSubentity:asTurret:
 
+// oo-3rb.233: equipment
+- (NSUInteger) countEquipmentItem:(NSString *)eqkey;	// -> -cxx_countEquipmentItem:
+- (NSString *) equipmentItemProviding:(NSString *)equipmentType;	// -> -cxx_equipmentItemProviding:
+- (BOOL) hasEquipmentItemProviding:(NSString *)equipmentType;	// -> -cxx_hasEquipmentItemProviding:
+- (BOOL) equipmentValidToAdd:(NSString *)equipmentKey inContext:(NSString *)context;	// -> -cxx_equipmentValidToAdd:inContext:
+- (BOOL) equipmentValidToAdd:(NSString *)equipmentKey whileLoading:(BOOL)loading inContext:(NSString *)context;	// -> -cxx_equipmentValidToAdd:whileLoading:inContext:
+- (NSEnumerator *) equipmentEnumerator;	// -> -cxx_equipmentKeys
+- (BOOL) hasOneEquipmentItem:(NSString *)itemKey includeWeapons:(BOOL)includeMissiles whileLoading:(BOOL)loading;	// -> -cxx_hasOneEquipmentItem:includeWeapons:whileLoading:
+- (BOOL) hasOneEquipmentItem:(NSString *)itemKey includeMissiles:(BOOL)includeMissiles whileLoading:(BOOL)loading;	// -> -cxx_hasOneEquipmentItem:includeMissiles:whileLoading:
+- (NSArray *) equipmentListForScripting;	// -> -cxx_equipmentListForScripting
+
 @end
 
 #endif	// SHIPENTITY_FOUNDATIONBRIDGE_H
