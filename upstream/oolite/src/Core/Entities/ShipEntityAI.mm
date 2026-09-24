@@ -2404,12 +2404,12 @@ using ooscript::Context;
 		
 		// Stuff expression in a function.
 		predicateCode = [NSString stringWithFormat:@"return %@;", predicateExpression];
-		function = [[OOJSFunction alloc] initWithName:@"_oo_AIScanPredicate"
+		function = [[OOJSFunction alloc] initWithName:std::string("_oo_AIScanPredicate")
 												scope:NULL
-												 code:predicateCode
+												 code:oo::OptionalString(predicateCode)
 										argumentCount:1
 										argumentNames:argNames
-											 fileName:aiName
+											 fileName:oo::OptionalString(aiName)
 										   lineNumber:0
 											  context:context];
 		[function autorelease];
