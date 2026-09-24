@@ -201,6 +201,75 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return oo::NSStringOrNil([self cxx_shortTimeDescription:interval]);
 }
 
+
+// Chunk 4 (oo-3rb.223). A nil key or role found no ship (as "" finds none); the old methods
+// returned nil there too.
+
+- (NSString *) randomShipKeyForRoleRespectingConditions:(NSString *)role
+{
+	return oo::NSStringOrNil([self cxx_randomShipKeyForRoleRespectingConditions:oo::StdString(role)]);
+}
+
+
+- (ShipEntity *) newShipWithRole:(NSString *)role
+{
+	return [self cxx_newShipWithRole:oo::StdString(role)];
+}
+
+
+- (ShipEntity *) newShipWithName:(NSString *)shipKey
+{
+	return [self cxx_newShipWithName:oo::StdString(shipKey)];
+}
+
+
+- (ShipEntity *) newSubentityWithName:(NSString *)shipKey andScaleFactor:(float)scale
+{
+	return [self cxx_newSubentityWithName:oo::StdString(shipKey) andScaleFactor:scale];
+}
+
+
+- (OOVisualEffectEntity *) newVisualEffectWithName:(NSString *)effectKey
+{
+	return [self cxx_newVisualEffectWithName:oo::StdString(effectKey)];
+}
+
+
+- (DockEntity *) newDockWithName:(NSString *)shipKey andScaleFactor:(float)scale
+{
+	return [self cxx_newDockWithName:oo::StdString(shipKey) andScaleFactor:scale];
+}
+
+
+- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy
+{
+	return [self cxx_newShipWithName:oo::StdString(shipKey) usePlayerProxy:usePlayerProxy];
+}
+
+
+- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity
+{
+	return [self cxx_newShipWithName:oo::StdString(shipKey) usePlayerProxy:usePlayerProxy isSubentity:isSubentity];
+}
+
+
+- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale
+{
+	return [self cxx_newShipWithName:oo::StdString(shipKey) usePlayerProxy:usePlayerProxy isSubentity:isSubentity andScaleFactor:scale];
+}
+
+
+- (Class) shipClassForShipDictionary:(NSDictionary *)dict
+{
+	return [self cxx_shipClassForShipDictionary:oo::PListFrom(dict)];
+}
+
+
+- (ShipEntity *) addWreckageFrom:(ShipEntity *)ship withRole:(NSString *)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime
+{
+	return [self cxx_addWreckageFrom:ship withRole:oo::StdString(wreckRole) at:rpos scale:scale lifetime:lifetime];
+}
+
 @end
 
 

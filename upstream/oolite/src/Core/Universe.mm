@@ -898,7 +898,6 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[equipmentData release];
 	[equipmentDataOutfitting release];
 	[demo_ships release];
-	[autoAIMap release];
 	[screenBackgrounds release];
 	[gameView release];
 	[populatorSettings release];
@@ -3919,24 +3918,24 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 #define PROFILE_SHIP_SELECTION 0
 
 
-- (BOOL) canInstantiateShip:(NSString *)shipKey
+- (BOOL) canInstantiateShip:(const std::string &)shipKey
 {
-	NSDictionary			*shipInfo = nil;
-	NSArray					*conditions = nil;
-	NSString  *condition_script = nil;
-	shipInfo = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
+	oo::PList				shipInfo;
+	const oo::PList			*conditions = nullptr;
+	std::optional<std::string>	condition_script;
+	shipInfo = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
 
-	condition_script = oo::PListView(shipInfo).get<NSString *>(@"condition_script");
-	if (condition_script != nil)
+	condition_script = OptionalStringIn(shipInfo, "condition_script");
+	if (condition_script.has_value())
 	{
-		OOJSScript *condScript = [self getConditionScript:condition_script];
+		OOJSScript *condScript = [self getConditionScript:oo::NSStringFrom(*condition_script)];
 		if (condScript != nil) // should always be non-nil, but just in case
 		{
 			ooscript::Context context = OOJSAcquireContext();
 			BOOL OK;
 			bool allow_instantiation;
 			ooscript::Value result;
-			ooscript::Value args[] = { OOJSValueFromNativeObject(context, shipKey) };
+			ooscript::Value args[] = { OOJSValueFromNativeObject(context, oo::NSStringFrom(shipKey)) };
 			
 			OK = [condScript callMethod:OOJSID("allowSpawnShip")
 						  inContext:context
@@ -3957,20 +3956,20 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 		}
 	}
 
-	conditions = oo::PListView(shipInfo).get<NSArray *>(@"conditions");
-	if (conditions == nil)  return YES;
-	
-	// Check conditions
-	return [PLAYER scriptTestConditions:conditions];
+	conditions = shipInfo.get<oo::PList::Array>("conditions");
+	if (conditions == nullptr)  return YES;
+
+	// Check conditions (the legacy script engine is not migrated yet: it gets the array it read before)
+	return [PLAYER scriptTestConditions:oo::ObjectFromPList(*conditions)];
 }
 
 
-- (NSString *) randomShipKeyForRoleRespectingConditions:(NSString *)role
+- (std::optional<std::string>) cxx_randomShipKeyForRoleRespectingConditions:(const std::string &)role
 {
 	OOJS_PROFILE_ENTER
-	
+
 	OOShipRegistry			*registry = [OOShipRegistry sharedRegistry];
-	NSString				*shipKey = nil;
+	std::optional<std::string>	shipKey;
 	OOMutableProbabilitySet	*pset = nil;
 	
 #if PROFILE_SHIP_SELECTION
@@ -3979,8 +3978,9 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 #endif
 	
 	// Select a ship, check conditions and return it if possible.
-	shipKey = [registry randomShipKeyForRole:role];
-	if ([self canInstantiateShip:shipKey])  return shipKey;
+	shipKey = [registry cxx_randomShipKeyForRole:role];
+	if (!shipKey.has_value())  return std::nullopt;	// no ship has the role (a nil key passed the check and was returned)
+	if ([self canInstantiateShip:*shipKey])  return shipKey;
 	
 	/*	If we got here, condition check failed.
 		We now need to keep trying until we either find an acceptable ship or
@@ -3993,66 +3993,66 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	++profSlowPath;
 	if ((profSlowPath % 10) == 0)	// Only print every tenth slow path, to reduce spamminess.
 	{
-		OOLog(@"shipRegistry.selection.profile", @"Hit slow path in ship selection for role \"%@\", having selected ship \"%@\". Now %zu of %zu on slow path (%f%%).", role, shipKey, profSlowPath, profTotal, ((double)profSlowPath)/((double)profTotal) * 100.0f);
+		OOLog(@"shipRegistry.selection.profile", @"Hit slow path in ship selection for role \"%@\", having selected ship \"%@\". Now %zu of %zu on slow path (%f%%).", oo::NSStringFrom(role), oo::NSStringOrNil(shipKey), profSlowPath, profTotal, ((double)profSlowPath)/((double)profTotal) * 100.0f);
 	}
 #endif
 	
-	pset = [[[registry probabilitySetForRole:role] mutableCopy] autorelease];
-	
+	pset = [[[registry cxx_probabilitySetForRole:role] mutableCopy] autorelease];
+
 	while ([pset count] > 0)
 	{
 		// Select a ship, check conditions and return it if possible.
-		shipKey = [pset randomObject];
-		if ([self canInstantiateShip:shipKey])  return shipKey;
-		
+		id shipKeyObject = [pset randomObject];	// the probability set (unmigrated) holds ship keys as objects
+		if ([self canInstantiateShip:oo::StdString(shipKeyObject)])  return oo::StdString(shipKeyObject);
+
 		// Condition failed -> remove ship from consideration.
-		[pset removeObject:shipKey];
+		[pset removeObject:shipKeyObject];
 	}
-	
+
 	// If we got here, some ships existed but all failed conditions test.
-	return nil;
-	
-	OOJS_PROFILE_EXIT
+	return std::nullopt;
+
+	OOJS_PROFILE_EXIT_VAL(std::nullopt)
 }
 
 
-- (ShipEntity *) newShipWithRole:(NSString *)role
+- (ShipEntity *) cxx_newShipWithRole:(const std::string &)role
 {
 	OOJS_PROFILE_ENTER
-	
+
 	ShipEntity				*ship = nil;
-	NSString				*shipKey = nil;
-	NSDictionary			*shipInfo = nil;
-	NSString				*autoAI = nil;
-	
-	shipKey = [self randomShipKeyForRoleRespectingConditions:role];
-	if (shipKey != nil)
+	std::optional<std::string>	shipKey;
+	oo::PList				shipInfo;
+	std::optional<std::string>	autoAI;
+
+	shipKey = [self cxx_randomShipKeyForRoleRespectingConditions:role];
+	if (shipKey.has_value())
 	{
-		ship = [self newShipWithName:shipKey];
+		ship = [self cxx_newShipWithName:*shipKey];
 		if (ship != nil)
 		{
-			[ship setPrimaryRole:role];
-			
-			shipInfo = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
-			if (oo::PListView(shipInfo).get<oo::FuzzyBoolean>(@"auto_ai", YES))
+			[ship setPrimaryRole:oo::NSStringFrom(role)];
+
+			shipInfo = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:*shipKey];
+			if (FuzzyBooleanIn(shipInfo, "auto_ai", YES))
 			{
 				// Set AI based on role
 				autoAI = [self defaultAIForRole:role];
-				if (autoAI != nil)
+				if (autoAI.has_value())
 				{
-					[ship setAITo:autoAI];
+					[ship setAITo:oo::NSStringFrom(*autoAI)];
 					// Nikos 20090604
 					// Pirate, trader or police with auto_ai? Follow populator rules for them.
-					if ([role isEqualToString:@"pirate"]) [ship setBounty:20 + randf() * 50 withReason:kOOLegalStatusReasonSetup];
-					if ([role isEqualToString:@"trader"]) [ship setBounty:0 withReason:kOOLegalStatusReasonSetup];
-					if ([role isEqualToString:@"police"]) [ship setScanClass:CLASS_POLICE];
-					if ([role isEqualToString:@"interceptor"])
+					if (role == "pirate") [ship setBounty:20 + randf() * 50 withReason:kOOLegalStatusReasonSetup];
+					if (role == "trader") [ship setBounty:0 withReason:kOOLegalStatusReasonSetup];
+					if (role == "police") [ship setScanClass:CLASS_POLICE];
+					if (role == "interceptor")
 					{
 						[ship setScanClass: CLASS_POLICE];
 						[ship setPrimaryRole:@"police"]; // to make sure interceptors get the correct pilot later on.
 					}
 				}
-				if ([role isEqualToString:@"thargoid"]) [ship setScanClass: CLASS_THARGOID]; // thargoids are not on the autoAIMap
+				if (role == "thargoid") [ship setScanClass: CLASS_THARGOID]; // thargoids are not on the autoAIMap
 			}
 		}
 	}
@@ -4063,25 +4063,26 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (OOVisualEffectEntity *) newVisualEffectWithName:(NSString *)effectKey
+- (OOVisualEffectEntity *) cxx_newVisualEffectWithName:(const std::string &)effectKey
 {
 	OOJS_PROFILE_ENTER
-	
-	NSDictionary			*effectDict = nil;
+
+	oo::PList				effectDict;
 	OOVisualEffectEntity	*effect = nil;
-	
-	effectDict = [[OOShipRegistry sharedRegistry] effectInfoForKey:effectKey];
-	if (effectDict == nil)  return nil;
-	
+
+	effectDict = [[OOShipRegistry sharedRegistry] cxx_effectInfoForKey:effectKey];
+	if (effectDict.isNull())  return nil;
+
 	@try
 	{
-		effect = [[OOVisualEffectEntity alloc] initWithKey:effectKey definition:effectDict];
+		// -initWithKey:definition: is shared: the key and definition as the objects it took before
+		effect = [[OOVisualEffectEntity alloc] initWithKey:oo::NSStringFrom(effectKey) definition:oo::ObjectFromPList(effectDict)];
 	}
 	@catch (OOException *exception)
 	{
 		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newVisualEffectWithName: %@ ] *****", oo::NSStringFrom([exception reason]), effectKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newVisualEffectWithName: %@ ] *****", oo::NSStringFrom([exception reason]), oo::NSStringFrom(effectKey));
 		}
 		else  @throw exception;
 	}
@@ -4092,31 +4093,31 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (ShipEntity *) newSubentityWithName:(NSString *)shipKey andScaleFactor:(float)scale
+- (ShipEntity *) cxx_newSubentityWithName:(const std::string &)shipKey andScaleFactor:(float)scale
 {
-	return [self newShipWithName:shipKey usePlayerProxy:NO isSubentity:YES andScaleFactor:scale];
+	return [self cxx_newShipWithName:shipKey usePlayerProxy:NO isSubentity:YES andScaleFactor:scale];
 }
 
 
-- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy
 {
-	return [self newShipWithName:shipKey usePlayerProxy:usePlayerProxy isSubentity:NO];
+	return [self cxx_newShipWithName:shipKey usePlayerProxy:usePlayerProxy isSubentity:NO];
 }
 
-- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity
 {
-	return [self newShipWithName:shipKey usePlayerProxy:usePlayerProxy isSubentity:isSubentity andScaleFactor:1.0f];
+	return [self cxx_newShipWithName:shipKey usePlayerProxy:usePlayerProxy isSubentity:isSubentity andScaleFactor:1.0f];
 }
 
-- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale
 {
 	OOJS_PROFILE_ENTER
-	
-	NSDictionary	*shipDict = nil;
+
+	oo::PList		shipDict;
 	ShipEntity		*ship = nil;
-	
-	shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipKey];
-	if (shipDict == nil)  return nil;
+
+	shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipKey];
+	if (shipDict.isNull())  return nil;
 	
 	volatile Class shipClass = nil;
 	if (isSubentity)
@@ -4125,7 +4126,7 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	}
 	else
 	{
-		shipClass = [self shipClassForShipDictionary:shipDict];
+		shipClass = [self cxx_shipClassForShipDictionary:shipDict];
 		if (usePlayerProxy && shipClass == [ShipEntity class])
 		{
 			shipClass = [ProxyPlayerEntity class];
@@ -4136,25 +4137,24 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 	{
 		if (scale != 1.0f)
 		{
-			NSMutableDictionary *mShipDict = [shipDict mutableCopy];
-			[mShipDict setObject:[NSNumber numberWithFloat:scale] forKey:@"model_scale_factor"];
-			shipDict = [NSDictionary dictionaryWithDictionary:mShipDict];
-			[mShipDict release];
+			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
+			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
 		}
-		ship = [[shipClass alloc] initWithKey:shipKey definition:shipDict];
+		// -initWithKey:definition: is shared: the key and definition as the objects it took before
+		ship = [[shipClass alloc] initWithKey:oo::NSStringFrom(shipKey) definition:oo::ObjectFromPList(shipDict)];
 	}
 	@catch (OOException *exception)
 	{
 		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newShipWithName: %@ ] *****", oo::NSStringFrom([exception reason]), shipKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newShipWithName: %@ ] *****", oo::NSStringFrom([exception reason]), oo::NSStringFrom(shipKey));
 		}
 		else  @throw exception;
 	}
-	
+
 	// Set primary role to same as ship name, if ship name is also a role.
 	// Otherwise, if caller doesn't set a role, one will be selected randomly.
-	if ([ship hasRole:shipKey])  [ship setPrimaryRole:shipKey];
+	if ([ship hasRole:oo::NSStringFrom(shipKey)])  [ship setPrimaryRole:oo::NSStringFrom(shipKey)];
 	
 	return ship;
 	
@@ -4162,39 +4162,38 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (DockEntity *) newDockWithName:(NSString *)shipDataKey andScaleFactor:(float)scale
+- (DockEntity *) cxx_newDockWithName:(const std::string &)shipDataKey andScaleFactor:(float)scale
 {
 	OOJS_PROFILE_ENTER
-	
-	NSDictionary	*shipDict = nil;
+
+	oo::PList		shipDict;
 	DockEntity		*dock = nil;
-	
-	shipDict = [[OOShipRegistry sharedRegistry] shipInfoForKey:shipDataKey];
-	if (shipDict == nil)  return nil;
-	
+
+	shipDict = [[OOShipRegistry sharedRegistry] cxx_shipInfoForKey:shipDataKey];
+	if (shipDict.isNull())  return nil;
+
 	@try
 	{
 		if (scale != 1.0f)
 		{
-			NSMutableDictionary *mShipDict = [shipDict mutableCopy];
-			[mShipDict setObject:[NSNumber numberWithFloat:scale] forKey:@"model_scale_factor"];
-			shipDict = [NSDictionary dictionaryWithDictionary:mShipDict];
-			[mShipDict release];
+			// a copy with the scale, a float as +numberWithFloat: stored it (ADR-0043 item 15)
+			(*shipDict.getIf<oo::PList::Dict>())["model_scale_factor"] = oo::PList::singleReal(scale);
 		}
-		dock = [[DockEntity alloc] initWithKey:shipDataKey definition:shipDict];
+		// -initWithKey:definition: is shared: the key and definition as the objects it took before
+		dock = [[DockEntity alloc] initWithKey:oo::NSStringFrom(shipDataKey) definition:oo::ObjectFromPList(shipDict)];
 	}
 	@catch (OOException *exception)
 	{
 		if (strcmp([exception name], OOLITE_EXCEPTION_DATA_NOT_FOUND) == 0)
 		{
-			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newDockWithName: %@ ] *****", oo::NSStringFrom([exception reason]), shipDataKey);
+			OOLog(kOOLogException, @"***** Oolite Exception : '%@' in [Universe newDockWithName: %@ ] *****", oo::NSStringFrom([exception reason]), oo::NSStringFrom(shipDataKey));
 		}
 		else  @throw exception;
 	}
-	
+
 	// Set primary role to same as name, if ship name is also a role.
 	// Otherwise, if caller doesn't set a role, one will be selected randomly.
-	if ([dock hasRole:shipDataKey])  [dock setPrimaryRole:shipDataKey];
+	if ([dock hasRole:oo::NSStringFrom(shipDataKey)])  [dock setPrimaryRole:oo::NSStringFrom(shipDataKey)];
 	
 	return dock;
 	
@@ -4202,41 +4201,41 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (ShipEntity *) newShipWithName:(NSString *)shipKey
+- (ShipEntity *) cxx_newShipWithName:(const std::string &)shipKey
 {
-	return [self newShipWithName:shipKey usePlayerProxy:NO];
+	return [self cxx_newShipWithName:shipKey usePlayerProxy:NO];
 }
 
 
-- (Class) shipClassForShipDictionary:(NSDictionary *)dict
+- (Class) cxx_shipClassForShipDictionary:(const oo::PList &)dict
 {
 	OOJS_PROFILE_ENTER
-	
-	if (dict == nil)  return Nil;
-	
+
+	if (dict.isNull())  return Nil;
+
 	BOOL		isStation = NO;
-	NSString	*shipRoles = oo::PListView(dict).get<NSString *>(@"roles");
-	
-	if (shipRoles != nil)
+	std::optional<std::string>	shipRoles = OptionalStringIn(dict, "roles");
+
+	if (shipRoles.has_value())
 	{
-		isStation = [shipRoles rangeOfString:@"station"].location != NSNotFound ||
-		[shipRoles rangeOfString:@"carrier"].location != NSNotFound;
+		isStation = shipRoles->find("station") != std::string::npos ||
+		shipRoles->find("carrier") != std::string::npos;
 	}
-	
+
 	// Note priority here: is_carrier overrides isCarrier which overrides roles.
-	isStation = oo::PListView(dict).get<BOOL>(@"isCarrier", isStation);
-	isStation = oo::PListView(dict).get<BOOL>(@"is_carrier", isStation);
-	
+	isStation = dict.get<bool>("isCarrier", isStation);
+	isStation = dict.get<bool>("is_carrier", isStation);
+
 
 	return isStation ? [StationEntity class] : [ShipEntity class];
-	
+
 	OOJS_PROFILE_EXIT
 }
 
 
-- (NSString *)defaultAIForRole:(NSString *)role
+- (std::optional<std::string>) defaultAIForRole:(const std::string &)role
 {
-	return oo::PListView(autoAIMap).get<NSString *>(role);
+	return OptionalStringIn(autoAIMap, role);
 }
 
 
@@ -6107,9 +6106,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 }
 
 
-- (ShipEntity*) addWreckageFrom:(ShipEntity *)ship withRole:(NSString *)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime
+- (ShipEntity*) cxx_addWreckageFrom:(ShipEntity *)ship withRole:(const std::string &)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime
 {
-	ShipEntity* wreck = [UNIVERSE newShipWithRole:wreckRole];   // retain count = 1
+	ShipEntity* wreck = [UNIVERSE cxx_newShipWithRole:wreckRole];   // retain count = 1
 	Quaternion q;
 	if (wreck)
 	{
@@ -8091,7 +8090,19 @@ std::optional<std::string> OptionalStringIn(const oo::PList &dict, std::string_v
 }
 
 
-/*	A system property the old code handed on as an NSString (a system name, inhabitants): the
+/*	oo_fuzzyBooleanForKey:defaultValue: on a configuration: NO for a null one (messaging nil), else
+	OOFuzzyBooleanFromObject (not migrated yet) of the value as the object it was (nil when absent),
+	which draws the same random number it drew before.
+*/
+BOOL FuzzyBooleanIn(const oo::PList &dict, std::string_view key, float fallback)
+{
+	if (dict.isNull())  return NO;
+	const oo::PList *value = dict.find(key);
+	return OOFuzzyBooleanFromObject((value != nullptr) ? oo::ObjectFromPList(*value) : nil, fallback);
+}
+
+
+/*	A system property the old code handed on as a string object (a system name, inhabitants): the
 	string, nullopt where the property was absent (nil). Planetinfo names and inhabitants are
 	strings; a number reads as its -stringValue.
 */
@@ -10500,8 +10511,7 @@ static OOComparisonResult comparePrice(id dict1, id dict2, void *context)
 	[roleCategories autorelease];
 	roleCategories = [[ResourceManager roleCategoriesDictionary] retain];
 	
-	[autoAIMap autorelease];
-	autoAIMap = [[ResourceManager dictionaryFromFilesNamed:@"autoAImap.plist" inFolder:@"Config" andMerge:YES] retain];
+	autoAIMap = [ResourceManager cxx_dictionaryFromFilesNamed:"autoAImap.plist" inFolder:std::string("Config") andMerge:YES];
 	
 	[equipmentData autorelease];
 	[equipmentDataOutfitting autorelease];

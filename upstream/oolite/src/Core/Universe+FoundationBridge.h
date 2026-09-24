@@ -60,6 +60,19 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (NSDictionary *) routeFromSystem:(OOSystemID) start toSystem:(OOSystemID) goal optimizedBy:(OORouteType) optimizeBy;	// -> -cxx_routeFromSystem:toSystem:optimizedBy:
 - (NSString *) shortTimeDescription:(OOTimeDelta) interval;	// -> -cxx_shortTimeDescription:
 
+// Chunk 4 (oo-3rb.223): ship, effect and dock creation.
+- (NSString *) randomShipKeyForRoleRespectingConditions:(NSString *)role;	// -> -cxx_randomShipKeyForRoleRespectingConditions:
+- (ShipEntity *) newShipWithRole:(NSString *)role OO_RETURNS_RETAINED;	// -> -cxx_newShipWithRole:
+- (ShipEntity *) newShipWithName:(NSString *)shipKey OO_RETURNS_RETAINED;	// -> -cxx_newShipWithName:
+- (ShipEntity *) newSubentityWithName:(NSString *)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// -> -cxx_newSubentityWithName:andScaleFactor:
+- (OOVisualEffectEntity *) newVisualEffectWithName:(NSString *)effectKey OO_RETURNS_RETAINED;	// -> -cxx_newVisualEffectWithName:
+- (DockEntity *) newDockWithName:(NSString *)shipKey andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// -> -cxx_newDockWithName:andScaleFactor:
+- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy OO_RETURNS_RETAINED;	// -> -cxx_newShipWithName:usePlayerProxy:
+- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity OO_RETURNS_RETAINED;	// -> -cxx_newShipWithName:usePlayerProxy:isSubentity:
+- (ShipEntity *) newShipWithName:(NSString *)shipKey usePlayerProxy:(BOOL)usePlayerProxy isSubentity:(BOOL)isSubentity andScaleFactor:(float)scale OO_RETURNS_RETAINED;	// -> -cxx_newShipWithName:usePlayerProxy:isSubentity:andScaleFactor:
+- (Class) shipClassForShipDictionary:(NSDictionary *)dict;	// -> -cxx_shipClassForShipDictionary:
+- (ShipEntity *) addWreckageFrom:(ShipEntity *)ship withRole:(NSString *)wreckRole at:(HPVector)rpos scale:(GLfloat)scale lifetime:(GLfloat)lifetime;	// -> -cxx_addWreckageFrom:withRole:at:scale:lifetime:
+
 @end
 
 
