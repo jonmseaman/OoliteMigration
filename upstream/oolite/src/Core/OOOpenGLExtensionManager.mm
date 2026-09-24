@@ -34,6 +34,7 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OORegExpMatcher.h"
 #import "OOConstToString.h"
+#include "oofnd/objc/OOException.h"
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
@@ -275,8 +276,8 @@ std::optional<std::string> OptionalGLString(const GLubyte *string)
 	if (![self versionIsAtLeastMajor:kMinMajorVersion minor:kMinMinorVersion])
 	{
 		OOLog(@"rendering.opengl.version.insufficient", @"***** Oolite requires OpenGL version %u.%u or later.", kMinMajorVersion, kMinMinorVersion);
-		[NSException raise:@"OoliteOpenGLTooOldException"
-					format:@"Oolite requires at least OpenGL %u.%u. You have %u.%u (\"%s\").", kMinMajorVersion, kMinMinorVersion, major, minor, versionString];
+		[OOException raise:"OoliteOpenGLTooOldException"
+					format:"Oolite requires at least OpenGL %u.%u. You have %u.%u (\"%s\").", kMinMajorVersion, kMinMinorVersion, major, minor, versionString];
 	}
 	
 	const std::optional<std::string> versionStr = OptionalGLString(versionString);

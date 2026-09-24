@@ -1,0 +1,16 @@
+# Selectors whose @selector() literals are only ever fed to a TYPED IMP call, never to a by-name
+# dispatcher (bead oo-bzjh; tools/check-selector-types.py, "SELECTORS DISPATCHED THROUGH A TYPED
+# IMP"). One entry per line: <selector> <file>:<line of the cast call>. The tool re-verifies each
+# entry on every run (same declared types as the typedef, called through it in every file with a
+# literal, the named line calls through it) and fails on an entry it cannot verify.
+#
+# OOOXZManager -applyFilter:... picks the filter by @selector and calls it through
+# -methodForSelector: cast to OneArgumentFilter / TwoArgumentFilter (bead oo-3rb.53).
+applyFilterByNoFilter:            upstream/oolite/src/Core/OOOXZManager.mm:576
+applyFilterByUpdateRequired:      upstream/oolite/src/Core/OOOXZManager.mm:576
+applyFilterByInstallable:         upstream/oolite/src/Core/OOOXZManager.mm:576
+applyFilterByKeyword:keyword:     upstream/oolite/src/Core/OOOXZManager.mm:572
+applyFilterByAuthor:author:       upstream/oolite/src/Core/OOOXZManager.mm:572
+applyFilterByDays:days:           upstream/oolite/src/Core/OOOXZManager.mm:572
+applyFilterByTag:tag:             upstream/oolite/src/Core/OOOXZManager.mm:572
+applyFilterByCategory:category:   upstream/oolite/src/Core/OOOXZManager.mm:572

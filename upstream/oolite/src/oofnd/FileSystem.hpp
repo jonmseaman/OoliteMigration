@@ -22,6 +22,9 @@
 	    [[fm oo_fileAttributesAtPath:p ...] fileSize] oo::fs::fileSize(p)
 	    [NSData dataWithContentsOfFile:p]             oo::fs::readFile(p)
 	    [data writeToFile:p atomically:YES / NO]      oo::fs::writeFile(p, data, WriteMode::atomic / direct)
+	    [fm createFileAtPath:p contents:nil ...] +
+	        [NSFileHandle fileHandleForWritingAtPath:p] oo::fs::createFileForWriting(p)  (a FILE *)
+	    [handle synchronizeFile]                      oo::fs::synchronizeFile(file)
 	    [fm displayNameAtPath:p]                      (GNUstep returns [p lastPathComponent]; a string op)
 
 	SEMANTICS (proposed ADR-0028), each matching what GNUstep does today:
@@ -68,6 +71,12 @@
 #include <string_view>
 #include <system_error>
 #include <vector>
+
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 namespace oo::fs {
 
@@ -302,6 +311,25 @@ inline Result<void> writeFile(const Path& path, const Data& data, WriteMode mode
 		}
 	}
 	return {};
+}
+
+// An empty file open for writing (created, or truncated if it exists), or nullptr: what
+// -createFileAtPath:contents:nil attributes:nil followed by +fileHandleForWritingAtPath: gave the
+// OXZ manager's download (bead oo-3rb.13). The caller writes with fwrite and closes with fclose.
+inline std::FILE* createFileForWriting(const Path& path) noexcept
+{
+	return detail::openFile(path, true);
+}
+
+// -[NSFileHandle synchronizeFile]: flush the stream, then commit the file to disk.
+inline bool synchronizeFile(std::FILE* file) noexcept
+{
+	if (file == nullptr || std::fflush(file) != 0)  return false;
+#if defined(_WIN32)
+	return ::_commit(::_fileno(file)) == 0;
+#else
+	return ::fsync(::fileno(file)) == 0;
+#endif
 }
 
 } // namespace oo::fs

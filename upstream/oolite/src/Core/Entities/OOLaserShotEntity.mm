@@ -253,7 +253,7 @@ static const GLfloat kLaserVertices[] =
 	OOGL(glDisable(GL_TEXTURE_2D));
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOLaserShotEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOLaserShotEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 

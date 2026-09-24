@@ -1058,9 +1058,9 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 }
 
 
-- (id) textureFileName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) textureFileName
 {
-	return oo::NSStringOrNil(_textureFileName);
+	return _textureFileName;
 }
 
 
@@ -1089,11 +1089,11 @@ oo::PList CloudAtmosphereDictionary(float cloudAlpha)
 }
 
 
-- (BOOL) setUpPlanetFromTexture:(id)fileName	// shared selector (proposed ADR-0043)
+- (BOOL) setUpPlanetFromTexture:(const std::optional<std::string> &)fileName
 {
-	if (fileName == nil)  return NO;
+	if (!fileName.has_value())  return NO;
 
-	[self loadTexture:cxx_OOTextureSpecFromObject(oo::PListFrom(fileName), std::nullopt)];
+	[self loadTexture:cxx_OOTextureSpecFromObject(oo::PList(*fileName), std::nullopt)];
 	[self deleteDisplayLists];
 	
 	unsigned i;

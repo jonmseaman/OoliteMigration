@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 //#import "OOJavaScriptEngine.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Notification.hpp"
 #import "OOFoundationBridge.h"
 
 /*
@@ -63,10 +64,9 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 
 	_owningScript = [[OOJSScript currentlyRunningScript] weakRetain];
 
-	[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(deleteJSPointers)
-												 name:kOOJavaScriptEngineWillResetNotification
-											   object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+														[OOJavaScriptEngine sharedEngine],
+														[self](const oo::Notification &) { [self deleteJSPointers]; });
 
 	return self;
 }
@@ -82,9 +82,8 @@ static inline Object  *OOJSFOBJP(ooscript::Object *o)     { return reinterpret_c
 
 	OOJSRelinquishContext(context);
 
-	[[NSNotificationCenter defaultCenter] removeObserver:self
-													name:kOOJavaScriptEngineWillResetNotification
-												  object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+															[OOJavaScriptEngine sharedEngine]);
 
 }
 

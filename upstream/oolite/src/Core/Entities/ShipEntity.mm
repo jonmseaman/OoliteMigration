@@ -38,7 +38,8 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
-#import "NSScannerOOExtensions.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 #import "OOFilteringEnumerator.h"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
@@ -291,8 +292,8 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	self = [super init];
 	if (self == nil)  return nil;
 	
-	_shipKey = [key retain];
-	
+	_shipKey = oo::OptionalString(key);
+
 	isShip = YES;
 	entity_personality = Ranrot() & ENTITY_PERSONALITY_MAX;
 	[self setStatus:STATUS_IN_FLIGHT];
@@ -478,18 +479,14 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	hyperspaceMotorSpinTime = oo::PListView(shipDict).get<float>(@"hyperspace_motor_spin_time", DEFAULT_HYPERSPACE_SPIN_TIME);
 	if(!oo::PListView(shipDict).get<BOOL>(@"hyperspace_motor", YES)) hyperspaceMotorSpinTime = -1;
 	
-	[name autorelease];
-	name = [oo::PListView(shipDict).get<NSString *>(@"name", @"?") copy];
-	
-	[shipUniqueName autorelease];
-	shipUniqueName = [oo::PListView(shipDict).get<NSString *>(@"ship_name", @"") copy];
+	name = oo::OptionalString(oo::PListView(shipDict).get<NSString *>(@"name", @"?"));
 
-	[shipClassName autorelease];
-	shipClassName = [oo::PListView(shipDict).get<NSString *>(@"ship_class_name", name) copy];
+	shipUniqueName = oo::OptionalString(oo::PListView(shipDict).get<NSString *>(@"ship_name", @""));
 
-	[displayName autorelease];
-	displayName = [oo::PListView(shipDict).get<NSString *>(@"display_name", nil) copy];
-	
+	shipClassName = oo::OptionalString(oo::PListView(shipDict).get<NSString *>(@"ship_class_name", oo::NSStringOrNil(name)));
+
+	displayName = oo::OptionalString(oo::PListView(shipDict).get<NSString *>(@"display_name", nil));
+
 	// Load the model (must be before subentities)
 	NSString *modelName = oo::PListView(shipDict).get<NSString *>(@"model");
 	if (modelName != nil)
@@ -497,7 +494,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		OOMesh *mesh = nil;
 
 		mesh = [OOMesh meshWithName:oo::StdString(modelName)
-						   cacheKey:oo::OptionalString([NSString stringWithFormat:@"%@-%.3f",_shipKey,_scaleFactor])
+						   cacheKey:oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor)	// %@ printed nil as (null)
 				 materialDictionary:oo::PListFrom(oo::PListView(shipDict).get<NSDictionary *>(@"materials"))
 				  shadersDictionary:oo::PListFrom(oo::PListView(shipDict).get<NSDictionary *>(@"shaders"))
 							 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
@@ -636,8 +633,7 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 		scanClass = OOScanClassFromString(oo::PListView(shipDict).get<NSString *>(@"scanClass", @"CLASS_NOT_SET"));
 	}
 
-	[scan_description autorelease];
-	scan_description = [oo::PListView(shipDict).get<NSString *>(@"scan_description", nil) copy];
+	scan_description = oo::OptionalString(oo::PListView(shipDict).get<NSString *>(@"scan_description", nil));
 
 	// FIXME: give NPCs shields instead.
 	
@@ -698,11 +694,11 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 			NSString		*c_commodity = nil;
 			int				c_amount = 1;
-			NSScanner		*scanner = [NSScanner scannerWithString:cargoString];
-			if ([scanner scanInt:&c_amount])
+			oo::str::Scanner	scanner(oo::StdString(cargoString));
+			if (scanner.scanInt(&c_amount))
 			{
-				[scanner ooliteScanCharactersFromSet:[NSCharacterSet whitespaceCharacterSet] intoString:NULL];	// skip whitespace
-				c_commodity = [[scanner string] substringFromIndex:[scanner scanLocation]];
+				scanner.scanCharactersFromSetNoSkip(oo::str::CharacterSet::whitespace());	// skip whitespace
+				c_commodity = oo::NSStringFrom(scanner.remainder());
 				if ([[UNIVERSE commodities] goodDefined:c_commodity])
 				{
 					[self cxx_setCommodityForPod:oo::OptionalString(c_commodity) andAmount:c_amount];
@@ -755,9 +751,8 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	
 	[roleSet release];
 	roleSet = [[[OORoleSet roleSetWithString:oo::StdString(oo::PListView(shipDict).get<NSString *>(@"roles"))] roleSetWithRemovedRole:"player"] retain];
-	[primaryRole release];
-	primaryRole = nil;
-	
+	primaryRole.reset();
+
 	[self setOwner:self];
 	[self setHulk:oo::PListView(shipDict).get<BOOL>(@"is_hulk")];
 	
@@ -1163,17 +1158,10 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	[[self parentEntity] subEntityReallyDied:self];	// Will do nothing if we're not really a subentity
 	[self clearSubEntities];
 	
-	DESTROY(_shipKey);
 	DESTROY(shipinfoDictionary);
-	DESTROY(shipAI);
-	DESTROY(name);
-	DESTROY(shipUniqueName);
-	DESTROY(shipClassName);
-	DESTROY(displayName);
-	DESTROY(scan_description);
+DESTROY(shipAI);
 	DESTROY(roleSet);
-	DESTROY(primaryRole);
-	DESTROY(laser_color);
+DESTROY(laser_color);
 	DESTROY(default_laser_color);
 	DESTROY(exhaust_emissive_color);
 	DESTROY(scanner_display_color1);
@@ -1196,8 +1184,6 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	
 	DESTROY(_lastAegisLock);
 	
-	DESTROY(_beaconCode);
-	DESTROY(_beaconLabel);
 	DESTROY(_beaconDrawable);
 	
 
@@ -1238,27 +1224,27 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-- (NSString *)descriptionComponents
+- (id)descriptionComponents	// shared selector (proposed ADR-0043)
 {
 	if (![self isSubEntity])
 	{
-		return [NSString stringWithFormat:@"\"%@\" %@", [self name], [super descriptionComponents]];
+		return oo::NSStringFrom(oo::str::format("\"%s\" %s", oo::DescriptionOf([self name]).c_str(), oo::DescriptionOf([super descriptionComponents]).c_str()));
 	}
 	else
 	{
 		// ID, scanClass and status are of no interest for subentities.
-		NSString *subtype = nil;
-		if ([self behaviour] == BEHAVIOUR_TRACK_AS_TURRET)  subtype = @"(turret)";
-		else  subtype = @"(subentity)";
-		
-		return [NSString stringWithFormat:@"\"%@\" position: %@ %@", [self name], HPVectorDescription([self position]), subtype];
+		const char *subtype = nullptr;
+		if ([self behaviour] == BEHAVIOUR_TRACK_AS_TURRET)  subtype = "(turret)";
+		else  subtype = "(subentity)";
+
+		return oo::NSStringFrom(oo::str::format("\"%s\" position: %s %s", oo::DescriptionOf([self name]).c_str(), cxx_HPVectorDescription([self position]).c_str(), subtype));
 	}
 }
 
 
-- (NSString *) shortDescriptionComponents
+- (id) shortDescriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"\"%@\"", [self name]];
+	return oo::NSStringFrom(oo::str::format("\"%s\"", oo::DescriptionOf([self name]).c_str()));
 }
 
 
@@ -1622,45 +1608,47 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 }
 
 
-- (NSString *) beaconCode
+- (id) beaconCode	// shared selector (proposed ADR-0043)
 {
-	return _beaconCode;
+	return oo::NSStringOrNil(_beaconCode);
 }
 
 
-- (void) setBeaconCode:(NSString *)bcode
+// bcode: an Objective-C string or nil. The Foundation version compared the new string with the
+// old by pointer, so any new string (every string this class hands out is new) replaced it.
+- (void) setBeaconCode:(id)bcode	// shared selector (proposed ADR-0043)
 {
-	if ([bcode length] == 0)  bcode = nil;
-	
-	if (_beaconCode != bcode)
+	std::optional<std::string> code = oo::OptionalString(bcode);
+	if (code.has_value() && code->empty())  code.reset();
+
+	if (code.has_value() || _beaconCode.has_value())
 	{
-		[_beaconCode release];
-		_beaconCode = [bcode copy];
-		
+		_beaconCode = code;
+
 		DESTROY(_beaconDrawable);
 	}
 	// if not blanking code and label is currently blank, default label to code
-	if (bcode != nil && (_beaconLabel == nil || [_beaconLabel length] == 0))
+	if (code.has_value() && (!_beaconLabel.has_value() || _beaconLabel->empty()))
 	{
-		[self setBeaconLabel:bcode];
+		[self setBeaconLabel:oo::NSStringFrom(*code)];
 	}
 }
 
 
-- (NSString *) beaconLabel
+- (id) beaconLabel	// shared selector (proposed ADR-0043)
 {
-	return _beaconLabel;
+	return oo::NSStringOrNil(_beaconLabel);
 }
 
 
-- (void) setBeaconLabel:(NSString *)blabel
+- (void) setBeaconLabel:(id)blabel	// shared selector (proposed ADR-0043): an Objective-C string or nil
 {
-	if ([blabel length] == 0)  blabel = nil;
-	
-	if (_beaconLabel != blabel)
+	std::optional<std::string> label = oo::OptionalString(blabel);
+	if (label.has_value() && label->empty())  label.reset();
+
+	if (label.has_value() || _beaconLabel.has_value())
 	{
-		[_beaconLabel release];
-		_beaconLabel = [OOExpand(blabel) retain];
+		_beaconLabel = oo::OptionalString(OOExpand(oo::NSStringOrNil(label)));
 	}
 }
 
@@ -1681,21 +1669,21 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 {
 	if (_beaconDrawable == nil)
 	{
-		NSString	*beaconCode = [self beaconCode];
-		NSUInteger	length = [beaconCode length];
-		
+		const std::u16string	beaconCode = oo::utf8ToUtf16(_beaconCode.value_or(std::string()));
+		NSUInteger	length = beaconCode.size();	// -length: UTF-16 units
+
 		if (length > 1)
 		{
-			NSArray *iconData = oo::PListView([UNIVERSE descriptions]).get<NSArray *>(beaconCode);
-			if (iconData != nil)  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:oo::PListFrom(iconData) outlineWidth:0.5 name:oo::StdString(beaconCode)];
+			const oo::PList iconData = oo::PListFrom([[UNIVERSE descriptions] objectForKey:oo::NSStringFrom(*_beaconCode)]);
+			if (iconData.isArray())  _beaconDrawable = [[OOPolygonSprite alloc] initWithDataArray:iconData outlineWidth:0.5 name:*_beaconCode];
 		}
-		
+
 		if (_beaconDrawable == nil)
 		{
-			if (length > 0)  _beaconDrawable = [[beaconCode substringToIndex:1] retain];
+			if (length > 0)  _beaconDrawable = [oo::NSStringFrom(oo::utf16ToUtf8(beaconCode.substr(0, 1))) retain];	// -substringToIndex:1
 			else  _beaconDrawable = @"";
 		}
-	}
+}
 	
 	return _beaconDrawable;
 }
@@ -1737,8 +1725,8 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 - (void) setIsBoulder:(BOOL)flag
 {
-	if (flag)  [self addRole:kBoulderRole];
-	else  [self removeRole:kBoulderRole];
+	if (flag)  [self addRole:oo::StdString(kBoulderRole)];
+	else  [self cxx_removeRole:oo::StdString(kBoulderRole)];
 }
 
 
@@ -2047,22 +2035,21 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 	
 }
 
-- (NSString *)shipDataKey
+- (std::optional<std::string>) cxx_shipDataKey
 {
 	return _shipKey;
 }
 
 
-- (NSString *)shipDataKeyAutoRole
+- (std::optional<std::string>) cxx_shipDataKeyAutoRole
 {
-	return [[[NSString alloc] initWithFormat:@"[%@]",[self shipDataKey]] autorelease];
+	return oo::str::format("[%s]", [self cxx_shipDataKey].value_or("(null)").c_str());	// %@ printed nil as (null)
 }
 
 
-- (void)setShipDataKey:(NSString *)key
+- (void) cxx_setShipDataKey:(const std::optional<std::string> &)key
 {
-	DESTROY(_shipKey);
-	_shipKey = [key copy];
+	_shipKey = key;
 }
 
 
@@ -2244,7 +2231,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (BOOL) checkCloseCollisionWith:(Entity *)other
 {
 	if (other == nil)  return NO;
-	if ([collidingEntities containsObject:other])  return NO;	// we know about this already!
+	if (std::find_if(collidingEntities.begin(), collidingEntities.end(), [other](const oo::ObjCRef<Entity *> &e) { return e.get() == other; }) != collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
 	
 	ShipEntity *otherShip = nil;
 	if ([other isShip])  otherShip = (ShipEntity *)other;
@@ -7184,71 +7171,72 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (NSString *) name
+- (id) name	// shared selector (proposed ADR-0043)
 {
-	return name;
+	return oo::NSStringOrNil(name);
 }
 
 
-- (NSString *) shipUniqueName
+- (std::optional<std::string>) cxx_shipUniqueName
 {
 	return shipUniqueName;
 }
 
 
-- (NSString *) shipClassName
+- (std::optional<std::string>) cxx_shipClassName
 {
 	return shipClassName;
 }
 
 
-- (NSString *) displayName
+- (id) displayName	// shared selector (proposed ADR-0043)
 {
-	if (displayName == nil || [displayName length] == 0)  
+	if (!displayName.has_value() || displayName->empty())
 	{
-		if ([shipUniqueName length] == 0)
+		if (!shipUniqueName.has_value() || shipUniqueName->empty())
 		{
-			if (shipClassName == nil)
+			if (!shipClassName.has_value())
 			{
-				return name;
+				return oo::NSStringOrNil(name);
 			}
-			else 
+			else
 			{
-				return shipClassName;
+				return oo::NSStringFrom(*shipClassName);
 			}
 		}
 		else
 		{
-			if (shipClassName == nil)
+			// %@ printed nil as (null)
+			if (!shipClassName.has_value())
 			{
-				return [NSString stringWithFormat:@"%@: %@",name,shipUniqueName];
+				return oo::NSStringFrom(oo::str::format("%s: %s", name.value_or("(null)").c_str(), shipUniqueName->c_str()));
 			}
 			else
 			{
-				return [NSString stringWithFormat:@"%@: %@",shipClassName,shipUniqueName];
+				return oo::NSStringFrom(oo::str::format("%s: %s", shipClassName->c_str(), shipUniqueName->c_str()));
 			}
 		}
 	}
-	return displayName;
+	return oo::NSStringFrom(*displayName);
 }
 
 
 // needed so that scan_description = scan_description doesn't have odd effects
-- (NSString *)scanDescriptionForScripting
+- (std::optional<std::string>) cxx_scanDescriptionForScripting
 {
 	return scan_description;
 }
 
 
-- (NSString *)scanDescription
+- (std::optional<std::string>) cxx_scanDescription
 {
-	if (scan_description != nil)
+	if (scan_description.has_value())
 	{
 		return scan_description;
 	}
 	else
 	{
-		NSString *desc = nil;
+		std::optional<std::string> desc;
 		switch ([self scanClass])
 		{
 		case CLASS_NEUTRAL:
@@ -7259,22 +7247,25 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 				{
 					legal_i =  (legal <= 50) ? 1 : 2;
 				}
-				desc = oo::PListView(oo::PListView([UNIVERSE descriptions]).get<NSArray *>(@"legal_status")).at<NSString *>(legal_i);
+				// the entry if it is a string (or a number's -stringValue), else nil
+				const oo::PList legalStatus = oo::PListFrom([[UNIVERSE descriptions] objectForKey:@"legal_status"]);
+				const oo::PList *entry = legalStatus.at(legal_i);
+				if (entry != nullptr && (entry->isString() || entry->isNumber()))  desc = legalStatus.at<std::string>(legal_i);
 			}
 			break;
-	
+
 		case CLASS_THARGOID:
-			desc = DESC(@"legal-desc-alien");
+			desc = oo::OptionalString(DESC(@"legal-desc-alien"));
 			break;
-		
+
 		case CLASS_POLICE:
-			desc = DESC(@"legal-desc-system-vessel");
+			desc = oo::OptionalString(DESC(@"legal-desc-system-vessel"));
 			break;
-		
+
 		case CLASS_MILITARY:
-			desc = DESC(@"legal-desc-military-vessel");
+			desc = oo::OptionalString(DESC(@"legal-desc-military-vessel"));
 			break;
-		
+
 		default:
 			break;
 		}
@@ -7283,42 +7274,37 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (void) setName:(NSString *)inName
+- (void) setName:(id)inName	// shared selector (proposed ADR-0043): an Objective-C string, or nil
 {
-	[name release];
-	name = [inName copy];
+	name = oo::OptionalString(inName);
 }
 
 
-- (void) setShipUniqueName:(NSString *)inName
+- (void) cxx_setShipUniqueName:(const std::optional<std::string> &)inName
 {
-	[shipUniqueName release];
-	shipUniqueName = [inName copy];
+	shipUniqueName = inName;
 }
 
 
-- (void) setShipClassName:(NSString *)inName
+- (void) cxx_setShipClassName:(const std::optional<std::string> &)inName
 {
-	[shipClassName release];
-	shipClassName = [inName copy];
+	shipClassName = inName;
 }
 
 
-- (void) setDisplayName:(NSString *)inName
+- (void) cxx_setDisplayName:(const std::optional<std::string> &)inName
 {
-	[displayName release];
-	displayName = [inName copy];
+	displayName = inName;
 }
 
 
-- (void) setScanDescription:(NSString *)inName
+- (void) cxx_setScanDescription:(const std::optional<std::string> &)inName
 {
-	[scan_description release];
-	scan_description = [inName copy];
+	scan_description = inName;
 }
 
 
-- (NSString *) identFromShip:(ShipEntity*) otherShip
+- (id) identFromShip:(ShipEntity*) otherShip	// shared selector (proposed ADR-0043)
 {
 	if ([self isJammingScanning] && ![otherShip hasMilitaryScannerFilter])
 	{
@@ -7328,32 +7314,35 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (BOOL) hasRole:(NSString *)role
+- (BOOL) hasRole:(id)role	// shared selector (proposed ADR-0043): an Objective-C string
 {
-	return [roleSet hasRole:role] || [role isEqual:primaryRole] || [role isEqual:[self shipDataKeyAutoRole]];
+	if ([roleSet hasRole:role])  return YES;
+	if (!oo::IsNSString(role))  return NO;	// -isEqual: of a non-string (or nil) with a string was NO
+	const std::string roleString = oo::StdString(role);
+	return roleString == primaryRole || roleString == [self cxx_shipDataKeyAutoRole];
 }
 
 
 - (OORoleSet *)roleSet
 {
-	if (roleSet == nil)  roleSet = [[OORoleSet alloc] initWithRoleString:oo::StdString(primaryRole)];
-	return [[roleSet roleSetWithAddedRoleIfNotSet:oo::StdString(primaryRole) probability:1.0] roleSetWithAddedRoleIfNotSet:oo::StdString([self shipDataKeyAutoRole]) probability:1.0];
+	if (roleSet == nil)  roleSet = [[OORoleSet alloc] initWithRoleString:primaryRole.value_or(std::string())];
+	return [[roleSet roleSetWithAddedRoleIfNotSet:primaryRole.value_or(std::string()) probability:1.0] roleSetWithAddedRoleIfNotSet:*[self cxx_shipDataKeyAutoRole] probability:1.0];
 }
 
 
-- (void) addRole:(NSString *)role
+- (void) addRole:(const std::string &)role
 {
-	[self addRole:role withProbability:0.0f];
+	[self cxx_addRole:role withProbability:0.0f];
 }
 
 
-- (void) addRole:(NSString *)role withProbability:(float)probability
+- (void) cxx_addRole:(const std::string &)role withProbability:(float)probability
 {
-	if (![self hasRole:role])
+	if (![self hasRole:oo::NSStringFrom(role)])
 	{
 		OORoleSet *newRoles = nil;
-		if (roleSet != nil)  newRoles = [roleSet roleSetWithAddedRole:oo::StdString(role) probability:probability];
-		else  newRoles = [OORoleSet roleSetWithRole:oo::StdString(role) probability:probability];
+		if (roleSet != nil)  newRoles = [roleSet roleSetWithAddedRole:role probability:probability];
+		else  newRoles = [OORoleSet roleSetWithRole:role probability:probability];
 		if (newRoles != nil)
 		{
 			[roleSet release];
@@ -7363,11 +7352,11 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (void) removeRole:(NSString *)role
+- (void) cxx_removeRole:(const std::string &)role
 {
-	if ([self hasRole:role])
+	if ([self hasRole:oo::NSStringFrom(role)])
 	{
-		OORoleSet *newRoles = [roleSet roleSetWithRemovedRole:oo::StdString(role)];
+		OORoleSet *newRoles = [roleSet roleSetWithRemovedRole:role];
 		if (newRoles != nil)
 		{
 			[roleSet release];
@@ -7377,34 +7366,30 @@ static GLfloat scripted_color[4] = 	{ 0.0, 0.0, 0.0, 0.0};	// to be defined by s
 }
 
 
-- (NSString *)primaryRole
+- (std::optional<std::string>) cxx_primaryRole
 {
-	if (primaryRole == nil)
+	if (!primaryRole.has_value())
 	{
-		primaryRole = oo::NSStringOrNil([roleSet anyRole]);
-		if (primaryRole == nil)  primaryRole = @"trader";
-		[primaryRole retain];
-		OOLog(@"ship.noPrimaryRole", @"%@ had no primary role, randomly selected \"%@\".", [self name], primaryRole);
+		primaryRole = [roleSet anyRole];
+		if (!primaryRole.has_value())  primaryRole = "trader";
+		OOLog(@"ship.noPrimaryRole", @"%@ had no primary role, randomly selected \"%@\".", [self name], oo::NSStringOrNil(primaryRole));
 	}
-	
+
 	return primaryRole;
 }
 
 
 // Exposed to AI.
-- (void)setPrimaryRole:(NSString *)role
+- (void)setPrimaryRole:(id)role	// shared selector (proposed ADR-0043), called by name (ADR-0043 item 21): an Objective-C string
 {
-	if (![role isEqual:primaryRole])
-	{
-		[primaryRole release];
-		primaryRole = [role copy];
-	}
+	// -isEqual: compared a string's text; nil (or a non-string) never matched, so it was stored
+	primaryRole = oo::IsNSString(role) ? oo::OptionalString(role) : std::nullopt;
 }
 
 
-- (BOOL)hasPrimaryRole:(NSString *)role
+- (BOOL) cxx_hasPrimaryRole:(const std::string &)role
 {
-	return [[self primaryRole] isEqual:role];
+	return [self cxx_primaryRole] == role;
 }
 
 
@@ -9126,7 +9111,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	if (modelName != nil)
 	{
 		mesh = [OOMesh meshWithName:oo::StdString(modelName)
-						   cacheKey:oo::OptionalString([NSString stringWithFormat:@"%@-%.3f",_shipKey,_scaleFactor])
+						   cacheKey:oo::str::format("%s-%.3f", _shipKey.value_or("(null)").c_str(), _scaleFactor)	// %@ printed nil as (null)
 				 materialDictionary:oo::PListFrom(oo::PListView(shipDict).get<NSDictionary *>(@"materials"))
 				  shadersDictionary:oo::PListFrom(oo::PListView(shipDict).get<NSDictionary *>(@"shaders"))
 							 smooth:oo::PListView(shipDict).get<BOOL>(@"smooth", NO)
@@ -12712,11 +12697,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	Entity*		ent;
 	ShipEntity* other_ship;
 	
-	while ([collidingEntities count] > 0)
+	while (!collidingEntities.empty())
 	{
 		// EMMSTRAN: investigate if doing this backwards would be more efficient. (Not entirely obvious, the array is kinda funky.) -- Ahruman 2011-02-12
-		ent = [[[collidingEntities objectAtIndex:0] retain] autorelease];
-		[collidingEntities removeObjectAtIndex:0];
+		ent = [[collidingEntities.front().get() retain] autorelease];
+		collidingEntities.erase(collidingEntities.begin());
 		if (ent)
 		{
 			if ([ent isShip])
@@ -12885,8 +12870,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	
 	// remove self from other's collision list
-	[[other collisionArray] removeObject:self];
-	
+	if (std::vector<oo::ObjCRef<Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<Entity *> &e) { return e.get() == self; });	// -removeObject:
+
 	[self cxx_doScriptEvent:OOJSID("shipCollided") withArgument:other andReactToAIMessage:"COLLISION"];
 	[other cxx_doScriptEvent:OOJSID("shipCollided") withArgument:self andReactToAIMessage:"COLLISION"];
 	
@@ -13127,7 +13112,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		}
 	}
 
-	[[other collisionArray] removeObject:self];			// so it can't be scooped twice!
+	if (std::vector<oo::ObjCRef<Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<Entity *> &e) { return e.get() == self; });	// -removeObject:, so it can't be scooped twice!
 	// make sure other ships trying to scoop it lose it
 	// probably already happened, but some may have acquired it
 	// after the scooping started, and they might get stuck in a scooping
@@ -14546,10 +14531,10 @@ static BOOL AuthorityPredicate(Entity *entity, void *parameter)
 	[super dumpSelfState];
 	
 	OOLog(@"dumpState.shipEntity", @"Type: %@", [self shipDataKey]);
-	OOLog(@"dumpState.shipEntity", @"Name: %@", name);
+	OOLog(@"dumpState.shipEntity", @"Name: %@", oo::NSStringOrNil(name));
 	OOLog(@"dumpState.shipEntity", @"Display Name: %@", [self displayName]);
 	OOLog(@"dumpState.shipEntity", @"Roles: %@", [self roleSet]);
-	OOLog(@"dumpState.shipEntity", @"Primary role: %@", primaryRole);
+	OOLog(@"dumpState.shipEntity", @"Primary role: %@", oo::NSStringOrNil(primaryRole));
 	OOLog(@"dumpState.shipEntity", @"Script: %@", script);
 	OOLog(@"dumpState.shipEntity", @"Subentity count: %zu", [self subEntityCount]);
 	OOLog(@"dumpState.shipEntity", @"Behaviour: %@", OOStringFromBehaviour(behaviour));
