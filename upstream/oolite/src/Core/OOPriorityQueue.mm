@@ -30,6 +30,7 @@ SOFTWARE.
 #import "OOPriorityQueue.h"
 #import "OOFunctionAttributes.h"
 #include "oofnd/objc/OOException.h"
+#include "oofnd/objc/OORuntime.h"
 
 
 /*	Capacity grows by 50% each time. kMinCapacity must be at least 2 or Bad
@@ -187,7 +188,7 @@ OOINLINE NSComparisonResult PQCompare(id a, id b, SEL comparator)
 	NSMutableString				*result = nil;
 	
 	result = [NSMutableString string];
-	[result appendFormat:@"<%@ %p> (count=%zu, capacity=%zu, comparator=%@)", [self class], self, _count, _capacity, NSStringFromSelector(_comparator)];
+	[result appendFormat:@"<%@ %p> (count=%zu, capacity=%zu, comparator=%s)", [self class], self, _count, _capacity, OOSelectorName(_comparator)];
 	
 	if (_count != 0)
 	{
