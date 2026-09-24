@@ -1344,6 +1344,20 @@ NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
 
 NSString *OOStringFromShipDamageType(OOShipDamageType type) CONST_FUNC;
 
+// C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161); the Foundation forms
+// above forward to them from OOConstToString+FoundationBridge.mm.
+std::string cxx_OOStringFromBehaviour(OOBehaviour behaviour);
+std::string cxx_OOStringFromShipDamageType(OOShipDamageType type);
+
+// Weapon identifiers and alert-condition names (chunk oo-3rb.162); nullopt where the old form gave nil.
+std::optional<std::string> cxx_OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon);	// nullopt: no weapon
+OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierSloppy(const std::string &string);	// Uses suffix match for backwards compatibility.
+OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierStrict(const std::string &string);
+OOWeaponType cxx_OOWeaponTypeFromEquipmentIdentifierLegacy(const std::string &string);
+std::optional<std::string> cxx_OOStringFromWeaponType(OOWeaponType weapon);
+OOWeaponType cxx_OOWeaponTypeFromString(const std::string &string);
+std::optional<std::string> cxx_OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
+
 
 /*	TRANSITIONAL (proposed ADR-0043, "Transitional bridges"): the Foundation-typed API this header
 	declared before the ShipEntity.mm sweep (chunk beads oo-3rb.232-.242 of oo-3rb.73), forwarding
