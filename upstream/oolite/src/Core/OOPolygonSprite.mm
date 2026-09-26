@@ -764,7 +764,7 @@ static void APIENTRY TessVertexCallback(void *vertexData, void *polygonData)
 			break;
 			
 		default:
-			OOLog(@"polygonSprite.tesselate.error", @"Unexpected tesselator primitive mode %u.", data->mode);
+			OO_LOG("polygonSprite.tesselate.error", "Unexpected tesselator primitive mode {}.", static_cast<unsigned>(data->mode));
 			data->OK = NO;
 	}
 }
@@ -803,7 +803,7 @@ static void APIENTRY ErrorCallback(GLenum error, void *polygonData)
 	
 	char *errStr = (char *)gluErrorString(error);
 	
-	OOLog(@"polygonSprite.tesselate.error", @"Error %s (%u) while tesselating polygon%@.", errStr, error, oo::NSStringFrom(name));
+	OO_LOG("polygonSprite.tesselate.error", "Error {} ({}) while tesselating polygon{}.", errStr, static_cast<unsigned>(error), name);
 	data->OK = NO;
 }
 
