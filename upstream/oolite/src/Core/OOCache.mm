@@ -124,7 +124,7 @@ MA 02110-1301, USA.
 
 // Protocol used internally to squash idiotic warnings in gnu-gcc.
 @protocol OOCacheComparable <NSObject, NSCopying>
-- (OOComparisonResult) compare:(id<OOCacheComparable>)other;
+- (NSComparisonResult) compare:(id<OOCacheComparable>)other;
 - (id) copy;
 @end
 
@@ -354,12 +354,12 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context);
 	pruneCount = count - desiredCount;
 	
 	const std::string logKey = oo::str::format("dataCache.prune.%s", CacheGetName(cache).value_or("(null)").c_str());
-	OO_LOG(logKey, "Pruning cache \"{}\" - removing {} entries", (CacheGetName(cache)).value_or("(null)"), static_cast<unsigned>(pruneCount));
-	oo::log::indentIf(logKey);
+	OOLog(oo::NSStringFrom(logKey), @"Pruning cache \"%@\" - removing %u entries", oo::NSStringOrNil(CacheGetName(cache)), pruneCount);
+	OOLogIndentIf(oo::NSStringFrom(logKey));
 	
 	while (pruneCount--)  CacheRemoveOldest(cache, logKey);
 	
-	oo::log::outdentIf(logKey);
+	OOLogOutdentIf(oo::NSStringFrom(logKey));
 }
 
 
@@ -514,7 +514,7 @@ BOOL CacheRemoveOldest(OOCacheImpl *cache, const std::string &logKey)
 	// This could be more efficient, but does it need to be?
 	if (cache == NULL || cache->oldest == NULL) return NO;
 	
-	OO_LOG(logKey, "Pruning cache \"{}\": removing {}", cache->name.value_or("(null)"), oo::DescriptionOf(cache->oldest->key));
+	OOLog(oo::NSStringFrom(logKey), @"Pruning cache \"%@\": removing %@", oo::NSStringOrNil(cache->name), cache->oldest->key);
 	return CacheRemove(cache, cache->oldest->key);
 }
 } // namespace
@@ -609,7 +609,7 @@ static void CacheCheckIntegrity(OOCacheImpl *cache, const std::string &context)
 	if (kCountUnknown == cache->count)  cache->count = trueCount;
 	else if (cache->count != trueCount)
 	{
-		OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): count is {}, but should be {}.", context, cache->name.value_or("(null)"), static_cast<unsigned>(cache->count), static_cast<unsigned>(trueCount));
+		OOLog(@"dataCache.integrityCheck", @"Integrity check (%@ for \"%@\"): count is %u, but should be %u.", oo::NSStringFrom(context), oo::NSStringOrNil(cache->name), cache->count, trueCount);
 		cache->count = trueCount;
 	}
 	
@@ -705,7 +705,7 @@ static std::string CacheNodeGetDescription(OOCacheNode *node)
 */
 static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 {
-	OOComparisonResult		order;
+	NSComparisonResult		order;
 	OOCacheNode				N = { .leftChild = NULL, .rightChild = NULL };
 	OOCacheNode				*node = NULL, *temp = NULL, *l = &N, *r = &N;
 	BOOL					exact = NO;
@@ -719,19 +719,19 @@ static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 #ifndef NDEBUG
 		if (node == NULL)
 		{
-			OO_LOG("node.error", "{}", "node is NULL");
+			OOLog(@"node.error", @"%@", @"node is NULL");
 		}
 		else if (node->key == NULL)
 		{
-			OO_LOG("node.error", "{}", "node->key is NULL");
+			OOLog(@"node.error", @"%@", @"node->key is NULL");
 		}
 #endif
 		order = [key compare:node->key];
-		if (order == OOOrderedAscending)
+		if (order == NSOrderedAscending)
 		{
 			// Closest match is in left subtree
 			if (node->leftChild == NULL) break;
-			if ([key compare:node->leftChild->key] == OOOrderedAscending)
+			if ([key compare:node->leftChild->key] == NSOrderedAscending)
 			{
 				// Rotate right
 				temp = node->leftChild;
@@ -745,11 +745,11 @@ static OOCacheNode *TreeSplay(OOCacheNode **root, id<OOCacheComparable> key)
 			r = node;
 			node = node->leftChild;
 		}
-		else if (order == OOOrderedDescending)
+		else if (order == NSOrderedDescending)
 		{
 			// Closest match is in right subtree
 			if (node->rightChild == NULL) break;
-			if ([key compare:node->rightChild->key] == OOOrderedDescending)
+			if ([key compare:node->rightChild->key] == NSOrderedDescending)
 			{
 				// Rotate left
 				temp = node->rightChild;
@@ -786,7 +786,7 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 {
 	OOCacheNode				*closest = NULL,
 							*node = NULL;
-	OOComparisonResult		order;
+	NSComparisonResult		order;
 	
 	if (cache == NULL || key == nil || value == nil) return NULL;
 	
@@ -812,7 +812,7 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 			
 			order = [key compare:closest->key];
 			
-			if (order == OOOrderedAscending)
+			if (order == NSOrderedAscending)
 			{
 				// Insert to left
 				node->leftChild = closest->leftChild;
@@ -821,7 +821,7 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 				cache->root = node;
 				++cache->count;
 			}
-			else if (order == OOOrderedDescending)
+			else if (order == NSOrderedDescending)
 			{
 				// Insert to right
 				node->rightChild = closest->rightChild;
@@ -833,7 +833,7 @@ static OOCacheNode *TreeInsert(OOCacheImpl *cache, id<OOCacheComparable> key, id
 			else
 			{
 				// Key already exists, which we should have caught above
-				OO_LOG("dataCache.inconsistency", "{}() internal inconsistency for cache \"{}\", insertion failed.", __PRETTY_FUNCTION__, cache->name.value_or("(null)"));
+				OOLog(@"dataCache.inconsistency", @"%s() internal inconsistency for cache \"%@\", insertion failed.", __PRETTY_FUNCTION__, oo::NSStringOrNil(cache->name));
 				CacheNodeFree(cache, node);
 				return NULL;
 			}
@@ -855,28 +855,28 @@ static unsigned TreeCountNodes(OOCacheNode *node)
 // TreeCheckIntegrity(): verify the links and contents of a (sub-)tree. If successful, returns the root of the subtree (which could theoretically be changed), otherwise returns NULL.
 static OOCacheNode *TreeCheckIntegrity(OOCacheImpl *cache, OOCacheNode *node, OOCacheNode *expectedParent, const std::string &context)
 {
-	OOComparisonResult		order;
+	NSComparisonResult		order;
 	BOOL					OK = YES;
 	
 	if (node == NULL) return NULL;
 	
 	if (OK && node->key == nil)
 	{
-		OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node \"{}\" has nil key; deleting subtree.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node));
+		OOLog(@"dataCache.integrityCheck", @"Integrity check (%@ for \"%@\"): node \"%@\" has nil key; deleting subtree.", oo::NSStringFrom(context), oo::NSStringOrNil(cache->name), oo::NSStringFrom(CacheNodeGetDescription(node)));
 		OK = NO;
 	}
 	
 	if (OK && node->value == nil)
 	{
-		OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node \"{}\" has nil value, deleting.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node));
+		OOLog(@"dataCache.integrityCheck", @"Integrity check (%@ for \"%@\"): node \"%@\" has nil value, deleting.", oo::NSStringFrom(context), oo::NSStringOrNil(cache->name), oo::NSStringFrom(CacheNodeGetDescription(node)));
 		OK = NO;
 	}	
 	if (OK && node->leftChild != NULL)
 	{
 		order = [node->key compare:node->leftChild->key];
-		if (order != OOOrderedDescending)
+		if (order != NSOrderedDescending)
 		{
-			OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node {}'s left child {} is not correctly ordered. Deleting subtree.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node), CacheNodeGetDescription(node->leftChild));
+			OOLog(@"dataCache.integrityCheck", @"Integrity check (%@ for \"%@\"): node %@'s left child %@ is not correctly ordered. Deleting subtree.", oo::NSStringFrom(context), oo::NSStringOrNil(cache->name), oo::NSStringFrom(CacheNodeGetDescription(node)), oo::NSStringFrom(CacheNodeGetDescription(node->leftChild)));
 			CacheNodeFree(cache, node->leftChild);
 			node->leftChild = NULL;
 			cache->count = kCountUnknown;
@@ -889,9 +889,9 @@ static OOCacheNode *TreeCheckIntegrity(OOCacheImpl *cache, OOCacheNode *node, OO
 	if (node->rightChild != NULL)
 	{
 		order = [node->key compare:node->rightChild->key];
-		if (order != OOOrderedAscending)
+		if (order != NSOrderedAscending)
 		{
-			OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node \"{}\"'s right child \"{}\" is not correctly ordered. Deleting subtree.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node), CacheNodeGetDescription(node->rightChild));
+			OOLog(@"dataCache.integrityCheck", @"Integrity check (%@ for \"%@\"): node \"%@\"'s right child \"%@\" is not correctly ordered. Deleting subtree.", oo::NSStringFrom(context), oo::NSStringOrNil(cache->name), oo::NSStringFrom(CacheNodeGetDescription(node)), oo::NSStringFrom(CacheNodeGetDescription(node->rightChild)));
 			CacheNodeFree(cache, node->rightChild);
 			node->rightChild = NULL;
 			cache->count = kCountUnknown;
@@ -969,7 +969,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 		
 		if (next->younger != node)
 		{
-			OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): node \"{}\" has invalid older link (should be \"{}\", is \"{}\"); repairing.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(next), CacheNodeGetDescription(node), CacheNodeGetDescription(next->older));
+			OOLog(@"dataCache.integrityCheck", @"Integrity check (%@ for \"%@\"): node \"%@\" has invalid older link (should be \"%@\", is \"%@\"); repairing.", oo::NSStringFrom(context), oo::NSStringOrNil(cache->name), oo::NSStringFrom(CacheNodeGetDescription(next)), oo::NSStringFrom(CacheNodeGetDescription(node)), oo::NSStringFrom(CacheNodeGetDescription(next->older)));
 			next->older = node;
 		}
 		node = next;
@@ -978,7 +978,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 	if (seenCount != cache->count)
 	{
 		// This is especially bad since this function is called just after verifying that the count field reflects the number of objects in the tree.
-		OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): expected {} nodes, found {}. Cannot repair; clearing cache.", context, cache->name.value_or("(null)"), static_cast<unsigned>(cache->count), static_cast<unsigned>(seenCount));
+		OOLog(@"dataCache.integrityCheck", @"Integrity check (%@ for \"%@\"): expected %u nodes, found %u. Cannot repair; clearing cache.", oo::NSStringFrom(context), oo::NSStringOrNil(cache->name), cache->count, seenCount);
 
 		/* Start of temporary extra logging */
 		node = cache->youngest;
@@ -993,20 +993,20 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 				
 				if (node->key != NULL)
 				{
-					OO_LOG("dataCache.integrityCheck", "Key is: {}", oo::DescriptionOf(node->key));
+					OOLog(@"dataCache.integrityCheck",@"Key is: %@",node->key);
 				}
 				else
 				{
-					OO_LOG("dataCache.integrityCheck", "Key is: NULL");
+					OOLog(@"dataCache.integrityCheck",@"Key is: NULL");
 				}
 
 				if (node->value != NULL)
 				{
-					OO_LOG("dataCache.integrityCheck", "Value is: {}", oo::DescriptionOf(node->value));
+					OOLog(@"dataCache.integrityCheck",@"Value is: %@",node->value);
 				}
 				else
 				{
-					OO_LOG("dataCache.integrityCheck", "Value is: NULL");
+					OOLog(@"dataCache.integrityCheck",@"Value is: NULL");
 				}
 				
 				node = next;
@@ -1024,7 +1024,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 	
 	if (node != cache->oldest)
 	{
-		OO_LOG("dataCache.integrityCheck", "Integrity check ({} for \"{}\"): oldest pointer in cache is wrong (should be \"{}\", is \"{}\"); repairing.", context, cache->name.value_or("(null)"), CacheNodeGetDescription(node), CacheNodeGetDescription(cache->oldest));
+		OOLog(@"dataCache.integrityCheck", @"Integrity check (%@ for \"%@\"): oldest pointer in cache is wrong (should be \"%@\", is \"%@\"); repairing.", oo::NSStringFrom(context), oo::NSStringOrNil(cache->name), oo::NSStringFrom(CacheNodeGetDescription(node)), oo::NSStringFrom(CacheNodeGetDescription(cache->oldest)));
 		cache->oldest = node;
 	}
 }
@@ -1093,7 +1093,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 }
 
 
-- (id) generateGraphViz	// shared selector (proposed ADR-0043): an Objective-C string
+- (std::string) generateGraphViz
 {
 	std::string				result;
 	
@@ -1108,15 +1108,15 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 	
 	result += "}\n";
 	
-	return oo::NSStringFrom(result);
+	return result;
 }
 
 
-- (void) writeGraphVizToPath:(id)path	// shared selector (proposed ADR-0043): an Objective-C string
+// (-writeGraphVizToURL: folded in: its only sender was this method; bead oo-3rb.264)
+- (void) writeGraphVizToPath:(const std::string &)path
 {
-	// -writeToURL:[NSURL fileURLWithPath:path] atomically:YES (bead oo-3rb.13).
-	const std::string graphViz = oo::StdString([self generateGraphViz]);
-	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(oo::StdString(path)), oo::Data(graphViz.data(), graphViz.size()), oo::fs::WriteMode::atomic);
+	const std::string graphViz = [self generateGraphViz];
+	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(path), oo::Data(graphViz.data(), graphViz.size()));	// atomically, as before
 }
 
 @end

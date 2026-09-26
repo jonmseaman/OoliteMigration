@@ -93,21 +93,19 @@ OOINLINE NSUInteger PQParent(NSUInteger n)
 }
 
 
-typedef OOComparisonResult (*CompareIMP)(id receiver, SEL selector, id other);
+typedef NSComparisonResult (*CompareIMP)(id self, SEL _cmd, id other);
 
 
-namespace {
-OOINLINE OOComparisonResult PQCompare(id a, id b, SEL comparator)
+OOINLINE NSComparisonResult PQCompare(id a, id b, SEL comparator)
 {
 	CompareIMP				compare = NULL;
-	OOComparisonResult		result;
+	NSComparisonResult		result;
 	
 	// This is equivalent to [a performSelector:comparator withObject:b], except the resulting value isn't an object.
 	compare = (CompareIMP)[a methodForSelector:comparator];
 	result = compare(a, comparator, b);
 	return result;
 }
-} // namespace
 
 
 // Private priority queue methods.
@@ -594,7 +592,7 @@ std::string EscapedString(const std::string &string)
 @implementation OOPriorityQueue (DebugGraphViz)
 
 
-- (id) generateGraphViz	// shared selector (proposed ADR-0043): an Objective-C string
+- (std::string) generateGraphViz
 {
 	std::string				result;
 	NSUInteger				i;
@@ -632,15 +630,15 @@ std::string EscapedString(const std::string &string)
 
 	result += "}\n";
 
-	return oo::NSStringFrom(result);
+	return result;
 }
 
 
-- (void) writeGraphVizToPath:(id)path	// shared selector (proposed ADR-0043): an Objective-C string
+// (-writeGraphVizToURL: folded in: its only sender was this method; bead oo-3rb.264)
+- (void) writeGraphVizToPath:(const std::string &)path
 {
-	// -writeToURL:[NSURL fileURLWithPath:path] atomically:YES (bead oo-3rb.13).
-	const std::string graphViz = oo::StdString([self generateGraphViz]);
-	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(oo::StdString(path)), oo::Data(graphViz.data(), graphViz.size()), oo::fs::WriteMode::atomic);
+	const std::string graphViz = [self generateGraphViz];
+	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(path), oo::Data(graphViz.data(), graphViz.size()));	// atomically, as before
 }
 
 @end
