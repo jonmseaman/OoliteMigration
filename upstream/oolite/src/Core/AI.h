@@ -96,7 +96,7 @@ MA 02110-1301, USA.
 
 - (void) message:(id) ms;	// shared selector (proposed ADR-0043): ms is an Objective-C string
 - (void) cxx_dropMessage:(const std::string &) ms;
-- (id) pendingMessages;	// shared selector (proposed ADR-0043): an immutable Objective-C set of strings
+- (std::set<std::string>) pendingMessages;	// in byte order
 - (void) debugDumpPendingMessages;
 
 - (void) setNextThinkTime:(OOTimeAbsolute) ntt;

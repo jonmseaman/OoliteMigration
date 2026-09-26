@@ -98,15 +98,22 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 }
 
 
-- (id)dependencies
+- (id)dependencies	// shared selector (Foundation declares -dependencies too; retires with oo-qps)
 {
-	return nil;
+	const std::optional<std::vector<std::string>> dependencies = [self cxx_dependencies];
+	return dependencies.has_value() ? oo::NSSetFromStrings(*dependencies) : nil;
 }
 
 
-- (id)dependents
+- (std::optional<std::vector<std::string>>)cxx_dependencies
 {
-	return nil;
+	return std::nullopt;
+}
+
+
+- (std::optional<std::vector<std::string>>)dependents
+{
+	return std::nullopt;
 }
 
 

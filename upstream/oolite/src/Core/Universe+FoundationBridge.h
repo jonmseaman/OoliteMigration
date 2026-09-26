@@ -115,6 +115,77 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (Universe.h)
 - (NSArray *) shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time;	// -> -cxx_shipsForSaleForSystem:withTL:atTime:
 - (OOCreditsQuantity) tradeInValueForCommanderDictionary:(NSDictionary*) cmdr_dict;	// -> -cxx_tradeInValueForCommanderDictionary:
 
+// Chunk 9 (oo-3rb.228): entity lists, stations, planets, wormholes, waypoints, predicate searches.
+// The lists are snapshots (the old -planets / -wormholes / -currentWaypoints were the live
+// collections; their callers only read them).
+#ifndef NDEBUG
+- (NSArray *) entityList;	// -> -cxx_entityList
+#endif
+- (NSArray *) planets;	// Note: does not include sun.	// -> -cxx_planets
+- (NSArray *) stations; // includes main station	// -> -cxx_stations
+- (NSArray *) wormholes; 	// -> -cxx_wormholes
+- (StationEntity *) stationWithRole:(NSString *)role andPosition:(HPVector)position;	// -> -cxx_stationWithRole:andPosition:
+- (NSDictionary *) currentWaypoints;	// -> -cxx_currentWaypoints
+- (void) defineWaypoint:(NSDictionary *)definition forKey:(NSString *)key;	// -> -cxx_defineWaypoint:forKey:
+- (NSArray *) entitiesWithinRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_entitiesWithinRange:ofEntity:
+- (unsigned) countShipsWithRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_countShipsWithRole:inRange:ofEntity:
+- (unsigned) countShipsWithRole:(NSString *)role;	// -> -cxx_countShipsWithRole:
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity;	// -> -cxx_countShipsWithPrimaryRole:inRange:ofEntity:
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role;	// -> -cxx_countShipsWithPrimaryRole:
+// -> -cxx_findEntitiesMatchingPredicate:... / -cxx_findShipsMatchingPredicate:... /
+// -cxx_findVisualEffectsMatchingPredicate:... (each call a fresh mutable array, as before)
+- (NSMutableArray *) findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+										 parameter:(void *)parameter
+										   inRange:(double)range
+										  ofEntity:(Entity *)entity;
+- (NSMutableArray *) findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity;
+- (NSMutableArray *) findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity;
+- (NSArray*) listBeaconsWithCode:(NSString*) code;	// -> -cxx_listBeaconsWithCode:
+- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message;	// -> -cxx_allShipsDoScriptEvent:andReactToAIMessage:
+
+// Chunk 10 (oo-3rb.229): messages, speech, custom sounds, screen backgrounds.
+- (NSDictionary *) screenTextureDescriptorForKey:(NSString *)key;	// -> -cxx_screenTextureDescriptorForKey:
+- (void) setScreenTextureDescriptorForKey:(NSString *) key descriptor:(NSDictionary *)desc;	// -> -cxx_setScreenTextureDescriptorForKey:descriptor:
+- (void) displayMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_displayMessage:forCount:
+- (void) displayCountdownMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_displayCountdownMessage:forCount:
+- (void) addDelayedMessage:(NSString *) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay;	// -> -cxx_addDelayedMessage:forCount:afterDelay:
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_addMessage:forCount:
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay;	// -> -cxx_addMessage:forCount:forceDisplay:
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count;	// -> -cxx_addCommsMessage:forCount:
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly;	// -> -cxx_addCommsMessage:forCount:andShowComms:logOnly:
+- (void) startSpeakingString:(NSString *) text;	// -> -cxx_startSpeakingString:
+#if OOLITE_ESPEAK
+- (NSString *) voiceName:(unsigned int) index;	// -> -cxx_voiceName:
+- (unsigned int) voiceNumber:(NSString *) name;	// -> -cxx_voiceNumber:
+#endif
+
+// Chunk 11 (oo-3rb.230): demo ships.
+- (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning;	// -> -cxx_makeDemoShipWithRole:spinning:
+
+// Chunk 12 (oo-3rb.231): add-ons, settings.
+- (NSString *) useAddOns;	// -> -cxx_useAddOns
+- (BOOL) setUseAddOns:(NSString *)newUse fromSaveGame: (BOOL)saveGame;	// -> -cxx_setUseAddOns:fromSaveGame:
+- (BOOL) setUseAddOns:(NSString *) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;	// -> -cxx_setUseAddOns:fromSaveGame:forceReinit:
+- (NSDictionary *) gameSettings;	// -> -cxx_gameSettings
+- (NSDictionary *) globalSettings;	// -> -cxx_globalSettings (a fresh immutable copy per call; its callers only read it)
+
+@end
+
+
+// Chunk 10 (oo-3rb.229): the custom sound categories.
+@interface OOSound (OOCustomSoundsFoundationBridge)
++ (id) soundWithCustomSoundKey:(NSString *)key;	// -> +cxx_soundWithCustomSoundKey:
+@end
+
+
+@interface OOSoundSource (OOCustomSoundsFoundationBridge)
+- (void) playCustomSoundWithKey:(NSString *)key;	// -> -cxx_playCustomSoundWithKey:
 @end
 
 
@@ -127,5 +198,17 @@ NSString *OOLookUpDescriptionPRIV(NSString *key);	// -> cxx_OOLookUpDescriptionP
 }
 #endif
 NSString *OOLookUpPluralDescriptionPRIV(NSString *key, NSInteger count);	// -> cxx_OOLookUpPluralDescriptionPRIV
+
+
+// Chunk 12 (oo-3rb.231): OOConstToString's display strings, declared in Universe.h before
+// (defined in OOConstToString.mm; -> cxx_OODisplayStringFromGovernmentID / EconomyID).
+#ifdef __cplusplus
+extern "C" {
+#endif
+NSString *OODisplayStringFromGovernmentID(OOGovernmentID government);
+NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
+#ifdef __cplusplus
+}
+#endif
 
 #endif	// UNIVERSE_FOUNDATIONBRIDGE_H
