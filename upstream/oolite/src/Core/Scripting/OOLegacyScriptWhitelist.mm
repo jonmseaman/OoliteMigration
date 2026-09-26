@@ -56,7 +56,6 @@ struct SanStackElement
 namespace {
 static oo::PList OOSanitizeLegacyScriptInternal(const oo::PList &script, SanStackElement *stack, BOOL allowAIMethods);
 static oo::PList OOSanitizeLegacyScriptConditionsInternal(const oo::PList &conditions, SanStackElement *stack);
-static BOOL ConditionsAreSanitized(const oo::PList &conditions);
 
 static oo::PList SanitizeCondition(const std::string &condition, SanStackElement *stack);
 static oo::PList SanitizeConditionalStatement(const oo::PList &statement, SanStackElement *stack, BOOL allowAIMethods);
@@ -71,11 +70,10 @@ static std::string StringFromStack(SanStackElement *topOfStack);
 } // namespace
 
 
-NSArray *OOSanitizeLegacyScript(NSArray *script, NSString *context, BOOL allowAIMethods)
+oo::PList OOSanitizeLegacyScript(const oo::PList &script, const std::optional<std::string> &context, BOOL allowAIMethods)
 {
-	SanStackElement stackRoot = { NULL, oo::OptionalString(context), 0 };
-	oo::PList result = OOSanitizeLegacyScriptInternal(oo::PListFrom(script), &stackRoot, allowAIMethods);
-	return oo::ObjectFromPList(result);	// a fresh tree, as the deep copy was
+	SanStackElement stackRoot = { NULL, context, 0 };
+	return OOSanitizeLegacyScriptInternal(script, &stackRoot, allowAIMethods);	// a fresh tree, as the deep copy was
 }
 
 
@@ -125,12 +123,10 @@ static oo::PList OOSanitizeLegacyScriptInternal(const oo::PList &script, SanStac
 } // namespace
 
 
-NSArray *OOSanitizeLegacyScriptConditions(NSArray *conditions, NSString *context)
+oo::PList OOSanitizeLegacyScriptConditions(const oo::PList &conditions, const std::optional<std::string> &context)
 {
-	std::optional<std::string> contextString = (context != nil) ? oo::OptionalString(context) : std::optional<std::string>("<anonymous conditions>");
-	SanStackElement stackRoot = { NULL, contextString, 0 };
-	oo::PList result = OOSanitizeLegacyScriptConditionsInternal(oo::PListFrom(conditions), &stackRoot);
-	return oo::ObjectFromPList(result);	// a fresh tree, as the deep copy was; null -> nil
+	SanStackElement stackRoot = { NULL, context ? context : std::optional<std::string>("<anonymous conditions>"), 0 };
+	return OOSanitizeLegacyScriptConditionsInternal(conditions, &stackRoot);	// a copy, as the deep copy was; null = nil
 }
 
 
@@ -141,7 +137,7 @@ static oo::PList OOSanitizeLegacyScriptConditionsInternal(const oo::PList &condi
 	BOOL						OK = YES;
 	NSUInteger					index = 0;
 
-	if (ConditionsAreSanitized(conditions) || conditions.isNull())  return conditions;
+	if (OOLegacyConditionsAreSanitized(conditions) || conditions.isNull())  return conditions;
 
 	result.reserve(conditions.count());
 
@@ -181,22 +177,12 @@ static oo::PList OOSanitizeLegacyScriptConditionsInternal(const oo::PList &condi
 } // namespace
 
 
-BOOL OOLegacyConditionsAreSanitized(NSArray *conditions)
-{
-	if ([conditions count] == 0)  return YES;	// Empty array is safe.
-	return oo::IsNSArray([conditions objectAtIndex:0]);
-}
-
-
-// OOLegacyConditionsAreSanitized() for the sanitizer's own trees.
-namespace {
-static BOOL ConditionsAreSanitized(const oo::PList &conditions)
+BOOL OOLegacyConditionsAreSanitized(const oo::PList &conditions)
 {
 	if (conditions.count() == 0)  return YES;	// Empty array is safe.
 	const oo::PList *first = conditions.at(0);
 	return first != nullptr && first->isArray();
 }
-} // namespace
 
 
 namespace {

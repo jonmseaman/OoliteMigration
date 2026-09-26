@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 
 
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import <SDL3/SDL_events.h>
 #import "OOJoystickManager.h"
 
@@ -55,7 +55,7 @@ MA 02110-1301, USA.
 - (id) init;
 - (void) dealloc;
 - (BOOL) handleSDLEvent: (SDL_Event *)evt;
-- (id) nameOfJoystick:(NSUInteger)stickNumber;	// an Objective-C string. Shared selector (proposed ADR-0043).
+- (std::optional<std::string>) nameOfJoystick:(NSUInteger)stickNumber;	// nullopt: the device has no name
 - (int16_t) getAxisWithStick:(NSUInteger) stickNum axis:(NSUInteger) axisNum ;
 - (JoyAxisEvent) makeJoyAxisEvent: (SDL_JoyAxisEvent*) sdlevt;
 - (JoyButtonEvent) makeJoyButtonEvent: (SDL_JoyButtonEvent*) sdlevt;

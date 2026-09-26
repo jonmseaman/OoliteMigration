@@ -110,15 +110,15 @@ MA 02110-1301, USA.
 
 - (void) setGuiToShipyardScreen:(NSUInteger)skip;
 
-- (void) showShipyardModel:(NSString *)shipKey shipData:(NSDictionary *)shipDict personality:(uint16_t)personality;
+- (void) cxx_showShipyardModel:(const std::string &)shipKey shipData:(const oo::PList &)shipDict personality:(uint16_t)personality;
 - (void) showShipyardInfoForSelection;
 - (NSInteger) missingSubEntitiesAdjustment;
 - (void) showTradeInInformationFooter;
 
-- (OOCreditsQuantity) priceForShipKey:(NSString *)key;
+- (OOCreditsQuantity) cxx_priceForShipKey:(const std::string &)key;
 - (BOOL) buySelectedShip;
-- (BOOL) replaceShipWithNamedShip:(NSString *)shipName;
-- (void) newShipCommonSetup:(NSString *)shipKey yardInfo:(NSDictionary *)ship_info baseInfo:(NSDictionary *)ship_base_dict; 
+- (BOOL) cxx_replaceShipWithNamedShip:(const std::string &)shipName;
+- (void) newShipCommonSetup:(const std::string &)shipKey yardInfo:(const oo::PList &)ship_info baseInfo:(const oo::PList &)ship_base_dict;
 
 @end
 

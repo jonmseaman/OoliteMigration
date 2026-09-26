@@ -873,7 +873,7 @@ static BOOL GetShaderSource(NSString *fileName, NSString *shaderType, NSString *
 		extensions = [NSArray arrayWithObjects:shaderType, [shaderType substringToIndex:4], nil];	// vertex and vert, or fragment and frag
 		
 		// Futureproofing -- in future, we may wish to support automatic selection between supported shader languages.
-		if (![fileName pathHasExtensionInArray:extensions])
+		if (!oo::str::pathHasExtensionIn(oo::StdString(fileName), oo::StringsFrom(extensions)))
 		{
 			foreach (extension, extensions)
 			{
