@@ -59,20 +59,21 @@ constexpr const char	*kObjectsKey = "objects";
 constexpr const char	*kWeightsKey = "weights";
 
 
-// The property list representation: the objects (each an Object node, so the same objects come
-// back) and their weights (single reals, as +numberWithFloat: made them).
-id PropertyListRepresentation(const id *objects, const float *weights, NSUInteger count)
+// The property list representation: the objects (each converted as oo::PListFrom converts it, as
+// the Objective-C dictionary this was before was converted) and their weights (single reals, as
+// +numberWithFloat: made them).
+oo::PList PropertyListRepresentation(const id *objects, const float *weights, NSUInteger count)
 {
 	oo::PList::Array objectList, weightList;
 	for (NSUInteger i = 0; i < count; ++i)
 	{
-		objectList.push_back(oo::PListObject(objects[i]));
+		objectList.push_back(oo::PListFrom(objects[i]));
 		weightList.push_back(oo::PList::singleReal(weights[i]));
 	}
 	oo::PList::Dict result;
 	result.emplace(kObjectsKey, oo::PList(std::move(objectList)));
 	result.emplace(kWeightsKey, oo::PList(std::move(weightList)));
-	return oo::ObjectFromPList(oo::PList(std::move(result)));
+	return oo::PList(std::move(result));
 }
 
 
@@ -162,7 +163,7 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 
 + (id) probabilitySetWithPropertyListRepresentation:(const oo::PList &)plist
 {
-	return [[[self alloc] initWithPropertyListRepresentation:oo::ObjectFromPList(plist)] autorelease];
+	return [[[self alloc] initWithPropertyListRepresentation:plist] autorelease];
 }
 
 
@@ -195,9 +196,9 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 }
 
 
-- (id) initWithPropertyListRepresentation:(id)plist
+- (id) initWithPropertyListRepresentation:(const oo::PList &)plist
 {
-	const oo::PList			representation = oo::PListFrom(plist);
+	const oo::PList			&representation = plist;
 	const oo::PList			*objects = representation.find(kObjectsKey);
 	const oo::PList			*weights = representation.find(kWeightsKey);
 	NSUInteger				i = 0, count = 0;
@@ -263,7 +264,7 @@ static void ThrowAbstractionViolationException(id obj)  GCC_ATTR((noreturn));
 }
 
 
-- (id) propertyListRepresentation
+- (oo::PList) propertyListRepresentation
 {
 	ThrowAbstractionViolationException(self);
 }
@@ -359,7 +360,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) propertyListRepresentation
+- (oo::PList) propertyListRepresentation
 {
 	return PropertyListRepresentation(NULL, NULL, 0);
 }
@@ -482,7 +483,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) propertyListRepresentation
+- (oo::PList) propertyListRepresentation
 {
 	return PropertyListRepresentation(&_object, &_weight, 1);
 }
@@ -586,7 +587,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) propertyListRepresentation
+- (oo::PList) propertyListRepresentation
 {
 	std::vector<float>		weights;
 	float					cuWeight = 0.0f, sum = 0.0f;
@@ -746,7 +747,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) initWithPropertyListRepresentation:(id)plist
+- (id) initWithPropertyListRepresentation:(const oo::PList &)plist
 {
 	OOZone *zone = [self zone];
 	[self release];
@@ -824,10 +825,10 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) initWithPropertyListRepresentation:(id)plist
+- (id) initWithPropertyListRepresentation:(const oo::PList &)plist
 {
 	BOOL					OK = YES;
-	const oo::PList			representation = oo::PListFrom(plist);
+	const oo::PList			&representation = plist;
 	const oo::PList			*objects = nullptr;
 	const oo::PList			*weights = nullptr;
 	NSUInteger				i = 0, count = 0;
@@ -875,7 +876,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 }
 
 
-- (id) propertyListRepresentation
+- (oo::PList) propertyListRepresentation
 {
 	std::vector<id>			objects;
 	for (const oo::ObjCRef<id> &object : _objects)  objects.push_back(object.get());

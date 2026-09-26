@@ -47,6 +47,8 @@
 #import "GameController.h"
 
 #include "ooscript/JSEngine.hpp"
+#import "OOStringBridge.h"
+#include "oofnd/Log.hpp"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
 
@@ -54,8 +56,8 @@
 namespace
 {
 
-// +[NSCharacterSet whitespaceCharacterSet]: whitespaceAndNewlineCharacterSet without the newline
-// set (U+000A-U+000D, U+0085, U+2028, U+2029).
+// Whitespace without newlines: whiteSpaceAndNewline without U+000A-U+000D, U+0085, U+2028, U+2029
+// (matches GNUstep's whitespaceCharacterSet table).
 bool IsWhitespace(char16_t c)
 {
 	return oo::str::isWhitespaceOrNewline(c) && !((c >= 0x000A && c <= 0x000D) || c == 0x0085 || c == 0x2028 || c == 0x2029);
@@ -617,7 +619,7 @@ using ooscript::Context;
 	if (station != nil && (distanceToStation2 < SCANNER_MAX_RANGE2 * 6.25 || !dockingInstructions.isNull()))
 	{
 		// remember the instructions (the station's weak reference is kept as an Object node)
-		dockingInstructions = oo::PListFrom([station dockingInstructionsForShip:self]);
+		dockingInstructions = [station dockingInstructionsForShip:self];
 		if (!dockingInstructions.isNull())
 		{
 			[self recallDockingInstructions];
@@ -701,7 +703,7 @@ using ooscript::Context;
 		// locate nearest wormhole
 		int				ent_count =		UNIVERSE->n_entities;
 		Entity**		uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-		WormholeEntity*	wormholes[ent_count];
+		std::vector<WormholeEntity *>	wormholes(ent_count);
 		int i;
 		int wh_count = 0;
 		for (i = 0; i < ent_count; i++)
@@ -1067,7 +1069,7 @@ using ooscript::Context;
 	
 	//-- Locates one of the merchantman in range.
 	[self checkScannerIgnoringUnpowered];
-	ShipEntity*		ids_found[n_scanned_ships];
+	std::vector<ShipEntity *>	ids_found(n_scanned_ships);
 	
 	n_found = 0;
 	DESTROY(_foundTarget);
@@ -1536,7 +1538,7 @@ using ooscript::Context;
 			return;
 	}
 	
-	NSLog(@"Aegis status for %@ has taken on invalid value %i. This is an internal error, please report it.", self, aegis_status);
+	OO_LOG("unclassified", "Aegis status for {} has taken on invalid value {}. This is an internal error, please report it.", oo::StdString([self description]), (int)aegis_status);
 	aegis_status = AEGIS_NONE;
 	[shipAI message:@"AEGIS_NONE"];
 }
@@ -2518,7 +2520,7 @@ using ooscript::Context;
 	/*- selects the nearest station it can find -*/
 	int				ent_count = UNIVERSE->n_entities;
 	Entity			**uni_entities = UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	StationEntity	*station = nil, *my_station = nil;
 	double			maxRange2 = desired_range * desired_range;
 	int				i;
