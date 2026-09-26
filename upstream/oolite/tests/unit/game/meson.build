@@ -7,7 +7,7 @@
 game_unit_tests = {
     'test_defaults_bridge': files(
         '../../../src/Core/NSUserDefaults+OODefaultsBridge.mm',
-        '../../../src/Core/NSNumberOOExtensions.mm',	# -oo_isBoolean, used by oo::PListFrom
+        # Former NSNumber (OOExtensions) TU retired; boolean identity is inlined in oo::PListFrom.
     ),
 }
 

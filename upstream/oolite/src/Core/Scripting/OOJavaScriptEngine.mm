@@ -64,7 +64,6 @@ MA 02110-1301, USA.
 #import "OOWeakReference.h"
 #import "EntityOOJavaScriptExtensions.h"
 #import "ResourceManager.h"
-#import "NSNumberOOExtensions.h"
 #import "OOConstToJSString.h"
 #import "OOVisualEffectEntity.h"
 #import "OOWaypointEntity.h"

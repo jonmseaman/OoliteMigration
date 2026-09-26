@@ -12,7 +12,6 @@ gnustep-base (bead oo-3rb.199).
 
 #import "OOJavaScriptEngine.h"	// declares the bridge at its end
 #import "OOFoundationBridge.h"
-#import "NSNumberOOExtensions.h"
 
 
 NSString * const kOOJavaScriptEngineWillResetNotification = @"org.aegidian.oolite OOJavaScriptEngine will reset";
@@ -518,7 +517,15 @@ static BOOL JSNewNSDictionaryValue(ooscript::Context context, NSDictionary *dict
 	BOOL					isFloat = NO;
 	long long				longLongValue;
 	
-	isFloat = [self oo_isFloatingPointNumber];
+	// Former NSNumber (OOExtensions) float/double objCType test.
+#if __COREFOUNDATION_CFNUMBER__
+	isFloat = CFNumberIsFloatType((CFNumberRef)self);
+#else
+	{
+		const char *type = [self objCType];
+		isFloat = (strcmp(type, @encode(double)) == 0 || strcmp(type, @encode(float)) == 0);
+	}
+#endif
 	if (!isFloat)
 	{
 		longLongValue = [self longLongValue];
