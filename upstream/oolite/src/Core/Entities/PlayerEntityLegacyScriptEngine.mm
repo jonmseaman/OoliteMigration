@@ -157,8 +157,9 @@ const oo::PList &ElementAt(const oo::PList &array, std::size_t index)
 }
 
 
-/*	Whitespace without newlines: GNUstep's whitespace-and-newline set (oo::str::isWhitespaceOrNewline)
-	without U+000A-U+000D, U+0085, U+2028, U+2029. The later chunks of oo-j924 reuse it.
+/*	-[NSCharacterSet whitespaceCharacterSet]: GNUstep's whitespace-and-newline set (the scanner's,
+	oo::str::isWhitespaceOrNewline) without its newlines (U+000A-U+000D, U+0085, U+2028, U+2029).
+	The later chunks of oo-j924 reuse it.
 */
 bool IsWhitespaceNotNewline(char16_t c)
 {
@@ -454,9 +455,9 @@ static BOOL sRunningScript = NO;
 		
 		// After all that, actually running the scripts is trivial. (Order: script name, byte
 		// order; it was the hash order of -allValues.)
-		for (const auto &[scriptName, tickleScript] : *tickleScripts.getIf<oo::PList::Dict>())
+		for (const auto &[scriptName, script] : *tickleScripts.getIf<oo::PList::Dict>())
 		{
-			[(OOScript *)oo::ObjectIn(tickleScript) runWithTarget:self];
+			[(OOScript *)oo::ObjectIn(script) runWithTarget:self];
 		}
 	}
 	@catch (OOException *exception)
@@ -1181,13 +1182,13 @@ static int shipsFound;
 
 - (id) missionChoice_string	// called by name (ADR-0043 item 21); returns nil or the key for the chosen option
 {
-	return missionChoice;
+	return oo::NSStringOrNil(missionChoice);
 }
 
 
 - (id) missionKeyPress_string	// called by name (ADR-0043 item 21)
 {
-	return missionKeyPress;
+	return oo::NSStringOrNil(missionKeyPress);
 }
 
 
@@ -1526,7 +1527,7 @@ static int shipsFound;
 		}
 	}
 
-	DESTROY(specialCargo);
+	specialCargo.reset();
 
 	[self calculateCurrentCargo];
 }
@@ -1539,7 +1540,7 @@ static int shipsFound;
 	const std::string description = oo::StdString(descriptionString);
 	[self removeAllCargo:YES];
 	OO_LOG(kOOLogNoteUseSpecialCargo, "Going to useSpecialCargo:'{}'", description);
-	specialCargo = [OOExpand(oo::NSStringFrom(description)) retain];
+	specialCargo = oo::OptionalString(OOExpand(oo::NSStringFrom(description)));
 }
 
 
@@ -1976,9 +1977,8 @@ static int shipsFound;
 {
 	const std::optional<std::string> key = oo::OptionalString(textKey);
 
-	if (key.has_value() && key == oo::OptionalString(lastTextKey))  return; // don't repeatedly add the same text
-	[lastTextKey release];
-	lastTextKey = [textKey copy];
+	if (key.has_value() && key == lastTextKey)  return; // don't repeatedly add the same text
+	lastTextKey = key;
 
 	// Replace literal \n in strings with line breaks and perform expansions.
 	const std::optional<std::string> text = MissionTextForKey(key.value_or(std::string()));
@@ -2222,25 +2222,24 @@ static int shipsFound;
 
 - (std::optional<std::string>) cxx_missionTitle
 {
-	return oo::OptionalString(_missionTitle);
+	return _missionTitle;
 }
 
 
 - (void) cxx_setMissionTitle:(const std::optional<std::string> &)value
 {
 	// (nil matters: the mission screen then falls back to DESC(mission-information))
-	[_missionTitle release];
-	_missionTitle = [oo::NSStringOrNil(value) retain];	// PlayerEntity.h's ivar
+	_missionTitle = value;
 }
 
 
 // Not declared in the header; called by name (setMissionImage: is whitelisted) (ADR-0043 item 21).
 - (void) setMissionImage:(id)value
 {
-	const std::string imageName = oo::StdString(value);
-	if (!IsNoneValue(imageName))
+	const std::string name = oo::StdString(value);
+	if (!IsNoneValue(name))
  	{
-		[self setMissionOverlayDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(imageName) } }))];
+		[self setMissionOverlayDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
 	}
 	else
 	{
@@ -2253,10 +2252,10 @@ static int shipsFound;
 // called by name (ADR-0043 item 21)
 - (void) setMissionBackground:(id)value
 {
-	const std::string backgroundName = oo::StdString(value);
-	if (!IsNoneValue(backgroundName))
+	const std::string name = oo::StdString(value);
+	if (!IsNoneValue(name))
  	{
-		[self setMissionBackgroundDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(backgroundName) } }))];
+		[self setMissionBackgroundDescriptor:oo::ObjectFromPList(oo::PList(oo::PList::Dict{ { "name", oo::PList(name) } }))];
 	}
 	else
 	{
@@ -2324,7 +2323,7 @@ static int shipsFound;
 		return;
 	int			ent_count =		UNIVERSE->n_entities;
 	Entity**	uni_entities =	UNIVERSE->sortedEntities;	// grab the public sorted list
-	std::vector<Entity *>	my_entities(ent_count);
+	Entity*		my_entities[ent_count];
 	int i;
 	for (i = 0; i < ent_count; i++)
 		my_entities[i] = [uni_entities[i] retain];		//	retained
@@ -2378,20 +2377,20 @@ static int shipsFound;
 	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:YES andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
-	const oo::PList *orientationValue = dict.find("orientation");
-	if (ScanQuaternionFromString(orientationValue != nullptr ? oo::ObjectFromPList(*orientationValue) : nil, &planetOrientation))
+	const oo::PList *orientation = dict.find("orientation");
+	if (ScanQuaternionFromString(orientation != nullptr ? oo::ObjectFromPList(*orientation) : nil, &planetOrientation))
 	{
 		[planet setOrientation:planetOrientation];
 	}
 
-	const oo::PList *positionValue = dict.find("position");
-	if (positionValue == nullptr)
+	const oo::PList *position = dict.find("position");
+	if (position == nullptr)
 	{
 		OO_LOG("script.error.addPlanet.noPosition", "***** ERROR: you must specify a position for scripted planet '{}' before it can be created", oo::DescriptionOf(planetKey));
 		return nil;
 	}
 
-	const std::string positionString = ConditionString(*positionValue).value_or(std::string());
+	const std::string positionString = ConditionString(*position).value_or(std::string());
 	if(oo::str::hasPrefix(positionString, "abs ") && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
 	{
 		OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.","position","planet",oo::DescriptionOf(planetKey));
@@ -2434,20 +2433,20 @@ static int shipsFound;
 	OOPlanetEntity *planet = [[[OOPlanetEntity alloc] initFromDictionary:dict withAtmosphere:NO andSeed:[[UNIVERSE systemManager] getRandomSeedForCurrentSystem] forSystem:system_id] autorelease];
 
 	Quaternion planetOrientation;
-	const oo::PList *orientationValue = dict.find("orientation");
-	if (ScanQuaternionFromString(orientationValue != nullptr ? oo::ObjectFromPList(*orientationValue) : nil, &planetOrientation))
+	const oo::PList *orientation = dict.find("orientation");
+	if (ScanQuaternionFromString(orientation != nullptr ? oo::ObjectFromPList(*orientation) : nil, &planetOrientation))
 	{
 		[planet setOrientation:planetOrientation];
 	}
 
-	const oo::PList *positionValue = dict.find("position");
-	if (positionValue == nullptr)
+	const oo::PList *position = dict.find("position");
+	if (position == nullptr)
 	{
 		OO_LOG("script.error.addPlanet.noPosition", "***** ERROR: you must specify a position for scripted moon '{}' before it can be created", oo::DescriptionOf(moonKey));
 		return nil;
 	}
 
-	const std::string positionString = ConditionString(*positionValue).value_or(std::string());
+	const std::string positionString = ConditionString(*position).value_or(std::string());
 	if(oo::str::hasPrefix(positionString, "abs ") && ([UNIVERSE planet] != nil || [UNIVERSE sun] !=nil))
 	{
 		OO_LOG_WARN("script.deprecated", "setting {} for {} '{}' in 'abs' inside .plists can cause compatibility issues across Oolite versions. Use coordinates relative to main system objects instead.","position","moon",oo::DescriptionOf(moonKey));
@@ -2508,20 +2507,19 @@ static int shipsFound;
 
 - (void) clearMissionScreenID
 {
-	[_missionScreenID release];
-	_missionScreenID = nil;
+	_missionScreenID.reset();
 }
 
 
 - (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid
 {
-	_missionScreenID = [oo::NSStringOrNil(msid) retain];	// PlayerEntity.h's ivar; retained as before
+	_missionScreenID = msid;
 }
 
 
 - (std::optional<std::string>) cxx_missionScreenID
 {
-	return oo::OptionalString(_missionScreenID);
+	return _missionScreenID;
 }
 
 
@@ -2615,11 +2613,7 @@ static int shipsFound;
 	if (gui)
 		gui_screen = GUI_SCREEN_MISSION;
 
-	if (lastTextKey)
-	{
-		[lastTextKey release];
-		lastTextKey = nil;
-	}
+	lastTextKey.reset();
 	
 	[[OOMusicController sharedController] playMissionMusic];
 	
@@ -2934,8 +2928,8 @@ static int shipsFound;
 
 	if (!scriptName.has_value()) return NO;
 
-	// no duplicates! (eqScripts, PlayerEntity.h's, holds (key, script) pairs)
-	if ([self cxx_eqScriptIndexForKey:eq_key] != [eqScripts count])  return NO;
+	// no duplicates! (eqScripts holds (key, script) pairs)
+	if ([self cxx_eqScriptIndexForKey:eq_key] != eqScripts.size())  return NO;
 
 	// the script's properties: a mixed configuration (Amendment 2)
 	oo::PList::Dict properties;
@@ -2946,23 +2940,23 @@ static int shipsFound;
 
 	OOLog(@"player.equipmentScript", @"Script '%@': installation %@successful.", oo::NSStringFrom(*scriptName),(s == nil ? @"un" : @""));
 
-	[eqScripts addObject:oo::NSArrayFromObjects(std::vector<id>{ oo::NSStringFrom(eq_key), s })];
-	if (primedEquipment == [eqScripts count] - 1) primedEquipment++;	// if primed-none, keep it as primed-none.
-	OOLog(@"player.equipmentScript", @"Scriptable equipment available: %zu.", [eqScripts count]);
+	eqScripts.emplace_back(eq_key, oo::ObjCRef<OOJSScript *>(static_cast<OOJSScript *>(s)));
+	if (primedEquipment == eqScripts.size() - 1) primedEquipment++;	// if primed-none, keep it as primed-none.
+	OOLog(@"player.equipmentScript", @"Scriptable equipment available: %zu.", eqScripts.size());
 	return YES;
 }
 
 
 - (void) cxx_removeEqScriptForKey:(const std::string &)eq_key
 {
-	NSUInteger			i, count = [eqScripts count];
+	NSUInteger			i, count = eqScripts.size();
 
 	for (i = 0; i < count; i++)
 	{
 		// (count is not updated after a removal: an index past the end read nil, matching nothing)
-		if (i < [eqScripts count] && oo::StdString([[eqScripts objectAtIndex:i] objectAtIndex:0]) == eq_key)
+		if (i < eqScripts.size() && eqScripts[i].first == eq_key)
 		{
-			[eqScripts removeObjectAtIndex:i];
+			eqScripts.erase(eqScripts.begin() + static_cast<std::ptrdiff_t>(i));
 
 			if (i == primedEquipment)  primedEquipment = count;	// primed-none
 			else if (i < primedEquipment)  primedEquipment--; // track the primed equipment
@@ -2976,11 +2970,11 @@ static int shipsFound;
 
 - (NSUInteger) cxx_eqScriptIndexForKey:(const std::string &)eq_key
 {
-	NSUInteger			i, count = [eqScripts count];
+	NSUInteger			i, count = eqScripts.size();
 
 	for (i = 0; i < count; i++)
 	{
-		if (oo::StdString([[eqScripts objectAtIndex:i] objectAtIndex:0]) == eq_key) return i;
+		if (eqScripts[i].first == eq_key) return i;
 	}
 
 	return count;

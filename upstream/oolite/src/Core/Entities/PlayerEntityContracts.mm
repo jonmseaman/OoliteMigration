@@ -145,9 +145,9 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 		{
 			[rescuee doScriptEvent:OOJSID("unloadCharacter")];
 		}
-		else if (![rescuee legacyScript].isNull())
+		else if ([rescuee legacyScript])
 		{
-			[self runUnsanitizedScriptActions:oo::ObjectFromPList([rescuee legacyScript])
+			[self runUnsanitizedScriptActions:[rescuee legacyScript]
 							allowingAIMethods:YES
 							  withContextName:oo::NSStringFrom(oo::str::format("<character \"%s\" script>", oo::DescriptionOf([rescuee name]).c_str()))
 									forTarget:nil];
@@ -162,7 +162,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				result += oo::str::formatRuntime(oo::StdString(DESC(@"capture-reward-for-@@-@-credits-@-alt")),
 				 { oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)),
 				 oo::DescriptionOf(OOStringFromDeciCredits(insurance, YES, NO)) });
-				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting]}))];
+				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), oo::PListObject([rescuee infoForScripting]) }))];
 			}
 			else
 			{
@@ -171,7 +171,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 				 { oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(insurance - reward, YES, NO)),
 				 oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)) });
 				reward = insurance - reward;
-				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), [rescuee infoForScripting]}))];
+				[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("insurance"), oo::PListObject([rescuee infoForScripting]) }))];
 			}
 			credits += reward;
 			added_entry = YES;
@@ -182,7 +182,7 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			result += oo::str::formatRuntime(oo::StdString(DESC(@"rescue-reward-for-@@-@-credits")),
 				{ oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits([rescuee insuranceCredits] * 10, YES, NO)) });
 			credits += 10 * [rescuee insuranceCredits];
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * [rescuee insuranceCredits])), oo::PList("insurance"), [rescuee infoForScripting]}))];
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(10 * [rescuee insuranceCredits])), oo::PList("insurance"), oo::PListObject([rescuee infoForScripting]) }))];
 
 			added_entry = YES;
 		}
@@ -193,14 +193,14 @@ void SetReputationValue(oo::PList::Dict &reputation, const std::string &key, int
 			result += oo::str::formatRuntime(oo::StdString(DESC(@"capture-reward-for-@@-@-credits")),
 				{ oo::DescriptionOf([rescuee name]), oo::DescriptionOf([rescuee shortDescription]), oo::DescriptionOf(OOStringFromDeciCredits(reward, YES, NO)) });
 			credits += reward;
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), [rescuee infoForScripting]}))];
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(static_cast<NSUInteger>(reward)), oo::PList("bounty"), oo::PListObject([rescuee infoForScripting]) }))];
 			added_entry = YES;
 		}
 		else
 		{
 			// sell as slave - increase no. of slaves in manifest
 			[shipCommodityData cxx_addQuantity:1 forGood:"slaves"];
-			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(0), oo::PList("slave"), [rescuee infoForScripting]}))];
+			[self doScriptEvent:OOJSID("playerRescuedEscapePod") withArguments:oo::ObjectFromPList(oo::PList(oo::PList::Array{ oo::PList::unsignedInteger(0), oo::PList("slave"), oo::PListObject([rescuee infoForScripting]) }))];
 
 		}
 		if ((i < rescuees.size() - 1) && added_entry)
@@ -1083,16 +1083,16 @@ for (unsigned i=0;i<amount;i++)
 
 	current_cargo = [self cargoQuantityOnBoard];
 
-	// roleWeightFlags is still a Foundation ivar (oo-3rb.75): its entry converted at the call, a signed integer as +numberWithInt:
+	// roleWeightFlags entries are signed integers, as +numberWithInt: was
 	if ([shipCommodityData cxx_exportLegalityForGood:type] > 0)
 	{
 		[self addRoleToPlayer:@"trader-smuggler"];
-		[roleWeightFlags setObject:oo::ObjectFromPList(oo::PList::signedInteger(1)) forKey:@"bought-illegal"];
+		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));
 	}
 	else
 	{
 		[self addRoleToPlayer:@"trader"];
-		[roleWeightFlags setObject:oo::ObjectFromPList(oo::PList::signedInteger(1)) forKey:@"bought-legal"];
+		roleWeightFlags.insert_or_assign("bought-legal", oo::PList::signedInteger(1));
 	}
 
 	contracts.push_back(cargo_info);
@@ -1386,11 +1386,7 @@ for (unsigned i=0;i<amount;i++)
 	}
 	/* ends */
 	
-	if (lastTextKey)
-	{
-		[lastTextKey release];
-		lastTextKey = nil;
-	}
+	lastTextKey.reset();
 	
 	[self setShowDemoShips:NO];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
@@ -1474,11 +1470,7 @@ for (unsigned i=0;i<amount;i++)
 	}
 	/* ends */
 	
-	if (lastTextKey)
-	{
-		[lastTextKey release];
-		lastTextKey = nil;
-	}
+	lastTextKey.reset();
 	
 	[self setShowDemoShips:NO];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
