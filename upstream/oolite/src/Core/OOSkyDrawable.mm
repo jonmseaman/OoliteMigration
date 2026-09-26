@@ -239,7 +239,7 @@ static OOColor *SaturatedColorInRange(OOColor *color1, OOColor *color2, BOOL hue
 	// Resetting fog is draw loop's responsibility.
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOSkyDrawable after rendering");
+	cxx_OOCheckOpenGLErrors("OOSkyDrawable after rendering");
 }
 
 

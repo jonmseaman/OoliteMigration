@@ -169,7 +169,7 @@ std::vector<oo::ObjCRef<OOVisualEffectEntity *>> VisualEffectsIn(const OOVisualE
 						 materialDictionary:DictionaryForKey(effectDict, "materials")
 						  shadersDictionary:DictionaryForKey(effectDict, "shaders")
 									 smooth:effectDict.get<bool>("smooth", NO)
-							   shaderMacros:oo::PListFrom(OODefaultShipShaderMacros())
+							   shaderMacros:OODefaultShipShaderMacros()
 						shaderBindingTarget:self];
 		if (mesh == nil)  return NO;
 		[self setMesh:mesh];

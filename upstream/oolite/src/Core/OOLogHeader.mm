@@ -36,6 +36,7 @@ SOFTWARE.
 #import "OOSound.h"
 #import "OOStringBridge.h"
 #include "oofnd/Date.hpp"
+#include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
 
 
@@ -187,7 +188,7 @@ void OOPrintLogHeader(void)
 
 	miscString += "\nNote that the contents of the log file can be adjusted by editing logcontrol.plist.";
 
-	OOLog(@"log.header", @"%@\n", oo::NSStringFrom(miscString));
+	OO_LOG("log.header", "{}\n", miscString);
 }
 
 

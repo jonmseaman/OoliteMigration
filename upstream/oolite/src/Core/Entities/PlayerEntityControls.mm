@@ -297,12 +297,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		{ "numpadenter", gvNumberPadKeyEnter },
 	};
 
-	keyShiftText = [DESC(@"oolite-keyconfig-shift") retain];
-	keyMod1Text = [DESC(@"oolite-keyconfig-mod1") retain];
+	keyShiftText = oo::StdString(DESC(@"oolite-keyconfig-shift"));
+	keyMod1Text = oo::StdString(DESC(@"oolite-keyconfig-mod1"));
 #if OOLITE_MAC_OS_X
-	keyMod2Text = [DESC(@"oolite-keyconfig-mod2-mac") retain];
+	keyMod2Text = oo::StdString(DESC(@"oolite-keyconfig-mod2-mac"));
 #else
-	keyMod2Text = [DESC(@"oolite-keyconfig-mod2-pc") retain];
+	keyMod2Text = oo::StdString(DESC(@"oolite-keyconfig-mod2-pc"));
 #endif
 
 	[self initKeyConfigSettings];
@@ -499,8 +499,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	LOAD_KEY_SETTING2(n_key_debug_off, 'n', NO, NO, 0, NO, NO);
 #endif
 
-	[keyconfig2_settings release];
-	keyconfig2_settings = [oo::ObjectFromPList(oo::PList(std::move(kdic2))) retain];
+	keyconfig2_settings = std::move(kdic2);
 }
 
 
@@ -803,8 +802,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 - (void) clearPlanetSearchString
 {
 	[[UNIVERSE gameView] resetTypedString];
-	if (planetSearchString)  [planetSearchString release];
-	planetSearchString = nil;
+	planetSearchString.reset();
 }
 
 
@@ -1406,7 +1404,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 
 						// cycle through all the relevant equipment.
-						NSUInteger c = [eqScripts count];
+						NSUInteger c = eqScripts.size();
 						
 						// if Ctrl is held down at the same time as the prime equipment key,
 						// cycle relevant equipment in reverse
@@ -1436,7 +1434,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						else
 						{
 							[self playNextEquipmentSelected];
-							eqKey = oo::StdString([[eqScripts objectAtIndex:primedEquipment] objectAtIndex:0]);
+							eqKey = eqScripts[primedEquipment].first;
 							const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] name]);
 							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}
@@ -2084,12 +2082,12 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			{
 				if (oo::str::length([gameView cxx_typedString].value_or("")) > 0)
 				{
-					planetSearchString = [oo::NSStringFrom(oo::str::lowercase(*[gameView cxx_typedString])) retain];
-					NSPoint search_coords = [UNIVERSE findSystemCoordinatesWithPrefix:planetSearchString];
+					planetSearchString = oo::str::lowercase(*[gameView cxx_typedString]);
+					NSPoint search_coords = [UNIVERSE findSystemCoordinatesWithPrefix:oo::NSStringFrom(*planetSearchString)];
 					if ((search_coords.x >= 0.0)&&(search_coords.y >= 0.0))
 					{
 						// always reset the found system index at the beginning of a new search
-						if ([planetSearchString length] == 1) [[UNIVERSE gui] targetNextFoundSystem:0];
+						if (oo::str::length(*planetSearchString) == 1) [[UNIVERSE gui] targetNextFoundSystem:0];
 						
 						// Always select the right one out of 2 overlapping systems.
 						[self targetNewSystem:0 whileTyping:YES];
@@ -2107,8 +2105,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						found_system_id = -1;
 						[UNIVERSE findSystemCoordinatesWithPrefix:@""];
 					}
-					if (planetSearchString) [planetSearchString release];
-					planetSearchString = nil;
+					planetSearchString.reset();
 				}
 				
 				moving |= (searchStringLength != oo::str::length([gameView cxx_typedString].value_or("")));
@@ -3159,8 +3156,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 	if (gui_screen == GUI_SCREEN_MARKET)
 	{
 		[self handleGUIUpDownArrowKeys];
-		DESTROY(marketSelectedCommodity);
-		marketSelectedCommodity = [oo::NSStringOrNil([gui cxx_selectedRowKey]) retain];
+		marketSelectedCommodity = [gui cxx_selectedRowKey];
 
 		BOOL			page_up = [self checkKeyPress:n_key_gui_page_up]; 
 		BOOL			page_down = [self checkKeyPress:n_key_gui_page_down]; 
@@ -3172,7 +3168,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
 				if (goods.size() > 0)
 				{
-					const std::optional<std::string> selected = oo::OptionalString(marketSelectedCommodity);
+					const std::optional<std::string> selected = marketSelectedCommodity;
 					const auto found = selected ? std::find(goods.begin(), goods.end(), *selected) : goods.end();
 					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					NSInteger offset1 = 0;
@@ -3202,8 +3198,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						goodsIndex += (16 - (offset1 + offset2));
 						if (goodsIndex > ((NSInteger)goods.size() - 1) || goods.size() <= 17) goodsIndex = (NSInteger)goods.size() - 1;
 					}
-					DESTROY(marketSelectedCommodity);
-					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? [oo::NSStringFrom(goods[goodsIndex]) retain] : nil;
+					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? std::optional<std::string>(goods[goodsIndex]) : std::nullopt;
 					[self setGuiToMarketScreen];
 				}
 			} 
@@ -3227,7 +3222,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 				const std::vector<std::string> goods = oo::StringsFrom([self applyMarketSorter:[self applyMarketFilter:[localMarket goods] onMarket:localMarket] onMarket:localMarket]);
 				if (goods.size() > 0)
 				{
-					const std::optional<std::string> selected = oo::OptionalString(marketSelectedCommodity);
+					const std::optional<std::string> selected = marketSelectedCommodity;
 					const auto found = selected ? std::find(goods.begin(), goods.end(), *selected) : goods.end();
 					NSInteger goodsIndex = (found != goods.end()) ? (found - goods.begin()) : NSNotFound;
 					if (arrow_down)
@@ -3246,8 +3241,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 						goodsIndex = 0;
 					}
-					DESTROY(marketSelectedCommodity);
-					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? [oo::NSStringFrom(goods[goodsIndex]) retain] : nil;
+					marketSelectedCommodity = (goodsIndex >= 0 && goodsIndex < (NSInteger)goods.size()) ? std::optional<std::string>(goods[goodsIndex]) : std::nullopt;
 					[self setGuiToMarketInfoScreen];
 				}
 			}
@@ -3268,7 +3262,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		{
 			if (!wait_for_key_up)
 			{
-				if (isdocked && [self tryBuyingCommodity:marketSelectedCommodity all:[gameView isShiftDown]])
+				if (isdocked && [self cxx_tryBuyingCommodity:marketSelectedCommodity.value_or(std::string()) all:[gameView isShiftDown]])
 				{
 					[self playBuyCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3304,7 +3298,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 		{
 			if (!wait_for_key_up)
 			{
-				if (isdocked && [self trySellingCommodity:marketSelectedCommodity all:[gameView isShiftDown]])
+				if (isdocked && [self cxx_trySellingCommodity:marketSelectedCommodity.value_or(std::string()) all:[gameView isShiftDown]])
 				{
 					[self playSellCommodity];
 					if (gui_screen == GUI_SCREEN_MARKET)
@@ -3346,7 +3340,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 			}
 			if (!wait_for_key_up)
 			{
-				const std::optional<std::string> item = oo::OptionalString(marketSelectedCommodity);	// Amendment 1 item 10
+				const std::optional<std::string> item = marketSelectedCommodity;	// Amendment 1 item 10
 				OOCargoQuantity yours =	[shipCommodityData cxx_quantityForGood:item.value_or("")];
 				if (item == ">>>")
 				{
@@ -5108,7 +5102,7 @@ static BOOL autopilot_pause;
 				if ([self checkKeyPress:n_key_gui_page_up])
 				{
 					//  find the Back <<< line, select it and press it
-					if ([[gui keyForRow:GUI_ROW_SCENARIOS_START - 1] hasPrefix:@"__page"]) 
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SCENARIOS_START - 1].value_or(std::string()), "__page")) 
 					{
 						if ([gui setSelectedRow:GUI_ROW_SCENARIOS_START - 1]) 
 						{
@@ -5120,7 +5114,7 @@ static BOOL autopilot_pause;
 				else if ([self checkKeyPress:n_key_gui_page_down])
 				{
 					// find the Next >>> line, select it and press it
-					if ([[gui keyForRow:GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS] hasPrefix:@"__page"]) 
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS].value_or(std::string()), "__page")) 
 					{
 						if ([gui setSelectedRow:GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS]) 
 						{
@@ -5247,7 +5241,7 @@ static BOOL autopilot_pause;
 				[self refreshMissionScreenTextEntry];
 				if ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick])	//  '<enter/return>' or double click
 				{
-					[self setMissionChoice:[gameView typedString] keyPress:@"enter"];
+					[self cxx_setMissionChoice:[gameView cxx_typedString] keyPress:std::string("enter")];
 					[[OOMusicController sharedController] stopMissionMusic];
 					[self playDismissedMissionScreen];
 					
@@ -5264,7 +5258,7 @@ static BOOL autopilot_pause;
 					[self pollMissionInterruptControls];
 				}
 			}
-			else if ([[gui keyForRow:end_row] isEqual:@"spacebar"])
+			else if ([gui cxx_keyForRow:end_row] == "spacebar")
 			{
 				if ([gameView isDown:32])	//  '<space>'
 				{
@@ -5285,14 +5279,14 @@ static BOOL autopilot_pause;
 			else
 			{
 				[self handleGUIUpDownArrowKeys];
-				NSString *extraKey = @"";
+				std::string extraKey;	// "": none
 				{
-					for (const auto &[key, keydef] : extraMissionKeys)	// byte order (was -allKeys hash order)
+					for (const auto &[key, keydef] : extraMissionKeys)	// ORDER-SENSITIVE: byte order of the keys (was -allKeys hash order)
 					{
 						if ([self checkKeyPress:keydef]) {
 							if (!extra_key_pressed)
 							{
-								extraKey = [oo::NSStringFrom(key) copy];
+								extraKey = key;
 							}
 							extra_key_pressed = YES;
 						}
@@ -5300,7 +5294,7 @@ static BOOL autopilot_pause;
 						extra_key_pressed = NO;
 					}
 				}
-				if ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick] || [extraKey length] > 0)	//  '<enter/return>' or double click
+				if ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick] || !extraKey.empty())	//  '<enter/return>' or double click
 				{
 					if ([gameView isDown:gvMouseDoubleClick])
 					{
@@ -5309,8 +5303,8 @@ static BOOL autopilot_pause;
 					}
 					if (!selectPressed)
 					{
-						if ([extraKey length] == 0) extraKey = @"enter";
-						[self setMissionChoice:[gui selectedRowKey] keyPress:extraKey];
+						if (extraKey.empty()) extraKey = "enter";
+						[self cxx_setMissionChoice:[gui cxx_selectedRowKey] keyPress:extraKey];
 						[[OOMusicController sharedController] stopMissionMusic];
 						[self playDismissedMissionScreen];
 						
@@ -5325,7 +5319,6 @@ static BOOL autopilot_pause;
 					selectPressed = NO;
 					[self pollMissionInterruptControls];
 				}
-				[extraKey release];
 			}
 			break;
 			
@@ -5333,14 +5326,14 @@ static BOOL autopilot_pause;
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
+			const std::optional<std::string> commanderFile = [self commanderSelector];
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
 
-				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
+				[self loadPlayerFromFile:*commanderFile asNew:NO];
 			}
 			break;
 		}
@@ -5534,14 +5527,16 @@ static BOOL autopilot_pause;
 // Called on c or Shift-C
 - (void) handleAutopilotOn:(BOOL)fastDocking
 {
-	NSString	*message = nil;
-	
+	// both declared before the first goto (C++ does not jump over their initialisation)
+	std::optional<std::string>	message;
+	std::string					stationName;
+
 	// Check alert condition - on red alert, abort
 	// -- but only for fast docking
 	if (fastDocking && ([self alertCondition] == ALERT_CONDITION_RED))
 	{
 		[self playAutopilotCannotDockWithTarget];
-		message = OOExpandKey(@"autopilot-red-alert");
+		message = oo::OptionalString(OOExpandKey(@"autopilot-red-alert"));
 		goto abort;
 	}
 	
@@ -5576,12 +5571,12 @@ static BOOL autopilot_pause;
 			if (nStations == 0)
 			{
 				[self playAutopilotOutOfRange];
-				message = OOExpandKey(@"autopilot-out-of-range");
+				message = oo::OptionalString(OOExpandKey(@"autopilot-out-of-range"));
 			}
 			else
 			{
 				[self playAutopilotCannotDockWithTarget];
-				message = OOExpandKey(@"autopilot-multiple-targets");
+				message = oo::OptionalString(OOExpandKey(@"autopilot-multiple-targets"));
 			}
 			goto abort;
 		}
@@ -5590,32 +5585,30 @@ static BOOL autopilot_pause;
 	// We found a dockable, check whether we can dock with it
 	// NSAssert([target isKindOfClass:[StationEntity class]], @"Expected entity with isStation flag set to be a station.");		// no need for asserts. Tested enough already.
 	StationEntity *ts; ts = (StationEntity *)target;
-	NSString *stationName; stationName = [ts displayName];
+	stationName = oo::StdString([ts displayName]);	// (nil raised in the expansion)
 	
 	// If station is not transmitting docking instructions, we cannot use autopilot.
 	if (![ts allowsAutoDocking])
 	{
 		[self playAutopilotCannotDockWithTarget];
-		message = OOExpandKey(@"autopilot-station-does-not-allow-autodocking", stationName);
+		message = ExpandKeyWithArguments("autopilot-station-does-not-allow-autodocking", { { "stationName", oo::PList(stationName) } });
 	}
 	// Deny if station is hostile or player is a fugitive trying to dock at the main station.
 	else if ((legalStatus > 50 && ts == [UNIVERSE station]) || [ts isHostileTo:self])
 	{
 		[self playAutopilotCannotDockWithTarget];
-		message = OOExpandKey((ts == [UNIVERSE station]) ? @"autopilot-denied" : @"autopilot-target-docking-instructions-denied", stationName);
+		message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 	}
 	// If we're fast-docking, perform the docking logic
 	else if (fastDocking && [ts allowsFastDocking])
 	{
 		// check whether there are docks that do not accept docking - even one such dock will result in rejection
-		NSEnumerator	*subEnum = nil;
-		DockEntity* sub = nil;
-		for (subEnum = [ts dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+		for (const auto &sub : [ts cxx_dockSubEntities])
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
-			if([sub canAcceptShipForDocking:self] == "TOO_BIG_TO_DOCK")
+			if([sub.get() canAcceptShipForDocking:self] == "TOO_BIG_TO_DOCK")
 			{
-				message = OOExpandKey((ts == [UNIVERSE station]) ? @"autopilot-denied" : @"autopilot-target-docking-instructions-denied", stationName);
+				message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 				goto abort;
 			}
 		}
@@ -5646,12 +5639,12 @@ static BOOL autopilot_pause;
 	{
 		// Standard docking - engage autopilot
 		[self engageAutopilotToStation:ts];
-		message = OOExpandKey(@"autopilot-on");
+		message = oo::OptionalString(OOExpandKey(@"autopilot-on"));
 	}
 	
 abort:
 	// Clean-up code
-	if (message != nil) [UNIVERSE addMessage:message forCount:4.5];
+	if (message.has_value()) [UNIVERSE addMessage:oo::NSStringFrom(*message) forCount:4.5];
 	return;
 }
 
@@ -5709,15 +5702,15 @@ abort:
 				[self noteLostTarget];
 			}
 			[missile_entity[activeMissile] noteLostTarget];
-			NSString *weaponName = [missile_entity[activeMissile] name];
-			[UNIVERSE addMessage:OOExpandKey(@"missile-armed", weaponName) forCount:2.0];
+			const std::string weaponName = oo::StdString([missile_entity[activeMissile] name]);	// (nil raised in the expansion)
+			[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("missile-armed", { { "weaponName", oo::PList(weaponName) } })) forCount:2.0];
 			[self playMissileArmed];
 		}
 	}
 	else if ([missile_entity[activeMissile] isMine])
 	{
-		NSString *weaponName = [missile_entity[activeMissile] name];
-		[UNIVERSE addMessage:OOExpandKey(@"mine-armed", weaponName) forCount:2.0];
+		const std::string weaponName = oo::StdString([missile_entity[activeMissile] name]);	// (nil raised in the expansion)
+		[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("mine-armed", { { "weaponName", oo::PList(weaponName) } })) forCount:2.0];
 		[self playMineArmed];
 	}
 	ident_engaged = NO;

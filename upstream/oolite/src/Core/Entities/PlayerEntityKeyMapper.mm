@@ -188,6 +188,15 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	return (index < entries.size()) ? entries[index].getIf<oo::PList::Dict>() : nullptr;
 }
 
+
+// keyconfig2_settings' entry for <key>: null when absent (-objectForKey:, nil for a nil key).
+oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<std::string> &key)
+{
+	if (!key.has_value())  return oo::PList();
+	const auto it = settings.find(*key);
+	return (it != settings.end()) ? it->second : oo::PList();
+}
+
 }	// namespace
 
 @interface PlayerEntity (KeyMapperInternal)
@@ -365,7 +374,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 		oo::PList definitions;
 		if (![self entryIsDictCustomEquip:selected_entry])
 		{
-			definitions = oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_DEFINITION)))]);
+			definitions = KeyConfigEntry(keyconfig2_settings, OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_DEFINITION)));
 		}
 		else
 		{
@@ -1006,7 +1015,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 					// Find out what's assigned for this function currently.
 					assignment = oo::OptionalString([PLAYER keyBindingDescription2:oo::NSStringOrNil(definition)]);
 					override = (definition && overrides.find(*definition) != nullptr ? "Yes" : ""); // work out whether this assignment is overriding the setting in keyconfig2.plist
-					validate = [self validateKey:definition.value_or("") checkKeys:oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(definition)])];
+					validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
 				}
 				else
 				{
@@ -1480,7 +1489,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	for (i = 0; i < keyFunctions.size(); i++)
 	{
 		const std::optional<std::string> definition = OptionalStringForKey(keyFunctions[i], oo::StdString(KEY_KC_DEFINITION));
-		const std::optional<std::string> validate = [self validateKey:definition.value_or("") checkKeys:oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(definition)])];
+		const std::optional<std::string> validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
 		if (validate)
 		{
 			failed.push_back(*validate);
@@ -1641,7 +1650,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 			oo::PList current;
 			if (![self entryIsCustomEquip:search])
 			{
-				current = oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringFrom(search)]);
+				current = KeyConfigEntry(keyconfig2_settings, search);
 			}
 			else
 			{

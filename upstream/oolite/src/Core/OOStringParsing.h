@@ -80,7 +80,7 @@ std::vector<unsigned> cxx_ComponentsFromVersionString(const std::string &string)
 	Components are ordered from most to least significant, and a missing
 	component is treated as 0. Thus "1.7" < "1.60", and "1.2.3.0" == "1.2.3".
 */
-NSComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2);
+OOComparisonResult cxx_CompareVersions(const std::vector<unsigned> &version1, const std::vector<unsigned> &version2);
 
 std::string cxx_ClockToString(double clock, BOOL adjusting);
 
