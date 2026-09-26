@@ -159,7 +159,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	// Check that it's a dictionary
 	if (!_shipdataPList.isDict())
 	{
-		OOLog(@"verifyOXP.shipdataPList.notDict", @"%@", @"***** ERROR: shipdata.plist is not a dictionary.");
+		OO_LOG("verifyOXP.shipdataPList.notDict", "{}", "***** ERROR: shipdata.plist is not a dictionary.");
 		return;
 	}
 
@@ -195,7 +195,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 			const oo::PList *shipInfo = _shipdataPList.get<oo::PList::Dict>(shipKey);
 			if (shipInfo == nullptr)
 			{
-				OOLog(@"verifyOXP.shipdata.badType", @"***** ERROR: shipdata.plist entry for \"%@\" is not a dictionary.", oo::NSStringFrom(shipKey));
+				OO_LOG("verifyOXP.shipdata.badType", "***** ERROR: shipdata.plist entry for \"{}\" is not a dictionary.", shipKey);
 			}
 			else
 			{
@@ -221,7 +221,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 	_name = name;
 	_info = info;
 	_havePrintedMessage = NO;
-	OOLogPushIndent();
+	oo::log::pushIndent();
 
 	[self getRoles];
 	[self checkKeys];
@@ -239,10 +239,10 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 	// Todo: check for pirates with 0 bounty
 
-	OOLogPopIndent();
+	oo::log::popIndent();
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.verbose.shipData.OK", @"- ship \"%@\" OK.", oo::NSStringFrom(_name));
+		OO_LOG("verifyOXP.verbose.shipData.OK", "- ship \"{}\" OK.", _name);
 	}
 	_name.clear();
 	_info = oo::PList();
@@ -257,8 +257,8 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.shipData.firstMessage", @"Ship \"%@\":", oo::NSStringFrom(_name));
-		OOLogIndent();
+		OO_LOG("verifyOXP.shipData.firstMessage", "Ship \"{}\":", _name);
+		oo::log::indent();
 		_havePrintedMessage = YES;
 	}
 
@@ -272,12 +272,12 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dictionary, std
 {
 	va_list						args;
 
-	if (!OOLogWillDisplayMessagesInClass(@"verifyOXP.verbose.shipData"))  return;
+	if (!oo::log::willDisplay("verifyOXP.verbose.shipData"))  return;
 
 	if (!_havePrintedMessage)
 	{
-		OOLog(@"verifyOXP.shipData.firstMessage", @"Ship \"%@\":", oo::NSStringFrom(_name));
-		OOLogIndent();
+		OO_LOG("verifyOXP.shipData.firstMessage", "Ship \"{}\":", _name);
+		oo::log::indent();
 		_havePrintedMessage = YES;
 	}
 
