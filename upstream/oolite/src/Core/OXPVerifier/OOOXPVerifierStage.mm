@@ -28,6 +28,8 @@ SOFTWARE.
 #include <assert.h>
 
 #import "OOOXPVerifierStageInternal.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
 
 #if OO_OXP_VERIFIER_ENABLED
 
@@ -96,15 +98,22 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 }
 
 
-- (id)dependencies
+- (id)dependencies	// shared selector (Foundation declares -dependencies too; retires with oo-qps)
 {
-	return nil;
+	const std::optional<std::vector<std::string>> dependencies = [self cxx_dependencies];
+	return dependencies.has_value() ? oo::NSSetFromStrings(*dependencies) : nil;
 }
 
 
-- (id)dependents
+- (std::optional<std::vector<std::string>>)cxx_dependencies
 {
-	return nil;
+	return std::nullopt;
+}
+
+
+- (std::optional<std::vector<std::string>>)dependents
+{
+	return std::nullopt;
 }
 
 
@@ -171,7 +180,13 @@ void AddStage(std::vector<oo::ObjCRef<OOOXPVerifierStage *>> &stages, OOOXPVerif
 	{
 		[self run];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
+	{
+		// %@ of a Foundation exception printed GNUstep's -description, "<ClassName: 0x...> NAME:... REASON:...";
+		// OOException has no -description, so the same layout is spelled out (proposed ADR-0037).
+		OOLog(@"verifyOXP.exception", @"***** Exception while running verification stage \"%@\": <OOException: %p> NAME:%@ REASON:%@", [self name], (void *)exception, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+	}
+	@catch (OOFoundationException *exception)
 	{
 		OOLog(@"verifyOXP.exception", @"***** Exception while running verification stage \"%@\": %@", [self name], exception);
 	}

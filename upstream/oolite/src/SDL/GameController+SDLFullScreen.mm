@@ -36,28 +36,49 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 
+namespace
+{
+// The first of modes with this size and refresh rate, or nullptr (modes are mode dictionaries).
+const oo::PList *FindDisplayMode(const oo::PList::Array &modes, unsigned int d_width, unsigned int d_height, unsigned int d_refresh)
+{
+	unsigned int modeWidth, modeHeight, modeRefresh;
+
+	for (const oo::PList &mode : modes)
+	{
+		modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
+		modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
+		modeRefresh = mode.get<int>(oo::StdString(kOODisplayRefreshRate));
+		if ((modeWidth == d_width)&&(modeHeight == d_height)&&(modeRefresh == d_refresh))
+		{
+			return &mode;
+		}
+	}
+	return nullptr;
+}
+}
+
+
 @implementation GameController (FullScreen)
 
 - (void) setUpDisplayModes
 {
 	// The screen's mode dictionaries, in its order (Foundation sweep, proposed ADR-0043).
-	const std::vector<oo::ObjCRef<id>>	modes = oo::ObjCRefsFrom<id>(oo::ObjectFromPList(oo::PList(oo::PList::Array([gameView getScreenSizeArray]))));
-	std::vector<oo::ObjCRef<id>>		usableModes;
+	const std::vector<oo::PList>	modes = [gameView getScreenSizeArray];
 	unsigned	int		modeWidth, modeHeight;
 
-	for (const oo::ObjCRef<id> &mode : modes)
+	displayModes.clear();
+	for (const oo::PList &mode : modes)
 	{
-		modeWidth = [[mode.get() objectForKey: kOODisplayWidth] intValue];
-		modeHeight = [[mode.get() objectForKey: kOODisplayHeight] intValue];
+		modeWidth = mode.get<int>(oo::StdString(kOODisplayWidth));
+		modeHeight = mode.get<int>(oo::StdString(kOODisplayHeight));
 
 		if (modeWidth < DISPLAY_MIN_WIDTH ||
 			modeWidth > DISPLAY_MAX_WIDTH ||
 			modeHeight < DISPLAY_MIN_HEIGHT ||
 			modeHeight > DISPLAY_MAX_HEIGHT)
 			continue;
-		usableModes.push_back(mode);
+		displayModes.push_back(mode);
 	}
-	displayModes = [oo::NSArrayFromObjects(usableModes) mutableCopy];	// owned (+1), as the ivar was
 
 	const oo::PList currentMode = [gameView currentScreenMode];
 	if (currentMode)
@@ -96,13 +117,13 @@ MA 02110-1301, USA.
 
 - (BOOL) setDisplayWidth:(unsigned int) d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh
 {
-	id d_mode = [self findDisplayModeForWidth: d_width Height: d_height Refresh: d_refresh];	// shared selector's result
-	if (d_mode)
+	const oo::PList *d_mode = FindDisplayMode(displayModes, d_width, d_height, d_refresh);
+	if (d_mode != nullptr)
 	{
 		width = d_width;
 		height = d_height;
 		refresh = d_refresh;
-		fullscreenDisplayMode = d_mode;
+		fullscreenDisplayMode = *d_mode;
 		
 		NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
 		
@@ -121,37 +142,24 @@ MA 02110-1301, USA.
 
 - (id) findDisplayModeForWidth:(unsigned int) d_width Height:(unsigned int) d_height Refresh:(unsigned int) d_refresh	// shared selector (proposed ADR-0043)
 {
-	unsigned int modeWidth, modeHeight, modeRefresh;
-
-	for (const oo::ObjCRef<id> &mode : oo::ObjCRefsFrom<id>(displayModes))
-	{
-		modeWidth = [[mode.get() objectForKey:kOODisplayWidth] intValue];
-		modeHeight = [[mode.get() objectForKey:kOODisplayHeight] intValue];
-		modeRefresh = [[mode.get() objectForKey:kOODisplayRefreshRate] intValue];
-		if ((modeWidth == d_width)&&(modeHeight == d_height)&&(modeRefresh == d_refresh))
-		{
-			return mode.get();
-		}
-	}
-	return nil;
+	const oo::PList *mode = FindDisplayMode(displayModes, d_width, d_height, d_refresh);
+	return (mode != nullptr) ? oo::ObjectFromPList(*mode) : nil;	// a mode dictionary
 }
 
 
 - (id) displayModes	// shared selector (proposed ADR-0043)
 {
-	return [[displayModes copy] autorelease];	// an immutable copy, as +arrayWithArray: gave
+	return oo::ObjectFromPList(oo::PList(displayModes));	// an immutable array of mode dictionaries
 }
 
 
 - (NSUInteger) indexOfCurrentDisplayMode
 {
-	id	mode;	// the shared selector's result
-
-	mode = [self findDisplayModeForWidth: width Height: height Refresh: refresh];
-	if (mode == nil)
+	const oo::PList *mode = FindDisplayMode(displayModes, width, height, refresh);
+	if (mode == nullptr)
 		return NSNotFound;
 	else
-		return [displayModes indexOfObject:mode];
+		return (NSUInteger)(mode - displayModes.data());	// the first match, as -indexOfObject: found
 
    return NSNotFound;
 }

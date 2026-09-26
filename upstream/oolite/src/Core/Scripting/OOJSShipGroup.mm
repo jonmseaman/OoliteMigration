@@ -218,7 +218,7 @@ static bool ShipGroupGetProperty(Context cx, Object obj, PropertyId propID, Valu
 	switch (ooscript::idToInt32(propID))
 	{
 		case kShipGroup_ships:
-			result = [group memberArray];
+			result = oo::NSArrayFromObjects((group != nil) ? [group cxx_memberArray] : std::vector<oo::ObjCRef<ShipEntity *>>());	// (no C++ value from a message to nil)
 			if (result == nil)  result = oo::NSArrayFromObjects(std::vector<id>());	// an empty array
 			break;
 			
@@ -327,7 +327,7 @@ static bool ShipGroupConstruct(ooscript::Context context, ooscript::CallArgs &oo
 		}
 	}
 	
-	OOJS_RETURN_OBJECT([OOShipGroup groupWithName:oo::NSStringOrNil(name) leader:leader]);
+	OOJS_RETURN_OBJECT([OOShipGroup cxx_groupWithName:name leader:leader]);
 	
 	OOJS_NATIVE_EXIT
 }

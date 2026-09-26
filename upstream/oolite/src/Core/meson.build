@@ -6,6 +6,7 @@ oolite_sources += files(
     'AIGraphViz.mm',
     'CollisionRegion.mm',
     'GameController.mm',
+    'GameController+FoundationBridge.mm',
     'GuiDisplayGen.mm',
     'GuiDisplayGen+FoundationBridge.mm',
     'HeadUpDisplay.mm',
@@ -13,10 +14,8 @@ oolite_sources += files(
     'NSDataOOExtensions.mm',
     'NSDictionaryOOExtensions.mm',
     'NSFileManagerOOExtensions.mm',
-    'NSMutableDictionaryOOExtensions.mm',
     'NSNumberOOExtensions.mm',
     'NSObjectOOExtensions.mm',
-    'NSScannerOOExtensions.mm',
     'NSStringOOExtensions.mm',
     'NSUserDefaults+Override.mm',
     'OOALBufferedSound.mm',
@@ -38,6 +37,7 @@ oolite_sources += files(
     'OOColor.mm',
     'OOColor+FoundationBridge.mm',
     'OOCommodities.mm',
+    'OOCommodities+FoundationBridge.mm',
     'OOCommodityMarket.mm',
     'OOCommodityMarket+FoundationBridge.mm',
     'OOConstToString.mm',
@@ -52,6 +52,7 @@ oolite_sources += files(
     'OOEntityFilterPredicate.mm',
     'OOEnumerationShuffle.mm',
     'OOEquipmentType.mm',
+    'OOEquipmentType+FoundationBridge.mm',
     'OOExcludeObjectEnumerator.mm',
     'OOFilteringEnumerator.mm',
     'OOGraphicsResetManager.mm',
@@ -90,6 +91,7 @@ oolite_sources += files(
     'OORegExpMatcher.mm',
     'OORoleSet.mm',
     'OOShipGroup.mm',
+    'OOShipGroup+FoundationBridge.mm',
     'OOShipLibraryDescriptions.mm',
     'OOShipRegistry.mm',
     'OOShipRegistry+FoundationBridge.mm',
@@ -98,6 +100,7 @@ oolite_sources += files(
     'OOSoundSourcePool.mm',
     'OOSpatialReference.mm',
     'OOStringExpander.mm',
+    'OOStringExpander+FoundationBridge.mm',
     'OOStringParsing.mm',
     'OOStringParsing+FoundationBridge.mm',
     'OOSystemDescriptionManager.mm',
@@ -111,11 +114,11 @@ oolite_sources += files(
     'OOWeakSet.mm',
     'OOXMLExtensions.mm',
     'Octree.mm',
-    'OldSchoolPropertyListWriting.mm',
     'ResourceManager.mm',
     'ResourceManager+FoundationBridge.mm',
     'TextureStore.mm',
     'Universe.mm',
+    'Universe+FoundationBridge.mm',
     'legacy_random.c',
 )
 
@@ -123,6 +126,7 @@ if host_os != 'darwin'
     oolite_sources += files(
         'NSBundle+Override.mm',
         'NSUserDefaults+Override.mm',
+        'NSUserDefaults+OODefaultsBridge.mm',
     )
 endif
 
