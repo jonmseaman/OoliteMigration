@@ -234,6 +234,21 @@ std::vector<std::string> Columns(std::initializer_list<std::optional<std::string
 	return result;
 }
 
+// Unique-by-== insert for the dependency stack (was NSMutableSet).
+void DependencyStackAdd(std::vector<oo::PList> &stack, const oo::PList &item)
+{
+	for (const oo::PList &existing : stack)
+	{
+		if (existing == item)  return;
+	}
+	stack.push_back(item);
+}
+
+void DependencyStackRemove(std::vector<oo::PList> &stack, const oo::PList &item)
+{
+	stack.erase(std::remove(stack.begin(), stack.end(), item), stack.end());
+}
+
 // The first line of a manifest's description (nullopt: no description, as the nil array gave).
 std::optional<std::string> FirstDescriptionLine(const oo::PList &manifest)
 {
