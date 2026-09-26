@@ -31,6 +31,7 @@ MA 02110-1301, USA.
 #import "OOJSScript.h"
 #import "OOFoundationBridge.h"
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
 
 
 namespace {
@@ -177,8 +178,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		speciesString = oo::str::lowercase(*speciesString);
 	}
 
-	// (whitespace without newlines has no oofnd character class yet: trimmed by the Foundation string)
-	return oo::StdString([oo::NSStringFrom(*speciesString) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);
+	return oo::str::trim(*speciesString, oo::str::CharacterSet::whitespace());
 }
 
 
