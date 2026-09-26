@@ -421,4 +421,81 @@ and converts the result exactly as the old method produced it.
 	return [self cxx_setWeaponMount:facing toWeapon:oo::StdString(eqKey) inContext:oo::OptionalString(context)];
 }
 
+
+// oo-3rb.251: roles, system memory and mission destinations
+- (NSMutableArray *) roleWeights
+{
+	return [[oo::NSArrayFromStrings([self cxx_roleWeights]) mutableCopy] autorelease];
+}
+
+
+- (void) addRoleToPlayer:(NSString *)role
+{
+	[self cxx_addRoleToPlayer:oo::StdString(role)];
+}
+
+
+- (void) addRoleToPlayer:(NSString *)role inSlot:(NSUInteger)slot
+{
+	[self cxx_addRoleToPlayer:oo::StdString(role) inSlot:slot];
+}
+
+
+- (void) addMissionDestinationMarker:(NSDictionary *)marker
+{
+	[self cxx_addMissionDestinationMarker:oo::PListFrom(marker)];	// nil: null, which -cxx_validatedMarker: reads as nil did
+}
+
+
+- (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker
+{
+	return [self cxx_removeMissionDestinationMarker:oo::PListFrom(marker)];
+}
+
+
+- (NSMutableDictionary*) getMissionDestinations
+{
+	return [[oo::ObjectFromPList([self cxx_getMissionDestinations]) mutableCopy] autorelease];
+}
+
+
+// oo-3rb.252: status screen and manifest lists
+- (NSArray *) equipmentList
+{
+	return oo::ObjectFromPList(oo::PList([self cxx_equipmentList]));	// colours come back as the OOColor objects
+}
+
+
+- (NSArray *) cargoList
+{
+	return oo::NSArrayFromStrings([self cxx_cargoList]);
+}
+
+
+// oo-3rb.255: mission strings, special cargo and equipment scripts
+- (NSString *) specialCargo
+{
+	return oo::NSStringOrNil([self cxx_specialCargo]);
+}
+
+
+- (BOOL) setPrimedEquipment:(NSString *)eqKey showMessage:(BOOL)showMsg
+{
+	// nil matched no script and was not "": primed equipment unchanged, NO
+	if (eqKey == nil)  return NO;
+	return [self cxx_setPrimedEquipment:oo::StdString(eqKey) showMessage:showMsg];
+}
+
+
+- (NSString *) primedEquipmentName:(NSInteger)offset
+{
+	return oo::NSStringOrNil([self cxx_primedEquipmentName:offset]);
+}
+
+
+- (NSString *) currentPrimedEquipment
+{
+	return oo::NSStringFrom([self cxx_currentPrimedEquipment]);
+}
+
 @end

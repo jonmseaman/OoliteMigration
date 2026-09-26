@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "GameController.h"
 #import "MyOpenGLView.h"
 #import "OOPListView.h"
+#import "OOFoundationBridge.h"
 
 
 #if OOLITE_MAC_OS_X	// TEMP, should be used for SDL too
@@ -65,10 +66,10 @@ MA 02110-1301, USA.
 #endif
 	
 	// Load preferred display mode, falling back to current mode if no preferences set.
-	NSDictionary *currentMode = [fullScreenController currentDisplayMode];
-	NSUInteger width = oo::PListView(currentMode).get<NSUInteger>(kOODisplayWidth);
-	NSUInteger height = oo::PListView(currentMode).get<NSUInteger>(kOODisplayHeight);
-	NSUInteger refresh = oo::PListView(currentMode).get<NSUInteger>(kOODisplayRefreshRate);
+	const oo::PList currentMode = [fullScreenController currentDisplayMode];
+	NSUInteger width = currentMode.get<NSUInteger>(oo::StdString(kOODisplayWidth));
+	NSUInteger height = currentMode.get<NSUInteger>(oo::StdString(kOODisplayHeight));
+	NSUInteger refresh = currentMode.get<NSUInteger>(oo::StdString(kOODisplayRefreshRate));
 	
 	NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
 	width = oo::PListView(userDefaults).get<NSUInteger>(@"display_width", width);
@@ -147,13 +148,13 @@ MA 02110-1301, USA.
 }
 
 
-- (NSDictionary *) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh
+- (id) findDisplayModeForWidth:(unsigned int)d_width Height:(unsigned int)d_height Refresh:(unsigned int)d_refresh	// shared selector (proposed ADR-0043)
 {
-	return [_fullScreenController findDisplayModeForWidth:d_width height:d_height refreshRate:d_refresh];
+	return oo::ObjectFromPList([_fullScreenController findDisplayModeForWidth:d_width height:d_height refreshRate:d_refresh]);
 }
 
 
-- (NSArray *) displayModes
+- (id) displayModes	// shared selector (proposed ADR-0043)
 {
 	return [_fullScreenController displayModes];
 }
