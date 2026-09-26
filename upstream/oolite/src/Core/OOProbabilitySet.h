@@ -49,10 +49,10 @@ SOFTWARE.
 
 - (id) init;
 - (id) initWithObjects:(id *)objects weights:(float *)weights count:(NSUInteger)count;
-- (id) initWithPropertyListRepresentation:(id)plist;	// shared selector: an Objective-C dictionary
+- (id) initWithPropertyListRepresentation:(const oo::PList &)plist;
 
 // propertyListRepresentation is only valid if objects are property list objects.
-- (id) propertyListRepresentation;	// shared selector: an Objective-C dictionary
+- (oo::PList) propertyListRepresentation;
 
 - (NSUInteger) count;
 - (id) randomObject;
