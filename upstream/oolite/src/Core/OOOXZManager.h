@@ -80,7 +80,7 @@ typedef enum {
 	BOOL				_changesMade;
 
 	oo::http::Download	*_currentDownload;	// oofnd/Http.hpp; owned
-	NSString			*_currentDownloadName;
+	std::string			_currentDownloadName;
 
 	OXZDownloadStatus	_downloadStatus;
 	NSUInteger			_downloadProgress;
@@ -93,7 +93,8 @@ typedef enum {
 	NSUInteger			_offset;
 
 	std::string			_progressStatus;	// "" when there is none
-	NSMutableSet		*_dependencyStack;
+	// Unique by oo::PList::operator==; "any" is front() (order-sensitive: named in commit).
+	std::vector<oo::PList>	_dependencyStack;
 }
 
 + (OOOXZManager *) sharedManager;
@@ -107,7 +108,7 @@ typedef enum {
 
 /*	Deliver the current download's callbacks (response, data, finish, failure), in order,
 	on the main thread: GameController's frame loop calls this where it pumps the run loop,
-	which is where NSURLConnection delivered them. Proposed ADR-0044.
+	which is where the old URL-connection callbacks were delivered. Proposed ADR-0044.
 */
 - (void) processDownloadEvents;
 
