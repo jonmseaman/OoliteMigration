@@ -536,16 +536,16 @@ static bool MissionSetInstructionsInternal(ooscript::Context context, ooscript::
 	{
 		if (isKey)
 		{
-			[player setMissionDescription:oo::NSStringFrom(*text) forMission:oo::NSStringOrNil(missionKey)];
+			[player setMissionDescription:*text forMission:missionKey];
 		}
 		else
 		{
-			[player setMissionInstructions:oo::NSStringFrom(*text) forMission:oo::NSStringOrNil(missionKey)];
+			[player cxx_setMissionInstructions:*text forMission:missionKey];
 		}
 	}
 	else if (!texts.isNull() && !isKey)
 	{
-		[player setMissionInstructionsList:oo::ObjectFromPList(texts) forMission:oo::NSStringOrNil(missionKey)];
+		[player cxx_setMissionInstructionsList:texts forMission:missionKey];
 	}
 	else
 	{

@@ -26,7 +26,9 @@
 
 
 #if 0
-#define FAIL(s)		do { NSLog(@"OOIsNumberLiteral failed for \"%@\": %@.", string, @s);  return NO; } while (0)
+#import "OOStringBridge.h"
+#include "oofnd/Log.hpp"
+#define FAIL(s)		do { OO_LOG("unclassified", "OOIsNumberLiteral failed for \"{}\": {}.", string != nil ? oo::StdString(string) : std::string("(null)"), s);  return NO; } while (0)
 #else
 #define FAIL(s)		do { return NO; } while (0)
 #endif

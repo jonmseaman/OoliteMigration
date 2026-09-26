@@ -701,6 +701,46 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 }
 #endif
 
+
+// Chunk 11 (oo-3rb.230). A nil role asked for the role "" (no ship), after clearing the display, as before.
+- (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning
+{
+	return [self cxx_makeDemoShipWithRole:oo::StdString(role) spinning:spinning];
+}
+
+
+// Chunk 12 (oo-3rb.231). The scenario restriction is never nil (its callers pass the save's
+// value or one of the SCENARIO_OXP_DEFINITION_* strings).
+
+- (NSString *) useAddOns
+{
+	return oo::NSStringOrNil([self cxx_useAddOns]);
+}
+
+
+- (BOOL) setUseAddOns:(NSString *)newUse fromSaveGame: (BOOL)saveGame
+{
+	return [self cxx_setUseAddOns:oo::StdString(newUse) fromSaveGame:saveGame];
+}
+
+
+- (BOOL) setUseAddOns:(NSString *) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force
+{
+	return [self cxx_setUseAddOns:oo::StdString(newUse) fromSaveGame:saveGame forceReinit:force];
+}
+
+
+- (NSDictionary *) gameSettings
+{
+	return oo::ObjectFromPList([self cxx_gameSettings]);
+}
+
+
+- (NSDictionary *) globalSettings
+{
+	return oo::ObjectFromPList([self cxx_globalSettings]);
+}
+
 @end
 
 
