@@ -362,6 +362,18 @@ enum {
 	typedef NSComparisonResult OOComparisonResult;
 #endif
 
+/*	The ordering values under Oolite's own names (bead oo-3yh0, the NSComparisonResult seam of the
+	oo-qps gap sweep): game code spells OOComparisonResult / OOOrdered*, never the NS names. They
+	are the same type and values as Foundation's, so a -compare: method a Foundation sort calls
+	keeps its ABI. oo-qps makes OOComparisonResult its own NSInteger enum when Foundation goes.
+*/
+#ifdef __cplusplus
+inline constexpr OOComparisonResult OOOrderedAscending = NSOrderedAscending;
+inline constexpr OOComparisonResult OOOrderedSame = NSOrderedSame;
+inline constexpr OOComparisonResult OOOrderedDescending = NSOrderedDescending;
+static_assert(OOOrderedAscending == -1 && OOOrderedSame == 0 && OOOrderedDescending == 1, "Foundation's ordering values");
+#endif
+
 
 /*	Fast enumeration (for (x in y) syntax) is supported in all Mac compilers
 	when targeting 10.5 or later, and in gcc 4.6 with the GNU libobjc runtime.

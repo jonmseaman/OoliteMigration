@@ -222,7 +222,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range);
 - (void) dumpDebugGraphViz;
 - (void) dumpSystemDescriptionGraphViz;
 #endif
-- (void) addNumericRefsInString:(NSString *)string toGraphViz:(NSMutableString *)graphViz fromNode:(NSString *)fromNode nodeCount:(NSUInteger)nodeCount;
+- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount;
 
 /**
  * \ingroup cli
@@ -269,6 +269,11 @@ OOGraphicsDetail OOGraphicsDetailFromNumber(unsigned int number)
 {
 	return (number > DETAIL_LEVEL_MAXIMUM) ? DETAIL_LEVEL_MAXIMUM : static_cast<OOGraphicsDetail>(number);
 }
+
+
+// Defined with the configuration readers and the shipyard helpers below.
+id ObjectForKeyIn(const oo::PList &dict, std::string_view key);
+std::string ExpandKeyWith(const std::string &key, const char *name, const oo::PList &value);
 
 
 // -addObject: on a set of objects (identity, as Entity keeps NSObject's -isEqual:): once each, in
@@ -773,7 +778,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	// prefs value no longer used - per save game but startup needs to
 	// be non-strict
-	useAddOns = [[NSString alloc] initWithString:SCENARIO_OXP_DEFINITION_ALL];
+	useAddOns = oo::StdString(SCENARIO_OXP_DEFINITION_ALL);
 	
 	[self setGameView:inGameView];
 	gSharedUniverse = self;
@@ -801,7 +806,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 #endif
 	
 	// init the Resource Manager
-	[ResourceManager setUseAddOns:useAddOns];	// also logs the paths if changed
+	[ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths if changed
 	
 	// Set up the internal game strings
 	[self loadDescriptions];
@@ -934,7 +939,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	[commodities release];
 	
 	customSounds = oo::PList();
-	[globalSettings release];
+	globalSettings = oo::PList();
 	[systemManager release];
 	demo_ships = oo::PList();
 	screenBackgrounds = oo::PList();
@@ -943,7 +948,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	allStations.clear();
 
 	activeWormholes.clear();
-	[characterPool release];
+	characterPool.clear();
 	[universeRegion release];
 
 	DESTROY(_firstBeacon);
@@ -997,26 +1002,25 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 }
 
 
-- (NSString *) useAddOns
+- (std::optional<std::string>) cxx_useAddOns
 {
 	return useAddOns;
 }
 
 
-- (BOOL) setUseAddOns:(NSString *) newUse fromSaveGame:(BOOL) saveGame
+- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame
 {
-	return [self setUseAddOns:newUse fromSaveGame:saveGame forceReinit:NO];
+	return [self cxx_setUseAddOns:newUse fromSaveGame:saveGame forceReinit:NO];
 }
 
 
-- (BOOL) setUseAddOns:(NSString *) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force
+- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force
 {
-	if (!force && [newUse isEqualToString:useAddOns])
+	if (!force && newUse == useAddOns)
 	{
 		return YES;
-	} 
-	DESTROY(useAddOns);
-	useAddOns = [newUse retain];
+	}
+	useAddOns = newUse;
 
 	return [self reinitAndShowDemo:!saveGame];
 }
@@ -1066,7 +1070,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	PlayerEntity 	*player = PLAYER;
 	
 	[self setPauseMessageVisible:NO];
-	NSString *pauseKey = [PLAYER keyBindingDescription2:@"key_pausebutton"];
+	const std::optional<std::string> pauseKey = [PLAYER cxx_keyBindingDescription2:"key_pausebutton"];
 	
 	if ([player status] == STATUS_DOCKED)
 	{
@@ -1077,7 +1081,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		else
 		{
 			[self setPauseMessageVisible:YES];
-			[self addMessage:OOExpandKey(@"game-paused-docked", pauseKey) forCount:1.0];
+			[self cxx_addMessage:ExpandKeyWith("game-paused-docked", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList()) forCount:1.0];
 		}
 	}
 	else
@@ -1089,7 +1093,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		else
 		{
 			[self setPauseMessageVisible:YES];
-			[self addMessage:OOExpandKey(@"game-paused", pauseKey) forCount:1.0];
+			[self cxx_addMessage:ExpandKeyWith("game-paused", "pauseKey", pauseKey.has_value() ? oo::PList(*pauseKey) : oo::PList()) forCount:1.0];
 		}
 	}
 	
@@ -2203,7 +2207,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		// Ensure piloted ships have pilots.
 		if (![ship crew] && ![ship isUnpiloted])
 			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
-						   [OOCharacter randomCharacterWithRole:oo::NSStringFrom(desc)
+						   [OOCharacter randomCharacterWithRole:desc
 											  andOriginalSystem:Ranrot() & 255] })];
 		
 		if ([ship scanClass] == CLASS_NOT_SET)
@@ -2803,7 +2807,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		if ([ship crew] == nil && ![ship isUnpiloted])
 			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
-				[OOCharacter randomCharacterWithRole:oo::NSStringFrom(role)
+				[OOCharacter randomCharacterWithRole:role
 				andOriginalSystem: Ranrot() & 255] })];
 		// The following is set inside leaveWitchspace: AI state GLOBAL, STATUS_EXITING_WITCHSPACE, ai message: EXITED_WITCHSPACE, then STATUS_IN_FLIGHT
 		[ship leaveWitchspace];
@@ -2896,7 +2900,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if ([ship crew] == nil && ![ship isUnpiloted])
 		{
 			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
-				[OOCharacter randomCharacterWithRole:oo::NSStringFrom(role)
+				[OOCharacter randomCharacterWithRole:role
 				andOriginalSystem:Ranrot() & 255] })];
 		}
 		
@@ -3160,7 +3164,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	OOColor *col1 = [OOColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:0.5];	//standard tunnel colour
 	OOColor *col2 = [OOColor colorWithRed:0.0 green:0.0 blue:1.0 alpha:0.25];	//standard tunnel colour
 	
-	colorDesc = [[self globalSettings] objectForKey:@"hyperspace_tunnel_color_1"];
+	colorDesc = ObjectForKeyIn(globalSettings, "hyperspace_tunnel_color_1");	// +colorWithDescription: takes any description object
 	if (colorDesc != nil)
 	{
 		color = [OOColor colorWithDescription:colorDesc];
@@ -3168,7 +3172,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		else  OOLogWARN(@"hyperspaceTunnel.fromDict", @"could not interpret \"%@\" as a colour.", colorDesc);
 	}
 
-	colorDesc = [[self globalSettings] objectForKey:@"hyperspace_tunnel_color_2"];
+	colorDesc = ObjectForKeyIn(globalSettings, "hyperspace_tunnel_color_2");
 	if (colorDesc != nil)
 	{
 		color = [OOColor colorWithDescription:colorDesc];
@@ -3182,10 +3186,10 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	
 	if (forDocking)
 	{
-		NSDictionary *info = [[PLAYER dockedStation] shipInfoDictionary];
-		sides = oo::PListView(info).get<unsigned int>(@"tunnel_corners", 4);
-		startAngle = oo::PListView(info).get<float>(@"tunnel_start_angle", 45.0f);
-		aspectRatio = oo::PListView(info).get<float>(@"tunnel_aspect_ratio", 2.67f);
+		const oo::PList info = oo::PListFrom([[PLAYER dockedStation] shipInfoDictionary]);	// the unmigrated ShipEntity's
+		sides = info.get<unsigned int>("tunnel_corners", 4);
+		startAngle = info.get<float>("tunnel_start_angle", 45.0f);
+		aspectRatio = info.get<float>("tunnel_aspect_ratio", 2.67f);
 	}
 	
 	for (i = 1; i < 11; i++)
@@ -3249,8 +3253,9 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	for (const oo::ObjCRef<StationEntity *> &entry : allStations)
 	{
 		station = entry.get();
-		NSString	*stationKey = [registry randomShipKeyForRole:[station primaryRole]];
-		if (![[[registry shipInfoForKey:stationKey] allKeys] containsObject:@"requires_docking_clearance"])
+		const std::optional<std::string>	stationKey = [registry cxx_randomShipKeyForRole:oo::StdString([station primaryRole])];
+		const oo::PList	stationInfo = stationKey.has_value() ? [registry cxx_shipInfoForKey:*stationKey] : oo::PList();
+		if (stationInfo.find("requires_docking_clearance") == nullptr)
 		{
 			[station setRequiresDockingClearance:!!newValue];
 		}
@@ -3268,7 +3273,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 	}
 	else
 	{
-		[self setUseAddOns:SCENARIO_OXP_DEFINITION_ALL fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
+		[self cxx_setUseAddOns:oo::StdString(SCENARIO_OXP_DEFINITION_ALL) fromSaveGame:NO forceReinit:YES]; // calls reinitAndShowDemo
 	} 
 }
 
@@ -3278,8 +3283,8 @@ namespace {
 std::optional<std::string> OptionalStringIn(const oo::PList &dict, std::string_view key);	// defined with the other configuration readers below
 
 
-// The demo ship entry at <index>, <subindex> of the demo list: null where the old at<NSArray *> /
-// at<NSDictionary *> chain gave nil.
+// The demo ship entry at <index>, <subindex> of the demo list: null where the old array /
+// dictionary lookup chain gave nil.
 oo::PList DemoShipEntry(const oo::PList &demoShips, NSUInteger index, NSUInteger subindex)
 {
 	const oo::PList *subList = demoShips.at(index);
@@ -3320,7 +3325,7 @@ std::optional<std::string> ExpandText(const std::string &text)
 }
 
 
-// [NSString stringWithFormat:DESC(descKey), OOExpand(override)]: a nil expansion printed "(null)".
+// The DESC(descKey) format given OOExpand(override): a nil expansion printed "(null)".
 std::string CustomLibraryText(const char *descKey, const std::string &override)
 {
 	const std::optional<std::string> expanded = ExpandText(override);
@@ -4660,53 +4665,50 @@ static BOOL IsFriendlyStationPredicate(Entity *entity, void *parameter)
 }
 
 
-- (NSDictionary *) gameSettings
+// The number kinds the old dictionary held: oo_setInteger: a signed integer, oo_setBool: a
+// boolean, oo_setFloat: / +numberWithFloat: a single-precision real.
+- (oo::PList) cxx_gameSettings
 {
-#if OOLITE_SDL
-	NSMutableDictionary *result = [NSMutableDictionary dictionaryWithCapacity:12];
-#else
- 	NSMutableDictionary *result = [NSMutableDictionary dictionaryWithCapacity:10];
-#endif
-	
-	[result oo_setInteger:[PLAYER isSpeechOn] forKey:@"speechOn"];
-	[result oo_setBool:autoSave forKey:@"autosave"];
-	[result oo_setBool:wireframeGraphics forKey:@"wireframeGraphics"];
-	[result oo_setBool:doProcedurallyTexturedPlanets forKey:@"procedurallyTexturedPlanets"];
+	oo::PList::Dict result;
 
-	[result oo_setFloat:[gameView fov:NO] forKey:@"fovValue"];
+	result["speechOn"] = oo::PList::signedInteger([PLAYER isSpeechOn]);
+	result["autosave"] = oo::PList(static_cast<bool>(autoSave));
+	result["wireframeGraphics"] = oo::PList(static_cast<bool>(wireframeGraphics));
+	result["procedurallyTexturedPlanets"] = oo::PList(static_cast<bool>(doProcedurallyTexturedPlanets));
+
+	result["fovValue"] = oo::PList::singleReal([gameView fov:NO]);
 
 #if OOLITE_WINDOWS
 	if ([gameView hdrOutput])
 	{
-		[result oo_setFloat:[gameView hdrMaxBrightness] forKey:@"hdr-max-brightness"];
-		[result oo_setFloat:[gameView hdrPaperWhiteBrightness] forKey:@"hdr-paperwhite-brightness"];
-		[result setObject:OOStringFromHDRToneMapper([gameView hdrToneMapper]) forKey:@"hdr-tone-mapper"];
+		result["hdr-max-brightness"] = oo::PList::singleReal([gameView hdrMaxBrightness]);
+		result["hdr-paperwhite-brightness"] = oo::PList::singleReal([gameView hdrPaperWhiteBrightness]);
+		result["hdr-tone-mapper"] = oo::PList(cxx_OOStringFromHDRToneMapper([gameView hdrToneMapper]));
 	}
 #endif
 
-	[result setObject:OOStringFromSDRToneMapper([gameView sdrToneMapper]) forKey:@"sdr-tone-mapper"];
-	
-	[result setObject:OOStringFromGraphicsDetail([self detailLevel]) forKey:@"detailLevel"];
-	
-	NSString *desc = @"UNDEFINED";
+	result["sdr-tone-mapper"] = oo::PList(cxx_OOStringFromSDRToneMapper([gameView sdrToneMapper]));
+
+	result["detailLevel"] = oo::PList(cxx_OOStringFromGraphicsDetail([self detailLevel]));
+
+	const char *desc = "UNDEFINED";
 	switch ([[OOMusicController sharedController] mode])
 	{
-		case kOOMusicOff:		desc = @"MUSIC_OFF"; break;
-		case kOOMusicOn:		desc = @"MUSIC_ON"; break;
-		case kOOMusicITunes:	desc = @"MUSIC_ITUNES"; break;
+		case kOOMusicOff:		desc = "MUSIC_OFF"; break;
+		case kOOMusicOn:		desc = "MUSIC_ON"; break;
+		case kOOMusicITunes:	desc = "MUSIC_ITUNES"; break;
 	}
-	[result setObject:desc forKey:@"musicMode"];
-	
-	NSDictionary *gameWindow = [NSDictionary dictionaryWithObjectsAndKeys:
-						[NSNumber numberWithFloat:[gameView backingViewSize].width], @"width",
-						[NSNumber numberWithFloat:[gameView backingViewSize].height], @"height",
-						[NSNumber numberWithBool:[[self gameController] inFullScreenMode]], @"fullScreen",
-						nil];
-	[result setObject:gameWindow forKey:@"gameWindow"];
-	
-	[result setObject:[PLAYER keyConfig] forKey:@"keyConfig"];
+	result["musicMode"] = oo::PList(desc);
 
-	return [[result copy] autorelease];
+	result["gameWindow"] = oo::PList(oo::PList::Dict{
+		{ "width", oo::PList::singleReal([gameView backingViewSize].width) },
+		{ "height", oo::PList::singleReal([gameView backingViewSize].height) },
+		{ "fullScreen", oo::PList(static_cast<bool>([[self gameController] inFullScreenMode])) },
+	});
+
+	result["keyConfig"] = oo::PListFrom([PLAYER keyConfig]);	// the unmigrated PlayerEntity's
+
+	return oo::PList(std::move(result));
 }
 
 
@@ -5360,11 +5362,10 @@ static const OOMatrix	starboard_matrix =
 			
 			// If the HUD has a non-nil deferred name string, it means that a HUD switch was requested while it was being rendered.
 			// If so, execute the deferred HUD switch now - Nikos 20110628
-			if ([theHUD deferredHudName] != nil)
+			if ([theHUD cxx_deferredHudName].has_value())
 			{
-				NSString *deferredName = [[theHUD deferredHudName] retain];
-				[player switchHudTo:deferredName];
-				[deferredName release];
+				const std::string deferredName = *[theHUD cxx_deferredHudName];	// a copy: the switch releases the HUD
+				[player switchHudTo:oo::NSStringFrom(deferredName)];
 				theHUD = [player hud];	// HUD has been changed, so point to its new address
 			}
 			
@@ -6286,9 +6287,9 @@ static BOOL MaintainLinkedLists(Universe *uni)
 	// low energy, start getting small surface explosions
 	if ([target showDamage] && [target energy] < [target maxEnergy]/2)
 	{
-		NSString *key = (randf() < 0.5) ? @"oolite-hull-spark" : @"oolite-hull-spark-b";
-		NSDictionary *settings = [UNIVERSE explosionSetting:key];
-		OOExplosionCloudEntity* burst = [OOExplosionCloudEntity explosionCloudFromEntity:target withSettings:oo::PListFrom(settings)];
+		const char *key = (randf() < 0.5) ? "oolite-hull-spark" : "oolite-hull-spark-b";
+		const oo::PList settings = [UNIVERSE cxx_explosionSetting:key];
+		OOExplosionCloudEntity* burst = [OOExplosionCloudEntity explosionCloudFromEntity:target withSettings:settings];
 		[burst setPosition:pos];
 		[self addEntity: burst];
 		if ([target energy] * randf() < damage)
@@ -6873,7 +6874,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 }
 
 
-- (NSString*) collisionDescription
+- (id) collisionDescription	// shared selector (proposed ADR-0043): an Objective-C string, as CollisionRegion's
 {
 	if (universeRegion != nil)  return [universeRegion collisionDescription];
 	else  return @"-";
@@ -6894,7 +6895,7 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 
 - (void) setViewDirection:(OOViewID) vd
 {
-	NSString		*ms = nil;
+	std::optional<std::string>	ms;
 	BOOL			guiSelected = NO;
 	
 	if ((viewDirection == vd) && (vd != VIEW_CUSTOM) && (!displayGUI))
@@ -6903,23 +6904,23 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 	switch (vd)
 	{
 		case VIEW_FORWARD:
-			ms = DESC(@"forward-view-string");
+			ms = cxx_OOLookUpDescriptionPRIV("forward-view-string");
 			break;
 			
 		case VIEW_AFT:
-			ms = DESC(@"aft-view-string");
+			ms = cxx_OOLookUpDescriptionPRIV("aft-view-string");
 			break;
 			
 		case VIEW_PORT:
-			ms = DESC(@"port-view-string");
+			ms = cxx_OOLookUpDescriptionPRIV("port-view-string");
 			break;
 			
 		case VIEW_STARBOARD:
-			ms = DESC(@"starboard-view-string");
+			ms = cxx_OOLookUpDescriptionPRIV("starboard-view-string");
 			break;
 			
 		case VIEW_CUSTOM:
-			ms = [PLAYER customViewDescription];
+			ms = oo::OptionalString([PLAYER customViewDescription]);
 			break;
 			
 		case VIEW_GUI_DISPLAY:
@@ -6953,9 +6954,9 @@ OOINLINE BOOL EntityInRange(HPVector p1, Entity *e2, float range)
 		// view notifications for when the player switches to/from gui!
 		//if (EXPECT(viewDirection == VIEW_GUI_DISPLAY || vd == VIEW_GUI_DISPLAY )) [PLAYER noteViewDidChangeFrom:viewDirection toView:vd];
 		viewDirection = vd;
-		if (ms && !gamePaused)
+		if (ms.has_value() && !gamePaused)
 		{
-			[self addMessage:ms forCount:3];
+			[self cxx_addMessage:ms forCount:3];
 		}
 		else if (gamePaused)
 		{
@@ -7329,7 +7330,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			my_entities[i] = [sortedEntities[i] retain];	// explicitly retain each one
 		}
 		
-		NSString * volatile update_stage = @"initialisation";
+		const char * volatile update_stage = "initialisation";
 #ifndef NDEBUG
 		id volatile update_stage_param = nil;
 #endif
@@ -7348,7 +7349,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			
 			if (EXPECT_NOT([player showDemoShips] && [player guiScreen] == GUI_SCREEN_SHIPLIBRARY))
 			{
-				update_stage = @"demo management";
+				update_stage = "demo management";
 				
 				if (universal_time >= demo_stage_time)
 				{
@@ -7424,15 +7425,15 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				}
 			}
 			
-			update_stage = @"update:entity";
+			update_stage = "update:entity";
 			std::vector<oo::ObjCRef<Entity *>> zombies;	// each once, in the order found
-			OOLog(@"universe.profile.update", @"%@", update_stage);
+			OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage));
 			for (i = 0; i < ent_count; i++)
 			{
 				Entity *thing = my_entities[i];
 #ifndef NDEBUG
 				update_stage_param = thing;
-				update_stage = @"update:entity [%@]";
+				update_stage = "update:entity [%@]";
 #endif
 				// Game Over code depends on regular delta_t updates to the dead player entity. Ignore the player entity, even when dead.
 				if (EXPECT_NOT([thing status] == STATUS_DEAD && std::find(entitiesDeadThisUpdate.begin(), entitiesDeadThisUpdate.end(), thing) == entitiesDeadThisUpdate.end() && ![thing isPlayer]))
@@ -7449,7 +7450,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				}
 				
 #ifndef NDEBUG
-				update_stage = @"update:list maintenance [%@]";
+				update_stage = "update:list maintenance [%@]";
 #endif
 				
 				// maintain distance-from-player list
@@ -7469,7 +7470,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 				if ([thing isShip])
 				{
 #ifndef NDEBUG
-					update_stage = @"update:think [%@]";
+					update_stage = "update:think [%@]";
 #endif
 					AI* theShipsAI = [(ShipEntity *)thing getAI];
 					if (theShipsAI)
@@ -7489,7 +7490,7 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			
 			if (!zombies.empty())
 			{
-				update_stage = @"shootin' zombies";
+				update_stage = "shootin' zombies";
 				Entity *zombie = nil;
 				for (const oo::ObjCRef<Entity *> &entry : zombies)
 				{
@@ -7500,8 +7501,8 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			}
 			
 			// Maintain x/y/z order lists
-			update_stage = @"updating linked lists";
-			OOLog(@"universe.profile.update", @"%@", update_stage);
+			update_stage = "updating linked lists";
+			OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage));
 			for (i = 0; i < ent_count; i++)
 			{
 				[my_entities[i] updateLinkedLists];
@@ -7509,8 +7510,8 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			
 			// detect collisions and light ships that can see the sun
 			
-			update_stage = @"collision and shadow detection";
-			OOLog(@"universe.profile.update", @"%@", update_stage);
+			update_stage = "collision and shadow detection";
+			OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage));
 			[self filterSortedLists];
 			[self findCollisionsAndShadows];
 			
@@ -7530,10 +7531,11 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			}
 			else
 			{
+				std::string stage = update_stage;
 #ifndef NDEBUG
-				if (update_stage_param != nil)  update_stage = [NSString stringWithFormat:update_stage, update_stage_param];
+				if (update_stage_param != nil)  stage = oo::str::formatRuntime(stage, { oo::DescriptionOf(update_stage_param) });
 #endif
-				OOLog(kOOLogException, @"***** Exception during [%@] in [Universe update:] : %@ : %@ *****", update_stage, oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
+				OOLog(kOOLogException, @"***** Exception during [%@] in [Universe update:] : %@ : %@ *****", oo::NSStringFrom(stage), oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
 				@throw exception;
 			}
 		}
@@ -7545,17 +7547,18 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 			}
 			else
 			{
+				std::string stage = update_stage;
 #ifndef NDEBUG
-				if (update_stage_param != nil)  update_stage = [NSString stringWithFormat:update_stage, update_stage_param];
+				if (update_stage_param != nil)  stage = oo::str::formatRuntime(stage, { oo::DescriptionOf(update_stage_param) });
 #endif
-				OOLog(kOOLogException, @"***** Exception during [%@] in [Universe update:] : %@ : %@ *****", update_stage, [exception name], [exception reason]);
+				OOLog(kOOLogException, @"***** Exception during [%@] in [Universe update:] : %@ : %@ *****", oo::NSStringFrom(stage), [exception name], [exception reason]);
 				@throw exception;
 			}
 		}
 		
 		// dispose of the non-mutable copy and everything it references neatly
-		update_stage = @"clean up";
-		OOLog(@"universe.profile.update", @"%@", update_stage);
+		update_stage = "clean up";
+		OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage));
 		for (i = 0; i < ent_count; i++)
 		{
 			[my_entities[i] release];	// explicitly release each one
@@ -7568,8 +7571,8 @@ bool SameMessage(const std::optional<std::string> &current, const std::optional<
 		 * necessary. Merely checking is not significant in terms of
 		 * time. - CIM: 4/8/2013
 		 */
-		update_stage = @"JS Garbage Collection";
-		OOLog(@"universe.profile.update", @"%@", update_stage); 
+		update_stage = "JS Garbage Collection";
+		OOLog(@"universe.profile.update", @"%@", oo::NSStringFrom(update_stage)); 
 #ifndef NDEBUG
 		ooscript::Context context = OOJSAcquireContext(); 
 		uint32_t gcbytes1 = ooscript::getGCParameter(ooscript::getRuntime(context),ooscript::GCParam::Bytes);
@@ -8742,7 +8745,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		}
 		else if (key == "texture")
 		{
-			[[self planet] setUpPlanetFromTexture:object];
+			[[self planet] setUpPlanetFromTexture:oo::OptionalString(object)];
 		}
 		else if (key == "texture_hsb_color")
 		{
@@ -9292,7 +9295,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 }
 
 
-- (NSDictionary *) globalSettings
+- (oo::PList) cxx_globalSettings
 {
 	return globalSettings;
 }
@@ -9513,7 +9516,7 @@ void SetInDict(oo::PList &dict, std::string_view key, const std::string &value)
 
 
 /*	OOExpandKey(key, <name>): OOExpand's macro hands the expander a one-entry argument dictionary
-	keyed by the variable's name; a number keeps the NSNumber type OO_CAST_PARAMETER boxed it as.
+	keyed by the variable's name; a number keeps the number type OO_CAST_PARAMETER boxed it as.
 */
 std::string ExpandKeyWith(const std::string &key, const char *name, const oo::PList &value)
 {
@@ -9529,7 +9532,7 @@ std::string ExpandKey(const std::string &key)
 }
 
 
-// -[NSNumber compare:] of the two offers' prices (unsigned long long).
+// -compare: of the two offers' price numbers (unsigned long long).
 int comparePrice(const oo::PList &offer1, const oo::PList &offer2)
 {
 	const unsigned long long price1 = offer1.get<unsigned long long>(oo::StdString(SHIPYARD_KEY_PRICE));
@@ -10569,8 +10572,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 			[player setStatus:STATUS_HANDLING_ERROR];
 			
 			OOLog(kOOLogException, @"***** Handling Fatal : %@ : %@ *****",oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason]));
-			NSString* exception_msg = [NSString stringWithFormat:@"Exception : %@ : %@ Please take a screenshot and/or press esc or Q to quit.", oo::NSStringFrom([exception name]), oo::NSStringFrom([exception reason])];
-			[self addMessage:exception_msg forCount:30.0];
+			std::string exception_msg = oo::str::format("Exception : %s : %s Please take a screenshot and/or press esc or Q to quit.", [exception name], [exception reason]);
+			[self cxx_addMessage:exception_msg forCount:30.0];
 			[[self gameController] setGamePaused:YES];
 		}
 		else
@@ -10833,8 +10836,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	
 	customSounds = [ResourceManager cxx_dictionaryFromFilesNamed:"customsounds.plist" inFolder:std::string("Config") andMerge:YES];
 	
-	[globalSettings autorelease];
-	globalSettings = [[ResourceManager dictionaryFromFilesNamed:@"global-settings.plist" inFolder:@"Config" mergeMode:MERGE_SMART cache:YES] retain];
+	globalSettings = [ResourceManager cxx_dictionaryFromFilesNamed:"global-settings.plist" inFolder:std::string("Config") mergeMode:MERGE_SMART cache:YES];
 
 	
 	[systemManager autorelease];
@@ -10923,7 +10925,7 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	
 	_sessionID++;	// Must be after removing old entities and before adding new ones.
 	
-	[ResourceManager setUseAddOns:useAddOns];	// also logs the paths
+	[ResourceManager cxx_setUseAddOns:useAddOns];	// also logs the paths
 	//[ResourceManager loadScripts]; // initialised inside [player setUp]!
 	
 	// NOTE: Anything in the sharedCache is now trashed and must be
@@ -11025,8 +11027,8 @@ int compareName(const oo::PList &offer1, const oo::PList &offer2)
 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Wormhole and character reset");
 	AutoreleaseAll(activeWormholes);	// the old list was autoreleased
 	activeWormholes.reserve(16);
-	if (characterPool) [characterPool autorelease];
-	characterPool = [[NSMutableArray arrayWithCapacity:256] retain];
+	AutoreleaseAll(characterPool);	// the old pool was autoreleased
+	characterPool.reserve(256);
 	OO_DEBUG_POP_PROGRESS();
 	
 	OO_DEBUG_PUSH_PROGRESS(@"%@", @"Galaxy reset");
@@ -11291,166 +11293,174 @@ static void PreloadOneSound(const std::string &soundName)
 }
 
 
+namespace {
+
+/*	EscapedGraphVizString(OOStringifySystemDescriptionLine(line, keyMap, NO)): the stringifier is
+	the unmigrated OOConvertSystemDescriptions' (oo-xh1g), given Objective-C objects at the call;
+	a nil line or result escaped to nil, which %@ printed as "(null)".
+*/
+std::string StringifiedLabel(id line, id keyMap)
+{
+	// oo-xh1g: stringify takes std::string / oo::PList; nil line still prints as "(null)".
+	if (line == nil)  return "(null)";
+	return cxx_EscapedGraphVizString(OOStringifySystemDescriptionLine(oo::StdString(line), oo::PListFrom(keyMap), NO));
+}
+
+}	// namespace
+
+
 - (void) dumpSystemDescriptionGraphViz
 {
-	NSMutableString				*graphViz = nil;
-	NSArray						*systemDescriptions = nil;
-	NSArray						*thisDesc = nil;
+	std::string					graphViz;
+	const oo::PList				*systemDescriptions = nullptr;
+	const oo::PList				*thisDesc = nullptr;
 	NSUInteger					i, count, j, subCount;
-	NSString					*descLine = nil;
-	NSArray						*curses = nil;
-	NSString					*label = nil;
-	NSDictionary				*keyMap = nil;
-	
-	keyMap = [ResourceManager dictionaryFromFilesNamed:@"sysdesc_key_table.plist"
-											  inFolder:@"Config"
+	std::string					descLine;
+	const oo::PList				*curses = nullptr;
+	std::string					label;
+	oo::PList					keyMap;
+
+	keyMap = [ResourceManager cxx_dictionaryFromFilesNamed:"sysdesc_key_table.plist"
+											  inFolder:std::string("Config")
 											  andMerge:NO];
-	
-	graphViz = [NSMutableString stringWithString:
-				@"// System description grammar:\n\n"
+	const id keyMapObject = oo::ObjectFromPList(keyMap);	// for the unmigrated stringifier
+
+	graphViz = "// System description grammar:\n\n"
 				"digraph system_descriptions\n"
 				"{\n"
 				"\tgraph [charset=\"UTF-8\", label=\"System description grammar\", labelloc=t, labeljust=l rankdir=LR compound=true nodesep=0.02 ranksep=1.5 concentrate=true fontname=Helvetica]\n"
 				"\tedge [arrowhead=dot]\n"
-				"\tnode [shape=none height=0.2 width=3 fontname=Helvetica]\n\t\n"];
-	
-	systemDescriptions = oo::PListView([self descriptions]).get<NSArray *>(@"system_description");
-	count = [systemDescriptions count];
-	
+				"\tnode [shape=none height=0.2 width=3 fontname=Helvetica]\n\t\n";
+
+	systemDescriptions = [self cxx_descriptions]->get<oo::PList::Array>("system_description");
+	count = (systemDescriptions != nullptr) ? systemDescriptions->count() : 0;
+
 	// Add system-description-string as special node (it's the one thing that ties [14] to everything else).
-	descLine = DESC(@"system-description-string");
-	label = OOStringifySystemDescriptionLine(descLine, keyMap, NO);
-	[graphViz appendFormat:@"\tsystem_description_string [label=\"%@\" shape=ellipse]\n", EscapedGraphVizString(label)];
+	descLine = cxx_OOLookUpDescriptionPRIV("system-description-string");
+	graphViz += oo::str::format("\tsystem_description_string [label=\"%s\" shape=ellipse]\n", StringifiedLabel(oo::NSStringFrom(descLine), keyMapObject).c_str());
 	[self addNumericRefsInString:descLine
 					  toGraphViz:graphViz
-						fromNode:@"system_description_string"
+						fromNode:"system_description_string"
 					   nodeCount:count];
-	[graphViz appendString:@"\t\n"];
-	
+	graphViz += "\t\n";
+
 	// Add special nodes for formatting codes
-	[graphViz appendString:
-	 @"\tpercent_I [label=\"%I\\nInhabitants\" shape=diamond]\n"
+	graphViz +=
+	 "\tpercent_I [label=\"%I\\nInhabitants\" shape=diamond]\n"
 	 "\tpercent_H [label=\"%H\\nSystem name\" shape=diamond]\n"
 	 "\tpercent_RN [label=\"%R/%N\\nRandom name\" shape=diamond]\n"
 	 "\tpercent_J [label=\"%J\\nNumbered system name\" shape=diamond]\n"
-	 "\tpercent_G [label=\"%G\\nNumbered system name in chart number\" shape=diamond]\n\t\n"];
-	
+	 "\tpercent_G [label=\"%G\\nNumbered system name in chart number\" shape=diamond]\n\t\n";
+
 	// Toss in the Thargoid curses, too
-	[graphViz appendString:@"\tsubgraph cluster_thargoid_curses\n\t{\n\t\tlabel = \"Thargoid curses\"\n"];
-	curses = oo::PListView([self descriptions]).get<NSArray *>(@"thargoid_curses");
-	subCount = [curses count];
+	graphViz += "\tsubgraph cluster_thargoid_curses\n\t{\n\t\tlabel = \"Thargoid curses\"\n";
+	curses = [self cxx_descriptions]->get<oo::PList::Array>("thargoid_curses");
+	subCount = (curses != nullptr) ? curses->count() : 0;
 	for (j = 0; j < subCount; ++j)
 	{
-		label = OOStringifySystemDescriptionLine(oo::PListView(curses).at<NSString *>(j), keyMap, NO);
-		[graphViz appendFormat:@"\t\tthargoid_curse_%zu [label=\"%@\"]\n", j, EscapedGraphVizString(label)];
+		graphViz += oo::str::format("\t\tthargoid_curse_%zu [label=\"%s\"]\n", j, StringifiedLabel(oo::NSStringOrNil(OptionalStringAt(*curses, j)), keyMapObject).c_str());
 	}
-	[graphViz appendString:@"\t}\n"];
+	graphViz += "\t}\n";
 	for (j = 0; j < subCount; ++j)
 	{
-		[self addNumericRefsInString:oo::PListView(curses).at<NSString *>(j)
+		[self addNumericRefsInString:OptionalStringAt(*curses, j).value_or(std::string())
 						  toGraphViz:graphViz
-							fromNode:[NSString stringWithFormat:@"thargoid_curse_%zu", j]
+							fromNode:oo::str::format("thargoid_curse_%zu", j)
 						   nodeCount:count];
 	}
-	[graphViz appendString:@"\t\n"];
-	
+	graphViz += "\t\n";
+
 	// The main show: the bits of systemDescriptions itself.
 	// Define the nodes
 	for (i = 0; i < count; ++i)
 	{
 		// Build label, using sysdesc_key_table.plist if available
-		label = [keyMap objectForKey:[NSString stringWithFormat:@"%zu", i]];
-		if (label == nil)  label = [NSString stringWithFormat:@"[%zu]", i];
-		else  label = [NSString stringWithFormat:@"[%zu] (%@)", i, label];
-		
-		[graphViz appendFormat:@"\tsubgraph cluster_%zu\n\t{\n\t\tlabel=\"%@\"\n", i, EscapedGraphVizString(label)];
-		
-		thisDesc = oo::PListView(systemDescriptions).at<NSArray *>(i);
-		subCount = [thisDesc count];
+		const oo::PList *keyLabel = keyMap.find(oo::str::format("%zu", i));
+		if (keyLabel == nullptr)  label = oo::str::format("[%zu]", i);
+		else  label = oo::str::format("[%zu] (%s)", i, oo::DescriptionOf(oo::ObjectFromPList(*keyLabel)).c_str());
+
+		graphViz += oo::str::format("\tsubgraph cluster_%zu\n\t{\n\t\tlabel=\"%s\"\n", i, cxx_EscapedGraphVizString(label).c_str());
+
+		thisDesc = systemDescriptions->at<oo::PList::Array>(i);
+		subCount = (thisDesc != nullptr) ? thisDesc->count() : 0;
 		for (j = 0; j < subCount; ++j)
 		{
-			label = OOStringifySystemDescriptionLine(oo::PListView(thisDesc).at<NSString *>(j), keyMap, NO);
-			[graphViz appendFormat:@"\t\tn%zu_%zu [label=\"\\\"%@\\\"\"]\n", i, j, EscapedGraphVizString(label)];
+			graphViz += oo::str::format("\t\tn%zu_%zu [label=\"\\\"%s\\\"\"]\n", i, j, StringifiedLabel(oo::NSStringOrNil(OptionalStringAt(*thisDesc, j)), keyMapObject).c_str());
 		}
-		
-		[graphViz appendString:@"\t}\n"];
+
+		graphViz += "\t}\n";
 	}
-	[graphViz appendString:@"\t\n"];
-	
+	graphViz += "\t\n";
+
 	// Define the edges
 	for (i = 0; i != count; ++i)
 	{
-		thisDesc = oo::PListView(systemDescriptions).at<NSArray *>(i);
-		subCount = [thisDesc count];
+		thisDesc = systemDescriptions->at<oo::PList::Array>(i);
+		subCount = (thisDesc != nullptr) ? thisDesc->count() : 0;
 		for (j = 0; j != subCount; ++j)
 		{
-			descLine = oo::PListView(thisDesc).at<NSString *>(j);
+			descLine = OptionalStringAt(*thisDesc, j).value_or(std::string());
 			[self addNumericRefsInString:descLine
 							  toGraphViz:graphViz
-								fromNode:[NSString stringWithFormat:@"n%zu_%zu", i, j]
+								fromNode:oo::str::format("n%zu_%zu", i, j)
 							   nodeCount:count];
 		}
 	}
-	
+
 	// Write file
-	[graphViz appendString:@"\t}\n"];
-	[ResourceManager writeDiagnosticData:[graphViz dataUsingEncoding:NSUTF8StringEncoding] toFileNamed:@"SystemDescription.dot"];
+	graphViz += "\t}\n";
+	[ResourceManager cxx_writeDiagnosticData:oo::Data(graphViz.data(), graphViz.size()) toFileNamed:"SystemDescription.dot"];
 }
 #endif	// DEBUG_GRAPHVIZ
 
 
-- (void) addNumericRefsInString:(NSString *)string toGraphViz:(NSMutableString *)graphViz fromNode:(NSString *)fromNode nodeCount:(NSUInteger)nodeCount
+// A missing line is "" here (the old nil receiver answered zeroed ranges and never ended the scan).
+- (void) addNumericRefsInString:(const std::string &)string toGraphViz:(std::string &)graphViz fromNode:(const std::string &)fromNode nodeCount:(NSUInteger)nodeCount
 {
-	NSString					*index = nil;
-	NSInteger					start, end;
-	NSRange						remaining, subRange;
+	std::size_t					start, end, remaining = 0;
 	unsigned					i;
-	
-	remaining = NSMakeRange(0, [string length]);
-	
+
 	for (;;)
 	{
-		subRange = [string rangeOfString:@"[" options:NSLiteralSearch range:remaining];
-		if (subRange.location == NSNotFound)  break;
-		start = subRange.location + subRange.length;
-		remaining.length -= start - remaining.location;
-		remaining.location = start;
-		
-		subRange = [string rangeOfString:@"]" options:NSLiteralSearch range:remaining];
-		if (subRange.location == NSNotFound)  break;
-		end = subRange.location;
-		remaining.length -= end - remaining.location;
-		remaining.location = end;
-		
-		index = [string substringWithRange:NSMakeRange(start, end - start)];
-		i = [index intValue];
-		
+		const std::size_t open = string.find('[', remaining);
+		if (open == std::string::npos)  break;
+		start = open + 1;
+		remaining = start;
+
+		const std::size_t close = string.find(']', remaining);
+		if (close == std::string::npos)  break;
+		end = close;
+		remaining = end;
+
+		const std::string index = string.substr(start, end - start);
+		i = oo::str::intValue(index);
+
 		// Each node gets a colour for its incoming edges. The multiplication and mod shuffle them to avoid adjacent nodes having similar colours.
-		[graphViz appendFormat:@"\t%@ -> n%u_0 [color=\"%f,0.75,0.8\" lhead=cluster_%u]\n", fromNode, i, ((float)(i * 511 % nodeCount)) / ((float)nodeCount), i];
+		graphViz += oo::str::format("\t%s -> n%u_0 [color=\"%f,0.75,0.8\" lhead=cluster_%u]\n", fromNode.c_str(), i, ((float)(i * 511 % nodeCount)) / ((float)nodeCount), i);
 	}
-	
-	if ([string rangeOfString:@"%I"].location != NSNotFound)
+
+	if (string.find("%I") != std::string::npos)
 	{
-		[graphViz appendFormat:@"\t%@ -> percent_I [color=\"0,0,0.25\"]\n", fromNode];
+		graphViz += oo::str::format("\t%s -> percent_I [color=\"0,0,0.25\"]\n", fromNode.c_str());
 	}
-	if ([string rangeOfString:@"%H"].location != NSNotFound)
+	if (string.find("%H") != std::string::npos)
 	{
-		[graphViz appendFormat:@"\t%@ -> percent_H [color=\"0,0,0.45\"]\n", fromNode];
+		graphViz += oo::str::format("\t%s -> percent_H [color=\"0,0,0.45\"]\n", fromNode.c_str());
 	}
-	if ([string rangeOfString:@"%R"].location != NSNotFound || [string rangeOfString:@"%N"].location != NSNotFound)
+	if (string.find("%R") != std::string::npos || string.find("%N") != std::string::npos)
 	{
-		[graphViz appendFormat:@"\t%@ -> percent_RN [color=\"0,0,0.65\"]\n", fromNode];
+		graphViz += oo::str::format("\t%s -> percent_RN [color=\"0,0,0.65\"]\n", fromNode.c_str());
 	}
-	
-	// TODO: test graphViz output for @"%Jxxx" and @"%Gxxxxxx"
-	if ([string rangeOfString:@"%J"].location != NSNotFound)
+
+	// TODO: test graphViz output for "%Jxxx" and "%Gxxxxxx"
+	if (string.find("%J") != std::string::npos)
 	{
-		[graphViz appendFormat:@"\t%@ -> percent_J [color=\"0,0,0.75\"]\n", fromNode];
+		graphViz += oo::str::format("\t%s -> percent_J [color=\"0,0,0.75\"]\n", fromNode.c_str());
 	}
-	
-	if ([string rangeOfString:@"%G"].location != NSNotFound)
+
+	if (string.find("%G") != std::string::npos)
 	{
-		[graphViz appendFormat:@"\t%@ -> percent_G [color=\"0,0,0.85\"]\n", fromNode];
+		graphViz += oo::str::format("\t%s -> percent_G [color=\"0,0,0.85\"]\n", fromNode.c_str());
 	}
 }
 

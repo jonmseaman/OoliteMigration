@@ -53,6 +53,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOAssert.h"
 
 
 #define ONE_SIXTEENTH				0.0625
@@ -875,7 +876,7 @@ OOINLINE void GLColorWithOverallAlpha(const GLfloat *color, GLfloat alpha)
 
 	SEL selector = OOSelectorFromName(selectorString->c_str());
 
-	NSAssert2([self respondsToSelector:selector], @"HUD dial in %@ uses selector \"%@\" which is in whitelist, but not implemented.", oo::NSStringOrNil(hudName), oo::NSStringFrom(*selectorString));
+	OOAssert([self respondsToSelector:selector], "HUD dial in %s uses selector \"%s\" which is in whitelist, but not implemented.", hudName.value_or("(null)").c_str(), selectorString->c_str());
 
 	//  handle the case above with NS_BLOCK_ASSERTIONS too.
 	if (![self respondsToSelector:selector])
@@ -1347,7 +1348,7 @@ void prefetchData(const oo::PList &info, struct CachedInfo *data)
 	// use a non-mutable copy so this can't be changed under us.
 	int				ent_count		= UNIVERSE->n_entities;
 	Entity			**uni_entities	= UNIVERSE->sortedEntities;	// grab the public sorted list
-	Entity			*my_entities[ent_count];
+	std::vector<Entity *>	my_entities(ent_count);
 	Entity			*scannedEntity = nil;
 	
 	for (i = 0; i < ent_count; i++)
@@ -4067,9 +4068,7 @@ static void InitTextEngine(void)
 	sF6KernGovt = fontSpec.get<float>("f6KernGovernment", 1.0);
 	sF6KernTL = fontSpec.get<float>("f6KernTechLevel", 2.0);
 
-	// OOEncodingConverter is not migrated yet (oo-gosz): it gets the font specification as the
-	// dictionary it read before.
-	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:oo::ObjectFromPList(fontSpec)];
+	sEncodingCoverter = [[OOEncodingConverter alloc] initWithFontPList:fontSpec];
 	widths = fontSpec.find("widths");	// used only if it is an array, as before
 	count = (widths != nullptr && widths->isArray()) ? widths->count() : 0;
 	if (count > 256)  count = 256;
@@ -4082,15 +4081,13 @@ static void InitTextEngine(void)
 
 namespace {
 
-/*	The display-encoded bytes of text. OOEncodingConverter is not migrated yet (oo-gosz): the text
-	goes to -convertString: through the bridge, and its result comes back as oo::Data (empty where
-	it was nil).
+/*	The display-encoded bytes of text (empty where the conversion failed, or before the font is
+	loaded: a message to nil).
 */
 oo::Data ConvertedString(const std::string &text)
 {
-	const oo::PList converted = oo::PListFrom([sEncodingCoverter convertString:oo::NSStringFrom(text)]);
-	if (const oo::Data *data = converted.getIf<oo::Data>())  return *data;
-	return oo::Data();
+	if (sEncodingCoverter == nil)  return oo::Data();
+	return [sEncodingCoverter convertString:text];
 }
 
 }	// namespace

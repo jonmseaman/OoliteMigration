@@ -54,7 +54,7 @@ MA 02110-1301, USA.
 	Entity, ShipEntity, StationEntity, OOPlanetEntity, OOSunEntity,
 	OOVisualEffectEntity, PlayerEntity, OORoleSet, WormholeEntity, 
 	DockEntity, OOJSScript, OOWaypointEntity, OOSystemDescriptionManager,
-	OOException;
+	OOException, OOCharacter;
 
 
 typedef BOOL (*EntityFilterPredicate)(Entity *entity, void *parameter);
@@ -279,12 +279,12 @@ enum
 	oo::PList				customSounds;			// holds descriptive audio for lots of stuff, loaded at initialisation
 	oo::PList				characters;				// holds descriptons of characters
 	oo::PList				_scenarios;				// game start scenarios (an array)
-	NSDictionary			*globalSettings;		// miscellaneous global game settings
+	oo::PList				globalSettings;			// miscellaneous global game settings
 	OOSystemDescriptionManager	*systemManager; // planetinfo data manager
 	oo::PList				missiontext;			// holds descriptive text for missions, loaded at initialisation
 	oo::PList				equipmentData;			// holds data on available equipment, loaded at initialisation (an array)
 	oo::PList				equipmentDataOutfitting;
-//	NSSet					*pirateVictimRoles;		// Roles listed in pirateVictimRoles.plist.
+//	std::set<std::string>	pirateVictimRoles;		// Roles listed in pirateVictimRoles.plist.
 	oo::PList				roleCategories;			// Categories for roles from role-categories.plist, extending the old pirate-victim-roles.plist (category -> array of roles)
 	oo::PList				autoAIMap;				// Default AIs for roles from autoAImap.plist.
 	oo::PList				screenBackgrounds;		// holds filenames for various screens backgrounds, loaded at initialisation
@@ -318,7 +318,7 @@ enum
 
 	std::optional<std::vector<OOSystemID>>	closeSystems;	// the current system's neighbours; nullopt until cached
 	
-	NSString				*useAddOns;
+	std::string				useAddOns;
 	
 	BOOL					no_update;
 	
@@ -330,7 +330,7 @@ enum
 	
 	std::vector<oo::ObjCRef<WormholeEntity *>>	activeWormholes;
 	
-	NSMutableArray			*characterPool;
+	std::vector<oo::ObjCRef<OOCharacter *>>	characterPool;
 	
 	CollisionRegion			*universeRegion;
 	
@@ -405,9 +405,9 @@ enum
 - (BOOL) doProcedurallyTexturedPlanets;
 - (void) setDoProcedurallyTexturedPlanets:(BOOL) value;
 
-- (NSString *) useAddOns;
-- (BOOL) setUseAddOns:(NSString *)newUse fromSaveGame: (BOOL)saveGame;
-- (BOOL) setUseAddOns:(NSString *) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;
+- (std::optional<std::string>) cxx_useAddOns;
+- (BOOL) cxx_setUseAddOns:(const std::string &)newUse fromSaveGame: (BOOL)saveGame;
+- (BOOL) cxx_setUseAddOns:(const std::string &) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force;
 
 - (void) setUpSettings;
 
@@ -553,7 +553,7 @@ enum
 - (void) setGameView:(MyOpenGLView *)view;
 - (MyOpenGLView *) gameView;
 - (GameController *) gameController;
-- (NSDictionary *) gameSettings;
+- (oo::PList) cxx_gameSettings;
 
 - (void) useGUILightSource:(BOOL)GUILight;
 
@@ -632,7 +632,7 @@ enum
 - (OOTimeDelta) getTimeDelta;
 
 - (void) findCollisionsAndShadows;
-- (NSString*) collisionDescription;
+- (id) collisionDescription;	// shared selector (proposed ADR-0043): an Objective-C string, as CollisionRegion's
 - (void) dumpCollisions;
 
 - (OOViewID) viewDirection;
@@ -734,7 +734,7 @@ enum
 - (void) preloadPlanetTexturesForSystem:(OOSystemID)system;
 - (void) preloadSounds;
 
-- (NSDictionary *) globalSettings;
+- (oo::PList) cxx_globalSettings;
 
 - (oo::PList) cxx_equipmentData;
 - (oo::PList) cxx_equipmentDataOutfitting;
@@ -889,19 +889,10 @@ std::string cxx_OOLookUpPluralDescriptionPRIV(const std::string &key, NSInteger 
 
 
 #ifdef __cplusplus
-extern "C" {
-#endif
-NSString *OODisplayStringFromGovernmentID(OOGovernmentID government);
-NSString *OODisplayStringFromEconomyID(OOEconomyID economy);
-#ifdef __cplusplus
-}
-#endif
-
-#ifdef __cplusplus
 #include "oofnd/StdLib.hpp"
 
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.162): nullopt where the
-// Foundation forms above (which forward to them) gave nil.
+// Foundation forms (Universe+FoundationBridge.h; they forward to these) gave nil.
 std::optional<std::string> cxx_OODisplayStringFromGovernmentID(OOGovernmentID government);
 std::optional<std::string> cxx_OODisplayStringFromEconomyID(OOEconomyID economy);
 #endif

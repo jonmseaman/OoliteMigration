@@ -56,6 +56,7 @@ MA 02110-1301, USA.
 #if PROFILE_WRITES
 #import "OOProfilingStopwatch.h"
 #endif
+#include "oofnd/objc/OOAssert.h"
 
 
 namespace {
@@ -200,7 +201,7 @@ CacheEntries *FindCache(std::optional<std::map<std::string, CacheEntries, std::l
 
 - (void)cxx_setObject:(id)inObject forKey:(const std::string &)inKey inCache:(const std::string &)inCacheKey
 {
-	NSParameterAssert(inObject != nil);
+	OOParameterAssert(inObject != nil);
 	
 	if (EXPECT_NOT(!_caches.has_value()))  return;
 	
