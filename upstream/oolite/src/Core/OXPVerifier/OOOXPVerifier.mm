@@ -739,7 +739,7 @@ void SwitchLogFile(const std::string &name)
 	// -stringByAppendingPathExtension: has no oo::str form yet: it runs on the bridged string.
 	const std::string logName = oo::StdString([oo::NSStringFrom(name) stringByAppendingPathExtension:@"log"]);
 	OOLog(@"verifyOXP.switchingLog", @"Switching log files -- logging to \"%@\".", oo::NSStringFrom(logName));
-	OOLogOutputHandlerChangeLogFile(oo::NSStringFrom(logName));
+	cxx_OOLogOutputHandlerChangeLogFile(logName);
 //#else
 //	OOLog(@"verifyOXP.switchingLog", @"Switching logging to <stdout>.");
 //	OOLogOutputHandlerStartLoggingToStdout();
@@ -760,10 +760,10 @@ void OpenLogFile()
 	if (oo::PListView([NSUserDefaults standardUserDefaults]).get<BOOL>(@"oxp-verifier-open-log", YES))
 	{
 #if OOLITE_MAC_OS_X
-		[[NSWorkspace sharedWorkspace] openFile:OOLogHandlerGetLogPath()];
+		[[NSWorkspace sharedWorkspace] openFile:oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath())];
 #elif OOLITE_WINDOWS
 		// ShellExecute will automatically use the app associated with .log files
-		ShellExecute(NULL, NULL, [OOLogHandlerGetLogPath() UTF8String], NULL, NULL, SW_SHOWNORMAL);
+		ShellExecute(NULL, NULL, [oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath()) UTF8String], NULL, NULL, SW_SHOWNORMAL);
 #elif  OOLITE_LINUX
 		// MKW - needed to suppress 'ignoring return value' warning for system() call
 		//		int ret;
@@ -771,7 +771,7 @@ void OpenLogFile()
 		// value to void seems to keep it quiet for now
 		// Nothing to do here, since we dump to stdout instead of to a file.
 		//OOLogOutputHandlerStopLoggingToStdout();
-		(void) system(oo::str::format("cat \"%s\"", oo::DescriptionOf(OOLogHandlerGetLogPath()).c_str()).c_str());
+		(void) system(oo::str::format("cat \"%s\"", oo::DescriptionOf(oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath())).c_str()).c_str());
 #else 
 		do {} while (0);
 #endif
