@@ -33,11 +33,22 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
 
 static const char * const kStageName	= "Validating AIs";
 
 
 namespace {
+
+// OODictionaryFromFile (OOPListParsing's bridge) as a property list: the file's
+// property list when it is a dictionary, a null PList otherwise (its plist.wrongType log line,
+// which named the Foundation class, is not kept).
+oo::PList PListDictionaryFromFile(const std::string &path)
+{
+	oo::PList result = cxx_OOPropertyListFromFile(path);
+	return result.isDict() ? result : oo::PList();
+}
+
 
 // Adding to a set kept as a sorted vector; false if it was already there.
 bool AddString(std::vector<std::string> &set, const std::string &string)
@@ -116,9 +127,9 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 }
 
 
-+ (id) nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
++ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
 {
-	return oo::NSStringFrom(kStageName);
+	return kStageName;
 }
 
 
@@ -158,7 +169,7 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 	path = oo::OptionalString([[[self verifier] fileScannerStage] pathForFile:oo::NSStringFrom(aiName) inFolder:@"AIs" referencedFrom:@"AI list" checkBuiltIn:NO]);
 	if (!path.has_value())  return;
 
-	aiStateMachine = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(*path)));
+	aiStateMachine = PListDictionaryFromFile(*path);
 	if (aiStateMachine.isNull())
 	{
 		OOLog(@"verifyOXP.validateAI.failed.notDictPlist", @"***** ERROR: could not interpret \"%@\" as a dictionary.", oo::NSStringFrom(*path));
@@ -196,7 +207,7 @@ std::vector<std::string> SortedCaseInsensitively(std::vector<std::string> string
 				}
 
 				// Trim spaces from beginning and end (the whitespace character set, not newlines).
-				const std::string action = oo::StdString([oo::NSStringFrom(*untrimmed) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]]);
+				const std::string action = oo::str::trim(*untrimmed, oo::str::CharacterSet::whitespace());
 
 				// Cut off parameters.
 				const std::string selector = action.substr(0, action.find(' '));
