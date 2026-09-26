@@ -301,6 +301,103 @@ NSArray *NativeVectorArray(const std::vector<Vector> &vectors)
 	[self cxx_doScriptEvent:scriptEvent withArgument:argument andReactToAIMessage:oo::StdString(aiMessage)];
 }
 
+
+// oo-3rb.240: identity: names, roles, ship key, descriptions
+
+- (NSString *) shipDataKey
+{
+	return oo::NSStringOrNil([self cxx_shipDataKey]);
+}
+
+
+- (NSString *) shipDataKeyAutoRole
+{
+	return oo::NSStringOrNil([self cxx_shipDataKeyAutoRole]);
+}
+
+
+- (void)setShipDataKey:(NSString *)key
+{
+	[self cxx_setShipDataKey:oo::OptionalString(key)];
+}
+
+
+- (NSString *) shipUniqueName
+{
+	return oo::NSStringOrNil([self cxx_shipUniqueName]);
+}
+
+
+- (NSString *) shipClassName
+{
+	return oo::NSStringOrNil([self cxx_shipClassName]);
+}
+
+
+- (NSString *) scanDescription
+{
+	return oo::NSStringOrNil([self cxx_scanDescription]);
+}
+
+
+- (NSString *) scanDescriptionForScripting
+{
+	return oo::NSStringOrNil([self cxx_scanDescriptionForScripting]);
+}
+
+
+- (void) setShipUniqueName:(NSString *)inName
+{
+	[self cxx_setShipUniqueName:oo::OptionalString(inName)];
+}
+
+
+- (void) setShipClassName:(NSString *)inName
+{
+	[self cxx_setShipClassName:oo::OptionalString(inName)];
+}
+
+
+- (void) setDisplayName:(NSString *)inName
+{
+	[self cxx_setDisplayName:oo::OptionalString(inName)];
+}
+
+
+- (void) setScanDescription:(NSString *)inName
+{
+	[self cxx_setScanDescription:oo::OptionalString(inName)];
+}
+
+
+- (void) addRole:(NSString *)role withProbability:(float)probability
+{
+	[self cxx_addRole:oo::StdString(role) withProbability:probability];
+}
+
+
+- (void) removeRole:(NSString *)role
+{
+	[self cxx_removeRole:oo::StdString(role)];
+}
+
+
+- (NSString *)primaryRole
+{
+	return oo::NSStringOrNil([self cxx_primaryRole]);
+}
+
+
+- (BOOL)hasPrimaryRole:(NSString *)role
+{
+	if (role == nil)
+	{
+		(void)[self cxx_primaryRole];	// still chooses a primary role if there is none, as before
+		return NO;	// -isEqual: nil was NO
+	}
+	return [self cxx_hasPrimaryRole:oo::StdString(role)];
+}
+
 @end
 
 
