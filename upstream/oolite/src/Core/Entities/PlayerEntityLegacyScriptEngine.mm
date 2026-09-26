@@ -157,9 +157,8 @@ const oo::PList &ElementAt(const oo::PList &array, std::size_t index)
 }
 
 
-/*	-[NSCharacterSet whitespaceCharacterSet]: GNUstep's whitespace-and-newline set (the scanner's,
-	oo::str::isWhitespaceOrNewline) without its newlines (U+000A-U+000D, U+0085, U+2028, U+2029).
-	The later chunks of oo-j924 reuse it.
+/*	Whitespace without newlines: GNUstep's whitespace-and-newline set (oo::str::isWhitespaceOrNewline)
+	without U+000A-U+000D, U+0085, U+2028, U+2029. The later chunks of oo-j924 reuse it.
 */
 bool IsWhitespaceNotNewline(char16_t c)
 {

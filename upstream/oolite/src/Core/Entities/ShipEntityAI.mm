@@ -56,8 +56,8 @@
 namespace
 {
 
-// +[NSCharacterSet whitespaceCharacterSet]: whitespaceAndNewlineCharacterSet without the newline
-// set (U+000A-U+000D, U+0085, U+2028, U+2029).
+// Whitespace without newlines: whiteSpaceAndNewline without U+000A-U+000D, U+0085, U+2028, U+2029
+// (matches GNUstep's whitespaceCharacterSet table).
 bool IsWhitespace(char16_t c)
 {
 	return oo::str::isWhitespaceOrNewline(c) && !((c >= 0x000A && c <= 0x000D) || c == 0x0085 || c == 0x2028 || c == 0x2029);

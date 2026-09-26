@@ -24,6 +24,8 @@ MA 02110-1301, USA.
 
 
 #import "Universe.h"
+#import "OOStringBridge.h"
+#include "oofnd/Scanner.hpp"
 #include "oofnd/Process.hpp"
 #include "oofnd/Date.hpp"
 #import "MyOpenGLView.h"
@@ -9072,7 +9074,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		int secs = floor(r_time);
 		result = [NSString stringWithFormat:@"%@ %d second%@", result, secs, (secs > 1) ? @"s" : @""];
 	}
-	return [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	return oo::StringMap(result, [&](std::string_view v) { return oo::str::trim(v, oo::str::CharacterSet::whitespace()); });
 }
 
 
@@ -9111,7 +9113,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		int secs = floor(r_time);
 		result = [NSString stringWithFormat:@"%@ %d %@", result, secs, DESC_PLURAL(@"contracts-second-word", secs)];
 	}
-	return [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+	return oo::StringMap(result, [&](std::string_view v) { return oo::str::trim(v, oo::str::CharacterSet::whitespace()); });
 }
 
 
