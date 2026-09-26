@@ -74,10 +74,14 @@ NSString * const kOOIsSynthesizedMaterialConfigurationKey = @"_oo_is_synthesized
 NSString * const kOOIsSynthesizedMaterialMacrosKey = @"_oo_synthesized_material_macros";
 
 
+namespace {
+
 // nullopt fileName: no shader of this type (YES, *outResult untouched).
-static BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, const std::optional<std::string> &prefix, std::optional<std::string> *outResult);
+BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, const std::optional<std::string> &prefix, std::optional<std::string> *outResult);
 // A macro dictionary as #define lines; nullopt for none or an empty result.
-static std::optional<std::string> MacrosToString(const oo::PList &macros);
+std::optional<std::string> MacrosToString(const oo::PList &macros);
+
+} // namespace
 
 
 @interface OOShaderMaterial (OOPrivate)
@@ -844,7 +848,9 @@ static std::optional<std::string> MacrosToString(const oo::PList &macros);
 @end
 
 
-static std::optional<std::string> MacrosToString(const oo::PList &macros)
+namespace {
+
+std::optional<std::string> MacrosToString(const oo::PList &macros)
 {
 	const oo::PList::Dict *entries = macros.getIf<oo::PList::Dict>();
 	if (entries == nullptr)  return std::nullopt;
@@ -867,6 +873,8 @@ static std::optional<std::string> MacrosToString(const oo::PList &macros)
 	return result;
 }
 
+} // namespace
+
 #endif
 
 
@@ -874,7 +882,9 @@ static std::optional<std::string> MacrosToString(const oo::PList &macros)
 	Returns YES if source was loaded or no shader was specified, and NO if an
 	external shader was specified but could not be found.
 */
-static BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, const std::optional<std::string> & /* prefix: unused, as before */, std::optional<std::string> *outResult)
+namespace {
+
+BOOL GetShaderSource(const std::optional<std::string> &fileName, const std::string &shaderType, const std::optional<std::string> & /* prefix: unused, as before */, std::optional<std::string> *outResult)
 {
 	if (!fileName.has_value())  return YES;	// It's OK for one or the other of the shaders to be undefined.
 
@@ -905,3 +915,5 @@ static BOOL GetShaderSource(const std::optional<std::string> &fileName, const st
 	if (outResult != NULL) *outResult = result;
 	return YES;
 }
+
+} // namespace
