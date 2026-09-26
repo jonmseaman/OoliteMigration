@@ -26,7 +26,6 @@ MA 02110-1301, USA.
 #import "OOSDLJoystickManager.h"
 #include "oofnd/Log.hpp"
 #include "oofnd/String.hpp"
-#import "OOStringBridge.h"
 
 #define kOOLogUnconvertedNSLog @"unclassified.OOSDLJoystickManager"
 
@@ -180,11 +179,12 @@ MA 02110-1301, USA.
 }
 
 
-- (id) nameOfJoystick:(NSUInteger)stickNumber	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) nameOfJoystick:(NSUInteger)stickNumber
 {
-	if (stickNumber >= stickCount)  return @"(unknown joystick)";
+	if (stickNumber >= stickCount)  return std::string("(unknown joystick)");
 	const char *name = SDL_GetJoystickName(stick[stickNumber]);
-	return (name != NULL) ? oo::NSStringFrom(name) : nil;	// no string for a NULL name, as before
+	if (name == NULL)  return std::nullopt;	// no string for a NULL name, as before
+	return std::string(name);
 }
 
 

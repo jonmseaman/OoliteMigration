@@ -435,15 +435,15 @@ static constexpr PropertyFlag kScriptDefinePropertyFlags = PropertyFlag::Permane
 }
 
 
-- (id) scriptDescription	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) scriptDescription
 {
-	return oo::NSStringOrNil(description);
+	return description;
 }
 
 
-- (id) version	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) cxx_version
 {
-	return oo::NSStringOrNil(version);
+	return version;
 }
 
 
