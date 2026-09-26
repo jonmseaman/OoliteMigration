@@ -189,7 +189,7 @@ OOMaybeUnits ApplyOneOperator(const OOMaybeUnits &string, const OOUnits &op, con
 	not used to avoid breaking code that worked with the old expander, even if
 	it was questionable.
 	
-	Errors that are not syntax or invalid keys are reported with OOLogERR().
+	Errors that are not syntax or invalid keys are reported with OO_LOG_ERR().
 */
 void SyntaxIssue(OOStringExpansionContext *context, const char *function, const char *fileName, NSUInteger line, const char *logMessageClass, const char *prefix, const char *format, ...)  __attribute__((format(printf, 7, 8)));
 void ReportJavaScriptWarning(ooscript::Context jsc, id format, ...);
@@ -605,7 +605,7 @@ OOMaybeUnits ApplyOneOperator(const OOMaybeUnits &string, const OOUnits &op, con
 		if (op == entry.name)  return entry.function(string, param);
 	}
 
-	OOLogERR(@"strings.expand.invalidOperator", @"Unknown string expansion operator %@", oo::NSStringFrom(oo::utf16ToUtf8(op)));
+	OO_LOG_ERR("strings.expand.invalidOperator", "Unknown string expansion operator {}", oo::utf16ToUtf8(op));
 	return string;
 }
 
@@ -646,7 +646,7 @@ OOMaybeUnits ExpandDigitKey(OOStringExpansionContext *context, const char16_t *c
 		else
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
-			OOLogERR(@"strings.expand.invalidData", @"%@", @"descriptions.plist entry system_description must be an array of arrays of strings.");
+			OO_LOG_ERR("strings.expand.invalidData", "{}", "descriptions.plist entry system_description must be an array of arrays of strings.");
 		}
 		return std::nullopt;
 	}
@@ -859,7 +859,7 @@ OOMaybeUnits ExpandStringKeyFromDescriptions(OOStringExpansionContext *context, 
 		if (text == nullptr)
 		{
 			// This is out of the scope of whatever triggered it, so shouldn't be a JS warning.
-			OOLogERR(@"strings.expand.invalidData", @"String expansion value %@ for [%@] from descriptions.plist is not a string or number.", [object shortDescription], oo::NSStringFrom(key));
+			OO_LOG_ERR("strings.expand.invalidData", "String expansion value {} for [{}] from descriptions.plist is not a string or number.", oo::DescriptionOf([object shortDescription]), key);
 			return std::nullopt;
 		}
 
@@ -1511,7 +1511,7 @@ void SyntaxIssue(OOStringExpansionContext *context, const char *function, const 
 	const std::string message = oo::str::vformat(format, args);
 	va_end(args);
 
-	// OOLogging and the JavaScript engine are not migrated here: the formatted text is handed on.
+	// Logging and the JavaScript engine call sites are not migrated here: the formatted text is handed on.
 	if (OOLogWillDisplayMessagesInClass(oo::NSStringFrom(logMessageClass)))
 	{
 		if (context->isJavaScript)

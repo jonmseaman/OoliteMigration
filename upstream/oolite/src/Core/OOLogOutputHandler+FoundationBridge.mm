@@ -3,14 +3,12 @@
 OOLogOutputHandler+FoundationBridge.mm
 
 TRANSITIONAL: see OOLogOutputHandler+FoundationBridge.h. The NSLog hook moved here unchanged from
-OOLogOutputHandler.mm; each Foundation-typed function forwards to its cxx_ counterpart and converts
-as the old function did (nil for nil).
+OOLogOutputHandler.mm. Foundation-typed forwarders were removed by oo-vors.
 
 */
 
 #import "OOLogOutputHandler.h"	// declares the bridge at its end
 #import "OOLogging.h"
-#import "OOFoundationBridge.h"
 
 
 #if OOLITE_GNUSTEP
@@ -48,22 +46,4 @@ void OOLogOutputHandlerRemoveNSLogHook(void)
 	_NSLog_printf_handler = NULL;
 	[GSLogLock() unlock];
 #endif
-}
-
-
-NSString *OOLogHandlerGetLogPath(void)
-{
-	return oo::NSStringOrNil(cxx_OOLogHandlerGetLogPath());
-}
-
-
-NSString *OOLogHandlerGetLogBasePath(void)
-{
-	return oo::NSStringOrNil(cxx_OOLogHandlerGetLogBasePath());
-}
-
-
-void OOLogOutputHandlerChangeLogFile(NSString *newLogName)
-{
-	cxx_OOLogOutputHandlerChangeLogFile(oo::StdString(newLogName));
 }

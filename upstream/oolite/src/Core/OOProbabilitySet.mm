@@ -906,7 +906,7 @@ static OOEmptyProbabilitySet *sOOEmptyProbabilitySetSingleton = nil;
 		if (sum >= target)  return _objects[i].get();
 	}
 	
-	OOLog(@"probabilitySet.broken", @"%s fell off end, returning first object. Nominal sum = %f, target = %f, actual sum = %f, count = %zu. %@", __PRETTY_FUNCTION__, sumOfWeights, target, sum, count,@"This is an internal error, please report it.");
+	OO_LOG("probabilitySet.broken", "{} fell off end, returning first object. Nominal sum = {:f}, target = {:f}, actual sum = {:f}, count = {}. {}", __PRETTY_FUNCTION__, sumOfWeights, target, sum, count, "This is an internal error, please report it.");
 	return _objects[0].get();
 }
 
