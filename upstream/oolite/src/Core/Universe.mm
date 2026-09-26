@@ -2207,7 +2207,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		// Ensure piloted ships have pilots.
 		if (![ship crew] && ![ship isUnpiloted])
 			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
-						   [OOCharacter randomCharacterWithRole:oo::NSStringFrom(desc)
+						   [OOCharacter randomCharacterWithRole:desc
 											  andOriginalSystem:Ranrot() & 255] })];
 		
 		if ([ship scanClass] == CLASS_NOT_SET)
@@ -2807,7 +2807,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		}
 		if ([ship crew] == nil && ![ship isUnpiloted])
 			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
-				[OOCharacter randomCharacterWithRole:oo::NSStringFrom(role)
+				[OOCharacter randomCharacterWithRole:role
 				andOriginalSystem: Ranrot() & 255] })];
 		// The following is set inside leaveWitchspace: AI state GLOBAL, STATUS_EXITING_WITCHSPACE, ai message: EXITED_WITCHSPACE, then STATUS_IN_FLIGHT
 		[ship leaveWitchspace];
@@ -2900,7 +2900,7 @@ static GLfloat	docked_light_specular[4]	= { DOCKED_ILLUM_LEVEL, DOCKED_ILLUM_LEV
 		if ([ship crew] == nil && ![ship isUnpiloted])
 		{
 			[ship setCrew:oo::NSArrayFromObjects(std::vector<id>{
-				[OOCharacter randomCharacterWithRole:oo::NSStringFrom(role)
+				[OOCharacter randomCharacterWithRole:role
 				andOriginalSystem:Ranrot() & 255] })];
 		}
 		
@@ -8745,7 +8745,7 @@ void VerifyDesc(const std::string &key, const oo::PList &desc)
 		}
 		else if (key == "texture")
 		{
-			[[self planet] setUpPlanetFromTexture:object];
+			[[self planet] setUpPlanetFromTexture:oo::OptionalString(object)];
 		}
 		else if (key == "texture_hsb_color")
 		{
@@ -11301,8 +11301,9 @@ namespace {
 */
 std::string StringifiedLabel(id line, id keyMap)
 {
-	const std::optional<std::string> label = oo::OptionalString(OOStringifySystemDescriptionLine(line, keyMap, NO));
-	return label.has_value() ? cxx_EscapedGraphVizString(*label) : std::string("(null)");
+	// oo-xh1g: stringify takes std::string / oo::PList; nil line still prints as "(null)".
+	if (line == nil)  return "(null)";
+	return cxx_EscapedGraphVizString(OOStringifySystemDescriptionLine(oo::StdString(line), oo::PListFrom(keyMap), NO));
 }
 
 }	// namespace
