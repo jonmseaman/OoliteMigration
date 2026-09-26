@@ -106,7 +106,7 @@ SOFTWARE.
 		OOGL(glPopAttrib());
 		
 		OOVerifyOpenGLState();
-		OOCheckOpenGLErrors(@"OOCrosshairs after rendering");
+		cxx_OOCheckOpenGLErrors("OOCrosshairs after rendering");
 	}
 }
 
