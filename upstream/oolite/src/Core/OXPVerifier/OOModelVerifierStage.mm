@@ -47,7 +47,7 @@ static const char * const kStageName	= "Testing models";
 
 @implementation OOModelVerifierStage
 
-+ (id)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
++ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier
 {
 	OOModelVerifierStage *stage = [verifier stageWithName:oo::NSStringFrom(kStageName)];
 	if (stage == nil)
@@ -57,7 +57,7 @@ static const char * const kStageName	= "Testing models";
 		[stage release];
 	}
 	
-	return oo::NSStringFrom(kStageName);
+	return kStageName;
 }
 
 

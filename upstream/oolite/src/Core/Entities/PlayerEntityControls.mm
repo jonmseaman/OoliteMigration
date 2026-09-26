@@ -1404,7 +1404,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 					{
 
 						// cycle through all the relevant equipment.
-						NSUInteger c = [eqScripts count];
+						NSUInteger c = eqScripts.size();
 						
 						// if Ctrl is held down at the same time as the prime equipment key,
 						// cycle relevant equipment in reverse
@@ -1434,7 +1434,7 @@ std::string ExpandKeyWithArguments(const char *key, const oo::PList::Dict &args)
 						else
 						{
 							[self playNextEquipmentSelected];
-							eqKey = oo::StdString([[eqScripts objectAtIndex:primedEquipment] objectAtIndex:0]);
+							eqKey = eqScripts[primedEquipment].first;
 							const std::string equipmentName = oo::StdString([[OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringFrom(eqKey)] name]);
 							[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("equipment-primed", { { "equipmentName", oo::PList(equipmentName) } })) forCount:2.0];
 						}
@@ -5102,7 +5102,7 @@ static BOOL autopilot_pause;
 				if ([self checkKeyPress:n_key_gui_page_up])
 				{
 					//  find the Back <<< line, select it and press it
-					if ([[gui keyForRow:GUI_ROW_SCENARIOS_START - 1] hasPrefix:@"__page"]) 
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SCENARIOS_START - 1].value_or(std::string()), "__page")) 
 					{
 						if ([gui setSelectedRow:GUI_ROW_SCENARIOS_START - 1]) 
 						{
@@ -5114,7 +5114,7 @@ static BOOL autopilot_pause;
 				else if ([self checkKeyPress:n_key_gui_page_down])
 				{
 					// find the Next >>> line, select it and press it
-					if ([[gui keyForRow:GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS] hasPrefix:@"__page"]) 
+					if (oo::str::hasPrefix([gui cxx_keyForRow:GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS].value_or(std::string()), "__page")) 
 					{
 						if ([gui setSelectedRow:GUI_ROW_SCENARIOS_START + GUI_MAX_ROWS_SCENARIOS]) 
 						{
@@ -5241,7 +5241,7 @@ static BOOL autopilot_pause;
 				[self refreshMissionScreenTextEntry];
 				if ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick])	//  '<enter/return>' or double click
 				{
-					[self setMissionChoice:[gameView typedString] keyPress:@"enter"];
+					[self cxx_setMissionChoice:[gameView cxx_typedString] keyPress:std::string("enter")];
 					[[OOMusicController sharedController] stopMissionMusic];
 					[self playDismissedMissionScreen];
 					
@@ -5258,7 +5258,7 @@ static BOOL autopilot_pause;
 					[self pollMissionInterruptControls];
 				}
 			}
-			else if ([[gui keyForRow:end_row] isEqual:@"spacebar"])
+			else if ([gui cxx_keyForRow:end_row] == "spacebar")
 			{
 				if ([gameView isDown:32])	//  '<space>'
 				{
@@ -5279,14 +5279,14 @@ static BOOL autopilot_pause;
 			else
 			{
 				[self handleGUIUpDownArrowKeys];
-				NSString *extraKey = @"";
+				std::string extraKey;	// "": none
 				{
-					for (const auto &[key, keydef] : extraMissionKeys)	// byte order (was -allKeys hash order)
+					for (const auto &[key, keydef] : extraMissionKeys)	// ORDER-SENSITIVE: byte order of the keys (was -allKeys hash order)
 					{
 						if ([self checkKeyPress:keydef]) {
 							if (!extra_key_pressed)
 							{
-								extraKey = [oo::NSStringFrom(key) copy];
+								extraKey = key;
 							}
 							extra_key_pressed = YES;
 						}
@@ -5294,7 +5294,7 @@ static BOOL autopilot_pause;
 						extra_key_pressed = NO;
 					}
 				}
-				if ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick] || [extraKey length] > 0)	//  '<enter/return>' or double click
+				if ([self checkKeyPress:n_key_gui_select] || [gameView isDown:gvMouseDoubleClick] || !extraKey.empty())	//  '<enter/return>' or double click
 				{
 					if ([gameView isDown:gvMouseDoubleClick])
 					{
@@ -5303,8 +5303,8 @@ static BOOL autopilot_pause;
 					}
 					if (!selectPressed)
 					{
-						if ([extraKey length] == 0) extraKey = @"enter";
-						[self setMissionChoice:[gui selectedRowKey] keyPress:extraKey];
+						if (extraKey.empty()) extraKey = "enter";
+						[self cxx_setMissionChoice:[gui cxx_selectedRowKey] keyPress:extraKey];
 						[[OOMusicController sharedController] stopMissionMusic];
 						[self playDismissedMissionScreen];
 						
@@ -5319,7 +5319,6 @@ static BOOL autopilot_pause;
 					selectPressed = NO;
 					[self pollMissionInterruptControls];
 				}
-				[extraKey release];
 			}
 			break;
 			
@@ -5327,14 +5326,14 @@ static BOOL autopilot_pause;
 			// DJS: Farm off load/save screen options to LoadSave.m
 		case GUI_SCREEN_LOAD:
 		{
-			NSString *commanderFile = oo::NSStringOrNil([self commanderSelector]);
+			const std::optional<std::string> commanderFile = [self commanderSelector];
 			if(commanderFile)
 			{
 				// also release the demo ship here (see showShipyardModel and noteGUIDidChangeFrom)
 				[demoShip release];
 				demoShip = nil;
 
-				[self loadPlayerFromFile:oo::StdString(commanderFile) asNew:NO];
+				[self loadPlayerFromFile:*commanderFile asNew:NO];
 			}
 			break;
 		}
@@ -5528,14 +5527,16 @@ static BOOL autopilot_pause;
 // Called on c or Shift-C
 - (void) handleAutopilotOn:(BOOL)fastDocking
 {
-	NSString	*message = nil;
-	
+	// both declared before the first goto (C++ does not jump over their initialisation)
+	std::optional<std::string>	message;
+	std::string					stationName;
+
 	// Check alert condition - on red alert, abort
 	// -- but only for fast docking
 	if (fastDocking && ([self alertCondition] == ALERT_CONDITION_RED))
 	{
 		[self playAutopilotCannotDockWithTarget];
-		message = OOExpandKey(@"autopilot-red-alert");
+		message = oo::OptionalString(OOExpandKey(@"autopilot-red-alert"));
 		goto abort;
 	}
 	
@@ -5570,12 +5571,12 @@ static BOOL autopilot_pause;
 			if (nStations == 0)
 			{
 				[self playAutopilotOutOfRange];
-				message = OOExpandKey(@"autopilot-out-of-range");
+				message = oo::OptionalString(OOExpandKey(@"autopilot-out-of-range"));
 			}
 			else
 			{
 				[self playAutopilotCannotDockWithTarget];
-				message = OOExpandKey(@"autopilot-multiple-targets");
+				message = oo::OptionalString(OOExpandKey(@"autopilot-multiple-targets"));
 			}
 			goto abort;
 		}
@@ -5584,32 +5585,30 @@ static BOOL autopilot_pause;
 	// We found a dockable, check whether we can dock with it
 	// NSAssert([target isKindOfClass:[StationEntity class]], @"Expected entity with isStation flag set to be a station.");		// no need for asserts. Tested enough already.
 	StationEntity *ts; ts = (StationEntity *)target;
-	NSString *stationName; stationName = [ts displayName];
+	stationName = oo::StdString([ts displayName]);	// (nil raised in the expansion)
 	
 	// If station is not transmitting docking instructions, we cannot use autopilot.
 	if (![ts allowsAutoDocking])
 	{
 		[self playAutopilotCannotDockWithTarget];
-		message = OOExpandKey(@"autopilot-station-does-not-allow-autodocking", stationName);
+		message = ExpandKeyWithArguments("autopilot-station-does-not-allow-autodocking", { { "stationName", oo::PList(stationName) } });
 	}
 	// Deny if station is hostile or player is a fugitive trying to dock at the main station.
 	else if ((legalStatus > 50 && ts == [UNIVERSE station]) || [ts isHostileTo:self])
 	{
 		[self playAutopilotCannotDockWithTarget];
-		message = OOExpandKey((ts == [UNIVERSE station]) ? @"autopilot-denied" : @"autopilot-target-docking-instructions-denied", stationName);
+		message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 	}
 	// If we're fast-docking, perform the docking logic
 	else if (fastDocking && [ts allowsFastDocking])
 	{
 		// check whether there are docks that do not accept docking - even one such dock will result in rejection
-		NSEnumerator	*subEnum = nil;
-		DockEntity* sub = nil;
-		for (subEnum = [ts dockSubEntityEnumerator]; (sub = [subEnum nextObject]); )
+		for (const auto &sub : [ts cxx_dockSubEntities])
 		{
 			// TOO_BIG_TO_DOCK issued when docks are scripted to reject docking
-			if([sub canAcceptShipForDocking:self] == "TOO_BIG_TO_DOCK")
+			if([sub.get() canAcceptShipForDocking:self] == "TOO_BIG_TO_DOCK")
 			{
-				message = OOExpandKey((ts == [UNIVERSE station]) ? @"autopilot-denied" : @"autopilot-target-docking-instructions-denied", stationName);
+				message = ExpandKeyWithArguments((ts == [UNIVERSE station]) ? "autopilot-denied" : "autopilot-target-docking-instructions-denied", { { "stationName", oo::PList(stationName) } });
 				goto abort;
 			}
 		}
@@ -5640,12 +5639,12 @@ static BOOL autopilot_pause;
 	{
 		// Standard docking - engage autopilot
 		[self engageAutopilotToStation:ts];
-		message = OOExpandKey(@"autopilot-on");
+		message = oo::OptionalString(OOExpandKey(@"autopilot-on"));
 	}
 	
 abort:
 	// Clean-up code
-	if (message != nil) [UNIVERSE addMessage:message forCount:4.5];
+	if (message.has_value()) [UNIVERSE addMessage:oo::NSStringFrom(*message) forCount:4.5];
 	return;
 }
 
@@ -5703,15 +5702,15 @@ abort:
 				[self noteLostTarget];
 			}
 			[missile_entity[activeMissile] noteLostTarget];
-			NSString *weaponName = [missile_entity[activeMissile] name];
-			[UNIVERSE addMessage:OOExpandKey(@"missile-armed", weaponName) forCount:2.0];
+			const std::string weaponName = oo::StdString([missile_entity[activeMissile] name]);	// (nil raised in the expansion)
+			[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("missile-armed", { { "weaponName", oo::PList(weaponName) } })) forCount:2.0];
 			[self playMissileArmed];
 		}
 	}
 	else if ([missile_entity[activeMissile] isMine])
 	{
-		NSString *weaponName = [missile_entity[activeMissile] name];
-		[UNIVERSE addMessage:OOExpandKey(@"mine-armed", weaponName) forCount:2.0];
+		const std::string weaponName = oo::StdString([missile_entity[activeMissile] name]);	// (nil raised in the expansion)
+		[UNIVERSE addMessage:oo::NSStringFrom(ExpandKeyWithArguments("mine-armed", { { "weaponName", oo::PList(weaponName) } })) forCount:2.0];
 		[self playMineArmed];
 	}
 	ident_engaged = NO;
