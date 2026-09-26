@@ -94,11 +94,48 @@ class ClassifierTest(unittest.TestCase):
 
 
 class RealTreeTest(unittest.TestCase):
-    """The four files bead oo-qnmv named, as they stand in the upstream tree."""
+    """The four files bead oo-qnmv named, as they stand in the upstream tree.
+
+    When oo-qnmv wrote this, each of the four had a plain-C body and a header declaring an NS*
+    signature, so the test pinned classify() == "foundation" for them. The Phase 2 Foundation sweep
+    (ADR-0043: oo-dupk, oo-6283, oo-q6bf, oo-7zgv) then deliberately removed those NS* signatures,
+    after which "renames" is the CORRECT class for them -- that flip is exactly the "rename bead
+    emitted after the Foundation bead closes" that oo-qnmv designed. Bead oo-3rb.167 therefore split
+    the old test in two so neither half depends on how far the sweep has got:
+      * the exact real-world declarations oo-qnmv caught are kept as fixtures and must still be
+        classed "foundation" (the detector's teeth, independent of the tree);
+      * on the live tree, each file is "foundation" iff its header still names an NS* type, checked
+        against an independent regex rather than against header_declares_ns() itself.
+    """
 
     KNOWN = ["OOQuaternion.mm", "OOMatrix.mm", "OOMouseInteractionMode.mm", "OOIsNumberLiteral.mm"]  # .m before seam 2.1 (oo-x7o)
 
+    # The NS* declaration each KNOWN header carried before the ADR-0043 sweep, verbatim from the
+    # sweep commits (219eca63e, 77b4ffaf2, 2983f7128, 25ed6ac50).
+    PRE_SWEEP_DECLARATIONS = {
+        "OOQuaternion": 'NSString *QuaternionDescription(Quaternion quaternion);\t// @"(w + xi + yj + zk)"\n',
+        "OOMatrix": 'NSString *OOMatrixDescription(OOMatrix matrix);\t\t// @"{{#, #, #, #}, {#, #, #, #}, {#, #, #, #}, {#, #, #, #}}"\n',
+        "OOMouseInteractionMode": "NSString *OOStringFromMouseInteractionMode(OOMouseInteractionMode mode);\n",
+        "OOIsNumberLiteral": "BOOL OOIsNumberLiteral(NSString *string, BOOL allowSpaces);\n",
+    }
+
+    # Independent of gs.text_declares_ns: any NS-prefixed identifier outside a comment.
+    NS_IDENT = r"\bNS[A-Z][A-Za-z0-9_]*"
+
     def test_known_offenders_are_not_renames(self):
+        """Kept name (oo-qnmv): the declarations that made these offenders are still not renames."""
+        self.assertEqual({f"{s}.mm" for s in self.PRE_SWEEP_DECLARATIONS}, set(self.KNOWN))
+        with tempfile.TemporaryDirectory() as d:
+            for stem, decl in self.PRE_SWEEP_DECLARATIONS.items():
+                m = Path(d) / f"{stem}.mm"
+                m.write_text(C_BODY)
+                (Path(d) / f"{stem}.h").write_text(f"#include <stdbool.h>\n{decl}")
+                self.assertTrue(gs.body_is_c(m))
+                self.assertEqual(gs.classify(m), "foundation",
+                                 f"{stem}.h's pre-sweep declaration must not be a mechanical rename")
+
+    def test_known_offenders_are_foundation_iff_header_still_names_ns(self):
+        import re
         by_name = {p.name: p for p in gs.m_files()}
         seen = 0
         for name in self.KNOWN:
@@ -106,7 +143,12 @@ class RealTreeTest(unittest.TestCase):
             if p is None:
                 continue
             seen += 1
-            self.assertEqual(gs.classify(p), "foundation", f"{name} must not be a mechanical rename")
+            h = gs.header_for(p)
+            code = gs.strip_noncode(h.read_text(errors="replace")) if h else ""
+            names_ns = re.search(self.NS_IDENT, code) is not None
+            want = "foundation" if names_ns else "renames"
+            self.assertEqual(gs.classify(p), want,
+                             f"{name}: header {'still names' if names_ns else 'no longer names'} an NS* type")
         if seen == 0:
             self.skipTest("upstream tree not present")
 

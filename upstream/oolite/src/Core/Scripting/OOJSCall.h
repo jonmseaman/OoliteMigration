@@ -29,6 +29,7 @@ MA 02110-1301, USA.
 
 #import <Foundation/Foundation.h>
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/StdLib.hpp"
 /*	OOJSCallObjCObjectMethod()
 	
 	Function for implementing JavaScript call() methods.
@@ -45,6 +46,6 @@ MA 02110-1301, USA.
 	
 	argv is assumed to contain at least one value.
 */
-BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, NSString *oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
+BOOL OOJSCallObjCObjectMethod(ooscript::Context context, id object, const std::string &oo_jsClassName, unsigned argc, ooscript::Value *argv, ooscript::Value *outResult);
 
 #endif

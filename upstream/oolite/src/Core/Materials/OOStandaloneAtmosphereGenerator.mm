@@ -36,8 +36,10 @@
 #define ALBEDO_FACTOR		0.7f	// Overall darkening of everything, allowing better contrast for snow and specular highlights.
 
 #import "OOStandaloneAtmosphereGenerator.h"
-#import "OOPListView.h"
 #import "OOColor.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 #ifndef TEXGEN_TEST_RIG
 #import "OOTexture.h"
@@ -70,7 +72,12 @@ enum
 @end
 
 
-static FloatRGB FloatRGBFromDictColor(NSDictionary *dictionary, NSString *key);
+namespace {
+
+FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key);	// dictionary: the planet info (colours are Object nodes)
+
+}	// namespace
+
 
 static BOOL FillFBMBuffer(OOStandaloneAtmosphereGeneratorInfo *info);
 static float QFactor(float *accbuffer, int x, int y, unsigned width, float polar_y_value, float bias, float polar_y);
@@ -93,21 +100,22 @@ enum
 
 @implementation OOStandaloneAtmosphereGenerator
 
-- (id) initWithPlanetInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
+- (id) initWithPlanetInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	OOLog(@"texture.planet.generate", @"%@", @"Initialising standalone atmosphere generator");
 
 	// AllowCubeMap not used yet but might be in future
-	if ((self = [super initWithPath:[NSString stringWithFormat:@"OOStandaloneAtmosphereTexture@%p", self] options:kOOTextureAllowCubeMap]))
+	self = [super initWithPath:oo::NSStringFrom(oo::str::format("OOStandaloneAtmosphereTexture@%s", oo::str::pointerDescription(self).c_str())) options:kOOTextureAllowCubeMap];
+	if (self != nil)
 	{
 		OOLog(@"texture.planet.generate",@"Extracting parameters for generator %@",self);
 		_info.seed = seed;	// was a value box under "noise_map_seed" in planetInfo (bead oo-3rb.48)
 		OOLog(@"texture.planet.generate", @"%@", @"Extracting atmosphere parameters");
 		// we are an atmosphere:
-		_info.cloudAlpha = oo::PListView(planetInfo).get<float>(@"cloud_alpha", 1.0f);
-		_info.cloudFraction = OOClamp_0_1_f(oo::PListView(planetInfo).get<float>(@"cloud_fraction", 0.3));
-		_info.cloudColor = FloatRGBFromDictColor(planetInfo, @"cloud_color");
-		_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, @"polar_cloud_color");
+		_info.cloudAlpha = planetInfo.get<float>("cloud_alpha", 1.0f);
+		_info.cloudFraction = OOClamp_0_1_f(planetInfo.get<float>("cloud_fraction", 0.3));
+		_info.cloudColor = FloatRGBFromDictColor(planetInfo, "cloud_color");
+		_info.paleCloudColor = FloatRGBFromDictColor(planetInfo, "polar_cloud_color");
 		
 		OOGraphicsDetail detailLevel = [UNIVERSE detailLevel];
 		
@@ -123,7 +131,7 @@ enum
 #else
 		_planetScale = kPlanetScale4096x4096;
 #endif
-		_info.perlin3d = oo::PListView(planetInfo).get<BOOL>(@"perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
+		_info.perlin3d = planetInfo.get<bool>("perlin_3d", detailLevel > DETAIL_LEVEL_SHADERS);
 		_info.planetAspectRatio = _info.perlin3d ? 2 : 1;
 		_info.planetScaleOffset	= 8 - _info.planetAspectRatio;
 	}
@@ -132,7 +140,7 @@ enum
 }
 
 
-+ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
++ (OOTexture *) planetTextureWithInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	OOTexture *result = nil;
 	OOStandaloneAtmosphereGenerator *generator = [[self alloc] initWithPlanetInfo:planetInfo seed:seed];
@@ -146,7 +154,7 @@ enum
 }
 
 
-+ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed
++ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed
 {
 	NSParameterAssert(texture != NULL);
 	
@@ -165,9 +173,9 @@ enum
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"seed: %u,%u", _info.seed.high, _info.seed.low];
+	return oo::NSStringFrom(oo::str::format("seed: %u,%u", _info.seed.high, _info.seed.low));
 }
 
 
@@ -177,16 +185,16 @@ enum
 }
 
 
-- (NSString *) cacheKey
+- (id) cacheKey	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"OOStandaloneAtmosphereGenerator-@%u\n%u,%u/%u,%u/%f/%f/%f,%f,%f/%f,%f,%f/%f,%f,%f",
+	return oo::NSStringFrom(oo::str::format("OOStandaloneAtmosphereGenerator-@%u\n%u,%u/%u,%u/%f/%f/%f,%f,%f/%f,%f,%f/%f,%f,%f",
 			_planetScale,
 			_info.width, _info.height, _info.seed.high, _info.seed.low,
 			_info.cloudAlpha, _info.cloudFraction,
 			 _info.airColor.r, _info.airColor.g, _info.airColor.b,
 			 _info.cloudColor.r, _info.cloudColor.g, _info.cloudColor.b,
 			 _info.paleCloudColor.r, _info.paleCloudColor.g, _info.paleCloudColor.b					 
-		];
+		));
 }
 
 
@@ -291,11 +299,11 @@ END:
 #if DEBUG_DUMP
 	if (success)
 	{
-		NSString *diffuseName = [NSString stringWithFormat:@"atmosphere-%u-%u-diffuse-new", _info.seed.high, _info.seed.low];
-		NSString *lightsName = [NSString stringWithFormat:@"atmosphere-%u-%u-alpha-new", _info.seed.high, _info.seed.low];
+		const std::string diffuseName = oo::str::format("atmosphere-%u-%u-diffuse-new", _info.seed.high, _info.seed.low);
+		const std::string lightsName = oo::str::format("atmosphere-%u-%u-alpha-new", _info.seed.high, _info.seed.low);
 		
-		[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:diffuseName
-								   andGrayFileNamed:lightsName
+		[[UNIVERSE gameView] dumpRGBAToRGBFileNamed:oo::NSStringFrom(diffuseName)
+								   andGrayFileNamed:oo::NSStringFrom(lightsName)
 											  bytes:aBuffer
 											  width:_width
 											 height:_height
@@ -309,7 +317,7 @@ END:
 
 - (void) dumpNoiseBuffer:(float *)noise
 {
-	NSString *noiseName = [NSString stringWithFormat:@"atmosphere-%u-%u-noise-new", _info.seed.high, _info.seed.low];
+	const std::string noiseName = oo::str::format("atmosphere-%u-%u-noise-new", _info.seed.high, _info.seed.low);
 	
 	uint8_t *noisePx = malloc(_width * _height);
 	unsigned x, y;
@@ -321,7 +329,7 @@ END:
 		}
 	}
 	
-	[[UNIVERSE gameView] dumpGrayToFileNamed:noiseName
+	[[UNIVERSE gameView] dumpGrayToFileNamed:oo::NSStringFrom(noiseName)
 									   bytes:noisePx
 									   width:_width
 									  height:_height
@@ -416,13 +424,18 @@ static FloatRGBA CloudMix(OOStandaloneAtmosphereGeneratorInfo *info, float q, fl
 }
 
 
-static FloatRGB FloatRGBFromDictColor(NSDictionary *dictionary, NSString *key)
+namespace {
+
+FloatRGB FloatRGBFromDictColor(const oo::PList &dictionary, const std::string &key)
 {
-	OOColor *color = [dictionary objectForKey:key];
+	const oo::PList *value = dictionary.find(key);
+	OOColor *color = (value != nullptr) ? oo::ObjectIn(*value) : nil;	// an Object node (Amendment 2)
 	NSCAssert1([color isKindOfClass:[OOColor class]], @"Expected OOColor, got %@", [color class]);
 	
 	return (FloatRGB){ [color redComponent] * ALBEDO_FACTOR, [color greenComponent] * ALBEDO_FACTOR, [color blueComponent] * ALBEDO_FACTOR };
 }
+
+}	// namespace
 
 
 OOINLINE float Hermite(float q)

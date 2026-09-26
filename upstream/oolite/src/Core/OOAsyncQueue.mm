@@ -31,7 +31,11 @@ SOFTWARE.
 #import "OOAsyncQueue.h"
 #import "OOFunctionAttributes.h"
 #import "OOLogging.h"
+#import "OOStringBridge.h"
 #include <stdlib.h>
+
+#include "oofnd/String.hpp"
+#import "OOFoundationBridge.h"
 
 #ifndef OO_BUGGY_PTHREADS
 #if OOLITE_WINDOWS
@@ -112,7 +116,7 @@ OOINLINE void FreeElement(OOAsyncQueueElement *element)
 	
 	if (_elemCount != 0)
 	{
-		OOLogWARN(@"asyncQueue.nonEmpty", @"%@ deallocated while non-empty, flushing.", self);
+		OO_LOG_WARN("asyncQueue.nonEmpty", "{} deallocated while non-empty, flushing.", oo::DescriptionOf(self));
 		[self doEmptyQueueWithAcquiredLock];
 	}
 	
@@ -132,10 +136,12 @@ OOINLINE void FreeElement(OOAsyncQueueElement *element)
 }
 
 
-- (NSString *)description
+// OOObject's -description wraps this as "<OOAsyncQueue 0x...>{n elements}", which is what this
+// class's own -description printed.
+- (id)descriptionComponents
 {
 	// Don't bother locking, the value would be out of date immediately anyway.
-	return [NSString stringWithFormat:@"<%@ %p>{%u elements}", [self class], self, _elemCount];
+	return oo::NSStringFrom(oo::str::format("%u elements", _elemCount));
 }
 
 

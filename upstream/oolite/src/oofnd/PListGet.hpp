@@ -140,12 +140,13 @@ I saturatingParse(std::string_view buf) noexcept
 inline long long longLongValue(std::u16string_view s) noexcept { return saturatingParse<long long>(intBuf(s)); }
 inline int intValue(std::u16string_view s) noexcept { return static_cast<int>(saturatingParse<long>(intBuf(s))); }
 
-// -[NSScanner scanDouble:] (NSScanner.m), GNUstep 1.31.1, ported statement for statement.
-inline bool scanDouble(std::u16string_view s, double* value) noexcept
+// -[NSScanner scanDouble:] (NSScanner.m), GNUstep 1.31.1, ported statement for statement, from
+// scan location <location>; on success <location> is past the number (oo::str::Scanner).
+inline bool scanDoubleAt(std::u16string_view s, std::size_t& location, double* value) noexcept
 {
 	static constexpr double powersOf10[] = {1.0e1, 1.0e2, 1.0e4, 1.0e8, 1.0e16, 1.0e32, 1.0e64, 1.0e128, 1.0e256};
 	const std::size_t length = s.size();
-	std::size_t loc = 0;
+	std::size_t loc = location;
 	while (loc < length && isScannerWhitespace(s[loc])) ++loc;
 	if (loc >= length) return false;
 
@@ -256,7 +257,14 @@ inline bool scanDouble(std::u16string_view s, double* value) noexcept
 	}
 	result = negativeExponent ? result / e : result * e;
 	if (value != nullptr) *value = negativeMantissa ? -result : result;
+	location = loc;
 	return true;
+}
+
+inline bool scanDouble(std::u16string_view s, double* value) noexcept
+{
+	std::size_t location = 0;
+	return scanDoubleAt(s, location, value);
 }
 
 // -[NSString doubleValue]: 0.0 when nothing scans.
@@ -416,7 +424,8 @@ inline std::string numberStringValue(const PList& v)
 	const double d = v.doubleValue();
 	if (std::isnan(d)) return "nan";
 	if (std::isinf(d)) return d < 0 ? "-inf" : "inf";
-	std::snprintf(buf, sizeof buf, "%0.16g", d);
+	if (v.isSinglePrecision()) std::snprintf(buf, sizeof buf, "%0.7g", static_cast<double>(static_cast<float>(d)));   // +numberWithFloat: (captured)
+	else std::snprintf(buf, sizeof buf, "%0.16g", d);
 	return buf;
 }
 

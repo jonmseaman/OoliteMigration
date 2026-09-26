@@ -360,9 +360,9 @@ stage_tier_b() {
     || fail tier-b "tier-b exited 0 but printed no 'tier-b: GREEN' line; it did not complete its stages"
   # ... and it must have actually entered its stages. Their names appear in its step() output.
   local seen
-  seen="$(grep -cE '^==> \[(build|tests|parity|goldens|component|smoke|corpus)\]' "$log" || true)"
-  [ "${seen:-0}" -ge 6 ] \
-    || fail tier-b "tier-b announced only ${seen:-0} of its 7 stages; it exited 0 without running its gate"
+  seen="$(grep -cE '^==> \[(build|tests|parity|game-unit|goldens|component|smoke|corpus)\]' "$log" || true)"
+  [ "${seen:-0}" -ge 7 ] \
+    || fail tier-b "tier-b announced only ${seen:-0} of its 8 stages; it exited 0 without running its gate"
   detail "$(grep -m1 '^tier-b: GREEN' "$log")"
   detail "stage tier-b ok: $seen stage(s) announced, $(( SECONDS - t0 ))s"
 }
@@ -822,13 +822,19 @@ stage_corpus() {
     > "$log" 2>&1 || rc=$?
   local checked passes
   checked="$(grep -oE '[0-9]+ group\(s\) checked' "$log" | tail -1 | grep -oE '[0-9]+' || echo 0)"
-  passes="$(grep -c '^PASS ' "$log" || true)"
+  # KNOWN (oo-1gc.7, proposed ADR-0047) counts with PASS: an exact, byte-pinned match of a reviewed
+  # entry in tools/oxp-corpus/known-content-failures.json. Any drift from the entry is KNOWNCHG,
+  # which fails corpus.sh (rc != 0) and is not counted here. NOMANIF counts ONLY for a fixture
+  # listed, with a reason, in tools/oxp-corpus/manifestless-fixtures.tsv (oo-88hv); an unlisted
+  # manifest-less group is named and not counted. corpus.sh's `tally` is the one definition of
+  # a passing group, shared with tier-b; it exits 2 (and this stage fails) on a malformed list.
+  passes="$(bash "$HERE/corpus.sh" tally "$log")"     || fail corpus "corpus.sh tally refused $(native "$log") (see above); cannot count passing groups"
   [ "$rc" -eq 0 ] || { tail -25 "$log" >&2
     fail corpus "the full Tier 1 corpus failed (rc=$rc, $checked checked, ${passes:-0} PASS); $(native "$log")"; }
   [ "${checked:-0}" -ge "$CORPUS_FLOOR" ] \
     || fail corpus "corpus.sh checked only ${checked:-0} group(s), fewer than the committed floor of $CORPUS_FLOOR -- this is the FULL tier, and a run that staged nothing reports 0 checked and exits 0"
   [ "${passes:-0}" -eq "${checked:-0}" ] \
-    || fail corpus "${passes:-0} of ${checked:-0} group(s) reported PASS"
+    || fail corpus "${passes:-0} of ${checked:-0} group(s) reported PASS (or KNOWN, or NOMANIF on a listed fixture)"
   detail "$passes/$checked expansion group(s) loaded in $(( SECONDS - t0 ))s"
 }
 

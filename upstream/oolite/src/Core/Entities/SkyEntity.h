@@ -26,6 +26,9 @@ MA 02110-1301, USA.
 
 #import "OOEntityWithDrawable.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+
 @class OOColor;
 
 
@@ -34,8 +37,8 @@ MA 02110-1301, USA.
 	OOColor					*skyColor;
 }
 
-- (id) initWithColors:(OOColor *)col1 :(OOColor *)col2 andSystemInfo:(NSDictionary *)systemInfo;
-- (BOOL) changeProperty:(NSString *)key withDictionary:(NSDictionary*) dict;
+- (id) initWithColors:(OOColor *)col1 :(OOColor *)col2 andSystemInfo:(const oo::PList &)systemInfo;
+- (BOOL) changeProperty:(const std::string &)key withDictionary:(const oo::PList &) dict;
 
 - (OOColor *)skyColor;
 

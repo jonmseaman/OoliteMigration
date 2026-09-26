@@ -39,7 +39,12 @@ MA 02110-1301, USA.
 #import "OOWeakReference.h"
 #import "OOOpenGLExtensionManager.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+#include "oofnd/Ref.hpp"
+
 @class OOMaterial, Octree;
+class OOMeshBuffer;	// OOMesh.mm: one refcounted buffer (an oo::Data), shared by a mesh and its mutable copies
 
 
 #define OOMESH_PROFILE	0
@@ -97,8 +102,8 @@ typedef struct
 	OOMeshVertexCount		vertexCount;
 	OOMeshFaceCount			faceCount;
 	
-	NSString				*baseFile;
-	NSString				*baseFileOctreeCacheRef;
+	std::optional<std::string>	baseFile;					// "No Model" until loaded; nullopt after -rescaleByFactor: (no octree cache)
+	std::optional<std::string>	baseFileOctreeCacheRef;
 	BOOL					_cacheWriteable;
 	
 	Vector					*_vertices;
@@ -110,7 +115,7 @@ typedef struct
 	OOMeshDisplayLists		_displayLists;
 	
 	NSRange					triangle_range[kOOMeshMaxMaterials];
-	NSString				*materialKeys[kOOMeshMaxMaterials];
+	std::string				materialKeys[kOOMeshMaxMaterials];
 	OOMaterial				*materials[kOOMeshMaxMaterials];
 	GLuint					displayList0;
 	
@@ -120,12 +125,12 @@ typedef struct
 	
 	Octree					*octree;
 	
-	NSMutableDictionary		*_retainedObjects;
+	std::map<std::string, oo::Ref<OOMeshBuffer>, std::less<>>	_retainedObjects;	// the buffers _vertices & co. point into, by key
 	
-	NSDictionary			*_materialDict;
-	NSDictionary			*_shadersDict;
-	NSString				*_cacheKey;
-	NSDictionary			*_shaderMacros;
+	oo::PList				_materialDict;		// mixed configurations (proposed ADR-0043 Amendment 2); null = nil
+	oo::PList				_shadersDict;
+	std::optional<std::string>	_cacheKey;		// nil and @"" differ for OOMaterial
+	oo::PList				_shaderMacros;
 	id						_shaderBindingTarget;
 
 	Vector					_lastPosition;
@@ -142,20 +147,20 @@ typedef struct
 #endif
 }
 
-+ (instancetype) meshWithName:(NSString *)name
-					 cacheKey:(NSString *)cacheKey
-		   materialDictionary:(NSDictionary *)materialDict
-			shadersDictionary:(NSDictionary *)shadersDict
++ (instancetype) meshWithName:(const std::string &)name
+					 cacheKey:(const std::optional<std::string> &)cacheKey
+		   materialDictionary:(const oo::PList &)materialDict
+			shadersDictionary:(const oo::PList &)shadersDict
 					   smooth:(BOOL)smooth
-				 shaderMacros:(NSDictionary *)macros
+				 shaderMacros:(const oo::PList &)macros
 		  shaderBindingTarget:(id<OOWeakReferenceSupport>)object;
 
-+ (instancetype) meshWithName:(NSString *)name
-					 cacheKey:(NSString *)cacheKey
-		   materialDictionary:(NSDictionary *)materialDict
-			shadersDictionary:(NSDictionary *)shadersDict
++ (instancetype) meshWithName:(const std::string &)name
+					 cacheKey:(const std::optional<std::string> &)cacheKey
+		   materialDictionary:(const oo::PList &)materialDict
+			shadersDictionary:(const oo::PList &)shadersDict
 					   smooth:(BOOL)smooth
-				 shaderMacros:(NSDictionary *)macros
+				 shaderMacros:(const oo::PList &)macros
 		  shaderBindingTarget:(id<OOWeakReferenceSupport>)object
 				  scaleFactor:(float)factor
 			   cacheWriteable:(BOOL)cacheWriteable;
@@ -163,12 +168,12 @@ typedef struct
 
 + (OOMaterial *) placeholderMaterial;
 
-- (NSString *) modelName;
+- (std::optional<std::string>) modelName;
 
 - (void) rebindMaterials;
 
-- (NSDictionary *) materials;
-- (NSDictionary *) shaders;
+- (oo::PList) materials;	// null: none
+- (oo::PList) shaders;
 
 - (size_t) vertexCount;
 - (size_t) faceCount;
@@ -190,7 +195,7 @@ typedef struct
 #import "OOCacheManager.h"
 @interface OOCacheManager (Octree)
 
-+ (Octree *)octreeForModel:(NSString *)inKey;
-+ (void)setOctree:(Octree *)inOctree forModel:(NSString *)inKey;
++ (Octree *)octreeForModel:(const std::string &)inKey;
++ (void)setOctree:(Octree *)inOctree forModel:(const std::string &)inKey;
 
 @end

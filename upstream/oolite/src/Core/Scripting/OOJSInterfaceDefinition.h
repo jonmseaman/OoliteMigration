@@ -25,6 +25,7 @@ MA 02110-1301, USA.
 
 #import "OOJSScript.h"
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/StdLib.hpp"
 @interface OOJSInterfaceDefinition: OOWeakRefObject
 {
 @private
@@ -32,23 +33,23 @@ MA 02110-1301, USA.
 	ooscript::Object _callbackThis;
 	OOJSScript			*_owningScript;
 
-	NSString			*_title;
-	NSString			*_summary;
-	NSString			*_category;
+	std::optional<std::string>	_title;		// nullopt until set (was nil)
+	std::optional<std::string>	_summary;
+	std::optional<std::string>	_category;
 }
 
-- (NSString *)title;
-- (void)setTitle:(NSString *)title;
-- (NSString *)category;
-- (void)setCategory:(NSString *)category;
-- (NSString *)summary;
-- (void)setSummary:(NSString *)summary;
+- (id)title;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (void)setTitle:(id)title;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
+- (std::optional<std::string>)category;
+- (void)setCategory:(const std::string &)category;
+- (std::optional<std::string>)summary;
+- (void)setSummary:(const std::string &)summary;
 - (ooscript::Value)callback;
 - (void)setCallback:(ooscript::Value)callback;
 - (ooscript::Object)callbackThis;
 - (void)setCallbackThis:(ooscript::Object)callbackthis;
 
-- (void)runCallback:(NSString *)key;
+- (void)runCallback:(id)key;	// shared selector (proposed ADR-0043): key is an Objective-C string
 
 - (NSComparisonResult)interfaceCompare:(OOJSInterfaceDefinition *)other;
 

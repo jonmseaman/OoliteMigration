@@ -55,7 +55,10 @@ PROVENANCE_CANDIDATES = (
 EVIDENCE = os.path.join(HERE, "check_ai_overflow_evidence.py")
 DIFF = os.path.join(HERE, "golden_diff.py")
 SCRIPT = os.path.join(HERE, "ai_overflow.py")
-AI_SOURCE = os.path.join(REPO_ROOT, "upstream", "oolite", "src", "Core", "AI.m")
+# Engine sources are named by STEM: the migration renames .m -> .mm -> .cpp (oo-7j3t).
+sys.path.insert(0, os.path.join(REPO_ROOT, "upstream", "oolite", "tests"))
+from source_paths import resolve_source  # noqa: E402
+AI_SOURCE = resolve_source("Core", "AI")
 
 sys.path.insert(0, HERE)
 

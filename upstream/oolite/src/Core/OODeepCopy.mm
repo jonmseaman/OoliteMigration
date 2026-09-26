@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OODeepCopy.h"
+#include "oofnd/objc/OOException.h"
 
 
 id OODeepCopy(id object)
@@ -104,12 +105,15 @@ id OODeepCopy(id object)
 @end
 
 
-@implementation NSValue (OODeepCopy)	// Includes NSNumber
+/*	Was the value-box class's category, which served NSNumber (a subclass). The game makes no other
+	value boxes any more (bead oo-3rb.50), so NSNumber is every receiver it had.
+*/
+@implementation NSNumber (OODeepCopy)
 
 - (id) ooDeepCopyWithSharedObjects:(NSMutableSet *)objects
 {
 	id object = [objects member:self];
-	if (object != nil && [object isKindOfClass:[NSValue class]])
+	if (object != nil && [object isKindOfClass:[NSNumber class]])
 	{
 		return [object retain];
 	}
@@ -139,7 +143,7 @@ id OODeepCopy(id object)
 	members = (id *)calloc(sizeof *members, count);
 	if (members == NULL)
 	{
-		[NSException raise:NSMallocException format:@"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
+		[OOException raise:OOMallocException format:"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
 	}
 	
 	// Ensure there's an objects set even if passed nil.
@@ -195,7 +199,7 @@ id OODeepCopy(id object)
 	members = (id *)malloc(sizeof *members * count);
 	if (members == NULL)
 	{
-		[NSException raise:NSMallocException format:@"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
+		[OOException raise:OOMallocException format:"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
 	}
 	
 	// Ensure there's an objects set even if passed nil.
@@ -257,7 +261,7 @@ id OODeepCopy(id object)
 	{
 		free(keys);
 		free(values);
-		[NSException raise:NSMallocException format:@"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
+		[OOException raise:OOMallocException format:"Failed to allocate space for %zu objects in %s.", count, __PRETTY_FUNCTION__];
 	}
 	
 	// Ensure there's an objects set even if passed nil.

@@ -26,13 +26,13 @@ MA 02110-1301, USA.
 #ifdef GNUSTEP_BASE_LIBRARY
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
-#if (GNUSTEP_BASE_MAJOR_VERSION == 1 && (GNUSTEP_BASE_MINOR_VERSION == 24 && GNUSTEP_BASE_SUBMINOR_VERSION >= 9) || (GNUSTEP_BASE_MINOR_VERSION > 24)) || (GNUSTEP_BASE_MAJOR_VERSION > 1)
-#import <Foundation/NSDate.h>
-#endif
-#import <Foundation/NSString.h>
 #import "GameController.h"
 #include "oofnd/Process.hpp"
+#include "oofnd/String.hpp"
 #import "OOLoggingExtended.h"
+#import "OOFoundationException.h"
+#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #if OOLITE_WINDOWS
 #include <locale.h>
@@ -76,10 +76,6 @@ int main(int argc, char *argv[])
 
 #ifdef GNUSTEP_BASE_LIBRARY
 	int i;
-
-#if (GNUSTEP_BASE_MAJOR_VERSION == 1 && (GNUSTEP_BASE_MINOR_VERSION == 24 && GNUSTEP_BASE_SUBMINOR_VERSION >= 9) || (GNUSTEP_BASE_MINOR_VERSION > 24)) || (GNUSTEP_BASE_MAJOR_VERSION > 1)
-	[NSDate class]; // See github issue #202
-#endif
 
 #if OOLITE_WINDOWS
 
@@ -173,10 +169,11 @@ int main(int argc, char *argv[])
 			{
 				i++;
 			}
-			NSString *argument = [NSString stringWithCString:argv[i]];
-			if (i < argc && [[argument lowercaseString] hasSuffix:@".oolite-save"])
+			// argv is UTF-8 (SDL_main); an argument past the end reads as nothing, as nil did.
+			const std::string argument = (i < argc) ? argv[i] : "";
+			if (i < argc && oo::str::hasSuffix(oo::str::lowercase(argument), ".oolite-save"))
 			{
-				[controller setPlayerFileToLoad:argument];
+				[controller setPlayerFileToLoad:oo::NSStringFrom(argument)];
 			}
 
    			if (!strcmp("-help", argv[i]) || !strcmp("--help", argv[i]))
@@ -221,7 +218,7 @@ int main(int argc, char *argv[])
 							"\n\n", processName
 						);
 				OO_SHOW_MSG(s, processName, MB_OK);
-    				OOLog(@"process.args", @"%s option detected, exiting after help page has been displayed.", argv[i]);
+    				OO_LOG("process.args", "{} option detected, exiting after help page has been displayed.", argv[i]);
 				return 0;
 			}
 		}
@@ -234,9 +231,14 @@ int main(int argc, char *argv[])
 		// GNUstep port.
 		[controller applicationDidFinishLaunching];
 	}
-	@catch (NSException *exception)
+	@catch (OOException *exception)
 	{
-		OOLogERR(kOOLogException, @"Root exception handler hit - terminating. This is an internal error, please report it. Exception name: %@, reason: %@", [exception name], [exception reason]);
+		OO_LOG_ERR(cxx_kOOLogException, "Root exception handler hit - terminating. This is an internal error, please report it. Exception name: {}, reason: {}", [exception name], [exception reason]);
+		return EXIT_FAILURE;
+	}
+	@catch (OOFoundationException *exception)
+	{
+		OO_LOG_ERR(cxx_kOOLogException, "Root exception handler hit - terminating. This is an internal error, please report it. Exception name: {}, reason: {}", oo::DescriptionOf([exception name]), oo::DescriptionOf([exception reason]));
 		return EXIT_FAILURE;
 	}
 #endif

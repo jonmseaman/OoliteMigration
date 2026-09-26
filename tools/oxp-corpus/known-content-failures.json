@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "about": "Reviewed Tier-1 corpus groups whose errors are diagnosed CONTENT defects under the 1.93 loader, identical on both JS engines (proposed ADR-0047). A group listed here reports KNOWN instead of ERRORS only when its members' bytes match the pinned sha256s AND its error lines, timestamps stripped, equal expected_errors exactly as a multiset. Any new, changed or vanished line makes it KNOWNCHG, which fails the tier. Adding or editing an entry changes what a test accepts: it needs a diagnosis made without reading expansion content, a bead, and review.",
+  "entries": [
+    {
+      "group": "oolite.oxp.Norby.Carriers",
+      "members_sha256": {
+        "oolite.oxp.Norby.Carriers": "e753e68821041de25991eec95759dc67d57a331564d9e97ea4621571d31cbb96",
+        "oolite.oxp.Norby.EscortDeck": "666bb8f0b24a61dbbdfe32adca97168a7eddf7c9d819b77e9cb96dfc3b9a5246",
+        "oolite.oxp.CaptMurphy.ShipStorageHelper": "9dc699cae0a3c48ccc9005b356e87f3e454f43185a7411c687f2fc26348e535c"
+      },
+      "beads": ["oo-1gc.7"],
+      "diagnosis": "The five *-carrier entries are VISUAL EFFECTS (effectdata.plist) whose subentities name SHIP keys. OOShipRegistry -loadShipData runs -canonicalizeAndTagSubentities: once per dictionary, and the effect pass resolves subentity keys only within effectdata, so a ship key can never resolve there; the entries are dropped. Measured 2026-09-23 with shipData.load.progress and effectData.load.progress enabled by a loose AddOns/logcontrol.plist: all 10 lines fall between effectData 'Finished resolving like_effects...' and 'Finished cleaning up subentities...', none in the ship pass. The message says 'shipdata.plist entry' because the one routine serves both passes. Every named key exists in core Resources/Config/shipdata.plist, so this is not a missing dependency. The pre-migration loader (OOShipRegistry.m before seam 2.1) has the same two passes and the same message, so SpiderMonkey 1.93 fails identically (observed in tier-c-diff, oo-1gc.6). Author fix: define the carriers as ships, or give the effects effect subentities.",
+      "expected_errors": [
+        "[shipData.load.error]: ***** ERROR: the shipdata.plist entry \"cobra1-carrier\" has unresolved subentity cobramk1-player.",
+        "[oxp-standards.error]: Bad subentity definition found",
+        "[shipData.load.error]: ***** ERROR: the shipdata.plist entry \"viper-carrier\" has unresolved subentity viper.",
+        "[oxp-standards.error]: Bad subentity definition found",
+        "[shipData.load.error]: ***** ERROR: the shipdata.plist entry \"cobra3-carrier\" has unresolved subentities adder-player, cobra3-player.",
+        "[oxp-standards.error]: Bad subentity definition found",
+        "[shipData.load.error]: ***** ERROR: the shipdata.plist entry \"ferdelance-carrier\" has unresolved subentities adder-player, ferdelance-player, gecko.",
+        "[oxp-standards.error]: Bad subentity definition found",
+        "[shipData.load.error]: ***** ERROR: the shipdata.plist entry \"anaconda-carrier\" has unresolved subentities adder-player, anaconda-player, asp-player, sidewinder.",
+        "[oxp-standards.error]: Bad subentity definition found"
+      ]
+    }
+  ]
+}

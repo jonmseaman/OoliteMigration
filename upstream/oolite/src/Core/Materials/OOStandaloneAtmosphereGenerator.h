@@ -28,6 +28,7 @@ MA 02110-1301, USA.
 
 #import "OOTextureGenerator.h"
 #import "OOMaths.h"
+#include "oofnd/PList.hpp"
 
 
 typedef struct OOStandaloneAtmosphereGeneratorInfo
@@ -64,9 +65,13 @@ typedef struct OOStandaloneAtmosphereGeneratorInfo
 }
 
 
-- (id) initWithPlanetInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed;
+/*	planetInfo is the planet's material parameters, a mixed configuration: plist values with the
+	colours as PList::Object nodes holding OOColors (proposed ADR-0043 Amendment 2; the
+	selector-family flip oo-3rb.269.2, which ended the id boundary of beads oo-lzk6 / oo-2pmp).
+*/
+- (id) initWithPlanetInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed;
 
-+ (OOTexture *) planetTextureWithInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed;
-+ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(NSDictionary *)planetInfo seed:(RANROTSeed)seed;
++ (OOTexture *) planetTextureWithInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed;
++ (BOOL) generateAtmosphereTexture:(OOTexture **)texture withInfo:(const oo::PList &)planetInfo seed:(RANROTSeed)seed;
 
 @end

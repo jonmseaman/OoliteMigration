@@ -29,6 +29,7 @@ SOFTWARE.
 #import "OOJSEngineTimeManagement.h"
 #import "OOPListView.h"
 #include "oofnd/Date.hpp"
+#import "OOFoundationBridge.h"
 
 
 /*
@@ -89,7 +90,17 @@ static CallbackEntry	*sCallbacks;
 static NSUInteger		sCount;			// Number of slots in use.
 static NSUInteger		sSpace;			// Number of slots allocated.
 static NSUInteger		sHighWaterMark;	// Number of slots which are GC roots.
-static NSMutableArray	*sDeferredOps;	// Deferred adds/removes while running.
+// A deferred add or remove (proposed ADR-0043: was a Foundation dictionary with the same three entries).
+typedef struct
+{
+	std::string					operation;		// "add" or "remove"
+	uint32_t					trackingID;
+	oo::ObjCRef<OOJSValue *>	value;			// the callback, for "add"
+} DeferredOperation;
+
+namespace {
+static std::vector<DeferredOperation>	*sDeferredOps;	// Deferred adds/removes while running.
+} // namespace
 static uint32_t			sNextID;
 static BOOL				sRunning;
 
@@ -101,15 +112,19 @@ static bool GlobalIsValidFrameCallback(ooscript::Context context, ooscript::Call
 
 
 // Internals
-static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, NSString **errorString);
-static BOOL GrowCallbackList(ooscript::Context context, NSString **errorString);
+namespace {
+static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, std::optional<std::string> *errorString);
+static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::string> *errorString);
+} // namespace
 
 static BOOL GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex);
 
 static BOOL RemoveCallbackWithTrackingID(ooscript::Context context, uint32_t trackingID);
 static void RemoveCallbackAtIndex(ooscript::Context context, NSUInteger index);
 
-static void QueueDeferredOperation(NSString *opType, uint32_t trackingID, OOJSValue *value);
+namespace {
+static void QueueDeferredOperation(const std::string &opType, uint32_t trackingID, OOJSValue *value);
+} // namespace
 static void RunDeferredOperations(ooscript::Context context);
 
 
@@ -165,7 +180,8 @@ void OOJSFrameCallbacksInvoke(OOTimeDelta inDeltaT)
 			if (EXPECT_NOT(sDeferredOps != NULL))
 			{
 				RunDeferredOperations(context);
-				DESTROY(sDeferredOps);
+				delete sDeferredOps;
+				sDeferredOps = NULL;
 			}
 		}
 		OOJSRelinquishContext(context);
@@ -208,10 +224,10 @@ static bool GlobalAddFrameCallback(ooscript::Context context, ooscript::CallArgs
 	if (EXPECT(!sRunning))
 	{
 		// Add to list immediately.
-		NSString *errorString = nil;
+		std::optional<std::string> errorString;
 		if (EXPECT_NOT(!AddCallback(context, callback, trackingID, &errorString)))
 		{
-			OOJSReportError(context, @"%@", errorString);
+			OOJSReportError(context, @"%@", oo::NSStringOrNil(errorString));
 			return NO;
 		}
 	}
@@ -219,7 +235,7 @@ static bool GlobalAddFrameCallback(ooscript::Context context, ooscript::CallArgs
 	{
 		// Defer mutations during callback invocation.
 		FCBLog(@"script.frameCallback.debug.add.deferred", @"Deferring addition of frame callback with tracking ID %u.", trackingID);
-		QueueDeferredOperation(@"add", trackingID, [OOJSValue valueWithJSValue:callback inContext:context]);
+		QueueDeferredOperation("add", trackingID, [OOJSValue valueWithJSValue:callback inContext:context]);
 	}
 	
 	OOJS_RETURN_INT(trackingID);
@@ -253,7 +269,7 @@ static bool GlobalRemoveFrameCallback(ooscript::Context context, ooscript::CallA
 	{
 		// Defer mutations during callback invocation.
 		FCBLog(@"script.frameCallback.debug.remove.deferred", @"Deferring removal of frame callback with tracking ID %u.", trackingID);
-		QueueDeferredOperation(@"remove", trackingID, nil);
+		QueueDeferredOperation("remove", trackingID, nil);
 	}
 	
 	OOJS_RETURN_VOID;
@@ -289,7 +305,8 @@ static bool GlobalIsValidFrameCallback(ooscript::Context context, ooscript::Call
 
 // MARK: Internals
 
-static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, NSString **errorString)
+namespace {
+static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uint32_t trackingID, std::optional<std::string> *errorString)
 {
 	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	NSCParameterAssert(errorString != NULL);
@@ -309,7 +326,7 @@ static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uin
 		
 		if (EXPECT_NOT(!OOJSAddGCValueRoot(context, &sCallbacks[sCount].callback, "frame callback")))
 		{
-			*errorString = @"Failed to add GC root for frame callback.";
+			*errorString = "Failed to add GC root for frame callback.";
 			return NO;
 		}
 		
@@ -321,9 +338,11 @@ static BOOL AddCallback(ooscript::Context context, ooscript::Value callback, uin
 	
 	return YES;
 }
+} // namespace
 
 
-static BOOL GrowCallbackList(ooscript::Context context, NSString **errorString)
+namespace {
+static BOOL GrowCallbackList(ooscript::Context context, std::optional<std::string> *errorString)
 {
 	NSCParameterAssert(context != NULL && ooscript::isInRequest(context));
 	NSCParameterAssert(errorString != NULL);
@@ -350,7 +369,7 @@ static BOOL GrowCallbackList(ooscript::Context context, NSString **errorString)
 			}
 			free(newCallbacks);
 			
-			*errorString = @"Failed to add GC root for frame callback.";
+			*errorString = "Failed to add GC root for frame callback.";
 			return NO;
 		}
 		newCallbacks[i] = oldCallbacks[i];
@@ -372,6 +391,7 @@ static BOOL GrowCallbackList(ooscript::Context context, NSString **errorString)
 	
 	return YES;
 }
+} // namespace
 
 
 static BOOL GetIndexForTrackingID(uint32_t trackingID, NSUInteger *outIndex)
@@ -436,42 +456,38 @@ static void RemoveCallbackAtIndex(ooscript::Context context, NSUInteger index)
 }
 
 
-static void QueueDeferredOperation(NSString *opType, uint32_t trackingID, OOJSValue *value)
+namespace {
+static void QueueDeferredOperation(const std::string &opType, uint32_t trackingID, OOJSValue *value)
 {
 	NSCAssert1(sRunning, @"%s can only be called while frame callbacks are running.", __PRETTY_FUNCTION__);
 	
-	if (sDeferredOps == nil)  sDeferredOps = [[NSMutableArray alloc] init];
-	[sDeferredOps addObject:[NSDictionary dictionaryWithObjectsAndKeys:
-							 opType, @"operation",
-							 [NSNumber numberWithInt:trackingID], @"trackingID",
-							 value, @"value",
-							 nil]];
+	if (sDeferredOps == NULL)  sDeferredOps = new std::vector<DeferredOperation>;
+	sDeferredOps->push_back(DeferredOperation{ opType, trackingID, oo::ObjCRef<OOJSValue *>(value) });
 }
+} // namespace
 
 
 static void RunDeferredOperations(ooscript::Context context)
 {
-	NSDictionary		*operation = nil;
-	
-	FCBLog(@"script.frameCallback.debug.run-deferred", @"Running %zu deferred frame callback operations.", (long)[sDeferredOps count]);
+	FCBLog(@"script.frameCallback.debug.run-deferred", @"Running %zu deferred frame callback operations.", (long)sDeferredOps->size());
 	FCBLogIndentIf(@"script.frameCallback.debug.run-deferred");
 	
-	foreach (operation, sDeferredOps)
+	for (const DeferredOperation &operation : *sDeferredOps)
 	{
-		NSString	*opType = [operation objectForKey:@"operation"];
-		uint32_t		trackingID = oo::PListView(operation).get<int>(@"trackingID");
+		const std::string	&opType = operation.operation;
+		uint32_t		trackingID = operation.trackingID;
 		
-		if ([opType isEqualToString:@"add"])
+		if (opType == "add")
 		{
-			OOJSValue	*callbackObj = [operation objectForKey:@"value"];
-			NSString	*errorString = nil;
+			OOJSValue	*callbackObj = operation.value.get();
+			std::optional<std::string>	errorString;
 			
 			if (!AddCallback(context, OOJSValueFromNativeObject(context, callbackObj), trackingID, &errorString))
 			{
-				OOLogWARN(@"script.frameCallback.deferredAdd.failed", @"Deferred frame callback insertion failed: %@", errorString);
+				OOLogWARN(@"script.frameCallback.deferredAdd.failed", @"Deferred frame callback insertion failed: %@", oo::NSStringOrNil(errorString));
 			}
 		}
-		else if ([opType isEqualToString:@"remove"])
+		else if (opType == "remove")
 		{
 			RemoveCallbackWithTrackingID(context, trackingID);
 		}

@@ -1,0 +1,21 @@
+# Reviewed list of Tier 1 groups allowed to finish as NOMANIF and still count toward the
+# corpus stage's pass==checked check (bead oo-88hv). Read by the corpus.sh `tally` subcommand,
+# which tools/tier-b.sh and tools/tier-c.sh use to count passing groups.
+#
+# NOMANIF (oxp_load_check.py, bead oo-kcrw) means: the expansion LOADED and EVERY error line
+# in the run is the standards complaint "[oxp-standards.error]: OXP <member> has no
+# manifest.plist". One extra error line of any kind and the verdict is ERRORS, which never
+# counts. This list adds a second condition on top of that: the group must be named here, with
+# a reason. A manifest-less group that is NOT listed (a catalogue expansion, a new fixture)
+# still counts as not passing, so the full tier goes red until someone reviews it and adds it.
+#
+# Every entry must be one of the in-tree test-oxps in tools/oxp-corpus/tier1.json
+# ("test_oxps"), must fit the 44-column name field of the verdict line, and must carry a reason.
+# `tally` refuses (exit 2) a list that breaks any of those rules.
+#
+# Format: <group name as printed on the verdict line><TAB><reason>
+AI overflow test.oxp	legacy upstream/oolite-tests fixture that predates manifest.plist; loads (the engine synthesises a manifest for a manifest-less .oxp) and emits exactly the 2 standards lines (oo-kcrw, oo-dto)
+JavaScript Interface Tests.oxp	legacy upstream/oolite-tests fixture that predates manifest.plist; loads and emits exactly the 2 standards lines (oo-kcrw)
+PNGTestSuite.oxp	legacy upstream/oolite-tests fixture that predates manifest.plist; loads and emits exactly the 2 standards lines (oo-kcrw)
+RetroMissions.oxp	legacy upstream/oolite-tests fixture that predates manifest.plist; loads and emits exactly the 2 standards lines (oo-kcrw)
+Fallback test.oxp	legacy upstream/oolite-tests fixture that predates manifest.plist; loads and emits exactly the 2 standards lines (oo-kcrw)

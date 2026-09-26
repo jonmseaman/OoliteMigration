@@ -34,23 +34,27 @@ SOFTWARE.
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 
+#include "oofnd/StdLib.hpp"
+#include "oofnd/PList.hpp"
+#include "oofnd/Encoding.hpp"
+
 @class OOCache;
 
 
 @interface OOEncodingConverter: OOObject
 {
 @private
-	NSStringEncoding			_encoding;
+	std::optional<oo::str::Encoding>	_encoding;	// nullopt: an unknown encoding name (was NSNotFound)
 	OOCache						*_cache;
-	NSDictionary				*_substitutions;
+	std::vector<std::pair<std::string, std::string>>	_substitutions;	// in the order they are applied
 }
 
-- (id) initWithEncoding:(NSStringEncoding)encoding substitutions:(NSDictionary *)substitutions;
-- (id) initWithFontPList:(NSDictionary *)fontPList;
+- (id) initWithEncoding:(std::optional<oo::str::Encoding>)encoding substitutions:(const oo::PList &)substitutions;	// a dictionary of strings
+- (id) initWithFontPList:(const oo::PList &)fontPList;
 
-- (NSData *) convertString:(NSString *)string;
+- (oo::Data) convertString:(const std::string &)string;	// empty if the string cannot be converted
 
-- (NSStringEncoding) encoding;
+- (std::optional<oo::str::Encoding>) encoding;
 
 @end
 
@@ -66,5 +70,5 @@ SOFTWARE.
 		"windows-greek"			NSWindowsCP1253StringEncoding
 		"windows-turkish"		NSWindowsCP1254StringEncoding
 */
-NSString *StringFromEncoding(NSStringEncoding encoding);	// Returns nil for unknown
-NSStringEncoding EncodingFromString(NSString *name);		// Returns (NSStringEncoding)NSNotFound for unknown
+const char *StringFromEncoding(NSStringEncoding encoding);	// Returns NULL for unknown
+// (EncodingFromString() retired with the Foundation sweep, bead oo-gosz: oo::str::encodingFromName() in oofnd/Encoding.hpp)

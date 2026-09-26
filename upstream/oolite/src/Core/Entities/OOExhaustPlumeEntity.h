@@ -26,6 +26,8 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "OOTexture.h"
 
+#include "oofnd/StdLib.hpp"
+
 typedef struct
 {
 	double					timeframe;		// universal time for this frame
@@ -53,8 +55,9 @@ enum
 	uint8_t			_nextFrame;
 }
 
-+ (id) exhaustForShip:(ShipEntity *)ship withDefinition:(NSArray *)definition andScale:(float)scale;
-- (id) initForShip:(ShipEntity *)ship withDefinition:(NSArray *)definition andScale:(float)scale;
+// definition: the exhaust's tokens (x y z scale_x scale_y scale_z), read as -oo_floatAtIndex: read them.
++ (id) exhaustForShip:(ShipEntity *)ship withDefinition:(const std::vector<std::string> &)definition andScale:(float)scale;
+- (id) initForShip:(ShipEntity *)ship withDefinition:(const std::vector<std::string> &)definition andScale:(float)scale;
 
 - (void) resetPlume;
 

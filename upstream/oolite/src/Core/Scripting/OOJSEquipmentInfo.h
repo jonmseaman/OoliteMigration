@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 
 #import "OOCocoa.h"
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/StdLib.hpp"
 
 @class OOEquipmentType;
 
@@ -53,9 +54,11 @@ extern "C" {
 #endif
 
 OOEquipmentType *JSValueToEquipmentType(ooscript::Context context, ooscript::Value value);
-NSString *JSValueToEquipmentKey(ooscript::Context context, ooscript::Value value);
+extern "C++" {	// C++ results (proposed ADR-0043, bead oo-xcqk); nullopt where these returned nil
+std::optional<std::string> JSValueToEquipmentKey(ooscript::Context context, ooscript::Value value);
 
-NSString *JSValueToEquipmentKeyRelaxed(ooscript::Context context, ooscript::Value value, BOOL *outExists);
+std::optional<std::string> JSValueToEquipmentKeyRelaxed(ooscript::Context context, ooscript::Value value, BOOL *outExists);
+}
 
 #ifdef __cplusplus
 }

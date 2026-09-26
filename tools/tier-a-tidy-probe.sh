@@ -139,6 +139,41 @@ finding "$(native "$W/src/Core/OOLogging.h")" 3 >"$OUT"
 tidy_gate "$W" "$BASE" "$W/src/a.mm" src/a.mm "$OUT" >/dev/null 2>&1
 check "the same finding in a linked worktree (how the fleet runs) passes" 0 "$?"
 
+echo "== the baseline is the branch accept merges into, not main (bead oo-3rb.71) =="
+# A phase branch adds a header with a pre-existing finding; a bead on top of the phase edits only
+# its own source. Baselined on main, the header is "new in this change" and its finding fails the
+# bead; baselined on the phase branch (what accept.sh merges into), it is pre-existing.
+P="$TMP/phase"
+git init -q -b main "$P"
+git -C "$P" config user.email probe@example.invalid
+git -C "$P" config user.name probe
+mkdir -p "$P/src"
+printf '%s\n' '// source' '#import "Old.h"' >"$P/src/a.mm"
+git -C "$P" add -A && git -C "$P" commit -qm main
+git -C "$P" checkout -q -b phase-x
+printf '%s\n' '// added on the phase' '#import "Cycle.h"' >"$P/src/bridge.h"
+git -C "$P" add -A && git -C "$P" commit -qm phase
+git -C "$P" checkout -q -b bead
+printf '%s\n' '// source' '#import "New.h"' >"$P/src/a.mm"
+git -C "$P" commit -qam bead
+finding "$(native "$P/src/bridge.h")" 2 >"$OUT"
+phase_gate() { # phase_gate <env...> -- rc of the real resolve_base_ref + tidy_gate in $P
+	(
+		unset OOLITE_TIER_A_BASE OOLITE_TIER_A_BASE_BRANCH BEADS_WORKER_BASE_BRANCH
+		export "$@"
+		b="$(resolve_base_ref "$P" 2>/dev/null)" || exit 3
+		tidy_gate "$P" "$b" "$P/src/a.mm" src/a.mm "$OUT" >/dev/null 2>&1
+	)
+	printf '%s' $?
+}
+check "BEADS_WORKER_BASE_BRANCH=phase-x: the phase's header finding is pre-existing" 0 \
+	"$(phase_gate BEADS_WORKER_BASE_BRANCH=phase-x)"
+check "no base branch set: main, where the header is new (the discrimination)" 1 "$(phase_gate PROBE_NOTHING=1)"
+check "OOLITE_TIER_A_BASE_BRANCH=main still wins over BEADS_WORKER_BASE_BRANCH" 1 \
+	"$(phase_gate OOLITE_TIER_A_BASE_BRANCH=main BEADS_WORKER_BASE_BRANCH=phase-x)"
+check "a BEADS_WORKER_BASE_BRANCH that does not exist falls back to main" 1 \
+	"$(phase_gate BEADS_WORKER_BASE_BRANCH=no-such-branch)"
+
 echo "== never a silent pass =="
 finding "$(native "$R/src/Core/OOLogging.h")" 3 >"$OUT"
 tidy_gate "$R" 0123456789abcdef0123456789abcdef01234567 "$R/src/a.mm" src/a.mm "$OUT" >/dev/null 2>&1

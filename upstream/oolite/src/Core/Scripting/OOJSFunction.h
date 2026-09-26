@@ -29,24 +29,26 @@ MA 02110-1301, USA.
 #import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/StdLib.hpp"
+#include "oofnd/objc/OOObjCRef.h"
 @interface OOJSFunction: OOObject
 {
 @private
 	ooscript::Function _function;
-	NSString					*_name;
+	std::optional<std::string>	_name;	// nullopt for an anonymous function (was nil)
 }
 
 - (id) initWithFunction:(ooscript::Function)function context:(ooscript::Context)context;
-- (id) initWithName:(NSString *)name
+- (id) initWithName:(const std::optional<std::string> &)name
 			  scope:(ooscript::Object)scope		// may be NULL, in which case global object is used.
-			   code:(NSString *)code		// full JS code for function, including function declaration.
+			   code:(const std::optional<std::string> &)code		// full JS code for function, including function declaration.
 	  argumentCount:(NSUInteger)argCount
 	  argumentNames:(const char **)argNames
-		   fileName:(NSString *)fileName
+		   fileName:(const std::optional<std::string> &)fileName
 		 lineNumber:(NSUInteger)lineNumber
 			context:(ooscript::Context)context;	// may be NULL. If not null, must be in a request.
 
-- (NSString *) name;
+- (id) name;	// shared selector (proposed ADR-0043): an Objective-C string, or nil
 - (ooscript::Function) function;
 - (ooscript::Value) functionValue;
 
@@ -60,11 +62,11 @@ MA 02110-1301, USA.
 // Object-wrapper evaluation.
 - (id) evaluateWithContext:(ooscript::Context)context
 					 scope:(id)jsThis
-				 arguments:(NSArray *)arguments;
+				 arguments:(const std::vector<oo::ObjCRef<id>> &)arguments;
 
 // As above, but converts result to a boolean.
 - (BOOL) evaluatePredicateWithContext:(ooscript::Context)context
 								scope:(id)jsThis
-							arguments:(NSArray *)arguments;
+							arguments:(const std::vector<oo::ObjCRef<id>> &)arguments;
 
 @end

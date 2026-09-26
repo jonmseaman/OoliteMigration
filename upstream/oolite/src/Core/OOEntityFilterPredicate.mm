@@ -30,6 +30,7 @@ MA 02110-1301, USA.
 #import "ShipEntity.h"
 #import "OOPlanetEntity.h"
 #import "OORoleSet.h"
+#import "OOFoundationBridge.h"
 
 
 BOOL YESPredicate(Entity *entity, void *parameter)
@@ -153,25 +154,30 @@ BOOL IsVisualEffectPredicate(Entity *entity, void *parameter)
 
 BOOL HasRolePredicate(Entity *ship, void *parameter)
 {
-	return [(ShipEntity *)ship hasRole:(NSString *)parameter];
+	return [(ShipEntity *)ship hasRole:(id)parameter];	// an Objective-C string; -hasRole: is a shared selector (proposed ADR-0043)
 }
 
 
 BOOL HasPrimaryRolePredicate(Entity *ship, void *parameter)
 {
-	return [(ShipEntity *)ship hasPrimaryRole:(NSString *)parameter];
+	return [(ShipEntity *)ship hasPrimaryRole:(id)parameter];	// an Objective-C string, as the callers pass it
 }
 
 
 BOOL HasRoleInSetPredicate(Entity *ship, void *parameter)
 {
-	return [[(ShipEntity *)ship roleSet] intersectsSet:(NSSet *)parameter];
+	return [[(ShipEntity *)ship roleSet] intersectsSet:(id)parameter];	// an Objective-C set of strings; -intersectsSet: is a shared selector (proposed ADR-0043)
 }
 
 
 BOOL HasPrimaryRoleInSetPredicate(Entity *ship, void *parameter)
 {
-	return [(NSSet *)parameter containsObject:[(ShipEntity *)ship primaryRole]];
+	// parameter: an Objective-C set of role strings, as the callers pass it; membership by string
+	// value, as -containsObject: tested it. A nil primary role is in no set.
+	const std::optional<std::string> primaryRole = oo::OptionalString([(ShipEntity *)ship primaryRole]);
+	if (!primaryRole.has_value())  return NO;
+	const std::vector<std::string> roles = oo::StringsFrom((id)parameter);
+	return std::find(roles.begin(), roles.end(), *primaryRole) != roles.end();
 }
 
 

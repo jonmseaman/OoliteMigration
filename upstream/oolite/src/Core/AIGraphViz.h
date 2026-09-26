@@ -1,11 +1,11 @@
 /*
 
-NSScannerOOExtensions.h
+AIGraphViz.h
 
-Additions to NSScanner to work around bugs.
-
-FIXME: does this work around bugs that actually exist in any system we're
-targetting? It's a conundrum.
+GenerateGraphVizForAIStateMachine(), defined in AIGraphViz.mm (DEBUG_GRAPHVIZ builds only). It
+was declared by an extern in AI.mm; the Foundation sweep of AI.mm (bead oo-3rb.87) moved the
+declaration here, next to its definition. AIGraphViz.mm's own sweep (bead oo-ndxe) gave it the
+C++ types AI.mm holds the state machine in.
 
 
 Oolite
@@ -28,13 +28,16 @@ MA 02110-1301, USA.
 
 */
 
+#ifndef AIGRAPHVIZ_H
+#define AIGRAPHVIZ_H
+
+#if DEBUG_GRAPHVIZ
+
 #import "OOCocoa.h"
+#include "oofnd/PList.hpp"
 
+void GenerateGraphVizForAIStateMachine(const oo::PList &stateMachine, const std::string &smName);
 
-@interface NSScanner (OOExtensions)
+#endif	// DEBUG_GRAPHVIZ
 
-- (BOOL) ooliteScanCharactersFromSet:(NSCharacterSet *)set intoString:(NSString **)value;
-- (BOOL) ooliteScanUpToCharactersFromSet:(NSCharacterSet *)set intoString:(NSString **)value;
-
-@end
-
+#endif	// AIGRAPHVIZ_H

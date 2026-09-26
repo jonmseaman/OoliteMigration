@@ -30,6 +30,8 @@ MA 02110-1301, USA.
 #import "OOIsNumberLiteral.h"
 
 #import "OOJSPlayer.h"
+#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
 #include <cstring>
@@ -56,14 +58,23 @@ using ooscript::PropertyFlag;
 using ooscript::EnumerateOp;
 
 namespace {
-static NSString *KeyForPropertyID(ooscript::Context context, ooscript::PropertyId propID)
+static std::optional<std::string> KeyForPropertyID(ooscript::Context context, ooscript::PropertyId propID)
 {
 	NSCParameterAssert(ooscript::isStringId(propID));
 	
-	NSString *key = OOStringFromJSString(context, ooscript::idToString(propID));
-	if ([key hasPrefix:@"_"])  return nil;
-	return [@"mission_" stringByAppendingString:key];
+	std::string key = oo::StdString(OOStringFromJSString(context, ooscript::idToString(propID)));
+	if (oo::str::hasPrefix(key, "_"))  return std::nullopt;
+	return "mission_" + key;
 }
+
+
+// The state of a missionVariables enumeration, kept in the enumeration's private slot (was a
+// retained Foundation enumerator over a copy of the keys).
+struct MissionVariablesEnumerationState
+{
+	std::vector<std::string>	keys;
+	std::size_t					next = 0;
+};
 } // namespace
 
 
@@ -147,8 +158,8 @@ static bool MissionVariablesDeleteProperty(Context cx, Object obj, PropertyId pr
 	
 	if (ooscript::isStringId(jsPropID))
 	{
-		NSString *key = KeyForPropertyID(context, jsPropID);
-		[player setMissionVariable:nil forKey:key];
+		std::optional<std::string> key = KeyForPropertyID(context, jsPropID);
+		[player setMissionVariable:nil forKey:oo::NSStringOrNil(key)];
 	}
 	return YES;
 	
@@ -172,14 +183,14 @@ static bool MissionVariablesGetProperty(Context cx, Object obj, PropertyId propI
 	
 	if (ooscript::isStringId(jsPropID))
 	{
-		NSString *key = KeyForPropertyID(context, jsPropID);
-		if (key == nil)  return YES;
+		std::optional<std::string> key = KeyForPropertyID(context, jsPropID);
+		if (!key.has_value())  return YES;
 		
-		id mvar = [player missionVariableForKey:key];
+		id mvar = [player missionVariableForKey:oo::NSStringFrom(*key)];
 		
-		if ([mvar isKindOfClass:[NSString class]])	// Currently there should only be strings, but we may want to change this.
+		if (oo::IsNSString(mvar))	// Currently there should only be strings, but we may want to change this.
 		{
-			if (OOIsNumberLiteral(mvar, YES))
+			if (OOIsNumberLiteral(oo::StdString(mvar), YES))
 			{
 				return ooscript::newNumberValue(cx, [mvar doubleValue], value);
 			}
@@ -209,17 +220,18 @@ static bool MissionVariablesSetProperty(Context cx, Object obj, PropertyId propI
 	
 	if (ooscript::isStringId(jsPropID))
 	{
-		NSString *key = KeyForPropertyID(context, jsPropID);
-		if (key == nil)
+		std::optional<std::string> key = KeyForPropertyID(context, jsPropID);
+		if (!key.has_value())
 		{
 			OOJSReportError(context, @"Invalid mission variable name \"%@\".", [OOStringFromJSID(jsPropID) escapedForJavaScriptLiteral]);
 			return NO;
 		}
 		
-		NSString *objValue = OOStringFromJSValue(context, *jsvalue);
+		// nil (a value with no string form) clears the variable. (The old OONull test could not match
+		// a string and is gone.)
+		std::optional<std::string> objValue = oo::OptionalString(OOStringFromJSValue(context, *jsvalue));
 		
-		if ([objValue isKindOfClass:[OONull class]])  objValue = nil;
-		[player setMissionVariable:objValue forKey:key];
+		[player setMissionVariable:oo::NSStringOrNil(objValue) forKey:oo::NSStringFrom(*key)];
 	}
 	return YES;
 	
@@ -237,7 +249,7 @@ static bool MissionVariablesEnumerate(Context cx, Object /*obj*/, EnumerateOp en
 	
 	OOJS_NATIVE_ENTER(context)
 	
-	NSEnumerator *enumerator = nil;
+	MissionVariablesEnumerationState *enumerator = nullptr;
 	
 	switch (enumOp)
 	{
@@ -245,11 +257,10 @@ static bool MissionVariablesEnumerate(Context cx, Object /*obj*/, EnumerateOp en
 		case EnumerateOp::InitAll:	// For ES5 Object.getOwnPropertyNames(). Since we have no non-enumerable properties, this is the same as _INIT.
 		{
 			// -allKeys implicitly makes a copy, which is good since the enumerating code might mutate.
-			NSArray *mvars = [[PLAYER missionVariables] allKeys];
-			enumerator = [[mvars objectEnumerator] retain];
+			enumerator = new MissionVariablesEnumerationState{ oo::StringsFrom([[PLAYER missionVariables] allKeys]) };
 			*jsstate = ooscript::privateValue(enumerator);
 			
-			NSUInteger count = [mvars count];
+			NSUInteger count = enumerator->keys.size();
 			assert(count <= INT32_MAX);
 			if (jsidp != NULL)  *jsidp = ooscript::int32Id((uint32_t)count);
 			return YES;
@@ -257,16 +268,15 @@ static bool MissionVariablesEnumerate(Context cx, Object /*obj*/, EnumerateOp en
 		
 		case EnumerateOp::Next:
 		{
-			enumerator = (NSEnumerator*)ooscript::toPrivate(*jsstate);
-			for (;;)
+			enumerator = static_cast<MissionVariablesEnumerationState *>(ooscript::toPrivate(*jsstate));
+			while (enumerator->next < enumerator->keys.size())
 			{
-				NSString *next = [enumerator nextObject];
-				if (next == nil)  break;
-				if (![next hasPrefix:@"mission_"])  continue;	// Skip mission instructions, which aren't visible through missionVariables.
+				std::string next = enumerator->keys[enumerator->next++];
+				if (!oo::str::hasPrefix(next, "mission_"))  continue;	// Skip mission instructions, which aren't visible through missionVariables.
 				
-				next = [next substringFromIndex:8];		// Cut off "mission_".
+				next = next.substr(8);		// Cut off "mission_".
 				
-				ooscript::Value val = [next oo_jsValueInContext:context];
+				ooscript::Value val = [oo::NSStringFrom(next) oo_jsValueInContext:context];
 				return ooscript::valueToId(cx, (val), jsidp);
 			}
 			
@@ -277,11 +287,11 @@ static bool MissionVariablesEnumerate(Context cx, Object /*obj*/, EnumerateOp en
 		
 		case EnumerateOp::Destroy:
 		{
-			if (enumerator == nil && ooscript::isDouble(*jsstate))
+			if (enumerator == nullptr && ooscript::isDouble(*jsstate))
 			{
-				enumerator = (NSEnumerator*)ooscript::toPrivate(*jsstate);
+				enumerator = static_cast<MissionVariablesEnumerationState *>(ooscript::toPrivate(*jsstate));
 			}
-			[enumerator release];
+			delete enumerator;
 			
 			if (jsidp != NULL)  *jsidp = ooscript::voidId();
 			return YES;

@@ -33,6 +33,7 @@ SOFTWARE.
 #import "OOTextureInternal.h"
 #import "OOMaterialSpecifier.h"
 #import "OOCollectionExtractors.h"
+#import "OOStringBridge.h"
 
 
 #define DUMP_COMBINER	0
@@ -343,7 +344,7 @@ static void ScaleToMatch(OOPixMap *pmA, OOPixMap *pmB);
 	static unsigned sTexID = 0;
 	unsigned texID = ++sTexID, dumpCount = 0;
 	
-#define DUMP(pm, label) OODumpPixMap(pm, [NSString stringWithFormat:@"lightmap %u.%u - %@", texID, ++dumpCount, label]);
+#define DUMP(pm, label) OODumpPixMap(pm, oo::StdString([NSString stringWithFormat:@"lightmap %u.%u - %@", texID, ++dumpCount, label]));
 #else
 #define DUMP(pm, label) do {} while (0)
 #endif

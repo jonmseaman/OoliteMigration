@@ -109,7 +109,7 @@ def run(app_dir, port, seed, output_dir):
     return witness
 
 
-def main(argv=None):
+def _main_unlocked(argv=None):
     parser = argparse.ArgumentParser()
     default_app = os.environ.get(
         "OO_APP_DIR",
@@ -142,6 +142,24 @@ def main(argv=None):
     else:
         print(text)
     return 0
+
+
+def main(argv=None):
+    """Run the probe holding tools/gui-lock (bead oo-hub0).
+
+    The probe launches the game on the interactive desktop, one game, by hand - not as a member
+    of the golden harness's concurrent fan-out - so CLAUDE.md's desktop-lock rule applies and
+    tools/check-desktop-lock.sh lists it as a LOCKED launcher. No lock, no launch.
+    """
+    sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
+    from desktop_lock import DesktopLockError, desktop_lock  # noqa: E402  - tools/desktop_lock.py
+
+    try:
+        with desktop_lock('value-probe', start=__file__, stream=sys.stderr):
+            return _main_unlocked(argv)
+    except DesktopLockError as exc:
+        print("value-probe: %s" % exc, file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":

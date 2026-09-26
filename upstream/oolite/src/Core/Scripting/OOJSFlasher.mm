@@ -191,7 +191,7 @@ static BOOL JSFlasherGetFlasherEntity(ooscript::Context context, ooscript::Objec
 }
 
 
-- (NSString *) oo_jsClassName
+- (id) oo_jsClassName	// shared selector (proposed ADR-0043)
 {
 	return @"Flasher";
 }

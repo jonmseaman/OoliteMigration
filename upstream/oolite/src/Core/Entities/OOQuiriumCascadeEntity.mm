@@ -27,6 +27,9 @@ MA 02110-1301, USA.
 #import "PlayerEntity.h"
 #import "Universe.h"
 #import "OOMacroOpenGL.h"
+#import "OOStringBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 #define kQuiriumCascadeDuration			(20.0)	// seconds
@@ -67,9 +70,9 @@ MA 02110-1301, USA.
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"%f seconds passed of %f", _timePassed, kQuiriumCascadeDuration];
+	return oo::NSStringFrom(oo::str::format("%f seconds passed of %f", _timePassed, kQuiriumCascadeDuration));
 }
 
 
@@ -102,9 +105,10 @@ MA 02110-1301, USA.
 
 	// manage collisions
 	Entity *owner = [self owner];
-	Entity *e = nil;
-	foreach (e, collidingEntities)
+	const std::vector<oo::ObjCRef<Entity *>> colliding = collidingEntities;	// a snapshot (enumerating the live array while it changed raised)
+	for (const oo::ObjCRef<Entity *> &collidingEntity : colliding)
 	{
+		Entity *e = collidingEntity.get();
 		// we're going to force the weapon id to be the qbomb key here, because at this point the cascade entity isn't a ship any more
 		// and there's no link back to the original.
 		[e takeEnergyDamage:energy from:self becauseOf:owner weaponIdentifier:@"EQ_QC_MINE"];

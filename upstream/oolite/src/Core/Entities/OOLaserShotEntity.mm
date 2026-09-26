@@ -32,7 +32,9 @@ MA 02110-1301, USA.
 #import "OOGraphicsResetManager.h"
 
 #import "MyOpenGLView.h"
-#import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
+
+#include "oofnd/String.hpp"
 
 
 #define kLaserDuration		(0.09)	// seconds
@@ -134,9 +136,9 @@ static OOTexture *sShotTexture2 = nil;
 }
 
 
-- (NSString *) descriptionComponents
+- (id) descriptionComponents	// shared selector (proposed ADR-0043)
 {
-	return [NSString stringWithFormat:@"ttl: %.3fs - %@ orientation %@", _lifetime, [super descriptionComponents], oo::NSStringFrom(QuaternionDescription([self orientation]))];
+	return oo::NSStringFrom(oo::str::format("ttl: %.3fs - %s orientation %s", _lifetime, oo::DescriptionOf([super descriptionComponents]).c_str(), QuaternionDescription([self orientation]).c_str()));
 }
 
 
@@ -251,7 +253,7 @@ static const GLfloat kLaserVertices[] =
 	OOGL(glDisable(GL_TEXTURE_2D));
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"OOLaserShotEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "OOLaserShotEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 

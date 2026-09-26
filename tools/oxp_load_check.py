@@ -227,6 +227,109 @@ class Verdict:
                                  # manifest.plist - a legacy in-tree fixture that
                                  # predates the manifest format. Non-fatal, and
                                  # argued in full at NOMANIFEST_RE below.
+    # --- added by bead oo-1gc.7 (proposed ADR-0047) ---------------------------
+    KNOWN = "KNOWN"              # the group's errors are EXACTLY the reviewed lines
+                                 # in known-content-failures.json, on the pinned
+                                 # member bytes. Non-fatal; lines still printed.
+    KNOWNCHANGED = "KNOWNCHG"    # the group has a known-failure entry but its
+                                 # errors (or its bytes) no longer match it: a new,
+                                 # changed or vanished line. Fatal.
+
+
+#: bead oo-1gc.7, proposed ADR-0047. The reviewed list of Tier-1 groups whose
+#: errors are diagnosed CONTENT defects, identical on both engines. See
+#: apply_known_failure() for the exact rule; it is a re-label of an exact,
+#: pinned match, never a filter.
+KNOWN_FAILURES_JSON = (Path(__file__).resolve().parent / "oxp-corpus"
+                       / "known-content-failures.json")
+TIMESTAMP_RE = re.compile(r"^\s*\d\d:\d\d:\d\d\.\d+ ")
+#: The group verdicts that do not fail the tier. Everything else does.
+GROUP_OK_STATES = (Verdict.PASS, Verdict.NOMANIFEST, Verdict.KNOWN)
+
+
+def normalise_error_line(line: str) -> str:
+    """An error line without its leading timestamp - the only volatile part."""
+    return TIMESTAMP_RE.sub("", line.rstrip())
+
+
+def load_known_failures(path: Path = KNOWN_FAILURES_JSON) -> dict:
+    """{group name: entry}. A malformed file is a harness error (ValueError), never
+    an empty list: an unreadable review list must not quietly accept nothing, and
+    must not quietly accept everything either."""
+    if not Path(path).exists():
+        return {}
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if data.get("schema") != 1:
+        raise ValueError("%s: unknown schema %r" % (path, data.get("schema")))
+    out = {}
+    for e in data.get("entries", []):
+        g = e.get("group")
+        for key in ("members_sha256", "beads", "diagnosis", "expected_errors"):
+            if not e.get(key):
+                raise ValueError("%s: entry %r has no %s" % (path, g, key))
+        if not g or g in out:
+            raise ValueError("%s: missing or duplicate group %r" % (path, g))
+        if any(normalise_error_line(l) != l for l in e["expected_errors"]):
+            raise ValueError("%s: entry %r has an expected line with a timestamp" % (path, g))
+        out[g] = e
+    return out
+
+
+def member_sha256s(members) -> dict:
+    """sha256 of each staged member's bytes (files only; in-tree dirs have none)."""
+    import hashlib
+    out = {}
+    for m in members:
+        p = Path(m["path"])
+        if p.is_file():
+            out[m["identifier"]] = hashlib.sha256(p.read_bytes()).hexdigest()
+    return out
+
+
+def apply_known_failure(name: str, verdict: str, detail: str, all_errors, shas: dict,
+                        known: dict) -> tuple:
+    """Re-label a group's verdict against the reviewed known-content-failures list.
+
+    Returns (verdict, detail). Only a group WITH an entry is ever touched, and then:
+      * the members' bytes must equal the entry's pinned sha256s, else KNOWNCHG -
+        the diagnosis was made on other content;
+      * the run must have reached the error scan (ERRORS, DEPERRORS or PASS); any
+        earlier failure (NOTLOADED, STARTUP, ...) is returned unchanged, still red;
+      * the timestamp-stripped error lines must equal expected_errors EXACTLY, as a
+        multiset: one extra, one missing or one altered line is KNOWNCHG. Zero
+        errors is also KNOWNCHG - the recorded diagnosis no longer holds, and a
+        silent change in the loader is exactly what this tier exists to notice.
+    Only an exact match becomes KNOWN. The lines stay in the result and are printed.
+    """
+    from collections import Counter
+    entry = known.get(name)
+    if entry is None:
+        return verdict, detail
+    if verdict not in (Verdict.ERRORS, Verdict.DEPERRORS, Verdict.PASS):
+        return verdict, detail
+    if shas != entry["members_sha256"]:
+        return (Verdict.KNOWNCHANGED,
+                "%s has a known-content-failures.json entry (%s) but the staged member "
+                "bytes differ from the pinned sha256s (staged %s, pinned %s), so the "
+                "recorded diagnosis does not apply - re-diagnose. Underlying: %s %s"
+                % (name, ", ".join(entry["beads"]), shas, entry["members_sha256"],
+                   verdict, detail))
+    got = Counter(normalise_error_line(l) for l in all_errors)
+    want = Counter(entry["expected_errors"])
+    if got == want:
+        return (Verdict.KNOWN,
+                "%s: its %d error line(s) EXACTLY match the reviewed known content failure "
+                "(%s; tools/oxp-corpus/known-content-failures.json): %s"
+                % (name, sum(got.values()), ", ".join(entry["beads"]),
+                   entry["diagnosis"].split(". ")[0] + "."))
+    extra, missing = got - want, want - got
+    return (Verdict.KNOWNCHANGED,
+            "%s's errors NO LONGER MATCH its known-content-failures.json entry (%s): "
+            "%d unexpected line(s) %s; %d expected line(s) absent %s. A new or changed "
+            "error is a new finding; vanished errors mean the loader changed. Either way "
+            "the entry needs review."
+            % (name, ", ".join(entry["beads"]), sum(extra.values()), sorted(extra),
+               sum(missing.values()), sorted(missing)))
 
 
 #: The exact standards complaint emitted for an expansion with no manifest.plist:
@@ -585,7 +688,8 @@ def judge_group(text: str, members, log_label: str, rc=None, timeout=None,
             % (len(members), len(text.splitlines())), [], per)
 
 
-def run_group(app_dir: Path, group: dict, work: Path, timeout: float) -> dict:
+def run_group(app_dir: Path, group: dict, work: Path, timeout: float,
+              known: dict | None = None) -> dict:
     """Launch the game ONCE with a primary plus its whole dependency closure."""
     name = group["name"]
     result = {
@@ -676,6 +780,12 @@ def run_group(app_dir: Path, group: dict, work: Path, timeout: float) -> dict:
     text = log_path.read_text(encoding="utf-8", errors="replace")
     v, d, errs, per = judge_group(text, group["members"], result["log"],
                                   rc=result["rc"], timeout=timeout)
+    if known and name in known:
+        all_errs = error_lines(text)
+        v, d = apply_known_failure(name, v, d, all_errs, member_sha256s(group["members"]),
+                                   known)
+        if v in (Verdict.KNOWN, Verdict.KNOWNCHANGED):
+            errs = all_errs[:20]
     result["verdict"], result["detail"], result["errors"], result["per_member"] = v, d, errs, per
     return result
 
@@ -827,15 +937,21 @@ def main(argv=None):
             sys.stderr.write("the group file is EMPTY - refusing to report success on "
                              "zero checks\n")
             return 2
+        try:
+            known = load_known_failures()
+        except ValueError as exc:
+            sys.stderr.write("known-content-failures list is malformed: %s\n" % exc)
+            return 2
         results, failed = [], 0
-        # NOMANIFEST is NON-FATAL: see the argument at NOMANIFEST_RE. It is the
-        # ONLY non-PASS state that does not fail the tier, it is still printed
-        # with its lines and still counted in the summary, and it is reachable
-        # only for an expansion that LOADED and whose every error is the missing
-        # -manifest standards complaint.
-        ok_states = (Verdict.PASS, Verdict.NOMANIFEST)
+        # NOMANIFEST is NON-FATAL: see the argument at NOMANIFEST_RE. It is
+        # still printed with its lines and still counted in the summary, and it is
+        # reachable only for an expansion that LOADED and whose every error is the
+        # missing-manifest standards complaint. KNOWN (oo-1gc.7, ADR-0047) is the
+        # other non-fatal state: an exact, byte-pinned match of a reviewed entry in
+        # known-content-failures.json (see apply_known_failure).
+        ok_states = GROUP_OK_STATES
         for g in groups:
-            r = run_group(app_dir, g, work, args.timeout)
+            r = run_group(app_dir, g, work, args.timeout, known=known)
             results.append(r)
             failed += r["verdict"] not in ok_states
             print("%-10s %-44s %6.1fs  %s"

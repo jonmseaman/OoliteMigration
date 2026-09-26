@@ -25,8 +25,10 @@ MA 02110-1301, USA.
 
 #import "OOJSInterfaceDefinition.h"
 #import "OOJavaScriptEngine.h"
+#import "OOFoundationBridge.h"
 
 #include "ooscript/JSEngine.hpp"
+#include "oofnd/Notification.hpp"
 
 /*
 	Retargeted (bead oo-mqb) onto the ooscript façade (JSEngine.hpp), same pattern as the
@@ -37,6 +39,18 @@ MA 02110-1301, USA.
 	Value/Object values, so their addresses go to the façade calls directly.
 */
 
+namespace {
+// -caseInsensitiveCompare: as the definitions used it: a nil receiver answers
+// NSOrderedSame (a message to nil); a nil argument compares as the empty string.
+static NSComparisonResult CaseInsensitiveCompare(const std::optional<std::string> &a, const std::optional<std::string> &b)
+{
+	if (!a.has_value())  return NSOrderedSame;
+	int order = oo::str::caseInsensitiveCompare(*a, b.value_or(std::string()));
+	return (order < 0) ? NSOrderedAscending : ((order > 0) ? NSOrderedDescending : NSOrderedSame);
+}
+} // namespace
+
+
 @implementation OOJSInterfaceDefinition
 
 - (id) init {
@@ -46,10 +60,9 @@ MA 02110-1301, USA.
 
 	_owningScript = [[OOJSScript currentlyRunningScript] weakRetain];
 
-	[[NSNotificationCenter defaultCenter] addObserver:self
-												 selector:@selector(deleteJSPointers)
-												 name:kOOJavaScriptEngineWillResetNotification
-											   object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().addObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+														[OOJavaScriptEngine sharedEngine],
+														[self](const oo::Notification &) { [self deleteJSPointers]; });
 
 	return self;
 }
@@ -65,9 +78,8 @@ MA 02110-1301, USA.
 
 	OOJSRelinquishContext(context);
 
-	[[NSNotificationCenter defaultCenter] removeObserver:self
-													name:kOOJavaScriptEngineWillResetNotification
-												  object:[OOJavaScriptEngine sharedEngine]];
+	oo::NotificationCenter::defaultCenter().removeObserver(self, kOOJavaScriptEngineWillResetNotificationName,
+															[OOJavaScriptEngine sharedEngine]);
 
 }
 
@@ -80,42 +92,39 @@ MA 02110-1301, USA.
 	[super dealloc];
 }
 
-- (NSString *)title 
+- (id)title	// shared selector (proposed ADR-0043)
 {
-	return _title;
+	return oo::NSStringOrNil(_title);
 }
 
 
-- (void)setTitle:(NSString *)title
+- (void)setTitle:(id)title	// shared selector (proposed ADR-0043)
 {
-	[_title autorelease];
-	_title = [title retain];
+	_title = oo::OptionalString(title);
 }
 
 
-- (NSString *)category
+- (std::optional<std::string>)category
 {
 	return _category;
 }
 
 
-- (void)setCategory:(NSString *)category
+- (void)setCategory:(const std::string &)category
 {
-	[_category autorelease];
-	_category = [category retain];
+	_category = category;
 }
 
 
-- (NSString *)summary
+- (std::optional<std::string>)summary
 {
 	return _summary;
 }
 
 
-- (void)setSummary:(NSString *)summary
+- (void)setSummary:(const std::string &)summary
 {
-	[_summary autorelease];
-	_summary = [summary retain];
+	_summary = summary;
 }
 
 
@@ -151,7 +160,7 @@ MA 02110-1301, USA.
 }
 
 
-- (void)runCallback:(NSString *)key
+- (void)runCallback:(id)key	// shared selector (proposed ADR-0043)
 {
 	OOJavaScriptEngine *engine = [OOJavaScriptEngine sharedEngine];
 	ooscript::Context context = OOJSAcquireContext();		
@@ -177,10 +186,10 @@ MA 02110-1301, USA.
 
 - (NSComparisonResult)interfaceCompare:(OOJSInterfaceDefinition *)other
 {
-	NSComparisonResult byCategory = [_category caseInsensitiveCompare:[other category]];
+	NSComparisonResult byCategory = CaseInsensitiveCompare(_category, [other category]);
 	if (byCategory == NSOrderedSame)
 	{
-		return [_title caseInsensitiveCompare:[other title]];
+		return CaseInsensitiveCompare(_title, oo::OptionalString([other title]));
 	}
 	else
 	{

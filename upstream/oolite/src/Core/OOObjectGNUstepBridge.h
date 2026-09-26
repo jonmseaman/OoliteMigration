@@ -7,7 +7,8 @@ OOCocoa.h. See OOObjectGNUstepBridge.mm.
 
 */
 
-#import "OOCocoa.h"	// imports this header after Foundation; the Foundation types used here come from there
+// Imported only by OOCocoa.h, after Foundation: the Foundation types used here come from there
+// (importing OOCocoa.h back from here was an include cycle, misc-header-include-cycle).
 #import "oofnd/objc/OOObject.h"
 
 
@@ -16,9 +17,6 @@ OOCocoa.h. See OOObjectGNUstepBridge.mm.
 + (NSString *) description;
 
 // NSObject's own implementations, applied to an OOObject (see OOObjectGNUstepBridge.mm).
-+ (NSMethodSignature *) instanceMethodSignatureForSelector:(SEL)selector;
-- (NSMethodSignature *) methodSignatureForSelector:(SEL)selector;
-- (void) performSelector:(SEL)selector withObject:(id)argument afterDelay:(NSTimeInterval)delay;
 - (NSString *) className;
 
 @end
