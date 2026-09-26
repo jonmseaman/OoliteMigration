@@ -498,7 +498,7 @@ std::string FormattedCharacter(unsigned code)
 						}
 						break;
 					default:
-						//OOLog(@"keys.test", @"Unhandled Keydown scancode with unicode = 0: %d", scan_code);
+						//OO_LOG("keys.test", "Unhandled Keydown scancode with unicode = 0: {}", static_cast<int>(scan_code));
 						;
 				}
 
@@ -532,7 +532,7 @@ std::string FormattedCharacter(unsigned code)
 					[self handleStringInput:kbd_event keyID:key_id];
 				}
 
-				OOLog(@"input.keyMapping.keyPress.keyDown", @"Keydown scancode = %d, unicode = %i", scan_code, key_id);
+				OO_LOG("input.keyMapping.keyPress.keyDown", "Keydown scancode = {}, unicode = {}", static_cast<int>(scan_code), static_cast<int>(key_id));
 
 				if (key_id > 0 && key_id <= [self numKeys]) 
 				{
@@ -540,7 +540,7 @@ std::string FormattedCharacter(unsigned code)
 				}
 				else 
 				{
-					OOLog(@"keys.test", @"Unhandled Keydown scancode/unicode: %d %i", scan_code, key_id);
+					OO_LOG("keys.test", "Unhandled Keydown scancode/unicode: {} {}", static_cast<int>(scan_code), static_cast<int>(key_id));
 				}
 				break;
 
@@ -576,8 +576,8 @@ std::string FormattedCharacter(unsigned code)
 					default:
 						;
 				}
-				OOLog(@"input.keyMapping.keyPress.keyUp", @"Keyup scancode = %d, unicode = %i, character = %c, shift = %d, ctrl = %d, alt = %d", scan_code, key_id, key_id, shift, ctrl, opt);
-				//OOLog(@"input.keyMapping.keyPress.keyUp", @"Keyup scancode = %d, shift = %d, ctrl = %d, alt = %d", scan_code, shift, ctrl, opt);
+				OO_LOG("input.keyMapping.keyPress.keyUp", "Keyup scancode = {}, unicode = {}, character = {}, shift = {}, ctrl = {}, alt = {}", static_cast<int>(scan_code), static_cast<int>(key_id), static_cast<char>(key_id), static_cast<int>(shift), static_cast<int>(ctrl), static_cast<int>(opt));
+				//OO_LOG("input.keyMapping.keyPress.keyUp", "Keyup scancode = {}, shift = {}, ctrl = {}, alt = {}", static_cast<int>(scan_code), static_cast<int>(shift), static_cast<int>(ctrl), static_cast<int>(opt));
 				
 				// translate scancode to unicode equiv
 				switch (kbd_event->key) 
@@ -629,7 +629,7 @@ std::string FormattedCharacter(unsigned code)
 					case SDLK_DELETE: key_id = gvDeleteKey; break;
 
 					default:
-						//OOLog(@"keys.test", @"Unhandled Keyup scancode with unicode = 0: %d", kbd_event->keysym.scancode);
+						//OO_LOG("keys.test", "Unhandled Keyup scancode with unicode = 0: {}", static_cast<int>(kbd_event->keysym.scancode));
 						;
 				}
 
@@ -639,7 +639,7 @@ std::string FormattedCharacter(unsigned code)
 				}
 				else 
 				{
-					//OOLog(@"keys.test", @"Unhandled Keyup scancode: %d", kbd_event->keysym.scancode);
+					//OO_LOG("keys.test", "Unhandled Keyup scancode: {}", static_cast<int>(kbd_event->keysym.scancode));
 				}
 				break;
 
