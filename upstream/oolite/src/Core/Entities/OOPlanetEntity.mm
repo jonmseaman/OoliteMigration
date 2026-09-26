@@ -1135,9 +1135,9 @@ static OOColor *ColorWithHSBColor(Vector c)
 
 			id amacros = oo::ObjectFromPList(DictionaryForKey(materialDefaults, "atmosphere-dynamic-macros"));
 
-			OOMaterial *dynamicShaderMaterial = [OOShaderMaterial shaderMaterialWithName:@"dynamic"
-																	configuration:aConfig
-																	macros:amacros
+			OOMaterial *dynamicShaderMaterial = [OOShaderMaterial shaderMaterialWithName:"dynamic"
+																	configuration:oo::PListFrom(aConfig)
+																	macros:oo::PListFrom(amacros)
 																	bindingTarget:self];
 																	
 			if (dynamicShaderMaterial == nil)
@@ -1152,9 +1152,9 @@ static OOColor *ColorWithHSBColor(Vector c)
 			id cloudConfig = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "clouds-dynamic-material"), { atmosphere });
 			id cloudMacros = oo::ObjectFromPList(DictionaryForKey(materialDefaults, "clouds-dynamic-macros"));
 
-			OOMaterial *cloudsMaterial = [OOShaderMaterial shaderMaterialWithName:@"dynamic"
-										configuration: cloudConfig
-										macros: cloudMacros
+			OOMaterial *cloudsMaterial = [OOShaderMaterial shaderMaterialWithName:"dynamic"
+										configuration: oo::PListFrom(cloudConfig)
+										macros: oo::PListFrom(cloudMacros)
 										bindingTarget: self];
 			if (cloudsMaterial == nil)
 			{
@@ -1176,9 +1176,9 @@ static OOColor *ColorWithHSBColor(Vector c)
 	{
 		id config = MaterialConfigWithTextures(DictionaryForKey(materialDefaults, "planet-material"), { diffuseMap, normalMap });
 
-		material = [OOShaderMaterial shaderMaterialWithName:oo::NSStringOrNil(textureName)
-											  configuration:config
-													 macros:oo::ObjectFromPList(macros)
+		material = [OOShaderMaterial shaderMaterialWithName:textureName
+											  configuration:oo::PListFrom(config)
+													 macros:macros
 											  bindingTarget:self];
 	}
 #endif
