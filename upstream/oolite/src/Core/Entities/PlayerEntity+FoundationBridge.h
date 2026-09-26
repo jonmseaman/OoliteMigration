@@ -111,6 +111,16 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (PlayerEntity.h)
 - (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker;	// -> -cxx_removeMissionDestinationMarker:
 - (NSMutableDictionary*) getMissionDestinations;	// -> -cxx_getMissionDestinations (a snapshot)
 
+// oo-3rb.252: status screen and manifest lists
+- (NSArray *) equipmentList;	// -> -cxx_equipmentList
+- (NSArray *) cargoList;	// -> -cxx_cargoList
+
+// oo-3rb.255: mission strings, special cargo and equipment scripts
+- (NSString *) specialCargo;	// -> -cxx_specialCargo
+- (BOOL) setPrimedEquipment:(NSString *)eqKey showMessage:(BOOL)showMsg;	// -> -cxx_setPrimedEquipment:showMessage: (nil: NO, unchanged)
+- (NSString *) primedEquipmentName:(NSInteger)offset;	// -> -cxx_primedEquipmentName:
+- (NSString *) currentPrimedEquipment;	// -> -cxx_currentPrimedEquipment
+
 @end
 
 #endif	// PLAYERENTITY_FOUNDATIONBRIDGE_H

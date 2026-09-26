@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource, OOSoundReferencePoint;
 @class OOJoystickManager, OOTexture, OOLaserShotEntity;
-@class StickProfileScreen, OOJSGuiScreenKeyDefinition;
+@class StickProfileScreen, OOJSGuiScreenKeyDefinition, OOJSScript;
 
 #define ALLOW_CUSTOM_VIEWS_WHILE_PAUSED	1
 #define SCRIPT_TIMER_INTERVAL			10.0
@@ -383,26 +383,26 @@ typedef enum
 	NSMutableDictionary		*commodityScripts;
 	NSMutableDictionary		*mission_variables;
 	NSMutableDictionary		*localVariables;
-	NSString				*_missionTitle;
+	std::optional<std::string>	_missionTitle;	// nullopt: the mission screen falls back on its default
 	NSInteger /*OOGUIRow*/	missionTextRow;
-	NSString				*missionChoice;
-	NSString				*missionKeyPress;
+	std::optional<std::string>	missionChoice;
+	std::optional<std::string>	missionKeyPress;
 	BOOL					_missionWithCallback;
 	BOOL					_missionAllowInterrupt;
 	BOOL					_missionTextEntry;
 	OOGUIScreenID			_missionExitScreen;
 	
-	NSString				*specialCargo;
+	std::optional<std::string>	specialCargo;
 	
 	std::vector<std::string>	commLog;	// trimmed by -cxx_commLog
 
-	NSMutableArray			*eqScripts;
+	std::vector<std::pair<std::string, oo::ObjCRef<OOJSScript *>>>	eqScripts;	// (key, script), in insertion order
 	
 	oo::PList				_missionOverlayDescriptor;	// null = none (was nil)
 	oo::PList				_missionBackgroundDescriptor;
 	OOGUIBackgroundSpecial	_missionBackgroundSpecial;
 	oo::PList				_equipScreenBackgroundDescriptor;
-	NSString				*_missionScreenID;
+	std::optional<std::string>	_missionScreenID;
 	
 	BOOL					found_equipment;
 	
@@ -429,7 +429,7 @@ typedef enum
 	double					script_time;
 	double					script_time_check;
 	double					script_time_interval;
-	NSString				*lastTextKey;
+	std::optional<std::string>	lastTextKey;	// nullopt: none
 	
 	double					ship_clock;
 	double					ship_clock_adjust;
@@ -440,7 +440,7 @@ typedef enum
 	int						fps_counter;
 	double					last_fps_check_time;
 	
-	NSString				*planetSearchString;
+	std::optional<std::string>	planetSearchString;	// the lower-cased typed prefix; nullopt: no search
 	
 	OOMatrix				playerRotMatrix;
 	
@@ -454,7 +454,7 @@ typedef enum
 // ...end save screen   
 
 	NSInteger				marketOffset;
-	OOCommodityType			marketSelectedCommodity;
+	std::optional<std::string>	marketSelectedCommodity;
 	OOMarketFilterMode		marketFilterMode;
 	OOMarketSorterMode		marketSorterMode;
 
@@ -541,7 +541,7 @@ typedef enum
 #endif
 
 	// keys!
-	NSDictionary   *keyconfig2_settings;
+	oo::PList::Dict	keyconfig2_settings;
 	std::map<std::string, uint16_t, std::less<>>	keyCodeLookups;	// lower-case key names -> key codes
 
 	oo::PList					n_key_roll_left;
@@ -694,7 +694,7 @@ typedef enum
 #endif
 
 	// dict to hold custom key config for OXP equipment with activate/mode functions
-	NSMutableArray			*customEquipActivation;
+	std::vector<oo::PList>	customEquipActivation;	// Dict entries, edited in place by KeyMapper/StickMapper/Controls
 	std::vector<BOOL>		customActivatePressed;	// parallel to customEquipActivation
 	std::vector<BOOL>		customModePressed;
 
@@ -786,12 +786,12 @@ typedef enum
 
 	// For PlayerEntity (StickMapper)
 	int						selFunctionIdx;
-	NSArray					*stickFunctions; 
+	std::vector<oo::PList>	stickFunctions;	// PlayerEntity (StickMapper)'s function list; empty until built
 	std::vector<oo::PList>	keyFunctions;	// PlayerEntity (KeyMapper)'s function list; empty until built
 	std::vector<oo::PList>	kbdLayouts;		// PlayerEntity (KeyMapper)'s keyboard layouts; empty until built
-	NSString				*keyShiftText;
-	NSString				*keyMod1Text;
-	NSString				*keyMod2Text;
+	std::string				keyShiftText;
+	std::string				keyMod1Text;
+	std::string				keyMod2Text;
 	
 	OOGalacticHyperspaceBehaviour galacticHyperspaceBehaviour;
 	NSPoint					galacticHyperspaceFixedCoords;
@@ -883,7 +883,7 @@ typedef enum
 - (NSDictionary *) commanderDataDictionary;
 - (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict;
 
-- (void) addEquipmentWithScriptToCustomKeyArray:(NSString *)equipmentKey;
+- (void) addEquipmentWithScriptToCustomKeyArray:(const std::string &)equipmentKey;
 - (void) validateCustomEquipActivationArray;
 
 - (void) doBookkeeping:(double) delta_t;
@@ -988,7 +988,7 @@ typedef enum
 - (BOOL) injectorsEngaged;
 - (BOOL) hyperspeedEngaged;
 
-- (NSMutableArray *) customEquipmentActivation;
+- (std::vector<oo::PList> *) cxx_customEquipmentActivation;	// the live entries
 
 
 - (double) clockTime;			// Note that this is not an OOTimeAbsolute
@@ -1022,7 +1022,7 @@ typedef enum
 - (NSUInteger) dialMaxMissiles;
 - (BOOL) dialIdentEngaged;
 - (void) setDialIdentEngaged:(BOOL)newValue;
-- (NSString *) specialCargo;
+- (std::optional<std::string>) cxx_specialCargo;
 - (std::optional<std::string>) cxx_dialTargetName;
 - (ShipEntity *) missileForPylon:(NSUInteger)value;
 - (void) safeAllMissiles;
@@ -1086,10 +1086,10 @@ typedef enum
 - (void) docked;
 
 - (void) setGuiToStatusScreen;
-- (NSArray *) equipmentList;	// Each entry is an array with a string followed by a boolean indicating availability (NO = damaged), then a color (or nil for default color).
-- (BOOL) setPrimedEquipment:(NSString *)eqKey showMessage:(BOOL)showMsg;
-- (NSString *) primedEquipmentName:(NSInteger)offset;
-- (NSString *) currentPrimedEquipment;
+- (std::vector<oo::PList>) cxx_equipmentList;	// Each entry is an Array: a string, a bool for availability (false = damaged), then a colour Object (absent for the default colour).
+- (BOOL) cxx_setPrimedEquipment:(const std::string &)eqKey showMessage:(BOOL)showMsg;
+- (std::optional<std::string>) cxx_primedEquipmentName:(NSInteger)offset;
+- (std::string) cxx_currentPrimedEquipment;	// "": primed-none
 - (NSUInteger) primedEquipmentCount;
 - (void) activatePrimableEquipment:(NSUInteger)index withMode:(OOPrimedEquipmentMode)mode;
 - (std::optional<std::string>) cxx_fastEquipmentA;
@@ -1099,7 +1099,7 @@ typedef enum
 
 - (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
 
-- (NSArray *) cargoList;
+- (std::vector<std::string>) cxx_cargoList;
 //- (NSArray *) cargoListForScripting; // now in ShipEntity
 - (unsigned) legalStatusOfCargoList;
 
