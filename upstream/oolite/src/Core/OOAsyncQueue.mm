@@ -35,6 +35,7 @@ SOFTWARE.
 #include <stdlib.h>
 
 #include "oofnd/String.hpp"
+#import "OOFoundationBridge.h"
 
 #ifndef OO_BUGGY_PTHREADS
 #if OOLITE_WINDOWS
@@ -115,7 +116,7 @@ OOINLINE void FreeElement(OOAsyncQueueElement *element)
 	
 	if (_elemCount != 0)
 	{
-		OOLogWARN(@"asyncQueue.nonEmpty", @"%@ deallocated while non-empty, flushing.", self);
+		OO_LOG_WARN("asyncQueue.nonEmpty", "{} deallocated while non-empty, flushing.", oo::DescriptionOf(self));
 		[self doEmptyQueueWithAcquiredLock];
 	}
 	
