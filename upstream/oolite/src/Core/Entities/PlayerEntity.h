@@ -41,7 +41,7 @@ MA 02110-1301, USA.
 @class GuiDisplayGen, OOTrumble, MyOpenGLView, HeadUpDisplay, ShipEntity;
 @class OOSound, OOSoundSource, OOSoundReferencePoint;
 @class OOJoystickManager, OOTexture, OOLaserShotEntity;
-@class StickProfileScreen, OOJSGuiScreenKeyDefinition, OOJSScript;
+@class StickProfileScreen, OOJSGuiScreenKeyDefinition;
 
 #define ALLOW_CUSTOM_VIEWS_WHILE_PAUSED	1
 #define SCRIPT_TIMER_INTERVAL			10.0
@@ -383,26 +383,26 @@ typedef enum
 	NSMutableDictionary		*commodityScripts;
 	NSMutableDictionary		*mission_variables;
 	NSMutableDictionary		*localVariables;
-	std::optional<std::string>	_missionTitle;	// nullopt: the mission screen falls back on its default
+	NSString				*_missionTitle;
 	NSInteger /*OOGUIRow*/	missionTextRow;
-	std::optional<std::string>	missionChoice;
-	std::optional<std::string>	missionKeyPress;
+	NSString				*missionChoice;
+	NSString				*missionKeyPress;
 	BOOL					_missionWithCallback;
 	BOOL					_missionAllowInterrupt;
 	BOOL					_missionTextEntry;
 	OOGUIScreenID			_missionExitScreen;
 	
-	std::optional<std::string>	specialCargo;
+	NSString				*specialCargo;
 	
 	std::vector<std::string>	commLog;	// trimmed by -cxx_commLog
 
-	std::vector<std::pair<std::string, oo::ObjCRef<OOJSScript *>>>	eqScripts;	// (key, script), in insertion order
+	NSMutableArray			*eqScripts;
 	
 	oo::PList				_missionOverlayDescriptor;	// null = none (was nil)
 	oo::PList				_missionBackgroundDescriptor;
 	OOGUIBackgroundSpecial	_missionBackgroundSpecial;
 	oo::PList				_equipScreenBackgroundDescriptor;
-	std::optional<std::string>	_missionScreenID;
+	NSString				*_missionScreenID;
 	
 	BOOL					found_equipment;
 	
@@ -420,16 +420,16 @@ typedef enum
 	
 	oo::PList::Dict			shipyard_record;	// shipdata key by shipyard ID of each ship bought
 	
-	std::map<std::string, oo::PList, std::less<>>	missionDestinations;	// validated marker Dicts by -markerKey:
-	std::vector<std::string>	roleWeights;
-	// temporary flags for role actions taking multiple steps, cleared on jump (signed integers)
-	oo::PList::Dict			roleWeightFlags;
-	std::vector<OOSystemID>	roleSystemList; // list of recently visited sysids
+	NSMutableDictionary		*missionDestinations;
+	NSMutableArray			*roleWeights;
+	// temporary flags for role actions taking multiple steps, cleared on jump
+	NSMutableDictionary		*roleWeightFlags;
+	NSMutableArray			*roleSystemList; // list of recently visited sysids
 	
 	double					script_time;
 	double					script_time_check;
 	double					script_time_interval;
-	std::optional<std::string>	lastTextKey;	// nullopt: none
+	NSString				*lastTextKey;
 	
 	double					ship_clock;
 	double					ship_clock_adjust;
@@ -440,7 +440,7 @@ typedef enum
 	int						fps_counter;
 	double					last_fps_check_time;
 	
-	std::optional<std::string>	planetSearchString;	// the lower-cased typed prefix; nullopt: no search
+	NSString				*planetSearchString;
 	
 	OOMatrix				playerRotMatrix;
 	
@@ -454,7 +454,7 @@ typedef enum
 // ...end save screen   
 
 	NSInteger				marketOffset;
-	std::optional<std::string>	marketSelectedCommodity;
+	OOCommodityType			marketSelectedCommodity;
 	OOMarketFilterMode		marketFilterMode;
 	OOMarketSorterMode		marketSorterMode;
 
@@ -541,7 +541,7 @@ typedef enum
 #endif
 
 	// keys!
-	oo::PList::Dict	keyconfig2_settings;
+	NSDictionary   *keyconfig2_settings;
 	std::map<std::string, uint16_t, std::less<>>	keyCodeLookups;	// lower-case key names -> key codes
 
 	oo::PList					n_key_roll_left;
@@ -694,7 +694,7 @@ typedef enum
 #endif
 
 	// dict to hold custom key config for OXP equipment with activate/mode functions
-	std::vector<oo::PList>	customEquipActivation;	// Dict entries, edited in place by KeyMapper/StickMapper/Controls
+	NSMutableArray			*customEquipActivation;
 	std::vector<BOOL>		customActivatePressed;	// parallel to customEquipActivation
 	std::vector<BOOL>		customModePressed;
 
@@ -786,12 +786,12 @@ typedef enum
 
 	// For PlayerEntity (StickMapper)
 	int						selFunctionIdx;
-	std::vector<oo::PList>	stickFunctions;	// PlayerEntity (StickMapper)'s function list; empty until built
+	NSArray					*stickFunctions; 
 	std::vector<oo::PList>	keyFunctions;	// PlayerEntity (KeyMapper)'s function list; empty until built
 	std::vector<oo::PList>	kbdLayouts;		// PlayerEntity (KeyMapper)'s keyboard layouts; empty until built
-	std::string				keyShiftText;
-	std::string				keyMod1Text;
-	std::string				keyMod2Text;
+	NSString				*keyShiftText;
+	NSString				*keyMod1Text;
+	NSString				*keyMod2Text;
 	
 	OOGalacticHyperspaceBehaviour galacticHyperspaceBehaviour;
 	NSPoint					galacticHyperspaceFixedCoords;
@@ -838,10 +838,10 @@ typedef enum
 
 - (void) unloadCargoPods;
 - (void) loadCargoPods;
-- (void) unloadAllCargoPodsForType:(const std::string &)type toManifest:(OOCommodityMarket *) manifest;
-- (void) unloadCargoPodsForType:(const std::string &)type amount:(OOCargoQuantity) quantity;
-- (void) loadCargoPodsForType:(const std::string &)type fromManifest:(OOCommodityMarket *) manifest;
-- (void) loadCargoPodsForType:(const std::string &)type amount:(OOCargoQuantity) quantity;
+- (void) unloadAllCargoPodsForType:(OOCommodityType)type toManifest:(OOCommodityMarket *) manifest;
+- (void) unloadCargoPodsForType:(OOCommodityType)type amount:(OOCargoQuantity) quantity;
+- (void) loadCargoPodsForType:(OOCommodityType)type fromManifest:(OOCommodityMarket *) manifest;
+- (void) loadCargoPodsForType:(OOCommodityType)type amount:(OOCargoQuantity) quantity;
 - (OOCommodityMarket *) shipCommodityData;
 
 - (OOCreditsQuantity) deciCredits;
@@ -883,7 +883,7 @@ typedef enum
 - (NSDictionary *) commanderDataDictionary;
 - (BOOL)setCommanderDataFromDictionary:(NSDictionary *) dict;
 
-- (void) addEquipmentWithScriptToCustomKeyArray:(const std::string &)equipmentKey;
+- (void) addEquipmentWithScriptToCustomKeyArray:(NSString *)equipmentKey;
 - (void) validateCustomEquipActivationArray;
 
 - (void) doBookkeeping:(double) delta_t;
@@ -988,7 +988,7 @@ typedef enum
 - (BOOL) injectorsEngaged;
 - (BOOL) hyperspeedEngaged;
 
-- (std::vector<oo::PList> *) cxx_customEquipmentActivation;	// the live entries
+- (NSMutableArray *) customEquipmentActivation;
 
 
 - (double) clockTime;			// Note that this is not an OOTimeAbsolute
@@ -1022,7 +1022,7 @@ typedef enum
 - (NSUInteger) dialMaxMissiles;
 - (BOOL) dialIdentEngaged;
 - (void) setDialIdentEngaged:(BOOL)newValue;
-- (std::optional<std::string>) cxx_specialCargo;
+- (NSString *) specialCargo;
 - (std::optional<std::string>) cxx_dialTargetName;
 - (ShipEntity *) missileForPylon:(NSUInteger)value;
 - (void) safeAllMissiles;
@@ -1071,11 +1071,11 @@ typedef enum
 
 - (BOOL) cxx_endScenario:(const std::string &)key;
 
-- (std::vector<std::string>) cxx_roleWeights;	// a copy
+- (NSMutableArray *) roleWeights;
 - (void) addRoleForAggression:(ShipEntity *)victim;
 - (void) addRoleForMining;
-- (void) cxx_addRoleToPlayer:(const std::string &)role;
-- (void) cxx_addRoleToPlayer:(const std::string &)role inSlot:(NSUInteger)slot;
+- (void) addRoleToPlayer:(NSString *)role;
+- (void) addRoleToPlayer:(NSString *)role inSlot:(NSUInteger)slot;
 - (void) clearRoleFromPlayer:(BOOL)includingLongRange;
 - (void) clearRolesFromPlayer:(float)chance;
 - (NSUInteger) maxPlayerRoles;
@@ -1086,10 +1086,10 @@ typedef enum
 - (void) docked;
 
 - (void) setGuiToStatusScreen;
-- (std::vector<oo::PList>) cxx_equipmentList;	// Each entry is an Array: a string, a bool for availability (false = damaged), then a colour Object (absent for the default colour).
-- (BOOL) cxx_setPrimedEquipment:(const std::string &)eqKey showMessage:(BOOL)showMsg;
-- (std::optional<std::string>) cxx_primedEquipmentName:(NSInteger)offset;
-- (std::string) cxx_currentPrimedEquipment;	// "": primed-none
+- (NSArray *) equipmentList;	// Each entry is an array with a string followed by a boolean indicating availability (NO = damaged), then a color (or nil for default color).
+- (BOOL) setPrimedEquipment:(NSString *)eqKey showMessage:(BOOL)showMsg;
+- (NSString *) primedEquipmentName:(NSInteger)offset;
+- (NSString *) currentPrimedEquipment;
 - (NSUInteger) primedEquipmentCount;
 - (void) activatePrimableEquipment:(NSUInteger)index withMode:(OOPrimedEquipmentMode)mode;
 - (std::optional<std::string>) cxx_fastEquipmentA;
@@ -1097,9 +1097,9 @@ typedef enum
 - (void) cxx_setFastEquipmentA:(const std::optional<std::string> &)eqKey;
 - (void) cxx_setFastEquipmentB:(const std::optional<std::string> &)eqKey;
 
-- (OOCreditsQuantity) cxx_adjustPriceByScriptForEqKey:(const std::string &)eqKey withCurrent:(OOCreditsQuantity)price;
+- (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price;
 
-- (std::vector<std::string>) cxx_cargoList;
+- (NSArray *) cargoList;
 //- (NSArray *) cargoListForScripting; // now in ShipEntity
 - (unsigned) legalStatusOfCargoList;
 
@@ -1122,8 +1122,8 @@ typedef enum
 - (void) highlightEquipShipScreenKey:(const std::string &)key;
 - (void) showInformationForSelectedUpgrade;
 - (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
-- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(id)eqKey;	// shared selector (proposed ADR-0043): an Objective-C string
-- (BOOL) cxx_setWeaponMount:(OOWeaponFacing)facing toWeapon:(const std::string &)eqKey inContext:(const std::optional<std::string> &) context;
+- (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(NSString *)eqKey;
+- (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context;
 
 - (BOOL) changePassengerBerths:(int) addRemove;
 - (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type;
@@ -1179,7 +1179,7 @@ typedef enum
 - (float) trumbleAppetiteAccumulator;
 - (void) setTrumbleAppetiteAccumulator:(float)value;
 
-- (void) mungChecksumWithString:(const std::optional<std::string> &)str;	// its UTF-16 units; nullopt does nothing
+- (void) mungChecksumWithNSString:(NSString *)str;
 
 - (std::optional<std::string>) cxx_screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;
 
@@ -1294,17 +1294,17 @@ typedef enum
 - (void) setWormhole:(WormholeEntity *)newWormhole;
 - (void) addScannedWormhole:(WormholeEntity*)wormhole;
 
-- (void) initialiseMissionDestinations:(const oo::PList &)destinations andLegacy:(const oo::PList &)legacy;	// used only if a Dict / an Array
-- (std::optional<std::string>)markerKey:(const oo::PList &)marker;
-- (void) cxx_addMissionDestinationMarker:(const oo::PList &)marker;
-- (BOOL) cxx_removeMissionDestinationMarker:(const oo::PList &)marker;
-- (oo::PList) cxx_getMissionDestinations;	// a snapshot Dict
+- (void) initialiseMissionDestinations:(NSDictionary *)destinations andLegacy:(NSArray *)legacy;
+- (NSString *)markerKey:(NSDictionary*)marker;
+- (void) addMissionDestinationMarker:(NSDictionary *)marker;
+- (BOOL) removeMissionDestinationMarker:(NSDictionary *)marker;
+- (NSMutableDictionary*) getMissionDestinations;
 
 - (oo::PList::Dict *) cxx_shipyardRecord;
 
 - (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot;
 
-- (void) cxx_showShipModelWithKey:(const std::string &)shipKey shipData:(const oo::PList &)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(const std::optional<std::string> &)context;	// null shipData: the registry's
+- (void) showShipModelWithKey:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(NSString *)context;
 
 /* Fractional expression of amount of entry inside a planet's atmosphere. 0.0f is out of atmosphere,
    1.0f is fully in and is normally associated with the point of ship destruct due to altitude.

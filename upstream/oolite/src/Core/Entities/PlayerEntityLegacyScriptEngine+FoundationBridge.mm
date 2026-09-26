@@ -132,7 +132,7 @@ cxx_ counterpart and converts the result exactly as the old method produced it (
 
 - (NSUInteger) eqScriptIndexForKey:(NSString *)eq_key
 {
-	if (eq_key == nil) return eqScripts.size();
+	if (eq_key == nil) return [eqScripts count];
 	return [self cxx_eqScriptIndexForKey:oo::StdString(eq_key)];
 }
 

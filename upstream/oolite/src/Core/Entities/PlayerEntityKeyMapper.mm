@@ -173,30 +173,6 @@ bool IsEmptyString(const oo::PList *value)
 	return string != nullptr && string->empty();
 }
 
-// customEquipActivation entry <index>: a null PList past the end (-objectAtIndex: raised there).
-const oo::PList &CustomEquipEntry(const std::vector<oo::PList> &entries, NSUInteger index)
-{
-	static const oo::PList none;
-	return (index < entries.size()) ? entries[index] : none;
-}
-
-
-// The fields of customEquipActivation entry <index>, edited in place; nullptr past the end or when
-// the entry is not a dictionary (its -setObject:forKey: / -removeObjectForKey: raised there).
-oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger index)
-{
-	return (index < entries.size()) ? entries[index].getIf<oo::PList::Dict>() : nullptr;
-}
-
-
-// keyconfig2_settings' entry for <key>: null when absent (-objectForKey:, nil for a nil key).
-oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<std::string> &key)
-{
-	if (!key.has_value())  return oo::PList();
-	const auto it = settings.find(*key);
-	return (it != settings.end()) ? it->second : oo::PList();
-}
-
 }	// namespace
 
 @interface PlayerEntity (KeyMapperInternal)
@@ -374,7 +350,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		oo::PList definitions;
 		if (![self entryIsDictCustomEquip:selected_entry])
 		{
-			definitions = KeyConfigEntry(keyconfig2_settings, OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_DEFINITION)));
+			definitions = oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(OptionalStringForKey(selected_entry, oo::StdString(KEY_KC_DEFINITION)))]);
 		}
 		else
 		{
@@ -428,23 +404,22 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 
 				OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(eq)];
 
-				// the customEquipActivation entry is edited in place, as before
-				oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx);
-				if ([item defaultActivateKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYACTIVATE) && fields != nullptr)
+				// the live (mutable) customEquipActivation element is edited in place, as before
+				if ([item defaultActivateKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYACTIVATE))
 				{
-					fields->insert_or_assign(*lookupKey, oo::PListFrom([item defaultActivateKey]));
+					[[customEquipActivation objectAtIndex:idx] setObject:[item defaultActivateKey] forKey:oo::NSStringOrNil(lookupKey)];
 					update = true;
 				}
-				if ([item defaultModeKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYMODE) && fields != nullptr)
+				if ([item defaultModeKey] && lookupKey == oo::StdString(CUSTOMEQUIP_KEYMODE))
 				{
-					fields->insert_or_assign(*lookupKey, oo::PListFrom([item defaultModeKey]));
+					[[customEquipActivation objectAtIndex:idx] setObject:[item defaultModeKey] forKey:oo::NSStringOrNil(lookupKey)];
 					update = true;
 				}
 
 				if (update) 
 				{
 					NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-					[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+					[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 				}
 			}
 			
@@ -494,9 +469,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		key = oo::StdString(CUSTOMEQUIP_KEYMODE);
 	}
 	if (!eq) return oo::PList();
-	for (i = 0; i < customEquipActivation.size(); i++)
+	for (i = 0; i < [customEquipActivation count]; i++)
 	{
-		const oo::PList equip = customEquipActivation[i];
+		const oo::PList equip = oo::PListFrom([customEquipActivation objectAtIndex:i]);
 		if (OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPKEY)) == eq)
 		{
 			const oo::PList *array = equip.get<oo::PList::Array>(key);	// -oo_arrayForKey:
@@ -520,9 +495,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 		eq = oo::str::replaceOccurrences(key_def, "mode_", "");
 	}
 	if (!eq) return -1;
-	for (i = 0; i < customEquipActivation.size(); i++)
+	for (i = 0; i < [customEquipActivation count]; i++)
 	{
-		if (OptionalStringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPKEY)) == eq)
+		if (OptionalStringForKey(oo::PListFrom([customEquipActivation objectAtIndex:i]), oo::StdString(CUSTOMEQUIP_EQUIPKEY)) == eq)
 		{
 			return i;
 		}
@@ -1015,13 +990,13 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 					// Find out what's assigned for this function currently.
 					assignment = oo::OptionalString([PLAYER keyBindingDescription2:oo::NSStringOrNil(definition)]);
 					override = (definition && overrides.find(*definition) != nullptr ? "Yes" : ""); // work out whether this assignment is overriding the setting in keyconfig2.plist
-					validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
+					validate = [self validateKey:definition.value_or("") checkKeys:oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(definition)])];
 				}
 				else
 				{
 					const std::optional<std::string> custom_keytype = [self getCustomEquipKeyDefType:definition.value_or("")];
 					NSUInteger idx = [self getCustomEquipIndex:definition.value_or("")];
-					const oo::PList &equip = CustomEquipEntry(customEquipActivation, idx);
+					const oo::PList equip = oo::PListFrom([customEquipActivation objectAtIndex:idx]);
 					const oo::PList *keyArray = equip.get<oo::PList::Array>(custom_keytype.value_or(""));	// -oo_arrayForKey:
 					assignment = oo::OptionalString([PLAYER getKeyBindingDescription:(keyArray != nullptr ? oo::ObjectFromPList(*keyArray) : nil)]);
 					OOEquipmentType	*item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPKEY)))];
@@ -1237,13 +1212,13 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_debug_shaders")) keyDef:"key_debug_shaders"]);
 	funcList.push_back([self makeKeyGuiDict:oo::StdString(DESC(@"oolite-keydesc-key_debug_off")) keyDef:"key_debug_off"]);
 
-	if (customEquipActivation.size() > 0) 
+	if ([customEquipActivation count] > 0) 
 	{
 		funcList.push_back([self makeKeyGuiDictHeader:oo::StdString(DESC(@"oolite-keydesc-header-oxp-equip"))]);
 		int i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; i < [customEquipActivation count]; i++)
 		{
-			const oo::PList equip = customEquipActivation[i];
+			const oo::PList equip = oo::PListFrom([customEquipActivation objectAtIndex:i]);
 			const std::string equipName = DescriptionOfString(OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPNAME)));	// %@: "(null)" for nil
 			const std::string equipKey = DescriptionOfString(OptionalStringForKey(equip, oo::StdString(CUSTOMEQUIP_EQUIPKEY)));
 			funcList.push_back([self makeKeyGuiDict:oo::str::format("Activate '%s'", equipName.c_str())
@@ -1489,7 +1464,7 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	for (i = 0; i < keyFunctions.size(); i++)
 	{
 		const std::optional<std::string> definition = OptionalStringForKey(keyFunctions[i], oo::StdString(KEY_KC_DEFINITION));
-		const std::optional<std::string> validate = [self validateKey:definition.value_or("") checkKeys:KeyConfigEntry(keyconfig2_settings, definition)];
+		const std::optional<std::string> validate = [self validateKey:definition.value_or("") checkKeys:oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringOrNil(definition)])];
 		if (validate)
 		{
 			failed.push_back(*validate);
@@ -1551,9 +1526,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	
 	if ([self entryIsCustomEquip:key]) {
 		NSUInteger i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; i < [customEquipActivation count]; i++)
 		{
-			const std::optional<std::string> equipKey = OptionalStringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPKEY));
+			const std::optional<std::string> equipKey = OptionalStringForKey(oo::PListFrom([customEquipActivation objectAtIndex:i]), oo::StdString(CUSTOMEQUIP_EQUIPKEY));
 			inflight_keys.push_back(oo::str::format("activate_%s", DescriptionOfString(equipKey).c_str()));
 			inflight_keys.push_back(oo::str::format("mode_%s", DescriptionOfString(equipKey).c_str()));
 		}
@@ -1650,14 +1625,13 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 			oo::PList current;
 			if (![self entryIsCustomEquip:search])
 			{
-				current = KeyConfigEntry(keyconfig2_settings, search);
+				current = oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringFrom(search)]);
 			}
 			else
 			{
 				NSUInteger idx = [self getCustomEquipIndex:search];
 				const std::optional<std::string> keytype = [self getCustomEquipKeyDefType:search];
-				const oo::PList *field = keytype.has_value() ? CustomEquipEntry(customEquipActivation, idx).find(*keytype) : nullptr;
-				current = (field != nullptr) ? *field : oo::PList();
+				current = oo::PListFrom([[customEquipActivation objectAtIndex:idx] objectForKey:oo::NSStringOrNil(keytype)]);
 			}
 			for (j = 0; j < current.count(); j++)
 			{
@@ -1757,8 +1731,11 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	else
 	{
 		NSUInteger idx = [self getCustomEquipIndex:key];
-		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  (*fields)[[self getCustomEquipKeyDefType:key].value_or("")] = key_list;	// in place
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		oo::PList custEquip = oo::PListFrom([customEquipActivation objectAtIndex:idx]);
+		if (oo::PList::Dict *fields = custEquip.getIf<oo::PList::Dict>())  (*fields)[[self getCustomEquipKeyDefType:key].value_or("")] = key_list;
+		// elements stay mutable: other code edits them in place
+		[customEquipActivation replaceObjectAtIndex:idx withObject:[[oo::ObjectFromPList(custEquip) mutableCopy] autorelease]];
+		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1778,8 +1755,11 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	else
 	{
 		NSUInteger idx = [self getCustomEquipIndex:key];
-		if (oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, idx))  fields->erase([self getCustomEquipKeyDefType:key].value_or(""));	// in place
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		oo::PList custEquip = oo::PListFrom([customEquipActivation objectAtIndex:idx]);
+		if (oo::PList::Dict *fields = custEquip.getIf<oo::PList::Dict>())  fields->erase([self getCustomEquipKeyDefType:key].value_or(""));
+		// elements stay mutable: other code edits them in place
+		[customEquipActivation replaceObjectAtIndex:idx withObject:[[oo::ObjectFromPList(custEquip) mutableCopy] autorelease]];
+		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1798,11 +1778,9 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 	}
 	else
 	{
-		// the customEquipActivation entry is edited in place, as before
-		const std::optional<std::string> keyDefType = [self getCustomEquipKeyDefType:key];
-		oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, [self getCustomEquipIndex:key]);
-		if (fields != nullptr && keyDefType.has_value())  fields->erase(*keyDefType);
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		// the live (mutable) customEquipActivation element is edited in place, as before
+		[[customEquipActivation objectAtIndex:[self getCustomEquipIndex:key]] removeObjectForKey:oo::NSStringOrNil([self getCustomEquipKeyDefType:key])];
+		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 	// reload settings
 	[self initKeyConfigSettings];
@@ -1814,26 +1792,24 @@ oo::PList KeyConfigEntry(const oo::PList::Dict &settings, const std::optional<st
 {
 	NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
 	[defaults removeObjectForKey:KEYCONFIG_OVERRIDES];
-	if (customEquipActivation.size() > 0)
+	if ([customEquipActivation count] > 0)
 	{
 		NSUInteger i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; i < [customEquipActivation count]; i++)
 		{
-			const std::optional<std::string> eq = OptionalStringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPKEY));
+			const std::optional<std::string> eq = OptionalStringForKey(oo::PListFrom([customEquipActivation objectAtIndex:i]), oo::StdString(CUSTOMEQUIP_EQUIPKEY));
 			OOEquipmentType *item = [OOEquipmentType equipmentTypeWithIdentifier:oo::NSStringOrNil(eq)];
-			oo::PList::Dict *fields = CustomEquipFields(customEquipActivation, i);	// edited in place
-			if (fields == nullptr)  continue;
-			if ([item defaultActivateKey])
-				fields->insert_or_assign(oo::StdString(CUSTOMEQUIP_KEYACTIVATE), oo::PListFrom([item defaultActivateKey]));
+			if ([item defaultActivateKey]) 
+				[[customEquipActivation objectAtIndex:i] setObject:[item defaultActivateKey] forKey:CUSTOMEQUIP_KEYACTIVATE];
 			else
-				fields->erase(oo::StdString(CUSTOMEQUIP_KEYACTIVATE));
+				[[customEquipActivation objectAtIndex:i] removeObjectForKey:CUSTOMEQUIP_KEYACTIVATE];
 
 			if ([item defaultModeKey])
-				fields->insert_or_assign(oo::StdString(CUSTOMEQUIP_KEYMODE), oo::PListFrom([item defaultModeKey]));
+				[[customEquipActivation objectAtIndex:i] setObject:[item defaultModeKey] forKey:CUSTOMEQUIP_KEYMODE];
 			else
-				fields->erase(oo::StdString(CUSTOMEQUIP_KEYMODE));
+				[[customEquipActivation objectAtIndex:i] removeObjectForKey:CUSTOMEQUIP_KEYMODE];
 		}
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 	// reload settings
 	[self initKeyConfigSettings];

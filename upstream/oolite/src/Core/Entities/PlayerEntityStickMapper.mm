@@ -100,33 +100,18 @@ int NumberAfterColon(const std::string &key)
 }
 
 
+// A mutable copy of a custom equipment entry, as -mutableCopy made (PlayerEntityKeyMapper edits
+// these in place).
+id MutableObjectFrom(const oo::PList &entry)
+{
+	return [[oo::ObjectFromPList(entry) mutableCopy] autorelease];
+}
+
+
 // -oo_integerForKey: of an entry that may be absent (nil: 0).
 NSInteger IntegerIn(const oo::PList *dict, std::string_view key)
 {
 	return dict != nullptr ? dict->get<NSInteger>(key) : 0;
-}
-
-
-// stickFunctions entry <index>: a null PList past the end (-objectAtIndex: raised there).
-const oo::PList &StickFunctionAt(const std::vector<oo::PList> &entries, NSUInteger index)
-{
-	static const oo::PList none;
-	return (index < entries.size()) ? entries[index] : none;
-}
-
-// customEquipActivation entry <index>: a null PList past the end (-objectAtIndex: raised there).
-const oo::PList &CustomEquipEntry(const std::vector<oo::PList> &entries, NSUInteger index)
-{
-	static const oo::PList none;
-	return (index < entries.size()) ? entries[index] : none;
-}
-
-
-// The fields of customEquipActivation entry <index>, edited in place; nullptr past the end or when
-// the entry is not a dictionary (its -setObject:forKey: / -removeObjectForKey: raised there).
-oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger index)
-{
-	return (index < entries.size()) ? entries[index].getIf<oo::PList::Dict>() : nullptr;
 }
 
 }	// namespace
@@ -136,7 +121,8 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 
 - (void) resetStickFunctions
 {
-	stickFunctions.clear();
+	[stickFunctions release];
+	stickFunctions = nil;
 }
 
 
@@ -263,7 +249,8 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 			return;
 		}
 		
-		const oo::PList &entry = StickFunctionAt(stickFunctions, selFunctionIdx);
+		// stickFunctions is PlayerEntity's Objective-C array of the function entries.
+		const oo::PList entry = oo::PListFrom([stickFunctions objectAtIndex: selFunctionIdx]);
 		int hw=[ObjectForKey(entry, KEY_ALLOWABLE) intValue];
 		[stickHandler setCallback: @selector(updateFunction:)
 						   object: self 
@@ -309,7 +296,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	}
 	// What moved?
 	int function;
-	const oo::PList &entry = StickFunctionAt(stickFunctions, selFunctionIdx);
+	const oo::PList entry = oo::PListFrom([stickFunctions objectAtIndex:selFunctionIdx]);
 	if(hwDict.get<bool>(oo::StdString(STICK_ISAXIS)))
 	{
 		function=entry.get<int>(KEY_AXISFN);
@@ -368,11 +355,13 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 			function -= 10000;
 			key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
 		}
-		// the customEquipActivation entry is edited in place
-		if (oo::PList::Dict *custEquipDict = CustomEquipFields(customEquipActivation, function))  (*custEquipDict)[key] = hwDict;
+		// customEquipActivation is PlayerEntity's Objective-C array of mutable entries.
+		oo::PList custEquip = oo::PListFrom([customEquipActivation objectAtIndex:function]);
+		if (oo::PList::Dict *custEquipDict = custEquip.getIf<oo::PList::Dict>())  (*custEquipDict)[key] = hwDict;
+		[customEquipActivation replaceObjectAtIndex:function withObject:MutableObjectFrom(custEquip)];
 		[self checkCustomEquipButtons:hwDict ignore:function];
 		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 	else 
 	{
@@ -403,11 +392,11 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	const std::string activateKey = oo::StdString(CUSTOMEQUIP_BUTTONACTIVATE);
 	const std::string modeKey = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
 	int i;
-	for (i = 0; i < customEquipActivation.size(); i++)
+	for (i = 0; i < [customEquipActivation count]; i++)
 	{
 		if (i != idx) {
-			const oo::PList original = customEquipActivation[i];
-			oo::PList &custEquip = customEquipActivation[i];	// edited in place
+			const oo::PList original = oo::PListFrom([customEquipActivation objectAtIndex:i]);
+			oo::PList custEquip = original;
 			oo::PList::Dict *custEquipDict = custEquip.getIf<oo::PList::Dict>();
 			const oo::PList *bf = original.find(activateKey);
 			if (IntegerIn(bf, stickNumberKey) == stickFn.get<NSInteger>(stickNumberKey) &&
@@ -423,6 +412,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 			{
 				custEquipDict->erase(modeKey);
 			}
+			[customEquipActivation replaceObjectAtIndex:i withObject:MutableObjectFrom(custEquip)];
 		}
 	}
 }
@@ -431,7 +421,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 - (void) removeFunction:(int)idx
 {
 	OOJoystickManager	*stickHandler = [OOJoystickManager sharedStickHandler];
-	const oo::PList		&entry = StickFunctionAt(stickFunctions, idx);
+	const oo::PList		entry = oo::PListFrom([stickFunctions objectAtIndex:idx]);
 	id					butfunc = ObjectForKey(entry, KEY_BUTTONFN);	// -intValue as before
 	id					axfunc = ObjectForKey(entry, KEY_AXISFN);
 	BOOL				custom = NO;
@@ -453,8 +443,9 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 				bf -= 10000;
 				key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
 			}
-			// edited in place; both tests reduce to "remove key if present"
-			if (oo::PList::Dict *custEquipDict = CustomEquipFields(customEquipActivation, bf))  custEquipDict->erase(key);
+			oo::PList custEquip = oo::PListFrom([customEquipActivation objectAtIndex:bf]);
+			if (oo::PList::Dict *custEquipDict = custEquip.getIf<oo::PList::Dict>())  custEquipDict->erase(key);	// both tests reduce to "remove key if present"
+			[customEquipActivation replaceObjectAtIndex:bf withObject:MutableObjectFrom(custEquip)];
 		}
 		else 
 		{
@@ -472,7 +463,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	else 
 	{
 		NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-		[defaults setObject:oo::ObjectFromPList(oo::PList(customEquipActivation)) forKey:KEYCONFIG_CUSTOMEQUIP];
+		[defaults setObject:customEquipActivation forKey:KEYCONFIG_CUSTOMEQUIP];
 	}
 	
 	unsigned skip;
@@ -493,14 +484,15 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 	[gui cxx_setArray:std::vector<std::string>{ "Function", "Assigned to", "Type" }
 		   forRow:GUI_ROW_HEADING];
 
-	if(stickFunctions.empty())	// (the list is never empty once built)
+	if(!stickFunctions)
 	{
-		stickFunctions = [self stickFunctionList];
+		// PlayerEntity keeps the entries as an Objective-C array.
+		stickFunctions = [oo::ObjectFromPList(oo::PList([self stickFunctionList])) retain];
 	}
 	const oo::PList assignedAxes = [stickHandler axisFunctions];
 	const oo::PList assignedButs = [stickHandler buttonFunctions];
 	
-	NSUInteger i, n_functions = stickFunctions.size();
+	NSUInteger i, n_functions = [stickFunctions count];
 	NSInteger n_rows, start_row, previous = 0;
 	
 	if (skip >= n_functions)
@@ -539,7 +531,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 		
 		for(i=0; i < (n_functions - skip) && (int)i < n_rows; i++)
 		{
-			const oo::PList &entry = StickFunctionAt(stickFunctions, i + skip);
+			const oo::PList entry = oo::PListFrom([stickFunctions objectAtIndex: i + skip]);
 			if (entry.find(KEY_HEADER) != nullptr) {
 				const std::optional<std::string> header = OptionalStringForKey(entry, KEY_HEADER);
 				[gui cxx_setArray:ColumnsUpToNil({ header, std::string(), std::string() }) forRow:i + start_row];
@@ -577,7 +569,7 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 								bf -= 10000;
 								key = oo::StdString(CUSTOMEQUIP_BUTTONMODE);
 							}
-							const oo::PList &custom = CustomEquipEntry(customEquipActivation, bf);
+							const oo::PList custom = oo::PListFrom([customEquipActivation objectAtIndex:bf]);
 							assignment=[self describeStickDict:custom.find(key)];
 						}
 						break;
@@ -959,18 +951,18 @@ oo::PList::Dict *CustomEquipFields(std::vector<oo::PList> &entries, NSUInteger i
 					 axisfn:AXIS_FIELD_OF_VIEW
 					  butfn:BUTTON_DEC_FIELD_OF_VIEW]);
 #endif
-	if (customEquipActivation.size() > 0) {
+	if ([customEquipActivation count] > 0) {
 		funcList.push_back([self makeStickGuiDictHeader:oo::StdString(DESC(@"stickmapper-header-oxp-equip"))]);
 		int i;
-		for (i = 0; i < customEquipActivation.size(); i++)
+		for (i = 0; i < [customEquipActivation count]; i++)
 		{
 			funcList.push_back(
-			[self makeStickGuiDict:oo::str::format("Activate '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPNAME)))).c_str())
+			[self makeStickGuiDict:oo::str::format("Activate '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(oo::PListFrom([customEquipActivation objectAtIndex:i]), oo::StdString(CUSTOMEQUIP_EQUIPNAME)))).c_str())
 						allowable:HW_BUTTON
 							axisfn:STICK_NOFUNCTION
 							butfn:(i+10000)]);
 			funcList.push_back(
-			[self makeStickGuiDict:oo::str::format("Mode '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(customEquipActivation[i], oo::StdString(CUSTOMEQUIP_EQUIPNAME)))).c_str())
+			[self makeStickGuiDict:oo::str::format("Mode '%s'", oo::DescriptionOf(oo::NSStringOrNil(OptionalStringForKey(oo::PListFrom([customEquipActivation objectAtIndex:i]), oo::StdString(CUSTOMEQUIP_EQUIPNAME)))).c_str())
 						allowable:HW_BUTTON
 							axisfn:STICK_NOFUNCTION
 							butfn:(i+20000)]);

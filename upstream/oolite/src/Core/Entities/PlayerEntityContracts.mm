@@ -1083,16 +1083,16 @@ for (unsigned i=0;i<amount;i++)
 
 	current_cargo = [self cargoQuantityOnBoard];
 
-	// roleWeightFlags entries are signed integers, as +numberWithInt: was
+	// roleWeightFlags is still a Foundation ivar (oo-3rb.75): its entry converted at the call, a signed integer as +numberWithInt:
 	if ([shipCommodityData cxx_exportLegalityForGood:type] > 0)
 	{
 		[self addRoleToPlayer:@"trader-smuggler"];
-		roleWeightFlags.insert_or_assign("bought-illegal", oo::PList::signedInteger(1));
+		[roleWeightFlags setObject:oo::ObjectFromPList(oo::PList::signedInteger(1)) forKey:@"bought-illegal"];
 	}
 	else
 	{
 		[self addRoleToPlayer:@"trader"];
-		roleWeightFlags.insert_or_assign("bought-legal", oo::PList::signedInteger(1));
+		[roleWeightFlags setObject:oo::ObjectFromPList(oo::PList::signedInteger(1)) forKey:@"bought-legal"];
 	}
 
 	contracts.push_back(cargo_info);
@@ -1386,7 +1386,11 @@ for (unsigned i=0;i<amount;i++)
 	}
 	/* ends */
 	
-	lastTextKey.reset();
+	if (lastTextKey)
+	{
+		[lastTextKey release];
+		lastTextKey = nil;
+	}
 	
 	[self setShowDemoShips:NO];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
@@ -1470,7 +1474,11 @@ for (unsigned i=0;i<amount;i++)
 	}
 	/* ends */
 	
-	lastTextKey.reset();
+	if (lastTextKey)
+	{
+		[lastTextKey release];
+		lastTextKey = nil;
+	}
 	
 	[self setShowDemoShips:NO];
 	[UNIVERSE enterGUIViewModeWithMouseInteraction:NO];
