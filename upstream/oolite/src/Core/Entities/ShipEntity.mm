@@ -38,11 +38,10 @@ MA 02110-1301, USA.
 #import "OOPListView.h"
 #import "OOConstToString.h"
 #import "OOConstToJSString.h"
-#import "NSScannerOOExtensions.h"
+#include "oofnd/Scanner.hpp"
 #import "OOFilteringEnumerator.h"
 #import "OORoleSet.h"
 #import "OOShipGroup.h"
-#import "OOExcludeObjectEnumerator.h"
 #import "OOWeakSet.h"
 #import "GameController.h"
 #import "MyOpenGLView.h"
@@ -741,11 +740,11 @@ static ShipEntity *doOctreesCollide(ShipEntity *prime, ShipEntity *other);
 
 			std::optional<std::string>	c_commodity;
 			int				c_amount = 1;
-			NSScanner		*scanner = [NSScanner scannerWithString:oo::NSStringFrom(*cargoString)];
-			if ([scanner scanInt:&c_amount])
+			oo::str::Scanner	scanner(*cargoString);
+			if (scanner.scanInt(&c_amount))
 			{
-				[scanner ooliteScanCharactersFromSet:[NSCharacterSet whitespaceCharacterSet] intoString:NULL];	// skip whitespace
-				c_commodity = oo::OptionalString([[scanner string] substringFromIndex:[scanner scanLocation]]);
+				scanner.scanCharactersFromSetNoSkip(oo::str::CharacterSet::whitespace());	// skip whitespace
+				c_commodity = scanner.remainder();
 				if ([[UNIVERSE commodities] goodDefined:oo::NSStringOrNil(c_commodity)])
 				{
 					[self cxx_setCommodityForPod:c_commodity andAmount:c_amount];
@@ -2281,7 +2280,7 @@ ShipEntity* doOctreesCollide(ShipEntity* prime, ShipEntity* other)
 - (BOOL) checkCloseCollisionWith:(Entity *)other
 {
 	if (other == nil)  return NO;
-	if ([collidingEntities containsObject:other])  return NO;	// we know about this already!
+	if (std::find_if(collidingEntities.begin(), collidingEntities.end(), [other](const oo::ObjCRef<Entity *> &e) { return e.get() == other; }) != collidingEntities.end())  return NO;	// we know about this already! (-containsObject:, identity for entities)
 	
 	ShipEntity *otherShip = nil;
 	if ([other isShip])  otherShip = (ShipEntity *)other;
@@ -8076,7 +8075,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 {
 	if (![self isUnpiloted])
 	{
-		OOCharacter *crewMember = [OOCharacter randomCharacterWithRole:oo::NSStringFrom(crewRole)
+		OOCharacter *crewMember = [OOCharacter randomCharacterWithRole:crewRole
 												 andOriginalSystem:[self homeSystem]];
 		[self cxx_setCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>(crewMember) }];
 	}
@@ -8093,7 +8092,7 @@ NSComparisonResult ComparePlanetsBySurfaceDistance(id i1, id i2, void* context)
 	result.reserve(crew->size());
 	for (const auto &crewMember : *crew)
 	{
-		result.push_back(oo::PListFrom([crewMember.get() infoForScripting]));
+		result.push_back([crewMember.get() infoForScripting]);
 	}
 	return result;
 }
@@ -12573,7 +12572,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	for (i = 1; i < n_pods; i++)
 	{
 		ShipEntity	*passenger = nil;
-		passenger = [self launchPodWithCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>([OOCharacter randomCharacterWithRole:@"passenger" andOriginalSystem:gen_rnd_number()]) }];
+		passenger = [self launchPodWithCrew:std::vector<oo::ObjCRef<OOCharacter *>>{ oo::ObjCRef<OOCharacter *>([OOCharacter randomCharacterWithRole:"passenger" andOriginalSystem:gen_rnd_number()]) }];
 		if (passengers.has_value())  passengers->emplace_back(passenger);
 	}
 
@@ -12746,11 +12745,11 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	Entity*		ent;
 	ShipEntity* other_ship;
 	
-	while ([collidingEntities count] > 0)
+	while (!collidingEntities.empty())
 	{
-		// EMMSTRAN: investigate if doing this backwards would be more efficient. (Not entirely obvious, the array is kinda funky.) -- Ahruman 2011-02-12
-		ent = [[[collidingEntities objectAtIndex:0] retain] autorelease];
-		[collidingEntities removeObjectAtIndex:0];
+		// EMMSTRAN: investigate if doing this backwards would be more efficient. (Not entirely obvious, the vector is kinda funky.) -- Ahruman 2011-02-12
+		ent = [[collidingEntities.front().get() retain] autorelease];
+		collidingEntities.erase(collidingEntities.begin());
 		if (ent)
 		{
 			if ([ent isShip])
@@ -12919,7 +12918,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 	}
 	
 	// remove self from other's collision list
-	[[other collisionArray] removeObject:self];
+	if (std::vector<oo::ObjCRef<Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<Entity *> &e) { return e.get() == self; });	// -removeObject:
 	
 	[self cxx_doScriptEvent:OOJSID("shipCollided") withArgument:other andReactToAIMessage:"COLLISION"];
 	[other cxx_doScriptEvent:OOJSID("shipCollided") withArgument:self andReactToAIMessage:"COLLISION"];
@@ -13161,7 +13160,7 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 		}
 	}
 
-	[[other collisionArray] removeObject:self];			// so it can't be scooped twice!
+	if (std::vector<oo::ObjCRef<Entity *>> *colliding = [other cxx_collidingEntities])  std::erase_if(*colliding, [self](const oo::ObjCRef<Entity *> &e) { return e.get() == self; });	// -removeObject:, so it can't be scooped twice!
 	// make sure other ships trying to scoop it lose it
 	// probably already happened, but some may have acquired it
 	// after the scooping started, and they might get stuck in a scooping
