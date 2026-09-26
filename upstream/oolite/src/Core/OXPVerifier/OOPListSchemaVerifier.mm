@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #import "OOPListSchemaVerifier.h"
+#include "oofnd/objc/OORuntime.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
 

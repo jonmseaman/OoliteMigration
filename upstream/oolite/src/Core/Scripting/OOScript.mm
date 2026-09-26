@@ -259,24 +259,30 @@ static std::optional<std::vector<std::string>> StringsOrNil(id array)
 }
 
 
-- (id)scriptDescription	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>)scriptDescription
 {
 	OOLogERR(kOOLogSubclassResponsibility, @"%@", @"OOScript should not be used directly!");
-	return nil;
+	return std::nullopt;
 }
 
 
-- (id)version	// shared selector (proposed ADR-0043)
+- (id)version	// shared selector (Foundation declares -version too; retires with oo-qps)
+{
+	return oo::NSStringOrNil([self cxx_version]);
+}
+
+
+- (std::optional<std::string>)cxx_version
 {
 	OOLogERR(kOOLogSubclassResponsibility, @"%@", @"OOScript should not be used directly!");
-	return nil;
+	return std::nullopt;
 }
 
 
 - (id)displayName	// shared selector (proposed ADR-0043)
 {
 	id name = [self name];
-	std::optional<std::string> version = oo::OptionalString([self version]);
+	std::optional<std::string> version = [self cxx_version];
 	
 	if (version.has_value())  return oo::NSStringFrom(oo::str::format("%s %s", oo::DescriptionOf(name).c_str(), version->c_str()));
 	else if (name != nil)  return oo::NSStringFrom(oo::DescriptionOf(name));

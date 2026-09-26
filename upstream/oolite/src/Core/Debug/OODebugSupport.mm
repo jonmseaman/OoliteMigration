@@ -97,7 +97,7 @@ void OOInitDebugSupport(void)
 		// Otherwise, use TCP debugger connection.
 		if (debugger == nil)
 		{
-			debugger = [[OODebugTCPConsoleClient alloc] initWithAddress:oo::NSStringOrNil(consoleHost)
+			debugger = [[OODebugTCPConsoleClient alloc] initWithAddress:consoleHost
 																   port:consolePort];
 			[debugger autorelease];
 			[[OODebugMonitor sharedDebugMonitor] setUsingPlugInController:NO];

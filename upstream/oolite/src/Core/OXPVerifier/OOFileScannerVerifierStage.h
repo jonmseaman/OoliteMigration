@@ -110,7 +110,7 @@ SOFTWARE.
 @interface OOListUnusedFilesStage: OOOXPVerifierStage
 
 // Returns name to be used in -dependents by other stages; also registers stage.
-+ (id)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier;	// an Objective-C string. Shared selector (proposed ADR-0043).
++ (std::string)nameForReverseDependencyForVerifier:(OOOXPVerifier *)verifier;	// flipped with its family (bead oo-3rb.274.2)
 
 @end
 
