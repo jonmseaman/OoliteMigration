@@ -12099,7 +12099,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 		xchar = digramchars[0];
 		const std::string digramstring = { static_cast<char>(digramchars[0]), static_cast<char>(digramchars[1]) };	// both ASCII
 		[trumble[i] release];
-		trumble[i] = [[OOTrumble alloc] initForPlayer:self digram:oo::NSStringFrom(digramstring)];
+		trumble[i] = [[OOTrumble alloc] initForPlayer:self digram:digramstring];
 	}
 	
 	trumbleCount = 0;
@@ -12175,7 +12175,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	trumbleArray.reserve(PLAYER_MAX_TRUMBLES);
 	for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
 	{
-		trumbleArray.push_back(oo::PListFrom([trumble[i] dictionary]));
+		trumbleArray.push_back([trumble[i] dictionary]);
 	}
 
 	// [count (unsigned), hash (signed), trumbles]: the same number kinds as before
@@ -12279,7 +12279,7 @@ std::optional<std::string> last_outfitting_key;	// nullopt = none (was nil)
 	if ((!putativeTrumbleArray.isNull()) && (putativeTrumbleArray.count() == PLAYER_MAX_TRUMBLES))
 	{
 		for (i = 0; i < PLAYER_MAX_TRUMBLES; i++)
-			[trumble[i] setFromDictionary:(putativeTrumbleArray.at(i)->isDict() ? oo::ObjectFromPList(*putativeTrumbleArray.at(i)) : nil)];	// nil unless a dictionary
+			[trumble[i] setFromDictionary:(putativeTrumbleArray.at(i)->isDict() ? *putativeTrumbleArray.at(i) : oo::PList())];	// null PList unless a dictionary
 	}
 	
 	clear_checksum();
