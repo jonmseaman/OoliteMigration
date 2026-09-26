@@ -82,9 +82,10 @@ typedef enum
 - (oo::PList) cxx_missionVariableForKey:(const std::string &)key;
 - (void) cxx_setMissionVariable:(const oo::PList &)value forKey:(const std::string &)key;	// null removes
 
-- (NSMutableDictionary *)localVariablesForMission:(NSString *)missionKey;
-- (NSString *)localVariableForKey:(NSString *)variableName andMission:(NSString *)missionKey;
-- (void)setLocalVariable:(NSString *)value forKey:(NSString *)variableName andMission:(NSString *)missionKey;
+// A mission's local variables (bead oo-3rb.192): a snapshot Dict, null for no mission.
+- (oo::PList) localVariablesForMission:(const std::optional<std::string> &)missionKey;
+- (std::optional<std::string>) localVariableForKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey;
+- (void) setLocalVariable:(const std::optional<std::string> &)value forKey:(const std::string &)variableName andMission:(const std::optional<std::string> &)missionKey;	// nullopt removes
 
 /*-----------------------------------------------------*/
 
@@ -140,52 +141,53 @@ typedef enum
 
 /*-----------------------------------------------------*/
 
-- (NSArray *) missionsList;
+// The F5 manifest (bead oo-3rb.193): strings first, then arrays of a header and its entries.
+- (oo::PList) cxx_missionsList;
 
-- (void) setMissionDescription:(NSString *)textKey;
+- (void) setMissionDescription:(id)textKey;	// called by name (ADR-0043 item 21)
 - (void) clearMissionDescription;
-- (void) setMissionInstructions:(NSString *)text forMission:(NSString *)key;
-- (void) setMissionInstructionsList:(NSArray *)list forMission:(NSString *)key;
-- (void) setMissionDescription:(NSString *)textKey forMission:(NSString *)key;
-- (void) clearMissionDescriptionForMission:(NSString *)key;
+- (void) cxx_setMissionInstructions:(const std::string &)text forMission:(const std::optional<std::string> &)key;	// nullopt key: logged, ignored
+- (void) cxx_setMissionInstructionsList:(const oo::PList &)list forMission:(const std::optional<std::string> &)key;
+- (void) setMissionDescription:(const std::string &)textKey forMission:(const std::optional<std::string> &)key;
+- (void) clearMissionDescriptionForMission:(id)key;	// called by name (ADR-0043 item 21)
 
-- (void) commsMessage:(NSString *)valueString;
-- (void) commsMessageByUnpiloted:(NSString *)valueString;  // Enabled 02-May-2008 - Nikos. Same as commsMessage, but
+- (void) commsMessage:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) commsMessageByUnpiloted:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)// Enabled 02-May-2008 - Nikos. Same as commsMessage, but
 							   // can be used by scripts to have unpiloted ships sending
 							   // commsMessages, if we want to.
 
-- (void) consoleMessage3s:(NSString *)valueString;
-- (void) consoleMessage6s:(NSString *)valueString;
+- (void) consoleMessage3s:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) consoleMessage6s:(id)valueString;	// called by name (ADR-0043 item 21)
 
 - (void) setLegalStatus:(id)valueString;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
-- (void) awardCredits:(NSString *)valueString;
-- (void) awardShipKills:(NSString *)valueString;
-- (void) awardEquipment:(NSString *)equipString;  //eg. EQ_NAVAL_ENERGY_UNIT
-- (void) removeEquipment:(NSString *)equipString;  //eg. EQ_NAVAL_ENERGY_UNIT
+- (void) awardCredits:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardShipKills:(id)valueString;	// called by name (ADR-0043 item 21)
+- (void) awardEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
+- (void) removeEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 
-- (void) setPlanetinfo:(NSString *)key_valueString;	// uses key=value format
-- (void) setSpecificPlanetInfo:(NSString *)key_valueString;	// uses galaxy#=planet#=key=value
+- (void) setPlanetinfo:(id)key_valueString;	// called by name (ADR-0043 item 21); uses key=value format
+- (void) setSpecificPlanetInfo:(id)key_valueString;	// called by name (ADR-0043 item 21); uses galaxy#=planet#=key=value
 
-- (void) awardCargo:(NSString *)amount_typeString;
+- (void) awardCargo:(id)amount_typeString;	// called by name (ADR-0043 item 21)
 - (void) removeAllCargo;
 - (void) removeAllCargo:(BOOL)forceRemoval;
 
-- (void) useSpecialCargo:(NSString *)descriptionString;
+- (void) useSpecialCargo:(id)descriptionString;	// called by name (ADR-0043 item 21)
 
-- (void) testForEquipment:(NSString *)equipString;  //eg. EQ_NAVAL_ENERGY_UNIT
+- (void) testForEquipment:(id)equipString;	// called by name (ADR-0043 item 21); eg. EQ_NAVAL_ENERGY_UNIT
 
-- (void) awardFuel:(NSString *)valueString;	// add to fuel up to 7.0 LY
+- (void) awardFuel:(id)valueString;	// called by name (ADR-0043 item 21); add to fuel up to 7.0 LY
 
-- (void) messageShipAIs:(NSString *)roles_message;
-- (void) ejectItem:(NSString *)item_key;
-- (void) addShips:(NSString *)roles_number;
-- (void) addSystemShips:(NSString *)roles_number_position;
-- (void) addShipsAt:(NSString *)roles_number_system_x_y_z;
-- (void) addShipsAtPrecisely:(NSString *)roles_number_system_x_y_z;
-- (void) addShipsWithinRadius:(NSString *)roles_number_system_x_y_z_r;
-- (void) spawnShip:(NSString *)ship_key;
-- (void) set:(NSString *)missionvariable_value;
-- (void) reset:(NSString *)missionvariable;
+- (void) messageShipAIs:(id)roles_message;	// called by name (ADR-0043 item 21)
+- (void) ejectItem:(id)item_key;	// called by name (ADR-0043 item 21)
+- (void) addShips:(id)roles_number;	// called by name (ADR-0043 item 21)
+- (void) addSystemShips:(id)roles_number_position;	// called by name (ADR-0043 item 21)
+- (void) addShipsAt:(id)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
+- (void) addShipsAtPrecisely:(id)roles_number_system_x_y_z;	// called by name (ADR-0043 item 21)
+- (void) addShipsWithinRadius:(id)roles_number_system_x_y_z_r;	// called by name (ADR-0043 item 21)
+- (void) spawnShip:(id)ship_key;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
+- (void) set:(id)missionvariable_value;	// called by name (ADR-0043 item 21)
+- (void) reset:(id)missionvariable;	// called by name (ADR-0043 item 21)
 /*
 	set:missionvariable_value
 	add:missionvariable_value
@@ -202,76 +204,78 @@ typedef enum
 		subtract: mission_my_mission_clock d100_number
 */
 
-- (void) increment:(NSString *)missionVariableString;
-- (void) decrement:(NSString *)missionVariableString;
+- (void) increment:(id)missionVariableString;	// called by name (ADR-0043 item 21)
+- (void) decrement:(id)missionVariableString;	// called by name (ADR-0043 item 21)
 
-- (void) add:(NSString *)missionVariableString_value;
-- (void) subtract:(NSString *)missionVariableString_value;
+- (void) add:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
+- (void) subtract:(id)missionVariableString_value;	// called by name (ADR-0043 item 21)
 
-- (void) checkForShips: (NSString *)roleString;
+- (void) checkForShips:(id)roleString;	// called by name (ADR-0043 item 21)
 - (void) resetScriptTimer;
-- (void) addMissionText: (NSString *)textKey;
-- (void) addLiteralMissionText: (NSString *)text;
+- (void) addMissionText:(id)textKey;	// called by name (ADR-0043 item 21)
+- (void) addLiteralMissionText:(id)text;	// called by name (ADR-0043 item 21)
 
 - (void) setMissionChoiceByTextEntry:(BOOL)enable;
-- (void) setMissionChoices:(NSString *)choicesKey;	// choicesKey is a key for a dictionary of
+- (void) setMissionChoices:(id)choicesKey;	// called by name (ADR-0043 item 21); choicesKey is a key for a dictionary of
 													// choices/choice phrases in missiontext.plist and also..
-- (void) setMissionChoicesDictionary:(NSDictionary *)choicesDict;
+- (void) cxx_setMissionChoicesDictionary:(const oo::PList &)choicesDict;	// keys are strings (bead oo-3rb.194)
 - (void) resetMissionChoice;						// resets MissionChoice to nil
 
 - (void) clearMissionScreen;
 
-- (void) addMissionDestination:(NSString *)destinations;	// mark a system on the star charts
-- (void) removeMissionDestination:(NSString *)destinations; // stop a system being marked on star charts
+- (void) addMissionDestination:(id)destinations;	// called by name (ADR-0043 item 21); mark a system on the star charts
+- (void) removeMissionDestination:(id)destinations;	// called by name (ADR-0043 item 21); stop a system being marked on star charts
 
-- (void) showShipModel:(NSString *)shipKey;
-- (void) setMissionMusic:(NSString *)value;
+- (void) showShipModel:(id)shipKey;	// called by name (ADR-0043 item 21)
+- (void) setMissionMusic:(id)value;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 
-- (NSString *)missionTitle;
-- (void) setMissionTitle:(NSString *)value;
+- (std::optional<std::string>) cxx_missionTitle;
+- (void) cxx_setMissionTitle:(const std::optional<std::string> &)value;
 
-- (void) setFuelLeak: (NSString *)value;
+- (void) setFuelLeak:(id)value;	// called by name (ADR-0043 item 21)
 - (id) fuelLeakRate_number;	// called by name (ADR-0043 item 21)
-- (void) setSunNovaIn: (NSString *)time_value;
+- (void) setSunNovaIn:(id)time_value;	// called by name (ADR-0043 item 21)
 - (void) launchFromStation;
 - (void) blowUpStation;
 - (void) sendAllShipsAway;
 
-- (OOPlanetEntity *) addPlanet: (NSString *)planetKey;
-- (OOPlanetEntity *) addMoon: (NSString *)moonKey;
+- (OOPlanetEntity *) addPlanet:(id)planetKey;	// called by name (ADR-0043 item 21)
+- (OOPlanetEntity *) addMoon:(id)moonKey;	// called by name (ADR-0043 item 21)
 
 - (void) debugOn;
 - (void) debugOff;
-- (void) debugMessage:(NSString *)args;
+- (void) debugMessage:(id)args;	// called by name (ADR-0043 item 21)
 
-- (NSString*) replaceVariablesInString:(NSString*) args;
+- (std::optional<std::string>) replaceVariablesInString:(const std::string &)args;
 
-- (void) playSound:(NSString *) soundName;
+- (void) playSound:(id)soundName;	// called by name (ADR-0043 item 21); shared selector (proposed ADR-0043)
 
-- (BOOL) addEqScriptForKey:(NSString *)eq_key;
-- (void) removeEqScriptForKey:(NSString *)eq_key;
-- (NSUInteger) eqScriptIndexForKey:(NSString *)eq_key;
+// Equipment scripts (bead oo-3rb.195): no equipment has an empty key.
+- (BOOL) cxx_addEqScriptForKey:(const std::string &)eq_key;
+- (void) cxx_removeEqScriptForKey:(const std::string &)eq_key;
+- (NSUInteger) cxx_eqScriptIndexForKey:(const std::string &)eq_key;	// the count of scripts if none
 
 - (void) targetNearestHostile;
 - (void) targetNearestIncomingMissile;
 
-- (void) setGalacticHyperspaceBehaviourTo:(NSString *) galacticHyperspaceBehaviourString;
-- (void) setGalacticHyperspaceFixedCoordsTo:(NSString *) galacticHyperspaceFixedCoordsString;
+- (void) setGalacticHyperspaceBehaviourTo:(id)galacticHyperspaceBehaviourString;	// called by name (ADR-0043 item 21)
+- (void) setGalacticHyperspaceFixedCoordsTo:(id)galacticHyperspaceFixedCoordsString;	// called by name (ADR-0043 item 21)
 
 /*-----------------------------------------------------*/
 
 - (void) clearMissionScreenID;
-- (void) setMissionScreenID:(NSString *)msid;
-- (NSString *) missionScreenID;
+- (void) cxx_setMissionScreenID:(const std::optional<std::string> &)msid;
+- (std::optional<std::string>) cxx_missionScreenID;
 - (void) setGuiToMissionScreen;
 - (void) refreshMissionScreenTextEntry;
 - (void) setGuiToMissionScreenWithCallback:(BOOL) callback;
 - (void) doMissionCallback;
 - (void) endMissionScreenAndNoteOpportunity;
-- (void) setBackgroundFromDescriptionsKey:(NSString*) d_key;
-- (void) addScene:(NSArray *) items atOffset:(Vector) off;
-- (BOOL) processSceneDictionary:(NSDictionary *) couplet atOffset:(Vector) off;
-- (BOOL) processSceneString:(NSString*) item atOffset:(Vector) off;
+- (void) cxx_setBackgroundFromDescriptionsKey:(const std::string &)d_key;
+// Scenes (bead oo-3rb.197): a scene is an array of strings, arrays and couplet dictionaries.
+- (void) addScene:(const oo::PList &)items atOffset:(Vector)off;
+- (BOOL) processSceneDictionary:(const oo::PList &)couplet atOffset:(Vector)off;
+- (BOOL) processSceneString:(const std::string &)item atOffset:(Vector)off;
 
 @end
 

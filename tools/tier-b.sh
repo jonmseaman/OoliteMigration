@@ -15,6 +15,7 @@
 #   1 build       13-22 s warm/incremental, ~142 s genuinely cold  (tools/build-windows.sh test)
 #   2 tests       ~12 s      offline module tests, 3 suites
 #   2b parity     ~3 s       tier-b's environment must agree with a bare shell's verdict
+#   2c game-unit  ~1-5 s     tools/check-game-unit.sh (meson suite game-unit), on the stage-1 build
 #   3 goldens     ~43 s      every blessed golden under goldens/<platform>/
 #   4 component   769-957 s  upstream/oolite/tests/component (ADR-0018) -- see BUDGET HISTORY
 #   5 smoke       ~14 s      upstream/oolite/tests/launch_snapshot.py
@@ -37,6 +38,7 @@
 # 957 + 141 = 1098 s worst-known-case, leaving ~100 s of headroom under the 1200 s budget. A full
 # run (no --fast) additionally pays the build stage (13-142 s), which is why the cold TOTAL above
 # runs higher than --fast's own budget; --fast is not required to fit a build it does not do.
+# Stage 2c (game-unit, bead oo-1f4x) adds ~1-5 s on a current build, inside that headroom.
 #
 # COMPONENT STAGE AND THE DESKTOP MUTEX. Stage 4 is not headless: upstream/oolite/tests/component
 # /conftest.py's session-scoped `desktop_lock` fixture takes tools/gui-lock (owner "component")
@@ -170,6 +172,8 @@ REPO_NATIVE="$(native "$REPO_ROOT")"
 # it cheaper. They are floors, not equalities: adding tests must not require editing this file.
 # See the deliberate exclusion note beside TESTS_DESELECT.
 GOLDEN_FLOOR="${OOLITE_TIER_B_GOLDEN_FLOOR:-2}"
+# game-unit: the oo_test cases its test executables report in total (tests/unit/game; 6 today).
+GAME_UNIT_FLOOR=6
 MIN_TUS=100
 
 # A knob that can only make the gate STRICTER. Added to every per-suite floor below, clamped at
@@ -471,6 +475,37 @@ stage_tests() {
 }
 
 # ================================================================================================
+# STAGE 2c -- GAME-SIDE UNIT TESTS (bead oo-1f4x)
+# ================================================================================================
+#
+# tests/unit/game (meson suite game-unit, tools/check-game-unit.sh): unit tests of game sources
+# that still sit on gnustep-base, such as the NSUserDefaults -> oo::Defaults shim (oo-mwo0). They
+# build with the game's own flags, so they run on the build stage 1 made (in --fast, the shared
+# build the app dir belongs to, as the golden and component stages use it). ~1 s when the build
+# is current (meson test only links the test executables); the build's cost is stage 1's.
+#
+# ANTI-VACUITY: meson's "Ok:" count must be at least one, with no "Fail:", and the oo_test
+# summary lines in the run's testlog must add up to at least GAME_UNIT_FLOOR test cases (a suite
+# that registered nothing, or a test that silently shrank, fails here).
+stage_game_unit() {
+  local t0=$SECONDS log="$RUN_ROOT/game-unit.log" rc=0
+  local build_dir
+  build_dir="$(dirname "$APP_DIR")"
+  step game-unit "tools/check-game-unit.sh on $(native "$build_dir") (floor $(( GAME_UNIT_FLOOR + TEST_FLOOR_BUMP )) test cases)"
+  ( cd "$REPO_ROOT" && OO_GAME_UNIT_BUILD_DIR="$build_dir" bash "$HERE/check-game-unit.sh" ) > "$log" 2>&1 || rc=$?
+  [ "$rc" -eq 0 ] || { tail -30 "$log" >&2; fail game-unit "tools/check-game-unit.sh failed (rc=$rc); $(native "$log")"; }
+  local ok
+  ok="$(grep -oE '^Ok: +[0-9]+' "$log" | grep -oE '[0-9]+' | tail -1 || true)"
+  [ "${ok:-0}" -ge 1 ] || { cat "$log" >&2; fail game-unit "meson ran no game-unit test (no 'Ok:' count); the stage would pass vacuously"; }
+  local testlog="$build_dir/meson-logs/testlog.txt" cases=0 n
+  [ -f "$testlog" ] || fail game-unit "no meson testlog at $(native "$testlog")"
+  while read -r n; do cases=$(( cases + n )); done < <(grep -aoE 'oo_test: [^:]+: [0-9]+ tests' "$testlog" | grep -oE '[0-9]+ tests$' | grep -oE '[0-9]+')
+  [ "$cases" -ge $(( GAME_UNIT_FLOOR + TEST_FLOOR_BUMP )) ]     || fail game-unit "the game-unit executables reported $cases test case(s), fewer than the committed floor of $(( GAME_UNIT_FLOOR + TEST_FLOOR_BUMP ))"
+  detail "$(printf 'game-unit      %3d executable(s), %d test case(s) (floor %s)' "$ok" "$cases" "$(( GAME_UNIT_FLOOR + TEST_FLOOR_BUMP ))")"
+  detail "stage game-unit ok in $(( SECONDS - t0 ))s"
+}
+
+# ================================================================================================
 # STAGE 2b -- ENVIRONMENT PARITY
 # ================================================================================================
 #
@@ -721,6 +756,7 @@ stage_guardrails
 stage_build
 stage_tests
 stage_environment_parity
+stage_game_unit
 stage_goldens
 stage_component
 stage_smoke
