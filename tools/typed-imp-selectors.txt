@@ -6,11 +6,11 @@
 #
 # OOOXZManager -applyFilter:... picks the filter by @selector and calls it through
 # -methodForSelector: cast to OneArgumentFilter / TwoArgumentFilter (bead oo-3rb.53).
-applyFilterByNoFilter:            upstream/oolite/src/Core/OOOXZManager.mm:585
-applyFilterByUpdateRequired:      upstream/oolite/src/Core/OOOXZManager.mm:585
-applyFilterByInstallable:         upstream/oolite/src/Core/OOOXZManager.mm:585
-applyFilterByKeyword:keyword:     upstream/oolite/src/Core/OOOXZManager.mm:581
-applyFilterByAuthor:author:       upstream/oolite/src/Core/OOOXZManager.mm:581
-applyFilterByDays:days:           upstream/oolite/src/Core/OOOXZManager.mm:581
-applyFilterByTag:tag:             upstream/oolite/src/Core/OOOXZManager.mm:581
-applyFilterByCategory:category:   upstream/oolite/src/Core/OOOXZManager.mm:581
+applyFilterByNoFilter:            upstream/oolite/src/Core/OOOXZManager.mm:576
+applyFilterByUpdateRequired:      upstream/oolite/src/Core/OOOXZManager.mm:576
+applyFilterByInstallable:         upstream/oolite/src/Core/OOOXZManager.mm:576
+applyFilterByKeyword:keyword:     upstream/oolite/src/Core/OOOXZManager.mm:572
+applyFilterByAuthor:author:       upstream/oolite/src/Core/OOOXZManager.mm:572
+applyFilterByDays:days:           upstream/oolite/src/Core/OOOXZManager.mm:572
+applyFilterByTag:tag:             upstream/oolite/src/Core/OOOXZManager.mm:572
+applyFilterByCategory:category:   upstream/oolite/src/Core/OOOXZManager.mm:572

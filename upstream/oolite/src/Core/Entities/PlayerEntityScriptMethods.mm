@@ -241,28 +241,24 @@ NSInteger IntegerValueOf(const oo::PList *value)
 
 - (void) cxx_setMissionChoice:(const std::optional<std::string> &)newChoice keyPress:(const std::optional<std::string> &)keyPress withEvent:(BOOL)withEvent
 {
-	// missionChoice / missionKeyPress are PlayerEntity's Objective-C string ivars (nil or a copy).
-	const std::optional<std::string> oldChoice = oo::OptionalString(missionChoice);
+	const std::optional<std::string> oldChoice = missionChoice;
 	BOOL equal = newChoice == oldChoice;	// Catch both being nil as well
 	if (!equal)
 	{
 		if (!newChoice.has_value())
 		{
-			[missionChoice autorelease];
-			missionChoice = nil;
+			missionChoice.reset();
 			if (withEvent) [self doScriptEvent:OOJSID("missionChoiceWasReset") withArgument:oo::NSStringOrNil(oldChoice)];
 		}
 		else
 		{
-			[missionChoice autorelease];
-			missionChoice = [oo::NSStringFrom(*newChoice) copy];
+			missionChoice = newChoice;
 		}
 	}
-	equal = keyPress == oo::OptionalString(missionKeyPress);
+	equal = keyPress == missionKeyPress;
 	if (!equal)
 	{
-		[missionKeyPress autorelease];
-		missionKeyPress = [oo::NSStringOrNil(keyPress) copy];
+		missionKeyPress = keyPress;
 	}
 }
 
@@ -401,8 +397,8 @@ NSInteger IntegerValueOf(const oo::PList *value)
 // utilising new keyconfig2.plist data
 - (std::optional<std::string>) cxx_keyBindingDescription2:(const std::string &)binding
 {
-	// keyconfig2_settings is PlayerEntity's Objective-C dictionary of key bindings.
-	const oo::PList keyList = oo::PListFrom([keyconfig2_settings objectForKey:oo::NSStringFrom(binding)]);
+	const auto keyEntry = keyconfig2_settings.find(binding);
+	const oo::PList keyList = (keyEntry != keyconfig2_settings.end()) ? keyEntry->second : oo::PList();
 	if (keyList.isNull())
 	{
 		// no such setting
@@ -424,9 +420,9 @@ NSInteger IntegerValueOf(const oo::PList *value)
 		const std::string desc = [self cxx_keyCodeDescription:k_int].value_or("(null)");	// %@ of nil
 		// 0 = key not set
 		if (k_int != 0) {
-			if (BoolValueOf(def->find("mod2")) == YES) final += oo::DescriptionOf(keyMod2Text) + "+";
-			if (BoolValueOf(def->find("mod1")) == YES) final += oo::DescriptionOf(keyMod1Text) + "+";
-			if (BoolValueOf(def->find("shift")) == YES) final += oo::DescriptionOf(keyShiftText) + "+";
+			if (BoolValueOf(def->find("mod2")) == YES) final += keyMod2Text + "+";
+			if (BoolValueOf(def->find("mod1")) == YES) final += keyMod1Text + "+";
+			if (BoolValueOf(def->find("shift")) == YES) final += keyShiftText + "+";
 			final += desc;
 		}
 	}

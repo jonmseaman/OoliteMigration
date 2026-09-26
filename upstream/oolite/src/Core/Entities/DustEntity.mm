@@ -425,7 +425,7 @@ enum
 	OOGL(glEnableClientState(GL_NORMAL_ARRAY));
 	
 	OOVerifyOpenGLState();
-	OOCheckOpenGLErrors(@"DustEntity after drawing %@", self);
+	cxx_OOCheckOpenGLErrors([&]() -> std::string { return "DustEntity after drawing " + oo::DescriptionOf(self); });
 }
 
 
