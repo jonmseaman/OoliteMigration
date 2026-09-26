@@ -15,8 +15,10 @@
 	        InString:s]
 	    [set invertedSet]                             set.inverted()
 	    [set characterIsMember:c]                     set.contains(c)   (c a UTF-16 unit)
+	    [set longCharacterIsMember:c]  (c a UTF-16 unit)  set.contains(c)   (the same over the BMP)
 	    [s stringByTrimmingCharactersInSet:set]       oo::str::trim(s, set)
 	    [s rangeOfCharacterFromSet:set].location      oo::str::findFirstOf(s, set)   (npos: NSNotFound)
+	    ... options:NSLiteralSearch range:{from, ...}  oo::str::findFirstOf(s, set, from)   (to the end)
 	    ... options:NSBackwardsSearch                 oo::str::findLastOf(s, set)
 	    [s componentsSeparatedByCharactersInSet:set]  oo::str::splitByCharacters(s, set)
 	    [NSScanner scannerWithString:s]               Scanner scanner(s)
@@ -289,6 +291,20 @@ inline std::size_t findFirstOf(std::string_view s, const CharacterSet& set)
 {
 	const std::u16string u = utf8ToUtf16(s);
 	for (std::size_t i = 0; i < u.size(); ++i)
+	{
+		if (set.contains(u[i])) return i;
+	}
+	return std::string_view::npos;
+}
+
+// -rangeOfCharacterFromSet:options:NSLiteralSearch range:NSMakeRange(from, length - from)
+// (.location): the UTF-16 index of the first member at or after <from>, npos if none. GNUstep
+// searches unit by unit here as in the unranged form (bead oo-3rb.67, probed with a throwaway
+// harness over quotes, newlines, backslashes, a combining mark and a surrogate pair).
+inline std::size_t findFirstOf(std::string_view s, const CharacterSet& set, std::size_t from)
+{
+	const std::u16string u = utf8ToUtf16(s);
+	for (std::size_t i = from; i < u.size(); ++i)
 	{
 		if (set.contains(u[i])) return i;
 	}

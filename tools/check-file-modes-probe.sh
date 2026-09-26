@@ -240,6 +240,27 @@ okeys=$(printf 'a.sh:1:V="\na.sh:2:tools/foo.sh\nb.sh:1:tools/foo.sh\nb.sh:2:W="
 if [ "$okeys" = "a.sh:2 b.sh:3 " ]; then pass=$((pass+1)); echo "ok   open_quote_keys resets per file -> [$okeys]"
 else failn=$((failn+1)); echo "FAIL open_quote_keys resets per file: got [$okeys]"; fi
 
+echo "== bead acceptance source (oo-1ysj: the JSONL export is untracked; read bd when present) =="
+aprobe() { # aprobe <label> <want> <got>
+	if [ "$3" = "$2" ]; then pass=$((pass+1)); printf 'ok   %s\n' "$1"
+	else failn=$((failn+1)); printf 'FAIL %s want=[%s] got=[%s]\n' "$1" "$2" "$3"; fi
+}
+aprobe 'bd list --json array' $'x-1\ttools/a.sh\nx-1\tbash tools/b.sh\ny-2\tz' \
+	"$(printf '[{"id":"x-1","acceptance_criteria":"tools/a.sh\\n\\nbash tools/b.sh"},{"id":"y-2","acceptance_criteria":"z"},{"id":"n-3"}]' | acceptance_lines)"
+aprobe 'issues.jsonl lines' $'x-1\ttools/a.sh\ny-2\tz' \
+	"$(printf '{"id":"x-1","acceptance_criteria":"tools/a.sh"}\nnot json\n{"id":"y-2","acceptance_criteria":"z"}\n' | acceptance_lines)"
+STUB=$(mktemp -d)
+printf '#!/usr/bin/env bash\necho %s\n' "'[{\"id\":\"s-1\",\"acceptance_criteria\":\"tools/stub.sh --x\"}]'" >"$STUB/bd"
+chmod +x "$STUB/bd"
+ACCOUT=$(mktemp)
+BD="$STUB/bd" read_acceptance "$ACCOUT"
+aprobe 'read_acceptance uses bd when present' 'bd list' "$ACC_SOURCE"
+aprobe 'read_acceptance: bd lines extracted' $'s-1\ttools/stub.sh --x' "$(cat "$ACCOUT")"
+BD="$STUB/no-such-bd" read_acceptance "$ACCOUT"
+if git cat-file -e :.beads/issues.jsonl 2>/dev/null; then want='index .beads/issues.jsonl'; else want=''; fi
+aprobe 'read_acceptance falls back without bd' "$want" "$ACC_SOURCE"
+rm -rf "$STUB" "$ACCOUT"
+
 echo
 echo "probes: pass=$pass fail=$failn"
 [ "$failn" -eq 0 ]

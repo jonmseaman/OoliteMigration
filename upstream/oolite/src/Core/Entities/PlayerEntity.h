@@ -394,14 +394,14 @@ typedef enum
 	
 	NSString				*specialCargo;
 	
-	NSMutableArray			*commLog;
+	std::vector<std::string>	commLog;	// trimmed by -cxx_commLog
 
 	NSMutableArray			*eqScripts;
 	
-	NSDictionary			*_missionOverlayDescriptor;
-	NSDictionary			*_missionBackgroundDescriptor;
+	oo::PList				_missionOverlayDescriptor;	// null = none (was nil)
+	oo::PList				_missionBackgroundDescriptor;
 	OOGUIBackgroundSpecial	_missionBackgroundSpecial;
-	NSDictionary			*_equipScreenBackgroundDescriptor;
+	oo::PList				_equipScreenBackgroundDescriptor;
 	NSString				*_missionScreenID;
 	
 	BOOL					found_equipment;
@@ -466,10 +466,10 @@ typedef enum
 	StationEntity			*targetDockStation; 
 	
 	HeadUpDisplay			*hud;
-	NSMutableDictionary		*multiFunctionDisplayText;
-	NSMutableArray			*multiFunctionDisplaySettings;
+	std::map<std::string, std::string, std::less<>>	multiFunctionDisplayText;	// MFD key -> text
+	std::vector<std::optional<std::string>>	multiFunctionDisplaySettings;	// one key per MFD; nullopt = inactive (was [OONull null])
 	NSUInteger				activeMFD;
-	NSMutableDictionary		*customDialSettings;
+	oo::PList::Dict			customDialSettings;	// a mixed configuration (proposed ADR-0043 item 11): whatever scripts set
 
 	GLfloat					roll_delta, pitch_delta, yaw_delta;
 	GLfloat					launchRoll;
@@ -491,8 +491,8 @@ typedef enum
 	OOMissileStatus			missile_status;
 	NSUInteger				activeMissile;
 	NSUInteger				primedEquipment;
-	NSString				*_fastEquipmentA;
-	NSString				*_fastEquipmentB;
+	std::optional<std::string>	_fastEquipmentA;	// nullopt = never set (was nil)
+	std::optional<std::string>	_fastEquipmentB;
 
 	OOCargoQuantity			current_cargo;
 	
@@ -512,11 +512,11 @@ typedef enum
 	OORouteType				ANA_mode;
 	OOTimeDelta				witchspaceCountdown;
 	
-	NSString				*_jumpCause;
+	std::optional<std::string>	_jumpCause;
 
 	// player commander data
-	NSString				*_commanderName;
-	NSString				*_lastsaveName;
+	std::optional<std::string>	_commanderName;
+	std::optional<std::string>	_lastsaveName;
 	NSPoint					galaxy_coordinates;
 	
 	OOCreditsQuantity		credits;	
@@ -542,166 +542,166 @@ typedef enum
 
 	// keys!
 	NSDictionary   *keyconfig2_settings;
-	NSDictionary   *keyCodeLookups;
+	std::map<std::string, uint16_t, std::less<>>	keyCodeLookups;	// lower-case key names -> key codes
 
-	NSArray					*n_key_roll_left;
-	NSArray					*n_key_roll_right;
-	NSArray					*n_key_pitch_forward;
-	NSArray					*n_key_pitch_back;
-	NSArray					*n_key_yaw_left;
-	NSArray					*n_key_yaw_right;
+	oo::PList					n_key_roll_left;
+	oo::PList					n_key_roll_right;
+	oo::PList					n_key_pitch_forward;
+	oo::PList					n_key_pitch_back;
+	oo::PList					n_key_yaw_left;
+	oo::PList					n_key_yaw_right;
 
-	NSArray					*n_key_view_forward; 		// && undock
-	NSArray					*n_key_view_aft;			// && options menu
-	NSArray					*n_key_view_port;			// && equipment screen
-	NSArray					*n_key_view_starboard;		// && interfaces screen
+	oo::PList					n_key_view_forward; 		// && undock
+	oo::PList					n_key_view_aft;			// && options menu
+	oo::PList					n_key_view_port;			// && equipment screen
+	oo::PList					n_key_view_starboard;		// && interfaces screen
 
-	NSArray					*n_key_launch_ship;
-	NSArray					*n_key_gui_screen_options;
-	NSArray					*n_key_gui_screen_equipship;
-	NSArray					*n_key_gui_screen_interfaces;
-	NSArray					*n_key_gui_screen_status;
-	NSArray					*n_key_gui_chart_screens;
-	NSArray					*n_key_gui_system_data;
-	NSArray					*n_key_gui_market;
+	oo::PList					n_key_launch_ship;
+	oo::PList					n_key_gui_screen_options;
+	oo::PList					n_key_gui_screen_equipship;
+	oo::PList					n_key_gui_screen_interfaces;
+	oo::PList					n_key_gui_screen_status;
+	oo::PList					n_key_gui_chart_screens;
+	oo::PList					n_key_gui_system_data;
+	oo::PList					n_key_gui_market;
 
-	NSArray					*n_key_gui_arrow_left;
-	NSArray					*n_key_gui_arrow_right;
-	NSArray					*n_key_gui_arrow_up;
-	NSArray					*n_key_gui_arrow_down;
-	NSArray					*n_key_gui_page_up;
-	NSArray					*n_key_gui_page_down;
-	NSArray					*n_key_gui_select;
+	oo::PList					n_key_gui_arrow_left;
+	oo::PList					n_key_gui_arrow_right;
+	oo::PList					n_key_gui_arrow_up;
+	oo::PList					n_key_gui_arrow_down;
+	oo::PList					n_key_gui_page_up;
+	oo::PList					n_key_gui_page_down;
+	oo::PList					n_key_gui_select;
 	
-	NSArray					*n_key_increase_speed;
-	NSArray					*n_key_decrease_speed;
-	NSArray					*n_key_inject_fuel;
+	oo::PList					n_key_increase_speed;
+	oo::PList					n_key_decrease_speed;
+	oo::PList					n_key_inject_fuel;
 	
-	NSArray					*n_key_fire_lasers;
-	NSArray					*n_key_launch_missile;
-	NSArray					*n_key_next_missile;
-	NSArray					*n_key_ecm;
+	oo::PList					n_key_fire_lasers;
+	oo::PList					n_key_launch_missile;
+	oo::PList					n_key_next_missile;
+	oo::PList					n_key_ecm;
 	
-	NSArray					*n_key_prime_next_equipment;
-	NSArray					*n_key_prime_previous_equipment;
-	NSArray					*n_key_activate_equipment;
-	NSArray					*n_key_mode_equipment;
-	NSArray					*n_key_fastactivate_equipment_a;
-	NSArray					*n_key_fastactivate_equipment_b;
+	oo::PList					n_key_prime_next_equipment;
+	oo::PList					n_key_prime_previous_equipment;
+	oo::PList					n_key_activate_equipment;
+	oo::PList					n_key_mode_equipment;
+	oo::PList					n_key_fastactivate_equipment_a;
+	oo::PList					n_key_fastactivate_equipment_b;
 	
-	NSArray					*n_key_target_missile;
-	NSArray					*n_key_untarget_missile;
-	NSArray					*n_key_target_incoming_missile;
-	NSArray					*n_key_ident_system;
+	oo::PList					n_key_target_missile;
+	oo::PList					n_key_untarget_missile;
+	oo::PList					n_key_target_incoming_missile;
+	oo::PList					n_key_ident_system;
 	
-	NSArray					*n_key_scanner_zoom;
-	NSArray					*n_key_scanner_unzoom;
+	oo::PList					n_key_scanner_zoom;
+	oo::PList					n_key_scanner_unzoom;
 	
-	NSArray					*n_key_launch_escapepod;
+	oo::PList					n_key_launch_escapepod;
 	
-	NSArray					*n_key_galactic_hyperspace;
-	NSArray					*n_key_hyperspace;
-	NSArray					*n_key_jumpdrive;
+	oo::PList					n_key_galactic_hyperspace;
+	oo::PList					n_key_hyperspace;
+	oo::PList					n_key_jumpdrive;
 	
-	NSArray					*n_key_dump_cargo;
-	NSArray					*n_key_rotate_cargo;
+	oo::PList					n_key_dump_cargo;
+	oo::PList					n_key_rotate_cargo;
 	
-	NSArray					*n_key_autopilot;
-	NSArray					*n_key_autodock;
+	oo::PList					n_key_autopilot;
+	oo::PList					n_key_autodock;
 	
-	NSArray					*n_key_snapshot;
-	NSArray					*n_key_docking_music;
+	oo::PList					n_key_snapshot;
+	oo::PList					n_key_docking_music;
 	
-	NSArray					*n_key_advanced_nav_array_next;
-	NSArray					*n_key_advanced_nav_array_previous;
-	NSArray					*n_key_info_next_system;
-	NSArray					*n_key_info_previous_system;
-	NSArray					*n_key_map_home;
-	NSArray					*n_key_map_end;
-	NSArray					*n_key_map_next_system;
-	NSArray					*n_key_map_previous_system;
-	NSArray					*n_key_map_info;
-	NSArray					*n_key_map_zoom_in;
-	NSArray					*n_key_map_zoom_out;
+	oo::PList					n_key_advanced_nav_array_next;
+	oo::PList					n_key_advanced_nav_array_previous;
+	oo::PList					n_key_info_next_system;
+	oo::PList					n_key_info_previous_system;
+	oo::PList					n_key_map_home;
+	oo::PList					n_key_map_end;
+	oo::PList					n_key_map_next_system;
+	oo::PList					n_key_map_previous_system;
+	oo::PList					n_key_map_info;
+	oo::PList					n_key_map_zoom_in;
+	oo::PList					n_key_map_zoom_out;
 
-	NSArray					*n_key_system_home;
-	NSArray					*n_key_system_end;
-	NSArray					*n_key_system_next_system;
-	NSArray					*n_key_system_previous_system;
+	oo::PList					n_key_system_home;
+	oo::PList					n_key_system_end;
+	oo::PList					n_key_system_next_system;
+	oo::PList					n_key_system_previous_system;
 
-	NSArray					*n_key_pausebutton;
-	NSArray					*n_key_show_fps;
-	NSArray					*n_key_bloom_toggle;
-	NSArray					*n_key_mouse_control_roll;
-	NSArray					*n_key_mouse_control_yaw;
-	NSArray					*n_key_hud_toggle;
+	oo::PList					n_key_pausebutton;
+	oo::PList					n_key_show_fps;
+	oo::PList					n_key_bloom_toggle;
+	oo::PList					n_key_mouse_control_roll;
+	oo::PList					n_key_mouse_control_yaw;
+	oo::PList					n_key_hud_toggle;
 	
-	NSArray					*n_key_comms_log;
-	NSArray					*n_key_prev_compass_mode;
-	NSArray					*n_key_next_compass_mode;
+	oo::PList					n_key_comms_log;
+	oo::PList					n_key_prev_compass_mode;
+	oo::PList					n_key_next_compass_mode;
 	
-	NSArray					*n_key_chart_highlight;
-	NSArray					*n_key_market_filter_cycle;
-	NSArray					*n_key_market_sorter_cycle;
-	NSArray					*n_key_market_buy_one;
-	NSArray					*n_key_market_sell_one;
-	NSArray					*n_key_market_buy_max;
-	NSArray					*n_key_market_sell_max;
+	oo::PList					n_key_chart_highlight;
+	oo::PList					n_key_market_filter_cycle;
+	oo::PList					n_key_market_sorter_cycle;
+	oo::PList					n_key_market_buy_one;
+	oo::PList					n_key_market_sell_one;
+	oo::PList					n_key_market_buy_max;
+	oo::PList					n_key_market_sell_max;
 
-	NSArray					*n_key_next_target;
-	NSArray					*n_key_previous_target;
+	oo::PList					n_key_next_target;
+	oo::PList					n_key_previous_target;
 	
-	NSArray					*n_key_custom_view;
-	NSArray					*n_key_custom_view_zoom_out;
-	NSArray					*n_key_custom_view_zoom_in;
-	NSArray					*n_key_custom_view_roll_left;
-	NSArray					*n_key_custom_view_pan_left;
-	NSArray					*n_key_custom_view_roll_right;
-	NSArray					*n_key_custom_view_pan_right;
-	NSArray					*n_key_custom_view_rotate_up;
-	NSArray					*n_key_custom_view_pan_up;
-	NSArray					*n_key_custom_view_rotate_down;
-	NSArray					*n_key_custom_view_pan_down;
-	NSArray					*n_key_custom_view_rotate_left;
-	NSArray					*n_key_custom_view_rotate_right;
+	oo::PList					n_key_custom_view;
+	oo::PList					n_key_custom_view_zoom_out;
+	oo::PList					n_key_custom_view_zoom_in;
+	oo::PList					n_key_custom_view_roll_left;
+	oo::PList					n_key_custom_view_pan_left;
+	oo::PList					n_key_custom_view_roll_right;
+	oo::PList					n_key_custom_view_pan_right;
+	oo::PList					n_key_custom_view_rotate_up;
+	oo::PList					n_key_custom_view_pan_up;
+	oo::PList					n_key_custom_view_rotate_down;
+	oo::PList					n_key_custom_view_pan_down;
+	oo::PList					n_key_custom_view_rotate_left;
+	oo::PList					n_key_custom_view_rotate_right;
 	
-	NSArray					*n_key_docking_clearance_request;
-	NSArray					*n_key_weapons_online_toggle;
+	oo::PList					n_key_docking_clearance_request;
+	oo::PList					n_key_weapons_online_toggle;
 
-	NSArray					*n_key_cycle_next_mfd;
-	NSArray					*n_key_cycle_previous_mfd;
-	NSArray					*n_key_switch_next_mfd;
-	NSArray					*n_key_switch_previous_mfd;
+	oo::PList					n_key_cycle_next_mfd;
+	oo::PList					n_key_cycle_previous_mfd;
+	oo::PList					n_key_switch_next_mfd;
+	oo::PList					n_key_switch_previous_mfd;
 
-	NSArray					*n_key_oxzmanager_setfilter;
-	NSArray					*n_key_oxzmanager_showinfo;
-	NSArray					*n_key_oxzmanager_extract;
+	oo::PList					n_key_oxzmanager_setfilter;
+	oo::PList					n_key_oxzmanager_showinfo;
+	oo::PList					n_key_oxzmanager_extract;
 	
 #if OO_FOV_INFLIGHT_CONTROL_ENABLED
-	NSArray					*n_key_inc_field_of_view;
-	NSArray					*n_key_dec_field_of_view;
+	oo::PList					n_key_inc_field_of_view;
+	oo::PList					n_key_dec_field_of_view;
 #endif
 	
 #ifndef NDEBUG
-	NSArray					*n_key_dump_target_state;
-	NSArray					*n_key_dump_entity_list;
-	NSArray					*n_key_debug_full;
-	NSArray					*n_key_debug_collision;
-	NSArray					*n_key_debug_console_connect;
-	NSArray					*n_key_debug_bounding_boxes;
-	NSArray					*n_key_debug_shaders;
-	NSArray					*n_key_debug_off;
+	oo::PList					n_key_dump_target_state;
+	oo::PList					n_key_dump_entity_list;
+	oo::PList					n_key_debug_full;
+	oo::PList					n_key_debug_collision;
+	oo::PList					n_key_debug_console_connect;
+	oo::PList					n_key_debug_bounding_boxes;
+	oo::PList					n_key_debug_shaders;
+	oo::PList					n_key_debug_off;
 #endif
 
 	// dict to hold custom key config for OXP equipment with activate/mode functions
 	NSMutableArray			*customEquipActivation;
-	NSMutableArray			*customActivatePressed;
-	NSMutableArray			*customModePressed;
+	std::vector<BOOL>		customActivatePressed;	// parallel to customEquipActivation
+	std::vector<BOOL>		customModePressed;
 
 	// dict to hold extra keys for missions screen.
-	NSDictionary			*extraMissionKeys;
+	std::map<std::string, oo::PList, std::less<>>	extraMissionKeys;	// key name -> processed key definitions
 
-	NSMutableDictionary		*extraGuiScreenKeys;
+	std::map<int, std::vector<oo::ObjCRef<OOJSGuiScreenKeyDefinition *>>>	extraGuiScreenKeys;	// by GUI screen ID
 
 	// save-file
 	NSString				*save_path;
@@ -721,14 +721,14 @@ typedef enum
 	
 	// target memory
 	// TODO: this should use weakrefs
-	NSMutableArray  		*target_memory;
+	std::vector<oo::ObjCRef<OOWeakReference *>>	target_memory;	// a null ref = an empty slot (was [OONull null])
 	NSUInteger				target_memory_index;
 	
 	// custom view points
 	Quaternion				customViewQuaternion;
 	OOMatrix				customViewMatrix;
 	Vector					customViewOffset, customViewForwardVector, customViewUpVector, customViewRightVector, customViewRotationCenter;
-	NSString				*customViewDescription;
+	std::optional<std::string>	customViewDescription;
 	
 	
 	// docking reports
@@ -798,16 +798,16 @@ typedef enum
 	
 	OOLongRangeChartMode	longRangeChartMode;
 
-	NSArray					*_customViews;
+	std::vector<oo::PList>	_customViews;	// the ship's custom view Dicts
 	NSUInteger				_customViewIndex;
 	
 	OODockingClearanceStatus dockingClearanceStatus;
 	
-	NSMutableArray			*scannedWormholes;
+	std::vector<oo::ObjCRef<WormholeEntity *>>	scannedWormholes;
 	WormholeEntity			*wormhole;
 
 	ShipEntity				*demoShip; // Used while docked to maintain demo ship rotation.
-	NSArray                 *lastShot; // used to correctly position laser shots on first frame of firing
+	std::vector<oo::ObjCRef<OOLaserShotEntity *>>	lastShot; // used to correctly position laser shots on first frame of firing
 	
 	StickProfileScreen		*stickProfileScreen;
 
@@ -827,10 +827,10 @@ typedef enum
 - (void) completeSetUpAndSetTarget:(BOOL)setTarget;
 - (void) startUpComplete;
 
-- (NSString *) commanderName;
-- (void) setCommanderName:(NSString *)value;
-- (NSString *) lastsaveName;
-- (void) setLastsaveName:(NSString *)value;
+- (std::optional<std::string>) cxx_commanderName;
+- (void) cxx_setCommanderName:(const std::optional<std::string> &)value;	// never nullopt
+- (std::optional<std::string>) cxx_lastsaveName;
+- (void) cxx_setLastsaveName:(const std::optional<std::string> &)value;	// never nullopt
 
 - (BOOL) isDocked;
 
@@ -861,8 +861,8 @@ typedef enum
 - (NSPoint) adjusted_chart_centre;
 - (OORouteType) ANAMode;
 
-- (NSString *) jumpCause;
-- (void) setJumpCause:(NSString *)value;
+- (std::optional<std::string>) cxx_jumpCause;
+- (void) cxx_setJumpCause:(const std::optional<std::string> &)value;	// never nullopt
 
 - (OOSystemID) systemID;
 - (void) setSystemID:(OOSystemID) sid;
@@ -914,19 +914,19 @@ typedef enum
 - (StationEntity *) getTargetDockStation;
 
 - (HeadUpDisplay *) hud;
-- (BOOL) switchHudTo:(NSString *)hudFileName;
+- (BOOL) cxx_switchHudTo:(const std::string &)hudFileName;
 - (void) resetHud;
 
-- (float) dialCustomFloat:(NSString *)dialKey;
-- (NSString *) dialCustomString:(NSString *)dialKey;
-- (OOColor *) dialCustomColor:(NSString *)dialKey;
-- (void) setDialCustom:(id)value forKey:(NSString *)key;
+- (float) cxx_dialCustomFloat:(const std::string &)dialKey;
+- (std::string) cxx_dialCustomString:(const std::string &)dialKey;
+- (OOColor *) cxx_dialCustomColor:(const std::string &)dialKey;
+- (void) cxx_setDialCustom:(id)value forKey:(const std::string &)dialKey;	// value: any script value, kept as given
 
 
-- (NSArray *) multiFunctionDisplayList;
-- (NSString *) multiFunctionText:(NSUInteger) index;
-- (void) setMultiFunctionText:(NSString *)text forKey:(NSString *)key;
-- (BOOL) setMultiFunctionDisplay:(NSUInteger) index toKey:(NSString *)key;
+- (std::vector<std::optional<std::string>>) cxx_multiFunctionDisplayList;	// nullopt = inactive MFD
+- (std::optional<std::string>) cxx_multiFunctionText:(NSUInteger) index;
+- (void) cxx_setMultiFunctionText:(const std::optional<std::string> &)text forKey:(const std::optional<std::string> &)key;
+- (BOOL) cxx_setMultiFunctionDisplay:(NSUInteger) index toKey:(const std::optional<std::string> &)key;
 - (void) cycleNextMultiFunctionDisplay:(NSUInteger) index;
 - (void) cyclePreviousMultiFunctionDisplay:(NSUInteger) index;
 - (void) selectNextMultiFunctionDisplay;
@@ -952,7 +952,7 @@ typedef enum
 - (void) setAftShieldRechargeRate:(float)newValue;
 
 // return keyconfig.plist settings for scripting
-- (NSDictionary *) keyConfig;
+- (oo::PList) cxx_keyConfig;
 - (BOOL) isMouseControlOn;
 
 - (GLfloat) dialRoll;
@@ -999,18 +999,18 @@ typedef enum
 - (double) escapePodRescueTime;
 - (void) setEscapePodRescueTime:(double) seconds;
 
-- (NSString *) dial_clock;
-- (NSString *) dial_clock_adjusted;
-- (NSString *) dial_fpsinfo;
-- (NSString *) dial_objinfo;
+- (std::string) cxx_dial_clock;
+- (std::string) cxx_dial_clock_adjusted;
+- (std::string) cxx_dial_fpsinfo;
+- (std::string) cxx_dial_objinfo;
 
-- (NSMutableArray *) commLog;
+- (std::vector<std::string> *) cxx_commLog;	// the live log, trimmed first (ADR-0043 item 22)
 
 - (Entity *) compassTarget;
 - (void) setCompassTarget:(Entity *)value;
 - (void) validateCompassTarget;
 
-- (NSString *) compassTargetLabel;
+- (std::optional<std::string>) cxx_compassTargetLabel;
 
 - (OOCompassMode) compassMode;
 - (void) setCompassMode:(OOCompassMode)value;
@@ -1023,13 +1023,13 @@ typedef enum
 - (BOOL) dialIdentEngaged;
 - (void) setDialIdentEngaged:(BOOL)newValue;
 - (NSString *) specialCargo;
-- (NSString *) dialTargetName;
+- (std::optional<std::string>) cxx_dialTargetName;
 - (ShipEntity *) missileForPylon:(NSUInteger)value;
 - (void) safeAllMissiles;
 - (void) selectNextMissile;
 - (void) tidyMissilePylons;
 - (BOOL) removeFromPylon:(NSUInteger) pylon;
-- (BOOL) assignToActivePylon:(NSString *)identifierKey;
+- (BOOL) cxx_assignToActivePylon:(const std::string &)identifierKey;
 
 - (void) clearAlertFlags;
 - (int) alertFlags;
@@ -1038,7 +1038,7 @@ typedef enum
 - (OOPlayerFleeingStatus) fleeingStatus;
 
 - (BOOL) mountMissile:(ShipEntity *)missile;
-- (BOOL) mountMissileWithRole:(NSString *)role;
+- (BOOL) cxx_mountMissileWithRole:(const std::string &)role;
 
 - (OOEnergyUnitType) installedEnergyUnitType;
 - (OOEnergyUnitType) energyUnitType;
@@ -1057,7 +1057,7 @@ typedef enum
 
 - (OOWeaponType) weaponForFacing:(OOWeaponFacing)facing;
 - (OOWeaponType) currentWeapon;
-- (NSArray *) currentLaserOffset;
+- (std::vector<Vector>) cxx_currentLaserOffset;
 
 - (void) rotateCargo;
 
@@ -1069,7 +1069,7 @@ typedef enum
 
 - (BOOL) takeInternalDamage;
 
-- (BOOL) endScenario:(NSString *)key;
+- (BOOL) cxx_endScenario:(const std::string &)key;
 
 - (NSMutableArray *) roleWeights;
 - (void) addRoleForAggression:(ShipEntity *)victim;
@@ -1092,10 +1092,10 @@ typedef enum
 - (NSString *) currentPrimedEquipment;
 - (NSUInteger) primedEquipmentCount;
 - (void) activatePrimableEquipment:(NSUInteger)index withMode:(OOPrimedEquipmentMode)mode;
-- (NSString *) fastEquipmentA;
-- (NSString *) fastEquipmentB;
-- (void) setFastEquipmentA:(NSString *)eqKey;
-- (void) setFastEquipmentB:(NSString *)eqKey;
+- (std::optional<std::string>) cxx_fastEquipmentA;
+- (std::optional<std::string>) cxx_fastEquipmentB;
+- (void) cxx_setFastEquipmentA:(const std::optional<std::string> &)eqKey;
+- (void) cxx_setFastEquipmentB:(const std::optional<std::string> &)eqKey;
 
 - (OOCreditsQuantity) adjustPriceByScriptForEqKey:(NSString *)eqKey withCurrent:(OOCreditsQuantity)price;
 
@@ -1112,27 +1112,27 @@ typedef enum
 - (void) setGuiToLoadSaveScreen;
 - (void) setGuiToGameOptionsScreen;
 - (OOWeaponFacingSet) availableFacings;
-- (void) setGuiToEquipShipScreen:(int)skip selectingFacingFor:(NSString *)eqKeyForSelectFacing;
+- (void) cxx_setGuiToEquipShipScreen:(int)skip selectingFacingFor:(const std::optional<std::string> &)eqKeyForSelectFacing;	// nullopt: the normal list
 - (void) setGuiToEquipShipScreen:(int)skip;
 
 - (void) setGuiToInterfacesScreen:(int)skip;
 - (void) showInformationForSelectedInterface;
 - (void) activateSelectedInterface;
 
-- (void) highlightEquipShipScreenKey:(NSString *)key;
+- (void) highlightEquipShipScreenKey:(const std::string &)key;
 - (void) showInformationForSelectedUpgrade;
-- (void) showInformationForSelectedUpgradeWithFormatString:(NSString *)extraString;
+- (void) cxx_showInformationForSelectedUpgradeWithFormatString:(const std::optional<std::string> &)extraString;	// a runtime format with one %@
 - (BOOL) setWeaponMount:(OOWeaponFacing)chosen_weapon_facing toWeapon:(NSString *)eqKey;
 - (BOOL) setWeaponMount:(OOWeaponFacing)facing toWeapon:(NSString *)eqKey inContext:(NSString *) context;
 
 - (BOOL) changePassengerBerths:(int) addRemove;
-- (OOCargoQuantity) cargoQuantityForType:(OOCommodityType)type;
-- (OOCargoQuantity) setCargoQuantityForType:(OOCommodityType)type amount:(OOCargoQuantity)amount;
+- (OOCargoQuantity) cxx_cargoQuantityForType:(const std::string &)type;
+- (OOCargoQuantity) cxx_setCargoQuantityForType:(const std::string &)type amount:(OOCargoQuantity)amount;
 - (void) calculateCurrentCargo;
 - (void) setGuiToMarketScreen;
 - (void) setGuiToMarketInfoScreen;
-- (NSArray *) applyMarketFilter:(NSArray *)goods onMarket:(OOCommodityMarket *)market;
-- (NSArray *) applyMarketSorter:(NSArray *)goods onMarket:(OOCommodityMarket *)market;
+- (std::vector<std::string>) cxx_applyMarketFilter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market;
+- (std::vector<std::string>) cxx_applyMarketSorter:(const std::vector<std::string> &)goods onMarket:(OOCommodityMarket *)market;
 - (OOCommodityMarket *) localMarket;
 
 
@@ -1149,8 +1149,8 @@ typedef enum
 
 - (void) buySelectedItem;
 
-- (BOOL) tryBuyingCommodity:(OOCommodityType)type all:(BOOL)all;
-- (BOOL) trySellingCommodity:(OOCommodityType)type all:(BOOL)all;
+- (BOOL) cxx_tryBuyingCommodity:(const std::string &)type all:(BOOL)all;	// "<<<" / ">>>" page the market
+- (BOOL) cxx_trySellingCommodity:(const std::string &)type all:(BOOL)all;
 
 - (OOSpeechSettings) isSpeechOn;
 
@@ -1181,14 +1181,14 @@ typedef enum
 
 - (void) mungChecksumWithNSString:(NSString *)str;
 
-- (NSString *)screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;
+- (std::optional<std::string>) cxx_screenModeStringForWidth:(unsigned)inWidth height:(unsigned)inHeight refreshRate:(float)inRate;
 
 - (void) suppressTargetLost;
 
 - (void) setScoopsActive;
 
 - (void) clearTargetMemory;
-- (NSMutableArray *) targetMemory;
+- (std::vector<oo::ObjCRef<OOWeakReference *>>) cxx_targetMemory;	// a copy; a null ref is an empty slot
 - (BOOL) moveTargetMemoryBy:(NSInteger)delta;
 
 - (void) printIdentLockedOnForMissile:(BOOL)missile;
@@ -1220,10 +1220,10 @@ typedef enum
 - (Vector)customViewForwardVector;
 - (Vector)customViewUpVector;
 - (Vector)customViewRightVector;
-- (NSString *)customViewDescription;
+- (std::optional<std::string>) cxx_customViewDescription;
 - (void)resetCustomView;
 - (void)setCustomViewData;
-- (void)setCustomViewDataFromDictionary:(NSDictionary*) viewDict withScaling:(BOOL)withScaling;
+- (void)cxx_setCustomViewDataFromDictionary:(const oo::PList &) viewDict withScaling:(BOOL)withScaling;	// a null viewDict (was nil) resets the matrix and offset only
 - (HPVector) viewpointPosition;
 - (HPVector) breakPatternPosition;
 - (Vector) viewpointOffset;
@@ -1233,27 +1233,27 @@ typedef enum
 - (Vector) viewpointOffsetStarboard;
 
 
-- (NSDictionary *) missionOverlayDescriptor;
-- (NSDictionary *) missionOverlayDescriptorOrDefault;
-- (void) setMissionOverlayDescriptor:(NSDictionary *)descriptor;
+- (oo::PList) cxx_missionOverlayDescriptor;
+- (oo::PList) cxx_missionOverlayDescriptorOrDefault;
+- (void) cxx_setMissionOverlayDescriptor:(const oo::PList &)descriptor;
 
-- (NSDictionary *) missionBackgroundDescriptor;
-- (NSDictionary *) missionBackgroundDescriptorOrDefault;
-- (void) setMissionBackgroundDescriptor:(NSDictionary *)descriptor;
+- (oo::PList) cxx_missionBackgroundDescriptor;
+- (oo::PList) cxx_missionBackgroundDescriptorOrDefault;
+- (void) cxx_setMissionBackgroundDescriptor:(const oo::PList &)descriptor;
 - (OOGUIBackgroundSpecial) missionBackgroundSpecial;
-- (void) setMissionBackgroundSpecial:(NSString *)special;
+- (void) cxx_setMissionBackgroundSpecial:(const std::string &)special;	// "" (was nil) = none
 - (void) setMissionExitScreen:(OOGUIScreenID)screen;
 - (OOGUIScreenID) missionExitScreen;
 - (void) clearExtraMissionKeys;
-- (void) setExtraMissionKeys:(NSDictionary *)keys;
+- (void) cxx_setExtraMissionKeys:(const oo::PList &)keys;	// a Dict of key name -> key definitions
 
-- (void) clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(NSString *)key;
+- (void) cxx_clearExtraGuiScreenKeys:(OOGUIScreenID)gui key:(const std::string &)key;
 - (BOOL) setExtraGuiScreenKeys:(OOGUIScreenID)gui definition:(OOJSGuiScreenKeyDefinition *)definition;
 
 
 // Nasty hack to keep background textures around while on equip screens.
-- (NSDictionary *) equipScreenBackgroundDescriptor;
-- (void) setEquipScreenBackgroundDescriptor:(NSDictionary *)descriptor;
+- (oo::PList) cxx_equipScreenBackgroundDescriptor;
+- (void) cxx_setEquipScreenBackgroundDescriptor:(const oo::PList &)descriptor;
 
 - (BOOL) scriptsLoaded;
 - (NSArray *) worldScriptNames;
@@ -1288,7 +1288,7 @@ typedef enum
 - (OODockingClearanceStatus) getDockingClearanceStatus;
 - (void) penaltyForUnauthorizedDocking;
 
-- (NSArray *) scannedWormholes;
+- (std::vector<oo::ObjCRef<WormholeEntity *>>) cxx_scannedWormholes;
 
 - (WormholeEntity *) wormhole;
 - (void) setWormhole:(WormholeEntity *)newWormhole;
@@ -1302,7 +1302,7 @@ typedef enum
 
 - (oo::PList::Dict *) cxx_shipyardRecord;
 
-- (void) setLastShot:(NSArray *)shot;
+- (void) cxx_setLastShot:(const std::vector<oo::ObjCRef<OOLaserShotEntity *>> &)shot;
 
 - (void) showShipModelWithKey:(NSString *)shipKey shipData:(NSDictionary *)shipData personality:(uint16_t)personality factorX:(GLfloat)factorX factorY:(GLfloat)factorY factorZ:(GLfloat)factorZ inContext:(NSString *)context;
 
