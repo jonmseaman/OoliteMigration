@@ -34,6 +34,7 @@ SOFTWARE.
 #import "OOALStreamedSound.h"
 #import "OOALSoundMixer.h"
 #import "OOStringBridge.h"
+#import "OOFoundationBridge.h"
 
 #define KEY_VOLUME_CONTROL @"volume_control"
 
@@ -120,12 +121,12 @@ static BOOL sIsSoundOK = NO;
 	if (nil != self)
 	{
 		#ifndef NDEBUG
-			OOLog(oo::NSStringFrom(kOOLogSoundLoadingSuccess), @"Loaded sound %@", path);
+			OO_LOG(kOOLogSoundLoadingSuccess, "Loaded sound {}", oo::DescriptionOf(path));
 		#endif
 	}
 	else
 	{
-		OOLog(oo::NSStringFrom(kOOLogSoundLoadingError), @"Failed to load sound \"%@\"", path);
+		OO_LOG(kOOLogSoundLoadingError, "Failed to load sound \"{}\"", oo::DescriptionOf(path));
 	}
 	
 	return self;
