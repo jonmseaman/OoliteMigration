@@ -483,6 +483,285 @@ counterpart and converts the result exactly as the old one produced it (nil for 
 	return oo::ObjectFromPList([self cxx_getStationMarkets]);
 }
 
+
+// Chunk 8 (oo-3rb.227).
+
+// The offers as the old method returned them: an array of dictionaries (their callers only read them).
+- (NSArray *) shipsForSaleForSystem:(OOSystemID) s withTL:(OOTechLevelID) specialTL atTime:(OOTimeAbsolute) current_time
+{
+	return oo::ObjectFromPList([self cxx_shipsForSaleForSystem:s withTL:specialTL atTime:current_time]);
+}
+
+
+- (OOCreditsQuantity) tradeInValueForCommanderDictionary:(NSDictionary*) cmdr_dict
+{
+	return [self cxx_tradeInValueForCommanderDictionary:oo::PListFrom(cmdr_dict)];
+}
+
+
+// Chunk 9 (oo-3rb.228). A nil role counted nothing and a nil role found no station, as before.
+
+#ifndef NDEBUG
+- (NSArray *) entityList
+{
+	return oo::NSArrayFromObjects([self cxx_entityList]);
+}
+#endif
+
+
+- (NSArray *) planets
+{
+	return oo::NSArrayFromObjects([self cxx_planets]);
+}
+
+
+- (NSArray *) stations
+{
+	return oo::NSArrayFromObjects([self cxx_stations]);
+}
+
+
+- (NSArray *) wormholes
+{
+	return oo::NSArrayFromObjects([self cxx_wormholes]);
+}
+
+
+- (StationEntity *) stationWithRole:(NSString *)role andPosition:(HPVector)position
+{
+	if (role == nil)  return nil;
+	return [self cxx_stationWithRole:oo::StdString(role) andPosition:position];
+}
+
+
+- (NSDictionary *) currentWaypoints
+{
+	NSMutableDictionary *result = [NSMutableDictionary dictionary];
+	for (const auto &[key, waypoint] : [self cxx_currentWaypoints])
+	{
+		if (waypoint.get() != nil)  [result setObject:waypoint.get() forKey:oo::NSStringFrom(key)];
+	}
+	return [[result copy] autorelease];
+}
+
+
+- (void) defineWaypoint:(NSDictionary *)definition forKey:(NSString *)key
+{
+	[self cxx_defineWaypoint:(definition != nil) ? oo::PListFrom(definition) : oo::PList() forKey:oo::StdString(key)];
+}
+
+
+- (NSArray *) entitiesWithinRange:(double)range ofEntity:(Entity *)entity
+{
+	if (entity == nil)  return nil;
+	return oo::NSArrayFromObjects([self cxx_entitiesWithinRange:range ofEntity:entity]);
+}
+
+
+- (unsigned) countShipsWithRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity
+{
+	if (role == nil)  return 0;
+	return [self cxx_countShipsWithRole:oo::StdString(role) inRange:range ofEntity:entity];
+}
+
+
+- (unsigned) countShipsWithRole:(NSString *)role
+{
+	return [self countShipsWithRole:role inRange:-1 ofEntity:nil];
+}
+
+
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role inRange:(double)range ofEntity:(Entity *)entity
+{
+	if (role == nil)  return 0;
+	return [self cxx_countShipsWithPrimaryRole:oo::StdString(role) inRange:range ofEntity:entity];
+}
+
+
+- (unsigned) countShipsWithPrimaryRole:(NSString *)role
+{
+	return [self countShipsWithPrimaryRole:role inRange:-1 ofEntity:nil];
+}
+
+
+- (NSMutableArray *) findEntitiesMatchingPredicate:(EntityFilterPredicate)predicate
+										 parameter:(void *)parameter
+										   inRange:(double)range
+										  ofEntity:(Entity *)entity
+{
+	return [[oo::NSArrayFromObjects([self cxx_findEntitiesMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity]) mutableCopy] autorelease];
+}
+
+
+- (NSMutableArray *) findShipsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity
+{
+	return [[oo::NSArrayFromObjects([self cxx_findShipsMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity]) mutableCopy] autorelease];
+}
+
+
+- (NSMutableArray *) findVisualEffectsMatchingPredicate:(EntityFilterPredicate)predicate
+									  parameter:(void *)parameter
+										inRange:(double)range
+									   ofEntity:(Entity *)entity
+{
+	return [[oo::NSArrayFromObjects([self cxx_findVisualEffectsMatchingPredicate:predicate parameter:parameter inRange:range ofEntity:entity]) mutableCopy] autorelease];
+}
+
+
+- (NSArray*) listBeaconsWithCode:(NSString*) code
+{
+	return oo::NSArrayFromObjects([self cxx_listBeaconsWithCode:oo::StdString(code)]);
+}
+
+
+- (void) allShipsDoScriptEvent:(ooscript::PropertyId)event andReactToAIMessage:(NSString *)message
+{
+	[self cxx_allShipsDoScriptEvent:event andReactToAIMessage:oo::OptionalString(message)];
+}
+
+
+// Chunk 10 (oo-3rb.229). A nil text is std::nullopt (see Universe.h); a nil key finds nothing.
+
+- (NSDictionary *) screenTextureDescriptorForKey:(NSString *)key
+{
+	return oo::ObjectFromPList([self cxx_screenTextureDescriptorForKey:oo::StdString(key)]);
+}
+
+
+- (void) setScreenTextureDescriptorForKey:(NSString *) key descriptor:(NSDictionary *)desc
+{
+	[self cxx_setScreenTextureDescriptorForKey:oo::StdString(key) descriptor:(desc != nil) ? oo::PListFrom(desc) : oo::PList()];
+}
+
+
+- (void) displayMessage:(NSString *) text forCount:(OOTimeDelta) count
+{
+	[self cxx_displayMessage:oo::OptionalString(text) forCount:count];
+}
+
+
+- (void) displayCountdownMessage:(NSString *) text forCount:(OOTimeDelta) count
+{
+	[self cxx_displayCountdownMessage:oo::OptionalString(text) forCount:count];
+}
+
+
+- (void) addDelayedMessage:(NSString *) text forCount:(OOTimeDelta) count afterDelay:(OOTimeDelta) delay
+{
+	[self cxx_addDelayedMessage:oo::OptionalString(text) forCount:count afterDelay:delay];
+}
+
+
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count
+{
+	[self cxx_addMessage:oo::OptionalString(text) forCount:count];
+}
+
+
+- (void) addMessage:(NSString *) text forCount:(OOTimeDelta) count forceDisplay:(BOOL) forceDisplay
+{
+	[self cxx_addMessage:oo::OptionalString(text) forCount:count forceDisplay:forceDisplay];
+}
+
+
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count
+{
+	[self cxx_addCommsMessage:oo::OptionalString(text) forCount:count];
+}
+
+
+- (void) addCommsMessage:(NSString *) text forCount:(OOTimeDelta) count andShowComms:(BOOL)showComms logOnly:(BOOL)logOnly
+{
+	[self cxx_addCommsMessage:oo::OptionalString(text) forCount:count andShowComms:showComms logOnly:logOnly];
+}
+
+
+// A nil text said nothing (espeak: no UTF-8 data).
+- (void) startSpeakingString:(NSString *) text
+{
+	if (text != nil)  [self cxx_startSpeakingString:oo::StdString(text)];
+}
+
+
+#if OOLITE_ESPEAK
+- (NSString *) voiceName:(unsigned int) index
+{
+	return oo::NSStringOrNil([self cxx_voiceName:index]);
+}
+
+
+- (unsigned int) voiceNumber:(NSString *) name
+{
+	if (name == nil)
+		return UINT_MAX;
+	return [self cxx_voiceNumber:oo::StdString(name)];
+}
+#endif
+
+
+// Chunk 11 (oo-3rb.230). A nil role asked for the role "" (no ship), after clearing the display, as before.
+- (ShipEntity *) makeDemoShipWithRole:(NSString *)role spinning:(BOOL)spinning
+{
+	return [self cxx_makeDemoShipWithRole:oo::StdString(role) spinning:spinning];
+}
+
+
+// Chunk 12 (oo-3rb.231). The scenario restriction is never nil (its callers pass the save's
+// value or one of the SCENARIO_OXP_DEFINITION_* strings).
+
+- (NSString *) useAddOns
+{
+	return oo::NSStringOrNil([self cxx_useAddOns]);
+}
+
+
+- (BOOL) setUseAddOns:(NSString *)newUse fromSaveGame: (BOOL)saveGame
+{
+	return [self cxx_setUseAddOns:oo::StdString(newUse) fromSaveGame:saveGame];
+}
+
+
+- (BOOL) setUseAddOns:(NSString *) newUse fromSaveGame:(BOOL) saveGame forceReinit:(BOOL)force
+{
+	return [self cxx_setUseAddOns:oo::StdString(newUse) fromSaveGame:saveGame forceReinit:force];
+}
+
+
+- (NSDictionary *) gameSettings
+{
+	return oo::ObjectFromPList([self cxx_gameSettings]);
+}
+
+
+- (NSDictionary *) globalSettings
+{
+	return oo::ObjectFromPList([self cxx_globalSettings]);
+}
+
+@end
+
+
+// Chunk 10 (oo-3rb.229): the custom sound categories. A nil key found no sound.
+@implementation OOSound (OOCustomSoundsFoundationBridge)
+
++ (id) soundWithCustomSoundKey:(NSString *)key
+{
+	return [self cxx_soundWithCustomSoundKey:oo::StdString(key)];
+}
+
+@end
+
+
+@implementation OOSoundSource (OOCustomSoundsFoundationBridge)
+
+- (void) playCustomSoundWithKey:(NSString *)key
+{
+	[self cxx_playCustomSoundWithKey:oo::StdString(key)];
+}
+
 @end
 
 
