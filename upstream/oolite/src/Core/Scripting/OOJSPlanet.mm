@@ -242,7 +242,7 @@ static bool PlanetGetProperty(Context cx, Object obj, PropertyId propID, Value *
 			return YES;
 			
 		case kPlanet_texture:
-			*value_raw = OOJSValueFromNativeObject(context, [planet textureFileName]);
+			*value_raw = OOJSValueFromNativeObject(context, oo::NSStringOrNil([planet textureFileName]));
 			return YES;
 			
 		case kPlanet_name:
@@ -350,7 +350,7 @@ static bool PlanetSetProperty(Context cx, Object obj, PropertyId propID, bool /*
 			
 			if (OK)
 			{
-				OK = [planet setUpPlanetFromTexture:oo::NSStringFrom(*sValue)];
+				OK = [planet setUpPlanetFromTexture:sValue];	// has a value here
 				if (!OK)  OOJSReportWarning(context, @"Cannot find texture \"%@\". Value not set.", oo::NSStringFrom(*sValue));
 			}
 
