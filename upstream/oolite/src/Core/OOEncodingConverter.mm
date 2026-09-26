@@ -219,7 +219,7 @@ static unsigned				sCacheMisses = 0;
 - (void) profileFire:(id)junk
 {
 	float ratio = (float)sCacheHits / (float)(sCacheHits + sCacheMisses);
-	OOLog(@"strings.encoding.profile", @"Cache hits: %u, misses: %u, ratio: %.2g", sCacheHits, sCacheMisses, ratio);
+	OO_LOG("strings.encoding.profile", "Cache hits: {}, misses: {}, ratio: {:.2g}", sCacheHits, sCacheMisses, ratio);
 	sCacheHits = sCacheMisses = 0;
 }
 #endif
