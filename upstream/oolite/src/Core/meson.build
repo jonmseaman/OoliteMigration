@@ -53,7 +53,6 @@ oolite_sources += files(
     'OOEnumerationShuffle.mm',
     'OOEquipmentType.mm',
     'OOEquipmentType+FoundationBridge.mm',
-    'OOExcludeObjectEnumerator.mm',
     'OOFilteringEnumerator.mm',
     'OOGraphicsResetManager.mm',
     'OOHPVector.mm',
