@@ -96,7 +96,7 @@ MA 02110-1301, USA.
  * <p>TODO: Where is the detection that the ship has docked?</p>
  * <p>TODO: What are the magic number's units? Is it km (kilometers)?</p>
  */
-- (id) dockingInstructionsForShip:(ShipEntity *)ship;	// shared selector (proposed ADR-0043): an Objective-C dictionary
+- (oo::PList) dockingInstructionsForShip:(ShipEntity *)ship;	// a dictionary (the station an Object node); null: none (bead oo-3rb.262)
 - (std::optional<std::string>) canAcceptShipForDocking:(ShipEntity *)ship;
 - (BOOL) shipIsInDockingCorridor:(ShipEntity *)ship;
 - (BOOL) shipIsInDockingQueue:(ShipEntity *)ship;
@@ -112,7 +112,7 @@ MA 02110-1301, USA.
 - (BOOL) allowsLaunching;
 - (void) setAllowsLaunching:(BOOL)allow;
 - (NSUInteger) countOfShipsInLaunchQueue;
-- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(id)role;	// shared selector (proposed ADR-0043): an Objective-C string
+- (NSUInteger) countOfShipsInLaunchQueueWithPrimaryRole:(const std::string &)role;
 - (BOOL) allowsLaunchingOf:(ShipEntity *)ship;
 - (void) launchShip:(ShipEntity *)ship;
 - (void) addShipToLaunchQueue:(ShipEntity *)ship withPriority:(BOOL)priority;
