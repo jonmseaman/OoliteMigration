@@ -77,7 +77,8 @@ void OpenLogFile();
 
 @interface OOOXPVerifier (OOPrivate)
 
-- (id)initWithPath:(id)path;	// path: an Objective-C string. Shared selector (proposed ADR-0043).
+- (id)initWithPath:(id)path;	// path: an Objective-C string. Shared selector (Foundation declares it too): -cxx_initWithPath:.
+- (id)cxx_initWithPath:(const std::optional<std::string> &)path OO_RETURNS_RETAINED;	// nullopt: nil (bead oo-3rb.292.2)
 - (void)run;
 
 - (void)setUpLogOverrides;
@@ -155,7 +156,7 @@ void OpenLogFile();
 	}
 	else
 	{
-		verifier = [[OOOXPVerifier alloc] initWithPath:oo::NSStringFrom(*foundPath)];
+		verifier = [[OOOXPVerifier alloc] cxx_initWithPath:foundPath];
 		objc_autoreleasePoolPop(pool);
 		pool = objc_autoreleasePoolPush();
 		[verifier run];
@@ -285,7 +286,13 @@ void OpenLogFile();
 
 @implementation OOOXPVerifier (OOPrivate)
 
-- (id)initWithPath:(id)path	// shared selector (proposed ADR-0043)
+- (id)initWithPath:(id)path	// shared selector (Foundation declares it too)
+{
+	return [self cxx_initWithPath:oo::OptionalString(path)];
+}
+
+
+- (id)cxx_initWithPath:(const std::optional<std::string> &)path
 {
 	self = [super init];
 
@@ -304,7 +311,7 @@ void OpenLogFile();
 		}
 	}
 
-	_basePath = oo::StdString(path);	// never nil: the path always came from the command line
+	_basePath = path.value_or(std::string());	// never nullopt: the path always came from the command line
 	_displayName = oo::str::lastPathComponent(_basePath);	// what GNUstep's -displayNameAtPath: returns
 
 	if (_verifierPList.isNull())
@@ -411,8 +418,6 @@ void OpenLogFile();
 	id						name = nil;
 	std::map<OOOXPVerifierStage *, std::vector<std::string>>	dependenciesByStage,
 															dependentsByStage;
-	id						dependencies = nil,
-							dependents = nil;
 
 	@autoreleasepool
 	{
@@ -431,16 +436,18 @@ void OpenLogFile();
 			_waitingStages.erase(_waitingStages.begin());
 			stage = waiting.get();
 
-			dependencies = [stage dependencies];
-			if (dependencies != nil)
+			std::optional<std::vector<std::string>> dependencies = [stage cxx_dependencies];
+			if (dependencies.has_value())
 			{
-				dependenciesByStage[stage] = oo::StringsFrom(dependencies);
+				dependenciesByStage[stage] = std::move(*dependencies);
 			}
 
-			dependents = [stage dependents];
-			if (dependents != nil)
+			const std::optional<std::vector<std::string>> dependents = [stage dependents];
+			if (dependents.has_value())
 			{
-				dependentsByStage[stage] = oo::StringsFrom(dependents);
+				// Through the Objective-C set the stages returned before, so the names keep its
+				// enumeration order (-setUpDependents: registers them in that order).
+				dependentsByStage[stage] = oo::StringsFrom(oo::NSSetFromStrings(*dependents));
 			}
 		}
 		_waitingStages.clear();

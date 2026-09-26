@@ -35,7 +35,7 @@ MA 02110-1301, USA.
 
 
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import <SDL3/SDL_events.h>
 #import "OOJoystickManager.h"
 

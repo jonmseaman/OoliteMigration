@@ -42,6 +42,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
 
 
 enum
@@ -146,7 +147,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 
 - (oo::PList) stateMachine;
 - (id) name;	// shared selector (proposed ADR-0043): an Objective-C string
-- (id) state;	// shared selector (proposed ADR-0043): an Objective-C string or nil
+- (std::optional<std::string>) cxx_state;
 - (std::set<std::string>) pendingMessages;
 - (std::optional<std::string>) jsScript;
 
@@ -165,7 +166,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 {
 	if (sCurrentlyRunningAI != nil)
 	{
-		return oo::str::format("%s in state %s", oo::DescriptionOf([sCurrentlyRunningAI name]).c_str(), oo::DescriptionOf([sCurrentlyRunningAI state]).c_str());
+		return oo::str::format("%s in state %s", oo::DescriptionOf([sCurrentlyRunningAI name]).c_str(), [sCurrentlyRunningAI cxx_state].value_or("(null)").c_str());
 	}
 	else
 	{
@@ -263,7 +264,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 			while (count--)
 			{
 				OOPreservedAIStateMachine *preservedMachine = aiStack[count].get();
-				OOLog(@"ai.error.stackOverflow.dump", @"%3zu: %@: %@", count, [preservedMachine name], [preservedMachine state]);
+				OOLog(@"ai.error.stackOverflow.dump", @"%3zu: %@: %@", count, [preservedMachine name], oo::NSStringOrNil([preservedMachine cxx_state]));
 			}
 			
 			OOLogOutdent();
@@ -313,7 +314,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 	[self directSetStateMachine:[preservedMachine.get() stateMachine]
 						   name:oo::StdString([preservedMachine.get() name])];
 
-	[self directSetState:oo::OptionalString([preservedMachine.get() state])];
+	[self directSetState:[preservedMachine.get() cxx_state]];
 
 	// restore JS script
 	[[self owner] setAIScript:[preservedMachine.get() jsScript].value_or("")];
@@ -413,9 +414,15 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 }
 
 
-- (id) state
+- (id) state	// shared selector (Foundation declares -state too; retires with oo-qps)
 {
-	return oo::NSStringOrNil(currentState);
+	return oo::NSStringOrNil([self cxx_state]);
+}
+
+
+- (std::optional<std::string>) cxx_state
+{
+	return currentState;
 }
 
 
@@ -649,18 +656,18 @@ static AIStackElement *sStack = NULL;
 }
 
 
-- (void) message:(id)ms
+- (void) message:(const std::string &)ms
 {
 	if ([[self owner] universalID] == NO_TARGET)  return;  // don't think until launched
 
 	if (EXPECT_NOT(pendingMessages.size() > 32))
 	{
 		// Generate the error, but don't crash Oolite! Fixes bug #18055 - Pending message overflow for thargoids, -> crash !
-		OOLogERR(@"ai.message.failed.overflow", @"AI message \"%@\" received by '%@' AI while pending messages stack full; message discarded. Pending messages:\n%@", ms, oo::NSStringOrNil(ownerDesc), oo::NSSetFromStrings([self pendingMessages]));
+		OOLogERR(@"ai.message.failed.overflow", @"AI message \"%@\" received by '%@' AI while pending messages stack full; message discarded. Pending messages:\n%@", oo::NSStringFrom(ms), oo::NSStringOrNil(ownerDesc), oo::NSSetFromStrings([self pendingMessages]));
 	}
 	else
 	{
-		pendingMessages.insert(oo::StdString(ms));
+		pendingMessages.insert(ms);
 	}
 }
 
@@ -872,9 +879,10 @@ static AIStackElement *sStack = NULL;
 			{
 				[cacheMgr cxx_setObject:@"nil" forKey:smName inCache:"AIs"];
 				std::string fromString;
-				if ([self state] != nil)
+				const std::optional<std::string> state = [self cxx_state];
+				if (state.has_value())
 				{
-					fromString = oo::str::format(" from %s:%s", oo::DescriptionOf([self name]).c_str(), oo::DescriptionOf([self state]).c_str());
+					fromString = oo::str::format(" from %s:%s", oo::DescriptionOf([self name]).c_str(), state->c_str());
 				}
 				OOLog(@"ai.load.failed.unknownAI", @"Can't switch AI for %@%@ to \"%@\" - could not load file.", [[self owner] shortDescription], oo::NSStringFrom(fromString), oo::NSStringFrom(smName));
 				return oo::PList();
@@ -901,7 +909,7 @@ static AIStackElement *sStack = NULL;
 #if DEBUG_GRAPHVIZ
 			if ([[NSUserDefaults standardUserDefaults] boolForKey:@"generate-ai-graphviz"])
 			{
-				GenerateGraphVizForAIStateMachine(oo::ObjectFromPList(newSM), oo::NSStringFrom(smName));
+				GenerateGraphVizForAIStateMachine(newSM, smName);
 			}
 #endif
 
@@ -964,9 +972,8 @@ static AIStackElement *sStack = NULL;
 		if (aliasDictionary != nullptr)  aliases = *aliasDictionary;
 	}
 
-	// -stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]: whitespace, not newlines.
-	NSCharacterSet *whitespace = [NSCharacterSet whitespaceCharacterSet];
-	auto isWhitespace = [whitespace](char16_t c) { return [whitespace characterIsMember:c] != NO; };
+	// The whitespace character set: whitespace, not newlines.
+	const oo::str::CharacterSet whitespace = oo::str::CharacterSet::whitespace();
 
 	const oo::PList::Array *entries = actions.getIf<oo::PList::Array>();
 	for (const oo::PList &entry : entries != nullptr ? *entries : oo::PList::Array())
@@ -978,7 +985,7 @@ static AIStackElement *sStack = NULL;
 		}
 
 		// Trim spaces from beginning and end.
-		std::string action = oo::str::trimTrailing(oo::str::trimLeading(*entry.getIf<std::string>(), isWhitespace), isWhitespace);
+		std::string action = oo::str::trim(*entry.getIf<std::string>(), whitespace);
 
 		// Cut off parameters.
 		const std::size_t space = action.find(' ');
@@ -1066,9 +1073,9 @@ static AIStackElement *sStack = NULL;
 }
 
 
-- (id) state
+- (std::optional<std::string>) cxx_state
 {
-	return oo::NSStringOrNil(_state);
+	return _state;
 }
 
 

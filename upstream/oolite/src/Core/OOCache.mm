@@ -1093,7 +1093,7 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 }
 
 
-- (id) generateGraphViz	// shared selector (proposed ADR-0043): an Objective-C string
+- (std::string) generateGraphViz
 {
 	std::string				result;
 	
@@ -1108,15 +1108,15 @@ static void AgeListCheckIntegrity(OOCacheImpl *cache, const std::string &context
 	
 	result += "}\n";
 	
-	return oo::NSStringFrom(result);
+	return result;
 }
 
 
-- (void) writeGraphVizToPath:(id)path	// shared selector (proposed ADR-0043): an Objective-C string
+// (-writeGraphVizToURL: folded in: its only sender was this method; bead oo-3rb.264)
+- (void) writeGraphVizToPath:(const std::string &)path
 {
-	// -writeToURL:[NSURL fileURLWithPath:path] atomically:YES (bead oo-3rb.13).
-	const std::string graphViz = oo::StdString([self generateGraphViz]);
-	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(oo::StdString(path)), oo::Data(graphViz.data(), graphViz.size()), oo::fs::WriteMode::atomic);
+	const std::string graphViz = [self generateGraphViz];
+	(void)oo::fs::writeFile(oo::fs::pathFromUTF8(path), oo::Data(graphViz.data(), graphViz.size()));	// atomically, as before
 }
 
 @end

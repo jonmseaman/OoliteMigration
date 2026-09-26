@@ -31,6 +31,8 @@ SOFTWARE.
 #import "oofnd/objc/OOObject.h"
 #import "OODebuggerInterface.h"
 
+#include "oofnd/StdLib.hpp"
+
 @class OODebugMonitor;
 
 
@@ -54,7 +56,7 @@ typedef enum
 @interface OODebugTCPConsoleClient: OOObject <OODebuggerInterface>
 {
 @private
-	NSString					*_hostName;			// was the host object; nil when closed
+	std::optional<std::string>	_hostName;			// was the host object; nullopt when closed
 	uintptr_t					_socket;			// SOCKET / file descriptor; all ones when closed
 	int							_inStatus,
 								_outStatus;
@@ -67,7 +69,7 @@ typedef enum
 	struct OOTCPStreamDecoder	*_decoder;
 }
 
-- (id) initWithAddress:(NSString *)address	// Pass nil for localhost
+- (id) initWithAddress:(const std::optional<std::string> &)address	// Pass nullopt for localhost
 				  port:(uint16_t)port;		// Pass 0 for default port
 
 @end

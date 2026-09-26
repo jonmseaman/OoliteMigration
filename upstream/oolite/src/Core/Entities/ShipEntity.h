@@ -218,7 +218,7 @@ typedef enum
 	
 @protected
 	//set-up
-	NSDictionary			*shipinfoDictionary;
+	oo::PList				shipinfoDictionary;	// null: not set up from a dictionary
 	
 	Quaternion				subentityRotationalVelocity;
 	
@@ -432,7 +432,7 @@ typedef enum
 #endif
 	
 	uint16_t				entity_personality;			// Per-entity random number. Exposed to shaders and scripts.
-	NSDictionary			*scriptInfo;				// script_info dictionary from shipdata.plist, exposed to scripts.
+	oo::PList				scriptInfo;				// script_info dictionary from shipdata.plist, exposed to scripts; null: none
 	
 	std::vector<oo::ObjCRef<Entity *>>	subEntities;	// empty == none (was nil)
 	OOEquipmentType			*missile_list[SHIPENTITY_MAX_MISSILES];
@@ -506,7 +506,7 @@ typedef enum
 - (AI *) getAI;
 - (BOOL) hasAutoAI;
 - (BOOL) hasNewAI;
-- (void) setShipScript:(NSString *)script_name;
+- (void) cxx_setShipScript:(const std::optional<std::string> &)script_name;
 - (void) removeScript;
 - (OOScript *) shipScript;
 - (OOScript *) shipAIScript;
@@ -577,9 +577,9 @@ typedef enum
 - (void) setUpEscorts;
 - (void) updateEscortFormation;
 
-- (id)initWithKey:(NSString *)key definition:(NSDictionary *)dict;
-- (BOOL)setUpFromDictionary:(NSDictionary *) shipDict;
-- (BOOL)setUpShipFromDictionary:(NSDictionary *) shipDict;
+- (id)initWithKey:(id)key definition:(id)dict;	// shared selector (proposed ADR-0043): an Objective-C string and dictionary
+- (BOOL) cxx_setUpFromDictionary:(const oo::PList &) shipDict;
+- (BOOL)setUpShipFromDictionary:(id) shipDict;	// shared selector (proposed ADR-0043): an Objective-C dictionary
 - (BOOL)setUpSubEntities;
 - (BOOL) cxx_setUpOneStandardSubentity:(const oo::PList &) subentDict asTurret:(BOOL)asTurret;
 - (GLfloat)frustumRadius;
@@ -588,7 +588,7 @@ typedef enum
 - (std::optional<std::string>) cxx_shipDataKeyAutoRole;	// "[key]"
 - (void) cxx_setShipDataKey:(const std::optional<std::string> &)key;
 
-- (NSDictionary *)shipInfoDictionary;
+- (oo::PList) cxx_shipInfoDictionary;
 
 - (std::vector<Vector>) cxx_weaponOffsetsFrom:(const oo::PList &)dict withKey:(const std::string &)key inMode:(const std::string &)mode;
 - (std::vector<Vector>) cxx_aftWeaponOffset;
@@ -909,7 +909,7 @@ typedef enum
 - (int) legalStatus;
 
 - (BOOL) isTemplateCargoPod;
-- (void) setUpCargoType:(NSString *)cargoString;
+- (void) setUpCargoType:(const std::string &)cargoString;
 - (void) cxx_setCommodity:(const std::string &)co_type andAmount:(OOCargoQuantity)co_amount;
 - (void) cxx_setCommodityForPod:(const std::optional<std::string> &)co_type andAmount:(OOCargoQuantity)co_amount;	// nullopt empties the pod, as nil did
 - (std::optional<std::string>) cxx_commodityType;
@@ -1240,8 +1240,8 @@ Vector cxx_positionOffsetForShipInRotationToAlignment(ShipEntity* ship, Quaterni
 
 
 - (OOJSScript *) script;
-- (NSDictionary *) scriptInfo;
-- (void) overrideScriptInfo:(NSDictionary *)override;	// Add items from override (if not nil) to scriptInfo, replacing in case of duplicates. Used for subentities.
+- (id) scriptInfo;	// shared selector (proposed ADR-0043): an Objective-C dictionary (empty when there is none)
+- (void) overrideScriptInfo:(const oo::PList &)override;	// Add items from override (a dictionary, or null for none) to scriptInfo, replacing in case of duplicates. Used for subentities.
 
 - (BOOL) scriptedMisjump;
 - (void) setScriptedMisjump:(BOOL)newValue;
@@ -1309,28 +1309,9 @@ unsigned argc = sizeof argv / sizeof *argv; \
 @end
 
 
-NSDictionary *OODefaultShipShaderMacros(void);
+oo::PList OODefaultShipShaderMacros(void);
 
 GLfloat getWeaponRangeFromType(OOWeaponType weapon_type);
-
-// Defined in OOConstToString.m
-NSString *OOStringFromBehaviour(OOBehaviour behaviour) CONST_FUNC;
-
-// Weapon strings prefixed with EQ_, used in shipyard.plist.
-NSString *OOEquipmentIdentifierFromWeaponType(OOWeaponType weapon) CONST_FUNC;
-#ifdef __cplusplus
-extern "C" {
-#endif
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierSloppy(NSString *string) PURE_FUNC;	// Uses suffix match for backwards compatibility.
-#ifdef __cplusplus
-}
-#endif
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierStrict(NSString *string) PURE_FUNC;
-OOWeaponType OOWeaponTypeFromEquipmentIdentifierLegacy(NSString *string);
-
-
-NSString *OOStringFromWeaponType(OOWeaponType weapon) CONST_FUNC;
-OOWeaponType OOWeaponTypeFromString(NSString *string) PURE_FUNC;
 
 #ifdef __cplusplus
 extern "C" {
@@ -1340,12 +1321,8 @@ BOOL isWeaponNone(OOWeaponType weapon);
 }
 #endif
 
-NSString *OODisplayStringFromAlertCondition(OOAlertCondition alertCondition);
-
-NSString *OOStringFromShipDamageType(OOShipDamageType type) CONST_FUNC;
-
 // C++ forms, defined in OOConstToString.mm (bead oo-nts1, chunk oo-3rb.161); the Foundation forms
-// above forward to them from OOConstToString+FoundationBridge.mm.
+// in ShipEntity+FoundationBridge.h forward to them from OOConstToString+FoundationBridge.mm.
 std::string cxx_OOStringFromBehaviour(OOBehaviour behaviour);
 std::string cxx_OOStringFromShipDamageType(OOShipDamageType type);
 
