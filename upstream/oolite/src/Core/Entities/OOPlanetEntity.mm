@@ -294,7 +294,7 @@ static const double kMesosphere = 10.0 * ATMOSPHERE_DEPTH;	// atmosphere effect 
 	_normSpecMapName = OptionalStringForKey(dict, "texture_normspec"); // must be set up before _textureName
 
 	_textureName = OptionalStringForKey(dict, "texture");
-	[self setUpPlanetFromTexture:oo::NSStringOrNil(_textureName)];
+	[self setUpPlanetFromTexture:_textureName];
 	[_planetDrawable setRadius:collision_radius];
 		
 	// Orientation should be handled by the code that calls this planetEntity. Starting with a default value anyway.
@@ -1031,16 +1031,16 @@ static OOColor *ColorWithHSBColor(Vector c)
 
 
 // FIXME: need material model.
-- (id) textureFileName	// shared selector (proposed ADR-0043)
+- (std::optional<std::string>) textureFileName
 {
-	return oo::NSStringOrNil([_planetDrawable textureName]);
+	return [_planetDrawable textureName];
 }
 
 
 - (void)resetGraphicsState
 {
 	// reset the texture if graphics mode changes
-	[self setUpPlanetFromTexture:oo::NSStringOrNil(_textureName)];
+	[self setUpPlanetFromTexture:_textureName];
 }
 
 
@@ -1104,7 +1104,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 	{
 		[OOPlanetTextureGenerator generatePlanetTexture:&diffuseMap
 									   secondaryTexture:(detailLevel >= DETAIL_LEVEL_SHADERS) ? &normalMap : NULL
-											   withInfo:oo::ObjectFromPList(_materialParameters)
+											   withInfo:_materialParameters
 												   seed:_noiseMapSeed];
 
 		if (shadersOn)
@@ -1121,7 +1121,7 @@ static OOColor *ColorWithHSBColor(Vector c)
 		/* Generate a standalone atmosphere texture */
 		OOTexture *atmosphere = nil;
 		[OOStandaloneAtmosphereGenerator generateAtmosphereTexture:&atmosphere
-														withInfo:oo::ObjectFromPList(_materialParameters)
+														withInfo:_materialParameters
 															seed:_noiseMapSeed];
 		
 		OOLog(@"texture.planet.generate",@"Planet %@ has atmosphere %@",self,atmosphere);
@@ -1191,9 +1191,9 @@ static OOColor *ColorWithHSBColor(Vector c)
 }
 
 
-- (BOOL) setUpPlanetFromTexture:(id)textureName	// shared selector (proposed ADR-0043)
+- (BOOL) setUpPlanetFromTexture:(const std::optional<std::string> &)textureName
 {
-	[self setTextureFileName:oo::OptionalString(textureName)];
+	[self setTextureFileName:textureName];
 	return YES;
 }
 

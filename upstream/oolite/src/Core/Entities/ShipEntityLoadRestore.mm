@@ -93,9 +93,9 @@ id ObjectForKey(const oo::PList &dict, std::string_view key);
 	OOShipSaveContext localContext;
 	if (context == nullptr)  context = &localContext;
 
-	result[KEY_SHIP_KEY] = oo::StdString(_shipKey);
+	result[KEY_SHIP_KEY] = _shipKey.value_or(std::string());	// nil as "", as oo::StdString gave
 
-	oo::PList::Dict updatedShipInfo = DictFrom(oo::PListFrom(shipinfoDictionary));
+	oo::PList::Dict updatedShipInfo = DictFrom(shipinfoDictionary);
 
 	// A role set without a role string (nil before, which -setObject:forKey: refused) adds no key.
 	if (const std::optional<std::string> roleString = [[self roleSet] roleString])  updatedShipInfo[KEY_ROLES] = *roleString;
