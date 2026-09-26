@@ -234,7 +234,7 @@ std::vector<std::string> Columns(std::initializer_list<std::optional<std::string
 	return result;
 }
 
-// Unique-by-== insert for the dependency stack (was NSMutableSet).
+// Unique-by-== insert for the dependency stack (was a mutable set of manifests).
 void DependencyStackAdd(std::vector<oo::PList> &stack, const oo::PList &item)
 {
 	for (const oo::PList &existing : stack)
