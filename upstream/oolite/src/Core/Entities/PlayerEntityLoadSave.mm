@@ -1515,7 +1515,7 @@ OOCreditsQuantity OODeciCreditsFromDouble(double doubleDeciCredits)
 
 OOCreditsQuantity OODeciCreditsFromObject(id object)
 {
-	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// -oo_isFloatingPointNumber: objCType f or d
+	if (oo::IsNSNumber(object) && oo::PListFrom(object).isReal())	// float/double NSNumber (objCType f or d)
 	{
 		return OODeciCreditsFromDouble([object doubleValue]);
 	}

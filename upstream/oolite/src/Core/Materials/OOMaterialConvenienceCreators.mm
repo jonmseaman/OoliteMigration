@@ -35,7 +35,6 @@ SOFTWARE.
 
 #if USE_NEW_SHADER_SYNTHESIZER
 #import "OODefaultShaderSynthesizer.h"
-#import "OOFoundationBridge.h"
 #import "ResourceManager.h"
 #endif
 
@@ -44,6 +43,7 @@ SOFTWARE.
 #import "OOSingleTextureMaterial.h"
 #import "OOMultiTextureMaterial.h"
 #import "OOPListView.h"
+#import "OOFoundationBridge.h"
 #import "Universe.h"
 #import "OOCacheManager.h"
 #import "OOTexture.h"
@@ -229,11 +229,11 @@ static BOOL sDumpShaderSource = NO;
 	NSDictionary	*uniformSpecs = oo::ObjectFromPList(uniformSpecDict);
 	
 	NSDictionary	*synthesizedConfig = [NSDictionary dictionaryWithObjectsAndKeys:
-										  [NSNumber numberWithBool:YES], kOOIsSynthesizedMaterialConfigurationKey,
-										  textureSpecs, kOOTexturesKey,
-										  uniformSpecs, kOOUniformsKey,
-										  vertexShader, kOOVertexShaderSourceKey,
-										  fragmentShader, kOOFragmentShaderSourceKey,
+										  [NSNumber numberWithBool:YES], oo::NSStringFrom(kOOIsSynthesizedMaterialConfigurationKey),
+										  textureSpecs, oo::NSStringFrom(kOOTexturesKey),
+										  uniformSpecs, oo::NSStringFrom(kOOUniformsKey),
+										  vertexShader, oo::NSStringFrom(kOOVertexShaderSourceKey),
+										  fragmentShader, oo::NSStringFrom(kOOFragmentShaderSourceKey),
 										  nil];
 	
 #ifndef NDEBUG
@@ -246,11 +246,11 @@ static BOOL sDumpShaderSource = NO;
 		
 		// Hide internal keys in the synthesized config before writing it.
 		NSMutableDictionary *humanFriendlyConfig = [[synthesizedConfig mutableCopy] autorelease];
-		[humanFriendlyConfig removeObjectForKey:kOOVertexShaderSourceKey];
-		[humanFriendlyConfig removeObjectForKey:kOOFragmentShaderSourceKey];
-		[humanFriendlyConfig removeObjectForKey:kOOIsSynthesizedMaterialConfigurationKey];
-		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.vertex", name] forKey:kOOVertexShaderNameKey];
-		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.fragment", name] forKey:kOOFragmentShaderNameKey];
+		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOVertexShaderSourceKey)];
+		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOFragmentShaderSourceKey)];
+		[humanFriendlyConfig removeObjectForKey:oo::NSStringFrom(kOOIsSynthesizedMaterialConfigurationKey)];
+		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.vertex", name] forKey:oo::NSStringFrom(kOOVertexShaderNameKey)];
+		[humanFriendlyConfig setObject:[NSString stringWithFormat:@"%@.fragment", name] forKey:oo::NSStringFrom(kOOFragmentShaderNameKey)];
 		
 		[ResourceManager writeDiagnosticPList:humanFriendlyConfig toFileNamed:[dumpPath stringByAppendingPathExtension:@"plist"]];
 		
@@ -282,11 +282,12 @@ static BOOL sDumpShaderSource = NO;
 
 	if ([UNIVERSE useShaders])
 	{
-		if ([OOShaderMaterial configurationDictionarySpecifiesShaderMaterial:configuration])
+		const oo::PList configurationPList = oo::PListFrom(configuration);
+		if ([OOShaderMaterial configurationDictionarySpecifiesShaderMaterial:configurationPList])
 		{
-			result = [OOShaderMaterial shaderMaterialWithName:name
-												configuration:configuration
-													   macros:macros
+			result = [OOShaderMaterial shaderMaterialWithName:oo::OptionalString(name)
+												configuration:configurationPList
+													   macros:oo::PListFrom(macros)
 												bindingTarget:object];
 		}
 		

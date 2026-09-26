@@ -34,7 +34,7 @@ SOFTWARE.
 #import "ResourceManager.h"
 #import "OOShaderUniform.h"
 #import "OOFunctionAttributes.h"
-#import "OOPListView.h"
+#import "OOCollectionExtractors.h"
 #import "OOShaderProgram.h"
 #import "OOTexture.h"
 #import "OOOpenGLExtensionManager.h"
@@ -51,7 +51,7 @@ SOFTWARE.
 
 namespace {
 
-// -[NSDictionary oo_stringForKey:] as the old code read it: a string, or a number's -stringValue;
+// Dictionary -oo_stringForKey: as the old code read it: a string, or a number's -stringValue;
 // nullopt (nil) for anything else or a missing key.
 std::optional<std::string> StringForKey(const oo::PList &dictionary, std::string_view key)
 {
@@ -61,17 +61,6 @@ std::optional<std::string> StringForKey(const oo::PList &dictionary, std::string
 }
 
 } // namespace
-
-
-NSString * const kOOVertexShaderSourceKey		= @"_oo_vertex_shader_source";
-NSString * const kOOVertexShaderNameKey			= @"vertex_shader";
-NSString * const kOOFragmentShaderSourceKey		= @"_oo_fragment_shader_source";
-NSString * const kOOFragmentShaderNameKey		= @"fragment_shader";
-NSString * const kOOTexturesKey					= @"textures";
-NSString * const kOOTextureObjectsKey			= @"_oo_texture_objects";
-NSString * const kOOUniformsKey					= @"uniforms";
-NSString * const kOOIsSynthesizedMaterialConfigurationKey = @"_oo_is_synthesized_config";
-NSString * const kOOIsSynthesizedMaterialMacrosKey = @"_oo_synthesized_material_macros";
 
 
 namespace {
@@ -97,74 +86,70 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 
 @implementation OOShaderMaterial
 
-+ (BOOL)configurationDictionarySpecifiesShaderMaterial:(NSDictionary *)configuration
++ (BOOL)configurationDictionarySpecifiesShaderMaterial:(const oo::PList &)configuration
 {
-	if (configuration == nil)  return NO;
+	if (configuration.isNull())  return NO;
 	
-	if (oo::PListView(configuration).get<NSString *>(kOOVertexShaderSourceKey) != nil)  return YES;
-	if (oo::PListView(configuration).get<NSString *>(kOOFragmentShaderSourceKey) != nil)  return YES;
-	if (oo::PListView(configuration).get<NSString *>(kOOVertexShaderNameKey) != nil)  return YES;
-	if (oo::PListView(configuration).get<NSString *>(kOOVertexShaderNameKey) != nil)  return YES;
+	if (StringForKey(configuration, kOOVertexShaderSourceKey).has_value())  return YES;
+	if (StringForKey(configuration, kOOFragmentShaderSourceKey).has_value())  return YES;
+	if (StringForKey(configuration, kOOVertexShaderNameKey).has_value())  return YES;
+	if (StringForKey(configuration, kOOVertexShaderNameKey).has_value())  return YES;
 	
 	return NO;
 }
 
 
-+ (instancetype) shaderMaterialWithName:(NSString *)name
-						  configuration:(NSDictionary *)configuration
-								 macros:(NSDictionary *)macros
++ (instancetype) shaderMaterialWithName:(const std::optional<std::string> &)name
+						  configuration:(const oo::PList &)configuration
+								 macros:(const oo::PList &)macros
 						  bindingTarget:(id<OOWeakReferenceSupport>)target
 {
 	return [[[self alloc] initWithName:name configuration:configuration macros:macros bindingTarget:target] autorelease];
 }
 
 
-- (id) initWithName:(NSString *)name
-	  configuration:(NSDictionary *)configuration
-			 macros:(NSDictionary *)macros
+- (id) initWithName:(const std::optional<std::string> &)name
+	  configuration:(const oo::PList &)configuration
+			 macros:(const oo::PList &)macros
 	  bindingTarget:(id<OOWeakReferenceSupport>)target
 {
 	BOOL					OK = YES;
-	NSString				*macroString = nil;
-	NSString				*vertexShader = nil;
-	NSString				*fragmentShader = nil;
+	std::optional<std::string>	macroString;
+	std::optional<std::string>	vertexShader;
+	std::optional<std::string>	fragmentShader;
 	GLint					textureUnits = [[OOOpenGLExtensionManager sharedManager] textureImageUnitCount];
-	NSMutableDictionary		*modifiedMacros = nil;
-	NSString				*vsName = @"<synthesized>";
-	NSString				*fsName = @"<synthesized>";
-	NSString				*vsCacheKey = nil;
-	NSString				*fsCacheKey = nil;
+	oo::PList				modifiedMacros;
+	std::optional<std::string>	vsName = "<synthesized>";
+	std::optional<std::string>	fsName = "<synthesized>";
+	std::optional<std::string>	vsCacheKey;
+	std::optional<std::string>	fsCacheKey;
 	
-	if (configuration == nil)  OK = NO;
+	if (configuration.isNull())  OK = NO;
 	
-	self = [super initWithName:name configuration:configuration];
+	id configurationObject = oo::ObjectFromPList(configuration);
+	self = [super initWithName:oo::NSStringOrNil(name) configuration:configurationObject];
 	if (self == nil)  OK = NO;
 	
 	if (OK)
 	{
-		modifiedMacros = macros ? [macros mutableCopy] : [[NSMutableDictionary alloc] init];
-		[modifiedMacros autorelease];
-		
-		[modifiedMacros setObject:[NSNumber numberWithUnsignedInt:textureUnits]
-						   forKey:@"OO_TEXTURE_UNIT_COUNT"];
+		// A copy of the macros (an empty one for nil, as +dictionary / -mutableCopy gave).
+		modifiedMacros = macros.isDict() ? macros : oo::PList(oo::PList::Dict{});
+		(*modifiedMacros.getIf<oo::PList::Dict>())["OO_TEXTURE_UNIT_COUNT"] = oo::PList::unsignedInteger(static_cast<std::uint64_t>(textureUnits));
 		
 		// used to test for simplified shaders - OO_REDUCED_COMPLEXITY - here
-		// (The configuration and macros stay Objective-C until chunk 4: converted at the call.)
-		macroString = oo::NSStringOrNil(MacrosToString(oo::PListFrom(modifiedMacros)));
+		macroString = MacrosToString(modifiedMacros);
 	}
 	
 	if (OK)
 	{
-		vertexShader = oo::PListView(configuration).get<NSString *>(kOOVertexShaderSourceKey);
-		if (vertexShader == nil)
+		vertexShader = StringForKey(configuration, kOOVertexShaderSourceKey);
+		if (!vertexShader.has_value())
 		{
-			vsName = oo::PListView(configuration).get<NSString *>(kOOVertexShaderNameKey);
+			vsName = StringForKey(configuration, kOOVertexShaderNameKey);
 			vsCacheKey = vsName;
-			if (vsName != nil)
+			if (vsName.has_value())
 			{
-				std::optional<std::string> source;
-				if (!GetShaderSource(oo::OptionalString(vsName), "vertex", oo::OptionalString(macroString), &source))  OK = NO;
-				vertexShader = oo::NSStringOrNil(source);
+				if (!GetShaderSource(vsName, "vertex", macroString, &vertexShader))  OK = NO;
 			}
 		}
 		else
@@ -175,16 +160,14 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 	
 	if (OK)
 	{
-		fragmentShader = oo::PListView(configuration).get<NSString *>(kOOFragmentShaderSourceKey);
-		if (fragmentShader == nil)
+		fragmentShader = StringForKey(configuration, kOOFragmentShaderSourceKey);
+		if (!fragmentShader.has_value())
 		{
-			fsName = oo::PListView(configuration).get<NSString *>(kOOFragmentShaderNameKey);
+			fsName = StringForKey(configuration, kOOFragmentShaderNameKey);
 			fsCacheKey = fsName;
-			if (fsName != nil)
+			if (fsName.has_value())
 			{
-				std::optional<std::string> source;
-				if (!GetShaderSource(oo::OptionalString(fsName), "fragment", oo::OptionalString(macroString), &source))  OK = NO;
-				fragmentShader = oo::NSStringOrNil(source);
+				if (!GetShaderSource(fsName, "fragment", macroString, &fragmentShader))  OK = NO;
 			}
 		}
 		else
@@ -195,26 +178,31 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 	
 	if (OK)
 	{
-		if (vertexShader != nil || fragmentShader != nil)
+		if (vertexShader.has_value() || fragmentShader.has_value())
 		{
-			static NSDictionary *attributeBindings = nil;
-			if (attributeBindings == nil)
+			static oo::PList attributeBindings;
+			if (attributeBindings.isNull())
 			{
-				attributeBindings = [NSDictionary dictionaryWithObject:[NSNumber numberWithInt:kTangentAttributeIndex]
-																forKey:@"tangent"];
-				[attributeBindings retain];
+				attributeBindings = oo::PList(oo::PList::Dict{
+					{ "tangent", oo::PList::signedInteger(kTangentAttributeIndex) }
+				});
 			}
 			
-			NSString *cacheKey = [NSString stringWithFormat:@"$VERTEX:\n%@\n\n$FRAGMENT:\n%@\n\n$MACROS:\n%@\n", vsCacheKey, fsCacheKey, macroString];
+			// %@ of a nil string printed "(null)"; keep that text in the cache key.
+			const std::optional<std::string> cacheKey = oo::str::format(
+				"$VERTEX:\n%s\n\n$FRAGMENT:\n%s\n\n$MACROS:\n%s\n",
+				vsCacheKey.has_value() ? vsCacheKey->c_str() : "(null)",
+				fsCacheKey.has_value() ? fsCacheKey->c_str() : "(null)",
+				macroString.has_value() ? macroString->c_str() : "(null)");
 			
 			OOLogIndent();
-			shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:oo::OptionalString(vertexShader)
-															fragmentShader:oo::OptionalString(fragmentShader)
-														  vertexShaderName:oo::OptionalString(vsName)
-														fragmentShaderName:oo::OptionalString(fsName)
-																	prefix:oo::OptionalString(macroString)
-														 attributeBindings:oo::PListFrom(attributeBindings)
-																  cacheKey:oo::OptionalString(cacheKey)];
+			shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:vertexShader
+															fragmentShader:fragmentShader
+														  vertexShaderName:vsName
+														fragmentShaderName:fsName
+																	prefix:macroString
+														 attributeBindings:attributeBindings
+																  cacheKey:cacheKey];
 			OOLogOutdent();
 
 // no reduced complexity mode now
@@ -222,26 +210,26 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 			if (shaderProgram == nil)
 			{
 
-				BOOL canFallBack = !oo::PListView(modifiedMacros).get<BOOL>(@"OO_REDUCED_COMPLEXITY");
+				BOOL canFallBack = !modifiedMacros.get<bool>("OO_REDUCED_COMPLEXITY");
 #ifndef NDEBUG
 				if (gDebugFlags & DEBUG_NO_SHADER_FALLBACK)  canFallBack = NO;
 #endif
 				if (canFallBack)
 				{
-					OOLogWARN(@"shader.load.fullModeFailed", @"Could not build shader %@/%@ in full complexity mode, trying simple mode.", vsName, fsName);
+					OOLogWARN(@"shader.load.fullModeFailed", @"Could not build shader %@/%@ in full complexity mode, trying simple mode.", oo::NSStringOrNil(vsName), oo::NSStringOrNil(fsName));
 					
-					[modifiedMacros setObject:[NSNumber numberWithInt:1] forKey:@"OO_REDUCED_COMPLEXITY"];
-					macroString = oo::NSStringOrNil(MacrosToString(oo::PListFrom(modifiedMacros)));
-					cacheKey = [cacheKey stringByAppendingString:@"\n$SIMPLIFIED FALLBACK\n"];
+					(*modifiedMacros.getIf<oo::PList::Dict>())["OO_REDUCED_COMPLEXITY"] = oo::PList::signedInteger(1);
+					macroString = MacrosToString(modifiedMacros);
+					cacheKey = *cacheKey + "\n$SIMPLIFIED FALLBACK\n";
 					
 					OOLogIndent();
-					shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:oo::OptionalString(vertexShader)
-																	fragmentShader:oo::OptionalString(fragmentShader)
-																  vertexShaderName:oo::OptionalString(vsName)
-																fragmentShaderName:oo::OptionalString(fsName)
-																			prefix:oo::OptionalString(macroString)
-																 attributeBindings:oo::PListFrom(attributeBindings)
-																		  cacheKey:oo::OptionalString(cacheKey)];
+					shaderProgram = [OOShaderProgram shaderProgramWithVertexShader:vertexShader
+																	fragmentShader:fragmentShader
+																  vertexShaderName:vsName
+																fragmentShaderName:fsName
+																			prefix:macroString
+																 attributeBindings:attributeBindings
+																		  cacheKey:cacheKey];
 					OOLogOutdent();
 					
 					if (shaderProgram != nil)
@@ -254,12 +242,12 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 			
 			if (shaderProgram == nil)
 			{
-				OOLogERR(@"shader.load.failed", @"Could not build shader %@/%@.", vsName, fsName);
+				OOLogERR(@"shader.load.failed", @"Could not build shader %@/%@.", oo::NSStringOrNil(vsName), oo::NSStringOrNil(fsName));
 			}
 		}
 		else
 		{
-			OOLog(@"shader.load.noShader", @"***** Error: no vertex or fragment shader specified in shader dictionary:\n%@", configuration);
+			OOLog(@"shader.load.noShader", @"***** Error: no vertex or fragment shader specified in shader dictionary:\n%@", oo::ObjectFromPList(configuration));
 		}
 		
 		OK = (shaderProgram != nil);
@@ -269,26 +257,23 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 	if (OK)
 	{
 		// Load uniforms and textures, which are a flavour of uniform for our purpose.
-		NSDictionary *uniformDefs = oo::PListView(configuration).get<NSDictionary *>(kOOUniformsKey);	// until chunk 4
+		const oo::PList *uniformDefs = configuration.find(kOOUniformsKey);
 		
-		// The texture objects given (until chunk 4 the configuration is Objective-C: its array is
-		// read into a vector here), else the texture specifiers loaded.
+		// Texture objects from the configuration (Object nodes), else texture specifiers loaded.
 		std::vector<oo::ObjCRef<OOTexture *>> textureObjects;
-		NSArray *textureArray = oo::PListView(configuration).get<NSArray *>(kOOTextureObjectsKey);
-		if (textureArray != nil)
+		if (const oo::PList *textureArray = configuration.get<oo::PList::Array>(kOOTextureObjectsKey))
 		{
-			for (id texture in textureArray)  textureObjects.push_back(oo::ObjCRef<OOTexture *>(texture));
-		}
-		else
-		{
-			const oo::PList textureSpecs = oo::PListFrom(oo::PListView(configuration).get<NSArray *>(kOOTexturesKey));
-			if (textureSpecs.isArray())
+			for (const oo::PList &entry : *textureArray->getIf<oo::PList::Array>())
 			{
-				textureObjects = [self loadTexturesFromArray:textureSpecs unitCount:textureUnits];
+				textureObjects.push_back(oo::ObjCRef<OOTexture *>(oo::ObjectIn(entry)));
 			}
 		}
+		else if (const oo::PList *textureSpecs = configuration.get<oo::PList::Array>(kOOTexturesKey))
+		{
+			textureObjects = [self loadTexturesFromArray:*textureSpecs unitCount:textureUnits];
+		}
 
-		[self addUniformsFromDictionary:oo::PListFrom(uniformDefs) withBindingTarget:target];
+		[self addUniformsFromDictionary:uniformDefs != nullptr ? *uniformDefs : oo::PList() withBindingTarget:target];
 		[self addTexturesFromArray:textureObjects unitCount:textureUnits];
 	}
 	
@@ -298,13 +283,13 @@ std::optional<std::string> MacrosToString(const oo::PList &macros);
 		
 		if (uniforms.find("uGloss") == uniforms.end())
 		{
-			float gloss = OOClamp_0_1_f(oo::PListView(configuration).get<float>(@"gloss", 0.5f));
+			float gloss = OOClamp_0_1_f(configuration.get<float>("gloss", 0.5f));
 			[self setUniform:"uGloss" floatValue:gloss];
 		}
 
 		if (uniforms.find("uGammaCorrect") == uniforms.end())
 		{
-			BOOL gammaCorrect = oo::PListView(configuration).get<BOOL>(@"gamma_correct", ![[NSUserDefaults standardUserDefaults] boolForKey:@"no-gamma-correct"]);
+			BOOL gammaCorrect = configuration.get<bool>("gamma_correct", ![[NSUserDefaults standardUserDefaults] boolForKey:@"no-gamma-correct"]);
 			[self setUniform:"uGammaCorrect" floatValue:(float)gammaCorrect];
 		}
 	}
