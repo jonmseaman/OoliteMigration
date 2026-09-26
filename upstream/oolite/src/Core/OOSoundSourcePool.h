@@ -33,7 +33,7 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #import "oofnd/objc/OOObject.h"
 #import "OOTypes.h"
 #import "OOMaths.h"

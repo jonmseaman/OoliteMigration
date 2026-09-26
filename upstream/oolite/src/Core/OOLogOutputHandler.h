@@ -37,7 +37,7 @@ SOFTWARE.
 
 */
 
-#import <Foundation/Foundation.h>
+#import "OOCocoa.h"
 #include <optional>
 #include <string>
 #include <string_view>
