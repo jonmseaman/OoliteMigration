@@ -504,7 +504,7 @@ std::optional<std::string> OptionalStringForKey(const oo::PList &dict, std::stri
 		OOSystemID sys = [UNIVERSE findSystemFromName:oo::NSStringFrom(*originName)];
 		if (sys < 0)
 		{
-			OOLogERR(@"character.load.unknownSystem", @"could not find a system named '%@' in this galaxy.", oo::NSStringFrom(*originName));
+			OO_LOG_ERR("character.load.unknownSystem", "could not find a system named '{}' in this galaxy.", *originName);
 			[self setOriginSystem:(ranrot_rand() & 0xff)];
 		}
 		else

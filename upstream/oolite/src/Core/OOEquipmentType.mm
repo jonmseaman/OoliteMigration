@@ -95,7 +95,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 	}
 	else
 	{
-		OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string or an array.", oo::NSStringFrom(key), oo::NSStringFrom(identifier));
+		OO_LOG("equipment.load", "***** ERROR: {} for equipment item {} is not a string or an array.", key, identifier);
 		return std::nullopt;
 	}
 	return keys;
@@ -225,7 +225,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 
 		if (!name.has_value() || !identifier.has_value() || !description.has_value())
 		{
-			OOLog(@"equipment.load", @"***** ERROR: Invalid equipment.plist entry - missing name, identifier or description (\"%@\", %@, \"%@\")", oo::NSStringOrNil(name), oo::NSStringOrNil(identifier), oo::NSStringOrNil(description));
+			OO_LOG("equipment.load", "***** ERROR: Invalid equipment.plist entry - missing name, identifier or description (\"{}\", {}, \"{}\")", name.value_or("(null)"), identifier.value_or("(null)"), description.value_or("(null)"));
 			OK = NO;
 		}
 		else
@@ -316,7 +316,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 			else if (value != nullptr && value->isArray())  legacyConditions = *value;
 			else if (value != nullptr)
 			{
-				OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string or an array.", @"conditions", oo::NSStringFrom(_identifier));
+				OO_LOG("equipment.load", "***** ERROR: {} for equipment item {} is not a string or an array.", "conditions", _identifier);
 			}
 			if (legacyConditions)
 			{
@@ -334,7 +334,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 			}
 			else if (value != nullptr)
 			{
-				OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not a string.", @"condition_script", oo::NSStringFrom(_identifier));
+				OO_LOG("equipment.load", "***** ERROR: {} for equipment item {} is not a string.", "condition_script", _identifier);
 			}
 			/* Condition scripts are shared: all equipment/ships using the
 			 * same condition script use one shared instance. Equipment
@@ -362,7 +362,7 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 					const oo::PList *keydef = extraInfo.find(keyName);
 					if (keydef != nullptr && !keydef->isArray())
 					{
-						OOLog(@"equipment.load", @"***** ERROR: %@ for equipment item %@ is not an array.", oo::NSStringFrom(keyName), oo::NSStringFrom(_identifier));
+						OO_LOG("equipment.load", "***** ERROR: {} for equipment item {} is not an array.", keyName, _identifier);
 						keydef = nullptr;
 					}
 
@@ -375,11 +375,11 @@ std::optional<std::vector<std::string>> EquipmentKeysFrom(const oo::PList &extra
 						if (checking.has_value()) {
 							if (activate)
 							{
-								OOLog(@"equipment.load", @"***** Error: %@ for equipment item %@ is already in use for %@. Default not applied", oo::NSStringFrom(keyName), oo::NSStringFrom(_identifier), oo::NSStringFrom(*checking));
+								OO_LOG("equipment.load", "***** Error: {} for equipment item {} is already in use for {}. Default not applied", keyName, _identifier, *checking);
 							}
 							else
 							{
-								OOLog(@"equipment.load", @"***** Error: %@ for equipment item %@ is already in use for %@. Default not applied.", oo::NSStringFrom(keyName), oo::NSStringFrom(_identifier), oo::NSStringFrom(*checking));
+								OO_LOG("equipment.load", "***** Error: {} for equipment item {} is already in use for {}. Default not applied.", keyName, _identifier, *checking);
 							}
 							defaultKey = oo::PList();
 						}
