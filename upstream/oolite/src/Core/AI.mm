@@ -23,6 +23,7 @@ MA 02110-1301, USA.
 */
 
 #import "AI.h"
+#include "oofnd/objc/OORuntime.h"
 #import <objc/runtime.h>
 #import <objc/objc-arc.h>
 #import "ResourceManager.h"
@@ -78,6 +79,16 @@ static AI *sCurrentlyRunningAI = nil;
 
 
 namespace {
+
+// OODictionaryFromFile (OOPListParsing's bridge) as a property list: the file's
+// property list when it is a dictionary, a null PList otherwise (its plist.wrongType log line,
+// which named the Foundation class, is not kept).
+oo::PList PListDictionaryFromFile(const std::string &path)
+{
+	oo::PList result = cxx_OOPropertyListFromFile(path);
+	return result.isDict() ? result : oo::PList();
+}
+
 
 // The state machine's "jsScript" entry as an Objective-C object, nil if it has none (what
 // -objectForKey:@"jsScript" answered).
@@ -136,7 +147,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 - (oo::PList) stateMachine;
 - (id) name;	// shared selector (proposed ADR-0043): an Objective-C string
 - (id) state;	// shared selector (proposed ADR-0043): an Objective-C string or nil
-- (id) pendingMessages;	// shared selector (proposed ADR-0043): an Objective-C set of strings
+- (std::set<std::string>) pendingMessages;
 - (std::optional<std::string>) jsScript;
 
 @end
@@ -305,10 +316,9 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 	[self directSetState:oo::OptionalString([preservedMachine.get() state])];
 
 	// restore JS script
-	[[self owner] setAIScript:oo::NSStringOrNil([preservedMachine.get() jsScript])];
+	[[self owner] setAIScript:[preservedMachine.get() jsScript].value_or("")];
 
-	const std::vector<std::string> preservedMessages = oo::StringsFrom([preservedMachine.get() pendingMessages]);
-	pendingMessages = std::set<std::string>(preservedMessages.begin(), preservedMessages.end());
+	pendingMessages = [preservedMachine.get() pendingMessages];
 
 	aiStack.pop_back();  //  POP
 }
@@ -590,7 +600,7 @@ static AIStackElement *sStack = NULL;
 				dataString = std::move(joined);
 			}
 
-			SEL selector = NSSelectorFromString(oo::NSStringFrom(selectorStr));
+			SEL selector = OOSelectorFromName(selectorStr);
 			if ([owner respondsToSelector:selector])
 			{
 				if (dataString.has_value())  [owner performSelector:selector withObject:oo::NSStringFrom(*dataString)];
@@ -646,7 +656,7 @@ static AIStackElement *sStack = NULL;
 	if (EXPECT_NOT(pendingMessages.size() > 32))
 	{
 		// Generate the error, but don't crash Oolite! Fixes bug #18055 - Pending message overflow for thargoids, -> crash !
-		OOLogERR(@"ai.message.failed.overflow", @"AI message \"%@\" received by '%@' AI while pending messages stack full; message discarded. Pending messages:\n%@", ms, oo::NSStringOrNil(ownerDesc), [self pendingMessages]);
+		OOLogERR(@"ai.message.failed.overflow", @"AI message \"%@\" received by '%@' AI while pending messages stack full; message discarded. Pending messages:\n%@", ms, oo::NSStringOrNil(ownerDesc), oo::NSSetFromStrings([self pendingMessages]));
 	}
 	else
 	{
@@ -661,9 +671,9 @@ static AIStackElement *sStack = NULL;
 }
 	
 
-- (id) pendingMessages
+- (std::set<std::string>) pendingMessages
 {
-	return oo::NSSetFromStrings(pendingMessages);
+	return pendingMessages;
 }
 
 
@@ -856,7 +866,7 @@ static AIStackElement *sStack = NULL;
 			const std::optional<std::string> aiPath = oo::OptionalString([ResourceManager pathForFileNamed:oo::NSStringFrom(smName) inFolder:@"AIs"]);
 			if (aiPath.has_value())
 			{
-				newSM = oo::PListFrom(OODictionaryFromFile(oo::NSStringFrom(*aiPath)));
+				newSM = PListDictionaryFromFile(*aiPath);
 			}
 			if (newSM.isNull())
 			{
@@ -891,7 +901,7 @@ static AIStackElement *sStack = NULL;
 #if DEBUG_GRAPHVIZ
 			if ([[NSUserDefaults standardUserDefaults] boolForKey:@"generate-ai-graphviz"])
 			{
-				GenerateGraphVizForAIStateMachine(oo::ObjectFromPList(newSM), oo::NSStringFrom(smName));
+				GenerateGraphVizForAIStateMachine(newSM, smName);
 			}
 #endif
 
@@ -1062,9 +1072,9 @@ static AIStackElement *sStack = NULL;
 }
 
 
-- (id) pendingMessages
+- (std::set<std::string>) pendingMessages
 {
-	return oo::NSSetFromStrings(_pendingMessages);
+	return _pendingMessages;
 }
 
 - (std::optional<std::string>) jsScript

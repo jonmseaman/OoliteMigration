@@ -81,6 +81,23 @@ Copyright (C) 2004-2013 Giles C Williams and contributors (ShipEntity.h)
 - (void) doScriptEvent:(ooscript::PropertyId)scriptEvent andReactToAIMessage:(NSString *)aiMessage;	// -> -cxx_doScriptEvent:andReactToAIMessage:
 - (void) doScriptEvent:(ooscript::PropertyId)scriptEvent withArgument:(id)argument andReactToAIMessage:(NSString *)aiMessage;	// -> -cxx_doScriptEvent:withArgument:andReactToAIMessage:
 
+// oo-3rb.240: identity: names, roles, ship key, descriptions
+- (NSString *) shipDataKey;	// -> -cxx_shipDataKey
+- (NSString *) shipDataKeyAutoRole;	// -> -cxx_shipDataKeyAutoRole
+- (void)setShipDataKey:(NSString *)key;	// -> -cxx_setShipDataKey:
+- (NSString *) shipUniqueName;	// -> -cxx_shipUniqueName
+- (NSString *) shipClassName;	// -> -cxx_shipClassName
+- (NSString *) scanDescription;	// -> -cxx_scanDescription
+- (NSString *) scanDescriptionForScripting;	// -> -cxx_scanDescriptionForScripting
+- (void) setShipUniqueName:(NSString *)inName;	// -> -cxx_setShipUniqueName:
+- (void) setShipClassName:(NSString *)inName;	// -> -cxx_setShipClassName:
+- (void) setDisplayName:(NSString *)inName;	// -> -cxx_setDisplayName:
+- (void) setScanDescription:(NSString *)inName;	// -> -cxx_setScanDescription:
+- (void) addRole:(NSString *)role withProbability:(float)probability;	// -> -cxx_addRole:withProbability:
+- (void) removeRole:(NSString *)role;	// -> -cxx_removeRole:
+- (NSString *)primaryRole;	// -> -cxx_primaryRole
+- (BOOL)hasPrimaryRole:(NSString *)role;	// -> -cxx_hasPrimaryRole:
+
 @end
 
 
