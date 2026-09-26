@@ -27,6 +27,7 @@ MA 02110-1301, USA.
 #import "OOSound.h"
 #import "OOCollectionExtractors.h"
 #import "ResourceManager.h"
+#import "OOFoundationBridge.h"
 
 
 static id sSingleton = nil;
@@ -34,7 +35,7 @@ static id sSingleton = nil;
 
 @interface OOMusicController (Private)
 
-- (void) playiTunesPlaylist:(NSString *)playlistName;
+- (void) playiTunesPlaylist:(const char *)playlistName;
 - (void) pauseiTunes;
 
 @end
@@ -70,34 +71,34 @@ enum
 	self = [super init];
 	if (self != nil)
 	{
-		NSString *modeString = [[NSUserDefaults standardUserDefaults] stringForKey:@"music mode"];
-		if ([modeString isEqualToString:@"off"])  _mode = kOOMusicOff;
-		else if ([modeString isEqualToString:@"iTunes"])  _mode = kOOMusicITunes;
+		const std::optional<std::string> modeString = oo::OptionalString([[NSUserDefaults standardUserDefaults] stringForKey:@"music mode"]);
+		if (modeString == "off")  _mode = kOOMusicOff;
+		else if (modeString == "iTunes")  _mode = kOOMusicITunes;
 		else  _mode = kOOMusicOn;
 		
 		// Handle unlikely case of taking prefs from iTunes-enabled system to other.
 		if (_mode > kOOMusicModeMax)  _mode = kOOMusicModeMax;
 		
-		[self setMissionMusic:@"OoliteTheme.ogg"];
+		_missionMusic = "OoliteTheme.ogg";
 	}
 	
 	return self;
 }
 
 
-- (void) playMusicNamed:(NSString *)name loop:(BOOL)loop
+- (void) playMusicNamed:(const std::string &)name loop:(BOOL)loop
 {
 	[self playMusicNamed:name loop:loop gain:OO_DEFAULT_SOUNDSOURCE_GAIN];
 }
 
 
-- (void) playMusicNamed:(NSString *)name loop:(BOOL)loop gain:(float)gain
+- (void) playMusicNamed:(const std::string &)name loop:(BOOL)loop gain:(float)gain
 {
-	if ([self isPlaying] && [name isEqual:[self playingMusic]])  return;
-	
-	if (_mode == kOOMusicOn || (_mode == kOOMusicITunes && [name isEqualToString:@"OoliteTheme.ogg"]))
+	if ([self isPlaying] && name == [self playingMusic])  return;
+
+	if (_mode == kOOMusicOn || (_mode == kOOMusicITunes && name == "OoliteTheme.ogg"))
 	{
-		OOMusic *music = [ResourceManager ooMusicNamed:name inFolder:@"Music"];
+		OOMusic *music = [ResourceManager cxx_ooMusicNamed:name inFolder:"Music"];
 		if (music != nil)
 		{
 			[_current stop];
@@ -115,7 +116,7 @@ enum
 - (void) playThemeMusic
 {
 	_special = kSpecialTheme;
-	[self playMusicNamed:@"OoliteTheme.ogg" loop:YES];
+	[self playMusicNamed:"OoliteTheme.ogg" loop:YES];
 }
 
 
@@ -125,11 +126,11 @@ enum
 	
 	if (_mode == kOOMusicITunes)
 	{
-		[self playiTunesPlaylist:@"Oolite-Docking"];
+		[self playiTunesPlaylist:"Oolite-Docking"];
 	}
 	else
 	{
-		[self playMusicNamed:@"BlueDanube.ogg" loop:YES];
+		[self playMusicNamed:"BlueDanube.ogg" loop:YES];
 	}
 }
 
@@ -140,28 +141,27 @@ enum
 	
 	if (_mode == kOOMusicITunes)
 	{
-		[self playiTunesPlaylist:@"Oolite-Docked"];
+		[self playiTunesPlaylist:"Oolite-Docked"];
 	}
 	else
 	{
-		[self playMusicNamed:@"OoliteDocked.ogg" loop:NO];
+		[self playMusicNamed:"OoliteDocked.ogg" loop:NO];
 	}
 }
 
 
-- (void) setMissionMusic:(NSString *)missionMusicName
+- (void) setMissionMusic:(id)missionMusicName
 {
-	[_missionMusic autorelease];
-	_missionMusic = [missionMusicName copy];
+	_missionMusic = oo::OptionalString(missionMusicName);
 }
 
 
 - (void) playMissionMusic
 {
-	if (_missionMusic != nil)
+	if (_missionMusic.has_value())
 	{
 		_special = kSpecialMission;
-		[self playMusicNamed:_missionMusic loop:NO];
+		[self playMusicNamed:*_missionMusic loop:NO];
 	}
 }
 
@@ -182,14 +182,14 @@ enum
 	
 	if (_mode == kOOMusicITunes)
 	{
-		[self playiTunesPlaylist:@"Oolite-Inflight"];
+		[self playiTunesPlaylist:"Oolite-Inflight"];
 	}
 }
 
 
-- (void) stopMusicNamed:(NSString *)name
+- (void) stopMusicNamed:(const std::string &)name
 {
-	if ([name isEqual:[self playingMusic]])  [self stop];
+	if (name == [self playingMusic])  [self stop];
 }
 
 
@@ -230,9 +230,9 @@ enum
 }
 
 
-- (NSString *) playingMusic
+- (std::optional<std::string>) playingMusic
 {
-	return [_current name];
+	return oo::OptionalString([_current name]);
 }
 
 
@@ -279,14 +279,14 @@ enum
 				break;
 		}
 		
-		NSString *modeString = nil;
+		std::optional<std::string> modeString;
 		switch (_mode)
 		{
-			case kOOMusicOff:		modeString = @"off"; break;
-			case kOOMusicOn:		modeString = @"on"; break;
-			case kOOMusicITunes:	modeString = @"iTunes"; break;
+			case kOOMusicOff:		modeString = "off"; break;
+			case kOOMusicOn:		modeString = "on"; break;
+			case kOOMusicITunes:	modeString = "iTunes"; break;
 		}
-		[[NSUserDefaults standardUserDefaults] setObject:modeString forKey:@"music mode"];
+		[[NSUserDefaults standardUserDefaults] setObject:oo::NSStringOrNil(modeString) forKey:@"music mode"];
 	}
 }
 
@@ -347,8 +347,9 @@ enum
 @implementation OOMusicController (Private)
 
 #if OOLITE_MAC_OS_X
-- (void) playiTunesPlaylist:(NSString *)playlistName
+- (void) playiTunesPlaylist:(const char *)playlistNameUTF8
 {
+	NSString *playlistName = oo::NSStringFrom(playlistNameUTF8);
 	NSString *ootunesScriptString =
 		[NSString stringWithFormat:
 		@"with timeout of 1 second\n"
@@ -381,7 +382,7 @@ enum
 	[ootunesScript release]; 
 }
 #else
-- (void) playiTunesPlaylist:(NSString *)playlistName {}
+- (void) playiTunesPlaylist:(const char *)playlistName {}
 - (void) pauseiTunes {}
 #endif
 
