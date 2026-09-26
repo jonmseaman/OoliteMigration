@@ -42,6 +42,7 @@ MA 02110-1301, USA.
 #import "OOFoundationBridge.h"
 
 #include "oofnd/String.hpp"
+#include "oofnd/Scanner.hpp"
 
 
 enum
@@ -316,7 +317,7 @@ id JSScriptObjectOf(const oo::PList &stateMachine)
 	[self directSetState:[preservedMachine.get() cxx_state]];
 
 	// restore JS script
-	[[self owner] setAIScript:oo::NSStringOrNil([preservedMachine.get() jsScript])];
+	[[self owner] setAIScript:[preservedMachine.get() jsScript].value_or("")];
 
 	pendingMessages = [preservedMachine.get() pendingMessages];
 
@@ -908,7 +909,7 @@ static AIStackElement *sStack = NULL;
 #if DEBUG_GRAPHVIZ
 			if ([[NSUserDefaults standardUserDefaults] boolForKey:@"generate-ai-graphviz"])
 			{
-				GenerateGraphVizForAIStateMachine(oo::ObjectFromPList(newSM), oo::NSStringFrom(smName));
+				GenerateGraphVizForAIStateMachine(newSM, smName);
 			}
 #endif
 
@@ -971,9 +972,8 @@ static AIStackElement *sStack = NULL;
 		if (aliasDictionary != nullptr)  aliases = *aliasDictionary;
 	}
 
-	// -stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]: whitespace, not newlines.
-	NSCharacterSet *whitespace = [NSCharacterSet whitespaceCharacterSet];
-	auto isWhitespace = [whitespace](char16_t c) { return [whitespace characterIsMember:c] != NO; };
+	// The whitespace character set: whitespace, not newlines.
+	const oo::str::CharacterSet whitespace = oo::str::CharacterSet::whitespace();
 
 	const oo::PList::Array *entries = actions.getIf<oo::PList::Array>();
 	for (const oo::PList &entry : entries != nullptr ? *entries : oo::PList::Array())
@@ -985,7 +985,7 @@ static AIStackElement *sStack = NULL;
 		}
 
 		// Trim spaces from beginning and end.
-		std::string action = oo::str::trimTrailing(oo::str::trimLeading(*entry.getIf<std::string>(), isWhitespace), isWhitespace);
+		std::string action = oo::str::trim(*entry.getIf<std::string>(), whitespace);
 
 		// Cut off parameters.
 		const std::size_t space = action.find(' ');
