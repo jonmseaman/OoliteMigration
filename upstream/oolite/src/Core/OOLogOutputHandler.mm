@@ -32,6 +32,7 @@ SOFTWARE.
 #import "OOCocoa.h"
 #import "OOLogOutputHandler.h"
 #import "OOLogging.h"
+#import "OOFoundationBridge.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "oofnd/Date.hpp"
@@ -85,15 +86,11 @@ static LogCStringFunctionSetterProc _NSSetLogCStringFunction = NULL;
 static void LoadLogCStringFunctions(void);
 static void OONSLogCStringFunction(const char *string, unsigned length, BOOL withSyslogBanner);
 
-static NSString *GetAppName(void);
+static std::string GetAppName(void);
 
 static LogCStringFunctionProc	sDefaultLogCStringFunction = NULL;
 
-#elif OOLITE_GNUSTEP
-
-static void OONSLogPrintfHandler(NSString *message);
-
-#else
+#elif !OOLITE_GNUSTEP
 #error Unknown platform!
 #endif
 
@@ -173,11 +170,9 @@ void OOLogOutputHandlerInit(void)
 	{
 		OOLog(@"logging.nsLogFilter.install.failed", @"Failed to install NSLog() filter; system messages will not be logged in log file.");
 	}
-#elif GNUSTEP_BASE_LIBRARY
-	// gnustep-base's own NSLog lock, not ours to replace: it goes with the NSLog hook (oo-qps).
-	[GSLogLock() lock];
-	_NSLog_printf_handler = OONSLogPrintfHandler;
-	[GSLogLock() unlock];
+#else
+	// gnustep-base's NSLog hook lives in the bridge (OOLogOutputHandler+FoundationBridge.mm).
+	OOLogOutputHandlerInstallNSLogHook();
 #endif
 
 	atexit(OOLogOutputHandlerClose);
@@ -218,10 +213,8 @@ void OOLogOutputHandlerClose(void)
 			_NSSetLogCStringFunction(sDefaultLogCStringFunction);
 			sDefaultLogCStringFunction = NULL;
 		}
-#elif GNUSTEP_BASE_LIBRARY
-		[GSLogLock() lock];
-		_NSLog_printf_handler = NULL;
-		[GSLogLock() unlock];
+#else
+		OOLogOutputHandlerRemoveNSLogHook();
 #endif
 	}
 }
@@ -270,16 +263,14 @@ void OOLogOutputHandlerPrintLine(std::string_view line)
 }
 
 
-NSString *OOLogHandlerGetLogPath(void)
+std::optional<std::string> cxx_OOLogHandlerGetLogPath(void)
 {
-	std::optional<std::string> path = LogPath();
-	return path.has_value() ? [NSString stringWithUTF8String:path->c_str()] : nil;
+	return LogPath();
 }
 
 
-void OOLogOutputHandlerChangeLogFile(NSString *newLogName)
+void cxx_OOLogOutputHandlerChangeLogFile(const std::string &name)
 {
-	std::string name = (newLogName != nil) ? std::string([newLogName UTF8String]) : std::string();
 	if (LogFileName() != name)
 	{
 		sLogFileName = name;
@@ -404,16 +395,6 @@ static void OONSLogCStringFunction(const char *string, unsigned length, BOOL wit
 	}
 }
 
-#elif OOLITE_GNUSTEP
-
-static void OONSLogPrintfHandler(NSString *message)
-{
-	if (OOLogWillDisplayMessagesInClass(@"gnustep"))
-	{
-		OOLogWithFunctionFileAndLine(@"gnustep", NULL, NULL, 0, @"%@", message);
-	}
-}
-
 #endif
 
 
@@ -445,7 +426,7 @@ bool DirectoryExistCreatingIfNecessary(const std::string &path)
 
 
 #if OOLITE_MAC_OS_X
-static void ExcludeFromTimeMachine(NSString *path)
+static void ExcludeFromTimeMachine(const std::string &path)
 {
 	OSStatus (*CSBackupSetItemExcluded)(NSURL *item, Boolean exclude, Boolean excludeByPath) = NULL;
 	CFBundleRef carbonCoreBundle = CFBundleGetBundleWithIdentifier(CFSTR("com.apple.CoreServices.CarbonCore"));
@@ -454,30 +435,29 @@ static void ExcludeFromTimeMachine(NSString *path)
 		CSBackupSetItemExcluded = CFBundleGetFunctionPointerForName(carbonCoreBundle, CFSTR("CSBackupSetItemExcluded"));
 		if (CSBackupSetItemExcluded != NULL)
 		{
-			(void)CSBackupSetItemExcluded([NSURL fileURLWithPath:path], YES, NO);
+			(void)CSBackupSetItemExcluded([NSURL fileURLWithPath:oo::NSStringFrom(path)], YES, NO);
 		}
 	}
 }
 
-static NSString *GetAppName(void)
+static std::string GetAppName(void)
 {
-	static NSString		*appName = nil;
-	NSBundle			*bundle = nil;
+	static std::optional<std::string>	appName;
+	NSBundle							*bundle = nil;
 
-	if (appName == nil)
+	if (!appName.has_value())
 	{
 		bundle = [NSBundle mainBundle];
-		appName = [bundle objectForInfoDictionaryKey:@"CFBundleName"];
-		if (appName == nil)  appName = [bundle bundleIdentifier];
-		if (appName == nil)  appName = @"<unknown application>";
-		[appName retain];
+		appName = oo::OptionalString([bundle objectForInfoDictionaryKey:@"CFBundleName"]);
+		if (!appName.has_value())  appName = oo::OptionalString([bundle bundleIdentifier]);
+		if (!appName.has_value())  appName = "<unknown application>";
 	}
 
-	return appName;
+	return *appName;
 }
 #endif
 
-/*	-[NSString stringByAppendingPathComponent:] as GNUstep 1.31.1 answers it on Windows for the
+/*	Foundation's -stringByAppendingPathComponent: as GNUstep 1.31.1 answers it on Windows for the
 	paths used here (probed): trailing '/' and '\' of <base> are dropped, except a root's ("/",
 	"C:/"), and one '/' joins; an empty base gives the component, "C:" gives "C:<component>".
 	(A UNC root's separator is not normalised here as GNUstep does; no default path is one.)
@@ -498,7 +478,7 @@ std::string AppendPathComponent(std::string base, const std::string &component)
 }	// namespace
 
 
-/*	The log directory as a UTF-8 path string, spelled as NSString's path methods spelled it:
+/*	The log directory as a UTF-8 path string, spelled as Foundation's string path methods spelled it:
 	$OO_LOGSDIR as given, else <home>/Logs (Windows) or <home>/.Oolite/Logs (Linux), creating the
 	directories. Cached once found; nullopt (and tried again next time) when a directory cannot
 	be created.
@@ -522,7 +502,7 @@ const std::optional<std::string> &LogBasePath(void)
 		{
 #if OOLITE_MAC_OS_X
 			// ~/Library
-			path = [[NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0] UTF8String];
+			path = oo::StdString([NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) objectAtIndex:0]);
 #elif OOLITE_LINUX
 			// ~/.Oolite
 			path = AppendPathComponent(oo::fs::utf8String(oo::ResourcePaths::current().homeDirectory()), ".Oolite");
@@ -538,12 +518,12 @@ const std::optional<std::string> &LogBasePath(void)
 
 #if OOLITE_MAC_OS_X
 			// ~/Library/Logs/Oolite
-			path = AppendPathComponent(path, [GetAppName() UTF8String]);
+			path = AppendPathComponent(path, GetAppName());
 			if (!DirectoryExistCreatingIfNecessary(path))  return basePath;
 #endif
 		}
 #if OOLITE_MAC_OS_X
-		ExcludeFromTimeMachine([NSString stringWithUTF8String:path.c_str()]);
+		ExcludeFromTimeMachine(path);
 #endif
 		basePath = path;
 	}
@@ -554,10 +534,9 @@ const std::optional<std::string> &LogBasePath(void)
 }	// namespace
 
 
-NSString *OOLogHandlerGetLogBasePath(void)
+std::optional<std::string> cxx_OOLogHandlerGetLogBasePath(void)
 {
-	const std::optional<std::string> &path = LogBasePath();
-	return path.has_value() ? [NSString stringWithUTF8String:path->c_str()] : nil;
+	return LogBasePath();
 }
 
 
